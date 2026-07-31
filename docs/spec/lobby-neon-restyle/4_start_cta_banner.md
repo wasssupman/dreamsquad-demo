@@ -45,3 +45,12 @@ unit 1 의 START 는 기존 버튼 rect(240×292 세로 박스)에 단순 그라
 
 > 2026-07-31 완료 — Play 검증 `Assets/Screenshots/neon_lobby_final.png`, 시안 대비 크롭 비교 완료.
 > 콘솔 에러/워닝 0. 남은 차이는 자체 폰트(Anton=콘덴스드)라 시안의 넓은 헤비 이탤릭보다 좁다는 점.
+>
+> **리뷰 반영 (major)**: 최초 구현은 `label.fontMaterial` 이 인스턴스를 떠 준다고 가정했으나,
+> 씬이 `m_fontMaterial`/`m_sharedMaterial` 에 같은 객체를 물고 있으면 TMP 게터가 인스턴스를
+> 만들지 않아 아웃라인이 공유 머티리얼에 박힌다(라벨을 복제하면 즉시 번진다). 항상 직접
+> 인스턴스를 뜨고 값도 머티리얼에 직접 쓰도록 고쳤다 — TMP 의 `outlineWidth` 세터는
+> `m_sharedMaterial` 을 겨냥해서 인스턴스를 분리하는 순간 엇갈린다(실제로 아웃라인이 사라졌다).
+> 검증: 씬·공유 에셋 모두 `_OutlineWidth: 0` 유지, `OUTLINE_ON` 흔적 없음.
+> 그 외: 슬라이더 극단값(`pointFrac`=1·`nearCornerInset`=0)에서 꼭짓점이 겹쳐 NaN 나던 것
+> 1px 클램프로 차단, `Apply(false, true)` 로 텍스처 CPU 사본 해제.

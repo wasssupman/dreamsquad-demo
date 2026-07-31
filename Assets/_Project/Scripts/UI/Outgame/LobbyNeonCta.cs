@@ -26,7 +26,7 @@ namespace Wassup.UI
         [SerializeField] private TMP_Text label;
 
         [Header("형상")]
-        [Tooltip("옆 꼭짓점의 세로 위치. 0=위, 1=아래. 왼쪽 기준이고 오른쪽은 180° 대칭으로 뒤집힌다.")]
+        [Tooltip("옆 꼭짓점의 세로 위치. 0.5=한가운데, 1=맨 아래. 왼쪽 기준이고 오른쪽은 180° 대칭.")]
         [SerializeField, Range(0.5f, 1f)] private float pointFrac = 0.75f;
         [Tooltip("꼭짓점에서 먼 쪽 모서리가 안으로 들어간 정도(가로 반폭 대비).")]
         [SerializeField, Range(0f, 0.4f)] private float farCornerInset = 0.17f;
@@ -39,7 +39,7 @@ namespace Wassup.UI
         [Tooltip("본체 바깥에서 링까지의 빈 거리(px). 여기로 배경이 비쳐 링이 떠 보인다.")]
         [SerializeField] private float rimGap = 9f;
         [SerializeField] private float rimWidth = 4.5f;
-        [Tooltip("링에서 글로우가 번지는 거리(px). 안팎 양쪽으로 퍼진다.")]
+        [Tooltip("링에서 글로우가 번지는 거리(px). 본체 안쪽은 본체가 덮으므로 바깥으로만 보인다.")]
         [SerializeField] private float glowReach = 18f;
         [SerializeField] private Color rimColor = new Color32(247, 252, 255, 255);
         [SerializeField] private Color glowColor = new Color32(48, 129, 211, 255);
@@ -65,6 +65,7 @@ namespace Wassup.UI
         [SerializeField] private Color labelOutlineColor = new Color32(105, 5, 146, 255);
 
         private Sprite _baked;
+        private Material _labelMat;
 
         private void Awake()
         {
@@ -85,20 +86,34 @@ namespace Wassup.UI
             if (label != null && labelOutlineWidth > 0f) ApplyLabelOutline();
         }
 
-        // 시안의 굵은 보라 아웃라인. 여기 세 줄은 전부 필요하고 하나라도 빠지면 조용히 안 보인다:
-        //   1) fontMaterial 로 인스턴스를 떠서 공유 머티리얼(다른 Anton 라벨 전부)을 오염시키지 않는다.
-        //   2) TMP 모바일 SDF 셰이더는 아웃라인을 OUTLINE_ON 키워드로 가른다. 인스펙터의 슬라이더는
-        //      이 키워드를 같이 켜주지만 스크립트로 _OutlineWidth 만 올리면 키워드가 꺼진 채라
-        //      화면에 아무 변화가 없다.
-        //   3) 글리프 쿼드 여백은 아웃라인 0 기준으로 잡혀 있어, 다시 계산하지 않으면 넓힌 아웃라인이
-        //      쿼드 밖으로 나가 잘린다.
+        // 시안의 굵은 보라 아웃라인. 네 가지가 전부 있어야 하고 하나라도 빠지면 **조용히** 안 보인다
+        // (에러도 경고도 없다 — 넷 다 실제로 한 번씩 밟은 함정이다):
+        //   1) 항상 우리 소유의 인스턴스를 뜬다. TMP 의 fontMaterial 게터는 m_fontMaterial 이
+        //      m_sharedMaterial 과 다를 때만 인스턴스를 뜨는데, 씬이 두 슬롯에 같은 객체를 물고
+        //      있으면(인스펙터가 만든 임베디드 머티리얼) 게터가 그 객체를 그대로 돌려줘서
+        //      아웃라인이 공유 대상에 박힌다.
+        //   2) 값은 TMP 의 outlineWidth/outlineColor 프로퍼티가 아니라 **머티리얼에 직접** 쓴다.
+        //      그 세터들은 m_sharedMaterial 을 겨냥하므로 인스턴스를 분리한 순간 우리 인스턴스가
+        //      아니라 원본에 쓰여 화면에는 아무 변화가 없다.
+        //   3) OUTLINE_ON 키워드를 켠다. TMP 모바일 SDF 셰이더가 아웃라인을 이 키워드로 가르기
+        //      때문에 _OutlineWidth 만 올리면 셰이더가 아예 계산을 건너뛴다.
+        //   4) UpdateMeshPadding — 글리프 쿼드 여백이 아웃라인 0 기준이라 재계산하지 않으면
+        //      넓힌 아웃라인이 쿼드 밖으로 나가 잘린다.
         private void ApplyLabelOutline()
         {
-            Material mat = label.fontMaterial;
-            if (mat == null) return;
-            mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
-            label.outlineColor = labelOutlineColor;
-            label.outlineWidth = labelOutlineWidth;
+            Material src = label.fontSharedMaterial;
+            if (src == null) return;
+
+            _labelMat = new Material(src)
+            {
+                name = src.name + " (LobbyNeonCta)",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            _labelMat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            _labelMat.SetColor(ShaderUtilities.ID_OutlineColor, labelOutlineColor);
+            _labelMat.SetFloat(ShaderUtilities.ID_OutlineWidth, labelOutlineWidth);
+
+            label.fontMaterial = _labelMat;
             label.UpdateMeshPadding();
         }
 
@@ -110,6 +125,7 @@ namespace Wassup.UI
                 Destroy(_baked);
                 _baked = null;
             }
+            if (_labelMat != null) { Destroy(_labelMat); _labelMat = null; }
         }
 
         private Sprite Bake(int width, int height)
@@ -124,7 +140,10 @@ namespace Wassup.UI
             // 코너 라운딩은 sd 에서 radius 를 빼서 만든다 — 폴리곤은 그만큼 미리 줄여 잡는다.
             float r = Mathf.Clamp(cornerRadius, 0f, Mathf.Min(halfW, halfH) - 1f);
             float pw = halfW - r, ph = halfH - r;
-            float pointY = ph * (1f - 2f * pointFrac);   // 왼쪽 꼭짓점 y (아래쪽이 음수)
+            // 왼쪽 꼭짓점 y (아래쪽이 음수). 아래 끝까지 내려가면 pointFrac=1·nearCornerInset=0
+            // 조합에서 꼭짓점과 아래 모서리가 한 점이 되고, 길이 0 인 변이 생겨 SdPolygon 이
+            // 0 으로 나눠 스프라이트 전체가 NaN 이 된다. 1px 안쪽으로 잡아 그 조합을 막는다.
+            float pointY = Mathf.Clamp(ph * (1f - 2f * pointFrac), -ph + 1f, ph - 1f);
 
             var poly = new[]
             {
@@ -190,7 +209,7 @@ namespace Wassup.UI
             }
 
             tex.SetPixels32(px);
-            tex.Apply();
+            tex.Apply(false, true);   // 다시 읽을 일이 없다 — CPU 사본을 놓아준다(500x180 ≈ 360KB).
             return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
         }
 

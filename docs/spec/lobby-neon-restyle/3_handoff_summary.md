@@ -15,14 +15,15 @@
   디졸브는 no-op 유지 — 낮 버전 도착 시 daySprite + SceneTransition.prefab daySprite 교체.
 - 스쿼드/드림캐쳐/히스토리 버튼 = `LobbyNeonChip`(Chip) 런타임 베이크 다크 칩 + 절차 재작화
   흰 글리프(`neon_glyph_*.png`) + Jua 한글 라벨. 기존 스티커 Icon GO 는 비활성 보존.
-- START = `LobbyNeonChip`(Cta) 핑크→퍼플 그라디언트 + Anton 볼드이탤릭 "START".
+- START = `LobbyNeonCta` 네온 리본 배너 + Anton 이탤릭 "START" (unit 4 에서 재구현.
+  최초 구현이던 `LobbyNeonChip(Cta)` 그라디언트 사각형은 폐기).
 - 뎁스 패럴랙스용 신규 저주파 뎁스맵(`lobby_bg_neon_depth.png`, 임포트 설정 구 에셋과 동일).
 - 씬 전환 커버(SceneTransition.prefab) 참조 3개도 네온 밤으로 스왑 (리뷰 major 반영).
 
 ## Key Files
 
 - `Assets/_Project/Scripts/UI/Outgame/LobbyNeonChip.cs` — 스킨 소유 컴포넌트 (지오메트리는 씬 소유)
-- `Assets/_Project/Scripts/UI/UiRoundedSprite.cs` — `MakeHorizontalGradient` 오버로드
+- `Assets/_Project/Scripts/UI/Outgame/LobbyNeonCta.cs` — START 배너 베이커 (unit 4)
 - `Assets/_Project/Scenes/OutgameScene.unity` — 버튼 4개 + 배경 참조
 - `Assets/Resources/SceneTransition.prefab` — 전환 커버 (로비 배경과 항상 같은 그림 유지)
 

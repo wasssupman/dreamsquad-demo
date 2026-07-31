@@ -2,10 +2,13 @@ using UnityEngine;
 
 namespace Wassup.UI
 {
-    /// 런타임에 절차적으로 굽는 라운드렉트/원 UI 스프라이트의 단일 소스.
+    /// 여러 화면이 공유하는 **라운드렉트/원** UI 스프라이트를 런타임에 굽는다.
     /// 새 아트 없이 네이비 플레이트·골드 테두리·순위 배지 등을 코드로 만든다.
     /// (score-hud-impact-upgrade 의 사설 MakeRoundedRectSprite 를 공용화 —
     ///  result-screen-visual-upgrade unit 0.)
+    ///
+    /// 소비처가 하나뿐인 특수 형상(예: START CTA 의 리본 배너 — LobbyNeonCta)은 여기 두지 않고
+    /// 그 소비처가 직접 굽는다. 여기 올리는 기준은 "형상이 실제로 재사용되는가"다.
     public static class UiRoundedSprite
     {
         /// 9-slice 라운드렉트 스프라이트. border>0 이면 border px 두께의 테두리 링을

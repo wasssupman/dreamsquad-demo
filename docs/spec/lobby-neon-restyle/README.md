@@ -20,7 +20,7 @@ START CTA 가 보이고, 기존 기능(로그인 게이트, 패널 열기, 캐�
 | # | 파일 | 작업 | 목적 |
 |---|---|---|---|
 | 0 | `0_neon_assets.md` | 네온 배경(밤)·글리프 3종·뎁스맵 임포트 | 순수 추가 에셋 커밋 |
-| 1 | `1_button_neon_reskin.md` | LobbyNeonChip + UiRoundedSprite 그라디언트 오버로드 + 버튼 와이어링 | 메뉴 버튼 네온 리스킨 |
+| 1 | `1_button_neon_reskin.md` | LobbyNeonChip + 버튼 와이어링 (START 부분은 unit 4 에서 개정) | 메뉴 버튼 네온 리스킨 |
 | 2 | `2_background_swap.md` | 디졸브/패럴랙스 슬롯을 네온 배경으로 스왑 | 배경 교체 |
 | 3 | `3_handoff_summary.md` | 인계 요약 | 종료 시 작성 |
 | 4 | `4_start_cta_banner.md` | START 를 시안의 네온 리본 배너로 재구현 (unit 1 rev) | CTA 형태 일치 |

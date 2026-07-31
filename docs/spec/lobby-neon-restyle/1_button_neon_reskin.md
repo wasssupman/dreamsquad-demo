@@ -1,5 +1,9 @@
 # 1 — 메뉴 버튼 네온 리스킨
 
+> **개정됨**: START CTA 부분은 `4_start_cta_banner.md` 가 대체한다. 아래 문서에서 START 를
+> `LobbyNeonChip(Cta)` 로 굽는다는 서술과 `UiRoundedSprite.MakeHorizontalGradient` 는
+> unit 4 에서 각각 `LobbyNeonCta` 신설·오버로드 삭제로 폐기됐다. 칩 3종 서술은 유효하다.
+
 ## 목적
 
 로비 1차 화면 버튼(`SquadButton`/`DreamcatcherButton`/`HistoryButton`/`StartButton`)을
