@@ -472,7 +472,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: cbabb2e7259c9064bbfb0eb2b3e65c2a, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -730,8 +730,8 @@ MonoBehaviour:
   frontImage: {fileID: 6285492048132663757}
   underImage: {fileID: 1841675467646157757}
   dissolveMaterial: {fileID: 2100000, guid: 31b16d9606de5b94da89d0f04a49468a, type: 2}
-  daySprite: {fileID: 21300000, guid: f64075ae7a7eee74a9a31214a4ca6236, type: 3}
-  nightSprite: {fileID: 21300000, guid: cbabb2e7259c9064bbfb0eb2b3e65c2a, type: 3}
+  daySprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
+  nightSprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
   startNight: 1
   goldenTintStrength: 0
   fallbackCenter: {x: 0.5, y: 0.35}
