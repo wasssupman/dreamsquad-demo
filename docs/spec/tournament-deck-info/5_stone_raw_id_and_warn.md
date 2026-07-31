@@ -24,3 +24,5 @@
 - compile 통과, EditMode 전량 green(기존 `BattleLoggerDeckInfoTests` 가 스톤→payload 매핑을 이미 고정한다).
 - Play 확인: 프리셋 스톤 슬롯에 카탈로그에 없는 id 를 넣은 뒤 한 판 진행 → 콘솔에 미해석 warning, 로컬 로그 `dreamstones[]` 에 그 id 가 `slotIndex` 와 함께 남고, `complete` 의 `squad.stones` 에도 실린다.
 - 스톤 `slotIndex` 를 payload 에 넣는 것(포맷 v2)은 이 작업 범위 밖 — README 후속 후보에 남긴다.
+
+**완료 확인 2026-07-31** — EditMode 전량 green(1764/1766, 기존 Ignore 2). 경고 위치는 리뷰에서 `BattleBridge` → `ReportResult` 로 이동(제출되지 않는 진입의 거짓 경고 제거)했고 그 결과 `BattleBridge` 는 무변경으로 원복됐다. 사용자 Play 확인 완료. 커밋 `73deadbb`.

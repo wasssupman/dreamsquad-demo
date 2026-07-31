@@ -38,3 +38,5 @@
 - compile 통과, EditMode 전량 green. `PendingMatchStoreTests` 5건: 덱 왕복 / 다른 attempt 는 no-op / 무레코드·빈 id / 새 `Save` 는 덱을 빈 값으로 초기화 / 덱 없는 구 레코드는 `TryLoad` 가 빈 값으로 정규화. `TournamentMatchReporterTests` 3건: 현재 attempt 에 기록 / **attempt 없으면 레코드 무접촉**(에디터 직접 Play·테스트 모드가 남의 안전망을 오염시키지 않는다) / 빈 스냅샷은 이미 적힌 덱을 지우지 않는다.
 - Play 3경로 콘솔 확인 — (a) 완주: 기존대로 덱 실림, (b) 배치 이후 나가기: `complete` body 에 `deckInfo` 존재, (c) 배치 중 강제 종료 후 로비 재진입: reconcile 이 그 attempt 의 덱과 함께 0점 마감.
 - 라이브 확인(선택): 좋은 판을 친 뒤 같은 엔트리에서 한 판을 나가기로 끝내고 `GET result` 로 엔트리의 `deckInfo` 가 살아 있는지 본다. 이 작업 이후에는 서버 가드가 없어도 덱이 남아야 한다.
+
+**완료 확인 2026-07-31** — EditMode 1766 중 1764 pass / 0 fail / 2 기존 Ignore, 신규 8건(`PendingMatchStoreTests` 5 · `TournamentMatchReporterTests` 3). Play 3경로(완주 · 배치 후 나가기 · 하드킬 후 로비 reconcile) 사용자 확인 완료. 커밋 `73deadbb`.
