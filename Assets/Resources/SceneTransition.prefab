@@ -730,7 +730,7 @@ MonoBehaviour:
   frontImage: {fileID: 6285492048132663757}
   underImage: {fileID: 1841675467646157757}
   dissolveMaterial: {fileID: 2100000, guid: 31b16d9606de5b94da89d0f04a49468a, type: 2}
-  daySprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
+  daySprite: {fileID: 21300000, guid: 7b9514d00f46713418c24b88ac1f06f9, type: 3}
   nightSprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
   startNight: 1
   goldenTintStrength: 0

@@ -5333,7 +5333,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyBackgroundDissolve
   dissolveMaterial: {fileID: 2100000, guid: 31b16d9606de5b94da89d0f04a49468a, type: 2}
   underImage: {fileID: 1415990802}
-  daySprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
+  daySprite: {fileID: 21300000, guid: 7b9514d00f46713418c24b88ac1f06f9, type: 3}
   nightSprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
   startNight: 1
   transitionDuration: 2
@@ -6452,7 +6452,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a9af3b5ef55e1d24499137a18f8fc345, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7b9514d00f46713418c24b88ac1f06f9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
