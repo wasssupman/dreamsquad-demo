@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &6735023400480352438
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: preset
+      value: 
+      objectReference: {fileID: 11400000, guid: 10322cfdd18594c96b0d14a86a90f70c, type: 2}
+    - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: alphaOverLifetime.m_Curve.Array.data[1].inSlope
+      value: -2.0852904
+      objectReference: {fileID: 0}
+    - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: alphaOverLifetime.m_Curve.Array.data[1].inWeight
+      value: 0.087804854
+      objectReference: {fileID: 0}
+    - target: {fileID: 212822236448720489, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: alphaOverLifetime.m_Curve.Array.data[1].outSlope
+      value: -2.0852904
+      objectReference: {fileID: 0}
+    - target: {fileID: 2357636064331021646, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_Name
+      value: WeaponTrail_Slash_ToonFire
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2797719719457648888, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bdd5d273d48594b12b51496367248bc9, type: 3}
