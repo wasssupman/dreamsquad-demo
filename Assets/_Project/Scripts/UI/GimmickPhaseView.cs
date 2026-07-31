@@ -54,8 +54,6 @@ namespace Wassup.UI
         private readonly System.Collections.Generic.List<Image> _particles = new();
         private Material _labelOutlineMat;
 
-        private static readonly Vector2 NameRestPos = new Vector2(0f, -40f);
-        private const float NameRiseFrom = -84f;
         private const float ParticleStartAlpha = 0.75f;
 
         private void Awake()
@@ -131,7 +129,7 @@ namespace Wassup.UI
             BurstParticles();
 
             _seq.Chain(Tween.Alpha(_nameGroup, 1f, config.beatNameSec, Ease.OutQuad))
-                .Group(Tween.UIAnchoredPosition(_nameRect, NameRestPos, config.beatNameSec, Ease.OutCubic));
+                .Group(Tween.UIAnchoredPosition(_nameRect, TitleRestPos, config.beatNameSec, Ease.OutCubic));
 
             _seq.Chain(Tween.Alpha(_summaryGroup, 1f, config.beatOutSec * 0.5f, Ease.OutQuad));
             _seq.ChainDelay(config.summaryHoldSec);
@@ -176,15 +174,26 @@ namespace Wassup.UI
             _icon.gameObject.SetActive(g.icon != null);
         }
 
+        private Vector2 TitleRestPos { get { return new Vector2(0f, config.titleOffsetY); } }
+
+        // 레이아웃은 BuildCanvas(Awake) 가 아니라 여기서 매번 적용한다 — config 를 Play 중에
+        // 만져도 다음 리빌에 바로 반영되고, Awake 시점 config null 을 걱정할 필요가 없다.
         private void ResetVisualState(Color tintColor)
         {
             _rootGroup.alpha = 1f;
             _dim.color = WithAlpha(Color.black, 0f);
             _tint.color = WithAlpha(tintColor, 0f);
+
+            _iconRect.anchoredPosition = new Vector2(0f, config.iconOffsetY);
+            _iconRect.sizeDelta = new Vector2(config.iconSize, config.iconSize);
             _iconGroup.alpha = 0f;
             _iconRect.localScale = Vector3.one * config.stampFromScale;
+
+            ((RectTransform)_subtitle.transform).anchoredPosition = new Vector2(0f, -config.subtitleGap);
             _nameGroup.alpha = 0f;
-            _nameRect.anchoredPosition = new Vector2(NameRestPos.x, NameRiseFrom);
+            _nameRect.anchoredPosition = new Vector2(0f, config.titleOffsetY + config.titleRiseFrom);
+
+            ((RectTransform)_summary.transform).anchoredPosition = new Vector2(0f, config.summaryOffsetY);
             _summaryGroup.alpha = 0f;
         }
 
@@ -272,19 +281,19 @@ namespace Wassup.UI
 
             var content = MakeCenterRect(_panel.transform, "Content");
 
-            _icon = MakeIcon(content, "Icon", config != null ? config.iconSize : 260f);
+            _icon = MakeIcon(content, "Icon");
             _iconRect = (RectTransform)_icon.transform;
             _iconGroup = _icon.gameObject.AddComponent<CanvasGroup>();
 
             var nameBlock = MakeCenterRect(content, "Name");
             _nameRect = nameBlock;
             _nameGroup = nameBlock.gameObject.AddComponent<CanvasGroup>();
-            _ruleLabel = MakeLabel(nameBlock, "Rule", "", 92f, Color.white, FontStyles.Bold, 0f);
+            _ruleLabel = MakeLabel(nameBlock, "Rule", "", 92f, Color.white, FontStyles.Bold);
             _subtitle = MakeLabel(nameBlock, "Subtitle", "", 34f,
-                new Color(0.78f, 0.82f, 0.9f, 1f), FontStyles.Italic, -76f);
+                new Color(0.78f, 0.82f, 0.9f, 1f), FontStyles.Italic);
 
             _summary = MakeLabel((RectTransform)_panel.transform, "Summary", "", 40f,
-                new Color(1f, 0.9f, 0.62f, 1f), FontStyles.Bold, -220f);
+                new Color(1f, 0.9f, 0.62f, 1f), FontStyles.Bold);
             _summaryGroup = _summary.gameObject.AddComponent<CanvasGroup>();
 
             UiLayer.Apply(gameObject);
@@ -329,14 +338,13 @@ namespace Wassup.UI
             return rt;
         }
 
-        private static Image MakeIcon(Transform parent, string goName, float size)
+        // 위치·크기는 ResetVisualState 가 config 로 매번 덮는다 — 여기선 구조만 만든다.
+        private static Image MakeIcon(Transform parent, string goName)
         {
             var go = new GameObject(goName, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             var rt = (RectTransform)go.transform;
             Center(rt);
-            rt.anchoredPosition = new Vector2(0f, 120f);
-            rt.sizeDelta = new Vector2(size, size);
             var image = go.AddComponent<Image>();
             image.preserveAspect = true;
             image.raycastTarget = false;
@@ -344,13 +352,12 @@ namespace Wassup.UI
         }
 
         private TextMeshProUGUI MakeLabel(Transform parent, string goName, string text, float size,
-            Color color, FontStyles style, float offsetY)
+            Color color, FontStyles style)
         {
             var go = new GameObject(goName, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             var rt = (RectTransform)go.transform;
             Center(rt);
-            rt.anchoredPosition = new Vector2(0f, offsetY);
             rt.sizeDelta = new Vector2(UiCanvasSetup.ReferenceResolution.x * 0.8f, size * 1.6f);
 
             var tmp = go.AddComponent<TextMeshProUGUI>();

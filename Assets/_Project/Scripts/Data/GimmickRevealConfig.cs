@@ -36,14 +36,26 @@ namespace Wassup.Data
         [Header("모양")]
         [Tooltip("배경 딤 알파. UiOverlay.Dim 보다 옅게 — 맵이 비쳐야 '이 판'이라는 느낌이 산다.")]
         [Range(0f, 1f)] public float dimAlpha = 0.82f;
-        // 틴트는 딤 **위에** 평평하게 덧발린다. 값을 올리면 화면 전체가 균일한 색 안개가 되고
-        // (딤이 만든 어두운 바탕까지 들어올려) 텍스트 대비가 깎인다. 0.28 로 검증했을 때
-        // 숲 (4,29,26) → (35,34,52) 로 오히려 밝아졌다. 딤이 지배하도록 낮게 유지할 것.
+        // 틴트는 딤 **위에** 평평하게 덧발리므로, 올릴수록 딤이 만든 어두운 바탕을 되들어올려
+        // 텍스트 대비를 깎는다. 0.12 는 딤이 지배하게 두는 보수적 기본값 — 실기 확인 후 조정.
+        // (MCP 스크린샷은 오버레이 캔버스를 충실히 합성하지 않아 색 판단에 쓸 수 없다.)
         [Tooltip("화면을 물들이는 틴트의 최대 알파. 높이면 텍스트 대비가 깎인다.")]
         [Range(0f, 1f)] public float tintAlpha = 0.12f;
         public float iconSize = 260f;
         [Tooltip("① 도장에서 아이콘이 줄어들며 찍히는 시작 배율.")]
         public float stampFromScale = 2.2f;
+
+        [Header("레이아웃 (1920×1080 기준, 화면 중앙 = 0)")]
+        [Tooltip("아이콘 중심 y. 제목보다 위에 둔다.")]
+        public float iconOffsetY = 260f;
+        [Tooltip("룰 라벨(제목) y. 화면 중앙 근처가 기본.")]
+        public float titleOffsetY = 20f;
+        [Tooltip("제목 아래 정서 카피까지의 간격.")]
+        public float subtitleGap = 76f;
+        [Tooltip("한 줄 요약 y.")]
+        public float summaryOffsetY = -140f;
+        [Tooltip("② 명명에서 제목 블록이 떠오르는 시작 오프셋(아래로).")]
+        public float titleRiseFrom = -64f;
         [Tooltip("절차 파티클 개수. 0 이면 생략.")]
         public int particleCount = 14;
         public float particleSize = 26f;

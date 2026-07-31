@@ -21,6 +21,11 @@ MonoBehaviour:
   tintAlpha: 0.12
   iconSize: 260
   stampFromScale: 2.2
+  iconOffsetY: 260
+  titleOffsetY: 20
+  subtitleGap: 76
+  summaryOffsetY: -140
+  titleRiseFrom: -64
   particleCount: 14
   particleSize: 26
   particleSpread: 420
