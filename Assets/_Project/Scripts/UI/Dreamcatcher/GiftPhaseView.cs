@@ -27,6 +27,9 @@ namespace Wassup.UI
         [SerializeField] private DraftController draftController;
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private PlacementPhaseView placementPhaseView;
+        // gimmick-recognition-upgrade unit 1 — 배치 앞에 끼우는 기믹 리빌.
+        // 미배선이면 리빌 없이 배치 직행(fail-open) — 연출은 부가물이고 배치 도달이 우선이다.
+        [SerializeField] private GimmickPhaseView gimmickPhaseView;
         [SerializeField] private GiftConfig giftConfig;
         // first-session-tutorial unit 7 — 첫 판 연출 억제 / 선물 튜토리얼 판정.
         // 미배선·미로드 세션이면 항상 일반 연출(fail-open).
@@ -161,12 +164,21 @@ namespace Wassup.UI
             PlayGiftSequence();
         }
 
+        // 선물 페이즈의 단일 퍼널 — 정상 종료·첫 판 스킵·config 미배선·TestMode ff 가 전부
+        // 여기로 모인다. 그래서 기믹 리빌(unit 1)도 여기 한 곳에만 끼운다.
         private void ProceedToPlacement()
         {
             // BeginPlacementPhase 를 먼저(도달 보장, gift-phase m4). 그 SetPhase(Placement) 가
             // OnPhaseChanged 를 통해 패널 숨김 + 시퀀스 정리를 수행한다.
-            if (placementPhaseView != null) placementPhaseView.BeginPlacementPhase();
-            else if (_panel != null) _panel.SetActive(false);
+            if (placementPhaseView == null)
+            {
+                if (_panel != null) _panel.SetActive(false);
+                return;
+            }
+            // 리빌이 끝나면(또는 스킵되면) 콜백으로 배치가 시작된다. BeginReveal 은 어떤
+            // 경로로든 콜백을 정확히 한 번 호출하는 게 계약이다.
+            if (gimmickPhaseView != null) gimmickPhaseView.BeginReveal(placementPhaseView.BeginPlacementPhase);
+            else placementPhaseView.BeginPlacementPhase();
         }
 
         private void OnPhaseChanged(GamePhase phase)
