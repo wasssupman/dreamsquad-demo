@@ -114,6 +114,7 @@ namespace Wassup.UI
             _startedAt = Time.unscaledTime;
 
             SpawnVfx(entry);
+            PlayRevealSfx(entry);
             LayoutParticles(tintColor);
 
             // ① 도장 → ② 명명 → ③ 한 줄 + 퇴장.
@@ -230,6 +231,18 @@ namespace Wassup.UI
                 _seq.Group(Tween.Scale(rt, Vector3.one * 0.4f, dur, Ease.OutQuad));
                 _seq.Group(Tween.Color(p, WithAlpha(p.color, 0f), dur, Ease.InQuad));
             }
+        }
+
+        // ── 등장 효과음 (unit 2) ──
+
+        // 클립 해석: 기믹 전용 → 공용 → 무음. 아이콘이 찍히는 ① 도장 시작과 같은 프레임에 낸다.
+        // 탭 스킵으로 연출을 건너뛰어도 원샷이라 끊지 않는다(중간에 자르면 더 어색하다).
+        private void PlayRevealSfx(GimmickRevealConfig.Entry entry)
+        {
+            var clip = entry != null && entry.sfxClip != null ? entry.sfxClip : config.defaultSfxClip;
+            if (clip == null) return;
+            var sound = SoundManager.Instance;
+            if (sound != null) sound.PlayGimmickReveal(clip);
         }
 
         // ── 월드 VFX (있으면) ──
