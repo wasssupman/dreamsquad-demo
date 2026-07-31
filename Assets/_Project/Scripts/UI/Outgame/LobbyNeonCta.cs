@@ -92,17 +92,26 @@ namespace Wassup.UI
         //      m_sharedMaterial 과 다를 때만 인스턴스를 뜨는데, 씬이 두 슬롯에 같은 객체를 물고
         //      있으면(인스펙터가 만든 임베디드 머티리얼) 게터가 그 객체를 그대로 돌려줘서
         //      아웃라인이 공유 대상에 박힌다.
-        //   2) 값은 TMP 의 outlineWidth/outlineColor 프로퍼티가 아니라 **머티리얼에 직접** 쓴다.
-        //      그 세터들은 m_sharedMaterial 을 겨냥하므로 인스턴스를 분리한 순간 우리 인스턴스가
-        //      아니라 원본에 쓰여 화면에는 아무 변화가 없다.
+        //   2) 값은 TMP 의 outlineWidth/outlineColor/faceColor 프로퍼티가 아니라 **머티리얼에
+        //      직접** 쓴다. ★이 라벨에는 앞으로도 그 세터들을 쓰지 말 것★ — 우리가 머티리얼을
+        //      갈아끼워도 TMP 내부의 m_fontMaterial 은 여전히 원본을 가리키는데(공개 API 로 고칠
+        //      수 없다), 그 세터들은 둘이 다른 걸 보면 렌더 머티리얼을 **원본으로 되돌리고** 값을
+        //      거기에 쓴다. 즉 1) 에서 막은 공유 오염이 한 줄로 되살아난다. 같은 이유로 이 라벨의
+        //      fontMaterial 게터도 읽지 말 것 — 세 번째 머티리얼을 새로 떠서 누수시킨다.
         //   3) OUTLINE_ON 키워드를 켠다. TMP 모바일 SDF 셰이더가 아웃라인을 이 키워드로 가르기
         //      때문에 _OutlineWidth 만 올리면 셰이더가 아예 계산을 건너뛴다.
         //   4) UpdateMeshPadding — 글리프 쿼드 여백이 아웃라인 0 기준이라 재계산하지 않으면
         //      넓힌 아웃라인이 쿼드 밖으로 나가 잘린다.
         private void ApplyLabelOutline()
         {
+            // fontSharedMaterial 게터는 단순 필드 읽기다. fontMaterial 게터를 쓰면 그 자체로
+            // 인스턴스를 떠 버려서 무엇을 복제하는지가 흐려진다.
             Material src = label.fontSharedMaterial;
-            if (src == null) return;
+            if (src == null)
+            {
+                Debug.LogWarning($"{nameof(LobbyNeonCta)}: 라벨 폰트 머티리얼 없음 — 아웃라인 생략.", this);
+                return;
+            }
 
             _labelMat = new Material(src)
             {
@@ -113,7 +122,9 @@ namespace Wassup.UI
             _labelMat.SetColor(ShaderUtilities.ID_OutlineColor, labelOutlineColor);
             _labelMat.SetFloat(ShaderUtilities.ID_OutlineWidth, labelOutlineWidth);
 
-            label.fontMaterial = _labelMat;
+            // 우리가 머티리얼을 직접 공급하는 상황이므로 이름이 정직한 fontSharedMaterial 로 넣는다
+            // (선례: GimmickGuideView). fontMaterial 세터와 결과는 같지만 게터/세터 의미가 다르다.
+            label.fontSharedMaterial = _labelMat;
             label.UpdateMeshPadding();
         }
 
@@ -210,7 +221,10 @@ namespace Wassup.UI
 
             tex.SetPixels32(px);
             tex.Apply(false, true);   // 다시 읽을 일이 없다 — CPU 사본을 놓아준다(500x180 ≈ 360KB).
-            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            // FullRect 명시: 기본값 Tight 는 CPU 픽셀로 메시를 따는데 위에서 이미 non-readable 로
+            // 만들었다. Image.Type.Simple 이라 실제로 쓰이지 않지만 조합 자체를 남기지 않는다.
+            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f,
+                                 0, SpriteMeshType.FullRect);
         }
 
         // 좌우 셰브론 그룹. 둘 다 가운데를 향한다(왼쪽은 오른쪽 화살표, 오른쪽은 왼쪽 화살표).
