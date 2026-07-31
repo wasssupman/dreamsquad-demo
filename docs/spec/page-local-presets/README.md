@@ -1,6 +1,6 @@
 # page-local-presets — 스쿼드·드림캐쳐 페이지별 플레이어 프리셋
 
-> 상태: **구현 완료 2026-07-30** (커밋 `5592b676` → `2e4f4c63`, 8커밋) — 컴파일 errors=0 · **EditMode 1660/1658 pass/0 fail** · PlayMode 프리셋 3건 통과 · Play 육안(바·팝업 레이어·dim). handoff `7_handoff_summary.md`. **PlayMode 전체 86건/13 실패 = 전부 사전 실패**(2026-07-31, 병합 `51aa8245` 이후 재검증) · **미검증**: Play 조작 육안(31셀 스크롤·30 상한 dim·한글 IME·전환 경고·삭제 확인)
+> 상태: **Unit 0–8 구현 완료** (Unit 8: 2026-07-31) — 미저장 변경 닫기/드롭다운 가드 집중 EditMode 8/8, 전체 EditMode 1754건 중 1752 통과/0 실패/2 기존 Ignore, 컴파일 errors=0. 상세 `8_dirty_close_guard.md`
 > 선행: `authored-preset-removal` (**먼저 커밋되어야 한다** — 구 authored 프리셋이 제거된 상태를 전제) · `squad-character-page`(스쿼드 페이지) · `dreamcatcher-deck-page`(드캐 페이지) · `dreamstone-loadout`(스톤 4슬롯)
 > 성격: 아웃게임 UI + 프로필 저장 의미론. **ECS/BattleBridge 무관.**
 
@@ -38,8 +38,9 @@
 | 5 | 정리 | `5_seed_prune_fallback.md` | `EnsureDefault*` 시드 · `DeckPrune` 전체 훑기 · 빈-스쿼드 draft 폴백 검토 |
 | 6 | 테스트 | `6_tests.md` | PlayMode 스모크 2개 수정 + "확정=저장분" 회귀 |
 | 7 | 인계 | `7_handoff_summary.md` | handoff (구현 종료 시 작성) |
+| 8 | 회귀 보강 | `8_dirty_close_guard.md` | 저장본과 작업본이 다를 때 Close·드롭다운 이탈 확인 |
 
-순서: 0 → 1 → 2 → (3 → 4) → 5 → 6 → 7. 0·1 은 순수 로직이라 UI 없이 테스트로 닫힌다. 3·4 는 서로 독립이므로 순서를 바꿔도 된다. 핵심 로직 단위(0·1·3) 종료 시 code-review.
+순서: 0 → 1 → 2 → (3 → 4) → 5 → 6 → 7 → 8. 0·1 은 순수 로직이라 UI 없이 테스트로 닫힌다. 3·4 는 서로 독립이므로 순서를 바꿔도 된다. 핵심 로직 단위(0·1·3) 종료 시 code-review.
 
 ## feature-wide 계약
 
@@ -58,6 +59,7 @@
 13. **미주입 ref 는 fail-closed.** `confirmPopup` 이 없으면 (a) dirty 상태의 프리셋 전환 (b) 삭제 를 **차단하고 `LogError`** 한다. 배선 누락을 "확인을 못 받았으니 그냥 실행"으로 넘기면 데이터 유실로 번진다. `OutgameMenuController.OnStartGame` 이 명문화한 정책과 동일하다 — 미주입 ref 는 플레이어가 고칠 수 있는 상황으로 위장하지 않는다.
 14. **구조 변경은 변이 *전에* 저장 가능성을 묻는다.** `CanPersist()`(= 로드본인가)를 생성·삭제·확정·저장 핸들러 **진입부**에서 확인한다. `Save()` 안에서만 걸면 메모리에는 프리셋이 생겼는데 디스크에는 없는 상태로 조용히 갈린다.
 15. **목록 갱신은 두 단계로 나뉜다.** `RefreshBarState()`(이름·dirty·버튼 활성 — 가볍다) / `RefreshBarEntries()`(목록 셀 전체 재구성 — 무겁다). 내용 편집은 앞의 것만, 구조 변경(생성·삭제·확정·저장·전환)만 뒤의 것을 부른다. 합치면 유닛 토글마다 30셀×썸네일7 을 재구성하고, "목록은 **저장본**을 그린다"는 성질도 흐려진다.
+16. **dirty 이탈은 확인을 받는다** (Unit 8). 현재 보고 있는 프리셋의 저장본과 작업본이 다르면 드롭다운 전환뿐 아니라 페이지 Close도 기존 `ConfirmPopup`으로 경고한다. 취소는 현재 페이지·작업본을 유지하고, 확인만 작업본을 버리고 이동/닫는다. `confirmPopup` 미주입은 두 경로 모두 fail-closed다.
 
 ## 파이프라인 커버리지
 

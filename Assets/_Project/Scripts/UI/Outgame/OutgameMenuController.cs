@@ -251,7 +251,36 @@ namespace Wassup.UI
             RaiseExclusive(panel);
         }
 
-        public void OnClosePanels() => ClosePanels();
+        public void OnClosePanels()
+        {
+            // page-local-presets unit 8 — 씬의 두 CloseButton 은 이 공통 메서드를 직접
+            // 호출한다. 활성 프리셋 페이지가 있으면 저장본/작업본 dirty 가드를 먼저
+            // 거치고, 확인 콜백에서만 기존 ClosePanels 를 실행한다. 다른 패널은 기존
+            // 즉시 닫기 동작을 유지한다.
+            if (squadPanel != null && squadPanel.activeSelf)
+            {
+                var controller =
+                    squadPanel.GetComponentInChildren<SquadCharacterPageController>(true);
+                if (controller != null)
+                {
+                    controller.RequestClose(ClosePanels);
+                    return;
+                }
+            }
+
+            if (dreamcatcherPanel != null && dreamcatcherPanel.activeSelf)
+            {
+                var controller =
+                    dreamcatcherPanel.GetComponentInChildren<DreamcatcherDeckPageController>(true);
+                if (controller != null)
+                {
+                    controller.RequestClose(ClosePanels);
+                    return;
+                }
+            }
+
+            ClosePanels();
+        }
 
         private void RaiseExclusive(GameObject panel)
         {

@@ -138,6 +138,29 @@ namespace Wassup.UI
         private bool IsDirty() =>
             PresetDiff.IsSquadDirty(_workingName, _workingUnits, _workingStones, StoredPreset(_viewingPresetId));
 
+        // page-local-presets unit 8 — 씬 CloseButton 은 공통 메뉴 컨트롤러를 향하므로,
+        // 메뉴가 활성 페이지를 찾은 뒤 이 가드에 실제 닫기 콜백을 맡긴다. dirty 판정은
+        // 드롭다운 전환과 동일하게 저장본 대 작업본 비교를 그대로 쓴다.
+        public void RequestClose(Action close)
+        {
+            if (!IsDirty())
+            {
+                close?.Invoke();
+                return;
+            }
+
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[SquadPreset] confirmPopup 미주입 — 미저장 변경이 있어 페이지 "
+                    + "닫기를 차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            confirmPopup.Show(
+                "저장하지 않은 변경이 있습니다.\n닫으면 변경은 사라집니다.",
+                close, "닫기");
+        }
+
         // review MEDIUM-4 — 구조 변경(생성·삭제·확정)은 **변이 전에** 물어야 한다. Save() 안에서만
         // 걸면 메모리에는 프리셋이 생겼는데 디스크에는 없는 상태로 조용히 갈린다.
         private bool CanPersist() =>

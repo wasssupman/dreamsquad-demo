@@ -252,6 +252,28 @@ namespace Wassup.UI
         private bool IsDirty() =>
             PresetDiff.IsDeckDirty(_workingName, _working, StoredPreset(_viewingPresetId));
 
+        // page-local-presets unit 8 — 스쿼드와 같은 저장본/작업본 비교로 Close를 지킨다.
+        // 확인 전에는 공통 닫기 콜백을 호출하지 않아 페이지와 작업본이 그대로 남는다.
+        public void RequestClose(Action close)
+        {
+            if (!IsDirty())
+            {
+                close?.Invoke();
+                return;
+            }
+
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[DeckPreset] confirmPopup 미주입 — 미저장 변경이 있어 페이지 "
+                    + "닫기를 차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            confirmPopup.Show(
+                "저장하지 않은 변경이 있습니다.\n닫으면 변경은 사라집니다.",
+                close, "닫기");
+        }
+
         // ---- 프리셋 바 --------------------------------------------------------
 
         // 가벼운 갱신 — 이름/dirty/버튼 활성만. **내용 편집 경로가 쓰는 것.**
