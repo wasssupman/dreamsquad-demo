@@ -10,12 +10,20 @@ namespace Wassup.Tests.EditMode.Api
     // request and is verified live (throwaway-account probe), not here.
     public class TournamentMatchReporterTests
     {
-        // _completesInFlight 는 static 이라 테스트 간에 샌다 — 양쪽에서 되돌린다.
+        // _completesInFlight·_attemptId 는 static 이라 테스트 간에 샌다 — 양쪽에서 되돌린다.
         [SetUp]
-        public void SetUp() { PendingMatchStore.Clear(); UserSession.Clear(); SetPrivateStatic("_completesInFlight", 0); }
+        public void SetUp() { Reset(); }
 
         [TearDown]
-        public void TearDown() { PendingMatchStore.Clear(); UserSession.Clear(); SetPrivateStatic("_completesInFlight", 0); }
+        public void TearDown() { Reset(); }
+
+        private static void Reset()
+        {
+            PendingMatchStore.Clear();
+            UserSession.Clear();
+            SetPrivateStatic("_completesInFlight", 0);
+            SetPrivateStatic("_attemptId", null);
+        }
 
         private static void SignInAs(string userId)
             => UserSession.Set(new UserSignApi.SignedInUser { userId = userId }, "id-token",
@@ -189,6 +197,49 @@ namespace Wassup.Tests.EditMode.Api
             Assert.AreEqual("lobby-attempt", (string)GetPrivateStatic("_attemptId"));
             Assert.IsFalse((bool)GetPrivateStatic("_lobbyIssued"));
             SetPrivateStatic("_attemptId", null); // static — 다른 테스트로 새지 않게
+        }
+
+        // ── tournament-deck-info unit 4 — 덱 스냅샷은 현재 attempt 에만 쓴다 ──────
+
+        [Test]
+        public void PersistMatchDeck_CurrentAttempt_WritesRecord()
+        {
+            PendingMatchStore.Save("a-1", "u-1", Now());
+            SetPrivateStatic("_attemptId", "a-1");
+
+            TournamentMatchReporter.PersistMatchDeck("{\"v\":1}");
+
+            Assert.IsTrue(PendingMatchStore.TryLoad(out var rec));
+            Assert.AreEqual("{\"v\":1}", rec.deckInfo);
+        }
+
+        // attempt 없는 진입(에디터 직접 Play / 테스트 모드)은 레코드를 건드리면 안 된다 —
+        // 그 레코드는 다른 판의 안전망이고, 덱이 박히면 reconcile 이 남의 덱을 올린다.
+        [Test]
+        public void PersistMatchDeck_NoAttempt_DoesNotTouchRecord()
+        {
+            PendingMatchStore.Save("a-1", "u-1", Now());   // _attemptId 는 SetUp 에서 null
+
+            TournamentMatchReporter.PersistMatchDeck("{\"v\":1}");
+
+            Assert.IsTrue(PendingMatchStore.TryLoad(out var rec));
+            Assert.AreEqual(string.Empty, rec.deckInfo);
+        }
+
+        // 빈 스냅샷이 이미 적힌 덱을 지우면, 그 창에서 하드킬이 나면 덱 없는 0점 마감으로
+        // 되돌아간다.
+        [Test]
+        public void PersistMatchDeck_EmptySnapshot_KeepsWhatWasWritten()
+        {
+            PendingMatchStore.Save("a-1", "u-1", Now());
+            SetPrivateStatic("_attemptId", "a-1");
+            TournamentMatchReporter.PersistMatchDeck("{\"v\":1}");
+
+            TournamentMatchReporter.PersistMatchDeck("");
+            TournamentMatchReporter.PersistMatchDeck(null);
+
+            Assert.IsTrue(PendingMatchStore.TryLoad(out var rec));
+            Assert.AreEqual("{\"v\":1}", rec.deckInfo);
         }
     }
 }

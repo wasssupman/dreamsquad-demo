@@ -93,7 +93,10 @@ namespace Wassup.UI
             if (_open) { _pauseLease.Dispose(); _open = false; }
             // abandoned-match-reconciliation unit 2 — exiting a live battle abandons
             // the tournament attempt: submit a 0 now while the app is still alive.
-            Wassup.Core.Api.TournamentMatchReporter.AbandonMatch();
+            // tournament-deck-info unit 4 — 덱도 같이 싣는다. 씬이 아직 살아 있어 로거가
+            // 이 attempt 의 덱을 그대로 준다(세션 부재면 null → 키 생략).
+            Wassup.Core.Api.TournamentMatchReporter.AbandonMatch(
+                GameManager.Instance?.Logger?.DeckInfoJson());
             SceneTransition.Go(SceneNames.Outgame);
         }
 

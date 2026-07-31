@@ -499,6 +499,11 @@ namespace Wassup.Core
             var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedDeck() : null;
             logger.SetDreamcatcherDeck(save != null ? save.id : "default",
                 save != null ? save.name : "Default+Active", ids, baseIds);
+
+            // tournament-deck-info unit 4 — 카드까지 확정된 덱을 pending 레코드에 갱신한다.
+            // 하드킬/이전 세션 마감(ReconcilePending)이 읽는 유일한 출처라, 판 중에 적어두지
+            // 않으면 그 경로는 영영 덱 없이 마감된다. 실제 전송은 마감 시점에 일어난다.
+            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(logger.DeckInfoJson());
         }
     }
 }

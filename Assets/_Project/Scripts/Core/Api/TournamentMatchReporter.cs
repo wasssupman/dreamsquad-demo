@@ -165,6 +165,20 @@ namespace Wassup.Core.Api
             });
         }
 
+        // tournament-deck-info unit 4 — 이 attempt 의 덱을 pending 레코드에 적어둔다.
+        // `ReconcilePending`(이전 세션/하드킬 마감)의 **유일한** 덱 출처다: 그 경로는
+        // 로비에서 도는데 거기엔 로거가 없다. 판 중에 두 번 불린다 — 캐리인(유닛·스톤)과
+        // 배치 진입(카드). payload 는 단조 증가라 두 호출의 순서에 의존하지 않는다.
+        //
+        // **빈 값은 쓰지 않는다.** 한 번 적힌 덱을 나중의 빈 스냅샷(로거 세션 부재 등)이
+        // 지우면, 그 창에서 하드킬이 나면 덱 없는 0점 마감으로 되돌아간다.
+        // 게스트/attempt 없음/레코드 불일치는 조용한 no-op.
+        public static void PersistMatchDeck(string deckInfoJson)
+        {
+            if (string.IsNullOrEmpty(deckInfoJson) || string.IsNullOrEmpty(_attemptId)) return;
+            PendingMatchStore.SaveDeckInfo(_attemptId, deckInfoJson);
+        }
+
         // onRanking fires only on the full success path (complete ok → result ok)
         // and only while the same match is still current.
         public static void ReportResult(int score, string deckInfoJson,
@@ -184,6 +198,13 @@ namespace Wassup.Core.Api
                 return;
             }
             _completeSent = true;
+            // tournament-deck-info unit 5 — 여기까지 왔으면 실제로 제출된다(게스트·attempt
+            // 부재는 위에서 걸러졌다). 그런데 덱이 비었으면 body 는 키가 빠진 `{}` 가 되어
+            // 서버엔 점수만 쌓인다 — 예전엔 무성 실패라 "서버에 덱만 없다"를 추적할 단서가
+            // 없었다. 완주 경로에서 이건 항상 이상이다(0점 마감의 빈 덱은 정상이라 그쪽엔
+            // 경고를 두지 않는다). 로거 미배선 자체는 GameManager.Awake 가 따로 경고한다.
+            if (string.IsNullOrEmpty(deckInfoJson))
+                Debug.LogWarning("[TournamentReporter] deckInfo 없음 — 점수만 제출된다(덱 스냅샷 누락).");
 
             string baseUrl = UserSession.GameServerBaseUrl;
             AuthCredential credential = UserSession.Credential;
@@ -230,7 +251,10 @@ namespace Wassup.Core.Api
         // alive, so the in-memory attemptId is authoritative. Bump the epoch first
         // so an in-flight play callback is dropped (it would otherwise Save a record
         // from the lobby we're leaving to). Sends complete(0) and clears the record.
-        public static void AbandonMatch()
+        //
+        // tournament-deck-info unit 4 — deckInfoJson 은 호출자가 넘긴다: 이 경로는 배틀 씬이
+        // 살아 있는 동안 도니까 라이브 로거의 덱(= 이 attempt 의 덱)이 가장 정확하다.
+        public static void AbandonMatch(string deckInfoJson)
         {
             string attemptId = _attemptId;
             string baseUrl = UserSession.GameServerBaseUrl;
@@ -245,9 +269,10 @@ namespace Wassup.Core.Api
             // unit 9 — clear-on-success. 나가기 직후 씬 전환 → 로비 reconcile 이 이 왕복과
             // 겹치는 것은 _completesInFlight 가 막는다.
             _completesInFlight++;
-            // tournament-deck-info unit 1 — deckInfo 는 빈 값. 0점 마감은 최고점 후보가
-            // 아니므로 덱을 기록할 이유가 없다.
-            TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
+            // tournament-deck-info unit 4 — 0점 마감도 덱을 싣는다(구 계약: 빈 값). 서버가
+            // 엔트리 컬럼을 최고점 가드 없이 대입한다면 빈 값은 좋은 판의 덱을 지우는데,
+            // 이 attempt 의 덱을 실으면 어느 서버 동작에서도 실제 덱이 남는다.
+            TournamentApi.Complete(baseUrl, credential, attemptId, 0, deckInfoJson, (ok, error) =>
             {
                 CompleteReturned();
                 if (!ok) Debug.LogWarning($"[TournamentReporter] abandon complete failed (pending 유지 → 다음 reconcile 트리거에서 재시도): {error}");
@@ -301,10 +326,11 @@ namespace Wassup.Core.Api
             _completesInFlight++;
             AuthCredential credential = UserSession.Credential;
             string attemptId = rec.attemptId;
-            // tournament-deck-info unit 1 — deckInfo 는 빈 값. 이 경로는 **이전 세션/
-            // 하드킬의 attempt** 를 뒤늦게 닫는 것이라, 지금 메모리의 덱을 붙이면 남의
-            // 판에 엉뚱한 덱이 박힌다.
-            TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
+            // tournament-deck-info unit 4 — 덱은 **레코드에서** 온다. 이 경로는 이전 세션/
+            // 하드킬의 attempt 를 뒤늦게 닫는 것이라 지금 메모리의 덱을 붙이면 남의 판에
+            // 엉뚱한 덱이 박힌다. 판 중에 PersistMatchDeck 이 적어둔 그 attempt 의 덱만
+            // 신뢰한다. 덱을 못 적고 죽었으면(배치 전 하드킬) 빈 값 → 키 생략(계약 5).
+            TournamentApi.Complete(baseUrl, credential, attemptId, 0, rec.deckInfo, (ok, error) =>
             {
                 CompleteReturned();
                 if (ok)

@@ -306,6 +306,7 @@ namespace Wassup.Core
             // including mid-match Restart) must never set it.
             if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(squad));
             LogDreamstoneCarryIn(squad);
+            PersistTournamentDeckSnapshot();
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
@@ -361,6 +362,7 @@ namespace Wassup.Core
             // dreamstone-loadout Unit 6 — StartSquadMatch 미러 (CostRate 분리 적용).
             if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(stoneSquad));
             LogDreamstoneCarryIn(stoneSquad);
+            PersistTournamentDeckSnapshot();
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
@@ -427,7 +429,25 @@ namespace Wassup.Core
                     var id = squad.stoneIds[i];
                     if (string.IsNullOrEmpty(id)) continue;
                     var stone = stoneCatalog.ById(id);
-                    if (stone == null) continue;
+                    if (stone == null)
+                    {
+                        // tournament-deck-info unit 5 — 미해석 id 를 버리지 않는다. 버리면
+                        // 4개 장착한 판이 서버 기록엔 2개로 남고, 로비 게이트는 스톤을
+                        // 검사하지 않으므로 실제 토너먼트 판에서도 벌어진다(시트에 새 스톤이
+                        // 생겼는데 로컬 SO 가 stale 한 빌드). 유닛이 raw id 를 남기는 것과
+                        // 같은 정책 = 계약 3(미해석 id 는 그 슬롯만 폴백).
+                        Debug.LogWarning($"[GameManager] 드림스톤 '{id}' 를 카탈로그에서 찾지 못했다 — id 만 기록한다(슬롯 {i}).");
+                        records.Add(new DreamstoneRecord
+                        {
+                            id = id,
+                            name = id,             // 표시명 해석은 수신 측 카탈로그의 몫
+                            grade = string.Empty,
+                            kind = string.Empty,
+                            percent = 0f,
+                            slotIndex = i,
+                        });
+                        continue;
+                    }
                     records.Add(new DreamstoneRecord
                     {
                         id = stone.id,
@@ -441,6 +461,16 @@ namespace Wassup.Core
             }
 
             logger.SetDreamstones(records);
+        }
+
+        // tournament-deck-info unit 4 — 캐리인 시점의 덱(유닛·스톤)을 pending 레코드에
+        // 적어둔다. 카드는 배치 진입에서 확정되며 DreamcatcherHandController 가 같은
+        // 통로로 갱신한다(payload 단조 증가). 여기서 한 번 적어두면 배치 전 하드킬도
+        // 유닛·스톤이 남은 채 reconcile 된다.
+        private void PersistTournamentDeckSnapshot()
+        {
+            if (logger == null) return;
+            Wassup.Core.Api.TournamentMatchReporter.PersistMatchDeck(logger.DeckInfoJson());
         }
 
         private void LogSkillLoadout()
