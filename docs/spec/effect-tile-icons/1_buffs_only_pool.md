@@ -26,4 +26,4 @@
 - Play 육안: `effectTileCount` 를 임시 상향해 다수 추첨을 강제했을 때 빨강·보라가 **0개**.
 - `git diff` 가 풀 2줄 삭제만 — `effectTileCount` 는 3 으로 원복.
 
-**완료 확인 2026-07-31** — PlayMode 1/1 green(3종 전부 저작값 일치). 34개 추첨 강제 스크린샷에서 주황·파랑·초록만 등장, 빨강·보라 0(`Assets/Screenshots/effect_tile_buffs_only.png`, 로컬·미추적). `effectTileCount` 3 원복 및 diff 확인, 활성 씬(OutgameScene) 원복. 커밋 `TBD`.
+**완료 확인 2026-07-31** — PlayMode 1/1 green(3종 전부 저작값 일치). 34개 추첨 강제 스크린샷에서 주황·파랑·초록만 등장, 빨강·보라 0(`Assets/Screenshots/effect_tile_buffs_only.png`, 로컬·미추적). `effectTileCount` 3 원복 및 diff 확인, 활성 씬(OutgameScene) 원복. 커밋 `52b4461d`.
