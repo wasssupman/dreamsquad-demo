@@ -99,4 +99,9 @@
 
 **확인 2026-07-31** — 사용자 Play 확인 통과(딤 붉은 계열 rev 3 포함). compile: `Wassup.Runtime` ·
 `Wassup.Tests.EditMode` 모두 error 0. ⚠ EditMode 테스트는 **컴파일만** 확인했고 실행하지 않았다
-(이 세션에 Unity MCP 미연결). 커밋 해시는 아래 후속 docs 커밋에서 기재.
+(이 세션에 Unity MCP 미연결).
+
+커밋 `b7bfa5c7` — `feat(selection-hand-attach, dreamcatcher-hand-card-face): 선택 중 부착 불가
+카드 붉은 딤 + 손패 카드 이름 확대`. hand-card-face unit 5 와 한 커밋이다: 둘 다
+`DreamcatcherHandView.cs` 의 같은 영역(카드 면 색·헤더 상수·`CardSlot` 필드)을 건드려 hunk 를
+가르면 어느 한쪽이 컴파일되지 않는다.

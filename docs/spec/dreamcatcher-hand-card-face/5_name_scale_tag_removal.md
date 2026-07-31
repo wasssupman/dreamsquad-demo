@@ -61,3 +61,6 @@
 **확인 2026-07-31** — 사용자 Play 확인 통과. 이름 32pt / `HeaderH` 76 / 본문 142px 로 안착
 (40pt·헤더 84 는 본문이 눌려 rev 1 에서 되돌림). compile error 0. ⚠ EditMode 테스트는
 **컴파일만** 확인했고 실행하지 않았다(이 세션에 Unity MCP 미연결).
+
+커밋 `b7bfa5c7` — selection-hand-attach unit 17(부착 불가 카드 붉은 딤)과 한 커밋이다.
+같은 파일의 같은 영역을 건드려 hunk 분리가 불가능했다.

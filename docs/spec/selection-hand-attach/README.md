@@ -1,7 +1,7 @@
 # selection-hand-attach — 유닛 선택 중 손패 등장 + 탭 즉발/D&D 부착
 
-> 상태: **units 0~15 구현·커밋 완료 · 핵심 체감 Play 확인 · `unit 5` e2e 전량 훑기 대기 ·
-> `unit 17` 착수(2026-07-31)** (units 9~15 인계는 `16_handoff_summary.md`)
+> 상태: **units 0~15·17 구현·커밋 완료 · 핵심 체감 Play 확인 · `unit 5` e2e 전량 훑기 대기**
+> (units 9~15 인계는 `16_handoff_summary.md`. `unit 17` 은 2026-07-31 Play 확인 후 `b7bfa5c7`)
 >
 > 커밋: units 0~8 은 `6_handoff_summary.md`, units 9~15 는 `16_handoff_summary.md` 참조.
 > 설계는 critic REVISE(H5/M7/L7) 전건 반영 rev 2(`9fdaba6a`) + 사용자 결정 다수.
