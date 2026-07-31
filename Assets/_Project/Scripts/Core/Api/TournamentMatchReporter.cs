@@ -269,9 +269,10 @@ namespace Wassup.Core.Api
             // unit 9 — clear-on-success. 나가기 직후 씬 전환 → 로비 reconcile 이 이 왕복과
             // 겹치는 것은 _completesInFlight 가 막는다.
             _completesInFlight++;
-            // tournament-deck-info unit 4 — 0점 마감도 덱을 싣는다(구 계약: 빈 값). 서버가
-            // 엔트리 컬럼을 최고점 가드 없이 대입한다면 빈 값은 좋은 판의 덱을 지우는데,
-            // 이 attempt 의 덱을 실으면 어느 서버 동작에서도 실제 덱이 남는다.
+            // tournament-deck-info unit 4 — 0점 마감도 덱을 싣는다(구 계약: 빈 값). 엔트리
+            // 하나로 플레이하는 판은 한 판이라, 나가기로 끝낸 판도 자기 엔트리로 히스토리에
+            // 남는다 — 덱이 비면 그 엔트리의 덱보기는 영원히 "덱 정보가 없습니다"다.
+            // 점수가 0 이어도 무엇을 들고 갔는지는 남을 값이 있다.
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, deckInfoJson, (ok, error) =>
             {
                 CompleteReturned();
