@@ -36,8 +36,11 @@ namespace Wassup.Data
         [Header("모양")]
         [Tooltip("배경 딤 알파. UiOverlay.Dim 보다 옅게 — 맵이 비쳐야 '이 판'이라는 느낌이 산다.")]
         [Range(0f, 1f)] public float dimAlpha = 0.82f;
-        [Tooltip("화면을 물들이는 틴트의 최대 알파.")]
-        [Range(0f, 1f)] public float tintAlpha = 0.28f;
+        // 틴트는 딤 **위에** 평평하게 덧발린다. 값을 올리면 화면 전체가 균일한 색 안개가 되고
+        // (딤이 만든 어두운 바탕까지 들어올려) 텍스트 대비가 깎인다. 0.28 로 검증했을 때
+        // 숲 (4,29,26) → (35,34,52) 로 오히려 밝아졌다. 딤이 지배하도록 낮게 유지할 것.
+        [Tooltip("화면을 물들이는 틴트의 최대 알파. 높이면 텍스트 대비가 깎인다.")]
+        [Range(0f, 1f)] public float tintAlpha = 0.12f;
         public float iconSize = 260f;
         [Tooltip("① 도장에서 아이콘이 줄어들며 찍히는 시작 배율.")]
         public float stampFromScale = 2.2f;

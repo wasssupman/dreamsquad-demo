@@ -18,7 +18,7 @@ MonoBehaviour:
   summaryHoldSec: 0.7
   tapSkipGraceSec: 0.25
   dimAlpha: 0.82
-  tintAlpha: 0.28
+  tintAlpha: 0.12
   iconSize: 260
   stampFromScale: 2.2
   particleCount: 14
