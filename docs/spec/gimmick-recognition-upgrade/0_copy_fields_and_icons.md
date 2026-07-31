@@ -42,7 +42,9 @@
 - **레드불·사직서 2개만 신규.** 캐주얼 디펜스 아트 방향: 작은 크기에서 읽히는 단순 실루엣, 굵은 외곽선, 밝고 선명. RPG 컨셉아트·다크 판타지 금지. 임포트 설정은 `Art/StackIcons/` 전례를 따른다.
 - **미할당 상태로 착지 가능**하다 — `icon` 은 nullable 이고 뷰가 라벨만 표시한다. 아이콘이 늦게 와도 이 유닛은 완결된다(계약 5의 nullable 슬롯 패턴).
 
-> **2026-07-31 실행 메모**: 레드불·사직서 아이콘은 **미착지**. UnityMCP `generate_image` 의 두 provider(fal / openrouter)가 모두 `configured: false` 라 생성 경로가 막혀 있다. 키를 넣거나 아트를 직접 주면 슬롯에 꽂기만 하면 된다.
+> **2026-08-01 착지**: 레드불·사직서 아이콘 **절차 생성으로 해결**. `generate_image` 의 두 provider(fal / openrouter)가 모두 `configured: false` 라, AI 생성 대신 **Pillow 로 직접 그렸다**(스크립트는 스크래치패드, 산출물만 커밋). 기존 `StackIcons` 톤에 맞춰 굵은 네이비 외곽선 + 플랫 컬러 + 단순 실루엣, 1024 에서 그려 256 으로 LANCZOS 축소. 임포트 설정도 `StackIcons` 전례와 동일(Sprite/Single/256/무압축/Bilinear/alphaIsTransparency).
+>
+> **읽기 오류 2건을 잡고 다시 그렸다** — 초안의 레드불 캔이 **휴대폰/배터리**로 읽혔고(둥근 사각형 + 상단 은색 밴드 조합), 사직서 도장이 **적십자**로 읽혔다(원 안의 플러스). 캔은 **윗면 타원 + 따개**를 넣어 원통임을 확정했고, 도장은 내부 기호를 빼고 채운 원 + 링으로 바꿨다. 작은 크기 아이콘은 실루엣이 다른 물건을 연상시키는지 **반드시 렌더해서 눈으로 확인**할 것.
 
 **뷰 소비** — `GimmickGuideView.Populate`:
 - 카드 제목을 2층으로: `ruleLabel` 주(대형) + `displayName` 부제(소형). 본문 = `summary` + `description`.

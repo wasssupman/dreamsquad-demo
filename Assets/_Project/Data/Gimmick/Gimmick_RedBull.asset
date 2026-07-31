@@ -23,7 +23,7 @@ MonoBehaviour:
   summary: "3\uCD08\uB9C8\uB2E4 \uB808\uB4DC\uBD88 \uC2A4\uD3F0 \xB7 \uBC1F\uC73C\uBA74
     \uACF5\uC18D +50% (5\uCD08), \uC885\uB8CC \uC2DC \uCD5C\uB300\uCCB4\uB825 50%
     \uD53C\uD574"
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 39f71abb1a6e14257a27fa361c532c7e, type: 3}
   redbullSpawnInterval: 3
   redbullLifetime: 20
   maxActivePickups: 6
