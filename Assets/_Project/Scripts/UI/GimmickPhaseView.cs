@@ -407,7 +407,8 @@ namespace Wassup.UI
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.textWrappingMode = TextWrappingModes.Normal;
             tmp.raycastTarget = false;
-            // 라벨 4개가 같은 아웃라인이므로 머티리얼 인스턴스 1개를 공유한다(GimmickGuideView 선례).
+            // 라벨이 전부 같은 아웃라인이므로 머티리얼 인스턴스 1개를 공유한다.
+            // fontMaterial(라벨당 인스턴스) 대신 fontSharedMaterial 할당 — OnDestroy 에서 해제.
             if (_labelOutlineMat == null && tmp.font != null && tmp.font.material != null)
             {
                 _labelOutlineMat = new Material(tmp.font.material);

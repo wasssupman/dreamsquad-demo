@@ -16,7 +16,7 @@ MonoBehaviour:
   beatNameSec: 0.8
   beatOutSec: 0.6
   summaryLeadSec: 0.35
-  summaryHoldSec: 2
+  summaryHoldSec: 2.2
   tapSkipGraceSec: 0.25
   dimAlpha: 0.82
   tintAlpha: 0.12

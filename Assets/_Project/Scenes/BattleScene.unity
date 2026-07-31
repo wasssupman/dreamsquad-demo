@@ -1780,7 +1780,6 @@ MonoBehaviour:
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   costDisplay: {fileID: 1075095674}
-  gimmickGuide: {fileID: 1916999830}
   placementSize: {x: 912, y: 120}
   battleSize: {x: 912, y: 88}
 --- !u!4 &915292525
@@ -3335,7 +3334,6 @@ MonoBehaviour:
   defenderSelector: {fileID: 915292524}
   mapView: {fileID: 172395674}
   mainCamera: {fileID: 1420088185}
-  gimmickGuide: {fileID: 1916999830}
   guidance: {fileID: 1572896087}
   handController: {fileID: 2054561897}
   gaugeView: {fileID: 1012444854}
@@ -4165,57 +4163,6 @@ MonoBehaviour:
     sparkColorBoost: 2.2
   billboardCamera: {fileID: 1420088185}
   sparkPrefab: {fileID: 372493123055174974, guid: 791501f91a6bd41babdb587fabb8231a, type: 3}
---- !u!1 &1916999829
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1916999831}
-  - component: {fileID: 1916999830}
-  m_Layer: 0
-  m_Name: GimmickGuideView
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1916999830
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1916999829}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b8f8ce6a0ad30a48bbb4f05804813cd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.GimmickGuideView
-  cardWidth: 640
-  cardCornerOffset: {x: -40, y: -40}
-  introAnimSeconds: 0.3
-  introOffscreenMargin: 60
-  autoCollapseSeconds: 3
-  collapseAnimSeconds: 0.18
-  chipCornerOffset: {x: -40, y: -40}
---- !u!4 &1916999831
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1916999829}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1939688407
 GameObject:
   m_ObjectHideFlags: 0
@@ -4467,7 +4414,6 @@ SceneRoots:
   - {fileID: 1737790244}
   - {fileID: 956177015}
   - {fileID: 1586207282}
-  - {fileID: 1916999831}
   - {fileID: 751645448}
   - {fileID: 603193525}
   - {fileID: 322840705}

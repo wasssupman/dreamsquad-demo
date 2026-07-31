@@ -60,7 +60,7 @@ namespace Wassup.Core
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
-        // gimmick-match-integration unit 1 — 매치당 배정된 기믹(없으면 null). GimmickGuideView 가 읽는다.
+        // gimmick-match-integration unit 1 — 매치당 배정된 기믹(없으면 null). GimmickPhaseView 가 읽는다.
         public GimmickData AssignedGimmick { get; private set; }
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.None;

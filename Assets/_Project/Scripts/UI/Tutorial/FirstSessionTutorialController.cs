@@ -43,7 +43,6 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private DefenderSelector defenderSelector;
         [SerializeField] private TilemapMapView mapView;
         [SerializeField] private Camera mainCamera;
-        [SerializeField] private GimmickGuideView gimmickGuide;
         [SerializeField] private TutorialGuidanceView guidance;
 
         [Header("Awakening")]
@@ -194,7 +193,8 @@ namespace Wassup.UI.Tutorial
             _coreActive = true;
             _coreStep = CoreStep.Goal;
             placementView.BeginTutorialGate();
-            gimmickGuide?.SetTutorialSuppressed(true);
+            // 기믹 안내 억제는 리빌(GimmickPhaseView)이 TutorialProgress.ShouldRunCore 로
+            // 스스로 판정한다 — 배치 카드가 은퇴하면서 여기서 억제할 대상이 없어졌다.
             guidance.SetWorldMarkerLayout(true);
             guidance.ShowMessage("적이 노란색 베이스에 닿기 전에 막아주세요.", showSkip: true);
             _goalRoutine = StartCoroutine(GoalBeatRoutine());
@@ -420,7 +420,6 @@ namespace Wassup.UI.Tutorial
             // Hide() 가 탭 캐처도 함께 끈다. 잔류하면 화면 전체가 먹통이 된다.
             guidance?.Hide();
             placementView?.EndTutorialGate(restoreNormalPlacement);
-            gimmickGuide?.SetTutorialSuppressed(false);
             UnsubscribeDrag();
             _recommendedSlot = null;
         }
