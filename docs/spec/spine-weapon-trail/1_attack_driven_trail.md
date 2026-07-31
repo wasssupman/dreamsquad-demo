@@ -83,3 +83,41 @@ stopAfter = Animation.Duration * weaponTrailEndNormalized / entry.TimeScale
   눈에 띄는지. 띄면 Script Execution Order 고정
 - **레이어 회수**: 유닛 사망 · 매치 종료 후 **프레임을 넘겨** `Generated Mesh Trail` 잔존 0 확인
   (unit 0 정리 때 같은 프레임엔 1개가 남아 보였다 — 지연 파괴로 추정되나 확증 안 됨)
+
+## 구현 중 발견 — asmdef 경계
+
+`Wassup.Runtime.asmdef` 는 어셈블리인데 Hovl 스크립트는 asmdef 가 없어 `Assembly-CSharp` 에
+있었다. **asmdef 어셈블리는 Assembly-CSharp 을 참조할 수 없다** — `Hovl.HS_SwordMeshTrail` 을
+타입으로 쓰는 순간 컴파일이 깨진다.
+
+해결: `Assets/Hovl Studio/HSFiles/Scripts/Hovl.HSFiles.asmdef` 신설 + `Wassup.Runtime` 참조에 추가.
+데모 스크립트가 `ENABLE_INPUT_SYSTEM` 경로를 타므로 `Unity.InputSystem` 을 참조에 넣어야 한다.
+벤더 **코드**는 손대지 않았다(asmdef 파일 추가뿐). 프리팹의 스크립트 참조는 guid 기반이라 무영향.
+
+## 판정 결과 (2026-08-01, BattleScene 실전 Play)
+
+### 통과
+
+- **배선**: `PlayAttack` 호출로 `IsEmitting` False → True. 실제 스폰 경로에서 리그 부착
+  (`boneValid=True`), 유닛 회전 `(45,0,0)` = Billboard 상속 확인
+- **정지 창**: 0.27초 뒤 자동 정지 관측(`emitting=False, verts=0`) — 창 계산이 실제로 먹는다
+- **틸트 단축 우려는 과장이었다**: 유닛 평면 45° vs 카메라 pitch 60° → 어긋남 **15°**,
+  단축률 cos15° = **0.966**. 세로 호가 잃는 건 3% 남짓이라 무시 가능하다.
+  (spec 초안의 "세로 스윙이 단축 축에 눕는다"는 정성적으로는 맞지만 양적으로 무의미했다.)
+
+### 불통과 — 가시성
+
+실제 보드 프레이밍(1280×720, 유닛 높이 ~60px)에서 궤적은 **보이기는 하나 참격으로 읽히지 않는다**.
+청록 보드 위 옅은 파랑이라 대비가 낮고, 폭 0.46 월드는 유닛 대비 너무 얇아 작은 얼룩으로 보인다.
+
+→ unit 2 는 오프셋 미세조정이 아니라 **가독성 문제**로 다룬다. 후보 4개(전부 authoring):
+1. **크기** — 리본 폭·길이를 키운다. unit 0 에서 우려한 "과장 = 가독성 부채"는 이 스케일에선
+   기우였다. 1~1.5 타일까지는 필요해 보인다
+2. **대비** — 프리셋 20종 중 보드 색과 분리되는 것으로 교체(현재 toon blue)
+3. **수명** — 0.2초는 이 스케일에서 너무 짧다
+4. **레이어 추가** — 현재 머티리얼 레이어 1개. 밝은 코어 레이어를 얹으면 작은 크기에서 읽힌다
+
+### 미검증 (unit 2 로 재이월)
+
+카메라 이동 중 박제 · `LateUpdate` 실행 순서(문제 안 보였으나 측정 안 함) · 레이어 회수(사망/매치
+종료 후) · 원거리 유닛 무궤적(프리팹 null 게이트라 구조상 성립하나 관측은 안 함).
