@@ -1,6 +1,9 @@
 # spine-weapon-trail — Spine 유닛 공격 무기 궤적
 
 > 상태: **완료 2026-08-01** (units 0~4 · 코드 리뷰 반영 · 검증 종료)
+> **궤적을 켜거나·룩을 바꾸거나·새 호스트에 붙이려면 이 문서가 아니라
+> [`docs/reference/weapon-trail-authoring.md`](../../reference/weapon-trail-authoring.md) 를 읽는다.**
+> 여기는 왜 그렇게 됐는지(설계 이력·실측·기각된 대안)를 남긴 곳이다.
 > 인계는 `4_handoff_summary.md`. 후속 후보는 `docs/spec/README.md` Follow-up Backlog 로 이관.
 > 남은 결정 1건: **보스 궤적 크기**(~4타일 vs 사거리 2).
 > `d37e3196` → `314c0033` → `4aab5bc7`·`71117b42`·`a340ed48`·`851ee392` → `bd6f079a`·`dd573654`

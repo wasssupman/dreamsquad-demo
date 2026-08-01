@@ -137,6 +137,9 @@ one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, 
 스포너도 큐도 새로 만들지 않는다 — 유닛 SO 가 리그 프리팹을 들고, 뷰가 공격 사건에 재생을 건다.
 새 "본 부착" 계열(꼬리·오라 트레일 등)은 이 표를 기준으로 삼는다.
 
+> 실제로 켜고·바꾸고·새 호스트에 붙이는 **레시피와 증상→원인 표**는
+> [`weapon-trail-authoring.md`](weapon-trail-authoring.md).
+
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
 | 데이터 SO | `Data/ISpineUnitVisualData.cs` — `SpineWeaponTrailPrefab` / `…EndNormalized` | ★디펜더·적 **공용** 인터페이스. 범위는 타입이 아니라 **프리팹 할당**이 정한다 |

@@ -19,6 +19,11 @@
 - 나이트메어에 무기 스킨 신규 부여(`gear_right_c_40`), 보스 2종 공격 애니를 `Attack3` 로 교체
 - 호스트 비종속: 필드가 `ISpineUnitVisualData` 에 있고 `WeaponTrailRig.Bind/Play` 만 알면 붙는다
 
+## 다음에 이걸 건드리는 사람은
+
+**`docs/reference/weapon-trail-authoring.md` 를 먼저 읽는다.** 붙이는 법·룩 추가·모양 튜닝·본 없는
+호스트 레시피와 증상→원인 표가 거기 있다. 이 spec 폴더는 **왜 그렇게 됐는지**(실측·기각된 대안·설계 오판)를 남긴 곳이다.
+
 ## Key Files
 
 - `Assets/_Project/Scripts/Presentation/WeaponTrailRig.cs` — 리그 자립 컴포넌트(부착·타이머·파티클 정렬)
