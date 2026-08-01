@@ -39,6 +39,11 @@ namespace Wassup.Core
         // panel and the lobby comes back, it asks them to actually drag a lobby
         // character. Additive like the rest — 0 means pending.
         public int lobbyKeyringHintVersion;
+        // first-session-tutorial unit 23 — the gimmick reveal hold. The reveal is
+        // skipped entirely on the first match (GimmickPhaseView gates on
+        // ShouldRunCore), so this fires on the first reveal the player ever sees.
+        // Additive like the rest — 0 means pending.
+        public int gimmickRevealHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.

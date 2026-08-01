@@ -28,6 +28,16 @@ namespace Wassup.UI.Tutorial
         // 그래서 이 앵커는 4:3 방어이고, 값은 링 도달선(297)을 넘겨야 의미가 있다.
         [Tooltip("전투 HUD 안내 전용 말풍선 상단 오프셋. 4:3 화면에서 우상단 스트레스 배지·포커스 링(~297)과 겹치지 않게 그 아래로 둔다.")]
         public float hudHintMessageTopOffset = 310f;
+        // unit 23 — 기믹 리빌 홀드 전용 앵커. 리빌은 화면 중앙을 세로로 길게 쓴다
+        // (아이콘 상단 +390 · 룰 라벨 +20 · 요약 -140 · "탭하여 계속" -290), 그래서 기본
+        // 앵커(184 → y 356~240)는 아이콘과 정면으로 겹친다. 탭 힌트 **아래**에 두어
+        // "읽고 탭"이 한 덩어리로 보이게 한다(1080 기준 880 → 패널 상단 y -340).
+        //
+        // 주의: 이 말풍선은 SafeAreaRoot 자식이라 인셋만큼 위로 클램프되지만, 리빌 패널은
+        // FullBleedRoot 자식이라 인셋과 무관하게 고정이다. 즉 에디터에서 안 겹쳐도 하단
+        // 인셋이 큰 실기기에서는 겹칠 수 있다 — 값을 올릴 땐 실기기에서 확인할 것.
+        [Tooltip("기믹 리빌 홀드 안내 전용 말풍선 상단 오프셋. 리빌의 \"탭하여 계속\" 힌트 아래에 둔다.")]
+        public float revealHintMessageTopOffset = 880f;
         public Color messageFill = new Color(0.025f, 0.045f, 0.09f, 0.96f);
         public Color messageBorder = new Color(1f, 0.78f, 0.24f, 1f);
         public Color messageText = new Color(1f, 0.97f, 0.88f, 1f);

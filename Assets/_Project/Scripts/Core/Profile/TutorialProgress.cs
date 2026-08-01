@@ -17,6 +17,7 @@ namespace Wassup.Core
         public const int LobbyIntroVersion = 1;
         public const int LobbyLoadoutHintVersion = 1;
         public const int LobbyKeyringHintVersion = 1;
+        public const int GimmickRevealHintVersion = 1;
 
         public static bool ShouldRunCore(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsCorePending(holder.profile);
@@ -67,6 +68,16 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession && holder.profile != null &&
             !IsLobbyLoadoutHintPending(holder.profile) && IsLobbyKeyringHintPending(holder.profile);
 
+        // unit 23 — the gimmick reveal hold. Deliberately chains **nothing**: the
+        // sibling gates above (`!IsCorePending`) reproduce a known defect — a player
+        // who took a fail-open path on the earlier step never sees the later one (see
+        // the backlog note on chapter B). No chain is needed here anyway, because the
+        // reveal itself is skipped while core is pending (GimmickPhaseView gates on
+        // ShouldRunCore), so there is no hold to hang a hint on during the first match.
+        public static bool ShouldRunGimmickRevealHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession &&
+            IsGimmickRevealHintPending(holder.profile);
+
         public static bool IsCorePending(PlayerProfile profile) =>
             profile != null && profile.firstBattleTutorialVersion < CoreVersion;
 
@@ -87,6 +98,9 @@ namespace Wassup.Core
 
         public static bool IsLobbyKeyringHintPending(PlayerProfile profile) =>
             profile != null && profile.lobbyKeyringHintVersion < LobbyKeyringHintVersion;
+
+        public static bool IsGimmickRevealHintPending(PlayerProfile profile) =>
+            profile != null && profile.gimmickRevealHintVersion < GimmickRevealHintVersion;
 
         public static bool CompleteCore(PlayerProfile profile)
         {
@@ -137,6 +151,13 @@ namespace Wassup.Core
             return true;
         }
 
+        public static bool CompleteGimmickRevealHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.gimmickRevealHintVersion >= GimmickRevealHintVersion) return false;
+            profile.gimmickRevealHintVersion = GimmickRevealHintVersion;
+            return true;
+        }
+
         // Tutorial replay support. This deliberately touches only tutorial
         // progress; squad, deck, account, and every other profile field remain.
         public static bool ResetAll(PlayerProfile profile)
@@ -146,7 +167,8 @@ namespace Wassup.Core
             bool changed = profile.firstBattleTutorialVersion != 0 || profile.awakeningHintVersion != 0 ||
                            profile.awakeningTapAttachHintVersion != 0 ||
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
-                           profile.lobbyLoadoutHintVersion != 0 || profile.lobbyKeyringHintVersion != 0;
+                           profile.lobbyLoadoutHintVersion != 0 || profile.lobbyKeyringHintVersion != 0 ||
+                           profile.gimmickRevealHintVersion != 0;
             profile.firstBattleTutorialVersion = 0;
             profile.awakeningHintVersion = 0;
             profile.awakeningTapAttachHintVersion = 0;
@@ -154,6 +176,7 @@ namespace Wassup.Core
             profile.lobbyIntroVersion = 0;
             profile.lobbyLoadoutHintVersion = 0;
             profile.lobbyKeyringHintVersion = 0;
+            profile.gimmickRevealHintVersion = 0;
             return changed;
         }
 
@@ -171,11 +194,12 @@ namespace Wassup.Core
             int lobbyIntro = root.Value<int?>(nameof(PlayerProfile.lobbyIntroVersion)) ?? 0;
             int lobbyHint = root.Value<int?>(nameof(PlayerProfile.lobbyLoadoutHintVersion)) ?? 0;
             int lobbyKeyring = root.Value<int?>(nameof(PlayerProfile.lobbyKeyringHintVersion)) ?? 0;
+            int gimmickReveal = root.Value<int?>(nameof(PlayerProfile.gimmickRevealHintVersion)) ?? 0;
             // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
             // gates the backup and the file replacement on it, so a token that is only
             // written below would never reach disk when it is the sole difference.
             changed = core != 0 || awakening != 0 || tapAttach != 0 || gift != 0 ||
-                      lobbyIntro != 0 || lobbyHint != 0 || lobbyKeyring != 0;
+                      lobbyIntro != 0 || lobbyHint != 0 || lobbyKeyring != 0 || gimmickReveal != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
             root[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
@@ -183,6 +207,7 @@ namespace Wassup.Core
             root[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             root[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
             root[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
+            root[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
             return root.ToString(Formatting.Indented);
         }
     }

@@ -18,9 +18,10 @@ namespace Wassup.UI.Tutorial
 
         [SerializeField] private TutorialGuidanceStyle style;
 
-        // unit 19 — 말풍선 세로 위치는 3값이다. 맵 이해 마커(하단으로 크게 내림)와 전투 HUD
-        // 안내(우상단 배지 아래)가 서로 다른 offset 을 요구하고, 두 구간이 동시에 뜨는 일은 없다.
-        public enum MessageAnchor { Default, WorldMarker, HudHint }
+        // unit 19 — 말풍선 세로 위치는 구간마다 다르다. 맵 이해 마커(하단으로 크게 내림), 전투
+        // HUD 안내(우상단 배지 아래), 기믹 리빌(전면 연출의 탭 힌트 아래)이 서로 다른 offset 을
+        // 요구하고, 이 구간들이 동시에 뜨는 일은 없다.
+        public enum MessageAnchor { Default, WorldMarker, HudHint, GimmickReveal }
 
         public event Action SkipRequested;
         // unit 11 — 읽고 넘기는 스텝에서만 쓰는 진행 신호.
@@ -430,6 +431,7 @@ namespace Wassup.UI.Tutorial
             {
                 MessageAnchor.WorldMarker => Style.worldMarkerMessageTopOffset,
                 MessageAnchor.HudHint => Style.hudHintMessageTopOffset,
+                MessageAnchor.GimmickReveal => Style.revealHintMessageTopOffset,
                 _ => Style.messageTopOffset,
             };
             float topOffset = Mathf.Clamp(requestedTopOffset, SafeEdgePadding, maxTopOffset);

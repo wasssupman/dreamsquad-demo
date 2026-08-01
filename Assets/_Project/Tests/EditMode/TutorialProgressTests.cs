@@ -204,12 +204,14 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, loaded.lobbyIntroVersion);
             Assert.AreEqual(0, loaded.lobbyLoadoutHintVersion);
             Assert.AreEqual(0, loaded.lobbyKeyringHintVersion);
+            Assert.AreEqual(0, loaded.gimmickRevealHintVersion);
             Assert.IsTrue(TutorialProgress.IsCorePending(loaded));
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(loaded));
+            Assert.IsTrue(TutorialProgress.IsGimmickRevealHintPending(loaded));
         }
 
         [Test]
@@ -267,6 +269,7 @@ namespace Wassup.Tests.EditMode
             expected[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
+            expected[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
 
             string result = TutorialProgress.ResetAllInJson(source, out bool changed);
 
@@ -464,6 +467,102 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(changed, "키링 안내만 완료된 상태도 초기화 대상이다");
             var stored = JObject.Parse(result);
             Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyKeyringHintVersion)));
+            Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
+            Assert.AreEqual(12345, stored["futureAccountData"]?["currency"]?.Value<int>());
+        }
+
+        // ── unit 23 — 기믹 리빌 홀드 안내 ───────────────────────────────────
+
+        // 이 게이트는 형제와 달리 **아무것도 체인하지 않는다**. `!IsCorePending` 을 무는 형제
+        // 게이트(선물·로비 B)는 선행 안내가 fail-open 경로를 타면 뒤 안내가 영영 발화하지
+        // 못하는 결함을 갖고 있다. 여기선 리빌 자체가 첫 판에 생략되므로(GimmickPhaseView 가
+        // ShouldRunCore 로 판정) 안내를 걸 홀드가 애초에 없어 체인이 필요 없다.
+        [Test]
+        public void GimmickRevealHint_GateChainsNothingButKeepsSessionGuard()
+        {
+            // core·선물이 모두 pending 인 계정(= 아직 첫 판도 안 한 계정)이라도 게이트 자체는 열려 있다.
+            _holder.SetLoadedProfile(new PlayerProfile());
+            Assert.IsTrue(TutorialProgress.ShouldRunGimmickRevealHint(_holder));
+
+            // 선물을 건너뛴 계정(TestMode fast-forward 등)도 막히지 않는다 — 체인이 없다는 뜻.
+            var skippedGift = new PlayerProfile
+            {
+                firstBattleTutorialVersion = TutorialProgress.CoreVersion,
+            };
+            _holder.SetLoadedProfile(skippedGift);
+            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(skippedGift), "선물은 여전히 미완료");
+            Assert.IsTrue(TutorialProgress.ShouldRunGimmickRevealHint(_holder),
+                "선물 미완료가 리빌 안내를 막으면 안 된다(챕터 B 결함 재현)");
+
+            // 세션 가드와 null 프로필은 형제와 같게 막는다.
+            _holder.SetLoadedProfile(null);
+            Assert.IsFalse(TutorialProgress.ShouldRunGimmickRevealHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunGimmickRevealHint(null));
+        }
+
+        [Test]
+        public void GimmickRevealHintCompletion_IsIdempotentAndTouchesNothingElse()
+        {
+            var profile = new PlayerProfile();
+
+            Assert.IsTrue(TutorialProgress.CompleteGimmickRevealHint(profile));
+            Assert.IsFalse(TutorialProgress.IsGimmickRevealHintPending(profile));
+            Assert.IsFalse(TutorialProgress.CompleteGimmickRevealHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteGimmickRevealHint(null));
+
+            // 리빌 완료가 다른 안내를 소비하면 안 된다.
+            Assert.IsTrue(TutorialProgress.IsCorePending(profile));
+            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
+
+            var ahead = new PlayerProfile
+            {
+                gimmickRevealHintVersion = TutorialProgress.GimmickRevealHintVersion + 1,
+            };
+            Assert.IsFalse(TutorialProgress.IsGimmickRevealHintPending(ahead));
+        }
+
+        // unit 17·outgame unit 6 과 같은 함정. 이 토큰이 `changed` 표현식에서 빠지면
+        // 리빌 안내만 완료된 계정에서 RESET TUTORIAL 이 "이미 초기화됨" 으로 빠져나간다.
+        [Test]
+        public void ResetAll_ReportsChanged_WhenOnlyGimmickRevealTokenIsSet()
+        {
+            var profile = new PlayerProfile
+            {
+                selectedSquadId = "keep_squad",
+                gimmickRevealHintVersion = TutorialProgress.GimmickRevealHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile),
+                "리빌 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, profile.gimmickRevealHintVersion);
+            Assert.AreEqual("keep_squad", profile.selectedSquadId);
+            Assert.IsFalse(TutorialProgress.ResetAll(profile), "멱등");
+        }
+
+        // 디스크 쪽 같은 함정. `changed` 가 false 면 ResetTutorialProgressAt 이 백업·파일
+        // 교체를 통째로 건너뛰어 리셋이 디스크에 영영 안 닿는다.
+        [Test]
+        public void ResetAllInJson_ReportsChanged_WhenOnlyGimmickRevealTokenIsSet()
+        {
+            const string source = @"{
+                'firstBattleTutorialVersion': 0,
+                'awakeningHintVersion': 0,
+                'awakeningTapAttachHintVersion': 0,
+                'giftTutorialVersion': 0,
+                'lobbyIntroVersion': 0,
+                'lobbyLoadoutHintVersion': 0,
+                'lobbyKeyringHintVersion': 0,
+                'gimmickRevealHintVersion': 1,
+                'selectedSquadId': 'keep_squad',
+                'futureAccountData': { 'currency': 12345 }
+            }";
+
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "리빌 안내만 완료된 상태도 초기화 대상이다");
+            var stored = JObject.Parse(result);
+            Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.gimmickRevealHintVersion)));
             Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
             Assert.AreEqual(12345, stored["futureAccountData"]?["currency"]?.Value<int>());
         }
