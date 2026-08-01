@@ -120,5 +120,14 @@ namespace Wassup.Data
         [Header("Score")]
         [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 잡몹 100 / 보스 2000 기준.")]
         public int killScore = 100;
+
+        // spine-weapon-trail unit 3 — 무기 궤적. 적/보스도 대상이다(디펜더 종속 해제).
+        // 미할당 = 무궤적이라 잡몹 전원은 현행 그대로. Appended last (직렬화 back-compat).
+        [Header("Weapon Trail")]
+        public GameObject weaponTrailPrefab;
+        [Range(0.05f, 1f)] public float weaponTrailEndNormalized = 0.31f;
+
+        public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;
+        public float SpineWeaponTrailEndNormalized => weaponTrailEndNormalized;
     }
 }

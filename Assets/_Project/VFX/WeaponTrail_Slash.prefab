@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 5170755300506597820}
   - component: {fileID: 212822236448720489}
   - component: {fileID: 2122514602642391490}
+  - component: {fileID: 1885807872623646562}
   m_Layer: 0
   m_Name: WeaponTrail_Slash
   m_TagString: Untagged
@@ -159,6 +160,18 @@ MonoBehaviour:
   swordTrails:
   - {fileID: 212822236448720489}
   workWithoutAnimation: 0
+--- !u!114 &1885807872623646562
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2357636064331021646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2339ec1e2d53147ad8d847e930c92078, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.WeaponTrailRig
 --- !u!1 &4253645290353972509
 GameObject:
   m_ObjectHideFlags: 0

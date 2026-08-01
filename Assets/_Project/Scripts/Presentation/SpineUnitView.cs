@@ -42,10 +42,9 @@ namespace Wassup.Presentation
         private const float LocoMoveOnFrac = 0.15f;   // _smoothedSpeed > ref×이 값 → 이동
         private const float LocoMoveOffFrac = 0.05f;  // _smoothedSpeed < ref×이 값 → 정지
         private const float LocoMixDuration = 0.15f;  // walk↔idle 크로스페이드 초
-        // spine-weapon-trail unit 1 — 무기 궤적 리그(방어 유닛 중 프리팹 할당분만 비null).
-        private Hovl.HS_SwordMeshTrail _weaponTrail;
-        private float _trailStopAt;
-        private bool _trailStopPending;
+        // spine-weapon-trail unit 3 — 무기 궤적 리그(프리팹 할당분만 비null). 타이머와
+        // 부착 로직은 리그가 소유한다 — 뷰는 붙이고 재생 신호만 준다.
+        private WeaponTrailRig _weaponTrail;
 
         public Entity Entity => _entity;
 
@@ -451,25 +450,19 @@ namespace Wassup.Presentation
             ApplyTimeScale();
         }
 
-        // spine-weapon-trail unit 1 — 궤적 리그 부착. 프리팹 미할당이면 무동작이고, 적은
-        // _defenderExtras 가 null 이라 이 경로 자체를 타지 않는다(방어 유닛 전용 = 자동 게이트).
+        // spine-weapon-trail unit 3 — 궤적 리그 부착. 대상은 **유닛 타입을 가리지 않는다**
+        // (디펜더·적·보스). 프리팹 미할당이면 무동작 = 유일한 게이트.
         // 리그는 반드시 **이 transform 의 자식**이어야 한다 — Billboard(Tilted) 로 기울어진
         // 평면을 상속해야 리본이 스프라이트와 같은 평면에 생긴다.
         private void AttachWeaponTrail()
         {
-            if (_defenderExtras == null || _skeleton == null) return;
-            var prefab = _defenderExtras.SpineWeaponTrailPrefab;
+            if (_visualData == null || _skeleton == null) return;
+            var prefab = _visualData.SpineWeaponTrailPrefab;
             if (prefab == null) return;
 
             var rig = Instantiate(prefab, transform);
-            _weaponTrail = rig.GetComponent<Hovl.HS_SwordMeshTrail>();
-
-            var follower = rig.GetComponent<BoneFollower>();
-            if (follower == null) return;
-            // 프리팹의 initializeOnAwake 는 false 다 — skeletonRenderer 를 런타임에 주입한 뒤
-            // 직접 Initialize 해야 본이 잡힌다(unit 0 계약). 스켈레톤 Initialize 이후여야 한다.
-            follower.skeletonRenderer = _skeleton;
-            follower.Initialize();
+            _weaponTrail = rig.GetComponent<WeaponTrailRig>();
+            if (_weaponTrail != null) _weaponTrail.Bind(_skeleton);
         }
 
         // spine-weapon-trail unit 1 — 방출은 **스윙 구간에만** 건다. 종료 시각은
@@ -477,28 +470,13 @@ namespace Wassup.Presentation
         // (TimeScale ≥ 1) 이 나눗셈을 빼면 공속이 빠른 유닛에서 방출이 스윙보다 오래 남는다.
         private void PlayWeaponTrail(TrackEntry entry)
         {
-            if (_weaponTrail == null || _defenderExtras == null) return;
+            if (_weaponTrail == null || _visualData == null) return;
             if (entry == null || entry.Animation == null) return;
             float duration = entry.Animation.Duration;
             if (duration <= 0f) return;
 
             float scale = entry.TimeScale > 0f ? entry.TimeScale : 1f;
-            float window = duration * Mathf.Clamp01(_defenderExtras.SpineWeaponTrailEndNormalized) / scale;
-            if (window <= 0f) return;
-
-            _weaponTrail.StartTrail();
-            // 시간 기준은 Time.time — 궤적 자체가 그 위에서 돈다(spec 계약 7).
-            _trailStopAt = Time.time + window;
-            if (!_trailStopPending) StartCoroutine(StopWeaponTrailRoutine());
-        }
-
-        // 연속 공격은 _trailStopAt 을 뒤로 밀 뿐, 코루틴을 겹쳐 만들지 않는다.
-        private System.Collections.IEnumerator StopWeaponTrailRoutine()
-        {
-            _trailStopPending = true;
-            while (_weaponTrail != null && Time.time < _trailStopAt) yield return null;
-            if (_weaponTrail != null) _weaponTrail.StopTrail();
-            _trailStopPending = false;
+            _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / scale);
         }
 
         public bool PlayDeploy()

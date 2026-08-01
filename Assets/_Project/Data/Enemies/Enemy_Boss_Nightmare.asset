@@ -15,6 +15,7 @@ MonoBehaviour:
   id: boss_nightmare
   displayName: "\uB098\uC774\uD2B8\uBA54\uC5B4"
   enemyClass: 1
+  minWaveNumber: 1
   attackMethod: 1
   targetMode: 1
   engageMovement: 0
@@ -44,7 +45,7 @@ MonoBehaviour:
   spineSkinName: full_skins
   idleAnimation: Idle
   walkAnimation: Walk
-  attackAnimation: Attack1
+  attackAnimation: Attack3
   deathAnimation: Die
   spineVisualScale: 3.2
   partSkins:
@@ -53,6 +54,7 @@ MonoBehaviour:
   - brow/brow_c_5
   - eyes/eyes_c_7
   - top/top_c_57
+  - gear_right/gear_right_c_40
   slotColors:
   - slotName: Back
     color: {r: 1, g: 1, b: 1, a: 0}
@@ -66,6 +68,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 10
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 17
       magnitude: 0
@@ -78,11 +83,17 @@ MonoBehaviour:
       stackKind: 0
       buffStat: 0
       pattern: {fileID: 11400000, guid: 6d2a89f314b74c05a9e37b1c8f4d6205, type: 2}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
   - trigger:
       kind: 4
       period: 0
       periodSeconds: 0.5
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 9
       magnitude: 20
@@ -94,11 +105,18 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
   - trigger:
       kind: 4
       period: 0
       periodSeconds: 0.1
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 17
       magnitude: 0
@@ -111,4 +129,9 @@ MonoBehaviour:
       stackKind: 0
       buffStat: 0
       pattern: {fileID: 11400000, guid: 2c9d64a7e83b41f5ab16c05d729e8f31, type: 2}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
   killScore: 2000
+  weaponTrailPrefab: {fileID: 980198975920828844, guid: bf5392c35fff74f68a45724df10f60a4, type: 3}
+  weaponTrailEndNormalized: 0.31

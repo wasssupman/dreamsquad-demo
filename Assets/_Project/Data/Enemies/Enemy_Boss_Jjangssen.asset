@@ -45,7 +45,7 @@ MonoBehaviour:
   spineSkinName: full_skins
   idleAnimation: Idle
   walkAnimation: Run_Gear
-  attackAnimation: Attack2
+  attackAnimation: Attack3
   deathAnimation: Die
   spineVisualScale: 2.6
   partSkins:
@@ -87,6 +87,7 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      stackModifier: {fileID: 0}
   - trigger:
       kind: 5
       period: 0
@@ -109,6 +110,7 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 50
       slamTileRange: 1
+      stackModifier: {fileID: 0}
   - trigger:
       kind: 5
       period: 0
@@ -131,4 +133,7 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 50
       slamTileRange: 1
+      stackModifier: {fileID: 0}
   killScore: 2000
+  weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
+  weaponTrailEndNormalized: 0.31

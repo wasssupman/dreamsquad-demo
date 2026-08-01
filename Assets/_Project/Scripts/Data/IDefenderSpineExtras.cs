@@ -14,11 +14,8 @@ namespace Wassup.Data
         string SpineDeployAnimation { get; }
         string SpineCastAnchorBone { get; }
         Vector3 SpineCastAnchorLocalOffset { get; }
-
-        // spine-weapon-trail unit 1 — 무기 궤적. 여기(방어 유닛 전용 인터페이스)에 두는 것이
-        // 설계 판단이다: SpineUnitView 는 적을 스폰할 때 _defenderExtras 가 null 이라,
-        // 적 제외가 코드 분기 없이 자동으로 성립한다.
-        GameObject SpineWeaponTrailPrefab { get; }
-        float SpineWeaponTrailEndNormalized { get; }
+        // spine-weapon-trail unit 3 — 무기 궤적 필드는 ISpineUnitVisualData 로 옮겼다.
+        // unit 1 에선 "적 제외가 코드 분기 없이 성립"을 노려 여기 뒀지만, 그 이점이
+        // 보스/구조물을 넣을 길을 막는 제약이 됐다. 게이트는 프리팹 null 이 대신한다.
     }
 }
