@@ -121,6 +121,22 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 기믹 인지 (gimmick-recognition-upgrade — 완료 2026-08-01, 사용자 리빌 실기 확인 통과)
+
+매판 배정되는 기믹을 배치 페이즈 안 우상단 카드에서 **배치 앞 독립 리빌 페이즈**로 옮겼다.
+문구를 4단(룰 라벨·두 줄 요약·정서 카피·상세)으로 쪼개고 아이콘·의미 색·등장음을 붙였으며,
+기존 `GimmickGuideView` 는 은퇴했다. 상세: `docs/spec/gimmick-recognition-upgrade/4_handoff_summary.md`.
+
+- **familiarity 게이팅** [S] · 같은 기믹을 N번 본 뒤 리빌이 자동으로 짧아진다. 지금은 매판 같은 길이라 반복 플레이에서 탭 스킵에 의존한다. `TutorialProgress`/`PlayerProfileSO` 플래그 전례가 있다. **읽을 시간이 여전히 모자라거나 반대로 길게 느껴지면 이걸 먼저 검토.** (gimmick-recognition-upgrade)
+- **`summary` 수치의 stale 위험** [S] · 수치가 문자열로 박혀 있어 기믹 SO 를 재튜닝하면 문구가 조용히 어긋난다. 드림캐쳐 카드가 같은 문제를 `DreamcatcherCardText` 포매터로 풀었다(에셋 텍스트는 폴백). 기믹 수치를 자주 만지게 되면 그 패턴으로 이관. (gimmick-recognition-upgrade)
+- **리빌 VFX 가 딤 아래 깔린다** [S] · 캔버스가 `ScreenSpaceOverlay` 라 월드 VFX 는 구조상 딤 밑이다. **2026-08-01 사용자 판정으로 현행 유지.** 살리려면 VFX 를 캔버스 자식으로 옮기고 스케일 knob 을 SO 에 추가해야 한다(프리팹이 월드 단위 저작이라 픽셀 캔버스에선 먼지만 해진다). (gimmick-recognition-upgrade)
+- **회상 경로** [S] · 판 중간에 "이번 기믹 뭐였지"를 답할 곳이 없다. 신규 UI 없이 가능한 자리가 둘 있다 — `MenuPopup`(일시정지)에 `description` 한 줄, 결과 화면에 "이번 판 특수룰" 한 줄. 후자는 룰↔결과 인과를 붙여 다음 판 인지를 올린다. **"진입 시점에만 집중" 지시로 이번 범위에서 제외됨.** (gimmick-recognition-upgrade)
+- **기믹 진행 표시** [M] · 사직서 3/5, 열기 4/6 같은 누적 상태와 임계 도달 신호. 인지 효과는 크지만 ECS→Bridge→View 데이터 seam 이 필요하고, **전투 중 상시 UI 는 2026-08-01 사용자 판정으로 비목표**다(정보량·화면 점유). 되살리려면 그 판정부터 뒤집어야 한다. (gimmick-recognition-upgrade)
+- **사직서·온천 리빌 VFX** [S] · `revealVfxPrefab` 슬롯이 비어 절차 파티클로만 돈다(번아웃·레드불은 기존 프리팹 연결됨). 아트가 생기면 코드 0줄로 꽂힌다. (gimmick-recognition-upgrade)
+- **등장음 테이크 확정** [S] · Take1 채택 상태, Take2·Take3 가 `Audio/GimmickRevealTakes/` 에 대기. 교체는 `GimmickReveal.mp3` GUID 유지 덮어쓰기. 확정 후 테이크 폴더 삭제. (gimmick-recognition-upgrade)
+- **`GimmickData` 시트 임포터** [S] · 문구가 4단으로 늘어 시트 관리 가치가 올라갔다. 지금은 수기 편집. (gimmick-recognition-upgrade)
+- **로비에서 다음 판 기믹 예고** [M] · 배정이 배틀 씬 `GameManager.Start` 라 로비에서 미리 알 수 없다. 구조 변경 필요. (gimmick-recognition-upgrade)
+
 #### 액티브 드림캐쳐 (active-dreamcatcher-tile-aim + active-ally-zone — 완료 2026-07-30, 사용자 Play 확인 통과)
 
 액티브 6종을 "화살표 + 타일 지정" 한 문법으로 통일하고(대상축 `SkillTargetType` 폐기), 아군 버프를

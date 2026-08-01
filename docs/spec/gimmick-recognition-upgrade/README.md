@@ -79,6 +79,8 @@ N/A — 데이터 SO 문구/아이콘 + MonoBehaviour View(리빌) + 페이즈 e
 
 ## 후속 후보 (현 spec 범위 밖)
 
+> **2026-08-01 spec 종료와 함께 `docs/spec/README.md` 의 Follow-up Backlog → "기믹 인지" 로 이관됨.** 아래는 spec 진행 중의 기록이고, 최신 목록은 백로그가 source of truth 다.
+
 - **회상 경로** — `MenuPopup`(일시정지)에 `description` 한 줄, 결과 화면에 "이번 판 특수룰" 한 줄. 신규 UI 영역 0 이고 룰↔결과 인과를 붙여 다음 판 인지를 올린다. 이번엔 "진입 시점에만 집중" 지시로 제외.
 - **진행 표시 + 발동 펄스** — 사직서 3/5, 열기 4/6, 임계 도달 시 신호. ECS→Bridge→View 데이터 seam 이 필요해 성격이 다르다.
 - **사직서·온천 전용 리빌 VFX** — `revealVfxPrefab` 빈 슬롯에 꽂기만 하면 되도록 구조는 이 spec 에서 열어둔다.

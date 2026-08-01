@@ -66,9 +66,11 @@
 
 ## Follow-up
 
-- **사용자 실기 확인**: 선물 → 리빌 → 배치 전체 흐름(지금까지 검증은 `BeginReveal` 직접 호출), 딤/대비 체감, 등장음 톤.
-- **효과음 테이크 선택**: `Audio/GimmickRevealTakes/` 3종 중 Take1 채택 상태. 교체는 `GimmickReveal.mp3` 에 **GUID 유지 덮어쓰기**. 확정되면 테이크 폴더 삭제.
-- **첫 세션 튜토리얼 진행 확인** — 신규 프로필이 필요해 미검증.
-- **familiarity 게이팅**(후속 후보): 그 기믹을 N번 본 뒤 자동으로 짧아진다. `TutorialProgress`/`PlayerProfileSO` 플래그 전례 있음.
-- `summary` 수치가 문자열이라 SO 재튜닝 시 stale — 잦아지면 `DreamcatcherCardText` 포매터 패턴으로 이관.
-- 레드불 리빌 VFX 가 딤 아래 깔린다(Overlay 캔버스 구조상). 사용자 판정으로 **현행 유지**. 살리려면 VFX 를 캔버스 안으로 옮기고 스케일 knob 추가.
+**남은 확인** (이것만 이 문서에 둔다 — 후속 *후보* 는 전부 백로그로 이관):
+
+1. **선물 → 리빌 → 배치 전체 흐름.** 이 세션 검증은 전부 `BeginReveal` 직접 호출이라 실제 라우팅은 안 탔다. 특히 `GamePhase.Gimmick` 전이가 `GiftPhaseView.OnPhaseChanged` 를 한 박자 앞당기므로 **첫 판 선물 튜토리얼 홀드와 겹칠 때**를 볼 것.
+2. **등장음 톤** — 소리는 이 세션이 판정할 수 없다.
+3. **첫 세션 튜토리얼 진행** — 신규 프로필 필요.
+4. **배치 페이즈에 카드가 안 뜨는지** — 은퇴 후 Play 는 스모크만 돌렸다.
+
+후속 후보 9건은 `docs/spec/README.md` 의 **Follow-up Backlog → 기믹 인지** 로 이관했다.
