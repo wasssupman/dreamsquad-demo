@@ -39,11 +39,18 @@ CompleteGimmickRevealHint(profile)  // 형제와 동일한 "이미 최신이면 
 다를 때 `ProfileStore.ResetTutorialProgressAt` 이 파일 교체를 건너뛰어 리셋이 디스크에 닿지 않는다
 (unit 17 · outgame unit 6 과 같은 함정).
 
-**말풍선 앵커**: `MessageAnchor` 에 `GimmickReveal` 을 추가하고 오프셋 분기에
+**말풍선 앵커**: `MessageAnchor` 에 `GimmickReveal` 을 추가하고 오프셋 분기(`TutorialGuidanceView.cs:429-434`)에
 `Style.revealHintMessageTopOffset` 을 잇는다. 리빌 콘텐츠는 y `+390`(아이콘 상단) ~ `-290`(탭힌트)
 을 점유하므로 기본 앵커(`messageTopOffset 184` → y `356`~`240`)는 **아이콘과 겹친다**. 값은
-탭힌트 아래 하단 대역(1920×1080 기준 topOffset ≈ `880`, y ≈ `-340`)에서 출발하고 unit 24 Play 로
-확정한다 — "읽고 탭"이 한 덩어리로 보이는 자리다.
+탭힌트 아래 하단 대역(1920×1080 기준 topOffset `880` → 패널 상단 y `-340`, 하단 `-456`)에서
+출발하고 unit 24 Play 로 확정한다 — "읽고 탭"이 한 덩어리로 보이는 자리다.
+
+**두 뷰의 좌표계가 다르다 — 겹침 판정을 한 좌표계로 계산하지 말 것.** 말풍선은
+`SafeAreaRoot` 자식이고 `Mathf.Clamp(requested, 20, safeRoot.height - size.y - 20)` 로
+**노치/홈 인디케이터만큼 위로 밀린다**(`TutorialGuidanceView.cs:427-436`). 리빌 패널은
+`FullBleedRoot` 자식이라(`GimmickPhaseView.cs:300`) 인셋과 **무관하게 고정**이다. 즉 에디터
+1920×1080 에서 안 겹쳐도 하단 인셋이 큰 실기기에서는 말풍선이 탭힌트 쪽으로 올라올 수 있다.
+`maxTopOffset` 이 `880` 아래로 내려가는 인셋(대략 하단 64px 초과)에서 겹침이 시작된다.
 
 **Style 신규 필드 1개** (제약 6 — 코드 const 금지): `revealHintMessageTopOffset` — 위 앵커 오프셋.
 
