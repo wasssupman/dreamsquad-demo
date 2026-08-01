@@ -121,3 +121,8 @@ stopAfter = Animation.Duration * weaponTrailEndNormalized / entry.TimeScale
 
 카메라 이동 중 박제 · `LateUpdate` 실행 순서(문제 안 보였으나 측정 안 함) · 레이어 회수(사망/매치
 종료 후) · 원거리 유닛 무궤적(프리팹 null 게이트라 구조상 성립하나 관측은 안 함).
+
+---
+
+확인: 2026-08-01 · 커밋 `314c0033` · 사용자 Play 확인 완료.
+재이월 항목은 전부 종료됐다 — 결과는 README "검증 결과" 표와 `edf4b67d` 참조.
