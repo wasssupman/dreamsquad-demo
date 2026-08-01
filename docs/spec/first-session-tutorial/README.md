@@ -5,8 +5,9 @@
 > UI 레이어 수정(unit 14) 완료 2026-07-25 (`8138996b`) ·
 > 선택 UX 연계(15~17) 구현·커밋 2026-07-30 — **핵심 경로 사용자 Play 확인 완료**,
 > 경계 항목 잔여. 인계는 `18_handoff_summary.md` ·
-> 첫 판 전투 HUD 안내(19~20) 구현·커밋 2026-08-01 (`45d35fea`·`34cf2a8d`, 리뷰 반영 포함) ·
-> 스트레스 정지+탭 rev(unit 21) 구현 2026-08-01 — **사용자 Play 확인 대기**
+> 첫 판 전투 HUD 안내(19~20) + 스트레스 정지+탭 rev(unit 21) **완료 2026-08-01**
+> (`45d35fea`·`34cf2a8d`·`65a4fb74`, 리뷰 반영 포함) — **사용자 Play 확인 통과**.
+> 컨트롤러는 관심사별 partial 4개로 분할(`3ebe1568`). 인계는 `22_handoff_summary.md`
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문

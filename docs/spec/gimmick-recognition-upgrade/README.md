@@ -1,6 +1,6 @@
 # gimmick-recognition-upgrade
 
-> 상태: **구현 완료 2026-08-01** (unit 0~3, `afada286`~`921829a4`). 매판 달라지는 기믹을 **진입 순간 한 번**에 인지시킨다. 사용자 실기 체감 확인만 남음 — 인계: [`4_handoff_summary.md`](4_handoff_summary.md).
+> 상태: **완료 2026-08-01** (unit 0~3, `afada286`~`921829a4`). **사용자 Play 확인 통과** — 선물→리빌→배치 흐름 · 등장음 톤(Take1) · 첫 세션 튜토리얼 · 배치 페이즈 카드 미노출. 매판 달라지는 기믹을 **진입 순간 한 번**에 인지시킨다. 인계: [`4_handoff_summary.md`](4_handoff_summary.md). 후속 후보는 `docs/spec/README.md` Follow-up Backlog → "기믹 인지".
 
 ## 상위 목표
 
