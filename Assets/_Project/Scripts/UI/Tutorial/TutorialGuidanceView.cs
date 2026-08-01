@@ -18,6 +18,10 @@ namespace Wassup.UI.Tutorial
 
         [SerializeField] private TutorialGuidanceStyle style;
 
+        // unit 19 — 말풍선 세로 위치는 3값이다. 맵 이해 마커(하단으로 크게 내림)와 전투 HUD
+        // 안내(우상단 배지 아래)가 서로 다른 offset 을 요구하고, 두 구간이 동시에 뜨는 일은 없다.
+        public enum MessageAnchor { Default, WorldMarker, HudHint }
+
         public event Action SkipRequested;
         // unit 11 — 읽고 넘기는 스텝에서만 쓰는 진행 신호.
         public event Action ContinueTapped;
@@ -26,6 +30,8 @@ namespace Wassup.UI.Tutorial
         public float AwakeningPromptSeconds => Style.awakeningPromptSeconds;
         public float CardInstructionSeconds => Style.cardInstructionSeconds;
         public float ClassHintFallbackSeconds => Style.classHintFallbackSeconds;
+        public float HudHintLineSeconds => Style.hudHintLineSeconds;
+        public float HudHintTargetWaitSeconds => Style.hudHintTargetWaitSeconds;
         public Color SpawnMarkerColor => Style.spawnMarkerColor;
         public Color GoalMarkerColor => Style.goalMarkerColor;
         public int DimSortingOrder => Style.dimSortingOrder;
@@ -51,7 +57,7 @@ namespace Wassup.UI.Tutorial
         private string _preferredText;
         private float _preferredTextWidth = -1f;
         private float _preferredTextHeight;
-        private bool _worldMarkerLayout;
+        private MessageAnchor _messageAnchor;
         private bool _built;
 
         private readonly Vector3[] _worldCorners = new Vector3[4];
@@ -129,17 +135,19 @@ namespace Wassup.UI.Tutorial
                 preferLabelAbove: preferLabelAbove);
         }
 
-        public void SetWorldMarkerLayout(bool active)
+        public void SetMessageAnchor(MessageAnchor anchor)
         {
-            if (_worldMarkerLayout == active) return;
-            _worldMarkerLayout = active;
+            if (_messageAnchor == anchor) return;
+            _messageAnchor = anchor;
             if (_built) UpdateMessageLayout();
         }
 
         public void ClearWorldMarkers()
         {
             ClearWorldPulses();
-            SetWorldMarkerLayout(false);
+            // unit 19 — 월드 마커 정리가 HUD 안내 앵커를 훔치지 않게 자기 앵커만 되돌린다.
+            // Hide() 가 이 경로를 타므로 무조건 Default 로 밀면 다른 구간의 앵커 소유권이 깨진다.
+            if (_messageAnchor == MessageAnchor.WorldMarker) SetMessageAnchor(MessageAnchor.Default);
         }
 
         private void CreateWorldPulse(Camera camera, Vector3 worldPosition, Color color,
@@ -416,9 +424,12 @@ namespace Wassup.UI.Tutorial
             // but never allow either edge to leave the current device safe rect.
             float maxTopOffset = Mathf.Max(SafeEdgePadding,
                 _safeRoot.rect.height - size.y - SafeEdgePadding);
-            float requestedTopOffset = _worldMarkerLayout
-                ? Style.worldMarkerMessageTopOffset
-                : Style.messageTopOffset;
+            float requestedTopOffset = _messageAnchor switch
+            {
+                MessageAnchor.WorldMarker => Style.worldMarkerMessageTopOffset,
+                MessageAnchor.HudHint => Style.hudHintMessageTopOffset,
+                _ => Style.messageTopOffset,
+            };
             float topOffset = Mathf.Clamp(requestedTopOffset, SafeEdgePadding, maxTopOffset);
             rect.anchoredPosition = new Vector2(0f, -topOffset);
         }
