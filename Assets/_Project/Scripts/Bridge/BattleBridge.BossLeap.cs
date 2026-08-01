@@ -49,6 +49,18 @@ namespace Wassup.Bridge
         [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1f);
         [Tooltip("착지 제어점 높이배수. 작을수록 수직으로 내리찍는다. = dropLandingHeight")]
         [SerializeField] private float bossLeapLandingHeight = 0.25f;
+        // flight-lift-feel unit 3 — 리듬·착지 반응. 드롭(`DragSwaySettings` ⑩)과 값 1:1 유지.
+        // 뜬 높이의 시각 반응(확대·그림자)은 여기 없다 — 원근 보상이라 화면 전역 단일 소유
+        // (`BattleBridge` 의 lift* 노브). 이 구분을 뒤집지 말 것.
+        [Tooltip("비행 구간 시간 리듬. 1=현행 등속. 낮출수록 초반 급상승→정점 체공→후반 급하강. = dropHangPower")]
+        [Range(0.3f, 1f)]
+        [SerializeField] private float bossLeapHangPower = 0.7f;
+        [Tooltip("착지 눌림 세기(0=없음). = dropLandingSquash")]
+        [Range(0f, 0.4f)]
+        [SerializeField] private float bossLeapLandingSquash = 0.10f;
+        [Tooltip("착지 눌림 복귀 시간(초). = dropLandingSquashSeconds")]
+        [Range(0.02f, 0.3f)]
+        [SerializeField] private float bossLeapLandingSquashSeconds = 0.05f;
 
         private NativeQueue<BossLeapVisualEvent> _bossLeapVisualQueue;
 
@@ -150,7 +162,13 @@ namespace Wassup.Bridge
 
                 // 시간 이징 없음(선형) — drop-dismount 가 구현 중 확정한 계약. Out* 이징은 끝속도를
                 // 0 으로 죽여 내리찍는 임팩트가 물러진다. 착지 속도는 기하(끝접선)가 만든다.
-                float t01 = Mathf.Clamp01(t / duration);
+                // flight-lift-feel unit 3 — ease-out-in 재매핑은 끝속도를 **키우므로** 그 계약과
+                // 충돌하지 않는다. 비행 구간만 재분배하고 총 시간은 그대로다.
+                float raw = Mathf.Clamp01(t / duration);
+                float t01 = raw <= recoilFrac
+                    ? raw
+                    : recoilFrac + (1f - recoilFrac) * Wassup.UI.KeyringSim.FlightTimeRemap(
+                          (raw - recoilFrac) / (1f - recoilFrac), bossLeapHangPower);
                 Vector3 p = Wassup.UI.KeyringSim.DismountPoint(
                     flatStart, Vector3.zero, flatEnd, Vector3.up,
                     recoilFrac, bossLeapRecoilDip,
@@ -175,6 +193,10 @@ namespace Wassup.Bridge
         // 그린다), 없으면 퍼프만 재생한다. 둘을 동시에 하면 같은 VFX 가 두 번 겹친다.
         private void ResolveLanding(BossLeapVisualEvent evt, Vector3 end)
         {
+            // flight-lift-feel unit 3 — 착지 눌림. abandon 이면 이 함수 자체가 안 불리므로
+            // 끊긴 비행에 스쿼시가 터지지 않는다(슬램과 같은 가드를 공유).
+            PlayLandingSquash(evt.entity, bossLeapLandingSquash, bossLeapLandingSquashSeconds);
+
             if (evt.slamDamage <= 0f)
             {
                 PlayLeapPuff(evt.dataIndex, end);

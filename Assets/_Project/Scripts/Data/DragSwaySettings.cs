@@ -149,6 +149,18 @@ namespace Wassup.Data
         [Tooltip("고리 페이드(초) — 놓은 자리에 잠시 남았다 사라짐.")]
         [Range(0.05f, 1f)]
         public float dropRingFade = 0.3f;
+        // flight-lift-feel unit 3 — 리듬·착지 반응은 **연출별 취향**이라 궤적 기하와 같은 자리에 둔다
+        // (보스 도약 값과 1:1 대응 유지). 뜬 높이의 시각 반응(확대·그림자)은 성격이 달라 화면 전역
+        // 단일 소유다 — BattleBridge 의 lift* 노브. 이 구분을 뒤집지 말 것.
+        [Tooltip("비행 구간 시간 리듬. 1=현행 등속. 낮출수록 초반 급상승→정점 체공→후반 급하강.")]
+        [Range(0.3f, 1f)]
+        public float dropHangPower = 0.7f;
+        [Tooltip("착지 눌림 세기(0=없음). 가로 확장·세로 압축.")]
+        [Range(0f, 0.4f)]
+        public float dropLandingSquash = 0.10f;
+        [Tooltip("착지 눌림 복귀 시간(초).")]
+        [Range(0.02f, 0.3f)]
+        public float dropLandingSquashSeconds = 0.05f;
 
         [Header("⑪ 배치 포인터 오프셋 — 손가락 가림 회피 (placement-thumb-occlusion)")]
         // 배치 판정 포인터를 실제 포인터보다 화면상 위로 파생시켜 손가락이 포커스 칸 하이라이트를

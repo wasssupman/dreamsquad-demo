@@ -127,6 +127,16 @@ namespace Wassup.Bridge
         public void ClearDefenderViewOverride(Entity entity)
             => _defenderViewOverride.Remove(entity);
 
+        // flight-lift-feel unit 3 — 착지 눌림. 드롭 하마·보스 도약이 착지 프레임에 **명시 호출**한다.
+        // "lift 가 0 으로 떨어지면 자동 착지" 로 만들지 않는다 — 비행 취소·teardown 도 0 이라 오탐이
+        // 터진다. 폴백 quad 뷰는 스쿼시 슬롯이 없어 조용히 건너뛴다(개발용 폴백).
+        public void PlayLandingSquash(Entity entity, float amount, float seconds)
+        {
+            if (amount <= 0f || seconds <= 0f) return;
+            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var view) && view != null)
+                view.PlayLandingSquash(amount, seconds);
+        }
+
         internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos, out float lift)
         {
             if (_defenderViewOverride.TryGetValue(entity, out var v))

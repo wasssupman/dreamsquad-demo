@@ -399,6 +399,36 @@ namespace Wassup.Presentation
             if (!_dying) { _punchScale = 1f; ApplyRenderScale(); }
         }
 
+        // flight-lift-feel unit 3 — 착지 눌림(squash & stretch). PunchRoutine 이 균등 펀치인 것은
+        // "유닛은 3D 반응 주역" 이라는 판단이었지만, 착지는 다른 맥락이라 비균등을 쓴다 —
+        // 2D 스켈레톤이라 가로 확장·세로 압축이 오히려 어울린다. amount 0 이면 꺼진다.
+        // 시계는 unscaled: 착지는 순간 반응이라 슬로모에 늘어지면 임팩트가 죽는다.
+        private Coroutine _squashRoutine;
+
+        public void PlayLandingSquash(float amount, float seconds)
+        {
+            if (amount <= 0f || seconds <= 0f || _dying || !gameObject.activeInHierarchy) return;
+            if (_squashRoutine != null) StopCoroutine(_squashRoutine);
+            _squashRoutine = StartCoroutine(SquashRoutine(amount, seconds));
+        }
+
+        private System.Collections.IEnumerator SquashRoutine(float amount, float seconds)
+        {
+            float e = 0f;
+            while (e < seconds)
+            {
+                e += Time.unscaledDeltaTime;
+                if (_dying) break;
+                float k = 1f - Mathf.Clamp01(e / seconds);   // 눌림 최대 → 0 으로 복귀
+                _squash = new Vector3(1f + amount * k, 1f - amount * k, 1f + amount * k);
+                ApplyRenderScale();
+                yield return null;
+            }
+            _squash = Vector3.one;
+            if (!_dying) ApplyRenderScale();
+            _squashRoutine = null;
+        }
+
         public void FlashWhite(float dur = 0.14f)
         {
             if (_dying || !gameObject.activeInHierarchy || _skeleton == null || _skeleton.Skeleton == null) return;

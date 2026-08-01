@@ -1223,7 +1223,13 @@ namespace Wassup.UI
                 // 기하(끝접선 = 3·(end−c2), 순수 -camUp)가 만든다. Out* 이징은 끝속도를 0 으로 죽여
                 // "스틱 착지"가 물러진다.
                 elapsed += Time.unscaledDeltaTime;
-                float f = Mathf.Clamp01(elapsed / duration);
+                float raw = Mathf.Clamp01(elapsed / duration);
+                // flight-lift-feel unit 3 — 비행 구간만 재매핑한다(반동까지 왜곡하면 힘 모으는 타이밍이
+                // 흔들린다). 총 시간은 안 바뀌므로 "비행 창 ⊆ pending 창" 계약이 그대로 산다.
+                float f = raw <= recoilFrac
+                    ? raw
+                    : recoilFrac + (1f - recoilFrac) * KeyringSim.FlightTimeRemap(
+                          (raw - recoilFrac) / (1f - recoilFrac), cfg.dropHangPower);
                 var p = KeyringSim.DismountPoint(start, startVel, end, camUp,
                     recoilFrac, cfg.dropRecoilDip, cfg.dropArcHeightFactor, cfg.dropArcMinHeight,
                     cfg.dropLaunchControl, cfg.dropLandingHeight, f);
@@ -1236,6 +1242,9 @@ namespace Wassup.UI
             // 착지 — 최종점(end)이 정상 피드 공식과 동일 좌표라 clear 직후 프레임이 그대로 이어진다(팝 0).
             _activeDismounts.Remove(entity);
             bridge?.ClearDefenderViewOverride(entity);
+            // flight-lift-feel unit 3 — 착지 눌림. 취소 경로(AbandonDismount)는 여기 못 오므로
+            // 끊긴 비행에 스쿼시가 터지지 않는다.
+            bridge?.PlayLandingSquash(entity, cfg.dropLandingSquash, cfg.dropLandingSquashSeconds);
             bridge?.PulsePlacementHover(cell, true);
             // unit 3 — 스폰 연출(배치 링 펄스·placementVfx·PlayDeploy 스폰애니)을 착지 프레임에 발화.
             // 유닛이 공중인 commit 프레임에 타일에서 링이 터지던 어긋남 제거. **활성화 시계는 무변경**
