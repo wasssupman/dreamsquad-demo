@@ -273,6 +273,15 @@ namespace Wassup.Bridge
         public static float LiftShadowFullHeight { get; private set; } = 3f;
         public static float LiftShadowMinScale { get; private set; } = 0.55f;
         public static float LiftShadowMinAlpha { get; private set; } = 0.35f;
+
+        private void MirrorLiftKnobs()
+        {
+            LiftScalePerHeight = liftScalePerHeight;
+            LiftScaleMax = liftScaleMax;
+            LiftShadowFullHeight = liftShadowFullHeight;
+            LiftShadowMinScale = liftShadowMinScale;
+            LiftShadowMinAlpha = liftShadowMinAlpha;
+        }
         // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
         public static bool UseRealShadows { get; private set; }
         // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러(SpineUnitView 가 읽음). SO 미할당 시
@@ -1046,11 +1055,7 @@ namespace Wassup.Bridge
             BlobShadowSize = blobShadowSize;
             BlobShadowColor = blobShadowColor;
             BlobShadowGroundY = blobShadowGroundY;
-            LiftScalePerHeight = liftScalePerHeight;
-            LiftScaleMax = liftScaleMax;
-            LiftShadowFullHeight = liftShadowFullHeight;
-            LiftShadowMinScale = liftShadowMinScale;
-            LiftShadowMinAlpha = liftShadowMinAlpha;
+            MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
             UseRealShadows = useRealShadows && !Application.isMobilePlatform;
             // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러. SO 미할당 시 비활성(배율 1.0).
@@ -2439,6 +2444,11 @@ namespace Wassup.Bridge
             // 오버라이드 없이 sim 좌표(=이미 착지점)를 그려 **1프레임 팝**이 보인다.
             // drop-dismount 가 "시작 오버라이드는 동기 등록" 으로 같은 함정을 막은 것과 같은 이유.
             DrainBossLeapVisualEvents();
+            // flight-lift-feel unit 3 — lift 노브는 뷰가 **매 프레임** 읽으므로 미러도 매 프레임이다.
+            // 맵 빌드 1회 스냅샷(BlobShadow* 와 같은 자리)으로 두면 Play 중 인스펙터 튜닝이 안 먹어,
+            // 같이 도입된 리듬·눌림 노브 8개(SO/코루틴이 매 프레임 읽음)와 비대칭이 된다.
+            // 감각 튜닝 spec 이라 이 비대칭이 곧 작업 비용이다.
+            MirrorLiftKnobs();
             SyncMonoUnitViews();
             ReconcileStatusFx();
             ReconcilePickupViews();
