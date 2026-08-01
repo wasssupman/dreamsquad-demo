@@ -47,7 +47,7 @@ MonoBehaviour:
   dropRecoilSeconds: 0.12
   dropRecoilDip: 0.35
   dropArcHeightFactor: 1.399
-  dropArcMinHeight: 4.5
+  dropArcMinHeight: 6
   dropLaunchControl: {x: 0.25, y: 1}
   dropLandingHeight: 0.25
   dropCordSnapFade: 0.15

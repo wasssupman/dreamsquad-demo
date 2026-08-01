@@ -4232,7 +4232,7 @@ MonoBehaviour:
   bossLeapRecoilSeconds: 0.14
   bossLeapRecoilDip: 0.35
   bossLeapArcHeightFactor: 0.5
-  bossLeapArcMinHeight: 4.5
+  bossLeapArcMinHeight: 6
   bossLeapLaunchControl: {x: 0.25, y: 1}
   bossLeapLandingHeight: 0.25
   bossLeapHangPower: 0.7
