@@ -62,6 +62,10 @@ namespace Wassup.Core
         [SerializeField] private AudioClip bossWarningClip;
         [Range(0f, 1f)] [SerializeField] private float bossWarningVolume = 0.85f;
 
+        [Header("Gimmick reveal")]
+        [Tooltip("기믹 리빌 등장음 볼륨. 클립은 GimmickRevealConfig 소유(기믹별 sfxClip → 공용 defaultSfxClip). PlayAttack/PlayDeployVoice 와 같은 '볼륨만 여기, 클립은 호출측' 형태.")]
+        [Range(0f, 1f)] [SerializeField] private float gimmickRevealVolume = 0.8f;
+
         [Header("Cost tick")]
         [Tooltip("코스트가 자연 충전으로 다음 정수에 도달한 순간 블립(BGM 위로 뚫리게 밝은 톤). Null → no-op.")]
         [SerializeField] private AudioClip costTickClip;
@@ -223,6 +227,10 @@ namespace Wassup.Core
 
         // boss-wave-cadence: 보스 경보 배너 슬램 순간 스팅어(~2s).
         public void PlayBossWarning() => PlayOneShot(bossWarningClip, bossWarningVolume);
+
+        // gimmick-recognition-upgrade unit 2: 리빌 ① 도장(아이콘이 찍히는 순간) 등장음.
+        // 클립은 GimmickRevealConfig 가 소유하고 여기로 넘어온다 — null 이면 PlayOneShot 이 no-op.
+        public void PlayGimmickReveal(AudioClip clip) => PlayOneShot(clip, gimmickRevealVolume);
 
         // 코스트 물통이 자연 충전으로 다음 정수에 도달한 순간 블립. pitch 로 상승감(가득 찰수록 높게).
         public void PlayCostTick(float pitch = 1f)

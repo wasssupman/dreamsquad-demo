@@ -15,7 +15,9 @@ MonoBehaviour:
   id: shield_shuttle
   role: 2
   displayName: "\uC2E4\uB4DC\uC154\uD2C0"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uB3C4\uBC1C \u00B7 \uCCB4\uB825 \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30 \uC2E4\uB4DC"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uB3C4\uBC1C \xB7 \uCCB4\uB825
+    \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30 \uC2E4\uB4DC"
   health: 1500
   attackRange: 2
   attackCooldown: 1.9
@@ -96,3 +98,5 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
+  weaponTrailPrefab: {fileID: 2859138987981848282, guid: 42d74f8b8abbd401b89a812f414eeda8, type: 3}
+  weaponTrailEndNormalized: 0.31

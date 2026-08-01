@@ -225,6 +225,8 @@ namespace Wassup.Data
         public string SpineDeployAnimation => deployAnimation;
         public string SpineCastAnchorBone => castAnchorBone;
         public Vector3 SpineCastAnchorLocalOffset => castAnchorLocalOffset;
+        public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;
+        public float SpineWeaponTrailEndNormalized => weaponTrailEndNormalized;
 
         // dreamcatcher-awakening-hand unit 0 — awakening currency granted when
         // this defender dies ("death is income": sacrificing units feeds the
@@ -232,6 +234,17 @@ namespace Wassup.Data
         // stable; existing assets pick up the initializer (4) until re-saved.
         [Header("Awakening")]
         public int awakeningReward = 4;
+
+        // spine-weapon-trail unit 1 — 무기 궤적. 직렬화 순서를 흔들지 않게 맨 뒤에 덧붙인다.
+        [Header("Weapon Trail")]
+        // 프리팹 유무가 유일한 게이트다(빔 유닛의 beamVfxPrefab 과 같은 관례 — id/kind 분기 없음).
+        // 미할당 = 무궤적이라 활·총을 든 원거리 유닛에 참격이 뜨지 않는다.
+        public GameObject weaponTrailPrefab;
+        // 방출 종료 지점 = 공격 애니 길이 대비 비율. 방출은 **스윙 구간에만** 걸어야 한다 —
+        // Attack3 는 전체 0.867초 중 앞 0.267초만 스윙이고 나머지는 복귀 동작이라,
+        // 끝까지 방출하면 칼을 되돌리는 자국이 남는다(0.267/0.867 ≈ 0.31).
+        // 애니마다 다르므로 상수로 박지 않는다.
+        [Range(0.05f, 1f)] public float weaponTrailEndNormalized = 0.31f;
     }
 
     public enum OnPlaceEffectType

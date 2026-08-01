@@ -151,9 +151,10 @@
   (Battle 시점엔 이미 false 다 — 위 계약과 같은 함정).
 - **HUD 안내 체인은 `_awakeningRoutine` 을 공유하지 않는다.** 그 핸들은 0·A·B 단계가 공유하고
   `ResetAwakeningSession`·`OnCardPeeked` 가 임의로 중단시킨다. 전용 `_hudHintRoutine` 을 둔다.
-- **HUD 안내는 기믹 배너를 억제하지 않는다.** `GimmickGuideView` 의 표시 조건이
-  `_phase == Placement` 이므로 Battle 전용 체인에는 억제할 대상이 없다 — 부르면 죽은 코드에
-  "억제 영구 고착" 위험만 딸려 온다. core 안내(Placement)의 억제는 그대로 유지한다.
+- **튜토리얼은 기믹 안내를 억제하지 않는다.** Battle 전용 HUD 체인에는 억제할 대상이 없고,
+  `gimmick-recognition-upgrade` unit 3 이 배치 안내 카드를 은퇴시킨 뒤로는 **core 안내 쪽
+  억제도 제거됐다**(`gimmickGuide` 참조 자체가 없다). 첫 판 리빌 생략은 `GimmickPhaseView` 가
+  `TutorialProgress.ShouldRunCore` 로 스스로 판정한다 — 튜토리얼이 밀어 넣지 않는다.
 - **체인 정리는 `EndCore` 에 기대지 말 것.** `EndCore` 는 `!_coreActive` 로 조기 return 하므로
   체인이 세운 상태(코루틴·말풍선·앵커)를 되돌리지 않는다. 반대로 정리 함수는 체인이 없을 때도
   불리므로(Placement 진입) `_hudHintActive` 가드가 없으면 core 안내의 말풍선을 걷어버린다.

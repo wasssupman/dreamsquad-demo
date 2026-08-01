@@ -14,7 +14,10 @@ namespace Wassup.Core
     // CameraPhasePose.phase / breathPhases 가 이 enum 을 int 로 직렬화하고 있어
     // (Assets/_Project/Data/Camera/CameraDirectionConfig.asset — phase: 1/3/4/5),
     // 중간에 끼우면 Result 가 5→6 으로 밀려 카메라 설정이 통째로 어긋난다.
-    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result, Tally }
+    // 그래서 값 순서 != 시간 순서다. Tally 는 Battle 뒤에, Gimmick 은 Gift 와 Placement
+    // 사이에 일어나지만 둘 다 맨 뒤에 붙는다. 전 코드가 == 비교라 순서 의존은 없다.
+    // 미등록 페이즈는 CameraDirector 가 hold 로 처리하므로 포즈 엔트리도 필요 없다.
+    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result, Tally, Gimmick }
 
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
@@ -57,7 +60,7 @@ namespace Wassup.Core
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
-        // gimmick-match-integration unit 1 — 매치당 배정된 기믹(없으면 null). GimmickGuideView 가 읽는다.
+        // gimmick-match-integration unit 1 — 매치당 배정된 기믹(없으면 null). GimmickPhaseView 가 읽는다.
         public GimmickData AssignedGimmick { get; private set; }
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.None;

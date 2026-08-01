@@ -35,10 +35,6 @@ namespace Wassup.UI
         // action-tray unit 4 — 비용 부족 차단 시 rail pulse 피드백 대상. 슬롯이
         // 런타임 생성이라 전역 이벤트 대신 Bind 로 직접 참조를 넘긴다.
         [SerializeField] private CostDisplay costDisplay;
-        // gimmick-match-integration unit 5 — 기믹 안내 카드의 "첫 배치 상호작용" 접힘 트리거.
-        // 컨트롤러가 런타임 부착이라 뷰가 직접 참조할 수 없어, 수명 소유자인 여기서 Bind 로
-        // 넘긴다(costDisplay 패턴). 미할당이면 카드는 타이머 접힘만으로 동작한다.
-        [SerializeField] private GimmickGuideView gimmickGuide;
         // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
         // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
         // 패널 크기만 바꾸면 균등 축소된다.
@@ -931,8 +927,6 @@ namespace Wassup.UI
             if (bridge != null)
                 dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput,
                     swaySettings, nameFont, deployCutscenePlayer);
-            if (gimmickGuide != null)
-                gimmickGuide.BindPlacementActivity(dragPlacementController);
             // drag-cancel-affordance unit 0 — 취소 존 = 트레이 패널. Awake 는 이 메서드를
             // BuildCanvas 보다 먼저 부르므로 여기선 아직 null 일 수 있다(BuildCanvas 말미가 다시 준다).
             if (_panel != null)

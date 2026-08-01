@@ -15,7 +15,9 @@ MonoBehaviour:
   id: guardian
   role: 2
   displayName: "\uAC00\uB514\uC5B8"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uC544\uAD70 \uACF5\uACA9\uB825 \uAC15\uD654\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801 \uB3C4\uBC1C"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC8FC\uBCC0 \uC544\uAD70 \uACF5\uACA9\uB825 \uAC15\uD654\n\uD2B9\uC218
+    \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801 \uB3C4\uBC1C"
   health: 600
   attackRange: 1
   attackCooldown: 2
@@ -145,3 +147,5 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
+  weaponTrailPrefab: {fileID: 6609797952208292497, guid: 8d5310571ecdf43509e91d90ec2135ef, type: 3}
+  weaponTrailEndNormalized: 0.31

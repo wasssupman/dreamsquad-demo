@@ -29,5 +29,13 @@ namespace Wassup.Data
         // unit-parts-appearance 0 — 슬롯 틴트 목록. 비어 있으면 미적용.
         // 애니메이션이 rgba 를 키잉하는 슬롯(현 스켈레톤 기준 eye)은 틴트가 덮여 무효.
         IReadOnlyList<SpineSlotColor> SpineSlotColors { get; }
+
+        // spine-weapon-trail unit 3 — 무기 궤적. 유닛 타입을 가리지 않는다(디펜더·적·보스).
+        // **프리팹 유무가 유일한 게이트** — 미할당이면 무궤적이라 잡몹 전원은 영향 없다.
+        // 리그 프리팹이 본 이름·포인트 오프셋·룩을 전부 들고 있어 유닛 데이터는 "무엇을 붙일지"만 안다.
+        GameObject SpineWeaponTrailPrefab { get; }
+        // 방출 종료 지점 = 공격 애니 길이 대비 비율. 스윙 구간에만 걸어야 복귀 동작에
+        // 궤적이 따라붙지 않는다. 애니마다 다르므로 유닛 데이터가 소유한다.
+        float SpineWeaponTrailEndNormalized { get; }
     }
 }

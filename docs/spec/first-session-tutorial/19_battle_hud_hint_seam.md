@@ -85,10 +85,15 @@
 
 ### 기믹 배너는 건드리지 않는다
 
-`GimmickGuideView.RefreshVisibility` 의 표시 조건이 `_phase == GamePhase.Placement` 다. 이 체인은
-Battle 에서만 도니까 **억제할 대상이 애초에 없다.** `SetTutorialSuppressed` 를 부르면 죽은 코드에
-"억제 영구 고착" 위험만 딸려 온다(제약 8·10). core 안내는 Placement 라 계속 억제가 필요하므로
-`OnPlacementReady` 쪽은 그대로 둔다.
+이 체인은 Battle 에서만 도는데 기믹 안내는 Battle 에 뜨지 않으므로 **억제할 대상이 없다.**
+`SetTutorialSuppressed` 를 부르면 죽은 코드에 "억제 영구 고착" 위험만 딸려 온다(제약 8·10).
+
+> 2026-08-01 갱신: 처음 근거는 `GimmickGuideView.RefreshVisibility` 의 `_phase == Placement`
+> 게이트였고, 그래서 "core 안내(Placement)의 억제는 유지"라고 적었다. 그 뒤
+> `gimmick-recognition-upgrade` unit 3 이 **배치 안내 카드를 은퇴**시켜 억제 대상이 통째로
+> 사라졌고, 첫 판 리빌 생략은 `GimmickPhaseView` 가 `TutorialProgress.ShouldRunCore` 로 스스로
+> 판정한다. 그 결과 `OnPlacementReady`·`EndCore` 쪽 억제 호출과 `gimmickGuide` 참조까지 전부
+> 제거됐다 — 이 문서의 "core 쪽은 그대로"는 더 이상 성립하지 않는다.
 
 ### 정리 경로 3곳
 

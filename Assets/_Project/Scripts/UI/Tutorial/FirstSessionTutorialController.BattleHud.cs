@@ -69,9 +69,9 @@ namespace Wassup.UI.Tutorial
 
             _hudHintShownThisBattle = true;
             _hudHintActive = true;
-            // 기믹 배너를 억제하지 않는다. GimmickGuideView.RefreshVisibility 의 표시 조건이
-            // `_phase == Placement` 라, Battle 에서만 도는 이 체인에는 억제할 대상이 애초에 없다
-            // (core 안내는 Placement 라 계속 억제가 필요하다 — OnPlacementReady 쪽은 그대로).
+            // 기믹 억제 코드는 없다. 배치 안내 카드가 은퇴하면서(gimmick-recognition-upgrade
+            // unit 3) 억제할 대상 자체가 사라졌고, 첫 판 리빌 생략은 GimmickPhaseView 가
+            // TutorialProgress.ShouldRunCore 로 스스로 판정한다.
             if (_hudHintRoutine != null) StopCoroutine(_hudHintRoutine);
             _hudHintRoutine = StartCoroutine(BattleHudHintRoutine());
         }
