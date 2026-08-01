@@ -69,3 +69,8 @@ float lift = Mathf.Max(0f, Vector3.Dot(p - Vector3.Lerp(start, end, f), camUp));
 - **비행 창 ⊆ pending 창 무회귀**: 드롭 총 시간은 안 바뀌었으므로 공중 유닛이 활성화되지 않는다
 - **취소 경로 무회귀**: 드래그 중 판매·맵 리빌드로 비행이 끊길 때(`AbandonDismount` /
   `FinishDismountsInstant`) 유닛이 커진 채 굳지 않는다 — 오버라이드 해제 = lift 0 = 항등
+
+## 검증 기록
+
+- 2026-08-01 · EditMode 1790 중 1788 통과·실패 0 · compile 클린 · 독립 코드 리뷰 반영(`c6f6405e`).
+- **사용자 Play 감각 확인은 미완** — 통과 시 이 줄 아래에 확인 일자를 추가한다.

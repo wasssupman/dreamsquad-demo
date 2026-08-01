@@ -52,3 +52,8 @@ public static float FlightTimeRemap(float u, float power)
   - **대칭**: `Remap(u) + Remap(1−u) ≈ 1` (오차 < 1e-5) — 상승/하강 리듬이 대칭이라는 계약
   - **체공 성립**: `power=0.7` 에서 중앙 기울기 < 끝 기울기 (차분 비교). `power=1` 에서는 둘이 같음
 - compile 클린 · 기존 `KeyringSimTests` 무회귀
+
+## 검증 기록
+
+- 2026-08-01 · EditMode 1790 중 1788 통과·실패 0 · compile 클린 · 독립 코드 리뷰 반영(`c6f6405e`).
+- **사용자 Play 감각 확인은 미완** — 통과 시 이 줄 아래에 확인 일자를 추가한다.
