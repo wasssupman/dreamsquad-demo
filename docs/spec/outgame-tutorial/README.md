@@ -3,7 +3,8 @@
 > 상태: **units 0~4 완료 2026-07-21 · 동작 확인됨 · 모바일 실기기 QA 는 보류(사용자 결정) ·
 > 챕터 C(unit 6) **완료 2026-08-01** (`f0d05bd7`, 리뷰 반영 포함) — **사용자 Play 확인 통과**.
 > 인계는 `7_handoff_summary.md` ·
-> 챕터 D 히스토리(units 8~9) **설계 승인 2026-08-01 · 구현 중**
+> 챕터 D 히스토리(units 8~9) **구현·커밋 2026-08-01** (`98c315d1`·`3c996168`) — 컴파일·EditMode·
+> 씬 배선·코드 리뷰 통과, **사용자 Play 확인 대기**. 인계는 `10_handoff_summary.md`
 > 선행: `first-session-tutorial` (완료) · `outgame-lobby-layout` (완료) · `lobby-keyring-drag` (완료)
 
 ## 검증 질문
@@ -44,6 +45,7 @@ C·D: `문구 + 포커스` → **지정 조작**(C=드래그 · D=버튼 클릭)
 | 7 | `7_handoff_summary.md` | 인계 | 챕터 C 커밋·검증·되돌림 금지 항목 |
 | 8 | `8_matches_played_counter.md` | 독립 신호 | `matchesPlayed` 카운터 + 챕터 D 진행 토큰 |
 | 9 | `9_history_chapter.md` | 챕터 D | 두 판 이후 복귀 → 히스토리 버튼 실제 클릭 |
+| 10 | `10_handoff_summary.md` | 인계 | units 8~9 커밋·검증·되돌림 금지 7건 |
 
 ## Feature-wide 계약
 

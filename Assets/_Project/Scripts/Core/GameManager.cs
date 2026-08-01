@@ -99,6 +99,13 @@ namespace Wassup.Core
 
         // 로비 챕터 D 가 읽는 독립 신호. 저장 실패는 경고만 남기고 판 흐름을 막지 않는다
         // (튜토리얼 컨트롤러들의 TrySaveProfile 과 같은 fail-open).
+        //
+        // **세는 기준 = "완주한 배틀"** 이다. Test Mode 도 엔드리스도 포함한다 —
+        // ReportMatchResult 가 IsEndless 를 배제하는 것과 대칭이 아닌 건 의도다(그쪽은 토너먼트
+        // 집계라 모드를 가려야 하고, 이쪽은 "판을 해봤나" 라는 경험 신호다).
+        // 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는 배치 전
+        // StartTestModeMatch 에서 1회 소비돼(아래 Clear) Result 시점엔 이미 Active=false 라,
+        // 여기에 그 가드를 넣으면 아무 일도 하지 않는 죽은 코드가 된다.
         private void RecordMatchPlayed()
         {
             // 이번 세션에 로드된 프로필일 때만 쓴다 — BattleScene 직접 Play 는 프로필이 없고,
