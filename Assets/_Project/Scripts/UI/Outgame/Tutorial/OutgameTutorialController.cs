@@ -25,8 +25,9 @@ namespace Wassup.UI
         private const string LoadoutFocusText = "스쿼드와 드림캐쳐에서 바꿀 수 있어요!";
         // unit 6 — 사용자 작성본. 임의로 고치지 않는다.
         private const string KeyringText = "배경에 있는 캐릭터를 끌고 드래그 해보세요";
+        private const string HistoryText = "히스토리에서 지난 판의 기록을 볼 수 있어요!";
 
-        private enum Step { None, IntroMessage, IntroFocus, LoadoutMessage, LoadoutFocus, KeyringFocus }
+        private enum Step { None, IntroMessage, IntroFocus, LoadoutMessage, LoadoutFocus, KeyringFocus, HistoryFocus }
 
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private OutgameTutorialOverlay overlay;
@@ -40,6 +41,9 @@ namespace Wassup.UI
         // 배회형(Hello)이 아니라 제자리형(World) 캐릭터를 배선한다 — 홀이 매 프레임
         // 움직이면 조준이 어렵다(사용자 결정).
         [SerializeField] private LobbyKeyringDrag keyringCharacter;
+        // unit 9 — 챕터 D 의 대상. 이 버튼은 게스트에게 **비활성**이라(HasAccount 게이트,
+        // OutgameMenuController.ApplyAuthGate) 대상 활성 검사가 게스트 차단을 겸한다.
+        [SerializeField] private RectTransform historyButton;
 
         [Tooltip("단계 진입 후 이 시간 동안 dim 탭을 무시한다. 씬 전환 직후 잔여 탭·연타 방지.")]
         [SerializeField] private float minStepSeconds = 0.5f;
@@ -120,9 +124,19 @@ namespace Wassup.UI
             overlay.SetSortingOrder(guidance.DimSortingOrder);
             // A → B → C 순서가 계약이다. 각 Should* 가 앞 챕터의 완료를 전제로 하므로
             // 이 else-if 사슬 순서와 플래그가 서로를 이중으로 보장한다.
+            //
+            // D 는 그 사슬에 얹히되 **플래그 체인은 쓰지 않는다**(unit 9) — 게이트가
+            // `matchesPlayed` 라는 독립 신호다. 사슬 맨 뒤인 것은 서사 순서일 뿐이라,
+            // C 가 아직 pending 이면 그 도착은 C 가 가져가고 D 는 다음 도착으로 밀린다
+            // (C 는 로비 도착마다 재시도되므로 곧 소진된다 — spec "알려진 한계").
+            //
+            // 계정 조건은 여기서 걸지 않는다: 히스토리 버튼이 게스트에게 비활성이라
+            // EnterStep 의 대상 활성 검사가 그걸 겸하고, 그 경로는 완료를 저장하지 않아
+            // 나중에 계정을 만들면 정상 노출된다.
             if (TutorialProgress.ShouldRunLobbyIntro(profileSO)) EnterStep(Step.IntroMessage);
             else if (TutorialProgress.ShouldRunLobbyLoadoutHint(profileSO)) EnterStep(Step.LoadoutMessage);
             else if (TutorialProgress.ShouldRunLobbyKeyringHint(profileSO)) EnterStep(Step.KeyringFocus);
+            else if (TutorialProgress.ShouldRunLobbyHistoryHint(profileSO)) EnterStep(Step.HistoryFocus);
         }
 
         private void EnterStep(Step step)
@@ -172,6 +186,23 @@ namespace Wassup.UI
                     // "읽기 → 지목" 2단계가 필요 없다(사용자 결정 2026-08-01).
                     ShowFocus(KeyringText, keyringRect);
                     HookKeyringDrag();
+                    break;
+                case Step.HistoryFocus:
+                    // C 와 같은 1단계 포커스라 같은 함정 둘을 그대로 따른다.
+                    //
+                    // fail-open: 대상이 없거나 **비활성**이면 챕터를 아예 열지 않는다.
+                    // 게스트가 이 경로다 — 히스토리 버튼은 HasAccount 게이트로 꺼져 있고
+                    // (OutgameMenuController.ApplyAuthGate), 그대로 dim 만 띄우면 아래처럼
+                    // dim 탭이 무반응이라 8초 Skip 이 뜰 때까지 로비가 통째로 잠긴다.
+                    // 완료를 저장하지 않으므로 계정을 만들면 다음 복귀에서 정상 노출된다.
+                    if (historyButton == null || !historyButton.gameObject.activeInHierarchy)
+                    {
+                        Debug.Log("[OutgameTutorial] 히스토리 버튼 미배선/비활성(게스트) — 챕터 D 를 생략합니다.", this);
+                        _step = Step.None;
+                        return;
+                    }
+                    overlay.Show(); // 포커스에서 시작하는 챕터는 dim 을 직접 켠다(위 C 주석 참조).
+                    ShowFocus(HistoryText, historyButton);
                     break;
             }
         }
@@ -271,6 +302,10 @@ namespace Wassup.UI
                     // 드래그를 한 번도 안 해보고 넘어가 이 챕터의 목적이 통째로 사라진다.
                     // (탈출구는 Update 의 8초 Skip 노출과 Esc/백키다.)
                     break;
+                case Step.HistoryFocus:
+                    // 히스토리 버튼을 직접 눌러야 진행한다 — 버튼 위치를 가르치는 단계다
+                    // (사용자 결정 2026-08-01). IntroFocus·KeyringFocus 와 같은 편이다.
+                    break;
             }
         }
 
@@ -279,7 +314,9 @@ namespace Wassup.UI
         // 이미 씬 전환이나 패널 열기를 일으켰고, 저장을 건너뛰면 안내가 영원히 반복된다.
         private void OnFocusedButtonClicked()
         {
-            if (_step != Step.IntroFocus && _step != Step.LoadoutFocus) return;
+            // unit 9 — 챕터 D 도 이 훅으로 완료된다(ShowFocus 가 대상의 Button 을 임시 구독).
+            if (_step != Step.IntroFocus && _step != Step.LoadoutFocus &&
+                _step != Step.HistoryFocus) return;
             CompleteAndEnd();
         }
 
@@ -316,7 +353,7 @@ namespace Wassup.UI
         private void Update()
         {
             if (_step != Step.IntroFocus && _step != Step.LoadoutFocus &&
-                _step != Step.KeyringFocus) return;
+                _step != Step.KeyringFocus && _step != Step.HistoryFocus) return;
 
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
@@ -353,6 +390,9 @@ namespace Wassup.UI
                     break;
                 case Step.KeyringFocus:
                     changed = TutorialProgress.CompleteLobbyKeyringHint(profile);
+                    break;
+                case Step.HistoryFocus:
+                    changed = TutorialProgress.CompleteLobbyHistoryHint(profile);
                     break;
                 default:
                     // Step.None — 진행 중인 챕터가 없으면 어떤 플래그도 쓰지 않는다.

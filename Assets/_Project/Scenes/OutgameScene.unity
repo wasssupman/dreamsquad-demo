@@ -5777,6 +5777,7 @@ MonoBehaviour:
   squadButton: {fileID: 2118375148}
   dreamcatcherButton: {fileID: 1210731817}
   keyringCharacter: {fileID: 921796606}
+  historyButton: {fileID: 2126287054}
   minStepSeconds: 0.5
   escapeDelaySeconds: 8
 --- !u!4 &1320334837

@@ -81,6 +81,17 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession &&
             IsGimmickRevealHintPending(holder.profile);
 
+        // unit 9 — 챕터 D. 형제 로비 챕터와 달리 **앞 챕터 완료를 체인하지 않는다**:
+        // 게이트는 `matchesPlayed` 라는 독립 신호다(백로그 "챕터 게이트를 독립 신호로" 참조).
+        //
+        // 계정 조건(`UserSession.HasAccount` — 히스토리 버튼은 게스트에게 숨겨진다)은 여기 넣지
+        // 않는다. 진행 정책 순수 함수에 세션/네트워크 상태를 끌어들이면 EditMode 테스트가 전역
+        // 상태에 묶인다 — 그 조건은 컨트롤러가 건다.
+        public static bool ShouldRunLobbyHistoryHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && holder.profile != null &&
+            holder.profile.matchesPlayed >= HistoryHintMatchesRequired &&
+            IsLobbyHistoryHintPending(holder.profile);
+
         public static bool IsCorePending(PlayerProfile profile) =>
             profile != null && profile.firstBattleTutorialVersion < CoreVersion;
 
