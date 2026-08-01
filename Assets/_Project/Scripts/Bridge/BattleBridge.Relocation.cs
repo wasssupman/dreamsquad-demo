@@ -113,16 +113,28 @@ namespace Wassup.Bridge
         // sim 높이를 버리므로 아치를 view 공간에서 계산해 넘긴다. SyncMonoUnitViews 는 ToView 재적용 없이 직배치.
         // defender-drop-dismount unit 1 — 소비처가 2개(재배치 비행·드롭 하마)가 되어 이름 중립화.
         // 같은 entity 동시 소유는 없다: 드롭 창 = pending 창이고 재배치 진입은 busy(pending) 거부.
-        private readonly Dictionary<Entity, Unity.Mathematics.float3> _defenderViewOverride = new();
+        // flight-lift-feel unit 2 — lift(지면에서 뜬 높이)를 **동반 전달**한다. 좌표 체계는 그대로
+        // 절대 view 좌표다: 보스가 (평면, 높이) 2축으로 나눈 것은 ToView 가 sim-Y 를 버리기 때문이고
+        // 이 경로엔 그 문제가 없다 — 잘 도는 좌표계를 높이를 알기 위해 재구성하지 않는다.
+        // 아치 높이가 좌표에 통합돼 있어 뷰가 "얼마나 떴는지"를 역산할 수 없으므로 값만 같이 싣는다.
+        private readonly Dictionary<Entity, (Unity.Mathematics.float3 pos, float lift)> _defenderViewOverride = new();
 
-        public void SetDefenderViewOverride(Entity entity, Vector3 viewPos)
-            => _defenderViewOverride[entity] = new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z);
+        // lift 기본값 0 = 반응 없음. 세 번째 인자를 안 주는 호출처가 있어도 항등이다.
+        public void SetDefenderViewOverride(Entity entity, Vector3 viewPos, float lift = 0f)
+            => _defenderViewOverride[entity] =
+                (new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z), lift);
 
         public void ClearDefenderViewOverride(Entity entity)
             => _defenderViewOverride.Remove(entity);
 
-        internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
-            => _defenderViewOverride.TryGetValue(entity, out pos);
+        internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos, out float lift)
+        {
+            if (_defenderViewOverride.TryGetValue(entity, out var v))
+            {
+                pos = v.pos; lift = v.lift; return true;
+            }
+            pos = default; lift = 0f; return false;
+        }
 
         // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.
         // sim 이 아니라 view 로 주는 이유: 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려, sim 공간

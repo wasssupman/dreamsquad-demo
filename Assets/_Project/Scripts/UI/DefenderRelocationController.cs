@@ -249,7 +249,10 @@ namespace Wassup.UI
                 float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
                 var p = haveArc ? KeyringSim.CubicBezier(start, c1, c2, end, k)
                                 : Vector3.Lerp(start, end, k);
-                bridge.SetDefenderViewOverride(entity, p);
+                // flight-lift-feel unit 2 — 기저선 대비 뜬 높이. ThrowArcControls 의 boardRight 좌우
+                // 변주 성분은 camUp 투영에서 자동으로 떨어져 나가므로 별도 처리가 없다.
+                float lift = Mathf.Max(0f, Vector3.Dot(p - Vector3.Lerp(start, end, k), camUp));
+                bridge.SetDefenderViewOverride(entity, p, lift);
                 UpdateKeyring(); // 실제 유닛 뷰 위로 고리 추종(배치 키링과 동일 룩)
                 yield return null;
             }

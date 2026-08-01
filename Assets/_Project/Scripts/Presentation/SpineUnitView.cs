@@ -317,10 +317,13 @@ namespace Wassup.Presentation
         // defender-relocation unit 6 — 비행 중 VIEW 좌표 직접 배치(BoardSpace.ToView 우회 — 평면 정면뷰가
         // sim 높이를 버려 아치가 평면이 되던 문제 교정: 아치가 이미 view 공간에 있으므로 그대로 쓴다) +
         // 전경 소팅(보드 타일 위로 hop). 비행은 PendingDeployment(비전투)라 facing/walk/게이지 갱신 불요.
-        public void SetFlightView(Vector3 viewPos)
+        // flight-lift-feel unit 2 — lift 는 좌표에서 역산할 수 없어 호출측이 같이 준다(절대 view 좌표라
+        // 기저선을 뷰가 모른다). 이 경로는 ApplyRenderPosition 을 타지 않으므로 반응 적용도 여기서 한다.
+        public void SetFlightView(Vector3 viewPos, float lift = 0f)
         {
             transform.position = viewPos;
             if (_meshRenderer != null) _meshRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            ApplyLift(lift);
         }
 
         // dreamcatcher-awakening-hand rev 4 — 카드 드래그 타겟팅 호버 강조.
