@@ -220,7 +220,11 @@ namespace Wassup.UI
             if (!_holding) return;
             _holding = false;
             TutorialHoldReleased?.Invoke();
-            if (_onDone == null) return; // 구독자가 종료 경로를 탔다면 여기서 멈춘다
+            // 현 불변식(`_holding` 은 EnterTutorialHold 에서만 서고 그쪽이 _onDone 을 이미 확인,
+            // Finish 는 _onDone 을 비우기 **전에** _holding 을 내림)에서 이 분기는 도달하지 않는다.
+            // 남겨두는 이유는 위 Invoke 때문이다 — 구독자가 나중에 종료 경로를 타게 되면
+            // 여기가 유일한 방어선이 된다.
+            if (_onDone == null) return;
             _seq = Sequence.Create(useUnscaledTime: true);
             PlayExit();
         }
