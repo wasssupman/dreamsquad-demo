@@ -494,6 +494,7 @@ MonoBehaviour:
   commitPopStartAlpha: 0.85
   commitPopValidColor: {r: 0.35, g: 1, b: 0.9, a: 1}
   commitPopInvalidColor: {r: 1, g: 0.4, b: 0.32, a: 1}
+  allyZoneColor: {r: 0.42, g: 0.95, b: 0.72, a: 0.42}
   liquidValidBorder: {r: 0.45, g: 1, b: 0.55, a: 0.95}
   liquidValidFill: {r: 0.35, g: 0.95, b: 0.45, a: 0.45}
   liquidInvalidBorder: {r: 1, g: 0.45, b: 0.35, a: 0.95}
@@ -1282,9 +1283,9 @@ MonoBehaviour:
   relocationController: {fileID: 1251145711}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   panel: {fileID: 751645447}
-  actionFlipbook: {fileID: 1090654029}
   cameraDirector: {fileID: 1420088188}
   tapMoveThreshold: 24
+  anchorMissFramesToClose: 3
 --- !u!4 &603193525
 Transform:
   m_ObjectHideFlags: 0
@@ -1578,17 +1579,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DcInspectPanelView
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  dockLeft: 24
+  dockTop: 88
   panelWidth: 460
+  fontUnitName: 38
+  fontSectionLabel: 21
+  fontStatLabel: 27
+  fontStatValue: 34
+  fontStatValueMin: 20
+  fontChip: 23
+  fontAttachName: 27
+  fontAttachKind: 22
+  fontAttachDesc: 22
   pad: 14
+  sectionGap: 10
   rowGap: 8
-  artHeight: 84
-  headerBodyGap: 6
-  gapFromUnit: 46
-  edgeMargin: 10
+  portraitSize: 84
+  statRowHeight: 54
+  hpBarHeight: 12
+  attachArtHeight: 78
+  descMaxLines: 2
+  actionButtonHeight: 60
+  fontActionButton: 26
   fill: {r: 0.07, g: 0.06, b: 0.13, a: 1}
   squadBorder: {r: 1, g: 0.82, b: 0.35, a: 1}
   unitBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
-  costColor: {r: 0.79, g: 0.65, b: 1, a: 1}
+  labelColor: {r: 0.55, g: 0.52, b: 0.66, a: 1}
+  valueColor: {r: 0.94, g: 0.93, b: 0.98, a: 1}
+  deltaUpColor: {r: 1, g: 0.82, b: 0.35, a: 1}
+  deltaDownColor: {r: 1, g: 0.48, b: 0.42, a: 1}
+  hpFillColor: {r: 0.35, g: 0.86, b: 0.55, a: 1}
+  deltaEpsilon: 0.005
 --- !u!4 &751645448
 Transform:
   m_ObjectHideFlags: 0
@@ -1967,6 +1988,7 @@ MonoBehaviour:
   deployPlaceVolume: 0.4
   bossWarningClip: {fileID: 8300000, guid: 5f9059c3c332247de8508eb246974095, type: 3}
   bossWarningVolume: 0.85
+  gimmickRevealVolume: 0.8
   costTickClip: {fileID: 8300000, guid: d92778876c5e4454d921af034f950f37, type: 3}
   costTickVolume: 0.7
   nextWaveClip: {fileID: 8300000, guid: 6d01ffc6bf2bb4fee8549cd0ce12d943, type: 3}
@@ -3267,6 +3289,11 @@ MonoBehaviour:
   textFadeSec: 0.18
   sinkDurationSec: 0.26
   sinkStaggerSec: 0.04
+  dragClearanceDrop: 210
+  dragClearanceSpring: 320
+  dragClearanceDamping: 24
+  cancelZoneHeight: 310
+  slomoOnOpen: 0
   focusRaise: 100
   focusScale: 1.28
   scatter: 42
@@ -3283,6 +3310,12 @@ MonoBehaviour:
   tooltipBobY: 6
   tooltipBobX: 3
   tooltipBobFreq: 1.2
+  boardTapMoveThreshold: 24
+  flinchStrengthX: 14
+  flinchDuration: 0.26
+  flinchFrequency: 14
+  rejectKickStrength: 0.45
+  rejectKickDuration: 0.1
 --- !u!4 &1558370270
 Transform:
   m_ObjectHideFlags: 0
@@ -4194,6 +4227,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20ee017e5853b409b9a881da2f00bda9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Bridge.BattleBridge
+  bossLeapTotalSeconds: 0.83
+  bossLeapRecoilSeconds: 0.14
+  bossLeapRecoilDip: 0.35
+  bossLeapArcHeightFactor: 0.5
+  bossLeapArcMinHeight: 3.5
+  bossLeapLaunchControl: {x: 0.25, y: 1}
+  bossLeapLandingHeight: 0.25
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
   mapPool: {fileID: 11400000, guid: 947db597914b146e8b8551fc3b0820db, type: 2}
   endlessEncounter:
@@ -4238,6 +4278,7 @@ MonoBehaviour:
   dcIconStripSpawner: {fileID: 956177014}
   unitHealthPresentationMode: 1
   unitOverheadUiLayer: {fileID: 956177016}
+  beamPresenter: {fileID: 0}
   scoreHud: {fileID: 1279129162}
   scoreTallyView: {fileID: 1664107286}
   _bossWarning: {fileID: 322840704}
@@ -4273,6 +4314,7 @@ MonoBehaviour:
   pickupOverrideMaterial: {fileID: 2100000, guid: b671d65788615a142a9cd6aa0e69066d, type: 2}
   resignationViewPrefab: {fileID: 0}
   resignationViewHeight: 0.2
+  dcProcImpactMinIntervalSec: 0.25
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
