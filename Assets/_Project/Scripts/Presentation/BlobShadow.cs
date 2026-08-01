@@ -66,9 +66,30 @@ namespace Wassup.Presentation
         // 원색 알파에 배수만 적용(색조/정렬/transform 불변). factor=1 이면 원상 복구.
         public void SetDimAlpha(float factor)
         {
+            _dimFactor = Mathf.Clamp01(factor);
+            ApplyColor();
+        }
+
+        // flight-lift-feel unit 1 — 유닛이 뜨면 그림자는 **지면에 남은 채** 작아지고 옅어진다.
+        // 지면 Y 고정(ApplyTransform)은 원래부터 있었고, 여기서 반응만 얹는다.
+        // 배율 2종은 각자 보관해 곱한다 — SetDimAlpha 가 base 색을 통째로 덮어쓰던 구조라
+        // 그대로 두면 배치 dim 과 비행 알파가 서로를 지운다.
+        public void SetFlight(float scaleMul, float alphaMul)
+        {
+            _flightScale = Mathf.Max(0f, scaleMul);
+            _flightAlphaFactor = Mathf.Clamp01(alphaMul);
+            ApplyColor();
+        }
+
+        private float _dimFactor = 1f;
+        private float _flightAlphaFactor = 1f;
+        private float _flightScale = 1f;
+
+        private void ApplyColor()
+        {
             if (_sr == null) return;
-            factor = Mathf.Clamp01(factor);
-            _sr.color = new Color(_baseColor.r, _baseColor.g, _baseColor.b, _baseColor.a * factor);
+            _sr.color = new Color(_baseColor.r, _baseColor.g, _baseColor.b,
+                                  _baseColor.a * _dimFactor * _flightAlphaFactor);
         }
 
         private void LateUpdate()
@@ -85,10 +106,13 @@ namespace Wassup.Presentation
             Vector3 p = _target.position;
             transform.position = new Vector3(p.x, _groundY, p.z);
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            // 부모 스케일 보정이 여기 있는 덕에, 유닛이 lift 로 커져도 그림자 월드 지름은 안 딸려
+            // 올라간다(비행 반응은 아래 _flightScale 만으로 온다) — flight-lift-feel unit 1.
             Vector3 par = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
             float sx = Mathf.Approximately(par.x, 0f) ? 1f : par.x;
             float sy = Mathf.Approximately(par.y, 0f) ? 1f : par.y;
-            transform.localScale = new Vector3(_size / sx, _size / sy, 1f);
+            float size = _size * _flightScale;
+            transform.localScale = new Vector3(size / sx, size / sy, 1f);
         }
     }
 }

@@ -49,7 +49,9 @@ namespace Wassup.Presentation
         {
             _entity = entity;
             Mesh quad = mesh != null ? mesh : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            transform.localScale = Vector3.one * Mathf.Max(0.01f, visualScale);
+            // flight-lift-feel unit 1 — 비행 확대의 복귀 기준. 스케일 쓰기는 ApplyRenderScale 단일 지점.
+            _baseScale = Vector3.one * Mathf.Max(0.01f, visualScale);
+            transform.localScale = _baseScale;
 
             // tilted-billboard unit 4a — Spine 과 동일 메커니즘: object-space unlit + Billboard transform 틸트.
             // 발 피벗: Quad(센터, Y −0.5..0.5)를 +0.5 올려 밑동을 root 원점(셀)에 둔다 → 틸트가 발 기준.
@@ -126,7 +128,24 @@ namespace Wassup.Presentation
             // 타일맵이 XZ 바닥. 빌보드 밑동이 바닥 Y 와 같으면 z-fighting → 살짝 띄운다.
             view.y += 0.01f + _flightHeight;
             transform.position = view;
+            // flight-lift-feel unit 1 — hop 이 없는 뷰라 lift = _flightHeight 그대로.
+            ApplyLift(_flightHeight);
         }
+
+        // flight-lift-feel unit 1 — SpineUnitView 와 같은 계약(lift → 확대 + 그림자 축소·페이드).
+        // 펀치·스쿼시가 없는 폴백 뷰라 슬롯은 비행 배율 하나뿐이다.
+        private Vector3 _baseScale = Vector3.one;
+        private float _flightScale = 1f;
+
+        private void ApplyLift(float lift)
+        {
+            UnitLiftVisual.Resolve(lift, out float unitScale, out float shadowScale, out float shadowAlpha);
+            _flightScale = unitScale;
+            ApplyRenderScale();
+            if (_blob != null) _blob.SetFlight(shadowScale, shadowAlpha);
+        }
+
+        private void ApplyRenderScale() => transform.localScale = _baseScale * _flightScale;
 
         // boss-jjangssen unit 7 — 뷰 비행 아치 높이. SpineUnitView 와 동일 계약:
         // ToView 는 sim-Y 를 버리므로 높이는 **변환 뒤** view 공간에서 더한다.

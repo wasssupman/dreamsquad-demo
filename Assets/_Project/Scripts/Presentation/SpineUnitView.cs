@@ -53,10 +53,13 @@ namespace Wassup.Presentation
             _visualData = visualData;
             _defenderExtras = defenderExtras;
             _entity = entity;
-            ApplyRenderPosition(worldPos);
+            // flight-lift-feel unit 1 — _baseScale 을 ApplyRenderPosition 보다 **먼저** 잡는다.
+            // 위치 갱신이 이제 lift → 스케일 파생까지 하므로, 기준이 없으면 스폰 프레임에 Vector3.one
+            // 로 한 번 써버린다.
             float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
-            transform.localScale = new Vector3(s, s, s);
-            _baseScale = transform.localScale; // card-fly unit 1 — 펀치 펄스 복귀 기준
+            _baseScale = new Vector3(s, s, s); // card-fly unit 1 — 펀치 펄스 복귀 기준
+            transform.localScale = _baseScale;
+            ApplyRenderPosition(worldPos);
 
             _skeleton = gameObject.AddComponent<SkeletonAnimation>();
             _skeleton.skeletonDataAsset = visualData.SpineSkeletonDataAsset;
@@ -185,9 +188,35 @@ namespace Wassup.Presentation
         {
             _simWorld = world;
             Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
+            // flight-lift-feel unit 1 — 이 합이 곧 lift(지면에서 뜬 view 공간 높이)다. 위치·크기·
+            // 그림자의 **공통 입력**이라 한 지점에서 구해 함께 흘린다.
+            float lift = CurrentHopOffset() + _flightHeight;
             transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
-                                 + new Vector3(0f, CurrentHopOffset() + _flightHeight, 0f);
+                                 + new Vector3(0f, lift, 0f);
+            ApplyLift(lift);
         }
+
+        // flight-lift-feel unit 1 — lift → 유닛 확대 + 그림자 축소·페이드.
+        // 매 프레임 피드가 값을 다시 쓰므로(비행 아니면 lift 0 → 항등) 별도 clear 경로가 필요 없다
+        // — _flightHeight 가 쓰던 규약 그대로다.
+        private void ApplyLift(float lift)
+        {
+            UnitLiftVisual.Resolve(lift, out float unitScale, out float shadowScale, out float shadowAlpha);
+            _flightScale = unitScale;
+            ApplyRenderScale();
+            if (_blob != null) _blob.SetFlight(shadowScale, shadowAlpha);
+        }
+
+        // flight-lift-feel unit 1 — **스케일 쓰기의 단일 지점.** transform.localScale 직접 대입 금지:
+        // 매 프레임 피드(비행)와 코루틴(펀치·착지 스쿼시)이 같은 필드를 다투면 한쪽이 조용히 진다
+        // (피드가 펀치를 덮거나, 펀치 종료의 복귀 대입이 비행 배율을 지운다).
+        // ApplyRenderPosition 이 hop + flightHeight 를 한 곳에서 합치는 것과 같은 모양.
+        private float _flightScale = 1f;   // 매 프레임 피드 소유
+        private float _punchScale = 1f;    // PunchRoutine 소유
+        private Vector3 _squash = Vector3.one; // 착지 스쿼시 소유(unit 3)
+
+        private void ApplyRenderScale()
+            => transform.localScale = Vector3.Scale(_baseScale * (_flightScale * _punchScale), _squash);
 
         // boss-jjangssen unit 7 — 뷰 비행(보스 도약) 아치 높이. 넉업 hop 과 **같은 이유로**
         // ToView 뒤에 더한다: BoardSpace.ToView 는 sim-Y 를 버리므로 sim 좌표에 높이를 넣으면
@@ -353,16 +382,18 @@ namespace Wassup.Presentation
         private System.Collections.IEnumerator PunchRoutine(float overshoot, float dur)
         {
             // base 대비 크게 튄 뒤 base 로 복귀(살짝 세로 눌림 없이 균일 펀치 — 유닛은 3D 반응 주역).
-            Vector3 peak = _baseScale * (1f + Mathf.Max(0f, overshoot));
+            // flight-lift-feel unit 1 — localScale 직접 대입 → _punchScale 슬롯으로. 비행 배율과
+            // 곱해질 뿐 서로를 지우지 않는다. 시계는 unscaled 그대로(카드 비행과 톤 일치).
+            float peak = 1f + Mathf.Max(0f, overshoot);
             float half = Mathf.Max(0.01f, dur * 0.35f);
             float e = 0f;
             while (e < half) { e += Time.unscaledDeltaTime; if (_dying) yield break;
-                transform.localScale = Vector3.Lerp(_baseScale, peak, e / half); yield return null; }
+                _punchScale = Mathf.Lerp(1f, peak, e / half); ApplyRenderScale(); yield return null; }
             float back = Mathf.Max(0.01f, dur - half);
             e = 0f;
             while (e < back) { e += Time.unscaledDeltaTime; if (_dying) yield break;
-                transform.localScale = Vector3.Lerp(peak, _baseScale, e / back); yield return null; }
-            if (!_dying) transform.localScale = _baseScale;
+                _punchScale = Mathf.Lerp(peak, 1f, e / back); ApplyRenderScale(); yield return null; }
+            if (!_dying) { _punchScale = 1f; ApplyRenderScale(); }
         }
 
         public void FlashWhite(float dur = 0.14f)

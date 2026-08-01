@@ -143,6 +143,25 @@ namespace Wassup.Bridge
         [SerializeField] private float blobShadowSize = 1f;
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
         [SerializeField] private float blobShadowGroundY = 0.216f; // blob 을 발 평면에서 ~5px(@1080) 띄워 접지점 가독.
+        // flight-lift-feel unit 1 — 뜬 높이(lift)의 시각 반응. **화면 전역 단일 소유**다:
+        // 스케일은 연출별 취향이 아니라 원근 보상이라, 같은 높이의 두 유닛이 다른 크기로 보이면
+        // 카메라가 깨져 보인다. 연출별 노브(DragSwaySettings ⑩ / BattleBridge.BossLeap)에 복제 금지.
+        // 소비처 4개 공통: 드롭 하마 · 보스 도약 · 재배치 던지기 · 넉업 hop.
+        [Header("Lift visual response (flight-lift-feel unit 1)")]
+        [Tooltip("월드 높이 1당 유닛 확대율. 0 = 반응 없음(현행). 카메라 축이 시선에 수직이라 원근 확대가 0인 것을 보상한다.")]
+        [Range(0f, 0.5f)]
+        [SerializeField] private float liftScalePerHeight = 0.14f;
+        [Tooltip("유닛 확대 상한. 1 미만은 무시된다(축소 방지).")]
+        [Range(1f, 2f)]
+        [SerializeField] private float liftScaleMax = 1.35f;
+        [Tooltip("그림자가 최소 크기/알파에 닿는 높이(월드). 이 위로는 더 안 줄어든다.")]
+        [SerializeField] private float liftShadowFullHeight = 3f;
+        [Tooltip("최대 높이에서의 그림자 크기 배율.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float liftShadowMinScale = 0.55f;
+        [Tooltip("최대 높이에서의 그림자 알파 배율.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float liftShadowMinAlpha = 0.35f;
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
         [SerializeField] private bool useRealShadows = true;
         [Range(0.1f, 1f)]
@@ -248,6 +267,12 @@ namespace Wassup.Bridge
         public static float BlobShadowSize { get; private set; } = 1f;
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
         public static float BlobShadowGroundY { get; private set; } = 0.02f;
+        // flight-lift-feel unit 1 — 코드 기본값이 곧 초기값이라 미배선 씬에서도 동작한다.
+        public static float LiftScalePerHeight { get; private set; } = 0.14f;
+        public static float LiftScaleMax { get; private set; } = 1.35f;
+        public static float LiftShadowFullHeight { get; private set; } = 3f;
+        public static float LiftShadowMinScale { get; private set; } = 0.55f;
+        public static float LiftShadowMinAlpha { get; private set; } = 0.35f;
         // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
         public static bool UseRealShadows { get; private set; }
         // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러(SpineUnitView 가 읽음). SO 미할당 시
@@ -1021,6 +1046,11 @@ namespace Wassup.Bridge
             BlobShadowSize = blobShadowSize;
             BlobShadowColor = blobShadowColor;
             BlobShadowGroundY = blobShadowGroundY;
+            LiftScalePerHeight = liftScalePerHeight;
+            LiftScaleMax = liftScaleMax;
+            LiftShadowFullHeight = liftShadowFullHeight;
+            LiftShadowMinScale = liftShadowMinScale;
+            LiftShadowMinAlpha = liftShadowMinAlpha;
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
             UseRealShadows = useRealShadows && !Application.isMobilePlatform;
             // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러. SO 미할당 시 비활성(배율 1.0).
