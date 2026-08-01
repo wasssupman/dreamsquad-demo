@@ -1,7 +1,7 @@
 # spine-weapon-trail — Spine 유닛 공격 무기 궤적
 
-> 상태: **unit 0 완료 · unit 1 대기** (2026-08-01)
-> unit 0 커밋 `d37e3196` — 리그 프리팹 + 프리셋 + 정렬 대역 + 벤더 패키지 편입
+> 상태: **units 0~3 구현 완료 · 미검증 3건 + 크기 결정 1건 남음** (2026-08-01)
+> `d37e3196` → `314c0033` → `4aab5bc7`·`71117b42`·`a340ed48`·`851ee392` → `bd6f079a`·`dd573654`
 
 ## 목표
 
@@ -24,27 +24,28 @@ Spine 유닛이 공격할 때 손에 든 무기가 지나간 자리에 **궤적 
 | # | 구분 | 문서 | 상태 | 목적 |
 |---|---|---|---|---|
 | 0 | asset+code | `0_trail_rig_and_sorting.md` | **완료** `d37e3196` | 본 추종 리그 프리팹 + 프로젝트 소유 프리셋(정렬 대역) + `BoardSortOrder` 상수 |
-| 1 | code | `1_attack_driven_trail.md` | 대기 | SO opt-in 필드 + 스폰 시 부착 + `PlayAttack` Start/Stop + **가시성 판정 게이트** |
-| 2 | asset | `2_melee_roster_and_tuning.md` | 대기 | 근접 로스터 적용 + 오프셋/수명/색 튜닝 + **가독성 상한 판정** |
-| 3 | docs | `3_handoff_summary.md` | 대기 | 인계 요약 |
+| 1 | code | `1_attack_driven_trail.md` | **완료** `314c0033` | SO opt-in 필드 + 스폰 시 부착 + `PlayAttack` Start/Stop + 가시성 판정 게이트 |
+| 2 | asset | `2_legibility_and_roster.md` | **완료** `4aab5bc7`+3 | 룩 세트 · 크기/수명 튜닝 · role 기준 로스터 · 유닛별 룩 배분 |
+| 3 | code | `3_any_host_generalization.md` | **완료** `bd6f079a` | 디펜더 종속 해제(`ISpineUnitVisualData` + `WeaponTrailRig`) + 보스 적용 |
+| 4 | docs | `4_handoff_summary.md` | 대기 | 인계 요약 |
 
-### unit 1 로 이월된 검증 (unit 0 하네스가 답하지 못한 것)
+### 남은 미검증 3건
 
-unit 0 은 틸트 없는 정면 직교 뷰로 찍어 **형태·정렬·수명**만 입증했다. 아래는 **실전 시야에서만**
-답이 나오므로 unit 1 의 완료 기준에 포함한다 — "메시가 생성된다"와 "화면에서 읽힌다"는 다른 질문이다.
-
-- **가시성(최우선)**: 유닛은 `Billboard(Tilted, 45°)` 고정 평면 위의 빌보드 캐릭터다. 리본도 같은
-  평면에 생기므로 스프라이트와 같은 방향을 보지만, **캐릭터 틸트는 45° 고정인데 카메라 pitch 는
-  페이즈마다 다르다**(Draft↔Battle). 어긋난 만큼 평면의 세로축이 화면에서 단축되는데 `Attack3` 는
-  세로 내려찍기라 호가 하필 그 축에 눕는다. 실제 배틀 카메라로 찍어 판정할 것.
 - **카메라 이동 중 박제**: 리본 섹션은 방출 시점 월드 좌표로 굳고 **다시 빌보드하지 않는다**.
-  스프라이트는 매 LateUpdate 재정렬된다. 수명 0.2초 안에 `CameraDirector` 가 카메라를 움직이면
+  스프라이트는 매 LateUpdate 재정렬된다. 수명 0.28초 안에 `CameraDirector` 가 카메라를 움직이면
   (비행·구두점·킥) 둘이 어긋난다.
 - **실행 순서**: `BoneFollower.LateUpdate` ↔ `HS_SwordMeshTrail.LateUpdate` 순서가 미정의라 1프레임
   지연 가능. 눈에 띄면 Script Execution Order 로 고정.
 - **레이어 회수**: 트레일 레이어는 씬 루트 오브젝트다. 유닛 사망·풀 반납·매치 종료 후 프레임을
-  넘겨 잔존이 없는지 확인(unit 0 정리에서 같은 프레임엔 1개가 남아 보였는데, `Destroy` 가 지연
-  파괴라 정상으로 보이나 확증 안 됨).
+  넘겨 잔존이 없는지 확인(정리 시 같은 프레임엔 남아 보였는데 `Destroy` 지연 파괴로 추정, 확증 안 됨).
+
+**해소됨**: 가시성(unit 1~2 — 틸트 45° vs 카메라 pitch 60° 어긋남 15°, 단축률 0.966 로 무시 가능.
+색·파티클로 해결) · 드로우콜(유닛당 1).
+
+### 결정 대기
+
+- **보스 궤적 크기** — 보스는 `spineVisualScale` 이 커서 리그가 그대로 스케일된다. 나이트메어의
+  호가 약 4타일인데 사거리는 2. 그대로 둘지, 보스 전용 Variant 에서 Point A/B 만 좁힐지.
 
 ## 조사에서 실증된 것 (unit 0 진입 전 읽을 것)
 
@@ -104,7 +105,34 @@ unit 0 은 틸트 없는 정면 직교 뷰로 찍어 **형태·정렬·수명**�
    이 동작을 사양으로 받아들인다 — 별도 시간 배선을 만들지 않는다.
 8. **수치는 전부 authoring 소유.** 리그 오프셋 = 프리팹, 수명·색·두께·정렬 = 프리셋 SO.
    코드에는 정렬 대역 상수(`BoardSortOrder`) 하나만 둔다.
-9. **스코프는 방어 유닛.** 적/보스는 이 spec 밖(후속 후보).
+9. **호스트를 가리지 않는다** (unit 3 에서 계약 반전 — 아래 "설계 오판" 참조).
+   궤적 필드는 `ISpineUnitVisualData` 에 있어 디펜더·적·보스가 모두 대상이고, 실제 범위는
+   **프리팹 할당 여부**가 정한다. `WeaponTrailRig.Bind(null)` 은 본 없는 호스트(구조물)용 경로다.
+
+## 설계 오판 — 스코프를 타입에 새기지 말 것
+
+unit 1 에서 궤적 필드를 `IDefenderSpineExtras`(방어 유닛 전용)에 뒀다가 unit 3 에서 되돌렸다.
+같은 자리에서 미끄러지지 않도록 근거와 오류를 남긴다.
+
+**그때의 근거** — (a) 첫 스펙에서 적·보스까지 끌어안는 건 스코프 확장이다, (b) `SpineUnitView` 는
+적 스폰 시 `_defenderExtras` 가 null 이라 **적 제외가 코드 분기 없이 성립**한다, (c) 선례로
+`SpineCastAnchorBone` 이 이미 그 인터페이스에 살고 있다.
+
+**무엇이 틀렸나**
+
+- **스코프 결정을 타입 경계로 굳혔다.** "지금 누구에게 켜나"(정책)와 "누가 켤 수 있나"(능력)는
+  다른 질문인데 전자를 후자에 새겼다. 정책을 바꾸려니 타입을 바꿔야 했다.
+- **그 "자동 게이트"는 중복이었다.** 게이트는 이미 `weaponTrailPrefab == null` 이 하고 있었다.
+  인터페이스 배치로 얻은 안전은 0 이고, 대신 구조적 제약을 샀다 — 지우기 어려운 쪽을 남긴 셈.
+- **근거 (b) 자체가 사실 오해였다.** `DrainUnitAttackVisualEvents` 는 `NotifyAttack` 을
+  **모든 공격자**(적 포함)에게 부른다. 그 아래 `FindDefenderData == null → continue` 는 그 뒤
+  디펜더 전용 VFX 에만 걸린다. 공격 경로는 원래 적도 태우고 있었고 **배제는 내가 넣은 것**이다.
+
+**놓친 신호**: unit 0 의 리그 프리팹은 이미 호스트를 가리지 않았다(BoneFollower + 트레일 + 점 둘).
+**에셋이 범용인데 배선만 좁으면** 그게 신호다.
+
+**규칙**: opt-in 데이터는 메커니즘이 자연히 지원하는 **가장 넓은 인터페이스**에 두고,
+범위는 **에셋 할당**으로 표현한다. 범위는 타입이 아니라 데이터에 산다.
 
 ## 파이프라인 커버리지 (VFX one-shot × Defender 대조)
 
@@ -112,23 +140,30 @@ unit 0 은 틸트 없는 정면 직교 뷰로 찍어 **형태·정렬·수명**�
 
 | 정거장 | 이 spec 에서 |
 |---|---|
-| 데이터 SO | `DefenderUnitData.weaponTrailPrefab` 신규 필드(unit 1) + 프로젝트 소유 `HS_SwordTrailPreset` 복사본(unit 0) |
-| 프리팹 소스 | `Assets/_Project/VFX/WeaponTrail_*.prefab` — BoneFollower + `HS_SwordMeshTrail` + Point A/B 자식 |
+| 데이터 SO | `ISpineUnitVisualData.SpineWeaponTrailPrefab` / `…EndNormalized` — `DefenderUnitData`·`AttackUnitData` 공용(unit 3) + 프로젝트 소유 `HS_SwordTrailPreset` 복사본 7종 |
+| 프리팹 소스 | `WeaponTrail_Slash.prefab`(base) + 룩별 **Prefab Variant** 7종. 리그 = Animator(빈) + BoneFollower + `HS_SwordMeshTrail` + `WeaponTrailRig` + Point A/B 자식 |
 | ECS | **N/A — 시뮬 무관 순수 프레젠테이션.** 궤적은 판정에 기여하지 않는다 |
 | 트리거 | 기존 `UnitAttackVisualEventsSingleton` drain → `SpineUnitView.PlayAttack`. **신규 큐 0** |
-| View | `SpineUnitView` 가 소유(스폰 시 부착) + 소형 부착 컴포넌트 1개(unit 1) |
+| View | `SpineUnitView` 는 Instantiate + `Bind`/`Play` 위임만. 부착·타이머는 `WeaponTrailRig` 소유 |
 | Pool | **N/A — 유닛당 1개 부착, 유닛 수명과 동일.** 별도 풀 불요 |
-| 정렬 | `BoardSortOrder` 신규 상수 + **프리셋 layer sortingOrder 가 실제 적용값**(계약 3) |
-| 씬 wiring | **N/A — 씬 오브젝트 신설 없음.** 프리팹 참조는 디펜더 SO 가 들고 있다 |
+| 정렬 | `BoardSortOrder.WeaponTrailOrder` + **프리셋 layer sortingOrder 가 실제 적용값**(계약 3) |
+| 씬 wiring | **N/A — 씬 오브젝트 신설 없음.** 프리팹 참조는 유닛 SO 가 들고 있다 |
+
+> `docs/reference/object-pipeline-map.md` 갱신 대상이다 — "본 부착 · 유닛 수명 추종" 계열이
+> 기존 VFX(one-shot) 아키타입에 없다. handoff(unit 4) 작성 시 반영한다.
 
 ## 후속 후보
 
-- **절차 스윙(본 비의존)** [M] · unit 2 에서 "애니 궤적 자체가 원하는 형태가 아니다"로 판정될 때의
-  탈출구. 두 점을 본이 아니라 스크립트 아크로 구동하면 애니와 무관한 참격 형태를 만들 수 있다.
-  코드가 늘고 애니와 어긋날 위험이 있어 기본안이 아니다.
-- **`Attack1` 과의 관계 정리** [S] · `Attack1`(순 57.4°)은 `Attack3`(168°)보다 작은 스윙인데
-  현재 `dragAnimation` 전용이다. 궤적을 붙일 애니를 유닛별로 고를 필요가 생기면 그때 다룬다.
-- **적/보스 궤적** [S] · 같은 리그를 적 스켈레톤에 재사용. 보스 도약 공격이 후보.
+- **절차 스윙(본 비의존)** [M] · 애니 궤적 자체가 원하는 형태가 아닐 때의 탈출구. 두 점을 본이
+  아니라 스크립트 아크로 구동한다. 지금은 불필요 — Attack3 통일로 해결됐다.
+- **공격 애니 다양성** [S] · 궤적이 읽히는 건 `Attack3`(순 178.8°) 뿐이라 디펜더 7종 + 보스 2종이
+  전부 같은 모션을 쓴다. 다른 모션을 쓰려면 그 모션의 스윙 폭부터 키워야 한다(스켈레톤 저작).
+- **구조물 호스트** [M] · `WeaponTrailRig.Bind(null)` 경로와 BoneFollower 없는 Variant 로 길은
+  열려 있다. 실제 소비자(회전 포탑·해저드 등)가 생기면 만든다.
+- **보스 전용 크기** [S] · 보스는 `spineVisualScale` 이 커서 호가 ~4타일이다. 줄이려면 보스 전용
+  Variant 에서 Point A/B 만 좁힌다(Variant 가 자식 트랜스폼 오버라이드 가능, 코드 0).
 - **무기 종류별 프리셋 분기** [S] · 도끼/둔기/마법무기에 다른 색·수명. 지금은 유닛 SO 가 직접 지정.
+- **Lightning 룩 활용처** [S] · 짙은 남색이라 현 보드에서 죽어 배분에서 뺐다. 어두운 배경 맵이
+  생기면 후보. 프리셋·Variant 는 남아 있다.
 - **타격 순간 강조** [S] · `hitDelaySec` 시점에 궤적 밝기 펄스 — 기존 `attackVfxPrefab` 히트 연출과 역할 분담 필요.
 - **모바일 실기기 프로파일** [S] · 동시 근접 유닛 최대치에서 LateUpdate CPU(샘플링+Catmull–Rom+메시 리빌드) 측정.
