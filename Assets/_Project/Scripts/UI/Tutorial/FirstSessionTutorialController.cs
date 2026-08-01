@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using Wassup.Core;
+using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.UI;
 
@@ -38,6 +39,8 @@ namespace Wassup.UI.Tutorial
 
         // unit 19 — 첫 판 전투 HUD 안내. 사용자 작성 문구. 임의로 고치지 말 것.
         // 한계 수치는 화면 배지와 같은 소스에서 채운다(하드코딩 금지 — 덱마다 다르다).
+        // unit 21 — 두 줄을 **한 문단 1탭**으로 낸다(사용자 결정 2026-08-01). 클래스 안내(6줄
+        // 한 문단)와 같은 리듬이고 첫 판의 강제 탭 수가 늘지 않는다.
         private const string HudHintStressText = "악몽을 막아 스트레스 관리하세요!";
         // 조사는 사용자 원문의 `이` 를 쓴다(원문: `스트레스가 10이되면 패배합니다.`). 한국어
         // 이/가 는 수치의 읽음에 따라 갈리므로(10=십 → 이, 5=오 → 가) 데이터로 바뀌면 어색해질
@@ -107,6 +110,13 @@ namespace Wassup.UI.Tutorial
         // 막 세운 기믹 억제를 이쪽 정리가 풀어버린다.
         private bool _hudHintActive;
         private bool _hudHintShownThisBattle;
+        // unit 21 — 스트레스 안내 동안 전투를 정지시키는 Battle 도메인 lease. **필드 하나가
+        // 소유하고 StopBattleHudHint 만 해제한다** — 누수되면 ResetAll(매치 경계)까지 그 판이
+        // 영구 정지한다. 중복 획득 금지(획득 전에 기존 lease 를 먼저 해제).
+        private TimeLease? _stressHintPause;
+        // 탭 소비자가 둘(클래스 안내 · 이 스텝)이라 대기 여부를 명시적으로 든다.
+        private bool _stressHintWaitingTap;
+        private bool _stressHintTapped;
 
         // Persistence is a small replaceable seam so the orchestration can be
         // integration-tested without touching the developer's real profile file.
@@ -347,6 +357,14 @@ namespace Wassup.UI.Tutorial
 
         private void OnContinueTapped()
         {
+            // unit 21 — 탭 소비자가 둘이다. 전투 정지 안내가 대기 중이면 그 탭은 이 쪽 것이다.
+            // 이 시점 core 는 이미 끝나 있어 아래 가드가 어차피 막지만, 순서를 명시해 두
+            // 소비자가 서로를 가리지 않게 한다.
+            if (_stressHintWaitingTap)
+            {
+                _stressHintTapped = true;
+                return;
+            }
             if (!_coreActive || _coreStep != CoreStep.ClassHint) return;
             BeginStart();
         }
@@ -712,6 +730,14 @@ namespace Wassup.UI.Tutorial
                 StopCoroutine(_hudHintRoutine);
                 _hudHintRoutine = null;
             }
+            // unit 21 — 정지 해제는 **여기 하나**가 소유한다. 누수되면 ResetAll(매치 경계)까지
+            // 그 판이 얼어붙으므로, 이탈 경로를 늘릴 때 이 함수를 타는지 반드시 확인할 것.
+            _stressHintWaitingTap = false;
+            _stressHintTapped = false;
+            _stressHintPause?.Dispose(); // 멱등 — 이중 Dispose·복사본 모두 안전(TimeLease 계약)
+            _stressHintPause = null;
+            // Hide() 도 캐처를 끄지만 명시적으로 끈다 — 잔류하면 화면 전체가 먹통이다.
+            guidance?.SetTapToContinue(false);
             guidance?.Hide();
             // 앵커를 되돌리지 않으면 다음 안내(각성 · 선물)가 배지 아래 엉뚱한 위치에 뜬다.
             guidance?.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
@@ -735,23 +761,51 @@ namespace Wassup.UI.Tutorial
                 yield break;
             }
 
+            // unit 21 — 시작 직후 바로 멈추면 "시작을 눌렀는데 아무 일도 안 일어난" 것처럼 읽힌다.
+            yield return WaitUnscaled(guidance.StressHintDelaySeconds);
+            if (!_hudHintActive) yield break; // 대기 중 페이즈 이탈
+
+            // 문구는 한 문단이다. 둘째 줄 생략 조건: 엔드리스는 분모를 표기하지 않고 유출로
+            // 패배하지도 않는다. `StressLimit > 0` 도 함께 요구한다 — _leakShowLimit 기본값이
+            // true 이고 _leakLimit 기본값이 0 이라, 스냅샷(SetLeakStatus)이 아직 안 왔거나
+            // ActiveDeck 이 없으면 `스트레스가 0이 되면 패배합니다.` 가 경고 없이 나간다.
+            // 안내는 거짓말보다 침묵이 낫다.
+            string text = HudHintStressText;
+            if (scoreHud.ShowsStressLimit && scoreHud.StressLimit > 0)
+                text += "\n" + string.Format(HudHintStressLimitFormat, scoreHud.StressLimit);
+
+            // **전투 정지.** 글로벌 Time.timeScale 이 아니라 Battle 도메인 lease 다 — 시뮬(BattleSimGroup
+            // 의 BattleScaledRateManager)·타이머·웨이브 스폰이 함께 멈추고(셋 다 _battleClock 기반),
+            // 안내 자신은 unscaled 라 계속 흐른다. 손패 슬로모(0.3x)와 겹쳐도 승자 규칙
+            // (priority 동률 → scale asc)상 0 이 이기고, 해제하면 0.3x 로 정확히 복귀한다.
+            _stressHintPause?.Dispose(); // 중복 획득 방지 — 소유는 항상 하나
+            _stressHintPause = TimeManager.Instance.Request(TimeDomain.Battle, 0f);
+
             // 말풍선을 배지·링 아래로 내린다. 배지는 우상단 214~278 이고 링은 ~297 까지 온다 —
             // 와이드 화면에서는 수평으로 안 겹치지만 4:3 급에서는 겹친다(TutorialGuidanceStyle 주석).
             // 이 앵커는 체인이 끝날 때까지 유지한다(웨이브 스텝에서 되돌리지 않는다).
             guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.HudHint);
-            guidance.ShowMessage(HudHintStressText, showSkip: false);
+            guidance.ShowMessage(text, showSkip: false);
             guidance.FocusUi(badge);
-            // 비차단 — SetTapToContinue 를 쓰지 않는다. 전투 중이라 배치 입력을 막으면 안 된다.
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
+            guidance.SetTapToContinue(true);
 
-            // 엔드리스는 분모를 표기하지 않고 유출로 패배하지도 않으므로 둘째 줄이 거짓이 된다.
-            // `StressLimit > 0` 도 함께 요구한다: _leakShowLimit 기본값이 true 이고 _leakLimit
-            // 기본값이 0 이라, 스냅샷(SetLeakStatus)이 아직 안 왔거나 ActiveDeck 이 없으면
-            // `스트레스가 0이 되면 패배합니다.` 가 경고 없이 나간다. 안내는 거짓말보다 침묵이 낫다.
-            if (!scoreHud.ShowsStressLimit || scoreHud.StressLimit <= 0) yield break;
-            guidance.ShowMessage(string.Format(HudHintStressLimitFormat, scoreHud.StressLimit),
-                showSkip: false);
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
+            // 탭 대기. 만료 폴백이 없으면 탭 유실 시 lease 가 남아 **그 판이 영구 정지**한다
+            // (ResetAll 안전망은 매치 경계에만 있다). 클래스 안내와 같은 이유의 안전장치다.
+            _stressHintTapped = false;
+            _stressHintWaitingTap = true;
+            float elapsed = 0f;
+            float limit = Mathf.Max(0.1f, guidance.StressHintFallbackSeconds);
+            while (!_stressHintTapped && elapsed < limit && _hudHintActive)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            _stressHintWaitingTap = false;
+            if (!_hudHintActive) yield break; // 정리 경로가 이미 lease·캐처를 걷었다
+
+            guidance.SetTapToContinue(false);
+            _stressHintPause?.Dispose();
+            _stressHintPause = null;
         }
 
         private RectTransform ResolveStressBadgeRect() =>

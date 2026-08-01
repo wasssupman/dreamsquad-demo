@@ -62,5 +62,12 @@ namespace Wassup.UI.Tutorial
         // unit 19 — 포커스 대상(스트레스 배지 · 웨이브 버튼)은 자기 Update 에서 lazily 켜진다.
         // 이 시간만 폴링하고 그래도 비활성이면 그 스텝을 생략한다(fail-open).
         [Range(0f, 3f)] public float hudHintTargetWaitSeconds = 1f;
+        // unit 21 — 전투 시작 후 이만큼 지나서 스트레스 안내(정지+탭)를 띄운다. 시작 직후
+        // 바로 멈추면 "시작을 눌렀는데 아무 일도 안 일어난" 것처럼 읽힌다.
+        [Range(0f, 6f)] public float stressHintDelaySeconds = 2f;
+        // unit 21 — 탭이 유실되면 Battle 도메인 0 lease 가 남아 **그 판이 영구 정지**한다.
+        // ResetAll 안전망은 매치 경계에만 있으므로 판 안에서 스스로 풀어야 한다
+        // (classHintFallbackSeconds 와 같은 목적).
+        [Range(4f, 30f)] public float stressHintFallbackSeconds = 12f;
     }
 }

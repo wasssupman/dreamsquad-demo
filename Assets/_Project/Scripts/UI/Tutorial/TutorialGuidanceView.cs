@@ -32,6 +32,8 @@ namespace Wassup.UI.Tutorial
         public float ClassHintFallbackSeconds => Style.classHintFallbackSeconds;
         public float HudHintLineSeconds => Style.hudHintLineSeconds;
         public float HudHintTargetWaitSeconds => Style.hudHintTargetWaitSeconds;
+        public float StressHintDelaySeconds => Style.stressHintDelaySeconds;
+        public float StressHintFallbackSeconds => Style.stressHintFallbackSeconds;
         public Color SpawnMarkerColor => Style.spawnMarkerColor;
         public Color GoalMarkerColor => Style.goalMarkerColor;
         public int DimSortingOrder => Style.dimSortingOrder;
