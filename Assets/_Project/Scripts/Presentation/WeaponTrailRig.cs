@@ -25,6 +25,20 @@ namespace Wassup.Presentation
         {
             _trail = GetComponent<Hovl.HS_SwordMeshTrail>();
             _follower = GetComponent<BoneFollower>();
+            // 컴포넌트 순서상 HS_SwordMeshTrail.Awake 가 먼저 돌아 프리셋의 pointA 이펙트가
+            // 이미 자식으로 붙어 있다. 여기서 정렬 대역을 못 박는다.
+            ApplyEffectSorting();
+        }
+
+        // 궤적 파티클은 리본과 **같은 대역**에 있어야 한다. 벤더 프리팹은 sortingOrder 0 으로
+        // 들어오고, 호스트가 자식 렌더러를 일괄 정렬하면 유닛 대역으로 끌려간다.
+        // 리본(WeaponTrailOrder) 바로 위에 세워 파티클이 리본에 묻히지 않게 한다.
+        // (호스트 쪽 스윕 제외는 SpineUnitView.UpdateSortingOrder 가 담당 — 둘이 한 쌍이다.)
+        private void ApplyEffectSorting()
+        {
+            var fx = GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < fx.Length; i++)
+                fx[i].sortingOrder = BoardSortOrder.WeaponTrailOrder + 1;
         }
 
         // 스켈레톤 주입. 프리팹의 initializeOnAwake 는 false 라 여기서 직접 Initialize 해야

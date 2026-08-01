@@ -242,8 +242,16 @@ namespace Wassup.Presentation
                 tileSize,
                 BoardSortOrder.CharacterOffset);
             var renderers = GetComponentsInChildren<Renderer>(true);
+            // spine-weapon-trail — 궤적 리그 하위는 **건너뛴다**. 리본 메시는 씬 루트라
+            // 이 스윕에 안 걸리지만 프리셋의 pointA 파티클은 리그의 자식이라 걸린다.
+            // 그대로 두면 파티클만 유닛 대역(수백)으로 끌려가 리본(15500)과 갈라지고
+            // 앞 유닛에 가린다(실측: 파티클 111 vs 리본 15500). 리그가 자기 대역을 소유한다.
+            Transform rigRoot = _weaponTrail != null ? _weaponTrail.transform : null;
             for (int i = 0; i < renderers.Length; i++)
+            {
+                if (rigRoot != null && renderers[i].transform.IsChildOf(rigRoot)) continue;
                 renderers[i].sortingOrder = order;
+            }
         }
 
         // dreamcatcher-awakening-hand rev 4 — 스크린 스페이스 픽킹: 스프라이트
@@ -476,7 +484,13 @@ namespace Wassup.Presentation
             if (duration <= 0f) return;
 
             float scale = entry.TimeScale > 0f ? entry.TimeScale : 1f;
-            _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / scale);
+            // 배틀 도메인 슬로우모는 _skeleton.timeScale 로 반영된다(ApplyTimeScale). 이 항을
+            // 빼면 슬로우모에서 방출이 스윙 도중에 끊긴다 — 0.25x 실측으로 창 0.269s 대
+            // 실제 스윙 1.075s (4배 짧음). 스윙이 느려진 만큼 창도 늘어나야 한다.
+            // 정지(0)면 스윙이 진행되지 않으므로 방출 자체를 걸지 않는다.
+            float animScale = _skeleton.timeScale;
+            if (animScale <= 0f) return;
+            _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / (scale * animScale));
         }
 
         public bool PlayDeploy()

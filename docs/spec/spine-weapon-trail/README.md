@@ -1,6 +1,6 @@
 # spine-weapon-trail — Spine 유닛 공격 무기 궤적
 
-> 상태: **units 0~3 구현 완료 · 미검증 3건 + 크기 결정 1건 남음** (2026-08-01)
+> 상태: **units 0~3 구현 완료 · 코드 리뷰 반영 완료 · 보스 크기 결정 1건 남음** (2026-08-01)
 > `d37e3196` → `314c0033` → `4aab5bc7`·`71117b42`·`a340ed48`·`851ee392` → `bd6f079a`·`dd573654`
 
 ## 목표
@@ -29,18 +29,15 @@ Spine 유닛이 공격할 때 손에 든 무기가 지나간 자리에 **궤적 
 | 3 | code | `3_any_host_generalization.md` | **완료** `bd6f079a` | 디펜더 종속 해제(`ISpineUnitVisualData` + `WeaponTrailRig`) + 보스 적용 |
 | 4 | docs | `4_handoff_summary.md` | 대기 | 인계 요약 |
 
-### 남은 미검증 3건
+### 검증 결과 — 전부 해소 (2026-08-01 코드 리뷰 동시 진행)
 
-- **카메라 이동 중 박제**: 리본 섹션은 방출 시점 월드 좌표로 굳고 **다시 빌보드하지 않는다**.
-  스프라이트는 매 LateUpdate 재정렬된다. 수명 0.28초 안에 `CameraDirector` 가 카메라를 움직이면
-  (비행·구두점·킥) 둘이 어긋난다.
-- **실행 순서**: `BoneFollower.LateUpdate` ↔ `HS_SwordMeshTrail.LateUpdate` 순서가 미정의라 1프레임
-  지연 가능. 눈에 띄면 Script Execution Order 로 고정.
-- **레이어 회수**: 트레일 레이어는 씬 루트 오브젝트다. 유닛 사망·풀 반납·매치 종료 후 프레임을
-  넘겨 잔존이 없는지 확인(정리 시 같은 프레임엔 남아 보였는데 `Destroy` 지연 파괴로 추정, 확증 안 됨).
-
-**해소됨**: 가시성(unit 1~2 — 틸트 45° vs 카메라 pitch 60° 어긋남 15°, 단축률 0.966 로 무시 가능.
-색·파티클로 해결) · 드로우콜(유닛당 1).
+| 항목 | 결과 |
+|---|---|
+| 가시성 | 틸트 45° vs 카메라 pitch 60° → 어긋남 15°, 단축률 0.966 로 무시 가능. 색·파티클로 해결 |
+| 드로우콜 | 트레일당 레이어 1 = **유닛당 1** |
+| `LateUpdate` 순서 | **지연 0.** 최신 섹션 좌표 = 현재 Point 좌표(`dA=dB=0.0000`). 리그 컴포넌트 순서가 `BoneFollower → HS_SwordMeshTrail` 이고 **같은 GameObject** 라 이 순서로 돈다. Script Execution Order 불요 |
+| 레이어 회수 | **누수 없음.** Kill 직후 같은 프레임 1 → 다음 프레임 0(지연 파괴) |
+| 카메라 이동 중 박제 | **성립하지 않는 기우였다.** `BillboardRotation.Compute(Facing.Tilted, …)` = `Quaternion.Euler(tilt,0,0)` — **카메라를 보지 않는다.** 스프라이트도 리본도 같은 고정 월드 평면이라 카메라가 움직여도 어긋날 수 없다. ⚠ `BillboardMode.Full`/`YAxis` 로 바꾸면 우려가 되살아난다 |
 
 ### 결정 대기
 
@@ -100,9 +97,19 @@ Spine 유닛이 공격할 때 손에 든 무기가 지나간 자리에 **궤적 
    (a) `SpineUnitView.UpdateSortingOrder` 의 `GetComponentsInChildren<Renderer>` 가 안 건드린다,
    (b) 회수는 `OnDisable→ClearTrail` / `OnDestroy→DestroyRuntimeLayers` 가 한다.
    매치 종료·씬 전환 시 잔존 여부는 unit 1 에서 확인한다.
+6-a. **정렬 대역은 리그가 소유하고, 호스트는 리그 하위를 건너뛴다** (리뷰 지적 반영).
+   리본 메시는 씬 루트라 안전하지만 프리셋의 pointA 파티클은 **리그의 자식**이라
+   `SpineUnitView.UpdateSortingOrder` 의 `GetComponentsInChildren<Renderer>` 스윕에 걸려
+   유닛 대역으로 끌려갔다(실측 파티클 111 vs 리본 15500 — 파티클만 앞 유닛에 가림).
+   `WeaponTrailRig` 가 파티클을 `WeaponTrailOrder + 1` 로 못 박고, 호스트는 `IsChildOf(rigRoot)`
+   로 건너뛴다. **둘은 한 쌍이다** — 한쪽만 있으면 매 프레임 다시 덮인다.
 7. **시간 제어**: 궤적은 `Time.time` 기반이고 `Time.timeScale` 은 1 고정(TimeManager 원칙)이라
    슬로우모/정지 중에는 두 점이 얼어 새 섹션이 안 생기고 기존 섹션만 수명대로 증발한다.
    이 동작을 사양으로 받아들인다 — 별도 시간 배선을 만들지 않는다.
+   **단 방출 창은 예외다**(리뷰 지적 반영): 창은 `Duration × norm ÷ (entry.TimeScale × _skeleton.timeScale)`
+   로 **스켈레톤 배속까지 나눠야** 한다. 슬로우모는 `_skeleton.timeScale` 로 들어오는데 이 항을
+   빼면 스윙이 느려진 만큼 창이 모자라 방출이 도중에 끊긴다(0.25× 실측: 창 0.269s 대 스윙 1.075s,
+   4배 짧음 → 수정 후 1.00 배). `_skeleton.timeScale == 0`(정지)이면 스윙이 진행되지 않으므로 방출을 걸지 않는다.
 8. **수치는 전부 authoring 소유.** 리그 오프셋 = 프리팹, 수명·색·두께·정렬 = 프리셋 SO.
    코드에는 정렬 대역 상수(`BoardSortOrder`) 하나만 둔다.
 9. **호스트를 가리지 않는다** (unit 3 에서 계약 반전 — 아래 "설계 오판" 참조).
