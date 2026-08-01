@@ -9,7 +9,8 @@
 | `1f365291` | docs — units 23~24 스펙 |
 | `4c1d834e` | docs — 리뷰 반영(계약 6건 · 완료 기준 3건) |
 | `5be4fa9b` | unit 23 — 진행 토큰 + 전용 말풍선 앵커 (동작 변화 0) |
-| _(unit 24)_ | 홀드 seam + 문구 + 씬 배선 |
+| `2805f70f` | unit 24 — 홀드 seam + 문구 + 씬 배선 |
+| `56c5c65d` | 코드 리뷰 반영 (주석만, 동작 변경 없음) |
 
 ## Implemented
 
@@ -33,8 +34,13 @@
 ## Verified
 
 - 컴파일 0 (Runtime · Tests.EditMode · Tests.PlayMode).
-- EditMode **1781 중 실패 0**(unit 23 시점, 기준선 1777 + 신규 4). unit 24 는 순수 뷰/구독 배선이라
-  신규 EditMode 테스트 없음 — 선례(`7_gift_phase_holds.md`)와 같은 관례다.
+- EditMode **1786 중 실패 0**(unit 24 시점). unit 23 이 신규 4건을 더했다.
+- **홀드 상태머신에 EditMode 테스트가 없는 것은 구조적 한계다.** `BeginReveal` 이 `_tutorialMode`
+  를 세우려면 `Play()` 에 진입해야 하고, 거기서 만든 시퀀스는 PrimeTween 이 틱해야
+  `EnterTutorialHold` 까지 간다 — EditMode 에선 틱하지 않는다. 게이트만 1줄 static 으로 빼는 것은
+  제약 10(자명한 로직 과잉 추출)에 걸린다. 선물 홀드(unit 7)와 같은 이유로 Play 검증 전용이다.
+- **코드 리뷰 통과** — Codex 2차 리뷰 CRITICAL/HIGH/MEDIUM 0건, LOW 3건(도달 불가 분기 주석 ·
+  테스트 공백 · 미확정 오프셋). 첫 항목은 `56c5c65d` 로 반영, 나머지 둘은 위/아래에 기재된 기지 항목.
 - 씬 배선 실측(에디터 `SerializedObject`): `gimmickView` → `GimmickPhaseView` 컴포넌트,
   대상 GameObject active, `tutorialHoldFallbackSec = 20`.
 - **씬은 열지 않고 디스크 YAML 을 편집했다** — BattleScene 이 로드돼 있지 않은 상태였고, 이렇게

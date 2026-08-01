@@ -8,7 +8,8 @@
 > 첫 판 전투 HUD 안내(19~20) + 스트레스 정지+탭 rev(unit 21) **완료 2026-08-01**
 > (`45d35fea`·`34cf2a8d`·`65a4fb74`, 리뷰 반영 포함) — **사용자 Play 확인 통과**.
 > 컨트롤러는 관심사별 partial 4개로 분할(`3ebe1568`). 인계는 `22_handoff_summary.md` ·
-> 기믹 리빌 안내(23~24) **설계 승인 2026-08-01 · 구현 대기**
+> 기믹 리빌 안내(23~24) **구현·커밋 2026-08-01** (`5be4fa9b`·`2805f70f`, 리뷰 반영 `56c5c65d`)
+> — 컴파일·EditMode·씬 배선 검증 통과, **사용자 Play 확인 대기**. 인계는 `25_handoff_summary.md`
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
@@ -63,6 +64,7 @@
 | 22 | `22_handoff_summary.md` | 인계 | units 19~21 + partial 4분할 |
 | 23 | `23_gimmick_reveal_progress_state.md` | 토대 | 리빌 안내 진행 토큰 + 말풍선 앵커·폴백 필드 |
 | 24 | `24_gimmick_reveal_hold_hint.md` | 기믹 리빌 안내 | 리빌 요약에서 홀드 + 구조 한 줄 |
+| 25 | `25_handoff_summary.md` | 인계 | units 23~24 커밋·검증·되돌림 금지 6건 |
 
 15 → 16 → 17 순서 필수(첫 판 경계가 흐리면 16 의 검증이 성립하지 않고, 17 의 분기는 16 이 만든다).
 19 → 20 순서 필수(20 은 19 가 만든 체인·활성 대기·앵커에 스텝을 잇는다).
