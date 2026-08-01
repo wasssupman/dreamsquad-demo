@@ -2862,10 +2862,11 @@ namespace Wassup.Bridge
                 // 오버라이드는 **VIEW 좌표**(ToView 우회) — 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려
                 // 아치가 평면이 되던 문제 교정(비행 곡선은 view 공간에서 계산). 비행은 PendingDeployment(비전투)라
                 // 게이지/오버헤드 UI 는 생략하고 이 엔티티 처리를 종료한다(착지 후 정상 경로가 복원).
-                if (TryGetDefenderViewOverride(entity, out var relocFlightView, out float relocLift))
+                if (TryGetDefenderViewOverride(entity, out var relocFlightView, out float relocLift,
+                        out var relocGround))
                 {
                     if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var flightSpine) && flightSpine != null)
-                        flightSpine.SetFlightView(relocFlightView, relocLift);
+                        flightSpine.SetFlightView(relocFlightView, relocLift, relocGround);
                     else if (defenderFallbackViewPool != null &&
                              defenderFallbackViewPool.TryGet(entity, out var flightFallback) && flightFallback != null)
                         flightFallback.transform.position = relocFlightView;

@@ -117,12 +117,16 @@ namespace Wassup.Bridge
         // 절대 view 좌표다: 보스가 (평면, 높이) 2축으로 나눈 것은 ToView 가 sim-Y 를 버리기 때문이고
         // 이 경로엔 그 문제가 없다 — 잘 도는 좌표계를 높이를 알기 위해 재구성하지 않는다.
         // 아치 높이가 좌표에 통합돼 있어 뷰가 "얼마나 떴는지"를 역산할 수 없으므로 값만 같이 싣는다.
-        private readonly Dictionary<Entity, (Unity.Mathematics.float3 pos, float lift)> _defenderViewOverride = new();
+        private readonly Dictionary<Entity,
+            (Unity.Mathematics.float3 pos, float lift, Unity.Mathematics.float3 ground)> _defenderViewOverride = new();
 
-        // lift 기본값 0 = 반응 없음. 세 번째 인자를 안 주는 호출처가 있어도 항등이다.
-        public void SetDefenderViewOverride(Entity entity, Vector3 viewPos, float lift = 0f)
+        // lift 기본값 0 = 반응 없음, groundAnchor 기본값 zero = 그림자가 종전대로 유닛을 따라감.
+        // 뒤 두 인자를 안 주는 호출처가 있어도 항등이다.
+        public void SetDefenderViewOverride(Entity entity, Vector3 viewPos, float lift = 0f,
+            Vector3 groundAnchor = default)
             => _defenderViewOverride[entity] =
-                (new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z), lift);
+                (new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z), lift,
+                 new Unity.Mathematics.float3(groundAnchor.x, groundAnchor.y, groundAnchor.z));
 
         public void ClearDefenderViewOverride(Entity entity)
             => _defenderViewOverride.Remove(entity);
@@ -137,13 +141,14 @@ namespace Wassup.Bridge
                 view.PlayLandingSquash(amount, seconds);
         }
 
-        internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos, out float lift)
+        internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos,
+            out float lift, out Unity.Mathematics.float3 ground)
         {
             if (_defenderViewOverride.TryGetValue(entity, out var v))
             {
-                pos = v.pos; lift = v.lift; return true;
+                pos = v.pos; lift = v.lift; ground = v.ground; return true;
             }
-            pos = default; lift = 0f; return false;
+            pos = default; lift = 0f; ground = default; return false;
         }
 
         // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.

@@ -85,6 +85,24 @@ namespace Wassup.Presentation
         private float _flightAlphaFactor = 1f;
         private float _flightScale = 1f;
 
+        // flight-lift-feel — 비행 중 접지 XZ 앵커 override.
+        // 기본은 부모(유닛) 위치를 따라간다. 그런데 드롭·재배치 아치는 **camUp 방향**이라
+        // (배틀 카메라 pitch 60° → camUp.z = 0.866) 유닛의 월드 Z 가 아치 높이만큼 밀린다 —
+        // 그림자가 착지 타일에서 2타일 가까이 미끄러졌다 돌아온다. 그림자는 "어느 칸에 내려앉나"를
+        // 알려주는 앵커인데 하필 그 순간에 엉뚱한 칸을 가리키는 셈이다.
+        // 그래서 비행 중엔 **아치 기저선**(출발→도착 직선)을 앵커로 받는다. 실제 그림자도 그렇게 움직인다.
+        // 보스 도약·넉업은 아치가 순수 +Y 라 XZ 가 안 밀리므로 이 경로를 쓰지 않는다.
+        private bool _hasGroundAnchor;
+        private Vector3 _groundAnchor;
+
+        public void SetGroundAnchor(Vector3 worldPos)
+        {
+            _hasGroundAnchor = true;
+            _groundAnchor = worldPos;
+        }
+
+        public void ClearGroundAnchor() => _hasGroundAnchor = false;
+
         private void ApplyColor()
         {
             if (_sr == null) return;
@@ -103,7 +121,7 @@ namespace Wassup.Presentation
         private void ApplyTransform()
         {
             if (_target == null) return;
-            Vector3 p = _target.position;
+            Vector3 p = _hasGroundAnchor ? _groundAnchor : _target.position;
             transform.position = new Vector3(p.x, _groundY, p.z);
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             // 부모 스케일 보정이 여기 있는 덕에, 유닛이 lift 로 커져도 그림자 월드 지름은 안 딸려

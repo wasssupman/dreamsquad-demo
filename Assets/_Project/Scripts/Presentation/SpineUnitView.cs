@@ -193,6 +193,9 @@ namespace Wassup.Presentation
             float lift = CurrentHopOffset() + _flightHeight;
             transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
                                  + new Vector3(0f, lift, 0f);
+            // 정상 피드 = 비행 아님 → 그림자 앵커 해제(매 프레임 피드가 자기해제하는 규약).
+            // 보스 도약·넉업은 이 경로를 타는데, 아치가 +Y 라 XZ 가 안 밀려 앵커가 필요 없다.
+            if (_blob != null) _blob.ClearGroundAnchor();
             ApplyLift(lift);
         }
 
@@ -319,10 +322,17 @@ namespace Wassup.Presentation
         // 전경 소팅(보드 타일 위로 hop). 비행은 PendingDeployment(비전투)라 facing/walk/게이지 갱신 불요.
         // flight-lift-feel unit 2 — lift 는 좌표에서 역산할 수 없어 호출측이 같이 준다(절대 view 좌표라
         // 기저선을 뷰가 모른다). 이 경로는 ApplyRenderPosition 을 타지 않으므로 반응 적용도 여기서 한다.
-        public void SetFlightView(Vector3 viewPos, float lift = 0f)
+        public void SetFlightView(Vector3 viewPos, float lift = 0f, Vector3 groundAnchor = default)
         {
             transform.position = viewPos;
             if (_meshRenderer != null) _meshRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            // 그림자는 유닛이 아니라 **아치 기저선** 위에 남는다(BlobShadow.SetGroundAnchor 주석 참조).
+            // 기본값(zero)이면 앵커 없음 = 종전대로 유닛을 따라간다.
+            if (_blob != null)
+            {
+                if (groundAnchor == default) _blob.ClearGroundAnchor();
+                else _blob.SetGroundAnchor(groundAnchor);
+            }
             ApplyLift(lift);
         }
 

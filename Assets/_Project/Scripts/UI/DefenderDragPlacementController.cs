@@ -1235,8 +1235,10 @@ namespace Wassup.UI
                     cfg.dropLaunchControl, cfg.dropLandingHeight, f);
                 // flight-lift-feel unit 2 — 기저선(출발→도착 직선) 대비 뜬 높이. 반동 구간의 dip 은
                 // 음수라 Max(0) 이 걷어낸다 — 내려앉을 때는 커지지 않는다.
-                float lift = Mathf.Max(0f, Vector3.Dot(p - Vector3.Lerp(start, end, f), camUp));
-                bridge.SetDefenderViewOverride(entity, p, lift);
+                Vector3 baseline = Vector3.Lerp(start, end, f);
+                float lift = Mathf.Max(0f, Vector3.Dot(p - baseline, camUp));
+                // 그림자는 유닛이 아니라 기저선 위에 남는다 — 아치가 camUp 이라 유닛 XZ 가 밀린다.
+                bridge.SetDefenderViewOverride(entity, p, lift, baseline);
                 UpdateKeyringRemnant(remnant, p, camUp, elapsed, recoilSeconds, cfg); // unit 4 — 줄 벙음→스냅 페이드
             }
             // 착지 — 최종점(end)이 정상 피드 공식과 동일 좌표라 clear 직후 프레임이 그대로 이어진다(팝 0).

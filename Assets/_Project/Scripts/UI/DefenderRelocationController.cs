@@ -251,8 +251,9 @@ namespace Wassup.UI
                                 : Vector3.Lerp(start, end, k);
                 // flight-lift-feel unit 2 — 기저선 대비 뜬 높이. ThrowArcControls 의 boardRight 좌우
                 // 변주 성분은 camUp 투영에서 자동으로 떨어져 나가므로 별도 처리가 없다.
-                float lift = Mathf.Max(0f, Vector3.Dot(p - Vector3.Lerp(start, end, k), camUp));
-                bridge.SetDefenderViewOverride(entity, p, lift);
+                Vector3 baseline = Vector3.Lerp(start, end, k);
+                float lift = Mathf.Max(0f, Vector3.Dot(p - baseline, camUp));
+                bridge.SetDefenderViewOverride(entity, p, lift, baseline);
                 UpdateKeyring(); // 실제 유닛 뷰 위로 고리 추종(배치 키링과 동일 룩)
                 yield return null;
             }
