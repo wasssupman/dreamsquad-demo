@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 using Wassup.Core;
-using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.UI;
 
@@ -10,7 +9,14 @@ namespace Wassup.UI.Tutorial
     // first-session-tutorial units 2~3 — thin orchestration over existing,
     // authoritative gameplay signals. It never decides cost, tiles, targets, or
     // battle outcomes and always fails open when a required presentation seam is missing.
-    public sealed class FirstSessionTutorialController : MonoBehaviour
+    //
+    // 이 파일은 **코어 배치 플로우**(목표 비트 → 배치 방법 → 배치 → 클래스 안내 → 전투 시작)와
+    // 컴포넌트 lifecycle · 페이즈 라우팅만 가진다. 나머지 관심사는 partial 로 분리했다
+    // (BattleBridge.*.cs 와 같은 관례 — 이 파일은 여러 세션이 동시 편집한다):
+    //   · .Awakening.cs — 각성 안내 0·A·B단계 + 첫 판 봉인
+    //   · .BattleHud.cs — 첫 판 전투 HUD 안내(스트레스 정지+탭 · 다음 웨이브)
+    //   · .Gift.cs      — 선물 단계 워크스루
+    public sealed partial class FirstSessionTutorialController : MonoBehaviour
     {
         private enum CoreStep { None, Goal, Pick, Place, WaitingAim, ClassHint, Start }
 
@@ -24,35 +30,6 @@ namespace Wassup.UI.Tutorial
             "서포터: 힐러, 버퍼 등 전투 보조\n" +
             "상황에 맞게 유닛을 골라서 배치해보세요.";
 
-        // unit 16 — 손패를 여는 문이 둘이다(항아리 · 유닛 선택). 포커스 링이 첫 번째 문을
-        // 시연하는 동안 문구가 두 번째 문을 알린다.
-        private const string AwakeningIntroText =
-            "항아리를 누르거나 캐릭터를 탭하면\n드림캐쳐 덱이 열립니다";
-
-        // unit 16 — B단계는 **오픈 경로**로 갈린다. 항아리로 연 손패에는 즉발 대상이 없어
-        // 드래그가 유일한 사용법이고, 선택으로 연 손패에는 탭 즉발이 있다
-        // (selection-hand-attach unit 3). 같은 문구를 쓰면 절반이 거짓말이 된다.
-        private const string CardHintDragText =
-            "포커스된 카드를 원하는 캐릭터로 끌어보세요!";
-        private const string CardHintSelectionText =
-            "카드를 탭하면 이 캐릭터에 바로 부착됩니다\n왼쪽에서 능력치와 부착 상태를 볼 수 있어요";
-
-        // unit 19 — 첫 판 전투 HUD 안내. 사용자 작성 문구. 임의로 고치지 말 것.
-        // 한계 수치는 화면 배지와 같은 소스에서 채운다(하드코딩 금지 — 덱마다 다르다).
-        // unit 21 — 두 줄을 **한 문단 1탭**으로 낸다(사용자 결정 2026-08-01). 클래스 안내(6줄
-        // 한 문단)와 같은 리듬이고 첫 판의 강제 탭 수가 늘지 않는다.
-        private const string HudHintStressText = "악몽을 막아 스트레스 관리하세요!";
-        // 조사는 사용자 원문의 `이` 를 쓴다(원문: `스트레스가 10이되면 패배합니다.`). 한국어
-        // 이/가 는 수치의 읽음에 따라 갈리므로(10=십 → 이, 5=오 → 가) 데이터로 바뀌면 어색해질
-        // 수 있다. 자릿수별 조사 계산은 데모 범위에서 과잉이라 현 튜닝(한계 10)에 맞춘다.
-        private const string HudHintStressLimitFormat = "스트레스가 {0}이 되면 패배합니다.";
-
-        // unit 20 — 사용자 작성 문구. 임의로 고치지 말 것. 클릭을 요구하지 않는다:
-        // 둘째 줄이 "지금 누르지 마"라는 뜻이라 행동 성공 신호로 진행시키면 문구와 모순이고,
-        // 첫 판에 웨이브를 겹치면 안내가 스트레스 한계 = 패배를 유도한다.
-        private const string HudHintWaveText = "더 높은 점수를 위해 다음 웨이브 호출해보세요";
-        private const string HudHintWaveCaveatText = "단, 준비가 되었을때!";
-
         [Header("Core")]
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private GameManager gameManager;
@@ -63,60 +40,15 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private GimmickGuideView gimmickGuide;
         [SerializeField] private TutorialGuidanceView guidance;
 
-        [Header("Awakening")]
-        [SerializeField] private DreamcatcherHandController handController;
-        [SerializeField] private AwakeningGaugeView gaugeView;
-        [SerializeField] private DreamcatcherHandView handView;
-
-        [Header("Gift walkthrough")]
-        [SerializeField] private GiftPhaseView giftView;
-
-        [Header("Battle HUD hint (unit 19)")]
-        [SerializeField] private ScoreHudView scoreHud;
-        // unit 20 — 좌하단 `다음 웨이브` 버튼. 레거시 덱(생성 웨이브 아님) 경로에는 버튼이
-        // 아예 없으므로 미배선·부재 모두 그 스텝만 생략한다.
-        [SerializeField] private NextWaveDock waveDock;
-
         private DefenderDragPlacementController _drag;
         private RectTransform _recommendedSlot;
         private CoreStep _coreStep;
         private bool _coreActive;
         private Coroutine _goalRoutine;
-        private Coroutine _awakeningRoutine;
-        private bool _awakeningOfferedThisBattle;
-        // unit 17 — 부착 안내는 경로별로 독립이다. 판당 래치도 경로별로 둔다: 저장은
-        // TrySaveProfile 이 예외를 삼키므로 실패할 수 있는데, 그때도 한 판에서 같은 안내가
-        // 반복되면 안 된다. (unit 12 의 `_awakeningArmedThisBattle` 을 대체한다 — 그 필드는
-        // B 가 유일한 독자였고, A 선행 요구를 뗀 지금 아무도 읽지 않는다. unit 17 C절.)
-        private bool _dragHintShownThisBattle;
-        private bool _tapHintShownThisBattle;
-        // unit 12 — 배틀 시작 인트로(0단계). _awakeningOfferedThisBattle 을 쓰면
-        // A 단계("드림캐쳐 사용 준비 완료!")가 영영 안 뜨므로 전용 플래그를 둔다.
-        private bool _awakeningIntroShownThisBattle;
-        // unit 10 — 첫 판 각성 봉인. 버튼 숨김과 힌트 억제를 함께 구동하는 단일 상태.
-        private bool _awakeningLockedThisMatch;
-        // hand-drag-tooltip unit 3 — "끌어보세요" 배너가 떠 있는 동안만 참. 카드 press 로
-        // 조기 해제할 때 A 단계 프롬프트(다른 단계지만 _awakeningRoutine 을 공유)를
-        // 잘못 걷지 않도록 단계를 명시적으로 구분한다.
-        private bool _cardInstructionShowing;
         private Coroutine _classHintRoutine;
-        private Coroutine _awakeningIntroRoutine;
-        // unit 19 — 전투 HUD 안내 체인 전용 핸들. **`_awakeningRoutine` 을 재사용하지 말 것** —
-        // 그 핸들은 각성 0·A·B 단계가 공유하고 ResetAwakeningSession·OnCardPeeked 가 임의로
-        // 중단시킨다. 한 핸들에 두 체인을 얹으면 누가 누구를 걷는지 추적이 불가능해진다.
-        private Coroutine _hudHintRoutine;
-        // 체인이 되돌릴 상태(말풍선 · 앵커 · 기믹 억제)를 들고 있는가. 정리 경로가 여러 곳에서
-        // 불려도 체인이 없을 때는 no-op 이어야 한다 — 안 그러면 Placement 진입 시 core 안내가
-        // 막 세운 기믹 억제를 이쪽 정리가 풀어버린다.
-        private bool _hudHintActive;
-        private bool _hudHintShownThisBattle;
-        // unit 21 — 스트레스 안내 동안 전투를 정지시키는 Battle 도메인 lease. **필드 하나가
-        // 소유하고 StopBattleHudHint 만 해제한다** — 누수되면 ResetAll(매치 경계)까지 그 판이
-        // 영구 정지한다. 중복 획득 금지(획득 전에 기존 lease 를 먼저 해제).
-        private TimeLease? _stressHintPause;
-        // 탭 소비자가 둘(클래스 안내 · 이 스텝)이라 대기 여부를 명시적으로 든다.
-        private bool _stressHintWaitingTap;
-        private bool _stressHintTapped;
+        // unit 10 — "이 판이 첫 판인가". 세 관심사(코어 · 각성 봉인 · HUD 안내)가 함께 읽으므로
+        // 공유 파일이 소유한다. 판정은 Placement 진입에서 한 번, 표시 억제는 .Awakening.cs.
+        private bool _awakeningLockedThisMatch;
 
         // Persistence is a small replaceable seam so the orchestration can be
         // integration-tested without touching the developer's real profile file.
@@ -137,25 +69,8 @@ namespace Wassup.UI.Tutorial
                 guidance.SkipRequested += OnSkipRequested;
                 guidance.ContinueTapped += OnContinueTapped;
             }
-            if (handController != null)
-            {
-                handController.GaugeChanged += OnGaugeChanged;
-                handController.HandChanged += OnHandChanged;
-            }
-            if (handView != null)
-            {
-                handView.HandOpened += OnHandOpened;
-                // unit 17 rev — 손패가 이미 열린 채 선택으로 **전환**되는 경우는 HandOpened 가
-                // 안 온다(OpenForSelection 이 no-op). 두 신호를 함께 받아야 두 경로가 대칭이 된다.
-                handView.SelectionTargetSet += OnSelectionTargetSet;
-                handView.CardPeeked += OnCardPeeked;
-            }
-            if (giftView != null)
-            {
-                giftView.TutorialHoldEntered += OnGiftHoldEntered;
-                giftView.TutorialHoldReleased += OnGiftHoldReleased;
-            }
-            else Debug.LogWarning("[FirstSessionTutorial] giftView 미배선 — 선물 튜토리얼 문구를 생략합니다(연출 홀드는 유지).", this);
+            SubscribeAwakening();
+            SubscribeGift();
         }
 
         private void Start()
@@ -175,38 +90,22 @@ namespace Wassup.UI.Tutorial
                 guidance.SkipRequested -= OnSkipRequested;
                 guidance.ContinueTapped -= OnContinueTapped;
             }
-            if (handController != null)
-            {
-                handController.GaugeChanged -= OnGaugeChanged;
-                handController.HandChanged -= OnHandChanged;
-            }
-            if (handView != null)
-            {
-                handView.HandOpened -= OnHandOpened;
-                handView.SelectionTargetSet -= OnSelectionTargetSet;
-                handView.CardPeeked -= OnCardPeeked;
-            }
-            if (giftView != null)
-            {
-                giftView.TutorialHoldEntered -= OnGiftHoldEntered;
-                giftView.TutorialHoldReleased -= OnGiftHoldReleased;
-            }
+            UnsubscribeAwakening();
+            UnsubscribeGift();
             UnsubscribeDrag();
             EndCore(restoreNormalPlacement: true);
             // unit 19 — 정리 경로 ②. 바로 위 EndCore 에 기대면 안 된다: 체인 구간은 core 가 이미
             // 끝나 있어 EndCore 가 `!_coreActive` 로 조기 return 하므로, 체인이 세운 상태
-            // (코루틴 · 말풍선 · 말풍선 앵커)는 아무도 되돌리지 않는다.
+            // (코루틴 · 말풍선 · 앵커 · 정지 lease)는 아무도 되돌리지 않는다.
             StopBattleHudHint();
             ResetAwakeningSession(hide: true);
+            ResetBattleHudLatches();
             guidance?.SetElevated(false);
-            // unit 10 — 봉인은 이 컴포넌트가 살아있는 동안만 유효하다. 단 Battle 도중
-            // 해제하면 캐시된 _phase(Battle)로 패널이 켜졌다 꺼지는 왕복이 생기고,
-            // 씬 파괴 순서에 따라 앰비언트 코루틴이 되살아난다. Battle 중 비활성화는
-            // 여전히 첫 판이므로 봉인을 유지하는 것이 의미상으로도 맞다.
             _awakeningLockedThisMatch = false;
-            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle)
-                gaugeView?.SetSuppressed(false);
+            ReleaseAwakeningSealIfNotBattle();
         }
+
+        // ── 코어 배치 플로우 ─────────────────────────────────────────────────
 
         private void OnPlacementReady()
         {
@@ -216,7 +115,7 @@ namespace Wassup.UI.Tutorial
             // 아래 fail-open return 들(참조 누락 · affordable 슬롯 없음)보다 앞이어야
             // 그 경로에서도 버튼이 숨겨진다. Placement 진입 시점이라 core 는 아직 pending 이다.
             _awakeningLockedThisMatch = TutorialProgress.ShouldRunCore(profileSO);
-            gaugeView?.SetSuppressed(_awakeningLockedThisMatch);
+            ApplyAwakeningSeal(_awakeningLockedThisMatch);
 
             if (!TutorialProgress.ShouldRunCore(profileSO)) return;
             if (!HasCoreReferences())
@@ -286,6 +185,8 @@ namespace Wassup.UI.Tutorial
             if (_coreActive && _coreStep == CoreStep.Goal) BeginPick();
         }
 
+        // 모든 안내 타이밍의 단일 시간원. 전투가 정지(Battle 도메인 0)돼도 안내는 흘러야 하므로
+        // unscaled 다 — partial 3개가 함께 쓴다.
         private static IEnumerator WaitUnscaled(float seconds)
         {
             float elapsed = 0f;
@@ -355,16 +256,12 @@ namespace Wassup.UI.Tutorial
             _classHintRoutine = null;
         }
 
+        // unit 21 — 탭 소비자가 둘이다. 전투 정지 안내가 대기 중이면 그 탭은 그 쪽 것이므로
+        // **먼저** 묻는다(순서를 흐리면 한쪽이 다른 쪽 탭을 삼킨다). 이 시점 core 는 이미 끝나
+        // 있어 아래 가드가 어차피 막지만, 우선순위를 코드로 드러낸다.
         private void OnContinueTapped()
         {
-            // unit 21 — 탭 소비자가 둘이다. 전투 정지 안내가 대기 중이면 그 탭은 이 쪽 것이다.
-            // 이 시점 core 는 이미 끝나 있어 아래 가드가 어차피 막지만, 순서를 명시해 두
-            // 소비자가 서로를 가리지 않게 한다.
-            if (_stressHintWaitingTap)
-            {
-                _stressHintTapped = true;
-                return;
-            }
+            if (TryConsumeStressHintTap()) return;
             if (!_coreActive || _coreStep != CoreStep.ClassHint) return;
             BeginStart();
         }
@@ -425,18 +322,14 @@ namespace Wassup.UI.Tutorial
             EndCore(restoreNormalPlacement: true);
         }
 
+        // ── 페이즈 라우팅 ────────────────────────────────────────────────────
+
         private void OnPhaseChanged(GamePhase phase)
         {
             if (phase == GamePhase.Battle)
             {
-                _awakeningOfferedThisBattle = false;
-                _dragHintShownThisBattle = false;
-                _tapHintShownThisBattle = false;
-                _awakeningIntroShownThisBattle = false;
-                // unit 19 — 형제 래치들과 같은 자리에서 되돌린다. 지금은
-                // `_awakeningLockedThisMatch` 가 지배해서 없어도 무해하지만, HUD 안내가 자기
-                // 진행 토큰을 갖게 되는 날 이 비대칭이 조용한 replay 결함이 된다.
-                _hudHintShownThisBattle = false;
+                ResetAwakeningLatches();
+                ResetBattleHudLatches();
 
                 // unit 10 — _coreActive 와 무관하게 완료 처리한다. 참조 누락이나 affordable
                 // 슬롯 부재로 안내가 fail-open 된 계정도 "첫 판"은 소비된 것으로 본다.
@@ -461,8 +354,11 @@ namespace Wassup.UI.Tutorial
             {
                 if (_coreActive) EndCore(restoreNormalPlacement: false);
                 ResetAwakeningSession(hide: true);
+                ResetBattleHudLatches();
             }
         }
+
+        // ── 코어 종료 · 구독 ─────────────────────────────────────────────────
 
         private void CompleteCoreProgress()
         {
@@ -514,427 +410,6 @@ namespace Wassup.UI.Tutorial
             _drag.UserDragStarted -= OnUserDragStarted;
             _drag.PlacementCommitted -= OnPlacementCommitted;
             _drag = null;
-        }
-
-        // ── Contextual awakening hint ────────────────────────────────────────
-
-        private void OnGaugeChanged(int _) => EvaluateAwakeningHint();
-
-        private void OnHandChanged(DreamcatcherHandController.HandChangeReason _) => EvaluateAwakeningHint();
-
-        // unit 12 — 0단계. gaugeView.OnPhaseChanged 가 같은 PhaseChanged 의 다른 구독자라
-        // 패널 활성화 순서가 보장되지 않는다. Pulse() 는 비활성 패널에서 조용히 소실되므로
-        // (포커스 링과 달리 다음 프레임에 복구되지 않는다) 한 프레임 미룬다.
-        private void StartAwakeningIntro()
-        {
-            if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) return;
-            if (guidance == null || gaugeView == null) return;
-            if (!TutorialProgress.ShouldRunAwakeningIntro(profileSO)) return;
-
-            if (_awakeningIntroRoutine != null) StopCoroutine(_awakeningIntroRoutine);
-            _awakeningIntroRoutine = StartCoroutine(AwakeningIntroRoutine());
-        }
-
-        private IEnumerator AwakeningIntroRoutine()
-        {
-            yield return null;
-            _awakeningIntroRoutine = null;
-
-            if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) yield break;
-            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle) yield break;
-            if (guidance == null || gaugeView == null) yield break;
-            if (!TutorialProgress.ShouldRunAwakeningIntro(profileSO)) yield break;
-
-            // 지연의 목적이 패널 활성화를 기다리는 것이므로 실제로 활성인지 확인한다.
-            // 아직 비활성이면 Pulse 가 조용히 no-op 되고 링도 안 뜨는데, 플래그만 소모돼
-            // 0단계가 펄스 없이 사라진다. 소모하지 말고 다음 기회에 다시 시도한다.
-            RectTransform hit = gaugeView.HitRect;
-            if (hit == null || !hit.gameObject.activeInHierarchy) yield break;
-
-            _awakeningIntroShownThisBattle = true;
-            // arm 하지 않는다. 카드 사용법(B단계)은 A단계가 실제로 뜬 뒤에만 의미가 있고,
-            // gaugeStart 는 SO/시트 튜너블이라 "전투 시작 게이지 0" 은 불변식이 아니다.
-            // 0단계가 arm 하면 gaugeStart > 0 인 순간 B 가 앞당겨 발화해 완료가 저장되고
-            // A 문구가 그 계정에서 영영 안 뜬다.
-            gaugeView.Pulse();
-            guidance.ShowMessage(AwakeningIntroText, showSkip: false);
-            guidance.FocusUi(gaugeView.HitRect);
-            if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
-            _awakeningRoutine = StartCoroutine(HideAwakeningPromptRoutine());
-        }
-
-        private void EvaluateAwakeningHint()
-        {
-            // unit 10 — 첫 판은 버튼이 없으므로 힌트도 뜨면 안 된다. 이 가드가 없으면
-            // 없는 버튼을 가리키고, _awakeningOfferedThisBattle 이 Pulse 보다 먼저 세팅돼
-            // 힌트가 조용히 소모된다.
-            if (_awakeningLockedThisMatch) return;
-            if (_coreActive || _awakeningOfferedThisBattle || gameManager == null ||
-                gameManager.CurrentPhase != GamePhase.Battle || guidance == null || gaugeView == null ||
-                handController == null || !TutorialProgress.ShouldRunAwakeningIntro(profileSO)) return;
-            if (!HasAffordableCard()) return;
-
-            _awakeningOfferedThisBattle = true;
-            gaugeView.Pulse();
-            guidance.ShowMessage("드림캐쳐 사용 준비 완료!", showSkip: false);
-            guidance.FocusUi(gaugeView.HitRect);
-            if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
-            _awakeningRoutine = StartCoroutine(HideAwakeningPromptRoutine());
-        }
-
-        private bool HasAffordableCard()
-        {
-            if (handController == null) return false;
-            var hand = handController.Hand();
-            for (int i = 0; i < hand.Count; i++)
-                if (handController.CanUse(hand[i].entryId)) return true;
-            return false;
-        }
-
-        private IEnumerator HideAwakeningPromptRoutine()
-        {
-            yield return WaitUnscaled(guidance.AwakeningPromptSeconds);
-            _awakeningRoutine = null;
-            if (!_coreActive) guidance.Hide();
-        }
-
-        // 손패가 닫혀 있다가 열렸다(항아리 오픈 · 선택 기인 오픈 둘 다 여기로 온다).
-        private void OnHandOpened() => EvaluateCardHint();
-
-        // unit 17 rev — 손패가 **이미 열린 채** 선택 대상이 잡혔다. 항아리로 먼저 열어둔 뒤
-        // 유닛을 탭하는 경로가 이것뿐이라, 이 신호가 없으면 탭 즉발 안내가 영영 안 뜬다
-        // (사용자 보고 2026-07-30). 손패가 닫힌 상태에서 온 신호는 아래 State 가드가 흘려보내고
-        // 곧이어 오는 HandOpened 가 처리한다.
-        private void OnSelectionTargetSet() => EvaluateCardHint();
-
-        private void EvaluateCardHint()
-        {
-            // unit 10 — 첫 판엔 각성 안내가 하나도 뜨지 않는다. 예전엔 이 경로가
-            // `_awakeningOfferedThisBattle`(A 가 떴다) 요구를 통해 **간접적으로** 보호됐는데,
-            // unit 17 이 그 요구를 걷어내며 보호도 함께 사라졌다. 지금은 첫 판에 손패를 열
-            // 방법이 없어(항아리 숨김 + unit 15 선택 봉인) 도달 불가지만, 그 두 장치에만
-            // 기대지 않도록 여기서 직접 막는다.
-            if (_awakeningLockedThisMatch) return;
-            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
-                handView == null || handView.State != DreamcatcherHandView.HandState.Hand ||
-                guidance == null) return;
-
-            // unit 17 — 오픈 경로가 곧 어떤 안내인지를 정한다. 두 안내는 서로 다른 조작을
-            // 가르치므로 **각자의 pending 과 각자의 판당 래치**로 갈린다 — 한쪽을 본 것이
-            // 다른 쪽을 소비하지 않는다(이 unit 의 요점).
-            bool selection = handView.InSelectionMode;
-            if (selection
-                ? (_tapHintShownThisBattle || !TutorialProgress.ShouldRunTapAttachHint(profileSO))
-                : (_dragHintShownThisBattle || !TutorialProgress.ShouldRunDragAttachHint(profileSO))) return;
-
-            // unit 12 의 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A 가 실제로
-            // 떴다) 요구는 여기서 뺐다. 그 목적은 "B 가 A 의 완료 저장을 앞당겨 훔치는 것"을
-            // 막는 것이었는데, 저장이 경로별이라 훔칠 대상이 없고 인트로는 파생이라 저장 자체가
-            // 없다. 반대로 남겨두면 인트로가 끝난 뒤 A 가 안 떠서 `_awakeningOfferedThisBattle`
-            // 이 false 로 고정되고, **못 배운 나머지 한쪽이 영영 발화하지 못한다**(unit 17 C절).
-            // 가드의 나머지 의미("낼 수 있는 카드가 있을 때만")는 아래 탐색이 강제한다.
-            // selection-hand-attach unit 17 — `usable`(각성치)이 아니라 `Playable` 을 본다.
-            // 선택 중이면 각성치가 충분해도 그 유닛에 못 붙는 카드는 딤 + 조작 불가라,
-            // 거기에 포커스를 주면 튜토리얼이 **거절당하는 제스처**를 가르친다. 후보가 없으면
-            // 아래 null 반환으로 안내를 미룬다(래치 미소비 — 다음 기회에 다시 시도).
-            RectTransform usable = null;
-            var slots = handView.Slots;
-            for (int i = 0; i < slots.Count; i++)
-            {
-                var slot = slots[i];
-                if (slot != null && slot.Playable && slot.card != null && slot.rect != null)
-                {
-                    usable = slot.rect;
-                    break;
-                }
-            }
-            if (usable == null) return;
-
-            if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
-            // unit 16 — InSelectionMode 는 SelectionTarget 파생값이고 DcInspectController 가
-            // SetSelectionTarget → OpenForSelection 순으로 부르므로, 두 진입 신호 어느 쪽에서든
-            // 이 시점엔 이미 확정돼 있다(SelectionTargetSet 은 대입 직후, HandOpened 는 그 뒤).
-            // 포커스는 두 경우 모두 usable 슬롯이다 — 지시의 대상은 카드다.
-            guidance.ShowMessage(selection ? CardHintSelectionText : CardHintDragText, showSkip: false);
-            guidance.FocusUi(usable);
-
-            if (selection)
-            {
-                _tapHintShownThisBattle = true;
-                if (TutorialProgress.CompleteTapAttachHint(profileSO.profile)) TrySaveProfile();
-            }
-            else
-            {
-                _dragHintShownThisBattle = true;
-                if (TutorialProgress.CompleteDragAttachHint(profileSO.profile)) TrySaveProfile();
-            }
-            _cardInstructionShowing = true;
-            _awakeningRoutine = StartCoroutine(HideCardInstructionRoutine());
-        }
-
-        private IEnumerator HideCardInstructionRoutine()
-        {
-            yield return WaitUnscaled(guidance.CardInstructionSeconds);
-            _awakeningRoutine = null;
-            _cardInstructionShowing = false;
-            guidance.Hide();
-        }
-
-        // hand-drag-tooltip unit 3 — 카드를 누른 순간 "끌어보세요" 지시는 이행됐다.
-        // 정보 가치가 소진됐고, 배너(상단 중앙 880x116, 거의 불투명)를 그대로 두면
-        // 같은 대역에 뜨는 드래그 툴팁 본문을 덮는다. 남은 대기 시간을 버리고 걷는다.
-        private void OnCardPeeked()
-        {
-            if (!_cardInstructionShowing) return;
-            _cardInstructionShowing = false;
-            if (_awakeningRoutine != null)
-            {
-                StopCoroutine(_awakeningRoutine);
-                _awakeningRoutine = null;
-            }
-            guidance.Hide();
-        }
-
-        // ── First-battle HUD hint chain (unit 19) ───────────────────────────
-        // 각성이 봉인된 첫 판 전투는 안내가 하나도 없는 구간이다. 그 자리에서 스트레스 배지의
-        // 의미와 패배 조건을 알린다. 첫 판에 플레이어가 관리할 자원은 스트레스 하나뿐이다.
-
-        private void StartBattleHudHint()
-        {
-            // 게이트는 `_awakeningLockedThisMatch`(= 첫 판) 하나다 — 첫 판 Battle 진입은 계정당
-            // 한 번이므로 신규 프로필 버전 토큰을 두지 않는다. **`IsCorePending` 으로 판정하면
-            // 안 된다** — 바로 위 CompleteCoreProgress() 가 이미 소비해서 이 시점엔 false 다.
-            if (!_awakeningLockedThisMatch || _hudHintShownThisBattle) return;
-            if (guidance == null) return;
-
-            _hudHintShownThisBattle = true;
-            _hudHintActive = true;
-            // 기믹 배너를 억제하지 않는다. GimmickGuideView.RefreshVisibility 의 표시 조건이
-            // `_phase == Placement` 라, Battle 에서만 도는 이 체인에는 억제할 대상이 애초에 없다
-            // (core 안내는 Placement 라 계속 억제가 필요하다 — OnPlacementReady 쪽은 그대로).
-            if (_hudHintRoutine != null) StopCoroutine(_hudHintRoutine);
-            _hudHintRoutine = StartCoroutine(BattleHudHintRoutine());
-        }
-
-        // 정리 단일 창구: 코루틴 중단 + 말풍선 정리 + 앵커 원복.
-        // 호출처 3곳 — OnPhaseChanged 의 비-Battle 경로 · OnDisable · 체인 정상 종료.
-        //
-        // `_hudHintActive` 가드가 본체다. 이 함수는 체인이 없을 때도 불리는데(Placement 진입),
-        // 가드 없이 Hide()·앵커 원복을 실행하면 core 안내가 막 세운 말풍선을 걷어버린다.
-        private void StopBattleHudHint()
-        {
-            if (!_hudHintActive) return;
-            _hudHintActive = false;
-            if (_hudHintRoutine != null)
-            {
-                StopCoroutine(_hudHintRoutine);
-                _hudHintRoutine = null;
-            }
-            // unit 21 — 정지 해제는 **여기 하나**가 소유한다. 누수되면 ResetAll(매치 경계)까지
-            // 그 판이 얼어붙으므로, 이탈 경로를 늘릴 때 이 함수를 타는지 반드시 확인할 것.
-            _stressHintWaitingTap = false;
-            _stressHintTapped = false;
-            _stressHintPause?.Dispose(); // 멱등 — 이중 Dispose·복사본 모두 안전(TimeLease 계약)
-            _stressHintPause = null;
-            // Hide() 도 캐처를 끄지만 명시적으로 끈다 — 잔류하면 화면 전체가 먹통이다.
-            guidance?.SetTapToContinue(false);
-            guidance?.Hide();
-            // 앵커를 되돌리지 않으면 다음 안내(각성 · 선물)가 배지 아래 엉뚱한 위치에 뜬다.
-            guidance?.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
-        }
-
-        private IEnumerator BattleHudHintRoutine()
-        {
-            yield return StressHintSteps();
-            yield return NextWaveHintSteps();
-            _hudHintRoutine = null;
-            StopBattleHudHint();
-        }
-
-        private IEnumerator StressHintSteps()
-        {
-            yield return WaitForHintTarget(ResolveStressBadgeRect);
-            RectTransform badge = ResolveStressBadgeRect();
-            if (badge == null || !badge.gameObject.activeInHierarchy)
-            {
-                Debug.LogWarning("[FirstSessionTutorial] 스트레스 배지 미배선/비활성 — 스트레스 안내를 생략합니다.", this);
-                yield break;
-            }
-
-            // unit 21 — 시작 직후 바로 멈추면 "시작을 눌렀는데 아무 일도 안 일어난" 것처럼 읽힌다.
-            yield return WaitUnscaled(guidance.StressHintDelaySeconds);
-            if (!_hudHintActive) yield break; // 대기 중 페이즈 이탈
-
-            // 문구는 한 문단이다. 둘째 줄 생략 조건: 엔드리스는 분모를 표기하지 않고 유출로
-            // 패배하지도 않는다. `StressLimit > 0` 도 함께 요구한다 — _leakShowLimit 기본값이
-            // true 이고 _leakLimit 기본값이 0 이라, 스냅샷(SetLeakStatus)이 아직 안 왔거나
-            // ActiveDeck 이 없으면 `스트레스가 0이 되면 패배합니다.` 가 경고 없이 나간다.
-            // 안내는 거짓말보다 침묵이 낫다.
-            string text = HudHintStressText;
-            if (scoreHud.ShowsStressLimit && scoreHud.StressLimit > 0)
-                text += "\n" + string.Format(HudHintStressLimitFormat, scoreHud.StressLimit);
-
-            // **전투 정지.** 글로벌 Time.timeScale 이 아니라 Battle 도메인 lease 다 — 시뮬(BattleSimGroup
-            // 의 BattleScaledRateManager)·타이머·웨이브 스폰이 함께 멈추고(셋 다 _battleClock 기반),
-            // 안내 자신은 unscaled 라 계속 흐른다. 손패 슬로모(0.3x)와 겹쳐도 승자 규칙
-            // (priority 동률 → scale asc)상 0 이 이기고, 해제하면 0.3x 로 정확히 복귀한다.
-            _stressHintPause?.Dispose(); // 중복 획득 방지 — 소유는 항상 하나
-            _stressHintPause = TimeManager.Instance.Request(TimeDomain.Battle, 0f);
-
-            // 말풍선을 배지·링 아래로 내린다. 배지는 우상단 214~278 이고 링은 ~297 까지 온다 —
-            // 와이드 화면에서는 수평으로 안 겹치지만 4:3 급에서는 겹친다(TutorialGuidanceStyle 주석).
-            // 이 앵커는 체인이 끝날 때까지 유지한다(웨이브 스텝에서 되돌리지 않는다).
-            guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.HudHint);
-            guidance.ShowMessage(text, showSkip: false);
-            guidance.FocusUi(badge);
-            guidance.SetTapToContinue(true);
-
-            // 탭 대기. 만료 폴백이 없으면 탭 유실 시 lease 가 남아 **그 판이 영구 정지**한다
-            // (ResetAll 안전망은 매치 경계에만 있다). 클래스 안내와 같은 이유의 안전장치다.
-            _stressHintTapped = false;
-            _stressHintWaitingTap = true;
-            float elapsed = 0f;
-            float limit = Mathf.Max(0.1f, guidance.StressHintFallbackSeconds);
-            while (!_stressHintTapped && elapsed < limit && _hudHintActive)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                yield return null;
-            }
-            _stressHintWaitingTap = false;
-            if (!_hudHintActive) yield break; // 정리 경로가 이미 lease·캐처를 걷었다
-
-            guidance.SetTapToContinue(false);
-            _stressHintPause?.Dispose();
-            _stressHintPause = null;
-        }
-
-        private RectTransform ResolveStressBadgeRect() =>
-            scoreHud != null ? scoreHud.StressBadgeRect : null;
-
-        // unit 20 — ③④ 다음 웨이브. 점수를 위해 당길 수 있다는 선택지와 그 조건을 알린다.
-        // **클릭을 요구하지 않는다**(사용자 결정 2026-08-01) — 문구 자체가 "지금 누르지 마"이고,
-        // 첫 판에 웨이브를 겹치게 만들면 안내가 패배를 유도한다.
-        private IEnumerator NextWaveHintSteps()
-        {
-            yield return WaitForHintTarget(ResolveWaveButtonRect);
-            // 미배선과 버튼 부재는 다른 사건이다. 앞은 씬 배선 버그(경고), 뒤는 레거시 덱
-            // (생성 웨이브 아님)의 **정상** 경로다 — 후자를 경고로 올리면 정상 플레이가 콘솔을
-            // 더럽히고 "경고 0" 완료 기준과 모순된다.
-            if (waveDock == null)
-            {
-                Debug.LogWarning("[FirstSessionTutorial] waveDock 미배선 — 웨이브 안내를 생략합니다.", this);
-                yield break;
-            }
-            RectTransform button = ResolveWaveButtonRect();
-            if (button == null || !button.gameObject.activeInHierarchy)
-            {
-                Debug.Log("[FirstSessionTutorial] 다음 웨이브 버튼 부재(생성 웨이브 아님) — 웨이브 안내를 생략합니다.", this);
-                yield break;
-            }
-
-            // 앵커는 스트레스 스텝이 내려둔 HudHint 를 **그대로 유지한다.** Default(184)로 되돌리면
-            // 방금 가르친 스트레스 배지를 이 두 줄이 덮는다(4:3 급 화면). 대상이 좌하단이라
-            // 말풍선이 아래에 있어도 지시 관계는 흐려지지 않는다. 원복은 StopBattleHudHint 가 한다.
-            guidance.ShowMessage(HudHintWaveText, showSkip: false);
-            guidance.FocusUi(button);
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
-
-            guidance.ShowMessage(HudHintWaveCaveatText, showSkip: false);
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
-        }
-
-        private RectTransform ResolveWaveButtonRect() =>
-            waveDock != null ? waveDock.WaveButtonRect : null;
-
-        // FocusUi 는 대상이 activeInHierarchy 가 아니면 **링을 조용히 끈다**(0단계가 빠졌던
-        // 함정). HUD 뷰들은 자기 Update 에서 lazily 구독·활성화되고 PhaseChanged 구독자 순서는
-        // 보장되지 않으므로, 한 프레임 양보 후 짧게 폴링한다. 시간이 지나도 비활성이면 호출자가
-        // 그 스텝만 생략한다(fail-open — 전투 플레이를 잠그지 않는다).
-        // rect 를 값이 아니라 함수로 받는 이유: 대상 자체가 나중에 생성되는 뷰도 있다(unit 20).
-        private IEnumerator WaitForHintTarget(System.Func<RectTransform> resolve)
-        {
-            yield return null;
-            float limit = guidance != null ? guidance.HudHintTargetWaitSeconds : 0f;
-            float elapsed = 0f;
-            while (elapsed < limit)
-            {
-                var rect = resolve();
-                if (rect != null && rect.gameObject.activeInHierarchy) yield break;
-                elapsed += Time.unscaledDeltaTime;
-                yield return null;
-            }
-        }
-
-        // ── Gift walkthrough (second battle, core done) ─────────────────────
-        // GiftPhaseView owns the hold/tap seam; this only supplies the copy, the
-        // elevated bubble, and the completion save. Card kind/counts come straight
-        // from the composed deck so the text never drifts from the actual gift.
-
-        private void OnGiftHoldEntered(GiftPhaseView.GiftTutorialHold hold)
-        {
-            if (guidance == null) return;
-            guidance.SetElevated(true);
-            int baseN = handController != null ? handController.GiftBaseCards.Count : 10;
-            int added = handController != null ? handController.GiftAddedCards.Count : 2;
-            if (hold == GiftPhaseView.GiftTutorialHold.Reveal)
-            {
-                string kind = handController != null && handController.GiftKind == GiftKind.Rim ? "림" : "루시드";
-                guidance.ShowMessage(
-                    $"{kind}의 선물은 내 덱 {baseN}장에 더해 꿈결의 집행자들이 {added}장의 추가 드림캐쳐를 제공합니다.",
-                    showSkip: false);
-            }
-            else
-            {
-                guidance.ShowMessage(
-                    $"{baseN}장 + {added}장의 카드가 무작위로 섞여서 덱 순서가 배정됩니다.",
-                    showSkip: false);
-            }
-        }
-
-        private void OnGiftHoldReleased(GiftPhaseView.GiftTutorialHold hold)
-        {
-            if (guidance == null) return;
-            if (hold == GiftPhaseView.GiftTutorialHold.Reveal)
-            {
-                // 스택 수렴은 짧다 — 문구만 접고 elevated 는 셔플 홀드까지 유지.
-                guidance.ShowMessage(null, showSkip: false);
-                return;
-            }
-            // 셔플 홀드 해제 = 완료 저장 지점(사용자 결정 2026-07-20).
-            CompleteGiftProgress();
-            guidance.Hide();
-            guidance.SetElevated(false);
-        }
-
-        private void CompleteGiftProgress()
-        {
-            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null) return;
-            if (!TutorialProgress.CompleteGiftTutorial(profileSO.profile)) return;
-            TrySaveProfile();
-        }
-
-        private void ResetAwakeningSession(bool hide)
-        {
-            _cardInstructionShowing = false;
-            if (_awakeningRoutine != null)
-            {
-                StopCoroutine(_awakeningRoutine);
-                _awakeningRoutine = null;
-            }
-            if (_awakeningIntroRoutine != null)
-            {
-                StopCoroutine(_awakeningIntroRoutine);
-                _awakeningIntroRoutine = null;
-            }
-            _awakeningOfferedThisBattle = false;
-            // unit 17 — 경로별 래치도 함께(unit 12 의 비대칭 방지 규칙 계승).
-            _dragHintShownThisBattle = false;
-            _tapHintShownThisBattle = false;
-            _awakeningIntroShownThisBattle = false;
-            // unit 19 — 판당 래치만 되돌린다. 체인 중단은 StopBattleHudHint 의 소유이고
-            // 이 함수는 그 핸들을 건드리지 않는다(각성 핸들과 달리 임의 중단 지점이 없다).
-            _hudHintShownThisBattle = false;
-            if (hide && !_coreActive) guidance?.Hide();
         }
 
         private void TrySaveProfile()
