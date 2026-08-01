@@ -370,5 +370,64 @@ namespace Wassup.Tests.EditMode
                 new Vector2(0.18f, 1f), new Vector2(0.72f, 0.22f), 4, out var a3, out _);
             Assert.AreNotEqual(a1.x, a3.x, "다른 seq → 좌우 변주(boardRight=x)가 달라야 한다");
         }
+
+        // --- flight-lift-feel unit 0 — FlightTimeRemap (비행 구간 ease-out-in 시간 재매핑) ---
+
+        [Test]
+        public void FlightTimeRemap_PowerOne_IsIdentity()
+        {
+            foreach (float u in new[] { 0f, 0.25f, 0.5f, 0.75f, 1f })
+                Assert.AreEqual(u, KeyringSim.FlightTimeRemap(u, 1f), 0f,
+                    "power=1 은 항등 — 현행 선형 비행과 byte-identical 이어야 무회귀다");
+        }
+
+        [Test]
+        public void FlightTimeRemap_Endpoints_Exact()
+        {
+            foreach (float p in new[] { 0.5f, 0.7f, 0.9f })
+            {
+                Assert.AreEqual(0f, KeyringSim.FlightTimeRemap(0f, p), 1e-5f, $"p={p} 시작점");
+                Assert.AreEqual(1f, KeyringSim.FlightTimeRemap(1f, p), 1e-5f, $"p={p} 끝점");
+            }
+        }
+
+        [Test]
+        public void FlightTimeRemap_IsMonotonicIncreasing()
+        {
+            float prev = -1f;
+            for (int i = 0; i <= 100; i++)
+            {
+                float v = KeyringSim.FlightTimeRemap(i / 100f, 0.7f);
+                Assert.Greater(v, prev, "재매핑은 순증가 — 뒤로 가는 프레임이 있으면 안 된다");
+                prev = v;
+            }
+        }
+
+        [Test]
+        public void FlightTimeRemap_IsSymmetric()
+        {
+            for (int i = 0; i <= 10; i++)
+            {
+                float u = i / 10f;
+                Assert.AreEqual(1f,
+                    KeyringSim.FlightTimeRemap(u, 0.7f) + KeyringSim.FlightTimeRemap(1f - u, 0.7f),
+                    1e-5f, "상승/하강 리듬은 대칭이어야 한다");
+            }
+        }
+
+        [Test]
+        public void FlightTimeRemap_LowPower_HangsAtMiddle()
+        {
+            const float d = 0.01f;
+            float MidSlope(float p) =>
+                (KeyringSim.FlightTimeRemap(0.5f + d, p) - KeyringSim.FlightTimeRemap(0.5f - d, p)) / (2f * d);
+            float StartSlope(float p) =>
+                (KeyringSim.FlightTimeRemap(d, p) - KeyringSim.FlightTimeRemap(0f, p)) / d;
+
+            Assert.Less(MidSlope(0.7f), StartSlope(0.7f),
+                "power<1 = 양 끝 빠르고 중간 느림(초반 급상승 → 정점 체공 → 후반 급하강)");
+            Assert.AreEqual(MidSlope(1f), StartSlope(1f), 1e-3f,
+                "power=1 은 등속이라 중앙과 끝 기울기가 같다");
+        }
     }
 }
