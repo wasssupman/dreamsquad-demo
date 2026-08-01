@@ -1,6 +1,9 @@
 # flight-lift-feel — 뜬 높이의 시각 규칙 + 아치 비행 감각 튜닝
 
-> 상태: **작성 2026-08-01 (구현 전)**. 설계 승인 완료, units 0~3 미착수.
+> 상태: **units 0~3 구현·커밋 완료 2026-08-01, 사용자 Play 감각 확인 대기.**
+> `3743abb0`(unit 0) · `fe6a54f1`(unit 1) · `4874e7c5`(unit 2) · `3c364ed3`+`9674b4bc`(unit 3) ·
+> `60041776`(아치 높이 4.5) · `c6f6405e`(코드 리뷰 반영). EditMode 1790 중 1788 통과·실패 0.
+> 미해결 리뷰 지적 3건은 하단 **"열린 결정"** 참조.
 
 ## 목표
 
@@ -84,7 +87,25 @@
 | 이벤트 큐 | **N/A** | 신규 채널 0. 기존 `BossLeapVisualEventsSingleton`·`KnockupVisualEventsSingleton` 소비만 |
 | View/Pool | unit 1·2 | `SpineUnitView`·`QuadUnitView` 에 스케일 슬롯 + `BlobShadow` 반응. 뷰 3종 중 디펜더 폴백(`transform.position` 직접 경로)은 **N/A — 개발용 폴백** |
 | 체력 표시 | 무변경 | 오버헤드 앵커는 뷰 transform 기반(`BattleBridge.cs:3459`)이라 자동 추종 |
-| 씬 wiring | `BattleBridge` 노브 7개 | lift 반응 5(unit 1) + 도약 리듬 2(unit 3). 드롭 리듬 2 는 SO(`DragSwaySettings`)라 씬 무관. **코드 기본값이 곧 초기값**이라 미배선도 무회귀 |
+| 씬 wiring | `BattleBridge` 노브 8개 | lift 반응 5(unit 1) + 도약 리듬 3(unit 3). 드롭 리듬 3 은 SO(`DragSwaySettings`)라 씬 무관. **코드 기본값이 곧 초기값**이라 미배선도 무회귀 |
+
+## 열린 결정 (코드 리뷰 2026-08-01 · 사용자 판단 대기)
+
+1. **lift 의 축이 소비처마다 다르다 — 계약 2·3 의 실질 위반.** 드롭·재배치는 `Dot(…, camUp)` 로
+   **화면 세로 상승분**을 lift 로 넘기고, 도약·넉업은 `_flightHeight`/`CurrentHopOffset()` 즉
+   **월드 +Y** 를 넘긴다. 배틀 카메라 pitch 60° → `camUp = (0, 0.5, 0.866)` 이라 **정확히 2배**
+   어긋난다. 실측: 도약 apex 1.8(월드 +Y) → 화면 0.9 상승에 ×1.25 배, 드롭 apex 1.8(camUp) →
+   화면 1.8 상승에 같은 ×1.25 배. 즉 **화면에서 두 배 솟은 유닛이 같은 크기**다.
+   → 후보 해법: lift 의 정의를 "화면 세로 상승분" 으로 못박고, 도약·넉업 쪽에 `camUp.y` 를 곱한다
+   (뷰가 카메라를 참조하지 않는다는 boss-jjangssen unit 7 결정과 충돌하므로 `BattleBridge` 가
+   `CameraUpY` 를 미러하는 형태). Play 에서 두 연출의 크기 단서가 실제로 어긋나 보이는지 먼저 판단.
+2. **실그림자 경로에서 그림자 반응이 없고, 오히려 커진다.** `1_lift_visual_response.md` 하단
+   "알려진 제약" 참조. 그림자 계약이 현재 모바일 경로 전용이다.
+3. **드롭·재배치에서 블롭이 놓인 타일에 남지 않는다.** 아치가 `camUp` 방향이라 `camUp.z = 0.866`
+   성분이 유닛의 월드 Z 를 민다 — apex 1.8 에서 **약 1.56 타일** 미끄러진다. `BlobShadow` 는 Y 만
+   지면 고정하고 XZ 는 `_target.position` 을 따르기 때문. 이번 변경 이전부터의 기하지만 축소·페이드를
+   얹으며 눈에 띄게 됐다. 해법은 그림자 앵커를 `p` 가 아니라 기저선(`Lerp(start,end,t)`)으로 잡는 것.
+   (1 을 고쳐도 남는 별건 — 1 은 측정축, 3 은 위치다.)
 
 ## 후속 후보 (범위 밖)
 

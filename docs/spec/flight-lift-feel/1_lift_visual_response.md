@@ -97,4 +97,17 @@ private void ApplyColor()
 - **펀치 무회귀**: 카드 흡수 임팩트(`PlayPunch`)가 이전과 같이 튀고 원래 크기로 복귀. 비행 중 펀치가
   들어와도 둘이 곱해질 뿐 어느 쪽도 사라지지 않는다
 - **배치 드래그 dim 무회귀**: 드래그 중 적 그림자 페이드가 그대로 동작
-- `liftScalePerHeight = 0` 으로 두면 전 반응이 꺼져 현행과 동일
+- **전 반응 OFF = 노브 3개**: `liftScalePerHeight 0` + `liftShadowMinScale 1` + `liftShadowMinAlpha 1`.
+  스케일과 그림자는 **독립 노브**라 `liftScalePerHeight` 하나만 0 으로 두면 유닛 크기만 원복되고
+  그림자는 계속 줄고 옅어진다. 무회귀 판정 때 셋 다 내려야 한다.
+
+## 알려진 제약 — 실그림자 경로에서는 그림자 반응이 없다
+
+`SpineUnitView.ApplyTilemapShadow` 는 `BattleBridge.UseRealShadows` 가 참이면 **블롭을 만들지 않는다**
+(둘은 상호배타). `UseRealShadows = useRealShadows && !isMobilePlatform` 이고 씬은 `useRealShadows: 1`
+이므로 **에디터·데스크톱에서는 `_blob == null` → 그림자 반응이 전부 no-op** 이다. 이 유닛의 그림자
+계약은 현재 **모바일(강제 블롭) 경로에서만** 성립한다.
+
+게다가 실그림자 경로에서는 유닛 확대가 renderer 실루엣을 키우므로 **바닥 cast 그림자가 같이 커진다** —
+"뜰수록 그림자가 작아진다"의 반대 신호다. 에디터에서 의도한 그림자 단서를 보려면
+`BattleBridge.useRealShadows` 를 끄고 확인한다.
