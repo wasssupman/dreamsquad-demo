@@ -26,6 +26,7 @@ MonoBehaviour:
   deployCutsceneSwipeRefSpeed: 925
   deployCutsceneSwipeSmoothing: 13.81
   placementStickMargin: 0.607
+  placementOutsideToleranceCells: 1
   placementCommitInterval: 0.093
   stickyLiquidEnabled: 1
   tapTravelDuration: 1.5
@@ -46,10 +47,16 @@ MonoBehaviour:
   dropRecoilSeconds: 0.12
   dropRecoilDip: 0.35
   dropArcHeightFactor: 1.399
-  dropArcMinHeight: 3.5
+  dropArcMinHeight: 4.5
   dropLaunchControl: {x: 0.25, y: 1}
   dropLandingHeight: 0.25
   dropCordSnapFade: 0.15
   dropRingFade: 0.3
+  dropHangPower: 0.7
+  dropLandingSquash: 0.1
+  dropLandingSquashSeconds: 0.05
   placementPointerOffsetHeightRatio: 0.1
   placementPointerOffsetRampDistance: 60
+  cancelPreviewAlpha: 0.4
+  cancelTint: {r: 1, g: 0.42, b: 0.36, a: 1}
+  cancelHintDwellSeconds: 0.18

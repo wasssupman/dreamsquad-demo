@@ -3361,6 +3361,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51e3e73f1575f4fdba65d717ba8ca3bb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstSessionTutorialController
+  handController: {fileID: 2054561897}
+  gaugeView: {fileID: 1012444854}
+  handView: {fileID: 1558370269}
+  scoreHud: {fileID: 1279129162}
+  waveDock: {fileID: 1151968987}
+  giftView: {fileID: 1586207281}
+  gimmickView: {fileID: 283596198}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   gameManager: {fileID: 1495062450}
   placementView: {fileID: 1628485822}
@@ -3368,13 +3375,6 @@ MonoBehaviour:
   mapView: {fileID: 172395674}
   mainCamera: {fileID: 1420088185}
   guidance: {fileID: 1572896087}
-  handController: {fileID: 2054561897}
-  gaugeView: {fileID: 1012444854}
-  handView: {fileID: 1558370269}
-  giftView: {fileID: 1586207281}
-  scoreHud: {fileID: 1279129162}
-  waveDock: {fileID: 1151968987}
-  gimmickView: {fileID: 283596198}
 --- !u!114 &1572896087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4232,9 +4232,12 @@ MonoBehaviour:
   bossLeapRecoilSeconds: 0.14
   bossLeapRecoilDip: 0.35
   bossLeapArcHeightFactor: 0.5
-  bossLeapArcMinHeight: 3.5
+  bossLeapArcMinHeight: 4.5
   bossLeapLaunchControl: {x: 0.25, y: 1}
   bossLeapLandingHeight: 0.25
+  bossLeapHangPower: 0.7
+  bossLeapLandingSquash: 0.1
+  bossLeapLandingSquashSeconds: 0.05
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
   mapPool: {fileID: 11400000, guid: 947db597914b146e8b8551fc3b0820db, type: 2}
   endlessEncounter:
@@ -4299,6 +4302,11 @@ MonoBehaviour:
   blobShadowSize: 1
   blobShadowColor: {r: 0, g: 0, b: 0, a: 0.3}
   blobShadowGroundY: 0.216
+  liftScalePerHeight: 0.14
+  liftScaleMax: 1.35
+  liftShadowFullHeight: 3
+  liftShadowMinScale: 0.55
+  liftShadowMinAlpha: 0.35
   useRealShadows: 1
   mobilePropBudgetScale: 0.5
   tilemapHiddenEnvironment: []
