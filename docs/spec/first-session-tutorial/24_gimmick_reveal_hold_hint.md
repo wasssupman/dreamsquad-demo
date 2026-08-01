@@ -96,8 +96,9 @@ order 체계가 `10 ↔ 40` 이던 시절(unit 8)의 잔재이고 unit 14 의 14
 
 ## 완료 기준
 
-- [ ] compile clean · EditMode 실패 0(기준선 대비 증가 없음).
-- [ ] 씬 배선 실측: `gimmickView → GimmickPhaseView`.
+- [x] compile clean · EditMode **1786 중 실패 0**.
+- [x] 씬 배선 실측(`SerializedObject`): `gimmickView` → `GimmickPhaseView` **컴포넌트**,
+      대상 GameObject active, `tutorialHoldFallbackSec = 20`.
 - [ ] **두 번째 판**: 선물 홀드 2회 통과 후 리빌이 요약에서 멈추고 말풍선 한 줄이 뜬다. 탭하면
       퇴장 → 배치. 말풍선이 아이콘·룰 라벨·요약·탭힌트 어느 것도 가리지 않는다.
 - [ ] **세 번째 판 이후 미노출** — 리빌이 기존 타임라인(자동 퇴장)으로 돌아온다.
@@ -109,3 +110,6 @@ order 체계가 `10 ↔ 40` 이던 시절(unit 8)의 잔재이고 unit 14 의 14
       유실 없음 · 잔여 `TutorialHoldReleased` 발행 없음).
 - [ ] **TestMode 진입 회귀** — `fastForwardInTestMode` 로 선물을 건너뛴 매치(`GiftPhaseView.cs:159`)
       에서도 리빌·홀드가 정상 동작한다(게이트를 선물에 체인하지 않은 근거의 실증).
+
+구현: 2026-08-01. **미확인 항목은 전부 사용자 Play 확인 대기** — 위 체크 안 된 6줄이 그것이다.
+`revealHintMessageTopOffset 880` 은 레이아웃 계산에서 나온 값이라 실화면 확정이 필요하다.

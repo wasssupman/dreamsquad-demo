@@ -51,6 +51,12 @@ namespace Wassup.UI
         private CanvasGroup _tapHintGroup;
         private Sequence _seq;
         private float _startedAt;
+        // first-session-tutorial unit 24 — 튜토리얼 홀드. 진입 시 캐시하고 연출 도중 재평가하지
+        // 않는다(선물 unit 7 선례). `_holding` 이 해제의 단일 가드다 — 탭과 만료 폴백이
+        // 경쟁하므로, 먼저 진입한 쪽이 이걸 내려 두 번째를 막는다.
+        private bool _tutorialMode;
+        private bool _holding;
+        private float _holdStartedAt;
         private GameObject _vfxInstance;
         private Sprite _particleSprite;
         private readonly System.Collections.Generic.List<Image> _particles = new();
@@ -84,6 +90,12 @@ namespace Wassup.UI
             }
         }
 
+        // unit 24 — 튜토리얼 홀드 seam. 문구는 구독자(FirstSessionTutorialController) 소관이고
+        // 이 뷰는 문구를 모른다. 구독자가 없어도 탭 진행은 뷰 단독으로 동작한다.
+        // 홀드가 하나뿐이라 선물의 GiftTutorialHold 같은 enum 은 두지 않는다.
+        public event Action TutorialHoldEntered;
+        public event Action TutorialHoldReleased;
+
         /// 선물 페이즈가 배치로 넘어가기 직전에 호출. onDone 은 어떤 경로로든 정확히 한 번 불린다.
         public void BeginReveal(Action onDone)
         {
@@ -103,6 +115,18 @@ namespace Wassup.UI
                 return;
             }
 
+            // unit 24 — 구독자가 없으면 홀드하지 않는다. 선물(unit 7)은 "구독자 없어도 뷰 단독
+            // 진행" 이지만 여기선 그러면 안 된다: 완료 저장의 주인이 구독자라, 미배선 상태에서
+            // 홀드하면 문구 없는 정지가 **매 판** 반복된다(저장할 사람이 없으니 영원히 pending).
+            // 참조 누락은 "안내 생략" 으로 떨어지는 것이 이 프로젝트의 fail-open 계약이다.
+            _tutorialMode = TutorialHoldEntered != null &&
+                            TutorialProgress.ShouldRunGimmickRevealHint(profileSO);
+
+            // unit 24 — 이 SetPhase 는 반드시 Play() **앞**이어야 한다.
+            // FirstSessionTutorialController.OnPhaseChanged 가 `phase != Placement` 에서
+            // ResetAwakeningSession(hide: true) → guidance.Hide() 를 부르고 Gimmick 도 여기 걸린다.
+            // SetPhase 는 동기 발화라, 여기서 부르면 그 Hide() 가 홀드 말풍선보다 몇 초 먼저
+            // 지나간다. 순서를 뒤집으면 말풍선이 뜨자마자 지워진다.
             if (gm != null) gm.SetPhase(GamePhase.Gimmick);
             Play(gimmick);
         }
@@ -146,10 +170,59 @@ namespace Wassup.UI
             _seq.Group(Tween.Alpha(_tapHintGroup, TapHintAlpha, summaryFade, Ease.OutQuad,
                 startDelay: config.beatNameSec - lead + summaryFade));
 
+            // unit 24 — 튜토리얼 모드는 여기서 시퀀스를 끝내고 무기한 홀드로 들어간다. 요약이
+            // 다 뜬 자리라 화면에 정보가 전부 나와 있고, 튜토리얼은 거기에 구조 한 줄만 얹는다.
+            if (_tutorialMode)
+            {
+                _seq.ChainCallback(EnterTutorialHold);
+                return;
+            }
+
             _seq.ChainDelay(config.summaryHoldSec);
+            PlayExit();
+        }
+
+        // 퇴장 = 페이드아웃 → Finish. 일반 모드는 위 시퀀스에 이어 붙고, 튜토리얼 모드는
+        // 홀드 해제 시점에 새 시퀀스로 재생한다.
+        private void PlayExit()
+        {
             _seq.Chain(Tween.Alpha(_rootGroup, 0f, config.beatOutSec, Ease.InQuad));
             // 자기 콜백 안에서 Stop 금지(BossWarningView 교훈) — 완주 경로는 시퀀스를 건드리지 않는다.
             _seq.ChainCallback(() => Finish(stopSeq: false));
+        }
+
+        // ── 튜토리얼 홀드 (unit 24) ──────────────────────────────────────────
+
+        private void EnterTutorialHold()
+        {
+            if (_onDone == null) return; // 이미 정리된 뒤 도착한 콜백
+            _holding = true;
+            // grace 를 오탭 debounce 로 재사용한다 — 홀드 진입 순간의 잔여 탭이 문구를
+            // 읽기도 전에 소진시키는 걸 막는다(선물 unit 7 과 같은 처리).
+            _holdStartedAt = Time.unscaledTime;
+            _startedAt = _holdStartedAt;
+            TutorialHoldEntered?.Invoke();
+        }
+
+        private void Update()
+        {
+            if (!_holding || config == null) return;
+            if (Time.unscaledTime - _holdStartedAt < config.tutorialHoldFallbackSec) return;
+            // 만료 폴백 — 리빌엔 Skip 버튼이 없어서 홀드가 안 풀리면 배치에 영영 못 간다.
+            ReleaseTutorialHold();
+        }
+
+        // 탭과 만료 폴백이 경쟁한다. 진입한 쪽이 `_holding` 을 즉시 내려 두 번째를 막는다 —
+        // 없으면 퇴장 트윈이 같은 _rootGroup.alpha 에 두 번 걸려 깜빡이고 이벤트가 두 번 나간다.
+        // Finish 가 _onDone 을 먼저 비우는 것과 같은 형태다.
+        private void ReleaseTutorialHold()
+        {
+            if (!_holding) return;
+            _holding = false;
+            TutorialHoldReleased?.Invoke();
+            if (_onDone == null) return; // 구독자가 종료 경로를 탔다면 여기서 멈춘다
+            _seq = Sequence.Create(useUnscaledTime: true);
+            PlayExit();
         }
 
         private void OnPanelTapped()
@@ -157,6 +230,13 @@ namespace Wassup.UI
             if (_onDone == null) return;
             // grace — 연출 시작 직후 오탭이 통째로 날리는 걸 막는다(GiftPhaseView 선례).
             if (config != null && Time.unscaledTime - _startedAt < config.tapSkipGraceSec) return;
+            // unit 24 — 튜토리얼 모드에서 탭은 **홀드 중일 때만** 진행시킨다. 홀드 전 탭이
+            // 연출을 통째로 날리면 읽을 것이 사라진다(기존 탭 스킵 비활성 — 선물과 같은 결정).
+            if (_tutorialMode)
+            {
+                ReleaseTutorialHold();
+                return;
+            }
             Finish(stopSeq: true);
         }
 
@@ -164,6 +244,11 @@ namespace Wassup.UI
         private void Finish(bool stopSeq)
         {
             if (stopSeq && _seq.isAlive) _seq.Stop();
+            // unit 24 — 홀드 상태도 여기서 걷는다. 조용히 내리는 것이 요점이다: 이탈·재진입에서
+            // TutorialHoldReleased 를 발행하면 구독자가 완료를 저장해, 플레이어가 문구를 읽지도
+            // 않은 판에서 안내가 소진된다.
+            _holding = false;
+            _tutorialMode = false;
             DespawnVfx();
             if (_panel != null) _panel.SetActive(false);
             var callback = _onDone;

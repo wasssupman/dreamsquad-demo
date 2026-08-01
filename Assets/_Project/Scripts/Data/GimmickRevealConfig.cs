@@ -38,6 +38,13 @@ namespace Wassup.Data
         public float summaryHoldSec = 2f;
         [Tooltip("탭 스킵이 먹기 시작하는 시점. 연출 시작 직후 오탭이 통째로 날리는 걸 막는다.")]
         public float tapSkipGraceSec = 0.25f;
+        // first-session-tutorial unit 24 — 튜토리얼 홀드의 만료 폴백. 리빌엔 Skip 버튼이 없고,
+        // 홀드가 안 풀리면 ProceedToPlacement 가 영영 안 불려 **그 판이 죽는다**
+        // (classHintFallbackSeconds · stressHintFallbackSeconds 와 같은 목적). 값을
+        // TutorialGuidanceStyle 에 두지 않는 이유는 의존 방향이다 — 이 뷰는 Wassup.UI 이고
+        // 그 SO 는 Wassup.UI.Tutorial 이라, 참조하면 연출 뷰가 튜토리얼을 알게 된다.
+        [Tooltip("튜토리얼 홀드가 탭 없이 자동 해제되기까지의 시간(초). 읽기엔 넉넉하고 죽은 판은 안 만드는 값.")]
+        public float tutorialHoldFallbackSec = 20f;
 
         [Header("모양")]
         [Tooltip("배경 딤 알파. UiOverlay.Dim 보다 옅게 — 맵이 비쳐야 '이 판'이라는 느낌이 산다.")]

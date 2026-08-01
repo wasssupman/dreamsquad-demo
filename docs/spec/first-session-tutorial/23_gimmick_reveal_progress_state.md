@@ -61,9 +61,11 @@ CompleteGimmickRevealHint(profile)  // 형제와 동일한 "이미 최신이면 
 
 ## 완료 기준
 
-- [ ] compile clean (Runtime · Tests.EditMode · Tests.PlayMode).
-- [ ] `TutorialProgressTests` 신규: pending 기본값 true · `Complete…` 1회만 true · `ResetAll` 이
-      이 토큰만 다를 때도 `changed == true` · `ResetAllInJson` 이 같은 조건에서 `changed == true`
-      이고 다른 토큰을 보존한다.
-- [ ] EditMode 전체 실패 0 (직전 기준선 대비 증가 없음).
-- [ ] **런타임 동작 변화 없음** — 리빌·선물·각성 안내가 이 커밋 전후로 동일하다.
+- [x] compile clean (Runtime · Tests.EditMode · Tests.PlayMode).
+- [x] `TutorialProgressTests` 신규 4건: 게이트가 아무것도 체인하지 않고 세션 가드는 유지 ·
+      `Complete…` 1회만 true 이고 형제 토큰 미소비 · `ResetAll` 이 이 토큰만 다를 때도
+      `changed == true` · `ResetAllInJson` 이 같은 조건에서 `changed == true` 이고 미지 필드 보존.
+- [x] EditMode **1781 중 실패 0** (기준선 1777 + 신규 4). skipped 2 는 기존 명시 Ignore.
+- [x] **런타임 동작 변화 없음** — 신규 토큰·앵커를 읽는 호출처가 unit 24 전까지 없다.
+
+구현: 2026-08-01 · 커밋 `5be4fa9b`. 에디터가 Play 중이라 테스트 첫 실행이 거부됨 — 재시도로 통과.

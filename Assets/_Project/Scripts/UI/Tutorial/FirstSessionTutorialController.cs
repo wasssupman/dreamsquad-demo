@@ -70,6 +70,7 @@ namespace Wassup.UI.Tutorial
             }
             SubscribeAwakening();
             SubscribeGift();
+            SubscribeGimmickReveal();
         }
 
         private void Start()
@@ -91,12 +92,15 @@ namespace Wassup.UI.Tutorial
             }
             UnsubscribeAwakening();
             UnsubscribeGift();
+            UnsubscribeGimmickReveal();
             UnsubscribeDrag();
             EndCore(restoreNormalPlacement: true);
             // unit 19 — 정리 경로 ②. 바로 위 EndCore 에 기대면 안 된다: 체인 구간은 core 가 이미
             // 끝나 있어 EndCore 가 `!_coreActive` 로 조기 return 하므로, 체인이 세운 상태
             // (코루틴 · 말풍선 · 앵커 · 정지 lease)는 아무도 되돌리지 않는다.
             StopBattleHudHint();
+            // unit 24 — 리빌 홀드 중 이탈이면 말풍선·앵커가 남는다. 완료는 저장하지 않는다.
+            StopGimmickRevealHint();
             ResetAwakeningSession(hide: true);
             ResetBattleHudLatches();
             guidance?.SetElevated(false);
@@ -349,6 +353,9 @@ namespace Wassup.UI.Tutorial
 
             // unit 19 — 정리 경로 ①. 어느 phase 로 나가든(Tally · Placement · Lobby) 체인을 걷는다.
             StopBattleHudHint();
+            // unit 24 — 리빌 안내도 같은 자리에서 걷는다. Gimmick 자신은 제외 — 이 페이즈로
+            // **들어오는** 전이가 리빌 시작이고, 홀드는 그 뒤에 열린다.
+            if (phase != GamePhase.Gimmick) StopGimmickRevealHint();
 
             if (phase != GamePhase.Placement)
             {
