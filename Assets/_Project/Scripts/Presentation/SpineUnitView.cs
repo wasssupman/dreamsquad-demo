@@ -58,7 +58,7 @@ namespace Wassup.Presentation
             // 로 한 번 써버린다.
             float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
             _baseScale = new Vector3(s, s, s); // card-fly unit 1 — 펀치 펄스 복귀 기준
-            transform.localScale = _baseScale;
+            ApplyRenderScale();                // 계약 4 — localScale 직접 대입은 여기서도 하지 않는다
             ApplyRenderPosition(worldPos);
 
             _skeleton = gameObject.AddComponent<SkeletonAnimation>();
@@ -414,15 +414,18 @@ namespace Wassup.Presentation
 
         private System.Collections.IEnumerator SquashRoutine(float amount, float seconds)
         {
+            // ⚠ k 를 **증분 전에** 적용한다. 증분을 먼저 하면 첫 렌더 프레임의 k 가 이미 1 미만이라
+            // authored amount 에 영영 도달하지 못하고, 세기가 프레임레이트에 비례해 달라진다
+            // (60fps k=0.67 / 30fps k=0.33 → 같은 SO 값이 실기기에서 절반 세기로 재생).
             float e = 0f;
-            while (e < seconds)
+            while (true)
             {
-                e += Time.unscaledDeltaTime;
-                if (_dying) break;
-                float k = 1f - Mathf.Clamp01(e / seconds);   // 눌림 최대 → 0 으로 복귀
+                float k = 1f - Mathf.Clamp01(e / seconds);   // 눌림 최대(1) → 0 으로 복귀
                 _squash = new Vector3(1f + amount * k, 1f - amount * k, 1f + amount * k);
                 ApplyRenderScale();
+                if (e >= seconds || _dying) break;
                 yield return null;
+                e += Time.unscaledDeltaTime;
             }
             _squash = Vector3.one;
             if (!_dying) ApplyRenderScale();
@@ -586,6 +589,14 @@ namespace Wassup.Presentation
         {
             if (_dying) return;
             _dying = true;
+            // flight-lift-feel — 사망 프레임에 비행 배율을 원복한다. Kill 이후엔 UpdatePosition 이 오지
+            // 않으므로(NotifyDeath 가 같은 프레임에 풀에서 제거) lift 확대·그림자 축소가 **그대로 굳는다.**
+            // 넉업 정점에서 처치되는 것은 상시 경로라 매 판 수십 회 걸린다. 아래 walkFactor 원복과 같은 이유.
+            _flightScale = 1f;
+            _punchScale = 1f;
+            _squash = Vector3.one;
+            ApplyRenderScale();
+            if (_blob != null) _blob.SetFlight(1f, 1f);
             string death = ResolveAnimation(_visualData.SpineDeathAnimation);
             if (_skeleton == null || string.IsNullOrEmpty(death))
             {

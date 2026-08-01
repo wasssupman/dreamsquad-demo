@@ -137,8 +137,8 @@ namespace Wassup.UI
         // 총 시간은 바뀌지 않는다 — 드롭의 "비행 창 ⊆ pending 창" 계약이 그대로 산다.
         public static float FlightTimeRemap(float u, float power)
         {
+            u = Mathf.Clamp01(u);               // 정의역 보장은 분기 앞 — 조기 반환도 같은 계약을 지킨다
             if (power >= 0.999f) return u;      // 항등 조기 반환 — 기본값 경로에 pow 비용·오차 0
-            u = Mathf.Clamp01(u);
             float p = Mathf.Max(0.05f, power);  // 0 은 계단 함수라 금지
             return u < 0.5f
                 ? 0.5f * Mathf.Pow(2f * u, p)

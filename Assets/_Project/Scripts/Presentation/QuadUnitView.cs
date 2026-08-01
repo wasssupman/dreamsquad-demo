@@ -51,7 +51,7 @@ namespace Wassup.Presentation
             Mesh quad = mesh != null ? mesh : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             // flight-lift-feel unit 1 — 비행 확대의 복귀 기준. 스케일 쓰기는 ApplyRenderScale 단일 지점.
             _baseScale = Vector3.one * Mathf.Max(0.01f, visualScale);
-            transform.localScale = _baseScale;
+            ApplyRenderScale();                // 계약 4 — localScale 직접 대입은 여기서도 하지 않는다
 
             // tilted-billboard unit 4a — Spine 과 동일 메커니즘: object-space unlit + Billboard transform 틸트.
             // 발 피벗: Quad(센터, Y −0.5..0.5)를 +0.5 올려 밑동을 root 원점(셀)에 둔다 → 틸트가 발 기준.
