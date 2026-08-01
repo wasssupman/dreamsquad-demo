@@ -57,6 +57,10 @@
 - **`StopGimmickRevealHint` 는 완료를 저장하지 않는다.** 저장은 실제로 홀드를 통과한
   `OnGimmickHoldReleased` 에만 있다. 정리 창구가 저장까지 하면 조용히 끝난 판에서 안내가 소진돼
   플레이어가 문구를 영영 못 본다.
+- **`OnGimmickHoldReleased` 의 `_gimmickHintActive` 가드를 빼지 말 것.** guidance 가 미배선이면
+  `OnGimmickHoldEntered` 가 조기 return 해 **아무것도 못 보여준 채** 뷰만 홀드한다. 그 상태로
+  저장하면 문구를 한 번도 못 본 판에서 안내가 소진된다. "구독자 없으면 홀드 안 함"과 같은 계열의
+  구멍이고, 둘 다 **참조 누락은 안내 생략으로 떨어진다**는 fail-open 계약의 표현이다.
 - **`Finish` 는 홀드를 조용히 내린다** — `TutorialHoldReleased` 를 발행하지 않는다. 발행하면
   재진입·이탈이 위와 같은 소진을 만든다. 대신 말풍선·앵커는 컨트롤러의 정리 창구가 걷는다.
 - **홀드 해제는 `_holding` 가드 하나가 소유한다.** 탭과 폴백이 경쟁하므로 진입한 쪽이 즉시

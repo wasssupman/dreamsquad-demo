@@ -60,8 +60,13 @@ namespace Wassup.UI.Tutorial
 
         // 완료 저장은 **실제로 홀드를 통과한** 이 경로에만 있다. 아래 정리 창구는 저장하지
         // 않는다 — 조용히 끝난 판에서 안내가 소진되면 플레이어가 문구를 영영 못 본다.
+        //
+        // `_gimmickHintActive` 가드가 여기 있는 이유는 같은 계열의 다른 구멍이다: guidance 가
+        // 미배선이면 위 Entered 가 조기 return 해 **아무것도 못 보여준 채** 뷰만 홀드한다.
+        // 그 상태로 저장하면 플레이어가 문구를 한 번도 못 본 판에서 안내가 소진된다.
         private void OnGimmickHoldReleased()
         {
+            if (!_gimmickHintActive) return;
             CompleteGimmickRevealProgress();
             StopGimmickRevealHint();
         }
