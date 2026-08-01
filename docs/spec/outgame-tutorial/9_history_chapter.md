@@ -56,10 +56,12 @@ C 가 B 의 플래그를 다시 쓰고 C 는 영원히 pending 이 된다").
 
 ## 완료 기준
 
-- [ ] compile clean · EditMode 실패 0.
-- [ ] 씬 배선 실측: `historyButton` → 로비 `HistoryButton`.
-- [ ] 두 판을 끝낸 실계정으로 로비 도착 → dim + 히스토리 버튼 포커스 + 문구.
-- [ ] **dim 탭 무반응**, 히스토리 버튼을 실제로 누르면 패널이 열리고 챕터가 종료된다.
+- [x] compile clean · EditMode **1796 중 실패 0**.
+- [x] 씬 배선 실측: `historyButton` → 로비 `HistoryButton`(`Button` 존재, 형제 배선 무손상).
+- [x] 두 판을 끝낸 실계정으로 로비 도착 → dim + 히스토리 버튼 포커스 + 문구.
+      (**사용자 Play 확인 2026-08-01 통과.** 프로필 실측: `matchesPlayed 3` ·
+      `lobbyHistoryHintVersion 1` — 완료 저장은 버튼 클릭 경로에만 있으므로 실제로 눌러 끝난 것.)
+- [ ] **dim 탭 무반응** 재확인 (노출·클릭 경로는 확인됨).
 - [ ] 재진입 시 미노출(완료 저장). `RESET TUTORIAL` 후에는 **판을 더 뛰지 않아도** 다시 뜬다
       (`matchesPlayed` 는 리셋 대상이 아니다).
 - [ ] **게스트 계정에서 미노출** — 버튼이 숨겨져 있고 챕터가 열리지 않는다(로비가 잠기지 않는다).

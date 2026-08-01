@@ -90,31 +90,53 @@ namespace Wassup.Core
         {
             if (CurrentPhase == phase) return;
             CurrentPhase = phase;
-            // outgame-tutorial unit 8 — 매치당 정확히 1회. 위 `CurrentPhase == phase` 가드와
-            // Result 의 단일 호출처(BattleBridge.CheckVictory)가 그걸 함께 보장한다.
-            // 중도 이탈은 세지 않는다 — 끝까지 본 판만 "친 판" 이다.
             if (phase == GamePhase.Result) RecordMatchPlayed();
             PhaseChanged?.Invoke(phase);
         }
 
-        // 로비 챕터 D 가 읽는 독립 신호. 저장 실패는 경고만 남기고 판 흐름을 막지 않는다
-        // (튜토리얼 컨트롤러들의 TrySaveProfile 과 같은 fail-open).
+        // outgame-tutorial unit 8 rev — 로비 챕터 D 가 읽는 독립 신호.
         //
-        // **세는 기준 = "완주한 배틀"** 이다. Test Mode 도 엔드리스도 포함한다 —
-        // ReportMatchResult 가 IsEndless 를 배제하는 것과 대칭이 아닌 건 의도다(그쪽은 토너먼트
-        // 집계라 모드를 가려야 하고, 이쪽은 "판을 해봤나" 라는 경험 신호다).
-        // 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는 배치 전
-        // StartTestModeMatch 에서 1회 소비돼(아래 Clear) Result 시점엔 이미 Active=false 라,
+        // **세는 기준 = "히스토리에 남는 판"** 이다. 처음엔 "완주한 판" 으로 잡았는데 그건
+        // 틀렸다: `나가기`(MenuPopup.OnExit)는 Result 를 거치지 않고 씬을 떠나지만
+        // `AbandonMatch` 가 0점으로 마감해 **그 판도 자기 엔트리로 히스토리에 남는다**
+        // (TournamentMatchReporter 주석). 챕터 D 가 가르치는 게 바로 그 히스토리이므로,
+        // 카운터와 안내가 같은 것을 세야 한다. 그래서 호출처가 둘이다 —
+        // `SetPhase(Result)` 와 `MenuPopup.OnExit`.
+        //
+        // Test Mode 도 엔드리스도 포함한다. `ReportMatchResult` 가 `IsEndless` 를 배제하는 것과
+        // 대칭이 아닌 건 의도다(그쪽은 토너먼트 집계라 모드를 가려야 하고, 이쪽은 "판을
+        // 해봤나" 라는 경험 신호다). 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는
+        // 배치 전 StartTestModeMatch 에서 1회 소비돼 Result 시점엔 이미 Active=false 라,
         // 여기에 그 가드를 넣으면 아무 일도 하지 않는 죽은 코드가 된다.
-        private void RecordMatchPlayed()
+        //
+        // 호출처가 둘이 되면서 래치가 필수다. `GameManager` 는 배틀 스코프라 인스턴스 수명이
+        // 곧 한 판이므로 평범한 필드로 충분하다. (dormant 인 `OnRestartRequested` 가 되살아나
+        // 같은 씬에서 판을 다시 돌리게 되면 그때 이 래치를 리셋해야 한다.)
+        private bool _matchRecorded;
+
+        // 교체 가능한 저장 seam. 이 프로젝트의 프로필 쓰기 주체는 전부 이걸 갖는다
+        // (FirstSessionTutorialController · OutgameTutorialController · SquadCharacterPageController).
+        // 없으면 증가 로직에 테스트를 붙일 때 개발자의 실제 profile.json 을 재작성하게 된다.
+        [System.NonSerialized] internal System.Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
+
+        /// 이 판을 "플레이한 판" 으로 기록한다. 판당 1회만 먹히므로 두 종료 경로가 함께 불러도 안전하다.
+        public void RecordMatchPlayed()
         {
+            if (_matchRecorded) return;
             // 이번 세션에 로드된 프로필일 때만 쓴다 — BattleScene 직접 Play 는 프로필이 없고,
             // 그때 Save 하면 빈 인메모리 상태가 디스크의 스쿼드·덱을 덮는다.
-            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null) return;
+            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null)
+            {
+                // 조용히 빠지면 "가드에 막혔나 / 아예 안 불렸나" 를 구분할 수 없다(이 결함을
+                // 실제로 진단하지 못했던 이유다). 정상 경로에선 안 울린다.
+                Debug.Log("[GameManager] matchesPlayed 기록 생략 — 이번 세션에 로드된 프로필이 아니다.", this);
+                return;
+            }
+            _matchRecorded = true;
             profileSO.profile.matchesPlayed++;
             try
             {
-                ProfileStore.Save(profileSO.profile);
+                (ProfileSaver ?? ProfileStore.Save)(profileSO.profile);
             }
             catch (System.Exception e)
             {

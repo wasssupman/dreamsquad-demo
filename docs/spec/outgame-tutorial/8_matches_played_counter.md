@@ -22,14 +22,26 @@ fail-open 경로를 타면 뒤 안내가 **영영 발화하지 못한다**. 이 
 남아야 안내를 다시 보려고 두 판을 더 뛸 필요가 없고, 의미상으로도 매치 이력은 튜토리얼 진행이
 아니다.
 
-**증가 지점**: `GameManager.SetPhase` 가 `GamePhase.Result` 로 전이할 때 1회. 근거 —
-`SetPhase` 는 맨 앞에 `if (CurrentPhase == phase) return;` 가드가 있고(`GameManager.cs:90`),
-`Result` 의 호출처는 `BattleBridge.cs:4734` **하나**뿐이라 매치당 정확히 한 번이다. 중도 이탈은
-세지 않는다(사양 — 끝까지 본 판만 "친 판"이다).
+**증가 지점**: 종료 경로 **둘** 다. `GameManager.RecordMatchPlayed()` 를 판당 1회 래치로 두고
+`SetPhase(GamePhase.Result)`(결과 화면까지 본 판)와 `MenuPopup.OnExit`(나가기)에서 부른다.
+나가기 호출은 **`SceneTransition.Go` 앞**이어야 한다 — 전환 뒤엔 `GameManager` 가 이미 파괴돼
+기록이 유실된다.
+
+**세는 기준 = "히스토리에 남는 판"** 이다(2026-08-01 정정). 처음엔 "완주한 판" 으로 잡고 중도
+이탈을 뺐는데 그건 틀렸다 — `나가기` 는 `Result` 를 거치지 않지만 `AbandonMatch` 가 0점으로
+마감해 **그 판도 자기 엔트리로 히스토리에 남는다**(`TournamentMatchReporter.cs:272-274`).
+챕터 D 가 가르치는 대상이 바로 그 히스토리이므로, 카운터와 안내가 같은 것을 세야 한다.
+이 오판정 때문에 두 판을 뛰고도 카운터가 1 에 머물러 챕터 D 가 안 뜨는 결함이 실제로 났다.
 
 저장은 `profileSO` 가 **이번 세션에 로드된 경우에만** 한다(`IsLoadedThisSession`). BattleScene
-직접 Play 는 프로필이 없으므로 조용히 건너뛴다 — 튜토리얼 컨트롤러들의 `TrySaveProfile` 과 같은
-가드다. 실패는 경고 로그만 남기고 판 흐름을 막지 않는다.
+직접 Play 는 프로필이 없으므로 건너뛴다 — 튜토리얼 컨트롤러들의 `TrySaveProfile` 과 같은 가드다.
+**단 조용히 빠지지 않고 로그를 남긴다**: 조기 return 이 무음이면 "가드에 막혔나 / 아예 안
+불렸나" 를 데이터로 구분할 수 없고, 위 결함을 실제로 진단하지 못한 이유가 그것이었다.
+저장 실패는 경고만 남기고 판 흐름을 막지 않는다.
+
+**`ProfileSaver` 주입 seam을 둔다.** 이 프로젝트의 프로필 쓰기 주체는 전부 갖고 있는 패턴이고
+(`FirstSessionTutorialController`·`OutgameTutorialController`·`SquadCharacterPageController`),
+없으면 증가 로직에 테스트를 붙일 때 개발자의 실제 `profile.json` 을 재작성하게 된다.
 
 **세는 기준 = "완주한 배틀"** 이다. Test Mode 도 엔드리스도 포함한다. `ReportMatchResult` 가
 `IsEndless` 를 배제하는 것과 대칭이 아닌 건 의도다 — 그쪽은 토너먼트 집계라 모드를 가려야 하고,
@@ -51,4 +63,7 @@ fail-open 경로를 타면 뒤 안내가 **영영 발화하지 못한다**. 이 
 - [ ] **`matchesPlayed` 는 `ResetAll` 이 건드리지 않는다**는 것을 테스트로 고정한다(반대 방향의
       회귀 — 누가 "튜토리얼 토큰이니까" 하고 리셋에 넣는 것을 막는다).
 - [ ] EditMode 전체 실패 0.
+- [ ] `GameManagerMatchCountTests`: 결과 화면 경로 · **나가기 경로** · 두 신호가 겹쳐도 1회 ·
+      기존 값에 누적 · 미로드 프로필은 증가·저장 없음 · 저장 실패 fail-open.
 - [ ] 판을 끝까지 한 번 진행하면 `profile.json` 의 `matchesPlayed` 가 1 늘어난다.
+- [ ] **나가기로 끝낸 판도** 1 늘어난다.

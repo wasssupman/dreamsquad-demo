@@ -97,6 +97,11 @@ namespace Wassup.UI
             // 이 attempt 의 덱을 그대로 준다(세션 부재면 null → 키 생략).
             Wassup.Core.Api.TournamentMatchReporter.AbandonMatch(
                 GameManager.Instance?.Logger?.DeckInfoJson());
+            // outgame-tutorial unit 8 rev — 나가기로 끝낸 판도 히스토리에 자기 엔트리를 남기므로
+            // (바로 위 AbandonMatch) "플레이한 판" 으로 센다. 로비 챕터 D 가 가르치는 게 그
+            // 히스토리라, 카운터와 안내가 같은 것을 세야 한다.
+            // **씬 전환 앞이어야 한다** — 전환 뒤엔 GameManager 가 이미 파괴돼 기록이 유실된다.
+            GameManager.Instance?.RecordMatchPlayed();
             SceneTransition.Go(SceneNames.Outgame);
         }
 
