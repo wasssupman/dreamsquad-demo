@@ -131,6 +131,24 @@
 | View | 프리팹 내부 Shuriken PS / `MeteorFall.cs` | 풀링 없음, 타이머 Destroy |
 | 씬 wiring | BattleBridge.vfxSpawner + 슬롯별 프리팹 할당 | |
 
+## 본 부착 VFX — 무기 궤적 (spine-weapon-trail)
+
+one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, Spine 본을 따라간다.**
+스포너도 큐도 새로 만들지 않는다 — 유닛 SO 가 리그 프리팹을 들고, 뷰가 공격 사건에 재생을 건다.
+새 "본 부착" 계열(꼬리·오라 트레일 등)은 이 표를 기준으로 삼는다.
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/ISpineUnitVisualData.cs` — `SpineWeaponTrailPrefab` / `…EndNormalized` | ★디펜더·적 **공용** 인터페이스. 범위는 타입이 아니라 **프리팹 할당**이 정한다 |
+| 룩 SO | `_Project/VFX/WeaponTrailPreset_*.asset` (벤더 `HS_SwordTrailPreset` 복사본 7종) | 벤더 프리셋 직접 참조 불가 — sortingOrder/recalcOnAwake/startActive 3개를 반드시 덮어야 한다 |
+| 프리팹 소스 | `_Project/VFX/WeaponTrail_Slash.prefab`(base) + 룩별 **Prefab Variant** | 리그 = 빈 Animator + BoneFollower + `HS_SwordMeshTrail` + `WeaponTrailRig` + Point A/B. Animator 빠지면 상시 방출 |
+| ECS | **N/A — 시뮬 무관.** 궤적은 판정에 기여하지 않는다 | |
+| 트리거 | 기존 `UnitAttackVisualEvents` drain → `SpineUnitView.PlayAttack` | **신규 큐 0** |
+| View | `Presentation/WeaponTrailRig.cs` — `Bind(SkeletonRenderer)` / `Play(sec)` | 호스트는 이 둘만 안다. `Bind(null)` = 본 없는 호스트(구조물) 경로 |
+| Pool | **N/A — 유닛당 1개, 유닛 수명과 동일** | 생성 메시 레이어는 **씬 루트** 오브젝트(부모 없음) |
+| 정렬 | `BoardSortOrder.WeaponTrailOrder` + 프리셋 layer sortingOrder | ★실제 적용값은 **프리셋**(HS 가 매 LateUpdate 되쓴다). 파티클은 리그가 소유하고 호스트 스윕이 `IsChildOf` 로 제외 |
+| 씬 wiring | **N/A — 씬 오브젝트 신설 없음** | 프리팹 참조는 유닛 SO 가 들고 있다 |
+
 ## 데미지 넘버
 
 | 정거장 | 앵커 | 확인 포인트 |

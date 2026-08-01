@@ -585,6 +585,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **Placement drag-preview polish** → `docs/spec/placement-drag-preview-polish/` (completed 2026-07-04, units 0~1 + rev — 프리뷰 빌보드 각도 정합 + 매달린 키링 velocity-lean sway(SO 튜닝) + 프랍 위 정렬. Play(MCP) 검증)
 - **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-06, units 0~7 — 스쿼드 4슬롯 장착 + set-then-apply 반입 + 개별 아이템 64종(순차 id·캐파 내 티어 스탯) + 코스트 생산속도 매치 배선 + 아이콘 스크롤 피커. 리뷰 4단 + 실측 검증. 획득/인벤토리는 후속)
 
+- **Spine weapon trail** → `docs/spec/spine-weapon-trail/` (completed 2026-08-01, units 0~4 — Hovl `HS_SwordMeshTrail` 을 Spine `Gear` 본에 물린 무기 궤적. 룩 7종 Variant + Guardian/Fighter 7종 + 보스 2종. 심 변경 0. 후속: 보스 궤적 크기 결정 · 구조물 호스트 · `WeaponTrailRig._stopPending` 풀링 도입 시 수정 · Lightning 룩 활용처 · 무기 종류별 프리셋 분기 · 타격 순간 강조 · 모바일 실기기 프로파일 · 공격 애니 다양성)
+
 - **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)
 
 - **Projectile GA reskin** → `docs/spec/projectile-ga-reskin/` (completed 2026-07-03, units 0~6 — GabrielAguiar UniqueProjectiles Vol4 50종 라이브러리 + 스트립/스왑 툴 + ViewPool as-is 가드(streak/preserveVfxColors) + 높이오프셋 + ProjectileOffset sorting + muzzle-hit. 실게임 검증 PASS. 최종 변종선택/스케일/미사용정리는 사용자 취향 후속)

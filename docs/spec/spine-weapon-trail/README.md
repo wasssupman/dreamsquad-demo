@@ -1,6 +1,8 @@
 # spine-weapon-trail — Spine 유닛 공격 무기 궤적
 
-> 상태: **units 0~3 구현 완료 · 코드 리뷰 반영 완료 · 보스 크기 결정 1건 남음** (2026-08-01)
+> 상태: **완료 2026-08-01** (units 0~4 · 코드 리뷰 반영 · 검증 종료)
+> 인계는 `4_handoff_summary.md`. 후속 후보는 `docs/spec/README.md` Follow-up Backlog 로 이관.
+> 남은 결정 1건: **보스 궤적 크기**(~4타일 vs 사거리 2).
 > `d37e3196` → `314c0033` → `4aab5bc7`·`71117b42`·`a340ed48`·`851ee392` → `bd6f079a`·`dd573654`
 
 ## 목표
@@ -27,7 +29,7 @@ Spine 유닛이 공격할 때 손에 든 무기가 지나간 자리에 **궤적 
 | 1 | code | `1_attack_driven_trail.md` | **완료** `314c0033` | SO opt-in 필드 + 스폰 시 부착 + `PlayAttack` Start/Stop + 가시성 판정 게이트 |
 | 2 | asset | `2_legibility_and_roster.md` | **완료** `4aab5bc7`+3 | 룩 세트 · 크기/수명 튜닝 · role 기준 로스터 · 유닛별 룩 배분 |
 | 3 | code | `3_any_host_generalization.md` | **완료** `bd6f079a` | 디펜더 종속 해제(`ISpineUnitVisualData` + `WeaponTrailRig`) + 보스 적용 |
-| 4 | docs | `4_handoff_summary.md` | 대기 | 인계 요약 |
+| 4 | docs | `4_handoff_summary.md` | **완료** | 인계 요약 |
 
 ### 검증 결과 — 전부 해소 (2026-08-01 코드 리뷰 동시 진행)
 
