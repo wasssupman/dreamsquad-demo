@@ -90,7 +90,29 @@ namespace Wassup.Core
         {
             if (CurrentPhase == phase) return;
             CurrentPhase = phase;
+            // outgame-tutorial unit 8 — 매치당 정확히 1회. 위 `CurrentPhase == phase` 가드와
+            // Result 의 단일 호출처(BattleBridge.CheckVictory)가 그걸 함께 보장한다.
+            // 중도 이탈은 세지 않는다 — 끝까지 본 판만 "친 판" 이다.
+            if (phase == GamePhase.Result) RecordMatchPlayed();
             PhaseChanged?.Invoke(phase);
+        }
+
+        // 로비 챕터 D 가 읽는 독립 신호. 저장 실패는 경고만 남기고 판 흐름을 막지 않는다
+        // (튜토리얼 컨트롤러들의 TrySaveProfile 과 같은 fail-open).
+        private void RecordMatchPlayed()
+        {
+            // 이번 세션에 로드된 프로필일 때만 쓴다 — BattleScene 직접 Play 는 프로필이 없고,
+            // 그때 Save 하면 빈 인메모리 상태가 디스크의 스쿼드·덱을 덮는다.
+            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null) return;
+            profileSO.profile.matchesPlayed++;
+            try
+            {
+                ProfileStore.Save(profileSO.profile);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[GameManager] matchesPlayed 저장 실패 — 무시하고 진행합니다: {e.Message}", this);
+            }
         }
 
         // 타겟 프레임 60 고정 — 앱 전역 관심사라 씬/인스턴스와 무관하게 앱 시작 시 1회만 세팅한다.

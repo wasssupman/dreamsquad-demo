@@ -18,6 +18,9 @@ namespace Wassup.Core
         public const int LobbyLoadoutHintVersion = 1;
         public const int LobbyKeyringHintVersion = 1;
         public const int GimmickRevealHintVersion = 1;
+        public const int LobbyHistoryHintVersion = 1;
+        // outgame-tutorial unit 9 — 챕터 D 가 요구하는 최소 매치 수. "두 번째 판 이후" 다.
+        public const int HistoryHintMatchesRequired = 2;
 
         public static bool ShouldRunCore(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsCorePending(holder.profile);
@@ -102,6 +105,9 @@ namespace Wassup.Core
         public static bool IsGimmickRevealHintPending(PlayerProfile profile) =>
             profile != null && profile.gimmickRevealHintVersion < GimmickRevealHintVersion;
 
+        public static bool IsLobbyHistoryHintPending(PlayerProfile profile) =>
+            profile != null && profile.lobbyHistoryHintVersion < LobbyHistoryHintVersion;
+
         public static bool CompleteCore(PlayerProfile profile)
         {
             if (profile == null || profile.firstBattleTutorialVersion >= CoreVersion) return false;
@@ -158,6 +164,13 @@ namespace Wassup.Core
             return true;
         }
 
+        public static bool CompleteLobbyHistoryHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.lobbyHistoryHintVersion >= LobbyHistoryHintVersion) return false;
+            profile.lobbyHistoryHintVersion = LobbyHistoryHintVersion;
+            return true;
+        }
+
         // Tutorial replay support. This deliberately touches only tutorial
         // progress; squad, deck, account, and every other profile field remain.
         public static bool ResetAll(PlayerProfile profile)
@@ -168,7 +181,9 @@ namespace Wassup.Core
                            profile.awakeningTapAttachHintVersion != 0 ||
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
                            profile.lobbyLoadoutHintVersion != 0 || profile.lobbyKeyringHintVersion != 0 ||
-                           profile.gimmickRevealHintVersion != 0;
+                           profile.gimmickRevealHintVersion != 0 || profile.lobbyHistoryHintVersion != 0;
+            // `matchesPlayed` 는 여기 없다 — 튜토리얼 진행이 아니라 매치 이력이다(unit 8).
+            // 넣으면 RESET TUTORIAL 후 챕터 D 를 보려고 두 판을 다시 뛰어야 한다.
             profile.firstBattleTutorialVersion = 0;
             profile.awakeningHintVersion = 0;
             profile.awakeningTapAttachHintVersion = 0;
@@ -177,6 +192,7 @@ namespace Wassup.Core
             profile.lobbyLoadoutHintVersion = 0;
             profile.lobbyKeyringHintVersion = 0;
             profile.gimmickRevealHintVersion = 0;
+            profile.lobbyHistoryHintVersion = 0;
             return changed;
         }
 
@@ -195,11 +211,14 @@ namespace Wassup.Core
             int lobbyHint = root.Value<int?>(nameof(PlayerProfile.lobbyLoadoutHintVersion)) ?? 0;
             int lobbyKeyring = root.Value<int?>(nameof(PlayerProfile.lobbyKeyringHintVersion)) ?? 0;
             int gimmickReveal = root.Value<int?>(nameof(PlayerProfile.gimmickRevealHintVersion)) ?? 0;
+            // `matchesPlayed` 는 읽지도 쓰지도 않는다 — 튜토리얼 진행이 아니다(unit 8).
+            int lobbyHistory = root.Value<int?>(nameof(PlayerProfile.lobbyHistoryHintVersion)) ?? 0;
             // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
             // gates the backup and the file replacement on it, so a token that is only
             // written below would never reach disk when it is the sole difference.
             changed = core != 0 || awakening != 0 || tapAttach != 0 || gift != 0 ||
-                      lobbyIntro != 0 || lobbyHint != 0 || lobbyKeyring != 0 || gimmickReveal != 0;
+                      lobbyIntro != 0 || lobbyHint != 0 || lobbyKeyring != 0 || gimmickReveal != 0 ||
+                      lobbyHistory != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
             root[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
@@ -208,6 +227,7 @@ namespace Wassup.Core
             root[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
             root[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
             root[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
+            root[nameof(PlayerProfile.lobbyHistoryHintVersion)] = 0;
             return root.ToString(Formatting.Indented);
         }
     }

@@ -44,6 +44,15 @@ namespace Wassup.Core
         // ShouldRunCore), so this fires on the first reveal the player ever sees.
         // Additive like the rest — 0 means pending.
         public int gimmickRevealHintVersion;
+        // outgame-tutorial unit 8 — 챕터 D 가 "두 번째 판 이후" 를 판정하는 **독립 신호**.
+        // 앞 챕터 완료를 체인하면 선행 안내가 fail-open 경로를 탄 계정이 뒤 안내를 영영 못 본다.
+        //
+        // 위 버전 토큰들과 성격이 다르다 — **튜토리얼 진행이 아니라 매치 이력**이므로
+        // TutorialProgress.ResetAll 이 건드리지 않는다. RESET TUTORIAL 후에 안내를 다시 보려고
+        // 두 판을 더 뛸 필요가 없어야 하고, 의미상으로도 리셋 대상이 아니다.
+        public int matchesPlayed;
+        // outgame-tutorial unit 8 — 챕터 D(히스토리 버튼). Additive like the rest — 0 means pending.
+        public int lobbyHistoryHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.

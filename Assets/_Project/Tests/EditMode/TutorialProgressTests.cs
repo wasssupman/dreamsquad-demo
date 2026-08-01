@@ -270,6 +270,7 @@ namespace Wassup.Tests.EditMode
             expected[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
             expected[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
+            expected[nameof(PlayerProfile.lobbyHistoryHintVersion)] = 0;
 
             string result = TutorialProgress.ResetAllInJson(source, out bool changed);
 
@@ -565,6 +566,91 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.gimmickRevealHintVersion)));
             Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
             Assert.AreEqual(12345, stored["futureAccountData"]?["currency"]?.Value<int>());
+        }
+
+        // ── outgame-tutorial units 8~9 — 챕터 D(히스토리) ─────────────────────
+
+        [Test]
+        public void LobbyHistoryHintCompletion_IsIdempotentAndTouchesNothingElse()
+        {
+            var profile = new PlayerProfile();
+            Assert.IsTrue(TutorialProgress.IsLobbyHistoryHintPending(profile));
+
+            Assert.IsTrue(TutorialProgress.CompleteLobbyHistoryHint(profile));
+            Assert.IsFalse(TutorialProgress.IsLobbyHistoryHintPending(profile));
+            Assert.IsFalse(TutorialProgress.CompleteLobbyHistoryHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteLobbyHistoryHint(null));
+
+            // D 완료가 형제 챕터를 소비하면 안 된다.
+            Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
+
+            var ahead = new PlayerProfile
+            {
+                lobbyHistoryHintVersion = TutorialProgress.LobbyHistoryHintVersion + 1,
+            };
+            Assert.IsFalse(TutorialProgress.IsLobbyHistoryHintPending(ahead));
+        }
+
+        [Test]
+        public void ResetAll_ReportsChanged_WhenOnlyHistoryTokenIsSet()
+        {
+            var profile = new PlayerProfile
+            {
+                selectedSquadId = "keep_squad",
+                lobbyHistoryHintVersion = TutorialProgress.LobbyHistoryHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile),
+                "히스토리 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, profile.lobbyHistoryHintVersion);
+            Assert.AreEqual("keep_squad", profile.selectedSquadId);
+            Assert.IsFalse(TutorialProgress.ResetAll(profile), "멱등");
+        }
+
+        [Test]
+        public void ResetAllInJson_ReportsChanged_WhenOnlyHistoryTokenIsSet()
+        {
+            const string source = @"{
+                'firstBattleTutorialVersion': 0,
+                'awakeningHintVersion': 0,
+                'awakeningTapAttachHintVersion': 0,
+                'giftTutorialVersion': 0,
+                'lobbyIntroVersion': 0,
+                'lobbyLoadoutHintVersion': 0,
+                'lobbyKeyringHintVersion': 0,
+                'gimmickRevealHintVersion': 0,
+                'lobbyHistoryHintVersion': 1,
+                'selectedSquadId': 'keep_squad'
+            }";
+
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "히스토리 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, JObject.Parse(result)
+                .Value<int>(nameof(PlayerProfile.lobbyHistoryHintVersion)));
+        }
+
+        // unit 8 — **역방향** 회귀. `matchesPlayed` 는 튜토리얼 진행이 아니라 매치 이력이라
+        // 리셋 대상이 아니다. 누가 "프로필의 튜토리얼 관련 필드니까" 하고 ResetAll 에 넣으면
+        // RESET TUTORIAL 이후 챕터 D 를 보려고 두 판을 다시 뛰어야 한다.
+        [Test]
+        public void ResetAll_DoesNotClearMatchesPlayed()
+        {
+            var profile = new PlayerProfile
+            {
+                matchesPlayed = 7,
+                lobbyHistoryHintVersion = TutorialProgress.LobbyHistoryHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile));
+            Assert.AreEqual(7, profile.matchesPlayed, "매치 이력은 튜토리얼 리셋 대상이 아니다");
+
+            const string source = @"{ 'matchesPlayed': 7, 'lobbyHistoryHintVersion': 1 }";
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+            Assert.IsTrue(changed);
+            Assert.AreEqual(7, JObject.Parse(result).Value<int>(nameof(PlayerProfile.matchesPlayed)));
         }
 
         [Test]
