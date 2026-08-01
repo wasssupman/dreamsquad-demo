@@ -4228,7 +4228,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20ee017e5853b409b9a881da2f00bda9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Bridge.BattleBridge
-  bossLeapTotalSeconds: 0.83
+  bossLeapTotalSeconds: 2
   bossLeapRecoilSeconds: 0.14
   bossLeapRecoilDip: 0.35
   bossLeapArcHeightFactor: 0.5
@@ -4300,14 +4300,14 @@ MonoBehaviour:
   propDistanceTiltMax: 62
   blobShadowSprite: {fileID: 21300000, guid: 952c54b00e0c643b7a3c22cd1f3b3b7d, type: 3}
   blobShadowSize: 1
-  blobShadowColor: {r: 0, g: 0, b: 0, a: 0.3}
+  blobShadowColor: {r: 0, g: 0, b: 0, a: 0.5}
   blobShadowGroundY: 0.216
   liftScalePerHeight: 0.14
   liftScaleMax: 1.35
   liftShadowFullHeight: 3
   liftShadowMinScale: 0.55
   liftShadowMinAlpha: 0.35
-  useRealShadows: 1
+  useRealShadows: 0
   mobilePropBudgetScale: 0.5
   tilemapHiddenEnvironment: []
   stackModifierAuthoring:
