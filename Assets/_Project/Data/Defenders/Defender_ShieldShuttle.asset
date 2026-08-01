@@ -95,7 +95,7 @@ MonoBehaviour:
   onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
+  deploymentDuration: 2
   placementSkillDelay: 0
   awakeningReward: 4
   weaponTrailPrefab: {fileID: 2859138987981848282, guid: 42d74f8b8abbd401b89a812f414eeda8, type: 3}

@@ -123,8 +123,8 @@ namespace Wassup.Data
         public float boardDragThreshold = 16f;
 
         [Header("⑩ 드롭 하마 — 릴리스 반동→솟음→착지 (defender-drop-dismount)")]
-        [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 런타임에 deploymentDuration 으로 클램프(공중=pending 보장).")]
-        [Range(0.1f, 1f)]
+        [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 런타임에 deploymentDuration 으로 클램프(공중=pending 보장). 느리게 관찰하려면 그 값도 같이 올려야 한다.")]
+        [Range(0.1f, 3f)]
         public float dropTotalSeconds = 0.45f;
         [Tooltip("반동 구간(초) — 줄이 벙은 채 -camUp 으로 dip(힘 모으기). 총 시간 내 비율로 환산.")]
         [Range(0.02f, 0.3f)]
