@@ -9,6 +9,8 @@
 | `98952437` | docs — units 8~9 스펙 (비목표 뒤집기 근거 포함) |
 | `98c315d1` | unit 8 — `matchesPlayed` 카운터 + 챕터 D 진행 토큰 |
 | `3c996168` | unit 9 — 챕터 D(히스토리 버튼) |
+| `561c6e21` | 리뷰 반영 + handoff |
+| `d37acc76` | **fix** — 나가기 판이 카운트 안 되던 결함 + 테스트 6건 |
 
 ## Implemented
 
@@ -16,7 +18,8 @@
   `히스토리에서 지난 판의 기록을 볼 수 있어요!`. **실제로 버튼을 눌러야** 종료된다.
 - 게이트는 `matchesPlayed >= 2` 라는 **독립 신호**다 — 앞 챕터 완료를 체인하지 않는다.
 - **게스트 미노출**: 히스토리 버튼이 `HasAccount` 게이트로 비활성이라 챕터가 아예 열리지 않는다.
-- `GameManager.SetPhase` 가 `Result` 전이에서 `matchesPlayed` 를 1회 증가·저장한다.
+- `matchesPlayed` 는 **종료 경로 둘 다** 에서 늘어난다 — `SetPhase(Result)`(결과 화면)와
+  `MenuPopup.OnExit`(나가기). 판당 1회 래치로 이중 카운트를 막는다.
 
 ## Key Files
 
@@ -54,12 +57,24 @@
   복귀에서 정상 노출된다.
 - **`RecordMatchPlayed` 에 `TestModeContext.Active` 가드를 넣지 말 것.** 그 토큰은 배치 전
   `StartTestModeMatch`(`GameManager.cs:362`)에서 소비돼 Result 시점엔 이미 false 다 — 넣으면
-  아무 일도 안 하는 죽은 코드가 된다. Test Mode 도 "완주한 배틀" 로 센다(의도).
+  아무 일도 안 하는 죽은 코드가 된다. Test Mode 도 센다(의도).
+- **`MenuPopup.OnExit` 의 기록 호출을 `SceneTransition.Go` 뒤로 옮기지 말 것.** 전환 뒤엔
+  `GameManager` 가 이미 파괴돼 그 판이 통째로 유실된다.
+- **`ProfileSaver` seam 과 미로드 로그를 빼지 말 것.** 둘의 부재가 위 결함을 진단 불가능하게
+  만들었던 원인이다 — 테스트를 못 붙였고, 조기 return 이 무음이라 원인 구분이 안 됐다.
+
+## 이 spec 에서 배운 것
+
+**게이트 신호의 정의는 그 게이트가 여는 것과 같은 것을 세야 한다.** 처음엔 카운터를 "완주한
+판" 으로 잡았는데, 챕터 D 가 가르치는 히스토리에는 **나가기로 끝낸 판도 남는다**. 두 정의가
+어긋나는 순간 "두 판 했는데 안 뜬다" 가 된다. 세는 기준을 정할 땐 **그 수를 소비하는 화면이
+무엇을 보여주는지**부터 확인할 것.
 
 ## Follow-up
 
-- **사용자 Play 확인 미완** — `9_history_chapter.md` 의 완료 기준 참조. QA 는 Test Mode 로 두 판을
-  돌리면 바로 챕터 D 에 도달할 수 있다(위 Notes 참조).
+- **사용자 Play 확인 2026-08-01 통과** — 노출 · 히스토리 버튼 클릭 종료까지. 프로필 실측
+  `matchesPlayed 3` · `lobbyHistoryHintVersion 1`.
+- **dim 탭 무반응 재확인**과 **게스트 미노출**은 아직 미확인(`9_history_chapter.md` 완료 기준).
 - 백로그의 **"챕터 B 게이트를 독립 신호로 교체"** 는 이제 절반만 남았다 — `matchesPlayed` 가
   생겼으므로 B 도 같은 신호로 옮길 수 있다.
 - 온보딩 총량이 로비 4챕터로 늘었다. `first-session-tutorial` 의 **총량 다이어트** 후보와 함께 볼 것.

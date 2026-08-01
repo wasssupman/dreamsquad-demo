@@ -3,8 +3,9 @@
 > 상태: **units 0~4 완료 2026-07-21 · 동작 확인됨 · 모바일 실기기 QA 는 보류(사용자 결정) ·
 > 챕터 C(unit 6) **완료 2026-08-01** (`f0d05bd7`, 리뷰 반영 포함) — **사용자 Play 확인 통과**.
 > 인계는 `7_handoff_summary.md` ·
-> 챕터 D 히스토리(units 8~9) **구현·커밋 2026-08-01** (`98c315d1`·`3c996168`) — 컴파일·EditMode·
-> 씬 배선·코드 리뷰 통과, **사용자 Play 확인 대기**. 인계는 `10_handoff_summary.md`
+> 챕터 D 히스토리(units 8~9) **완료 2026-08-01** (`98c315d1`·`3c996168`, 카운터 fix `d37acc76`)
+> — **사용자 Play 확인 통과**(노출·클릭 종료). dim 탭 무반응·게스트 미노출은 미확인.
+> 인계는 `10_handoff_summary.md`
 > 선행: `first-session-tutorial` (완료) · `outgame-lobby-layout` (완료) · `lobby-keyring-drag` (완료)
 
 ## 검증 질문
