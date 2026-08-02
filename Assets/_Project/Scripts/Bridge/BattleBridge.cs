@@ -669,6 +669,7 @@ namespace Wassup.Bridge
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
             DisposeBossLeapChannel(); // 오버라이드 clear 포함 — 진행 중 비행이 자진 종료한다
+            DisposeUltimateLeapChannel(); // 동일 — 공중 집합 + 오버라이드 clear
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1441,6 +1442,7 @@ namespace Wassup.Bridge
             var knockupVisualSingleton = _em.CreateEntity();
             _em.AddComponentData(knockupVisualSingleton, new Wassup.Battle.Combat.KnockupVisualEventsSingleton { queue = _knockupVisualQueue });
             CreateBossLeapChannel(); // boss-jjangssen unit 6 (상태·코루틴은 BattleBridge.BossLeap.cs)
+            CreateUltimateLeapChannel(); // ultimate-leap unit 3 (상태·코루틴은 BattleBridge.UltimateLeap.cs)
 
             // beam unit 1 — 매치 경계에서 빔 세션을 전부 끊는다. 브리지는 매치 간 살아남으므로
             // (이 함수가 큐를 재생성하는 것이 그 증거) 안 끊으면 이전 매치 엔티티를 키로 든
@@ -2444,6 +2446,10 @@ namespace Wassup.Bridge
             // 오버라이드 없이 sim 좌표(=이미 착지점)를 그려 **1프레임 팝**이 보인다.
             // drop-dismount 가 "시작 오버라이드는 동기 등록" 으로 같은 함정을 막은 것과 같은 이유.
             DrainBossLeapVisualEvents();
+            // ultimate-leap unit 3 — 같은 이유로 SyncMonoUnitViews 앞이다: 이탈이 발동한 프레임에
+            // 오버라이드를 못 걸면 그 프레임 피드가 sim 좌표(=출발지)를 그린 뒤 다음 프레임에
+            // 튀어오른다. 착지도 마찬가지로 sim 이 이미 텔레포트한 좌표를 한 프레임 노출하게 된다.
+            DrainUltimateLeapVisualEvents();
             // flight-lift-feel unit 3 — lift 노브는 뷰가 **매 프레임** 읽으므로 미러도 매 프레임이다.
             // 맵 빌드 1회 스냅샷(BlobShadow* 와 같은 자리)으로 두면 Play 중 인스펙터 튜닝이 안 먹어,
             // 같이 도입된 리듬·눌림 노브 8개(SO/코루틴이 매 프레임 읽음)와 비대칭이 된다.

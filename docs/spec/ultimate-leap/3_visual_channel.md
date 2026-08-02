@@ -46,3 +46,17 @@ public struct UltimateLeapVisualEvent
 - compile 클린 · EditMode 무회귀 · 채널 lifecycle 3점 세트(생성/파괴/Dispose) 확인
 - `unity-feature-wiring` 체크: 씬 저장 없이 재생 가능한지(신규 SerializeField 는 코드 기본값)
 - (연출 Play 확인은 unit 5 통합 검증에서)
+
+## 구현 중 확정
+
+- 상승·강하를 **한 코루틴으로 잇지 않았다.** 상승이 끝나면 화면 밖 높이로 유지하며 sim 의 Descend
+  신호를 기다린다 — 브리지가 2초를 복제하면 두 시계가 갈리기 때문이다(브리지는 예고 시간을 모른다).
+  `_ultimateLeapAirborne` 집합이 "대기 중" 을 표현하고, 비우면 코루틴이 자진 종료한다.
+- Descend 는 상승 기록이 없으면 무시한다 — 취소·teardown 뒤에 허공에서 유닛이 떨어지지 않게.
+- 드레인은 `SyncMonoUnitViews` **앞**(BossLeap 드레인 옆). 뒤로 가면 이탈 프레임에 sim 좌표를,
+  착지 프레임에 이미 텔레포트한 좌표를 각각 한 프레임씩 노출한다.
+- 착지 스쿼시는 `flight-lift-feel` 의 `PlayLandingSquash` 재사용(0.14/0.06 — 일반 착지보다 세게).
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린. 채널 lifecycle 3점 세트 배선 완료.

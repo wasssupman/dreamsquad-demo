@@ -81,6 +81,9 @@ namespace Wassup.Battle.Combat
             // 비행 코루틴이 소유한다. 여기서는 "언제·어디서·어디로" 만 신호한다.
             bool hasLeapQ = SystemAPI.TryGetSingletonRW<BossLeapVisualEventsSingleton>(out var leapRW);
             NativeQueue<BossLeapVisualEvent> leapQueue = hasLeapQ ? leapRW.ValueRW.queue : default;
+            // ultimate-leap unit 3 — 이탈 연출 채널. 부재면 연출만 없고 sim 시퀀스는 그대로 돈다.
+            bool hasUltLeapQ = SystemAPI.TryGetSingletonRW<UltimateLeapVisualEventsSingleton>(out var ultLeapRW);
+            NativeQueue<UltimateLeapVisualEvent> ultLeapQueue = hasUltLeapQ ? ultLeapRW.ValueRW.queue : default;
 
             // Defender 셀 풀 = SelfBlink 착지 앵커 소스. 디펜더-only 판(last_stand 만 있고 blink
             // 슬롯 없음)에서 매 프레임 쿼리+배열 할당을 피하려 첫 SelfBlink 발동 때 지연 생성
@@ -207,6 +210,18 @@ namespace Wassup.Battle.Combat
                                     projectileDataIndex = slot.projectileDataIndex,
                                 });
                                 ecb.AddComponent<LeapFlight>(entity);
+                                // ultimate-leap unit 3 — 이탈 상승 신호. 채널 부재면 연출만 없고
+                                // sim 은 그대로 돈다(기존 채널 부재-가드 규약).
+                                if (hasUltLeapQ)
+                                {
+                                    ultLeapQueue.Enqueue(new UltimateLeapVisualEvent
+                                    {
+                                        entity = entity,
+                                        kind = UltimateLeapVisualKind.Ascend,
+                                        world = transform.ValueRO.Position,
+                                        dataIndex = -1,
+                                    });
+                                }
                             }
                             // 목적지 실패 = skip. k 는 이미 전진 — 생존당 1회라 **재시도가 없다.**
                             // 방어유닛 전멸 상황이면 어차피 응징할 밀집이 없으므로 수용.

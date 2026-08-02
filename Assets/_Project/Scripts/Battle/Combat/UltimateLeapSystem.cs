@@ -33,6 +33,8 @@ namespace Wassup.Battle.Combat
         {
             float dt = SystemAPI.Time.DeltaTime;
             bool hasBlinkQ = SystemAPI.TryGetSingletonRW<BlinkRequestEventsSingleton>(out var blinkRW);
+            // 연출 채널 부재면 강하 연출만 없고 sim 은 그대로 착지한다(기존 부재-가드 규약).
+            bool hasVisQ = SystemAPI.TryGetSingletonRW<UltimateLeapVisualEventsSingleton>(out var visRW);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // DeadTag 제외는 방어적 가드다 — 계약 3(피해 완전 차단)상 공중 사망이 없으므로
@@ -82,7 +84,20 @@ namespace Wassup.Battle.Combat
                     ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
                 }
 
-                // 3. 상태 해제 — 무적과 잠금이 함께 떨어진다(붙을 때와 대칭).
+                // 3. 강하 연출 신호 — 뷰는 지금부터 떨어지기 시작한다. sim 은 이미 착지했으므로
+                //    슬램 VFX 타이밍(뷰 도착)은 브리지가 소유한다.
+                if (hasVisQ)
+                {
+                    visRW.ValueRW.queue.Enqueue(new UltimateLeapVisualEvent
+                    {
+                        entity = entity,
+                        kind = UltimateLeapVisualKind.Descend,
+                        world = leap.landingWorld,
+                        dataIndex = leap.projectileDataIndex,
+                    });
+                }
+
+                // 4. 상태 해제 — 무적과 잠금이 함께 떨어진다(붙을 때와 대칭).
                 ecb.RemoveComponent<UltimateLeapState>(entity);
                 ecb.RemoveComponent<LeapFlight>(entity);
             }
