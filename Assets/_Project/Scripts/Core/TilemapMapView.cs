@@ -210,6 +210,8 @@ namespace Wassup.Core
             // 사거리 알파 — 펄스 제거(사용자 요청): 정적 레벨(rangePulseMaxAlpha)만 적용.
             // 세기 차이(방향 미정 십자 vs 선택된 레인)는 _rangeAlphaMul 배율로만.
             if (_rangeTilemap != null && _rangeCells.Count > 0) ApplyRangeTint();
+            // ultimate-leap unit 4 — 예고 tint 도 같은 이유로 매 프레임(셀이 있을 때만).
+            if (_telegraphCells.Count > 0) ApplyTelegraphTint();
             // placement-eligible-tile-highlight unit 1 — 배치 하이라이트 페이드인(정적, 펄스 없음).
             // range 와 독립: 탭 arm 처럼 range 가 없어도 페이드가 돌아야 한다.
             if (_placeableActive && _placeableTilemap != null)
@@ -1095,6 +1097,7 @@ namespace Wassup.Core
         // 두 번째 소비처가 생기면 그 spec 이 refcount 를 붙인다(제약 8).
         private Tilemap _telegraphTilemap;
         private readonly List<Vector2Int> _telegraphCells = new List<Vector2Int>();
+        private bool _telegraphFallbackWarned; // 배선 누락 경고 1회 제한(매 발동 스팸 방지)
 
         public void SetTelegraphCells(IReadOnlyList<Vector2Int> cells)
         {
@@ -1104,8 +1107,22 @@ namespace Wassup.Core
             // dim" 으로만 보이고, `rangeTile` 은 격자 outline 이라 면적이 없어 주변시로 안 읽힌다.
             // `telegraphTile` 은 흰색 solid + TileFlags.None 이라 아래 tint 가 원색으로 실린다.
             // 폴백은 "안 보이는 것보다 낫다" 수준의 열화 경로다.
-            var tile = _tileSet.telegraphTile != null ? _tileSet.telegraphTile
-                     : (_tileSet.placeableTile != null ? _tileSet.placeableTile : _tileSet.rangeTile);
+            var tile = _tileSet.telegraphTile;
+            if (tile == null)
+            {
+                // 폴백은 남기되(예고가 아예 안 뜨면 회피 불가 = 불공정) **한 번은 시끄럽게** 알린다.
+                // 실제로 이 조용한 열화가 "색이 안 먹는다" 로 위장해 색·정렬·머티리얼·스프라이트를
+                // 차례로 의심하게 만들었다 — 원인은 tileSet 하나의 배선 누락이었다.
+                // ⚠ tileSet 은 여러 개다(예: Generated/ 아래 실사용본). **전부** 배선해야 한다.
+                if (!_telegraphFallbackWarned)
+                {
+                    _telegraphFallbackWarned = true;
+                    Debug.LogWarning($"[TilemapMapView] '{_tileSet.name}' 에 telegraphTile 이 없어 " +
+                        "placeable/range 타일로 폴백한다 — 그 타일들은 자체 색이 있어 예고 tint 가 죽는다. " +
+                        "TileSetData.telegraphTile 을 배선하라.", this);
+                }
+                tile = _tileSet.placeableTile != null ? _tileSet.placeableTile : _tileSet.rangeTile;
+            }
             if (tile == null) return;
             ClearTelegraphCells();
             EnsureTelegraphTilemap();
@@ -1145,6 +1162,16 @@ namespace Wassup.Core
                 if (or != null) r.sharedMaterial = or.sharedMaterial;
             }
             _telegraphTilemap.color = landingTelegraphColor;
+        }
+
+        // 생성 시 1회 대입만 하면 **Play 중 인스펙터 튜닝이 안 먹는다** — 타일맵 GameObject 는 맵
+        // 리빌드까지 살아남으므로 첫 생성 때의 색이 굳는다. range 가 `ApplyRangeTint()` 를 매 프레임
+        // 호출하는 것과 같은 이유로 여기도 매 프레임 반영한다(셀이 있을 때만 — 평소 비용 0).
+        private void ApplyTelegraphTint()
+        {
+            if (_telegraphTilemap == null) return;
+            if (_telegraphTilemap.color != landingTelegraphColor)
+                _telegraphTilemap.color = landingTelegraphColor;
         }
 
         private void EnsureZoneTilemap()

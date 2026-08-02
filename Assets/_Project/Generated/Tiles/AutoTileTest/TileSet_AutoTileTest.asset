@@ -32,6 +32,7 @@ MonoBehaviour:
   aimRangeTile: {fileID: 11400000, guid: 44f6d5c4753ccd4b13d4b959565df56f, type: 2}
   aimRangeColor: {r: 1, g: 0.55, b: 0.12, a: 1}
   aimRangeAlpha: 1
+  telegraphTile: {fileID: 11400000, guid: 1723b6b0af6184505be0e6610ef2d732, type: 2}
   placeableTile: {fileID: 11400000, guid: f2d5f2261bda44f6a823d13dcece09fe, type: 2}
   placeableColor: {r: 0.5, g: 0.88, b: 1, a: 0.5}
   placeableFadeInDuration: 0.2
