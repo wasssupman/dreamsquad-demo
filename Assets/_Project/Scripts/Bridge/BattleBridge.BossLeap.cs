@@ -118,6 +118,12 @@ namespace Wassup.Bridge
                 // **첫 프레임 오버라이드는 여기서** 걸어야 한다. 걸기 전에 sim 좌표가 한 프레임이라도
                 // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다(rev 3 실측 증상).
                 _enemyViewOverride[evt.entity] = (evt.fromWorld, 0f);
+                // leap-flight-state unit 1 — 비행 창 시작. 창의 길이(뷰 시계 0.83s)를 아는 것은
+                // 비행을 구동하는 브리지뿐이라 여기가 소유다(PendingDeployment 를
+                // TryBeginDefenderDeployment/ActivateDeployedDefender 가 여닫는 선례).
+                // 오버라이드 등록과 같은 지점 — "뷰는 나는데 심은 싸우는" 조합을 구조적으로 배제한다.
+                if (HasLiveEntityManager() && !_em.HasComponent<LeapFlight>(evt.entity))
+                    _em.AddComponent<LeapFlight>(evt.entity);
                 StartCoroutine(RunBossLeap(evt));
             }
         }
@@ -184,6 +190,16 @@ namespace Wassup.Bridge
             }
 
             _enemyViewOverride.Remove(evt.entity);
+            // leap-flight-state unit 1 — 비행 창 종료. 정상 착지·abandon **양쪽 모두** 해제한다:
+            // 사망은 DeadTag 로 행동이 이미 끝나 있지만 시체에 태그를 남기지 않는 위생이 목적이고,
+            // teardown 은 월드가 곧 해체되지만 남겨서 득이 없다. 오버라이드 제거와 co-locate 해
+            // "뷰는 돌아왔는데 심은 잠긴" 조합을 구조적으로 배제한다.
+            // ⚠ `HasLiveEntityManager` 가 먼저다 — abandon 경로는 teardown 을 포함하고, 루프는
+            // 오버라이드 키 부재를 보고 `_em` 을 **건드리기 전에** 빠져나온다(단락 순서가 계약).
+            // 여기서 무방비로 `_em` 을 만지면 해체된 월드에 접근하게 된다.
+            if (HasLiveEntityManager() && _em.Exists(evt.entity)
+                && _em.HasComponent<LeapFlight>(evt.entity))
+                _em.RemoveComponent<LeapFlight>(evt.entity);
             // **abandon 이면 착지 처리를 하지 않는다.** 매치 teardown·보스 사망으로 끊긴 비행에
             // 슬램을 발사하면 이미 해체된 월드에 투사체 요청을 내게 된다(브리지는 매치 간 생존).
             if (!abandoned) ResolveLanding(evt, end);
