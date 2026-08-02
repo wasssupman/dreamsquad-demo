@@ -92,10 +92,14 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         else if (hostIsDefender && !enemyBuilt)
                         {
                             // 재조준 풀 관례: 죽은·유출된 적은 후보에서 뺀다.
+                            // ultimate-leap unit 2 — 판 밖(이탈) 적도 뺀다. 빠뜨리면 발사 명세
+                            // 패턴 유닛이 화면 밖 보스를 골라 빈 타일에 사격한다(피해는 버퍼 드랍이
+                            // 막지만 "사라졌다" 는 읽힘이 깨진다).
                             var enemyQuery = SystemAPI.QueryBuilder()
                                 .WithAll<AttackUnitTag, LocalTransform>()
                                 .WithNone<DeadTag>()
-                                .WithNone<PastGoalTag>().Build();
+                                .WithNone<PastGoalTag>()
+                                .WithNone<Wassup.Battle.Combat.UltimateLeapState>().Build();
                             enemyEntities = enemyQuery.ToEntityArray(Allocator.Temp);
                             var enemyXf = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                             enemyCells = new NativeArray<int2>(enemyXf.Length, Allocator.Temp);

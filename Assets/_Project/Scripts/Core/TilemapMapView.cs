@@ -311,6 +311,10 @@ namespace Wassup.Core
             SetRendererSorting(_rangeTilemap, above ? 10000 : -12);
             SetRendererSorting(_placeableTilemap, above ? 9998 : -13); // placement-eligible-tile-highlight unit 1
             SetRendererSorting(_zoneTilemap, above ? 9997 : -14);     // active-ally-zone unit 2
+            // ultimate-leap unit 4 — **이 목록에 반드시 있어야 한다.** 빠지면 예고가 -13 에 굳어,
+            // 플레이어가 유닛을 빼려고 드래그를 시작하는 **바로 그 순간**(이 스킬이 성립하는 순간)
+            // range/placeable 만 위로 올라가고 예고가 그 아래로 묻힌다.
+            SetRendererSorting(_telegraphTilemap, above ? 9999 : -13);
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -1154,7 +1158,9 @@ namespace Wassup.Core
             _telegraphTilemap = go.AddComponent<Tilemap>();
             var r = go.AddComponent<TilemapRenderer>();
             _telegraphTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
-            r.sortingOrder = _highlightAbove ? 9998 : -13;
+            // placeable(9998/-13) 바로 위 — 예고는 배치 하이라이트에 가리면 안 된다.
+            // ⚠ 이 값을 바꾸면 `SetPlacementHighlightAboveUnits` 의 같은 쌍도 함께 바꿔야 한다.
+            r.sortingOrder = _highlightAbove ? 9999 : -13;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용
             {

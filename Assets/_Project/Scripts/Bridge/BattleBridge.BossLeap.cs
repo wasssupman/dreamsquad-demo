@@ -197,8 +197,13 @@ namespace Wassup.Bridge
             // ⚠ `HasLiveEntityManager` 가 먼저다 — abandon 경로는 teardown 을 포함하고, 루프는
             // 오버라이드 키 부재를 보고 `_em` 을 **건드리기 전에** 빠져나온다(단락 순서가 계약).
             // 여기서 무방비로 `_em` 을 만지면 해체된 월드에 접근하게 된다.
+            // ⚠ **소유권 가드**: 같은 태그를 브리지(이 창)와 sim(궁극기 시퀀스)이 각자 붙였다 뗀다.
+            // add 는 idempotent 라 무해하지만 remove 는 아니다 — 일반 도약 비행(피격 가능) 중에
+            // 체력이 궁극기 경계를 넘으면 궁극기 창이 열리는데, 곧 끝나는 이 코루틴이 **남의
+            // 잠금을 걷어간다**(무적인 채로 공격·이동하는 보스가 된다). 궁극기가 소유 중이면 둔다.
             if (HasLiveEntityManager() && _em.Exists(evt.entity)
-                && _em.HasComponent<LeapFlight>(evt.entity))
+                && _em.HasComponent<LeapFlight>(evt.entity)
+                && !_em.HasComponent<UltimateLeapState>(evt.entity))
                 _em.RemoveComponent<LeapFlight>(evt.entity);
             // **abandon 이면 착지 처리를 하지 않는다.** 매치 teardown·보스 사망으로 끊긴 비행에
             // 슬램을 발사하면 이미 해체된 월드에 투사체 요청을 내게 된다(브리지는 매치 간 생존).

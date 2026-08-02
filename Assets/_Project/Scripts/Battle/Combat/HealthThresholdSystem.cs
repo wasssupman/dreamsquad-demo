@@ -147,15 +147,7 @@ namespace Wassup.Battle.Combat
                             // 착지 앵커 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
                             if (hasBlinkQ && !defBuilt)
                             {
-                                // boss-jjangssen unit 4 — 밀집도 판정은 셀 단위. 위치→셀 변환을
-                                // 여기서 한 번만 하고 순수 함수엔 셀만 넘긴다. transforms 는 변환
-                                // 재료일 뿐이라 이 블록 밖으로 수명을 늘리지 않는다.
-                                var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
-                                defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
-                                for (int di = 0; di < defTransforms.Length; di++)
-                                    defCells[di] = GridMath.WorldToCell(
-                                        defTransforms[di].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                defTransforms.Dispose();
+                                defCells = BuildDefenderCells(defQuery, in ff);
                                 defBuilt = true;
                             }
                             if (hasBlinkQ && TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
@@ -187,12 +179,7 @@ namespace Wassup.Battle.Combat
                             // 착지 직전 재계산하면 빨간 타일을 보고 유닛을 빼는 회피가 거짓이 된다.
                             if (!defBuilt)
                             {
-                                var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
-                                defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
-                                for (int di = 0; di < defTransforms.Length; di++)
-                                    defCells[di] = GridMath.WorldToCell(
-                                        defTransforms[di].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                defTransforms.Dispose();
+                                defCells = BuildDefenderCells(defQuery, in ff);
                                 defBuilt = true;
                             }
                             if (TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
@@ -287,9 +274,28 @@ namespace Wassup.Battle.Combat
         // OffsetDest(리더를 지나쳐 1타일)는 쓰지 않는다 — 밀집을 응징하러 뛰는 것이므로
         // 밀집 셀 자체가 desired 이고, 그 셀이 배치칸(비-walkable)이면 TryFindLandingCell 의
         // 링 탐색이 인접 walkable·연결 셀로 스냅한다(고립 포켓 착지 방지는 기존 계약).
-        // ultimate-leap unit 1 — 착지 **셀**도 함께 돌려준다. 궁극기는 예고 타일을 그려야 해서
-        // 셀이 필요하고, 월드→셀 역변환은 반올림 경계에서 원본과 갈릴 수 있다(예고와 실제 착지가
-        // 어긋나면 이 스킬의 존재 이유가 무너진다). SelfBlink 호출부는 `_` 로 버린다.
+        // boss-jjangssen unit 4 — 밀집도 판정은 셀 단위. 위치→셀 변환을 한 번만 하고 순수 함수엔
+        // 셀만 넘긴다. transforms 는 변환 재료일 뿐이라 수명을 늘리지 않는다.
+        // 반환 배열의 Dispose 는 **호출측 책임**(OnUpdate 끝의 `if (defBuilt) defCells.Dispose()`).
+        // SelfBlink·UltimateLeap 두 arm 이 같은 지연 생성을 쓰므로 한 곳에 둔다 — 세 번째 arm 이
+        // 복사본을 또 만들면 `defBuilt` 를 빠뜨려 프레임당 재할당이 조용히 시작된다.
+        private static NativeArray<int2> BuildDefenderCells(EntityQuery defQuery, in FlowFieldSingleton ff)
+        {
+            var xf = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var cells = new NativeArray<int2>(xf.Length, Allocator.Temp);
+            for (int i = 0; i < xf.Length; i++)
+                cells[i] = GridMath.WorldToCell(xf[i].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
+            xf.Dispose();
+            return cells;
+        }
+
+        // ultimate-leap unit 1 — 착지 **셀**도 함께 돌려준다.
+        // (정정: 초판 주석은 "월드→셀 역변환이 반올림 경계에서 갈릴 수 있다" 고 적었으나 **거짓**이다.
+        //  `CellToWorldCenter` = `origin + cell*tileSize`, `WorldToCell` = `floor(cell + 0.5)` 라
+        //  왕복은 항상 정확하다. 실제 이유는 **의존 회피**다: 셀은 뷰(예고 타일)가, 월드는 sim 이
+        //  쓰는데, 한쪽에서 다른 쪽을 파생하려면 그 시스템이 없는 의존을 새로 져야 한다 —
+        //  sim 은 `FlowFieldSingleton`, 뷰는 격자 파라미터. 12바이트로 의존 하나를 산다.)
+        // SelfBlink 호출부는 `_` 로 버린다.
         private static bool TryResolveBlinkDest(
             int maxRingRadius, int densityRadius,
             in NativeArray<int2> defCells,

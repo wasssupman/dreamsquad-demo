@@ -21,6 +21,12 @@ namespace Wassup.Bridge
         [SerializeField] private float ultimateLeapDescendSeconds = 0.25f;
         [Tooltip("이탈 정점 높이(view 공간). 화면 밖으로 나갈 만큼 충분히 크게.")]
         [SerializeField] private float ultimateLeapHeight = 14f;
+        [Tooltip("착지 눌림 세기(0=없음). 일반 도약(bossLeapLandingSquash)보다 세게 — 궁극기 체급.")]
+        [Range(0f, 0.4f)]
+        [SerializeField] private float ultimateLeapLandingSquash = 0.14f;
+        [Tooltip("착지 눌림 복귀 시간(초).")]
+        [Range(0.02f, 0.3f)]
+        [SerializeField] private float ultimateLeapLandingSquashSeconds = 0.06f;
 
         private NativeQueue<UltimateLeapVisualEvent> _ultimateLeapVisualQueue;
 
@@ -51,19 +57,16 @@ namespace Wassup.Bridge
             tilemapMapView?.ClearTelegraphCells(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
         }
 
-        // 착지 예고. 셀 집합은 **슬램 피해와 같은 함수**에서 나온다 — 예고와 실제 피해 범위가
-        // 갈리면 이 스킬의 존재 이유(보고 피한다)가 무너진다. sim 이 이미 확정한 값을 읽기만 한다.
+        // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 사각 셀 열거
+        // 단일 지점이고(보드 경계 클리핑 + 스크래치 재사용 포함), 액티브 장판이 이미 쓰고 있다.
+        // 손으로 다시 돌면 "예고 셀 = 피해 셀" 계약이 두 계산의 우연한 일치에 기대게 된다.
         private void ShowLandingTelegraph(Entity entity)
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
             var leap = _em.GetComponentData<UltimateLeapState>(entity);
-            int r = leap.slamTileRange;
-            var cells = new System.Collections.Generic.List<Vector2Int>((2 * r + 1) * (2 * r + 1));
-            // Chebyshev 정사각 — TileAoe 피해 판정과 같은 모양(GridMath.RangeToTiles 규약).
-            for (int dx = -r; dx <= r; dx++)
-            for (int dz = -r; dz <= r; dz++)
-                cells.Add(new Vector2Int(leap.landingCell.x + dx, leap.landingCell.y + dz));
-            tilemapMapView.SetTelegraphCells(cells);
+            BuildZoneCells(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange,
+                _zoneCellScratch);
+            tilemapMapView.SetTelegraphCells(_zoneCellScratch);
         }
 
         // ── 드레인 ──
@@ -113,14 +116,12 @@ namespace Wassup.Bridge
                 _enemyViewOverride[entity] = (from, ultimateLeapHeight * k * k);
                 yield return null;
             }
-            // 화면 밖 도달 — 강하 신호가 올 때까지 이 높이로 유지한다(오버라이드는 살아 있어야
-            // 매 프레임 피드가 sim 좌표(착지 셀)를 그리지 않는다).
-            while (_ultimateLeapAirborne.Contains(entity) && _em.Exists(entity))
-            {
-                if (!_enemyViewOverride.ContainsKey(entity)) yield break;
+            // 화면 밖 도달 — **여기서 코루틴을 끝낸다.** 대기 루프로 같은 값을 매 프레임 재기입할
+            // 필요가 없다: 이 딕셔너리의 writer 는 도약 두 기능뿐이고 소비처는 읽기만 하므로,
+            // 한 번 써 둔 값이 강하가 시작될 때까지 그대로 남는다(= 뷰가 화면 밖에 머문다).
+            // 취소(teardown)는 `_enemyViewOverride.Clear()` 가 키를 지우는 것으로 성립한다.
+            if (_enemyViewOverride.ContainsKey(entity))
                 _enemyViewOverride[entity] = (from, ultimateLeapHeight);
-                yield return null;
-            }
         }
 
         // ── 강하: 착지 셀 직상방에서 수직 낙하 ──
@@ -149,8 +150,9 @@ namespace Wassup.Bridge
             // 착지 순간 — 슬램 VFX 는 **뷰가 도착한 지금** 뜬다(sim 은 이미 2초 전 착지를 확정했다).
             // BossLeap 의 "착지 퍼프가 뷰 도착보다 먼저 터지지 않는다" 계약 미러.
             PlayLeapPuff(dataIndex, new Vector3(to.x, to.y, to.z));
-            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var view) && view != null)
-                view.PlayLandingSquash(0.14f, 0.06f);
+            // 풀 조회·0 가드·폴백 뷰 스킵 규약은 공용 헬퍼가 소유한다(BattleBridge.Relocation.cs).
+            // 여기서 재구현하면 그 규약이 두 곳으로 갈린다.
+            PlayLandingSquash(entity, ultimateLeapLandingSquash, ultimateLeapLandingSquashSeconds);
         }
     }
 }

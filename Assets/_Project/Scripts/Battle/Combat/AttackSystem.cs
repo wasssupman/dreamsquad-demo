@@ -99,6 +99,8 @@ namespace Wassup.Battle.Combat
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
             // combat-action-lock — 행동불가(Sleep/Stun) 게이트용 RO CcEffect lookup.
             var ccActionLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Effects.CcEffect>(isReadOnly: true);
+            // leap-flight-state unit 0 rev — 도약 비행 잠금. CC 와 같은 술어에 OR 로 합류한다.
+            var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
             // dreamcatcher-content-2 끝을 보는 눈 — per-attack frontmost lock (RW, defender-owned)
             // + PastGoal exclusion (goal-reached enemies are leak-pending, not valid frontmost).
             var frontmostLockLookup = SystemAPI.GetComponentLookup<FrontmostAttackLock>(isReadOnly: false);
@@ -222,12 +224,9 @@ namespace Wassup.Battle.Combat
             // Unified attacker loop — defenders and enemies share this single query.
             // Defender-specific branches guard on defenderTagLookup / HasComponent.
             // ─────────────────────────────────────────────────────────────────────
-            // leap-flight-state unit 0 — LeapFlight(도약 비행 중)는 공격 START 를 막는다.
-            // 위 targetCandidatesQuery 에는 **넣지 않는다** — 비행 중에도 피격은 가능하다(계약 2).
             foreach (var (attack, transform, attackerEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
                               .WithNone<PendingDeployment>()
-                              .WithNone<LeapFlight>()
                               .WithEntityAccess())
             {
                 // Tick cooldown first.
@@ -238,8 +237,15 @@ namespace Wassup.Battle.Combat
 
                 // combat-action-lock — Sleep/Stun: 공격 START 금지(쿨다운 틱은 위에서 유지 →
                 // wake 시 즉시 공격). 이미 시작된 스윙(hitDelayRemaining>0)의 RESOLVE 는 완료.
-                bool actionLocked = ccActionLookup.HasBuffer(attackerEntity)
-                    && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]);
+                // leap-flight-state unit 0 rev — 도약 비행 중도 **같은 술어에 합류**한다.
+                // 쿼리 `WithNone<LeapFlight>` 로 빼면 위 쿨다운 틱과 진행 중 스윙 RESOLVE 까지
+                // 얼어붙어 CC 와 규약이 갈린다(CC 는 둘 다 유지하고 START 만 막는다 — 그래야
+                // 깨어난 유닛이 즉시 때린다). MovementSystem 이 `locked` 한 변수에 OR 로 접은 것과
+                // 같은 고도. 소비 지점이 같고 출처만 다르다.
+                bool actionLocked =
+                    (ccActionLookup.HasBuffer(attackerEntity)
+                     && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]))
+                    || leapFlightLookup.HasComponent(attackerEntity);
 
                 // bomb-thrower-defender unit 4 — 폭탄맨은 타겟 없이 쿨다운마다 방향×N 칸에
                 // 폭탄을 굴려 발사(blind bombardment, 계약 2). 타겟팅/일반 공격 경로를 타지

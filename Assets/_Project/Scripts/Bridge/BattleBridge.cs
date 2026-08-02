@@ -642,6 +642,10 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.BossLeapVisualEventsSingleton>();
+            // ultimate-leap — 누락 시 BattleTimeScale H1 과 **같은 실패**: orphan 싱글턴이 남고
+            // 다음 매치에 새 엔티티가 생겨 2개 → TryGetSingletonRW 실패 → 2판째부터 궁극기가
+            // 예고·이탈·강하 없이 순간이동만 한다(부재-가드가 조용히 삼켜 콘솔도 깨끗하다).
+            DestroyEntitiesByType<Wassup.Battle.Combat.UltimateLeapVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
