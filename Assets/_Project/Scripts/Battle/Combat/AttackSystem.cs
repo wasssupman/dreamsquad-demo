@@ -218,9 +218,12 @@ namespace Wassup.Battle.Combat
             // Unified attacker loop — defenders and enemies share this single query.
             // Defender-specific branches guard on defenderTagLookup / HasComponent.
             // ─────────────────────────────────────────────────────────────────────
+            // leap-flight-state unit 0 — LeapFlight(도약 비행 중)는 공격 START 를 막는다.
+            // 위 targetCandidatesQuery 에는 **넣지 않는다** — 비행 중에도 피격은 가능하다(계약 2).
             foreach (var (attack, transform, attackerEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
                               .WithNone<PendingDeployment>()
+                              .WithNone<LeapFlight>()
                               .WithEntityAccess())
             {
                 // Tick cooldown first.

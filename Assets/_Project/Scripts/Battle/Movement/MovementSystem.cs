@@ -31,6 +31,8 @@ namespace Wassup.Battle.Movement
             bool hasHuntField = SystemAPI.TryGetSingleton<DefenderFieldSingleton>(out var huntField);
             var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
+            // leap-flight-state unit 0 — Combat 소유 태그를 RO 로 읽는다(AttackState·EnemyAiState 선례).
+            var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
 
@@ -64,7 +66,11 @@ namespace Wassup.Battle.Movement
 
                 // combat-action-lock — Sleep/Stun 은 자기주도 이동만 정지(외력=impulse/tornado/portal 유지).
                 // AiState 직후 조기 계산: Chasing/goal/tornado 분기가 flow-step 전에 continue 하므로.
-                bool locked = ccLookup.HasBuffer(entity) && CcActionLock.IsLocked(ccLookup[entity]);
+                // leap-flight-state unit 0 — 도약 비행 중도 같은 규약으로 합류한다(자기주도 이동만
+                // 정지, 외력 유지). 같은 변수에 접는 이유: 소비 지점이 전부 동일하고, 출처만 다르다
+                // (CC = 남이 건 것 / LeapFlight = 본체 자신의 상태).
+                bool locked = (ccLookup.HasBuffer(entity) && CcActionLock.IsLocked(ccLookup[entity]))
+                              || leapFlightLookup.HasComponent(entity);
 
                 if (ai == AiState.Standoff) continue; // 정지
 

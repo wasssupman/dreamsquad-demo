@@ -8,8 +8,12 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Battle/Combat/LeapFlight.cs` — **신규** 태그 컴포넌트
-- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` — 공격자 쿼리 2곳
+- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` — **공격자 루프 1곳**
 - `Assets/_Project/Scripts/Battle/Movement/MovementSystem.cs` — 자기주도 이동 게이트
+
+> 정정(구현 중): 초안은 "공격자 쿼리 2곳" 이라 적었으나 실제로는 하나다. `AttackSystem` 의
+> `WithNone<PendingDeployment>` 2개 중 앞의 것(`:41` `targetCandidatesQuery`)은 **타겟 후보 풀**이라
+> 오히려 `LeapFlight` 를 넣으면 안 되는 자리다(계약 2). 공격자 순회는 통합 루프 하나뿐이다.
 
 ## 구현
 
@@ -31,8 +35,18 @@ namespace Wassup.Battle.Combat
 - 타겟 **후보** 수집(`NearestTargeting` 호출부들)은 **건드리지 않는다** — 비행 중 보스는 계속
   타겟팅·피격된다.
 
+## 알려진 범위 한계
+
+`HazardCastSystem` / `ShieldCastSystem`(디펜더 능력 캐스트)에는 게이트를 넣지 않았다. 지금
+`LeapFlight` 가 붙는 대상은 보스뿐이고 보스는 캐스트 경로를 타지 않는다. 이 태그를 캐스트하는
+유닛(예: 미래의 석화)에 재사용하게 되면 그 spec 이 두 시스템에 게이트를 추가한다 — 제약 8.
+
 ## 완료 기준
 
 - compile 클린 · EditMode 무회귀 (신규 순수 함수 없음 — 쿼리 필터라 EditMode 신규 테스트 대상 아님)
 - anti-계약 주석이 컴포넌트 정의에 존재
 - 이 시점에는 태그를 붙이는 코드가 없어 **런타임 동작 무변경** (unit 1 이 붙인다)
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1806 통과·실패 0 · compile 클린. 태그 부착 코드가 없어 런타임 무변경.
