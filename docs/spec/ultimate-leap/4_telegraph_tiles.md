@@ -73,3 +73,4 @@ refcount 를 가진 것은 장판이 여러 장 겹치기 때문이고, 여기�
 참고: `TileFlags.LockColor`(m_Flags 1)는 `Tilemap.SetColor`(per-cell)만 막고 `Tilemap.color`
 (타일맵 전체 tint)는 막지 않는다 — 세 기존 타일이 전부 flags 1 인데 range 노랑 tint 가 정상
 동작하는 것이 그 증거다. 색이 죽은 원인은 flags 가 아니라 **타일 자체 색**이었다.
+- 확인: 2026-08-02 · 사용자 Play 확인 — 전용 타일 + 실사용 tileSet 배선 후 주황 정상 노출.

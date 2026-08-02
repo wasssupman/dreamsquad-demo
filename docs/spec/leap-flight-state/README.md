@@ -1,6 +1,6 @@
 # leap-flight-state — 도약 비행 중 행동 상태 정의
 
-> 상태: **units 0~1 구현·커밋 완료 2026-08-02** (`a8e62138`·`e4514d60`). 사용자 Play 확인 미완.
+> 상태: **완료 2026-08-02 (사용자 Play 확인)** (`a8e62138`·`e4514d60`).
 > `ultimate-leap` spec 의 선행 의존이며 그쪽과 함께 구현됐다 — 인계는 `ultimate-leap/6_handoff_summary.md`.
 
 ## 목표

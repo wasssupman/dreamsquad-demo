@@ -1,8 +1,8 @@
 # ultimate-leap — 보스 궁극기 도약: 이탈 → 예고 → 강습
 
-> 상태: **units 0~5 구현·커밋 완료 2026-08-02. 사용자 Play 감각 확인 미완.**
+> 상태: **완료 2026-08-02 (사용자 Play 확인).**
 > 선행 의존: `docs/spec/leap-flight-state/`(LeapFlight 태그) — 함께 구현됨.
-> EditMode 1809 중 1807 통과·실패 0. 커밋·검증 범위·되돌리면 안 되는 의도는 `6_handoff_summary.md`.
+> EditMode 1815 중 1813 통과·실패 0. 커밋·검증 범위·되돌리면 안 되는 의도는 `6_handoff_summary.md`.
 
 ## 목표
 
