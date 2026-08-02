@@ -34,11 +34,20 @@ namespace Wassup.Core
         // lobby reveal, B once the in-game core tutorial is done and the player is
         // back in the lobby. Same additive-field rule as the three above.
         public int lobbyIntroVersion;
+        // unit 11 — 이 필드는 이제 로드아웃 시퀀스의 **첫 스텝(스쿼드)** 만 뜻한다. 이름을
+        // 좁히지 않는 이유는 JSON 호환이다(awakeningHintVersion 과 같은 이유) — 바꾸면 기존
+        // 프로필의 진행이 0 으로 읽혀 온보딩이 되살아난다. 의미는 API 이름이 나른다.
         public int lobbyLoadoutHintVersion;
+        // outgame-tutorial unit 11 — 로드아웃 시퀀스 2번째 스텝(드림캐쳐 덱 페이지).
+        // Additive like the rest — 0 means pending.
+        public int lobbyDeckHintVersion;
         // outgame-tutorial unit 6 — chapter C: the first time the player closes a
         // panel and the lobby comes back, it asks them to actually drag a lobby
         // character. Additive like the rest — 0 means pending.
         public int lobbyKeyringHintVersion;
+        // outgame-tutorial unit 11 — 로드아웃 시퀀스의 마지막 스텝(재출발 START 포커스).
+        // 키링을 놓아 착지한 뒤에 뜬다. Additive like the rest — 0 means pending.
+        public int lobbyStartHintVersion;
         // first-session-tutorial unit 23 — the gimmick reveal hold. The reveal is
         // skipped entirely on the first match (GimmickPhaseView gates on
         // ShouldRunCore), so this fires on the first reveal the player ever sees.

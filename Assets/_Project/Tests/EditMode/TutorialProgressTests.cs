@@ -27,7 +27,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
-            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
         }
 
@@ -39,15 +39,15 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.CompleteLobbyIntro(profile));
             Assert.IsFalse(TutorialProgress.IsLobbyIntroPending(profile));
             Assert.IsFalse(TutorialProgress.CompleteLobbyIntro(profile));
-            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
 
-            Assert.IsTrue(TutorialProgress.CompleteLobbyLoadoutHint(profile));
-            Assert.IsFalse(TutorialProgress.IsLobbyLoadoutHintPending(profile));
-            Assert.IsFalse(TutorialProgress.CompleteLobbyLoadoutHint(profile));
+            Assert.IsTrue(TutorialProgress.CompleteLobbySquadHint(profile));
+            Assert.IsFalse(TutorialProgress.IsLobbySquadHintPending(profile));
+            Assert.IsFalse(TutorialProgress.CompleteLobbySquadHint(profile));
 
             Assert.IsFalse(TutorialProgress.CompleteLobbyIntro(null));
-            Assert.IsFalse(TutorialProgress.CompleteLobbyLoadoutHint(null));
+            Assert.IsFalse(TutorialProgress.CompleteLobbySquadHint(null));
         }
 
         // Chapter B must never run alongside chapter A: it requires the in-game core
@@ -59,19 +59,19 @@ namespace Wassup.Tests.EditMode
             _holder.SetLoadedProfile(profile);
 
             Assert.IsTrue(TutorialProgress.ShouldRunLobbyIntro(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbySquadHint(_holder));
 
             // Chapter A done, but the first battle has not run yet.
             TutorialProgress.CompleteLobbyIntro(profile);
             Assert.IsFalse(TutorialProgress.ShouldRunLobbyIntro(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbySquadHint(_holder));
 
             // Core complete → chapter B fires exactly here.
             TutorialProgress.CompleteCore(profile);
-            Assert.IsTrue(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbySquadHint(_holder));
 
-            TutorialProgress.CompleteLobbyLoadoutHint(profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            TutorialProgress.CompleteLobbySquadHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbySquadHint(_holder));
         }
 
         [Test]
@@ -80,11 +80,11 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(TutorialProgress.ShouldRunLobbyIntro(_holder),
                 "asset default profile is not a loaded session");
             TutorialProgress.CompleteCore(_holder.profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbySquadHint(_holder));
 
             _holder.SetLoadedProfile(null);
             Assert.IsFalse(TutorialProgress.ShouldRunLobbyIntro(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbySquadHint(_holder));
 
             _holder.SetLoadedProfile(new PlayerProfile());
             Assert.IsTrue(TutorialProgress.ShouldRunLobbyIntro(_holder));
@@ -209,7 +209,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(loaded));
-            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(loaded));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsGimmickRevealHintPending(loaded));
         }
@@ -268,7 +268,9 @@ namespace Wassup.Tests.EditMode
             expected[nameof(PlayerProfile.giftTutorialVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
+            expected[nameof(PlayerProfile.lobbyDeckHintVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
+            expected[nameof(PlayerProfile.lobbyStartHintVersion)] = 0;
             expected[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyHistoryHintVersion)] = 0;
 
@@ -373,27 +375,34 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.ShouldRunDragAttachHint(_holder));
         }
 
-        // outgame-tutorial unit 6 — 챕터 C 는 챕터 B 완료를 전제로 한다. B 를 전제로 걸어야
-        // A·B·C 가 동시에 pending 될 수 없고, A → B → C 순서에 별도 상태가 필요 없다.
+        // outgame-tutorial unit 6 → **unit 12 갱신**: 키링(C)의 선행이 스쿼드(B1)에서
+        // **덱(B2)** 으로 옮겨졌다. 로드아웃이 두 스텝으로 쪼개졌으므로, 선행을 그대로 두면
+        // 스쿼드만 끝낸 상태에서 키링이 드림캐쳐를 앞지른다. 이 테스트가 그 순서를 고정한다.
         [Test]
-        public void LobbyKeyringHint_RunsOnlyAfterLoadoutHintComplete()
+        public void LobbyKeyringHint_RunsOnlyAfterDeckStepComplete()
         {
             var profile = new PlayerProfile();
             _holder.SetLoadedProfile(profile);
 
-            // 첫 진입: A 만 pending. C 는 B 를 기다린다.
+            // 첫 진입: A 만 pending. C 는 앞 스텝들을 기다린다.
             Assert.IsTrue(TutorialProgress.ShouldRunLobbyIntro(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
 
-            // A 완료 + core 완료 → B 차례. 여기서도 C 는 뜨지 않는다.
+            // A 완료 + core 완료 → B1 차례. 여기서도 C 는 뜨지 않는다.
             TutorialProgress.CompleteLobbyIntro(profile);
             TutorialProgress.CompleteCore(profile);
-            Assert.IsTrue(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbySquadHint(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
 
-            // B 완료 → C 가 정확히 여기서 뜬다.
-            TutorialProgress.CompleteLobbyLoadoutHint(profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            // B1 완료 → B2 차례. **C 는 아직도 뜨면 안 된다** — 이 단언이 unit 12 의 회귀 방지다.
+            TutorialProgress.CompleteLobbySquadHint(profile);
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder),
+                "키링이 드림캐쳐 스텝을 앞지르면 시퀀스 순서가 깨진다");
+
+            // B2 완료 → C 가 정확히 여기서 뜬다.
+            TutorialProgress.CompleteLobbyDeckHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
             Assert.IsTrue(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
 
             TutorialProgress.CompleteLobbyKeyringHint(profile);
@@ -416,7 +425,7 @@ namespace Wassup.Tests.EditMode
 
             // C 완료가 A·B 를 소비하면 안 된다 — 챕터별로 독립된 토큰이다.
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
-            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
 
             // 미래 버전으로 앞서 있는 프로필도 pending 이 아니다.
             var ahead = new PlayerProfile
@@ -424,6 +433,151 @@ namespace Wassup.Tests.EditMode
                 lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion + 1,
             };
             Assert.IsFalse(TutorialProgress.IsLobbyKeyringHintPending(ahead));
+        }
+
+        // ── unit 11: 로드아웃 시퀀스 토큰 ─────────────────────────────────────
+        //
+        // 챕터 B 가 스쿼드 → 드림캐쳐 두 스텝으로 쪼개지고 마지막에 재출발(START) 스텝이 붙는다.
+        // 이 unit 은 순수 가산이라 컨트롤러도 기존 체인도 건드리지 않는다 — 여기서 고정하는 것은
+        // 신규 두 토큰의 선행 관계와 레거시 가드다.
+
+        [Test]
+        public void LobbyDeckHint_RunsOnlyAfterSquadStepComplete()
+        {
+            var profile = new PlayerProfile();
+            _holder.SetLoadedProfile(profile);
+
+            // 스쿼드 스텝(기존 lobbyLoadoutHintVersion)이 pending 인 동안엔 덱이 뜨지 않는다.
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+
+            TutorialProgress.CompleteLobbySquadHint(profile);
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+
+            TutorialProgress.CompleteLobbyDeckHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+
+            _holder.SetLoadedProfile(null);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+        }
+
+        [Test]
+        public void LobbyStartHint_RunsOnlyAfterKeyringStepComplete()
+        {
+            var profile = new PlayerProfile();
+            _holder.SetLoadedProfile(profile);
+
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyStartHint(_holder));
+
+            // 새 순서: 스쿼드 → 덱 → 키링. 덱을 먼저 채워야 레거시 가드에 걸리지 않는다.
+            TutorialProgress.CompleteLobbySquadHint(profile);
+            TutorialProgress.CompleteLobbyDeckHint(profile);
+            TutorialProgress.CompleteLobbyKeyringHint(profile);
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyStartHint(_holder));
+
+            TutorialProgress.CompleteLobbyStartHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyStartHint(_holder));
+        }
+
+        // unit 11 — 옛 온보딩(챕터 B 한 덩어리 + C)을 마친 계정은 신규 토큰이 0 이라 그대로
+        // 두면 `이번엔 드림캐쳐 덱 차례!` 와 재출발 안내를 맥락 없이 다시 본다. 파생 가드로 막되,
+        // **정상 진행을 삼키면 안 된다** — 아래 두 케이스가 그 경계를 양쪽에서 고정한다.
+        [Test]
+        public void LegacyProfile_DoesNotReplayDeckOrStartSteps()
+        {
+            var legacy = new PlayerProfile
+            {
+                firstBattleTutorialVersion = TutorialProgress.CoreVersion,
+                lobbyIntroVersion = TutorialProgress.LobbyIntroVersion,
+                lobbyLoadoutHintVersion = TutorialProgress.LobbyLoadoutHintVersion,
+                lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion,
+                // 신규 토큰 2개는 0 — 옛 빌드가 쓴 적이 없다.
+            };
+
+            Assert.IsFalse(TutorialProgress.IsLobbyDeckHintPending(legacy));
+            Assert.IsFalse(TutorialProgress.IsLobbyStartHintPending(legacy));
+
+            _holder.SetLoadedProfile(legacy);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyDeckHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyStartHint(_holder));
+        }
+
+        [Test]
+        public void NewSequenceProfile_StillGetsStartStepAfterKeyring()
+        {
+            // 새 순서를 그대로 탄 프로필: 덱이 키링보다 먼저 완료되므로 레거시 조합
+            // (`키링 완료 && 덱 0`)이 성립하지 않는다.
+            var profile = new PlayerProfile
+            {
+                firstBattleTutorialVersion = TutorialProgress.CoreVersion,
+                lobbyIntroVersion = TutorialProgress.LobbyIntroVersion,
+                lobbyLoadoutHintVersion = TutorialProgress.LobbyLoadoutHintVersion,
+                lobbyDeckHintVersion = TutorialProgress.LobbyDeckHintVersion,
+                lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.IsLobbyStartHintPending(profile),
+                "레거시 가드가 정상 진행의 마지막 스텝을 삼키면 안 된다");
+            _holder.SetLoadedProfile(profile);
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyStartHint(_holder));
+        }
+
+        [Test]
+        public void LobbySequenceCompletions_AreIdempotentAndIndependent()
+        {
+            var profile = new PlayerProfile();
+
+            Assert.IsTrue(TutorialProgress.CompleteLobbyDeckHint(profile));
+            Assert.IsFalse(TutorialProgress.CompleteLobbyDeckHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteLobbyDeckHint(null));
+
+            Assert.IsTrue(TutorialProgress.CompleteLobbyStartHint(profile));
+            Assert.IsFalse(TutorialProgress.CompleteLobbyStartHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteLobbyStartHint(null));
+
+            // 형제 토큰을 소비하지 않는다.
+            Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
+
+            var ahead = new PlayerProfile
+            {
+                lobbyDeckHintVersion = TutorialProgress.LobbyDeckHintVersion + 1,
+                lobbyStartHintVersion = TutorialProgress.LobbyStartHintVersion + 1,
+            };
+            Assert.IsFalse(TutorialProgress.IsLobbyDeckHintPending(ahead));
+            Assert.IsFalse(TutorialProgress.IsLobbyStartHintPending(ahead));
+        }
+
+        // unit 11 — 신규 토큰이 `changed` 표현식에서 빠지면 그 토큰만 다를 때 리셋이 디스크에
+        // 영영 닿지 않는다(unit 6·17 이 같은 함정을 두 번 겪었다). 메모리·JSON 양쪽을 고정한다.
+        [Test]
+        public void Reset_ReportsChanged_WhenOnlySequenceTokensAreSet()
+        {
+            var profile = new PlayerProfile
+            {
+                selectedSquadId = "keep_squad",
+                lobbyDeckHintVersion = TutorialProgress.LobbyDeckHintVersion,
+                lobbyStartHintVersion = TutorialProgress.LobbyStartHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile));
+            Assert.AreEqual(0, profile.lobbyDeckHintVersion);
+            Assert.AreEqual(0, profile.lobbyStartHintVersion);
+            Assert.AreEqual("keep_squad", profile.selectedSquadId);
+            Assert.IsFalse(TutorialProgress.ResetAll(profile), "멱등");
+
+            const string source = @"{
+                'lobbyDeckHintVersion': 1,
+                'lobbyStartHintVersion': 1,
+                'selectedSquadId': 'keep_squad'
+            }";
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "시퀀스 토큰만 완료된 상태도 초기화 대상이다");
+            var stored = JObject.Parse(result);
+            Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyDeckHintVersion)));
+            Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyStartHintVersion)));
+            Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
         }
 
         // unit 6 — 신규 토큰은 ResetAll 의 `changed` 표현식에도 들어가야 한다. 빠지면 이
@@ -583,7 +737,7 @@ namespace Wassup.Tests.EditMode
 
             // D 완료가 형제 챕터를 소비하면 안 된다.
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
-            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
 
             var ahead = new PlayerProfile
