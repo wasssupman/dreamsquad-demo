@@ -134,6 +134,29 @@ MonoBehaviour:
       slamDamage: 50
       slamTileRange: 1
       stackModifier: {fileID: 0}
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.7
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 18
+      magnitude: 2
+      projectile: {fileID: 11400000, guid: 15fde480215048148a6f37e0b33bb5de, type: 2}
+      tileRange: 6
+      duration: 2
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 100
+      slamTileRange: 2
+      stackModifier: {fileID: 0}
   killScore: 2000
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31

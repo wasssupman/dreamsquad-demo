@@ -1,6 +1,7 @@
 # leap-flight-state — 도약 비행 중 행동 상태 정의
 
-> 상태: **작성 2026-08-02 (구현 전)**. `ultimate-leap` spec 의 선행 의존.
+> 상태: **units 0~1 구현·커밋 완료 2026-08-02** (`a8e62138`·`e4514d60`). 사용자 Play 확인 미완.
+> `ultimate-leap` spec 의 선행 의존이며 그쪽과 함께 구현됐다 — 인계는 `ultimate-leap/6_handoff_summary.md`.
 
 ## 목표
 
@@ -28,7 +29,7 @@ sim 은 발동 프레임에 이미 텔레포트를 끝내는데 뷰만 아치로
 |---|---|---|---|
 | 0 | 시뮬 | `0_leap_flight_component.md` | `LeapFlight` 태그(Combat) + AttackSystem·MovementSystem 게이트 |
 | 1 | 브리지 | `1_bridge_lifecycle.md` | 비행 창에 붙이고 착지·취소에 뗀다 (`PendingDeployment` 선례) |
-| 2 | 인계 | `2_handoff_summary.md` | 종료 시 작성 |
+| 2 | 인계 | — | `ultimate-leap/6_handoff_summary.md` 로 통합(두 spec 이 한 흐름으로 구현됨) |
 
 ## Feature-wide 계약
 

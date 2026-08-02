@@ -43,3 +43,21 @@
 - 위 체크리스트 전부 + **사용자 Play 감각 확인**
 - CLAUDE.md 채널 목록 갱신이 같은 커밋에 포함
 - 종료 시 `6_handoff_summary.md` 작성 + `docs/spec/README.md` 등재
+
+## 배선 결과 (2026-08-02)
+
+슬램 VFX 는 기존 `Projectile_JjangssenLeap` 재사용(신규 에셋 0). Unity 런타임 판독 확인:
+
+```
+[0] fraction=0.2 | kind=2  (진동갑주)
+[1] fraction=0.5 | kind=6  (일반 도약)
+[2] fraction=0.9 | kind=6  (일반 도약)
+[3] fraction=0.7 | kind=18 dur=2 slamDmg=100 slamR=2  ← 궁극기
+```
+
+`nightmareMechanics` 는 시트 DTO 가 아니라 로그인 임포트가 덮지 않는다.
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린 · 에셋 런타임 판독 확인.
+- **Play 체크리스트 9항목은 전부 미확인** — 사용자 확인 대기.

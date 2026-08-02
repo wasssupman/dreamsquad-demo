@@ -1,6 +1,8 @@
 # ultimate-leap — 보스 궁극기 도약: 이탈 → 예고 → 강습
 
-> 상태: **작성 2026-08-02 (구현 전)**. 선행 의존: `docs/spec/leap-flight-state/` (LeapFlight 태그).
+> 상태: **units 0~5 구현·커밋 완료 2026-08-02. 사용자 Play 감각 확인 미완.**
+> 선행 의존: `docs/spec/leap-flight-state/`(LeapFlight 태그) — 함께 구현됨.
+> EditMode 1809 중 1807 통과·실패 0. 커밋·검증 범위·되돌리면 안 되는 의도는 `6_handoff_summary.md`.
 
 ## 목표
 
@@ -26,6 +28,7 @@ N타일이 **빨갛게 예고**되며, **2초 후 착지해 범위 피해**를 �
 | 3 | 프레젠테이션 | `3_visual_channel.md` | 신규 채널 + 상승/숨김/강하 연출 |
 | 4 | 프레젠테이션 | `4_telegraph_tiles.md` | 착지 예고 빨간 타일 (기존 tint 경로 재사용) |
 | 5 | 배선 | `5_asset_wiring.md` | 짱쎈놈 슬롯(30%) + Play 검증 + CLAUDE.md 채널 등재 |
+| 6 | 인계 | `6_handoff_summary.md` | 커밋·검증·되돌리면 안 되는 것 |
 
 ## Feature-wide 계약
 
