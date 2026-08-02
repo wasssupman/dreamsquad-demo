@@ -35,8 +35,12 @@ namespace Wassup.Core
         // active-ally-zone unit 2 — 아군 장판 색(민트). 조준 시안/불가 적색과 구분되는 색.
         // 타일맵당 색 1개라 채널 균일하다. 이 파일의 색 규약(SerializeField 또는 tileSet SO)을 따른다.
         [SerializeField] private Color allyZoneColor = new Color(0.42f, 0.95f, 0.72f, 0.42f);
-        // ultimate-leap unit 4 — 착지 예고. 빨강 = "여기서 나가라" 라는 유일한 의미로 쓴다.
-        [SerializeField] private Color landingTelegraphColor = new Color(0.95f, 0.22f, 0.20f, 0.55f);
+        // ultimate-leap unit 4 — 착지 예고. **dimmed 주황 채움**(사용자 결정 2026-08-02).
+        // 빨강 outline 에서 바꾼 이유: 빨강은 이미 `rangeInvalidColor`(배치 불가)가 쓰고 있어
+        // 의미가 겹치고, outline 은 면적이 없어 "여기서 나가라" 가 주변시로 안 읽힌다.
+        // 주황은 `aimRangeColor`(조준)와 계열이 같지만 그건 배치 조작 중에만 뜨고 이건 전투
+        // 중에만 떠서 화면에 공존하지 않는다. 알파는 낮게 — 밑의 유닛·바닥이 비쳐야 어느 칸인지 읽힌다.
+        [SerializeField] private Color landingTelegraphColor = new Color(1f, 0.45f, 0.08f, 0.42f);
 
         [Header("끈적 액체 타일 (placement-cell-snap unit 7 rev)")]
         // 포커스 셀 하이라이트 자체가 액체 — 테두리(셀 고정) + 내부 번짐(손가락 방향).
@@ -105,6 +109,9 @@ namespace Wassup.Core
         private bool _hasGoalVisualAnchor;
         private Vector3 _goalVisualAnchorWorld;
         private readonly List<Vector3> _spawnVisualAnchorsWorld = new();
+        // first-session-tutorial unit 26 — 효과 타일이 칠해진 셀. 튜토리얼 마커 조회용이며
+        // 소유권은 BattleBridge._effectTilesByCell 에 있다(여기는 "보이는 곳" 미러).
+        private readonly List<Vector2Int> _effectTileCells = new();
         // effect-tiles unit 1 — 효과 타일 전용 런타임 타일맵. overlayTilemap 은 hover/reject 가
         // SetTile/null 로 덮어쓰므로 공유 금지. sorting -15 = ground(-20) 위 / overlay·hover(-10) 아래.
         // 런타임 생성 → 씬 SerializeField/저장 불필요.
@@ -194,6 +201,7 @@ namespace Wassup.Core
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
             _hasGoalVisualAnchor = false;
             _spawnVisualAnchorsWorld.Clear();
+            _effectTileCells.Clear(); // unit 26 — 타일맵을 비웠으니 기억도 비운다(맵 리빌드 경계)
         }
 
         private void Update()
@@ -849,6 +857,28 @@ namespace Wassup.Core
             if (grid == null) return;
             EnsureEffectTilemap();
             _effectTilemap.SetTile(ToCell(cell), tile);
+            // first-session-tutorial unit 26 — 칠한 셀을 기억한다. 튜토리얼이 "빛나는 타일" 하나를
+            // 월드 마커로 지목하는 데 쓴다. 앵커를 미리 굳히지 않고 셀만 들고 조회 시점에
+            // CellCenterToWorld 로 푸는 이유는 그리드 설정이 재빌드로 바뀔 수 있어서다.
+            // 같은 셀 재페인트는 덮어쓰기이므로(BattleBridge._effectTilesByCell 과 동형) 중복을 막는다.
+            if (tile != null) { if (!_effectTileCells.Contains(cell)) _effectTileCells.Add(cell); }
+            else _effectTileCells.Remove(cell);
+        }
+
+        // unit 26 — 튜토리얼 조회용. 인덱스는 페인트 순서이고 의미는 없다(어느 하나면 된다).
+        public int EffectTileCount => _effectTileCells.Count;
+
+        public bool TryGetEffectTileAnchor(int index, out Vector3 worldPosition)
+        {
+            if (index >= 0 && index < _effectTileCells.Count)
+            {
+                var cell = _effectTileCells[index];
+                worldPosition = CellCenterToWorld(cell.x, cell.y);
+                return true;
+            }
+
+            worldPosition = default;
+            return false;
         }
 
         // 효과 타일맵 전용 머티리얼 지정(펄스 발광 등). null 이면 기본 유지. TilemapRenderer 는
@@ -1068,14 +1098,19 @@ namespace Wassup.Core
 
         public void SetTelegraphCells(IReadOnlyList<Vector2Int> cells)
         {
-            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
+            if (grid == null || _tileSet == null || cells == null) return;
+            // **채움(solid) 타일을 쓴다** — `rangeTile` 은 격자 outline 이라 "여기서 나가라" 를
+            // 주변시로 읽히게 하지 못한다. `placeableTile` 은 안쪽 fill + 가장자리 림이 한
+            // 스프라이트에 구워진 slab 이라 면(area)으로 읽힌다. 미할당이면 outline 으로 폴백.
+            var tile = _tileSet.placeableTile != null ? _tileSet.placeableTile : _tileSet.rangeTile;
+            if (tile == null) return;
             ClearTelegraphCells();
             EnsureTelegraphTilemap();
             for (int i = 0; i < cells.Count; i++)
             {
                 var cell = cells[i];
                 if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
-                _telegraphTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+                _telegraphTilemap.SetTile(ToCell(cell), tile);
                 _telegraphCells.Add(cell);
             }
         }

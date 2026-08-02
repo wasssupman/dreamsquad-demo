@@ -138,7 +138,7 @@ MonoBehaviour:
       kind: 5
       period: 0
       periodSeconds: 0
-      fraction: 0.1
+      fraction: 0.7
       gate: 0
       gateSubject: 0
       gateValue: 0
