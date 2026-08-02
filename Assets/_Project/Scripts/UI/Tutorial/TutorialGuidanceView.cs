@@ -21,7 +21,7 @@ namespace Wassup.UI.Tutorial
         // unit 19 — 말풍선 세로 위치는 구간마다 다르다. 맵 이해 마커(하단으로 크게 내림), 전투
         // HUD 안내(우상단 배지 아래), 기믹 리빌(전면 연출의 탭 힌트 아래)이 서로 다른 offset 을
         // 요구하고, 이 구간들이 동시에 뜨는 일은 없다.
-        public enum MessageAnchor { Default, WorldMarker, HudHint, GimmickReveal }
+        public enum MessageAnchor { Default, WorldMarker, HudHint, GimmickReveal, EffectTile }
 
         public event Action SkipRequested;
         // unit 11 — 읽고 넘기는 스텝에서만 쓰는 진행 신호.
@@ -37,6 +37,23 @@ namespace Wassup.UI.Tutorial
         public float StressHintFallbackSeconds => Style.stressHintFallbackSeconds;
         public Color SpawnMarkerColor => Style.spawnMarkerColor;
         public Color GoalMarkerColor => Style.goalMarkerColor;
+        public Color EffectTileMarkerColor => Style.effectTileMarkerColor;
+
+        // unit 26 — 월드 마커는 매 프레임 SafeAreaRoot 안쪽인지로 표시가 갈린다
+        // (UpdateWorldPulse). 화면 가장자리 셀 + 큰 인셋이면 **꺼진 채**로 있을 수 있으므로,
+        // "안내를 실제로 보여줬나" 를 완료 저장의 조건으로 쓰려면 호출자가 이걸 물어야 한다.
+        public bool HasVisibleWorldMarker
+        {
+            get
+            {
+                for (int i = 0; i < _worldPulses.Count; i++)
+                {
+                    var rect = _worldPulses[i].rect;
+                    if (rect != null && rect.gameObject.activeSelf) return true;
+                }
+                return false;
+            }
+        }
         public int DimSortingOrder => Style.dimSortingOrder;
         public int GuidanceSortingOrder => Style.guidanceSortingOrder;
         public int ElevatedSortingOrder => Style.elevatedSortingOrder;
@@ -432,6 +449,7 @@ namespace Wassup.UI.Tutorial
                 MessageAnchor.WorldMarker => Style.worldMarkerMessageTopOffset,
                 MessageAnchor.HudHint => Style.hudHintMessageTopOffset,
                 MessageAnchor.GimmickReveal => Style.revealHintMessageTopOffset,
+                MessageAnchor.EffectTile => Style.effectTileHintMessageTopOffset,
                 _ => Style.messageTopOffset,
             };
             float topOffset = Mathf.Clamp(requestedTopOffset, SafeEdgePadding, maxTopOffset);

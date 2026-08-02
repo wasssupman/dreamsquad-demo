@@ -62,6 +62,10 @@ namespace Wassup.Core
         public int matchesPlayed;
         // outgame-tutorial unit 8 — 챕터 D(히스토리 버튼). Additive like the rest — 0 means pending.
         public int lobbyHistoryHintVersion;
+        // first-session-tutorial unit 26 — 두 번째 판 배치 구간의 효과 타일("빛나는 타일") 안내.
+        // 맵에 효과 타일이 0개일 수 있으므로(desert 테마) 그 판에서는 저장하지 않고 미룬다.
+        // Additive like the rest — 0 means pending.
+        public int effectTileHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.

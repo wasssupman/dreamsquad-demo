@@ -38,6 +38,13 @@ namespace Wassup.UI.Tutorial
         // 인셋이 큰 실기기에서는 겹칠 수 있다 — 값을 올릴 땐 실기기에서 확인할 것.
         [Tooltip("기믹 리빌 홀드 안내 전용 말풍선 상단 오프셋. 리빌의 \"탭하여 계속\" 힌트 아래에 둔다.")]
         public float revealHintMessageTopOffset = 880f;
+        // unit 26 — 효과 타일 안내 전용. 이 안내는 **보드 위 타일에 링을 얹으므로** 말풍선이
+        // 기본 위치(184)에 있으면 상단 타일이 뽑혔을 때 링과 겹친다(2026-08-02 화면 확인).
+        // 카운트다운 플레이트 바로 아래까지 끌어올려 보드에서 최대한 물러난다. 링이 뽑히는
+        // 위치는 맵마다 다르므로 이 값만으로는 부족하고, 컨트롤러가 **화면상 가장 아래 타일**을
+        // 고르는 것과 짝이다.
+        [Tooltip("효과 타일 안내 전용 말풍선 상단 오프셋. 보드 위 마커 링과 겹치지 않게 최대한 위로.")]
+        public float effectTileHintMessageTopOffset = 120f;
         public Color messageFill = new Color(0.025f, 0.045f, 0.09f, 0.96f);
         public Color messageBorder = new Color(1f, 0.78f, 0.24f, 1f);
         public Color messageText = new Color(1f, 0.97f, 0.88f, 1f);
@@ -53,6 +60,12 @@ namespace Wassup.UI.Tutorial
         [Header("World Markers")]
         public Color spawnMarkerColor = new Color(1f, 0.34f, 0.24f, 1f);
         public Color goalMarkerColor = new Color(1f, 0.82f, 0.25f, 1f);
+        // unit 26 — 효과 타일 마커. **goalMarkerColor 를 재사용하지 말 것**: 그 노랑은 첫 판
+        // core 안내가 `방어 목표` 라벨과 "노란색 베이스에 닿기 전에 막아주세요" 문구로 각인시킨
+        // 색이라, 두 번째 판에서 같은 링이 다른 뜻으로 뜨면 학습된 신호가 어긋난다.
+        // 민트는 스폰(주황빨강)·목표(노랑)와 겹치지 않고 효과 타일 3종(주황·파랑·초록)과도
+        // 구분된다 — 타일 자체가 아니라 "여기를 보라"는 지시선이므로 타일 색을 따라가지 않는다.
+        public Color effectTileMarkerColor = new Color(0.35f, 0.95f, 0.85f, 1f);
         public float worldMarkerFontSize = 24f;
         public float worldMarkerLabelOffset = 76f;
         public float worldMarkerMessageTopOffset = 320f;

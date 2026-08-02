@@ -101,6 +101,7 @@ namespace Wassup.UI.Tutorial
             StopBattleHudHint();
             // unit 24 — 리빌 홀드 중 이탈이면 말풍선·앵커가 남는다. 완료는 저장하지 않는다.
             StopGimmickRevealHint();
+            StopEffectTileHint(); // unit 26 — 같은 이유(배치 중 이탈이면 마커·말풍선이 남는다)
             ResetAwakeningSession(hide: true);
             ResetBattleHudLatches();
             guidance?.SetElevated(false);
@@ -119,6 +120,11 @@ namespace Wassup.UI.Tutorial
             // 그 경로에서도 버튼이 숨겨진다. Placement 진입 시점이라 core 는 아직 pending 이다.
             _awakeningLockedThisMatch = TutorialProgress.ShouldRunCore(profileSO);
             ApplyAwakeningSeal(_awakeningLockedThisMatch);
+
+            // unit 26 — 효과 타일 안내는 **두 번째 판 이후**라 아래 `!ShouldRunCore` return 보다
+            // 앞이어야 한다. 뒤에 두면 대상 판이 전부 그 return 에 걸려 영영 도달하지 못한다.
+            // 첫 판 배제는 이 함수 자신의 `_awakeningLockedThisMatch` 가드가 한다.
+            StartEffectTileHint();
 
             if (!TutorialProgress.ShouldRunCore(profileSO)) return;
             if (!HasCoreReferences())
@@ -263,9 +269,13 @@ namespace Wassup.UI.Tutorial
         // unit 21 — 탭 소비자가 둘이다. 전투 정지 안내가 대기 중이면 그 탭은 그 쪽 것이므로
         // **먼저** 묻는다(순서를 흐리면 한쪽이 다른 쪽 탭을 삼킨다). 이 시점 core 는 이미 끝나
         // 있어 아래 가드가 어차피 막지만, 우선순위를 코드로 드러낸다.
+        // unit 26 — 탭 소비자가 셋이 됐다. 셋은 실제로 배타적이지만(클래스=1판 배치 ·
+        // 스트레스=1판 전투 · 효과 타일=2판 이후 배치) 우선순위를 코드로 드러낸다 —
+        // 순서를 흐리면 한쪽이 다른 쪽 탭을 삼킨다.
         private void OnContinueTapped()
         {
             if (TryConsumeStressHintTap()) return;
+            if (TryConsumeEffectTileHintTap()) return;
             if (!_coreActive || _coreStep != CoreStep.ClassHint) return;
             BeginStart();
         }
@@ -330,6 +340,12 @@ namespace Wassup.UI.Tutorial
 
         private void OnPhaseChanged(GamePhase phase)
         {
+            // unit 26 — 배치 구간 안내는 어느 페이즈로 나가든 걷는다. Battle 분기가 아래에서
+            // 조기 return 하므로 **분기 앞**이어야 한다. Placement 진입 자신도 여기 걸리지만
+            // 그 시점엔 안내가 아직 없다 — BeginPlacementPhase 가 SetPhase 를 PlacementReady
+            // 보다 먼저 부르기 때문이다(그 순서가 뒤집히면 안내가 뜨자마자 지워진다).
+            StopEffectTileHint();
+
             if (phase == GamePhase.Battle)
             {
                 ResetAwakeningLatches();

@@ -22,6 +22,7 @@ namespace Wassup.Core
         public const int LobbyKeyringHintVersion = 1;
         public const int LobbyStartHintVersion = 1;
         public const int GimmickRevealHintVersion = 1;
+        public const int EffectTileHintVersion = 1;
         public const int LobbyHistoryHintVersion = 1;
         // outgame-tutorial unit 9 — 챕터 D 가 요구하는 최소 매치 수. "두 번째 판 이후" 다.
         public const int HistoryHintMatchesRequired = 2;
@@ -95,6 +96,14 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession &&
             IsGimmickRevealHintPending(holder.profile);
 
+        // unit 26 — 효과 타일 배치 안내. 리빌 안내와 마찬가지로 **아무것도 체인하지 않는다**
+        // (형제 게이트의 fail-open 결함 — 위 주석 참조). "두 번째 판 이후" 라는 순서는
+        // 컨트롤러가 `_awakeningLockedThisMatch`(= 첫 판) 로 가르고, 리빌 뒤라는 순서는
+        // 페이즈 흐름(Gift → Gimmick → Placement)이 이미 보장한다.
+        public static bool ShouldRunEffectTileHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession &&
+            IsEffectTileHintPending(holder.profile);
+
         // unit 9 — 챕터 D. 형제 로비 챕터와 달리 **앞 챕터 완료를 체인하지 않는다**:
         // 게이트는 `matchesPlayed` 라는 독립 신호다(백로그 "챕터 게이트를 독립 신호로" 참조).
         //
@@ -155,6 +164,9 @@ namespace Wassup.Core
 
         public static bool IsGimmickRevealHintPending(PlayerProfile profile) =>
             profile != null && profile.gimmickRevealHintVersion < GimmickRevealHintVersion;
+
+        public static bool IsEffectTileHintPending(PlayerProfile profile) =>
+            profile != null && profile.effectTileHintVersion < EffectTileHintVersion;
 
         public static bool IsLobbyHistoryHintPending(PlayerProfile profile) =>
             profile != null && profile.lobbyHistoryHintVersion < LobbyHistoryHintVersion;
@@ -229,6 +241,13 @@ namespace Wassup.Core
             return true;
         }
 
+        public static bool CompleteEffectTileHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.effectTileHintVersion >= EffectTileHintVersion) return false;
+            profile.effectTileHintVersion = EffectTileHintVersion;
+            return true;
+        }
+
         public static bool CompleteLobbyHistoryHint(PlayerProfile profile)
         {
             if (profile == null || profile.lobbyHistoryHintVersion >= LobbyHistoryHintVersion) return false;
@@ -247,7 +266,8 @@ namespace Wassup.Core
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
                            profile.lobbyLoadoutHintVersion != 0 || profile.lobbyDeckHintVersion != 0 ||
                            profile.lobbyKeyringHintVersion != 0 || profile.lobbyStartHintVersion != 0 ||
-                           profile.gimmickRevealHintVersion != 0 || profile.lobbyHistoryHintVersion != 0;
+                           profile.gimmickRevealHintVersion != 0 || profile.lobbyHistoryHintVersion != 0 ||
+                           profile.effectTileHintVersion != 0;
             // `matchesPlayed` 는 여기 없다 — 튜토리얼 진행이 아니라 매치 이력이다(unit 8).
             // 넣으면 RESET TUTORIAL 후 챕터 D 를 보려고 두 판을 다시 뛰어야 한다.
             profile.firstBattleTutorialVersion = 0;
@@ -261,6 +281,7 @@ namespace Wassup.Core
             profile.lobbyStartHintVersion = 0;
             profile.gimmickRevealHintVersion = 0;
             profile.lobbyHistoryHintVersion = 0;
+            profile.effectTileHintVersion = 0;
             return changed;
         }
 
@@ -283,12 +304,13 @@ namespace Wassup.Core
             int gimmickReveal = root.Value<int?>(nameof(PlayerProfile.gimmickRevealHintVersion)) ?? 0;
             // `matchesPlayed` 는 읽지도 쓰지도 않는다 — 튜토리얼 진행이 아니다(unit 8).
             int lobbyHistory = root.Value<int?>(nameof(PlayerProfile.lobbyHistoryHintVersion)) ?? 0;
+            int effectTile = root.Value<int?>(nameof(PlayerProfile.effectTileHintVersion)) ?? 0;
             // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
             // gates the backup and the file replacement on it, so a token that is only
             // written below would never reach disk when it is the sole difference.
             changed = core != 0 || awakening != 0 || tapAttach != 0 || gift != 0 ||
                       lobbyIntro != 0 || lobbyHint != 0 || lobbyDeck != 0 || lobbyKeyring != 0 ||
-                      lobbyStart != 0 || gimmickReveal != 0 || lobbyHistory != 0;
+                      lobbyStart != 0 || gimmickReveal != 0 || lobbyHistory != 0 || effectTile != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
             root[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
@@ -300,6 +322,7 @@ namespace Wassup.Core
             root[nameof(PlayerProfile.lobbyStartHintVersion)] = 0;
             root[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
             root[nameof(PlayerProfile.lobbyHistoryHintVersion)] = 0;
+            root[nameof(PlayerProfile.effectTileHintVersion)] = 0;
             return root.ToString(Formatting.Indented);
         }
     }

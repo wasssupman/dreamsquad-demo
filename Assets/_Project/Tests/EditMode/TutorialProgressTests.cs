@@ -273,6 +273,7 @@ namespace Wassup.Tests.EditMode
             expected[nameof(PlayerProfile.lobbyStartHintVersion)] = 0;
             expected[nameof(PlayerProfile.gimmickRevealHintVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyHistoryHintVersion)] = 0;
+            expected[nameof(PlayerProfile.effectTileHintVersion)] = 0;
 
             string result = TutorialProgress.ResetAllInJson(source, out bool changed);
 
@@ -433,6 +434,67 @@ namespace Wassup.Tests.EditMode
                 lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion + 1,
             };
             Assert.IsFalse(TutorialProgress.IsLobbyKeyringHintPending(ahead));
+        }
+
+        // ── first-session-tutorial unit 26: 효과 타일 안내 토큰 ───────────────
+        //
+        // 게이트는 자기 토큰 하나다 — "두 번째 판" 은 컨트롤러가 `_awakeningLockedThisMatch` 로
+        // 가르고, 리빌 뒤라는 순서는 페이즈 흐름이 보장한다. 여기서 고정하는 것은
+        // 토큰의 독립성과 리셋 등록이다.
+
+        [Test]
+        public void EffectTileHint_PendingUntilCompleted_AndTouchesNothingElse()
+        {
+            var profile = new PlayerProfile();
+            _holder.SetLoadedProfile(profile);
+
+            Assert.IsTrue(TutorialProgress.IsEffectTileHintPending(profile));
+            Assert.IsTrue(TutorialProgress.ShouldRunEffectTileHint(_holder));
+
+            Assert.IsTrue(TutorialProgress.CompleteEffectTileHint(profile));
+            Assert.IsFalse(TutorialProgress.ShouldRunEffectTileHint(_holder));
+            Assert.IsFalse(TutorialProgress.CompleteEffectTileHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteEffectTileHint(null));
+
+            // 형제 토큰을 소비하지 않는다 — 특히 리빌 안내와 서로 독립이다.
+            Assert.IsTrue(TutorialProgress.IsGimmickRevealHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsCorePending(profile));
+
+            var ahead = new PlayerProfile
+            {
+                effectTileHintVersion = TutorialProgress.EffectTileHintVersion + 1,
+            };
+            Assert.IsFalse(TutorialProgress.IsEffectTileHintPending(ahead));
+
+            // 세션 가드
+            _holder.SetLoadedProfile(null);
+            Assert.IsFalse(TutorialProgress.ShouldRunEffectTileHint(_holder));
+        }
+
+        [Test]
+        public void Reset_ReportsChanged_WhenOnlyEffectTileTokenIsSet()
+        {
+            var profile = new PlayerProfile
+            {
+                selectedSquadId = "keep_squad",
+                effectTileHintVersion = TutorialProgress.EffectTileHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile),
+                "효과 타일 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, profile.effectTileHintVersion);
+            Assert.AreEqual("keep_squad", profile.selectedSquadId);
+
+            const string source = @"{
+                'effectTileHintVersion': 1,
+                'selectedSquadId': 'keep_squad'
+            }";
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "이 토큰만 다를 때도 리셋이 디스크에 닿아야 한다");
+            var stored = JObject.Parse(result);
+            Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.effectTileHintVersion)));
+            Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
         }
 
         // ── unit 11: 로드아웃 시퀀스 토큰 ─────────────────────────────────────
