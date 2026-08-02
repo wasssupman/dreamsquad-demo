@@ -43,7 +43,7 @@ MonoBehaviour:
   tapSettleMaxDuration: 0.28
   directionAimSlowmoScale: 0.2
   boardDragThreshold: 16
-  dropTotalSeconds: 2
+  dropTotalSeconds: 0.45
   dropRecoilSeconds: 0.12
   dropRecoilDip: 0.35
   dropArcHeightFactor: 1.399

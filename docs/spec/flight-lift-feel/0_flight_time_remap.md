@@ -56,4 +56,4 @@ public static float FlightTimeRemap(float u, float power)
 ## 검증 기록
 
 - 2026-08-01 · EditMode 1790 중 1788 통과·실패 0 · compile 클린 · 독립 코드 리뷰 반영(`c6f6405e`).
-- **사용자 Play 감각 확인은 미완** — 통과 시 이 줄 아래에 확인 일자를 추가한다.
+- 확인: 2026-08-02 · 사용자 Play 감각 확인 통과(드롭 2초·도약 2초로 늘려 관찰 후 원 수치 복귀).
