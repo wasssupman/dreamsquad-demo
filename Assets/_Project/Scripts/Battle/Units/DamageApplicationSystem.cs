@@ -34,6 +34,8 @@ namespace Wassup.Battle.Units
         // shield-guardian-defender unit 0 — 실드 슬롯(쓰기 단독 소유) + 부여 drain.
         private BufferLookup<ShieldSlot> _shieldSlotLookup;
         private BufferLookup<IncomingShield> _incomingShieldLookup;
+        // ultimate-leap unit 2 — 이탈(판 밖) 판정. Combat 소유 컴포넌트를 Units 가 RO 로 읽는다.
+        private ComponentLookup<Wassup.Battle.Combat.UltimateLeapState> _ultimateLeapLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -47,6 +49,7 @@ namespace Wassup.Battle.Units
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
             _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
             _killScoreLookup = state.GetComponentLookup<KillScore>(isReadOnly: true);
+            _ultimateLeapLookup = state.GetComponentLookup<Wassup.Battle.Combat.UltimateLeapState>(isReadOnly: true);
             _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
             _dcTriggerSlotLookup = state.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
             _shieldSlotLookup = state.GetBufferLookup<ShieldSlot>(isReadOnly: false);
@@ -77,6 +80,7 @@ namespace Wassup.Battle.Units
             _dcTriggerSlotLookup.Update(ref state);
             _shieldSlotLookup.Update(ref state);
             _incomingShieldLookup.Update(ref state);
+            _ultimateLeapLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -85,6 +89,17 @@ namespace Wassup.Battle.Units
                               .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
+                // ultimate-leap unit 2 — 이탈 중이면 **버퍼를 비우고 넘어간다.**
+                // ⚠ 쿼리에서 WithNone 으로 빼면 안 된다 — 그러면 2초 동안 피해가 버퍼에 적립됐다가
+                // 착지 프레임에 통째로 터진다(무적이 아니라 지연 폭탄이 된다). DoT 틱과 잔여
+                // 투사체 히트도 같은 버퍼로 들어오므로 이 한 지점 드랍이 전부를 커버한다.
+                // 따름정리: 공중 사망이 없다 = 착지가 보장된다(UltimateLeapSystem 의 전제).
+                if (_ultimateLeapLookup.HasComponent(entity))
+                {
+                    damageBuffer.Clear();
+                    continue;
+                }
+
                 // ── ModifierStats lookup (read-only, defaults safe when absent) ────────
                 bool hasModifierStats = _buffStatsLookup.HasComponent(entity);
                 float dmgTakenMul = hasModifierStats ? _buffStatsLookup[entity].dmgTakenMul : 1f;

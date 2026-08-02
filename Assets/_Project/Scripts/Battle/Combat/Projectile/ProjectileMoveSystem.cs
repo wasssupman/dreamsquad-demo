@@ -65,10 +65,12 @@ namespace Wassup.Battle.Combat.Projectile
                 }
                 // AttackUnitTag = 적 전용 태그이자 이 풀의 유일한 진영 필터다
                 // (FactionTag 는 디펜더·적·해저드가 전부 갖고 있어 아무것도 안 거른다).
+                // ultimate-leap unit 2 — 이탈(판 밖) 중인 적은 재조준 후보가 아니다.
                 var q = SystemAPI.QueryBuilder()
                     .WithAll<LocalTransform, Wassup.Battle.Units.AttackUnitTag>()
                     .WithNone<Wassup.Battle.Units.DeadTag>()
                     .WithNone<Wassup.Battle.Movement.PastGoalTag>()
+                    .WithNone<UltimateLeapState>()
                     .Build();
                 retargetEntities = q.ToEntityArray(Allocator.Temp);
                 var xf = q.ToComponentDataArray<LocalTransform>(Allocator.Temp);

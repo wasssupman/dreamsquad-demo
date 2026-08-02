@@ -73,7 +73,11 @@ namespace Wassup.Battle.Combat.Projectile
             // Snapshot all living attack units up-front so a Splash hit can iterate
             // them without a nested SystemAPI.Query inside the projectile loop.
             // AttackUnitTag filter keeps non-enemy entities out of the AOE pool.
-            var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
+            // ultimate-leap unit 2 — 이탈(판 밖) 중인 적은 splash/TileAoe 피해자도, bounce 재조준
+            // 후보도 아니다. 직격 호밍은 target 을 이미 들고 있어 여기로 안 걸러지지만, 그 피해는
+            // DamageApplicationSystem 의 버퍼 드랍이 잡는다(2중 방어가 아니라 역할 분담).
+            var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>()
+                .WithNone<UltimateLeapState>().Build();
             var aoeEntities = aoeQuery.ToEntityArray(Allocator.Temp);
             var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             // Positions snapshot for the pure BounceRetarget.FindNext (architecture-

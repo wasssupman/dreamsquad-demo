@@ -38,10 +38,14 @@ namespace Wassup.Battle.Combat
 
             // Snapshot attackable targets into native arrays so the unified attacker
             // loop uses the same candidate pool and filters by AttackState.targetMask.
+            // ultimate-leap unit 2 — 이탈(판 밖) 중인 유닛은 타겟 후보에서 빠진다. 화면 밖에 있는
+            // 보스를 겨누면 방어유닛들이 빈 타일에 사격하고 데미지 숫자가 허공에 뜬다.
+            // (LeapFlight 는 여기 **없다** — 일반 도약은 비행 중에도 계속 맞는다.)
             var targetCandidatesQuery = SystemAPI.QueryBuilder()
                 .WithAll<FactionTag, Health, LocalTransform>()
                 .WithNone<PendingDeployment>()
                 .WithNone<DeadTag>()
+                .WithNone<UltimateLeapState>()
                 .Build();
             var targetEntities = targetCandidatesQuery.ToEntityArray(Allocator.Temp);
             var targetTransforms = targetCandidatesQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
