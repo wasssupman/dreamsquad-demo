@@ -156,7 +156,7 @@ namespace Wassup.Battle.Combat
                                 defBuilt = true;
                             }
                             if (hasBlinkQ && TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
-                                     defCells, in ff, out float3 destWorld))
+                                     defCells, in ff, out float3 destWorld, out _))
                             {
                                 blinkRW.ValueRW.queue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
                                 // sim 은 이번 프레임에 destWorld 로 텔레포트한다. 뷰는 브리지가
@@ -175,6 +175,41 @@ namespace Wassup.Battle.Combat
                             }
                             // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
                             // 이미 전진(발동 소모 유지, 재발동 없음).
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.UltimateLeap)
+                        {
+                            // ultimate-leap unit 1 — 이탈 개시. 여기서 하는 일은 **착지점 고정과
+                            // 상태 부착**뿐이고, 카운트다운·착지는 UltimateLeapSystem 이 굴린다.
+                            // 착지 셀을 지금 고정하는 것이 계약이다(README 4): 예고는 약속이라
+                            // 착지 직전 재계산하면 빨간 타일을 보고 유닛을 빼는 회피가 거짓이 된다.
+                            if (!defBuilt)
+                            {
+                                var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+                                defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
+                                for (int di = 0; di < defTransforms.Length; di++)
+                                    defCells[di] = GridMath.WorldToCell(
+                                        defTransforms[di].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                defTransforms.Dispose();
+                                defBuilt = true;
+                            }
+                            if (TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
+                                    defCells, in ff, out float3 ultDest, out int2 ultCell))
+                            {
+                                // 잠금(LeapFlight)과 무적(UltimateLeapState)은 **함께 붙는다** —
+                                // 레이어는 갈리지만 수명은 하나다(README 6).
+                                ecb.AddComponent(entity, new UltimateLeapState
+                                {
+                                    remaining = math.max(0.01f, slot.duration),
+                                    landingCell = ultCell,
+                                    landingWorld = ultDest,
+                                    slamDamage = slot.slamDamage,
+                                    slamTileRange = math.max(0, slot.slamTileRange),
+                                    projectileDataIndex = slot.projectileDataIndex,
+                                });
+                                ecb.AddComponent<LeapFlight>(entity);
+                            }
+                            // 목적지 실패 = skip. k 는 이미 전진 — 생존당 1회라 **재시도가 없다.**
+                            // 방어유닛 전멸 상황이면 어차피 응징할 밀집이 없으므로 수용.
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                         {
@@ -230,17 +265,22 @@ namespace Wassup.Battle.Combat
         // OffsetDest(리더를 지나쳐 1타일)는 쓰지 않는다 — 밀집을 응징하러 뛰는 것이므로
         // 밀집 셀 자체가 desired 이고, 그 셀이 배치칸(비-walkable)이면 TryFindLandingCell 의
         // 링 탐색이 인접 walkable·연결 셀로 스냅한다(고립 포켓 착지 방지는 기존 계약).
+        // ultimate-leap unit 1 — 착지 **셀**도 함께 돌려준다. 궁극기는 예고 타일을 그려야 해서
+        // 셀이 필요하고, 월드→셀 역변환은 반올림 경계에서 원본과 갈릴 수 있다(예고와 실제 착지가
+        // 어긋나면 이 스킬의 존재 이유가 무너진다). SelfBlink 호출부는 `_` 로 버린다.
         private static bool TryResolveBlinkDest(
             int maxRingRadius, int densityRadius,
             in NativeArray<int2> defCells,
-            in FlowFieldSingleton ff, out float3 destWorld)
+            in FlowFieldSingleton ff, out float3 destWorld, out int2 landingCell)
         {
             destWorld = default;
+            landingCell = default;
 
             if (!DefenderDensity.TryFindDensestCell(defCells, densityRadius, ff.gridSize, out int2 desiredCell, out _))
                 return false; // 방어유닛 전멸 → skip
             if (!BlinkMath.TryFindLandingCell(desiredCell, ff.dist, ff.gridSize, math.max(0, maxRingRadius), out int2 landing))
                 return false; // 링 상한 내 착지 불가 → skip
+            landingCell = landing;
             destWorld = GridMath.CellToWorldCenter(landing, ff.tileSize, 0f, origin: ff.origin);
             return true;
         }

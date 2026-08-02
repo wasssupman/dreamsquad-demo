@@ -43,3 +43,17 @@ foreach (UltimateLeapState, WithNone<DeadTag>):
 - compile 클린 · EditMode 무회귀
 - (에셋 배선 전이라 발동 불가 — unit 5 에서 Play 검증. 이 유닛은 시스템 등록·순서까지)
 - `UltimateLeapSystem` 이 `BattleSimGroup` 에서 `HealthThresholdSystem` 뒤에 도는 것 확인
+
+## 구현 중 확정
+
+- `TryResolveBlinkDest` 에 `out int2 landingCell` 추가. 궁극기는 예고 타일을 그려야 해서 셀이
+  필요한데, 월드→셀 역변환은 반올림 경계에서 원본과 갈릴 수 있다 — **예고와 실제 착지가 어긋나면
+  이 스킬의 존재 이유가 무너지므로** 원본 셀을 그대로 나른다. SelfBlink 호출부는 `_` 로 버린다.
+- 이탈 신호(Ascend) enqueue 는 **unit 3 으로 미뤘다** — 채널이 거기서 생긴다. 이 유닛까지는
+  sim 만 돌아서, 배선 시 보스는 제자리에 보인 채 2초 뒤 착지 위치로 순간이동한다.
+- 착지 실패(방어유닛 전멸)는 skip 이고 k 는 이미 전진이라 **재시도가 없다**(생존당 1회).
+  응징할 밀집이 없는 상황이므로 수용.
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린. 에셋 배선 전이라 발동 없음.
