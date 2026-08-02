@@ -35,6 +35,8 @@ namespace Wassup.Core
         // active-ally-zone unit 2 — 아군 장판 색(민트). 조준 시안/불가 적색과 구분되는 색.
         // 타일맵당 색 1개라 채널 균일하다. 이 파일의 색 규약(SerializeField 또는 tileSet SO)을 따른다.
         [SerializeField] private Color allyZoneColor = new Color(0.42f, 0.95f, 0.72f, 0.42f);
+        // ultimate-leap unit 4 — 착지 예고. 빨강 = "여기서 나가라" 라는 유일한 의미로 쓴다.
+        [SerializeField] private Color landingTelegraphColor = new Color(0.95f, 0.22f, 0.20f, 0.55f);
 
         [Header("끈적 액체 타일 (placement-cell-snap unit 7 rev)")]
         // 포커스 셀 하이라이트 자체가 액체 — 테두리(셀 고정) + 내부 번짐(손가락 방향).
@@ -186,6 +188,7 @@ namespace Wassup.Core
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles(); // placement-eligible-tile-highlight unit 1
             _placeableActive = false;
             ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
+            ClearTelegraphCells(); // ultimate-leap unit 4 — 예고가 맵 너머로 살아남지 않게
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
@@ -1050,6 +1053,60 @@ namespace Wassup.Core
         {
             _zoneCellRefs.Clear();
             if (_zoneTilemap != null) _zoneTilemap.ClearAllTiles();
+        }
+
+        // ── ultimate-leap unit 4 — 착지 예고 타일 ────────────────────────────────
+        // **또 하나의 전용 타일맵이다.** range 채널을 공유할 수 없다: 그쪽은 `SetPlacementRange`/
+        // `SetPlacementCells` 가 매번 `ClearPlacementRange()` 로 시작하는 단일 owner set/clear 라,
+        // 예고 2초 동안 플레이어가 유닛을 드래그하면 배치 프리뷰와 예고가 서로를 지운다.
+        // (예고 중 배치는 막을 수 없다 — 유닛을 빼고 다시 놓는 것이 이 스킬의 놀이다.)
+        //
+        // zone 처럼 refcount 는 두지 않는다: 궁극기는 생존당 1회라 동시 예고가 존재할 수 없다.
+        // 두 번째 소비처가 생기면 그 spec 이 refcount 를 붙인다(제약 8).
+        private Tilemap _telegraphTilemap;
+        private readonly List<Vector2Int> _telegraphCells = new List<Vector2Int>();
+
+        public void SetTelegraphCells(IReadOnlyList<Vector2Int> cells)
+        {
+            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
+            ClearTelegraphCells();
+            EnsureTelegraphTilemap();
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _telegraphTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+                _telegraphCells.Add(cell);
+            }
+        }
+
+        public void ClearTelegraphCells()
+        {
+            if (_telegraphCells.Count == 0) return;
+            if (_telegraphTilemap != null)
+                foreach (var cell in _telegraphCells) _telegraphTilemap.SetTile(ToCell(cell), null);
+            _telegraphCells.Clear();
+        }
+
+        private void EnsureTelegraphTilemap()
+        {
+            if (_telegraphTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("LandingTelegraphTiles");
+            go.transform.SetParent(grid.transform, false);
+            // zone(-0.03) 위, range(-0.05) 아래 — 예고는 배치 프리뷰에 가려지지 않아야 한다.
+            go.transform.localPosition = new Vector3(0f, 0f, -0.045f);
+            _telegraphTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _telegraphTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = _highlightAbove ? 9998 : -13;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+            _telegraphTilemap.color = landingTelegraphColor;
         }
 
         private void EnsureZoneTilemap()

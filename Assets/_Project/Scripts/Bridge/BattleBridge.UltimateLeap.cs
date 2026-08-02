@@ -48,6 +48,22 @@ namespace Wassup.Bridge
             // 화면 밖에 멈춘 채 남지 않는다.
             _ultimateLeapAirborne.Clear();
             _enemyViewOverride.Clear();
+            tilemapMapView?.ClearTelegraphCells(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
+        }
+
+        // 착지 예고. 셀 집합은 **슬램 피해와 같은 함수**에서 나온다 — 예고와 실제 피해 범위가
+        // 갈리면 이 스킬의 존재 이유(보고 피한다)가 무너진다. sim 이 이미 확정한 값을 읽기만 한다.
+        private void ShowLandingTelegraph(Entity entity)
+        {
+            if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
+            var leap = _em.GetComponentData<UltimateLeapState>(entity);
+            int r = leap.slamTileRange;
+            var cells = new System.Collections.Generic.List<Vector2Int>((2 * r + 1) * (2 * r + 1));
+            // Chebyshev 정사각 — TileAoe 피해 판정과 같은 모양(GridMath.RangeToTiles 규약).
+            for (int dx = -r; dx <= r; dx++)
+            for (int dz = -r; dz <= r; dz++)
+                cells.Add(new Vector2Int(leap.landingCell.x + dx, leap.landingCell.y + dz));
+            tilemapMapView.SetTelegraphCells(cells);
         }
 
         // ── 드레인 ──
@@ -65,6 +81,7 @@ namespace Wassup.Bridge
                     // 첫 프레임 오버라이드를 여기서 건다 — 걸기 전에 sim 좌표가 한 프레임이라도
                     // 소비되면 팝이 보인다(BossLeap rev 3 실측 교훈).
                     _enemyViewOverride[evt.entity] = (evt.world, 0f);
+                    ShowLandingTelegraph(evt.entity);
                     StartCoroutine(RunUltimateLeapAscend(evt.entity, evt.world));
                 }
                 else
@@ -72,6 +89,9 @@ namespace Wassup.Bridge
                     // 강하는 sim 이 착지를 확정한 프레임에 온다. 상승이 없었으면(취소·teardown)
                     // 무시 — 허공에서 유닛이 떨어지는 그림을 만들지 않는다.
                     if (!_ultimateLeapAirborne.Remove(evt.entity)) continue;
+                    // 예고는 **여기서** 끈다 — sim 이 착지를 확정한 순간이고, 강하 연출이 끝날
+                    // 때까지 붉은 타일을 남기면 "아직 피할 수 있다" 는 거짓 신호가 된다.
+                    tilemapMapView?.ClearTelegraphCells();
                     StartCoroutine(RunUltimateLeapDescend(evt.entity, evt.world, evt.dataIndex));
                 }
             }

@@ -30,3 +30,24 @@
 - 예고 타일 집합과 슬램 피해 타일 집합이 같은 함수에서 나온다(코드 리뷰 확인 항목)
 - teardown/배틀 종료 시 예고가 화면에 남지 않는다
 - (Play 확인은 unit 5)
+
+## 구현 중 확정 — 전용 타일맵으로 갔다
+
+`_rangeTilemap` **공유는 불가**로 확정. `SetPlacementRange`/`SetPlacementCells` 가 매번
+`ClearPlacementRange()` 로 시작하는 단일 owner set/clear 채널이라, 예고 2초 동안 플레이어가
+유닛을 드래그하면 배치 프리뷰와 예고가 서로를 지운다. **예고 중 배치를 막을 수도 없다** —
+유닛을 빼고 다시 놓는 것이 이 스킬의 놀이다.
+
+`active-ally-zone` 이 같은 이유로 전용 타일맵을 판 선례라 그대로 따랐다:
+`TilemapMapView.SetTelegraphCells` / `ClearTelegraphCells` + `landingTelegraphColor`(빨강).
+z = -0.045(zone -0.03 위, range -0.05 아래), sorting -13.
+
+**refcount 는 두지 않았다** — 궁극기는 생존당 1회라 동시 예고가 존재할 수 없다. zone 이
+refcount 를 가진 것은 장판이 여러 장 겹치기 때문이고, 여기는 그 조건이 없다(제약 8).
+
+해제 3지점: Descend 드레인(착지 확정 순간 — 강하 연출이 끝날 때까지 남기면 "아직 피할 수 있다"는
+거짓 신호) · `DisposeUltimateLeapChannel`(매치 teardown) · `TilemapMapView.Clear`(맵 리빌드).
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린.
