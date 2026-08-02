@@ -79,6 +79,19 @@ namespace Wassup.Data
         // 반복 주기는 트리거 소유다(PeriodicTimer(0.5s) × 패턴(1발) = 0.5초 간격 사격).
         // append-only.
         EmitProjectilePattern = 17,
+        // ultimate-leap unit 0 — 이탈→예고→강습. 보스가 판을 떠나 화면 밖으로 사라지고,
+        // 착지 셀 주변 slamTileRange 타일이 예고된 뒤 duration 초 후 착지해 슬램 피해.
+        // 이탈 동안 공격·이동 불가(LeapFlight) + **피격 불가**(UltimateLeapState 축).
+        //
+        // SelfBlink 와 분리한 이유: 그건 "즉시 텔레포트 + 뷰 아치 + 피격 가능" 이고 이건
+        // "판 밖 이탈 + 예고 + 무적" 이다. 한 kind 에 플래그로 겸직시키면 DotEffect 가 겪은
+        // "성격이 다른 둘이 한 슬롯을 공유" 형태가 된다.
+        //
+        // "생존당 1회" 는 코드에 없다 — fraction >= 0.5 면 두 번째 경계가 음수라 재발동이
+        // 수학적으로 불가하다(HealthThresholdEval). 다른 보스 재사용 = 에셋 슬롯 한 줄.
+        // 필드 재사용: duration=예고 초 · magnitude=밀집 탐색 반경 · tileRange=착지 링 상한 ·
+        // slamDamage/slamTileRange=착지 피해와 예고 범위. 신규 슬롯 필드 0. append-only.
+        UltimateLeap = 18,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의

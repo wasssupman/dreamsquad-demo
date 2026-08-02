@@ -145,6 +145,12 @@ namespace Wassup.Core
                 case DcPayloadKind.NextAttackDoubleFire:
                 case DcPayloadKind.AreaBarrage:
                 case DcPayloadKind.SelfBlink:
+                // ultimate-leap unit 0 — self 계열이라 host 의 공격 모델과 무관하다.
+                // 실제로는 보스 bake 전용(BakeNightmareMechanics)이지만 그건 **authoring 사실**
+                // 이지 적용성 판정이 아니다 — 바로 위 SelfBlink 도 같은 처지로 여기 있다.
+                // "카드가 아니다" 를 이 레이어에서 표현하려 들면 Unclassified(=통합 버그)와
+                // 정상 거절이 섞인다.
+                case DcPayloadKind.UltimateLeap:
                 case DcPayloadKind.SelfWarmupBuff:
                 case DcPayloadKind.PlacementAura:
                 case DcPayloadKind.AllyMoveSpeedAura:

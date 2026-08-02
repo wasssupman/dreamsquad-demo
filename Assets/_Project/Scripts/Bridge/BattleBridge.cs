@@ -6450,7 +6450,10 @@ namespace Wassup.Bridge
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
                           m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura ||
-                          m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe) &&
+                          m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe ||
+                          // ultimate-leap unit 0 — 착지 슬램도 ProjectileSpawnRequest 로 나가므로
+                          // SelfTileAoe 와 같은 이유로 dataIndex 가 필수다(아래 loud 거절 참조).
+                          m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap) &&
                          m.payload.projectile != null)
                 {
                     // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
@@ -6469,6 +6472,15 @@ namespace Wassup.Bridge
                     // 거절한다(bake 의 기존 loud 거절 선례와 동일 표현). defender 슬롯 경로도
                     // 같은 규칙을 쓴다.
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)
+                {
+                    // ultimate-leap unit 0 — SelfTileAoe 와 같은 함정: 착지 슬램이
+                    // ProjectileSpawnRequest 하나로 표현되고 드레인이 dataIndex<0 이면 요청을
+                    // 통째로 버린다 → **연출뿐 아니라 피해까지 사라진다.** 조용히 "이탈만 하고
+                    // 아무 일도 안 일어나는" 궁극기가 되므로 loud 하게 거절한다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: UltimateLeap 에 ProjectileData(착지 슬램 view) 가 없어 슬램 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
                     continue;
                 }
                 // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언 부착 오라(kind 무관):

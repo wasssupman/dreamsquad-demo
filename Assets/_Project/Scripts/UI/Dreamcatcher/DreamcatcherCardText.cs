@@ -260,6 +260,12 @@ namespace Wassup.UI
                 case DcPayloadKind.SelfBlink:
                     effect = $"반경 {Count(payload.tileRange)}칸 내 위치로 이동";
                     break;
+                // ultimate-leap unit 0 — 보스 전용이라 카드로 렌더될 일이 없다. 그래도 비워 두면
+                // 훗날 보스 능력 툴팁 같은 소비처가 생겼을 때 빈 문자열이 조용히 나간다.
+                case DcPayloadKind.UltimateLeap:
+                    effect = $"{Duration(payload.duration)} 후 착지 · 반경 "
+                           + $"{Count(payload.slamTileRange)}칸 피해 {Count(payload.slamDamage)}";
+                    break;
                 case DcPayloadKind.AllyMoveSpeedAura:
                     effect = $"반경 {Count(payload.tileRange)}칸 아군 이동 속도 "
                            + $"{SignedPercent(payload.magnitude)} · {Duration(payload.duration)}";

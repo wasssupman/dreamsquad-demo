@@ -36,14 +36,26 @@ namespace Wassup.Battle.Combat
 ```
 
 - bake: `DcTriggerSlot` 은 `duration`·`slamDamage`·`slamTileRange`·`projectileDataIndex` 필드를
-  이미 갖고 있다 — `BakeNightmareMechanics` 가 새 kind 를 기존 필드 매핑 그대로 통과시키는지 확인만.
-  신규 슬롯 필드 0.
-- 카드 텍스트/적용성 분기: 이 payload 는 드림캐쳐 카드로 노출되지 않는다 — `DcApplicability` 에서
-  명시적으로 제외(보스 전용 arm). `HealthThresholdSystem` 의 "unhandled payload" 경고는 unit 1 이
-  분기를 추가할 때까지 이 kind 에 대해 뜨면 안 되므로, **unit 0 에서는 에셋 배선을 하지 않는다**
-  (배선은 unit 5).
+  이미 갖고 있다 — 일반 필드 매핑은 그대로 통과한다. **신규 슬롯 필드 0.**
+- ⚠ **`projectileDataIndex` 는 필수다.** 착지 슬램이 `ProjectileSpawnRequest` 하나로 표현되고
+  드레인이 `dataIndex < 0` 이면 요청을 통째로 버린다 — 연출뿐 아니라 **피해까지 사라져** "이탈만
+  하고 아무 일도 안 일어나는" 궁극기가 된다. `SelfTileAoe` 가 겪은 그 함정이라 같은 처방을 쓴다:
+  bake 의 projectile→index 분기에 kind 추가 + 미지정 시 **loud 거절**(skip + 경고).
+- 적용성 판정: `DcApplicability` 의 **self/오라/지역 계열 목록에 넣는다**(`SelfBlink` 옆).
+  "보스 전용이라 카드가 아니다" 를 이 레이어에서 표현하려 들면 안 된다 — `Unclassified` 는
+  **통합 버그 전용**으로 예약돼 있고 `EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs` 가
+  그 불변식을 강제한다(구현 중 이 테스트가 실제로 잡았다). 보스 전용은 authoring 사실이지
+  적용성 판정이 아니며, `SelfBlink` 도 같은 처지로 그 목록에 있다.
+- `HealthThresholdSystem` 의 "unhandled payload" 경고는 unit 1 이 분기를 추가할 때까지 뜨면
+  안 되므로, **unit 0 에서는 에셋 배선을 하지 않는다**(배선은 unit 5).
 
 ## 완료 기준
 
 - compile 클린 · EditMode 무회귀 · 런타임 동작 무변경(발동 경로 없음)
 - enum 추가가 기존 에셋의 int 값과 충돌하지 않음(뒤에 append 확인)
+
+## 검증 기록
+
+- 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린. 에셋 배선 전이라 런타임 무변경.
+- 구현 중 `DcApplicabilityTests.EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs` 가 초안의
+  `Unclassified` 반환을 잡았다 — 위 "적용성 판정" 항목 참조.
