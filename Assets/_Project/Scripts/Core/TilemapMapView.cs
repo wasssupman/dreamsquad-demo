@@ -1099,10 +1099,13 @@ namespace Wassup.Core
         public void SetTelegraphCells(IReadOnlyList<Vector2Int> cells)
         {
             if (grid == null || _tileSet == null || cells == null) return;
-            // **채움(solid) 타일을 쓴다** — `rangeTile` 은 격자 outline 이라 "여기서 나가라" 를
-            // 주변시로 읽히게 하지 못한다. `placeableTile` 은 안쪽 fill + 가장자리 림이 한
-            // 스프라이트에 구워진 slab 이라 면(area)으로 읽힌다. 미할당이면 outline 으로 폴백.
-            var tile = _tileSet.placeableTile != null ? _tileSet.placeableTile : _tileSet.rangeTile;
+            // **전용 채움 타일을 쓴다.** 다른 채널 타일을 빌리면 그쪽 저작 의도에 종속된다 —
+            // `placeableTile`(슬랩)은 자체 색이 회색(0.80)이라 tint 를 곱하면 색이 죽어 "어두운
+            // dim" 으로만 보이고, `rangeTile` 은 격자 outline 이라 면적이 없어 주변시로 안 읽힌다.
+            // `telegraphTile` 은 흰색 solid + TileFlags.None 이라 아래 tint 가 원색으로 실린다.
+            // 폴백은 "안 보이는 것보다 낫다" 수준의 열화 경로다.
+            var tile = _tileSet.telegraphTile != null ? _tileSet.telegraphTile
+                     : (_tileSet.placeableTile != null ? _tileSet.placeableTile : _tileSet.rangeTile);
             if (tile == null) return;
             ClearTelegraphCells();
             EnsureTelegraphTilemap();

@@ -60,6 +60,15 @@ namespace Wassup.Data
         [Tooltip("조준 표시 기준 알파. 실제 알파 = 이 값 × 세기 배율(미선택 십자 0.7 / 선택 레인 1).")]
         public float aimRangeAlpha = 0.85f;
 
+        [Header("Landing telegraph (ultimate-leap)")]
+        // **전용 타일이다 — 다른 채널의 타일을 빌려 쓰지 않는다.** 세 후보가 전부 임자가 있다:
+        // rangeTile=격자 outline(배치 사거리) · aimRangeTile=tile_range_solid(조준 페이즈) ·
+        // placeableTile=슬랩(배치 가능 칸). 특히 슬랩은 자체 `m_Color` 가 회색(0.80)이라 tint 를
+        // 곱하면 색이 죽어 "어두운 dim" 으로만 보인다 — 빌려 쓰면 그 타일의 저작 의도에 종속된다.
+        // 이 타일은 흰색 + `TileFlags.None` 이라 아래 tint 가 원색 그대로 실린다.
+        [Tooltip("착지 예고 채움 타일. 흰색 solid 여야 tint 가 제 색으로 나온다. 미할당 시 placeable→range 폴백.")]
+        public TileBase telegraphTile;
+
         [Header("Placement highlight (placement-eligible-tile-highlight)")]
         // 배치 가능 칸을 덮는 타일. 안쪽 은은한 fill + 가장자리 밝은 림이 한 스프라이트에 구워져
         // "플랫폼(슬랩)" 느낌을 준다(3D 융기 없음). 색은 placeableColor 가 tint. 형태 조정(림/베벨)은

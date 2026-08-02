@@ -51,3 +51,25 @@ refcount 를 가진 것은 장판이 여러 장 겹치기 때문이고, 여기�
 ## 검증 기록
 
 - 2026-08-02 · EditMode 1809 중 1807 통과·실패 0 · compile 클린.
+
+## 전용 타일 (사용자 지적 2026-08-02)
+
+초판은 `placeableTile`(배치 하이라이트 슬랩)을 빌려 썼는데, **그 타일은 자체 `m_Color` 가 회색
+(0.80)** 이라 주황 tint 를 곱하면 색이 죽어 "어두운 dim" 으로만 보였다. 타일을 빌리면 그 타일의
+저작 의도(색·형태·flags)에 종속된다.
+
+세 후보가 전부 임자가 있다:
+
+| 타일 | 임자 |
+|---|---|
+| `tile_grid_outline` | `rangeTile` — 배치 사거리(격자 outline, 면적 없음) |
+| `tile_range_solid` | `aimRangeTile` — 조준 페이즈 |
+| `Tile_PlaceableSlab` | `placeableTile` — 배치 가능 칸(자체 회색) |
+
+→ **`Tile_LandingTelegraph.asset` 신설**(흰색 + `TileFlags.None` + solid 스프라이트).
+흰색이라야 tint 가 원색으로 실리고, `TileFlags.None` 이라 훗날 per-cell 색도 가능하다.
+`TileSetData.telegraphTile` 필드로 참조하며 미할당 시 placeable→range 폴백(열화 경로).
+
+참고: `TileFlags.LockColor`(m_Flags 1)는 `Tilemap.SetColor`(per-cell)만 막고 `Tilemap.color`
+(타일맵 전체 tint)는 막지 않는다 — 세 기존 타일이 전부 flags 1 인데 range 노랑 tint 가 정상
+동작하는 것이 그 증거다. 색이 죽은 원인은 flags 가 아니라 **타일 자체 색**이었다.
