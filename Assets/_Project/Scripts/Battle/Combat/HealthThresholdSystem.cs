@@ -223,8 +223,15 @@ namespace Wassup.Battle.Combat
                                     });
                                 }
                             }
-                            // 목적지 실패 = skip. k 는 이미 전진 — 생존당 1회라 **재시도가 없다.**
-                            // 방어유닛 전멸 상황이면 어차피 응징할 밀집이 없으므로 수용.
+                            else
+                            {
+                                // 목적지 실패 = skip. k 는 이미 전진 — 생존당 1회라 **재시도가 없다.**
+                                // 조용히 넘기면 "궁극기가 왜 안 나왔는지" 를 영영 알 수 없다(1회성이라
+                                // 재현도 안 된다). 원인은 둘뿐이다: 방어유닛 0(밀집 셀 없음) 또는
+                                // 링 6칸 안에 walkable·연결 셀 없음. Burst 라 문자열 리터럴만 쓴다.
+                                UnityEngine.Debug.LogWarning(
+                                    "[UltimateLeap] 착지점 해석 실패로 발동 skip — 방어유닛이 없거나 밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
+                            }
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                         {
