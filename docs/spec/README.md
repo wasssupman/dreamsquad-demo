@@ -315,6 +315,9 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
 - **챕터 B 게이트를 독립 신호로 교체** [S] · 현재는 인게임 core 튜토리얼 완료 플래그를 재사용하는데, 그 실제 의미는 "core 튜토리얼이 발동하고 Battle 페이즈에 도달했다"다. `FirstSessionTutorialController` 의 fail-open 경로(참조 누락·affordable 슬롯 부재)를 탄 플레이어는 전투를 몇 판 하든 **챕터 B 를 영원히 못 본다**. 매치 카운트 같은 독립 신호가 의미에 맞다. (outgame-tutorial)
 - **`SQUAD`/`DREAMCATCHER` 버튼 라벨 한글 통일** [S] · 좌측 열 4개 중 둘만 영문이라, 한국어 안내 문구("스쿼드와 드림캐쳐")를 읽고 라틴 라벨로 대응시켜야 한다. 같은 줄의 `프리셋`/`히스토리` 는 한글이라 잘못된 그룹핑도 유발한다. 로비 레이아웃 스펙 범위. (outgame-tutorial)
 - **온보딩 인지 지표 관측** [M] · 현 spec 은 노출과 실행만 보장하고 인지는 검증하지 않는다. `2번째 판 시작 시 안내 없이 START 도달`, `첫 복귀 이후 세션에서 스쿼드/덱 패널 1회 이상 열기` 같은 사후 관측 지표가 필요. (outgame-tutorial)
+- **챕터 A `IntroFocus` 에 대상 사전 검사가 없다** [S] · 다른 포커스 단계와 달리 `startButton` 이 null/비활성이어도 열려서 "구멍 없는 풀 dim + 8초 잠금" 경로가 살아 있다. units 11~13 이 dim 탭 종료를 없애면서 `ShowFocus` 의 "구멍 없이 표시" 폴백이 더 이상 탈출구가 아니게 됐고, 나머지 스텝은 `TryEnterFocusStep` 의 사전 검사로 그 경로를 막았다. A 만 남았다. (outgame-tutorial units 11~13 이관, 2026-08-02)
+- **패널 닫기가 막히는 배선 경로** [S] · 스쿼드 페이지가 dirty 인데 `confirmPopup` 이 미배선이면 닫기가 LogError 로 차단돼(`SquadCharacterPageController.cs:152-157`) 로비 복귀 훅(`ClosePanels` → `OnLobbyShown`)이 안 돌고 시퀀스가 그 자리에 선다. 배선 버그 한정이지만, 로드아웃 시퀀스가 패널 왕복 2회로 늘어 노출 면이 커졌다. (outgame-tutorial units 11~13 이관, 2026-08-02)
+- **로비 구간 온보딩 총량** [M] · 재편으로 로비가 2스텝 → 4스텝 + 패널 왕복 2회가 됐다. 아래 "첫 판 튜토리얼 개선" 의 **온보딩 총량** [M] 항목과 같은 문제이고 그만큼 급해졌다 — 체감 후 뺄 것을 정한다. (outgame-tutorial units 11~13 이관, 2026-08-02)
 
 #### 어그로 이동/클램프 (aggro-tile-chase 종료 이관, 2026-07-20)
 

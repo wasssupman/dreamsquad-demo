@@ -43,7 +43,8 @@
 - 이 spec 의 회귀 11건 개별 재실행 전부 Passed — dim 탭 no-op 4건(Squad·Deck·Keyring·Start),
   토큰 격리 4건, `DragStarted → KeyringSettling` 전이, 늦은 드래그 신호 무시, 키링 선행 순서.
 - `TutorialProgressTests` 신규 6건(선행 관계 2 · 레거시 가드 경계 2 · 멱등/독립 · 리셋) Passed.
-- **Play 확인은 아직이다.** 아래 Follow-up 참조.
+- **사용자 Play 확인 통과 2026-08-02** — 스쿼드 포커스→클릭→페이지, 복귀 시 드림캐쳐 포커스,
+  키링 4초 초과 홀드 중 dim 미노출, 착지 후 START 포커스·문구, 콘솔 경고 0.
 
 ## Notes (되돌리면 안 되는 것)
 
@@ -66,14 +67,11 @@
 
 ## Follow-up
 
-- **Play 확인 필요**(로비 개발용 `RESET TUTORIAL` → 1판 소화 → 복귀):
-  ① 스쿼드 포커스 → 클릭 시 dim 이 같은 프레임에 걷히고 페이지가 열리는지
-  ② 닫으면 로비 복귀와 함께 드림캐쳐 포커스가 뜨는지
-  ③ 키링을 **4초 넘게 붙잡고 흔들어도** dim 이 올라오지 않는지
-  ④ 놓고 착지한 뒤 START 포커스 + `새로 구성한 덱으로 다시 게임시작!` 이 뜨는지
-  ⑤ 콘솔 경고 0
+후속 후보 3건(챕터 A 사전 검사 · 패널 닫기 배선 경로 · 온보딩 총량)은
+`docs/spec/README.md` → Follow-up Backlog → **아웃게임 튜토리얼** 로 이관했다.
+
 - `TryBeginChapter` 의 스텝 선택과 착지 폴링 진입은 **EditMode 로 관측 불가**다
   (`overlay`/`guidance` 미배선이면 즉시 return · `EnterStep` 이 `overlay.Show()` 를 탄다).
   선물 홀드(unit 7)·리빌 홀드(first-session unit 24)와 같은 계열의 구조적 한계.
-- 챕터 A `IntroFocus` 에만 대상 사전 검사가 없다(README 후속 후보).
-- 로비 구간이 2스텝 → 4스텝 + 패널 왕복 2회가 됐다. "온보딩 총량" 백로그가 그만큼 급해진다.
+- 실기기 QA 는 units 0~4 시절부터 계속 보류다. 이번 재편으로 포커스 대상이 2개 늘었으므로
+  노치·safe area 확인 대상도 함께 늘었다.

@@ -68,3 +68,5 @@ IsLegacyLobbySequenceDone(p) = p.lobbyKeyringHintVersion >= LobbyKeyringHintVers
 - 기존 EditMode 스위트 실패 0 — 특히 `LobbyKeyringHint_RunsOnlyAfterLoadoutHintComplete`
   (`TutorialProgressTests.cs`)는 이 unit 에서 **그대로 통과해야 한다**. 깨진다면 체인을 건드린 것이다
 - Play 동작 변화 0: 로비 안내 흐름이 커밋 전과 동일
+
+확인 완료 2026-08-02 · `10fad0c2` (EditMode 신규 6건 포함 회귀 통과).

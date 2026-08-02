@@ -6,8 +6,8 @@
 > 챕터 D 히스토리(units 8~9) **완료 2026-08-01** (`98c315d1`·`3c996168`, 카운터 fix `d37acc76`)
 > — **사용자 Play 확인 통과**(노출·클릭 종료). dim 탭 무반응·게스트 미노출은 미확인.
 > 인계는 `10_handoff_summary.md` ·
-> 로드아웃 시퀀스 재편(units 11~13) **구현 완료 2026-08-02 — 사용자 Play 확인 대기**
-> (컴파일 0 · EditMode 회귀 17건 통과 · 씬 변경 없음). 인계는 `14_handoff_summary.md`
+> 로드아웃 시퀀스 재편(units 11~13) **완료 2026-08-02** (`10fad0c2`)
+> — **사용자 Play 확인 통과**. 씬 변경 없음. 인계는 `14_handoff_summary.md`
 > 선행: `first-session-tutorial` (완료) · `outgame-lobby-layout` (완료) · `lobby-keyring-drag` (완료)
 
 ## 검증 질문
@@ -180,14 +180,6 @@ N/A — 신규 플레이 오브젝트나 생성→렌더 경로가 아니다. Sc
 
 ## 후속 후보
 
-- **챕터 A `IntroFocus` 에 대상 사전 검사가 없다** — 다른 포커스 단계와 달리 `startButton` 이
-  null/비활성이어도 열려서 "구멍 없는 풀 dim + 8초 잠금" 경로가 살아 있다. C·D 식 사전 검사를
-  넣는 소규모 항목(spec critic 2026-08-02 지적).
-- **패널 닫기가 막히는 배선 경로** — 스쿼드 페이지가 dirty 인데 `confirmPopup` 이 미배선이면
-  닫기가 LogError 로 차단돼(`SquadCharacterPageController.cs:152-157`) 로비 복귀 훅이 안 돌고
-  시퀀스가 그 자리에 선다. 배선 버그 한정이지만 시퀀스가 길어진 만큼 노출 면이 커졌다.
-- **로비 구간 온보딩 총량** — 이 재편으로 로비가 2스텝 → 4스텝 + 패널 왕복 2회가 된다.
-  백로그의 "온보딩 총량" [M] 지적이 그만큼 커지므로, 체감 후 뺄 것을 정한다.
-
-`docs/spec/README.md` → Follow-up Backlog → **아웃게임 튜토리얼 (outgame-tutorial 종료 이관,
-2026-07-21)** 로 이관했다 — 실기기 QA · 챕터 B 게이트 교체 · 버튼 라벨 한글 통일 · 인지 지표 관측 4건.
+`docs/spec/README.md` → Follow-up Backlog → **아웃게임 튜토리얼** 로 전부 이관했다 —
+units 0~9 종료분 4건(실기기 QA · 챕터 B 게이트 교체 · 버튼 라벨 한글 통일 · 인지 지표 관측)과
+units 11~13 종료분 3건(챕터 A 사전 검사 · 패널 닫기 배선 경로 · 로비 온보딩 총량).
