@@ -37,12 +37,24 @@ public void SetDefenderViewOverride(Entity entity, Vector3 viewPos, float lift =
 ### 뷰
 
 ```csharp
-public void SetFlightView(Vector3 viewPos, float lift)
+public void SetFlightView(Vector3 viewPos, float lift = 0f, Vector3 groundAnchor = default)
 ```
 
 `transform.position = viewPos` + 정렬 유지는 그대로 두고, unit 1 의 `UnitLiftVisual.Resolve(lift, …)` →
 `_flightScale` / `_blob.SetFlight(...)` 갱신을 덧붙인다. 이 경로는 `ApplyRenderPosition` 을 타지 않으므로
 lift 반영을 **여기서 직접** 해야 한다(보스는 피드가, 디펜더는 이 진입점이 소유).
+
+### 접지 앵커 (rev — `1746a731`)
+
+`groundAnchor` 는 **그림자가 서 있을 XZ** 다. 아치가 `camUp` 방향이라 `camUp.z = 0.866`(pitch 60°)
+성분이 유닛의 월드 Z 를 밀어, 블롭이 착지 타일에서 **약 2타일 미끄러졌다 돌아왔다**. 그림자는 "어느 칸에
+내려앉나"를 알려주는 앵커인데 하필 그 순간 엉뚱한 칸을 가리키는 셈이다.
+
+호출측이 **아치 기저선**(`Lerp(start, end, t)` — lift 계산에 이미 쓰는 값)을 그대로 넘긴다. 실제 그림자도
+그렇게 움직인다. 기본값 `default`(zero)면 앵커 없음 = 종전대로 유닛을 따라간다.
+
+보스 도약·넉업은 아치가 순수 +Y 라 XZ 가 안 밀리므로 이 경로를 쓰지 않는다 — 정상 피드
+(`ApplyRenderPosition`)가 매 프레임 앵커를 해제한다(`_flightHeight` 와 같은 자기해제 규약).
 
 ### lift 계산 (호출측 한 줄)
 

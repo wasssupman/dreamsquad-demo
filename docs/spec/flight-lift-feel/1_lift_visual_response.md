@@ -101,16 +101,21 @@ private void ApplyColor()
   스케일과 그림자는 **독립 노브**라 `liftScalePerHeight` 하나만 0 으로 두면 유닛 크기만 원복되고
   그림자는 계속 줄고 옅어진다. 무회귀 판정 때 셋 다 내려야 한다.
 
-## 알려진 제약 — 실그림자 경로에서는 그림자 반응이 없다
+## 그림자 반응은 블롭 경로에서만 산다 (해소됨 2026-08-02)
 
 `SpineUnitView.ApplyTilemapShadow` 는 `BattleBridge.UseRealShadows` 가 참이면 **블롭을 만들지 않는다**
-(둘은 상호배타). `UseRealShadows = useRealShadows && !isMobilePlatform` 이고 씬은 `useRealShadows: 1`
-이므로 **에디터·데스크톱에서는 `_blob == null` → 그림자 반응이 전부 no-op** 이다. 이 유닛의 그림자
-계약은 현재 **모바일(강제 블롭) 경로에서만** 성립한다.
+(둘은 상호배타, `tilemap-real-shadows` unit 2 계약). `UseRealShadows = useRealShadows && !isMobilePlatform`
+이므로, 씬이 `useRealShadows: 1` 이던 동안에는 **에디터·데스크톱에서 `_blob == null` → 그림자 반응이
+전부 no-op** 이었다. 게다가 실그림자 경로에서는 유닛 확대가 renderer 실루엣을 키워 **바닥 cast 그림자가
+같이 커진다** — "뜰수록 작아진다"의 반대 신호다.
 
-게다가 실그림자 경로에서는 유닛 확대가 renderer 실루엣을 키우므로 **바닥 cast 그림자가 같이 커진다** —
-"뜰수록 그림자가 작아진다"의 반대 신호다. 에디터에서 의도한 그림자 단서를 보려면
-`BattleBridge.useRealShadows` 를 끄고 확인한다.
+**해소**: 사용자 판정으로 씬의 `useRealShadows` 를 **0 으로 내렸다**(`bff474a1`). 이제 PC·모바일 모두
+블롭 경로를 타므로 이 유닛의 그림자 계약이 전 플랫폼에서 성립한다. 근거는 성능이 아니라 룩이다 —
+유닛 그림자는 조명이 아니라 "어느 칸에 있나"를 알려주는 **앵커**라, 광원 쪽으로 늘어지는 실루엣보다
+발밑 타원이 판독성에서 낫다는 판단.
+
+⚠ 되돌릴 경우(실그림자 복귀) 이 유닛의 그림자 절반은 다시 죽고 확대만 남는다. 그때는 계약을 "확대 전용"
+으로 좁히든지, 확대가 cast 그림자를 키우는 문제를 별도로 풀어야 한다.
 
 ## 검증 기록
 

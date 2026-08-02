@@ -14,6 +14,11 @@
 | `c6f6405e` | fix — 코드 리뷰 지적 4건 |
 | `b5e1525f` | docs — 계약 정정 3건 + 열린 결정 3건 |
 | `ebf7238c` | tune — 아치 높이 4.5 → 6.0 |
+| `5cde8fc7` | docs — handoff 작성 + 검증 기록 |
+| `1746a731` | rev — 비행 중 블롭이 착지 타일에 남게 (기저선 앵커) |
+| `bff474a1` | tune — PC 도 블롭 경로 + 블롭 알파 0.5 (+ 관찰용 도약 2초) |
+| `61c28f5d` | tune — 관찰용 드롭 2초 (`deploymentDuration` 동반 상향) |
+| `50cafa76` | tune — 관찰용 시간값 롤백 + Play 확인 기재 · spec 종료 |
 
 ## Implemented
 
@@ -28,6 +33,10 @@
 - `BattleBridge` 노브 8개(lift 5 · 도약 리듬 3) + `DragSwaySettings` ⑩ 3개. `MirrorLiftKnobs` 가
   `LateUpdate` 에서 매 프레임 미러 → Play 중 실시간 튜닝.
 - 아치 높이 6.0(드롭 SO · 도약 씬). 실제 apex ≈ 2.4 world.
+- **비행 중 블롭 접지 앵커** — 드롭·재배치 아치가 `camUp` 이라 유닛 XZ 가 밀린다. 그림자는 아치
+  기저선 위에 남아 착지 타일을 가리킨다(`BlobShadow.SetGroundAnchor`, 정상 피드가 자기해제).
+- **`useRealShadows` 0** — PC 도 블롭 경로. 유닛 그림자는 조명이 아니라 앵커라는 룩 판정.
+  바닥 receive 머티리얼·프랍 cast 도 함께 블롭 룩으로 넘어간다(상호배타 계약).
 
 ## Key Files
 
@@ -70,14 +79,18 @@
 
 ## Follow-up
 
-1. **사용자 Play 감각 확인** — 남은 유일한 완료 조건.
-2. **열린 결정 3건** — README "열린 결정" 참조. 요약: (a) lift 축이 드롭(camUp)과 도약(월드 +Y)에서
-   pitch 60° 기준 **정확히 2배** 어긋난다, (b) `useRealShadows` 가 켜진 에디터·데스크톱에서는 블롭이
-   생성되지 않아 그림자 반응이 no-op 이고 실그림자는 오히려 커진다, (c) 드롭 블롭이 `camUp.z` 성분
-   때문에 착지 타일에서 ~1.56 타일 미끄러진다.
-3. **탭 배치 던지기 적용** — 같은 인프라. `defender-drop-dismount` 후속 후보의 남은 절반.
-4. **먼지 VFX · 카메라 킥** — 착지 임팩트의 나머지.
-5. **테스트 공백** — `UnitLiftVisual.Resolve` 는 `BattleBridge` static 을 직접 읽어 EditMode 로 고정
+1. **lift 축 2배 불일치 — 수용 상태로 남음.** 드롭·재배치는 `camUp` 투영(=화면 세로 상승분), 도약·넉업은
+   월드 +Y 를 lift 로 넘긴다. pitch 60° 라 `camUp.y = 0.5` → **정확히 2배**. Play 에서 거슬리지 않아
+   수용했으나 **계약 2 의 "같은 높이 = 같은 크기" 는 이 코드에서 참이 아니다.** 다섯 번째 소비처를
+   붙이는 사람은 README "열린 결정" 1 을 먼저 읽을 것.
+2. **탭 배치 던지기 적용** — 같은 인프라. `defender-drop-dismount` 후속 후보의 남은 절반.
+3. **먼지 VFX · 카메라 킥** — 착지 임팩트의 나머지.
+4. **테스트 공백** — `UnitLiftVisual.Resolve` 는 `BattleBridge` static 을 직접 읽어 EditMode 로 고정
    불가. 재매핑 적용 규약(`recoilFrac + (1−recoilFrac)·Remap(u)`)이 두 파일에 복제됐는데 테스트 없음.
-6. **`liftScaleMax` 포화** — 아치 6.0 의 apex 2.4 에서 유닛 배율이 1.336 으로 상한(1.35)에 붙었다.
+5. **`liftScaleMax` 포화** — 아치 6.0 의 apex 2.4 에서 유닛 배율이 1.336 으로 상한(1.35)에 붙었다.
    아치를 더 올리려면 이 노브를 같이 올려야 크기 단서가 따라온다.
+6. **안드로이드 실기기 확인** — PC·모바일 모두 블롭 경로가 되어 룩은 같지만 프로파일은 미측정.
+   `useRealShadows` 를 끈 것이 모바일 성능에 주는 영향은 (원래 모바일이 블롭이었으므로) 없다 —
+   달라진 것은 PC 쪽이다.
+
+**해소된 항목**: 실그림자 경로 그림자 반응 no-op(`bff474a1`) · 블롭 착지 타일 미끄러짐(`1746a731`).

@@ -20,7 +20,7 @@
 
 ## 왜 지금 안 읽히는가 (진단)
 
-1. **원근 확대가 구조적으로 0.** 카메라는 perspective(FOV 36, pitch 58°)인데 아치 높이는 D&D 는
+1. **원근 확대가 구조적으로 0.** 카메라는 perspective(FOV 36, 배틀 pitch 60° 실측)인데 아치 높이는 D&D 는
    `camUp`, 보스는 `ToView` 뒤 월드 +Y 로 더한다. 둘 다 시선축에 거의 수직이라 **카메라와의 거리가
    안 변한다.** 화면에서 위로 미끄러질 뿐 커지지 않는다.
 2. **시간이 선형이라 리듬이 없다.** `KeyringSim.DismountPoint` 는 기하만 담당하고, 두 호출처 모두
@@ -35,7 +35,7 @@
 |---|---|---|---|
 | 0 | 순수 수학 | `0_flight_time_remap.md` | `FlightTimeRemap` 1개 + EditMode. power=1 = 항등(무회귀 기본값) |
 | 1 | 프레젠테이션 | `1_lift_visual_response.md` | 리프트 시각 반응의 단일 정의 — 헬퍼 + 전역 노브 + 두 뷰 스케일 합성 + BlobShadow. **보스 도약·넉업이 여기서 반응 시작** |
-| 2 | 프레젠테이션 | `2_defender_flight_lift.md` | 디펜더 비행이 lift 를 동반 전달. 드롭·재배치가 반응 |
+| 2 | 프레젠테이션 | `2_defender_flight_lift.md` | 디펜더 비행이 lift + 접지 앵커를 동반 전달. 드롭·재배치가 반응 |
 | 3 | 튜닝 | `3_feel_tuning.md` | 재매핑 적용(노브 4) + 아치 높이 재튜닝 + 착지 스쿼시(발화 2) |
 | 4 | 인계 | `4_handoff_summary.md` | 커밋·검증·되돌리면 안 되는 것 |
 
@@ -49,7 +49,9 @@
    알면 경로마다 갈라진다 — 소비처는 **원시 높이**만 넘기고, 해석은 `UnitLiftVisual` 한 곳에서 한다.
 2. **배율은 단위 높이당 비율로 정의한다** — `scale = 1 + lift × scalePerHeight` (상한 clamp).
    "이 연출의 apex 대비 몇 %" 로 정의하면 `arcHeight` 개념이 없는 소비처(넉업)가 기준을 못 만든다.
-   비율 정의는 **같은 높이 = 같은 크기**를 전 유닛에 자동 보장한다(= 원근 일관성).
+   ⚠ 당초 이 정의가 **같은 높이 = 같은 크기**를 자동 보장한다고 적었는데, **구현에서는 참이 아니다** —
+   소비처가 넘기는 lift 의 축이 갈린다(하단 "열린 결정" 1). 다섯 번째 소비처를 붙이기 전에 그 항목을
+   먼저 읽을 것.
 3. **lift 반응 노브는 단일 소유.** 스케일은 원근 보상이라 연출별 취향이 아니다 — 같은 높이의 두 유닛이
    다른 크기로 보이면 카메라가 깨져 보인다. `BattleBridge` SerializeField → static 전역
    (`BlobShadowSize`/`BlobShadowColor`/`BlobShadowGroundY` 선례, `BattleBridge.cs:248`·`:1021`).
