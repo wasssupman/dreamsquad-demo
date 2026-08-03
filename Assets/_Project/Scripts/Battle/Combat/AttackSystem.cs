@@ -352,16 +352,19 @@ namespace Wassup.Battle.Combat
                     continue;
                 }
 
-                // summon-patrol-defender unit 3 — 소환사는 타겟 없이 쿨다운마다 순찰병을
-                // 소환한다(blind, 폭탄맨 계약과 같은 형태). 타겟을 요구하는 RESOLVE 에 두면
-                // 적이 사거리에 들어오기 전까지 순찰병이 안 나와서 "거점을 지킨다"가 성립하지
-                // 않는다. 폭탄맨과 같은 자리에서 처리하고 continue.
+                // summon-patrol-defender unit 3 — 소환사는 **타겟을 고르지 않고** 순찰병을
+                // 유지한다. 폭탄맨과 같은 자리(타겟 선정 앞)에서 처리하고 continue —
+                // 타겟을 요구하는 RESOLVE 에 두면 소환사 attackRange(근접 1타일) 안에 적이
+                // 들어와야만 소환돼, 순찰병이 마중 나갈 시간이 없어진다.
+                //
+                // 단 **첫 소환에만 거점 구역 게이트**가 걸린다(계약 8) — 폭탄맨의 blind
+                // bombardment 를 그대로 따르지 않는 지점이다. 상세는 아래 게이트 블록.
                 if (summonerLookup.HasComponent(attackerEntity))
                 {
                     if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f)
                     {
                         var summoner = summonerLookup[attackerEntity];
-                        // 계약 8 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
+                        // 계약 9 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
                         // 파괴된 순찰병의 stale 핸들로 소환사가 영구 대기한다.
                         bool alivePatrol = summoner.current != Entity.Null
                             && SystemAPI.Exists(summoner.current)
@@ -375,10 +378,10 @@ namespace Wassup.Battle.Combat
                         // 스냅 상한이 leash 반경이라 소환사 셀 기준 구역이 실제 구역을
                         // 보수적으로 감싼다. 구역 술어는 PatrolAreaMath 가 단독 소유한다.
                         float3 sPos = transform.ValueRO.Position;
+                        int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
                         bool gateOpen = summoner.hasSummonedOnce;
                         if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
                         {
-                            int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
                             for (int ti = 0; ti < targetEntities.Length && !gateOpen; ti++)
                             {
                                 if (((int)targetFactions[ti].value & (int)Faction.Enemy) == 0) continue;
@@ -397,7 +400,7 @@ namespace Wassup.Battle.Combat
                             ecb.AddComponent(carrier, new PatrolSpawnRequest
                             {
                                 owner = attackerEntity,
-                                ownerCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin),
+                                ownerCell = sCell,   // 게이트 판정과 **같은 셀**이어야 한다
                                 patrolDataIndex = summoner.patrolDataIndex,
                                 leashTileRadius = summoner.leashTileRadius,
                             });
@@ -413,8 +416,10 @@ namespace Wassup.Battle.Combat
 
                         // 게이트가 닫혀 있으면 **쿨다운을 리셋하지 않는다** — 만료 상태로 대기하다
                         // 적이 구역에 들어온 프레임에 즉시 소환한다("구역에 들어오면 부른다"가
-                        // 규칙이므로 여기서 리셋하면 최대 한 쿨 늦게 반응한다). 대기 중 매 프레임
-                        // 도는 스캔은 이미 만들어 둔 타겟 스냅샷 위의 짧은 루프라 비용이 없다.
+                        // 규칙이므로 여기서 리셋하면 최대 한 쿨 늦게 반응한다). 그 대가로 게이트가
+                        // 닫힌 소환사는 매 프레임 타겟 스냅샷을 훑는다 — 진영 미스매치를 즉시
+                        // continue 하는 짧은 루프이고 소환사 수도 적어 수용한다. 게이트는 첫
+                        // 소환 한 번뿐이라 이 상태가 판 내내 지속되지도 않는다.
                         //
                         // 게이트가 열렸으면 성사 여부와 무관하게 리셋한다(스냅 실패로 취소된
                         // 경우 포함) — 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한
