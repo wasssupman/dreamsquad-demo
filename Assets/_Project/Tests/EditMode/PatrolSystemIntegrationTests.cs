@@ -168,7 +168,7 @@ namespace Wassup.Tests.EditMode
 
         // ───────────────────────── ③ blind 소환 순환 ─────────────────────────
 
-        private Entity CreateSummoner(float cooldownRemaining, Entity current)
+        private Entity CreateSummoner(float cooldownRemaining, Entity current, bool hasSummonedOnce = true)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
@@ -187,7 +187,18 @@ namespace Wassup.Tests.EditMode
                 patrolDataIndex = 0,
                 leashTileRadius = 2,
                 current = current,
+                hasSummonedOnce = hasSummonedOnce,
             });
+            return e;
+        }
+
+        // 타겟 스냅샷 조건(FactionTag + Health + LocalTransform)을 채운 적.
+        private Entity CreateEnemyAt(float x)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0f, 0f)));
+            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new Health { value = 50f, max = 50f });
             return e;
         }
 
@@ -206,7 +217,7 @@ namespace Wassup.Tests.EditMode
 
             Tick();
 
-            Assert.AreEqual(1, CarrierCount(), "적이 없어도(blind) 쿨다운 만료에 소환 요청이 나가야 한다");
+            Assert.AreEqual(1, CarrierCount(), "게이트가 소비된 뒤엔 적 없이도 재소환한다");
             Assert.AreEqual(5f, _em.GetComponentData<AttackState>(summoner).cooldownRemaining,
                 "성사 여부와 무관하게 쿨다운이 리셋돼야 재스캔 스팸이 없다");
         }
@@ -228,7 +239,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Summoner_Restages_When_Current_Handle_Is_Stale()
         {
-            // 계약 8 — `current != Entity.Null` 만 보면 파괴된 순찰병의 stale 핸들로
+            // 계약 9 — `current != Entity.Null` 만 보면 파괴된 순찰병의 stale 핸들로
             // 소환사가 영구 대기한다. Exists 까지 봐야 재소환이 돈다.
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
             CreateLinearFlowField();
@@ -251,6 +262,78 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(dying, new Health { value = 0f, max = 50f });
             _em.AddComponent<DeadTag>(dying);
             CreateSummoner(cooldownRemaining: 0f, current: dying);
+
+            Tick();
+
+            Assert.AreEqual(1, CarrierCount());
+        }
+
+        // ───────────────── 초회 게이트(거점 구역 기준) ─────────────────
+
+        [Test]
+        public void First_Summon_Waits_Until_An_Enemy_Enters_The_Area()
+        {
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            var summoner = CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
+
+            Tick();
+
+            Assert.AreEqual(0, CarrierCount(), "적이 없으면 첫 순찰병을 내지 않는다");
+            Assert.AreEqual(0f, _em.GetComponentData<AttackState>(summoner).cooldownRemaining,
+                "게이트가 닫혀 있으면 쿨다운을 리셋하지 않는다 — 적이 들어온 프레임에 즉시 반응해야 한다");
+        }
+
+        [Test]
+        public void First_Summon_Fires_When_Enemy_Is_Inside_The_Area()
+        {
+            // 소환사 셀 (1,0), 반경 2 → 구역 x∈[-1,3]. 적 (2,0) 은 안.
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
+            CreateEnemyAt(2f);
+
+            Tick();
+
+            Assert.AreEqual(1, CarrierCount(), "구역 안 적이 첫 소환을 연다");
+        }
+
+        [Test]
+        public void First_Summon_Ignores_Enemy_Outside_The_Area()
+        {
+            // 적 (4,0) 은 소환사 (1,0) 기준 Chebyshev 3 > 반경 2 → 구역 밖.
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
+            CreateEnemyAt(4f);
+
+            Tick();
+
+            Assert.AreEqual(0, CarrierCount(), "구역 밖 적은 소환 사유가 아니다");
+        }
+
+        [Test]
+        public void First_Summon_Ignores_PastGoal_Enemy_In_The_Area()
+        {
+            // 유출 대기 적은 부르는 이유가 못 된다.
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
+            var enemy = CreateEnemyAt(2f);
+            _em.AddComponent<PastGoalTag>(enemy);
+
+            Tick();
+
+            Assert.AreEqual(0, CarrierCount());
+        }
+
+        [Test]
+        public void Respawn_Ignores_The_Gate_Once_Consumed()
+        {
+            // "한 번 만들면 유지" — 게이트 소비 후엔 적이 사라져도 재소환이 끊기지 않는다.
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: true);
 
             Tick();
 

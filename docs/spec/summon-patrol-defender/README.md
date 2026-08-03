@@ -1,6 +1,6 @@
 # summon-patrol-defender — 소환사 & 순찰병 (Patrol)
 
-> 상태: 스펙 작성 2026-08-03 · 구현 대기
+> 상태: 구현 중 2026-08-03 · units 0~6 코드 완료 · unit 7 Play 검증 중 · unit 8 대기
 
 ## 목표
 
@@ -21,7 +21,7 @@
 | 0 | 선행 | `0_zone_faction_gate.md` | `ZoneApplySystem` 적 전용 게이트 — 아군 오폭 차단 (기존 결함 교정) |
 | 1 | A | `1_patrol_anchor_and_field.md` | `PatrolAnchor`/`PatrolStep` + 박스 마스크·타겟 선정 순수 함수 + `PatrolFieldSystem` + EditMode |
 | 2 | A | `2_movement_and_bridge_spawn.md` | `MovementSystem` dir 분기 + goal 게이트 + `CreatePatrolEntity` + 디버그 메뉴 + 매치 경계 정리 |
-| 3 | B | `3_summon_ability_and_fire.md` | `SummonPatrolAbility` + `SummonerState` + blind 발화 + 스폰 요청 캐리어 |
+| 3 | B | `3_summon_ability_and_fire.md` | `SummonPatrolAbility` + `SummonerState` + 소환 발화(초회 구역 게이트) + 스폰 요청 캐리어 |
 | 4 | B | `4_owner_link_and_respawn.md` | `SummonedBy` 연쇄 소멸 + 재소환 순환 + 재배치 anchor 재스냅 |
 | 5 | 뷰 | `5_view_and_leash_preview.md` | 순찰병 walk 애니 + 소환 VFX + 거점 반경 프리뷰 · **소환사 대기 모션은 unit 8 로 이관**(재생할 트랙이 없음) |
 | 6 | 뷰 | `6_ally_readability.md` | **아군 식별 표식** — 표식 종류가 육안 판정이라 unit 5 에서 분리 |
@@ -55,7 +55,14 @@
 
 7. **goal 셀이 박스 안에 있을 수 있다.** `MovementSystem` 의 goal 판정은 dir 분기보다 **앞**이라 patrol 분기가 우회하지 못한다. 붙으면 `PastGoalTag` 로 영구 동결되고(파괴 루프는 `AttackUnitTag` 요구), 그 결과 `SummonerState.current` 가 계속 유효해 **소환사가 남은 판 내내 재소환하지 못한다**. 보스 `hunting` 과 같은 형태로 `!patrolling &&` 게이트를 건다. 맵은 매판 랜덤이고 배치는 플레이어가 하므로 "저작으로 피한다"는 해법은 쓰지 않는다.
 
-8. **소환은 blind 발화다** — 쿨다운마다 적 유무 무관하게 발동한다(`bomb-thrower-defender` 의 blind bombardment 와 같은 계약). 그래야 적이 오기 전에 순찰병이 거점에 나와 있고 계약 1의 "거점을 지킨다"가 성립한다. 따라서 훅은 타겟을 요구하는 RESOLVE 가 아니라 폭탄맨과 같은 **발사 분기**다.
+8. **첫 소환만 구역 게이트, 이후 재소환은 무게이트** (사용자 결정 2026-08-03).
+   - 첫 순찰병은 **거점 구역 안에 적이 있을 때만** 낸다. 판정 중심은 **소환사 셀**이다 — 실제 거점은 Bridge 가 walk 셀로 스냅해 정하는데 첫 소환 전엔 아직 없고, 스냅 상한이 leash 반경이라(계약 4) 소환사 기준 구역이 실제 구역을 보수적으로 감싼다. 구역 술어는 `PatrolAreaMath.IsInArea` 단독 소유(정의가 갈리지 않게).
+   - **게이트가 닫혀 있으면 쿨다운을 리셋하지 않는다.** 만료 상태로 대기하다 적이 들어온 프레임에 즉시 소환한다 — 리셋하면 "구역에 들어오면 부른다"가 최대 한 쿨 늦게 반응해 규칙이 거짓이 된다. 대기 중 스캔은 이미 만든 타겟 스냅샷 위의 짧은 루프라 비용이 없다.
+   - **재소환에는 게이트를 다시 걸지 않는다.** 순찰병이 죽는다는 건 곧 적이 있다는 뜻이라 재게이트는 같은 사실을 두 번 묻는 것이고, 교전 중 적이 잠깐 구역을 벗어난 프레임에 재소환이 끊기면 순환이 덜컥거린다.
+   - **게이트 소비(`SummonerState.hasSummonedOnce`)는 Bridge 가 순찰병을 실제로 생성한 시점에** 켠다. stage 시점에 켜면 스냅 실패로 취소된 경우에도 게이트가 닳아 이후 적 없이 소환되는 상태로 넘어간다.
+   - 유출 대기(`PastGoalTag`) 적은 게이트를 열지 않는다.
+   - 훅 위치는 그대로 폭탄맨과 같은 **발사 분기**(타겟을 요구하는 RESOLVE 가 아님) — 게이트는 "적이 구역에 있나"만 보고 타겟을 고르지 않는다.
+   - **이력**: 초기 구현은 `bomb-thrower-defender` 의 blind bombardment 를 따라 적 유무 무관 발화였다. 실플레이 확인 중 "적이 와야 첫 소환"으로 뒤집혔다.
 
 9. **생존 술어는 양방향 대칭이다.** `SummonerState.current` 유효 = `Exists && !DeadTag && HP>0`, `SummonedBy.owner` 동일. `Entity` 는 version 을 포함하므로 `Exists` 가 재활용 id 를 막는다. 한쪽만 검사하면 stale 핸들로 소환사가 영구 대기한다.
 
@@ -72,7 +79,7 @@
 | 데이터 SO | `Defender_Summoner.asset`(소환사) + `Defender_PatrolSoldier.asset`(순찰병, **카탈로그 미등록**) + `SummonPatrolAbility` 서브에셋(Data/Abilities/). 소환사만 `DefenderCatalog` 등록 |
 | 스폰 진입점 | 소환사 = 기존 `PlaceDefenderAs`→`CreateDefenderEntity`. 순찰병 = **신규 `CreatePatrolEntity`**(소환 발화 + 디버그 메뉴 2 경로) |
 | ECS 컴포넌트 | **신규 4**(순찰병/소환사 본체): `PatrolAnchor`(Movement) · `PatrolStep`(Effects) · `SummonerState`(Combat) · `SummonedBy`(Units). **+ 요청 캐리어 2**(Combat, 수명 1프레임): `PatrolSpawnRequest` · `PatrolRequestCarrier`. 재사용: `EnemyAiState`·`EnemyBehavior{Halt}`·`PathFollowState`·`AttackState`·`DefenderUnitTag`·`DefenderClassTag`. **`DefenderTile` 은 의도적 미부착**(계약 1) |
-| 시뮬 시스템 | **신규 2**: `PatrolFieldSystem`(Effects) · `PatrolLifecycleSystem`(Units, owner 연쇄 소멸). 수정 3: `MovementSystem`(dir 분기+goal 게이트) · `ZoneApplySystem`(진영 게이트) · `AttackSystem`(blind 소환 발화) |
+| 시뮬 시스템 | **신규 2**: `PatrolFieldSystem`(Effects) · `PatrolLifecycleSystem`(Units, owner 연쇄 소멸). 수정 3: `MovementSystem`(dir 분기+goal 게이트) · `ZoneApplySystem`(진영 게이트) · `AttackSystem`(소환 발화 + 초회 구역 게이트) |
 | 이벤트 큐 | **신규 채널 0.** 순찰병 스폰은 `ProjectileRequestCarrier` 와 같은 **캐리어 엔티티** 관용구를 쓴다(AttackSystem 에서 Bridge 스폰을 요청하는 관용구가 이미 그 자리에 있다) — 싱글턴 배선도 CLAUDE.md 채널 목록 갱신도 불요. `DefenderDeathEventsSingleton` 은 계약 1로 미발행 |
 | View/Pool | 기존 `SpineUnitPool` 재사용(스폰·회수는 `DespawnMissing` 이 자동). **위치 sync 는 전용 루프가 필요하다** — `SyncMonoUnitViews` 의 두 루프는 각각 `AttackUnitTag` 쿼리(적)와 `_defenderByTile` 순회(방어유닛)인데 순찰병은 **둘 다 아니다**. 없으면 뷰가 스폰만 되고 영원히 제자리에 선다 → `SyncPatrolViews`(unit 5) 신설. walk 애니는 `SpineWalkAnimation` 을 채워 활성화(방어유닛은 `""`) |
 | 체력 표시 | **노출한다** — `UnitOverheadUiLayer`/`UnitOverheadView` 기존 폴링 경로를 `SyncPatrolViews` 안에서 호출. HP 보유 완전 유닛이고 죽고 다시 나는 것이 이 유닛의 핵심 피드백이므로 숨기지 않는다 |

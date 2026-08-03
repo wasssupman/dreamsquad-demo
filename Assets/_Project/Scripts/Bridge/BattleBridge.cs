@@ -5989,6 +5989,10 @@ namespace Wassup.Bridge
                 {
                     var state = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(req.owner);
                     state.current = patrol;
+                    // 초회 게이트는 **실제로 생성된 시점**에 소비한다. stage 시점에 켜면
+                    // 위 스냅 실패(continue)로 소환이 취소된 경우에도 게이트가 닳아,
+                    // 이후 적 없이도 소환되는 상태로 넘어간다.
+                    state.hasSummonedOnce = true;
                     _em.SetComponentData(req.owner, state);
                 }
             }

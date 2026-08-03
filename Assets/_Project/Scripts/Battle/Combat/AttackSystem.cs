@@ -369,9 +369,29 @@ namespace Wassup.Battle.Combat
                             && healthLookup.HasComponent(summoner.current)
                             && healthLookup[summoner.current].value > 0f;
 
-                        if (!alivePatrol && summoner.patrolDataIndex >= 0)
+                        // 초회 게이트 — 첫 순찰병은 **거점 구역 안에 적이 있을 때만** 낸다
+                        // (사용자 결정 2026-08-03). 판정 중심은 소환사 셀이다: 실제 거점은
+                        // Bridge 가 walk 셀로 스냅해 정하는데 첫 소환 전엔 그게 아직 없고,
+                        // 스냅 상한이 leash 반경이라 소환사 셀 기준 구역이 실제 구역을
+                        // 보수적으로 감싼다. 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        float3 sPos = transform.ValueRO.Position;
+                        bool gateOpen = summoner.hasSummonedOnce;
+                        if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
                         {
-                            float3 sPos = transform.ValueRO.Position;
+                            int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
+                            for (int ti = 0; ti < targetEntities.Length && !gateOpen; ti++)
+                            {
+                                if (((int)targetFactions[ti].value & (int)Faction.Enemy) == 0) continue;
+                                if (pastGoalLookup.HasComponent(targetEntities[ti])) continue; // 유출 대기 적은 부르는 이유가 못 된다
+                                int2 eCell = GridMath.WorldToCell(
+                                    targetTransforms[ti].Position, tileSize, gridSize, origin: ffOrigin);
+                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, summoner.leashTileRadius))
+                                    gateOpen = true;
+                            }
+                        }
+
+                        if (gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
+                        {
                             var carrier = ecb.CreateEntity();
                             ecb.AddComponent<PatrolRequestCarrier>(carrier);
                             ecb.AddComponent(carrier, new PatrolSpawnRequest
@@ -391,10 +411,15 @@ namespace Wassup.Battle.Combat
                                 });
                         }
 
-                        // 소환 성사 여부와 무관하게 쿨다운 리셋(blind, 재스캔 스팸 방지).
-                        // 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한 프레임 늦어도
-                        // 중복 소환이 나올 수 없다.
-                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                        // 게이트가 닫혀 있으면 **쿨다운을 리셋하지 않는다** — 만료 상태로 대기하다
+                        // 적이 구역에 들어온 프레임에 즉시 소환한다("구역에 들어오면 부른다"가
+                        // 규칙이므로 여기서 리셋하면 최대 한 쿨 늦게 반응한다). 대기 중 매 프레임
+                        // 도는 스캔은 이미 만들어 둔 타겟 스냅샷 위의 짧은 루프라 비용이 없다.
+                        //
+                        // 게이트가 열렸으면 성사 여부와 무관하게 리셋한다(스냅 실패로 취소된
+                        // 경우 포함) — 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한
+                        // 프레임 늦어도 중복 소환이 나올 수 없다.
+                        if (gateOpen) attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                     }
                     continue;
                 }

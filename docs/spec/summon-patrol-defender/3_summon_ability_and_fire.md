@@ -1,4 +1,4 @@
-# unit 3 — 소환 능력 에셋 + blind 발화
+# unit 3 — 소환 능력 에셋 + 소환 발화(구역 게이트)
 
 ## 목적
 
@@ -9,7 +9,7 @@
 - 신규 `Assets/_Project/Scripts/Data/Abilities/SummonPatrolAbility.cs`
 - 신규 `Assets/_Project/Scripts/Battle/Combat/SummonerState.cs`
 - 신규 `Assets/_Project/Scripts/Battle/Combat/PatrolSpawnRequest.cs`
-- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` — blind 분기
+- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` — 소환 발화 분기(구역 게이트)
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — bake · 레지스트리 · 드레인 · `DestroyBattleEntities`
 
 ## 구현
@@ -40,7 +40,7 @@ struct SummonerState : IComponentData
 
 bake: `CreateDefenderEntity` 에서 `GetAbility<SummonPatrolAbility>()` 가 non-null 이고 `patrolUnit != null` 이면 `SummonerState` 부착(`current = Entity.Null`). 기존 능력 4종의 bake 분기와 같은 자리·같은 형태.
 
-### ③ blind 발화 분기
+### ③ 소환 발화 분기 — 구역 게이트
 
 폭탄맨과 같은 자리 — `AttackSystem` 공격자 루프에서 **타겟 선정보다 앞**이다. 타겟을 요구하는 RESOLVE 에 두면 적이 사거리에 들어오기 전까지 순찰병이 안 나와서 "거점을 지킨다"가 성립하지 않는다.
 
@@ -48,8 +48,10 @@ bake: `CreateDefenderEntity` 에서 `GetAbility<SummonPatrolAbility>()` 가 non-
 if (SummonerState 보유):
     쿨다운 진행 → 만료 아니면 continue
     current 가 유효(Exists && !DeadTag && HP>0) → 소환 스킵
-    아니면 → 요청 캐리어 stage
-    발사 성사 여부와 무관하게 쿨다운 리셋      // 재스캔 스팸 방지 (폭탄맨 계약과 동일)
+    gateOpen = hasSummonedOnce
+             || 소환사 셀 ± leashTileRadius 안에 PastGoal 아닌 적이 있음
+    gateOpen 이면 → 요청 캐리어 stage + 쿨다운 리셋
+    아니면        → 쿨다운을 **리셋하지 않고** 만료 상태로 대기(즉시 반응)
     continue                                    // 일반 타겟팅/공격 경로를 타지 않는다
 ```
 
