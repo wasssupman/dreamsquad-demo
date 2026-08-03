@@ -8,8 +8,9 @@
 
 - 신규 `Assets/_Project/Data/Defenders/Defender_Summoner.asset`
 - 신규 `Assets/_Project/Data/Defenders/Defender_PatrolSoldier.asset`
-- 신규 `Assets/_Project/Data/Abilities/SummonPatrol_Summoner.asset`
+- 신규 `Assets/_Project/Data/Abilities/Ability_SummonPatrol_Summoner.asset`
 - `Assets/_Project/Data/DefenderCatalog.asset` — **소환사만** 등록
+- 신규 `Assets/_Project/Tests/PlayMode/PatrolDefenderPlayTest.cs`
 
 ## 구현
 
@@ -30,6 +31,11 @@
 **`desc` 는 카탈로그 등록 유닛의 계약이다.** `UnitKitSummaryTests.CatalogDescriptions_UseThreeFixedSections` 가 카탈로그의 **모든** 유닛에 3줄 형식을 강제한다 — `기본 기능: ` / `배치 스킬: ` / `특수 효과: ` 접두, 줄당 28자 이내, 본문 비어 있으면 실패. 비워 두면 `UnitKitSummary.Build` 폴백이 1줄을 내놓아 **신규 유닛 등록만으로 기존 테스트가 빨개진다**(실제로 겪었다). 해당 섹션이 없으면 `배치 스킬: 없음`(BlockingCaster 선례).
 
 **고유 스파인이 없으므로** 기존 `Casual Character` 파츠 조합으로 임시 외형을 입힌다. 교체는 unit 8.
+
+PlayMode 회귀 테스트는 실제 `BattleScene` 과 라이브 에셋을 사용한다. 소환사를 정상 배치한 뒤
+`AttackSystem → PatrolRequestCarrier → BattleBridge 드레인 → CreatePatrolEntity` 전 경로를 태우고,
+순찰병의 1기 유지·힐/실드 편입·사망 재소환·owner 연쇄 소멸·매치 경계 정리를 검증한다.
+작업 단위의 육안 판정(아군 표식·영구 봉쇄 감각·검증 질문)은 자동 테스트로 대체하지 않는다.
 
 ## 완료 기준
 
