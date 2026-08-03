@@ -97,6 +97,10 @@ namespace Wassup.Bridge
             _defenderByTile[to] = binding;
             _em.SetComponentData(entity, new DefenderTile { cell = new int2(to.x, to.y) });
             _em.AddComponent<PendingDeployment>(entity);
+            // summon-patrol-defender unit 4 — 소환사가 옮겨가면 순찰병의 거점도 따라간다.
+            // 거점은 walk 셀이므로 새 배치 셀 기준으로 **재스냅**한다(계약 4). 재스냅 실패
+            // (주변에 walk 타일 없음)면 기존 거점을 유지한다 — 순찰병을 죽이지 않는다.
+            RelocatePatrolAnchorFor(entity, new int2(to.x, to.y));
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{binding.data.displayName}_{to.x}_{to.y}");
 #endif
@@ -105,6 +109,23 @@ namespace Wassup.Bridge
             RefreshPlacementHighlightIfShown();
             Debug.Log($"[BattleBridge] Relocation began: {binding.data.displayName} {from} -> {to}.");
             return true;
+        }
+
+        // summon-patrol-defender unit 4 — 소환사 재배치 시 순찰병 거점 재스냅.
+        // 소환사가 아니거나(SummonerState 없음) 순찰병이 없으면 no-op.
+        private void RelocatePatrolAnchorFor(Entity summoner, int2 newOwnerCell)
+        {
+            if (!_em.HasComponent<Wassup.Battle.Combat.SummonerState>(summoner)) return;
+
+            var state = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(summoner);
+            Entity patrol = state.current;
+            if (patrol == Entity.Null || !_em.Exists(patrol)) return;
+            if (!_em.HasComponent<Wassup.Battle.Movement.PatrolAnchor>(patrol)) return;
+
+            var anchor = _em.GetComponentData<Wassup.Battle.Movement.PatrolAnchor>(patrol);
+            if (!TryGetPatrolAnchorCell(newOwnerCell, anchor.tileRadius, out var anchorCell)) return;
+            anchor.cell = anchorCell;
+            _em.SetComponentData(patrol, anchor);
         }
 
         // relocation unit 6 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에

@@ -1,0 +1,101 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d6648c9dfafd44cb8ce28bc0507242b, type: 3}
+  m_Name: Defender_PatrolSoldier
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
+  id: patrol_soldier
+  role: 3
+  displayName: "\uC21C\uCC30\uBCD1"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uADFC\uC811 \uB2E8\uC77C \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uAC70\uC810 \uC8FC\uBCC0\uB9CC
+    \uC21C\uCC30"
+  health: 300
+  attackRange: 1
+  attackCooldown: 0.9
+  hitDelaySec: 0.3
+  deployDelaySec: 0
+  attackTargetCount: 1
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef104, type: 2}
+  deployVoiceClip: {fileID: 0}
+  attackSfxClip: {fileID: 0}
+  attackVfxScale: 1
+  attackVfxFacesTarget: 0
+  attackVfxEulerOffset: {x: 0, y: 0, z: 0}
+  beamVfxPrefab: {fileID: 0}
+  projectile: {fileID: 0}
+  outputs:
+  - kind: 0
+    magnitude: 25
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  onPlaceEffect: 0
+  onPlaceRange: 0
+  onPlaceMagnitude: 0
+  onPlaceDuration: 0
+  onPlaceStackKind: 3
+  onPlaceTickInterval: 0
+  cost: 0
+  placementCooldown: 0
+  targetAllies: 0
+  abilities: []
+  rarity: 0
+  portrait: {fileID: 21300000, guid: a23a525aeebba4a008f7424f308ccf83, type: 3}
+  aggroCapacity: 0
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack3
+  deathAnimation: Die
+  spineVisualScale: 1.3
+  partSkins:
+  - boots/boots_c_18
+  - bottom/bottom_c_18
+  - brow/brow_c_10
+  - eyes/eyes_c_10
+  - gloves/gloves_c_15
+  - hair_short/hair_short_c_12
+  - mouth/mouth_c_8
+  - gear_right/gear_right_c_30
+  - top/top_c_18
+  - skin/skin_1
+  slotColors: []
+  dragAnimation: Attack1
+  deployAnimation: Hit
+  placementVfxPrefab: {fileID: 0}
+  attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
+  knockbackDistance: 0
+  knockbackDuration: 0
+  sleepOnHitSec: 0
+  knockupOnHitSec: 0
+  knockupVisualHeight: 1.2
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
+  castAnchorBone: 
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0
+  awakeningReward: 0
+  weaponTrailPrefab: {fileID: 416037035443229880, guid: badefa6935aa04ba9badb5386cb9a3c8, type: 3}
+  weaponTrailEndNormalized: 0.31
+  moveSpeed: 2
+  walkAnimation: Walk

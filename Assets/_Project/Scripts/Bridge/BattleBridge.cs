@@ -230,6 +230,10 @@ namespace Wassup.Bridge
         private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
         private readonly List<HazardSO> _zoneHazardRegistry = new();
         private readonly Dictionary<HazardSO, int> _zoneHazardIndex = new();
+        // summon-patrol-defender unit 3 — 순찰병 SO 레지스트리. DefenderUnitData 는 managed 라
+        // SummonerState 에 담을 수 없어 인덱스로 실어 나른다(_zoneHazardRegistry 와 동형).
+        private readonly List<DefenderUnitData> _patrolUnitRegistry = new();
+        private readonly Dictionary<DefenderUnitData, int> _patrolUnitIndex = new();
         private readonly List<BlockingHazardSO> _blockingHazardSoRegistry = new();
         private readonly Dictionary<BlockingHazardSO, int> _blockingHazardSoIndex = new();
         private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
@@ -581,6 +585,11 @@ namespace Wassup.Bridge
             _zoneHazardIndex.Clear();
             _blockingHazardSoRegistry.Clear();
             _blockingHazardSoIndex.Clear();
+            // summon-patrol-defender — 순찰병 SO 레지스트리도 형제와 같은 두 지점에서 비운다.
+            // 인덱스는 판마다 bake 되므로 안전하고, 안 비우면 managed SO 참조를 앱 수명으로
+            // 붙들어 에셋 언로드를 막는다.
+            _patrolUnitRegistry.Clear();
+            _patrolUnitIndex.Clear();
 
             // Phase 10A (P10A-04A): dispose GeneratedMap (idempotent) alongside FlowField.
             TeardownGeneratedMap();
@@ -614,6 +623,14 @@ namespace Wassup.Bridge
             // AllyBuffFieldSystem 이 **옛 centerCell** 로 다시 버프를 걸어 보이지 않는 강화 구역이 된다
             // (뷰 등록부는 매치 경계에서 비워지므로 점등도 없다).
             DestroyEntitiesByType<Wassup.Battle.Effects.AllyBuffField>();
+            // summon-patrol-defender unit 2 — 거점 순찰 아군 정리. DefenderUnitTag 로 이미
+            // 걸리지만 중복으로 등재해 둔다: 위 사직서/AllyBuffField 사고가 정확히 "정리 목록에
+            // 안 넣어서" 났고, 이 아키타입은 태그 구성이 일반 방어유닛과 달라 나중에 누가
+            // DefenderUnitTag 를 떼면 조용히 새기 때문이다.
+            DestroyEntitiesByType<Wassup.Battle.Movement.PatrolAnchor>();
+            // summon-patrol-defender unit 3 — 소환 요청 캐리어. 보통 같은 프레임 드레인에서
+            // 죽지만, stage 와 drain 사이에 전투가 멈추면 낙오분이 남는다(투사체 캐리어 선례).
+            DestroyEntitiesByType<Wassup.Battle.Combat.PatrolRequestCarrier>();
         }
 
         private void DestroyEcsInfrastructureEntities()
@@ -1676,6 +1693,11 @@ namespace Wassup.Bridge
             _zoneHazardIndex.Clear();
             _blockingHazardSoRegistry.Clear();
             _blockingHazardSoIndex.Clear();
+            // summon-patrol-defender — 순찰병 SO 레지스트리도 형제와 같은 두 지점에서 비운다.
+            // 인덱스는 판마다 bake 되므로 안전하고, 안 비우면 managed SO 참조를 앱 수명으로
+            // 붙들어 에셋 언로드를 막는다.
+            _patrolUnitRegistry.Clear();
+            _patrolUnitIndex.Clear();
 
             TeardownGeneratedMap();
             TeardownFlowField();
@@ -2433,6 +2455,7 @@ namespace Wassup.Bridge
             DrainEnemyKilledEvents();
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
+            DrainPatrolSpawnRequests(); // summon-patrol-defender unit 3 — 소환 요청 캐리어
             DrainMeteorBarrageRequests(); // season-gimmick-clockout unit 4 — 사직서 임계 메테오 barrage
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
@@ -2916,7 +2939,61 @@ namespace Wassup.Bridge
                         defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio, GatherOverheadStacks(entity));
                 }
             }
+            SyncPatrolViews(unifiedOverhead, canSort, gridSize);
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
+        }
+
+        // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
+        //
+        // **전용 루프가 필요하다.** 위 두 루프는 각각 `AttackUnitTag` 쿼리(적)와
+        // `_defenderByTile` 순회(방어유닛)인데, 순찰병은 둘 다 아니다 — 적 태그를 안 붙이고
+        // (계약 1) 타일 딕셔너리에도 안 들어간다(DefenderTile 미부착). 이 루프가 없으면
+        // 뷰가 스폰만 되고 **영원히 제자리에 서 있는다**(이 아키타입 고유의 함정).
+        //
+        // 뷰 회수는 spineUnitPool.DespawnMissing 이 이미 처리한다(엔티티 소멸 기준).
+        private void SyncPatrolViews(bool unifiedOverhead, bool canSort, int2 gridSize)
+        {
+            // 형제 드레인(DrainPatrolSpawnRequests)과 같은 가드로 통일 — `_em == default` 만
+            // 보면 월드가 파괴된 뒤 CreateEntityQuery 가 던진다.
+            if (!HasLiveEntityManager()) return;
+            using var query = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Movement.PatrolAnchor>(),
+                ComponentType.ReadOnly<LocalTransform>());
+            if (query.IsEmpty) return;
+
+            using var entities = query.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var entity = entities[i];
+                var p = _em.GetComponentData<LocalTransform>(entity).Position;
+                var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
+
+                if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
+                {
+                    spineView.UpdatePosition(world);
+                    if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                }
+                else if (defenderFallbackViewPool != null &&
+                         defenderFallbackViewPool.TryGet(entity, out var fallbackView))
+                {
+                    fallbackView.UpdatePosition(world);
+                    if (canSort) fallbackView.UpdateSortingOrder(gridSize, tileSize);
+                }
+
+                // 체력 표시 — HP 보유 완전 유닛이고 "죽고 다시 나는" 것이 이 유닛의 핵심
+                // 피드백이라 숨기지 않는다(파이프라인 커버리지 '체력 표시' 행).
+                if (unifiedOverhead && _em.HasComponent<Health>(entity)
+                    && TryGetUnitScreenAnchor(entity, out var garScreenAnchor, out var garAnchor))
+                {
+                    var h = _em.GetComponentData<Health>(entity);
+                    float garShieldRatio = 0f;
+                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
+                        garShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
+                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
+                    unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
+                        garScreenAnchor, ProjectTileScreenWidth(garAnchor), garShieldRatio, GatherOverheadStacks(entity));
+                }
+            }
         }
 
         // unit-overhead-ui 확장(unit 8) — 오버헤드 스택행 gather 재사용 버퍼(프레임 GC 회피).
@@ -5175,8 +5252,22 @@ namespace Wassup.Bridge
             // defender-ability-assets unit 2 — 폭탄병은 레인도 거짓말(착지 셀만 때린다) →
             // 조준 페이즈(SetAimGuide)와 같은 착지 후보 4셀. 나머지 facing 유닛은 레인 유지.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
+            // summon-patrol-defender unit 5 — 소환사에게 공격범위는 거짓말이다(본인은 안 때린다).
+            // 읽어야 할 정보는 **순찰병이 지킬 거점 반경**이고, 이 유닛에서 배치 판단의 전부가
+            // 그것이다. 판별은 능력 에셋 보유로 한다(id/kind 분기 금지 — beamVfxPrefab 관례).
+            // 중심은 실제 거점과 같게 **walk 셀로 스냅**한다(계약 4). 스냅 실패면 아무것도
+            // 그리지 않는다 — 그 자리에 놓으면 소환이 취소된다는 신호다.
+            var summonPreview = unit.GetAbility<SummonPatrolAbility>();
             var bombPreview = unit.GetAbility<BombThrowAbility>();
-            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
+            if (summonPreview != null && summonPreview.patrolUnit != null)
+            {
+                if (TryGetPatrolAnchorCell(new int2(center.x, center.y), summonPreview.leashTileRadius, out var leashCell))
+                    tilemapMapView.SetPlacementRange(
+                        new Vector2Int(leashCell.x, leashCell.y), math.max(0, summonPreview.leashTileRadius));
+                else
+                    tilemapMapView.ClearPlacementRange();
+            }
+            else if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
             else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
@@ -5548,6 +5639,18 @@ namespace Wassup.Bridge
                     rng = new Unity.Mathematics.Random(bombSeed),
                 });
             }
+            // summon-patrol-defender unit 3 — 소환 능력 bake. 쿨다운은 AttackState 재사용이라
+            // 여기서 따로 두지 않는다(계약 7 — 소환 = 공격).
+            var summonAbility = unitData.GetAbility<SummonPatrolAbility>();
+            if (summonAbility != null && summonAbility.patrolUnit != null)
+            {
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.SummonerState
+                {
+                    patrolDataIndex = RegisterPatrolUnitSO(summonAbility.patrolUnit),
+                    leashTileRadius = math.max(0, summonAbility.leashTileRadius),
+                    current = Entity.Null,
+                });
+            }
             if (pendingDeployment)
                 _em.AddComponent<PendingDeployment>(entity);
 
@@ -5645,6 +5748,250 @@ namespace Wassup.Bridge
             ApplyActiveDcEffectsTo(entity, unitData);
 
             return entity;
+        }
+
+        // summon-patrol-defender unit 2 — 거점 순찰 아군(Patrol) 엔티티+뷰 생성.
+        //
+        // CreateDefenderEntity 를 재사용하지 않는 이유: 그쪽은 _defenderByTile 등록과
+        // DefenderTile 부착을 한다 — 배치 점유·재배치·DefenderDeathEvent·사직서 드랍을
+        // 통째로 끌고 들어온다. 순찰병은 그 어느 것도 타면 안 된다(README 계약 1).
+        //
+        // anchorCell 은 **walk 셀**이어야 한다. 호출자가 TryGetNearestWalkCell 로 스냅해
+        // 넘긴다 — 방어유닛 셀(MapTileType.Place)은 walkable 이 아니라서 그대로 쓰면
+        // 순찰병이 설 수 없는 칸을 향해 영원히 전진한다(계약 4).
+        // owner == Entity.Null 이면 SummonedBy 미부착 = 연쇄 소멸 대상 아님(디버그 스폰).
+        private Entity CreatePatrolEntity(
+            DefenderUnitData unitData,
+            int2 anchorCell,
+            int tileRadius,
+            Entity owner)
+        {
+            if (unitData == null || _em == default) return Entity.Null;
+
+            var entity = _em.CreateEntity();
+            _em.AddBuffer<IncomingDamage>(entity);
+            _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
+            _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
+
+            var cellV2 = new Vector2Int(anchorCell.x, anchorCell.y);
+            var pos = GridToWorldCenter(cellV2, spawnHeight);
+            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
+#if UNITY_EDITOR
+            _em.SetName(entity, $"Patrol_{unitData.displayName}_{anchorCell.x}_{anchorCell.y}");
+#endif
+            // 계약 1 — DefenderUnitTag 는 선택이 아니다. DestroyBattleEntities 가 타입 기반
+            // 파괴라 이 태그가 없으면 매치 경계에서 안 지워지고 앱 수명 world 에 잔존한다.
+            _em.AddComponent<DefenderUnitTag>(entity);
+            // 계약 1 — DefenderClassTag 도 붙인다. 태그 없음 면제는 EnemyTargetFilter 주석대로
+            // 무생물(blocking hazard)용이라, 생물을 태그 없이 태우면 클래스 하드 타게팅 적
+            // (킨들러 = 레인저 전용 마스크)이 레인저 대신 순찰병을 쏴서 그 적이 무력화된다.
+            _em.AddComponentData(entity, new DefenderClassTag { value = unitData.role });
+            _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(entity, new AttackState
+            {
+                range = unitData.attackRange,
+                cooldownDuration = unitData.attackCooldown,
+                cooldownRemaining = unitData.deployDelaySec,
+                attackTargetCount = unitData.attackTargetCount,
+                targetMask = (int)Faction.Enemy,
+                hitDelaySec = unitData.hitDelaySec,
+            });
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
+            {
+                knockbackDistance   = unitData.knockbackDistance,
+                knockbackDuration   = unitData.knockbackDuration,
+                sleepOnHitSec       = unitData.sleepOnHitSec,
+                knockupOnHitSec     = unitData.knockupOnHitSec,
+                knockupVisualHeight = unitData.knockupVisualHeight,
+            });
+
+            // 적 AI 스택을 그대로 물려받는다 — EnemyAiStateSystem 은 FactionTag 를 안 보고
+            // AttackState.targetMask 로만 타겟을 찾는다(faction-agnostic). Halt = 사거리에
+            // 적이 들면 정지하고 공격.
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyBehavior
+            {
+                targetMode = Wassup.Data.EnemyTargetMode.Nearest,
+                engageMovement = Wassup.Data.EngageMovement.Halt,
+            });
+            _em.AddComponentData(entity, new Wassup.Battle.Movement.PathFollowState { speed = unitData.moveSpeed });
+            _em.AddComponentData(entity, new Wassup.Battle.Movement.PatrolAnchor
+            {
+                cell = anchorCell,
+                tileRadius = math.max(0, tileRadius),
+            });
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.PatrolStep { dir = float2.zero });
+            if (owner != Entity.Null)
+                _em.AddComponentData(entity, new SummonedBy { owner = owner });
+
+            if (unitData.outputs != null && unitData.outputs.Length > 0)
+            {
+                var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                foreach (var output in unitData.outputs)
+                    outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
+            }
+
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.ModifierStats
+            {
+                damageMul      = 1f,
+                attackSpeedMul = 1f,
+                dmgTakenMul    = 1f,
+                regenPerSec    = 0f,
+                moveSpeedMul   = 1f,
+                damageVsCcMul  = 1f,
+                maxHealthMul   = 1f,
+            });
+            _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
+            _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(entity);
+            _em.AddBuffer<Wassup.Battle.Units.ShieldSlot>(entity);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingShield>(entity);
+
+            // 계약 11 — ApplyActiveDcEffectsTo 를 호출하지 않는다(드림캐쳐/시너지 비적용).
+
+            // unit 5 — 소환 순간 VFX. 전용 아트가 생기기 전까지 배치 링을 재사용한다
+            // (순찰병이 "지금 나왔다"를 읽히게 하는 게 목적, 룩은 unit 7 에서 교체).
+            if (vfxSpawner != null)
+                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
+
+            bool spineSpawned = false;
+            if (spineUnitPool != null)
+            {
+                var spineWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
+                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpinePat", out var patrolView);
+                // unit 6 — 아군 식별 표식. 이 게임에서 움직이는 건 지금까지 전부 적이었다.
+                if (spineSpawned && patrolView != null)
+                    Wassup.Presentation.AllyMarkerDecal.Attach(patrolView.transform);
+            }
+            if (!spineSpawned)
+            {
+                EnsureMonoViewPools();
+                var fallbackWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
+                var mesh = unitData.visualMesh != null
+                    ? unitData.visualMesh
+                    : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+                var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
+                defenderFallbackViewPool.TrySpawn(
+                    unitData.displayName, entity, fallbackWorld, mesh, material, CharacterVisualScale, out _);
+            }
+
+            return entity;
+        }
+
+        // summon-patrol-defender unit 2 — 디버그 스폰 공개 API (DebugSpawnHazardAt 동형).
+        // 호출자가 준 셀을 walk 셀로 스냅한다. 스냅 실패(맵 미생성/walk 셀 없음) = Entity.Null.
+        // summon-patrol-defender — 거점 스냅 + **거리 상한**.
+        //
+        // TryGetNearestWalkCell 은 전 그리드를 스캔해 **전역 최근접** walk 타일을 고른다 —
+        // 반경 제한이 없어서 false 는 "맵에 walk 타일이 0개"일 때만 나온다. 그대로 쓰면
+        // "스냅 실패 = 소환 취소"가 사실상 도달 불가한 분기가 되고(완료 기준이 검증 불가해진다),
+        // 실제로 벌어지는 일은 그 반대다: 경로에서 먼 Place 타일에 소환사를 놓으면 거점이
+        // 화면 저쪽 walk 타일로 날아가 순찰병이 소환사와 무관한 자리에 나온다.
+        //
+        // 상한 = leash 반경 자체(SO 값, 제약 6) — "순찰병의 집은 소환사가 주장하는 구역
+        // 안에 있어야 한다". radius 0 은 Place 타일만 남아 항상 실패하므로 최소 1로 본다.
+        private bool TryGetPatrolAnchorCell(int2 ownerCell, int tileRadius, out int2 anchorCell)
+        {
+            if (!TryGetNearestWalkCell(ownerCell, out anchorCell)) return false;
+            return GridMath.ChebyshevDistance(anchorCell, ownerCell) <= math.max(1, tileRadius);
+        }
+
+        public Entity DebugSpawnPatrolAt(DefenderUnitData unitData, int2 cell, int tileRadius)
+        {
+            if (!TryGetPatrolAnchorCell(cell, tileRadius, out var walkCell)) return Entity.Null;
+            return CreatePatrolEntity(unitData, walkCell, tileRadius, Entity.Null);
+        }
+
+        // summon-patrol-defender unit 2 — 디버그 스폰의 거점 기준 셀.
+        //
+        // 마우스 커서를 쓰지 않는다: 메뉴 항목을 클릭하는 순간 커서는 메뉴 위에 있어
+        // 게임 뷰 좌표가 아니다(기존 HazardDebugMenu 의 커서 레이는 이 이유로 사실상
+        // 폴백 셀만 쓴다). 대신 **배치된 방어유닛**을 기준으로 삼는다 — 실제 소환에서
+        // 거점이 소환사 셀이므로 테스트가 진짜 경로를 그대로 흉내 낸다.
+        //
+        // 여러 기가 배치돼 있으면 (y, x) 오름차순 최솟값 하나를 고른다(Dictionary 열거
+        // 순서는 보장이 없으므로 결정론을 위해 명시 정렬). 하나도 없으면 보드 중심.
+        // fromDefender = 어느 쪽이 쓰였는지(호출자 로그용).
+        public bool DebugTryGetPatrolAnchorCell(out int2 cell, out bool fromDefender)
+        {
+            cell = default;
+            fromDefender = false;
+
+            bool found = false;
+            foreach (var kv in _defenderByTile)
+            {
+                var c = new int2(kv.Key.x, kv.Key.y);
+                if (!found || c.y < cell.y || (c.y == cell.y && c.x < cell.x))
+                {
+                    cell = c;
+                    found = true;
+                }
+            }
+            if (found)
+            {
+                fromDefender = true;
+                return true;
+            }
+
+            if (!_generatedMap.IsCreated) return false;
+            cell = new int2(_generatedMap.gridSize.x / 2, _generatedMap.gridSize.y / 2);
+            return true;
+        }
+
+        // summon-patrol-defender unit 3 — 순찰병 SO 인덱스 등록 (RegisterZoneHazardSO 동형).
+        private int RegisterPatrolUnitSO(DefenderUnitData so)
+        {
+            if (so == null) return -1;
+            if (_patrolUnitIndex.TryGetValue(so, out int idx)) return idx;
+            idx = _patrolUnitRegistry.Count;
+            _patrolUnitRegistry.Add(so);
+            _patrolUnitIndex[so] = idx;
+            return idx;
+        }
+
+        // summon-patrol-defender unit 3 — 소환 요청 캐리어 드레인.
+        //
+        // walk 셀 스냅을 여기서 한다: TryGetNearestWalkCell 이 GeneratedMap 을 보는 Mono 측
+        // API 라 심에서 못 부른다. 스냅 실패 = 소환 취소(요청만 폐기, 에러 아님) — 주변에
+        // walk 타일이 없는 자리에 소환사를 놓을 수 있기 때문이다.
+        private void DrainPatrolSpawnRequests()
+        {
+            if (!HasLiveEntityManager()) return;
+
+            using var query = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Combat.PatrolSpawnRequest>(),
+                ComponentType.ReadOnly<Wassup.Battle.Combat.PatrolRequestCarrier>());
+            if (query.IsEmpty) return;
+
+            using var carriers = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+            for (int i = 0; i < carriers.Length; i++)
+            {
+                var carrier = carriers[i];
+                var req = _em.GetComponentData<Wassup.Battle.Combat.PatrolSpawnRequest>(carrier);
+                _em.DestroyEntity(carrier);
+
+                if (!_em.Exists(req.owner)) continue;
+                if (req.patrolDataIndex < 0 || req.patrolDataIndex >= _patrolUnitRegistry.Count)
+                {
+                    Debug.LogWarning($"[Summon] Invalid patrol unit index {req.patrolDataIndex}; dropping.");
+                    continue;
+                }
+                var so = _patrolUnitRegistry[req.patrolDataIndex];
+                if (so == null) continue;
+
+                if (!TryGetPatrolAnchorCell(req.ownerCell, req.leashTileRadius, out var anchorCell)) continue;
+
+                var patrol = CreatePatrolEntity(so, anchorCell, req.leashTileRadius, req.owner);
+                if (patrol == Entity.Null) continue;
+
+                if (_em.HasComponent<Wassup.Battle.Combat.SummonerState>(req.owner))
+                {
+                    var state = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(req.owner);
+                    state.current = patrol;
+                    _em.SetComponentData(req.owner, state);
+                }
+            }
         }
 
         // effect-tiles unit 2 — 효과 타일 modifier 슬롯 네임스페이스.

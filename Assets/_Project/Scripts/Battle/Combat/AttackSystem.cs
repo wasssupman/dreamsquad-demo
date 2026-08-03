@@ -73,6 +73,8 @@ namespace Wassup.Battle.Combat
             var emitterInstanceLookup = SystemAPI.GetBufferLookup<EmitterInstance>(isReadOnly: false);
             // bomb-thrower-defender unit 4 — 폭탄맨 발사 상태(RW: rng advance). volleyLookup 선례.
             var bombLauncherLookup = SystemAPI.GetComponentLookup<BombLauncherState>(isReadOnly: false);
+            // summon-patrol-defender unit 3 — 소환사 상태(RO). current 갱신은 Bridge 드레인이 한다.
+            var summonerLookup = SystemAPI.GetComponentLookup<SummonerState>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
@@ -345,6 +347,53 @@ namespace Wassup.Battle.Combat
                             }
                         }
                         // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
+                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                    }
+                    continue;
+                }
+
+                // summon-patrol-defender unit 3 — 소환사는 타겟 없이 쿨다운마다 순찰병을
+                // 소환한다(blind, 폭탄맨 계약과 같은 형태). 타겟을 요구하는 RESOLVE 에 두면
+                // 적이 사거리에 들어오기 전까지 순찰병이 안 나와서 "거점을 지킨다"가 성립하지
+                // 않는다. 폭탄맨과 같은 자리에서 처리하고 continue.
+                if (summonerLookup.HasComponent(attackerEntity))
+                {
+                    if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f)
+                    {
+                        var summoner = summonerLookup[attackerEntity];
+                        // 계약 8 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
+                        // 파괴된 순찰병의 stale 핸들로 소환사가 영구 대기한다.
+                        bool alivePatrol = summoner.current != Entity.Null
+                            && SystemAPI.Exists(summoner.current)
+                            && !deadLookup.HasComponent(summoner.current)
+                            && healthLookup.HasComponent(summoner.current)
+                            && healthLookup[summoner.current].value > 0f;
+
+                        if (!alivePatrol && summoner.patrolDataIndex >= 0)
+                        {
+                            float3 sPos = transform.ValueRO.Position;
+                            var carrier = ecb.CreateEntity();
+                            ecb.AddComponent<PatrolRequestCarrier>(carrier);
+                            ecb.AddComponent(carrier, new PatrolSpawnRequest
+                            {
+                                owner = attackerEntity,
+                                ownerCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin),
+                                patrolDataIndex = summoner.patrolDataIndex,
+                                leashTileRadius = summoner.leashTileRadius,
+                            });
+                            // 소환 = 이 유닛의 공격 사건. 애니/SFX 는 여기서 신호한다.
+                            if (attackWriter.HasValue)
+                                attackWriter.Value.Enqueue(new UnitAttackVisualEvent
+                                {
+                                    attacker = attackerEntity,
+                                    targetWorld = sPos,
+                                    attackAnimPeriod = attack.ValueRO.cooldownDuration,
+                                });
+                        }
+
+                        // 소환 성사 여부와 무관하게 쿨다운 리셋(blind, 재스캔 스팸 방지).
+                        // 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한 프레임 늦어도
+                        // 중복 소환이 나올 수 없다.
                         attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                     }
                     continue;
