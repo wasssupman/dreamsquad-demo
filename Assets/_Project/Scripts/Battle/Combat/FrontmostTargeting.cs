@@ -15,7 +15,7 @@ namespace Wassup.Battle.Combat
     // Rank order (fully deterministic — README contract 1):
     //   1. flowDist ascending  — smaller BFS remaining-cost to the goal is "more frontmost"
     //   2. sqDist  ascending   — attacker→candidate XZ squared distance
-    //   3. entityIndex ascending, then entityVersion ascending — total tie-break
+    //   3. simId ascending — total tie-break (SimEntityId, 스폰 순 stable — unit 1)
     [BurstCompile]
     public static class FrontmostTargeting
     {
@@ -26,8 +26,7 @@ namespace Wassup.Battle.Combat
         {
             public int flowDist;      // FlowFieldSingleton.dist[cell]; UnreachableDist = excluded
             public float sqDist;      // XZ squared distance attacker→candidate
-            public int entityIndex;   // Entity.Index
-            public int entityVersion; // Entity.Version
+            public int simId;         // SimEntityId — unit 1 이 Entity.Index/Version 축 대체
         }
 
         // True when `a` ranks strictly before `b` under the fixed order above.
@@ -35,8 +34,7 @@ namespace Wassup.Battle.Combat
         {
             if (a.flowDist != b.flowDist) return a.flowDist < b.flowDist;
             if (a.sqDist != b.sqDist) return a.sqDist < b.sqDist;
-            if (a.entityIndex != b.entityIndex) return a.entityIndex < b.entityIndex;
-            return a.entityVersion < b.entityVersion;
+            return a.simId < b.simId;
         }
 
         // Index into `cands` [0, count) of the frontmost reachable candidate, or -1 if

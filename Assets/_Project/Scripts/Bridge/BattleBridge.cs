@@ -1263,6 +1263,7 @@ namespace Wassup.Bridge
             ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 등록부와 refcount 를 함께 반납
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
+            _simEntityIdCounter = 0; // battle-sim-extraction unit 1 — per-match spawn-ordinal (SimEntityId)
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
             // loadout right after the clear above (single point, see SetDreamstones).
             ApplyPendingDreamstones();
@@ -3837,6 +3838,19 @@ namespace Wassup.Bridge
 
         // Returns the spawned projectile entity (Entity.Null when dropped) so
         // skill casts can track their telegraph's projectile (unit 9).
+        // battle-sim-extraction unit 1 — 매치 내 stable ID(스폰 순 0부터, 재사용 없음) 발급.
+        // 실 sim 엔티티 스폰이 전부 브리지로 수렴하므로(ECS 내부 생성은 1프레임 staging
+        // carrier 뿐) 카운터는 브리지 필드 하나로 충분하다. Pickup/사직서/필드 캐리어
+        // (버프장판·토네이도·포탈)는 타겟팅 무관이라 미부여 — unit 4 트레이스 축 설계 시
+        // 재판단. 리셋은 BeginPlacement(배치 페이즈가 defender 를 먼저 낳는다).
+        private int _simEntityIdCounter;
+
+        private void AttachSimEntityId(Entity entity)
+        {
+            if (entity == Entity.Null) return;
+            _em.AddComponentData(entity, new SimEntityId { value = _simEntityIdCounter++ });
+        }
+
         private Entity SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
         {
             if (req.dataIndex < 0 || req.dataIndex >= _projectileDataByIndex.Count)
@@ -3861,6 +3875,7 @@ namespace Wassup.Bridge
             }
 
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity);
 #if UNITY_EDITOR
             _em.SetName(entity, $"Projectile_{req.dataIndex}");
 #endif
@@ -5530,6 +5545,7 @@ namespace Wassup.Bridge
             bool spawnPlacementVfx)
         {
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity); // battle-sim-extraction unit 1
             // Phase 4: defenders can now take damage from enemy attackers, so
             // they need an IncomingDamage buffer just like attack units have.
             _em.AddBuffer<IncomingDamage>(entity);
@@ -5769,6 +5785,7 @@ namespace Wassup.Bridge
             if (unitData == null || _em == default) return Entity.Null;
 
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity); // battle-sim-extraction unit 1
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
@@ -6070,6 +6087,7 @@ namespace Wassup.Bridge
             }
             float3 worldPos = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
             var e = Wassup.Battle.Effects.EffectSpawner.SpawnObstacle(_em, cell, worldPos, lifetime);
+            AttachSimEntityId(e); // battle-sim-extraction unit 1
             Debug.Log($"[ObstacleDebug] Spawned entity {e} at cell {cell} world {worldPos} lifetime={lifetime}s");
 
             // Debug visual: semi-transparent cube that despawns with the obstacle.
@@ -6097,6 +6115,7 @@ namespace Wassup.Bridge
             var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(_em, so, cell);
             if (e == Unity.Entities.Entity.Null)
                 return e;
+            AttachSimEntityId(e); // battle-sim-extraction unit 1
 
             RecordHazardSpawn(so, cell);
 
@@ -6138,6 +6157,7 @@ namespace Wassup.Bridge
                 RecordBlockingHazard(so, cell, "spawn_rejected", "EffectSpawner rejected spawn");
                 return entity;
             }
+            AttachSimEntityId(entity); // battle-sim-extraction unit 1
 
 #if UNITY_EDITOR
             _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
@@ -6971,6 +6991,7 @@ namespace Wassup.Bridge
             }
 
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity); // battle-sim-extraction unit 1
 #if UNITY_EDITOR
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif

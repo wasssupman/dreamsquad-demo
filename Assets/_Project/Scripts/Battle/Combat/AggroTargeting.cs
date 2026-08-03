@@ -15,6 +15,8 @@ namespace Wassup.Battle.Combat
         public int2 cell;    // 사거리 판정용 셀
         public float3 pos;   // 최근접 정렬용 월드 위치
         public bool aggroed; // 이미 어그로된 적인가(선점 상태)
+        public int simId;    // 등거리 동률 tiebreak — battle-sim-extraction unit 1 신설
+                             // (이전엔 후보 배열 순서 = 청크 스냅샷 순서가 승자를 결정했다)
     }
 
     public static class AggroTargeting
@@ -47,6 +49,7 @@ namespace Wassup.Battle.Combat
             {
                 int best = -1;
                 float bestSq = float.MaxValue;
+                int bestSimId = int.MaxValue;
                 for (int i = 0; i < cands.Length; i++)
                 {
                     if (AlreadyPicked(outIdx, count, i)) continue;
@@ -56,9 +59,11 @@ namespace Wassup.Battle.Combat
                     float dx = c.pos.x - gPos.x;
                     float dz = c.pos.z - gPos.z;
                     float d2 = dx * dx + dz * dz;
-                    if (d2 < bestSq) // strict < → lower index wins ties (deterministic)
+                    // 등거리 동률은 simId 낮은 쪽 — unit 1 이 배열(청크) 순서 의존을 제거.
+                    if (d2 < bestSq || (d2 == bestSq && c.simId < bestSimId))
                     {
                         bestSq = d2;
+                        bestSimId = c.simId;
                         best = i;
                     }
                 }

@@ -6,17 +6,20 @@ using Wassup.Battle.Combat;
 namespace Wassup.Tests.EditMode
 {
     // nightmare-catcher unit 1 — pure threat math invariants: find-or-append
-    // accumulation, max-damage leader, entity-index tie determinism, dead
-    // attackers excluded via the caller-resolved alive mask, empty → Null.
+    // accumulation, max-damage leader, simId tie determinism(unit 1 이 Entity.Index
+    // 축 교체), dead attackers excluded via the caller-resolved alive mask, empty → Null.
     public class ThreatTableTests
     {
         private static Entity E(int index) => new Entity { Index = index, Version = 1 };
 
-        private static Entity Leader(ThreatEntry[] entries, bool[] alive)
+        private static Entity Leader(ThreatEntry[] entries, bool[] alive, int[] simIds = null)
         {
             using var entriesNa = new NativeArray<ThreatEntry>(entries, Allocator.Temp);
             using var aliveNa = new NativeArray<bool>(alive, Allocator.Temp);
-            return ThreatTable.Leader(entriesNa, aliveNa);
+            // 기본값: Entity.Index 를 simId 로 재사용 — 기존 케이스의 기대값 보존.
+            simIds ??= System.Array.ConvertAll(entries, e => e.attacker.Index);
+            using var simNa = new NativeArray<int>(simIds, Allocator.Temp);
+            return ThreatTable.Leader(entriesNa, aliveNa, simNa);
         }
 
         [Test]
@@ -38,12 +41,22 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Leader_Tie_PrefersLowerEntityIndex_RegardlessOfOrder()
+        public void Leader_Tie_PrefersLowerSimId_RegardlessOfOrder()
         {
             var a = new ThreatEntry { attacker = E(7), cumulativeDamage = 40f };
             var b = new ThreatEntry { attacker = E(3), cumulativeDamage = 40f };
             Assert.AreEqual(E(3), Leader(new[] { a, b }, new[] { true, true }));
             Assert.AreEqual(E(3), Leader(new[] { b, a }, new[] { true, true }));
+        }
+
+        [Test]
+        public void Leader_Tie_UsesSimId_NotEntityIndex()
+        {
+            // battle-sim-extraction unit 1 — Entity.Index 가 커도 simId(스폰 순서)가
+            // 낮으면 이긴다. 축이 교체됐음을 고정하는 테스트.
+            var a = new ThreatEntry { attacker = E(3), cumulativeDamage = 40f };
+            var b = new ThreatEntry { attacker = E(7), cumulativeDamage = 40f };
+            Assert.AreEqual(E(7), Leader(new[] { a, b }, new[] { true, true }, new[] { 5, 1 }));
         }
 
         [Test]

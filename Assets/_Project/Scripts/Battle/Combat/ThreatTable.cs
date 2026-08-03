@@ -39,12 +39,15 @@ namespace Wassup.Battle.Combat
     public static class ThreatTable
     {
         // Highest cumulativeDamage among alive attackers. Ties break to the
-        // lower Entity index (stable, insertion-order independent). Empty table
-        // or no alive attacker → Entity.Null (caller falls back / skips).
-        public static Entity Leader(in NativeArray<ThreatEntry> entries, in NativeArray<bool> alive)
+        // lower simId (SimEntityId — unit 1 이 Entity.Index 축 대체. aliveness 처럼
+        // 호출부가 병렬 배열로 해소한다). Empty table or no alive attacker →
+        // Entity.Null (caller falls back / skips).
+        public static Entity Leader(in NativeArray<ThreatEntry> entries, in NativeArray<bool> alive,
+            in NativeArray<int> simIds)
         {
             var best = Entity.Null;
             float bestDamage = 0f;
+            int bestSimId = int.MaxValue;
             for (int i = 0; i < entries.Length; i++)
             {
                 if (!alive[i]) continue;
@@ -52,10 +55,11 @@ namespace Wassup.Battle.Combat
                 if (e.attacker == Entity.Null) continue;
                 if (best == Entity.Null
                     || e.cumulativeDamage > bestDamage
-                    || (e.cumulativeDamage == bestDamage && e.attacker.Index < best.Index))
+                    || (e.cumulativeDamage == bestDamage && simIds[i] < bestSimId))
                 {
                     best = e.attacker;
                     bestDamage = e.cumulativeDamage;
+                    bestSimId = simIds[i];
                 }
             }
             return best;

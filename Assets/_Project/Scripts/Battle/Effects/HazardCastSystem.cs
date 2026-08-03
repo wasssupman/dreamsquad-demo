@@ -38,6 +38,8 @@ namespace Wassup.Battle.Effects
             // 없으면(구 세이브/테스트 월드) 조용히 건너뛴다.
             bool hasCastQueue = SystemAPI.TryGetSingletonRW<Wassup.Battle.Combat.CastEventsSingleton>(out var castSingleton);
             var dcSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Combat.DcTriggerSlot>(isReadOnly: true);
+            // battle-sim-extraction unit 1 — 등거리 동률 tiebreak 축 (신설).
+            var simIdLookup = SystemAPI.GetComponentLookup<SimEntityId>(isReadOnly: true);
 
             var targetsQuery = SystemAPI.QueryBuilder()
                 .WithAll<FactionTag, LocalTransform, PathFollowState>()
@@ -67,6 +69,7 @@ namespace Wassup.Battle.Effects
                 int tileRange = GridMath.RangeToTiles(cast.ValueRO.range);
                 int mask = cast.ValueRO.targetMask;
                 float bestSq = float.MaxValue;
+                int bestSimId = int.MaxValue;
                 Entity bestTarget = Entity.Null;
                 int2 bestTargetCell = default;
 
@@ -81,9 +84,12 @@ namespace Wassup.Battle.Effects
                     if (tileDist > tileRange) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
-                    if (distSq < bestSq)
+                    int candSimId = SimEntityId.Resolve(simIdLookup, targetEntities[i]);
+                    // unit 1 — 등거리 동률 tiebreak 신설: ToEntityArray(청크) 순서 의존 제거.
+                    if (distSq < bestSq || (distSq == bestSq && candSimId < bestSimId))
                     {
                         bestSq = distSq;
+                        bestSimId = candSimId;
                         bestTarget = targetEntities[i];
                         bestTargetCell = targetCell;
                     }

@@ -20,17 +20,15 @@ namespace Wassup.Battle.Combat
             public bool eligible;     // 호출부의 진영/상태 필터 통과 여부
             public int tileDist;      // Chebyshev 타일 거리 (반경 판정용)
             public float sqDist;      // XZ 제곱 거리 (랭킹용)
-            public int entityIndex;   // Entity.Index
-            public int entityVersion; // Entity.Version
+            public int simId;         // SimEntityId — battle-sim-extraction unit 1 이 Entity.Index/Version 축 대체
         }
 
-        // 랭킹: 최근접 우선, 동거리는 엔티티 index→version 순.
+        // 랭킹: 최근접 우선, 동거리는 simId(스폰 순 stable ID) 낮은 쪽.
         // 후보 배열 순서(chunk 순서)가 흔들려도 같은 대상이 뽑힌다(결정론).
         public static bool RanksBefore(in Candidate a, in Candidate b)
         {
             if (a.sqDist != b.sqDist) return a.sqDist < b.sqDist;
-            if (a.entityIndex != b.entityIndex) return a.entityIndex < b.entityIndex;
-            return a.entityVersion < b.entityVersion;
+            return a.simId < b.simId;
         }
 
         // 반경 안에서 가장 앞선 후보의 인덱스. 없으면 -1.

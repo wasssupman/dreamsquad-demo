@@ -100,6 +100,8 @@ namespace Wassup.Battle.Combat
             // content-1 ① (가시 갑옷) — double-fire charge (Units→Combat handoff), read+cleared here.
             var nextDoubleFireLookup = SystemAPI.GetComponentLookup<NextAttackDoubleFire>(isReadOnly: true);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
+            // battle-sim-extraction unit 1 — 타겟팅 tiebreak·발사 RNG seed 의 stable ID 축.
+            var simIdLookup = SystemAPI.GetComponentLookup<SimEntityId>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
             // combat-action-lock — 행동불가(Sleep/Stun) 게이트용 RO CcEffect lookup.
             var ccActionLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Effects.CcEffect>(isReadOnly: true);
@@ -211,7 +213,7 @@ namespace Wassup.Battle.Combat
 
                         int2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, origin: ffOrigin);
                         int pick = PickFallbackTarget(needleScratch,
-                            targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                            targetEntities, targetTransforms, targetFactions, pastGoalLookup, simIdLookup,
                             castEvt.caster, castEvt.casterPos, casterCell,
                             tileSize, gridSize, ffOrigin, slot.tileRange);
                         // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
@@ -336,7 +338,7 @@ namespace Wassup.Battle.Combat
                                     // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
                                     // 진영 Enemy 고정 + PastGoal 제외는 헬퍼가 보장한다.
                                     int pick = PickFallbackTarget(needleScratch,
-                                        targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                                        targetEntities, targetTransforms, targetFactions, pastGoalLookup, simIdLookup,
                                         attackerEntity, bPos, bCasterCell,
                                         tileSize, gridSize, ffOrigin, slot.tileRange);
                                     // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
@@ -529,8 +531,7 @@ namespace Wassup.Battle.Combat
                         {
                             hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
                             sqDist = d2,
-                            entityIndex = targetEntities[i].Index,
-                            entityVersion = targetEntities[i].Version,
+                            simId = SimEntityId.Resolve(simIdLookup, targetEntities[i]),
                         };
                         if (!healHasBest || LowestHealthTargeting.RanksBefore(hc, healBest))
                         {
@@ -568,8 +569,7 @@ namespace Wassup.Battle.Combat
                             {
                                 flowDist = fdist,
                                 sqDist = d2,
-                                entityIndex = targetEntities[i].Index,
-                                entityVersion = targetEntities[i].Version,
+                                simId = SimEntityId.Resolve(simIdLookup, targetEntities[i]),
                             };
                             if (!fmHasBest || FrontmostTargeting.RanksBefore(fc, fmBest))
                             {
@@ -1028,9 +1028,10 @@ namespace Wassup.Battle.Combat
                                         // unit 5 — 랜덤 패턴도 instance가 완성된 runtime
                                         // shot 목록을 소유한다. 같은 host의 연속 trigger와
                                         // 여러 host가 같은 시퀀스를 반복하지 않되 결정론은 유지.
+                                        // unit 1 — seed 축을 Entity.Index → SimEntityId 로 교체(할당 순서 독립).
                                         PatternShotRandomizer.Apply(
                                             ref spec,
-                                            math.hash(new int2(attackerEntity.Index, slot.fireCountBase)));
+                                            math.hash(new int2(SimEntityId.Resolve(simIdLookup, attackerEntity), slot.fireCountBase)));
 
                                         // barrel 기반 template이 가진 effect/targetFaction은
                                         // 보존하고, 이번 공격에만 결정되는 값은 RESOLVE에서
@@ -1130,6 +1131,7 @@ namespace Wassup.Battle.Combat
                                         cell = GridMath.WorldToCell(tp, tileSize, gridSize, origin: ffOrigin),
                                         pos = tp,
                                         aggroed = aggroLookup.HasComponent(targetEntities[i]),
+                                        simId = SimEntityId.Resolve(simIdLookup, targetEntities[i]),
                                     };
                                     candIdx[nc] = i;
                                     nc++;
@@ -1211,8 +1213,7 @@ namespace Wassup.Battle.Combat
                                                 {
                                                     hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
                                                     sqDist = d2,
-                                                    entityIndex = targetEntities[i].Index,
-                                                    entityVersion = targetEntities[i].Version,
+                                                    simId = SimEntityId.Resolve(simIdLookup, targetEntities[i]),
                                                 };
                                                 if (!passHasBest || LowestHealthTargeting.RanksBefore(hc, passBest))
                                                 {
@@ -1665,6 +1666,7 @@ namespace Wassup.Battle.Combat
             NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
             ComponentLookup<Wassup.Battle.Movement.PastGoalTag> pastGoal,
+            ComponentLookup<SimEntityId> simIds,
             Entity self, float3 selfPos, int2 selfCell,
             float tileSize, int2 gridSize, float3 gridOrigin, int tileRange)
         {
@@ -1681,8 +1683,7 @@ namespace Wassup.Battle.Combat
                     eligible = eligible,
                     tileDist = math.max(math.abs(c.x - selfCell.x), math.abs(c.y - selfCell.y)),
                     sqDist = math.distancesq(selfPos, p),
-                    entityIndex = e.Index,
-                    entityVersion = e.Version,
+                    simId = SimEntityId.Resolve(simIds, e),
                 };
             }
             return NearestTargeting.SelectNearest(scratch, tileRange);
