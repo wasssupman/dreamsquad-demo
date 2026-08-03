@@ -19,6 +19,8 @@
 | [2_fixed_step_harness_driver.md](2_fixed_step_harness_driver.md) | 시간 결정론 | 하네스 모드 `StepOneTick` 드라이버 + 입력 sim-tick 스케줄 주입 |
 | [3_canonical_match_config.md](3_canonical_match_config.md) | 조건 물질화 | MatchConfig blob + `configHash` + LoginAutoImport 차단 |
 | [4_legacy_trace_golden.md](4_legacy_trace_golden.md) | 골든 하네스 | `LegacyTraceV0` 기록·직렬화 왕복·seed 코퍼스·parity 기준 확정 |
+| [5_handoff_summary.md](5_handoff_summary.md) | 인계 문서 | 클론 세션용 헛발 방지 + 레포 함정 |
+| [6_decision_record.md](6_decision_record.md) | 결정 기록 | 기각 대안·자기 철회·재론 조건 (ADR) — 재론 전 필독 |
 
 ## Feature-wide 계약
 
