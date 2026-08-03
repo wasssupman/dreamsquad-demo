@@ -2,7 +2,7 @@
 
 ## 목적
 
-M1 신 sim과의 A/B parity 기준선. 하네스 실행(units 2·3 위)에서 28채널 이벤트를 tick 스탬프·`SimEntityId` 축으로 기록한 `LegacyTraceV0`를 만들고, seed 코퍼스를 골든으로 저장한다. **직렬화 왕복을 통과시켜 기록**한다 — 네트워크에 못 탈 페이로드(오브젝트 참조 등)를 첫날부터 걸러내는 가드다. parity 기준과 동률 예외를 여기서 명문화한다.
+M1 신 sim과의 A/B parity 기준선. 하네스 실행(units 2·3 위)에서 27채널 이벤트를 tick 스탬프·`SimEntityId` 축으로 기록한 `LegacyTraceV0`를 만들고, seed 코퍼스를 골든으로 저장한다. **직렬화 왕복을 통과시켜 기록**한다 — 네트워크에 못 탈 페이로드(오브젝트 참조 등)를 첫날부터 걸러내는 가드다. parity 기준과 동률 예외를 여기서 명문화한다.
 
 ## 변경 대상
 
@@ -13,7 +13,7 @@ M1 신 sim과의 A/B parity 기준선. 하네스 실행(units 2·3 위)에서 28
 
 ## 구현
 
-기록 파이프: 이벤트 → 직렬화 → 역직렬화 → 재직렬화 byte 동일 검증 → 저장. 코퍼스는 seed·맵·덱 조합 N개(최소: 일반 판·보스 웨이브 판·멀티골 맵·드림캐쳐 다용 판·강제 웨이브·동시 사망 유발 시나리오·restart). **parity 기준(명문)**: semantic 이벤트 시퀀스·킬/유출 수·점수(int)·최종 상태 해시 = exact, 연속 물리값(위치·잔여시간) = epsilon. **동률 예외 목록**: KillAttribution 등량 데미지·Aggro capacity FIFO·Cc/Stat·Stack/Dot merge 동키 충돌·(unit 1이 해소한 HazardCast tiebreak 제외)·HazardSingleton 셀 순회 — 이 지점들의 차이는 parity 실패로 치지 않되 발생 시 로그. 사전 실패 테스트(CardBuffs PlayMode — main HEAD부터 가디언 dmgTaken ×1.25 실패)는 수리 또는 코퍼스에서 명시 제외를 결정해 기록.
+기록 파이프: 이벤트 → 직렬화 → 역직렬화 → 재직렬화 byte 동일 검증 → 저장. 코퍼스는 seed·맵·덱 조합 N개(최소: 일반 판·보스 웨이브 판·멀티골 맵·드림캐쳐 다용 판·강제 웨이브·동시 사망 유발 시나리오·restart). **parity 기준(명문)**: semantic 이벤트 시퀀스·킬/유출 수·점수(int)·최종 상태 해시 = exact, 연속 물리값(위치·잔여시간) = epsilon. **동률 예외 목록(2026-08-03 교차검증 정정)**: KillAttribution 등량 데미지(이미 `KillAttribution.cs` 주석에 계약화) · Aggro capacity FIFO(실질 결정자는 AttackSystem 청크 순회 순서) · Cc/Stat merge 동키 충돌 · Dot merge 동키 충돌 · (unit 1이 해소한 HazardCast tiebreak 제외) · HazardSingleton 셀 순회(순서 미규정이나 메인스레드 삽입이라 재현은 됨) — 이 지점들의 차이는 parity 실패로 치지 않되 발생 시 로그. **ApplyStack 은 동률 지점 아님**(stackCount 가환 누적) — 단 병합 경로별 duration 정책 불일치(값 축 LWW · 지속 축 max · tickTimer carry-over, 예외로 ApplyStack 의 `remaining` 만 무조건 덮어쓰기)는 이식 계약으로 명문화한다. 사전 실패 테스트는 `DreamcatcherEffectTest.CardBuffs_ApplyToCurrentAndFutureMatchingUnits`(PlayMode — 별도 파일 아님. 초안의 "가디언 dmgTaken ×1.25" 서술은 코드 어서션 0.87 과 불일치라 실행 재확인 필요)이며 수리 또는 코퍼스에서 명시 제외를 결정해 기록.
 
 ## 완료 기준
 

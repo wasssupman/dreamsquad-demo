@@ -75,12 +75,12 @@ Sim 라이브러리 (netstandard, UnityEngine 참조 = 컴파일 에러)
 4. **유효 시스템 총순서 캡처**: 어트리뷰트 그래프는 불완전(미선언 순서 존재) — 러닝 월드에서 실제 실행 순서를 덤프해 그것을 틱 파이프라인 명세의 입력으로.
 5. **canonical MatchConfig blob + `configHash`**: 스탯 SO만으로 부족 — 씬 상주 gameplay knob(스폰 spread, 인접 시너지 토글 등)까지 포함한 불변 config blob으로 물질화, canonical serialization + `configHash`를 골든·AMR·커맨드로그에 공통 저장. 테스트 모드에서 LoginAutoImport 차단. 시트 드리프트 vs 코드 회귀 판독 절차 명시.
 6. **골든 덤프 = `LegacyTraceV0`**: seed N개 → 이벤트 스트림(직렬화 왕복 통과)·최종 점수·상태 해시. M1 신규 스키마와 직접 비교 가능하도록 stable ID·config serializer를 이 시점에 포함 (골든이 M1 계약에 선행하는 모순 해소).
-5. **parity 기준 선언**: 커맨드 receipt·semantic 이벤트·틱별 공개 read model·**최종 canonical 상태+RNG 해시·점수(전부 int)는 exact 비교**, 연속 물리값(위치·잔여시간)만 epsilon. **동률 6지점은 예외 명시**(§3). 골든 시나리오에 거절·pause/slow-mo·강제 웨이브·동시 사망·restart 포함. 사전 실패 테스트(CardBuffs PlayMode) 수리 또는 명시 제외.
+7. **parity 기준 선언**: 커맨드 receipt·semantic 이벤트·틱별 공개 read model·**최종 canonical 상태+RNG 해시·점수(전부 int)는 exact 비교**, 연속 물리값(위치·잔여시간)만 epsilon. **동률 지점은 예외 명시**(§3 — ApplyStack 제외 정정 반영). 골든 시나리오에 거절·pause/slow-mo·강제 웨이브·동시 사망·restart 포함. 사전 실패 테스트(`DreamcatcherEffectTest.CardBuffs_…` PlayMode 메서드) 수리 또는 명시 제외.
 
 ### M1 — seam 선행 적출
 
 1. **백지 청사진 — 3장으로 캡, 1주 timebox**: ① IMatchSession 계약(커맨드·이벤트 스키마, 고스트 필드 포함) ② 컴포넌트 97종→plain struct 대응표 ③ 틱 파이프라인 순서도(M0 캡처 기반). 시스템별 상세는 이식 시점 지연 결정.
-2. **salvage 판정 — 모듈 단위 ~60건** (시스템 44 + 채널 28 + Bridge 서브시스템): conform / adapt / rewrite / discard.
+2. **salvage 판정 — 모듈 단위 ~60건** (시스템 44 + 채널 27 + Bridge 서브시스템): conform / adapt / rewrite / discard.
 3. **IMatchSession을 기존 ECS sim 위 파사드로 먼저 도입** → 소비자 82파일 재배선을 구 sim 위에서 완료·머지. 스왑 커밋을 "세션 구현체 교체 1곳"으로 축소. **BattleBridge는 마지막에 죽는다.** (Bridge `_em.` 호출 305곳 = seam 인벤토리 정량 목표)
 4. **Bridge 상주 매치 규칙 적출을 1급 작업으로**: 웨이브 스케줄·승패·배치 규칙·점수 산정·드림캐쳐 파셜 64KB — 이것 없이는 sim lib이 반쪽. (선행 머지 단위: 비주얼 statics 분리, `GetStackThresholds` 의존 역전, DebugMenu 퇴거)
 5. **sim lib 이식** (맥락 4개 + 매치 규칙), 맥락당 테스트 포팅을 하위 작업으로 (World-조립 40파일은 어서션만 salvage, 골격 재작성).
@@ -103,13 +103,13 @@ RemoteSession · 서버 스택 결정(순수 호스팅/비용 문제로 격하) 
 **형태 보존 필수:**
 - ECB는 전부 로컬-즉시(자기 OnUpdate 내 `Allocator.Temp` Playback, Begin/EndSimulationECB 사용 0건)라 immediate 전환 안전 — 단 **"루프 중 기록, 루프 후 적용" 형태 유지**. 동일 엔티티 2연산 함정은 드레인 루프 시스템 전수 점검(`ModifierApplySystem` 선례: ECB AddBuffer 중복이 슬롯 덮어쓰기 버그를 냈고 즉시 적용으로 탈출).
 - **사망 4단계 2-phase delete** (DamageApplication의 DeadTag 마킹 → HealthDeath 보완 → PatrolLifecycle/ResignationDrop 후처리 → UnitLifecycle 일괄 삭제). 즉시 삭제 단순화 금지.
-- **`RequireForUpdate` 게이트 시맨틱을 가드로 정확 복제** (**39개 시스템** — 예: IncomingDamage 엔티티 0이면 DamageApplicationSystem 자체가 안 돌아 RegenPerSec 힐도 정지). `WithNone<>` 같은 **"컴포넌트 부재 = 상태"** 로직 포함 — 시스템별 all/any 게이트·optional presence·tag include/exclude를 기계 추출한 **이식 매트릭스** 작성.
+- **`RequireForUpdate` 게이트 시맨틱을 가드로 정확 복제** (**35개 시스템** — 초안 39 는 주석 전용 GimmickConfig 4파일 포함 grep 파일 수, 2026-08-03 실측 35. 예: IncomingDamage 엔티티 0이면 DamageApplicationSystem 자체가 안 돌아 RegenPerSec 힐도 정지). `WithNone<>` 같은 **"컴포넌트 부재 = 상태"** 로직 포함 — 시스템별 all/any 게이트·optional presence·tag include/exclude를 기계 추출한 **이식 매트릭스** 작성.
 - RNG는 xorshift 상수 계승 (System.Random 치환 금지).
 - `ModifierStatsDirty`(유일 enableable) dirty-only 순회 → 명시 dirty flag/set.
 
 **명시 결정 필요 (현재 암묵 — Unity 토폴로지 tie-break이 동작을 결정 중):**
-- 미선언 순서: 모디파이어 클러스터(9개 생산자 시스템이 ModifierApplySystem과 순서 무관계), 투사체 체인(Move/Hit) vs Movement/Attack 체인, LastRunSystem→IncomingDamage, EffectTickSystem→IncomingDamage — **M0 캡처 순서로 고정**.
-- **동률 6지점**: KillAttribution(등량 데미지 킬 귀속=버퍼 적재 순서)·Aggro capacity FIFO·CcEffectMerge/ApplyStat·ApplyStack/DotEffectMerge(last-writer-wins)·HazardCastSystem 최근접 tiebreak 부재(`HazardCastSystem.cs:83-88`)·HazardSingleton NativeParallelMultiHashMap 셀 순회. **권고: 프로젝트 자체 관례(Entity.Index/Version identity tiebreak — 타겟팅 유틸은 이미 전부 이 방식)로 승격하고 행동 변경 문서화.**
+- 미선언 순서: 모디파이어 클러스터(생산자 11개 중 9개가 ModifierApplySystem과 순서 무관계 — 2026-08-03 정정), 투사체 체인(Move/Hit) vs Movement/Attack 체인, LastRunSystem→IncomingDamage, DotApplySystem→IncomingDamage(초안의 EffectTickSystem 은 오지목 — unit 0 참조) — **M0 캡처 순서로 고정**.
+- **동률 지점(2026-08-03 교차검증 정정 — ApplyStack 은 가환 누적이라 동률 지점 아님)**: KillAttribution(등량 데미지 킬 귀속=버퍼 적재 순서, 코드 주석에 이미 계약화)·Aggro capacity FIFO(실질 결정자는 AttackSystem 청크 순회)·CcEffectMerge/ApplyStat·DotEffectMerge(순수 LWW 아님 — 값 축 LWW·지속 축 max·tickTimer carry-over 3분할. ApplyStack 의 `remaining` 만 무조건 덮어쓰기로 정책이 갈림 — 경로별 duration 정책 불일치 자체를 이식 계약에 명문화)·HazardCastSystem 최근접 tiebreak 부재(`HazardCastSystem.cs:84`)·HazardSingleton NativeParallelMultiHashMap 셀 순회(미규정이나 메인스레드 삽입이라 재현됨). **권고: 프로젝트 자체 관례(Entity.Index/Version identity tiebreak — 타겟팅 유틸은 이미 전부 이 방식)로 승격하고 행동 변경 문서화.**
 
 **비보존 (Burst/ECS 아티팩트):**
 - `RequireAnyForUpdate` 비-Burst 분리, ParallelWriter 방어적 타이핑(실제 `Schedule`/`ScheduleParallel` 호출 0건 — 전 시뮬 메인스레드 단일), 죽은 ECB(ModifierApplySystem), `[InternalBufferCapacity]` 레이아웃 힌트.
@@ -133,7 +133,7 @@ RemoteSession · 서버 스택 결정(순수 호스팅/비용 문제로 격하) 
 
 ## 6. 실측 기준치 (감사 보정)
 
-Battle 227파일/13.5k줄(U40/M12/C74/E98) · ISystem 44(SystemBase 0·Baker 0) · IComponentData 97·IBufferElementData 21 · NativeQueue 채널 28 · Bridge 본체 7,157줄/파셜 합 8,967줄/`_em.` 호출 305곳 · 실코드 소비자 82파일 · Battle→Bridge 실결합 6파일(sim 시스템 1건: `StackModifierTickSystem.cs:74`) · Entities 참조 테스트 72(그중 World-조립 40) · Entities Graphics 실사용 0(dead using 1줄).
+Battle 227파일/13,505줄(U40/M12/C74/E98) · ISystem 44(SystemBase 0·Baker 0) · IComponentData 96·IBufferElementData 21 · NativeQueue 채널 27(CLAUDE.md 목록과 일치 — 초안의 28 은 오기) · Bridge 본체 7,164줄/파셜 합 8,922줄/`_em.` 호출 305곳(본체 매칭 줄 기준) · 실코드 소비자 82파일 · Battle→Bridge 실결합 6파일 = 디버그 메뉴 5 + 프로덕션 1(`StackModifierTickSystem.cs:90` `GetStackThresholds`) · Entities 참조 테스트 74(`using Unity.Entities` 기준, 그중 `new World(` 조립 38 — 근사치) · Entities Graphics 코드 사용 0(dead using 1줄, 단 패키지는 manifest 잔존). — 2026-08-03 교차검증(HEAD `54e0d7af`) 재실측 반영.
 
 ## 7. 다음 수순
 
