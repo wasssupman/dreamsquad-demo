@@ -14,6 +14,8 @@ namespace Wassup.Battle.Units
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(AttackSystem))]
+    // battle-sim-extraction unit 0 — 자기 자신도 모디파이어 생산자(킬 파생 enqueue) — 다음-프레임 적용(캡처 순서)을 선언으로 고정.
+    [UpdateAfter(typeof(ModifierApplySystem))]
     public partial struct DamageApplicationSystem : ISystem
     {
         private ComponentLookup<ModifierStats> _buffStatsLookup;

@@ -27,6 +27,8 @@ namespace Wassup.Battle.Combat
     // units in range via StatModifierApplyEvents; release is TTL expiry only.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction unit 0 — 모디파이어 enqueue 의 같은-프레임 적용(캡처 순서)을 선언으로 고정.
+    [UpdateBefore(typeof(ModifierApplySystem))]
     public partial struct BossPeriodicTriggerSystem : ISystem
     {
         public void OnCreate(ref SystemState state)

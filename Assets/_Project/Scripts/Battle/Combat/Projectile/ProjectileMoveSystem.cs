@@ -17,6 +17,8 @@ namespace Wassup.Battle.Combat.Projectile
     // serves the same purpose within a Burst-compiled ISystem.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction unit 0 — 호밍이 이동 직후의 최신 타겟 위치를 읽던 현행 순서를 선언으로 고정.
+    [UpdateAfter(typeof(Wassup.Battle.Movement.MovementSystem))]
     public partial struct ProjectileMoveSystem : ISystem
     {
         [BurstCompile]

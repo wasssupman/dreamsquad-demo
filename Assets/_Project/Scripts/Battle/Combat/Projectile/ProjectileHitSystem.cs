@@ -21,6 +21,10 @@ namespace Wassup.Battle.Combat.Projectile
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(ProjectileMoveSystem))]
+    // battle-sim-extraction unit 0 — 캡처 순서 박제: 착탄 IncomingDamage 의 같은-프레임 소비와
+    // 모디파이어 enqueue 의 다음-프레임 적용(현행)을 선언으로 고정 (기존엔 둘 다 tie-break 산물).
+    [UpdateBefore(typeof(DamageApplicationSystem))]
+    [UpdateAfter(typeof(ModifierApplySystem))]
     public partial struct ProjectileHitSystem : ISystem
     {
         [BurstCompile]

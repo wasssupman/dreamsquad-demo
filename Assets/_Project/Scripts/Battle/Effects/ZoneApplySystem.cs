@@ -11,6 +11,9 @@ namespace Wassup.Battle.Effects
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(HazardLifetimeSystem))]
     [UpdateBefore(typeof(CcApplySystem))]
+    // battle-sim-extraction unit 0 — 모디파이어 enqueue 의 같은-프레임 적용(캡처 순서)을 선언으로 고정.
+    // (기존 Before(CcApply)만으로는 ModifierApply(#9)와 CcApply(#10) 사이 배치가 허용됐다.)
+    [UpdateBefore(typeof(ModifierApplySystem))]
     public partial struct ZoneApplySystem : ISystem
     {
         [BurstCompile]

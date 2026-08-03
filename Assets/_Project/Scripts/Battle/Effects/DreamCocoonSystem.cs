@@ -19,6 +19,8 @@ namespace Wassup.Battle.Effects
     [UpdateInGroup(typeof(Wassup.Battle.BattleSimGroup))]
     [UpdateAfter(typeof(CcClearSystem))]
     [UpdateBefore(typeof(CcDecaySystem))]
+    // battle-sim-extraction unit 0 — 모디파이어 enqueue 의 다음-프레임 적용(캡처의 1프레임 지연)을 선언으로 고정.
+    [UpdateAfter(typeof(ModifierApplySystem))]
     public partial struct DreamCocoonSystem : ISystem
     {
         [BurstCompile]

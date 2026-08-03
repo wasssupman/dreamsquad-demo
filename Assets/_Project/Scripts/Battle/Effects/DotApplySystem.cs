@@ -14,6 +14,8 @@ namespace Wassup.Battle.Effects
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(CcApplySystem))]
     [UpdateBefore(typeof(CcDecaySystem))]
+    // battle-sim-extraction unit 0 — IncomingDamage 기록의 같은-프레임 소비(캡처 순서)를 선언으로 고정.
+    [UpdateBefore(typeof(DamageApplicationSystem))]
     public partial struct DotApplySystem : ISystem
     {
         [BurstCompile]

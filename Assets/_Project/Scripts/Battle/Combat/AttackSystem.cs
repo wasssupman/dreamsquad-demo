@@ -18,6 +18,8 @@ namespace Wassup.Battle.Combat
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(MovementSystem))]
+    // battle-sim-extraction unit 0 — 모디파이어 enqueue 의 다음-프레임 적용(캡처의 1프레임 지연)을 선언으로 고정.
+    [UpdateAfter(typeof(ModifierApplySystem))]
     public partial struct AttackSystem : ISystem
     {
         private EntityQuery _attackEventsQuery;
