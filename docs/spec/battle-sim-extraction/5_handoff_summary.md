@@ -4,7 +4,8 @@
 
 ## Commit
 
-- `1833ce74` docs(battle-sim-extraction): ECS 제거 재설계 스펙 신설 — M0 units 0~4 + 설계 정본 v6
+- 스펙 커밋 제목: "docs(battle-sim-extraction): ECS 제거 재설계 스펙 신설 — M0 units 0~4 + 설계 정본 v6"
+- 병행 세션 커밋과 분리해 **cherry-pick으로 게시**했으므로 해시는 원 워크트리(`1833ce74`)와 origin이 **다르다** — 커밋 제목으로 식별하라.
 
 ## 상태
 
