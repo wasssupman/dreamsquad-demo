@@ -14,6 +14,7 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private byte[] propLayerId;
         [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
         [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
+        [SerializeField] private float[] goalMaxStability;   // goals 와 index 정렬. 0 = 유출 지점 현행, >0 = 공성 대상. 부재/길이 불일치 = 전 골 0 폴백(goal-stability unit 0).
         [SerializeField] private Vector2Int[] spawns;
 
         // -1 = 수동 입력, 그 외 값 = 절차적 결과 캐시.
@@ -30,6 +31,7 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<byte> PropLayerId => propLayerId;
         public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
         public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
+        public IReadOnlyList<float> GoalMaxStability => goalMaxStability;   // null/길이 불일치 가능 — 소비 시 전 골 0 폴백(ToGeneratedMap)
         public IReadOnlyList<Vector2Int> Spawns => spawns;
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
@@ -38,7 +40,8 @@ namespace Wassup.Data.MapGrid
             int w, int h,
             MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
             Vector2Int[] goalsArr, Vector2Int[] s,
-            int seed, int version)
+            int seed, int version,
+            float[] goalStabilityArr = null)
         {
             width = w;
             height = h;
@@ -48,6 +51,7 @@ namespace Wassup.Data.MapGrid
             propLayerId = pl;
             goals = goalsArr;
             goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
+            goalMaxStability = goalStabilityArr;
             spawns = s;
             authoringSeed = seed;
             generatorVersion = version;
@@ -87,6 +91,17 @@ namespace Wassup.Data.MapGrid
                 foreach (var g in goals)
                     if (g.x < 0 || g.x >= width || g.y < 0 || g.y >= height)
                         Debug.LogError($"[MapDocument] goal {g} 이 격자 밖 ({width}×{height})", this);
+            }
+
+            // 안정도: 비면 전 골 0 폴백(레거시/미authored) → 유효. 길이 불일치·음수만 에러 (goal-stability unit 0).
+            if (goalMaxStability != null && goalMaxStability.Length > 0)
+            {
+                int goalCount = (goals != null && goals.Length > 0) ? goals.Length : 1;
+                if (goalMaxStability.Length != goalCount)
+                    Debug.LogError($"[MapDocument] goalMaxStability.Length={goalMaxStability.Length} != 골 개수 {goalCount} — 소비 시 전 골 0 폴백", this);
+                foreach (var m in goalMaxStability)
+                    if (m < 0f)
+                        Debug.LogError($"[MapDocument] goalMaxStability 음수 {m} — 0 이상이어야 한다", this);
             }
         }
 #endif

@@ -104,6 +104,8 @@ namespace Wassup.Tests.EditMode.MapGrid
             Assert.IsTrue(map.chokepoint.IsCreated);
             Assert.IsTrue(map.propLayerId.IsCreated);
             Assert.IsTrue(map.spawns.IsCreated);
+            Assert.IsTrue(map.goalMaxStability.IsCreated);
+            Assert.AreEqual(map.goals.Length, map.goalMaxStability.Length, "goalMaxStability 는 goals 와 같은 길이");
 
             int n = map.gridSize.x * map.gridSize.y;
             Assert.AreEqual(n, map.tiles.Length);
@@ -145,6 +147,86 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             ScriptableObject.DestroyImmediate(doc);
             ScriptableObject.DestroyImmediate(roundTripped);
+        }
+
+        // ── goal-stability unit 0 — per-goal 최대 안정도 M ──────────────────────
+
+        private static MapDocument BuildTwoGoalDocument(float[] stability)
+        {
+            const int w = 6, h = 4; int n = w * h;
+            var tiles = new MapTileType[n];
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
+
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(5, 2), new Vector2Int(3, 2) },
+                new[] { new Vector2Int(0, 2) },
+                seed: 7, version: 0,
+                goalStabilityArr: stability);
+            return doc;
+        }
+
+        [Test]
+        public void GoalStability_RoundTrip_Preserved()
+        {
+            var doc = BuildTwoGoalDocument(new[] { 30f, 0f });
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.IsTrue(map.goalMaxStability.IsCreated);
+            Assert.AreEqual(2, map.goalMaxStability.Length);
+            Assert.AreEqual(30f, map.goalMaxStability[0]);
+            Assert.AreEqual(0f, map.goalMaxStability[1]);
+
+            var roundTripped = ScriptableObject.CreateInstance<MapDocument>();
+            MapDocumentBuilder.WriteToDocument(roundTripped, in map);
+            Assert.AreEqual(2, roundTripped.GoalMaxStability.Count);
+            Assert.AreEqual(30f, roundTripped.GoalMaxStability[0]);
+            Assert.AreEqual(0f, roundTripped.GoalMaxStability[1]);
+
+            ScriptableObject.DestroyImmediate(doc);
+            ScriptableObject.DestroyImmediate(roundTripped);
+        }
+
+        [Test]
+        public void GoalStability_Absent_FallsBackToZero()
+        {
+            // 레거시/미authored: SetFrom 에 안정도 미전달 → 전 골 0, 배열은 goals 길이로 생성.
+            var doc = BuildSampleDocument();
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.IsTrue(map.goalMaxStability.IsCreated);
+            Assert.AreEqual(map.goals.Length, map.goalMaxStability.Length);
+            for (int i = 0; i < map.goalMaxStability.Length; i++)
+                Assert.AreEqual(0f, map.goalMaxStability[i], $"goalMaxStability[{i}]");
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
+        [Test]
+        public void GoalStability_LengthMismatch_FallsBackToZero()
+        {
+            // 골 2개 vs 안정도 1개 — 부분 채택 없이 전 골 0 (README 폴백 계약).
+            var doc = BuildTwoGoalDocument(new[] { 30f });
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.AreEqual(2, map.goalMaxStability.Length);
+            Assert.AreEqual(0f, map.goalMaxStability[0]);
+            Assert.AreEqual(0f, map.goalMaxStability[1]);
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
+        [Test]
+        public void GoalStability_Negative_ClampedToZero()
+        {
+            var doc = BuildTwoGoalDocument(new[] { -5f, 12f });
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.AreEqual(0f, map.goalMaxStability[0], "음수는 0 clamp");
+            Assert.AreEqual(12f, map.goalMaxStability[1]);
+
+            ScriptableObject.DestroyImmediate(doc);
         }
     }
 }
