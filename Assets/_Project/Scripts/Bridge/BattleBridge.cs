@@ -3910,6 +3910,9 @@ namespace Wassup.Bridge
 #endif
                 // unit 13-B — 뷰를 직접 부르지 않고 발행한다(뷰가 구독). 발행 지점·순서는
                 // 구 호출 지점 그대로라 같은 tick 에 같은 순서로 도달한다.
+                // ⚠ 발행은 **동기**다. 여기는 `_enemyKilledEventQueue` 순회 중이므로 구독자가
+                // EntityManager 를 건드리거나 커맨드를 보내면 진행 중인 드레인이 뒤엉킨다
+                // (커맨드 재진입은 `MatchSession.Send` 가 거절한다 — ECS 리뷰 M1).
                 _session?.Emit(SessionEventKind.EnemyKilled, amount: evt.killScore);
                 // battle-score-formula unit 2 — 최종 점수용 누적.
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
@@ -6987,8 +6990,23 @@ namespace Wassup.Bridge
             // unit 13-B — 경보 뷰를 직접 부르지 않고 "보스가 등장했다"는 사실을 발행한다.
             // simId 는 이 시점에 이미 붙어 있다 — 같은 스폰 경로에서 AttachSimEntityId 가
             // BakeNightmareMechanics 보다 먼저 실행된다(불변식).
-            _session?.Emit(SessionEventKind.BossSpawned,
-                subjectSimId: TryGetSimId(entity, out int bossSimId) ? bossSimId : -1);
+            // ⚠ 발행은 **동기**이고 이 줄은 `AddComponent<BossTag>` 와 `AddBuffer<ThreatEntry>`
+            // **사이**다 — 구조 변경 시퀀스 한가운데. 구독자가 EntityManager 를 건드리면 아래
+            // 버퍼 획득 순서 가정(구조 변경이 기존 DynamicBuffer 핸들을 무효화한다)이 깨진다.
+            // 현재 구독자는 UI 만 만지며, 커맨드 재진입은 `MatchSession.Send` 가 거절한다.
+            // 불변식은 **실제로 발행하는 경로에만** 걸린다. `PatternBakeTests` 처럼 이 메서드를
+            // 리플렉션으로 단독 호출하는 테스트는 엔티티를 직접 만들어 `AttachSimEntityId` 를
+            // 거치지 않으므로, 세션 없이 단정하면 정당한 테스트를 처벌한다(실측으로 6건 깨졌다).
+            // 발행할 때만 검사하면 의도는 그대로다 — subject 가 -1 인 채 스트림에 들어가면
+            // "누가 등장했는지 모르는 보스 스폰"이 되고 그건 리플레이에서 복구 불가다.
+            if (_session != null)
+            {
+                bool bossIdResolved = TryGetSimId(entity, out int bossSimId);
+                Debug.Assert(bossIdResolved, "[BattleBridge] BossSpawned 의 SimEntityId 미해석 — " +
+                                             "AttachSimEntityId 가 BakeNightmareMechanics 앞이어야 한다.");
+                _session.Emit(SessionEventKind.BossSpawned,
+                    subjectSimId: bossIdResolved ? bossSimId : -1);
+            }
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);

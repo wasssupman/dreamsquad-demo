@@ -190,9 +190,12 @@ namespace Wassup.UI
             }
             // unit 13-A3 — 코스트는 `CostRuntime` 직독에서 세션 읽기 모델로. `gameManager` 참조는
             // `PhaseChanged` 구독 때문에 남는다(push → 이벤트 구독 전환은 bundle B).
-            if (!MatchSession.IsActive) return;
+            // 위 트레이-꺼짐 가드와 **같은 이유로 sentinel 을 되돌린다**(리뷰 minor 1): 폴링이
+            // 멈춘 사이 코스트는 계속 변하므로, 재개 프레임을 재동기화로 시작하지 않으면 자연
+            // 충전이 "+N 획득" 연출로 오발한다. `return` 만 하고 `_prevInt` 를 남기면 그 버그다.
+            if (!MatchSession.IsActive) { _prevInt = -1; return; }
             var rm = MatchSession.Current.ReadModel;
-            if (!rm.SupportedCost) return; // 미지원 구간에 0 을 그리지 않는다
+            if (!rm.SupportedCost) { _prevInt = -1; return; } // 미지원 구간에 0 을 그리지 않는다
 
             int curInt = CostWellMath.DisplayInt(rm.CostCurrent);
             float fill = CostWellMath.WellFill(rm.CostCurrent, rm.CostMax);

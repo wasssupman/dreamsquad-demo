@@ -433,10 +433,11 @@ namespace Wassup.UI
         public bool TryGetAffordableTutorialSlot(out RectTransform target)
         {
             target = null;
-            // unit 13-A3 — 미지원이면 int.MinValue 로 전 슬롯을 탈락시킨다(구 null 폴백과 동일).
-            int available = MatchSession.IsActive && MatchSession.Current.ReadModel.SupportedCost
-                ? MatchSession.Current.ReadModel.CostCurrentInt
-                : int.MinValue;
+            // unit 13-A3 — 미지원이면 int.MinValue 로 전 슬롯을 탈락시킨다(구 null 폴백 +
+            // 세션 미무장 구간). 읽기 모델은 **한 번만** 만든다 — 두 번 읽으면 A1 이 NextWaveDock
+            // 에서 없앤 찢어진 스냅샷이 그대로 재발한다(리뷰 minor 2).
+            var rm = MatchSession.IsActive ? MatchSession.Current.ReadModel : default;
+            int available = rm.SupportedCost ? rm.CostCurrentInt : int.MinValue;
             int bestCost = int.MaxValue;
             bool foundNonDirectional = false;
 
@@ -556,9 +557,9 @@ namespace Wassup.UI
             UpdateCooldownOverlays();
             // unit 13-A3 — 미지원 폴백은 `int.MaxValue`(위 주석의 계약: false-negative 를 피해 전부
             // available). 위 TryGetAffordableTutorialSlot 의 MinValue 와 **방향이 반대**이며 의도된 것이다.
-            int current = MatchSession.IsActive && MatchSession.Current.ReadModel.SupportedCost
-                ? MatchSession.Current.ReadModel.CostCurrentInt
-                : int.MaxValue;
+            // 읽기 모델은 한 번만 만든다(리뷰 minor 2).
+            var costRm = MatchSession.IsActive ? MatchSession.Current.ReadModel : default;
+            int current = costRm.SupportedCost ? costRm.CostCurrentInt : int.MaxValue;
             if (current == _lastCostSeen) return;
             _lastCostSeen = current;
 

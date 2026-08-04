@@ -29,9 +29,6 @@ namespace Wassup.Core.Session
                     "[MatchSession] 살아 있는 세션을 교체한다 — 이전 소유자가 Release 를 빠뜨렸을 수 있다.");
             }
             Current = session;
-            // 새 세션은 순번을 0 부터 기대한다(어댑터의 `_nextExpectedSeq`). 여기서 리셋하지 않으면
-            // 두 번째 판의 첫 커맨드가 갭으로 거절돼 **배치가 통째로 먹지 않는다**.
-            _nextCommandSeq = 0;
         }
 
         // 자신이 등록한 세션만 내린다. 매치 재시작이 새 세션을 무장한 뒤 옛 소유자의 teardown 이
@@ -42,11 +39,13 @@ namespace Wassup.Core.Session
         }
 
         // 테스트 전용. 프로덕션 경로에서 부르지 않는다 — 소유자가 Release 를 쓴다.
-        public static void ResetForTests()
-        {
-            Current = null;
-            Events = null;
-        }
+        //
+        // **`Events` 는 절대 여기서 지우지 않는다.** 이 프로젝트는 Play 진입 시 도메인 리로드가
+        // 꺼져 있어(`ProjectSettings/EditorSettings.asset`) 뷰의 `OnEnable` 이 다시 실행되지
+        // 않는다. 즉 여기서 구독자를 끊으면 그 PlayMode 세션 내내 점수 HUD·보스 배너가 **되살아날
+        // 경로 없이** 죽는다. 이 클래스가 방어하려던 정적 누출을 스스로 만드는 셈이다(리뷰 #5).
+        // 핸들러를 붙인 테스트는 자기가 뗀다.
+        public static void ResetForTests() => Current = null;
 
         // ── 이벤트 fan-out (unit 13-B) ──────────────────────────────────────────
         //
@@ -63,33 +62,59 @@ namespace Wassup.Core.Session
         public static event System.Action<SessionEvent> Events;
 
         // 구현체가 호출한다. 계약(IMatchSession)에 이벤트를 두지 않은 이유는 위와 같다 —
-        // 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다. 구현체 4종(Local/Remote/Replay/
-        // Ghost)이 모두 이 지점을 쓰는 것이 규약이다.
-        public static void Publish(in SessionEvent evt) => Events?.Invoke(evt);
-
-        // ── 커맨드 순번 (unit 13-C) ─────────────────────────────────────────────
+        // 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다.
         //
-        // 어댑터는 순번 갭을 **즉시 거절**한다(인프로세스는 순서가 보장되므로 갭 = 호출자 버그).
-        // 따라서 발신자가 여럿(웨이브 버튼·정지·배치 확정·배치·카드)이어도 **하나의 카운터**를
-        // 공유해야 한다. 각 뷰가 자기 카운터를 들면 두 번째 발신자부터 전부 거절된다.
+        // **발신자를 받아 `Current` 인 것만 통과시킨다**(리뷰 #4). 이것 없이 정적 fan-out 만
+        // 두면 구현체 4종 중 둘이 깨진다: Ghost(남의 판을 곁에서 재생)가 `EnemyKilled` 를 같은
+        // 창구로 흘리면 `ScoreHudView` 가 누적식이라 **상대 킬이 내 점수를 부풀린다**. Replay 의
+        // seek 도 같은 뷰에 재발행된다. `SessionEvent` 에는 세션을 식별할 필드가 없어 구독자가
+        // 걸러낼 방법이 없으므로, 라우터가 걸러야 한다. (완전한 해법은 봉투에 세션 신원을 넣는
+        // 것이고 그건 Ghost/Replay 를 실제로 만들 때 — 지금은 게이트로 충분하다.)
+        // 이 게이트는 **죽은 어댑터의 발행**도 함께 막는다(`_disposed` 검사만으로는 안 걸린다).
         //
-        // 매치 경계에서 0 으로 리셋된다(`Arm`) — 세션의 기대값과 맞춘다.
-        // 발신구를 **하나로 좁힌다**. "순번을 미리 받아가는" API 를 따로 두면 받아가고 보내지
-        // 않는 경로가 갭을 만들어 **다음 진짜 커맨드가 거절된다**. 순번은 여기서만 움직인다.
-        private static uint _nextCommandSeq;
+        // **불변식: 이 fan-out 은 동기다.** 구독자는 발행자의 스택 위에서 실행되며, 현재 발행
+        // 지점은 (a) `_enemyKilledEventQueue` 드레인 루프 안 (b) `AddComponent<BossTag>` 와
+        // `AddBuffer<ThreatEntry>` 사이 — 둘 다 진행 중인 구조 변경·큐 순회의 한가운데다.
+        // 따라서 구독자는 **EntityManager 를 건드리거나 커맨드를 보내거나 Bridge 에 재진입하지
+        // 않는다**. 필요하면 다음 프레임으로 미룬다(플래그를 세우고 Update 에서 처리).
+        // 커맨드 재진입은 아래 `Send` 가 실제로 거절해 조용한 손상을 막는다.
+        public static void Publish(IMatchSession sender, in SessionEvent evt)
+        {
+            if (Events == null || !ReferenceEquals(sender, Current)) return;
+            _publishing = true;
+            try { Events.Invoke(evt); }
+            finally { _publishing = false; }
+        }
 
-        // 세션이 없으면 `Session_PhaseClosed` 로 거절된 receipt 를 돌려줘
-        // 호출부가 null 검사 없이 결과만 보면 되게 한다 — **순번은 소모하지 않는다**
-        // (소모하면 다음 진짜 커맨드가 갭으로 거절된다).
+        // 동기 fan-out 중인지. 재진입 커맨드를 거절하는 데만 쓴다.
+        private static bool _publishing;
+
+        // ── 커맨드 발신 (unit 13-C) ─────────────────────────────────────────────
+        //
+        // **순번은 세션이 소유한다**(`NextClientSeq`). 여기 정적 카운터를 두었더니 실패 모드가
+        // 이렇게 됐다(리뷰 #1): 두 카운터가 1 어긋나면 어댑터의 갭 분기가 기대값을 전진시키지
+        // 않으므로 **재수렴이 불가능**하고, 모든 커맨드가 거절되며, 아무도 receipt 를 보지 않아
+        // 콘솔이 깨끗한 채로 웨이브 버튼·정지·배치가 전부 죽는다. 세션이 "다음에 기대하는 값"을
+        // 직접 내주면 그 어긋남이 **구조적으로 생길 수 없다** — 매치 경계 리셋도 필요 없어져
+        // `Arm` 이 정적 상태를 만지지 않게 됐다(재진입 위험 제거, 리뷰 #2).
+        //
+        // 세션이 없으면 `Session_PhaseClosed` 로 거절된 receipt 를 돌려줘 호출부가 null 검사 없이
+        // 결과만 보면 되게 한다. 순번은 세션이 쥐고 있으므로 여기서 새는 것이 없다.
         public static CommandReceipt Send(System.Func<uint, MatchCommand> build)
         {
+            // 이벤트 동기 fan-out 중의 커맨드는 거절한다. 그 지점은 드레인 루프·구조 변경의
+            // 한가운데라(위 Publish 주석) 여기서 sim 을 건드리면 진행 중인 순회가 뒤엉킨다.
+            // 반응으로 커맨드를 보내야 하면 플래그를 세우고 **다음 프레임**에 보낸다.
+            if (_publishing)
+            {
+                UnityEngine.Debug.LogError(
+                    "[MatchSession] 이벤트 처리 중 커맨드 전송은 금지다 — 다음 프레임으로 미룰 것.");
+                return CommandReceipt.Rejected(0, CommandReject.Session_InternalError);
+            }
             var session = Current;
             if (session == null || !session.IsActive)
                 return CommandReceipt.Rejected(0, CommandReject.Session_PhaseClosed);
-            var command = build(_nextCommandSeq);
-            var receipt = session.SendCommand(command);
-            _nextCommandSeq++;
-            return receipt;
+            return session.SendCommand(build(session.NextClientSeq()));
         }
     }
 }

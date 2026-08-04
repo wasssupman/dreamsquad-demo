@@ -30,6 +30,14 @@ namespace Wassup.Core.Session
         // (청사진 ① §3 의 jitter 충돌 회피). 구현체는 자기 채널에 맞는 쪽을 고르고 근거를 적는다.
         CommandReceipt SendCommand(in MatchCommand command);
 
+        // 다음에 보낼 커맨드의 `ClientSeq`. **순번 소유가 세션에 있는 이유**(리뷰 #1): 호출자
+        // 쪽에 카운터를 두면 두 값이 어긋날 수 있고, 어긋나면 갭 분기가 기대값을 전진시키지 않아
+        // **재수렴이 불가능**하다 — 그 뒤 모든 커맨드가 거절되는데 receipt 를 보는 호출부가 없어
+        // 콘솔이 깨끗한 채로 입력 전체가 죽는다. 세션이 자기 기대값을 내주면 그 상태가 생기지
+        // 않는다. 호출자는 이 값을 받아 커맨드를 만들고 즉시 보낸다(받아두고 안 보내면 갭이다 —
+        // 그래서 `MatchSession.Send` 가 두 동작을 한 곳에 묶는다).
+        uint NextClientSeq();
+
         // 이번 tick 에 발생한 이벤트. semantic 과 presentation 이 섞여 오고 소비자가
         // IsPresentation 으로 가른다. 내부 phase queue(9채널)는 여기 나타나지 않는다.
         IReadOnlyList<SessionEvent> DrainEvents();

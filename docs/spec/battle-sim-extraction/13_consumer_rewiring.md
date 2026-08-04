@@ -56,6 +56,54 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 - **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
   **bundle B** 로 이관한다(스펙 초안의 분류 오류).
 
+### bundle C 의 실제 분해 + 순번 계약 (2026-08-05)
+
+| 조각 | 대상 | 상태 |
+|---|---|---|
+| **C1** | `ForceNextWave`(버튼) · `SetPaused`(MenuPopup — lease 소유 이전) | ✅ 완료 |
+| **C2** | `DefenderDragPlacementController` · `DirectionAimController` · `DefenderRelocationController` | 대기 |
+| **C3** | `DreamcatcherCardDragSlot` 4변종 — 컨트롤러는 발신자로만, 소유권은 unit 16 | 대기 |
+| — | `PlacementPhaseView.FinishPlacement` → **unit 14 로 이관**(아래 근거) | 이관 |
+
+**커맨드 순번 계약 — 순번은 세션이 소유한다.** `IMatchSession.NextClientSeq()` 가 세션이 다음에
+기대하는 값을 내주고 `MatchSession.Send(build)` 가 발급·전송을 한 곳에 묶는다. 호출자 쪽에
+카운터를 두면 안 된다:
+
+- 어댑터의 갭 분기는 기대값을 **전진시키지 않는다**. 따라서 두 값이 1 어긋나면 **재수렴이 없다** —
+  이후 모든 커맨드가 `Session_SeqGap` 이고, 호출부가 receipt 를 보지 않으므로 **콘솔이 깨끗한 채로
+  웨이브 버튼·정지·배치가 영구히 죽는다**. 초기 구현이 정적 카운터였고 리뷰가 이것을 잡았다.
+- 그래서 갭은 이제 **`Debug.LogError`** 로 시끄럽다. 정상 경로는 이 분기에 오지 않으므로, 로그가
+  뜨면 누군가 `MatchSession.Current.SendCommand(...)` 를 직접 부른 것이다 — **하지 말 것**.
+- 순번 소유가 세션에 있으므로 매치 경계의 정적 리셋이 사라졌고, `Arm` 이 정적 상태를 만지지 않게
+  되어 재진입 위험도 함께 없어졌다(`FinishPlacement` → `StartBattle` → `BeginPlacement` 가 실행
+  중인 어댑터를 Dispose 하는 경로가 실재했다).
+- 어댑터는 실행 중 자신이 파기되면(`_disposed`) 기록을 남기지 않는다 — 죽은 세션이 비워진
+  `_receipts` 에 다시 쓰거나 기대값을 전진시켜 살아 있는 새 세션과 어긋나는 것을 막는다.
+
+**`FinishPlacement` 를 unit 14 로 이관한 근거**: `StartBattle` 에는
+`if (!_placementAllowed) BeginPlacement()` 라는 **자기치유 재시도**가 있고, 그것이
+`BeginPlacement` 조기 반환("Default World not ready … will retry")이 가리키는 경로다. 조기 반환은
+`Arm` **앞**이라 그 구간에는 세션이 없으므로, 커맨드로 바꾸면 거절되고 재시도가 사라진다. 그때
+상태는 `GamePhase.Battle` · 배치 패널 숨김 · 코스트 리젠 시작 · `_running == false` 로 타이머가
+0:00 에 굳고 웨이브 버튼도 숨겨져 **로비로 나가는 외에 복구가 없다**. 매치 개시의 소유는 웨이브·
+승패 규칙과 함께 움직여야 한다.
+
+**이벤트 라우터는 발신자를 확인한다.** `Publish(sender, evt)` 가 `Current` 가 아닌 세션의 이벤트를
+버린다. 없으면 구현체 4종 중 둘이 깨진다 — Ghost(남의 판 곁 재생)의 `EnemyKilled` 가 같은 창구로
+흐르면 `ScoreHudView` 가 누적식이라 **상대 킬이 내 점수를 부풀리고**, Replay 의 seek 도 같은 뷰에
+재발행된다. `SessionEvent` 에 세션 신원 필드가 없어 구독자가 걸러낼 수 없으므로 라우터가 막는다.
+
+**`ResetForTests()` 는 `Events` 를 지우지 않는다.** 이 프로젝트는 Play 진입 시 도메인 리로드가 꺼져
+있어 뷰의 `OnEnable` 이 다시 실행되지 않는다 — 구독자를 끊으면 그 PlayMode 세션 내내 점수 HUD·
+보스 배너가 되살아날 경로 없이 죽는다.
+
+**tick 은 라이브에서 `-1`(모른다)이다.** `_harnessTick` 은 하네스 스테퍼만 증가시켜 라이브 판에서는
+내내 0 이다. 0 을 신고하면 "tick-스탬프드 읽기 모델"·"수락 tick"·"tick 내 순서"가 전부 거짓이 되고,
+**골든은 하네스로 녹음되므로 byte diff 로 절대 잡히지 않는다**. unit 19(커맨드로그)·unit 20(A/B
+parity)이 이 필드 위에 세워지기 전에 부재를 명시했다. 라이브의 `_orderInTick` 리셋 축은 프레임이다.
+진짜 tick 을 라이브에 주는 것은 **unit 19(시계 정책)** 의 몫이다 — 여기서 `_battleClock / dt` 로
+지어내면 하네스와 라이브가 서로 다른 두 시계를 갖는다.
+
 ### bundle C 의 검출기 문제 (2026-08-05 — 진행 전 반드시 읽을 것)
 
 **골든은 bundle C 를 검출하지 못한다.** 골든 하네스(`LegacyTraceGoldenRunner`)는
@@ -97,8 +145,9 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 이 코드베이스의 기존 관용구(`GameManager.PhaseChanged`)와 같다.
 
 - `IMatchSession` 에는 이벤트를 **두지 않았다**: 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다.
-  대신 "구현체 4종이 모두 `MatchSession.Publish` 를 쓴다"는 **규약**이며 계약이 강제하지는 않는다
-  (리뷰 대상으로 명시).
+  대신 `Publish(sender, evt)` 가 **발신자를 받아 `Current` 만 통과**시켜 라우터가 규약을 강제한다.
+  남은 한계: 봉투에 세션 신원 필드가 없어 Ghost/Replay 를 **동시에** 살릴 때는 필드 추가가 필요하다
+  (지금은 하나만 Current 이므로 게이트로 충분하다).
 - `DrainEvents()` 는 여전히 빈 목록이다 — **의도적**이다. 소비자(기록기)가 없는데 누적하면 무한히
   자란다. fan-out 은 `Publish` 가 이미 했고, 누적·드레인 소유는 기록기가 생기는 unit 19 와 함께 온다.
 - `Bridge` 의 `_bossWarning` SerializeField 를 **제거**했다(뷰 참조 0). 뷰 오브젝트는 씬에 그대로
@@ -148,8 +197,11 @@ unit 15 의 일은 "필드를 만드는 것"이 아니라 **소유권을 sim 으
 > 인터페이스는 "보류 후 거절"이라 적혀 있었으나 실제 기준은 전송 채널의 순서 보장 여부다).
 > 검증: 4어셈블리 오류 0 · 로케이터 집중 3/3 · 전체 EditMode **1898 통과/실패 0**(이전 1895 →
 > +3 = 신규가 실제로 실행된 증거) · **골든 7종 byte diff 0**(승격 확인 + 백업 대비 cmp 7/7).
-> 골든 14 Play 세션에서 `[MatchSession]` 교체 경고 **0** — 라이브 경로의 Dispose 선행/Release
-> 순서가 맞다는 뜻(로그에 보이는 경고 2건은 그것을 단정하는 테스트가 낸 것이다).
+> 골든 14 Play 세션에서 `[MatchSession]` 교체 경고 **0**(로그의 경고는 그것을 단정하는 EditMode
+> 테스트가 낸 것뿐이다). ⚠ **이 0 은 순서가 옳다는 증거가 아니다** — `BeginPlacement` 가 `Arm`
+> 앞에서 `Dispose` 하므로 `Current.IsActive` 는 그 지점에서 항상 false 고, 경고는 **구조적으로**
+> 뜰 수 없다(리뷰 minor 5). Dispose 선행 순서는 코드와 테스트로 지켜지는 것이고, 이 로그 수치는
+> 그 근거가 아니다.
 > **뷰 폴링을 옮겨도 골든이 안 움직인다는 것은 당연하지 않다** — 뷰가 Bridge 프로퍼티를 읽는
 > 행위가 sim 상태를 건드렸다면(지연 초기화·캐시 갱신 등) diff 가 났을 것이다.
 

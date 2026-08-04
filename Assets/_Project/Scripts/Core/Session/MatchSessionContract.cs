@@ -161,15 +161,28 @@ namespace Wassup.Core.Session
         public readonly int AcceptedTick;   // 수락 시 실행 tick, 거절이면 -1
         public readonly int OrderInTick;    // 같은 tick 내 실행 순서(0부터)
 
+        // unit 13-C2 — 이 커맨드가 **만들거나 움직인 개체**의 SimEntityId. 없으면 -1.
+        //
+        // 왜 필요한가: 배치는 후속 사건을 낳는다. 방향 지정 유닛은 배치 직후 `SetDeployFacing`
+        // 으로 활성화되어야 하고, 드롭 하마 연출은 그 개체의 뷰를 날린다. 구 코드는
+        // `TryBeginDefenderDeployment(out Entity)` 로 **엔진 타입**을 뷰에 넘겨 그것이
+        // 가능했지만, 계약은 엔진 타입을 넘기지 않으므로(`SimCell` 이 `int2` 를 대신하는 것과
+        // 같은 이유) id 를 돌려주고 뷰가 필요할 때 뷰 서비스로 해석한다.
+        //
+        // 재배치처럼 **생성이 아닌** 커맨드도 대상 id 를 여기 싣는다 — 이름이 Created 가 아니라
+        // Subject 인 이유다.
+        public readonly int SubjectSimId;
+
         public CommandReceipt(uint clientSeq, bool accepted, CommandReject reject,
-            int acceptedTick, int orderInTick)
+            int acceptedTick, int orderInTick, int subjectSimId = -1)
         {
             ClientSeq = clientSeq; Accepted = accepted; Reject = reject;
             AcceptedTick = acceptedTick; OrderInTick = orderInTick;
+            SubjectSimId = subjectSimId;
         }
 
-        public static CommandReceipt Ok(uint seq, int tick, int order)
-            => new CommandReceipt(seq, true, CommandReject.None, tick, order);
+        public static CommandReceipt Ok(uint seq, int tick, int order, int subjectSimId = -1)
+            => new CommandReceipt(seq, true, CommandReject.None, tick, order, subjectSimId);
 
         public static CommandReceipt Rejected(uint seq, CommandReject reason)
             => new CommandReceipt(seq, false, reason, -1, 0);

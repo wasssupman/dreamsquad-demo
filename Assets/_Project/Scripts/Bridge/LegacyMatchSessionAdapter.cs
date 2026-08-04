@@ -27,7 +27,6 @@ namespace Wassup.Bridge
         private readonly BattleBridge _bridge;
         private DreamcatcherHandController _hand;
         private readonly Dictionary<uint, CommandReceipt> _receipts = new(); // 멱등: seq → receipt
-        private readonly List<SessionEvent> _emptyEvents = new();
         private uint _nextExpectedSeq;
         private int _eventSeq;   // unit 13-B — 매치 전역 단조 이벤트 순번
         private int _orderInTick;
@@ -51,6 +50,10 @@ namespace Wassup.Bridge
         {
             get
             {
+                // 다른 조회 API(`TryGetSpawnAlertForecast`·`TryGetPlacementCooldown`)와 같은
+                // 가드를 둔다. 뷰는 `MatchSession.IsActive` 로 이미 걸러지지만, 가드가 없는
+                // 표면 하나가 남아 있으면 그것을 그냥 부르는 호출자가 생긴다(리뷰 minor 8).
+                if (_disposed) return default;
                 var phase = ResolvePhase();
                 var gm = GameManager.Instance;
                 // unit 13-A3 — 코스트·쿨타임은 **번역으로 채운다**(사용자 결정: "지금 번역").
@@ -110,12 +113,24 @@ namespace Wassup.Bridge
             // 순번 갭 — 전송 채널이 순서를 보장한다는 전제(청사진 ① §3). 인프로세스라 갭은
             // 곧 호출자 버그이므로 보류 없이 거절한다. 비순서 채널(M3)에서는 세션이 재정렬
             // 버퍼를 소유하도록 이 지점을 바꾼다.
+            //
+            // **반드시 시끄러워야 한다**(리뷰 #1): 이 분기는 `_nextExpectedSeq` 를 전진시키지
+            // 않으므로 한 번 어긋나면 재수렴이 없다. 그런데 호출부는 receipt 를 보지 않아, 로그가
+            // 없으면 "웨이브 버튼·정지·배치가 콘솔 깨끗한 채로 영구히 죽는" 증상만 남는다.
+            // 정상 경로(`MatchSession.Send`)는 `NextClientSeq()` 를 써서 이 분기에 오지 않는다 —
+            // 여기 오면 누군가 순번을 직접 만들어 `SendCommand` 를 부른 것이다.
             if (command.ClientSeq != _nextExpectedSeq)
+            {
+                Debug.LogError($"[MatchSession] 커맨드 순번 갭: got={command.ClientSeq} " +
+                               $"expected={_nextExpectedSeq} ({command.Kind}) — 호출자가 순번을 " +
+                               $"직접 만들었다. MatchSession.Send 를 쓸 것. 이후 커맨드는 전부 거절된다.");
                 return Remember(command.ClientSeq,
                     CommandReceipt.Rejected(command.ClientSeq, CommandReject.Session_SeqGap));
+            }
 
-            int tick = _bridge.HarnessTick;
-            if (tick != _lastTick) { _lastTick = tick; _orderInTick = 0; }
+            int axis = OrderResetAxis;
+            if (axis != _lastTick) { _lastTick = axis; _orderInTick = 0; }
+            int tick = CurrentTick;
 
             CommandReceipt receipt = command.Kind switch
             {
@@ -129,10 +144,37 @@ namespace Wassup.Bridge
                 _ => CommandReceipt.Rejected(command.ClientSeq, CommandReject.Session_UnknownVerb),
             };
 
+            // 실행 중에 이 세션이 파기됐으면(예: FinishPlacement → StartBattle → BeginPlacement 가
+            // 새 세션을 무장하고 이 어댑터를 Dispose 한 경로 — 리뷰 #2) 기록을 남기지 않는다.
+            // `Dispose` 가 이미 비운 `_receipts` 에 다시 쓰거나 죽은 세션의 기대값을 전진시키면
+            // 살아 있는 새 세션과 어긋난다.
+            if (_disposed) return receipt;
+
             _nextExpectedSeq = command.ClientSeq + 1;
             if (receipt.Accepted) _orderInTick++;
             return Remember(command.ClientSeq, receipt);
         }
+
+        // 세션이 다음에 기대하는 순번. 호출자 쪽 카운터를 없애 어긋남을 구조적으로 제거한다.
+        public uint NextClientSeq() => _nextExpectedSeq;
+
+        // ── tick 축 (리뷰 #6) ────────────────────────────────────────────────────
+        //
+        // `_harnessTick` 은 **하네스 스테퍼만** 증가시킨다(`StepOneTick`). 라이브 판에서는 매치
+        // 내내 0 이다. 그래서 라이브의 tick 을 0 으로 신고하면 "tick-스탬프드 읽기 모델"·
+        // "수락 tick"·"tick 내 순서"가 전부 거짓이 되고, 골든은 하네스로 녹음되므로 **byte diff
+        // 로는 절대 잡히지 않는다**. unit 19(커맨드로그)·unit 20(A/B parity)이 이 필드 위에
+        // 세워지기 전에 부재를 명시한다: 라이브는 **-1 = 모른다**.
+        //
+        // 진짜 tick 을 라이브에도 주는 것은 시계 정책의 몫이다(unit 19) — 여기서
+        // `_battleClock / fixedDt` 로 지어내면 하네스와 라이브가 서로 다른 두 시계를 갖게 된다.
+        private int CurrentTick => TestModeContext.HarnessActive ? _bridge.HarnessTick : -1;
+
+        // `_orderInTick` 을 되돌릴 축. tick 이 -1 로 고정이면 리셋이 영원히 안 걸려 순서가 매치
+        // 전체로 단조 증가한다("같은 tick 내 순서 0부터"라는 계약과 어긋남). 라이브에서는
+        // 프레임이 그 역할을 한다 — 한 프레임에 들어온 커맨드들이 한 묶음이라는 의미는 유지된다.
+        private int OrderResetAxis
+            => TestModeContext.HarnessActive ? _bridge.HarnessTick : Time.frameCount;
 
         private CommandReceipt Remember(uint seq, CommandReceipt receipt)
         {
@@ -268,14 +310,18 @@ namespace Wassup.Bridge
         internal void Emit(SessionEventKind kind, int subjectSimId = -1, float amount = 0f)
         {
             if (_disposed) return;
-            MatchSession.Publish(new SessionEvent(
-                _eventSeq++, _bridge.HarnessTick, kind, subjectSimId, amount: amount));
+            // `this` 를 넘겨 라우터가 `Current` 인지 확인한다 — 죽은/곁의 세션이 뷰에 흘리지 못한다.
+            MatchSession.Publish(this, new SessionEvent(
+                _eventSeq++, CurrentTick, kind, subjectSimId, amount: amount));
         }
 
         // 여전히 빈 목록이다 — **의도적**이다. 지금 여기에 누적하면 소비자가 없어 무한히 자란다
         // (fan-out 은 `MatchSession.Publish` 가 이미 했다). 누적·드레인의 소유는 기록기가 생기는
         // 시점(unit 19 커맨드로그/AMR)에 함께 온다.
-        public IReadOnlyList<SessionEvent> DrainEvents() => _emptyEvents;
+        //
+        // `List` 대신 `Array.Empty` 를 돌려주는 이유: `IReadOnlyList` 로 감싼 `List` 는 호출자가
+        // `List<T>` 로 되돌려 **수정할 수 있다**. A2 가 예보 배열에서 막은 것과 같은 구멍이다.
+        public IReadOnlyList<SessionEvent> DrainEvents() => Array.Empty<SessionEvent>();
 
         // unit 13-A2 — Bridge 는 내부 캐시 배열 참조를 넘기지만 여기서 span 으로 좁혀 **쓰기 경로를
         // 끊는다**. 복사가 아니므로 할당 0이고, 유효 범위는 호출 프레임뿐이라는 계약이 그 대가다.

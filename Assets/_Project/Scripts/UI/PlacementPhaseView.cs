@@ -176,9 +176,18 @@ namespace Wassup.UI
             _panel.SetActive(false);
             if (gameManager != null) gameManager.SetPhase(GamePhase.Battle);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.BeginRegen();
-            // unit 13-C — 배치 확정을 커맨드로. 위의 페이즈 전환·리젠 개시는 아직 뷰가 직접 하며
-            // (통화 소유가 sim 으로 가는 unit 15 의 몫), 여기서는 전투 개시만 세션에 넘긴다.
-            MatchSession.Send(seq => MatchCommand.FinishPlacement(seq));
+            // unit 13-C — **여기는 커맨드로 바꾸지 않는다**(리뷰 #3 으로 되돌림).
+            //
+            // `StartBattle` 은 `if (!_placementAllowed) BeginPlacement()` 로 **자기치유 재시도**를
+            // 갖는다. 그 재시도가 `BeginPlacement` 의 조기 반환("Default World not ready … will
+            // retry")이 가리키는 바로 그 경로다. 그런데 조기 반환은 `MatchSession.Arm` 앞에서
+            // 일어나므로 그 구간에는 **세션이 없다** — 커맨드로 바꾸면 거절되고 재시도가 사라진다.
+            // 그때 상태는 GamePhase.Battle · 배치 패널 숨김 · 코스트 리젠 시작 · `_running == false`
+            // 로 타이머가 0:00 에 굳고 웨이브 버튼도 숨겨져 **로비로 나가는 외에 복구가 없다**.
+            //
+            // 매치 개시의 소유는 웨이브·승패 규칙과 함께 움직여야 한다 — unit 14 가 그 규칙을
+            // 적출할 때 재시도 의미까지 세션으로 옮기고 그때 커맨드로 바꾼다.
+            if (bridge != null) bridge.StartBattle();
         }
 
         private bool CanFinishPlacement()
