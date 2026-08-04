@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Battle.Effects
+namespace Wassup.Presentation
 {
     // season-gimmick-clockout unit 1 — 사직서 뷰 (BattleBridge 가 엔티티↔GameObject 조정).
     // prefab 있으면 그걸, 없으면 절차적 플레이스홀더(흰 종이). idle 부양(unscaled — 정지/슬로우모 무관).

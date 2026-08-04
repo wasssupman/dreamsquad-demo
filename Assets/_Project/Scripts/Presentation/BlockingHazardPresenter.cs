@@ -1,7 +1,7 @@
 using Unity.Entities;
 using UnityEngine;
 
-namespace Wassup.Battle.Effects
+namespace Wassup.Presentation
 {
     public class BlockingHazardPresenter : MonoBehaviour
     {

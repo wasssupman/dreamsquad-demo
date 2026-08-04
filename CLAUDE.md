@@ -48,10 +48,20 @@
 
 ## 절대 제약 (위반 시 정지하고 질문)
 
+> **제약 1~4 는 ECS 전투가 살아 있는 동안 그대로 효력을 갖는다.** 다만 `docs/spec/battle-sim-extraction/`
+> (ECS 제거 → 엔진-프리 sim 라이브러리)이 진행 중이므로, 신 sim 코드에서의 **후계 불변식**은 그 spec
+> README 의 "CLAUDE.md 제약 이행" 표가 정본이다. 현행 ECS 코드를 만질 때는 아래를 따르고, 신 sim
+> 쪽 작업이면 그 표를 먼저 읽는다. (2026-08-04 unit 11 시점: `Assets/_Project/Scripts/Battle/` 안의
+> `BattleBridge` 코드 참조·MonoBehaviour·`using UnityEditor` 가 **전부 0** 이 되어, 제약 1 의 후계인
+> **asmdef 의존 방향**(sim 은 Bridge/UnityEditor 를 모른다)이 grep 으로 검증 가능해졌다 — 그 상태를
+> 되돌리는 변경은 금지다.)
+
 1. **ECS 경계 엄수**: `BattleBridge` 클래스가 MonoBehaviour ↔ ECS 통신의 유일한 창구다. 그 외 MonoBehaviour에서 `EntityManager` / `World.DefaultGameObjectInjectionWorld` / `SystemAPI` 직접 호출 금지.
+   - 역방향도 금지다(unit 11 머지 2·3 이후 성립): **`Battle/` 안에서 `BattleBridge` 를 참조하지 않는다.** 규칙 데이터가 필요하면 sim 쪽 레지스트리(예: `StackThresholdRegistry`)에 Bridge 가 등록하고 sim 이 읽는다. 뷰 상수도 `Presentation/BattleVisualKnobs` 처럼 프레젠테이션 계층이 소유한다.
 2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
 3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
 4. **Authoring/Runtime 분리**: ScriptableObject/프리팹/Spine/Particle/UI 는 MonoBehaviour 계층에 두고, ECS 런타임 상태는 unmanaged Component/Buffer 중심으로 유지한다.
+   - `Battle/` 폴더에는 MonoBehaviour·에디터 전용 코드를 두지 않는다. 뷰 프레젠터는 `Scripts/Presentation/`, 에디터 디버그 메뉴는 `Editor/BattleDebug/` 가 자리다.
 5. **Manager 싱글톤 제한 완화** (2026-07-07 사용자 결정): 기존 "GameManager 1개만" 하드 캡 해제. 명확한 단일 역할의 매니저(예: `SoundManager`)는 허용한다. 단 무분별한 `XxxManager` 남발은 지양 — 기능이 실제로 전역 매니저를 요구할 때만 신설하고, 애매하면 질문한다.
 6. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
 7. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).

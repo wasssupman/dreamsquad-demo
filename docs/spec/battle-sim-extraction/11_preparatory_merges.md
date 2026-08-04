@@ -82,9 +82,14 @@ Bridge 에 남는다(인스펙터 저작 지점 = 씬 배선 유지) — 옮기�
 
 | 머지 | 커밋 | 컴파일 | EditMode | Play smoke |
 |---|---|---|---|---|
-| 1 비주얼 statics | `b564e768` (+writer 제한 후속) | ✅ 에디터 자체 컴파일 오류 0 | ⏳ 미실행 | ⏳ 미실행 |
+| 1 비주얼 statics | `b564e768` · writer 제한 `bfc75f09` | ✅ 에디터 자체 컴파일 오류 0 | ⏳ 미실행 | ⏳ 미실행 |
 | 2 임계 조회 역전 | `c0a361cb` | ✅ `dotnet build` 런타임+테스트 오류 0 | ⏳ **신규/해제 3건 포함 미실행** | N/A |
-| 3 비-sim 코드 퇴거 | — | — | — | — |
+| 3 비-sim 코드 퇴거 | (이 커밋) | ✅ `dotnet build` 런타임+에디터 어셈블리 오류 0 | ⏳ 미실행 | ⏳ 미실행 |
+
+**머지 3 달성 게이트(실측)**: `Assets/_Project/Scripts/Battle/` 안 MonoBehaviour **0** ·
+`using UnityEditor` **0** · `BattleBridge` 코드 참조 **0**(주석/Tooltip 문자열만 잔존).
+→ 제약 1 의 후계인 asmdef 의존 방향이 grep 으로 검증 가능해졌고, CLAUDE.md 절대 제약에
+그 상태를 되돌리지 못하도록 명문화했다.
 
 > ⚠ EditMode/Play 미실행 사유: 사용자 Unity 에디터가 프로젝트 락을 보유해 batch 실행이 불가했다.
 > `dotnet build` 는 **컴파일만** 증명하며 Unity Test Framework 를 실행하지 않는다(리뷰 HIGH 2).

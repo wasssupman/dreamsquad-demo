@@ -2870,7 +2870,7 @@ namespace Wassup.Bridge
                     var go = new GameObject($"Pickup_{pickup.kind}_{pickup.cell.x}_{pickup.cell.y}");
                     go.transform.SetParent(transform, worldPositionStays: false);
                     go.transform.position = pos;
-                    go.AddComponent<Wassup.Battle.Effects.PickupPresenter>()
+                    go.AddComponent<Wassup.Presentation.PickupPresenter>()
                         .Init(pickupViewPrefab, pickupModelScale, pickupModelBaseY, pickupOverrideMaterial);
                     _pickupVisualMap[e] = go;
                 }
@@ -2924,7 +2924,7 @@ namespace Wassup.Bridge
                     var go = new GameObject($"Resignation_{r.cell.x}_{r.cell.y}");
                     go.transform.SetParent(transform, worldPositionStays: false);
                     go.transform.position = pos;
-                    go.AddComponent<Wassup.Battle.Effects.ResignationPresenter>().Init(resignationViewPrefab, 0f);
+                    go.AddComponent<Wassup.Presentation.ResignationPresenter>().Init(resignationViewPrefab, 0f);
                     _resignationVisualMap[e] = go;
                 }
 
@@ -6413,9 +6413,9 @@ namespace Wassup.Bridge
             var p = _em.GetComponentData<LocalTransform>(entity).Position;
             // tilemap-view-backend 후속 — blocking hazard 비주얼도 sim→view 경계를 거친다(BoardSpace 경유).
             var visual = Instantiate(so.visualPrefab, (Vector3)Wassup.Core.BoardSpace.ToView(p), Quaternion.identity, _blockingHazardVisualRoot);
-            var presenter = visual.GetComponent<BlockingHazardPresenter>();
+            var presenter = visual.GetComponent<Wassup.Presentation.BlockingHazardPresenter>();
             if (presenter == null)
-                presenter = visual.AddComponent<BlockingHazardPresenter>();
+                presenter = visual.AddComponent<Wassup.Presentation.BlockingHazardPresenter>();
             presenter.Bind(entity);
             _blockingHazardVisualMap[entity] = visual;
             return entity;
@@ -6659,7 +6659,7 @@ namespace Wassup.Bridge
 
                 if (_blockingHazardVisualMap.TryGetValue(evt.hazardEntity, out var visual) && visual != null)
                 {
-                    var presenter = visual.GetComponent<BlockingHazardPresenter>();
+                    var presenter = visual.GetComponent<Wassup.Presentation.BlockingHazardPresenter>();
                     if (presenter != null)
                         presenter.OnDestroyed(so != null ? so.destructionVfxPrefab : null);
                     else

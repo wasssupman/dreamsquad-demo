@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wassup.Battle.Effects
+namespace Wassup.Presentation
 {
     // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 (BattleBridge 가 엔티티↔GameObject 조정).
     // BattleBridge 가 AddComponent 직후 Init 호출: modelPrefab(FBX 등) 있으면 그걸, 없으면
