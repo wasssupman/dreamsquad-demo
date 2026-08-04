@@ -15,10 +15,15 @@ namespace Wassup.EditorTools
     // 파일로 받는다. `dotnet build` 는 컴파일만 증명하고 Unity Test Framework 를 실행하지 않는다.
     //
     // 사용법 (둘 중 아무거나):
-    //   ① Temp/sim-test-request.txt 를 만든다 — 1행 `EditMode`|`PlayMode`,
+    //   ① Temp/sim-test-request.txt 를 만든다 — 1행 `EditMode`|`PlayMode`|`Golden`,
     //      2행(선택) 그룹 정규식(예: `Wassup\.Tests\.EditMode\.ModifierFrameworkTests`).
     //      최대 1초 안에 소비(삭제)되고 실행이 시작된다.
     //   ② 메뉴 `Tools/Sim/Run EditMode Tests`.
+    //
+    // `Golden` 은 `LegacyTraceGoldenRunner.RegenerateGoldens()` 를 기동한다(테스트 프레임워크 미경유).
+    // 그 하네스는 마지막에 골든 7종을 **덮어쓰므로** 판정·원복 절차가 호출자에게 있다:
+    // 재생성 → `git diff Assets/_Project/Tests/Golden/` 이 비면 초록 → `git checkout --` 로 원복.
+    // 골든을 커밋할 권한은 spec 상 unit 19 뿐이다.
     //
     // 결과는 항상 `Temp/sim-test-result.txt` 로 나간다 — **트리거 없이 사용자가 Test Runner 창에서
     // 직접 돌린 실행도 수확된다**(콜백을 로드 시 상시 등록하므로). 실패는 전건 기록한다.
@@ -29,7 +34,14 @@ namespace Wassup.EditorTools
     {
         private const string RequestFile = "sim-test-request.txt";
         private const string ResultFile = "sim-test-result.txt";
+        private const string VersionFile = "sim-test-runner.version";
         private const double PollIntervalSeconds = 1.0;
+
+        // 이 러너가 아는 모드 집합의 신분증. **모드를 추가하면 반드시 올린다.** 호출자는 트리거를
+        // 쓰기 전에 Temp/sim-test-runner.version 을 읽어 기대 버전인지 확인한다 — 에디터가 아직
+        // 리컴파일하지 않았으면 이 파일이 옛 값이거나 갱신 시각이 낡아서 그 사실이 드러난다.
+        // (파일 존재만 보고 판단하면 안 된다. 이 파일도, 산출물도 stale 할 수 있다.)
+        private const string RunnerVersion = "2-golden";
 
         private static double _nextPoll;
 
@@ -40,6 +52,14 @@ namespace Wassup.EditorTools
             // 놓치지 않는 방법이다.
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
             api.RegisterCallbacks(new ResultWriter());
+
+            // 로드될 때마다 신분증을 다시 쓴다 = 이 파일의 갱신 시각이 "지금 살아 있는 코드"의 시각.
+            try
+            {
+                Directory.CreateDirectory(TempDir);
+                File.WriteAllText(Path.Combine(TempDir, VersionFile), RunnerVersion, new UTF8Encoding(false));
+            }
+            catch (IOException) { /* 신분증 실패가 러너를 막을 이유는 없다 */ }
 
             EditorApplication.update += Poll;
         }
@@ -72,12 +92,33 @@ namespace Wassup.EditorTools
                 return; // 쓰는 중이면 다음 폴에서
             }
 
-            var mode = TestMode.EditMode;
-            if (lines.Length > 0 && lines[0].Trim().Equals("PlayMode", StringComparison.OrdinalIgnoreCase))
-                mode = TestMode.PlayMode;
-            string group = lines.Length > 1 ? lines[1].Trim() : null;
+            string head = lines.Length > 0 ? lines[0].Trim() : string.Empty;
 
-            Run(mode, string.IsNullOrEmpty(group) ? null : group);
+            // Golden 은 테스트가 아니라 하네스다 — 7시나리오 × 2회 Play 를 스스로 몰고 가며,
+            // 전부 2-run diff 0 일 때만 마지막에 골든을 승격한다. 결과 판정은 승격 뒤의
+            // `git diff Assets/_Project/Tests/Golden/` 이 소유한다(이 러너는 기동만 한다).
+            if (head.Equals("Golden", StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.Log("[SimTest] LegacyTraceV0 골든 재생성 기동 — 14 Play 세션 예정.");
+                LegacyTraceGoldenRunner.RegenerateGoldens();
+                return;
+            }
+
+            // 모르는 모드는 **조용히 폴백하지 않는다**. 실측 사고: 러너를 고친 뒤 에디터가 아직
+            // 리컴파일하지 않은 상태에서 `Golden` 트리거를 옛 바이너리가 물어가 EditMode 전체로
+            // 폴백했고, 호출자는 그것을 "골든이 돌았다"로 오독할 수 있었다. 폴백 대신 거절한다.
+            bool isEditMode = head.Length == 0 || head.Equals("EditMode", StringComparison.OrdinalIgnoreCase);
+            bool isPlayMode = head.Equals("PlayMode", StringComparison.OrdinalIgnoreCase);
+            if (!isEditMode && !isPlayMode)
+            {
+                Debug.LogError($"[SimTest] 알 수 없는 요청 '{head}' — 실행하지 않는다. " +
+                               $"이 러너가 그 모드를 모르는 구버전일 수 있다(Temp/{VersionFile} 확인).");
+                return;
+            }
+
+            string group = lines.Length > 1 ? lines[1].Trim() : null;
+            Run(isPlayMode ? TestMode.PlayMode : TestMode.EditMode,
+                string.IsNullOrEmpty(group) ? null : group);
         }
 
         [MenuItem("Tools/Sim/Run EditMode Tests")]

@@ -64,6 +64,22 @@ unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 �
 - ECS 변경 리뷰는 Track A common과 Track B `$ecs-reviewer` 모두 **APPROVE**, 더 엄격한 최종 판정도 **APPROVE**다.
 - M1은 이 기준선 위에서 unit 7부터 새로 분해한다. 상세 spec이 작성되기 전에는 adapter/sim-lib 이식을 시작하지 않는다.
 
+### 선행 머지 + unit 12 이후 기준선 재확인 (2026-08-04 23:15)
+
+M0 골든은 **12:44 에 녹음**됐고 그 뒤 M1 의 선행 머지 3건과 unit 12 가 들어왔다. 그중 sim 을
+건드린 것은 **머지 2(`c0a361cb`, 18:22) 하나**뿐이라 골든이 그것을 담고 있지 않았다. HEAD
+(`229ccd00`)에서 코퍼스를 재생성해 확인했다:
+
+- 7 시나리오 × 2회 = 14 Play 세션, 전 시나리오 **two-run diff 0** → 승격 통과
+  (승격은 `exitCode == 0` 에서만 일어나고 `PublishValidatedCorpus` 가 승격 직전 재검사한다).
+- 재생성된 7개가 커밋본과 **byte 동일**(git clean + 백업 대비 `cmp` 7/7 IDENTICAL).
+- ⇒ **머지 2 의 "행동 변화 0" 주장이 실측으로 증명**됐고, 머지 1·3·unit 12 도 중립임이 확인됐다.
+  units 13~18 의 byte-diff 게이트는 이제 **초록 기준선 위에서** 의미를 갖는다.
+
+> 골든은 뷰 상태를 기록하지 않는다 — 머지 1(뷰 상수 이관)의 **렌더 정합**은 이 초록이 답하지
+> 않는다. 다만 14판이 Play 에서 신규 콘솔 에러 0 으로 완주했으므로 스모크 게이트의 "에러 0"
+> 부분은 충족된다. 남은 것은 눈으로 보는 확인뿐이다.
+
 ## Feature-wide 계약
 
 - **sim은 이식 가능한 순수 관리 C# 소스**(Burst-off)로 유지 — 특정 런타임 가정 금지. 클라는 Android IL2CPP, 검증 러너는 CoreCLR이므로 교차 실행이 전제. 교차 골든(Editor/IL2CPP/CoreCLR)은 M1 게이트.
@@ -100,3 +116,22 @@ unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 �
 - **M2 units**: 헤드리스 dotnet 러너 CI · AMR 녹화 · ReplaySession(seek) · 커맨드로그 재시뮬 배치 잡(advisory) · 스키마 upcaster + 구버전 리플레이 코퍼스 CI · Entities 패키지 물리 제거.
 - **M3 units**: RemoteSession · 서버 스택 결정(Unity headless vs 자체) · 재접속(스냅샷+백로그 exactly-once) · suspend/resume · 점수 발급 서버 이관.
 - **미채택 보류**: lag compensation(RTT 매트릭스 리뷰에서 실패 스킬이 나오면 재론).
+- **PlayMode 스위트 수리 (이 spec 범위 밖 · 별도 spec 후보)**: 2026-08-04 전체 실행 결과
+  `passed=76 failed=15`. **이 spec 이 만든 파손이 아니다** — 골든 7종이 HEAD 에서 byte 동일하고,
+  실패는 이 spec 이 건드리지 않은 경로에 있다. 진단된 것:
+  - `AuthE2ETest` — 개발 DB 의 `uk_users_user_name` 중복(`user_name=e2e-test` 선점). 환경 상태.
+  - `DropDismountTest` — `fe53bd45`(drop-dismount unit 1)가 `_defenderViewOverride` 값을 튜플로
+    바꿨는데 테스트의 리플렉션 헬퍼가 `float3` 캐스팅을 유지 → `InvalidCastException`.
+  - `BountyMarkTest` · `DreamstoneCarryInSmokeTest` ×2 — PrimeTween `EmergencyStop` 의
+    "OnComplete ignored" 에러 로그를 `LogAssert.Expect` 하지 않음. 테스트 위생.
+  - `PlacementAuraTest` ×3 — **단독 실행에서도 재현**되며 받아선 안 되는 유닛에 정확히 ×1.2
+    (`attackSpeedMul` 1.0 기대 → 1.2, 1.5 기대 → 1.8). 오라 판정 코드
+    (`BattleBridge.Dreamcatcher.cs` · `Core/Dreamcatcher/DcApplicability.cs`)는 최근 20커밋에서
+    무변. 테스트 최종 수정(`837bc9c6`, 07-23) 이후 `Scripts/` 332커밋 · `Data/` 128커밋이
+    지나갔으므로 **원인 특정에는 이분 탐색이 필요**하다.
+  - 나머지(`DragCancelZoneTest` · `DreamcatcherAttachRequirementE2ETest` ·
+    `DreamcatcherCursedRelicTest` · `DreamCocoonTest` · `DreamcatcherDeckCarryInTest` ·
+    `SceneTransitionSmokeTest` · `SquadCarryInSmokeTest`) — 미진단.
+  - 주의: 전체 실행에서는 오라 수치에 ×1.012 가 **추가로** 붙었다(단독은 ×1.2 만).
+    `TestModeContext.RuntimeImportsBlocked` 는 정적이고 PlayMode 는 테스트 간 도메인 리로드를
+    하지 않으므로, 스위트에는 **테스트 간 상태 누출** 축이 하나 더 있다는 신호다.
