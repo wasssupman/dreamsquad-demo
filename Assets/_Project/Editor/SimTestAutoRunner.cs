@@ -119,13 +119,16 @@ namespace Wassup.EditorTools
                 return;
             }
 
-            // 시트 런타임 임포트가 ScriptableObject 를 **메모리에서** 변조하면 디스크는 온전한데
-            // 그 세션의 `configHash` 가 바뀌어 **골든 검증이 세션 내내 불가**해진다. 실측
-            // (2026-08-05): 드림캐쳐 PlayMode 스위트 뒤 `normal` 두 실행의 configHash 가 서로,
-            // 또 커밋된 골든과도 달랐다(`c85c3208` / `bbdbcfd0` / 골든 `d3ded5d0`). 도메인 리로드는
-            // 듣지 않는다 — 에셋 인스턴스는 리로드를 넘어 살아남는다.
+            // PlayMode 스위트가 ScriptableObject 를 **메모리에서** 변조하면 디스크는 온전한데 그
+            // 세션의 골든 검증이 내내 불가해진다. 규명된 사례(2026-08-05): 드림캐쳐 스위트가
+            // `PlayerProfileSO` 를 스쿼드 보유 상태로 남겨, 하네스가 draft 대신 **squad 경로**로
+            // 진입했다. 그 경로만 `SetSkillLoadout` 을 호출하므로 캡처되는 설정이 달라져
+            // `configHash` 가 실행마다 흔들렸다(`c85c3208`/`bbdbcfd0`, 골든은 `d3ded5d0`).
+            // 진입 경로 판별: 정상이면 로그에 `[DraftController] Roll 완료` 가 있다.
             //
-            // 강제 재임포트로 디스크 값을 다시 읽어 기준선을 복원한다. 에디터 재시작의 대용이다.
+            // **도메인 리로드는 듣지 않는다** — 에셋 인스턴스는 리로드를 넘어 산다. 강제 재임포트로
+            // 디스크 값을 다시 읽어 기준선을 복원한다. 에디터 재시작의 대용이다.
+            // (상세·증거는 `docs/spec/battle-sim-extraction/3_canonical_match_config.md`.)
             if (head.Equals("ReimportData", StringComparison.OrdinalIgnoreCase))
             {
                 const string dataRoot = "Assets/_Project/Data";

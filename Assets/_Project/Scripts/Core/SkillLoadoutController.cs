@@ -103,6 +103,16 @@ namespace Wassup.Core
             return result;
         }
 
+        // battle-sim-extraction — 시드를 명시해 굴린다. 매치 진입 경로는 **반드시 이 오버로드**를
+        // 쓴다: 인자 없는 Roll() 은 미설정 시 벽시계로 폴백해 같은 matchSeed 가 매 실행 다른
+        // 로드아웃을 내고, 그 값이 MatchConfigSnapshot 에 캡처돼 configHash 를 흔든다.
+        // 호출처는 GameManager.NextSkillRollSeed() 가 준 값을 넘긴다.
+        public IReadOnlyList<SkillData> Roll(int seed)
+        {
+            if (seed != 0) _seed = seed;
+            return Roll();
+        }
+
         // Produces a new random picked set. Idempotent per seed: same seed always
         // yields same picks, so logs can replay sessions exactly.
         public IReadOnlyList<SkillData> Roll()

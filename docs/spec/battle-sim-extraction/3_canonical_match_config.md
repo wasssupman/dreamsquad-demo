@@ -48,3 +48,51 @@
 - 실제 Play 하네스 2회: 각 306 ticks × 20Hz, `configHash=9293e3e11f7c023cdeaa5eb49644b0e540134ab617249b8630dcf926f50fe48e`, 7,727-byte digest 완전 동일.
 - Track A common review: **APPROVE**. Track B `$ecs-reviewer`: **APPROVE**. 더 엄격한 최종 판정: **APPROVE**.
 - 완료 커밋: `11902d32`.
+
+## 골든 게이트 정지 사건 — 원인 2개 (2026-08-05)
+
+**증상**: unit 13 진행 중 골든이 멎었다. `normal` 두 실행의 `configHash` 가 서로, 또 커밋된 골든과도
+달랐고 **매번 새 값**이었다(`c85c3208`/`bbdbcfd0` → `7ccadf0d`/`c68c22bf`).
+
+**진단 도구가 먼저다**: `LegacyTraceGoldenRunner` 가 이제 canonical blob 을
+`Library/LegacyTraceV0/{scenario}.run{N}.blob.txt` 로 덤프한다. 해시가 갈리면 **두 블롭을 diff 하면
+그 줄이 범인**이다. 이 결함은 정렬·반사 순회를 의심하며 세 번 오진했고 블롭 diff 는 한 번에 지목했다.
+범인은 `skillLoadout` 이었다 — run1 `{power_surge, slow_field}` vs run2 `{slow_field, tornado}`.
+
+### 원인 ① (근인) 세션 오염이 하네스의 **진입 경로**를 갈아탔다
+
+Editor.log 증거: 정상 세션의 하네스는 `[DraftController] Roll 완료` 를 남긴다. 실패 구간
+(687000~687600)에는 그 줄이 **0개**다 — 즉 draft 가 아니라 **squad/TestMode 경로**로 들어갔다.
+그 경로만 `SetSkillLoadout(...)` 을 호출하므로, draft 경로에서는 `skillLoadout=null` 로 캡처되던
+필드가 그 세션에서만 실제 스킬 2개로 채워졌다. 원인은 선행 PlayMode 스위트가 `PlayerProfileSO` 를
+**메모리에서** 스쿼드 보유 상태로 만든 것이고, `Assets/_Project/Data` 강제 재임포트가 디스크 값으로
+되돌려 치료된다(러너 `ReimportData` 모드). **도메인 리로드로는 낫지 않는다** — 에셋 인스턴스는
+리로드를 넘어 산다.
+
+⇒ **위생 규칙: 골든으로 검증할 세션에서 PlayMode 스위트를 먼저 돌리지 않는다.** 이미 돌렸으면
+`ReimportData` 후 골든을 돌린다.
+
+### 원인 ② (잠재) squad/TestMode 경로의 로드아웃이 **벽시계**로 굴렀다
+
+`SkillLoadoutController.Roll()` 은 `_seed == 0` 이면 `DateTime.UtcNow.Ticks` 로 폴백하는데, 로드아웃을
+굴리는 세 경로(Draft·Squad·TestMode) 중 **아무도 시드를 주지 않았다**. `MatchSeed` 의 다른 7계열
+(map·wave·visual·pickup·gimmick·meteor·bomb)은 전부 `Derive*` 를 쓰는데 스킬만 빠져 있었다.
+오염이 진입 경로를 갈아타자 이 결함이 캡처된 설정으로 드러난 것이다 — **오염이 원인 ②를 만든 게
+아니라 노출했다.** squad 는 실제 게임 경로이므로 이건 라이브 결정론의 구멍이다.
+
+**수리**: `MatchSeed.DeriveSkillSeed(matchSeed, rollIndex)` 신설 + `GameManager.NextSkillRollSeed()`
+가 회차를 소유(매치 시드 확정 시 0 리셋) + 세 경로가 `Roll(seed)` 로 굴린다. **회차를 섞는 이유**:
+REDRAFT 는 같은 매치에서 새 조합을 줘야 하므로 매번 같은 2개면 재드래프트가 무의미해진다. 회차를
+넣어 조합은 갱신되지만 같은 `matchSeed` 의 롤 **순서 전체**가 재현된다.
+
+### 결과 — 재기준선 없음
+
+골든 7종 재생성: **two-run diff 0 · 커밋된 코퍼스와 byte 동일**(백업 대비 `cmp` 7/7). `normal` 블롭의
+SHA-256 = `d3ded5d09609ff73` = 커밋된 헤더 `configHash` 그대로다. 로그 전체에서 이 해시는 **26회**
+재현되고 흔들린 구간은 오염된 그 한 창뿐이다. ⇒ 골든을 다시 찍을 필요가 없었다. unit 13 C3 의
+"골든 미검증" 도 이 실행으로 해소된다.
+
+**주의 — 골든의 사각지대**: 코퍼스는 **draft 경로**를 녹음하고 거기서 `_skillLoadout` 은 null 이다
+(하네스가 `ConfirmDraft` 를 거치지 않고 `BeginPlacement` 를 직접 부른다). 그래서 **골든은 로드아웃
+결정론을 증인할 수 없다** — 원인 ②의 회귀 방지는 `MatchSeedTests`·`SkillLoadoutControllerTests` 의
+EditMode 6건이 진다. squad 경로를 덮는 시나리오 추가는 후속 후보(코퍼스 변경 = unit 19 권한).

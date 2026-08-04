@@ -78,12 +78,15 @@ namespace Wassup.Core
             // and Redraft). Roll a fresh skill loadout here so the DraftView can
             // display the 2 skills alongside the unit pool. Restart skips this
             // path and therefore keeps its prior loadout.
-            var loadout = GameManager.Instance?.SkillLoadout;
+            var gm = GameManager.Instance;
+            var loadout = gm?.SkillLoadout;
             if (loadout != null)
             {
                 if (loadout.Pool.Count == 0 && defaultSkillLoadout != null && defaultSkillLoadout.Length > 0)
                     loadout.Configure(defaultSkillLoadout);
-                loadout.Roll();
+                // battle-sim-extraction — 벽시계 폴백 금지. REDRAFT 는 회차가 올라 새 조합을 받고,
+                // 같은 matchSeed 는 같은 롤 순서를 재현한다(Configure 가 _seed 를 0 으로 비운 뒤).
+                loadout.Roll(gm.NextSkillRollSeed());
                 Debug.Log($"[DraftController] Roll 완료: Picked={loadout.Picked.Count}", this);
             }
 

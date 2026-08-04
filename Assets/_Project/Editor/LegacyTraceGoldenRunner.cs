@@ -129,6 +129,19 @@ namespace Wassup.EditorTools
         private static string RunPath(Scenario scenario, int repeat) =>
             Path.Combine(WorkDirectory, scenario.id + ".run" + repeat + ".json");
         private static string GoldenPath(Scenario scenario) => Path.Combine(GoldenDirectory, scenario.id + ".json");
+        private static string BlobPath(Scenario scenario, int repeat) =>
+            Path.Combine(WorkDirectory, scenario.id + ".run" + repeat + ".blob.txt");
+
+        // configHash 가 두 실행에서 갈릴 때 "설정의 어느 필드가 흔들렸나" 를 추측 없이 보기 위한
+        // 진단 출력이다. run1/run2 블롭을 diff 하면 그 줄이 곧 범인이다. 골든 산출물이 아니다.
+        private static void DumpCanonicalBlob(Scenario scenario, BattleBridge bridge)
+        {
+            MatchConfigSnapshot config = bridge.CurrentMatchConfig;
+            if (config == null) return;
+            Directory.CreateDirectory(WorkDirectory);
+            File.WriteAllText(BlobPath(scenario, SessionState.GetInt(RepeatKey, 1)),
+                config.CanonicalBlob, new System.Text.UTF8Encoding(false));
+        }
 
         private static void StartNextRun()
         {
@@ -212,6 +225,7 @@ namespace Wassup.EditorTools
                 if (!bridge.BeginHarness(FixedDt, schedule))
                     throw new InvalidOperationException("BeginHarness failed.");
                 string expectedConfigHash = bridge.ConfigHash;
+                DumpCanonicalBlob(scenario, bridge);
 
                 if (scenario.restart)
                 {

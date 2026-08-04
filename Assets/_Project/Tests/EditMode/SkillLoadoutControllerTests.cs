@@ -132,6 +132,30 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(0, _ctl.Seed);
         }
 
+        // battle-sim-extraction — 시드 명시 오버로드. 매치 진입 3경로가 이걸로 굴러야 같은
+        // matchSeed 가 같은 로드아웃을 낸다(벽시계 폴백이 configHash 를 흔들던 결함의 수리).
+        [Test]
+        public void Roll_With_Explicit_Seed_Overrides_Wall_Clock_Fallback()
+        {
+            _ctl.Configure(_pool, 2, seed: 0); // 0 = 미설정 = 폴백 대상
+            var first = new List<SkillData>(_ctl.Roll(4242));
+            Assert.AreEqual(4242, _ctl.Seed);
+
+            _ctl.Configure(_pool, 2, seed: 0);
+            var second = new List<SkillData>(_ctl.Roll(4242));
+
+            CollectionAssert.AreEqual(first, second);
+        }
+
+        [Test]
+        public void Roll_With_Zero_Seed_Leaves_Configured_Seed_Intact()
+        {
+            // 0 은 "지정 없음" 이다 — Configure 로 들어온 시드를 덮어써 폴백으로 되돌리면 안 된다.
+            _ctl.Configure(_pool, 2, seed: 555);
+            _ctl.Roll(0);
+            Assert.AreEqual(555, _ctl.Seed);
+        }
+
         [Test]
         public void ResetRollState_Clears_Picks_And_Seed()
         {

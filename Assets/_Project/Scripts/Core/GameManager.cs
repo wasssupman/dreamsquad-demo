@@ -49,6 +49,17 @@ namespace Wassup.Core
         private bool _matchSeedFixed;
         public bool MatchSeedFixed => _matchSeedFixed;
 
+        // battle-sim-extraction — 스킬 로드아웃 롤 회차. 매치 시드 확정 시 0 으로 돌아간다.
+        private int _skillRollIndex;
+
+        /// <summary>
+        /// 다음 스킬 로드아웃 롤에 쓸 시드를 주고 회차를 전진시킨다. 로드아웃을 굴리는 세 경로
+        /// (Draft·Squad·TestMode)의 유일한 시드 출처 — 벽시계 폴백을 대체한다. 회차가 섞이므로
+        /// REDRAFT 는 새 조합을 받지만 같은 matchSeed 의 롤 **순서 전체**가 재현된다.
+        /// </summary>
+        public int NextSkillRollSeed()
+            => Wassup.Core.MatchSeed.DeriveSkillSeed(MatchSeed, _skillRollIndex++);
+
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         // random-map-pool unit 7 — 일시정지 메뉴가 선택된 맵의 실전 웨이브 플랜을 프리뷰하는 통로.
@@ -225,6 +236,7 @@ namespace Wassup.Core
                 : debugFixedMatchSeed;
             _matchSeedFixed = fixedSeed != 0;
             MatchSeed = fixedSeed != 0 ? fixedSeed : Wassup.Core.MatchSeed.GenerateRandom();
+            _skillRollIndex = 0; // 새 매치 = 새 롤 계열. 같은 matchSeed 는 같은 첫 로드아웃을 낸다.
             if (battleBridge != null) battleBridge.SetMatchSeed(MatchSeed);
             if (logger != null) logger.SetMatchSeeds(MatchSeed, MatchSeedFixed);
             Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={fixedSeed != 0})");
@@ -373,7 +385,7 @@ namespace Wassup.Core
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
-                skillLoadout.Roll();
+                skillLoadout.Roll(NextSkillRollSeed());
                 LogSkillLoadout();
                 if (skillLoadout.Picked.Count > 0)
                 {
@@ -429,7 +441,7 @@ namespace Wassup.Core
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
-                skillLoadout.Roll();
+                skillLoadout.Roll(NextSkillRollSeed());
                 LogSkillLoadout();
                 if (skillLoadout.Picked.Count > 0)
                 {
