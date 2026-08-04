@@ -32,6 +32,12 @@ namespace Wassup.Presentation
         [Tooltip("흡수 이펙트 스케일(타일 1 유닛 기준 축소)")]
         [SerializeField] private float cardAbsorbScale = 0.6f;
 
+        [Header("goal-stability unit 5 — 골 붕괴 원샷")]
+        [Tooltip("안정도 0 붕괴 순간 이펙트. v1 은 blocking hazard 파괴 VFX 재사용(정식 아트 후속)")]
+        [SerializeField] private GameObject goalCollapsePrefab;
+        [Tooltip("붕괴 이펙트 스케일(타일 1 유닛 기준)")]
+        [SerializeField] private float goalCollapseScale = 1.2f;
+
         // V1 — Placement pulse. One-shot outward radial burst that fades in 0.35s.
         public void SpawnPlacementRing(Vector3 worldPos)
         {
@@ -174,6 +180,24 @@ namespace Wassup.Presentation
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(shieldGrantedPrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, shieldGrantedScale);
+            float lifetime = ConfigureOneShot(go);
+            Destroy(go, lifetime);
+        }
+
+        // goal-stability unit 5 — 골 붕괴 원샷. 루프형 벤더 프리팹이 와도 ConfigureOneShot
+        // 으로 단발화(공유 에셋 무접촉). 호출 = BattleBridge.DrainGoalCollapsedEvents.
+        public void SpawnGoalCollapse(Vector3 worldPos)
+        {
+            if (goalCollapsePrefab == null)
+            {
+                Debug.LogWarning("[VfxSpawner] goalCollapse prefab slot empty, using code fallback");
+                SpawnPlacementRing(worldPos); // 폴백: 최소한 붕괴 지점 링 펄스
+                return;
+            }
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
+            var go = Instantiate(goalCollapsePrefab, pos, Quaternion.identity, transform);
+            go.transform.localScale = Vector3.one * Mathf.Max(0.1f, goalCollapseScale);
             float lifetime = ConfigureOneShot(go);
             Destroy(go, lifetime);
         }

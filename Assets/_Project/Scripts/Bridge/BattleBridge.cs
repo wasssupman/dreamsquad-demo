@@ -398,6 +398,11 @@ namespace Wassup.Bridge
         // goal-stability unit 3 — 이 판에 안정도(M>0) 골이 존재하는가. SpawnGoalEntities 가
         // 맵 빌드마다 갱신. walk-only 적의 골 공격 grant 조건(골 없는 판엔 grant 자체를 안 함).
         private bool _hasStabilityGoals;
+        // goal-stability unit 5 — 게이지 폴링용 골 등록부(Bridge 가 스폰 주체라 직접 안다).
+        // 붕괴 드레인이 제거, teardown 이 Clear. 쿼리 없이 맵당 ≤4 순회.
+        private readonly List<(Entity entity, Vector2Int cell)> _goalGaugeList = new();
+        [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
+        [SerializeField] private float goalOverheadHeight = 1.1f;
 
         // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
@@ -559,6 +564,7 @@ namespace Wassup.Bridge
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
+            _goalGaugeList.Clear(); // goal-stability unit 5 — 골 게이지 등록부도 같은 지점에서
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
@@ -890,6 +896,7 @@ namespace Wassup.Bridge
         private void SpawnGoalEntities()
         {
             _hasStabilityGoals = false;
+            _goalGaugeList.Clear();
             if (!_generatedMap.IsCreated || _em == null) return;
             DestroyEntitiesByType<GoalPoint>();
 
@@ -913,6 +920,7 @@ namespace Wassup.Bridge
                 _em.AddBuffer<IncomingDamage>(entity);
                 _em.AddComponentData(entity, new FactionTag { value = Faction.Goal });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
+                _goalGaugeList.Add((entity, new Vector2Int(cell.x, cell.y))); // unit 5 게이지 폴링
                 spawned++;
             }
             if (spawned > 0)
@@ -2999,6 +3007,8 @@ namespace Wassup.Bridge
                         defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio, GatherOverheadStacks(entity));
                 }
             }
+            // goal-stability unit 5 — 골 게이지도 유닛과 같은 오버헤드 창(Begin/EndFrame) 안에서 Set.
+            SyncGoalOverheadGauges(unifiedOverhead);
             SyncPatrolViews(unifiedOverhead, canSort, gridSize);
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
         }
@@ -6467,14 +6477,55 @@ namespace Wassup.Bridge
             }
         }
 
-        // goal-stability unit 4 — 붕괴 드레인. v1 소비 = 로그 + unit 5 연출 훅 자리.
-        // 상태 갱신 없음: 유출 전환은 골 엔티티 부재(공성 게이트)가 이미 담당한다.
+        // goal-stability unit 4 — 붕괴 드레인. 게임 상태 갱신 없음: 유출 전환은 골 엔티티
+        // 부재(공성 게이트)가 이미 담당한다. unit 5 — 게이지 제거 + 붕괴 원샷 VFX 소비.
         private void DrainGoalCollapsedEvents()
         {
             if (!_goalCollapsedQueue.IsCreated) return;
             while (_goalCollapsedQueue.TryDequeue(out var evt))
             {
                 Debug.Log($"[BattleBridge] Goal collapsed — cell=({evt.cell.x},{evt.cell.y}) index={evt.goalIndex} → 유출 지점 전환");
+                var cell = new Vector2Int(evt.cell.x, evt.cell.y);
+                tileHealthGaugeLayer?.Hide(cell);
+                for (int i = _goalGaugeList.Count - 1; i >= 0; i--)
+                    if (_goalGaugeList[i].cell == cell) _goalGaugeList.RemoveAt(i);
+                vfxSpawner?.SpawnGoalCollapse(new Vector3(evt.worldPosition.x, evt.worldPosition.y, evt.worldPosition.z));
+            }
+        }
+
+        // goal-stability unit 5 — 골 안정도 게이지를 유닛 체력바와 동일한 오버헤드 UI 로
+        // (사용자 결정 2026-08-04 "체력바는 유닛처럼 띄워"). Health read-only 폴링(큐 아님).
+        // 골은 뷰 풀에 없어 TryGetUnitScreenAnchor 를 못 쓴다 — 셀 중심 + 구조물 높이를 직접
+        // 투영해 같은 (anchor, tileScreenWidth) 계약으로 SetUnit. 붕괴 시 숨김은 EndFrame 의
+        // 미표시-자동-Hide 가 처리(별도 코드 0). Legacy 모드는 방어유닛 이원화와 동형으로
+        // 타일 게이지 폴백.
+        private void SyncGoalOverheadGauges(bool unifiedOverhead)
+        {
+            if (_goalGaugeList.Count == 0 || !HasLiveEntityManager()) return;
+            var cam = Camera.main;
+            for (int i = 0; i < _goalGaugeList.Count; i++)
+            {
+                var (entity, cell) = _goalGaugeList[i];
+                if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
+                var h = _em.GetComponentData<Health>(entity);
+                float ratio = Health.ComputeRatio(h.value, h.max);
+                var world = GridToWorldCenter(cell);
+                var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(world.x, 0f, world.z));
+                if (unifiedOverhead && unitOverheadUiLayer != null && cam != null)
+                {
+                    Vector3 baseScreen = cam.WorldToScreenPoint(baseView);
+                    Vector3 topScreen = cam.WorldToScreenPoint(baseView + Vector3.up * goalOverheadHeight);
+                    var anchor = new Vector2(baseScreen.x, topScreen.y);
+                    Vector3 a = cam.WorldToScreenPoint(baseView - Vector3.right * (tileSize * 0.5f));
+                    Vector3 b = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
+                    float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
+                    unitOverheadUiLayer.SetUnit(entity, true, ratio, anchor, tileScreenWidth, 0f,
+                        GatherOverheadStacks(entity));
+                }
+                else if (!unifiedOverhead && tileHealthGaugeLayer != null)
+                {
+                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, ratio);
+                }
             }
         }
 

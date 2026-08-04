@@ -4045,6 +4045,8 @@ MonoBehaviour:
   shieldGrantedScale: 0.7
   cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   cardAbsorbScale: 0.6
+  goalCollapsePrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
+  goalCollapseScale: 1.2
 --- !u!4 &1795146347
 Transform:
   m_ObjectHideFlags: 0

@@ -12,13 +12,17 @@
 
 ## 구현
 
-1. **게이지**: unit-health-display 후속 후보("blocking hazard 체력 표시 — 타일 게이지 재사용 검토")를 이 자리에서 소화한다. `TileHealthGaugeLayer/View` 재사용이 1순위 — 골 셀 위 게이지, `BattleBridge` 가 골 엔티티 `Health` 를 read-only 폴링(큐 아님, 기존 체력 표시 관용구). 재사용이 구조적으로 안 맞으면 최소 전용 게이지(월드스페이스 바 1개)로 대체하고 사유를 기록.
+1. **게이지**: **유닛 체력바와 동일한 오버헤드 UI**(`UnitOverheadUiLayer.SetUnit`, 사용자 결정 2026-08-04 "체력바는 유닛처럼 띄워"). `BattleBridge` 가 골 엔티티 `Health` 를 read-only 폴링(큐 아님) — 골은 뷰 풀에 없어 스크린 앵커만 셀 중심+구조물 높이(`goalOverheadHeight`)로 직접 투영하고 나머지는 유닛과 같은 계약. 붕괴 시 숨김은 `EndFrame` 미표시-자동-Hide 가 공짜로 처리. Legacy(비통합) 모드는 방어유닛 이원화와 동형으로 `TileHealthGaugeLayer` 폴백.
 2. **붕괴 연출**: unit 4 의 `DrainGoalCollapsedEvents` 에서 one-shot VFX (`VfxSpawner` 슬롯 신설, `unity-vfx-integration` 스킬). 골 구조물 프랍은 v1 에서 유지(교체/파괴 아트는 후속 후보).
 3. **씬 wiring**: BattleBridge SerializeField(게이지 레이어/VFX 슬롯) 할당까지 완료가 이 unit 의 완료. 수작업 이관 금지.
 4. 게이지는 M>0 골에만 표시, 붕괴 시 제거. M=0 맵은 시각 변화 0.
 
 ## 완료 기준
 
-- [ ] Play(M>0 맵): 골 위 게이지 표시·피격 감소·붕괴 시 VFX + 게이지 제거 — 게임뷰 스크린샷 확인.
-- [ ] M=0 맵 시각 현행 동일.
-- [ ] 콘솔 클린(누락 슬롯 경고 없음).
+- [x] Play(M>0 맵): 골 구조물 위 유닛식 오버헤드 체력바 표시·피격 감소·붕괴 시 바 소멸 + 록버스트 VFX — 사용자 Play 확인.
+- [x] M=0 맵 시각 현행 동일.
+- [x] 콘솔 클린 + 관련 스위트 30/30. 씬 wiring 은 BattleScene 미로드 상태라 YAML 직접 배선(`goalCollapsePrefab` non-zero fileID 확인, SaveScene 미사용).
+
+구현 노트: 초안의 타일 게이지는 구현 후 사용자 결정("체력바는 유닛처럼 띄워")으로 오버헤드 UI 로 전환. 타일 게이지는 Legacy(비통합) 모드 폴백으로만 잔존. `goalOverheadHeight`(기본 1.1) 인스펙터 튜닝 가능.
+
+2026-08-04 사용자 확인 완료.
