@@ -1,5 +1,4 @@
 using UnityEngine;
-using Wassup.Bridge;
 
 namespace Wassup.Presentation
 {
@@ -11,7 +10,7 @@ namespace Wassup.Presentation
     [DisallowMultipleComponent]
     public class BlobShadow : MonoBehaviour
     {
-        [Tooltip("프리팹에 authoring 된 블롭(프랍 전용). 위치 XZ/스케일/회전은 프리팹 값이 확정값. sprite/color/sort/바닥 Y 는 Awake 에서 전역값(BattleBridge)으로 정규화.")]
+        [Tooltip("프리팹에 authoring 된 블롭(프랍 전용). 위치 XZ/스케일/회전은 프리팹 값이 확정값. sprite/color/sort/바닥 Y 는 Awake 에서 전역값(BattleVisualKnobs)으로 정규화.")]
         [SerializeField] private bool authoredInPrefab;
 
         private Transform _target;
@@ -33,8 +32,8 @@ namespace Wassup.Presentation
             if (!authoredInPrefab) return; // 런타임 Attach 경로는 Attach() 가 전부 세팅
             var sr = GetComponent<SpriteRenderer>();
             if (sr == null) return;
-            if (BattleBridge.BlobShadowSprite != null) sr.sprite = BattleBridge.BlobShadowSprite;
-            sr.color = BattleBridge.BlobShadowColor;
+            if (BattleVisualKnobs.BlobShadowSprite != null) sr.sprite = BattleVisualKnobs.BlobShadowSprite;
+            sr.color = BattleVisualKnobs.BlobShadowColor;
             sr.sortingOrder = BoardSortOrder.ShadowOrder;
             _sr = sr;
             _baseColor = sr.color;

@@ -1326,7 +1326,7 @@ namespace Wassup.UI
         {
             if (unitData == null || unitData.skeletonDataAsset == null) return false;
 
-            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleVisualKnobs.CharacterVisualScale);
 
             var root = new GameObject($"DragPreview_{unitData.displayName}");
 
@@ -1337,7 +1337,7 @@ namespace Wassup.UI
             var endNode = new GameObject($"{root.name}_End");
             endNode.transform.SetParent(root.transform, false);
             var endBillboard = endNode.AddComponent<Billboard>();
-            endBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+            endBillboard.Setup(BillboardMode.Tilted, BattleVisualKnobs.CharacterBillboardTilt);
 
             var swingPivot = new GameObject($"{root.name}_Swing");
             swingPivot.transform.SetParent(endNode.transform, false);
@@ -1436,7 +1436,7 @@ namespace Wassup.UI
                 ringLr.sortingOrder = BoardSortOrder.DragPreviewOrder;
             }
             var ringBillboard = ringGo.AddComponent<Billboard>();
-            ringBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+            ringBillboard.Setup(BillboardMode.Tilted, BattleVisualKnobs.CharacterBillboardTilt);
 
             // 줄(cord): 월드 LineRenderer, 2점(고리→머리). 스타일 머티리얼(u=길이, _LengthAxis=1) 또는 절차적 단색.
             var cordGo = new GameObject($"{namePrefix}_Cord");
@@ -1471,7 +1471,7 @@ namespace Wassup.UI
         public KeyringHardware CreateKeyringHardware(DefenderUnitData unitData)
         {
             if (unitData == null) return default;
-            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleVisualKnobs.CharacterVisualScale);
             var root = new GameObject("RelocationKeyring");
             // 고리+줄은 배치 프리뷰와 공통 헬퍼(BuildRingAndCord)로 만든다 — 룩 단일 소스.
             BuildRingAndCord(root, "RelocationKeyring", scale, out var ring, out var cord);
@@ -1514,7 +1514,7 @@ namespace Wassup.UI
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             go.name = $"DragPreview_{unitData.displayName}";
-            go.transform.localScale = Vector3.one * (previewScale * BattleBridge.CharacterVisualScale);
+            go.transform.localScale = Vector3.one * (previewScale * BattleVisualKnobs.CharacterVisualScale);
             var collider = go.GetComponent<Collider>();
             if (collider != null) Destroy(collider);
 

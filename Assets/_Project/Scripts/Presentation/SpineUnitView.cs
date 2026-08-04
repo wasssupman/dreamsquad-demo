@@ -2,7 +2,6 @@ using Spine;
 using Spine.Unity;
 using Unity.Entities;
 using UnityEngine;
-using Wassup.Bridge;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 
@@ -56,7 +55,7 @@ namespace Wassup.Presentation
             // flight-lift-feel unit 1 — _baseScale 을 ApplyRenderPosition 보다 **먼저** 잡는다.
             // 위치 갱신이 이제 lift → 스케일 파생까지 하므로, 기준이 없으면 스폰 프레임에 Vector3.one
             // 로 한 번 써버린다.
-            float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
+            float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleVisualKnobs.CharacterVisualScale);
             _baseScale = new Vector3(s, s, s); // card-fly unit 1 — 펀치 펄스 복귀 기준
             ApplyRenderScale();                // 계약 4 — localScale 직접 대입은 여기서도 하지 않는다
             ApplyRenderPosition(worldPos);
@@ -77,10 +76,10 @@ namespace Wassup.Presentation
             PlayIdleLooping();
 
             // tilted-billboard unit 0 — 틸트는 Billboard 컴포넌트가 소유. 스폰 시 1회 주입
-            // (tilemapBillboardTilt, BattleBridge 가 세팅).
+            // (tilemapBillboardTilt → BattleVisualKnobs, BattleBridge 가 미러).
             // 카메라 yaw 고정(0) 전제라 월드 X 틸트로 충분. ScaleX(좌우반전)는 skeleton 채널이라 독립.
             var billboard = gameObject.AddComponent<Billboard>();
-            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+            billboard.Setup(BillboardMode.Tilted, BattleVisualKnobs.CharacterBillboardTilt);
 
             ApplyTilemapShadow();
 
@@ -129,7 +128,7 @@ namespace Wassup.Presentation
         private void ApplyTilemapShadow()
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
-            if (BattleBridge.UseRealShadows)
+            if (BattleVisualKnobs.UseRealShadows)
             {
                 for (int i = 0; i < renderers.Length; i++)
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
@@ -138,10 +137,10 @@ namespace Wassup.Presentation
             {
                 for (int i = 0; i < renderers.Length; i++)
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                if (BattleBridge.BlobShadowSprite != null)
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
-                        BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
+                if (BattleVisualKnobs.BlobShadowSprite != null)
+                    _blob = BlobShadow.Attach(transform, BattleVisualKnobs.BlobShadowSprite, BattleVisualKnobs.BlobShadowSize,
+                        BattleVisualKnobs.BlobShadowColor,
+                        BattleVisualKnobs.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
         }
 
@@ -163,20 +162,20 @@ namespace Wassup.Presentation
         // SO 미할당(WalkAnimSpeedEnabled=false)이면 _walkFactor=1 유지 → 현행 동작.
         private void UpdateWalkTimeScale(Vector3 world)
         {
-            if (!BattleBridge.WalkAnimSpeedEnabled || _dying) return;
+            if (!BattleVisualKnobs.WalkAnimSpeedEnabled || _dying) return;
             float simDt = Time.deltaTime * _battleScale;
             if (simDt <= SimDtEpsilon) return; // 정지/도메인리로드 프레임 — 직전 배율 유지(ApplyTimeScale 은 battleScale 로 프리즈)
             float disp = Vector3.Distance(
                 (Vector3)Wassup.Core.BoardSpace.ToView(world),
                 (Vector3)Wassup.Core.BoardSpace.ToView(_simWorld));
-            if (disp >= BattleBridge.WalkAnimTeleportGuard) return; // 포탈 점프 — 측정 스킵
+            if (disp >= BattleVisualKnobs.WalkAnimTeleportGuard) return; // 포탈 점프 — 측정 스킵
             float simSpeed = disp / simDt;
-            _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, BattleBridge.WalkAnimSmoothing);
-            _walkFactor = Mathf.Clamp(_smoothedSpeed / BattleBridge.WalkAnimRefSpeed,
-                BattleBridge.WalkAnimMinTimeScale, BattleBridge.WalkAnimMaxTimeScale);
+            _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, BattleVisualKnobs.WalkAnimSmoothing);
+            _walkFactor = Mathf.Clamp(_smoothedSpeed / BattleVisualKnobs.WalkAnimRefSpeed,
+                BattleVisualKnobs.WalkAnimMinTimeScale, BattleVisualKnobs.WalkAnimMaxTimeScale);
             // unit 4 — 이동/정지 히스테리시스(ApplyTimeScale + 로코 스위칭 공용). 모든 유닛에
             // 적용 — 정지 판정이라 임계 낮음(느린 이동은 여전히 _moving=true 로 배율 동기 유지).
-            float refSpeed = Mathf.Max(0.01f, BattleBridge.WalkAnimRefSpeed);
+            float refSpeed = Mathf.Max(0.01f, BattleVisualKnobs.WalkAnimRefSpeed);
             if (_moving && _smoothedSpeed < refSpeed * LocoMoveOffFrac) _moving = false;
             else if (!_moving && _smoothedSpeed > refSpeed * LocoMoveOnFrac) _moving = true;
             ApplyTimeScale();
@@ -497,7 +496,7 @@ namespace Wassup.Presentation
                 _skeleton.Skeleton.A = a;
             _blob?.SetDimAlpha(transparent ? a : 1f);
             // 그림자 캐스팅 토글은 상태 변화 시에만 — QuadUnitView 와 일관, 매 프레임 GetComponentsInChildren alloc 방지.
-            if (BattleBridge.UseRealShadows && transparent != _shadowTransparent)
+            if (BattleVisualKnobs.UseRealShadows && transparent != _shadowTransparent)
             {
                 var mode = transparent
                     ? UnityEngine.Rendering.ShadowCastingMode.Off

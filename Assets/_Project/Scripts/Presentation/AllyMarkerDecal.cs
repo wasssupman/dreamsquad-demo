@@ -1,5 +1,4 @@
 using UnityEngine;
-using Wassup.Bridge;
 using Wassup.Core;
 
 namespace Wassup.Presentation
@@ -81,9 +80,9 @@ namespace Wassup.Presentation
             BlobShadow.Attach(
                 unitViewRoot,
                 GetOrBuildSprite(),
-                BattleBridge.BlobShadowSize * SizeMul,
+                BattleVisualKnobs.BlobShadowSize * SizeMul,
                 RingColor,
-                BattleBridge.BlobShadowGroundY,
+                BattleVisualKnobs.BlobShadowGroundY,
                 SortingOrder,
                 live: true);
         }

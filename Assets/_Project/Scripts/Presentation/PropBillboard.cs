@@ -1,6 +1,5 @@
 using Spine.Unity;
 using UnityEngine;
-using Wassup.Bridge;
 using Wassup.Data;
 
 namespace Wassup.Presentation
@@ -40,7 +39,7 @@ namespace Wassup.Presentation
             var facing = ToFacing(billboardMode);
             // 거리 틸트(unit 6)는 Tilted 에서도 카메라가 필요하다. factor=0 이면 비활성(고정).
             bool wantsDistance = facing == BillboardRotation.Facing.Tilted
-                                 && BattleBridge.PropDistanceTiltFactor != 0f;
+                                 && BattleVisualKnobs.PropDistanceTiltFactor != 0f;
             Camera cam = null;
             if (facing != BillboardRotation.Facing.Tilted || wantsDistance)
             {
@@ -57,8 +56,8 @@ namespace Wassup.Presentation
             if (wantsDistance && cam != null)
             {
                 tilt = BillboardRotation.ResolveDistanceTilt(tilt,
-                    BattleBridge.PropDistanceTiltFactor,
-                    BattleBridge.PropDistanceTiltMin, BattleBridge.PropDistanceTiltMax,
+                    BattleVisualKnobs.PropDistanceTiltFactor,
+                    BattleVisualKnobs.PropDistanceTiltMin, BattleVisualKnobs.PropDistanceTiltMax,
                     cam, transform.position);
             }
             var rot = BillboardRotation.Compute(facing, tilt, cam, target.position, flip180: false);

@@ -1,5 +1,4 @@
 using UnityEngine;
-using Wassup.Bridge;
 
 namespace Wassup.Presentation
 {
@@ -12,7 +11,7 @@ namespace Wassup.Presentation
     // 소비처(넉업 hop)가 기준을 만들 수 없다. 비율 정의는 **같은 높이 = 같은 크기**를 전 유닛에
     // 자동 보장한다 = 원근 일관성. 원근 자체가 거리에 대략 선형이라 물리적으로도 더 정직하다.
     //
-    // 노브를 BattleBridge static 에서 직접 읽는 이유: Presentation 이 BlobShadowSprite/Size/Color 를
+    // 노브를 BattleVisualKnobs static 에서 직접 읽는 이유: Presentation 이 BlobShadowSprite/Size/Color 를
     // 그렇게 읽는 관용구 그대로다. 이 계산은 clamp+lerp 라 순수성을 위한 별도 파라미터 타입은 과잉.
     public static class UnitLiftVisual
     {
@@ -29,12 +28,12 @@ namespace Wassup.Presentation
             }
 
             // 상한은 1 미만으로 내려가지 않는다 — 오설정이 유닛을 축소시키는 일이 없게.
-            unitScale = Mathf.Min(1f + lift * BattleBridge.LiftScalePerHeight,
-                                  Mathf.Max(1f, BattleBridge.LiftScaleMax));
+            unitScale = Mathf.Min(1f + lift * BattleVisualKnobs.LiftScalePerHeight,
+                                  Mathf.Max(1f, BattleVisualKnobs.LiftScaleMax));
 
-            float r = Mathf.Clamp01(lift / Mathf.Max(0.01f, BattleBridge.LiftShadowFullHeight));
-            shadowScale = Mathf.Lerp(1f, BattleBridge.LiftShadowMinScale, r);
-            shadowAlpha = Mathf.Lerp(1f, BattleBridge.LiftShadowMinAlpha, r);
+            float r = Mathf.Clamp01(lift / Mathf.Max(0.01f, BattleVisualKnobs.LiftShadowFullHeight));
+            shadowScale = Mathf.Lerp(1f, BattleVisualKnobs.LiftShadowMinScale, r);
+            shadowAlpha = Mathf.Lerp(1f, BattleVisualKnobs.LiftShadowMinAlpha, r);
         }
     }
 }

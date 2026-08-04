@@ -1,6 +1,5 @@
 using Unity.Entities;
 using UnityEngine;
-using Wassup.Bridge;
 
 namespace Wassup.Presentation
 {
@@ -64,10 +63,10 @@ namespace Wassup.Presentation
 
             var billboard = GetComponent<Billboard>();
             if (billboard == null) billboard = gameObject.AddComponent<Billboard>();
-            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+            billboard.Setup(BillboardMode.Tilted, BattleVisualKnobs.CharacterBillboardTilt);
 
             // tilemap-real-shadows — 진짜 그림자(실루엣 cast) vs 블롭(상호배타).
-            if (BattleBridge.UseRealShadows)
+            if (BattleVisualKnobs.UseRealShadows)
             {
                 // URP/Unlit + _ALPHATEST_ON → ShadowCaster 가 실루엣 cast. 평면이라 TwoSided.
                 _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
@@ -75,10 +74,10 @@ namespace Wassup.Presentation
             else
             {
                 _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                if (BattleBridge.BlobShadowSprite != null)
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
-                        BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
+                if (BattleVisualKnobs.BlobShadowSprite != null)
+                    _blob = BlobShadow.Attach(transform, BattleVisualKnobs.BlobShadowSprite, BattleVisualKnobs.BlobShadowSize,
+                        BattleVisualKnobs.BlobShadowColor,
+                        BattleVisualKnobs.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
 
             // 재스폰/머티리얼 리빌드는 cutout 기준으로 되돌린다 → 다음 SetDimmed 가 정확히 재적용.
@@ -182,7 +181,7 @@ namespace Wassup.Presentation
                     _ownedMaterial.DisableKeyword("_ALPHATEST_ON");
                     _ownedMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                     _ownedMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-                    if (_renderer != null && BattleBridge.UseRealShadows)
+                    if (_renderer != null && BattleVisualKnobs.UseRealShadows)
                         _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
                 else
@@ -196,7 +195,7 @@ namespace Wassup.Presentation
                     _ownedMaterial.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
                     _ownedMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
                     if (_renderer != null)
-                        _renderer.shadowCastingMode = BattleBridge.UseRealShadows
+                        _renderer.shadowCastingMode = BattleVisualKnobs.UseRealShadows
                             ? UnityEngine.Rendering.ShadowCastingMode.TwoSided
                             : UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
