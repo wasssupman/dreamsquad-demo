@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Data;
 using Wassup.DepthParallax;
 using Wassup.UI.Layout;
@@ -49,7 +50,7 @@ namespace Wassup.UI
         private int _lastSlotCount;
 
         // action-tray unit 1 — 슬롯별 시각 참조 캐시. RebuildSlots 에서만 재구성하고
-        // Update 는 CostRuntime.CurrentInt 가 바뀐 프레임에만 순회한다(매 프레임
+        // Update 는 ReadModel.CostCurrentInt 가 바뀐 프레임에만 순회한다(매 프레임
         // 할당/계층 검색 금지 계약). 슬롯 GO Destroy 와 함께 리스트도 클리어라
         // 재빌드/재진입 시 stale 참조 없음.
         private struct SlotVisual
@@ -432,8 +433,10 @@ namespace Wassup.UI
         public bool TryGetAffordableTutorialSlot(out RectTransform target)
         {
             target = null;
-            var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
-            int available = runtime != null ? runtime.CurrentInt : int.MinValue;
+            // unit 13-A3 — 미지원이면 int.MinValue 로 전 슬롯을 탈락시킨다(구 null 폴백과 동일).
+            int available = MatchSession.IsActive && MatchSession.Current.ReadModel.SupportedCost
+                ? MatchSession.Current.ReadModel.CostCurrentInt
+                : int.MinValue;
             int bestCost = int.MaxValue;
             bool foundNonDirectional = false;
 
@@ -542,7 +545,7 @@ namespace Wassup.UI
         // 가리는데 정보량이 그만 못했다. 클래스 정보는 NameBandColorFor 의 밴드
         // 틴트로 옮겼다(신규 픽셀 0). config 의 roles 데이터는 그 틴트 입력이라 유지.
 
-        // action-tray unit 1 — affordability 갱신. CostRuntime.CurrentInt 가 바뀐
+        // action-tray unit 1 — affordability 갱신. ReadModel.CostCurrentInt 가 바뀐
         // 프레임에만 슬롯 순회(값 diff — 매 프레임 할당/검색 없음). 런타임 미초기화는
         // false-negative 를 피해 전부 available 로 유지(계약).
         private void Update()
@@ -551,8 +554,11 @@ namespace Wassup.UI
             // defender-placement-cooldown 2 — 쿨타임 오버레이는 매 프레임(코스트 diff-gate 위)에서
             // 리페인트한다. fillAmount 가 연속 변하므로 diff-gate 에 삼켜지면 안 된다.
             UpdateCooldownOverlays();
-            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
-            int current = costRuntime != null ? costRuntime.CurrentInt : int.MaxValue;
+            // unit 13-A3 — 미지원 폴백은 `int.MaxValue`(위 주석의 계약: false-negative 를 피해 전부
+            // available). 위 TryGetAffordableTutorialSlot 의 MinValue 와 **방향이 반대**이며 의도된 것이다.
+            int current = MatchSession.IsActive && MatchSession.Current.ReadModel.SupportedCost
+                ? MatchSession.Current.ReadModel.CostCurrentInt
+                : int.MaxValue;
             if (current == _lastCostSeen) return;
             _lastCostSeen = current;
 
@@ -579,23 +585,30 @@ namespace Wassup.UI
         // value-copy 함정을 피한다(critic M1).
         private void UpdateCooldownOverlays()
         {
-            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
-            if (rt == null)
+            // unit 13-A3 — 쿨타임은 세션이 서빙한다. 유닛별 잔여는 키 조회(unitDefId)이고
+            // "하나라도 활성인가"는 읽기 모델 스칼라다.
+            if (!MatchSession.IsActive)
             {
                 if (_anyCooldownShown) { HideAllCooldownOverlays(); _anyCooldownShown = false; }
                 return;
             }
+            var session = MatchSession.Current;
             // 활성 쿨타임도 표시 중 오버레이도 없으면 순회 스킵(전 유닛 0 이면 O(1)).
-            if (!rt.AnyActive && !_anyCooldownShown) return;
+            if (!session.ReadModel.AnyPlacementCooldown && !_anyCooldownShown) return;
 
             bool anyShown = false;
             for (int i = 0; i < _slotVisuals.Count; i++)
             {
                 var v = _slotVisuals[i];
                 if (v.cooldownRoot == null) continue; // 쿨다운 없는 유닛(오버레이 미생성)
-                float rem = rt.RemainingFor(v.data);
+                // false = 쿨타임 아님(구 `RemainingFor(...) > 0f` 판정과 같은 경계).
+                // out 변수를 미리 초기화한다 — `v.data != null` 단축 평가로 호출이 생략될 수 있어
+                // 컴파일러가 할당을 증명하지 못한다(CS0165).
+                float rem = 0f, cdFraction = 0f;
+                bool onCooldown = v.data != null
+                    && session.TryGetPlacementCooldown(v.data.id, out rem, out cdFraction);
                 bool shown = v.cooldownRoot.activeSelf;
-                if (rem > 0f)
+                if (onCooldown)
                 {
                     if (!shown)
                     {
@@ -603,7 +616,7 @@ namespace Wassup.UI
                         // 재표시 시 직전 쿨타임의 잔여 팝 스케일 초기화(안전).
                         if (v.cooldownText != null) v.cooldownText.rectTransform.localScale = Vector3.one;
                     }
-                    float frac = rt.Fraction(v.data); // 남은비율 = 수위 → 아래로 빠짐
+                    float frac = cdFraction; // 남은비율 = 수위 → 아래로 빠짐 (조회 1회에 함께 왔다)
                     if (v.cooldownMat != null) { v.cooldownMat.SetFloat(CdFillId, frac); PushCooldownGeometry(v); }
                     else if (v.cooldownFill != null) v.cooldownFill.fillAmount = frac;
                     if (v.cooldownText != null)

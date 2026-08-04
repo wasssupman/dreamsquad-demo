@@ -15,7 +15,7 @@ namespace Wassup.EditorTools
     // 파일로 받는다. `dotnet build` 는 컴파일만 증명하고 Unity Test Framework 를 실행하지 않는다.
     //
     // 사용법 (둘 중 아무거나):
-    //   ① Temp/sim-test-request.txt 를 만든다 — 1행 `EditMode`|`PlayMode`|`Golden`,
+    //   ① Temp/sim-test-request.txt 를 만든다 — 1행 `EditMode`|`PlayMode`|`Golden`|`Refresh`,
     //      2행(선택) 그룹 정규식(예: `Wassup\.Tests\.EditMode\.ModifierFrameworkTests`).
     //      최대 1초 안에 소비(삭제)되고 실행이 시작된다.
     //   ② 메뉴 `Tools/Sim/Run EditMode Tests`.
@@ -41,7 +41,7 @@ namespace Wassup.EditorTools
         // 쓰기 전에 Temp/sim-test-runner.version 을 읽어 기대 버전인지 확인한다 — 에디터가 아직
         // 리컴파일하지 않았으면 이 파일이 옛 값이거나 갱신 시각이 낡아서 그 사실이 드러난다.
         // (파일 존재만 보고 판단하면 안 된다. 이 파일도, 산출물도 stale 할 수 있다.)
-        private const string RunnerVersion = "2-golden";
+        private const string RunnerVersion = "3-refresh";
 
         private static double _nextPoll;
 
@@ -101,6 +101,21 @@ namespace Wassup.EditorTools
             {
                 Debug.Log("[SimTest] LegacyTraceV0 골든 재생성 기동 — 14 Play 세션 예정.");
                 LegacyTraceGoldenRunner.RegenerateGoldens();
+                return;
+            }
+
+            // 에디터는 **포커스를 받을 때만** 스크립트를 리컴파일한다. 원격/무인 진행에서는 그
+            // 클릭이 병목이라(유닛마다 1회) 여기서 직접 임포트를 돌린다. 이 폴은 **이미 로드된**
+            // 러너가 매초 실행하므로 새 코드가 아직 컴파일되지 않은 상태에서도 동작한다 —
+            // 그게 이 모드의 존재 이유다(신 모드를 신 코드로 부를 수는 없다는 순환의 탈출구).
+            //
+            // 성공하면 도메인 리로드가 일어나 러너가 다시 로드되며 신분증 파일의 갱신 시각이
+            // 바뀐다 = 호출자의 "리컴파일 완료" 신호. **컴파일이 실패하면 리로드가 없어 그 시각이
+            // 그대로**이므로, 호출자는 타임아웃을 성공으로 읽지 말고 로그의 `error CS` 를 봐야 한다.
+            if (head.Equals("Refresh", StringComparison.OrdinalIgnoreCase))
+            {
+                Debug.Log("[SimTest] AssetDatabase.Refresh — 스크립트 리컴파일 요청.");
+                AssetDatabase.Refresh(ImportAssetOptions.Default);
                 return;
             }
 

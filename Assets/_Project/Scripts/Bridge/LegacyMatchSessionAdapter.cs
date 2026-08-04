@@ -51,6 +51,13 @@ namespace Wassup.Bridge
             get
             {
                 var phase = ResolvePhase();
+                var gm = GameManager.Instance;
+                // unit 13-A3 — 코스트·쿨타임은 **번역으로 채운다**(사용자 결정: "지금 번역").
+                // 여기서 값을 만들지 않고 Mono 런타임을 미러링할 뿐이며, 소유권을 sim 으로 옮기는
+                // 것은 unit 15 다. 런타임이 없는 구간(씬 로드 전·아웃게임)은 미지원으로 신고한다 —
+                // 0 을 조용히 흘리면 HUD 가 코스트 0 을 그린다.
+                var cost = gm != null ? gm.CostRuntime : null;
+                var cooldown = gm != null ? gm.CooldownRuntime : null;
                 return new MatchReadModel(
                     tick: _bridge.HarnessTick,
                     battleClock: _bridge.BattleClock,
@@ -63,9 +70,13 @@ namespace Wassup.Bridge
                     // unit 14 가 채운다 — 현재 Bridge private + 뷰 독립 누적이라 값이 없다.
                     supportedScore: false, scoreKill: 0, goals: 0, effectiveLeakLimit: 0,
                     stressAccrued: 0, stressLimit: 0,
-                    // unit 15 가 sim 소유로 옮긴다 — 지금은 Mono 런타임이 권위라 미지원 표기.
-                    supportedCurrency: false, costCurrent: 0f, costMax: 0f,
-                    gaugeCurrent: 0, gaugeMax: 0);
+                    supportedCost: cost != null,
+                    costCurrent: cost != null ? cost.Current : 0f,
+                    costMax: cost != null ? cost.Max : 0f,
+                    costCurrentInt: cost != null ? cost.CurrentInt : 0,
+                    // 게이지는 DreamcatcherHandController 소유 — unit 16 까지 미지원.
+                    supportedGauge: false, gaugeCurrent: 0, gaugeMax: 0,
+                    anyPlacementCooldown: cooldown != null && cooldown.AnyActive);
             }
         }
 
@@ -263,6 +274,22 @@ namespace Wassup.Bridge
                 return false;
             }
             laneFirstSpawnSec = lanes;
+            return true;
+        }
+
+        // unit 13-A3 — id→정의 해석을 구현체가 소유한다(계약은 문자열 키만 안다). 해석기는
+        // Deploy 커맨드가 쓰는 것과 **같은 함수**라 뷰와 커맨드가 같은 카탈로그를 본다.
+        public bool TryGetPlacementCooldown(string unitDefId, out float remaining, out float fraction)
+        {
+            remaining = 0f;
+            fraction = 0f;
+            if (_disposed) return false;
+            var runtime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (runtime == null || !TryResolveUnitDef(unitDefId, out var unitData)) return false;
+
+            remaining = runtime.RemainingFor(unitData);
+            if (remaining <= 0f) return false;
+            fraction = runtime.Fraction(unitData);
             return true;
         }
 

@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Data;
 using Wassup.UI.Layout;
 
@@ -187,15 +188,18 @@ namespace Wassup.UI
                 _prevInt = -1;
                 return;
             }
-            var runtime = gameManager != null ? gameManager.CostRuntime : null;
-            if (runtime == null) return;
+            // unit 13-A3 — 코스트는 `CostRuntime` 직독에서 세션 읽기 모델로. `gameManager` 참조는
+            // `PhaseChanged` 구독 때문에 남는다(push → 이벤트 구독 전환은 bundle B).
+            if (!MatchSession.IsActive) return;
+            var rm = MatchSession.Current.ReadModel;
+            if (!rm.SupportedCost) return; // 미지원 구간에 0 을 그리지 않는다
 
-            int curInt = CostWellMath.DisplayInt(runtime.Current);
-            float fill = CostWellMath.WellFill(runtime.Current, runtime.Max);
-            bool atMax = runtime.Current >= runtime.Max;
+            int curInt = CostWellMath.DisplayInt(rm.CostCurrent);
+            float fill = CostWellMath.WellFill(rm.CostCurrent, rm.CostMax);
+            bool atMax = rm.CostCurrent >= rm.CostMax;
 
             ApplyFill(fill);
-            ApplyValue(curInt, runtime.Max);
+            ApplyValue(curInt, rm.CostMax);
             if (!_geometryPushed) { _geometryPushed = true; PushWellGeometry(); }
             UpdateWellFlair(fill); // 기포 + 림 글로우(시간 기반 stateless)
 
@@ -226,7 +230,7 @@ namespace Wassup.UI
                     PlayValuePunch();
                     // 다음 정수 도달 알림음 — 가득 찰수록 피치를 올려 "차오르는" 느낌.
                     float tickPitch = Mathf.Lerp(1f, 1.2f,
-                        runtime.Max > 1f ? Mathf.Clamp01(curInt / runtime.Max) : 0f);
+                        rm.CostMax > 1f ? Mathf.Clamp01(curInt / rm.CostMax) : 0f);
                     SoundManager.Instance?.PlayCostTick(tickPitch);
                 }
                 else

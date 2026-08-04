@@ -45,6 +45,15 @@ namespace Wassup.Core.Session
         // 필드에 저장하지 않는다. 값이 필요하면 그 프레임에 읽어 쓴다.
         bool TryGetSpawnAlertForecast(out ReadOnlySpan<float> laneFirstSpawnSec);
 
+        // 유닛 배치 쿨타임. false = 쿨타임 아님(remaining <= 0). fraction 은 남은 비율(1→0).
+        //
+        // **키가 `unitDefId` 문자열인 이유**: 구 `PlacementCooldownRuntime` 은
+        // `DefenderUnitData`(ScriptableObject) 인스턴스로 키잉한다. 계약에 엔진 타입을 넣지 않는
+        // 원칙(`SimCell` 이 `int2` 를 대신하는 것과 같은 이유)이라 문자열 id 로 좁히고, id→정의
+        // 해석은 구현체가 소유한다. 활성 쿨타임이 하나도 없는지는 `ReadModel.AnyPlacementCooldown`
+        // 으로 먼저 걸러 전 슬롯 순회를 건너뛴다.
+        bool TryGetPlacementCooldown(string unitDefId, out float remaining, out float fraction);
+
         // 매치 종료 통지. outcome 4종. 구독자는 결과·집계 화면.
         event Action<MatchOutcome> MatchEnded;
 

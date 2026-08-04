@@ -51,10 +51,33 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 |---|---|---|
 | **A1** | `MatchSession` 로케이터 + Bridge 공급 + `NextWaveDock`(폴링 5종) | ✅ 완료 |
 | **A2** | `SpawnAlertPresenter` forecast — `TryGetSpawnAlertForecast` 가 **캐시 배열 참조**를 넘긴다 → 세션은 `ReadOnlySpan<float>` 로 좁힌다 | ✅ 완료 |
-| **A3** | `CostDisplay` · `DefenderSelector` — 읽기 모델이 `SupportedCurrency=false` 이고 **쿨타임 표면이 아예 없다**(키별 조회라 필드가 아니라 메서드가 필요). unit 15 영역과 겹치므로 경계를 먼저 정한다 | 대기 |
+| **A3** | `CostDisplay` · `DefenderSelector` · `DefenderDragSlot` — 코스트·쿨타임 표면 신설 + 재배선 | ✅ 완료 |
 
 - **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
   **bundle B** 로 이관한다(스펙 초안의 분류 오류).
+
+### A3 의 통화·쿨타임 경계 (2026-08-04 사용자 결정: "지금 번역")
+
+어댑터가 `GameManager.{CostRuntime,CooldownRuntime}` 을 **번역해 읽기 모델을 지금 채운다**. 그 결과
+unit 15 의 일은 "필드를 만드는 것"이 아니라 **소유권을 sim 으로 옮기는 것**이 되고, 그때 뷰는 무변이다
+(뷰 재배선을 두 시점으로 쪼개지 않는 편이 82파일 작업의 성격에 맞다).
+
+- **플래그를 분리**했다: `SupportedCost`(A3 에서 true) / `SupportedGauge`(unit 16 까지 false).
+  하나로 묶으면 코스트를 채운 순간 게이지 0 이 "지원됨"으로 거짓 신고된다.
+- **코스트 값을 둘로 실었다**: `CostCurrent`(raw — 지불 판정 `CanAfford` = `_current >= amount`) +
+  `CostCurrentInt`(floor — 표시·부족분). 구 런타임이 두 규칙을 쓰므로 한 필드로 합치면 max 근처에서
+  판정이 1 씩 어긋난다.
+- **쿨타임은 메서드**다: `TryGetPlacementCooldown(unitDefId, out remaining, out fraction)`.
+  구 `PlacementCooldownRuntime` 은 `DefenderUnitData`(ScriptableObject)로 키잉하지만 계약에 엔진
+  타입을 넣지 않는다(`SimCell` 이 `int2` 를 대신하는 것과 같은 이유). id→정의 해석은 구현체가
+  소유하며 **Deploy 커맨드와 같은 해석기**(`TryResolveUnitDef`)라 뷰와 커맨드가 같은 카탈로그를 본다.
+  "하나라도 활성인가"는 스칼라라 `ReadModel.AnyPlacementCooldown` 으로 두어 전 유닛 0 일 때의
+  O(1) 스킵을 보존했다.
+- **폴백 방향이 두 곳에서 반대**인 것을 보존했다: `TryGetAffordableTutorialSlot` 은 미지원 시
+  `int.MinValue`(전부 탈락), affordability `Update` 는 `int.MaxValue`(전부 available — 코드에
+  "false-negative 회피"가 계약으로 적혀 있다). 통일하면 둘 중 하나가 뒤집힌다.
+- **쓰기는 A3 가 아니다**: `StartCooldown`(`DefenderSelector`) ·
+  `ResetToStart`/`ResetAll`/`BeginRegen`(`PlacementPhaseView`) 는 bundle C 로 남는다.
 - 각 묶음 후 **PlayMode 스모크**로 그 화면이 살아 있음을 확인한다(A: HUD 수치 갱신, B: 승패·집계
   연출, C: 배치·카드·웨이브 호출).
 - **드림캐쳐 손패는 C 에서 가장 무겁다** — 현재 `DreamcatcherHandController` 가 덱·게이지·부착

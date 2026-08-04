@@ -29,19 +29,36 @@ namespace Wassup.Core.Session
         public readonly int StressAccrued;
         public readonly int StressLimit;
 
-        // 통화 (unit 15 에서 sim 소유가 되면 sim 값으로 교체)
-        public readonly bool SupportedCurrency;
+        // 코스트 — unit 13-A3 부터 **번역으로 채운다**(`GameManager.CostRuntime` 미러).
+        // unit 15 의 일은 "필드를 만드는 것"이 아니라 **소유권을 sim 으로 옮기는 것**이고,
+        // 그때 뷰는 무변이다(사용자 결정 2026-08-04: "지금 번역").
+        public readonly bool SupportedCost;
         public readonly float CostCurrent;
         public readonly float CostMax;
+        // `CostRuntime.CurrentInt`(floor) 미러. **`CostCurrent` 와 용도가 다르다** —
+        // 지불 가능 판정은 raw 비교(`CanAfford` = `_current >= amount`)이고 표시·부족분은 floor 다.
+        // 두 값을 한 필드로 합치면 max 근처에서 판정이 1 씩 어긋난다.
+        public readonly int CostCurrentInt;
+
+        // 게이지는 `DreamcatcherHandController` 소유라 아직 미지원 — **코스트와 플래그를 분리**한다.
+        // 하나로 묶으면 코스트를 채운 순간 게이지 0 도 "지원됨"으로 거짓 신고된다.
+        public readonly bool SupportedGauge;
         public readonly int GaugeCurrent;
         public readonly int GaugeMax;
+
+        // 배치 쿨타임 — 활성 여부만 스칼라로. 유닛별 잔여는 키 조회라 세션 메서드
+        // (`TryGetPlacementCooldown`)가 서빙한다. 이 플래그가 false 면 소비자는 전 슬롯 순회를
+        // 건너뛴다(전 유닛 0 일 때 O(1) — 구 `PlacementCooldownRuntime.AnyActive` 와 같은 역할).
+        public readonly bool AnyPlacementCooldown;
 
         public MatchReadModel(
             int tick, double battleClock, MatchPhase phase, float timerRemaining,
             bool nextWaveAvailable, bool nextWaveHasNext, int nextWaveNumber, bool nextWaveClearReady,
             bool supportedScore, int scoreKill, int goals, int effectiveLeakLimit,
             int stressAccrued, int stressLimit,
-            bool supportedCurrency, float costCurrent, float costMax, int gaugeCurrent, int gaugeMax)
+            bool supportedCost, float costCurrent, float costMax, int costCurrentInt,
+            bool supportedGauge, int gaugeCurrent, int gaugeMax,
+            bool anyPlacementCooldown)
         {
             Tick = tick; BattleClock = battleClock; Phase = phase; TimerRemaining = timerRemaining;
             NextWaveAvailable = nextWaveAvailable; NextWaveHasNext = nextWaveHasNext;
@@ -49,8 +66,10 @@ namespace Wassup.Core.Session
             SupportedScore = supportedScore; ScoreKill = scoreKill; Goals = goals;
             EffectiveLeakLimit = effectiveLeakLimit;
             StressAccrued = stressAccrued; StressLimit = stressLimit;
-            SupportedCurrency = supportedCurrency; CostCurrent = costCurrent; CostMax = costMax;
-            GaugeCurrent = gaugeCurrent; GaugeMax = gaugeMax;
+            SupportedCost = supportedCost; CostCurrent = costCurrent; CostMax = costMax;
+            CostCurrentInt = costCurrentInt;
+            SupportedGauge = supportedGauge; GaugeCurrent = gaugeCurrent; GaugeMax = gaugeMax;
+            AnyPlacementCooldown = anyPlacementCooldown;
         }
     }
 

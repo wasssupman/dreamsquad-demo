@@ -82,6 +82,13 @@ namespace Wassup.Tests.EditMode
                 return false;
             }
 
+            public bool TryGetPlacementCooldown(string unitDefId, out float remaining, out float fraction)
+            {
+                remaining = 0f;
+                fraction = 0f;
+                return false;
+            }
+
             public event Action<MatchOutcome> MatchEnded;
             public void RaiseEnded(MatchOutcome outcome) => MatchEnded?.Invoke(outcome);
 

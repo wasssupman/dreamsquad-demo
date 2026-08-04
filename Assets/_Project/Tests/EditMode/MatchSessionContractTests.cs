@@ -119,19 +119,30 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void ReadModel_UnsupportedFlags_DefaultToFalse_SoViewsDoNotDrawZeros()
+        public void ReadModel_UnsupportedFlags_AreIndependent_SoViewsDoNotDrawZeros()
         {
-            // unit 12 시점에는 점수·통화가 미지원이다. 플래그 없이 0 을 흘리면 HUD 가 0 을 그린다 —
-            // 그래서 Supported* 가 계약이고, unit 14·15 가 true 로 바꾼다.
+            // 플래그 없이 0 을 흘리면 HUD 가 0 을 그린다 — 그래서 Supported* 가 계약이다.
+            // unit 13-A3 이 코스트를 번역으로 채웠고(SupportedCost), 점수는 unit 14 · 게이지는
+            // unit 16 이 채운다. **플래그가 분리돼 있어야** 코스트를 채운 순간 게이지 0 이
+            // "지원됨"으로 거짓 신고되지 않는다.
             var rm = new MatchReadModel(
                 tick: 1, battleClock: 0.5, phase: MatchPhase.Battle, timerRemaining: 10f,
                 nextWaveAvailable: true, nextWaveHasNext: true, nextWaveNumber: 2, nextWaveClearReady: false,
                 supportedScore: false, scoreKill: 0, goals: 0, effectiveLeakLimit: 0,
                 stressAccrued: 0, stressLimit: 0,
-                supportedCurrency: false, costCurrent: 0f, costMax: 0f, gaugeCurrent: 0, gaugeMax: 0);
-            Assert.IsFalse(rm.SupportedScore);
-            Assert.IsFalse(rm.SupportedCurrency);
+                supportedCost: true, costCurrent: 7.9f, costMax: 20f, costCurrentInt: 7,
+                supportedGauge: false, gaugeCurrent: 0, gaugeMax: 0,
+                anyPlacementCooldown: true);
+            Assert.IsFalse(rm.SupportedScore, "점수는 unit 14");
+            Assert.IsTrue(rm.SupportedCost, "코스트는 A3 에서 번역으로 채워졌다");
+            Assert.IsFalse(rm.SupportedGauge, "게이지는 unit 16 — 코스트와 같은 플래그를 쓰지 않는다");
             Assert.AreEqual(MatchPhase.Battle, rm.Phase);
+
+            // 지불 판정(raw)과 표시(floor)가 다른 값이라는 계약. 한 필드로 합치면 max 근처에서
+            // 판정이 1 씩 어긋난다.
+            Assert.AreEqual(7.9f, rm.CostCurrent, 0.0001f);
+            Assert.AreEqual(7, rm.CostCurrentInt);
+            Assert.IsTrue(rm.AnyPlacementCooldown);
         }
     }
 }
