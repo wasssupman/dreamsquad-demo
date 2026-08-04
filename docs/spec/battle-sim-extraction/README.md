@@ -1,8 +1,20 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — 청사진·판정표(units 7·9·10) 완료 ·
-unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 대기) · 머지 3 미착수**
+상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~14 완료, units 15~20 미착수**
+
+| unit | 상태 | 커밋 |
+|---|---|---|
+| 7·9·10 청사진·판정표 | 완료 | — |
+| 8 데이터 매핑(리뷰 보완 반영) | 완료 | — |
+| 11 선행 머지 1·2·3 | 완료 | `b0681da6` 에서 골든 parity 확인 |
+| 12 세션 파사드 | 완료 | — |
+| 13 소비자 재배선 (A1~C3) | 완료 | `1ce4407c` `cbd830c3` `0cd3e04c` `e588d6b5` `18ed2315` `a71e8088` `e41a30a4` `52454aa4` |
+| — 골든 게이트 복구 | 완료 | `6f1bf77f` (unit 3 결함 수리 — 로드아웃 벽시계 시드) |
+| 14 규칙 적출 ① 웨이브·승패·점수 | 완료 | `773e57b2` (골든 7종 byte diff 0) |
+| 15~20 | **미착수** | — |
+
 > M1 리뷰 판정과 재리뷰 게이트 6건은 [m1_review.md](m1_review.md) 가 정본이다.
+> 세션 인계는 [m1_unit13_handoff.md](m1_unit13_handoff.md) → [m1_unit14_handoff.md](m1_unit14_handoff.md).
 
 설계 정본: [`docs/plans/2026-08-03-battle-sim-extraction-design.md`](../../plans/2026-08-03-battle-sim-extraction-design.md) (v6 — Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰 수렴). 이 README는 그 계획의 실행 인덱스다. 근거·감사 상세는 설계 문서를 읽는다.
 
