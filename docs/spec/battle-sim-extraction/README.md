@@ -31,6 +31,7 @@
 
 | 파일 | 작업 구분 | 목적 |
 |---|---|---|
+| [m1_review.md](m1_review.md) | 리뷰 기록 | HEAD `c0a361cb` 기준 units 7~11 완료 판정 · Track A/B 발견사항 · 재검증 게이트 |
 | [7_session_contract_blueprint.md](7_session_contract_blueprint.md) | 청사진 ① | `IMatchSession` 계약 — 커맨드/receipt/이벤트 3분리/스냅샷/읽기 모델 스키마 (고스트 필드 포함) |
 | [8_data_mapping_blueprint.md](8_data_mapping_blueprint.md) | 청사진 ② | IComponentData 96 + IBufferElementData 21 → plain struct 대응표 + `RequireForUpdate` 35 게이트 이식 매트릭스 |
 | [9_tick_pipeline_blueprint.md](9_tick_pipeline_blueprint.md) | 청사진 ③ | order-capture 기반 틱 페이즈 순서도 + 동률 예외·병합 duration 정책 명문화 |
