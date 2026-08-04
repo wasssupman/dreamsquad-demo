@@ -41,7 +41,7 @@ namespace Wassup.EditorTools
         // 쓰기 전에 Temp/sim-test-runner.version 을 읽어 기대 버전인지 확인한다 — 에디터가 아직
         // 리컴파일하지 않았으면 이 파일이 옛 값이거나 갱신 시각이 낡아서 그 사실이 드러난다.
         // (파일 존재만 보고 판단하면 안 된다. 이 파일도, 산출물도 stale 할 수 있다.)
-        private const string RunnerVersion = "3-refresh";
+        private const string RunnerVersion = "4-reimport";
 
         private static double _nextPoll;
 
@@ -116,6 +116,23 @@ namespace Wassup.EditorTools
             {
                 Debug.Log("[SimTest] AssetDatabase.Refresh — 스크립트 리컴파일 요청.");
                 AssetDatabase.Refresh(ImportAssetOptions.Default);
+                return;
+            }
+
+            // 시트 런타임 임포트가 ScriptableObject 를 **메모리에서** 변조하면 디스크는 온전한데
+            // 그 세션의 `configHash` 가 바뀌어 **골든 검증이 세션 내내 불가**해진다. 실측
+            // (2026-08-05): 드림캐쳐 PlayMode 스위트 뒤 `normal` 두 실행의 configHash 가 서로,
+            // 또 커밋된 골든과도 달랐다(`c85c3208` / `bbdbcfd0` / 골든 `d3ded5d0`). 도메인 리로드는
+            // 듣지 않는다 — 에셋 인스턴스는 리로드를 넘어 살아남는다.
+            //
+            // 강제 재임포트로 디스크 값을 다시 읽어 기준선을 복원한다. 에디터 재시작의 대용이다.
+            if (head.Equals("ReimportData", StringComparison.OrdinalIgnoreCase))
+            {
+                const string dataRoot = "Assets/_Project/Data";
+                Debug.Log($"[SimTest] {dataRoot} 강제 재임포트 — 메모리 변조된 SO 를 디스크에서 재적재.");
+                AssetDatabase.ImportAsset(dataRoot,
+                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive);
+                Debug.Log("[SimTest] 재임포트 완료.");
                 return;
             }
 

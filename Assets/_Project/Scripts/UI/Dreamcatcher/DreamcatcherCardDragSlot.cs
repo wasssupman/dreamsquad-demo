@@ -2,6 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Data;
 
 namespace Wassup.UI
@@ -153,7 +154,9 @@ namespace Wassup.UI
             Vector2 ghostSize = slot.rect.rect.size;
             Sprite face = slot.art != null ? slot.art.sprite : null;
             var host = target;
-            CommitNow(() => _view.Controller.CommitAttach(entryId, host),
+            CommitNow(() => TryTargetSimId(host, out int hostSimId)
+                    && MatchSession.Send(seq =>
+                        MatchCommand.PlayCardAttach(seq, entryId, hostSimId)).Accepted,
                 () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
         }
 
@@ -308,7 +311,9 @@ namespace Wassup.UI
                     Vector2 ghostSize = slot.rect.rect.size;
                     Sprite face = slot.art != null ? slot.art.sprite : null;
                     var host2 = host;
-                    CommitNow(() => _view.Controller.CommitAttach(entryId, host),
+                    CommitNow(() => TryTargetSimId(host, out int hostSimId)
+                            && MatchSession.Send(seq =>
+                                MatchCommand.PlayCardAttach(seq, entryId, hostSimId)).Accepted,
                         () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
                     return;
                 }
@@ -325,7 +330,9 @@ namespace Wassup.UI
                     Vector2 mSize = slot.rect.rect.size;
                     Sprite mFace = slot.art != null ? slot.art.sprite : null;
                     var enemy2 = enemy;
-                    CommitNow(() => _view.Controller.CommitMarkEnemy(markEntryId, enemy),
+                    CommitNow(() => TryTargetSimId(enemy, out int enemySimId)
+                            && MatchSession.Send(seq =>
+                                MatchCommand.PlayCardMarkEnemy(seq, markEntryId, enemySimId)).Accepted,
                         () => _view.FlyCardToUnit(mStart, mSize, mFace, enemy2));
                     return;
                 }
@@ -359,7 +366,8 @@ namespace Wassup.UI
                     Sprite tFace = slot.art != null ? slot.art.sprite : null;
                     var tile2 = tile;
                     int tEntryId = slot.entryId;
-                    CommitNow(() => _view.Controller.CommitActiveTile(tEntryId, tile),
+                    CommitNow(() => MatchSession.Send(seq => MatchCommand.PlayCardActiveTile(
+                            seq, tEntryId, new SimCell(tile.x, tile.y))).Accepted,
                         () => _view.FlyCardToCell(tStart, tSize, tFace, tile2),
                         TilePulseCenter(tile));
                     return;
@@ -405,7 +413,11 @@ namespace Wassup.UI
             Vector2 pSize = pSlot.rect.rect.size;
             Sprite pFace = pSlot.art != null ? pSlot.art.sprite : null;
             var exit2 = exitTile;
-            CommitNow(() => _view.Controller.CommitActivePortal(entryId, entry, exitTile),
+            // 같은 셀 거절은 어댑터가 `Card_PortalSameCell` 로 갖고 있지만, 위 `_aimCell == entry`
+            // 조기 반환이 먼저 걸러 여기 도달하지 않는다(이중 판정 유지 — 사유 보존이 목적).
+            CommitNow(() => MatchSession.Send(seq => MatchCommand.PlayCardActivePortal(
+                    seq, entryId, new SimCell(entry.x, entry.y),
+                    new SimCell(exitTile.x, exitTile.y))).Accepted,
                 () => _view.FlyCardToCell(pStart, pSize, pFace, exit2),
                 TilePulseCenter(exitTile));
         }
@@ -416,6 +428,15 @@ namespace Wassup.UI
         // card-fly-to-target-absorb unit 0 — onSuccess 는 커밋 성공(ok) 시에만
         // 발화(실패/취소는 비용 0 · 연출 없음 계약 유지). 비행 발사점(슬롯 위치)·
         // 고스트 스프라이트는 commit() 이 손패를 소비하기 전에 호출부에서 캡처한다.
+        // unit 13-C3 — 카드 커맨드는 대상을 **SimEntityId** 로 지목한다(계약에 엔진 타입 금지).
+        // 해석 실패는 "지목 불가" 이므로 커밋 실패와 같은 자리로 접힌다 — 카드 잔류·무차감이라
+        // 기존 거절 계약과 결과가 같다.
+        private bool TryTargetSimId(Entity entity, out int simId)
+        {
+            simId = -1;
+            return _view != null && _view.Bridge != null && _view.Bridge.TryGetSimId(entity, out simId);
+        }
+
         private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null,
             Vector2? pulseCenterOverride = null)
         {

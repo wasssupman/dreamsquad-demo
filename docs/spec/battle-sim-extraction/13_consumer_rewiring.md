@@ -61,8 +61,8 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 | 조각 | 대상 | 상태 |
 |---|---|---|
 | **C1** | `ForceNextWave`(버튼) · `SetPaused`(MenuPopup — lease 소유 이전) | ✅ 완료 |
-| **C2** | `DefenderDragPlacementController` · `DirectionAimController` · `DefenderRelocationController` | 대기 |
-| **C3** | `DreamcatcherCardDragSlot` 4변종 — 컨트롤러는 발신자로만, 소유권은 unit 16 | 대기 |
+| **C2** | `DefenderDragPlacementController` · `DirectionAimController` · `DefenderRelocationController` | ✅ 완료 |
+| **C3** | `DreamcatcherCardDragSlot` 5곳(Attach ×2 · MarkEnemy · ActiveTile · ActivePortal) | ✅ 완료 |
 | — | `PlacementPhaseView.FinishPlacement` → **unit 14 로 이관**(아래 근거) | 이관 |
 
 **커맨드 순번 계약 — 순번은 세션이 소유한다.** `IMatchSession.NextClientSeq()` 가 세션이 다음에
@@ -103,6 +103,20 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 parity)이 이 필드 위에 세워지기 전에 부재를 명시했다. 라이브의 `_orderInTick` 리셋 축은 프레임이다.
 진짜 tick 을 라이브에 주는 것은 **unit 19(시계 정책)** 의 몫이다 — 여기서 `_battleClock / dt` 로
 지어내면 하네스와 라이브가 서로 다른 두 시계를 갖는다.
+
+**커맨드로 바꾸지 않은 채 남은 쓰기 3종과 이유** — 완료 기준의 grep 을 조급히 돌리지 않도록 명시:
+
+| 남은 호출 | 위치 | 이관 대상 |
+|---|---|---|
+| `ActivateDeployedDefender(cell, entity)` — **방향 없는** 활성화 3곳 | `DefenderDragPlacementController.RunDeployment` 꼬리 · `DefenderRelocationController` 비행 착지 2곳 | **unit 15** |
+| `CostRuntime.{ResetToStart,BeginRegen}` · `CooldownRuntime.ResetAll` | `PlacementPhaseView` | **unit 15** |
+| `CooldownRuntime.StartCooldown` | `DefenderSelector` | **unit 15** |
+| `bridge.StartBattle()` | `PlacementPhaseView.FinishPlacement` | **unit 14**(재시도 의미) |
+
+방향 없는 활성화를 옮기지 못하는 이유: 계약의 활성화 동사는 `SetDeployFacing` 하나이고 그것은 3인자
+오버로드(Facing 기록)로 번역된다 — 임의 방향을 넣으면 행동이 바뀐다. 없는 동사를 지어내는 대신,
+활성화 주체를 Deploy 의 `activationTick` 예약으로 옮기고 `SetDeployFacing` 을 방향 힌트로 격하하는
+unit 15 에 남겼다(어댑터 `SetFacing` 주석이 이미 그 경계를 명시해 뒀다).
 
 ### bundle C 의 검출기 문제 (2026-08-05 — 진행 전 반드시 읽을 것)
 
