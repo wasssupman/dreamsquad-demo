@@ -1273,6 +1273,9 @@ namespace Wassup.Bridge
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             _simEntityIdCounter = 0; // battle-sim-extraction unit 1 — per-match spawn-ordinal (SimEntityId)
+#if UNITY_EDITOR
+            ResetLegacyTraceEntityRegistry();
+#endif
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
             // loadout right after the clear above (single point, see SetDreamstones).
             ApplyPendingDreamstones();
@@ -1940,9 +1943,24 @@ namespace Wassup.Bridge
 
         public void ForceNextWave()
         {
-            if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return;
-            if (_nextWaveIndex >= _wavePlan.waves.Count)
+            if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null)
+            {
+#if UNITY_EDITOR
+                TraceLegacyCommand("ForceNextWave", false);
+#endif
                 return;
+            }
+            if (_nextWaveIndex >= _wavePlan.waves.Count)
+            {
+#if UNITY_EDITOR
+                TraceLegacyCommand("ForceNextWave", false);
+#endif
+                return;
+            }
+
+#if UNITY_EDITOR
+            TraceLegacyCommand("ForceNextWave", true);
+#endif
 
             // time-manager Unit 3 — 강제 웨이브의 triggerTimeSec 기준도 Battle 클럭이어야 한다.
             // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
@@ -2630,12 +2648,25 @@ namespace Wassup.Bridge
             _harnessSchedule?.RunDue(_harnessTick);
             if (_harnessRateManager == null || _harnessSimGroup == null) return;
             if (skillRuntime != null) skillRuntime.Tick(fixedDt);
+#if UNITY_EDITOR
+            // AdvanceBattleFrame drains the previous sim update's 16 Bridge channels.
+            SetLegacyTraceEventTick(_harnessTick - 1);
+#endif
             AdvanceBattleFrame(fixedDt);
             if (_harnessRateManager == null || _harnessSimGroup == null) return;
             _harnessRateManager.ArmStep(fixedDt);
             _harnessSimGroup.Update();
+#if UNITY_EDITOR
+            // Boss/Ultimate queues are the two post-sim drains and belong to this tick.
+            SetLegacyTraceEventTick(_harnessTick);
+#endif
             DrainBossLeapVisualEvents();
             DrainUltimateLeapVisualEvents();
+#if UNITY_EDITOR
+            // Final state is intentionally the live post-frame boundary: result may have
+            // been fixed during Advance, then the current PlayerLoop still runs one sim update.
+            RecordLegacyTraceTick(_harnessTick);
+#endif
             _harnessTick++;
         }
 
@@ -3239,6 +3270,9 @@ namespace Wassup.Bridge
                 // removal so DefenderDied can carry the entity (card-recovery key)
                 // and the SO (awakeningReward) regardless of the spine pool.
                 bool hasBinding = _defenderByTile.TryGetValue(cell, out var binding);
+#if UNITY_EDITOR
+                TraceLegacyEvent("DefenderDeath", evt, hasBinding ? binding.entity : Entity.Null);
+#endif
                 // beam unit 1 — 쏘던 유닛이 죽으면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 즉시 끊는다.
                 if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.Item1);
                 if (spineUnitPool != null && hasBinding)
@@ -3300,6 +3334,9 @@ namespace Wassup.Bridge
             _dcFiredScratch.Clear();
             while (_dcTriggerFiredQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("DcTriggerFired", evt);
+#endif
                 if (!_dcFiredScratch.Add(evt.host)) continue;
                 if (unitOverheadUiLayer != null) unitOverheadUiLayer.PulseCards(evt.host);
                 bool impactReady = !_dcProcLastImpact.TryGetValue(evt.host, out float last)
@@ -3359,6 +3396,9 @@ namespace Wassup.Bridge
             if (!_knockupVisualQueue.IsCreated) return;
             while (_knockupVisualQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("KnockupVisual", evt);
+#endif
                 if (evt.durationSec <= 0f || evt.height <= 0f) continue;
                 if (spineUnitPool != null && spineUnitPool.TryGet(evt.target, out var view) && view != null)
                     view.PlayKnockupHop(evt.durationSec, evt.height);
@@ -3371,6 +3411,9 @@ namespace Wassup.Bridge
             var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("ShieldBreak", evt);
+#endif
                 // use-flow unit 3 — OnShieldBreak/피격트리거 payload 실행 = 부착 카드가 일한
                 // 순간. 이 채널은 이미 host 를 실어오므로 신규 채널 없이 펄스가 공짜다.
                 if (evt.payload != Wassup.Data.DcPayloadKind.None && unitOverheadUiLayer != null)
@@ -3501,6 +3544,9 @@ namespace Wassup.Bridge
             if (!_unitAttackVisualQueue.IsCreated) return;
             while (_unitAttackVisualQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("UnitAttackVisual", evt);
+#endif
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
                 spineUnitPool?.NotifyAttack(evt.attacker, targetWorld, evt.attackAnimPeriod);
 
@@ -3612,6 +3658,9 @@ namespace Wassup.Bridge
             var logger = GameManager.Instance?.Logger;
             while (_attackOutputLogQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("AttackOutputLog", evt);
+#endif
                 if (logger == null) continue;
                 var defData = FindDefenderData(evt.attacker);
                 var sourceUnit = defData != null ? defData.displayName : "<unknown>";
@@ -3670,6 +3719,9 @@ namespace Wassup.Bridge
             if (!_projectileHitEventQueue.IsCreated) return;
             while (_projectileHitEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("ProjectileHit", evt);
+#endif
                 if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
                 var data = _projectileDataByIndex[evt.dataIndex];
                 // Visual routing: authored hitPrefab wins (GA impact); a prefab-less
@@ -3700,11 +3752,21 @@ namespace Wassup.Bridge
         private void DrainHealAppliedEvents()
         {
             if (!_healAppliedEventQueue.IsCreated) return;
-            if (vfxSpawner == null) { _healAppliedEventQueue.Clear(); return; }
+            if (vfxSpawner == null)
+            {
+#if UNITY_EDITOR
+                if (_legacyTraceRecorder == null) { _healAppliedEventQueue.Clear(); return; }
+#else
+                _healAppliedEventQueue.Clear(); return;
+#endif
+            }
             while (_healAppliedEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("HealApplied", evt);
+#endif
                 if (evt.amount <= 0f) continue;
-                vfxSpawner.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
+                vfxSpawner?.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
             }
         }
 
@@ -3713,9 +3775,21 @@ namespace Wassup.Bridge
         private void DrainShieldGrantedEvents()
         {
             if (!_shieldGrantedEventQueue.IsCreated) return;
-            if (vfxSpawner == null) { _shieldGrantedEventQueue.Clear(); return; }
+            if (vfxSpawner == null)
+            {
+#if UNITY_EDITOR
+                if (_legacyTraceRecorder == null) { _shieldGrantedEventQueue.Clear(); return; }
+#else
+                _shieldGrantedEventQueue.Clear(); return;
+#endif
+            }
             while (_shieldGrantedEventQueue.TryDequeue(out var evt))
-                vfxSpawner.SpawnShieldGranted(new Vector3(evt.position.x, evt.position.y, evt.position.z));
+            {
+#if UNITY_EDITOR
+                TraceLegacyEvent("ShieldGranted", evt);
+#endif
+                vfxSpawner?.SpawnShieldGranted(new Vector3(evt.position.x, evt.position.y, evt.position.z));
+            }
         }
 
         // Enemy-only floating damage numbers. DamageApplicationSystem enqueues one
@@ -3725,9 +3799,19 @@ namespace Wassup.Bridge
             if (!_damageNumberEventQueue.IsCreated) return;
             bool hasNumbers = damageNumberSpawner != null;
             bool hasBars = !UnifiedOverheadActive && enemyHitBarSpawner != null;
-            if (!hasNumbers && !hasBars) { _damageNumberEventQueue.Clear(); return; }
+            if (!hasNumbers && !hasBars)
+            {
+#if UNITY_EDITOR
+                if (_legacyTraceRecorder == null) { _damageNumberEventQueue.Clear(); return; }
+#else
+                _damageNumberEventQueue.Clear(); return;
+#endif
+            }
             while (_damageNumberEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("DamageNumber", evt);
+#endif
                 if (evt.amount <= 0f) continue;
                 var simPos = new Vector3(evt.position.x, evt.position.y, evt.position.z);
                 if (hasNumbers)
@@ -3851,6 +3935,9 @@ namespace Wassup.Bridge
             if (!_enemyKilledEventQueue.IsCreated) return;
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("EnemyKilled", evt);
+#endif
                 scoreHud?.OnEnemyKilled(evt.killScore);
                 // battle-score-formula unit 2 — 최종 점수용 누적.
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
@@ -3970,6 +4057,9 @@ namespace Wassup.Bridge
 
             while (_meteorBarrageRequestQueue.TryDequeue(out var req))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("MeteorBarrageRequest", req);
+#endif
                 if (walk.Count == 0) continue;
                 int shots = math.min(req.meteorCount, walk.Count);
                 chosen.Clear();
@@ -4019,7 +4109,11 @@ namespace Wassup.Bridge
         private void AttachSimEntityId(Entity entity)
         {
             if (entity == Entity.Null) return;
-            _em.AddComponentData(entity, new SimEntityId { value = _simEntityIdCounter++ });
+            int simId = _simEntityIdCounter++;
+            _em.AddComponentData(entity, new SimEntityId { value = simId });
+#if UNITY_EDITOR
+            RegisterLegacyTraceEntity(entity, simId);
+#endif
         }
 
         private Entity SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
@@ -4908,6 +5002,9 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("GoalReached", evt);
+#endif
                 enemyViewPool?.Despawn(evt.entity);
                 spineUnitPool?.Despawn(evt.entity);
                 // 살찌운 제물 — 표식 악몽 유출: 무보상 회수. 패배 트리거의 조기 return 시
@@ -4926,6 +5023,9 @@ namespace Wassup.Bridge
                     _resultShown = true;
                     _running = false;
                     var score = CalculateBattleScore(defeated: true);
+#if UNITY_EDITOR
+                    CaptureLegacyTraceResult("defeat", score);
+#endif
                     int playerScore = score.Total;
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
@@ -4953,6 +5053,9 @@ namespace Wassup.Bridge
             // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
             // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
             var score = CalculateBattleScore(defeated: false);
+#if UNITY_EDITOR
+            CaptureLegacyTraceResult("victory_timeout", score);
+#endif
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
@@ -4970,6 +5073,9 @@ namespace Wassup.Bridge
             _resultShown = true;
             _running = false;
             var score = CalculateBattleScore(defeated: false);
+#if UNITY_EDITOR
+            CaptureLegacyTraceResult("victory", score);
+#endif
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
@@ -6522,6 +6628,9 @@ namespace Wassup.Bridge
             if (!_hazardRuntimeEventQueue.IsCreated) return;
             while (_hazardRuntimeEventQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("HazardRuntime", evt);
+#endif
                 string eventType = evt.eventType == HazardRuntimeEventType.ZoneApply ? "zone_apply" : "dot_damage";
                 GameManager.Instance?.Logger?.RecordHazard(new Logging.HazardLog
                 {
@@ -6542,6 +6651,9 @@ namespace Wassup.Bridge
             if (!_hazardSpawnRequestQueue.IsCreated) return;
             while (_hazardSpawnRequestQueue.TryDequeue(out var req))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("HazardSpawnRequest", req);
+#endif
                 if (!_em.Exists(req.caster)) continue;
 
                 if (req.kind == HazardCastKind.Zone)
@@ -6576,6 +6688,9 @@ namespace Wassup.Bridge
             if (!_hazardDestroyedQueue.IsCreated) return;
             while (_hazardDestroyedQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("HazardDestroyed", evt);
+#endif
                 BlockingHazardSO so = null;
                 if (evt.hazardSoIndex >= 0 && evt.hazardSoIndex < _blockingHazardSoRegistry.Count)
                     so = _blockingHazardSoRegistry[evt.hazardSoIndex];

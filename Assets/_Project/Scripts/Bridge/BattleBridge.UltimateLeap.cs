@@ -76,6 +76,9 @@ namespace Wassup.Bridge
             if (!_ultimateLeapVisualQueue.IsCreated) return;
             while (_ultimateLeapVisualQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("UltimateLeapVisual", evt);
+#endif
                 if (evt.entity == Entity.Null || !_em.Exists(evt.entity)) continue;
                 if (evt.kind == UltimateLeapVisualKind.Ascend)
                 {

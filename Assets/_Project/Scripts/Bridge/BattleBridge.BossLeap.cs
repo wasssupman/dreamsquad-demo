@@ -112,6 +112,9 @@ namespace Wassup.Bridge
             if (!_bossLeapVisualQueue.IsCreated) return;
             while (_bossLeapVisualQueue.TryDequeue(out var evt))
             {
+#if UNITY_EDITOR
+                TraceLegacyEvent("BossLeapVisual", evt);
+#endif
                 if (evt.entity == Entity.Null || !_em.Exists(evt.entity)) continue;
                 // 키가 있으면 이미 비행 중 — 무시(경계 동시 관통 방어).
                 if (_enemyViewOverride.ContainsKey(evt.entity)) continue;
