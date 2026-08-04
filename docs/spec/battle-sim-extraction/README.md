@@ -23,6 +23,20 @@
 | [5_handoff_summary.md](5_handoff_summary.md) | 인계 문서 | 클론 세션용 헛발 방지 + 레포 함정 |
 | [6_decision_record.md](6_decision_record.md) | 결정 기록 | 기각 대안·자기 철회·재론 조건 (ADR) — 재론 전 필독 |
 
+## 작업 단위 목록 (M1 — seam 선행 적출)
+
+> 분해 원칙: 청사진(7~9)은 **3장 캡·1주 timebox**(설계 정본 M1-1). 11+ 상세 unit 은
+> 청사진이 확정한 계약 위에서 작성한다 — 지금 쓰면 추측 스펙이 된다. CLAUDE.md
+> 제약 1~4 의 정식 개정은 **첫 구현 unit(11) 커밋**에서 수행한다(위 이행표 계약).
+
+| 파일 | 작업 구분 | 목적 |
+|---|---|---|
+| [7_session_contract_blueprint.md](7_session_contract_blueprint.md) | 청사진 ① | `IMatchSession` 계약 — 커맨드/receipt/이벤트 3분리/스냅샷/읽기 모델 스키마 (고스트 필드 포함) |
+| [8_data_mapping_blueprint.md](8_data_mapping_blueprint.md) | 청사진 ② | IComponentData 96 + IBufferElementData 21 → plain struct 대응표 + `RequireForUpdate` 35 게이트 이식 매트릭스 |
+| [9_tick_pipeline_blueprint.md](9_tick_pipeline_blueprint.md) | 청사진 ③ | order-capture 기반 틱 페이즈 순서도 + 동률 예외·병합 duration 정책 명문화 |
+| [10_salvage_matrix.md](10_salvage_matrix.md) | 판정표 | 시스템 44 · 채널 27 · Bridge 서브시스템 ≈60건 conform/adapt/rewrite/discard |
+| 11+ (청사진 확정 후 분해) | 구현 | adapter(유일 drain)·소비자 재배선·Bridge 매치 규칙 적출(선행 머지 3건 포함)·카드 트랜잭션 원자화·pause/slow-mo 시계 정책·sim lib 이식(맥락 4)·커맨드로그 이중 기록·A/B parity+성능 게이트(ARM64 IL2CPP p95/p99)+스왑·RTT 150ms 수용 리뷰 — 설계 정본 §2 M1 순서 |
+
 ## M0 종료 판정 (2026-08-04)
 
 - units 0~4를 각각 독립 커밋으로 구현했다: `8795ac3c` → `3e7b33f5` → `cc04bc19` → `11902d32` → `c0f7bd4f`.
