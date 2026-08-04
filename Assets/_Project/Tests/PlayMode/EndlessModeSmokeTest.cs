@@ -54,11 +54,13 @@ namespace Wassup.Tests.PlayMode
             int poolCount = (int)pool.GetType().GetProperty("Count").GetValue(pool);
             Assert.AreEqual(6, poolCount, "mapPool.Count 불변(랜덤/토너먼트 선택 회귀 0)");
 
-            // (4) 배틀 시작 — _wavePlan 은 StartBattle 에서 빌드된다.
+            // (4) 배틀 시작 — 웨이브 플랜은 StartBattle 에서 빌드된다.
             bridge.StartBattle();
 
             // (2) 10초 고정간격 30웨이브 (StartBattle 이후 조회)
-            var plan = GetField(bridge, "_wavePlan");
+            // unit 14 — 플랜 소유자가 `_waveSchedule` 로 이사했다.
+            var schedule = GetField(bridge, "_waveSchedule");
+            var plan = GetPublic(schedule, "Plan");
             var waves = (IList)GetPublic(plan, "waves");
             Assert.AreEqual(30, waves.Count, "30 웨이브");
             float interval = (float)GetPublic(plan, "waveIntervalSec");
@@ -74,9 +76,11 @@ namespace Wassup.Tests.PlayMode
             float start = Time.unscaledTime;
             for (int f = 0; f < 30000; f++)
             {
-                int leaks = (int)GetField(bridge, "_goalReachedCount");
+                // unit 14 — 유출·결과 래치 소유자가 `_outcome` 으로 이사했다.
+                var rules = GetField(bridge, "_outcome");
+                int leaks = (int)GetPublic(rules, "GoalReachedCount");
                 bool running = (bool)GetField(bridge, "_running");
-                bool shown = (bool)GetField(bridge, "_resultShown");
+                bool shown = (bool)GetPublic(rules, "ResultShown");
                 if (running) maxLeaksWhileAlive = Mathf.Max(maxLeaksWhileAlive, leaks);
 
                 if (shown)
@@ -128,11 +132,14 @@ namespace Wassup.Tests.PlayMode
             return f.GetValue(o);
         }
 
+        // 필드와 프로퍼티를 모두 읽는다 — unit 14 이후 규칙 모듈의 상태는 프로퍼티로 노출된다.
         private static object GetPublic(object o, string name)
         {
             var f = o.GetType().GetField(name);
-            Assert.IsNotNull(f, $"public field '{name}' on {o.GetType().Name}");
-            return f.GetValue(o);
+            if (f != null) return f.GetValue(o);
+            var p = o.GetType().GetProperty(name);
+            Assert.IsNotNull(p, $"public field/property '{name}' on {o.GetType().Name}");
+            return p.GetValue(o);
         }
     }
 }

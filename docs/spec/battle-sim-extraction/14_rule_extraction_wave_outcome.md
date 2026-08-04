@@ -40,3 +40,56 @@ salvage 판정표 §3 의 sim 규칙 클러스터 3개:
 - 읽기 모델에서 점수·유출·스트레스가 **실제 값**으로 서빙되고, `ScoreHudView` 가 자체 누적이 아니라
   그 값을 그린다(PlayMode 스모크로 HUD 수치 일치 확인).
 - Bridge 에서 위 3클러스터 멤버 0(grep) — 남은 것은 호출과 뷰 통지뿐.
+
+## 구현 결과 (2026-08-05)
+
+### 만든 것
+
+`Assets/_Project/Scripts/Sim/Match/` — `Wassup.Runtime` asmdef 안이지만 **`UnityEngine` 을 직접
+`using` 하지 않는다**. 그 선이 unit 17 asmdef 분리의 출발점이다.
+
+| 타입 | 소유 상태 | 성격 |
+|---|---|---|
+| `MatchWaveSchedule` | 플랜·인덱스·`_waveTimeShift`·대기열·예고·클리어 래치 | 스케줄 규칙 |
+| `MatchOutcomeRules` | 유출·선불차감·킬점수·결과 래치·제한시간 | 승패·점수 규칙 |
+| `MatchOutcomeNames` | — | enum → 기존 로그 문자열 |
+
+두 모듈 모두 **부작용이 없다**: 로그·HUD·연출·엔티티 생성을 하나도 하지 않고 판정만 돌려준다.
+새로 큐잉된 웨이브는 `QueuedWaveNotice` 로 나가고 서술(`RecordWaveEvent`·`Debug.Log`)은 Bridge 가 한다.
+
+### 설계 결정 3개
+
+1. **`MatchOutcome` enum 을 신설하지 않았다.** unit 12 가 세션 계약에 이미 정의해 뒀고
+   (`Wassup.Core.Session.MatchOutcome`, 4종 동일), 규칙이 그 어휘로 결과를 내야 세션 이벤트·
+   커맨드로그·리플레이가 한 어휘를 쓴다. 처음엔 모르고 중복 정의했다가 `CS0104` 로 드러났다.
+2. **`TryInitializeGeneratedWaves` 는 규칙이 아니라 로더라서 Bridge 에 남겼다** —
+   `ResolveAndInitializeWavePlan()` 으로 개명. 하는 일이 SO 해석(작성 플랜 → seed → legacy
+   fall-through)과 로거 통지뿐이고, 고른 **결과**(`GeneratedWavePlan`)만 모듈에 넘긴다. 규칙 안으로
+   SO 를 끌고 들어가면 sim lib 이 에셋 계층을 물고 온다. 이 함수가 unit 18 의 데이터 seam 이다.
+3. **`ConcludeMatch` 로 종료 3종을 한 경로로 접었다.** 버팀 승리가 `BeginTally` 에 리터럴 `0f` 를
+   넘기던 분기는 제거했다 — 그 판정 조건이 `clock >= duration` 이라 `RemainingBattleSeconds` 가
+   정확히 0 을 주므로 **같은 값**이다.
+
+### 부수 소득 — 테스트가 씬을 버렸다
+
+규칙이 plain 객체가 되면서 웨이브 테스트 4종(20건)이 재작성됐다:
+
+- `WaveForceRescheduleTests` · `WaveSpawnLeadInTests` — `BattleBridge`·`GameObject`·리플렉션 **전부
+  제거**. private 필드 3개를 주입하고 private 메서드를 리플렉션으로 부르던 픽스처가 그냥 `new` 다.
+- `SpawnAlertForecastTests` — `laneCount` 가 plain 인자가 되어 **레인 수만을 위해 만들던
+  `NativeArray` 맵 2개(+Dispose)가 사라졌다.** `_running` 게이트만 Bridge 소유라 그 1건은 남겼다.
+- `NextWaveClearReadyTests` — **Bridge 에 남는다.** 검증 대상이 "대기열(모듈) + 생존 적(ECS 질의)의
+  합집합" 이라 두 소유자가 만나는 지점이 곧 Bridge 다. 대신 상태 주입을 `_waveSchedule` 의 공개
+  API 로 바꿔 픽스처가 규칙을 우회하지 않게 했고, 인덱스 주입 대신 실제 큐잉으로 도달시킨다.
+
+### 남긴 것 (B2 — 다음 작업 단위)
+
+`ScoreHudView.SetLeakStatus` push→pull 역전, `ScoreTallyView.Play`, `ResultScreen.ShowVictory/
+ShowDefeat` 는 옮기지 않았다. 킬 점수는 이 unit 에서 정본이 뒤집혔지만(아래), 유출 배지·연출·결과
+화면은 **뷰 소유권** 문제라 한 묶음으로 다루는 것이 맞다(`13_consumer_rewiring.md` B2).
+
+**킬 점수 정본 역전(이 unit 에서 완료)**: `ScoreHudView` 가 `SyncScoreFromSession()` 으로 매 프레임
+`ReadModel.ScoreKill` 을 따라간다. `AddScore` 누적을 지우지 않고 **덮어쓰기**로 둔 이유가 둘 —
+① 세션 없는 경로(EditMode 픽스처·툴 씬)에서는 누적이 유일한 값이다, ② 두 값이 어긋나면 정본이
+이겨 조용히 갈리는 대신 즉시 수렴한다. **Battle 구간에서만** 동기화한다(`Tally`→`MatchPhase.Ended`):
+연출은 시간·스트레스 축을 킬 점수 위에 더해 올리므로 계속 동기화하면 합산이 안 보인다.

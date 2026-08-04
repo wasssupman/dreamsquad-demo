@@ -153,19 +153,20 @@ namespace Wassup.Tests.PlayMode
 
         private static Entity SpawnEnemy(BattleBridge bridge, AttackUnitData unit)
         {
-            // SpawnUnit 은 private (PendingSpawnEntry 도 private nested) — 리플렉션으로 실제
-            // 스폰 경로를 그대로 탄다. 직접 엔티티를 조립하면 outputs/EnemyTargetFilter bake 를
-            // 테스트가 복제하게 되어 정작 검증하려는 배선을 우회한다.
-            var bridgeType = typeof(BattleBridge);
-            var pendingType = bridgeType.GetNestedType("PendingSpawnEntry", BindingFlags.NonPublic);
-            var pending = System.Activator.CreateInstance(pendingType);
-            pendingType.GetField("entry").SetValue(pending,
-                new SpawnEntry { unitType = unit, spawnIndex = 0, triggerTimeSec = 0f });
-            pendingType.GetField("deckIndex").SetValue(pending, 0);
+            // SpawnUnit 은 private — 리플렉션으로 실제 스폰 경로를 그대로 탄다. 직접 엔티티를
+            // 조립하면 outputs/EnemyTargetFilter bake 를 테스트가 복제하게 되어 정작 검증하려는
+            // 배선을 우회한다.
+            // battle-sim-extraction unit 14 — 대기열 항목 타입은 `MatchWaveSchedule` 로 이사했다
+            // (더는 BattleBridge 의 nested type 이 아니다).
+            var pending = new Wassup.Sim.Match.MatchWaveSchedule.PendingSpawnEntry
+            {
+                entry = new SpawnEntry { unitType = unit, spawnIndex = 0, triggerTimeSec = 0f },
+                deckIndex = 0,
+            };
 
             var before = SnapshotAttackers();
-            bridgeType.GetMethod("SpawnUnit", BindingFlags.NonPublic | BindingFlags.Instance)
-                      .Invoke(bridge, new[] { pending });
+            typeof(BattleBridge).GetMethod("SpawnUnit", BindingFlags.NonPublic | BindingFlags.Instance)
+                      .Invoke(bridge, new object[] { pending });
             foreach (var e in SnapshotAttackers())
                 if (!before.Contains(e)) return e;
             return Entity.Null;

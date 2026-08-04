@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
-using Unity.Collections;
-using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.EditMode
 {
@@ -15,7 +14,10 @@ namespace Wassup.Tests.EditMode
     //   • lane 별 시각은 실스폰과 동일(같은 base·같은 lane 산식).
     //   • 마지막 lane 스폰이 지나면 예고가 사라진다.
     //
-    // Fixture 는 WaveForceRescheduleTests 와 같은 리플렉션 격리 + laneCount 를 위한 최소 맵.
+    // battle-sim-extraction unit 14 — 예고는 `MatchWaveSchedule` 소유가 됐다. laneCount 가 plain
+    // 인자라 **레인 수만을 위해 NativeArray 맵을 만들던 픽스처가 사라졌다**(Allocator.Persistent
+    // 두 개 + Dispose 포함). 전투 중 여부(`_running`) 게이트만 Bridge 쪽에 남아 마지막 테스트가
+    // 그것을 따로 덮는다.
     public class SpawnAlertForecastTests
     {
         private const float Interval = 10f;
@@ -23,57 +25,42 @@ namespace Wassup.Tests.EditMode
         private const float Spacing = 1f;
         private const int Lanes = 3;
 
-        private GameObject _go;
-        private BattleBridge _bridge;
+        private MatchWaveSchedule _schedule;
         private AttackUnitData _a;
         private AttackUnitData _b;
-        private GeneratedMap _map;
 
         [SetUp]
         public void SetUp()
         {
             _a = CreateUnit("A");
             _b = CreateUnit("B");
-
-            _go = new GameObject("BattleBridge_SpawnAlertTest");
-            _bridge = _go.AddComponent<BattleBridge>();
-
-            // laneCount 는 _generatedMap.spawns.Length 에서 온다. tiles+spawns 만 있으면 IsCreated.
-            _map = new GeneratedMap
-            {
-                gridSize = new int2(4, 4),
-                tiles = new NativeArray<MapTileType>(16, Allocator.Persistent),
-                spawns = new NativeArray<int2>(Lanes, Allocator.Persistent),
-            };
-            for (int i = 0; i < Lanes; i++) _map.spawns[i] = new int2(i, 0);
-
-            var waves = new List<GeneratedWave>();
-            for (int i = 0; i < 4; i++)
-                waves.Add(new GeneratedWave(i, i * Interval, _a, 2, _b, 2));
-
-            SetField(_bridge, "_wavePlan", new GeneratedWavePlan(
-                seed: 1, generatorVersion: 2, timerDurationSec: 40f,
-                waveIntervalSec: Interval, intraWaveSpacingSec: Spacing, waves: waves,
-                spawnLeadInSec: LeadIn));
-            SetField(_bridge, "_generatedMap", _map);
-            SetField(_bridge, "_usingGeneratedWaves", true);
-            SetField(_bridge, "_running", true);
+            _schedule = new MatchWaveSchedule();
+            _schedule.Initialize(BuildPlan(), authored: false);
         }
 
         [TearDown]
         public void TearDown()
         {
-            _map.Dispose();
-            if (_go != null) Object.DestroyImmediate(_go);
             if (_a != null) Object.DestroyImmediate(_a);
             if (_b != null) Object.DestroyImmediate(_b);
+        }
+
+        private GeneratedWavePlan BuildPlan()
+        {
+            var waves = new List<GeneratedWave>();
+            for (int i = 0; i < 4; i++)
+                waves.Add(new GeneratedWave(i, i * Interval, _a, 2, _b, 2));
+            return new GeneratedWavePlan(
+                seed: 1, generatorVersion: 2, timerDurationSec: 40f,
+                waveIntervalSec: Interval, intraWaveSpacingSec: Spacing, waves: waves,
+                spawnLeadInSec: LeadIn);
         }
 
         // 큐잉 전에는 예고가 없다(배틀 시작 직후 프레임).
         [Test]
         public void NoQueuedWave_HasNoForecast()
         {
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out var first), "큐잉 전 예고");
+            Assert.IsFalse(_schedule.TryGetSpawnAlertForecast(0f, out var first), "큐잉 전 예고");
             Assert.IsNull(first);
         }
 
@@ -82,11 +69,10 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void WaveOne_GetsForecast_FromQueueTime()
         {
-            QueueDueWaves(0f);
+            _schedule.QueueDueWaves(0f, Lanes, null);
 
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out float clock, out var first),
+            Assert.IsTrue(_schedule.TryGetSpawnAlertForecast(0f, out var first),
                 "Wave 1 도 예고를 받아야 한다");
-            Assert.AreEqual(0f, clock, 0.0001f);
             Assert.AreEqual(Lanes, first.Length, "lane 수");
             // 웨이브 0 엔트리 4개: base 2 에서 spacing 1 → 2,3,4,5. lane = deckIndex % 3 = 0,1,2,0.
             Assert.AreEqual(2f, first[0], 0.0001f);
@@ -94,16 +80,15 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(4f, first[2], 0.0001f);
         }
 
-        // 당긴 웨이브도 같은 경로(QueueWave)를 지나므로 예고를 받는다. unit 1 의 "강제 호출은
-        // 예고 없이 즉시 스폰" 계약은 폐기됐다.
+        // 당긴 웨이브도 같은 큐잉 경로를 지나므로 예고를 받는다. unit 1 의 "강제 호출은 예고 없이
+        // 즉시 스폰" 계약은 폐기됐다.
         [Test]
         public void ForcedWave_GetsForecast()
         {
-            QueueDueWaves(0f);
-            SetBattleClock(3f);
-            _bridge.ForceNextWave();
+            _schedule.QueueDueWaves(0f, Lanes, null);
+            Assert.IsTrue(_schedule.TryForceNextWave(3f, Lanes, null));
 
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out _, out var first),
+            Assert.IsTrue(_schedule.TryGetSpawnAlertForecast(3f, out var first),
                 "당긴 웨이브도 예고를 받아야 한다");
             float earliest = float.MaxValue;
             for (int i = 0; i < first.Length; i++)
@@ -115,39 +100,40 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void ForecastSurvivesUntilTheLastLaneSpawn()
         {
-            QueueDueWaves(0f);   // lane 시각 2 / 3 / 4
+            _schedule.QueueDueWaves(0f, Lanes, null);   // lane 시각 2 / 3 / 4
 
-            SetBattleClock(3.5f);
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out _, out _),
+            Assert.IsTrue(_schedule.TryGetSpawnAlertForecast(3.5f, out _),
                 "아직 lane 2(4초)가 남았다");
-
-            SetBattleClock(4.1f);
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out _),
+            Assert.IsFalse(_schedule.TryGetSpawnAlertForecast(4.1f, out _),
                 "마지막 lane 스폰이 지나면 예고가 사라진다");
         }
 
-        // 전투가 끝나면 즉시 끊긴다(프레젠터가 잔상 없이 정리하는 근거).
+        // 전투가 끝나면 즉시 끊긴다(프레젠터가 잔상 없이 정리하는 근거). 이 게이트만 Bridge 소유라
+        // 스케줄에 플랜을 주입한 실제 Bridge 로 확인한다.
         [Test]
         public void NotRunning_HasNoForecast()
         {
-            QueueDueWaves(0f);
-            SetField(_bridge, "_running", false);
+            var go = new GameObject("BattleBridge_SpawnAlertRunningGate");
+            try
+            {
+                var bridge = go.AddComponent<BattleBridge>();
+                var schedule = (MatchWaveSchedule)FindField(bridge, "_waveSchedule").GetValue(bridge);
+                schedule.Initialize(BuildPlan(), authored: false);
+                schedule.QueueDueWaves(0f, Lanes, null);
 
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out _));
+                FindField(bridge, "_running").SetValue(bridge, true);
+                Assert.IsTrue(bridge.TryGetSpawnAlertForecast(out _, out _), "전투 중에는 서빙한다");
+
+                FindField(bridge, "_running").SetValue(bridge, false);
+                Assert.IsFalse(bridge.TryGetSpawnAlertForecast(out _, out _), "전투가 끝나면 끊긴다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
+            }
         }
 
         // ---- helpers ----
-
-        private void QueueDueWaves(float elapsedSec)
-        {
-            SetBattleClock(elapsedSec);
-            var mi = typeof(BattleBridge).GetMethod("QueueDueWaves",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(mi, "QueueDueWaves 를 찾지 못했다");
-            mi.Invoke(_bridge, new object[] { elapsedSec });
-        }
-
-        private void SetBattleClock(float sec) => SetField(_bridge, "_battleClock", (double)sec);
 
         private static AttackUnitData CreateUnit(string name)
         {
@@ -156,7 +142,7 @@ namespace Wassup.Tests.EditMode
             return unit;
         }
 
-        private static void SetField(object target, string name, object value)
+        private static FieldInfo FindField(object target, string name)
         {
             var type = target.GetType();
             FieldInfo fi = null;
@@ -167,7 +153,7 @@ namespace Wassup.Tests.EditMode
                 type = type.BaseType;
             }
             Assert.IsNotNull(fi, $"Field '{name}' not found on {target.GetType().Name}");
-            fi.SetValue(target, value);
+            return fi;
         }
     }
 }

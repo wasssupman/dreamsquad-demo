@@ -71,9 +71,14 @@ namespace Wassup.Bridge
                     nextWaveHasNext: _bridge.NextWaveHasNext,
                     nextWaveNumber: _bridge.NextWaveNumber,
                     nextWaveClearReady: _bridge.NextWaveClearReady,
-                    // unit 14 가 채운다 — 현재 Bridge private + 뷰 독립 누적이라 값이 없다.
-                    supportedScore: false, scoreKill: 0, goals: 0, effectiveLeakLimit: 0,
-                    stressAccrued: 0, stressLimit: 0,
+                    // unit 14 — 규칙이 `MatchOutcomeRules` 로 이사해 **실제 값**을 서빙한다.
+                    // 뷰의 독립 누적은 이 값으로 대체된다(두 산식이 갈리면 화면 검산이 깨진다).
+                    supportedScore: true,
+                    scoreKill: _bridge.OutcomeScoreKill,
+                    goals: _bridge.OutcomeGoals,
+                    effectiveLeakLimit: _bridge.OutcomeEffectiveLeakLimit,
+                    stressAccrued: _bridge.OutcomeStressAccrued,
+                    stressLimit: _bridge.OutcomeStressLimit,
                     supportedCost: cost != null,
                     costCurrent: cost != null ? cost.Current : 0f,
                     costMax: cost != null ? cost.Max : 0f,

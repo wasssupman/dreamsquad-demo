@@ -21,6 +21,10 @@ using Wassup.Rendering;
 using Wassup.UI;
 using Wassup.Battle;
 using Wassup.Core.TimeControl;
+using Wassup.Sim.Match;
+// battle-sim-extraction unit 14 — 대기열 항목의 소유자가 MatchWaveSchedule 로 옮겨갔다.
+// 별칭으로 기존 짧은 이름을 유지한다(SpawnUnit 시그니처가 이걸 쓴다).
+using PendingSpawnEntry = Wassup.Sim.Match.MatchWaveSchedule.PendingSpawnEntry;
 // DraftController lives in Wassup.Core above.
 
 namespace Wassup.Bridge
@@ -221,7 +225,6 @@ namespace Wassup.Bridge
         // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
         private EntityQuery _pickupViewQuery;
         private bool _pickupViewQueryCreated;
-        private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
@@ -276,38 +279,23 @@ namespace Wassup.Bridge
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
         private double _battleClock;
         private Entity _battleTimeScaleEntity = Entity.Null;
-        private float _timerDuration;
         private bool _running;
         public float LogElapsedTime => Mathf.Max(0f, (float)_battleClock);
         private bool _placementAllowed;
-        private bool _resultShown;
         // draft-stage-map-prebuild Unit 0 — ECS infrastructure idempotent guard.
         private bool _ecsInfrastructureReady;
-        private bool _usingGeneratedWaves;
-        private GeneratedWavePlan _wavePlan;
         // wave-authoring-test-mode unit 2 — 테스트 모드 작성 플랜. null 이면 seed 경로.
         private WavePlanAsset _authoredPlan;
-        private bool _usingAuthoredPlan;
-        private int _nextWaveIndex;
-        // nextwave-clear-attention unit 0 — 이미 호출된 모든 웨이브의 pending/live 합집합이
-        // 비었는지 BattleBridge 가 판정한다. UI 는 아래 read-only getter 만 폴링한다.
-        private bool _nextWaveClearReady;
-        // wave-pattern unit 9 — Next Wave 강제 호출로 앞당긴 누적 시간(앞당김이므로 음수).
-        // 플랜의 triggerTimeSec 자체는 불변(브리핑 스트립·로그의 source of truth)이고,
-        // 런타임 스케줄만 이 오프셋으로 민다. 남은 웨이브 전체가 같은 값만큼 이동하므로
-        // 웨이브 간 간격이 보존되고, 강제 호출 뒤 다음 웨이브는 "호출 시점 + 원래 간격"에 나온다.
-        private float _waveTimeShift;
-        private int _goalReachedCount;
-        // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
-        // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
-        // 에디터 자산 영구 오염 + 기기에서 매치 간 누적된다(spec critic M1). 매치 리셋
-        // (BeginPlacement)에서 0 초기화. 환불 경로 없음(§6 세탁 차단).
-        private int _leakAllowancePenalty;
-        // battle-score-formula unit 2 — 실제 처치분 누적(유출된 적은 포함되지 않는다).
-        // **계약 9: _battleClock 이 0 이 되는 모든 지점에서 함께 0 이 되어야 한다.**
-        // _goalReachedCount 처럼 BeginPlacement 에만 두면, teardown 없는 StartBattle
-        // 재호출에서 시계만 리셋되고 이 값은 이월돼 이전 판 점수가 얹힌다.
-        private int _killScoreTotal;
+
+        // battle-sim-extraction unit 14 — 웨이브 스케줄·승패·점수 규칙은 **sim 후보 모듈이
+        // 소유한다.** Bridge 는 호출자이고, 이쪽으로 옮긴 상태를 다시 필드로 복제하지 않는다
+        // (복제하면 두 진실이 갈린다). 각 모듈은 엔진 무참조 + 부작용 없음이라 로그·HUD·연출·
+        // 엔티티 생성은 전부 이 파일에 남는다.
+        private readonly MatchWaveSchedule _waveSchedule = new();
+        private readonly MatchOutcomeRules _outcome = new();
+        // 프레임마다 재사용하는 버퍼 — 모듈이 판정만 하고 값을 여기 담아주면 Bridge 가 소비한다.
+        private readonly List<MatchWaveSchedule.QueuedWaveNotice> _waveNotices = new();
+        private readonly List<PendingSpawnEntry> _dueSpawns = new();
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -403,11 +391,6 @@ namespace Wassup.Bridge
         private Wassup.Data.GimmickData _assignedGimmick;
         public void SetAssignedGimmick(Wassup.Data.GimmickData g) => _assignedGimmick = g;
 
-        private struct PendingSpawnEntry
-        {
-            public SpawnEntry entry;
-            public int deckIndex;
-        }
 
         private void Awake()
         {
@@ -495,7 +478,7 @@ namespace Wassup.Bridge
             TeardownCurrentBattle();
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
-            _resultShown = false;
+            _outcome.ClearResultLatch();
             EnterPlacementOrGift();
         }
 
@@ -519,7 +502,7 @@ namespace Wassup.Bridge
             EndHarness();
             TestModeContext.ReleaseRuntimeImportBlock();
             _running = false;
-            _nextWaveClearReady = false;
+            _waveSchedule.ClearReadyOff();
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
             // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
@@ -1221,8 +1204,7 @@ namespace Wassup.Bridge
                 return;
             }
             _em = _world.EntityManager;
-            _pending.Clear();
-            _nextWaveClearReady = false;
+            _waveSchedule.Reset();
             _occupiedTiles.Clear();
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
@@ -1253,21 +1235,18 @@ namespace Wassup.Bridge
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
             _synergyPeakCount = 0;
-            _goalReachedCount = 0;
-            _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
-            _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
+            // unit 14 — 유출·점수 누적은 규칙 모듈이 소유한다. 조건(덱 한계·엔드리스·점수 배점)을
+            // 먼저 고정해야 아래 RefreshLeakHud 가 올바른 분모를 그린다. 제한시간만 StartBattle
+            // 에서 따로 들어온다(작성 플랜이 자기 타이머를 가질 수 있다).
+            ConfigureOutcomeRules(logMissingScoreRules: false);
+            _outcome.ResetMatch();
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
-            _resultShown = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
             // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
             // 잔존 방지; 고아 lease 안전망). skillRuntime.ResetAll 과 동일 지점(시작·종료 양쪽).
             TimeManager.Instance.ResetAll();
-            _usingGeneratedWaves = false;
-            _usingAuthoredPlan = false;
-            _wavePlan = default;
-            _nextWaveIndex = 0;
 
             EnsureQueriesAndQueues();
 
@@ -1293,30 +1272,52 @@ namespace Wassup.Bridge
             }
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
-            _pending.Clear();
-            _nextWaveClearReady = false;
-            _usingGeneratedWaves = TryInitializeGeneratedWaves();
-            if (!_usingGeneratedWaves)
-            {
-                for (int i = 0; i < ActiveDeck.spawns.Count; i++)
-                    _pending.Add(new PendingSpawnEntry { entry = ActiveDeck.spawns[i], deckIndex = i });
-            }
+            _waveSchedule.Reset();
+            ResolveAndInitializeWavePlan();
+            if (!_waveSchedule.UsesGeneratedWaves)
+                _waveSchedule.SeedLegacySpawns(ActiveDeck.spawns);
             _startTime = Time.time;
             _battleClock = 0.0;
-            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
+            _outcome.ResetKillScore(); // battle-score-formula unit 2 — 계약 9 (시계와 짝)
+            // 덱·엔드리스·배점을 여기서 재확정한다(배치 이후 덱이 바뀌는 경로 방어).
+            ConfigureOutcomeRules(logMissingScoreRules: true);
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
-            _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
+            _outcome.SetTimerDurationSec(_waveSchedule.ResolveTimerDurationSec(ActiveDeck.timerDurationSec));
             CaptureMatchConfig();
             _running = true;
-            if (_usingGeneratedWaves)
+            if (_waveSchedule.UsesGeneratedWaves)
                 QueueDueWaves(0f);
-            if (_usingAuthoredPlan)
-                Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
+            GeneratedWavePlan plan = _waveSchedule.Plan;
+            if (_waveSchedule.UsesAuthoredPlan)
+                Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={plan.waves.Count} endless={(_outcome.TimerDurationSec <= 0f)}.");
             else
-                Debug.Log(_usingGeneratedWaves
-                    ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
+                Debug.Log(_waveSchedule.UsesGeneratedWaves
+                    ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={plan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={plan.waves.Count}."
                     : $"[BattleBridge] Battle started with legacy deck '{ActiveDeck.deckId}' ({ActiveDeck.spawns.Count} spawns queued).");
+        }
+
+        /// <summary>
+        /// unit 14 — 승패·점수 규칙의 매치 조건 주입. 덱/점수 SO 를 **여기서 풀어** plain 값으로
+        /// 넘긴다(규칙 모듈은 SO 를 모른다). `scoreRules` 미배선 경고도 SO 배선 문제라 여기 남는다.
+        /// </summary>
+        private void ConfigureOutcomeRules(bool logMissingScoreRules)
+        {
+            int perSec = 100, perStress = 900;
+            if (scoreRules != null)
+            {
+                perSec = scoreRules.timeScorePerSecond;
+                perStress = scoreRules.stressScorePerPoint;
+            }
+            else if (logMissingScoreRules)
+            {
+                // 원래 점수 계산 시점에 판당 1회 울렸다. 배치 진입마다 울리면 SO 미배선 테스트 씬이
+                // 배치만 해도 실패하므로 전투 시작 1회로 유지한다.
+                Debug.LogError("[BattleBridge] scoreRules 미배선 — 기본값(100/900)으로 점수를 계산한다. "
+                    + "ScoreRules.asset 을 인스펙터에 물릴 것.");
+            }
+            _outcome.Configure(ActiveDeck != null, ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0,
+                IsEndless, perSec, perStress);
         }
 
         private void CaptureMatchConfig()
@@ -1339,10 +1340,10 @@ namespace Wassup.Bridge
             {
                 matchSeed = _matchSeed,
                 fixedMapSeed = fixedMapSeed,
-                usesGeneratedWaves = _usingGeneratedWaves,
-                timerDurationSec = _timerDuration,
+                usesGeneratedWaves = _waveSchedule.UsesGeneratedWaves,
+                timerDurationSec = _outcome.TimerDurationSec,
                 generatedMap = _generatedMap,
-                generatedWavePlan = _wavePlan,
+                generatedWavePlan = _waveSchedule.Plan,
                 effectTiles = effectTiles,
                 activeDeck = ActiveDeck,
                 defenderPool = defenderPool,
@@ -1660,12 +1661,12 @@ namespace Wassup.Bridge
         {
             // dreamstone-loadout Unit 3 — reset symmetry: pending loadout must not outlive the match (review M2).
             _pendingDreamstones = null;
-            _nextWaveClearReady = false;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
-            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
-            _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
-            _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
+            // 계약 9 — 시계가 0 이 되는 지점에서 **시계와 짝인 상태 전부**가 함께 0 이 된다
+            // (킬점수 / 강제 호출 오프셋 / 스폰 예고 / 클리어 래치). 규칙 모듈 두 곳이 소유한다.
+            _outcome.ResetKillScore();
+            _waveSchedule.ResetClockPairedState();
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
@@ -1773,25 +1774,25 @@ namespace Wassup.Bridge
             _authoredPlan = plan;
         }
 
-        private bool TryInitializeGeneratedWaves()
+        /// <summary>
+        /// unit 14 — **어떤 플랜을 쓸지 고르는 SO 해석**이 Bridge 에 남는 부분이다(작성 플랜 →
+        /// seed → legacy fall-through + 로거 통지). 고른 결과만 규칙 모듈에 넘긴다 — 규칙이 SO 를
+        /// 알면 sim lib 이 에셋 계층을 끌고 들어간다. unit 18 이 데이터 계층을 옮길 때 이 함수가
+        /// 그 seam 이다.
+        /// </summary>
+        private void ResolveAndInitializeWavePlan()
         {
-            _wavePlan = default;
-            _nextWaveIndex = 0;
-            _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
-            _usingAuthoredPlan = false;
-            _spawnAlertForecast = null;   // spawn-point-alert unit 3 — 이전 판 예고 이월 방지
-
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
             if (_authoredPlan != null)
             {
                 try
                 {
-                    _wavePlan = WavePatternGenerator.FromPlanAsset(_authoredPlan);
-                    GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
-                    if (_wavePlan.waves != null && _wavePlan.waves.Count > 0)
+                    GeneratedWavePlan authored = WavePatternGenerator.FromPlanAsset(_authoredPlan);
+                    GameManager.Instance?.Logger?.SetWavePattern(authored);
+                    if (authored.waves != null && authored.waves.Count > 0)
                     {
-                        _usingAuthoredPlan = true;
-                        return true;
+                        _waveSchedule.Initialize(authored, authored: true);
+                        return;
                     }
                     Debug.LogWarning($"[BattleBridge] Authored plan '{_authoredPlan.name}' has no waves; falling back to seed/legacy.", this);
                 }
@@ -1799,12 +1800,9 @@ namespace Wassup.Bridge
                 {
                     Debug.LogError($"[BattleBridge] Authored plan '{_authoredPlan.name}' failed; falling back. {ex.Message}", this);
                 }
-                _wavePlan = default;
-                _nextWaveIndex = 0;
             }
 
-            if (ActiveDeck == null || !ActiveDeck.useGeneratedWaves)
-                return false;
+            if (ActiveDeck == null || !ActiveDeck.useGeneratedWaves) return;
 
             try
             {
@@ -1813,73 +1811,64 @@ namespace Wassup.Bridge
                 int waveSeed = ActiveDeck.waveSeed != 0
                     ? ActiveDeck.waveSeed
                     : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
-                _wavePlan = WavePatternGenerator.Generate(ActiveDeck, waveSeed);
-                GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
-                return _wavePlan.waves != null && _wavePlan.waves.Count > 0;
+                GeneratedWavePlan generated = WavePatternGenerator.Generate(ActiveDeck, waveSeed);
+                GameManager.Instance?.Logger?.SetWavePattern(generated);
+                _waveSchedule.Initialize(generated, authored: false);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[BattleBridge] Generated wave plan failed; using legacy spawns. {ex.Message}", this);
-                return false;
             }
         }
 
-        // wave-pattern unit 9 — 런타임 예정 시각 = 플랜 시각 + 강제 호출 누적 오프셋.
-        // 스케줄을 읽는 모든 지점(자동 큐잉·강제 호출·스폰 예고)이 이 창구를 쓴다.
-        private float ScheduledWaveTime(int waveIndex) =>
-            _wavePlan.waves[waveIndex].triggerTimeSec + _waveTimeShift;
-
-        // wave-pattern unit 11 — 웨이브 트리거와 첫 적 등장 사이의 리드인. 스폰 base 에만
-        // 더한다. ScheduledWaveTime(트리거 그리드)·_waveTimeShift 산식에는 절대 넣지 않는다 —
-        // 섞으면 강제 호출 연타마다 리드인이 누적 왜곡된다.
-        private float SpawnLeadInSec => _wavePlan.spawnLeadInSec;
-
+        /// <summary>
+        /// 예정된 웨이브를 큐잉하고 **서술만** 한다 — 스케줄 판단은 규칙 모듈이 하고, 로그·기록은
+        /// 여기 남는다(모듈은 부작용이 없다).
+        /// </summary>
         private void QueueDueWaves(float elapsedSec)
         {
-            if (!_usingGeneratedWaves || _wavePlan.waves == null) return;
-            while (_nextWaveIndex < _wavePlan.waves.Count &&
-                   elapsedSec + 0.0001f >= ScheduledWaveTime(_nextWaveIndex))
+            if (!_waveSchedule.UsesGeneratedWaves) return;
+            _waveNotices.Clear();
+            _waveSchedule.QueueDueWaves(elapsedSec, SpawnLaneCount, _waveNotices);
+            NarrateQueuedWaves();
+        }
+
+        private int SpawnLaneCount => _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
+
+        /// <summary>
+        /// 강제 호출된 웨이브는 `wave_forced` **와** `wave_started` 를 둘 다 남긴다 — 기존 계약
+        /// (`ForceNextWave` 가 forced 를 먼저 기록하고 `QueueWave` 가 started 를 기록했다).
+        /// 한쪽으로 접으면 감사 로그의 강제 호출 흔적이 사라진다.
+        /// </summary>
+        private void NarrateQueuedWaves()
+        {
+            var logger = GameManager.Instance?.Logger;
+            for (int i = 0; i < _waveNotices.Count; i++)
             {
-                QueueWave(_wavePlan.waves[_nextWaveIndex],
-                    ScheduledWaveTime(_nextWaveIndex) + SpawnLeadInSec, false, elapsedSec);
-                _nextWaveIndex++;
+                var notice = _waveNotices[i];
+                if (notice.forced)
+                    logger?.RecordWaveEvent("wave_forced", notice.wave.waveIndex, notice.elapsedSec, true);
+                logger?.RecordWaveEvent("wave_started", notice.wave.waveIndex, notice.elapsedSec, notice.forced);
+                Debug.Log($"[BattleBridge] Wave {notice.wave.waveIndex + 1} queued ({notice.spawnCount} spawns, forced={notice.forced}). {WavePatternGenerator.FormatSummary(notice.wave)}");
             }
+            _waveNotices.Clear();
         }
 
         // Read-only wave-progress state for the UI (NextWaveDock polls these). The dock
         // owns the button/label chrome; BattleBridge (ECS gateway) no longer builds UI.
-        public bool NextWaveAvailable => _running && _usingGeneratedWaves && _wavePlan.waves != null;
-        public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
-        public int NextWaveNumber => _nextWaveIndex + 1;
-        public bool NextWaveClearReady =>
-            NextWaveHasNext && _nextWaveIndex > 0 && _nextWaveClearReady;
+        public bool NextWaveAvailable => _waveSchedule.NextWaveAvailable(_running);
+        public bool NextWaveHasNext => _waveSchedule.NextWaveHasNext(_running);
+        public int NextWaveNumber => _waveSchedule.WaveNumber;
+        public bool NextWaveClearReady => _waveSchedule.ClearReadyForUi(_running);
 
-        // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
-        // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
-        // 큐잉 시점에 실제 스폰 base 로 1회 계산해 넣는다 — 실스폰과 어긋날 여지가 없고,
-        // 자동/강제/Wave 1 이 모두 같은 경로라 리드인(wave-pattern unit 11) 만큼의 창을 똑같이
-        // 얻는다. 반환 배열은 캐시 참조라 수정 금지.
-        private float[] _spawnAlertForecast;
-
+        // spawn-point-alert unit 3 — 예고는 규칙 파생이라 스케줄 모듈이 소유한다(unit 14).
+        // 반환 배열은 모듈의 캐시 참조라 **수정 금지**. 전투 중이 아니면 서빙하지 않는다.
         public bool TryGetSpawnAlertForecast(out float battleClockSec, out float[] laneFirstSpawnSec)
         {
             battleClockSec = (float)_battleClock;
             laneFirstSpawnSec = null;
-            if (!_running || _spawnAlertForecast == null) return false;
-            // 미래 스폰이 남아 있는 동안만 서빙한다. 웨이브의 뒷 lane 들은 레인 간
-            // intraWaveSpacing 간격으로 늦게 나오므로, 마지막 lane 스폰까지 유지해야 뒷 lane
-            // 예고가 자기 유닛보다 먼저 사라지지 않는다.
-            if (LastSpawnSec(_spawnAlertForecast) <= battleClockSec) return false;
-            laneFirstSpawnSec = _spawnAlertForecast;
-            return true;
-        }
-
-        private static float LastSpawnSec(float[] laneFirstSpawnSec)
-        {
-            float last = -1f;
-            for (int i = 0; i < laneFirstSpawnSec.Length; i++)
-                if (laneFirstSpawnSec[i] > last) last = laneFirstSpawnSec[i];
-            return last;
+            if (!_running) return false;
+            return _waveSchedule.TryGetSpawnAlertForecast(battleClockSec, out laneFirstSpawnSec);
         }
 
         // spawn-point-alert unit 1(rev) — 스폰→골 대표 경로(sim, 셀 중심 나열. [0]=스폰).
@@ -1911,65 +1900,25 @@ namespace Wassup.Bridge
             return outPath.Count >= 2;
         }
 
+        /// <summary>
+        /// unit 14 — 스케줄 재기준(비멱등)은 규칙 모듈이 하고, Bridge 는 게이트·트레이스·서술만 한다.
+        ///
+        /// time-manager Unit 3 — 강제 웨이브의 기준 시각도 Battle 클럭이어야 한다. 스폰 게이트가
+        /// `_battleClock` 을 쓰므로 실시간을 쓰면 정지/슬로우모에서 갈라진다.
+        ///
+        /// spawn-point-alert unit 3 — 예고는 큐잉이 이 웨이브 기준으로 채운다(unit 1 의 "강제 호출은
+        /// 예고 없이 즉시 스폰" 계약은 리드인 도입으로 폐기 — 당긴 웨이브도 리드인만큼의 창을 갖는다).
+        /// </summary>
         public void ForceNextWave()
         {
-            if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null)
-            {
+            _waveNotices.Clear();
+            bool accepted = _running
+                && _waveSchedule.TryForceNextWave((float)_battleClock, SpawnLaneCount, _waveNotices);
 #if UNITY_EDITOR
-                TraceLegacyCommand("ForceNextWave", false);
+            TraceLegacyCommand("ForceNextWave", accepted);
 #endif
-                return;
-            }
-            if (_nextWaveIndex >= _wavePlan.waves.Count)
-            {
-#if UNITY_EDITOR
-                TraceLegacyCommand("ForceNextWave", false);
-#endif
-                return;
-            }
-
-#if UNITY_EDITOR
-            TraceLegacyCommand("ForceNextWave", true);
-#endif
-
-            // time-manager Unit 3 — 강제 웨이브의 triggerTimeSec 기준도 Battle 클럭이어야 한다.
-            // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
-            float elapsedSec = (float)_battleClock;
-            var wave = _wavePlan.waves[_nextWaveIndex];
-
-            // wave-pattern unit 9 — 앞당긴 만큼 남은 웨이브 전체를 같이 민다(README "연타는 남은
-            // wave 들을 순서대로 앞당긴다" 계약). 오프셋이 균일해 웨이브 간 간격이 보존되므로
-            // 다음 웨이브는 "지금 + 그 웨이브의 원래 간격"에 나온다 — 연타해도 매번 재기준된다.
-            // 인덱스 증가 전에 계산해야 한다(밀 대상 = 지금 강제 호출하는 웨이브).
-            _waveTimeShift -= ScheduledWaveTime(_nextWaveIndex) - elapsedSec;
-
-            GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
-            // unit 11 — 강제 호출도 리드인을 따른다(당긴 웨이브의 첫 적도 리드인 뒤에 나온다).
-            QueueWave(wave, elapsedSec + SpawnLeadInSec, true, elapsedSec);
-            _nextWaveIndex++;
-            // spawn-point-alert unit 3 — 예고는 QueueWave 가 이 웨이브 기준으로 채운다.
-            // (unit 1 의 "강제 호출은 예고 없이 즉시 스폰" 계약은 리드인 도입으로 폐기 —
-            //  당긴 웨이브도 리드인만큼의 예고 창을 갖는다.)
-        }
-
-        private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
-        {
-            // 자동/강제 호출 모두 같은 진입점. UI Update 순서와 무관하게 이전 클리어 강조를
-            // 즉시 내리고, 아래 pending/live 상태가 다시 빌 때만 Update 말미에 재활성한다.
-            _nextWaveClearReady = false;
-            int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
-            var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-            int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
-            for (int i = 0; i < entries.Count; i++)
-                _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
-
-            // spawn-point-alert unit 3 — 예고는 **이 웨이브의 실제 스폰 base** 로 계산한다(예측 아님).
-            // 자동·강제·Wave 1 이 모두 이 경로를 지나므로 예고 창이 균일하게 생긴다.
-            _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
-                wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-
-            GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
-            Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
+            if (accepted) NarrateQueuedWaves();
+            else _waveNotices.Clear();
         }
 
         // Replaces the defender pool used by random placement selection. Called by
@@ -2493,14 +2442,12 @@ namespace Wassup.Bridge
             _battleClock += battleDt;
             float t = (float)_battleClock;
             QueueDueWaves(t);
-            for (int i = _pending.Count - 1; i >= 0; i--)
-            {
-                if (t >= _pending[i].entry.triggerTimeSec)
-                {
-                    SpawnUnit(_pending[i]);
-                    _pending.RemoveAt(i);
-                }
-            }
+            // unit 14 — 대기열은 스케줄 모듈이 소유한다. **역순 순회로 뽑은 순서 그대로** 스폰해야
+            // 한다 — 그 순서가 엔티티 생성 순서를 통해 sim 결과에 들어간다(골든이 고정하고 있다).
+            _dueSpawns.Clear();
+            _waveSchedule.TakeDueSpawns(t, _dueSpawns);
+            for (int i = 0; i < _dueSpawns.Count; i++) SpawnUnit(_dueSpawns[i]);
+            _dueSpawns.Clear();
 
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
@@ -2656,10 +2603,10 @@ namespace Wassup.Bridge
                     ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
                 defenders = defenderQuery.CalculateEntityCount();
             }
-            nextWaveIndex = _nextWaveIndex;
-            pendingSpawns = _pending.Count;
-            goals = _goalReachedCount;
-            killScore = _killScoreTotal;
+            nextWaveIndex = _waveSchedule.NextWaveIndex;
+            pendingSpawns = _waveSchedule.PendingCount;
+            goals = _outcome.GoalReachedCount;
+            killScore = _outcome.KillScoreTotal;
         }
 #endif
 
@@ -3918,7 +3865,7 @@ namespace Wassup.Bridge
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
                 // (예전엔 처치당 고정 +10 이라 15배 어긋나 있었다). 두 경로가 같은
                 // evt.killScore 를 쓰므로 전투 중 HUD 숫자 == _killScoreTotal 이다.
-                _killScoreTotal += evt.killScore;
+                _outcome.AddKillScore(evt.killScore);
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 // unit 3 — 흡수 비행 시작점으로 사망 view-space 위치 동봉(sim→view).
                 // orb-dock unit 6 — 죽은 적 데이터 동봉(피규어 스킨 소스). 등록부 조회+제거.
@@ -4974,32 +4921,27 @@ namespace Wassup.Bridge
             return idx;
         }
 
-        // battle-leak-limit-hud unit 0 — 패배 비교/HUD/저주 지불이 공유하는 유효 한계.
-        private int EffectiveLeakLimit()
-            => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
-
-        // battle-score-formula unit 7 — 스트레스점수의 입력. 점수 계산(CalculateBattleScore)과
-        // 결과 화면 표기(FinishTally)가 **같은 값**을 써야 화면에서 검산된다. 한계는 덱 원본값
-        // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
-        private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
-        private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
-
+        // unit 14 — 유출·점수 규칙은 `_outcome` 이 소유한다. 아래는 그 값을 뷰/컨트롤러에 잇는
+        // 얇은 통로다. **값을 여기서 다시 계산하지 않는다** — 두 산식이 갈리면 화면에서 검산이 깨진다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), !IsEndless);
+            => scoreHud?.SetLeakStatus(_outcome.GoalReachedCount, _outcome.EffectiveLeakLimit, !IsEndless);
 
-        // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
-        // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
-        public int RemainingLeakAllowance()
-            => EffectiveLeakLimit() - _goalReachedCount;
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치. 컨트롤러 게이트 조회용.
+        public int RemainingLeakAllowance() => _outcome.RemainingLeakAllowance;
 
-        // 몽마의 계약 선불 지불. 지불 후 잔여가 1 미만이면 거절 — "지불로 즉시 패배"
-        // 상태를 구조적으로 금지(spec 게이트 조건: 잔여 − cost ≥ 1). 성공 시 비가역:
-        // host 사망 revoke 는 hosted 버프만 회수하고 이 오프셋은 되돌리지 않는다.
+        // unit 14 — 세션 읽기 모델이 점수·유출·스트레스를 **실제 값**으로 서빙하기 위한 read-only
+        // 창구. 어댑터 전용이라 internal 이고, 가변 규칙 객체 자체는 노출하지 않는다(노출하면
+        // 어댑터가 TryPayLeakAllowance 처럼 규칙을 움직일 수 있게 된다 — 번역기의 권한이 아니다).
+        internal int OutcomeScoreKill => _outcome.KillScoreTotal;
+        internal int OutcomeGoals => _outcome.GoalReachedCount;
+        internal int OutcomeEffectiveLeakLimit => _outcome.EffectiveLeakLimit;
+        internal int OutcomeStressAccrued => _outcome.StressAccrued;
+        internal int OutcomeStressLimit => _outcome.StressLimit;
+
+        /// 몽마의 계약 선불 지불(비가역). 판정은 규칙이 하고 HUD 갱신만 여기서 한다.
         public bool TryPayLeakAllowance(int cost)
         {
-            if (cost <= 0) return false;
-            if (RemainingLeakAllowance() - cost < 1) return false;
-            _leakAllowancePenalty += cost;
+            if (!_outcome.TryPayLeakAllowance(cost)) return false;
             RefreshLeakHud();
             return true;
         }
@@ -5018,93 +4960,74 @@ namespace Wassup.Bridge
                 // 같은 프레임 잔여 이벤트의 EnemyGone 은 미발화 — 매치 종료 직후라 무해
                 // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
                 NotifyEnemyGoneIfMarked(evt.entity);
-                _goalReachedCount++;
+                // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준이고, 그 판정은
+                // 규칙 모듈이 소유한다. endless-mode unit 2 — 무한 모드는 누수로 죽지 않는다(계약 4).
+                MatchOutcome outcome = _outcome.RegisterGoalReached(out int leakLimit);
                 RefreshLeakHud();
-                // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
-                int leakLimit = EffectiveLeakLimit();
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{leakLimit}");
-                // endless-mode unit 2 — 무한 모드는 누수로 죽지 않는다(계약 4). 누수 카운트/HUD 는 그대로
-                // 누적돼 스트레스 점수에 반영. 메인은 IsEndless=false 라 기존 패배 게이트 불변.
-                if (!IsEndless && !_resultShown && _goalReachedCount >= leakLimit)
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_outcome.GoalReachedCount}/{leakLimit}");
+                if (outcome == MatchOutcome.Defeat)
                 {
-                    _resultShown = true;
-                    _running = false;
-                    var score = CalculateBattleScore(defeated: true);
-#if UNITY_EDITOR
-                    CaptureLegacyTraceResult("defeat", score);
-#endif
-                    int playerScore = score.Total;
-                    GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-                    BeginTally(win: false, score, RemainingBattleSeconds());
-                    Debug.Log("[BattleBridge] DEFEAT triggered.");
+                    ConcludeMatch(outcome);
                     return;
                 }
             }
         }
 
-        public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
+        public float TimerRemaining
+            => _running ? _outcome.RemainingBattleSeconds((float)_battleClock) : 0f;
 
-        // Seconds left on the match clock at query time — unlike TimerRemaining this
-        // stays valid after _running is cleared (used to stamp the result popup).
-        private float RemainingBattleSeconds() => Mathf.Max(0f, _timerDuration - (float)_battleClock);
-
-        private void CheckTimer()
-        {
-            if (_resultShown) return;
-            if (_timerDuration <= 0f) return;
-            if ((float)_battleClock < _timerDuration) return;
-
-            _resultShown = true;
-            _running = false;
-            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
-            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
-            var score = CalculateBattleScore(defeated: false);
-#if UNITY_EDITOR
-            CaptureLegacyTraceResult("victory_timeout", score);
-#endif
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            BeginTally(win: true, score, 0f); // timer expired → 0 left
-            Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
-        }
+        private void CheckTimer() => ConcludeIfEnded(_outcome.CheckTimer((float)_battleClock));
 
         // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
         private void CheckVictory()
-        {
-            if (_resultShown) return;
-            if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
-            if (!NoQueuedAttackersRemain()) return;
+            => ConcludeIfEnded(_outcome.CheckVictory(
+                _waveSchedule.AllWavesQueued,
+                _waveSchedule.NoQueuedAttackersRemain(NoAliveAttackers)));
 
-            _resultShown = true;
+        private void ConcludeIfEnded(MatchOutcome outcome)
+        {
+            if (outcome != MatchOutcome.None) ConcludeMatch(outcome);
+        }
+
+        /// <summary>
+        /// unit 14 — 종료 3종(패배/버팀승리/전멸승리)의 **단일 마감 경로**. 규칙이 이미 결과 래치를
+        /// 세웠고, 여기서는 점수 산출 요청 → 트레이스 → 로그 → 연출만 한다.
+        ///
+        /// `BeginTally` 의 남은 초는 항상 `RemainingBattleSeconds` 다. 버팀 승리에서 예전 코드가
+        /// 리터럴 `0f` 를 넘겼는데, 그 판정 조건이 `clock >= duration` 이라 이 함수도 정확히 0 을
+        /// 준다 — 같은 값이므로 분기를 없앴다.
+        /// </summary>
+        private void ConcludeMatch(MatchOutcome outcome)
+        {
             _running = false;
-            var score = CalculateBattleScore(defeated: false);
+            bool defeated = outcome == MatchOutcome.Defeat;
+            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
+            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
+            ScoreMath.BattleScore score = _outcome.CalculateScore(defeated, (float)_battleClock);
+            string outcomeName = MatchOutcomeNames.Of(outcome);
 #if UNITY_EDITOR
-            CaptureLegacyTraceResult("victory", score);
+            CaptureLegacyTraceResult(outcomeName, score);
 #endif
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds());
-            Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+            var logger = GameManager.Instance?.Logger;
+            logger?.SetResult(outcomeName, _outcome.GoalReachedCount);
+            logger?.SetScore(score.Total, score.Time, score.Stress, score.Kill);
+            BeginTally(win: !defeated, score, _outcome.RemainingBattleSeconds((float)_battleClock));
+            Debug.Log(outcome switch
+            {
+                MatchOutcome.Defeat => "[BattleBridge] DEFEAT triggered.",
+                MatchOutcome.VictoryTimeout => "[BattleBridge] VICTORY — timer expired, player survived.",
+                _ => "[BattleBridge] VICTORY — all attack units defeated.",
+            });
         }
 
-        // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
-        // emptiness source of truth. pending 은 호출됐지만 아직 스폰되지 않은 적,
-        // AttackUnitTag query 는 이미 필드에 나온 적을 각각 담당한다.
-        private bool NoQueuedAttackersRemain()
-        {
-            if (_pending.Count > 0 || !_aliveAttackersQueryCreated) return false;
-            return _aliveAttackersQuery.CalculateEntityCount() == 0;
-        }
+        // nextwave-clear-attention unit 0 — 필드에 나온 적의 유무. 대기열(호출됐지만 아직 스폰되지
+        // 않은 적)은 스케줄 모듈이 알고, 이쪽 ECS 질의만 Bridge 가 소유한다. 질의 미생성은
+        // "판정 불가 = 비지 않았다" 로 접는다(기존 계약).
+        private bool NoAliveAttackers
+            => _aliveAttackersQueryCreated && _aliveAttackersQuery.CalculateEntityCount() == 0;
 
         private void RefreshNextWaveClearReady()
-        {
-            _nextWaveClearReady = NextWaveHasNext
-                && _nextWaveIndex > 0
-                && NoQueuedAttackersRemain();
-        }
+            => _waveSchedule.RefreshClearReady(_running, NoAliveAttackers);
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
         // the deck carried into this match (tournament-deck-info unit 1 — the
@@ -5161,36 +5084,9 @@ namespace Wassup.Bridge
             GameManager.Instance?.SetPhase(GamePhase.Result);
             // unit 7 — 팝업에 넘기는 스트레스 값은 점수 계산과 같은 소스다. 엔드리스는 한계를
             // 0으로 넘겨 분모를 숨긴다(누수로 죽지 않아 한계가 무의미 — HUD 와 같은 규칙).
-            int stressLimitForUi = IsEndless ? 0 : StressLimit;
-            if (win) resultScreen?.ShowVictory(score, remainingSec, StressAccrued, stressLimitForUi);
-            else resultScreen?.ShowDefeat(score, remainingSec, StressAccrued, stressLimitForUi);
-        }
-
-        // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
-        // 하고 여기서는 입력을 모아 넘기기만 한다.
-        //
-        // stressLimit 은 deck.defeatGoalReachedCount **원본값**이다(계약 8).
-        // EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 들어간다.
-        private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
-        {
-            int perSec = 100, perStress = 900;
-            if (scoreRules != null)
-            {
-                perSec = scoreRules.timeScorePerSecond;
-                perStress = scoreRules.stressScorePerPoint;
-            }
-            else
-            {
-                Debug.LogError("[BattleBridge] scoreRules 미배선 — 기본값(100/900)으로 점수를 계산한다. "
-                    + "ScoreRules.asset 을 인스펙터에 물릴 것.");
-            }
-
-            // endless-mode unit 2 — 무한 모드는 시간축 0(스코어어택). 조기클리어로 remainingMs>0
-            // 이어도 시간점수가 새지 않게 여기서 0 고정. 메인은 기존대로 남은시간 반영.
-            int remainingMs = IsEndless ? 0 : Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
-
-            return ScoreMath.Evaluate(remainingMs, StressAccrued, StressLimit, _killScoreTotal,
-                defeated, perSec, perStress);
+            int stressLimitForUi = IsEndless ? 0 : _outcome.StressLimit;
+            if (win) resultScreen?.ShowVictory(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
+            else resultScreen?.ShowDefeat(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers

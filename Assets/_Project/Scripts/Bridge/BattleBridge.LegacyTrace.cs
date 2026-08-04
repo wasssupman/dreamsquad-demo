@@ -71,10 +71,10 @@ namespace Wassup.Bridge
         {
             if (_legacyTraceRecorder == null) return null;
 
-            bool defeated = !IsEndless && _goalReachedCount >= EffectiveLeakLimit();
+            bool defeated = !IsEndless && _outcome.GoalReachedCount >= _outcome.EffectiveLeakLimit;
             ScoreMath.BattleScore score = _legacyTraceHasFinalScore
                 ? _legacyTraceFinalScore
-                : CalculateBattleScore(defeated);
+                : _outcome.CalculateScore(defeated, (float)_battleClock);
             string canonicalState = BuildLegacyFinalStateCanonical();
             string json = _legacyTraceRecorder.Complete(new LegacyTraceFinalV0
             {
@@ -98,7 +98,7 @@ namespace Wassup.Bridge
             string previousConfigHash = ConfigHash;
             TeardownCurrentBattle();
             _running = false;
-            _resultShown = false;
+            _outcome.ClearResultLatch();
             BeginPlacement();
             StartBattle();
             if (!_running || string.IsNullOrEmpty(previousConfigHash)
@@ -143,7 +143,7 @@ namespace Wassup.Bridge
                 killScore = killScore,
                 running = _running,
                 phase = (int)(GameManager.Instance != null ? GameManager.Instance.CurrentPhase : GamePhase.None),
-                timerRemaining = RemainingBattleSeconds(),
+                timerRemaining = _outcome.RemainingBattleSeconds((float)_battleClock),
                 cost = GameManager.Instance != null && GameManager.Instance.CostRuntime != null
                     ? GameManager.Instance.CostRuntime.CurrentInt
                     : 0,
@@ -229,16 +229,16 @@ namespace Wassup.Bridge
         {
             var sb = new StringBuilder(32768);
             AppendStateLine(sb, "battleClock", _battleClock);
-            AppendStateLine(sb, "nextWaveIndex", _nextWaveIndex);
-            AppendStateLine(sb, "pendingSpawns", _pending.Count);
-            AppendStateLine(sb, "goals", _goalReachedCount);
-            AppendStateLine(sb, "leakPenalty", _leakAllowancePenalty);
-            AppendStateLine(sb, "killScore", _killScoreTotal);
+            AppendStateLine(sb, "nextWaveIndex", _waveSchedule.NextWaveIndex);
+            AppendStateLine(sb, "pendingSpawns", _waveSchedule.PendingCount);
+            AppendStateLine(sb, "goals", _outcome.GoalReachedCount);
+            AppendStateLine(sb, "leakPenalty", _outcome.LeakAllowancePenalty);
+            AppendStateLine(sb, "killScore", _outcome.KillScoreTotal);
             AppendStateLine(sb, "running", _running);
             AppendStateLine(sb, "phase", GameManager.Instance != null
                 ? (int)GameManager.Instance.CurrentPhase
                 : (int)GamePhase.None);
-            AppendStateLine(sb, "timerRemaining", RemainingBattleSeconds());
+            AppendStateLine(sb, "timerRemaining", _outcome.RemainingBattleSeconds((float)_battleClock));
             AppendStateLine(sb, "cost", GameManager.Instance != null && GameManager.Instance.CostRuntime != null
                 ? GameManager.Instance.CostRuntime.Current
                 : 0f);

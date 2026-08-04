@@ -1,10 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.EditMode
 {
@@ -14,32 +12,31 @@ namespace Wassup.Tests.EditMode
     // 의 스폰 base 만 리드인만큼 밀린다. 리드인이 트리거 그리드나 shift 산식으로 새면 강제
     // 호출 연타마다 누적 왜곡되므로, 아래 테스트가 그 분리를 고정한다.
     //
-    // Fixture 는 WaveForceRescheduleTests 와 동일 방식 — ECS world 없이 리플렉션으로
-    // 플랜/클럭을 주입해 스케줄러만 격리 검증한다(_generatedMap 미생성 → laneCount 1).
+    // battle-sim-extraction unit 14 — 큐잉 규칙이 `MatchWaveSchedule` 로 이사해 이 픽스처는
+    // BattleBridge·GameObject·리플렉션을 버렸다. 생성기(WavePatternGenerator) 테스트는 원래부터
+    // 순수해서 그대로다. laneCount 는 이제 plain 인자다(예전엔 _generatedMap 미생성에 기대 1 이었다).
     public class WaveSpawnLeadInTests
     {
         private const float Interval = 10f;
         private const float LeadIn = 2f;
+        private const int LaneCount = 1;
 
-        private GameObject _go;
-        private BattleBridge _bridge;
+        private MatchWaveSchedule _schedule;
         private AttackUnitData _a;
         private AttackUnitData _b;
+        private readonly List<MatchWaveSchedule.PendingSpawnEntry> _drain = new();
 
         [SetUp]
         public void SetUp()
         {
             _a = CreateUnit("A");
             _b = CreateUnit("B");
-
-            _go = new GameObject("BattleBridge_WaveLeadInTest");
-            _bridge = _go.AddComponent<BattleBridge>();
+            _schedule = new MatchWaveSchedule();
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (_go != null) Object.DestroyImmediate(_go);
             if (_a != null) Object.DestroyImmediate(_a);
             if (_b != null) Object.DestroyImmediate(_b);
         }
@@ -128,7 +125,7 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // ── 브리지: 플랜 → 큐잉 ────────────────────────────────────────────
+        // ── 스케줄: 플랜 → 큐잉 ────────────────────────────────────────────
 
         [Test]
         public void QueueDueWaves_FirstSpawnLandsAfterLeadIn()
@@ -160,8 +157,7 @@ namespace Wassup.Tests.EditMode
 
             QueueDueWaves(0f);            // wave 1 자동 큐잉
             ClearPending();
-            SetBattleClock(3f);
-            _bridge.ForceNextWave();      // wave 2 를 3초로 당김
+            Assert.IsTrue(_schedule.TryForceNextWave(3f, LaneCount, null)); // wave 2 를 3초로 당김
 
             Assert.AreEqual(3f + LeadIn, FirstPendingSpawnSec(), 0.0001f,
                 "당긴 웨이브의 첫 적도 리드인 뒤에 나온다");
@@ -181,14 +177,10 @@ namespace Wassup.Tests.EditMode
             for (int i = 0; i < 4; i++)
                 waves.Add(new GeneratedWave(i, i * Interval, _a, 2, _b, 2));
 
-            var plan = new GeneratedWavePlan(
+            _schedule.Initialize(new GeneratedWavePlan(
                 seed: 1, generatorVersion: 2, timerDurationSec: 40f,
                 waveIntervalSec: Interval, intraWaveSpacingSec: 1f, waves: waves,
-                spawnLeadInSec: leadInSec);
-
-            SetField(_bridge, "_wavePlan", plan);
-            SetField(_bridge, "_usingGeneratedWaves", true);
-            SetField(_bridge, "_running", true);
+                spawnLeadInSec: leadInSec), authored: false);
         }
 
         private AttackDeck CreateDeck(float leadInSec)
@@ -210,39 +202,33 @@ namespace Wassup.Tests.EditMode
             return deck;
         }
 
-        // pending 큐의 가장 이른 스폰 시각. 큐가 비면 실패시킨다.
+        // pending 큐의 가장 이른 스폰 시각. 큐가 비면 실패시킨다. 대기열을 꺼내 보고 되돌려
+        // 넣을 수는 없으므로(TakeDueSpawns 는 소비다) **아직 시각이 안 된 것까지 전부** 꺼내 읽고
+        // 그 자체를 검증값으로 쓴다 — 각 테스트는 이 호출 뒤 큐잉을 다시 하지 않는다.
         private float FirstPendingSpawnSec()
         {
-            var pending = (IList)GetField(_bridge, "_pending");
-            Assert.Greater(pending.Count, 0, "pending 스폰 큐가 비었다");
-
-            var entryField = pending[0].GetType()
-                .GetField("entry", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(entryField, "PendingSpawnEntry.entry 필드를 찾지 못했다");
+            _drain.Clear();
+            _schedule.TakeDueSpawns(float.MaxValue, _drain);
+            Assert.Greater(_drain.Count, 0, "pending 스폰 큐가 비었다");
 
             float min = float.MaxValue;
-            for (int i = 0; i < pending.Count; i++)
-            {
-                var entry = (SpawnEntry)entryField.GetValue(pending[i]);
-                if (entry.triggerTimeSec < min) min = entry.triggerTimeSec;
-            }
+            for (int i = 0; i < _drain.Count; i++)
+                if (_drain[i].entry.triggerTimeSec < min) min = _drain[i].entry.triggerTimeSec;
+            _drain.Clear();
             return min;
         }
 
-        private void ClearPending() => ((IList)GetField(_bridge, "_pending")).Clear();
-
-        private void QueueDueWaves(float elapsedSec)
+        private void ClearPending()
         {
-            SetBattleClock(elapsedSec);
-            var mi = typeof(BattleBridge).GetMethod("QueueDueWaves",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(mi, "QueueDueWaves 를 찾지 못했다");
-            mi.Invoke(_bridge, new object[] { elapsedSec });
+            _drain.Clear();
+            _schedule.TakeDueSpawns(float.MaxValue, _drain);
+            _drain.Clear();
         }
 
-        private void SetBattleClock(float sec) => SetField(_bridge, "_battleClock", (double)sec);
+        private void QueueDueWaves(float elapsedSec)
+            => _schedule.QueueDueWaves(elapsedSec, LaneCount, null);
 
-        private int NextWaveIndex() => (int)GetField(_bridge, "_nextWaveIndex");
+        private int NextWaveIndex() => _schedule.NextWaveIndex;
 
         private static AttackUnitData CreateUnit(string name)
         {
@@ -250,25 +236,5 @@ namespace Wassup.Tests.EditMode
             unit.displayName = name;
             return unit;
         }
-
-        private static FieldInfo FindField(object target, string name)
-        {
-            var type = target.GetType();
-            FieldInfo fi = null;
-            while (fi == null && type != null)
-            {
-                fi = type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance
-                                       | BindingFlags.Public);
-                type = type.BaseType;
-            }
-            Assert.IsNotNull(fi, $"Field '{name}' not found on {target.GetType().Name}");
-            return fi;
-        }
-
-        private static void SetField(object target, string name, object value) =>
-            FindField(target, name).SetValue(target, value);
-
-        private static object GetField(object target, string name) =>
-            FindField(target, name).GetValue(target);
     }
 }

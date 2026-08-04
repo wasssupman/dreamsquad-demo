@@ -213,6 +213,8 @@ namespace Wassup.UI
                 return;
             }
 
+            SyncScoreFromSession();
+
             // Count-up roll: ease the shown number toward the target (unscaled so it
             // keeps climbing during the timeScale=0 drag-catcher modal).
             _shownScore = Mathf.Lerp(_shownScore, _targetScore, Mathf.Clamp01(Time.unscaledDeltaTime * rollLerp));
@@ -285,6 +287,26 @@ namespace Wassup.UI
             _pendingKills++;
             // 유입 시점에 기록한다 — 판정은 프레임당 1회 flush(TriggerHit)에서.
             _burstWindow.Add((Time.unscaledTime, p));
+        }
+
+        /// <summary>
+        /// battle-sim-extraction unit 14 — **킬 점수의 정본은 읽기 모델이다.** 예전에는 이 뷰가
+        /// 이벤트를 받아 스스로 누적했고 그래서 점수의 진실이 두 곳(뷰·Bridge)에 있었다. 규칙이
+        /// `MatchOutcomeRules` 로 이사한 뒤로는 스냅샷이 그 값을 서빙하므로 여기서 덮어쓴다.
+        ///
+        /// `AddScore` 누적을 지우지 않고 **덮어쓰기**로 둔 이유가 둘 있다:
+        ///   • 세션이 없는 경로(EditMode 픽스처·툴 씬)에서는 누적이 유일한 값이다.
+        ///   • 두 값이 어긋나면 정본이 이긴다 — 조용히 갈리는 대신 즉시 수렴한다.
+        ///
+        /// **Battle 구간에서만 동기화한다.** 연출(Tally)에서는 뷰가 시간·스트레스 축을 킬 점수
+        /// 위에 더해 올리므로, 계속 동기화하면 매 프레임 킬 점수로 되돌려져 합산이 안 보인다.
+        /// </summary>
+        private void SyncScoreFromSession()
+        {
+            if (!MatchSession.IsActive) return;
+            var rm = MatchSession.Current.ReadModel;
+            if (!rm.SupportedScore || rm.Phase != MatchPhase.Battle) return;
+            _targetScore = rm.ScoreKill;
         }
 
         // 연출이 롤업 완료를 기다릴 때 쓴다(표시 숫자가 목표에 붙었는가).

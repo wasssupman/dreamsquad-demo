@@ -22,6 +22,10 @@ namespace Wassup.Tests.PlayMode
         private GameObject _bridgeGo;
         private GameObject _dockGo;
         private BattleBridge _bridge;
+        // unit 14 — 웨이브 스케줄/대기열의 소유자.
+        private Wassup.Sim.Match.MatchWaveSchedule _schedule;
+        private LegacyMatchSessionAdapter _session;
+        private readonly System.Collections.Generic.List<Wassup.Sim.Match.MatchWaveSchedule.PendingSpawnEntry> _drain = new();
         private NextWaveDock _dock;
         private AttackUnitData _a;
         private AttackUnitData _b;
@@ -47,7 +51,10 @@ namespace Wassup.Tests.PlayMode
                 LogType.Error,
                 "[BattleBridge] SeasonRegistry / activeSeason / mapTheme 가 wiring 되지 않았다. BattleScene 에 SeasonRegistry.asset 을 연결하라.");
             _bridge = _bridgeGo.AddComponent<BattleBridge>();
-            SetField(_bridge, "_wavePlan", new GeneratedWavePlan(
+            // battle-sim-extraction unit 14 — 플랜/대기열 소유자가 `_waveSchedule` 로 이사했다.
+            // 주입은 그 공개 API 로 한다(private 필드 주입이 아니라 실제 경로를 지난다).
+            _schedule = (Wassup.Sim.Match.MatchWaveSchedule)GetField(_bridge, "_waveSchedule");
+            _schedule.Initialize(new GeneratedWavePlan(
                 seed: 1,
                 generatorVersion: 2,
                 timerDurationSec: 30f,
@@ -58,8 +65,7 @@ namespace Wassup.Tests.PlayMode
                     new GeneratedWave(0, 0f, _a, 1, _b, 1),
                     new GeneratedWave(1, 10f, _a, 1, _b, 1),
                     new GeneratedWave(2, 20f, _a, 1, _b, 1)
-                }));
-            SetField(_bridge, "_usingGeneratedWaves", true);
+                }), authored: false);
             SetField(_bridge, "_running", true);
             SetField(_bridge, "_world", _world);
             SetField(_bridge, "_em", _em);
@@ -68,6 +74,14 @@ namespace Wassup.Tests.PlayMode
                 "_aliveAttackersQuery",
                 _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>()));
             SetField(_bridge, "_aliveAttackersQueryCreated", true);
+
+            // battle-sim-extraction unit 13-A1 — `NextWaveDock` 은 `bridge.X` 직독에서
+            // `MatchSession.Current.ReadModel` 폴링으로 옮겨갔다. 이 픽스처는 `BeginPlacement`
+            // 를 거치지 않아 세션이 무장되지 않으므로, 도크가 스냅샷을 읽을 수 있게 여기서
+            // 직접 무장한다. **없으면 도크가 통째로 무동작이 되고**(IsActive 게이트에서 조기
+            // return) 브리지 상태가 맞는데도 CTA 강조가 안 켜진다 — 실측했다.
+            _session = new LegacyMatchSessionAdapter(_bridge);
+            Wassup.Core.Session.MatchSession.Arm(_session);
 
             _dockGo = new GameObject("NextWaveDock_NextWaveClearAttentionSmokeTest");
             _dockGo.SetActive(false);
@@ -92,6 +106,12 @@ namespace Wassup.Tests.PlayMode
         [TearDown]
         public void TearDown()
         {
+            if (_session != null)
+            {
+                Wassup.Core.Session.MatchSession.Release(_session);
+                _session.Dispose();
+                _session = null;
+            }
             if (_dockGo != null) Object.DestroyImmediate(_dockGo);
             if (_bridgeGo != null) Object.DestroyImmediate(_bridgeGo);
             if (_a != null) Object.DestroyImmediate(_a);
@@ -115,7 +135,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(_bridge.NextWaveClearReady);
             Assert.IsFalse(ClearVisual());
 
-            ((IList)GetField(_bridge, "_pending")).Clear();
+            ClearPending();
             var attacker = _em.CreateEntity(typeof(AttackUnitTag));
             Invoke(_bridge, "RefreshNextWaveClearReady");
             yield return null;
@@ -160,7 +180,15 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(new Vector2(-86f, -18f), labelRect.offsetMax);
         }
 
-        private int PendingCount() => ((IList)GetField(_bridge, "_pending")).Count;
+        private int PendingCount() => _schedule.PendingCount;
+
+        /// 대기열을 실제 경로로 비운다(꺼내는 것이 곧 스폰이다).
+        private void ClearPending()
+        {
+            _drain.Clear();
+            _schedule.TakeDueSpawns(float.MaxValue, _drain);
+            _drain.Clear();
+        }
 
         private bool ClearVisual() => (bool)GetField(_dock, "_clearReadyVisual");
 
