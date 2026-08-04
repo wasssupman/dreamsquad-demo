@@ -1,6 +1,6 @@
 # Goal Stability — 목표지점 안정도 (꿈결 안정도)
 
-**상태: 초안 2026-08-04 (사용자 승인 대기)**
+**상태: 완료 2026-08-04** (units 0~5 구현·유닛별 사용자 Play 확인·커밋 완료. 게이지는 구현 중 사용자 결정으로 유닛식 오버헤드 바로 전환 — unit 5 참조. 실맵 M 콘텐츠 값은 Follow-up Backlog)
 
 ## 목표
 
@@ -64,6 +64,8 @@
 - unit 1~4 = ECS 시뮬 변경 → **ecs-reviewer**. unit 0(Data/Editor)·5(Mono 뷰) → 일반 리뷰.
 
 ## 후속 후보
+
+> 종료 시점에 `docs/spec/README.md` Follow-up Backlog "목표지점 안정도" 그룹으로 이관됨 — 최신 목록은 그쪽이 정본.
 
 - 안정도 잔량 점수화 / 스트레스 예산 재균형 (`docs/reference/score-formula.md` "한계와 점당 점수는 같이 움직여야 한다" 경고 — 공성 전환으로 유출 빈도가 줄면 재균형 검토).
 - 골 피격 데미지 넘버 (`DamageApplicationSystem` 의 `AttackUnitTag` 필터 확장).

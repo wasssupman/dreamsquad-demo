@@ -60,6 +60,18 @@
 | View | Zone: `Presentation/HazardVisualLifetime.cs`(self-destroy) / Blocking: `Battle/Effects/BlockingHazardPresenter.cs`(엔티티 추적) | 계열별 뷰 백엔드 다름 |
 | 씬 wiring | BattleBridge (EffectSpawner·vfxSpawner 경유) | |
 
+## 목표지점 — 안정도 골 (goal-stability)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/MapGrid/MapDocument.cs` `goalMaxStability[]` (goals 와 index 정렬) | 전용 SO 없음 — 맵 에셋이 per-goal M 소유, MapPainter 가 bake. 부재/길이 불일치 = 전 골 0 = **엔티티 미스폰(현행 유출)** |
+| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnGoalEntities` (BuildFlowField 직후) | ★Mono 주도 — request 왕복 없음. M>0 골만. teardown = `DestroyEntitiesByType<GoalPoint>` |
+| ECS 컴포넌트 (Units) | `Battle/Units/GoalPoint.cs` + FactionTag{Goal}·Health·IncomingDamage·LocalTransform | blocking hazard 동형 최소 아키타입(1칸·이동/공격/CC/모디파이어 버퍼 없음) |
+| 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(공성 게이트 — 살아있는 골 셀 PastGoalTag 봉인) · `Battle/Combat/AttackSystem.cs`(최후순위 타겟·Focus 잠금 금지) · `Battle/Units/UnitLifecycleSystem.cs`(goal-dead 루프) | ★붕괴 신호 = **엔티티 부재**(플래그/동기화 없음). general-dead 루프는 `WithNone<GoalPoint>` |
+| 이벤트 큐 | `Battle/Units/GoalCollapsedEventsSingleton.cs` (Units→Bridge) | **연출/로그 전용** — 게임 상태 갱신 없음. 생성·drain·Dispose 3종 BattleBridge |
+| View | 유닛 오버헤드 체력바 재사용(`Presentation/UnitOverheadUiLayer.cs` SetUnit — Bridge 가 앵커 직접 투영, `goalOverheadHeight`) + 붕괴 원샷 `VfxSpawner.SpawnGoalCollapse` | ★큐 아님 — Health read-only 폴링. 붕괴 숨김 = EndFrame 자동. 골 구조물 프랍은 장식 유지 |
+| 씬 wiring | `VfxSpawner.goalCollapsePrefab`(록버스트 재사용) | 게이지 계층은 기존 배선 재사용 — 신규 씬 오브젝트 0 |
+
 ## 스킬 해저드 — Tornado/Meteor/Portal (플레이어 스킬 탭)
 
 | 정거장 | 앵커 | 확인 포인트 |
