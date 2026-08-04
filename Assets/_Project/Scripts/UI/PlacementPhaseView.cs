@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -175,7 +176,9 @@ namespace Wassup.UI
             _panel.SetActive(false);
             if (gameManager != null) gameManager.SetPhase(GamePhase.Battle);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.BeginRegen();
-            if (bridge != null) bridge.StartBattle();
+            // unit 13-C — 배치 확정을 커맨드로. 위의 페이즈 전환·리젠 개시는 아직 뷰가 직접 하며
+            // (통화 소유가 sim 으로 가는 unit 15 의 몫), 여기서는 전투 개시만 세션에 넘긴다.
+            MatchSession.Send(seq => MatchCommand.FinishPlacement(seq));
         }
 
         private bool CanFinishPlacement()

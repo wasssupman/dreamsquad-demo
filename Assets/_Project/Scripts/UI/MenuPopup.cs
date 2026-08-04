@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
-using Wassup.Core.TimeControl;
+using Wassup.Core.Session;
 using Wassup.Data;
 using Wassup.UI.Layout;
 
@@ -31,7 +31,11 @@ namespace Wassup.UI
         private Button _exitButton;
         private bool _built;
         private bool _open;
-        private TimeLease _pauseLease;
+        // unit 13-C — 정지 lease 를 이 뷰가 직접 들지 않는다. `SetPaused` 는 커맨드 자격이 있는
+        // 유일한 시간 제어(청사진 ① §2)이고 lease 소유는 세션으로 갔다. 어댑터가 쓰는 파라미터는
+        // 여기 있던 것과 동일하다(`TimeDomain.Battle, 0f, priority: 100`) — 행동 변화 0.
+        // teardown 안전망도 세션이 갖는다: 어댑터 `Dispose` 가 lease 를 반납하고, 매치 경계의
+        // `TimeManager.ResetAll` 이 이중 안전망이다.
 
         public bool IsOpen => _open;
 
@@ -44,15 +48,19 @@ namespace Wassup.UI
         private void OnDisable()
         {
             // Safety: never leave the battle paused if this object is torn down while open.
-            if (_open) { _pauseLease.Dispose(); _open = false; }
+            // 세션이 이미 사라진 순서라도 어댑터 Dispose 가 lease 를 반납하므로 정지가 남지 않는다.
+            if (_open) { SendPaused(false); _open = false; }
         }
+
+        private static void SendPaused(bool paused)
+            => MatchSession.Send(seq => MatchCommand.SetPaused(seq, paused));
 
         public void Open()
         {
             if (_open) return;               // idempotent
             if (!_built) BuildCanvas();
             _open = true;
-            _pauseLease = TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority: 100);
+            SendPaused(true);
             if (_root != null) _root.SetActive(true);
             if (wavePatternStrip != null)
             {
@@ -75,7 +83,7 @@ namespace Wassup.UI
         {
             if (!_open) return;
             _open = false;
-            _pauseLease.Dispose();           // idempotent no-op on double dispose
+            SendPaused(false);               // 어댑터가 `_paused` 로 멱등을 보장한다
             if (wavePatternStrip != null)
             {
                 wavePatternStrip.Roll();
@@ -90,7 +98,7 @@ namespace Wassup.UI
         {
             // Release the pause before leaving; the scene teardown + TimeManager.ResetAll
             // at the match boundary also clears it, so double-release is harmless.
-            if (_open) { _pauseLease.Dispose(); _open = false; }
+            if (_open) { SendPaused(false); _open = false; }
             // abandoned-match-reconciliation unit 2 — exiting a live battle abandons
             // the tournament attempt: submit a 0 now while the app is still alive.
             // tournament-deck-info unit 4 — 덱도 같이 싣는다. 씬이 아직 살아 있어 로거가

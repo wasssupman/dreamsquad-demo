@@ -56,6 +56,23 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 - **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
   **bundle B** 로 이관한다(스펙 초안의 분류 오류).
 
+### bundle C 의 검출기 문제 (2026-08-05 — 진행 전 반드시 읽을 것)
+
+**골든은 bundle C 를 검출하지 못한다.** 골든 하네스(`LegacyTraceGoldenRunner`)는
+`bridge.BeginPlacement` · `PlaceFirstValid(bridge, unit)` · `bridge.ForceNextWave` 를 **직접**
+호출하고 뷰를 하나도 거치지 않는다. 따라서 C 의 회귀는 sim 이 아니라 **UI 에만** 나타나며
+"컴파일 통과 + 화면만 죽음"이 된다. 골든 초록은 이때 "sim 을 안 건드렸다"만 증명한다.
+
+실제 검출기는 PlayMode 테스트다. 진행 전 초록 기준선을 확보했다(집중 실행 `passed=8 failed=3`):
+- ✅ `DropDismountTest.RealDragDrop_HandoffContinuity_...` — **실제 드래그·드롭 + 활성화 시계 +
+  탭 게이트**를 한 테스트에서 태운다. C2 의 핵심 검출기.
+  (선행 파손이었다 — `fe53bd45` 가 `_defenderViewOverride` 값을 `(float3,float,float3)` 튜플로
+  바꿨는데 테스트의 리플렉션 헬퍼가 `float3` 캐스팅을 유지해 `InvalidCastException`. Item1 만
+  꺼내도록 고쳐 되살렸다. **C2 를 하기 전에 검출기를 먼저 세우는 것이 순서**였다.)
+- ✅ `RelocationSmokeTest` · `RelocationMoveModeTest` · `RelocationPlacementSessionTest` ·
+  `OnPlaceApplyStackNearbyTest`
+- 🔴 `PlacementAuraTest` ×3 — 선행 파손(×1.2), 이 spec 밖. README 후속 후보 참조.
+
 ### bundle B 의 실제 분해 (2026-08-05 실측)
 
 | 조각 | 대상 | 상태 |

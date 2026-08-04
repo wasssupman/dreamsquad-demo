@@ -162,7 +162,13 @@ namespace Wassup.Tests.PlayMode
         {
             var dict = OverrideDict(bridge);
             if (!dict.Contains(entity)) return null;
-            var f3 = (Unity.Mathematics.float3)dict[entity];
+            // `fe53bd45`(drop-dismount unit 1) 이후 값은 float3 가 아니라
+            // `(float3 pos, float lift, float3 ground)` 튜플이다. 여기서 보는 것은 위치뿐이라
+            // Item1 만 꺼낸다 — 예전의 직접 캐스팅은 InvalidCastException 이었다.
+            object boxed = dict[entity];
+            var posField = boxed.GetType().GetField("Item1");
+            Assert.IsNotNull(posField, "뷰 오버라이드 값의 모양이 또 바뀌었다 — 헬퍼를 갱신할 것");
+            var f3 = (Unity.Mathematics.float3)posField.GetValue(boxed);
             return (Vector3)f3;
         }
 

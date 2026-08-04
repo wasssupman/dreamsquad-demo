@@ -244,7 +244,9 @@ namespace Wassup.UI
         {
             SetClearReadyVisual(false);
             SoundManager.Instance?.PlayNextWave();
-            if (bridge != null) bridge.ForceNextWave();
+            // unit 13-C — 직접 호출에서 커맨드로. 거절이면 아무 일도 일어나지 않는다(구
+            // `bridge == null` 가드와 같은 결과) — 사운드·시각 피드백은 그대로라 체감 동일하다.
+            MatchSession.Send(seq => MatchCommand.ForceNextWave(seq));
         }
 
         private void BuildCanvas()

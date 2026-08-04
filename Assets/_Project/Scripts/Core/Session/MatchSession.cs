@@ -29,6 +29,9 @@ namespace Wassup.Core.Session
                     "[MatchSession] 살아 있는 세션을 교체한다 — 이전 소유자가 Release 를 빠뜨렸을 수 있다.");
             }
             Current = session;
+            // 새 세션은 순번을 0 부터 기대한다(어댑터의 `_nextExpectedSeq`). 여기서 리셋하지 않으면
+            // 두 번째 판의 첫 커맨드가 갭으로 거절돼 **배치가 통째로 먹지 않는다**.
+            _nextCommandSeq = 0;
         }
 
         // 자신이 등록한 세션만 내린다. 매치 재시작이 새 세션을 무장한 뒤 옛 소유자의 teardown 이
@@ -63,5 +66,30 @@ namespace Wassup.Core.Session
         // 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다. 구현체 4종(Local/Remote/Replay/
         // Ghost)이 모두 이 지점을 쓰는 것이 규약이다.
         public static void Publish(in SessionEvent evt) => Events?.Invoke(evt);
+
+        // ── 커맨드 순번 (unit 13-C) ─────────────────────────────────────────────
+        //
+        // 어댑터는 순번 갭을 **즉시 거절**한다(인프로세스는 순서가 보장되므로 갭 = 호출자 버그).
+        // 따라서 발신자가 여럿(웨이브 버튼·정지·배치 확정·배치·카드)이어도 **하나의 카운터**를
+        // 공유해야 한다. 각 뷰가 자기 카운터를 들면 두 번째 발신자부터 전부 거절된다.
+        //
+        // 매치 경계에서 0 으로 리셋된다(`Arm`) — 세션의 기대값과 맞춘다.
+        // 발신구를 **하나로 좁힌다**. "순번을 미리 받아가는" API 를 따로 두면 받아가고 보내지
+        // 않는 경로가 갭을 만들어 **다음 진짜 커맨드가 거절된다**. 순번은 여기서만 움직인다.
+        private static uint _nextCommandSeq;
+
+        // 세션이 없으면 `Session_PhaseClosed` 로 거절된 receipt 를 돌려줘
+        // 호출부가 null 검사 없이 결과만 보면 되게 한다 — **순번은 소모하지 않는다**
+        // (소모하면 다음 진짜 커맨드가 갭으로 거절된다).
+        public static CommandReceipt Send(System.Func<uint, MatchCommand> build)
+        {
+            var session = Current;
+            if (session == null || !session.IsActive)
+                return CommandReceipt.Rejected(0, CommandReject.Session_PhaseClosed);
+            var command = build(_nextCommandSeq);
+            var receipt = session.SendCommand(command);
+            _nextCommandSeq++;
+            return receipt;
+        }
     }
 }
