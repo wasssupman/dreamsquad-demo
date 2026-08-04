@@ -22,3 +22,10 @@ ECS 컴포넌트의 **형태가 아니라 시맨틱**을 이식하기 위한 대
 - 컴포넌트 96+21 전수(당시 grep 수와 대조해 빠짐 0 증명), 게이트 35 전수.
 - 부재-상태 로직 목록이 별도 섹션으로 분리돼 있다(이식 시 개별 체크박스가 되도록).
 - 코드 변경 0(선택 유틸 제외).
+
+> 진행 기록 2026-08-04: 완료 — `m1_blueprint_data_mapping.md`(번역 규칙) + 부속 전수 인벤토리 2편
+> (`m1_data_inventory_components.md` 97+21 · `m1_data_inventory_gates.md` 게이트 44/WithNone 48/
+> 부재-상태 20/쓰기 지도 44행). 계수 정정: IComponentData 는 루트 `BattleTimeScale` 포함 **97**
+> (정본 96 은 맥락 4폴더 기준 — 범위 차이). RequireForUpdate 35 일치 + RequireAny 4 + 무게이트 5.
+> 발견: DamageApplication 게이트는 버퍼 "부재"만 봄 · UltimateLeap 무적은 WithNone 직역 금지
+> (버퍼 Clear 계약) · 단독 writer 표 = 모듈 경계 초안. 추출 유틸은 미작성(에이전트 전수 판독으로 대체).
