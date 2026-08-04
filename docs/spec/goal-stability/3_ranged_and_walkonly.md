@@ -23,7 +23,9 @@
 
 ## 완료 기준
 
-- [ ] compile + 기존 EditMode green.
-- [ ] Play: 원거리 적이 사거리에서 골 포격(방어유닛이 사거리에 있으면 그쪽 우선 유지), Runner/Swift 가 골 앞에서 공격.
-- [ ] 도발(가디언) 중 Runner/Swift 가 방어유닛을 때리고, 도발 종료 후 골 공격으로 복귀.
-- [ ] 골 붕괴 후 walk-only 적이 정상 유출(잔존 AttackState 무해 확인).
+- [x] compile + 기존 EditMode green (관련 스위트 85/85).
+- [x] 원거리 골 피해 — **조사 결과 단일 직격 호밍(SingleSplash)은 타겟 엔티티 직결이라 무변경 개통**(faction 검사 없음). 실제 구멍은 TileAoe 피해자 풀뿐 → Defender 풀에 골 포함(`GoalProjectileTests` 3건: 호밍 직격/Defender 풀 포함/Enemy 풀 무회귀). Play 확인 완료.
+- [x] Runner/Swift 골 공격 + 도발 병존 — 스폰 grant(mask=Goal, `_hasStabilityGoals` 판)·`TauntAttackGranted.previousTargetMask` 원복(`GoalTauntGrantTests` 3건). Play 확인 완료.
+- [x] 골 붕괴 후 walk-only 정상 유출 — Play 확인.
+
+2026-08-04 사용자 확인 완료.

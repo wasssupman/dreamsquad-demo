@@ -56,19 +56,46 @@ namespace Wassup.Battle.Combat
                         magnitude = p.damage,
                     },
                 });
-                ecb.AddComponent<TauntAttackGranted>(entity);
+                // previousTargetMask 0 = 도발이 AttackState 자체를 부여 → 해제 시 통째 제거(현행).
+                ecb.AddComponent(entity, new TauntAttackGranted { previousTargetMask = 0 });
+            }
+
+            // goal-stability unit 3 — 도발 전에 이미 AttackState 를 가진 적(walk-only
+            // goal-grant, mask=Goal 단독)은 마스크에 Defender 를 OR 하고 이전 마스크를
+            // 저장한다. Defender 비트가 이미 있는 일반 적은 대상 아님 — 그쪽 타겟팅은
+            // aggro sticky(AttackSystem)가 이미 소유하고, 여기 걸리면 해제 시 원복이
+            // 무의미한 구조 변경만 만든다.
+            foreach (var (attackState, entity) in
+                     SystemAPI.Query<RefRW<AttackState>>()
+                              .WithAll<Aggroed>()
+                              .WithNone<TauntAttackGranted>()
+                              .WithEntityAccess())
+            {
+                int mask = attackState.ValueRO.targetMask;
+                if ((mask & (int)Faction.Defender) != 0) continue;
+                attackState.ValueRW.targetMask = mask | (int)Faction.Defender;
+                ecb.AddComponent(entity, new TauntAttackGranted { previousTargetMask = mask });
             }
 
             // Strip: granted enemy that is no longer aggroed (released → back to exit).
-            foreach (var (_, entity) in
-                     SystemAPI.Query<RefRO<AttackState>>()
-                              .WithAll<TauntAttackGranted>()
+            // goal-stability unit 3 — 이전 마스크가 있으면(스폰 grant 소유의 AttackState)
+            // 마스크만 원복하고 컴포넌트는 유지한다. 0 이면 현행대로 통째 제거.
+            foreach (var (attackState, granted, entity) in
+                     SystemAPI.Query<RefRW<AttackState>, RefRO<TauntAttackGranted>>()
                               .WithNone<Aggroed>()
                               .WithEntityAccess())
             {
-                ecb.RemoveComponent<AttackState>(entity);
-                ecb.RemoveComponent<AttackOutputElement>(entity);
-                ecb.RemoveComponent<TauntAttackGranted>(entity);
+                if (granted.ValueRO.previousTargetMask != 0)
+                {
+                    attackState.ValueRW.targetMask = granted.ValueRO.previousTargetMask;
+                    ecb.RemoveComponent<TauntAttackGranted>(entity);
+                }
+                else
+                {
+                    ecb.RemoveComponent<AttackState>(entity);
+                    ecb.RemoveComponent<AttackOutputElement>(entity);
+                    ecb.RemoveComponent<TauntAttackGranted>(entity);
+                }
             }
 
             ecb.Playback(state.EntityManager);

@@ -393,6 +393,9 @@ namespace Wassup.Bridge
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
+        // goal-stability unit 3 — 이 판에 안정도(M>0) 골이 존재하는가. SpawnGoalEntities 가
+        // 맵 빌드마다 갱신. walk-only 적의 골 공격 grant 조건(골 없는 판엔 grant 자체를 안 함).
+        private bool _hasStabilityGoals;
 
         // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
@@ -882,6 +885,7 @@ namespace Wassup.Bridge
         // 없어 행동 변화 0.
         private void SpawnGoalEntities()
         {
+            _hasStabilityGoals = false;
             if (!_generatedMap.IsCreated || _em == null) return;
             DestroyEntitiesByType<GoalPoint>();
 
@@ -908,7 +912,10 @@ namespace Wassup.Bridge
                 spawned++;
             }
             if (spawned > 0)
+            {
+                _hasStabilityGoals = true;
                 Debug.Log($"[BattleBridge] Goal entities spawned — {spawned}/{goalCount} (안정도 M>0)");
+            }
         }
 
         // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place) 싱글턴 구축.
@@ -7119,6 +7126,33 @@ namespace Wassup.Bridge
                     cooldown = entry.unitType.aggroAttackCooldown,
                     range = entry.unitType.aggroAttackRange,
                 });
+
+            // goal-stability unit 3 — "모든 적이 공격 가능한 최후의 대상": 공격 없는
+            // walk-only(Runner/Swift)도 안정도 골이 있는 판에서는 도발 프로필 수치를
+            // 재사용해 mask=Goal 단독 AttackState 를 스폰 시 부여한다. 골 전멸 후엔
+            // mask 에 유효 후보가 없어 자연 무해(제거 불필요). 도발 병존(마스크 OR/원복)은
+            // TauntAttackGrantSystem 이 previousTargetMask 로 처리한다.
+            if (!wantsAttack && _hasStabilityGoals && entry.unitType.aggroAttackDamage > 0f)
+            {
+                _em.AddComponentData(entity, new AttackState
+                {
+                    range = entry.unitType.aggroAttackRange,
+                    cooldownDuration = entry.unitType.aggroAttackCooldown,
+                    cooldownRemaining = 0f,
+                    attackTargetCount = 1,
+                    targetMask = (int)Faction.Goal,
+                    hitDelaySec = entry.unitType.hitDelaySec,
+                });
+                var goalOutputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                goalOutputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement
+                {
+                    value = new Wassup.Data.AttackOutput
+                    {
+                        kind = Wassup.Data.AttackOutputKind.Damage,
+                        magnitude = entry.unitType.aggroAttackDamage,
+                    },
+                });
+            }
 
             // enemy-behavior-components Unit 2 — behavior + filter from SO (enemyClass
             // hardcode removed). EnemyBehavior drives targeting/aim; FocusTarget is

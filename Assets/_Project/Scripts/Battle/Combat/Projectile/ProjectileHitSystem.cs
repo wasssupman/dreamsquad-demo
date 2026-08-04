@@ -94,6 +94,14 @@ namespace Wassup.Battle.Combat.Projectile
             var defenderEntities = defenderQuery.ToEntityArray(Allocator.Temp);
             var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
+            // goal-stability unit 3 — Defender 풀 TileAoe 의 골 포함용 스냅샷(맵당 ≤4).
+            // 골은 DefenderUnitTag 가 없어 위 풀에 안 잡힌다 — 적/보스 광역이 골만
+            // 비껴가는 구멍을 여기서 닫는다. 직격 호밍(SingleSplash)은 타겟 엔티티
+            // 직결이라 풀 무관(무변경 개통).
+            var goalQuery = SystemAPI.QueryBuilder().WithAll<Wassup.Battle.Units.GoalPoint, LocalTransform>().Build();
+            var goalEntities = goalQuery.ToEntityArray(Allocator.Temp);
+            var goalTransforms = goalQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
             // the flow field exists (early frames / tests). Hoisted out of the loop.
@@ -496,17 +504,33 @@ namespace Wassup.Battle.Combat.Projectile
                         // 중심 거리²를 모아 가까운 순 aoeTargetCap 개로 절단(0 = 무제한 =
                         // 레거시 메테오/스킬/보스 경로, byte-identical). 데미지와 CC 를
                         // 같은 capped 집합에 적용. 비폭탄 spawn 은 cap 0·ccKind 0 → 무회귀.
-                        var inRange = new NativeList<int>(Allocator.Temp);
+                        // goal-stability unit 3 — 후보를 엔티티 리스트로 수집해 Defender 풀일 때
+                        // 골 풀을 같은 cap 선정에 합류시킨다. Enemy 풀(플레이어 메테오/방어
+                        // 광역 레거시)은 수집 대상이 동일해 무변경.
+                        var inRangeEnts = new NativeList<Entity>(Allocator.Temp);
                         var inRangeDistSq = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < victims.Length; i++)
                         {
                             float3 vpos = victimTransforms[i].Position;
                             int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
-                            inRange.Add(i);
+                            inRangeEnts.Add(victims[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;
                             inRangeDistSq.Add(dx * dx + dz * dz);
+                        }
+                        if (hitsDefenders)
+                        {
+                            for (int i = 0; i < goalEntities.Length; i++)
+                            {
+                                float3 vpos = goalTransforms[i].Position;
+                                int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
+                                if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                                inRangeEnts.Add(goalEntities[i]);
+                                float dx = vpos.x - impactWorld.x;
+                                float dz = vpos.z - impactWorld.z;
+                                inRangeDistSq.Add(dx * dx + dz * dz);
+                            }
                         }
                         var selectedAoe = new NativeList<int>(Allocator.Temp);
                         AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), projectile.ValueRO.aoeTargetCap, ref selectedAoe);
@@ -515,7 +539,7 @@ namespace Wassup.Battle.Combat.Projectile
                         float bombCcDur = projectile.ValueRO.ccDuration;
                         for (int s = 0; s < selectedAoe.Length; s++)
                         {
-                            var victim = victims[inRange[selectedAoe[s]]];
+                            var victim = inRangeEnts[selectedAoe[s]];
                             // 데미지탄만 dmg>0 — 수면/스턴탄(dmg 0)은 데미지 append 스킵.
                             if (dmg > 0f && damageBufferLookup.HasBuffer(victim))
                             {
@@ -533,7 +557,7 @@ namespace Wassup.Battle.Combat.Projectile
                                     effect = new CcEffect { kind = (CcKind)bombCc, remainingTime = bombCcDur },
                                 });
                         }
-                        inRange.Dispose();
+                        inRangeEnts.Dispose();
                         inRangeDistSq.Dispose();
                         selectedAoe.Dispose();
 
@@ -570,6 +594,8 @@ namespace Wassup.Battle.Combat.Projectile
             ecb.Dispose();
             aoeEntities.Dispose();
             aoeTransforms.Dispose();
+            goalEntities.Dispose();
+            goalTransforms.Dispose();
             aoePositions.Dispose();
             defenderEntities.Dispose();
             defenderTransforms.Dispose();
