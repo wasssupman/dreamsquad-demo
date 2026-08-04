@@ -14,6 +14,7 @@
 
 | 파일 | 작업 구분 | 목적 |
 |---|---|---|
+| [m0_implementation_summary.md](m0_implementation_summary.md) | 구현 요약 | M0 실제 변경·런타임 흐름·검증·잔여 경계 종합 |
 | [0_system_order_capture.md](0_system_order_capture.md) | 순서 박제 | 유효 시스템 총순서 덤프 + 미선언 순서 어트리뷰트 핀 |
 | [1_sim_entity_id.md](1_sim_entity_id.md) | stable ID | `SimEntityId` 도입, 타겟팅 동률·발사 RNG seed 축 교체 |
 | [2_fixed_step_harness_driver.md](2_fixed_step_harness_driver.md) | 시간 결정론 | 하네스 모드 `StepOneTick` 드라이버 + 입력 sim-tick 스케줄 주입 |
