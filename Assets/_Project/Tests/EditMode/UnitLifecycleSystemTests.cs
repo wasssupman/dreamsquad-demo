@@ -39,6 +39,13 @@ namespace Wassup.Tests.EditMode
                 if (s.queue.IsCreated) s.queue.Dispose();
             }
             query.Dispose();
+            var collapsedQuery = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
+            if (collapsedQuery.CalculateEntityCount() > 0)
+            {
+                var s = collapsedQuery.GetSingleton<GoalCollapsedEventsSingleton>();
+                if (s.queue.IsCreated) s.queue.Dispose();
+            }
+            collapsedQuery.Dispose();
             _world?.Dispose();
         }
 
@@ -112,6 +119,53 @@ namespace Wassup.Tests.EditMode
             Assert.DoesNotThrow(() => Tick());
             Assert.IsFalse(_em.Exists(unit),
                 "entity must still be destroyed even when singleton is absent");
+        }
+
+        // ── goal-stability unit 4 — 골 붕괴 이벤트 ─────────────────────────────
+
+        private Entity CreateDeadGoal()
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, new GoalPoint { cell = new int2(4, 2), goalIndex = 1 });
+            _em.AddComponentData(e, LocalTransform.FromPosition(new float3(4f, 0f, 2f)));
+            _em.AddComponentData(e, new Health { value = 0f, max = 30f });
+            _em.AddComponent<DeadTag>(e);
+            return e;
+        }
+
+        [Test]
+        public void GoalDead_EnqueuesCollapsedEvent_AndDestroys()
+        {
+            var singletonEntity = _em.CreateEntity();
+            _em.AddComponentData(singletonEntity, new GoalCollapsedEventsSingleton
+            {
+                queue = new NativeQueue<GoalCollapsedEvent>(Allocator.Persistent)
+            });
+            var goal = CreateDeadGoal();
+
+            Tick();
+
+            using var q = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
+            var singleton = q.GetSingleton<GoalCollapsedEventsSingleton>();
+            Assert.AreEqual(1, singleton.queue.Count,
+                "붕괴 이벤트 정확히 1건 — general-dead 루프가 삼키면(WithNone<GoalPoint> 누락) 0건이 된다");
+
+            var evt = singleton.queue.Dequeue();
+            Assert.AreEqual(goal, evt.entity);
+            Assert.AreEqual(new int2(4, 2), evt.cell, "cell 은 destroy 전에 bake 되어야 한다");
+            Assert.AreEqual(1, evt.goalIndex);
+
+            Assert.IsFalse(_em.Exists(goal), "이벤트 enqueue 후 엔티티 파괴");
+        }
+
+        [Test]
+        public void GoalDead_WithoutSink_StillDestroyed()
+        {
+            // fail-open: 채널 없이도(합성 테스트 월드) 붕괴 파괴는 진행된다.
+            var goal = CreateDeadGoal();
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsFalse(_em.Exists(goal));
         }
     }
 }

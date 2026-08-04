@@ -369,6 +369,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
+        // goal-stability unit 4 — 골 붕괴 채널(Units→Bridge). 연출/로그 전용.
+        private NativeQueue<GoalCollapsedEvent> _goalCollapsedQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardSpawnRequestQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
         // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
@@ -657,6 +659,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
+            DestroyEntitiesByType<GoalCollapsedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
@@ -711,6 +714,7 @@ namespace Wassup.Bridge
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
+            if (_goalCollapsedQueue.IsCreated) _goalCollapsedQueue.Dispose();
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -1610,6 +1614,13 @@ namespace Wassup.Bridge
             var hazardDestroyedSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardDestroyedSingleton, new Wassup.Battle.Effects.HazardDestroyedEventsSingleton { queue = _hazardDestroyedQueue });
 
+            // goal-stability unit 4 — 골 붕괴 채널(Units→Bridge). 연출/로그 전용 — 유출
+            // 전환은 골 엔티티 부재로 이미 성립(공성 게이트)해 상태 갱신이 없다.
+            if (_goalCollapsedQueue.IsCreated) _goalCollapsedQueue.Dispose();
+            _goalCollapsedQueue = new NativeQueue<GoalCollapsedEvent>(Allocator.Persistent);
+            var goalCollapsedSingleton = _em.CreateEntity();
+            _em.AddComponentData(goalCollapsedSingleton, new GoalCollapsedEventsSingleton { queue = _goalCollapsedQueue });
+
             // Hazard caster spawn request channel. Effects systems enqueue
             // unmanaged requests; BattleBridge owns SO lookup and visual spawning.
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
@@ -2507,6 +2518,7 @@ namespace Wassup.Bridge
             DrainMeteorBarrageRequests(); // season-gimmick-clockout unit 4 — 사직서 임계 메테오 barrage
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
+            DrainGoalCollapsedEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -6452,6 +6464,17 @@ namespace Wassup.Bridge
 
                 _blockingHazardVisualMap.Remove(evt.hazardEntity);
                 RecordBlockingHazardDestroyed(so, evt.worldPosition);
+            }
+        }
+
+        // goal-stability unit 4 — 붕괴 드레인. v1 소비 = 로그 + unit 5 연출 훅 자리.
+        // 상태 갱신 없음: 유출 전환은 골 엔티티 부재(공성 게이트)가 이미 담당한다.
+        private void DrainGoalCollapsedEvents()
+        {
+            if (!_goalCollapsedQueue.IsCreated) return;
+            while (_goalCollapsedQueue.TryDequeue(out var evt))
+            {
+                Debug.Log($"[BattleBridge] Goal collapsed — cell=({evt.cell.x},{evt.cell.y}) index={evt.goalIndex} → 유출 지점 전환");
             }
         }
 

@@ -20,6 +20,8 @@
 
 ## 완료 기준
 
-- [ ] compile + EditMode green (신규 테스트 포함).
-- [ ] Play(M 낮은 테스트 맵): 공성 → 안정도 0 → 붕괴 로그 → 공성하던 적들이 진입해 스트레스 상승 → 유출 한계 도달 시 기존 패배/Tally 정상.
-- [ ] 붕괴 후 새로 스폰된 웨이브도 그 골로 정상 유출.
+- [x] compile + EditMode green — `UnitLifecycleSystemTests` 2건 신규(이벤트 1건·cell bake·파괴 / sink 부재 fail-open) 포함 관련 스위트 57/57. general-dead 루프 `WithNone<GoalPoint>`(리뷰 M1).
+- [x] Play: 공성 → 안정도 0 → 붕괴 로그 → 진입 유출로 스트레스 상승 → 유출 한계 패배 정상 — 사용자 Play 확인.
+- [x] 붕괴 후 신규 웨이브 정상 유출 — Play 확인.
+
+2026-08-04 사용자 확인 완료.
