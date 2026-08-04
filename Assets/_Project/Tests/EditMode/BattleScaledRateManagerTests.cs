@@ -40,6 +40,9 @@ namespace Wassup.Tests.EditMode
             _world.EntityManager.SetComponentData(_scaleEntity, new BattleTimeScale { Value = value });
         }
 
+        private BattleScaledRateManager RateManager =>
+            (BattleScaledRateManager)_group.RateManager;
+
         [Test]
         public void NoSingleton_RunsAtFullSpeed()
         {
@@ -117,6 +120,59 @@ namespace Wassup.Tests.EditMode
                 _group.Update();
                 Assert.AreEqual(1, _probe.Updates, $"cycle {cycle}: 재개돼 1회 돌아야");
             }
+        }
+
+        [Test]
+        public void HarnessGate_BlocksPlayerLoopUntilArmed_ThenRunsExactlyOneFixedStep()
+        {
+            _world.SetTime(new TimeData(50.0, 0.2f));
+            _probe.Updates = 0;
+            RateManager.SetHarnessGate(true);
+
+            _group.Update();
+            Assert.AreEqual(0, _probe.Updates, "arm 전 플레이어 루프 update 는 차단돼야 한다");
+
+            RateManager.ArmStep(0.05f);
+            _group.Update();
+            Assert.AreEqual(1, _probe.Updates, "arm 된 스텝만 정확히 1회 실행돼야 한다");
+            Assert.AreEqual(0.05f, _probe.LastDelta, 1e-5f);
+            Assert.AreEqual(0.05, _probe.LastElapsed, 1e-5);
+
+            _group.Update();
+            Assert.AreEqual(1, _probe.Updates, "스텝 토큰은 1회 소비여야 한다");
+        }
+
+        [Test]
+        public void HarnessGate_InvalidStepDoesNotAdvance()
+        {
+            _world.SetTime(new TimeData(0, 0.2f));
+            _probe.Updates = 0;
+            RateManager.SetHarnessGate(true);
+
+            RateManager.ArmStep(0f);
+            _group.Update();
+            RateManager.ArmStep(float.NaN);
+            _group.Update();
+
+            Assert.AreEqual(0, _probe.Updates, "유효하지 않은 dt 는 월드 시간을 전진시키면 안 된다");
+        }
+
+        [Test]
+        public void HarnessGate_DisabledReturnsToLiveScalePath()
+        {
+            SetScale(0.5f);
+            _world.SetTime(new TimeData(0, 0.2f));
+            _probe.Updates = 0;
+            RateManager.SetHarnessGate(true);
+            RateManager.ArmStep(0.05f);
+            _group.Update();
+
+            RateManager.SetHarnessGate(false);
+            _group.Update();
+
+            Assert.AreEqual(2, _probe.Updates);
+            Assert.AreEqual(0.1f, _probe.LastDelta, 1e-5f, "게이트 해제 뒤에는 라이브 scale 경로여야 한다");
+            Assert.AreEqual(0.15, _probe.LastElapsed, 1e-5);
         }
     }
 

@@ -46,7 +46,8 @@ namespace Wassup.Core
         [Tooltip("0 이면 매 판 새 시드. 0 이 아니면 재현용 고정 — 맵·웨이브가 매 판 동일.")]
         [SerializeField] private int debugFixedMatchSeed = 0;
         public int MatchSeed { get; private set; }
-        public bool MatchSeedFixed => debugFixedMatchSeed != 0;
+        private bool _matchSeedFixed;
+        public bool MatchSeedFixed => _matchSeedFixed;
 
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
@@ -216,10 +217,17 @@ namespace Wassup.Core
         // BattleBridge 에 주입하면 맵·웨이브가 이 시드에서 파생된다(작업 2/3).
         private void EnsureMatchSeed()
         {
-            MatchSeed = debugFixedMatchSeed != 0 ? debugFixedMatchSeed : Wassup.Core.MatchSeed.GenerateRandom();
+            // battle-sim-extraction unit 2 — 하네스 시드 최우선("같은 seed 2회 실행" 계약).
+            // 라이브/일반 테스트에선 0 이라 기존 우선순위(고정 노브 → 랜덤) 그대로다.
+            int harnessSeed = TestModeContext.ConsumeHarnessSeed();
+            int fixedSeed = harnessSeed != 0
+                ? harnessSeed
+                : debugFixedMatchSeed;
+            _matchSeedFixed = fixedSeed != 0;
+            MatchSeed = fixedSeed != 0 ? fixedSeed : Wassup.Core.MatchSeed.GenerateRandom();
             if (battleBridge != null) battleBridge.SetMatchSeed(MatchSeed);
             if (logger != null) logger.SetMatchSeeds(MatchSeed, MatchSeedFixed);
-            Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={debugFixedMatchSeed != 0})");
+            Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={fixedSeed != 0})");
         }
 
         // gimmick-match-integration unit 1 — 매치당 1회 기믹 배정(모든 진입 경로 공통, 모든

@@ -1,6 +1,6 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **작성 2026-08-03 · M0 구간 (unit 0 착수 전, 사용자 승인 대기) · 교차검증 4트랙(35건) 사실 정정 반영 2026-08-03**
+상태: **M0 units 0·1·2 구현·자동 검증 완료 (2026-08-04) · unit 3 착수 전 · 교차검증 4트랙(35건) 사실 정정 반영 2026-08-03**
 
 설계 정본: [`docs/plans/2026-08-03-battle-sim-extraction-design.md`](../../plans/2026-08-03-battle-sim-extraction-design.md) (v6 — Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰 수렴). 이 README는 그 계획의 실행 인덱스다. 근거·감사 상세는 설계 문서를 읽는다.
 

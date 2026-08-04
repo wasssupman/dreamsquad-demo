@@ -67,8 +67,18 @@ namespace Wassup.Core
 
         private void Update()
         {
+            // battle-sim-extraction unit 2 — 하네스 중엔 StepOneTick 이 고정 dt 로 Tick 을
+            // 구동한다(프레임 dt 이중 진행 방지).
+            if (TestModeContext.HarnessActive) return;
+            Tick(Time.deltaTime);
+        }
+
+        // unit 2 — 시계 주입 seam. 라이브 = Update(프레임 dt), 하네스 = StepOneTick(고정 dt).
+        // 참고: 라이브가 TimeManager 배틀 도메인이 아니라 raw Time.deltaTime 인 것은 기존
+        // 동작이다(슬로우모/정지에서 쿨다운이 배틀 시계와 갈림 — M0 은 라이브 무변 계약).
+        public void Tick(float dt)
+        {
             if (_cooldownRemaining.Count == 0) return;
-            var dt = Time.deltaTime;
 
             _expireBuffer.Clear();
             foreach (var kv in _cooldownRemaining)

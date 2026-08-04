@@ -538,6 +538,9 @@ namespace Wassup.Bridge
 
         private void TeardownCurrentBattle()
         {
+            // unit 2 — 예외/씬 종료/재시작도 정상 EndHarness 와 같은 전역 상태를 복구한다.
+            // EndHarness 는 멱등이라 일반 매치 teardown 에서 호출해도 라이브 상태를 건드리지 않는다.
+            EndHarness();
             _running = false;
             _nextWaveClearReady = false;
             _placementAllowed = false;
@@ -2418,8 +2421,22 @@ namespace Wassup.Bridge
 
             if (!_running) return;
 
+            // battle-sim-extraction unit 2 — 하네스 중 배틀 프레임 전진은 StepOneTick 이
+            // 소유한다(여기서도 돌리면 이중 진행). 위 뷰 유지 구간(스케일 push·dim 페이드·
+            // 장판 점등 회수)은 페이즈/모드 무관이라 그대로 둔다.
+            if (Wassup.Core.TestModeContext.HarnessActive) return;
+
+            AdvanceBattleFrame(TimeManager.Instance.DeltaTime(TimeDomain.Battle));
+        }
+
+        // unit 2 — Update 의 배틀 프레임 본문 추출. 시계·펜딩 히트 VFX·빔 프레젠터가 **같은
+        // battleDt 하나**를 공유한다(추출 전엔 TimeManager.DeltaTime(Battle) 를 3곳이 독립
+        // read — 프레임 내 상수라 값은 동일했다. 하네스가 고정 dt 를 세 곳에 일관 주입해야
+        // 하므로 단일 인자로 접었다 — 라이브 값 불변 리팩터).
+        private void AdvanceBattleFrame(float battleDt)
+        {
             // 웨이브/스폰/타이머는 실시간이 아니라 Battle-스케일 클럭을 따른다(정지·슬로우모 반영).
-            _battleClock += TimeManager.Instance.DeltaTime(TimeDomain.Battle);
+            _battleClock += battleDt;
             float t = (float)_battleClock;
             QueueDueWaves(t);
             for (int i = _pending.Count - 1; i >= 0; i--)
@@ -2439,15 +2456,12 @@ namespace Wassup.Bridge
             DrainUnitAttackVisualEvents();
             // beam unit 1 — 세션 TTL 은 **배틀 도메인 시간**으로 깎는다(공격 사건이 sim 시간).
             // 히트 VFX 를 RESOLVE 시점으로 미뤄 재생(위 PendingHitVfx 주석).
-            TickPendingHitVfx(
-                Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle));
+            TickPendingHitVfx(battleDt);
 
             if (beamPresenter != null)
             {
                 _beamViewResolver ??= ResolveBeamViewPos;
-                beamPresenter.Tick(
-                    Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle),
-                    _beamViewResolver);
+                beamPresenter.Tick(battleDt, _beamViewResolver);
             }
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -2490,6 +2504,97 @@ namespace Wassup.Bridge
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             SyncProjectileViews();
         }
+
+        // === battle-sim-extraction unit 2 — StepOneTick 하네스 ===
+        // 같은 seed + 같은 입력 스케줄의 2회 실행이 같은 결과를 내는 고정 스텝 구동.
+        // 동기 자가구동: ArmStep 직후 BattleSimGroup.Update() 를 직접 호출하므로 에디터
+        // 포커스/프레임 펌프와 무관하게 완주한다(lessons 01 의 비포커스 정지 회피).
+        // 라이브 경로는 HarnessActive 게이트(위 Update·SkillRuntime.Update)로 이중 진행 차단.
+        private int _harnessTick;
+        private Wassup.Core.HarnessInputSchedule _harnessSchedule;
+        private Wassup.Battle.BattleScaledRateManager _harnessRateManager;
+        private Wassup.Battle.BattleSimGroup _harnessSimGroup;
+        private float _harnessPreviousCaptureDeltaTime;
+
+        public bool BattleRunning => _running;
+        public double BattleClock => _battleClock;
+        public int HarnessTick => _harnessTick;
+
+        public bool BeginHarness(float fixedDt, Wassup.Core.HarnessInputSchedule schedule = null)
+        {
+            if (fixedDt <= 0f || float.IsNaN(fixedDt) || float.IsInfinity(fixedDt)) return false;
+            if (_harnessRateManager != null || Wassup.Core.TestModeContext.HarnessActive) return false;
+            if (_world == null || !_world.IsCreated || !_running) return false;
+            var group = _world.GetExistingSystemManaged<Wassup.Battle.BattleSimGroup>();
+            if (group == null || group.RateManager is not Wassup.Battle.BattleScaledRateManager rm)
+                return false;
+            _harnessSimGroup = group;
+            _harnessRateManager = rm;
+            _harnessSchedule = schedule;
+            _harnessTick = 0;
+            _harnessPreviousCaptureDeltaTime = UnityEngine.Time.captureDeltaTime;
+            rm.SetHarnessGate(true);
+            Wassup.Core.TestModeContext.SetHarness(true);
+            // 코루틴 등 잔여 Time.deltaTime 결합 방어 — 프레임 델타 자체를 고정 dt 로.
+            UnityEngine.Time.captureDeltaTime = fixedDt;
+            return true;
+        }
+
+        public void EndHarness()
+        {
+            bool ownedHarness = _harnessRateManager != null || Wassup.Core.TestModeContext.HarnessActive;
+            _harnessRateManager?.SetHarnessGate(false);
+            if (ownedHarness) UnityEngine.Time.captureDeltaTime = _harnessPreviousCaptureDeltaTime;
+            Wassup.Core.TestModeContext.ClearHarness();
+            _harnessRateManager = null;
+            _harnessSimGroup = null;
+            _harnessSchedule = null;
+            _harnessPreviousCaptureDeltaTime = 0f;
+        }
+
+        // 스텝 순서 계약: 라이브 PlayerLoop 와 동일하게 ① 이번 tick 입력 ② 스킬 Update 상당
+        // ③ 브리지 Update 상당(시계·웨이브/스폰·이전 sim 이벤트 drain) ④ BattleSimGroup 1회
+        // ⑤ 도약 뷰 드레인(LateUpdate 소유분 — 1프레임에
+        // 다중 tick 을 돌려도 큐가 tick 정밀로 비워지도록 여기서도 회수. LateUpdate 의
+        // "SyncMonoUnitViews 직전" 계약은 그대로 성립 — 빈 큐 드레인은 무해).
+        public void StepOneTick(float fixedDt)
+        {
+            if (fixedDt <= 0f || float.IsNaN(fixedDt) || float.IsInfinity(fixedDt)) return;
+            if (!_running || _harnessRateManager == null || _harnessSimGroup == null) return;
+            _harnessSchedule?.RunDue(_harnessTick);
+            if (_harnessRateManager == null || _harnessSimGroup == null) return;
+            if (skillRuntime != null) skillRuntime.Tick(fixedDt);
+            AdvanceBattleFrame(fixedDt);
+            if (_harnessRateManager == null || _harnessSimGroup == null) return;
+            _harnessRateManager.ArmStep(fixedDt);
+            _harnessSimGroup.Update();
+            DrainBossLeapVisualEvents();
+            DrainUltimateLeapVisualEvents();
+            _harnessTick++;
+        }
+
+#if UNITY_EDITOR
+        // 에디터 러너도 BattleBridge 유일 ECS gateway 계약을 지킨다. Unity.Entities 타입은
+        // 이 메서드 안에서 plain count 로 닫히고 러너에는 노출되지 않는다.
+        public void GetHarnessDigestCounts(
+            out int attackers, out int defenders, out int projectiles,
+            out int nextWaveIndex, out int pendingSpawns, out int goals, out int killScore)
+        {
+            attackers = _aliveAttackersQueryCreated ? _aliveAttackersQuery.CalculateEntityCount() : 0;
+            projectiles = _projectileQueryCreated ? _projectileQuery.CalculateEntityCount() : 0;
+            defenders = 0;
+            if (HasLiveEntityManager())
+            {
+                using var defenderQuery = _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
+                defenders = defenderQuery.CalculateEntityCount();
+            }
+            nextWaveIndex = _nextWaveIndex;
+            pendingSpawns = _pending.Count;
+            goals = _goalReachedCount;
+            killScore = _killScoreTotal;
+        }
+#endif
 
         // projectile-shot-sequence unit 3 — BattleBridge가 유일한 Mono↔ECS 경계다.
         // Pool은 활성 entity key만 제공하고, Bridge가 component를 plain view snapshot으로

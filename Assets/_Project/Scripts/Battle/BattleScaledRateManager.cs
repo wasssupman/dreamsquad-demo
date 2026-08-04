@@ -27,11 +27,39 @@ namespace Wassup.Battle
         private EntityQuery _scaleQuery;
         private bool _queryReady;
         private bool _didPushTime;
+        // battle-sim-extraction unit 2 — 하네스 게이트. true 인 동안 플레이어 루프의
+        // 프레임 구동을 전부 차단하고, ArmStep 으로 예약된 고정 dt 스텝만 통과시킨다.
+        // 기본 false — 라이브 경로/기존 테스트(BattleScaledRateManagerTests) 무변.
+        private bool _harnessGate;
+        private bool _stepArmed;
+        private float _stepDt;
         // 스케일된 델타만 누적하는 로컬 elapsed. 월드의 (스케일 안 된) ElapsedTime 을 읽으면
         // 정지 구간의 실시간이 재개 시 한 프레임에 점프한다(FixedRateSimpleManager 도 로컬 누산기 사용).
         private double _elapsedTime;
 
         public float Timestep { get; set; }
+
+        public void SetHarnessGate(bool on)
+        {
+            _harnessGate = on;
+            _stepArmed = false;
+            if (!on) _stepDt = 0f;
+        }
+
+        // 다음 ShouldGroupUpdate 1회를 고정 dt 로 통과시킨다. 호출측(Bridge.StepOneTick)이
+        // arm 직후 group.Update() 를 **동기** 호출하는 것이 계약 — 플레이어 루프에 맡기면
+        // 스텝 시점이 렌더 프레임에 결합돼 에디터 비포커스 정지가 재현된다.
+        public void ArmStep(float fixedDt)
+        {
+            if (fixedDt <= 0f || float.IsNaN(fixedDt) || float.IsInfinity(fixedDt))
+            {
+                _stepArmed = false;
+                _stepDt = 0f;
+                return;
+            }
+            _stepArmed = true;
+            _stepDt = fixedDt;
+        }
 
         public bool ShouldGroupUpdate(ComponentSystemGroup group)
         {
@@ -40,6 +68,18 @@ namespace Wassup.Battle
                 group.World.PopTime();
                 _didPushTime = false;
                 return false;
+            }
+
+            if (_harnessGate)
+            {
+                if (!_stepArmed) return false; // 하네스 중 플레이어 루프 구동은 전부 skip.
+                _stepArmed = false;
+                _elapsedTime += _stepDt;
+                group.World.PushTime(new TimeData(
+                    elapsedTime: _elapsedTime,
+                    deltaTime: _stepDt));
+                _didPushTime = true;
+                return true;
             }
 
             float scale = ReadScale(group);
