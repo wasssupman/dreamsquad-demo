@@ -1,6 +1,6 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **M0 units 0·1·2·3 구현·자동 검증 완료 (2026-08-04) · unit 4 대기 · 교차검증 4트랙(35건) 사실 정정 반영 2026-08-03**
+상태: **M0 완료 — units 0~4 구현·자동 검증·골든 확정 (2026-08-04) · Track A common + Track B `$ecs-reviewer` 최종 APPROVE · M1 상세 units 미작성**
 
 설계 정본: [`docs/plans/2026-08-03-battle-sim-extraction-design.md`](../../plans/2026-08-03-battle-sim-extraction-design.md) (v6 — Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰 수렴). 이 README는 그 계획의 실행 인덱스다. 근거·감사 상세는 설계 문서를 읽는다.
 
@@ -21,6 +21,14 @@
 | [4_legacy_trace_golden.md](4_legacy_trace_golden.md) | 골든 하네스 | `LegacyTraceV0` 기록·직렬화 왕복·seed 코퍼스·parity 기준 확정 |
 | [5_handoff_summary.md](5_handoff_summary.md) | 인계 문서 | 클론 세션용 헛발 방지 + 레포 함정 |
 | [6_decision_record.md](6_decision_record.md) | 결정 기록 | 기각 대안·자기 철회·재론 조건 (ADR) — 재론 전 필독 |
+
+## M0 종료 판정 (2026-08-04)
+
+- units 0~4를 각각 독립 커밋으로 구현했다: `8795ac3c` → `3e7b33f5` → `cc04bc19` → `11902d32` → `c0f7bd4f`.
+- Unity 스크립트 컴파일 오류 0, 전체 EditMode **1,888건 중 실패 0**(1,886 통과, 기존 Ignore 2), `LegacyTrace` 집중 테스트 **5/5**, CardBuff PlayMode **1/1**을 확인했다.
+- 7개 골든 시나리오를 각각 새 Play 세션에서 2회 실행해 JSON byte diff **0**을 확인했다.
+- ECS 변경 리뷰는 Track A common과 Track B `$ecs-reviewer` 모두 **APPROVE**, 더 엄격한 최종 판정도 **APPROVE**다.
+- M1은 이 기준선 위에서 unit 7부터 새로 분해한다. 상세 spec이 작성되기 전에는 adapter/sim-lib 이식을 시작하지 않는다.
 
 ## Feature-wide 계약
 

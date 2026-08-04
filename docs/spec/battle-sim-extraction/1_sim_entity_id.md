@@ -34,5 +34,4 @@
 > 진행 기록 2026-08-04: 구현 완료 — `SimEntityId` + Bridge 카운터/부착 7경로, 랭킹 3종 축 교체,
 > Aggro·HazardCast 동률 **신설**, 발사 RNG seed 교체, ThreatTable simIds 화. **EditMode 전체
 > 1,859건 중 실패 0**(1,857 통과/기존 skip 2) — unit 1 관련 26건 green, `AggroTargetingTests` 신설.
-> grep 전수: Entity.Index 잔존 = Resolve 폴백 1곳(예외 ①). 잔여 = 같은 배치 2회 Play 로그 동일
-> 확인(unit 0 smoke 와 함께 — unit 2 하네스가 이 확인의 상위 호환이기도 하다).
+> grep 전수: Entity.Index 잔존 = Resolve 폴백 1곳(예외 ①). 후속 unit 2·4의 고정 입력 Play 하네스와 7개 골든 시나리오 2회 실행이 동일성 검증을 상위 호환으로 충족했다. 완료 커밋 `3e7b33f5`.

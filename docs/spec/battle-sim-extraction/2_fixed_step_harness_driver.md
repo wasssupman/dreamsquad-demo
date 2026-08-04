@@ -33,3 +33,4 @@
 - 비하네스 PlayMode smoke: `ActiveTileCastTest` **1/1 통과**.
 - 배치·비포커스 결정론: seed `20260804`, 20Hz, tick 100 `ForceNextWave`, 각 run **306 tick** 실행. 두 다이제스트 **7,651자 완전 동일**.
 - 종료 로그: `NullReferenceException`, 컴파일 오류, `Persistent allocates`, Native Collection leak **0건**. 종료 직전 `StopBattle` 로 Persistent 필드를 dispose하고 `EnteredEditMode` 뒤 프로세스를 종료함.
+- 완료 커밋: `cc04bc19`.

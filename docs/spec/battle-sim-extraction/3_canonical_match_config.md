@@ -47,3 +47,4 @@
 - 전체 EditMode: **1,883건 중 1,881 통과, 실패 0, 기존 Ignore 2**.
 - 실제 Play 하네스 2회: 각 306 ticks × 20Hz, `configHash=9293e3e11f7c023cdeaa5eb49644b0e540134ab617249b8630dcf926f50fe48e`, 7,727-byte digest 완전 동일.
 - Track A common review: **APPROVE**. Track B `$ecs-reviewer`: **APPROVE**. 더 엄격한 최종 판정: **APPROVE**.
+- 완료 커밋: `11902d32`.

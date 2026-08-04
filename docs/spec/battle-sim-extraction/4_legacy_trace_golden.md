@@ -51,3 +51,12 @@ M1 신 sim과의 A/B parity 기준선. 하네스 실행(units 2·3 위)에서 27
 - 직렬화 왕복 무손실 검증 통과.
 - 골든 코퍼스 N개 저장 + 재생성 절차 문서화.
 - parity 기준·동률 예외·CardBuffs 처리가 이 문서에 확정 기록됨. → **M0 완료. M1 units는 이 기준선 위에서 시작.**
+
+## 검증 결과 (2026-08-04)
+
+- Unity 스크립트 컴파일: 오류 0.
+- 골든 결정론: 7개 시나리오 × 새 Play 세션 2회, JSON byte diff **0**.
+- 집중 EditMode `LegacyTrace` 테스트: **5/5 통과**. 전체 EditMode: **1,888건 중 1,886 통과, 실패 0, 기존 Ignore 2**.
+- 사전 실패 후보 CardBuff PlayMode: **1/1 통과** — 코드 변경 없이 문서 불일치로 종결.
+- Track A common review: **APPROVE**. Track B `$ecs-reviewer`: **APPROVE**. 더 엄격한 최종 판정: **APPROVE**.
+- 완료 커밋: `c0f7bd4f`.

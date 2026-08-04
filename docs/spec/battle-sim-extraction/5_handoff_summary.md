@@ -1,43 +1,62 @@
-# 5 — Handoff: 설계·스펙 세션 → 구현 세션 (별도 클론)
+# 5 — Handoff: M0 완료 → M1 설계 세션
 
-> 이 문서는 구현 0줄 시점의 인계다. M1+ 작업 단위는 7번부터 이어 쓴다.
-
-## Commit
-
-- 스펙 커밋 제목: "docs(battle-sim-extraction): ECS 제거 재설계 스펙 신설 — M0 units 0~4 + 설계 정본 v6"
-- 병행 세션 커밋과 분리해 **cherry-pick으로 게시**했으므로 해시는 원 워크트리(`1833ce74`)와 origin이 **다르다** — 커밋 제목으로 식별하라.
+> 2026-08-04 M0 종료 스냅샷이다. M1+ 작업 단위는 7번부터 이어 쓴다.
 
 ## 상태
 
-- **설계 완료·스펙 작성됨·구현 0.** unit 0 착수 전이며, 사용자 승인 범위는 "스펙 작성"까지다. 구현 시작 전 사용자에게 unit 0 착수를 확인하라.
-- 읽는 순서: ① `README.md`(계약·마일스톤 지도) ② `docs/plans/2026-08-03-battle-sim-extraction-design.md`(설계 정본 v6 — 왜 이런 순서인지의 근거 전부) ③ `6_decision_record.md`(기각 대안·재론 조건 — 결정을 재론하고 싶어지면 먼저) ④ `0_system_order_capture.md`부터 번호순.
-- 설계 정본 v6는 Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰의 수렴본. Codex 원문 아티팩트는 원 세션 워크트리의 `.omc/`(비추적)에만 있으나 요지는 정본 §8에 전부 반영됨.
+- **M0 units 0~4 구현·검증·리뷰 완료.** 현행 ECS sim 위에 결정론 기준선과 `LegacyTraceV0` 골든이 고정됐다.
+- 다음 단계는 구현이 아니라 **M1 상세 spec 분해**다. `IMatchSession` adapter나 순수 C# sim lib 이식을 unit 문서 없이 시작하지 않는다.
+- 읽는 순서: ① `README.md` ② `docs/plans/2026-08-03-battle-sim-extraction-design.md`의 M1 절 ③ `6_decision_record.md` ④ units 0~4와 `order-capture.md`.
 
-## 헛발 방지 (이 순서·이 결정이 나온 이유)
+## 완료 커밋
 
-1. **"Mono 전환" ≠ MonoBehaviour-per-unit.** 목적지는 엔진-프리 순수 C# 틱 라이브러리 + Unity는 프레젠테이션. 유닛마다 Update() 짜기 시작하면 전부 재작업이다.
-2. **골든 하네스부터 만들지 마라.** 현행 sim은 비결정이다 — 가변 프레임 dt(`BattleScaledRateManager`가 프레임당 1회 갱신), Mono/ECS 이중 시계, `SkillRuntime`의 별도 `Time.deltaTime`. **dt 상수 주입은 fixed tick이 아니다**(프레임레이트에 비례해 게임 속도가 변함). units 0~3이 골든(unit 4)에 선행하는 이유.
-3. **`Entity.Index`가 발사 패턴 RNG seed에 직접 들어간다**(`AttackSystem`의 `math.hash(int2(Index, fireCount))`) + 타겟팅 동률 tiebreak. unit 1(SimEntityId) 전에 뜬 골든은 신 sim과 비교 불가 = 무효.
-4. **27채널을 단일 이벤트 스트림으로 붕괴하지 마라.** 같은 틱 소비 계약인 내부 phase 메시지(CastEvents→AttackSystem, BlinkRequests)가 있다 — 이벤트 3분리(내부 phase queue / AMR / presentation projection)가 계약이다.
-5. **"sim은 CoreCLR에서 돈다"고 가정하지 마라.** 클라는 Android IL2CPP다. 커맨드로그 재시뮬 검증은 M3 전까지 advisory flag만 — exact 자동 판정 금지.
-6. **틱 페이즈 순서의 정본은 unit 0의 캡처다.** 기억·스케치로 짜지 마라 (예: CC 감쇠는 이동 **후** — `CcDecaySystem [UpdateAfter(MovementSystem)]`).
-7. 점수는 전부 int — parity 비교는 exact(±ε 금지). `RequireForUpdate` 게이트는 35개 시스템의 **행동**이다(초안 39 는 주석 전용 4파일 포함 grep 수치. IncomingDamage 0이면 Regen 힐도 정지) — 항상-틱으로 바꾸면 조용히 깨진다.
-8. **M0의 스코프는 "하네스 모드 한정 결정론"이다.** 라이브 게임 경로는 unit 1의 동률·난수열 변화(의도됨) 외에 무변이어야 한다. fixed tick 상시화는 M1 신 sim의 몫.
+| 범위 | 커밋 |
+|---|---|
+| 설계 정정 문서 | `a8c8a862` |
+| unit 0 — 시스템 순서 캡처·핀 | `8795ac3c` |
+| unit 1 — `SimEntityId` | `3e7b33f5` |
+| unit 2 — `StepOneTick` 하네스 | `cc04bc19` |
+| unit 3 — canonical `MatchConfig` | `11902d32` |
+| unit 4 — `LegacyTraceV0` 골든 | `c0f7bd4f` |
 
-## 레포 고유 함정 (구현 중)
+## 구현된 기준선
 
-- `LoginAutoImport`가 로그인 시 SO 스탯을 시트값으로 덮는다 — 골든 오염 원천, unit 3에서 차단. 골든 diff는 configHash로 "시트 드리프트 vs 코드 회귀"부터 가른다.
-- Bash 샌드박스에서 git add/commit이 무산될 수 있다(exit 0인데 index 롤백) — git 쓰기는 샌드박스 비활성으로.
-- `dotnet build` "오류 0"은 거짓일 수 있다 — 신규 .cs는 csproj에 없어 건너뛴다(1초 빌드가 신호). 컴파일 검증은 Unity 리임포트/UnityMCP 기준.
-- main HEAD에 PlayMode 사전 실패 존재 — `DreamcatcherEffectTest.CardBuffs_ApplyToCurrentAndFutureMatchingUnits`(별도 파일 아님, 메서드다. 초안의 "가디언 dmgTaken 여분 ×1.25" 는 코드 어서션 0.87 과 불일치 — 실행으로 재확인) — unit 4에서 수리 또는 명시 제외 결정.
-- 원 워크트리는 병행 세션 다수 — 클론이므로 해당 없음. 단 머지 시 스테이징은 경로 명시로.
+- `BattleSimGroup` 44개 시스템의 유효 총순서를 캡처하고 미선언 순서 13건을 현행 순서 그대로 핀했다.
+- 매치 내 비재사용 `SimEntityId`를 스폰 7경로에 부착하고 타겟팅 동률·발사 RNG·ThreatTable의 결정 축을 교체했다.
+- `StepOneTick`이 입력, 배틀 시계, Bridge drain, ECS sim을 고정 tick으로 자가 구동한다. 라이브 PlayerLoop 경로와 하네스 경로는 상호 배타다.
+- canonical `MatchConfig`와 `configHash`가 생성 맵·웨이브·덱·스탯·gameplay knob를 고정하고, 하네스 중 `LoginAutoImport` 오염을 차단한다.
+- `LegacyTraceV0`가 command receipt, tick read model, Bridge 출력 이벤트, 점수와 최종 상태 해시를 직렬화 왕복 후 기록한다.
+- 운영 27채널 중 Bridge 출력 18개만 trace event stream에 넣고, 같은 틱 내부 전달용 9개는 `internalPhaseChannels`로 명시 제외했다.
+- 7개 시나리오 골든은 `Assets/_Project/Tests/Golden/LegacyTraceV0/`에 추적된다.
 
-## Verified
+## 검증 증거
 
-- 코드 변경 0 — compile/test 영향 없음. 스펙·설계 문서만 커밋됨.
+- Unity 스크립트 컴파일 오류 **0**.
+- 전체 EditMode **1,888건**: 1,886 통과, 실패 0, 기존 Ignore 2.
+- 집중 `LegacyTrace` EditMode **5/5**, CardBuff PlayMode **1/1**.
+- 7개 시나리오를 각각 새 Play 세션에서 2회 실행해 JSON byte diff **0**.
+- 종료 로그의 `NullReferenceException`, Persistent allocator/Native Collection leak **0**.
+- Track A common review **APPROVE**, Track B `$ecs-reviewer` **APPROVE**, 최종 **APPROVE**.
 
-## Follow-up
+## M1에서 보존할 계약
 
-- unit 0부터 번호순 구현(한 번에 한 unit, 완료 확인 후 커밋 — CLAUDE.md 워크플로우).
-- 기본값 2건이 README 계약에 박혀 있다: 콘텐츠 동결(신규는 신 lib에만) · lag compensation 미채택. 이견이 생기면 구현 전에 README를 갱신하고 사용자와 확인.
-- M0 완료 시 M1 units(7~)를 설계 정본의 M1 절 기준으로 분해해 이어 쓴다.
+1. 목적지는 MonoBehaviour-per-unit이 아니라 **엔진-프리 순수 C# tick sim + Unity 프레젠테이션**이다.
+2. tick phase의 정본은 `order-capture.md`이며, 기억이나 설계 스케치로 순서를 재구성하지 않는다.
+3. `SimEntityId`가 커맨드·이벤트·스냅샷·뷰 키의 유일 축이다. `Entity.Index/Version`을 새 sim 계약에 노출하지 않는다.
+4. 내부 phase queue, authoritative semantic event, presentation projection의 3분리를 유지한다.
+5. parity는 receipt·semantic event·read model·점수·최종 상태/RNG hash를 exact로 비교한다. epsilon은 연속값에만 적용한다.
+6. `LegacyMatchSessionAdapter`가 ECS 채널의 유일 drain 소유자가 되어야 한다. 관찰용 소비자 추가로 라이브 순서를 바꾸지 않는다.
+7. Android IL2CPP와 CoreCLR 교차 실행을 전제로 순수 관리 C#을 유지한다.
+
+## 다음 작업
+
+- 설계 정본 M1 절을 unit 7+로 분해한다: 세션 계약, 데이터 대응표, tick 파이프라인, adapter/소비자 재배선, sim 이식, A/B 스왑과 성능 게이트.
+- M1 A/B runner에 연속값 epsilon 비교기와 동률 예외 전용 로그를 추가한다.
+- 스왑 전 Android ARM64 IL2CPP 피크 웨이브 soak에서 tick p95/p99와 steady-state GC를 측정한다.
+- M1 구조 변경 시 `docs/reference/object-pipeline-map.md`를 다시 대조한다. M0는 플레이 오브젝트 생성·렌더 경로 변경이 없어 N/A였다.
+
+## 잔여 위험
+
+- unit 4 종료 검증은 집중 PlayMode와 7개 골든 러너까지다. 전체 PlayMode suite와 Player build는 이번 unit에서 실행하지 않았다.
+- M0 결정론은 하네스 모드 계약이다. 라이브 fixed tick 상시화, pause/slow-mo 정책, Burst 제거 성능은 M1 책임이다.
+- 콘텐츠 동결과 lag compensation 미채택은 현 기본값이다. 재론 조건은 `6_decision_record.md`를 따른다.
