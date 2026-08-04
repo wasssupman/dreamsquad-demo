@@ -1,6 +1,8 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **M0 완료 — units 0~4 구현·자동 검증·골든 확정 (2026-08-04) · Track A common + Track B `$ecs-reviewer` 최종 APPROVE · M1 상세 units 미작성**
+상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — 청사진·판정표(units 7·9·10) 완료 ·
+unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 대기) · 머지 3 미착수**
+> M1 리뷰 판정과 재리뷰 게이트 6건은 [m1_review.md](m1_review.md) 가 정본이다.
 
 설계 정본: [`docs/plans/2026-08-03-battle-sim-extraction-design.md`](../../plans/2026-08-03-battle-sim-extraction-design.md) (v6 — Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰 수렴). 이 README는 그 계획의 실행 인덱스다. 근거·감사 상세는 설계 문서를 읽는다.
 
@@ -36,7 +38,8 @@
 | [8_data_mapping_blueprint.md](8_data_mapping_blueprint.md) | 청사진 ② | IComponentData 96 + IBufferElementData 21 → plain struct 대응표 + `RequireForUpdate` 35 게이트 이식 매트릭스 |
 | [9_tick_pipeline_blueprint.md](9_tick_pipeline_blueprint.md) | 청사진 ③ | order-capture 기반 틱 페이즈 순서도 + 동률 예외·병합 duration 정책 명문화 |
 | [10_salvage_matrix.md](10_salvage_matrix.md) | 판정표 | 시스템 44 · 채널 27 · Bridge 서브시스템 ≈60건 conform/adapt/rewrite/discard |
-| 11+ (청사진 확정 후 분해) | 구현 | adapter(유일 drain)·소비자 재배선·Bridge 매치 규칙 적출(선행 머지 3건 포함)·카드 트랜잭션 원자화·pause/slow-mo 시계 정책·sim lib 이식(맥락 4)·커맨드로그 이중 기록·A/B parity+성능 게이트(ARM64 IL2CPP p95/p99)+스왑·RTT 150ms 수용 리뷰 — 설계 정본 §2 M1 순서 |
+| [11_preparatory_merges.md](11_preparatory_merges.md) | 선행 머지 3건 | 뷰 상수 분리(✅ `b564e768`) · 스택 임계 의존 역전(✅ `c0a361cb`) · sim 폴더의 비-sim 코드 퇴거(미착수) — **Unity EditMode/Play 검증 대기** |
+| 12+ (머지·검증 완료 후 분해) | 구현 | adapter(유일 drain)·소비자 재배선 82파일·Bridge 매치 규칙 적출 3단·카드 트랜잭션 원자화·통화 5종 sim 이관·pause/slow-mo 시계 정책·sim lib 이식(맥락 4)·커맨드로그 이중 기록·A/B parity+성능 게이트(ARM64 IL2CPP p95/p99)+스왑·RTT 150ms 수용 리뷰 — 설계 정본 §2 M1 순서 + `m1_salvage_matrix.md` §6 초안 |
 
 ## M0 종료 판정 (2026-08-04)
 

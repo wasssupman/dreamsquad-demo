@@ -1,263 +1,265 @@
-﻿> unit 8 부속 — 게이트·부재-상태·쓰기 지도 전수 인벤토리(기계 추출 2026-08-04). 번역 규칙은
+> unit 8 부속 — 게이트·부재-상태·쓰기 지도 전수 인벤토리(기계 추출 2026-08-04). 번역 규칙은
 > [m1_blueprint_data_mapping.md](m1_blueprint_data_mapping.md) 본문이 소유한다.
 
-# battle-sim-extraction unit 8 ?먯옄猷???寃뚯씠??쨌 遺???곹깭 쨌 ?곌린 吏??
-??? `Assets/_Project/Scripts/Battle/` ??ISystem 44媛?(Combat 9 / Effects 26 / Movement 2 / Units 7).
-異붿텧 諛⑹떇: ???뚯씪 吏곸젒 ?먮룆 (`RequireForUpdate` / `RequireAnyForUpdate` / `WithNone` / `RefRW` / `isReadOnly:false` lookup / ECB ?몄텧 / ?깃?????enqueue).
+# battle-sim-extraction unit 8 원자료 — 게이트 · 부재-상태 · 쓰기 지도
 
-吏묎퀎 ?붿빟:
+대상: `Assets/_Project/Scripts/Battle/` 의 ISystem 44개 (Combat 9 / Effects 26 / Movement 2 / Units 7).
+추출 방식: 전 파일 직접 판독 (`RequireForUpdate` / `RequireAnyForUpdate` / `WithNone` / `RefRW` / `isReadOnly:false` lookup / ECB 호출 / 싱글턴 큐 enqueue).
 
-| ??ぉ | ??|
+집계 요약:
+
+| 항목 | 수 |
 |---|---|
-| ISystem 珥앷퀎 | 44 |
-| `RequireForUpdate<T>()` 蹂댁쑀 | **35** (湲곕?移??쇱튂) |
-| `RequireAnyForUpdate(query??` 蹂댁쑀 | 4 |
-| 寃뚯씠??蹂댁쑀 ?뚭퀎 (35 + 4, 寃몄슜 0) | 39 |
-| 臾닿쾶?댄듃 (留?tick ?ㅽ뻾) | 5 |
-| `WithNone<>` ?ъ슜 ?쒖뒪??/ ?몄텧 ?ъ씠??| 26 / 48 |
-| `EntityCommandBuffer` ?ъ슜 | 28 (?꾨? `Allocator.Temp` + 媛숈? OnUpdate ??Playback) |
-| ECB 誘몄궗??(吏곸젒 ?곌린/?먮쭔) | 16 |
+| ISystem 총계 | 44 |
+| `RequireForUpdate<T>()` 보유 | **35** (기대치 일치) |
+| `RequireAnyForUpdate(query…)` 보유 | 4 |
+| 게이트 보유 소계 (35 + 4, 겸용 0) | 39 |
+| 무게이트 (매 tick 실행) | 5 |
+| `WithNone<>` 사용 시스템 / 호출 사이트 | 26 / 48 |
+| `EntityCommandBuffer` 사용 | 28 (전부 `Allocator.Temp` + 같은 OnUpdate 내 Playback) |
+| ECB 미사용 (직접 쓰기/큐만) | 16 |
 
 ---
 
-## A. RequireForUpdate 留ㅽ듃由?뒪
+## A. RequireForUpdate 매트릭스
 
-寃뚯씠?몃뒗 **AND** ?????섏뿴?????以??섎굹?쇰룄 ?뷀떚??0 ?대㈃ `OnUpdate` 媛 ?듭㎏濡??ㅽ궢?쒕떎. `RequireAnyForUpdate` 留?OR.
+게이트는 **AND** 다 — 나열된 타입 중 하나라도 엔티티 0 이면 `OnUpdate` 가 통째로 스킵된다. `RequireAnyForUpdate` 만 OR.
 
-### A-1. Combat (9/9 ?꾩썝 寃뚯씠??蹂댁쑀)
+### A-1. Combat (9/9 전원 게이트 보유)
 
-| ?쒖뒪??| 寃뚯씠??| ?됰룞 ?⑥쓽 |
+| 시스템 | 게이트 | 행동 함의 |
 |---|---|---|
-| `AttackSystem` | `AttackState` | 怨듦꺽??AttackState 蹂댁쑀) 0 ?대㈃ ??猷⑦봽 誘몄떎?? **遺???뺤?**: 媛숈? OnUpdate 癒몃━???덈뒗 `CastEventsSingleton` ?쒕젅???댁???罹먯뒪??= host ??怨듦꺽 ?ш굔)???④퍡 硫덉떠 ?먭? ?곸옱?쒕떎. |
-| `BossPeriodicTriggerSystem` | `DcTriggerSlot` 쨌 `FlowFieldSingleton` | 移대뱶 ?щ’ 蹂댁쑀 ?좊떅 0 ?먮뒗 flow field 誘몃퉴??留?濡쒕뵫 ?? ??二쇨린 ?몃━嫄?`elapsed` ?꾩궛 ?먯껜媛 ?뺤?. 留??놁씠 ?щ’留??덉뼱?????덈떎. |
-| `EnemyAiStateSystem` | `EnemyAiState` | FSM 蹂댁쑀 ??0 ???곹깭 ?꾩씠 ?놁쓬. Movement ??`aiStateLookup` 遺????`Marching` ?대갚?대씪 ?대룞? 怨꾩냽?쒕떎. |
-| `HealthThresholdSystem` | `FlowFieldSingleton` **留?* | `ThreatEntry` 寃뚯씠?몃? ?섎룄?곸쑝濡??쒓굅(unit 1 二쇱꽍) ??蹂댁뒪 ?놁씠 ?뷀렂?붾쭔 ?덉뼱??`last_stand` 媛 ?뚯븘???섎?濡? threat drain ? `TryGetSingletonRW` + `HasBuffer` 濡??낅┰ 媛?? |
-| `ProjectileEmitterSystem` | `EmitterInstance` 쨌 `FlowFieldSingleton` | 吏꾪뻾 以?諛쒖궗 ?몄뒪?댁뒪 0 ??誘몄떎?? ?몄뒪?댁뒪 踰꾪띁媛 鍮꾩뼱 ?덉뼱??湲몄씠 0) **踰꾪띁 蹂댁쑀** ?먯껜濡?寃뚯씠?몃뒗 ?듦낵?섎?濡?猷⑦봽 ??`instances.Length == 0` continue 媛 ?ㅼ젣 ?꾪꽣?? |
-| `ProjectileHitSystem` | `ProjectileTag` | ?ъ궗泥?0 ??誘몄떎?? 李⑺깂 ?닿껐쨌splash쨌TileAoe쨌PathHit ?꾨? ??寃뚯씠???꾨옒. |
-| `ProjectileMoveSystem` | `ProjectileTag` | ?ъ궗泥?0 ??誘몄떎?? |
-| `TauntAttackGrantSystem` | **Any**(`Aggroed`, `TauntAttackGranted`) | ?닿렇濡??곸씠 ?놁뼱??**strip ?⑥뒪媛 ?댁븘 ?덉뼱??* ?섎?濡?OR. 遺?щ텇 ?뚯닔 ?꾨씫 諛⑹?. |
-| `UltimateLeapSystem` | `UltimateLeapState` | ?댄깉 以??좊떅 0 ??誘몄떎?? ?곹깭媛 怨?吏꾪뻾 以??쒗?ㅻ씪 ?먭린-寃뚯씠?? |
+| `AttackSystem` | `AttackState` | 공격자(AttackState 보유) 0 이면 전 루프 미실행. **부수 정지**: 같은 OnUpdate 머리에 있는 `CastEventsSingleton` 드레인(해저드 캐스트 = host 의 공격 사건)도 함께 멈춰 큐가 적재된다. |
+| `BossPeriodicTriggerSystem` | `DcTriggerSlot` · `FlowFieldSingleton` | 카드 슬롯 보유 유닛 0 또는 flow field 미빌드(맵 로딩 전) → 주기 트리거 `elapsed` 누산 자체가 정지. 맵 없이 슬롯만 있어도 안 돈다. |
+| `EnemyAiStateSystem` | `EnemyAiState` | FSM 보유 적 0 → 상태 전이 없음. Movement 는 `aiStateLookup` 부재 시 `Marching` 폴백이라 이동은 계속된다. |
+| `HealthThresholdSystem` | `FlowFieldSingleton` **만** | `ThreatEntry` 게이트를 의도적으로 제거(unit 1 주석) — 보스 없이 디펜더만 있어도 `last_stand` 가 돌아야 하므로. threat drain 은 `TryGetSingletonRW` + `HasBuffer` 로 독립 가드. |
+| `ProjectileEmitterSystem` | `EmitterInstance` · `FlowFieldSingleton` | 진행 중 발사 인스턴스 0 → 미실행. 인스턴스 버퍼가 비어 있어도(길이 0) **버퍼 보유** 자체로 게이트는 통과하므로 루프 안 `instances.Length == 0` continue 가 실제 필터다. |
+| `ProjectileHitSystem` | `ProjectileTag` | 투사체 0 → 미실행. 착탄 해결·splash·TileAoe·PathHit 전부 이 게이트 아래. |
+| `ProjectileMoveSystem` | `ProjectileTag` | 투사체 0 → 미실행. |
+| `TauntAttackGrantSystem` | **Any**(`Aggroed`, `TauntAttackGranted`) | 어그로 적이 없어도 **strip 패스가 살아 있어야** 하므로 OR. 부여분 회수 누락 방지. |
+| `UltimateLeapSystem` | `UltimateLeapState` | 이탈 중 유닛 0 → 미실행. 상태가 곧 진행 중 시퀀스라 자기-게이트. |
 
-### A-2. Effects (22/26 寃뚯씠??蹂댁쑀)
+### A-2. Effects (22/26 게이트 보유)
 
-| ?쒖뒪??| 寃뚯씠??| ?됰룞 ?⑥쓽 |
+| 시스템 | 게이트 | 행동 함의 |
 |---|---|---|
-| `AggroStateSystem` | **Any**(`AggroCapacity`, `Aggroed`) | 留덉?留?媛?붿뼵 ?뚮㈇ ?꾩뿉??orphan ?댁젣 ?⑥뒪媛 ?뚯븘???댁꽌 OR (二쇱꽍: 援?HIGH1 蹂댁〈). |
-| `AllyBuffFieldSystem` | `AllyBuffField` 쨌 `StatModifierApplyEventsSingleton` | ?ν뙋 罹먮━??0 ???щ컻???뺤? = 踰꾪봽媛 `AllyBuffApplySec` ?덉뿉 ?먯뿰 ?뚮㈇(?뚯닔 硫붿빱?덉쬁??寃뚯씠??洹??먯껜). |
-| `CcApplySystem` | `EnemyCcEventsSingleton` | ???깃???遺??釉뚮━吏 ?뗭뾽 ?? ??CC 遺???꾨㈃ ?뺤?. 紐⑤뱺 CC ?앹궛?먭? ???먮줈 ?섎졃?섎?濡??⑥씪 ?ㅽ뙣?? |
-| `CcClearSystem` | `CcClearRequestsSingleton` | wake-on-hit(Sleep ?댁젣) ?꾩슜 ?뚮퉬?? 遺?????쇨꺽?대룄 ??源⑥뼱?? |
-| `DefenderFieldSystem` | `DefenderFieldSingleton` | ?꾨뱶 誘명븷????誘몄떎?? 異붽?濡??고??꾩뿉 `bossQuery.IsEmpty` 硫??щ퉴??skip(?뚮퉬??蹂댁뒪肉?. |
-| `DreamCocoonSystem` | `DreamCocoon` | ???꾩＜ 媛먯떆 ???0 ??誘몄떎?? |
-| `EffectTickSystem` | **Any**(`TornadoField`, `PortalLink`, `AllyBuffField`) | ??罹먮━??以??섎굹?쇰룄 ?덉쑝硫??ㅽ뻾. ?????놁쑝硫??섎챸 tick ?먯껜媛 遺덊븘?? |
-| `FatigueAccrualSystem` | `BurnoutGimmickConfig` 쨌 `StackModifierApplyEventsSingleton` | **config 議댁옱 = 湲곕? ?쒖꽦** 愿?⑷뎄(self-gate, `BurnoutGimmickConfig.cs` 二쇱꽍??紐낆떆). 鍮꾪솢???쒖쫵??lazy-attach ?⑥뒪源뚯? 0 鍮꾩슜. |
-| `HazardCastSystem` | `HazardCastState` 쨌 `FlowFieldSingleton` 쨌 `HazardSpawnRequestsSingleton` | 3以?AND. 釉뚮━吏媛 spawn ?먮? 留뚮뱾湲??꾩뿏 罹먯뒪?곗쓽 **荑⑤떎??tick ?????덈떎**(荑⑤떎??媛먯궛??猷⑦봽 ?덉뿉 ?덉쓬). |
-| `HazardLifetimeSystem` | `HazardSingleton` | 誘몄떎????`cellToEffects` 媛 **Clear ?섏? ?딆븘** 吏곸쟾 ?꾨젅??留듭씠 洹몃?濡??⑤뒗????ZoneApply 媛 stale ????쎌쓣 ???덈뒗 援ъ“(??ZoneApply ??媛숈? ?깃??댁쓣 寃뚯씠?몃줈 ?붽뎄?섎?濡??숈떆 ?뺤?). |
-| `HeatAccrualSystem` | `OnsenGimmickConfig` | ?⑥쿇 湲곕? self-gate. |
-| `LastRunSystem` | `RedBullGimmickConfig` | ?덈뱶遺?湲곕? self-gate. 鍮꾪솢?????대? 遺숈? `LastRun` ??crash ???곴뎄 蹂대쪟. |
-| `ModifierApplySystem` | `StatModifierApplyEventsSingleton` 쨌 `StackModifierApplyEventsSingleton` | **AND ?쇱꽌** ?ㅽ깮 ?먮쭔 ?놁뼱??stat ?곸슜源뚯? ?④퍡 硫덉텣?? 紐⑤뵒?뚯씠???뚯씠?꾨씪???꾩껜???⑥씪 ?ㅽ뙣?? |
-| `ObstacleLifetimeSystem` | `ObstacleSingleton` | 誘몄떎????`blockedCells` 誘멸갚?????대룞 trim ??stale 李⑤떒 ???蹂몃떎. |
-| `PatrolFieldSystem` | `PatrolAnchor` 쨌 `FlowFieldSingleton` | ?쒖같蹂?0 ??`PatrolStep` 誘멸갚?? Movement ??`PatrolStep` **蹂댁쑀 ?щ?**濡??쒖같 ?꾪궎??낆쓣 ?먮퀎?섎?濡?寃뚯씠?멸? ?ロ엳硫?湲곗〈 dir 濡?怨꾩냽 嫄룸뒗??媛믪씠 ?⑥븘 ?덉쓬). |
-| `PickupConsumeSystem` | `RedBullGimmickConfig` 쨌 `FlowFieldSingleton` 쨌 `StatModifierApplyEventsSingleton` | 3以?AND. |
-| `PickupSpawnSystem` | `RedBullGimmickConfig` 쨌 `PickupSpawnState` | ?꾨낫 ? ?곹깭(留?鍮뚮뱶 ?곕Ъ) 遺?????ㅽ룿쨌留뚮즺 tick 紐⑤몢 ?뺤? ???대? ?볦씤 ?쎌뾽??留뚮즺?섏? ?딅뒗?? |
-| `ResignationDropSystem` | `ClockOutGimmickConfig` | ?닿렐 湲곕? self-gate. |
-| `ResignationThresholdSystem` | `ClockOutGimmickConfig` 쨌 `MeteorBarrageRequestsSingleton` | barrage ??遺?????ъ쭅?쒓? ?뚮え?섏? ?딄퀬 臾댄븳 ?곸옱. |
-| `ShieldCastSystem` | `ShieldCastState` 쨌 `FlowFieldSingleton` | ?ㅻ뱶 罹먯뒪??0 ??誘몄떎??荑⑤떎??tick ?ы븿). |
-| `StackModifierTickSystem` | `EnemyCcEventsSingleton` 쨌 `DotApplyEventsSingleton` 쨌 `StatModifierApplyEventsSingleton` | **3以?AND???뚭? ?꾪뿕**: ?섎굹留??놁뼱???ㅽ깮 tick ?꾩껜媛 硫덉떠 `header.remaining` ??媛먯궛?섏? ?딅뒗??= ?ㅽ깮???곴뎄 ?붿〈. `StatModifierTickSystem`(臾닿쾶?댄듃)怨?鍮꾨?移? |
-| `ZoneApplySystem` | `HazardSingleton` 쨌 `EnemyCcEventsSingleton` 쨌 `FlowFieldSingleton` | 3以?AND. 異붽?濡??고??꾩뿉 `cellToEffects.Count()==0` early-return. |
+| `AggroStateSystem` | **Any**(`AggroCapacity`, `Aggroed`) | 마지막 가디언 소멸 후에도 orphan 해제 패스가 돌아야 해서 OR (주석: 구 HIGH1 보존). |
+| `AllyBuffFieldSystem` | `AllyBuffField` · `StatModifierApplyEventsSingleton` | 장판 캐리어 0 → 재발행 정지 = 버프가 `AllyBuffApplySec` 안에 자연 소멸(회수 메커니즘이 게이트 그 자체). |
+| `CcApplySystem` | `EnemyCcEventsSingleton` | 큐 싱글턴 부재(브리지 셋업 전) → CC 부여 전면 정지. 모든 CC 생산자가 이 큐로 수렴하므로 단일 실패점. |
+| `CcClearSystem` | `CcClearRequestsSingleton` | wake-on-hit(Sleep 해제) 전용 소비자. 부재 → 피격해도 안 깨어남. |
+| `DefenderFieldSystem` | `DefenderFieldSingleton` | 필드 미할당 → 미실행. 추가로 런타임에 `bossQuery.IsEmpty` 면 재빌드 skip(소비자=보스뿐). |
+| `DreamCocoonSystem` | `DreamCocoon` | 잠 완주 감시 대상 0 → 미실행. |
+| `EffectTickSystem` | **Any**(`TornadoField`, `PortalLink`, `AllyBuffField`) | 세 캐리어 중 하나라도 있으면 실행. 셋 다 없으면 수명 tick 자체가 불필요. |
+| `FatigueAccrualSystem` | `BurnoutGimmickConfig` · `StackModifierApplyEventsSingleton` | **config 존재 = 기믹 활성** 관용구(self-gate, `BurnoutGimmickConfig.cs` 주석에 명시). 비활성 시즌엔 lazy-attach 패스까지 0 비용. |
+| `HazardCastSystem` | `HazardCastState` · `FlowFieldSingleton` · `HazardSpawnRequestsSingleton` | 3중 AND. 브리지가 spawn 큐를 만들기 전엔 캐스터의 **쿨다운 tick 도 안 돈다**(쿨다운 감산이 루프 안에 있음). |
+| `HazardLifetimeSystem` | `HazardSingleton` | 미실행 시 `cellToEffects` 가 **Clear 되지 않아** 직전 프레임 맵이 그대로 남는다 → ZoneApply 가 stale 셀을 읽을 수 있는 구조(단 ZoneApply 도 같은 싱글턴을 게이트로 요구하므로 동시 정지). |
+| `HeatAccrualSystem` | `OnsenGimmickConfig` | 온천 기믹 self-gate. |
+| `LastRunSystem` | `RedBullGimmickConfig` | 레드불 기믹 self-gate. 비활성 시 이미 붙은 `LastRun` 의 crash 도 영구 보류. |
+| `ModifierApplySystem` | `StatModifierApplyEventsSingleton` · `StackModifierApplyEventsSingleton` | **AND 라서** 스택 큐만 없어도 stat 적용까지 함께 멈춘다. 모디파이어 파이프라인 전체의 단일 실패점. |
+| `ObstacleLifetimeSystem` | `ObstacleSingleton` | 미실행 시 `blockedCells` 미갱신 → 이동 trim 이 stale 차단 셀을 본다. |
+| `PatrolFieldSystem` | `PatrolAnchor` · `FlowFieldSingleton` | 순찰병 0 → `PatrolStep` 미갱신. Movement 는 `PatrolStep` **보유 여부**로 순찰 아키타입을 판별하므로 게이트가 닫히면 기존 dir 로 계속 걷는다(값이 남아 있음). |
+| `PickupConsumeSystem` | `RedBullGimmickConfig` · `FlowFieldSingleton` · `StatModifierApplyEventsSingleton` | 3중 AND. |
+| `PickupSpawnSystem` | `RedBullGimmickConfig` · `PickupSpawnState` | 후보 셀 상태(맵 빌드 산물) 부재 → 스폰·만료 tick 모두 정지 → 이미 놓인 픽업이 만료되지 않는다. |
+| `ResignationDropSystem` | `ClockOutGimmickConfig` | 퇴근 기믹 self-gate. |
+| `ResignationThresholdSystem` | `ClockOutGimmickConfig` · `MeteorBarrageRequestsSingleton` | barrage 큐 부재 → 사직서가 소모되지 않고 무한 적재. |
+| `ShieldCastSystem` | `ShieldCastState` · `FlowFieldSingleton` | 실드 캐스터 0 → 미실행(쿨다운 tick 포함). |
+| `StackModifierTickSystem` | `EnemyCcEventsSingleton` · `DotApplyEventsSingleton` · `StatModifierApplyEventsSingleton` | **3중 AND의 회귀 위험**: 하나만 없어도 스택 tick 전체가 멈춰 `header.remaining` 이 감산되지 않는다 = 스택이 영구 잔존. `StatModifierTickSystem`(무게이트)과 비대칭. |
+| `ZoneApplySystem` | `HazardSingleton` · `EnemyCcEventsSingleton` · `FlowFieldSingleton` | 3중 AND. 추가로 런타임에 `cellToEffects.Count()==0` early-return. |
 
 ### A-3. Movement (2/2)
 
-| ?쒖뒪??| 寃뚯씠??| ?됰룞 ?⑥쓽 |
+| 시스템 | 게이트 | 행동 함의 |
 |---|---|---|
-| `BlinkApplySystem` | `BlinkRequestEventsSingleton` | ?붾젅?ы듃 ?붿껌 梨꾨꼸 遺?????꾩튂 ?곸슜 ?놁쓬. `UltimateLeapSystem` ??李⑹? ?붾젅?ы듃????梨꾨꼸濡??섍?誘濡?梨꾨꼸 遺????沅곴레湲?李⑹?媛 ?쒖옄由??곗텧留??대룞). |
-| `MovementSystem` | `PathFollowState` 쨌 `FlowFieldSingleton` | ?대룞泥?0 ?먮뒗 flow field 誘몃퉴?????대룞쨌?ы깉쨌?좊꽕?대룄쨌goal ?먯젙쨌`PastGoalTag` 遺???꾨? ?뺤?. |
+| `BlinkApplySystem` | `BlinkRequestEventsSingleton` | 텔레포트 요청 채널 부재 → 위치 적용 없음. `UltimateLeapSystem` 의 착지 텔레포트도 이 채널로 나가므로 채널 부재 시 궁극기 착지가 제자리(연출만 이동). |
+| `MovementSystem` | `PathFollowState` · `FlowFieldSingleton` | 이동체 0 또는 flow field 미빌드 → 이동·포탈·토네이도·goal 판정·`PastGoalTag` 부여 전부 정지. |
 
 ### A-4. Units (6/7)
 
-| ?쒖뒪??| 寃뚯씠??| ?됰룞 ?⑥쓽 |
+| 시스템 | 게이트 | 행동 함의 |
 |---|---|---|
-| `DamageApplicationSystem` | `IncomingDamage` | **踰꾪띁 蹂댁쑀 ?뷀떚??0 ?대㈃ ?쒖뒪???꾩껜 誘몄떎??* ??媛숈? 猷⑦봽???뱁엺 Regen ?먃?IncomingHeal` ?쒕젅?맞룹떎??蹂묓빀/?≪닔쨌`DamagedCounter` tick쨌??洹?띉?DeadTag` 遺?ш퉴吏 ?숇컲 ?뺤?. 寃뚯씠?몃뒗 踰꾪띁 **鍮꾩뼱 ?덉쓬**???꾨땲??**遺??*留?蹂몃떎. |
-| `HealthDeathSystem` | `Health` | ?ъ떎??臾댁“嫄??듦낵(?좊떅???덉쑝硫??깅┰). ?덉쟾留??깃꺽. |
-| `HitFlashSystem` | `HitFlashTag` | ?뚮옒??以??좊떅 0 ??誘몄떎?? ?쒓렇媛 怨?吏꾪뻾 ?곹깭. |
-| `LethalTimerSystem` | `LethalTimer` | ?먰룺 ??대㉧ 蹂댁쑀 0 ??誘몄떎?? |
-| `PatrolLifecycleSystem` | `SummonedBy` | ?뚰솚???쒖같蹂?0 ??誘몄떎???뚰솚???щ쭩 ?곕룞 ?뺤?). |
-| `UnitLifecycleSystem` | **Any**(`_pastGoalQuery`=PastGoalTag+AttackUnitTag, `_deadQuery`=DeadTag) | OR. ?좎텧 ?먮뒗 ?щ쭩 以??섎굹?쇰룄 ?덉쑝硫??ㅽ뻾. ?댁????뚭눼/?뷀렂???щ쭩 猷⑦봽????OR ?꾨옒???뱁? ?덈떎(????DeadTag 瑜??붽뎄?섎?濡?而ㅻ쾭??. |
+| `DamageApplicationSystem` | `IncomingDamage` | **버퍼 보유 엔티티 0 이면 시스템 전체 미실행** → 같은 루프에 얹힌 Regen 힐·`IncomingHeal` 드레인·실드 병합/흡수·`DamagedCounter` tick·킬 귀속·`DeadTag` 부여까지 동반 정지. 게이트는 버퍼 **비어 있음**이 아니라 **부재**만 본다. |
+| `HealthDeathSystem` | `Health` | 사실상 무조건 통과(유닛이 있으면 성립). 안전망 성격. |
+| `HitFlashSystem` | `HitFlashTag` | 플래시 중 유닛 0 → 미실행. 태그가 곧 진행 상태. |
+| `LethalTimerSystem` | `LethalTimer` | 자폭 타이머 보유 0 → 미실행. |
+| `PatrolLifecycleSystem` | `SummonedBy` | 소환된 순찰병 0 → 미실행(소환사 사망 연동 정지). |
+| `UnitLifecycleSystem` | **Any**(`_pastGoalQuery`=PastGoalTag+AttackUnitTag, `_deadQuery`=DeadTag) | OR. 유출 또는 사망 중 하나라도 있으면 실행. 해저드 파괴/디펜더 사망 루프는 이 OR 아래에 얹혀 있다(둘 다 DeadTag 를 요구하므로 커버됨). |
 
-### A-5. 臾닿쾶?댄듃 ??留?tick ?ㅽ뻾 (5媛?
+### A-5. 무게이트 — 매 tick 실행 (5개)
 
-| ?쒖뒪??| 鍮꾧퀬 |
+| 시스템 | 비고 |
 |---|---|
-| `CcDecaySystem` (Effects) | `IJobEntity.Run()` ?쇰줈 `CcEffect` 踰꾪띁 ?꾩닔 媛먯뇿. 寃뚯씠?멸? ?놁뼱??留뚮즺媛 ??긽 吏꾪뻾?쒕떎. |
-| `DotApplySystem` (Effects) | 遺??`DotApplyEventsSingleton`)??`TryGetSingleton` ?듭뀛?? ??媛먯뇿??臾댁“嫄? 濡쒓렇 ???좊Т濡?job 2醫?遺꾧린. |
-| `ModifierStatsAggregateSystem` (Effects) | dirty-only 荑쇰━(`EnabledRefRW<ModifierStatsDirty>`)媛 ?ъ떎???꾪꽣 ??븷. |
-| `StatModifierTickSystem` (Effects) | 臾닿쾶?댄듃 = 梨꾨꼸 遺?ъ? 臾닿??섍쾶 stat ?щ’????긽 留뚮즺?쒕떎. `StackModifierTickSystem`(3以?寃뚯씠??怨쇱쓽 鍮꾨?移?씠 ?ш린??諛쒖깮. |
-| `MaxHealthScaleSystem` (Units) | 臾닿쾶?댄듃. pass1(lazy attach) ??以묎컙 Playback ??pass2(?ш퀎??. |
+| `CcDecaySystem` (Effects) | `IJobEntity.Run()` 으로 `CcEffect` 버퍼 전수 감쇠. 게이트가 없어야 만료가 항상 진행된다. |
+| `DotApplySystem` (Effects) | 부여(`DotApplyEventsSingleton`)는 `TryGetSingleton` 옵셔널, 틱/감쇠는 무조건. 로그 큐 유무로 job 2종 분기. |
+| `ModifierStatsAggregateSystem` (Effects) | dirty-only 쿼리(`EnabledRefRW<ModifierStatsDirty>`)가 사실상 필터 역할. |
+| `StatModifierTickSystem` (Effects) | 무게이트 = 채널 부재와 무관하게 stat 슬롯이 항상 만료된다. `StackModifierTickSystem`(3중 게이트)과의 비대칭이 여기서 발생. |
+| `MaxHealthScaleSystem` (Units) | 무게이트. pass1(lazy attach) → 중간 Playback → pass2(재계산). |
 
-### A-6. 寃뚯씠???좏삎 遺꾪룷 (李멸퀬)
+### A-6. 게이트 유형 분포 (참고)
 
-- **肄섑뀗痢?議댁옱 寃뚯씠??*(洹?湲곕뒫????곸씠 ?덉쓣 ?뚮쭔): `AttackState`, `ProjectileTag`, `DreamCocoon`, `LethalTimer`, `HitFlashTag`, `UltimateLeapState`, `EmitterInstance`, `SummonedBy`, `AllyBuffField`, `PatrolAnchor`, `DcTriggerSlot`, `HazardCastState`, `ShieldCastState`, `EnemyAiState`, `IncomingDamage`, `Health`, `PathFollowState`, `PickupSpawnState`
-- **湲곕? ?쒖꽦 ?뚮옒洹?*(config ?깃???議댁옱 = 耳쒖쭚): `BurnoutGimmickConfig`, `OnsenGimmickConfig`, `RedBullGimmickConfig`(3 ?쒖뒪??, `ClockOutGimmickConfig`(2 ?쒖뒪??
-- **?명봽???깃???*(留?釉뚮━吏 ?쇱씠?꾩궗?댄겢 而ㅽ뵆留?: `FlowFieldSingleton`(8 ?쒖뒪??, `HazardSingleton`, `ObstacleSingleton`, `DefenderFieldSingleton`
-- **?대깽??梨꾨꼸 ?깃???*(遺??= ?뚯씠?꾨씪???뺤?): `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `DotApplyEventsSingleton`, `CcClearRequestsSingleton`, `BlinkRequestEventsSingleton`, `HazardSpawnRequestsSingleton`, `MeteorBarrageRequestsSingleton`
+- **콘텐츠 존재 게이트**(그 기능의 대상이 있을 때만): `AttackState`, `ProjectileTag`, `DreamCocoon`, `LethalTimer`, `HitFlashTag`, `UltimateLeapState`, `EmitterInstance`, `SummonedBy`, `AllyBuffField`, `PatrolAnchor`, `DcTriggerSlot`, `HazardCastState`, `ShieldCastState`, `EnemyAiState`, `IncomingDamage`, `Health`, `PathFollowState`, `PickupSpawnState`
+- **기믹 활성 플래그**(config 싱글턴 존재 = 켜짐): `BurnoutGimmickConfig`, `OnsenGimmickConfig`, `RedBullGimmickConfig`(3 시스템), `ClockOutGimmickConfig`(2 시스템)
+- **인프라 싱글턴**(맵/브리지 라이프사이클 커플링): `FlowFieldSingleton`(8 시스템), `HazardSingleton`, `ObstacleSingleton`, `DefenderFieldSingleton`
+- **이벤트 채널 싱글턴**(부재 = 파이프라인 정지): `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `DotApplyEventsSingleton`, `CcClearRequestsSingleton`, `BlinkRequestEventsSingleton`, `HazardSpawnRequestsSingleton`, `MeteorBarrageRequestsSingleton`
 
 ---
 
-## B. 遺???곹깭 (WithNone / tag) 紐⑸줉
+## B. 부재-상태 (WithNone / tag) 목록
 
-### B-1. `WithNone<>` 荑쇰━ (26 ?쒖뒪??쨌 48 ?ъ씠??
+### B-1. `WithNone<>` 쿼리 (26 시스템 · 48 사이트)
 
-| ?쒖뒪??| 荑쇰━ | ?쒖쇅 ???| ?섎? |
+| 시스템 | 쿼리 | 제외 타입 | 의미 |
 |---|---|---|---|
-| `AttackSystem` | ?寃??꾨낫 ?ㅻ깄??| `PendingDeployment` | 諛곗튂 ?湲??좊떅? 留욎? ?딅뒗???꾩쭅 ?먯뿉 ?놁쓬) |
-| `AttackSystem` | ?寃??꾨낫 ?ㅻ깄??| `DeadTag` | ?쒖껜 議곗? 湲덉? |
-| `AttackSystem` | ?寃??꾨낫 ?ㅻ깄??| `UltimateLeapState` | ?댄깉(??諛? 以?= 議곗? 遺덇?. `LeapFlight` ??**?섎룄?곸쑝濡??쒖쇅 ????*(?쇰컲 ?꾩빟? 鍮꾪뻾 以묒뿉??留욌뒗?? |
-| `AttackSystem` | 怨듦꺽??硫붿씤 猷⑦봽 | `PendingDeployment` | 諛곗튂 ?湲??좊떅? 怨듦꺽 ???? `DeadTag`/`LeapFlight` ??荑쇰━?먯꽌 鍮쇱? ?딄퀬 猷⑦봽 ??`actionLocked` ?좎뼱濡?泥섎━ ??荑⑤떎??tick 怨?吏꾪뻾 以??ㅼ쐷 RESOLVE 瑜??대젮???섎?濡?|
-| `BossPeriodicTriggerSystem` | ?щ’ 猷⑦봽 | `DeadTag` | ?쒖껜媛 ?ㅽ궗????踰????곕뒗 寃?李⑤떒(?쒖꽌 ???洹쒖튃?쇰줈 ?쒗쁽) |
-| `EnemyAiStateSystem` | ?寃??꾨낫 | `PendingDeployment`, `DeadTag` | AttackSystem 怨??숈씪 ?꾨낫 ? ?좎? |
-| `HealthThresholdSystem` | ?щ’ 猷⑦봽 | `DeadTag` | ?ㅻ쾭?щ줈 寃쎄퀎 ?ㅼ쨷 愿?????쒖껜媛 ??컻/?꾩빟?섎뒗 寃?李⑤떒 |
-| `ProjectileEmitterSystem` | ?몄뒪?댁뒪 host 猷⑦봽 | `DeadTag` | 二쎌? host ????諛??????대? ?쒖옉??踰꾩뒪?몃뒗 ?꾩＜) |
-| `ProjectileEmitterSystem` | ???ъ“以 ? | `DeadTag`, `PastGoalTag`, `UltimateLeapState` | 二쎌?쨌?좎텧?쑣룻뙋 諛??곸? 議곗? ?꾨낫 ?꾨떂(鍮?????ш꺽 諛⑹?) |
-| `ProjectileHitSystem` | AOE ?쇳빐??? | `UltimateLeapState` | ?댄깉 以??곸? splash/TileAoe ?쇳빐?먮룄 bounce ?꾨낫???꾨떂 |
-| `ProjectileMoveSystem` | ?ъ“以 ?꾨낫 ? | `DeadTag`, `PastGoalTag`, `UltimateLeapState` | 媛숈? 洹쒖빟. ?ъ궗泥??먯껜 猷⑦봽??臾댄븘??|
-| `TauntAttackGrantSystem` | grant | `AttackState`, `TauntAttackGranted` | **遺??= ?먯껜 怨듦꺽?섎떒 ?놁쓬 = ?꾨컻 怨듦꺽 遺?????*. ?대? 遺?щ맖(`TauntAttackGranted`) ?щ???李⑤떒 |
-| `TauntAttackGrantSystem` | strip | `Aggroed` | ?닿렇濡??댁젣??= 遺?щ텇 ?뚯닔 ???|
-| `UltimateLeapSystem` | ?댄깉 猷⑦봽 | `DeadTag` | 諛⑹뼱??媛??怨꾩빟??怨듭쨷 ?щ쭩 ?놁쓬). 二쎌뿀?쇰㈃ 李⑹? ?놁씠 ?곹깭留?嫄룹뼱 "?좉릿 ?쒖껜" 諛⑹? |
-| `AllyBuffFieldSystem` | 硫ㅻ쾭??猷⑦봽 | `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??щ쭩 ?좊떅? ?ν뙋 踰꾪봽 ????꾨떂 |
-| `DefenderFieldSystem` | 諛⑹뼱?좊떅 ?ㅻ깄??| `PendingDeployment`, `DeadTag` | BFS ?뚯뒪?먯꽌 ?쒖쇅 = 蹂댁뒪媛 諛곗튂 ?湲??좊떅???щ깷?섏? ?딆쓬 |
-| `DreamCocoonSystem` | ?꾩＜ 媛먯떆 | `DeadTag` | 二쎌쑝硫??먯젙 以묐떒 |
-| `FatigueAccrualSystem` | pass1 lazy attach | `FatigueAccrual` | **遺??= ?꾩쭅 ??대㉧ 誘몃?李?* (idempotent attach 愿?⑷뎄) |
-| `HazardCastSystem` | ?寃??꾨낫 | `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??쒖껜??罹먯뒪???쒖쟻 ?꾨떂 |
-| `HazardCastSystem` | 罹먯뒪??猷⑦봽 | `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??쒖껜??罹먯뒪??????荑⑤떎??tick ???뺤?) |
-| `HeatAccrualSystem` | pass1 lazy attach | `HeatAccrual` + `DeadTag`, `PendingDeployment` | 誘몃?李??좊떅?먮쭔 ??대㉧ 遺李?|
-| `HeatAccrualSystem` | pass2 ?꾩궛 | `DeadTag`, `PendingDeployment` | ?쒖껜/諛곗튂 ?湲곗뿏 ?닿린 ?꾩쟻 ?놁쓬 |
-| `ObstacleLifetimeSystem` | ?섎챸 tick | `BlockingHazardCellsBuffer` | **遺??= ?⑥씪 ? ?μ븷臾??꾪궎???*. ?ㅼ쨷 ?(?뚭눼 媛???댁???? ??踰덉㎏ 猷⑦봽媛 ?대떦 = 遺?щ줈 ?꾪궎??낆쓣 媛瑜몃떎 |
-| `ObstacleLifetimeSystem` | ?ㅼ쨷 ? 猷⑦봽 | `DeadTag` | 二쎌? ?댁????? 李⑤떒?먯꽌 鍮좎쭚 |
-| `PatrolFieldSystem` | ??? ?ㅻ깄??| `DeadTag`, `PastGoalTag` | ?좎텧 ?湲??곸? 已볦쓣 ?댁쑀 ?놁쓬 |
-| `PatrolFieldSystem` | ?쒖같蹂?猷⑦봽 | `DeadTag` | 二쎌? ?쒖같蹂?dir 誘멸갚??|
-| `PickupConsumeSystem` | defender ?뚮퉬 | `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??쒖껜???쎌뾽 紐?癒뱀쓬 |
-| `PickupConsumeSystem` | enemy ?뚮퉬 | `PendingDeployment`, `DeadTag` | ?숈씪 |
-| `ShieldCastSystem` | ?꾨낫 ?ㅻ깄??| `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??쒖껜???ㅻ뱶 ????꾨떂(?먯떊 ?ы븿 洹쒖튃怨?蹂꾧컻) |
-| `ShieldCastSystem` | 罹먯뒪??猷⑦봽 | `PendingDeployment`, `DeadTag` | 諛곗튂 ?湲??쒖껜??罹먯뒪??????|
-| `MovementSystem` | ?대룞 猷⑦봽 | `PastGoalTag` | **?좎텧 ?뺤젙 ?좊떅? ?대룞 ?숆껐**. `UnitLifecycleSystem` ??媛숈? ?꾨젅?꾩뿉 ?뚭눼?섎뒗 ?꾩젣 ???뚭눼 猷⑦봽媛 `AttackUnitTag` 瑜??붽뎄?댁꽌 ?쒖같蹂묒뿉 ?쒓렇媛 遺숈쑝硫??곴뎄 ?숆껐?쒕떎(洹몃옒??goal ?먯젙??patrol 寃뚯씠?멸? ?덈떎) |
-| `DamageApplicationSystem` | ?쒕젅??猷⑦봽 | `DeadTag` | ?대? 二쎌? ?좊떅? ?ъ쟻??????|
-| `DamageApplicationSystem` | ?쒕젅??猷⑦봽 | `PendingDeployment` | 諛곗튂 ?湲??좊떅? ?쇳빐 ?섏떊 ????|
-| `HealthDeathSystem` | HP<=0 ?ㅼ틪 | `DeadTag` | 以묐났 ?쒓퉭 諛⑹? |
-| `LethalTimerSystem` | ??대㉧ 猷⑦봽 | `DeadTag` | ?대쾲 ?꾨젅???쇳빐濡??대? 二쎌? ?좊떅 double-tag 諛⑹? (critic H5) |
-| `MaxHealthScaleSystem` | pass1 lazy attach | `MaxHealthScaleState` | **遺??= baseMax ?꾩쭅 誘몄벙泥?* (諛곗쑉??1 ?먯꽌 踰쀬뼱??泥??꾨젅?꾩뿉留?遺李? |
-| `PatrolLifecycleSystem` | ?쒖같蹂?猷⑦봽 | `DeadTag` | ?대? 二쎌? ?쒖같蹂??ы깭源?諛⑹? |
-| `UnitLifecycleSystem` | general dead 猷⑦봽 | `DefenderTile` | ?꾩そ ?뷀렂???щ쭩 猷⑦봽???**double-destroy 諛⑹?** |
-| `UnitLifecycleSystem` | general dead 猷⑦봽 | `BlockingHazard` | ?댁????대깽??enqueue 猷⑦봽???double-destroy 諛⑹? |
+| `AttackSystem` | 타겟 후보 스냅샷 | `PendingDeployment` | 배치 대기 유닛은 맞지 않는다(아직 판에 없음) |
+| `AttackSystem` | 타겟 후보 스냅샷 | `DeadTag` | 시체 조준 금지 |
+| `AttackSystem` | 타겟 후보 스냅샷 | `UltimateLeapState` | 이탈(판 밖) 중 = 조준 불가. `LeapFlight` 는 **의도적으로 제외 안 함**(일반 도약은 비행 중에도 맞는다) |
+| `AttackSystem` | 공격자 메인 루프 | `PendingDeployment` | 배치 대기 유닛은 공격 안 함. `DeadTag`/`LeapFlight` 는 쿼리에서 빼지 않고 루프 안 `actionLocked` 술어로 처리 — 쿨다운 tick 과 진행 중 스윙 RESOLVE 를 살려야 하므로 |
+| `BossPeriodicTriggerSystem` | 슬롯 루프 | `DeadTag` | 시체가 스킬을 한 번 더 쓰는 것 차단(순서 대신 규칙으로 표현) |
+| `EnemyAiStateSystem` | 타겟 후보 | `PendingDeployment`, `DeadTag` | AttackSystem 과 동일 후보 풀 유지 |
+| `HealthThresholdSystem` | 슬롯 루프 | `DeadTag` | 오버킬로 경계 다중 관통 시 시체가 폭발/도약하는 것 차단 |
+| `ProjectileEmitterSystem` | 인스턴스 host 루프 | `DeadTag` | 죽은 host 는 새 발 안 냄(이미 시작된 버스트는 완주) |
+| `ProjectileEmitterSystem` | 적 재조준 풀 | `DeadTag`, `PastGoalTag`, `UltimateLeapState` | 죽은·유출된·판 밖 적은 조준 후보 아님(빈 타일 사격 방지) |
+| `ProjectileHitSystem` | AOE 피해자 풀 | `UltimateLeapState` | 이탈 중 적은 splash/TileAoe 피해자도 bounce 후보도 아님 |
+| `ProjectileMoveSystem` | 재조준 후보 풀 | `DeadTag`, `PastGoalTag`, `UltimateLeapState` | 같은 규약. 투사체 자체 루프는 무필터 |
+| `TauntAttackGrantSystem` | grant | `AttackState`, `TauntAttackGranted` | **부재 = 자체 공격수단 없음 = 도발 공격 부여 대상**. 이미 부여됨(`TauntAttackGranted`) 재부여 차단 |
+| `TauntAttackGrantSystem` | strip | `Aggroed` | 어그로 해제됨 = 부여분 회수 대상 |
+| `UltimateLeapSystem` | 이탈 루프 | `DeadTag` | 방어적 가드(계약상 공중 사망 없음). 죽었으면 착지 없이 상태만 걷어 "잠긴 시체" 방지 |
+| `AllyBuffFieldSystem` | 멤버십 루프 | `PendingDeployment`, `DeadTag` | 배치 대기/사망 유닛은 장판 버프 대상 아님 |
+| `DefenderFieldSystem` | 방어유닛 스냅샷 | `PendingDeployment`, `DeadTag` | BFS 소스에서 제외 = 보스가 배치 대기 유닛을 사냥하지 않음 |
+| `DreamCocoonSystem` | 완주 감시 | `DeadTag` | 죽으면 판정 중단 |
+| `FatigueAccrualSystem` | pass1 lazy attach | `FatigueAccrual` | **부재 = 아직 타이머 미부착** (idempotent attach 관용구) |
+| `HazardCastSystem` | 타겟 후보 | `PendingDeployment`, `DeadTag` | 배치 대기/시체는 캐스트 표적 아님 |
+| `HazardCastSystem` | 캐스터 루프 | `PendingDeployment`, `DeadTag` | 배치 대기/시체는 캐스트 안 함(쿨다운 tick 도 정지) |
+| `HeatAccrualSystem` | pass1 lazy attach | `HeatAccrual` + `DeadTag`, `PendingDeployment` | 미부착 유닛에만 타이머 부착 |
+| `HeatAccrualSystem` | pass2 누산 | `DeadTag`, `PendingDeployment` | 시체/배치 대기엔 열기 누적 없음 |
+| `ObstacleLifetimeSystem` | 수명 tick | `BlockingHazardCellsBuffer` | **부재 = 단일 셀 장애물 아키타입**. 다중 셀(파괴 가능 해저드)은 두 번째 루프가 담당 = 부재로 아키타입을 가른다 |
+| `ObstacleLifetimeSystem` | 다중 셀 루프 | `DeadTag` | 죽은 해저드 셀은 차단에서 빠짐 |
+| `PatrolFieldSystem` | 적 셀 스냅샷 | `DeadTag`, `PastGoalTag` | 유출 대기 적은 쫓을 이유 없음 |
+| `PatrolFieldSystem` | 순찰병 루프 | `DeadTag` | 죽은 순찰병 dir 미갱신 |
+| `PickupConsumeSystem` | defender 소비 | `PendingDeployment`, `DeadTag` | 배치 대기/시체는 픽업 못 먹음 |
+| `PickupConsumeSystem` | enemy 소비 | `PendingDeployment`, `DeadTag` | 동일 |
+| `ShieldCastSystem` | 후보 스냅샷 | `PendingDeployment`, `DeadTag` | 배치 대기/시체는 실드 대상 아님(자신 포함 규칙과 별개) |
+| `ShieldCastSystem` | 캐스터 루프 | `PendingDeployment`, `DeadTag` | 배치 대기/시체는 캐스트 안 함 |
+| `MovementSystem` | 이동 루프 | `PastGoalTag` | **유출 확정 유닛은 이동 동결**. `UnitLifecycleSystem` 이 같은 프레임에 파괴하는 전제 — 파괴 루프가 `AttackUnitTag` 를 요구해서 순찰병에 태그가 붙으면 영구 동결된다(그래서 goal 판정에 patrol 게이트가 있다) |
+| `DamageApplicationSystem` | 드레인 루프 | `DeadTag` | 이미 죽은 유닛은 재적용 안 함 |
+| `DamageApplicationSystem` | 드레인 루프 | `PendingDeployment` | 배치 대기 유닛은 피해 수신 안 함 |
+| `HealthDeathSystem` | HP<=0 스캔 | `DeadTag` | 중복 태깅 방지 |
+| `LethalTimerSystem` | 타이머 루프 | `DeadTag` | 이번 프레임 피해로 이미 죽은 유닛 double-tag 방지 (critic H5) |
+| `MaxHealthScaleSystem` | pass1 lazy attach | `MaxHealthScaleState` | **부재 = baseMax 아직 미캡처** (배율이 1 에서 벗어난 첫 프레임에만 부착) |
+| `PatrolLifecycleSystem` | 순찰병 루프 | `DeadTag` | 이미 죽은 순찰병 재태깅 방지 |
+| `UnitLifecycleSystem` | general dead 루프 | `DefenderTile` | 위쪽 디펜더 사망 루프와의 **double-destroy 방지** |
+| `UnitLifecycleSystem` | general dead 루프 | `BlockingHazard` | 해저드 이벤트 enqueue 루프와의 double-destroy 방지 |
 
-### B-2. `HasComponent` / `HasBuffer` 遺꾧린 ??load-bearing ??"遺??= ?곹깭"
+### B-2. `HasComponent` / `HasBuffer` 분기 — load-bearing 한 "부재 = 상태"
 
-| 吏??| ?좎뼱 | ?섎? |
+| 지점 | 술어 | 의미 |
 |---|---|---|
-| `DamageApplicationSystem:99` | `UltimateLeapState` **蹂댁쑀** ??`damageBuffer.Clear(); continue` | ?댄깉 以?臾댁쟻. **荑쇰━ `WithNone` ?쇰줈 鍮쇰㈃ ???쒕떎** ??洹몃윭硫?2珥덇컙 ?쇳빐媛 踰꾪띁???곷┰??李⑹? ?꾨젅?꾩뿉 ?듭㎏濡??곗쭊??臾댁쟻???꾨땲??吏????깂). 肄붾뱶 二쇱꽍??紐낆떆???섎룄??鍮?WithNone |
-| `MovementSystem:72` | `PatrolStep` 蹂댁쑀 = **?쒖같 ?꾪궎????먮퀎** | 遺??= ?쇰컲 ?대룞泥? goal ?먯젙쨌flow step ?뚯뒪瑜?????媛덉븘?꾨떎 |
-| `MovementSystem:68` | `EnemyAiState` 遺????`AiState.Marching` ?대갚 | FSM 誘몃낫???뷀렂???쒖같蹂???????긽 ?꾩쭊 痍④툒 |
-| `MovementSystem:80` / `AttackSystem:254` | `LeapFlight` 蹂댁쑀 ??`locked` (CC ? 媛숈? ?좎뼱??OR) | ?먭린二쇰룄 ?대룞/怨듦꺽 START 留??뺤?, ?몃젰쨌荑⑤떎??tick쨌吏꾪뻾 以??ㅼ쐷 RESOLVE ???좎? |
-| `MovementSystem:135` | `DefenderFieldSingleton` 遺????`hunting=false` ?꾩썝 goal 寃쎈줈 | ?꾨뱶媛 ?덉뼱??`dist[idx]==int.MaxValue` 硫??꾨떖 遺덇? ??留덉묶 ?대갚(諛⑹뼱?좊떅 ?꾨㈇ = ??? MaxValue) |
-| `CcApplySystem:33` | `BossTag` 蹂댁쑀 + `IsBossImmune(kind)` ??CC 嫄곗젅 | **遺???쒖젏 1怨?* 李⑤떒. IsLocked ?먯젙 履쎌뿉 ?ｌ쑝硫?臾댁떆 吏?먯씠 6怨??댁긽 |
-| `AggroStateSystem:118` | `BossTag` 蹂댁쑀 ??`Aggroed` 遺李?嫄곗젅 | 遺李?1怨?李⑤떒. 遺숈? ??臾댁떆???뚮퉬 吏??6怨녹씠??鍮꾩떥??|
-| `AggroStateSystem:104` | `AggroCapacity` 遺????鍮?媛?붿뼵 = ?덊듃 ?대깽??臾댁떆 | 媛?붿뼵 ?먭꺽??而댄룷?뚰듃 蹂댁쑀濡??뺤쓽??|
-| `AggroStateSystem:57` / `PatrolLifecycleSystem:47` | ?щ쭩 3以??먯젙: `Exists` && !`DeadTag` && `Health.value>0` | ECB ?뚭눼遺?+ death ?꾨젅???쒓렇 + HP ?뚯쭊 ????李쎌쓣 紐⑤몢 ??뒗?? `Entity` 媛 version ???ы븿???ы솢??id 諛⑹뼱 |
-| `AttackSystem` / `MovementSystem` / `DamageApplicationSystem` | `ModifierStats` 遺????諛곗쑉 `1f`, regen `0f` | 紐⑤뵒?뚯씠??誘몃낫?좉? 湲곕낯媛믨낵 媛숈? ?섎? (遺???덉쟾 湲곕낯媛? |
-| `HealthThresholdSystem:67` / `ProjectileHitSystem:61` / `AttackSystem:140` | `ThreatEntry` **踰꾪띁 蹂댁쑀** = 蹂댁뒪 踰좎씠??| ?꾪삊 洹?띿씠 蹂댁뒪?먮쭔 ?곷┰?섎룄濡??섎뒗 ?좎씪???꾪꽣 |
-| `ProjectileHitSystem` | `DefenderUnitTag`(owner) 蹂댁쑀 | ?꾪삊 洹?띿? defender 諛?李⑺깂留????ㅽ궗 ?ъ궗泥?owner=Null)??臾댁쁺??|
-| `PickupConsumeSystem:90` | `LastRun` 蹂댁쑀 ???뚮퉬 嫄곗젅(**?뚮퉬 ??*) | ?ъ냼鍮꾨줈 ??대㉧ 由ъ뀑??crash 臾댄븳 ?뚰뵾?섎뜕 臾몄젣 李⑤떒. ?쎌뾽? 蹂대뱶???붿〈 |
-| `DefenderFieldSystem:40` | `bossQuery.IsEmpty` ???щ퉴??skip | ?꾨뱶 ?뚮퉬?먭? 蹂댁뒪肉?|
-| `LastRunSystem:41` | `Health` && `IncomingDamage` 踰꾪띁 ????蹂댁쑀?댁빞 crash ?곸슜 | 遺????議곗슜??而댄룷?뚰듃留??쒓굅 |
-| `HazardCastSystem:126` | 罹먯뒪?곌? `DcTriggerSlot` 踰꾪띁 蹂댁쑀?댁빞 `CastEvent` enqueue | ?앹궛??寃뚯씠?????놁쑝硫?4珥덈쭏???대깽?몃쭔 ?곸옱 |
-| `ShieldCastSystem:110` | 湲곗〈 ?щ’???대? amount ?댁긽?대㈃ append/VFX skip | Merge(max) no-op ?덉륫 = ?쏅텋苑?諛⑹? |
-| `UnitLifecycleSystem` / `DamageApplicationSystem` | ?깃???荑쇰━ `CalculateEntityCount()==1` / `TryGetSingletonRW` | **fail-open**: 梨꾨꼸 ?놁쑝硫??대깽?몃쭔 鍮좎?怨??뚭눼/?쇳빐 濡쒖쭅? 怨꾩냽 |
-| `DreamCocoonSystem:49` | `CcEffect` ??`Sleep` 遺??&& `remaining>0` ???뚰깂 | 遺?ш? "?쇨꺽?쇰줈 源⑥뼱?????좏샇. `remaining>0` 媛?쒓? ?뚰깂/?꾩＜???ㅼ젣 disambiguator |
-| `EnemyAiStateSystem` / `AttackSystem` | `EnemyTargetFilter` 遺????`classMask=-1`(?꾩껜 ?덉슜) | 遺??= 臾댁젣???꾪꽣 |
+| `DamageApplicationSystem:99` | `UltimateLeapState` **보유** → `damageBuffer.Clear(); continue` | 이탈 중 무적. **쿼리 `WithNone` 으로 빼면 안 된다** — 그러면 2초간 피해가 버퍼에 적립돼 착지 프레임에 통째로 터진다(무적이 아니라 지연 폭탄). 코드 주석에 명시된 의도적 비-WithNone |
+| `MovementSystem:72` | `PatrolStep` 보유 = **순찰 아키타입 판별** | 부재 = 일반 이동체. goal 판정·flow step 소스를 둘 다 갈아탄다 |
+| `MovementSystem:68` | `EnemyAiState` 부재 → `AiState.Marching` 폴백 | FSM 미보유(디펜더/순찰병 등)는 항상 전진 취급 |
+| `MovementSystem:80` / `AttackSystem:254` | `LeapFlight` 보유 → `locked` (CC 와 같은 술어에 OR) | 자기주도 이동/공격 START 만 정지, 외력·쿨다운 tick·진행 중 스윙 RESOLVE 는 유지 |
+| `MovementSystem:135` | `DefenderFieldSingleton` 부재 → `hunting=false` 전원 goal 경로 | 필드가 있어도 `dist[idx]==int.MaxValue` 면 도달 불가 → 마칭 폴백(방어유닛 전멸 = 전 셀 MaxValue) |
+| `CcApplySystem:33` | `BossTag` 보유 + `IsBossImmune(kind)` → CC 거절 | **부여 시점 1곳** 차단. IsLocked 판정 쪽에 넣으면 무시 지점이 6곳 이상 |
+| `AggroStateSystem:118` | `BossTag` 보유 → `Aggroed` 부착 거절 | 부착 1곳 차단. 붙은 뒤 무시는 소비 지점 6곳이라 비싸다 |
+| `AggroStateSystem:104` | `AggroCapacity` 부재 → 비-가디언 = 히트 이벤트 무시 | 가디언 자격이 컴포넌트 보유로 정의됨 |
+| `AggroStateSystem:57` / `PatrolLifecycleSystem:47` | 사망 3중 판정: `Exists` && !`DeadTag` && `Health.value>0` | ECB 파괴분 + death 프레임 태그 + HP 소진 — 세 창을 모두 덮는다. `Entity` 가 version 을 포함해 재활용 id 방어 |
+| `AttackSystem` / `MovementSystem` / `DamageApplicationSystem` | `ModifierStats` 부재 → 배율 `1f`, regen `0f` | 모디파이어 미보유가 기본값과 같은 의미 (부재-안전 기본값) |
+| `HealthThresholdSystem:67` / `ProjectileHitSystem:61` / `AttackSystem:140` | `ThreatEntry` **버퍼 보유** = 보스 베이크 | 위협 귀속이 보스에만 적립되도록 하는 유일한 필터 |
+| `ProjectileHitSystem` | `DefenderUnitTag`(owner) 보유 | 위협 귀속은 defender 발 착탄만 — 스킬 투사체(owner=Null)는 무영향 |
+| `PickupConsumeSystem:90` | `LastRun` 보유 → 소비 거절(**소비 락**) | 재소비로 타이머 리셋해 crash 무한 회피하던 문제 차단. 픽업은 보드에 잔존 |
+| `DefenderFieldSystem:40` | `bossQuery.IsEmpty` → 재빌드 skip | 필드 소비자가 보스뿐 |
+| `LastRunSystem:41` | `Health` && `IncomingDamage` 버퍼 둘 다 보유해야 crash 적용 | 부재 시 조용히 컴포넌트만 제거 |
+| `HazardCastSystem:126` | 캐스터가 `DcTriggerSlot` 버퍼 보유해야 `CastEvent` enqueue | 생산자 게이트 — 없으면 4초마다 이벤트만 적재 |
+| `ShieldCastSystem:110` | 기존 슬롯이 이미 amount 이상이면 append/VFX skip | Merge(max) no-op 예측 = 헛불꽃 방지 |
+| `UnitLifecycleSystem` / `DamageApplicationSystem` | 싱글턴 쿼리 `CalculateEntityCount()==1` / `TryGetSingletonRW` | **fail-open**: 채널 없으면 이벤트만 빠지고 파괴/피해 로직은 계속 |
+| `DreamCocoonSystem:49` | `CcEffect` 에 `Sleep` 부재 && `remaining>0` → 파탄 | 부재가 "피격으로 깨어남"의 신호. `remaining>0` 가드가 파탄/완주의 실제 disambiguator |
+| `EnemyAiStateSystem` / `AttackSystem` | `EnemyTargetFilter` 부재 → `classMask=-1`(전체 허용) | 부재 = 무제한 필터 |
 
 ---
 
-## C. ?곌린 吏??
-?뺤떇: `?곌린 ??곷뱾` = 而댄룷?뚰듃/踰꾪띁 吏곸젒 ?곌린(RefRW, RW lookup, DynamicBuffer 蹂??. `???? = NativeQueue enqueue(留λ씫 媛?梨꾨꼸). ECB ?댁? ?꾨? `Allocator.Temp` 濡쒖뺄 + 媛숈? OnUpdate ??`Playback(state.EntityManager)` + `Dispose()`.
+## C. 쓰기 지도
+
+형식: `쓰기 대상들` = 컴포넌트/버퍼 직접 쓰기(RefRW, RW lookup, DynamicBuffer 변이). `→ 큐` = NativeQueue enqueue(맥락 간 채널). ECB 열은 전부 `Allocator.Temp` 로컬 + 같은 OnUpdate 내 `Playback(state.EntityManager)` + `Dispose()`.
 
 ### C-1. Combat
 
-| ?쒖뒪??| ?곌린 ??곷뱾 | ECB |
+| 시스템 | 쓰기 대상들 | ECB |
 |---|---|---|
-| `AttackSystem` | `AttackState`(RefRW: cooldown/hitDelay) 쨌 `FrontmostAttackLock`(RW lookup) 쨌 `FocusTarget`(RW lookup) 쨌 `BombLauncherState`(RW lookup, rng ?꾩쭊) 쨌 `DcTriggerSlot`(RW buffer: counter/elapsed ?섏벐湲? 쨌 `PatternSlot`(RW buffer: fireCountBase) 쨌 `EmitterInstance`(RW buffer: Add) ??`UnitAttackVisualEvents` 쨌 `EnemyCcEvents` 쨌 `AggroHitEvents` 쨌 `AttackOutputLogEvents` 쨌 `ThreatHitEvents`(ThreatTable.TryCredit) 쨌 `KnockupVisualEvents` 쨌 `StatModifierApplyEvents` 쨌 `StackModifierApplyEvents` 쨌 `DcTriggerFiredEvents` | **O** ??Temp 1媛? `AddComponent<ProjectileSpawnRequest>`(attacker in-place + 罹먮━?? 쨌 `AddBuffer<ProjectileSpawnOutputElement>` 쨌 `RemoveComponent<NextAttackDoubleFire>` 쨌 `AppendToBuffer<IncomingDamage>`/`<IncomingHeal>` 쨌 `CreateEntity` 罹먮━??`ProjectileRequestCarrier`, `PatrolRequestCarrier`) |
-| `BossPeriodicTriggerSystem` | `DcTriggerSlot`(RW buffer: elapsed) 쨌 `PatternSlot`(RW buffer: fireCountBase) 쨌 `EmitterInstance`(RW buffer: Add) ??`StatModifierApplyEvents` 쨌 `ProjectileHitEvents` | **X** ??援ъ“ 蹂寃??놁쓬(踰꾪띁 ?댁슜 蹂?대쭔) |
-| `EnemyAiStateSystem` | `EnemyAiState`(RefRW) ???좎씪??writer | **X** |
-| `HealthThresholdSystem` | `ThreatEntry`(RW buffer, `ThreatTable.Accumulate`) 쨌 `DcTriggerSlot`(RW buffer: nextBoundaryIndex) ??`StatModifierApplyEvents` 쨌 `BlinkRequestEvents` 쨌 `BossLeapVisualEvents` 쨌 `UltimateLeapVisualEvents` | **O** ??`AddComponent<UltimateLeapState>` 쨌 `AddComponent<LeapFlight>` 쨌 `CreateEntity` SelfTileAoe 罹먮━??|
-| `ProjectileEmitterSystem` | `EmitterInstance`(RW buffer: runtime ?섏벐湲?/ ?꾩＜ ??`RemoveAtSwapBack`) | **O** ??`CreateEntity` + `AddComponent<ProjectileSpawnRequest>` + `ProjectileRequestCarrier` (諛??섎쭔?? |
-| `ProjectileHitSystem` | `IncomingDamage`(RW buffer lookup ?뺣낫) 쨌 `IncomingHeal`(RW) 쨌 `AttackOutputElement`(RW buffer: bounce 媛먯뇿 in-place) ??`ProjectileHitEvents` 쨌 `EnemyCcEvents` 쨌 `ThreatHitEvents` 쨌 `StatModifierApplyEvents` 쨌 `StackModifierApplyEvents` | **O** ??`AppendToBuffer<IncomingDamage>`/`<IncomingHeal>`/`<PathHitRecord>` 쨌 `SetComponent`/`AddComponent<HitFlashTag>` 쨌 `SetComponent<ProjectileState>`(bounce next) 쨌 `RemoveComponent<AttackOutputElement>` 쨌 `DestroyEntity`(?ъ궗泥? |
-| `ProjectileMoveSystem` | `LocalTransform`(RefRW: ?ъ궗泥??꾩튂) 쨌 `ProjectileState`(RefRW: elapsed/target/impactReached) | **O** ??`DestroyEntity`(?寃??뚮㈇쨌?섎챸 醫낅즺) |
-| `TauntAttackGrantSystem` | (吏곸젒 ?곌린 ?놁쓬 ???꾨? ECB) | **O** ??grant: `AddComponent<AttackState>` + `AddBuffer<AttackOutputElement>` + `AddComponent<TauntAttackGranted>` / strip: 3媛?`RemoveComponent` |
-| `UltimateLeapSystem` | `UltimateLeapState`(RefRW: remaining) ??`BlinkRequestEvents` 쨌 `UltimateLeapVisualEvents` | **O** ??`CreateEntity` ?щ옩 罹먮━??쨌 `RemoveComponent<UltimateLeapState>` 쨌 `RemoveComponent<LeapFlight>` |
+| `AttackSystem` | `AttackState`(RefRW: cooldown/hitDelay) · `FrontmostAttackLock`(RW lookup) · `FocusTarget`(RW lookup) · `BombLauncherState`(RW lookup, rng 전진) · `DcTriggerSlot`(RW buffer: counter/elapsed 되쓰기) · `PatternSlot`(RW buffer: fireCountBase) · `EmitterInstance`(RW buffer: Add) → `UnitAttackVisualEvents` · `EnemyCcEvents` · `AggroHitEvents` · `AttackOutputLogEvents` · `ThreatHitEvents`(ThreatTable.TryCredit) · `KnockupVisualEvents` · `StatModifierApplyEvents` · `StackModifierApplyEvents` · `DcTriggerFiredEvents` | **O** — Temp 1개. `AddComponent<ProjectileSpawnRequest>`(attacker in-place + 캐리어) · `AddBuffer<ProjectileSpawnOutputElement>` · `RemoveComponent<NextAttackDoubleFire>` · `AppendToBuffer<IncomingDamage>`/`<IncomingHeal>` · `CreateEntity` 캐리어(`ProjectileRequestCarrier`, `PatrolRequestCarrier`) |
+| `BossPeriodicTriggerSystem` | `DcTriggerSlot`(RW buffer: elapsed) · `PatternSlot`(RW buffer: fireCountBase) · `EmitterInstance`(RW buffer: Add) → `StatModifierApplyEvents` · `ProjectileHitEvents` | **X** — 구조 변경 없음(버퍼 내용 변이만) |
+| `EnemyAiStateSystem` | `EnemyAiState`(RefRW) — 유일한 writer | **X** |
+| `HealthThresholdSystem` | `ThreatEntry`(RW buffer, `ThreatTable.Accumulate`) · `DcTriggerSlot`(RW buffer: nextBoundaryIndex) → `StatModifierApplyEvents` · `BlinkRequestEvents` · `BossLeapVisualEvents` · `UltimateLeapVisualEvents` | **O** — `AddComponent<UltimateLeapState>` · `AddComponent<LeapFlight>` · `CreateEntity` SelfTileAoe 캐리어 |
+| `ProjectileEmitterSystem` | `EmitterInstance`(RW buffer: runtime 되쓰기 / 완주 시 `RemoveAtSwapBack`) | **O** — `CreateEntity` + `AddComponent<ProjectileSpawnRequest>` + `ProjectileRequestCarrier` (발 수만큼) |
+| `ProjectileHitSystem` | `IncomingDamage`(RW buffer lookup 확보) · `IncomingHeal`(RW) · `AttackOutputElement`(RW buffer: bounce 감쇠 in-place) → `ProjectileHitEvents` · `EnemyCcEvents` · `ThreatHitEvents` · `StatModifierApplyEvents` · `StackModifierApplyEvents` | **O** — `AppendToBuffer<IncomingDamage>`/`<IncomingHeal>`/`<PathHitRecord>` · `SetComponent`/`AddComponent<HitFlashTag>` · `SetComponent<ProjectileState>`(bounce next) · `RemoveComponent<AttackOutputElement>` · `DestroyEntity`(투사체) |
+| `ProjectileMoveSystem` | `LocalTransform`(RefRW: 투사체 위치) · `ProjectileState`(RefRW: elapsed/target/impactReached) | **O** — `DestroyEntity`(타겟 소멸·수명 종료) |
+| `TauntAttackGrantSystem` | (직접 쓰기 없음 — 전부 ECB) | **O** — grant: `AddComponent<AttackState>` + `AddBuffer<AttackOutputElement>` + `AddComponent<TauntAttackGranted>` / strip: 3개 `RemoveComponent` |
+| `UltimateLeapSystem` | `UltimateLeapState`(RefRW: remaining) → `BlinkRequestEvents` · `UltimateLeapVisualEvents` | **O** — `CreateEntity` 슬램 캐리어 · `RemoveComponent<UltimateLeapState>` · `RemoveComponent<LeapFlight>` |
 
 ### C-2. Effects
 
-| ?쒖뒪??| ?곌린 ??곷뱾 | ECB |
+| 시스템 | 쓰기 대상들 | ECB |
 |---|---|---|
-| `AggroStateSystem` | `AggroCapacity`(RefRW: held full recompute) ??`Aggroed`/`AggroCapacity` ?⑤룆 writer | **O** ??`AddComponent<Aggroed>` 쨌 `AddBuffer<AggroChaseCell>` 쨌 `RemoveComponent<Aggroed>` 쨌 `RemoveComponent<AggroChaseCell>` |
-| `AllyBuffFieldSystem` | (而댄룷?뚰듃 ?곌린 0) ??`StatModifierApplyEvents` (留??꾨젅???щ컻?? | **X** |
-| `CcApplySystem` | `CcEffect`(EntityManager.GetBuffer ??`CcEffectMerge.Apply`) | **X** ??non-Burst OnUpdate |
-| `CcClearSystem` | `CcEffect`(GetBuffer ??`RemoveAtSwapBack`) | **X** |
-| `CcDecaySystem` | `CcEffect`(IJobEntity `ref DynamicBuffer`: remainingTime 媛먯궛 + 留뚮즺 ?쒓굅) | **X** |
-| `DefenderFieldSystem` | `DefenderFieldSingleton.flow`/`.dist`(?깃????대? NativeArray in-place ?щ퉴?? | **X** |
-| `DotApplySystem` | `DotEffect`(遺??merge + tick/媛먯뇿 ?섏벐湲? 쨌 `IncomingDamage`(job ??`ref DynamicBuffer.Add`) ??`HazardRuntimeEvents` | **X** |
-| `DreamCocoonSystem` | `DreamCocoon`(RefRW: remaining) ??`StatModifierApplyEvents` | **O** ??`RemoveComponent<DreamCocoon>`(?뚰깂/?꾩＜) |
-| `EffectTickSystem` | `TornadoField` 쨌 `AllyBuffField` 쨌 `PortalLink` (媛?RefRW: remaining) | **O** ??留뚮즺 ??`DestroyEntity`(罹먮━???뷀떚???듭㎏) |
-| `FatigueAccrualSystem` | `FatigueAccrual`(RefRW: elapsed) ??`StackModifierApplyEvents` | **O** ??pass1 `AddComponent<FatigueAccrual>` + **以묎컙 Playback** ??pass2 |
-| `HazardCastSystem` | `HazardCastState`(RefRW: cooldownRemaining) ??`HazardSpawnRequests` 쨌 `UnitAttackVisualEvents` 쨌 `CastEvents` | **X** |
-| `HazardLifetimeSystem` | `HazardSingleton.cellToEffects`(Clear + ?ъ쟻?? 쨌 `Hazard`(RefRW: remainingLife) | **O** ??留뚮즺 `DestroyEntity` |
-| `HeatAccrualSystem` | `HeatAccrual`(RefRW: elapsed/stacks) 쨌 `IncomingHeal`(RW buffer lookup `.Add`) 쨌 `IncomingDamage`(RW buffer lookup `.Add`) | **O** ??pass1 `AddComponent<HeatAccrual>` + `AddBuffer<IncomingHeal>` + **以묎컙 Playback**, ?댄썑 ??lookup ??Update`(援ъ“ 蹂寃쎌쑝濡?臾댄슚?? |
-| `LastRunSystem` | `LastRun`(RefRW: remaining) 쨌 `IncomingDamage`(`SystemAPI.GetBuffer(...).Add`, crash ?쇳빐) | **O** ??`RemoveComponent<LastRun>` |
-| `ModifierApplySystem` | `StatModifierSlot`(GetBuffer 蹂묓빀/異붽?) 쨌 `StackModifierSlot`(?숈씪) 쨌 `ModifierStatsDirty`(**EntityManager 利됱떆** `AddComponent` + `SetComponentEnabled`) | **O(?쇱슜)** ??ECB ??`AddBuffer` 留? 踰꾪띁 ?좎꽕쨌MarkDirty ??**?섎룄?곸쑝濡?EntityManager 利됱떆** ??媛숈? ?쒕젅??猷⑦봽?먯꽌 媛숈? ?源껋뿉 ??踰덉㎏ ?대깽?멸? ?ㅻ㈃ ECB ??AddBuffer 瑜???踰?湲곕줉??泥??щ’????씤??|
-| `ModifierStatsAggregateSystem` | `ModifierStats`(RefRW ??**?좎씪??writer**) 쨌 `ModifierStatsDirty`(EnabledRefRW ??false) | **X** |
-| `ObstacleLifetimeSystem` | `ObstacleSingleton.blockedCells`(Clear + ?ъ쟻?? 쨌 `Obstacle`(RefRW: remainingLife) | **O** ??留뚮즺 `DestroyEntity` |
-| `PatrolFieldSystem` | `PatrolStep`(RefRW: dir ???좎씪??writer) | **X** |
-| `PickupConsumeSystem` | (而댄룷?뚰듃 吏곸젒 ?곌린 0) ??`StatModifierApplyEvents` | **O** ??`DestroyEntity`(?쎌뾽) 쨌 `AddComponent<LastRun>`. `EntityManager.HasComponent<LastRun>` 濡??뚮퉬 ??利됱떆 ?먯젙 |
-| `PickupSpawnSystem` | `Pickup`(RefRW: remainingLife) 쨌 `PickupSpawnState`(RW ?깃??? elapsed, **rng ?곹깭 ?섏벐湲???寃곗젙濡?*) | **O** ??留뚮즺 `DestroyEntity` 쨌 `CreateEntity` + `AddComponent<Pickup>` |
-| `ResignationDropSystem` | (吏곸젒 ?곌린 0) | **O** ??`CreateEntity` + `AddComponent<Resignation>`(?щ쭩 defender ??쇰쭏?? |
-| `ResignationThresholdSystem` | (吏곸젒 ?곌린 0) ??`MeteorBarrageRequests` | **O** ??`DestroyEntity`(?꾧퀎 諛곗닔留뚰겮 ?ъ쭅???뚮え) |
-| `ShieldCastSystem` | `ShieldCastState`(RefRW: cooldownRemaining) 쨌 `IncomingShield`(RW buffer lookup `.Add`) ??`ShieldGrantedEvents` | **X** |
-| `StackModifierTickSystem` | `StackModifierSlot`(GetBuffer: remaining 媛먯궛 쨌 stackCount consume 쨌 lastTriggeredStack 쨌 留뚮즺 ?쒓굅) ??`EnemyCcEvents` 쨌 `DotApplyEvents` 쨌 `StatModifierApplyEvents` | **X** ??non-Burst(BattleBridge 愿由?Dictionary SO 議고쉶) |
-| `StatModifierTickSystem` | `StatModifierSlot`(GetBuffer: remaining 媛먯궛 + 留뚮즺 ?쒓굅) 쨌 `ModifierStatsDirty`(`SystemAPI.SetComponentEnabled` 利됱떆) | **X** |
-| `ZoneApplySystem` | **而댄룷?뚰듃 ?곌린 0** ??`StatModifierApplyEvents` 쨌 `DotApplyEvents` 쨌 `EnemyCcEvents` 쨌 `HazardRuntimeEvents` | **X** ???쒖닔 ?앹궛??|
+| `AggroStateSystem` | `AggroCapacity`(RefRW: held full recompute) — `Aggroed`/`AggroCapacity` 단독 writer | **O** — `AddComponent<Aggroed>` · `AddBuffer<AggroChaseCell>` · `RemoveComponent<Aggroed>` · `RemoveComponent<AggroChaseCell>` |
+| `AllyBuffFieldSystem` | (컴포넌트 쓰기 0) → `StatModifierApplyEvents` (매 프레임 재발행) | **X** |
+| `CcApplySystem` | `CcEffect`(EntityManager.GetBuffer → `CcEffectMerge.Apply`) | **X** — non-Burst OnUpdate |
+| `CcClearSystem` | `CcEffect`(GetBuffer → `RemoveAtSwapBack`) | **X** |
+| `CcDecaySystem` | `CcEffect`(IJobEntity `ref DynamicBuffer`: remainingTime 감산 + 만료 제거) | **X** |
+| `DefenderFieldSystem` | `DefenderFieldSingleton.flow`/`.dist`(싱글턴 내부 NativeArray in-place 재빌드) | **X** |
+| `DotApplySystem` | `DotEffect`(부여 merge + tick/감쇠 되쓰기) · `IncomingDamage`(job 내 `ref DynamicBuffer.Add`) → `HazardRuntimeEvents` | **X** |
+| `DreamCocoonSystem` | `DreamCocoon`(RefRW: remaining) → `StatModifierApplyEvents` | **O** — `RemoveComponent<DreamCocoon>`(파탄/완주) |
+| `EffectTickSystem` | `TornadoField` · `AllyBuffField` · `PortalLink` (각 RefRW: remaining) | **O** — 만료 시 `DestroyEntity`(캐리어 엔티티 통째) |
+| `FatigueAccrualSystem` | `FatigueAccrual`(RefRW: elapsed) → `StackModifierApplyEvents` | **O** — pass1 `AddComponent<FatigueAccrual>` + **중간 Playback** 후 pass2 |
+| `HazardCastSystem` | `HazardCastState`(RefRW: cooldownRemaining) → `HazardSpawnRequests` · `UnitAttackVisualEvents` · `CastEvents` | **X** |
+| `HazardLifetimeSystem` | `HazardSingleton.cellToEffects`(Clear + 재적재) · `Hazard`(RefRW: remainingLife) | **O** — 만료 `DestroyEntity` |
+| `HeatAccrualSystem` | `HeatAccrual`(RefRW: elapsed/stacks) · `IncomingHeal`(RW buffer lookup `.Add`) · `IncomingDamage`(RW buffer lookup `.Add`) | **O** — pass1 `AddComponent<HeatAccrual>` + `AddBuffer<IncomingHeal>` + **중간 Playback**, 이후 두 lookup 재`Update`(구조 변경으로 무효화) |
+| `LastRunSystem` | `LastRun`(RefRW: remaining) · `IncomingDamage`(`SystemAPI.GetBuffer(...).Add`, crash 피해) | **O** — `RemoveComponent<LastRun>` |
+| `ModifierApplySystem` | `StatModifierSlot`(GetBuffer 병합/추가) · `StackModifierSlot`(동일) · `ModifierStatsDirty`(**EntityManager 즉시** `AddComponent` + `SetComponentEnabled`) | **O(혼용)** — ECB 는 `AddBuffer` 만. 버퍼 신설·MarkDirty 는 **의도적으로 EntityManager 즉시** — 같은 드레인 루프에서 같은 타깃에 두 번째 이벤트가 오면 ECB 는 AddBuffer 를 두 번 기록해 첫 슬롯이 덮인다 |
+| `ModifierStatsAggregateSystem` | `ModifierStats`(RefRW — **유일한 writer**) · `ModifierStatsDirty`(EnabledRefRW → false) | **X** |
+| `ObstacleLifetimeSystem` | `ObstacleSingleton.blockedCells`(Clear + 재적재) · `Obstacle`(RefRW: remainingLife) | **O** — 만료 `DestroyEntity` |
+| `PatrolFieldSystem` | `PatrolStep`(RefRW: dir — 유일한 writer) | **X** |
+| `PickupConsumeSystem` | (컴포넌트 직접 쓰기 0) → `StatModifierApplyEvents` | **O** — `DestroyEntity`(픽업) · `AddComponent<LastRun>`. `EntityManager.HasComponent<LastRun>` 로 소비 락 즉시 판정 |
+| `PickupSpawnSystem` | `Pickup`(RefRW: remainingLife) · `PickupSpawnState`(RW 싱글턴: elapsed, **rng 상태 되쓰기 — 결정론**) | **O** — 만료 `DestroyEntity` · `CreateEntity` + `AddComponent<Pickup>` |
+| `ResignationDropSystem` | (직접 쓰기 0) | **O** — `CreateEntity` + `AddComponent<Resignation>`(사망 defender 타일마다) |
+| `ResignationThresholdSystem` | (직접 쓰기 0) → `MeteorBarrageRequests` | **O** — `DestroyEntity`(임계 배수만큼 사직서 소모) |
+| `ShieldCastSystem` | `ShieldCastState`(RefRW: cooldownRemaining) · `IncomingShield`(RW buffer lookup `.Add`) → `ShieldGrantedEvents` | **X** |
+| `StackModifierTickSystem` | `StackModifierSlot`(GetBuffer: remaining 감산 · stackCount consume · lastTriggeredStack · 만료 제거) → `EnemyCcEvents` · `DotApplyEvents` · `StatModifierApplyEvents` | **X** — non-Burst(BattleBridge 관리 Dictionary SO 조회) |
+| `StatModifierTickSystem` | `StatModifierSlot`(GetBuffer: remaining 감산 + 만료 제거) · `ModifierStatsDirty`(`SystemAPI.SetComponentEnabled` 즉시) | **X** |
+| `ZoneApplySystem` | **컴포넌트 쓰기 0** → `StatModifierApplyEvents` · `DotApplyEvents` · `EnemyCcEvents` · `HazardRuntimeEvents` | **X** — 순수 생산자 |
 
 ### C-3. Movement
 
-| ?쒖뒪??| ?곌린 ??곷뱾 | ECB |
+| 시스템 | 쓰기 대상들 | ECB |
 |---|---|---|
-| `BlinkApplySystem` | `LocalTransform`(RW lookup, x/z 留???y ??mover ?먭린 媛??좎?) | **X** |
-| `MovementSystem` | `LocalTransform`(RefRW: ?ы깉 ?붾젅?ы듃 쨌 chase step 쨌 flow step 쨌 pull 쨌 recenter) | **O** ??`AddComponent<PastGoalTag>`(goal ? ?꾨떖) |
+| `BlinkApplySystem` | `LocalTransform`(RW lookup, x/z 만 — y 는 mover 자기 값 유지) | **X** |
+| `MovementSystem` | `LocalTransform`(RefRW: 포탈 텔레포트 · chase step · flow step · pull · recenter) | **O** — `AddComponent<PastGoalTag>`(goal 셀 도달) |
 
 ### C-4. Units
 
-| ?쒖뒪??| ?곌린 ??곷뱾 | ECB |
+| 시스템 | 쓰기 대상들 | ECB |
 |---|---|---|
-| `DamageApplicationSystem` | `Health`(RefRW ??Units ?뚯쑀) 쨌 `IncomingDamage`(Clear) 쨌 `IncomingHeal`(RW lookup, Clear) 쨌 `ShieldSlot`(RW lookup: Merge/Absorb) 쨌 `IncomingShield`(RW lookup, Clear) 쨌 `DamagedCounter`(RW lookup: counter tick) ??`HealAppliedEvents` 쨌 `DamageNumberEvents` 쨌 `EnemyKilledEvents` 쨌 `CcClearRequests` 쨌 `StatModifierApplyEvents` 쨌 `ShieldBreakEvents` | **O** ??`AddComponent<DeadTag>` 쨌 `AddComponent<NextAttackDoubleFire>` |
-| `HealthDeathSystem` | (吏곸젒 ?곌린 0 ??Health ??RefRO) | **O** ??`AddComponent<DeadTag>` |
-| `HitFlashSystem` | `LocalTransform`(RefRW: Scale 留? 쨌 `HitFlashTag`(RefRW: remaining) | **O** ??`RemoveComponent<HitFlashTag>` |
-| `LethalTimerSystem` | `LethalTimer`(RefRW: remaining) | **O** ??`AddComponent<DeadTag>` + `RemoveComponent<LethalTimer>` |
-| `MaxHealthScaleSystem` | `Health`(RefRW: value+max, `Health.ScaleMax` ?쒖닔?⑥닔) 쨌 `MaxHealthScaleState`(RefRW: appliedMul) | **O** ??pass1 `AddComponent<MaxHealthScaleState>` + **以묎컙 Playback** ??pass2 |
-| `PatrolLifecycleSystem` | (吏곸젒 ?곌린 0) | **O** ??`AddComponent<DeadTag>`(?뚰솚???щ쭩 ???쒖같蹂? |
-| `UnitLifecycleSystem` | (吏곸젒 ?곌린 0) ??`GoalReachedEvents` 쨌 `DefenderDeathEvents` 쨌 `HazardDestroyedEvents` | **O** ??4媛?猷⑦봽 ?꾨? `DestroyEntity`. enqueue 瑜??뚭눼 **??*???먯뼱 釉뚮━吏媛 tile/cell ??蹂닿린 ???뚮㈇?섏? ?딄쾶 ??|
+| `DamageApplicationSystem` | `Health`(RefRW — Units 소유) · `IncomingDamage`(Clear) · `IncomingHeal`(RW lookup, Clear) · `ShieldSlot`(RW lookup: Merge/Absorb) · `IncomingShield`(RW lookup, Clear) · `DamagedCounter`(RW lookup: counter tick) → `HealAppliedEvents` · `DamageNumberEvents` · `EnemyKilledEvents` · `CcClearRequests` · `StatModifierApplyEvents` · `ShieldBreakEvents` | **O** — `AddComponent<DeadTag>` · `AddComponent<NextAttackDoubleFire>` |
+| `HealthDeathSystem` | (직접 쓰기 0 — Health 는 RefRO) | **O** — `AddComponent<DeadTag>` |
+| `HitFlashSystem` | `LocalTransform`(RefRW: Scale 만) · `HitFlashTag`(RefRW: remaining) | **O** — `RemoveComponent<HitFlashTag>` |
+| `LethalTimerSystem` | `LethalTimer`(RefRW: remaining) | **O** — `AddComponent<DeadTag>` + `RemoveComponent<LethalTimer>` |
+| `MaxHealthScaleSystem` | `Health`(RefRW: value+max, `Health.ScaleMax` 순수함수) · `MaxHealthScaleState`(RefRW: appliedMul) | **O** — pass1 `AddComponent<MaxHealthScaleState>` + **중간 Playback** 후 pass2 |
+| `PatrolLifecycleSystem` | (직접 쓰기 0) | **O** — `AddComponent<DeadTag>`(소환사 사망 시 순찰병) |
+| `UnitLifecycleSystem` | (직접 쓰기 0) → `GoalReachedEvents` · `DefenderDeathEvents` · `HazardDestroyedEvents` | **O** — 4개 루프 전부 `DestroyEntity`. enqueue 를 파괴 **앞**에 두어 브리지가 tile/cell 을 보기 전 소멸하지 않게 함 |
 
-### C-5. ECB ?⑦꽩 愿李?
-- 28媛??꾨? `new EntityCommandBuffer(Allocator.Temp)` ??媛숈? `OnUpdate` ??`Playback(state.EntityManager)` ??`Dispose()`. **怨듭쑀 ECB / SystemGroup EntityCommandBufferSystem ?ъ슜 0**.
-- **OnUpdate ??以묎컙 Playback 3嫄?* (lazy-attach 2-pass 愿?⑷뎄): `MaxHealthScaleSystem`, `FatigueAccrualSystem`, `HeatAccrualSystem`. `HeatAccrualSystem` ? 以묎컙 Playback ??BufferLookup ??臾댄슚?뷀븯誘濡?`_healLookup`/`_damageLookup` ??**??踰?* `Update` ?쒕떎(媛숈? ?꾨젅???⑥씠釉??ㅽ룿 + 湲곗〈 ?좊떅 ?곕?吏 append 寃쏀빀 諛⑹뼱).
-- **ECB ? EntityManager 利됱떆 ?곌린 ?쇱슜 1嫄?*: `ModifierApplySystem` ??媛숈? ?쒕젅??猷⑦봽???숈씪 ?源?2???대깽?몄뿉??ECB `AddBuffer` 以묐났 湲곕줉??泥??щ’????뒗 臾몄젣瑜??쇳븯??踰꾪띁 ?좎꽕쨌MarkDirty 瑜?利됱떆 ?섑뻾.
-- ECB 誘몄궗??16媛쒕뒗 (a) ?쒖닔 ?앹궛??`ZoneApplySystem`, `AllyBuffFieldSystem`), (b) 踰꾪띁 ?댁슜留?蹂??`Cc*`/`Dot*`/`*ModifierTick*`), (c) ?깃????대? 諛곗뿴 ?щ퉴??`DefenderFieldSystem`), (d) 而댄룷?뚰듃 in-place 留?`EnemyAiStateSystem`, `PatrolFieldSystem`, `HazardCastSystem`, `ShieldCastSystem`, `BlinkApplySystem`, `BossPeriodicTriggerSystem`, `ModifierStatsAggregateSystem`).
+### C-5. ECB 패턴 관찰
 
-### C-6. ?⑤룆 writer ?좎뼵??肄붾뱶/二쇱꽍??紐낆떆??而댄룷?뚰듃
+- 28개 전부 `new EntityCommandBuffer(Allocator.Temp)` → 같은 `OnUpdate` 내 `Playback(state.EntityManager)` → `Dispose()`. **공유 ECB / SystemGroup EntityCommandBufferSystem 사용 0**.
+- **OnUpdate 내 중간 Playback 3건** (lazy-attach 2-pass 관용구): `MaxHealthScaleSystem`, `FatigueAccrualSystem`, `HeatAccrualSystem`. `HeatAccrualSystem` 은 중간 Playback 이 BufferLookup 을 무효화하므로 `_healLookup`/`_damageLookup` 을 **두 번** `Update` 한다(같은 프레임 웨이브 스폰 + 기존 유닛 데미지 append 경합 방어).
+- **ECB 와 EntityManager 즉시 쓰기 혼용 1건**: `ModifierApplySystem` — 같은 드레인 루프의 동일 타깃 2회 이벤트에서 ECB `AddBuffer` 중복 기록이 첫 슬롯을 덮는 문제를 피하려 버퍼 신설·MarkDirty 를 즉시 수행.
+- ECB 미사용 16개는 (a) 순수 생산자(`ZoneApplySystem`, `AllyBuffFieldSystem`), (b) 버퍼 내용만 변이(`Cc*`/`Dot*`/`*ModifierTick*`), (c) 싱글턴 내부 배열 재빌드(`DefenderFieldSystem`), (d) 컴포넌트 in-place 만(`EnemyAiStateSystem`, `PatrolFieldSystem`, `HazardCastSystem`, `ShieldCastSystem`, `BlinkApplySystem`, `BossPeriodicTriggerSystem`, `ModifierStatsAggregateSystem`).
 
-| 而댄룷?뚰듃 | ?좎씪 writer |
+### C-6. 단독 writer 선언이 코드/주석에 명시된 컴포넌트
+
+| 컴포넌트 | 유일 writer |
 |---|---|
 | `ModifierStats` | `ModifierStatsAggregateSystem` |
 | `EnemyAiState` | `EnemyAiStateSystem` |
 | `PatrolStep` | `PatrolFieldSystem` |
-| `Aggroed` 쨌 `AggroCapacity` | `AggroStateSystem` (Movement/Attack ? RO) |
-| `Health` | Units 留λ씫 (`DamageApplicationSystem`, `MaxHealthScaleSystem`) |
-| `LocalTransform`(?좊떅 ?꾩튂) | Movement 留λ씫 (`MovementSystem`, `BlinkApplySystem`) ????`HitFlashSystem` ??**Scale 留?*, `ProjectileMoveSystem` ??**?ъ궗泥??꾩튂**瑜??대떎 |
-| `ShieldSlot` | `DamageApplicationSystem` (`ShieldCastSystem` ? `IncomingShield` append 留? |
-| `DamagedCounter` | `DamageApplicationSystem` (Combat ? charge 留?read) |
-
+| `Aggroed` · `AggroCapacity` | `AggroStateSystem` (Movement/Attack 은 RO) |
+| `Health` | Units 맥락 (`DamageApplicationSystem`, `MaxHealthScaleSystem`) |
+| `LocalTransform`(유닛 위치) | Movement 맥락 (`MovementSystem`, `BlinkApplySystem`) — 단 `HitFlashSystem` 이 **Scale 만**, `ProjectileMoveSystem` 이 **투사체 위치**를 쓴다 |
+| `ShieldSlot` | `DamageApplicationSystem` (`ShieldCastSystem` 은 `IncomingShield` append 만) |
+| `DamagedCounter` | `DamageApplicationSystem` (Combat 은 charge 만 read) |

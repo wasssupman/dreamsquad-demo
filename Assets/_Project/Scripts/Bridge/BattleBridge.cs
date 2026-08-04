@@ -262,13 +262,9 @@ namespace Wassup.Bridge
         // 여기 남고, 브리지는 아래 4지점(Awake/OnValidate/BuildMapForBattle/MirrorLiftKnobs)에서
         // 그 클래스로 값을 흘리는 **유일한 writer** 다.
         private void MirrorLiftKnobs()
-        {
-            Wassup.Presentation.BattleVisualKnobs.LiftScalePerHeight = liftScalePerHeight;
-            Wassup.Presentation.BattleVisualKnobs.LiftScaleMax = liftScaleMax;
-            Wassup.Presentation.BattleVisualKnobs.LiftShadowFullHeight = liftShadowFullHeight;
-            Wassup.Presentation.BattleVisualKnobs.LiftShadowMinScale = liftShadowMinScale;
-            Wassup.Presentation.BattleVisualKnobs.LiftShadowMinAlpha = liftShadowMinAlpha;
-        }
+            => Wassup.Presentation.BattleVisualKnobs.ApplyLiftKnobs(
+                liftScalePerHeight, liftScaleMax,
+                liftShadowFullHeight, liftShadowMinScale, liftShadowMinAlpha);
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -1047,31 +1043,24 @@ namespace Wassup.Bridge
             }
 
             // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
-            Wassup.Presentation.BattleVisualKnobs.CharacterVisualScale = tilemapCharacterScale;
-            Wassup.Presentation.BattleVisualKnobs.CharacterBillboardTilt = tilemapBillboardTilt;
-            // tilted-billboard unit 6 — 배경 프랍 거리 틸트 미러.
-            // refElev(기준 elevation)은 PropBillboard 가 라이브 카메라 pitch 에서 도출 — 페이즈별 카메라 변화 자기보정.
-            Wassup.Presentation.BattleVisualKnobs.PropDistanceTiltFactor = propDistanceTiltFactor;
-            Wassup.Presentation.BattleVisualKnobs.PropDistanceTiltMin = propDistanceTiltMin;
-            Wassup.Presentation.BattleVisualKnobs.PropDistanceTiltMax = propDistanceTiltMax;
+            // tilted-billboard unit 6 — 배경 프랍 거리 틸트 미러. refElev(기준 elevation)은
+            // PropBillboard 가 라이브 카메라 pitch 에서 도출 — 페이즈별 카메라 변화 자기보정.
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
-            Wassup.Presentation.BattleVisualKnobs.BlobShadowSprite = blobShadowSprite;
-            Wassup.Presentation.BattleVisualKnobs.BlobShadowSize = blobShadowSize;
-            Wassup.Presentation.BattleVisualKnobs.BlobShadowColor = blobShadowColor;
-            Wassup.Presentation.BattleVisualKnobs.BlobShadowGroundY = blobShadowGroundY;
-            MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
-            Wassup.Presentation.BattleVisualKnobs.UseRealShadows = useRealShadows && !Application.isMobilePlatform;
+            Wassup.Presentation.BattleVisualKnobs.ApplyMapKnobs(
+                tilemapCharacterScale, tilemapBillboardTilt,
+                propDistanceTiltFactor, propDistanceTiltMin, propDistanceTiltMax,
+                blobShadowSprite, blobShadowSize, blobShadowColor, blobShadowGroundY,
+                useRealShadows && !Application.isMobilePlatform);
+            MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
             // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러. SO 미할당 시 비활성(배율 1.0).
-            Wassup.Presentation.BattleVisualKnobs.WalkAnimSpeedEnabled = walkAnimSpeedStyle != null;
-            if (Wassup.Presentation.BattleVisualKnobs.WalkAnimSpeedEnabled)
-            {
-                Wassup.Presentation.BattleVisualKnobs.WalkAnimRefSpeed = walkAnimSpeedStyle.referenceSpeed;
-                Wassup.Presentation.BattleVisualKnobs.WalkAnimMinTimeScale = walkAnimSpeedStyle.minTimeScale;
-                Wassup.Presentation.BattleVisualKnobs.WalkAnimMaxTimeScale = walkAnimSpeedStyle.maxTimeScale;
-                Wassup.Presentation.BattleVisualKnobs.WalkAnimSmoothing = walkAnimSpeedStyle.smoothing;
-                Wassup.Presentation.BattleVisualKnobs.WalkAnimTeleportGuard = walkAnimSpeedStyle.teleportGuard;
-            }
+            Wassup.Presentation.BattleVisualKnobs.ApplyWalkAnimStyle(
+                walkAnimSpeedStyle != null,
+                walkAnimSpeedStyle != null ? walkAnimSpeedStyle.referenceSpeed : 0f,
+                walkAnimSpeedStyle != null ? walkAnimSpeedStyle.minTimeScale : 0f,
+                walkAnimSpeedStyle != null ? walkAnimSpeedStyle.maxTimeScale : 0f,
+                walkAnimSpeedStyle != null ? walkAnimSpeedStyle.smoothing : 0f,
+                walkAnimSpeedStyle != null ? walkAnimSpeedStyle.teleportGuard : 0f);
             ApplyEnvironmentGating(); // 비-타일맵 환경 오브젝트 숨김 (빈 목록이면 no-op)
 
             // view-init 는 view 부재 시 조용히 skip — headless(EditMode 테스트) sim 빌드 계약.

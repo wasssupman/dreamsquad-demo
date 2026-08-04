@@ -11,7 +11,10 @@ ECS 컴포넌트의 **형태가 아니라 시맨틱**을 이식하기 위한 대
 
 ## 구현
 
-- **컴포넌트 전수**: IComponentData 96 + IBufferElementData 21(2026-08-03 실측). 각 행: 이름 · 소유 맥락 · 태그/데이터 구분 · 쓰기 시스템 · 읽기 맥락 · plain struct 매핑(필드/컬렉션/소속 모듈) · 부재-상태 여부.
+- **컴포넌트 전수**: HEAD 전체 기준 **IComponentData 97 + IBufferElementData 21**(2026-08-04 실측).
+  보조 계수로 **96** 은 "Units/Movement/Combat/Effects 네 맥락 폴더만 센 부분집합"(루트 `BattleTimeScale`
+  제외)이다 — 누락 검사는 **97+21** 로 한다(리뷰 MEDIUM 3 정정). 각 행: 이름 · 소유 맥락 ·
+  태그/데이터 구분 · 쓰기 시스템 · 읽기 맥락 · plain struct 매핑(필드/컬렉션/소속 모듈) · 부재-상태 여부.
 - **게이트 매트릭스**: `RequireForUpdate` 35 시스템 — 게이트 조건(all/any/singleton) → 신 sim 가드 조건 번역. `RequireAnyForUpdate` 비-Burst 분리 지점 포함.
 - **enableable**: `ModifierStatsDirty`(유일) → 명시 dirty set 설계.
 - **비보존 아티팩트 폐기 목록**: `[InternalBufferCapacity]`·ParallelWriter 방어 타이핑·죽은 ECB 등(설계 정본 §3 "비보존").
@@ -19,7 +22,7 @@ ECS 컴포넌트의 **형태가 아니라 시맨틱**을 이식하기 위한 대
 
 ## 완료 기준
 
-- 컴포넌트 96+21 전수(당시 grep 수와 대조해 빠짐 0 증명), 게이트 35 전수.
+- 컴포넌트 **97+21** 전수(HEAD 기준. grep 수와 대조해 빠짐 0 증명), 게이트 35 전수.
 - 부재-상태 로직 목록이 별도 섹션으로 분리돼 있다(이식 시 개별 체크박스가 되도록).
 - 코드 변경 0(선택 유틸 제외).
 
