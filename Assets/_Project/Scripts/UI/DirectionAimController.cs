@@ -8,6 +8,7 @@ using UnityEngine.InputSystem;
 using Wassup.Battle.Movement;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -44,7 +45,10 @@ namespace Wassup.UI
         private bool _active;
         private DefenderUnitData _unit;
         private Vector2Int _cell;
+        // unit 13-C2 — 커맨드는 `_simId` 로, **뷰 연출**(PlayDeploymentPresentation)은 `_entity` 로
+        // 간다. 둘은 `Begin` 에서 **한 번에** 받아 서로 갈릴 수 없다(각자 해석하면 desync 가능).
         private Entity _entity;
+        private int _simId;
         private TimeLease _slowmoLease;
 
         private bool _pressing;
@@ -64,7 +68,7 @@ namespace Wassup.UI
 
         // 드롭 성공 직후 호출. 엔티티는 이미 PendingDeployment 로 스폰돼 있고(전투 미참여),
         // 이 페이즈가 확정될 때까지 활성화되지 않는다.
-        public void Begin(DefenderUnitData unit, Vector2Int cell, Entity entity)
+        public void Begin(DefenderUnitData unit, Vector2Int cell, Entity entity, int simId)
         {
             // 방어적: 이전 조준이 살아 있으면 그 유닛을 기본 방향으로 내보내고 자리를 넘긴다.
             // 드래그 컨트롤러가 조준 중 새 드래그를 막으므로 정상 흐름에선 도달하지 않는다.
@@ -72,6 +76,7 @@ namespace Wassup.UI
             _unit = unit;
             _cell = cell;
             _entity = entity;
+            _simId = simId;
             _active = true;
             _pressing = false;
             _sample = default;
@@ -185,7 +190,10 @@ namespace Wassup.UI
             if (duration > 0f) yield return new WaitForSeconds(duration);
             float skillDelay = unitData != null ? Mathf.Max(0f, unitData.placementSkillDelay) : 0f;
             if (skillDelay > 0f) yield return new WaitForSeconds(skillDelay);
-            _bridge?.ActivateDeployedDefender(cell, entity, facing);
+            // unit 13-C2 — 방향 확정 활성화를 커맨드로. 계약의 `SetDeployFacing` 이 정확히 이
+            // 3인자 오버로드로 번역된다(어댑터가 셀은 대상 id 로 역조회한다).
+            MatchSession.Send(seq => MatchCommand.SetDeployFacing(
+                seq, _simId, new SimCell(facing.x, facing.y)));
         }
 
         // 조준을 끝내지 못한 채 세션이 무너지는 경로. `activatePending` 이 이 둘을 가른다:
@@ -200,7 +208,10 @@ namespace Wassup.UI
             _pressing = false;
             _bridge?.ClearAimGuide();
             _slowmoLease.Dispose();
-            if (activatePending) _bridge?.ActivateDeployedDefender(_cell, _entity, new Vector2Int(0, 1));
+            // 재진입 경로의 기본 방향(+Y) 활성화도 같은 커맨드다 — 코스트를 낸 유닛이
+            // PendingDeployment 로 굳는 것을 막는 안전망이라 teardown 에서는 부르지 않는다.
+            if (activatePending)
+                MatchSession.Send(seq => MatchCommand.SetDeployFacing(seq, _simId, new SimCell(0, 1)));
         }
 
         // 가이드는 선택이 바뀔 때만 다시 그린다 — 매 프레임 SetTile 로 타일맵을 갈아엎지 않는다.

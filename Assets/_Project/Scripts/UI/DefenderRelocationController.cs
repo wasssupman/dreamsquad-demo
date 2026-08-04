@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -200,9 +201,22 @@ namespace Wassup.UI
         private void CommitRelocation(Vector2Int to)
         {
             var from = _sourceCell;
-            if (!bridge.TryBeginDefenderRelocation(from, to, out var entity, out _))
+            // unit 13-C2 — 재배치를 커맨드로. 규약: `Cell` = 도착 / `Cell2` = 출발.
+            var receipt = MatchSession.Send(seq => MatchCommand.RelocateDefender(
+                seq, from: new SimCell(from.x, from.y), to: new SimCell(to.x, to.y)));
+            if (!receipt.Accepted)
             {
                 bridge.FlashPlacementReject(to);
+                ClearScout();
+                return;
+            }
+            // 재배치는 **이미 성사됐다**(sim 은 확정 프레임에 to 귀속을 끝냈다). 뷰 해석이 실패해도
+            // 거절로 되돌리면 안 된다 — 비행 연출만 포기하고 넘어간다.
+            if (!bridge.TryResolveSimEntity(receipt.SubjectSimId, out var entity))
+            {
+                Debug.LogError($"[Relocation] 재배치 수락({receipt.SubjectSimId})했으나 뷰 해석 실패 " +
+                               $"— 비행 연출을 건너뛴다.");
+                CancelMoveMode();
                 ClearScout();
                 return;
             }
@@ -271,6 +285,8 @@ namespace Wassup.UI
                 wait -= TimeManager.Instance.DeltaTime(TimeDomain.Battle);
                 yield return null;
             }
+            // unit 13-C2 — 방향 없는 활성화는 계약에 동사가 없어 커맨드로 바꾸지 않는다(배치
+            // 경로와 같은 이유). 활성화 소유는 unit 15(배치 규칙 적출)가 가져간다.
             bridge.ActivateDeployedDefender(to, entity);
             _activeFlightEntity = Entity.Null;
         }

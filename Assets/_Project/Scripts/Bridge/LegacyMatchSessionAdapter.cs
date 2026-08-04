@@ -182,8 +182,8 @@ namespace Wassup.Bridge
             return receipt;
         }
 
-        private CommandReceipt Ok(in MatchCommand c, int tick) =>
-            CommandReceipt.Ok(c.ClientSeq, tick, _orderInTick);
+        private CommandReceipt Ok(in MatchCommand c, int tick, int subjectSimId = -1) =>
+            CommandReceipt.Ok(c.ClientSeq, tick, _orderInTick, subjectSimId);
 
         private CommandReceipt Deploy(in MatchCommand c, int tick)
         {
@@ -194,11 +194,16 @@ namespace Wassup.Bridge
             if (!_bridge.CanPlaceDefenderAt(c.Cell.X, c.Cell.Y, unitData, out var reason))
                 return CommandReceipt.Rejected(c.ClientSeq, MapPlacement(reason));
 
-            if (!_bridge.TryBeginDefenderDeployment(c.Cell.X, c.Cell.Y, unitData, out _))
+            if (!_bridge.TryBeginDefenderDeployment(c.Cell.X, c.Cell.Y, unitData, out var deployed))
                 return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Session_InternalError);
 
-            return Ok(c, tick);
+            // unit 13-C2 — 만든 개체의 id 를 receipt 에 실어야 뷰가 후속 사건을 이어갈 수 있다
+            // (방향 지정 유닛의 활성화, 드롭 하마 뷰 비행). 엔진 타입은 넘기지 않는다.
+            return Ok(c, tick, SubjectSimIdOf(deployed));
         }
+
+        private int SubjectSimIdOf(Entity entity)
+            => _bridge.TryGetSimId(entity, out int simId) ? simId : -1;
 
         private CommandReceipt SetFacing(in MatchCommand c, int tick)
         {
@@ -211,16 +216,17 @@ namespace Wassup.Bridge
             // 활성화 주체를 Deploy 의 activationTick 예약으로 옮기고 이 커맨드를 방향 힌트로
             // 격하하는 것은 unit 15(배치 규칙 적출)의 몫이다. 그때 Session_TooLate 가 의미를 갖는다.
             _bridge.ActivateDeployedDefender(cell, entity, new Vector2Int(c.Facing.X, c.Facing.Y));
-            return Ok(c, tick);
+            return Ok(c, tick, c.TargetSimId);
         }
 
         private CommandReceipt Relocate(in MatchCommand c, int tick)
         {
             var from = new Vector2Int(c.Cell2.X, c.Cell2.Y);
             var to = new Vector2Int(c.Cell.X, c.Cell.Y);
-            if (!_bridge.TryBeginDefenderRelocation(from, to, out _, out var reason))
+            if (!_bridge.TryBeginDefenderRelocation(from, to, out var moved, out var reason))
                 return CommandReceipt.Rejected(c.ClientSeq, MapPlacement(reason));
-            return Ok(c, tick);
+            // 재배치는 생성이 아니지만 **움직인 개체**를 실어 뷰가 후속 활성화를 이어간다.
+            return Ok(c, tick, SubjectSimIdOf(moved));
         }
 
         private CommandReceipt PlayCard(in MatchCommand c, int tick)

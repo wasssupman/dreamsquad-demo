@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -1040,7 +1041,28 @@ namespace Wassup.UI
         {
             if (!_session.active) return;
             var session = _session;
-            if (bridge != null && bridge.TryBeginDefenderDeployment(cell.x, cell.y, session.unit, out var entity))
+
+            // unit 13-C2 — 배치를 커맨드로. 거절 사유는 어댑터가 `CanPlaceDefenderAt` 로 얻어
+            // receipt 에 싣는다(구 bool API 의 사유 손실 없음). 뷰는 성사된 개체의 **id** 를 받고,
+            // 뷰 작업용 Entity 는 뷰 서비스로 해석한다 — 계약에 엔진 타입을 넘기지 않는다.
+            var receipt = MatchSession.Send(seq => MatchCommand.DeployDefender(
+                seq, new SimCell(cell.x, cell.y), session.unit != null ? session.unit.id : null));
+            if (!receipt.Accepted)
+            {
+                bridge?.FlashPlacementReject(cell);
+                CleanupSession();
+                return;
+            }
+            if (bridge == null || !bridge.TryResolveSimEntity(receipt.SubjectSimId, out var entity))
+            {
+                // 배치는 **이미 성사됐다**(코스트도 빠졌다). 여기서 거절 연출로 되돌리면 화면과
+                // sim 이 갈려 조작 불가한 유닛이 남는다 — 연출만 포기하고 커밋으로 마무리한다.
+                Debug.LogError($"[DragPlacement] 배치 수락({receipt.SubjectSimId})했으나 뷰 해석 실패 " +
+                               $"— 연출을 건너뛰고 커밋만 진행한다.");
+                CleanupSession();
+                PlacementCommitted?.Invoke(session.unit);
+                return;
+            }
             {
                 // defender-deploy-cutscene unit 8 — 배치 완료는 컷씬보다 절대 우선.
                 // 플립북/hold/slide-out 어느 단계든 즉시 숨기고 다음 배치를 위해 틸트까지 원복한다.
@@ -1060,7 +1082,7 @@ namespace Wassup.UI
                 // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
                 if (facing)
                 {
-                    _aimController.Begin(session.unit, cell, entity);
+                    _aimController.Begin(session.unit, cell, entity, receipt.SubjectSimId);
                     CleanupSession();
                     PlacementCommitted?.Invoke(session.unit);
                     return;
@@ -1068,10 +1090,7 @@ namespace Wassup.UI
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
                 StartCoroutine(RunDeployment(session.unit, cell, entity, skipPresentation: dismount));
-                return;
             }
-            bridge?.FlashPlacementReject(cell);
-            CleanupSession();
         }
 
         // defender-drop-dismount unit 2 — 진행 중 하마 비행 등록부(entity→cell). OnDisable/OnDestroy
@@ -1310,6 +1329,11 @@ namespace Wassup.UI
             if (duration > 0f) yield return new WaitForSeconds(duration);
             float skillDelay = unitData != null ? Mathf.Max(0f, unitData.placementSkillDelay) : 0f;
             if (skillDelay > 0f) yield return new WaitForSeconds(skillDelay);
+            // unit 13-C2 — **여기는 커맨드로 바꾸지 않는다.** 계약의 활성화 동사는
+            // `SetDeployFacing` 하나이고 이 경로는 **방향 없는** 활성화다(3인자 오버로드는 Facing 을
+            // 쓴다 — 임의 방향을 넣으면 행동이 바뀐다). 없는 동사를 지어내는 대신 경계를 남긴다:
+            // 활성화 주체를 Deploy 의 activationTick 예약으로 옮기고 SetDeployFacing 을 방향
+            // 힌트로 격하하는 것이 **unit 15(배치 규칙 적출)** 의 몫이며, 그때 이 줄이 사라진다.
             bridge?.ActivateDeployedDefender(cell, entity);
         }
 
