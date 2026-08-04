@@ -107,6 +107,8 @@ namespace Wassup.Battle.Combat
             // + PastGoal exclusion (goal-reached enemies are leak-pending, not valid frontmost).
             var frontmostLockLookup = SystemAPI.GetComponentLookup<FrontmostAttackLock>(isReadOnly: false);
             var pastGoalLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PastGoalTag>(isReadOnly: true);
+            // goal-stability unit 2 — 골 판별(Units 소유, RO). 골은 타겟 최후순위 + 잠금 금지.
+            var goalPointLookup = SystemAPI.GetComponentLookup<GoalPoint>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -437,6 +439,11 @@ namespace Wassup.Battle.Combat
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
                 int mask = attack.ValueRO.targetMask;
+                // goal-stability unit 2 — goal 은 타겟 최후순위: 별도 슬롯으로만 추적하고,
+                // 사거리 내 non-Goal 유효 후보가 전무할 때만 채택한다(스캔 종료 후).
+                float goalBestSq = float.MaxValue;
+                Entity goalBestTarget = Entity.Null;
+                float3 goalBestPos = default;
                 // healer-lowest-health-targeting — an ally-targeting defender (targetAllies →
                 // mask == Defender, baked in BattleBridge) heals the most-hurt ally, not the
                 // nearest. Gated on DefenderUnitTag so a taunted enemy (also mask == Defender
@@ -512,6 +519,19 @@ namespace Wassup.Battle.Combat
                     int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
                     if (tileDist > tileRange) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
+                    // goal-stability unit 2 — Goal 후보는 nearest/특수 트래커(힐·우선순위·레인·
+                    // frontmost)에서 제외, 최후순위 슬롯으로만. (defender 마스크엔 Goal 이 없어
+                    // 이 분기는 실질 적 전용 — 힐러 rankByHealth 가 골을 힐하는 일도 없다.)
+                    if (goalPointLookup.HasComponent(targetEntities[i]))
+                    {
+                        if (d2 < goalBestSq)
+                        {
+                            goalBestSq = d2;
+                            goalBestTarget = targetEntities[i];
+                            goalBestPos = nearestPos;
+                        }
+                        continue;
+                    }
                     if (d2 < bestSq)
                     {
                         bestSq = d2;
@@ -576,6 +596,14 @@ namespace Wassup.Battle.Combat
                         }
                     }
                 }
+                // goal-stability unit 2 — 최후순위 채택: 사거리 내 non-Goal 후보가 하나도 없을
+                // 때만 골을 친다. 이후 오버라이드(focus/aggro)가 이 값을 덮을 수 있음은 의도 —
+                // 골은 어떤 잠금/우선순위에도 이기지 못한다.
+                if (bestTarget == Entity.Null && goalBestTarget != Entity.Null)
+                {
+                    bestTarget = goalBestTarget;
+                    bestTargetPos = goalBestPos;
+                }
                 // healer-lowest-health-targeting — override nearest with the most-hurt ally.
                 // healHasBest is true iff an in-range candidate existed (same filters as the
                 // nearest scan), so this only re-ranks; it never targets when nearest wouldn't.
@@ -620,7 +648,13 @@ namespace Wassup.Battle.Combat
                     else
                     {
                         // invalid lock → adopt the already-computed nearest+filter result (may be Null)
-                        focusLookup[attackerEntity] = new FocusTarget { current = bestTarget };
+                        // goal-stability unit 2 (리뷰 M3) — 골은 잠금 대상이 아니다: 잠그면 이후
+                        // 배치된 방어유닛을 사거리에 두고도 골만 계속 때려 최후순위 계약이 깨진다.
+                        // 이 프레임 사격(bestTarget=goal)은 유지하되 락에는 저장하지 않는다.
+                        focusLookup[attackerEntity] = new FocusTarget
+                        {
+                            current = goalPointLookup.HasComponent(bestTarget) ? Entity.Null : bestTarget,
+                        };
                     }
                 }
 

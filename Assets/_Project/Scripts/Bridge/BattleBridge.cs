@@ -7079,7 +7079,9 @@ namespace Wassup.Bridge
                     cooldownDuration = entry.unitType.attackCooldown,
                     cooldownRemaining = 0f,
                     attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
-                    targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
+                    // goal-stability unit 2 — 안정도 골 개통(공격 능력 있는 적 전원). 골이 없거나
+                    // 전부 M=0 이면 후보 자체가 없어 무해. walk-only 2종의 골 공격은 unit 3.
+                    targetMask = (int)(Faction.Defender | Faction.BlockingHazard | Faction.Goal),
                     hitDelaySec = entry.unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);

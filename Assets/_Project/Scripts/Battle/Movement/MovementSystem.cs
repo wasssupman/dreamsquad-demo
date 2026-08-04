@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Movement
 {
@@ -53,6 +54,13 @@ namespace Wassup.Battle.Movement
             // summon-patrol-defender unit 2 — 거점 순찰 아군의 이동 방향(Effects 소유, RO).
             // PatrolFieldSystem 이 Movement 전에 굽는다. 보유 = patrol 아키타입 판별.
             var patrolStepLookup = SystemAPI.GetComponentLookup<PatrolStep>(isReadOnly: true);
+
+            // goal-stability unit 2 — 살아있는 골 셀 집합(맵당 ≤4, 프레임당 재구축 — 동기화 없음).
+            // 골 엔티티(Units 소유) RO 쿼리. 존재 = 공성: 그 셀에서 유출(PastGoalTag)을 봉인한다.
+            // 붕괴(DeadTag/엔티티 파괴) 즉시 집합에서 빠져 다음 프레임부터 현행 유출로 자동 복귀.
+            var aliveGoalCells = new NativeList<int2>(4, Allocator.Temp);
+            foreach (var goalPoint in SystemAPI.Query<RefRO<GoalPoint>>().WithNone<DeadTag>())
+                aliveGoalCells.Add(goalPoint.ValueRO.cell);
 
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
@@ -143,7 +151,10 @@ namespace Wassup.Battle.Movement
                 // ⑴ 이 루프가 WithNone<PastGoalTag> 라 영구 동결, ⑵ UnitLifecycle 의 PastGoal 파괴
                 // 루프는 AttackUnitTag 를 요구해 파괴도 안 됨, ⑶ 살아 있으니 SummonerState.current 가
                 // 계속 유효해 소환사가 남은 판 내내 재소환하지 못한다. 보스 leak-proof 와 같은 형태.
-                if (!hunting && !patrolling && field.IsGoalCell(cell))
+                // goal-stability unit 2 — 게이트의 세 번째 케이스: 살아있는(안정도>0) 골 셀에서는
+                // 유출 대신 공성(적은 남아서 골을 공격, AttackSystem 이 최후순위로 채택).
+                if (!hunting && !patrolling && field.IsGoalCell(cell)
+                    && !IsAliveGoalCell(cell, in aliveGoalCells))
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
                     continue;
@@ -284,8 +295,17 @@ namespace Wassup.Battle.Movement
 
             portals.Dispose();
             tornadoFields.Dispose();
+            aliveGoalCells.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+        }
+
+        // goal-stability unit 2 — 공성 게이트 술어. 맵당 골 ≤4 라 선형 스캔.
+        static bool IsAliveGoalCell(int2 cell, in NativeList<int2> aliveGoalCells)
+        {
+            for (int i = 0; i < aliveGoalCells.Length; i++)
+                if (math.all(aliveGoalCells[i] == cell)) return true;
+            return false;
         }
     }
 }

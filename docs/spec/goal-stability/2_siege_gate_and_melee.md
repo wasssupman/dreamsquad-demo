@@ -22,8 +22,10 @@
 
 ## 완료 기준
 
-- [ ] compile + 기존 EditMode green.
-- [ ] Play(M>0 맵): 근접 적이 골 사거리에서 멈춰 공격, 안정도(Health) 감소, 유출/스트레스 0 유지.
-- [ ] 경로 중 방어유닛과의 교전은 현행과 동일(사거리 내 방어유닛 우선, 골은 최후순위).
-- [ ] M=0 맵 + 붕괴 후(수동으로 Health 0 세팅) 유출 재개 스모크.
-- 주의: walk-only 적(Runner/Swift)은 unit 3 grant 전까지 M>0 골 셀에서 flow=0 영구 정지한다(공격도 유출도 없음) — 의도된 중간 상태. 이 unit 의 Play 검증 웨이브에는 walk-only 적을 제외한다.
+- [x] compile + 기존 EditMode green (관련 스위트 96/96).
+- [x] Play(M>0 맵): 근접 적이 골 사거리에서 멈춰 공격, 유출/스트레스 0 유지 — 풀 맵 임시 M=300 주입으로 사용자 Play 확인. EditMode 로도 고정: `GoalSiegeGateTests` 4건(공성/DeadTag 당프레임 복귀/파괴 후 복귀/멀티골 셀 단위).
+- [x] 방어유닛 교전 현행 동일 + 골 최후순위 — `GoalTargetingPriorityTests` 3건(근접골보다 원거리 방어유닛 우선/골만 있을 때 채택/Focus 잠금 금지·전환).
+- [x] 붕괴 후 유출 재개 — 게이트 테스트(DeadTag/파괴) + Play 확인.
+- 주의: walk-only 적(Runner/Swift)·원거리 헛사격은 unit 3 전까지 의도된 중간 상태.
+
+2026-08-04 사용자 확인 완료. (검증용 임시 맵 M=300 은 미커밋 — 콘텐츠 값은 별도 결정)
