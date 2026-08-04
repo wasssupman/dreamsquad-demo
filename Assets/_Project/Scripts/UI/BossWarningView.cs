@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -65,13 +66,25 @@ namespace Wassup.UI
             EnsureSubscribed();
         }
 
+        // battle-sim-extraction unit 13-B — Bridge 가 `Show()` 를 직접 부르던 방향에서
+        // **뷰가 `BossSpawned` 를 구독**하는 방향으로 뒤집혔다. 세션은 매치마다 교체되므로
+        // 구독 지점은 인스턴스가 아니라 정적 창구다. 이 컴포넌트는 항상 활성이고 자식 `_panel`
+        // 만 토글하므로 OnEnable 이 판마다 재실행되지 않는다 — 구독 1회로 충분하다.
+        private void OnEnable() => MatchSession.Events += OnSessionEvent;
+
         private void OnDisable()
         {
+            MatchSession.Events -= OnSessionEvent;
             Unsubscribe();
             HideNow();
         }
 
-        // BattleBridge 가 보스 스폰 순간 호출. 재진입 = 재시작(진행 중 배너를 끊고 새로 연다).
+        private void OnSessionEvent(SessionEvent evt)
+        {
+            if (evt.Kind == SessionEventKind.BossSpawned) Show();
+        }
+
+        // 보스 스폰 사실을 받으면 호출. 재진입 = 재시작(진행 중 배너를 끊고 새로 연다).
         // 스티키 가드(_showing) 없음 — 첫 배너 후 콜백이 실패해 가드가 굳으면 이후 보스(예:
         // 10웨이브)가 삼켜지던 문제를 원천 제거. 보스 웨이브 간격 ≫ 배너라 실제 재시작은 드묾.
         public void Show()

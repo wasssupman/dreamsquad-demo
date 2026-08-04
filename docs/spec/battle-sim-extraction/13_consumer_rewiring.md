@@ -56,6 +56,37 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 - **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
   **bundle B** 로 이관한다(스펙 초안의 분류 오류).
 
+### bundle B 의 실제 분해 (2026-08-05 실측)
+
+| 조각 | 대상 | 상태 |
+|---|---|---|
+| **B1** | `ScoreHudView.OnEnemyKilled` · `BossWarningView.Show` — 페이로드가 호출 지점에 이미 있는 스칼라 | ✅ 완료 |
+| **B2** | `ScoreHudView.SetLeakStatus` · `ScoreTallyView.Play` · `ResultScreen.ShowVictory/ShowDefeat` | **unit 14 와 함께** |
+
+**B2 를 unit 14 로 미룬 근거**(추측이 아니라 실측):
+- `SetLeakStatus(goals, limit, notEndless)` 는 이벤트가 아니라 **상태 푸시**다. 이벤트로 바꾸면
+  비멱등해진다. 읽기 모델 폴링이 맞는 모양인데 그 값(`_goalReachedCount`·`EffectiveLeakLimit()`·
+  `IsEndless`)이 전부 **Bridge private** 이라, 지금 옮기면 unit 14 가 즉시 걷어낼 `internal` 발판을
+  세우게 된다.
+- 집계·결과는 `ScoreMath.BattleScore`(4값 구조체)를 넘겨야 하는데 `SessionEvent` 는 스칼라 봉투이고,
+  `MatchEnded` 의 **score4 페이로드 발행 지점을 unit 14 가 소유**한다고 unit 14 스펙이 이미 정해뒀다.
+- `scoreTallyView.Play(score, scoreHud, callback)` 는 뷰→뷰 결합 + 완료 콜백이라, 이벤트 1건으로
+  뒤집는 게 아니라 **프레젠테이션 시퀀스 소유자**를 정하는 일이다(unit 14 의 MatchEnded 위에서).
+
+**B1 의 설계 결정 — 구독 지점은 세션 인스턴스가 아니라 정적 창구다.** 세션은 매치마다 교체되므로
+(`BeginPlacement` 가 새 어댑터를 만든다) 뷰가 `Current.SomeEvent += ...` 로 붙으면 다음 판에서 죽은
+인스턴스를 잡거나 OnEnable 시점에 `Current` 가 null 이라 아예 못 붙는다. 그래서 `MatchSession.Events`
+(정적) + `MatchSession.Publish`(구현체가 호출). 뷰는 `OnEnable`/`OnDisable` 에서 붙이고 뗀다 —
+이 코드베이스의 기존 관용구(`GameManager.PhaseChanged`)와 같다.
+
+- `IMatchSession` 에는 이벤트를 **두지 않았다**: 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다.
+  대신 "구현체 4종이 모두 `MatchSession.Publish` 를 쓴다"는 **규약**이며 계약이 강제하지는 않는다
+  (리뷰 대상으로 명시).
+- `DrainEvents()` 는 여전히 빈 목록이다 — **의도적**이다. 소비자(기록기)가 없는데 누적하면 무한히
+  자란다. fan-out 은 `Publish` 가 이미 했고, 누적·드레인 소유는 기록기가 생기는 unit 19 와 함께 온다.
+- `Bridge` 의 `_bossWarning` SerializeField 를 **제거**했다(뷰 참조 0). 뷰 오브젝트는 씬에 그대로
+  있고 스스로 구독한다. `scoreHud` 필드는 B2 대상(`SetLeakStatus`·tally)이 남아 잔류한다.
+
 ### A3 의 통화·쿨타임 경계 (2026-08-04 사용자 결정: "지금 번역")
 
 어댑터가 `GameManager.{CostRuntime,CooldownRuntime}` 을 **번역해 읽기 모델을 지금 채운다**. 그 결과

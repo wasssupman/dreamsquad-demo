@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -184,10 +185,22 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
+        // battle-sim-extraction unit 13-B — 킬 점수는 Bridge 가 `OnEnemyKilled` 를 직접 부르던
+        // 방향에서 **뷰가 세션 이벤트를 구독**하는 방향으로 뒤집혔다. 세션은 매치마다 교체되므로
+        // 구독 지점은 인스턴스가 아니라 정적 창구(`MatchSession.Events`)다.
+        private void OnEnable() => MatchSession.Events += OnSessionEvent;
+
         private void OnDisable()
         {
+            // 떼지 않으면 파괴된 뷰가 계속 호출된다(정적 이벤트의 대가).
+            MatchSession.Events -= OnSessionEvent;
             Unsubscribe();
             StopFeedbackTweens();
+        }
+
+        private void OnSessionEvent(SessionEvent evt)
+        {
+            if (evt.Kind == SessionEventKind.EnemyKilled) OnEnemyKilled((int)evt.Amount);
         }
 
         private void Update()

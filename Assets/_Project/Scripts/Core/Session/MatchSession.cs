@@ -39,6 +39,29 @@ namespace Wassup.Core.Session
         }
 
         // 테스트 전용. 프로덕션 경로에서 부르지 않는다 — 소유자가 Release 를 쓴다.
-        public static void ResetForTests() => Current = null;
+        public static void ResetForTests()
+        {
+            Current = null;
+            Events = null;
+        }
+
+        // ── 이벤트 fan-out (unit 13-B) ──────────────────────────────────────────
+        //
+        // **왜 세션 인스턴스가 아니라 여기에 붙는가**: 세션은 매치마다 교체된다
+        // (`BeginPlacement` 가 새 어댑터를 만든다). 뷰가 `Current.SomeEvent += ...` 로 붙으면
+        // 다음 판에서 죽은 인스턴스를 잡고 있거나, OnEnable 시점에 Current 가 null 이라 아예
+        // 못 붙는다. 정적 창구에 붙으면 세션 교체와 무관하게 유지된다.
+        //
+        // `DrainEvents()`(pull, 기록기/AMR용)와 **경쟁하지 않는다** — 이쪽은 소비가 아니라
+        // fan-out 이라 구독자가 서로를, 또 기록기를 굶기지 않는다.
+        //
+        // 구독자는 뷰이며 `OnEnable`/`OnDisable` 에서 붙이고 뗀다 — 이 코드베이스의 기존 관용구
+        // (`GameManager.PhaseChanged`)와 같다. **떼지 않으면 파괴된 뷰가 계속 호출된다.**
+        public static event System.Action<SessionEvent> Events;
+
+        // 구현체가 호출한다. 계약(IMatchSession)에 이벤트를 두지 않은 이유는 위와 같다 —
+        // 인스턴스 수명이 매치 단위라 구독 지점으로 부적합하다. 구현체 4종(Local/Remote/Replay/
+        // Ghost)이 모두 이 지점을 쓰는 것이 규약이다.
+        public static void Publish(in SessionEvent evt) => Events?.Invoke(evt);
     }
 }

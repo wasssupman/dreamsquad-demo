@@ -29,6 +29,7 @@ namespace Wassup.Bridge
         private readonly Dictionary<uint, CommandReceipt> _receipts = new(); // 멱등: seq → receipt
         private readonly List<SessionEvent> _emptyEvents = new();
         private uint _nextExpectedSeq;
+        private int _eventSeq;   // unit 13-B — 매치 전역 단조 이벤트 순번
         private int _orderInTick;
         private int _lastTick = -1;
         private bool _disposed;
@@ -262,6 +263,18 @@ namespace Wassup.Bridge
         // ── 이벤트 ───────────────────────────────────────────────────────────────
         // unit 13 이 드레인 소유권을 여기로 옮긴다. 그 전에는 Bridge 직독 소비자가 큐의 주인이므로
         // 빈 목록을 돌려준다(중복 소비 금지). 계약면은 이미 성립해 소비자가 미리 붙을 수 있다.
+        // unit 13-B — 발행 지점. Bridge 가 뷰 메서드를 직접 부르던 자리에서 이것을 부르면
+        // 방향이 뒤집힌다(뷰가 구독). `EventSeq` 는 매치 전역 단조다(청사진 ① §4).
+        internal void Emit(SessionEventKind kind, int subjectSimId = -1, float amount = 0f)
+        {
+            if (_disposed) return;
+            MatchSession.Publish(new SessionEvent(
+                _eventSeq++, _bridge.HarnessTick, kind, subjectSimId, amount: amount));
+        }
+
+        // 여전히 빈 목록이다 — **의도적**이다. 지금 여기에 누적하면 소비자가 없어 무한히 자란다
+        // (fan-out 은 `MatchSession.Publish` 가 이미 했다). 누적·드레인의 소유는 기록기가 생기는
+        // 시점(unit 19 커맨드로그/AMR)에 함께 온다.
         public IReadOnlyList<SessionEvent> DrainEvents() => _emptyEvents;
 
         // unit 13-A2 — Bridge 는 내부 캐시 배열 참조를 넘기지만 여기서 span 으로 좁혀 **쓰기 경로를

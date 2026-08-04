@@ -17,6 +17,9 @@ namespace Wassup.Core.Session
         // genesis — 현행 18채널엔 없어서 신설된 축(청사진 ① §4 C1). 이것 없이는 스트림만으로
         // 판을 재구성할 수 없다(tick 0 부터 재생하면 개체가 존재하지 않는다).
         EnemySpawned,
+        // unit 13-B — "보스가 등장했다"는 게임 사실이다(경보 UI 는 그 파생). 구 코드의
+        // `BakeNightmareMechanics` 가 보스 판별의 단일 진실 지점이라 발행도 거기 하나뿐이다.
+        BossSpawned,
         DefenderDeployed,
         ProjectileSpawned,
         WaypointUpdate,        // 권위 웨이포인트 — 코스메틱 보간은 클라 몫

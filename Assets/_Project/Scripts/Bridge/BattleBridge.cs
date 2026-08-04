@@ -13,6 +13,7 @@ using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
 using Wassup.Data.Season;
@@ -112,9 +113,10 @@ namespace Wassup.Bridge
         // score-tally-sequence unit 2 — 결과 연출(점수 합산). 미배선이면 연출을 건너뛰고
         // 곧장 결과 화면으로 간다 — 연출은 곁가지, 결과 화면은 필수다.
         [SerializeField] private Wassup.UI.ScoreTallyView scoreTallyView;
-        // boss-wave-cadence unit 2 — 보스 스폰 순간 "꿈결 위기!!" 경보. BakeNightmareMechanics
-        // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
-        [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
+        // boss-wave-cadence unit 2 — 보스 스폰 경보의 구동 지점은 여전히
+        // `BakeNightmareMechanics`(BossTag 부착 = 보스 확정의 단일 지점)이지만, unit 13-B 부터
+        // Bridge 는 **뷰를 모른다** — `SessionEventKind.BossSpawned` 를 발행하고
+        // `BossWarningView` 가 구독한다. 그래서 여기의 SerializeField 참조를 제거했다.
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         private readonly System.Collections.Generic.List<Entity> _projectileViewScratch = new(8);
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -3906,7 +3908,9 @@ namespace Wassup.Bridge
 #if UNITY_EDITOR
                 TraceLegacyEvent("EnemyKilled", evt);
 #endif
-                scoreHud?.OnEnemyKilled(evt.killScore);
+                // unit 13-B — 뷰를 직접 부르지 않고 발행한다(뷰가 구독). 발행 지점·순서는
+                // 구 호출 지점 그대로라 같은 tick 에 같은 순서로 도달한다.
+                _session?.Emit(SessionEventKind.EnemyKilled, amount: evt.killScore);
                 // battle-score-formula unit 2 — 최종 점수용 누적.
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
                 // (예전엔 처치당 고정 +10 이라 15배 어긋나 있었다). 두 경로가 같은
@@ -6978,9 +6982,13 @@ namespace Wassup.Bridge
             if (mechanics == null || mechanics.Length == 0) return;
 
             _em.AddComponent<BossTag>(entity);
-            // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 경보를 구동해
+            // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 발행해
             // SpawnUnit 재판정(로직 이중화·이중 발화)을 피한다. 재진입 코얼레스는 뷰가 담당.
-            _bossWarning?.Show();
+            // unit 13-B — 경보 뷰를 직접 부르지 않고 "보스가 등장했다"는 사실을 발행한다.
+            // simId 는 이 시점에 이미 붙어 있다 — 같은 스폰 경로에서 AttachSimEntityId 가
+            // BakeNightmareMechanics 보다 먼저 실행된다(불변식).
+            _session?.Emit(SessionEventKind.BossSpawned,
+                subjectSimId: TryGetSimId(entity, out int bossSimId) ? bossSimId : -1);
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);
