@@ -26,3 +26,13 @@
 - 선행 머지 3건의 대상 파일 확정.
 - 11+ unit 분해 초안이 이 표의 등급 집계에서 도출 가능함을 마지막 섹션에서 시연(다음 unit 후보 나열).
 - 코드 변경 0.
+
+> 진행 기록 2026-08-04: 완료 — `m1_salvage_matrix.md`. **87건 판정**(시스템 44 + 채널 27 +
+> Bridge 클러스터 16; 채널을 3그룹으로 접으면 63 = 정본 "~60" 추정과 일치). 등급: 시스템
+> conform 7·adapt 31·rewrite 5·discard 1 / 채널 내부 9 컨테이너 discard(타이밍 계약은 보존)·
+> 출력 18 adapt / Bridge conform 1·adapt 9·rewrite 4·discard 2.
+> 실측 확정: Bridge 파셜 8,862줄/7파일 · 비주얼 statics **21개** · `GetStackThresholds` 결합은
+> 정의 `:6852` ↔ 호출 `:90` **1:1**(역전 방향 = MatchConfig 주입) · 테스트 262 중 조립 38
+> rewrite/참조 36 adapt/**미참조 188 conform**(이식의 실질 안전망) · HitFlash 는 sim 소비자 0 이나
+> 생산자가 sim 이라 "피격 사실만 sim, 펄스는 뷰" 로 갈랐다. discard 후보 특기: `ThreatEntry`
+> 계열 3종(하류 소비자 0 — 이식 unit 에서 사용자 확인). §6 에 11+ unit 분해 초안 11항.
