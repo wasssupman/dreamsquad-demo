@@ -65,6 +65,11 @@ namespace Wassup.UI
             // onSignedIn can fire more than once per app session (e.g. returning
             // auto-login, then SKIP taking the already-signed-in path).
             if (_done) return;
+            if (TestModeContext.RuntimeImportsBlocked)
+            {
+                Debug.Log($"[LoginAutoImport] {TestModeContext.RuntimeImportBlockedLog}.", this);
+                return;
+            }
             if (refresher == null)
             {
                 Debug.LogWarning("[LoginAutoImport] refresherSource is not an IRuntimeRefresher — auto import skipped.", this);

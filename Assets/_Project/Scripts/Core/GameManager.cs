@@ -396,7 +396,7 @@ namespace Wassup.Core
             logger?.SetEntryMode("test", testMode: true);
             var plan = TestModeContext.Plan;
             var fallbackPreset = TestModeContext.DefenderPreset;
-            TestModeContext.Clear(); // 1회 소비
+            TestModeContext.ConsumeTestCarry(); // 1회 소비; runtime-import lock 은 match teardown 까지 유지
 
             battleBridge.PrepareDraftMap();
 

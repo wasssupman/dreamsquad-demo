@@ -399,6 +399,11 @@ namespace Wassup.Bridge
         private int _matchSeed;
         public void SetMatchSeed(int seed) => _matchSeed = seed;
 
+        // battle-sim-extraction unit 3 — materialized after map/wave setup and
+        // before the first wave is queued. It contains no live SO/Native refs.
+        public MatchConfigSnapshot CurrentMatchConfig { get; private set; }
+        public string ConfigHash => CurrentMatchConfig != null ? CurrentMatchConfig.ConfigHash : string.Empty;
+
         // random-map-pool unit 1 — BuildMapForBattle 이 풀에서 고른 덱. 미해결(빌드 전)이면 serialized deck 폴백.
         // 모든 덱 소비는 ActiveDeck 경유. public = 브리핑 스트립이 선택된 덱을 읽어 브리핑=실전 일치(unit 4).
         private AttackDeck _resolvedDeck;
@@ -541,6 +546,7 @@ namespace Wassup.Bridge
             // unit 2 — 예외/씬 종료/재시작도 정상 EndHarness 와 같은 전역 상태를 복구한다.
             // EndHarness 는 멱등이라 일반 매치 teardown 에서 호출해도 라이브 상태를 건드리지 않는다.
             EndHarness();
+            TestModeContext.ReleaseRuntimeImportBlock();
             _running = false;
             _nextWaveClearReady = false;
             _placementAllowed = false;
@@ -1328,6 +1334,7 @@ namespace Wassup.Bridge
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
+            CaptureMatchConfig();
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
@@ -1337,6 +1344,65 @@ namespace Wassup.Bridge
                 Debug.Log(_usingGeneratedWaves
                     ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
                     : $"[BattleBridge] Battle started with legacy deck '{ActiveDeck.deckId}' ({ActiveDeck.spawns.Count} spawns queued).");
+        }
+
+        private void CaptureMatchConfig()
+        {
+            var effectTiles = new List<MatchConfigEffectTile>(_effectTilesByCell.Count);
+            foreach (var pair in _effectTilesByCell)
+                effectTiles.Add(new MatchConfigEffectTile(pair.Key, pair.Value));
+
+            var dreamcatcherCards = new List<DreamcatcherCard>();
+            var handController = UnityEngine.Object.FindAnyObjectByType<DreamcatcherHandController>();
+            if (handController != null)
+            {
+                var finalOrder = handController.GiftFinalOrder();
+                for (int i = 0; i < finalOrder.Count; i++)
+                    dreamcatcherCards.Add(finalOrder[i].card);
+            }
+
+            var gameManager = GameManager.Instance;
+            var capture = new MatchConfigCapture
+            {
+                matchSeed = _matchSeed,
+                fixedMapSeed = fixedMapSeed,
+                usesGeneratedWaves = _usingGeneratedWaves,
+                timerDurationSec = _timerDuration,
+                generatedMap = _generatedMap,
+                generatedWavePlan = _wavePlan,
+                effectTiles = effectTiles,
+                activeDeck = ActiveDeck,
+                defenderPool = defenderPool,
+                skillLoadout = _skillLoadout,
+                dreamstones = _pendingDreamstones,
+                dreamcatcherCards = dreamcatcherCards,
+                awakeningConfig = handController != null ? handController.Config : null,
+                assignedGimmick = _assignedGimmick,
+                scoreRules = scoreRules,
+                costConfig = gameManager != null ? gameManager.CostConfig : null,
+                costRegenRateMultiplier = gameManager != null && gameManager.CostRuntime != null
+                    ? gameManager.CostRuntime.RegenRateMultiplier
+                    : 1f,
+                stackModifiers = stackModifierAuthoring,
+                tileSize = tileSize,
+                spawnSpreadEnabled = spawnSpreadEnabled,
+                spawnSpreadFraction = spawnSpreadFraction,
+                spawnSpreadTopScale = spawnSpreadTopScale,
+                spawnSubLaneCount = spawnSubLaneCount,
+                enableAdjacencySynergy = enableAdjacencySynergy,
+                bossLeapTotalSeconds = bossLeapTotalSeconds,
+            };
+
+            try
+            {
+                CurrentMatchConfig = MatchConfigSnapshot.Capture(capture);
+                Debug.Log($"[BattleBridge] MatchConfig v{CurrentMatchConfig.Version} configHash={CurrentMatchConfig.ConfigHash}", this);
+            }
+            catch (Exception e)
+            {
+                CurrentMatchConfig = null;
+                Debug.LogError($"[BattleBridge] MatchConfig capture failed: {e}", this);
+            }
         }
 
         private void EnsureQueriesAndQueues()

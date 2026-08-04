@@ -1,9 +1,12 @@
+using System;
+using System.Reflection;
 using System.Text;
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Object = UnityEngine.Object;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -141,6 +144,48 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Object.DestroyImmediate(archer);
             Object.DestroyImmediate(defenderCatalog);
             Object.DestroyImmediate(enemyCatalog);
+        }
+
+        [Test]
+        public void Refresh_LockArmedBeforeCallback_DoesNotApplyAndClearsInFlight()
+        {
+            var go = new GameObject("UnitStatRuntimeRefresher");
+            var refresher = go.AddComponent<UnitStatRuntimeRefresher>();
+            var archer = Defender("archer", 500f);
+            var defenderCatalog = MakeDefenderCatalog(archer);
+            var enemyCatalog = MakeEnemyCatalog();
+            Action<SheetFetcher.Result, SheetFetcher.Result> callback = null;
+            string result = null;
+
+            try
+            {
+                typeof(UnitStatRuntimeRefresher).GetField("defenderCatalog", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.SetValue(refresher, defenderCatalog);
+                typeof(UnitStatRuntimeRefresher).GetField("enemyCatalog", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.SetValue(refresher, enemyCatalog);
+                refresher.FetchBoth = (_, __, done) => callback = done;
+
+                refresher.Refresh(log => result = log);
+                Assert.IsTrue(refresher.RequestInFlight);
+                Assert.IsNotNull(callback);
+
+                TestModeContext.SetHarnessSeed(9876);
+                callback(
+                    new SheetFetcher.Result(SuccessBody(@"{ ""id"": ""archer"", ""health"": 123 }"), null),
+                    new SheetFetcher.Result(SuccessBody(string.Empty), null));
+
+                Assert.AreEqual(500f, archer.health);
+                Assert.AreEqual(TestModeContext.RuntimeImportBlockedLog, result);
+                Assert.IsFalse(refresher.RequestInFlight);
+            }
+            finally
+            {
+                TestModeContext.ClearHarness();
+                Object.DestroyImmediate(archer);
+                Object.DestroyImmediate(defenderCatalog);
+                Object.DestroyImmediate(enemyCatalog);
+                Object.DestroyImmediate(go);
+            }
         }
     }
 }

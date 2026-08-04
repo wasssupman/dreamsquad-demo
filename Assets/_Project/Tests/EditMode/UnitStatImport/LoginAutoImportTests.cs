@@ -28,12 +28,19 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [SetUp]
         public void SetUp()
         {
+            TestModeContext.Clear();
+            TestModeContext.ClearHarness();
             _go = new GameObject("LoginAutoImport");
             _auto = _go.AddComponent<LoginAutoImport>();
         }
 
         [TearDown]
-        public void TearDown() => UnityEngine.Object.DestroyImmediate(_go);
+        public void TearDown()
+        {
+            TestModeContext.Clear();
+            TestModeContext.ClearHarness();
+            UnityEngine.Object.DestroyImmediate(_go);
+        }
 
         [Test]
         public void FirstSignIn_TriggersRefreshOnce()
@@ -66,6 +73,53 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var fake = new FakeRefresher();
             _auto.TriggerOnce(fake);
             Assert.AreEqual(1, fake.RefreshCalls);
+        }
+
+        [Test]
+        public void TestMode_BlocksNowAndAllowsImportAfterTeardown()
+        {
+            var fake = new FakeRefresher();
+            TestModeContext.Set(null, null);
+            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("runtime import skipped"));
+
+            _auto.TriggerOnce(fake);
+            TestModeContext.ConsumeTestCarry();
+            TestModeContext.ReleaseRuntimeImportBlock();
+            _auto.TriggerOnce(fake);
+
+            Assert.AreEqual(1, fake.RefreshCalls);
+        }
+
+        [Test]
+        public void HarnessRequest_SkipsAutoImport()
+        {
+            var fake = new FakeRefresher();
+            TestModeContext.SetHarnessSeed(2468);
+            LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("runtime import skipped"));
+
+            _auto.TriggerOnce(fake);
+
+            Assert.AreEqual(0, fake.RefreshCalls);
+        }
+
+        [Test]
+        public void LeafRefreshers_BlockBeforeStartingNetworkRequests()
+        {
+            TestModeContext.SetHarnessSeed(2468);
+            var refreshers = new IRuntimeRefresher[]
+            {
+                _go.AddComponent<UnitStatRuntimeRefresher>(),
+                _go.AddComponent<DcSheetRuntimeRefresher>(),
+                _go.AddComponent<CostConfigRuntimeRefresher>(),
+            };
+
+            for (int i = 0; i < refreshers.Length; i++)
+            {
+                string result = null;
+                refreshers[i].Refresh(log => result = log);
+                Assert.AreEqual(TestModeContext.RuntimeImportBlockedLog, result);
+                Assert.IsFalse(refreshers[i].RequestInFlight);
+            }
         }
     }
 }

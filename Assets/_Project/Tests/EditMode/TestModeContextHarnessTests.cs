@@ -6,10 +6,18 @@ namespace Wassup.Tests.EditMode
     public class TestModeContextHarnessTests
     {
         [SetUp]
-        public void SetUp() => TestModeContext.ClearHarness();
+        public void SetUp()
+        {
+            TestModeContext.Clear();
+            TestModeContext.ClearHarness();
+        }
 
         [TearDown]
-        public void TearDown() => TestModeContext.ClearHarness();
+        public void TearDown()
+        {
+            TestModeContext.Clear();
+            TestModeContext.ClearHarness();
+        }
 
         [Test]
         public void ConsumeHarnessSeed_ReturnsOnceAndClears()
@@ -31,6 +39,30 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsFalse(TestModeContext.HarnessActive);
             Assert.AreEqual(0, TestModeContext.HarnessFixedSeed);
+        }
+
+        [Test]
+        public void HarnessSeedConsumption_KeepsRuntimeImportLockUntilTeardown()
+        {
+            TestModeContext.SetHarnessSeed(77);
+
+            Assert.AreEqual(77, TestModeContext.ConsumeHarnessSeed());
+            Assert.IsTrue(TestModeContext.RuntimeImportsBlocked);
+
+            TestModeContext.ClearHarness();
+            Assert.IsFalse(TestModeContext.RuntimeImportsBlocked);
+        }
+
+        [Test]
+        public void TestCarryConsumption_KeepsRuntimeImportLockUntilRelease()
+        {
+            TestModeContext.Set(null, null);
+
+            TestModeContext.ConsumeTestCarry();
+            Assert.IsTrue(TestModeContext.RuntimeImportsBlocked);
+
+            TestModeContext.ReleaseRuntimeImportBlock();
+            Assert.IsFalse(TestModeContext.RuntimeImportsBlocked);
         }
     }
 }

@@ -20,18 +20,30 @@ namespace Wassup.Core
         [SerializeField] private CostConfig config;
         [SerializeField] private string baseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
 
+        internal Action<string, Action<SheetFetcher.Result>> Fetch = SheetFetcher.Fetch;
+
         public bool RequestInFlight { get; private set; }
 
         public void Refresh(Action<string> onDone)
         {
+            if (TestModeContext.RuntimeImportsBlocked)
+            {
+                onDone?.Invoke(TestModeContext.RuntimeImportBlockedLog);
+                return;
+            }
             if (RequestInFlight) { onDone?.Invoke("refresh already in progress"); return; }
             RequestInFlight = true;
 
             string url = SheetEnvelopeParser.BuildSheetUrl(baseUrl, Tab);
-            SheetFetcher.Fetch(url, result =>
+            Fetch(url, result =>
             {
                 string res;
-                try { res = ApplyBody(result, config); }
+                try
+                {
+                    res = TestModeContext.RuntimeImportsBlocked
+                        ? TestModeContext.RuntimeImportBlockedLog
+                        : ApplyBody(result, config);
+                }
                 catch (Exception e) { res = $"Refresh failed: {e}"; }
                 finally { RequestInFlight = false; }
                 onDone?.Invoke(res);

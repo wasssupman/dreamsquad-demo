@@ -1,8 +1,11 @@
+using System;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Object = UnityEngine.Object;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -99,6 +102,41 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             StringAssert.Contains("구글 시트 연동 실패", log);
 
             Object.DestroyImmediate(config);
+        }
+
+        [Test]
+        public void Refresh_LockArmedBeforeCallback_DoesNotApplyAndClearsInFlight()
+        {
+            var go = new GameObject("CostConfigRuntimeRefresher");
+            var refresher = go.AddComponent<CostConfigRuntimeRefresher>();
+            var config = NewConfig("cost_default");
+            Action<SheetFetcher.Result> callback = null;
+            string result = null;
+
+            try
+            {
+                typeof(CostConfigRuntimeRefresher).GetField("config", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.SetValue(refresher, config);
+                refresher.Fetch = (_, done) => callback = done;
+
+                refresher.Refresh(log => result = log);
+                Assert.IsTrue(refresher.RequestInFlight);
+                Assert.IsNotNull(callback);
+
+                TestModeContext.SetHarnessSeed(9876);
+                callback(new SheetFetcher.Result(
+                    Body(@"{ ""id"": ""cost_default"", ""maxCost"": 99 }"), null));
+
+                Assert.AreEqual(10, config.maxCost);
+                Assert.AreEqual(TestModeContext.RuntimeImportBlockedLog, result);
+                Assert.IsFalse(refresher.RequestInFlight);
+            }
+            finally
+            {
+                TestModeContext.ClearHarness();
+                Object.DestroyImmediate(config);
+                Object.DestroyImmediate(go);
+            }
         }
 
         [Test]

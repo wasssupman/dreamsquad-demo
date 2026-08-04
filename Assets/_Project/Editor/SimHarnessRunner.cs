@@ -116,8 +116,10 @@ namespace Wassup.EditorTools
             try
             {
                 if (!bridge.BeginHarness(FixedDt, schedule)) { Fail("BeginHarness 실패"); return; }
+                if (string.IsNullOrEmpty(bridge.ConfigHash)) { Fail("MatchConfig configHash 미생성"); return; }
 
                 var sb = new StringBuilder(Ticks * 40);
+                sb.Append("configHash:").Append(bridge.ConfigHash).Append('\n');
                 int executedTicks = 0;
                 for (int i = 0; i < Ticks && bridge.BattleRunning; i++)
                 {

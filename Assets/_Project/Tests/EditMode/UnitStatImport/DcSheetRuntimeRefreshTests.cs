@@ -1,8 +1,11 @@
+using System;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.StatImport;
+using Object = UnityEngine.Object;
 
 namespace Wassup.Tests.EditMode.UnitStatImport
 {
@@ -129,6 +132,47 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Object.DestroyImmediate(card);
             Object.DestroyImmediate(catalog);
+        }
+
+        [Test]
+        public void Refresh_LockArmedBeforeCallback_DoesNotApplyAndClearsInFlight()
+        {
+            var go = new GameObject("DcSheetRuntimeRefresher");
+            var refresher = go.AddComponent<DcSheetRuntimeRefresher>();
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = "test_card";
+            card.displayName = "OLD";
+            var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
+            catalog.cards = new[] { card };
+            Action<SheetFetcher.Result[]> callback = null;
+            string result = null;
+
+            try
+            {
+                typeof(DcSheetRuntimeRefresher).GetField("cardCatalog", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.SetValue(refresher, catalog);
+                refresher.FetchAll = (_, done) => callback = done;
+
+                refresher.Refresh(log => result = log);
+                Assert.IsTrue(refresher.RequestInFlight);
+                Assert.IsNotNull(callback);
+
+                TestModeContext.SetHarnessSeed(9876);
+                callback(Results(
+                    Body(@"{ ""id"": ""test_card"", ""displayName"": ""NEW"" }"),
+                    Empty, Empty, Empty, Empty, Empty));
+
+                Assert.AreEqual("OLD", card.displayName);
+                Assert.AreEqual(TestModeContext.RuntimeImportBlockedLog, result);
+                Assert.IsFalse(refresher.RequestInFlight);
+            }
+            finally
+            {
+                TestModeContext.ClearHarness();
+                Object.DestroyImmediate(card);
+                Object.DestroyImmediate(catalog);
+                Object.DestroyImmediate(go);
+            }
         }
     }
 }

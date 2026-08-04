@@ -10,15 +10,29 @@ namespace Wassup.Core
         public static bool Active { get; private set; }
         public static WavePlanAsset Plan { get; private set; }
         public static DefenderUnitData[] DefenderPreset { get; private set; }
+        // battle-sim-extraction unit 3 — unlike Active/HarnessFixedSeed this lock is
+        // not a one-shot carry. It survives scene consumption so an import request
+        // started in the lobby cannot apply SO mutations after the battle loads.
+        public static bool RuntimeImportsBlocked { get; private set; }
+        public const string RuntimeImportBlockedLog = "deterministic test/harness mode — runtime import skipped";
 
         public static void Set(WavePlanAsset plan, DefenderUnitData[] defenderPreset)
         {
             Active = true;
             Plan = plan;
             DefenderPreset = defenderPreset;
+            RuntimeImportsBlocked = true;
         }
 
         public static void Clear()
+        {
+            ConsumeTestCarry();
+            if (!HarnessActive && HarnessFixedSeed == 0) RuntimeImportsBlocked = false;
+        }
+
+        // GameManager consumes the scene carry but deliberately keeps the import
+        // lock until BattleBridge teardown.
+        public static void ConsumeTestCarry()
         {
             Active = false;
             Plan = null;
@@ -33,8 +47,17 @@ namespace Wassup.Core
         public static bool HarnessActive { get; private set; }
         public static int HarnessFixedSeed { get; private set; }
 
-        public static void SetHarness(bool active) => HarnessActive = active;
-        public static void SetHarnessSeed(int seed) => HarnessFixedSeed = seed;
+        public static void SetHarness(bool active)
+        {
+            HarnessActive = active;
+            if (active) RuntimeImportsBlocked = true;
+        }
+
+        public static void SetHarnessSeed(int seed)
+        {
+            HarnessFixedSeed = seed;
+            if (seed != 0) RuntimeImportsBlocked = true;
+        }
 
         // 하네스 시드는 매치 시작 시 한 번만 소비한다. 남겨두면 도메인 리로드를
         // 끈 에디터나 같은 Play 세션의 다음 매치가 이전 검증 시드를 재사용한다.
@@ -49,6 +72,13 @@ namespace Wassup.Core
         {
             HarnessActive = false;
             HarnessFixedSeed = 0;
+            if (!Active) RuntimeImportsBlocked = false;
+        }
+
+        public static void ReleaseRuntimeImportBlock()
+        {
+            if (!Active && !HarnessActive && HarnessFixedSeed == 0)
+                RuntimeImportsBlocked = false;
         }
 
 #if UNITY_EDITOR

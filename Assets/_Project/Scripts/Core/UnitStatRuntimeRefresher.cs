@@ -18,10 +18,21 @@ namespace Wassup.Core
         [SerializeField] private string defenderSheet = "Defenders";
         [SerializeField] private string enemySheet = "Enemies";
 
+        // Test seam for the request/callback boundary. Production keeps the
+        // SheetFetcher method group; EditMode tests can hold the callback until
+        // the deterministic-config lock is armed.
+        internal Action<string, string, Action<SheetFetcher.Result, SheetFetcher.Result>> FetchBoth
+            = SheetFetcher.FetchBoth;
+
         public bool RequestInFlight { get; private set; }
 
         public void Refresh(Action<string> onDone)
         {
+            if (TestModeContext.RuntimeImportsBlocked)
+            {
+                onDone?.Invoke(TestModeContext.RuntimeImportBlockedLog);
+                return;
+            }
             if (RequestInFlight)
             {
                 onDone?.Invoke("refresh already in progress");
@@ -29,7 +40,7 @@ namespace Wassup.Core
             }
             RequestInFlight = true;
 
-            SheetFetcher.FetchBoth(
+            FetchBoth(
                 SheetEnvelopeParser.BuildSheetUrl(baseUrl, defenderSheet),
                 SheetEnvelopeParser.BuildSheetUrl(baseUrl, enemySheet),
                 (defenderFetch, enemyFetch) =>
@@ -37,9 +48,11 @@ namespace Wassup.Core
                     string result;
                     try
                     {
-                        result = ApplyBodies(defenderFetch.body, defenderFetch.transportError,
-                            enemyFetch.body, enemyFetch.transportError,
-                            defenderSheet, enemySheet, defenderCatalog, enemyCatalog);
+                        result = TestModeContext.RuntimeImportsBlocked
+                            ? TestModeContext.RuntimeImportBlockedLog
+                            : ApplyBodies(defenderFetch.body, defenderFetch.transportError,
+                                enemyFetch.body, enemyFetch.transportError,
+                                defenderSheet, enemySheet, defenderCatalog, enemyCatalog);
                     }
                     finally
                     {

@@ -26,10 +26,17 @@ namespace Wassup.Core
         [SerializeField] private AwakeningConfig awakeningConfig;
         [SerializeField] private string baseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
 
+        internal Action<string[], Action<SheetFetcher.Result[]>> FetchAll = SheetFetcher.FetchAll;
+
         public bool RequestInFlight { get; private set; }
 
         public void Refresh(Action<string> onDone)
         {
+            if (TestModeContext.RuntimeImportsBlocked)
+            {
+                onDone?.Invoke(TestModeContext.RuntimeImportBlockedLog);
+                return;
+            }
             if (RequestInFlight)
             {
                 onDone?.Invoke("refresh already in progress");
@@ -41,10 +48,15 @@ namespace Wassup.Core
             for (int i = 0; i < Tabs.Length; i++)
                 urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, Tabs[i]);
 
-            SheetFetcher.FetchAll(urls, results =>
+            FetchAll(urls, results =>
             {
                 string result;
-                try { result = ApplyBodies(results, Tabs, cardCatalog, activeCards, awakeningConfig); }
+                try
+                {
+                    result = TestModeContext.RuntimeImportsBlocked
+                        ? TestModeContext.RuntimeImportBlockedLog
+                        : ApplyBodies(results, Tabs, cardCatalog, activeCards, awakeningConfig);
+                }
                 catch (Exception e) { result = $"Refresh failed: {e}"; }
                 finally { RequestInFlight = false; }
                 onDone?.Invoke(result);
