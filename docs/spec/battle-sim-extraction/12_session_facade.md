@@ -39,7 +39,20 @@
 ## 완료 기준
 
 - compile 0 · EditMode 회귀 0(신규 경로는 미사용이라 회귀면이 없다).
-- 어댑터가 커맨드 7종을 전부 받고 receipt 를 돌려준다 — EditMode 에서 **거절 경로 최소 1건/동사**
-  단정(수락 경로는 Play 필요라 unit 13 과 함께).
+- **EditMode 로 고정하는 것 = 계약 타입**(어댑터 번역은 `BattleBridge` 인스턴스를 요구해 PlayMode
+  영역이고 unit 13 과 함께 온다 — 완료 기준을 실행 가능한 것으로 한정): 커맨드 팩토리의 필드
+  배치(특히 Relocate 의 `Cell`=도착/`Cell2`=출발 규약) · receipt Ok/Rejected 형태 ·
+  **semantic/projection 경계**(`IsPresentation` 이 enum 순서에 의존하므로 재정렬 시 조용히 깨진다) ·
+  `PlacementRejectReason` 전 멤버의 통합 enum 흡수 완전성(멤버가 늘면 이 테스트가 먼저 깨진다).
 - 골든 7종 재생성 **불필요**(sim 무변) — `configHash`·trace byte 동일 확인만.
 - 소비자 재배선 0건: 기존 UI/뷰가 여전히 Bridge 직접 호출임을 grep 으로 확인(경계 지킴 증명).
+
+> 진행 기록 2026-08-04: 구현 완료(컴파일 검증까지). 신규 6파일 —
+> `Core/Session/{MatchSessionContract,MatchSessionEvents,MatchReadModel,IMatchSession}.cs` ·
+> `Bridge/LegacyMatchSessionAdapter.cs` · `Tests/EditMode/MatchSessionContractTests.cs`.
+> **범위 조정 2건**: ① 이벤트는 타입·구독면만 만들고 **드레인 배선은 unit 13** 으로(지금 큐를
+> 소비하면 Bridge 직독 소비자와 중복 소비). ② `Bridge` 에 **simId→Entity 역참조**를 추가했다
+> (`TryResolveSimEntity`/`TryGetSimId` + `BeginPlacement` 리셋) — 커맨드가 SimEntityId 로 오는데
+> Bridge 공개면은 `Entity` 를 받아 번역 축이 없었다. 에디터 전용 trace 등록부는 릴리즈에 없으므로 별도.
+> 구현 중 정정: `TimeLease` 는 class 가 아니라 **struct** 라 MenuPopup 관용구(struct 필드 + 보유
+> 플래그)를 따랐다. `DreamcatcherHandController` 는 `Wassup.Core`(하위 namespace 아님).

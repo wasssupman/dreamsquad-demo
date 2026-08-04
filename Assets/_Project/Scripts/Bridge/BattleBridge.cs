@@ -1235,6 +1235,7 @@ namespace Wassup.Bridge
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             _simEntityIdCounter = 0; // battle-sim-extraction unit 1 — per-match spawn-ordinal (SimEntityId)
+            _simIdToEntity.Clear();  // unit 12 — 역참조도 카운터와 같은 경계에서 리셋(불변식)
 #if UNITY_EDITOR
             ResetLegacyTraceEntityRegistry();
 #endif
@@ -4068,14 +4069,41 @@ namespace Wassup.Bridge
         // 재판단. 리셋은 BeginPlacement(배치 페이즈가 defender 를 먼저 낳는다).
         private int _simEntityIdCounter;
 
+        // battle-sim-extraction unit 12 — simId → Entity 역참조(런타임). 커맨드는 SimEntityId(int)로
+        // 오는데 Bridge 공개면은 Entity 를 받으므로 세션 어댑터가 번역할 축이 필요하다.
+        // 에디터 전용 trace 등록부(`_legacyTraceEntityIds`)는 릴리즈에서 없으므로 별도로 둔다.
+        // 죽은 엔티티 항목은 남을 수 있어 조회 시 존재를 확인한다(id 는 비재사용이라 오매칭은 없다).
+        private readonly Dictionary<int, Entity> _simIdToEntity = new();
+
         private void AttachSimEntityId(Entity entity)
         {
             if (entity == Entity.Null) return;
             int simId = _simEntityIdCounter++;
             _em.AddComponentData(entity, new SimEntityId { value = simId });
+            _simIdToEntity[simId] = entity;
 #if UNITY_EDITOR
             RegisterLegacyTraceEntity(entity, simId);
 #endif
+        }
+
+        // 세션 어댑터용. 살아 있는 엔티티만 true.
+        public bool TryResolveSimEntity(int simId, out Entity entity)
+        {
+            entity = Entity.Null;
+            if (simId < 0 || !_simIdToEntity.TryGetValue(simId, out var e)) return false;
+            if (!HasLiveEntityManager() || !_em.Exists(e)) return false;
+            entity = e;
+            return true;
+        }
+
+        // 역방향(뷰/어댑터가 Entity 를 받은 자리에서 커맨드를 만들 때).
+        public bool TryGetSimId(Entity entity, out int simId)
+        {
+            simId = -1;
+            if (entity == Entity.Null || !HasLiveEntityManager()) return false;
+            if (!_em.Exists(entity) || !_em.HasComponent<SimEntityId>(entity)) return false;
+            simId = _em.GetComponentData<SimEntityId>(entity).value;
+            return true;
         }
 
         private Entity SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
