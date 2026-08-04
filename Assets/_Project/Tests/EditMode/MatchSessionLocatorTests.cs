@@ -76,6 +76,12 @@ namespace Wassup.Tests.EditMode
 
             public IReadOnlyList<SessionEvent> DrainEvents() => Array.Empty<SessionEvent>();
 
+            public bool TryGetSpawnAlertForecast(out ReadOnlySpan<float> laneFirstSpawnSec)
+            {
+                laneFirstSpawnSec = default;
+                return false;
+            }
+
             public event Action<MatchOutcome> MatchEnded;
             public void RaiseEnded(MatchOutcome outcome) => MatchEnded?.Invoke(outcome);
 

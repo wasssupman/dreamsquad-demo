@@ -34,6 +34,17 @@ namespace Wassup.Core.Session
         // IsPresentation 으로 가른다. 내부 phase queue(9채널)는 여기 나타나지 않는다.
         IReadOnlyList<SessionEvent> DrainEvents();
 
+        // 레인별 첫 스폰 시각(초). 예보가 없으면 false — 전투 종료·재시작·남은 스폰 없음.
+        //
+        // **배열이 아니라 span 인 이유**(unit 13-A2): 구 `BattleBridge.TryGetSpawnAlertForecast` 는
+        // 내부 캐시 배열 `_spawnAlertForecast` **참조를 그대로** 넘겨, 뷰가 그것을 통해 sim 상태를
+        // 쓸 수 있었다. `ReadOnlySpan` 은 쓰기를 **컴파일러가** 막고 `float[]` 로 되돌리는 캐스팅
+        // 우회도 불가하며 복사 할당도 없다(청사진 ① §6 이 지정한 "복사본/read-only" 중 후자).
+        //
+        // 유효 범위는 **호출한 프레임 안**이다 — 세션이 다음 tick 에 내용을 갱신할 수 있으므로
+        // 필드에 저장하지 않는다. 값이 필요하면 그 프레임에 읽어 쓴다.
+        bool TryGetSpawnAlertForecast(out ReadOnlySpan<float> laneFirstSpawnSec);
+
         // 매치 종료 통지. outcome 4종. 구독자는 결과·집계 화면.
         event Action<MatchOutcome> MatchEnded;
 

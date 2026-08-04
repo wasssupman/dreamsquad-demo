@@ -50,7 +50,7 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 | 조각 | 대상 | 상태 |
 |---|---|---|
 | **A1** | `MatchSession` 로케이터 + Bridge 공급 + `NextWaveDock`(폴링 5종) | ✅ 완료 |
-| **A2** | `SpawnAlertPresenter` forecast — `TryGetSpawnAlertForecast` 가 **캐시 배열 참조**를 넘긴다. 호출자 소유 버퍼(`TryGetSpawnPathSim` 이 이미 쓰는 관용구)로 세션 메서드 신설 | 대기 |
+| **A2** | `SpawnAlertPresenter` forecast — `TryGetSpawnAlertForecast` 가 **캐시 배열 참조**를 넘긴다 → 세션은 `ReadOnlySpan<float>` 로 좁힌다 | ✅ 완료 |
 | **A3** | `CostDisplay` · `DefenderSelector` — 읽기 모델이 `SupportedCurrency=false` 이고 **쿨타임 표면이 아예 없다**(키별 조회라 필드가 아니라 메서드가 필요). unit 15 영역과 겹치므로 경계를 먼저 정한다 | 대기 |
 
 - **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
@@ -81,3 +81,19 @@ A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 
 > 순서가 맞다는 뜻(로그에 보이는 경고 2건은 그것을 단정하는 테스트가 낸 것이다).
 > **뷰 폴링을 옮겨도 골든이 안 움직인다는 것은 당연하지 않다** — 뷰가 Bridge 프로퍼티를 읽는
 > 행위가 sim 상태를 건드렸다면(지연 초기화·캐시 갱신 등) diff 가 났을 것이다.
+
+> 진행 기록 2026-08-04 — **A2 완료**. `IMatchSession.TryGetSpawnAlertForecast(out ReadOnlySpan<float>)`
+> 신설, 어댑터가 Bridge 배열을 span 으로 좁혀 서빙, `Presentation/SpawnAlertPresenter.cs` 재배선.
+> **실측된 구멍**: 구 `Bridge.TryGetSpawnAlertForecast` 는 `laneFirstSpawnSec = _spawnAlertForecast`
+> 로 내부 캐시 배열 **참조**를 넘겨 뷰가 그것으로 sim 상태에 쓸 수 있었다.
+> `ReadOnlySpan` 을 고른 이유 = ① 쓰기를 **컴파일러가** 막고 `float[]` 캐스팅 우회도 불가
+> (`IReadOnlyList<float>` 는 되돌릴 수 있다) ② 매 프레임 Update 라 복사 할당 0 이 실이익이다.
+> 대가는 **유효 범위가 호출 프레임뿐**이라는 계약이며 인터페이스 주석에 명시했다(필드 저장 금지).
+> 클럭은 분리했다 — 구 API 는 false 를 돌려주면서도 `battleClockSec` 을 채우는 모양이었는데
+> 예보 유무와 묶일 이유가 없어 `ReadModel.BattleClock` 으로 출처를 하나로 모았다.
+> `bridge` 참조는 남는다 — `TryGetSpawnPathSim` 은 공간 질의 = 청사진 ① §6 의 "계약 밖" 뷰 서비스.
+> 검증: 4어셈블리 오류 0 · 전체 EditMode **1898/실패 0** · **골든 7종 byte diff 0**(신규 PASS
+> @343956, cmp 7/7). 골든 구간에서 `[MatchSession]` 경고 0(로그의 경고 3건은 전부 그것을 단정하는
+> EditMode 테스트 발 — 줄번호로 확인).
+> 뷰 계층의 예보 직독 **0**(어댑터만 번역). `Tests/EditMode/SpawnAlertForecastTests.cs` 5건은
+> Bridge API 를 직접 검사하는 **sim 쪽** 테스트라 유지한다 — 어댑터의 번역 대상이 계속 그것이다.

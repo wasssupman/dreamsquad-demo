@@ -120,7 +120,7 @@ namespace Wassup.UI
         // 함께 감싸면 지시 대상이 흐려진다.
         //
         // 이 오브젝트는 Awake 에서 SetActive(false) 로 시작하고 Update 의
-        // bridge.NextWaveAvailable 폴링이 켠다. 즉 Battle 진입 프레임에는 아직 비활성이므로,
+        // `ReadModel.NextWaveAvailable` 폴링이 켠다. 즉 Battle 진입 프레임에는 아직 비활성이므로,
         // 튜토리얼은 활성을 기다린 뒤에 포커스를 걸어야 한다(unit 19 의 WaitForHintTarget).
         public RectTransform WaveButtonRect =>
             _buttonRoot != null ? (RectTransform)_buttonRoot.transform : null;

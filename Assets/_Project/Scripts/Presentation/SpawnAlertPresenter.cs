@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 
 namespace Wassup.Presentation
 {
@@ -12,7 +13,9 @@ namespace Wassup.Presentation
     // 4개 레이어의 합으로 "그냥 빨간 선"이 아닌 VFX 로 만든다:
     //   glow(가산 광휘) + core(흰 중심 코어) + streak(선을 타고 흐르는 에너지) + ring(스폰점 맥동)
     //
-    // BattleBridge 예보(read-only) 폴링. 표시 창·트레이싱·흐름 위상 모두 battle 클럭 기준이라
+    // 예보는 `MatchSession` 폴링(unit 13-A2 — 구 `bridge.TryGetSpawnAlertForecast` 는 내부 캐시
+    // 배열 **참조**를 넘겨 뷰가 sim 상태에 쓸 수 있었다. 지금은 `ReadOnlySpan` 이라 컴파일러가
+    // 막는다). 표시 창·트레이싱·흐름 위상 모두 battle 클럭 기준이라
     // 정지/슬로우 시 자연 동결. Wave 1(0초 트리거)·Next Wave 강제 호출은 표시 창이 성립하지
     // 않아 자연 스킵(spec 계약).
     public class SpawnAlertPresenter : MonoBehaviour
@@ -88,8 +91,14 @@ namespace Wassup.Presentation
 
         private void Update()
         {
-            if (bridge == null) return;
-            bool has = bridge.TryGetSpawnAlertForecast(out float clock, out float[] first);
+            // bridge 는 아직 경로 질의(TryGetSpawnPathSim = 공간 질의, 세션 계약 밖)에 쓰인다.
+            // 예보와 클럭만 세션으로 옮겼다 — unit 13-A2.
+            if (bridge == null || !MatchSession.IsActive) return;
+            var session = MatchSession.Current;
+            // 클럭은 예보 유무와 무관하게 필요하다(streak 위상·수렴 진행도). 구 Bridge API 는
+            // false 를 돌려주면서도 clock 은 채워줬는데, 그 두 값을 한 호출에 묶을 이유가 없다.
+            float clock = (float)session.ReadModel.BattleClock;
+            bool has = session.TryGetSpawnAlertForecast(out var first);
             int laneCount = has ? first.Length : 0;
             EnsureLanes(laneCount);
 

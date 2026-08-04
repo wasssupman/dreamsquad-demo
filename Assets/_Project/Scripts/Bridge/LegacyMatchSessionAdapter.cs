@@ -253,6 +253,19 @@ namespace Wassup.Bridge
         // 빈 목록을 돌려준다(중복 소비 금지). 계약면은 이미 성립해 소비자가 미리 붙을 수 있다.
         public IReadOnlyList<SessionEvent> DrainEvents() => _emptyEvents;
 
+        // unit 13-A2 — Bridge 는 내부 캐시 배열 참조를 넘기지만 여기서 span 으로 좁혀 **쓰기 경로를
+        // 끊는다**. 복사가 아니므로 할당 0이고, 유효 범위는 호출 프레임뿐이라는 계약이 그 대가다.
+        public bool TryGetSpawnAlertForecast(out ReadOnlySpan<float> laneFirstSpawnSec)
+        {
+            if (_disposed || !_bridge.TryGetSpawnAlertForecast(out _, out float[] lanes) || lanes == null)
+            {
+                laneFirstSpawnSec = default;
+                return false;
+            }
+            laneFirstSpawnSec = lanes;
+            return true;
+        }
+
         internal void RaiseMatchEnded(MatchOutcome outcome) => MatchEnded?.Invoke(outcome);
 
         public void Dispose()
