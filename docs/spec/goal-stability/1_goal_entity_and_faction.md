@@ -23,7 +23,9 @@ M>0 골을 전투 엔티티로 심에 존재시킨다. 이 unit 까지는 **어�
 
 ## 완료 기준
 
-- [ ] compile + 기존 EditMode/PlayMode 무회귀.
-- [ ] M>0 테스트 맵 Play 진입 시 골 엔티티 존재(Entities 디버거 또는 로그), M=0 맵은 미스폰.
-- [ ] 연속 2판 진행 시 골 엔티티 누수 없음(teardown 확인).
-- [ ] 적/방어유닛 행동 현행과 동일(스모크).
+- [x] compile + 기존 EditMode/PlayMode 무회귀 (관련 스위트 35/35).
+- [x] M>0 맵 진입 시 골 엔티티 존재, M=0 맵은 미스폰 — `BattleBridgeGoalStabilityTests` 가 실 ECS World 라이브 경로(BuildMapForBattle→SpawnGoalEntities)로 EditMode 검증(스폰 값·미스폰·컴포넌트 세트).
+- [x] 골 엔티티 누수 없음 — 재빌드 멱등 + `DestroyBattleEntities` 정리 테스트.
+- [x] 적/방어유닛 행동 현행과 동일 — 어떤 targetMask 에도 Goal 비트 없음(구조적 무변화) + 스위트 무회귀.
+
+2026-08-04 사용자 확인 완료. (M>0 실기 Play 확인은 unit 2 검증에 포함)

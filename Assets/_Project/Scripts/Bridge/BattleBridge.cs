@@ -612,6 +612,9 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+            // goal-stability unit 1 — 안정도 골 엔티티 정리. 누락 시 사직서/AllyBuffField 와 같은
+            // 앱-수명 월드 잔존 사고: 다음 매치에서 죽은/이전 맵의 골이 살아있는 것으로 판정된다.
+            DestroyEntitiesByType<GoalPoint>();
             // season-gimmick-overwork unit 4 — 레드불 픽업 엔티티 정리.
             DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
             // season-gimmick-clockout unit 8 — 사직서 엔티티 정리. 누락 시 월드(앱 수명 default
@@ -872,6 +875,42 @@ namespace Wassup.Bridge
             }
         }
 
+        // goal-stability unit 1 — 안정도(M>0) 골을 전투 엔티티로 스폰. BuildFlowField 직후 호출
+        // (goals 폴백·_boardOrigin 확정 시점). 멱등: 기존 골 엔티티 제거 후 재생성.
+        // 아키타입 = blocking hazard 동형(FactionTag+Health+IncomingDamage+LocalTransform) —
+        // AttackSystem 후보 스냅샷 자동 진입 조건. 이 unit 시점엔 어떤 targetMask 에도 Goal 이
+        // 없어 행동 변화 0.
+        private void SpawnGoalEntities()
+        {
+            if (!_generatedMap.IsCreated || _em == null) return;
+            DestroyEntitiesByType<GoalPoint>();
+
+            bool hasGoals = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+            int goalCount = hasGoals ? _generatedMap.goals.Length : 1;
+            // M 소비 폴백(spec README 계약): (폴백 후) goals 와 길이 일치할 때만 채택 — 아니면 전 골 0.
+            if (!_generatedMap.goalMaxStability.IsCreated
+                || _generatedMap.goalMaxStability.Length != goalCount) return;
+
+            int spawned = 0;
+            for (int i = 0; i < goalCount; i++)
+            {
+                float m = _generatedMap.goalMaxStability[i];
+                if (m <= 0f) continue;   // M=0 골 = 현행 유출 지점 그대로(엔티티 없음)
+
+                var cell = hasGoals ? _generatedMap.goals[i] : _generatedMap.goal;
+                float3 worldPos = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
+                var entity = _em.CreateEntity();
+                _em.AddComponentData(entity, new GoalPoint { cell = cell, goalIndex = i });
+                _em.AddComponentData(entity, new Health { value = m, max = m });
+                _em.AddBuffer<IncomingDamage>(entity);
+                _em.AddComponentData(entity, new FactionTag { value = Faction.Goal });
+                _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
+                spawned++;
+            }
+            if (spawned > 0)
+                Debug.Log($"[BattleBridge] Goal entities spawned — {spawned}/{goalCount} (안정도 M>0)");
+        }
+
         // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place) 싱글턴 구축.
         // FlowFieldSingleton 동형: Persistent NativeArray 소유, TeardownFlowField 가 dispose.
         // gimmick 비활성이면 no-op. 멱등 (재빌드/redraft 시 기존 dispose 후 재생성).
@@ -1126,6 +1165,8 @@ namespace Wassup.Bridge
                 EnsureCameraDirector()?.FrameBoard(boardBounds);
 
             BuildFlowField();
+            // goal-stability unit 1 — 안정도(M>0) 골 엔티티. goals 폴백·boardOrigin 확정 직후.
+            SpawnGoalEntities();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
             // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.
             BuildPickupSpawnState();
