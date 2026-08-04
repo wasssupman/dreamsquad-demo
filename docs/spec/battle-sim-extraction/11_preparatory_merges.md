@@ -82,9 +82,33 @@ Bridge 에 남는다(인스펙터 저작 지점 = 씬 배선 유지) — 옮기�
 
 | 머지 | 커밋 | 컴파일 | EditMode | Play smoke |
 |---|---|---|---|---|
-| 1 비주얼 statics | `b564e768` · writer 제한 `bfc75f09` | ✅ 에디터 자체 컴파일 오류 0 | ⏳ 미실행 | ⏳ 미실행 |
-| 2 임계 조회 역전 | `c0a361cb` | ✅ `dotnet build` 런타임+테스트 오류 0 | ⏳ **신규/해제 3건 포함 미실행** | N/A |
-| 3 비-sim 코드 퇴거 | (이 커밋) | ✅ `dotnet build` 런타임+에디터 어셈블리 오류 0 | ⏳ 미실행 | ⏳ 미실행 |
+| 1 비주얼 statics | `b564e768` · writer 제한 `bfc75f09` | ✅ 에디터 리컴파일 오류 0 | ✅ 전체 통과 | ⏳ PlayMode 스위트 |
+| 2 임계 조회 역전 | `c0a361cb` · **PlayMode 호출부 보정** (후속) | ✅ 4어셈블리 오류 0 | ✅ **집중 12/12** | N/A |
+| 3 비-sim 코드 퇴거 | `562f83b7` | ✅ 4어셈블리 오류 0 | ✅ 전체 통과 | ⏳ PlayMode 스위트 |
+
+**전체 EditMode 실측 (2026-08-04)**: `passed=1895 failed=0 skipped=1` · 23.7s.
+총계가 이전 1,888 → 1,896 으로 **+8**(unit 12 계약 테스트 7 + 레지스트리 미등록 1) 이고 skip 이
+2→1 로 줄었다(머지 2 가 해제한 multiThreshold). **신규 테스트가 실제로 실행됐다는 증거는 이 카운트
+증가**다 — "failed=0" 만으로는 테스트가 돌았는지 알 수 없다(리뷰 HIGH 2 의 교훈).
+잔존 skip 1건은 `ModifierFrameworkTests.cs` 의 의도적 `[Ignore]`(AttackOutput 분기가 `AttackSystem`
+업데이트 루프 안) — 그 커버리지는 PlayMode `DefenderApplyStackOutputTest` 가 갖는다.
+
+**머지 2 집중 실행**: `.*ModifierFrameworkTests.*` → `passed=12 failed=0 skipped=1`.
+집중 실행을 따로 돌린 이유 = 그 12건이 **실행됐음을 카운트로 증명**하기 위해서다.
+
+### 검증 방법의 구멍 1건 (2026-08-04 발견·수정)
+
+머지 2 가 `BattleBridge.GetStackThresholds` 를 삭제했는데 **PlayMode 테스트 3파일이 아직 그것을
+호출**해 프로젝트가 컴파일 에러 상태였다(`error CS0117` ×3, 에디터 로그 실측). 원인은 코드가 아니라
+**검증 범위**다 — 당시 `dotnet build` 를 `Wassup.Runtime` + `Wassup.Tests.EditMode` 2개만 돌려
+`Wassup.Tests.PlayMode` 를 빼먹었고, 표에는 "테스트 오류 0" 이라고 적혀 있었다.
+
+- 보정: 3파일을 `StackThresholdRegistry.Get(kind)` 로 전환 —
+  `DefenderApplyStackOutputTest:45` · `DreamcatcherOnHitTest:70` · `KindlerFireStackE2ETest:49`.
+  가드의 의미는 오히려 강해진다(저작 SO 존재 → **Bridge 가 실제로 등록했는지**).
+- **이후 규칙**: 공개면을 지우거나 이름을 바꾼 커밋은 `Wassup.Runtime` ·
+  `Wassup.Tests.EditMode` · **`Wassup.Tests.PlayMode`** · `Assembly-CSharp-Editor`
+  **4개를 모두** 빌드한다. 2개만 도는 검증은 "테스트 통과" 로 적지 않는다.
 
 **머지 3 달성 게이트(실측)**: `Assets/_Project/Scripts/Battle/` 안 MonoBehaviour **0** ·
 `using UnityEditor` **0** · `BattleBridge` 코드 참조 **0**(주석/Tooltip 문자열만 잔존).
@@ -95,3 +119,17 @@ Bridge 에 남는다(인스펙터 저작 지점 = 씬 배선 유지) — 옮기�
 > `dotnet build` 는 **컴파일만** 증명하며 Unity Test Framework 를 실행하지 않는다(리뷰 HIGH 2).
 > 락 해제 후 ① 머지 2 집중(`ModifierFrameworkTests`) ② 전체 EditMode ③ 머지 1 Play smoke
 > 순서로 실행하고 이 표를 갱신한다.
+
+### 락 하에서 테스트를 실행하는 경로 (`SimTestAutoRunner`)
+
+락 해제를 기다리지 않는다. `Assets/_Project/Editor/SimTestAutoRunner.cs` 가 **살아 있는 에디터**에게
+트리거 파일로 실행을 시키고 결과를 파일로 회수한다 — batch 두 번째 인스턴스가 막히는 제약의 우회.
+
+- 요청: `Temp/sim-test-request.txt` — 1행 `EditMode`|`PlayMode`, 2행(선택) 그룹 정규식.
+  1초 폴링으로 소비된다. 메뉴 `Tools/Sim/Run {EditMode,PlayMode} Tests` 도 같은 일을 한다.
+- 결과: `Temp/sim-test-result.txt` — 상태·카운트·**실패 전건**(이름 + 메시지 + 스택 6줄).
+- 콜백은 도메인 리로드마다 재등록되므로 **Test Runner 창에서 사용자가 직접 돌린 실행도 수확된다**.
+- 전제: 에디터가 **리컴파일을 한 번 해야** 러너가 로드된다(포커스 시 자동). 즉 트리거가 소비되지
+  않고 남아 있으면 아직 리컴파일 전이라는 뜻 — 실행 실패로 오독하지 말 것.
+- `Temp/` 는 gitignored · 에디터 재시작 시 소실 = 저장소 오염 0. 러너는 M1 잔여 unit(13~20)이
+  전부 EditMode+PlayMode 실행을 요구하므로 스캐폴딩이 아니라 상시 도구로 둔다.

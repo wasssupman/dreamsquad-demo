@@ -42,8 +42,10 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             // Bleed 임계 규칙이 배선돼 있어야 DoT 단언이 의미를 갖는다 — 회귀 가드.
-            Assert.Greater(BattleBridge.GetStackThresholds(StackKind.Bleed).Length, 0,
-                "Bleed ThresholdRule(ApplyDot) 이 BattleBridge 에 배선돼 있어야 함");
+            // (unit 11 머지 2: 규칙 소유가 sim 레지스트리로 넘어갔다. 저작 SO 의 존재가 아니라
+            //  Bridge 가 매치 시작에 **실제로 등록했는지**를 본다.)
+            Assert.Greater(StackThresholdRegistry.Get(StackKind.Bleed).Length, 0,
+                "Bleed ThresholdRule(ApplyDot) 이 StackThresholdRegistry 에 등록돼 있어야 함");
 
             // 카탈로그 가디언을 복제해 outputs 만 갈아끼운다 — 유닛 에셋(unit 2)에 선행 의존하지
             // 않으면서 멜리(직접 IncomingDamage) 경로를 그대로 쓴다.

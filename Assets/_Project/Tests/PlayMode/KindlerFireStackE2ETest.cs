@@ -46,9 +46,10 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             // Fire 임계 규칙 배선(unit 1) 이 없으면 스택만 쌓이고 아무 일도 안 일어난다 — 회귀 가드.
-            var fireRules = BattleBridge.GetStackThresholds(StackKind.Fire);
+            // (unit 11 머지 2: 규칙 소유가 sim 레지스트리로 넘어갔다.)
+            var fireRules = StackThresholdRegistry.Get(StackKind.Fire);
             Assert.Greater(fireRules.Length, 0,
-                "StackModifier_Fire 가 BattleBridge.stackModifierAuthoring 에 배선돼 있어야 함");
+                "StackModifier_Fire 가 StackThresholdRegistry 에 등록돼 있어야 함(Bridge.stackModifierAuthoring 경유)");
 
             var defCatalog = FindDefenderCatalog();
             var archer = defCatalog.ById("archer");

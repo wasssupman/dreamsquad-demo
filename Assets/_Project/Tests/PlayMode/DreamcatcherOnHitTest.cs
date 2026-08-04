@@ -67,8 +67,9 @@ namespace Wassup.Tests.PlayMode
             var (bridge, defender) = PlaceGuardian(em);
 
             // Bleed DoT 규칙이 배선돼 있어야 ember 가 실효 — 회귀 가드.
-            Assert.Greater(BattleBridge.GetStackThresholds(StackKind.Bleed).Length, 0,
-                "Bleed ThresholdRule(ApplyDot) 이 BattleBridge 에 배선돼 있어야 함");
+            // (unit 11 머지 2: 규칙 소유가 sim 레지스트리로 넘어갔다.)
+            Assert.Greater(StackThresholdRegistry.Get(StackKind.Bleed).Length, 0,
+                "Bleed ThresholdRule(ApplyDot) 이 StackThresholdRegistry 에 등록돼 있어야 함");
 
             var card = MakeUnitCard(new DcMechanic
             {
