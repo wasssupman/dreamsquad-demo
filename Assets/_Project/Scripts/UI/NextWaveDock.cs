@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -15,8 +16,13 @@ namespace Wassup.UI
     // is the "NEXT WAVE {n}" / "NO WAVES" control that early-summons the next wave.
     //
     // The NextWave button used to be built inside BattleBridge (the ECS gateway). It now
-    // lives here in the View layer; BattleBridge only exposes read-only wave state
-    // (NextWaveAvailable / NextWaveHasNext / NextWaveNumber) which this dock polls.
+    // lives here in the View layer.
+    //
+    // battle-sim-extraction unit 13(A) — 웨이브·타이머 폴링은 `bridge.X` 직독에서
+    // `MatchSession.Current.ReadModel` 스냅샷으로 옮겼다. 프로퍼티를 5번 따로 읽으면 값들이
+    // 서로 다른 tick 을 볼 수 있다(지금은 단일 스레드라 실害가 없지만 계약이 그렇다) — 그래서
+    // Update 당 **1회 읽고** 그 스냅샷만 쓴다. 버튼의 ForceNextWave 는 아직 직접 호출이며
+    // 커맨드 전환은 bundle C 의 몫이다.
     public class NextWaveDock : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
@@ -166,12 +172,16 @@ namespace Wassup.UI
         private void Update()
         {
             EnsureSubscribed();
-            if (bridge == null || _panel == null || !_panel.activeSelf) return;
+            if (_panel == null || !_panel.activeSelf) return;
+            // 판이 없으면 그릴 것이 없다. dock 패널은 GamePhase.Battle 에서만 활성이고 세션 무장은
+            // BeginPlacement(그보다 앞)에서 끝나므로 이 가드가 구 `bridge == null` 과 같은 창을 막는다.
+            if (!MatchSession.IsActive) return;
+            var rm = MatchSession.Current.ReadModel;
 
             // Timer row — always visible while the dock is shown.
             if (_timerLabel != null)
             {
-                float remaining = bridge.TimerRemaining;
+                float remaining = rm.TimerRemaining;
                 if (remaining < 0f) remaining = 0f;
                 int min = (int)(remaining / 60f);
                 int sec = (int)(remaining % 60f);
@@ -203,7 +213,7 @@ namespace Wassup.UI
 
             // Next-wave row — visible only for generated-wave battles; label/interactable
             // track the remaining waves.
-            bool available = bridge.NextWaveAvailable;
+            bool available = rm.NextWaveAvailable;
             if (_buttonRoot != null && _buttonRoot.activeSelf != available)
                 _buttonRoot.SetActive(available);
             if (!available)
@@ -214,16 +224,16 @@ namespace Wassup.UI
 
             if (available)
             {
-                bool hasNext = bridge.NextWaveHasNext;
+                bool hasNext = rm.NextWaveHasNext;
                 if (_waveButton != null) _waveButton.interactable = hasNext;
                 if (_waveLabel != null)
                 {
-                    _waveLabel.text = hasNext ? $"다음 웨이브 {bridge.NextWaveNumber}" : "웨이브 없음";
+                    _waveLabel.text = hasNext ? $"다음 웨이브 {rm.NextWaveNumber}" : "웨이브 없음";
                 }
 
                 VisualState state = !hasNext
                     ? VisualState.Disabled
-                    : bridge.NextWaveClearReady
+                    : rm.NextWaveClearReady
                         ? VisualState.ClearReady
                         : VisualState.Normal;
                 ApplyVisualState(state);

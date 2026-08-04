@@ -24,8 +24,10 @@ namespace Wassup.Core.Session
         MatchReadModel ReadModel { get; }
 
         // 커맨드 수락/거절. 같은 ClientSeq 재전송은 재실행 없이 같은 receipt 를 돌려준다(멱등).
-        // 순번 갭은 즉시 거절이 아니라 보류 + 타임아웃 후 Session_SeqGap(청사진 ① §3 — jitter 와의
-        // 충돌 회피). 전송 채널이 순서를 보장하지 않으면 세션이 재정렬 버퍼를 소유한다.
+        // 순번 갭 처리는 **전송 채널의 순서 보장 여부가 정한다**: 인프로세스(순서 보장)에서 갭은
+        // 곧 호출자 버그이므로 즉시 `Session_SeqGap` 거절이고 — `LegacyMatchSessionAdapter` 가
+        // 그렇다 — 비순서 채널(M3)에서는 세션이 재정렬 버퍼를 소유해 보류 + 타임아웃 후 거절한다
+        // (청사진 ① §3 의 jitter 충돌 회피). 구현체는 자기 채널에 맞는 쪽을 고르고 근거를 적는다.
         CommandReceipt SendCommand(in MatchCommand command);
 
         // 이번 tick 에 발생한 이벤트. semantic 과 presentation 이 섞여 오고 소비자가

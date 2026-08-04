@@ -1236,6 +1236,11 @@ namespace Wassup.Bridge
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             _simEntityIdCounter = 0; // battle-sim-extraction unit 1 — per-match spawn-ordinal (SimEntityId)
             _simIdToEntity.Clear();  // unit 12 — 역참조도 카운터와 같은 경계에서 리셋(불변식)
+            // unit 13 — 새 판 = 새 세션. 옛 세션을 먼저 Dispose 해야 그것이 잡고 있던 pause lease 가
+            // 반납된다(안 하면 그 판이 영구 정지한다). 무장은 뷰가 폴링을 시작하기 전에 끝나야 한다.
+            _session?.Dispose();
+            _session = new LegacyMatchSessionAdapter(this);
+            Wassup.Core.Session.MatchSession.Arm(_session);
 #if UNITY_EDITOR
             ResetLegacyTraceEntityRegistry();
 #endif
@@ -4075,6 +4080,11 @@ namespace Wassup.Bridge
         // 죽은 엔티티 항목은 남을 수 있어 조회 시 존재를 확인한다(id 는 비재사용이라 오매칭은 없다).
         private readonly Dictionary<int, Entity> _simIdToEntity = new();
 
+        // battle-sim-extraction unit 13 — 이 Bridge 가 소유하는 세션 구현체. 뷰는 이 필드를 보지
+        // 않고 `MatchSession.Current` 를 본다(공개 프로퍼티를 두지 않는 이유 = 뷰가 Bridge 타입으로
+        // 세션을 얻으면 Bridge 해체 때 소비자를 또 만져야 한다). 수명은 여기가 소유한다.
+        private LegacyMatchSessionAdapter _session;
+
         private void AttachSimEntityId(Entity entity)
         {
             if (entity == Entity.Null) return;
@@ -6912,6 +6922,13 @@ namespace Wassup.Bridge
         private void OnDestroy()
         {
             TeardownCurrentBattle();
+
+            // unit 13 — 내가 무장한 세션만 내린다(Release 가 신분을 확인한다). 씬 전환 순서에서
+            // 새 Bridge 가 이미 무장한 뒤 옛 Bridge 의 OnDestroy 가 도착하면, 무조건 null 대입은
+            // 새 세션을 지운다. Dispose 는 무장 해제 뒤 — 그 사이 뷰가 죽은 세션을 잡지 않도록.
+            Wassup.Core.Session.MatchSession.Release(_session);
+            _session?.Dispose();
+            _session = null;
 
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
             {

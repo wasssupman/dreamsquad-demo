@@ -22,9 +22,39 @@
   `PlacementPhaseView.FinishPlacement` · `MenuPopup` pause): 직접 호출 → `session.SendCommand`.
   preflight(`CanPlaceDefenderAt` 등)은 **커맨드 검증과 같은 함수를 공유**해 이중 계산을 없앤다.
 
+## 세션 획득 방식 (2026-08-04 사용자 결정)
+
+**정적 로케이터 `MatchSession.Current`.** Bridge 가 `BeginPlacement` 에서 `Arm`, `OnDestroy` 에서
+`Release`. 뷰는 `MatchSession.IsActive` 로 가드하고 `MatchSession.Current.ReadModel` 을 읽는다.
+
+- 채택 근거: 뷰가 `BattleBridge` 타입으로 세션을 얻으면(대안 `Bridge.Session` 프로퍼티)
+  Bridge 가 해체되는 M1 말에 소비자 82파일을 **한 번 더** 만져야 한다. 로케이터를 거치면 스왑은
+  `Arm()` 1곳 교체이고 뷰는 무변이다. 인스펙터 주입은 `IMatchSession` 이 인터페이스라 제공자
+  MonoBehaviour 신설 + 씬 82곳 연결이 필요해 기각.
+- **`Bridge.Session` 공개 프로퍼티를 두지 않는다** — 두면 뷰가 그것을 쓰고 채택 근거가 무너진다.
+- 정적 전역의 위험은 이 프로젝트에서 실측했다(`TestModeContext.RuntimeImportsBlocked` 의 테스트 간
+  누출 의심). 그래서 ① `Release(expected)` 는 신분 일치 시에만 해제 ② `Arm` 이 살아 있는 세션을
+  덮으면 경고 ③ `ResetForTests()`. 셋 다 EditMode 로 고정(`MatchSessionLocatorTests`).
+- 수명은 로케이터가 아니라 **만든 쪽(Bridge)이 소유**한다. `BeginPlacement` 는 `Dispose` → 생성 →
+  `Arm` 순이며 **Dispose 선행이 계약**이다(옛 세션이 잡은 pause lease 미반납 = 그 판 영구 정지).
+
 ## 구현
 
 - 순서는 A → B → C. A 는 읽기만이라 가장 안전하고, C 는 게임 상태를 바꾸므로 마지막.
+
+### bundle A 의 실제 분해 (2026-08-04 실측 정정)
+
+A 가 나열한 소비자를 **한 커밋에 전부 옮길 수 없다**. 읽기 모델의 표면이 부족하고, 한 파일은
+분류 자체가 틀렸다:
+
+| 조각 | 대상 | 상태 |
+|---|---|---|
+| **A1** | `MatchSession` 로케이터 + Bridge 공급 + `NextWaveDock`(폴링 5종) | ✅ 완료 |
+| **A2** | `SpawnAlertPresenter` forecast — `TryGetSpawnAlertForecast` 가 **캐시 배열 참조**를 넘긴다. 호출자 소유 버퍼(`TryGetSpawnPathSim` 이 이미 쓰는 관용구)로 세션 메서드 신설 | 대기 |
+| **A3** | `CostDisplay` · `DefenderSelector` — 읽기 모델이 `SupportedCurrency=false` 이고 **쿨타임 표면이 아예 없다**(키별 조회라 필드가 아니라 메서드가 필요). unit 15 영역과 겹치므로 경계를 먼저 정한다 | 대기 |
+
+- **`ScoreHudView` 는 bundle A 가 아니다** — bridge 폴링이 **0** 이고 점수는 push 로 들어온다.
+  **bundle B** 로 이관한다(스펙 초안의 분류 오류).
 - 각 묶음 후 **PlayMode 스모크**로 그 화면이 살아 있음을 확인한다(A: HUD 수치 갱신, B: 승패·집계
   연출, C: 배치·카드·웨이브 호출).
 - **드림캐쳐 손패는 C 에서 가장 무겁다** — 현재 `DreamcatcherHandController` 가 덱·게이지·부착
@@ -40,3 +70,14 @@
   (grep 증명. 좌표·픽 서비스 등 뷰 질의는 잔존 허용 — 청사진 ① §6 "계약 밖").
 - 골든 7종 byte diff 0 — **재배선은 sim 을 건드리지 않는다**가 이 unit 의 핵심 계약이고 골든이 그
   증인이다. diff 가 나면 재배선이 규칙을 옮겼다는 뜻이므로 되돌린다.
+
+> 진행 기록 2026-08-04 — **A1 완료**. 신규 `Core/Session/MatchSession.cs` ·
+> `Tests/EditMode/MatchSessionLocatorTests.cs`(3건), 수정 `Bridge/BattleBridge.cs`(무장/해제) ·
+> `UI/NextWaveDock.cs`(스냅샷 1회 읽기) · `Core/Session/IMatchSession.cs`(순번 갭 주석 정정 —
+> 인터페이스는 "보류 후 거절"이라 적혀 있었으나 실제 기준은 전송 채널의 순서 보장 여부다).
+> 검증: 4어셈블리 오류 0 · 로케이터 집중 3/3 · 전체 EditMode **1898 통과/실패 0**(이전 1895 →
+> +3 = 신규가 실제로 실행된 증거) · **골든 7종 byte diff 0**(승격 확인 + 백업 대비 cmp 7/7).
+> 골든 14 Play 세션에서 `[MatchSession]` 교체 경고 **0** — 라이브 경로의 Dispose 선행/Release
+> 순서가 맞다는 뜻(로그에 보이는 경고 2건은 그것을 단정하는 테스트가 낸 것이다).
+> **뷰 폴링을 옮겨도 골든이 안 움직인다는 것은 당연하지 않다** — 뷰가 Bridge 프로퍼티를 읽는
+> 행위가 sim 상태를 건드렸다면(지연 초기화·캐시 갱신 등) diff 가 났을 것이다.
