@@ -27,9 +27,16 @@ unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 �
 
 ## 작업 단위 목록 (M1 — seam 선행 적출)
 
-> 분해 원칙: 청사진(7~9)은 **3장 캡·1주 timebox**(설계 정본 M1-1). 11+ 상세 unit 은
-> 청사진이 확정한 계약 위에서 작성한다 — 지금 쓰면 추측 스펙이 된다. CLAUDE.md
-> 제약 1~4 의 정식 개정은 **첫 구현 unit(11) 커밋**에서 수행한다(위 이행표 계약).
+> 분해 원칙: 청사진(7~9)은 **3장 캡·1주 timebox**(설계 정본 M1-1). 상세 unit(12~20)은 청사진이
+> 계약을 확정한 뒤 도출했다. CLAUDE.md 제약 1~4 이행은 unit 11 커밋에서 명문화 완료.
+>
+> **순서 의존**: 12(파사드) → 13(재배선) → 14·15·16(규칙 적출, 이 셋은 상호 독립) → 17(asmdef) →
+> 18(이식) → 19(시계·로그) → 20(parity·스왑). 12·13 을 구 sim 위에서 끝내는 것이 스왑 반경을
+> 1곳으로 만드는 전제이고, 17 을 18 앞에 두는 것은 이식 중 Unity 유입을 컴파일러가 막게 하려는 것이다.
+>
+> **골든 계약**: units 12~18 은 **byte diff 0** 이 완료 기준이다(규칙 이동이 결과를 바꾸지 않았다는
+> 증인). 골든을 바꾸는 unit 은 **19 하나**(슬로모 격하가 통화 누적 rate 를 바꾼다)이고, 20 은 A/B
+> parity 로 신 sim 을 구 sim 기준선에 맞춘다.
 
 | 파일 | 작업 구분 | 목적 |
 |---|---|---|
@@ -38,8 +45,16 @@ unit 8 리뷰 보완 반영 · unit 11 선행 머지 1·2 구현(Unity 검증 �
 | [8_data_mapping_blueprint.md](8_data_mapping_blueprint.md) | 청사진 ② | IComponentData 96 + IBufferElementData 21 → plain struct 대응표 + `RequireForUpdate` 35 게이트 이식 매트릭스 |
 | [9_tick_pipeline_blueprint.md](9_tick_pipeline_blueprint.md) | 청사진 ③ | order-capture 기반 틱 페이즈 순서도 + 동률 예외·병합 duration 정책 명문화 |
 | [10_salvage_matrix.md](10_salvage_matrix.md) | 판정표 | 시스템 44 · 채널 27 · Bridge 서브시스템 ≈60건 conform/adapt/rewrite/discard |
-| [11_preparatory_merges.md](11_preparatory_merges.md) | 선행 머지 3건 | 뷰 상수 분리(✅ `b564e768`) · 스택 임계 의존 역전(✅ `c0a361cb`) · sim 폴더의 비-sim 코드 퇴거(미착수) — **Unity EditMode/Play 검증 대기** |
-| 12+ (머지·검증 완료 후 분해) | 구현 | adapter(유일 drain)·소비자 재배선 82파일·Bridge 매치 규칙 적출 3단·카드 트랜잭션 원자화·통화 5종 sim 이관·pause/slow-mo 시계 정책·sim lib 이식(맥락 4)·커맨드로그 이중 기록·A/B parity+성능 게이트(ARM64 IL2CPP p95/p99)+스왑·RTT 150ms 수용 리뷰 — 설계 정본 §2 M1 순서 + `m1_salvage_matrix.md` §6 초안 |
+| [11_preparatory_merges.md](11_preparatory_merges.md) | 선행 머지 3건 | 뷰 상수 분리(✅ `b564e768`) · 스택 임계 의존 역전(✅ `c0a361cb`) · 비-sim 코드 퇴거(✅ `562f83b7`) — **Unity EditMode/Play 검증 대기** |
+| [12_session_facade.md](12_session_facade.md) | seam 도입 | `IMatchSession` + `LegacyMatchSessionAdapter` — 구 sim 위 파사드, 소비자 변경 0 |
+| [13_consumer_rewiring.md](13_consumer_rewiring.md) | 재배선 | 소비자 82파일을 A(폴링→읽기 모델)·B(push→이벤트)·C(입력→커맨드) 3묶음으로 |
+| [14_rule_extraction_wave_outcome.md](14_rule_extraction_wave_outcome.md) | 규칙 적출 ① | 웨이브·승패·타이머·점수/유출 — 읽기 모델의 신설 카운터를 여기서 채운다 |
+| [15_rule_extraction_placement_currency.md](15_rule_extraction_placement_currency.md) | 규칙 적출 ② | 배치 규칙 + 통화 5종(코스트·쿨다운 2·유출·게이지) — 커맨드 검증이 sim 안에서 닫힌다 |
+| [16_rule_extraction_dreamcatcher.md](16_rule_extraction_dreamcatcher.md) | 규칙 적출 ③ | 드림캐쳐 덱 소유권 + 카드 5단계→원자 트랜잭션(롤백 경로 소멸) |
+| [17_sim_lib_skeleton.md](17_sim_lib_skeleton.md) | asmdef 격리 | `Wassup.Sim` 골격(UnityEngine 참조 = 컴파일 에러) + conform 유틸 이주 |
+| [18_context_port.md](18_context_port.md) | 이식 본체 | 맥락 4단계(Units→Movement→Effects→Combat) — 청사진 ③ 을 코드로, 단계별 골든 대조 |
+| [19_clock_policy_commandlog.md](19_clock_policy_commandlog.md) | 시계·로그 | UI 슬로모 처분(골든 재생성 유일 지점) + 커맨드로그 기록 개시 |
+| [20_ab_parity_swap.md](20_ab_parity_swap.md) | M1 종료 | A/B parity + ARM64 IL2CPP 성능 게이트 + RTT 리뷰 → 스왑(구현체 1곳) |
 
 ## M0 종료 판정 (2026-08-04)
 
