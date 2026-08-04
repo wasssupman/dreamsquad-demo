@@ -1,11 +1,13 @@
 // Unit 11 — modifier-framework-and-healer EditMode tests.
-// Tests 1, 2, 5 are fully implemented.
-// Tests 3 and 4 are skipped (see [Ignore] attributes for rationale).
+// Tests 1, 2, 3, 5 are fully implemented (3 은 battle-sim-extraction unit 11 머지 2 가
+// StackThresholdRegistry 를 만들며 Ignore 해제됨).
+// Test 4 만 skipped (see [Ignore] attribute for rationale).
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using Wassup.Battle.Effects;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -46,6 +48,17 @@ namespace Wassup.Tests.EditMode
             var singletonCc = _em.CreateEntity();
             _em.AddComponentData(singletonCc,
                 new EnemyCcEventsSingleton { queue = ccQueue });
+
+            // battle-sim-extraction unit 11(머지 2) — StackModifierTickSystem 의 게이트는
+            // Cc·Dot·Stat 3중 AND 다. DotApply 싱글턴이 없어서 이 픽스처에서 그 시스템이
+            // **한 번도 돌지 않고 있었다**(임계 테스트가 Ignore 였던 것과 별개의 공백).
+            _dotQueue = new NativeQueue<DotApplyEvent>(Allocator.Persistent);
+            var singletonDot = _em.CreateEntity();
+            _em.AddComponentData(singletonDot,
+                new DotApplyEventsSingleton { queue = _dotQueue });
+
+            // 임계 레지스트리는 static 이라 테스트 간 누수를 막기 위해 매번 비운다.
+            StackThresholdRegistry.Clear();
             // ccQueue is owned by the singleton entity; disposed when world is disposed
             // via EnemyCcEventsSingleton.queue — no separate tracking needed here because
             // the World.Dispose path does not auto-dispose NativeCollections. We capture
@@ -54,6 +67,7 @@ namespace Wassup.Tests.EditMode
         }
 
         private NativeQueue<EnemyCcEvent> _ccQueue;
+        private NativeQueue<DotApplyEvent> _dotQueue;
 
         [TearDown]
         public void TearDown()
@@ -61,6 +75,8 @@ namespace Wassup.Tests.EditMode
             if (_statQueue.IsCreated)  _statQueue.Dispose();
             if (_stackQueue.IsCreated) _stackQueue.Dispose();
             if (_ccQueue.IsCreated)    _ccQueue.Dispose();
+            if (_dotQueue.IsCreated)   _dotQueue.Dispose();
+            StackThresholdRegistry.Clear();
             _world?.Dispose();
         }
 
@@ -300,23 +316,81 @@ namespace Wassup.Tests.EditMode
 
         // ── Test 3 ────────────────────────────────────────────────────────────────
         // Stack edge multi-threshold (4→7 jump fires all crossed thresholds).
-        // BattleBridge._stackThresholds is private static with no public injection hook.
-        // Cannot mock without modifying production code. Skipped; tracked as future spec item.
+        // battle-sim-extraction unit 11(머지 2)가 임계 조회를 BattleBridge 에서 sim 소유
+        // StackThresholdRegistry 로 뒤집어, 이 테스트가 요구했던 주입 지점이 생겼다
+        // (이전 Ignore 사유: "private static with no public setter" — 그 결합이 sim→Bridge
+        //  프로덕션 참조의 유일한 지점이었다). 이제 레지스트리에 직접 등록해 검증한다.
 
         [Test]
-        [Ignore("BattleBridge._stackThresholds is private static with no public setter. " +
-                "Multi-threshold crossing test requires a test-injection hook or a " +
-                "StackThresholdRegistry abstraction. Track as follow-up spec.")]
         public void StackModifier_MultiThreshold_FourToSeven_Fires_All_Crossed_Thresholds()
         {
-            // TODO: Once BattleBridge exposes SetStackThresholdsForTest(kind, rules[]) or
-            // StackModifierTickSystem is decoupled from the static registry via an injected
-            // IStackThresholdRegistry, implement this test:
-            //   1. Inject rules at atStack=5 and atStack=6 for StackKind.Fire.
-            //   2. Enqueue StackModifierApplyEvent(kind=Fire, countDelta=4, maxStack=10).
-            //   3. Tick -> verify stackCount=4, lastTriggeredStack=0.
-            //   4. Enqueue another event(countDelta=3) -> Tick.
-            //   5. Assert ccQueue.Count == 2 (rules at 5 and 6 both fired).
+            // 5·6 스택에 각각 Edge 규칙(ApplyStun → EnemyCc 채널). 오름차순 계약 준수.
+            StackThresholdRegistry.Register(StackKind.Fire, new[]
+            {
+                new ThresholdRule
+                {
+                    atStack = 5, mode = ThresholdMode.Edge,
+                    derivedKind = DerivedEffectKind.ApplyStun, magnitude = 0.5f,
+                },
+                new ThresholdRule
+                {
+                    atStack = 6, mode = ThresholdMode.Edge,
+                    derivedKind = DerivedEffectKind.ApplyStun, magnitude = 0.5f,
+                },
+            });
+
+            var e = CreateEntityWithModifierStats();
+
+            // 1차: 4스택 — 임계(5·6) 미도달이라 아무 것도 발화하지 않는다.
+            _stackQueue.Enqueue(new StackModifierApplyEvent
+            {
+                target = e, kind = StackKind.Fire, countDelta = 4, maxStack = 10,
+                perAppDuration = 100f, source = Entity.Null,
+            });
+            Tick();
+
+            var slots = _em.GetBuffer<StackModifierSlot>(e);
+            Assert.AreEqual(1, slots.Length, "Fire 슬롯 1개");
+            Assert.AreEqual(4, slots[0].stackCount, "4스택 누적");
+            // 발화가 없어도 엣지 캐시는 현재 스택으로 전진한다(DispatchThresholds 말미 계약).
+            Assert.AreEqual(4, slots[0].lastTriggeredStack,
+                "임계 미도달이어도 lastTriggeredStack 은 stackCount 로 갱신된다");
+            Assert.AreEqual(0, _ccQueue.Count, "임계 미도달 — CC 발화 없음");
+
+            // 2차: +3 → 7스택. 4→7 점프가 5·6 **둘 다** 건너뛰므로 둘 다 발화해야 한다.
+            _stackQueue.Enqueue(new StackModifierApplyEvent
+            {
+                target = e, kind = StackKind.Fire, countDelta = 3, maxStack = 10,
+                perAppDuration = 100f, source = Entity.Null,
+            });
+            Tick();
+
+            slots = _em.GetBuffer<StackModifierSlot>(e);
+            Assert.AreEqual(7, slots[0].stackCount, "7스택 누적");
+            Assert.AreEqual(7, slots[0].lastTriggeredStack, "엣지 캐시가 7로 전진");
+            Assert.AreEqual(2, _ccQueue.Count,
+                "4→7 점프는 건너뛴 임계(5·6)를 모두 발화한다 — 다중 임계 계약");
+        }
+
+        [Test]
+        public void StackThresholdRegistry_UnregisteredKind_ReturnsEmpty_AndFiresNothing()
+        {
+            // 머지 2 회귀 핀: 미등록 kind 는 빈 배열이어야 하고(예외/null 아님),
+            // 임계가 없으면 스택만 쌓이고 파생 효과는 발화하지 않는다.
+            Assert.IsNotNull(StackThresholdRegistry.Get(StackKind.Ice));
+            Assert.AreEqual(0, StackThresholdRegistry.Get(StackKind.Ice).Length);
+
+            var e = CreateEntityWithModifierStats();
+            _stackQueue.Enqueue(new StackModifierApplyEvent
+            {
+                target = e, kind = StackKind.Ice, countDelta = 9, maxStack = 10,
+                perAppDuration = 100f, source = Entity.Null,
+            });
+            Tick();
+
+            Assert.AreEqual(9, _em.GetBuffer<StackModifierSlot>(e)[0].stackCount);
+            Assert.AreEqual(0, _ccQueue.Count, "규칙 미등록 — 파생 발화 없음");
+            Assert.AreEqual(0, _dotQueue.Count, "규칙 미등록 — DoT 발화 없음");
         }
 
         // ── Test 4 ────────────────────────────────────────────────────────────────

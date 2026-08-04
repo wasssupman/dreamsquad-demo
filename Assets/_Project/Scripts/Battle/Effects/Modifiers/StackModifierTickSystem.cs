@@ -2,11 +2,12 @@
 // detect edge threshold crossings (multi-threshold: all crossed thresholds fire),
 // dispatch derived effects to EnemyCcEvents / StatModifierApplyEvents (1-frame delay),
 // and remove expired slots.
-// Not Burst-compiled: BattleBridge static SO registry uses a managed Dictionary.
+// Not Burst-compiled: StackThresholdRegistry uses a managed Dictionary.
+// (battle-sim-extraction unit 11 머지 2 — 규칙 조회가 BattleBridge 에서 sim 소유 레지스트리로
+//  뒤집혔다. Bridge 는 저작 SO 를 등록만 하고, sim 은 Bridge 를 모른다.)
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Wassup.Bridge;
 using Wassup.Data;
 
 namespace Wassup.Battle.Effects
@@ -87,7 +88,7 @@ namespace Wassup.Battle.Effects
             NativeQueue<DotApplyEvent> dotQ,
             NativeQueue<StatModifierApplyEvent> statQ)
         {
-            ThresholdRule[] rules = BattleBridge.GetStackThresholds(kind);
+            ThresholdRule[] rules = StackThresholdRegistry.Get(kind);
             if (rules == null || rules.Length == 0)
             {
                 s.lastTriggeredStack = s.stackCount;

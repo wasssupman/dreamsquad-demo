@@ -236,7 +236,8 @@ namespace Wassup.Bridge
         private readonly Dictionary<DefenderUnitData, int> _patrolUnitIndex = new();
         private readonly List<BlockingHazardSO> _blockingHazardSoRegistry = new();
         private readonly Dictionary<BlockingHazardSO, int> _blockingHazardSoIndex = new();
-        private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
+        // battle-sim-extraction unit 11(머지 2) — 스택 임계 레지스트리는
+        // Wassup.Battle.Effects.StackThresholdRegistry(sim 소유)로 이주했다. Bridge 는 등록자다.
         private readonly Dictionary<Entity, GameObject> _blockingHazardVisualMap = new();
         private Transform _blockingHazardVisualRoot;
         // season-gimmick-overwork unit 6 — 레드불 픽업 엔티티↔뷰 GameObject 매핑.
@@ -6736,12 +6737,12 @@ namespace Wassup.Bridge
 
         private void BuildStackThresholdRegistry()
         {
-            _stackThresholds.Clear();
+            Wassup.Battle.Effects.StackThresholdRegistry.Clear();
             if (stackModifierAuthoring == null) return;
             foreach (var so in stackModifierAuthoring)
             {
                 if (so == null) continue;
-                _stackThresholds[so.kind] = so.thresholds ?? System.Array.Empty<Wassup.Data.ThresholdRule>();
+                Wassup.Battle.Effects.StackThresholdRegistry.Register(so.kind, so.thresholds);
             }
         }
 
@@ -6815,17 +6816,6 @@ namespace Wassup.Bridge
                     heatMaxStack  = od.heatMaxStack,
                 });
             }
-        }
-
-        /// <summary>
-        /// Called by StackModifierTickSystem (managed context — not Burst).
-        /// Returns the ThresholdRule array for the given StackKind, or empty if none registered.
-        /// </summary>
-        public static Wassup.Data.ThresholdRule[] GetStackThresholds(Wassup.Battle.Effects.StackKind kind)
-        {
-            if (_stackThresholds.TryGetValue(kind, out var rules))
-                return rules;
-            return System.Array.Empty<Wassup.Data.ThresholdRule>();
         }
 
         private static Vector3 ShapeToHazardVisualScale(HazardShape shape, int radius, float yScale)
