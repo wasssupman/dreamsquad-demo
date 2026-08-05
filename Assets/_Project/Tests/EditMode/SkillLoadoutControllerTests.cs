@@ -128,6 +128,11 @@ namespace Wassup.Tests.EditMode
         public void Seed_Zero_Is_Replaced_With_Nonzero_At_Roll()
         {
             _ctl.Configure(_pool, 2, seed: 0);
+            // battle-sim-extraction — 폴백은 남아 있지만 **더는 조용하지 않다**(리뷰 M5).
+            // 그 침묵이 골든의 configHash 를 흔든 결함이었다. 이 테스트는 폴백 동작을 고정하므로
+            // 에러를 기대해야 한다 — 기대하지 않으면 이 테스트가 그 경고를 삼킨다.
+            UnityEngine.TestTools.LogAssert.Expect(UnityEngine.LogType.Error,
+                new System.Text.RegularExpressions.Regex("시드 미설정"));
             _ctl.Roll();
             Assert.AreNotEqual(0, _ctl.Seed);
         }

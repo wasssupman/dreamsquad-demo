@@ -7,6 +7,10 @@ using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Sim.Match;
 
+// battle-sim-extraction unit 15-B — 판정 본체가 `Sim/Match/MatchPlacementRules.Spatial` 로
+// 이사했으므로 **sim 규칙을 직접** 부른다. `BattleBridge.SpatialPlacementCheck` 는 프로덕션
+// 호출처 2곳(하이라이트 수집·재배치)을 위한 포워더로만 남는다 — 테스트가 그 이름을 계속
+// 쓰면 unit 17 asmdef 분리 후에도 테스트 어셈블리가 Bridge 를 참조하게 된다.
 namespace Wassup.Tests.EditMode
 {
     // placement-eligible-tile-highlight unit 2 — 공간 배치 술어(판정 CanPlaceDefenderAt 과 하이라이트
@@ -33,7 +37,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.None,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0)));
+                    MatchPlacementRules.Spatial(map, new HashSet<Vector2Int>(), new int2(0, 0)));
             }
             finally { map.Dispose(); }
         }
@@ -45,7 +49,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1)));
+                    MatchPlacementRules.Spatial(map, new HashSet<Vector2Int>(), new int2(1, 1)));
             }
             finally { map.Dispose(); }
         }
@@ -57,9 +61,9 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(3, 0)));
+                    MatchPlacementRules.Spatial(map, new HashSet<Vector2Int>(), new int2(3, 0)));
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(-1, 0)));
+                    MatchPlacementRules.Spatial(map, new HashSet<Vector2Int>(), new int2(-1, 0)));
             }
             finally { map.Dispose(); }
         }
@@ -72,7 +76,7 @@ namespace Wassup.Tests.EditMode
             {
                 var occupied = new HashSet<Vector2Int> { new Vector2Int(0, 0) };
                 Assert.AreEqual(PlacementRejectReason.Occupied,
-                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(0, 0)));
+                    MatchPlacementRules.Spatial(map, occupied, new int2(0, 0)));
             }
             finally { map.Dispose(); }
         }
@@ -81,7 +85,7 @@ namespace Wassup.Tests.EditMode
         public void UncreatedMap_ReturnsMissingMap()
         {
             Assert.AreEqual(PlacementRejectReason.MissingMap,
-                BattleBridge.SpatialPlacementCheck(default, new HashSet<Vector2Int>(), new int2(0, 0)));
+                MatchPlacementRules.Spatial(default, new HashSet<Vector2Int>(), new int2(0, 0)));
         }
     }
 }

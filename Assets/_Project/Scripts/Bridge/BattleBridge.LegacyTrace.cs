@@ -71,7 +71,7 @@ namespace Wassup.Bridge
         {
             if (_legacyTraceRecorder == null) return null;
 
-            bool defeated = !IsEndless && _outcome.GoalReachedCount >= _outcome.EffectiveLeakLimit;
+            bool defeated = !_outcome.IsEndless && _outcome.GoalReachedCount >= _outcome.EffectiveLeakLimit;
             ScoreMath.BattleScore score = _legacyTraceHasFinalScore
                 ? _legacyTraceFinalScore
                 : _outcome.CalculateScore(defeated, (float)_battleClock);

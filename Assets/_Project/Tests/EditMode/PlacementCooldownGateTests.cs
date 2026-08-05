@@ -1,6 +1,7 @@
 using System.Reflection;
 using NUnit.Framework;
 using Unity.Collections;
+using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
@@ -28,6 +29,9 @@ namespace Wassup.Tests.EditMode
         private Material _unitMaterial;
         private GeneratedMap _map;
         private GameManager _previousInstance;
+        // 배치 성사 경로는 `CreateDefenderEntity` → `EntityManager.CreateEntity` 를 지나므로
+        // 쿨타임 **시작** 을 보려면 실제 World 가 필요하다(게이트 4건은 필요 없다).
+        private World _world;
 
         [SetUp]
         public void SetUp()
@@ -73,6 +77,9 @@ namespace Wassup.Tests.EditMode
             };
             for (int i = 0; i < 16; i++) _map.tiles[i] = MapTileType.Place;
 
+            _world = new World("PlacementCooldownGateTests");
+            SetField(_bridge, "_world", _world);
+            SetField(_bridge, "_em", _world.EntityManager);
             SetField(_bridge, "_generatedMap", _map);
             SetField(_bridge, "_placementAllowed", true);
             _bridge.SetDefenderPool(new[] { _unit });
@@ -86,6 +93,7 @@ namespace Wassup.Tests.EditMode
             if (_gmGo != null) Object.DestroyImmediate(_gmGo);
             if (_unit != null) Object.DestroyImmediate(_unit);
             if (_unitMaterial != null) Object.DestroyImmediate(_unitMaterial);
+            _world?.Dispose();
             SetInstance(_previousInstance);
         }
 
@@ -132,6 +140,47 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(_bridge.CanPlaceDefenderAt(1, 1, _unit, out var reason));
             Assert.AreEqual(PlacementRejectReason.None, reason);
+        }
+
+        // ── 쿨타임 **시작** 의 증인 ────────────────────────────────────────
+        //
+        // 위 4건은 전부 `_cooldown.StartCooldown` 을 직접 부르고 게이트만 본다. 그래서 그것만으로는
+        // `BattleBridge.StartPlacementCooldown` 호출을 지워도 전부 통과한다 — 쿨타임이 어디서도
+        // 시작되지 않는데 초록이 된다(골든도 못 잡는다: 하네스는 타입마다 1회만 배치하고 쿨타임은
+        // 정규 상태 라인에 없다). unit 15-A 가 시작 책임을 `DefenderSelector` 에서 걷어왔으므로
+        // 예전의 UI 구독이라는 증인마저 사라졌다. 아래 2건이 그 자리를 메운다.
+        //
+        // 이 픽스처는 **규칙 단계까지만** 세운다. 배치는 커밋(타일 점유 + 통화 청구) 뒤에 엔티티
+        // 생성과 뷰 작업으로 이어지는데, 그 단계는 타일맵/Grid 배선을 요구하므로 여기서 예외로
+        // 끝난다. 쿨타임 청구는 **커밋 지점**에 있으므로 그 전에 일어나고, 그것이 이 테스트가
+        // 검증하는 계약이다(`StartPlacementCooldown` 호출을 지우면 아래 단정이 깨진다).
+        private void CommitPlacementIgnoringViewStage(System.Action commit)
+        {
+            try { commit(); }
+            catch (MissingReferenceException) { /* 뷰 단계 — 이 픽스처의 범위 밖 */ }
+            catch (System.NullReferenceException) { /* 〃 */ }
+        }
+
+        [Test]
+        public void PlaceDefenderAs_Starts_The_Cooldown()
+        {
+            Assert.AreEqual(0f, _cooldown.RemainingFor(_unit), "전제: 쿨타임 없음");
+
+            CommitPlacementIgnoringViewStage(() => _bridge.PlaceDefenderAs(1, 1, _unit));
+
+            Assert.Greater(_cooldown.RemainingFor(_unit), 0f,
+                "배치 커밋이 쿨타임을 시작해야 한다 — StartPlacementCooldown 호출이 사라지면 깨진다");
+        }
+
+        [Test]
+        public void TryBeginDefenderDeployment_Starts_The_Cooldown()
+        {
+            Assert.AreEqual(0f, _cooldown.RemainingFor(_unit), "전제: 쿨타임 없음");
+
+            CommitPlacementIgnoringViewStage(() => _bridge.TryBeginDefenderDeployment(2, 2, _unit, out _));
+
+            Assert.Greater(_cooldown.RemainingFor(_unit), 0f,
+                "드래그 배치 경로도 같은 커밋 지점에서 쿨타임을 시작해야 한다");
         }
 
         private static void SetField(object target, string name, object value)

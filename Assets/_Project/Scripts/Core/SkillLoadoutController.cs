@@ -124,7 +124,17 @@ namespace Wassup.Core
                 return _picked;
             }
 
-            if (_seed == 0) _seed = unchecked((int)System.DateTime.UtcNow.Ticks) | 1;
+            if (_seed == 0)
+            {
+                // 리뷰 반영(M5) — 벽시계 폴백은 **남기되 조용하지 않게** 한다. 이것이 정확히
+                // `6f1bf77f` 가 고친 configHash 불안정의 원인이고, 매치 진입 3경로가 전부
+                // `Roll(NextSkillRollSeed())` 를 쓰는 지금 이 분기에 오는 것은 새 호출자의 실수다.
+                // (인자 없는 Roll 은 테스트가 쓰므로 public 을 유지한다.)
+                Debug.LogError("[SkillLoadoutController] 시드 미설정 — 벽시계로 폴백한다. 같은 " +
+                               "matchSeed 가 매 실행 다른 로드아웃을 내고 configHash 가 흔들린다. " +
+                               "매치 경로는 Roll(GameManager.NextSkillRollSeed()) 를 쓸 것.");
+                _seed = unchecked((int)System.DateTime.UtcNow.Ticks) | 1;
+            }
             var rng = new System.Random(_seed);
 
             var working = new List<SkillData>(_pool);

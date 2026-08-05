@@ -609,6 +609,11 @@ namespace Wassup.UI
                     text = "X 코스트 부족"; color = new Color(1f, 0.42f, 0.36f, 1f); break;
                 case PlacementRejectReason.Occupied:
                     text = "■ 점유됨"; color = new Color(1f, 0.76f, 0.30f, 1f); break;
+                // battle-sim-extraction unit 15-A — 규칙이 내는 사유이므로 라벨을 준다.
+                // 정상 경로에서는 `DefenderDragSlot` 이 쿨타임 중 드래그 시작 자체를 막아 여기까지
+                // 오지 않는다(이중 방어). 그래도 뭉개면 커맨드/디버그 경로의 거절 진단이 어렵다.
+                case PlacementRejectReason.OnCooldown:
+                    text = "⏱ 재배치 대기"; color = new Color(0.55f, 0.78f, 1f, 1f); break;
                 default:
                     text = "— 배치 불가"; color = new Color(0.82f, 0.83f, 0.88f, 1f); break;
             }

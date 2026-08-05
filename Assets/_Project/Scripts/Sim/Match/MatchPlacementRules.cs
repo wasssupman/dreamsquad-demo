@@ -19,8 +19,13 @@ namespace Wassup.Sim.Match
     /// **판정 순서가 계약이다.** 사유 우선순위가 바뀌면 UI 메시지와 receipt 의 거절 사유가
     /// 달라진다 — 뷰가 "왜 안 놓이는지"를 그 사유로 그린다(`DefenderDragPlacementController`).
     ///
-    /// 엔진 의존 잔재: `GeneratedMap`(NativeArray)·`Vector2Int` 를 받는다. `MatchWaveSchedule` 과
-    /// 같은 이유로 이 unit 의 범위 밖이고, 데이터 계층의 엔진 분리는 unit 18 이 맡는다.
+    /// ⚠ **엔진 의존 잔재 — 이 파일은 `using UnityEngine` 을 갖는다**(`HashSet&lt;Vector2Int&gt;` 점유
+    /// 집합 + `new Vector2Int(...)`). `Sim/Match/` 의 다른 타입들은 갖지 않으므로 **폴더 단위로
+    /// "엔진 무참조" 라고 말하면 거짓**이다. unit 17 은 이 참조를 컴파일 에러로 만드는 것이 완료
+    /// 기준이므로, 그때 `Vector2Int`·`GeneratedMap`(NativeArray)·`SpawnEntry`·`GeneratedWavePlan`
+    /// 4종이 동시에 걸린다 — `17_sim_lib_skeleton.md` 에 목록으로 적어 뒀다. `int2` 로 갈아타려면
+    /// `BattleBridge._occupiedTiles` 까지 함께 바꿔야 해서 이 unit 범위 밖이다.
+    /// 드리프트 게이트는 `SimEngineIndependenceTests`.
     /// </summary>
     public static class MatchPlacementRules
     {

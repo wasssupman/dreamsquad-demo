@@ -23,8 +23,11 @@ namespace Wassup.Sim.Match
         private int _defeatGoalReachedCount;
         private float _timerDurationSec;
         private bool _endless;
-        private int _timeScorePerSecond = 100;
-        private int _stressScorePerPoint = 900;
+        // 초기값을 두지 않는다(리뷰 반영). 두 `Configure` 호출처가 항상 덮어쓰므로 관측 불가한
+        // 죽은 값이면서, `ScoreRulesData` 기본값·Bridge 폴백과 함께 같은 상수의 **3번째 사본**이
+        // 됐다. 미설정 상태에서 0점이 나오는 것이 조용히 기본 밸런스로 채점되는 것보다 낫다.
+        private int _timeScorePerSecond;
+        private int _stressScorePerPoint;
 
         // ── 매치 누적(경계에서 리셋) ─────────────────────────────────────
         private int _goalReachedCount;
@@ -72,6 +75,12 @@ namespace Wassup.Sim.Match
         public void ClearResultLatch() => _resultShown = false;
 
         public bool ResultShown => _resultShown;
+        /// <summary>
+        /// 리뷰 반영(M1) — `endless` 의 **단일 진실**. 이 값은 `Configure` 로 굳고, Bridge 가
+        /// `ActiveDeck` 을 라이브로 다시 읽으면 덱 교체 축에서 두 판정이 갈린다(유출 패배 억제와
+        /// HUD 분모가 서로 다른 답을 내는 형태). 그래서 소비자는 전부 이것을 읽는다.
+        /// </summary>
+        public bool IsEndless => _endless;
         public int GoalReachedCount => _goalReachedCount;
         public int LeakAllowancePenalty => _leakAllowancePenalty;
         public int KillScoreTotal => _killScoreTotal;

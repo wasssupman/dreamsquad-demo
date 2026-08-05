@@ -12,8 +12,11 @@ namespace Wassup.Sim.Match
     ///
     /// **엔진 의존 잔재**: `Wassup.Data`(`WavePatternGenerator`·`GeneratedWavePlan`·`SpawnEntry`)를
     /// 참조하고 그 어셈블리는 `UnityEngine` 을 쓴다. 이 unit 의 범위는 **규칙의 이사**이고 데이터
-    /// 계층의 엔진 분리는 unit 18(context port)이 맡는다. 그래서 여기서는 `UnityEngine` 을 직접
-    /// `using` 하지 않는 선까지만 지킨다 — 그 선이 unit 17 asmdef 작업의 출발점이다.
+    /// 계층의 엔진 분리는 unit 18(context port)이 맡는다. **이 파일은** `UnityEngine` 을 직접
+    /// `using` 하지 않는 선까지 지킨다.
+    ///
+    /// ⚠ 폴더 전체가 그렇지는 않다 — `MatchPlacementRules` 는 `Vector2Int` 때문에
+    /// `using UnityEngine` 을 갖는다. 허용 목록과 게이트는 `SimEngineIndependenceTests` 가 소유한다.
     ///
     /// SO 해석(어떤 플랜을 쓸지)은 이 타입이 하지 않는다. Bridge 가 authored/seed/legacy 를 골라
     /// 이미 해결된 <see cref="GeneratedWavePlan"/> 을 <see cref="Initialize"/> 로 넘긴다 — SO 를
@@ -69,7 +72,6 @@ namespace Wassup.Sim.Match
 
         private int WaveCount => _plan.waves != null ? _plan.waves.Count : 0;
         public bool HasPlan => _usesGeneratedWaves && _plan.waves != null;
-        public bool HasNextWave => HasPlan && _nextWaveIndex < WaveCount;
 
         /// <summary>
         /// 전멸 승리의 전제 — 덱의 모든 웨이브가 이미 큐잉되었는가. 생성 웨이브를 쓰지 않는
@@ -134,7 +136,10 @@ namespace Wassup.Sim.Match
 
         /// wave-pattern unit 9 — 런타임 예정 시각 = 플랜 시각 + 강제 호출 누적 오프셋.
         /// 스케줄을 읽는 모든 지점(자동 큐잉·강제 호출)이 이 창구를 쓴다.
-        public float ScheduledWaveTime(int waveIndex)
+        ///
+        /// **private 이다**(리뷰 반영): 가드 없이 `_plan.waves[i]` 를 인덱싱하므로 플랜 없는 상태의
+        /// 외부 호출은 예외가 된다. 스케줄은 `QueueDueWaves`/`TryForceNextWave` 로만 진행시킨다.
+        private float ScheduledWaveTime(int waveIndex)
             => _plan.waves[waveIndex].triggerTimeSec + _waveTimeShift;
 
         /// <summary>
@@ -216,7 +221,10 @@ namespace Wassup.Sim.Match
         /// 소유자만 알므로 `noAliveAttackers` 로 받는다.
         /// </summary>
         public bool NoQueuedAttackersRemain(bool noAliveAttackers)
-            => _pending.Count == 0 && noAliveAttackers;
+            => PendingEmpty && noAliveAttackers;
+
+        /// 호출자가 ECS 질의 **전에** 단축 평가할 수 있게 대기열 상태만 따로 노출한다(리뷰 M2).
+        public bool PendingEmpty => _pending.Count == 0;
 
         public void RefreshClearReady(bool running, bool noAliveAttackers)
             => _clearReady = NextWaveAvailable(running) && _nextWaveIndex < WaveCount

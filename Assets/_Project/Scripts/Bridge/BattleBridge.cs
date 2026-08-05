@@ -370,7 +370,10 @@ namespace Wassup.Bridge
 
         // endless-mode unit 2 — 현재 배틀이 무한 모드인가. BattleBridge 만 이 값으로 분기한다
         // (진입/간격은 데이터 구동, 누수/시간축/토너먼트 리포트는 아래 각 지점에서 이 플래그로).
-        private bool IsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
+        // **`ConfigureOutcomeRules` 주입 전용 라이브 읽기다**(리뷰 M1). 다른 소비자는
+        // `_outcome.IsEndless`(스냅샷)를 읽는다 — 라이브 읽기가 흩어지면 덱 교체 축에서 유출 패배
+        // 억제와 HUD 분모가 서로 다른 답을 낸다.
+        private bool DeckIsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -1235,12 +1238,6 @@ namespace Wassup.Bridge
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
             _synergyPeakCount = 0;
-            // unit 14 — 유출·점수 누적은 규칙 모듈이 소유한다. 조건(덱 한계·엔드리스·점수 배점)을
-            // 먼저 고정해야 아래 RefreshLeakHud 가 올바른 분모를 그린다. 제한시간만 StartBattle
-            // 에서 따로 들어온다(작성 플랜이 자기 타이머를 가질 수 있다).
-            ConfigureOutcomeRules(logMissingScoreRules: false);
-            _outcome.ResetMatch();
-            RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
             if (skillRuntime != null) skillRuntime.ResetAll();
@@ -1257,6 +1254,20 @@ namespace Wassup.Bridge
                 Debug.LogWarning("[BattleBridge] BeginPlacement: map not prepared, building now.");
                 BuildMapForBattle();
             }
+
+            // unit 14 — 유출·점수 누적은 규칙 모듈이 소유한다. 조건(덱 한계·엔드리스·배점)을 고정한
+            // 뒤 누적을 리셋하고 HUD 를 그린다.
+            //
+            // **반드시 위 맵 fallback 뒤여야 한다**(리뷰 H2): `BuildMapForBattle` 이 `_resolvedDeck`
+            // 을 갈아치우므로(엔들리스/인카운터 덱) 그 앞에서 고정하면 다른 덱의 유출 한계가 굳는다.
+            // 적출 전에는 `EffectiveLeakLimit()` 가 `ActiveDeck` 을 매 호출 라이브로 읽어 순서와
+            // 무관하게 수렴했지만, 값으로 굳힌 지금은 **순서가 계약**이다. teardown 이 맵을
+            // dispose 하므로 RESTART 는 매번 이 fallback 을 지난다 — 드문 경로가 아니다.
+            // 배치 페이즈의 몽마의 계약 지불이 비가역이라, 한계가 뒤늦게 줄면 "지불로 즉시 패배
+            // 금지" 불변식이 첫 유출에서 깨진다.
+            ConfigureOutcomeRules(logMissingScoreRules: false);
+            _outcome.ResetMatch();
+            RefreshLeakHud();
 
             GameManager.Instance?.Logger?.SetAttackDeckId(ActiveDeck.deckId);
             Debug.Log("[BattleBridge] Placement phase ready.");
@@ -1317,7 +1328,7 @@ namespace Wassup.Bridge
                     + "ScoreRules.asset 을 인스펙터에 물릴 것.");
             }
             _outcome.Configure(ActiveDeck != null, ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0,
-                IsEndless, perSec, perStress);
+                DeckIsEndless, perSec, perStress);
         }
 
         private void CaptureMatchConfig()
@@ -1812,8 +1823,11 @@ namespace Wassup.Bridge
                     ? ActiveDeck.waveSeed
                     : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
                 GeneratedWavePlan generated = WavePatternGenerator.Generate(ActiveDeck, waveSeed);
-                GameManager.Instance?.Logger?.SetWavePattern(generated);
+                // 리뷰 반영 — **Initialize 를 로거 통지보다 먼저** 한다. 원래 코드는 `_wavePlan` 에
+                // 먼저 대입한 뒤 통지했으므로, 통지가 던지면 catch 뒤에도 플랜이 남아 있었다.
+                // 순서를 뒤집으면 그 경로에서 플랜이 비어 `configHash` 입력이 달라진다.
                 _waveSchedule.Initialize(generated, authored: false);
+                GameManager.Instance?.Logger?.SetWavePattern(generated);
             }
             catch (Exception ex)
             {
@@ -4924,7 +4938,7 @@ namespace Wassup.Bridge
         // unit 14 — 유출·점수 규칙은 `_outcome` 이 소유한다. 아래는 그 값을 뷰/컨트롤러에 잇는
         // 얇은 통로다. **값을 여기서 다시 계산하지 않는다** — 두 산식이 갈리면 화면에서 검산이 깨진다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_outcome.GoalReachedCount, _outcome.EffectiveLeakLimit, !IsEndless);
+            => scoreHud?.SetLeakStatus(_outcome.GoalReachedCount, _outcome.EffectiveLeakLimit, !_outcome.IsEndless);
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치. 컨트롤러 게이트 조회용.
         public int RemainingLeakAllowance() => _outcome.RemainingLeakAllowance;
@@ -4978,11 +4992,26 @@ namespace Wassup.Bridge
 
         private void CheckTimer() => ConcludeIfEnded(_outcome.CheckTimer((float)_battleClock));
 
+        /// <summary>
+        /// nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는 "비어 있음".
+        ///
+        /// 리뷰 반영(M2) — **단축 평가를 지키는 것이 이 헬퍼의 존재 이유다.** 적출 전
+        /// `NoQueuedAttackersRemain()` 은 `_pending.Count > 0` 에서 조기 return 해 ECS 질의를 아예
+        /// 돌지 않았다(판 대부분의 시간이 그 상태다). 대기열 소유자가 모듈로 갔다고 이 값을 인자로
+        /// 빼면 질의가 항상 먼저 평가된다 — 그래서 여기서 조합한다.
+        /// </summary>
+        private bool NoQueuedAttackersRemainNow()
+            => _waveSchedule.PendingEmpty && NoAliveAttackers;
+
         // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
         private void CheckVictory()
-            => ConcludeIfEnded(_outcome.CheckVictory(
-                _waveSchedule.AllWavesQueued,
-                _waveSchedule.NoQueuedAttackersRemain(NoAliveAttackers)));
+        {
+            // 이미 마감된 프레임이면 질의하지 않는다 — 판정이 어차피 None 이고, 마감 이후 ECS
+            // 질의를 도는 것 자체가 향후 Tally/Result 리스너의 teardown 에 대한 노출면이다.
+            if (_outcome.ResultShown) return;
+            ConcludeIfEnded(_outcome.CheckVictory(
+                _waveSchedule.AllWavesQueued, NoQueuedAttackersRemainNow()));
+        }
 
         private void ConcludeIfEnded(MatchOutcome outcome)
         {
@@ -4999,6 +5028,15 @@ namespace Wassup.Bridge
         /// </summary>
         private void ConcludeMatch(MatchOutcome outcome)
         {
+            // 리뷰 반영 — 현재 호출자(`ConcludeIfEnded`·유출 드레인)는 모두 규칙이 결과 래치를 세운
+            // 뒤에만 들어오지만, 이 함수 자체는 무방비였다. `Aborted` 처리를 붙이는 다음 세션이
+            // 여기로 직접 들어오면 이중 집계 + 잘못된 로그가 난다.
+            if (!_outcome.ResultShown)
+            {
+                Debug.LogError($"[BattleBridge] ConcludeMatch({outcome}) 가 결과 래치 없이 불렸다 — " +
+                               "판정은 MatchOutcomeRules 가 소유한다. 무시한다.");
+                return;
+            }
             _running = false;
             bool defeated = outcome == MatchOutcome.Defeat;
             // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
@@ -5012,11 +5050,13 @@ namespace Wassup.Bridge
             logger?.SetResult(outcomeName, _outcome.GoalReachedCount);
             logger?.SetScore(score.Total, score.Time, score.Stress, score.Kill);
             BeginTally(win: !defeated, score, _outcome.RemainingBattleSeconds((float)_battleClock));
+            // 전멸 승리를 `_ =>` 로 받으면 훗날 `Aborted` 가 "VICTORY" 로 찍힌다 — 명시 arm 을 둔다.
             Debug.Log(outcome switch
             {
                 MatchOutcome.Defeat => "[BattleBridge] DEFEAT triggered.",
                 MatchOutcome.VictoryTimeout => "[BattleBridge] VICTORY — timer expired, player survived.",
-                _ => "[BattleBridge] VICTORY — all attack units defeated.",
+                MatchOutcome.Victory => "[BattleBridge] VICTORY — all attack units defeated.",
+                _ => $"[BattleBridge] 매치 종료({outcome}) — 전용 로그 없음.",
             });
         }
 
@@ -5027,7 +5067,12 @@ namespace Wassup.Bridge
             => _aliveAttackersQueryCreated && _aliveAttackersQuery.CalculateEntityCount() == 0;
 
         private void RefreshNextWaveClearReady()
-            => _waveSchedule.RefreshClearReady(_running, NoAliveAttackers);
+        {
+            // 전투 중이 아니면 결과가 항상 false 다(`NextWaveAvailable` 이 running 을 본다) —
+            // 질의를 돌 이유가 없다. 마감된 프레임의 ECS 접근을 막는 두 번째 지점이기도 하다.
+            if (!_running) { _waveSchedule.ClearReadyOff(); return; }
+            _waveSchedule.RefreshClearReady(_running, NoQueuedAttackersRemainNow());
+        }
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
         // the deck carried into this match (tournament-deck-info unit 1 — the
@@ -5040,7 +5085,7 @@ namespace Wassup.Bridge
         private void ReportMatchResult(int playerScore)
         {
             // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
-            if (IsEndless)
+            if (_outcome.IsEndless)
             {
                 Debug.Log("[BattleBridge] ENDLESS — 토너먼트 리포트 스킵.");
                 return;
@@ -5084,7 +5129,7 @@ namespace Wassup.Bridge
             GameManager.Instance?.SetPhase(GamePhase.Result);
             // unit 7 — 팝업에 넘기는 스트레스 값은 점수 계산과 같은 소스다. 엔드리스는 한계를
             // 0으로 넘겨 분모를 숨긴다(누수로 죽지 않아 한계가 무의미 — HUD 와 같은 규칙).
-            int stressLimitForUi = IsEndless ? 0 : _outcome.StressLimit;
+            int stressLimitForUi = _outcome.IsEndless ? 0 : _outcome.StressLimit;
             if (win) resultScreen?.ShowVictory(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
             else resultScreen?.ShowDefeat(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
         }
@@ -5169,12 +5214,12 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            StartPlacementCooldown(unitData);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
             TriggerOnPlaceAndSynergy(unitData, cell, entity);
-            StartPlacementCooldown(unitData);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -5188,6 +5233,11 @@ namespace Wassup.Bridge
         ///
         /// `placementCooldown == 0` 은 no-op 이다("0 = inert" 계약, 런타임 쪽에서 판정).
         /// 쿨타임 **상태**의 소유권을 sim 으로 옮기는 것은 이 unit 의 남은 절반이다.
+        ///
+        /// **호출 위치는 "커밋 지점"** — 타일을 점유한 직후, 엔티티 생성·뷰 작업보다 **앞**이다.
+        /// 코스트 차감과 같은 자리다: 배치가 받아들여진 순간 두 통화가 함께 청구된다. 뒤에 두면
+        /// 뷰 단계에서 예외가 났을 때 타일은 점유됐는데 쿨타임은 안 걸린 상태가 남고, 규칙을
+        /// 검증하는 테스트가 뷰 배선까지 세워야 한다.
         /// </summary>
         private void StartPlacementCooldown(DefenderUnitData unitData)
         {
@@ -5213,11 +5263,11 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            StartPlacementCooldown(unitData);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);
-            StartPlacementCooldown(unitData);
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
