@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Wassup.Sim.Effects;
 
 namespace Wassup.Sim
 {
@@ -21,17 +22,11 @@ namespace Wassup.Sim
     /// </summary>
     public sealed class SimConfig
     {
-        /// <summary>스택 임계 1행. `kind` 는 저작 enum 을 푼 정수다(sim 은 그 enum 을 모른다).</summary>
-        public readonly struct StackThreshold
-        {
-            public readonly int Kind;
-            public readonly byte Count;      // 이 개수를 **넘는 순간** 파생(엣지 교차)
-            public readonly int DerivedId;   // 파생 효과 식별자 — 해석은 조각이 소유
-            public StackThreshold(int kind, byte count, int derivedId)
-            { Kind = kind; Count = count; DerivedId = derivedId; }
-        }
-
-        private readonly Dictionary<int, StackThreshold[]> _stackThresholds;
+        // 18-C/6 — 자리표시자 `StackThreshold(int kind, byte count, int derivedId)` 를
+        // 실물 <see cref="StackThresholdRule"/> 로 채웠다. int 인코딩이었던 이유는 "Battle enum 을
+        // 여기 들이지 않는다" 였고 그 제약은 그대로다 — 다만 이제 **sim 자신의** enum 이 있어서
+        // 우회가 필요 없다. Battle enum → sim enum 환산은 저작 주입 지점(18-K)이 진다.
+        private readonly Dictionary<StackKind, StackThresholdRule[]> _stackThresholds;
 
         /// <summary>`PickupSpawnState.rng` 초기 시드 — `DerivePickupSeed(matchSeed)`(청사진 ③ §4).</summary>
         public uint PickupSeed { get; }
@@ -43,18 +38,21 @@ namespace Wassup.Sim
         public uint BombSeedBase { get; }
 
         public SimConfig(uint pickupSeed, uint bombSeedBase,
-                         IReadOnlyList<StackThreshold> stackThresholds = null)
+                         IReadOnlyList<StackThresholdRule> stackThresholds = null)
         {
             PickupSeed = pickupSeed;
             BombSeedBase = bombSeedBase;
-            _stackThresholds = new Dictionary<int, StackThreshold[]>();
+            _stackThresholds = new Dictionary<StackKind, StackThresholdRule[]>();
             if (stackThresholds == null) return;
 
-            var byKind = new Dictionary<int, List<StackThreshold>>();
+            // kind 로 묶되 **저작 순서를 보존**한다 — 발화 루프가 `atStack` 오름차순을 신뢰하고,
+            // Consume 모드는 발화 도중 stackCount 를 깎으므로 재정렬하면 판정 대상이 달라진다.
+            // 여기서 정렬하지 않는 것은 구 `StackThresholdRegistry.Register` 와 같은 계약이다.
+            var byKind = new Dictionary<StackKind, List<StackThresholdRule>>();
             for (int i = 0; i < stackThresholds.Count; i++)
             {
                 var t = stackThresholds[i];
-                if (!byKind.TryGetValue(t.Kind, out var l)) byKind[t.Kind] = l = new List<StackThreshold>();
+                if (!byKind.TryGetValue(t.kind, out var l)) byKind[t.kind] = l = new List<StackThresholdRule>();
                 l.Add(t);
             }
             foreach (var kv in byKind) _stackThresholds[kv.Key] = kv.Value.ToArray();
@@ -67,8 +65,8 @@ namespace Wassup.Sim
         /// 배선 누락과 규칙 부재의 구분은 **이 조회가 아니라 생성자가** 진다 — config 없이는
         /// sim 이 만들어지지 않는다.
         /// </summary>
-        public IReadOnlyList<StackThreshold> StackThresholdsFor(int kind)
-            => _stackThresholds.TryGetValue(kind, out var a) ? a : Array.Empty<StackThreshold>();
+        public IReadOnlyList<StackThresholdRule> StackThresholdsFor(StackKind kind)
+            => _stackThresholds.TryGetValue(kind, out var a) ? a : Array.Empty<StackThresholdRule>();
 
         public int StackKindCount => _stackThresholds.Count;
     }

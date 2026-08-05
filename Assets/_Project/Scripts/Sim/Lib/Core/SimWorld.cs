@@ -206,5 +206,23 @@ namespace Wassup.Sim
                 if (_alive.Contains(id) && map.ContainsKey(id)) yield return new SimEntityId(id);
             }
         }
+
+        /// <summary>
+        /// `T` **버퍼**를 가진 엔티티만. 구 ECS 의 `SystemAPI.Query&lt;DynamicBuffer&lt;T&gt;&gt;()`
+        /// 대응이다 — 컴포넌트 쿼리(<see cref="With{T}"/>)와 **다른 축**이라는 점이 중요하다.
+        /// `StackModifierTick` 은 버퍼만 요구하고 `StatModifierTick` 은 컴포넌트도 요구하는데,
+        /// 그 차이를 표현할 수 없으면 이식이 조건을 조용히 좁힌다.
+        ///
+        /// 빈 버퍼도 포함한다(**부재 ≠ 빈 버퍼**).
+        /// </summary>
+        public IEnumerable<SimEntityId> WithBuffer<T>() where T : struct
+        {
+            var map = BufferStore<T>().Map;
+            for (int i = 0; i < _order.Count; i++)
+            {
+                int id = _order[i];
+                if (_alive.Contains(id) && map.ContainsKey(id)) yield return new SimEntityId(id);
+            }
+        }
     }
 }
