@@ -145,5 +145,43 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(deck.UseAndRecycle(entryId: 999, HandSize)); // unknown id
             Assert.AreEqual(12, deck.QueueCount); // untouched
         }
+
+        // ── battle-sim-extraction unit 16 — 부분 커밋 구멍의 근원 ────────────────
+        //
+        // `TryGetCard`(큐 **또는** 부착)와 커밋(`UseUnit`/`UseAndRecycle` → 큐 **앞 N칸**)이
+        // 서로 다른 조건을 봤다. 그래서 손패 밖·이미 부착된 entryId 가 컨트롤러의 사용 가능
+        // 판정을 통과한 뒤 커밋에서만 실패했고, 그 시점엔 효과 적용과 유출 허용치 **비가역
+        // 차감**이 이미 끝나 있었다. `IsInHand` 가 그 비대칭을 닫는 술어다 —
+        // 아래 두 테스트가 "커밋 가능성 == IsInHand" 를 고정한다.
+
+        [Test]
+        public void IsInHand_MatchesWhatCommitAccepts_NotWhatTryGetCardFinds()
+        {
+            var cards = MakeCards(12);
+            var deck = new DreamcatcherCycleDeck(cards, seed: 7);
+            var seventh = deck.Hand(7)[6]; // 손패 밖(큐 7번째)
+
+            // TryGetCard 는 찾아준다 — 이것만 보면 "쓸 수 있다" 로 오판한다.
+            Assert.IsTrue(deck.TryGetCard(seventh.entryId, out _));
+            // IsInHand 는 커밋과 같은 답을 준다.
+            Assert.IsFalse(deck.IsInHand(seventh.entryId, HandSize));
+            Assert.IsFalse(deck.UseUnit(seventh.entryId, HandSize), "IsInHand 와 커밋이 일치해야 한다");
+        }
+
+        [Test]
+        public void AttachedEntry_IsFoundButNotInHand()
+        {
+            var cards = MakeCards(12);
+            var deck = new DreamcatcherCycleDeck(cards, seed: 7);
+            var front = deck.Hand(HandSize)[0];
+            Assert.IsTrue(deck.UseUnit(front.entryId, HandSize)); // 부착 → 풀 이탈
+
+            // 부착분은 여전히 조회된다(아이콘 스냅샷이 이것을 읽는다 — 이 동작은 유지해야 한다).
+            Assert.IsTrue(deck.TryGetCard(front.entryId, out _));
+            // 그러나 손패에는 없다 = 다시 커밋할 수 없다.
+            Assert.IsFalse(deck.IsInHand(front.entryId, HandSize));
+            Assert.IsFalse(deck.UseUnit(front.entryId, HandSize),
+                "이미 부착된 카드를 다시 커밋하면 이중 적용 + 비가역 차감이 난다");
+        }
     }
 }

@@ -313,6 +313,9 @@ namespace Wassup.Core
         public bool CanUse(int entryId)
         {
             if (_deck == null || !_deck.TryGetCard(entryId, out var card)) return false;
+            // unit 16 — 주석대로 **손패 안**을 실제로 확인한다. `TryGetCard` 는 부착분도 통과시켜서
+            // 이 게이트가 자기 계약("in hand")을 어기고 있었다.
+            if (!_deck.IsInHand(entryId, HandSize)) return false;
             return Gauge >= CostOf(card);
         }
 
@@ -357,7 +360,15 @@ namespace Wassup.Core
         // Shared attach tail: out-of-pool, host registry, spend, notify.
         private bool AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
         {
-            if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
+            if (!_deck.UseUnit(entryId, HandSize))
+            {
+                // unit 16 — 검증이 손패 멤버십을 보게 된 뒤로 **도달 불가**다. 그래도 조용히
+                // false 를 돌려주면 부분 커밋(효과 적용 + 유출 비가역 차감은 끝났는데 손패·게이지는
+                // 그대로, 회수 핸들 미등록)이 다시 숨는다. 여기 오면 불변식이 깨진 것이다.
+                Debug.LogError($"[DreamcatcherHandController] '{card.id}' — 검증 통과 후 손패 이탈. " +
+                               "효과는 이미 적용됐고 유출 허용치는 비가역 차감됐다(핸들 미등록).");
+                return false;
+            }
             _attachedTo[entryId] = (host, handle);
             AttachmentsChanged?.Invoke();
             Spend(card);
@@ -407,11 +418,22 @@ namespace Wassup.Core
 
         // ── internals ────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// battle-sim-extraction unit 16 — **손패 멤버십을 여기서 본다.**
+        ///
+        /// 그 전에는 `TryGetCard`(큐 **또는** 부착) 로만 판정하고 커밋 단계의
+        /// `UseUnit`/`UseAndRecycle` 이 `IndexInHand`(큐 **앞 N칸**)를 요구했다. 두 조건이 달라서
+        /// **이미 부착된 entryId·손패 밖 entryId 가 검증을 통과한 뒤 커밋에서 실패**했고, 그
+        /// 시점엔 효과 적용(ECS 쓰기)과 유출 허용치 **비가역 차감**이 이미 끝나 있었다 — 손패도
+        /// 게이지도 그대로인 채 회수 핸들이 등록되지 못해 영영 revoke 불가였다.
+        /// `AttachAndSpend` 의 `// guarded by TryGetUsable` 주석은 사실이 아니었다.
+        /// </summary>
         private bool TryGetUsable(int entryId, CardType expected, out DreamcatcherCard card)
         {
             card = null;
             if (_deck == null || bridge == null) return false;
             if (!_deck.TryGetCard(entryId, out card)) return false;
+            if (!_deck.IsInHand(entryId, HandSize)) return false;
             if (card.type != expected) return false;
             return Gauge >= CostOf(card);
         }
@@ -423,6 +445,7 @@ namespace Wassup.Core
             card = null;
             if (_deck == null || bridge == null) return false;
             if (!_deck.TryGetCard(entryId, out card)) return false;
+            if (!_deck.IsInHand(entryId, HandSize)) return false; // unit 16 — 위 주석 참조
             if (card.type == CardType.Active) return false;
             return Gauge >= CostOf(card);
         }
@@ -440,7 +463,11 @@ namespace Wassup.Core
 
         private void SpendAndRecycle(int entryId, DreamcatcherCard card)
         {
-            _deck.UseAndRecycle(entryId, HandSize);
+            // unit 16 — 반환값을 무시하면 **스킬은 나갔고 쿨다운도 물렸는데 카드는 제자리, 게이지만
+            // 차감**되는 비대칭이 조용히 생긴다. 검증이 손패 멤버십을 보게 된 뒤로 도달 불가다.
+            if (!_deck.UseAndRecycle(entryId, HandSize))
+                Debug.LogError($"[DreamcatcherHandController] '{card.id}' — 검증 통과 후 손패 이탈. " +
+                               "스킬은 이미 발동됐다(카드 잔류).");
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);
         }

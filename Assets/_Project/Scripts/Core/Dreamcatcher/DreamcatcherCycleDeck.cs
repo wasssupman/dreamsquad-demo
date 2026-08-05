@@ -104,6 +104,14 @@ namespace Wassup.Core
             return -1;
         }
 
+        /// <summary>
+        /// battle-sim-extraction unit 16 — **커밋 가능성의 정본**. `TryGetCard` 는 큐 **또는**
+        /// 부착분을 보므로(아이콘 스냅샷이 부착분을 읽어야 한다) 사용 가능 판정에 쓰면 안 된다.
+        /// 커밋(`UseUnit`/`UseAndRecycle`)이 요구하는 것은 **손패 안**이므로 검증도 이것을 봐야
+        /// 둘이 어긋나지 않는다.
+        /// </summary>
+        public bool IsInHand(int entryId, int handSize) => IndexInHand(entryId, handSize) >= 0;
+
         // Membership guard: only entries currently visible in the hand are usable.
         private int IndexInHand(int entryId, int handSize)
         {
