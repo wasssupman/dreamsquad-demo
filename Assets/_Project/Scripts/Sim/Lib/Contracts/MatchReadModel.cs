@@ -1,4 +1,4 @@
-namespace Wassup.Core.Session
+﻿namespace Wassup.Core.Session
 {
     // battle-sim-extraction unit 12 — tick-스탬프드 읽기 모델(청사진 ① §6).
     //
@@ -28,6 +28,14 @@ namespace Wassup.Core.Session
         public readonly int EffectiveLeakLimit;
         public readonly int StressAccrued;
         public readonly int StressLimit;
+        /// <summary>
+        /// battle-sim-extraction unit 13-B2 — 무한 모드인가. 뷰가 "/한계" 를 그릴지 결정한다
+        /// (endless-mode 계약 4: 무한은 누수로 죽지 않으므로 한계·위기색을 숨긴다).
+        ///
+        /// **다른 필드에서 도출할 수 없다** — 무한에서도 `EffectiveLeakLimit` 은 덱 값 그대로라
+        /// 0 이 아니다. 그래서 축을 따로 싣는다. 정본은 `MatchOutcomeRules.IsEndless` 하나다.
+        /// </summary>
+        public readonly bool Endless;
 
         // 코스트 — unit 13-A3 부터 **번역으로 채운다**(`GameManager.CostRuntime` 미러).
         // unit 15 의 일은 "필드를 만드는 것"이 아니라 **소유권을 sim 으로 옮기는 것**이고,
@@ -55,7 +63,7 @@ namespace Wassup.Core.Session
             int tick, double battleClock, MatchPhase phase, float timerRemaining,
             bool nextWaveAvailable, bool nextWaveHasNext, int nextWaveNumber, bool nextWaveClearReady,
             bool supportedScore, int scoreKill, int goals, int effectiveLeakLimit,
-            int stressAccrued, int stressLimit,
+            int stressAccrued, int stressLimit, bool endless,
             bool supportedCost, float costCurrent, float costMax, int costCurrentInt,
             bool supportedGauge, int gaugeCurrent, int gaugeMax,
             bool anyPlacementCooldown)
@@ -65,7 +73,7 @@ namespace Wassup.Core.Session
             NextWaveNumber = nextWaveNumber; NextWaveClearReady = nextWaveClearReady;
             SupportedScore = supportedScore; ScoreKill = scoreKill; Goals = goals;
             EffectiveLeakLimit = effectiveLeakLimit;
-            StressAccrued = stressAccrued; StressLimit = stressLimit;
+            StressAccrued = stressAccrued; StressLimit = stressLimit; Endless = endless;
             SupportedCost = supportedCost; CostCurrent = costCurrent; CostMax = costMax;
             CostCurrentInt = costCurrentInt;
             SupportedGauge = supportedGauge; GaugeCurrent = gaugeCurrent; GaugeMax = gaugeMax;

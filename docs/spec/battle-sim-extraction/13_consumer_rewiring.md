@@ -1,4 +1,4 @@
-# 13 — 소비자 재배선 (82파일 → 세션 계약)
+﻿# 13 — 소비자 재배선 (82파일 → 세션 계약)
 
 ## 목적
 
@@ -140,7 +140,7 @@ unit 15 에 남겼다(어댑터 `SetFacing` 주석이 이미 그 경계를 명�
 | 조각 | 대상 | 상태 |
 |---|---|---|
 | **B1** | `ScoreHudView.OnEnemyKilled` · `BossWarningView.Show` — 페이로드가 호출 지점에 이미 있는 스칼라 | ✅ 완료 |
-| **B2** | `ScoreHudView.SetLeakStatus` · `ScoreTallyView.Play` · `ResultScreen.ShowVictory/ShowDefeat` | ⏳ **미완** — unit 14 는 지나갔다(아래) |
+| **B2** | `ScoreHudView.SetLeakStatus` · `ScoreTallyView.Play` · `ResultScreen.ShowVictory/ShowDefeat` | ✅ **완료**(2026-08-05) — 아래 결과 |
 
 **B2 현황 (2026-08-05, unit 14 완료 후)** — unit 14 는 B2 의 **전제만** 해결하고 B2 자체는 남겼다:
 
@@ -150,6 +150,25 @@ unit 15 에 남겼다(어댑터 `SetFacing` 주석이 이미 그 경계를 명�
   `ReadModel.ScoreKill` 을 따라간다(Battle 구간 한정).
 - ⏳ 남음: `SetLeakStatus` push→pull 역전, `ScoreTallyView.Play`, `ResultScreen` 2종. 이 셋은
   **뷰 소유권** 문제라 한 묶음으로 다루는 것이 맞다(아래 근거가 그대로 유효하다).
+
+**B2 결과 (2026-08-05)**
+
+- ✅ **`SetLeakStatus` push → pull.** `BattleBridge.RefreshLeakHud` 는 은퇴하고 뷰가 매 프레임
+  읽기 모델을 폴링한다(`ScoreHudView.SyncLeakFromSession`). **패널이 꺼져 있어도 동기화**한다 —
+  튜토리얼이 배치 구간에 `StressLimit` 을 읽고, 적출 전 push 도 패널 상태와 무관했다.
+  불변식(grep): `Scripts/` 안에서 이 뷰 밖의 `SetLeakStatus` 호출이 **0** 이다.
+  (`public` 으로 남긴 것은 표시 규칙을 상태만 주고 검증하는 `ScoreHudStressSeamTests` 때문이다.)
+- ✅ **읽기 모델에 `Endless` 축 신설.** 다른 필드에서 도출할 수 없다 — 무한 모드에서도
+  `EffectiveLeakLimit` 은 덱 값 그대로라 0 이 아니다. 정본은 `MatchOutcomeRules.IsEndless` 하나다.
+- ✅ **`ResultScreen` 이 스트레스 축을 세션에서 직접 읽는다**(`ShowResultFromSession`).
+  이전에는 Bridge 가 값을 넘기면서 *"엔드리스는 한계를 0 으로 넘겨 분모를 숨긴다"* 는 **표시
+  규칙까지 결정**하고 있었다. 분모를 숨길지는 프레젠테이션 판단이므로 뷰가 소유한다 — sim 은
+  `Endless` 라는 **사실만** 서빙하고 해석은 뷰가 한다(제약 10: 값은 아키텍처를 모른다).
+- ⏸ **`ScoreTallyView.Play(score, scoreHud, onDone)` 의 `scoreHud` 인자는 남는다.**
+  이것은 sim seam 이 아니라 **Bridge 가 뷰를 다른 뷰에 배선하는 와트**다. 떼려면 tally 뷰가
+  HUD 를 스스로 찾아야 하는데, 씬 배선(SerializeField)이나 `FindObjectOfType` 폴백이 필요해
+  성격이 다르다 — B1 의 `_bossWarning` 제거와 같은 처분을 **프레젠테이션 정리 후보**로 남긴다.
+  이 인자가 남아 있어도 `Bridge → 세션` 방향에는 영향이 없다.
 
 **B2 를 unit 14 로 미뤘던 근거**(추측이 아니라 실측):
 - `SetLeakStatus(goals, limit, notEndless)` 는 이벤트가 아니라 **상태 푸시**다. 이벤트로 바꾸면

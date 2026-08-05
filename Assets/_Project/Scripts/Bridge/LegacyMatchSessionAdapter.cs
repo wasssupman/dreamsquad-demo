@@ -84,6 +84,7 @@ namespace Wassup.Bridge
                     effectiveLeakLimit: _bridge.OutcomeEffectiveLeakLimit,
                     stressAccrued: _bridge.OutcomeStressAccrued,
                     stressLimit: _bridge.OutcomeStressLimit,
+                    endless: _bridge.OutcomeIsEndless,
                     supportedCost: cost != null,
                     costCurrent: cost != null ? cost.Current : 0f,
                     costMax: cost != null ? cost.Max : 0f,

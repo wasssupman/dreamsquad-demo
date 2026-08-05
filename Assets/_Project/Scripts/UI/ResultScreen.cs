@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Core.Session;
 using Wassup.Core.Api;
 using Wassup.UI.Layout;
 
@@ -157,6 +158,34 @@ namespace Wassup.UI
         public void ShowVictory(ScoreMath.BattleScore score, float remainingSec,
             int stressAccrued, int stressLimit)
             => ShowResult("승리", score.Total, new MatchStats(remainingSec, stressAccrued, stressLimit, score));
+
+        /// <summary>
+        /// battle-sim-extraction unit 13-B2 — **스트레스 축을 읽기 모델에서 직접 읽는다.**
+        ///
+        /// 그 전에는 Bridge 가 `StressAccrued`·`StressLimit` 을 넘겨줬고, 그러면서 "엔드리스는
+        /// 한계를 0 으로 넘겨 분모를 숨긴다" 는 **표시 규칙까지 Bridge 가 결정**하고 있었다.
+        /// 분모를 숨길지는 프레젠테이션 판단이므로 여기가 자리다 — sim 은 `Endless` 라는 사실만
+        /// 서빙하고 그 해석은 뷰가 한다(제약 10: 값은 아키텍처를 모른다).
+        ///
+        /// 세션 미배선/미지원이면 **직전 4-인자 경로와 같은 값이 되도록** 0/0 으로 접는다.
+        /// </summary>
+        public void ShowResultFromSession(bool win, ScoreMath.BattleScore score, float remainingSec)
+        {
+            int accrued = 0, limit = 0;
+            if (MatchSession.IsActive)
+            {
+                var rm = MatchSession.Current.ReadModel;
+                if (rm.SupportedScore)
+                {
+                    accrued = rm.StressAccrued;
+                    // 엔드리스 = 누수로 죽지 않는다 → 한계가 무의미하므로 분모를 숨긴다
+                    // (HUD 의 `showLimit=false` 와 같은 규칙).
+                    limit = rm.Endless ? 0 : rm.StressLimit;
+                }
+            }
+            ShowResult(win ? "승리" : "패배", score.Total,
+                new MatchStats(remainingSec, accrued, limit, score));
+        }
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {

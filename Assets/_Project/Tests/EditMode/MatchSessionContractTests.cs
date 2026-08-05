@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using NUnit.Framework;
 using Wassup.Core.Session;
 using Wassup.Sim.Match;
@@ -130,7 +130,7 @@ namespace Wassup.Tests.EditMode
                 tick: 1, battleClock: 0.5, phase: MatchPhase.Battle, timerRemaining: 10f,
                 nextWaveAvailable: true, nextWaveHasNext: true, nextWaveNumber: 2, nextWaveClearReady: false,
                 supportedScore: false, scoreKill: 0, goals: 0, effectiveLeakLimit: 0,
-                stressAccrued: 0, stressLimit: 0,
+                stressAccrued: 0, stressLimit: 0, endless: false,
                 supportedCost: true, costCurrent: 7.9f, costMax: 20f, costCurrentInt: 7,
                 supportedGauge: false, gaugeCurrent: 0, gaugeMax: 0,
                 anyPlacementCooldown: true);

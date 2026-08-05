@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -1267,7 +1267,6 @@ namespace Wassup.Bridge
             // 금지" 불변식이 첫 유출에서 깨진다.
             ConfigureOutcomeRules(logMissingScoreRules: false);
             _outcome.ResetMatch();
-            RefreshLeakHud();
 
             GameManager.Instance?.Logger?.SetAttackDeckId(ActiveDeck.deckId);
             Debug.Log("[BattleBridge] Placement phase ready.");
@@ -4953,10 +4952,9 @@ namespace Wassup.Bridge
             return idx;
         }
 
-        // unit 14 — 유출·점수 규칙은 `_outcome` 이 소유한다. 아래는 그 값을 뷰/컨트롤러에 잇는
-        // 얇은 통로다. **값을 여기서 다시 계산하지 않는다** — 두 산식이 갈리면 화면에서 검산이 깨진다.
-        private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_outcome.GoalReachedCount, _outcome.EffectiveLeakLimit, !_outcome.IsEndless);
+        // unit 13-B2 — `RefreshLeakHud` 는 은퇴했다. 유출 HUD 는 이제 뷰가 읽기 모델을 **폴링**한다
+        // (`ScoreHudView.SyncLeakFromSession`). 상태를 push 로 밀면 비멱등해진다 — 한 번 놓치면
+        // 화면이 영구히 어긋나고 "누가 언제 밀었는가" 가 계약이 된다.
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치. 컨트롤러 게이트 조회용.
         public int RemainingLeakAllowance() => _outcome.RemainingLeakAllowance;
@@ -4969,12 +4967,14 @@ namespace Wassup.Bridge
         internal int OutcomeEffectiveLeakLimit => _outcome.EffectiveLeakLimit;
         internal int OutcomeStressAccrued => _outcome.StressAccrued;
         internal int OutcomeStressLimit => _outcome.StressLimit;
+        // unit 13-B2 — 뷰가 "/한계" 표시 여부를 읽기 모델에서 가져오게 한다.
+        // 정본은 `MatchOutcomeRules.IsEndless` 하나다(라이브 `ActiveDeck` 재조회 금지 — unit 14 리뷰).
+        internal bool OutcomeIsEndless => _outcome.IsEndless;
 
         /// 몽마의 계약 선불 지불(비가역). 판정은 규칙이 하고 HUD 갱신만 여기서 한다.
         public bool TryPayLeakAllowance(int cost)
         {
             if (!_outcome.TryPayLeakAllowance(cost)) return false;
-            RefreshLeakHud();
             return true;
         }
 
@@ -4995,8 +4995,7 @@ namespace Wassup.Bridge
                 // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준이고, 그 판정은
                 // 규칙 모듈이 소유한다. endless-mode unit 2 — 무한 모드는 누수로 죽지 않는다(계약 4).
                 MatchOutcome outcome = _outcome.RegisterGoalReached(out int leakLimit);
-                RefreshLeakHud();
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_outcome.GoalReachedCount}/{leakLimit}");
+                    Debug.Log($"[BattleBridge] Goal reached! Count: {_outcome.GoalReachedCount}/{leakLimit}");
                 if (outcome == MatchOutcome.Defeat)
                 {
                     ConcludeMatch(outcome);
@@ -5145,11 +5144,10 @@ namespace Wassup.Bridge
         private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            // unit 7 — 팝업에 넘기는 스트레스 값은 점수 계산과 같은 소스다. 엔드리스는 한계를
-            // 0으로 넘겨 분모를 숨긴다(누수로 죽지 않아 한계가 무의미 — HUD 와 같은 규칙).
-            int stressLimitForUi = _outcome.IsEndless ? 0 : _outcome.StressLimit;
-            if (win) resultScreen?.ShowVictory(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
-            else resultScreen?.ShowDefeat(score, remainingSec, _outcome.StressAccrued, stressLimitForUi);
+            // unit 13-B2 — 스트레스 축은 **뷰가 읽기 모델에서 직접 읽는다**. 그 전에는 여기서
+            // 값을 넘기면서 "엔드리스는 분모를 숨긴다" 는 표시 규칙까지 Bridge 가 결정했다 —
+            // 분모를 숨길지는 프레젠테이션 판단이다. sim 은 `Endless` 라는 사실만 서빙한다.
+            resultScreen?.ShowResultFromSession(win, score, remainingSec);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers

@@ -1,4 +1,4 @@
-using PrimeTween;
+﻿using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -206,6 +206,9 @@ namespace Wassup.UI
         private void Update()
         {
             EnsureSubscribed();
+            // **패널이 꺼져 있어도 먼저 동기화한다** — 튜토리얼이 배치 구간에 `StressLimit` 을 읽고
+            // (`FirstSessionTutorialController.BattleHud`), 적출 전 push 도 패널 상태와 무관했다.
+            SyncLeakFromSession();
 
             if (_panel == null || !_panel.activeSelf)
             {
@@ -359,9 +362,27 @@ namespace Wassup.UI
         // 엔드리스는 분모를 표기하지 않고 유출로 패배하지도 않는다 → 패배 조건 문구를 생략해야 한다.
         public bool ShowsStressLimit => _leakShowLimit;
 
-        // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
-        // GoalReached count and effective defeat limit. Store the snapshot even while
-        // the Battle-only panel is hidden; unit 1 renders it without duplicating math.
+        /// <summary>
+        /// battle-sim-extraction unit 13-B2 — 유출 상태를 **폴링으로 읽는다.**
+        ///
+        /// 적출 전에는 `BattleBridge.RefreshLeakHud` 가 세 지점(배치 진입·유출 발생·허용치 선불)에서
+        /// 밀어 넣었다. 이 값은 이벤트가 아니라 **상태**라 push 로 두면 비멱등해진다 — 한 번 놓치면
+        /// 화면이 영구히 어긋나고, "누가 언제 밀었는가" 가 계약이 된다. unit 14 이후 읽기 모델이
+        /// 실제 값을 서빙하므로 이제 폴링이 맞는 모양이다(계산은 `MatchOutcomeRules` 가 소유).
+        /// </summary>
+        private void SyncLeakFromSession()
+        {
+            if (!MatchSession.IsActive) return;
+            var rm = MatchSession.Current.ReadModel;
+            if (!rm.SupportedScore) return;  // 미지원 구간은 직전 스냅샷을 유지한다
+            SetLeakStatus(rm.Goals, rm.EffectiveLeakLimit, !rm.Endless);
+        }
+
+        // battle-leak-limit-hud unit 0 — 유출 카운트·유효 한계의 정본은 `MatchOutcomeRules` 다.
+        // 패널이 숨어 있어도 스냅샷을 저장한다(unit 1 이 산식 중복 없이 렌더).
+        // unit 13-B2 — **프로덕션 push 창구가 아니다.** 위 폴링의 적용 지점이고, public 인 것은
+        // 표시 규칙을 상태만 주고 검증하는 EditMode() 때문이다.
+        // 불변식(grep):  안에서 이 뷰 밖의 호출자가 0 이다.
         public void SetLeakStatus(int current, int limit, bool showLimit = true)
         {
             int nextCurrent = Mathf.Max(0, current);
