@@ -124,6 +124,51 @@ M1 규칙 적출의 최난도 묶음. 카드 사용이 지금 **5단계로 흩�
 
 부착 제한 **데이터 무효**는 `Session_InternalError` 로 충분(시트/배선 버그 센티넬).
 
+---
+
+## 실행 결과 (2026-08-05) — 16-C 완료, 16-A·B 는 소멸
+
+### ✅ 16-C: `MatchCardRules` — 판정 4곳을 하나로
+
+`Sim/Lib/Match/MatchCardRules.cs`(unit 17 게이트 **안**, 엔진 무참조). 순수 함수 —
+plain 값 in / 사유 out. `DreamcatcherCard`(SO)·`Entity`·덱을 모른다.
+
+적출 전에는 같은 3~4조건이 `TryGetUsable`·`TryGetUsableAttach`·`TryGetUsableActive` 에 복제돼
+있었고, 유출 선불 가능성과 부착 캡은 `CommitAttach` 본문에 따로 있었다. 넷 다 `bool` 만 돌려줘
+**사유가 `false` 하나로 접혔다.** 이제 컨트롤러에는 `Judge` 하나만 남고 그것은 규칙이 알 수 없는
+것(덱 조회·SO 필드·부착 집계)만 푼다. `AtAttachCap` 은 소멸.
+
+판정 순서(계약): `NotInHand → WrongType → InsufficientGauge → InternalError(스킬 미배선) →
+LeakAllowanceTooLow → AttachCapReached`. **게이지가 스킬 배선보다 앞**인 것은 적출 전 순서다.
+
+행동 보존 2건 — `CommitMarkEnemy` 는 부착 캡도 유출 선불도 보지 않는다(`applyCapAndLeak: false`).
+전자는 의도된 계약(캡은 defender 슬롯 개념)이고, **후자는 적출 전부터 그랬다** — 표식 카드에
+`leakAllowanceCost` 를 주면 무료로 지불되는 셈이라 검토 대상이지만 동결 구간이라 그대로 옮겼다.
+
+증인: `MatchCardRulesTests` 14건. **골든은 이 규칙을 보지 못한다** — `dreamcatcher_heavy` 는
+`ApplyHarnessDreamcatcherCard` 로 컨트롤러·손패·게이지·부착제한을 통째로 우회한다.
+
+### ❌ 16-A 는 실행 불가, 16-B 는 불필요해졌다 — 둘 다 unit 17 때문
+
+- **16-A(어휘 이관)**: `DcApplicability`·`DreamcatcherAttachEval` 은 **엔진 무참조지만
+  `using Wassup.Data`** 다. unit 17 이후 `Wassup.Sim` 은 `Wassup.Runtime` 을 참조할 수 없으므로
+  졸업이 불가능하다. **엔진 무참조 ≠ 어셈블리 이동 가능** — 이 문서의 "셋 다 이미 엔진 무참조라
+  옮기면 된다"는 전제가 틀렸다. SO 계층이 함께 움직이는 unit 18 로 이관.
+  (`DcRejectReason` 은 별도 파일이 아니라 `DcApplicability.cs:38` 안에 있다.)
+- **16-B(`CommandReject` 4종 신설)**: 이 조각이 필요했던 이유는 규칙이 쓸 사유가 없어서였는데,
+  `CommandReject` 에 `Card_NotInHand`·`Card_WrongType`·`Card_InsufficientGauge`·
+  `Card_AttachCapReached`·`Card_LeakAllowanceTooLow` 5종이 **이미 있고** unit 17 에서 같은
+  어셈블리로 졸업했다. 규칙이 그것을 직접 돌려주므로 전용 enum + 매핑 계층이 불필요하다(제약 8).
+  **여전히 필요한 4종**(부착 제한 불일치·대상 종류 불일치·이미 표식됨·기여 0)은 **Bridge 의 apply
+  경로가 사유를 돌려주게 되는 16-E** 의 일이다 — 그때 신설한다.
+
+### 남은 조각 — 16-D · 16-E · 16-F · 16-G
+
+16-D(원자화)가 다음이고, 단독으로는 못 끝난다: `CommitAttach` 는 `handle < 0`(= 기여 0)을
+**적용해 봐야** 알 수 있어서, 검증 전량 선행을 하려면 그 예측이 필요하고 그 예측이 곧
+`WouldDreamcatcherCardApply`(16-F 가 지우려는 preflight 미러)다. ⇒ **16-D 와 16-F 는 한 묶음**이고,
+Bridge 의 apply 경로가 `bool` 대신 사유를 돌려주는 16-E 가 그 전제다. 순서: 16-E → 16-D+F → 16-G.
+
 ### 완료 기준 (개정)
 
 - compile 0 · EditMode 회귀 0 · **골든 7종 byte diff 0**.

@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Bridge;
+using Wassup.Core.Session;
 using Wassup.Data;
+using Wassup.Sim.Match;
 
 namespace Wassup.Core
 {
@@ -332,18 +334,19 @@ namespace Wassup.Core
         // RevokeDreamcatcherEffects — squad 버프·placement-aura 오라 회수).
         public bool CommitAttach(int entryId, Entity host)
         {
-            if (!TryGetUsableAttach(entryId, out var card)) return false;
-            // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 게이트.
-            // 지불 가능성(잔여 − cost ≥ 1)을 apply 전에 확인하고, 실제 지불은 apply 성공
-            // 후에만 한다(실패한 부착이 지불하는 일 없음 — contract 9). 지불은 비가역:
-            // host 사망 revoke 는 hosted 버프만 회수하고 허용치는 돌아오지 않는다.
-            if (card.leakAllowanceCost > 0 &&
-                bridge.RemainingLeakAllowance() - card.leakAllowanceCost < 1)
+            // unit 16-C — 손패·종류·게이지 + **유출 선불 가능성 + 부착 캡**을 한 판정으로 본다.
+            // subconscious-curse-expansion unit 1 (몽마의 계약): 지불 가능성(잔여 − cost ≥ 1)은
+            // apply **전**에 확인하고 실제 지불은 apply 성공 후에만 한다(실패한 부착이 지불하는 일
+            // 없음 — contract 9). 지불은 비가역: host 사망 revoke 는 hosted 버프만 회수한다.
+            var reason = Judge(entryId, wantActive: false, host, applyCapAndLeak: true, out var card);
+            if (reason != CommandReject.None)
             {
-                Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — 잔여 유출 허용치 부족(지불 시 즉시 패배 금지).");
+                if (reason == CommandReject.Card_LeakAllowanceTooLow)
+                    Debug.Log($"[DreamcatcherHandController] '{card?.id}' rejected — 잔여 유출 허용치 부족(지불 시 즉시 패배 금지).");
+                else if (reason == CommandReject.Card_AttachCapReached)
+                    Debug.Log($"[DreamcatcherHandController] '{card?.id}' rejected — host at attach cap.");
                 return false;
             }
-            if (AtAttachCap(host, card)) return false;
             int handle = bridge.ApplyDreamcatcherCard(host, card);
             if (handle < 0) return false; // contributed nothing — no spend
             if (card.leakAllowanceCost > 0 && !bridge.TryPayLeakAllowance(card.leakAllowanceCost))
@@ -376,17 +379,12 @@ namespace Wassup.Core
             return true;
         }
 
-        // Shared cap (unit 9): Unit + Squad attachments count together.
-        private bool AtAttachCap(Entity host, DreamcatcherCard card)
-        {
-            if (CountAttachedTo(host) < (config != null ? config.maxAttachPerUnit : 3)) return false;
-            Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — host at attach cap.");
-            return true;
-        }
+        // (unit 16-C — 부착 캡 판정은 `MatchCardRules.Check` 로 이관됐다. 공유 캡 계약은 그대로:
+        //  Unit + Squad 부착이 함께 세어진다 — unit 9. 집계는 `CountAttachedTo` 가 소유한다.)
 
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식 커밋. Unit 부착과
         // 같은 수명주기(UseUnit 풀 이탈 + _attachedTo 등록 + spend)를 적 host 로 재사용.
-        // AtAttachCap 은 **의도적 미적용** — 표식 상한은 bridge 의 이중 표식 preflight
+        // 부착 캡은 **의도적 미적용**(unit 16-C: `applyCapAndLeak: false`) — 표식 상한은 bridge 의 이중 표식 preflight
         // (적당 1개)가 강제하고, 부착 캡은 defender 슬롯 개념이다(spec critic m4).
         // BountyMark 카드가 실수로 CommitAttach(defender 경로)에 유입돼도 bake 의
         // trigger=None 가드가 무차감 거절한다 — 정식 라우팅은 unit 3 드래그 판별.
@@ -428,37 +426,60 @@ namespace Wassup.Core
         /// 게이지도 그대로인 채 회수 핸들이 등록되지 못해 영영 revoke 불가였다.
         /// `AttachAndSpend` 의 `// guarded by TryGetUsable` 주석은 사실이 아니었다.
         /// </summary>
-        private bool TryGetUsable(int entryId, CardType expected, out DreamcatcherCard card)
+        /// <summary>
+        /// battle-sim-extraction unit 16-C — **판정은 `MatchCardRules.Check` 가 한다.** 여기 남은
+        /// 것은 규칙이 알 수 없는 것뿐이다: 덱 조회 · SO 필드 읽기 · 부착 등록부 집계.
+        ///
+        /// 그 전에는 같은 3~4조건이 세 함수에 복제돼 있었고 유출·캡은 `CommitAttach` 본문에
+        /// 따로 있어서, 거절 사유가 전부 `bool false` 하나로 접혔다.
+        /// </summary>
+        /// <param name="wantActive">true = Active 경로, false = 부착 경로(Squad|Unit 둘 다 허용)</param>
+        /// <param name="host">부착 캡을 볼 때만 쓰인다. 그 외에는 무시.</param>
+        /// <param name="applyCapAndLeak">
+        /// 부착 캡 + 유출 선불 게이트를 적용할지. **`CommitAttach` 만 true** 다 — 적 표식
+        /// (`CommitMarkEnemy`)은 캡이 defender 슬롯 개념이라 의도적 미적용이고(spec critic m4),
+        /// 유출 선불도 적출 전부터 보지 않았다. 행동 보존을 위해 그대로 둔다.
+        /// </param>
+        private CommandReject Judge(int entryId, bool wantActive, Entity host,
+                                    bool applyCapAndLeak, out DreamcatcherCard card)
         {
             card = null;
-            if (_deck == null || bridge == null) return false;
-            if (!_deck.TryGetCard(entryId, out card)) return false;
-            if (!_deck.IsInHand(entryId, HandSize)) return false;
-            if (card.type != expected) return false;
-            return Gauge >= CostOf(card);
+            if (_deck == null || bridge == null) return CommandReject.Card_NotInHand;
+
+            bool exists = _deck.TryGetCard(entryId, out card) && card != null;
+            bool typeOk = exists && (wantActive ? card.type == CardType.Active
+                                                : card.type != CardType.Active);
+            return MatchCardRules.Check(new MatchCardRules.CommitInputs
+            {
+                CardExists     = exists,
+                // `TryGetCard`(큐 **또는** 부착)와 `IsInHand`(큐 **앞 N칸**)는 다른 조건이다 —
+                // 이 둘이 어긋나서 부분 커밋 구멍이 났었다(`2d4fab98`).
+                InHand         = exists && _deck.IsInHand(entryId, HandSize),
+                TypeMatches    = typeOk,
+                SkillWired     = !typeOk || !wantActive || card.skill != null,
+                Gauge          = Gauge,
+                Cost           = exists ? CostOf(card) : 0,
+                LeakRemaining  = applyCapAndLeak ? bridge.RemainingLeakAllowance() : 0,
+                LeakCost       = applyCapAndLeak && exists ? card.leakAllowanceCost : 0,
+                AttachedToHost = applyCapAndLeak ? CountAttachedTo(host) : 0,
+                AttachCap      = applyCapAndLeak ? MaxAttachPerUnit : 0,
+            });
         }
 
         // dreamcatcher-taxonomy-cleanup unit 1 — attach gate for both host-attached
         // kinds (Squad|Unit). Active is rejected (it uses the skill-cast paths).
         private bool TryGetUsableAttach(int entryId, out DreamcatcherCard card)
-        {
-            card = null;
-            if (_deck == null || bridge == null) return false;
-            if (!_deck.TryGetCard(entryId, out card)) return false;
-            if (!_deck.IsInHand(entryId, HandSize)) return false; // unit 16 — 위 주석 참조
-            if (card.type == CardType.Active) return false;
-            return Gauge >= CostOf(card);
-        }
+            => Judge(entryId, wantActive: false, default, applyCapAndLeak: false, out card)
+               == CommandReject.None;
 
         private bool TryGetUsableActive(int entryId, out DreamcatcherCard card)
         {
-            if (!TryGetUsable(entryId, CardType.Active, out card)) return false;
-            if (card.skill == null)
+            var reason = Judge(entryId, wantActive: true, default, applyCapAndLeak: false, out card);
+            if (reason == CommandReject.Session_InternalError)
             {
-                Debug.LogWarning($"[DreamcatcherHandController] Active card '{card.id}' has no skill — config error.");
-                return false;
+                Debug.LogWarning($"[DreamcatcherHandController] Active card '{card?.id}' has no skill — config error.");
             }
-            return true;
+            return reason == CommandReject.None;
         }
 
         private void SpendAndRecycle(int entryId, DreamcatcherCard card)

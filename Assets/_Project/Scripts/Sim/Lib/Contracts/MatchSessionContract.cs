@@ -114,7 +114,8 @@ namespace Wassup.Core.Session
         Place_InvalidUnit,
         Place_NotInPickedPool,
         Place_InsufficientCost,
-        Place_OnCooldown,          // unit 15 신설 — 현재 UI 게이트뿐이라 커맨드 우회 시 무시된다
+        Place_OnCooldown,          // unit 15-A 신설. (그 전에는 UI 게이트뿐이라 커맨드 우회 시
+                                   //  무시됐다 — 이제 배치 규칙 자체가 본다.)
 
         // 재배치 — RelocationCheck 계승
         Relocate_NoDefenderAtSource,
