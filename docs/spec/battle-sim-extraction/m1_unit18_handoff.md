@@ -505,3 +505,84 @@ A 를 고르면 18-I 는 **쓰기**(AttackSystem 의 counter 전진)만 얹으�
 
 남은 T1: **18-G 5시스템**(#11·#12·#19·#34·#35·#36·#41 중 특성화 완료 3 제외) ·
 H(1,081) · I(1,870 — #18 포함) · J(1,171). 그 뒤 18-K · 18-L.
+
+---
+
+# S6 — 18-G 완결 + 18-H 완결 (32/44 이식)
+
+## Commit
+
+| 커밋 | 내용 |
+|---|---|
+| `3d906d68` | 18-G/2 드림캐쳐 어휘(S5 권고 **A안** 채택) + 어휘 평행성 박제 |
+| `5758b211` | 18-G/3 피해 정산 #34(384줄) + 실드·킬귀속 어휘 |
+| `f3f5d8be` | 18-G/4 사망 릴레이 5시스템(#11·#12·#35·#36·#41) |
+| `27587de6` | 18-G/5 실드 캐스트 #19 + 18-G 클러스터 (**18-G 7/7 종료**) |
+| `d4db9c30` | docs 진행표 갱신 |
+| `b19ee78e` | 18-H/1 투사체 어휘 + 궤적·판정 순수수학 6종 |
+| `e7366ca4` | 18-H/2 궤적 축 #26 (6 arm) |
+| `a10cbebb` | 18-H/3 착탄 축 #27 (582줄, 3 payload) |
+| `21034e4d` | 18-H/4 발사 명세 #38 + 투사체 클러스터 (**18-H 3/3 종료**) |
+
+## Implemented
+
+- **18-G 7/7** — 피해 정산·실드·사망 릴레이. 마킹(P3/P9) → 창(P10) → 파괴(P12) 3단이
+  **압축되면 조용히 깨진다**는 것을 테스트로 박았다(`ResignationDrop_NeedsTheDeathWindow_NotJustTheTag`).
+- **18-H 3/3** — 투사체. `MovementKind`(궤적 6) × `PayloadKind`(착탄 3) 직교 분해 유지.
+- 어휘 이관 완료: `DcTriggerSlot`(25필드)·`DcTrigger`·enum 4 · 실드/킬귀속 · 투사체 41+35필드
+  · 발사 패턴(`PatternSpec`·`EmitterRuntime`·`ShotOrder`·`MovementBinding`).
+- `SimChannels` +10: `EnemyKilled`·`ShieldBreak`·`DamageNumber`·`HealApplied`·`Warnings`·
+  `GoalReached`·`DefenderDeath`·`HazardDestroyed`·`ShieldGranted`·`ThreatHit`·`ProjectileHit`.
+- `SimConfig.ClockOut` — **분류 B 게이트가 증발이 아니라 저작면으로 이사**한 첫 사례.
+- `SimWarning` 신설 — 구 sim 의 `Debug.LogWarning` 자리. 지우면 "발동했는데 arm 이 없는"
+  상태가 로그 없이 지나간다. 상태 해시에는 실리지 않는다.
+- `SimMath` +`PI`·벡터 `Lerp`·`Radians`·`SinCos` / `SimRandom.CreateFromIndex` /
+  `SimTransform.Scale`.
+
+## Key Files
+
+`Sim/Lib/Units/{DamageApplicationSystem,LifecycleSystems,DamageCluster}.cs` ·
+`Sim/Lib/Effects/{ShieldCastSystem,ResignationDropSystem}.cs` ·
+`Sim/Lib/Combat/{DcTrigger,ProjectileMoveSystem,ProjectileHitSystem,ProjectileEmitterSystem}.cs`
+
+## Notes — 되돌리면 안 되는 것
+
+- **구 sim 의 구멍 2개를 그대로 재현했다**(`SimDeathRelayTests` 의 `PreservedLegacyHole` 2건):
+  `DefenderTile` 있고 `DefenderUnitTag` 없는 사망체 / `BlockingHazard` 있고 `Obstacle` 없는
+  사망체는 어느 루프도 잡지 않아 영원히 남는다. **메우면 골든이 갈린다.**
+- **스탯 출력의 source 가 투사체 엔티티**라 발사마다 새 슬롯이 생겨 곱연산이 누적된다.
+  알려진 병리이고 라이브 밸런스가 걸려 있어 **지금 고치지 않는다**. 반대로 스택 출력은
+  source 가 사수여야 임계에 도달한다 — 둘을 같게 만들지 말 것.
+- **`PatternShotRandomizer` 는 새 배열을 만든다.** 구 `FixedList128Bytes` 의 값 의미론을
+  배열로는 공짜로 얻을 수 없다. 제자리 수정으로 "최적화" 하면 원본 슬롯이 오염된다.
+- **`MovementBinding.KnownKindCount`** 는 의도적 핀이다. 새 `MovementKind` 를 추가하면
+  테스트가 깨지고, 그때 분류를 갱신하라는 뜻이다.
+
+## Verified
+
+- 전체 EditMode **2554 / 실패 0 / skip 1**. 누적: 2325(S5) → 2346 → 2391 → 2419 → 2439
+  → 2487 → 2502 → 2529 → **2554**.
+- I1 유지 — 이 세션 **9커밋 전부** `Scripts/Battle/**`·`Scripts/Bridge/**` 수정 **0**
+  (`git diff-tree` 로 커밋마다 확인).
+- 오라클 복제: `DcTriggerTests`(20) · `ShieldMathTests`(9) · `KillAttributionTests`(5) ·
+  `ModifierAuthoringTests`(4) · `DeathRelayCharacterizationTests`(18) ·
+  `TileAoe/BallisticArc/SkyFall/SweepHitMath/Bezier3/BounceRetarget`(46).
+
+## Follow-up — 다음 세션
+
+남은 T1 조각: **18-I**(#18 `HazardCast` + #33 `AttackSystem` — 1,870줄, 단일 파일 최대) ·
+**18-J**(9시스템 1,171줄 — #20·21·22·23·24·25·39·42·43). 그 뒤 18-K(통합) · 18-L(Bridge 축출).
+
+**18-I 착수 전 확인할 것**:
+- `DcTriggerSlot` 은 **이미 옮겨져 있다**(18-G/2). 18-I 는 `counter` **쓰기**만 얹으면 된다 —
+  그 필드의 소유가 공격 루프 단독이라는 계약을 그대로 유지할 것.
+- `#18 HazardCast` 가 18-E 에서 이관된 이유(`DcTriggerSlot` 버퍼 존재 확인)는 이제 해소됐다.
+  나머지 의존(`HazardCastState`·`HazardSpawnRequest`)은 Effects 것이라 함께 가져간다.
+- 공격 루프는 `AttackOutputElement`·`AttackState`·`NextAttackDoubleFire`·`PatternSlot`·
+  `EmitterInstance`·`ThreatEntry` 를 전부 쓰는데 **여섯 다 이미 sim 에 있다**. 새로 옮길
+  어휘는 타겟팅 후보/사거리 계열과 캐스트 계열뿐이다.
+- `AttackSystem` 은 **1파일 1,700줄**이라 한 번에 읽고 옮기려 하면 중간에 끊긴다.
+  arm 단위(타겟팅 / 출력 해결 / 발사 / 드림캐쳐 / 캐스트 드레인)로 **읽기부터 쪼갤 것**.
+
+**미결 결정(변동 없음)**: `Sim` 접두사 정리 → unit 20 · `SimTransform.Rotation`/`Scale` 의
+상태 해시 편입 → 18-K · PlayMode 16 실패 → 18-K 전 재판정.

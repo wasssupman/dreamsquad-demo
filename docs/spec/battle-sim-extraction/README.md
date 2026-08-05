@@ -1,8 +1,8 @@
 ﻿# battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
 상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~17 완료
-(17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중 — 조각 A·C·D·E·F·G 완료,
-44 시스템 중 29 이식 · 다음은 18-H(투사체) · units 19~20 미착수**
+(17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중 — 조각 A·C·D·E·F·G·H 완료,
+44 시스템 중 32 이식 · 다음은 18-I(공격 루프) · units 19~20 미착수**
 
 > **의존 방향을 컴파일러가 강제하기 시작했다** (unit 17, 2026-08-05). `Scripts/Sim/Lib/` 는
 > `Wassup.Sim.asmdef`(`noEngineReferences: true`) 안에 있고, 거기에 `using UnityEngine;` 을 넣으면
@@ -42,7 +42,8 @@
 | **18-E** 필드·존·해저드 7/8 (#18 은 18-I 로 이관) | 완료 | `7876cc3d` `ba61015f` `ade2ebc6` `ae9fc480` `05ad9181` `02708802` |
 | **18-F** 어그로·AI·이동 5/5 | 완료 | `bfd1de38` `3cc8d677` `f14b9e3a` `b59b8675` (EditMode 2325 / 실패 0) |
 | **18-G** 피해·실드·사망 릴레이 7/7 | 완료 | `b7bbcb89` `3d906d68` `5758b211` `f3f5d8be` `27587de6` (EditMode 2439 / 실패 0) |
-| 18-H~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
+| **18-H** 투사체 3/3 | 완료 | `b19ee78e` `e7366ca4` `a10cbebb` `21034e4d` (EditMode 2554 / 실패 0) |
+| 18-I~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
 | 19~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
