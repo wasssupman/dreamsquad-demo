@@ -102,6 +102,7 @@ unit 은 19 하나" 라고 못박았다. unit 15 문서의 "은퇴 경로 삭제
 | [15_rule_extraction_placement_currency.md](15_rule_extraction_placement_currency.md) | 규칙 적출 ② | 배치 규칙 + 통화 5종(코스트·쿨다운 2·유출·게이지) — 커맨드 검증이 sim 안에서 닫힌다 |
 | [16_rule_extraction_dreamcatcher.md](16_rule_extraction_dreamcatcher.md) | 규칙 적출 ③ | 드림캐쳐 덱 소유권 + 카드 5단계→원자 트랜잭션(롤백 경로 소멸) |
 | [17_sim_lib_skeleton.md](17_sim_lib_skeleton.md) | asmdef 격리 | `Wassup.Sim` 골격(UnityEngine 참조 = 컴파일 에러) + conform 유틸 이주 |
+| [m1_unit18_plan.md](m1_unit18_plan.md) | **실행 계획** | unit 18 조각 배정(A~L) · 증인 명세 · 12세션 분할 · 중단 기준. **18 착수 전 필독** |
 | [18_context_port.md](18_context_port.md) | 이식 본체 | 맥락 4단계(Units→Movement→Effects→Combat) — 청사진 ③ 을 코드로, 단계별 골든 대조 |
 | [19_clock_policy_commandlog.md](19_clock_policy_commandlog.md) | 시계·로그 | UI 슬로모 처분(골든 재생성 유일 지점) + 커맨드로그 기록 개시 |
 | [20_ab_parity_swap.md](20_ab_parity_swap.md) | M1 종료 | A/B parity + ARM64 IL2CPP 성능 게이트 + RTT 리뷰 → 스왑(구현체 1곳) |
