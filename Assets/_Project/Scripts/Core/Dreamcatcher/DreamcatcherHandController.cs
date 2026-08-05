@@ -332,7 +332,21 @@ namespace Wassup.Core
         // nothing) must not spend or cycle (contract 9). Handle 규약: <0 실패 /
         // 0 무회수(엔티티 부착형: 슬롯이 엔티티와 함께 소멸) / >0 회수핸들(host 사망 시
         // RevokeDreamcatcherEffects — squad 버프·placement-aura 오라 회수).
-        public bool CommitAttach(int entryId, Entity host)
+        /// <summary>
+        /// battle-sim-extraction unit 16-E — **거절 사유를 밖으로 낸다.**
+        /// 그 전에는 네 `Commit*` 이 전부 `bool` 이라 30여 사유가 어댑터에서 `Card_NotInHand`
+        /// 하나로 접혔고(실제로 손패와 무관한 거절까지 그렇게 보고됐다), UI 는 그것을 preflight 로
+        /// 다시 계산했다. 이제 receipt 가 진짜 사유를 싣는다.
+        /// </summary>
+        public bool CommitAttach(int entryId, Entity host, out CommandReject reject)
+        {
+            reject = CommitAttachReason(entryId, host);
+            return reject == CommandReject.None;
+        }
+
+        public bool CommitAttach(int entryId, Entity host) => CommitAttach(entryId, host, out _);
+
+        private CommandReject CommitAttachReason(int entryId, Entity host)
         {
             // unit 16-C — 손패·종류·게이지 + **유출 선불 가능성 + 부착 캡**을 한 판정으로 본다.
             // subconscious-curse-expansion unit 1 (몽마의 계약): 지불 가능성(잔여 − cost ≥ 1)은
@@ -345,23 +359,23 @@ namespace Wassup.Core
                     Debug.Log($"[DreamcatcherHandController] '{card?.id}' rejected — 잔여 유출 허용치 부족(지불 시 즉시 패배 금지).");
                 else if (reason == CommandReject.Card_AttachCapReached)
                     Debug.Log($"[DreamcatcherHandController] '{card?.id}' rejected — host at attach cap.");
-                return false;
+                return reason;
             }
             int handle = bridge.ApplyDreamcatcherCard(host, card);
-            if (handle < 0) return false; // contributed nothing — no spend
+            if (handle < 0) return CommandReject.Card_NoEffect; // contributed nothing — no spend
             if (card.leakAllowanceCost > 0 && !bridge.TryPayLeakAllowance(card.leakAllowanceCost))
             {
                 // 게이트 통과 직후라 단일 스레드 흐름에서 실패할 수 없는 경로 — 방어적
                 // 처리: 이미 성립한 부착을 회수하고 커밋 전체를 거절(무차감·카드 잔류).
                 if (handle > 0) bridge.RevokeDreamcatcherEffects(handle);
                 Debug.LogWarning($"[DreamcatcherHandController] '{card.id}' — 지불 단계 실패, 커밋 롤백.");
-                return false;
+                return CommandReject.Session_InternalError;
             }
             return AttachAndSpend(entryId, card, host, handle);
         }
 
         // Shared attach tail: out-of-pool, host registry, spend, notify.
-        private bool AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
+        private CommandReject AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
         {
             if (!_deck.UseUnit(entryId, HandSize))
             {
@@ -370,13 +384,13 @@ namespace Wassup.Core
                 // 그대로, 회수 핸들 미등록)이 다시 숨는다. 여기 오면 불변식이 깨진 것이다.
                 Debug.LogError($"[DreamcatcherHandController] '{card.id}' — 검증 통과 후 손패 이탈. " +
                                "효과는 이미 적용됐고 유출 허용치는 비가역 차감됐다(핸들 미등록).");
-                return false;
+                return CommandReject.Session_InternalError;
             }
             _attachedTo[entryId] = (host, handle);
             AttachmentsChanged?.Invoke();
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);
-            return true;
+            return CommandReject.None;
         }
 
         // (unit 16-C — 부착 캡 판정은 `MatchCardRules.Check` 로 이관됐다. 공유 캡 계약은 그대로:
@@ -388,31 +402,47 @@ namespace Wassup.Core
         // (적당 1개)가 강제하고, 부착 캡은 defender 슬롯 개념이다(spec critic m4).
         // BountyMark 카드가 실수로 CommitAttach(defender 경로)에 유입돼도 bake 의
         // trigger=None 가드가 무차감 거절한다 — 정식 라우팅은 unit 3 드래그 판별.
-        public bool CommitMarkEnemy(int entryId, Entity enemy)
+        public bool CommitMarkEnemy(int entryId, Entity enemy, out CommandReject reject)
         {
-            if (!TryGetUsableAttach(entryId, out var card)) return false;
+            reject = Judge(entryId, wantActive: false, default, applyCapAndLeak: false, out var card);
+            if (reject != CommandReject.None) return false;
             int handle = bridge.ApplyBountyMark(enemy, card);
-            if (handle < 0) return false; // not marked — no spend
-            return AttachAndSpend(entryId, card, enemy, handle);
+            // 이미 표식된 적 · 적이 아닌 대상이 여기로 접힌다 — 가르려면 Bridge 가 사유를
+            // 돌려줘야 한다(16-D+F).
+            if (handle < 0) { reject = CommandReject.Card_NoEffect; return false; }
+            reject = AttachAndSpend(entryId, card, enemy, handle);
+            return reject == CommandReject.None;
         }
+
+        public bool CommitMarkEnemy(int entryId, Entity enemy) => CommitMarkEnemy(entryId, enemy, out _);
 
         // active-dreamcatcher-tile-aim unit 0 — Active 의 단일 커밋(포탈만 별도). 아군 버프
         // (공격폭증·속사)도 여기로 온다 — 구 CommitActiveDefender 은퇴.
-        public bool CommitActiveTile(int entryId, Vector2Int cell)
+        public bool CommitActiveTile(int entryId, Vector2Int cell, out CommandReject reject)
         {
-            if (!TryGetUsableActive(entryId, out var card)) return false;
-            if (!bridge.CastSkillAtTile(card.skill, cell, out _)) return false;
+            reject = JudgeActive(entryId, out var card);
+            if (reject != CommandReject.None) return false;
+            // 캐스트 실패(쿨다운·부적합 타일 등)가 여기로 접힌다 — 가르려면 `CastSkillAtTile` 이
+            // 사유를 돌려줘야 한다(16-D+F).
+            if (!bridge.CastSkillAtTile(card.skill, cell, out _)) { reject = CommandReject.Card_NoEffect; return false; }
+            SpendAndRecycle(entryId, card);
+            return true;
+        }
+
+        public bool CommitActiveTile(int entryId, Vector2Int cell) => CommitActiveTile(entryId, cell, out _);
+
+        public bool CommitActivePortal(int entryId, Vector2Int entryTile, Vector2Int exitTile,
+                                       out CommandReject reject)
+        {
+            reject = JudgeActive(entryId, out var card);
+            if (reject != CommandReject.None) return false;
+            if (!bridge.CastPortal(card.skill, entryTile, exitTile, out _)) { reject = CommandReject.Card_NoEffect; return false; }
             SpendAndRecycle(entryId, card);
             return true;
         }
 
         public bool CommitActivePortal(int entryId, Vector2Int entryTile, Vector2Int exitTile)
-        {
-            if (!TryGetUsableActive(entryId, out var card)) return false;
-            if (!bridge.CastPortal(card.skill, entryTile, exitTile, out _)) return false;
-            SpendAndRecycle(entryId, card);
-            return true;
-        }
+            => CommitActivePortal(entryId, entryTile, exitTile, out _);
 
         // ── internals ────────────────────────────────────────────────────────
 
@@ -472,14 +502,14 @@ namespace Wassup.Core
             => Judge(entryId, wantActive: false, default, applyCapAndLeak: false, out card)
                == CommandReject.None;
 
-        private bool TryGetUsableActive(int entryId, out DreamcatcherCard card)
+        private CommandReject JudgeActive(int entryId, out DreamcatcherCard card)
         {
             var reason = Judge(entryId, wantActive: true, default, applyCapAndLeak: false, out card);
             if (reason == CommandReject.Session_InternalError)
             {
                 Debug.LogWarning($"[DreamcatcherHandController] Active card '{card?.id}' has no skill — config error.");
             }
-            return reason == CommandReject.None;
+            return reason;
         }
 
         private void SpendAndRecycle(int entryId, DreamcatcherCard card)

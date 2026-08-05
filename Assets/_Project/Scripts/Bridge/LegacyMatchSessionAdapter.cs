@@ -242,36 +242,38 @@ namespace Wassup.Bridge
                 return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Session_InternalError);
 
             bool ok;
+            CommandReject reject;
             switch (c.Variant)
             {
                 case CardVariant.Attach:
                     if (!_bridge.TryResolveSimEntity(c.TargetSimId, out var host))
                         return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Session_UnknownEntity);
-                    ok = hand.CommitAttach(c.CardHandle, host);
+                    ok = hand.CommitAttach(c.CardHandle, host, out reject);
                     break;
                 case CardVariant.MarkEnemy:
                     if (!_bridge.TryResolveSimEntity(c.TargetSimId, out var enemy))
                         return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Session_UnknownEntity);
-                    ok = hand.CommitMarkEnemy(c.CardHandle, enemy);
+                    ok = hand.CommitMarkEnemy(c.CardHandle, enemy, out reject);
                     break;
                 case CardVariant.ActiveTile:
-                    ok = hand.CommitActiveTile(c.CardHandle, new Vector2Int(c.Cell.X, c.Cell.Y));
+                    ok = hand.CommitActiveTile(c.CardHandle, new Vector2Int(c.Cell.X, c.Cell.Y), out reject);
                     break;
                 case CardVariant.ActivePortal:
                     if (c.Cell.X == c.Cell2.X && c.Cell.Y == c.Cell2.Y)
                         return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Card_PortalSameCell);
                     ok = hand.CommitActivePortal(c.CardHandle,
-                        new Vector2Int(c.Cell.X, c.Cell.Y), new Vector2Int(c.Cell2.X, c.Cell2.Y));
+                        new Vector2Int(c.Cell.X, c.Cell.Y), new Vector2Int(c.Cell2.X, c.Cell2.Y), out reject);
                     break;
                 default:
                     return CommandReceipt.Rejected(c.ClientSeq, CommandReject.Session_UnknownVerb);
             }
 
-            // ⚠ 사유 손실 지점: `Commit*` 이 bool 만 돌려주므로 30여 사유가 하나로 접힌다.
-            // 이것을 푸는 것이 unit 16(카드 원자 트랜잭션)의 목표다 — 그때 DcRejectReason 을
-            // receipt 에 실어 UI 의 preflight 미러(WouldDreamcatcherCardApply)를 소거한다.
-            return ok ? Ok(c, tick)
-                      : CommandReceipt.Rejected(c.ClientSeq, CommandReject.Card_NotInHand);
+            // unit 16-E — **사유 손실 지점이 사라졌다.** 그 전에는 `Commit*` 이 bool 만 돌려줘
+            // 모든 거절이 `Card_NotInHand` 로 보고됐다(손패와 무관한 거절까지). 이제 검증 사유는
+            // `MatchCardRules` 가 결정한 그대로 실리고, 적용 단계 거절은 `Card_NoEffect` 다.
+            // 남은 과제: `Card_NoEffect` 를 세부 사유로 가르려면 Bridge 의 apply 경로가 사유를
+            // 돌려줘야 한다(16-D+F 묶음). UI preflight 미러 소거도 그때.
+            return ok ? Ok(c, tick) : CommandReceipt.Rejected(c.ClientSeq, reject);
         }
 
         private CommandReceipt ForceNextWave(in MatchCommand c, int tick)

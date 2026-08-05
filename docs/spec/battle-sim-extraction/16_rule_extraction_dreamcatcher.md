@@ -162,7 +162,23 @@ LeakAllowanceTooLow → AttachCapReached`. **게이지가 스킬 배선보다 �
   **여전히 필요한 4종**(부착 제한 불일치·대상 종류 불일치·이미 표식됨·기여 0)은 **Bridge 의 apply
   경로가 사유를 돌려주게 되는 16-E** 의 일이다 — 그때 신설한다.
 
-### 남은 조각 — 16-D · 16-E · 16-F · 16-G
+### ✅ 16-E: 거절 사유를 receipt 로 — 사유 손실 지점 소멸
+
+네 `Commit*` 이 전부 `bool` 이라 어댑터가 **모든 카드 거절을 `Card_NotInHand` 로 보고**했다
+(`LegacyMatchSessionAdapter.cs:274`). 손패와 아무 상관 없는 거절 — 게이지 부족·부착 캡·유출
+허용치·종류 불일치 — 까지 그렇게 나갔고, 그래서 UI 가 preflight 로 사유를 다시 계산했다.
+
+이제 `Commit*(…, out CommandReject reject)` 가 진짜 사유를 낸다. 검증 사유는 `MatchCardRules` 가
+결정한 그대로, 적용 단계 거절은 **`Card_NoEffect`**(신설, enum 맨 뒤 — 기존 직렬화 값 보존)다.
+기존 `bool` 시그니처는 얇은 오버로드로 남긴다 — PlayMode 6곳이 그 이름을 쓰고 있어서다.
+
+**`Card_NoEffect` 를 더 쪼개지 않은 이유**: 부착 제한 불일치 · 대상 종류 불일치 · 이미 표식됨 ·
+스킬 캐스트 실패가 여기 접혀 있는데, 가르려면 `ApplyDreamcatcherCard`/`ApplyBountyMark`/
+`CastSkillAtTile` 이 `int`/`bool` 대신 사유를 돌려줘야 한다. **틀린 구체 사유를 지어내느니 정직한
+한 통**으로 둔다 — 그 분해가 16-D+F 묶음의 내용이다. 문서의 16-B 4종 중 실제로 필요한 것이
+무엇인지도 그때 확정된다(지금은 `Card_NoEffect` 하나로 충분하다는 것이 실측이다).
+
+### 남은 조각 — 16-D+F · 16-G
 
 16-D(원자화)가 다음이고, 단독으로는 못 끝난다: `CommitAttach` 는 `handle < 0`(= 기여 0)을
 **적용해 봐야** 알 수 있어서, 검증 전량 선행을 하려면 그 예측이 필요하고 그 예측이 곧

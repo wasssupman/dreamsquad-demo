@@ -151,6 +151,15 @@ namespace Wassup.Core.Session
         // DcRejectReason.Unclassified 는 정상 거절이 아니라 배선 버그 센티넬이므로 여기로 분리한다
         // (클라가 버그를 UI 문구로 번역하지 않게).
         Session_InternalError,
+
+        // unit 16-E — **맨 뒤에 붙인다**(기존 직렬화 값 보존).
+        //
+        // 검증(`MatchCardRules`)은 통과했는데 **적용 단계가 거절**한 경우다: 카드가 그 대상에
+        // 아무것도 기여하지 못했다(`ApplyDreamcatcherCard` handle < 0 · 표식 실패 · 스킬 캐스트 실패).
+        // 세부 사유(부착 제한 불일치 · 대상 종류 불일치 · 이미 표식됨)로 가르려면 Bridge 의 apply
+        // 경로가 `int`/`bool` 대신 사유를 돌려줘야 한다 — 그건 16-D+F 묶음의 일이다. 그때까지
+        // **틀린 구체 사유를 지어내느니 정직한 한 통**으로 둔다.
+        Card_NoEffect,
     }
 
     // 수락 여부 기록(청사진 ① §3). 같은 ClientSeq 재전송은 재실행 없이 같은 receipt 를 돌려준다.
