@@ -412,6 +412,9 @@ namespace Wassup.Bridge
             PlacementRejectReason.NoDefenderAtSource => CommandReject.Relocate_NoDefenderAtSource,
             PlacementRejectReason.SourceBusy => CommandReject.Relocate_SourceBusy,
             PlacementRejectReason.SameCell => CommandReject.Relocate_SameCell,
+            // unit 15 — 배치 쿨타임. 재배치는 이 사유를 내지 않는다(같은 유닛을 옮기는 것이라
+            // 배치 쿨타임 대상이 아니다) — 그래서 Place_ 계열로 접는다.
+            PlacementRejectReason.OnCooldown => CommandReject.Place_OnCooldown,
             _ => CommandReject.Session_InternalError,
         };
     }

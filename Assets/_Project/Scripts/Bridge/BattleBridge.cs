@@ -5150,6 +5150,16 @@ namespace Wassup.Bridge
                 return false;
             }
 
+            // battle-sim-extraction unit 15 — 배치 쿨타임 게이트. 그 전까지 이 판정은 **UI 에만**
+            // 있어서(`DefenderSelector` 의 딤 처리) 커맨드로 직접 배치하면 쿨타임이 무시됐다.
+            // 규칙 판정이 보게 되면서 뷰를 우회하는 경로도 같은 답을 받는다.
+            var cooldownRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (cooldownRuntime != null && !cooldownRuntime.IsReady(unitData))
+            {
+                reason = PlacementRejectReason.OnCooldown;
+                return false;
+            }
+
             reason = PlacementRejectReason.None;
             return true;
         }
@@ -5198,9 +5208,25 @@ namespace Wassup.Bridge
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
             TriggerOnPlaceAndSynergy(unitData, cell, entity);
+            StartPlacementCooldown(unitData);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
+        }
+
+        /// <summary>
+        /// battle-sim-extraction unit 15 — 배치 쿨타임 **시작의 단일 소유자**. 그 전에는
+        /// `DefenderSelector`(UI)가 `PlacementCommitted` 를 듣고 시작했다 — 즉 배치 성사와
+        /// 쿨타임 시작이 다른 계층에 있어서, 뷰를 거치지 않는 배치 경로(커맨드·테스트·클릭 배치)는
+        /// 쿨타임을 아예 걸지 않았다. 이제 성사 지점 두 곳이 모두 이걸 부른다.
+        ///
+        /// `placementCooldown == 0` 은 no-op 이다("0 = inert" 계약, 런타임 쪽에서 판정).
+        /// 쿨타임 **상태**의 소유권을 sim 으로 옮기는 것은 이 unit 의 남은 절반이다.
+        /// </summary>
+        private void StartPlacementCooldown(DefenderUnitData unitData)
+        {
+            if (unitData == null) return;
+            GameManager.Instance?.CooldownRuntime?.StartCooldown(unitData, unitData.placementCooldown);
         }
 
         public bool TryBeginDefenderDeployment(int tileX, int tileY, DefenderUnitData unitData, out Entity entity)
@@ -5225,6 +5251,7 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);
+            StartPlacementCooldown(unitData);
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");

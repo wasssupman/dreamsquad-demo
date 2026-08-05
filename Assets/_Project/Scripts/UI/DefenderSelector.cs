@@ -109,13 +109,6 @@ namespace Wassup.UI
             // 시작점이라 선물 도중 트레이가 튀어나온다. DraftStarted 는 숨김용으로 유지.
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
-            // defender-placement-cooldown 1 — 배치 성공 시 쿨타임 시작. 컨트롤러는 Awake 의
-            // EnsureDragController 로 확정돼 있어 여기서 구독(OnDisable 해제와 대칭). 멱등.
-            if (dragPlacementController != null)
-            {
-                dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
-                dragPlacementController.PlacementCommitted += OnDefenderPlaced;
-            }
         }
 
         private void OnDisable()
@@ -124,17 +117,13 @@ namespace Wassup.UI
                 draftController.DraftStarted -= OnDraftStarted;
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            if (dragPlacementController != null)
-                dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
         }
 
-        // defender-placement-cooldown 1 — 배치가 성공 확정된 유닛 타입을 쿨타임에 넣는다.
-        // placementCooldown==0 이면 StartCooldown 이 no-op(등록 안 함) → "0 = inert".
-        private void OnDefenderPlaced(DefenderUnitData unit)
-        {
-            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
-            if (rt != null && unit != null) rt.StartCooldown(unit, unit.placementCooldown);
-        }
+        // battle-sim-extraction unit 15 — 쿨타임 **시작**은 더 이상 UI 의 일이 아니다. 배치 성사
+        // 지점(`BattleBridge.StartPlacementCooldown`)이 단일 소유자다 — 그래야 뷰를 거치지 않는
+        // 배치 경로(커맨드·클릭 배치·테스트)도 쿨타임을 받는다. `PlacementCommitted` 구독은
+        // **그것만을 위한 것이었으므로 함께 제거**한다(빈 콜백을 남기면 죽은 배선이 된다).
+        // 이 뷰가 쿨타임에 대해 하는 일은 남은 시간을 세션에서 **읽어 딤 처리하는 것**뿐이다.
 
         // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
         // 자체 이벤트로 숨으므로 크기를 건드리지 않는다.
