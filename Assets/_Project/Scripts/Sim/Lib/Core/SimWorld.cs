@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Wassup.Sim
@@ -61,6 +61,19 @@ namespace Wassup.Sim
     /// </summary>
     public sealed class SimWorld
     {
+        /// <summary>
+        /// 매치 저작 스냅샷. **생성자가 요구한다** — 기본값 경로를 두면 조각이 config 를 관통시키지
+        /// 않은 채로 컴파일되고, 그 결과가 "규칙이 없어서" 인지 "배선이 빠져서" 인지 구분되지 않는다
+        /// (critic M5: `StackModifierTick` 이 6세션 동안 조용히 no-op 이 되는 경로).
+        /// </summary>
+        public SimConfig Config { get; }
+
+        public SimWorld(SimConfig config)
+        {
+            Config = config ?? throw new ArgumentNullException(nameof(config),
+                "sim 은 저작 스냅샷 없이 만들 수 없다 — 배선 누락이 규칙 부재로 위장하는 것을 막는다.");
+        }
+
         // id 0 은 Null 예약. **감소하지 않는다** — 파괴돼도 재사용 없음.
         private int _nextId = 1;
         private readonly List<int> _order = new List<int>();      // 생성 순서(파괴돼도 안 지운다)
