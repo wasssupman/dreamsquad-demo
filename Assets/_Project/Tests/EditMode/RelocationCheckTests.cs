@@ -7,6 +7,10 @@ using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Sim.Match;
 
+// battle-sim-extraction unit 15-C - 판정 본체가 `Sim/Match/MatchPlacementRules.Relocation` 으로
+// 이사했으므로 sim 규칙을 직접 부른다. `BattleBridge.RelocationCheck` 는 프로덕션 호출처를 위한
+// 포워더로만 남는다 - 테스트가 그 이름을 계속 쓰면 unit 17 asmdef 분리 후에도 테스트
+// 어셈블리가 Bridge 를 참조하게 된다(SpatialPlacementCheckTests 와 같은 처분).
 namespace Wassup.Tests.EditMode
 {
     // defender-relocation unit 0 — 재배치 순수 판정(RelocationCheck) 회귀 방지.
@@ -36,7 +40,7 @@ namespace Wassup.Tests.EditMode
             {
                 var occupied = OccupiedAt(new Vector2Int(0, 0)); // from 은 점유 집합에 남아 있는 상태
                 Assert.AreEqual(PlacementRejectReason.None,
-                    BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(2, 2),
+                    MatchPlacementRules.Relocation(map, occupied, new int2(0, 0), new int2(2, 2),
                         fromHasDefender: true, fromBusy: false));
             }
             finally { map.Dispose(); }
@@ -49,7 +53,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.NoDefenderAtSource,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(), new int2(0, 0), new int2(2, 2),
+                    MatchPlacementRules.Relocation(map, OccupiedAt(), new int2(0, 0), new int2(2, 2),
                         fromHasDefender: false, fromBusy: false));
             }
             finally { map.Dispose(); }
@@ -62,7 +66,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.SourceBusy,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(2, 2),
+                    MatchPlacementRules.Relocation(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(2, 2),
                         fromHasDefender: true, fromBusy: true));
             }
             finally { map.Dispose(); }
@@ -76,7 +80,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.SameCell,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(0, 0),
+                    MatchPlacementRules.Relocation(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(0, 0),
                         fromHasDefender: true, fromBusy: false));
             }
             finally { map.Dispose(); }
@@ -90,7 +94,7 @@ namespace Wassup.Tests.EditMode
             {
                 var occupied = OccupiedAt(new Vector2Int(0, 0), new Vector2Int(2, 2));
                 Assert.AreEqual(PlacementRejectReason.Occupied,
-                    BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(2, 2),
+                    MatchPlacementRules.Relocation(map, occupied, new int2(0, 0), new int2(2, 2),
                         fromHasDefender: true, fromBusy: false));
             }
             finally { map.Dispose(); }
@@ -103,7 +107,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(1, 1),
+                    MatchPlacementRules.Relocation(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(1, 1),
                         fromHasDefender: true, fromBusy: false));
             }
             finally { map.Dispose(); }
@@ -116,7 +120,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(3, 0),
+                    MatchPlacementRules.Relocation(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(3, 0),
                         fromHasDefender: true, fromBusy: false));
             }
             finally { map.Dispose(); }

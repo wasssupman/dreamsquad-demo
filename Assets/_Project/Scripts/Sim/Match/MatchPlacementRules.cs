@@ -46,6 +46,27 @@ namespace Wassup.Sim.Match
         }
 
         /// <summary>
+        /// battle-sim-extraction unit 15-C — 재배치 판정. 배치와 **같은 형태의 순수 규칙**이라
+        /// 여기 산다(적출 전에는 `BattleBridge` 의 static 이었다 — MonoBehaviour 가 sim 사유를
+        /// 반환하는 모양이라 unit 17 의 asmdef 분리에서 걸릴 자리였다).
+        ///
+        /// `to` 의 공간 판정은 <see cref="Spatial"/> 재사용. **`from == to` 검사가 선행해야 한다** —
+        /// `from` 은 아직 점유 집합에 남아 있으므로, 순서를 바꾸면 제자리 재배치가 `Occupied` 로
+        /// 오판된다.
+        ///
+        /// 배치와 달리 **쿨타임·코스트를 보지 않는다**: 같은 유닛을 옮기는 것이라 새 배치가 아니다.
+        /// </summary>
+        public static PlacementRejectReason Relocation(
+            GeneratedMap map, HashSet<Vector2Int> occupied, int2 from, int2 to,
+            bool fromHasDefender, bool fromBusy)
+        {
+            if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
+            if (fromBusy) return PlacementRejectReason.SourceBusy;
+            if (from.Equals(to)) return PlacementRejectReason.SameCell;
+            return Spatial(map, occupied, to);
+        }
+
+        /// <summary>
         /// 배치 전체 판정. `None` 이면 놓을 수 있다.
         ///
         /// `unitValid` 는 현재 "유닛이 있고 뷰 머티리얼이 배선됐는가"다 — 후자는 사실 프레젠테이션

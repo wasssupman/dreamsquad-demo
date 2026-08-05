@@ -111,13 +111,25 @@ units 15-B~18 구간(가장 위험한 이식 구간) 동안 **byte 동결**이�
   테스트가 이 이름을 쓰고 있다(로직 중복이 아니다).
 - `CanPlaceDefenderAt` 은 입력 수집 + 규칙 호출만 한다.
 
-### 15-C 이후 (미착수)
+### 15-C 진행 중
 
 코퍼스 동결 결정에 따라 **동결 구간에 가능한 것 / 해제 후에 할 것**으로 갈린다.
 
-동결 구간에도 가능 (값·시점을 바꾸지 않는 조각):
+#### ✅ 15-C-1 완료: 재배치 판정 이관
 
-- **재배치 판정 이관** — `RelocationCheck` 를 `MatchPlacementRules` 옆으로(같은 형태의 순수 판정).
+`RelocationCheck` 본체가 `MatchPlacementRules.Relocation` 으로 이사했고 `BattleBridge` 쪽은
+포워더만 남는다(`SpatialPlacementCheck` 와 같은 처분 — 프로덕션 호출처 1곳이 그 이름을 쓴다).
+`RelocationCheckTests` 7곳은 sim 규칙을 직접 부르게 바꿨다 — 테스트가 Bridge 이름을 계속 쓰면
+unit 17 asmdef 분리 후에도 **테스트 어셈블리가 Bridge 를 참조**하게 된다.
+
+이 조각은 unit 17 정찰이 지목한 와트도 함께 없앤다: 적출 전 `RelocationCheck` 는 **MonoBehaviour 의
+static 이 sim enum 을 반환**하는 모양이었다(`BattleBridge.Relocation.cs:22`).
+
+계약 보존: `from == to` 검사가 공간 판정보다 **선행**해야 한다 — `from` 이 아직 점유 집합에 있어서
+순서를 바꾸면 제자리 재배치가 `Occupied` 로 오판된다. 재배치는 배치와 달리 **쿨타임·코스트를 보지
+않는다**(같은 유닛을 옮기는 것이라 새 배치가 아니다) — 그래서 `Check` 가 아니라 별도 함수다.
+
+#### 남은 조각 — 동결 구간에도 가능 (값·시점을 바꾸지 않는 것)
 - **`ApplyOnPlaceEffect`·시너지 2종**(`RecomputeSynergyFor`·`NeutralizeActiveSynergy`) — ECS 쓰기가
   섞여 있어 판정/적용 분리가 선행 조건이다.
 - **`unitValid` 의 `visualMaterial` 조건 정리** — 뷰 배선 조건이 배치 규칙에 있는 것은 계층 오류다.

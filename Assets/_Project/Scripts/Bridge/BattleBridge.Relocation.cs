@@ -16,18 +16,12 @@ namespace Wassup.Bridge
     // 재배치가 어느 쪽도 재발화하지 않는다(spec README 계약 4).
     public partial class BattleBridge
     {
-        // 순수 판정 (plain 값 in → reason out) — EditMode 테스트 대상 (CLAUDE.md 제약 10).
-        // to 의 공간 판정은 SpatialPlacementCheck 재사용. from 은 점유 집합에 남아 있으므로
-        // from == to 검사가 선행되어야 "자기 자리 = Occupied" 로 오판하지 않는다.
+        // unit 15-C: 판정 본체는 `MatchPlacementRules.Relocation` 으로 이사했고 여기는 **포워더**다
+        // (`SpatialPlacementCheck` 와 같은 처분 — 호출처와 EditMode 테스트가 이 이름을 쓴다).
         public static PlacementRejectReason RelocationCheck(
             GeneratedMap map, HashSet<Vector2Int> occupied, int2 from, int2 to,
             bool fromHasDefender, bool fromBusy)
-        {
-            if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
-            if (fromBusy) return PlacementRejectReason.SourceBusy;
-            if (from.Equals(to)) return PlacementRejectReason.SameCell;
-            return SpatialPlacementCheck(map, occupied, to);
-        }
+            => MatchPlacementRules.Relocation(map, occupied, from, to, fromHasDefender, fromBusy);
 
         // unit 1 — 보드 유닛 조회 read seam (재배치 컨트롤러의 홀드 판정용). busy = 배치/이동
         // 진행 중(PendingDeployment) — 홀드 진입 자체를 막는다.
