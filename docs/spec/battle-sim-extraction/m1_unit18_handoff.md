@@ -118,3 +118,54 @@
 **계획서 rev 2 가 남긴 미결** — `m1_unit18_plan.md` 의 §"착수 전 사용자 확인" 3번:
 A/B 비교기가 `GameManager.CurrentPhase`·`CostRuntime.Current` 를 어떻게 다룰지. 그림자 sim 은
 둘 다 없는데 `LegacyTrace.cs:238-243` 이 상태 라인에 넣는다. **18-K 의 읽기 모델을 제약**한다.
+
+---
+
+# S2 (2026-08-05) — 18-C 특성화 선행
+
+## Commit
+
+| 해시 | 내용 |
+|---|---|
+| `10a9cbc7` | 폴더 meta 2개 편입 + 인계 HEAD 정정 (코드 변경 0) |
+| `f57c80e8` | 18-C/2 — 오라클 0 시스템 2개에 특성화 선행 (테스트만) |
+
+## Implemented
+
+- **`10a9cbc7`** — `Sim/Lib/Core.meta`·`Effects.meta` 가 untracked 로 남아 있었다.
+  `2eeb1fdf`·`77752f41` 이 경로 명시 스테이징에서 `.cs.meta` 만 잡고 **폴더 meta** 를 놓친 것.
+  형제(Contracts/Match/Math)는 추적 중이었으므로 이 둘만 구멍이었다.
+- **`f57c80e8`** — `FatigueAccrualSystemTests` 6건 + `MaxHealthScaleSystemTests` 7건.
+  계획서 §증인 4의 "구 sim 에 먼저 붙여 초록 확인" 집행. 각 픽스처는 **대상 시스템 하나만**
+  월드에 올린다(상·하류를 끼우면 clamp·dirty·채널 지연이 섞여 계약이 흐려진다).
+- 박제한 것은 **산식이 아니라 시스템 골격**이다. `Health.ScaleMax` 는 `HealthScaleMaxTests`
+  6건이 이미 덮으므로 재검증하지 않았다 — 이식이 갈리는 자리는 lazy attach 조건 · baseMax
+  캡처 시점 · `appliedMul` 래치 · `mul<=0` 가드 · **중간 Playback**(부착과 적용이 같은 프레임)이다.
+
+## 다음 조각 — 18-C 시스템 몸체 6개 (변동 없음)
+
+오라클 게이트는 이제 6/6 이 채워졌다(4개는 `ModifierFrameworkTests` 계열, 2개는 위 신규).
+남은 것은 이식 본문과 **S2 끝의 성능 프로브**(중단 기준 ④ — 합성 모디파이어 틱 1만 회 A/B).
+
+## Notes — S1 함정 목록의 정정 1건
+
+- **러너 결과 파일에 BOM 은 없다.** S1 이 적은 운영 함정 ①은 현 러너(`RunnerVersion = "4-reimport"`)
+  에서 **사실이 아니다** — `SimTestAutoRunner.Write` 가 `new UTF8Encoding(false)` 로 쓴다
+  (실측: 첫 4바이트 `53 54 41 54` = `STAT`). 방어적 `TrimStart(U+FEFF)` 는 무해하지만 불필요하다.
+  나머지 3함정(② stale 결과 · ③ `Golden` 은 결과 파일 미기록 · ④ Refresh 타임아웃 ≠ 실패)은
+  **그대로 유효하다** — 이 세션도 ②를 mtime 추적으로, ④를 신분증 파일 mtime 변화로 갈랐다.
+
+## Verified
+
+- 신규 13건 **13/13**.
+- 전체 EditMode **2027 통과 / 실패 0 / skip 1**. S1 기준선 2014 + 13 = 2027 로 정확히 일치
+  (skip 1 은 기존 `ModifierFrameworkTests` Test 4 의 `[Ignore]`).
+- I1 유지 — 두 커밋 모두 `Scripts/Battle/**`·`Scripts/Bridge/**` 수정 0.
+
+## Follow-up
+
+- **S1 이 열어둔 판단 2개는 그대로 열려 있다** — 18-B 미루기(권고 유지) · PlayMode 16건 정리.
+- 특성화 2건은 **변이 검증을 하지 않았다.** 어서션이 값-특정적이라 공허하지는 않지만,
+  구 sim 을 일부러 깨뜨려 빨간불을 확인하려면 `Scripts/Battle/**` 을 건드려야 해서 I1 과
+  공유 워크트리 위생 양쪽에 걸린다. **이식 시점에 신 sim 쪽에서 확인**하는 것이 맞다 —
+  신 코드가 이 어서션을 통과하지 못하면 그것이 곧 변이 검증이다.
