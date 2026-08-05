@@ -1,4 +1,4 @@
-# unit 18 실행 계획 — 맥락 이식 본체
+﻿# unit 18 실행 계획 — 맥락 이식 본체
 
 > rev 2 (2026-08-05) — critic 리뷰 REWORK 반영. 초판이 틀렸던 것은 분해가 아니라 **분해 주변의
 > 보증**이었다: I1 이 달성 불가였고, I3 는 이미 집행 중이라고 잘못 적었고, 증인 40파일을 재측정
@@ -42,6 +42,41 @@ conform 유틸(`ModifierMath`·`CcEffectMerge`·`DotEffectMerge`·`KillAttributi
 | P4 | 재현할 **스케줄링 비결정성이 없다** — `.Schedule()`/`.ScheduleParallel()` 0건, `IJobEntity` 3개 전부 `.Run()` | 실측 · critic 재검증 |
 | P5 | 상태 해시 **제외 축 2건**(`LocalTransform.Scale` · `ThreatEntry`) | 사용자 결정. 집행 조건은 [`20_ab_parity_swap.md`](20_ab_parity_swap.md) |
 | **P6** | **트레이스 키 승계** — 필드 이름·타입·개수**만으로는 부족하다**. 아래 §"트레이스 키 계약" 이 정본 | rev 2 신설 |
+
+### 수학 소유권 (사용자 결정 2026-08-05) — ✅ 18-A 에서 구현 완료
+
+**sim 이 `SimVec3`·`SimVec2`·`SimInt2`·`SimMath`·`SimRandom` 을 소유한다.**
+`Wassup.Sim.asmdef` 의 references 는 `[]` 로 유지 — 엔진 무참조가 컴파일러 플래그가 아니라 사실이다.
+
+판단 근거(초판의 "M1 은 유지, M2 에 제거" 를 뒤집었다):
+
+- **오라클은 지금만 있다.** "parity 제약이 없는 M2 에서 교체" 는 곧 **검증 수단이 없을 때 교체**
+  라는 뜻이다. 구 sim 이 살아 있는 18~20 이 유일한 창이고, A/B parity 가 이 구현 자체를 검증한다.
+- **이미 그어진 선과 정합.** `MatchSessionContract.cs:10` 의 `SimCell` 이 *"int2 대용.
+  Unity.Mathematics 를 DTO 에 들이지 않기 위한 최소 좌표 타입"* 이다. 계약 표면이 거부하는 타입을
+  내부 12,839줄이 쓰는 것은 반쪽이다.
+- **의존이 애초에 정당화되지 않는다.** `quaternion`·`float4x4` **0회**, `math.*` 184회 중
+  **133회(72%)가 `max`/`abs`/`min`/`clamp`/`saturate`**, 스위즐은 `.xz` 8회뿐. 그리고 이 패키지의
+  존재 이유인 Burst/SIMD 코드젠은 이 마이그레이션에서 **사라진다**(unit 20 성능 게이트의 이유).
+- 비용 실측: 3타입 + 13함수 + xorshift = **~330줄**, 이식 본체의 2.6%.
+
+**비트 동일성이 계약이다.** 부동소수 결과가 **이산 판정**(사거리 경계·타겟팅 동률)에 먹히므로
+마지막 비트가 분기를 뒤집는다. 순진한 재구현이 실제로 갈리는 지점 3개를 실측해 옮겼다:
+
+| 함수 | 순진한 구현 | 원본 |
+|---|---|---|
+| `Max`/`Min` | `Math.Max`/`Math.Min` | **두 번째 인자만** NaN 검사하는 비대칭 |
+| `Abs` | `Math.Abs` | **부호 비트 마스크**(`-0f` → `+0f`) |
+| `Normalize` | `v / length(v)` | **역제곱근 곱** `rsqrt(dot) * v` |
+| `Clamp` | 임의 순서 | `max(lo, min(hi, v))` — NaN 전파 방향 |
+| `SimRandom` | 상태 반환 | `NextState()` 는 **변이 전** 값, 생성자가 1회 **버림**, `NextUInt = NextState() - 1` |
+
+게이트 `SimMathParityTests` 5건이 표본 ~2,018개(경계값 18 + 지수 범위 10⁻²⁰~10²⁰ 난수 2,000)에
+대해 두 구현을 **비트 대조**한다. 시드 6개 × 500 draw × 4종도 함께. **이 테스트는 두 라이브러리가
+공존하는 동안에만 쓸 수 있다** — 그래서 지금 만들었다.
+
+⇒ **P6 의 키 매핑표는 처음부터 sim 자체 타입명으로 쓴다.** `Unity.Mathematics.float3` 를 키에
+넣었다가 나중에 바꾸는 경로가 사라졌다.
 
 ### 트레이스 키 계약 (P6 — rev 2 에서 확장)
 
@@ -191,11 +226,8 @@ I3 보충 — 텍스트 게이트는 그동안 **부분적으로** 막아준다:
 
 ## 착수 전 사용자 확인
 
-1. **`Unity.Mathematics` 유지 여부 — S1 전에 닫아야 한다(초판은 "착수 전" 으로 뭉뚱그렸다).**
-   unit 17 결정 (a) 는 조건부였고, 18 은 `float3` 를 들인다. `implicit operator Vector3` 가
-   오버로드 해석에 들어와 **CS0012** 가 나면 (a) 를 접어야 하는데, 그 순간 **P6 의 키 매핑표가
-   통째로 바뀐다**(`Unity.Mathematics.float3` → 자체 타입명). 반경: `Battle/` 안
-   `using Unity.Mathematics` 98파일.
+1. ~~`Unity.Mathematics` 유지 여부~~ — **닫힘(사용자 결정 2026-08-05): sim 이 자기 수학 타입을
+   소유한다.** 아래 §"수학 소유권" 참조.
 2. **PlayMode 16건을 18 착수 전에 정리할지.** 증인 전략 7번의 근거로는 정리가 맞지만 spec 범위 밖.
 3. **18-K 의 A/B 비교기가 `GameManager.CurrentPhase`·`CostRuntime.Current` 를 어떻게 다룰지.**
    `LegacyTrace.cs:238-243` 이 그것을 상태 라인에 넣는데 그림자 sim 은 둘 다 없다 — 비교기가
