@@ -169,3 +169,103 @@ A/B 비교기가 `GameManager.CurrentPhase`·`CostRuntime.Current` 를 어떻게
   구 sim 을 일부러 깨뜨려 빨간불을 확인하려면 `Scripts/Battle/**` 을 건드려야 해서 I1 과
   공유 워크트리 위생 양쪽에 걸린다. **이식 시점에 신 sim 쪽에서 확인**하는 것이 맞다 —
   신 코드가 이 어서션을 통과하지 못하면 그것이 곧 변이 검증이다.
+  → **닫혔다**(18-C/5). 복제가 통과했고, 이식 중 실제로 조건을 좁힌 건이 하나 잡혔다(아래).
+
+---
+
+# S2 (2026-08-05) — 18-C 완료
+
+## Commit
+
+| 해시 | 내용 |
+|---|---|
+| `afc75890` | 18-C/3 — `ModifierApplySystem`(#9, P2 Intake) |
+| `aeea0561` | 18-C/4 — #29 `StatModifierTick` · #30 `Aggregate` (+ `SimWorld.DeltaTime`) |
+| `6b6171d7` | 18-C/5 — #28 `FatigueAccrual` · #31 `MaxHealthScale` (+ `Sim/Lib/Units/`) |
+| `e7574555` | 18-C/6 — #32 `StackModifierTick` + `ModifierCluster` 조립 |
+| `95a6075c` | 18-C/7 — 성능 프로브 (중단 기준 ④) |
+
+## Implemented
+
+**18-C 6시스템 전부 이식 완료.** phase 배치는 **P2 에 하나(#9), P7 에 다섯(#28·#29·#30·#31·#32)**
+이고 `ModifierCluster.Register` 한 곳에 모여 있다 — 6곳에 흩어지면 캡처 순서가 다시 확인할 수
+없는 계약이 된다.
+
+시스템 표현은 **채널을 생성자로 받는 인스턴스 클래스 + `Run(SimWorld)`** 로 정착했다.
+`SimTick.Register` 의 `Action<SimWorld>` 에 그대로 꽂힌다. 18-D 이후도 이 모양을 따르면 된다.
+
+## Notes — 되돌리면 안 되는 의도 (18-C 분)
+
+- **`StatModifierTick` 의 `HasComponent<ModifierStatsDirty>` 가드는 떼는 것이 보존이다.**
+  그 가드는 구 sim 3상태 표현(부재/존재+비활성/존재+활성)의 산물이라 슬롯 보유 엔티티에겐
+  **항상 참**이었다. 2상태(존재=dirty)로 접힌 신 sim 에 그대로 옮기면 집계가 마커를 제거한
+  뒤 영영 거짓이 되어 **집계가 안 깨어난다**. 접힘으로 도달 불가능해진 구 상태 1건은 코드
+  주석에 명시했다(프로덕션에선 `ApplyStat` 이 항상 MarkDirty 를 부르므로 만들어지지 않는다).
+- **스탯/스택의 비대칭 3종**: 병합 키 4축 vs 2축 · refresh 시 `max(old,new)` vs 덮어쓰기 ·
+  MarkDirty 함 vs 안 함. 셋 다 계약이다.
+- **스택 병합의 cap 은 슬롯의 `maxStack`** 을 쓴다(이벤트 값이 아니다). `stackId` ·
+  `lastTriggeredStack` 도 슬롯 것을 유지 — 엣지 캐시를 리셋하면 임계가 매 부착마다 재발화한다.
+- **버퍼 신설을 지연시키지 않는다.** 구 sim 이 ECB 대신 EntityManager 로 즉시 만든 이유가
+  "같은 드레인의 두 번째 이벤트가 첫 슬롯을 덮어쓴다" 였다. 신 sim 에선 구조적으로 사라지지만
+  분기 모양을 보존했고 회귀 핀을 새로 붙였다(구 sim 에 없던 테스트).
+- **`RemoveAtSwapBack` + 역순 순회**를 두 틱 시스템 모두 유지. 안정 제거로 바꾸면 슬롯 순서가
+  달라지고 집계의 곱셈 누적 순서가 바뀌어 부동소수 마지막 비트가 갈린다.
+
+## Notes — 이식 중 잡은 결함 1건 (같은 실수를 반복하지 않기 위해)
+
+**`StackModifierTick` 의 쿼리 축을 좁혔다가 잡았다.** 구 쿼리는
+`SystemAPI.Query<DynamicBuffer<StackModifierSlot>>()` 로 **버퍼만** 보는데,
+바로 앞에서 옮긴 `StatModifierTick`(`RefRO<ModifierStats>` + `WithAll<StatModifierSlot>`)의
+모양을 따라 `With<ModifierStats>()` 로 썼다. 스탯 캐시 없는 대상이 통째로 빠지는 회귀였다.
+
+교훈 두 개: ① **인접 시스템의 쿼리 모양을 복사하지 말 것** — 컴포넌트 쿼리와 버퍼 쿼리는
+다른 축이다. ② 18-A 의 `SimWorld` 에는 그 차이를 표현할 수단이 **없었다**(`With<T>` 만 있었다).
+표현 수단이 없으면 이식은 조용히 조건을 바꾼다 — `WithBuffer<T>()` 를 신설했다.
+
+## Notes — 18-A 표면을 넓힌 2건 (재설계 아님)
+
+중단 기준 ③("18-C 가 18-A 의 저장소/채널 표현을 바꾸도록 강제하면 재설계") 판정: **해당 없음**.
+둘 다 저장소·채널 **표현**이 아니라 없던 표면이다.
+
+1. **`SimWorld.DeltaTime` + `SimTick.Run(world, dt)`** — 18-A 는 시스템이 없어 시간이 필요 없었다.
+   구 sim 이 `SystemAPI.Time`(=`World.Time`)을 읽던 배치 그대로 두고, writer 는 `SimTick` 하나.
+   `Run` 에 기본값 dt 를 두지 않았다(18-A/4 가 `SimConfig` 에서 거부한 "조용한 no-op" 과 같은 패턴).
+2. **`SimWorld.WithBuffer<T>()`** — 위 결함의 처방.
+
+`SimConfig.StackThreshold` 자리표시자는 **채웠다**(`StackThresholdRule`). 18-A/4 가 "내용은
+조각이 채운다" 고 위임한 대로다. int 인코딩이었던 이유("Battle enum 은 여기 못 온다")는
+유효하지만 이제 sim 자신의 enum 이 있어 우회가 필요 없다.
+
+## Notes — 18-D 가 물려받는 것
+
+`CcEffect`·`DotEffect`·`EnemyCcEvent`·`DotApplyEvent`·`DotElementMap` 을 18-C 가 **먼저 열었다** —
+`StackModifierTick` 이 생산자라서다. 18-D 는 **소비자**(적용·병합·감쇠)를 가져오고,
+duration 병합의 비대칭도 거기 소유다. 필드가 모자라면 18-D 가 넓힌다.
+
+## Verified
+
+- 전체 EditMode **2087 통과 / 실패 0 / skip 1**. 누적이 정확히 맞는다:
+  2014(S1) + 13(18-C/2) + 14(/3) + 11(/4) + 19(/5) + 15(/6) + 1(/7).
+- **오라클 복제 초록** — 구 `ModifierFrameworkTests` 의 Test 1·2·3·5 + vsCc 2 + clamp +
+  additive 합산 + 파괴 대상 2건, 그리고 18-C/2 특성화 13건 전부.
+- **중단 기준 ④ 통과** — 프로브 실측 구 49.26 µs/tick vs 신 25.71 µs/tick = **×0.52**.
+  자릿수가 갈리지 않았다. ⚠ **이 숫자로 unit 20 을 예단하지 말 것** — 에디터·x64·Mono 이고
+  진짜 게이트는 ARM64 IL2CPP p95/p99 다.
+- I1 유지 — 18-C 전 커밋에서 `Scripts/Battle/**`·`Scripts/Bridge/**` 수정 **0**.
+
+## Follow-up
+
+- **다음은 18-D(CC/DoT).** 계획서 S3. 18-B 는 여전히 미루기 권고 — 게이트 진리표의 증인은
+  실물 게이트를 만나며 뽑는 것이 맞고, 18-C 에서 이미 self-gate 2종(`BurnoutGimmickConfig`
+  부재 = 시스템 정지, `MaxHealthScale` 은 게이트 **없음**)을 실물로 만났다.
+- **틱당 관리 할당량은 아직 모른다.** 에디터 Mono 에서
+  `GC.GetAllocatedBytesForCurrentThread` 가 **동작하지 않는다**(1 MB 대조 할당에 delta=0).
+  프로브는 이제 계측 불가를 통과로 위장하지 않고 명시적으로 비운다. unit 20 의 기기
+  프로파일이 답할 항목이다.
+- **네이밍 규칙 미결(사용자 판단 보류 2026-08-05)** — `Sim` 접두사가 일관되지 않다.
+  `Sim/Lib/Math/` 안에서 `SimMath` 와 `ScoreMath` 가 나란히 있고, 도메인 타입인
+  `SimModifierMath`·`SimModifierAuthoring` 만 접두사를 달고 있다(`ModifierStats`·
+  `StatModifierSlot` 은 안 달았다). 성립하는 규칙은 "**엔진/BCL 타입 대체분에만 `Sim`**"
+  이고 어긋난 것은 그 둘뿐이다. 사용자 판단은 *"나중에 바뀌는 거라면 일단 진행"* —
+  **unit 20 스왑(구 sim 삭제 = 접두사의 존재 이유 소멸) 시점에 함께 정리**하는 것이
+  자연스럽다. 그때 정리하지 않으면 `Sim*` 이 영구히 남는다.

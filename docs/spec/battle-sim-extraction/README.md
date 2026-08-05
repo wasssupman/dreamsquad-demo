@@ -1,7 +1,7 @@
 ﻿# battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
 상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~17 완료
-(17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중(18-A 완료 · 18-C 착수) · units 19~20 미착수**
+(17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중(18-A·18-C 완료 · 다음은 18-D) · units 19~20 미착수**
 
 > **의존 방향을 컴파일러가 강제하기 시작했다** (unit 17, 2026-08-05). `Scripts/Sim/Lib/` 는
 > `Wassup.Sim.asmdef`(`noEngineReferences: true`) 안에 있고, 거기에 `using UnityEngine;` 을 넣으면
@@ -34,7 +34,9 @@
 | **18-A** 스캐폴딩 4계약 | 완료 | `4e6e1c59` `2eeb1fdf` `beb5931d` `17f1e5b0` |
 | 18-C/1 모디파이어 어휘·산식 | 완료 | `77752f41` |
 | 18-C/2 오라클 0 시스템 2개 특성화 선행 | 완료 | `f57c80e8` (EditMode 2027 / 실패 0) |
-| 18-B~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) 12세션 · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
+| **18-C 시스템 몸체 6/6** | 완료 | `afc75890` `aeea0561` `6b6171d7` `e7574555` (EditMode 2086 / 실패 0) |
+| 18-C/7 성능 프로브 (중단 기준 ④) | 완료 — **통과** ×0.52 | `95a6075c` (EditMode 2087 / 실패 0) |
+| 18-B · 18-D~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) 12세션 · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
 | 19~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
