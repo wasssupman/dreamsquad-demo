@@ -111,7 +111,24 @@ namespace Wassup.Sim
         public SimChannel<Wassup.Sim.Combat.ProjectileHitEvent> ProjectileHit { get; }
             = new SimChannel<Wassup.Sim.Combat.ProjectileHitEvent>();
 
+        // ── 캐스트 (18-I) ─────────────────────────────────────────────────────
+        /// <summary>
+        /// Effects→Combat 캐스트 성사. 생산자 `HazardCastSystem`(#18, P5) → 소비자 공격 루프(#33, P8).
+        /// ⚠ **같은 틱 소비가 계약**이다 — 늦어지면 "가끔 한 프레임 늦게 나감" 이 된다.
+        /// 채널 타입이 소비자 맥락(Combat)에 사는 것도 규칙이다(`AggroHit` 의 대칭).
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.CastEvent> Cast { get; }
+            = new SimChannel<Wassup.Sim.Combat.CastEvent>();
+
+        /// 해저드 스폰 요청. sim 이 "무엇을 어디에" 만 정하고 생성은 소비 지점(18-K)이 한다.
+        public SimChannel<HazardSpawnRequest> HazardSpawnRequest { get; }
+            = new SimChannel<HazardSpawnRequest>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
+        /// 공격이 나갔다(방어유닛/적 공통). 뷰가 애니와 바라보는 방향을 잡는다.
+        public SimChannel<Wassup.Sim.Combat.UnitAttackVisualEvent> UnitAttackVisual { get; }
+            = new SimChannel<Wassup.Sim.Combat.UnitAttackVisualEvent>();
+
         /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
         public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
             = new SimChannel<Wassup.Sim.Units.DamageNumberEvent>();
@@ -160,6 +177,9 @@ namespace Wassup.Sim
             ShieldGranted.Reset();
             ThreatHit.Reset();
             ProjectileHit.Reset();
+            Cast.Reset();
+            HazardSpawnRequest.Reset();
+            UnitAttackVisual.Reset();
             DamageNumber.Reset();
             HealApplied.Reset();
             Warnings.Reset();
