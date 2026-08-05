@@ -90,6 +90,12 @@ namespace Wassup.Sim
         public SimChannel<HazardDestroyedEvent> HazardDestroyed { get; }
             = new SimChannel<HazardDestroyedEvent>();
 
+        /// <summary>
+        /// 실드 부여 원샷 VFX. 생산자 `ShieldCastSystem`(#19, P5) → 소비자는 뷰(18-K).
+        /// ⚠ **실제로 실드가 오른 경우에만** 나간다 — no-op 재부여는 여기에도 안 온다.
+        /// </summary>
+        public SimChannel<ShieldGrantedEvent> ShieldGranted { get; } = new SimChannel<ShieldGrantedEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
         public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
@@ -136,6 +142,7 @@ namespace Wassup.Sim
             GoalReached.Reset();
             DefenderDeath.Reset();
             HazardDestroyed.Reset();
+            ShieldGranted.Reset();
             DamageNumber.Reset();
             HealApplied.Reset();
             Warnings.Reset();
