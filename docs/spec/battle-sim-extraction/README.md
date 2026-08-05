@@ -1,6 +1,7 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~14 완료, units 15~20 미착수**
+상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~14 완료 · unit 15 는 A·B 완료,
+C 이후 대기(골든 코퍼스 동결) · units 16~20 미착수**
 
 | unit | 상태 | 커밋 |
 |---|---|---|
@@ -8,10 +9,32 @@
 | 8 데이터 매핑(리뷰 보완 반영) | 완료 | — |
 | 11 선행 머지 1·2·3 | 완료 | `b0681da6` 에서 골든 parity 확인 |
 | 12 세션 파사드 | 완료 | — |
-| 13 소비자 재배선 (A1~C3) | 완료 | `1ce4407c` `cbd830c3` `0cd3e04c` `e588d6b5` `18ed2315` `a71e8088` `e41a30a4` `52454aa4` |
+| 13 소비자 재배선 (A1~C3) | 완료 · **B2 잔여** | `1ce4407c` `cbd830c3` `0cd3e04c` `e588d6b5` `18ed2315` `a71e8088` `e41a30a4` `52454aa4` |
 | — 골든 게이트 복구 | 완료 | `6f1bf77f` (unit 3 결함 수리 — 로드아웃 벽시계 시드) |
 | 14 규칙 적출 ① 웨이브·승패·점수 | 완료 | `773e57b2` (골든 7종 byte diff 0) |
-| 15~20 | **미착수** | — |
+| 15-A 배치 쿨타임을 규칙 판정으로 | 완료 | `45692e47` (골든 byte diff 0) |
+| 15-B 배치 판정 순수화 + 사유 이관 | 완료 | `87eb80fc` (골든 byte diff 0) |
+| 15-C 이후 | **대기** — 분기 조건은 아래 코퍼스 동결 | — |
+| 16~20 | **미착수** | — |
+
+### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
+
+units 15-C~18 구간 동안 골든 7종을 **byte 동결**로 두고 계속 `byte diff 0` 으로 판정한다.
+`PlaceDefenderAs` 은퇴는 unit 18 이후로 이관됐다 — 하네스가 그 함수로 배치하고 코스트 차감 주체가
+경로마다 달라(드래그=Bridge, 클릭=UI), 차감을 sim 으로 모으면 `cost` 정규 상태 라인이 움직여
+코퍼스가 바뀐다. 그래서 이 구간의 작업은 **값·시점을 바꾸지 않는 조각**으로 한정한다.
+분류표는 [`15_rule_extraction_placement_currency.md`](15_rule_extraction_placement_currency.md) 참조.
+
+이 결정은 새 정책이 아니라 **아래 "골든 계약"의 집행**이다 — 그 계약은 처음부터 "골든을 바꾸는
+unit 은 19 하나" 라고 못박았다. unit 15 문서의 "은퇴 경로 삭제" 항목이 그것과 충돌하고 있었고,
+충돌을 계약 쪽으로 해소한 것이다.
+
+### 남은 유닛의 규모 (2026-08-05 판단)
+
+- 15-C · 16 · 17 · 19 — 세션 규모.
+- **18 (context port) 은 단일 세션 규모가 아니다** — ECS 시스템 전체와 27개 이벤트 채널을
+  엔진-프리로 옮기는 이 spec 의 실질적 본체. 별도 계획으로 쪼갤 것.
+- **20 (A/B parity) 은 ARM64 실기기 게이트** — 장비 없이는 완료 불가.
 
 > M1 리뷰 판정과 재리뷰 게이트 6건은 [m1_review.md](m1_review.md) 가 정본이다.
 > 세션 인계는 [m1_unit13_handoff.md](m1_unit13_handoff.md) → [m1_unit14_handoff.md](m1_unit14_handoff.md).
@@ -57,7 +80,7 @@
 | [8_data_mapping_blueprint.md](8_data_mapping_blueprint.md) | 청사진 ② | IComponentData 96 + IBufferElementData 21 → plain struct 대응표 + `RequireForUpdate` 35 게이트 이식 매트릭스 |
 | [9_tick_pipeline_blueprint.md](9_tick_pipeline_blueprint.md) | 청사진 ③ | order-capture 기반 틱 페이즈 순서도 + 동률 예외·병합 duration 정책 명문화 |
 | [10_salvage_matrix.md](10_salvage_matrix.md) | 판정표 | 시스템 44 · 채널 27 · Bridge 서브시스템 ≈60건 conform/adapt/rewrite/discard |
-| [11_preparatory_merges.md](11_preparatory_merges.md) | 선행 머지 3건 | 뷰 상수 분리(✅ `b564e768`) · 스택 임계 의존 역전(✅ `c0a361cb`) · 비-sim 코드 퇴거(✅ `562f83b7`) — **Unity EditMode/Play 검증 대기** |
+| [11_preparatory_merges.md](11_preparatory_merges.md) | 선행 머지 3건 | 뷰 상수 분리(✅ `b564e768`) · 스택 임계 의존 역전(✅ `c0a361cb`) · 비-sim 코드 퇴거(✅ `562f83b7`) — ✅ 검증 완료(`b0681da6` 골든 parity) |
 | [12_session_facade.md](12_session_facade.md) | seam 도입 | `IMatchSession` + `LegacyMatchSessionAdapter` — 구 sim 위 파사드, 소비자 변경 0 |
 | [13_consumer_rewiring.md](13_consumer_rewiring.md) | 재배선 | 소비자 82파일을 A(폴링→읽기 모델)·B(push→이벤트)·C(입력→커맨드) 3묶음으로 |
 | [14_rule_extraction_wave_outcome.md](14_rule_extraction_wave_outcome.md) | 규칙 적출 ① | 웨이브·승패·타이머·점수/유출 — 읽기 모델의 신설 카운터를 여기서 채운다 |
@@ -128,12 +151,25 @@ M0 골든은 **12:44 에 녹음**됐고 그 뒤 M1 의 선행 머지 3건과 uni
 - **M2 units**: 헤드리스 dotnet 러너 CI · AMR 녹화 · ReplaySession(seek) · 커맨드로그 재시뮬 배치 잡(advisory) · 스키마 upcaster + 구버전 리플레이 코퍼스 CI · Entities 패키지 물리 제거.
 - **M3 units**: RemoteSession · 서버 스택 결정(Unity headless vs 자체) · 재접속(스냅샷+백로그 exactly-once) · suspend/resume · 점수 발급 서버 이관.
 - **미채택 보류**: lag compensation(RTT 매트릭스 리뷰에서 실패 스킬이 나오면 재론).
+- **골든 코퍼스의 사각지대 2개** (코퍼스 변경 = unit 19 권한이라 미조치):
+  ① 하네스가 Bridge API 를 직접 불러 **뷰→커맨드 경로를 우회**한다 → bundle C 의 검출기는 PlayMode 다.
+  ② 코퍼스는 **draft 경로**를 녹음하고 거기서 `_skillLoadout` 은 null 이라 **로드아웃 결정론을
+  증인할 수 없다**(회귀 방지는 `MatchSeedTests`·`SkillLoadoutControllerTests` 6건이 진다).
+  ③ **배치 쿨타임도 증인이 없다** — 하네스는 유닛 타입마다 1회만 배치하고 쿨타임은 정규 상태
+  라인에도 없다(그래서 `PlacementCooldownGateTests` 4건이 유일한 증인 — unit 15-A).
 - **PlayMode 스위트 수리 (이 spec 범위 밖 · 별도 spec 후보)**: 2026-08-04 전체 실행 결과
   `passed=76 failed=15`. **이 spec 이 만든 파손이 아니다** — 골든 7종이 HEAD 에서 byte 동일하고,
   실패는 이 spec 이 건드리지 않은 경로에 있다. 진단된 것:
   - `AuthE2ETest` — 개발 DB 의 `uk_users_user_name` 중복(`user_name=e2e-test` 선점). 환경 상태.
-  - `DropDismountTest` — `fe53bd45`(drop-dismount unit 1)가 `_defenderViewOverride` 값을 튜플로
-    바꿨는데 테스트의 리플렉션 헬퍼가 `float3` 캐스팅을 유지 → `InvalidCastException`.
+  - ~~`DropDismountTest`~~ — **수리됨**(unit 13-C1, `18ed2315`). `fe53bd45`(drop-dismount unit 1)가
+    `_defenderViewOverride` 값을 튜플로 바꿨는데 테스트의 리플렉션 헬퍼가 `float3` 캐스팅을 유지해
+    `InvalidCastException` 이 났다. bundle C 의 **유일한 자동 검출기**라 C2 진행 전에 먼저 고쳤다.
+  - ~~`NextWaveClearAttentionSmokeTest`~~ — **수리됨**(unit 14, `773e57b2`). 위 목록에 없었지만
+    unit 13-A1 이후 줄곧 깨져 있었다: `NextWaveDock` 이 `bridge.X` 직독에서 세션 스냅샷 폴링으로
+    옮겨갔는데 이 픽스처는 `BeginPlacement` 를 거치지 않아 세션이 무장되지 않고, 도크가 `IsActive`
+    게이트에서 조기 return 해 **브리지 상태가 맞는데도 CTA 강조가 안 켜졌다**. A1 검증이
+    EditMode+골든만 봤고 이 PlayMode 그룹을 돌리지 않아 놓쳤다 — **재배선 unit 은 그 뷰를 덮는
+    PlayMode 군을 함께 돌려야 한다**는 교훈.
   - `BountyMarkTest` · `DreamstoneCarryInSmokeTest` ×2 — PrimeTween `EmergencyStop` 의
     "OnComplete ignored" 에러 로그를 `LogAssert.Expect` 하지 않음. 테스트 위생.
   - `PlacementAuraTest` ×3 — **단독 실행에서도 재현**되며 받아선 안 되는 유닛에 정확히 ×1.2

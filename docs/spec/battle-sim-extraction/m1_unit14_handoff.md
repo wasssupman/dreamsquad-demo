@@ -24,7 +24,10 @@ feature 종료 handoff 가 아니다 — units 15~20 이 남아 있다. 최신 �
 ## Key Files
 
 - `Assets/_Project/Scripts/Sim/Match/` — `MatchWaveSchedule` · `MatchOutcomeRules` ·
-  `MatchOutcomeNames`. **`UnityEngine` 을 직접 `using` 하지 않는다** = unit 17 asmdef 분리의 출발점.
+  `MatchOutcomeNames`(+ unit 15-B 의 `MatchPlacementRules` · `PlacementRejectReason`).
+  이 unit 의 세 타입은 **`UnityEngine` 을 직접 `using` 하지 않는다** = unit 17 asmdef 분리의 출발점.
+  ⚠ 단 **폴더 전체는 아니다** — `MatchPlacementRules` 는 `Vector2Int` 때문에 참조를 갖는다
+  (리뷰 양측 H1). 게이트는 `SimEngineIndependenceTests`, 이식 목록은 `17_sim_lib_skeleton.md`.
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `ResolveAndInitializeWavePlan`(SO 해석 seam) ·
   `ConcludeMatch`(종료 단일 경로) · `NarrateQueuedWaves`(서술) · `Outcome*` internal 읽기 창구.
 - `Assets/_Project/Editor/LegacyTraceGoldenRunner.cs` — `DumpCanonicalBlob`. **해시가 흔들리면

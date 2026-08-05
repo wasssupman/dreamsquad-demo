@@ -28,7 +28,7 @@
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
 | 데이터 SO | `Data/AttackUnitData.cs` (+`EnemyCatalog.cs`) | ★적 스탯 SO 이름이 **AttackUnitData** — "EnemyData" 는 없음. 신규 적은 **EnemyCatalog + AttackDeck/웨이브 pool 노출까지** |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnUnit` | 웨이브 스케줄러가 `Data/AttackDeck.cs`·`WavePlanAsset.cs` 소비 |
+| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnUnit` | 대기열은 `Sim/Match/MatchWaveSchedule` 소유(battle-sim-extraction unit 14) — Bridge 가 `TakeDueSpawns` 로 뽑아 스폰한다. 스케줄러가 `Data/AttackDeck.cs`·`WavePlanAsset.cs` 소비 |
 | ECS 컴포넌트 | Units: AttackUnitTag·Health·IncomingDamage · Movement: `PathFollowState` · Combat: AttackState·EnemyBehavior·EnemyAiState | 이동은 적 전용 |
 | 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(flow-field) · `Battle/Combat/AttackSystem.cs`·`EnemyAiStateSystem.cs` | |
 | 이벤트 큐 | `Battle/Units/EnemyKilledEventsSingleton.cs`·`GoalReachedEventsSingleton.cs` · `Battle/Effects/EnemyCcEvents.cs` | + 공유 UnitAttackVisual/DamageNumber |
@@ -173,7 +173,7 @@ one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, 
 | 데이터 | `Presentation/SpawnAlertPresenter.cs` SerializeField (SO 아님) | 색·폭·타이밍 전부 인스펙터. 프리팹/SO 소스 없음 |
 | ECS | N/A — 시뮬 무관 순수 Mono | 예고는 시뮬을 바꾸지 않는다 |
 | 트리거 | ★큐 아님 — `BattleBridge.TryGetSpawnAlertForecast` **read-only 폴링** | NextWaveDock 과 같은 폴링 계열. 이벤트 drain 아님 |
-| 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) — **`BattleBridge.QueueWave` 가 큐잉 시점에 1회 호출** | 실스폰 엔트리와 **같은 인자**로 호출(+`EffectiveSpawnIndex`·`DeckIndexStride` 공유)가 정확도 보증. 창은 `waveSpawnLeadInSec`(wave-pattern 11)가 만든다 |
+| 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) — **`Sim/Match/MatchWaveSchedule` 이 큐잉 시점에 1회 호출**(unit 14 이전엔 `BattleBridge.QueueWave`) | 실스폰 엔트리와 **같은 인자**로 호출(+`EffectiveSpawnIndex`·`DeckIndexStride` 공유)가 정확도 보증. 창은 `waveSpawnLeadInSec`(wave-pattern 11)가 만든다 |
 | 경로 소스 | `BattleBridge.TryGetSpawnPathSim` (goal flow field 추적) | 유닛 이동과 같은 필드 → 표시 루트 = 실제 루트 |
 | View | `Presentation/SpawnAlertPresenter.cs` — lane 당 LineRenderer 3 + SpriteRenderer 1 | 풀 없음(lane 수만큼 생성 후 재사용). 텍스처 절차 생성 |
 | 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다 |

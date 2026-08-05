@@ -54,6 +54,23 @@ MonoBehaviour 런타임, 유출 허용치는 Bridge private 라 흩어져 있어
 - `PlacementCooldownGateTests` 4건 — **골든은 이 회귀를 잡지 못한다**(하네스는 유닛 타입마다 1회만
   배치하고, 쿨타임은 정규 상태 라인에도 없다). 그래서 이 EditMode 4건이 유일한 증인이다.
 
+### 리뷰 반영 (2026-08-05 투트랙)
+
+- **쿨타임 청구 지점을 "커밋" 으로 옮겼다** — 타일 점유 직후, 엔티티 생성·뷰 작업보다 **앞**.
+  코스트 차감과 같은 자리다(배치가 받아들여진 순간 두 통화가 함께 청구된다). 뒤에 있으면 뷰
+  단계에서 예외가 났을 때 **타일은 점유됐는데 쿨타임은 안 걸린** 상태가 남고, 규칙을 검증하는
+  테스트가 뷰 배선까지 세워야 한다(실측: `CreateDefenderEntity` 가 Grid 를 요구해 EditMode 에서
+  막혔다). 골든 무영향 — 쿨타임은 정규 상태 라인에 없다.
+- **Track A 의 HIGH 는 기각**: "15-A 가 라이브 드래그 배치에 쿨타임을 새로 강제한다(밸런스 변경)"
+  는 지적이었으나, `BeginDrag` 의 유일한 호출처인 `DefenderDragSlot.OnBeginDrag` 가 이미
+  *"쿨타임 중이면 세션 자체를 시작하지 않는다"* 로 막고 있고(탭 경로도 동일),
+  `PlacementInput.clickPlacementEnabled` 는 기본 false(은퇴 경로)다. **라이브는 원래 막혀 있었고
+  15-A 가 닫은 것은 뷰 우회 경로가 맞다.** 리뷰어가 `DefenderSelector`/`DefenderDragPlacementController`
+  만 보고 이 스펙이 "드래그/탭 진입 게이트" 로 지목한 `DefenderDragSlot` 을 놓쳤다.
+  ⇒ 뷰 게이트(드래그 시작 차단)와 규칙 게이트(판정)는 **의도된 이중 방어**다. 어느 쪽도 지우지 말 것.
+- `OnCooldown` 에 뷰 라벨을 줬다(`DefenderDragPlacementController`). 정상 경로에선 도달하지 않지만
+  커맨드/디버그 경로의 거절이 "배치 불가" 로 뭉개지면 진단이 안 된다.
+
 ### ⚠ 발견 — "은퇴 경로 삭제(`PlaceDefenderAs`)" 는 골든 코퍼스와 충돌한다
 
 이 문서가 `PlaceDefenderAs` 를 salvage discard 로 적었지만, **골든 하네스가 그 함수로 배치한다**

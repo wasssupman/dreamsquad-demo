@@ -6,7 +6,12 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/UI/DefenderSelector.cs` — `PlacementCommitted` 구독 → 쿨타임 시작
+- ~~`Assets/_Project/Scripts/UI/DefenderSelector.cs` — `PlacementCommitted` 구독 → 쿨타임 시작~~
+  ⚠ **이 계약은 대체됨** (battle-sim-extraction unit 15-A, 2026-08-05): 쿨타임 시작은 이제
+  `BattleBridge.StartPlacementCooldown` 이 단일 소유자다. UI 가 시작하면 **뷰를 거치지 않는 배치
+  경로(세션 커맨드·클릭 배치·테스트)가 쿨타임을 통째로 무시**하기 때문이다. 아래 "시작" 절의
+  코드는 역사 기록으로 남긴다. 게이트(딤 처리)는 그대로 UI 가 하고, 판정도 이제
+  `MatchPlacementRules.Check` 가 `PlacementRejectReason.OnCooldown` 으로 낸다.
 - `Assets/_Project/Scripts/UI/DefenderDragSlot.cs` — 드래그/탭 진입 게이트
 
 ## 구현

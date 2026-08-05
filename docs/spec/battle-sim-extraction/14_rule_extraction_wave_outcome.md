@@ -45,8 +45,15 @@ salvage 판정표 §3 의 sim 규칙 클러스터 3개:
 
 ### 만든 것
 
-`Assets/_Project/Scripts/Sim/Match/` — `Wassup.Runtime` asmdef 안이지만 **`UnityEngine` 을 직접
-`using` 하지 않는다**. 그 선이 unit 17 asmdef 분리의 출발점이다.
+`Assets/_Project/Scripts/Sim/Match/` — `Wassup.Runtime` asmdef 안이지만 이 unit 이 만든 세 타입은
+**`UnityEngine` 을 직접 `using` 하지 않는다**. 그 선이 unit 17 asmdef 분리의 출발점이다.
+
+> ⚠ **정정 (2026-08-05, 리뷰 양측 H1)**: 위 문장은 unit 14 시점에는 폴더 전체에 대해 참이었지만
+> **unit 15-B 의 `MatchPlacementRules` 가 `Vector2Int` 때문에 `using UnityEngine` 을 들여왔다.**
+> 이제 폴더 단위 주장은 거짓이고, 무참조인 것은 `MatchOutcomeRules`·`MatchOutcomeNames`·
+> `MatchWaveSchedule` 세 개다(`MatchWaveSchedule` 은 `Wassup.Data` 를 참조하지만 `UnityEngine` 을
+> 직접 쓰지는 않는다). 드리프트 재발을 막는 게이트는 `SimEngineIndependenceTests` 가 소유한다 —
+> asmdef 가 없는 동안 강제 수단은 그것뿐이다.
 
 | 타입 | 소유 상태 | 성격 |
 |---|---|---|

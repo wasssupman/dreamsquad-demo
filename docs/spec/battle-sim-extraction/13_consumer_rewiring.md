@@ -140,9 +140,18 @@ unit 15 에 남겼다(어댑터 `SetFacing` 주석이 이미 그 경계를 명�
 | 조각 | 대상 | 상태 |
 |---|---|---|
 | **B1** | `ScoreHudView.OnEnemyKilled` · `BossWarningView.Show` — 페이로드가 호출 지점에 이미 있는 스칼라 | ✅ 완료 |
-| **B2** | `ScoreHudView.SetLeakStatus` · `ScoreTallyView.Play` · `ResultScreen.ShowVictory/ShowDefeat` | **unit 14 와 함께** |
+| **B2** | `ScoreHudView.SetLeakStatus` · `ScoreTallyView.Play` · `ResultScreen.ShowVictory/ShowDefeat` | ⏳ **미완** — unit 14 는 지나갔다(아래) |
 
-**B2 를 unit 14 로 미룬 근거**(추측이 아니라 실측):
+**B2 현황 (2026-08-05, unit 14 완료 후)** — unit 14 는 B2 의 **전제만** 해결하고 B2 자체는 남겼다:
+
+- ✅ 전제 해소: 값이 더는 Bridge private 이 아니다. 읽기 모델이 `Goals`·`EffectiveLeakLimit`·
+  `StressAccrued`·`StressLimit`·`ScoreKill` 을 **실제 값**으로 서빙한다(`SupportedScore: true`).
+- ✅ 부분 완료: **킬 점수 정본이 뒤집혔다** — `ScoreHudView.SyncScoreFromSession()` 이 매 프레임
+  `ReadModel.ScoreKill` 을 따라간다(Battle 구간 한정).
+- ⏳ 남음: `SetLeakStatus` push→pull 역전, `ScoreTallyView.Play`, `ResultScreen` 2종. 이 셋은
+  **뷰 소유권** 문제라 한 묶음으로 다루는 것이 맞다(아래 근거가 그대로 유효하다).
+
+**B2 를 unit 14 로 미뤘던 근거**(추측이 아니라 실측):
 - `SetLeakStatus(goals, limit, notEndless)` 는 이벤트가 아니라 **상태 푸시**다. 이벤트로 바꾸면
   비멱등해진다. 읽기 모델 폴링이 맞는 모양인데 그 값(`_goalReachedCount`·`EffectiveLeakLimit()`·
   `IsEndless`)이 전부 **Bridge private** 이라, 지금 옮기면 unit 14 가 즉시 걷어낼 `internal` 발판을
