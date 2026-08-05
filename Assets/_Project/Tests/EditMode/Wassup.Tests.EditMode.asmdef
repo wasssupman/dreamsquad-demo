@@ -2,6 +2,7 @@
     "name": "Wassup.Tests.EditMode",
     "rootNamespace": "Wassup.Tests.EditMode",
     "references": [
+        "Wassup.Sim",
         "Wassup.Runtime",
         "Wassup.Editor.UnitStatImport",
         "Wassup.Editor.MobileBuild",

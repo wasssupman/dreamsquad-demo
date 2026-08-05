@@ -2,6 +2,7 @@
     "name": "Wassup.Runtime",
     "rootNamespace": "Wassup",
     "references": [
+        "Wassup.Sim",
         "Unity.Entities",
         "Unity.Entities.Graphics",
         "Unity.Burst",

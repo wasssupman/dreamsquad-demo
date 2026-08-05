@@ -142,6 +142,46 @@ byte-diff-0 unit** 으로 끝날 수 있고, 엔진 타입 4종은 데이터 계
 해석에 들어와 **CS0012** 가 날 수 있다. (a) 를 M2 까지의 최종 결정으로 못박지 않는다.
 `Unity.Collections` 는 `noEngineReferences:false` 라 **`NativeArray` 는 sim 에 들어올 수 없다**.
 
+---
+
+## ✅ 실행 결과 (2026-08-05) — 17-A~E·G 완료, 17-F 는 unit 18 로
+
+정찰이 제안한 `Sim/Lib/` 2층 구조로 진행했고 **코드 변경 0 · 소비자 diff 0** 로 끝났다.
+네임스페이스를 폴더에 맞춰 바꾸지 않은 것이 그 근거다(`Wassup.Core.Session`·`Wassup.Core` 유지).
+
+**게이트 실측(17-B, 완료 기준 항목)**: 졸업한 파일에 `using UnityEngine;` 을 임시로 넣으니
+`CS0246: The type or namespace name 'UnityEngine' could not be found` 로 빌드가 깨졌다. 되돌림.
+⇒ 의존 방향을 이제 **컴파일러가 강제**한다.
+
+**졸업한 9파일** (`Scripts/Sim/Lib/`, `Wassup.Sim.asmdef` · `noEngineReferences: true` · references 0):
+
+| 위치 | 파일 |
+|---|---|
+| `Lib/Contracts/` | `IMatchSession` · `MatchReadModel` · `MatchSessionContract` · `MatchSessionEvents` |
+| `Lib/Match/` | `PlacementRejectReason` · `MatchOutcomeNames` · `MatchOutcomeRules` · `MatchSynergyRules` |
+| `Lib/Math/` | `ScoreMath` |
+
+`MatchSynergyRules`(unit 15-C-2 신설)는 정찰 시점에 없던 파일인데 `using System;` 뿐이라 함께 졸업했다.
+
+**스테이징에 남은 2파일** — 이유는 정찰 표 그대로다:
+`MatchPlacementRules`(`Vector2Int`·`GeneratedMap`) · `MatchWaveSchedule`(`SpawnEntry`·`GeneratedWavePlan`).
+
+**`MatchSession.cs` 는 남았다** — `UnityEngine.Debug` ×2 를 갖는 **로케이터**다. 리뷰 M3 가 막으려던
+것(sim 이 `MatchSession.Current` 에 손이 닿는 것)은 이제 **어셈블리 순환 금지가 집행**한다:
+어휘는 `Wassup.Sim` 에, 로케이터는 `Wassup.Runtime` 에 있어서 sim 이 로케이터를 보려면 순환이 필요하다.
+
+**`MapTileType` 은 옮기지 않았다**(정찰의 17-E 목록과 다름). 그것을 쓰는 `MatchPlacementRules` 가
+스테이징에 남으므로 지금 옮겨도 얻는 것이 없고, `Wassup.Data` 타입을 하나만 떼면 데이터 계층이
+두 어셈블리로 갈린다. `GeneratedMap`→plain tile view 와 **같은 커밋에서** 움직이는 것이 맞다(unit 18).
+
+**17-G — 텍스트 게이트의 관할을 좁혔다.** `SimEngineIndependenceTests` 는 이제 **스테이징 층만**
+본다(졸업 층은 컴파일러가 정본이라 이중 감시하지 않는다). 대신 **게이트 자신을 지키는 단정**을
+신설했다 — `noEngineReferences` 가 false 로 돌아가면 졸업 층의 무참조를 강제하는 것이 하나도
+없어지는데 그 사실이 조용하다. asmdef 의 `name`·`allowUnsafeCode`·금지 참조 4종도 함께 본다.
+
+**`Unity.Mathematics` 결정 (a) 유지** — 다만 이 unit 은 references 를 **빈 배열**로 두었다.
+졸업한 9파일 중 수학 타입을 쓰는 것이 없어서다. 필요해지는 시점(17-F/18)에 추가한다.
+
 ### 문서 드리프트 정정
 
 - **`MatchSeed` 는 순수하지 않다** — `Core/MatchSeed.cs:25` 가 `UnityEngine.Random.Range` 를

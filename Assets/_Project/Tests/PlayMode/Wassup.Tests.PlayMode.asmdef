@@ -2,6 +2,7 @@
     "name": "Wassup.Tests.PlayMode",
     "rootNamespace": "Wassup.Tests.PlayMode",
     "references": [
+        "Wassup.Sim",
         "Wassup.Runtime",
         "PrimeTween.Runtime",
         "Unity.Mathematics",

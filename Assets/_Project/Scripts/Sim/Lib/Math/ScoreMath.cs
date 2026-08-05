@@ -11,7 +11,10 @@ namespace Wassup.Core
     ///   킬점수      = 실제 처치한 적의 killScore 합
     ///
     /// **승패 규칙도 여기 있다.** Bridge 에 흩으면 테스트로 고정되지 않는다(spec 계약 3).
-    /// 아키텍처 무참조 순수 함수 — UnityEngine/Entities 를 참조하지 않는다(MatchSeed 선례).
+    /// 아키텍처 무참조 순수 함수 — UnityEngine/Entities 를 참조하지 않는다.
+    /// battle-sim-extraction unit 17 — 이제 그 사실을 **컴파일러가 강제**한다(`Wassup.Sim`,
+    /// `noEngineReferences: true`). 주석이 "(MatchSeed 선례)" 라고 적었던 것은 오기였다 —
+    /// `MatchSeed.GenerateRandom()` 은 `UnityEngine.Random.Range` 를 정규화 참조로 부른다.
     /// int 만 쓴다: 최악 180,000ms × 100 = 18,000,000 이고, int 오버플로 임계는
     /// 초당점수 11,930 이다(ScoreRulesData 의 Range 가 막는다).
     /// </summary>

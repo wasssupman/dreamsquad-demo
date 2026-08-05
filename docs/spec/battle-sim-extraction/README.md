@@ -1,7 +1,12 @@
 # battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
-상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~14 완료 · unit 15 는 A·B 완료,
-C 이후 대기(골든 코퍼스 동결) · units 16~20 미착수**
+상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~15 완료 · unit 17 은 asmdef
+게이트까지 완료(17-F 는 18 로 이관) · units 16 · 18~20 미착수**
+
+> **의존 방향을 컴파일러가 강제하기 시작했다** (unit 17, 2026-08-05). `Scripts/Sim/Lib/` 는
+> `Wassup.Sim.asmdef`(`noEngineReferences: true`) 안에 있고, 거기에 `using UnityEngine;` 을 넣으면
+> **CS0246 으로 빌드가 깨진다**(1회 실측 후 되돌림). 이후 unit 은 이 게이트 안에서 코드를 쓴다.
+> `Sim/` 중 `Sim/Lib/` **밖**은 아직 스테이징(=`Wassup.Runtime` 소속)이라 텍스트 게이트가 지킨다.
 
 | unit | 상태 | 커밋 |
 |---|---|---|
@@ -17,7 +22,9 @@ C 이후 대기(골든 코퍼스 동결) · units 16~20 미착수**
 | 15-C-1 재배치 판정 이관 | 완료 | `afdea076` (골든 byte diff 0) |
 | 15-C-2 시너지 판정 적출 + `visualMaterial` 계층 정리 | 완료 | `c76cf833` (골든 byte diff 0) |
 | **15 종료** | `ApplyOnPlaceEffect` 는 unit 18 로, 통화 상태 이관은 동결 해제 후로 이관 | — |
-| 16~20 | **미착수** | — |
+| 17-A~E·G asmdef 격리 | 완료 — **코드 변경 0** | (골든 byte diff 0) |
+| 16 · 17-F | **미착수** (17-F 는 unit 18 과 같은 커밋으로 이관) | — |
+| 18~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
 
