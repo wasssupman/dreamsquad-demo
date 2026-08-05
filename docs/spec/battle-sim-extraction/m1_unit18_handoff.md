@@ -346,3 +346,85 @@ duration 병합의 비대칭도 거기 소유다. 필드가 모자라면 18-D �
 | 18-L Bridge 축출 | — | — | — | 라이브 코드 · **골든 14 Play 세션**으로 판정 |
 
 44 시스템 중 **10 이식 완료**(#9·#10·#15·#28~32·#37·#40).
+
+---
+
+# S4 (2026-08-05) — 18-E (7/8) + 공간 토대
+
+## Commit
+
+| 해시 | 내용 |
+|---|---|
+| `7876cc3d` | 18-E/1 — 오라클 0 시스템 4개 특성화 선행 |
+| `ba61015f` | 18-E/2 — 공간 토대 415줄(`Sim/Lib/Movement/` 개설) |
+| `ade2ebc6` | 18-E/3 — #1 LastRun · #2 HazardLifetime · #6 ObstacleLifetime |
+| `ae9fc480` | 18-E/4 — #3 AllyBuffField · #7 DefenderField |
+| `05ad9181` | 18-E/5 — #5 ZoneApply · #16 PatrolField |
+| (이 커밋) | 18-E/6 — `EnvironmentCluster` 조립 + #18 이관 기록 |
+
+## Implemented
+
+**44 시스템 중 17 이식 완료.** 18-E 는 **7/8** 로 닫았다 — #18 `HazardCast` 는 **18-I 로 이관**.
+
+이관 근거: 그 시스템이 `DcTriggerSlot`(25필드 + `Wassup.Data` enum 4개, 쓰기 소유자 =
+`AttackSystem`)의 **버퍼 존재**를 본다. 존재 확인 하나 때문에 18-I 의 타입을 추측으로 옮기면
+필드 하나만 틀려도 상태 라인이 갈린다(`AttackState` 를 9필드 전부 옮긴 것과 같은 이유).
+**누락이 사고가 아니라 결정임을 테스트로 박았다** — `HazardCastIsAbsent_BecauseItMovedTo18I`.
+
+## Notes — 이 세션의 관통 주제: "주석 계약" 이 결함이 되는 자리
+
+네이티브→관리 치환은 **구 sim 이 주석으로만 유지했던 계약**을 실제 결함으로 바꾼다.
+구 sim 에서는 `Allocator.Temp`(범프 할당)와 네이티브 컨테이너의 성질이 그 계약을 우연히
+지켜줬는데, 관리 코드는 그러지 않는다. 이번에 셋을 만났다:
+
+1. **`HazardCellIndex` 순회 순서** — 구 `NativeParallelMultiHashMap` 은 버킷에 prepend 해서
+   **역-삽입순**으로 읽힌다. 관리 `List` 를 그대로 쓰면 뒤집힌다. 계획서는 "순회 순서를
+   보존한다" 고만 적었고 **그 순서가 무엇인지는 없었다** — 구 sim 에 특성화를 붙여 **측정**했다.
+   처방: 리스트를 노출하지 않고 `Get(cell, index)` 만 준다(`index 0` = 최신). 소비자가 틀릴 수 없다.
+2. **`FillAreaMask` 의 자체 소거** — 구 sim 은 "호출자가 0 초기화해 넘긴다" 는 **주석 계약**이었다.
+   신 sim 은 버퍼를 재사용하므로(그럴 유인이 실제로 있다) 앞 엔티티의 구역이 남아 뒤 엔티티가
+   자기 구역 밖을 walkable 로 본다 = **순찰병이 거점을 벗어난다**. 함수가 스스로 지우게 했다.
+3. **`ObstacleSingleton` 순회 부재** — `HashSet` 은 순서가 없다. 현 소비자는 `Contains` 만
+   쓰지만, 순회가 필요한 규칙이 생기면 순서 있는 표현으로 바꿔야 한다(주석에 명시).
+
+**다음 조각도 이 렌즈로 볼 것**: 구 sim 이 네이티브 컨테이너/범프 할당의 성질에 기대고 있던
+곳은 어디인가. `NativeList` 의 인덱스 안정성 · `NativeQueue` 의 FIFO · chunk 순회 순서.
+
+## Notes — 18-A 계약 정정 1건 (18-E/3)
+
+`SimWorld.Destroy` 의 *"P12 만 부른다"* 는 **`DeadTag` 마킹된 유닛에만** 참이다.
+구 sim 에는 P1 에 수명 만료 파괴자가 둘 더 있다(#2 해저드 · #6 장애물 — 릴레이 미참여).
+정확한 계약: **`DeadTag` 를 가진 엔티티를 파괴하는 것은 #41 뿐.** 초판대로 읽으면 #2·#6 이
+이식 불가로 보인다.
+
+## Notes — 구조 (18-D 가 세운 것을 18-E 가 검증)
+
+`SimPipeline`(캡처 번호 정렬)이 실제로 값을 했다. 18-E 는 P1 을 **독점하지 않는다** —
+#4 `BossPeriodicTrigger` 가 18-J 소속으로 같은 phase 에 끼어든다. 클러스터 단위 등록이었다면
+조각을 얹는 순서가 실행 순서를 바꿨다. 번호 중복은 조립 시 예외로 막는다(테스트 있음).
+
+## 게이트 장부
+
+분류 A 증발: 없음(18-E 의 게이트는 B 1건 · C 4건 · D 2건). 누적 A 증발 **8건**.
+- B: `RedBullGimmickConfig`(#1)
+- C: `HazardSingleton`(#2·#5) · `ObstacleSingleton`(#6) · `DefenderFieldSingleton`(#7) ·
+  `FlowFieldSingleton`(#5·#16) — **전부 `SimSingleton.TryGet` + early-return 으로 이식**
+- D: `AllyBuffField`(#3, 명시 카운트 체크로 대체) · `PatrolAnchor`(#16, 쿼리가 곧 게이트)
+
+루프 밖 부수효과 점검(분류 D 처분 기준): 7시스템 모두 **채널 드레인 없음**(전부 생산자만) ·
+**RNG 전진 없음** · 싱글턴 갱신은 자기 소유분(인덱스·집합·필드 배열)뿐. ⇒ 게이트 제거 안전.
+
+## Verified
+
+- 전체 EditMode **2238 / 실패 0 / skip 1**. 누적: 2014(S1) → 2087(S2) → 2122(S3) → 2238(S4).
+- **tie-break ⑥ 양쪽 박제** — 생산측(18-E/3, 구 sim 측정) + 소비측(18-E/5).
+- I1 유지 — 이 세션 24커밋 전부 `Scripts/Battle/**`·`Scripts/Bridge/**` 수정 **0**.
+
+## Follow-up
+
+**다음은 18-F(어그로·AI·이동, 5시스템 744줄).** 공간 토대가 이미 깔려 있어 새로 읽을 유틸이 적다.
+남은 것: F(744) → G(829) → H(1,081) → **I(1,870 — #18 포함)** → J(1,171) → K → L.
+
+- `SimTransform` 의 `Rotation` 질문은 여전히 18-K 몫(18-E/2 주석).
+- `Sim` 접두사 정리는 unit 20 에 걸려 있다.
+- **PlayMode 16건은 18-K 착수 전에 다시 판단**(rev 3 결정).
