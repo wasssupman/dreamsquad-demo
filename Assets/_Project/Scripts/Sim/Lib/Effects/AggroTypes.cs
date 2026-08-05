@@ -40,4 +40,12 @@ namespace Wassup.Sim.Effects
         public SimEntityId guardian;
         public SimEntityId enemy;
     }
+
+    /// <summary>
+    /// battle-sim-extraction unit 18-F/3 — 도발 공격이 **부여된 상태** 표식. 구 `TauntAttackGranted` 이식.
+    ///
+    /// 이 태그가 있어야 회수(strip)가 "부여받은 것" 과 "원래 자기 공격" 을 구분할 수 있다 —
+    /// 없으면 해제 시 적의 **원래 `AttackState` 까지 떼어간다.**
+    /// </summary>
+    public struct TauntAttackGranted { }
 }
