@@ -1,7 +1,7 @@
 ﻿# battle-sim-extraction — 전투 시뮬의 엔진-프리 라이브러리화 (ECS 제거)
 
 상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~17 완료
-(17-F·16-F 는 unit 18 과 같은 커밋으로 이관) · units 18~20 미착수 · unit 13-B2 잔여**
+(17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중(18-A 완료 · 18-C 착수) · units 19~20 미착수**
 
 > **의존 방향을 컴파일러가 강제하기 시작했다** (unit 17, 2026-08-05). `Scripts/Sim/Lib/` 는
 > `Wassup.Sim.asmdef`(`noEngineReferences: true`) 안에 있고, 거기에 `using UnityEngine;` 을 넣으면
@@ -30,7 +30,11 @@
 | 16-D 적용성을 검증으로 + UI 술어 통합 | 완료 — **unit 16 종료** | (골든 byte diff 0) |
 | 16-F | unit 18 로 이관 — 진짜 중복은 eval↔bake 이고 그 본체가 480줄이다 | — |
 | 17-F | unit 18 과 같은 커밋으로 이관 | — |
-| 18~20 | **미착수** (18-A 선행 결정은 완료 — 20 문서의 제외 축) | — |
+| 13-B2 뷰 소유권 3건 | 완료 — **unit 13 종료** | `d3528bb5` (골든 byte diff 0) |
+| **18-A** 스캐폴딩 4계약 | 완료 | `4e6e1c59` `2eeb1fdf` `beb5931d` `17f1e5b0` |
+| 18-C/1 모디파이어 어휘·산식 | 완료 | `77752f41` |
+| 18-B~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) 12세션 · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
+| 19~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
 
@@ -51,6 +55,10 @@ unit 은 19 하나" 라고 못박았다. unit 15 문서의 "은퇴 경로 삭제
   엔진-프리로 옮기는 이 spec 의 실질적 본체. 별도 계획으로 쪼갤 것.
 - **20 (A/B parity) 은 ARM64 실기기 게이트** — 장비 없이는 완료 불가.
 
+> **unit 18 을 이어받는다면 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) 를 먼저 읽는다** —
+> 되돌리면 안 되는 의도 5건 · 이식 함정 6건 · **운영 함정 3건**(신규 파일 csproj 등록 · 골든 전
+> `ReimportData` · 러너 트리거 4함정)이 거기 있다. 그 다음 [`m1_unit18_plan.md`](m1_unit18_plan.md).
+>
 > M1 리뷰 판정과 재리뷰 게이트 6건은 [m1_review.md](m1_review.md) 가 정본이다.
 > 세션 인계는 [m1_unit13_handoff.md](m1_unit13_handoff.md) → [m1_unit14_handoff.md](m1_unit14_handoff.md).
 
