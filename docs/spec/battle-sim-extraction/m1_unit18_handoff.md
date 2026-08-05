@@ -586,3 +586,32 @@ H(1,081) · I(1,870 — #18 포함) · J(1,171). 그 뒤 18-K · 18-L.
 
 **미결 결정(변동 없음)**: `Sim` 접두사 정리 → unit 20 · `SimTransform.Rotation`/`Scale` 의
 상태 해시 편입 → 18-K · PlayMode 16 실패 → 18-K 전 재판정.
+
+## S6 추가 — 18-I/1 (#18 회수, 33/44)
+
+`5444bde6` — 18-E 에서 18-I 로 이관됐던 `HazardCast` 를 회수했다. 미룬 근거
+(`DcTriggerSlot` 버퍼 존재 확인)가 18-G/2 로 해소되어 자립한다.
+
+`SimChannels` +3 (`Cast` · `HazardSpawnRequest` · `UnitAttackVisual`). EditMode **2566 / 0**.
+
+**남은 것은 #33 `AttackSystem` 하나(1,729줄, 단일 파일 최대)와 18-J 9시스템이다.**
+
+### #33 착수 지침 (읽기 전에 반드시)
+
+이 파일은 **한 번에 읽으면 안 된다.** arm 단위로 잘라 읽고, arm 하나를 옮길 때마다
+컴파일 + 테스트를 돌린 뒤 다음으로 간다. 근거: 1,729줄을 한 컨텍스트에 담으면 이식 도중
+끊기고, 반쯤 옮겨진 공격 루프는 되돌리기가 가장 비싼 상태다.
+
+착수 시점에 **이미 sim 에 있는 것**(다시 옮기지 말 것):
+`AttackState` · `AttackOutput`/`AttackOutputElement` · `DcTriggerSlot`/`DcTrigger` ·
+`NextAttackDoubleFire` · `PatternSlot`/`EmitterInstance`/`EmitterTick`/`PatternLogic` ·
+`ThreatEntry`/`ThreatTable` · `ProjectileSpawnRequest`/`ProjectileRequestCarrier` ·
+`CastEvent`/`UnitAttackVisualEvent` · `EnemyAiState` · `AggroPolicy` · `TileAoe` ·
+`CcEffect`/`EnemyCcEvent` · `StatModifierApplyEvent`/`StackModifierApplyEvent`.
+
+새로 옮겨야 할 어휘는 **타겟팅 후보·사거리 계열과 hitDelay 계열**뿐일 가능성이 높다 —
+먼저 `grep` 으로 확인하고 시작할 것.
+
+`counter` 쓰기의 소유가 이 시스템 단독이라는 계약(RESOLVE / 폭탄 발사 훅 / 캐스트 드레인
+셋 중 host 하나는 **정확히 1곳만** 탄다)을 그대로 유지해야 한다 — 18-G/2 가 그 필드를
+옮기면서 주석으로 박아 뒀다.
