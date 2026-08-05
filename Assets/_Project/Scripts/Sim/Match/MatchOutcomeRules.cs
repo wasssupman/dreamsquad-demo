@@ -9,7 +9,10 @@ namespace Wassup.Sim.Match
     /// 이 규칙이 Bridge 에 남으면 sim lib 이 반쪽이 된다 — 서버권위(M3)도 리플레이 검증도 "끝"의
     /// 정의를 sim 이 몰라 성립하지 않는다. 그래서 여기로 옮겼다.
     ///
-    /// **엔진 무참조**: `UnityEngine`/`Entities` 를 참조하지 않는다(`ScoreMath`·`MatchSeed` 선례).
+    /// **엔진 무참조**: `UnityEngine`/`Entities` 를 참조하지 않는다(`ScoreMath` 선례 — 그 파일은
+    /// `using` 지시문이 0개다). ⚠ `MatchSeed` 는 선례가 **아니다**: `GenerateRandom()` 이
+    /// `UnityEngine.Random.Range` 를 정규화 참조로 부른다(`Core/MatchSeed.cs:25`). 순수한 것은
+    /// `Derive*`·`Mix` 뿐이라, sim 이주 시 그 진입점을 떼는 분할이 선행한다(unit 18).
     /// 입력은 plain 값이고 SO 는 호출자(Bridge)가 풀어서 `Configure` 로 넘긴다. 그래서 이 규칙은
     /// EditMode 에서 씬 없이 테스트되고, unit 17 의 asmdef 격리에 그대로 실린다.
     ///

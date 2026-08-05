@@ -27,6 +27,14 @@ namespace Wassup.Tests.EditMode
             "MatchPlacementRules.cs",
         };
 
+        /// 줄에서 `//` 이후를 잘라낸다. 문자열 리터럴 안의 `//` 까지 고려하지는 않는다 —
+        /// 이 게이트의 대상(엔진 참조 탐지)에서는 과탐이 미탐보다 낫다.
+        private static string StripComment(string line)
+        {
+            int idx = line.IndexOf("//", System.StringComparison.Ordinal);
+            return idx >= 0 ? line.Substring(0, idx) : line;
+        }
+
         private static string SimRoot =>
             Path.Combine(Application.dataPath, "_Project", "Scripts", "Sim");
 
@@ -40,14 +48,25 @@ namespace Wassup.Tests.EditMode
             {
                 string name = Path.GetFileName(path);
                 if (AllowedEngineUsers.Contains(name)) continue;
-                // **실제 using 지시문만** 본다. 파일 전체 문자열 검색은 "이 파일은 using
-                // UnityEngine 을 갖는다" 같은 **주석 언급까지 잡는다** — 실제로 이 테스트를 처음
-                // 돌렸을 때 그 오탐이 났다(그 주석을 방금 내가 썼다).
-                foreach (string line in File.ReadAllLines(path))
+                // 두 형태를 모두 본다:
+                //   ① `using UnityEngine;` 지시문
+                //   ② **정규화 참조** `UnityEngine.Random.Range(...)` — using 없이도 엔진에 닿는다.
+                //      실존 사례: `Core/MatchSeed.cs:25`(`UnityEngine.Random`)와
+                //      `Core/Session/MatchSession.cs:28,110`(`UnityEngine.Debug`). 둘 다 sim 이주
+                //      후보인데 `using` 만 보는 게이트는 **통과시킨다** — unit 17 정찰이 잡은 구멍이다.
+                //
+                // 주석은 제외한다. 파일 전체 문자열 검색으로 시작했다가 "이 파일은 using UnityEngine
+                // 을 갖는다" 는 **설명 주석까지 잡는 오탐**이 실제로 났다.
+                foreach (string raw in File.ReadAllLines(path))
                 {
-                    string trimmed = line.TrimStart();
-                    if (!trimmed.StartsWith("using ")) continue;
-                    if (trimmed.StartsWith("using UnityEngine") || trimmed.StartsWith("using Unity.Entities"))
+                    string line = StripComment(raw);
+                    if (line.Length == 0) continue;
+                    if (line.TrimStart().StartsWith("using UnityEngine")
+                        || line.TrimStart().StartsWith("using Unity.Entities")
+                        || line.TrimStart().StartsWith("using Unity.Collections")
+                        || line.Contains("UnityEngine.")
+                        || line.Contains("Unity.Entities.")
+                        || line.Contains("Unity.Collections."))
                     {
                         offenders.Add(name);
                         break;
