@@ -68,6 +68,26 @@ namespace Wassup.Sim
         /// </summary>
         public SimConfig Config { get; }
 
+        /// <summary>
+        /// 이번 틱의 델타 시간. 구 sim 의 `SystemAPI.Time.DeltaTime`(=`World.Time`) 대응 —
+        /// **시간은 시스템이 아니라 월드가 소유한다**는 배치를 그대로 옮긴 것이다.
+        ///
+        /// 18-A 는 시스템이 하나도 없어서 이 표면이 없었고, 18-C 의 P7 틱 계열(#28·#29·#32)이
+        /// 처음 요구했다. **저장소·채널 표현은 건드리지 않는다** — 중단 기준 ③ 이 말하는
+        /// 재설계 신호가 아니라 틱 골격의 누락분이다.
+        ///
+        /// 정책(고정 스텝·슬로모 처분)은 여기 없다 — unit 19 와 18-K 가 소유한다. 여기서는
+        /// 값을 실어 나르기만 한다.
+        /// </summary>
+        public float DeltaTime { get; private set; }
+
+        /// <summary>
+        /// 프로덕션 호출자는 <see cref="SimTick.Run"/> 하나다(구 sim 에서 하네스가
+        /// `World.SetTime` 뒤 그룹을 돌리던 것과 같은 배치). public 인 것은 틱 골격 없이
+        /// 단일 시스템만 돌리는 테스트를 위해서다.
+        /// </summary>
+        public void SetDeltaTime(float dt) => DeltaTime = dt;
+
         public SimWorld(SimConfig config)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config),

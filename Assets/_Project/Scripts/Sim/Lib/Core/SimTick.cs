@@ -77,8 +77,14 @@ namespace Wassup.Sim
 
         public int StepCount(SimPhase phase) => _slots.TryGetValue(phase, out var l) ? l.Count : 0;
 
-        public void Run(SimWorld world)
+        /// <summary>
+        /// 델타를 월드에 실은 뒤 phase 순서로 돌린다 — 구 sim 하네스의
+        /// `world.SetTime(...)` → `simGroup.Update()` 와 같은 배치다. 시간의 writer 를 여기
+        /// 하나로 두어 phase 중간에 시계가 바뀌는 경로를 만들지 않는다.
+        /// </summary>
+        public void Run(SimWorld world, float deltaTime)
         {
+            world.SetDeltaTime(deltaTime);
             for (int p = 0; p < Order.Length; p++)
             {
                 if (!_slots.TryGetValue(Order[p], out var list)) continue;

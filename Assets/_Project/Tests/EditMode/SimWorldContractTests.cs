@@ -129,9 +129,9 @@ namespace Wassup.Tests.EditMode
             tick.Register(SimPhase.Intake, _ => consumed.AddRange(ch.Drain().Select(h => h.amount)));
             tick.Register(SimPhase.Attack, _ => ch.Enqueue(new Hit { amount = 7 }));
 
-            tick.Run(w);
+            tick.Run(w, 0.016f);
             CollectionAssert.IsEmpty(consumed, "1틱차: 생산이 소비 뒤라 이번 틱엔 안 보인다");
-            tick.Run(w);
+            tick.Run(w, 0.016f);
             CollectionAssert.AreEqual(new[] { 7 }, consumed, "2틱차에 소비된다");
         }
 
@@ -148,9 +148,9 @@ namespace Wassup.Tests.EditMode
             tick.Register(SimPhase.Intake, _ => consumed.AddRange(ch.Drain().Select(h => h.amount)));
             tick.Register(SimPhase.Attack, _ => ch.Enqueue(new Hit { amount = 9 }));
 
-            tick.Run(w);
+            tick.Run(w, 0.016f);
             CollectionAssert.AreEqual(new[] { 1 }, consumed, "앞선 생산자만 같은 틱에 잡힌다");
-            tick.Run(w);
+            tick.Run(w, 0.016f);
             CollectionAssert.AreEqual(new[] { 1, 9, 1 }, consumed, "지연분이 다음 틱 앞머리에 온다");
         }
 
@@ -200,7 +200,7 @@ namespace Wassup.Tests.EditMode
             tick.Register(SimPhase.Intake, _ => log.Add(1));
             tick.Register(SimPhase.Intake, _ => log.Add(2));
             tick.Register(SimPhase.FieldsAndPeriodic, _ => log.Add(0));
-            tick.Run(w);
+            tick.Run(w, 0.016f);
             CollectionAssert.AreEqual(new[] { 0, 1, 2 }, log);
         }
 
