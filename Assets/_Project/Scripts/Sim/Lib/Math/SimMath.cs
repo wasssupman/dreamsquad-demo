@@ -59,6 +59,20 @@ namespace Wassup.Sim
         /// </summary>
         public const float PI = 3.14159265358979323846f;
 
+        /// 구 `math.TODEGREES`/`math.radians` 와 같은 상수·같은 형태(곱셈 한 번).
+        public const float ToRadians = 0.0174532925199432957692f;
+        public static float Radians(float degrees) => degrees * ToRadians;
+
+        /// <summary>
+        /// 구 `math.sincos` 대응. **두 값을 한 번에** 내는 형태를 유지한다 —
+        /// 호출부가 `Sin`/`Cos` 를 따로 부르는 것과 결과가 같아야 하고, 실제로 같다.
+        /// </summary>
+        public static void SinCos(float x, out float s, out float c)
+        {
+            s = Sin(x);
+            c = Cos(x);
+        }
+
         // ── SimVec3 ───────────────────────────────────────────────────────────
         public static float Dot(SimVec3 a, SimVec3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
         public static float LengthSq(SimVec3 v) => Dot(v, v);

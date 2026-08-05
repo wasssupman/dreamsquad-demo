@@ -56,5 +56,35 @@ namespace Wassup.Sim
         }
 
         public float NextFloat(float min, float max) => NextFloat() * (max - min) + min;
+
+        /// <summary>
+        /// 구 `Unity.Mathematics.Random.CreateFromIndex` 의 비트 동일 재현 — 18-H/4(발사 패턴
+        /// 트리거 스냅샷)가 처음 요구했다.
+        ///
+        /// ⚠ **인덱스를 시드로 그냥 쓰지 않는다.** `WangHash(index + 62)` 로 흩뿌린 뒤 시드로
+        /// 삼는다 — 연속한 인덱스가 연속한 스트림이 되는 것을 막는 자리다. `+ 62` 와 해시 상수
+        /// 넷 전부 원본 그대로여야 한 draw 도 어긋나지 않는다.
+        ///
+        /// ⚠ 원본은 `index == uint.MaxValue` 를 던진다(해시 결과가 0 이 되어 xorshift 가 죽는
+        /// 값). 여기서도 같은 자리에서 거절한다 — 조용히 0 스트림을 돌리면 그 판이 통째로
+        /// 결정론을 잃는다.
+        /// </summary>
+        public static SimRandom CreateFromIndex(uint index)
+        {
+            if (index == uint.MaxValue)
+                throw new System.ArgumentException(
+                    "index must not be uint.MaxValue — 해시가 0 이 되어 난수열이 죽는다.", nameof(index));
+            return new SimRandom(WangHash(index + 62u));
+        }
+
+        private static uint WangHash(uint n)
+        {
+            n = (n ^ 61u) ^ (n >> 16);
+            n *= 9u;
+            n = n ^ (n >> 4);
+            n *= 0x27d4eb2du;
+            n = n ^ (n >> 15);
+            return n;
+        }
     }
 }
