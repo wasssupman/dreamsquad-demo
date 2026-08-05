@@ -165,6 +165,17 @@ M0 골든은 **12:44 에 녹음**됐고 그 뒤 M1 의 선행 머지 3건과 uni
 
 - **M1 units**: 백지 청사진 3장(세션 계약/데이터 대응표/틱 파이프라인) · salvage 판정표(모듈 단위 ~60건) · `LegacyMatchSessionAdapter`(유일 drain 소유자) · 소비자 82파일 재배선 · Bridge 상주 매치 규칙 적출(웨이브·승패·코스트·점수·드림캐쳐) · sim lib 이식(맥락 4 + `RequireForUpdate` 35개 이식 매트릭스) · 다단계 카드 트랜잭션의 원자 커맨드화 · pause/slow-mo gameplay 시계 정책 · Burst 상실 성능 게이트(ARM64 IL2CPP p95/p99) · A/B 스왑.
 - **M2 units**: 헤드리스 dotnet 러너 CI · AMR 녹화 · ReplaySession(seek) · 커맨드로그 재시뮬 배치 잡(advisory) · 스키마 upcaster + 구버전 리플레이 코퍼스 CI · Entities 패키지 물리 제거.
+- **`BattleBridge` 해체 (소유자 없음 — 등재 2026-08-05)**: ADR **D4** 가 *"해체가 목적지"* 를
+  **채택**했는데(기각된 것은 "표면 동결 후 이면만 교체") **units 18~20 도 M2 백로그도 이것을
+  소유하지 않는다.** D4 가 순서를 역전시켜(해체보다 seam 먼저) 뒤로 민 자리가 비어 있다.
+  - 왜 자동으로 안 풀리나: 18~20 이 걷어가는 건 **sim 지분뿐**이다. 실측(10,049줄) —
+    `_em.` 421 · `SystemAPI`/`World`/`EntityQuery` 59 는 사라지지만, `SerializeField` 89 ·
+    `Presenter`/`View`/`Pool` 179 · `Debug.Log` 143 은 **잔존**한다. 파일은 얇아져도
+    **겸직 구조는 그대로**이고, 그게 D4 가 경계한 "갓-매니저를 새 아키텍처에 계승" 이다.
+  - 왜 지금 계획하지 않나: 무엇이 남을지 모르는 상태에서 경계를 그으면 D4 가 순서를 역전시킨
+    이유와 같은 실수다. **M1 종료 후 별도 spec** 이 맞다.
+  - 축은 코드가 이미 알려준다: 파셜이 `Dreamcatcher`/`LegacyTrace`/`BossLeap`/`Relocation`/
+    `UltimateLeap`/`UnitStats` 로 갈려 있고, 남는 지분은 대부분 `Scripts/Presentation/` 성격이다.
 - **M3 units**: RemoteSession · 서버 스택 결정(Unity headless vs 자체) · 재접속(스냅샷+백로그 exactly-once) · suspend/resume · 점수 발급 서버 이관.
 - **미채택 보류**: lag compensation(RTT 매트릭스 리뷰에서 실패 스킬이 나오면 재론).
 - **골든 코퍼스의 사각지대 2개** (코퍼스 변경 = unit 19 권한이라 미조치):

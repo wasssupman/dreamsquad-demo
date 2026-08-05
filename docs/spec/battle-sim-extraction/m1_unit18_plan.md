@@ -78,6 +78,25 @@ conform 유틸(`ModifierMath`·`CcEffectMerge`·`DotEffectMerge`·`KillAttributi
 ⇒ **P6 의 키 매핑표는 처음부터 sim 자체 타입명으로 쓴다.** `Unity.Mathematics.float3` 를 키에
 넣었다가 나중에 바꾸는 경로가 사라졌다.
 
+### asmdef 배치 (18-A 결정 — critic H2 해소)
+
+**신 맥락 폴더는 `Sim/Lib/` **아래**에 둔다** — 기존 `Wassup.Sim.asmdef` 가 그대로 덮는다.
+
+```
+Scripts/Sim/
+├── Match/                              ← 스테이징(Wassup.Runtime) — 졸업 대기 2파일
+└── Lib/  ★ Wassup.Sim.asmdef (noEngineReferences: true, references: [])
+    ├── Contracts/ · Match/ · Math/     ← 이미 있음
+    └── Units/ · Movement/ · Combat/ · Effects/   ← 신설 (18-C 부터 채워진다)
+```
+
+형제 폴더(`Sim/Units/` 등)로 두면 `Wassup.Runtime` 소속이 되어 **`Unity.Entities` 를 참조할 수
+있게 되고 I3 가 집행되지 않는다**(critic H2). asmdef 를 `Sim/` 으로 올리는 대안은 스테이징
+2파일을 위해 4번째 어셈블리를 만들어야 해서 더 비싸다.
+
+⇒ **I2 의 경로 표기는 `Sim/Lib/{Units,Movement,Combat,Effects}/**` 다.** I3 는 첫 파일이
+그 아래 놓이는 순간부터 컴파일러가 집행한다 — 별도 조치 불요.
+
 ### 트레이스 키 계약 (P6 — rev 2 에서 확장)
 
 초판 P6 은 *"public 필드를 ordinal 이름순 정렬해 직렬화하므로 필드 이름을 승계하라"* 였다.
