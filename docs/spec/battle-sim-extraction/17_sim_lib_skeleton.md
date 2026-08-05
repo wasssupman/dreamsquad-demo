@@ -70,3 +70,90 @@ UnityEditor 참조 0)을 asmdef 로 승격해, 이후 이식(unit 18)이 실수�
 - 이주한 conform 유틸의 EditMode 테스트 **전량 통과**(기대값 변경 0).
 - `Unity.Mathematics` 유지/탈출 결정이 이 문서에 기재됨 + `m1_blueprint_data_mapping.md` 에 반영.
 - 골든 7종 byte diff 0(유틸 이주는 로직 무변).
+
+---
+
+## ⚠ 정찰 결과 (2026-08-05) — 현행 범위로는 완료 기준 달성 불가
+
+### 차단 근거 — `SpawnEntry` 는 에셋에 직렬화돼 있다
+
+`Data/AttackDeck.cs:68` `public List<SpawnEntry> spawns` + `:96` `[Serializable]` + `:100`
+`public AttackUnitData unitType`(SO 참조). ⇒ `SpawnEntry` 를 plain struct/id 로 접으면 **`AttackDeck`
+.asset 의 직렬화 모양이 바뀐다**. 이것은 unit 18 의 `MatchConfig` 물질화가 id↔SO 표를 만들 때 함께
+처리할 일이고 `configHash` 입력에도 닿는다. **따라서 `MatchWaveSchedule` 은 unit 17 에서 asmdef 안에
+들어갈 수 없다**(`SpawnEntry`·`GeneratedWave*`·`WavePatternGenerator` 에 전면 의존).
+
+### 해법 — `Sim/Lib/` 2층 구조 (경계선을 폴더 한 겹 깊이 옮긴다)
+
+```
+Scripts/
+├── Wassup.Runtime.asmdef              (references 에 "Wassup.Sim" 추가)
+│   └── Core/Session/MatchSession.cs   ← 로케이터 잔류 (UnityEngine.Debug ×2)
+└── Sim/                               ← "sim 후보" 스테이징. Wassup.Runtime 소속.
+    ├── Match/MatchWaveSchedule.cs     ← 미졸업 (SpawnEntry 차단)
+    └── Lib/                           ← ★ Wassup.Sim.asmdef (noEngineReferences: true)
+        ├── Contracts/  (Core/Session 어휘 4파일)
+        ├── Math/       (ScoreMath)
+        └── Match/      (MatchOutcomeRules · MatchOutcomeNames · PlacementRejectReason …)
+```
+
+이렇게 하면 unit 17 이 **"게이트를 세우고 깨끗한 것부터 졸업시킨다"** 가 되어 **코드 변경 0 ·
+byte-diff-0 unit** 으로 끝날 수 있고, 엔진 타입 4종은 데이터 계층이 함께 움직이는 unit 18 로 넘어간다.
+`Sim/Match/` 를 통째로 asmdef 에 넣으면 `MatchWaveSchedule` 하나가 수십 개 CS0246/CS0012 를 낸다.
+
+### `Wassup.Contracts`(3번째 어셈블리)는 만들지 않는다
+
+리뷰 M3 가 막으려던 것(sim 이 `MatchSession.Current` 에 손이 닿는 것)은 **어셈블리 순환 금지만으로
+이미 막힌다** — 어휘를 `Wassup.Sim` 에 올리고 로케이터를 `Wassup.Runtime` 에 남기면, sim 이 로케이터를
+보려면 순환 참조가 필요한데 Unity 가 거부한다. 3번째 어셈블리의 고유 소비자는 M3 서버뿐이고 그 스택은
+미정이므로, 지금 만들면 **제약 8("나중을 위한 추상 레이어 금지")과 정면 충돌**한다.
+뷰가 sim 내부를 못 보게 하는 것은 `internal` 이 더 싸다(Bridge 직접 구동이 사라지는 unit 18~20 시점).
+**재론 조건**: M2 헤드리스 러너가 어휘만 필요로 하거나, M3 wire contract 를 별도 배포해야 할 때.
+
+### 단계 — 매 단계 컴파일 초록
+
+| 단계 | 내용 | 초록 근거 |
+|---|---|---|
+| **17-0**(폐기) | 빈 asmdef + `int2` 한 줄 스파이크. 이어 `float3` 로 CS0012 재현 여부 측정 | 커밋 없음. 결과만 결정 기록 |
+| **17-A** | `Sim/Lib/` + `Wassup.Sim.asmdef` + **`PlacementRejectReason.cs` 1개만** 이동, 3어셈블리 references 추가 | 이동 파일이 완전 순수(using 0) — 배선만 검증 |
+| **17-B** | 게이트 실측: sim 에 `using UnityEngine;` 임시 추가 → 컴파일 에러 확인 → revert | 커밋 없음. **완료 기준의 "1회 실측" 충족** |
+| **17-C** | 세션 어휘 4파일 → `Sim/Lib/Contracts/`. **네임스페이스 불변** | 소비자 21파일 diff 0 |
+| **17-D** | `ScoreMath.cs` → `Sim/Lib/Math/`. **네임스페이스 `Wassup.Core` 불변** | 소비자 7파일 무변 |
+| **17-E** | `MatchOutcomeRules`·`MatchOutcomeNames`·`MapTileType` 이동 | `MatchOutcomeRules` 의 `using Wassup.Core;` 가 이제 `ScoreMath` 만 본다 — `GameManager` 는 컴파일러가 차단 |
+| **17-F**(선택) | `Vector2Int`→`int2` + `GeneratedMap`→`SimTileGrid` + `MatchPlacementRules`/`RelocationCheck` 졸업 | 유일하게 코드가 바뀌는 단계 — 골든 재확인 |
+| **17-G** | 게이트를 **스테이징 층 전용**으로 조정(졸업 파일은 컴파일러가 정본) · 허용 목록 축소 · 문서 갱신 | 테스트만 |
+
+**네임스페이스를 폴더에 맞춰 바꾸지 말 것** — `Wassup.Core.Session`·`Wassup.Core` 유지가 소비자
+21+7 파일 diff 0 의 근거다. C# 은 폴더와 네임스페이스가 무관하다.
+
+### 골든 영향 — 파일 이동은 바이트에 닿을 경로가 없다
+
+① `LegacyTraceV0.cs:25` 의 `JsonUtility` 는 **필드명 기반**이라 어셈블리명이 트레이스에 안 들어간다 ·
+② configHash blob writer(`MatchConfigSnapshot.cs:218-250`)는 **필드명 + 스칼라만** 기록하고 `:227`
+`GetType()` 은 분기용이다 · ③ 이동 타입 중 Unity 직렬화 대상 0. **17-F 만 증명이 필요**한데,
+`_occupiedTiles` 는 `Add`/`Remove`/`Contains`/`Clear` 만 쓰고 **열거 지점이 0**(9곳 전수)이라
+`HashSet<Vector2Int>`→`HashSet<int2>` 는 순회 순서를 노출하지 않는다.
+
+### `Unity.Mathematics` — (a) 유지, 단 **조건부**
+
+실측: `math_unity_conversion.cs` 는 `float2/3/4`·`quaternion`·`float4x4` 만 UnityEngine 변환을 갖고
+**`int2`·`int3`·`int4` 에는 없다.** unit 17 이 쓰는 수학 타입은 `int2` 뿐이라 `noEngineReferences:true`
+와 양립한다. ⚠ **unit 18 에서 재검증**: `float3` 를 들이면 `implicit operator Vector3` 가 오버로드
+해석에 들어와 **CS0012** 가 날 수 있다. (a) 를 M2 까지의 최종 결정으로 못박지 않는다.
+`Unity.Collections` 는 `noEngineReferences:false` 라 **`NativeArray` 는 sim 에 들어올 수 없다**.
+
+### 문서 드리프트 정정
+
+- **`MatchSeed` 는 순수하지 않다** — `Core/MatchSeed.cs:25` 가 `UnityEngine.Random.Range` 를
+  정규화 참조로 부른다. 순수한 것은 `Derive*`·`Mix` 뿐이고, 이주 시 그 진입점을 떼는 분할이 선행한다.
+  (`ScoreMath` 는 `using` 지시문이 **0개**로 완전 순수 — 이쪽만 선례다.)
+- 위 §"conform 유틸 이주" 의 "의존이 없어 안전" 은 **사실과 다르다**. 실측: `Unity.Entities` 3종 ·
+  `Unity.Collections` 2종 · `Wassup.Data` 2종 · Mathematics-only 6종 · **무의존 1종(`AggroPolicy`)**.
+  unit 17 에서 확정 이주 가능한 것은 `AggroPolicy` 하나다.
+- **`VolleyMath` 는 존재하지 않는다** — `EmitterTick.cs:24` 주석에만 남은 은퇴 타입.
+- **`PlacementPhasePolicy` 는 `UI/PlacementPhaseView.cs:371` 안의 internal 클래스**다(UI 파일에 규칙 상주).
+- `MatchPlacementRules.cs:5` 의 `using Wassup.Data.MapGrid;` 는 **죽은 using**(`GeneratedMap`·
+  `MapTileType` 둘 다 `Wassup.Data`).
+- 참조 방향은 **이미 단방향**이다: `Wassup.Sim` 을 쓰는 프로덕션 5파일 · 테스트 13파일, **sim → 소비자
+  참조 0건**. 단 `BattleBridge.Relocation.cs:22` `RelocationCheck` 는 MonoBehaviour static 이 sim enum 을
+  반환하므로 `MatchPlacementRules` 졸업 시 함께 정리한다.
