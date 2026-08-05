@@ -1925,6 +1925,14 @@ namespace Wassup.Bridge
         /// </summary>
         public void ForceNextWave()
         {
+            // 리뷰 L1 — `TraceLegacyCommand` 를 상태 변경 **뒤**에 찍는다. 안전한 이유는
+            // 그 기록이 `(tick, "CommandReceipt", command, accepted)` 뿐이고 **상태 스냅샷을
+            // 싣지 않기** 때문이다. receipt 페이로드에 상태 필드가 붙는 순간 이 순서가 골든을
+            // 조용히 움직인다 — 그때는 트레이스를 다시 앞으로 옮겨야 한다.
+            //
+            // 리뷰 L4 — `_waveNotices`/`_dueSpawns` 는 프레임 재사용 공유 버퍼다. 이 API 와
+            // `AdvanceBattleFrame` 의 `QueueDueWaves` 가 같은 버퍼를 쓰므로 **재진입 금지**다
+            // (현재는 `NarrateQueuedWaves` 가 동기 드레인 후 비우므로 중첩이 불가능하다).
             _waveNotices.Clear();
             bool accepted = _running
                 && _waveSchedule.TryForceNextWave((float)_battleClock, SpawnLaneCount, _waveNotices);
@@ -2458,6 +2466,11 @@ namespace Wassup.Bridge
             QueueDueWaves(t);
             // unit 14 — 대기열은 스케줄 모듈이 소유한다. **역순 순회로 뽑은 순서 그대로** 스폰해야
             // 한다 — 그 순서가 엔티티 생성 순서를 통해 sim 결과에 들어간다(골든이 고정하고 있다).
+            //
+            // 리뷰 L2 — 적출 전에는 `SpawnUnit` 뒤에 `RemoveAt` 했고 지금은 **먼저 전부 뽑은 뒤**
+            // 스폰한다. `SpawnUnit` 이 던졌을 때 예전에는 항목이 남아 다음 프레임에 같은 예외를
+            // 무한 반복했고, 지금은 그 프레임의 due 항목이 유실된다. **의도된 변경**이다
+            // (무한 반복보다 낫다). 스폰 순서는 동일하다.
             _dueSpawns.Clear();
             _waveSchedule.TakeDueSpawns(t, _dueSpawns);
             for (int i = 0; i < _dueSpawns.Count; i++) SpawnUnit(_dueSpawns[i]);

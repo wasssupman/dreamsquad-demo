@@ -134,7 +134,10 @@ namespace Wassup.Tests.EditMode
                 supportedCost: true, costCurrent: 7.9f, costMax: 20f, costCurrentInt: 7,
                 supportedGauge: false, gaugeCurrent: 0, gaugeMax: 0,
                 anyPlacementCooldown: true);
-            Assert.IsFalse(rm.SupportedScore, "점수는 unit 14");
+            // 이 단정은 **손으로 만든 스냅샷**에 대한 것이다 — 생성자에 false 를 넣었으니 false 다.
+            // 어댑터가 실제로 무엇을 서빙하는지는 여기서 검증하지 않는다(unit 14 이후 어댑터는
+            // `supportedScore: true` 를 낸다 — `LegacyMatchSessionAdapter.ReadModel`).
+            Assert.IsFalse(rm.SupportedScore, "생성자에 넣은 값이 그대로 보존된다");
             Assert.IsTrue(rm.SupportedCost, "코스트는 A3 에서 번역으로 채워졌다");
             Assert.IsFalse(rm.SupportedGauge, "게이지는 unit 16 — 코스트와 같은 플래그를 쓰지 않는다");
             Assert.AreEqual(MatchPhase.Battle, rm.Phase);

@@ -187,9 +187,15 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(_bridge.NextWaveClearReady, "final wave has no next action");
 
             // ② legacy 전투(생성 웨이브 없음) — Next Wave 자체를 노출하지 않는다.
+            //
+            // 리뷰 L7 — `Initialize(default)` 는 인덱스도 0 으로 되돌리므로, 이 단정은 엄밀히는
+            // "플랜 없음" 과 "인덱스 0" 중 어느 쪽으로도 통과할 수 있다. 플랜만 비우고 인덱스를
+            // 살리는 공개 경로가 없어서(그게 정상이다 — 인덱스는 큐잉으로만 움직인다) 이 조합이
+            // 최선이고, **인덱스 축은 위 케이스 ①(마지막 웨이브까지 큐잉)이 이미 덮는다.**
             _schedule.Initialize(default, authored: false);
             RefreshClearReady();
             Assert.IsFalse(_bridge.NextWaveClearReady, "legacy battles do not expose Next Wave");
+            Assert.IsFalse(_schedule.HasPlan, "플랜이 실제로 비었는지 함께 고정한다");
 
             // ③ 전투 종료 — 남은 웨이브가 있어도 강조를 노출하지 않는다.
             _schedule.Initialize(BuildPlan(), authored: false);

@@ -56,6 +56,13 @@ namespace Wassup.Core
 
         // 각 entry remaining 감소, <=0 은 제거. Update 에서 추출 — EditMode 가 직접 구동
         // (MonoBehaviour.Update 는 EditMode 미실행). Entry 가 struct 라 재대입으로 갱신한다.
+        //
+        // ⚠ battle-sim-extraction 리뷰 L5 — 이 tick 에는 `TestModeContext.HarnessActive` 게이트가
+        // 없다(`BattleBridge.Update`·`SkillRuntime` 과 비대칭). 하네스에서는 sim 틱이 아니라
+        // **렌더 프레임**으로 깎인다는 뜻이다. 골든 영향은 없다 — 쿨타임은 정규 상태 라인에 없고
+        // 코퍼스는 유닛 타입마다 1회만 배치한다. 다만 unit 15-A 가 쿨타임을 뷰 관심사에서
+        // **배치 규칙**으로 승격시켰으므로, 이제 sim 권위를 가진 값이 게이트 없는 시계로 흐른다.
+        // 통화 상태를 sim 으로 옮기는 15-C 에서 이 비대칭을 함께 해소한다.
         public void Tick(float dt)
         {
             if (_map.Count == 0) return;
