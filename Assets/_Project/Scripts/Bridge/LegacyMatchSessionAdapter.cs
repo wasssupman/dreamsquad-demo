@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
@@ -63,6 +63,10 @@ namespace Wassup.Bridge
                 // 0 을 조용히 흘리면 HUD 가 코스트 0 을 그린다.
                 var cost = gm != null ? gm.CostRuntime : null;
                 var cooldown = gm != null ? gm.CooldownRuntime : null;
+                // unit 16-G — 게이지는 이제 `MatchGaugeRules` 가 소유하고 컨트롤러가 그것을 든다.
+                // 컨트롤러가 없는 구간(씬 로드 전·아웃게임)은 **미지원으로 신고**한다 — 0 을 조용히
+                // 흘리면 HUD 가 게이지 0 을 그린다(코스트와 같은 처분).
+                var hand = ResolveHand();
                 return new MatchReadModel(
                     tick: _bridge.HarnessTick,
                     battleClock: _bridge.BattleClock,
@@ -84,8 +88,9 @@ namespace Wassup.Bridge
                     costCurrent: cost != null ? cost.Current : 0f,
                     costMax: cost != null ? cost.Max : 0f,
                     costCurrentInt: cost != null ? cost.CurrentInt : 0,
-                    // 게이지는 DreamcatcherHandController 소유 — unit 16 까지 미지원.
-                    supportedGauge: false, gaugeCurrent: 0, gaugeMax: 0,
+                    supportedGauge: hand != null,
+                    gaugeCurrent: hand != null ? hand.Gauge : 0,
+                    gaugeMax: hand != null ? hand.GaugeMax : 0,
                     anyPlacementCooldown: cooldown != null && cooldown.AnyActive);
             }
         }

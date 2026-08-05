@@ -178,7 +178,24 @@ LeakAllowanceTooLow → AttachCapReached`. **게이지가 스킬 배선보다 �
 한 통**으로 둔다 — 그 분해가 16-D+F 묶음의 내용이다. 문서의 16-B 4종 중 실제로 필요한 것이
 무엇인지도 그때 확정된다(지금은 `Card_NoEffect` 하나로 충분하다는 것이 실측이다).
 
-### 남은 조각 — 16-D+F · 16-G
+### ✅ 16-G: 게이지 소유권 → sim + 읽기 모델 서빙
+
+신규 `MatchGaugeRules`(`Sim/Lib/Match/`) — 게이지의 **상태와 산식**을 소유한다. 적출 전에는
+`DreamcatcherHandController` 의 `Gauge` 프로퍼티였고 클램프·넘침 계산·소비 바닥이 뷰 이벤트
+발화와 한 메서드에 섞여 있었다.
+
+- 뷰 신호 3종(`GaugeChanged`·`AwakeningOverflowed`·`AwakeningGainedAt`)은 **컨트롤러가 계속
+  소유**한다 — 프레젠테이션이다. 규칙은 값만 결정한다(`MatchOutcomeRules` 와 같은 형태).
+- `Gauge` 프로퍼티는 읽기 표면으로 남아 **소비자 diff 0**.
+- 읽기 모델이 게이지를 서빙한다 — `SupportedGauge` 가 `false` → `hand != null`.
+  컨트롤러가 없는 구간(씬 로드 전·아웃게임)은 **미지원으로 신고**한다. 0 을 조용히 흘리면 HUD 가
+  게이지 0 을 그린다 — 코스트와 같은 처분(unit 13-A3 선례).
+- 넘침 계약을 명시로 굳혔다: **상한 초과분은 소멸하고 이월되지 않는다.** 그 사실을 뷰가 알려야
+  해서 `overflowed` 를 따로 낸다. 시작값이 상한을 넘는 시트 오기는 `Reset` 이 접는다.
+
+증인: `MatchGaugeRulesTests` 10건. 골든에는 게이지가 실리지 않는다.
+
+### 남은 조각 — 16-D+F 하나
 
 16-D(원자화)가 다음이고, 단독으로는 못 끝난다: `CommitAttach` 는 `handle < 0`(= 기여 0)을
 **적용해 봐야** 알 수 있어서, 검증 전량 선행을 하려면 그 예측이 필요하고 그 예측이 곧

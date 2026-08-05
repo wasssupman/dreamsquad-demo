@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Bridge;
@@ -63,7 +63,10 @@ namespace Wassup.Core
         public List<DreamcatcherCycleDeck.Entry> GiftFinalOrder() =>
             _deck != null ? _deck.Hand(_deck.TotalCount) : new List<DreamcatcherCycleDeck.Entry>();
 
-        public int Gauge { get; private set; }
+        // unit 16-G — 게이지 **상태와 산식**은 `MatchGaugeRules` 가 소유한다. 이 프로퍼티는
+        // 읽기 표면으로 남는다(소비자 diff 0). 뷰 신호 3종은 여기 그대로 — 프레젠테이션이다.
+        private readonly MatchGaugeRules _gauge = new MatchGaugeRules();
+        public int Gauge => _gauge.Current;
         public int GaugeMax => config != null ? config.gaugeMax : 100;
         public int HandSize => config != null ? config.handSize : 5;
         // dreamcatcher-orb-dock unit 1 — 항아리 독이 코스트 눈금·ready 임계를 데이터에서
@@ -132,7 +135,7 @@ namespace Wassup.Core
             _giftDeckComposed = false;
             _attachedTo.Clear();
             AttachmentsChanged?.Invoke();
-            Gauge = config != null ? Mathf.Clamp(config.gaugeStart, 0, config.gaugeMax) : 0;
+            _gauge.Reset(config != null ? config.gaugeStart : 0, config != null ? config.gaugeMax : 0);
             GaugeChanged?.Invoke(Gauge);
             HandChanged?.Invoke(HandChangeReason.Reset);
             LogDeck(_lastComposedCards);
@@ -289,12 +292,10 @@ namespace Wassup.Core
         private void GainAwakening(int reward, Vector3 sourceWorldPos, ISpineUnitVisualData killedVisual)
         {
             if (reward <= 0) return;
-            int next = Mathf.Min(Gauge + reward, GaugeMax); // overflow is lost
-            int applied = next - Gauge;
-            if (applied < reward) // 일부(또는 전부)가 상한에 막혀 소멸 → 넘침 경고
-                AwakeningOverflowed?.Invoke(reward - applied);
-            if (next == Gauge) return;
-            Gauge = next;
+            // unit 16-G — 클램프·넘침 산식은 규칙이 결정하고, 여기서는 그 값을 뷰로 흘린다.
+            bool moved = _gauge.TryGain(reward, out int applied, out int overflowed);
+            if (overflowed > 0) AwakeningOverflowed?.Invoke(overflowed);
+            if (!moved) return;
             GaugeChanged?.Invoke(Gauge);
             // unit 3 — 흡수 비행: 실제 적용된 획득량 + 사망 view-space 위치를 뷰로 흘려
             // 킬 위치에서 피규어가 날아오게 한다(입자=피규어).
@@ -525,7 +526,7 @@ namespace Wassup.Core
 
         private void Spend(DreamcatcherCard card)
         {
-            Gauge = Mathf.Max(0, Gauge - CostOf(card));
+            _gauge.Spend(CostOf(card));
             GaugeChanged?.Invoke(Gauge);
         }
 
