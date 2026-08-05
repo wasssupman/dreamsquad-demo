@@ -51,12 +51,28 @@ namespace Wassup.Sim
         public static float Sin(float x) => (float)Math.Sin(x);
         public static float Cos(float x) => (float)Math.Cos(x);
 
+        /// <summary>
+        /// ⚠ **`(float)Math.PI` 로 계산하지 않는다.** 구 `Unity.Mathematics.math.PI` 는 double
+        /// 리터럴을 float 로 굳힌 `const` 라 여기서도 같은 리터럴을 같은 방식으로 굳힌다 —
+        /// 런타임 변환을 끼우면 같은 값이 나오리라는 보장이 표준에 없다.
+        /// 18-H/1(포물선 아치)이 처음 요구했다.
+        /// </summary>
+        public const float PI = 3.14159265358979323846f;
+
         // ── SimVec3 ───────────────────────────────────────────────────────────
         public static float Dot(SimVec3 a, SimVec3 b) => a.x * b.x + a.y * b.y + a.z * b.z;
         public static float LengthSq(SimVec3 v) => Dot(v, v);
         public static float Length(SimVec3 v) => Sqrt(Dot(v, v));
         public static float DistanceSq(SimVec3 a, SimVec3 b) => LengthSq(b - a);
         public static float Distance(SimVec3 a, SimVec3 b) => Length(b - a);
+
+        /// <summary>
+        /// 성분별 보간. 구 `math.lerp(float3, float3, float)` 과 같은 형태(`a + t*(b-a)`)라
+        /// 스칼라 <see cref="Lerp(float,float,float)"/> 와도 일관된다 — `(1-t)*a + t*b` 로 바꾸면
+        /// 부동소수 결과가 달라진다. 18-H/1 이 처음 요구했다.
+        /// </summary>
+        public static SimVec3 Lerp(SimVec3 start, SimVec3 end, float t)
+            => new SimVec3(Lerp(start.x, end.x, t), Lerp(start.y, end.y, t), Lerp(start.z, end.z, t));
 
         /// ⚠ 나눗셈이 아니라 **역제곱근 곱**이다 — 영벡터에서 NaN 을 낸다(그게 원본 동작).
         public static SimVec3 Normalize(SimVec3 v) => Rsqrt(Dot(v, v)) * v;
