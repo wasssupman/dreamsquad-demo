@@ -129,11 +129,44 @@ static 이 sim enum 을 반환**하는 모양이었다(`BattleBridge.Relocation.
 순서를 바꾸면 제자리 재배치가 `Occupied` 로 오판된다. 재배치는 배치와 달리 **쿨타임·코스트를 보지
 않는다**(같은 유닛을 옮기는 것이라 새 배치가 아니다) — 그래서 `Check` 가 아니라 별도 함수다.
 
-#### 남은 조각 — 동결 구간에도 가능 (값·시점을 바꾸지 않는 것)
-- **`ApplyOnPlaceEffect`·시너지 2종**(`RecomputeSynergyFor`·`NeutralizeActiveSynergy`) — ECS 쓰기가
-  섞여 있어 판정/적용 분리가 선행 조건이다.
-- **`unitValid` 의 `visualMaterial` 조건 정리** — 뷰 배선 조건이 배치 규칙에 있는 것은 계층 오류다.
-  다만 지금 빼면 뷰 없는 유닛이 배치돼 렌더에서 터지므로, 프레젠테이션 쪽 검증으로 옮긴 뒤 뺀다.
+#### ✅ 15-C-2 완료: 시너지 판정 적출 + `visualMaterial` 계층 정리
+
+**시너지** — 신규 `MatchSynergyRules`(`Sim/Match/`, **엔진 무참조** — `System` 만 쓴다). 규칙이 받는
+것은 **타입 키의 5×5 창**(`int`, 0 = 활성 디펜더 없음)이고 돌려주는 것은 블록 9칸의 **이웃 수**다.
+Bridge 에 남은 것은 규칙이 알 수 없는 것뿐이다: ① 어느 칸이 "활성" 인가(`Exists` +
+`PendingDeployment` = ECS 조회) ② 배율을 어느 채널로 흘리는가 ③ 활성화 카운터 진단.
+
+- **배율이 아니라 이웃 수를 내보낸다.** 이웃 0 과 미점유는 다른 사건인데 배율로는 둘 다 1.0 이라
+  구분이 사라진다 — 전자만 항등값 refresh 를 받아야 한다(모디파이어 슬롯이 남지 않게 하는 계약).
+- **종류 동일성**의 정본은 SO 참조 동일성(`n.data == here.data`)이었고, 인스턴스 ID 가 그것과 1:1
+  이라 판정을 바꾸지 않으면서 규칙이 엔진 타입을 모르게 된다.
+- **블록 순회 순서가 계약**이다 — 그 순서가 곧 채널 enqueue 순서이고 골든의 `StatModifierSlot`
+  라인에 실린다. 적출 전 배열 리터럴 순서를 그대로 옮겼다.
+- 창이 5×5 인 이유: 블록이 3×3 이고 그 각각이 다시 8 이웃을 세므로 실제로 읽히는 범위가 ±2 다.
+- 증인은 `MatchSynergyRulesTests` 10건. **골든은 이 규칙을 증인하지 못한다** — 하네스는 유닛
+  타입마다 1회만 배치해서 같은 종류가 인접하는 배치를 만들지 않는다.
+
+**`visualMaterial`** — `unitValid` 는 이제 "유닛 정의가 있는가" 뿐이다. 걷어낼 수 있었던 근거는
+문서의 전제("지금 빼면 렌더에서 터진다")가 **실측과 달랐다**는 것이다: 디펜더 뷰 2경로가 이미
+`ResolveUnitMaterial` 로 null 을 런타임 폴백 머티리얼로 바꾸고 있었다. 실제로 무방비였던 곳은
+배치 펄스 연출 하나뿐이라(`sharedMaterial = null`) 같은 폴백을 태웠다. 저작 실수는 신설
+`ResolveFallbackViewMaterial` 이 경고로 잡는다 — **Spine 이 뜬 디펜더는 이 경로에 오지 않으므로**
+배치 시점이 아니라 폴백 렌더가 실제로 필요해진 지점에서 묻는다(적 유닛 경로와 같은 처분).
+
+#### ⏸ `ApplyOnPlaceEffect` 는 unit 18 로 이관한다
+
+이 문서가 시너지와 한 묶음으로 적었지만 성격이 다르다. 8분기를 전수로 읽은 결과 **분리 가능한
+판정이 사실상 없다**:
+
+- 각 분기의 "판정"은 `magnitude <= 0` · `duration <= 0` · `range <= 0` · `queue.IsCreated` 같은
+  **한 줄짜리 가드**이고 호출처가 각각 1곳뿐이다 → 지금 빼면 제약 10 이 명시한 과잉 추상화다.
+- 실체는 **페이로드 구성**인데 그 타입이 전부 ECS 소유다(`StackModifierApplyEvent` · `EnemyCcEvent` ·
+  `DotEffect` · `IncomingDamage`) 또는 MonoBehaviour 런타임 호출이다(`CostRuntime.AddCost` ·
+  `SkillRuntime.ReduceAllCooldowns`). 이 타입들이 plain struct 가 되는 시점이 **unit 18** 이므로,
+  지금 규칙을 세우면 그때 통째로 다시 쓴다.
+- 대상 선정(`CollectEnemiesInTileRange`)의 순수 부분은 `GridMath` 이고 그건 **unit 17** 이 가져간다.
+
+⇒ 동결 구간에서 이 함수로부터 얻을 수 있는 것은 없다. unit 18 의 Effects 이식과 같은 커밋에서 옮긴다.
 
 **코퍼스 동결 해제(unit 18 스왑) 후에** 할 것:
 

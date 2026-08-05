@@ -69,9 +69,11 @@ namespace Wassup.Sim.Match
         /// <summary>
         /// 배치 전체 판정. `None` 이면 놓을 수 있다.
         ///
-        /// `unitValid` 는 현재 "유닛이 있고 뷰 머티리얼이 배선됐는가"다 — 후자는 사실 프레젠테이션
-        /// 조건이라 sim 규칙에 있을 이유가 없다(후속 정리 후보). 지금은 **행동 보존**을 위해 그대로
-        /// 받는다: 여기서 빼면 뷰가 없는 유닛이 배치되고 렌더 단계에서 터진다.
+        /// unit 15-C-2 — `unitValid` 는 이제 **"유닛 정의가 있는가"** 뿐이다. 이전에는 뷰 머티리얼
+        /// 배선 여부(`visualMaterial != null`)도 함께 봤는데, 그건 프레젠테이션 조건이라 sim 규칙이
+        /// 알 이유가 없다. 걷어낼 수 있었던 근거는 렌더 경로가 **이미 방어적**이라는 것이다 —
+        /// `BattleBridge.ResolveUnitMaterial` 이 null 을 런타임 폴백 머티리얼로 바꾼다("렌더에서
+        /// 터진다"는 우려는 실측과 달랐다). 저작 실수는 `ResolveFallbackViewMaterial` 이 경고로 잡는다.
         /// </summary>
         public static PlacementRejectReason Check(
             bool placementOpen,

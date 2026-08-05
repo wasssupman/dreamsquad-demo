@@ -4557,10 +4557,18 @@ namespace Wassup.Bridge
             return math.normalize(dir);
         }
 
+        // unit 15-C-2 판정 입력/출력 스크래치. 배치마다 재사용 — 규칙이 Span 을 받으므로 할당 0.
+        private readonly int[] _synergyWindowScratch = new int[MatchSynergyRules.WindowSize];
+        private readonly int[] _synergyNeighborScratch = new int[MatchSynergyRules.BlockSize];
+
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
         // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
         // Writes to SynergyBuff go through EffectSpawner so the Effects-context
         // write gateway stays a single code path (Phase 2 decision #9).
+        //
+        // unit 15-C-2 — **이웃 세기(판정)는 `MatchSynergyRules` 가 한다.** 여기 남은 것은 그 규칙이
+        // 알 수 없는 것뿐이다: ① 어느 칸이 "활성" 인가(엔티티 존재 + 배치 완료 = ECS 조회) ②
+        // 결정된 배율을 어느 채널로 흘리는가 ③ 활성화 카운터 진단. 규칙은 타입 키 창만 본다.
         private void RecomputeSynergyFor(Vector2Int cell)
         {
             if (!enableAdjacencySynergy)
@@ -4569,35 +4577,31 @@ namespace Wassup.Bridge
                 return;
             }
 
-            var cells = new Vector2Int[]
+            // 5×5 창에 활성 디펜더의 타입 키를 채운다. 종류 동일성의 정본은 SO **참조** 동일성이었고
+            // (`n.data == here.data`), 인스턴스 ID 는 그것과 1:1 이라 판정은 그대로면서 규칙이
+            // 엔진 타입을 모르게 된다. 미활성(미존재·배치 진행 중)은 0 = "없음" 으로 접힌다 —
+            // 적출 전 `continue` 두 줄과 같은 뜻이다.
+            for (int dy = -2; dy <= 2; dy++)
+            for (int dx = -2; dx <= 2; dx++)
             {
-                cell,
-                cell + new Vector2Int(1, 0),
-                cell + new Vector2Int(-1, 0),
-                cell + new Vector2Int(0, 1),
-                cell + new Vector2Int(0, -1),
-                cell + new Vector2Int(1, 1),
-                cell + new Vector2Int(-1, 1),
-                cell + new Vector2Int(1, -1),
-                cell + new Vector2Int(-1, -1),
-            };
+                int key = 0;
+                if (_defenderByTile.TryGetValue(cell + new Vector2Int(dx, dy), out var probe)
+                    && probe.data != null
+                    && _em.Exists(probe.entity)
+                    && !_em.HasComponent<PendingDeployment>(probe.entity))
+                    key = probe.data.GetInstanceID();
+                _synergyWindowScratch[MatchSynergyRules.WindowIndex(dx, dy)] = key;
+            }
 
-            for (int i = 0; i < cells.Length; i++)
+            MatchSynergyRules.CountBlock(_synergyWindowScratch, _synergyNeighborScratch);
+
+            for (int i = 0; i < MatchSynergyRules.BlockSize; i++)
             {
-                var c = cells[i];
-                if (!_defenderByTile.TryGetValue(c, out var here)) continue;
-                if (!_em.Exists(here.entity) || _em.HasComponent<PendingDeployment>(here.entity)) continue;
-                int neighbors = 0;
-                for (int dx = -1; dx <= 1; dx++)
-                for (int dz = -1; dz <= 1; dz++)
-                {
-                    if (dx == 0 && dz == 0) continue;
-                    if (_defenderByTile.TryGetValue(c + new Vector2Int(dx, dz), out var n)
-                        && n.data == here.data
-                        && _em.Exists(n.entity)
-                        && !_em.HasComponent<PendingDeployment>(n.entity))
-                        neighbors++;
-                }
+                int neighbors = _synergyNeighborScratch[i];
+                if (neighbors == MatchSynergyRules.Unoccupied) continue;
+
+                (int ox, int oy) = MatchSynergyRules.BlockOffset(i);
+                if (!_defenderByTile.TryGetValue(cell + new Vector2Int(ox, oy), out var here)) continue;
 
                 if (neighbors == 0)
                 {
@@ -4607,7 +4611,8 @@ namespace Wassup.Bridge
                 else
                 {
                     bool wasPresent = _synergyActivatedEntities.Contains(here.entity);
-                    EnqueueSynergyMul(here.entity, 1f + SynergyPerNeighbor * neighbors);
+                    EnqueueSynergyMul(here.entity,
+                        MatchSynergyRules.Multiplier(neighbors, SynergyPerNeighbor));
                     if (!wasPresent && _synergyActivatedEntities.Add(here.entity))
                     {
                         _synergyActivations++;
@@ -5180,7 +5185,7 @@ namespace Wassup.Bridge
                 map: _generatedMap,
                 occupied: _occupiedTiles,
                 cell: new int2(tileX, tileY),
-                unitValid: unitData != null && unitData.visualMaterial != null,
+                unitValid: unitData != null,
                 inPool: unitData != null && (defenderPool == null || defenderPool.Length == 0
                         || System.Array.IndexOf(defenderPool, unitData) >= 0),
                 canAfford: costRuntime == null || unitData == null || costRuntime.CanAfford(unitData.cost),
@@ -5726,7 +5731,7 @@ namespace Wassup.Bridge
                 ? unitData.visualMesh
                 : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             var renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = unitData.visualMaterial;
+            renderer.sharedMaterial = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
 
             float elapsed = 0f;
             while (elapsed < duration)
@@ -5927,7 +5932,7 @@ namespace Wassup.Bridge
                 var mesh = unitData.visualMesh != null
                     ? unitData.visualMesh
                     : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-                var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
+                var material = ResolveFallbackViewMaterial(unitData);
                 defenderFallbackViewPool.TrySpawn(
                     unitData.displayName,
                     entity,
@@ -6124,7 +6129,7 @@ namespace Wassup.Bridge
                 var mesh = unitData.visualMesh != null
                     ? unitData.visualMesh
                     : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-                var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
+                var material = ResolveFallbackViewMaterial(unitData);
                 defenderFallbackViewPool.TrySpawn(
                     unitData.displayName, entity, fallbackWorld, mesh, material, Wassup.Presentation.BattleVisualKnobs.CharacterVisualScale, out _);
             }
@@ -6916,6 +6921,26 @@ namespace Wassup.Bridge
             var go = new GameObject(poolName);
             go.transform.SetParent(transform, worldPositionStays: false);
             return go.AddComponent<Wassup.Presentation.QuadUnitViewPool>();
+        }
+
+        // battle-sim-extraction unit 15-C-2 — **뷰 배선 검증의 자리**.
+        //
+        // 배치 규칙(`MatchPlacementRules.Check`)의 `unitValid` 가 `visualMaterial != null` 까지 보던
+        // 것을 걷어냈다: 렌더 배선이 되었는지는 프레젠테이션 조건이지 배치 적법성이 아니다(계층 오류 —
+        // sim 규칙이 머티리얼을 판정하면 `Sim/Match` 가 렌더를 알아야 한다). 그 조건이 잡던 **저작
+        // 실수**를 대신 여기서 잡는다.
+        //
+        // 이 자리인 이유: Spine 이 뜬 디펜더는 `visualMaterial` 을 아예 쓰지 않으므로 배치 시점에
+        // 경고하면 오탐이다. 폴백 렌더가 실제로 필요해진 지점에서만 묻는다.
+        // 처분은 적 유닛 경로(`SpawnUnit` 의 동형 경고)와 같다 — 배치는 성사되고 렌더는 폴백으로 내려간다.
+        private Material ResolveFallbackViewMaterial(DefenderUnitData unitData)
+        {
+            if (unitData.visualMaterial == null)
+            {
+                Debug.LogWarning($"[BattleBridge] 디펜더 '{unitData.displayName}' 의 visualMaterial 이 "
+                    + "미배선이다 — 런타임 폴백 머티리얼로 렌더한다.");
+            }
+            return ResolveUnitMaterial(unitData.visualMaterial, Color.white);
         }
 
         private Material ResolveUnitMaterial(Material source, Color fallbackColor)

@@ -60,8 +60,9 @@ namespace Wassup.Tests.EditMode
             _unit.displayName = "Gate Unit";
             _unit.cost = 0;                 // 코스트 게이트를 비껴가 쿨타임만 남긴다
             _unit.placementCooldown = 5f;
-            // `CanPlaceDefenderAt` 은 visualMaterial 미할당을 InvalidUnit 으로 거절한다 —
-            // 그 게이트가 먼저라 쿨타임까지 오지 못한다(픽스처 필수 조건).
+            // unit 15-C-2 이후 배치 규칙은 머티리얼을 보지 않는다(뷰 배선 조건이라 프레젠테이션으로
+            // 이관). 그래도 배선해 두는 이유는 이 픽스처가 배치 **성사** 경로도 타기 때문이다 —
+            // 뷰 단계에서 폴백 머티리얼 생성 경고가 나면 로그 단정과 섞인다.
             _unitMaterial = new Material(Shader.Find("Sprites/Default"));
             _unit.visualMaterial = _unitMaterial;
 
