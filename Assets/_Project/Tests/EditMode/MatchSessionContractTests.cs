@@ -1,6 +1,7 @@
 using System;
 using NUnit.Framework;
 using Wassup.Core.Session;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.EditMode
 {
@@ -108,7 +109,7 @@ namespace Wassup.Tests.EditMode
         {
             // 통합 enum 이 기존 사유를 **값 손실 없이** 흡수했는지 — PlacementRejectReason 멤버가
             // 늘면 이 테스트가 먼저 깨져서 매핑 누락을 알린다(어댑터 MapPlacement 의 짝).
-            foreach (var name in Enum.GetNames(typeof(Wassup.Bridge.PlacementRejectReason)))
+            foreach (var name in Enum.GetNames(typeof(Wassup.Sim.Match.PlacementRejectReason)))
             {
                 if (name == "None") continue;
                 bool mapped =

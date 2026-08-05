@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.EditMode
 {

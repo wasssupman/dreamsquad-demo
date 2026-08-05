@@ -5104,64 +5104,30 @@ namespace Wassup.Bridge
         }
 
         // placement-eligible-tile-highlight unit 2 — 공간 배치 조건만(IsCreated/bounds/Place/점유).
-        // 순수 static(값 in → reason out): 판정(CanPlaceDefenderAt)과 하이라이트 셀 수집이 공유해
-        // 어긋나지 않게 한다(PaintLanes 가 시뮬 발사 게이트를 공유하는 것과 동형). EditMode 테스트 대상.
-        // 비용/풀/유닛/running 은 CanPlaceDefenderAt 이 별도로 본다.
+        // unit 15-B: 판정 본체는 `MatchPlacementRules.Spatial` 로 이사했고 여기는 **포워더**다
+        // (호출처·EditMode 테스트가 이 이름을 쓰고 있어 유지 — 로직 중복이 아니다).
         public static PlacementRejectReason SpatialPlacementCheck(GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell)
-        {
-            if (!map.IsCreated) return PlacementRejectReason.MissingMap;
-            if (cell.x < 0 || cell.x >= map.gridSize.x || cell.y < 0 || cell.y >= map.gridSize.y)
-                return PlacementRejectReason.OutOfBounds;
-            if (map.TileAt(cell) != MapTileType.Place) return PlacementRejectReason.NotBuildable;
-            if (occupied != null && occupied.Contains(new Vector2Int(cell.x, cell.y))) return PlacementRejectReason.Occupied;
-            return PlacementRejectReason.None;
-        }
+            => MatchPlacementRules.Spatial(map, occupied, cell);
 
         public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
         {
-            if (!_running && !_placementAllowed)
-            {
-                reason = PlacementRejectReason.NotRunningOrPlacementClosed;
-                return false;
-            }
-            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY));
-            if (spatial != PlacementRejectReason.None)
-            {
-                reason = spatial;
-                return false;
-            }
-
-            if (unitData == null || unitData.visualMaterial == null)
-            {
-                reason = PlacementRejectReason.InvalidUnit;
-                return false;
-            }
-
-            if (defenderPool != null && defenderPool.Length > 0 && System.Array.IndexOf(defenderPool, unitData) < 0)
-            {
-                reason = PlacementRejectReason.NotInPickedPool;
-                return false;
-            }
-
-            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
-            if (costRuntime != null && !costRuntime.CanAfford(unitData.cost))
-            {
-                reason = PlacementRejectReason.InsufficientCost;
-                return false;
-            }
-
-            // battle-sim-extraction unit 15 — 배치 쿨타임 게이트. 그 전까지 이 판정은 **UI 에만**
-            // 있어서(`DefenderSelector` 의 딤 처리) 커맨드로 직접 배치하면 쿨타임이 무시됐다.
-            // 규칙 판정이 보게 되면서 뷰를 우회하는 경로도 같은 답을 받는다.
-            var cooldownRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
-            if (cooldownRuntime != null && !cooldownRuntime.IsReady(unitData))
-            {
-                reason = PlacementRejectReason.OnCooldown;
-                return false;
-            }
-
-            reason = PlacementRejectReason.None;
-            return true;
+            // unit 15-B — 판정은 `MatchPlacementRules.Check` 가 한다. 여기서는 그 규칙이 알 수
+            // 없는 것(통화 런타임·픽 풀·뷰 배선)을 **plain bool 로 조회해 넘기기만** 한다.
+            // 사유 우선순위는 규칙이 소유한다 — 뷰가 그 사유로 거절 이유를 그린다.
+            var gm = GameManager.Instance;
+            var costRuntime = gm != null ? gm.CostRuntime : null;
+            var cooldownRuntime = gm != null ? gm.CooldownRuntime : null;
+            reason = MatchPlacementRules.Check(
+                placementOpen: _running || _placementAllowed,
+                map: _generatedMap,
+                occupied: _occupiedTiles,
+                cell: new int2(tileX, tileY),
+                unitValid: unitData != null && unitData.visualMaterial != null,
+                inPool: unitData != null && (defenderPool == null || defenderPool.Length == 0
+                        || System.Array.IndexOf(defenderPool, unitData) >= 0),
+                canAfford: costRuntime == null || unitData == null || costRuntime.CanAfford(unitData.cost),
+                cooldownReady: cooldownRuntime == null || unitData == null || cooldownRuntime.IsReady(unitData));
+            return reason == PlacementRejectReason.None;
         }
 
         // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).

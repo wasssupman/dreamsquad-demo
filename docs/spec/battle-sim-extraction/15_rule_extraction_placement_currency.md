@@ -15,7 +15,8 @@ MonoBehaviour 런타임, 유출 허용치는 Bridge private 라 흩어져 있어
 - **통화 5종 sim 이관**: `CostRuntime`(float — **고정소수점화 검토**, 현 `CanAfford` 는 float 비교) ·
   배치 쿨다운 `PlacementCooldownRuntime`(→ `OnCooldown` 거절 사유 신설의 근거) ·
   스킬 쿨다운 `SkillRuntime` · 유출 허용치(unit 14 에서 이미 이동) · 각성 게이지는 **unit 16**
-- 은퇴 경로 삭제: `PlaceDefender`(랜덤픽 레거시) · `PlaceDefenderAs`(클릭 배치 은퇴) — salvage discard
+- 은퇴 경로 삭제: `PlaceDefender`(랜덤픽 레거시) · ~~`PlaceDefenderAs`(클릭 배치 은퇴)~~ — **`PlaceDefenderAs`
+  은퇴는 unit 18 이후로 이관됨** (사용자 결정 2026-08-05, 아래 "코퍼스 동결" 참조)
 - `DefenderSelector` — 쿨다운 시작 책임 제거(현재 UI 가 `StartCooldown` 호출: 청사진 ① §2 실측)
 
 ## 구현
@@ -67,21 +68,50 @@ MonoBehaviour 런타임, 유출 허용치는 Bridge private 라 흩어져 있어
 골든의 정규 상태 라인에 실린다(`BattleBridge.LegacyTrace.cs`). ⇒ 코스트 차감을 sim 으로 모으거나
 하네스를 배치 경로로 옮기는 순간 **코퍼스가 바뀐다.**
 
-그래서 15-B 는 다음 중 하나를 **먼저 결정**해야 한다:
+### ✅ 결정 — 코퍼스 동결 (사용자, 2026-08-05)
 
-1. unit 19 의 재기준선 권한과 함께 진행한다(코퍼스 갱신을 그 커밋이 소유).
-2. `PlaceDefenderAs` 를 하네스 전용 seam 으로 남긴다(은퇴 취소 — 이 문서 수정).
+**`PlaceDefenderAs` 를 하네스 전용 seam 으로 남기고, 은퇴를 unit 18 이후로 미룬다.** 골든 코퍼스는
+units 15-B~18 구간(가장 위험한 이식 구간) 동안 **byte 동결**이며 계속 `byte diff 0` 로 판정한다.
 
-판정 순서는 그대로다: 해시가 다르면 설정, 해시는 같고 스트림이 다르면 sim.
+따라올 결과:
 
-### 15-B 이후 (미착수)
+- 코스트 차감을 sim 으로 모으는 조각, 통화 tick 순서를 바꾸는 조각은 **이 구간에서 하지 않는다**
+  (`cost` 가 정규 상태 라인이라 코퍼스가 움직인다). `PlacementInput` 의 `TrySpend` 도 그대로 둔다.
+- 15-B 에서 할 수 있는 것은 **코퍼스 무해한 조각**이다: 판정 로직의 이사, 순수화, 소유권 정리 중
+  값·시점을 바꾸지 않는 것.
+- 은퇴/재기준선은 unit 18 의 sim lib 스왑이 어차피 코퍼스를 다시 찍을 때 함께 처리한다.
+- 판정 순서는 그대로다: 해시가 다르면 설정, 해시는 같고 스트림이 다르면 sim.
+
+### 15-B 완료: 배치 판정을 순수 규칙으로
+
+- `PlacementRejectReason` 이 `Wassup.Bridge` → **`Wassup.Sim.Match`** 로 이사(파일도 함께).
+  거절 사유는 배치 규칙의 산출물이므로 규칙과 같은 쪽에 있어야 한다 — Bridge 에 두면 sim 모듈이
+  Bridge 네임스페이스를 알아야 해서 **의존 방향이 뒤집힌다**(CLAUDE.md 제약 1 의 후계).
+- 신규 `MatchPlacementRules` — `Spatial`(공간 4조건) + `Check`(전체 판정). **순수 static**:
+  통화·풀·뷰 배선처럼 호출자만 아는 것은 `bool` 로 받으므로 이 타입은 `CostRuntime`·`GameManager`
+  를 모른다. **판정 순서가 계약**이다(뷰가 그 사유로 거절 이유를 그린다).
+- `BattleBridge.SpatialPlacementCheck` 는 **포워더**로 남긴다 — 하이라이트 수집과 EditMode
+  테스트가 이 이름을 쓰고 있다(로직 중복이 아니다).
+- `CanPlaceDefenderAt` 은 입력 수집 + 규칙 호출만 한다.
+
+### 15-C 이후 (미착수)
+
+코퍼스 동결 결정에 따라 **동결 구간에 가능한 것 / 해제 후에 할 것**으로 갈린다.
+
+동결 구간에도 가능 (값·시점을 바꾸지 않는 조각):
+
+- **재배치 판정 이관** — `RelocationCheck` 를 `MatchPlacementRules` 옆으로(같은 형태의 순수 판정).
+- **`ApplyOnPlaceEffect`·시너지 2종**(`RecomputeSynergyFor`·`NeutralizeActiveSynergy`) — ECS 쓰기가
+  섞여 있어 판정/적용 분리가 선행 조건이다.
+- **`unitValid` 의 `visualMaterial` 조건 정리** — 뷰 배선 조건이 배치 규칙에 있는 것은 계층 오류다.
+  다만 지금 빼면 뷰 없는 유닛이 배치돼 렌더에서 터지므로, 프레젠테이션 쪽 검증으로 옮긴 뒤 뺀다.
+
+**코퍼스 동결 해제(unit 18 스왑) 후에** 할 것:
 
 - **통화 상태의 sim 이관** — `CostRuntime`·`PlacementCooldownRuntime` 은 아직 MonoBehaviour 이고
   self-tick 한다. 읽기면은 unit 13-A3 이 이미 세션으로 옮겨 놨으므로 남은 일은 **상태와 tick 의
-  이사**다. 주의: 그 tick 순서가 바뀌면 `cost` 상태 라인이 흔들려 골든이 붉어진다(위와 같은 사유).
-- **배치 규칙 이관** — `CanPlaceDefenderAt`·`TryBeginDefenderDeployment`·`ActivateDeployedDefender`·
-  재배치 3종·`ApplyOnPlaceEffect`·시너지 2종.
+  이사**다. tick 순서가 바뀌면 `cost` 상태 라인이 흔들린다.
+- **`PlacementInput` 의 `TrySpend` 제거** + `PlaceDefenderAs` 은퇴 + 하네스를 배치 경로로 전환.
 - **활성화 지연을 sim 시퀀스로**(`activationTick`/`landTick`) — 현재 뷰 코루틴이 sim 전이 시각을
   소유한다. 행동 변화가 큰 조각이라 골든이 강한 증인이 된다.
-- **`PlacementInput` 의 `TrySpend` 제거** — 위 충돌 결정 후.
 - ⚠ **슬로모-통화 결합**은 이 unit 에서 **그대로 옮긴다**(행동 보존). 처분은 unit 19.

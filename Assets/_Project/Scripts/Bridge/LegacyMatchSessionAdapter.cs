@@ -6,6 +6,7 @@ using Wassup.Core;
 using Wassup.Core.Session;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
+using Wassup.Sim.Match;
 
 namespace Wassup.Bridge
 {

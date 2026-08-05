@@ -7,6 +7,7 @@ using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.EditMode
 {

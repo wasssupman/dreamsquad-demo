@@ -1,4 +1,7 @@
-namespace Wassup.Bridge
+// battle-sim-extraction unit 15-B — 배치 거절 사유는 **배치 규칙의 산출물**이라 규칙과 함께
+// sim 쪽에 산다. `Wassup.Bridge` 에 두면 sim 모듈이 Bridge 네임스페이스를 알아야 해서
+// 의존 방향(sim 은 Bridge 를 모른다)이 뒤집힌다 — 그 방향은 CLAUDE.md 제약 1 의 후계다.
+namespace Wassup.Sim.Match
 {
     public enum PlacementRejectReason
     {

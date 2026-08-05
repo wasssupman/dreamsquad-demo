@@ -12,6 +12,7 @@ using Wassup.Core.TimeControl;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Battle.Units;
+using Wassup.Sim.Match;
 
 namespace Wassup.Tests.PlayMode
 {
