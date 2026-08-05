@@ -71,6 +71,25 @@ namespace Wassup.Sim
         public SimChannel<Wassup.Sim.Units.ShieldBreakEvent> ShieldBreak { get; }
             = new SimChannel<Wassup.Sim.Units.ShieldBreakEvent>();
 
+        // ── 수명 (18-G/4) ─────────────────────────────────────────────────────
+        /// <summary>
+        /// 적이 목표에 도달했다. 생산자 `UnitLifecycleSystem`(#41, P12) → 소비자는 판정 계층(18-K).
+        /// ⚠ **처치가 아니다** — 점수도 각성도 남기지 않는다(그 비대칭이 사양이다).
+        /// </summary>
+        public SimChannel<Wassup.Sim.Units.GoalReachedEvent> GoalReached { get; }
+            = new SimChannel<Wassup.Sim.Units.GoalReachedEvent>();
+
+        /// <summary>
+        /// 방어유닛 사망. 생산자 `UnitLifecycleSystem`(#41) → 소비자는 배치 슬롯 해제·시너지 재계산.
+        /// 페이로드가 **파괴 직전에** 구워진다(드레인 시점엔 엔티티가 없다).
+        /// </summary>
+        public SimChannel<Wassup.Sim.Units.DefenderDeathEvent> DefenderDeath { get; }
+            = new SimChannel<Wassup.Sim.Units.DefenderDeathEvent>();
+
+        /// 차단 해저드 파괴. 생산자 `UnitLifecycleSystem`(#41). 같은 사정으로 값이 실린다.
+        public SimChannel<HazardDestroyedEvent> HazardDestroyed { get; }
+            = new SimChannel<HazardDestroyedEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
         public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
@@ -114,6 +133,9 @@ namespace Wassup.Sim
             BlinkRequest.Reset();
             EnemyKilled.Reset();
             ShieldBreak.Reset();
+            GoalReached.Reset();
+            DefenderDeath.Reset();
+            HazardDestroyed.Reset();
             DamageNumber.Reset();
             HealApplied.Reset();
             Warnings.Reset();

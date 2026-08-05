@@ -37,11 +37,23 @@ namespace Wassup.Sim
         /// </summary>
         public uint BombSeedBase { get; }
 
+        /// <summary>
+        /// 퇴근 기믹 저작값. **`null` = 기믹 비활성**이고, 그게 구 sim 의
+        /// `RequireForUpdate&lt;ClockOutGimmickConfig&gt;`(분류 B 게이트)가 하던 일이다 —
+        /// 싱글턴 엔티티의 **존재**로 표현되던 게이트가 여기로 이사했다.
+        ///
+        /// ⚠ 이 자리는 **게이트가 사라진 게 아니라 이동한** 사례다. 분류 A(채널 싱글턴)는
+        /// 증발했지만 분류 B 는 저작면에 남는다 — 기믹을 끈 매치와 켠 매치는 다른 판이다.
+        /// </summary>
+        public ClockOutConfig ClockOut { get; }
+
         public SimConfig(uint pickupSeed, uint bombSeedBase,
-                         IReadOnlyList<StackThresholdRule> stackThresholds = null)
+                         IReadOnlyList<StackThresholdRule> stackThresholds = null,
+                         ClockOutConfig clockOut = null)
         {
             PickupSeed = pickupSeed;
             BombSeedBase = bombSeedBase;
+            ClockOut = clockOut;
             _stackThresholds = new Dictionary<StackKind, StackThresholdRule[]>();
             if (stackThresholds == null) return;
 
