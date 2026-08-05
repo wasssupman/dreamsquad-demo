@@ -192,6 +192,17 @@ namespace Wassup.Sim
             return l;
         }
 
+        /// <summary>
+        /// 버퍼를 **없앤다**(비우는 것이 아니다). 구 ECS 의 `RemoveComponent&lt;T&gt;` 가 버퍼
+        /// 타입에 대해 하던 일이고, **부재 ≠ 빈 버퍼**이므로 둘은 다른 결과다 —
+        /// `AggroChaseCell` 의 소비자(`MovementSystem`)가 `HasBuffer` 로 분기하기 때문에
+        /// 비우기만 하면 "필드는 있는데 전부 0" 이라는 없는 상태가 만들어진다.
+        ///
+        /// 18-F/2 가 처음 요구했다 — 18-A 는 버퍼 **추가**만 있었다.
+        /// </summary>
+        public bool RemoveBuffer<T>(SimEntityId e) where T : struct
+            => BufferStore<T>().Map.Remove(e.Value);
+
         // ── 순회 ──────────────────────────────────────────────────────────────
         /// <summary>
         /// **생성 순서**로 살아 있는 엔티티를 훑는다. 순회 중 <see cref="Create"/>/<see cref="Destroy"/>
