@@ -12,15 +12,16 @@ namespace Wassup.Tests.EditMode
     public class SimModifierClusterTests
     {
         private SimWorld _world;
+        private SimChannels _channels;
         private ModifierCluster _cluster;
         private SimTick _tick;
 
         private void Build(params StackThresholdRule[] rules)
         {
             _world = new SimWorld(new SimConfig(1u, 1u, rules));
-            _cluster = new ModifierCluster();
-            _tick = new SimTick();
-            _cluster.Register(_tick);
+            _channels = new SimChannels();
+            _cluster = new ModifierCluster(_channels);
+            _tick = new SimPipeline().Add(_cluster.Steps()).Build();
         }
 
         [Test]
@@ -32,13 +33,23 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void EveryStep_LandsInThePhaseItsCaptureNumberImplies()
+        {
+            // 번호 구간이 phase 를 결정한다(청사진 ③ §1). 어긋나면 이식이 phase 를 잘못 골랐다.
+            Build();
+            foreach (var s in new ModifierCluster(new SimChannels()).Steps())
+                Assert.AreEqual(SimPipeline.PhaseForOrder(s.Order), s.Phase,
+                    $"#{s.Order} {s.Name} 의 phase 가 캡처 번호와 어긋난다.");
+        }
+
+        [Test]
         public void ExpiryIsReflectedInTheSameTick_BecauseTickPrecedesAggregate()
         {
             // #29 가 #30 보다 앞이라는 배치의 관측점.
             Build();
             var e = _world.Create();
             _world.Set(e, ModifierStats.Identity);
-            _cluster.StatApply.Enqueue(new StatModifierApplyEvent
+            _channels.StatApply.Enqueue(new StatModifierApplyEvent
             {
                 target = e, stat = StatKind.DamageMul, op = CombineOp.Additive,
                 magnitude = 1f, duration = 1f, source = e,
@@ -60,7 +71,7 @@ namespace Wassup.Tests.EditMode
             var e = _world.Create();
             _world.Set(e, ModifierStats.Identity);
             _world.Set(e, new Health { value = 100f, max = 100f });
-            _cluster.StatApply.Enqueue(new StatModifierApplyEvent
+            _channels.StatApply.Enqueue(new StatModifierApplyEvent
             {
                 target = e, stat = StatKind.MaxHealthMul, op = CombineOp.Multiplicative,
                 magnitude = 0.5f, duration = 100f, source = e,
@@ -90,7 +101,7 @@ namespace Wassup.Tests.EditMode
             _tick.Run(_world, 1f);
             Assert.IsFalse(_world.HasBuffer<StackModifierSlot>(d),
                 "발행은 됐지만 소비자(P2)는 이미 지나갔다 — 이번 틱엔 슬롯이 없다.");
-            Assert.AreEqual(1, _cluster.StackApply.Count, "채널에 대기 중.");
+            Assert.AreEqual(1, _channels.StackApply.Count, "채널에 대기 중.");
 
             _tick.Run(_world, 0.016f);
             Assert.AreEqual(1, _world.GetBuffer<StackModifierSlot>(d)[0].stackCount,
@@ -110,7 +121,7 @@ namespace Wassup.Tests.EditMode
             });
             var e = _world.Create();
             _world.Set(e, ModifierStats.Identity);
-            _cluster.StackApply.Enqueue(new StackModifierApplyEvent
+            _channels.StackApply.Enqueue(new StackModifierApplyEvent
             {
                 target = e, kind = StackKind.Fire, countDelta = 1, maxStack = 9,
                 perAppDuration = 100f, source = SimEntityId.Null,

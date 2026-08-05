@@ -153,9 +153,10 @@ namespace Wassup.Tests.EditMode
         private static (double ms, long bytes) MeasureFresh()
         {
             var world = new SimWorld(new SimConfig(1u, 1u));
-            var cluster = new Fresh.ModifierCluster();
-            var tick = new SimTick();
-            cluster.Register(tick);
+            var channels = new SimChannels();
+            var cluster = new Fresh.ModifierCluster(channels);
+
+            var tick = new SimPipeline().Add(cluster.Steps()).Build();
 
             var entities = new SimEntityId[EntityCount];
             for (int i = 0; i < EntityCount; i++)
@@ -174,7 +175,7 @@ namespace Wassup.Tests.EditMode
             {
                 if (t % ReapplyEvery == 0)
                     for (int i = 0; i < EntityCount; i++)
-                        cluster.StatApply.Enqueue(new Fresh.StatModifierApplyEvent
+                        channels.StatApply.Enqueue(new Fresh.StatModifierApplyEvent
                         {
                             target = entities[i], stat = Fresh.StatKind.DamageMul,
                             op = Fresh.CombineOp.Additive, magnitude = 0.1f,
