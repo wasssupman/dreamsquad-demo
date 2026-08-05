@@ -54,7 +54,38 @@ namespace Wassup.Sim
         public SimChannel<Wassup.Sim.Movement.BlinkRequestEvent> BlinkRequest { get; }
             = new SimChannel<Wassup.Sim.Movement.BlinkRequestEvent>();
 
+        // ── 피해 정산 산출 (18-G) ─────────────────────────────────────────────
+        /// <summary>
+        /// 적 처치 원샷. 생산자 `DamageApplicationSystem`(P9) → 소비자는 **뷰/점수 계층**(18-K).
+        ///
+        /// ⚠ 이름과 달리 순수 연출 채널이 아니다 — 점수와 각성 재화, 시체폭발 파라미터가 여기 실린다.
+        /// 그 값들이 **엔티티 파괴보다 먼저** 복사돼야 해서 이 채널이 존재한다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Units.EnemyKilledEvent> EnemyKilled { get; }
+            = new SimChannel<Wassup.Sim.Units.EnemyKilledEvent>();
+
+        /// <summary>
+        /// 실드 파열 + 피격 폭발. 생산자 `DamageApplicationSystem`(P9) → 소비자는 payload 실행기(18-K).
+        /// 두 사건이 한 채널을 공유하는 근거는 <see cref="Wassup.Sim.Units.ShieldBreakEvent"/> 참조.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Units.ShieldBreakEvent> ShieldBreak { get; }
+            = new SimChannel<Wassup.Sim.Units.ShieldBreakEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
+        /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
+        public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
+            = new SimChannel<Wassup.Sim.Units.DamageNumberEvent>();
+
+        /// 회복 펄스 VFX. `RegenPerSec` 은 의도적으로 제외된다.
+        public SimChannel<Wassup.Sim.Units.HealAppliedEvent> HealApplied { get; }
+            = new SimChannel<Wassup.Sim.Units.HealAppliedEvent>();
+
+        /// <summary>
+        /// 저작 오류 진단. 구 sim 의 `Debug.LogWarning` 자리 — 엔진을 모르는 sim 이 소리를 내는
+        /// 유일한 통로다(<see cref="SimWarning"/> 참조). **상태 해시에 실리지 않는다.**
+        /// </summary>
+        public SimChannel<SimWarning> Warnings { get; } = new SimChannel<SimWarning>();
+
         /// <summary>
         /// 해저드 런타임 로그. **상태 해시에 실리지 않는다** — 뷰·디버그용이다.
         ///
@@ -81,6 +112,11 @@ namespace Wassup.Sim
             CcClear.Reset();
             AggroHit.Reset();
             BlinkRequest.Reset();
+            EnemyKilled.Reset();
+            ShieldBreak.Reset();
+            DamageNumber.Reset();
+            HealApplied.Reset();
+            Warnings.Reset();
             HazardRuntime.Reset();
         }
     }
