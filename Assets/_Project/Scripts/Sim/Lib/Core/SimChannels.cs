@@ -35,6 +35,17 @@ namespace Wassup.Sim
         /// Units→Effects wake-on-hit. 생산자 `DamageApplication`(P9, 18-G) → 소비자 `CcClearSystem`.
         public SimChannel<CcClearRequest> CcClear { get; } = new SimChannel<CcClearRequest>();
 
+        // ── 어그로 (18-F) ─────────────────────────────────────────────────────
+        /// <summary>
+        /// Combat→Effects 히트 구동 어그로. 생산자 `AttackSystem`(#33, P8) →
+        /// 소비자 `AggroStateSystem`(#8, P2).
+        ///
+        /// ⚠ **소비자가 생산자보다 앞이라 구조적 영구 1틱 지연**이다. 청사진이 이 쌍을 두고
+        /// *"선언 없음 — 구조가 보장"* 이라고 적었고, `SimChannel` 이 지연 플래그를 두지 않는
+        /// 근거가 바로 이 쌍이다.
+        /// </summary>
+        public SimChannel<AggroHitEvent> AggroHit { get; } = new SimChannel<AggroHitEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// <summary>
         /// 해저드 런타임 로그. **상태 해시에 실리지 않는다** — 뷰·디버그용이다.
@@ -60,6 +71,7 @@ namespace Wassup.Sim
             EnemyCc.Reset();
             DotApply.Reset();
             CcClear.Reset();
+            AggroHit.Reset();
             HazardRuntime.Reset();
         }
     }
