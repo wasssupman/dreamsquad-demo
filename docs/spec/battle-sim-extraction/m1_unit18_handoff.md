@@ -1,6 +1,6 @@
 # unit 18 세션 인계 — S1 종료 시점
 
-> 2026-08-05 · HEAD `77752f41` · 이 문서는 **지도**다. 계약은 [`m1_unit18_plan.md`](m1_unit18_plan.md),
+> 2026-08-05 · HEAD `8f028dcf` · 이 문서는 **지도**다. 계약은 [`m1_unit18_plan.md`](m1_unit18_plan.md),
 > 설계는 [`m1_blueprint_tick_pipeline.md`](m1_blueprint_tick_pipeline.md) 가 소유한다.
 > 세션마다 이 문서 끝에 덧붙인다.
 
