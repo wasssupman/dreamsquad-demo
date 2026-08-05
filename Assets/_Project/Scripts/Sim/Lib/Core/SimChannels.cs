@@ -46,6 +46,14 @@ namespace Wassup.Sim
         /// </summary>
         public SimChannel<AggroHitEvent> AggroHit { get; } = new SimChannel<AggroHitEvent>();
 
+        /// <summary>
+        /// Combat→Movement 텔레포트 seam. 생산자는 P12 의 임계·궁극기 계열(#42·#43),
+        /// 소비자는 `BlinkApplySystem`(#44) — **같은 phase 안에서 뒤**라 같은 틱에 착지한다.
+        /// 위치 쓰기가 Movement 소유라 Combat 이 직접 못 쓰는 것이 이 채널의 존재 이유다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Movement.BlinkRequestEvent> BlinkRequest { get; }
+            = new SimChannel<Wassup.Sim.Movement.BlinkRequestEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// <summary>
         /// 해저드 런타임 로그. **상태 해시에 실리지 않는다** — 뷰·디버그용이다.
@@ -72,6 +80,7 @@ namespace Wassup.Sim
             DotApply.Reset();
             CcClear.Reset();
             AggroHit.Reset();
+            BlinkRequest.Reset();
             HazardRuntime.Reset();
         }
     }
