@@ -18,6 +18,19 @@ namespace Wassup.Sim.Effects
 
     public enum StackKind : byte { None, Fire, Ice, Bleed, Poison, Fatigue }
 
+    /// <summary>
+    /// battle-sim-extraction unit 18-H/3 — 저작이 상한을 비워 둔 스택의 폴백.
+    /// 구 `Wassup.Data.StackModifierSO.DefaultMaxStack` 이식.
+    ///
+    /// ⚠ 여러 생산자(공격 출력·배치 도포·투사체 착탄)가 같은 값을 복사해 쓰고 있었다 —
+    /// 권위는 스택을 소유한 저작 SO 지만, sim 은 그걸 못 읽으므로 값을 **복제**한다.
+    /// 저작 쪽이 바뀌면 여기도 바꿔야 한다(어휘 평행성 검사와 같은 성격의 결합).
+    /// </summary>
+    public static class StackDefaults
+    {
+        public const byte MaxStack = 5;
+    }
+
     public enum CombineOp : byte { Multiplicative, Additive, Override }
 
     /// 모디파이어 출처(1급 태그). 크기·stat 이 같아도 출처를 슬롯 단위로 구분한다 —

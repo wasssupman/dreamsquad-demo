@@ -96,6 +96,21 @@ namespace Wassup.Sim
         /// </summary>
         public SimChannel<ShieldGrantedEvent> ShieldGranted { get; } = new SimChannel<ShieldGrantedEvent>();
 
+        // ── 투사체 (18-H) ─────────────────────────────────────────────────────
+        /// <summary>
+        /// Combat→Combat 보스 위협 귀속. 생산자 `ProjectileHitSystem`(#27, P6)·공격 루프(#33, P8)
+        /// → 소비자는 임계 계열(#42, P12) — **같은 틱 뒤**라 그 틱에 반영된다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.ThreatHitEvent> ThreatHit { get; }
+            = new SimChannel<Wassup.Sim.Combat.ThreatHitEvent>();
+
+        /// <summary>
+        /// 착탄 연출. **샷 하나당 하나**(스플래시 2차는 실리지 않는다).
+        /// ⚠ TileAoe 는 대상 위치가 아니라 **착탄 셀**을 싣는다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.ProjectileHitEvent> ProjectileHit { get; }
+            = new SimChannel<Wassup.Sim.Combat.ProjectileHitEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
         public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
@@ -143,6 +158,8 @@ namespace Wassup.Sim
             DefenderDeath.Reset();
             HazardDestroyed.Reset();
             ShieldGranted.Reset();
+            ThreatHit.Reset();
+            ProjectileHit.Reset();
             DamageNumber.Reset();
             HealApplied.Reset();
             Warnings.Reset();

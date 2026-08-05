@@ -17,7 +17,16 @@ namespace Wassup.Sim.Movement
     {
         public SimVec3 Position;
 
-        public static SimTransform FromPosition(SimVec3 p) => new SimTransform { Position = p };
+        /// <summary>
+        /// 균등 스케일. 구 `LocalTransform.Scale` 이식 — 18-H/3(피격 플래시)이 처음 요구했다.
+        ///
+        /// ⚠ **기본값 0 은 틀린 상태다.** 구 `LocalTransform.FromPosition` 이 1 을 넣으므로
+        /// <see cref="FromPosition"/> 도 1 을 넣는다. `new SimTransform { Position = ... }` 로
+        /// 직접 만들면 스케일 0 짜리 유닛이 생기니 **팩토리를 쓸 것**.
+        /// </summary>
+        public float Scale;
+
+        public static SimTransform FromPosition(SimVec3 p) => new SimTransform { Position = p, Scale = 1f };
     }
 
     /// <summary>
