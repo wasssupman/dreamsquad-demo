@@ -48,7 +48,7 @@ namespace Wassup.Sim.Effects
         public void Run(SimWorld world)
         {
             // self-gate — 기믹 비활성이면 **아무것도 하지 않는다**(부착조차).
-            if (!TryGetSingleton(world, out BurnoutGimmickConfig config)) return;
+            if (!SimSingleton.TryGet(world, out BurnoutGimmickConfig config)) return;
 
             // 잘못 저작된 데이터에 대한 무한 루프 방어. ⚠ 이 return 은 Pass 1(부착)보다 **앞**이다 —
             // 뒤로 옮기면 타이머가 붙어 상태(컴포넌트 유무)가 갈린다.
@@ -94,20 +94,7 @@ namespace Wassup.Sim.Effects
             }
         }
 
-        /// <summary>
-        /// 구 `SystemAPI.GetSingleton&lt;T&gt;` 대응. 생성 순서 첫 보유자를 싱글턴으로 본다.
-        /// 지금은 호출처가 하나라 여기 둔다 — 18-B 가 게이트 53건을 옮기며 같은 모양이 반복되면
-        /// 그때 <see cref="SimWorld"/> 로 올린다(반복이 생긴 뒤에 추출한다).
-        /// </summary>
-        private static bool TryGetSingleton<T>(SimWorld world, out T value) where T : struct
-        {
-            foreach (SimEntityId e in world.With<T>())
-            {
-                value = world.Get<T>(e);
-                return true;
-            }
-            value = default;
-            return false;
-        }
+        // 싱글턴 조회는 18-E/3 에서 `SimSingleton` 으로 올렸다 — 호출처가 4개가 됐다
+        // (약속대로: "반복이 생기면 그때 추출한다").
     }
 }

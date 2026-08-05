@@ -115,8 +115,19 @@ namespace Wassup.Sim
         public bool Exists(SimEntityId e) => !e.IsNull && _alive.Contains(e.Value);
 
         /// <summary>
-        /// **P12(UnitLifecycle)만 부른다.** 다른 phase 에서 부르면 사망 창이 사라져 사직서 드랍·
-        /// 순찰병 전파·DefenderDeath 이벤트 베이크가 전부 깨진다(청사진 ③ §3).
+        /// ⚠ **계약의 적용 범위가 18-A 의 초판보다 좁다**(18-E/3 실측 정정).
+        ///
+        /// 초판은 *"P12(UnitLifecycle)만 부른다"* 였다. 그건 **`DeadTag` 로 마킹된 유닛**에
+        /// 대해서만 참이다 — 그 릴레이(마킹 #11/#34 → 관찰 P10 → 파괴 #41)의 1틱 창이
+        /// 사라지면 사직서 드랍·순찰병 전파·DefenderDeath 베이크가 깨진다(청사진 ③ §3).
+        ///
+        /// 그러나 구 sim 에는 **수명 만료 파괴자가 P1 에 둘 더 있다** —
+        /// `HazardLifetimeSystem`(#2)과 `ObstacleLifetimeSystem`(#6)이다. 그 둘은 릴레이에
+        /// 참여하지 않는다(마킹 없이 즉시 파괴). 같은 해저드가 **피해로** 죽는 경로는 별개이고
+        /// 그건 `DeadTag` 를 거쳐 #41 로 간다.
+        ///
+        /// ⇒ 정확한 계약: **`DeadTag` 를 가진 엔티티를 파괴하는 것은 #41 뿐이다.**
+        /// 수명 만료(#2·#6)는 자기 phase 에서 즉시 파괴한다.
         /// </summary>
         public void Destroy(SimEntityId e)
         {

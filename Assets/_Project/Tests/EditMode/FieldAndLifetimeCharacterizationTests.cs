@@ -218,6 +218,52 @@ namespace Wassup.Tests.EditMode
             Tick(0.25f);
             Assert.AreEqual(0.75f, _em.GetComponentData<Hazard>(e).remainingLife, 1e-5f);
         }
+
+        /// 한 셀의 효과를 `TryGetFirstValue`/`TryGetNextValue` 순서 그대로 뽑는다 —
+        /// `ZoneApplySystem` 이 소비하는 바로 그 순서다.
+        private float[] EffectOrderAt(int2 cell)
+        {
+            var order = new System.Collections.Generic.List<float>();
+            if (_map.TryGetFirstValue(cell, out var effect, out var it))
+                do { order.Add(effect.param1); }
+                while (_map.TryGetNextValue(out effect, ref it));
+            return order.ToArray();
+        }
+
+        // ── tie-break ⑥ — 셀당 효과 순회 순서 ─────────────────────────────────
+        // 계획서가 `HazardLifetime` 재작성의 제약으로 못박은 자리다: "재작성은 자료구조만,
+        // **순회 순서는 보존**한다." 그 순서가 무엇인지 **추정하지 않고 여기서 잰다** —
+        // 신 sim 의 관리 컬렉션은 삽입 순서로 도는 것이 자연스러워서, 구 sim 이 그 반대라면
+        // 이식이 조용히 순서를 뒤집는다. `ZoneApply` 가 이 순서로 CC/DoT/스탯을 발행하므로
+        // 순서가 곧 채널 적재 순서이고, 병합 결과에 먹힌다.
+
+        [Test]
+        public void EffectOrderWithinCell_IsReverseInsertion_NotInsertion()
+        {
+            Hazard(10f, new[] { new int2(0, 0) },
+                new HazardEffect { kind = CcKind.Slow, param1 = 1f },
+                new HazardEffect { kind = CcKind.Slow, param1 = 2f },
+                new HazardEffect { kind = CcKind.Slow, param1 = 3f });
+            Tick(0.1f);
+
+            CollectionAssert.AreEqual(new[] { 3f, 2f, 1f }, EffectOrderAt(new int2(0, 0)),
+                "NativeParallelMultiHashMap.Add 는 버킷 체인에 **prepend** 한다 — " +
+                "TryGetFirstValue 가 가장 최근 추가분을 먼저 준다.");
+        }
+
+        [Test]
+        public void EffectOrderAcrossHazards_OnSameCell_IsAlsoReverseOfAddOrder()
+        {
+            // 두 해저드가 같은 셀에 겹친다. 적재 순서는 (엔티티 순회 × 셀 × 효과) 이고,
+            // 읽기는 그 전체의 역순이다.
+            var cell = new int2(2, 2);
+            Hazard(10f, new[] { cell }, new HazardEffect { kind = CcKind.Slow, param1 = 10f });
+            Hazard(10f, new[] { cell }, new HazardEffect { kind = CcKind.Slow, param1 = 20f });
+            Tick(0.1f);
+
+            CollectionAssert.AreEqual(new[] { 20f, 10f }, EffectOrderAt(cell),
+                "나중에 적재된 해저드의 효과가 먼저 읽힌다.");
+        }
     }
 
     // ── #3 AllyBuffFieldSystem ────────────────────────────────────────────────
