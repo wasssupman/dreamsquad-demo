@@ -1,4 +1,4 @@
-using Unity.Entities;
+﻿using Unity.Entities;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Wassup.Core;
@@ -141,8 +141,7 @@ namespace Wassup.UI
                 return;
             }
             // D&D 의 _attachable 스냅샷과 동일한 판정 — 커밋 거절과 UI 를 일치시킨다(계약 5).
-            if (!_view.Controller.CanAttachMore(target) ||
-                !_view.Bridge.WouldDreamcatcherCardApply(target, slot.card))
+            if (!_view.Controller.CanAttachTo(target, slot.card))
             {
                 Reject("<color=#FF9B8A>이 유닛에는 부착할 수 없습니다</color>");
                 return;
@@ -252,7 +251,7 @@ namespace Wassup.UI
                     // 유효 = 부착 여유(캡) AND 이 카드가 이 유닛에 실제로 기여(통통구슬은
                     // 투사체 유닛만 등). 커밋 거절과 UI 를 일치시킨다.
                     var e = _defRectBuf[i].entity;
-                    if (_view.Controller.CanAttachMore(e) && _view.Bridge.WouldDreamcatcherCardApply(e, slot.card))
+                    if (_view.Controller.CanAttachTo(e, slot.card))
                         _attachable.Add(e);
                 }
                 _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.AttachAim, _attachable);

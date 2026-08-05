@@ -195,7 +195,36 @@ LeakAllowanceTooLow → AttachCapReached`. **게이지가 스킬 배선보다 �
 
 증인: `MatchGaugeRulesTests` 10건. 골든에는 게이지가 실리지 않는다.
 
-### 남은 조각 — 16-D+F 하나
+### ✅ 16-D: 적용성을 검증으로 끌어올려 부분 상태를 구조적으로 막았다
+
+`CommitAttach` 가 `WouldDreamcatcherCardApply` 를 **적용 전에** 부른다. 그 전에는 "이 카드가 이
+host 에 기여하는가" 를 **적용해 보고** `handle < 0` 으로 알았다 — 즉 검증이 끝나기 전에 ECS 쓰기가
+일어났다. 이제 부작용 이전에 판정이 닫힌다(`JudgeAttach` = `MatchCardRules` + 적용성).
+
+`handle < 0` 검사는 **방어 단정으로 남긴다** — 이제 도달하면 preflight 와 apply 가 갈린 것이고,
+그것이 정확히 `WouldDreamcatcherCardApply` 주석의 **"★ 동기화"** 부채가 실현된 상태다.
+조용히 거절하면 그 드리프트가 "가끔 안 붙네" 로 묻히므로 `LogError` 로 깨운다.
+
+**뷰 3곳의 조합을 `CanAttachTo(host, card)` 하나로.** 드래그 타깃 유효성 · 타깃 수집 · 손패 딤이
+각자 `CanAttachMore(host) && WouldDreamcatcherCardApply(host, card)` 를 조립하고 있었다.
+술어 범위는 **바꾸지 않았다** — 카드-종속 조건(손패·게이지)은 `CanUse` 가 이미 따로 보고,
+여기서 합치면 뷰의 판정이 넓어져 행동이 바뀐다(동결 규율).
+
+### ⚠ 16-F 의 전제 정정 — "preflight 미러" 는 미러가 아니었다
+
+문서는 `WouldDreamcatcherCardApply` 를 "검증 공유로 소거" 대상으로 적었지만, 실측하면 이것은
+**검증의 복제가 아니라 적용성이 결정되는 유일한 사전 지점**이다. 소거하면 16-D 가 성립하지 않는다.
+
+진짜 중복은 다른 곳에 있다 — `WouldDreamcatcherCardApply` 와 **`ApplyDreamcatcherCardToUnit` 의
+메커닉별 skip** 사이다(같은 파일 주석이 "★ 동기화 … 새 유닛-게이트 kind 추가 시 eval 갱신" 이라고
+수동 동기화 부채를 자백해 둔 자리). 이걸 접으려면 apply 경로를 **"판정 목록을 만들고 그 목록을
+적용" 형태로 다시 쓰는 것**이 필요하고, 그 본체가 bake ~480줄이다 ⇒ **unit 18 의 Effects 이식과
+같은 커밋**이 맞다. 그래서 16-F 는 unit 18 로 이관한다.
+
+⇒ **unit 16 은 이것으로 닫힌다.** UI preflight 미러 0(grep)은 `CanAttachTo` 로 달성됐고,
+그 안의 Bridge 호출 1건은 미러가 아니라 정본이다.
+
+### 남은 조각 — 없음 (16-F 는 unit 18 로)
 
 16-D(원자화)가 다음이고, 단독으로는 못 끝난다: `CommitAttach` 는 `handle < 0`(= 기여 0)을
 **적용해 봐야** 알 수 있어서, 검증 전량 선행을 하려면 그 예측이 필요하고 그 예측이 곧

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
@@ -1282,8 +1282,7 @@ namespace Wassup.UI
             if (DreamcatcherCardDragSlot.Classify(card) != DreamcatcherCardDragSlot.AimMode.Defender)
                 return false;
             if (handController == null || bridge == null) return false; // 미배선 = 기존 동작 유지
-            return !(handController.CanAttachMore(SelectionTarget)
-                && bridge.WouldDreamcatcherCardApply(SelectionTarget, card));
+            return !handController.CanAttachTo(SelectionTarget, card);
         }
 
         // hand-card-face unit 1 — 아트 제거: 카드 면 = 투톤 face 스프라이트(타입색 헤더 +

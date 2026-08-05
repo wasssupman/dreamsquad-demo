@@ -353,7 +353,7 @@ namespace Wassup.Core
             // subconscious-curse-expansion unit 1 (몽마의 계약): 지불 가능성(잔여 − cost ≥ 1)은
             // apply **전**에 확인하고 실제 지불은 apply 성공 후에만 한다(실패한 부착이 지불하는 일
             // 없음 — contract 9). 지불은 비가역: host 사망 revoke 는 hosted 버프만 회수한다.
-            var reason = Judge(entryId, wantActive: false, host, applyCapAndLeak: true, out var card);
+            var reason = JudgeAttach(entryId, host, out var card);
             if (reason != CommandReject.None)
             {
                 if (reason == CommandReject.Card_LeakAllowanceTooLow)
@@ -363,7 +363,15 @@ namespace Wassup.Core
                 return reason;
             }
             int handle = bridge.ApplyDreamcatcherCard(host, card);
-            if (handle < 0) return CommandReject.Card_NoEffect; // contributed nothing — no spend
+            if (handle < 0)
+            {
+                // unit 16-D — **적용성은 위에서 이미 확인했다.** 여기 오면 preflight 와 apply 가
+                // 갈린 것이다(`WouldDreamcatcherCardApply` 주석의 "★ 동기화" 부채가 실현된 상태).
+                // 조용히 거절하면 그 드리프트가 "가끔 안 붙네" 로 묻힌다.
+                Debug.LogError($"[DreamcatcherHandController] '{card.id}' — preflight 는 통과했는데 " +
+                               "apply 가 기여 0 을 반환했다. 적용성 판정과 적용 경로가 어긋났다.");
+                return CommandReject.Card_NoEffect;
+            }
             if (card.leakAllowanceCost > 0 && !bridge.TryPayLeakAllowance(card.leakAllowanceCost))
             {
                 // 게이트 통과 직후라 단일 스레드 흐름에서 실패할 수 없는 경로 — 방어적
@@ -374,6 +382,37 @@ namespace Wassup.Core
             }
             return AttachAndSpend(entryId, card, host, handle);
         }
+
+        /// <summary>
+        /// battle-sim-extraction unit 16-D — **부착의 검증 전량.** 손패·종류·게이지·유출·캡
+        /// (`MatchCardRules`) + **적용성**(`WouldDreamcatcherCardApply`)까지 여기서 닫힌다.
+        ///
+        /// 적용성이 검증으로 올라온 것이 이 unit 의 요점이다. 그 전에는 "이 카드가 이 host 에
+        /// 기여하는가" 를 **적용해 보고** `handle &lt; 0` 으로 알았고, 그래서 검증과 적용 사이에
+        /// 부분 상태가 생길 수 있는 구조였다. 이제 부작용 전에 판정이 끝난다.
+        /// </summary>
+        private CommandReject JudgeAttach(int entryId, Entity host, out DreamcatcherCard card)
+        {
+            var reason = Judge(entryId, wantActive: false, host, applyCapAndLeak: true, out card);
+            if (reason != CommandReject.None) return reason;
+            // 적용성 판정의 정본은 Bridge 다(ECS 능력 조회가 필요 — `ProjectileRef` 유무 등).
+            // 순수 부분은 `DreamcatcherAttachEval` 이 갖고 EditMode 로 검증된다.
+            if (!bridge.WouldDreamcatcherCardApply(host, card)) return CommandReject.Card_NoEffect;
+            return CommandReject.None;
+        }
+
+        /// <summary>
+        /// unit 16-D — 뷰 3곳이 각자 조합하던 **대상-종속 2조건**(부착 캡 + 적용성)을 한 이름으로.
+        /// 드래그 타깃 유효성 · 타깃 수집 · 손패 딤 처리가 같은 술어를 보게 된다.
+        ///
+        /// 카드-종속 조건(손패 멤버십·게이지)은 <see cref="CanUse"/> 가 이미 따로 본다 —
+        /// **여기서 합치지 않는다.** 합치면 뷰의 기존 판정이 넓어져 행동이 바뀐다(동결 규율).
+        /// 커밋의 전량 판정은 <see cref="JudgeAttach"/> 이고, 이 술어는 그것의 부분집합이다.
+        /// </summary>
+        public bool CanAttachTo(Entity host, DreamcatcherCard card)
+            => card != null && bridge != null
+               && CountAttachedTo(host) < MaxAttachPerUnit
+               && bridge.WouldDreamcatcherCardApply(host, card);
 
         // Shared attach tail: out-of-pool, host registry, spend, notify.
         private CommandReject AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
