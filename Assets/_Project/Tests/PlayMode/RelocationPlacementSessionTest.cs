@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -20,6 +20,12 @@ namespace Wassup.Tests.PlayMode
     public class RelocationPlacementSessionTest
     {
         static MethodInfo _stepMethod;
+
+        // battle-sim-extraction unit 15-A — 배치 규칙이 쿨타임을 본다(뷰를 우회하는 경로 포함).
+        // 이 테스트는 배치/재배치 **메커니즘**을 보는 것이고 같은 유닛을 연속으로 놓는 것이 전제라,
+        // 쿨타임 축을 중립화한다. 라이브에서는 UI 가 먼저 막으므로 이 경로가 열려 있지 않다.
+        private static void ClearPlacementCooldown()
+            => Wassup.Core.GameManager.Instance?.CooldownRuntime?.ResetAll();
 
         [TearDown]
         public void TearDown() => LogAssert.ignoreFailingMessages = false;
@@ -70,6 +76,7 @@ namespace Wassup.Tests.PlayMode
 
             // 유효 목적지 / 점유(무효) 목적지 준비
             Vector2Int target = FindRelocTarget(bridge, source);
+            ClearPlacementCooldown();
             Assert.IsTrue(bridge.PlaceDefenderAs(target.x, target.y, unit), "place blocker on future-invalid cell");
             Vector2Int occupiedCell = target;                     // 이제 점유 → 무효 목적지
             Vector2Int target2 = FindRelocTarget(bridge, source); // 새 유효 목적지
@@ -181,6 +188,7 @@ namespace Wassup.Tests.PlayMode
             var cellA = SoleCell(bridge);
             // 둘째로 집을 유닛 B 를 다른 셀에 배치
             var blockerCell = FindRelocTarget(bridge, cellA);
+            ClearPlacementCooldown();
             Assert.IsTrue(bridge.PlaceDefenderAs(blockerCell.x, blockerCell.y, unit), "place unit B");
             gm.SetPhase(GamePhase.Battle);
             yield return null;
@@ -320,7 +328,11 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                    {
+                        bool ok = bridge.PlaceDefenderAs(x, y, u);
+                        ClearPlacementCooldown();
+                        return ok;
+                    }
             return false;
         }
 

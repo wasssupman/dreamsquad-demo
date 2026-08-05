@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -22,6 +22,12 @@ namespace Wassup.Tests.PlayMode
     // → 비워진 원 타일에 재배치 성공.
     public class RelocationSmokeTest
     {
+        // battle-sim-extraction unit 15-A — 배치 규칙이 쿨타임을 본다(뷰를 우회하는 경로 포함).
+        // 이 테스트는 배치/재배치 **메커니즘**을 보는 것이고 같은 유닛을 연속으로 놓는 것이 전제라,
+        // 쿨타임 축을 중립화한다. 라이브에서는 UI 가 먼저 막으므로 이 경로가 열려 있지 않다.
+        private static void ClearPlacementCooldown()
+            => Wassup.Core.GameManager.Instance?.CooldownRuntime?.ResetAll();
+
         [TearDown]
         public void TearDown() => LogAssert.ignoreFailingMessages = false;
 
@@ -95,6 +101,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(em.HasComponent<PendingDeployment>(entity), "PendingDeployment removed on activate");
 
             // 비워진 원 타일에 재배치 성공
+            ClearPlacementCooldown();
             Assert.IsTrue(bridge.PlaceDefenderAs(from.x, from.y, unit), "source tile is free for a new placement");
         }
 
@@ -137,7 +144,9 @@ namespace Wassup.Tests.PlayMode
                 }
             }
             Assert.IsTrue(foundPair, "adjacent placeable pair exists");
+            ClearPlacementCooldown();
             Assert.IsTrue(bridge.PlaceDefenderAs(a.x, a.y, unit), "place A");
+            ClearPlacementCooldown();
             Assert.IsTrue(bridge.PlaceDefenderAs(b.x, b.y, unit), "place B");
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var entityA = EntityAt(bridge, em, a);
@@ -198,7 +207,11 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                    {
+                        bool ok = bridge.PlaceDefenderAs(x, y, u);
+                        ClearPlacementCooldown();
+                        return ok;
+                    }
             return false;
         }
 
