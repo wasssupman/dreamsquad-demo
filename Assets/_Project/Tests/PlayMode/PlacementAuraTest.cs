@@ -225,13 +225,34 @@ namespace Wassup.Tests.PlayMode
             return all.Length > 0 ? all[0] : null;
         }
 
+        // ⚠ **효과 타일을 피해서 놓는다.** 이 테스트는 오라의 *절대* 배율을 단정하는데
+        // (`attackSpeedMul` == 1.0 / 1.5), 맵의 EffectTile 은 그 칸에 놓인 유닛에게 영구 스탯
+        // 모디파이어를 얹는다(`BattleBridge.ApplyEffectTileIfAny`, origin=Tile, duration=∞).
+        // 스캔이 (-24,-24) 부터 첫 배치 가능 칸을 잡으므로 공속 버프 타일에 정확히 착지했고,
+        // 오라와 무관하게 ×1.2 가 곱해져 1.0→1.2 · 1.5→1.8 로 어긋났다(슬롯 덤프로 확인:
+        // `origin=Tile stat=AttackSpeedMul op=Multiplicative mag=1.2`). 오라 쪽은 정상이었다
+        // (`origin=Dreamcatcher op=Additive mag=0.5`) — 배치 위치가 문제였지 규칙이 아니다.
+        //
+        // 기대값을 상대 비교로 바꾸지 않는 이유: "부여됨/미부여" 를 절대값으로 읽는 편이 회귀를
+        // 더 좁게 잡는다. 효과 없는 칸은 맵에 충분히 많다.
         private static bool PlaceFirstValid(BattleBridge bridge, DefenderUnitData u)
         {
+            var effectCells = EffectTileCells(bridge);
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
+                {
+                    if (effectCells != null && effectCells.Contains(new Vector2Int(x, y))) continue;
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
                         return bridge.PlaceDefenderAs(x, y, u);
+                }
             return false;
+        }
+
+        private static System.Collections.IDictionary EffectTileCells(BattleBridge bridge)
+        {
+            var f = typeof(BattleBridge).GetField("_effectTilesByCell",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            return f?.GetValue(bridge) as System.Collections.IDictionary;
         }
 
         private static ModifierStats GetStat(BattleBridge bridge, EntityManager em, string id)

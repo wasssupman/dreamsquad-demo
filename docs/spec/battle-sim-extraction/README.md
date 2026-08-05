@@ -15,7 +15,7 @@ C 이후 대기(골든 코퍼스 동결) · units 16~20 미착수**
 | 15-A 배치 쿨타임을 규칙 판정으로 | 완료 | `45692e47` (골든 byte diff 0) |
 | 15-B 배치 판정 순수화 + 사유 이관 | 완료 | `87eb80fc` (골든 byte diff 0) |
 | 15-C-1 재배치 판정 이관 | 완료 | `afdea076` (골든 byte diff 0) |
-| 15-C-2 시너지 판정 적출 + `visualMaterial` 계층 정리 | 완료 | (골든 byte diff 0) |
+| 15-C-2 시너지 판정 적출 + `visualMaterial` 계층 정리 | 완료 | `c76cf833` (골든 byte diff 0) |
 | **15 종료** | `ApplyOnPlaceEffect` 는 unit 18 로, 통화 상태 이관은 동결 해제 후로 이관 | — |
 | 16~20 | **미착수** | — |
 
@@ -174,11 +174,19 @@ M0 골든은 **12:44 에 녹음**됐고 그 뒤 M1 의 선행 머지 3건과 uni
     PlayMode 군을 함께 돌려야 한다**는 교훈.
   - `BountyMarkTest` · `DreamstoneCarryInSmokeTest` ×2 — PrimeTween `EmergencyStop` 의
     "OnComplete ignored" 에러 로그를 `LogAssert.Expect` 하지 않음. 테스트 위생.
-  - `PlacementAuraTest` ×3 — **단독 실행에서도 재현**되며 받아선 안 되는 유닛에 정확히 ×1.2
-    (`attackSpeedMul` 1.0 기대 → 1.2, 1.5 기대 → 1.8). 오라 판정 코드
-    (`BattleBridge.Dreamcatcher.cs` · `Core/Dreamcatcher/DcApplicability.cs`)는 최근 20커밋에서
-    무변. 테스트 최종 수정(`837bc9c6`, 07-23) 이후 `Scripts/` 332커밋 · `Data/` 128커밋이
-    지나갔으므로 **원인 특정에는 이분 탐색이 필요**하다.
+  - ~~`PlacementAuraTest` ×3~~ — **수리됨**(2026-08-05). 이분 탐색은 필요 없었다: 슬롯을 덤프하니
+    범인이 이름을 댔다 — `origin=Tile stat=AttackSpeedMul op=Multiplicative mag=1.2`. **맵의
+    EffectTile** 이다. `PlaceFirstValid` 가 `(-24,-24)` 부터 훑어 첫 배치 가능 칸에 놓는데 그게
+    공속 버프 타일이라, 오라와 무관하게 ×1.2 가 곱해졌다(1.0→1.2 · 1.5→1.8).
+    오라 자체는 내내 정상이었다(`origin=Dreamcatcher op=Additive mag=0.5`) — **제품 버그가 아니라
+    테스트가 맵을 고려하지 않은 것**이고, 그래서 코드 무변에도 실패가 재현됐다.
+    수리는 효과 타일 회피 배치. 교훈 2개:
+    ① 절대 스탯을 단정하는 배치 테스트는 **효과 타일을 피해 놓아야 한다**(같은 스캔 패턴을
+    쓰는 PlayMode 파일이 33개 — 스탯을 안 보는 테스트는 무해하다).
+    ② 원인이 "코드가 안 변했는데 실패" 로 보이면 이분 탐색보다 **상태를 덤프**하는 것이 빠르다.
+    부수 관찰: 매치 기믹은 `MatchSeed` 파생으로 **매 실행 랜덤 배정**된다(G1~G4). 이 테스트는
+    `StartBattle` 을 안 해서 기믹 시스템이 틱하지 않아 무해했지만, 전투를 도는 PlayMode 테스트가
+    스탯을 단정한다면 그 축을 고정해야 한다.
   - 나머지(`DragCancelZoneTest` · `DreamcatcherAttachRequirementE2ETest` ·
     `DreamcatcherCursedRelicTest` · `DreamCocoonTest` · `DreamcatcherDeckCarryInTest` ·
     `SceneTransitionSmokeTest` · `SquadCarryInSmokeTest`) — 미진단.
