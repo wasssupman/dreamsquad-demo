@@ -186,7 +186,7 @@ namespace Wassup.Sim.Effects
     /// ⚠ **#4 `BossPeriodicTrigger` 는 P1** 이라 `EnvironmentCluster` 의 phase 한가운데 끼어든다.
     /// 그 클러스터에 직접 넣으면 경계가 무너지므로, 여기서 신고하고 정렬은 파이프라인에 맡긴다.
     ///
-    /// 조각별로 채워지는 중이다 — 지금 있는 것은 18-J/1~2(#20~#25).
+    /// 조각별로 채워지는 중이다 — 지금 있는 것은 18-J/1~3(#20~#25 · #39 · #43).
     /// </summary>
     public sealed class GimmickCluster
     {
@@ -196,6 +196,8 @@ namespace Wassup.Sim.Effects
         public PickupConsumeSystem PickupConsume { get; }
         public HitFlashSystem HitFlash { get; }
         public EffectTickSystem EffectTick { get; }
+        public DreamCocoonSystem DreamCocoon { get; }
+        public Wassup.Sim.Combat.UltimateLeapSystem UltimateLeap { get; }
 
         public GimmickCluster(SimChannels channels)
         {
@@ -205,6 +207,8 @@ namespace Wassup.Sim.Effects
             PickupConsume = new PickupConsumeSystem(channels);
             HitFlash = new HitFlashSystem();
             EffectTick = new EffectTickSystem();
+            DreamCocoon = new DreamCocoonSystem(channels);
+            UltimateLeap = new Wassup.Sim.Combat.UltimateLeapSystem(channels);
         }
 
         public IEnumerable<SimStep> Steps()
@@ -216,6 +220,11 @@ namespace Wassup.Sim.Effects
             yield return new SimStep(23, SimPhase.PostMoveCast, nameof(PickupConsumeSystem), PickupConsume.Run);
             yield return new SimStep(24, SimPhase.PostMoveCast, nameof(HitFlashSystem), HitFlash.Run);
             yield return new SimStep(25, SimPhase.PostMoveCast, nameof(EffectTickSystem), EffectTick.Run);
+            // ⚠ **#39 는 #37(CcClear) 뒤 · #40(CcDecay) 앞**이어야 한다 — 그 사이가 아니면
+            //    자연만료를 피격 파탄으로 오인한다. 캡처 번호가 그 자리에 있는 것이 우연이 아니다.
+            yield return new SimStep(39, SimPhase.PostProcess, nameof(DreamCocoonSystem), DreamCocoon.Run);
+            // ⚠ **#43 은 #44(BlinkApply) 앞** — 텔레포트 요청이 같은 틱에 적용된다.
+            yield return new SimStep(43, SimPhase.Destruction, nameof(Wassup.Sim.Combat.UltimateLeapSystem), UltimateLeap.Run);
         }
     }
 }

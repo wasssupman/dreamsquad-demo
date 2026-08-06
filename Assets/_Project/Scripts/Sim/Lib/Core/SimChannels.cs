@@ -139,6 +139,15 @@ namespace Wassup.Sim
             = new SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent>();
 
         /// <summary>
+        /// 궁극기 도약 연출(이탈 → 강하). 생산자 `UltimateLeapSystem`(#43, P12) → 소비자는 뷰(18-K).
+        /// ⚠ **보스 도약의 아치 하나로 대체할 수 없다** — 이탈과 강하가 예고 시간만큼 떨어진 별개
+        /// 사건이라 `kind` 2종으로 나눠 보내고 **뷰는 예고 시간을 복제하지 않는다**(두 시계가 갈린다).
+        /// 상태 해시에 실리지 않는다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.UltimateLeapVisualEvent> UltimateLeapVisual { get; }
+            = new SimChannel<Wassup.Sim.Combat.UltimateLeapVisualEvent>();
+
+        /// <summary>
         /// 넉업 띄우기 연출. 생산자는 공격 루프(#33) → 소비자는 뷰(18-K).
         /// 심에서 넉업의 실체는 짧은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분할 수 없다 —
         /// **띄운 쪽이 대상을 직접 신호**한다. ⚠ 상태 해시에 실리지 않는다.
@@ -211,6 +220,7 @@ namespace Wassup.Sim
             MeteorBarrageRequest.Reset();
             DcTriggerFired.Reset();
             KnockupVisual.Reset();
+            UltimateLeapVisual.Reset();
             UnitAttackVisual.Reset();
             AttackOutputLog.Reset();
             DamageNumber.Reset();
