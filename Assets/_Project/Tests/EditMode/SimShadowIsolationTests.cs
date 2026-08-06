@@ -39,7 +39,13 @@ namespace Wassup.Tests.EditMode
         /// 무장 예외. **18-K 가 그림자를 켜는 지점 하나만** 여기 들어온다.
         /// ⚠ 항목을 추가하는 것은 I2 를 그만큼 포기하는 것이다 — 계획서 §불변식도 함께 고칠 것.
         /// </summary>
-        private static readonly HashSet<string> ArmingExceptions = new HashSet<string>();
+        private static readonly HashSet<string> ArmingExceptions = new HashSet<string>
+        {
+            // 18-K/5c — **그림자 무장.** 여기서 I2 가 끝난다. 이 파일이 따로 있는 이유가 그것이다:
+            // `BattleBridge.cs` 본체는 `ShadowBeginMatch()`/`ShadowStepOneTick()`/`ShadowEndMatch()`
+            // 만 부르고 `Wassup.Sim.*` 를 한 글자도 적지 않아 **예외가 한 파일로 유지된다.**
+            "BattleBridge.Shadow.cs",
+        };
 
         private static string ScriptsRoot => Path.Combine(Application.dataPath, "_Project", "Scripts");
         private static string SimRoot => Path.Combine(ScriptsRoot, "Sim");
@@ -91,6 +97,25 @@ namespace Wassup.Tests.EditMode
                 "I2 위반 — 프로덕션 코드가 그림자 맥락을 참조한다. 그림자는 18-K 가 무장하기 " +
                 "전까지 **아무도 부르지 않아야** 한다(그래야 I1 의 '건드린 파일이 없다' 가 " +
                 "A/B 기준선의 근거로 성립한다):\n  " + string.Join("\n  ", hits));
+        }
+
+        [Test]
+        public void 무장_예외는_그림자_파일_하나뿐이다()
+        {
+            // ⚠ 이 목록이 길어지는 것은 I2 를 그만큼 포기하는 것이다. 늘리기 전에
+            //   "본체가 sim 을 직접 부르는 대신 Shadow 파일에 메서드를 놓을 수 없나" 를 먼저 묻는다.
+            CollectionAssert.AreEquivalent(new[] { "BattleBridge.Shadow.cs" }, ArmingExceptions);
+        }
+
+        [Test]
+        public void 무장_예외_파일이_실제로_존재한다()
+        {
+            // 예외 이름이 오타거나 파일이 이사하면 그 파일은 **검사 대상으로 돌아가는 게 아니라**
+            // 그냥 예외가 무의미해진다 — 그 상태를 조용히 두지 않는다.
+            var names = new HashSet<string>();
+            foreach (string p in ProductionFiles()) names.Add(Path.GetFileName(p));
+            foreach (string e in ArmingExceptions)
+                Assert.IsTrue(names.Contains(e), $"무장 예외 '{e}' 에 해당하는 프로덕션 파일이 없다");
         }
 
         [Test]

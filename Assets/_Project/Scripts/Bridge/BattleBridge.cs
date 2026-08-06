@@ -504,6 +504,9 @@ namespace Wassup.Bridge
             // EndHarness 는 멱등이라 일반 매치 teardown 에서 호출해도 라이브 상태를 건드리지 않는다.
             EndHarness();
             TestModeContext.ReleaseRuntimeImportBlock();
+            // battle-sim-extraction unit 18-K/5c — 그림자도 매치와 함께 죽는다(정의는
+            // BattleBridge.Shadow.cs). 남겨두면 다음 판이 옛 저작 스냅샷으로 돈다.
+            ShadowEndMatch();
             _running = false;
             _waveSchedule.ClearReadyOff();
             _placementAllowed = false;
@@ -1269,6 +1272,13 @@ namespace Wassup.Bridge
             _outcome.ResetMatch();
 
             GameManager.Instance?.Logger?.SetAttackDeckId(ActiveDeck.deckId);
+
+            // battle-sim-extraction unit 18-K/5c — 그림자 sim 무장(정의는 BattleBridge.Shadow.cs).
+            // 여기가 매치 경계다: `_simEntityIdCounter = 0` 과 같은 자리이고, 위 두 호출
+            // (`EnsureQueriesAndQueues` = 스택 임계 · `BuildMapForBattle` = 기믹 config)이
+            // 끝나 저작이 완성돼 있으며, 첫 defender 배치보다 앞이다.
+            ShadowBeginMatch();
+
             Debug.Log("[BattleBridge] Placement phase ready.");
         }
 
@@ -2599,6 +2609,10 @@ namespace Wassup.Bridge
             if (_harnessRateManager == null || _harnessSimGroup == null) return;
             _harnessRateManager.ArmStep(fixedDt);
             _harnessSimGroup.Update();
+            // battle-sim-extraction unit 18-K/5c — 그림자를 **같은 dt 로** 함께 돌린다.
+            // 라이브 P1~P12 뒤이고 P13(도약 드레인) 앞이다 — 그림자 자신의 P0/P13 은
+            // 그 안에서 돈다(`SimTick.Run`). 관측 가능한 부수효과는 아직 0 이다.
+            ShadowStepOneTick(fixedDt);
 #if UNITY_EDITOR
             // Boss/Ultimate queues are the two post-sim drains and belong to this tick.
             SetLegacyTraceEventTick(_harnessTick);
