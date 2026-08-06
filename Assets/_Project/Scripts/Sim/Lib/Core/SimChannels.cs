@@ -139,6 +139,15 @@ namespace Wassup.Sim
             = new SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent>();
 
         /// <summary>
+        /// 보스 도약 비행 신호. 생산자 `HealthThresholdSystem`(#42, P12) → 소비자는 뷰(18-K).
+        /// ⚠ sim 은 `BlinkRequest` 로 **즉시 텔레포트**하고 뷰만 아치로 날린다 — 출발/착지 퍼프
+        /// 타이밍도 이 채널이 소유해서 착지 VFX 가 뷰 도착보다 먼저 터지지 않는다.
+        /// 상태 해시에 실리지 않는다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.BossLeapVisualEvent> BossLeapVisual { get; }
+            = new SimChannel<Wassup.Sim.Combat.BossLeapVisualEvent>();
+
+        /// <summary>
         /// 궁극기 도약 연출(이탈 → 강하). 생산자 `UltimateLeapSystem`(#43, P12) → 소비자는 뷰(18-K).
         /// ⚠ **보스 도약의 아치 하나로 대체할 수 없다** — 이탈과 강하가 예고 시간만큼 떨어진 별개
         /// 사건이라 `kind` 2종으로 나눠 보내고 **뷰는 예고 시간을 복제하지 않는다**(두 시계가 갈린다).
@@ -221,6 +230,7 @@ namespace Wassup.Sim
             DcTriggerFired.Reset();
             KnockupVisual.Reset();
             UltimateLeapVisual.Reset();
+            BossLeapVisual.Reset();
             UnitAttackVisual.Reset();
             AttackOutputLog.Reset();
             DamageNumber.Reset();

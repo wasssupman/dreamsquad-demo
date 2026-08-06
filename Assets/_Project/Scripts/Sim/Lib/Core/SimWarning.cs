@@ -39,6 +39,27 @@ namespace Wassup.Sim
         /// (구 sim: "[AttackSystem] DcTriggerSlot fired with unhandled payload kind.")
         /// </summary>
         ResolveUnhandledPayload = 4,
+
+        /// <summary>
+        /// 체력 임계 슬롯이 발동했는데 그 payload 를 처리하는 arm 이 없다.
+        /// (구 sim: "[HealthThreshold] HealthThreshold slot fired with unhandled payload kind.")
+        /// </summary>
+        HealthThresholdUnhandledPayload = 5,
+
+        /// <summary>
+        /// 궁극기 이탈이 **착지점을 못 찾아** 발동을 건너뛰었다. 원인은 둘뿐이다 —
+        /// 방어유닛 0(밀집 셀 없음) 또는 링 반경 안에 갈 수 있는 칸 없음.
+        ///
+        /// ⚠ **임계는 이미 소모됐고 생존당 1회라 재시도가 없다.** 조용히 넘기면 "궁극기가 왜
+        /// 안 나왔는지" 를 영영 알 수 없다(1회성이라 재현도 안 된다).
+        /// </summary>
+        UltimateLeapNoLanding = 6,
+
+        /// <summary>
+        /// 주기 트리거 슬롯이 발동했는데 그 payload 를 처리하는 arm 이 없다.
+        /// (구 sim: "[BossPeriodicTrigger] PeriodicTimer slot fired with unhandled payload kind.")
+        /// </summary>
+        PeriodicUnhandledPayload = 7,
     }
 
     /// <summary>

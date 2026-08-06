@@ -186,7 +186,7 @@ namespace Wassup.Sim.Effects
     /// ⚠ **#4 `BossPeriodicTrigger` 는 P1** 이라 `EnvironmentCluster` 의 phase 한가운데 끼어든다.
     /// 그 클러스터에 직접 넣으면 경계가 무너지므로, 여기서 신고하고 정렬은 파이프라인에 맡긴다.
     ///
-    /// 조각별로 채워지는 중이다 — 지금 있는 것은 18-J/1~3(#20~#25 · #39 · #43).
+    /// 조각별로 채워지는 중이다 — **18-J 전 조각 완료** — #4 · #20~#25 · #39 · #42 · #43.
     /// </summary>
     public sealed class GimmickCluster
     {
@@ -196,6 +196,8 @@ namespace Wassup.Sim.Effects
         public PickupConsumeSystem PickupConsume { get; }
         public HitFlashSystem HitFlash { get; }
         public EffectTickSystem EffectTick { get; }
+        public Wassup.Sim.Combat.BossPeriodicTriggerSystem BossPeriodic { get; }
+        public Wassup.Sim.Combat.HealthThresholdSystem HealthThreshold { get; }
         public DreamCocoonSystem DreamCocoon { get; }
         public Wassup.Sim.Combat.UltimateLeapSystem UltimateLeap { get; }
 
@@ -207,12 +209,17 @@ namespace Wassup.Sim.Effects
             PickupConsume = new PickupConsumeSystem(channels);
             HitFlash = new HitFlashSystem();
             EffectTick = new EffectTickSystem();
+            BossPeriodic = new Wassup.Sim.Combat.BossPeriodicTriggerSystem(channels);
+            HealthThreshold = new Wassup.Sim.Combat.HealthThresholdSystem(channels);
             DreamCocoon = new DreamCocoonSystem(channels);
             UltimateLeap = new Wassup.Sim.Combat.UltimateLeapSystem(channels);
         }
 
         public IEnumerable<SimStep> Steps()
         {
+            // ⚠ **#4 는 P1** — `EnvironmentCluster` 의 phase 한가운데다. 직접 넣으면 그 경계가
+            //    무너지므로 여기서 신고하고 정렬은 `SimPipeline` 이 한다.
+            yield return new SimStep(4, SimPhase.FieldsAndPeriodic, nameof(Wassup.Sim.Combat.BossPeriodicTriggerSystem), BossPeriodic.Run);
             yield return new SimStep(20, SimPhase.PostMoveCast, nameof(ResignationThresholdSystem), ResignationThreshold.Run);
             yield return new SimStep(21, SimPhase.PostMoveCast, nameof(HeatAccrualSystem), HeatAccrual.Run);
             // ⚠ #22 → #23 순서가 계약이다 — 스폰이 놓은 픽업을 소비가 **같은 틱**에 먹는다.
@@ -224,6 +231,8 @@ namespace Wassup.Sim.Effects
             //    자연만료를 피격 파탄으로 오인한다. 캡처 번호가 그 자리에 있는 것이 우연이 아니다.
             yield return new SimStep(39, SimPhase.PostProcess, nameof(DreamCocoonSystem), DreamCocoon.Run);
             // ⚠ **#43 은 #44(BlinkApply) 앞** — 텔레포트 요청이 같은 틱에 적용된다.
+            // ⚠ **#42 → #43 순서가 계약** — 임계가 이탈을 시작시키고 도약이 그것을 굴린다.
+            yield return new SimStep(42, SimPhase.Destruction, nameof(Wassup.Sim.Combat.HealthThresholdSystem), HealthThreshold.Run);
             yield return new SimStep(43, SimPhase.Destruction, nameof(Wassup.Sim.Combat.UltimateLeapSystem), UltimateLeap.Run);
         }
     }
