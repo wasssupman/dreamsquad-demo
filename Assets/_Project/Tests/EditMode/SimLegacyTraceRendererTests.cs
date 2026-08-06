@@ -236,12 +236,17 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void 헤더는_기록기와_같은_12줄을_같은_순서로_낸다()
         {
+            // `battleClock`·`simEntityIdCounter` 는 헤더가 아니라 **월드**에서 온다(18-K/3).
+            var world = new SimWorld(new SimConfig(1u, 1u));
+            world.AdvanceClock(1.5f);
+            for (int i = 0; i < 10; i++) world.Create();
+
             var sb = new StringBuilder();
-            SimLegacyTrace.AppendHeader(sb, new SimLegacyTraceHeader
+            SimLegacyTrace.AppendHeader(sb, world, new SimLegacyTraceHeader
             {
-                battleClock = 1.5, nextWaveIndex = 2, pendingSpawns = 3, goals = 4,
+                nextWaveIndex = 2, pendingSpawns = 3, goals = 4,
                 leakPenalty = 5, killScore = 6, running = true, phase = 7,
-                timerRemaining = 8.5f, cost = 9.25f, simEntityIdCounter = 10, meteorRngState = 11u,
+                timerRemaining = 8.5f, cost = 9.25f, meteorRngState = 11u,
             });
 
             Assert.AreEqual(
@@ -359,10 +364,8 @@ namespace Wassup.Tests.EditMode
             world.Set(world.Create(), new Wassup.Sim.Units.KillScore { value = 2 });
             world.Set(world.CreateInternal(), new Wassup.Sim.Effects.PickupSpawnState { elapsed = 1f });
 
-            string s = SimLegacyTrace.BuildStateCanonical(world, new SimLegacyTraceHeader
-            {
-                battleClock = 0.5, simEntityIdCounter = world.SpawnedCount,
-            });
+            world.AdvanceClock(0.5f);
+            string s = SimLegacyTrace.BuildStateCanonical(world, default);
 
             int header = s.IndexOf("battleClock=", StringComparison.Ordinal);
             int block = s.IndexOf("entity+0", StringComparison.Ordinal);

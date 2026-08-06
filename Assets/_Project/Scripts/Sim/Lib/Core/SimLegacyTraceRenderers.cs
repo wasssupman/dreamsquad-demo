@@ -243,17 +243,22 @@ namespace Wassup.Sim
         public static string BuildStateCanonical(SimWorld world, in SimLegacyTraceHeader header)
         {
             var sb = new StringBuilder(32768);
-            AppendHeader(sb, in header);
+            AppendHeader(sb, world, in header);
             AppendEntities(sb, world);
             AppendUnkeyedPickupSpawnState(sb, world);
             return sb.ToString();
         }
 
-        public static void AppendHeader(StringBuilder sb, in SimLegacyTraceHeader h)
+        /// <summary>
+        /// ⚠ `battleClock` 과 `simEntityIdCounter` 는 <see cref="SimLegacyTraceHeader"/> 가 아니라
+        /// **월드에서** 온다(18-K/3). 둘 다 이제 sim 이 소유하므로, 조립 지점이 따로 채우게 두면
+        /// 두 값이 갈릴 수 있는 자리가 생긴다.
+        /// </summary>
+        public static void AppendHeader(StringBuilder sb, SimWorld world, in SimLegacyTraceHeader h)
         {
             // ⚠ `battleClock` 은 double 이고 `cost` 는 float 다 — 구 기록기의 이원화를 그대로 옮긴다
             //   (`RecordTick` 은 cost 를 int 로 쓰는데 해시는 float 다. 통일은 스냅샷 스키마의 몫).
-            Line(sb, "battleClock", Double(h.battleClock));
+            Line(sb, "battleClock", Double(world.BattleClock));
             Line(sb, "nextWaveIndex", Int(h.nextWaveIndex));
             Line(sb, "pendingSpawns", Int(h.pendingSpawns));
             Line(sb, "goals", Int(h.goals));
@@ -263,7 +268,7 @@ namespace Wassup.Sim
             Line(sb, "phase", Int(h.phase));
             Line(sb, "timerRemaining", Float(h.timerRemaining));
             Line(sb, "cost", Float(h.cost));
-            Line(sb, "simEntityIdCounter", Int(h.simEntityIdCounter));
+            Line(sb, "simEntityIdCounter", Int(world.SpawnedCount));
             Line(sb, "meteorRng", UInt(h.meteorRngState));
         }
 
@@ -361,7 +366,6 @@ namespace Wassup.Sim
     /// </summary>
     public struct SimLegacyTraceHeader
     {
-        public double battleClock;
         public int nextWaveIndex;
         public int pendingSpawns;
         public int goals;
@@ -371,8 +375,10 @@ namespace Wassup.Sim
         public int phase;
         public float timerRemaining;
         public float cost;
-        /// 구 `_simEntityIdCounter` — <see cref="SimWorld.SpawnedCount"/> 가 그 대응물이다.
-        public int simEntityIdCounter;
+        /// ⚠ 메테오 난수는 아직 Bridge 소유다(`_meteorRng`) — 18-L 이 옮긴다.
         public uint meteorRngState;
+
+        // ⚠ `battleClock`·`simEntityIdCounter` 는 **여기 없다** — sim 이 소유하므로
+        //   `AppendHeader` 가 월드에서 직접 읽는다(18-K/3).
     }
 }

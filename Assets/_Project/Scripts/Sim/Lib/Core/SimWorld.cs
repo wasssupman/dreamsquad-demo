@@ -126,6 +126,37 @@ namespace Wassup.Sim
         /// </summary>
         public void SetDeltaTime(float dt) => DeltaTime = dt;
 
+        /// <summary>
+        /// battle-sim-extraction unit 18-K/3 — **배틀 도메인 절대 시계**(구 `BattleBridge._battleClock`).
+        ///
+        /// `double` 인 것이 계약이다 — 구가 `double` 로 누적하고 읽을 때만 `(float)` 로 내린다.
+        /// `float` 로 누적하면 긴 판에서 값이 갈리고, 그 값은 **상태 해시의 첫 줄**이다.
+        ///
+        /// ⚠ 실시간이 아니라 배틀 스케일 시간이다(정지·슬로우모가 반영된다).
+        /// </summary>
+        public double BattleClock { get; private set; }
+
+        /// <summary>
+        /// 실행한 틱 수(구 `_harnessTick`). **0 부터 시작해 틱 끝에서 오른다** —
+        /// 그래서 첫 틱 안에서 읽으면 0 이다.
+        /// </summary>
+        public int Tick { get; private set; }
+
+        /// <summary>
+        /// P0 에서 드레인되는 이벤트의 귀속 틱 = **직전 틱**. 그 이벤트는 지난 틱 sim 이 만든 것이다.
+        /// ⚠ 첫 틱에서는 **-1** 이다(구 `SetLegacyTraceEventTick(_harnessTick - 1)` 그대로).
+        /// </summary>
+        public int PreSimEventTick => Tick - 1;
+
+        /// P13 에서 드레인되는 이벤트의 귀속 틱 = **이번 틱**. P0 와 다른 것이 박제된 계약이다.
+        public int PostSimEventTick => Tick;
+
+        /// ⚠ <see cref="SimTick"/> 이 P0 안에서 부른다 — 다른 곳에서 부르면 시계가 두 번 흐른다.
+        public void AdvanceClock(float dt) => BattleClock += dt;
+
+        /// ⚠ <see cref="SimTick"/> 이 틱 **끝**에서 부른다.
+        public void AdvanceTick() => Tick++;
+
         public SimWorld(SimConfig config)
         {
             Config = config ?? throw new ArgumentNullException(nameof(config),

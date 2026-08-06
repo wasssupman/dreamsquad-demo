@@ -188,7 +188,83 @@ namespace Wassup.Tests.EditMode
                 "DotApply(P3)가 이동(P4) 앞");
             Assert.Less(o.ToList().IndexOf(SimPhase.DeathWindow), o.ToList().IndexOf(SimPhase.PostProcess),
                 "CC 감쇠(P11)는 사망 창(P10) 뒤");
-            Assert.AreEqual(12, o.Count);
+            Assert.AreEqual(15, o.Count, "P1~P12 + P0 두 조각 + P13 (18-K/3)");
+        }
+
+        // ── P0 / P13 (18-K/3) ────────────────────────────────────────────────
+
+        [Test]
+        public void P0_두_조각과_P13_이_양_끝을_감싼다()
+        {
+            var o = SimTick.PhaseOrder.ToList();
+            Assert.AreEqual(SimPhase.CommandIntake, o[0]);
+            Assert.AreEqual(SimPhase.FramePrologue, o[1]);
+            Assert.AreEqual(SimPhase.PostSim, o[o.Count - 1]);
+            Assert.AreEqual(SimPhase.FieldsAndPeriodic, o[2], "P1 은 P0 두 조각 뒤");
+            Assert.AreEqual(SimPhase.Destruction, o[o.Count - 2], "P12 는 P13 앞");
+        }
+
+        [Test]
+        public void 시계는_커맨드_반입_뒤_sim_그룹_앞에서_움직인다()
+        {
+            // ⚠ 구 `StepOneTick`: 커맨드 → `AdvanceBattleFrame`(첫 줄이 `_battleClock += dt`) → sim.
+            //   P1~P12 는 **이번 틱이 더해진** 시계를 본다. 뒤로 옮기면 규칙이 한 틱 밀린다.
+            var w = NewWorld();
+            var seen = new List<double>();
+            var tick = new SimTick();
+            tick.Register(SimPhase.CommandIntake, x => seen.Add(x.BattleClock));
+            tick.Register(SimPhase.FramePrologue, x => seen.Add(x.BattleClock));
+            tick.Register(SimPhase.Attack, x => seen.Add(x.BattleClock));
+            tick.Register(SimPhase.PostSim, x => seen.Add(x.BattleClock));
+
+            tick.Run(w, 0.5f);
+            CollectionAssert.AreEqual(new[] { 0.0, 0.5, 0.5, 0.5 }, seen,
+                "커맨드만 전진 전 시계를 본다");
+            Assert.AreEqual(0.5, w.BattleClock);
+        }
+
+        [Test]
+        public void 시계는_double_로_누적한다()
+        {
+            // ⚠ 구가 `double` 로 누적하고 읽을 때만 내린다. `float` 누적은 긴 판에서 갈리고
+            //   그 값은 **상태 해시의 첫 줄**이다.
+            var w = NewWorld();
+            var tick = new SimTick();
+            for (int i = 0; i < 1000; i++) tick.Run(w, 0.1f);
+
+            double asDouble = 0.0;
+            float asFloat = 0f;
+            for (int i = 0; i < 1000; i++) { asDouble += 0.1f; asFloat += 0.1f; }
+            Assert.AreEqual(asDouble, w.BattleClock, "double 누적과 비트까지 같다");
+            Assert.AreNotEqual((double)asFloat, w.BattleClock, "float 누적과는 갈린다 — 그래서 double 이다");
+        }
+
+        [Test]
+        public void 틱_번호는_틱_끝에서_오르고_0_부터_센다()
+        {
+            var w = NewWorld();
+            var seen = new List<int>();
+            var tick = new SimTick();
+            tick.Register(SimPhase.PostSim, x => seen.Add(x.Tick));
+
+            Assert.AreEqual(0, w.Tick, "구 `_harnessTick` 은 0 에서 시작한다");
+            tick.Run(w, 0.016f);
+            tick.Run(w, 0.016f);
+            CollectionAssert.AreEqual(new[] { 0, 1 }, seen, "P13 스탬프는 **이번 틱** 번호로 찍힌다");
+            Assert.AreEqual(2, w.Tick, "실행한 틱 수");
+        }
+
+        [Test]
+        public void 이벤트_귀속은_P0_가_직전틱_P13_이_이번틱이다()
+        {
+            // 구 sim 의 16채널(`tick-1`) / 2채널(`tick`) 이원화가 이 두 자리의 차이다.
+            var w = NewWorld();
+            Assert.AreEqual(-1, w.PreSimEventTick, "⚠ 첫 틱의 P0 드레인은 -1 에 귀속된다");
+            Assert.AreEqual(0, w.PostSimEventTick);
+
+            new SimTick().Run(w, 0.016f);
+            Assert.AreEqual(0, w.PreSimEventTick);
+            Assert.AreEqual(1, w.PostSimEventTick);
         }
 
         [Test]
