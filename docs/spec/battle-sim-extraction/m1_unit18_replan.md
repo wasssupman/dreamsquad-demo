@@ -162,6 +162,41 @@
 
 **추가 완료 기준(F6)**: 공격 클러스터가 `SimStep(18, SimPhase.PostMoveCast, ...)` 를 **포함**한다.
 
+### 진행 상황 — 1/N 완료 (`29953628`)
+
+**어휘 토대 이식 끝.** 실측 결과 새로 옮길 타입은 **6개뿐**이었다(위 "다시 옮기면 안 되는" 14종
+덕분). 이제 남은 것은 **본체 arm 뿐이고 전부 이미 있는 어휘 위에 선다.**
+
+| 옮긴 것 | 되돌리면 안 되는 것 |
+|---|---|
+| `BombLauncherState` | `rng` 가 **상태 해시에 실린다** — 캐스터별 독립 스트림 |
+| `DcAttackModSlot`·`DcAttackModKind` | 카운터 **없다**(상시 적용) — `DcTriggerSlot` 과 다르다 |
+| `DefenderCcData` | `sleepOnHitSec`(주 타겟 1) ≠ `knockupOnHitSec`(전 대상) — 합치면 깨진다 |
+| `DeployedFacing` | 활성화 시 1회 쓰기, 이후 불변 |
+| `FrontmostAttackLock` | **strict lapse** — RESOLVE 에서 잠금이 무효면 재선택 없이 불발 |
+| `SummonerState` | 자체 쿨다운 없음 · `hasSummonedOnce` writer 는 **실제 생성 시점** 하나 |
+| `NearestTargeting` | 반경 필터가 **함수 안**(계약이 호출처마다 갈리면 안 된다) |
+| `AttackMath` | `DistanceSqToTarget` 은 다중 셀 대상에서 **최근접 점유 셀** |
+
+### 남은 arm 지도 (구 `AttackSystem.cs` 라인 기준)
+
+한 번에 읽지 말 것. **arm 하나 = 읽기 → 이식 → 컴파일 → 테스트 → 커밋** 1주기다.
+
+| # | 구간 | 줄 | 내용 |
+|---|---|---|---|
+| A | 25–171 | 147 | `OnCreate` 쿼리 + `OnUpdate` 선두 lookup·스냅샷 구축 |
+| B | 172–228 | 57 | **캐스트 사건 드레인**(Effects→Combat) — #18 과 같은 틱 소비 계약 |
+| C | 229–712 | 484 | 후보/타겟팅 + 폭탄맨 사건 지점(312~) |
+| D | 713–798 | 86 | **START** — 애니 + 쿨다운 리셋 + 지연 세팅(타격은 RESOLVE) |
+| E | 799–1103 | 305 | **RESOLVE** — `bestTarget` 재판정 |
+| F | 1104–1617 | 514 | **Outputs** 경로 |
+| G | 1618–1664 | 47 | `SpawnNeedleCarrier`(순수 아님 — 캐리어 생성) |
+
+G 의 나머지 순수 헬퍼 3종은 **이미 옮겼다**(`AttackMath` + `NearestTargeting`).
+
+권장 순서는 **B → D → E → C → F → A** 다. B·D·E 는 경계가 뚜렷하고 계약이 좁아 먼저 초록을
+만들 수 있고, A(스냅샷 구축)는 C·F 가 무엇을 요구하는지 안 뒤에 짜야 헛수고가 없다.
+
 **주의**: `BombLauncherState.rng` write-back 이 상태 해시에 실린다 — xorshift 상수 하나만 달라도
 parity 가 조용히 깨진다. `counter` 쓰기 단일 소유(RESOLVE / 폭탄 훅 / 캐스트 드레인 중 정확히 1곳)
 계약도 유지.
