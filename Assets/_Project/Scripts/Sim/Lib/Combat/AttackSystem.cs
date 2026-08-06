@@ -123,8 +123,95 @@ namespace Wassup.Sim.Combat
                     continue;
                 }
 
+                // summon-patrol-defender — 소환사는 **타겟을 고르지 않고** 순찰병을 유지한다.
+                // 폭탄맨과 같은 자리(타겟 선정 앞)에서 끝낸다 — 타겟을 요구하는 RESOLVE 에 두면
+                // 소환사의 근접 사거리 안에 적이 들어와야만 소환돼, 순찰병이 마중 나갈 시간이 없다.
+                if (world.Has<SummonerState>(attackerEntity))
+                {
+                    RunSummoner(world, attackerEntity, ref attack, transform.Position, actionLocked,
+                                tileSize, gridSize, ffOrigin);
+                    world.Set(attackerEntity, attack);
+                    continue;
+                }
+
                 world.Set(attackerEntity, attack);
             }
+        }
+
+        /// <summary>
+        /// arm C/2 — 소환사 분기. 순찰병 **1기를 유지**하는 것이 이 유닛의 공격이다.
+        ///
+        /// ⚠ **첫 소환에만 거점 구역 게이트**가 걸린다 — 폭탄맨의 blind bombardment 를 그대로
+        /// 따르지 않는 지점이다. 판정 중심은 **소환사 셀**이다: 실제 거점은 소비 지점이 walk 셀로
+        /// 스냅해 정하는데 첫 소환 전엔 그게 아직 없고, 스냅 상한이 leash 반경이라 소환사 셀 기준
+        /// 구역이 실제 구역을 보수적으로 감싼다. 그래서 요청의 `ownerCell` 도 **같은 셀**이다.
+        ///
+        /// ⚠ 게이트가 닫혀 있으면 **쿨다운을 리셋하지 않는다** — 만료 상태로 대기하다 적이 구역에
+        /// 들어온 프레임에 즉시 소환한다("구역에 들어오면 부른다" 가 규칙이므로 리셋하면 최대 한 쿨
+        /// 늦게 반응한다). 그 대가로 게이트가 닫힌 소환사는 매 프레임 타겟 스냅샷을 훑지만, 진영
+        /// 미스매치를 즉시 건너뛰는 짧은 루프이고 게이트는 첫 소환 한 번뿐이다.
+        ///
+        /// ⚠ 이 함수는 <see cref="SummonerState"/> 를 **쓰지 않는다**. `hasSummonedOnce` 의 writer 는
+        /// **순찰병이 실제로 생성된 시점** 하나다 — 요청을 stage 할 때 켜면 스냅 실패로 소환이 취소된
+        /// 경우에도 게이트가 소비된다.
+        /// </summary>
+        private void RunSummoner(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 sPos,
+            bool actionLocked, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            if (actionLocked || attack.cooldownRemaining > 0f) return;
+
+            var summoner = world.Get<SummonerState>(attackerEntity);
+
+            // ⚠ **양방향 대칭 생존 술어.** `current` 가 `Null` 이 아닌지만 보면 파괴된 순찰병의
+            //   stale 핸들로 소환사가 영구 대기한다.
+            bool alivePatrol = !summoner.current.IsNull
+                && world.Exists(summoner.current)
+                && !world.Has<DeadTag>(summoner.current)
+                && world.Has<Health>(summoner.current)
+                && world.Get<Health>(summoner.current).value > 0f;
+
+            SimInt2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, ffOrigin);
+            bool gateOpen = summoner.hasSummonedOnce;
+            if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
+            {
+                for (int ti = 0; ti < _targetEntities.Count && !gateOpen; ti++)
+                {
+                    if (((int)_targetFactions[ti] & (int)Faction.Enemy) == 0) continue;
+                    if (world.Has<PastGoalTag>(_targetEntities[ti])) continue; // 유출 대기 적은 부르는 이유가 못 된다
+                    SimInt2 eCell = GridMath.WorldToCell(_targetPositions[ti], tileSize, gridSize, ffOrigin);
+                    if (PatrolAreaMath.IsInArea(eCell, sCell, summoner.leashTileRadius))
+                        gateOpen = true;
+                }
+            }
+
+            if (gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
+            {
+                var req = new PatrolSpawnRequest
+                {
+                    owner = attackerEntity,
+                    ownerCell = sCell, // 게이트 판정과 **같은 셀**이어야 한다
+                    patrolDataIndex = summoner.patrolDataIndex,
+                    leashTileRadius = summoner.leashTileRadius,
+                };
+                _ecb.Defer(w =>
+                {
+                    var carrier = w.Create();
+                    w.Set(carrier, new PatrolRequestCarrier());
+                    w.Set(carrier, req);
+                });
+                // 소환 = 이 유닛의 공격 사건. 애니/SFX 는 여기서 신호한다.
+                _channels.UnitAttackVisual.Enqueue(new UnitAttackVisualEvent
+                {
+                    attacker = attackerEntity,
+                    targetWorld = sPos,
+                    attackAnimPeriod = attack.cooldownDuration,
+                });
+            }
+
+            // 게이트가 열렸으면 성사 여부와 무관하게 리셋한다(스냅 실패로 취소된 경우 포함) —
+            // 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한 프레임 늦어도 중복 소환이 없다.
+            if (gateOpen) attack.cooldownRemaining = attack.cooldownDuration;
         }
 
         /// <summary>
