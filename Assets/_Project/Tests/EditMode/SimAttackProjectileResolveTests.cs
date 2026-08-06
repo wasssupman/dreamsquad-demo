@@ -519,9 +519,10 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void MeleeAttacker_IsUntouchedHere()
+        public void MeleeAttacker_TakesTheOtherBranch()
         {
-            // ⚠ `ProjectileRef` 없는 경로는 **arm F** 다 — arm E 는 손대지 않는다.
+            // ⚠ 분기는 구 sim 의 `if (projRef) / else` 그대로다 — `ProjectileRef` 가 없으면 발사
+            //   요청 대신 즉시 피해다(arm F). 두 경로가 **동시에** 나는 일은 없다.
             var defender = Shooter(new SimVec3(0f, 0f, 0f), damage: 5f,
                                    projRef: new ProjectileRef { speed = 10f });
             _world.RemoveComponent<ProjectileRef>(defender);
@@ -529,8 +530,9 @@ namespace Wassup.Tests.EditMode
 
             _sut.Run(_world);
 
-            Assert.IsFalse(_world.Has<ProjectileSpawnRequest>(defender));
-            Assert.IsNull(_world.GetBuffer<IncomingDamage>(enemy), "근접 피해는 arm F 가 넣는다");
+            Assert.IsFalse(_world.Has<ProjectileSpawnRequest>(defender), "근접은 발사 요청을 만들지 않는다");
+            Assert.AreEqual(1, _world.GetBuffer<IncomingDamage>(enemy).Count, "대신 즉시 피해가 들어간다");
+            Assert.AreEqual(5f, _world.GetBuffer<IncomingDamage>(enemy)[0].amount, 1e-4f);
         }
     }
 }

@@ -37,6 +37,13 @@ namespace Wassup.Sim.Combat
 
         private readonly HashSet<SimEntityId> _castCountedHosts = new HashSet<SimEntityId>();
 
+        // ── arm F scratch — 공격자마다 재사용한다(엔티티당 프레임당 쓰레기를 만들지 않는다) ──
+        private readonly List<SimEntityId> _hitTargets = new List<SimEntityId>();
+        private readonly List<AggroCandidate> _aggroCands = new List<AggroCandidate>();
+        private readonly List<int> _aggroCandIdx = new List<int>();
+        private readonly List<bool> _aoeHitMask = new List<bool>();
+        private int[] _aggroOutIdx = new int[4];
+
         public AttackSystem(SimChannels channels) => _channels = channels;
 
         /// <summary>
@@ -639,12 +646,438 @@ namespace Wassup.Sim.Combat
             var outputs = world.GetBuffer<AttackOutputElement>(attackerEntity);
             if (outputs == null) return;
 
-            if (!world.TryGet<ProjectileRef>(attackerEntity, out var projRef)) return; // 근접 = arm F
+            if (world.TryGet<ProjectileRef>(attackerEntity, out var projRef))
+            {
+                ResolveProjectileAttack(world, attackerEntity, ref attack, atkPos, in pick, in projRef,
+                                        outputs, bestTarget, bestTargetPos, facing,
+                                        damageMul, attackerVsCc, fmPrioTarget, fmPrioMul, heavyMul,
+                                        tileSize, gridSize, ffOrigin);
+            }
+            else
+            {
+                ResolveMeleeAttack(world, attackerEntity, in attack, atkPos, in pick, outputs,
+                                   ref bestTarget, ref bestTargetPos,
+                                   damageMul, attackerVsCc, fmPrioTarget, fmPrioMul, heavyMul,
+                                   tileSize, gridSize, ffOrigin);
+            }
 
-            ResolveProjectileAttack(world, attackerEntity, ref attack, atkPos, in pick, in projRef,
-                                    outputs, bestTarget, bestTargetPos, facing,
-                                    damageMul, attackerVsCc, fmPrioTarget, fmPrioMul, heavyMul,
-                                    tileSize, gridSize, ffOrigin);
+            // ── 주 타겟 CC (방어유닛 전용 — 적은 `DefenderCcData` 를 갖지 않는다) ──
+            ApplyPrimaryTargetCc(world, attackerEntity, atkPos, bestTarget, bestTargetPos);
+
+            // ── 발동형 카드 카운트 (방어유닛 전용) ──────────────────────────────
+            TickResolveAttackNSlots(world, attackerEntity, atkPos, bestTarget, bestTargetPos);
+        }
+
+        /// <summary>
+        /// arm F — `ProjectileRef` 없는 근접/Outputs 경로. 대상 집합을 모으고 산출물을 즉시 해결한다.
+        ///
+        /// ⚠ `bestTarget`/`bestTargetPos` 가 `ref` 인 이유: **가디언 선정이 주 타겟을 바꾼다**.
+        /// 뒤따르는 넉백 CC·카드 캐리어·로그가 그 값을 쓰므로 실제로 때린 적으로 정렬하지 않으면
+        /// 불일치가 생긴다.
+        /// </summary>
+        private void ResolveMeleeAttack(
+            SimWorld world, SimEntityId attackerEntity, in AttackState attack, SimVec3 atkPos,
+            in TargetPick pick, List<AttackOutputElement> outputs,
+            ref SimEntityId bestTarget, ref SimVec3 bestTargetPos,
+            float damageMul, float attackerVsCc, SimEntityId fmPrioTarget, float fmPrioMul, float heavyMul,
+            float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            int mask = attack.targetMask;
+            // ⚠ 어그로 걸린 적은 **가디언만** 때린다 — AoE 후속이 다른 방어유닛을 끌어오지
+            //   못하도록 단일 대상으로 강제한다.
+            int desiredCount = world.Has<Aggroed>(attackerEntity)
+                ? 1
+                : SimMath.Max(1, attack.attackTargetCount);
+
+            _hitTargets.Clear();
+
+            bool isGuardian = world.TryGet<AggroCapacity>(attackerEntity, out var cap);
+            if (isGuardian)
+            {
+                _aggroCands.Clear();
+                _aggroCandIdx.Clear();
+                for (int i = 0; i < _targetEntities.Count; i++)
+                {
+                    if (((int)_targetFactions[i] & mask) == 0) continue;
+                    if (_targetEntities[i] == attackerEntity) continue;
+                    SimVec3 tp = _targetPositions[i];
+                    _aggroCands.Add(new AggroCandidate
+                    {
+                        cell = GridMath.WorldToCell(tp, tileSize, gridSize, ffOrigin),
+                        pos = tp,
+                        aggroed = world.Has<Aggroed>(_targetEntities[i]),
+                        simId = _targetEntities[i].Value,
+                    });
+                    _aggroCandIdx.Add(i);
+                }
+                if (_aggroOutIdx.Length < desiredCount) _aggroOutIdx = new int[desiredCount];
+                int sel = AggroTargeting.SelectTargets(
+                    pick.atkCell, atkPos, pick.tileRange, cap.held, cap.max,
+                    _aggroCands, _aggroOutIdx, desiredCount);
+                for (int s = 0; s < sel; s++)
+                    _hitTargets.Add(_targetEntities[_aggroCandIdx[_aggroOutIdx[s]]]);
+
+                // ⚠ 가디언의 선정 결과는 일반 최근접(`bestTarget`)과 다를 수 있다. 이후 넉백 CC·
+                //   카드 캐리어·로그가 `bestTarget` 을 쓰므로 **실제로 때린 적으로 정렬**한다.
+                if (_hitTargets.Count > 0)
+                {
+                    // 최전방 카드가 있으면 주 타겟을 **잠근 최전방으로 강제**한다(선정의 몫은 부수 대상).
+                    bool keepFrontmostPrimary = pick.wantFrontmost
+                        && world.Get<FrontmostAttackLock>(attackerEntity).active
+                        && !bestTarget.IsNull;
+                    if (keepFrontmostPrimary)
+                    {
+                        // 선정이 이미 부수 대상으로 뽑아 뒀으면 **자리를 맞바꾼다**(중복 타격 없이
+                        // 밀려난 대상을 부수로 남긴다). 아니면 선정의 주 타겟을 밀어낸다.
+                        int existing = -1;
+                        for (int s = 0; s < _hitTargets.Count; s++)
+                            if (_hitTargets[s] == bestTarget) { existing = s; break; }
+                        if (existing >= 0) _hitTargets[existing] = _hitTargets[0];
+                        _hitTargets[0] = bestTarget;
+                    }
+                    else
+                    {
+                        int primaryI = _aggroCandIdx[_aggroOutIdx[0]];
+                        bestTarget = _targetEntities[primaryI];
+                        bestTargetPos = _targetPositions[primaryI];
+                    }
+                }
+            }
+            else
+            {
+                _hitTargets.Add(bestTarget);
+                if (desiredCount > 1) FillAoeSecondaries(world, attackerEntity, atkPos, in pick, mask,
+                                                         bestTarget, desiredCount, tileSize, gridSize, ffOrigin);
+            }
+
+            // 위협 credit 여부는 **공격자에만** 의존한다(피격자별 버퍼 검사는 `TryCredit` 안).
+            bool creditThreat = world.Has<DefenderUnitTag>(attackerEntity);
+
+            for (int ti = 0; ti < _hitTargets.Count; ti++)
+            {
+                SimEntityId hitTarget = _hitTargets[ti];
+                for (int oi = 0; oi < outputs.Count; oi++)
+                {
+                    var o = outputs[oi].value;
+                    switch (o.kind)
+                    {
+                        case AttackOutputKind.Damage:
+                        {
+                            // shatter_hymn — 멜리/AoE 는 즉시 해결이라 **대상별 현재 CC** 로 판정한다.
+                            float dmg = o.magnitude * damageMul;
+                            if (attackerVsCc != 1f && AttackMath.AnyActiveCc(world.GetBuffer<CcEffect>(hitTarget)))
+                                dmg *= attackerVsCc;
+                            // ⚠ 최전방 보너스는 **잠근 주 타겟 1체만**. 부수/AoE 는 기본값이다.
+                            if (!fmPrioTarget.IsNull && hitTarget == fmPrioTarget) dmg *= fmPrioMul;
+                            // 강공은 이 공격의 **전 대상**에 곱한다(cleave 포함). 1 이면 무영향.
+                            dmg *= heavyMul;
+                            // ⚠ 같은 `dmg` 가 피해와 위협 양쪽에 들어간다 — 갈리면 어그로가 desync 된다.
+                            var incoming = world.AddBuffer<IncomingDamage>(hitTarget);
+                            incoming?.Add(new IncomingDamage { amount = dmg, source = attackerEntity });
+                            ThreatTable.TryCredit(_channels.ThreatHit, creditThreat, world,
+                                                  hitTarget, attackerEntity, dmg);
+                            _channels.AttackOutputLog.Enqueue(new AttackOutputLogEvent
+                            {
+                                attacker = attackerEntity, kind = AttackOutputKind.Damage,
+                                magnitude = dmg, duration = 0f,
+                                sourcePos = atkPos, targetPos = bestTargetPos,
+                            });
+                            break;
+                        }
+
+                        case AttackOutputKind.Heal:
+                        {
+                            var heals = world.AddBuffer<IncomingHeal>(hitTarget);
+                            heals?.Add(new IncomingHeal { amount = o.magnitude });
+                            _channels.AttackOutputLog.Enqueue(new AttackOutputLogEvent
+                            {
+                                attacker = attackerEntity, kind = AttackOutputKind.Heal,
+                                magnitude = o.magnitude, duration = 0f,
+                                sourcePos = atkPos, targetPos = bestTargetPos,
+                            });
+                            break;
+                        }
+
+                        case AttackOutputKind.ApplyStat:
+                            _channels.StatApply.Enqueue(new StatModifierApplyEvent
+                            {
+                                target = hitTarget, stat = o.stat, op = o.op,
+                                magnitude = o.magnitude, duration = o.duration,
+                                source = attackerEntity, stackId = 0,
+                                origin = ModifierOrigin.OnHit,
+                            });
+                            _channels.AttackOutputLog.Enqueue(new AttackOutputLogEvent
+                            {
+                                attacker = attackerEntity, kind = AttackOutputKind.ApplyStat,
+                                magnitude = o.magnitude, stat = o.stat, duration = o.duration,
+                                sourcePos = atkPos, targetPos = bestTargetPos,
+                            });
+                            break;
+
+                        case AttackOutputKind.ApplyStack:
+                            _channels.StackApply.Enqueue(new StackModifierApplyEvent
+                            {
+                                target = hitTarget, kind = o.stackKind,
+                                countDelta = (byte)SimMath.Max(1f, o.magnitude),
+                                maxStack = o.stackMaxStack > 0 ? o.stackMaxStack : StackDefaults.MaxStack,
+                                perAppDuration = o.duration,
+                                source = attackerEntity,
+                            });
+                            _channels.AttackOutputLog.Enqueue(new AttackOutputLogEvent
+                            {
+                                attacker = attackerEntity, kind = AttackOutputKind.ApplyStack,
+                                magnitude = o.magnitude, stackKind = o.stackKind, duration = o.duration,
+                                sourcePos = atkPos, targetPos = bestTargetPos,
+                            });
+                            break;
+                    }
+                }
+            }
+
+            // 가디언 명중분을 Effects 로 넘긴다. `Aggroed` 부착·상한 게이트·선점 판정은 소비자
+            // (`AggroStateSystem`)의 몫이고 Combat 은 **"때렸다" 사실만** 전달한다(맥락 경계).
+            if (isGuardian)
+                for (int ti = 0; ti < _hitTargets.Count; ti++)
+                    _channels.AggroHit.Enqueue(new AggroHitEvent
+                    {
+                        guardian = attackerEntity, enemy = _hitTargets[ti],
+                    });
+
+            // 공중 띄우기 = 히트한 **전 대상**에 짧은 Stun. 아래 넉백/수면(주 타겟 1체)과 스코프가
+            // 달라서 여기 있다. 심에 "공중" 개념은 없고 떠오르는 그림은 뷰가 따로 재생한다.
+            if (world.TryGet<DefenderCcData>(attackerEntity, out var kd) && kd.knockupOnHitSec > 0f)
+            {
+                for (int ti = 0; ti < _hitTargets.Count; ti++)
+                {
+                    // ⚠ 보스는 넉업 면역이고 **CC 와 연출을 함께** 건너뛴다 — 연출만 나가면
+                    //   떠오르는데 스턴은 안 걸리는 desync 가 된다. 면역 술어 단일 소스를 부르므로
+                    //   나중에 면역 범위를 좁히면 이 지점도 자동으로 따라온다.
+                    if (world.Has<BossTag>(_hitTargets[ti]) && CcActionLock.IsBossImmune(CcKind.Stun)) continue;
+                    _channels.EnemyCc.Enqueue(new EnemyCcEvent
+                    {
+                        target = _hitTargets[ti],
+                        effect = new CcEffect { kind = CcKind.Stun, remainingTime = kd.knockupOnHitSec },
+                    });
+                    _channels.KnockupVisual.Enqueue(new KnockupVisualEvent
+                    {
+                        target = _hitTargets[ti],
+                        durationSec = kd.knockupOnHitSec,
+                        height = kd.knockupVisualHeight,
+                    });
+                }
+            }
+        }
+
+        /// <summary>
+        /// arm F — 근접 AoE 의 부수 대상 채우기. 주 타겟을 제외하고 같은 필터로 `desiredCount` 까지.
+        /// ⚠ 힐러는 부수 대상도 **체력 비율**로 고른다(주 타겟과 같은 랭킹).
+        /// </summary>
+        private void FillAoeSecondaries(
+            SimWorld world, SimEntityId attackerEntity, SimVec3 atkPos, in TargetPick pick, int mask,
+            SimEntityId bestTarget, int desiredCount, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            bool rankByHealth = mask == (int)Faction.Defender && world.Has<DefenderUnitTag>(attackerEntity);
+            bool hasFlowField = SimSingleton.TryGet<FlowFieldSingleton>(world, out var flowField);
+
+            _aoeHitMask.Clear();
+            for (int i = 0; i < _targetEntities.Count; i++)
+                _aoeHitMask.Add(_targetEntities[i] == bestTarget);
+
+            for (int pass = 1; pass < desiredCount && _hitTargets.Count < desiredCount; pass++)
+            {
+                float passSq = float.MaxValue;
+                int passIdx = -1;
+                bool passHasBest = false;
+                LowestHealthTargeting.Candidate passBest = default;
+                for (int i = 0; i < _targetEntities.Count; i++)
+                {
+                    if (_aoeHitMask[i]) continue;
+                    if (((int)_targetFactions[i] & mask) == 0) continue;
+                    if (_targetEntities[i] == attackerEntity) continue;
+                    SimInt2 tgtCell = GridMath.WorldToCell(_targetPositions[i], tileSize, gridSize, ffOrigin);
+                    if (GridMath.ChebyshevDistance(tgtCell, pick.atkCell) > pick.tileRange) continue;
+                    float d2 = AttackMath.DistanceSqToTarget(
+                        atkPos, _targetEntities[i], _targetPositions[i],
+                        world.GetBuffer<BlockingHazardCellsBuffer>(_targetEntities[i]),
+                        hasFlowField, flowField, out _);
+                    if (rankByHealth)
+                    {
+                        var h = world.Get<Health>(_targetEntities[i]);
+                        var hc = new LowestHealthTargeting.Candidate
+                        {
+                            hpRatio = Health.ComputeRatio(h.value, h.max),
+                            sqDist = d2,
+                            simId = _targetEntities[i].Value,
+                        };
+                        if (!passHasBest || LowestHealthTargeting.RanksBefore(hc, passBest))
+                        { passBest = hc; passIdx = i; passHasBest = true; }
+                    }
+                    else if (d2 < passSq)
+                    {
+                        passSq = d2;
+                        passIdx = i;
+                    }
+                }
+                if (passIdx < 0) break;
+                _aoeHitMask[passIdx] = true;
+                _hitTargets.Add(_targetEntities[passIdx]);
+            }
+        }
+
+        /// <summary>
+        /// arm F — 주 타겟 1체에 거는 CC(넉백 · 수면). **방어유닛 전용**이다.
+        ///
+        /// ⚠ 넉백 방향은 **상대속도 임펄스**다: `D`(방어유닛→적) − `E`(적 셀의 흐름). 흐름장이
+        /// 없으면 `D` 로 폴백한다. `D ≈ 0`(같은 셀)이면 방향이 `-E` 로 퇴화해 적을 자기 경로 **뒤로**
+        /// 밀어버리므로 임펄스를 아예 걸지 않는다.
+        /// </summary>
+        private void ApplyPrimaryTargetCc(
+            SimWorld world, SimEntityId attackerEntity, SimVec3 atkPos,
+            SimEntityId bestTarget, SimVec3 bestTargetPos)
+        {
+            if (bestTarget.IsNull) return;
+            if (!world.TryGet<DefenderCcData>(attackerEntity, out var ccData)) return;
+
+            if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
+            {
+                // ⚠ **정규화가 먼저, y 제거가 나중**이다(구 sim 순서). 뒤집으면 XZ 성분이
+                //   달라져 임펄스 방향이 미세하게 갈린다 — y 를 먼저 버리면 XZ 가 다시 단위가 된다.
+                SimVec3 dn = SimMath.NormalizeSafe(bestTargetPos - atkPos);
+                SimVec3 D = new SimVec3(dn.x, 0f, dn.z);
+                if (SimMath.LengthSq(D) > 1e-6f)
+                {
+                    SimVec3 dir;
+                    if (SimSingleton.TryGet<FlowFieldSingleton>(world, out var ff))
+                    {
+                        var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize, ff.origin);
+                        SimVec2 flowDir = ff.flow[GridMath.CellIndex(targetCell, ff.gridSize)];
+                        SimVec3 E = SimMath.NormalizeSafe(new SimVec3(flowDir.x, 0f, flowDir.y));
+                        dir = SimMath.NormalizeSafe(D - E);
+                        if (SimMath.LengthSq(dir) < 1e-6f) dir = D; // D == E (뒤에서 때렸다)
+                    }
+                    else dir = D;
+
+                    float speed = ccData.knockbackDistance / ccData.knockbackDuration;
+                    _channels.EnemyCc.Enqueue(new EnemyCcEvent
+                    {
+                        target = bestTarget,
+                        effect = new CcEffect
+                        {
+                            kind = CcKind.Impulse,
+                            vector = dir * speed,
+                            remainingTime = ccData.knockbackDuration,
+                        },
+                    });
+                }
+            }
+
+            // 수면 — 주 타겟 1체만(넉백과 같은 스코프). 병합·해제(wake-on-hit)·게이트는 CC 계열의
+            // 기존 계약이 처리한다. 자기 히트가 자기 Sleep 을 깨우지 않는 것은 **시스템 순서**가
+            // 보장한다(피해 프레임 N, Sleep 적용 N+1).
+            if (ccData.sleepOnHitSec > 0f)
+            {
+                _channels.EnemyCc.Enqueue(new EnemyCcEvent
+                {
+                    target = bestTarget,
+                    effect = new CcEffect { kind = CcKind.Sleep, remainingTime = ccData.sleepOnHitSec },
+                });
+            }
+        }
+
+        /// <summary>
+        /// arm F — RESOLVE 의 `AttackN` 카운트. **공격 1회당 1카운트**다(다중 산출물이어도 1,
+        /// 유효 대상 없이 불발한 resolve 는 0).
+        ///
+        /// ⚠ **캐스트로 이미 센 host 는 제외**한다(attack-decoupling 계약 2) — `CastCountedHosts`
+        /// 가 그 seam 이다.
+        ///
+        /// ⚠ 여기는 <see cref="FireAttackNSlots"/> 를 쓰지 않는다. 차이가 둘이다:
+        /// **① 게이트를 평가한다**(`EventTarget` = 주 타겟의 pre-damage HP) **② payload 분기가 넓다**
+        /// (투사체 · CC · 스택 · 강공). 억지로 합치면 "게이트를 볼지" 가 인자로 새어나온다.
+        /// </summary>
+        private void TickResolveAttackNSlots(
+            SimWorld world, SimEntityId attackerEntity, SimVec3 atkPos,
+            SimEntityId bestTarget, SimVec3 bestTargetPos)
+        {
+            if (bestTarget.IsNull) return;
+            if (!world.Has<DefenderUnitTag>(attackerEntity)) return;
+            if (_castCountedHosts.Contains(attackerEntity)) return;
+            var dcSlots = world.GetBuffer<DcTriggerSlot>(attackerEntity);
+            if (dcSlots == null) return;
+
+            for (int si = 0; si < dcSlots.Count; si++)
+            {
+                var slot = dcSlots[si];
+                if (slot.trigger != DcTriggerKind.AttackN) continue;
+                // 게이트: **통과 사건만 카운트**한다(`if (GatePass) { Tick }`). `EventTarget` 은 주
+                // 타겟의 pre-damage HP — 위 강공 pre-scan 과 **동일 입력**이다(합성 불변식).
+                if (slot.gate != DcGateKind.None)
+                {
+                    if (!world.TryGet<Health>(bestTarget, out var gh)) continue;
+                    if (!DcTrigger.GatePass(slot.gate, slot.gateValue, gh.value, gh.max)) continue;
+                }
+                ushort dcCounter = slot.counter;
+                bool dcFired = DcTrigger.Tick(ref dcCounter, slot.period);
+                slot.counter = dcCounter;
+                dcSlots[si] = slot;
+                if (!dcFired) continue;
+
+                _channels.DcTriggerFired.Enqueue(new DcTriggerFiredEvent { host = attackerEntity });
+
+                if (slot.payload == DcPayloadKind.ProjectileToTarget)
+                {
+                    // ⚠ owner 는 **부착된 방어유닛**이지 캐리어가 아니다(위협 귀속).
+                    SpawnNeedleCarrier(slot, attackerEntity, atkPos, bestTarget, bestTargetPos);
+                }
+                else if (slot.payload == DcPayloadKind.ApplyCcToTarget)
+                {
+                    // frost_arrow — 판정 대상은 **발사 시점 의도 대상**이다(호밍 명중 대상과의
+                    // 불일치는 허용).
+                    var cc = new CcEffect { kind = slot.ccKind, remainingTime = slot.duration };
+                    bool emit = true;
+                    if (slot.ccKind == CcKind.Impulse)
+                    {
+                        // 같은 셀이면 방향이 0 → phantom impulse 방지(넉백 가드와 대칭).
+                        SimVec3 raw = bestTargetPos - atkPos;
+                        SimVec3 kd = new SimVec3(raw.x, 0f, raw.z);
+                        if (SimMath.LengthSq(kd) > 1e-6f) cc.vector = SimMath.Normalize(kd) * slot.magnitude;
+                        else emit = false;
+                    }
+                    if (emit) _channels.EnemyCc.Enqueue(new EnemyCcEvent { target = bestTarget, effect = cc });
+                }
+                else if (slot.payload == DcPayloadKind.ApplyStackToTarget)
+                {
+                    // ember_bite — 스택→DoT 는 임계 계열이 `StackThresholdRule` 로 처리한다.
+                    _channels.StackApply.Enqueue(new StackModifierApplyEvent
+                    {
+                        target = bestTarget,
+                        kind = slot.stackKind,
+                        // ⚠ 무경계 `(byte)` 캐스트는 256 → 0 wrap = **조용한 no-op** 이라 clamp 한다.
+                        countDelta = (byte)SimMath.Clamp(slot.magnitude, 1f, 255f),
+                        maxStack = slot.tileRange > 0
+                            ? (byte)SimMath.Min(slot.tileRange, 255)
+                            : StackDefaults.MaxStack,
+                        perAppDuration = slot.duration,
+                        source = attackerEntity,
+                    });
+                }
+                else if (slot.payload == DcPayloadKind.HeavyStrike)
+                {
+                    // 강공은 pre-scan(arm E)이 이미 `heavyMul` 로 산출해 출력에 실었다. 여기서
+                    // 발사할 것은 없다 — 이 분기는 **아래 unhandled 경고에 걸리지 않기 위함**이고,
+                    // 루프에서 강공의 역할은 위 `Tick`(카운터 소유)뿐이다.
+                }
+                else
+                {
+                    // 발동했는데 arm 이 없음 = 통합 버그(신규 kind 가 arm 없이 착지). loud fail.
+                    _channels.Warnings.Enqueue(new SimWarning
+                    {
+                        code = SimWarningCode.ResolveUnhandledPayload,
+                        entity = attackerEntity,
+                        detail = (int)slot.payload,
+                    });
+                }
+            }
         }
 
         /// <summary>

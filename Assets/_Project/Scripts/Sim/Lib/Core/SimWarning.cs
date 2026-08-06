@@ -31,6 +31,14 @@ namespace Wassup.Sim
         /// (구 sim: "[AttackSystem] bomb-throw dc slot fired with a payload that has no arm here")
         /// </summary>
         BombThrowUnhandledPayload = 3,
+
+        /// <summary>
+        /// 공격 RESOLVE 의 `AttackN` 슬롯이 발동했는데 그 payload 를 처리하는 arm 이 없다.
+        /// **신규 kind 가 arm 없이 착지한 통합 버그**의 신호다 — 위 둘과 달리 이 자리는 payload
+        /// 분기가 넓어서(투사체·CC·스택·강공), 여기 걸린다는 것은 어휘가 늘었는데 배선이 빠졌다는 뜻이다.
+        /// (구 sim: "[AttackSystem] DcTriggerSlot fired with unhandled payload kind.")
+        /// </summary>
+        ResolveUnhandledPayload = 4,
     }
 
     /// <summary>

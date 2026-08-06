@@ -131,6 +131,14 @@ namespace Wassup.Sim
         public SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent> DcTriggerFired { get; }
             = new SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent>();
 
+        /// <summary>
+        /// 넉업 띄우기 연출. 생산자는 공격 루프(#33) → 소비자는 뷰(18-K).
+        /// 심에서 넉업의 실체는 짧은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분할 수 없다 —
+        /// **띄운 쪽이 대상을 직접 신호**한다. ⚠ 상태 해시에 실리지 않는다.
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.KnockupVisualEvent> KnockupVisual { get; }
+            = new SimChannel<Wassup.Sim.Combat.KnockupVisualEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// 공격이 나갔다(방어유닛/적 공통). 뷰가 애니와 바라보는 방향을 잡는다.
         public SimChannel<Wassup.Sim.Combat.UnitAttackVisualEvent> UnitAttackVisual { get; }
@@ -194,6 +202,7 @@ namespace Wassup.Sim
             Cast.Reset();
             HazardSpawnRequest.Reset();
             DcTriggerFired.Reset();
+            KnockupVisual.Reset();
             UnitAttackVisual.Reset();
             AttackOutputLog.Reset();
             DamageNumber.Reset();
