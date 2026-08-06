@@ -35,6 +35,14 @@ namespace Wassup.Sim.Effects
         {
             if (!SimSingleton.TryGet<FlowFieldSingleton>(world, out var flowField)) return;
 
+            // ⚠ 구 sim 의 `RequireForUpdate<HazardCastState>`(분류 D) 자리다. 이게 없으면 캐스터가
+            //   0 명인 동안에도 아래 후보 스냅샷이 **매 틱 전 유닛을 훑는다** — 배치 전 구간이
+            //   통째로 그렇다. 분류 D 는 "루프 밖 부수효과가 없으면 증발" 이 원칙이지만,
+            //   **루프 밖에 스냅샷 구축이 있으면 증발이 아니라 이사**다.
+            bool hasCaster = false;
+            foreach (var _ in world.With<HazardCastState>()) { hasCaster = true; break; }
+            if (!hasCaster) return;
+
             float dt = world.DeltaTime;
 
             // 후보 = 진영·위치·경로 상태를 가진, 배치 완료된 산 유닛.

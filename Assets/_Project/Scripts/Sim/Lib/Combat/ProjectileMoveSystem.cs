@@ -76,6 +76,11 @@ namespace Wassup.Sim.Combat
                 if (!world.TryGet<ProjectileState>(entity, out var projectile)) continue;
                 if (!world.TryGet<SimTransform>(entity, out var transform)) continue;
 
+                // ⚠ 파괴 예정 엔티티에는 write-back 을 하지 않는다. 구 sim 은 `RefRW` 로 arm 안에서만
+                //   선택 기록했고, 여기서 무조건 쓰면 **곧 사라질 엔티티에 두 번의 저장소 쓰기**가
+                //   투사체 수만큼 매 틱 생긴다(결과는 같지만 순수 낭비다).
+                bool destroyed = false;
+
                 switch (projectile.movement)
                 {
                     case MovementKind.HomingToEntity:
@@ -100,6 +105,7 @@ namespace Wassup.Sim.Combat
                             if (repick < 0)
                             {
                                 _ecb.Destroy(entity);
+                                destroyed = true;
                                 break;
                             }
                             target = _retargetEntities[repick];
@@ -131,6 +137,7 @@ namespace Wassup.Sim.Combat
                         if (!IsLiveTarget(world, projectile.target))
                         {
                             _ecb.Destroy(entity);
+                            destroyed = true;
                             break;
                         }
 
@@ -225,9 +232,11 @@ namespace Wassup.Sim.Combat
                         //   남기느니, 미래에 arm 을 빠뜨렸을 때 "투사체가 사라진다" 는 보이는 증상이
                         //   조용한 누수보다 낫다.
                         _ecb.Destroy(entity);
+                        destroyed = true;
                         break;
                 }
 
+                if (destroyed) continue;
                 world.Set(entity, projectile);
                 world.Set(entity, transform);
             }
