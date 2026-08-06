@@ -28,6 +28,11 @@ namespace Wassup.Tests.EditMode
             "Wassup.Sim.Movement",
             "Wassup.Sim.Combat",
             "Wassup.Sim.Effects",
+            // ⚠ 18-K/5 — **조립 지점은 네임스페이스가 `Wassup.Sim`(Core)이라 위 스캔에 안 걸린다.**
+            //   그런데 `SimRuntime` 은 정의상 8 클러스터를 전부 끌어오므로, 프로덕션이 이 이름
+            //   하나만 적어도 그림자가 통째로 무장된다. 맥락 스캔의 구멍이라 이름으로 막는다.
+            //   (`Wassup.Sim` 전체를 금지할 수는 없다 — 파사드·규칙·점수 산식은 이미 졸업분이다.)
+            "SimRuntime",
         };
 
         /// <summary>

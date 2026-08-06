@@ -477,16 +477,12 @@ namespace Wassup.Tests.EditMode
         public void EveryCaptureNumberIsRegisteredExactlyOnce()
         {
             // 🎯 **18-J 의 완료 기준** — 44 시스템 전부가 파이프라인에 있다.
-            var ch = new SimChannels();
-            var pipeline = new SimPipeline()
-                .Add(new GimmickCluster(ch).Steps())
-                .Add(new AttackCluster(ch).Steps())
-                .Add(new ModifierCluster(ch).Steps())
-                .Add(new CcDotCluster(ch).Steps())
-                .Add(new EnvironmentCluster(ch).Steps())
-                .Add(new MovementCluster(ch).Steps())
-                .Add(new DamageCluster(ch).Steps())
-                .Add(new ProjectileCluster(ch).Steps());
+            //
+            // ⚠ 18-K/5: 조립을 **여기서 하지 않는다.** 초판은 8 클러스터를 이 테스트가 직접
+            //   모았는데, 그러면 프로덕션(`SimRuntime`)과 조립이 두 벌이 되어 이 단정이
+            //   프로덕션을 증언하지 않는다 — A/B 가 서로 다른 파이프라인을 비교하게 되는
+            //   바로 그 모양이다. 이제 조립 지점을 그대로 검사한다.
+            var pipeline = new SimRuntime(new SimConfig(1u, 1u)).Pipeline;
 
             var orders = pipeline.Steps.Select(s => s.Order).OrderBy(o => o).ToArray();
             CollectionAssert.AreEqual(Enumerable.Range(1, 44).ToArray(), orders,
