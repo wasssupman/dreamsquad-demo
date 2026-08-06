@@ -125,6 +125,13 @@ namespace Wassup.Sim
             = new SimChannel<HazardSpawnRequest>();
 
         /// <summary>
+        /// 사직서 임계 → 메테오 barrage. 생산자 `ResignationThresholdSystem`(#20, P5) →
+        /// 소비자는 캐스트 실행기(18-K). sim 은 **몇 발**만 정한다.
+        /// </summary>
+        public SimChannel<MeteorBarrageRequest> MeteorBarrageRequest { get; }
+            = new SimChannel<MeteorBarrageRequest>();
+
+        /// <summary>
         /// 부착 카드 발동 신호. 생산자는 공격 루프(#33, P8)의 `AttackN` 발동 3지점 →
         /// 소비자는 뷰(18-K). ⚠ **상태 해시에 실리지 않는다.**
         /// </summary>
@@ -201,6 +208,7 @@ namespace Wassup.Sim
             ProjectileHit.Reset();
             Cast.Reset();
             HazardSpawnRequest.Reset();
+            MeteorBarrageRequest.Reset();
             DcTriggerFired.Reset();
             KnockupVisual.Reset();
             UnitAttackVisual.Reset();
