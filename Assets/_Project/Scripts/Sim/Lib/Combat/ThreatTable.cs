@@ -51,11 +51,11 @@ namespace Wassup.Sim.Combat
                 if (e.attacker.IsNull) continue;
                 if (best.IsNull
                     || e.cumulativeDamage > bestDamage
-                    || (e.cumulativeDamage == bestDamage && e.attacker.Value < bestSimId))
+                    || (e.cumulativeDamage == bestDamage && e.attacker.SpawnOrdinal < bestSimId))
                 {
                     best = e.attacker;
                     bestDamage = e.cumulativeDamage;
-                    bestSimId = e.attacker.Value;
+                    bestSimId = e.attacker.SpawnOrdinal;
                 }
             }
             return best;

@@ -262,7 +262,7 @@ namespace Wassup.Sim.Effects
                     if (!found) continue; // 보드 포화 — 이번 주기 건너뛴다
 
                     _occupied.Add(chosen);
-                    var pickupEntity = world.Create();
+                    var pickupEntity = world.CreateInternal();
                     world.Set(pickupEntity, new Pickup
                     {
                         cell = chosen,

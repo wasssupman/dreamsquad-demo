@@ -100,10 +100,16 @@ namespace Wassup.Sim
             => System.Convert.ToInt64(v, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// 엔티티 참조. ⚠ **`Null` 은 `sim:-1`** 이다 — 구 `ResolveLegacyTraceEntity` 의 반환값이고
-        /// `SimEntityId.ToString()`(`sim:null`)과 다르다.
+        /// 엔티티 참조 — **핸들이 아니라 <see cref="SimEntityId.SpawnOrdinal"/>**(구 0-base 순번)이다.
+        ///
+        /// ⚠ 18-K/1 은 여기서 `Value` 를 썼다. **틀렸다** — 구 `_simEntityIdCounter` 는 0 부터 세고
+        /// 신 핸들은 1 부터 발급한다(0 = `Null` 예약). 기록기를 다시 읽고 나서야 드러났다(18-K/2).
+        ///
+        /// `Null` 이 `sim:-1` 인 것도 특수 분기가 아니라 같은 축의 결과다 — `0 - 1 = -1` 이 구
+        /// `ResolveLegacyTraceEntity` 의 `Entity.Null` 반환값과 정확히 같다.
+        /// (`SimEntityId.ToString()` 의 `sim:null` 은 별개 계약이다.)
         /// </summary>
-        public static string Entity(SimEntityId e) => e.IsNull ? "sim:-1" : "sim:" + Int(e.Value);
+        public static string Entity(SimEntityId e) => "sim:" + Int(e.SpawnOrdinal);
 
         public static string Vec3(SimVec3 v)
             => KeyFloat3 + "{x=" + Float(v.x) + ",y=" + Float(v.y) + ",z=" + Float(v.z) + "}";

@@ -35,7 +35,7 @@ namespace Wassup.Sim.Effects
                 var cell = tile.cell;
                 _ecb.Defer(w =>
                 {
-                    var letter = w.Create();
+                    var letter = w.CreateInternal();
                     w.Set(letter, new Resignation { cell = cell });
                 });
             }

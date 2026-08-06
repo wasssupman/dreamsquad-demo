@@ -140,7 +140,7 @@ namespace Wassup.Sim.Combat
 
                         _ecb.Defer(w =>
                         {
-                            var carrier = w.Create();
+                            var carrier = w.CreateInternal();
                             w.Set(carrier, req);
                             w.Set(carrier, new ProjectileRequestCarrier());
                         });

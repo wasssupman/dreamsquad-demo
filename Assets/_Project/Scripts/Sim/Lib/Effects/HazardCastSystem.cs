@@ -100,7 +100,7 @@ namespace Wassup.Sim.Effects
                     if (tileDist > tileRange) continue;
 
                     float distSq = SimMath.DistanceSq(casterPos, targetPos);
-                    int candSimId = _targetEntities[i].Value;
+                    int candSimId = _targetEntities[i].SpawnOrdinal;
                     // ⚠ **등거리 동률은 낮은 simId 가 이긴다.** 이 축이 없으면 스냅샷(청크) 순서에
                     //   결과가 걸려 같은 판이 실행마다 갈린다.
                     if (distSq < bestSq || (distSq == bestSq && candSimId < bestSimId))

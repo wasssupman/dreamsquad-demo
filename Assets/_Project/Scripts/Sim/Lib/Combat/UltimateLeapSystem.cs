@@ -87,7 +87,7 @@ namespace Wassup.Sim.Combat
                 //    와 같은 규약). `dataIndex` 는 bake 가 보장한다.
                 if (leap.slamDamage > 0f)
                 {
-                    var carrier = world.Create();
+                    var carrier = world.CreateInternal();
                     world.Set(carrier, new ProjectileSpawnRequest
                     {
                         movement = MovementKind.SkyFall,

@@ -179,14 +179,30 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void 엔티티_참조는_Null_이_sim_마이너스1_이다()
+        public void 엔티티_참조는_핸들이_아니라_스폰_순번이다()
         {
-            // ⚠ `SimEntityId.ToString()`(`sim:null`)과 다르다 — 트레이스는
-            //   `ResolveLegacyTraceEntity` 경로라 `Entity.Null` → `-1` 이다.
-            Assert.AreEqual("sim:7", SimLegacyTrace.Entity(new SimEntityId(7)));
+            // ⚠ 18-K/1 은 `sim:7` 로 박제했다 — **틀렸다.** 구 `_simEntityIdCounter` 는 0 부터
+            //   세고(첫 스폰 = simId 0) 신 핸들은 1 부터 발급한다(0 = Null 예약).
+            //   기록기(`BattleBridge.LegacyTrace`)를 다시 읽고서야 드러났다.
+            Assert.AreEqual("sim:6", SimLegacyTrace.Entity(new SimEntityId(7)));
+            Assert.AreEqual("sim:0", SimLegacyTrace.Entity(new SimEntityId(1)),
+                "첫 스폰은 구 sim 에서 simId 0 이었다");
+
+            // `Null` 의 `sim:-1` 은 특수 분기가 아니라 같은 축의 끝이다.
             Assert.AreEqual("sim:-1", SimLegacyTrace.Entity(SimEntityId.Null));
             Assert.AreNotEqual(SimEntityId.Null.ToString(), SimLegacyTrace.Entity(SimEntityId.Null),
                 "ToString 계약과 트레이스 렌더는 서로 다른 규칙이다");
+        }
+
+        [Test]
+        public void 스폰_순번이_구_카운터와_같은_축이다()
+        {
+            // 구 `BattleBridge`: `_simEntityIdCounter = 0` → `simId = _simEntityIdCounter++`.
+            // 그래서 k 번째 스폰(0-base)의 simId 는 정확히 k 다.
+            var world = new SimWorld(new SimConfig(1u, 1u));
+            for (int k = 0; k < 5; k++)
+                Assert.AreEqual(k, world.Create().SpawnOrdinal, $"{k} 번째 스폰");
+            Assert.AreEqual(5, world.SpawnedCount, "구 `simEntityIdCounter` 최종값의 대응물");
         }
 
         // ── 라인 조립 ─────────────────────────────────────────────────────────

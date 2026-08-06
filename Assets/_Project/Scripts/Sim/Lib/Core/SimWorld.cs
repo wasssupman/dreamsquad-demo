@@ -18,6 +18,34 @@ namespace Wassup.Sim
         public static readonly SimEntityId Null = default;
         public bool IsNull => Value == 0;
 
+        /// <summary>
+        /// battle-sim-extraction unit 18-K/2 — **비추적 엔티티**(캐리어·픽업·사직서·필드 캐리어).
+        /// <see cref="SimWorld.CreateInternal"/> 가 음수 공간에서 발급한다.
+        ///
+        /// 구 sim 에서 이들은 `SimEntityId` 컴포넌트를 **받지 않았다**(unit 1 문서: *"ECS 내부 ECB
+        /// 생성에는 부착하지 않는다"*). 그래서 구 카운터를 전진시키지 않았고, 트레이스의
+        /// 엔티티 블록에도 나타나지 않는다. 신 sim 은 캐리어에도 핸들이 필요하므로
+        /// **부호로 두 공간을 가른다** — 그래야 추적 시퀀스가 구와 1:1 로 유지된다.
+        /// </summary>
+        public bool IsInternal => Value < 0;
+
+        /// <summary>
+        /// battle-sim-extraction unit 18-K/2 — **구 sim 의 `SimEntityId.value`**(0-base 스폰 순번).
+        ///
+        /// 신 핸들은 0 을 `Null` 로 예약해 1 부터 발급하므로 **구보다 정확히 1 크다.**
+        /// 이 축은 골든에 실린다 — 트레이스 키(`entity+N`·`sim:N`)와 **발사 패턴 RNG seed**
+        /// (`hash(int2(simId, fireCountBase))`)가 둘 다 이 숫자를 먹는다. 핸들 값을 그대로
+        /// 쓰면 난수열이 통째로 어긋나 A/B parity 가 조용히 깨진다.
+        ///
+        /// `Null` → **-1**. 구 `ResolveLegacyTraceEntity` 가 `Entity.Null` 에 돌려주던 값과 같다 —
+        /// 우연이 아니라 같은 0-base 축의 두 끝이다.
+        ///
+        /// ⚠ <see cref="IsInternal"/> 엔티티에는 의미가 없다. 구 sim 이 그런 참조를 만나면
+        /// 기록기가 **예외를 던졌으므로**(등록부 미등재), 골든이 존재한다는 사실 자체가
+        /// "추적 컴포넌트는 비추적 엔티티를 참조하지 않는다"의 증거다.
+        /// </summary>
+        public int SpawnOrdinal => Value - 1;
+
         public bool Equals(SimEntityId o) => Value == o.Value;
         /// <summary>
         /// ⚠ **패턴 변수 `e` 를 넘겨야 한다.** `Equals(o)` 로 쓰면 `o` 의 정적 타입이 `object` 라
@@ -106,17 +134,47 @@ namespace Wassup.Sim
 
         // id 0 은 Null 예약. **감소하지 않는다** — 파괴돼도 재사용 없음.
         private int _nextId = 1;
+        // 비추적 공간(18-K/2). 음수로 **내려간다** — 추적 시퀀스와 절대 만나지 않는다.
+        private int _nextInternalId = -1;
         private readonly List<int> _order = new List<int>();      // 생성 순서(파괴돼도 안 지운다)
         private readonly HashSet<int> _alive = new HashSet<int>();
         private readonly Dictionary<Type, ISimStore> _stores = new Dictionary<Type, ISimStore>();
 
-        /// 발급된 총 개수(비재사용 계약의 관측점).
+        /// <summary>
+        /// **추적** 엔티티의 발급 총량 = 구 `BattleBridge._simEntityIdCounter` 의 대응물이고
+        /// 그 이름으로 상태 해시에 실린다. 비추적 발급은 세지 않는다.
+        /// </summary>
         public int SpawnedCount => _nextId - 1;
+        public int InternalSpawnedCount => -_nextInternalId - 1;
         public int AliveCount => _alive.Count;
 
+        /// <summary>
+        /// **추적 엔티티** — 유닛·투사체·해저드·장애물. 구 sim 이 `AttachSimEntityId` 를 부르던
+        /// 7 경로의 대응물이고, 이 시퀀스가 곧 골든의 `entity+N` 순번이다
+        /// (<see cref="SimEntityId.SpawnOrdinal"/> 참조).
+        /// </summary>
         public SimEntityId Create()
         {
             int id = _nextId++;
+            _order.Add(id);
+            _alive.Add(id);
+            return new SimEntityId(id);
+        }
+
+        /// <summary>
+        /// **비추적 엔티티** — 1프레임 staging 캐리어(투사체 요청·순찰 요청)와, 타겟팅에
+        /// 참여하지 않는 영속물(픽업·사직서·필드 캐리어 3종).
+        ///
+        /// ⚠ **이 구분은 성능이 아니라 결정론이다.** 구 sim 은 이들에게 id 를 주지 않았으므로,
+        /// 신 sim 이 같은 카운터에서 뽑으면 **그 뒤에 태어나는 유닛의 번호가 전부 밀린다** —
+        /// 동률 tie-break 승자가 바뀌고 발사 RNG seed 가 달라진다. 골든은 "다른 판"이 된다.
+        ///
+        /// 판정 기준은 구 sim 그대로다: **`AttachSimEntityId` 를 받았는가.** 받았으면
+        /// <see cref="Create"/>, 아니면 여기다.
+        /// </summary>
+        public SimEntityId CreateInternal()
+        {
+            int id = _nextInternalId--;
             _order.Add(id);
             _alive.Add(id);
             return new SimEntityId(id);

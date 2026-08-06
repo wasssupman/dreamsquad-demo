@@ -283,7 +283,7 @@ namespace Wassup.Sim.Combat
                     {
                         hpRatio = Health.ComputeRatio(h.value, h.max),
                         sqDist = d2,
-                        simId = _targetEntities[i].Value,
+                        simId = _targetEntities[i].SpawnOrdinal,
                     };
                     if (!healHasBest || LowestHealthTargeting.RanksBefore(hc, healBest))
                     {
@@ -324,7 +324,7 @@ namespace Wassup.Sim.Combat
                         {
                             flowDist = fdist,
                             sqDist = d2,
-                            simId = _targetEntities[i].Value,
+                            simId = _targetEntities[i].SpawnOrdinal,
                         };
                         if (!fmHasBest || FrontmostTargeting.RanksBefore(fc, fmBest))
                         {
@@ -706,7 +706,7 @@ namespace Wassup.Sim.Combat
                         cell = GridMath.WorldToCell(tp, tileSize, gridSize, ffOrigin),
                         pos = tp,
                         aggroed = world.Has<Aggroed>(_targetEntities[i]),
-                        simId = _targetEntities[i].Value,
+                        simId = _targetEntities[i].SpawnOrdinal,
                     });
                     _aggroCandIdx.Add(i);
                 }
@@ -907,7 +907,7 @@ namespace Wassup.Sim.Combat
                         {
                             hpRatio = Health.ComputeRatio(h.value, h.max),
                             sqDist = d2,
-                            simId = _targetEntities[i].Value,
+                            simId = _targetEntities[i].SpawnOrdinal,
                         };
                         if (!passHasBest || LowestHealthTargeting.RanksBefore(hc, passBest))
                         { passBest = hc; passIdx = i; passHasBest = true; }
@@ -1223,7 +1223,9 @@ namespace Wassup.Sim.Combat
                     // ⚠ 시드 축은 `SimEntityId` 다(할당 순서 독립). 같은 host 의 연속 트리거와 여러
                     //   host 가 같은 시퀀스를 반복하지 않되 결정론은 유지된다.
                     PatternShotRandomizer.Apply(
-                        ref spec, SimMath.Hash(new SimInt2(attackerEntity.Value, slot.fireCountBase)));
+                        // ⚠ `Value` 가 아니라 `SpawnOrdinal` 이다 — 이 시드가 난수열 전체를
+                        //   정하고 구 sim 은 0-base 순번을 먹였다(18-K/2).
+                        ref spec, SimMath.Hash(new SimInt2(attackerEntity.SpawnOrdinal, slot.fireCountBase)));
 
                     // barrel 기반 template 의 effect/targetFaction 은 보존하고, **이번 공격에만
                     // 결정되는 값**만 RESOLVE 에서 스냅샷한다.
@@ -1343,7 +1345,7 @@ namespace Wassup.Sim.Combat
                 };
                 _ecb.Defer(w =>
                 {
-                    var carrier = w.Create();
+                    var carrier = w.CreateInternal();
                     w.Set(carrier, new PatrolRequestCarrier());
                     w.Set(carrier, req);
                 });
@@ -1571,7 +1573,7 @@ namespace Wassup.Sim.Combat
                     eligible = eligible,
                     tileDist = GridMath.ChebyshevDistance(c, selfCell),
                     sqDist = SimMath.DistanceSq(selfPos, p),
-                    simId = e.Value,
+                    simId = e.SpawnOrdinal,
                 });
             }
             return NearestTargeting.SelectNearest(_needleScratch, tileRange);
@@ -1607,7 +1609,7 @@ namespace Wassup.Sim.Combat
             };
             _ecb.Defer(w =>
             {
-                var carrier = w.Create();
+                var carrier = w.CreateInternal();
                 w.Set(carrier, req);
                 w.Set(carrier, new ProjectileRequestCarrier());
             });
