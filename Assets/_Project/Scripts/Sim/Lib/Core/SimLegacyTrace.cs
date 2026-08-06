@@ -37,7 +37,7 @@ namespace Wassup.Sim
     /// (`LegacyTraceKeyContractTests` 는 `sim:7`/`sim:null` 을 박제하지만 그건 `ToString` 의
     /// 계약이고, 트레이스가 쓰는 것은 `ResolveLegacyTraceEntity` 경로다.)
     /// </summary>
-    public static class SimLegacyTrace
+    public static partial class SimLegacyTrace
     {
         // ── 구 타입 FullName 표 (하드코딩 — 리플렉션 금지) ──────────────────────
         // 신 sim 이 `Unity.*` 를 버려도 **키는 승계**한다. 이 문자열이 곧 상태 해시의 키다.
@@ -71,6 +71,39 @@ namespace Wassup.Sim
         public const string KeyInt2 = "Unity.Mathematics.int2";
         public const string KeyRandom = "Unity.Mathematics.Random";
         public const string KeyModifierHeader = "Wassup.Battle.Effects.ModifierHeader";
+
+        /// <summary>
+        /// 18-K/2 추가 — `PatternSlot` 이 **두 단계 더** 중첩한다. ⚠ `PatternSpec` 은
+        /// `Wassup.Battle.*` 가 아니라 **`Wassup.Data`** 다(아키텍처 중립 정의 계층).
+        /// </summary>
+        public const string KeyPatternSpec = "Wassup.Data.PatternSpec";
+        public const string KeyProjectileSpawnRequest = "Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest";
+
+        /// <summary>
+        /// ⚠ **컨테이너 두 개는 값이 아니라 타입 이름으로 렌더된다.**
+        ///
+        /// 구 포매터는 public **필드**가 하나도 없는 값에 `value.ToString()` 을 쓴다.
+        /// `FixedList128Bytes&lt;T&gt;`(내부 `data` 만 internal)와 `NativeArray&lt;T&gt;` 가 정확히
+        /// 그 경우라, 상태 라인에는 **내용물이 아니라 타입 문자열**이 들어간다.
+        ///
+        /// ⇒ 신 sim 이 같은 자리를 `PatternShotSpec[]`·`SimInt2[]` 로 바꿔도 **이 문자열은
+        /// 그대로 내보내야 한다.** 정보가 없는 라인이지만 해시에는 들어간다.
+        /// (그래서 발사 shot 목록과 픽업 후보 셀은 애초에 상태 해시의 관측 대상이 아니었다 —
+        ///  드리프트를 잡고 싶으면 별도 축이 필요하다. 18-K 가 넓힐 자리는 아니다.)
+        ///
+        /// ⚠⚠ **어셈블리 한정 이름이다** — 짧은 이름(`…`1[Wassup.Data.PatternShotSpec]`)이 아니라
+        /// `…`1[[타입, 어셈블리, Version=…, Culture=…, PublicKeyToken=…]]` 이다(실측 정정).
+        /// 즉 **골든 해시가 어셈블리 신원에 묶여 있다** — `Wassup.Runtime` 을 개명하거나
+        /// `PatternShotSpec` 를 다른 어셈블리로 옮기면 이 두 줄이 바뀌어 7 개 골든이 전부 깨진다.
+        /// 옮길 일이 생기면 골든 재생성 권한(unit 19)과 함께 처리해야 한다.
+        /// </summary>
+        public const string ValueShotsContainer =
+            "Unity.Collections.FixedList128Bytes`1[[Wassup.Data.PatternShotSpec, Wassup.Runtime, "
+            + "Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]";
+
+        public const string ValueCandidateCellsContainer =
+            "Unity.Collections.NativeArray`1[[Unity.Mathematics.int2, Unity.Mathematics, "
+            + "Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]";
 
         /// <summary>
         /// ⚠ **`LocalTransform.Rotation` 은 신 sim 에 없다** — sim 코드가 회전을 한 번도 쓰지 않아

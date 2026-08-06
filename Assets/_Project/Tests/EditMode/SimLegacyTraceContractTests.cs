@@ -108,6 +108,51 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void 렌더러가_다루는_나머지_타입도_필드가_같다()
+        {
+            // 18-K/2 — 렌더러를 손으로 쓰려면 필드 집합 일치가 **전제**다. 위 목록에 없던 것들.
+            SameFields(typeof(Wassup.Battle.Units.KillScore), typeof(Wassup.Sim.Units.KillScore));
+            SameFields(typeof(Wassup.Battle.Combat.Projectile.ProjectileState),
+                       typeof(Wassup.Sim.Combat.ProjectileState));
+            SameFields(typeof(Wassup.Battle.Effects.PickupSpawnState),
+                       typeof(Wassup.Sim.Effects.PickupSpawnState));
+            SameFields(typeof(Wassup.Battle.Combat.Projectile.Emission.PatternSlot),
+                       typeof(Wassup.Sim.Combat.PatternSlot));
+            SameFields(typeof(Wassup.Data.PatternSpec), typeof(Wassup.Sim.Combat.PatternSpec));
+            SameFields(typeof(Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest),
+                       typeof(Wassup.Sim.Combat.ProjectileSpawnRequest));
+        }
+
+        [Test]
+        public void 중첩_두_단계_키도_구_타입과_같다()
+        {
+            // ⚠ `PatternSpec` 은 `Wassup.Battle.*` 가 아니라 **`Wassup.Data`** 다 —
+            //   패턴 정의는 아키텍처 중립 계층에 산다. 규칙으로 유추하면 틀린다.
+            SameKey(SimLegacyTrace.KeyPatternSpec, typeof(Wassup.Data.PatternSpec));
+            SameKey(SimLegacyTrace.KeyProjectileSpawnRequest,
+                    typeof(Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest));
+        }
+
+        // 구 포매터는 public 필드가 0 인 값에 `ToString()` 을 쓴다. `FixedList128Bytes`·
+        // `NativeArray` 가 그 경우라 **내용이 아니라 타입 이름**이 해시에 들어간다.
+        // ⚠ 그 이름은 **어셈블리 한정**이라 골든이 어셈블리 신원에 묶인다.
+        // 둘을 별개 테스트로 두는 이유: 한 테스트에 묶으면 앞의 실패가 뒤의 실제값을 가린다.
+
+        [Test]
+        public void shots_컨테이너는_어셈블리_한정_타입명으로_나간다()
+        {
+            string shots = LegacyFormat(default(Unity.Collections.FixedList128Bytes<Wassup.Data.PatternShotSpec>));
+            Assert.AreEqual(shots, SimLegacyTrace.ValueShotsContainer, "실제=[" + shots + "]");
+        }
+
+        [Test]
+        public void candidateCells_컨테이너는_어셈블리_한정_타입명으로_나간다()
+        {
+            string cells = LegacyFormat(default(Unity.Collections.NativeArray<int2>));
+            Assert.AreEqual(cells, SimLegacyTrace.ValueCandidateCellsContainer, "실제=[" + cells + "]");
+        }
+
+        [Test]
         public void SimTransform_은_Rotation_만_빠진다()
         {
             // ⚠ 이것이 18-K 가 결정해야 했던 유일한 필드 차이다 — 나머지 20 타입은 집합이 같다.
