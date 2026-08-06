@@ -186,17 +186,23 @@ namespace Wassup.Sim.Effects
     /// ⚠ **#4 `BossPeriodicTrigger` 는 P1** 이라 `EnvironmentCluster` 의 phase 한가운데 끼어든다.
     /// 그 클러스터에 직접 넣으면 경계가 무너지므로, 여기서 신고하고 정렬은 파이프라인에 맡긴다.
     ///
-    /// 조각별로 채워지는 중이다 — 지금 있는 것은 18-J/1(#20 · #24 · #25).
+    /// 조각별로 채워지는 중이다 — 지금 있는 것은 18-J/1~2(#20~#25).
     /// </summary>
     public sealed class GimmickCluster
     {
         public ResignationThresholdSystem ResignationThreshold { get; }
+        public HeatAccrualSystem HeatAccrual { get; }
+        public PickupSpawnSystem PickupSpawn { get; }
+        public PickupConsumeSystem PickupConsume { get; }
         public HitFlashSystem HitFlash { get; }
         public EffectTickSystem EffectTick { get; }
 
         public GimmickCluster(SimChannels channels)
         {
             ResignationThreshold = new ResignationThresholdSystem(channels);
+            HeatAccrual = new HeatAccrualSystem();
+            PickupSpawn = new PickupSpawnSystem();
+            PickupConsume = new PickupConsumeSystem(channels);
             HitFlash = new HitFlashSystem();
             EffectTick = new EffectTickSystem();
         }
@@ -204,6 +210,10 @@ namespace Wassup.Sim.Effects
         public IEnumerable<SimStep> Steps()
         {
             yield return new SimStep(20, SimPhase.PostMoveCast, nameof(ResignationThresholdSystem), ResignationThreshold.Run);
+            yield return new SimStep(21, SimPhase.PostMoveCast, nameof(HeatAccrualSystem), HeatAccrual.Run);
+            // ⚠ #22 → #23 순서가 계약이다 — 스폰이 놓은 픽업을 소비가 **같은 틱**에 먹는다.
+            yield return new SimStep(22, SimPhase.PostMoveCast, nameof(PickupSpawnSystem), PickupSpawn.Run);
+            yield return new SimStep(23, SimPhase.PostMoveCast, nameof(PickupConsumeSystem), PickupConsume.Run);
             yield return new SimStep(24, SimPhase.PostMoveCast, nameof(HitFlashSystem), HitFlash.Run);
             yield return new SimStep(25, SimPhase.PostMoveCast, nameof(EffectTickSystem), EffectTick.Run);
         }

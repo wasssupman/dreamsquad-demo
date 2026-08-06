@@ -170,5 +170,15 @@ namespace Wassup.Sim.Effects
             value = default;
             return false;
         }
+
+        /// <summary>
+        /// 싱글턴을 **들고 있는 엔티티**. 값을 되쓰는 시스템(예: `PickupSpawnState.rng`)이 필요로 한다 —
+        /// 구 sim 의 `GetSingletonRW` 자리다. 없으면 `Null`.
+        /// </summary>
+        public static SimEntityId FindEntity<T>(SimWorld world) where T : struct
+        {
+            foreach (SimEntityId e in world.With<T>()) return e;
+            return SimEntityId.Null;
+        }
     }
 }

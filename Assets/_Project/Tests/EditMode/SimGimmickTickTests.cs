@@ -239,9 +239,10 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Cluster_DeclaresItsStepsWithMatchingPhases()
         {
+            // ⚠ 이 클러스터는 조각마다 자란다 — **포함**만 본다. {1..44} 전수 단정은 18-K 몫이다.
             var steps = new GimmickCluster(new SimChannels()).Steps().ToList();
 
-            CollectionAssert.AreEquivalent(new[] { 20, 24, 25 }, steps.Select(s => s.Order).ToArray());
+            CollectionAssert.IsSubsetOf(new[] { 20, 24, 25 }, steps.Select(s => s.Order).ToArray());
             foreach (var s in steps)
                 Assert.AreEqual(SimPipeline.PhaseForOrder(s.Order), s.Phase,
                     $"#{s.Order}({s.Name}) 의 phase 가 캡처 번호 구간과 어긋난다");
