@@ -19,7 +19,17 @@ namespace Wassup.Sim
         public bool IsNull => Value == 0;
 
         public bool Equals(SimEntityId o) => Value == o.Value;
-        public override bool Equals(object o) => o is SimEntityId e && Equals(o);
+        /// <summary>
+        /// ⚠ **패턴 변수 `e` 를 넘겨야 한다.** `Equals(o)` 로 쓰면 `o` 의 정적 타입이 `object` 라
+        /// 오버로드 해석이 <see cref="Equals(SimEntityId)"/> 가 아니라 **자기 자신**에 바인딩돼
+        /// 무한 재귀 → `StackOverflowException`(catch 불가, 프로세스 사망)이 된다.
+        /// `object → SimEntityId` 암시적 변환이 없어 전자가 후보에서 탈락하기 때문이다.
+        ///
+        /// 잠복하기 쉬운 버그다 — `Dictionary`/`List.Contains` 는 `EqualityComparer&lt;T&gt;.Default`
+        /// 를 거쳐 `IEquatable` 경로로 가므로 **박싱 비교가 처음 일어날 때** 터진다
+        /// (`object.Equals(a,b)` · 비제네릭 컬렉션 · 직렬화/리플렉션 = **엔진 밖 호스팅 경로**).
+        /// </summary>
+        public override bool Equals(object o) => o is SimEntityId e && Equals(e);
         public override int GetHashCode() => Value;
         public static bool operator ==(SimEntityId a, SimEntityId b) => a.Value == b.Value;
         public static bool operator !=(SimEntityId a, SimEntityId b) => a.Value != b.Value;

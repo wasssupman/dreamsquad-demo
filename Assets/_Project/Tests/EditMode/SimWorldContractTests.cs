@@ -217,5 +217,50 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(w.HasBuffer<Hit>(e));
             Assert.AreEqual(0, w.GetBuffer<Hit>(e).Count, "빈 버퍼는 부재가 아니다");
         }
+
+        /// <summary>
+        /// **박싱 비교 경로**를 지킨다. `Dictionary`/`List.Contains` 는
+        /// `EqualityComparer&lt;T&gt;.Default` → `IEquatable` 로 가므로 이 경로를 **밟지 않는다** —
+        /// 그래서 `Equals(object)` 가 무한 재귀여도 스위트 전체가 초록일 수 있다(실제로 그랬다).
+        ///
+        /// 이 경로가 처음 밟히는 곳은 직렬화·리플렉션·비제네릭 컬렉션, 즉 **엔진 밖 호스팅**이다.
+        /// 거기서 터지면 `StackOverflowException` 이라 catch 도 못 하고 진행 중인 판이 사라진다.
+        ///
+        /// 값 타입 4종을 한 자리에서 본다 — 넷이 같은 관용구를 쓰고, 하나만 틀려도 나머지가
+        /// 맞다는 사실이 오히려 눈을 가린다.
+        /// </summary>
+        [Test]
+        public void ValueTypes_SurviveBoxedEquality()
+        {
+            object a = new SimEntityId(7);
+            object same = new SimEntityId(7);
+            object other = new SimEntityId(8);
+            Assert.IsTrue(a.Equals(same));
+            Assert.IsFalse(a.Equals(other));
+            Assert.IsFalse(a.Equals("not an id"), "다른 타입은 false — 던지지도, 재귀하지도 않는다");
+            Assert.IsFalse(a.Equals(null));
+
+            object v3 = new SimVec3(1f, 2f, 3f);
+            Assert.IsTrue(v3.Equals(new SimVec3(1f, 2f, 3f)));
+            Assert.IsFalse(v3.Equals(new SimVec3(1f, 2f, 4f)));
+
+            object v2 = new SimVec2(1f, 2f);
+            Assert.IsTrue(v2.Equals(new SimVec2(1f, 2f)));
+            Assert.IsFalse(v2.Equals(new SimVec2(1f, 3f)));
+
+            object i2 = new SimInt2(3, 4);
+            Assert.IsTrue(i2.Equals(new SimInt2(3, 4)));
+            Assert.IsFalse(i2.Equals(new SimInt2(3, 5)));
+        }
+
+        /// 해시 계약 — 같은 값이면 같은 해시여야 `Dictionary` 키로 쓸 수 있다.
+        [Test]
+        public void ValueTypes_HashAgreesWithEquality()
+        {
+            Assert.AreEqual(new SimEntityId(7).GetHashCode(), new SimEntityId(7).GetHashCode());
+            Assert.AreEqual(new SimVec3(1f, 2f, 3f).GetHashCode(), new SimVec3(1f, 2f, 3f).GetHashCode());
+            Assert.AreEqual(new SimVec2(1f, 2f).GetHashCode(), new SimVec2(1f, 2f).GetHashCode());
+            Assert.AreEqual(new SimInt2(3, 4).GetHashCode(), new SimInt2(3, 4).GetHashCode());
+        }
     }
 }
