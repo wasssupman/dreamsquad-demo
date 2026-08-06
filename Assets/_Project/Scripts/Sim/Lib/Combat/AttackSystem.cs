@@ -140,7 +140,12 @@ namespace Wassup.Sim.Combat
                                          hasFlowField, flowField, tileSize, gridSize, ffOrigin);
 
                 // ── arm D — START ───────────────────────────────────────────
-                StartAttack(world, attackerEntity, ref attack, transform.Position, in pick, actionLocked, dt);
+                bool doResolve = StartAttack(world, attackerEntity, ref attack, transform.Position,
+                                             ref pick, actionLocked, dt);
+
+                // ── arm E — RESOLVE ─────────────────────────────────────────
+                ResolveAttack(world, attackerEntity, ref attack, transform.Position, in pick, doResolve,
+                              tileSize, gridSize, ffOrigin);
 
                 world.Set(attackerEntity, attack);
             }
@@ -435,31 +440,28 @@ namespace Wassup.Sim.Combat
         ///
         /// 지연 중이면 tick 만 하고 새 START 를 하지 않는다 — 만료한 프레임에 RESOLVE 가 돈다.
         ///
-        /// ⚠ **아직 RESOLVE 가 없다(arm E).** 구 sim 은 이 함수가 정하는 `doResolve` 를 같은 반복의
-        /// RESOLVE 블록이 소비한다 — ① `hitDelaySec &lt;= 0` 이면 이번 프레임 즉시 ② 지연이 만료한
-        /// 프레임에. arm E 가 들어올 때 이 함수는 그 bool 을 **돌려주게** 된다. 지금 그 값을 만들어
-        /// 버리지 않는 이유는, 소비자 없는 신호를 저장해 두면 "쓰이는 것처럼" 보이기 때문이다.
-        /// 그때까지 이 시스템은 **피해를 넣지 않는다** — START 와 쿨다운·지연 상태만 굴린다.
+        /// 돌려주는 `doResolve` 를 같은 반복의 <see cref="ResolveAttack"/> 이 소비한다 —
+        /// ① `hitDelaySec &lt;= 0` 이면 이번 프레임 즉시 ② 지연이 만료한 프레임에.
         /// </summary>
-        private void StartAttack(
+        private bool StartAttack(
             SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
-            in TargetPick pick, bool actionLocked, float dt)
+            ref TargetPick pick, bool actionLocked, float dt)
         {
             if (attack.hitDelayRemaining > 0f)
             {
                 float rem = attack.hitDelayRemaining - dt;
                 attack.hitDelayRemaining = SimMath.Max(0f, rem);
-                return; // 지연 중엔 새 공격 START 안 함 (RESOLVE 는 arm E)
+                return rem <= 0f; // 지연 만료 → 이번 프레임 타격. 지연 중엔 새 START 안 함
             }
 
-            if (actionLocked || pick.target.IsNull || attack.cooldownRemaining > 0f) return;
+            if (actionLocked || pick.target.IsNull || attack.cooldownRemaining > 0f) return false;
 
             // enemy-ai-fsm — 적은 `Engaging|Standoff` 에서만 발사한다. 방어유닛은 상태머신 대상이
             // 아니라 항상 발사한다.
             bool isDefenderStart = world.Has<DefenderUnitTag>(attackerEntity);
             if (!isDefenderStart && world.TryGet<EnemyAiState>(attackerEntity, out var ai)
                 && ai.value != AiState.Engaging && ai.value != AiState.Standoff)
-                return;
+                return false;
 
             // projectile-shot-sequence — 일반 타겟팅 Direction 탄은 최근접으로 START 하되, wind-up
             // 뒤의 재판정이 이번 발사의 기준축을 바꾸거나 취소하지 못하도록 **방향만** 스냅샷한다.
@@ -514,8 +516,340 @@ namespace Wassup.Sim.Combat
             }
 
             // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE, >0 이면 지연 시작.
-            // (RESOLVE 본체는 arm E — 지금은 지연 상태만 세운다.)
-            if (attack.hitDelaySec > 0f) attack.hitDelayRemaining = attack.hitDelaySec;
+            if (attack.hitDelaySec <= 0f) return true;
+            attack.hitDelayRemaining = attack.hitDelaySec;
+            return false;
+        }
+
+        /// <summary>
+        /// arm E — **RESOLVE**(타격 판정). 재판정된 `pick.target` 이 필요하다. 단 START 가 성사된
+        /// **facing Direction 탄**은 targetless 궤적이라 witness 소실 뒤에도 완주한다.
+        ///
+        /// ⚠ **여기까지가 arm E 다.** 투사체를 가진 공격자의 발사 요청까지 만들고, `ProjectileRef`
+        /// 없는 근접/Outputs 경로(구 `1104-1617`)는 arm F 다. 그 경계가 구 sim 의 `if (projRef)` /
+        /// `else` 그대로다.
+        /// </summary>
+        private void ResolveAttack(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
+            in TargetPick pick, bool doResolve, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            if (!doResolve) return;
+
+            ResolveAttackBody(world, attackerEntity, ref attack, atkPos, in pick, tileSize, gridSize, ffOrigin);
+
+            // ── 에필로그 ────────────────────────────────────────────────────────
+            // ⚠ **본문이 어느 분기로 끝나든 지난다.** 해결된 공격은 명중이든 strict lapse 든 잠금을
+            //   풀어야 다음 공격이 현재 최전방을 다시 고른다. 본문 안에 두면 조기 반환 경로에서
+            //   빠지고, 그러면 잠금이 영구 활성으로 남아 유닛이 죽은 대상을 계속 겨눈다.
+            if (pick.wantFrontmost)
+            {
+                world.Set(attackerEntity, new FrontmostAttackLock
+                {
+                    active = false, target = SimEntityId.Null,
+                    damageMulSnapshot = 1f, targetIsPriority = false,
+                });
+            }
+            // 이번 발사의 기준축을 쓴 뒤 비운다 — 다음 START 가 자기 방향을 새로 얼린다.
+            if (attack.hasCommittedDirection != 0)
+            {
+                attack.committedDirection = default;
+                attack.hasCommittedDirection = 0;
+            }
+        }
+
+        /// <summary>arm E — RESOLVE 본문(에필로그 제외). 호출자는 <see cref="ResolveAttack"/> 뿐이다.</summary>
+        private void ResolveAttackBody(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
+            in TargetPick pick, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            SimEntityId bestTarget = pick.target;
+            SimVec3 bestTargetPos = pick.targetPos;
+            SimInt2 facing = default;
+            if (pick.hasFacing) facing = world.Get<DeployedFacing>(attackerEntity).value;
+
+            // targetless 완주 — 로그/방향 보조점은 **레인 끝**을 쓴다.
+            bool facingDirectionalNoWitness =
+                bestTarget.IsNull && pick.hasFacing && pick.isDirectionalProjectile;
+            bool committedDirectionalNoWitness =
+                bestTarget.IsNull && !pick.hasFacing && pick.isDirectionalProjectile
+                && attack.hasCommittedDirection != 0;
+
+            if (facingDirectionalNoWitness)
+            {
+                bestTargetPos = atkPos + new SimVec3(facing.x, 0f, facing.y) * (pick.tileRange * tileSize);
+            }
+            else if (committedDirectionalNoWitness)
+            {
+                bestTargetPos = atkPos
+                    + new SimVec3(attack.committedDirection.x, 0f, attack.committedDirection.y)
+                    * (pick.tileRange * tileSize);
+            }
+
+            if (bestTarget.IsNull && !facingDirectionalNoWitness && !committedDirectionalNoWitness) return;
+
+            float damageMul = world.TryGet<ModifierStats>(attackerEntity, out var ms) ? ms.damageMul : 1f;
+            // shatter_hymn — CC 걸린 적 대상 추가 배율. 공격자 stat(부재 → 1)이고 **대상별 활성 CC
+            // 게이트는 각 피해 지점**에서 건다(투사체는 발사 시점 `bestTarget` 기준).
+            float attackerVsCc = world.TryGet<ModifierStats>(attackerEntity, out var ms2) ? ms2.damageVsCcMul : 1f;
+
+            // 최전방 주 타겟 배율 — 잠금이 활성이고 **진짜 최전방을 골랐을 때만**(폴백 최근접 제외).
+            // 아니면 `fmPrioMul` 은 0(inert)으로 남고, 소비 지점이 `0 = 보너스 없음`으로 읽는다.
+            var fmPrioTarget = SimEntityId.Null;
+            float fmPrioMul = 0f;
+            if (pick.wantFrontmost)
+            {
+                var l = world.Get<FrontmostAttackLock>(attackerEntity);
+                if (l.active && l.targetIsPriority)
+                {
+                    fmPrioTarget = l.target;
+                    fmPrioMul = l.damageMulSnapshot;
+                }
+            }
+
+            // 응축된 일격 pre-scan — **이번 공격이 N 번째인가**(→ 강공)? 사본별 배율을 곱으로 모은다.
+            // ⚠ 아래 dc 트리거 루프가 `Tick` 할 **같은 pre-increment 카운터**를 비변이 peek
+            //   (`WouldFire`)으로 읽으므로 이 예측 == 그 루프의 발화다. counter 쓰기 소유는 그 루프에 있다.
+            float heavyMul = 1f;
+            if (!bestTarget.IsNull
+                && world.Has<DefenderUnitTag>(attackerEntity)
+                && world.HasBuffer<DcTriggerSlot>(attackerEntity))
+            {
+                var heavySlots = world.GetBuffer<DcTriggerSlot>(attackerEntity);
+                for (int hi = 0; hi < heavySlots.Count; hi++)
+                {
+                    var hs = heavySlots[hi];
+                    if (hs.trigger != DcTriggerKind.AttackN
+                        || hs.payload != DcPayloadKind.HeavyStrike
+                        || !DcTrigger.WouldFire(hs.counter, hs.period))
+                        continue;
+                    // ⚠ **게이트 합성 불변식**: pre-scan 은 `WouldFire ∧ GatePass`, 아래 counter 루프는
+                    //   `if (GatePass) Tick` — 같은 프레임·같은 `bestTarget`·pre-damage HP 라 결과가
+                    //   일치한다. 게이트 실패 시 counter 도 안 오르므로(카운트 게이트) 이 공격은
+                    //   강공이 아니고, 다음 게이트 통과 공격이 같은 카운트로 재도전한다.
+                    if (hs.gate != DcGateKind.None)
+                    {
+                        if (!world.TryGet<Health>(bestTarget, out var gh)) continue;
+                        if (!DcTrigger.GatePass(hs.gate, hs.gateValue, gh.value, gh.max)) continue;
+                    }
+                    heavyMul *= hs.magnitude > 0f ? hs.magnitude : 1f;
+                }
+            }
+
+            // 방어유닛/적의 모든 타격 효과는 `AttackOutputElement` 를 통해 나간다.
+            var outputs = world.GetBuffer<AttackOutputElement>(attackerEntity);
+            if (outputs == null) return;
+
+            if (!world.TryGet<ProjectileRef>(attackerEntity, out var projRef)) return; // 근접 = arm F
+
+            ResolveProjectileAttack(world, attackerEntity, ref attack, atkPos, in pick, in projRef,
+                                    outputs, bestTarget, bestTargetPos, facing,
+                                    damageMul, attackerVsCc, fmPrioTarget, fmPrioMul, heavyMul,
+                                    tileSize, gridSize, ffOrigin);
+        }
+
+        /// <summary>
+        /// arm E — 투사체 보유 공격자의 발사. 궤적 3분기(탄도 아치 / 방향 직선 / 호밍)로 갈린다.
+        ///
+        /// ⚠ **always-on 모드 집계는 분기 위에서 한 번만** 한다(count 합 / range max / mul 곱).
+        /// homing 과 directional 이 같은 12줄을 각자 갖고 있으면 필드가 하나 늘 때 한쪽이 조용히
+        /// 뒤처진다. 탄도는 계산만 하고 요청에 싣지 않는다 — 착탄 셀이 발사 시점에 고정돼 재조준할
+        /// 대상이 없다.
+        /// </summary>
+        private void ResolveProjectileAttack(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
+            in TargetPick pick, in ProjectileRef projRef, List<AttackOutputElement> outputs,
+            SimEntityId bestTarget, SimVec3 bestTargetPos, SimInt2 facing,
+            float damageMul, float attackerVsCc, SimEntityId fmPrioTarget, float fmPrioMul, float heavyMul,
+            float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            int dcBounceCount = 0, dcBounceRange = 0;
+            float dcBounceMul = 1f;
+            if (world.Has<DefenderUnitTag>(attackerEntity))
+            {
+                var bmods = world.GetBuffer<DcAttackModSlot>(attackerEntity);
+                if (bmods != null)
+                    for (int di = 0; di < bmods.Count; di++)
+                    {
+                        var mod = bmods[di];
+                        if (mod.kind != DcAttackModKind.ProjectileBounce) continue;
+                        dcBounceCount += mod.count;
+                        dcBounceRange = SimMath.Max(dcBounceRange, mod.tileRange);
+                        dcBounceMul *= mod.damageMul;
+                    }
+            }
+
+            float projectileDamage = 0f;
+            // ⚠ 구 sim 은 `ecb.AddBuffer` 로 **지연** 생성했다. 신 sim 은 즉시 쓴다 — 이 버퍼를
+            //   같은 틱 안에서 읽는 시스템이 없고(소비자는 #38·소비 지점), 지연으로 두면 resolve
+            //   마다 델리게이트 + 임시 List 가 생긴다(N2 가 없애려는 바로 그 할당). `AddBuffer` 가
+            //   기존 버퍼를 돌려주므로 **비우고 다시 채우는 것**이 ECB 의 교체 의미와 같다.
+            var projectileOutputs = world.AddBuffer<ProjectileSpawnOutputElement>(attackerEntity);
+            projectileOutputs.Clear();
+            for (int oi = 0; oi < outputs.Count; oi++)
+            {
+                var o = outputs[oi].value;
+                if (o.kind == AttackOutputKind.Damage)
+                {
+                    float amount = o.magnitude * damageMul;
+                    // shatter_hymn — **발사 시점 의도 대상**이 CC 상태면 배율(투사체 bake 경로 포함).
+                    if (!bestTarget.IsNull && attackerVsCc != 1f
+                        && AttackMath.AnyActiveCc(world.GetBuffer<CcEffect>(bestTarget)))
+                        amount *= attackerVsCc;
+                    o.magnitude = amount;
+                    projectileDamage += amount;
+                    _channels.AttackOutputLog.Enqueue(new AttackOutputLogEvent
+                    {
+                        attacker = attackerEntity,
+                        kind = AttackOutputKind.Damage,
+                        magnitude = amount,
+                        duration = 0f,
+                        sourcePos = atkPos,
+                        targetPos = bestTargetPos,
+                    });
+                }
+                projectileOutputs.Add(new ProjectileSpawnOutputElement { value = o });
+            }
+
+            if (projRef.movement == MovementKind.BallisticArcToPoint)
+            {
+                // 대상의 **현재 셀**을 착탄점으로 고정한다 — 비행 중 대상이 죽거나 움직여도 그 자리에
+                // 떨어진다. XZ 만 의미가 있고 Y 는 소비 지점이 스폰 높이 평면으로 덮는다.
+                SimInt2 impactCell = GridMath.WorldToCell(bestTargetPos, tileSize, gridSize, ffOrigin);
+                SimVec3 impactWorld = GridMath.CellToWorldCenter(impactCell, tileSize, 0f, ffOrigin);
+                _ecb.Set(attackerEntity, new ProjectileSpawnRequest
+                {
+                    movement = MovementKind.BallisticArcToPoint,
+                    payload = projRef.payload,
+                    origin = atkPos,
+                    impact = impactWorld,
+                    damage = projectileDamage,
+                    speed = projRef.speed,
+                    visualScale = projRef.visualScale,
+                    dataIndex = projRef.dataIndex,
+                    arcHeight = projRef.arcHeight,
+                    impactTileRange = projRef.impactTileRange,
+                    owner = attackerEntity, // 위협 귀속
+                    priorityTarget = fmPrioTarget,
+                    priorityDamageMul = fmPrioMul,
+                    heavyDamageMul = heavyMul,
+                });
+                return;
+            }
+
+            if (projRef.movement == MovementKind.DirectionalLinear)
+            {
+                // ⚠ **대상 엔티티를 싣지 않는다** — 경로에 있는 것을 맞히는 탄이라 발사 후 대상이
+                //   죽거나 비켜도 궤적은 그대로다. 방향은 facing 이 원칙이고, facing 없는 유닛이 이
+                //   저작을 쓰면 조준 대상 쪽으로 쏜다(퇴화 벡터는 소비 지점이 폐기).
+                SimVec2 fireDir = new SimVec2(facing.x, facing.y);
+                if (!pick.hasFacing && attack.hasCommittedDirection != 0)
+                {
+                    fireDir = attack.committedDirection;
+                }
+                else if (!pick.hasFacing)
+                {
+                    SimVec2 toTarget = new SimVec2(bestTargetPos.x - atkPos.x, bestTargetPos.z - atkPos.z);
+                    fireDir = SimMath.LengthSq(toTarget) > 1e-6f
+                        ? SimMath.Normalize(toTarget) : new SimVec2(0f, 1f);
+                }
+                var template = new ProjectileSpawnRequest
+                {
+                    movement = MovementKind.DirectionalLinear,
+                    payload = projRef.payload,
+                    origin = atkPos,
+                    direction = fireDir,
+                    // 사거리는 **레인 게이트와 같은 타일 단위**로 환산한다 — 그래야 탄이 "게이트가
+                    // 인정한 마지막 칸" 까지 정확히 닿는다.
+                    maxDistance = pick.tileRange * tileSize,
+                    damage = projectileDamage,
+                    speed = projRef.speed,
+                    hitThreshold = projRef.hitThreshold,
+                    visualScale = projRef.visualScale,
+                    dataIndex = projRef.dataIndex,
+                    bounceRemaining = dcBounceCount,
+                    bounceTileRange = dcBounceRange,
+                    bounceDamageMul = dcBounceMul,
+                    owner = attackerEntity,
+                    priorityTarget = fmPrioTarget,
+                    priorityDamageMul = fmPrioMul,
+                    heavyDamageMul = heavyMul,
+                };
+
+                // 패턴 방어유닛은 요청을 직접 만들지 않고 **한 트리거를 인스턴스 하나로 번역**한다.
+                // emitter(#38)가 이 시스템 뒤에 돌아 첫 탄도 같은 틱에 캐리어가 된다.
+                bool pushedPattern = false;
+                var slots = world.GetBuffer<PatternSlot>(attackerEntity);
+                var instances = world.GetBuffer<EmitterInstance>(attackerEntity);
+                if (slots != null && instances != null && slots.Count > 0 && slots[0].spec.ShotCount > 0)
+                {
+                    var slot = slots[0];
+                    var spec = slot.spec;
+                    // 방어유닛 피해는 output/modifier 가 정한다. 패턴 저작의 damage 는 보스/스킬
+                    // 경로용이라 여기서 **트리거 시점 실효값으로 덮어 전탄에 스냅샷**한다.
+                    spec.damage = projectileDamage;
+                    // ⚠ 시드 축은 `SimEntityId` 다(할당 순서 독립). 같은 host 의 연속 트리거와 여러
+                    //   host 가 같은 시퀀스를 반복하지 않되 결정론은 유지된다.
+                    PatternShotRandomizer.Apply(
+                        ref spec, SimMath.Hash(new SimInt2(attackerEntity.Value, slot.fireCountBase)));
+
+                    // barrel 기반 template 의 effect/targetFaction 은 보존하고, **이번 공격에만
+                    // 결정되는 값**만 RESOLVE 에서 스냅샷한다.
+                    var patternTemplate = slot.template;
+                    patternTemplate.origin = template.origin;
+                    patternTemplate.direction = template.direction;
+                    patternTemplate.maxDistance = template.maxDistance;
+                    patternTemplate.damage = projectileDamage;
+                    patternTemplate.bounceRemaining = template.bounceRemaining;
+                    patternTemplate.bounceTileRange = template.bounceTileRange;
+                    patternTemplate.bounceDamageMul = template.bounceDamageMul;
+                    patternTemplate.owner = attackerEntity;
+                    patternTemplate.priorityTarget = template.priorityTarget;
+                    patternTemplate.priorityDamageMul = template.priorityDamageMul;
+                    patternTemplate.heavyDamageMul = template.heavyDamageMul;
+
+                    var instance = new EmitterInstance
+                    {
+                        spec = spec,
+                        template = patternTemplate,
+                        lockedTarget = SimEntityId.Null,
+                    };
+                    EmitterTick.Begin(ref instance.runtime, spec, slot.fireCountBase);
+                    instances.Add(instance);
+
+                    slot.fireCountBase += spec.ShotCount;
+                    slots[0] = slot;
+                    // 다음 트리거는 **버스트가 끝난 뒤부터** 기다린다.
+                    attack.cooldownRemaining += EmitterTick.TotalDuration(spec);
+                    pushedPattern = true;
+                }
+
+                // 패턴 없는 방향 단발(적 또는 레거시 저작)은 기존 요청 경로를 유지한다.
+                if (!pushedPattern) _ecb.Set(attackerEntity, template);
+                return;
+            }
+
+            _ecb.Set(attackerEntity, new ProjectileSpawnRequest
+            {
+                movement = MovementKind.HomingToEntity,
+                payload = projRef.payload,
+                target = bestTarget,
+                origin = atkPos,
+                damage = projectileDamage,
+                speed = projRef.speed,
+                hitThreshold = projRef.hitThreshold,
+                visualScale = projRef.visualScale,
+                dataIndex = projRef.dataIndex,
+                onHitEffect = projRef.onHitEffect,
+                splashRadius = projRef.splashRadius,
+                splashDamageMul = projRef.splashDamageMul,
+                bounceRemaining = dcBounceCount,
+                bounceTileRange = dcBounceRange,
+                bounceDamageMul = dcBounceMul,
+                owner = attackerEntity,
+                priorityTarget = fmPrioTarget,
+                priorityDamageMul = fmPrioMul,
+                heavyDamageMul = heavyMul,
+            });
         }
 
         /// <summary>

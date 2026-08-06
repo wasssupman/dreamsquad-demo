@@ -128,5 +128,30 @@ namespace Wassup.Sim
             float len = Dot(v, v);
             return len > FltMinNormal ? v * Rsqrt(len) : defaultValue;
         }
+
+        // ── 해시 ──────────────────────────────────────────────────────────────
+        /// <summary>
+        /// `Unity.Mathematics.math.hash(int2)` 를 그대로 옮겼다(`int2.gen.cs:947`):
+        /// `csum(asuint(v) * uint2(0x83B58237, 0x833E3E29)) + 0xA9D919BF`.
+        ///
+        /// ⚠ **"같은 값을 주는 다른 해시" 로 대체할 수 없다.** 18-I/2 의 발사 패턴이 이 값을
+        /// `SimRandom.CreateFromIndex` 의 시드로 쓰므로, 상수 하나만 달라도 랜덤 패턴의 각도·간격이
+        /// 통째로 갈리고 그것이 골든에 실린다.
+        ///
+        /// ⚠ 상수는 **타입마다 다르다**(`int2`/`int3`/`float2`… 각자 고유). 기억으로 적으면 안 되고
+        /// 패키지 소스에서 옮겨야 한다 — 초판이 다른 타입의 상수를 적었고 `SimMathParityTests` 가
+        /// 그것을 잡았다.
+        ///
+        /// unchecked 곱셈/덧셈이 원본 동작이다(오버플로 wrap).
+        /// </summary>
+        public static uint Hash(SimInt2 v)
+        {
+            unchecked
+            {
+                uint x = (uint)v.x * 0x83B58237u;
+                uint y = (uint)v.y * 0x833E3E29u;
+                return x + y + 0xA9D919BFu;
+            }
+        }
     }
 }

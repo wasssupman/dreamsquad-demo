@@ -10,9 +10,13 @@ namespace Wassup.Tests.EditMode
     /// <summary>
     /// battle-sim-extraction unit 18-I/2 arm C/3 + D — 타겟팅 스캔과 START.
     ///
-    /// ⚠ **RESOLVE(arm E)가 아직 없다.** 이 스위트의 관측점은 피해가 아니라
-    /// `UnitAttackVisualEvent`(누가 무엇을 겨눠 START 했나) + `AttackState`(쿨다운·지연) +
-    /// `FrontmostAttackLock`/`FocusTarget` 이다. 구 오라클이 피해로 보던 것을 여기서는 **조준**으로 본다.
+    /// 이 스위트의 관측점은 피해가 아니라 **조준**이다 — `UnitAttackVisualEvent`(누가 무엇을 겨눠
+    /// START 했나) + `AttackState`(쿨다운·지연) + `FrontmostAttackLock`/`FocusTarget`.
+    /// 구 오라클이 피해로 보던 것을 여기서는 조준으로 본다.
+    ///
+    /// ⚠ **잠금 상태를 보는 테스트는 `hitDelaySec` 을 준다.** 지연이 0 이면 START 와 RESOLVE 가
+    /// 같은 틱에 나고 RESOLVE 에필로그가 잠금을 바로 푼다(그게 구 sim 동작이다) — 잠긴 상태는
+    /// 준비 동작 중에만 존재한다.
     ///
     /// 어서션 복제 출처(구 `AttackSystemUnifiedLoopTests`): `U4`(쿨다운 부분) · `U7` · `U8` ·
     /// `SelfExclusion_Attacker_Does_Not_Target_Itself` · `DeadTag_Excludes_Target_From_Pool`.
@@ -460,7 +464,10 @@ namespace Wassup.Tests.EditMode
         public void Frontmost_PicksTheLowestFlowDist_AndLocksTheMultiplier()
         {
             FlowField();
-            var defender = FrontmostDefender(new SimVec3(3f, 0f, 3f));
+            // ⚠ `hitDelaySec` 을 주는 이유: 지연이 0 이면 START 와 RESOLVE 가 같은 틱에 나고
+            //   RESOLVE 에필로그가 잠금을 **바로 푼다**(그게 구 sim 동작이다). 잠긴 상태를
+            //   관측하려면 준비 동작 중이어야 한다.
+            var defender = FrontmostDefender(new SimVec3(3f, 0f, 3f), hitDelaySec: 1f);
             Target(Faction.Enemy, new SimVec3(2f, 0f, 3f));           // dist 14
             var ahead = Target(Faction.Enemy, new SimVec3(5f, 0f, 3f)); // dist 11 = 더 앞
 
@@ -478,7 +485,7 @@ namespace Wassup.Tests.EditMode
         public void Frontmost_FallsBackToNearest_WithoutTheBonus()
         {
             // 흐름장이 없으면 후보가 전부 도달 불가 → 최근접 폴백이되 **배율 수령자는 아니다**.
-            var defender = FrontmostDefender(new SimVec3(0f, 0f, 0f));
+            var defender = FrontmostDefender(new SimVec3(0f, 0f, 0f), hitDelaySec: 1f);
             var near = Target(Faction.Enemy, new SimVec3(1f, 0f, 0f));
 
             _sut.Run(_world);
@@ -573,7 +580,7 @@ namespace Wassup.Tests.EditMode
             // ⚠ witness 는 "최전방" 이 아니라 "최근접" 이다 — 보너스를 실으면 카드가 약속한
             //   대상이 아닌 적이 배율을 받는다.
             FlowField();
-            var defender = FrontmostDefender(new SimVec3(3f, 0f, 3f));
+            var defender = FrontmostDefender(new SimVec3(3f, 0f, 3f), hitDelaySec: 1f);
             _world.Set(defender, new DeployedFacing { value = new SimInt2(1, 0) });
             var inLane = Target(Faction.Enemy, new SimVec3(5f, 0f, 3f));
 

@@ -278,5 +278,32 @@ namespace Wassup.Tests.EditMode
                 SameBits(magA, magB, $"×{mul}: magnitude");
             }
         }
+
+        /// <summary>
+        /// 18-I/2 arm E — 발사 패턴의 셔플 시드가 `math.hash(int2)` 다. 상수 하나만 달라도 랜덤
+        /// 패턴의 각도·간격이 통째로 갈리고 **그것이 골든에 실린다**. 음수·오버플로 경계를 함께 본다
+        /// (`asuint` 캐스트와 wrap 곱셈이 원본 동작이라 여기서 어긋나기 쉽다).
+        /// </summary>
+        [Test]
+        public void Hash_int2_가_비트까지_같다()
+        {
+            var rng = new System.Random(20260806);
+            for (int i = 0; i < Samples; i++)
+            {
+                int a = rng.Next(int.MinValue, int.MaxValue);
+                int b = rng.Next(int.MinValue, int.MaxValue);
+                Assert.AreEqual(math.hash(new int2(a, b)), SimMath.Hash(new SimInt2(a, b)),
+                    $"hash({a}, {b})");
+            }
+
+            foreach (var v in new[]
+            {
+                new int2(0, 0), new int2(1, 0), new int2(0, 1), new int2(-1, -1),
+                new int2(int.MinValue, int.MaxValue), new int2(int.MaxValue, int.MinValue),
+            })
+            {
+                Assert.AreEqual(math.hash(v), SimMath.Hash(new SimInt2(v.x, v.y)), $"hash{v}");
+            }
+        }
     }
 }
