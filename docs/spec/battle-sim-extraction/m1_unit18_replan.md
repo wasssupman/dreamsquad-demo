@@ -23,7 +23,7 @@
 | 순서 | 단위 | 규모 | 새로 들어간 것 |
 |---|---|---|---|
 | 1 | **18-I/2** #33 `AttackSystem` | 1,729줄 | **F6** — #18 등록을 완료 기준에 |
-| 2 | **N1** 초월함수 **측정 보장** (만들지 않음) | 코퍼스 확인 + 테스트 | ⬅ **신설 · 18-J 앞** |
+| 2 | ~~**N1** 초월함수 측정 보장~~ **완료** | — | `fea4de0e` + 코퍼스 실측 |
 | 3 | **N2** 할당 회귀 차단 | 시스템 6 + 테스트 | ⬅ **신설 · N1 과 같은 패스 가능** |
 | 4 | **18-J** 기믹·보스·임계·도약 | 10시스템 1,242줄 | #24 살베지 판정 선행 |
 | 5 | **18-K** 통합 | — | **F5·F6·D3·D5** + 성능 재측정 |
@@ -96,10 +96,29 @@
 그리고 세 파일의 게이트 주장(`SimMath.cs:18`·`SimVec.cs:17-18`·`SimRandom.cs:16`)을
 **실제 커버리지와 일치**시킨다 — 넓게 주장하고 좁게 덮는 상태를 남기지 않는다.
 
+### 실측 결과 — 골든 코퍼스는 `sin` 경로를 밟는다 ✅ (2026-08-06)
+
+**결론: unit 20 교차 골든이 F2 를 건드리지 않고 통과할 위험은 없다.** 코퍼스 변경 불필요.
+
+근거(저작 링크 추적):
+
+| flightMode | 탄 에셋 | 소유자 | sim 경로 |
+|---|---|---|---|
+| 1 `BallisticArcToPoint` | `Projectile_ArtilleryShell` | `Defender_Artillery` | `ArcPosition` → **`Sin`** |
+| 2 `SkyFall` | `MachineGunBullet`·`ShotgunPellet` | 방어유닛 2 + 패턴 2 | (아치 없음) |
+| 3 **`DirectionalLinear`** | `Projectile_NightmareMissile` | `Pattern_NightmareMissile` | `PatternDirection.Resolve` → **`SinCos`** |
+| 4 **`GrenadeToCell`** | `Projectile_NightmareBarrage` | `Pattern_NightmareBarrage` | `ArcPosition` → **`Sin`** |
+
+- 골든 덱 `Deck_Serpent` 에 **`Enemy_Boss_Nightmare` 포함** — 그 보스의 패턴 2종이 정확히
+  위 3·4번이다.
+- 투사체 생존 틱: `boss_wave` 27 · `dreamcatcher_heavy` 68 · `forced_wave` 29 ·
+  `multi_goal` 17 · `normal` 22 (`restart`·`simultaneous_death` 는 0).
+
+⚠ **이건 저작 링크 추론이지 실행 계측이 아니다.** 보스가 실제로 그 패턴을 발사하는 틱이
+코퍼스 안에 있는지는 **18-K 트레이스 emitter 작업 중 한 줄로 확정**할 수 있다 — 그때 확인한다.
+(`ProjectileState` 는 `stateHash` 에 들어가므로 골든 JSON 에 타입명이 리터럴로 안 보인다.)
+
 ### 완료 기준
-- **골든 코퍼스 7종의 `sin` 경로 도달 여부가 기록된다.** 안 밟으면 unit 20 교차 골든이
-  F2 를 건드리지 않고 통과하므로, 밟는 시나리오를 코퍼스에 넣을지 판단한다
-  (코퍼스 변경은 unit 19 권한이므로 **판단만 하고 실행은 이관**)
 - `SimMathParityTests` 가 `Sin`·`Cos`·`SinCos`·`Radians`·`PI`·**`SimVec2` 전부**·
   `CreateFromIndex`·`ModifierAuthoring` 일치를 덮는다
 - 세 파일의 게이트 주장(`SimMath.cs:18`·`SimVec.cs:17-18`·`SimRandom.cs:16`)이 실제 커버리지와
