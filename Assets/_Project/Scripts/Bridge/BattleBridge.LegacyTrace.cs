@@ -75,6 +75,9 @@ namespace Wassup.Bridge
             ScoreMath.BattleScore score = _legacyTraceHasFinalScore
                 ? _legacyTraceFinalScore
                 : _outcome.CalculateScore(defeated, (float)_battleClock);
+            // battle-sim-extraction unit 18-N — 그림자가 실제로 채워졌는지 한 줄로 남긴다
+            // (골든 초록은 "라이브를 안 깼다" 는 증거일 뿐이다 — 정의는 BattleBridge.Shadow.cs).
+            ShadowLogSummary();
             string canonicalState = BuildLegacyFinalStateCanonical();
             string json = _legacyTraceRecorder.Complete(new LegacyTraceFinalV0
             {

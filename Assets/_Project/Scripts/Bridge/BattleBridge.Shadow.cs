@@ -1,4 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using UnityEngine;
 using Wassup.Core;
 
 namespace Wassup.Bridge
@@ -46,6 +51,9 @@ namespace Wassup.Bridge
         /// </summary>
         private void ShadowBeginMatch()
         {
+            _shadowPendingSpawns.Clear();
+            _shadowUnmappedLogged.Clear();
+            _shadowMirroredCount = 0;
             _shadow = new Wassup.Sim.SimRuntime(BuildSimConfig());
             ShadowMirrorMapSingletons();
         }
@@ -186,7 +194,105 @@ namespace Wassup.Bridge
             _shadow.StepOneTick(fixedDt);
         }
 
-        private void ShadowEndMatch() => _shadow = null;
+        private void ShadowEndMatch()
+        {
+            _shadow = null;
+            _shadowPendingSpawns.Clear();
+        }
+
+        // ── 스폰 미러링 (18-N) ────────────────────────────────────────────────
+
+        private readonly List<(Unity.Entities.Entity live, int simId)> _shadowPendingSpawns
+            = new List<(Unity.Entities.Entity, int)>();
+        private readonly HashSet<System.Type> _shadowUnmappedLogged = new HashSet<System.Type>();
+
+        /// <summary>
+        /// `AttachSimEntityId` 에서 부른다 — **모든 추적 스폰이 지나는 유일 지점**이라
+        /// 여기서 적으면 ordinal 정렬이 **구조적으로** 보장된다(경로별 훅 7개를 두면 순서가
+        /// 어긋날 자유도가 생긴다).
+        ///
+        /// ⚠ **여기서 복사하지 않는다.** 보스는 attach **뒤에** `BakeNightmareMechanics` 가
+        /// 버퍼를 더 붙인다(`BattleBridge.cs` 그 주석 참조) — 지금 복사하면 그걸 놓친다.
+        /// 복사는 P0 flush(<see cref="ShadowFlushSpawns"/>)에서 일괄로 한다.
+        /// </summary>
+        private void ShadowRecordSpawn(Unity.Entities.Entity entity, int simId)
+        {
+            if (_shadow == null || entity == Unity.Entities.Entity.Null) return;
+            _shadowPendingSpawns.Add((entity, simId));
+        }
+
+        /// <summary>
+        /// P0 — 라이브 프레임 준비가 끝난 뒤, sim 그룹이 보기 **직전**에 일괄 미러한다.
+        ///
+        /// ⚠ **죽은 엔티티도 id 를 소모한다.** 구 카운터는 이미 그 번호를 발급했으므로,
+        /// 건너뛰면 뒤따르는 유닛의 ordinal 이 전부 밀려 **다른 판**이 된다.
+        /// ⇒ 만들고 즉시 파괴한다(`_nextId` 는 감소하지 않으므로 번호가 보존된다).
+        /// </summary>
+        private void ShadowFlushSpawns()
+        {
+            if (_shadow == null || _shadowPendingSpawns.Count == 0) return;
+            Wassup.Sim.SimWorld w = _shadow.World;
+
+            for (int i = 0; i < _shadowPendingSpawns.Count; i++)
+            {
+                (Unity.Entities.Entity live, int simId) = _shadowPendingSpawns[i];
+                Wassup.Sim.SimEntityId se = w.Create();
+
+                // 순번 계약을 **여기서** 단정한다 — 어긋난 채 진행하면 골든이 갈릴 때까지 모른다.
+                if (se.SpawnOrdinal != simId)
+                    throw new InvalidOperationException(
+                        $"[Shadow] 스폰 순번 불일치: live simId={simId} · shadow ordinal={se.SpawnOrdinal}. " +
+                        "그림자가 추적 공간에서 별도로 엔티티를 만들었다는 뜻이다(CreateInternal 누락).");
+
+                if (!HasLiveEntityManager() || !_em.Exists(live)) { w.Destroy(se); continue; }
+                ShadowMirrorComponents(live, se);
+                _shadowMirroredCount++;
+            }
+            _shadowPendingSpawns.Clear();
+        }
+
+        /// <summary>
+        /// 그림자가 **실제로 채워졌는지**의 관측점. 골든 초록은 copier 가 라이브를 깨지 않았다는
+        /// 증거일 뿐 — copier 가 조용히 아무것도 안 해도 라이브가 골든을 만들기 때문에 초록이다.
+        /// 그 사실은 A/B 비교(18-Q)를 붙일 때까지 드러나지 않으므로, 매치당 한 줄을 남긴다.
+        /// </summary>
+        private void ShadowLogSummary()
+        {
+            if (_shadow == null) return;
+            Debug.Log($"[Shadow] mirrored={_shadowMirroredCount} · ordinals={_shadow.World.SpawnedCount}" +
+                      $" · alive={_shadow.World.AliveCount} · internal={_shadow.World.InternalSpawnedCount}" +
+                      $" · liveCounter={_simEntityIdCounter} · pending={_shadowPendingSpawns.Count}" +
+                      $" · tick={_shadow.World.Tick}");
+        }
+
+        private int _shadowMirroredCount;
+
+        /// <summary>
+        /// **presence-driven 복사.** 라이브 아키타입이 들고 있는 것을 그대로 옮긴다 —
+        /// 조건부 컴포넌트가 자동으로 처리되고, 경로별 차이(적/방어/해저드/투사체)가
+        /// "어떤 컴포넌트가 붙어 있나" 뿐이라 **이 함수 하나가 전 경로를 덮는다.**
+        ///
+        /// ⚠ **bake 가 아니라 copy 인 것이 의도다**(18-N 판정): bake 는 스폰 로직을 sim 쪽에
+        /// 다시 쓰는 일이라 A/B 가 갈렸을 때 "규칙이 틀렸나 / bake 가 틀렸나" 를 구분할 수 없다.
+        /// copy 는 그림자를 **정확히 같은 초기 상태**에서 출발시켜 이후 불일치를 전부
+        /// **이식된 규칙**의 것으로 만든다.
+        /// </summary>
+        private void ShadowMirrorComponents(Unity.Entities.Entity live, Wassup.Sim.SimEntityId se)
+            => ShadowMirror.MirrorEntity(_em, live, _shadow.World, se, ResolveShadowEntity,
+                oldT =>
+                {
+                    if (_shadowUnmappedLogged.Add(oldT))
+                        Debug.LogError($"[Shadow] 미매핑 컴포넌트 — 그림자에 상태가 빠진다: {oldT.FullName}. " +
+                                       "18-M 스윕 장부(`SimTypeParitySweepTests`)를 먼저 갱신할 것.");
+                });
+
+        /// <summary>
+        /// 라이브 `Entity` 참조 → 그림자 핸들. 구 simId 를 거쳐 간다(= `SpawnOrdinal + 1`).
+        /// 해석 불가(Null·미등록)는 `Null` — 구 트레이스가 `sim:-1` 로 찍던 그 상태다.
+        /// </summary>
+        private Wassup.Sim.SimEntityId ResolveShadowEntity(Unity.Entities.Entity e)
+            => TryGetSimId(e, out int simId) ? new Wassup.Sim.SimEntityId(simId + 1)
+                                            : Wassup.Sim.SimEntityId.Null;
 
         // ── 저작 스냅샷 주입 ──────────────────────────────────────────────────
 
@@ -267,6 +373,292 @@ namespace Wassup.Bridge
             return new Wassup.Sim.Effects.ClockOutConfig(
                 cd.resignationThreshold, cd.meteorCount, cd.meteorDamage,
                 cd.meteorTileRange, cd.meteorWarningSec, cd.meteorStaggerSec);
+        }
+    }
+
+    /// <summary>
+    /// battle-sim-extraction unit 18-N — **값 미러의 기계 부품.**
+    ///
+    /// 구 컴포넌트를 신 컴포넌트로 옮긴다. 규칙은 하나: **신 타입의 필드 이름으로 구 값을 찾는다.**
+    /// 그 이름들이 같다는 것은 18-M(`SimTypeParitySweepTests`)이 155쌍에서 증명했고, **이 클래스는
+    /// 그 오라클을 전제로만 성립한다** — 스윕이 빨개지면 여기부터 의심할 것.
+    ///
+    /// 방향이 "신 필드를 훑는다" 인 것이 계약이다: 구에만 있는 필드(`LocalTransform.Rotation`)가
+    /// **자동으로 탈락**한다. 반대로 훑으면 sim 에 없는 필드에서 터진다.
+    ///
+    /// ⚠ 리플렉션 금지 원칙과 충돌하지 않는다 — 그 금지의 근거는 *"신 타입에 리플렉션을 걸면
+    /// **타입 이름**이 신 것으로 나온다"*(트레이스 키)였고, 여기서 옮기는 것은 **값**이다.
+    ///
+    /// ⚠ 모르는 모양을 만나면 **던진다.** 조용히 기본값을 남기면 그림자가 다른 초기 상태에서
+    /// 출발하고, 그 사실이 골든이 갈릴 때까지 드러나지 않는다.
+    /// </summary>
+    internal static class ShadowMirror
+    {
+        /// <summary>
+        /// **네임스페이스를 건너는 쌍** — 동명 매칭이 못 잡는 것들. 여기 없으면 그 컴포넌트는
+        /// 조용히 미러되지 않는다.
+        ///
+        /// ⚠ `LocalTransform` 이 그 사례이고 실제로 이 테이블 없이 한 번 빠졌다:
+        /// 네임스페이스가 `Unity.Transforms` 라 Wassup 표면 스캔에 걸리지 않아 **미러된 유닛에
+        /// 위치가 없었다.** 18-M 장부는 `SimTransform` 을 new-only 로 적고 *"대조는
+        /// `SimLegacyTraceContractTests` 소유"* 라고만 했다 — 필드 대조의 소유자를 적은 것이지
+        /// 미러 배선을 적은 것이 아니었다. 장부의 "다른 데서 본다" 는 **다른 축까지 덮지 않는다.**
+        /// </summary>
+        private static readonly Dictionary<Type, Type> CrossNamespacePairs = new Dictionary<Type, Type>
+        {
+            [typeof(Unity.Transforms.LocalTransform)] = typeof(Wassup.Sim.Movement.SimTransform),
+        };
+
+        /// 미러 대상 — Wassup 표면 + 위 명시 쌍. 그 밖(Unity.*·프레젠테이션)은 조용히 건너뛴다.
+        internal static bool IsCandidate(Type t)
+            => CrossNamespacePairs.ContainsKey(t)
+               || (t.Namespace != null
+                   && (t.Namespace == "Wassup.Data" || t.Namespace == "Wassup.Battle"
+                       || t.Namespace.StartsWith("Wassup.Battle.", StringComparison.Ordinal)));
+
+        /// <summary>
+        /// 명시 비대상 — **이유가 없으면 넣지 않는다.** 여기 넣는 것은 그림자에서 그 상태를
+        /// 포기하는 것이고, 포기가 정당한 경우만 있다.
+        /// </summary>
+        internal static readonly HashSet<Type> Skip = new HashSet<Type>
+        {
+            // 순번 그 자체 — 그림자에서는 `SimEntityId` 핸들이 이 정보를 담는다(18-K/2a).
+            typeof(Wassup.Battle.Units.SimEntityId),
+            // 시계 스케일 싱글턴. 그림자는 스케일된 dt 를 P0 에서 받는다 — 처분은 unit 19.
+            typeof(Wassup.Battle.BattleTimeScale),
+        };
+
+        internal static bool IsEnableable(Type t)
+            => typeof(Unity.Entities.IEnableableComponent).IsAssignableFrom(t);
+
+        // ── 엔티티 단위 미러 (presence-driven) ────────────────────────────────
+
+        /// <summary>
+        /// 라이브 아키타입이 들고 있는 것을 그대로 옮긴다. **경로별 차이가 "어떤 컴포넌트가
+        /// 붙어 있나" 뿐이라 이 함수 하나가 전 스폰 경로를 덮는다**(18-N/O/P).
+        ///
+        /// ⚠ 이것이 `BattleBridge` 인스턴스 메서드가 아니라 static 인 이유: 첫 구현은 인스턴스
+        /// 안에 있었고, 그래서 **크기 0 태그 버그를 EditMode 가 잡을 수 없어 골든 14세션을
+        /// 태웠다**(`GetComponentData<AttackUnitTag>` → `ArgumentException`). 라이브 ECS 월드는
+        /// EditMode 에서도 만들 수 있으므로, 루프가 static 이면 그 등급의 버그는 여기서 걸린다.
+        /// </summary>
+        internal static void MirrorEntity(Unity.Entities.EntityManager em, Unity.Entities.Entity live,
+                                          Wassup.Sim.SimWorld w, Wassup.Sim.SimEntityId se,
+                                          Func<Unity.Entities.Entity, Wassup.Sim.SimEntityId> resolve,
+                                          Action<Type> onUnmapped)
+        {
+            using Unity.Collections.NativeArray<Unity.Entities.ComponentType> types =
+                em.GetComponentTypes(live, Unity.Collections.Allocator.Temp);
+
+            for (int i = 0; i < types.Length; i++)
+            {
+                Unity.Entities.ComponentType ct = types[i];
+                Type oldT = ct.GetManagedType();
+                if (oldT == null || !IsCandidate(oldT) || Skip.Contains(oldT)) continue;
+
+                if (!TypeMap.TryGetValue(oldT, out Type newT)) { onUnmapped?.Invoke(oldT); continue; }
+
+                // ⚠ enableable 3상태 → 신 sim 2상태(존재/부재) 접힘. **비활성 = 부재**다 —
+                //   스폰 시 부착+비활성인 `ModifierStatsDirty` 를 그대로 Set 하면 그림자가
+                //   첫 틱에 가짜 재집계를 돈다(Battle 의 유일한 enableable).
+                if (IsEnableable(oldT) && !em.IsComponentEnabled(live, ct)) continue;
+
+                if (ct.IsBuffer)
+                {
+                    System.Collections.IList target = AddSimBuffer(w, se, newT);
+                    if (target == null) continue;
+                    foreach (object element in ReadBuffer(em, live, oldT))
+                        target.Add(ConvertStruct(element, newT, resolve));
+                }
+                // ⚠ **크기 0 태그는 값을 읽지 않는다.** `GetComponentData<T>` 는 필드가 없는
+                //   타입에 `ArgumentException` 을 던진다(패키지 문서 명시) — 첫 골든 실행이
+                //   `AttackUnitTag` 에서 정확히 그렇게 죽었다. 태그는 **존재가 내용 전부**다.
+                else if (ct.IsZeroSized)
+                {
+                    SetSimComponent(w, se, newT, Activator.CreateInstance(newT));
+                }
+                else
+                {
+                    object oldVal = ReadComponent(em, live, oldT);
+                    if (oldVal != null) SetSimComponent(w, se, newT, ConvertStruct(oldVal, newT, resolve));
+                }
+            }
+        }
+
+        // ── 타입 맵 (18-M 과 같은 동명 매칭) ──────────────────────────────────
+
+        private static Dictionary<Type, Type> _typeMap;
+
+        internal static Dictionary<Type, Type> TypeMap => _typeMap ?? (_typeMap = BuildTypeMap());
+
+        private static bool IsMirrorableStruct(Type t)
+            => t.IsValueType && !t.IsEnum && !t.IsPrimitive && t.IsPublic && !t.IsNested
+               && !t.Name.Contains("<")
+               && !typeof(Unity.Entities.ISystem).IsAssignableFrom(t);
+
+        private static Dictionary<Type, Type> BuildTypeMap()
+        {
+            var newByName = new Dictionary<string, Type>();
+            foreach (Type t in typeof(Wassup.Sim.SimWorld).Assembly.GetTypes())
+            {
+                if (!IsMirrorableStruct(t) || t.Namespace == null) continue;
+                if (!t.Namespace.StartsWith("Wassup.Sim", StringComparison.Ordinal)) continue;
+                newByName[t.Name] = t;   // 동명 유일성은 18-M 이 단정한다
+            }
+
+            // 명시 쌍이 먼저 — 동명 매칭이 이것을 덮어쓸 일은 없다(이름이 다르니까).
+            var map = new Dictionary<Type, Type>(CrossNamespacePairs);
+            var assemblies = new HashSet<Assembly>
+            {
+                typeof(Wassup.Battle.Units.Health).Assembly,
+                typeof(Wassup.Data.PatternSpec).Assembly,
+            };
+            foreach (Assembly a in assemblies)
+            {
+                foreach (Type t in a.GetTypes())
+                {
+                    if (!IsMirrorableStruct(t) || !IsCandidate(t)) continue;
+                    if (newByName.TryGetValue(t.Name, out Type newT)) map[t] = newT;
+                }
+            }
+            return map;
+        }
+
+        // ── 라이브 읽기 / 그림자 쓰기 (제네릭 메서드 캐시) ────────────────────
+
+        private static readonly Dictionary<Type, MethodInfo> GetComponentCache = new Dictionary<Type, MethodInfo>();
+        private static readonly Dictionary<Type, MethodInfo> GetBufferCache = new Dictionary<Type, MethodInfo>();
+        private static readonly Dictionary<Type, MethodInfo> SetCache = new Dictionary<Type, MethodInfo>();
+        private static readonly Dictionary<Type, MethodInfo> AddBufferCache = new Dictionary<Type, MethodInfo>();
+
+        private static MethodInfo Closed(Dictionary<Type, MethodInfo> cache, Type key, Func<MethodInfo> open)
+        {
+            if (cache.TryGetValue(key, out MethodInfo m)) return m;
+            return cache[key] = open().MakeGenericMethod(key);
+        }
+
+        /// <summary>
+        /// ⚠ **`Invoke` 는 실제 예외를 `TargetInvocationException` 으로 감싼다.** 골든 러너는
+        /// `ex.Message` 만 저장하므로 그대로 두면 *"Exception has been thrown by the target of an
+        /// invocation."* 라는 **아무 정보 없는 실패**가 남는다 — 첫 실행이 정확히 그랬고, 원인
+        /// (크기 0 태그)을 로그가 아니라 패키지 소스를 읽어서 찾아야 했다. 여기서 벗겨 둔다.
+        /// </summary>
+        private static object InvokeUnwrapped(MethodInfo mi, object target, object[] args)
+        {
+            try { return mi.Invoke(target, args); }
+            catch (TargetInvocationException tie) when (tie.InnerException != null)
+            {
+                throw new InvalidOperationException(
+                    $"[Shadow] {mi.Name}<{string.Join(",", mi.GetGenericArguments().Select(t => t.Name))}> 실패: " +
+                    tie.InnerException.Message, tie.InnerException);
+            }
+        }
+
+        internal static object ReadComponent(Unity.Entities.EntityManager em,
+                                             Unity.Entities.Entity e, Type oldT)
+        {
+            MethodInfo mi = Closed(GetComponentCache, oldT, () => typeof(Unity.Entities.EntityManager)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .First(x => x.Name == "GetComponentData" && x.IsGenericMethodDefinition
+                            && x.GetParameters().Length == 1
+                            && x.GetParameters()[0].ParameterType == typeof(Unity.Entities.Entity)));
+            return InvokeUnwrapped(mi, em, new object[] { e });
+        }
+
+        internal static IEnumerable<object> ReadBuffer(Unity.Entities.EntityManager em,
+                                                       Unity.Entities.Entity e, Type oldT)
+        {
+            MethodInfo mi = Closed(GetBufferCache, oldT, () => typeof(Unity.Entities.EntityManager)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .First(x => x.Name == "GetBuffer" && x.IsGenericMethodDefinition
+                            && x.GetParameters().Length == 2));
+            object buffer = InvokeUnwrapped(mi, em, new object[] { e, true });
+            if (buffer == null) yield break;
+
+            Type bt = buffer.GetType();
+            int length = (int)bt.GetProperty("Length").GetValue(buffer);
+            PropertyInfo item = bt.GetProperty("Item");
+            for (int i = 0; i < length; i++) yield return item.GetValue(buffer, new object[] { i });
+        }
+
+        internal static void SetSimComponent(Wassup.Sim.SimWorld w, Wassup.Sim.SimEntityId e,
+                                             Type newT, object value)
+        {
+            MethodInfo mi = Closed(SetCache, newT, () => typeof(Wassup.Sim.SimWorld)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .First(x => x.Name == "Set" && x.IsGenericMethodDefinition));
+            InvokeUnwrapped(mi, w, new object[] { e, value });
+        }
+
+        internal static System.Collections.IList AddSimBuffer(Wassup.Sim.SimWorld w,
+                                                              Wassup.Sim.SimEntityId e, Type newT)
+        {
+            MethodInfo mi = Closed(AddBufferCache, newT, () => typeof(Wassup.Sim.SimWorld)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .First(x => x.Name == "AddBuffer" && x.IsGenericMethodDefinition));
+            return InvokeUnwrapped(mi, w, new object[] { e }) as System.Collections.IList;
+        }
+
+        // ── 값 변환 ──────────────────────────────────────────────────────────
+
+        /// 신 타입의 필드를 훑어 동명 구 필드에서 값을 끌어온다(구 전용 필드는 자동 탈락).
+        internal static object ConvertStruct(object oldVal, Type newT,
+                                             Func<Unity.Entities.Entity, Wassup.Sim.SimEntityId> resolve)
+        {
+            object box = Activator.CreateInstance(newT);
+            Type oldT = oldVal.GetType();
+            foreach (FieldInfo nf in newT.GetFields(BindingFlags.Instance | BindingFlags.Public))
+            {
+                FieldInfo of = oldT.GetField(nf.Name, BindingFlags.Instance | BindingFlags.Public);
+                if (of == null) continue;   // 신에만 있는 필드 — 기본값을 남긴다
+                nf.SetValue(box, ConvertValue(of.GetValue(oldVal), nf.FieldType, resolve));
+            }
+            return box;
+        }
+
+        private static object ConvertValue(object v, Type target,
+                                           Func<Unity.Entities.Entity, Wassup.Sim.SimEntityId> resolve)
+        {
+            if (v == null) return null;
+            Type src = v.GetType();
+            if (src == target) return v;
+
+            if (target.IsEnum)
+                return Enum.ToObject(target, Convert.ToInt64(v, CultureInfo.InvariantCulture));
+
+            // ⚠ 엔티티 참조는 **구 simId 를 거쳐** 옮긴다 — 라이브 Entity 번호는 그림자에서 뜻이 없다.
+            if (v is Unity.Entities.Entity ent && target == typeof(Wassup.Sim.SimEntityId))
+                return resolve(ent);
+
+            if (v is Unity.Mathematics.float3 f3 && target == typeof(Wassup.Sim.SimVec3))
+                return new Wassup.Sim.SimVec3(f3.x, f3.y, f3.z);
+            if (v is Unity.Mathematics.float2 f2 && target == typeof(Wassup.Sim.SimVec2))
+                return new Wassup.Sim.SimVec2(f2.x, f2.y);
+            if (v is Unity.Mathematics.int2 i2 && target == typeof(Wassup.Sim.SimInt2))
+                return new Wassup.Sim.SimInt2(i2.x, i2.y);
+
+            // 컨테이너 → 관리 배열. `Length` + 인덱서만 쓰므로 NativeArray·FixedList 를 함께 덮는다.
+            if (target.IsArray && src.IsGenericType)
+            {
+                PropertyInfo lengthProp = src.GetProperty("Length");
+                PropertyInfo item = src.GetProperty("Item");
+                if (lengthProp == null || item == null)
+                    throw new InvalidOperationException($"[Shadow] 열거 불가 컨테이너: {src.Name} → {target.Name}");
+                int n = (int)lengthProp.GetValue(v);
+                Type et = target.GetElementType();
+                Array dst = Array.CreateInstance(et, n);
+                for (int i = 0; i < n; i++)
+                    dst.SetValue(ConvertValue(item.GetValue(v, new object[] { i }), et, resolve), i);
+                return dst;
+            }
+
+            // 남은 것은 중첩 struct — 재귀(`Random`→`SimRandom` 도 `state` 동명으로 여기서 처리된다).
+            if (target.IsValueType && !target.IsPrimitive)
+                return ConvertStruct(v, target, resolve);
+
+            throw new InvalidOperationException(
+                $"[Shadow] 값 변환 규칙이 없다: {src.FullName} → {target.FullName}. " +
+                "조용히 기본값을 남기면 그림자가 다른 초기 상태에서 출발한다.");
         }
     }
 }

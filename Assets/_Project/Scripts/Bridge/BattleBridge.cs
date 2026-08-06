@@ -2607,6 +2607,9 @@ namespace Wassup.Bridge
 #endif
             AdvanceBattleFrame(fixedDt);
             if (_harnessRateManager == null || _harnessSimGroup == null) return;
+            // battle-sim-extraction unit 18-N — P0 끝: 라이브 프레임 준비가 끝나고 sim 그룹이
+            // 보기 **직전**에 이번 프레임의 신규 스폰을 그림자로 일괄 미러한다.
+            ShadowFlushSpawns();
             _harnessRateManager.ArmStep(fixedDt);
             _harnessSimGroup.Update();
             // battle-sim-extraction unit 18-K/5c — 그림자를 **같은 dt 로** 함께 돌린다.
@@ -4085,6 +4088,10 @@ namespace Wassup.Bridge
             int simId = _simEntityIdCounter++;
             _em.AddComponentData(entity, new SimEntityId { value = simId });
             _simIdToEntity[simId] = entity;
+            // battle-sim-extraction unit 18-N — 그림자 스폰 기록(정의는 BattleBridge.Shadow.cs).
+            // **모든 추적 스폰이 지나는 유일 지점**이라 여기서 적으면 ordinal 정렬이 구조적으로
+            // 보장된다. 복사는 여기가 아니라 P0 flush 다 — 보스는 이 뒤에 버퍼를 더 붙인다.
+            ShadowRecordSpawn(entity, simId);
 #if UNITY_EDITOR
             RegisterLegacyTraceEntity(entity, simId);
 #endif
