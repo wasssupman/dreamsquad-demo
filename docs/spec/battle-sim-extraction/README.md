@@ -44,7 +44,8 @@
 | **18-G** 피해·실드·사망 릴레이 7/7 | 완료 | `b7bbcb89` `3d906d68` `5758b211` `f3f5d8be` `27587de6` (EditMode 2439 / 실패 0) |
 | **18-H** 투사체 3/3 | 완료 | `b19ee78e` `e7366ca4` `a10cbebb` `21034e4d` (EditMode 2554 / 실패 0) |
 | 18-I/1 #18 HazardCast (18-E 이관분 회수) | 완료 | `5444bde6` (EditMode 2566 / 실패 0) |
-| 18-I/2~18-L | **진행 중** — [`m1_unit18_plan.md`](m1_unit18_plan.md) · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
+| — 3렌즈 코드 리뷰 + 재정리 | 완료 | `2ae418a6`(F1 수정) · [`m1_unit18_review.md`](m1_unit18_review.md) · [`m1_unit18_replan.md`](m1_unit18_replan.md) |
+| 18-I/2~18-L | **진행 중** — 순서·범위는 [`m1_unit18_replan.md`](m1_unit18_replan.md) 가 정본(계획서 갱신판) · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
 | 19~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
@@ -66,7 +67,12 @@ unit 은 19 하나" 라고 못박았다. unit 15 문서의 "은퇴 경로 삭제
   엔진-프리로 옮기는 이 spec 의 실질적 본체. 별도 계획으로 쪼갤 것.
 - **20 (A/B parity) 은 ARM64 실기기 게이트** — 장비 없이는 완료 불가.
 
-> **unit 18 을 이어받는다면 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) 를 먼저 읽는다** —
+> **unit 18 을 이어받는다면 [`m1_unit18_replan.md`](m1_unit18_replan.md) 를 먼저 읽는다** —
+> 3렌즈 리뷰(2026-08-06) 반영판이고 남은 작업의 순서·범위는 이 문서가 정본이다.
+> 발견의 근거·미채택 사유는 [`m1_unit18_review.md`](m1_unit18_review.md).
+> ⚠ **N1(초월함수 정책 A/B)은 사용자 결정 대기 중** — 18-J 착수 전에 정해야 한다.
+>
+> 그 다음 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) —
 > 되돌리면 안 되는 의도 5건 · 이식 함정 6건 · **운영 함정 3건**(신규 파일 csproj 등록 · 골든 전
 > `ReimportData` · 러너 트리거 4함정)이 거기 있다. 그 다음 [`m1_unit18_plan.md`](m1_unit18_plan.md).
 >
