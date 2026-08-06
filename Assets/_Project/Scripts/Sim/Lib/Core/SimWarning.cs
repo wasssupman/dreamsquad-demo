@@ -16,6 +16,13 @@ namespace Wassup.Sim
         /// `DamagedCounter` 가 발동했는데 그 payload 를 처리하는 arm 이 없다.
         /// (구 sim: "[DamageApplication] DamagedCounter fired with unhandled payload kind.")
         DamagedCounterUnhandledPayload = 1,
+
+        /// <summary>
+        /// 캐스트 사건의 `AttackN` 슬롯이 발동했는데 그 payload 를 처리하는 arm 이 **이 자리에**
+        /// 없다. 카운트는 이미 소비됐다 — 조용히 태우는 것이 이 spec 이 없애려는 병이다.
+        /// (구 sim: "[AttackSystem] cast-event dc slot fired with a payload that has no arm here")
+        /// </summary>
+        CastEventUnhandledPayload = 2,
     }
 
     /// <summary>

@@ -124,10 +124,24 @@ namespace Wassup.Sim
         public SimChannel<HazardSpawnRequest> HazardSpawnRequest { get; }
             = new SimChannel<HazardSpawnRequest>();
 
+        /// <summary>
+        /// 부착 카드 발동 신호. 생산자는 공격 루프(#33, P8)의 `AttackN` 발동 3지점 →
+        /// 소비자는 뷰(18-K). ⚠ **상태 해시에 실리지 않는다.**
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent> DcTriggerFired { get; }
+            = new SimChannel<Wassup.Sim.Combat.DcTriggerFiredEvent>();
+
         // ── 로그·연출 (sim 규칙 아님) ─────────────────────────────────────────
         /// 공격이 나갔다(방어유닛/적 공통). 뷰가 애니와 바라보는 방향을 잡는다.
         public SimChannel<Wassup.Sim.Combat.UnitAttackVisualEvent> UnitAttackVisual { get; }
             = new SimChannel<Wassup.Sim.Combat.UnitAttackVisualEvent>();
+
+        /// <summary>
+        /// 공격 산출물 전투로그. 생산자는 공격 루프(#33)·니들 발사 지점 → 소비자는 로거(18-K).
+        /// ⚠ **상태 해시에 실리지 않는다.**
+        /// </summary>
+        public SimChannel<Wassup.Sim.Combat.AttackOutputLogEvent> AttackOutputLog { get; }
+            = new SimChannel<Wassup.Sim.Combat.AttackOutputLogEvent>();
 
         /// 피격 숫자 팝업. **히트당 1건**(프레임 합이 아니다).
         public SimChannel<Wassup.Sim.Units.DamageNumberEvent> DamageNumber { get; }
@@ -179,7 +193,9 @@ namespace Wassup.Sim
             ProjectileHit.Reset();
             Cast.Reset();
             HazardSpawnRequest.Reset();
+            DcTriggerFired.Reset();
             UnitAttackVisual.Reset();
+            AttackOutputLog.Reset();
             DamageNumber.Reset();
             HealApplied.Reset();
             Warnings.Reset();
