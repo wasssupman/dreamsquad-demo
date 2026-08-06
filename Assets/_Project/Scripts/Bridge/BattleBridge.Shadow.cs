@@ -267,6 +267,85 @@ namespace Wassup.Bridge
 
         private int _shadowMirroredCount;
 
+        // ── A/B 비교 (18-Q) ───────────────────────────────────────────────────
+        //
+        // ⚠ 에디터 전용: `BuildLegacyFinalStateCanonical`(기록기)이 `#if UNITY_EDITOR` 라
+        //   빌드에서는 대조할 상대가 없다. 교차 골든(IL2CPP)은 unit 20 이 러너와 함께 푼다.
+#if UNITY_EDITOR
+
+        /// <summary>
+        /// battle-sim-extraction unit 18-Q — **그림자와 라이브의 상태 원문 대조.**
+        ///
+        /// 이 spec 전체가 이 한 줄을 위해 있었다: 44 시스템을 이식한 것이 **행동 동치**인지.
+        /// 지금까지의 증인(EditMode 오라클)은 *"내가 옮긴 것이 내가 의도한 대로 동작한다"* 만
+        /// 봤고, *"구 sim 과 같은 판을 만든다"* 는 여기서 처음 관측된다.
+        ///
+        /// ⚠ **헤더는 라이브 값으로 채운다.** 웨이브·판정·코스트는 아직 sim 이 소유하지 않으므로
+        /// (18-L·19 의 몫) 그 줄을 그림자가 스스로 만들 수 없다. 헤더를 라이브에서 공급하면
+        /// 그 줄은 **자명하게 같아지고**, 실제 비교는 **엔티티 블록**에서 일어난다 —
+        /// 그것이 지금 검증 가능한 축의 전부이고, 헤더까지 sim 이 만들게 되는 것은 19 이후다.
+        ///
+        /// ⚠ `Rotation` 은 양쪽에서 뗀다(18-K 결정 1) — sim 이 회전을 쓰지 않아 뷰 소유다.
+        ///
+        /// ⚠ **불일치를 예외로 만들지 않는다.** 지금 단계의 목적은 "얼마나 갈리는지 보기" 이고,
+        /// 던지면 첫 불일치에서 코퍼스가 멈춰 나머지 6 시나리오의 정보를 잃는다. 판정을 실패로
+        /// 승격하는 것은 unit 20(스왑 게이트)의 몫이다.
+        /// </summary>
+        private void ShadowCompareState()
+        {
+            if (_shadow == null) return;
+
+            string live = Wassup.Sim.SimLegacyTrace.StripExcludedFields(BuildLegacyFinalStateCanonical());
+            string shadow = Wassup.Sim.SimLegacyTrace.StripExcludedFields(
+                _shadow.BuildStateCanonical(BuildShadowTraceHeader()));
+
+            if (string.Equals(live, shadow, StringComparison.Ordinal))
+            {
+                Debug.Log("[Shadow] A/B EXACT — 상태 원문이 문자 단위로 같다.");
+                return;
+            }
+
+            string[] a = live.Split('\n');
+            string[] b = shadow.Split('\n');
+            var report = new System.Text.StringBuilder(2048);
+            report.Append("[Shadow] A/B DIFF — live ").Append(a.Length)
+                  .Append(" 줄 · shadow ").Append(b.Length).Append(" 줄\n");
+
+            int shown = 0;
+            for (int i = 0; i < Math.Max(a.Length, b.Length) && shown < 12; i++)
+            {
+                string la = i < a.Length ? a[i] : "<없음>";
+                string lb = i < b.Length ? b[i] : "<없음>";
+                if (string.Equals(la, lb, StringComparison.Ordinal)) continue;
+                report.Append("  #").Append(i).Append(" live   : ").Append(Trunc(la)).Append('\n');
+                report.Append("  #").Append(i).Append(" shadow : ").Append(Trunc(lb)).Append('\n');
+                shown++;
+            }
+            Debug.LogWarning(report.ToString());
+        }
+
+        private static string Trunc(string s) => s.Length <= 220 ? s : s.Substring(0, 220) + "…";
+
+        /// 라이브 기록기의 헤더 12줄 중 **sim 이 아직 소유하지 않는 10개**를 그대로 공급한다
+        /// (`battleClock`·`simEntityIdCounter` 는 sim 소유라 여기 없다 — 18-K/3).
+        private Wassup.Sim.SimLegacyTraceHeader BuildShadowTraceHeader()
+            => new Wassup.Sim.SimLegacyTraceHeader
+            {
+                nextWaveIndex = _waveSchedule.NextWaveIndex,
+                pendingSpawns = _waveSchedule.PendingCount,
+                goals = _outcome.GoalReachedCount,
+                leakPenalty = _outcome.LeakAllowancePenalty,
+                killScore = _outcome.KillScoreTotal,
+                running = _running,
+                phase = GameManager.Instance != null ? (int)GameManager.Instance.CurrentPhase
+                                                     : (int)GamePhase.None,
+                timerRemaining = _outcome.RemainingBattleSeconds((float)_battleClock),
+                cost = GameManager.Instance != null && GameManager.Instance.CostRuntime != null
+                    ? GameManager.Instance.CostRuntime.Current : 0f,
+                meteorRngState = _meteorRng.state,
+            };
+#endif
+
         /// <summary>
         /// **presence-driven 복사.** 라이브 아키타입이 들고 있는 것을 그대로 옮긴다 —
         /// 조건부 컴포넌트가 자동으로 처리되고, 경로별 차이(적/방어/해저드/투사체)가

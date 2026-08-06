@@ -78,6 +78,9 @@ namespace Wassup.Bridge
             // battle-sim-extraction unit 18-N — 그림자가 실제로 채워졌는지 한 줄로 남긴다
             // (골든 초록은 "라이브를 안 깼다" 는 증거일 뿐이다 — 정의는 BattleBridge.Shadow.cs).
             ShadowLogSummary();
+            // battle-sim-extraction unit 18-Q — 그림자와 라이브의 상태 원문 대조. 이 spec 이
+            // 증명하려던 것("이식이 행동 동치인가")이 여기서 처음 관측된다.
+            ShadowCompareState();
             string canonicalState = BuildLegacyFinalStateCanonical();
             string json = _legacyTraceRecorder.Complete(new LegacyTraceFinalV0
             {
