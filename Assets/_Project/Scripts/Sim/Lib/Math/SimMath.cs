@@ -48,7 +48,24 @@ namespace Wassup.Sim
         /// NaN → 0, `-0f` → 0. 비교 두 번의 뺄셈이라 `Math.Sign` 과 다르다(그쪽은 NaN 에서 던진다).
         public static float Sign(float x) => (x > 0f ? 1f : 0f) - (x < 0f ? 1f : 0f);
         public static float Lerp(float start, float end, float t) => start + t * (end - start);
+        /// <summary>
+        /// ⚠ **이 둘만 다른 함수와 성질이 다르다.** IEEE-754 는 `+ - * / sqrt` 에만 정확 반올림을
+        /// 요구하고 **초월함수에는 아무것도 요구하지 않는다** — 플랫폼 libm 이 각자 다항식을 쓰므로
+        /// 런타임/아키텍처가 다르면 마지막 비트가 갈릴 수 있다.
+        ///
+        /// **그래도 자체 구현하지 않는다**(N1 결정, 2026-08-06). 구 sim 은 이 수학을 Burst 로 돌리고
+        /// Burst 는 초월함수를 자기 구현으로 인트린식화한다 — 여기에 다항식을 넣으면 구 sim 과
+        /// **확실히** 갈리고, unit 20 A/B parity 의 목적("신 sim == 구 sim")이 사라진다.
+        /// `Math.Sin` 유지는 최소한 우연히 같을 가능성이 있다.
+        ///
+        /// ⚠ `SimMathParityTests` 가 이 둘을 덮지만 그 대조는 **관리 경로 대 관리 경로**다
+        /// (EditMode 의 `math.sin` 도 결국 `Math.Sin`). 즉 **드리프트는 잡지만 Burst 와의 차이는
+        /// 못 본다** — 그건 unit 20 의 교차 골든(Editor·IL2CPP)만 볼 수 있고, 그래서 골든 코퍼스가
+        /// 이 경로(탄도 아치·`DirectionalLinear` 패턴)를 실제로 밟는지 확인이 선행 조건이다.
+        /// 호출처는 둘뿐이다 — `BallisticArc.ArcHeight` · `PatternDirection.Resolve`.
+        /// </summary>
         public static float Sin(float x) => (float)Math.Sin(x);
+        /// <inheritdoc cref="Sin"/>
         public static float Cos(float x) => (float)Math.Cos(x);
 
         /// <summary>

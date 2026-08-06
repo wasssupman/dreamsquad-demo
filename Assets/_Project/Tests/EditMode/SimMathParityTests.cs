@@ -34,6 +34,12 @@ namespace Wassup.Tests.EditMode
             SameBits(expected.z, actual.z, what + ".z");
         }
 
+        static void SameBits(float2 expected, SimVec2 actual, string what)
+        {
+            SameBits(expected.x, actual.x, what + ".x");
+            SameBits(expected.y, actual.y, what + ".y");
+        }
+
         /// 경계값 — 순진한 재구현이 갈리는 자리를 전부 포함한다.
         static readonly float[] Edge =
         {
@@ -141,6 +147,135 @@ namespace Wassup.Tests.EditMode
                     Assert.AreEqual(u.NextBool(), s.NextBool(), $"seed {seed} draw {i}: NextBool");
                     Assert.AreEqual(u.state, s.state, $"seed {seed} draw {i}: 상태 동기");
                 }
+            }
+        }
+
+        // ── 18-I/N1 (3렌즈 리뷰 F3·D2) — 문서가 게이트라 주장하는데 안 덮던 표면 ──────
+
+        /// <summary>
+        /// **`SimVec2` 는 이 파일에 한 번도 없었다.** `SimVec3` 만 대조하고 있었는데,
+        /// `MovementSystem` 의 `NormalizeSafe(SimVec2)` 가 **모든 이동 유닛의 스텝 방향**이다
+        /// (#17 "위치 갱신 단일 권한"). 1 ULP 가 갈리면 다음 틱 `WorldToCell` 이 셀 경계에서
+        /// 다른 셀을 반환하고, 거기서 사거리·타겟팅·존 진입이 전부 갈린다.
+        ///
+        /// 외 소비처: `GridMath` · `MovementCellTrim` · `ProjectileMoveSystem`(직선 전진) ·
+        /// `SweepHitMath`(경로 명중 판정).
+        /// </summary>
+        [Test]
+        public void SimVec2_연산이_비트까지_같다()
+        {
+            var c = Corpus();
+            for (int i = 0; i + 3 < c.Length; i += 2)
+            {
+                var u = new float2(c[i], c[i + 1]);
+                var v = new float2(c[i + 2], c[i + 3]);
+                var su = new SimVec2(c[i], c[i + 1]);
+                var sv = new SimVec2(c[i + 2], c[i + 3]);
+
+                SameBits(math.dot(u, v), SimMath.Dot(su, sv), "Dot2");
+                SameBits(math.lengthsq(u), SimMath.LengthSq(su), "LengthSq2");
+                SameBits(math.length(u), SimMath.Length(su), "Length2");
+                SameBits(math.distancesq(u, v), SimMath.DistanceSq(su, sv), "DistanceSq2");
+                SameBits(math.distance(u, v), SimMath.Distance(su, sv), "Distance2");
+                SameBits(math.normalize(u), SimMath.Normalize(su), "Normalize2");
+                SameBits(math.normalizesafe(u), SimMath.NormalizeSafe(su), "NormalizeSafe2");
+                SameBits(u + v, su + sv, "add2");
+                SameBits(u - v, su - sv, "sub2");
+                SameBits(u * 0.37f, su * 0.37f, "mul2");
+            }
+
+            // SimVec3 쪽과 같은 비대칭이 2축에도 성립해야 한다.
+            SameBits(math.normalize(float2.zero), SimMath.Normalize(SimVec2.Zero), "Normalize2(0)");
+            SameBits(math.normalizesafe(float2.zero), SimMath.NormalizeSafe(SimVec2.Zero), "NormalizeSafe2(0)");
+        }
+
+        /// <summary>
+        /// ⚠ **이 테스트는 지금 자명하게 통과한다** — EditMode 에서 `math.sin` 은 관리 경로라
+        /// 결국 `Math.Sin` 이고 `SimMath.Sin` 도 그렇다(libm 대 libm).
+        ///
+        /// 그런데도 넣는 이유는 **드리프트 감지**다. 초월함수는 IEEE-754 가 정확 반올림을 요구하지
+        /// 않아 "sim 이 자기 `Sin` 을 소유해야 하나" 가 실제로 논의됐고(N1), **만들지 않기로**
+        /// 결정했다. 나중에 누가 그 결정을 뒤집어 다항식을 넣으면 **그 순간 여기서 잡힌다** —
+        /// 구 sim(Burst-sin)과의 A/B parity 가 조용히 깨지는 것보다 훨씬 낫다.
+        ///
+        /// `PI`·`ToRadians` 상수도 함께 본다. 상수 한 자리가 다르면 각도 전체가 밀린다.
+        /// </summary>
+        [Test]
+        public void 초월함수와_상수가_비트까지_같다()
+        {
+            Assert.AreEqual(Bits(math.PI), Bits(SimMath.PI), "PI 상수");
+            SameBits(math.radians(1f), SimMath.Radians(1f), "ToRadians 상수");
+
+            // 각도 코퍼스 — 경계(0·±π/2·±π·±2π)와 큰 인수(축소 오차가 드러나는 자리).
+            var angles = new float[]
+            {
+                0f, -0f, math.PI * 0.5f, -math.PI * 0.5f, math.PI, -math.PI,
+                math.PI * 2f, 1e-8f, 1e8f, 1000f, -1000f, 0.5f, -0.5f,
+                float.NaN, float.PositiveInfinity, float.NegativeInfinity,
+            };
+            foreach (float x in angles)
+            {
+                SameBits(math.sin(x), SimMath.Sin(x), $"Sin({x})");
+                SameBits(math.cos(x), SimMath.Cos(x), $"Cos({x})");
+
+                math.sincos(x, out float us, out float uc);
+                SimMath.SinCos(x, out float ss, out float sc);
+                SameBits(us, ss, $"SinCos({x}).sin");
+                SameBits(uc, sc, $"SinCos({x}).cos");
+            }
+
+            // 저작 각도 범위(패턴 min/max) 를 도 단위로 훑는다 — 실사용 입력이 여기다.
+            for (int deg = -360; deg <= 360; deg++)
+            {
+                float r = math.radians(deg);
+                SameBits(r, SimMath.Radians(deg), $"Radians({deg})");
+                SameBits(math.sin(r), SimMath.Sin(SimMath.Radians(deg)), $"Sin({deg}deg)");
+                SameBits(math.cos(r), SimMath.Cos(SimMath.Radians(deg)), $"Cos({deg}deg)");
+            }
+        }
+
+        /// <summary>
+        /// `CreateFromIndex` 는 모든 무작위 발사 패턴의 시드다(`PatternShotRandomizer`).
+        /// ⚠ 인덱스를 시드로 그냥 쓰지 않고 `WangHash(index + 62)` 로 흩뿌린다 — `+62` 와 해시
+        /// 상수 넷 중 하나만 달라도 그 뒤 **모든** draw 가 갈린다.
+        /// </summary>
+        [Test]
+        public void CreateFromIndex_가_비트까지_같은_수열을_낸다()
+        {
+            foreach (uint index in new uint[] { 0u, 1u, 2u, 7u, 62u, 63u, 1000u, uint.MaxValue - 1u })
+            {
+                var u = Unity.Mathematics.Random.CreateFromIndex(index);
+                var s = SimRandom.CreateFromIndex(index);
+                Assert.AreEqual(u.state, s.state, $"index {index}: 생성 직후 상태");
+
+                for (int i = 0; i < 100; i++)
+                {
+                    SameBits(u.NextFloat(), s.NextFloat(), $"index {index} draw {i}");
+                    Assert.AreEqual(u.state, s.state, $"index {index} draw {i}: 상태 동기");
+                }
+            }
+
+            // 퇴화 인덱스는 **양쪽 다 거절**한다(해시가 0 → 난수열 사망).
+            Assert.Throws<ArgumentException>(() => SimRandom.CreateFromIndex(uint.MaxValue));
+        }
+
+        /// <summary>
+        /// 3렌즈 리뷰 발견 — `ModifierAuthoring` 과 `SimModifierAuthoring` 이 **바이트 동일 중복**이다
+        /// (같은 네임스페이스·같은 본문·둘 다 "구 `ModifierAuthoring` 이식"). 호출처가 갈려 있어서
+        /// (`FieldBuilderSystems` 는 `Sim` 접두사 쪽, `DamageApplicationSystem` 은 무접두사 쪽)
+        /// **정책이 바뀌면 하나만 고쳐지고 나머지 절반의 호출처가 옛 규칙을 유지한다.**
+        ///
+        /// 통합은 `Sim` 접두사 정리(unit 20)와 같은 축이라 그때 한다 — 그 전까지 **갈리는 것만** 막는다.
+        /// </summary>
+        [Test]
+        public void 중복된_ModifierAuthoring_두_벌이_같은_정책을_낸다()
+        {
+            foreach (float mul in new[] { 0f, 0.5f, 0.999f, 1f, 1.0001f, 1.3f, 5f, -1f })
+            {
+                Wassup.Sim.Effects.ModifierAuthoring.FromMultiplier(mul, out var opA, out var magA);
+                Wassup.Sim.Effects.SimModifierAuthoring.FromMultiplier(mul, out var opB, out var magB);
+                Assert.AreEqual(opA, opB, $"×{mul}: op 가 갈렸다");
+                SameBits(magA, magB, $"×{mul}: magnitude");
             }
         }
     }
