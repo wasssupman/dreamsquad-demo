@@ -80,7 +80,9 @@ namespace Wassup.Sim.Combat
     /// battle-sim-extraction unit 18-H/1 — 온-히트 효과 선택자. 구 `Wassup.Data.OnHitEffectType` 이식.
     /// 저작 계층이 원본이므로 <see cref="DcTriggerKind"/> 와 같은 이유로 **복제**다. ⚠ append-only.
     /// </summary>
-    public enum OnHitEffectType : byte { None = 0, Poison = 1, Fire = 2, Splash = 3, Slow = 4 }
+    /// ⚠ 기반 타입은 구와 같은 **int**(무표기)다 — 18-M 스윕이 `: byte` 좁히기를 잡았다.
+    /// 값 렌더(`Convert.ToInt64`)에는 무해하지만, 이식 충실성의 기본은 "다르게 하지 않는 것"이다.
+    public enum OnHitEffectType { None = 0, Poison = 1, Fire = 2, Splash = 3, Slow = 4 }
 
     /// 비행 중인 투사체 표식. 구 `ProjectileTag` 이식.
     public struct ProjectileTag { }
