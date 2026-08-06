@@ -23,6 +23,14 @@ namespace Wassup.Sim
         /// (구 sim: "[AttackSystem] cast-event dc slot fired with a payload that has no arm here")
         /// </summary>
         CastEventUnhandledPayload = 2,
+
+        /// <summary>
+        /// 폭탄 발사 사건의 `AttackN` 슬롯이 발동했는데 그 payload 를 처리하는 arm 이 없다.
+        /// <see cref="CastEventUnhandledPayload"/> 와 **같은 병**이지만 사건 지점이 달라 코드를
+        /// 가른다 — 어느 아키타입의 카드가 죽었는지가 진단의 실질이다.
+        /// (구 sim: "[AttackSystem] bomb-throw dc slot fired with a payload that has no arm here")
+        /// </summary>
+        BombThrowUnhandledPayload = 3,
     }
 
     /// <summary>

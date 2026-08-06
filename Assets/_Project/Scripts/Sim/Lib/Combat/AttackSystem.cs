@@ -77,8 +77,181 @@ namespace Wassup.Sim.Combat
             BuildTargetSnapshot(world);
 
             DrainCastEvents(world, tileSize, gridSize, ffOrigin);
+            RunAttackerLoop(world, world.DeltaTime, tileSize, gridSize, ffOrigin);
 
             _ecb.Playback(world);
+        }
+
+        /// <summary>
+        /// **통합 공격자 루프** — 방어유닛과 적이 이 쿼리 하나를 공유한다. 진영 고유 동작은
+        /// 태그 분기로 갈리므로 쿼리에 공격자 태그 필터가 없다.
+        ///
+        /// ⚠ `AttackState` 쓰기는 **각 반복 끝에서 한 번** write-back 한다(구 sim 의 `RefRW` 는
+        /// 즉시 쓰기였지만, 반복 안에서 이 엔티티의 `AttackState` 를 다시 읽는 코드가 없어
+        /// 결과가 같다). **모든 탈출 경로가 write-back 을 지나야 한다** — 빠뜨리면 쿨다운 틱이
+        /// 조용히 사라진다. 그래서 분기는 `continue` 대신 헬퍼가 처리하고 여기서 한 번만 쓴다.
+        /// </summary>
+        private void RunAttackerLoop(SimWorld world, float dt, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            foreach (var attackerEntity in world.With<AttackState>())
+            {
+                if (world.Has<PendingDeployment>(attackerEntity)) continue;
+                // 구 쿼리는 `LocalTransform` 도 요구한다 — 위치 없는 공격자는 참여하지 않는다.
+                if (!world.TryGet<SimTransform>(attackerEntity, out var transform)) continue;
+
+                var attack = world.Get<AttackState>(attackerEntity);
+
+                // 쿨다운을 **먼저** 굴린다.
+                if (attack.cooldownRemaining > 0f)
+                    attack.cooldownRemaining = SimMath.Max(0f, attack.cooldownRemaining - dt);
+
+                // combat-action-lock — Sleep/Stun 은 공격 **START** 만 막는다. 쿨다운 틱은 위에서
+                // 이미 굴렸고(→ 깨어나면 즉시 공격) 진행 중 스윙의 RESOLVE 도 완료된다.
+                // leap-flight-state — 도약 비행도 **같은 술어에 OR 로 합류**한다. 쿼리에서 빼면
+                // 쿨다운 틱과 진행 중 스윙까지 얼어붙어 CC 와 규약이 갈린다.
+                bool actionLocked =
+                    CcActionLock.IsLocked(world.GetBuffer<CcEffect>(attackerEntity))
+                    || world.Has<LeapFlight>(attackerEntity);
+
+                // bomb-thrower-defender — 폭탄맨은 타겟 없이 쿨다운마다 방향×N 칸에 폭탄을 굴린다
+                // (blind bombardment). 타겟팅/RESOLVE 경로를 타지 않으므로 여기서 끝낸다.
+                if (world.Has<BombLauncherState>(attackerEntity))
+                {
+                    RunBombThrower(world, attackerEntity, ref attack, transform.Position, actionLocked,
+                                   tileSize, gridSize, ffOrigin);
+                    world.Set(attackerEntity, attack);
+                    continue;
+                }
+
+                world.Set(attackerEntity, attack);
+            }
+        }
+
+        /// <summary>
+        /// arm C/1 — 폭탄맨 분기. **타겟을 고르지 않는다**(계약 2, blind bombardment).
+        ///
+        /// ⚠ 쿨다운 리셋은 `landValid` **밖**이다 — 격자 밖을 보고 있어 발사가 거절된 프레임도
+        /// 쿨다운은 돈다(재스캔 스팸 방지). 반대로 **공격 사건은 `landValid` 안**에서만 난다:
+        /// 폭탄이 실제로 손을 떠난 프레임만 `AttackN` 1카운트다.
+        ///
+        /// ⚠ `rng` write-back 도 `landValid` 안이다 — 거절된 프레임은 draw 자체가 없어 스트림이
+        /// 전진하지 않는다. 한 draw 라도 어긋나면 그 뒤 모든 확률 판정이 갈린다.
+        /// </summary>
+        private void RunBombThrower(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 bPos,
+            bool actionLocked, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            if (actionLocked || attack.cooldownRemaining > 0f) return;
+            if (!world.TryGet<DeployedFacing>(attackerEntity, out var facing)) return;
+            if (!world.TryGet<ProjectileRef>(attackerEntity, out var bProjRef)) return;
+
+            var bomb = world.Get<BombLauncherState>(attackerEntity);
+            SimInt2 bCasterCell = GridMath.WorldToCell(bPos, tileSize, gridSize, ffOrigin);
+            BombLanding.ResolveCell(bCasterCell, facing.value, bomb.landingTiles, gridSize,
+                                    out SimInt2 landCell, out bool landValid);
+            if (landValid)
+            {
+                SimVec3 landWorld = GridMath.CellToWorldCenter(landCell, tileSize, 0f, ffOrigin);
+                // 3종 균등(1/3): 0 피해 · 1 수면 · 2 스턴. 캐스터별 rng advance.
+                int bombType = bomb.rng.NextInt(0, 3);
+                world.Set(attackerEntity, bomb); // rng 상태 저장
+                float bDamage = 0f; byte bCcKind = 0; float bCcDur = 0f;
+                if (bombType == 0) bDamage = bomb.dmgBombDamage;
+                else if (bombType == 1) { bCcKind = (byte)CcKind.Sleep; bCcDur = bomb.sleepSec; }
+                else { bCcKind = (byte)CcKind.Stun; bCcDur = bomb.stunSec; }
+
+                // ⚠ 요청이 **캐리어가 아니라 공격자 본인**에 붙는다 — 주 발사의 자리다
+                // (`ProjectileRequestCarrier` 는 같은 프레임의 **부가** 발사용).
+                _ecb.Set(attackerEntity, new ProjectileSpawnRequest
+                {
+                    movement = MovementKind.GrenadeToCell,
+                    payload = PayloadKind.TileAoe,
+                    origin = bPos,
+                    impact = landWorld,
+                    impactTileRange = bomb.aoeTileRange,
+                    aoeTargetCap = bomb.aoeTargetCap,
+                    flightTime = bomb.travelSec, // 거리 무관 고정 — 요청이 싣고 온다
+                    fuseSec = bomb.fuseSec,
+                    arcHeight = bomb.arcHeight,
+                    damage = bDamage,
+                    ccKind = bCcKind,
+                    ccDuration = bCcDur,
+                    bombType = (byte)bombType,
+                    dataIndex = bProjRef.dataIndex,
+                    visualScale = bProjRef.visualScale,
+                    owner = attackerEntity,
+                    targetFaction = ProjectileTargetFaction.Enemy,
+                });
+
+                // 던지기 애니 + facing(착지셀 방향). ⚠ `attackAnimPeriod` 가 **속도 배율을 타지
+                // 않은 raw `cooldownDuration`** 이다 — START 경로와 다르고, 구 sim 의 값이다.
+                _channels.UnitAttackVisual.Enqueue(new UnitAttackVisualEvent
+                {
+                    attacker = attackerEntity,
+                    targetWorld = landWorld,
+                    attackAnimPeriod = attack.cooldownDuration,
+                });
+
+                // 폭탄이 **실제로 손을 떠난** 프레임만 1카운트. 이 host 는 RESOLVE 로 가지
+                // 않으므로 여기가 유일한 사건 지점이다(계약 1·2).
+                FireAttackNSlots(world, attackerEntity, bPos, bCasterCell,
+                                 SimWarningCode.BombThrowUnhandledPayload, tileSize, gridSize, ffOrigin);
+            }
+
+            // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
+            attack.cooldownRemaining = attack.cooldownDuration;
+        }
+
+        /// <summary>
+        /// **host 가 대상을 주지 않는** 사건 지점의 `AttackN` 슬롯 처리 — 캐스트 드레인과
+        /// 폭탄 발사가 공유한다. 구 sim 은 이 블록을 두 곳에 복붙했고 차이는 경고 문구뿐이었다.
+        ///
+        /// ⚠ **RESOLVE 는 이 헬퍼를 쓰지 않는다**(arm E). 거기는 host 가 대상을 확정해 주고
+        /// 게이트(`DcTrigger.GatePass`)도 평가하므로 같은 함수가 아니다 — 억지로 합치면
+        /// "게이트를 볼지" 가 인자로 새어나와 두 계약이 한 함수에서 갈린다.
+        /// </summary>
+        private void FireAttackNSlots(
+            SimWorld world, SimEntityId host, SimVec3 origin, SimInt2 hostCell,
+            SimWarningCode unhandled, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            var slots = world.GetBuffer<DcTriggerSlot>(host);
+            if (slots == null) return;
+
+            for (int si = 0; si < slots.Count; si++)
+            {
+                var slot = slots[si];
+                if (slot.trigger != DcTriggerKind.AttackN) continue;
+                // ⚠ 게이트를 보지 않는다 — 처형타(AttackN × EventTarget)는 대상이 있는
+                //   RESOLVE 전용이고, 여기 host 들은 대상을 모른다.
+                ushort cc = slot.counter;
+                bool fired = DcTrigger.Tick(ref cc, slot.period);
+                slot.counter = cc;
+                slots[si] = slot;
+                if (!fired) continue;
+
+                // 발동 = 카운터 소비 성사. payload arm/대상 유무와 무관하게 신호한다.
+                _channels.DcTriggerFired.Enqueue(new DcTriggerFiredEvent { host = host });
+
+                // 발동했는데 arm 이 없으면 loud fail — 조용히 카운트만 태우는 것이 이 spec 이
+                // 없애려는 병이다(RESOLVE 의 unhandled 규율과 대칭).
+                if (slot.payload != DcPayloadKind.ProjectileToTarget)
+                {
+                    _channels.Warnings.Enqueue(new SimWarning
+                    {
+                        code = unhandled,
+                        entity = host,
+                        detail = (int)slot.payload,
+                    });
+                    continue;
+                }
+
+                int pick = PickFallbackTarget(world, host, origin, hostCell,
+                                              tileSize, gridSize, ffOrigin, slot.tileRange);
+                // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
+                if (pick >= 0)
+                    SpawnNeedleCarrier(slot, host, origin,
+                                       _targetEntities[pick], _targetPositions[pick]);
+            }
         }
 
         /// <summary>
@@ -129,43 +302,9 @@ namespace Wassup.Sim.Combat
                 //   하나도 없어도 **사건은 났다** — 아래 슬롯 루프의 성과와 무관하게 기록한다.
                 _castCountedHosts.Add(castEvt.caster);
 
-                var castSlots = world.GetBuffer<DcTriggerSlot>(castEvt.caster);
-                for (int si = 0; si < castSlots.Count; si++)
-                {
-                    var slot = castSlots[si];
-                    if (slot.trigger != DcTriggerKind.AttackN) continue;
-                    // ⚠ 게이트(`DcTrigger.GatePass`)를 보지 않는 것이 구 sim 의 이 자리다 —
-                    //   처형타 계열(AttackN × EventTarget)은 대상이 있는 RESOLVE 에서만 평가된다.
-                    ushort cc2 = slot.counter;
-                    bool fired = DcTrigger.Tick(ref cc2, slot.period);
-                    slot.counter = cc2;
-                    castSlots[si] = slot;
-                    if (!fired) continue;
-
-                    // 발동 = 카운터 소비 성사. payload arm/대상 유무와 무관하게 신호한다.
-                    _channels.DcTriggerFired.Enqueue(new DcTriggerFiredEvent { host = castEvt.caster });
-
-                    // 발동했는데 arm 이 없으면 loud fail — 조용히 카운트만 태우는 것이 이 spec 이
-                    // 없애려는 병이다(RESOLVE 의 unhandled 규율과 대칭).
-                    if (slot.payload != DcPayloadKind.ProjectileToTarget)
-                    {
-                        _channels.Warnings.Enqueue(new SimWarning
-                        {
-                            code = SimWarningCode.CastEventUnhandledPayload,
-                            entity = castEvt.caster,
-                            detail = (int)slot.payload,
-                        });
-                        continue;
-                    }
-
-                    SimInt2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, ffOrigin);
-                    int pick = PickFallbackTarget(world, castEvt.caster, castEvt.casterPos, casterCell,
-                                                  tileSize, gridSize, ffOrigin, slot.tileRange);
-                    // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
-                    if (pick >= 0)
-                        SpawnNeedleCarrier(slot, castEvt.caster, castEvt.casterPos,
-                                           _targetEntities[pick], _targetPositions[pick]);
-                }
+                SimInt2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, ffOrigin);
+                FireAttackNSlots(world, castEvt.caster, castEvt.casterPos, casterCell,
+                                 SimWarningCode.CastEventUnhandledPayload, tileSize, gridSize, ffOrigin);
             }
         }
 
