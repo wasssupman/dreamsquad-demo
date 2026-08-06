@@ -2,7 +2,7 @@
 
 상태: **M0 완료 (2026-08-04, 리뷰 APPROVE) · M1 진행 중 — units 7~17 완료
 (17-F·16-F 는 unit 18 로 이관) · unit 18 진행 중 — 조각 A·C·D·E·F·G·H 완료,
-44 시스템 중 34 이식(#33 AttackSystem 완료) · 다음은 18-J · units 19~20 미착수**
+**44/44 이식 완료(T1 종료)** · 다음은 18-K 통합(= I1 예외 지점) · units 19~20 미착수**
 
 > **의존 방향을 컴파일러가 강제하기 시작했다** (unit 17, 2026-08-05). `Scripts/Sim/Lib/` 는
 > `Wassup.Sim.asmdef`(`noEngineReferences: true`) 안에 있고, 거기에 `using UnityEngine;` 을 넣으면
@@ -46,7 +46,8 @@
 | 18-I/1 #18 HazardCast (18-E 이관분 회수) | 완료 | `5444bde6` (EditMode 2566 / 실패 0) |
 | — 3렌즈 코드 리뷰 + 재정리 | 완료 | `2ae418a6`(F1 수정) · [`m1_unit18_review.md`](m1_unit18_review.md) · [`m1_unit18_replan.md`](m1_unit18_replan.md) |
 | **18-I/2** #33 `AttackSystem` 7조각 (1,729줄) | 완료 | `29953628` 어휘 · `5f0216d4` armB · `b230ec91` armC/1 · `0af9f06f` armC/2 · `08df9713` armC/3+D · `94131f69` armE · `a293db5e` armF (EditMode 2724 / 실패 0) |
-| 18-J ~ 18-L | **진행 중** — 순서·범위는 [`m1_unit18_replan.md`](m1_unit18_replan.md) 가 정본(계획서 갱신판) · 인계는 [`m1_unit18_handoff.md`](m1_unit18_handoff.md) | — |
+| **18-J** 기믹·보스·임계·도약 10/10 | 완료 — **44/44 이식** | `22c6ffba` `30514757` `53616442` `a445cbef` (EditMode 2797 / 실패 0) |
+| 18-K ~ 18-L | **진행 중** — ⚠ **18-K 부터 I1 예외**(라이브 코드 · 골든이 증인). 순서·범위는 [`m1_unit18_replan.md`](m1_unit18_replan.md) 가 정본 | — |
 | 19~20 | **미착수** | — |
 
 ### 골든 코퍼스 동결 (사용자 결정 2026-08-05)
