@@ -50,12 +50,39 @@
 | 유닛 | 내용 | 사이징 | 증인 |
 |---|---|---|---|
 | **18-M** ✅ `5f316ad4` | 타입 대조 오라클 — **자동 매칭 155 쌍**(struct 124 + enum 31). 잡은 것: `OnHitEffectType` 기반 타입 부정합(수정) · ISystem 44개 표면 오염(필터). 장부 6건 전부 이유 부착 | 실측 155 쌍 | EditMode |
-| **18-N** | 스폰 bake ① 적 웨이브 — 유닛 데이터→컴포넌트 세트. 타이밍은 우선 live 미러 | 컴포넌트 ~14종 | EditMode · 골든 불변 |
+| **18-N** | 스폰 bake ① 적 웨이브 — 유닛 데이터→컴포넌트 세트. 타이밍은 우선 live 미러 | 컴포넌트 **20종**(실측, 아래 착수 노트) | EditMode · 골든 불변 |
 | **18-O** | 스폰 bake ② 방어유닛 + 배치·카드 커맨드 반입 (카드→mechanics **소유 이관은 18-L/16-F** — 여기선 결과 미러) | 컴포넌트 ~14종 + 커맨드 2종 | 〃 |
 | **18-P** | 스폰 bake ③ 해저드 2종·장애물·투사체(Bridge 발) | 경로 4 | 〃 |
 | **18-Q** | lockstep 비교기 — 틱 canonical 대조(`StripExcludedFields` 경유) + 불일치 리포트 | 축 1 | 골든 + 비교 로그 |
 | **18-R** | **D3** 제외 목록 기록기 재유도(제외 축 2건 처분 — 사용자 확인 1줄 필요) · 성능 장기측정. **F5 는 18-N~P 의 완료 기준으로 흡수** | 판정 2 | EditMode · 측정 |
 | 18-L | 합류 4건 (기존) — ⚠ 17-F 타입 졸업은 sim-owned 스폰 타이밍의 선행 조건 | 항목 4 | 골든 |
+
+#### 18-N 착수 노트 (2026-08-06 실측 — 시작 전에 이것만 읽으면 된다)
+
+**적 스폰(`SpawnUnit`)의 컴포넌트 세트 = 20종** (조건부 포함):
+`LocalTransform`(Scale = `CharacterVisualScale` — F5 가 지키려는 값이 이것) · `AttackUnitTag` ·
+`Health` · `FactionTag` · `AwakeningReward` · `KillScore` · 버퍼 3(`IncomingDamage`·`CcEffect`·
+`DotEffect`, 빈 채 선부착 — **부재 ≠ 빈 버퍼**라 이것도 옮겨야 한다) · `AttackState`⁽조⁾ ·
+`AttackOutputElement` 버퍼⁽조⁾ · `ProjectileRef`⁽조⁾ · `AggroAttackProfile`⁽조⁾ · `EnemyBehavior` ·
+`EnemyAiState` · `FocusTarget`⁽조⁾ · `EnemyTargetFilter` · `PathFollowState` · `ModifierStats` ·
+`ModifierStatsDirty`(⚠ 아래).
+
+**설계 결정 3 (이미 검증된 근거 포함)**:
+
+1. **훅은 `AttachSimEntityId` 하나** — 모든 추적 스폰이 지나는 유일 지점이라, 여기서 그림자
+   pending 목록에 적으면 **ordinal 정렬이 구조적으로 보장**된다(`SpawnOrdinal == simId` 단정
+   가능). 경로별 훅 7개를 두면 순서가 어긋날 자유도가 생긴다.
+2. **복사 시점은 스폰 함수 끝이 아니라 P0 flush** — 보스는 `AttachSimEntityId` **뒤에**
+   `BakeNightmareMechanics` 가 버퍼를 더 붙인다(`BattleBridge.cs:6966` 주석). attach 시점에
+   복사하면 그걸 놓친다. `AdvanceBattleFrame` 완료 후(= 라이브 sim 이 보기 직전) pending 을
+   일괄 미러하면 전 경로가 한 규칙으로 덮인다.
+3. **copier 는 presence-driven** — "live 에 있으면 변환해 Set". 조건부 컴포넌트가 자동으로
+   처리되고, 같은 copier 가 18-O/P 의 다른 아키타입도 덮는다(경로별 차이 = 어떤 컴포넌트가
+   있느냐뿐).
+
+⚠ **`ModifierStatsDirty` 특례**: 구는 enableable(3상태 — 스폰 시 부착+**비활성**), 신 sim 은
+존재 여부(2상태 — `ModifierApplySystem.cs:178` 주석이 접힘을 기록)다. 매핑: 비활성 → **부재**,
+활성 → 존재. 스폰 상태(비활성)를 그대로 Set 하면 그림자가 첫 틱에 가짜 재집계를 돈다.
 | 19 | 시계 정책 + 커맨드로그 (기존) — **골든을 바꾸는 유일 유닛** | 요청자 7 + 스키마 1 | 골든 재생성 |
 | 20 | A/B parity·성능 게이트·스왑 (기존) — ⚠ **D1 미결**: CoreCLR 포함이면 러너 유닛 +1 | 판정축 5 + 게이트 2 | A/B 러너 |
 
