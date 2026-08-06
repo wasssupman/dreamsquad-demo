@@ -77,7 +77,7 @@ namespace Wassup.Sim.Combat
             BuildTargetSnapshot(world);
 
             DrainCastEvents(world, tileSize, gridSize, ffOrigin);
-            RunAttackerLoop(world, world.DeltaTime, tileSize, gridSize, ffOrigin);
+            RunAttackerLoop(world, world.DeltaTime, hasFlowField, flowField, tileSize, gridSize, ffOrigin);
 
             _ecb.Playback(world);
         }
@@ -91,7 +91,8 @@ namespace Wassup.Sim.Combat
         /// 결과가 같다). **모든 탈출 경로가 write-back 을 지나야 한다** — 빠뜨리면 쿨다운 틱이
         /// 조용히 사라진다. 그래서 분기는 `continue` 대신 헬퍼가 처리하고 여기서 한 번만 쓴다.
         /// </summary>
-        private void RunAttackerLoop(SimWorld world, float dt, float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        private void RunAttackerLoop(SimWorld world, float dt, bool hasFlowField, FlowFieldSingleton flowField,
+                                     float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
         {
             foreach (var attackerEntity in world.With<AttackState>())
             {
@@ -134,8 +135,387 @@ namespace Wassup.Sim.Combat
                     continue;
                 }
 
+                // ── arm C/3 — 후보/타겟팅 ────────────────────────────────────
+                var pick = ResolveTarget(world, attackerEntity, ref attack, transform.Position,
+                                         hasFlowField, flowField, tileSize, gridSize, ffOrigin);
+
+                // ── arm D — START ───────────────────────────────────────────
+                StartAttack(world, attackerEntity, ref attack, transform.Position, in pick, actionLocked, dt);
+
                 world.Set(attackerEntity, attack);
             }
+        }
+
+        /// <summary>
+        /// arm C/3 의 산출물 — 이번 프레임 이 공격자의 조준 결과와 START/RESOLVE 가 읽는 부수 정보.
+        /// 구 sim 에서는 루프 본문의 지역 변수 묶음이었다.
+        /// </summary>
+        private struct TargetPick
+        {
+            public SimEntityId target;
+            public SimVec3 targetPos;
+            public SimInt2 atkCell;
+            public int tileRange;
+            /// 방향 고정(`DeployedFacing`) 유닛인가.
+            public bool hasFacing;
+            /// `ProjectileRef.movement == DirectionalLinear` 인가.
+            public bool isDirectionalProjectile;
+            /// 최전방 카드를 실제로 들고 있는가(잠금만 남고 슬롯이 회수된 상태 배제).
+            public bool wantFrontmost;
+            /// 활성 `FrontmostTarget` 슬롯 `damageMul` 의 곱. 1 = 없음.
+            public float frontmostMul;
+            /// 고른 대상이 **최전방 배율 수령자**인가(폴백/최근접이면 false).
+            public bool chosenIsPriority;
+        }
+
+        /// <summary>
+        /// arm C/3 — 후보 스캔 + 오버라이드 사슬. **단일 패스**로 최근접·우선순위·레인 witness·
+        /// 최전방·최저체력을 동시에 추적한다(두 번째 전역 쿼리를 만들지 않는다).
+        ///
+        /// 오버라이드 순서가 계약이다: 최근접 → 최저체력(힐러) → 우선순위 클래스 →
+        /// `FocusUntilDead` → 어그로 → 최전방 → **facing 레인(최종)**.
+        /// 뒤로 갈수록 강하고, 마지막 셋은 서로 다른 진영 축을 가진다(어그로·포커스는 적 전용,
+        /// 최전방·facing 은 방어유닛 전용)라 실제로 겹치지 않는다.
+        /// </summary>
+        private TargetPick ResolveTarget(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
+            bool hasFlowField, FlowFieldSingleton flowField,
+            float tileSize, SimInt2 gridSize, SimVec3 ffOrigin)
+        {
+            var r = new TargetPick
+            {
+                target = SimEntityId.Null,
+                tileRange = GridMath.RangeToTiles(attack.range),
+                atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, ffOrigin),
+                frontmostMul = 1f,
+            };
+            int mask = attack.targetMask;
+
+            // healer-lowest-health-targeting — 아군을 겨누는 방어유닛(mask == Defender)은 최근접이
+            // 아니라 **가장 다친** 아군을 고른다. `DefenderUnitTag` 로 게이트해서 도발당한 적
+            // (역시 mask == Defender)은 최근접 타겟팅을 유지한다. 후보 집합은 같고 **랭킹만** 바뀐다.
+            bool rankByHealth = mask == (int)Faction.Defender && world.Has<DefenderUnitTag>(attackerEntity);
+
+            // aggro-targeting — 적의 클래스 필터 + 우선순위. 방어유닛은 이 컴포넌트가 없어
+            // filterMask -1 / prioClass -1 = 레거시 최근접이다.
+            bool hasFilter = world.TryGet<EnemyTargetFilter>(attackerEntity, out var filter);
+            int filterMask = hasFilter ? filter.classMask : -1;
+            int prioClass = hasFilter ? filter.priorityClass : -1;
+            float bestSqPrio = float.MaxValue;
+            var bestTargetPrio = SimEntityId.Null;
+            SimVec3 bestTargetPosPrio = default;
+
+            // 최전방 카드 — 잠금이 회수 뒤에도 남을 수 있으므로 **살아 있는 슬롯**도 함께 요구한다.
+            r.wantFrontmost = world.Has<DefenderUnitTag>(attackerEntity)
+                              && world.Has<FrontmostAttackLock>(attackerEntity);
+            if (r.wantFrontmost)
+            {
+                bool hasSlot = false;
+                var fmods = world.GetBuffer<DcAttackModSlot>(attackerEntity);
+                if (fmods != null)
+                    for (int di = 0; di < fmods.Count; di++)
+                        if (fmods[di].kind == DcAttackModKind.FrontmostTarget)
+                        { r.frontmostMul *= fmods[di].damageMul; hasSlot = true; }
+                r.wantFrontmost = hasSlot;
+            }
+
+            // defender-directional-volley — facing 유닛은 "레인에 적이 있으면 쏜다" 가 타겟팅 규칙
+            // 전부다. witness 는 **데미지 대상이 아니라** 발사 게이트/조준 시각의 근거다 — 레인은
+            // facing 축 직선이라 그 위치를 바라보는 것이 곧 facing 방향을 바라보는 것과 같다.
+            r.hasFacing = world.TryGet<DeployedFacing>(attackerEntity, out var facingComp);
+            SimInt2 facing = r.hasFacing ? facingComp.value : default;
+            r.isDirectionalProjectile = world.TryGet<ProjectileRef>(attackerEntity, out var projRef)
+                                        && projRef.movement == MovementKind.DirectionalLinear;
+            var laneWitness = SimEntityId.Null;
+            SimVec3 laneWitnessPos = default;
+            float laneBestSq = float.MaxValue;
+
+            float bestSq = float.MaxValue;
+            bool fmHasBest = false;
+            FrontmostTargeting.Candidate fmBest = default;
+            var fmBestEntity = SimEntityId.Null;
+            SimVec3 fmBestPos = default;
+            bool healHasBest = false;
+            LowestHealthTargeting.Candidate healBest = default;
+            var healBestEntity = SimEntityId.Null;
+            SimVec3 healBestPos = default;
+
+            for (int i = 0; i < _targetEntities.Count; i++)
+            {
+                if (((int)_targetFactions[i] & mask) == 0) continue;
+                if (_targetEntities[i] == attackerEntity) continue;
+                int cclass = world.TryGet<DefenderClassTag>(_targetEntities[i], out var ct) ? (int)ct.value : -1;
+                if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // 허용 안 된 클래스
+
+                SimVec3 targetPos = _targetPositions[i];
+                SimInt2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, ffOrigin);
+                if (GridMath.ChebyshevDistance(tgtCell, r.atkCell) > r.tileRange) continue;
+
+                float d2 = AttackMath.DistanceSqToTarget(
+                    atkPos, _targetEntities[i], targetPos,
+                    world.GetBuffer<BlockingHazardCellsBuffer>(_targetEntities[i]),
+                    hasFlowField, flowField, out SimVec3 nearestPos);
+
+                if (d2 < bestSq)
+                {
+                    bestSq = d2;
+                    r.target = _targetEntities[i];
+                    r.targetPos = nearestPos;
+                }
+
+                if (rankByHealth)
+                {
+                    // 후보 쿼리가 `Health` 를 요구하므로 직접 조회가 안전하다.
+                    var h = world.Get<Health>(_targetEntities[i]);
+                    var hc = new LowestHealthTargeting.Candidate
+                    {
+                        hpRatio = Health.ComputeRatio(h.value, h.max),
+                        sqDist = d2,
+                        simId = _targetEntities[i].Value,
+                    };
+                    if (!healHasBest || LowestHealthTargeting.RanksBefore(hc, healBest))
+                    {
+                        healBest = hc; healBestEntity = _targetEntities[i];
+                        healBestPos = nearestPos; healHasBest = true;
+                    }
+                }
+
+                if (prioClass >= 0 && cclass == prioClass && d2 < bestSqPrio)
+                {
+                    bestSqPrio = d2;
+                    bestTargetPrio = _targetEntities[i];
+                    bestTargetPosPrio = nearestPos;
+                }
+
+                // 레인 witness — facing 축 폭 1타일 × [1..tileRange]. 위 Chebyshev 사거리 필터를
+                // 이미 통과했으므로 레인은 그 부분집합이다.
+                if (r.hasFacing && LaneMath.IsInLane(r.atkCell, facing, r.tileRange, tgtCell) && d2 < laneBestSq)
+                {
+                    laneBestSq = d2;
+                    laneWitness = _targetEntities[i];
+                    laneWitnessPos = nearestPos;
+                }
+
+                // 최전방 추적 — 유출 대기(`PastGoal`)와 도달 불가 셀은 제외한다.
+                if (r.wantFrontmost && !world.Has<PastGoalTag>(_targetEntities[i]))
+                {
+                    int fdist = FrontmostTargeting.UnreachableDist;
+                    if (hasFlowField
+                        && tgtCell.x >= 0 && tgtCell.x < gridSize.x
+                        && tgtCell.y >= 0 && tgtCell.y < gridSize.y)
+                    {
+                        fdist = flowField.dist[GridMath.CellIndex(tgtCell, gridSize)];
+                    }
+                    if (fdist != FrontmostTargeting.UnreachableDist)
+                    {
+                        var fc = new FrontmostTargeting.Candidate
+                        {
+                            flowDist = fdist,
+                            sqDist = d2,
+                            simId = _targetEntities[i].Value,
+                        };
+                        if (!fmHasBest || FrontmostTargeting.RanksBefore(fc, fmBest))
+                        {
+                            fmBest = fc; fmBestEntity = _targetEntities[i];
+                            fmBestPos = nearestPos; fmHasBest = true;
+                        }
+                    }
+                }
+            }
+
+            // 힐러 오버라이드 — `healHasBest` 는 최근접 스캔과 **같은 필터**를 통과한 후보가
+            // 있을 때만 참이므로 재랭킹만 한다(최근접이 못 고를 상황에서 고르지 않는다).
+            if (rankByHealth && healHasBest)
+            {
+                r.target = healBestEntity;
+                r.targetPos = healBestPos;
+            }
+
+            // 우선순위 클래스 오버라이드.
+            if (prioClass >= 0 && !bestTargetPrio.IsNull)
+            {
+                r.target = bestTargetPrio;
+                r.targetPos = bestTargetPosPrio;
+            }
+
+            // FocusUntilDead 잠금(어그로 아래, 최근접/우선순위 위). 대상이 죽거나 사라질 때까지
+            // 유지하고 **사거리는 발사만 게이트**한다(잠금 자체는 풀리지 않는다).
+            if (world.TryGet<EnemyBehavior>(attackerEntity, out var behavior)
+                && behavior.targetMode == EnemyTargetMode.FocusUntilDead
+                && world.TryGet<FocusTarget>(attackerEntity, out var focus))
+            {
+                SimEntityId cur = focus.current;
+                bool curValid = !cur.IsNull
+                    && world.TryGet<Health>(cur, out var curHp) && curHp.value > 0f
+                    && !world.Has<DeadTag>(cur);
+                if (curValid)
+                {
+                    SimVec3 cPos = world.TryGet<SimTransform>(cur, out var cxf) ? cxf.Position : r.targetPos;
+                    SimInt2 cCell = GridMath.WorldToCell(cPos, tileSize, gridSize, ffOrigin);
+                    if (GridMath.ChebyshevDistance(cCell, r.atkCell) <= r.tileRange)
+                    { r.target = cur; r.targetPos = cPos; }
+                    else r.target = SimEntityId.Null; // 사거리 밖 → 발사 보류, 잠금 유지
+                    world.Set(attackerEntity, new FocusTarget { current = cur });
+                }
+                else
+                {
+                    // 잠금 무효 → 이미 계산된 최근접+필터 결과를 채택한다(Null 일 수 있다).
+                    world.Set(attackerEntity, new FocusTarget { current = r.target });
+                }
+            }
+
+            // 어그로 sticky 오버라이드 — 어그로 걸린 적은 필터/우선순위/최근접/포커스를 무시하고
+            // **오직 자기 가디언만** 겨눈다. 사거리 밖이면 앵커로 걸어가며 발사를 보류한다.
+            if (world.TryGet<Aggroed>(attackerEntity, out var aggro))
+            {
+                r.target = SimEntityId.Null;
+                SimEntityId g = aggro.guardian;
+                if (!g.IsNull && world.TryGet<SimTransform>(g, out var gxf))
+                {
+                    SimVec3 gPos = gxf.Position;
+                    SimInt2 gCell = GridMath.WorldToCell(gPos, tileSize, gridSize, ffOrigin);
+                    if (GridMath.ChebyshevDistance(gCell, r.atkCell) <= r.tileRange)
+                    {
+                        r.target = g;
+                        r.targetPos = gPos;
+                    }
+                }
+            }
+
+            // 최전방 잠금 판정(**strict lapse**). 방어유닛 전용이라 위 적 전용 블록들과 겹치지 않는다.
+            if (r.wantFrontmost)
+            {
+                var fmLock = world.Get<FrontmostAttackLock>(attackerEntity);
+                bool midAttack = attack.hitDelayRemaining > 0f && fmLock.active;
+                if (midAttack)
+                {
+                    // START 에서 잠근 정체를 준비 동작 내내 유지한다. 검증 실패 = **재선택 없이 불발**.
+                    SimEntityId lt = fmLock.target;
+                    bool ltValid = !lt.IsNull
+                        && world.TryGet<Health>(lt, out var ltHp) && ltHp.value > 0f
+                        && !world.Has<DeadTag>(lt)
+                        && !world.Has<PastGoalTag>(lt);
+                    if (ltValid)
+                    {
+                        SimVec3 ltPos = world.TryGet<SimTransform>(lt, out var ltxf) ? ltxf.Position : r.targetPos;
+                        SimInt2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, ffOrigin);
+                        if (GridMath.ChebyshevDistance(ltCell, r.atkCell) <= r.tileRange)
+                        { r.target = lt; r.targetPos = ltPos; }
+                        else r.target = SimEntityId.Null; // 사거리 이탈 → 불발
+                    }
+                    else r.target = SimEntityId.Null; // 사망/소멸/유출 → 불발
+                }
+                else
+                {
+                    // 준비 동작 중이 아니면 이번 프레임 START 용 최전방을 고른다. 도달 가능한 최전방이
+                    // 없으면 최근접 폴백을 유지하되 **배율 수령자는 아니다**(계약 3).
+                    if (fmHasBest) { r.target = fmBestEntity; r.targetPos = fmBestPos; r.chosenIsPriority = true; }
+                    else r.chosenIsPriority = false;
+                }
+            }
+
+            // facing 최종 오버라이드 — 방향 고정 유닛에게는 **레인 밖 적이 존재하지 않는 것과 같다.**
+            // 최근접/우선순위/최전방/어그로가 무엇을 골랐든 레인 witness 로 덮는다.
+            if (r.hasFacing)
+            {
+                r.target = laneWitness;
+                r.targetPos = laneWitnessPos;
+                // ⚠ witness 는 "최전방" 이 아니라 "최근접" 이다 — 최전방 보너스를 여기 실으면
+                //   카드가 약속한 대상이 아닌 적이 배율을 받는다. 방향 유닛은 레인이 타겟팅 규칙
+                //   전부이므로 보너스를 포기한다.
+                r.chosenIsPriority = false;
+            }
+
+            return r;
+        }
+
+        /// <summary>
+        /// arm D — **START**(공격 시작). 애니 + 쿨다운 리셋 + 지연 세팅까지가 이 자리의 일이고
+        /// **타격은 RESOLVE** 가 한다(attack-hit-delay).
+        ///
+        /// 지연 중이면 tick 만 하고 새 START 를 하지 않는다 — 만료한 프레임에 RESOLVE 가 돈다.
+        ///
+        /// ⚠ **아직 RESOLVE 가 없다(arm E).** 구 sim 은 이 함수가 정하는 `doResolve` 를 같은 반복의
+        /// RESOLVE 블록이 소비한다 — ① `hitDelaySec &lt;= 0` 이면 이번 프레임 즉시 ② 지연이 만료한
+        /// 프레임에. arm E 가 들어올 때 이 함수는 그 bool 을 **돌려주게** 된다. 지금 그 값을 만들어
+        /// 버리지 않는 이유는, 소비자 없는 신호를 저장해 두면 "쓰이는 것처럼" 보이기 때문이다.
+        /// 그때까지 이 시스템은 **피해를 넣지 않는다** — START 와 쿨다운·지연 상태만 굴린다.
+        /// </summary>
+        private void StartAttack(
+            SimWorld world, SimEntityId attackerEntity, ref AttackState attack, SimVec3 atkPos,
+            in TargetPick pick, bool actionLocked, float dt)
+        {
+            if (attack.hitDelayRemaining > 0f)
+            {
+                float rem = attack.hitDelayRemaining - dt;
+                attack.hitDelayRemaining = SimMath.Max(0f, rem);
+                return; // 지연 중엔 새 공격 START 안 함 (RESOLVE 는 arm E)
+            }
+
+            if (actionLocked || pick.target.IsNull || attack.cooldownRemaining > 0f) return;
+
+            // enemy-ai-fsm — 적은 `Engaging|Standoff` 에서만 발사한다. 방어유닛은 상태머신 대상이
+            // 아니라 항상 발사한다.
+            bool isDefenderStart = world.Has<DefenderUnitTag>(attackerEntity);
+            if (!isDefenderStart && world.TryGet<EnemyAiState>(attackerEntity, out var ai)
+                && ai.value != AiState.Engaging && ai.value != AiState.Standoff)
+                return;
+
+            // projectile-shot-sequence — 일반 타겟팅 Direction 탄은 최근접으로 START 하되, wind-up
+            // 뒤의 재판정이 이번 발사의 기준축을 바꾸거나 취소하지 못하도록 **방향만** 스냅샷한다.
+            if (!pick.hasFacing && pick.isDirectionalProjectile)
+            {
+                SimVec2 toTarget = new SimVec2(pick.targetPos.x - atkPos.x, pick.targetPos.z - atkPos.z);
+                attack.committedDirection = SimMath.LengthSq(toTarget) > 1e-6f
+                    ? SimMath.Normalize(toTarget)
+                    : new SimVec2(0f, 1f);
+                attack.hasCommittedDirection = 1;
+            }
+
+            float attackSpeedMul = world.TryGet<ModifierStats>(attackerEntity, out var ms)
+                ? ms.attackSpeedMul : 1f;
+            float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
+            // ⚠ **double-fire 로 0 화하기 전의** 정상 간격이라 애니는 정상 속도를 유지한다.
+            float attackInterval = attack.cooldownDuration * effectiveCooldownMul;
+            // 실제 발사 주기 = max(간격, hitDelay). `hitDelayRemaining > 0` 동안 다음 START 가
+            // 막히므로 `hitDelaySec > interval` 이면 실주기는 `hitDelaySec` 이다 — 애니를 이 주기에
+            // 맞춰야 실발사보다 먼저 끝나지 않는다.
+            float attackAnimPeriod = SimMath.Max(attackInterval, attack.hitDelaySec);
+
+            _channels.UnitAttackVisual.Enqueue(new UnitAttackVisualEvent
+            {
+                attacker = attackerEntity,
+                targetWorld = pick.targetPos,
+                attackAnimPeriod = attackAnimPeriod,
+                target = pick.target,
+            });
+
+            attack.cooldownRemaining = attackInterval;
+
+            // content-1 (가시 갑옷) — double-fire charge: 이번 공격의 쿨다운을 0 으로 만들어 즉시
+            // 한 번 더 때리게 하고 charge 를 소비한다(보너스 **1발**). 각 발이 온전한 정상 공격이라
+            // DC tick / CC / 넉백 / 로그가 실발사마다 한 번씩 일어난다(RESOLVE 내부 복제 없음).
+            if (isDefenderStart && world.Has<NextAttackDoubleFire>(attackerEntity))
+            {
+                attack.cooldownRemaining = 0f;
+                _ecb.RemoveComponent<NextAttackDoubleFire>(attackerEntity);
+            }
+
+            // 최전방 잠금 + 배율 스냅샷 — 공격 도중 카드가 바뀌어도 진행 중 공격은 영향받지 않는다.
+            if (pick.wantFrontmost)
+            {
+                world.Set(attackerEntity, new FrontmostAttackLock
+                {
+                    active = true,
+                    target = pick.target,
+                    damageMulSnapshot = pick.frontmostMul,
+                    targetIsPriority = pick.chosenIsPriority,
+                });
+            }
+
+            // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE, >0 이면 지연 시작.
+            // (RESOLVE 본체는 arm E — 지금은 지연 상태만 세운다.)
+            if (attack.hitDelaySec > 0f) attack.hitDelayRemaining = attack.hitDelaySec;
         }
 
         /// <summary>
