@@ -4391,7 +4391,7 @@ namespace Wassup.Bridge
 
                 foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                    PublishStackModifier(new Wassup.Battle.Effects.StackModifierApplyEvent
                     {
                         target         = e,
                         kind           = unitData.onPlaceStackKind,
@@ -4411,7 +4411,7 @@ namespace Wassup.Bridge
 
                 foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    PublishEnemyCc(new Wassup.Battle.Effects.EnemyCcEvent
                     {
                         target = e,
                         effect = new Wassup.Battle.Effects.CcEffect
@@ -4438,7 +4438,7 @@ namespace Wassup.Bridge
 
                 foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    _dotApplyQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
+                    PublishDotApply(new Wassup.Battle.Effects.DotApplyEvent
                     {
                         target = e,
                         effect = new Wassup.Battle.Effects.DotEffect
@@ -4481,7 +4481,7 @@ namespace Wassup.Bridge
                 foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
                     if (!_em.HasBuffer<IncomingDamage>(e)) continue;
-                    _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
+                    PublishIncomingDamage(e, new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
             }
@@ -4547,7 +4547,7 @@ namespace Wassup.Bridge
                 float2 closest = forward * along;
                 float2 lateral = toTarget - closest;
                 if (math.lengthsq(lateral) > widthSq) continue;
-                _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
+                PublishIncomingDamage(e, new IncomingDamage { amount = unitData.onPlaceMagnitude });
                 affected++;
             }
             entities.Dispose();
@@ -4673,7 +4673,7 @@ namespace Wassup.Bridge
         {
             if (!_statModifierQueue.IsCreated) return;
             Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(multiplier, out var op, out var magnitude);
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            PublishStatModifier(new Wassup.Battle.Effects.StatModifierApplyEvent
             {
                 target    = target,
                 stat      = stat,
@@ -4691,7 +4691,7 @@ namespace Wassup.Bridge
         private void EnqueueStatModifierRaw(Entity target, Wassup.Battle.Effects.StatKind stat, Wassup.Battle.Effects.CombineOp op, float magnitude, float duration, ushort stackId, Wassup.Battle.Effects.ModifierOrigin origin)
         {
             if (!_statModifierQueue.IsCreated) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            PublishStatModifier(new Wassup.Battle.Effects.StatModifierApplyEvent
             {
                 target    = target,
                 stat      = stat,
@@ -6310,7 +6310,7 @@ namespace Wassup.Bridge
             for (int i = 0; i < data.effects.Length; i++)
             {
                 var e = data.effects[i];
-                _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                PublishStatModifier(new Wassup.Battle.Effects.StatModifierApplyEvent
                 {
                     target    = entity,
                     stat      = e.stat,

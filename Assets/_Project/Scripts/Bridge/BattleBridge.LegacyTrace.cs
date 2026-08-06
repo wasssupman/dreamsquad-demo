@@ -191,7 +191,9 @@ namespace Wassup.Bridge
                 sorted.Add((_em.GetComponentData<SimEntityId>(entities[i]).value, entities[i]));
             sorted.Sort((a, b) => a.id.CompareTo(b.id));
             for (int i = 0; i < sorted.Count; i++)
-                _em.GetBuffer<IncomingDamage>(sorted[i].entity).Add(new IncomingDamage
+                // ⚠ 18-S — 하네스 커맨드도 그림자에 전달한다. 전달 전에는 라이브만 유닛이
+                //   죽어 `simultaneous_death` 의 A/B 가 shadow 쪽이 130줄 더 많았다(18-Q).
+                PublishIncomingDamage(sorted[i].entity, new IncomingDamage
                 {
                     amount = float.MaxValue,
                     source = Entity.Null,

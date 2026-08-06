@@ -267,6 +267,129 @@ namespace Wassup.Bridge
 
         private int _shadowMirroredCount;
 
+        // ── Bridge 산출 이벤트 미러링 (18-S) ──────────────────────────────────
+
+        /// <summary>
+        /// battle-sim-extraction unit 18-S — **Bridge 가 sim 상태에 쓰는 것을 그림자에도 쓴다.**
+        ///
+        /// 18-Q 가 찾은 갈림의 원인이 이것이다: 배치 스킬(`ApplyOnPlaceEffect`)·효과 타일이
+        /// `StatModifierApply`/`StackModifierApply`/`EnemyCc`/`DotApply` 를 **라이브 큐에만** 넣어
+        /// 그림자에서는 stat 모디파이어가 한 번도 적용되지 않았다(`StatModifierSlot` 버퍼 부재가
+        /// 그 흔적이다). 슬로우가 안 걸리니 적이 더 빨리 도달해 피해량까지 갈렸다.
+        ///
+        /// ## 왜 규칙을 옮기지 않고 이벤트를 먹이나
+        ///
+        /// 규칙 축출(18-L)은 **다른 질문**이다. 지금 답해야 하는 것은 *"이식한 44 시스템이 구
+        /// sim 과 같은 판을 만드는가"* 이고, 그 답을 얻으려면 **입력을 같게** 해야 한다. 규칙을
+        /// 먼저 옮기면 "규칙 이식이 틀렸나 / 44 시스템 이식이 틀렸나" 가 다시 섞인다 —
+        /// 18-Q 가 애써 분리한 것을 되돌리는 셈이다. copier(18-N)와 같은 판단이다.
+        ///
+        /// ⇒ 18-L 이 규칙을 sim 으로 옮기면 **이 미러는 그 자리에서 삭제된다**(생산자가 sim
+        /// 안으로 들어오므로 Bridge 가 쓸 것이 없어진다). 임시 배선임을 알고 두는 것이다.
+        ///
+        /// ⚠ **타이밍이 등가인 이유**: 라이브 큐는 다음 sim 그룹 업데이트가 소비하고, 그림자
+        /// 채널은 다음 `ShadowStepOneTick` 의 P2 가 소비한다. 두 소비가 같은 프레임의 같은
+        /// 상대 위치라 지연이 일치한다. 배치 페이즈의 enqueue 도 양쪽 모두 첫 틱에 소비된다.
+        /// </summary>
+        // ── 짝을 잃지 않는 발행 지점 ───────────────────────────────────────────
+        //
+        // 라이브 enqueue 와 그림자 미러를 **한 함수 안에** 둔다. 호출부는 큐를 직접 만지지
+        // 않으므로 새 생산자가 생겨도 미러를 잊을 수 없다 — 잊으면 A/B 가 갈리고 그 원인을
+        // 찾는 데 골든 실행이 든다(18-Q 가 실제로 그 비용을 지불했다).
+        //
+        // ⚠ 이 함수들이 그림자 파일에 사는 것은 **I2 예외를 한 파일로 유지**하기 위해서다 —
+        //   `BattleBridge.cs` 본체는 `Wassup.Sim.*` 를 한 글자도 적지 않는다.
+        // ⚠ 라이브 쪽 동작은 **바뀌지 않는다**: 큐 호출이 그대로다(미생성 시 던지는 것도 동일).
+
+        private void PublishStatModifier(Wassup.Battle.Effects.StatModifierApplyEvent ev)
+        {
+            _statModifierQueue.Enqueue(ev);
+            ShadowEnqueueStat(ev);
+        }
+
+        private void PublishStackModifier(Wassup.Battle.Effects.StackModifierApplyEvent ev)
+        {
+            _stackModifierQueue.Enqueue(ev);
+            ShadowEnqueueStack(ev);
+        }
+
+        private void PublishEnemyCc(Wassup.Battle.Effects.EnemyCcEvent ev)
+        {
+            _enemyCcQueue.Enqueue(ev);
+            ShadowEnqueueCc(ev);
+        }
+
+        private void PublishDotApply(Wassup.Battle.Effects.DotApplyEvent ev)
+        {
+            _dotApplyQueue.Enqueue(ev);
+            ShadowEnqueueDot(ev);
+        }
+
+        /// Bridge 가 `IncomingDamage` 버퍼에 직접 붙이는 3 지점의 짝.
+        private void PublishIncomingDamage(Unity.Entities.Entity target,
+                                          Wassup.Battle.Units.IncomingDamage dmg)
+        {
+            _em.GetBuffer<Wassup.Battle.Units.IncomingDamage>(target).Add(dmg);
+            ShadowAddIncomingDamage(target, dmg.amount, dmg.source);
+        }
+
+        private void ShadowEnqueueStat(Wassup.Battle.Effects.StatModifierApplyEvent ev)
+        {
+            if (_shadow == null) return;
+            _shadow.Channels.StatApply.Enqueue((Wassup.Sim.Effects.StatModifierApplyEvent)
+                ShadowMirror.ConvertStruct(ev, typeof(Wassup.Sim.Effects.StatModifierApplyEvent),
+                                           ResolveShadowEntity));
+        }
+
+        private void ShadowEnqueueStack(Wassup.Battle.Effects.StackModifierApplyEvent ev)
+        {
+            if (_shadow == null) return;
+            _shadow.Channels.StackApply.Enqueue((Wassup.Sim.Effects.StackModifierApplyEvent)
+                ShadowMirror.ConvertStruct(ev, typeof(Wassup.Sim.Effects.StackModifierApplyEvent),
+                                           ResolveShadowEntity));
+        }
+
+        private void ShadowEnqueueCc(Wassup.Battle.Effects.EnemyCcEvent ev)
+        {
+            if (_shadow == null) return;
+            _shadow.Channels.EnemyCc.Enqueue((Wassup.Sim.Effects.EnemyCcEvent)
+                ShadowMirror.ConvertStruct(ev, typeof(Wassup.Sim.Effects.EnemyCcEvent),
+                                           ResolveShadowEntity));
+        }
+
+        private void ShadowEnqueueDot(Wassup.Battle.Effects.DotApplyEvent ev)
+        {
+            if (_shadow == null) return;
+            _shadow.Channels.DotApply.Enqueue((Wassup.Sim.Effects.DotApplyEvent)
+                ShadowMirror.ConvertStruct(ev, typeof(Wassup.Sim.Effects.DotApplyEvent),
+                                           ResolveShadowEntity));
+        }
+
+        /// <summary>
+        /// Bridge 가 `IncomingDamage` 버퍼에 **직접** 붙이는 3 지점(배치 스킬 즉발 피해 2 ·
+        /// 하네스 동시사망 커맨드 1)의 그림자 몫.
+        ///
+        /// ⚠ 라이브는 `GetBuffer` 로 **존재를 가정**한다(스폰이 빈 채로 선부착한다). 그림자도
+        /// copier 가 그 빈 버퍼를 옮겼으므로 보통 존재하지만, 없으면 만들어 붙인다 —
+        /// 여기서 조용히 버리면 피해가 사라져 A/B 가 갈린다.
+        /// </summary>
+        private void ShadowAddIncomingDamage(Unity.Entities.Entity target, float amount,
+                                            Unity.Entities.Entity source)
+        {
+            if (_shadow == null) return;
+            Wassup.Sim.SimEntityId se = ResolveShadowEntity(target);
+            if (se.IsNull || !_shadow.World.Exists(se)) return;
+
+            List<Wassup.Sim.Units.IncomingDamage> buf =
+                _shadow.World.GetBuffer<Wassup.Sim.Units.IncomingDamage>(se)
+                ?? _shadow.World.AddBuffer<Wassup.Sim.Units.IncomingDamage>(se);
+            buf?.Add(new Wassup.Sim.Units.IncomingDamage
+            {
+                amount = amount,
+                source = ResolveShadowEntity(source),
+            });
+        }
+
         // ── A/B 비교 (18-Q) ───────────────────────────────────────────────────
         //
         // ⚠ 에디터 전용: `BuildLegacyFinalStateCanonical`(기록기)이 `#if UNITY_EDITOR` 라
