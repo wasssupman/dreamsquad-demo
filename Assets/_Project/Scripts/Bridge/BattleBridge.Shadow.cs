@@ -123,6 +123,19 @@ namespace Wassup.Bridge
                 });
             }
 
+            // ⚠ **기믹 config 싱글턴 3종**(18-S 후속 실측). `ClockOut` 은 `SimConfig` 로 갔지만
+            //   레드불·온천·야근은 **컴포넌트 싱글턴**이라 별도로 옮겨야 한다 — 안 옮기면
+            //   그림자에서 그 기믹이 전부 **꺼진 판**이 된다(분류 B 게이트의 정의: 부재 = 비활성).
+            //   #21 온천 열기는 `IncomingHeal`/`IncomingDamage` 를, #1 라스트런은 공격속도를,
+            //   #28 피로도는 스택을 만든다 ⇒ 빠지면 체력 누적이 갈린다. 실제로 그랬다.
+            //   ⚠ 부재는 그대로 부재여야 한다(비활성 시즌) — 없으면 만들지 않는다.
+            MirrorSingletonIfPresent<Wassup.Battle.Effects.RedBullGimmickConfig,
+                                     Wassup.Sim.Effects.RedBullGimmickConfig>(w);
+            MirrorSingletonIfPresent<Wassup.Battle.Effects.OnsenGimmickConfig,
+                                     Wassup.Sim.Effects.OnsenGimmickConfig>(w);
+            MirrorSingletonIfPresent<Wassup.Battle.Effects.BurnoutGimmickConfig,
+                                     Wassup.Sim.Effects.BurnoutGimmickConfig>(w);
+
             // 매 틱 재빌드분 — 홀더만 세운다. 구 sim 도 브리지가 컨테이너만 만들고 내용은
             // #2·#6 이 채웠다(그 게이트가 분류 C 다).
             w.Set(w.CreateInternal(), new Wassup.Sim.Effects.HazardSingleton
@@ -133,6 +146,19 @@ namespace Wassup.Bridge
             {
                 blockedCells = new HashSet<Wassup.Sim.SimInt2>(),
             });
+        }
+
+        /// <summary>
+        /// 라이브 싱글턴이 **있을 때만** 그림자에 옮긴다(값 변환은 18-N 의 필드-이름 copier 재사용).
+        /// ⚠ 부재를 기본값으로 채우면 안 된다 — 분류 B 게이트에서 부재는 "기능 비활성" 이라는
+        /// 규칙이고, 채우면 기믹을 끈 판이 켜진 판으로 바뀐다.
+        /// </summary>
+        private void MirrorSingletonIfPresent<TOld, TNew>(Wassup.Sim.SimWorld w)
+            where TOld : unmanaged, Unity.Entities.IComponentData
+        {
+            if (!TryGetLiveSingleton(out TOld live)) return;
+            ShadowMirror.SetSimComponent(w, w.CreateInternal(), typeof(TNew),
+                ShadowMirror.ConvertStruct(live, typeof(TNew), ResolveShadowEntity));
         }
 
         private bool TryGetLiveSingleton<T>(out T value) where T : unmanaged, Unity.Entities.IComponentData
