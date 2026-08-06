@@ -47,6 +47,133 @@ namespace Wassup.Bridge
         private void ShadowBeginMatch()
         {
             _shadow = new Wassup.Sim.SimRuntime(BuildSimConfig());
+            ShadowMirrorMapSingletons();
+        }
+
+        // ── 맵 싱글턴 미러링 (분류 C 가 기다리던 것) ───────────────────────────
+
+        /// <summary>
+        /// 라이브 월드 싱글턴을 그림자로 옮긴다. **재구축이 아니라 복사**다 —
+        /// BFS·후보 셀 수집을 신 sim 에서 다시 구현하면 그 구현 자체가 새 오차원이 된다.
+        /// 이미 지어진 결과를 베끼면 데이터가 같다는 것이 자명하다.
+        ///
+        /// ⚠ **홀더는 비추적 엔티티**(`CreateInternal`)여야 한다. 구 sim 에서 이 싱글턴들은
+        /// `SimEntityId` 를 받지 않았고(`AppendUnkeyedComponents` 가 그 사실에 의존한다),
+        /// 추적 공간에서 뽑으면 그 뒤 모든 유닛의 번호가 밀린다.
+        ///
+        /// ⚠ 무엇을 베끼고 무엇을 비워 두는지가 갈린다:
+        /// <list type="bullet">
+        /// <item>`FlowField`·`DefenderField`·`PickupSpawnState` = **Bridge 가 맵에서 지은 것** → 복사</item>
+        /// <item>`Hazard`·`Obstacle` = **sim 이 매 틱 재빌드**(#2·#6) → 빈 홀더만</item>
+        /// </list>
+        /// `DefenderField` 의 `flow`/`dist` 도 매 틱 재빌드(#7)지만 배열은 **할당돼 있어야**
+        /// 하므로(그 시스템은 크기를 신뢰한다) 함께 베낀다.
+        /// </summary>
+        private void ShadowMirrorMapSingletons()
+        {
+            if (_shadow == null || !HasLiveEntityManager()) return;
+            Wassup.Sim.SimWorld w = _shadow.World;
+
+            if (TryGetLiveSingleton(out Wassup.Battle.Effects.FlowFieldSingleton ff) && ff.IsCreated)
+            {
+                w.Set(w.CreateInternal(), new Wassup.Sim.Effects.FlowFieldSingleton
+                {
+                    flow = ToSimVec2(ff.flow),
+                    dist = ToIntArray(ff.dist),
+                    gridSize = ToSimInt2(ff.gridSize),
+                    goalCell = ToSimInt2(ff.goalCell),
+                    goals = ToSimInt2Array(ff.goals),
+                    tileSize = ff.tileSize,
+                    origin = ToSimVec3(ff.origin),
+                    version = ff.version,
+                });
+            }
+
+            if (TryGetLiveSingleton(out Wassup.Battle.Effects.DefenderFieldSingleton df) && df.IsCreated)
+            {
+                w.Set(w.CreateInternal(), new Wassup.Sim.Effects.DefenderFieldSingleton
+                {
+                    walkMask = ToByteArray(df.walkMask),
+                    flow = ToSimVec2(df.flow),
+                    dist = ToIntArray(df.dist),
+                    gridSize = ToSimInt2(df.gridSize),
+                    tileSize = df.tileSize,
+                    origin = ToSimVec3(df.origin),
+                });
+            }
+
+            // ⚠ 없으면 만들지 않는다 — 부재가 곧 "레드불 기믹 비활성" 이다(분류 B 와 같은 결).
+            if (TryGetLiveSingleton(out Wassup.Battle.Effects.PickupSpawnState ps) && ps.IsCreated)
+            {
+                w.Set(w.CreateInternal(), new Wassup.Sim.Effects.PickupSpawnState
+                {
+                    candidateCells = ToSimInt2Array(ps.candidateCells),
+                    elapsed = ps.elapsed,
+                    // ⚠ `state` 를 그대로 옮긴다 — 생성자에 시드를 다시 먹이면 두 난수열이 갈린다
+                    //   (`SimRandom(seed)` 와 `Unity.Mathematics.Random(seed)` 의 섞는 방식이 다르다).
+                    rng = new Wassup.Sim.SimRandom { state = ps.rng.state },
+                });
+            }
+
+            // 매 틱 재빌드분 — 홀더만 세운다. 구 sim 도 브리지가 컨테이너만 만들고 내용은
+            // #2·#6 이 채웠다(그 게이트가 분류 C 다).
+            w.Set(w.CreateInternal(), new Wassup.Sim.Effects.HazardSingleton
+            {
+                cellToEffects = new Wassup.Sim.Effects.HazardCellIndex(),
+            });
+            w.Set(w.CreateInternal(), new Wassup.Sim.Effects.ObstacleSingleton
+            {
+                blockedCells = new HashSet<Wassup.Sim.SimInt2>(),
+            });
+        }
+
+        private bool TryGetLiveSingleton<T>(out T value) where T : unmanaged, Unity.Entities.IComponentData
+        {
+            using Unity.Entities.EntityQuery q =
+                _em.CreateEntityQuery(Unity.Entities.ComponentType.ReadOnly<T>());
+            if (q.IsEmptyIgnoreFilter) { value = default; return false; }
+            value = q.GetSingleton<T>();
+            return true;
+        }
+
+        // ── 엔진 타입 → sim 타입 (복사) ───────────────────────────────────────
+
+        private static Wassup.Sim.SimInt2 ToSimInt2(Unity.Mathematics.int2 v)
+            => new Wassup.Sim.SimInt2(v.x, v.y);
+
+        private static Wassup.Sim.SimVec3 ToSimVec3(Unity.Mathematics.float3 v)
+            => new Wassup.Sim.SimVec3(v.x, v.y, v.z);
+
+        private static byte[] ToByteArray(Unity.Collections.NativeArray<byte> src)
+        {
+            if (!src.IsCreated) return null;
+            var dst = new byte[src.Length];
+            for (int i = 0; i < src.Length; i++) dst[i] = src[i];
+            return dst;
+        }
+
+        private static int[] ToIntArray(Unity.Collections.NativeArray<int> src)
+        {
+            if (!src.IsCreated) return null;
+            var dst = new int[src.Length];
+            for (int i = 0; i < src.Length; i++) dst[i] = src[i];
+            return dst;
+        }
+
+        private static Wassup.Sim.SimVec2[] ToSimVec2(Unity.Collections.NativeArray<Unity.Mathematics.float2> src)
+        {
+            if (!src.IsCreated) return null;
+            var dst = new Wassup.Sim.SimVec2[src.Length];
+            for (int i = 0; i < src.Length; i++) dst[i] = new Wassup.Sim.SimVec2(src[i].x, src[i].y);
+            return dst;
+        }
+
+        private static Wassup.Sim.SimInt2[] ToSimInt2Array(Unity.Collections.NativeArray<Unity.Mathematics.int2> src)
+        {
+            if (!src.IsCreated) return null;
+            var dst = new Wassup.Sim.SimInt2[src.Length];
+            for (int i = 0; i < src.Length; i++) dst[i] = ToSimInt2(src[i]);
+            return dst;
         }
 
         /// <summary>
