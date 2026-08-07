@@ -1,6 +1,6 @@
 # placement-mask — 배치 가능 영역의 mask 정본화 (타일 종류 → per-cell 마스크)
 
-상태: **units 0~3 구현·커밋 완료 2026-08-07 (EditMode 1894 그린 · 투트랙 코드 리뷰 반영) · unit 3 육안 축(Play 검증 맵·시나리오 4종·재검토 표 추기)은 대기**
+상태: **units 0~4 구현·커밋 완료 2026-08-07 (EditMode 1912 그린 · units 0~3 투트랙 리뷰 반영) · unit 3 육안 축(Play 검증 맵·시나리오 4종·재검토 표 추기)과 unit 4 리뷰는 대기**
 
 ## 상위 목표
 
@@ -16,10 +16,12 @@
 | [1_predicate_and_curving.md](1_predicate_and_curving.md) | 판정 교체 | `SpatialPlacementCheck` 마스크화 + 런타임 커빙 재해석 + EffectTilePlacer |
 | [2_map_painter_mask_brush.md](2_map_painter_mask_brush.md) | 저작 도구 | Map Painter 마스크 브러시·오버레이·베이크 |
 | [3_walk_cell_placement_verification.md](3_walk_cell_placement_verification.md) | B-1 검증 | Walk 셀 배치의 Play 검증 + "배치칸=벽" 암묵 전제 6곳 재검토 |
+| [4_placement_layers.md](4_placement_layers.md) | 층 비트필드 | 셀 마스크 × 유닛 레이어 교집합 판정 (클래스 비종속) + 페인터 층 브러시 |
 
 ## Feature-wide 계약
 
-1. **`placeMask`(per-cell byte, 1=배치 가능)가 배치 가능성의 단일 정본.** `tiles` 는 시각(바닥/프랍 zone)·통행(walkMask 파생식 `tiles==Walk`) 정본으로 잔존한다. ECS 로 넘어가는 데이터는 불변 — sim 변경 0.
+0. **(unit 4 개정) 마스크 바이트 = 층 비트필드**, 판정 = `(셀 층 & 유닛 층) != 0`. 구현은 유닛 **클래스에 종속되지 않는다** — 코드는 비트만 본다. 아래 1~7 의 "배치 가능"은 이 교집합으로 읽는다.
+1. **`placeMask`(per-cell byte)가 배치 가능성의 단일 정본.** `tiles` 는 시각(바닥/프랍 zone)·통행(walkMask 파생식 `tiles==Walk`) 정본으로 잔존한다. ECS 로 넘어가는 데이터는 불변 — sim 변경 0.
 2. **폴백 사다리** (`goals`/`goalMaxStability` 폴백과 동형): doc 의 `placeMask` 부재·길이 불일치 → `tiles==Place` 파생. 빌더를 거치지 않은 직접 구성 픽스처 보호: `GeneratedMap.PlaceableAt` 이 마스크 미생성 시 `tiles==Place` 로 폴백. 기존 맵 6종·기존 테스트는 **무회귀**가 계약이다.
 3. **배치 판정 술어의 단일 지점 유지**: 배치 가능성 판정은 `SpatialPlacementCheck` 하나로 수렴한다. 하이라이트·D&D·재배치·탭/클릭 배치는 술어 공유로 자동 추종하며, 병렬 스캔 재구현 금지 (placement-eligible-tile-highlight 계약 승계). (커빙 intent 비교·EffectTilePlacer 의 마스크 읽기는 배치 판정이 아니라 각각 저작 의도 감지·효과 타일 선정이다.)
 4. **커빙(`ObstaclePlacer.DesignateDeco`) 재해석**: "doc 마스크가 파생값(`tiles==Place`)과 상이" = 수동 배치판 ⇒ 커빙 skip (authored-Deco skip 규칙과 동형·병렬). 커빙이 실행된 경우 종료 후 마스크를 tiles 에서 재파생해 동기를 유지한다. `ObstaclePlacer` 시그니처 불변.
