@@ -82,5 +82,60 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(PlacementRejectReason.MissingMap,
                 BattleBridge.SpatialPlacementCheck(default, new HashSet<Vector2Int>(), new int2(0, 0)));
         }
+
+        // ── placement-mask unit 1 — 마스크가 배치 가능성의 정본 ─────────────────
+
+        // MakeMap 과 동일 3x3 + placeMask: Walk 셀 (1,1) 허용, Place 셀 (0,0) 금지.
+        static GeneratedMap MakeMaskedMap()
+        {
+            var map = MakeMap();
+            var mask = new NativeArray<byte>(9, Allocator.Persistent);
+            for (int i = 0; i < 9; i++)
+                mask[i] = (byte)(map.tiles[i] == MapTileType.Place ? 1 : 0);
+            mask[1 * 3 + 1] = 1;   // Walk 셀 (1,1) 배치 허용 — B-1.
+            mask[0 * 3 + 0] = 0;   // Place 셀 (0,0) 배치 금지.
+            map.placeMask = mask;
+            return map;
+        }
+
+        [Test]
+        public void WalkCellWithMask_ReturnsNone()
+        {
+            var map = MakeMaskedMap();
+            try
+            {
+                Assert.AreEqual(PlacementRejectReason.None,
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1)),
+                    "Walk 셀이어도 mask=1 이면 배치 가능 (B-1)");
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void PlaceCellMaskedOff_ReturnsNotBuildable()
+        {
+            var map = MakeMaskedMap();
+            try
+            {
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0)),
+                    "Place 셀이어도 mask=0 이면 배치 불가");
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void MaskedWalkCell_Occupied_ReturnsOccupied()
+        {
+            var map = MakeMaskedMap();
+            try
+            {
+                var occupied = new HashSet<Vector2Int> { new Vector2Int(1, 1) };
+                Assert.AreEqual(PlacementRejectReason.Occupied,
+                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(1, 1)),
+                    "마스크 셀도 점유 판정은 동일");
+            }
+            finally { map.Dispose(); }
+        }
     }
 }

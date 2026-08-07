@@ -8,6 +8,17 @@ namespace Wassup.Data
     // DesignateDeco 는 authored-Deco 를 칠하지 않은 문서맵의 배치칸 커빙에 살아있다.
     public static class ObstaclePlacer
     {
+        // placement-mask unit 1 — "마스크가 파생값(tiles==Place)과 상이한 셀이 있나" = 마스크 브러시로
+        // 저작된 수동 배치판인가. 참이면 BattleBridge 가 시드 커빙을 skip 한다(authored-Deco 규칙과 동형).
+        // bool 비교라 마스크 비정규값(≠0/1)에도 안전. 마스크 미생성이면 저작 의도 없음.
+        public static bool HasAuthoredMaskIntent(NativeArray<MapTileType> tiles, NativeArray<byte> placeMask)
+        {
+            if (!placeMask.IsCreated) return false;
+            for (int i = 0; i < tiles.Length; i++)
+                if ((placeMask[i] != 0) != (tiles[i] == MapTileType.Place)) return true;
+            return false;
+        }
+
         // Place(=buildable) 를 솔리드 블롭으로 남기고 나머지를 Deco 로 변환. keepFraction = 남길 Place 비율 [0,1].
         // 시드 결정적. BattleBridge 의 맵 빌드(데코 미지정 문서맵)가 소비한다.
         public static void DesignateDeco(

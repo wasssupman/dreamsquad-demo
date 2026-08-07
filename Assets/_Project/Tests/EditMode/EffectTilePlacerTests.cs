@@ -82,6 +82,29 @@ namespace Wassup.Tests.EditMode
             finally { map.Dispose(); }
         }
 
+        [Test]
+        public void SelectCells_MaskWinsOverTileType()
+        {
+            // placement-mask unit 1 — 마스크 생성 시 배치 정본은 마스크: Walk 셀 mask=1 선정 가능,
+            // Place 셀 mask=0 선정 불가.
+            var map = CreateMap(new int2(4, 4), MapTileType.Place);
+            try
+            {
+                var mask = new NativeArray<byte>(16, Allocator.Temp);
+                mask[map.CellIndex(new int2(1, 1))] = 1;
+                mask[map.CellIndex(new int2(2, 2))] = 1;
+                map.tiles[map.CellIndex(new int2(1, 1))] = MapTileType.Walk;   // Walk 인데 mask=1
+                map.placeMask = mask;
+
+                var cells = EffectTilePlacer.SelectCells(map, 99, 10);
+
+                Assert.AreEqual(2, cells.Count, "mask=1 인 2셀만 선정");
+                CollectionAssert.Contains(cells, new int2(1, 1), "Walk 셀도 mask=1 이면 선정");
+                CollectionAssert.Contains(cells, new int2(2, 2));
+            }
+            finally { map.Dispose(); }
+        }
+
         private static GeneratedMap CreateMap(int2 gridSize, MapTileType fill)
         {
             int count = gridSize.x * gridSize.y;

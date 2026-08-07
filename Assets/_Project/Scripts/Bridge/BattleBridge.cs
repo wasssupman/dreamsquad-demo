@@ -1114,12 +1114,20 @@ namespace Wassup.Bridge
             if (_generatedMap.IsCreated)
                 for (int i = 0; i < _generatedMap.tiles.Length; i++)
                     if (_generatedMap.tiles[i] == MapTileType.Deco) { hasAuthoredDeco = true; break; }
+            // placement-mask unit 1 — 마스크가 파생값(tiles==Place)과 상이 = 마스크 브러시로 저작된
+            // 수동 배치판 ⇒ 커빙 skip (authored-Deco 규칙과 동형). 파생 마스크는 상이 셀 0 → 기존대로 커빙.
+            bool hasAuthoredMaskIntent = _generatedMap.IsCreated
+                && ObstaclePlacer.HasAuthoredMaskIntent(_generatedMap.tiles, _generatedMap.placeMask);
             if (theme != null
-                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated && !hasAuthoredDeco)
+                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated && !hasAuthoredDeco
+                && !hasAuthoredMaskIntent)
             {
                 var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(_generatedMap.seed ^ 0x5A5A5A) | 1u);
                 ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,
                     _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
+                // 커빙은 파생-마스크 맵에서만 도니 재파생이 정확히 동기다 (placement-mask unit 1).
+                for (int i = 0; i < _generatedMap.tiles.Length; i++)
+                    _generatedMap.placeMask[i] = (byte)(_generatedMap.tiles[i] == MapTileType.Place ? 1 : 0);
             }
 
             // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
@@ -4978,16 +4986,18 @@ namespace Wassup.Bridge
             return PlaceDefenderAs(tileX, tileY, unitData);
         }
 
-        // placement-eligible-tile-highlight unit 2 — 공간 배치 조건만(IsCreated/bounds/Place/점유).
+        // placement-eligible-tile-highlight unit 2 — 공간 배치 조건만(IsCreated/bounds/마스크/점유).
         // 순수 static(값 in → reason out): 판정(CanPlaceDefenderAt)과 하이라이트 셀 수집이 공유해
         // 어긋나지 않게 한다(PaintLanes 가 시뮬 발사 게이트를 공유하는 것과 동형). EditMode 테스트 대상.
         // 비용/풀/유닛/running 은 CanPlaceDefenderAt 이 별도로 본다.
+        // placement-mask unit 1 — 배치 가능성의 정본은 placeMask(PlaceableAt). 타일 종류와 직교 —
+        // Walk 셀도 마스크가 1 이면 배치된다(B-1: 통행·행동 규칙은 불변, 위치 제약만 해제).
         public static PlacementRejectReason SpatialPlacementCheck(GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell)
         {
             if (!map.IsCreated) return PlacementRejectReason.MissingMap;
             if (cell.x < 0 || cell.x >= map.gridSize.x || cell.y < 0 || cell.y >= map.gridSize.y)
                 return PlacementRejectReason.OutOfBounds;
-            if (map.TileAt(cell) != MapTileType.Place) return PlacementRejectReason.NotBuildable;
+            if (!map.PlaceableAt(cell)) return PlacementRejectReason.NotBuildable;
             if (occupied != null && occupied.Contains(new Vector2Int(cell.x, cell.y))) return PlacementRejectReason.Occupied;
             return PlacementRejectReason.None;
         }
