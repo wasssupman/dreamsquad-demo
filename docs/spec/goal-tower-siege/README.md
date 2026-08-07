@@ -1,7 +1,8 @@
 # goal-tower-siege — 골에 도달한 적이 타워를 때린다
 
-> 상태: **초안 2026-08-07 · 미착수**
-> 선행 필수: `three-minute-survival` 완료 (안정도 값·체력바·패배 조건·tie-break 가 거기 있다)
+> 상태: **착수 2026-08-08 · units 0~2 구현 중**
+> 선행: `three-minute-survival` units 0~3 커밋됨(`a7d1b015`, 컴파일만 검증).
+> 안정도 값·체력바·패배 조건·tie-break 는 거기 있고, 이 spec 은 **피해가 도착하는 방식만** 바꾼다.
 
 ## 목표
 
@@ -14,6 +15,49 @@
 
 **바꾸는 것은 피해가 도착하는 방식 하나다.** 안정도 값·체력바·패배 조건·점수 tie-break 는
 선행 spec 이 이미 소유하므로 재설계하지 않는다.
+
+## 작업 단위
+
+| # | 문서 | 작업 구분 | 목적 |
+|---|---|---|---|
+| 0 | `0_tower_entity_and_pool.md` | ECS (Units) | 타워 엔티티 + 공유 체력 싱글턴 + 피해 시스템 + 안정도 authority 이관 |
+| 1 | `1_enemy_siege.md` | ECS (Units/Combat) + 브리지 | 적이 골에서 죽지 않고 타워를 때린다 — 파괴 중단·마스크 부여·타겟팅 배제 해제·도발 |
+| 2 | `2_coverage_and_cadence.md` | ECS (Combat) + 문서 | 투사체 페이로드 커버리지 · 웨이브 케이던스 상호작용 · 계약 문서/테스트 갱신 |
+| 3 | `3_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
+
+## Feature-wide 계약
+
+- **안정도의 정본이 브리지에서 ECS 싱글턴으로 이동한다.** 브리지는 폴링해 기존 공개 API
+  (`GoalStabilityCurrent`/`GoalStabilityMax`)를 그대로 서빙한다 — 체력바(three-minute-survival
+  unit 1)와 tie-break(unit 3)는 **한 줄도 바뀌지 않는다.**
+- **`GoalTowerDamageSystem` 은 `[UpdateBefore(DamageApplicationSystem)]`** 에서 타워
+  `IncomingDamage` 를 직접 소비한다. 그래야 (a) 누적 결손 재차감이 원천적으로 불가능하고
+  (b) `DamageApplicationSystem` 이 타워 `Health` 를 건드리지 않아 개별 타워 `DeadTag` 가 안 생긴다.
+- **타워는 `ModifierStats`/`StatModifierSlot`/`ShieldSlot`/`IncomingHeal` 을 갖지 않는다.**
+  `MaxHealthScaleSystem` 이 `Health.max` 를 재계산하면 미러가 깨진다.
+- **`GoalTower` 비트는 base `targetMask` 에 넣지 않는다.** 골에 도달한(=`PastGoalTag`) 적에게만
+  부여한다 — base 에 넣으면 사거리 3타일 원거리 적이 골 3칸 앞에서 `Engaging` 으로 멈춰
+  `PastGoalTag` 도 스트레스도 발생하지 않는다.
+- **유출 즉발 피해는 제거된다.** 안정도는 이제 타워 공격으로만 깎인다. 스트레스 카운트와
+  `_enemyTypeByEntity` 정리는 유지한다.
+- **적의 뷰를 despawn 하지 않는다.** `DrainGoalEvents` 의 despawn·표식 회수 3줄을 걷어낸다.
+- 보스는 `hunting` 중 골 셀을 지나쳐도 도달 처리되지 않는다(leak-proof) — **의도된 구멍**이다.
+  방어유닛이 전멸해야 보스가 타워로 향한다.
+
+## 파이프라인 커버리지
+
+골 타워는 신규 플레이 오브젝트다. 가장 가까운 아키타입은 **해저드 — Blocking**(정적 ·
+`Health` 보유 · 적의 공격 대상)이라 그 표를 대조했다.
+
+| 정거장 | 골 타워의 대응 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/AttackDeck.cs` → `goalStabilityMax`(기존) | 전용 SO 신설 없음 — 최대치는 이미 덱이 소유 |
+| 스폰 진입점 | `BattleBridge` 맵 빌드 직후 골 셀 순회 | 판 시작 1회 결정론 생성이라 요청 큐 불요(해저드의 staged-request 와 다름) |
+| ECS 컴포넌트 (Units) | `GoalTowerTag`·`GoalTowerHealth` + `Health`/`IncomingDamage`/`FactionTag`/`LocalTransform` | `EffectSpawner.SpawnBlockingHazard` 와 동형 |
+| 시뮬 시스템 | `GoalTowerDamageSystem`(Units, `[UpdateBefore(DamageApplicationSystem)]`) | 버퍼 직접 소비 → 풀 → 전 타워 미러 |
+| 이벤트 큐 | **N/A** — 체력은 원샷 사건이 아니라 **상태**다. 브리지가 싱글턴을 폴링한다 |
+| View | **N/A(재사용)** — 바는 `UnitOverheadView` 타워 스킨(three-minute-survival unit 1), 구조물 메쉬는 `theme.goalStructureProp`. 신규 프리팹 0 |
+| 씬 wiring | **N/A** — 새 SerializeField 없음 |
 
 ## 왜 분리했나
 

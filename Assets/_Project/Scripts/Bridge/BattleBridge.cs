@@ -1273,6 +1273,7 @@ namespace Wassup.Bridge
             _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
             _killCount = 0;
             ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
+            DestroyGoalTowers();       // goal-tower-siege unit 0 — 이전 판의 타워/풀 정리
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
@@ -1322,6 +1323,9 @@ namespace Wassup.Bridge
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _killCount = 0;
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
+            // goal-tower-siege unit 0 — 맵·월드가 준비된 뒤 골 셀마다 타워를 세운다.
+            // ResetGoalStability 다음이어야 풀이 이번 판의 최대치를 받는다.
+            EnsureGoalTowers();
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
@@ -1623,6 +1627,7 @@ namespace Wassup.Bridge
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _killCount = 0;
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
+            DestroyGoalTowers();  // goal-tower-siege unit 0 — 타워/풀도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
             _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
@@ -4754,6 +4759,54 @@ namespace Wassup.Bridge
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
             _leakTypeMissLogged = false;
+        }
+
+        // goal-tower-siege unit 0 — 골 셀마다 "때릴 수 있는 대상" 을 세우고 공유 체력 풀
+        // 싱글턴을 만든다. 아키타입은 Blocking 해저드와 동형(EffectSpawner.SpawnBlockingHazard).
+        //
+        // 계약: ModifierStats/StatModifierSlot/ShieldSlot/IncomingHeal 을 붙이지 않는다 —
+        // MaxHealthScaleSystem 이 Health.max 를 재계산하면 미러가 깨진다.
+        //
+        // 이 단위에서 타워는 **아직 아무에게도 안 맞는다**. Faction.GoalTower 를 적의
+        // targetMask 에 부여하는 것은 unit 1(골 도달 시점)이고, 안정도의 정본도 그때
+        // 브리지에서 이 싱글턴으로 옮긴다.
+        private void EnsureGoalTowers()
+        {
+            if (_em == null || !_generatedMap.IsCreated || _goalStabilityMax <= 0) return;
+            DestroyGoalTowers();
+
+            var poolEntity = _em.CreateEntity();
+            _em.AddComponentData(poolEntity, new Wassup.Battle.Units.GoalTowerHealth
+            {
+                value = _goalStabilityMax,
+                max = _goalStabilityMax,
+            });
+
+            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+            int count = hasList ? _generatedMap.goals.Length : 1;
+            for (int i = 0; i < count; i++)
+            {
+                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
+                var tower = _em.CreateEntity();
+                _em.AddComponent<Wassup.Battle.Units.GoalTowerTag>(tower);
+                _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
+                _em.AddBuffer<IncomingDamage>(tower);
+                _em.AddComponentData(tower, new FactionTag { value = Faction.GoalTower });
+                _em.AddComponentData(tower, LocalTransform.FromPosition(
+                    GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
+            }
+            Debug.Log($"[BattleBridge] Goal towers spawned: {count} @ stability {_goalStabilityMax}");
+        }
+
+        private void DestroyGoalTowers()
+        {
+            if (_em == null) return;
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());
+            _em.DestroyEntity(towerQuery);
+            using var poolQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerHealth>());
+            _em.DestroyEntity(poolQuery);
         }
 
         // 안정도 읽기 창구. unit 1(게이지)·unit 3(동점 판정)이 이것만 쓴다.
