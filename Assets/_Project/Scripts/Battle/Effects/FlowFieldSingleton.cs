@@ -17,6 +17,9 @@ namespace Wassup.Battle.Effects
         // ⚠ 두 싱글턴이 같은 배열을 들면 double dispose 로 죽는다 — 소유·해제는 여기 하나뿐.
         // IsCreated 불변식에는 넣지 않는다(goals 와 같은 이유 — 픽스처가 뒤집히는 걸 막는다).
         public NativeArray<byte>   walkMask;
+        // continuous-agent-movement unit 5 (D1-b) — 필드가 마지막으로 반영한 차단 셀 집합의
+        // 시그니처. FlowFieldRebuildSystem 이 유일 writer. 0 = 장애물 없음.
+        public uint                blockedSignature;
         public int2                gridSize;    // (Width, Height)
         public int2                goalCell;    // 픽스처 폴백 전용 기준(goals 미설정 시 IsGoalCell 이 이걸 씀).
                                                 // 프로덕션 BuildFlowField 는 goals 를 항상 채우므로 여기선 읽히지 않음.

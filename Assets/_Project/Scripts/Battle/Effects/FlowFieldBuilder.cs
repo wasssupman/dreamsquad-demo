@@ -9,16 +9,46 @@ namespace Wassup.Battle.Effects
     {
         // boss-defender-field unit 0 — 기존 static readonly int2[] 를 switch 로 교체.
         // Burst ISystem(DefenderFieldSystem)에서 호출 가능해야 하는데 managed 배열
-        // static 접근은 Burst 미보장. 순서(+x, -x, +y, -y)는 flow 타이브레이크 결정론 계약.
+        // static 접근은 Burst 미보장.
+        //
+        // continuous-agent-movement unit 4 — 4방향 → 8방향.
+        // **결정론 계약(구 "+x, -x, +y, -y" 를 대체)**: 직교 4 를 앞에, 대각 4 를 뒤에 둔다.
+        // 동률이면 직교가 이긴다 — 대각의 실제 이동 거리가 길기 때문이다.
+        private const int DirCount = 8;
+
         private static int2 Dir(int d)
         {
             switch (d)
             {
-                case 0:  return new int2(1, 0);
-                case 1:  return new int2(-1, 0);
-                case 2:  return new int2(0, 1);
-                default: return new int2(0, -1);
+                case 0:  return new int2( 1,  0);
+                case 1:  return new int2(-1,  0);
+                case 2:  return new int2( 0,  1);
+                case 3:  return new int2( 0, -1);
+                case 4:  return new int2( 1,  1);
+                case 5:  return new int2( 1, -1);
+                case 6:  return new int2(-1,  1);
+                default: return new int2(-1, -1);
             }
+        }
+
+        // ×10 스케일 정수 비용. 부동소수 dist 는 결정론 위험이 커서 쓰지 않는다.
+        // 직교 10 / 대각 14 (≈ 10√2 = 14.14). 단순 BFS 로 8-이웃을 돌리면 dist 가 체비셰프가
+        // 되어 대각이 공짜가 되고, 불필요한 대각을 선호하는 반대 방향 왜곡이 생긴다.
+        public const int CostOrtho = 10;
+        public const int CostDiag  = 14;
+
+        private static int Cost(int d) => d < 4 ? CostOrtho : CostDiag;
+
+        // 대각은 인접한 두 직교 이웃이 **둘 다** 통행 가능할 때만 허용한다.
+        // 아니면 유닛이 벽 모서리를 관통한다(타일 정렬 벽이라 눈에 잘 띈다).
+        private static bool DiagonalAllowed(int2 from, int2 step, NativeArray<byte> walkMask, int2 gridSize)
+        {
+            int w = gridSize.x, h = gridSize.y;
+            int2 sideA = new int2(from.x + step.x, from.y);
+            int2 sideB = new int2(from.x, from.y + step.y);
+            if (sideA.x < 0 || sideA.x >= w || sideA.y < 0 || sideA.y >= h) return false;
+            if (sideB.x < 0 || sideB.x >= w || sideB.y < 0 || sideB.y >= h) return false;
+            return walkMask[sideA.y * w + sideA.x] != 0 && walkMask[sideB.y * w + sideB.x] != 0;
         }
 
         public static void Build(
@@ -56,6 +86,9 @@ namespace Wassup.Battle.Effects
             for (int i = 0; i < n; i++) outDist[i] = int.MaxValue;
             for (int i = 0; i < n; i++) outFlow[i] = float2.zero;
 
+            // continuous-agent-movement unit 4 — 가중 다익스트라. 비용이 {10, 14} 두 종뿐이라
+            // 우선순위 큐 없이 **재삽입 허용 큐**로 충분하다(라벨 정정법). 맵이 180셀 규모라
+            // 재삽입 비용이 무시되고, 처리 순서와 무관하게 결과가 같아 결정론이 유지된다.
             var queue = new NativeQueue<int2>(Allocator.Temp);
             try
             {
@@ -74,21 +107,25 @@ namespace Wassup.Battle.Effects
                 {
                     int cIdx = c.y * w + c.x;
                     int cDist = outDist[cIdx];
-                    for (int d = 0; d < 4; d++)
+                    for (int d = 0; d < DirCount; d++)
                     {
-                        int2 n2 = c + Dir(d);
+                        int2 step = Dir(d);
+                        int2 n2 = c + step;
                         if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                         int nIdx = n2.y * w + n2.x;
                         if (walkMask[nIdx] == 0) continue;
-                        if (outDist[nIdx] <= cDist + 1) continue;
-                        outDist[nIdx] = cDist + 1;
+                        if (d >= 4 && !DiagonalAllowed(c, step, walkMask, gridSize)) continue;
+                        int nd = cDist + Cost(d);
+                        if (outDist[nIdx] <= nd) continue;
+                        outDist[nIdx] = nd;
                         queue.Enqueue(n2);
                     }
                 }
             }
             finally { queue.Dispose(); }
 
-            // Fill flow: 각 cell 에서 4-neighbor 중 dist 최소 방향 unit vector.
+            // Fill flow: 각 cell 에서 8-neighbor 중 "그쪽으로 가면 총비용이 가장 줄어드는" 방향.
+            // 비용을 빼야 대각의 긴 거리가 반영된다 — dist 만 비교하면 대각이 과하게 선택된다.
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
@@ -96,18 +133,29 @@ namespace Wassup.Battle.Effects
                 if (outDist[idx] == int.MaxValue) { outFlow[idx] = float2.zero; continue; }
                 if (outDist[idx] == 0)             { outFlow[idx] = float2.zero; continue; }
 
-                int bestDist = outDist[idx];
+                var cell = new int2(x, y);
+                // argmin(outDist[n] + Cost(d)). 다익스트라 최적성에 의해 최소값은 outDist[idx]
+                // 와 같고, 그 이웃이 곧 최적 선행자다. `outDist[idx]` 로 초기화하면 등호라
+                // 아무것도 선택되지 않아 전 셀이 zero-flow 가 된다 — MaxValue 로 시작해야 한다.
+                int bestScore = int.MaxValue;
                 int2 bestDir = int2.zero;
-                for (int d = 0; d < 4; d++)
+                for (int d = 0; d < DirCount; d++)
                 {
-                    int2 n2 = new int2(x, y) + Dir(d);
+                    int2 step = Dir(d);
+                    int2 n2 = cell + step;
                     if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                     int nIdx = n2.y * w + n2.x;
-                    if (outDist[nIdx] >= bestDist) continue;
-                    bestDist = outDist[nIdx];
-                    bestDir = Dir(d);
+                    if (outDist[nIdx] == int.MaxValue) continue;
+                    if (d >= 4 && !DiagonalAllowed(cell, step, walkMask, gridSize)) continue;
+                    int score = outDist[nIdx] + Cost(d);
+                    if (score >= bestScore) continue;   // 동률이면 앞선 방향(직교 우선) 유지
+                    bestScore = score;
+                    bestDir = step;
                 }
-                outFlow[idx] = new float2(bestDir.x, bestDir.y);
+                // 자기보다 나은 이웃이 없으면(소스 인접 예외 상황) 정지 신호를 유지한다.
+                if (bestScore > outDist[idx]) bestDir = int2.zero;
+                // 대각은 정규화해 저장한다 — "필드는 단위 벡터" 라는 기존 계약 유지.
+                outFlow[idx] = math.normalizesafe(new float2(bestDir.x, bestDir.y));
             }
         }
 

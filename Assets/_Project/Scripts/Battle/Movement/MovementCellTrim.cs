@@ -20,10 +20,7 @@ namespace Wassup.Battle.Movement
                 hasObstacles: hasObstacles,
                 gridSize:     field.gridSize,
                 tileSize:     field.tileSize,
-                origin:       field.origin,
-                flow:         field.flow,
-                goals:        field.goals,
-                goalCell:     field.goalCell);
+                origin:       field.origin);
 
         // summon-patrol-defender — BFS 소비자용 walk 마스크(1 = 걸을 수 있음).
         // outMask 는 gridSize.x * gridSize.y 길이여야 한다(호출자 책임).
@@ -39,15 +36,6 @@ namespace Wassup.Battle.Movement
         // exactly ±0.5*tileSize would be mapped to the adjacent blocked cell, breaking the
         // trim invariant (currentCell != targetCell) on the next frame.
         private const float kBoundaryEpsilon = 1e-3f;
-
-        // continuous-agent-movement unit 1 — 술어 본체는 NavGrid.IsBlocked 가 소유한다.
-        // 이 오버로드는 장애물을 보지 않는 "정적 벽만" 질의라 기존 호출부·테스트 계약이 그대로다
-        // (장애물 검사는 예나 지금이나 호출자가 따로 합성한다).
-        // unit 2 에서 은퇴 — 그때 NavGrid.IsBlocked 로 완전히 흡수된다.
-        public static bool IsWallCell(int2 cell, in FlowFieldSingleton field)
-            => BuildNavGrid(in field, hasObstacles: false, in DefaultObstacles).IsBlocked(cell);
-
-        private static readonly ObstacleSingleton DefaultObstacles = default;
 
         // origin = board world origin (Tilemap mode = zero). Default zero keeps
         // legacy callers identical. Cell boundaries are offset by origin so the trim

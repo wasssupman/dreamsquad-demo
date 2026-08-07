@@ -42,6 +42,10 @@ namespace Wassup.Bridge
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
+        // continuous-agent-movement unit 3 — 적 원형 충돌 반지름(타일 배수).
+        // 0.35 = 지름 0.7 < 1.0 이라 1타일 복도를 통과하고 벽까지 여유 0.15 가 남는다.
+        // 0 으로 두면 기존 점 충돌(셀 경계 clamp)로 되돌아간다 — 회귀 시 스위치.
+        [SerializeField, Range(0f, 0.49f)] private float agentRadiusTiles = 0.35f;
         [SerializeField] private ResultScreen resultScreen;
         // battle-score-formula unit 3 — 최종 점수 배점. 미배선이면 기본값(100/900)으로
         // 진행하되 LogError 를 남긴다 — 조용히 0점이 되는 게 최악이다.
@@ -5792,7 +5796,13 @@ namespace Wassup.Bridge
                 targetMode = Wassup.Data.EnemyTargetMode.Nearest,
                 engageMovement = Wassup.Data.EngageMovement.Halt,
             });
-            _em.AddComponentData(entity, new Wassup.Battle.Movement.PathFollowState { speed = unitData.moveSpeed });
+            // continuous-agent-movement unit 3 — 순찰병도 같은 원형 충돌을 쓴다.
+            // radius 누락 시 조용히 구 점 충돌로 돌아가 이 아키타입만 코너에서 걸린다(ecs-review HIGH).
+            _em.AddComponentData(entity, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = unitData.moveSpeed,
+                radius = agentRadiusTiles * tileSize,
+            });
             _em.AddComponentData(entity, new Wassup.Battle.Movement.PatrolAnchor
             {
                 cell = anchorCell,
@@ -7164,6 +7174,8 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new PathFollowState
             {
                 speed = entry.unitType.moveSpeed,
+                // continuous-agent-movement unit 3 — 반지름은 월드 단위로 넘긴다(sim 은 타일을 모른다).
+                radius = agentRadiusTiles * tileSize,
             });
 
             EnsureMonoViewPools();

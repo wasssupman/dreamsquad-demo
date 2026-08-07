@@ -5,6 +5,9 @@ using Wassup.Battle.Effects;
 
 namespace Wassup.Tests.EditMode
 {
+    // continuous-agent-movement unit 4 — dist 는 ×10 스케일 정수 비용이다(직교 10 / 대각 14).
+    // 아래 기대값이 전부 10배가 된 것은 그 단위 변경의 결과이며, 경로 **모양**은 그대로다
+    // (모든 케이스가 직교 경로라 정확히 old × CostOrtho).
     public class FlowFieldBuilderTests
     {
         // 각 테스트 NativeArray 는 try/finally 로 dispose — Assert 실패 시 leak 방지.
@@ -23,7 +26,7 @@ namespace Wassup.Tests.EditMode
                 FlowFieldBuilder.Build(walk, gridSize, new int2(4, 0), flow, dist);
 
                 Assert.AreEqual(0, dist[4], "goal cell dist must be 0");
-                Assert.AreEqual(4, dist[0], "distance from start to goal");
+                Assert.AreEqual(4 * FlowFieldBuilder.CostOrtho, dist[0], "distance from start to goal");
                 Assert.AreEqual(new float2(1, 0), flow[0], "cell 0 must point +x");
                 Assert.AreEqual(new float2(1, 0), flow[3], "cell 3 must point +x");
                 Assert.AreEqual(new float2(0, 0), flow[4], "goal flow must be zero");
@@ -54,7 +57,7 @@ namespace Wassup.Tests.EditMode
                 FlowFieldBuilder.Build(walk, gridSize, new int2(2, 2), flow, dist);
 
                 Assert.AreEqual(0, dist[2 * 3 + 2], "goal dist must be 0");
-                Assert.AreEqual(4, dist[0], "start (0,0) routes around center obstacle via an L-path of length 4");
+                Assert.AreEqual(4 * FlowFieldBuilder.CostOrtho, dist[0], "start (0,0) routes around center obstacle via an L-path of length 4");
                 Assert.AreEqual(int.MaxValue, dist[1 * 3 + 1], "obstacle cell must be unreachable");
                 Assert.AreNotEqual(float2.zero, flow[0], "start cell flow must be non-zero (reachable)");
             }
@@ -105,9 +108,9 @@ namespace Wassup.Tests.EditMode
 
                 Assert.AreEqual(0, dist[0]);
                 Assert.AreEqual(0, dist[6]);
-                Assert.AreEqual(1, dist[1]);
-                Assert.AreEqual(1, dist[5]);
-                Assert.AreEqual(3, dist[3], "midpoint is 3 from both sources");
+                Assert.AreEqual(1 * FlowFieldBuilder.CostOrtho, dist[1]);
+                Assert.AreEqual(1 * FlowFieldBuilder.CostOrtho, dist[5]);
+                Assert.AreEqual(3 * FlowFieldBuilder.CostOrtho, dist[3], "midpoint is 3 from both sources");
                 Assert.AreEqual(new float2(-1, 0), flow[1], "left of midpoint drains to left source");
                 Assert.AreEqual(new float2(1, 0), flow[5], "right of midpoint drains to right source");
                 Assert.AreEqual(float2.zero, flow[0], "source cell flow is zero");
@@ -162,7 +165,7 @@ namespace Wassup.Tests.EditMode
                 FlowFieldBuilder.BuildFromSources(walk, gridSize, sources, flow, dist);
 
                 Assert.AreEqual(0, dist[0]);
-                Assert.AreEqual(3, dist[3]);
+                Assert.AreEqual(3 * FlowFieldBuilder.CostOrtho, dist[3]);
                 Assert.AreEqual(new float2(-1, 0), flow[3]);
             }
             finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); sources.Dispose(); }
@@ -186,7 +189,7 @@ namespace Wassup.Tests.EditMode
 
                 FlowFieldBuilder.BuildFromSources(walk, gridSize, sources, flow, dist);
 
-                Assert.AreEqual(1, dist[1], "same component reachable");
+                Assert.AreEqual(1 * FlowFieldBuilder.CostOrtho, dist[1], "same component reachable");
                 Assert.AreEqual(int.MaxValue, dist[2], "wall");
                 Assert.AreEqual(int.MaxValue, dist[3], "other component unreachable");
                 Assert.AreEqual(int.MaxValue, dist[4], "other component unreachable");
@@ -291,11 +294,75 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(400, flow.Length);
                 Assert.AreEqual(400, dist.Length);
                 Assert.AreEqual(0, dist[midY * gridSize.x + gridSize.x - 1]);
-                Assert.AreEqual(19, dist[midY * gridSize.x]);
+                Assert.AreEqual(19 * FlowFieldBuilder.CostOrtho, dist[midY * gridSize.x]);
                 Assert.AreEqual(float2.zero, flow[midY * gridSize.x + gridSize.x - 1]);
                 Assert.AreEqual(new float2(1, 0), flow[midY * gridSize.x]);
             }
             finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
         }
+
+        // continuous-agent-movement unit 4 — L 자 소멸 회귀. 8x6 열린 격자에서 경로가
+        // 축 정렬 구간만으로 이뤄지면(= 대각 스텝이 하나도 없으면) 4-이웃 시절로 되돌아간 것이다.
+        [Test]
+        public void Build_OpenField_NonFortyFiveSlope_UsesDiagonalSteps()
+        {
+            int2 gridSize = new int2(9, 7);
+            int n = gridSize.x * gridSize.y;
+            var walk = new NativeArray<byte>(n, Allocator.Temp);
+            var flow = new NativeArray<float2>(n, Allocator.Temp);
+            var dist = new NativeArray<int>(n, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < n; i++) walk[i] = 1;
+                FlowFieldBuilder.Build(walk, gridSize, new int2(0, 0), flow, dist);
+
+                // 스폰 (8,6) 에서 골 (0,0) 까지 필드를 따라 내려가며 대각 스텝을 센다.
+                var cell = new int2(8, 6);
+                int diagonalSteps = 0, guard = 0;
+                while (!cell.Equals(new int2(0, 0)) && guard++ < 64)
+                {
+                    var f = flow[cell.y * gridSize.x + cell.x];
+                    Assert.Greater(math.lengthsq(f), 1e-6f, $"cell {cell} 에서 흐름이 끊겼다");
+                    var step = new int2((int)math.round(f.x), (int)math.round(f.y));
+                    if (step.x != 0 && step.y != 0) diagonalSteps++;
+                    cell += step;
+                }
+                Assert.Less(guard, 64, "골에 도달");
+                Assert.Greater(diagonalSteps, 0, "열린 공간인데 축 정렬로만 간다 = L 자 회귀");
+            }
+            finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
+        }
+
+        // 대각 비용이 직교 1회보다 비싸고 2회보다 싸야 한다. 아니면 대각 선호가 왜곡된다.
+        [Test]
+        public void DiagonalCost_IsBetweenOneAndTwoOrthogonalSteps()
+        {
+            Assert.Greater(FlowFieldBuilder.CostDiag, FlowFieldBuilder.CostOrtho);
+            Assert.Less(FlowFieldBuilder.CostDiag, 2 * FlowFieldBuilder.CostOrtho);
+        }
+
+        // 코너컷 방지 — 두 벽이 대각으로 맞닿은 틈을 필드가 통과시키면 안 된다.
+        [Test]
+        public void CornerCut_IsRefused_WhenBothOrthogonalNeighborsBlocked()
+        {
+            int2 gridSize = new int2(3, 3);
+            int n = 9;
+            var walk = new NativeArray<byte>(n, Allocator.Temp);
+            var flow = new NativeArray<float2>(n, Allocator.Temp);
+            var dist = new NativeArray<int>(n, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < n; i++) walk[i] = 1;
+                walk[1 * 3 + 0] = 0;   // (0,1)
+                walk[0 * 3 + 1] = 0;   // (1,0)
+                // 골 (0,0) 은 (1,1) 에서 대각으로만 닿는데, 그 대각은 두 벽 사이라 금지돼야 한다.
+                FlowFieldBuilder.Build(walk, gridSize, new int2(0, 0), flow, dist);
+
+                Assert.AreEqual(int.MaxValue, dist[1 * 3 + 1],
+                    "코너컷이 막히면 (1,1) 은 골에서 도달 불가여야 한다");
+            }
+            finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
+        }
+
     }
 }

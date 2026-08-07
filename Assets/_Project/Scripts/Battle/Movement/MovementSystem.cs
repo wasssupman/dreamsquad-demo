@@ -36,6 +36,9 @@ namespace Wassup.Battle.Movement
             var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
+            // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
+            // 장애물을 합쳐 프레임당 1회 조립하고, 아래 모든 충돌 해결이 이것만 본다.
+            var nav = MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacleSingleton);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
@@ -110,8 +113,8 @@ namespace Wassup.Battle.Movement
                                 float3 desiredChase = current + new float3(chaseDir.x, 0f, chaseDir.y)
                                     * (follow.ValueRO.speed * aggroSpeedMul * dt);
                                 desiredChase = MovementCellTrim.ClampDisplacement(current, desiredChase, field.tileSize);
-                                transform.ValueRW.Position = MovementCellTrim.Apply(
-                                    desiredChase, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                                transform.ValueRW.Position = AgentCollision.Resolve(
+                                    current, desiredChase, follow.ValueRO.radius, in nav);
                             }
                         }
                     }
@@ -201,7 +204,7 @@ namespace Wassup.Battle.Movement
                         if (hasPull)
                         {
                             float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                            transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                            transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
                         }
                         continue;
                     }
@@ -222,7 +225,7 @@ namespace Wassup.Battle.Movement
                         if (hasPull)
                         {
                             float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                            transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                            transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
                         }
                         continue;
                     }
@@ -244,11 +247,28 @@ namespace Wassup.Battle.Movement
                             if (hasPull)
                             {
                                 float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                                transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                                transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
                             }
                             continue;
                         }
                         dir = recovDir;
+                    }
+                    else
+                    {
+                        // continuous-agent-movement unit 7 — 평활화(string pulling).
+                        // 필드는 8방향으로 양자화돼 있어 기울기가 45°가 아니면 대각/직축이
+                        // 꺾여 붙는다. 전방 K 셀 중 벽 없이 보이는 가장 먼 지점으로 직행해
+                        // 방향을 연속으로 만든다. 필드를 **대체하지 않는다** — 후보를 필드가
+                        // 만들므로 오목 지형에서도 갇히지 않는다.
+                        // 사냥 분기는 defender field 를 따르므로 그쪽 flow 로 후보를 만든다.
+                        var smoothFlow = hunting ? huntField.flow : field.flow;
+                        if (PathSmoothing.TryFurthestVisible(
+                                current, in nav, in smoothFlow, follow.ValueRO.radius,
+                                PathSmoothing.DefaultLookahead, out float3 aim))
+                        {
+                            float2 toAim = new float2(aim.x - current.x, aim.z - current.z);
+                            if (math.lengthsq(toAim) > 1e-6f) dir = toAim;
+                        }
                     }
                 }
 
@@ -288,7 +308,7 @@ namespace Wassup.Battle.Movement
                 // aggro-tile-chase unit 2 — 프레임 변위 상한(터널링 차단), trim 전제 보존.
                 desired = MovementCellTrim.ClampDisplacement(current, desired, field.tileSize);
                 // Cell-trim (option B): keep impulse/recenter from pushing into wall/obstacle cells.
-                desired = MovementCellTrim.Apply(desired, cell, in field, hasObstacles, in obstacleSingleton);
+                desired = AgentCollision.Resolve(current, desired, follow.ValueRO.radius, in nav);
 
                 transform.ValueRW.Position = desired;
             }

@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.EditMode
@@ -79,7 +80,7 @@ namespace Wassup.Tests.EditMode
                 Assert.Greater(sources, 0);            // y3 통로 중 |x-4|≤2 (x2..6) 셀들이 소스
                 Assert.AreEqual(0, dist[Idx(4, 3)]);   // 수선 발 지점이 곧 목적지
                 Assert.AreEqual(0, dist[Idx(6, 3)]);   // Chebyshev((6,3),(4,1))=2 → 소스 자신
-                Assert.AreEqual(1, dist[Idx(7, 3)]);   // 디스크 밖 적 — 1칸 걸어 도달
+                Assert.AreEqual(1 * FlowFieldBuilder.CostOrtho, dist[Idx(7, 3)]);   // 디스크 밖 적 — 1칸 걸어 도달 (unit 4: ×10 스케일)
             }
             finally { mask.Dispose(); flow.Dispose(); dist.Dispose(); }
         }
@@ -106,7 +107,7 @@ namespace Wassup.Tests.EditMode
                 int sources = AggroChaseMath.BuildChaseField(mask, new int2(8, 5), new int2(2, 0), 1, flow, dist);
                 Assert.Greater(sources, 0);                       // (1,0)·(1,1) 이 소스
                 Assert.AreNotEqual(int.MaxValue, dist[Idx(6, 3)]); // 직선 불가여도 우회 도달
-                Assert.AreEqual(7, dist[Idx(6, 3)]);               // (6,3)→(1,3) 5 + 하강 2 → 소스 (1,1)
+                Assert.AreEqual(7 * FlowFieldBuilder.CostOrtho, dist[Idx(6, 3)]);   // (6,3)→(1,3) 5 + 하강 2 → 소스 (1,1) (unit 4: ×10 스케일)
             }
             finally { mask.Dispose(); flow.Dispose(); dist.Dispose(); }
         }

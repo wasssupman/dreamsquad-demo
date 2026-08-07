@@ -189,16 +189,21 @@ namespace Wassup.Tests.EditMode
             int2 gridSize = new int2(4, 3);
             var flow = new NativeArray<float2>(12, Allocator.Persistent);
             var dist = new NativeArray<int>(12, Allocator.Persistent);
-            for (int i = 0; i < 12; i++) { flow[i] = float2.zero; dist[i] = int.MaxValue; }
+            // continuous-agent-movement unit 2 — 픽스처의 의도("통로는 y=1 행 하나뿐")는
+            // 그대로이고 그 의도를 표현하는 수단만 flow=0 → walkMask=0 으로 바뀐다.
+            // 이제 벽은 지형이 정하므로 flow 만으로는 y=0/y=2 가 벽이 되지 않는다.
+            var walk = new NativeArray<byte>(12, Allocator.Persistent);
+            for (int i = 0; i < 12; i++) { flow[i] = float2.zero; dist[i] = int.MaxValue; walk[i] = 0; }
             for (int x = 0; x < 4; x++)
             {
                 int idx = 1 * 4 + x;
                 dist[idx] = x;
                 flow[idx] = x == 0 ? float2.zero : new float2(-1f, 0f); // goal (0,1) 는 zero(특례)
+                walk[idx] = 1;                                          // 통로만 Walk 타일
             }
             var f = new FlowFieldSingleton
             {
-                flow = flow, dist = dist, gridSize = gridSize,
+                flow = flow, dist = dist, walkMask = walk, gridSize = gridSize,
                 goalCell = new int2(0, 1), tileSize = 1f, origin = float3.zero,
             };
             var s = _em.CreateEntity();

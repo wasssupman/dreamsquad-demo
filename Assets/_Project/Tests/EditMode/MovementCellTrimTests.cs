@@ -8,62 +8,98 @@ namespace Wassup.Tests.EditMode
 {
     public class MovementCellTrimTests
     {
-        // 3x1 grid: cells (0,0) flow=(1,0), (1,0) flow=(1,0), (2,0) = goal (zero flow).
+        // 3x1 grid: 전 셀 Walk 타일. (2,0) 은 골이며 골도 Walk 타일이다.
+        // continuous-agent-movement unit 2 — 벽은 flow 가 아니라 walkMask 가 정한다.
+        // (flow/dist 는 다른 소비자용으로 유지 — 벽 판정엔 더 이상 쓰이지 않는다.)
         private FlowFieldSingleton CreateField()
         {
             var flow = new NativeArray<float2>(3, Allocator.Temp);
             var dist = new NativeArray<int>(3, Allocator.Temp);
-            flow[0] = new float2(1, 0); dist[0] = 2;
-            flow[1] = new float2(1, 0); dist[1] = 1;
-            flow[2] = float2.zero;      dist[2] = 0;
+            var walk = new NativeArray<byte>(3, Allocator.Temp);
+            flow[0] = new float2(1, 0); dist[0] = 2; walk[0] = 1;
+            flow[1] = new float2(1, 0); dist[1] = 1; walk[1] = 1;
+            flow[2] = float2.zero;      dist[2] = 0; walk[2] = 1;   // 골 = Walk 타일
             return new FlowFieldSingleton
             {
-                flow = flow, dist = dist,
+                flow = flow, dist = dist, walkMask = walk,
                 gridSize = new int2(3, 1),
                 goalCell = new int2(2, 0),
                 tileSize = 1f, version = 1,
             };
         }
 
+        // 벽 술어는 NavGrid 가 소유한다. 여기서는 어댑터(BuildNavGrid) 경유로 검증해
+        // ECS 싱글턴 → NavGrid 조립까지 함께 커버한다.
+        private static NavGrid Nav(in FlowFieldSingleton field)
+            => MovementCellTrim.BuildNavGrid(in field, hasObstacles: false, default);
+
         [Test]
-        public void IsWallCell_True_For_OOB_Cell()
+        public void IsBlocked_True_For_OOB_Cell()
         {
             var field = CreateField();
-            Assert.IsTrue(MovementCellTrim.IsWallCell(new int2(-1, 0), in field));
-            Assert.IsTrue(MovementCellTrim.IsWallCell(new int2(3, 0), in field));
-            Assert.IsTrue(MovementCellTrim.IsWallCell(new int2(0, 1), in field));
+            var nav = Nav(in field);
+            Assert.IsTrue(nav.IsBlocked(new int2(-1, 0)));
+            Assert.IsTrue(nav.IsBlocked(new int2(3, 0)));
+            Assert.IsTrue(nav.IsBlocked(new int2(0, 1)));
         }
 
         [Test]
-        public void IsWallCell_False_For_Goal_Cell()
+        public void IsBlocked_False_For_Goal_Cell()
         {
+            // 골은 flow=0 이지만 Walk 타일이라 통행 가능하다. unit 1 까지는 명시적 골 예외가
+            // 이 결과를 만들었고, unit 2 부터는 마스크가 이미 1 이라 예외 자체가 불필요하다.
             var field = CreateField();
-            Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(2, 0), in field));
+            Assert.IsFalse(Nav(in field).IsBlocked(new int2(2, 0)));
         }
 
         [Test]
-        public void IsWallCell_False_For_Normal_Cell()
+        public void IsBlocked_False_For_Normal_Cell()
         {
             var field = CreateField();
-            Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(0, 0), in field));
-            Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(1, 0), in field));
+            var nav = Nav(in field);
+            Assert.IsFalse(nav.IsBlocked(new int2(0, 0)));
+            Assert.IsFalse(nav.IsBlocked(new int2(1, 0)));
         }
 
         [Test]
-        public void IsWallCell_True_For_Zero_Flow_Non_Goal()
+        public void IsBlocked_True_For_NonWalk_Tile()
         {
             var flow = new NativeArray<float2>(2, Allocator.Temp);
             var dist = new NativeArray<int>(2, Allocator.Temp);
-            flow[0] = float2.zero; dist[0] = int.MaxValue; // isolated
-            flow[1] = float2.zero; dist[1] = 0;            // goal
+            var walk = new NativeArray<byte>(2, Allocator.Temp);
+            flow[0] = float2.zero; dist[0] = int.MaxValue; walk[0] = 0;  // 비-Walk 타일
+            flow[1] = float2.zero; dist[1] = 0;            walk[1] = 1;  // 골
             var field = new FlowFieldSingleton
             {
-                flow = flow, dist = dist,
+                flow = flow, dist = dist, walkMask = walk,
                 gridSize = new int2(2, 1),
                 goalCell = new int2(1, 0),
                 tileSize = 1f, version = 1,
             };
-            Assert.IsTrue(MovementCellTrim.IsWallCell(new int2(0, 0), in field));
+            Assert.IsTrue(Nav(in field).IsBlocked(new int2(0, 0)));
+        }
+
+        [Test]
+        public void IsolatedWalkCell_IsNotWall_AfterPredicateSwap()
+        {
+            // unit 2 의 유일한 의미 변화(구 IsWallCell_True_For_Zero_Flow_Non_Goal 대체).
+            // 골에서 도달 불가한 Walk 셀은 flow=0 이라 이전 술어에선 벽이었지만, 지형상
+            // 걸을 수 있는 칸이다. 이 성질이 없으면 D1-b 에서 봉쇄로 끊긴 구역 전체가 벽이
+            // 되어 그 안의 적이 자기가 선 칸을 벽으로 인식한다.
+            var flow = new NativeArray<float2>(2, Allocator.Temp);
+            var dist = new NativeArray<int>(2, Allocator.Temp);
+            var walk = new NativeArray<byte>(2, Allocator.Temp);
+            flow[0] = float2.zero; dist[0] = int.MaxValue; walk[0] = 1;  // 고립됐지만 Walk 타일
+            flow[1] = float2.zero; dist[1] = 0;            walk[1] = 1;
+            var field = new FlowFieldSingleton
+            {
+                flow = flow, dist = dist, walkMask = walk,
+                gridSize = new int2(2, 1),
+                goalCell = new int2(1, 0),
+                tileSize = 1f, version = 1,
+            };
+            Assert.IsFalse(Nav(in field).IsBlocked(new int2(0, 0)),
+                "도달 가능성이 아니라 지형이 벽을 정한다");
         }
 
         [Test]
@@ -122,23 +158,34 @@ namespace Wassup.Tests.EditMode
             var field = CreateField();
             using var blocked = new NativeHashSet<int2>(4, Allocator.Temp);
             blocked.Add(new int2(1, 0));
+            var obstacles = new ObstacleSingleton { blockedCells = blocked };
 
-            // Check: cell (1,0) is normally passable but now blocked
-            Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(1, 0), in field));
-            Assert.IsTrue(blocked.Contains(new int2(1, 0)));
+            // 지형은 통행 가능인데 장애물이 덮은 셀 — 두 층의 합성이 막는다.
+            Assert.IsFalse(Nav(in field).IsBlocked(new int2(1, 0)), "지형만 보면 통행 가능");
+            Assert.IsTrue(
+                MovementCellTrim.BuildNavGrid(in field, hasObstacles: true, in obstacles)
+                    .IsBlocked(new int2(1, 0)),
+                "장애물 오버레이가 막는다");
         }
 
         [Test]
-        public void Goal_Cell_As_Obstacle_Still_Passable()
+        public void Goal_Cell_Blocked_When_Covered_By_Obstacle()
         {
+            // 골은 지형상 통행 가능이지만 장애물이 덮으면 막힌다.
+            // 의미 변화 표(2_wall_predicate_swap.md) 3행: 골 셀 = 통행(이전 명시 예외 → 이후
+            // 마스크가 이미 1). 즉 이 케이스는 **기대값이 바뀌지 않은** 항목이다.
+            // 이는 unit 2 이전과 동일한 거동이다 — 구 Apply 도 `IsWallCell(goal)=false` 뒤에
+            // 장애물 검사를 따로 돌려 막았다. (실제로 EffectSpawner 가 골 셀 차단 해저드
+            // 배치를 거부하므로 프로덕션에선 발생하지 않는 방어적 계약이다.)
             var field = CreateField();
             using var blocked = new NativeHashSet<int2>(4, Allocator.Temp);
-            blocked.Add(new int2(2, 0)); // goal cell in obstacle set
+            blocked.Add(new int2(2, 0));
+            var obstacles = new ObstacleSingleton { blockedCells = blocked };
 
-            // IsWallCell returns false for goal regardless (option B: caller handles obstacle check separately,
-            // but should prioritize goal over obstacle in the wall condition).
-            Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(2, 0), in field),
-                "goal cell must not be treated as wall by IsWallCell");
+            Assert.IsFalse(Nav(in field).IsBlocked(new int2(2, 0)), "장애물 없으면 통행 가능");
+            Assert.IsTrue(
+                MovementCellTrim.BuildNavGrid(in field, hasObstacles: true, in obstacles)
+                    .IsBlocked(new int2(2, 0)));
         }
 
         // ── aggro-tile-chase unit 2 — ClampDisplacement (터널링 차단 상한) ──

@@ -3,7 +3,7 @@ using Unity.Mathematics;
 
 namespace Wassup.Battle.Movement
 {
-    // continuous-agent-movement unit 1 — 벽 질의의 단일 진입점.
+    // continuous-agent-movement unit 1·2 — 벽 질의의 단일 진입점.
     //
     // 벽은 이 게임에서 두 층이다: 맵 빌드 시 1회 굽는 정적 벽(tiles == Walk)과,
     // ObstacleLifetimeSystem 이 매 프레임 Clear 후 재수집하는 동적 장애물. 갱신 주기가
@@ -12,20 +12,20 @@ namespace Wassup.Battle.Movement
     //
     // 생성자가 FlowFieldSingleton/ObstacleSingleton 을 받지 않는 것은 의도다. 그 타입을
     // 알면 ECS 에 묶여 다른 아키텍처가 같은 함수를 재사용할 수 없다. plain 값만 받는다.
+    //
+    // unit 2 — 술어의 근거는 **지형 데이터**다. 이전엔 flow == 0 을 벽으로 읽었는데,
+    // 그건 경로 계산 *결과*에 벽의 정의를 얹은 형태라 두 가지를 못 했다:
+    //   (1) 봉쇄로 필드가 끊기면 차단 구역 전체가 벽이 된다(D1-b 를 켤 수 없다).
+    //   (2) 평활화 레이캐스트가 쓸 수 없다 — 가시선은 "지형이 막혔나"를 묻는데
+    //       flow 는 "거기서 어디로 가나"만 안다.
     public readonly struct NavGrid
     {
-        public readonly NativeArray<byte>   staticWalk;   // 1 = walkable. 미생성이면 flow 폴백(아래).
+        public readonly NativeArray<byte>   staticWalk;   // 1 = walkable (tiles == Walk)
         public readonly NativeHashSet<int2> blockedCells;
         public readonly bool                hasObstacles;
         public readonly int2                gridSize;
         public readonly float               tileSize;
         public readonly float3              origin;
-
-        // ── unit 1 한정: 정적 마스크 부재 시 기존 zero-flow 술어를 그대로 재현하기 위한 입력.
-        //    unit 2 가 술어를 마스크 단독으로 바꾸면서 이 셋을 함께 제거한다.
-        public readonly NativeArray<float2> flow;
-        public readonly NativeArray<int2>   goals;
-        public readonly int2                goalCell;
 
         public NavGrid(
             NativeArray<byte>   staticWalk,
@@ -33,10 +33,7 @@ namespace Wassup.Battle.Movement
             bool                hasObstacles,
             int2                gridSize,
             float               tileSize,
-            float3              origin,
-            NativeArray<float2> flow     = default,
-            NativeArray<int2>   goals    = default,
-            int2                goalCell = default)
+            float3              origin)
         {
             this.staticWalk   = staticWalk;
             this.blockedCells = blockedCells;
@@ -44,52 +41,23 @@ namespace Wassup.Battle.Movement
             this.gridSize     = gridSize;
             this.tileSize     = tileSize;
             this.origin       = origin;
-            this.flow         = flow;
-            this.goals        = goals;
-            this.goalCell     = goalCell;
         }
 
         public bool InBounds(int2 cell)
             => cell.x >= 0 && cell.x < gridSize.x && cell.y >= 0 && cell.y < gridSize.y;
 
         // "이 칸을 걸을 수 없는가" 를 묻는 유일한 지점. 경계 밖은 항상 막힘.
+        //
+        // 골 예외가 없는 것에 유의 — 골은 tiles == Walk 라 마스크에서 이미 통행 가능이다.
+        // (골이 Walk 가 아닌 맵이 생기면 그건 맵 저작 결함이지 술어가 감쌀 일이 아니다.)
         public bool IsBlocked(int2 cell)
         {
             if (!InBounds(cell)) return true;
-            if (IsStaticWall(cell)) return true;
+            // 마스크 미생성 = 평지로 본다(정적 벽 없음). 프로덕션은 SimFieldInstaller 가 항상
+            // 채우므로 해당 없고, 이 규약은 마스크를 안 쓰는 EditMode 픽스처를 보호한다
+            // (goals 를 IsCreated 불변식에서 뺀 것과 같은 전략).
+            if (staticWalk.IsCreated && staticWalk[GridMath.CellIndex(cell, gridSize)] == 0) return true;
             return hasObstacles && blockedCells.IsCreated && blockedCells.Contains(cell);
-        }
-
-        // ⚠ unit 1 은 술어를 바꾸지 않는다 — **flow 가 있으면 무조건 기존 zero-flow 규칙**이다.
-        // 정적 마스크가 우선하면 고립된 Walk 셀(도달 불가 → flow=0)의 판정이 벽에서 통행가능으로
-        // 뒤집힌다. 그건 의미 변경이고 unit 2 의 몫이다. unit 1 에서 그게 새면 "이관 탓인지 술어
-        // 탓인지" 를 가리려고 unit 을 나눈 의미가 사라진다.
-        // unit 2 가 이 우선순위를 뒤집고 flow/goals 폴백을 통째로 제거한다.
-        private bool IsStaticWall(int2 cell)
-        {
-            if (flow.IsCreated)
-            {
-                // multi-goal-map — 골 셀은 flow=0 이라 zero-flow=wall 규칙에 걸린다.
-                // 모든 골을 wall 예외로 빼 적이 골 밖으로 clamp 되지 않게 한다.
-                if (IsGoalCell(cell)) return false;
-                return math.lengthsq(flow[GridMath.CellIndex(cell, gridSize)]) < 1e-6f;
-            }
-            if (staticWalk.IsCreated)
-                return staticWalk[GridMath.CellIndex(cell, gridSize)] == 0;
-            return false;
-        }
-
-        // FlowFieldSingleton.IsGoalCell 과 같은 규칙(goals 멤버십 / goalCell 폴백).
-        // 폴백 술어 전용이라 unit 2 에서 함께 사라진다.
-        private bool IsGoalCell(int2 cell)
-        {
-            if (goals.IsCreated && goals.Length > 0)
-            {
-                for (int i = 0; i < goals.Length; i++)
-                    if (goals[i].Equals(cell)) return true;
-                return false;
-            }
-            return cell.Equals(goalCell);
         }
 
         // BFS 소비자(AggroChaseMath·PatrolAreaMath)는 배열을 요구한다. 술어는 여기 하나뿐이므로

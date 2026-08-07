@@ -1,6 +1,6 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **진행 중 2026-08-08 · unit 0(`942ca7f5`)·unit 1(`b1457a5a`) 완료 → unit 2 착수 대기**
+상태: **units 0~8 구현 완료 2026-08-08 · EditMode 그린 · ecs-review 3회 통과 → Play 육안 검증 대기** ([9_handoff_summary.md](9_handoff_summary.md))
 
 ## 결정 요약
 
