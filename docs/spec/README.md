@@ -514,7 +514,6 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 #### 프랍 접지/프레임 (prop-upright-root 파생)
 
 - ~~**desert 테마 접지 fix**~~ [완료 2026-07-03] · desert prop_style_*/prop_dummy_* + 공유 forest dummy PropData 를 Tilted + offset 0 + 텍스처 BottomCenter 로 정합. 실제 렌더 sink 는 dummy 2종뿐(prop_style_* 는 공유 forest 프리팹의 baked data 로 이미 정상)이었고 나머지는 데이터 hygiene. Play 검증(`desert_dummy_grounding_verify.png`).
-- **ObstaclePlacer 테스트 기존 실패** [S] · `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`(≥36 기대, 31). dea2733(phase10) 테스트, 맵 생성 결정론 실패. prop-upright-root 작업과 무관하게 HEAD 에서 이미 실패 — 회귀 아님. minPlaceableRatio/ObstaclePlacer 로직 별도 조사.
 
 #### 모바일 디스플레이·Battle HUD 대응
 
