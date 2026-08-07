@@ -101,10 +101,9 @@ namespace Wassup.Battle.Combat
             var ccActionLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Effects.CcEffect>(isReadOnly: true);
             // leap-flight-state unit 0 rev — 도약 비행 잠금. CC 와 같은 술어에 OR 로 합류한다.
             var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
-            // dreamcatcher-content-2 끝을 보는 눈 — per-attack frontmost lock (RW, defender-owned)
-            // + PastGoal exclusion (goal-reached enemies are leak-pending, not valid frontmost).
+            // dreamcatcher-content-2 끝을 보는 눈 — per-attack frontmost lock (RW, defender-owned).
+            // goal-tower-siege unit 1 — PastGoal 배제가 사라져 그 lookup 도 함께 없앴다.
             var frontmostLockLookup = SystemAPI.GetComponentLookup<FrontmostAttackLock>(isReadOnly: false);
-            var pastGoalLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PastGoalTag>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -207,7 +206,7 @@ namespace Wassup.Battle.Combat
 
                         int2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, origin: ffOrigin);
                         int pick = PickFallbackTarget(needleScratch,
-                            targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                            targetEntities, targetTransforms, targetFactions,
                             castEvt.caster, castEvt.casterPos, casterCell,
                             tileSize, gridSize, ffOrigin, slot.tileRange);
                         // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
@@ -332,7 +331,7 @@ namespace Wassup.Battle.Combat
                                     // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
                                     // 진영 Enemy 고정 + PastGoal 제외는 헬퍼가 보장한다.
                                     int pick = PickFallbackTarget(needleScratch,
-                                        targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                                        targetEntities, targetTransforms, targetFactions,
                                         attackerEntity, bPos, bCasterCell,
                                         tileSize, gridSize, ffOrigin, slot.tileRange);
                                     // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
@@ -471,8 +470,12 @@ namespace Wassup.Battle.Combat
                         laneWitnessPos = nearestPos;
                     }
                     // frontmost tracking — rank in-range candidates by FlowField remaining
-                    // distance, excluding PastGoal (leak-pending) and unreachable cells.
-                    if (wantFrontmost && !pastGoalLookup.HasComponent(targetEntities[i]))
+                    // distance, excluding unreachable cells.
+                    //
+                    // goal-tower-siege unit 1 — PastGoal 배제를 **뺐다**. 그 태그는 이제
+                    // "유출 대기(곧 사라짐)" 가 아니라 "골에 붙어 타워를 때리는 중" 이다 —
+                    // 경로상 가장 앞선 적이 곧 frontmost 라는 정의에 정확히 부합한다.
+                    if (wantFrontmost)
                     {
                         int fdist = FrontmostTargeting.UnreachableDist;
                         if (hasFlowField
@@ -577,10 +580,11 @@ namespace Wassup.Battle.Combat
                         // PastGoal, in range. Any failure = strict lapse (no reselect on
                         // death/despawn/out-of-range/PastGoal).
                         Entity lt = fmLock.target;
+                        // goal-tower-siege unit 1 — PastGoal 은 더 이상 락 해제 사유가 아니다
+                        // (골에 붙은 적은 살아서 계속 유효한 대상이다).
                         bool ltValid = lt != Entity.Null
                             && healthLookup.HasComponent(lt) && healthLookup[lt].value > 0f
-                            && !deadLookup.HasComponent(lt)
-                            && !pastGoalLookup.HasComponent(lt);
+                            && !deadLookup.HasComponent(lt);
                         if (ltValid)
                         {
                             float3 ltPos = aggroTransformLookup.HasComponent(lt)
@@ -1577,22 +1581,21 @@ namespace Wassup.Battle.Combat
 
         // host 가 대상을 확정해 주지 않는 아키타입(폭탄맨·캐스터)의 폴백 선정.
         // 후보 조립이 두 곳에 복붙돼 있었고, 정작 실수하기 쉬운 부분(진영 마스크·
-        // 자기 제외·그리드 변환·PastGoal)이 테스트 밖에 남아 있었다 — 실제로
-        // PastGoalTag 제외가 두 곳 모두에서 누락됐다(NearestTargeting 의 caller
-        // 계약과 README 계약 3 을 코드가 위반한 상태였다).
+        // 자기 제외·그리드 변환)이 테스트 밖에 남아 있었다.
+        // goal-tower-siege unit 1 — PastGoal 제외는 폐기됐다(골에 붙은 적도 유효 대상).
         private static int PickFallbackTarget(
             NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
-            ComponentLookup<Wassup.Battle.Movement.PastGoalTag> pastGoal,
             Entity self, float3 selfPos, int2 selfCell,
             float tileSize, int2 gridSize, float3 gridOrigin, int tileRange)
         {
             for (int i = 0; i < ents.Length; i++)
             {
                 var e = ents[i];
+                // goal-tower-siege unit 1 — PastGoal 배제 제거. 골에 붙은 적은 살아서 타워를
+                //때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
                 bool eligible = e != self
-                    && ((int)fac[i].value & (int)Faction.Enemy) != 0
-                    && !pastGoal.HasComponent(e); // 유출 대기 적에 니들을 낭비하지 않는다
+                    && ((int)fac[i].value & (int)Faction.Enemy) != 0;
                 float3 p = xf[i].Position;
                 int2 c = GridMath.WorldToCell(p, tileSize, gridSize, origin: gridOrigin);
                 scratch[i] = new NearestTargeting.Candidate

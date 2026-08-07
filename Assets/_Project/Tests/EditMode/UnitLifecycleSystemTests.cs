@@ -42,6 +42,8 @@ namespace Wassup.Tests.EditMode
             _world?.Dispose();
         }
 
+        // goal-tower-siege unit 1 — AttackState 가 **없는** 적(Runner·Swift 같은 돌격형).
+        // 골에 붙어도 아무것도 못 하므로 기존대로 파괴된다.
         private Entity CreateUnitAtGoal()
         {
             var e = _em.CreateEntity();
@@ -51,6 +53,20 @@ namespace Wassup.Tests.EditMode
             // Phase 9: PathFollowState 축소. PathWaypoint DynamicBuffer 제거.
             // PastGoalTag 이미 있으므로 MovementSystem 의 .WithNone<PastGoalTag>() 에 의해 필터됨.
             _em.AddComponentData(e, new PathFollowState { speed = 1f });
+            return e;
+        }
+
+        // 공격 수단이 있는 적 — 골에 도달해도 살아남아 타워를 때린다.
+        private Entity CreateSiegeUnitAtGoal()
+        {
+            var e = CreateUnitAtGoal();
+            _em.AddComponentData(e, new Wassup.Battle.Combat.AttackState
+            {
+                range = 1f,
+                cooldownDuration = 1f,
+                targetMask = (int)Faction.Defender,
+                attackTargetCount = 1,
+            });
             return e;
         }
 
@@ -88,10 +104,13 @@ namespace Wassup.Tests.EditMode
             var evt = singleton.queue.Dequeue();
             Assert.AreEqual(unit, evt.entity,
                 "enqueued entity must match the unit that reached the goal");
+            Assert.IsFalse(evt.canSiege,
+                "AttackState 가 없으면 canSiege=false — 브리지가 자폭 경로로 보낸다");
         }
 
+        // goal-tower-siege unit 1 — 공격 수단이 없는 적만 파괴한다.
         [Test]
-        public void Destroys_Unit_After_Enqueue()
+        public void Destroys_AttacklessUnit_After_Enqueue()
         {
             CreateSingletonEntity();
             var unit = CreateUnitAtGoal();
@@ -99,7 +118,30 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.IsFalse(_em.Exists(unit),
-                "UnitLifecycleSystem must destroy the entity after enqueuing the event");
+                "AttackState 가 없는 적은 골에 붙어도 아무것도 못 하므로 기존대로 파괴된다");
+        }
+
+        // goal-tower-siege unit 1 — 공격 수단이 있는 적은 **살아남아 공성한다.**
+        [Test]
+        public void KeepsSiegeUnitAlive_AndMarksItOnce()
+        {
+            CreateSingletonEntity();
+            var unit = CreateSiegeUnitAtGoal();
+
+            Tick();
+
+            Assert.IsTrue(_em.Exists(unit), "공성 가능한 적은 골 도달로 파괴되지 않는다");
+            Assert.IsTrue(_em.HasComponent<GoalReachedMarker>(unit), "재발화 방지 마커가 붙는다");
+
+            using var q = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalReachedEventsSingleton>());
+            var singleton = q.GetSingleton<GoalReachedEventsSingleton>();
+            Assert.AreEqual(1, singleton.queue.Count, "첫 틱에 1회 발화");
+            var evt = singleton.queue.Dequeue();
+            Assert.IsTrue(evt.canSiege, "공성 가능 플래그가 실려야 브리지가 뷰를 지우지 않는다");
+
+            // PastGoalTag 는 영구히 남으므로, 마커가 없으면 매 틱 재발화한다.
+            for (int i = 0; i < 3; i++) Tick();
+            Assert.AreEqual(0, singleton.queue.Count, "마커 이후로는 재발화하지 않는다");
         }
 
         [Test]
@@ -111,7 +153,7 @@ namespace Wassup.Tests.EditMode
             // Must not throw, and unit must still be destroyed.
             Assert.DoesNotThrow(() => Tick());
             Assert.IsFalse(_em.Exists(unit),
-                "entity must still be destroyed even when singleton is absent");
+                "싱글턴이 없어도(fail-open) 공격 수단 없는 적은 파괴된다");
         }
     }
 }

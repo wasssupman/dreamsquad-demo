@@ -26,6 +26,20 @@
 
 이동 정지는 기존 `MovementSystem` 의 `WithNone<PastGoalTag>` 가 이미 처리한다.
 
+**1-a. 예외: 공격 수단이 없는 적은 자폭한다** (착수 후 실측으로 추가) — `Enemy_Runner` ·
+`Enemy_Swift` 는 `attackMethod: None` + outputs 0 이라 `AttackState` 자체가 안 붙는 **돌격형**
+이다. 이들이 골에 눌러앉으면 아무 피해도 못 주면서 `NoQueuedAttackersRemain()` 만 영구히
+거짓으로 만든다 → **전멸 진행이 그 판 내내 죽는다.**
+
+그래서 `UnitLifecycleSystem` 이 `AttackState` 보유 여부로 갈라 판정하고, 그 결과를
+`GoalReachedEvent.canSiege` 에 실어 보낸다(소비 시점엔 엔티티가 이미 파괴됐을 수 있어 브리지가
+컴포넌트를 되읽을 수 없다). `canSiege == false` 면 기존대로 파괴하고, 브리지가 그 적의
+`stabilityDamage` 를 **타워 버퍼로** 넣는다 — 풀의 writer 를 하나로 유지하려고 안정도를 직접
+깎지 않는다. 읽힘은 "돌격형이 골에 몸을 부딪고 사라진다".
+
+`AttackState` 는 Combat 소유지만 여기서는 읽기만 한다(맥락 간 RO 읽기 허용 — 같은 시스템의
+`DcTriggerSlot` 선례).
+
 **2. 도달한 적에게만 타워를 열어준다** — 브리지가 `GoalReachedEvent` 를 드레인할 때 그 적의
 `AttackState.targetMask |= (int)Faction.GoalTower` 를 쓴다. **base mask 에 넣지 않는 이유**:
 넣으면 사거리 3타일 원거리 적이 골에서 3칸 떨어진 지점에서 `HasFireTarget` → `Engaging` →
@@ -35,11 +49,21 @@
 > Units 맥락(브리지 경유)이 Combat 컴포넌트를 쓰는 지점이다. 브리지는 ECS 게이트웨이라
 > 허용되지만, 시스템 간 직접 쓰기로 옮기지 말 것.
 
-**3. 유출 처리 변경**(`DrainGoalEvents`) — three-minute-survival unit 0 이 넣은 즉발 차감을
-제거하고, 뷰 despawn(`enemyViewPool`/`spineUnitPool`)과 표식 회수(`NotifyEnemyGoneIfMarked`)도
-걷어낸다. 남기면 **안 보이는 적이 타워를 때리고**, 살아 있는 적의 현상금이 무보상 회수된다.
-유지: `_goalReachedCount++`(스트레스), HUD 갱신. `_enemyTypeByEntity` 제거는 **하지 않는다** —
-그 적은 아직 살아 있고 킬 경로가 나중에 쓴다.
+**3. 유출 처리 변경**(`DrainGoalEvents`) — `canSiege` 로 두 갈래가 된다.
+
+- **공성(true)**: 뷰 despawn·표식 회수·`_enemyTypeByEntity` 제거·즉발 피해를 **전부 안 한다**
+  (적이 살아 있다). 남기면 안 보이는 적이 타워를 때리고 데미지 폰트만 허공에 뜬다.
+  `targetMask` 만 연다.
+- **자폭(false)**: 기존 유출 경로 그대로 + `stabilityDamage` 를 타워 버퍼로.
+
+스트레스(`_goalReachedCount++`)와 HUD 갱신은 **두 경로 공통**이다 — "몇 번 뚫렸나" 는 집계
+지표라 적이 살아남든 자폭하든 똑같이 오른다.
+
+**3-a. authority 이관** — 브리지 Update 가 `GoalTowerHealth` 싱글턴을 폴링해 `_goalStability`
+미러를 갱신하고 패배를 판정한다(`DrainGoalEvents` 안의 패배 블록은 제거). 표시는 올림
+(`CeilToInt`)이고 패배 판정은 원본 float — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다"
+가 된다. 공개 API(`GoalStabilityCurrent`/`GoalStabilityMax`)는 불변이라 체력바와 tie-break 는
+정본이 옮겨간 것을 모른다.
 
 **4. 타겟팅 배제 해제(5곳)** — `PastGoalTag` 를 "곧 사라질 놈"으로 배제하던 곳:
 

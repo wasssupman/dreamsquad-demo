@@ -350,6 +350,8 @@ namespace Wassup.Bridge
         private int _goalStabilityMax;
         // 유출 적의 등록부 조회 실패 경고를 판당 1회로 제한(로그 폭주 방지).
         private bool _leakTypeMissLogged;
+        // goal-tower-siege unit 1 — 타워 부재 경고도 판당 1회.
+        private bool _towerMissLogged;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -2521,6 +2523,7 @@ namespace Wassup.Bridge
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
+            SyncGoalStabilityFromPool(); // goal-tower-siege unit 1 — 정본(싱글턴) → 미러 + 패배 판정
             CheckTimer();
             CheckVictory();
         }
@@ -4759,6 +4762,7 @@ namespace Wassup.Bridge
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
             _leakTypeMissLogged = false;
+            _towerMissLogged = false;
         }
 
         // goal-tower-siege unit 0 — 골 셀마다 "때릴 수 있는 대상" 을 세우고 공유 체력 풀
@@ -4767,9 +4771,7 @@ namespace Wassup.Bridge
         // 계약: ModifierStats/StatModifierSlot/ShieldSlot/IncomingHeal 을 붙이지 않는다 —
         // MaxHealthScaleSystem 이 Health.max 를 재계산하면 미러가 깨진다.
         //
-        // 이 단위에서 타워는 **아직 아무에게도 안 맞는다**. Faction.GoalTower 를 적의
-        // targetMask 에 부여하는 것은 unit 1(골 도달 시점)이고, 안정도의 정본도 그때
-        // 브리지에서 이 싱글턴으로 옮긴다.
+        // unit 1 부터 이 싱글턴이 안정도의 **정본**이다. 브리지의 _goalStability 는 미러다.
         private void EnsureGoalTowers()
         {
             if (_em == null || !_generatedMap.IsCreated || _goalStabilityMax <= 0) return;
@@ -4835,22 +4837,31 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
-                enemyViewPool?.Despawn(evt.entity);
-                spineUnitPool?.Despawn(evt.entity);
-                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수. 패배 트리거의 조기 return 시
-                // 같은 프레임 잔여 이벤트의 EnemyGone 은 미발화 — 매치 종료 직후라 무해
-                // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
-                NotifyEnemyGoneIfMarked(evt.entity);
+                // 스트레스는 두 경로 공통이다 — "몇 번 뚫렸나" 는 집계 지표라 적이 살아남든
+                // 자폭하든 똑같이 오른다(패배와는 무관, three-minute-survival unit 0).
                 _goalReachedCount++;
                 RefreshLeakHud();
-                // three-minute-survival unit 0 — 유출의 대가는 **안정도**다. 스트레스 한계
-                // 패배는 폐기했고(스트레스는 집계 지표로만 남는다), 적 티어별 피해량이
-                // "얼마나 아픈 걸 흘렸나" 를 만든다.
+
+                // goal-tower-siege unit 1 — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
+                // 데이터 등록부를 건드리지 않는다(지우면 안 보이는 적이 타워를 때리고
+                // 데미지 폰트만 허공에 뜬다). 이 시점부터 타워를 노릴 수 있게 mask 만 연다.
+                if (evt.canSiege)
+                {
+                    GrantGoalTowerTarget(evt.entity);
+                    continue;
+                }
+
+                // 돌격형 자폭(AttackState 없는 Runner·Swift 계열) — 기존 유출 경로 그대로.
+                // 골에 붙어도 아무것도 못 하면서 웨이브 전멸 판정만 막으므로 남기지 않는다.
+                enemyViewPool?.Despawn(evt.entity);
+                spineUnitPool?.Despawn(evt.entity);
+                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수.
+                NotifyEnemyGoneIfMarked(evt.entity);
                 int stabilityDamage = 1;
                 if (_enemyTypeByEntity.TryGetValue(evt.entity, out var leakedType) && leakedType != null)
                 {
                     stabilityDamage = Mathf.Max(0, leakedType.stabilityDamage);
-                    // 킬 경로(DrainEnemyKilledEvents)와 대칭 — 유출도 등록부에서 빼야 누적되지 않는다.
+                    // 킬 경로(DrainEnemyKilledEvents)와 대칭 — 등록부에서 빼야 누적되지 않는다.
                     _enemyTypeByEntity.Remove(evt.entity);
                 }
                 else if (!_leakTypeMissLogged)
@@ -4859,22 +4870,72 @@ namespace Wassup.Bridge
                     _leakTypeMissLogged = true;
                     Debug.LogWarning("[BattleBridge] 유출한 적의 데이터가 등록부에 없다 — 안정도 피해 1 로 폴백.", this);
                 }
-                _goalStability = Mathf.Max(0, _goalStability - stabilityDamage);
-                Debug.Log($"[BattleBridge] Goal reached! Stability: {_goalStability}/{_goalStabilityMax} (-{stabilityDamage}), stress {_goalReachedCount}");
-                // 엔드리스도 이 패배를 받는다 — 무한 모드에 끝이 생긴다(endless-mode 계약 4 갱신).
-                if (!_resultShown && _goalStabilityMax > 0 && _goalStability <= 0)
-                {
-                    _resultShown = true;
-                    _running = false;
-                    var score = CalculateBattleScore(defeated: true);
-                    int playerScore = score.Total;
-                    GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-                    BeginTally(win: false, score, RemainingBattleSeconds());
-                    Debug.Log("[BattleBridge] DEFEAT triggered.");
-                    return;
-                }
+                // 안정도를 직접 깎지 않는다 — 타워 버퍼로 넣어 공성 피해와 **같은 통로**를
+                // 지나게 한다(풀의 writer 는 GoalTowerDamageSystem 하나다).
+                EnqueueGoalTowerDamage(stabilityDamage);
             }
+        }
+
+        // goal-tower-siege unit 1 — 골에 도달한 적에게만 타워를 연다. base targetMask 에 넣으면
+        // 사거리 3타일 원거리 적이 골에서 3칸 떨어진 지점에서 Engaging → (engageMovement Halt면)
+        // 정지해 골 셀에 영영 도달하지 않는다(= PastGoalTag 도 스트레스도 발생 안 함).
+        private void GrantGoalTowerTarget(Entity enemy)
+        {
+            if (_em == null || !_em.Exists(enemy)) return;
+            if (!_em.HasComponent<Wassup.Battle.Combat.AttackState>(enemy)) return;
+            var attack = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(enemy);
+            int opened = attack.targetMask | (int)Faction.GoalTower;
+            if (opened == attack.targetMask) return;
+            attack.targetMask = opened;
+            _em.SetComponentData(enemy, attack);
+        }
+
+        // 타워 IncomingDamage 에 직접 적립한다. 소비는 GoalTowerDamageSystem(다음 sim 틱).
+        private void EnqueueGoalTowerDamage(int amount)
+        {
+            if (_em == null || amount <= 0) return;
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>(),
+                ComponentType.ReadOnly<IncomingDamage>());
+            if (towerQuery.IsEmpty)
+            {
+                if (!_towerMissLogged)
+                {
+                    _towerMissLogged = true;
+                    Debug.LogWarning("[BattleBridge] 골 타워가 없다 — 안정도 피해가 유실된다.", this);
+                }
+                return;
+            }
+            var towers = towerQuery.ToEntityArray(Allocator.Temp);
+            _em.GetBuffer<IncomingDamage>(towers[0]).Add(new IncomingDamage { amount = amount });
+            towers.Dispose();
+        }
+
+        // goal-tower-siege unit 1 — 안정도의 정본이 ECS 싱글턴으로 옮겨졌다. 브리지는 미러를
+        // 갱신하고 패배만 판정한다. 공개 API(GoalStabilityCurrent/Max)는 불변이라 체력바와
+        // 점수 tie-break 는 정본이 어디인지 모른다.
+        private void SyncGoalStabilityFromPool()
+        {
+            if (_em == null || _resultShown) return;
+            using var poolQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerHealth>());
+            if (poolQuery.IsEmpty) return;
+            var pool = poolQuery.GetSingleton<Wassup.Battle.Units.GoalTowerHealth>();
+
+            _goalStabilityMax = Mathf.Max(0, Mathf.RoundToInt(pool.max));
+            // 표시는 올림 — 0.3 남은 상태에서 화면에 0 이 뜨면 "죽었는데 안 죽었다" 가 된다.
+            // 패배 판정은 원본 float 로 한다.
+            _goalStability = Mathf.Max(0, Mathf.CeilToInt(pool.value));
+            if (_goalStabilityMax <= 0 || pool.value > 0f) return;
+
+            _goalStability = 0;
+            _resultShown = true;
+            _running = false;
+            var score = CalculateBattleScore(defeated: true);
+            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
+            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
+            BeginTally(win: false, score, RemainingBattleSeconds());
+            Debug.Log("[BattleBridge] DEFEAT — 골 안정도 소진.");
         }
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;

@@ -46,18 +46,35 @@ namespace Wassup.Battle.Units
 
             // Goal-reached: attack units that walked past the last waypoint.
             // Emit GoalReachedEvent when the sink singleton is present (fail-open otherwise).
+            //
+            // goal-tower-siege unit 1 — **도달은 더 이상 죽음이 아니다.** 공격 수단이 있는 적은
+            // 골에 남아 타워를 때린다(파괴하지 않는다). 마커로 발화를 1회로 고정하고, 쿼리의
+            // WithNone 으로 걸러 공성 인구를 매 프레임 순회하지 않는다.
+            //
+            // 예외: AttackState 가 없는 적(Runner·Swift 같은 attackMethod None 돌격형)은 골에
+            // 붙어도 아무것도 못 하면서 "필드에 적 0기" 웨이브 판정만 영구히 막는다. 그들만
+            // 기존대로 파괴하고, 안정도 피해는 브리지가 타워 버퍼로 넣는다(canSiege=false).
+            // AttackState 는 Combat 소유지만 읽기만 한다(맥락 간 RO 읽기 허용 — 아래 DcTriggerSlot 선례).
             bool hasSink = _singletonQuery.CalculateEntityCount() == 1;
+            var attackStateLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
             foreach (var (_, entity) in
                      SystemAPI.Query<RefRO<PastGoalTag>>()
                               .WithAll<AttackUnitTag>()
+                              .WithNone<GoalReachedMarker>()
                               .WithEntityAccess())
             {
+                bool canSiege = attackStateLookup.HasComponent(entity);
                 if (hasSink)
                 {
                     var singleton = _singletonQuery.GetSingletonRW<GoalReachedEventsSingleton>();
-                    singleton.ValueRW.queue.Enqueue(new GoalReachedEvent { entity = entity });
+                    singleton.ValueRW.queue.Enqueue(new GoalReachedEvent
+                    {
+                        entity = entity,
+                        canSiege = canSiege,
+                    });
                 }
-                ecb.DestroyEntity(entity);
+                if (canSiege) ecb.AddComponent<GoalReachedMarker>(entity);
+                else ecb.DestroyEntity(entity);
             }
 
             // Defender deaths: emit DefenderDeathEvent (carrying tile) then destroy.

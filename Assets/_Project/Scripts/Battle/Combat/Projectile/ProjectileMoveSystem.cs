@@ -69,7 +69,8 @@ namespace Wassup.Battle.Combat.Projectile
                 var q = SystemAPI.QueryBuilder()
                     .WithAll<LocalTransform, Wassup.Battle.Units.AttackUnitTag>()
                     .WithNone<Wassup.Battle.Units.DeadTag>()
-                    .WithNone<Wassup.Battle.Movement.PastGoalTag>()
+                    // goal-tower-siege unit 1 — PastGoal 배제 제거: 골에 붙은 적으로 재조준하는
+                    // 것은 낭비가 아니라 정확히 필요한 동작이다.
                     .WithNone<UltimateLeapState>()
                     .Build();
                 retargetEntities = q.ToEntityArray(Allocator.Temp);
