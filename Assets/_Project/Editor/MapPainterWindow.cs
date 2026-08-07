@@ -21,6 +21,7 @@ namespace Wassup.EditorTools
         private MapTileType[] _tiles;
         private bool[] _placeMask;   // placement-mask unit 2 — 배치 가능 레이어. 타일 종류와 직교(Walk 셀도 true 가능).
         private bool _maskPaintValue;   // 드래그 = 시작 셀의 반전값으로 set (재토글 깜빡임 방지 — Spawn/Goal 이 click-only 인 이유와 동일 함정)
+        private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
         private readonly List<float> _goalStability = new();   // _goals 와 index 정렬 — per-goal 최대 안정도 M (goal-stability unit 0)
@@ -219,12 +220,6 @@ namespace Wassup.EditorTools
                     Color c = ColorFor(_tiles[i]);
                     EditorGUI.DrawRect(r, c);
 
-                    // placement-mask unit 2 — 마스크 오버레이: on = 시안 테두리(하이라이트 색 계열),
-                    // 파생값과 상이 = 노랑(이 맵은 수동 배치판 → 커빙 skip 을 저작 중에 인지).
-                    bool differs = _placeMask[i] != DerivedMask(i);
-                    if (differs) DrawMaskBorder(r, new Color(0.95f, 0.85f, 0.2f, 0.9f));
-                    else if (_placeMask[i]) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
-
                     if (_goals.Contains(cell))
                     {
                         EditorGUI.DrawRect(r, new Color(0.85f, 0.7f, 0.15f));
@@ -235,6 +230,14 @@ namespace Wassup.EditorTools
                         EditorGUI.DrawRect(new Rect(r.x, r.y, r.width, 3f), new Color(0.2f, 0.5f, 0.95f));
                         GUI.Label(r, "S", CenterLabel);
                     }
+
+                    // placement-mask unit 2 — 마스크 오버레이: on = 시안 테두리(하이라이트 색 계열),
+                    // 파생값과 상이 = 노랑(이 맵은 수동 배치판 → 커빙 skip 을 저작 중에 인지).
+                    // goal/spawn 채움 **뒤에** 그린다 — 경고가 뜨는 바로 그 셀(spawn/골 mask=1)에서
+                    // 상이 테두리가 가려지면 저작 중 인지가 죽는다 (Track A 리뷰 MINOR-4).
+                    bool differs = _placeMask[i] != DerivedMask(i);
+                    if (differs) DrawMaskBorder(r, new Color(0.95f, 0.85f, 0.2f, 0.9f));
+                    else if (_placeMask[i]) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
                 }
             }
 
@@ -268,6 +271,7 @@ namespace Wassup.EditorTools
         private void HandlePaint(Rect area)
         {
             var e = Event.current;
+            if (e.type == EventType.MouseUp) { _maskStrokePrimed = false; return; }   // 스트로크 종료
             if (e.type != EventType.MouseDown && e.type != EventType.MouseDrag) return;
             if (!area.Contains(e.mousePosition)) return;
 
@@ -329,7 +333,12 @@ namespace Wassup.EditorTools
                     break;
                 case Tool.PlaceMask:
                     // 드래그 = 시작 셀의 반전값으로 set (같은 셀 MouseDrag 재토글 깜빡임 방지).
-                    if (isDown) _maskPaintValue = !_placeMask[idx];
+                    // 격자 밖 MouseDown → 진입 드래그도 첫 셀에서 시작값을 잡는다 (MINOR-5).
+                    if (isDown || !_maskStrokePrimed)
+                    {
+                        _maskPaintValue = !_placeMask[idx];
+                        _maskStrokePrimed = true;
+                    }
                     _placeMask[idx] = _maskPaintValue;
                     break;
             }

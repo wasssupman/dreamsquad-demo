@@ -1,6 +1,6 @@
 # placement-mask — 배치 가능 영역의 mask 정본화 (타일 종류 → per-cell 마스크)
 
-상태: **작성 2026-08-07 · 설계 critic 리뷰 1회 반영(C1·M4·m7) · 사용자 승인 대기**
+상태: **units 0~3 구현·커밋 완료 2026-08-07 (EditMode 1894 그린 · 투트랙 코드 리뷰 반영) · unit 3 육안 축(Play 검증 맵·시나리오 4종·재검토 표 추기)은 대기**
 
 ## 상위 목표
 
@@ -15,7 +15,7 @@
 | [0_place_mask_data_layer.md](0_place_mask_data_layer.md) | 데이터 레이어 | `placeMask` 직렬화·왕복·파생 폴백 (`propLayerId`/`goals` 선례 미러) |
 | [1_predicate_and_curving.md](1_predicate_and_curving.md) | 판정 교체 | `SpatialPlacementCheck` 마스크화 + 런타임 커빙 재해석 + EffectTilePlacer |
 | [2_map_painter_mask_brush.md](2_map_painter_mask_brush.md) | 저작 도구 | Map Painter 마스크 브러시·오버레이·베이크 |
-| [3_walk_cell_placement_verification.md](3_walk_cell_placement_verification.md) | B-1 검증 | Walk 셀 배치의 Play 검증 + "배치칸=벽" 암묵 전제 4곳 재검토 |
+| [3_walk_cell_placement_verification.md](3_walk_cell_placement_verification.md) | B-1 검증 | Walk 셀 배치의 Play 검증 + "배치칸=벽" 암묵 전제 6곳 재검토 |
 
 ## Feature-wide 계약
 
@@ -37,3 +37,4 @@
 - **자유 이동** [L] · walkable 을 복도(`tiles==Walk`)에서 open field(`!blockMask`)로 재정의 + flow field 8방향·벡터 보간 일반화. navmesh 는 기각(footprint 가 타일 정렬이라 이득 없음 + 구조적 결정론 원칙과 상충). (단계 3)
 - **픽업 후보·프랍 zone 의 마스크 정합** [S] · `PickupSpawnState.candidateCells`(Walk∪Place)·`BackgroundPropPlacer.OccludesPlay` 를 마스크 기준으로 볼지 — footprint 모델과 함께 결정.
 - **Walk 셀 배치의 콘텐츠 활용** [M] · 실맵 6종에 마스크를 실제로 저작할지, 시각 어포던스(경로 위 배치 가능 표시)를 줄지 — 제품 결정.
+- **페인터 Deco+mask=1 warning** [S] · spawn/골 셀 mask=1 은 warning 을 주는데 "장식물 위 배치 가능"(Deco+mask=1)은 침묵 — 마스크 브러시로만 만들 수 있는 의도 저작이지만 실수 가능성도 있어 warning 후보 (Track A 리뷰 MINOR-7).

@@ -20,6 +20,16 @@ namespace Wassup.Data
             return false;
         }
 
+        // placement-mask unit 1(Track A 리뷰 반영) — tiles 변이(커빙) 후 마스크 동기. 파생-마스크
+        // 맵 전용(호출자가 intent=false 를 보장하고 부른다). 길이 불일치/미생성이면 no-op —
+        // HasAuthoredMaskIntent 의 가드와 대칭(불일치 병리가 하류 재파생으로 이동하지 않게).
+        public static void RederivePlaceMask(NativeArray<MapTileType> tiles, NativeArray<byte> placeMask)
+        {
+            if (!placeMask.IsCreated || placeMask.Length != tiles.Length) return;
+            for (int i = 0; i < tiles.Length; i++)
+                placeMask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
+        }
+
         // Place(=buildable) 를 솔리드 블롭으로 남기고 나머지를 Deco 로 변환. keepFraction = 남길 Place 비율 [0,1].
         // 시드 결정적. BattleBridge 의 맵 빌드(데코 미지정 문서맵)가 소비한다.
         public static void DesignateDeco(

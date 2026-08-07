@@ -297,6 +297,54 @@ namespace Wassup.Tests.EditMode.MapGrid
         }
 
         [Test]
+        public void PlaceMask_LengthZero_DerivesFromPlaceTiles()
+        {
+            // 기존 asset 6종의 실제 로드 모양 — Unity 는 신규 배열 필드를 length-0 으로 로드한다.
+            var doc = BuildMaskedDocument(new byte[0]);
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            int n = map.gridSize.x * map.gridSize.y;
+            for (int i = 0; i < n; i++)
+                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생 폴백");
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
+        [Test]
+        public void WriteToDocument_UncreatedMask_ExportsDerived()
+        {
+            // 직접 구성 map(마스크 미생성) 내보내기 — WriteToDocument 의 파생 분기.
+            // (mergeDegree/chokepoint/propLayerId 는 WriteToDocument 가 무가드로 읽으므로 생성 필수.)
+            const int w = 4, h = 2; int n = w * h;
+            var tiles = new NativeArray<MapTileType>(n, Allocator.TempJob);
+            var spawns = new NativeArray<int2>(1, Allocator.TempJob);
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            tiles[1] = MapTileType.Walk;
+            var map = new GeneratedMap
+            {
+                tiles = tiles,
+                spawns = spawns,
+                mergeDegree = new NativeArray<byte>(n, Allocator.TempJob),
+                chokepoint = new NativeArray<byte>(n, Allocator.TempJob),
+                propLayerId = new NativeArray<byte>(n, Allocator.TempJob),
+                gridSize = new int2(w, h),
+            };
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            try
+            {
+                MapDocumentBuilder.WriteToDocument(doc, in map);
+                Assert.AreEqual(n, doc.PlaceMask.Count);
+                for (int i = 0; i < n; i++)
+                    Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, doc.PlaceMask[i], $"placeMask[{i}] 파생 내보내기");
+            }
+            finally
+            {
+                map.Dispose();
+                ScriptableObject.DestroyImmediate(doc);
+            }
+        }
+
+        [Test]
         public void PlaceMask_NonBinaryValue_NormalizedToOne()
         {
             const int n = 24;

@@ -1126,8 +1126,7 @@ namespace Wassup.Bridge
                 ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,
                     _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
                 // 커빙은 파생-마스크 맵에서만 도니 재파생이 정확히 동기다 (placement-mask unit 1).
-                for (int i = 0; i < _generatedMap.tiles.Length; i++)
-                    _generatedMap.placeMask[i] = (byte)(_generatedMap.tiles[i] == MapTileType.Place ? 1 : 0);
+                ObstaclePlacer.RederivePlaceMask(_generatedMap.tiles, _generatedMap.placeMask);
             }
 
             // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
