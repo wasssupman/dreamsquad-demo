@@ -64,7 +64,7 @@ unit 2 가 이 우선순위를 뒤집고 `flow`/`goals` 폴백을 통째로 제�
 - [x] `DefenderFieldSingleton` 에 `walkMask` 없음 · Persistent 마스크 할당 1개
 - [x] `ecs-reviewer` 통과 — CRITICAL/HIGH/MEDIUM **0건**. LOW 2건(문서 부정확)·테스트 갭 3건 반영 완료
 - [x] `NavGridTests` 신설 — flow 경로 / 마스크 경로 **양쪽** 직접 커버 (ecs-review T1·T2)
-- [ ] Play 스모크: 전투 진입 → 적 이동·보스 사냥·순찰병 정상, 재진입 시 콘솔 경고 0 (double dispose 회귀 확인)
+- [x] Play 스모크 통과 (2026-08-08 사용자) — 적 이동·보스 사냥·순찰병 정상, 재진입 콘솔 경고 0
 
 ## 주의
 
@@ -72,4 +72,4 @@ unit 2 가 이 우선순위를 뒤집고 `flow`/`goals` 폴백을 통째로 제�
 
 ---
 
-**완료 기준 확인**: (미확인)
+**완료 기준 확인**: 2026-08-08 · `b1457a5a`
