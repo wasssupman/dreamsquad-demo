@@ -62,6 +62,19 @@ namespace Wassup.EditorTools
             for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = DerivedMask(i);
         }
 
+        // 파생 비트를 OR 로만 더한다(기존 저작 보존). 층이 추가된 뒤 옛 문서를 되살리는 경로.
+        private void FillMissingDerivedLayers()
+        {
+            EnsureMask();
+            int added = 0;
+            for (int i = 0; i < _placeMask.Length; i++)
+            {
+                byte after = (byte)(_placeMask[i] | DerivedMask(i));
+                if (after != _placeMask[i]) { _placeMask[i] = after; added++; }
+            }
+            Debug.Log($"[MapPainter] 빠진 층 채움 — {added}칸에 파생 층 추가(기존 저작 보존). Bake 해야 반영된다.");
+        }
+
         // 도메인 리로드 등으로 마스크가 격자와 어긋나면 파생값으로 재생성.
         private void EnsureMask()
         {
@@ -229,6 +242,10 @@ namespace Wassup.EditorTools
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
                         new[] { "지면", "경로" }, EditorStyles.toolbarButton, GUILayout.Width(72)) == 1
                         ? PlacementLayer.Path : PlacementLayer.Ground;
+                // 층이 늘어난 뒤 옛 문서를 열면 새 층 비트가 통째로 비어 있다(그 층 유닛이 놓일 곳 0).
+                // 리셋은 기존 저작을 지우므로, 빠진 층만 OR 로 채우는 비파괴 경로를 따로 둔다.
+                if (GUILayout.Button("빠진 층 채우기", EditorStyles.toolbarButton, GUILayout.Width(88)))
+                    FillMissingDerivedLayers();
                 if (GUILayout.Button("Mask=파생 리셋", EditorStyles.toolbarButton, GUILayout.Width(96)))
                     ResetMaskToDerived();
             }
