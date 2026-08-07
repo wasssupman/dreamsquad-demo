@@ -13,12 +13,14 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Deco, Spawn, Goal }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask }
 
         private const float Cell = 26f;
 
         private int _w = 15, _h = 10;
         private MapTileType[] _tiles;
+        private bool[] _placeMask;   // placement-mask unit 2 — 배치 가능 레이어. 타일 종류와 직교(Walk 셀도 true 가능).
+        private bool _maskPaintValue;   // 드래그 = 시작 셀의 반전값으로 set (재토글 깜빡임 방지 — Spawn/Goal 이 click-only 인 이유와 동일 함정)
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
         private readonly List<float> _goalStability = new();   // _goals 와 index 정렬 — per-goal 최대 안정도 M (goal-stability unit 0)
@@ -43,9 +45,25 @@ namespace Wassup.EditorTools
             _h = Mathf.Max(2, h);
             _tiles = new MapTileType[_w * _h];
             for (int i = 0; i < _tiles.Length; i++) _tiles[i] = MapTileType.Place;
+            ResetMaskToDerived();
             _spawns.Clear();
             _goals.Clear();
             _goalStability.Clear();
+        }
+
+        // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
+        private bool DerivedMask(int i) => _tiles[i] == MapTileType.Place;
+
+        private void ResetMaskToDerived()
+        {
+            _placeMask = new bool[_w * _h];
+            for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = DerivedMask(i);
+        }
+
+        // 도메인 리로드 등으로 마스크가 격자와 어긋나면 파생값으로 재생성.
+        private void EnsureMask()
+        {
+            if (_placeMask == null || _placeMask.Length != _w * _h) ResetMaskToDerived();
         }
 
         private void LoadFrom(MapDocument doc)
@@ -57,6 +75,11 @@ namespace Wassup.EditorTools
             var t = doc.Tiles;
             for (int i = 0; i < _tiles.Length; i++)
                 _tiles[i] = (t != null && i < t.Count) ? t[i] : MapTileType.Place;
+            // 마스크: doc 저작본(길이 일치) 채택, 아니면 파생 (런타임 ToGeneratedMap 폴백과 같은 규칙).
+            var dm = doc.PlaceMask;
+            ResetMaskToDerived();
+            if (dm != null && dm.Count == _w * _h)
+                for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = dm[i] != 0;
             _spawns.Clear();
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
@@ -120,6 +143,20 @@ namespace Wassup.EditorTools
             var errors = Validate();
             bool ok = errors.Count == 0;
 
+            // placement-mask unit 2 — 마스크는 무제약(에러 없음). 저작 실수 가능성만 warning 으로.
+            EnsureMask();
+            var warnings = new List<string>();
+            foreach (var s in _spawns)
+                if (InBounds(s.x, s.y) && _placeMask[Idx(s.x, s.y)])
+                    warnings.Add($"스폰 ({s.x},{s.y}) 셀이 배치 가능(mask=1) — 의도 확인");
+            foreach (var g in _goals)
+                if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)])
+                    warnings.Add($"골 ({g.x},{g.y}) 셀이 배치 가능(mask=1) — 의도 확인");
+            if (warnings.Count > 0)
+                using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+                    foreach (var w in warnings)
+                        EditorGUILayout.LabelField("⚠ " + w, EditorStyles.miniLabel);
+
             var box = new GUIStyle(EditorStyles.helpBox);
             var prev = GUI.backgroundColor;
             GUI.backgroundColor = ok ? new Color(0.5f, 0.9f, 0.5f) : new Color(0.95f, 0.55f, 0.55f);
@@ -159,13 +196,16 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask" }, EditorStyles.toolbarButton);
+                if (GUILayout.Button("Mask=파생 리셋", EditorStyles.toolbarButton, GUILayout.Width(96)))
+                    ResetMaskToDerived();
             }
         }
 
         private void DrawGrid()
         {
             if (_tiles == null) return;
+            EnsureMask();
             Rect area = GUILayoutUtility.GetRect(_w * Cell, _h * Cell, GUILayout.ExpandWidth(false));
 
             for (int y = 0; y < _h; y++)
@@ -175,8 +215,15 @@ namespace Wassup.EditorTools
                     // 화면 위쪽 = y=H-1 (y=0 하단)
                     var r = new Rect(area.x + x * Cell, area.y + (_h - 1 - y) * Cell, Cell - 1f, Cell - 1f);
                     var cell = new Vector2Int(x, y);
-                    Color c = ColorFor(_tiles[Idx(x, y)]);
+                    int i = Idx(x, y);
+                    Color c = ColorFor(_tiles[i]);
                     EditorGUI.DrawRect(r, c);
+
+                    // placement-mask unit 2 — 마스크 오버레이: on = 시안 테두리(하이라이트 색 계열),
+                    // 파생값과 상이 = 노랑(이 맵은 수동 배치판 → 커빙 skip 을 저작 중에 인지).
+                    bool differs = _placeMask[i] != DerivedMask(i);
+                    if (differs) DrawMaskBorder(r, new Color(0.95f, 0.85f, 0.2f, 0.9f));
+                    else if (_placeMask[i]) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
 
                     if (_goals.Contains(cell))
                     {
@@ -192,6 +239,15 @@ namespace Wassup.EditorTools
             }
 
             HandlePaint(area);
+        }
+
+        private static void DrawMaskBorder(Rect r, Color c)
+        {
+            const float t = 2f;
+            EditorGUI.DrawRect(new Rect(r.x, r.y, r.width, t), c);
+            EditorGUI.DrawRect(new Rect(r.x, r.yMax - t, r.width, t), c);
+            EditorGUI.DrawRect(new Rect(r.x, r.y, t, r.height), c);
+            EditorGUI.DrawRect(new Rect(r.xMax - t, r.y, t, r.height), c);
         }
 
         private static Color ColorFor(MapTileType t)
@@ -227,20 +283,26 @@ namespace Wassup.EditorTools
 
         private void ApplyTool(int x, int y, bool isDown)
         {
+            EnsureMask();
             int idx = Idx(x, y);
             var cell = new Vector2Int(x, y);
             switch (_tool)
             {
+                // 타일 브러시는 셀 마스크를 파생값으로 추종시킨다 — 파생과 상이한 마스크는
+                // Mask 브러시로 칠한 셀에만 생존 (stale mask 방지 계약, placement-mask unit 2).
                 case Tool.Road:
                     _tiles[idx] = MapTileType.Walk;
+                    _placeMask[idx] = false;
                     break;
                 case Tool.Buildable:
                     _tiles[idx] = MapTileType.Place;
+                    _placeMask[idx] = true;
                     _spawns.Remove(cell);
                     RemoveGoal(cell);
                     break;
                 case Tool.Deco:
                     _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
+                    _placeMask[idx] = false;
                     _spawns.Remove(cell);
                     RemoveGoal(cell);
                     break;
@@ -250,6 +312,7 @@ namespace Wassup.EditorTools
                     else if (_spawns.Count < 4)
                     {
                         _tiles[idx] = MapTileType.Walk; // 스폰은 Walk 셀
+                        _placeMask[idx] = false;        // 타일 변경 → 파생 추종
                         _spawns.Add(cell);
                     }
                     break;
@@ -259,9 +322,15 @@ namespace Wassup.EditorTools
                     else if (_goals.Count < 4)
                     {
                         _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
+                        _placeMask[idx] = false;        // 타일 변경 → 파생 추종
                         _goals.Add(cell);
                         _goalStability.Add(0f);   // 기본 0 = 현행 유지
                     }
+                    break;
+                case Tool.PlaceMask:
+                    // 드래그 = 시작 셀의 반전값으로 set (같은 셀 MouseDrag 재토글 깜빡임 방지).
+                    if (isDown) _maskPaintValue = !_placeMask[idx];
+                    _placeMask[idx] = _maskPaintValue;
                     break;
             }
         }
@@ -331,11 +400,14 @@ namespace Wassup.EditorTools
                 AssetDatabase.CreateAsset(target, path);
             }
 
+            EnsureMask();
             int n = _w * _h;
+            int maskDiffCount = 0;
             var tiles = new NativeArray<MapTileType>(n, Allocator.Temp);
             var merge = new NativeArray<byte>(n, Allocator.Temp);
             var choke = new NativeArray<byte>(n, Allocator.Temp);
             var prop = new NativeArray<byte>(n, Allocator.Temp);
+            var mask = new NativeArray<byte>(n, Allocator.Temp);
             try
             {
                 for (int y = 0; y < _h; y++)
@@ -343,6 +415,8 @@ namespace Wassup.EditorTools
                     {
                         int i = Idx(x, y);
                         tiles[i] = _tiles[i];
+                        mask[i] = (byte)(_placeMask[i] ? 1 : 0);
+                        if (_placeMask[i] != DerivedMask(i)) maskDiffCount++;
                         int d = 0;
                         if (_tiles[i] == MapTileType.Walk)
                         {
@@ -372,6 +446,7 @@ namespace Wassup.EditorTools
                     mergeDegree = merge,
                     chokepoint = choke,
                     propLayerId = prop,
+                    placeMask = mask,
                     gridSize = new int2(_w, _h),
                     spawns = spawns,
                     goals = goals,
@@ -387,13 +462,14 @@ namespace Wassup.EditorTools
             }
             finally
             {
-                tiles.Dispose(); merge.Dispose(); choke.Dispose(); prop.Dispose();
+                tiles.Dispose(); merge.Dispose(); choke.Dispose(); prop.Dispose(); mask.Dispose();
             }
 
             EditorUtility.SetDirty(target);
             AssetDatabase.SaveAssets();
             _target = target; // 연속 편집
-            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count})");
+            // maskDiff>0 = 수동 배치판(런타임 시드 커빙 skip) — 저작자 최종 인지용 (placement-mask unit 2).
+            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count}, 마스크 상이 셀={maskDiffCount})");
         }
     }
 }
