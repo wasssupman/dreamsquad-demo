@@ -58,10 +58,12 @@
 
 점수는 아니지만 같은 판정에 얽혀 있다.
 
-- 적이 골을 뚫으면 그 적의 `stabilityDamage`(일반 1 / 엘리트 2 / 보스 5)만큼 깎인다.
+- 적이 골을 뚫으면 **거기 남아 타워를 때린다**(그 적의 공격력으로 지속 피해).
+- 예외: 공격 수단이 없는 돌격형(`Enemy_Runner`·`Enemy_Swift`)은 몸을 부딪고 사라지며 그 적의
+  `stabilityDamage`(일반 1 / 엘리트 2 / 보스 5)만큼 1회 피해를 준다.
 - **0 = 패배.** 유일한 패배 조건이다(스트레스 한계 패배는 폐기).
-- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 전 덱 20).
-- 지속 공격 모델(적이 골에 살아남아 타워를 때린다)은 `docs/spec/goal-tower-siege/` — 미착수.
+- 최대치는 `Deck_*.asset` → `goalStabilityMax`(현재 전 덱 20). 정본은 `GoalTowerHealth` 싱글턴.
+- 설계·함정은 `docs/spec/goal-tower-siege/`.
 
 ## 결과별 정리
 

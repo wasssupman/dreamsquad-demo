@@ -48,6 +48,21 @@
 | View/Pool | `Presentation/ProjectileViewPool.cs` | 매 프레임 `SyncTransforms`; muzzle/cast VFX 도 이 풀 (PlayHit/PlayCast, UnitAttackVisualEvents drain) |
 | 씬 wiring | BattleBridge `_projectileViewPool` | |
 
+## 골 타워 (goal-tower-siege)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/AttackDeck.cs` → `goalStabilityMax` | 전용 SO 없음 — 최대치는 맵별 덱이 소유. 적별 피해는 `AttackUnitData.stabilityDamage`(자폭 경로) 또는 그 적의 공격력(공성 경로) |
+| 스폰 진입점 | `Bridge/BattleBridge.cs` `EnsureGoalTowers`(StartBattle) | 판 시작 1회 결정론 생성 — 요청 큐 없음(해저드의 staged-request 와 다름). 골 셀마다 1기 |
+| ECS 컴포넌트 (Units) | `Battle/Units/` GoalTowerTag·GoalTowerHealth(싱글턴) + Health·IncomingDamage·FactionTag(`Faction.GoalTower`)·LocalTransform | 체력은 **공유 1풀**: 싱글턴이 정본, 각 타워 Health 는 미러. ★ModifierStats/StatModifierSlot/ShieldSlot/IncomingHeal 부착 금지(MaxHealthScaleSystem 이 max 를 재계산하면 미러가 깨진다) |
+| 시뮬 시스템 | `Battle/Units/GoalTowerDamageSystem.cs` | **`[UpdateBefore(DamageApplicationSystem)]`** 에서 IncomingDamage 를 직접 소비 → 그 시스템이 타워 Health 를 안 건드린다(개별 DeadTag·역산 델타 둘 다 원천 차단) |
+| 이벤트 큐 | **N/A** — 체력은 상태이지 원샷 사건이 아니다. 브리지가 싱글턴을 폴링(`SyncGoalStabilityFromPool`)해 미러·패배 판정 |
+| View | **N/A(재사용)** — 바는 `Presentation/UnitOverheadView.cs` 의 GoalStability 스킨(three-minute-survival unit 1), 구조물 메쉬는 `theme.goalStructureProp`. 신규 프리팹 0 |
+| 씬 wiring | **N/A** — 신규 SerializeField 없음 |
+
+★ 적이 타워를 노리는 조건: `Faction.GoalTower` 는 base `targetMask` 에 없고 **골 도달 시점에만**
+부여된다(`BattleBridge.GrantGoalTowerTarget`). base 에 넣으면 원거리 적이 사거리만큼 떨어져 멈춘다.
+
 ## 해저드 — Zone/Blocking (방어 유닛 HazardCast 능력)
 
 | 정거장 | 앵커 | 확인 포인트 |

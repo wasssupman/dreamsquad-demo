@@ -48,8 +48,10 @@
 - **서버 제출값 = `판별오프셋 + kills점수 × 1000 + 남은안정도permille`.** 서버는 int 하나만
   받으므로 동점 판정을 값에 싣는다. 오프셋 미만은 **구 포맷**이라 디코딩하지 않는다(구 총점
   1~3만이 그럴듯한 가짜 점수로 읽히는 것을 막는다). 순수 함수 2개, `ScoreMath` 에 둔다.
-- **안정도 피해는 유출 즉시 1회**다. 적 SO 의 티어별 피해값을 쓰고, 적은 지금처럼 골에서
-  despawn 한다. 지속 공격 모델은 `goal-tower-siege` 의 몫이다.
+- ~~**안정도 피해는 유출 즉시 1회**다~~ → **`goal-tower-siege` units 0~1 로 지속 피해 모델로
+  교체됨(2026-08-08).** 공격 수단이 있는 적은 골에 남아 타워를 때리고, 없는 적(Runner·Swift)만
+  기존 즉발 경로로 자폭한다. 안정도의 정본도 브리지 → `GoalTowerHealth` 싱글턴으로 이동했다.
+  이 spec 의 공개 API(`GoalStabilityCurrent`/`Max`)·체력바·tie-break 는 그대로다.
 - **웨이브 진행 = 필드에 적 0기 OR 현재 웨이브 트리거 후 20초.** 시계는 `_battleClock`(Battle
   도메인)이다 — 실시간을 쓰면 정지·슬로우모에서 갈라진다.
 - **스폰 창 불변식**: `waveSpawnLeadInSec + (N−1) × intraWaveSpacingSec < maxWaveIntervalSec`.

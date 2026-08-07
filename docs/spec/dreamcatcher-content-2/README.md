@@ -106,6 +106,12 @@ attackMods[0]
 
 ### 3. PastGoalTag·FlowField·후보 부재 시 안전 폴백
 
+> **goal-tower-siege unit 1 로 이 계약은 뒤집혔다(2026-08-08).** `PastGoalTag` 는 더 이상
+> "유출 대기(다음 프레임 소멸)" 가 아니라 **"골에 붙어 타워를 때리는 중"** 이다. 골에 도달한
+> 적은 살아서 그 자리에 남으므로 배제 대상이 아니며, 오히려 경로상 가장 앞선 적이라
+> frontmost 의 정의에 정확히 부합한다. 아래 서술의 `PastGoalTag 제외`·`lapse` 는 전부 폐기됐다.
+
+
 - **PastGoalTag 제외**: `MovementSystem`은 골 도달 시 `PastGoalTag`를 붙이고 그 적은 `dist[goalCell]=0`이라 flow-dist 랭킹에서 무조건 1순위가 된다. 하지만 이 적은 이미 누수 판정 대상(다음 프레임 소멸)이므로 eye의 priority·eye 전용 fallback 모두에서 제외한다. lock 대상이 wind-up 중 PastGoal이 되면 계약 2대로 lapse.
 - FlowField가 없거나 모든 이동 적이 unreachable이면 기존 최근접 타게팅으로 폴백한다.
 - 폴백으로 고른 대상은 `끝을 보는 눈`의 +20% 대상이 아니다(`targetIsPriority=false`, `priorityDamageMul` inert).

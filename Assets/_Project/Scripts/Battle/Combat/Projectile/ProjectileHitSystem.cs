@@ -90,7 +90,14 @@ namespace Wassup.Battle.Combat.Projectile
             // parameterized TileAoe (boss AreaBarrage hits defenders, HIGH-1).
             // Snapshot built alongside the enemy pool, same lifetime; splash and
             // bounce intentionally keep the enemy pool only.
-            var defenderQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
+            //
+            // goal-tower-siege unit 2 — 골 타워를 이 풀에 넣는다. 타워는 DefenderUnitTag 가
+            // 없어서(유닛이 아니다) 여기 빠져 있었고, 그 결과 **보스의 AreaBarrage 가 골에
+            // 떨어져도 안정도가 한 톨도 안 줄었다.** 근접 공격은 타겟에 직접 append 라
+            // 멀쩡했기 때문에 증상이 "보스만 타워를 못 부순다" 는 형태로 조용했다.
+            var defenderQuery = SystemAPI.QueryBuilder()
+                .WithAny<DefenderUnitTag, GoalTowerTag>()
+                .WithAll<LocalTransform>().Build();
             var defenderEntities = defenderQuery.ToEntityArray(Allocator.Temp);
             var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
