@@ -63,6 +63,19 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void LengthMismatch_NoIntent_NoCrash()
+        {
+            var tiles = MakeTiles();
+            var shortMask = new NativeArray<byte>(2, Allocator.Temp);   // 4 != 2
+            try
+            {
+                Assert.IsFalse(ObstaclePlacer.HasAuthoredMaskIntent(tiles, shortMask),
+                    "길이 불일치 = 판정 불가 → 의도 없음 (IndexOutOfRange 크래시 방어)");
+            }
+            finally { tiles.Dispose(); shortMask.Dispose(); }
+        }
+
+        [Test]
         public void NonBinaryMaskValue_ComparedAsBool()
         {
             var tiles = MakeTiles();

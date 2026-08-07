@@ -13,7 +13,8 @@ namespace Wassup.Data
         // bool 비교라 마스크 비정규값(≠0/1)에도 안전. 마스크 미생성이면 저작 의도 없음.
         public static bool HasAuthoredMaskIntent(NativeArray<MapTileType> tiles, NativeArray<byte> placeMask)
         {
-            if (!placeMask.IsCreated) return false;
+            // 길이 불일치 = 빌더 불변식 밖의 오용 — 저작 의도 판정 불가로 접는다(커빙은 파생 규칙대로).
+            if (!placeMask.IsCreated || placeMask.Length != tiles.Length) return false;
             for (int i = 0; i < tiles.Length; i++)
                 if ((placeMask[i] != 0) != (tiles[i] == MapTileType.Place)) return true;
             return false;
