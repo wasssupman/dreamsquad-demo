@@ -362,11 +362,8 @@ namespace Wassup.EditorTools
             foreach (var g in _goals)
                 if (!IsWalk(g.x, g.y)) errs.Add($"골 ({g.x},{g.y}) 이 Walk 아님");
 
-            // 2×2 walk 블록 금지
-            for (int y = 0; y < _h - 1; y++)
-                for (int x = 0; x < _w - 1; x++)
-                    if (IsWalk(x, y) && IsWalk(x + 1, y) && IsWalk(x, y + 1) && IsWalk(x + 1, y + 1))
-                    { errs.Add($"2×2 walk 블록 ({x},{y})"); y = _h; break; }
+            // (2×2 walk 블록 금지는 map-painter-tool unit 4 에서 철회 — 폭 1 은 저작 규칙이었지
+            // 런타임 요구가 아니다. flow field/CellTrim 은 임의 폭 walkable 에서 성립.)
 
             // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인
             if (_goals.Count > 0 && _spawns.Count > 0)

@@ -13,13 +13,14 @@
 | 0 | Editor | `0_painter_window_and_paint.md` | `MapPainterWindow` — 창·타깃 로드/신규·격자 렌더·셀 페인팅(Road/Buildable/Spawn/Goal) |
 | 1 | Editor | `1_validate_and_bake.md` | 실시간 검증(BFS 연결성·2×2·스폰 수) + Bake(파생값 계산 → asset 쓰기) |
 | 2 | Handoff | `2_handoff_summary.md` | 인계 (종료 시) |
+| 4 | Editor rev | `4_walk_width_limit_lift.md` | 경로 폭 1 제한 해제 — 2×2 walk 금지 철회 (2026-08-07, placement-mask B-1 연장) |
 
 ## Feature-wide 계약
 
 - **위치**: `Assets/_Project/Editor/MapPainterWindow.cs` (Assembly-CSharp-Editor → Wassup.Runtime 자동 참조). 메뉴 `Window/Wassup/Map Painter`.
 - **손으로 칠하는 1차 데이터는 Walk/Place + spawns + goal 뿐**. `Deco`/`Env` 는 칠하지 않는다(Deco 는 런타임 `DesignateDeco` 소관, 테마 keepRatio). `mergeDegree`/`chokepoint` 는 Bake 시 tiles 에서 계산(CellClassifier 정의와 동일: mergeDegree=4방향 인접 Walk 수, chokepoint=deg≥3).
 - **수동맵 관례 고정**: Bake 시 `authoringSeed = -1`, `generatorVersion = 0`, `propLayerId = 0`.
-- **검증은 런타임 계약과 일치**: 스폰→골 BFS 연결성(각 스폰 도달) + 2×2 walk 블록 금지 + 스폰 1~4개 + 골·스폰은 Walk 셀. 하나라도 실패면 Bake 비활성(런타임 `MapConnectivity.AllSpawnsReachGoal` 가 잡기 전에 authoring 에서 차단).
+- **검증은 런타임 계약과 일치**: 스폰→골 BFS 연결성(각 스폰 도달) + 스폰 1~4개 + 골·스폰은 Walk 셀. 하나라도 실패면 Bake 비활성(런타임 `MapConnectivity.AllSpawnsReachGoal` 가 잡기 전에 authoring 에서 차단). ~~2×2 walk 블록 금지~~ — unit 4 에서 철회(폭 1 은 저작 규칙이었지 런타임 요구가 아님).
 - **덮어쓰기 = GUID 유지**: 기존 `MapDocument` 타깃에 Bake 하면 `MapDocumentBuilder.WriteToDocument` 로 그 asset 에 다시 굽는다 → 씬/풀 배선 불변. 신규는 저장 경로를 받아 새 asset 생성.
 - **런타임 오염 없음**: 순수 에디터 도구. 씬·플레이·ECS 무관.
 
