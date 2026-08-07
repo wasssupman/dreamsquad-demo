@@ -1,7 +1,8 @@
 # three-minute-survival — 3분 생존 · 처치 점수 개편
 
 > 상태: **units 0~3 구현 완료(컴파일만 검증) 2026-08-07 · Unity 검증 대기**
-> 인계: `4_handoff_summary.md`
+> 인계: `4_handoff_summary.md` · **검증 체크리스트: `5_verification_checklist.md`
+> (세션 복구 시 이 파일부터 읽는다)**
 > 선행: `battle-score-formula`(폐기 대상 산식), `wave-pattern`(케이던스), `battle-leak-limit-hud`(스트레스 배지)
 > 자매 spec: `goal-tower-siege` — "적이 골에 살아남아 타워를 때린다"는 **여기 없다**. 이 spec 은
 > 유출 즉시 안정도가 깎이는 모델이고, 공성은 그 뒤에 피해 도착 방식만 교체한다.
