@@ -4363,6 +4363,10 @@ namespace Wassup.Bridge
                 if (_generatedMap.TileAt(new int2(x, y)) != MapTileType.Walk) continue;
                 int dx = x - placedCell.x;
                 int dy = y - placedCell.y;
+                // placement-mask unit 3 — 배치 셀 자신은 제외. B-1 로 Walk 셀 위 배치가 가능해져
+                // 자기 셀이 d2=0 최근접이 되면 zero-길이 가드가 고정 +x 를 쏘던 결함 — 방향의 의미는
+                // "가장 가까운 '경로'를 향해" 이므로 최근접 '타' Walk 셀이 맞다.
+                if (dx == 0 && dy == 0) continue;
                 int d2 = dx * dx + dy * dy;
                 if (d2 >= bestDistSq) continue;
                 bestDistSq = d2;
@@ -5837,8 +5841,9 @@ namespace Wassup.Bridge
         // 통째로 끌고 들어온다. 순찰병은 그 어느 것도 타면 안 된다(README 계약 1).
         //
         // anchorCell 은 **walk 셀**이어야 한다. 호출자가 TryGetNearestWalkCell 로 스냅해
-        // 넘긴다 — 방어유닛 셀(MapTileType.Place)은 walkable 이 아니라서 그대로 쓰면
-        // 순찰병이 설 수 없는 칸을 향해 영원히 전진한다(계약 4).
+        // 넘긴다 — 방어유닛 셀은 통상 walkable 이 아니라서(placement-mask B-1 의 Walk 셀
+        // 배치는 예외 — 그땐 스냅이 자기 셀을 반환) 그대로 쓰면 순찰병이 설 수 없는 칸을
+        // 향해 영원히 전진한다(계약 4).
         // owner == Entity.Null 이면 SummonedBy 미부착 = 연쇄 소멸 대상 아님(디버그 스폰).
         private Entity CreatePatrolEntity(
             DefenderUnitData unitData,

@@ -140,7 +140,7 @@ namespace Wassup.Battle.Effects
                 for (int dy = -rangeTiles; dy <= rangeTiles; dy++)
                 for (int dx = -rangeTiles; dx <= rangeTiles; dx++)
                 {
-                    if (dx == 0 && dy == 0) continue; // 방어유닛 자신의 셀(Place=벽)
+                    if (dx == 0 && dy == 0) continue; // 방어유닛 자신의 셀 — 통상 벽(비-walkable). placement-mask B-1 로 Walk 셀 위 배치여도 인접 소스만으로 필드가 선다.
                     int2 n2 = new int2(c.x + dx, c.y + dy);
                     if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                     if (walkMask[n2.y * w + n2.x] == 0) continue;
