@@ -1,6 +1,6 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **초안 2026-08-07 (rev 4: BattleBridge 감량 unit 0 편입 — 필드 설치 코드 추출) · 사용자 승인 대기**
+상태: **진행 중 2026-08-07 · unit 0 완료(`942ca7f5`) → unit 1 착수 대기**
 
 ## 결정 요약
 
