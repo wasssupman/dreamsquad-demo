@@ -32,7 +32,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.None,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0)));
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0), PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -44,7 +44,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1)));
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1), PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -56,9 +56,9 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(3, 0)));
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(3, 0), PlacementLayer.Ground));
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(-1, 0)));
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(-1, 0), PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -71,7 +71,7 @@ namespace Wassup.Tests.EditMode
             {
                 var occupied = new HashSet<Vector2Int> { new Vector2Int(0, 0) };
                 Assert.AreEqual(PlacementRejectReason.Occupied,
-                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(0, 0)));
+                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(0, 0), PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -80,7 +80,7 @@ namespace Wassup.Tests.EditMode
         public void UncreatedMap_ReturnsMissingMap()
         {
             Assert.AreEqual(PlacementRejectReason.MissingMap,
-                BattleBridge.SpatialPlacementCheck(default, new HashSet<Vector2Int>(), new int2(0, 0)));
+                BattleBridge.SpatialPlacementCheck(default, new HashSet<Vector2Int>(), new int2(0, 0), PlacementLayer.Ground));
         }
 
         // ── placement-mask unit 1 — 마스크가 배치 가능성의 정본 ─────────────────
@@ -105,7 +105,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.None,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1)),
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(1, 1), PlacementLayer.Ground),
                     "Walk 셀이어도 mask=1 이면 배치 가능 (B-1)");
             }
             finally { map.Dispose(); }
@@ -118,7 +118,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0)),
+                    BattleBridge.SpatialPlacementCheck(map, new HashSet<Vector2Int>(), new int2(0, 0), PlacementLayer.Ground),
                     "Place 셀이어도 mask=0 이면 배치 불가");
             }
             finally { map.Dispose(); }
@@ -132,7 +132,7 @@ namespace Wassup.Tests.EditMode
             {
                 var occupied = new HashSet<Vector2Int> { new Vector2Int(1, 1) };
                 Assert.AreEqual(PlacementRejectReason.Occupied,
-                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(1, 1)),
+                    BattleBridge.SpatialPlacementCheck(map, occupied, new int2(1, 1), PlacementLayer.Ground),
                     "마스크 셀도 점유 판정은 동일");
             }
             finally { map.Dispose(); }

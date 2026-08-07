@@ -36,7 +36,7 @@ namespace Wassup.Tests.EditMode
                 var occupied = OccupiedAt(new Vector2Int(0, 0)); // from 은 점유 집합에 남아 있는 상태
                 Assert.AreEqual(PlacementRejectReason.None,
                     BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(2, 2),
-                        fromHasDefender: true, fromBusy: false));
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -49,7 +49,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.AreEqual(PlacementRejectReason.NoDefenderAtSource,
                     BattleBridge.RelocationCheck(map, OccupiedAt(), new int2(0, 0), new int2(2, 2),
-                        fromHasDefender: false, fromBusy: false));
+                        fromHasDefender: false, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -62,7 +62,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.AreEqual(PlacementRejectReason.SourceBusy,
                     BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(2, 2),
-                        fromHasDefender: true, fromBusy: true));
+                        fromHasDefender: true, fromBusy: true, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -76,7 +76,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.AreEqual(PlacementRejectReason.SameCell,
                     BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(0, 0),
-                        fromHasDefender: true, fromBusy: false));
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -90,7 +90,7 @@ namespace Wassup.Tests.EditMode
                 var occupied = OccupiedAt(new Vector2Int(0, 0), new Vector2Int(2, 2));
                 Assert.AreEqual(PlacementRejectReason.Occupied,
                     BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(2, 2),
-                        fromHasDefender: true, fromBusy: false));
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -103,7 +103,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.AreEqual(PlacementRejectReason.NotBuildable,
                     BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(1, 1),
-                        fromHasDefender: true, fromBusy: false));
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }
@@ -116,7 +116,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.AreEqual(PlacementRejectReason.OutOfBounds,
                     BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(3, 0),
-                        fromHasDefender: true, fromBusy: false));
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }

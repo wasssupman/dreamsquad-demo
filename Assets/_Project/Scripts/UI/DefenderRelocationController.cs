@@ -115,7 +115,7 @@ namespace Wassup.UI
             _hasLease = true;
             if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
                 view.SetHoverHighlight(true, settings.highlightColor);
-            bridge.ShowPlacementHighlight(); // unit 6 — 배치 가능 타일 하이라이트(소스는 점유라 자동 제외)
+            bridge.ShowPlacementHighlight(_unit); // unit 6 — 배치 가능 타일 하이라이트(소스는 점유라 자동 제외). placement-mask unit 4 — 옮기는 유닛의 층 기준.
             // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
             _targetPressActive = false;
             _targetDragging = false; // unit 1 — 승격 상태도 진입마다 초기화(이전 제스처 잔재 금지)

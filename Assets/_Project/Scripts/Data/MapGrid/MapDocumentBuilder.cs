@@ -30,8 +30,8 @@ namespace Wassup.Data.MapGrid
                 chokepoint[i] = (byte)(doc.Chokepoint[i] ? 1 : 0);
                 propLayerId[i] = doc.PropLayerId[i];
                 placeMask[i] = hasAuthoredMask
-                    ? (byte)(docMask[i] != 0 ? 1 : 0)
-                    : (byte)(doc.Tiles[i] == MapTileType.Place ? 1 : 0);
+                    ? PlacementLayers.Sanitize(docMask[i])
+                    : PlacementLayers.Derive(doc.Tiles[i]);
             }
 
             var spawns = new NativeArray<int2>(doc.Spawns.Count, allocator);
@@ -88,8 +88,8 @@ namespace Wassup.Data.MapGrid
                 propLayerId[i] = map.propLayerId[i];
                 // 미생성 map(직접 구성) 은 파생으로 채워 내보냄 — 빌더 경유 map 은 항상 생성돼 있다.
                 placeMask[i] = map.placeMask.IsCreated
-                    ? (byte)(map.placeMask[i] != 0 ? 1 : 0)
-                    : (byte)(map.tiles[i] == MapTileType.Place ? 1 : 0);
+                    ? PlacementLayers.Sanitize(map.placeMask[i])
+                    : PlacementLayers.Derive(map.tiles[i]);
             }
 
             var spawns = new Vector2Int[map.spawns.Length];

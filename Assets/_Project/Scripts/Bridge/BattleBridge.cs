@@ -4998,14 +4998,17 @@ namespace Wassup.Bridge
         // 순수 static(값 in → reason out): 판정(CanPlaceDefenderAt)과 하이라이트 셀 수집이 공유해
         // 어긋나지 않게 한다(PaintLanes 가 시뮬 발사 게이트를 공유하는 것과 동형). EditMode 테스트 대상.
         // 비용/풀/유닛/running 은 CanPlaceDefenderAt 이 별도로 본다.
-        // placement-mask unit 1 — 배치 가능성의 정본은 placeMask(PlaceableAt). 타일 종류와 직교 —
-        // Walk 셀도 마스크가 1 이면 배치된다(B-1: 통행·행동 규칙은 불변, 위치 제약만 해제).
-        public static PlacementRejectReason SpatialPlacementCheck(GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell)
+        // placement-mask unit 1 — 배치 가능성의 정본은 placeMask. 타일 종류와 직교 —
+        // Walk 셀도 마스크가 열려 있으면 배치된다(B-1: 통행·행동 규칙은 불변, 위치 제약만 해제).
+        // unit 4 — 판정 = (셀 층 & 유닛 층) != 0. 층 교집합을 계산하는 유일한 지점이며,
+        // 여기서도 유닛 **클래스**는 보지 않는다 — 호출자가 넘긴 비트만 본다.
+        public static PlacementRejectReason SpatialPlacementCheck(
+            GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell, PlacementLayer layers)
         {
             if (!map.IsCreated) return PlacementRejectReason.MissingMap;
             if (cell.x < 0 || cell.x >= map.gridSize.x || cell.y < 0 || cell.y >= map.gridSize.y)
                 return PlacementRejectReason.OutOfBounds;
-            if (!map.PlaceableAt(cell)) return PlacementRejectReason.NotBuildable;
+            if (!map.PlaceableAt(cell, layers)) return PlacementRejectReason.NotBuildable;
             if (occupied != null && occupied.Contains(new Vector2Int(cell.x, cell.y))) return PlacementRejectReason.Occupied;
             return PlacementRejectReason.None;
         }
@@ -5017,7 +5020,10 @@ namespace Wassup.Bridge
                 reason = PlacementRejectReason.NotRunningOrPlacementClosed;
                 return false;
             }
-            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY));
+            // unit 4 — 층 교집합에 쓸 유닛 레이어. null 은 아래 InvalidUnit 이 잡으므로 여기선 Ground 폴백
+            // (사유 우선순위 보존 — 공간 판정이 유닛 검사보다 앞선다는 기존 계약).
+            var layers = unitData != null ? unitData.EffectivePlacementLayers : PlacementLayer.Ground;
+            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY), layers);
             if (spatial != PlacementRejectReason.None)
             {
                 reason = spatial;
@@ -5051,12 +5057,21 @@ namespace Wassup.Bridge
         // 공간 술어로 밝힐 셀을 수집 → TilemapMapView. 비용/풀은 안 본다(계약: 하이라이트=공간, hover=전체 판정).
         private bool _placeableHlShown;
         private readonly List<Vector2Int> _placeableHlScratch = new();
+        // unit 4 — 하이라이트는 유닛 종속: 드는 유닛의 층으로 스캔한다(Ground 유닛이면 배치지면이,
+        // Path 유닛이면 경로가 빛난다). 유닛 미상이면 Ground 폴백.
+        private DefenderUnitData _placeableHlUnit;
 
-        public void ShowPlacementHighlight() { _placeableHlShown = true; RepaintPlacementHighlight(); }
+        public void ShowPlacementHighlight(DefenderUnitData unit)
+        {
+            _placeableHlShown = true;
+            _placeableHlUnit = unit;
+            RepaintPlacementHighlight();
+        }
 
         public void HidePlacementHighlight()
         {
             _placeableHlShown = false;
+            _placeableHlUnit = null;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
         }
 
@@ -5066,10 +5081,11 @@ namespace Wassup.Bridge
         {
             if (!_placeableHlShown || tilemapMapView == null || !_generatedMap.IsCreated) return;
             _placeableHlScratch.Clear();
+            var layers = _placeableHlUnit != null ? _placeableHlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
             int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
-                if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y)) == PlacementRejectReason.None)
+                if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y), layers) == PlacementRejectReason.None)
                     _placeableHlScratch.Add(new Vector2Int(x, y));
             tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
         }

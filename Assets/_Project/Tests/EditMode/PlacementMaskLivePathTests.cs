@@ -65,9 +65,9 @@ namespace Wassup.Tests.EditMode
             for (int x = 0; x < W; x++) tiles[2 * W + x] = MapTileType.Walk;
 
             var mask = new byte[n];
-            for (int i = 0; i < n; i++) mask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
-            mask[2 * W + 3] = 1;   // MaskedWalkCell
-            mask[0 * W + 0] = 0;   // MaskedOffPlaceCell
+            for (int i = 0; i < n; i++) mask[i] = PlacementLayers.Derive(tiles[i]);
+            mask[2 * W + 3] = (byte)PlacementLayer.Ground;   // MaskedWalkCell — 경로 셀에 Ground 층 개방
+            mask[0 * W + 0] = 0;   // MaskedOffPlaceCell — 지면 셀을 닫음
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(
@@ -92,13 +92,13 @@ namespace Wassup.Tests.EditMode
 
             var none = new HashSet<Vector2Int>();
             Assert.AreEqual(PlacementRejectReason.None,
-                BattleBridge.SpatialPlacementCheck(gm, none, MaskedWalkCell),
+                BattleBridge.SpatialPlacementCheck(gm, none, MaskedWalkCell, PlacementLayer.Ground),
                 "Walk 셀 mask=1 → 배치 가능 (B-1)");
             Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                BattleBridge.SpatialPlacementCheck(gm, none, MaskedOffPlaceCell),
+                BattleBridge.SpatialPlacementCheck(gm, none, MaskedOffPlaceCell, PlacementLayer.Ground),
                 "Place 셀 mask=0 → 배치 불가");
             Assert.AreEqual(PlacementRejectReason.None,
-                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 1)),
+                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 1), PlacementLayer.Ground),
                 "마스크 안 건드린 Place 셀은 그대로 배치 가능");
         }
 

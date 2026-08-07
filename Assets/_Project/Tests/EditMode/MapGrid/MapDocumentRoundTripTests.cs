@@ -251,13 +251,13 @@ namespace Wassup.Tests.EditMode.MapGrid
         {
             const int n = 24;
             var mask = new byte[n];
-            mask[2 * 6 + 3] = 1;   // Walk 셀 (3,2) 에 배치 허용 — 타일 종류와 직교 확인.
+            mask[2 * 6 + 3] = (byte)PlacementLayer.Ground;   // Walk 셀 (3,2) 에 Ground 층 개방 — 타일 종류와 직교 확인.
             var doc = BuildMaskedDocument(mask);
             using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
 
             Assert.IsTrue(map.placeMask.IsCreated);
-            Assert.AreEqual(1, map.placeMask[2 * 6 + 3], "Walk 셀 mask=1 보존");
-            Assert.AreEqual(0, map.placeMask[0], "Place 셀 mask=0 보존 (파생 아님)");
+            Assert.AreEqual((byte)PlacementLayer.Ground, map.placeMask[2 * 6 + 3], "Walk 셀 Ground 비트 보존");
+            Assert.AreEqual(0, map.placeMask[0], "Place 셀 닫힘 보존 (파생 아님)");
 
             var roundTripped = ScriptableObject.CreateInstance<MapDocument>();
             MapDocumentBuilder.WriteToDocument(roundTripped, in map);
@@ -278,7 +278,7 @@ namespace Wassup.Tests.EditMode.MapGrid
             Assert.IsTrue(map.placeMask.IsCreated, "빌더 산출물 불변식: 항상 생성");
             int n = map.gridSize.x * map.gridSize.y;
             for (int i = 0; i < n; i++)
-                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생");
+                Assert.AreEqual(PlacementLayers.Derive(map.tiles[i]), map.placeMask[i], $"placeMask[{i}] 파생");
 
             ScriptableObject.DestroyImmediate(doc);
         }
@@ -291,7 +291,7 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             int n = map.gridSize.x * map.gridSize.y;
             for (int i = 0; i < n; i++)
-                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생 폴백");
+                Assert.AreEqual(PlacementLayers.Derive(map.tiles[i]), map.placeMask[i], $"placeMask[{i}] 파생 폴백");
 
             ScriptableObject.DestroyImmediate(doc);
         }
@@ -305,7 +305,7 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             int n = map.gridSize.x * map.gridSize.y;
             for (int i = 0; i < n; i++)
-                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생 폴백");
+                Assert.AreEqual(PlacementLayers.Derive(map.tiles[i]), map.placeMask[i], $"placeMask[{i}] 파생 폴백");
 
             ScriptableObject.DestroyImmediate(doc);
         }
@@ -335,7 +335,7 @@ namespace Wassup.Tests.EditMode.MapGrid
                 MapDocumentBuilder.WriteToDocument(doc, in map);
                 Assert.AreEqual(n, doc.PlaceMask.Count);
                 for (int i = 0; i < n; i++)
-                    Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, doc.PlaceMask[i], $"placeMask[{i}] 파생 내보내기");
+                    Assert.AreEqual(PlacementLayers.Derive(map.tiles[i]), doc.PlaceMask[i], $"placeMask[{i}] 파생 내보내기");
             }
             finally
             {
@@ -345,15 +345,17 @@ namespace Wassup.Tests.EditMode.MapGrid
         }
 
         [Test]
-        public void PlaceMask_NonBinaryValue_NormalizedToOne()
+        public void PlaceMask_UndefinedBits_SanitizedAway()
         {
             const int n = 24;
             var mask = new byte[n];
-            mask[0] = 2;   // 비정규값 — intent 비교 오염 방지 정규화 확인.
+            mask[0] = (byte)(PlacementLayer.Ground | PlacementLayer.Path);   // 정의된 2층 동시 개방
+            mask[1] = 0x80;   // 미정의 비트만 — 어떤 층도 열지 않은 것과 같아야 한다.
             var doc = BuildMaskedDocument(mask);
             using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
 
-            Assert.AreEqual(1, map.placeMask[0], "2 → 1 정규화");
+            Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Path), map.placeMask[0], "2층 동시 개방 보존");
+            Assert.AreEqual(0, map.placeMask[1], "미정의 비트는 Sanitize 로 제거");
 
             ScriptableObject.DestroyImmediate(doc);
         }

@@ -289,7 +289,9 @@ namespace Wassup.UI
             bool desired = (_session.active && !_simulatedDrag && !CancelArmed) || _armedUnit != null;
             if (desired == _placeableHlDesired) return;
             _placeableHlDesired = desired;
-            if (desired) bridge.ShowPlacementHighlight(); else bridge.HidePlacementHighlight();
+            // placement-mask unit 4 — 하이라이트는 드는 유닛의 배치 층 기준(드래그 세션 우선, 없으면 탭 arm).
+            if (desired) bridge.ShowPlacementHighlight(_session.active ? _session.unit : _armedUnit);
+            else bridge.HidePlacementHighlight();
         }
 
         private void Update()

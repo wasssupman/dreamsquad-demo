@@ -19,7 +19,8 @@ namespace Wassup.EditorTools
 
         private int _w = 15, _h = 10;
         private MapTileType[] _tiles;
-        private bool[] _placeMask;   // placement-mask unit 2 — 배치 가능 레이어. 타일 종류와 직교(Walk 셀도 true 가능).
+        private byte[] _placeMask;   // placement-mask unit 2/4 — 셀이 여는 배치 층 비트. 타일 종류와 직교.
+        private PlacementLayer _maskBrushLayer = PlacementLayer.Ground;   // unit 4 — 어느 층을 칠할지
         private bool _maskPaintValue;   // 드래그 = 시작 셀의 반전값으로 set (재토글 깜빡임 방지 — Spawn/Goal 이 click-only 인 이유와 동일 함정)
         private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
@@ -53,11 +54,11 @@ namespace Wassup.EditorTools
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
-        private bool DerivedMask(int i) => _tiles[i] == MapTileType.Place;
+        private byte DerivedMask(int i) => PlacementLayers.Derive(_tiles[i]);   // 런타임과 같은 단일 파생 정의
 
         private void ResetMaskToDerived()
         {
-            _placeMask = new bool[_w * _h];
+            _placeMask = new byte[_w * _h];
             for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = DerivedMask(i);
         }
 
@@ -80,7 +81,7 @@ namespace Wassup.EditorTools
             var dm = doc.PlaceMask;
             ResetMaskToDerived();
             if (dm != null && dm.Count == _w * _h)
-                for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = dm[i] != 0;
+                for (int i = 0; i < _placeMask.Length; i++) _placeMask[i] = PlacementLayers.Sanitize(dm[i]);
             _spawns.Clear();
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
@@ -131,6 +132,17 @@ namespace Wassup.EditorTools
             while (_goalStability.Count > _goals.Count) _goalStability.RemoveAt(_goalStability.Count - 1);
         }
 
+        // placement-mask unit 4 — 셀 층 비트 → 사람이 읽는 라벨(경고/로그용).
+        private static string LayerLabel(byte bits)
+        {
+            bool g = (bits & (byte)PlacementLayer.Ground) != 0;
+            bool p = (bits & (byte)PlacementLayer.Path) != 0;
+            if (g && p) return "지면+경로";
+            if (g) return "지면";
+            if (p) return "경로";
+            return "없음";
+        }
+
         private void RemoveGoal(Vector2Int cell)
         {
             int i = _goals.IndexOf(cell);
@@ -148,11 +160,11 @@ namespace Wassup.EditorTools
             EnsureMask();
             var warnings = new List<string>();
             foreach (var s in _spawns)
-                if (InBounds(s.x, s.y) && _placeMask[Idx(s.x, s.y)])
-                    warnings.Add($"스폰 ({s.x},{s.y}) 셀이 배치 가능(mask=1) — 의도 확인");
+                if (InBounds(s.x, s.y) && _placeMask[Idx(s.x, s.y)] != 0)
+                    warnings.Add($"스폰 ({s.x},{s.y}) 셀에 배치 층이 열려 있다 [{LayerLabel(_placeMask[Idx(s.x, s.y)])}] — 의도 확인");
             foreach (var g in _goals)
-                if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)])
-                    warnings.Add($"골 ({g.x},{g.y}) 셀이 배치 가능(mask=1) — 의도 확인");
+                if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)] != 0)
+                    warnings.Add($"골 ({g.x},{g.y}) 셀에 배치 층이 열려 있다 [{LayerLabel(_placeMask[Idx(g.x, g.y)])}] — 의도 확인");
             if (warnings.Count > 0)
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                     foreach (var w in warnings)
@@ -198,6 +210,11 @@ namespace Wassup.EditorTools
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
                     new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask" }, EditorStyles.toolbarButton);
+                // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
+                using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
+                    _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
+                        new[] { "지면", "경로" }, EditorStyles.toolbarButton, GUILayout.Width(72)) == 1
+                        ? PlacementLayer.Path : PlacementLayer.Ground;
                 if (GUILayout.Button("Mask=파생 리셋", EditorStyles.toolbarButton, GUILayout.Width(96)))
                     ResetMaskToDerived();
             }
@@ -236,8 +253,11 @@ namespace Wassup.EditorTools
                     // goal/spawn 채움 **뒤에** 그린다 — 경고가 뜨는 바로 그 셀(spawn/골 mask=1)에서
                     // 상이 테두리가 가려지면 저작 중 인지가 죽는다 (Track A 리뷰 MINOR-4).
                     bool differs = _placeMask[i] != DerivedMask(i);
+                    bool hasGround = (_placeMask[i] & (byte)PlacementLayer.Ground) != 0;
+                    bool hasPath = (_placeMask[i] & (byte)PlacementLayer.Path) != 0;
                     if (differs) DrawMaskBorder(r, new Color(0.95f, 0.85f, 0.2f, 0.9f));
-                    else if (_placeMask[i]) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
+                    else if (hasGround) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
+                    else if (hasPath) DrawMaskBorder(r, new Color(0.95f, 0.45f, 0.9f, 0.55f));
                 }
             }
 
@@ -296,17 +316,17 @@ namespace Wassup.EditorTools
                 // Mask 브러시로 칠한 셀에만 생존 (stale mask 방지 계약, placement-mask unit 2).
                 case Tool.Road:
                     _tiles[idx] = MapTileType.Walk;
-                    _placeMask[idx] = false;
+                    _placeMask[idx] = DerivedMask(idx);
                     break;
                 case Tool.Buildable:
                     _tiles[idx] = MapTileType.Place;
-                    _placeMask[idx] = true;
+                    _placeMask[idx] = DerivedMask(idx);
                     _spawns.Remove(cell);
                     RemoveGoal(cell);
                     break;
                 case Tool.Deco:
                     _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
-                    _placeMask[idx] = false;
+                    _placeMask[idx] = DerivedMask(idx);
                     _spawns.Remove(cell);
                     RemoveGoal(cell);
                     break;
@@ -316,7 +336,7 @@ namespace Wassup.EditorTools
                     else if (_spawns.Count < 4)
                     {
                         _tiles[idx] = MapTileType.Walk; // 스폰은 Walk 셀
-                        _placeMask[idx] = false;        // 타일 변경 → 파생 추종
+                        _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _spawns.Add(cell);
                     }
                     break;
@@ -326,7 +346,7 @@ namespace Wassup.EditorTools
                     else if (_goals.Count < 4)
                     {
                         _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
-                        _placeMask[idx] = false;        // 타일 변경 → 파생 추종
+                        _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _goals.Add(cell);
                         _goalStability.Add(0f);   // 기본 0 = 현행 유지
                     }
@@ -334,12 +354,15 @@ namespace Wassup.EditorTools
                 case Tool.PlaceMask:
                     // 드래그 = 시작 셀의 반전값으로 set (같은 셀 MouseDrag 재토글 깜빡임 방지).
                     // 격자 밖 MouseDown → 진입 드래그도 첫 셀에서 시작값을 잡는다 (MINOR-5).
+                    byte bit = (byte)_maskBrushLayer;
                     if (isDown || !_maskStrokePrimed)
                     {
-                        _maskPaintValue = !_placeMask[idx];
+                        _maskPaintValue = (_placeMask[idx] & bit) == 0;   // 시작 셀 기준 반전
                         _maskStrokePrimed = true;
                     }
-                    _placeMask[idx] = _maskPaintValue;
+                    _placeMask[idx] = _maskPaintValue
+                        ? (byte)(_placeMask[idx] | bit)
+                        : (byte)(_placeMask[idx] & ~bit);
                     break;
             }
         }
@@ -421,7 +444,7 @@ namespace Wassup.EditorTools
                     {
                         int i = Idx(x, y);
                         tiles[i] = _tiles[i];
-                        mask[i] = (byte)(_placeMask[i] ? 1 : 0);
+                        mask[i] = _placeMask[i];
                         if (_placeMask[i] != DerivedMask(i)) maskDiffCount++;
                         int d = 0;
                         if (_tiles[i] == MapTileType.Walk)

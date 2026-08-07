@@ -91,15 +91,15 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var mask = new NativeArray<byte>(16, Allocator.Temp);
-                mask[map.CellIndex(new int2(1, 1))] = 1;
-                mask[map.CellIndex(new int2(2, 2))] = 1;
+                mask[map.CellIndex(new int2(1, 1))] = (byte)PlacementLayer.Ground;
+                mask[map.CellIndex(new int2(2, 2))] = (byte)PlacementLayer.Ground;
                 map.tiles[map.CellIndex(new int2(1, 1))] = MapTileType.Walk;   // Walk 인데 mask=1
                 map.placeMask = mask;
 
                 var cells = EffectTilePlacer.SelectCells(map, 99, 10);
 
-                Assert.AreEqual(2, cells.Count, "mask=1 인 2셀만 선정");
-                CollectionAssert.Contains(cells, new int2(1, 1), "Walk 셀도 mask=1 이면 선정");
+                Assert.AreEqual(2, cells.Count, "Ground 비트가 열린 2셀만 선정");
+                CollectionAssert.Contains(cells, new int2(1, 1), "Walk 셀도 Ground 비트가 열려 있으면 선정");
                 CollectionAssert.Contains(cells, new int2(2, 2));
             }
             finally { map.Dispose(); }

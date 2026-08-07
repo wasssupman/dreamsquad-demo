@@ -27,7 +27,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 for (int i = 0; i < 4; i++)
-                    mask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
+                    mask[i] = PlacementLayers.Derive(tiles[i]);
                 Assert.IsFalse(ObstaclePlacer.HasAuthoredMaskIntent(tiles, mask),
                     "파생 동일 마스크 = 저작 의도 없음 → 커빙 유지");
             }
@@ -42,8 +42,8 @@ namespace Wassup.Tests.EditMode
             try
             {
                 for (int i = 0; i < 4; i++)
-                    mask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
-                mask[1] = 1;   // Walk 셀 배치 허용 — 상이 셀 1개.
+                    mask[i] = PlacementLayers.Derive(tiles[i]);
+                mask[1] = (byte)PlacementLayer.Ground;   // Walk 셀에 Ground 층 개방 — 파생(Path)과 상이.
                 Assert.IsTrue(ObstaclePlacer.HasAuthoredMaskIntent(tiles, mask),
                     "상이 셀 1개 = 수동 배치판 → 커빙 skip");
             }
@@ -76,17 +76,17 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void NonBinaryMaskValue_ComparedAsBool()
+        public void UndefinedBits_AreSanitizedAway()
         {
             var tiles = MakeTiles();
             var mask = new NativeArray<byte>(4, Allocator.Temp);
             try
             {
                 for (int i = 0; i < 4; i++)
-                    mask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
-                mask[0] = 2;   // Place 셀에 비정규값 — bool 비교라 파생과 동치.
+                    mask[i] = PlacementLayers.Derive(tiles[i]);
+                mask[0] = (byte)(PlacementLayers.Derive(tiles[0]) | 0x80);   // 미정의 비트 혼입
                 Assert.IsFalse(ObstaclePlacer.HasAuthoredMaskIntent(tiles, mask),
-                    "비정규값(≠0)도 '배치 가능'으로 접혀 파생과 동치");
+                    "미정의 비트는 Sanitize 로 떨어져 파생과 동치");
             }
             finally { tiles.Dispose(); mask.Dispose(); }
         }
@@ -105,7 +105,7 @@ namespace Wassup.Tests.EditMode
             {
                 for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
                 for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;   // 복도
-                for (int i = 0; i < n; i++) mask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
+                for (int i = 0; i < n; i++) mask[i] = PlacementLayers.Derive(tiles[i]);
 
                 var rng = Unity.Mathematics.Random.CreateFromIndex(7u);
                 ObstaclePlacer.DesignateDeco(ref rng, tiles, new Unity.Mathematics.int2(w, h), 0.5f);
@@ -115,8 +115,8 @@ namespace Wassup.Tests.EditMode
                 for (int i = 0; i < n; i++)
                 {
                     if (tiles[i] == MapTileType.Deco) anyDeco = true;
-                    Assert.AreEqual(tiles[i] == MapTileType.Place ? 1 : 0, mask[i],
-                        $"mask[{i}] — 커빙 후 파생 동기 (Deco 셀 mask=1 잔존 금지)");
+                    Assert.AreEqual(PlacementLayers.Derive(tiles[i]), mask[i],
+                        $"mask[{i}] — 커빙 후 파생 동기 (Deco 셀에 층 잔존 금지)");
                 }
                 Assert.IsTrue(anyDeco, "keepFraction 0.5 커빙이 실제로 Deco 를 만들었어야 테스트가 유효");
             }

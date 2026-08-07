@@ -13,6 +13,12 @@ namespace Wassup.Data
         public string id;
         // ingame-dreamcatcher Unit 0 — class/role for buff targeting axes.
         public DefenderClass role = DefenderClass.None;
+        // placement-mask unit 4 — 이 유닛이 설 수 있는 배치 층(비트). 판정은 (셀 층 & 이 값) != 0 뿐이고
+        // 코드는 role 을 보지 않는다 — 클래스별 배정은 이 필드를 어떻게 적느냐는 저작 선택이다.
+        // None(기존 asset 역직렬화 기본값) = 미지정 → Ground 폴백. 즉 안 건드리면 기존 동작 그대로.
+        public PlacementLayer placementLayers = PlacementLayer.Ground;
+        public PlacementLayer EffectivePlacementLayers
+            => placementLayers == PlacementLayer.None ? PlacementLayer.Ground : placementLayers;
         public string displayName;
         // squad-character-page unit 6 — 유닛 설명(시트-동기 plain 필드, 체력 등과 동형).
         // 비어 있으면 UnitKitSummary.Describe 가 자동 요약문으로 폴백. 시드값 = 자동 요약문.

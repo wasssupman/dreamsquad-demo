@@ -23,7 +23,8 @@ namespace Wassup.Data
             for (int x = 0; x < map.gridSize.x; x++)
             {
                 var cell = new int2(x, y);
-                if (map.PlaceableAt(cell))
+                // unit 4 — 효과 타일은 Ground(배치지면) 층 고정. 경로 위로 번지지 않는다.
+                if (map.PlaceableAt(cell, PlacementLayer.Ground))
                     placeCells.Add(cell);
             }
             if (placeCells.Count == 0) return result;

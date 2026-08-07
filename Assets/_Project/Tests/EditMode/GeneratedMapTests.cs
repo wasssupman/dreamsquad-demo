@@ -48,8 +48,9 @@ namespace Wassup.Tests.EditMode
             var map = new GeneratedMap { tiles = tiles, gridSize = new int2(2, 2) };
             try
             {
-                Assert.IsTrue(map.PlaceableAt(new int2(0, 0)), "Place 타일 → 배치 가능");
-                Assert.IsFalse(map.PlaceableAt(new int2(1, 0)), "Walk 타일 → 배치 불가");
+                Assert.IsTrue(map.PlaceableAt(new int2(0, 0), PlacementLayer.Ground), "Place 타일 → Ground 층");
+                Assert.IsFalse(map.PlaceableAt(new int2(1, 0), PlacementLayer.Ground), "Walk 타일은 Ground 층이 아님");
+                Assert.IsTrue(map.PlaceableAt(new int2(1, 0), PlacementLayer.Path), "Walk 타일 → Path 층 파생");
             }
             finally { map.Dispose(); }
         }
@@ -67,8 +68,8 @@ namespace Wassup.Tests.EditMode
             var map = new GeneratedMap { tiles = tiles, placeMask = mask, gridSize = new int2(2, 2) };
             try
             {
-                Assert.IsFalse(map.PlaceableAt(new int2(0, 0)), "Place 타일이어도 mask=0 → 불가");
-                Assert.IsTrue(map.PlaceableAt(new int2(1, 0)), "Walk 타일이어도 mask=1 → 가능");
+                Assert.IsFalse(map.PlaceableAt(new int2(0, 0), PlacementLayer.All), "마스크가 닫힌 셀은 All 유닛도 불가");
+                Assert.IsTrue(map.PlaceableAt(new int2(1, 0), PlacementLayer.Ground), "Walk 타일이어도 Ground 비트가 열려 있으면 Ground 유닛 배치 가능");
             }
             finally { map.Dispose(); }
         }

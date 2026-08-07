@@ -16,7 +16,7 @@ namespace Wassup.Data
             // 길이 불일치 = 빌더 불변식 밖의 오용 — 저작 의도 판정 불가로 접는다(커빙은 파생 규칙대로).
             if (!placeMask.IsCreated || placeMask.Length != tiles.Length) return false;
             for (int i = 0; i < tiles.Length; i++)
-                if ((placeMask[i] != 0) != (tiles[i] == MapTileType.Place)) return true;
+                if (PlacementLayers.Sanitize(placeMask[i]) != PlacementLayers.Derive(tiles[i])) return true;
             return false;
         }
 
@@ -27,7 +27,7 @@ namespace Wassup.Data
         {
             if (!placeMask.IsCreated || placeMask.Length != tiles.Length) return;
             for (int i = 0; i < tiles.Length; i++)
-                placeMask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
+                placeMask[i] = PlacementLayers.Derive(tiles[i]);
         }
 
         // Place(=buildable) 를 솔리드 블롭으로 남기고 나머지를 Deco 로 변환. keepFraction = 남길 Place 비율 [0,1].

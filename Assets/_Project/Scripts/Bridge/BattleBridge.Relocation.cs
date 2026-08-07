@@ -20,12 +20,13 @@ namespace Wassup.Bridge
         // from == to 검사가 선행되어야 "자기 자리 = Occupied" 로 오판하지 않는다.
         public static PlacementRejectReason RelocationCheck(
             GeneratedMap map, HashSet<Vector2Int> occupied, int2 from, int2 to,
-            bool fromHasDefender, bool fromBusy)
+            bool fromHasDefender, bool fromBusy, PlacementLayer layers)
         {
             if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
             if (fromBusy) return PlacementRejectReason.SourceBusy;
             if (from.Equals(to)) return PlacementRejectReason.SameCell;
-            return SpatialPlacementCheck(map, occupied, to);
+            // unit 4 — 옮기는 그 유닛의 층으로 목적 셀을 본다(배치와 같은 규칙).
+            return SpatialPlacementCheck(map, occupied, to, layers);
         }
 
         // unit 1 — 보드 유닛 조회 read seam (재배치 컨트롤러의 홀드 판정용). busy = 배치/이동
@@ -71,8 +72,11 @@ namespace Wassup.Bridge
             bool has = _defenderByTile.TryGetValue(from, out var binding)
                        && _em != null && _em.Exists(binding.entity);
             bool busy = has && _em.HasComponent<PendingDeployment>(binding.entity);
+            // unit 4 — 옮기는 유닛(소스 바인딩)의 층. 바인딩 부재는 위 has=false 가 사유를 낸다.
+            var layers = (has && binding.data != null)
+                ? binding.data.EffectivePlacementLayers : PlacementLayer.Ground;
             reason = RelocationCheck(_generatedMap, _occupiedTiles,
-                new int2(from.x, from.y), new int2(to.x, to.y), has, busy);
+                new int2(from.x, from.y), new int2(to.x, to.y), has, busy, layers);
             return reason == PlacementRejectReason.None;
         }
 
