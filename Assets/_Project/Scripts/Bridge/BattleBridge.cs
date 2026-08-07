@@ -380,14 +380,12 @@ namespace Wassup.Bridge
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
-        // Phase 9 flow field 싱글톤 entity reference
-        private Entity _flowFieldSingleton = Entity.Null;
-        // boss-defender-field unit 1 — 방어유닛-지향 필드. goal field 와 라이프사이클 동일
-        // (BuildFlowField 생성 / TeardownFlowField 정리). 내용 갱신은 DefenderFieldSystem.
-        private Entity _defenderFieldSingleton = Entity.Null;
-        // season-gimmick-overwork unit 4 — 레드불 픽업 스폰 상태(후보 셀 배열 소유).
-        // goal/defender field 와 동일 lifecycle (BuildPickupSpawnState / TeardownFlowField).
-        private Entity _pickupSpawnStateSingleton = Entity.Null;
+        // continuous-agent-movement unit 0 — 판 단위 sim 필드 3종의 핸들.
+        // goal flow field(Phase 9) / 방어유닛-지향 필드(boss-defender-field unit 1) /
+        // 레드불 픽업 스폰 상태(season-gimmick-overwork unit 4)는 라이프사이클을 공유한다:
+        // BuildFlowField·BuildPickupSpawnState 에서 서고 TeardownFlowField 에서 같이 죽는다.
+        // 할당/해제 구현은 SimFieldInstaller. 내용 갱신은 DefenderFieldSystem(defender field).
+        private SimFieldHandles _simFields;
 
         // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
         private int _spawnSpreadCounter;
@@ -586,8 +584,9 @@ namespace Wassup.Bridge
             }
             else
             {
-                _flowFieldSingleton = Entity.Null;
-                _defenderFieldSingleton = Entity.Null;
+                // unit 0 의 의도적 델타: 이전에는 3개 중 2개만 되돌려 pickup 핸들이 stale 하게
+                // 남았다(가드에 막혀 무해했으나 비대칭). Reset 은 3개를 모두 되돌린다.
+                _simFields.Reset();
             }
 
             DisposeEcsInfrastructureNativeContainers();
@@ -789,6 +788,7 @@ namespace Wassup.Bridge
         // Idempotent: 재호출(판 재시작/redraft) 시 기존 Persistent arrays dispose 후 재생성.
         // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수. TeardownFlowField 선행으로 해결.
+        // 이 순서가 계약이므로 설치자 안으로 감추지 않는다 (continuous-agent-movement unit 0).
         private void BuildFlowField()
         {
             if (!_generatedMap.IsCreated || _em == null) return;
@@ -797,95 +797,7 @@ namespace Wassup.Bridge
             TeardownFlowField();
 
             // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
-
-            int w = _generatedMap.gridSize.x;
-            int h = _generatedMap.gridSize.y;
-            int n = w * h;
-
-            var walk = new NativeArray<byte>(n, Allocator.Temp);
-            try
-            {
-                for (int i = 0; i < n; i++)
-                    walk[i] = (byte)(_generatedMap.tiles[i] == MapTileType.Walk ? 1 : 0);
-
-                var flow = new NativeArray<float2>(n, Allocator.Persistent);
-                var dist = new NativeArray<int>(n, Allocator.Persistent);
-                NativeArray<int2> goalsField = default;
-                try
-                {
-                    var gridSize = _generatedMap.gridSize;
-                    var goal = _generatedMap.goal;   // primary = goals[0] (FlowFieldSingleton.goalCell·폴백)
-
-                    // multi-goal-map 유닛 1·2 — 골 집합을 Persistent 로 만들어 (a) N-소스 BFS 소스
-                    // (최근접-골 라우팅) (b) FlowFieldSingleton.goals 저장(IsGoalCell 멤버십). goals
-                    // 미초기화/빈 생산자(라이브 폴백 BuildFallbackLinear·legacy)는 [goal] 로 폴백.
-                    // 성공 시 goalsField 소유권은 싱글턴으로 이관 → TeardownFlowField 가 dispose.
-                    bool hasGoals = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
-                    goalsField = new NativeArray<int2>(hasGoals ? _generatedMap.goals.Length : 1, Allocator.Persistent);
-                    if (hasGoals) goalsField.CopyFrom(_generatedMap.goals);
-                    else goalsField[0] = goal;
-
-                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField, flow, dist);
-
-                    var data = new FlowFieldSingleton
-                    {
-                        flow = flow,
-                        dist = dist,
-                        gridSize = gridSize,
-                        goalCell = goal,
-                        goals = goalsField,
-                        tileSize = tileSize,
-                        origin = _boardOrigin,
-                        version = _generatedMap.generatorVersion,
-                    };
-
-                    _flowFieldSingleton = _em.CreateEntity();
-                    _em.AddComponentData(_flowFieldSingleton, data);
-                    Debug.Log($"[BattleBridge] FlowField built — boardOrigin={_boardOrigin} tileSize={tileSize} grid={gridSize}");
-                }
-                catch
-                {
-                    if (flow.IsCreated) flow.Dispose();
-                    if (dist.IsCreated) dist.Dispose();
-                    if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
-                    throw;
-                }
-
-                // boss-defender-field unit 1 — 방어유닛-지향 필드 싱글톤. walkMask 는 위의
-                // Temp `walk` 를 Persistent 로 복사(goal field 는 저장 안 하는 값).
-                // flow/dist 는 초기 "소스 0" 상태(dist=MaxValue) — 내용은 DefenderFieldSystem 이
-                // 매 프레임 재빌드. teardown 은 TeardownFlowField 가 함께 처리(멱등).
-                var dWalk = new NativeArray<byte>(n, Allocator.Persistent);
-                var dFlow = new NativeArray<float2>(n, Allocator.Persistent);
-                var dDist = new NativeArray<int>(n, Allocator.Persistent);
-                try
-                {
-                    dWalk.CopyFrom(walk);
-                    for (int i = 0; i < n; i++) dDist[i] = int.MaxValue;
-
-                    _defenderFieldSingleton = _em.CreateEntity();
-                    _em.AddComponentData(_defenderFieldSingleton, new Wassup.Battle.Effects.DefenderFieldSingleton
-                    {
-                        walkMask = dWalk,
-                        flow     = dFlow,
-                        dist     = dDist,
-                        gridSize = _generatedMap.gridSize,
-                        tileSize = tileSize,
-                        origin   = _boardOrigin,
-                    });
-                }
-                catch
-                {
-                    if (dWalk.IsCreated) dWalk.Dispose();
-                    if (dFlow.IsCreated) dFlow.Dispose();
-                    if (dDist.IsCreated) dDist.Dispose();
-                    throw;
-                }
-            }
-            finally
-            {
-                if (walk.IsCreated) walk.Dispose();
-            }
+            SimFieldInstaller.InstallNavFields(_em, in _generatedMap, tileSize, _boardOrigin, ref _simFields);
         }
 
         // goal-stability unit 1 — 안정도(M>0) 골을 전투 엔티티로 스폰. BuildFlowField 직후 호출
@@ -941,46 +853,12 @@ namespace Wassup.Bridge
             // gimmick-match-integration — 레드불 기믹 배정 시에만 픽업 스폰 후보 구축.
             if (!(_assignedGimmick is Wassup.Data.RedBullGimmickData)) return;
 
-            int2 gridSize = _generatedMap.gridSize;
-            int n = gridSize.x * gridSize.y;
-
-            // 이동/배치 타일영역 = Walk∪Place 셀 수집.
-            var cells = new System.Collections.Generic.List<int2>(n);
-            for (int i = 0; i < n; i++)
-            {
-                var t = _generatedMap.tiles[i];
-                if (t == MapTileType.Walk || t == MapTileType.Place)
-                    cells.Add(new int2(i % gridSize.x, i / gridSize.x));
-            }
-            if (cells.Count == 0) return;
-
-            var candidateCells = new NativeArray<int2>(cells.Count, Allocator.Persistent);
-            for (int i = 0; i < cells.Count; i++) candidateCells[i] = cells[i];
-
             uint pickupSeed = (uint)Wassup.Core.MatchSeed.DerivePickupSeed(_matchSeed);
-            _pickupSpawnStateSingleton = _em.CreateEntity();
-            _em.AddComponentData(_pickupSpawnStateSingleton, new Wassup.Battle.Effects.PickupSpawnState
-            {
-                candidateCells = candidateCells,
-                elapsed = 0f,
-                rng = new Unity.Mathematics.Random(pickupSeed),
-            });
-            Debug.Log($"[BattleBridge] PickupSpawnState built — 후보 셀 {candidateCells.Length}개 (Walk∪Place), seed={pickupSeed}");
+            SimFieldInstaller.InstallPickupSpawnState(_em, in _generatedMap, pickupSeed, ref _simFields);
         }
 
         private void TeardownPickupSpawnState()
-        {
-            if (_pickupSpawnStateSingleton != Entity.Null && _em != null && _em.Exists(_pickupSpawnStateSingleton))
-            {
-                if (_em.HasComponent<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton))
-                {
-                    var data = _em.GetComponentData<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton);
-                    data.Dispose();
-                }
-                _em.DestroyEntity(_pickupSpawnStateSingleton);
-            }
-            _pickupSpawnStateSingleton = Entity.Null;
-        }
+            => SimFieldInstaller.TeardownPickupSpawnState(_em, ref _simFields);
 
         // enemy-spawn-positioning / tile-movement-integrity u0(rev) — 스폰 셀 flow 수직으로 중앙 기준 이산 N-레인 오프셋 계산.
         private float3 ComputeSpawnLateralOffset(int2 spawnCell)
@@ -988,10 +866,10 @@ namespace Wassup.Bridge
             if (!spawnSpreadEnabled || spawnSpreadFraction <= 0f) return float3.zero;
 
             float2 flowDir = float2.zero; // flow 0 → SpawnSpread.Perpendicular 가 (1,0) 기준 폴백.
-            if (_flowFieldSingleton != Entity.Null && _em.Exists(_flowFieldSingleton) &&
-                _em.HasComponent<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton))
+            if (_simFields.flowField != Entity.Null && _em.Exists(_simFields.flowField) &&
+                _em.HasComponent<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField))
             {
-                var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton);
+                var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(spawnCell, field.gridSize);
                 if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
             }
@@ -1285,40 +1163,7 @@ namespace Wassup.Bridge
         }
 
         private void TeardownFlowField()
-        {
-            if (_world == null || !_world.IsCreated || _em == default)
-            {
-                _flowFieldSingleton = Entity.Null;
-                _defenderFieldSingleton = Entity.Null;
-                _pickupSpawnStateSingleton = Entity.Null;
-                return;
-            }
-            if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
-            {
-                if (_em.HasComponent<FlowFieldSingleton>(_flowFieldSingleton))
-                {
-                    var data = _em.GetComponentData<FlowFieldSingleton>(_flowFieldSingleton);
-                    data.Dispose();
-                }
-                _em.DestroyEntity(_flowFieldSingleton);
-            }
-            _flowFieldSingleton = Entity.Null;
-
-            // boss-defender-field unit 1 — defender field 는 goal field 와 라이프사이클 공유.
-            if (_defenderFieldSingleton != Entity.Null && _em != null && _em.Exists(_defenderFieldSingleton))
-            {
-                if (_em.HasComponent<Wassup.Battle.Effects.DefenderFieldSingleton>(_defenderFieldSingleton))
-                {
-                    var data = _em.GetComponentData<Wassup.Battle.Effects.DefenderFieldSingleton>(_defenderFieldSingleton);
-                    data.Dispose();
-                }
-                _em.DestroyEntity(_defenderFieldSingleton);
-            }
-            _defenderFieldSingleton = Entity.Null;
-
-            // season-gimmick-overwork unit 4 — 픽업 스폰 상태도 맵 field 와 동일 lifecycle.
-            TeardownPickupSpawnState();
-        }
+            => SimFieldInstaller.Teardown(_world, _em, ref _simFields);
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
         // PlaceDefenderAs works immediately, but spawns / timer stay dormant.
@@ -1943,11 +1788,11 @@ namespace Wassup.Bridge
             outPath.Clear();
             if (!_generatedMap.IsCreated || laneIndex < 0 || laneIndex >= _generatedMap.spawns.Length)
                 return false;
-            if (_flowFieldSingleton == Entity.Null || !_em.Exists(_flowFieldSingleton) ||
-                !_em.HasComponent<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton))
+            if (_simFields.flowField == Entity.Null || !_em.Exists(_simFields.flowField) ||
+                !_em.HasComponent<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField))
                 return false;
 
-            var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton);
+            var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField);
             int2 cell = _generatedMap.spawns[laneIndex];
             int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어(BFS 필드라 실제론 불가)
             for (int step = 0; step < guard; step++)
