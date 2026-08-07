@@ -7,30 +7,32 @@ namespace Wassup.Battle.Movement
     // Static cell-trim utilities called from Burst-compiled MovementSystem.
     public static class MovementCellTrim
     {
+        // continuous-agent-movement unit 1 — 벽 술어의 소유자는 NavGrid 로 옮겼다.
+        // 여기 남은 것은 ECS 싱글턴 → NavGrid 조립 하나뿐이다(호출자 편의). 술어를 다시
+        // 쓰지 않는다 — 벽 판정이 바뀔 때 고칠 곳은 NavGrid 하나여야 한다.
+        public static NavGrid BuildNavGrid(
+            in FlowFieldSingleton field,
+            bool hasObstacles,
+            in ObstacleSingleton obstacles)
+            => new NavGrid(
+                staticWalk:   field.walkMask,
+                blockedCells: hasObstacles ? obstacles.blockedCells : default,
+                hasObstacles: hasObstacles,
+                gridSize:     field.gridSize,
+                tileSize:     field.tileSize,
+                origin:       field.origin,
+                flow:         field.flow,
+                goals:        field.goals,
+                goalCell:     field.goalCell);
+
         // summon-patrol-defender — BFS 소비자용 walk 마스크(1 = 걸을 수 있음).
-        //
-        // "무엇이 걸을 수 있는 칸인가" = IsWallCell + 장애물 이라는 합성이 이미 이 클래스의
-        // Apply 안에 있다. 그 합성을 그리드 전체로 돌리는 코드가 AggroStateSystem 과
-        // PatrolFieldSystem 두 곳에 그대로 복제돼 있었다 — 제약 10 의 (b) 호출처 2+ 와
-        // (c) sim-critical(마스크가 틀리면 이동 전체가 깨진다)을 동시에 충족하므로 여기로 모은다.
-        // 술어의 단일 정의를 유지하는 것이 목적이다: 벽 판정이 바뀔 때 한 곳만 고치면 된다.
-        //
         // outMask 는 gridSize.x * gridSize.y 길이여야 한다(호출자 책임).
         public static void FillWalkMask(
             in FlowFieldSingleton field,
             bool hasObstacles,
             in ObstacleSingleton obstacles,
             NativeArray<byte> outMask)
-        {
-            for (int y = 0; y < field.gridSize.y; y++)
-            for (int x = 0; x < field.gridSize.x; x++)
-            {
-                var cell = new int2(x, y);
-                bool wall = IsWallCell(cell, in field)
-                            || (hasObstacles && obstacles.blockedCells.Contains(cell));
-                outMask[GridMath.CellIndex(cell, field.gridSize)] = wall ? (byte)0 : (byte)1;
-            }
-        }
+            => BuildNavGrid(in field, hasObstacles, in obstacles).MaterializeWalkMask(outMask);
 
         // Inset to keep the clamped position strictly inside currentCell.
         // WorldToCell rounds 0.5 up to the next cell, so without this offset a position at
@@ -38,17 +40,14 @@ namespace Wassup.Battle.Movement
         // trim invariant (currentCell != targetCell) on the next frame.
         private const float kBoundaryEpsilon = 1e-3f;
 
+        // continuous-agent-movement unit 1 — 술어 본체는 NavGrid.IsBlocked 가 소유한다.
+        // 이 오버로드는 장애물을 보지 않는 "정적 벽만" 질의라 기존 호출부·테스트 계약이 그대로다
+        // (장애물 검사는 예나 지금이나 호출자가 따로 합성한다).
+        // unit 2 에서 은퇴 — 그때 NavGrid.IsBlocked 로 완전히 흡수된다.
         public static bool IsWallCell(int2 cell, in FlowFieldSingleton field)
-        {
-            if (cell.x < 0 || cell.x >= field.gridSize.x ||
-                cell.y < 0 || cell.y >= field.gridSize.y)
-                return true;
-            // multi-goal-map — 골 셀은 flow=0 이라 아래 zero-flow=wall 규칙에 걸린다. 모든 골을
-            // wall 예외로 빼 적이 골 밖으로 clamp 되지 않게(IsGoalCell = goals 멤버십/goalCell 폴백).
-            if (field.IsGoalCell(cell))
-                return false;
-            return math.lengthsq(field.flow[GridMath.CellIndex(cell, field.gridSize)]) < 1e-6f;
-        }
+            => BuildNavGrid(in field, hasObstacles: false, in DefaultObstacles).IsBlocked(cell);
+
+        private static readonly ObstacleSingleton DefaultObstacles = default;
 
         // origin = board world origin (Tilemap mode = zero). Default zero keeps
         // legacy callers identical. Cell boundaries are offset by origin so the trim
@@ -83,12 +82,16 @@ namespace Wassup.Battle.Movement
         // 모든 이동 모드(flow follow, aggro target chase)를 walk 타일 위에 묶는 단일 지점.
         public static float3 Apply(float3 desired, int2 currentCell, in FlowFieldSingleton field,
                                    bool hasObstacles, in ObstacleSingleton obstacles)
+            => Apply(desired, currentCell, BuildNavGrid(in field, hasObstacles, in obstacles));
+
+        // continuous-agent-movement unit 1 — NavGrid 만 받는 본체. 이후 unit 들이 쓰는 형태다.
+        public static float3 Apply(float3 desired, int2 currentCell, in NavGrid nav)
         {
-            int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize, origin: field.origin);
+            int2 targetCell = GridMath.WorldToCell(desired, nav.tileSize, nav.gridSize, origin: nav.origin);
             if (currentCell.Equals(targetCell)) return desired;
-            bool isWall = IsWallCell(targetCell, in field);
-            if (!isWall && hasObstacles) isWall = obstacles.blockedCells.Contains(targetCell);
-            return isWall ? ClampToBoundary(desired, currentCell, field.tileSize, origin: field.origin) : desired;
+            return nav.IsBlocked(targetCell)
+                ? ClampToBoundary(desired, currentCell, nav.tileSize, origin: nav.origin)
+                : desired;
         }
     }
 }

@@ -47,7 +47,11 @@ namespace Wassup.Bridge
             int h = map.gridSize.y;
             int n = w * h;
 
-            var walk = new NativeArray<byte>(n, Allocator.Temp);
+            // continuous-agent-movement unit 1 — 정적 walk 마스크는 Persistent 1개만 만든다.
+            // (이전: Temp `walk` + DefenderField 용 Persistent 사본, 총 2개.)
+            // 실패 시 소유권 이관 전이므로 catch 에서 직접 dispose 한다.
+            var walk = new NativeArray<byte>(n, Allocator.Persistent);
+            bool walkOwnedBySingleton = false;   // AddComponentData 성공 시점에 소유권 이관
             try
             {
                 for (int i = 0; i < n; i++)
@@ -76,6 +80,7 @@ namespace Wassup.Bridge
                     {
                         flow = flow,
                         dist = dist,
+                        walkMask = walk,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -86,6 +91,7 @@ namespace Wassup.Bridge
 
                     handles.flowField = em.CreateEntity();
                     em.AddComponentData(handles.flowField, data);
+                    walkOwnedBySingleton = true;   // 이후 dispose 책임은 FlowFieldSingleton.Dispose
                     Debug.Log($"[SimFieldInstaller] FlowField built — boardOrigin={origin} tileSize={tileSize} grid={gridSize}");
                 }
                 catch
@@ -96,22 +102,20 @@ namespace Wassup.Bridge
                     throw;
                 }
 
-                // boss-defender-field unit 1 — 방어유닛-지향 필드 싱글톤. walkMask 는 위의
-                // Temp `walk` 를 Persistent 로 복사(goal field 는 저장 안 하는 값).
+                // boss-defender-field unit 1 — 방어유닛-지향 필드 싱글톤.
+                // continuous-agent-movement unit 1 — walkMask 사본을 더 만들지 않는다.
+                // 정적 벽은 FlowFieldSingleton 이 단독 소유하고 DefenderFieldSystem 이 읽는다.
                 // flow/dist 는 초기 "소스 0" 상태(dist=MaxValue) — 내용은 DefenderFieldSystem 이
                 // 매 프레임 재빌드. teardown 은 Teardown 이 함께 처리(멱등).
-                var dWalk = new NativeArray<byte>(n, Allocator.Persistent);
                 var dFlow = new NativeArray<float2>(n, Allocator.Persistent);
                 var dDist = new NativeArray<int>(n, Allocator.Persistent);
                 try
                 {
-                    dWalk.CopyFrom(walk);
                     for (int i = 0; i < n; i++) dDist[i] = int.MaxValue;
 
                     handles.defenderField = em.CreateEntity();
                     em.AddComponentData(handles.defenderField, new DefenderFieldSingleton
                     {
-                        walkMask = dWalk,
                         flow     = dFlow,
                         dist     = dDist,
                         gridSize = map.gridSize,
@@ -121,15 +125,17 @@ namespace Wassup.Bridge
                 }
                 catch
                 {
-                    if (dWalk.IsCreated) dWalk.Dispose();
                     if (dFlow.IsCreated) dFlow.Dispose();
                     if (dDist.IsCreated) dDist.Dispose();
                     throw;
                 }
             }
-            finally
+            catch
             {
-                if (walk.IsCreated) walk.Dispose();
+                // 이관 전 실패만 여기서 해제한다. 이관 후라면 FlowFieldSingleton 이 소유하며
+                // 호출부의 Teardown 이 정리한다(flow/dist/goals 와 같은 규약).
+                if (!walkOwnedBySingleton && walk.IsCreated) walk.Dispose();
+                throw;
             }
         }
 

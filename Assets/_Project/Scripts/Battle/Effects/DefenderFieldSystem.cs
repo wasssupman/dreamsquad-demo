@@ -29,6 +29,18 @@ namespace Wassup.Battle.Effects
             var field = SystemAPI.GetSingleton<DefenderFieldSingleton>();
             if (!field.IsCreated) return;
 
+            // continuous-agent-movement unit 1 — 정적 walk 마스크는 goal field 가 단독 소유한다
+            // (사본을 들면 double dispose + 벽 정의 이원화). 실운영에선 SimFieldInstaller 가 두
+            // 필드를 항상 함께 세우므로 동시 존재이지만, 합성 테스트 월드는 한쪽만 만들 수 있다.
+            //
+            // 이 의존을 RequireForUpdate 에 올리지 않은 것은 의도다 — 올리면 DefenderField 만
+            // 세우는 테스트 월드에서 시스템이 아예 안 돌아 기존 픽스처가 조용히 바뀐다. 대신
+            // 조기 return 을 택했고, 그 대가로 그런 월드에선 매 프레임 OnUpdate 진입 후 즉시
+            // 빠져나오는 비용이 있다(ecs-review T3). 프로덕션엔 해당 없음.
+            if (!SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var goalField)) return;
+            var walkMask = goalField.walkMask;
+            if (!walkMask.IsCreated) return;
+
             // unit 5 — 필드 소비자는 보스뿐. 보스 부재 시 재빌드 skip(보스 스폰 프레임엔
             // 이 시스템이 Movement 앞에서 다시 돌아 신선한 필드 보장).
             // R = 동시 헌터 사거리(타일)의 **min fold** — 소스는 "모든 헌터가 발사 가능한 셀"
@@ -59,9 +71,9 @@ namespace Wassup.Battle.Effects
 
             int discArea = (2 * rangeTiles + 1) * (2 * rangeTiles + 1);
             var sources = new NativeList<int2>(math.max(4, defenderCells.Length * discArea), Allocator.Temp);
-            FlowFieldBuilder.CollectDefenderSources(field.walkMask, field.gridSize,
+            FlowFieldBuilder.CollectDefenderSources(walkMask, field.gridSize,
                 defenderCells.AsArray(), rangeTiles, sources);
-            FlowFieldBuilder.BuildFromSources(field.walkMask, field.gridSize,
+            FlowFieldBuilder.BuildFromSources(walkMask, field.gridSize,
                 sources.AsArray(), field.flow, field.dist);
 
             defenderCells.Dispose();
