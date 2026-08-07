@@ -228,5 +228,86 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             ScriptableObject.DestroyImmediate(doc);
         }
+
+        // ── placement-mask unit 0 — placeMask 왕복·파생 폴백 ────────────────────
+
+        private static MapDocument BuildMaskedDocument(byte[] mask)
+        {
+            const int w = 6, h = 4; int n = w * h;
+            var tiles = new MapTileType[n];
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
+
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(w - 1, 2) }, new[] { new Vector2Int(0, 2) },
+                seed: 42, version: 1,
+                placeMaskArr: mask);
+            return doc;
+        }
+
+        [Test]
+        public void PlaceMask_RoundTrip_Preserved()
+        {
+            const int n = 24;
+            var mask = new byte[n];
+            mask[2 * 6 + 3] = 1;   // Walk 셀 (3,2) 에 배치 허용 — 타일 종류와 직교 확인.
+            var doc = BuildMaskedDocument(mask);
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.IsTrue(map.placeMask.IsCreated);
+            Assert.AreEqual(1, map.placeMask[2 * 6 + 3], "Walk 셀 mask=1 보존");
+            Assert.AreEqual(0, map.placeMask[0], "Place 셀 mask=0 보존 (파생 아님)");
+
+            var roundTripped = ScriptableObject.CreateInstance<MapDocument>();
+            MapDocumentBuilder.WriteToDocument(roundTripped, in map);
+            Assert.AreEqual(n, roundTripped.PlaceMask.Count);
+            for (int i = 0; i < n; i++)
+                Assert.AreEqual(mask[i], roundTripped.PlaceMask[i], $"placeMask[{i}]");
+
+            ScriptableObject.DestroyImmediate(doc);
+            ScriptableObject.DestroyImmediate(roundTripped);
+        }
+
+        [Test]
+        public void PlaceMask_Absent_DerivesFromPlaceTiles()
+        {
+            var doc = BuildSampleDocument();   // placeMask 미전달
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.IsTrue(map.placeMask.IsCreated, "빌더 산출물 불변식: 항상 생성");
+            int n = map.gridSize.x * map.gridSize.y;
+            for (int i = 0; i < n; i++)
+                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생");
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
+        [Test]
+        public void PlaceMask_LengthMismatch_DerivesFromPlaceTiles()
+        {
+            var doc = BuildMaskedDocument(new byte[] { 1, 1, 1 });   // 3 != 24
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            int n = map.gridSize.x * map.gridSize.y;
+            for (int i = 0; i < n; i++)
+                Assert.AreEqual(map.tiles[i] == MapTileType.Place ? 1 : 0, map.placeMask[i], $"placeMask[{i}] 파생 폴백");
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
+        [Test]
+        public void PlaceMask_NonBinaryValue_NormalizedToOne()
+        {
+            const int n = 24;
+            var mask = new byte[n];
+            mask[0] = 2;   // 비정규값 — intent 비교 오염 방지 정규화 확인.
+            var doc = BuildMaskedDocument(mask);
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.AreEqual(1, map.placeMask[0], "2 → 1 정규화");
+
+            ScriptableObject.DestroyImmediate(doc);
+        }
     }
 }

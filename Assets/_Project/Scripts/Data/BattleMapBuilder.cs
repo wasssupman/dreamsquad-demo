@@ -50,9 +50,15 @@ namespace Wassup.Data
             var goals = new NativeArray<int2>(1, Allocator.Persistent);
             goals[0] = new int2(w - 1, goalY);
 
+            // placement-mask unit 0 — 빌더 산출물 불변식: placeMask 항상 생성(파생).
+            var placeMask = new NativeArray<byte>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++)
+                placeMask[i] = (byte)(tiles[i] == MapTileType.Place ? 1 : 0);
+
             return new GeneratedMap
             {
                 tiles = tiles,
+                placeMask = placeMask,
                 gridSize = new int2(w, h),
                 spawns = spawns,
                 goal = new int2(w - 1, goalY),

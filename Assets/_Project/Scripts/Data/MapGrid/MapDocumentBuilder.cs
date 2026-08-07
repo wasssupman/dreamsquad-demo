@@ -16,6 +16,12 @@ namespace Wassup.Data.MapGrid
             var mergeDegree = new NativeArray<byte>(n, allocator);
             var chokepoint = new NativeArray<byte>(n, allocator);
             var propLayerId = new NativeArray<byte>(n, allocator);
+            var placeMask = new NativeArray<byte>(n, allocator);
+
+            // placeMask: doc 저작본(길이 일치) 채택 + 0/1 정규화, 아니면 tiles==Place 파생.
+            // 빌더 산출물 불변식: IsCreated ⇒ placeMask 생성됨 (placement-mask unit 0).
+            var docMask = doc.PlaceMask;
+            bool hasAuthoredMask = docMask != null && docMask.Count == n;
 
             for (int i = 0; i < n; i++)
             {
@@ -23,6 +29,9 @@ namespace Wassup.Data.MapGrid
                 mergeDegree[i] = doc.MergeDegree[i];
                 chokepoint[i] = (byte)(doc.Chokepoint[i] ? 1 : 0);
                 propLayerId[i] = doc.PropLayerId[i];
+                placeMask[i] = hasAuthoredMask
+                    ? (byte)(docMask[i] != 0 ? 1 : 0)
+                    : (byte)(doc.Tiles[i] == MapTileType.Place ? 1 : 0);
             }
 
             var spawns = new NativeArray<int2>(doc.Spawns.Count, allocator);
@@ -51,6 +60,7 @@ namespace Wassup.Data.MapGrid
                 mergeDegree = mergeDegree,
                 chokepoint = chokepoint,
                 propLayerId = propLayerId,
+                placeMask = placeMask,
                 gridSize = new int2(w, h),
                 spawns = spawns,
                 goal = goals[0],
@@ -68,6 +78,7 @@ namespace Wassup.Data.MapGrid
             var mergeDegree = new byte[n];
             var chokepoint = new bool[n];
             var propLayerId = new byte[n];
+            var placeMask = new byte[n];
 
             for (int i = 0; i < n; i++)
             {
@@ -75,6 +86,10 @@ namespace Wassup.Data.MapGrid
                 mergeDegree[i] = map.mergeDegree[i];
                 chokepoint[i] = map.chokepoint[i] != 0;
                 propLayerId[i] = map.propLayerId[i];
+                // 미생성 map(직접 구성) 은 파생으로 채워 내보냄 — 빌더 경유 map 은 항상 생성돼 있다.
+                placeMask[i] = map.placeMask.IsCreated
+                    ? (byte)(map.placeMask[i] != 0 ? 1 : 0)
+                    : (byte)(map.tiles[i] == MapTileType.Place ? 1 : 0);
             }
 
             var spawns = new Vector2Int[map.spawns.Length];
@@ -106,7 +121,8 @@ namespace Wassup.Data.MapGrid
                 goals,
                 spawns,
                 map.seed, map.generatorVersion,
-                goalStability);
+                goalStability,
+                placeMask);
         }
     }
 }

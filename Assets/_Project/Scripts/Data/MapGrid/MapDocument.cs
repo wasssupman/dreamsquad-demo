@@ -12,6 +12,7 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private byte[] mergeDegree;
         [SerializeField] private bool[] chokepoint;
         [SerializeField] private byte[] propLayerId;
+        [SerializeField] private byte[] placeMask;     // 0/1. 1 = 배치 가능. 부재/길이 불일치 = tiles==Place 파생 폴백(placement-mask unit 0). 타일 종류와 직교 — Walk 셀도 1 가능.
         [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
         [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
         [SerializeField] private float[] goalMaxStability;   // goals 와 index 정렬. 0 = 유출 지점 현행, >0 = 공성 대상. 부재/길이 불일치 = 전 골 0 폴백(goal-stability unit 0).
@@ -29,6 +30,7 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<byte> MergeDegree => mergeDegree;
         public IReadOnlyList<bool> Chokepoint => chokepoint;
         public IReadOnlyList<byte> PropLayerId => propLayerId;
+        public IReadOnlyList<byte> PlaceMask => placeMask;   // null/length-0 가능 — 소비 시 tiles==Place 파생 폴백(ToGeneratedMap)
         public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
         public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
         public IReadOnlyList<float> GoalMaxStability => goalMaxStability;   // null/길이 불일치 가능 — 소비 시 전 골 0 폴백(ToGeneratedMap)
@@ -41,7 +43,8 @@ namespace Wassup.Data.MapGrid
             MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
             Vector2Int[] goalsArr, Vector2Int[] s,
             int seed, int version,
-            float[] goalStabilityArr = null)
+            float[] goalStabilityArr = null,
+            byte[] placeMaskArr = null)
         {
             width = w;
             height = h;
@@ -49,6 +52,7 @@ namespace Wassup.Data.MapGrid
             mergeDegree = md;
             chokepoint = cp;
             propLayerId = pl;
+            placeMask = placeMaskArr;
             goals = goalsArr;
             goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
             goalMaxStability = goalStabilityArr;
@@ -78,6 +82,10 @@ namespace Wassup.Data.MapGrid
                 Debug.LogError($"[MapDocument] chokepoint.Length={chokepoint.Length} != {n}", this);
             if (propLayerId != null && propLayerId.Length != n)
                 Debug.LogError($"[MapDocument] propLayerId.Length={propLayerId.Length} != {n}", this);
+            // placeMask: goalMaxStability 패턴 — Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로
+            // 로드하므로 length-0 = 부재 = 파생 폴백으로 유효. 길이 불일치만 에러.
+            if (placeMask != null && placeMask.Length > 0 && placeMask.Length != n)
+                Debug.LogError($"[MapDocument] placeMask.Length={placeMask.Length} != {n} — 소비 시 tiles==Place 파생 폴백", this);
 
             if (spawns == null || spawns.Length < 1 || spawns.Length > 4)
                 Debug.LogError($"[MapDocument] spawns.Length 는 1~4 (현재 {spawns?.Length ?? 0})", this);
