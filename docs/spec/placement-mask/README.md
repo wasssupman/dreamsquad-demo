@@ -17,6 +17,7 @@
 | [2_map_painter_mask_brush.md](2_map_painter_mask_brush.md) | 저작 도구 | Map Painter 마스크 브러시·오버레이·베이크 |
 | [3_walk_cell_placement_verification.md](3_walk_cell_placement_verification.md) | B-1 검증 | Walk 셀 배치의 Play 검증 + "배치칸=벽" 암묵 전제 6곳 재검토 |
 | [4_placement_layers.md](4_placement_layers.md) | 층 비트필드 | 셀 마스크 × 유닛 레이어 교집합 판정 (클래스 비종속) + 페인터 층 브러시 |
+| [5_handoff_summary.md](5_handoff_summary.md) | 인계 | 커밋 지도 · 되돌리면 안 되는 의도 · 남은 육안 검증 |
 
 ## Feature-wide 계약
 
