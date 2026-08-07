@@ -40,3 +40,5 @@
 - **픽업 후보·프랍 zone 의 마스크 정합** [S] · `PickupSpawnState.candidateCells`(Walk∪Place)·`BackgroundPropPlacer.OccludesPlay` 를 마스크 기준으로 볼지 — footprint 모델과 함께 결정.
 - **Walk 셀 배치의 콘텐츠 활용** [M] · 실맵 6종에 마스크를 실제로 저작할지, 시각 어포던스(경로 위 배치 가능 표시)를 줄지 — 제품 결정.
 - **페인터 Deco+mask=1 warning** [S] · spawn/골 셀 mask=1 은 warning 을 주는데 "장식물 위 배치 가능"(Deco+mask=1)은 침묵 — 마스크 브러시로만 만들 수 있는 의도 저작이지만 실수 가능성도 있어 warning 후보 (Track A 리뷰 MINOR-7).
+- **"배치 불가" 유닛 표현** [S] · `None` 이 미지정 sentinel 로 소진돼 "손으로는 못 놓는 유닛"(소환 전용 등)을 층으로 표현할 수 없다. 필요해지면 별도 플래그나 sentinel 재설계 (unit 4 리뷰 MINOR-1).
+- **경로 개방 도로의 시각 어포던스** [M] · Path 층이 열린 도로도 zone 시각은 여전히 tiles 파생이라 "그냥 도로"로 보인다(`BoardVisualPlanBuilder`). 하이라이트 밖에서도 읽히게 할지 — footprint 모델과 함께 결정 (unit 4 리뷰 m-6).

@@ -279,6 +279,7 @@ namespace Wassup.UI
         // 지점마다 show/hide 산탄 대신 원하는 상태를 파생해 idempotent 호출. 탭 비행(_simulatedDrag)은 OFF
         // (range 억제와 일관). 이 파생이 BeginDrag 의 Disarm→재Show 순서의존·_sessionGen 하이재킹을 무관하게 만든다.
         private bool _placeableHlDesired;
+        private DefenderUnitData _placeableHlUnit;   // placement-mask unit 4 — 마지막으로 게시한 하이라이트 유닛(층 축)
 
         private void UpdatePlacementHighlightState()
         {
@@ -287,10 +288,18 @@ namespace Wassup.UI
             // 아무 일도 일어나지 않는다" 를 한 덩어리로 보여야 한다(계약 4). CancelArmed 가 두 사유
             // (트레이 존 / 칸 없음)를 함께 덮으므로 사유별로 화면이 갈리지 않는다(계약 6).
             bool desired = (_session.active && !_simulatedDrag && !CancelArmed) || _armedUnit != null;
-            if (desired == _placeableHlDesired) return;
-            _placeableHlDesired = desired;
             // placement-mask unit 4 — 하이라이트는 드는 유닛의 배치 층 기준(드래그 세션 우선, 없으면 탭 arm).
-            if (desired) bridge.ShowPlacementHighlight(_session.active ? _session.unit : _armedUnit);
+            var unit = desired ? (_session.active ? _session.unit : _armedUnit) : null;
+            // 래치에 **유닛과 실제 표시 상태**를 포함한다. bool 하나만 래치하면 desired 가 true 로 유지된 채
+            // 유닛만 바뀌는 전이(탭 arm 갈아타기 ToggleArm=Disarm→재arm, arm 중 다른 유닛 BeginDrag)에서
+            // 재호출이 스킵돼 **이전 유닛의 층**이 계속 그려진다 — 판정은 새 유닛 층을 쓰므로
+            // "빛나는데 거부 / 어두운데 성공" 이 된다(판정↔하이라이트 술어 공유 계약 파손).
+            // 표시 상태까지 보는 이유: 재배치 컨트롤러가 Hide 를 쏜 뒤에도 여기서 자기치유 재게시된다.
+            bool shown = bridge.IsPlacementHighlightShown;
+            if (desired == _placeableHlDesired && ReferenceEquals(unit, _placeableHlUnit) && shown == desired) return;
+            _placeableHlDesired = desired;
+            _placeableHlUnit = unit;
+            if (desired) bridge.ShowPlacementHighlight(unit);
             else bridge.HidePlacementHighlight();
         }
 

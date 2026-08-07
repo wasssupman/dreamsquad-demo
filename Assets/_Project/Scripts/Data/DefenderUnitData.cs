@@ -15,7 +15,9 @@ namespace Wassup.Data
         public DefenderClass role = DefenderClass.None;
         // placement-mask unit 4 — 이 유닛이 설 수 있는 배치 층(비트). 판정은 (셀 층 & 이 값) != 0 뿐이고
         // 코드는 role 을 보지 않는다 — 클래스별 배정은 이 필드를 어떻게 적느냐는 저작 선택이다.
-        // None(기존 asset 역직렬화 기본값) = 미지정 → Ground 폴백. 즉 안 건드리면 기존 동작 그대로.
+        // 기존 asset 은 누락 필드를 **이니셜라이저**(Ground)로 채우고, None(0) 이 들어와도 폴백이
+        // Ground 로 맞춘다 — 두 경로 다 안 건드리면 기존 동작 그대로다(이니셜라이저를 바꾸면 폴백이
+        // 유일한 방어선이 되므로 둘을 함께 유지할 것). 참고: 그래서 "손으로는 못 놓는 유닛"은 표현 불가.
         public PlacementLayer placementLayers = PlacementLayer.Ground;
         public PlacementLayer EffectivePlacementLayers
             => placementLayers == PlacementLayer.None ? PlacementLayer.Ground : placementLayers;

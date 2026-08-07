@@ -103,6 +103,43 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void LivePath_SpawnAndGoalCells_AreClosedForAllLayers()
+        {
+            // unit 4 리뷰 M-1 — Walk→Path 파생이 스폰·골 칸까지 열어버리는 걸 런타임 불변식이 막는다.
+            // 문서/커빙 의미는 그대로고 라이브 맵에만 덮는다.
+            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
+            CallPrivateMethod(_bridge, "BuildMapForBattle");
+            var gm = GetGeneratedMap(_bridge);
+            var none = new HashSet<Vector2Int>();
+
+            for (int i = 0; i < gm.spawns.Length; i++)
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.SpatialPlacementCheck(gm, none, gm.spawns[i], PlacementLayer.All),
+                    $"스폰 {gm.spawns[i]} 칸은 어느 층으로도 배치 불가");
+            for (int i = 0; i < gm.goals.Length; i++)
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.SpatialPlacementCheck(gm, none, gm.goals[i], PlacementLayer.All),
+                    $"골 {gm.goals[i]} 칸은 어느 층으로도 배치 불가");
+        }
+
+        [Test]
+        public void LivePath_PathLayerOpensRoadCells_ButNotSpawnGoal()
+        {
+            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
+            CallPrivateMethod(_bridge, "BuildMapForBattle");
+            var gm = GetGeneratedMap(_bridge);
+            var none = new HashSet<Vector2Int>();
+
+            // (2,2) 는 복도 한가운데 — 스폰(0,2)/(1,2) 도 골(5,2) 도 아니다.
+            Assert.AreEqual(PlacementRejectReason.None,
+                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 2), PlacementLayer.Path),
+                "경로 층 유닛은 파생만으로 도로 칸에 선다");
+            Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 2), PlacementLayer.Ground),
+                "지면 층 유닛은 같은 도로 칸에 못 선다");
+        }
+
+        [Test]
         public void LivePath_TilesUnchangedByMask_WalkabilitySourceIntact()
         {
             CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");

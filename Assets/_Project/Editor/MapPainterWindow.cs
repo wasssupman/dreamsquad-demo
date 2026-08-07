@@ -132,6 +132,17 @@ namespace Wassup.EditorTools
             while (_goalStability.Count > _goals.Count) _goalStability.RemoveAt(_goalStability.Count - 1);
         }
 
+        // placement-mask unit 4 — 저작된(파생과 상이한) 셀의 테두리 색 = 그 칸이 여는 층.
+        private static Color AuthoredLayerColor(byte bits)
+        {
+            bool g = (bits & (byte)PlacementLayer.Ground) != 0;
+            bool p = (bits & (byte)PlacementLayer.Path) != 0;
+            if (g && p) return new Color(1f, 1f, 1f, 0.95f);          // 두 층 동시 개방
+            if (g) return new Color(0.3f, 0.9f, 0.95f, 0.95f);        // 지면
+            if (p) return new Color(0.95f, 0.45f, 0.9f, 0.95f);       // 경로
+            return new Color(0.9f, 0.25f, 0.25f, 0.95f);              // 저작으로 닫은 칸
+        }
+
         // placement-mask unit 4 — 셀 층 비트 → 사람이 읽는 라벨(경고/로그용).
         private static string LayerLabel(byte bits)
         {
@@ -159,12 +170,15 @@ namespace Wassup.EditorTools
             // placement-mask unit 2 — 마스크는 무제약(에러 없음). 저작 실수 가능성만 warning 으로.
             EnsureMask();
             var warnings = new List<string>();
+            // 술어는 "파생과 상이"다. `!= 0` 으로 두면 Walk→Path 파생 때문에 모든 스폰·골이 상시 경고를
+            // 띄워(스폰·골은 정의상 Walk 셀) 가드 신호가 죽는다 (unit 4 리뷰 M-2).
+            // 참고: 런타임은 스폰·골 칸의 층을 어차피 닫으므로(BattleBridge 불변식) 이건 저작 의도 확인용이다.
             foreach (var s in _spawns)
-                if (InBounds(s.x, s.y) && _placeMask[Idx(s.x, s.y)] != 0)
-                    warnings.Add($"스폰 ({s.x},{s.y}) 셀에 배치 층이 열려 있다 [{LayerLabel(_placeMask[Idx(s.x, s.y)])}] — 의도 확인");
+                if (InBounds(s.x, s.y) && _placeMask[Idx(s.x, s.y)] != DerivedMask(Idx(s.x, s.y)))
+                    warnings.Add($"스폰 ({s.x},{s.y}) 마스크가 파생과 다름 [{LayerLabel(_placeMask[Idx(s.x, s.y)])}] — 런타임은 스폰 칸을 닫는다");
             foreach (var g in _goals)
-                if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)] != 0)
-                    warnings.Add($"골 ({g.x},{g.y}) 셀에 배치 층이 열려 있다 [{LayerLabel(_placeMask[Idx(g.x, g.y)])}] — 의도 확인");
+                if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)] != DerivedMask(Idx(g.x, g.y)))
+                    warnings.Add($"골 ({g.x},{g.y}) 마스크가 파생과 다름 [{LayerLabel(_placeMask[Idx(g.x, g.y)])}] — 런타임은 골 칸을 닫는다");
             if (warnings.Count > 0)
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                     foreach (var w in warnings)
@@ -248,16 +262,13 @@ namespace Wassup.EditorTools
                         GUI.Label(r, "S", CenterLabel);
                     }
 
-                    // placement-mask unit 2 — 마스크 오버레이: on = 시안 테두리(하이라이트 색 계열),
-                    // 파생값과 상이 = 노랑(이 맵은 수동 배치판 → 커빙 skip 을 저작 중에 인지).
-                    // goal/spawn 채움 **뒤에** 그린다 — 경고가 뜨는 바로 그 셀(spawn/골 mask=1)에서
-                    // 상이 테두리가 가려지면 저작 중 인지가 죽는다 (Track A 리뷰 MINOR-4).
+                    // placement-mask unit 2/4 — 마스크 오버레이. **테두리 = 손댄 칸(파생과 상이)** 이고
+                    // **색 = 그 칸이 여는 층**이다(지면=시안 / 경로=마젠타 / 둘 다=흰 / 닫힘=적).
+                    // 파생 일치 셀에는 아무것도 안 그린다 — 파생은 타일 색이 이미 말해주고(Place=흙 / Walk=회),
+                    // Walk→Path 파생 때문에 도로 전체가 테두리로 덮이면 신호가 죽는다 (unit 4 리뷰 M-3).
+                    // goal/spawn 채움 **뒤에** 그린다 — 그 셀에서 테두리가 가려지면 저작 중 인지가 죽는다.
                     bool differs = _placeMask[i] != DerivedMask(i);
-                    bool hasGround = (_placeMask[i] & (byte)PlacementLayer.Ground) != 0;
-                    bool hasPath = (_placeMask[i] & (byte)PlacementLayer.Path) != 0;
-                    if (differs) DrawMaskBorder(r, new Color(0.95f, 0.85f, 0.2f, 0.9f));
-                    else if (hasGround) DrawMaskBorder(r, new Color(0.3f, 0.9f, 0.95f, 0.55f));
-                    else if (hasPath) DrawMaskBorder(r, new Color(0.95f, 0.45f, 0.9f, 0.55f));
+                    if (differs) DrawMaskBorder(r, AuthoredLayerColor(_placeMask[i]));
                 }
             }
 

@@ -98,6 +98,68 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void LegacyBinaryMask_StillPlacesGroundUnitsIdentically()
+        {
+            // units 0~3 시기에 baked 된 문서는 마스크가 0/1(Place=1, Walk=0)이다. 값 1 은 그대로
+            // Ground 비트라 **지면 유닛 판정이 그때와 동일**해야 한다(Path 비트만 없을 뿐).
+            var tiles = new NativeArray<MapTileType>(3, Allocator.Persistent);
+            var spawns = new NativeArray<int2>(1, Allocator.Persistent);
+            var legacy = new NativeArray<byte>(3, Allocator.Persistent);
+            tiles[0] = MapTileType.Place; legacy[0] = 1;   // 구 "배치 가능"
+            tiles[1] = MapTileType.Walk;  legacy[1] = 1;   // 구 저작: 경로 셀 개방(B-1)
+            tiles[2] = MapTileType.Walk;  legacy[2] = 0;   // 구 "배치 불가"
+            var map = new GeneratedMap { tiles = tiles, spawns = spawns, placeMask = legacy, gridSize = new int2(3, 1) };
+            try
+            {
+                var none = new HashSet<Vector2Int>();
+                Assert.AreEqual(PlacementRejectReason.None,
+                    BattleBridge.SpatialPlacementCheck(map, none, new int2(0, 0), PlacementLayer.Ground));
+                Assert.AreEqual(PlacementRejectReason.None,
+                    BattleBridge.SpatialPlacementCheck(map, none, new int2(1, 0), PlacementLayer.Ground),
+                    "구 마스크의 1 은 Ground 비트 — 저작한 경로 셀 개방이 살아 있다");
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.SpatialPlacementCheck(map, none, new int2(2, 0), PlacementLayer.Ground));
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.SpatialPlacementCheck(map, none, new int2(1, 0), PlacementLayer.Path),
+                    "구 문서엔 Path 비트가 없다 — 경로 층 유닛은 재저작 전까지 못 선다");
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void RelocationCheck_UsesMovingUnitLayers()
+        {
+            var map = MakeLayeredMap();
+            try
+            {
+                var occupied = new HashSet<Vector2Int> { new Vector2Int(0, 0) };   // from 은 점유에 남아 있다
+                Assert.AreEqual(PlacementRejectReason.None,
+                    BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(1, 0),
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Path),
+                    "경로 층 유닛은 경로 셀로 재배치 가능");
+                Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                    BattleBridge.RelocationCheck(map, occupied, new int2(0, 0), new int2(1, 0),
+                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground),
+                    "지면 층 유닛은 같은 목적 셀이어도 거부");
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void EffectTiles_SkipPathOnlyCells()
+        {
+            // 효과 타일은 Ground 층 고정 — 경로 층만 열린 칸으로 번지지 않는다.
+            var map = MakeLayeredMap();
+            try
+            {
+                var cells = EffectTilePlacer.SelectCells(map, 5, 10);
+                Assert.AreEqual(1, cells.Count, "Ground 층이 열린 1셀만");
+                Assert.AreEqual(new int2(0, 0), cells[0]);
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
         public void MaskAbsent_DerivedLayersStillSeparateUnits()
         {
             // 마스크 미저작 맵(라이브 6종)에서도 층은 타일 종류에서 파생된다.

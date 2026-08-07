@@ -276,9 +276,15 @@ namespace Wassup.Tests.EditMode.MapGrid
             using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
 
             Assert.IsTrue(map.placeMask.IsCreated, "빌더 산출물 불변식: 항상 생성");
-            int n = map.gridSize.x * map.gridSize.y;
-            for (int i = 0; i < n; i++)
-                Assert.AreEqual(PlacementLayers.Derive(map.tiles[i]), map.placeMask[i], $"placeMask[{i}] 파생");
+            // 기대치를 Derive 호출로 쓰면 "Derive == Derive" tautology 가 된다(구현이 그 함수를 쓴다).
+            // 픽스처(6×4, y=2 행만 Walk)의 기대 층을 **명시**해 파생 매핑을 이 테스트가 직접 고정한다.
+            int w = map.gridSize.x, h = map.gridSize.y;
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                byte expected = (byte)(y == 2 ? PlacementLayer.Path : PlacementLayer.Ground);
+                Assert.AreEqual(expected, map.placeMask[y * w + x], $"placeMask[{x},{y}] — 복도행=경로, 나머지=지면");
+            }
 
             ScriptableObject.DestroyImmediate(doc);
         }

@@ -1134,6 +1134,22 @@ namespace Wassup.Bridge
                 ObstaclePlacer.RederivePlaceMask(_generatedMap.tiles, _generatedMap.placeMask);
             }
 
+            // placement-mask unit 4 리뷰 M-1 — 스폰·골 칸은 배치 불가(런타임 불변식).
+            // Walk→Path 파생 때문에 Path 층 유닛에게 스폰/골 칸까지 열려 버리는데(스폰·골은 정의상
+            // Walk 셀이다), 적이 튀어나오는 칸·유출 지점 위에 세우는 건 어느 층 저작에도 없던 의미다.
+            // **문서/커빙 의미는 건드리지 않는다** — intent 비교와 재파생은 순수 파생 기준이라
+            // 그대로 두고, 라이브 맵에만 마지막에 덮는다(문서를 이 규칙으로 오염시키지 않는다).
+            if (_generatedMap.IsCreated && _generatedMap.placeMask.IsCreated)
+            {
+                for (int i = 0; i < _generatedMap.spawns.Length; i++)
+                    CloseCellLayers(_generatedMap.spawns[i]);
+                if (_generatedMap.goals.IsCreated)
+                    for (int i = 0; i < _generatedMap.goals.Length; i++)
+                        CloseCellLayers(_generatedMap.goals[i]);
+                else
+                    CloseCellLayers(_generatedMap.goal);
+            }
+
             // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
             CharacterVisualScale = tilemapCharacterScale;
             CharacterBillboardTilt = tilemapBillboardTilt;
@@ -5060,6 +5076,17 @@ namespace Wassup.Bridge
         // unit 4 — 하이라이트는 유닛 종속: 드는 유닛의 층으로 스캔한다(Ground 유닛이면 배치지면이,
         // Path 유닛이면 경로가 빛난다). 유닛 미상이면 Ground 폴백.
         private DefenderUnitData _placeableHlUnit;
+
+        // unit 4 리뷰 M-1 — 라이브 맵에서 한 셀의 모든 배치 층을 닫는다(스폰·골 불변식용).
+        private void CloseCellLayers(int2 cell)
+        {
+            if (cell.x < 0 || cell.x >= _generatedMap.gridSize.x
+                || cell.y < 0 || cell.y >= _generatedMap.gridSize.y) return;
+            _generatedMap.placeMask[_generatedMap.CellIndex(cell)] = 0;
+        }
+
+        // 표시 여부 read seam — 컨트롤러가 자기 래치와 실제 상태를 대조해 자기치유하기 위함(unit 4 리뷰 C-1).
+        public bool IsPlacementHighlightShown => _placeableHlShown;
 
         public void ShowPlacementHighlight(DefenderUnitData unit)
         {
