@@ -1051,10 +1051,13 @@ namespace Wassup.Bridge
                 string poolSource;
                 // map-play-feel unit 2 — 개발 확인용 인덱스 강제(모바일 개발빌드 런타임).
                 // 서버 API 는 그대로 받되 override 가 설정돼 있으면 최우선. 없으면 아래 기존 3분기.
+                // map-painter-tool unit 5 — 풀 뒤 이어붙은 dev 슬롯([Count..Count+DevCount-1])도 해석.
+                // 시드 3분기는 mapPool.Count 만 보므로 devEntries 는 결정론에 불가시.
                 if (Wassup.Core.DevMapOverride.HasIndex)
                 {
-                    poolIndex = Mathf.Clamp(Wassup.Core.DevMapOverride.Index, 0, mapPool.Count - 1);
-                    poolSource = "dev";
+                    poolIndex = Mathf.Clamp(Wassup.Core.DevMapOverride.Index, 0,
+                        mapPool.Count + mapPool.DevCount - 1);
+                    poolSource = poolIndex >= mapPool.Count ? "dev(devEntry)" : "dev";
                 }
                 else if (fixedMapSeed != 0)
                 {
@@ -1072,8 +1075,10 @@ namespace Wassup.Bridge
                     poolIndex = 0; // 게스트/응답 미도착/직접 Play — 시드 부재는 전부 0번
                     poolSource = "fallback0";
                 }
-                Debug.Log($"[BattleBridge] map pool index={poolIndex}/{mapPool.Count} (source={poolSource})");
-                var encounter = mapPool.Get(poolIndex);
+                Debug.Log($"[BattleBridge] map pool index={poolIndex}/{mapPool.Count}(+dev {mapPool.DevCount}) (source={poolSource})");
+                var encounter = poolIndex >= mapPool.Count
+                    ? mapPool.GetDev(poolIndex - mapPool.Count)
+                    : mapPool.Get(poolIndex);
                 if (MapGridBattleAdapter.IsUsableDocument(encounter.document))
                 {
                     activeDoc = encounter.document;

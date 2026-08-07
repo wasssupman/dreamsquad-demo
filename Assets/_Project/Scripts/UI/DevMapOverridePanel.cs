@@ -32,15 +32,17 @@ namespace Wassup.UI
             if (count <= 0) return;
 
             // endless-mode unit 3 — 스텝 사이클에 ENDLESS 슬롯(마지막 인덱스 다음)을 추가.
-            // 슬롯 [0..count-1]=풀 인덱스, 슬롯 count=무한 모드. OFF 는 별도(OFF 버튼).
-            int total = count + 1;
+            // map-painter-tool unit 5 — 풀 뒤에 dev 슬롯(devEntries, 시드 선택 미포함)을 이어붙인다.
+            // 슬롯 [0..count-1]=풀, [count..count+dev-1]=dev 맵, 마지막=무한 모드. OFF 는 별도(OFF 버튼).
+            int steppable = count + (pool != null ? pool.DevCount : 0);
+            int total = steppable + 1;
             int cur;
-            if (DevMapOverride.Endless) cur = count;
+            if (DevMapOverride.Endless) cur = steppable;
             else if (DevMapOverride.HasIndex) cur = DevMapOverride.Index;
             else cur = dir > 0 ? -1 : total;                    // OFF 진입: ▶=0, ◀=ENDLESS
             int next = ((cur + dir) % total + total) % total;
 
-            if (next >= count)                                  // ENDLESS 슬롯
+            if (next >= steppable)                              // ENDLESS 슬롯
             {
                 DevMapOverride.Endless = true;
                 DevMapOverride.Index = -1;                      // 인덱스 off (무한이 우선하지만 표시 정합)
@@ -66,7 +68,16 @@ namespace Wassup.UI
             if (!DevMapOverride.HasIndex) { label.text = "MAP?"; return; }
 
             int i = DevMapOverride.Index;
-            string name = (pool != null && i >= 0 && i < pool.Count && pool.Get(i).document != null)
+            int count = pool != null ? pool.Count : 0;
+            if (pool != null && i >= count && i < count + pool.DevCount)
+            {
+                // dev 슬롯 — 풀 본편과 구분되는 라벨(시드 선택에 안 잡히는 맵임을 표시).
+                int d = i - count;
+                var devDoc = pool.GetDev(d).document;
+                label.text = $"D{d}:{(devDoc != null ? devDoc.name.Replace("MapDocument_", "") : "?")}";
+                return;
+            }
+            string name = (pool != null && i >= 0 && i < count && pool.Get(i).document != null)
                 ? pool.Get(i).document.name.Replace("MapDocument_", "")
                 : "?";
             label.text = $"{i}:{name}";

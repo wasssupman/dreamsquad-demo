@@ -472,10 +472,33 @@ namespace Wassup.EditorTools
             }
 
             EditorUtility.SetDirty(target);
+
+            // map-painter-tool unit 5 — 신규 맵을 dev 슬롯에 자동 노출. 풀 본편(entries)은 절대
+            // 건드리지 않는다(seed % Count 결정론). 스테퍼(DevMapOverridePanel)가 풀 뒤 D 슬롯으로 순환.
+            RegisterToDevSlot(target);
+
             AssetDatabase.SaveAssets();
             _target = target; // 연속 편집
             // maskDiff>0 = 수동 배치판(런타임 시드 커빙 skip) — 저작자 최종 인지용 (placement-mask unit 2).
             Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count}, 마스크 상이 셀={maskDiffCount})");
+        }
+
+        // map-painter-tool unit 5 — Bake 된 신규 문서를 풀의 dev 슬롯에 자동 등록.
+        // 풀 본편/dev 어디에도 없을 때만 추가(중복 방지) — 이미 라이브 풀에 있는 맵은 그대로 둔다.
+        private static void RegisterToDevSlot(MapDocument doc)
+        {
+            var guids = AssetDatabase.FindAssets("t:MapDocumentPool");
+            if (guids.Length == 0) return;
+            if (guids.Length > 1)
+                Debug.LogWarning($"[MapPainter] MapDocumentPool 이 {guids.Length}개 — 첫 번째에만 dev 등록한다.");
+            var pool = AssetDatabase.LoadAssetAtPath<MapDocumentPool>(
+                AssetDatabase.GUIDToAssetPath(guids[0]));
+            if (pool == null) return;
+            if (pool.EditorRegisterDevDocument(doc))
+            {
+                EditorUtility.SetDirty(pool);
+                Debug.Log($"[MapPainter] '{doc.name}' 을 {pool.name} dev 슬롯에 등록 — 맵 스테퍼 D 슬롯으로 진입 가능(시드 선택 무영향).");
+            }
         }
     }
 }

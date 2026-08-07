@@ -14,6 +14,7 @@
 | 1 | Editor | `1_validate_and_bake.md` | 실시간 검증(BFS 연결성·2×2·스폰 수) + Bake(파생값 계산 → asset 쓰기) |
 | 2 | Handoff | `2_handoff_summary.md` | 인계 (종료 시) |
 | 4 | Editor rev | `4_walk_width_limit_lift.md` | 경로 폭 1 제한 해제 — 2×2 walk 금지 철회 (2026-08-07, placement-mask B-1 연장) |
+| 5 | Editor+Bridge rev | `5_dev_slot_stepper_exposure.md` | Bake 신규 맵을 풀 dev 슬롯에 자동 등록 → 맵 스테퍼 `D` 슬롯 진입 (시드 선택 무영향, 2026-08-07) |
 
 ## Feature-wide 계약
 
