@@ -113,28 +113,29 @@ namespace Wassup.UI
             public readonly float RemainingSec;
             public readonly int Leaks; // 구 경로 전용 — 유출 수 그대로
             public readonly bool HasBreakdown;
-            public readonly int TimeScore, StressScore, KillScore;
 
-            // unit 7 — 점수 3축 위에 얹는 원시 상태. **스트레스점수의 실제 입력과 같은 두 값**
-            // 이어야 화면에서 검산된다(누적 = 유출 + 계약 선불, 한계 = 덱 원본값 · 계약 8).
-            // StressLimit <= 0 = 한계 미표기(엔드리스 · 덱 미배선).
-            public readonly int StressAccrued, StressLimit;
+            // three-minute-survival unit 3 — 결과 3줄의 입력. 점수 축이 하나(처치)로 줄어
+            // 3축 분해(시간/스트레스/처치)를 대체한다.
+            //   처치 N기 · 남은 안정도 X / Max · 도달 웨이브 N
+            public readonly int KillCount, Stability, StabilityMax, WaveReached, KillScore;
 
             public MatchStats(float remainingSec, int leaks)
             {
                 RemainingSec = remainingSec; Leaks = leaks;
                 HasBreakdown = false;
-                TimeScore = StressScore = KillScore = 0;
-                StressAccrued = StressLimit = 0;
+                KillCount = Stability = StabilityMax = WaveReached = KillScore = 0;
             }
 
-            public MatchStats(float remainingSec, int stressAccrued, int stressLimit,
+            public MatchStats(int killCount, int stability, int stabilityMax, int waveReached,
                 ScoreMath.BattleScore score)
             {
-                RemainingSec = remainingSec; Leaks = 0;
+                RemainingSec = 0f; Leaks = 0;
                 HasBreakdown = true;
-                TimeScore = score.Time; StressScore = score.Stress; KillScore = score.Kill;
-                StressAccrued = stressAccrued; StressLimit = stressLimit;
+                KillCount = killCount;
+                Stability = stability;
+                StabilityMax = stabilityMax;
+                WaveReached = waveReached;
+                KillScore = score.Kill;
             }
         }
 
@@ -147,16 +148,14 @@ namespace Wassup.UI
         public void ShowVictory(int playerScore, float remainingSec, int leaks)
             => ShowResult("승리", playerScore, new MatchStats(remainingSec, leaks));
 
-        // battle-score-formula unit 4 — 점수 3축 분해를 실은 경로. 총점은 score.Total 이라
-        // 따로 받지 않는다. unit 7 — 유출 수 대신 **스트레스 누적/한계**를 받는다(점수 산식의
-        // 실제 입력이라 화면에서 검산된다).
-        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec,
-            int stressAccrued, int stressLimit)
-            => ShowResult("패배", score.Total, new MatchStats(remainingSec, stressAccrued, stressLimit, score));
+        // three-minute-survival unit 3 — 총점(=처치 점수)과 3줄 통계. 총점은 score.Total 이라
+        // 따로 받지 않는다. **화면에 뜨는 총점은 디코딩된 값이 아니라 원본 처치 점수다** —
+        // 제출값 인코딩은 서버 전송에만 쓴다(BattleBridge.BeginTally).
+        public void ShowDefeat(ScoreMath.BattleScore score, MatchStats stats)
+            => ShowResult("패배", score.Total, stats);
 
-        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec,
-            int stressAccrued, int stressLimit)
-            => ShowResult("승리", score.Total, new MatchStats(remainingSec, stressAccrued, stressLimit, score));
+        public void ShowVictory(ScoreMath.BattleScore score, MatchStats stats)
+            => ShowResult("승리", score.Total, stats);
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
@@ -186,12 +185,9 @@ namespace Wassup.UI
                 var s = stats.Value;
                 SetStatRows(new[]
                 {
-                    StatRow.State("남은 시간", ClockText(s.RemainingSec)),
-                    StatRow.State("스트레스", StressText(s.StressAccrued, s.StressLimit)),
-                    StatRow.Divider,
-                    StatRow.Score("시간 점수", $"{s.TimeScore:N0}"),
-                    StatRow.Score("스트레스 점수", $"{s.StressScore:N0}"),
-                    StatRow.Score("처치 점수", $"{s.KillScore:N0}"),
+                    StatRow.State("처치", $"{s.KillCount:N0}기"),
+                    StatRow.State("남은 안정도", StabilityText(s.Stability, s.StabilityMax)),
+                    StatRow.State("도달 웨이브", $"{s.WaveReached:N0}"),
                 });
             }
             else if (stats.HasValue)
@@ -357,10 +353,22 @@ namespace Wassup.UI
             return $"{t / 60}:{t % 60:D2}";
         }
 
-        // 스트레스 누적 표기. limit <= 0 = 한계 미표기 — 엔드리스(누수로 죽지 않아 한계가 무의미,
-        // HUD 도 같은 규칙으로 숨긴다) 또는 덱 미배선.
+        // 스트레스 누적 표기. limit <= 0 = 한계 미표기.
+        // three-minute-survival unit 3 — 결과 화면은 더 이상 이걸 쓰지 않지만(스트레스는 패배도
+        // 점수도 만들지 않는다) 순수 표기 함수라 테스트가 참조한다.
         public static string StressText(int accrued, int limit)
             => limit > 0 ? $"{accrued} / {limit}" : accrued.ToString();
+
+        // three-minute-survival unit 3 — 남은 안정도 표기: `12 / 20 (60%)`. max <= 0 = 값만.
+        // 백분율을 같이 내는 이유는 동점 판정 기준(permille)이 비율이라, 화면에서 그 근거가
+        // 읽혀야 하기 때문이다.
+        public static string StabilityText(int stability, int max)
+        {
+            int v = Mathf.Max(0, stability);
+            if (max <= 0) return v.ToString();
+            int pct = Mathf.RoundToInt(Mathf.Clamp01(v / (float)max) * 100f);
+            return $"{v} / {max} ({pct}%)";
+        }
 
         // null/empty hides the whole block (mirrors the old statsLabel behaviour).
         private void SetStatRows(StatRow[] items)

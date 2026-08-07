@@ -98,33 +98,47 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(spawns, 0, "스폰이 하나도 없다");
             Assert.Greater(budget, 0, "킬 예산이 0");
             Assert.Greater(bosses, 0, "보스가 하나도 없다 — 보스 편성 계약 확인");
-            // 보스가 잡몹보다 확실히 비싸야 한다는 것만 확인한다(구체 배율은 밸런스).
-            Assert.Greater(deck.bossUnit.killScore, 100, "보스 killScore 가 잡몹 기본값 이하");
+            // 보스가 잡몹보다 확실히 비싸야 한다 — **상대 비교**다. 예전엔 잡몹 기본값 100 을
+            // 리터럴로 박았는데, 티어 재장전(three-minute-survival unit 3)으로 스케일이 바뀌면
+            // 구조가 멀쩡한데도 빨개진다.
+            var mob = deck.ResolveAttackUnitPool()[0];
+            Assert.Greater(deck.bossUnit.killScore, mob.killScore,
+                $"보스 killScore({deck.bossUnit.killScore}) 가 잡몹({mob.id}={mob.killScore}) 이하");
         }
 
-        // 당기기 없이도 제한시간 안에 마지막 적이 나온다. 이게 깨지면 정상 플레이로
-        // 전멸 승리가 불가능해져 시간축이 영구히 0 이 된다.
+        // three-minute-survival unit 2 — **스폰 창 불변식**. 구 `LastSpawn_FitsInsideTheTimeLimit`
+        // (마지막 스폰이 제한시간 안)을 대체한다: 시각 그리드가 명목값이 되면서 "마지막 웨이브
+        // 시각" 은 더 이상 실제 스폰 시각이 아니다(100웨이브 × 20초 = 2000초).
+        //
+        // 대신 지켜야 할 것은 이것이다: 한 웨이브의 스폰이 상한 간격 안에 끝나야 `_pending` 이
+        // 비고, 그래야 "전멸 즉시 다음 웨이브" 가 성립한다. 위반하면 증상이 "웨이브가 항상
+        // 20초로만 온다" 는 형태라 원인 추적이 매우 어렵다.
         [Test]
-        public void LastSpawn_FitsInsideTheTimeLimit()
+        public void SpawnWindow_FitsInsideTheWaveIntervalCap()
         {
-            var deck = LoadDeck();
-            var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
-
-            float last = 0f;
-            for (int i = 0; i < plan.waves.Count; i++)
+            string[] paths =
             {
-                var wave = plan.waves[i];
-                // wave-pattern unit 11 — 리드인만큼 스폰 base 가 밀리므로 pin 도 같은 base 를
-                // 써야 한다. 트리거만 보면 실제보다 리드인만큼 이른 값을 재 pin 이 무력화된다.
-                var entries = WavePatternGenerator.ExpandWave(
-                    wave, wave.triggerTimeSec + plan.spawnLeadInSec, 4, deck.intraWaveSpacingSec);
-                for (int e = 0; e < entries.Count; e++)
-                    if (entries[e].triggerTimeSec > last) last = entries[e].triggerTimeSec;
-            }
+                "Assets/_Project/Scripts/Data/Decks/Deck_Serpent.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Coil.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Twin.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Spiral.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Zig.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Hook.asset",
+                "Assets/_Project/Scripts/Data/Decks/Deck_Endless.asset",
+            };
 
-            Assert.Less(last, deck.timerDurationSec,
-                $"마지막 스폰 {last:F2}s 가 제한시간 {deck.timerDurationSec}s 를 넘는다 "
-                + $"(리드인 {plan.spawnLeadInSec:F1}s 포함) — 정상 클리어 불가");
+            foreach (string path in paths)
+            {
+                var deck = AssetDatabase.LoadAssetAtPath<AttackDeck>(path);
+                Assert.IsNotNull(deck, $"덱 에셋을 찾지 못했다: {path}");
+                Assert.Greater(deck.maxWaveIntervalSec, 0f, $"{deck.name}: 상한 간격이 0 이면 케이던스가 폭주한다");
+
+                float window = deck.waveSpawnLeadInSec + (deck.maxUnitsPerWave - 1) * deck.intraWaveSpacingSec;
+                Assert.Less(window, deck.maxWaveIntervalSec,
+                    $"{deck.name}: 스폰 창 {window:F2}s ≥ 상한 간격 {deck.maxWaveIntervalSec}s "
+                    + $"(리드인 {deck.waveSpawnLeadInSec} + (maxUnits {deck.maxUnitsPerWave}−1) × spacing {deck.intraWaveSpacingSec}) "
+                    + "— 전멸 즉시 진행이 성립하지 않는다");
+            }
         }
     }
 }

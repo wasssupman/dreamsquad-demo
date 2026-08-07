@@ -33,6 +33,8 @@ namespace Wassup.UI.Draft
         private const float CardSpacing      =  16f;
         private const float CardStaggerSec   =  0.06f;
         private const float CardFadeDurSec   =  0.30f;
+        // three-minute-survival unit 2 — 표시 카드 상한(스크롤 폭·인트로 길이 보호).
+        private const int   MaxCards         =  12;
 
         private static readonly float OverlayAlpha = UiOverlay.DimAlpha; // 통일 dim (단일 소스)
         private const float OverlayFadeInDurSec  = 0.15f;
@@ -81,7 +83,13 @@ namespace Wassup.UI.Draft
             ClearCards();
             if (plan.waves == null) return;
 
-            for (int i = 0; i < plan.waves.Count; i++) AddWaveCard(plan.waves[i]);
+            // three-minute-survival unit 2 — 카드 수 상한. 웨이브 상한이 100(명목)이 되면서
+            // 무제한 루프가 카드 100장을 만들었다: 인트로 = 0.20 + 99×CardStaggerSec + fade
+            // ≈ 6.4초, 콘텐츠 폭 27,600px(ScrollViewWidth 1600). 드래프트 화면이 멈춘다.
+            // 앞 MaxCards 장만 그린다 — 3분 안에 도달하는 것은 10~16웨이브뿐이라 앞부분이
+            // 곧 실제로 만나는 전부다.
+            int shown = Mathf.Min(plan.waves.Count, MaxCards);
+            for (int i = 0; i < shown; i++) AddWaveCard(plan.waves[i]);
             UiLayer.Apply(gameObject);
         }
 

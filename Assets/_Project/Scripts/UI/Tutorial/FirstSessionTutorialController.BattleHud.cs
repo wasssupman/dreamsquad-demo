@@ -26,17 +26,8 @@ namespace Wassup.UI.Tutorial
         // 수 있다. 자릿수별 조사 계산은 데모 범위에서 과잉이라 현 튜닝(한계 10)에 맞춘다.
         private const string HudHintStressLimitFormat = "스트레스가 {0}이 되면 패배합니다.";
 
-        // unit 20 — 사용자 작성 문구. 임의로 고치지 말 것. 클릭을 요구하지 않는다:
-        // 둘째 줄이 "지금 누르지 마"라는 뜻이라 행동 성공 신호로 진행시키면 문구와 모순이고,
-        // 첫 판에 웨이브를 겹치면 안내가 스트레스 한계 = 패배를 유도한다.
-        private const string HudHintWaveText = "더 높은 점수를 위해 다음 웨이브 호출해보세요";
-        private const string HudHintWaveCaveatText = "단, 준비가 되었을때!";
-
         [Header("Battle HUD hint (unit 19)")]
         [SerializeField] private ScoreHudView scoreHud;
-        // unit 20 — 좌하단 `다음 웨이브` 버튼. 레거시 덱(생성 웨이브 아님) 경로에는 버튼이
-        // 아예 없으므로 미배선·부재 모두 그 스텝만 생략한다.
-        [SerializeField] private NextWaveDock waveDock;
 
         // unit 19 — 체인 전용 핸들. **`_awakeningRoutine` 을 재사용하지 말 것** — 그 핸들은
         // 각성 0·A·B 단계가 공유하고 ResetAwakeningSession·OnCardPeeked 가 임의로 중단시킨다.
@@ -116,7 +107,6 @@ namespace Wassup.UI.Tutorial
         private IEnumerator BattleHudHintRoutine()
         {
             yield return StressHintSteps();
-            yield return NextWaveHintSteps();
             _hudHintRoutine = null;
             StopBattleHudHint();
         }
@@ -178,43 +168,12 @@ namespace Wassup.UI.Tutorial
             _stressHintPause = null;
         }
 
-        // unit 20 — ③④ 다음 웨이브. 점수를 위해 당길 수 있다는 선택지와 그 조건을 알린다.
-        // **클릭을 요구하지 않는다**(사용자 결정 2026-08-01) — 문구 자체가 "지금 누르지 마"이고,
-        // 첫 판에 웨이브를 겹치게 만들면 안내가 패배를 유도한다.
-        private IEnumerator NextWaveHintSteps()
-        {
-            yield return WaitForHintTarget(ResolveWaveButtonRect);
-            // 미배선과 버튼 부재는 다른 사건이다. 앞은 씬 배선 버그(경고), 뒤는 레거시 덱
-            // (생성 웨이브 아님)의 **정상** 경로다 — 후자를 경고로 올리면 정상 플레이가 콘솔을
-            // 더럽히고 "경고 0" 완료 기준과 모순된다.
-            if (waveDock == null)
-            {
-                Debug.LogWarning("[FirstSessionTutorial] waveDock 미배선 — 웨이브 안내를 생략합니다.", this);
-                yield break;
-            }
-            RectTransform button = ResolveWaveButtonRect();
-            if (button == null || !button.gameObject.activeInHierarchy)
-            {
-                Debug.Log("[FirstSessionTutorial] 다음 웨이브 버튼 부재(생성 웨이브 아님) — 웨이브 안내를 생략합니다.", this);
-                yield break;
-            }
-
-            // 앵커는 스트레스 스텝이 내려둔 HudHint 를 **그대로 유지한다.** Default(184)로 되돌리면
-            // 방금 가르친 스트레스 배지를 이 두 줄이 덮는다(4:3 급 화면). 대상이 좌하단이라
-            // 말풍선이 아래에 있어도 지시 관계는 흐려지지 않는다. 원복은 StopBattleHudHint 가 한다.
-            guidance.ShowMessage(HudHintWaveText, showSkip: false);
-            guidance.FocusUi(button);
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
-
-            guidance.ShowMessage(HudHintWaveCaveatText, showSkip: false);
-            yield return WaitUnscaled(guidance.HudHintLineSeconds);
-        }
+        // three-minute-survival unit 2 — 웨이브 당기기가 사라져 `NextWaveHintSteps`(③④ 다음
+        // 웨이브 안내)를 제거했다. 도크에 누를 버튼이 없고, 전멸하면 자동으로 다음 웨이브가
+        // 오므로 "점수를 위해 당겨보라"는 안내가 거짓이 된다. 문구 상수와 waveDock 참조도 함께.
 
         private RectTransform ResolveStressBadgeRect() =>
             scoreHud != null ? scoreHud.StressBadgeRect : null;
-
-        private RectTransform ResolveWaveButtonRect() =>
-            waveDock != null ? waveDock.WaveButtonRect : null;
 
         // FocusUi 는 대상이 activeInHierarchy 가 아니면 **링을 조용히 끈다**(0단계가 빠졌던
         // 함정). HUD 뷰들은 자기 Update 에서 lazily 구독·활성화되고 PhaseChanged 구독자 순서는

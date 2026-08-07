@@ -12,11 +12,15 @@ using Wassup.UI;
 
 namespace Wassup.Tests.PlayMode
 {
-    // score-tally-sequence unit 4 — 전투 종료 → Tally 연출 → 결과 화면의 **흐름 계약**.
+    // score-tally-sequence unit 4 — 전투 종료 → 결과 화면의 **흐름 계약**.
     //
-    // 연출의 모양(타이밍·색·폰트)은 사람이 볼 문제라 건드리지 않는다. 여기서 지키는 건
-    // 자동으로만 잡히는 것들이다 — 특히 **onDone 유실 = 결과 화면이 영영 안 뜨는 하드락**.
-    // 그건 컴파일도 되고 EditMode 도 통과하므로 이 테스트가 유일한 방어선이다.
+    // three-minute-survival unit 3 — 합산 연출(ScoreTallyView)은 제거됐다: 시간·스트레스 축이
+    // 사라져 더할 것이 없고, 전투 중 HUD 숫자가 이미 최종 점수다. 그래서 이 테스트에서 연출
+    // 관련 단언(HUD 가시성·Skip 경로)은 빠지고 **페이즈 흐름과 총점 보존**만 남는다.
+    // Battle → Tally → Result 전이 자체는 유지된다(전투 HUD 게이팅이 그 페이즈를 읽는다).
+    //
+    // 지키는 것: 결과 화면이 영영 안 뜨는 하드락. 컴파일도 되고 EditMode 도 통과하므로
+    // 이 테스트가 유일한 방어선이다.
     public class TallyFlowTest
     {
         private const float ResultTimeoutSec = 90f;
@@ -24,7 +28,6 @@ namespace Wassup.Tests.PlayMode
         private BattleBridge _bridge;
         private GameManager _gm;
         private ScoreHudView _hud;
-        private ScoreTallyView _tally;
         private readonly List<GamePhase> _phases = new();
 
         [UnityTearDown]
@@ -42,28 +45,13 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator BattleEnd_GoesThroughTally_AndReachesResult()
         {
             yield return Setup();
-            yield return RunToEnd(skipAfterTallySec: -1f);
-
-            AssertPhaseOrder();
-            Assert.IsTrue(_sawHudDuringTally,
-                "Tally 동안 점수 HUD 패널이 꺼져 있었다 — 연출의 주인공이 안 보인다");
-            AssertTotalPreserved();
-        }
-
-        // 스킵 경로에서도 총점이 보존되는지. 남은 축의 AddScore 가 누락되기 쉬운 지점이다.
-        [UnityTest]
-        public IEnumerator SkippingTally_StillReachesResult_AndPreservesTotal()
-        {
-            yield return Setup();
-            yield return RunToEnd(skipAfterTallySec: 0.2f);
+            yield return RunToEnd();
 
             AssertPhaseOrder();
             AssertTotalPreserved();
         }
 
         // ── 흐름 ──────────────────────────────────────────────────────────────
-
-        private bool _sawHudDuringTally;
 
         private void OnPhase(GamePhase p)
         {
@@ -78,17 +66,11 @@ namespace Wassup.Tests.PlayMode
             _bridge = Object.FindObjectOfType<BattleBridge>();
             _gm = Object.FindObjectOfType<GameManager>();
             _hud = Object.FindObjectOfType<ScoreHudView>();
-            var tallies = Object.FindObjectsByType<ScoreTallyView>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
-            _tally = tallies.Length > 0 ? tallies[0] : null;
-
             Assert.IsNotNull(_bridge, "BattleBridge present");
             Assert.IsNotNull(_gm, "GameManager present");
             Assert.IsNotNull(_hud, "ScoreHudView present");
-            Assert.IsNotNull(_tally, "ScoreTallyView present — 미배선이면 연출이 통째로 건너뛰어진다");
 
             _phases.Clear();
-            _sawHudDuringTally = false;
             _gm.PhaseChanged += OnPhase;
 
             // 디펜더를 한 기도 놓지 않는다 — 전 웨이브를 당기면 유출이 빠르게 쌓여 패배로
@@ -98,40 +80,23 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
-        private IEnumerator RunToEnd(float skipAfterTallySec)
+        private IEnumerator RunToEnd()
         {
             _bridge.StartBattle();
+            // three-minute-survival unit 2 — 플레이어 경로는 사라졌지만 ForceNextWave 는
+            // 테스트 진행 동력으로 남아 있다. 디펜더를 놓지 않았으므로 유출이 쌓여
+            // 안정도 0 = 패배로 끝난다.
             for (int i = 0; i < 20 && _bridge.NextWaveHasNext; i++) _bridge.ForceNextWave();
 
-            var panelField = typeof(ScoreHudView)
-                .GetField("_panel", BindingFlags.NonPublic | BindingFlags.Instance);
-
             float start = Time.unscaledTime;
-            float tallyEnteredAt = -1f;
-            bool skipSent = false;
-
             while (_gm.CurrentPhase != GamePhase.Result)
             {
                 if (Time.unscaledTime - start > ResultTimeoutSec)
                 {
                     Assert.Fail(
                         $"{ResultTimeoutSec}초 안에 Result 에 도달하지 못했다 (현재 {_gm.CurrentPhase}). " +
-                        "onDone 유실 의심 — 결과 화면이 영영 안 뜨는 하드락이다. " +
+                        "결과 화면이 영영 안 뜨는 하드락이다. " +
                         $"페이즈 이력: {string.Join(" → ", _phases)}");
-                }
-
-                if (_gm.CurrentPhase == GamePhase.Tally)
-                {
-                    if (tallyEnteredAt < 0f) tallyEnteredAt = Time.unscaledTime;
-                    var panel = panelField.GetValue(_hud) as GameObject;
-                    if (panel != null && panel.activeSelf) _sawHudDuringTally = true;
-
-                    if (skipAfterTallySec >= 0f && !skipSent &&
-                        Time.unscaledTime - tallyEnteredAt >= skipAfterTallySec)
-                    {
-                        _tally.Skip();
-                        skipSent = true;
-                    }
                 }
                 yield return null;
             }
@@ -153,9 +118,9 @@ namespace Wassup.Tests.PlayMode
             Assert.Less(tally, result, $"Tally → Result 순서가 아니다. 이력: {string.Join(" → ", _phases)}");
         }
 
-        // 계약 2 — 연출이 끝난 뒤 HUD 숫자가 총점과 정확히 같아야 한다.
+        // 계약 2 — 종료 후 HUD 숫자가 총점과 정확히 같아야 한다.
         // ScoreMath 를 여기서 다시 부르지 않는다. 산식을 두 번 구현하면 회귀 검출력이 없다 —
-        // Bridge 가 기록한 3축을 읽어 대조한다.
+        // Bridge 가 기록한 값을 읽어 대조한다. 점수 축이 처치 하나라 총점 == kill_score 다.
         private void AssertTotalPreserved()
         {
             var logger = _gm.Logger;
@@ -168,18 +133,16 @@ namespace Wassup.Tests.PlayMode
             var result = entry.GetType().GetField("result").GetValue(entry);
             var rt = result.GetType();
             int total = (int)rt.GetField("score").GetValue(result);
-            int time = (int)rt.GetField("time_score").GetValue(result);
-            int stress = (int)rt.GetField("stress_score").GetValue(result);
             int kill = (int)rt.GetField("kill_score").GetValue(result);
 
-            Assert.AreEqual(total, time + stress + kill,
-                $"3축 합이 총점과 다르다 (time {time} + stress {stress} + kill {kill} != {total})");
+            Assert.AreEqual(total, kill,
+                $"총점({total})과 처치 점수({kill})가 다르다 — 점수 축은 처치 하나뿐이다");
 
             int hud = (int)typeof(ScoreHudView)
                 .GetField("_targetScore", BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetValue(_hud);
             Assert.AreEqual(total, hud,
-                $"연출 후 HUD 숫자({hud})가 총점({total})과 다르다 — 축이 누락되거나 중복 가산됐다");
+                $"종료 후 HUD 숫자({hud})가 총점({total})과 다르다 — 처치 누적이 어긋났다");
         }
     }
 }

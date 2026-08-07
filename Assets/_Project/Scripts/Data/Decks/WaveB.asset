@@ -35,3 +35,4 @@ MonoBehaviour:
   spawns: []
   defeatGoalReachedCount: 10
   timerDurationSec: 180
+  goalStabilityMax: 20

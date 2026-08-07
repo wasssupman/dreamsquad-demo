@@ -1,73 +1,90 @@
 namespace Wassup.Core
 {
     /// <summary>
-    /// battle-score-formula unit 1 — 최종 결과 점수의 유일한 계산 지점.
+    /// three-minute-survival unit 3 — 최종 결과 점수의 유일한 계산 지점.
     ///
-    /// 예산 소모 모델이다: 시간·스트레스 예산을 만점으로 두고 소모한 만큼 깎은 뒤,
-    /// 실제 처치분을 더한다.
+    /// **점수는 처치로만 번다.** 처치한 적의 killScore 합이 곧 총점이다.
+    /// 구 예산 소모 모델(시간·스트레스 예산에서 소모분을 깎던 3축 산식)은 폐기했다 —
+    /// 3분은 이제 지갑이 아니라 판의 길이이고, 스트레스는 패배도 점수도 만들지 않는다.
+    /// 패배해도 점수는 깎이지 않으므로 산식에 분기가 하나도 없다.
     ///
-    ///   시간점수    = 남은시간ms × 초당점수 / 1000   (패배 시 0)
-    ///   스트레스점수 = (한계 − 누적) × 점당점수
-    ///   킬점수      = 실제 처치한 적의 killScore 합
+    /// **동점은 남은 골 안정도로 가른다.** 서버는 int 점수 하나만 받으므로(TournamentApi)
+    /// 제출값에 안정도를 실어 보낸다 — 아래 EncodeSubmission/DecodeKillScore.
     ///
-    /// **승패 규칙도 여기 있다.** Bridge 에 흩으면 테스트로 고정되지 않는다(spec 계약 3).
     /// 아키텍처 무참조 순수 함수 — UnityEngine/Entities 를 참조하지 않는다(MatchSeed 선례).
-    /// int 만 쓴다: 최악 180,000ms × 100 = 18,000,000 이고, int 오버플로 임계는
-    /// 초당점수 11,930 이다(ScoreRulesData 의 Range 가 막는다).
     /// </summary>
     public static class ScoreMath
     {
         public readonly struct BattleScore
         {
-            public readonly int Time;
-            public readonly int Stress;
+            /// <summary>처치한 적의 killScore 합.</summary>
             public readonly int Kill;
+            /// <summary>총점. 처치 축이 유일하므로 Kill 과 같다 — 호출부가 "총점" 을 읽는
+            /// 자리를 남겨 둔다(점수 축이 다시 늘어나면 여기만 바뀐다).</summary>
             public readonly int Total;
 
-            public BattleScore(int time, int stress, int kill)
+            public BattleScore(int kill)
             {
-                Time = time;
-                Stress = stress;
                 Kill = kill;
-                Total = time + stress + kill;
+                Total = kill;
             }
         }
 
-        /// <param name="remainingMs">남은 전투 시간(ms). 음수는 0 으로 본다.</param>
-        /// <param name="stressAccrued">_goalReachedCount + _leakAllowancePenalty (유출 + 몽마의 계약 선불).</param>
-        /// <param name="stressLimit">deck.defeatGoalReachedCount <b>원본값</b>. EffectiveLeakLimit 이 아니다.</param>
         /// <param name="killScoreTotal">실제 처치분 누적. 유출당한 적은 포함되지 않는다.</param>
-        /// <param name="defeated">스트레스 한계 도달로 패배했는가.</param>
-        public static BattleScore Evaluate(
-            int remainingMs,
-            int stressAccrued,
-            int stressLimit,
-            int killScoreTotal,
-            bool defeated,
-            int timeScorePerSecond,
-            int stressScorePerPoint)
+        public static BattleScore Evaluate(int killScoreTotal)
+            => new BattleScore(killScoreTotal > 0 ? killScoreTotal : 0);
+
+        // ── 제출값 인코딩 ────────────────────────────────────────────────────────
+        //
+        // submitted = BASE + killScore × 1000 + 안정도permille
+        //
+        // BASE 오프셋이 있는 이유: 구 산식의 총점은 현실적으로 1~3만이라 `v / 1000` 으로
+        // 디코딩하면 **10~30 이라는 그럴듯한 가짜 점수**가 되어 신규 기록과 구분할 수 없다.
+        // 오프셋 미만은 구 포맷으로 판정해 디코딩하지 않는다(화면이 원값을 그대로 보여준다).
+        // 신규 기록이 구 기록보다 항상 위로 정렬되는 것은 의도다 — 룰이 다른 기록이다.
+        //
+        // permille(0~999)을 쓰는 이유: 맵별 안정도 최대치가 달라도 인코딩이 깨지지 않고
+        // tie-break 가 공정하다(비율 비교).
+        public const int SubmissionBase = 1_000_000_000;
+        public const int KillScoreScale = 1000;
+        /// <summary>인코딩이 int 를 넘지 않는 killScore 상한.</summary>
+        public const int MaxEncodableKillScore = (int.MaxValue - SubmissionBase - 999) / KillScoreScale;
+
+        public static int EncodeSubmission(int killScoreTotal, int stability, int stabilityMax)
         {
-            // 패배하면 시간 예산은 전부 소모한 것으로 본다. 이게 산식의 **유일한 분기**다 —
-            // 버팀 승리(victory_timeout)는 남은 시간이 0 이라 자동으로 0 점이 되고,
-            // 패배 시 스트레스점수도 아래 뺄셈이 알아서 0 을 만든다(누적 == 한계).
-            int usableMs = defeated || remainingMs < 0 ? 0 : remainingMs;
-            // ms × 초당점수 / 1000 과 결과가 같되(정수 나눗셈 포함), 곱하기 전에 초 단위를
-            // 떼어내 오버플로 여지를 없앤다. 현행 180초 × Range 상한이면 직접 곱해도
-            // int 에 들어가지만, 제한시간이 길어지면 그 여유가 사라진다.
-            int time = usableMs / 1000 * timeScorePerSecond
-                       + usableMs % 1000 * timeScorePerSecond / 1000;
-
-            // 정상 경로에서는 음수가 될 수 없다: 패배 트리거 시점의 누적은 정확히 한계이고
-            // (지불 게이트가 remaining ≥ 1 을 강제 + 유출은 1씩 증가), 비패배 종료면
-            // 누적 ≤ 한계 − 1 이라 최소 1점분이 남는다.
-            // 이 clamp 는 defeatGoalReachedCount ≤ 0 인 덱 오저작 방어다 — 지우지 말 것.
-            int remainingStress = stressLimit - stressAccrued;
-            if (remainingStress < 0) remainingStress = 0;
-            int stress = remainingStress * stressScorePerPoint;
-
             int kill = killScoreTotal > 0 ? killScoreTotal : 0;
+            if (kill > MaxEncodableKillScore) kill = MaxEncodableKillScore;
+            return SubmissionBase + kill * KillScoreScale + StabilityPermille(stability, stabilityMax);
+        }
 
-            return new BattleScore(time, stress, kill);
+        /// <summary>안정도 비율을 0~999 로. max ≤ 0 이면 0(정보 없음).</summary>
+        public static int StabilityPermille(int stability, int stabilityMax)
+        {
+            if (stabilityMax <= 0 || stability <= 0) return 0;
+            if (stability >= stabilityMax) return 999;
+            // 정수 산술로 반올림 — float 왕복이 경계에서 999/1000 을 오가는 것을 막는다.
+            int permille = (stability * 999 * 2 / stabilityMax + 1) / 2;
+            return permille > 999 ? 999 : permille;
+        }
+
+        public static bool IsEncodedSubmission(int submitted) => submitted >= SubmissionBase;
+
+        /// <summary>제출값에서 처치 점수를 되꺼낸다. 구 포맷(오프셋 미만)이면 -1.</summary>
+        public static int DecodeKillScore(int submitted)
+            => IsEncodedSubmission(submitted) ? (submitted - SubmissionBase) / KillScoreScale : -1;
+
+        /// <summary>제출값에서 안정도 permille 을 되꺼낸다. 구 포맷이면 -1.</summary>
+        public static int DecodeStabilityPermille(int submitted)
+            => IsEncodedSubmission(submitted) ? (submitted - SubmissionBase) % KillScoreScale : -1;
+
+        /// <summary>
+        /// 리더보드·히스토리의 표시 문자열. 신규 기록은 처치 점수만, 구 기록은 원값 그대로.
+        /// 표시 지점 3곳(결과 화면·리더보드·히스토리)이 같은 규칙을 쓰게 한 단일 창구다.
+        /// </summary>
+        public static int DisplayScore(int submitted)
+        {
+            int kill = DecodeKillScore(submitted);
+            return kill >= 0 ? kill : submitted;
         }
     }
 }

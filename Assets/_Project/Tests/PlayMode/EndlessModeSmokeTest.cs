@@ -57,12 +57,14 @@ namespace Wassup.Tests.PlayMode
             // (4) 배틀 시작 — _wavePlan 은 StartBattle 에서 빌드된다.
             bridge.StartBattle();
 
-            // (2) 10초 고정간격 30웨이브 (StartBattle 이후 조회)
+            // (2) three-minute-survival unit 2 — 무한 모드도 같은 케이던스를 상속한다:
+            // 웨이브 상한 100(명목) + 상한 간격 20초(구 10초 고정간격은 스폰 창 13.5초와
+            // 충돌해 은퇴). 명목 그리드는 브리핑·로그 표기 전용이고 런타임은 전멸/상한으로 굴린다.
             var plan = GetField(bridge, "_wavePlan");
             var waves = (IList)GetPublic(plan, "waves");
-            Assert.AreEqual(30, waves.Count, "30 웨이브");
+            Assert.AreEqual(100, waves.Count, "웨이브 상한 100(명목)");
             float interval = (float)GetPublic(plan, "waveIntervalSec");
-            Assert.AreEqual(10f, interval, 0.001f, "10초 고정간격");
+            Assert.AreEqual(20f, interval, 0.001f, "상한 간격 20초가 명목 그리드를 정한다");
 
             // (5) 디펜더 0 + 전 웨이브 당김 → 적 유출. 누수가 쌓여도 패배 안 함.
             for (int i = 0; i < 40 && bridge.NextWaveHasNext; i++) bridge.ForceNextWave();
@@ -70,7 +72,7 @@ namespace Wassup.Tests.PlayMode
             int maxLeaksWhileAlive = 0;
             bool defeatSeen = false;
             bool ended = false;
-            int endTimeScore = -1;
+            int endStability = -1;
             float start = Time.unscaledTime;
             for (int f = 0; f < 30000; f++)
             {
@@ -82,7 +84,8 @@ namespace Wassup.Tests.PlayMode
                 if (shown)
                 {
                     ended = true;
-                    ReadResult(out string outcome, out endTimeScore);
+                    ReadResult(out string outcome);
+                    endStability = bridge.GoalStabilityCurrent;
                     if (outcome == "defeat") defeatSeen = true;
                     break;
                 }
@@ -92,9 +95,11 @@ namespace Wassup.Tests.PlayMode
             }
 
             Assert.Greater(maxLeaksWhileAlive, 0, "적이 골에 유출돼 누수가 쌓였어야 한다(디펜더 0)");
-            Assert.IsFalse(defeatSeen, "무한 모드는 누수로 패배하지 않는다(defeatEnabled=!IsEndless)");
-            if (ended)
-                Assert.AreEqual(0, endTimeScore, "무한 모드 종료 결과의 시간점수는 0");
+            // three-minute-survival unit 0 — 무한 모드도 **골 안정도 0 으로 패배한다**
+            // (endless-mode 계약 4 "누수로 죽지 않음" 은 이 spec 이 갱신했다). 유출이 쌓이면
+            // 패배가 정상이므로 defeat 부재를 요구하지 않는다.
+            if (defeatSeen)
+                Assert.AreEqual(0, endStability, "패배로 끝났다면 안정도가 0 이어야 한다");
 
             // 무한 모드 누수 HUD 는 죽는 한계가 없으니 "/한계" 를 숨기고 개수만 표시한다.
             // (TMP_Text 타입 참조를 피해 .text 프로퍼티를 reflection 으로 읽는다 — asmdef 무변경.)
@@ -106,11 +111,11 @@ namespace Wassup.Tests.PlayMode
                     $"무한 모드 누수 HUD 는 '/한계' 를 숨겨야 한다 (실제: '{leakText}')");
         }
 
-        // BattleLogger.currentEntry.result 에서 outcome/time_score 를 읽는다(TallyFlowTest 와 동형).
-        private static void ReadResult(out string outcome, out int timeScore)
+        // BattleLogger.currentEntry.result 에서 outcome 을 읽는다(TallyFlowTest 와 동형).
+        // three-minute-survival unit 3 — time_score/stress_score 는 은퇴했다(점수 축 = 처치 하나).
+        private static void ReadResult(out string outcome)
         {
             outcome = "unknown";
-            timeScore = -1;
             var logger = GameManager.Instance != null ? GameManager.Instance.Logger : null;
             if (logger == null) return;
             var entry = logger.GetType().GetField("currentEntry", F)?.GetValue(logger);
@@ -118,7 +123,6 @@ namespace Wassup.Tests.PlayMode
             if (result == null) return;
             var rt = result.GetType();
             outcome = (string)rt.GetField("outcome").GetValue(result);
-            timeScore = (int)rt.GetField("time_score").GetValue(result);
         }
 
         private static object GetField(object o, string name)

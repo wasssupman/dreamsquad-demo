@@ -47,17 +47,40 @@
 
 | 원하는 것 | 필드 | 현재 기본 |
 |---|---|---|
-| 웨이브당 몬스터 ↑↓ | `minUnitsPerWave` / `maxUnitsPerWave` | 6 / 10 |
-| **웨이브마다 수량 평탄** | `minUnitsPerWave == maxUnitsPerWave` | (ramp 폭 0) |
-| 웨이브 개수 | `minWaveCount` / `maxWaveCount` (+`waveCountJitter`) | 10 / 15 |
+| 웨이브당 몬스터 시작값 ↑↓ | `minUnitsPerWave`(= 곡선의 base) | 5 |
+| 성장 속도 ↑↓ | `unitGrowthPerWave`(웨이브마다 ×) | 1.12 |
+| 수량 상한 | `maxUnitsPerWave`(= cap) | 24 |
+| **웨이브마다 수량 평탄** | `unitGrowthPerWave = 1` | (성장 없음) |
+| 웨이브 개수 | `minWaveCount` / `maxWaveCount` | 100 / 100 (**명목** — 아래 참조) |
+| 웨이브 간 상한 간격 | `maxWaveIntervalSec` | 20 |
 | 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | 9종 |
 | 보스 | `bossUnit` · `bossWaveInterval` · `bossEscortMin`/`Max` | Nightmare · 5마다 · 3~4 |
 | 스폰 템포 | `intraWaveSpacingSec` | 1s |
 | **웨이브 시작 → 첫 적 유예** | `waveSpawnLeadInSec` | 2s |
-| 누수 한계(스트레스 축) | `defeatGoalReachedCount` | 10 |
+| 골 안정도 최대치(패배 조건) | `goalStabilityMax` | 20 |
+| 스트레스 한계(계약 카드 지불 대상, **패배와 무관**) | `defeatGoalReachedCount` | 10 |
 | 제한 시간 | `timerDurationSec` | 180 |
 
-**수량 결정 방식**: `minUnitsPerWave~maxUnitsPerWave` 를 **초반→후반 ramp**(초반 웨이브 ≈ min, 후반 ≈ max, jitter). 일반 웨이브 = **2종류**(countA+countB 분할). 보스 웨이브 = 보스1 + 호위(escortMin~Max) 치환.
+**수량 결정 방식**(three-minute-survival unit 2): **완만한 지수 성장**.
+`total_i = clamp(round(base × growth^i) + jitter, base, cap)` — base=`minUnitsPerWave`,
+growth=`unitGrowthPerWave`, cap=`maxUnitsPerWave`, jitter 폭=`waveCountJitter`(waveSeed 파생).
+구 선형 ramp(전체 웨이브 수로 나눈 보간)는 은퇴 — 웨이브 상한이 100(명목)이 되면서 분모가
+의미를 잃었다. 일반 웨이브 = **2종류**(countA+countB 분할). 보스 웨이브 = 보스1 + 호위 치환.
+
+**웨이브 진행 = 이벤트 구동**: 이전 웨이브를 전멸시키면 리드인 뒤 즉시 다음 웨이브, 못 잡으면
+트리거 후 `maxWaveIntervalSec`(20초)에 자동 진행. 시각 그리드(`triggerTimeSec`)는 **명목값**
+(= i × 상한 간격 = 최악 케이스)으로만 남고 런타임은 읽지 않는다. 당기기(`ForceNextWave`)의
+플레이어 경로는 제거됐다(테스트 진행 동력으로만 남음).
+
+**⚠ 스폰 창 불변식**: `waveSpawnLeadInSec + (maxUnitsPerWave − 1) × intraWaveSpacingSec`
+< `maxWaveIntervalSec`. 위반하면 `_pending` 이 영구히 비지 않아 **전멸 즉시 진행이 구조적으로
+죽고** 상한 케이던스만 남는다. 현재 값: 2 + 23 × 0.5 = 13.5초 < 20초 ✓.
+생성기가 위반 시 경고하고 `WaveKillBudgetPinTests` 가 7개 덱 전부를 가드한다.
+수량 상한을 올릴 때는 `intraWaveSpacingSec` 을 함께 내려라.
+
+**웨이브 100은 명목이다**: 180초 + 20초 상한이면 실제 도달은 **10~16웨이브**(못 잡으면
+floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이 보이도록 저작한다.
+브리핑 스트립(`WavePatternStripView`)은 앞 12장만 그린다(100장이면 인트로가 6.4초).
 
 **리드인**(`waveSpawnLeadInSec`, wave-pattern unit 11): 웨이브 트리거와 첫 적 등장 사이의 유예.
 트리거 그리드(`i × interval`)·강제 호출 리스케줄·플랜 시각·브리핑 표기는 **불변**이고 스폰만 밀린다.
@@ -82,10 +105,11 @@
 
 ## 점수 예산과의 관계
 
-점수 3원천(`docs/reference/score-formula.md`): **시간**(`timerDurationSec`) · **스트레스**(`defeatGoalReachedCount`) · **킬**(볼륨 ≈ waveCount×unitsPerWave). 그래서:
+점수원은 **처치 하나**다(`docs/reference/score-formula.md`). 시간·스트레스 축은 은퇴했다. 그래서:
 
-- **몬스터 종류만 바꾸기 = 예산 불변**(킬값 종류 무관 잡몹 일괄).
-- **수·웨이브·시간·누수 바꾸기 = 예산 변동.**
+- **몬스터 종류를 바꾸면 예산이 바뀐다** — `killScore` 가 티어별로 다르다(일반 1 / 엘리트 3 / 보스 10).
+- **수·성장률·상한 간격을 바꾸면 예산이 변동한다**(3분 안에 몇 웨이브를 미느냐가 곧 점수).
+- **제한시간·안정도는 예산에 직접 관여하지 않는다** — 안정도는 동점 판정 tie-break 값이다.
 - **맵 간 점수 소폭 차등은 허용**(2026-07-23 사용자 결정) — 예산을 맵마다 똑같이 맞출 필요 없음. **유일 불변식은 "같은 맵=같은 웨이브"**. 맵별 난이도는 그 `Deck_*` 만 자유롭게 조정.
 
 ---
