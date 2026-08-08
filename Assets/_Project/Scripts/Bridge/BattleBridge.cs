@@ -42,10 +42,17 @@ namespace Wassup.Bridge
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
-        // continuous-agent-movement unit 3 — 적 원형 충돌 반지름(타일 배수).
-        // 0.35 = 지름 0.7 < 1.0 이라 1타일 복도를 통과하고 벽까지 여유 0.15 가 남는다.
+        // continuous-agent-movement unit 3·12 — 적 충돌 반지름(타일 배수).
         // 0 으로 두면 기존 점 충돌(셀 경계 clamp)로 되돌아간다 — 회귀 시 스위치.
-        [SerializeField, Range(0f, 0.49f)] private float agentRadiusTiles = 0.35f;
+        //
+        // unit 12 로 0.35 → 0.25. 0.35 는 "지름 0.7 < 1.0 이라 1타일 복도 통과 가능"으로
+        // 정했는데 그 검산이 **단독 통과만** 봤다. 폭1 복도에서 전진하려면 몸통이 통로 한
+        // 줄에만 걸쳐야 해서 중심선 ±(0.5−r) 안에 있어야 하는데, r=0.35 면 그 여유가 0.15 로
+        // 겹침 해소의 측면 밀어냄(최대 r)보다 작다 → 밀어냄이 유닛을 **전진 불가능한 자리로
+        // 보낸다**. 앞이 비면 스스로 벽면 슬라이드로 복귀하지만(unit 11), 앞에 마개(교전 정지
+        // 유닛·정면 합류)가 있으면 복귀할 틈이 없어 굳는다. 실측(16기·선두 1기 정지):
+        // r=0.35 는 로테이션 6맵 중 4맵에서 100초 교착, r=0.25 는 6/6 통과·최장 정체 1~5프레임.
+        [SerializeField, Range(0f, 0.49f)] private float agentRadiusTiles = 0.25f;
         [SerializeField] private ResultScreen resultScreen;
         // battle-score-formula unit 3 — 최종 점수 배점. 미배선이면 기본값(100/900)으로
         // 진행하되 LogError 를 남긴다 — 조용히 0점이 되는 게 최악이다.
