@@ -3,52 +3,41 @@ using Wassup.Core;
 
 namespace Wassup.Tests.EditMode
 {
-    // endless-mode unit 4 — 무한 모드 점수 산식(순수 ScoreMath)의 리스크/리워드 성립.
-    // 시간축 0(무한은 remainingMs=0) + 누수 페널티가 예산까지 선형 감소, 예산 초과 시 0 floor(saturate).
-    // 이 두 성질이 "당겨서 킬 벌되 누수는 예산까지 아프다"는 모드 가설의 수학적 코어.
+    // three-minute-survival unit 3 — 무한 모드도 **같은 산식**을 쓴다.
+    //
+    // 구 endless-mode unit 4 는 "시간축 0 + 누수가 스트레스 예산까지 선형 감소" 를 모드 가설의
+    // 수학적 코어로 고정했다. 그 두 성질은 이제 존재하지 않는다: 시간·스트레스 축이 폐기됐고
+    // 무한 모드도 처치로만 점수를 번다. 모드 분기가 산식에 없다는 것이 지금 고정할 성질이다.
+    //
+    // (무한 모드의 리스크/리워드 재설계는 spec 후속 후보 — 당기기 제거로 기존 가설이 소멸했다.)
     public class EndlessScoreTests
     {
-        private const int PerSec = 100;
-        private const int PerStress = 900;
-
         [Test]
-        public void TimeAxisIsZero_WhenRemainingMsZero()
+        public void EndlessUsesTheSameKillOnlyFormula()
         {
-            // 무한 모드는 CalculateBattleScore 에서 remainingMs=0 을 넘긴다(BattleBridge unit 2).
-            var s = ScoreMath.Evaluate(remainingMs: 0, stressAccrued: 5, stressLimit: 100,
-                killScoreTotal: 1234, defeated: false, PerSec, PerStress);
-
-            Assert.AreEqual(0, s.Time, "remainingMs=0 → 시간점수 0");
-            Assert.AreEqual(1234, s.Kill, "킬 점수는 그대로 주력");
-            Assert.AreEqual((100 - 5) * PerStress, s.Stress);
+            // 같은 처치 점수면 모드와 무관하게 같은 총점이다 — 산식에 모드 인자가 없다.
+            Assert.AreEqual(1234, ScoreMath.Evaluate(1234).Total);
         }
 
         [Test]
-        public void LeaksReduceStressByPerStress_UpToBudget()
+        public void LeaksDoNotReduceScore()
         {
-            const int budget = 100;
-            int prev = int.MinValue;
-            for (int leaks = 0; leaks <= budget; leaks++)
-            {
-                var s = ScoreMath.Evaluate(0, leaks, budget, 0, false, PerSec, PerStress);
-                Assert.AreEqual((budget - leaks) * PerStress, s.Stress, $"leaks={leaks} 스트레스 점수");
-                if (leaks > 0)
-                    Assert.AreEqual(prev - PerStress, s.Stress, $"leak {leaks}: 누수 1당 -{PerStress}");
-                prev = s.Stress;
-            }
+            // 유출은 안정도를 깎을 뿐 점수를 깎지 않는다(브리지에서 처리, 산식 밖).
+            // 유출이 점수를 깎던 구 스트레스 축이 되살아나면 여기서 잡힌다.
+            var s = ScoreMath.Evaluate(500);
+            Assert.AreEqual(500, s.Total, "산식 입력은 처치 점수 하나뿐이다");
         }
 
         [Test]
-        public void StressSaturatesAtZero_BeyondBudget()
+        public void StabilityRidesInSubmissionOnly()
         {
-            const int budget = 100;
-            foreach (int leaks in new[] { 100, 101, 150, 500 })
-            {
-                var s = ScoreMath.Evaluate(0, leaks, budget, 0, false, PerSec, PerStress);
-                Assert.AreEqual(0, s.Stress,
-                    $"누수 {leaks}(예산 {budget} 도달/초과)은 스트레스 점수 0 floor — 이 지점부터 페널티 saturate. "
-                    + "그래서 무한 모드 예산은 180초 내 도달 불가하게 높게 잡는다(README §누수 예산).");
-            }
+            // 안정도는 총점을 바꾸지 않고 제출값의 tie-break 자리에만 들어간다.
+            var s = ScoreMath.Evaluate(500);
+            int full = ScoreMath.EncodeSubmission(s.Total, 20, 20);
+            int empty = ScoreMath.EncodeSubmission(s.Total, 0, 20);
+            Assert.AreNotEqual(full, empty, "제출값은 갈린다");
+            Assert.AreEqual(ScoreMath.DecodeKillScore(full), ScoreMath.DecodeKillScore(empty),
+                "표시 점수는 같다");
         }
     }
 }

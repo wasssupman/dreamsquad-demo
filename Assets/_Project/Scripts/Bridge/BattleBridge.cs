@@ -115,7 +115,6 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         // score-tally-sequence unit 2 — 결과 연출(점수 합산). 미배선이면 연출을 건너뛰고
         // 곧장 결과 화면으로 간다 — 연출은 곁가지, 결과 화면은 필수다.
-        [SerializeField] private Wassup.UI.ScoreTallyView scoreTallyView;
         // boss-wave-cadence unit 2 — 보스 스폰 순간 "꿈결 위기!!" 경보. BakeNightmareMechanics
         // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
         [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
@@ -126,6 +125,10 @@ namespace Wassup.Bridge
         [Header("Tilemap View Backend (tilemap-view-backend)")]
         [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.TilemapRect;
         [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
+        // three-minute-survival unit 1 — 안정도 바를 골 앵커에서 월드 Y 로 띄우는 양.
+        // 구조물 메쉬가 셀 중심보다 높아서 바가 메쉬를 파고드는 것을 막는다. 씬 배선 불요
+        // (신규 SerializeField 는 기존 씬에서 이 initializer 를 받는다).
+        [SerializeField] private float goalStabilityBarLift = 1.6f;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
@@ -324,12 +327,14 @@ namespace Wassup.Bridge
         private int _nextWaveIndex;
         // nextwave-clear-attention unit 0 — 이미 호출된 모든 웨이브의 pending/live 합집합이
         // 비었는지 BattleBridge 가 판정한다. UI 는 아래 read-only getter 만 폴링한다.
-        private bool _nextWaveClearReady;
         // wave-pattern unit 9 — Next Wave 강제 호출로 앞당긴 누적 시간(앞당김이므로 음수).
         // 플랜의 triggerTimeSec 자체는 불변(브리핑 스트립·로그의 source of truth)이고,
         // 런타임 스케줄만 이 오프셋으로 민다. 남은 웨이브 전체가 같은 값만큼 이동하므로
         // 웨이브 간 간격이 보존되고, 강제 호출 뒤 다음 웨이브는 "호출 시점 + 원래 간격"에 나온다.
         private float _waveTimeShift;
+        // three-minute-survival unit 2 — 현재 웨이브가 트리거된 Battle 클럭 시각. 상한 간격의
+        // 기준이다(스폰 완료 시각이 아니라 **트리거** 시각). 시계와 함께 리셋된다.
+        private float _waveStartSec;
         private int _goalReachedCount;
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
         // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
@@ -341,6 +346,23 @@ namespace Wassup.Bridge
         // _goalReachedCount 처럼 BeginPlacement 에만 두면, teardown 없는 StartBattle
         // 재호출에서 시계만 리셋되고 이 값은 이월돼 이전 판 점수가 얹힌다.
         private int _killScoreTotal;
+        // three-minute-survival unit 3 — 처치 **마리 수**(점수와 별개 축, 결과 화면 표기용).
+        // 계약 9: _killScoreTotal 과 같은 지점에서 함께 0 이 된다.
+        private int _killCount;
+        // three-minute-survival unit 0 — 골 안정도. **브리지가 소유하는 값**이다: 유출 1회당
+        // 즉발 차감이라 시뮬 상태가 필요 없어 ECS 컴포넌트/시스템을 만들지 않는다(적이 골에
+        // 살아남아 때리는 지속 피해 모델은 goal-tower-siege spec 의 몫).
+        // 유출한 적의 AttackUnitData.stabilityDamage 만큼 깎이고 0 이면 패배다.
+        // **계약 9(_killScoreTotal 과 같은 규칙)**: 시계가 0 이 되는 지점마다 만피로 돌아간다.
+        private int _goalStability;
+        private int _goalStabilityMax;
+        // 유출 적의 등록부 조회 실패 경고를 판당 1회로 제한(로그 폭주 방지).
+        private bool _leakTypeMissLogged;
+        // goal-tower-siege unit 1 — 타워 부재 경고도 판당 1회.
+        private bool _towerMissLogged;
+        // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
+        // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
+        private int _goalTowerCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -551,7 +573,6 @@ namespace Wassup.Bridge
         private void TeardownCurrentBattle()
         {
             _running = false;
-            _nextWaveClearReady = false;
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
             // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
@@ -640,6 +661,11 @@ namespace Wassup.Bridge
             // AllyBuffFieldSystem 이 **옛 centerCell** 로 다시 버프를 걸어 보이지 않는 강화 구역이 된다
             // (뷰 등록부는 매치 경계에서 비워지므로 점등도 없다).
             DestroyEntitiesByType<Wassup.Battle.Effects.AllyBuffField>();
+            // goal-tower-siege — 골 타워 정리. 누락하면 앱 수명 default world 에 남아
+            // 다음 매치의 EnsureGoalTowers 가 지우기 전까지 로비에서도 살아 있고,
+            // 살아있는 수 비교(_goalTowerCount)로 패배를 판정하는 규칙이 오염된다.
+            DestroyEntitiesByType<Wassup.Battle.Units.GoalTowerTag>();
+            _goalTowerCount = 0;
             // summon-patrol-defender unit 2 — 거점 순찰 아군 정리. DefenderUnitTag 로 이미
             // 걸리지만 중복으로 등재해 둔다: 위 사직서/AllyBuffField 사고가 정확히 "정리 목록에
             // 안 넣어서" 났고, 이 아키타입은 태그 구성이 일반 방어유닛과 달라 나중에 누가
@@ -1186,7 +1212,6 @@ namespace Wassup.Bridge
             }
             _em = _world.EntityManager;
             _pending.Clear();
-            _nextWaveClearReady = false;
             _occupiedTiles.Clear();
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
@@ -1210,6 +1235,9 @@ namespace Wassup.Bridge
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
             _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
+            _killCount = 0;
+            ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
+            DestroyGoalTowers();       // goal-tower-siege unit 0 — 이전 판의 타워/풀 정리
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
@@ -1248,7 +1276,6 @@ namespace Wassup.Bridge
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
             _pending.Clear();
-            _nextWaveClearReady = false;
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
@@ -1258,6 +1285,11 @@ namespace Wassup.Bridge
             _startTime = Time.time;
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
+            _killCount = 0;
+            ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
+            // goal-tower-siege unit 0 — 맵·월드가 준비된 뒤 골 셀마다 타워를 세운다.
+            // ResetGoalStability 다음이어야 풀이 이번 판의 최대치를 받는다.
+            EnsureGoalTowers();
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
@@ -1561,11 +1593,14 @@ namespace Wassup.Bridge
         {
             // dreamstone-loadout Unit 3 — reset symmetry: pending loadout must not outlive the match (review M2).
             _pendingDreamstones = null;
-            _nextWaveClearReady = false;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
+            _killCount = 0;
+            ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
+            DestroyGoalTowers();  // goal-tower-siege unit 0 — 타워/풀도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
+            _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
             _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
@@ -1679,6 +1714,7 @@ namespace Wassup.Bridge
             _wavePlan = default;
             _nextWaveIndex = 0;
             _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
+            _waveStartSec = 0f;  // three-minute-survival unit 2 — 상한 간격 기준 시각도 함께
             _usingAuthoredPlan = false;
             _spawnAlertForecast = null;   // spawn-point-alert unit 3 — 이전 판 예고 이월 방지
 
@@ -1735,25 +1771,69 @@ namespace Wassup.Bridge
         // 섞으면 강제 호출 연타마다 리드인이 누적 왜곡된다.
         private float SpawnLeadInSec => _wavePlan.spawnLeadInSec;
 
+        // three-minute-survival unit 2 — 웨이브 진행은 **이벤트 구동**이다:
+        //   다음 웨이브 = 필드에 적 0기(전멸)  OR  현재 웨이브 트리거 후 maxWaveIntervalSec 경과
+        // 시각 그리드(triggerTimeSec = i × interval)는 명목값으로만 남는다.
+        //
+        // 작성 플랜(_usingAuthoredPlan)은 **예외**다: 저작된 durationSec 타임라인이 그 모드의
+        // 정본이므로(wave-authoring-test-mode 계약) 기존 시각 스케줄을 그대로 쓴다.
         private void QueueDueWaves(float elapsedSec)
         {
             if (!_usingGeneratedWaves || _wavePlan.waves == null) return;
-            while (_nextWaveIndex < _wavePlan.waves.Count &&
-                   elapsedSec + 0.0001f >= ScheduledWaveTime(_nextWaveIndex))
+            if (_usingAuthoredPlan)
             {
-                QueueWave(_wavePlan.waves[_nextWaveIndex],
-                    ScheduledWaveTime(_nextWaveIndex) + SpawnLeadInSec, false, elapsedSec);
-                _nextWaveIndex++;
+                while (_nextWaveIndex < _wavePlan.waves.Count &&
+                       elapsedSec + 0.0001f >= ScheduledWaveTime(_nextWaveIndex))
+                {
+                    QueueWave(_wavePlan.waves[_nextWaveIndex],
+                        ScheduledWaveTime(_nextWaveIndex) + SpawnLeadInSec, false, elapsedSec);
+                    _nextWaveIndex++;
+                }
+                return;
+            }
+
+            if (_nextWaveIndex >= _wavePlan.waves.Count) return;
+
+            // 웨이브 1 은 판 시작에 무조건 나간다. _nextWaveIndex == 0 에서 전멸 분기를 허용하면
+            // "아직 아무것도 안 나왔다" 가 "전멸했다" 로 읽혀 첫 두 웨이브가 같은 프레임에 터진다.
+            bool first = _nextWaveIndex == 0;
+            bool cleared = !first && NoQueuedAttackersRemain();
+            bool capReached = !first && elapsedSec - _waveStartSec >= MaxWaveIntervalSec;
+            if (!first && !cleared && !capReached) return;
+
+            QueueWave(_wavePlan.waves[_nextWaveIndex], elapsedSec + SpawnLeadInSec, false, elapsedSec);
+            _nextWaveIndex++;
+            _waveStartSec = elapsedSec;
+        }
+
+        // 상한 간격. 덱이 0(레거시 저작)이면 플랜의 명목 interval 로 폴백해 "상한 없음" 상태를
+        // 만들지 않는다 — 0 이면 매 프레임 capReached 가 참이 되어 전 웨이브가 한 번에 쏟아진다.
+        private float MaxWaveIntervalSec
+        {
+            get
+            {
+                float deckValue = ActiveDeck != null ? ActiveDeck.maxWaveIntervalSec : 0f;
+                if (deckValue > 0f) return deckValue;
+                return _wavePlan.waveIntervalSec > 0f ? _wavePlan.waveIntervalSec : 20f;
             }
         }
+
+        // 도크 표시용(읽기 전용): 다음 웨이브 자동 진행까지 남은 초.
+        public float NextWaveSecondsRemaining => !NextWaveHasNext || _nextWaveIndex == 0
+            ? 0f
+            : Mathf.Max(0f, MaxWaveIntervalSec - ((float)_battleClock - _waveStartSec));
+
+        public int WaveCountTotal =>
+            _wavePlan.waves != null ? _wavePlan.waves.Count : 0;
 
         // Read-only wave-progress state for the UI (NextWaveDock polls these). The dock
         // owns the button/label chrome; BattleBridge (ECS gateway) no longer builds UI.
         public bool NextWaveAvailable => _running && _usingGeneratedWaves && _wavePlan.waves != null;
         public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
         public int NextWaveNumber => _nextWaveIndex + 1;
-        public bool NextWaveClearReady =>
-            NextWaveHasNext && _nextWaveIndex > 0 && _nextWaveClearReady;
+        // three-minute-survival unit 2 — `NextWaveClearReady`(클리어 강조)는 은퇴했다. 전멸이
+        // 곧 자동 진행이라 "눌러라" 라고 알릴 대상이 없다. `_nextWaveClearReady` 내부 상태와
+        // `nextwave-clear-attention` 의 도크 어필도 함께 제거.
 
         // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
         // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
@@ -1812,11 +1892,27 @@ namespace Wassup.Bridge
             return outPath.Count >= 2;
         }
 
+        // three-minute-survival unit 2 — **플레이어 경로는 없어졌다**(NextWaveDock 은 정보 표시
+        // 전용이고 이 메서드를 부르지 않는다). 메서드 자체는 남는다: PlayMode 스모크
+        // (TallyFlowTest·EndlessModeSmokeTest·MovementIntegritySmokeTest)가 이것을 **판 진행
+        // 동력**으로 쓰기 때문이다 — no-op 으로 만들면 그 테스트들이 타임아웃으로 죽는다.
         public void ForceNextWave()
         {
             if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return;
             if (_nextWaveIndex >= _wavePlan.waves.Count)
                 return;
+            // 이벤트 구동 경로에서는 그리드 리스케줄(_waveTimeShift)이 의미가 없다 —
+            // 지금 큐잉하고 상한 타이머만 재기준한다.
+            if (!_usingAuthoredPlan)
+            {
+                float now = (float)_battleClock;
+                var forced = _wavePlan.waves[_nextWaveIndex];
+                GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", forced.waveIndex, now, true);
+                QueueWave(forced, now + SpawnLeadInSec, true, now);
+                _nextWaveIndex++;
+                _waveStartSec = now;
+                return;
+            }
 
             // time-manager Unit 3 — 강제 웨이브의 triggerTimeSec 기준도 Battle 클럭이어야 한다.
             // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
@@ -1840,9 +1936,7 @@ namespace Wassup.Bridge
 
         private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
         {
-            // 자동/강제 호출 모두 같은 진입점. UI Update 순서와 무관하게 이전 클리어 강조를
-            // 즉시 내리고, 아래 pending/live 상태가 다시 빌 때만 Update 말미에 재활성한다.
-            _nextWaveClearReady = false;
+            // 자동/강제 호출 모두 같은 진입점(전멸 진행·상한 진행·강제 호출·웨이브 1).
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
             var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
             int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
@@ -2405,9 +2499,9 @@ namespace Wassup.Bridge
             DrainHazardDestroyedEvents();
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
+            SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러 + 패배 판정
             CheckTimer();
             CheckVictory();
-            RefreshNextWaveClearReady();
         }
 
         private void LateUpdate()
@@ -2888,6 +2982,48 @@ namespace Wassup.Bridge
             SyncGoalOverheadGauges(unifiedOverhead);
             SyncPatrolViews(unifiedOverhead, canSort, gridSize);
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
+            // three-minute-survival unit 1 — 골 안정도 바. EndFrame 뒤에 둔다(유닛 풀의
+            // _seen 소거와 무관한 별도 슬롯이라 순서 의존은 없지만, 유닛 바 위에 그려진다).
+            if (unifiedOverhead) SyncGoalStabilityBars();
+        }
+
+        // three-minute-survival unit 1 — 골 셀마다 안정도 바 1개. 값은 공유 1개라 두 바가 같은
+        // 숫자를 밀살 표시한다. 전투 중에만 보이고 그 외에는 슬롯을 접는다.
+        private void SyncGoalStabilityBars()
+        {
+            if (!_running || _goalStabilityMax <= 0 || !_generatedMap.IsCreated)
+            {
+                unitOverheadUiLayer.HideStability();
+                return;
+            }
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            float ratio = Wassup.Battle.Units.Health.ComputeRatio(_goalStability, _goalStabilityMax);
+            string label = _goalStability.ToString();
+            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+            int count = hasList ? _generatedMap.goals.Length : 1;
+            for (int i = 0; i < count; i++)
+            {
+                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
+                // primary 골은 구조물 시각 앵커를 쓴다(구조물이 없는 테마는 셀 중심으로 폴백).
+                Vector3 world;
+                if (i == 0 && tilemapMapView != null && tilemapMapView.TryGetGoalVisualAnchor(out var anchor))
+                    world = anchor;
+                else
+                    // sim → view 변환을 반드시 거친다. GridToWorldCenterVector 만 쓰면
+                    // Tilemap 모드에서 반 타일 어긋나 바가 모서리에 놓인다(:2764 선례).
+                    world = GridCellToViewCenter(new Vector2Int(cell.x, cell.y));
+                world.y += goalStabilityBarLift;
+
+                Vector3 sp = cam.WorldToScreenPoint(world);
+                if (sp.z <= 0f) continue; // 카메라 뒤 — 투영이 뒤집힌다
+                Vector3 half = Vector3.right * (tileSize * 0.5f);
+                Vector3 a = cam.WorldToScreenPoint(world - half);
+                Vector3 b = cam.WorldToScreenPoint(world + half);
+                float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
+                unitOverheadUiLayer.SetStability(i, ratio, label, new Vector2(sp.x, sp.y), tileScreenWidth);
+            }
         }
 
         // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
@@ -3632,6 +3768,10 @@ namespace Wassup.Bridge
                 // (예전엔 처치당 고정 +10 이라 15배 어긋나 있었다). 두 경로가 같은
                 // evt.killScore 를 쓰므로 전투 중 HUD 숫자 == _killScoreTotal 이다.
                 _killScoreTotal += evt.killScore;
+                // three-minute-survival unit 3 — 점수는 티어 가중이라 "처치 수" 와 다르다
+                // (잡몹 10 + 보스 1 = 20점). 결과 화면이 `처치 N기` 를 따로 보여주므로
+                // 마리 수를 별도로 센다.
+                _killCount++;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 // unit 3 — 흡수 비행 시작점으로 사망 view-space 위치 동봉(sim→view).
                 // orb-dock unit 6 — 죽은 적 데이터 동봉(피규어 스킨 소스). 등록부 조회+제거.
@@ -4648,8 +4788,72 @@ namespace Wassup.Bridge
         private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
         private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
 
+        // three-minute-survival unit 0 — 분모와 위기색은 한계가 패배를 만들 때만 참이었다.
+        // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
+        // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), !IsEndless);
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
+
+        // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
+        private void ResetGoalStability()
+        {
+            _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
+            _goalStability = _goalStabilityMax;
+            _leakTypeMissLogged = false;
+            _towerMissLogged = false;
+        }
+
+        // goal-tower-siege(rev 2) — 골 셀마다 **건물형 유닛**을 세운다.
+        //
+        // 진영은 `Faction.Defender` 다. 적의 base targetMask 가 이미 `Defender|BlockingHazard`
+        // 라서 **타겟팅 코드가 한 줄도 필요 없다** — 전용 Faction 비트도, 골 도달 시 마스크를
+        // 열어주는 브리지 훅도, 도발 시스템 패치도 전부 사라졌다(rev 1 의 과설계).
+        //
+        // 단 `DefenderUnitTag` 는 **붙이지 않는다.** 그건 "플레이어가 놓은 유닛" 축이라,
+        // 붙이는 순간 배치/코스트/카드 부착/시너지/피로도·열기/픽업/실드가 전부 딸려온다.
+        // 진영(Faction)과 유닛 태그를 분리해 쓰는 것은 Blocking 해저드의 선례와 같다.
+        //
+        // 피해는 표준 경로다: 공격자가 IncomingDamage 에 append → DamageApplicationSystem 이
+        // Health 를 깎고 0 이면 DeadTag → UnitLifecycleSystem 이 파괴. 전용 피해 시스템도,
+        // 공유 풀 싱글턴도, 미러도 없다. **타워가 사라진 것이 곧 패배 신호**다.
+        private void EnsureGoalTowers()
+        {
+            if (!HasLiveEntityManager() || !_generatedMap.IsCreated || _goalStabilityMax <= 0)
+            {
+                _goalTowerCount = 0;
+                return;
+            }
+            DestroyGoalTowers();
+
+            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+            int count = hasList ? _generatedMap.goals.Length : 1;
+            for (int i = 0; i < count; i++)
+            {
+                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
+                var tower = _em.CreateEntity();
+                _em.AddComponent<Wassup.Battle.Units.GoalTowerTag>(tower);
+                _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
+                _em.AddBuffer<IncomingDamage>(tower);
+                _em.AddComponentData(tower, new FactionTag { value = Faction.Defender });
+                _em.AddComponentData(tower, LocalTransform.FromPosition(
+                    GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
+            }
+            _goalTowerCount = count;
+            Debug.Log($"[BattleBridge] Goal towers spawned: {count} @ stability {_goalStabilityMax}");
+        }
+
+        private void DestroyGoalTowers()
+        {
+            _goalTowerCount = 0;
+            if (!HasLiveEntityManager()) return;
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());
+            _em.DestroyEntity(towerQuery);
+        }
+
+        // 안정도 읽기 창구. unit 1(게이지)·unit 3(동점 판정)이 이것만 쓴다.
+        public int GoalStabilityCurrent => _goalStability;
+        public int GoalStabilityMax => _goalStabilityMax;
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
@@ -4673,32 +4877,110 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
-                enemyViewPool?.Despawn(evt.entity);
-                spineUnitPool?.Despawn(evt.entity);
-                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수. 패배 트리거의 조기 return 시
-                // 같은 프레임 잔여 이벤트의 EnemyGone 은 미발화 — 매치 종료 직후라 무해
-                // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
-                NotifyEnemyGoneIfMarked(evt.entity);
+                // 스트레스는 두 경로 공통이다 — "몇 번 뚫렸나" 는 집계 지표라 적이 살아남든
+                // 자폭하든 똑같이 오른다(패배와는 무관, three-minute-survival unit 0).
                 _goalReachedCount++;
                 RefreshLeakHud();
-                // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
-                int leakLimit = EffectiveLeakLimit();
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{leakLimit}");
-                // endless-mode unit 2 — 무한 모드는 누수로 죽지 않는다(계약 4). 누수 카운트/HUD 는 그대로
-                // 누적돼 스트레스 점수에 반영. 메인은 IsEndless=false 라 기존 패배 게이트 불변.
-                if (!IsEndless && !_resultShown && _goalReachedCount >= leakLimit)
+
+                // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
+                // 데이터 등록부를 건드리지 않는다(지우면 안 보이는 적이 타워를 때리고
+                // 데미지 폰트만 허공에 뜬다). 타워가 Faction.Defender 라 적의 base targetMask
+                // 가 이미 그것을 포함하므로 **여기서 열어줄 것이 없다.**
+                if (evt.canSiege) continue;
+
+                // 돌격형 자폭(AttackState 없는 Runner·Swift 계열) — 기존 유출 경로 그대로.
+                // 골에 붙어도 아무것도 못 하면서 웨이브 전멸 판정만 막으므로 남기지 않는다.
+                enemyViewPool?.Despawn(evt.entity);
+                spineUnitPool?.Despawn(evt.entity);
+                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수.
+                NotifyEnemyGoneIfMarked(evt.entity);
+                int stabilityDamage = 1;
+                if (_enemyTypeByEntity.TryGetValue(evt.entity, out var leakedType) && leakedType != null)
                 {
-                    _resultShown = true;
-                    _running = false;
-                    var score = CalculateBattleScore(defeated: true);
-                    int playerScore = score.Total;
-                    GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-                    BeginTally(win: false, score, RemainingBattleSeconds());
-                    Debug.Log("[BattleBridge] DEFEAT triggered.");
-                    return;
+                    stabilityDamage = Mathf.Max(0, leakedType.stabilityDamage);
+                    // 킬 경로(DrainEnemyKilledEvents)와 대칭 — 등록부에서 빼야 누적되지 않는다.
+                    _enemyTypeByEntity.Remove(evt.entity);
                 }
+                else if (!_leakTypeMissLogged)
+                {
+                    // 조용히 0 으로 넘기면 유출이 무해해진다 — 폴백 1 + 경고 1회.
+                    _leakTypeMissLogged = true;
+                    Debug.LogWarning("[BattleBridge] 유출한 적의 데이터가 등록부에 없다 — 안정도 피해 1 로 폴백.", this);
+                }
+                // 안정도를 직접 깎지 않는다 — 타워 버퍼로 넣어 공성 피해와 **같은 통로**를
+                // 지나게 한다(풀의 writer 는 GoalTowerDamageSystem 하나다).
+                EnqueueGoalTowerDamage(stabilityDamage, evt.position);
             }
+        }
+
+        // goal-tower-siege(rev 2) — 돌격형(공격 수단 없는 적)의 자폭 피해. 표준 경로와 같은
+        // 통로(IncomingDamage)로 넣어 DamageApplicationSystem 이 처리하게 한다.
+        // 적이 도달한 골이 어느 쪽인지는 이벤트에 실린 위치로 가른다(골 2개 맵).
+        private void EnqueueGoalTowerDamage(int amount, float3 atPosition)
+        {
+            if (!HasLiveEntityManager() || amount <= 0) return;
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>(),
+                ComponentType.ReadOnly<LocalTransform>(),
+                ComponentType.ReadWrite<IncomingDamage>());
+            if (towerQuery.IsEmpty)
+            {
+                if (!_towerMissLogged)
+                {
+                    _towerMissLogged = true;
+                    Debug.LogWarning("[BattleBridge] 골 타워가 없다 — 자폭 피해가 유실된다.", this);
+                }
+                return;
+            }
+            var towers = towerQuery.ToEntityArray(Allocator.Temp);
+            var nearest = towers[0];
+            float bestSq = float.MaxValue;
+            for (int i = 0; i < towers.Length; i++)
+            {
+                float3 p = _em.GetComponentData<LocalTransform>(towers[i]).Position;
+                float sq = math.distancesq(p, atPosition);
+                if (sq < bestSq) { bestSq = sq; nearest = towers[i]; }
+            }
+            _em.GetBuffer<IncomingDamage>(nearest).Add(new IncomingDamage { amount = amount });
+            towers.Dispose();
+        }
+
+        // goal-tower-siege(rev 2) — 안정도 = **타워의 Health** 다. 별도 정본(싱글턴)이 없으므로
+        // 브리지는 그것을 읽어 미러(_goalStability)를 갱신하고 패배만 판정한다.
+        // 공개 API(GoalStabilityCurrent/Max)는 불변이라 체력바와 점수 tie-break 는 그대로다.
+        //
+        // 패배 = **타워가 하나라도 부서짐.** 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)를
+        // 그대로 타므로 "엔티티가 사라졌다" 가 곧 신호다 — 별도 판정 규칙이 필요 없다.
+        private void SyncGoalStability()
+        {
+            if (!HasLiveEntityManager() || _resultShown || _goalTowerCount <= 0) return;
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>(),
+                ComponentType.ReadOnly<Health>());
+
+            bool destroyed = towerQuery.CalculateEntityCount() < _goalTowerCount;
+            float lowest = float.MaxValue;
+            if (!destroyed)
+            {
+                var healths = towerQuery.ToComponentDataArray<Health>(Allocator.Temp);
+                for (int i = 0; i < healths.Length; i++)
+                    if (healths[i].value < lowest) lowest = healths[i].value;
+                _goalStabilityMax = Mathf.Max(0, Mathf.RoundToInt(healths.Length > 0 ? healths[0].max : 0f));
+                healths.Dispose();
+                // 표시는 올림 — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다" 가 된다.
+                // 판정은 원본 float 로 한다. 골이 여럿이면 **가장 위험한 골**을 보여준다.
+                _goalStability = Mathf.Max(0, Mathf.CeilToInt(lowest));
+                if (lowest > 0f) return;
+            }
+
+            _goalStability = 0;
+            _resultShown = true;
+            _running = false;
+            var score = CalculateBattleScore(defeated: true);
+            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
+            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
+            BeginTally(win: false, score, RemainingBattleSeconds());
+            Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다.");
         }
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
@@ -4720,7 +5002,7 @@ namespace Wassup.Bridge
             var score = CalculateBattleScore(defeated: false);
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
             BeginTally(win: true, score, 0f); // timer expired → 0 left
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
@@ -4737,7 +5019,7 @@ namespace Wassup.Bridge
             var score = CalculateBattleScore(defeated: false);
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
             BeginTally(win: true, score, RemainingBattleSeconds());
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
@@ -4745,17 +5027,13 @@ namespace Wassup.Bridge
         // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
         // emptiness source of truth. pending 은 호출됐지만 아직 스폰되지 않은 적,
         // AttackUnitTag query 는 이미 필드에 나온 적을 각각 담당한다.
+        //
+        // three-minute-survival unit 2 — 이제 **웨이브 진행 트리거**이기도 하다(QueueDueWaves).
+        // 클리어 강조 UI 는 은퇴했지만 이 판정은 그 자리에 남아 케이던스를 구동한다.
         private bool NoQueuedAttackersRemain()
         {
             if (_pending.Count > 0 || !_aliveAttackersQueryCreated) return false;
             return _aliveAttackersQuery.CalculateEntityCount() == 0;
-        }
-
-        private void RefreshNextWaveClearReady()
-        {
-            _nextWaveClearReady = NextWaveHasNext
-                && _nextWaveIndex > 0
-                && NoQueuedAttackersRemain();
         }
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
@@ -4790,20 +5068,18 @@ namespace Wassup.Bridge
         //
         // Tally 동안 전투 HUD 중 ScoreHud 만 살아남는다(연출의 주인공). NextWaveDock·
         // CostDisplay 등은 `== GamePhase.Battle` 을 보므로 자동으로 꺼진다.
+        // three-minute-survival unit 3 — **합산 연출(탤리)은 제거됐다.** 시간·스트레스 축이
+        // 사라져 더할 것이 없다: 전투 중 HUD 숫자가 이미 최종 점수다. 남기면 내용 없는
+        // 4초 정지가 된다.
+        //
+        // `GamePhase.Tally` 전이는 유지한다 — 전투 HUD 게이팅이 그 페이즈를 읽고, 서버 제출
+        // 지점(연출과 독립이라는 계약 3)도 여기 그대로 있다.
         private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Tally);
-            ReportMatchResult(score.Total);
-
-            // 미배선이면 즉시 결과 화면으로. 연출은 곁가지이고 결과 화면은 필수라,
-            // 뷰가 없다고 게임이 멈춰서는 안 된다.
-            if (scoreTallyView == null)
-            {
-                FinishTally(win, score, remainingSec);
-                return;
-            }
-            scoreTallyView.Play(score, scoreHud,
-                () => FinishTally(win, score, remainingSec));
+            // 제출값에 동점 판정(남은 안정도)을 실어 보낸다 — 서버는 int 하나만 받는다.
+            ReportMatchResult(ScoreMath.EncodeSubmission(score.Total, _goalStability, _goalStabilityMax));
+            FinishTally(win, score, remainingSec);
         }
 
         // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
@@ -4811,39 +5087,24 @@ namespace Wassup.Bridge
         private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            // unit 7 — 팝업에 넘기는 스트레스 값은 점수 계산과 같은 소스다. 엔드리스는 한계를
-            // 0으로 넘겨 분모를 숨긴다(누수로 죽지 않아 한계가 무의미 — HUD 와 같은 규칙).
-            int stressLimitForUi = IsEndless ? 0 : StressLimit;
-            if (win) resultScreen?.ShowVictory(score, remainingSec, StressAccrued, stressLimitForUi);
-            else resultScreen?.ShowDefeat(score, remainingSec, StressAccrued, stressLimitForUi);
+            // three-minute-survival unit 3 — 결과 3줄: 처치 수 / 남은 안정도 / 도달 웨이브.
+            // 총점(=처치 점수)은 score.Total 이 들고 온다.
+            var stats = new Wassup.UI.ResultScreen.MatchStats(
+                _killCount, _goalStability, _goalStabilityMax, ReachedWaveNumber, score);
+            if (win) resultScreen?.ShowVictory(score, stats);
+            else resultScreen?.ShowDefeat(score, stats);
         }
 
-        // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
-        // 하고 여기서는 입력을 모아 넘기기만 한다.
-        //
-        // stressLimit 은 deck.defeatGoalReachedCount **원본값**이다(계약 8).
-        // EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 들어간다.
+        // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
+        // 그대로 쓰면 아직 안 나온 웨이브를 도달로 센다.
+        private int ReachedWaveNumber => _nextWaveIndex > 0 ? _nextWaveIndex : 0;
+
+        // three-minute-survival unit 3 — 점수는 처치로만 번다. 시간·스트레스 축과 그 배점
+        // (ScoreRulesData)은 폐기됐고 패배 분기도 없다 — 져도 잡은 만큼은 남는다.
+        // `defeated` 인자는 호출부 3곳(패배·버팀승리·전멸승리)의 의미를 남기기 위해 유지하되
+        // 산식에 영향을 주지 않는다.
         private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
-        {
-            int perSec = 100, perStress = 900;
-            if (scoreRules != null)
-            {
-                perSec = scoreRules.timeScorePerSecond;
-                perStress = scoreRules.stressScorePerPoint;
-            }
-            else
-            {
-                Debug.LogError("[BattleBridge] scoreRules 미배선 — 기본값(100/900)으로 점수를 계산한다. "
-                    + "ScoreRules.asset 을 인스펙터에 물릴 것.");
-            }
-
-            // endless-mode unit 2 — 무한 모드는 시간축 0(스코어어택). 조기클리어로 remainingMs>0
-            // 이어도 시간점수가 새지 않게 여기서 0 고정. 메인은 기존대로 남은시간 반영.
-            int remainingMs = IsEndless ? 0 : Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
-
-            return ScoreMath.Evaluate(remainingMs, StressAccrued, StressLimit, _killScoreTotal,
-                defeated, perSec, perStress);
-        }
+            => ScoreMath.Evaluate(_killScoreTotal);
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
         // PlaceDefenderAs with an explicit type, but this path stays for tests

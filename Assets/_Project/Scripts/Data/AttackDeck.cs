@@ -34,10 +34,21 @@ namespace Wassup.Data
         public int waveCountJitter = 1;
         public float intraWaveSpacingSec = 0.35f;
 
-        // endless-mode unit 0 — 웨이브 간 고정 간격(초). 0 = 기존 제한시간/웨이브수 파생,
-        // >0 = 이 값으로 고정(무한 모드는 10). WavePatternGenerator 가 interval 계산에서 우선한다.
-        [Tooltip("웨이브 간 고정 간격(초). 0=제한시간/웨이브수 파생(기존), >0=이 값 고정(무한 모드).")]
-        public float fixedWaveIntervalSec = 0f;
+        // three-minute-survival unit 2 — 웨이브 간 **상한** 간격(초). 이전 웨이브를 전멸시키면
+        // 즉시 다음 웨이브가 오고, 못 잡으면 이 시간에 자동으로 넘어간다(구 fixedWaveIntervalSec
+        // 을 이 의미로 대체 — 고정 간격 스케줄은 은퇴했다). 0 = 제한시간/웨이브수 파생(레거시
+        // 폴백, 직접 호출자 전용).
+        //
+        // ⚠ 스폰 창 불변식: `waveSpawnLeadInSec + (maxUnitsPerWave−1) × intraWaveSpacingSec`
+        // 이 이 값보다 **작아야** 한다. 크면 _pending 이 영구히 비지 않아 "전멸 즉시 진행"이
+        // 구조적으로 죽고 상한 케이던스만 남는다. 생성기가 위반 시 경고한다.
+        [Tooltip("웨이브 간 상한 간격(초). 전멸하면 즉시 진행, 못 잡으면 이 시간에 자동 진행.")]
+        public float maxWaveIntervalSec = 20f;
+
+        // three-minute-survival unit 2 — 웨이브당 수량의 지수 성장률(웨이브마다 ×). 1 = 성장 없음.
+        // total_i = clamp(round(minUnitsPerWave × growth^i) + jitter, minUnitsPerWave, maxUnitsPerWave).
+        [Tooltip("웨이브당 수량 지수 성장률. 1=성장 없음. 초반은 완만하고 중반부터 붙는다.")]
+        [Min(1f)] public float unitGrowthPerWave = 1.12f;
 
         // wave-pattern unit 11 — 웨이브 트리거와 첫 적 등장 사이의 균일 리드인(초).
         // 트리거 그리드(i*interval)·리스케줄(_waveTimeShift)·플랜 시각은 불변이고 QueueWave 의
@@ -68,6 +79,14 @@ namespace Wassup.Data
         public List<SpawnEntry> spawns = new();
         public int defeatGoalReachedCount = 5;
         public float timerDurationSec = 180f;
+
+        // three-minute-survival unit 0 — 골 안정도 최대치. 유출한 적의 stabilityDamage 합이
+        // 이 값에 닿으면 패배다. defeatGoalReachedCount(스트레스 한계)는 더 이상 패배를
+        // 만들지 않지만 몽마의 계약이 그 값을 지불 대상으로 쓰므로 **은퇴시키지 않는다**.
+        // Appended last (직렬화 back-compat).
+        [Header("Goal Stability")]
+        [Tooltip("골 안정도 최대치. 유출한 적의 stabilityDamage 합이 이 값에 닿으면 패배.")]
+        [Min(1)] public int goalStabilityMax = 20;
 
         public int ResolveWaveSeed()
         {

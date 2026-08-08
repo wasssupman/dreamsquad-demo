@@ -372,18 +372,16 @@ namespace Wassup.Logging
             currentEntry.result.score = score;
         }
 
-        // battle-score-formula unit 3 — 총점 + 3축 분해. 기존 SetScore(int) 는 지우지
-        // 않는다: AddScoreEvent 경로가 여전히 result.score 를 갱신한다.
+        // three-minute-survival unit 3 — 점수 축이 처치 하나로 줄었다. `time_score`/
+        // `stress_score` 는 은퇴하고(항상 0) 총점 == kill_score 다. 기존 SetScore(int) 는
+        // 지우지 않는다: AddScoreEvent 경로가 여전히 result.score 를 갱신한다.
         //
-        // score-tally-sequence unit 0 이후 score_events[] 는 유닛별 실제 killScore 를
-        // 쌓으므로 result.kill_score 와 합이 일치한다(예전엔 처치당 고정 +10 이라 어긋났다).
-        // result.score 는 시간·스트레스까지 더한 총점이라 당연히 더 크다.
-        public void SetScore(int total, int timeScore, int stressScore, int killScore)
+        // score_events[] 는 유닛별 실제 killScore 를 쌓으므로 result.kill_score 와 합이
+        // 일치한다 — 이제 result.score 와도 일치한다(더할 축이 없다).
+        public void SetScore(int total, int killScore)
         {
             if (currentEntry == null) return;
             SetScore(total);
-            currentEntry.result.time_score = Math.Max(0, timeScore);
-            currentEntry.result.stress_score = Math.Max(0, stressScore);
             currentEntry.result.kill_score = Math.Max(0, killScore);
         }
 

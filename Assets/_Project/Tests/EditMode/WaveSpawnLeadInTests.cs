@@ -202,7 +202,7 @@ namespace Wassup.Tests.EditMode
             deck.maxUnitsPerWave = 2;
             deck.waveCountJitter = 0;
             deck.intraWaveSpacingSec = 1f;
-            deck.fixedWaveIntervalSec = Interval;
+            deck.maxWaveIntervalSec = Interval;
             deck.timerDurationSec = 40f;
             deck.bossUnit = null;
             deck.bossWaveInterval = 0;

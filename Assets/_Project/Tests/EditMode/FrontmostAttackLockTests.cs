@@ -162,17 +162,20 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(fl.active, "lock is released after the lapsed resolve");
         }
 
+        // goal-tower-siege unit 1 — 배제가 **뒤집혔다.** PastGoalTag 는 "유출 대기(곧 사라짐)"
+        // 가 아니라 "골에 붙어 타워를 때리는 중" 이다 — 경로상 가장 앞선 적이 곧 frontmost 라는
+        // 정의에 정확히 부합하므로, 이제 그 적이 선택돼야 한다.
         [Test]
-        public void Frontmost_PastGoalEnemy_IsExcluded()
+        public void Frontmost_PastGoalEnemy_IsTheFrontmost()
         {
             CreateLinearFlowField();
             var def = CreateFrontmostDefender(new float3(0, 0, 0), range: 10f);
-            var atGoal = CreateEnemy(new float3(4, 0, 0)); // flowDist 0 but leak-pending
+            var atGoal = CreateEnemy(new float3(4, 0, 0)); // flowDist 0 — 골에 붙어 공성 중
             _em.AddComponent<PastGoalTag>(atGoal);
             var normal = CreateEnemy(new float3(2, 0, 0)); // flowDist 2
             Tick();
-            Assert.Greater(IncomingSum(normal), 0f, "the non-PastGoal enemy is the frontmost");
-            Assert.AreEqual(0f, IncomingSum(atGoal), "a PastGoal (leak-pending) enemy is excluded from frontmost");
+            Assert.Greater(IncomingSum(atGoal), 0f, "골에 붙은 적이 가장 앞선 적이다");
+            Assert.AreEqual(0f, IncomingSum(normal), "뒤에 있는 적은 선택되지 않는다");
         }
 
         [Test]
@@ -241,17 +244,18 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Frontmost_LapsesWhenLockedTargetBecomesPastGoal_MidWindup()
+        public void Frontmost_KeepsLockWhenTargetBecomesPastGoal_MidWindup()
         {
             CreateLinearFlowField();
             var def = CreateFrontmostDefender(new float3(0, 0, 0), range: 10f, hitDelaySec: 0.05f);
             var locked = CreateEnemy(new float3(3, 0, 0));
             Tick(); // START locks `locked`
             Assert.AreEqual(locked, _em.GetComponentData<FrontmostAttackLock>(def).target);
+            // goal-tower-siege unit 1 — 골 도달은 더 이상 락 해제 사유가 아니다.
+            // 적이 살아서 그 자리에 있으므로 조준이 유지되고 타격이 성사돼야 한다.
             _em.AddComponent<PastGoalTag>(locked); // reaches the goal mid-windup
             for (int i = 0; i < 6; i++) Tick();
-            Assert.AreEqual(0f, IncomingSum(locked), "a locked target that becomes PastGoal lapses (no hit)");
-            Assert.IsFalse(_em.GetComponentData<FrontmostAttackLock>(def).active, "lock released after lapse");
+            Assert.Greater(IncomingSum(locked), 0f, "골에 도달해도 락이 유지돼 타격이 성사된다");
         }
 
         [Test]

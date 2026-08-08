@@ -98,7 +98,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             var enemyQuery = SystemAPI.QueryBuilder()
                                 .WithAll<AttackUnitTag, LocalTransform>()
                                 .WithNone<DeadTag>()
-                                .WithNone<PastGoalTag>()
+                                // goal-tower-siege unit 1 — PastGoal 배제 제거(골에 붙은 적도
+                                // 살아 있는 사격 대상이다). 판 밖 이탈(UltimateLeapState)만 남긴다.
                                 .WithNone<Wassup.Battle.Combat.UltimateLeapState>().Build();
                             enemyEntities = enemyQuery.ToEntityArray(Allocator.Temp);
                             var enemyXf = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);

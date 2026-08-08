@@ -212,7 +212,12 @@ namespace Wassup.UI
             if (onDeckView != null && !row.IsWaiting) CreateDeckButton(go.transform, row, onDeckView);
 
             // Score (right).
-            string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
+            // three-minute-survival unit 3 — 제출값은 `BASE + 처치점수×1000 + 안정도permille`
+            // 로 인코딩돼 있다(서버가 int 하나만 받아 동점 판정을 값에 실었다). 화면에는
+            // 디코딩한 처치 점수를 보여준다. 구 포맷 기록은 원값 그대로(DisplayScore).
+            string scoreText = row.IsWaiting
+                ? "-"
+                : Wassup.Core.ScoreMath.DisplayScore(row.Score).ToString("N0");
             var score = CreateLabel(go.transform, "Score", scoreText, 30, TextAlignmentOptions.MidlineRight, textColor);
             var scoreRt = (RectTransform)score.transform;
             scoreRt.anchorMin = new Vector2(1f, 0f);

@@ -116,16 +116,29 @@ namespace Wassup.Data
         // battle-score-formula unit 0 — 이 적을 **처치**했을 때 얻는 점수.
         // 유출당하면 얻지 못한다(EnemyKilledEvent 는 goal-reach 경로에서 발화하지
         // 않는다 — EnemyKilledEvent.cs 주석). 티어 enum 을 만들지 않고 이 필드의
-        // 값 구간으로만 잡몹/보스를 구분한다(제약 8). Appended last (직렬화 back-compat).
+        // 값 구간으로만 티어를 구분한다(제약 8). Appended last (직렬화 back-compat).
+        //
+        // three-minute-survival unit 3 — **점수가 처치 축 하나가 되면서 스케일을 재장전했다**:
+        // 일반 1 / 엘리트 3 / 보스 10 (구 100 / 2,000). 화면 숫자가 곧 "얼마나 팼나" 로 읽히고,
+        // 제출값 인코딩(ScoreMath.EncodeSubmission)의 여유도 커진다.
         [Header("Score")]
-        [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 잡몹 100 / 보스 2000 기준.")]
-        public int killScore = 100;
+        [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 일반 1 / 엘리트 3 / 보스 10 기준.")]
+        public int killScore = 1;
 
         // spine-weapon-trail unit 3 — 무기 궤적. 적/보스도 대상이다(디펜더 종속 해제).
         // 미할당 = 무궤적이라 잡몹 전원은 현행 그대로. Appended last (직렬화 back-compat).
         [Header("Weapon Trail")]
         public GameObject weaponTrailPrefab;
         [Range(0.05f, 1f)] public float weaponTrailEndNormalized = 0.31f;
+
+        // three-minute-survival unit 0 — 이 적이 골을 뚫었을 때 골 안정도에서 깎는 양.
+        // killScore(처치 보상)와 **반대 축**이다: 이쪽은 놓쳤을 때의 대가다. 티어 enum 을
+        // 만들지 않고 값 구간으로 일반/엘리트/보스를 구분한다(제약 8, killScore 선례).
+        // 기본 1 = 미저작 자산도 유출이 무해해지지 않는다.
+        // Appended last (직렬화 back-compat).
+        [Header("Goal Stability")]
+        [Tooltip("골을 뚫었을 때 골 안정도에서 깎는 양. 일반 1 / 엘리트 2 / 보스 5 기준.")]
+        [Min(0)] public int stabilityDamage = 1;
 
         public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;
         public float SpineWeaponTrailEndNormalized => weaponTrailEndNormalized;

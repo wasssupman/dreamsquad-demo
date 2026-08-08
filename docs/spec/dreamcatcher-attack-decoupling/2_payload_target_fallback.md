@@ -23,7 +23,8 @@
 - **진영 = `Faction.Enemy` 고정.** host mask 를 재사용하지 않는다 — 재사용하면 힐러가 아군을 겨눌 때 니들도 아군을 겨눈다(unit-trigger 계약 10 이 막고 있던 바로 그 버그).
 - **진입 필터 = Chebyshev 타일**(`GridMath.RangeToTiles`), host 사거리 판정과 같은 자.
 - **랭킹 = 유클리드 XZ 최근접**, 동점은 **후보 스냅샷 인덱스 순**(결정론).
-- `PastGoalTag`(유출 대기) 제외 — 끝을 보는 눈 선례(`AttackSystem.cs:334`).
+- ~~`PastGoalTag`(유출 대기) 제외~~ — **goal-tower-siege unit 1 로 폐기**. 그 태그는 이제
+  "골에 붙어 타워를 때리는 중" 이고, 살아 있는 적을 폴백에서 빼면 공성을 못 막는다.
 - 후보 없음 → `Entity.Null` 반환. 호출부는 발사를 건너뛴다(카운트는 이미 소비 — README 계약 5).
 
 후보 스냅샷(`AttackSystem.cs:45~47`의 `targetEntities/targetTransforms/targetFactions`)은 `OnUpdate` 지역변수라 폭탄 분기·드레인 지점 어디서든 재사용할 수 있다. 별도 쿼리나 `ComponentLookup` 을 만들지 않는다.
@@ -53,7 +54,7 @@ spec critic 은 "반경 0 = 절대 발동 불가 = 부착 거절"을 제안했�
 
 ## 주의 (unit 3·4 로 넘기는 것)
 
-- **폴백 호출 시 caller 계약**: 후보의 `eligible` 은 진영 `Faction.Enemy` 고정 + `DeadTag`/`PendingDeployment`/`PastGoalTag` 제외로 채운다. host 의 `targetMask` 를 재사용하면 힐러 자해가 되돌아온다.
+- **폴백 호출 시 caller 계약**: 후보의 `eligible` 은 진영 `Faction.Enemy` 고정 + `DeadTag`/`PendingDeployment` 제외로 채운다(`PastGoalTag` 는 goal-tower-siege unit 1 로 제외 대상에서 빠졌다). host 의 `targetMask` 를 재사용하면 힐러 자해가 되돌아온다.
 - **적용성 조건 추가**: host 타겟이 구조적으로 없는 아키타입(`BombThrow`/`HazardCast`)에서 `ProjectileToTarget` 은 `tileRange > 0` 을 요구해야 한다. 지금 넣으면 쓰이지 않는 죽은 규칙이라 미뤘다.
 - **문안 재검토**: 폭탄맨·캐스터가 열리면 그 host 에서만 "대상"이 "반경 N칸 최근접 적"이 된다. 반경을 문안에 노출할지 그때 판단.
 

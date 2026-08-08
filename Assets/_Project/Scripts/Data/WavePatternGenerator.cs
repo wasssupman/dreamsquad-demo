@@ -33,9 +33,10 @@ namespace Wassup.Data
                 deck.bossEscortMin,
                 deck.bossEscortMax,
                 deck.waveCountJitter,
-                deck.fixedWaveIntervalSec,
+                deck.maxWaveIntervalSec,
                 deck.waveSpawnLeadInSec,
-                deck.bossPool);
+                deck.bossPool,
+                deck.unitGrowthPerWave);
         }
 
         public static GeneratedWavePlan Generate(
@@ -53,11 +54,15 @@ namespace Wassup.Data
             int bossEscortMin = 0,
             int bossEscortMax = 0,
             int waveCountJitter = 1,
-            float fixedIntervalSec = 0f,
+            // three-minute-survival unit 2 — 웨이브 간 상한 간격(구 fixedIntervalSec). 명목
+            // triggerTimeSec 그리드(i × 이 값 = 최악 케이스 시각)도 여기서 나온다.
+            float maxWaveIntervalSec = 0f,
             float spawnLeadInSec = 0f,
             // boss-jjangssen unit 0 — 보스 로테이션 풀. **맨 뒤에 추가**한 것은 의도다: 기존 boss 파라미터
             // 사이에 끼우면 positional 인자로 호출하는 테스트들이 조용히 다른 값을 받는다.
-            IReadOnlyList<AttackUnitData> bossPool = null)
+            IReadOnlyList<AttackUnitData> bossPool = null,
+            // three-minute-survival unit 2 — 같은 이유로 맨 뒤에 추가. 1 = 성장 없음.
+            float unitGrowthPerWave = 1f)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -90,12 +95,26 @@ namespace Wassup.Data
             int maxUnits = math.max(minUnits, math.max(minUnitsPerWave, maxUnitsPerWave));
 
             float duration = timerDurationSec > 0f ? timerDurationSec : 180f;
-            // endless-mode unit 1 — 고정 간격(>0)이면 웨이브수 의존 파생 대신 그 값을 쓴다.
-            // triggerTimeSec = i*interval 계약은 불변 → 스케줄러(QueueDueWaves) 재사용.
-            float interval = fixedIntervalSec > 0f
-                ? fixedIntervalSec
+            // three-minute-survival unit 2 — 상한 간격(>0)이 명목 그리드를 정한다. 런타임은 이
+            // triggerTimeSec 을 읽지 않는다(전멸/상한 이벤트 구동) — 남겨두는 이유는 브리핑
+            // 스트립·배틀로그가 "최악 케이스 시각"으로 읽을 수 있게 하는 것뿐이다.
+            // 0 이면 레거시 파생(제한시간/웨이브수) — 작성 플랜·직접 호출자용 폴백.
+            float interval = maxWaveIntervalSec > 0f
+                ? maxWaveIntervalSec
                 : (waveCount > 0 ? duration / waveCount : 0f);
             float spacing = intraWaveSpacingSec > 0f ? intraWaveSpacingSec : 0.35f;
+            // 스폰 창 불변식 — 위반하면 _pending 이 영구히 비지 않아 "전멸 즉시 진행"이 죽는다.
+            // 저작 실수를 조용히 넘기지 않는다(증상이 "웨이브가 항상 상한 간격으로만 온다"는
+            // 형태라 원인 추적이 매우 어렵다).
+            if (maxWaveIntervalSec > 0f)
+            {
+                float window = math.max(0f, spawnLeadInSec) + (maxUnits - 1) * spacing;
+                if (window >= maxWaveIntervalSec)
+                    Debug.LogWarning(
+                        $"[WavePatternGenerator] 스폰 창 {window:0.##}s 가 상한 간격 {maxWaveIntervalSec:0.##}s 이상이다 " +
+                        $"(leadIn {spawnLeadInSec:0.##} + (maxUnits {maxUnits}−1) × spacing {spacing:0.##}). " +
+                        "전멸 즉시 진행이 성립하지 않는다 — intraWaveSpacingSec 을 내리거나 maxUnitsPerWave 를 줄여라.");
+            }
 
             var waves = new List<GeneratedWave>(waveCount);
             for (int i = 0; i < waveCount; i++)
@@ -113,7 +132,7 @@ namespace Wassup.Data
                 // wave-pattern unit 7 — 수량 램프. NextFloat 1콜은 기존 NextInt 1콜과 rng
                 // 소비 수가 같아 아래 countA·보스 후처리의 rng 정렬이 불변이다.
                 float jitter01 = rng.NextFloat();
-                int total = RampedWaveTotal(i, waveCount, minUnits, maxUnits, waveCountJitter, jitter01);
+                int total = ExponentialWaveTotal(i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, jitter01);
                 int countA = rng.NextInt(1, total);
                 int countB = total - countA;
 
@@ -205,16 +224,29 @@ namespace Wassup.Data
             return math.abs(deckIndex) % laneCount;
         }
 
-        // wave-pattern unit 7 — 웨이브 수량 램프(순수). total 을 웨이브 인덱스에 따라
-        // minUnits(첫 웨이브)→maxUnits(마지막 웨이브) 선형 보간하고 ±jitterBand 정수 지터를
-        // 더한 뒤 [minUnits,maxUnits] 로 클램프한다. jitter01∈[0,1) 는 호출측이 뽑아 넘기는
-        // plain 입력(rng 를 함수에 넣지 않아 EditMode 로 결정론 검증 가능 — 제약 10).
-        public static int RampedWaveTotal(
-            int waveIndex, int waveCount, int minUnits, int maxUnits, int jitterBand, float jitter01)
+        // three-minute-survival unit 2 — 웨이브 수량의 **완만한 지수 성장**(순수). 구
+        // RampedWaveTotal(전체 웨이브 수로 나눈 선형 보간)을 대체한다: 웨이브 상한이 100(명목)이
+        // 되면서 "전체 대비 진행률" 이라는 분모가 의미를 잃었다 — 3분 안에 도달하는 것은 앞의
+        // 10~16개뿐이므로 성장은 **웨이브 번호의 절대 함수**여야 한다.
+        //
+        //   center_i = minUnits × growth^i          (growth=1 이면 상수 = 성장 없음)
+        //   total_i  = clamp(round(center + jitter), minUnits, maxUnits)
+        //
+        // jitter01∈[0,1) 는 호출측이 뽑아 넘기는 plain 입력(rng 를 함수에 넣지 않아 EditMode 로
+        // 결정론 검증 가능 — 제약 10). growth^i 는 i 가 커지면 폭발하므로 maxUnits 클램프가
+        // 유일한 상한이다.
+        public static int ExponentialWaveTotal(
+            int waveIndex, int minUnits, int maxUnits, float growth, int jitterBand, float jitter01)
         {
             if (maxUnits < minUnits) { int t = minUnits; minUnits = maxUnits; maxUnits = t; }
-            float ramp = waveCount > 1 ? (float)waveIndex / (waveCount - 1) : 1f;
-            float center = math.lerp(minUnits, maxUnits, math.saturate(ramp));
+            float g = growth > 1f ? growth : 1f;
+            int i = waveIndex > 0 ? waveIndex : 0;
+            // pow 로 한 번에 구한다 — 누적 곱은 웨이브 인덱스마다 값이 달라지는 것을 막지 못하고
+            // (같은 결과) 호출당 루프만 늘린다.
+            float center = minUnits * math.pow(g, i);
+            // 지수 구간에서 center 가 maxUnits 를 크게 넘어가면 float 이 커져 jitter 가 묻힌다.
+            // 클램프를 먼저 걸어 jitter 가 상한 근처에서도 살아 있게 한다.
+            center = math.min(center, maxUnits);
             float jitter = jitterBand > 0 ? (jitter01 * 2f - 1f) * jitterBand : 0f;
             return math.clamp((int)math.round(center + jitter), minUnits, maxUnits);
         }

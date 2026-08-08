@@ -3,150 +3,155 @@ using Wassup.Core;
 
 namespace Wassup.Tests.EditMode
 {
-    // battle-score-formula unit 1 — 최종 점수 산식의 회귀 고정.
-    // 승패 규칙이 ScoreMath 안에 있으므로(spec 계약 3) 종료 3종의 배점도 여기서 덮는다.
+    // three-minute-survival unit 3 — 점수 산식과 제출값 인코딩을 고정한다.
+    //
+    // 산식은 이제 분기가 없다: 총점 = 처치한 적의 killScore 합. 시간·스트레스 축과
+    // "패배 시 0" 예외는 폐기됐다(져도 잡은 만큼은 남는다).
+    //
+    // 인코딩이 이 파일의 무게 중심이다 — 서버가 int 하나만 받아서 동점 판정(남은 안정도)을
+    // 값에 실어 보내고, 표시 지점 3곳(결과·리더보드·히스토리)이 그걸 되꺼내 쓴다.
+    // 왕복이 깨지면 리더보드에 10억대 숫자가 뜨거나 구 기록이 가짜 점수로 읽힌다.
     public class ScoreMathTests
     {
-        // 현행 튜닝값 (ScoreRules.asset). 산식 자체는 이 값을 모른다.
-        private const int PerSec = 100;
-        private const int PerStress = 900;
-        private const int Limit = 10;      // deck.defeatGoalReachedCount (unit 5 적용 후)
-        // 킬 합계는 밸런스 산물이라 아무 값이나 써도 된다 — 산식은 이 값을 그대로 더할 뿐이다.
-        private const int KillFull = 10300;
+        // ── 산식 ────────────────────────────────────────────────────────────────
 
-        private static ScoreMath.BattleScore Eval(int remainingMs, int accrued, int kill, bool defeated,
-            int limit = Limit)
-            => ScoreMath.Evaluate(remainingMs, accrued, limit, kill, defeated, PerSec, PerStress);
-
-        // ── 예산 만점 ──────────────────────────────────────────────────────
         [Test]
-        public void FullBudget_MatchesDocumentedTotals()
+        public void Total_IsKillScoreSum()
         {
-            var s = Eval(remainingMs: 180_000, accrued: 0, kill: KillFull, defeated: false);
-            Assert.AreEqual(18_000, s.Time, "시간 예산 = 180초 × 100");
-            Assert.AreEqual(9_000, s.Stress, "스트레스 예산 = 한계 10 × 900");
-            Assert.AreEqual(10_300, s.Kill);
-            Assert.AreEqual(37_300, s.Total);
+            var s = ScoreMath.Evaluate(47);
+            Assert.AreEqual(47, s.Kill);
+            Assert.AreEqual(47, s.Total, "처치 축이 유일하므로 총점 == 처치 점수");
         }
 
         [Test]
-        public void Total_IsSumOfThreeAxes()
+        public void NegativeKillScore_ClampsToZero()
         {
-            var s = Eval(120_400, accrued: 2, kill: 9_400, defeated: false);
-            Assert.AreEqual(s.Time + s.Stress + s.Kill, s.Total);
-        }
-
-        // ── 종료 3종 ───────────────────────────────────────────────────────
-        // 패배: 시간 0(명시 분기) + 스트레스 0(누적 == 한계라 자동) → 킬점수만 남는다.
-        [Test]
-        public void Defeat_KeepsOnlyKillScore()
-        {
-            var s = Eval(remainingMs: 120_000, accrued: Limit, kill: 5_600, defeated: true);
-            Assert.AreEqual(0, s.Time, "패배는 남은 시간이 있어도 시간점수 0");
-            Assert.AreEqual(0, s.Stress);
-            Assert.AreEqual(5_600, s.Kill);
-            Assert.AreEqual(5_600, s.Total);
-        }
-
-        // 빨리 무너지든 늦게 무너지든 패배 점수는 킬점수뿐 — 현행 산식의 부호 역전
-        // (오래 끌수록 점수가 오르던 문제) 재발 방지.
-        [Test]
-        public void Defeat_TimeScoreIsZeroRegardlessOfWhenItHappened()
-        {
-            var early = Eval(150_000, accrued: Limit, kill: 3_000, defeated: true);
-            var late = Eval(5_000, accrued: Limit, kill: 3_000, defeated: true);
-            Assert.AreEqual(early.Total, late.Total);
-        }
-
-        // 버팀 승리(victory_timeout): 남은 시간이 0 이라 분기 없이 시간점수가 0 이 된다.
-        [Test]
-        public void TimeoutSurvival_ZeroTimeScore_ButStressAndKillStand()
-        {
-            var s = Eval(remainingMs: 0, accrued: 3, kill: 7_200, defeated: false);
-            Assert.AreEqual(0, s.Time);
-            Assert.AreEqual((Limit - 3) * PerStress, s.Stress);
-            Assert.AreEqual(7_200, s.Kill);
-        }
-
-        // ── 스트레스 불변식 ────────────────────────────────────────────────
-        // 비패배 종료면 누적 ≤ 한계 − 1 이 보장되므로 최소 1점분(900)이 남는다.
-        [Test]
-        public void Victory_AlwaysKeepsAtLeastOneStressPoint()
-        {
-            var s = Eval(10_000, accrued: Limit - 1, kill: 0, defeated: false);
-            Assert.AreEqual(PerStress, s.Stress);
-        }
-
-        // 몽마의 계약을 9회 재부착한 뒤 무유출 승리 — 지불이 스트레스축에서 그대로 깎인다.
-        [Test]
-        public void PactPayments_CountAsStressAccrual()
-        {
-            var noPact = Eval(10_000, accrued: 0, kill: 0, defeated: false);
-            var ninePacts = Eval(10_000, accrued: 9, kill: 0, defeated: false);
-            Assert.AreEqual(9_000, noPact.Stress);
-            Assert.AreEqual(900, ninePacts.Stress);
-            Assert.AreEqual(8_100, noPact.Stress - ninePacts.Stress, "계약 9회 = 8,100점 소각");
+            Assert.AreEqual(0, ScoreMath.Evaluate(-5).Total);
         }
 
         [Test]
-        public void StressScore_IsLinear()
+        public void ZeroKills_IsZero()
         {
-            for (int accrued = 0; accrued <= Limit; accrued++)
-            {
-                var s = Eval(0, accrued, kill: 0, defeated: false);
-                Assert.AreEqual((Limit - accrued) * PerStress, s.Stress, $"누적 {accrued}");
-            }
+            Assert.AreEqual(0, ScoreMath.Evaluate(0).Total);
         }
 
-        // ── 절삭 ───────────────────────────────────────────────────────────
+        // ── 안정도 permille ─────────────────────────────────────────────────────
+
         [Test]
-        public void SubTenMilliseconds_TruncateToZero()
+        public void StabilityPermille_FullIsNineNineNine_EmptyIsZero()
         {
-            Assert.AreEqual(0, Eval(9, accrued: 0, kill: 0, defeated: false).Time);
-            Assert.AreEqual(1, Eval(10, accrued: 0, kill: 0, defeated: false).Time);
+            Assert.AreEqual(999, ScoreMath.StabilityPermille(20, 20));
+            Assert.AreEqual(0, ScoreMath.StabilityPermille(0, 20));
         }
 
         [Test]
-        public void TimeScore_MatchesDirectFormula()
+        public void StabilityPermille_MidpointRounds()
         {
-            // 초 경계를 넘는 값에서도 ms × 초당점수 / 1000 과 결과가 같아야 한다
-            // (구현이 오버플로 회피를 위해 초/나머지로 쪼개 계산한다).
-            foreach (int ms in new[] { 1, 999, 1_000, 1_001, 12_345, 124_000, 179_999 })
-            {
-                var s = Eval(ms, accrued: 0, kill: 0, defeated: false);
-                Assert.AreEqual(ms * PerSec / 1000, s.Time, $"{ms}ms");
-            }
-        }
-
-        // ── 방어 (정상 경로에서는 도달 불가) ────────────────────────────────
-        [Test]
-        public void NegativeRemainingTime_ClampsToZero()
-        {
-            Assert.AreEqual(0, Eval(-5_000, accrued: 0, kill: 0, defeated: false).Time);
-        }
-
-        // defeatGoalReachedCount ≤ 0 인 덱 오저작 — 음수 총점이 나오면 안 된다.
-        [Test]
-        public void MisauthoredZeroLimit_DoesNotProduceNegativeScore()
-        {
-            var s = Eval(0, accrued: 1, kill: 0, defeated: false, limit: 0);
-            Assert.AreEqual(0, s.Stress);
-            Assert.AreEqual(0, s.Total);
+            // 12/20 = 60% → 599.4 → 599
+            Assert.AreEqual(599, ScoreMath.StabilityPermille(12, 20));
+            // 10/20 = 50% → 499.5 → 500 (반올림)
+            Assert.AreEqual(500, ScoreMath.StabilityPermille(10, 20));
         }
 
         [Test]
-        public void NegativeKillTotal_ClampsToZero()
+        public void StabilityPermille_DegenerateInputs_AreZero()
         {
-            Assert.AreEqual(0, Eval(0, accrued: Limit, kill: -1, defeated: false).Kill);
+            Assert.AreEqual(0, ScoreMath.StabilityPermille(5, 0), "max 0 = 정보 없음");
+            Assert.AreEqual(0, ScoreMath.StabilityPermille(-3, 20));
         }
 
-        // 한계와 점당점수는 곱해서 예산이 된다 — 짝으로 움직여야 한다는 계약의 고정.
         [Test]
-        public void LimitAndPerPoint_MultiplyIntoTheSameBudget()
+        public void StabilityPermille_NeverExceedsBucket()
         {
-            var tight = ScoreMath.Evaluate(0, 0, 10, 0, false, PerSec, 900);
-            var loose = ScoreMath.Evaluate(0, 0, 30, 0, false, PerSec, 300);
-            Assert.AreEqual(tight.Stress, loose.Stress, "한계 10×900 == 한계 30×300");
+            // 999 를 넘으면 killScore 자리로 넘쳐 점수가 1 올라간다 — 절대 금지.
+            for (int max = 1; max <= 64; max++)
+                for (int v = 0; v <= max; v++)
+                    Assert.LessOrEqual(ScoreMath.StabilityPermille(v, max), 999, $"{v}/{max}");
+        }
+
+        // ── 인코딩 왕복 ─────────────────────────────────────────────────────────
+
+        [Test]
+        public void Encode_RoundTripsKillScore()
+        {
+            int submitted = ScoreMath.EncodeSubmission(47, 12, 20);
+            Assert.AreEqual(ScoreMath.SubmissionBase + 47 * 1000 + 599, submitted);
+            Assert.AreEqual(47, ScoreMath.DecodeKillScore(submitted));
+            Assert.AreEqual(599, ScoreMath.DecodeStabilityPermille(submitted));
+            Assert.AreEqual(47, ScoreMath.DisplayScore(submitted));
+        }
+
+        [Test]
+        public void Encode_TieBreak_HigherStabilityWinsAtEqualKills()
+        {
+            int a = ScoreMath.EncodeSubmission(47, 18, 20);
+            int b = ScoreMath.EncodeSubmission(47, 4, 20);
+            Assert.Greater(a, b, "같은 처치 점수면 남은 안정도가 높은 쪽이 위로 정렬돼야 한다");
+            Assert.AreEqual(ScoreMath.DecodeKillScore(a), ScoreMath.DecodeKillScore(b),
+                "tie-break 는 표시 점수를 바꾸지 않는다");
+        }
+
+        [Test]
+        public void Encode_MoreKillsAlwaysBeatsMoreStability()
+        {
+            // 안정도는 1000 미만 버킷이라 처치 1점 차이를 절대 뒤집지 못한다.
+            int fewerKillsFullStability = ScoreMath.EncodeSubmission(47, 20, 20);
+            int moreKillsZeroStability = ScoreMath.EncodeSubmission(48, 0, 20);
+            Assert.Greater(moreKillsZeroStability, fewerKillsFullStability);
+        }
+
+        [Test]
+        public void Encode_ZeroEverything_IsStillEncoded()
+        {
+            int submitted = ScoreMath.EncodeSubmission(0, 0, 20);
+            Assert.AreEqual(ScoreMath.SubmissionBase, submitted);
+            Assert.IsTrue(ScoreMath.IsEncodedSubmission(submitted));
+            Assert.AreEqual(0, ScoreMath.DecodeKillScore(submitted));
+        }
+
+        [Test]
+        public void Encode_NegativeKillScore_ClampsToZero()
+        {
+            Assert.AreEqual(0, ScoreMath.DecodeKillScore(ScoreMath.EncodeSubmission(-9, 20, 20)));
+        }
+
+        [Test]
+        public void Encode_AtMaxEncodable_DoesNotOverflow()
+        {
+            int submitted = ScoreMath.EncodeSubmission(ScoreMath.MaxEncodableKillScore, 20, 20);
+            Assert.Greater(submitted, 0, "int 오버플로로 음수가 되면 서버 정렬이 뒤집힌다");
+            Assert.AreEqual(ScoreMath.MaxEncodableKillScore, ScoreMath.DecodeKillScore(submitted));
+        }
+
+        [Test]
+        public void Encode_AboveMaxEncodable_SaturatesInsteadOfOverflowing()
+        {
+            int submitted = ScoreMath.EncodeSubmission(int.MaxValue, 20, 20);
+            Assert.Greater(submitted, 0);
+            Assert.AreEqual(ScoreMath.MaxEncodableKillScore, ScoreMath.DecodeKillScore(submitted));
+        }
+
+        // ── 구 포맷 판별 ────────────────────────────────────────────────────────
+
+        [Test]
+        public void LegacyScore_IsNotDecoded()
+        {
+            // 구 산식 총점(시간+스트레스+킬)은 현실적으로 1~3만이다. 이걸 /1000 하면
+            // 10~30 이라는 그럴듯한 가짜 점수가 나와 신규 기록과 구분이 불가능하다.
+            const int legacyTotal = 26_000;
+            Assert.IsFalse(ScoreMath.IsEncodedSubmission(legacyTotal));
+            Assert.AreEqual(-1, ScoreMath.DecodeKillScore(legacyTotal));
+            Assert.AreEqual(-1, ScoreMath.DecodeStabilityPermille(legacyTotal));
+            Assert.AreEqual(legacyTotal, ScoreMath.DisplayScore(legacyTotal),
+                "구 기록은 원값 그대로 보여준다");
+        }
+
+        [Test]
+        public void LegacyMaxTotal_IsBelowSubmissionBase()
+        {
+            // 구 산식의 산술적 최악값(18,000,000 = 180초 × 100 × 1000ms 환산 상한)조차
+            // 오프셋 미만이어야 판별이 성립한다.
+            Assert.Less(18_000_000, ScoreMath.SubmissionBase);
         }
     }
 }

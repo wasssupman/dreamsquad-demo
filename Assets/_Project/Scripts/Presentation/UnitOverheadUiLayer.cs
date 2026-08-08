@@ -18,6 +18,9 @@ namespace Wassup.Presentation
         [SerializeField] private int sortingOrder = 3;
 
         private readonly Dictionary<Entity, UnitOverheadView> _active = new();
+        // three-minute-survival unit 1 — 골 안정도 바(골 인덱스 키). 엔티티가 없는 뷰라
+        // _active 와 분리한다 — EndFrame 의 _seen 소거에 걸리면 매 프레임 사라진다.
+        private readonly Dictionary<int, UnitOverheadView> _stabilityViews = new();
         private readonly Queue<UnitOverheadView> _idle = new();
         private readonly HashSet<Entity> _seen = new();
         private readonly List<Entity> _toHide = new();
@@ -66,7 +69,37 @@ namespace Wassup.Presentation
             float scale = Mathf.Max(0.001f, _canvas.scaleFactor);
             float tileRef = tileScreenWidth / scale;
             _cardsByHost.TryGetValue(entity, out var cards);
-            view.Show(local, tileRef, defender, healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons);
+            view.Show(local, tileRef,
+                defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy,
+                healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons);
+        }
+
+        // three-minute-survival unit 1 — 골 안정도 바. 유닛 풀(_active/_seen/EndFrame)과 섞지
+        // 않는다: 안정도는 ECS 엔티티가 아니라(SetUnit 은 Entity.Null 을 거절한다) 골 셀당
+        // 하나이고, 전투 중 상시 존재하며 페이즈 경계에서만 사라진다.
+        // key = 골 인덱스. 골이 여럿이어도 값은 공유 1개라 같은 텍스트가 밀살 표시된다.
+        public void SetStability(int key, float ratio, string valueText, Vector2 screenAnchor, float tileScreenWidth)
+        {
+            if (!EnsureCanvas()
+                || float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
+            if (!_stabilityViews.TryGetValue(key, out var view) || view == null)
+            {
+                view = GetView();
+                _stabilityViews[key] = view;
+            }
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRect, screenAnchor, null, out var local);
+            float scale = Mathf.Max(0.001f, _canvas.scaleFactor);
+            view.Show(local, tileScreenWidth / scale, OverheadBarSkin.GoalStability,
+                ratio, null, style, _sprites, resetHealth: false, shieldRatio: 0f,
+                stacks: null, stackIcons: null, valueLabel: valueText);
+        }
+
+        public void HideStability()
+        {
+            if (_stabilityViews.Count == 0) return;
+            foreach (var kv in _stabilityViews)
+                if (kv.Value != null) { kv.Value.Hide(); _idle.Enqueue(kv.Value); }
+            _stabilityViews.Clear();
         }
 
         public void EndFrame()
@@ -91,6 +124,9 @@ namespace Wassup.Presentation
             foreach (var kv in _active)
                 if (kv.Value != null) Destroy(kv.Value.gameObject);
             _active.Clear();
+            foreach (var kv in _stabilityViews)
+                if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _stabilityViews.Clear();
             while (_idle.Count > 0)
             {
                 var v = _idle.Dequeue();

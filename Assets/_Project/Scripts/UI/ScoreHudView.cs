@@ -75,12 +75,16 @@ namespace Wassup.UI
         [SerializeField] private float kickDuration = 0.3f;
         // score-tally-sequence unit 0 — 가장자리 플래시는 **순간 화력** 기준이다.
         // 원래는 누계 N 점마다(milestoneInterval) 터졌는데, 킬점수 축척으로 바뀐 뒤
-        // 간격을 키우니 보스에서만 터져 거의 안 보였다. 잡몹 3기(300)나 보스 1기(2,000)
-        // 처럼 "몰아친 순간"에 터지는 게 타격감에 맞다.
+        // 간격을 키우니 보스에서만 터져 거의 안 보였다. "몰아친 순간"에 터지는 게 타격감에 맞다.
+        //
+        // three-minute-survival unit 3 — **점수 단위가 100 → 1 로 바뀌어 임계를 다시 잡았다**
+        // (일반 1 / 엘리트 3 / 보스 10). 옛 300 을 그대로 두면 한 판 총점이 수십~수백인데
+        // 1초 창 합계가 300 을 넘을 일이 없어 플래시가 영원히 안 터진다.
+        // 잡몹 4기 동시 처치(4) 또는 보스 1기(10) 정도가 "몰아친 순간"이다.
         [Tooltip("이 시간 안에 번 점수를 합산한다(초)")]
         [SerializeField] private float burstWindowSec = 1f;
-        [Tooltip("윈도우 합계가 이 값 이상이면 가장자리 플래시. 잡몹 100 / 보스 2,000 기준.")]
-        [SerializeField] private int burstScoreThreshold = 300;
+        [Tooltip("윈도우 합계가 이 값 이상이면 가장자리 플래시. 일반 1 / 엘리트 3 / 보스 10 기준.")]
+        [SerializeField] private int burstScoreThreshold = 4;
         [Tooltip("풀스크린 비네트 스프라이트(가장자리 밝음). Null → 플래시 생략.")]
         [SerializeField] private Sprite vignetteSprite;
         [SerializeField] private Color milestoneColor = new Color(1f, 0.8f, 0.35f, 1f);

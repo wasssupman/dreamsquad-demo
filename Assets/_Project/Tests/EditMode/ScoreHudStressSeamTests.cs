@@ -7,9 +7,13 @@ using Wassup.UI;
 namespace Wassup.Tests.EditMode
 {
     // first-session-tutorial unit 19 — 전투 HUD 안내가 읽는 seam 을 고정한다.
-    // 이 두 값이 뒤집히면 실패가 조용하다: ShowsStressLimit 이 참으로 새면 엔드리스에서
-    // "스트레스가 N이 되면 패배합니다" 라는 거짓 문구가 나가고, 거짓으로 새면 메인 판에서
-    // 패배 조건 안내가 통째로 사라진다. 어느 쪽도 콘솔에 흔적을 남기지 않는다.
+    // 이 두 값이 뒤집히면 실패가 조용하다: ShowsStressLimit 이 참으로 새면
+    // "스트레스가 N이 되면 패배합니다" 라는 거짓 문구가 나간다. 어느 쪽도 콘솔에 흔적을
+    // 남기지 않는다.
+    //
+    // three-minute-survival unit 0 — 이제 **전 모드**가 showLimit:false 다(패배는 골 안정도가
+    // 소유하므로 스트레스 분모는 어디서도 참이 아니다). 뷰 seam 은 양방향을 그대로 지원해야
+    // 하므로 아래 테스트는 불변이다 — 튜토리얼의 패배 문구 생략이 이 가드에 걸려 있다.
     public class ScoreHudStressSeamTests
     {
         private GameObject _go;

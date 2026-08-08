@@ -109,4 +109,5 @@ MonoBehaviour:
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 2
   nightmareMechanics: []
-  killScore: 100
+  killScore: 1
+  stabilityDamage: 1
