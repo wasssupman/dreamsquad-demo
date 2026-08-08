@@ -124,5 +124,45 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(cell, back, $"round-trip failed for cell ({x},{z})");
             }
         }
+
+        // continuous-agent-movement unit 4 후속 회귀 — 경로 예고 라인이 첫 대각에서 끊긴 사고.
+        // 8-이웃 flow 의 대각 성분은 ±0.7071 이라 버림 캐스트로는 0 이 되고, 필드를 따라가는
+        // 루프가 같은 셀에 갇힌다. 이 변환의 단일 정의가 그 사고를 막는다.
+        [Test]
+        public void FlowStep_DiagonalUnitVector_YieldsDiagonalStep()
+        {
+            float inv = 1f / Unity.Mathematics.math.sqrt(2f);   // 0.7071
+            Assert.AreEqual(new int2(1, 1),   GridMath.FlowStep(new float2( inv,  inv)));
+            Assert.AreEqual(new int2(1, -1),  GridMath.FlowStep(new float2( inv, -inv)));
+            Assert.AreEqual(new int2(-1, 1),  GridMath.FlowStep(new float2(-inv,  inv)));
+            Assert.AreEqual(new int2(-1, -1), GridMath.FlowStep(new float2(-inv, -inv)));
+        }
+
+        [Test]
+        public void FlowStep_TruncationWouldHaveFailed()
+        {
+            // 사고의 실체를 못박는다: 버림이면 0 이 나온다.
+            float inv = 1f / Unity.Mathematics.math.sqrt(2f);
+            Assert.AreEqual(0, (int)inv, "버림 캐스트는 대각을 0 으로 만든다 — 이래서 끊겼다");
+            Assert.AreNotEqual(0, GridMath.FlowStep(new float2(inv, inv)).x);
+        }
+
+        [Test]
+        public void FlowStep_OrthogonalUnitVector_Unchanged()
+        {
+            Assert.AreEqual(new int2(1, 0),  GridMath.FlowStep(new float2(1f, 0f)));
+            Assert.AreEqual(new int2(-1, 0), GridMath.FlowStep(new float2(-1f, 0f)));
+            Assert.AreEqual(new int2(0, 1),  GridMath.FlowStep(new float2(0f, 1f)));
+            Assert.AreEqual(new int2(0, -1), GridMath.FlowStep(new float2(0f, -1f)));
+        }
+
+        [Test]
+        public void FlowStep_ZeroFlow_YieldsZeroStep()
+        {
+            // 호출자는 이걸 루프 종료 신호로 쓴다(골 도착·고립·미도달).
+            Assert.AreEqual(int2.zero, GridMath.FlowStep(float2.zero));
+            Assert.AreEqual(int2.zero, GridMath.FlowStep(new float2(1e-4f, -1e-4f)));
+        }
+
     }
 }

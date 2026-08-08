@@ -1877,17 +1877,49 @@ namespace Wassup.Bridge
                 return false;
 
             var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField);
+
+            // continuous-agent-movement — 예고 라인은 **실제 이동선과 같아야 한다**.
+            // MovementSystem 이 매 프레임 하는 것과 같은 절차를 그대로 밟는다: 전방 가시점으로
+            // 직행(평활화), 없으면 필드 한 스텝. 라인만 필드 계단을 그리면 유닛이 라인을
+            // 벗어나 걷는 것처럼 보인다(사용자 지적 2026-08-08).
+            var obstacles = default(Wassup.Battle.Effects.ObstacleSingleton);
+            bool hasObstacles = _blockedCells.IsCreated;
+            if (hasObstacles) obstacles = new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells };
+            var nav = Wassup.Battle.Movement.MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacles);
+
+            float radius = agentRadiusTiles * tileSize;
             int2 cell = _generatedMap.spawns[laneIndex];
-            int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어(BFS 필드라 실제론 불가)
-            for (int step = 0; step < guard; step++)
+            float3 pos = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
+                cell, field.tileSize, spawnHeight, origin: field.origin);
+            outPath.Add(new Vector3(pos.x, pos.y, pos.z));
+
+            int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어
+            for (int i = 0; i < guard; i++)
             {
-                outPath.Add(GridToWorldCenter(new Vector2Int(cell.x, cell.y), spawnHeight));
+                cell = Wassup.Battle.Movement.GridMath.WorldToCell(
+                    pos, field.tileSize, field.gridSize, origin: field.origin);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
                 if (idx < 0 || idx >= field.flow.Length) break;
-                if (field.dist[idx] == 0) break; // goal 도달
-                var f = field.flow[idx];
-                if (f.x == 0f && f.y == 0f) break; // 빈 필드(미도달 셀) 방어
-                cell = new int2(cell.x + (int)f.x, cell.y + (int)f.y); // flow 는 4-이웃 단위벡터
+                if (field.dist[idx] == 0) break; // 골 도달
+
+                // 1순위: 평활화 조준점(유닛이 실제로 향하는 지점).
+                if (Wassup.Battle.Movement.PathSmoothing.TryFurthestVisible(
+                        pos, in nav, in field.flow, radius,
+                        Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 aim)
+                    && math.distancesq(aim, pos) > 1e-6f)
+                {
+                    pos = aim;
+                }
+                else
+                {
+                    // 폴백: 필드 한 스텝. flow 는 8-이웃이라 대각 성분이 ±0.7071 이므로
+                    // 버림 캐스트를 쓰면 같은 셀에 갇힌다 — GridMath.FlowStep 단일 정의를 쓴다.
+                    int2 flowStep = Wassup.Battle.Movement.GridMath.FlowStep(field.flow[idx]);
+                    if (flowStep.x == 0 && flowStep.y == 0) break; // 골 도착·고립·미도달
+                    pos = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
+                        cell + flowStep, field.tileSize, spawnHeight, origin: field.origin);
+                }
+                outPath.Add(new Vector3(pos.x, pos.y, pos.z));
             }
             return outPath.Count >= 2;
         }

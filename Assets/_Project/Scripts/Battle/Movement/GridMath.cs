@@ -45,5 +45,21 @@ namespace Wassup.Battle.Movement
         // half-away-from-zero rounding — avoids banker's rounding from math.round.
         public static int RangeToTiles(float r)
             => (int)(r + 0.5f);
+
+        // continuous-agent-movement unit 4 후속 — flow 단위벡터 → 인접 셀 스텝.
+        //
+        // ⚠ **버림 캐스트를 쓰지 말 것.** 4-이웃 시절엔 성분이 정확히 ±1/0 이라 `(int)f.x` 가
+        // 맞았지만, 8-이웃이 되면서 대각 성분이 ±0.7071 이 됐다. 버리면 0 이 되어 스텝이
+        // 사라지고, 필드를 따라가는 루프가 같은 셀에 갇힌다(경로 예고 라인이 첫 대각에서
+        // 끊긴 실제 사고 — 2026-08-08).
+        //
+        // 반환 zero = 스텝 없음(골 도착·고립·미도달). 호출자는 루프를 끝내야 한다.
+        public static int2 FlowStep(float2 flowDir)
+        {
+            if (math.lengthsq(flowDir) < 1e-6f) return int2.zero;
+            return new int2(
+                (int)math.round(flowDir.x),
+                (int)math.round(flowDir.y));
+        }
     }
 }

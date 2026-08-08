@@ -147,6 +147,58 @@ namespace Wassup.Tests.EditMode
                 "고립 셀에선 후보가 없다 — 호출자는 기존 flow 를 쓴다");
         }
 
+        // ── 교착 방지 (2026-08-08 사용자 제보 회귀) ─────────────────────────────
+
+        [Test]
+        public void OffCenterAgent_GetsLateralAim_WhenBodyDoesNotFitFieldDirection()
+        {
+            // 사고 재현: 장애물 모서리 옆 셀에서 필드는 "위로"라고 하는데, 유닛이 셀 안에서
+            // 장애물 쪽으로 치우쳐 있어 몸이 이웃 열을 침범한다. 방향 벡터에 비켜설 성분이
+            // 없으면 영구 교착이 나고, 뒤에서 다른 적이 밀어야 빠져나온다.
+            //
+            //   y=2  . # .      (1,2) 벽
+            //   y=1  . # .      (1,1) 벽
+            //   y=0  . . .
+            // 셀 (0,1) 의 유닛이 오른쪽으로 치우쳐 있으면 위로 못 간다.
+            var grid = new int2(4, 4);
+            var walk = OpenField(grid);
+            walk[1 * 4 + 1] = 0;
+            walk[2 * 4 + 1] = 0;
+            var flow = BuildFlow(walk, grid, new int2(0, 3));   // 골 = 좌상단
+            var nav = Nav(walk, grid);
+
+            var from = new float3(0.45f, 0f, 0.5f);   // 셀 (0,1) 안에서 벽 쪽으로 치우침
+
+            Assert.IsTrue(PathSmoothing.TryFurthestVisible(
+                from, nav, flow, R, PathSmoothing.DefaultLookahead, out var target),
+                "조준점이 없으면 호출자가 필드 방향만 쓰게 되어 교착한다");
+
+            Assert.Less(target.x, from.x,
+                "조준점에 **왼쪽으로 비켜설 성분**이 있어야 몸이 통로에 들어간다");
+        }
+
+        [Test]
+        public void FirstCandidate_IsAcceptedEvenWhenNotVisible()
+        {
+            // 위 성질의 근거를 직접 못박는다: 첫 후보(= 바로 다음 셀 중심)는 가시성과
+            // 무관하게 채택한다. 그 자리는 정의상 몸이 들어가는 위치이기 때문이다.
+            // 되돌리면 치우친 유닛이 다시 갇힌다.
+            var grid = new int2(4, 4);
+            var walk = OpenField(grid);
+            walk[1 * 4 + 1] = 0;
+            walk[2 * 4 + 1] = 0;
+            var flow = BuildFlow(walk, grid, new int2(0, 3));
+            var nav = Nav(walk, grid);
+
+            var from = new float3(0.45f, 0f, 0.5f);
+            Assert.IsTrue(PathSmoothing.TryFurthestVisible(
+                from, nav, flow, R, PathSmoothing.DefaultLookahead, out var target));
+
+            // 채택된 첫 후보는 셀 중심이므로 좌표가 정수여야 한다.
+            Assert.AreEqual(math.round(target.x), target.x, 1e-4f, "셀 중심 조준");
+            Assert.AreEqual(math.round(target.z), target.z, 1e-4f, "셀 중심 조준");
+        }
+
         [Test]
         public void UncreatedFlow_ReturnsFalse()
         {

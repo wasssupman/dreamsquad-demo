@@ -15,9 +15,15 @@ namespace Wassup.Battle.Movement
     // 순수 함수. NavGrid 와 plain 값만 받는다.
     public static class PathSmoothing
     {
-        // 전방 탐색 셀 수. 열린 공간에서 직선이 드러날 만큼 길고, 매 프레임 에이전트마다
-        // 도는 비용이 무시될 만큼 짧아야 한다.
-        public const int DefaultLookahead = 8;
+        // 전방 탐색 셀 수.
+        //
+        // 8 은 짧았다 — 실측(2026-08-08, 20x14 열린 격자 · 기울기 17:8)에서 총회전 32° 가
+        // 남고 주행거리가 직선 대비 +1.4% 였다. 24 면 총회전 0°, 주행거리가 직선거리와 일치한다.
+        // 그 이상(64)은 결과가 같다 — 가림이 없으면 어차피 골 근처에서 멈추기 때문이다.
+        //
+        // 비용: 가림을 만나면 즉시 끊기므로 복도에선 1~2 회에 끝난다. 열린 구간에서만
+        // 길어지는데, 그때가 정확히 직선이 필요한 상황이다.
+        public const int DefaultLookahead = 24;
 
         // 현재 위치에서 필드를 따라 K 셀 앞까지 훑어, 가시선이 뚫린 **가장 먼** 지점을 준다.
         // 반환 false = 쓸 만한 후보 없음(호출자는 기존 flow 방향을 그대로 쓴다).
@@ -41,16 +47,23 @@ namespace Wassup.Battle.Movement
             {
                 if (!nav.InBounds(cell)) break;
                 float2 dir = flow[GridMath.CellIndex(cell, nav.gridSize)];
-                if (math.lengthsq(dir) < 1e-6f) break;   // 골 도착 또는 고립
-
-                var next = new int2(
-                    cell.x + (int)math.round(dir.x),
-                    cell.y + (int)math.round(dir.y));
-                if (next.Equals(cell)) break;
-                cell = next;
+                int2 step = GridMath.FlowStep(dir);      // 대각 성분 반올림 — 단일 정의
+                if (step.x == 0 && step.y == 0) break;   // 골 도착 또는 고립
+                cell += step;
 
                 float3 candidate = GridMath.CellToWorldCenter(cell, nav.tileSize, from.y, origin: nav.origin);
-                if (!IsVisible(from, candidate, radius, in nav)) break;   // 막히면 그 앞까지가 한계
+
+                // ⚠ 첫 후보(= 바로 다음 셀의 중심)는 **가시성과 무관하게 채택한다.**
+                //
+                // 필드는 셀 중심 기준의 방향을 준다. 유닛이 셀 안에서 한쪽으로 치우쳐 있으면
+                // 그 방향으로는 몸이 안 들어갈 수 있는데, 방향 벡터에는 비켜설 성분이 없어
+                // 영구 교착이 난다(장애물 모서리에 끼어 뒤에서 밀어야 빠지던 사고 —
+                // 2026-08-08 사용자 제보. 셀 (8,7) 에서 flow=(0,1), 몸이 이웃 열을 침범).
+                //
+                // 다음 셀 중심은 **정의상 몸이 들어가는 자리**다(walkable 셀 + r < 타일/2).
+                // 거기를 조준하면 방향에 측면 성분이 생겨 유닛이 통로 쪽으로 비켜서고,
+                // 다음 프레임에 통과한다. 되돌리지 말 것 — 이게 교착을 막는 지점이다.
+                if (i > 0 && !IsVisible(from, candidate, radius, in nav)) break;
 
                 target = candidate;
                 found = true;

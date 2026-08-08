@@ -214,7 +214,6 @@ namespace Wassup.Battle.Movement
                 //    아니면 goal field. "Marching = 전진, 목적지는 dir 소스가 결정" 계약에
                 //    세 번째 소스로 합류한다(AiState 에 값을 추가하지 않는다).
                 float2 dir;
-                bool zeroFlowRecovery = false;
                 if (patrolling)
                 {
                     dir = patrolStepLookup[entity].dir;
@@ -235,7 +234,6 @@ namespace Wassup.Battle.Movement
                     dir = hunting ? huntField.flow[idx] : field.flow[idx];
                     if (math.lengthsq(dir) < 1e-6f)
                     {
-                        zeroFlowRecovery = true;
                         // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                         // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
                         // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
@@ -295,12 +293,19 @@ namespace Wassup.Battle.Movement
                 float3 flowStep = locked ? float3.zero : new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
                 float3 desired = current + flowStep + impulseDisplacement;
 
-                // enemy-tile-movement-integrity unit 1 — 코너 엣지-허깅 측면 복원(target=0 + dead-band).
-                // zero-flow recovery 분기는 스킵(이미 교정 이동 중). 임펄스 측면성분은 이 프레임 보존
-                // (recenter 는 current 기준 standing 오프셋만 당김 → 넉백은 이후 프레임에 점진 복귀).
-                if (!zeroFlowRecovery && !locked)
-                    desired += LateralRecenter.Compute(current, cell, stepDir,
-                        follow.ValueRO.speed * speedMul, dt, field.tileSize, field.origin);
+                // [은퇴] enemy-tile-movement-integrity unit 1 의 LateralRecenter 를 여기서 걷어냈다.
+                //
+                // 그 장치의 목적은 주석 그대로 **"코너 엣지-허깅 복원"** — 진행방향 수직으로
+                // 현재 셀의 중심선 쪽으로 당기는 것이다. 4-이웃 레인 모델에선 맞았지만,
+                // continuous-agent-movement 는 **코너에 붙어 도는 것이 목표**라 정면으로 충돌한다.
+                //
+                // 실측(2026-08-08, 20x14 열린 격자 · 기울기 17:8): 대각 주행 중 현재 셀이 계속
+                // 바뀌면서 당김 방향이 뒤집혀 톱니가 난다 — 좌우 꺾임 19회 · 총회전 624° ·
+                // 단일 프레임 최대 43.9° 급회전. 제거하면 0회 / 32°, lookahead 를 늘리면 0°.
+                // (사용자 제보 "대각선 직행 시 지그재그".)
+                //
+                // 스폰 측면 분산은 이제 recenter 가 되돌리지 않는다 — 유지되는 편이 낫고,
+                // 뭉침은 AgentSeparationSystem(unit 8)이 담당한다.
 
                 // aggro-tile-chase unit 3 — tornado pull 가산 (flow/impulse/recenter 와 합성).
                 desired += pullDisplacement;
