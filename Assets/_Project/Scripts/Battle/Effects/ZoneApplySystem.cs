@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Movement;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
@@ -32,11 +33,20 @@ namespace Wassup.Battle.Effects
             bool hasRuntimeEvents = SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents);
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
-            foreach (var (transform, entity) in
-                     SystemAPI.Query<RefRO<LocalTransform>>()
+            // summon-patrol-defender unit 0 — 진영 게이트. 이전엔 `PathFollowState` 보유만으로
+            // 존 효과를 걸었는데, 그건 "이동체 = 적"이라는 암묵 전제에 기댄 것이었다
+            // (object-pipeline-map Defender 행: "이동 없음(고정) — PathFollowState 미부여").
+            // 거점 수비 아군이 그 전제를 깨므로, 아군이 아군 장판에 오폭당하지 않도록
+            // 진영을 명시적으로 판정한다. 형태는 HazardCastSystem 의 targetMask 게이트와 같다.
+            // 존의 대상 진영은 오늘 적 하나뿐이라 HazardEffect 에 진영 축을 열지 않는다(제약 8) —
+            // 아군 대상 존(회복 장판 등)이 실제로 생기면 그때 데이터로 승격한다.
+            foreach (var (transform, faction, entity) in
+                     SystemAPI.Query<RefRO<LocalTransform>, RefRO<FactionTag>>()
                               .WithAll<PathFollowState>()
                               .WithEntityAccess())
             {
+                if (((int)faction.ValueRO.value & (int)Faction.Enemy) == 0) continue;
+
                 int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                 if (!hazardSingleton.cellToEffects.TryGetFirstValue(cell, out var effect, out var iterator)) continue;
 

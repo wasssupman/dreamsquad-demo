@@ -1,0 +1,156 @@
+using Unity.Collections;
+using Unity.Mathematics;
+using Wassup.Battle.Combat;   // AggroChaseMath — 목적지 디스크 + BFS 조합 재사용
+using Wassup.Battle.Movement; // GridMath · FlowRecovery
+
+namespace Wassup.Battle.Effects
+{
+    // summon-patrol-defender unit 1 — 거점 순찰 아군의 이동 방향 계산(순수, 아키텍처 무참조).
+    //
+    // **신규 이동 알고리즘을 만들지 않는다.** 박스 제약을 walkMask 마스킹으로 표현하면
+    // 목적지 BFS(FlowFieldBuilder) · 도달 불가 판정 · cardinal 하강(FlowRecovery.RecoveryDir)을
+    // 전부 재사용할 수 있다. 그리디 스텝은 금지다 — aggro-tile-chase 가 직선 greedy 를
+    // 벽 고착(좀비버그)으로 폐기했고, 대각 이웃은 미수리 결함("대각 코너 슬립 차단", 백로그)에
+    // 걸린다. 현행 이동이 cardinal 인 것은 의도다.
+    public static class PatrolAreaMath
+    {
+        public static bool IsInArea(int2 cell, int2 anchorCell, int tileRadius)
+            => math.abs(cell.x - anchorCell.x) <= tileRadius
+            && math.abs(cell.y - anchorCell.y) <= tileRadius;
+
+        // 구역 ∩ walk 마스크를 채운다.
+        //
+        // **버퍼를 먼저 0 으로 지운다.** 예전엔 "호출자가 0 초기화해 넘긴다"는 주석 계약이었는데,
+        // 그건 코드로 강제되지 않는다: 호출처가 버퍼를 재사용하도록 최적화하는 순간(그럴 유인이
+        // 실제로 있다 — 이웃한 fullMask/scratch 들은 이미 프레임당 1회로 hoist 돼 있다) 앞
+        // 엔티티의 구역 셀이 1 로 남아 **뒤 엔티티가 자기 구역 밖을 walkable 로 본다** =
+        // 순찰병이 거점을 벗어나 걸어나간다. 순찰병 2기 이상에서만 재현되는 추적 난이도 높은
+        // 버그라, 말로 된 계약 대신 함수가 스스로 보장한다. 그리드가 작아 비용은 무시 가능하다.
+        public static void FillAreaMask(
+            NativeArray<byte> walkMask, int2 gridSize,
+            int2 anchorCell, int tileRadius,
+            NativeArray<byte> outMask)
+        {
+            for (int i = 0; i < outMask.Length; i++) outMask[i] = 0;
+
+            int minX = math.max(0, anchorCell.x - tileRadius);
+            int maxX = math.min(gridSize.x - 1, anchorCell.x + tileRadius);
+            int minY = math.max(0, anchorCell.y - tileRadius);
+            int maxY = math.min(gridSize.y - 1, anchorCell.y + tileRadius);
+
+            for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                int idx = GridMath.CellIndex(new int2(x, y), gridSize);
+                outMask[idx] = walkMask[idx];
+            }
+        }
+
+        // 구역 안 **모든** 적의 사격 위치를 소스로 chase field 를 굽는다. 반환 = 소스 수(0 = 없음).
+        //
+        // 최근접 적 1체를 먼저 고르지 않는 이유: 그러면 벽으로 갈린 구역에서 **도달 불가한
+        // 최근접 적** 때문에 같은 구역의 도달 가능한 적을 통째로 포기한다(코앞의 적을 두고
+        // 뒷걸음질). N-소스 BFS 는 "갈 수 있는 사격 위치 중 가장 가까운 곳"을 자동으로 고르므로
+        // 그 실패가 구조적으로 사라지고, BFS 횟수도 1회로 같다.
+        // 결정론: 소스 집합은 enemyCells 순서와 무관한 셀 집합이고, 하강은 RecoveryDir 의
+        // 고정 cardinal 순서(+x,-x,+y,-y)를 따른다.
+        private static int BuildAreaChaseField(
+            NativeArray<byte> areaMask, int2 gridSize,
+            int2 anchorCell, int tileRadius, int attackTileRange,
+            NativeArray<int2> enemyCells,
+            NativeArray<float2> scratchFlow, NativeArray<int> scratchDist)
+        {
+            var inArea = new NativeList<int2>(math.max(1, enemyCells.Length), Allocator.Temp);
+            var sources = new NativeList<int2>(16, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < enemyCells.Length; i++)
+                    if (IsInArea(enemyCells[i], anchorCell, tileRadius))
+                        inArea.Add(enemyCells[i]);
+                if (inArea.Length == 0) return 0;
+
+                int count = FlowFieldBuilder.CollectDefenderSources(
+                    areaMask, gridSize, inArea.AsArray(), math.max(1, attackTileRange), sources);
+                if (count == 0)
+                {
+                    for (int i = 0; i < scratchDist.Length; i++) scratchDist[i] = int.MaxValue;
+                    return 0;
+                }
+                FlowFieldBuilder.BuildFromSources(areaMask, gridSize, sources.AsArray(), scratchFlow, scratchDist);
+                return count;
+            }
+            finally
+            {
+                inArea.Dispose();
+                sources.Dispose();
+            }
+        }
+
+        // 이번 틱의 자기주도 이동 방향. zero = 정지.
+        //
+        // areaMask  = 박스 ∩ walk (FillAreaMask 결과)
+        // fullMask = 박스 무시 walk — **외력으로 박스 밖에 밀려났을 때만** 쓴다.
+        //            포털/토네이도/임펄스는 faction 을 안 보므로 순찰병을 박스 밖으로 민다
+        //            (README 계약 6). areaMask 로는 박스 밖 셀 dist 가 int.MaxValue 라
+        //            하강이 zero 가 되어 영구 정지한다.
+        public static float2 StepDir(
+            NativeArray<byte> areaMask,
+            NativeArray<byte> fullMask,
+            int2 gridSize,
+            int2 anchorCell,
+            int tileRadius,
+            int2 selfCell,
+            int attackTileRange,
+            NativeArray<int2> enemyCells,
+            NativeArray<float2> scratchFlow,
+            NativeArray<int> scratchDist)
+        {
+            int selfIdx = GridMath.CellIndex(selfCell, gridSize);
+
+            // 박스 밖 = 외력에 밀려남. 마스크 없는 필드로 거점까지 복귀 경로를 잡는다.
+            if (!IsInArea(selfCell, anchorCell, tileRadius))
+                return DescendToAnchor(fullMask, gridSize, anchorCell, selfCell, scratchFlow, scratchDist);
+
+            // 구역 안 적 전원의 사격 위치를 소스로 BFS. 도달 = 발사 가능(같은 Chebyshev 메트릭).
+            int srcCount = BuildAreaChaseField(
+                areaMask, gridSize, anchorCell, tileRadius, attackTileRange,
+                enemyCells, scratchFlow, scratchDist);
+
+            // 소스 0(구역 안에 사격 위치 없음) 또는 도달 불가(벽으로 갈린 구역)면
+            // 적을 포기하고 거점으로 — 좀비 추격을 만들지 않는다.
+            if (srcCount > 0 && scratchDist[selfIdx] != int.MaxValue)
+                return FlowRecovery.RecoveryDir(selfCell, scratchDist, gridSize);
+
+            if (selfCell.Equals(anchorCell)) return float2.zero;
+            return DescendToAnchor(areaMask, gridSize, anchorCell, selfCell, scratchFlow, scratchDist);
+        }
+
+        // 거점 1셀을 소스로 BFS 후 하강. CollectDefenderSources 를 쓰지 않는 이유:
+        // 그쪽은 **중심 셀을 제외**한다(방어유닛 자기 셀 = Place = 벽 전제). 거점은
+        // walk 셀이고 순찰병이 실제로 서야 하는 칸이라 소스에서 빠지면 안 된다.
+        private static float2 DescendToAnchor(
+            NativeArray<byte> mask, int2 gridSize, int2 anchorCell, int2 selfCell,
+            NativeArray<float2> scratchFlow, NativeArray<int> scratchDist)
+        {
+            var sources = new NativeArray<int2>(1, Allocator.Temp);
+            try
+            {
+                sources[0] = anchorCell;
+                FlowFieldBuilder.BuildFromSources(mask, gridSize, sources, scratchFlow, scratchDist);
+                // `dist[self] == MaxValue` 가드를 두지 않는다. 그 값은 두 상황에서 나온다:
+                //  (1) 진짜 고립(walkable 인데 anchor 와 단절) — 4이웃도 전부 MaxValue 라
+                //      RecoveryDir 이 알아서 zero 를 돌려준다. 가드는 중복이다.
+                //  (2) **자기 셀이 마스크 0** — 차단형 해저드가 발밑에 깔린 경우. 여기서
+                //      가드를 두면 탈출 자체를 막아 순찰병이 장애물 안에 영구히 박힌다.
+                //      RecoveryDir 은 best=MaxValue 로 시작하므로 유한한 이웃 아무 쪽으로나
+                //      빠져나간다 — 어그로 추격 경로가 가드 없이 RecoveryDir 을 직접 부르는
+                //      것과 같은 이유다(MovementSystem 의 Chasing 분기).
+                return FlowRecovery.RecoveryDir(selfCell, scratchDist, gridSize);
+            }
+            finally
+            {
+                sources.Dispose();
+            }
+        }
+    }
+}

@@ -213,7 +213,9 @@ namespace Wassup.Data
         public string SpineIdleAnimation => idleAnimation;
         // enemy-walk-anim-speed unit 4 — 디펜더는 타일 고정(이동 없음) → 걷기 애니 불요.
         // 항상 idle 단일 루프(현행). 빈 문자열 = 스위칭 비활성.
-        public string SpineWalkAnimation => "";
+        // summon-patrol-defender unit 5 — 단 거점 수비 아군(Patrol)은 이동한다. 그 유닛만
+        // walkAnimation 을 채운다. 기존 에셋은 null/"" 이라 현행 동작 그대로다(무회귀).
+        public string SpineWalkAnimation => walkAnimation;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
@@ -245,6 +247,15 @@ namespace Wassup.Data
         // 끝까지 방출하면 칼을 되돌리는 자국이 남는다(0.267/0.867 ≈ 0.31).
         // 애니마다 다르므로 상수로 박지 않는다.
         [Range(0.05f, 1f)] public float weaponTrailEndNormalized = 0.31f;
+
+        // summon-patrol-defender unit 2 — 거점 수비 아군(Patrol)의 이동 속도.
+        // 일반 방어유닛은 타일 고정이라 PathFollowState 자체가 안 붙어서 이 값이 읽히지
+        // 않는다. 직렬화 순서를 흔들지 않게 맨 뒤에 덧붙인다(기존 에셋은 초기값 유지).
+        [Header("Patrol")]
+        public float moveSpeed = 1.5f;
+        // 이동하는 유닛만 채운다. 빈 값 = 단일 idle 루프(기존 방어유닛 동작, 무회귀).
+        // 채우면 enemy-walk-anim-speed 의 발 미끄러짐 보정이 로코모션 루프에 함께 붙는다.
+        public string walkAnimation = "";
     }
 
     public enum OnPlaceEffectType

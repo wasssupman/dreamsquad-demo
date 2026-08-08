@@ -1,6 +1,6 @@
 # 5 — Handoff: 설계·스펙 세션 → 구현 세션 (별도 클론)
 
-> 이 문서는 구현 0줄 시점의 인계다. M1+ 작업 단위는 6번부터 이어 쓴다.
+> 이 문서는 구현 0줄 시점의 인계다. M1+ 작업 단위는 7번부터 이어 쓴다.
 
 ## Commit
 
@@ -10,7 +10,7 @@
 ## 상태
 
 - **설계 완료·스펙 작성됨·구현 0.** unit 0 착수 전이며, 사용자 승인 범위는 "스펙 작성"까지다. 구현 시작 전 사용자에게 unit 0 착수를 확인하라.
-- 읽는 순서: ① `README.md`(계약·마일스톤 지도) ② `docs/plans/2026-08-03-battle-sim-extraction-design.md`(설계 정본 v6 — 왜 이런 순서인지의 근거 전부) ③ `0_system_order_capture.md`부터 번호순.
+- 읽는 순서: ① `README.md`(계약·마일스톤 지도) ② `docs/plans/2026-08-03-battle-sim-extraction-design.md`(설계 정본 v6 — 왜 이런 순서인지의 근거 전부) ③ `6_decision_record.md`(기각 대안·재론 조건 — 결정을 재론하고 싶어지면 먼저) ④ `0_system_order_capture.md`부터 번호순.
 - 설계 정본 v6는 Claude critic 2트랙 + ECS 시맨틱 감사 6트랙 + Codex 적대 리뷰의 수렴본. Codex 원문 아티팩트는 원 세션 워크트리의 `.omc/`(비추적)에만 있으나 요지는 정본 §8에 전부 반영됨.
 
 ## 헛발 방지 (이 순서·이 결정이 나온 이유)

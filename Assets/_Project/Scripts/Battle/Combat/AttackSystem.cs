@@ -73,6 +73,8 @@ namespace Wassup.Battle.Combat
             var emitterInstanceLookup = SystemAPI.GetBufferLookup<EmitterInstance>(isReadOnly: false);
             // bomb-thrower-defender unit 4 — 폭탄맨 발사 상태(RW: rng advance). volleyLookup 선례.
             var bombLauncherLookup = SystemAPI.GetComponentLookup<BombLauncherState>(isReadOnly: false);
+            // summon-patrol-defender unit 3 — 소환사 상태(RO). current 갱신은 Bridge 드레인이 한다.
+            var summonerLookup = SystemAPI.GetComponentLookup<SummonerState>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
@@ -345,6 +347,85 @@ namespace Wassup.Battle.Combat
                         }
                         // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
                         attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                    }
+                    continue;
+                }
+
+                // summon-patrol-defender unit 3 — 소환사는 **타겟을 고르지 않고** 순찰병을
+                // 유지한다. 폭탄맨과 같은 자리(타겟 선정 앞)에서 처리하고 continue —
+                // 타겟을 요구하는 RESOLVE 에 두면 소환사 attackRange(근접 1타일) 안에 적이
+                // 들어와야만 소환돼, 순찰병이 마중 나갈 시간이 없어진다.
+                //
+                // 단 **첫 소환에만 거점 구역 게이트**가 걸린다(계약 8) — 폭탄맨의 blind
+                // bombardment 를 그대로 따르지 않는 지점이다. 상세는 아래 게이트 블록.
+                if (summonerLookup.HasComponent(attackerEntity))
+                {
+                    if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f)
+                    {
+                        var summoner = summonerLookup[attackerEntity];
+                        // 계약 9 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
+                        // 파괴된 순찰병의 stale 핸들로 소환사가 영구 대기한다.
+                        bool alivePatrol = summoner.current != Entity.Null
+                            && SystemAPI.Exists(summoner.current)
+                            && !deadLookup.HasComponent(summoner.current)
+                            && healthLookup.HasComponent(summoner.current)
+                            && healthLookup[summoner.current].value > 0f;
+
+                        // 초회 게이트 — 첫 순찰병은 **거점 구역 안에 적이 있을 때만** 낸다
+                        // (사용자 결정 2026-08-03). 판정 중심은 소환사 셀이다: 실제 거점은
+                        // Bridge 가 walk 셀로 스냅해 정하는데 첫 소환 전엔 그게 아직 없고,
+                        // 스냅 상한이 leash 반경이라 소환사 셀 기준 구역이 실제 구역을
+                        // 보수적으로 감싼다. 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        float3 sPos = transform.ValueRO.Position;
+                        int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
+                        bool gateOpen = summoner.hasSummonedOnce;
+                        if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
+                        {
+                            for (int ti = 0; ti < targetEntities.Length && !gateOpen; ti++)
+                            {
+                                if (((int)targetFactions[ti].value & (int)Faction.Enemy) == 0) continue;
+                                // goal-tower-siege unit 1 — PastGoal 배제 제거(머지 정리).
+                                // 그 태그는 이제 "유출 대기" 가 아니라 "골에 붙어 타워를 때리는 중" 이다 —
+                                // 골을 두들기는 적이야말로 순찰을 부를 이유다.
+                                int2 eCell = GridMath.WorldToCell(
+                                    targetTransforms[ti].Position, tileSize, gridSize, origin: ffOrigin);
+                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, summoner.leashTileRadius))
+                                    gateOpen = true;
+                            }
+                        }
+
+                        if (gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
+                        {
+                            var carrier = ecb.CreateEntity();
+                            ecb.AddComponent<PatrolRequestCarrier>(carrier);
+                            ecb.AddComponent(carrier, new PatrolSpawnRequest
+                            {
+                                owner = attackerEntity,
+                                ownerCell = sCell,   // 게이트 판정과 **같은 셀**이어야 한다
+                                patrolDataIndex = summoner.patrolDataIndex,
+                                leashTileRadius = summoner.leashTileRadius,
+                            });
+                            // 소환 = 이 유닛의 공격 사건. 애니/SFX 는 여기서 신호한다.
+                            if (attackWriter.HasValue)
+                                attackWriter.Value.Enqueue(new UnitAttackVisualEvent
+                                {
+                                    attacker = attackerEntity,
+                                    targetWorld = sPos,
+                                    attackAnimPeriod = attack.ValueRO.cooldownDuration,
+                                });
+                        }
+
+                        // 게이트가 닫혀 있으면 **쿨다운을 리셋하지 않는다** — 만료 상태로 대기하다
+                        // 적이 구역에 들어온 프레임에 즉시 소환한다("구역에 들어오면 부른다"가
+                        // 규칙이므로 여기서 리셋하면 최대 한 쿨 늦게 반응한다). 그 대가로 게이트가
+                        // 닫힌 소환사는 매 프레임 타겟 스냅샷을 훑는다 — 진영 미스매치를 즉시
+                        // continue 하는 짧은 루프이고 소환사 수도 적어 수용한다. 게이트는 첫
+                        // 소환 한 번뿐이라 이 상태가 판 내내 지속되지도 않는다.
+                        //
+                        // 게이트가 열렸으면 성사 여부와 무관하게 리셋한다(스냅 실패로 취소된
+                        // 경우 포함) — 요청을 stage 한 프레임에 이미 리셋되므로 드레인이 한
+                        // 프레임 늦어도 중복 소환이 나올 수 없다.
+                        if (gateOpen) attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                     }
                     continue;
                 }

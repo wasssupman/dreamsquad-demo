@@ -50,6 +50,9 @@ namespace Wassup.Battle.Movement
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
             // enemy-ai-fsm Unit 7 — Pulse 진동: AttackState(Combat) RO 로 스윙 진행(hitDelayRemaining) 판정.
             var attackStateLookup = SystemAPI.GetComponentLookup<AttackState>(isReadOnly: true);
+            // summon-patrol-defender unit 2 — 거점 순찰 아군의 이동 방향(Effects 소유, RO).
+            // PatrolFieldSystem 이 Movement 전에 굽는다. 보유 = patrol 아키타입 판별.
+            var patrolStepLookup = SystemAPI.GetComponentLookup<PatrolStep>(isReadOnly: true);
 
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
@@ -63,6 +66,10 @@ namespace Wassup.Battle.Movement
                 //  aggro 의 본질은 이동목표 변경(goal→guardian)뿐 — guardian step 을 다른 이동과 같은 cell-trim 에
                 //  통과시켜 walk 타일 위에 머물게 한다. 도달 여부 판정은 더 이상 여기서 안 하고 상태가 대신한다.
                 AiState ai = aiStateLookup.HasComponent(entity) ? aiStateLookup[entity].value : AiState.Marching;
+
+                // summon-patrol-defender unit 2 — 거점 순찰 아군. 목적지가 goal/가디언이 아니라
+                // 자기 거점 박스라, 아래 goal 판정과 flow-step 을 둘 다 갈아탄다.
+                bool patrolling = patrolStepLookup.HasComponent(entity);
 
                 // combat-action-lock — Sleep/Stun 은 자기주도 이동만 정지(외력=impulse/tornado/portal 유지).
                 // AiState 직후 조기 계산: Chasing/goal/tornado 분기가 flow-step 전에 continue 하므로.
@@ -131,7 +138,12 @@ namespace Wassup.Battle.Movement
 
                 // 사냥 중엔 goal 셀을 지나쳐도 누수 안 함(leak-proof) — 방어유닛 전멸 후에만 도달 처리.
                 // multi-goal-map — 어느 골이든 도달하면 누수(IsGoalCell = goals 멤버십/goalCell 폴백).
-                if (!hunting && field.IsGoalCell(cell))
+                // summon-patrol-defender unit 2 — 거점 박스 안에 goal 셀이 들어올 수 있다(맵은 매판
+                // 랜덤, 배치는 플레이어가 한다). 게이트가 없으면 순찰병에 PastGoalTag 가 붙어
+                // ⑴ 이 루프가 WithNone<PastGoalTag> 라 영구 동결, ⑵ UnitLifecycle 의 PastGoal 파괴
+                // 루프는 AttackUnitTag 를 요구해 파괴도 안 됨, ⑶ 살아 있으니 SummonerState.current 가
+                // 계속 유효해 소환사가 남은 판 내내 재소환하지 못한다. 보스 leak-proof 와 같은 형태.
+                if (!hunting && !patrolling && field.IsGoalCell(cell))
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
                     continue;
@@ -184,20 +196,18 @@ namespace Wassup.Battle.Movement
                     }
                 }
 
-                // 4. Flow field step — hunting 이면 defender field, 아니면 goal field.
-                float2 dir = hunting ? huntField.flow[idx] : field.flow[idx];
+                // 4. Flow field step — patrol 이면 PatrolStep, hunting 이면 defender field,
+                //    아니면 goal field. "Marching = 전진, 목적지는 dir 소스가 결정" 계약에
+                //    세 번째 소스로 합류한다(AiState 에 값을 추가하지 않는다).
+                float2 dir;
                 bool zeroFlowRecovery = false;
-                if (math.lengthsq(dir) < 1e-6f)
+                if (patrolling)
                 {
-                    zeroFlowRecovery = true;
-                    // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
-                    // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
-                    // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
-                    // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
-                    float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
-                    if (math.lengthsq(recovDir) < 1e-6f)
+                    dir = patrolStepLookup[entity].dir;
+                    if (math.lengthsq(dir) < 1e-6f)
                     {
-                        // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
+                        // 거점 도착·사격 위치 도달·고립 = 정지. goal field 기반 zero-flow recovery 로
+                        // 떨어뜨리지 않는다 — 그 dist 는 순찰병의 목적지와 무관하다.
                         if (hasPull)
                         {
                             float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
@@ -205,7 +215,30 @@ namespace Wassup.Battle.Movement
                         }
                         continue;
                     }
-                    dir = recovDir;
+                }
+                else
+                {
+                    dir = hunting ? huntField.flow[idx] : field.flow[idx];
+                    if (math.lengthsq(dir) < 1e-6f)
+                    {
+                        zeroFlowRecovery = true;
+                        // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
+                        // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
+                        // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
+                        // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
+                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
+                        if (math.lengthsq(recovDir) < 1e-6f)
+                        {
+                            // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
+                            if (hasPull)
+                            {
+                                float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
+                                transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                            }
+                            continue;
+                        }
+                        dir = recovDir;
+                    }
                 }
 
                 float speedMul = modifierStatsLookup.HasComponent(entity)

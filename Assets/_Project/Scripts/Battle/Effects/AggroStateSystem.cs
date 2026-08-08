@@ -141,14 +141,9 @@ namespace Wassup.Battle.Effects
                             walkMask = new NativeArray<byte>(n, Allocator.Temp);
                             tmpFlow = new NativeArray<Unity.Mathematics.float2>(n, Allocator.Temp);
                             tmpDist = new NativeArray<int>(n, Allocator.Temp);
-                            for (int y = 0; y < flowField.gridSize.y; y++)
-                                for (int x = 0; x < flowField.gridSize.x; x++)
-                                {
-                                    var cell = new int2(x, y);
-                                    bool wall = MovementCellTrim.IsWallCell(cell, in flowField)
-                                        || (hasObstacles && obstacleSingleton.blockedCells.Contains(cell));
-                                    walkMask[GridMath.CellIndex(cell, flowField.gridSize)] = wall ? (byte)0 : (byte)1;
-                                }
+                            // summon-patrol-defender — 벽 술어 + 장애물 합성은 MovementCellTrim 단독 소유.
+                            // (구 인라인 루프. PatrolFieldSystem 과 문자 그대로 같은 코드였다.)
+                            MovementCellTrim.FillWalkMask(in flowField, hasObstacles, in obstacleSingleton, walkMask);
                         }
                         int2 gCell = GridMath.WorldToCell(transformLookup[ev.guardian].Position,
                             flowField.tileSize, flowField.gridSize, origin: flowField.origin);

@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Mathematics;
 using Wassup.Battle.Effects;
 
@@ -6,6 +7,31 @@ namespace Wassup.Battle.Movement
     // Static cell-trim utilities called from Burst-compiled MovementSystem.
     public static class MovementCellTrim
     {
+        // summon-patrol-defender — BFS 소비자용 walk 마스크(1 = 걸을 수 있음).
+        //
+        // "무엇이 걸을 수 있는 칸인가" = IsWallCell + 장애물 이라는 합성이 이미 이 클래스의
+        // Apply 안에 있다. 그 합성을 그리드 전체로 돌리는 코드가 AggroStateSystem 과
+        // PatrolFieldSystem 두 곳에 그대로 복제돼 있었다 — 제약 10 의 (b) 호출처 2+ 와
+        // (c) sim-critical(마스크가 틀리면 이동 전체가 깨진다)을 동시에 충족하므로 여기로 모은다.
+        // 술어의 단일 정의를 유지하는 것이 목적이다: 벽 판정이 바뀔 때 한 곳만 고치면 된다.
+        //
+        // outMask 는 gridSize.x * gridSize.y 길이여야 한다(호출자 책임).
+        public static void FillWalkMask(
+            in FlowFieldSingleton field,
+            bool hasObstacles,
+            in ObstacleSingleton obstacles,
+            NativeArray<byte> outMask)
+        {
+            for (int y = 0; y < field.gridSize.y; y++)
+            for (int x = 0; x < field.gridSize.x; x++)
+            {
+                var cell = new int2(x, y);
+                bool wall = IsWallCell(cell, in field)
+                            || (hasObstacles && obstacles.blockedCells.Contains(cell));
+                outMask[GridMath.CellIndex(cell, field.gridSize)] = wall ? (byte)0 : (byte)1;
+            }
+        }
+
         // Inset to keep the clamped position strictly inside currentCell.
         // WorldToCell rounds 0.5 up to the next cell, so without this offset a position at
         // exactly ±0.5*tileSize would be mapped to the adjacent blocked cell, breaking the
