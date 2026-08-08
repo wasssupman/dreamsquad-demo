@@ -18,6 +18,15 @@ namespace Wassup.Presentation
         private bool _dying;
         private string _attackAnimationName;
         private const float FacingMoveEpsilon = 0.001f;
+        // continuous-agent-movement 후속(2026-08-09 사용자 제보: 제자리 좌우 팩팩거림) —
+        // epsilon(1mm)만 넘으면 즉시 반전하던 구 규칙은 4-이웃 축정렬 이동 전제였다
+        // (프레임 델타가 33mm 직진 아니면 0). 연속 이동에선 대기열 평형·벽면 슬라이드·
+        // 분리 밀림이 ±수 mm 의 부호 교대 dx 를 만들어 스프라이트가 프레임마다 뒤집힌다.
+        // 반대 방향 이동이 이 거리만큼 **누적**돼야 뒤집는다(같은 방향이 나오면 리셋).
+        // 0.05 = 타일 5% ≈ 정상 보행 1.5프레임 — 진짜 회두는 여전히 즉각으로 보인다.
+        // FaceToward(공격 타겟 지정)는 명시 이벤트라 누적 없이 즉시 반전한다.
+        private const float FacingFlipAccum = 0.05f;
+        private float _pendingFlipAccum;
         // tilemap-view-backend unit 3 — sim 좌표 보존. transform.position 은 view 좌표(ToView)라
         // sorting 셀 역산에 쓸 수 없다(z 소실). sorting 은 이 sim 좌표로 계산한다.
         private Vector3 _simWorld;
@@ -631,7 +640,7 @@ namespace Wassup.Presentation
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             // worldPoint 는 sim 좌표(NotifyAttack 경유) — view 좌표로 변환해 view transform 과 같은 공간에서 비교.
             float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
-            SetFacingByViewDelta(dx);
+            SetFacingByViewDelta(dx, immediate: true);   // 타겟 지정은 명시 이벤트 — 즉시 반전
         }
 
         private void FaceAlongMovement(Vector3 world)
@@ -639,7 +648,7 @@ namespace Wassup.Presentation
             if (_dying || IsAttackAnimationPlaying()) return;
             float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(world)).x
                        - ((Vector3)Wassup.Core.BoardSpace.ToView(_simWorld)).x;
-            SetFacingByViewDelta(dx);
+            SetFacingByViewDelta(dx, immediate: false);  // 이동 유래 — 누적 히스테리시스 적용
         }
 
         private bool IsAttackAnimationPlaying()
@@ -652,7 +661,7 @@ namespace Wassup.Presentation
                    && current.Animation.Name == _attackAnimationName;
         }
 
-        private void SetFacingByViewDelta(float dx)
+        private void SetFacingByViewDelta(float dx, bool immediate)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             if (Mathf.Abs(dx) <= FacingMoveEpsilon) return;
@@ -664,6 +673,19 @@ namespace Wassup.Presentation
             // 지금은 규칙도 하나다. 방향이 반대인 미래 리그는 코드 분기 대신 SkeletonFlipX modifier 로
             // 데이터에서 정규화한다(net facing = Skeleton.ScaleX * rootScaleX).
             float desiredSign = dx >= 0f ? -1f : 1f;
+
+            // 이미 그 방향을 보고 있으면 누적 리셋 — 노이즈가 쌓여 뒤집히는 것을 막는다.
+            if (Mathf.Sign(_skeleton.Skeleton.ScaleX) == desiredSign)
+            {
+                _pendingFlipAccum = 0f;
+                return;
+            }
+            if (!immediate)
+            {
+                _pendingFlipAccum += Mathf.Abs(dx);
+                if (_pendingFlipAccum < FacingFlipAccum) return;   // 아직 확신 없음 — 유지
+            }
+            _pendingFlipAccum = 0f;
             _skeleton.Skeleton.ScaleX = currentAbs * desiredSign;
         }
 
