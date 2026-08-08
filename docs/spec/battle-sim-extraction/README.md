@@ -42,4 +42,6 @@
 - **M1 units**: 백지 청사진 3장(세션 계약/데이터 대응표/틱 파이프라인) · salvage 판정표(모듈 단위 ~60건) · `LegacyMatchSessionAdapter`(유일 drain 소유자) · 소비자 82파일 재배선 · Bridge 상주 매치 규칙 적출(웨이브·승패·코스트·점수·드림캐쳐) · sim lib 이식(맥락 4 + `RequireForUpdate` 39개 이식 매트릭스) · 다단계 카드 트랜잭션의 원자 커맨드화 · pause/slow-mo gameplay 시계 정책 · Burst 상실 성능 게이트(ARM64 IL2CPP p95/p99) · A/B 스왑.
 - **M2 units**: 헤드리스 dotnet 러너 CI · AMR 녹화 · ReplaySession(seek) · 커맨드로그 재시뮬 배치 잡(advisory) · 스키마 upcaster + 구버전 리플레이 코퍼스 CI · Entities 패키지 물리 제거.
 - **M3 units**: RemoteSession · 서버 스택 결정(Unity headless vs 자체) · 재접속(스냅샷+백로그 exactly-once) · suspend/resume · 점수 발급 서버 이관.
+- **분리 누적 순서를 `SimEntityId` 정렬로**: `AgentSeparationSystem` 은 2단계(전량 누적 → 일괄 적용)라 순차 위치 갱신 의존은 없지만, `pushes[i] += push` 의 부동소수 덧셈은 결합법칙이 성립하지 않아 **누적 순서에 결과가 의존**한다. 그 순서는 `ToComponentDataArray` 의 청크 순서에서 오고 구조 변경 이력에 따라 달라진다. 전체 리플레이(같은 커맨드·같은 구조변경 순서)는 안전하나 **스냅샷 부분 재시뮬에서 갈릴 수 있다**. 해소: unit 1 의 stable id 로 정렬한 뒤 누적.
+- **스폰 측면 오프셋을 `spawnOrdinal` 파생으로**: 현재는 `BattleBridge._spawnSpreadCounter++` 라는 가변 상태가 오프셋을 정한다(`SpawnSpread.LaneFraction`). 서버권위에서 "N번째 스폰 위치"를 알려면 앞의 N-1 기를 재생해야 해 스팟체크·late-join·리플레이 점프가 비싸진다. 해소: `LaneFraction(spawnOrdinal, …)` 로 전환하면 값은 동일하되 **앞을 재생하지 않고 즉시 파생**된다. 동시 다개체 스폰 겹침(현 서브레인 수 3 초과 시 4기째부터 동일점)도 `wrapShift = (ordinal / laneCount) × ε` 로 함께 해소.
 - **미채택 보류**: lag compensation(RTT 매트릭스 리뷰에서 실패 스킬이 나오면 재론).

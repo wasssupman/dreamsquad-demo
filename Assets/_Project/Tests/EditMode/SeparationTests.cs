@@ -62,9 +62,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void AccumulationIsOrderIndependent()
+        public void PairPush_SumOfTwo_IsCommutative()
         {
-            // 순서 무관이 이 unit 의 결정론 계약이다. 누적은 덧셈이라 순서와 무관해야 한다.
+            // ⚠ 이 테스트는 **2항 교환법칙만** 증명한다. IEEE754 에서 a+b 와 b+a 는 항상
+            // 비트까지 같으므로 자명하게 통과한다 — 즉 이건 결정론 증거가 아니다.
+            // 실제 위험한 축(3항 이상 결합법칙)은 아래 [Ignore] 테스트가 다룬다.
             var self = new float3(1f, 0f, 1f);
             var n1 = new float3(0.8f, 0f, 1f);
             var n2 = new float3(1f, 0f, 0.8f);
@@ -74,6 +76,31 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(forward.x, reverse.x, 1e-6f);
             Assert.AreEqual(forward.y, reverse.y, 1e-6f);
+        }
+
+        [Test]
+        [Ignore("현재 실패한다 — 그게 사실이다. float 덧셈에 결합법칙이 없어 3항 이상 누적은 " +
+                "더한 순서에 따라 결과가 1 ULP 갈린다(아래 값이 실측 사례). AgentSeparationSystem 의 " +
+                "`pushes[i] += push` 누적 순서는 ToComponentDataArray 의 청크 순서 = 스폰·사망 이력에서 " +
+                "온다. 전체 리플레이는 안전하지만 스냅샷 부분 재시뮬은 갈릴 수 있다. 해결은 float 를 " +
+                "결합적으로 만드는 게 아니라 누적 순서를 stable id 로 고정하는 것이고, 그 축(SimEntityId)은 " +
+                "docs/spec/battle-sim-extraction/ unit 1 소관이다. unit 1 이 정렬 누적을 세우면 이 테스트를 " +
+                "그 API 로 겨눠 다시 켠다 — 그때 통과해야 한다.")]
+        public void Accumulation_OfThreeOrMore_IsOrderIndependent()
+        {
+            // 세 이웃에게 동시에 밀리는 한 에이전트. 시스템의 누적 루프를 그대로 재현한다.
+            var self = new float3(1f, 0f, 1f);
+            var p1 = Separation.PairPush(self, new float3(0.98f, 0f, 0.63f), 0.7f, S);
+            var p2 = Separation.PairPush(self, new float3(1.14f, 0f, 0.60f), 0.7f, S);
+            var p3 = Separation.PairPush(self, new float3(1.18f, 0f, 0.84f), 0.7f, S);
+
+            var a = (p1 + p2) + p3;
+            var b = (p3 + p2) + p1;   // 역순 — x 가 1 ULP 어긋난다
+            var c = (p1 + p3) + p2;   // 회전 — y 가 1 ULP 어긋난다
+
+            // 비트로 비교한다. 허용오차를 주면 이 결함이 통째로 숨는다 — 1 ULP 가 요점이다.
+            Assert.AreEqual(math.asuint(a.x), math.asuint(b.x), "역순 누적이 x 를 바꾼다");
+            Assert.AreEqual(math.asuint(a.y), math.asuint(c.y), "회전 누적이 y 를 바꾼다");
         }
 
         [Test]

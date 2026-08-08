@@ -73,6 +73,9 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── 가시선 ──────────────────────────────────────────────────────────────
+        // 아래 IsVisible_* 는 프로덕션이 부르지 않는 술어를 검증한다(평활화는 차단 셀까지
+        // 필요해 내부 경로를 쓴다). 그래도 여기서 직접 부르는 이유는 이 술어가 곧 가시선
+        // 계약이라, TryFurthestVisible 을 통해 간접 검증하면 실패 원인이 흐려지기 때문이다.
 
         [Test]
         public void IsVisible_True_AcrossOpenGround()

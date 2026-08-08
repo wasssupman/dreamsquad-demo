@@ -19,6 +19,11 @@ namespace Wassup.Battle.Movement
     // 관찰자가 어디 있든 같은 점이 나온다 → 왕복이 구조적으로 불가능하다.
     //
     // 순수 함수. NavGrid 와 plain 값만 받는다.
+    //
+    // 공개 표면 규칙 — **프로덕션 진입점은 `TryStepTarget` 하나다**(MovementSystem·BattleBridge).
+    // `TryFurthestVisible`·`TryCornerAim`·`IsVisible` 은 그 내부 단계이면서, 동시에 이 spec 의
+    // 계약(가장 먼 가시점 / 코너 apex 선택 / 반지름 가시선)을 테스트가 직접 못박는 표면이다.
+    // 프로덕션 호출자가 0 이라는 이유로 지우지 말 것 — 지우면 회귀 검증이 통째로 사라진다.
     public static class PathSmoothing
     {
         // 전방 탐색 셀 수.
@@ -120,12 +125,17 @@ namespace Wassup.Battle.Movement
         // 기반이라 어떤 셀도 건너뛰지 않는다. Bresenham 대신 이걸 쓰는 이유는 **반지름을
         // 함께 봐야** 하기 때문이다 — 선분만 뚫려 있고 몸통이 걸리는 통로로 직행하면
         // AgentCollision 이 매 프레임 막아 제자리 진동이 난다.
+        //
+        // 프로덕션은 이걸 부르지 않는다(평활화는 차단 셀까지 필요해 TryFindFirstBlocked 를 쓴다).
+        // 그래도 남긴다 — 이 술어가 곧 가시선 계약이고, PathSmoothingTests 의 IsVisible_* 케이스가
+        // 그 계약(특히 "선분은 뚫려도 몸통이 걸리면 막힘")을 직접 검증한다.
         public static bool IsVisible(float3 a, float3 b, float radius, in NavGrid nav)
             => !TryFindFirstBlocked(a, b, radius, in nav, out _);
 
         // IsVisible 과 같은 판정이되, 처음 걸린 막힌 셀을 알려준다(unit 10 꼭짓점 조준 입력).
         // 샘플 순서(가까운 쪽부터)와 셀 스캔 순서가 고정이라 결과가 결정론적이다.
-        public static bool TryFindFirstBlocked(
+        // 클래스 안에서만 쓴다 — 외부에 필요한 건 가시 여부뿐이라 IsVisible 이 그 창구다.
+        private static bool TryFindFirstBlocked(
             float3 a, float3 b, float radius, in NavGrid nav, out int2 blockedCell)
         {
             blockedCell = default;

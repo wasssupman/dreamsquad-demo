@@ -68,6 +68,9 @@ namespace Wassup.Battle.Movement
         // enemy-tile-movement-integrity unit 2 — flow 분기와 aggro 분기가 공유하는 cell-trim.
         // desired 가 wall(zero-flow) 또는 obstacle 셀로 넘어가면 currentCell 경계로 clamp.
         // 모든 이동 모드(flow follow, aggro target chase)를 walk 타일 위에 묶는 단일 지점.
+        //
+        // 싱글턴을 그대로 받는 어댑터 — 테스트/레거시 호출 편의용이다. 프로덕션 경로는
+        // 아래 NavGrid 오버로드다(프레임당 한 번 조립한 NavGrid 를 들고 다닌다).
         public static float3 Apply(float3 desired, int2 currentCell, in FlowFieldSingleton field,
                                    bool hasObstacles, in ObstacleSingleton obstacles)
             => Apply(desired, currentCell, BuildNavGrid(in field, hasObstacles, in obstacles));
