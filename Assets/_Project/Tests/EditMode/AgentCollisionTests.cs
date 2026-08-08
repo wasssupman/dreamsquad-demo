@@ -86,20 +86,60 @@ namespace Wassup.Tests.EditMode
             var r = AgentCollision.Resolve(from, to, R, Nav());
 
             Assert.AreEqual(1.5f - R, r.z, Eps, "벽 축은 멈춘다");
-            Assert.AreEqual(1.4f, r.x, Eps, "자유 축은 계속 간다 — 이것이 슬라이드");
+            // unit 11 계약 진화 — 예전엔 "자유 축은 요청한 만큼(1.4)"이었다. 이제는 막힌 축이
+            // 잃은 몫이 자유 축으로 재분배되어 **더 멀리** 간다(접선 속도 보존).
+            // 그 전의 거동은 실이동이 speed·sinθ 로 붕괴하는 것이었고, 좁은 통로 앞에서
+            // 정상 속도 1.5% 로 1초간 기어가는 사고를 만들었다.
+            Assert.Greater(r.x, 1.4f, "잃은 몫이 자유 축으로 재분배된다");
         }
 
         [Test]
-        public void Diagonal_Slide_PreservesFullTangentialDistance()
+        public void Diagonal_Slide_PreservesFrameSpeed()
         {
-            // 접선 성분이 깎이면 벽에 붙었을 때 눈에 띄게 느려진다. 온전히 보존돼야 한다.
+            // unit 11 — 이 unit 의 핵심 계약. 벽에 막혀도 **프레임 변위 크기가 요청량과 같다.**
+            // (구 이름 PreservesFullTangentialDistance 는 "접선 성분 보존"만 주장했는데,
+            //  그것만으로는 speed·sinθ 붕괴를 못 막는다 — 정확히 그 구멍이 1초 크리프였다.)
             var from = new float3(0.5f, 0f, 1.0f);
             var to   = new float3(0.9f, 0f, 1.4f);
 
             var r = AgentCollision.Resolve(from, to, R, Nav());
 
-            Assert.AreEqual(0.4f, r.x - from.x, Eps, "접선 변위 온전");
+            float want = math.distance(new float2(from.x, from.z), new float2(to.x, to.z));
+            float got  = math.distance(new float2(from.x, from.z), new float2(r.x, r.z));
+            Assert.AreEqual(want, got, Eps, "막혀도 프레임 변위 크기는 유지된다");
+            Assert.AreEqual(1.5f - R, r.z, Eps, "벽 축은 여전히 벽면에 선다");
+            Assert.Greater(r.x - from.x, 0.4f, "잃은 몫이 접선으로 재분배된다");
+        }
+
+        [Test]
+        public void HeadOnIntoWall_NoTangentialIntent_DoesNotDrift()
+        {
+            // 접선 의도가 없으면(순수 법선 진입) 재분배도 없어야 한다 — 있으면 유닛이
+            // 벽에 닿는 순간 옆으로 미끄러지는 유령 이동이 생긴다.
+            var from = new float3(1f, 0f, 0.5f);
+            var to   = new float3(1f, 0f, 1.4f);   // 순수 +z, x 성분 0
+
+            var r = AgentCollision.Resolve(from, to, R, Nav());
+
+            Assert.AreEqual(1f, r.x, Eps, "옆으로 새지 않는다");
             Assert.AreEqual(1.5f - R, r.z, Eps);
+        }
+
+        [Test]
+        public void CreepRegression_NearNormalDirection_KeepsFullSpeed()
+        {
+            // 2026-08-09 사고 회귀. 방향이 벽 법선에서 1° 이내면 예전엔 실이동이 요청의
+            // 1.5% 로 붕괴해 ~1초간 벽을 긁었다. 이제 100% 여야 한다.
+            var from = new float3(1f, 0f, 1.0f);
+            var to   = new float3(1f - 0.0333f, 0f, 1.0f + 0.00055f);   // 거의 순수 -x
+            // 왼쪽에 벽을 세워 -x 를 막는다
+            for (int y = 0; y < H; y++) _walk[y * W + 0] = 0;
+
+            var r = AgentCollision.Resolve(from, to, R, Nav());
+
+            float want = math.distance(new float2(from.x, from.z), new float2(to.x, to.z));
+            float got  = math.distance(new float2(from.x, from.z), new float2(r.x, r.z));
+            Assert.Greater(got, want * 0.9f, "막힌 축의 몫이 접선으로 복원돼야 한다");
         }
 
         // ── 겹침·경계 방어 ──────────────────────────────────────────────────────

@@ -209,9 +209,15 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void CornerAim_IsObserverIndependent()
         {
-            // unit 10 의 존재 이유 — 조준점이 (차단 셀, 꼭짓점) 쌍에서만 파생되는 월드
-            // 고정점이라, 유닛이 코너 근처 어디에 있든 같은 점이 나온다. 이 성질이 깨지면
+            // unit 10 — 조준점이 (차단 셀, 꼭짓점) 쌍에서만 파생되는 월드 고정점이라,
+            // 유닛이 코너 근처에서 조금 움직여도 같은 점이 나온다. 이 성질이 깨지면
             // 매 프레임 재계산이 다시 왕복(덜컹임)을 만든다.
+            //
+            // ⚠ 이 테스트가 증명하는 범위 (2026-08-09 감사 정정): 두 관찰자는 **같은 셀**
+            // 안에 있다(둘 다 (0,1)). 따라서 후보 열이 동일한 상태에서의 안정성만 본다 —
+            // "관찰자가 어디 있든" 이라는 전역 주장의 증거가 아니다. 관찰자가 셀을 넘으면
+            // 후보 열과 lastVisible 이 함께 바뀌어 다른 코너가 정당하게 뽑힐 수 있다.
+            // 더 강한(그리고 실제로 참인) 성질은 아래 CornerAim_AgentPos_* 가 겨눈다.
             var grid = new int2(4, 4);
             var walk = OpenField(grid);
             walk[1 * 4 + 1] = 0;
@@ -226,6 +232,29 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(a.x, b.x, 1e-4f, "관찰자 위치가 달라도 같은 코너면 같은 조준점");
             Assert.AreEqual(a.z, b.z, 1e-4f);
+        }
+
+        [Test]
+        public void CornerAim_AgentPos_IsOnlyATiebreak_NotThePrimaryKey()
+        {
+            // apex 선택의 1차 키는 **마지막 가시점**이고 에이전트 위치는 동률일 때만 쓰인다.
+            // 1차 키가 결정적이면 에이전트를 코너 반대편까지 옮겨도 같은 꼭짓점이 나온다 —
+            // 이것이 "조준점이 관찰자를 따라다니지 않는다"의 정확한 형태다.
+            // (이 성질이 없으면 유닛이 코너를 돌면서 조준이 함께 끌려가 왕복한다.)
+            var grid = new int2(4, 4);
+            var walk = OpenField(grid);
+            walk[1 * 4 + 1] = 0;              // 차단 셀 (1,1)
+            var nav = Nav(walk, grid);
+            var blocked = new int2(1, 1);
+            var lastVisible = new float3(2.4f, 0f, 0.4f);   // 1차 키를 (1.5, 0.5) 코너로 결정
+
+            Assert.IsTrue(PathSmoothing.TryCornerAim(
+                blocked, lastVisible, new float3(2.2f, 0f, 0.2f), R, nav, out var near));
+            Assert.IsTrue(PathSmoothing.TryCornerAim(
+                blocked, lastVisible, new float3(0.2f, 0f, 2.2f), R, nav, out var far));
+
+            Assert.AreEqual(near.x, far.x, 1e-5f, "에이전트를 반대편으로 옮겨도 같은 코너");
+            Assert.AreEqual(near.z, far.z, 1e-5f);
         }
 
         [Test]

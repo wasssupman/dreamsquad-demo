@@ -1,6 +1,6 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **units 0~10 구현 완료 2026-08-09 · EditMode 그린 → unit 10 Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [10_corner_vertex_aiming.md](10_corner_vertex_aiming.md))
+상태: **units 0~11 구현 완료 2026-08-09 · EditMode 그린 → Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [10_corner_vertex_aiming.md](10_corner_vertex_aiming.md) · [11_tangential_speed.md](11_tangential_speed.md))
 
 ## 결정 요약
 
@@ -63,6 +63,8 @@
 | `7_los_path_smoothing.md` | 평활화 | `PathSmoothing.FurthestVisible(from, candidates, in NavGrid)` | `MovementSystem` — flow 방향 대체. **후보 생성 방식 미결 (D2)** |
 | `8_agent_separation.md` | 분리 | `Separation.Accumulate(...)` → 일괄 적용 | **이웃 질의는 ECS 판단 필요 (아래 참조)** |
 | `9_handoff_summary.md` | 인계 | — | 커밋·검증·주의점 |
+| `10_corner_vertex_aiming.md` | 코너 조준 | `PathSmoothing.TryCornerAim` — 차단 셀의 코너 꼭짓점 + (r+skin) 오프셋, apex 2-키 선택 | `MovementSystem`·`BattleBridge` 를 공유 헬퍼 `TryStepTarget` 으로 접음 (**라인 ≡ 이동선**) |
+| `11_tangential_speed.md` | 코너 크리프 | `AgentCollision` 접선 속도 보존 — 막힌 축이 잃은 몫을 자유 축으로 재분배(`free²+blocked²=want²`) | 호출부 변경 없음. 벽에 붙어도 **프레임 변위 크기 유지** |
 
 **순서 근거**:
 
@@ -182,3 +184,4 @@ flow field 는 **명시 경로를 주지 않는데** string-pulling 은 경로�
 - **항법 격자 세분화(2x)** — 게임플레이 격자 1타일을 유지한 이중 해상도. unit 7 까지 끝낸 뒤 코너 표현이 실제로 부족할 때만 착수한다. 맵이 15×12=180셀로 작아 비용은 문제되지 않지만, 세분화는 계단을 **없애지 못하고 잘게 만들 뿐**이라 평활화의 대체가 아니다.
 - **방어유닛·투사체의 연속화** — 이 spec 은 적 이동만 다룬다.
 - **경로 예고 UI 재표현** — 평활화 후 예고 라인이 실제 이동선과 어긋나면 표현 갱신.
+- **조준 기준을 전역 비용 최소로 교체** — 현재 조준 대상은 "레이가 **처음** 막히는 셀"이라 국소적이다. 관찰자가 움직이면 어느 셀이 먼저 걸리는지가 바뀌어 다른 코너가 정당하게 뽑히고, 기둥이 흩어진 구역에서 조준 진동으로 남는다(`MapDocument_MovementStress` 스폰 (12,2): 13.4타일에 헤딩 45°↑ 전환 6회 · 총회전 1161° — unit 11 실측). unit 11(접선 속도 보존)은 이 축을 건드리지 않는다 — 총회전량이 1164°→1161° 로 불변인 것이 그 증거다. 후보 코너들을 **골까지의 실제 비용**으로 평가해 argmin 을 조준하면 관찰자 이동이 선택을 흔들지 않는다.
