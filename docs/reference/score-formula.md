@@ -52,7 +52,7 @@
 - 안정도 버킷이 1000 미만이라 **처치 1점 차이를 안정도가 뒤집지 못한다.**
 - 디코딩 지점 3곳: 결과 화면 · `LeaderboardList` · `TournamentHistoryPanel`
   (모두 `ScoreMath.DisplayScore`).
-- `killScore합` 상한 = `ScoreMath.MaxEncodableKillScore`(≈1,147,483). 초과분은 saturate.
+- `killScore합` 상한 = `ScoreMath.MaxEncodableKillScore`(1,147,482). 초과분은 saturate.
 
 ## 골 안정도 (패배 조건)
 

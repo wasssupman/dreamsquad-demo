@@ -1593,7 +1593,7 @@ namespace Wassup.Battle.Combat
             {
                 var e = ents[i];
                 // goal-tower-siege unit 1 — PastGoal 배제 제거. 골에 붙은 적은 살아서 타워를
-                //때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
+                // 때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
                 bool eligible = e != self
                     && ((int)fac[i].value & (int)Faction.Enemy) != 0;
                 float3 p = xf[i].Position;

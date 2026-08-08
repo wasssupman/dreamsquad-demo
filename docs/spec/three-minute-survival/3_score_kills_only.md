@@ -39,7 +39,7 @@ decode(v)   = v >= BASE ? (v − BASE) / 1000 : LEGACY
 **`BASE` 오프셋이 있는 이유**: 구 총점은 현실적으로 1~3만이라 `v / 1000` 로 디코딩하면
 **10~30 이라는 그럴듯한 가짜 점수**가 되어 신규 기록과 구분할 수 없다. 오프셋 미만은 구 포맷
 으로 판정해 디코딩하지 않고 그대로 표시한다. 신규 기록이 구 기록보다 항상 위에 정렬되는 것은
-의도다(룰이 다른 기록이다). 오버플로 상한: `killScoreTotal ≤ 1,147,483`.
+의도다(룰이 다른 기록이다). 오버플로 상한: `killScoreTotal ≤ 1,147,482`.
 
 **3. `killScore` 재장전** — 이름 유지, 값만 티어로: 일반 1 / 엘리트 3 / 보스 10(초기값).
 코드 기본값(`AttackUnitData.killScore = 100`)도 1 로 내린다. **엘리트 라벨은 아직 없다** —
@@ -65,7 +65,7 @@ decode(v)   = v >= BASE ? (v − BASE) / 1000 : LEGACY
 ## 완료 기준
 
 - [ ] 컴파일 통과(테스트 어셈블리 포함), 콘솔 에러/경고 0
-- [ ] EditMode: `Encode`/`Decode` 왕복, 안정도 경계(0·max), 점수 0, 상한 `1,147,483` 에서
+- [ ] EditMode: `Encode`/`Decode` 왕복, 안정도 경계(0·max), 점수 0, 상한 `1,147,482` 에서
       오버플로 없음, **`BASE` 미만 값이 LEGACY 로 판정**
 - [ ] EditMode: `ScoreMathTests`·`EndlessScoreTests` 를 새 산식으로 재작성
 - [ ] Play: 적 1기 처치 → HUD 가 정확히 그 적의 `killScore` 만큼 오른다

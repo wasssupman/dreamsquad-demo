@@ -32,7 +32,9 @@
 3. **점수는 `ScoreMath.Evaluate` 순수함수 그대로.** 모드 차이 = BattleBridge 한 줄
    `remainingMs = IsEndless ? 0`(시간축 0) 뿐. **엔드리스 전용 ScoreRules 에셋 없음** — 메인
    `scoreRules` 재사용(엔드리스 전용 가중은 후속). 인터페이스 3분할 기각(제약 8·10).
-4. **v1 은 무제한-only.** 엔드리스는 누수로 죽지 않음 — `defeatEnabled = !IsEndless`(신규 필드 없음).
+4. ~~**v1 은 무제한-only.** 엔드리스는 누수로 죽지 않음~~ → **폐기 2026-08-08**(`three-minute-survival` units 0~3, 사용자 결정). 패배는 **골 안정도 0** 하나가 소유하고
+   엔드리스도 그것을 받는다 — 무한 모드에도 끝이 생긴다. `defeatEnabled` 분기는 제거됐다.
+   유출/스트레스는 패배를 만들지 않으므로 `IsEndless` 게이트 자체가 필요 없어졌다.
    스트레스 점수 예산은 `defeatGoalReachedCount` 재사용하되 **높게**(§누수 예산). 개수 기반 패배는 후속.
 5. **엔드리스는 공용 풀에 넣지 않는다.** BattleBridge 전용 `endlessEncounter`(serialized) + dev 토글로
    진입. `mapPool.Count` 불변 → `MapPoolSelect` 무손 → **토너먼트/디버그 맵 선택 회귀 0**. 엔드리스는
