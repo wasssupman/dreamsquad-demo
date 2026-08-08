@@ -1,6 +1,9 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **units 0~11 구현 완료 2026-08-09 · EditMode 그린 → Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [10_corner_vertex_aiming.md](10_corner_vertex_aiming.md) · [11_tangential_speed.md](11_tangential_speed.md))
+상태: **units 0~13 구현 완료 2026-08-09 · Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [11_tangential_speed.md](11_tangential_speed.md) · [12_corridor_clearance.md](12_corridor_clearance.md) · [13_engaged_unit_shove.md](13_engaged_unit_shove.md))
+
+- **유닛 반지름 계약 갱신**: 아래 feature-wide 계약의 "0.35" 는 **unit 12 에서 0.25 로 대체**됐다. 0.35 의 근거("지름 0.7 < 1.0 이라 1타일 복도 통과 가능")는 단독 통과만 본 검산이었고, 군집에서는 여유 0.15 가 밀어냄 폭 0.35 보다 작아 교착을 만들었다.
+- **unit 12·13 은 세트다.** 13 만 남기고 12 를 되돌리면 통과가 무너진다 ([13](13_engaged_unit_shove.md) 의 의존성 표 참조).
 
 ## 결정 요약
 
@@ -65,6 +68,8 @@
 | `9_handoff_summary.md` | 인계 | — | 커밋·검증·주의점 |
 | `10_corner_vertex_aiming.md` | 코너 조준 | `PathSmoothing.TryCornerAim` — 차단 셀의 코너 꼭짓점 + (r+skin) 오프셋, apex 2-키 선택 | `MovementSystem`·`BattleBridge` 를 공유 헬퍼 `TryStepTarget` 으로 접음 (**라인 ≡ 이동선**) |
 | `11_tangential_speed.md` | 코너 크리프 | `AgentCollision` 접선 속도 보존 — 막힌 축이 잃은 몫을 자유 축으로 재분배(`free²+blocked²=want²`) | 호출부 변경 없음. 벽에 붙어도 **프레임 변위 크기 유지** |
+| `12_corridor_clearance.md` | 군집 교착 | — (knob) | `agentRadiusTiles` 0.35 → 0.25. 폭1 복도 여유 0.15 < 밀어냄 0.35 라 **밀어냄이 유닛을 전진 불가 위치로 보내던** 구조를 해소 |
+| `13_engaged_unit_shove.md` | 밀려 나름 | `Separation.RejectForwardPush` + `PathFollowState.holdingGround` seam | 정지 유닛은 **전진 밀림만 거부**. 교전 중 적의 밀림 4~9타일 → 0.5타일 이하. **unit 12 의존** |
 
 **순서 근거**:
 
