@@ -3,7 +3,7 @@ using Unity.Mathematics;
 
 namespace Wassup.Battle.Movement
 {
-    // continuous-agent-movement unit 7 — 경로 평활화(string pulling).
+    // continuous-agent-movement unit 7·10 — 경로 평활화(string pulling).
     //
     // unit 4 로 L 자는 사라졌지만 방향이 8단계로 양자화돼 있어, 기울기가 45°가 아니면
     // 대각 구간과 직축 구간이 꺾여 붙는다("꺾인 빗변"). 진짜 직선은 여기서 나온다.
@@ -11,6 +11,12 @@ namespace Wassup.Battle.Movement
     // flow field 는 **명시 경로를 주지 않는다.** 그래서 필드를 따라 앞으로 K 셀 전진시켜
     // 후보 지점을 만들고(D2-(a)), 그중 **벽 없이 보이는 가장 먼 지점**으로 직행한다.
     // 필드를 대체하는 게 아니라 필드 위에 얹는다 — 전역 필드를 버리면 오목 지형에서 갇힌다.
+    //
+    // unit 10 — 가시선이 막히면 조준 대상을 "직전 셀 중심"이 아니라 **막은 벽 타일의
+    // 코너 꼭짓점(+반지름 오프셋)** 으로 바꾼다. 셀 중심 + 움직이는 관찰자는 코너에서
+    // 가시성 판정이 매 프레임 뒤집혀 조준이 왕복했다(6.5타일↔0.9타일, 헤딩 ±20~85° —
+    // 2026-08-08 실측). 꼭짓점은 (차단 셀, 코너) 쌍에서만 파생되는 월드 고정 좌표라
+    // 관찰자가 어디 있든 같은 점이 나온다 → 왕복이 구조적으로 불가능하다.
     //
     // 순수 함수. NavGrid 와 plain 값만 받는다.
     public static class PathSmoothing
@@ -25,7 +31,8 @@ namespace Wassup.Battle.Movement
         // 길어지는데, 그때가 정확히 직선이 필요한 상황이다.
         public const int DefaultLookahead = 24;
 
-        // 현재 위치에서 필드를 따라 K 셀 앞까지 훑어, 가시선이 뚫린 **가장 먼** 지점을 준다.
+        // 현재 위치에서 필드를 따라 K 셀 앞까지 훑어, 가시선이 뚫린 가장 먼 지점 —
+        // 막혔다면 막은 코너의 오프셋 꼭짓점 — 을 준다.
         // 반환 false = 쓸 만한 후보 없음(호출자는 기존 flow 방향을 그대로 쓴다).
         public static bool TryFurthestVisible(
             float3 from,
@@ -58,17 +65,53 @@ namespace Wassup.Battle.Movement
                 // 필드는 셀 중심 기준의 방향을 준다. 유닛이 셀 안에서 한쪽으로 치우쳐 있으면
                 // 그 방향으로는 몸이 안 들어갈 수 있는데, 방향 벡터에는 비켜설 성분이 없어
                 // 영구 교착이 난다(장애물 모서리에 끼어 뒤에서 밀어야 빠지던 사고 —
-                // 2026-08-08 사용자 제보. 셀 (8,7) 에서 flow=(0,1), 몸이 이웃 열을 침범).
-                //
-                // 다음 셀 중심은 **정의상 몸이 들어가는 자리**다(walkable 셀 + r < 타일/2).
-                // 거기를 조준하면 방향에 측면 성분이 생겨 유닛이 통로 쪽으로 비켜서고,
-                // 다음 프레임에 통과한다. 되돌리지 말 것 — 이게 교착을 막는 지점이다.
-                if (i > 0 && !IsVisible(from, candidate, radius, in nav)) break;
+                // 2026-08-08 사용자 제보). 다음 셀 중심은 정의상 몸이 들어가는 자리다
+                // (walkable 셀 + r < 타일/2). 되돌리지 말 것 — 이게 교착을 막는 지점이다.
+                if (i > 0 && TryFindFirstBlocked(from, candidate, radius, in nav, out int2 blocker))
+                {
+                    // unit 10 — 가시 구간이 꺾이는 코너(apex)의 오프셋 꼭짓점을 조준한다.
+                    // 오프셋이 다른 벽 안에 떨어지면(좁은 대각 틈) 마지막 가시 후보 유지.
+                    // 자기 위치와 겹치면(이미 코너 위) 조준 의미가 없어 역시 유지.
+                    float3 lastVisible = found ? target : from;
+                    if (TryCornerAim(blocker, lastVisible, from, radius, in nav, out float3 cornerAim)
+                        && math.distancesq(cornerAim, from) > 1e-4f)
+                    {
+                        target = cornerAim;
+                        found = true;
+                    }
+                    break;   // 코너가 이번 프레임의 한계 — 지나면 다음 프레임에 열린다
+                }
 
                 target = candidate;
                 found = true;
             }
             return found;
+        }
+
+        // 이동(MovementSystem)과 예고 라인(BattleBridge)이 공유하는 "다음 목표점" 규칙 —
+        // 갈라지면 "라인 ≠ 이동선" 부류의 버그가 재발한다(2026-08-08). 호출처 2곳 +
+        // sim-critical 이라 제약 10 의 추출 조건을 충족한다.
+        // 평활화 성공 → 그 점. 실패 → 필드 한 스텝의 셀 중심. 골·고립 → false.
+        public static bool TryStepTarget(
+            float3 pos,
+            in NavGrid nav,
+            in NativeArray<float2> flow,
+            float radius,
+            int lookahead,
+            out float3 target)
+        {
+            if (TryFurthestVisible(pos, in nav, in flow, radius, lookahead, out target)
+                && math.distancesq(target, pos) > 1e-6f)
+                return true;
+
+            target = default;
+            if (!flow.IsCreated) return false;
+            int2 cell = GridMath.WorldToCell(pos, nav.tileSize, nav.gridSize, origin: nav.origin);
+            if (!nav.InBounds(cell)) return false;
+            int2 step = GridMath.FlowStep(flow[GridMath.CellIndex(cell, nav.gridSize)]);
+            if (step.x == 0 && step.y == 0) return false;
+            target = GridMath.CellToWorldCenter(cell + step, nav.tileSize, pos.y, origin: nav.origin);
+            return true;
         }
 
         // 두 점 사이가 반지름 r 의 원이 지나갈 만큼 뚫려 있는가.
@@ -78,10 +121,17 @@ namespace Wassup.Battle.Movement
         // 함께 봐야** 하기 때문이다 — 선분만 뚫려 있고 몸통이 걸리는 통로로 직행하면
         // AgentCollision 이 매 프레임 막아 제자리 진동이 난다.
         public static bool IsVisible(float3 a, float3 b, float radius, in NavGrid nav)
+            => !TryFindFirstBlocked(a, b, radius, in nav, out _);
+
+        // IsVisible 과 같은 판정이되, 처음 걸린 막힌 셀을 알려준다(unit 10 꼭짓점 조준 입력).
+        // 샘플 순서(가까운 쪽부터)와 셀 스캔 순서가 고정이라 결과가 결정론적이다.
+        public static bool TryFindFirstBlocked(
+            float3 a, float3 b, float radius, in NavGrid nav, out int2 blockedCell)
         {
+            blockedCell = default;
             float dx = b.x - a.x, dz = b.z - a.z;
             float len = math.sqrt(dx * dx + dz * dz);
-            if (len < 1e-5f) return true;
+            if (len < 1e-5f) return false;
 
             float step = math.max(0.1f, math.min(radius, nav.tileSize * 0.5f));
             int steps = (int)math.ceil(len / step);
@@ -90,14 +140,60 @@ namespace Wassup.Battle.Movement
                 float t = (float)i / steps;
                 float px = a.x + dx * t;
                 float pz = a.z + dz * t;
-                if (OverlapsBlocked(px, pz, radius, in nav)) return false;
+                if (TryFirstOverlapBlocked(px, pz, radius, in nav, out blockedCell)) return true;
             }
-            return true;
+            return false;
         }
 
-        // 중심 (px,pz), 반지름 r 의 원이 걸치는 셀들 중 막힌 것이 있는가.
+        // unit 10 — 차단 셀 B 의 4꼭짓점 중 **에이전트에 가장 가까운 것**(= 지금 돌아야 할
+        // 코너)을 골라, B 중심 반대 방향으로 (반지름+skin) 오프셋한 조준점을 만든다.
+        //
+        // funnel 의 apex 선택 — 1차 키: **마지막 가시점에 최근접**(가시 구간이 꺾이는 지점),
+        // 2차 키(동률): **에이전트에 최근접**. 두 키가 모두 필요하다는 것이 각각 실측됐다
+        // (2026-08-09):
+        //  · 1차 키를 "에이전트 최근접"으로 하면, 이미 돌아 나온 코너를 뒤로 다시 조준해
+        //    그 자리에 동결된다(장애물 언더사이드 — 전방 apex 를 버리고 후방 코너를 봄).
+        //  · 2차 키 없이 1차 키만 쓰면 동률(두 코너가 꺾임점에서 등거리)이 스캔 순서로
+        //    벽 건너편에 풀려, 방향이 막힌 축 위주가 되어 0.1배속 크리프(아레나 입구
+        //    164프레임 정체).
+        //
+        // 반환 false = 오프셋 점에 반지름 원이 안 들어감(좁은 대각 틈) — 호출자는 폴백.
+        public static bool TryCornerAim(
+            int2 blockedCell, float3 lastVisible, float3 agentPos, float radius, in NavGrid nav, out float3 aim)
+        {
+            float ts = nav.tileSize;
+            float cx = nav.origin.x + blockedCell.x * ts;
+            float cz = nav.origin.z + blockedCell.y * ts;
+            float half = ts * 0.5f;
+
+            float bestD = float.MaxValue, bestA = float.MaxValue;
+            float2 bestCorner = default, bestSign = default;
+            for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                var corner = new float2(cx + sx * half, cz + sz * half);
+                float d = math.distancesq(new float2(lastVisible.x, lastVisible.z), corner);
+                float a = math.distancesq(new float2(agentPos.x, agentPos.z), corner);
+                bool better = d < bestD - 1e-6f
+                              || (math.abs(d - bestD) <= 1e-6f && a < bestA - 1e-6f);
+                if (better)
+                {
+                    bestD = d; bestA = a;
+                    bestCorner = corner;
+                    bestSign = new float2(sx, sz);
+                }
+            }
+
+            float off = radius + AgentCollision.Skin;
+            var p = bestCorner + bestSign * off;
+            aim = new float3(p.x, agentPos.y, p.y);
+            return !TryFirstOverlapBlocked(p.x, p.y, radius, in nav, out _);
+        }
+
+        // 중심 (px,pz), 반지름 r 의 원이 걸치는 셀들 중 막힌 것이 있으면 그 첫 셀을 준다.
         // r < tileSize 전제라 3x3 이웃이면 충분하다(AgentCollision 과 같은 전제).
-        private static bool OverlapsBlocked(float px, float pz, float radius, in NavGrid nav)
+        private static bool TryFirstOverlapBlocked(
+            float px, float pz, float radius, in NavGrid nav, out int2 blockedCell)
         {
             int x0 = CellCoord(px - radius, nav.origin.x, nav.tileSize);
             int x1 = CellCoord(px + radius, nav.origin.x, nav.tileSize);
@@ -106,7 +202,11 @@ namespace Wassup.Battle.Movement
 
             for (int cz = z0; cz <= z1; cz++)
             for (int cx = x0; cx <= x1; cx++)
-                if (nav.IsBlocked(new int2(cx, cz))) return true;
+            {
+                var cell = new int2(cx, cz);
+                if (nav.IsBlocked(cell)) { blockedCell = cell; return true; }
+            }
+            blockedCell = default;
             return false;
         }
 

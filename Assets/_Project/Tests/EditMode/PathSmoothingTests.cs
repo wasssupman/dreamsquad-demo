@@ -178,15 +178,16 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void FirstCandidate_IsAcceptedEvenWhenNotVisible()
+        public void EscapeAim_IsCornerVertex_WhenSecondCandidateBlocked()
         {
-            // 위 성질의 근거를 직접 못박는다: 첫 후보(= 바로 다음 셀 중심)는 가시성과
-            // 무관하게 채택한다. 그 자리는 정의상 몸이 들어가는 위치이기 때문이다.
-            // 되돌리면 치우친 유닛이 다시 갇힌다.
+            // unit 10 계약 진화 — 구 버전은 "탈출 조준 = 첫 후보 셀 중심(정수 좌표)" 을
+            // 박았지만, 이제 둘째 후보가 막히면 **막은 벽의 코너 오프셋 꼭짓점**(비정수,
+            // 월드 고정점)이 조준된다. 탈출의 본질(측면 성분)은 위 OffCenterAgent 케이스가
+            // 계속 지키고, 여기서는 꼭짓점의 정확한 좌표를 못박는다.
             var grid = new int2(4, 4);
             var walk = OpenField(grid);
-            walk[1 * 4 + 1] = 0;
-            walk[2 * 4 + 1] = 0;
+            walk[1 * 4 + 1] = 0;   // (1,1) 벽
+            walk[2 * 4 + 1] = 0;   // (1,2) 벽
             var flow = BuildFlow(walk, grid, new int2(0, 3));
             var nav = Nav(walk, grid);
 
@@ -194,9 +195,98 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(PathSmoothing.TryFurthestVisible(
                 from, nav, flow, R, PathSmoothing.DefaultLookahead, out var target));
 
-            // 채택된 첫 후보는 셀 중심이므로 좌표가 정수여야 한다.
-            Assert.AreEqual(math.round(target.x), target.x, 1e-4f, "셀 중심 조준");
-            Assert.AreEqual(math.round(target.z), target.z, 1e-4f, "셀 중심 조준");
+            // apex 규칙: 차단 셀 (1,1) 의 4꼭짓점 중 **마지막 가시점(셀 (0,2) 중심)에
+            // 최근접**한 (0.5, 1.5) 에서 벽 중심 반대 방향 (-,+) 으로 (R+skin) 오프셋.
+            // 1차 키가 "에이전트 최근접"이면 이미 지난 코너를 뒤로 조준해 동결된다(실측).
+            float off = R + AgentCollision.Skin;
+            Assert.AreEqual(0.5f - off, target.x, 1e-3f, "apex x 오프셋");
+            Assert.AreEqual(1.5f + off, target.z, 1e-3f, "apex z 오프셋");
+        }
+
+        [Test]
+        public void CornerAim_IsObserverIndependent()
+        {
+            // unit 10 의 존재 이유 — 조준점이 (차단 셀, 꼭짓점) 쌍에서만 파생되는 월드
+            // 고정점이라, 유닛이 코너 근처 어디에 있든 같은 점이 나온다. 이 성질이 깨지면
+            // 매 프레임 재계산이 다시 왕복(덜컹임)을 만든다.
+            var grid = new int2(4, 4);
+            var walk = OpenField(grid);
+            walk[1 * 4 + 1] = 0;
+            walk[2 * 4 + 1] = 0;
+            var flow = BuildFlow(walk, grid, new int2(0, 3));
+            var nav = Nav(walk, grid);
+
+            Assert.IsTrue(PathSmoothing.TryFurthestVisible(
+                new float3(0.45f, 0f, 0.50f), nav, flow, R, PathSmoothing.DefaultLookahead, out var a));
+            Assert.IsTrue(PathSmoothing.TryFurthestVisible(
+                new float3(0.42f, 0f, 0.62f), nav, flow, R, PathSmoothing.DefaultLookahead, out var b));
+
+            Assert.AreEqual(a.x, b.x, 1e-4f, "관찰자 위치가 달라도 같은 코너면 같은 조준점");
+            Assert.AreEqual(a.z, b.z, 1e-4f);
+        }
+
+        [Test]
+        public void CornerAim_InvalidOffset_ReturnsFalse()
+        {
+            // 좁은 대각 틈 — 오프셋 점에 반지름 원이 안 들어가면 채택하지 않는다
+            // (호출자는 마지막 가시 셀 중심 폴백). 여기서 true 를 주면 유닛이 벽에 겹치는
+            // 자리를 조준해 AgentCollision 과 매 프레임 싸운다.
+            var grid = new int2(4, 4);
+            var walk = OpenField(grid);
+            walk[1 * 4 + 1] = 0;   // (1,1) — 차단 셀
+            walk[2 * 4 + 0] = 0;   // (0,2) — 오프셋 점 (0.149, 1.851) 이 이 셀에 겹친다
+            var nav = Nav(walk, grid);
+
+            Assert.IsFalse(PathSmoothing.TryCornerAim(
+                new int2(1, 1), new float3(0f, 0f, 2f), new float3(0.45f, 0f, 0.5f), R, nav, out _));
+        }
+
+
+        [Test]
+        public void CornerAim_Tie_ResolvesToAgentSide()
+        {
+            // 아레나 입구 164프레임 정체의 최소 재현(2026-08-09). 두 코너가 꺾임점에서
+            // 등거리(동률)일 때 벽 건너편으로 풀리면, 조준 방향이 막힌 축 위주가 되어
+            // 충돌 해결 후 0.1배속 크리프가 남는다. 동률은 에이전트 쪽으로 풀려야 한다.
+            //
+            //   y=1  . . .        blocker (1,0). lastVisible = (1,1) 중심 →
+            //   y=0  . # .        코너 (0.5,0.5) 와 (1.5,0.5) 가 등거리 동률.
+            var grid = new int2(3, 2);
+            var walk = OpenField(grid);
+            walk[0 * 3 + 1] = 0;
+            var nav = Nav(walk, grid);
+
+            float off = R + AgentCollision.Skin;
+
+            // 에이전트가 오른쪽에 있으면 → 오른쪽 코너 (1.5,0.5)
+            Assert.IsTrue(PathSmoothing.TryCornerAim(
+                new int2(1, 0), new float3(1f, 0f, 1f), new float3(1.8f, 0f, 0.2f), R, nav, out var right));
+            Assert.AreEqual(1.5f + off, right.x, 1e-3f, "동률은 에이전트 쪽으로");
+
+            // 에이전트가 왼쪽에 있으면 → 왼쪽 코너 (0.5,0.5)
+            Assert.IsTrue(PathSmoothing.TryCornerAim(
+                new int2(1, 0), new float3(1f, 0f, 1f), new float3(0.2f, 0f, 0.2f), R, nav, out var left));
+            Assert.AreEqual(0.5f - off, left.x, 1e-3f, "동률은 에이전트 쪽으로");
+        }
+
+        [Test]
+        public void TryStepTarget_FallsBackToFieldStep_AndStopsAtGoal()
+        {
+            // 이동·예고 라인이 공유하는 선택 규칙: 평활화 → 필드 스텝 → 골/고립 false.
+            var grid = new int2(6, 3);
+            var walk = new NativeArray<byte>(18, Allocator.Temp);
+            for (int x = 0; x < 6; x++) walk[1 * 6 + x] = 1;
+            var flow = BuildFlow(walk, grid, new int2(0, 1));
+            var nav = Nav(walk, grid);
+
+            Assert.IsTrue(PathSmoothing.TryStepTarget(
+                new float3(5f, 0f, 1f), nav, flow, R, PathSmoothing.DefaultLookahead, out var t),
+                "복도 안 — 목표점이 있어야 한다");
+            Assert.AreEqual(1f, t.z, 1e-3f, "복도 밖으로 나가지 않는다");
+
+            Assert.IsFalse(PathSmoothing.TryStepTarget(
+                new float3(0f, 0f, 1f), nav, flow, R, PathSmoothing.DefaultLookahead, out _),
+                "골 셀 위 — 더 갈 곳이 없다");
         }
 
         [Test]

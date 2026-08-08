@@ -50,20 +50,16 @@ namespace Wassup.Battle.Effects
 
             // 정적 지형에서 장애물을 뺀 합성 마스크. walkMask 자체는 덮어쓰지 않는다 —
             // 그건 지형이고 장애물은 별개 층이다.
+            // unit 10 계약 수리 — 벽 술어(정적∪장애물)를 여기서 인라인 재구현하지 않는다.
+            // "이 칸을 걸을 수 없는가"의 정의는 NavGrid 하나이고(unit 1·2 계약), 합성 마스크
+            // 물질화는 FillWalkMask 가 그 술어로 해 준다. 인라인 루프는 벽 정의가 바뀔 때
+            // 조용히 낡는다(자가 감사에서 발견된 위반).
             var combined = new NativeArray<byte>(n, Allocator.Temp);
             var sources = new NativeList<int2>(4, Allocator.Temp);
             try
             {
-                for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                {
-                    var cell = new int2(x, y);
-                    int idx = GridMath.CellIndex(cell, field.gridSize);
-                    bool blocked = field.walkMask[idx] == 0
-                                   || (hasObstacles && obstacles.blockedCells.IsCreated
-                                       && obstacles.blockedCells.Contains(cell));
-                    combined[idx] = blocked ? (byte)0 : (byte)1;
-                }
+                Wassup.Battle.Movement.MovementCellTrim.FillWalkMask(
+                    in field, hasObstacles, in obstacles, combined);
 
                 if (field.goals.IsCreated && field.goals.Length > 0)
                     for (int i = 0; i < field.goals.Length; i++) sources.Add(field.goals[i]);

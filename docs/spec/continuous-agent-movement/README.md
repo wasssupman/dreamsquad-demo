@@ -1,12 +1,13 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **units 0~8 구현 완료 2026-08-08 · EditMode 그린 · ecs-review 3회 통과 → Play 육안 검증 대기** ([9_handoff_summary.md](9_handoff_summary.md))
+상태: **units 0~10 구현 완료 2026-08-09 · EditMode 그린 → unit 10 Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [10_corner_vertex_aiming.md](10_corner_vertex_aiming.md))
 
 ## 결정 요약
 
 - **D1 = (b) 확정** (2026-08-07 사용자) — 장애물 변경 시 flow field 재빌드. **막으면 돌아간다.**
 - **D2 = (a) 제안, unit 7 착수 시 확정** — 평활화 후보는 필드 전방 K 셀 전진으로 생성.
 - **D3 = (B) 확정** (2026-08-07 사용자) — 필드 설치 코드를 `BattleBridge` 밖 `SimFieldInstaller` 로 추출. unit 0.
+- **D4 = C안 확정** (2026-08-09 브레인스토밍) — 코너 덜컹임은 **무상태 코너 꼭짓점(apex) 조준**으로 해결. A안(적별 웨이포인트 funnel) 기각 — 재론 조건: unit 10 Play 게이트에서 잔여 팝 체감 시 승격. 범위는 경로 기하만(운동학 별도 spec). unit 10.
 
 ## 상위 목표
 

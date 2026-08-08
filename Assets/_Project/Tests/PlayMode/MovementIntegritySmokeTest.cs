@@ -16,7 +16,8 @@ using Wassup.Battle.Movement;
 namespace Wassup.Tests.PlayMode
 {
     // enemy-tile-movement-integrity / aggro-standoff / attack-hit-delay / enemy-ai-fsm — 합성 경로 통합 smoke (투트랙 리뷰 M2).
-    // pure-math seam(LateralRecenter/MovementCellTrim/SpawnSpread)은 EditMode 로 검증됨. 여기서는 라이브 합성:
+    // pure-math seam(MovementCellTrim/SpawnSpread/PathSmoothing)은 EditMode 로 검증됨. 여기서는 라이브 합성:
+    // (LateralRecenter 는 continuous-agent-movement unit 10 에서 은퇴 — 코너 밀착 목표와 정면 충돌.)
     //  (a) tile invariant — 실 전투 동안 모든 적이 walk 타일 위 유지(aggro chase→cell-trim, flow→recenter→cell-trim, zeroFlow skip).
     //  (b) aggro 전투 — 더미 guardian 에 aggro 적이 tile-Chebyshev 사거리 도달(M1) → AttackSystem RESOLVE 로 데미지(unit 1).
     // enemy-ai-fsm: aggro 경로는 이제 EnemyAiState FSM 으로 흐른다 — guardian aggro 시 Chasing(self-walk) →

@@ -13,7 +13,10 @@ namespace Wassup.Battle.Movement
     {
         // 경계에 정확히 붙으면 다음 프레임 셀 판정이 흔들린다. 살짝 띄운다
         // (MovementCellTrim.kBoundaryEpsilon 과 같은 성격).
-        private const float kSkin = 1e-3f;
+        // unit 10 — PathSmoothing 의 코너 꼭짓점 오프셋도 같은 값을 쓴다: 조준점과 충돌
+        // 해결이 같은 여유를 가져야 "조준한 자리에 실제로 설 수 있다"가 성립한다.
+        public const float Skin = 1e-3f;
+        private const float kSkin = Skin;
 
         // radius <= 0 이면 기존 점 충돌(MovementCellTrim.Apply)에 위임한다.
         // 술어를 두 벌 두지 않기 위한 위임이지 폴백 분기의 중복이 아니다.

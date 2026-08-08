@@ -1902,23 +1902,14 @@ namespace Wassup.Bridge
                 if (idx < 0 || idx >= field.flow.Length) break;
                 if (field.dist[idx] == 0) break; // 골 도달
 
-                // 1순위: 평활화 조준점(유닛이 실제로 향하는 지점).
-                if (Wassup.Battle.Movement.PathSmoothing.TryFurthestVisible(
+                // unit 10 — 목표점 선택 규칙은 MovementSystem 과 같은 순수 헬퍼 하나다.
+                // (평활화/코너 꼭짓점 → 폴백 필드 스텝 → 골·고립 종료.) 여기 인라인하지
+                // 말 것 — 갈라지면 "라인 ≠ 이동선" 부류가 재발한다.
+                if (!Wassup.Battle.Movement.PathSmoothing.TryStepTarget(
                         pos, in nav, in field.flow, radius,
-                        Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 aim)
-                    && math.distancesq(aim, pos) > 1e-6f)
-                {
-                    pos = aim;
-                }
-                else
-                {
-                    // 폴백: 필드 한 스텝. flow 는 8-이웃이라 대각 성분이 ±0.7071 이므로
-                    // 버림 캐스트를 쓰면 같은 셀에 갇힌다 — GridMath.FlowStep 단일 정의를 쓴다.
-                    int2 flowStep = Wassup.Battle.Movement.GridMath.FlowStep(field.flow[idx]);
-                    if (flowStep.x == 0 && flowStep.y == 0) break; // 골 도착·고립·미도달
-                    pos = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
-                        cell + flowStep, field.tileSize, spawnHeight, origin: field.origin);
-                }
+                        Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 next))
+                    break;
+                pos = next;
                 outPath.Add(new Vector3(pos.x, pos.y, pos.z));
             }
             return outPath.Count >= 2;

@@ -253,14 +253,16 @@ namespace Wassup.Battle.Movement
                     }
                     else
                     {
-                        // continuous-agent-movement unit 7 — 평활화(string pulling).
+                        // continuous-agent-movement unit 7·10 — 평활화(string pulling).
                         // 필드는 8방향으로 양자화돼 있어 기울기가 45°가 아니면 대각/직축이
-                        // 꺾여 붙는다. 전방 K 셀 중 벽 없이 보이는 가장 먼 지점으로 직행해
-                        // 방향을 연속으로 만든다. 필드를 **대체하지 않는다** — 후보를 필드가
+                        // 꺾여 붙는다. 전방 가시점(막히면 코너 꼭짓점)으로 직행해 방향을
+                        // 연속으로 만든다. 필드를 **대체하지 않는다** — 후보를 필드가
                         // 만들므로 오목 지형에서도 갇히지 않는다.
+                        // 목표점 선택 규칙은 예고 라인과 공유(TryStepTarget) — 갈라지면
+                        // "라인 ≠ 이동선" 부류가 재발한다.
                         // 사냥 분기는 defender field 를 따르므로 그쪽 flow 로 후보를 만든다.
                         var smoothFlow = hunting ? huntField.flow : field.flow;
-                        if (PathSmoothing.TryFurthestVisible(
+                        if (PathSmoothing.TryStepTarget(
                                 current, in nav, in smoothFlow, follow.ValueRO.radius,
                                 PathSmoothing.DefaultLookahead, out float3 aim))
                         {
