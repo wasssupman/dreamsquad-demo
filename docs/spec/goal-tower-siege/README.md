@@ -1,7 +1,8 @@
 # goal-tower-siege — 골에 도달한 적이 타워를 때린다
 
 > 상태: **rev 2 재설계 완료(컴파일만 검증) 2026-08-08 · Unity 검증 대기**
-> 인계·검증 체크리스트: `3_handoff_summary.md`
+> 인계: `3_handoff_summary.md` · **검증 체크리스트는 통합본**
+> `docs/spec/three-minute-survival/5_verification_checklist.md`
 > 선행: `three-minute-survival` units 0~3 커밋됨(`a7d1b015`, 컴파일만 검증).
 > 안정도 값·체력바·패배 조건·tie-break 는 거기 있고, 이 spec 은 **피해가 도착하는 방식만** 바꾼다.
 
