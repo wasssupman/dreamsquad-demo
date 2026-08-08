@@ -1,6 +1,7 @@
 # goal-tower-siege — 골에 도달한 적이 타워를 때린다
 
-> 상태: **rev 2 재설계 완료(컴파일만 검증) 2026-08-08 · Unity 검증 대기**
+> 상태: **rev 3 — 붕괴 후 스트레스(unit 4) 추가 · 자동 검증 완료 2026-08-09**
+> (EditMode 전량 + PlayMode GoalStability·Endless·TallyFlow 그린. Play 육안·밸런스 실측만 대기)
 > 인계: `3_handoff_summary.md` · **검증 체크리스트는 통합본**
 > `docs/spec/three-minute-survival/5_verification_checklist.md`
 > 선행: `three-minute-survival` units 0~3 커밋됨(`a7d1b015`, 컴파일만 검증).
@@ -26,6 +27,7 @@
 | 1 | `1_enemy_siege.md` | ECS (Units) + 브리지 | 적이 골에서 죽지 않는다 — 파괴 중단·타겟팅 배제 해제·돌격형 자폭 |
 | 2 | `2_coverage_and_cadence.md` | ECS (Combat) + 문서 | `TileAoe` 피해자 풀 · 케이던스 실측 · 계약 문서 갱신 |
 | 3 | `3_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
+| 4 | `4_stress_after_breach.md` | 규칙 rev 3 | 골 파괴 = 유출 개통, 스트레스 상한이 패배를 소유 |
 
 ## Feature-wide 계약 (rev 2)
 
@@ -37,7 +39,7 @@
   Blocking 해저드의 선례와 같다.
 - **피해·사망은 표준 경로다.** `IncomingDamage` → `DamageApplicationSystem` → `DeadTag` →
   `UnitLifecycleSystem` 파괴. 전용 시스템·공유 풀·미러 없음. **신규 ISystem 0개.**
-- **체력은 타워마다 자기 것. 하나라도 부서지면 패배.** 표시는 가장 위험한 골(최소 체력).
+- **체력은 타워마다 자기 것.** ~~하나라도 부서지면 패배~~ → unit 4 에서 **유출 개통**으로 개정(상한 0 인 덱만 즉시 패배). 표시는 가장 위험한 골(최소 체력).
   구 "공유 1풀" 결정을 대체한다(2026-08-08).
 - **적의 뷰를 despawn 하지 않는다.** 공성 적은 살아 있으므로 뷰·현상금 표식·데이터 등록부를
   건드리지 않는다.

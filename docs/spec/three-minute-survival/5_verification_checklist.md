@@ -25,7 +25,11 @@
 | `b8f22ebd` | **rev 2 재설계** — 골 타워를 건물형 유닛으로 단순화(현재 코드) |
 | `143584be` | endless-mode 계약 4 폐기 |
 
-## 2. 자동 테스트
+## 2. 자동 테스트 — **완료 2026-08-09** (goal-tower-siege unit 4 포함)
+
+> EditMode 1982/1985(실패 0, skip 3) · PlayMode GoalStability·Endless·TallyFlow 그린.
+> 검증 중 적발·수정: 순찰 소환 게이트 낡은 단언 / GoalStabilityTest 하네스 2건
+> (페이즈 게이트·마지막 낙폭 미관측) / 엔드리스 전제(누수>0 → 안정도 감소) / 카탈로그 가드 예외.
 
 - [ ] **EditMode 전량** (개편 전 기준선: 2890 passed / 0 failed / 1 skipped)
 - [ ] PlayMode `GoalStabilityTest` — 공성 지속 피해 경로로 갱신됨. 만피 시작 → 감소 →

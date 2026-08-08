@@ -86,7 +86,9 @@ namespace Wassup.Data
         // Appended last (직렬화 back-compat).
         [Header("Goal Stability")]
         [Tooltip("골 안정도 최대치. 유출한 적의 stabilityDamage 합이 이 값에 닿으면 패배.")]
-        [Min(1)] public int goalStabilityMax = 20;
+        // 2026-08-08 — 20 → 1000. 공성(goal-tower-siege)이 붙으면서 20 은 적 2~3대에 녹아
+        // "3분 생존" 전제가 성립하지 않았다(검증에서 첫 접촉 몇 초 뒤 패배). 1000 은 사용자 결정.
+        [Min(1)] public int goalStabilityMax = 1000;
 
         public int ResolveWaveSeed()
         {

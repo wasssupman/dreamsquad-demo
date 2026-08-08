@@ -243,4 +243,4 @@ MonoBehaviour:
     spawnIndex: 1
   defeatGoalReachedCount: 10
   timerDurationSec: 180
-  goalStabilityMax: 20
+  goalStabilityMax: 1000

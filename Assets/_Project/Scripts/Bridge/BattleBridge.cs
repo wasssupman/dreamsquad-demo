@@ -363,6 +363,8 @@ namespace Wassup.Bridge
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
+        // stress-after-breach — 골이 부서져 유출 지점으로 전환됐나(상한>0 경로). 매치 경계에서 리셋.
+        private bool _goalBreached;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -4815,13 +4817,14 @@ namespace Wassup.Bridge
         // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
         // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: StressLimit > 0);
 
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
         {
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
+            _goalBreached = false;   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
             _leakTypeMissLogged = false;
             _towerMissLogged = false;
         }
@@ -4900,16 +4903,34 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
-                // 스트레스는 두 경로 공통이다 — "몇 번 뚫렸나" 는 집계 지표라 적이 살아남든
-                // 자폭하든 똑같이 오른다(패배와는 무관, three-minute-survival unit 0).
-                _goalReachedCount++;
-                RefreshLeakHud();
+                // stress-after-breach(2026-08-08) — 스트레스는 **골이 부서진 뒤에만** 쌓인다.
+                // 붕괴 전 도달은 공성(안정도 피해)이거나 자폭(안정도 피해)이라 안정도 축이
+                // 이미 그것을 세고 있다. 여기서도 세면 한 사건이 두 축을 깎아, 안정도가
+                // 멀쩡한데 스트레스 상한으로 먼저 죽는다(1000 남았는데 패배가 실측됐다).
+                if (_goalBreached)
+                {
+                    _goalReachedCount++;
+                    RefreshLeakHud();
+                    CheckStressDefeat();
+                }
+
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
                 // 데이터 등록부를 건드리지 않는다(지우면 안 보이는 적이 타워를 때리고
                 // 데미지 폰트만 허공에 뜬다). 타워가 Faction.Defender 라 적의 base targetMask
                 // 가 이미 그것을 포함하므로 **여기서 열어줄 것이 없다.**
-                if (evt.canSiege) continue;
+                // stress-after-breach — 골이 이미 부서졌으면 때릴 타워가 없다. 공성으로 두면
+                // 적이 눌러앉아 웨이브 전멸 판정을 막으므로 유출(뷰 회수 + 파괴)로 내린다.
+                if (evt.canSiege && !_goalBreached) continue;
+                if (evt.canSiege && _goalBreached)
+                {
+                    enemyViewPool?.Despawn(evt.entity);
+                    spineUnitPool?.Despawn(evt.entity);
+                    NotifyEnemyGoneIfMarked(evt.entity);
+                    _enemyTypeByEntity.Remove(evt.entity);
+                    if (HasLiveEntityManager() && _em.Exists(evt.entity)) _em.DestroyEntity(evt.entity);
+                    continue;
+                }
 
                 // 돌격형 자폭(AttackState 없는 Runner·Swift 계열) — 기존 유출 경로 그대로.
                 // 골에 붙어도 아무것도 못 하면서 웨이브 전멸 판정만 막으므로 남기지 않는다.
@@ -4948,7 +4969,8 @@ namespace Wassup.Bridge
                 ComponentType.ReadWrite<IncomingDamage>());
             if (towerQuery.IsEmpty)
             {
-                if (!_towerMissLogged)
+                // 붕괴 후에는 타워가 없는 게 정상이다(피해 대신 스트레스가 오른다) — 경고 금지.
+                if (!_towerMissLogged && !_goalBreached)
                 {
                     _towerMissLogged = true;
                     Debug.LogWarning("[BattleBridge] 골 타워가 없다 — 자폭 피해가 유실된다.", this);
@@ -4997,13 +5019,72 @@ namespace Wassup.Bridge
             }
 
             _goalStability = 0;
+
+            // stress-after-breach (2026-08-08 사용자 결정) — 골 파괴는 더 이상 그 자체로 패배가
+            // 아니다. 상한이 있으면 **유출 지점으로 전환**되고, 그때부터 유출 1회 = 스트레스 1이
+            // 누적돼 상한에 닿을 때 패배한다(3분 전이라도). 상한 0 = 구 동작(파괴 즉시 패배).
+            if (StressLimit > 0)
+            {
+                if (!_goalBreached)
+                {
+                    _goalBreached = true;
+                    OpenGoalAfterBreach();
+                    Debug.Log($"[BattleBridge] 골 붕괴 — 유출 지점으로 전환. 스트레스 {_goalReachedCount}/{StressLimit} 에서 패배.");
+                }
+                return;
+            }
+
             _resultShown = true;
             _running = false;
             var score = CalculateBattleScore(defeated: true);
             GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
             BeginTally(win: false, score, RemainingBattleSeconds());
-            Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다.");
+            Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
+        }
+
+        // 붕괴 처리: 남은 타워를 정리하고, **이미 공성 중이던 적**을 유출로 전환한다.
+        // 전환하지 않으면 때릴 타워가 없는 적이 골에 눌러앉아 웨이브 전멸 판정을 영구히 막는다.
+        private void OpenGoalAfterBreach()
+        {
+            DestroyGoalTowers();   // _goalTowerCount = 0 → 이후 SyncGoalStability 는 early-return
+            if (!HasLiveEntityManager()) return;
+            using var siegeQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalReachedMarker>(),
+                ComponentType.ReadOnly<AttackUnitTag>());
+            var sieging = siegeQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < sieging.Length; i++) LeakSiegingEnemy(sieging[i]);
+            sieging.Dispose();
+        }
+
+        // 공성 중이던 적 1기를 유출로 처리한다(뷰 회수 + 스트레스 + 엔티티 파괴).
+        // 안정도 피해는 넣지 않는다 — 골은 이미 부서졌고 이제 세는 것은 스트레스다.
+        private void LeakSiegingEnemy(Entity entity)
+        {
+            if (!_em.Exists(entity)) return;
+            _goalReachedCount++;
+            enemyViewPool?.Despawn(entity);
+            spineUnitPool?.Despawn(entity);
+            NotifyEnemyGoneIfMarked(entity);
+            _enemyTypeByEntity.Remove(entity);
+            _em.DestroyEntity(entity);
+            RefreshLeakHud();
+            CheckStressDefeat();
+        }
+
+        // 스트레스 상한 패배. 상한 0 = 이 경로 없음(골 파괴가 즉시 패배를 소유).
+        private void CheckStressDefeat()
+        {
+            // 상한의 on/off 는 덱 원본값(StressLimit)이, **문턱값**은 EffectiveLeakLimit()이 정한다 —
+            // HUD 분모와 같은 값이어야 화면에서 검산된다(몽마의 계약 선불 차감이 반영된 값).
+            if (_resultShown || StressLimit <= 0 || _goalReachedCount < EffectiveLeakLimit()) return;
+            _resultShown = true;
+            _running = false;
+            var score = CalculateBattleScore(defeated: true);
+            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
+            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
+            BeginTally(win: false, score, RemainingBattleSeconds());
+            Debug.Log($"[BattleBridge] DEFEAT — 스트레스 상한 도달 ({_goalReachedCount}/{StressLimit}).");
         }
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;

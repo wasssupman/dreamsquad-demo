@@ -55,37 +55,48 @@ namespace Wassup.Tests.PlayMode
             // 낙폭 상한도 티어값(보스 5)이 아니라 **적 공격력** 축이다(예: Rootcaster 14).
             // 그래서 상한을 걸지 않고, 대신 "유출이 한 번이라도 있어야 줄기 시작한다" 는
             // 인과만 고정한다 — 아무도 골에 못 갔는데 안정도가 줄면 그건 진짜 결함이다.
+            // rev 2 에서 "유출이 한 번이라도 있어야 줄기 시작한다" 인과 단언도 폐기했다:
+            // 원거리 적은 사거리에서 멈춰 타워를 쏘므로 **골에 도달한 적이 0 이어도** 안정도가
+            // 준다(스펙이 '수용된 대가'로 명시). 그 단언을 남기면 원거리 편성에서 거짓 실패한다.
             int prevStability = bridge.GoalStabilityCurrent;
             bool sawDrain = false;
-            int initialAllowance = bridge.RemainingLeakAllowance();
             float start = Time.unscaledTime;
 
-            while (bridge.GoalStabilityCurrent > 0 && gm.CurrentPhase == GamePhase.Battle)
+            // 하네스 주의(2026-08-08 검증에서 적발): 이 테스트는 GameManager 를 거치지 않고
+            // 브리지를 직접 몬다(BeginPlacement/StartBattle 직접 호출). 그래서 `CurrentPhase` 는
+            // **Battle 로 바뀌지 않는다** — Battle 로 게이팅하면 관측 루프 본문이 한 번도 돌지 않아
+            // "안정도가 한 번도 줄지 않았다" 는 거짓 실패가 난다. 자매 하네스(TallyFlowTest)가
+            // Result 도달만 보는 이유가 이것이다. 종료 조건은 안정도 0 또는 Result 뿐이다.
+            // 관측은 **본문에서** 하고 종료는 본문 끝에서 판단한다. 조건절에 `stability > 0` 를
+            // 두면 안정도가 만피에서 0 으로 **한 번에** 떨어지는 판(타워 20 은 적 2~3대면 녹는다)에서
+            // 루프가 그 값을 못 보고 빠져나가 "한 번도 줄지 않았다" 는 거짓 실패가 난다
+            // (2026-08-08 검증에서 실제로 이 형태로 실패했다).
+            while (gm.CurrentPhase != GamePhase.Result)
             {
                 Assert.Less(Time.unscaledTime - start, TimeoutSec,
                     $"{TimeoutSec}초 안에 안정도가 0 에 닿지 않았다 (현재 {bridge.GoalStabilityCurrent}/{max}). " +
-                    "유출이 안정도를 안 깎거나 적이 골에 도달하지 못하고 있다.");
+                    "공성 피해가 안정도를 안 깎거나 적이 골에 도달하지 못하고 있다.");
 
                 int stability = bridge.GoalStabilityCurrent;
-                if (stability < prevStability)
-                {
-                    sawDrain = true;
-                    Assert.Less(bridge.RemainingLeakAllowance(), initialAllowance,
-                        "골에 도달한 적이 한 기도 없는데 안정도가 줄었다 — 유출 외의 경로가 깎고 있다.");
-                }
+                if (stability < prevStability) sawDrain = true;
                 prevStability = stability;
+                if (stability <= 0) break;
                 yield return null;
             }
 
             Assert.IsTrue(sawDrain, "골이 뚫렸는데 안정도가 한 번도 줄지 않았다");
             Assert.AreEqual(0, bridge.GoalStabilityCurrent, "안정도는 0 에서 바닥친다(음수 금지)");
 
+            // stress-after-breach(2026-08-08) — 안정도 0 은 이제 **패배가 아니라 유출 개통**이다.
+            // 스트레스 상한(덱 defeatGoalReachedCount)이 있으면 그때부터 유출 1회 = 스트레스 1이
+            // 쌓여 상한에서 패배한다. 상한 0 인 덱만 구 동작(즉시 패배)을 유지한다.
+
             // 안정도 0 = 패배. 스트레스 한계 패배는 제거됐으므로 종료 경로는 이것뿐이다.
             float tallyStart = Time.unscaledTime;
-            while (gm.CurrentPhase == GamePhase.Battle)
+            while (gm.CurrentPhase != GamePhase.Result)
             {
                 Assert.Less(Time.unscaledTime - tallyStart, 10f,
-                    "안정도 0 인데 Battle 페이즈를 벗어나지 않았다 — 패배 전이가 끊겼다.");
+                    $"안정도 0 인데 Result 로 가지 않았다 — 패배 전이가 끊겼다 (현재 {gm.CurrentPhase}).");
                 yield return null;
             }
         }

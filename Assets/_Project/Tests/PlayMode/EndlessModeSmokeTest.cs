@@ -66,10 +66,15 @@ namespace Wassup.Tests.PlayMode
             float interval = (float)GetPublic(plan, "waveIntervalSec");
             Assert.AreEqual(20f, interval, 0.001f, "상한 간격 20초가 명목 그리드를 정한다");
 
-            // (5) 디펜더 0 + 전 웨이브 당김 → 적 유출. 누수가 쌓여도 패배 안 함.
+            // (5) 디펜더 0 + 전 웨이브 당김 → 적이 골에 도달. stress-after-breach(2026-08-08)
+            // 이후로는 **도달 = 유출이 아니다**: 골 타워가 살아 있으면 적은 공성으로 안정도를
+            // 깎고, 유출(스트레스)은 타워가 부서진 뒤에만 생긴다. 그래서 이 스모크의 전제는
+            // "누수 > 0" 이 아니라 "공성이 실제로 일어났다(안정도 감소)" 로 바뀐다.
             for (int i = 0; i < 40 && bridge.NextWaveHasNext; i++) bridge.ForceNextWave();
 
             int maxLeaksWhileAlive = 0;
+            bool sawStabilityDrain = false;
+            int prevStability = bridge.GoalStabilityCurrent;
             bool defeatSeen = false;
             bool ended = false;
             int endStability = -1;
@@ -80,6 +85,9 @@ namespace Wassup.Tests.PlayMode
                 bool running = (bool)GetField(bridge, "_running");
                 bool shown = (bool)GetField(bridge, "_resultShown");
                 if (running) maxLeaksWhileAlive = Mathf.Max(maxLeaksWhileAlive, leaks);
+                int stability = bridge.GoalStabilityCurrent;
+                if (stability < prevStability) sawStabilityDrain = true;
+                prevStability = stability;
 
                 if (shown)
                 {
@@ -94,7 +102,8 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
 
-            Assert.Greater(maxLeaksWhileAlive, 0, "적이 골에 유출돼 누수가 쌓였어야 한다(디펜더 0)");
+            Assert.IsTrue(sawStabilityDrain,
+                "디펜더 0 인데 안정도가 한 번도 줄지 않았다 — 적이 골에 도달하지 못하고 있다");
             // three-minute-survival unit 0 — 무한 모드도 **골 안정도 0 으로 패배한다**
             // (endless-mode 계약 4 "누수로 죽지 않음" 은 이 spec 이 갱신했다). 유출이 쌓이면
             // 패배가 정상이므로 defeat 부재를 요구하지 않는다.

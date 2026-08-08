@@ -248,6 +248,6 @@ MonoBehaviour:
   - triggerTimeSec: 175
     unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
     spawnIndex: 1
-  defeatGoalReachedCount: 100
+  defeatGoalReachedCount: 0
   timerDurationSec: 180
-  goalStabilityMax: 20
+  goalStabilityMax: 1000

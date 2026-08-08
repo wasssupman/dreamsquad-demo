@@ -34,6 +34,13 @@ namespace Wassup.Tests.EditMode
             return result;
         }
 
+        // 의도적으로 카탈로그에서 뺀 카드(= 뽑히지 않음). SO·기능 코드는 남겨 두므로
+        // 이 가드가 "등록 깜빡"으로 오인하지 않게 여기에 사유와 함께 명시한다.
+        //   Card_IncubusPact(희생계약) — 2026-08-08 사용자 결정으로 비활성화. 유출 허용치를
+        //   선불로 지불하는 카드인데, goal-tower-siege 이후 유출이 **골 파괴 뒤에만** 생겨
+        //   지불이 사실상 무비용이 됐다. 유출/스트레스 규칙이 안정되면 재등록 여부를 재판단.
+        private static readonly HashSet<string> IntentionallyDisabled = new() { "Card_IncubusPact" };
+
         [Test]
         public void EveryNonActiveCard_IsRegisteredInCatalog()
         {
@@ -43,6 +50,7 @@ namespace Wassup.Tests.EditMode
             foreach (var card in LoadAllCards())
             {
                 if (card.type == CardType.Active) continue; // 공용 — 카탈로그 제외 규약
+                if (IntentionallyDisabled.Contains(card.name)) continue;
                 if (!registered.Contains(card)) missing.Add(card.name);
             }
             Assert.IsEmpty(missing,

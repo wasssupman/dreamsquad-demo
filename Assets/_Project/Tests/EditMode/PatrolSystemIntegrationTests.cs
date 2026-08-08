@@ -313,9 +313,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void First_Summon_Ignores_PastGoal_Enemy_In_The_Area()
+        public void First_Summon_Answers_Siege_Enemy_In_The_Area()
         {
-            // 유출 대기 적은 부르는 이유가 못 된다.
+            // goal-tower-siege unit 1 — **단언이 뒤집혔다**(구: PastGoal 적은 무시).
+            // 그 태그는 이제 "유출 대기"(곧 사라질 적)가 아니라 "골에 붙어 타워를 때리는 중"이다.
+            // 골을 두들기는 적이야말로 순찰을 부를 이유이므로 첫 소환 게이트가 열려야 한다.
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
@@ -324,7 +326,7 @@ namespace Wassup.Tests.EditMode
 
             Tick();
 
-            Assert.AreEqual(0, CarrierCount());
+            Assert.AreEqual(1, CarrierCount(), "공성 중인 적은 거점 구역 게이트를 연다");
         }
 
         [Test]
