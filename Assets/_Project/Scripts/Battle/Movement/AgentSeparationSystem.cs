@@ -108,8 +108,23 @@ namespace Wassup.Battle.Movement
                 {
                     if (math.lengthsq(pushes[i]) < 1e-8f) continue;
                     float3 from = transforms[i].Position;
+
+                    // unit 13 — MovementSystem 이 멈춘 유닛(교전·CC·정지)은 **전진 성분의
+                    // 밀어냄을 거부**한다. 안 그러면 뒤 무리가 경로를 따라 4~9타일 밀어 나른다.
+                    // 전진 방향은 그 유닛이 선 셀의 flow 에서 매 프레임 파생 — 앵커를 저장하지
+                    // 않는다. 술어는 소유자(MovementSystem)가 기록한 것만 읽는다(재구현 금지).
+                    float2 accumulated = pushes[i];
+                    if (follows[i].holdingGround != 0 && field.flow.IsCreated)
+                    {
+                        int2 cell = GridMath.WorldToCell(from, field.tileSize, field.gridSize, origin: field.origin);
+                        if (nav.InBounds(cell))
+                            accumulated = Separation.RejectForwardPush(
+                                accumulated, field.flow[GridMath.CellIndex(cell, field.gridSize)]);
+                        if (math.lengthsq(accumulated) < 1e-8f) continue;
+                    }
+
                     float maxPush = follows[i].radius;   // 한 프레임에 반지름 이상 밀리지 않는다(초당 아님)
-                    float3 pushed = Separation.ApplyAccumulated(from, pushes[i], maxPush);
+                    float3 pushed = Separation.ApplyAccumulated(from, accumulated, maxPush);
                     float3 resolved = AgentCollision.Resolve(from, pushed, follows[i].radius, in nav);
 
                     var xf = lookup[entities[i]];

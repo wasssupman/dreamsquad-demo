@@ -66,11 +66,16 @@ namespace Wassup.Battle.Movement
                 aliveGoalCells.Add(goalPoint.ValueRO.cell);
 
             foreach (var (transform, follow, entity) in
-                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
+                     SystemAPI.Query<RefRW<LocalTransform>, RefRW<PathFollowState>>()
                               .WithNone<PastGoalTag>()
                               .WithEntityAccess())
             {
                 float3 current = transform.ValueRO.Position;
+
+                // unit 13 — 기본값은 "정지". 자기주도 변위를 **실제로 적용하는 지점에서만**
+                // 내린다(아래 2곳). 케이스를 열거하지 않으므로 새 continue 경로가 생겨도
+                // 자동으로 정지에 편입된다 — 열거식이면 분기가 늘 때마다 조용히 샌다.
+                follow.ValueRW.holdingGround = 1;
 
                 // enemy-ai-fsm Unit 2 — 이동을 EnemyAiState 로 결정(상태는 EnemyAiStateSystem 이 Movement 전에 set).
                 //  Standoff = 정지(가디언 사거리 도달, 공격은 AttackSystem). Chasing = 가디언 anchor 로 self-walk.
@@ -115,6 +120,7 @@ namespace Wassup.Battle.Movement
                                 desiredChase = MovementCellTrim.ClampDisplacement(current, desiredChase, field.tileSize);
                                 transform.ValueRW.Position = AgentCollision.Resolve(
                                     current, desiredChase, follow.ValueRO.radius, in nav);
+                                follow.ValueRW.holdingGround = 0;   // unit 13 — 자기주도 이동함
                             }
                         }
                     }
@@ -294,6 +300,10 @@ namespace Wassup.Battle.Movement
                 // combat-action-lock — 잠/스턴: 자기주도 flow-step 0, 넉백(impulse)은 유지.
                 float3 flowStep = locked ? float3.zero : new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
                 float3 desired = current + flowStep + impulseDisplacement;
+
+                // unit 13 — 자기주도 변위가 실제로 있을 때만 "이동 중". 외력(impulse/pull)만
+                // 있는 프레임은 정지로 남는다 — 밀려나는 유닛은 자리를 지키는 쪽이 맞다.
+                if (math.lengthsq(flowStep) > 1e-12f) follow.ValueRW.holdingGround = 0;
 
                 // [은퇴] enemy-tile-movement-integrity unit 1 의 LateralRecenter 를 여기서 걷어냈다.
                 //

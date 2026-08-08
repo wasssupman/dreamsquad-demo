@@ -50,6 +50,32 @@ namespace Wassup.Battle.Movement
             return new float2(dx / d, dz / d) * (overlap * strength);
         }
 
+        // unit 13 — 정지한(자기주도 이동을 하지 않은) 유닛이 받는 밀어냄에서 **전진 성분만**
+        // 걷어낸다. 뒤로·옆으로 밀리는 건 그대로 받는다.
+        //
+        // 왜 필요한가: 시뮬이 "여기서 멈춘다"고 정한 유닛(가디언 교전 등)을 뒤 무리가 경로를
+        // 따라 4~9타일 밀어 나른다(실측, Zig 9.15타일). 사거리 판정과 배치 의도가 함께 무너진다.
+        //
+        // 왜 프레임당 상한(maxPush)이 아닌가: 밀림은 큰 한 방이 아니라 **수백 프레임 누적
+        // 압력**이다. 실제 밀어냄은 `겹침 × strength` 라 상한선에 애초에 닿지 않아서, 상한을
+        // 0.05·0.02 로 낮춰도 밀림이 그대로였다(6.47 → 6.47 → 6.42타일). 상한은 폭주 방지용이지
+        // 누적 방지용이 아니다.
+        //
+        // 왜 전면 차단(앵커)이 아닌가: 밀림은 사라지지만 폭1 복도에서 마개가 **진짜 벽**이 되어
+        // 뒤가 통과하지 못한다(통과 8~13/15 로 붕괴). 옆·뒤 성분을 남겨야 뭉침이 계속 풀린다.
+        //
+        // forward 는 호출자가 그 유닛이 선 셀의 flow 에서 매 프레임 파생한다 — 앵커 좌표를
+        // 저장하지 않는다(저장하면 무효화 시점이 생긴다). zero 면 원본 그대로.
+        // forward 는 안에서 정규화한다 — 호출자가 flow 값을 그대로 넘겨도 투영이 왜곡되지
+        // 않게(비단위 벡터를 그대로 쓰면 제거량이 |forward|² 배로 어긋난다).
+        public static float2 RejectForwardPush(float2 accumulated, float2 forward)
+        {
+            float2 dir = math.normalizesafe(forward);
+            if (math.lengthsq(dir) < 1e-8f) return accumulated;
+            float along = math.dot(accumulated, dir);
+            return along > 0f ? accumulated - dir * along : accumulated;
+        }
+
         // 누적분을 실제 변위로 바꾼다. 한 프레임에 밀려나는 양을 상한해 폭주를 막는다
         // (밀집 대열에서 누적이 커지면 튕겨 나간다).
         public static float3 ApplyAccumulated(float3 position, float2 accumulated, float maxPush)

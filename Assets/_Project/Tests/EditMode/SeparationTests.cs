@@ -124,6 +124,49 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.8f, r.z, 1e-4f, "4/5 비율 보존");
         }
 
+        // ── unit 13 — 정지 유닛의 전진 밀림 거부 ────────────────────────────────
+
+        [Test]
+        public void RejectForwardPush_RemovesForwardComponent_KeepsLateral()
+        {
+            // 뒤에서 미는 힘(+forward)만 사라지고 옆 성분은 남아야 한다 — 옆까지 죽이면
+            // 마개가 진짜 벽이 되어 뒤가 통과하지 못한다(앵커 실험에서 통과 8/15 로 붕괴).
+            var forward = new float2(1f, 0f);
+            var r = Separation.RejectForwardPush(new float2(0.3f, 0.2f), forward);
+
+            Assert.AreEqual(0f, r.x, 1e-5f, "전진 성분 제거");
+            Assert.AreEqual(0.2f, r.y, 1e-5f, "측면 성분 보존");
+        }
+
+        [Test]
+        public void RejectForwardPush_KeepsBackwardPush()
+        {
+            // 뒤로 밀리는 건 그대로 받는다 — 자리를 내주는 방향이라 밀어 나르지 않는다.
+            var r = Separation.RejectForwardPush(new float2(-0.3f, 0.1f), new float2(1f, 0f));
+
+            Assert.AreEqual(-0.3f, r.x, 1e-5f);
+            Assert.AreEqual(0.1f, r.y, 1e-5f);
+        }
+
+        [Test]
+        public void RejectForwardPush_ZeroForward_IsNoOp()
+        {
+            // 고립 셀·필드 부재(flow zero) — 전진 방향을 모르면 손대지 않는다.
+            var p = new float2(0.3f, 0.2f);
+            Assert.AreEqual(p, Separation.RejectForwardPush(p, float2.zero));
+        }
+
+        [Test]
+        public void RejectForwardPush_NonUnitForward_ProjectsCorrectly()
+        {
+            // flow 값을 그대로 넘겨도(길이 ≠ 1) 제거량이 |forward|² 배로 어긋나지 않는다.
+            var unit  = Separation.RejectForwardPush(new float2(0.3f, 0.2f), new float2(1f, 0f));
+            var scaled = Separation.RejectForwardPush(new float2(0.3f, 0.2f), new float2(7f, 0f));
+
+            Assert.AreEqual(unit.x, scaled.x, 1e-5f);
+            Assert.AreEqual(unit.y, scaled.y, 1e-5f);
+        }
+
         [Test]
         public void ApplyAccumulated_ZeroPush_IsNoOp()
         {
