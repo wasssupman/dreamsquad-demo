@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Wassup.Battle.Units
 {
@@ -17,5 +18,9 @@ namespace Wassup.Battle.Units
         // 생산자(UnitLifecycleSystem)가 판정해 실어 보낸다 — 소비 시점엔 엔티티가 이미
         // 파괴됐을 수 있어 브리지가 컴포넌트를 되읽을 수 없다.
         public bool canSiege;
+
+        // goal-tower-siege(rev 2) — 도달 지점(sim). 자폭 경로에서 **어느 골에 부딪혔는지**를
+        // 가르는 데 쓴다(골 2개 맵). 소비 시점엔 엔티티가 파괴돼 위치를 되읽을 수 없다.
+        public float3 position;
     }
 }

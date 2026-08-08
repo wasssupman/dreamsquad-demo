@@ -495,7 +495,12 @@ namespace Wassup.UI
 
             // Score (right). Bold and a step above the name — a leaderboard is read
             // down the score column.
-            string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
+            // three-minute-survival unit 3 — 서버 제출값은 인코딩돼 있다(동점 판정을 값에
+            // 실었다). 이 화면의 리더보드도 LeaderboardList·히스토리와 **같은 규칙**으로
+            // 디코딩해야 한다 — 여기만 빠지면 랭킹 응답 도착 순간 10억대 숫자가 뜬다.
+            string scoreText = row.IsWaiting
+                ? "-"
+                : Wassup.Core.ScoreMath.DisplayScore(row.Score).ToString("N0");
             var score = CreateLabel(go.transform, "Score", scoreText, 38, TextAlignmentOptions.MidlineRight, textColor);
             if (!row.IsWaiting) score.fontStyle = FontStyles.Bold;
             var scoreRt = (RectTransform)score.transform;

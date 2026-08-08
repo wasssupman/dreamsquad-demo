@@ -13,7 +13,6 @@
 - `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` ·
   `Combat/Projectile/Emission/ProjectileEmitterSystem.cs` · `Combat/Projectile/ProjectileMoveSystem.cs`
   — `PastGoalTag` 배제 해제
-- `Assets/_Project/Scripts/Battle/Combat/TauntAttackGrantSystem.cs` — mask 덮어쓰기 보정
 - `Assets/_Project/Tests/EditMode/UnitLifecycleSystemTests.cs` · `FrontmostAttackLockTests.cs`
 
 ## 구현
@@ -34,20 +33,21 @@
 그래서 `UnitLifecycleSystem` 이 `AttackState` 보유 여부로 갈라 판정하고, 그 결과를
 `GoalReachedEvent.canSiege` 에 실어 보낸다(소비 시점엔 엔티티가 이미 파괴됐을 수 있어 브리지가
 컴포넌트를 되읽을 수 없다). `canSiege == false` 면 기존대로 파괴하고, 브리지가 그 적의
-`stabilityDamage` 를 **타워 버퍼로** 넣는다 — 풀의 writer 를 하나로 유지하려고 안정도를 직접
-깎지 않는다. 읽힘은 "돌격형이 골에 몸을 부딪고 사라진다".
+`stabilityDamage` 를 **그 적이 부딪힌 골의 타워** `IncomingDamage` 로 넣는다(표준 경로와 같은
+통로). 어느 골인지는 이벤트에 실린 도달 위치로 가른다 — 소비 시점엔 엔티티가 파괴돼 위치를
+되읽을 수 없다. 읽힘은 "돌격형이 골에 몸을 부딪고 사라진다".
 
 `AttackState` 는 Combat 소유지만 여기서는 읽기만 한다(맥락 간 RO 읽기 허용 — 같은 시스템의
 `DcTriggerSlot` 선례).
 
-**2. 도달한 적에게만 타워를 열어준다** — 브리지가 `GoalReachedEvent` 를 드레인할 때 그 적의
-`AttackState.targetMask |= (int)Faction.GoalTower` 를 쓴다. **base mask 에 넣지 않는 이유**:
-넣으면 사거리 3타일 원거리 적이 골에서 3칸 떨어진 지점에서 `HasFireTarget` → `Engaging` →
-(`engageMovement == Halt`면) 정지해 버린다. 그러면 골 셀에 도달하지 않아 `PastGoalTag` 도,
-`GoalReachedEvent` 도, 스트레스 카운트도 발생하지 않는다.
+**2. 마스크를 열어줄 일이 없다 (rev 2)** — 타워가 `Faction.Defender` 라 적의 base
+`targetMask` 가 이미 그것을 포함한다. rev 1 의 `GrantGoalTowerTarget`(브리지가 Combat 소유
+`AttackState` 를 쓰던 지점)은 **삭제**됐다 — 리뷰가 맥락 경계 위반으로 지적한 곳이고,
+없애는 것이 규칙 위반도 1프레임 지연도 동시에 없앤다.
 
-> Units 맥락(브리지 경유)이 Combat 컴포넌트를 쓰는 지점이다. 브리지는 ECS 게이트웨이라
-> 허용되지만, 시스템 간 직접 쓰기로 옮기지 말 것.
+대가: 사거리가 긴 적은 골 셀에 들어가기 전에 멈춰 타워를 쏜다 → 그 적은 `PastGoalTag` 를
+못 받아 **스트레스 카운터에 안 잡힌다.** 스트레스는 이미 패배·점수와 무관한 지표라 손실이
+작고, "원거리가 멀리서 골을 두들긴다" 는 연출은 오히려 자연스럽다(2026-08-08 판단).
 
 **3. 유출 처리 변경**(`DrainGoalEvents`) — `canSiege` 로 두 갈래가 된다.
 
@@ -59,11 +59,10 @@
 스트레스(`_goalReachedCount++`)와 HUD 갱신은 **두 경로 공통**이다 — "몇 번 뚫렸나" 는 집계
 지표라 적이 살아남든 자폭하든 똑같이 오른다.
 
-**3-a. authority 이관** — 브리지 Update 가 `GoalTowerHealth` 싱글턴을 폴링해 `_goalStability`
-미러를 갱신하고 패배를 판정한다(`DrainGoalEvents` 안의 패배 블록은 제거). 표시는 올림
-(`CeilToInt`)이고 패배 판정은 원본 float — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다"
-가 된다. 공개 API(`GoalStabilityCurrent`/`GoalStabilityMax`)는 불변이라 체력바와 tie-break 는
-정본이 옮겨간 것을 모른다.
+**3-a. 안정도 = 타워의 Health (rev 2)** — 별도 정본이 없다. 브리지 Update 가 타워 `Health` 를
+읽어 미러(`_goalStability`)를 갱신하고 패배만 판정한다. 표시는 올림(`CeilToInt`), 판정은 원본
+float — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다" 가 된다. 골이 여럿이면 **가장
+위험한 골**을 보여주고, **하나라도 부서지면 패배**다. 공개 API 는 불변.
 
 **4. 타겟팅 배제 해제(5곳)** — `PastGoalTag` 를 "곧 사라질 놈"으로 배제하던 곳:
 
@@ -78,9 +77,13 @@
 `NearestTargeting.cs` 에는 필터가 없다(순수 랭킹 유틸) — 주석만 갱신한다. 주 최근접 타겟 루프
 (`:424-441`)에도 필터가 없어 **일반 방어유닛은 지금도 공성 적을 때린다**.
 
-**5. 도발** — `TauntAttackGrantSystem:48` 이 `targetMask` 를 `Defender` **단독으로 덮어쓴다.**
-골에 도달한 적이 도발되면 타워를 못 때리면서 필드를 점유해 전멸 트리거만 막는다. 덮어쓰기
-대신 `Defender` 비트를 **더한다**(기존 비트 보존).
+**5. 도발 — 패치 불필요 (rev 2)** — 도발이 부여하는 마스크가 `Defender` 단독인데 타워가 바로
+그 진영이다. rev 1 의 패치는 되돌렸다.
+
+**6. 싱크 부재 시 fail-open 유지** — 마커는 **이벤트를 실제로 보낸 경우에만** 붙인다. 마커는
+쿼리에서 빼는 필터라, 이벤트 없이 붙이면 그 적은 두 번 다시 평가되지 않는다(스트레스도 안
+오르고 `AttackUnitTag` 는 유지돼 웨이브 전멸 판정을 그 판 내내 막는 유령이 된다).
+원저자의 "fail-open otherwise" 를 fail-closed 로 뒤집지 않기 위한 가드다.
 
 ## 완료 기준
 

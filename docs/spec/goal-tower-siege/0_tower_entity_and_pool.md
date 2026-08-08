@@ -1,70 +1,60 @@
-# 0 — 타워 엔티티 + 공유 체력 풀
+# 0 — 골 타워 = 건물형 유닛 (rev 2)
+
+> rev 1 은 전용 `Faction` 비트 + 공유 체력 싱글턴 + 전용 피해 시스템으로 만들었다가
+> 코드리뷰에서 CRITICAL 2건을 받고 되돌렸다. 아래 "rev 1 에서 지운 것" 참조.
 
 ## 목적
 
-골 셀마다 **때릴 수 있는 대상**을 세우고, 안정도의 정본을 브리지에서 ECS 싱글턴으로 옮긴다.
-이 단위만으로는 아무도 타워를 때리지 않는다(적 공성은 unit 1) — 여기서는 **맞을 준비**만 한다.
+골 셀마다 **때릴 수 있는 건물**을 세운다. 표준 피해 경로를 그대로 타므로 이 spec 이
+새로 만드는 시스템은 **0개**다.
 
 ## 변경 대상
 
-- 신규 `Assets/_Project/Scripts/Battle/Units/GoalTowerTag.cs` · `GoalTowerHealth.cs` ·
-  `GoalTowerDamageSystem.cs`
-- `Assets/_Project/Scripts/Battle/Units/Faction.cs` — `GoalTower = 1 << 3`
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — 타워 생성/티어다운, 안정도 폴링
-- `Assets/_Project/Tests/EditMode/` — 풀 감산 회귀 테스트 신설
+- 신규 `Assets/_Project/Scripts/Battle/Units/GoalTowerTag.cs` (식별용 태그 하나뿐)
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — 타워 생성/정리, 안정도 미러, 패배 판정
 
 ## 구현
 
-**1. 아키타입** — `EffectSpawner.SpawnBlockingHazard` 와 동형이다. 판 시작 시(맵 빌드 직후)
-골 셀(`_generatedMap.goals`, 폴백 `goal`)마다 엔티티 1기:
+**아키타입**
 
 ```
-GoalTowerTag + Health{value=max=goalStabilityMax} + IncomingDamage 버퍼
-             + FactionTag{Faction.GoalTower} + LocalTransform(셀 중심, sim 좌표)
+GoalTowerTag + FactionTag{Faction.Defender} + Health + IncomingDamage + LocalTransform
 ```
 
-`AttackSystem`·`EnemyAiStateSystem` 의 타겟 후보 쿼리가 `FactionTag + Health + LocalTransform`
-이라 **타겟 후보로는 이미 보인다**. 실제로 노려지는 것은 mask 를 받는 unit 1 부터다.
+**진영은 `Faction.Defender` 다.** 적의 base `targetMask` 가 이미
+`Defender | BlockingHazard`(`BattleBridge` 적 스폰)라서 **타겟팅 코드가 한 줄도 필요 없다** —
+전용 Faction 비트도, 골 도달 시 마스크를 열어주는 브리지 훅도, 도발 시스템 패치도 없다.
 
-**금지 목록(계약)**: `ModifierStats`·`StatModifierSlot`·`ShieldSlot`·`IncomingHeal` 을 붙이지
-않는다. `MaxHealthScaleSystem` 이 `Health.max` 의 유일한 런타임 writer 이고 `ModifierStats`
-보유 엔티티만 건드리는데, 타워가 그걸 얻으면 미러가 깨진다.
+**`DefenderUnitTag` 는 붙이지 않는다.** 그건 "플레이어가 놓은 유닛" 축이고, 붙이는 순간
+배치·코스트·카드 부착·시너지·피로도/열기·픽업·실드가 전부 딸려온다. 진영(`FactionTag`)과
+유닛 태그를 분리해 쓰는 것은 Blocking 해저드의 선례와 같다.
 
-**2. 공유 체력** — `GoalTowerHealth`(싱글턴 컴포넌트, `value`/`max`)가 정본이고 각 타워의
-`Health` 는 표시·타겟팅용 미러다. `GoalTowerDamageSystem`(Units,
-**`[UpdateBefore(DamageApplicationSystem)]`**):
+**피해는 표준 경로다.** 공격자가 `IncomingDamage` 에 append → `DamageApplicationSystem` 이
+`Health` 를 깎고 0 이면 `DeadTag` → `UnitLifecycleSystem` 이 파괴. 전용 시스템도, 공유 풀도,
+미러도 없다. **타워가 사라진 것이 곧 패배 신호**다(`_goalTowerCount` 와 살아있는 수 비교).
 
-```
-for each tower:
-    taken += Σ(IncomingDamage);  buffer.Clear()
-pool.value = max(0, pool.value − taken)
-for each tower: Health = { value = pool.value, max = pool.max }
-```
+**체력은 타워마다 자기 것**이다(2026-08-08 사용자 결정, 구 "공유 1풀" 대체). 골이 2개면
+**하나라도 부서지면 패배**이고, 화면에는 가장 위험한 골(최소 체력)을 보여준다.
 
-**`UpdateBefore` 가 핵심이다.** 버퍼를 먼저 비우므로 `DamageApplicationSystem` 은 타워
-`Health` 를 건드리지 않는다 → (a) "누적 결손을 매 프레임 재차감" 하는 델타 계산이 원천적으로
-불가능하고(초안의 치명적 오류), (b) 개별 타워가 `DeadTag` 를 받아 `UnitLifecycleSystem` 에
-파괴되는 경로도 생기지 않는다. 타워 피격은 데미지 폰트를 만들지 않는다(그 발화도
-`DamageApplicationSystem` 에 있다) — 타워는 유닛이 아니므로 의도된 결과다.
+**생성/정리** — `StartBattle` 에서 골 셀마다 1기(`EnsureGoalTowers`), `BeginPlacement` ·
+`StopBattle` · `DestroyBattleEntities`(티어다운) 3곳에서 정리. 티어다운 누락은 이 파일이
+이미 세 번 겪은 사고다(`Resignation`·`AllyBuffField`·`BattleTimeScale`).
 
-**3. authority 는 아직 옮기지 않는다** — 이 단위에서 브리지가 싱글턴을 폴링하기 시작하면
-`DrainGoalEvents` 의 즉발 차감(three-minute-survival unit 0)이 매 프레임 덮여 **유출이 무해해진
-채로 커밋된다.** 그래서 unit 0 은 풀을 덱 최대치로 세우고 미러만 돌리는 **inert 상태**로 두고,
-authority 이관(폴링 + 즉발 차감 제거)은 실제로 피해가 도착하기 시작하는 unit 1 에서 한 번에
-한다. 공개 API(`GoalStabilityCurrent`/`GoalStabilityMax`)는 그때도 **시그니처도 의미도 불변**
-— 체력바와 tie-break 는 정본이 옮겨간 것을 모른다.
+## rev 1 에서 지운 것 (과설계)
 
-**4. 티어다운** — `BeginPlacement` 에서 `GoalTowerTag` 쿼리로 타워 엔티티를 파괴하고 싱글턴
-엔티티도 정리한다(`_pending.Clear()` 부근, 기존 매치 경계 리셋과 co-locate).
-`GoalTowerHealth` 는 NativeQueue 를 들지 않으므로 Dispose 대상이 없다.
+| 지운 것 | 왜 만들었었나 | 왜 필요 없나 |
+|---|---|---|
+| `Faction.GoalTower` 비트 + 골 도달 시 mask 부여 | 원거리 적이 골 앞에서 멈추는 것을 막으려고 | 진영을 `Defender` 로 두면 base mask 가 이미 포함 |
+| `GoalTowerHealth` 싱글턴 + 공유 풀 + 미러 | "체력은 골마다가 아니라 한 풀" 결정 | 타워마다 `Health` 를 갖는 게 표준 경로 |
+| `GoalTowerDamageSystem` + `[UpdateBefore]` | 미러 역산 버그를 피하려고 | 미러가 없으면 회피할 것도 없다 |
+| `TauntAttackGrantSystem` 패치 | GoalTower 비트를 도발이 덮어써서 | 비트가 없다 |
+
+리뷰의 CRITICAL 2건(생산자 대비 정렬 미선언 · `DeadTag` 경로 없다는 거짓 불변식)은 전부
+이 세 축에서만 나왔다. 표준 경로를 우회하려고 만든 것들이었다.
 
 ## 완료 기준
 
 - [ ] 컴파일 통과(테스트 어셈블리 포함), 콘솔 에러/경고 0
-- [ ] EditMode: **타워 2기 + 복수 프레임** 풀 감산 — 피해를 준 프레임에만 정확히 그만큼 줄고,
-      **무피해 프레임에는 풀이 불변**이어야 한다(초안 버그를 잡는 유일한 케이스)
-- [ ] EditMode: 오버킬(풀보다 큰 피해)이 음수를 만들지 않는다
-- [ ] EditMode: 두 타워에 나눠 들어온 피해의 합이 풀에서 한 번만 빠진다
-- [ ] Play: 판 시작 시 골 셀마다 타워 엔티티가 서고 `BeginPlacement` 후 남지 않는다
-- [ ] Play: **무회귀** — 유출 시 안정도가 지금까지처럼 즉발로 깎이고 0 이면 패배한다
-      (이 단위는 아무 동작도 바꾸지 않는다. 타워는 아직 아무에게도 안 맞는다)
+- [ ] Play: 판 시작 시 골 셀마다 타워가 서고, `BeginPlacement`·로비 왕복 후 남지 않는다
+- [ ] Play: 적이 타워를 때리면 안정도가 줄고 0 이면 패배한다
+- [ ] Play: 골 2개 맵에서 한쪽만 부서져도 패배하고, 표시는 낮은 쪽을 따라간다

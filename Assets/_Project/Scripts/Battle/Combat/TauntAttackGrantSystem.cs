@@ -30,8 +30,6 @@ namespace Wassup.Battle.Combat
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            // goal-tower-siege unit 1 — 골 도달 여부로 부여 마스크가 갈린다(아래 주석 참조).
-            var pastGoalLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PastGoalTag>(isReadOnly: true);
 
             // Grant: outputs-less enemy that just got aggroed and has a taunt profile.
             foreach (var (profile, entity) in
@@ -47,12 +45,7 @@ namespace Wassup.Battle.Combat
                     cooldownDuration = p.cooldown,
                     cooldownRemaining = 0f,
                     attackTargetCount = 1,
-                    // goal-tower-siege unit 1 — 이미 골에 도달한 적이 뒤늦게 도발되면
-                    // Defender 단독 마스크로는 타워를 못 때리면서 필드만 점유해 웨이브
-                    // 전멸 판정을 영구히 막는다. 도달 상태면 GoalTower 비트를 함께 준다.
-                    targetMask = pastGoalLookup.HasComponent(entity)
-                        ? (int)(Faction.Defender | Faction.GoalTower)
-                        : (int)Faction.Defender,
+                    targetMask = (int)Faction.Defender,
                 });
                 var ob = ecb.AddBuffer<AttackOutputElement>(entity);
                 ob.Add(new AttackOutputElement

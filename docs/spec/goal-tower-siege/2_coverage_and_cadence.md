@@ -28,6 +28,10 @@
 | 투사체 `TileAoe` | ○ (**이번에 고침**) | 피해자 풀이 `DefenderUnitTag` 쿼리라 타워가 빠져 있었다 → `WithAny<DefenderUnitTag, GoalTowerTag>`. 증상이 "보스만 타워를 못 부순다" 라 조용했다 |
 | 해저드 캐스트 | N/A | `HazardCastSystem` 후보가 `PathFollowState` 를 요구 — 타워는 안 가진다 |
 
+> rev 2 로 타워가 `Faction.Defender` 가 되면서 `TileAoe` 를 제외한 나머지는 **원래부터**
+> 동작했다는 것이 확실해졌다. `TileAoe` 만 피해자 풀이 `DefenderUnitTag` 쿼리라 여전히
+> 예외이고, 그래서 `WithAny<DefenderUnitTag, GoalTowerTag>` 패치가 남는다.
+
 **실측 결과 결함이 실재했다.** `ProjectileHitSystem` 의 defender 풀은
 `WithAll<DefenderUnitTag, LocalTransform>` 이라 타워가 빠졌다 — 보스 AreaBarrage 가 골 위에
 떨어져도 안정도가 한 톨도 안 줄었다. 근접 공격은 타겟에 직접 append 라 멀쩡했기 때문에

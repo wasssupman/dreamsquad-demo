@@ -1,6 +1,6 @@
 # goal-tower-siege — 골에 도달한 적이 타워를 때린다
 
-> 상태: **units 0~2 구현 완료(컴파일만 검증) 2026-08-08 · Unity 검증 대기**
+> 상태: **rev 2 재설계 완료(컴파일만 검증) 2026-08-08 · Unity 검증 대기**
 > 인계·검증 체크리스트: `3_handoff_summary.md`
 > 선행: `three-minute-survival` units 0~3 커밋됨(`a7d1b015`, 컴파일만 검증).
 > 안정도 값·체력바·패배 조건·tie-break 는 거기 있고, 이 spec 은 **피해가 도착하는 방식만** 바꾼다.
@@ -21,29 +21,34 @@
 
 | # | 문서 | 작업 구분 | 목적 |
 |---|---|---|---|
-| 0 | `0_tower_entity_and_pool.md` | ECS (Units) | 타워 엔티티 + 공유 체력 싱글턴 + 피해 시스템 + 안정도 authority 이관 |
-| 1 | `1_enemy_siege.md` | ECS (Units/Combat) + 브리지 | 적이 골에서 죽지 않고 타워를 때린다 — 파괴 중단·마스크 부여·타겟팅 배제 해제·도발 |
-| 2 | `2_coverage_and_cadence.md` | ECS (Combat) + 문서 | 투사체 페이로드 커버리지 · 웨이브 케이던스 상호작용 · 계약 문서/테스트 갱신 |
+| 0 | `0_tower_entity_and_pool.md` | 브리지 + 태그 1개 | 골 타워 = `Faction.Defender` 건물 엔티티. 신규 시스템 0 |
+| 1 | `1_enemy_siege.md` | ECS (Units) + 브리지 | 적이 골에서 죽지 않는다 — 파괴 중단·타겟팅 배제 해제·돌격형 자폭 |
+| 2 | `2_coverage_and_cadence.md` | ECS (Combat) + 문서 | `TileAoe` 피해자 풀 · 케이던스 실측 · 계약 문서 갱신 |
 | 3 | `3_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
 
-## Feature-wide 계약
+## Feature-wide 계약 (rev 2)
 
-- **안정도의 정본이 브리지에서 ECS 싱글턴으로 이동한다.** 브리지는 폴링해 기존 공개 API
-  (`GoalStabilityCurrent`/`GoalStabilityMax`)를 그대로 서빙한다 — 체력바(three-minute-survival
-  unit 1)와 tie-break(unit 3)는 **한 줄도 바뀌지 않는다.**
-- **`GoalTowerDamageSystem` 은 `[UpdateBefore(DamageApplicationSystem)]`** 에서 타워
-  `IncomingDamage` 를 직접 소비한다. 그래야 (a) 누적 결손 재차감이 원천적으로 불가능하고
-  (b) `DamageApplicationSystem` 이 타워 `Health` 를 건드리지 않아 개별 타워 `DeadTag` 가 안 생긴다.
-- **타워는 `ModifierStats`/`StatModifierSlot`/`ShieldSlot`/`IncomingHeal` 을 갖지 않는다.**
-  `MaxHealthScaleSystem` 이 `Health.max` 를 재계산하면 미러가 깨진다.
-- **`GoalTower` 비트는 base `targetMask` 에 넣지 않는다.** 골에 도달한(=`PastGoalTag`) 적에게만
-  부여한다 — base 에 넣으면 사거리 3타일 원거리 적이 골 3칸 앞에서 `Engaging` 으로 멈춰
-  `PastGoalTag` 도 스트레스도 발생하지 않는다.
-- **유출 즉발 피해는 제거된다.** 안정도는 이제 타워 공격으로만 깎인다. 스트레스 카운트와
-  `_enemyTypeByEntity` 정리는 유지한다.
-- **적의 뷰를 despawn 하지 않는다.** `DrainGoalEvents` 의 despawn·표식 회수 3줄을 걷어낸다.
-- 보스는 `hunting` 중 골 셀을 지나쳐도 도달 처리되지 않는다(leak-proof) — **의도된 구멍**이다.
-  방어유닛이 전멸해야 보스가 타워로 향한다.
+- **골 타워는 `Faction.Defender` 진영의 건물 엔티티다.** 적의 base `targetMask` 가 이미 그
+  진영을 포함하므로 **타겟팅 코드가 0줄**이다 — 전용 Faction 비트·마스크 부여 훅·도발 패치
+  전부 없다.
+- **`DefenderUnitTag` 는 붙이지 않는다.** 그건 "플레이어가 놓은 유닛" 축이라, 붙이면 배치·
+  코스트·카드 부착·시너지·피로도/열기·픽업·실드가 딸려온다. 진영과 유닛 태그의 분리는
+  Blocking 해저드의 선례와 같다.
+- **피해·사망은 표준 경로다.** `IncomingDamage` → `DamageApplicationSystem` → `DeadTag` →
+  `UnitLifecycleSystem` 파괴. 전용 시스템·공유 풀·미러 없음. **신규 ISystem 0개.**
+- **체력은 타워마다 자기 것. 하나라도 부서지면 패배.** 표시는 가장 위험한 골(최소 체력).
+  구 "공유 1풀" 결정을 대체한다(2026-08-08).
+- **적의 뷰를 despawn 하지 않는다.** 공성 적은 살아 있으므로 뷰·현상금 표식·데이터 등록부를
+  건드리지 않는다.
+- **공격 수단이 없는 적(Runner·Swift)은 자폭한다.** 골에 눌러앉으면 아무 피해도 못 주면서
+  웨이브 전멸 판정만 막으므로, 기존대로 사라지며 `stabilityDamage` 를 부딪힌 골에 넣는다.
+- **원거리 적은 골 셀에 못 들어올 수 있다** — 사거리에서 멈춰 타워를 쏜다. 그 적은
+  `PastGoalTag` 를 못 받아 스트레스 카운터에 안 잡힌다(수용된 대가).
+- 보스는 `hunting` 대상에 타워가 포함되므로(`DefenderFieldSystem` 이 `Faction.Defender` 로
+  필터) 방어유닛이 남아 있어도 골로 향한다 — rev 1 이 "의도된 구멍" 으로 남겼던 항목이
+  진영 변경으로 자연 해소됐다.
+- **힐러가 골을 수리할 수 있다** — 아군 타겟 후보가 `Faction.Defender` 라 타워가 포함된다.
+  Play 로 보고 판단할 것(막으려면 후보에서 `GoalTowerTag` 배제).
 
 ## 파이프라인 커버리지
 

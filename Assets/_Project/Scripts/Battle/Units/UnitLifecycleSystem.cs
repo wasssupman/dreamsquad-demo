@@ -9,8 +9,9 @@ using Wassup.Data;
 
 namespace Wassup.Battle.Units
 {
-    // Owns entity lifecycle for units. Destroys any unit carrying PastGoalTag (reached end of path)
+    // Owns entity lifecycle for units. Destroys units carrying DeadTag, and PastGoalTag units
     // or DeadTag (health dropped to zero). Emits GoalReachedEvent when an attack unit reaches the goal.
+    // goal-tower-siege unit 1 — 골 도달 적은 더 이상 파괴되지 않는다(공격 수단 없는 돌격형만 파괴).
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(DamageApplicationSystem))]
@@ -57,8 +58,8 @@ namespace Wassup.Battle.Units
             // AttackState 는 Combat 소유지만 읽기만 한다(맥락 간 RO 읽기 허용 — 아래 DcTriggerSlot 선례).
             bool hasSink = _singletonQuery.CalculateEntityCount() == 1;
             var attackStateLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
-            foreach (var (_, entity) in
-                     SystemAPI.Query<RefRO<PastGoalTag>>()
+            foreach (var (_, transform, entity) in
+                     SystemAPI.Query<RefRO<PastGoalTag>, RefRO<Unity.Transforms.LocalTransform>>()
                               .WithAll<AttackUnitTag>()
                               .WithNone<GoalReachedMarker>()
                               .WithEntityAccess())
@@ -71,7 +72,17 @@ namespace Wassup.Battle.Units
                     {
                         entity = entity,
                         canSiege = canSiege,
+                        position = transform.ValueRO.Position,
                     });
+                }
+                // 싱크가 없으면 **마커도 붙이지 않는다.** 마커는 쿼리에서 빼는 필터라, 이벤트
+                // 없이 붙이면 그 적은 두 번 다시 평가되지 않는다 — 스트레스도 안 오르고
+                // AttackUnitTag 는 유지돼 웨이브 전멸 판정을 그 판 내내 막는 유령이 된다.
+                // (원저자의 "fail-open otherwise" 를 fail-closed 로 뒤집지 않기 위한 가드)
+                if (!hasSink)
+                {
+                    if (!canSiege) ecb.DestroyEntity(entity);
+                    continue;
                 }
                 if (canSiege) ecb.AddComponent<GoalReachedMarker>(entity);
                 else ecb.DestroyEntity(entity);

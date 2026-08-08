@@ -15,6 +15,9 @@ namespace Wassup.Tests.PlayMode
     //
     // 하네스는 TallyFlowTest 와 같다 — 디펜더를 한 기도 놓지 않고 웨이브를 전부 당겨
     // 유출을 만든다. 승리 유도는 밸런스 의존이라 불안정하다.
+    //
+    // goal-tower-siege — 골 타워는 Faction.Defender 진영의 건물 엔티티이고, 적은 자기
+    // 공격으로 그것을 때린다. 즉 이 테스트는 **공성 지속 피해**를 통과 경로로 돈다.
     public class GoalStabilityTest
     {
         private const float TimeoutSec = 120f;
@@ -44,11 +47,17 @@ namespace Wassup.Tests.PlayMode
             bridge.StartBattle();
             for (int i = 0; i < 20 && bridge.NextWaveHasNext; i++) bridge.ForceNextWave();
 
-            // 안정도가 줄어드는 유일한 원인은 유출이어야 한다. RemainingLeakAllowance 는
-            // 유출마다 1 줄어드는 공개 카운터라 유출 프록시로 쓴다(스트레스 누적은 private).
+            // goal-tower-siege — 안정도가 줄어드는 원인은 이제 **둘**이다: 골에 남은 적의
+            // 지속 공격(주 경로)과 공격 수단 없는 돌격형의 자폭(Runner·Swift). 그래서 예전의
+            // "안정도가 줄면 유출 카운터도 반드시 늘었다" 단언은 성립하지 않는다 —
+            // 새 적이 도착하지 않은 프레임에도 공성 DPS 로 줄어든다.
+            //
+            // 낙폭 상한도 티어값(보스 5)이 아니라 **적 공격력** 축이다(예: Rootcaster 14).
+            // 그래서 상한을 걸지 않고, 대신 "유출이 한 번이라도 있어야 줄기 시작한다" 는
+            // 인과만 고정한다 — 아무도 골에 못 갔는데 안정도가 줄면 그건 진짜 결함이다.
             int prevStability = bridge.GoalStabilityCurrent;
-            int prevAllowance = bridge.RemainingLeakAllowance();
             bool sawDrain = false;
+            int initialAllowance = bridge.RemainingLeakAllowance();
             float start = Time.unscaledTime;
 
             while (bridge.GoalStabilityCurrent > 0 && gm.CurrentPhase == GamePhase.Battle)
@@ -58,22 +67,17 @@ namespace Wassup.Tests.PlayMode
                     "유출이 안정도를 안 깎거나 적이 골에 도달하지 못하고 있다.");
 
                 int stability = bridge.GoalStabilityCurrent;
-                int allowance = bridge.RemainingLeakAllowance();
                 if (stability < prevStability)
                 {
                     sawDrain = true;
-                    int drop = prevStability - stability;
-                    Assert.Less(allowance, prevAllowance,
-                        "안정도가 줄었는데 유출 카운터가 안 늘었다 — 유출 외의 경로가 안정도를 깎고 있다.");
-                    Assert.LessOrEqual(drop, 5,
-                        "한 프레임 낙폭이 보스 피해(5)를 넘었다 — 티어값이 아니라 다른 수가 들어가고 있다.");
+                    Assert.Less(bridge.RemainingLeakAllowance(), initialAllowance,
+                        "골에 도달한 적이 한 기도 없는데 안정도가 줄었다 — 유출 외의 경로가 깎고 있다.");
                 }
                 prevStability = stability;
-                prevAllowance = allowance;
                 yield return null;
             }
 
-            Assert.IsTrue(sawDrain, "유출이 안정도를 깎는 것을 한 번도 관측하지 못했다");
+            Assert.IsTrue(sawDrain, "골이 뚫렸는데 안정도가 한 번도 줄지 않았다");
             Assert.AreEqual(0, bridge.GoalStabilityCurrent, "안정도는 0 에서 바닥친다(음수 금지)");
 
             // 안정도 0 = 패배. 스트레스 한계 패배는 제거됐으므로 종료 경로는 이것뿐이다.
