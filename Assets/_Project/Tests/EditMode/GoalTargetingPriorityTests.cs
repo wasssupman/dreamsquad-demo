@@ -133,6 +133,61 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(4f, damage[0].amount, 1e-4f);
         }
 
+        // 힐러 결함 회귀 — 거점은 아군 타게팅 후보에 들지 않는다.
+        //
+        // 라이브 타워가 Faction.Defender 였을 때, 힐러 마스크(targetAllies → Defender)가
+        // 타워를 후보로 잡았고 체력비 최저 우선이라 깎일수록 1순위로 올라왔다. 타워엔
+        // IncomingHeal 버퍼가 없어 성사되면 ECB playback 이 던진다. 이제 마스크가
+        // DefenderUnit 단독이라 DefenderCore 는 후보 필터에서 먼저 걸러진다(계약 2).
+        // 이 방어선은 «최후순위» 가 아니라 **마스크**가 세운다 — 계약 4 폐기와 무관하게 유효.
+        [Test]
+        public void Healer_DoesNotTargetStructure_EvenWhenStructureIsMostHurt()
+        {
+            using var world = new World("GoalTargetingPriorityTests_Healer");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            // 힐러 — targetAllies 베이크와 같은 마스크(DefenderUnit 단독) + DefenderUnitTag.
+            var healer = em.CreateEntity();
+            em.AddComponentData(healer, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            em.AddComponentData(healer, new Health { value = 50f, max = 50f });
+            em.AddComponentData(healer, new FactionTag { value = Faction.DefenderUnit });
+            em.AddComponent<DefenderUnitTag>(healer);
+            em.AddBuffer<IncomingDamage>(healer);
+            em.AddBuffer<IncomingHeal>(healer);
+            em.AddComponentData(healer, new AttackState
+            {
+                range = 5f,
+                cooldownDuration = 1f,
+                cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                targetMask = (int)Faction.DefenderUnit,
+            });
+            var outputs = em.AddBuffer<AttackOutputElement>(healer);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Heal, magnitude = 9f },
+            });
+
+            // 거점 — 체력비 최저(10%)이고 더 가깝다. IncomingHeal 버퍼는 **없다**(계약 8).
+            var tower = CreateGoal(em, new float3(1f, 0f, 0f));
+            em.SetComponentData(tower, new Health { value = 10f, max = 100f });
+
+            // 다친 아군 — 거점보다 멀고 체력비는 더 높다(50%).
+            var ally = CreateTarget(em, Faction.DefenderUnit, new float3(3f, 0f, 0f), defenderTag: true);
+            em.SetComponentData(ally, new Health { value = 50f, max = 100f });
+            em.AddBuffer<IncomingHeal>(ally);
+
+            Assert.DoesNotThrow(() => Tick(world, simGroup),
+                "거점이 힐 후보에 들면 IncomingHeal 버퍼 부재로 ECB playback 이 던진다");
+
+            Assert.AreEqual(1, em.GetBuffer<IncomingHeal>(ally).Length,
+                "힐은 체력비 최저 **유닛**에게 간다");
+            Assert.IsFalse(em.HasBuffer<IncomingHeal>(tower),
+                "거점은 IncomingHeal 버퍼를 갖지 않는다(계약 8) — 후보에 들면 안 되는 이유");
+        }
+
         // 잠금도 거점에 균일하게 걸린다 — M3 의 «거점은 잠금 대상이 아니다» 예외는 제거됐다.
         // 유지·해제는 TargetPersistence.KeepsLock 하나가 정한다(죽거나 사거리 이탈).
         [Test]

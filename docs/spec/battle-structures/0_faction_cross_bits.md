@@ -106,13 +106,31 @@ step 1 에서 정정된 것: `:7506` 분기째 삭제(위 표) · `MapDocument.g
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 0 · 콘솔 신규 에러 0
-- [ ] EditMode 전량 그린. 기준선 = 이 unit 직전 **2014개 / 실패 0 / 의도적 스킵 3**. 최종 수는 `2014 − 삭제분 + 신규분` 이고 **실패 0 · 신규 스킵 0**
-- [ ] 타겟팅 테스트가 `EnsureGoalTowers` 가 만든 타워를 대상으로 돌고, **거리순**으로 결정된다(가까운 쪽이 맞는다 — 종류가 순위를 뒤집지 않는다)
-- [ ] `AttackSystem` 에 «거점이니까» 로 순위를 뒤집거나 잠금을 거르는 분기가 **0개**다
-- [ ] 힐러 결함 회귀 테스트: 힐러(`targetAllies`)의 후보에 타워가 **들지 않는다**. 현행 코드로 돌리면 `IncomingHeal` 버퍼 부재 예외로 실패해야 한다(결함의 존재 증명)
-- [ ] 보스 광역 1발이 타워에 **1회만** 데미지를 넣는다(F2 이중 피해 회귀)
-- [ ] `AttackState` 없는 적(Runner·Swift)이 골 셀 도달 시 여전히 파괴되고 안정도 피해가 들어간다(F3 유령 회귀)
-- [ ] `Faction.Goal`/`GoalPoint` 잔존 참조 0 (`\bFaction\.Goal`·`GoalPoint` 그렙 공집합)
-- [ ] 리뷰: **`ecs-reviewer`** (ECS 시뮬 변경)
-- [ ] 행동 변화를 커밋 메시지에 명시 — 부작용 2건 해소 + 최후순위 신규 도입(공성 체감 변화)
+- [x] 컴파일 에러 0 · 콘솔 신규 에러 0
+- [x] EditMode 전량 그린 — **2005개 / 실패 0 / 의도적 스킵 3**(기준선 2014 에서 삭제 13·신규 4). 신규 스킵 0
+- [x] 타겟팅 테스트가 `EnsureGoalTowers` 가 만든 타워를 대상으로 돈다 — `GoalTowerArchetypeTests`. **거리순**으로 결정된다(`BridgeSpawnedTower_CompetesByDistance_AsOrdinaryCandidate`)
+- [x] `AttackSystem` 에 «거점이니까» 로 순위를 뒤집거나 잠금을 거르는 분기 **0개** (`goalBest`·`AnyStructure` 그렙 공집합)
+- [x] 힐러 결함 회귀 테스트 — `Healer_DoesNotTargetStructure_EvenWhenStructureIsMostHurt`. 거점을 체력비 최저(10%)·최근접으로 놓고도 힐이 유닛에게 간다. 후보에 들면 버퍼 부재로 던지므로 `DoesNotThrow` 가 결함 검출선이다
+- [x] 보스 광역 1발이 타워에 **1회만** — `GoalProjectileTests.TileAoe_DefenderFaction_IncludesGoal` 이 버퍼 길이 1 을 단정한다(F2 이중 피해면 2)
+- [x] `Faction.Goal`/`GoalPoint` 잔존 코드 참조 0 (이력 서술 주석만 남음)
+- [~] `AttackState` 없는 적(Runner·Swift) 골 도달 — 파괴·`canSiege=false` 는 `UnitLifecycleSystemTests` 가 덮지만 **안정도 피해 유입은 브리지 측이라 미검증**(F3 유령의 sim 절반만 커버)
+- [ ] 리뷰: **`ecs-reviewer`** — 미실시
+- [ ] Play 검증 — 스펙 구현 종료 시점으로 유보(사용자 지시)
+- [x] 행동 변화를 커밋 메시지에 명시
+
+---
+
+**확인 2026-08-09** — 커밋 (시간순):
+
+| 해시 | 내용 |
+|---|---|
+| `567facbc` | step 1 — 잠자는 골 소비 기계 4자리 삭제 (행동 중립) |
+| `60515f15` | step 2 — Faction 교차 비트 + 타워 `DefenderCore` + 21곳 치환 |
+| `38b051f8` | 계약 4 폐기 — 거점 타입 특별취급 제거, 거리순 경쟁 |
+| `e43c1616` | `goalMaxStability` 저작 축 제거 |
+
+문서: `2d14d092`(초판) · `7572cdc8`(step 1 반영) · 본 커밋(완료 기준 기재).
+
+**unit 0 에서 방향이 바뀐 것 2건** — 다음 unit 이 전제로 삼을 것:
+1. **`StructureTag` 를 만들지 않았다.** 최후순위가 비트 판정이 되어 `GoalPoint` 소비처가 0이 되었고, 흡수 대상이 태그가 아니라 **비트**로 판명됐다. 거점 태그는 실제 소비처가 생기는 unit 4 몫이다(제약 8).
+2. **계약 4 는 폐기됐다.** 거점 우선순위는 unit 1 의 저작 축(`EnemyTargetFilter`)으로 넘어갔다 — unit 1 이 그 자리를 채워야 «어떤 적은 거점만 때린다» 가 성립한다.
