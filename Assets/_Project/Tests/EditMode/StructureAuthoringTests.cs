@@ -346,6 +346,110 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(target); Object.DestroyImmediate(core); }
         }
 
+        // ── unit 6 — 공성 모드 파생 (적 마음 → spawns[]) ────────────────────────
+
+        private static MapDocument BuildDocumentWithSpawns(Vector2Int[] spawns, StructureEntry[] structures)
+        {
+            const int w = 8, h = 6; int n = w * h;
+            var tiles = new MapTileType[n];
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            for (int x = 0; x < w; x++) tiles[3 * w + x] = MapTileType.Walk;
+
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(7, 3) },
+                spawns,
+                seed: 7, version: 0);
+            if (structures != null) doc.SetStructures(structures);
+            return doc;
+        }
+
+        [Test]
+        public void SiegeDoc_EnemyCoreCell_BecomesTheSpawn_AndPassesConnectivity()
+        {
+            var core = ScriptableObject.CreateInstance<StructureData>();
+            core.kind = StructureKind.Core;
+            // 공성 문서: spawns 미저작(빈 배열) + 적 마음 1 (Walk 복도 y=3 위).
+            var doc = BuildDocumentWithSpawns(new Vector2Int[0], new[]
+            {
+                new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Enemy, data = core },
+            });
+            try
+            {
+                using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+                Assert.AreEqual(1, map.spawns.Length, "적 마음 1 = 스폰 1 (파생)");
+                Assert.AreEqual(new int2(0, 3), map.spawns[0], "스폰 = 적 마음 셀");
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map),
+                    "공성 문서가 처음으로 연결성을 통과한다 — unit 3 M-b 의 전제가 풀렸다");
+            }
+            finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void SiegeDoc_AuthoredSpawnsAreOverridden_ByDerivation()
+        {
+            var core = ScriptableObject.CreateInstance<StructureData>();
+            core.kind = StructureKind.Core;
+            // «공성 + spawns 저작» 은 검증 에러지만 — 뚫고 와도 파생이 덮는다.
+            var doc = BuildDocumentWithSpawns(
+                new[] { new Vector2Int(1, 3), new Vector2Int(2, 3) },
+                new[] { new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Enemy, data = core } });
+            try
+            {
+                using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+                Assert.AreEqual(1, map.spawns.Length, "표현 불가능해야 할 상태를 런타임에서도 화해시킨다");
+                Assert.AreEqual(new int2(0, 3), map.spawns[0]);
+            }
+            finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void InvasionDoc_NoEnemyCore_KeepsAuthoredSpawns()
+        {
+            var instinct = ScriptableObject.CreateInstance<StructureData>();
+            instinct.kind = StructureKind.Instinct;
+            // 침략 + 방어 본능 — 적 마음이 없으면 파생은 손대지 않는다(현행 9장 무회귀 축).
+            var doc = BuildDocumentWithSpawns(
+                new[] { new Vector2Int(0, 3), new Vector2Int(1, 3) },
+                new[] { new StructureEntry { cell = new Vector2Int(4, 3), side = StructureSide.Defender, data = instinct } });
+            try
+            {
+                using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+                Assert.AreEqual(2, map.spawns.Length, "적 마음 0 → 저작 spawns 그대로");
+                Assert.AreEqual(new int2(0, 3), map.spawns[0]);
+            }
+            finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(instinct); }
+        }
+
+        [Test]
+        public void ValidateStructures_EnemyCoreOnNonWalk_IsError()
+        {
+            var core = MakeData(StructureKind.Core);
+            try
+            {
+                const int w = 8, h = 6;
+                var tiles = new MapTileType[w * h];
+                for (int i = 0; i < tiles.Length; i++) tiles[i] = MapTileType.Place;   // 전부 비-Walk
+
+                var errs = new List<string>();
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(2, 2), side = StructureSide.Enemy, data = core },
+                }, w, h, errs, tiles);
+                Assert.AreEqual(1, errs.Count,
+                    "적 마음 = 파생 스폰 — Walk 가 아니면 연결성이 런타임 hard-fail 하므로 저작에서 잡는다");
+
+                errs.Clear();
+                tiles[2 * w + 2] = MapTileType.Walk;
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(2, 2), side = StructureSide.Enemy, data = core },
+                }, w, h, errs, tiles);
+                Assert.IsEmpty(errs, "Walk 위 적 마음은 통과");
+            }
+            finally { Object.DestroyImmediate(core); }
+        }
+
         // ── 연결성 하한 ─────────────────────────────────────────────────────────
 
         [Test]

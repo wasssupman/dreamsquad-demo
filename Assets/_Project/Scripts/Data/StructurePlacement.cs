@@ -87,8 +87,13 @@ namespace Wassup.Data
         // 볼 수 없고, structures 는 [SerializeField] 라 **인스펙터로 페인터를 우회**해 찍을 수
         // 있다. 특히 (Defender, Core) 금지는 «골이 두 벌» 재발을 막는 유일한 게이트다 —
         // 페인터와 MapDocument.OnValidate 양쪽이 이 함수를 부른다.
+        // tiles(선택) — 주면 **적 마음 셀의 Walk 검사**가 켜진다(unit 6). 적 마음은 파생
+        // 스폰이 되는데(공성 모드), 스폰이 Walk 가 아니면 연결성 BFS 가 도달 못 해 런타임
+        // hard-fail 한다. 기존 «스폰이 Walk 아님» 검사는 저작 스폰 목록만 봐서 파생 스폰을
+        // 못 잡는다.
         public static void ValidateStructures(
-            IReadOnlyList<StructureEntry> structures, int width, int height, List<string> errors)
+            IReadOnlyList<StructureEntry> structures, int width, int height, List<string> errors,
+            IReadOnlyList<MapTileType> tiles = null)
         {
             if (structures == null) return;
             var occupied = new Dictionary<UnityEngine.Vector2Int, int>();
@@ -106,6 +111,13 @@ namespace Wassup.Data
                 if (s.cell.x - half < 0 || s.cell.x + half >= width
                     || s.cell.y - half < 0 || s.cell.y + half >= height)
                     errors.Add($"거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 (반경 {half}, 격자 {width}×{height})");
+
+                // 적 마음 = 파생 스폰(unit 6) — Walk 가 아니면 연결성이 런타임 hard-fail.
+                if (faction == Wassup.Battle.Units.Faction.EnemyCore
+                    && tiles != null && tiles.Count == width * height
+                    && s.cell.x >= 0 && s.cell.x < width && s.cell.y >= 0 && s.cell.y < height
+                    && tiles[s.cell.y * width + s.cell.x] != MapTileType.Walk)
+                    errors.Add($"적 마음 {s.cell} 이 Walk 셀이 아니다 — 공성 스폰 지점은 Walk 여야 한다");
 
                 // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.
                 for (int dy = -half; dy <= half; dy++)

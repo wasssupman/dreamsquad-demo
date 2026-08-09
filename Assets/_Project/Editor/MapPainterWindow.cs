@@ -429,7 +429,7 @@ namespace Wassup.EditorTools
             // 여기 인라인하면 툴과 런타임이 갈린다.
             StructureAuthoringRules.ValidateMode(
                 CountEnemyCores(), _goals.Count, _spawns.Count, errs);
-            StructureAuthoringRules.ValidateStructures(_structures, _w, _h, errs);
+            StructureAuthoringRules.ValidateStructures(_structures, _w, _h, errs, _tiles);
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
             foreach (var g in _goals)

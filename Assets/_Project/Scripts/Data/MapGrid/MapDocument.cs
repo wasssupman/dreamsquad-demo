@@ -119,7 +119,7 @@ namespace Wassup.Data.MapGrid
             StructureAuthoringRules.ValidateMode(
                 StructureAuthoringRules.CountEnemyCores(structures),
                 goalCount, spawns?.Length ?? 0, authoringErrors);
-            StructureAuthoringRules.ValidateStructures(structures, width, height, authoringErrors);
+            StructureAuthoringRules.ValidateStructures(structures, width, height, authoringErrors, tiles);
             foreach (var e in authoringErrors)
                 Debug.LogError($"[MapDocument] {e}", this);
         }

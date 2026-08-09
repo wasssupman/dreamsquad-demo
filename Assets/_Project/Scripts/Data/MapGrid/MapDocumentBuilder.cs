@@ -34,9 +34,12 @@ namespace Wassup.Data.MapGrid
                     : PlacementLayers.Derive(doc.Tiles[i]);
             }
 
-            var spawns = new NativeArray<int2>(doc.Spawns.Count, allocator);
-            for (int i = 0; i < spawns.Length; i++)
-                spawns[i] = new int2(doc.Spawns[i].x, doc.Spawns[i].y);
+            // unit 6 — 공성 문서는 spawns 를 저작하지 않는다(파생이 채운다). null/0 허용.
+            var docSpawns = doc.Spawns;
+            int spawnCount = docSpawns != null ? docSpawns.Count : 0;
+            var spawns = new NativeArray<int2>(spawnCount, allocator);
+            for (int i = 0; i < spawnCount; i++)
+                spawns[i] = new int2(docSpawns[i].x, docSpawns[i].y);
 
             // 멀티골: doc.Goals 있으면 그대로, 없으면 primary [doc.Goal] 폴백 (유닛 0 계약).
             var docGoals = doc.Goals;
@@ -68,6 +71,24 @@ namespace Wassup.Data.MapGrid
                         faction = StructurePlacements.DeriveFaction(s.side, s.data.kind),
                     };
                 }
+            }
+
+            // battle-structures unit 6 — 공성 모드 파생. **적 마음의 유무가 곧 모드다**:
+            // 적 마음이 있으면 그 셀이 스폰이다(저작 spawns 무시 — «공성 + spawns 저작» 은
+            // 검증 에러지만 뚫고 와도 여기서 덮는다). spawns[] 소비처 8곳은 전부 «셀 좌표
+            // 목록» 만 보므로 이 한 블록으로 하류 전체가 모드를 모른 채 공성으로 돈다.
+            // 공성 규칙(적 마음 정확히 1)은 저작 검증 몫 — 파생은 기계적으로만 처리한다.
+            int enemyCoreCount = 0;
+            for (int i = 0; i < structures.Length; i++)
+                if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore) enemyCoreCount++;
+            if (enemyCoreCount > 0)
+            {
+                spawns.Dispose();
+                spawns = new NativeArray<int2>(enemyCoreCount, allocator);
+                int sw = 0;
+                for (int i = 0; i < structures.Length; i++)
+                    if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore)
+                        spawns[sw++] = structures[i].cell;
             }
 
             return new GeneratedMap
