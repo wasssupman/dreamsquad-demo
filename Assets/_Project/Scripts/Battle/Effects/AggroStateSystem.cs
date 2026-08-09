@@ -41,6 +41,8 @@ namespace Wassup.Battle.Effects
             var profileLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AggroAttackProfile>(isReadOnly: true);
             // boss-jjangssen unit 3 — 보스 어그로 면역 게이트용 RO lookup (위 Combat 읽기 선례와 동일).
             var bossLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.BossTag>(isReadOnly: true);
+            // battle-structures unit 2 — 도발 범위 게이트용 저작 의도 RO lookup (같은 선례).
+            var filterLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.EnemyTargetFilter>(isReadOnly: true);
             var transformLookup = SystemAPI.GetComponentLookup<Unity.Transforms.LocalTransform>(isReadOnly: true);
             var chaseLookup = SystemAPI.GetBufferLookup<AggroChaseCell>(isReadOnly: true);
             bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField) && flowField.IsCreated;
@@ -116,6 +118,21 @@ namespace Wassup.Battle.Effects
                     // AggroCapacity.held 는 매 프레임 Aggroed 보유 적으로 full recompute 하므로
                     // 부착이 없으면 카운트에 아예 안 들어온다(회계 무변경).
                     if (bossLookup.HasComponent(ev.enemy)) continue;
+
+                    // battle-structures unit 2 — 도발 범위 게이트. **유닛을 노리지 않는 적은
+                    // 유인으로 막을 수 없다** — 거점 전담 적은 죽여야만 막힌다. 보스 면역과
+                    // 같은 이유로 부착 1곳에서 막는다(소비 지점 6곳).
+                    //
+                    // **저작 의도**(EnemyTargetFilter.factionMask)를 읽는다 — 계약 2.
+                    // 런타임 마스크(AttackState.targetMask)를 읽으면 무기 없는 적(러너·스위프트,
+                    // AttackState 자체가 없다)은 도발이 나중에 유닛 비트를 OR 해주는 구조라
+                    // «도발되어야 마스크가 생기는데 마스크가 있어야 도발된다» 는 순환에 빠져
+                    // 영구 도발 불가가 된다.
+                    //
+                    // 컴포넌트 부재 = 통과(fail-open). 합성 픽스처·비-적 아키타입이 조용히
+                    // 도발 불가가 되는 것을 막는다(AttackSystem 의 «필터 없으면 -1» 규약과 같은 방향).
+                    if (filterLookup.HasComponent(ev.enemy)
+                        && (filterLookup[ev.enemy].factionMask & Factions.AnyUnit) == 0) continue;
 
                     // aggro-tile-chase unit 1 — 전투수단(AttackState/도발 프로파일) 없는 적은
                     // 가디언을 때릴 수 없으므로 거부 (구 M5 "Chasing 고착"의 원천 차단).

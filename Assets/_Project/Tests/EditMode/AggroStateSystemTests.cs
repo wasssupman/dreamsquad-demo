@@ -84,6 +84,66 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(g, _em.GetComponentData<Aggroed>(e).guardian);
         }
 
+        // ── battle-structures unit 2 — 도발 범위 게이트 ─────────────────────────
+        // 판정은 **저작 의도**(EnemyTargetFilter.factionMask)다. 런타임 마스크를 읽으면
+        // 무기 없는 적이 순환에 빠져 영구 도발 불가가 된다(계약 2).
+        // 위 HitDrivenAcquire_AggrosHitEnemy 를 비롯한 기존 전량이 필터 **없이** 돌므로
+        // fail-open(컴포넌트 부재 = 통과)은 그쪽이 덮는다.
+
+        private void SetTargetIntent(Entity enemy, Faction factions)
+            => _em.AddComponentData(enemy, new EnemyTargetFilter
+            {
+                classMask = -1,
+                priorityClass = -1,
+                factionMask = (int)factions,
+            });
+
+        [Test]
+        public void StructureOnlyEnemy_IsNotAggroed()
+        {
+            var g = MakeGuardian(4, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            SetTargetIntent(e, Faction.DefenderCore);   // 유닛 비트 전무 = 거점 전담
+
+            Hit(g, e);
+            _simGroup.Update();
+
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e),
+                "거점 전담 적은 유인으로 막을 수 없다 — 죽여야만 막힌다");
+            Assert.AreEqual(0, AggroedCount());
+        }
+
+        [Test]
+        public void UnitTargetingEnemy_WithIntent_IsStillAggroed()
+        {
+            var g = MakeGuardian(4, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            SetTargetIntent(e, Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore);
+
+            Hit(g, e);
+            _simGroup.Update();
+
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e),
+                "유닛을 노리는 적은 그대로 도발된다 — 이게 깨지면 게이트가 과잉 차단이다");
+        }
+
+        // 계약 2 의 순환 함정 회귀선. MakeEnemy 는 AttackState 를 주지 않는다(러너·스위프트
+        // 동형) — 런타임 마스크로 판정했다면 여기서 영구 도발 불가가 된다.
+        [Test]
+        public void WeaponlessEnemy_TargetingUnits_IsStillAggroed()
+        {
+            var g = MakeGuardian(4, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            Assert.IsFalse(_em.HasComponent<AttackState>(e), "전제: 무기(AttackState) 없음");
+            SetTargetIntent(e, Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore);
+
+            Hit(g, e);
+            _simGroup.Update();
+
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e),
+                "무기가 없어도 저작 의도가 유닛을 포함하면 도발된다");
+        }
+
         [Test]
         public void CapacityCap_SameTick_DoesNotExceed()
         {
