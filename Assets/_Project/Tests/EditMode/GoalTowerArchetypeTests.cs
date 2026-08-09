@@ -79,11 +79,12 @@ namespace Wassup.Tests.EditMode
         }
 
         // 브리지의 라이브 스폰 경로. ResetGoalStability 가 덱에서 상한을 받아야
-        // EnsureGoalTowers 가 타워를 세운다(상한 0 이면 세우지 않는 것이 계약).
+        // SpawnStructureEntities 가 타워를 세운다(상한 0 이면 세우지 않는 것이 계약).
+        // (unit 4 — EnsureGoalTowers 가 SpawnStructureEntities 로 일반화됐다.)
         private void SpawnTowersViaBridge()
         {
             CallPrivateMethod(_bridge, "ResetGoalStability");
-            CallPrivateMethod(_bridge, "EnsureGoalTowers");
+            CallPrivateMethod(_bridge, "SpawnStructureEntities");
         }
 
         private Entity SingleTower()
@@ -100,7 +101,7 @@ namespace Wassup.Tests.EditMode
         // 핵심 — 라이브 타워의 진영은 DefenderCore 다. 이것이 최후순위 술어
         // ((faction & AnyStructure) != 0)에 걸리는 유일한 근거다.
         [Test]
-        public void EnsureGoalTowers_TagsTowerAsDefenderCore()
+        public void SpawnStructureEntities_TagsTowerAsDefenderCore()
         {
             SpawnTowersViaBridge();
             var em = _world.EntityManager;
@@ -114,10 +115,37 @@ namespace Wassup.Tests.EditMode
                 "DefenderUnit 비트는 없어야 한다 — 지원계(힐·버프)가 거점을 대상으로 고르면 버퍼 부재 예외");
         }
 
+        // 리뷰 M-d — 아키타입 단일 소스의 강제. 브리지 산물과 공용 픽스처 빌더
+        // (StructureFixtures.MakeGoalTower) 산물의 **컴포넌트 집합이 동일**해야 한다.
+        // 브리지 스폰이 바뀌면(컴포넌트 추가/제거) 이 단정이 깨져 빌더를 따라오게 만든다 —
+        // 손으로 맞춘 사본이 조용히 낡던 원죄(최후순위 미발효)의 구조적 재발 방지선이다.
+        [Test]
+        public void BridgeTower_ComponentSet_MatchesSharedFixtureBuilder()
+        {
+            SpawnTowersViaBridge();
+            var em = _world.EntityManager;
+            var bridgeTower = SingleTower();
+            var builderTower = StructureFixtures.MakeGoalTower(em, new float3(9f, 0f, 9f));
+
+            using var bridgeTypes = em.GetComponentTypes(bridgeTower, Allocator.Temp);
+            using var builderTypes = em.GetComponentTypes(builderTower, Allocator.Temp);
+
+            var bridgeSet = new System.Collections.Generic.HashSet<ComponentType>();
+            foreach (var t in bridgeTypes) bridgeSet.Add(t);
+            var builderSet = new System.Collections.Generic.HashSet<ComponentType>();
+            foreach (var t in builderTypes) builderSet.Add(t);
+
+            bridgeSet.SymmetricExceptWith(builderSet);
+            Assert.IsEmpty(bridgeSet,
+                "브리지 타워와 픽스처 빌더 타워의 컴포넌트 집합이 갈렸다 — " +
+                "StructureFixtures.MakeGoalTower 를 브리지 스폰과 동기화하라: " +
+                string.Join(", ", bridgeSet));
+        }
+
         // 아키타입 구성 — 피해를 받을 수 있고(IncomingDamage), 후보 스냅샷에 들어가고
         // (Health+LocalTransform), 유닛 축 시스템에는 안 잡힌다(DefenderUnitTag 없음).
         [Test]
-        public void EnsureGoalTowers_ProducesDamageableNonUnitArchetype()
+        public void SpawnStructureEntities_ProducesDamageableNonUnitArchetype()
         {
             SpawnTowersViaBridge();
             var em = _world.EntityManager;

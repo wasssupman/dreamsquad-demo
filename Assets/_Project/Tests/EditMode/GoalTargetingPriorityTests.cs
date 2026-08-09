@@ -40,13 +40,10 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
-        // 라이브 골 타워 아키타입 = DefenderCore 진영 + GoalTowerTag (EnsureGoalTowers 산물).
+        // battle-structures unit 4(리뷰 M-d) — 손 사본 대신 공용 픽스처 빌더. 빌더와 브리지
+        // 산물의 동일성은 GoalTowerArchetypeTests 가 컴포넌트 집합 단정으로 강제한다.
         private static Entity CreateGoal(EntityManager em, float3 position)
-        {
-            var e = CreateTarget(em, Faction.DefenderCore, position);
-            em.AddComponent<GoalTowerTag>(e);
-            return e;
-        }
+            => StructureFixtures.MakeGoalTower(em, position, hp: 100f);
 
         private static Entity CreateEnemyAttacker(
             EntityManager em, float3 position, float cooldown = 1f)

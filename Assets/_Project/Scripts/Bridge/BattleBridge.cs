@@ -370,8 +370,10 @@ namespace Wassup.Bridge
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
-        // stress-after-breach — 골이 부서져 유출 지점으로 전환됐나(상한>0 경로). 매치 경계에서 리셋.
-        private bool _goalBreached;
+        // battle-structures unit 4(ⓐ, 사용자 확정 2026-08-09) — 붕괴는 **셀 단위**다.
+        // 구 `_goalBreached`(bool)는 골 2개 맵에서 하나만 부서져도 전역 전환이라 계약 7
+        // («무너진 마음의 셀만 열리고 나머지는 선다»)을 표현할 수 없었다. 매치 경계에서 Clear.
+        private readonly HashSet<Vector2Int> _breachedCells = new();
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -428,9 +430,13 @@ namespace Wassup.Bridge
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
-        // goal-stability unit 5 — 게이지 폴링용 골 등록부(Bridge 가 스폰 주체라 직접 안다).
-        // 붕괴 드레인이 제거, teardown 이 Clear. 쿼리 없이 맵당 ≤4 순회.
-        private readonly List<(Entity entity, Vector2Int cell)> _goalGaugeList = new();
+        // battle-structures unit 4 — 거점 등록부(Bridge 가 스폰 주체라 직접 안다).
+        // 구 _goalGaugeList(goal-stability unit 5)의 부활·일반화 — 리뷰 M-e 의 «writer 0» 처분.
+        // 게이지 폴링 + 붕괴 감지(ⓐ: 사라진 엔티티의 셀 특정)가 소비한다. 쿼리 없이 맵당 소수 순회.
+        private readonly List<(Entity entity, Vector2Int cell, Faction faction)> _structureRegistry = new();
+        // unit 4 — 저작 거점의 뷰 인스턴스(SO.viewPrefab). Pickup 프레젠터 선례: 브리지가
+        // 만들고 teardown 이 지운다. 골 타워 프랍은 기존 경로(MapThemeData.goalStructureProp) 유지.
+        private readonly List<GameObject> _structureViews = new();
         [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
         [SerializeField] private float goalOverheadHeight = 1.1f;
 
@@ -598,7 +604,7 @@ namespace Wassup.Bridge
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
-            _goalGaugeList.Clear(); // goal-stability unit 5 — 골 게이지 등록부도 같은 지점에서
+            _structureRegistry.Clear(); // battle-structures unit 4 — 거점 등록부도 같은 지점에서
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
@@ -673,7 +679,10 @@ namespace Wassup.Bridge
             // 다음 매치의 EnsureGoalTowers 가 지우기 전까지 로비에서도 살아 있고,
             // 살아있는 수 비교(_goalTowerCount)로 패배를 판정하는 규칙이 오염된다.
             DestroyEntitiesByType<Wassup.Battle.Units.GoalTowerTag>();
+            // battle-structures unit 4 — 저작 거점(본능/적 마음)도 같은 이유로 등재.
+            DestroyEntitiesByType<Wassup.Battle.Units.StructureTag>();
             _goalTowerCount = 0;
+            _structureRegistry.Clear();
             // summon-patrol-defender unit 2 — 거점 순찰 아군 정리. DefenderUnitTag 로 이미
             // 걸리지만 중복으로 등재해 둔다: 위 사직서/AllyBuffField 사고가 정확히 "정리 목록에
             // 안 넣어서" 났고, 이 아키타입은 태그 구성이 일반 방어유닛과 달라 나중에 누가
@@ -1032,6 +1041,23 @@ namespace Wassup.Bridge
                         CloseCellLayers(_generatedMap.goals[i]);
                 else
                     CloseCellLayers(_generatedMap.goal);
+
+                // battle-structures unit 4 — 거점 배치 배제(README 요청 7-2). 적 본능은
+                // 3×3 본체 + 주변 3타일 = 9×9 를 닫는다(포탑 사거리 안에 세우는 것 방지).
+                // 그 외 거점(방어 본능·적 마음)은 본체 footprint 만. 빌드 시 파생이며
+                // 저작본을 덮지 않는다 — 위 스폰·골 폐쇄와 같은 자리·같은 성격.
+                if (_generatedMap.structures.IsCreated)
+                {
+                    for (int i = 0; i < _generatedMap.structures.Length; i++)
+                    {
+                        var st = _generatedMap.structures[i];
+                        int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
+                        if (st.faction == Faction.EnemyInstinct) half += 3;
+                        for (int dy = -half; dy <= half; dy++)
+                            for (int dx = -half; dx <= half; dx++)
+                                CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
+                    }
+                }
             }
 
             // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
@@ -1211,7 +1237,7 @@ namespace Wassup.Bridge
             _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
             _killCount = 0;
             ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
-            DestroyGoalTowers();       // goal-tower-siege unit 0 — 이전 판의 타워/풀 정리
+            DestroyStructureEntities();  // goal-tower-siege unit 0 — 이전 판의 타워/거점 정리
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
@@ -1263,7 +1289,7 @@ namespace Wassup.Bridge
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
             // goal-tower-siege unit 0 — 맵·월드가 준비된 뒤 골 셀마다 타워를 세운다.
             // ResetGoalStability 다음이어야 풀이 이번 판의 최대치를 받는다.
-            EnsureGoalTowers();
+            SpawnStructureEntities();
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
@@ -1572,7 +1598,7 @@ namespace Wassup.Bridge
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _killCount = 0;
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
-            DestroyGoalTowers();  // goal-tower-siege unit 0 — 타워/풀도 매치와 함께 정리
+            DestroyStructureEntities();  // goal-tower-siege unit 0 — 타워/거점도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
             _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
@@ -4796,7 +4822,7 @@ namespace Wassup.Bridge
         {
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
-            _goalBreached = false;   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
+            _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
             _leakTypeMissLogged = false;
             _towerMissLogged = false;
         }
@@ -4814,39 +4840,114 @@ namespace Wassup.Bridge
         // 피해는 표준 경로다: 공격자가 IncomingDamage 에 append → DamageApplicationSystem 이
         // Health 를 깎고 0 이면 DeadTag → UnitLifecycleSystem 이 파괴. 전용 피해 시스템도,
         // 공유 풀 싱글턴도, 미러도 없다. **타워가 사라진 것이 곧 패배 신호**다.
-        private void EnsureGoalTowers()
+        // battle-structures unit 4 — EnsureGoalTowers 의 일반화. 두 소스, 한 아키타입:
+        //   goals[]                     → 방어 마음(= 현행 골 타워). HP = 덱(현행 유지 —
+        //                                 SO 이관은 «HP 소스가 맵마다 갈리는» 상태를 만든다).
+        //                                 GoalTowerTag + StructureTag.
+        //   _resolvedMapDoc.Structures  → 본능 + 적 마음. HP = SO(StructureData.health).
+        //                                 StructureTag 만. 본능은 3×3 통행 차단 버퍼
+        //                                 (BlockingHazardCellsBuffer — 기존 소비자가 그대로 처리).
+        private void SpawnStructureEntities()
         {
-            if (!HasLiveEntityManager() || !_generatedMap.IsCreated || _goalStabilityMax <= 0)
-            {
-                _goalTowerCount = 0;
-                return;
-            }
-            DestroyGoalTowers();
+            DestroyStructureEntities();
+            if (!HasLiveEntityManager() || !_generatedMap.IsCreated) return;
 
-            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
-            int count = hasList ? _generatedMap.goals.Length : 1;
-            for (int i = 0; i < count; i++)
+            // ── 방어 마음(골 타워) — 현행 경로 그대로 ──
+            if (_goalStabilityMax > 0)
             {
-                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
-                var tower = _em.CreateEntity();
-                _em.AddComponent<Wassup.Battle.Units.GoalTowerTag>(tower);
-                _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
-                _em.AddBuffer<IncomingDamage>(tower);
-                _em.AddComponentData(tower, new FactionTag { value = Faction.DefenderCore });
-                _em.AddComponentData(tower, LocalTransform.FromPosition(
-                    GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
+                bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+                int count = hasList ? _generatedMap.goals.Length : 1;
+                for (int i = 0; i < count; i++)
+                {
+                    int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
+                    var tower = _em.CreateEntity();
+                    _em.AddComponent<Wassup.Battle.Units.GoalTowerTag>(tower);
+                    _em.AddComponentData(tower, new Wassup.Battle.Units.StructureTag
+                    {
+                        cell = cell,
+                        faction = Faction.DefenderCore,
+                    });
+                    _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
+                    _em.AddBuffer<IncomingDamage>(tower);
+                    _em.AddComponentData(tower, new FactionTag { value = Faction.DefenderCore });
+                    _em.AddComponentData(tower, LocalTransform.FromPosition(
+                        GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
+                    _structureRegistry.Add((tower, new Vector2Int(cell.x, cell.y), Faction.DefenderCore));
+                }
+                _goalTowerCount = count;
+                Debug.Log($"[BattleBridge] Goal towers spawned: {count} @ stability {_goalStabilityMax}");
             }
-            _goalTowerCount = count;
-            Debug.Log($"[BattleBridge] Goal towers spawned: {count} @ stability {_goalStabilityMax}");
+
+            // ── 저작 거점(본능 + 적 마음) — unit 3 의 _resolvedMapDoc 에서 SO 스탯을 읽는다 ──
+            var docStructures = _resolvedMapDoc != null ? _resolvedMapDoc.Structures : null;
+            if (docStructures == null) return;
+            int spawned = 0;
+            for (int i = 0; i < docStructures.Count; i++)
+            {
+                var s = docStructures[i];
+                if (s.data == null) continue;   // OnValidate 가 이미 에러로 알림 — 방어적 스킵
+                var faction = Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                // (Defender, Core) 는 저작 금지(정본 = goals[]) — 검증을 뚫고 왔어도 안 세운다.
+                if (faction == Faction.DefenderCore) continue;
+
+                var cell = new int2(s.cell.x, s.cell.y);
+                var entity = _em.CreateEntity();
+                _em.AddComponentData(entity, new Wassup.Battle.Units.StructureTag
+                {
+                    cell = cell,
+                    faction = faction,
+                });
+                _em.AddComponentData(entity, new Health { value = s.data.health, max = s.data.health });
+                _em.AddBuffer<IncomingDamage>(entity);
+                _em.AddComponentData(entity, new FactionTag { value = faction });
+                _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));
+
+                // 본능 3×3 — 통행 차단은 본체만(계약 12: 마음은 비차단). BlockingHazard
+                // 다중셀 선례(EffectSpawner)와 같은 버퍼라 통행 코드 신설 0.
+                if (Wassup.Data.StructurePlacements.IsInstinct(faction))
+                {
+                    int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
+                    var cells = _em.AddBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(entity);
+                    for (int dy = -half; dy <= half; dy++)
+                        for (int dx = -half; dx <= half; dx++)
+                            cells.Add(new Wassup.Battle.Effects.BlockingHazardCellsBuffer
+                            {
+                                cell = new int2(cell.x + dx, cell.y + dy),
+                            });
+                }
+
+                // 뷰 — SO 의 viewPrefab 을 셀 중심에 직배치(sim→view 는 BoardSpace.ToView 경유,
+                // Pickup 선례와 동일). 프리팹 미지정은 무해(게이지만 뜬다).
+                if (s.data.viewPrefab != null)
+                {
+                    float3 simCenter = GridToWorldCenter(s.cell);
+                    var view = Instantiate(s.data.viewPrefab,
+                        (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                    view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
+                    _structureViews.Add(view);
+                }
+
+                _structureRegistry.Add((entity, s.cell, faction));
+                spawned++;
+            }
+            if (spawned > 0)
+                Debug.Log($"[BattleBridge] Structures spawned: {spawned} (본능/적 마음, SO HP)");
         }
 
-        private void DestroyGoalTowers()
+        private void DestroyStructureEntities()
         {
             _goalTowerCount = 0;
+            _structureRegistry.Clear();
+            for (int i = 0; i < _structureViews.Count; i++)
+                if (_structureViews[i] != null) Destroy(_structureViews[i]);
+            _structureViews.Clear();
             if (!HasLiveEntityManager()) return;
             using var towerQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());
             _em.DestroyEntity(towerQuery);
+            using var structureQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.StructureTag>());
+            _em.DestroyEntity(structureQuery);
         }
 
         // 안정도 읽기 창구. unit 1(게이지)·unit 3(동점 판정)이 이것만 쓴다.
@@ -4875,26 +4976,30 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
-                // stress-after-breach(2026-08-08) — 스트레스는 **골이 부서진 뒤에만** 쌓인다.
+                // battle-structures unit 4(ⓐ) — 판정은 셀 단위: **이 적이 도달한 골**(최근접
+                // 골 셀)이 부서졌는가. 골 2개 맵에서 한쪽만 부서지면 그쪽 도달만 유출이고
+                // 다른 쪽 도달은 여전히 공성이다.
+                bool breached = _breachedCells.Contains(NearestGoalCell(evt.position));
+
+                // stress-after-breach(2026-08-08) — 스트레스는 **부서진 골로의 유출만** 센다.
                 // 붕괴 전 도달은 공성(안정도 피해)이거나 자폭(안정도 피해)이라 안정도 축이
                 // 이미 그것을 세고 있다. 여기서도 세면 한 사건이 두 축을 깎아, 안정도가
                 // 멀쩡한데 스트레스 상한으로 먼저 죽는다(1000 남았는데 패배가 실측됐다).
-                if (_goalBreached)
+                if (breached)
                 {
                     _goalReachedCount++;
                     RefreshLeakHud();
                     CheckStressDefeat();
                 }
 
-
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
                 // 데이터 등록부를 건드리지 않는다(지우면 안 보이는 적이 타워를 때리고
                 // 데미지 폰트만 허공에 뜬다). 타워가 Faction.DefenderCore 라 적의 base targetMask
                 // 가 이미 그것을 포함하므로 **여기서 열어줄 것이 없다.**
-                // stress-after-breach — 골이 이미 부서졌으면 때릴 타워가 없다. 공성으로 두면
+                // stress-after-breach — 그 셀의 골이 부서졌으면 때릴 타워가 없다. 공성으로 두면
                 // 적이 눌러앉아 웨이브 전멸 판정을 막으므로 유출(뷰 회수 + 파괴)로 내린다.
-                if (evt.canSiege && !_goalBreached) continue;
-                if (evt.canSiege && _goalBreached)
+                if (evt.canSiege && !breached) continue;
+                if (evt.canSiege && breached)
                 {
                     enemyViewPool?.Despawn(evt.entity);
                     spineUnitPool?.Despawn(evt.entity);
@@ -4925,8 +5030,31 @@ namespace Wassup.Bridge
                 }
                 // 안정도를 직접 깎지 않는다 — 타워 버퍼로 넣어 공성 피해와 **같은 통로**를
                 // 지나게 한다(풀의 writer 는 GoalTowerDamageSystem 하나다).
-                EnqueueGoalTowerDamage(stabilityDamage, evt.position);
+                // unit 4(ⓐ) — 부서진 셀 도달이면 넣지 않는다(스트레스가 이미 셌다). 전역 bool
+                // 시절엔 붕괴 후 타워가 없어 자연 no-op 였지만, per-cell 에선 **다른 살아있는
+                // 골**이 존재하므로 가드가 없으면 최근접 검색이 남의 골을 깎는다.
+                if (!breached) EnqueueGoalTowerDamage(stabilityDamage, evt.position);
             }
+        }
+
+        // unit 4(ⓐ) — 적 위치 → 귀속 골 셀. EnqueueGoalTowerDamage 가 최근접 타워를 고르는
+        // 것과 같은 기준을 셀에 적용한다(골 2개 맵에서 이벤트가 어느 골 사건인지 가른다).
+        private Vector2Int NearestGoalCell(float3 position)
+        {
+            if (!_generatedMap.IsCreated) return default;
+            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+            int count = hasList ? _generatedMap.goals.Length : 1;
+            Vector2Int best = default;
+            float bestSq = float.MaxValue;
+            for (int i = 0; i < count; i++)
+            {
+                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
+                float3 c = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
+                float dx = c.x - position.x, dz = c.z - position.z;
+                float d = dx * dx + dz * dz;
+                if (d < bestSq) { bestSq = d; best = new Vector2Int(cell.x, cell.y); }
+            }
+            return best;
         }
 
         // goal-tower-siege(rev 2) — 돌격형(공격 수단 없는 적)의 자폭 피해. 표준 경로와 같은
@@ -4942,7 +5070,7 @@ namespace Wassup.Bridge
             if (towerQuery.IsEmpty)
             {
                 // 붕괴 후에는 타워가 없는 게 정상이다(피해 대신 스트레스가 오른다) — 경고 금지.
-                if (!_towerMissLogged && !_goalBreached)
+                if (!_towerMissLogged && _breachedCells.Count == 0)
                 {
                     _towerMissLogged = true;
                     Debug.LogWarning("[BattleBridge] 골 타워가 없다 — 자폭 피해가 유실된다.", this);
@@ -4965,47 +5093,85 @@ namespace Wassup.Bridge
         // goal-tower-siege(rev 2) — 안정도 = **타워의 Health** 다. 별도 정본(싱글턴)이 없으므로
         // 브리지는 그것을 읽어 미러(_goalStability)를 갱신하고 패배만 판정한다.
         // 공개 API(GoalStabilityCurrent/Max)는 불변이라 체력바와 점수 tie-break 는 그대로다.
+        // 미러는 판정을 소유하지 않는 «가장 위험한 골» 읽기 캐시다(계약 7 — 판정은 per-entity).
         //
-        // 패배 = **타워가 하나라도 부서짐.** 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)를
-        // 그대로 타므로 "엔티티가 사라졌다" 가 곧 신호다 — 별도 판정 규칙이 필요 없다.
+        // battle-structures unit 4(ⓐ) — 붕괴는 **셀 단위**다. 등록부를 순회해 사라진(또는
+        // Health 0) 엔티티의 셀을 특정한다. 구현이 count 비교였던 시절엔 «하나 부서짐 = 전부
+        // 파괴 + 전역 전환» 이라 계약 7 을 표현할 수 없었다.
+        // 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)는 그대로다 — 브리지는 관측만 한다.
         private void SyncGoalStability()
         {
             if (!HasLiveEntityManager() || _resultShown || _goalTowerCount <= 0) return;
-            using var towerQuery = _em.CreateEntityQuery(
-                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>(),
-                ComponentType.ReadOnly<Health>());
 
-            bool destroyed = towerQuery.CalculateEntityCount() < _goalTowerCount;
             float lowest = float.MaxValue;
-            if (!destroyed)
+            float maxHp = 0f;
+            bool newCoreBreach = false;
+            for (int i = _structureRegistry.Count - 1; i >= 0; i--)
             {
-                var healths = towerQuery.ToComponentDataArray<Health>(Allocator.Temp);
-                for (int i = 0; i < healths.Length; i++)
-                    if (healths[i].value < lowest) lowest = healths[i].value;
-                _goalStabilityMax = Mathf.Max(0, Mathf.RoundToInt(healths.Length > 0 ? healths[0].max : 0f));
-                healths.Dispose();
-                // 표시는 올림 — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다" 가 된다.
-                // 판정은 원본 float 로 한다. 골이 여럿이면 **가장 위험한 골**을 보여준다.
-                _goalStability = Mathf.Max(0, Mathf.CeilToInt(lowest));
-                if (lowest > 0f) return;
+                var (entity, cell, faction) = _structureRegistry[i];
+                bool alive = _em.Exists(entity) && _em.HasComponent<Health>(entity);
+                float hp = alive ? _em.GetComponentData<Health>(entity).value : 0f;
+                if (alive && hp > 0f)
+                {
+                    if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
+                    if (hp < lowest) lowest = hp;
+                    float m = _em.GetComponentData<Health>(entity).max;
+                    if (m > maxHp) maxHp = m;
+                    continue;
+                }
+
+                // 부서졌다(엔티티 부재 또는 Health 0 — 파괴는 사망 경로가 곧 처리한다).
+                _structureRegistry.RemoveAt(i);
+                if (faction == Faction.DefenderCore)
+                {
+                    if (_breachedCells.Add(cell))
+                    {
+                        newCoreBreach = true;
+                        OpenGoalCellAfterBreach(cell);
+                    }
+                }
+                else
+                {
+                    // 본능·적 마음 붕괴 — v1 은 연출·로그만(README 결정 2). 사격이 멎는 것
+                    // 자체가 보상이고, 유출 전환·스트레스는 방어 마음(골) 전용이다.
+                    Debug.Log($"[BattleBridge] Structure collapsed — cell=({cell.x},{cell.y}) faction={faction}");
+                    tileHealthGaugeLayer?.Hide(cell);
+                    vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+                }
             }
 
-            _goalStability = 0;
+            if (newCoreBreach)
+            {
+                // 붕괴 프레임의 «가장 위험한 골» 은 방금 0 이 되어 죽은 그 골이다 — 미러도
+                // 0 을 보여준다(생존 골 체력으로 덮으면 «부서졌는데 191» 이 HUD 에 뜬다).
+                // StressLimit 0 즉시 패배는 이 프레임에 _resultShown 이 서므로 0 으로 얼어붙는다
+                // = 구 동작과 동일. 다음 프레임부터는 생존 골 중 최저를 다시 보여준다.
+                _goalStability = 0;
+            }
+            else if (lowest != float.MaxValue)
+            {
+                _goalStabilityMax = Mathf.Max(0, Mathf.RoundToInt(maxHp));
+                // 표시는 올림 — 0.3 남았는데 화면에 0 이 뜨면 "죽었는데 안 죽었다" 가 된다.
+                // 골이 여럿이면 **가장 위험한 골**을 보여준다.
+                _goalStability = Mathf.Max(0, Mathf.CeilToInt(lowest));
+            }
+            else
+            {
+                _goalStability = 0;   // 마음이 하나도 안 남았다
+            }
+
+            if (!newCoreBreach) return;
 
             // stress-after-breach (2026-08-08 사용자 결정) — 골 파괴는 더 이상 그 자체로 패배가
-            // 아니다. 상한이 있으면 **유출 지점으로 전환**되고, 그때부터 유출 1회 = 스트레스 1이
-            // 누적돼 상한에 닿을 때 패배한다(3분 전이라도). 상한 0 = 구 동작(파괴 즉시 패배).
+            // 아니다. 상한이 있으면 그 셀이 **유출 지점으로 전환**되고(위에서 이미 열었다),
+            // 부서진 셀로의 유출 1회 = 스트레스 1 이 상한에 닿을 때 패배한다.
             if (StressLimit > 0)
             {
-                if (!_goalBreached)
-                {
-                    _goalBreached = true;
-                    OpenGoalAfterBreach();
-                    Debug.Log($"[BattleBridge] 골 붕괴 — 유출 지점으로 전환. 스트레스 {_goalReachedCount}/{StressLimit} 에서 패배.");
-                }
+                Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 스트레스 {_goalReachedCount}/{StressLimit} 에서 패배.");
                 return;
             }
 
+            // 상한 0 = 구 동작 보존: 마음 하나라도 부서지면 즉시 패배.
             _resultShown = true;
             _running = false;
             var score = CalculateBattleScore(defeated: true);
@@ -5015,18 +5181,26 @@ namespace Wassup.Bridge
             Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
         }
 
-        // 붕괴 처리: 남은 타워를 정리하고, **이미 공성 중이던 적**을 유출로 전환한다.
-        // 전환하지 않으면 때릴 타워가 없는 적이 골에 눌러앉아 웨이브 전멸 판정을 영구히 막는다.
-        private void OpenGoalAfterBreach()
+        // 붕괴 처리(ⓐ: **그 셀만**) — 그 셀에서 공성 중이던 적을 유출로 전환한다. 다른 골의
+        // 공성 적은 건드리지 않는다. 전환하지 않으면 때릴 타워가 없는 적이 눌러앉아 웨이브
+        // 전멸 판정을 영구히 막는다(구 OpenGoalAfterBreach 와 같은 이유 — 그쪽은 전 타워
+        // 파괴 + 전원 전환이었다).
+        private void OpenGoalCellAfterBreach(Vector2Int cell)
         {
-            DestroyGoalTowers();   // _goalTowerCount = 0 → 이후 SyncGoalStability 는 early-return
             if (!HasLiveEntityManager()) return;
+            tileHealthGaugeLayer?.Hide(cell);
+            vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
             using var siegeQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalReachedMarker>(),
-                ComponentType.ReadOnly<AttackUnitTag>());
+                ComponentType.ReadOnly<AttackUnitTag>(),
+                ComponentType.ReadOnly<LocalTransform>());
             var sieging = siegeQuery.ToEntityArray(Allocator.Temp);
-            for (int i = 0; i < sieging.Length; i++) LeakSiegingEnemy(sieging[i]);
+            var positions = siegeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            for (int i = 0; i < sieging.Length; i++)
+                if (NearestGoalCell(positions[i].Position) == cell)
+                    LeakSiegingEnemy(sieging[i]);
             sieging.Dispose();
+            positions.Dispose();
         }
 
         // 공성 중이던 적 1기를 유출로 처리한다(뷰 회수 + 스트레스 + 엔티티 파괴).
@@ -6745,8 +6919,8 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Goal collapsed — cell=({evt.cell.x},{evt.cell.y}) index={evt.goalIndex} → 유출 지점 전환");
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
                 tileHealthGaugeLayer?.Hide(cell);
-                for (int i = _goalGaugeList.Count - 1; i >= 0; i--)
-                    if (_goalGaugeList[i].cell == cell) _goalGaugeList.RemoveAt(i);
+                for (int i = _structureRegistry.Count - 1; i >= 0; i--)
+                    if (_structureRegistry[i].cell == cell) _structureRegistry.RemoveAt(i);
                 vfxSpawner?.SpawnGoalCollapse(new Vector3(evt.worldPosition.x, evt.worldPosition.y, evt.worldPosition.z));
             }
         }
@@ -6759,11 +6933,11 @@ namespace Wassup.Bridge
         // 타일 게이지 폴백.
         private void SyncGoalOverheadGauges(bool unifiedOverhead)
         {
-            if (_goalGaugeList.Count == 0 || !HasLiveEntityManager()) return;
+            if (_structureRegistry.Count == 0 || !HasLiveEntityManager()) return;
             var cam = Camera.main;
-            for (int i = 0; i < _goalGaugeList.Count; i++)
+            for (int i = 0; i < _structureRegistry.Count; i++)
             {
-                var (entity, cell) = _goalGaugeList[i];
+                var (entity, cell, _) = _structureRegistry[i];
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
