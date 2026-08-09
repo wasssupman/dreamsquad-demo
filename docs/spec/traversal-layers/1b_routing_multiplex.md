@@ -40,6 +40,16 @@ rev 2 초판은 1b 에 «로스터 수집»을 넣고 2a 에 «유닛 축»을 �
 
 `cellLayers` 가 없으면(= `FlowFieldSingleton` 을 직접 초기화하는 EditMode 픽스처) 기존 `walkMask` 경로로 떨어진다. 픽스처 수십 개를 고치지 않기 위한 것이고, 프로덕션은 설치자가 항상 채운다.
 
+## ⚠ 초판은 «행동 변화 0» 이 아니었다 — 라이브를 깨뜨렸다 (`43b714d1` 로 수정)
+
+초판은 `cellLayers = Sanitize(placeMask)` 였고, 그러면 **적이 한 발도 안 움직인다.**
+`BattleBridge` 가 필드를 굽기 직전 스폰·골 칸의 `placeMask` 를 0 으로 닫으므로(배치 불변식)
+골의 통행 층이 0 이 되고 → `FlowFieldBuilder` 가 그 소스를 버려 → 유효 소스 0 → 필드 전멸.
+
+수정: 통행 층을 `tiles` 에서만 파생한다. 상세와 재발 방지 규칙은 README §0.
+
+**아래 논거는 그 수정 이후에만 성립한다.**
+
 ## 행동 변화 0 의 논거
 
 슬롯이 `DefaultMask = Path` 하나일 때, `(cellLayers & Path) != 0` 은 `tiles == Walk` 와 **같은 집합**이다 — `PlacementLayers.Derive` 가 `Walk → Path` 이기 때문이다. 이 등식을 테스트로 셀 단위 고정했다(`SingleDefaultSlot_MatchesWalkMaskRouting`).
