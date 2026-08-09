@@ -39,6 +39,8 @@
 
 이 spec 의 의무는 그보다 좁다 — **sim 이 이미 쓰는 어휘를 벗어나지 않는 것.** 즉 `EntityManager` / `SystemAPI` / `MonoBehaviour` / `Time` 을 계산 안으로 들이지 않는다. 컨테이너 어휘(`NativeArray`→배열) 교체는 `battle-sim-extraction` 이 시뮬 전체에 대해 일괄 수행하며, 그때 이 함수들은 **시그니처의 컨테이너 타입만 치환**되고 로직은 그대로다.
 
+> **검증됨** ([14_portability_audit.md](14_portability_audit.md), 2026-08-09) — 주장이 아니라 컴파일로 확인했다. 순수 로직 **984줄이 Unity 참조 0 으로 컴파일**되고, 기존 EditMode 테스트 95개를 **수정 없이** Unity 밖에서 돌려 **94 통과·실패 0**(1건은 Unity 안에서도 ignored). 실제 수정은 **1줄**(`FlowFieldBuilder` 의 `UnityEngine.Debug.Assert`)뿐이고, `MovementCellTrim` 에서 ECS 싱글턴을 받는 어댑터 3개(21줄)를 분리하면 된다. 포팅 비용 = shim 169줄(`Unity.Mathematics` 는 엔진 비의존 패키지라 그대로 가져가도 된다). 위 두 문장의 정정: 엔진 호출이 "0"은 아니었고(1줄), `MovementCellTrim` 은 순수/어댑터가 한 타입에 섞여 있다.
+
 ### `NavGrid` 는 저장 상태가 아니라 프레임 뷰다
 
 벽은 이 게임에서 **두 층**이다 (아래 "실제 ECS 접점" 참조): 맵 빌드 시 1회 굽는 정적 벽과, 매 프레임 재구축되는 동적 장애물. 하나로 구울 수 없다.
@@ -70,6 +72,7 @@
 | `11_tangential_speed.md` | 코너 크리프 | `AgentCollision` 접선 속도 보존 — 막힌 축이 잃은 몫을 자유 축으로 재분배(`free²+blocked²=want²`) | 호출부 변경 없음. 벽에 붙어도 **프레임 변위 크기 유지** |
 | `12_corridor_clearance.md` | 군집 교착 | — (knob) | `agentRadiusTiles` 0.35 → 0.25. 폭1 복도 여유 0.15 < 밀어냄 0.35 라 **밀어냄이 유닛을 전진 불가 위치로 보내던** 구조를 해소 |
 | `13_engaged_unit_shove.md` | 밀려 나름 | `Separation.RejectForwardPush` + `PathFollowState.holdingGround` seam | 정지 유닛은 **전진 밀림만 거부**. 교전 중 적의 밀림 4~9타일 → 0.5타일 이하. **unit 12 의존** |
+| `14_portability_audit.md` | 이식성 감사 | — (코드 변경 0) | Unity 밖 컴파일 + 테스트 94/95 실행으로 「이식성의 정확한 범위」를 검증·정정 |
 
 **순서 근거**:
 
