@@ -128,6 +128,27 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void CombinedLayers_UnitRoamsBothRegions_NoCodeChangeNeeded()
+        {
+            // ★ 이 spec 이 **저작만으로** 여는 것 — «지형을 가리지 않는 순찰병».
+            //
+            // `Ground | Path` 를 주면 통로(Walk)와 배치지면(Place)을 넘나들며 돈다.
+            // 비트필드의 **조합**이 실제로 작동하는지 여기서 처음 증명한다(지금까지 테스트는
+            // 단일 비트만 봤다). 코드 변경 0 — SO 필드 하나 저작이면 된다.
+            var both = MakePatrol(atX: 4, anchorX: 2,
+                PlacementLayer.Ground | PlacementLayer.Path, tileRadius: 3);
+            Tick();
+            Assert.Less(Step(both).x, 0f,
+                "Place 구역(4)에서 Walk 구역의 앵커(2)로 — 층 경계를 넘는다");
+
+            // 대조: 같은 자리·같은 앵커라도 Path 만 가진 유닛은 못 움직인다
+            // (자기 층에 셀 4 가 없어 영역이 비어 있다).
+            var pathOnly = MakePatrol(atX: 4, anchorX: 2, PlacementLayer.Path, tileRadius: 3);
+            Tick();
+            Assert.AreEqual(0f, Step(pathOnly).x, 1e-6f, "경로 전용은 지면 위에서 갈 곳이 없다");
+        }
+
+        [Test]
         public void WrongLayerForAnchor_UnitCannotMove_NegativeControl()
         {
             // ★ 음성 대조군 — 위 테스트들에 **이빨이 있음**을 증명한다.
