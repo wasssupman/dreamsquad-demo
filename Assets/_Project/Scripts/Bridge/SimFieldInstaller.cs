@@ -36,12 +36,16 @@ namespace Wassup.Bridge
         // 호출 전 Teardown 이 선행되어야 한다(멱등성 계약은 호출부에 남겨 순서가 보이게 한다).
         // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수.
+        // traversal-layers unit 1b — `slotMasks` 는 이 매치가 라우팅할 통행 마스크 집합이다
+        // (오름차순·중복 없음이 호출자 책임). 미생성이면 슬롯 1개(`TraversalSlots.DefaultMask`)
+        // 로 떨어져 **현행과 바이트 동일**하다. 실제 수집(로스터 → 집합)은 unit 2a 소관이다.
         public static void InstallNavFields(
             EntityManager em,
             in GeneratedMap map,
             float tileSize,
             float3 origin,
-            ref SimFieldHandles handles)
+            ref SimFieldHandles handles,
+            NativeArray<byte> slotMasks = default)
         {
             int w = map.gridSize.x;
             int h = map.gridSize.y;
@@ -67,16 +71,13 @@ namespace Wassup.Bridge
                         : PlacementLayers.Derive(map.tiles[i]);
                 }
 
-                // traversal-layers unit 1a — 라우팅은 슬롯별 stride. 지금 슬롯 1개라
-                // 길이가 n 이고 인덱스가 셀 인덱스와 같다(바이트 동일 회귀 축).
-                const int maskCount = 1;
+                // traversal-layers unit 1a·1b — 라우팅은 슬롯별 stride.
+                int maskCount = (slotMasks.IsCreated && slotMasks.Length > 0) ? slotMasks.Length : 1;
                 var flow = new NativeArray<float2>(maskCount * n, Allocator.Persistent);
                 var dist = new NativeArray<int>(maskCount * n, Allocator.Persistent);
-                // 슬롯 0 이 라우팅하는 통행 마스크 = Path(경로 칸). walkMask 가 tiles==Walk 이고
-                // Walk 는 Path 층을 여므로(PlacementLayers.Derive) 지금은 정확히 같은 집합이다
-                // — unit 1b 가 마스크 기반 빌드로 갈아탈 때 이 등식이 무변경의 근거가 된다.
                 var maskValues = new NativeArray<byte>(maskCount, Allocator.Persistent);
-                maskValues[0] = (byte)PlacementLayer.Path;
+                if (slotMasks.IsCreated && slotMasks.Length > 0) maskValues.CopyFrom(slotMasks);
+                else maskValues[0] = TraversalSlots.DefaultMask;
                 NativeArray<int2> goalsField = default;
                 try
                 {
@@ -92,9 +93,20 @@ namespace Wassup.Bridge
                     if (hasGoals) goalsField.CopyFrom(map.goals);
                     else goalsField[0] = goal;
 
-                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField,
-                        flow.GetSubArray(FlowFieldSingleton.PrimarySlot * n, n),
-                        dist.GetSubArray(FlowFieldSingleton.PrimarySlot * n, n));
+                    // traversal-layers unit 1b — 슬롯마다 «셀 층 ∩ 슬롯 마스크» 로 굽는다.
+                    // 슬롯이 DefaultMask(Path) 하나면 walk(= tiles==Walk)와 같은 집합이라
+                    // 결과가 현행과 바이트 동일하다(회귀 축).
+                    var slotWalk = new NativeArray<byte>(n, Allocator.Temp);
+                    try
+                    {
+                        for (int m = 0; m < maskCount; m++)
+                        {
+                            TraversalSlots.FillWalkMask(in cellLayers, maskValues[m], slotWalk);
+                            FlowFieldBuilder.BuildFromSources(slotWalk, gridSize, goalsField,
+                                flow.GetSubArray(m * n, n), dist.GetSubArray(m * n, n));
+                        }
+                    }
+                    finally { slotWalk.Dispose(); }
 
                     var data = new FlowFieldSingleton
                     {

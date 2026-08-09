@@ -61,6 +61,11 @@ namespace Wassup.Battle.Effects
 
         public const int PrimarySlot = 0;
 
+        // 슬롯 → 그 슬롯의 통행 마스크. maskValues 미생성(픽스처)이면 기본 슬롯 마스크.
+        public byte MaskAt(int slot)
+            => (maskValues.IsCreated && slot < maskValues.Length)
+                ? maskValues[slot] : TraversalSlots.DefaultMask;
+
         // 유닛의 통행 층 → 슬롯. 못 찾으면 primary(현행 동작) — 마스크 미부착 엔티티와
         // 픽스처가 그대로 돈다.
         public int SlotFor(byte unitLayers)

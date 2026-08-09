@@ -257,6 +257,90 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(123));
         }
 
+        // ── unit 1b — 마스크 집합 → 슬롯 N개 ──────────────────────────────────
+
+        [Test]
+        public void TwoSlots_EachRoutesItsOwnLayer()
+        {
+            // 슬롯이 2개면 라우팅이 2벌이고, 각자 «셀 층 ∩ 자기 마스크» 로 굽는다.
+            // Path 슬롯은 Walk 칸만, Ground 슬롯은 Place 칸만 걸을 수 있다.
+            var masks = new NativeArray<byte>(2, Allocator.Temp);
+            masks[0] = (byte)PlacementLayer.Ground;   // 오름차순(계약 5)
+            masks[1] = (byte)PlacementLayer.Path;
+            var map = MakeMap(withAuthoredMask: false);
+            try
+            {
+                SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
+                var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+
+                Assert.AreEqual(2, field.MaskCount);
+                Assert.AreEqual(field.CellCount * 2, field.flow.Length, "stride");
+
+                // 골(1,1)은 Walk 라 Path 층에서만 도달 가능하다.
+                var pathDist   = field.DistSlot(1);
+                var groundDist = field.DistSlot(0);
+                int goalIdx = 3;   // (1,1)
+                // 이 두 줄이 **비-앨리어싱의 증거**다. 빌드 순서가 슬롯0(Ground) → 슬롯1(Path)
+                // 이므로, 두 슬롯이 같은 메모리를 봤다면 나중에 구운 Path 값이 Ground 를
+                // 덮어써 둘 다 0 이 나온다. 다르게 나온다 = 슬롯이 독립이다.
+                Assert.AreEqual(0, pathDist[goalIdx], "Path 슬롯: 골이 자기 층 위라 dist 0");
+                Assert.AreEqual(int.MaxValue, groundDist[goalIdx],
+                    "Ground 슬롯: 골 칸이 자기 층을 안 열어 도달 불가");
+
+                // ⚠ 다른 셀로 «라우팅이 다르다»를 더 보이려 하지 말 것 — 이 2x2 픽스처에서
+                // (0,0)은 두 슬롯 모두 도달 불가다(골과 대각인데 코너컷 방지로 막힌다).
+                // 처음 쓴 `AreNotEqual(pathDist[0], groundDist[0])` 이 그래서 빨갛게 났고,
+                // 사실 위 두 줄이 이미 같은 것을 증명하고 있었다.
+            }
+            finally { masks.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void SingleDefaultSlot_MatchesWalkMaskRouting()
+        {
+            // unit 1b 의 무변경 축. 슬롯을 명시하지 않으면 DefaultMask(Path) 1개이고,
+            // 그 walk 집합이 walkMask(= tiles==Walk)와 **셀 단위로 같아야** 한다.
+            var map = MakeMap(withAuthoredMask: false);
+            try
+            {
+                var field = Install(map);
+                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(TraversalSlots.DefaultMask, field.MaskAt(FlowFieldSingleton.PrimarySlot));
+
+                var slotWalk = new NativeArray<byte>(field.CellCount, Allocator.Temp);
+                try
+                {
+                    TraversalSlots.FillWalkMask(in field.cellLayers, field.MaskAt(0), slotWalk);
+                    for (int i = 0; i < field.CellCount; i++)
+                        Assert.AreEqual(field.walkMask[i], slotWalk[i], $"cell {i}");
+                }
+                finally { slotWalk.Dispose(); }
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void FillWalkMask_IsTheIntersectionRule()
+        {
+            // 이 spec 의 정의식이 한 곳에만 있는지 — (셀 층 & 슬롯 마스크) != 0
+            var layers = new NativeArray<byte>(4, Allocator.Temp);
+            var outMask = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                layers[0] = (byte)PlacementLayer.Ground;
+                layers[1] = (byte)PlacementLayer.Path;
+                layers[2] = (byte)(PlacementLayer.Ground | PlacementLayer.Path);
+                layers[3] = 0;
+
+                TraversalSlots.FillWalkMask(in layers, (byte)PlacementLayer.Path, outMask);
+                Assert.AreEqual(0, outMask[0], "Ground 칸은 Path 유닛이 못 지난다");
+                Assert.AreEqual(1, outMask[1]);
+                Assert.AreEqual(1, outMask[2], "두 층을 다 여는 칸은 둘 다 지난다");
+                Assert.AreEqual(0, outMask[3], "층을 안 여는 칸은 아무도 못 지난다");
+            }
+            finally { layers.Dispose(); outMask.Dispose(); }
+        }
+
         [Test]
         public void Teardown_IsIdempotent()
         {
