@@ -7,6 +7,10 @@ namespace Wassup.Data
 
     public enum EnemyAttackMethod { None, Melee, Projectile }
 
+    // FocusUntilDead 의 의미는 target-persistence unit 2(D2, 2026-08-09)로 «죽거나
+    // **사거리를 벗어날 때까지**»가 됐다. 이름은 그대로 둔다 — 저작된 적 SO 6종의 참조를
+    // 흔들 이유가 없다. 예전 의미(죽을 때까지만 해제)는 이탈한 적이 락을 붙든 채 발사를
+    // 보류하고 골로 걸어가는 버그를 만들었다.
     public enum EnemyTargetMode { None, Nearest, FocusUntilDead }
 
     // enemy-ai-fsm — Engaging 상태의 이동 정책(구 aimMode 대체).

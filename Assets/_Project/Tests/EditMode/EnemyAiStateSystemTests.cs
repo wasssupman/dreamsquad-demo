@@ -101,17 +101,24 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(AiState.Chasing, StateOf(enemy));
         }
 
-        // H2 회귀 가드 — FocusUntilDead 락 타겟이 사거리 밖이면, 다른 디펜더가 사거리 안에 있어도
-        // AttackSystem 은 락 때문에 발사하지 않으므로 전이는 Marching 이어야 한다(영구 정지 방지).
+        // target-persistence unit 2 (D2) — **계약이 뒤집혔다.**
+        //
+        // 예전 기대값은 `Marching` 이었고 근거는 "락 때문에 발사를 못 하니 영구 정지를 막으려면
+        // 걸어가야 한다"였다. 그런데 그 조합이 정확히 B2 다 — 적이 **바로 옆 방어유닛을 두고
+        // 골로 걸어간다**. 락을 놓지 않는 것이 전제였고, 이제 그 전제가 사라졌다.
+        //
+        // D2 이후: 사거리 이탈은 락 해제 사유다 → 사거리 안의 다른 디펜더를 새로 잡고 `Engaging`.
+        // 옛 근거였던 "영구 정지 방지"도 함께 만족된다(멈추지도, 지나치지도 않는다).
         [Test]
-        public void Focus_LockOutOfRange_OtherNear_Marching()
+        public void Focus_LockOutOfRange_OtherNear_ReleasesAndEngages()
         {
             var far = MakeDefender(20f);
             MakeDefender(2f); // near, 비-락
             var enemy = MakeEnemy(0f, 5f, EnemyTargetMode.FocusUntilDead);
             _em.SetComponentData(enemy, new FocusTarget { current = far });
             _sim.Update();
-            Assert.AreEqual(AiState.Marching, StateOf(enemy));
+            Assert.AreEqual(AiState.Engaging, StateOf(enemy),
+                "사거리 안에 대상이 있으면 락을 놓고 교전한다 (Marching = B2)");
         }
     }
 }

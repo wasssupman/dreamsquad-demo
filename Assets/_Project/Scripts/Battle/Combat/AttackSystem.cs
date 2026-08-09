@@ -633,8 +633,12 @@ namespace Wassup.Battle.Combat
                 }
 
                 // enemy-behavior-components Unit 3 — FocusUntilDead lock (below aggro,
-                // above nearest/priority). Keeps the locked target until it dies/despawns;
-                // range only gates firing, not the lock (fire path has no range check).
+                // above nearest/priority).
+                //
+                // ⚠ target-persistence unit 2 로 계약이 바뀌었다. 예전 주석은 *"죽거나 사라질
+                // 때까지 유지, 사거리는 발사만 게이팅하고 락은 유지"* 였는데 **사거리 이탈도
+                // 이제 해제 사유다**(D2). 예전 거동은 이탈한 적이 락을 붙든 채 발사를 보류하고
+                // FSM 이 Marching 으로 떨어져 **옆에 방어유닛을 두고 골로 걸어가는** 버그였다.
                 if (behaviorLookup.HasComponent(attackerEntity)
                     && behaviorLookup[attackerEntity].targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead
                     && focusLookup.HasComponent(attackerEntity))
@@ -643,18 +647,30 @@ namespace Wassup.Battle.Combat
                     bool curValid = cur != Entity.Null
                         && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
                         && !deadLookup.HasComponent(cur);
+                    // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
+                    // (EnemyAiStateSystem 미러와 **같은 함수**. 두 벌이면 데드락이 재발한다).
+                    bool keepLock = false;
+                    float3 curPos = bestTargetPos;
                     if (curValid)
                     {
-                        float3 cPos = aggroTransformLookup.HasComponent(cur)
+                        curPos = aggroTransformLookup.HasComponent(cur)
                             ? aggroTransformLookup[cur].Position : bestTargetPos;
-                        int2 cCell = GridMath.WorldToCell(cPos, tileSize, gridSize, origin: ffOrigin);
+                        int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
                         int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
-                        if (cDist <= tileRange) { bestTarget = cur; bestTargetPos = cPos; }
-                        else bestTarget = Entity.Null; // out of range → hold fire, keep lock
+                        keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
+                    }
+
+                    if (keepLock)
+                    {
+                        bestTarget = cur; bestTargetPos = curPos;
                         focusLookup[attackerEntity] = new FocusTarget { current = cur };
                     }
                     else
                     {
+                        // 사망/소멸 **또는 사거리 이탈**(D2) → 락 해제.
+                        // 예전엔 이탈 시 bestTarget=Null 로 발사만 보류하고 락을 재저장했다.
+                        // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
+                        // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
                         // invalid lock → adopt the already-computed nearest+filter result (may be Null)
                         // goal-stability unit 2 (리뷰 M3) — 골은 잠금 대상이 아니다: 잠그면 이후
                         // 배치된 방어유닛을 사거리에 두고도 골만 계속 때려 최후순위 계약이 깨진다.

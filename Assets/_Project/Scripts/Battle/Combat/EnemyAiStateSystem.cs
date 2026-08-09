@@ -100,8 +100,11 @@ namespace Wassup.Battle.Combat
             return hasFireTarget ? AiState.Engaging : AiState.Marching;
         }
 
-        // ⚠ AttackSystem fire 조건 미러 (AttackSystem.cs:131-189). 타겟 선정 로직 변경 시 동기화 필요.
-        // FocusUntilDead 락이 걸린 적은 락 타겟이 사거리 내일 때만 fire → 그때만 Engaging(데드락 방지).
+        // AttackSystem fire 조건 미러. 타겟 **선정** 로직은 여전히 손으로 맞춰야 하지만,
+        // 락 **유지** 판정만은 target-persistence unit 1 이 TargetPersistence.KeepsLock 으로
+        // 단일화했다 — 그 축의 드리프트는 이제 구조로 막힌다.
+        // FocusUntilDead 락은 대상이 살아 있고 사거리 안일 때만 유지되며, 유지 중에는 그
+        // 대상만 fire 가능하다(그때만 Engaging).
         static bool HasFireTarget(
             Entity attacker, int2 atkCell, int tileRange, int mask,
             in NativeArray<Entity> candEntities,
@@ -125,14 +128,16 @@ namespace Wassup.Battle.Combat
                 bool curValid = cur != Entity.Null
                     && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
                     && !deadLookup.HasComponent(cur);
-                if (curValid)
+                if (curValid && transformLookup.HasComponent(cur))
                 {
-                    if (!transformLookup.HasComponent(cur)) return false;
                     int2 cCell = GridMath.WorldToCell(transformLookup[cur].Position, tileSize, gridSize, origin: ffOrigin);
                     int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
-                    return cDist <= tileRange;
+                    // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
+                    if (TargetPersistence.KeepsLock(true, cDist, tileRange)) return true;
+                    // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
+                    // 그게 "옆에 방어유닛을 두고 골로 걸어가는" B2 의 절반이었다.
                 }
-                // invalid 락 → nearest/filter 경로로 진행
+                // 락을 놓았거나(사망·이탈) 애초에 무효 → nearest/filter 경로로 진행
             }
 
             bool hasFilter = filterLookup.HasComponent(attacker);

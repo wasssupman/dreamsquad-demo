@@ -93,8 +93,12 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(a, Locked(f));
         }
 
+        // target-persistence unit 2 (D2) — **계약이 뒤집혔다.**
+        // 예전 이름은 `..._HoldsFire_KeepsLock` 이었고 "이탈해도 락 유지"를 고정했다.
+        // 그 계약이 B2 의 원인이다 — 락을 붙든 적이 사거리 안의 다른 디펜더를 영원히 무시했다.
+        // 이제 이탈은 해제 사유다. 여기선 대체 후보가 없으므로 락이 비고 발사도 없다.
         [Test]
-        public void FocusUntilDead_OutOfRange_HoldsFire_KeepsLock()
+        public void FocusUntilDead_OutOfRange_ReleasesLock_NoFireWhenNoOtherTarget()
         {
             var f = MakeEnemy(0f, EnemyTargetMode.FocusUntilDead);
             var a = MakeDefender(1f);
@@ -105,8 +109,8 @@ namespace Wassup.Tests.EditMode
             _em.SetComponentData(a, LocalTransform.FromPosition(new float3(50f, 0, 0))); // out of range
             ReadyAttack(f); // ensure no-fire is due to range, not cooldown
             _simGroup.Update();
-            Assert.AreEqual(a, Locked(f), "lock kept while out of range");
-            Assert.AreEqual(0, Incoming(a), "no fire while locked target out of range");
+            Assert.AreEqual(Entity.Null, Locked(f), "이탈 = 해제 (D2)");
+            Assert.AreEqual(0, Incoming(a), "사거리 밖 대상은 여전히 안 맞는다");
         }
 
         [Test]
