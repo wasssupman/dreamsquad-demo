@@ -39,13 +39,6 @@ namespace Wassup.Tests.EditMode
                 if (s.queue.IsCreated) s.queue.Dispose();
             }
             query.Dispose();
-            var collapsedQuery = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
-            if (collapsedQuery.CalculateEntityCount() > 0)
-            {
-                var s = collapsedQuery.GetSingleton<GoalCollapsedEventsSingleton>();
-                if (s.queue.IsCreated) s.queue.Dispose();
-            }
-            collapsedQuery.Dispose();
             _world?.Dispose();
         }
 

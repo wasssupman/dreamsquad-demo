@@ -131,8 +131,12 @@ namespace Wassup.Battle.Effects
                     //
                     // 컴포넌트 부재 = 통과(fail-open). 합성 픽스처·비-적 아키타입이 조용히
                     // 도발 불가가 되는 것을 막는다(AttackSystem 의 «필터 없으면 -1» 규약과 같은 방향).
+                    // ⚠ raw 필드가 아니라 Resolve 를 거친다(투트랙 리뷰 H1) — 0(미저작)의 의미는
+                    // 베이크와 소비자가 **같은 함수**로 읽어야 한다. raw 로 읽으면 0 이 «아무것도
+                    // 노리지 않음 → 영구 도발 불가» 가 되어 fail-open 선언과 정반대가 된다.
                     if (filterLookup.HasComponent(ev.enemy)
-                        && (filterLookup[ev.enemy].factionMask & Factions.AnyUnit) == 0) continue;
+                        && (Wassup.Battle.Combat.EnemyTargetDefaults.Resolve(filterLookup[ev.enemy].factionMask)
+                            & Factions.AnyUnit) == 0) continue;
 
                     // aggro-tile-chase unit 1 — 전투수단(AttackState/도발 프로파일) 없는 적은
                     // 가디언을 때릴 수 없으므로 거부 (구 M5 "Chasing 고착"의 원천 차단).

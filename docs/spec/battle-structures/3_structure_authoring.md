@@ -103,11 +103,19 @@ public NativeArray<StructurePlacement> structures;   // GeneratedMap
 - [x] `AllSpawnsReachGoal` 이 스폰 1개 맵을 통과 — `AcceptsSingleSpawn`. 기존 다중 스폰 테스트 무회귀
 - [x] 모드 판정 3케이스(적 마음 0/1/2+) + 공성 규칙(멀티골 금지·spawns 저작 금지)이 표대로 — 순수 함수 직접 호출
 - [~] 페인터 실제 저작 — 창은 메뉴로 열려 **예외 없음**을 확인했으나, 에디터 비포커스라 `OnGUI` 리페인트(배지·툴바 레이아웃)는 미검증. 스펙 종료 시점 검증으로 유보
-- [ ] 리뷰: 일반 리뷰(Data/Editor — ECS 시뮬 변경 없음)
+- [x] 리뷰: 투트랙(code-reviewer + ecs-reviewer) 완료 2026-08-09. 반영:
+  - **M-a(양측)**: 거점 규칙 3개((Defender,Core) 금지·경계·겹침)를 페인터에서 `StructureAuthoringRules.ValidateStructures` 로 이관 — 페인터와 `MapDocument.OnValidate` 가 같은 함수를 부른다. 인스펙터 우회 저작이 이제 import 에서 잡힌다. 규칙 테스트 5개 추가
+  - **M-b(양측)**: `OnValidate` 의 무조건 `spawns<1` 에러를 `ValidateMode`(모드별 규칙)로 교체 — 공성 문서(스폰 0)가 import 에러를 뱉던 자기모순 해소. ⚠ **런타임은 여전히 공성 문서를 못 돌린다** — `MapConnectivity` 가 spawns 0 에 false 인 것은 의도이고, unit 6 의 파생(적 마음 → `spawns[]`)이 서야 풀린다. 이것이 unit 6 의 전제다
+  - M-c: stale 주석 정정(`Faction.cs` 그룹 상수 소비처 · 테스트 단정 메시지)
 
 ---
 
 **확인 2026-08-09** — 구현 커밋: (아래 커밋 해시)
+
+**unit 4 로 이관된 리뷰 지적** (M-d·M-e — 코드 무변경, 착수 시 처리):
+- M-d: 아키타입 고정(`GoalTowerArchetypeTests`)이 속성 나열식이라 완전성 단정이 없고, 합성 픽스처 2개(`GoalProjectileTests.MakeGoal`·`GoalTargetingPriorityTests.CreateGoal`)는 브리지와 구조적 연결이 없다 — unit 4 가 타워 아키타입을 바꿀 때 **공용 픽스처 빌더**로 접을 것
+- M-e: `_goalGaugeList` 는 writer 0(게이지 폴링 도달 불가, 라이브 바는 `SyncGoalStabilityBars` 가 그림) · `GoalCollapsedEventsSingleton` 페이로드(`cell`·`goalIndex`)는 골 인덱스 기준 — unit 4 의 거점 게이지·붕괴 채널 재설계에서 재용도/삭제를 명시 결정
+- (기각 1건: «`AnyUnit` 게이트가 과대» — 도발이 `TauntAttackGrantSystem` 에서 `DefenderUnit` 비트를 OR 하므로 «게이트 통과 후 가디언 타격 불가» 시나리오는 불성립. «`EnemyUnit` 만 노리는 적이 도발*되어야 하는가*» 는 설계 질문으로 후속 후보)
 
 **설계 결정 1건 (README 보다 좁힘)**: **방어 마음은 `goals[]` 로 계속 저작한다.** `structures[]` 는 본능 + 적 마음만 받고, `(Defender, Core)` 조합은 페인터가 에러로 막는다. 현행 9장이 전부 `goals[]` 를 쓰고 라이브 타워가 이미 `DefenderCore` 라, 옮기면 «콘텐츠 이관 0» 이 깨지고 **골이 또 두 벌**이 된다 — 이 스펙이 상대해 온 바로 그 병이다. unit 4 의 스폰은 두 소스를 각각 읽되 같은 아키타입을 만든다.
 

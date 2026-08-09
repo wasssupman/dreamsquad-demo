@@ -82,6 +82,55 @@ namespace Wassup.Data
              : enemyCoreCount == 1 ? MapMode.Siege
              : MapMode.Invalid;
 
+        // 거점 저작 자체의 정합성 — 금지 조합·격자 경계·footprint 겹침.
+        // 투트랙 리뷰 M-a: 이 세 규칙이 페인터(에디터 어셈블리)에만 있으면 런타임·테스트가
+        // 볼 수 없고, structures 는 [SerializeField] 라 **인스펙터로 페인터를 우회**해 찍을 수
+        // 있다. 특히 (Defender, Core) 금지는 «골이 두 벌» 재발을 막는 유일한 게이트다 —
+        // 페인터와 MapDocument.OnValidate 양쪽이 이 함수를 부른다.
+        public static void ValidateStructures(
+            IReadOnlyList<StructureEntry> structures, int width, int height, List<string> errors)
+        {
+            if (structures == null) return;
+            var occupied = new Dictionary<UnityEngine.Vector2Int, int>();
+            for (int i = 0; i < structures.Count; i++)
+            {
+                var s = structures[i];
+                if (s.data == null) { errors.Add($"거점 {s.cell} 의 StructureData 가 비었다"); continue; }
+
+                // 방어 마음의 정본은 goals[] 다 — 두 벌이 되는 것을 여기서 막는다.
+                if (s.side == StructureSide.Defender && s.data.kind == StructureKind.Core)
+                    errors.Add($"거점 {s.cell}: 방어 마음은 Goal 브러시로 저작한다(골이 두 벌이 되는 것을 막는다)");
+
+                var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                int half = StructurePlacements.FootprintOf(faction) / 2;
+                if (s.cell.x - half < 0 || s.cell.x + half >= width
+                    || s.cell.y - half < 0 || s.cell.y + half >= height)
+                    errors.Add($"거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 (반경 {half}, 격자 {width}×{height})");
+
+                // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.
+                for (int dy = -half; dy <= half; dy++)
+                    for (int dx = -half; dx <= half; dx++)
+                    {
+                        var c = new UnityEngine.Vector2Int(s.cell.x + dx, s.cell.y + dy);
+                        if (occupied.TryGetValue(c, out int other))
+                            errors.Add($"거점 {s.cell} 이 거점 {structures[other].cell} 과 {c} 에서 겹친다");
+                        else occupied[c] = i;
+                    }
+            }
+        }
+
+        // 적 마음 개수 = 모드의 유일한 입력. 페인터·OnValidate 가 공유한다.
+        public static int CountEnemyCores(IReadOnlyList<StructureEntry> structures)
+        {
+            if (structures == null) return 0;
+            int n = 0;
+            for (int i = 0; i < structures.Count; i++)
+                if (structures[i].data != null
+                    && structures[i].side == StructureSide.Enemy
+                    && structures[i].data.kind == StructureKind.Core) n++;
+            return n;
+        }
+
         // 방어 마음은 goals[] 로 저작한다(현행 승계) — defenderGoalCount 는 그 개수다.
         public static void ValidateMode(
             int enemyCoreCount, int defenderGoalCount, int spawnCount, List<string> errors)

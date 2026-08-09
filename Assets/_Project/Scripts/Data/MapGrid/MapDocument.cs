@@ -103,41 +103,25 @@ namespace Wassup.Data.MapGrid
             if (placeMask != null && placeMask.Length > 0 && placeMask.Length != n)
                 Debug.LogError($"[MapDocument] placeMask.Length={placeMask.Length} != {n} — 소비 시 tiles==Place 파생 폴백", this);
 
-            if (spawns == null || spawns.Length < 1 || spawns.Length > 4)
-                Debug.LogError($"[MapDocument] spawns.Length 는 1~4 (현재 {spawns?.Length ?? 0})", this);
-
-            // goals 빈 배열/null = primary [goal] 폴백(레거시 asset·미authored) → 유효. 상한·범위만 검증.
+            // goals 좌표 범위 — 이 파일만 아는 정보(격자 크기 대 좌표)라 여기 남는다.
             // (Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 직렬화하므로 length<1 은 에러 아님.)
             if (goals != null)
-            {
-                if (goals.Length > 4)
-                    Debug.LogError($"[MapDocument] goals.Length 는 최대 4 (현재 {goals.Length})", this);
                 foreach (var g in goals)
                     if (g.x < 0 || g.x >= width || g.y < 0 || g.y >= height)
                         Debug.LogError($"[MapDocument] goal {g} 이 격자 밖 ({width}×{height})", this);
-            }
 
-            // battle-structures unit 3 — 거점 구조 검증. 모드 규칙(적 마음 개수·멀티골 금지)은
-            // 페인터가 저작 중에 잡는다(README §모드 판정) — 여기서는 격자 정합성만 본다.
-            if (structures != null)
-            {
-                for (int i = 0; i < structures.Length; i++)
-                {
-                    var s = structures[i];
-                    if (s.data == null)
-                    {
-                        Debug.LogError($"[MapDocument] structures[{i}] 의 StructureData 가 비었다", this);
-                        continue;
-                    }
-                    int half = StructurePlacements.FootprintOf(
-                        StructurePlacements.DeriveFaction(s.side, s.data.kind)) / 2;
-                    if (s.cell.x - half < 0 || s.cell.x + half >= width
-                        || s.cell.y - half < 0 || s.cell.y + half >= height)
-                        Debug.LogError(
-                            $"[MapDocument] 거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 " +
-                            $"— footprint 반경 {half}, 격자 {width}×{height}", this);
-                }
-            }
+            // battle-structures unit 3(투트랙 리뷰 M-a·M-b 정정) — 개수 규칙과 거점 규칙은
+            // 런타임 StructureAuthoringRules 가 단일 소유하고 페인터와 여기가 같은 함수를
+            // 부른다. 이전엔 spawns<1 을 무조건 에러로 잡아 공성 맵(스폰 0 = 파생이 채움)이
+            // 페인터를 통과하고도 import 에서 에러를 뱉는 자기모순이 있었다.
+            var authoringErrors = new List<string>();
+            int goalCount = (goals != null && goals.Length > 0) ? goals.Length : 1;   // 폴백 [goal]
+            StructureAuthoringRules.ValidateMode(
+                StructureAuthoringRules.CountEnemyCores(structures),
+                goalCount, spawns?.Length ?? 0, authoringErrors);
+            StructureAuthoringRules.ValidateStructures(structures, width, height, authoringErrors);
+            foreach (var e in authoringErrors)
+                Debug.LogError($"[MapDocument] {e}", this);
         }
 #endif
     }

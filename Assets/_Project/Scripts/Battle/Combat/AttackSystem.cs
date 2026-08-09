@@ -521,7 +521,7 @@ namespace Wassup.Battle.Combat
                     // «이 공격자가 거점을 우선하나» 는 공격자 쪽 저작이 정할 문제이고
                     // (unit 1, EnemyTargetFilter), 술어가 타입을 보고 순위를 뒤집지 않는다.
                     // 방어측 지원 마스크가 DefenderUnit 단독이라 거점은 힐러·버프 후보에
-                    // 애초에 들지 않는다(:516 필터) — 버퍼 부재 예외는 그쪽에서 막힌다.
+                    // 애초에 들지 않는다(후보 루프 진입부의 targetMask 필터) — 버퍼 부재 예외는 그쪽에서 막힌다.
                     if (d2 < bestSq)
                     {
                         bestSq = d2;

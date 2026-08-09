@@ -127,6 +127,24 @@ namespace Wassup.Tests.EditMode
                 "유닛을 노리는 적은 그대로 도발된다 — 이게 깨지면 게이트가 과잉 차단이다");
         }
 
+        // 투트랙 리뷰 H1 회귀선 — factionMask 미설정(0) 적도 도발된다. 0 = «미저작» 이고
+        // 그 의미는 베이크와 게이트가 같은 함수(EnemyTargetDefaults.Resolve)로 읽는다.
+        // 게이트가 raw 필드를 읽으면 0 & AnyUnit == 0 → 영구 도발 불가(무음)가 된다.
+        [Test]
+        public void UnauthoredFactionMask_IsStillAggroed()
+        {
+            var g = MakeGuardian(4, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            // 실존 합성 사이트와 동형: classMask/priorityClass 만 설정, factionMask 는 0.
+            _em.AddComponentData(e, new EnemyTargetFilter { classMask = -1, priorityClass = -1 });
+
+            Hit(g, e);
+            _simGroup.Update();
+
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e),
+                "factionMask 0 = 미저작 → 레거시 마스크(유닛 포함)로 해석돼 도발된다");
+        }
+
         // 계약 2 의 순환 함정 회귀선. MakeEnemy 는 AttackState 를 주지 않는다(러너·스위프트
         // 동형) — 런타임 마스크로 판정했다면 여기서 영구 도발 불가가 된다.
         [Test]

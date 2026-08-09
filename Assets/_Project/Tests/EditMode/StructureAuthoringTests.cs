@@ -109,6 +109,114 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, errs.Count, "적 마음 2+ 는 그 자체가 에러");
         }
 
+        // ── 거점 규칙 (투트랙 리뷰 M-a — 런타임 이관으로 검증 가능해진 규칙들) ──
+        // 이 규칙들이 페인터에 인라인돼 있던 동안은 테스트가 볼 수 없었고, 인스펙터로
+        // 페인터를 우회해 (Defender, Core) 를 찍으면 «골이 두 벌» 이 재발할 수 있었다.
+
+        private static StructureData MakeData(StructureKind kind)
+        {
+            var d = ScriptableObject.CreateInstance<StructureData>();
+            d.kind = kind;
+            return d;
+        }
+
+        [Test]
+        public void ValidateStructures_DefenderCore_IsForbidden()
+        {
+            var core = MakeData(StructureKind.Core);
+            try
+            {
+                var errs = new List<string>();
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(3, 3), side = StructureSide.Defender, data = core },
+                }, 8, 8, errs);
+                Assert.AreEqual(1, errs.Count,
+                    "방어 마음의 정본은 goals[] — structures 로 찍으면 골이 두 벌이 된다");
+            }
+            finally { Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void ValidateStructures_InstinctFootprint_OutOfBounds_IsError()
+        {
+            var instinct = MakeData(StructureKind.Instinct);
+            try
+            {
+                var errs = new List<string>();
+                // 3×3 본능을 (0,0) 에 — 반경 1 이 격자 밖으로 나간다.
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(0, 0), side = StructureSide.Enemy, data = instinct },
+                }, 8, 8, errs);
+                Assert.AreEqual(1, errs.Count);
+            }
+            finally { Object.DestroyImmediate(instinct); }
+        }
+
+        [Test]
+        public void ValidateStructures_OverlappingFootprints_IsError()
+        {
+            var instinct = MakeData(StructureKind.Instinct);
+            try
+            {
+                var errs = new List<string>();
+                // 3×3 두 개가 한 칸 겹치게 (중심 거리 2).
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(2, 2), side = StructureSide.Enemy, data = instinct },
+                    new StructureEntry { cell = new Vector2Int(4, 2), side = StructureSide.Enemy, data = instinct },
+                }, 10, 10, errs);
+                Assert.Greater(errs.Count, 0, "footprint 겹침은 에러");
+            }
+            finally { Object.DestroyImmediate(instinct); }
+        }
+
+        [Test]
+        public void ValidateStructures_ValidLayout_NoErrors()
+        {
+            var core = MakeData(StructureKind.Core);
+            var instinct = MakeData(StructureKind.Instinct);
+            try
+            {
+                var errs = new List<string>();
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(1, 1), side = StructureSide.Enemy, data = core },
+                    new StructureEntry { cell = new Vector2Int(5, 5), side = StructureSide.Defender, data = instinct },
+                }, 10, 10, errs);
+                Assert.IsEmpty(errs, "적 마음 1×1 + 방어 본능 3×3, 겹침 없음 — 유효 저작");
+            }
+            finally
+            {
+                Object.DestroyImmediate(core);
+                Object.DestroyImmediate(instinct);
+            }
+        }
+
+        [Test]
+        public void CountEnemyCores_CountsOnlyEnemyCores()
+        {
+            var core = MakeData(StructureKind.Core);
+            var instinct = MakeData(StructureKind.Instinct);
+            try
+            {
+                Assert.AreEqual(0, StructureAuthoringRules.CountEnemyCores(null));
+                Assert.AreEqual(1, StructureAuthoringRules.CountEnemyCores(new[]
+                {
+                    new StructureEntry { cell = default, side = StructureSide.Enemy, data = core },
+                    new StructureEntry { cell = default, side = StructureSide.Enemy, data = instinct },   // 본능은 미계수
+                    new StructureEntry { cell = default, side = StructureSide.Defender, data = core },    // 방어는 미계수
+                    new StructureEntry { cell = default, side = StructureSide.Enemy, data = null },       // 빈 데이터 미계수
+                }));
+            }
+            finally
+            {
+                Object.DestroyImmediate(core);
+                Object.DestroyImmediate(instinct);
+            }
+        }
+
         // ── 문서 왕복 ───────────────────────────────────────────────────────────
 
         private static MapDocument BuildDocument(StructureEntry[] structures)

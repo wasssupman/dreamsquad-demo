@@ -414,47 +414,10 @@ namespace Wassup.EditorTools
         // ── Validation (unit 1) — 런타임 계약과 일치 ──────────────────────────────
         private bool IsWalk(int x, int y) => InBounds(x, y) && _tiles[Idx(x, y)] == MapTileType.Walk;
 
-        // battle-structures unit 3 — 적 마음 개수 = 모드의 유일한 입력.
-        private int CountEnemyCores()
-        {
-            int n = 0;
-            foreach (var s in _structures)
-                if (s.data != null && s.side == StructureSide.Enemy && s.data.kind == StructureKind.Core) n++;
-            return n;
-        }
-
-        // 거점 저작 자체의 정합성 — 격자·중복·금지 조합.
-        private List<string> ValidateStructures()
-        {
-            var errs = new List<string>();
-            var occupied = new Dictionary<Vector2Int, int>();
-            for (int i = 0; i < _structures.Count; i++)
-            {
-                var s = _structures[i];
-                if (s.data == null) { errs.Add($"거점 {s.cell} 의 StructureData 가 비었다"); continue; }
-
-                // 방어 마음의 정본은 goals[] 다 — 두 벌이 되는 것을 여기서 막는다.
-                if (s.side == StructureSide.Defender && s.data.kind == StructureKind.Core)
-                    errs.Add($"거점 {s.cell}: 방어 마음은 Goal 브러시로 저작한다(골이 두 벌이 되는 것을 막는다)");
-
-                var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
-                int half = StructurePlacements.FootprintOf(faction) / 2;
-                if (s.cell.x - half < 0 || s.cell.x + half >= _w
-                    || s.cell.y - half < 0 || s.cell.y + half >= _h)
-                    errs.Add($"거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 (반경 {half})");
-
-                // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.
-                for (int dy = -half; dy <= half; dy++)
-                    for (int dx = -half; dx <= half; dx++)
-                    {
-                        var c = new Vector2Int(s.cell.x + dx, s.cell.y + dy);
-                        if (occupied.TryGetValue(c, out int other))
-                            errs.Add($"거점 {s.cell} 이 거점 {_structures[other].cell} 과 {c} 에서 겹친다");
-                        else occupied[c] = i;
-                    }
-            }
-            return errs;
-        }
+        // battle-structures unit 3(투트랙 리뷰 M-a 정정) — 거점 규칙은 런타임
+        // StructureAuthoringRules 가 단일 소유한다. 여기 인라인돼 있던 구현은 에디터
+        // 어셈블리에 갇혀 테스트가 못 보고 인스펙터 우회를 못 막았다.
+        private int CountEnemyCores() => StructureAuthoringRules.CountEnemyCores(_structures);
 
         private List<string> Validate()
         {
@@ -466,7 +429,7 @@ namespace Wassup.EditorTools
             // 여기 인라인하면 툴과 런타임이 갈린다.
             StructureAuthoringRules.ValidateMode(
                 CountEnemyCores(), _goals.Count, _spawns.Count, errs);
-            errs.AddRange(ValidateStructures());
+            StructureAuthoringRules.ValidateStructures(_structures, _w, _h, errs);
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
             foreach (var g in _goals)

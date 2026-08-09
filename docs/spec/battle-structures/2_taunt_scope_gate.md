@@ -48,7 +48,7 @@ README 가 지시한 점검 결과: `EnemyAiStateSystem` 은 `Aggroed` 를 **RO 
 - [x] **현행 적은 그대로 도발된다** — `UnitTargetingEnemy_WithIntent_IsStillAggroed`(과잉 차단 검출선)
 - [x] **무기 없지만 유닛을 노리는 적도 도발된다** — `WeaponlessEnemy_TargetingUnits_IsStillAggroed`. 픽스처가 `AttackState` 부재를 먼저 단정하므로 런타임 마스크로 판정했다면 실패한다(계약 2 순환 함정 회귀선)
 - [x] `EnemyTargetFilter` 부재 적은 통과(fail-open) — 기존 `AggroStateSystemTests` 전량이 필터 없이 돌며 이 경로를 덮는다
-- [ ] 리뷰: **`ecs-reviewer`** — 미실시
+- [x] 리뷰: 투트랙(code-reviewer + ecs-reviewer) 완료 2026-08-09. **H1 정정 반영** — 게이트가 raw `factionMask` 를 읽어 0(미저작)이 fail-closed 였다. 0 의 의미는 베이크와 소비자가 같은 함수(`EnemyTargetDefaults.Resolve`)로 읽어야 한다. 회귀 테스트 `UnauthoredFactionMask_IsStillAggroed` 추가
 
 ---
 

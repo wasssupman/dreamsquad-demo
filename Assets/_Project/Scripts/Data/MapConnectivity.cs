@@ -14,9 +14,11 @@ namespace Wassup.Data
         {
             if (!map.IsCreated) return false;
             if (map.gridSize.x <= 0 || map.gridSize.y <= 0) return false;
-            // battle-structures unit 3 — 하한을 2 → 1 로 내렸다. 공성 맵은 적 마음 1개가
-            // 스폰 지점이므로 스폰이 1개다(모드 파생, unit 6) — 하한 2 면 통과할 수 없었다.
-            // 침략 맵은 실측상 전부 2개 이상이라 영향 없다.
+            // battle-structures unit 3 — 하한을 2 → 1 로 내렸다(리뷰 M-b 정정 반영).
+            // ⚠ 이 완화가 지금 통과시키는 것은 **단일 스폰 침략 맵**뿐이다. 공성 맵의 스폰은
+            // 저작이 아니라 unit 6 의 파생(적 마음 셀 → spawns[])이 채우므로, 파생이 서기
+            // 전까지 공성 문서는 spawns 0 으로 여기서 false → 브리지 hard-fail 이 맞다.
+            // 하한 1 은 그 파생이 채울 «스폰 1개» 를 미리 받아들이는 준비다.
             if (map.spawns.Length < 1) return false;
 
             int n = map.gridSize.x * map.gridSize.y;

@@ -109,7 +109,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(Faction.DefenderCore, em.GetComponentData<FactionTag>(tower).value,
                 "타워 진영 = DefenderCore. DefenderUnit 이면 힐러·보스 사냥 필드가 타워를 유닛으로 오인한다");
             Assert.AreNotEqual(0, (int)em.GetComponentData<FactionTag>(tower).value & Factions.AnyStructure,
-                "AnyStructure 에 걸려야 최후순위 계약이 성립한다");
+                "타워는 거점 분류(AnyStructure)에 속한다 — 거점 전담 적의 저작 마스크가 이 비트로 타워를 겨눈다");
             Assert.AreEqual(0, (int)em.GetComponentData<FactionTag>(tower).value & (int)Faction.DefenderUnit,
                 "DefenderUnit 비트는 없어야 한다 — 지원계(힐·버프)가 거점을 대상으로 고르면 버퍼 부재 예외");
         }
