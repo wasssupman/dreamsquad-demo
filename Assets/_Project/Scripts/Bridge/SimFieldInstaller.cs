@@ -51,11 +51,21 @@ namespace Wassup.Bridge
             // (이전: Temp `walk` + DefenderField 용 Persistent 사본, 총 2개.)
             // 실패 시 소유권 이관 전이므로 catch 에서 직접 dispose 한다.
             var walk = new NativeArray<byte>(n, Allocator.Persistent);
+            // traversal-layers unit 0 — 셀 층 비트를 sim 으로 넘긴다. walk 와 수명·소유권이 같다.
+            var cellLayers = new NativeArray<byte>(n, Allocator.Persistent);
             bool walkOwnedBySingleton = false;   // AddComponentData 성공 시점에 소유권 이관
             try
             {
                 for (int i = 0; i < n; i++)
+                {
                     walk[i] = (byte)(map.tiles[i] == MapTileType.Walk ? 1 : 0);
+                    // 저작본이 있으면 그것이 정본, 없으면 런타임과 **같은 단일 정의**로 파생.
+                    // 빌더 불변식은 "IsCreated ⇒ placeMask 생성됨" 이지만 픽스처와
+                    // BuildFallbackLinear 경로까지 강제되지는 않아 방어적으로 둔다.
+                    cellLayers[i] = map.placeMask.IsCreated
+                        ? PlacementLayers.Sanitize(map.placeMask[i])
+                        : PlacementLayers.Derive(map.tiles[i]);
+                }
 
                 var flow = new NativeArray<float2>(n, Allocator.Persistent);
                 var dist = new NativeArray<int>(n, Allocator.Persistent);
@@ -81,6 +91,7 @@ namespace Wassup.Bridge
                         flow = flow,
                         dist = dist,
                         walkMask = walk,
+                        cellLayers = cellLayers,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -134,7 +145,9 @@ namespace Wassup.Bridge
             {
                 // 이관 전 실패만 여기서 해제한다. 이관 후라면 FlowFieldSingleton 이 소유하며
                 // 호출부의 Teardown 이 정리한다(flow/dist/goals 와 같은 규약).
+                // traversal-layers unit 0 — cellLayers 는 walk 와 소유권이 같다(같은 싱글턴).
                 if (!walkOwnedBySingleton && walk.IsCreated) walk.Dispose();
+                if (!walkOwnedBySingleton && cellLayers.IsCreated) cellLayers.Dispose();
                 throw;
             }
         }

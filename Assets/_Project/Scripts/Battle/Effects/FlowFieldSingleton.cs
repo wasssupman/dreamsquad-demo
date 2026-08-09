@@ -17,6 +17,17 @@ namespace Wassup.Battle.Effects
         // ⚠ 두 싱글턴이 같은 배열을 들면 double dispose 로 죽는다 — 소유·해제는 여기 하나뿐.
         // IsCreated 불변식에는 넣지 않는다(goals 와 같은 이유 — 픽스처가 뒤집히는 걸 막는다).
         public NativeArray<byte>   walkMask;
+        // traversal-layers unit 0 — 셀이 여는 층 비트(`PlacementLayer`: Ground = 배치지면,
+        // Path = 경로). `walkMask` 와 같은 수명·같은 길이다.
+        //
+        // ⚠ 이름은 `placeMask` 에서 왔지만 **배치 전용 데이터가 아니다.** `PlacementLayer.cs:8`
+        // 이 "층 이름은 **공간** 기준(어떤 종류의 칸인가)이지 유닛 클래스 기준이 아니다" 라고
+        // 못박고 있고, 통행 판정도 같은 비트를 읽는다(rev 2 계약 1 — 셀 배열을 두 벌 만들지
+        // 않는다). walkMask 가 "걸을 수 있나" 1비트라면 이쪽은 "어떤 종류의 칸인가" 전체다.
+        //
+        // 소비자는 traversal-layers unit 2b 부터. unit 0 은 값을 넘기기만 한다.
+        // IsCreated 불변식에는 넣지 않는다(walkMask·goals 와 같은 이유 — 픽스처 보호).
+        public NativeArray<byte>   cellLayers;
         // continuous-agent-movement unit 5 (D1-b) — 필드가 마지막으로 반영한 차단 셀 집합의
         // 시그니처. FlowFieldRebuildSystem 이 유일 writer. 0 = 장애물 없음.
         public uint                blockedSignature;
@@ -50,6 +61,7 @@ namespace Wassup.Battle.Effects
             if (dist.IsCreated) dist.Dispose();
             if (goals.IsCreated) goals.Dispose();
             if (walkMask.IsCreated) walkMask.Dispose();
+            if (cellLayers.IsCreated) cellLayers.Dispose();
         }
     }
 }
