@@ -40,7 +40,8 @@ public struct StructureTag : IComponentData { public int2 cell; public Faction f
 
 ### 3. 3×3 점유 + 배치 배제
 
-- **통행 차단** = 본능 본체 3×3 만(계약 12 — 마음은 비차단). `BlockingHazardCellsBuffer` 선례(`EffectSpawner:164`)를 그대로: 본능 엔티티에 buffer 로 9칸 등재. `ObstacleLifetimeSystem`·`FlowFieldRebuildSystem` 이 이미 이 버퍼를 소비하므로 **통행 코드 신설 0**.
+- **통행 차단** = 본능 본체 3×3 만(계약 12 — 마음은 비차단). `BlockingHazardCellsBuffer` 로 9칸 등재.
+  ⚠ (2026-08-10 정정 — 리뷰 C-1) 초판의 «기존 소비자가 버퍼를 그대로 소비하므로 통행 코드 신설 0» 은 **반증됐다**. `ObstacleLifetimeSystem` 의 다중셀 루프가 `BlockingHazard` **컴포넌트**를 요구해 버퍼만 든 본능은 아무것도 막지 않았다(테스트 두 층이 못 잡은 이유: EditMode 는 버퍼 존재만, Play 는 골 도달만 쟀다). → 루프를 버퍼 기준으로 완화(**계약 13: 버퍼 보유 = 다중셀 점유 선언**) + `blockedCells` 유입을 재는 회귀 테스트. 커밋 `94a29196`.
 - **배치 배제** = 적 본능 3×3 + 주변 3타일(9×9) `placeMask` 클리어. `CloseCellLayers` 선례(`BattleBridge:1029`)와 같은 자리(빌드 시 파생, 저작본 무접촉)에서 수행.
 - **연결성**: 3×3 블로커가 스폰→골을 끊을 수 있다 — `MapConnectivity` 를 거점 반영 후 상태로 검사(페인터 Validate 에 합류).
 

@@ -1,7 +1,7 @@
 # 거점 체계 — 마음 · 본능 (battle-structures)
 
-상태: 구현 중 — **unit 0 완료** (2026-08-09) · 다음 = unit 1(저작 타겟 마스크)
-(rev 3 설계 확정 → 병렬 리뷰 F1~F7 반영 → unit 0 구현. Play 검증은 스펙 구현 종료 시점으로 유보)
+상태: **완료 2026-08-10** — units 0~6 구현 + Play 검증 + 투트랙 리뷰 2회(0~3 / 4~6) 반영
+(rev 3 설계 확정 → 리뷰 F1~F7 → units 0~6 → Play(`StructureLivePlayTest`) → 리뷰 C-1/H/M/L 반영. 종료 인계 = [`7_handoff_summary.md`](7_handoff_summary.md))
 (rev 1 = 방어기제 명칭 / rev 2 = 골 두 벌 발견 / rev 3 = **원점 재설계** — 진영×종류 2축, 마음·본능, 침략/공성 모드)
 
 > **이어받는 세션은 [`7_handoff_summary.md`](7_handoff_summary.md) 를 먼저 읽는다.**
@@ -194,7 +194,8 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
    - 본능은 양쪽 모두 맵당 N개.
    - 마음은 1칸(현행 골과 동일), 본능은 3×3.
    - 라이브 맵 실측: 골 2개 = Serpent·Twin·Zig, 나머지 6장은 1개. **콘텐츠 이관 0** — 이 규칙은 공성 맵에만 걸린다.
-7. **거점은 각자 체력을 갖고, 각자 무너진다.** 현행 «타워 N개가 스칼라 1벌 공유»(`SyncGoalStabilityBars` 주석: *"값은 공유 1개라 두 바가 같은 숫자를 표시한다"*)를 엔티티별 `Health` 로 바꾼다 — 각 타워가 이미 `Health` 를 갖고 있으므로 **미러 스칼라를 걷어내는 방향**이다.
+7. **거점은 각자 체력을 갖고, 각자 무너진다.** 현행 «타워 N개가 스칼라 1벌 공유»(`SyncGoalStabilityBars` 주석: *"값은 공유 1개라 두 바가 같은 숫자를 표시한다"*)를 엔티티별 `Health` 로 바꾼다.
+   - (2026-08-10 unit 4 이행 정정) **미러 스칼라(`_goalStability`)는 유지한다** — 점수 tie-break·HUD·공개 API 가 읽는 «가장 위험한 골» 캐시로서. «걷어낸다» 는 «미러가 판정을 소유하지 않는다» 로 충족됐다(판정은 per-entity Health/부재). 붕괴 프레임의 미러는 0(방금 죽은 골), 다음 프레임부터 생존 골 최저 — 유출 전환은 미러 갱신 **뒤**에 연다(리뷰 A-M1: 제출값 순서).
    - 붕괴도 거점 단위다: 무너진 마음의 셀만 유출 지점으로 열리고 나머지는 그대로 선다. 이는 goal-stability 의 원설계(*"엔티티 존재 = 그 셀의 골이 살아있다. 붕괴 = 엔티티 파괴 — 별도 플래그 없음"*)로 **되돌아가는** 것이고, 공유 스칼라는 goal-tower-siege 의 단순화였다.
    - ⚠ **«`MovementSystem` 게이트를 되살리면 된다» 는 앞선 판단은 철회한다** (2026-08-09 리뷰 F3). 두 공성 기계는 **보완이 아니라 대안**이다. 게이트가 마음 셀에서 `PastGoalTag` 를 봉인하면 `UnitLifecycleSystem` 의 goal-reached 루프(`WithAll<PastGoalTag, AttackUnitTag>`)에 아무도 못 들어간다 → ⑴ `AttackState` 없는 Runner·Swift 가 파괴도 안 되고 안정도 피해도 못 줘 «필드에 적 0기» 판정을 영구히 막는 유령이 되고 ⑵ `GoalReachedEvent` 가 안 나가 붕괴 후 유출 처리(`evt.canSiege && _goalBreached`)도 죽는다. **라이브 공성 전체가 깨진다.**
    - ⚠⚠ **«가만히 두기» 는 선택지가 아니다 — 지뢰다.** `GoalPoint` 를 마음 태그로 흡수하면 게이트 쿼리가 **자동으로 타워를 잡아 저절로 깨어난다**(타워가 그 태그를 다니까). 그러면 위 파손이 unit 0 에서 그대로 터진다. → **unit 0 은 게이트 블록을 삭제한다**(`MovementSystem:63-66` + 소비처 + `GoalSiegeGateTests` 4개). 지운 코드는 git 이 갖고 있고, unit 4 가 그 커밋을 참조 구현으로 쓴다.
@@ -206,6 +207,7 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
 11. **`ProjectileTargetFaction` 은 통합하지 않는다** (2026-08-09 리뷰 F6). 투사체 피해풀 선택은 `Defender`/`Enemy` 2값 enum 이 별도로 소유한다(`ProjectileHitSystem` · `BattleBridge:7357`·`:3950` · `BossLeap:243` · `HealthThresholdSystem:246`). 이것은 «누구를 겨누나»(교차 비트)가 아니라 «어느 스냅샷 배열을 훑나»(성능/구조)라 축이 다르다.
     ⚠ 그래서 **저작 마스크와 피해풀이 갈릴 수 있다** — unit 5(본능 공격)는 본능의 `factionMask` 와 `ProjectileTargetFaction` 이 같은 대상을 가리키는지 **명시적으로 대조**하고, 어긋나면 저작 마스크가 정본이다. 이 대조를 unit 5 완료 기준에 넣는다.
 12. **마음은 통행을 막지 않는다** (2026-08-09 리뷰 F7). 방어 마음은 적이 그 셀에 서야 공성이 성립하고, 적 마음은 스폰 셀이라 그 위에서 적이 태어난다. 통행 차단은 **본능 3×3 본체만**.
+13. **버퍼 보유 = 다중셀 점유 선언** (2026-08-10 리뷰 C-1 정정으로 확립). `ObstacleLifetimeSystem` 은 `BlockingHazard` **컴포넌트**가 아니라 `BlockingHazardCellsBuffer` 자체를 기준으로 `blockedCells` 를 만든다 — 컴포넌트를 요구하던 시절엔 버퍼만 든 본능이 통행을 전혀 안 막았다. 같은 판정을 `MapConnectivity`·페인터 BFS 도 공유한다(본능 footprint = 벽, 마음 = 비차단). 본능에 `BlockingHazard` 컴포넌트를 달아주는 대안은 금지 — hazard-dead 루프가 그 컴포넌트로 분기해 붕괴가 가짜 `hazardSoIndex` 를 실은 `HazardDestroyedEvent` 를 쏘고, `Obstacle` 없이는 어느 사망 루프에도 안 걸려 영구 미파괴가 된다.
 
 ## 배치·통행 배제 (요청 7-2)
 
@@ -270,6 +272,14 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
    근거·오판 기록은 `7_handoff_summary.md` 논박 ⑪~⑭. 자리별 치환 판정 전수(21곳/8파일)는 [`0_faction_cross_bits.md`](0_faction_cross_bits.md) §2.
 
 ## 후속 후보
+
+(2026-08-10 투트랙 리뷰 4~6 에서 이관)
+
+- **배치 페이즈 거점 프랍 표시** [M] · placeMask 9×9 배제는 맵 빌드 시, 프랍은 StartBattle 시 — 배치 중 «왜 이 칸이 막혔나» 를 볼 수 없다(B-M5). 뷰 생성 시점을 빌드로 당기거나 배치 하이라이트에 배제 사유 표기.
+- **NeutralInstinct 배치 배제** [S] · 9×9 여유가 `EnemyInstinct` 리터럴에만 걸린다(B-M9). 중립은 생산자 0(계약 9 + 저작 거절)이라 현재 무해 — 중립을 여는 날 «방어유닛을 노리는 본능인가» 판정으로 일반화.
+- **본능 발사의 라이브 검증** [S] · `StructureLivePlayTest` 는 방어유닛을 배치하지 않아 발사가 라이브에서 안 돈다(A-L4 — 뷰·머즐·SFX 경로 미검증, EditMode 실시스템 테스트만 커버). 방어유닛 배치 하네스가 생기면 합류.
+- **본능 광역 투사체** [M] · TileAoe 계열은 통합 루프 요청이 `targetFaction` 을 안 실어 거부 중(M-10). host 진영 도출(BossLeap/패턴 선례)을 통합 루프에 넣으면 열린다 — 기존 적 원거리와 공유하는 한계.
+- **`GoalCollapsedEventsSingleton` 재정의** [S] · 생산자 0 존치 중. 거점 붕괴 알림이 필요해지면 페이로드를 `goalIndex` 에서 거점 식별로 재설계.
 
 - **공성 모드 콘텐츠** [L] · 적 마음을 파괴하면 무엇이 바뀌나(스폰 정지·승리 조건·점수). 이 spec 은 «모드가 성립한다» 까지만.
 - **중립 진영 콘텐츠** [M] · 비트만 예약돼 있다. 중립 거점(양측이 다 때릴 수 있는 것)·중립 유닛의 규칙.
