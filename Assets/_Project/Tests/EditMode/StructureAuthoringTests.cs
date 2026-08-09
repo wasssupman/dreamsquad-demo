@@ -177,6 +177,9 @@ namespace Wassup.Tests.EditMode
         {
             var core = MakeData(StructureKind.Core);
             var instinct = MakeData(StructureKind.Instinct);
+            // 방어 본능은 편에 맞는 마스크여야 한다 — SO 기본값(DefenderUnit, 적 본능용)을
+            // 그대로 물리면 리뷰 M-8 의 아군 사격 검증에 걸린다(그게 그 검증의 존재 이유다).
+            instinct.targetFactions = Faction.EnemyUnit;
             try
             {
                 var errs = new List<string>();
@@ -185,13 +188,31 @@ namespace Wassup.Tests.EditMode
                     new StructureEntry { cell = new Vector2Int(1, 1), side = StructureSide.Enemy, data = core },
                     new StructureEntry { cell = new Vector2Int(5, 5), side = StructureSide.Defender, data = instinct },
                 }, 10, 10, errs);
-                Assert.IsEmpty(errs, "적 마음 1×1 + 방어 본능 3×3, 겹침 없음 — 유효 저작");
+                Assert.IsEmpty(errs, "적 마음 1×1 + 방어 본능 3×3(적 유닛 마스크), 겹침 없음 — 유효 저작");
             }
             finally
             {
                 Object.DestroyImmediate(core);
                 Object.DestroyImmediate(instinct);
             }
+        }
+
+        // 리뷰 M-8 — 아군 사격 저작 함정 검출선.
+        [Test]
+        public void ValidateStructures_DefenderInstinct_TargetingDefenders_IsError()
+        {
+            var instinct = MakeData(StructureKind.Instinct);   // 기본 SO = DefenderUnit 마스크(적 본능용)
+            try
+            {
+                var errs = new List<string>();
+                StructureAuthoringRules.ValidateStructures(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(5, 5), side = StructureSide.Defender, data = instinct },
+                }, 10, 10, errs);
+                Assert.AreEqual(1, errs.Count,
+                    "SO 는 진영을 모르고 진영은 배치가 정한다 — 이 틈의 아군 사격 조합을 저작에서 잡는다");
+            }
+            finally { Object.DestroyImmediate(instinct); }
         }
 
         [Test]
@@ -451,6 +472,53 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── 연결성 하한 ─────────────────────────────────────────────────────────
+
+        // 리뷰 H-2 — 본능 3×3 은 연결성 BFS 에서도 벽이다. 반영하지 않으면 복도를 봉인한
+        // 맵이 검사를 통과하고, 적이 스폰에서 정지한 채 웨이브 전멸 판정을 영구히 막는다.
+        [Test]
+        public void AllSpawnsReachGoal_InstinctSealingCorridor_ReturnsFalse()
+        {
+            int w = 7, h = 3, n = w * h;
+            var tiles = new NativeArray<MapTileType>(n, Allocator.Persistent);
+            var spawns = new NativeArray<int2>(1, Allocator.Persistent);
+            var goals = new NativeArray<int2>(1, Allocator.Persistent);
+            var structures = new NativeArray<StructurePlacement>(1, Allocator.Persistent);
+            try
+            {
+                for (int i = 0; i < n; i++) tiles[i] = MapTileType.Walk;   // 3줄 전면 Walk
+                spawns[0] = new int2(0, 1);
+                goals[0] = new int2(6, 1);
+                // 3×3 본능이 (3,1) — 높이 3 복도를 정확히 봉인한다.
+                structures[0] = new StructurePlacement
+                {
+                    cell = new int2(3, 1),
+                    faction = Wassup.Battle.Units.Faction.EnemyInstinct,
+                };
+
+                var map = new GeneratedMap
+                {
+                    tiles = tiles, spawns = spawns, goals = goals, structures = structures,
+                    gridSize = new int2(w, h), goal = goals[0],
+                };
+                Assert.IsFalse(MapConnectivity.AllSpawnsReachGoal(map),
+                    "복도를 봉인한 본능 — 통과시키면 적이 스폰에서 영구 정지한다");
+
+                // 같은 맵에서 본능이 마음이면(비차단, 계약 12) 통과한다.
+                structures[0] = new StructurePlacement
+                {
+                    cell = new int2(3, 1),
+                    faction = Wassup.Battle.Units.Faction.EnemyCore,
+                };
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "마음은 통행을 막지 않는다");
+            }
+            finally
+            {
+                if (tiles.IsCreated) tiles.Dispose();
+                if (spawns.IsCreated) spawns.Dispose();
+                if (goals.IsCreated) goals.Dispose();
+                if (structures.IsCreated) structures.Dispose();
+            }
+        }
 
         [Test]
         public void AllSpawnsReachGoal_AcceptsSingleSpawn()

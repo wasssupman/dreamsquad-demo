@@ -605,6 +605,9 @@ namespace Wassup.Bridge
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             _structureRegistry.Clear(); // battle-structures unit 4 — 거점 등록부도 같은 지점에서
+            ClearStructureViews();      // 리뷰 H-4 — restart 경로는 DestroyStructureEntities 를 안 거쳐
+                                        // 지난 판 프랍이 배치 페이즈 내내 남는다(픽업/사직서 뷰와 같은 사고 유형)
+            _resolvedMapDoc = null;     // 리뷰 H-3 — 지난 판 문서의 거점이 다음 판에 스폰되는 것 + SO 앱수명 참조 방지
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
@@ -989,6 +992,7 @@ namespace Wassup.Bridge
             {
                 Debug.LogError($"[BattleBridge] {ex.Message}", this);
                 _generatedMap = default;
+                _resolvedMapDoc = null;   // 리뷰 H-3 — 실패한 문서의 거점이 다음 판에 스폰되면 안 된다
                 return;
             }
 
@@ -999,6 +1003,9 @@ namespace Wassup.Bridge
                 TeardownGeneratedMap();
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(
                     FallbackGridSize, seed, FallbackGeneratorVersion, FallbackSpawnLaneCount);
+                // 리뷰 H-3 — 폐기된 문서를 계속 들고 있으면 그 좌표(다른 격자계)에 거점이
+                // 서고, 공성 파생 스폰은 사라져 공성 맵이 조용히 침략 맵이 된다.
+                _resolvedMapDoc = null;
             }
 
             // tilemap-world-surround unit 1 — MapGrid 내부에 장식 Deco 셀을 데이터로 designate (배경 프랍 호스트).
@@ -4926,6 +4933,15 @@ namespace Wassup.Bridge
                             // 조용한 미발사 방지 — 적 베이크의 «outputs empty → walk-only» 선례.
                             Debug.LogWarning($"[BattleBridge] {s.data.displayName}: attackDamage={s.data.attackDamage} 인데 projectile 미지정 — 무공격으로 베이크.", s.data);
                         }
+                        else if (ResolveProjectileAxes(s.data.projectile.flightMode).payload
+                                 == Wassup.Battle.Combat.Projectile.PayloadKind.TileAoe)
+                        {
+                            // 리뷰 M-10 — 광역 투사체는 본능에 못 물린다. 통합 루프의 ballistic
+                            // 요청이 targetFaction 을 싣지 않아 기본 Enemy 풀로 떨어지므로,
+                            // 적 본능의 광역이 **적을** 때리는 오귀속이 된다(unit 5 문서 §계약 11).
+                            // projectile 미지정과 대칭으로 loud warn + 무공격.
+                            Debug.LogWarning($"[BattleBridge] {s.data.displayName}: TileAoe 계열 투사체({s.data.projectile.name})는 본능에 지원되지 않는다(피해풀 오귀속) — 무공격으로 베이크.", s.data);
+                        }
                         else
                         {
                             _em.AddComponentData(entity, new AttackState
@@ -4985,13 +5001,19 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Structures spawned: {spawned} (본능/적 마음, SO HP)");
         }
 
+        // 리뷰 H-4 — 뷰 정리는 2곳(여기 + TeardownCurrentBattle의 restart 경로)이 공유한다.
+        private void ClearStructureViews()
+        {
+            for (int i = 0; i < _structureViews.Count; i++)
+                if (_structureViews[i] != null) Destroy(_structureViews[i]);
+            _structureViews.Clear();
+        }
+
         private void DestroyStructureEntities()
         {
             _goalTowerCount = 0;
             _structureRegistry.Clear();
-            for (int i = 0; i < _structureViews.Count; i++)
-                if (_structureViews[i] != null) Destroy(_structureViews[i]);
-            _structureViews.Clear();
+            ClearStructureViews();
             if (!HasLiveEntityManager()) return;
             using var towerQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());
@@ -5092,6 +5114,8 @@ namespace Wassup.Bridge
         // 것과 같은 기준을 셀에 적용한다(골 2개 맵에서 이벤트가 어느 골 사건인지 가른다).
         private Vector2Int NearestGoalCell(float3 position)
         {
+            // 리뷰 L-13 — 맵 부재 시 (0,0) 반환은 오판 여지가 있으나, 호출자 둘 다
+            // (DrainGoalEvents/OpenGoalCellAfterBreach) 라이브 맵이 있어야만 도달한다.
             if (!_generatedMap.IsCreated) return default;
             bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
             int count = hasList ? _generatedMap.goals.Length : 1;
@@ -5152,7 +5176,10 @@ namespace Wassup.Bridge
         // 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)는 그대로다 — 브리지는 관측만 한다.
         private void SyncGoalStability()
         {
-            if (!HasLiveEntityManager() || _resultShown || _goalTowerCount <= 0) return;
+            // 리뷰 M-7 — 게이트는 등록부 유무다. 구 _goalTowerCount 게이트는 «골 타워 개수»
+            // 라는 무관한 개념에 거점(본능·적 마음) 붕괴 관측까지 가둬, 덱 미저작 판에서
+            // 거점 붕괴가 영구 미관측이었다.
+            if (!HasLiveEntityManager() || _resultShown || _structureRegistry.Count == 0) return;
 
             float lowest = float.MaxValue;
             float maxHp = 0f;
@@ -5161,13 +5188,12 @@ namespace Wassup.Bridge
             {
                 var (entity, cell, faction) = _structureRegistry[i];
                 bool alive = _em.Exists(entity) && _em.HasComponent<Health>(entity);
-                float hp = alive ? _em.GetComponentData<Health>(entity).value : 0f;
-                if (alive && hp > 0f)
+                var health = alive ? _em.GetComponentData<Health>(entity) : default;   // 리뷰 L-11 — 1회 조회
+                if (alive && health.value > 0f)
                 {
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
-                    if (hp < lowest) lowest = hp;
-                    float m = _em.GetComponentData<Health>(entity).max;
-                    if (m > maxHp) maxHp = m;
+                    if (health.value < lowest) lowest = health.value;
+                    if (health.max > maxHp) maxHp = health.max;
                     continue;
                 }
 
@@ -6988,7 +7014,7 @@ namespace Wassup.Bridge
             var cam = Camera.main;
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
-                var (entity, cell, _) = _structureRegistry[i];
+                var (entity, cell, faction) = _structureRegistry[i];
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
@@ -7002,7 +7028,10 @@ namespace Wassup.Bridge
                     Vector3 a = cam.WorldToScreenPoint(baseView - Vector3.right * (tileSize * 0.5f));
                     Vector3 b = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
                     float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
-                    unitOverheadUiLayer.SetUnit(entity, true, ratio, anchor, tileScreenWidth, 0f,
+                    // 리뷰 M-6 — 등록부에 이제 적 거점도 들어온다. defender 색 플래그는 진영에서.
+                    unitOverheadUiLayer.SetUnit(entity,
+                        ((int)faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
+                        ratio, anchor, tileScreenWidth, 0f,
                         GatherOverheadStacks(entity));
                 }
                 else if (!unifiedOverhead && tileHealthGaugeLayer != null)

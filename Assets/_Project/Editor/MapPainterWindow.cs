@@ -441,6 +441,19 @@ namespace Wassup.EditorTools
             // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인
             if (_goals.Count > 0 && _spawns.Count > 0)
             {
+                // 리뷰 H-2 패리티 — 본능 3×3 은 벽이다(런타임 MapConnectivity 와 같은 판정).
+                // 여기서 안 잡으면 «툴은 통과인데 런타임이 fallback» 이 난다.
+                var occluded = new bool[_w * _h];
+                foreach (var st in _structures)
+                {
+                    if (st.data == null || st.data.kind != StructureKind.Instinct) continue;
+                    int half = StructurePlacements.InstinctFootprint / 2;
+                    for (int oy = -half; oy <= half; oy++)
+                        for (int ox = -half; ox <= half; ox++)
+                            if (InBounds(st.cell.x + ox, st.cell.y + oy))
+                                occluded[Idx(st.cell.x + ox, st.cell.y + oy)] = true;
+                }
+
                 var vis = new bool[_w * _h];
                 var q = new Queue<int>();
                 foreach (var g in _goals)
@@ -454,7 +467,7 @@ namespace Wassup.EditorTools
                     for (int k = 0; k < 4; k++)
                     {
                         int nx = cx + dx[k], ny = cy + dy[k];
-                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)])
+                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)] && !occluded[Idx(nx, ny)])
                         { vis[Idx(nx, ny)] = true; q.Enqueue(Idx(nx, ny)); }
                     }
                 }

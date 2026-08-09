@@ -119,6 +119,14 @@ namespace Wassup.Data
                     && tiles[s.cell.y * width + s.cell.x] != MapTileType.Walk)
                     errors.Add($"적 마음 {s.cell} 이 Walk 셀이 아니다 — 공성 스폰 지점은 Walk 여야 한다");
 
+                // 리뷰 M-8 — 아군 사격 저작 함정. SO 의 targetFactions 는 진영을 모르고
+                // (기본 DefenderUnit = 적 본능용 포탑), 진영은 배치가 정한다 — 그래서
+                // «방어/중립 본능 + 방어유닛 마스크» 조합이 저작으로 가능해진다. 여기서 잡는다.
+                if (s.data.kind == StructureKind.Instinct && s.side != StructureSide.Enemy
+                    && s.data.attackDamage > 0f
+                    && ((int)s.data.targetFactions & (int)Wassup.Battle.Units.Faction.DefenderUnit) != 0)
+                    errors.Add($"거점 {s.cell}: {s.side} 본능이 방어유닛을 노린다(SO targetFactions) — 아군 사격. 편에 맞는 마스크의 SO 를 물려라");
+
                 // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.
                 for (int dy = -half; dy <= half; dy++)
                     for (int dx = -half; dx <= half; dx++)

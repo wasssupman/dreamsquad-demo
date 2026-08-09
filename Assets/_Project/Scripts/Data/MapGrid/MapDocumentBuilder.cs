@@ -56,7 +56,10 @@ namespace Wassup.Data.MapGrid
             int structureCount = 0;
             if (docStructures != null)
                 for (int i = 0; i < docStructures.Count; i++)
-                    if (docStructures[i].data != null) structureCount++;
+                    if (docStructures[i].data != null
+                        && StructurePlacements.DeriveFaction(docStructures[i].side, docStructures[i].data.kind)
+                           != Wassup.Battle.Units.Faction.DefenderCore)   // 리뷰 L-12 — 기록 패스와 동일 필터
+                        structureCount++;
             var structures = new NativeArray<StructurePlacement>(structureCount, allocator);
             if (structureCount > 0)
             {
@@ -65,10 +68,14 @@ namespace Wassup.Data.MapGrid
                 {
                     var s = docStructures[i];
                     if (s.data == null) continue;
+                    var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                    // 리뷰 L-12 — 스폰(SpawnStructureEntities)과 같은 필터. 투영에만 남기면
+                    // «placeMask 는 닫혔는데 엔티티는 없는» 셀이 생긴다. 방어 마음의 정본은 goals[].
+                    if (faction == Wassup.Battle.Units.Faction.DefenderCore) continue;
                     structures[written++] = new StructurePlacement
                     {
                         cell = new int2(s.cell.x, s.cell.y),
-                        faction = StructurePlacements.DeriveFaction(s.side, s.data.kind),
+                        faction = faction,
                     };
                 }
             }
