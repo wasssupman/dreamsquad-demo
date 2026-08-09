@@ -15,7 +15,10 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private byte[] placeMask;     // 0/1. 1 = 배치 가능. 부재/길이 불일치 = tiles==Place 파생 폴백(placement-mask unit 0). 타일 종류와 직교 — Walk 셀도 1 가능.
         [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
         [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
-        [SerializeField] private float[] goalMaxStability;   // goals 와 index 정렬. 0 = 유출 지점 현행, >0 = 공성 대상. 부재/길이 불일치 = 전 골 0 폴백(goal-stability unit 0).
+        // battle-structures unit 0 — goalMaxStability(per-goal 최대 안정도 M) 저작 축을 제거했다.
+        // 전 맵 미저작(0)이라 소비처가 한 번도 엔티티를 만들지 않았고, 읽는 코드를 걷어내
+        // «저작해도 아무 일이 없는 필드» 가 남는 것을 막는다. 거점 체력 저작은 unit 3 의
+        // StructureData 가 맡는다. (기존 asset 의 YAML 키는 orphan 으로 남지만 무해하다.)
         [SerializeField] private Vector2Int[] spawns;
 
         // -1 = 수동 입력, 그 외 값 = 절차적 결과 캐시.
@@ -33,7 +36,6 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<byte> PlaceMask => placeMask;   // null/length-0 가능 — 소비 시 tiles==Place 파생 폴백(ToGeneratedMap)
         public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
         public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
-        public IReadOnlyList<float> GoalMaxStability => goalMaxStability;   // null/길이 불일치 가능 — 소비 시 전 골 0 폴백(ToGeneratedMap)
         public IReadOnlyList<Vector2Int> Spawns => spawns;
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
@@ -43,7 +45,6 @@ namespace Wassup.Data.MapGrid
             MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
             Vector2Int[] goalsArr, Vector2Int[] s,
             int seed, int version,
-            float[] goalStabilityArr = null,
             byte[] placeMaskArr = null)
         {
             width = w;
@@ -55,7 +56,6 @@ namespace Wassup.Data.MapGrid
             placeMask = placeMaskArr;
             goals = goalsArr;
             goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
-            goalMaxStability = goalStabilityArr;
             spawns = s;
             authoringSeed = seed;
             generatorVersion = version;
@@ -82,8 +82,8 @@ namespace Wassup.Data.MapGrid
                 Debug.LogError($"[MapDocument] chokepoint.Length={chokepoint.Length} != {n}", this);
             if (propLayerId != null && propLayerId.Length != n)
                 Debug.LogError($"[MapDocument] propLayerId.Length={propLayerId.Length} != {n}", this);
-            // placeMask: goalMaxStability 패턴 — Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로
-            // 로드하므로 length-0 = 부재 = 파생 폴백으로 유효. 길이 불일치만 에러.
+            // placeMask: Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 로드하므로
+            // length-0 = 부재 = 파생 폴백으로 유효. 길이 불일치만 에러.
             if (placeMask != null && placeMask.Length > 0 && placeMask.Length != n)
                 Debug.LogError($"[MapDocument] placeMask.Length={placeMask.Length} != {n} — 소비 시 tiles==Place 파생 폴백", this);
 
@@ -99,17 +99,6 @@ namespace Wassup.Data.MapGrid
                 foreach (var g in goals)
                     if (g.x < 0 || g.x >= width || g.y < 0 || g.y >= height)
                         Debug.LogError($"[MapDocument] goal {g} 이 격자 밖 ({width}×{height})", this);
-            }
-
-            // 안정도: 비면 전 골 0 폴백(레거시/미authored) → 유효. 길이 불일치·음수만 에러 (goal-stability unit 0).
-            if (goalMaxStability != null && goalMaxStability.Length > 0)
-            {
-                int goalCount = (goals != null && goals.Length > 0) ? goals.Length : 1;
-                if (goalMaxStability.Length != goalCount)
-                    Debug.LogError($"[MapDocument] goalMaxStability.Length={goalMaxStability.Length} != 골 개수 {goalCount} — 소비 시 전 골 0 폴백", this);
-                foreach (var m in goalMaxStability)
-                    if (m < 0f)
-                        Debug.LogError($"[MapDocument] goalMaxStability 음수 {m} — 0 이상이어야 한다", this);
             }
         }
 #endif

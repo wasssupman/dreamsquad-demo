@@ -25,7 +25,6 @@ namespace Wassup.EditorTools
         private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
-        private readonly List<float> _goalStability = new();   // _goals 와 index 정렬 — per-goal 최대 안정도 M (goal-stability unit 0)
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -50,7 +49,6 @@ namespace Wassup.EditorTools
             ResetMaskToDerived();
             _spawns.Clear();
             _goals.Clear();
-            _goalStability.Clear();
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
@@ -104,11 +102,6 @@ namespace Wassup.EditorTools
             else
                 _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
 
-            // 안정도: _goals 와 길이 일치 시 채택, 아니면 전 골 0 (런타임 폴백과 같은 규칙).
-            _goalStability.Clear();
-            var st = doc.GoalMaxStability;
-            for (int i = 0; i < _goals.Count; i++)
-                _goalStability.Add(st != null && st.Count == _goals.Count ? Mathf.Max(0f, st[i]) : 0f);
         }
 
         private void OnGUI()
@@ -118,32 +111,12 @@ namespace Wassup.EditorTools
             DrawGrid();
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField($"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}", EditorStyles.miniLabel);
-            DrawGoalStability();
             DrawValidationAndBake();
         }
 
-        // goal-stability unit 0 — per-goal 최대 안정도 M 입력. 0 = 유출 지점 현행, >0 = 공성 대상.
-        private void DrawGoalStability()
-        {
-            SyncGoalStabilityLength();
-            if (_goals.Count == 0) return;
-            EditorGUILayout.LabelField("골 안정도 (0 = 현행 유출, >0 = 공성 대상)", EditorStyles.miniBoldLabel);
-            for (int i = 0; i < _goals.Count; i++)
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    EditorGUILayout.LabelField($"골 ({_goals[i].x},{_goals[i].y})", GUILayout.Width(90));
-                    _goalStability[i] = Mathf.Max(0f, EditorGUILayout.FloatField(_goalStability[i], GUILayout.Width(70)));
-                }
-            }
-        }
-
-        // 도메인 리로드 등으로 두 리스트 길이가 어긋나면 0 패딩/절단으로 재정렬.
-        private void SyncGoalStabilityLength()
-        {
-            while (_goalStability.Count < _goals.Count) _goalStability.Add(0f);
-            while (_goalStability.Count > _goals.Count) _goalStability.RemoveAt(_goalStability.Count - 1);
-        }
+        // battle-structures unit 0 — «골 안정도» 저작 컬럼을 제거했다. 그 값을 읽던 런타임
+        // 경로(SpawnGoalEntities)가 없어져 저작해도 아무 일이 일어나지 않는 입력란이었다.
+        // 거점 체력 저작은 unit 3 의 StructureData 가 맡는다.
 
         // placement-mask unit 4 — 저작된(파생과 상이한) 셀의 테두리 색 = 그 칸이 여는 층.
         private static Color AuthoredLayerColor(byte bits)
@@ -172,7 +145,6 @@ namespace Wassup.EditorTools
             int i = _goals.IndexOf(cell);
             if (i < 0) return;
             _goals.RemoveAt(i);
-            if (i < _goalStability.Count) _goalStability.RemoveAt(i);
         }
 
         private void DrawValidationAndBake()
@@ -376,7 +348,6 @@ namespace Wassup.EditorTools
                         _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
                         _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _goals.Add(cell);
-                        _goalStability.Add(0f);   // 기본 0 = 현행 유지
                     }
                     break;
                 case Tool.PlaceMask:
@@ -493,10 +464,6 @@ namespace Wassup.EditorTools
                 var goals = new NativeArray<int2>(_goals.Count, Allocator.Temp);
                 for (int i = 0; i < _goals.Count; i++) goals[i] = new int2(_goals[i].x, _goals[i].y);
 
-                SyncGoalStabilityLength();
-                var goalStability = new NativeArray<float>(_goals.Count, Allocator.Temp);
-                for (int i = 0; i < _goals.Count; i++) goalStability[i] = Mathf.Max(0f, _goalStability[i]);
-
                 var gm = new GeneratedMap
                 {
                     tiles = tiles,
@@ -508,12 +475,10 @@ namespace Wassup.EditorTools
                     spawns = spawns,
                     goals = goals,
                     goal = _goals.Count > 0 ? goals[0] : new int2(0, 0),   // primary = goals[0]
-                    goalMaxStability = goalStability,
                     seed = -1,
                     generatorVersion = 0,
                 };
                 MapDocumentBuilder.WriteToDocument(target, in gm);
-                goalStability.Dispose();
                 goals.Dispose();
                 spawns.Dispose();
             }

@@ -47,13 +47,6 @@ namespace Wassup.Data.MapGrid
             else
                 goals[0] = new int2(doc.Goal.x, doc.Goal.y);
 
-            // 안정도: doc 배열이 (폴백 후) goals 와 길이 일치할 때만 채택, 아니면 전 골 0 (goal-stability 유닛 0).
-            var docStability = doc.GoalMaxStability;
-            var goalMaxStability = new NativeArray<float>(goals.Length, allocator);
-            if (docStability != null && docStability.Count == goals.Length)
-                for (int i = 0; i < goals.Length; i++)
-                    goalMaxStability[i] = math.max(0f, docStability[i]);
-
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -65,7 +58,6 @@ namespace Wassup.Data.MapGrid
                 spawns = spawns,
                 goal = goals[0],
                 goals = goals,
-                goalMaxStability = goalMaxStability,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
             };
@@ -109,19 +101,12 @@ namespace Wassup.Data.MapGrid
                 goals = new[] { new Vector2Int(map.goal.x, map.goal.y) };
             }
 
-            // 안정도: goals 와 길이 일치 시 보존, 아니면 전 골 0 (goal-stability 유닛 0).
-            var goalStability = new float[goals.Length];
-            if (map.goalMaxStability.IsCreated && map.goalMaxStability.Length == goals.Length)
-                for (int i = 0; i < goals.Length; i++)
-                    goalStability[i] = Mathf.Max(0f, map.goalMaxStability[i]);
-
             doc.SetFrom(
                 map.gridSize.x, map.gridSize.y,
                 tiles, mergeDegree, chokepoint, propLayerId,
                 goals,
                 spawns,
                 map.seed, map.generatorVersion,
-                goalStability,
                 placeMask);
         }
     }
