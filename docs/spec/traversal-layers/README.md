@@ -16,7 +16,7 @@
 
 ## 2. 왜 적/방어유닛을 구분할 필요가 없나
 
-**이미 둘 다 같은 이동 파이프라인을 탄다.** `PathFollowState` 를 받는 곳은 `BattleBridge` 에 두 군데이고 — 적 스폰(`:6173`)과 순찰 방어유닛 스폰(`:7546`) — 그 뒤로는 `MovementSystem` 이 둘을 같은 루프에서 돈다.
+**이미 둘 다 같은 이동 파이프라인을 탄다.** `PathFollowState` 를 받는 곳은 `BattleBridge` 에 두 군데이고 — 순찰 방어유닛 스폰(`CreatePatrolEntity:6173`)과 적 스폰(`SpawnUnit:7546`) — 그 뒤로는 `MovementSystem` 이 둘을 같은 루프에서 돈다.
 
 따라서 **통행 층을 `PathFollowState` 에 실으면 한 메커니즘이 둘 다 덮는다.** 적용 대상을 유닛 종류로 분기하지 않는다(placement-mask 의 «클래스 비종속» 원칙 승계). 미래에 움직이는 주체가 늘어도 `PathFollowState` 를 받는 순간 자동으로 편입된다.
 
@@ -39,9 +39,10 @@
 | 층 비트필드 + 파생 폴백 + Sanitize | `PlacementLayer` / `PlacementLayers.Derive·Sanitize` — **그대로 복제** |
 | 유닛 SO 의 층 필드 + None 폴백 | `DefenderUnitData.placementLayers` / `EffectivePlacementLayers` |
 | 셀 마스크 직렬화·왕복·페인터 브러시 | `MapDocument.placeMask` · `MapPainterWindow._placeMask` / `_maskBrushLayer` |
-| **제한된 마스크로 필드를 굽고 특정 유닛만 따르기** | **순찰**(`PatrolAreaMath:79`, 거점 박스 마스크) · **어그로 추격**(`AggroChaseMath:49`, 적별 필드를 `AggroChaseCell` 버퍼에) |
+| **제한된 마스크로 필드를 굽기** | **순찰**(`PatrolAreaMath:79`, 거점 박스 ∩ walk) — **이것 하나뿐이다** |
+| 유닛마다 **자기 필드 버퍼**를 따르기 | **어그로 추격**(`AggroChaseCell`, `AggroStateSystem:163`). 어그로는 **전체 walkMask** 를 쓰고 제한되는 건 **소스 집합**(가디언 사거리 디스크)이라 마스크 선례가 아니다 |
 
-마지막 줄이 중요하다 — **«유닛마다 다른 필드를 따른다»는 이미 프로덕션에서 돌고 있다.** 골 필드만 1벌 공유였을 뿐이다.
+두 줄은 **서로 다른 선례**다: 마스크를 바꿔 굽는 것(순찰)과 유닛별 필드를 따르는 것(어그로). 이 spec 은 **둘을 합친 형태**이고, 각각은 이미 프로덕션에서 돈다.
 
 ### 3-3. **새로 만드는 것**
 
@@ -55,7 +56,12 @@
 
 | 파일 | 무엇을 |
 |---|---|
-| `Bridge/SimFieldInstaller.cs` | 유일한 `walkMask` 생산 지점(`:58`)이 **마스크별로 N벌** 생성. 라이프사이클도 N벌 |
+| `Bridge/SimFieldInstaller.cs` | 유일한 `walkMask` 생산 지점(`:58`)이 마스크별 라우팅을 만든다. **싱글턴 엔티티는 1개를 유지**한다(아래 상자) |
+| **`Movement/MovementCellTrim.cs`** | `BuildNavGrid`/`FillWalkMask` — `NavGrid` 를 조립하는 **유일한 지점**인데 시그니처가 `in FlowFieldSingleton` 이라 «어느 마스크»를 고를 수단이 없다. 호출처 4곳. 계약 4를 실제로 이행하는 파일 |
+| `Combat/AttackSystem.cs:1465` | **넉백 방향**을 골 flow 에서 뽑는다 — 물 적이 육지 필드 방향으로 밀린다 |
+| `Bridge/BattleBridge.cs:903` | 스폰 레인 측면 분산이 골 flow 기반(`ComputeSpawnLateralOffset`) |
+| `Bridge/BattleBridge.cs` 의 `MapTileType.Walk` 6곳 | `:2247,:2256`(`TryGetNearestWalkCell` — **순찰 앵커 스냅**이 쓴다) · `:2292,:2306` · `:3912` · `:4404` |
+| `Data/BattleMapBuilder.cs:39,42` | `BuildFallbackLinear` — §3-3 직렬화 목록에 없던 **네 번째 맵 생산자**(라이브 폴백에서 실제로 불림) |
 | `Effects/FlowFieldRebuildSystem.cs` | 장애물 변경 시 N벌 재빌드 |
 | `Movement/MovementSystem.cs` | `field.flow/dist` → **그 유닛의 필드**. `NavGrid` 도 그 마스크 것 |
 | `Movement/AgentSeparationSystem.cs` | unit 13 의 `RejectForwardPush` 가 `field.flow` 를 읽는다 — **rev 0 목록에 없던 신규 소비처** |
@@ -69,7 +75,17 @@
 | `Data/DefenderUnitData.cs` + 적 SO | `traversalLayers` 필드 + `None` → `Ground` 폴백 |
 | `Bridge/BattleBridge.cs` | 스폰 2곳에서 `PathFollowState.traversalLayers` 주입 + 예고 라인(`:1911`)이 그 적의 필드 |
 
-**총 파일 ~15개 · 신규 3개.** 대부분이 «인자를 하나 더 넘긴다» 수준이고, 실제 설계 부담은 **필드 집합 싱글턴의 라이프사이클** 하나에 몰려 있다.
+**총 파일 ~20개 · 신규 3개.**
+
+> ### 「N벌」이 아니라 **「기하 1벌 + 라우팅 N벌, 한 컴포넌트 안」** 이다
+>
+> rev 1 초판은 *"마스크별로 N벌 생성. 라이프사이클도 N벌"* 이라고 썼다. **그대로 구현하면 게임이 죽는다** — `SystemAPI.GetSingleton<T>()` 는 매치가 2개 이상이면 throw 한다.
+>
+> 실측: `FlowFieldSingleton` 소비처 **15곳 중 라우팅(`flow`/`dist`/`walkMask`)을 읽는 건 4곳뿐**이다(`MovementSystem` · `AgentSeparationSystem` · `DefenderFieldSystem` · `HealthThresholdSystem`). 나머지 **11곳은 `tileSize`/`gridSize`/`origin` 만** 읽는다 — 투사체 3종 · 존/해저드/실드 캐스트 · 픽업 · 보스주기 · 적 FSM · 어그로 · 순찰.
+>
+> 따라서 올바른 shape 는 **싱글턴 엔티티 1개 안에서 기하는 1벌로 두고 라우팅만 마스크 수만큼** 갖는 것이다. 이러면 **11곳은 손댈 필요가 없다** — 파급이 오히려 줄어든다.
+>
+> 그리고 `NativeArray<NativeArray<T>>` 는 **불법**이다(nested native container). 라우팅은 **flat stride** 여야 한다 — `flow[m * n + i]` + `maskValues[m]`. 200셀 규모에서 가장 단순하고 Burst 친화적이다.
 
 ## 4. 작업 단위
 
@@ -91,7 +107,7 @@
 
 **⚠ 범위 정정**: 이 규칙은 **일반 타겟팅이 아니다.** `AttackSystem:470` 이 요구하는 조건은 ⑴ 방어유닛 ⑵ `FrontmostAttackLock` 보유 ⑶ 살아있는 `FrontmostTarget` 슬롯 — 즉 **드림캐쳐 카드 「끝을 보는 눈」이 걸린 동안에만** 발동한다. 평소 타겟팅은 이 경로를 타지 않는다. 착수를 막을 결정이 아니다.
 
-**채택: `dist / maxFiniteDist(그 마스크의 필드)` 정규화.** 0~1 잔여 진행률이라 그래프가 달라도 비교되고, 엔티티별 상태가 필요 없으며 필드 재빌드 때 함께 갱신된다. **마스크가 1종이면 단조 변환이라 순서가 지금과 완전히 동일하다.** unit 3 소관.
+**채택(재검토 중): `dist / maxFiniteDist(그 마스크의 필드)` 정규화.** 리뷰 반론 — raw `dist` 는 «그 유닛 통행 집합 위의 실제 남은 이동 비용»이라는 방어 가능한 의미가 있고, 정규화는 그것을 «그 마스크 최악치 대비 비율»로 바꾼다. 발동 조건이 (카드 × 마스크 2종 공존 × 둘 다 사거리 내)로 희소하므로 **코드 0줄 + 계약 한 줄(«마스크 간 dist 비교는 근사»)** 이 더 나을 수 있다. 착수 시 재확정. 0~1 잔여 진행률이라 그래프가 달라도 비교되고, 엔티티별 상태가 필요 없으며 필드 재빌드 때 함께 갱신된다. **마스크가 1종이면 단조 변환이라 순서가 지금과 완전히 동일하다.** unit 3 소관.
 
 **D2 — 통행 불가 지형에 넉백/견인으로 밀려 들어가면?** 지금은 벽이면 `AgentCollision` 이 막는다. 물 적이 육지로 밀리는 건 같은 규칙으로 막히지만, **자기 층이 아닌 칸에 갇히는 경우**(맵 편집 실수·층 변경)의 탈출 규칙이 필요하다. 후보: `FlowRecovery` 를 그 마스크 dist 로 돌리면 자동 해결 — 기본값으로 채택 제안.
 
@@ -130,7 +146,7 @@
 | **적** — `FocusUntilDead` | `FocusTarget.current` 락. 대상이 죽거나 사라질 때까지 유지하고, **사거리는 발사만 게이팅(락은 유지)** — `AttackSystem:637~667` | **일치** |
 | **적** — 어그로 | `aggroLookup` sticky override. 필터·우선순위·nearest·focus 를 전부 무시하고 가디언만, 사거리 안일 때만 — `:669~` | **일치** |
 | **적** — `Nearest` 모드 | 매 프레임 재선정 | **불일치** — 원칙대로면 이 모드도 락이 필요하거나, 「의도된 예외」로 문서화돼야 한다 |
-| **방어유닛** | **락이 없다.** `FocusTarget` 경로는 `behaviorLookup`(`EnemyBehavior`) 게이트라 **적 전용**이다. 방어유닛은 매 프레임 nearest/priority 재선정 | **불일치 — 이게 가장 큰 갭** |
+| **방어유닛** | **지속 락이 없다.** 정정 — `EnemyBehavior` 는 순찰 방어유닛도 갖는다(`:6165`, 주석에 "faction-agnostic"). 적 전용을 만드는 건 클래스가 아니라 **SO 의 `targetMode` 값 + `FocusTarget` 부착**(`:7533`) = **데이터로 갈린다**(계약 3과 일관). 유일한 방어유닛 락 `FrontmostAttackLock` 은 카드 한정 + **공격 1회 안에서만** 유효하다(지속성 장치가 아니라 wind-up desync 방지). 방어유닛은 `EnemyTargetFilter` 를 안 받아 priority 경로가 없고, 힐러만 lowest-health 랭킹 | **불일치 — 이게 가장 큰 갭** |
 
 **traversal-layers 와의 접점**: 방어유닛 타겟이 고착이면 frontmost 순서(D1)는 **획득 시점에만** 영향을 준다. 지금처럼 매 프레임 재선정이면 매 프레임 영향을 준다. 즉 **철학을 구현하면 D1 의 중요도가 더 떨어진다.**
 
@@ -144,7 +160,16 @@
 - **소환 순찰병**은 `PatrolAnchor`(거점) + `PatrolFieldSystem`(거점 박스 ∩ walk 마스크로 필드) + `PatrolStep`(방향) 으로 움직이고, `MovementSystem` 이 그 dir 을 **적과 같은 루프**에서 소비한다.
 - **일반 방어유닛**은 배치 타일 위에 고정. 예외는 `DefenderRelocationController`(이동모드 → 목적지 지정 → 비행/재전개)인데 이건 **플레이어가 지시하는 텔레포트성 재배치**이지 지속 이동이 아니다.
 
-**기술적으로는 가능하다.** 필요한 건 `PatrolAnchor` + `PathFollowState` 부착뿐이고, 두 컴포넌트 모두 유닛 종류를 묻지 않는다. `MovementSystem` 의 patrol 분기도 `patrolStepLookup.HasComponent` 로만 판별한다 — **클래스 분기가 이미 0 이다.**
+**부품은 비종속이다.** `PatrolAnchor`·`PatrolStep`·`PatrolFieldSystem`·`PatrolAreaMath` + `MovementSystem` 의 patrol 분기(`patrolStepLookup.HasComponent`) 전부 유닛 종류를 묻지 않는다. 소환 종속은 수명 링크(`SummonedBy`/`PatrolLifecycleSystem`)와 스폰 경로뿐이다. 부착은 **3개** 필요하다(`PatrolAnchor` + `PathFollowState` + `PatrolStep` — `PatrolFieldSystem` 은 `PatrolStep` 을 쿼리만 하고 생성하지 않는다, `BattleBridge:7565`).
+
+**그러나 현재 로스터에서는 켤 수 없다** (2026-08-09 조사):
+
+- **C1 — 배치 셀이 walkable 이 아니다.** `NavGrid.staticWalk = (tiles == Walk)` 인데 배치칸은 `Place` 라 마스크 0 이다. 실측 저작: `placementLayers: 2`(Path)인 유닛은 **`Defender_Guardian` 하나뿐**이고 나머지 25종은 `Ground` 폴백 = 비-walkable 위에 서 있다. 이동을 켜면 `PatrolAreaMath` 가 **의도적으로** `RecoveryDir` 탈출을 시켜(`:140-147`) 전투 시작 즉시 배치 타일을 떠난다. 앵커를 배치 셀에 두면 반대로 도달 불가 목적지를 향해 영원히 전진한다.
+- **C3 — 유일하게 Path 층인 가디언이 하필 어그로 보유자다.** `AggroCapacity: 2` = Guardian·Bastion·ShieldShuttle. `AggroChaseCell` 은 **어그로 획득 시점의 가디언 셀로 1회만** 굽고(`AggroStateSystem:148-165`), 그 1회성의 근거가 *"어그로는 목적지가 정적이라"*(`PatrolStep.cs:11-14`)다. 가디언이 움직이면 적이 옛 자리로 계속 걷는다.
+
+즉 **C1 이 없는 유일한 유닛이 C3 에 정면으로 걸린다** — 두 제약이 현재 로스터에서 상호 배타적이다.
+
+그 외 HIGH: 좌표 권위 split-brain(`DefenderTile` vs `LocalTransform` — 사직서·레드불·아군장판·해저드검증·시너지·효과타일·점유격자 8곳), 재배치의 앵커 재스냅 경로 부재, `SyncPatrolViews` 이중 동기화로 재배치 비행 파괴, `AgentSeparationSystem` 자동 편입(배치 격자가 물리적으로 흐트러짐), `DeployedFacing` 축 무의미화, walk 애니 전 유닛 미저작.
 
 막는 것은 코드가 아니라 제품 축이다. 함께 결정해야 하는 것:
 1. **배치 위치의 의미** — 자유 이동하면 "어디에 놓나"가 "어느 구역에 넣나"로 바뀐다. 배치 게임의 핵심 축 변경.
