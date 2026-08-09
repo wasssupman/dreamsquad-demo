@@ -36,6 +36,18 @@ namespace Wassup.Data
         public EngageMovement engageMovement = EngageMovement.Halt;
         public DefenderClass targetPriorityClass = DefenderClass.None; // None = no priority
         public DefenderClassFlags targetClassMask = DefenderClassFlags.Everything;
+        // battle-structures unit 1 — 저작 타겟 마스크(진영 × 종류). «이 적은 무엇을 노리는
+        // 놈인가». targetClassMask(어느 **직업**의 방어유닛)와 다른 축이다 — 거점에는
+        // DefenderClassTag 가 없어 classMask 가 애초에 적용되지 않는다.
+        // None(0) = 미저작 → 베이크 시 EnemyTargetDefaults.LegacyEnemyMask 로 폴백. 이는
+        // 마이그레이션이 아니라 «인스펙터에서 마스크를 비웠을 때 무장 해제되는 것» 방어선이다
+        // (기존 에셋 무회귀는 아래 이니셜라이저가 보장한다).
+        // 예: DefenderCore 단독으로 두면 «거점만 때리는 적» 이 된다.
+        [Tooltip("이 적이 노리는 대상(진영 × 종류). 비우면(None) 현행 기본값으로 폴백한다.")]
+        public Wassup.Battle.Units.Faction targetFactions =
+            Wassup.Battle.Units.Faction.DefenderUnit
+            | Wassup.Battle.Units.Faction.BlockingHazard
+            | Wassup.Battle.Units.Faction.DefenderCore;
 
         public float health = 100f;
         public float moveSpeed = 2f;

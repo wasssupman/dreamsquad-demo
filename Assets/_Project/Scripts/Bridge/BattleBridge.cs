@@ -7401,6 +7401,15 @@ namespace Wassup.Bridge
                 Debug.LogWarning($"[BattleBridge] {entry.unitType.displayName}: attackMethod={attackMethod} but outputs empty — baked as walk-only.");
                 wantsAttack = false;
             }
+            // battle-structures unit 1 — 저작 타겟 마스크를 한 번 푼다. 아래 두 곳이 **같은
+            // 값**을 써야 한다: AttackState.targetMask(런타임 초기값)와
+            // EnemyTargetFilter.factionMask(저작 의도, 불변). 갈리면 도발 게이트(unit 2)가
+            // 실제 조준과 다른 의도를 읽는다.
+            // 미저작(None=0)은 레거시 마스크로 폴백 — 저작자가 인스펙터에서 마스크를 비웠을
+            // 때 그 적이 조용히 무장 해제되는 것을 막는다.
+            int authoredTargetMask = Wassup.Battle.Combat.EnemyTargetDefaults.Resolve(
+                (int)entry.unitType.targetFactions);
+
             if (wantsAttack)
             {
                 _em.AddComponentData(entity, new AttackState
@@ -7409,13 +7418,7 @@ namespace Wassup.Bridge
                     cooldownDuration = entry.unitType.attackCooldown,
                     cooldownRemaining = 0f,
                     attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
-                    // goal-stability unit 2 — 안정도 골 개통(공격 능력 있는 적 전원). 골이 없거나
-                    // 전부 M=0 이면 후보 자체가 없어 무해. walk-only 2종의 골 공격은 unit 3.
-                    // battle-structures unit 0 — 적의 base 마스크는 «유닛 + 방어 마음» 이다.
-                    // 유일하게 종류 축을 넘는 자리 — 여기서 DefenderCore 가 빠지면 적이 골
-                    // 타워를 못 때려 공성 자체가 사라진다. 최후순위 판정(AttackSystem)이
-                    // 사거리 내 유닛을 먼저 고르므로 «유닛 우선, 없으면 마음» 이 성립한다.
-                    targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
+                    targetMask = authoredTargetMask,
                     hitDelaySec = entry.unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
@@ -7481,10 +7484,13 @@ namespace Wassup.Bridge
             int priorityClass = entry.unitType.targetPriorityClass == Wassup.Data.DefenderClass.None
                 ? -1
                 : (int)entry.unitType.targetPriorityClass;
+            // 이 부착은 wantsAttack 게이트 **밖**이다 — 무기 없는 적(러너·스위프트)도 저작
+            // 의도를 갖는다. 계약 2 의 도발 게이트가 이것을 읽는다.
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
             {
                 classMask = (int)entry.unitType.targetClassMask,
                 priorityClass = priorityClass,
+                factionMask = authoredTargetMask,
             });
 
             _em.AddComponentData(entity, new PathFollowState
