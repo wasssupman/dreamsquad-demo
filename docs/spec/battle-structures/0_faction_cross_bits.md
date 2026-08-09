@@ -4,7 +4,7 @@
 
 `Faction` 을 «진영 × 종류» 교차 비트로 재정의하고, 라이브 골 타워를 `DefenderCore` 로 옮긴다. 동시에 goal-stability 가 남긴 **잠자는 소비 기계 3쌍**을 처분한다 — 쌍마다 라이브와의 관계가 달라 일괄 치환하면 라이브가 깨진다(README §결정 6, handoff 논박 ⑬).
 
-**행동 변화: 있다.** 부작용 2건 해소 + **최후순위 신규 도입**. 「무변경 리팩터」가 아니다.
+**행동 변화: 있다.** 부작용 2건 해소 + **거점이 거리순 일반 후보가 된다**(계약 4 폐기). 「무변경 리팩터」가 아니다.
 
 ## 변경 대상
 
@@ -57,15 +57,21 @@ README §타겟 비트의 10비트 배치와 `Factions` 그룹 상수를 그대�
 
 주석 3곳(`BattleBridge:4841`·`:4927`, `DefenderUnitData:96`)은 새 이름으로 갱신.
 
-### 3. 최후순위 키 이관 + 라이브 안전망
+### 3. 거점 특별취급 제거 (계약 4 폐기) + 라이브 안전망
 
-`AttackSystem:529` 의 `goalPointLookup.HasComponent(...)` → `(faction & Factions.AnyStructure) != 0`. `:113` 의 lookup 과 `:680` 의 잠금 배제도 같은 술어로.
+**«거점이니까 후순위» 라는 타입 기반 전역 규칙을 없앤다.** 우선순위는 공격자 저작이 정하고(unit 1), 저작이 같으면 거리순, 타겟 변경은 `TargetPersistence` 가 소유한다 — README 계약 4.
 
-⚠ **이 계약은 라이브에서 한 번도 발효된 적이 없다**(README 계약 4). 기존 `GoalTargetingPriorityTests` 는 `Faction.Goal` + `GoalPoint` 합성 엔티티를 써서 라이브 아키타입을 통과시키지 않는다.
+`AttackSystem` 에서 지울 것:
+- 거점 전용 트래커 `goalBestSq`/`goalBestTarget`/`goalBestPos` 와 스캔 중 `continue` 분기
+- 스캔 후 «유닛 후보가 없을 때만 거점 채택» 폴백
+- `FocusTarget` 잠금의 거점 예외(M3) — `current = bestTarget` 으로 균일화
+- 거점 판별용 `ComponentLookup<FactionTag>` (소비처가 사라진다)
 
-**안전망은 «케이스 추가» 가 아니라 «아키타입 단일 소스» 로 세운다** — 이번 결함의 원인이 테스트 아키타입과 `EnsureGoalTowers` 아키타입의 drift 였기 때문이다. 케이스를 늘리면 다음에 또 갈린다.
+⚠ 힐러 결함은 이 규칙이 막던 게 **아니다.** 힐러 마스크가 `DefenderUnit` 단독이라 거점이 후보 필터(`:516`)에서 먼저 걸러진다 — 계약 2 가 방어선이다.
 
-→ 최후순위 테스트가 **`EnsureGoalTowers` 를 리플렉션으로 호출해 브리지가 실제로 만든 타워**를 대상으로 돌게 한다. 기법은 폐기 예정인 `BattleBridgeGoalStabilityTests`(`PrepareDraftMapInternal` → 실 ECS World 주입)에서 승계한다.
+**안전망은 «케이스 추가» 가 아니라 «아키타입 단일 소스» 로 세운다** — 최후순위가 라이브에서 발효되지 않았던 원인이 테스트 아키타입과 `EnsureGoalTowers` 아키타입의 drift 였기 때문이다. 케이스를 늘리면 다음에 또 갈린다.
+
+→ `GoalTowerArchetypeTests` 가 **`EnsureGoalTowers` 를 리플렉션으로 호출해 브리지가 실제로 만든 타워**를 검사한다(진영 = `DefenderCore` · 유닛 태그 없음 · 피해 버퍼 있음 · 거리순 경쟁). 기법은 폐기한 `BattleBridgeGoalStabilityTests`(실 ECS World 주입)에서 승계했다 — `567facbc^`.
 
 ### 4. 삭제 — 잠자는 소비 기계 (치환 아님)
 
@@ -102,7 +108,8 @@ step 1 에서 정정된 것: `:7506` 분기째 삭제(위 표) · `MapDocument.g
 
 - [ ] 컴파일 에러 0 · 콘솔 신규 에러 0
 - [ ] EditMode 전량 그린. 기준선 = 이 unit 직전 **2014개 / 실패 0 / 의도적 스킵 3**. 최종 수는 `2014 − 삭제분 + 신규분` 이고 **실패 0 · 신규 스킵 0**
-- [ ] 최후순위 테스트가 `EnsureGoalTowers` 가 만든 타워를 대상으로 돌고, 사거리 내 방어유닛이 있으면 그쪽을 먼저 고른다
+- [ ] 타겟팅 테스트가 `EnsureGoalTowers` 가 만든 타워를 대상으로 돌고, **거리순**으로 결정된다(가까운 쪽이 맞는다 — 종류가 순위를 뒤집지 않는다)
+- [ ] `AttackSystem` 에 «거점이니까» 로 순위를 뒤집거나 잠금을 거르는 분기가 **0개**다
 - [ ] 힐러 결함 회귀 테스트: 힐러(`targetAllies`)의 후보에 타워가 **들지 않는다**. 현행 코드로 돌리면 `IncomingHeal` 버퍼 부재 예외로 실패해야 한다(결함의 존재 증명)
 - [ ] 보스 광역 1발이 타워에 **1회만** 데미지를 넣는다(F2 이중 피해 회귀)
 - [ ] `AttackState` 없는 적(Runner·Swift)이 골 셀 도달 시 여전히 파괴되고 안정도 피해가 들어간다(F3 유령 회귀)

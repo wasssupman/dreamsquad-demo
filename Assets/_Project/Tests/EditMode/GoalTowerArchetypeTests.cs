@@ -15,12 +15,15 @@ namespace Wassup.Tests.EditMode
 {
     // battle-structures unit 0 — 골 타워 아키타입의 **단일 소스** 방지선.
     //
-    // 왜 브리지를 직접 호출하나: 최후순위 계약(계약 4)이 라이브에서 한 번도 발효되지 않았던
-    // 원인이 «테스트가 만드는 골» 과 «EnsureGoalTowers 가 만드는 골» 의 아키타입 drift 였다.
-    // 테스트는 Faction.Goal + GoalPoint 를 달았고 브리지는 (구) Faction.Defender + GoalTowerTag 를
-    // 달았다. 그래서 3개짜리 최후순위 스위트가 통과하는 동안 라이브 타워는 방어유닛과 거리로
-    // 경쟁하는 일반 후보였다. 케이스를 늘려도 이 drift 는 다시 벌어진다 — 그래서 여기서
-    // **생산 코드가 만든 엔티티**를 직접 검사한다.
+    // 왜 브리지를 직접 호출하나: goal-stability 의 최후순위 계약이 라이브에서 한 번도
+    // 발효되지 않았던 원인이 «테스트가 만드는 골» 과 «EnsureGoalTowers 가 만드는 골» 의
+    // 아키타입 drift 였다. 테스트는 Faction.Goal + GoalPoint 를 달았고 브리지는 (구)
+    // Faction.Defender + GoalTowerTag 를 달았다. 그래서 3개짜리 스위트가 통과하는 동안
+    // 라이브 타워는 그 계약 밖에 있었다. 케이스를 늘려도 이 drift 는 다시 벌어진다 —
+    // 그래서 여기서 **생산 코드가 만든 엔티티**를 직접 검사한다.
+    //
+    // (그 계약 자체는 폐기됐다 — 거점은 타입으로 특별 취급하지 않고 거리로 경쟁한다.
+    //  하지만 아키타입을 생산 경로에 고정한다는 이 파일의 목적은 그와 무관하게 유효하다.)
     public class GoalTowerArchetypeTests
     {
         private World _world;
@@ -131,17 +134,18 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(health.max, health.value, 1e-4f, "만피로 시작");
         }
 
-        // F1 — 최후순위가 **브리지가 만든 타워**에 걸리는지. 합성 골이 아니라 생산 경로
-        // 산물을 대상으로 재므로 아키타입 drift 가 있으면 여기서 깨진다.
+        // 브리지가 만든 타워가 **일반 후보로서 거리로 경쟁**하는지. 합성 골이 아니라 생산
+        // 경로 산물을 대상으로 재므로 아키타입 drift 가 있으면 여기서 깨진다.
+        // (goal-stability 의 «거점 최후순위» 는 폐기됐다 — 타입이 순위를 뒤집지 않는다.)
         [Test]
-        public void BridgeSpawnedTower_IsLastPriority_BehindDefenderUnit()
+        public void BridgeSpawnedTower_CompetesByDistance_AsOrdinaryCandidate()
         {
             SpawnTowersViaBridge();
             var em = _world.EntityManager;
             var tower = SingleTower();
             float3 towerPos = em.GetComponentData<LocalTransform>(tower).Position;
 
-            // 타워보다 **먼** 방어유닛. 거리로는 타워가 이기지만 최후순위 계약이 뒤집는다.
+            // 타워보다 **먼** 방어유닛 — 거리로 타워가 이겨야 한다.
             var defender = em.CreateEntity();
             em.AddComponentData(defender, LocalTransform.FromPosition(towerPos + new float3(1.5f, 0f, 0f)));
             em.AddComponentData(defender, new Health { value = 100f, max = 100f });
@@ -175,10 +179,10 @@ namespace Wassup.Tests.EditMode
             _world.SetTime(new TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
             simGroup.Update();
 
-            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(defender).Length,
-                "사거리 내 유닛이 있으면 거리 무관하게 유닛이 이긴다");
-            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(tower).Length,
-                "마음은 최후순위 — 방어유닛이 사거리에 있는 동안 맞지 않는다");
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(tower).Length,
+                "브리지가 만든 타워도 마스크에 들어온 일반 후보다 — 더 가까우면 맞는다");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(defender).Length,
+                "더 먼 방어유닛은 이 프레임에 맞지 않는다");
         }
 
         // -----------------------------------------------------------------------

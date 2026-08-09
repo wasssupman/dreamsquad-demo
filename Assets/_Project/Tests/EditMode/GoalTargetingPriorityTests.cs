@@ -9,14 +9,16 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // 거점은 타겟 최후순위: 사거리 내 유닛 후보가 있으면 그쪽이 이기고(거리 무관), 거점만
-    // 남았을 때만 거점을 친다. FocusUntilDead 는 거점을 잠그지 않는다(리뷰 M3).
+    // battle-structures unit 0 — **거점은 일반 후보다.** 타입으로 순위를 뒤집지 않는다.
     //
-    // battle-structures unit 0 — 아키타입을 **라이브 골 타워**로 재조준했다. 예전 픽스처는
-    // Faction.Goal + GoalPoint 합성 엔티티를 썼는데 그 조합은 어떤 맵에서도 태어나지 않아
-    // 이 계약이 라이브에서 검증된 적이 없었다. 판정 키도 GoalPoint 보유에서 진영 비트로
-    // 옮겨졌다. 아키타입 자체가 브리지 산물과 일치하는지는 GoalTowerArchetypeTests 가
-    // EnsureGoalTowers 를 직접 호출해 고정한다 — 그쪽이 drift 방지선이다.
+    // goal-stability unit 2 의 «골은 타겟 최후순위» 계약은 폐기됐다(2026-08-09 사용자 확정).
+    // 그 규칙은 «거점 타입이 유닛 타입에 항상 우선/후순위» 라는 전역 규칙이었고, 우선순위는
+    // 공격자 쪽 저작(«이 놈은 거점을 우선하나» — unit 1 EnemyTargetFilter)이 정할 문제다.
+    // 저작이 같으면 **거리순**이고, 정해진 타겟이 바뀌는 규칙은 TargetPersistence 가 소유한다.
+    //
+    // 이 스위트가 지키는 것: 마스크에 든 후보는 종류를 묻지 않고 거리로 경쟁한다 · 거점만
+    // 남으면 거점을 친다 · 잠금도 거점에 균일하게 걸린다.
+    // 아키타입이 브리지 산물과 일치하는지는 GoalTowerArchetypeTests 가 고정한다.
     public class GoalTargetingPriorityTests
     {
         private static void Tick(World world, SimulationSystemGroup simGroup)
@@ -72,24 +74,45 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
+        // 거점이 더 가까우면 거점을 친다 — 종류가 아니라 거리가 정한다.
         [Test]
-        public void Enemy_PrefersDefender_OverNearerGoal()
+        public void Enemy_TargetsNearest_EvenWhenNearestIsStructure()
         {
-            using var world = new World("GoalTargetingPriorityTests_Prefer");
+            using var world = new World("GoalTargetingPriorityTests_NearestStructure");
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
-            var enemy = CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
-            var goal = CreateGoal(em, new float3(0.5f, 0f, 0f));            // 골이 더 가깝다
+            CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
+            var goal = CreateGoal(em, new float3(0.5f, 0f, 0f));             // 거점이 더 가깝다
             var defender = CreateTarget(em, Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
 
             Tick(world, simGroup);
 
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(goal).Length,
+                "거점이 더 가까우면 거점이 맞는다 — 타입 기반 후순위는 폐기됐다");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(defender).Length,
+                "더 먼 방어유닛은 이 프레임에 맞지 않는다");
+        }
+
+        // 방어유닛이 더 가까우면 방어유닛을 친다 — 같은 규칙의 반대 방향.
+        [Test]
+        public void Enemy_TargetsNearest_UnitWhenUnitIsNearer()
+        {
+            using var world = new World("GoalTargetingPriorityTests_NearestUnit");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(0.5f, 0f, 0f), defenderTag: true);
+            var goal = CreateGoal(em, new float3(2f, 0f, 0f));
+
+            Tick(world, simGroup);
+
             Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(defender).Length,
-                "사거리 내 non-Goal 후보가 있으면 거리 무관하게 그쪽이 이긴다");
-            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(goal).Length,
-                "골은 최후순위 — 방어유닛이 사거리에 있는 동안 맞지 않는다");
+                "방어유닛이 더 가까우면 방어유닛이 맞는다");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(goal).Length);
         }
 
         [Test]
@@ -100,18 +123,20 @@ namespace Wassup.Tests.EditMode
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
-            var enemy = CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
+            CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
             var goal = CreateGoal(em, new float3(1f, 0f, 0f));
 
             Tick(world, simGroup);
 
             var damage = em.GetBuffer<IncomingDamage>(goal);
-            Assert.AreEqual(1, damage.Length, "골만 사거리에 있으면 골을 친다");
+            Assert.AreEqual(1, damage.Length, "거점만 사거리에 있으면 거점을 친다");
             Assert.AreEqual(4f, damage[0].amount, 1e-4f);
         }
 
+        // 잠금도 거점에 균일하게 걸린다 — M3 의 «거점은 잠금 대상이 아니다» 예외는 제거됐다.
+        // 유지·해제는 TargetPersistence.KeepsLock 하나가 정한다(죽거나 사거리 이탈).
         [Test]
-        public void FocusUntilDead_DoesNotLockGoal_AndSwitchesToDefender()
+        public void FocusUntilDead_LocksStructure_LikeAnyOtherTarget()
         {
             using var world = new World("GoalTargetingPriorityTests_Focus");
             var em = world.EntityManager;
@@ -125,20 +150,19 @@ namespace Wassup.Tests.EditMode
 
             Tick(world, simGroup);
 
-            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(goal).Length,
-                "골만 있으면 골을 친다 (잠금 없이도 사격은 유지)");
-            Assert.AreEqual(Entity.Null, em.GetComponentData<FocusTarget>(enemy).current,
-                "리뷰 M3 — 골은 FocusUntilDead 잠금에 저장되지 않는다");
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(goal).Length);
+            Assert.AreEqual(goal, em.GetComponentData<FocusTarget>(enemy).current,
+                "거점도 다른 타겟과 똑같이 잠금에 저장된다");
 
-            // 방어유닛이 배치되면 잠금이 없으므로 즉시 그쪽으로 전환된다.
-            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
+            // 이후 더 가까이 배치된 방어유닛에게 빼앗기지 않는다 — 잠금이 살아있고 사거리 안이므로.
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(0.5f, 0f, 0f), defenderTag: true);
             Tick(world, simGroup);
             Tick(world, simGroup);
 
-            Assert.GreaterOrEqual(em.GetBuffer<IncomingDamage>(defender).Length, 1,
-                "골에 잠기지 않았으므로 이후 배치된 방어유닛으로 전환돼야 한다");
-            Assert.AreEqual(defender, em.GetComponentData<FocusTarget>(enemy).current,
-                "새 잠금은 방어유닛에 걸린다");
+            Assert.AreEqual(goal, em.GetComponentData<FocusTarget>(enemy).current,
+                "FocusUntilDead — 물었으면 죽거나 사거리를 벗어날 때까지 유지한다");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(defender).Length,
+                "잠긴 대상이 있으면 더 가까운 후보로 갈아타지 않는다");
         }
     }
 }
