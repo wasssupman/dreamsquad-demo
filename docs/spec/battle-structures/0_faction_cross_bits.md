@@ -45,7 +45,7 @@ README §타겟 비트의 10비트 배치와 `Factions` 그룹 상수를 그대�
 | `BattleBridge:5950` 해저드 캐스터 | `Enemy` | `EnemyUnit` | |
 | `BattleBridge:6150` 순찰 아군 마스크 | `Enemy` | `EnemyUnit` | |
 | `BattleBridge:7454` 적 base 마스크 | `Defender\|BlockingHazard\|Goal` | **`DefenderUnit\|BlockingHazard\|DefenderCore`** | ★유일한 «유닛+거점». 타워 피격 가능성이 여기서 나온다 |
-| `BattleBridge:7506` walk-only 적 마스크 | `Goal` | **`DefenderCore`** | ★«거점 전담 적» 의 현존 사례. 계약 4 가 공전하는 대상이고 unit 1 기본값의 근거 |
+| `BattleBridge:7506` walk-only 적 마스크 | `Goal` | **⚠ 분기째 삭제** | 초판은 `DefenderCore` 치환으로 적었으나 **틀렸다**(step 1 에서 정정). 게이트가 `_hasStabilityGoals`(= `SpawnGoalEntities` 산물)라 한 번도 발화하지 않았고, 라이브 타워로 재게이팅하면 Runner·Swift 가 `AttackState` 를 얻어 `canSiege=true` 가 되어 **골에서 파괴되지 않는다** — F3 유령이 다른 경로로 재발한다. «거점 전담 적» 저작은 unit 1 의 `EnemyTargetFilter.factionMask` 가 제자리다 |
 | `AttackSystem:456` 힐러 rank 게이트 | `== Defender` | **`== DefenderUnit`** | ★등가 비교. 이 한 줄이 힐러 결함을 끈다 |
 | `AttackSystem:391` 순찰 소환 게이트 | `& Enemy` | `EnemyUnit` | 순찰은 거점을 못 때린다 |
 | `AttackSystem:1780` 니들 후보 | `& Enemy` | `EnemyUnit` | 동상 |
@@ -88,6 +88,15 @@ README §타겟 비트의 10비트 배치와 `Factions` 그룹 상수를 그대�
 → **골 사망 루프도 삭제한다.** 다른 세 자리와 같은 근거다 — 오늘 죽은 코드라 삭제가 행동 중립이고, 거점 단위 붕괴는 unit 4 가 새로 짓는다(그때 이 채널이 제 자리를 찾는다). `GoalCollapsedEventsSingleton` **타입과 브리지 수명주기는 존치**(소비 측 무변경) — 생산자만 사라진다. 이는 오늘의 라이브 상태와 같다.
 
 `GoalPoint` 타입은 `StructureTag` 로 흡수한다. `cell`·`goalIndex` 필드는 위 네 소비처가 모두 사라지므로 **unit 0 에서는 옮기지 않는다** — unit 4 가 거점 식별에 필요한 형태로 새로 정한다.
+
+## 구현 순서 — 삭제를 먼저
+
+**step 1 = §4·§5 의 삭제** (완료: `567facbc`). 넷 다 오늘 죽은 코드라 행동 중립이고, 먼저 치우면 이어지는 흡수가 **깨울 대상이 없다.** 검증: EditMode 2004개(2014 − 4 − 4 − 2) / 실패 0.
+step 1 에서 정정된 것: `:7506` 분기째 삭제(위 표) · `MapDocument.goalMaxStability` 저작 축은 별도 커밋으로 분리(읽는 코드가 사라져 이미 무해, 직렬화 필드 제거는 페인터·라운드트립 테스트를 건드려 리뷰 단위를 흐린다).
+
+**step 2 = §1·§2·§3** — 비트 재정의 + 타워 `DefenderCore` + 21곳 치환 + 최후순위 키. 남는 라이브 행동 변화가 **F1 하나**뿐이라 리뷰와 검증이 그 하나에 집중된다.
+
+순서를 뒤집으면 두 커밋 사이에 4쌍이 전부 깨어난 중간 상태가 생겨 EditMode 도 Play 도 신뢰할 수 없다.
 
 ## 완료 기준
 
