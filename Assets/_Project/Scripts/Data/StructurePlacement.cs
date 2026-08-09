@@ -38,6 +38,8 @@ namespace Wassup.Data
         // v1 footprint — 마음 1×1 · 본능 3×3 (README 계약 6). 임의 footprint 는 후속 후보.
         public const int CoreFootprint = 1;
         public const int InstinctFootprint = 3;
+        // 적 본능의 배치 배제 여유(README 요청 7-2 — «주변 3타일») = 3×3 본체 + 3 = 9×9.
+        public const int EnemyInstinctPlacementPadding = 3;
 
         // 편 × 종류 → 교차 비트. 거점 아닌 비트는 이 함수에서 나올 수 없다.
         public static Faction DeriveFaction(StructureSide side, StructureKind kind)
@@ -101,6 +103,12 @@ namespace Wassup.Data
             {
                 var s = structures[i];
                 if (s.data == null) { errors.Add($"거점 {s.cell} 의 StructureData 가 비었다"); continue; }
+
+                // 리뷰 A-L3 — 중립은 비트만 예약이다(계약 9: 생산자·소비자 0). 어떤 마스크도
+                // 중립 비트를 포함하지 않아 «못 죽이는데 쏘는 블로커» 가 된다. 페인터는
+                // 방어/적 2택만 노출하지만 인스펙터 저작이 가능하므로 여기서 거절한다.
+                if (s.side == StructureSide.Neutral)
+                { errors.Add($"거점 {s.cell}: 중립 거점은 저작 불가 — 계약 9(중립은 비트만 예약)"); continue; }
 
                 // 방어 마음의 정본은 goals[] 다 — 두 벌이 되는 것을 여기서 막는다.
                 if (s.side == StructureSide.Defender && s.data.kind == StructureKind.Core)

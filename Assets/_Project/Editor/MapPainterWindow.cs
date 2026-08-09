@@ -438,8 +438,19 @@ namespace Wassup.EditorTools
             // (2×2 walk 블록 금지는 map-painter-tool unit 4 에서 철회 — 폭 1 은 저작 규칙이었지
             // 런타임 요구가 아니다. flow field/CellTrim 은 임의 폭 walkable 에서 성립.)
 
-            // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인
-            if (_goals.Count > 0 && _spawns.Count > 0)
+            // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인.
+            // 리뷰 A-참고 — 공성 맵은 spawns 저작이 금지라 실제 스폰 = 적 마음 셀(unit 6 파생).
+            // 저작 스폰 대신 파생 스폰을 검사해야 «툴 통과 → 런타임 폴백 선형맵으로 조용히
+            // 증발» 을 막는다.
+            var effectiveSpawns = new List<Vector2Int>(_spawns);
+            if (CountEnemyCores() > 0)
+            {
+                effectiveSpawns.Clear();   // 런타임 파생과 동일: 적 마음이 있으면 저작 스폰은 덮인다
+                foreach (var st in _structures)
+                    if (st.data != null && st.side == StructureSide.Enemy && st.data.kind == StructureKind.Core)
+                        effectiveSpawns.Add(st.cell);
+            }
+            if (_goals.Count > 0 && effectiveSpawns.Count > 0)
             {
                 // 리뷰 H-2 패리티 — 본능 3×3 은 벽이다(런타임 MapConnectivity 와 같은 판정).
                 // 여기서 안 잡으면 «툴은 통과인데 런타임이 fallback» 이 난다.
@@ -471,7 +482,7 @@ namespace Wassup.EditorTools
                         { vis[Idx(nx, ny)] = true; q.Enqueue(Idx(nx, ny)); }
                     }
                 }
-                foreach (var s in _spawns)
+                foreach (var s in effectiveSpawns)
                     if (IsWalk(s.x, s.y) && !vis[Idx(s.x, s.y)])
                         errs.Add($"스폰 ({s.x},{s.y}) → 골 미도달");
             }

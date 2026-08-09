@@ -1059,7 +1059,8 @@ namespace Wassup.Bridge
                     {
                         var st = _generatedMap.structures[i];
                         int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
-                        if (st.faction == Faction.EnemyInstinct) half += 3;
+                        if (st.faction == Faction.EnemyInstinct)
+                            half += Wassup.Data.StructurePlacements.EnemyInstinctPlacementPadding;   // 리뷰 A-L1
                         for (int dy = -half; dy <= half; dy++)
                             for (int dx = -half; dx <= half; dx++)
                                 CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
@@ -4847,6 +4848,31 @@ namespace Wassup.Bridge
         // 피해는 표준 경로다: 공격자가 IncomingDamage 에 append → DamageApplicationSystem 이
         // Health 를 깎고 0 이면 DeadTag → UnitLifecycleSystem 이 파괴. 전용 피해 시스템도,
         // 공유 풀 싱글턴도, 미러도 없다. **타워가 사라진 것이 곧 패배 신호**다.
+        // 리뷰 A-M3 — ProjectileRef 베이크의 단일 지점(제약 10-b: 호출처 3 — 방어·적·본능).
+        // 이전엔 11필드 초기화가 세 곳에 글자 단위로 복제돼, ProjectileData 에 필드가 붙으면
+        // 셋 중 둘만 갱신되는 drift 가 가능했다. 반환 = dataIndex(방어 경로가 방향 패턴
+        // 베이크에 이어 쓴다).
+        private int BakeProjectileRef(Entity entity, Wassup.Data.ProjectileData projectile)
+        {
+            int dataIndex = GetOrCreateProjectileDataIndex(projectile);
+            var axes = ResolveProjectileAxes(projectile.flightMode);
+            _em.AddComponentData(entity, new ProjectileRef
+            {
+                dataIndex = dataIndex,
+                speed = projectile.speed,
+                hitThreshold = projectile.hitThreshold,
+                visualScale = projectile.visualScale,
+                onHitEffect = projectile.onHitEffect,
+                splashRadius = projectile.splashRadius,
+                splashDamageMul = projectile.splashDamageMul,
+                movement = axes.movement,
+                payload = axes.payload,
+                arcHeight = projectile.arcHeight,
+                impactTileRange = projectile.impactTileRange,
+            });
+            return dataIndex;
+        }
+
         // battle-structures unit 4 — EnsureGoalTowers 의 일반화. 두 소스, 한 아키타입:
         //   goals[]                     → 방어 마음(= 현행 골 타워). HP = 덱(현행 유지 —
         //                                 SO 이관은 «HP 소스가 맵마다 갈리는» 상태를 만든다).
@@ -4964,21 +4990,7 @@ namespace Wassup.Bridge
                                     magnitude = s.data.attackDamage,
                                 },
                             });
-                            var axes = ResolveProjectileAxes(s.data.projectile.flightMode);
-                            _em.AddComponentData(entity, new ProjectileRef
-                            {
-                                dataIndex = GetOrCreateProjectileDataIndex(s.data.projectile),
-                                speed = s.data.projectile.speed,
-                                hitThreshold = s.data.projectile.hitThreshold,
-                                visualScale = s.data.projectile.visualScale,
-                                onHitEffect = s.data.projectile.onHitEffect,
-                                splashRadius = s.data.projectile.splashRadius,
-                                splashDamageMul = s.data.projectile.splashDamageMul,
-                                movement = axes.movement,
-                                payload = axes.payload,
-                                arcHeight = s.data.projectile.arcHeight,
-                                impactTileRange = s.data.projectile.impactTileRange,
-                            });
+                            BakeProjectileRef(entity, s.data.projectile);   // 리뷰 A-M3 — 단일 베이크
                         }
                     }
                 }
@@ -5184,6 +5196,7 @@ namespace Wassup.Bridge
             float lowest = float.MaxValue;
             float maxHp = 0f;
             bool newCoreBreach = false;
+            List<Vector2Int> newBreaches = null;   // 붕괴는 드문 사건 — lazy 할당
             for (int i = _structureRegistry.Count - 1; i >= 0; i--)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
@@ -5204,7 +5217,13 @@ namespace Wassup.Bridge
                     if (_breachedCells.Add(cell))
                     {
                         newCoreBreach = true;
-                        OpenGoalCellAfterBreach(cell);
+                        // 리뷰 A-M1 — 여기서 바로 열지 않는다. 열기(유출 전환)는 아래 미러
+                        // 갱신 **뒤** — 붕괴가 만든 유출이 이 프레임에 스트레스 상한을 채우면
+                        // 그 사슬(LeakSiegingEnemy → CheckStressDefeat → BeginTally →
+                        // EncodeSubmission)이 _goalStability 를 제출값으로 싣는데, 루프 안에서
+                        // 열면 지난 프레임의 **양수** 미러가 제출된다(구 코드는 0 을 먼저
+                        // 놓았다 — 순서 회귀였다).
+                        (newBreaches ??= new List<Vector2Int>()).Add(cell);
                     }
                 }
                 else
@@ -5238,6 +5257,11 @@ namespace Wassup.Bridge
             }
 
             if (!newCoreBreach) return;
+
+            // 리뷰 A-M1 — 미러가 0 이 된 뒤에 연다(위 주석 참조).
+            if (newBreaches != null)
+                for (int i = 0; i < newBreaches.Count; i++)
+                    OpenGoalCellAfterBreach(newBreaches[i]);
 
             // stress-after-breach (2026-08-08 사용자 결정) — 골 파괴는 더 이상 그 자체로 패배가
             // 아니다. 상한이 있으면 그 셀이 **유출 지점으로 전환**되고(위에서 이미 열었다),
@@ -6260,23 +6284,7 @@ namespace Wassup.Bridge
 
             if (unitData.projectile != null)
             {
-                var dataIndex = GetOrCreateProjectileDataIndex(unitData.projectile);
-                var axes = ResolveProjectileAxes(unitData.projectile.flightMode);
-                _em.AddComponentData(entity, new ProjectileRef
-                {
-                    dataIndex = dataIndex,
-                    speed = unitData.projectile.speed,
-                    hitThreshold = unitData.projectile.hitThreshold,
-                    visualScale = unitData.projectile.visualScale,
-                    onHitEffect = unitData.projectile.onHitEffect,
-                    splashRadius = unitData.projectile.splashRadius,
-                    splashDamageMul = unitData.projectile.splashDamageMul,
-                    movement = axes.movement,
-                    payload = axes.payload,
-                    arcHeight = unitData.projectile.arcHeight,
-                    impactTileRange = unitData.projectile.impactTileRange,
-                });
-
+                var dataIndex = BakeProjectileRef(entity, unitData.projectile);   // 리뷰 A-M3 — 단일 베이크
                 BakeDefenderDirectionalPattern(entity, unitData, dataIndex);
             }
             else if (unitData.GetAbility<DirectionalVolleyAbility>() != null)
@@ -7689,24 +7697,7 @@ namespace Wassup.Bridge
                     outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
 
                 if (attackMethod == Wassup.Data.EnemyAttackMethod.Projectile && entry.unitType.projectile != null)
-                {
-                    var dataIndex = GetOrCreateProjectileDataIndex(entry.unitType.projectile);
-                    var axes = ResolveProjectileAxes(entry.unitType.projectile.flightMode);
-                    _em.AddComponentData(entity, new ProjectileRef
-                    {
-                        dataIndex = dataIndex,
-                        speed = entry.unitType.projectile.speed,
-                        hitThreshold = entry.unitType.projectile.hitThreshold,
-                        visualScale = entry.unitType.projectile.visualScale,
-                        onHitEffect = entry.unitType.projectile.onHitEffect,
-                        splashRadius = entry.unitType.projectile.splashRadius,
-                        splashDamageMul = entry.unitType.projectile.splashDamageMul,
-                        movement = axes.movement,
-                        payload = axes.payload,
-                        arcHeight = entry.unitType.projectile.arcHeight,
-                        impactTileRange = entry.unitType.projectile.impactTileRange,
-                    });
-                }
+                    BakeProjectileRef(entity, entry.unitType.projectile);   // 리뷰 A-M3 — 단일 베이크
             }
 
             // aggro-targeting Unit 1 — taunt-attack profile for enemies with no
