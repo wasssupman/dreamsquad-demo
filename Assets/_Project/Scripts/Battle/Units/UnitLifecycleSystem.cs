@@ -20,7 +20,6 @@ namespace Wassup.Battle.Units
         private EntityQuery _singletonQuery;
         private EntityQuery _defenderDeathSingletonQuery;
         private EntityQuery _hazardDestroyedSingletonQuery;
-        private EntityQuery _goalCollapsedSingletonQuery;
         private EntityQuery _pastGoalQuery;
         private EntityQuery _deadQuery;
         private EntityQuery _defenderDeadQuery;
@@ -30,7 +29,6 @@ namespace Wassup.Battle.Units
             _singletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<GoalReachedEventsSingleton>());
             _defenderDeathSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderDeathEventsSingleton>());
             _hazardDestroyedSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<HazardDestroyedEventsSingleton>());
-            _goalCollapsedSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
             _pastGoalQuery = state.GetEntityQuery(ComponentType.ReadOnly<PastGoalTag>(), ComponentType.ReadOnly<AttackUnitTag>());
             _deadQuery = state.GetEntityQuery(ComponentType.ReadOnly<DeadTag>());
             _defenderDeadQuery = state.GetEntityQuery(
@@ -148,40 +146,23 @@ namespace Wassup.Battle.Units
                 ecb.DestroyEntity(entity);
             }
 
-            // goal-stability unit 4 — 골 붕괴: 이벤트 enqueue 후 destroy (hazard-dead 동형,
-            // enqueue 는 반드시 destroy 앞 — Bridge 가 cell/goalIndex 를 엔티티 소멸 전에 본다).
-            // 유출 전환은 이 이벤트와 무관 — 엔티티 부재로 공성 게이트가 이미 열린다.
-            bool hasGoalSink = _goalCollapsedSingletonQuery.CalculateEntityCount() == 1;
-            foreach (var (goalPoint, transform, entity) in
-                     SystemAPI.Query<RefRO<GoalPoint>, RefRO<LocalTransform>>()
-                              .WithAll<DeadTag>()
-                              .WithEntityAccess())
-            {
-                if (hasGoalSink)
-                {
-                    var singleton = _goalCollapsedSingletonQuery.GetSingletonRW<GoalCollapsedEventsSingleton>();
-                    singleton.ValueRW.queue.Enqueue(new GoalCollapsedEvent
-                    {
-                        entity = entity,
-                        cell = goalPoint.ValueRO.cell,
-                        goalIndex = goalPoint.ValueRO.goalIndex,
-                        worldPosition = transform.ValueRO.Position,
-                    });
-                }
-                ecb.DestroyEntity(entity);
-            }
+            // battle-structures unit 0 — goal-stability 의 «골 사망» 루프를 제거했다.
+            // GoalPoint 엔티티는 어떤 맵에서도 스폰되지 않아 이 루프는 한 번도 발화한 적이
+            // 없고(라이브 골 타워는 아래 일반 루프에서 파괴된다), 그 결과
+            // GoalCollapsedEventsSingleton 은 생산자 없는 채널이었다. 채널 타입과 Bridge
+            // 소비 측은 그대로 둔다 — 거점 단위 붕괴를 짓는 unit 4 가 페이로드를 새로 정한다.
 
             // General dead loop: attackers + any defender that somehow lacks
             // DefenderTile (should not happen in Phase 4, but keeps the system
             // safe). WithNone<DefenderTile> prevents double-destroy of the
             // defender-dead loop above, and WithNone<BlockingHazard> prevents
-            // double-destroy after hazard event enqueue. WithNone<GoalPoint> —
-            // goal-dead 루프(위)와의 이중 파괴/이벤트 유실 방지 (goal-stability 리뷰 M1).
+            // double-destroy after hazard event enqueue.
+            // battle-structures unit 0 — WithNone<GoalPoint> 는 제거했다: 짝이던 골 사망
+            // 루프가 사라져 이중 파괴 위험이 없고, 라이브 골 타워는 원래부터 이 루프가 파괴한다.
             foreach (var (_, entity) in
                      SystemAPI.Query<RefRO<DeadTag>>()
                               .WithNone<DefenderTile>()
                               .WithNone<BlockingHazard>()
-                              .WithNone<GoalPoint>()
                               .WithEntityAccess())
             {
                 ecb.DestroyEntity(entity);

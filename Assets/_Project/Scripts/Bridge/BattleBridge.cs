@@ -428,9 +428,6 @@ namespace Wassup.Bridge
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
-        // goal-stability unit 3 — 이 판에 안정도(M>0) 골이 존재하는가. SpawnGoalEntities 가
-        // 맵 빌드마다 갱신. walk-only 적의 골 공격 grant 조건(골 없는 판엔 grant 자체를 안 함).
-        private bool _hasStabilityGoals;
         // goal-stability unit 5 — 게이지 폴링용 골 등록부(Bridge 가 스폰 주체라 직접 안다).
         // 붕괴 드레인이 제거, teardown 이 Clear. 쿼리 없이 맵당 ≤4 순회.
         private readonly List<(Entity entity, Vector2Int cell)> _goalGaugeList = new();
@@ -656,9 +653,6 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
-            // goal-stability unit 1 — 안정도 골 엔티티 정리. 누락 시 사직서/AllyBuffField 와 같은
-            // 앱-수명 월드 잔존 사고: 다음 매치에서 죽은/이전 맵의 골이 살아있는 것으로 판정된다.
-            DestroyEntitiesByType<GoalPoint>();
             // season-gimmick-overwork unit 4 — 레드불 픽업 엔티티 정리.
             DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
             // season-gimmick-clockout unit 8 — 사직서 엔티티 정리. 누락 시 월드(앱 수명 default
@@ -839,47 +833,11 @@ namespace Wassup.Bridge
             SimFieldInstaller.InstallNavFields(_em, in _generatedMap, tileSize, _boardOrigin, ref _simFields);
         }
 
-        // goal-stability unit 1 — 안정도(M>0) 골을 전투 엔티티로 스폰. BuildFlowField 직후 호출
-        // (goals 폴백·_boardOrigin 확정 시점). 멱등: 기존 골 엔티티 제거 후 재생성.
-        // 아키타입 = blocking hazard 동형(FactionTag+Health+IncomingDamage+LocalTransform) —
-        // AttackSystem 후보 스냅샷 자동 진입 조건. 이 unit 시점엔 어떤 targetMask 에도 Goal 이
-        // 없어 행동 변화 0.
-        private void SpawnGoalEntities()
-        {
-            _hasStabilityGoals = false;
-            _goalGaugeList.Clear();
-            if (!_generatedMap.IsCreated || _em == null) return;
-            DestroyEntitiesByType<GoalPoint>();
-
-            bool hasGoals = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
-            int goalCount = hasGoals ? _generatedMap.goals.Length : 1;
-            // M 소비 폴백(spec README 계약): (폴백 후) goals 와 길이 일치할 때만 채택 — 아니면 전 골 0.
-            if (!_generatedMap.goalMaxStability.IsCreated
-                || _generatedMap.goalMaxStability.Length != goalCount) return;
-
-            int spawned = 0;
-            for (int i = 0; i < goalCount; i++)
-            {
-                float m = _generatedMap.goalMaxStability[i];
-                if (m <= 0f) continue;   // M=0 골 = 현행 유출 지점 그대로(엔티티 없음)
-
-                var cell = hasGoals ? _generatedMap.goals[i] : _generatedMap.goal;
-                float3 worldPos = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
-                var entity = _em.CreateEntity();
-                _em.AddComponentData(entity, new GoalPoint { cell = cell, goalIndex = i });
-                _em.AddComponentData(entity, new Health { value = m, max = m });
-                _em.AddBuffer<IncomingDamage>(entity);
-                _em.AddComponentData(entity, new FactionTag { value = Faction.Goal });
-                _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
-                _goalGaugeList.Add((entity, new Vector2Int(cell.x, cell.y))); // unit 5 게이지 폴링
-                spawned++;
-            }
-            if (spawned > 0)
-            {
-                _hasStabilityGoals = true;
-                Debug.Log($"[BattleBridge] Goal entities spawned — {spawned}/{goalCount} (안정도 M>0)");
-            }
-        }
+        // battle-structures unit 0 — goal-stability 의 SpawnGoalEntities 를 제거했다.
+        // 저작 축(MapDocument.goalMaxStability)이 전 맵 미저작(0)이라 이 경로는 한 번도
+        // 엔티티를 만들지 않았고, 라이브 골은 EnsureGoalTowers 하나가 세운다. 골이 두 벌인
+        // 채로 거점 태그를 붙이면 "어느 골에 붙였나" 가 실제 버그가 된다.
+        // 거점 스폰의 일반화(마음/본능)는 unit 4 SpawnStructureEntities 소관.
 
         // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place) 싱글턴 구축.
         // FlowFieldSingleton 동형: Persistent NativeArray 소유, TeardownFlowField 가 dispose.
@@ -1129,8 +1087,6 @@ namespace Wassup.Bridge
                 EnsureCameraDirector()?.FrameBoard(boardBounds);
 
             BuildFlowField();
-            // goal-stability unit 1 — 안정도(M>0) 골 엔티티. goals 폴백·boardOrigin 확정 직후.
-            SpawnGoalEntities();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
             // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.
             BuildPickupSpawnState();
@@ -7490,32 +7446,12 @@ namespace Wassup.Bridge
                     range = entry.unitType.aggroAttackRange,
                 });
 
-            // goal-stability unit 3 — "모든 적이 공격 가능한 최후의 대상": 공격 없는
-            // walk-only(Runner/Swift)도 안정도 골이 있는 판에서는 도발 프로필 수치를
-            // 재사용해 mask=Goal 단독 AttackState 를 스폰 시 부여한다. 골 전멸 후엔
-            // mask 에 유효 후보가 없어 자연 무해(제거 불필요). 도발 병존(마스크 OR/원복)은
-            // TauntAttackGrantSystem 이 previousTargetMask 로 처리한다.
-            if (!wantsAttack && _hasStabilityGoals && entry.unitType.aggroAttackDamage > 0f)
-            {
-                _em.AddComponentData(entity, new AttackState
-                {
-                    range = entry.unitType.aggroAttackRange,
-                    cooldownDuration = entry.unitType.aggroAttackCooldown,
-                    cooldownRemaining = 0f,
-                    attackTargetCount = 1,
-                    targetMask = (int)Faction.Goal,
-                    hitDelaySec = entry.unitType.hitDelaySec,
-                });
-                var goalOutputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
-                goalOutputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement
-                {
-                    value = new Wassup.Data.AttackOutput
-                    {
-                        kind = Wassup.Data.AttackOutputKind.Damage,
-                        magnitude = entry.unitType.aggroAttackDamage,
-                    },
-                });
-            }
+            // battle-structures unit 0 — goal-stability 의 walk-only 골 공격 grant 를 제거했다.
+            // 게이트가 _hasStabilityGoals(= SpawnGoalEntities 산물)라 전 맵 M=0 에서 한 번도
+            // 발화하지 않았다. 라이브 타워로 재게이팅하면 Runner·Swift 가 AttackState 를 얻어
+            // canSiege=true 가 되고 골에서 파괴되지 않아 «필드에 적 0기» 판정을 막는다 —
+            // 그건 행동 변화이자 회귀다. «거점 전담 적» 저작은 unit 1 의
+            // EnemyTargetFilter.factionMask 가 제자리다(계약 2).
 
             // enemy-behavior-components Unit 2 — behavior + filter from SO (enemyClass
             // hardcode removed). EnemyBehavior drives targeting/aim; FocusTarget is
