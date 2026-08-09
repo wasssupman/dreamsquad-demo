@@ -130,6 +130,21 @@ foreach (var goalPoint in SystemAPI.Query<RefRO<GoalPoint>>().WithNone<DeadTag>(
 
 **리뷰가 방어한 것** (되돌리지 말 것): spawns[] 8개 소비처 감사(줄 참조 5곳 전부 유효) · 1축 교차 비트 · 저작/런타임 마스크 2분 · 모드 enum 기각 · 중립 3비트 예약(제약 8 위반 아님 — 계약 9 가 «술어 특별취급 금지» 로 닫았다).
 
+**⑭ 기계 쌍은 3쌍이 아니라 4쌍이다 — 그리고 규칙이 하나로 정리된다** (unit 0 문서 작성 중 발견, 2026-08-09)
+
+`UnitLifecycleSystem` 에 사망 처리가 두 벌이다:
+
+| 루프 | 조건 | 현실 |
+|---|---|---|
+| `:155~172` 골 사망 | `Query<GoalPoint, LocalTransform>.WithAll<DeadTag>` → `GoalCollapsedEvent` → destroy | **한 번도 발화하지 않는다.** `GoalCollapsedEventsSingleton` 은 **생산자 없는 채널**이다 |
+| `:180~188` 일반 사망 | `WithNone<DefenderTile, BlockingHazard, GoalPoint>` | 라이브 타워가 세 조건을 다 피해 **여기서 파괴된다 — 붕괴 이벤트 없이**. 패배 판정은 브리지 `_goalTowerCount` 비교가 따로 한다 |
+
+흡수는 이 쌍도 F3 와 **같은 기제로 저절로 깨운다** — `:156` 이 타워를 잡아 붕괴 이벤트가 처음 발화하고 `:184` 가 타워를 일반 루프에서 빼낸다. 더 성가신 건 페이로드다: `cell`·`goalIndex` 를 요구하므로 «`GoalCollapsedEventsSingleton` 은 unit 4 에서 일반화» 라는 유보가 **unit 0 으로 강제 소환된다**(안 하면 컴파일이 막힌다). → 다른 세 자리와 같은 처분: **루프 삭제 · 채널 타입과 소비 측 존치**(= 오늘의 라이브 상태).
+
+**⑪~⑭ 를 관통하는 규칙**: 잠자는 것을 «치환» 하려는 시도가 매번 라이브를 깨웠다. 4쌍 4전패다 — 라이브 타워가 흡수 태그를 다는 순간 **모든 잠자는 쿼리가 동시에 타워를 잡는다.** 그래서 unit 0 은 리팩터가 아니라 **«흡수 + 4자리 동시 처분»** 이고, 넷 중 하나만 빠뜨리면 라이브가 깨진다. 자리별 판정 전수(21곳/8파일 — `\bFaction\.` 실측, `ProjectileTargetFaction.*` 제외)는 `0_faction_cross_bits.md` §2.
+
+⚠ 초판이 «36곳» 으로 적었던 치환 규모는 **21곳**이다(주석 3 제외). 36 은 `ProjectileTargetFaction.Defender` 류가 섞인 값이었다 — 그 축은 계약 11 로 분리돼 있어 치환 대상이 아니다.
+
 ## 3. 확정된 사용자 결정
 
 - 명칭: 거점 = `Structure` / 마음 = `Core` / 본능 = `Instinct`. (구 «방어기제» 폐기)
