@@ -47,6 +47,29 @@ namespace Wassup.Data.MapGrid
             else
                 goals[0] = new int2(doc.Goal.x, doc.Goal.y);
 
+            // battle-structures unit 3 — 거점 투영. data 가 빈 엔트리는 건너뛴다(저작 사고
+            // 방어 — OnValidate 가 이미 에러로 알린다). 진영은 (편 × 종류) 파생.
+            var docStructures = doc.Structures;
+            int structureCount = 0;
+            if (docStructures != null)
+                for (int i = 0; i < docStructures.Count; i++)
+                    if (docStructures[i].data != null) structureCount++;
+            var structures = new NativeArray<StructurePlacement>(structureCount, allocator);
+            if (structureCount > 0)
+            {
+                int written = 0;
+                for (int i = 0; i < docStructures.Count; i++)
+                {
+                    var s = docStructures[i];
+                    if (s.data == null) continue;
+                    structures[written++] = new StructurePlacement
+                    {
+                        cell = new int2(s.cell.x, s.cell.y),
+                        faction = StructurePlacements.DeriveFaction(s.side, s.data.kind),
+                    };
+                }
+            }
+
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -58,12 +81,17 @@ namespace Wassup.Data.MapGrid
                 spawns = spawns,
                 goal = goals[0],
                 goals = goals,
+                structures = structures,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
             };
         }
 
-        public static void WriteToDocument(MapDocument doc, in GeneratedMap map)
+        // battle-structures unit 3 — structures 는 **별도 인자**다. GeneratedMap 은 unmanaged 라
+        // StructureData 참조를 왕복시킬 수 없어, 저작 주체(페인터)가 관리 엔트리를 직접
+        // 넘긴다. null = 거점 저작을 건드리지 않는다(기존 호출자 무회귀).
+        public static void WriteToDocument(MapDocument doc, in GeneratedMap map,
+            StructureEntry[] structures = null)
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
@@ -108,6 +136,7 @@ namespace Wassup.Data.MapGrid
                 spawns,
                 map.seed, map.generatorVersion,
                 placeMask);
+            if (structures != null) doc.SetStructures(structures);
         }
     }
 }

@@ -17,6 +17,9 @@ namespace Wassup.Data
         public NativeArray<int2>        spawns;  // 1~N
         public int2                     goal;    // primary = goals[0] (단일-점 소비자·폴백)
         public NativeArray<int2>        goals;   // multi-goal 목록. 소비 시 미생성/빈이면 [goal] 폴백(유닛 1·3).
+        // battle-structures unit 3 — 거점 저작의 런타임 투영(셀 + 교차 비트). 스탯은 SO 에
+        // 남고 브리지가 문서에서 읽는다(unit 4). 미생성/빈 = 거점 없는 맵.
+        public NativeArray<StructurePlacement> structures;
         public int                      seed;
         public int                      generatorVersion;
 
@@ -43,6 +46,7 @@ namespace Wassup.Data
             if (tiles.IsCreated)            tiles.Dispose();
             if (spawns.IsCreated)           spawns.Dispose();
             if (goals.IsCreated)            goals.Dispose();
+            if (structures.IsCreated)       structures.Dispose();
             if (mergeDegree.IsCreated) mergeDegree.Dispose();
             if (chokepoint.IsCreated)  chokepoint.Dispose();
             if (propLayerId.IsCreated) propLayerId.Dispose();

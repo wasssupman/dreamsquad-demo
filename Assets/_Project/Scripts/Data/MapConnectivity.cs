@@ -14,7 +14,10 @@ namespace Wassup.Data
         {
             if (!map.IsCreated) return false;
             if (map.gridSize.x <= 0 || map.gridSize.y <= 0) return false;
-            if (map.spawns.Length < 2) return false;
+            // battle-structures unit 3 — 하한을 2 → 1 로 내렸다. 공성 맵은 적 마음 1개가
+            // 스폰 지점이므로 스폰이 1개다(모드 파생, unit 6) — 하한 2 면 통과할 수 없었다.
+            // 침략 맵은 실측상 전부 2개 이상이라 영향 없다.
+            if (map.spawns.Length < 1) return false;
 
             int n = map.gridSize.x * map.gridSize.y;
             if (map.tiles.Length != n) return false;

@@ -13,7 +13,7 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure }
 
         private const float Cell = 26f;
 
@@ -25,6 +25,15 @@ namespace Wassup.EditorTools
         private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
+        // battle-structures unit 3 — 거점 저작(본능 + 적 마음).
+        //
+        // **방어 마음은 여기 넣지 않는다.** 현행 9장이 전부 goals[] 로 방어 골을 저작하고
+        // 라이브 타워가 이미 DefenderCore 진영이라, structures[] 로 옮기면 «콘텐츠 이관 0»
+        // 이 깨지고 골이 또 두 벌이 된다(이 스펙이 상대해 온 바로 그 병). goals[] 가 방어
+        // 마음의 정본이고, (Defender, Core) 조합은 Validate 가 에러로 막는다.
+        private readonly List<StructureEntry> _structures = new();
+        private StructureSide _structureSide = StructureSide.Enemy;
+        private StructureData _structureData;
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -49,6 +58,7 @@ namespace Wassup.EditorTools
             ResetMaskToDerived();
             _spawns.Clear();
             _goals.Clear();
+            _structures.Clear();
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
@@ -101,7 +111,9 @@ namespace Wassup.EditorTools
                 foreach (var g in doc.Goals) _goals.Add(new Vector2Int(g.x, g.y));
             else
                 _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
-
+            _structures.Clear();
+            if (doc.Structures != null)
+                foreach (var s in doc.Structures) _structures.Add(s);
         }
 
         private void OnGUI()
@@ -110,7 +122,13 @@ namespace Wassup.EditorTools
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField($"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}", EditorStyles.miniLabel);
+            // battle-structures unit 3 — 모드는 파생 배지다(드롭다운이 아니다).
+            var mode = StructureAuthoringRules.DeriveMode(CountEnemyCores());
+            string modeLabel = mode == MapMode.Siege ? "공성"
+                : mode == MapMode.Invalid ? "에러(적 마음 2+)" : "침략";
+            EditorGUILayout.LabelField(
+                $"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}  거점={_structures.Count}  모드={modeLabel}",
+                EditorStyles.miniLabel);
             DrawValidationAndBake();
         }
 
@@ -208,7 +226,16 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점" }, EditorStyles.toolbarButton);
+                // battle-structures unit 3 — 거점 브러시가 찍을 편 + SO.
+                using (new EditorGUI.DisabledScope(_tool != Tool.Structure))
+                {
+                    _structureSide = GUILayout.Toolbar(_structureSide == StructureSide.Defender ? 0 : 1,
+                        new[] { "방어", "적" }, EditorStyles.toolbarButton, GUILayout.Width(70)) == 0
+                        ? StructureSide.Defender : StructureSide.Enemy;
+                    _structureData = (StructureData)EditorGUILayout.ObjectField(
+                        _structureData, typeof(StructureData), false, GUILayout.Width(130));
+                }
                 // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
                 using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
@@ -350,6 +377,24 @@ namespace Wassup.EditorTools
                         _goals.Add(cell);
                     }
                     break;
+                case Tool.Structure:
+                    if (!isDown) return; // 토글은 클릭만 (스폰·골과 같은 이유)
+                    {
+                        int existing = _structures.FindIndex(s => s.cell == cell);
+                        if (existing >= 0) { _structures.RemoveAt(existing); break; }
+                        if (_structureData == null)
+                        {
+                            Debug.LogWarning("[MapPainter] 거점 브러시: StructureData 를 먼저 물려라.");
+                            break;
+                        }
+                        _structures.Add(new StructureEntry
+                        {
+                            cell = cell,
+                            side = _structureSide,
+                            data = _structureData,
+                        });
+                    }
+                    break;
                 case Tool.PlaceMask:
                     // 드래그 = 시작 셀의 반전값으로 set (같은 셀 MouseDrag 재토글 깜빡임 방지).
                     // 격자 밖 MouseDown → 진입 드래그도 첫 셀에서 시작값을 잡는다 (MINOR-5).
@@ -369,18 +414,61 @@ namespace Wassup.EditorTools
         // ── Validation (unit 1) — 런타임 계약과 일치 ──────────────────────────────
         private bool IsWalk(int x, int y) => InBounds(x, y) && _tiles[Idx(x, y)] == MapTileType.Walk;
 
+        // battle-structures unit 3 — 적 마음 개수 = 모드의 유일한 입력.
+        private int CountEnemyCores()
+        {
+            int n = 0;
+            foreach (var s in _structures)
+                if (s.data != null && s.side == StructureSide.Enemy && s.data.kind == StructureKind.Core) n++;
+            return n;
+        }
+
+        // 거점 저작 자체의 정합성 — 격자·중복·금지 조합.
+        private List<string> ValidateStructures()
+        {
+            var errs = new List<string>();
+            var occupied = new Dictionary<Vector2Int, int>();
+            for (int i = 0; i < _structures.Count; i++)
+            {
+                var s = _structures[i];
+                if (s.data == null) { errs.Add($"거점 {s.cell} 의 StructureData 가 비었다"); continue; }
+
+                // 방어 마음의 정본은 goals[] 다 — 두 벌이 되는 것을 여기서 막는다.
+                if (s.side == StructureSide.Defender && s.data.kind == StructureKind.Core)
+                    errs.Add($"거점 {s.cell}: 방어 마음은 Goal 브러시로 저작한다(골이 두 벌이 되는 것을 막는다)");
+
+                var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                int half = StructurePlacements.FootprintOf(faction) / 2;
+                if (s.cell.x - half < 0 || s.cell.x + half >= _w
+                    || s.cell.y - half < 0 || s.cell.y + half >= _h)
+                    errs.Add($"거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 (반경 {half})");
+
+                // footprint 겹침 — 3×3 본능끼리, 또는 본능이 다른 거점을 덮는 경우.
+                for (int dy = -half; dy <= half; dy++)
+                    for (int dx = -half; dx <= half; dx++)
+                    {
+                        var c = new Vector2Int(s.cell.x + dx, s.cell.y + dy);
+                        if (occupied.TryGetValue(c, out int other))
+                            errs.Add($"거점 {s.cell} 이 거점 {_structures[other].cell} 과 {c} 에서 겹친다");
+                        else occupied[c] = i;
+                    }
+            }
+            return errs;
+        }
+
         private List<string> Validate()
         {
             var errs = new List<string>();
             if (_tiles == null) { errs.Add("격자 없음"); return errs; }
 
-            // 런타임 MapConnectivity 가 스폰 <2 를 거부(fallback linear 로 교체)하므로 authoring 에서 ≥2 강제.
-            if (_spawns.Count < 2 || _spawns.Count > 4)
-                errs.Add($"스폰 {_spawns.Count}개 (2~4 필요)");
+            // battle-structures unit 3 — 스폰·골 개수 규칙은 **모드에 따라 다르다**(공성은
+            // spawns 저작 금지·멀티골 금지). 규칙은 런타임 순수 함수 하나가 소유한다 —
+            // 여기 인라인하면 툴과 런타임이 갈린다.
+            StructureAuthoringRules.ValidateMode(
+                CountEnemyCores(), _goals.Count, _spawns.Count, errs);
+            errs.AddRange(ValidateStructures());
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
-            if (_goals.Count < 1 || _goals.Count > 4)
-                errs.Add($"골 {_goals.Count}개 (1~4 필요)");
             foreach (var g in _goals)
                 if (!IsWalk(g.x, g.y)) errs.Add($"골 ({g.x},{g.y}) 이 Walk 아님");
 
@@ -478,7 +566,9 @@ namespace Wassup.EditorTools
                     seed = -1,
                     generatorVersion = 0,
                 };
-                MapDocumentBuilder.WriteToDocument(target, in gm);
+                // battle-structures unit 3 — 거점은 관리 참조(StructureData)라 GeneratedMap 이
+                // 왕복시킬 수 없다. 저작 주체가 엔트리를 직접 넘긴다.
+                MapDocumentBuilder.WriteToDocument(target, in gm, _structures.ToArray());
                 goals.Dispose();
                 spawns.Dispose();
             }

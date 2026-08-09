@@ -444,6 +444,11 @@ namespace Wassup.Bridge
         private AttackDeck _resolvedDeck;
         public AttackDeck ActiveDeck => _resolvedDeck != null ? _resolvedDeck : deck;
 
+        // battle-structures unit 3 — 풀에서 고른 맵 문서를 들고 있는다(_resolvedDeck 과 대칭).
+        // 거점 스탯(체력·프랍·공격)은 GeneratedMap 이 실을 수 없는 SO 참조라, 스폰(unit 4)이
+        // 저작 엔트리를 다시 읽을 창구가 필요하다. 빌드가 끝나면 사라지던 지역 변수였다.
+        private Wassup.Data.MapGrid.MapDocument _resolvedMapDoc;
+
         // endless-mode unit 2 — 현재 배틀이 무한 모드인가. BattleBridge 만 이 값으로 분기한다
         // (진입/간격은 데이터 구동, 누수/시간축/토너먼트 리포트는 아래 각 지점에서 이 플래그로).
         private bool IsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
@@ -962,6 +967,10 @@ namespace Wassup.Bridge
             }
 
             // map-pipeline-cleanup unit 2/4 — legacy 맵 소스 스위치·절차 폴백 제거:
+            // battle-structures unit 3 — 고른 문서를 보관한다. 거점 스탯(SO 참조)은
+            // GeneratedMap 이 실을 수 없어 스폰(unit 4)이 저작 엔트리를 다시 읽어야 한다.
+            _resolvedMapDoc = activeDoc;
+
             // authored 풀 문서 → ToGeneratedMap 이 유일 경로. unusable 문서는 hard-fail.
             try
             {
