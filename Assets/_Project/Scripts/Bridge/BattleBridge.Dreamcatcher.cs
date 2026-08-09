@@ -911,7 +911,7 @@ namespace Wassup.Bridge
         private bool TargetsEnemies(Entity defender)
         {
             if (!_em.HasComponent<AttackState>(defender)) return false;
-            return (_em.GetComponentData<AttackState>(defender).targetMask & (int)Faction.Enemy) != 0;
+            return (_em.GetComponentData<AttackState>(defender).targetMask & Factions.AnyEnemy) != 0;
         }
 
         private bool HasPositiveDamageOutput(Entity defender)

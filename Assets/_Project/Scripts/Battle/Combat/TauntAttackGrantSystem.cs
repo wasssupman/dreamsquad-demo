@@ -45,7 +45,7 @@ namespace Wassup.Battle.Combat
                     cooldownDuration = p.cooldown,
                     cooldownRemaining = 0f,
                     attackTargetCount = 1,
-                    targetMask = (int)Faction.Defender,
+                    targetMask = (int)Faction.DefenderUnit,
                 });
                 var ob = ecb.AddBuffer<AttackOutputElement>(entity);
                 ob.Add(new AttackOutputElement
@@ -72,8 +72,8 @@ namespace Wassup.Battle.Combat
                               .WithEntityAccess())
             {
                 int mask = attackState.ValueRO.targetMask;
-                if ((mask & (int)Faction.Defender) != 0) continue;
-                attackState.ValueRW.targetMask = mask | (int)Faction.Defender;
+                if ((mask & (int)Faction.DefenderUnit) != 0) continue;
+                attackState.ValueRW.targetMask = mask | (int)Faction.DefenderUnit;
                 ecb.AddComponent(entity, new TauntAttackGranted { previousTargetMask = mask });
             }
 

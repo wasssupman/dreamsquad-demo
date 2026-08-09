@@ -57,7 +57,7 @@ namespace Wassup.Tests.PlayMode
             var enemy = em.CreateEntity();
             em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(0.05f, 0f, 0f)));
             em.AddComponentData(enemy, new Health { value = EnemyHp, max = EnemyHp });
-            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
 
             // Let any temporary on-place buff (guardian gets one) decay so the
@@ -130,7 +130,7 @@ namespace Wassup.Tests.PlayMode
             var enemy = em.CreateEntity();
             em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(0.05f, 0f, 0f)));
             em.AddComponentData(enemy, new Health { value = EnemyHp, max = EnemyHp });
-            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
             // CC 상태 세팅: 긴 Stun(창 내내 활성). AnyActiveCc(remaining>0) 게이트 만족.
             var cc = em.AddBuffer<CcEffect>(enemy);

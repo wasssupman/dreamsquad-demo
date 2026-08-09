@@ -172,7 +172,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddComponentData(e, new AttackState
             {
@@ -180,7 +180,7 @@ namespace Wassup.Tests.EditMode
                 cooldownDuration = 5f,
                 cooldownRemaining = cooldownRemaining,
                 attackTargetCount = 1,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
             });
             _em.AddComponentData(e, new SummonerState
             {
@@ -197,7 +197,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0f, 0f)));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 50f, max = 50f });
             return e;
         }

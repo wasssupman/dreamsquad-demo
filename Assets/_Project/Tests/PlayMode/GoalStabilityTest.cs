@@ -16,7 +16,7 @@ namespace Wassup.Tests.PlayMode
     // 하네스는 TallyFlowTest 와 같다 — 디펜더를 한 기도 놓지 않고 웨이브를 전부 당겨
     // 유출을 만든다. 승리 유도는 밸런스 의존이라 불안정하다.
     //
-    // goal-tower-siege — 골 타워는 Faction.Defender 진영의 건물 엔티티이고, 적은 자기
+    // goal-tower-siege — 골 타워는 Faction.DefenderCore 진영의 건물 엔티티이고, 적은 자기
     // 공격으로 그것을 때린다. 즉 이 테스트는 **공성 지속 피해**를 통과 경로로 돈다.
     public class GoalStabilityTest
     {

@@ -1,0 +1,209 @@
+using System.Reflection;
+using NUnit.Framework;
+using Unity.Collections;
+using Unity.Core;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using UnityEngine;
+using Wassup.Battle.Combat;
+using Wassup.Battle.Units;
+using Wassup.Bridge;
+using Wassup.Data;
+
+namespace Wassup.Tests.EditMode
+{
+    // battle-structures unit 0 — 골 타워 아키타입의 **단일 소스** 방지선.
+    //
+    // 왜 브리지를 직접 호출하나: 최후순위 계약(계약 4)이 라이브에서 한 번도 발효되지 않았던
+    // 원인이 «테스트가 만드는 골» 과 «EnsureGoalTowers 가 만드는 골» 의 아키타입 drift 였다.
+    // 테스트는 Faction.Goal + GoalPoint 를 달았고 브리지는 (구) Faction.Defender + GoalTowerTag 를
+    // 달았다. 그래서 3개짜리 최후순위 스위트가 통과하는 동안 라이브 타워는 방어유닛과 거리로
+    // 경쟁하는 일반 후보였다. 케이스를 늘려도 이 drift 는 다시 벌어진다 — 그래서 여기서
+    // **생산 코드가 만든 엔티티**를 직접 검사한다.
+    public class GoalTowerArchetypeTests
+    {
+        private World _world;
+        private GameObject _go;
+        private BattleBridge _bridge;
+        private AttackDeck _deck;
+        private GeneratedMap _map;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _world = new World("GoalTowerArchetypeTests");
+            _deck = ScriptableObject.CreateInstance<AttackDeck>();
+
+            _go = new GameObject("BattleBridge_GoalTowerArchetypeTest");
+            _bridge = _go.AddComponent<BattleBridge>();
+
+            // 3×3 전부 Walk, 스폰 1, 골 1 (2,1). EnsureGoalTowers 는 goals 와 tileSize 만 본다.
+            _map = BuildMap(new int2(3, 3), spawn: new int2(0, 1), goal: new int2(2, 1));
+
+            SetField(_bridge, "deck", _deck);
+            SetField(_bridge, "_world", _world);
+            SetField(_bridge, "_em", _world.EntityManager);
+            SetField(_bridge, "_generatedMap", _map);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_go != null) Object.DestroyImmediate(_go);
+            if (_deck != null) Object.DestroyImmediate(_deck);
+            _map.Dispose();
+            _world?.Dispose();
+        }
+
+        private static GeneratedMap BuildMap(int2 gridSize, int2 spawn, int2 goal)
+        {
+            int n = gridSize.x * gridSize.y;
+            var tiles = new NativeArray<MapTileType>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Walk;
+            var spawns = new NativeArray<int2>(1, Allocator.Persistent);
+            spawns[0] = spawn;
+            var goals = new NativeArray<int2>(1, Allocator.Persistent);
+            goals[0] = goal;
+            return new GeneratedMap
+            {
+                tiles = tiles,
+                spawns = spawns,
+                goals = goals,
+                goal = goal,
+                gridSize = gridSize,
+            };
+        }
+
+        // 브리지의 라이브 스폰 경로. ResetGoalStability 가 덱에서 상한을 받아야
+        // EnsureGoalTowers 가 타워를 세운다(상한 0 이면 세우지 않는 것이 계약).
+        private void SpawnTowersViaBridge()
+        {
+            CallPrivateMethod(_bridge, "ResetGoalStability");
+            CallPrivateMethod(_bridge, "EnsureGoalTowers");
+        }
+
+        private Entity SingleTower()
+        {
+            var em = _world.EntityManager;
+            using var q = em.CreateEntityQuery(ComponentType.ReadOnly<GoalTowerTag>());
+            var entities = q.ToEntityArray(Allocator.Temp);
+            Assert.AreEqual(1, entities.Length, "골 1개짜리 맵 → 타워 1기");
+            var e = entities[0];
+            entities.Dispose();
+            return e;
+        }
+
+        // 핵심 — 라이브 타워의 진영은 DefenderCore 다. 이것이 최후순위 술어
+        // ((faction & AnyStructure) != 0)에 걸리는 유일한 근거다.
+        [Test]
+        public void EnsureGoalTowers_TagsTowerAsDefenderCore()
+        {
+            SpawnTowersViaBridge();
+            var em = _world.EntityManager;
+            var tower = SingleTower();
+
+            Assert.AreEqual(Faction.DefenderCore, em.GetComponentData<FactionTag>(tower).value,
+                "타워 진영 = DefenderCore. DefenderUnit 이면 힐러·보스 사냥 필드가 타워를 유닛으로 오인한다");
+            Assert.AreNotEqual(0, (int)em.GetComponentData<FactionTag>(tower).value & Factions.AnyStructure,
+                "AnyStructure 에 걸려야 최후순위 계약이 성립한다");
+            Assert.AreEqual(0, (int)em.GetComponentData<FactionTag>(tower).value & (int)Faction.DefenderUnit,
+                "DefenderUnit 비트는 없어야 한다 — 지원계(힐·버프)가 거점을 대상으로 고르면 버퍼 부재 예외");
+        }
+
+        // 아키타입 구성 — 피해를 받을 수 있고(IncomingDamage), 후보 스냅샷에 들어가고
+        // (Health+LocalTransform), 유닛 축 시스템에는 안 잡힌다(DefenderUnitTag 없음).
+        [Test]
+        public void EnsureGoalTowers_ProducesDamageableNonUnitArchetype()
+        {
+            SpawnTowersViaBridge();
+            var em = _world.EntityManager;
+            var tower = SingleTower();
+
+            Assert.IsTrue(em.HasBuffer<IncomingDamage>(tower), "IncomingDamage 버퍼 사전 부착");
+            Assert.IsTrue(em.HasComponent<Health>(tower));
+            Assert.IsTrue(em.HasComponent<LocalTransform>(tower));
+            Assert.IsFalse(em.HasComponent<DefenderUnitTag>(tower), "타워는 유닛이 아니다");
+            Assert.IsFalse(em.HasComponent<AttackState>(tower), "마음은 공격하지 않는다");
+
+            var health = em.GetComponentData<Health>(tower);
+            Assert.AreEqual(_deck.goalStabilityMax, health.max, 1e-4f, "상한은 덱에서 온다");
+            Assert.AreEqual(health.max, health.value, 1e-4f, "만피로 시작");
+        }
+
+        // F1 — 최후순위가 **브리지가 만든 타워**에 걸리는지. 합성 골이 아니라 생산 경로
+        // 산물을 대상으로 재므로 아키타입 drift 가 있으면 여기서 깨진다.
+        [Test]
+        public void BridgeSpawnedTower_IsLastPriority_BehindDefenderUnit()
+        {
+            SpawnTowersViaBridge();
+            var em = _world.EntityManager;
+            var tower = SingleTower();
+            float3 towerPos = em.GetComponentData<LocalTransform>(tower).Position;
+
+            // 타워보다 **먼** 방어유닛. 거리로는 타워가 이기지만 최후순위 계약이 뒤집는다.
+            var defender = em.CreateEntity();
+            em.AddComponentData(defender, LocalTransform.FromPosition(towerPos + new float3(1.5f, 0f, 0f)));
+            em.AddComponentData(defender, new Health { value = 100f, max = 100f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
+            em.AddComponent<DefenderUnitTag>(defender);
+            em.AddBuffer<IncomingDamage>(defender);
+
+            var enemy = em.CreateEntity();
+            em.AddComponentData(enemy, LocalTransform.FromPosition(towerPos - new float3(0.5f, 0f, 0f)));
+            em.AddComponentData(enemy, new Health { value = 10f, max = 10f });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
+            em.AddComponent<AttackUnitTag>(enemy);
+            em.AddBuffer<IncomingDamage>(enemy);
+            em.AddComponentData(enemy, new AttackState
+            {
+                range = 5f,
+                cooldownDuration = 1f,
+                cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                // BattleBridge.CreateAttackerEntity 가 굽는 base 마스크와 같은 조합.
+                targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
+            });
+            var outputs = em.AddBuffer<AttackOutputElement>(enemy);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 4f },
+            });
+
+            var simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            _world.SetTime(new TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(defender).Length,
+                "사거리 내 유닛이 있으면 거리 무관하게 유닛이 이긴다");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(tower).Length,
+                "마음은 최후순위 — 방어유닛이 사거리에 있는 동안 맞지 않는다");
+        }
+
+        // -----------------------------------------------------------------------
+        // Helpers (구 BattleBridgeGoalStabilityTests 에서 승계 — 567facbc^)
+
+        private static void CallPrivateMethod(object target, string name)
+        {
+            var mi = target.GetType().GetMethod(name,
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(mi, $"Method '{name}' not found on {target.GetType().Name}");
+            mi.Invoke(target, null);
+        }
+
+        private static void SetField(object target, string name, object value)
+        {
+            var type = target.GetType();
+            FieldInfo fi = null;
+            while (fi == null && type != null)
+            {
+                fi = type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance
+                                       | BindingFlags.Public);
+                type = type.BaseType;
+            }
+            Assert.IsNotNull(fi, $"Field '{name}' not found on {target.GetType().Name}");
+            fi.SetValue(target, value);
+        }
+    }
+}

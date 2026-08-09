@@ -37,14 +37,15 @@ namespace Wassup.Tests.EditMode
         // battle-structures unit 0 — 라이브 아키타입으로 재조준했다. goal-stability 의
         // GoalPoint 골 풀이 제거되어 광역 포함은 defender 풀의 WithAny<DefenderUnitTag,
         // GoalTowerTag> 가 담당한다. 즉 이 테스트는 이제 EnsureGoalTowers 가 실제로 만드는
-        // 아키타입(GoalTowerTag + Faction.Defender)을 검증한다.
+        // 아키타입(GoalTowerTag + Faction.DefenderCore)을 검증한다. 풀 포함은 태그가
+        // 결정하므로 진영 비트는 판정에 관여하지 않지만, 픽스처는 생산 산물과 일치시킨다.
         private Entity MakeGoal(float3 pos, float m = 300f)
         {
             var e = _em.CreateEntity();
             _em.AddComponent<GoalTowerTag>(e);
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new Health { value = m, max = m });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderCore });
             _em.AddBuffer<IncomingDamage>(e);
             return e;
         }

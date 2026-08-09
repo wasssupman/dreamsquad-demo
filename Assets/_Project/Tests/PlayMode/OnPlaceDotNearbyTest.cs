@@ -84,7 +84,7 @@ namespace Wassup.Tests.PlayMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(worldPos.x, worldPos.y, worldPos.z)));
             em.AddComponentData(e, new Health { value = hp, max = hp });
-            em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(e);
             em.AddBuffer<CcEffect>(e);
             em.AddBuffer<DotEffect>(e); // dot-effect-extraction unit 0 — 배치 도트의 소비처

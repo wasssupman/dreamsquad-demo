@@ -126,7 +126,7 @@ namespace Wassup.Tests.PlayMode
             var enemy = em.CreateEntity();
             em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(0.05f, 0f, 0f)));
             em.AddComponentData(enemy, new Health { value = Hp, max = Hp });
-            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
             if (withCcBuffer) em.AddBuffer<CcEffect>(enemy); // CcApplySystem 소비처(실적 아키타입 모사)
             return enemy;

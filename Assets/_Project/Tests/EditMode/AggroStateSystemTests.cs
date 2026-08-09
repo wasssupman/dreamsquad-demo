@@ -46,7 +46,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new AggroCapacity { max = capacity, held = 0 });
             return e;
@@ -56,7 +56,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             // aggro-tile-chase unit 1 — 전투수단 없는 적은 획득 거부되므로, 실데이터처럼
             // 도발 프로파일을 기본 부여(모든 적 에셋이 aggroAttackDamage>0 로 베이크됨).
@@ -176,7 +176,7 @@ namespace Wassup.Tests.EditMode
             var g = MakeGuardian(4, float3.zero);
             var e = _em.CreateEntity(); // MakeEnemy 미사용 — 전투수단 없음
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(1, 0, 0)));
             Hit(g, e);
             _simGroup.Update();

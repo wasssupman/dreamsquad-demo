@@ -9,9 +9,14 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // goal-stability unit 2 — goal 은 타겟 최후순위: 사거리 내 non-Goal 유효 후보가 있으면
-    // 그쪽이 이기고(거리 무관), 골만 남았을 때만 골을 친다. FocusUntilDead 는 골을 잠그지
-    // 않는다(리뷰 M3). 픽스처는 AttackSystemMaskTests 동형.
+    // 거점은 타겟 최후순위: 사거리 내 유닛 후보가 있으면 그쪽이 이기고(거리 무관), 거점만
+    // 남았을 때만 거점을 친다. FocusUntilDead 는 거점을 잠그지 않는다(리뷰 M3).
+    //
+    // battle-structures unit 0 — 아키타입을 **라이브 골 타워**로 재조준했다. 예전 픽스처는
+    // Faction.Goal + GoalPoint 합성 엔티티를 썼는데 그 조합은 어떤 맵에서도 태어나지 않아
+    // 이 계약이 라이브에서 검증된 적이 없었다. 판정 키도 GoalPoint 보유에서 진영 비트로
+    // 옮겨졌다. 아키타입 자체가 브리지 산물과 일치하는지는 GoalTowerArchetypeTests 가
+    // EnsureGoalTowers 를 직접 호출해 고정한다 — 그쪽이 drift 방지선이다.
     public class GoalTargetingPriorityTests
     {
         private static void Tick(World world, SimulationSystemGroup simGroup)
@@ -33,14 +38,11 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
-        private static Entity CreateGoal(EntityManager em, float3 position, float m = 30f)
+        // 라이브 골 타워 아키타입 = DefenderCore 진영 + GoalTowerTag (EnsureGoalTowers 산물).
+        private static Entity CreateGoal(EntityManager em, float3 position)
         {
-            var e = CreateTarget(em, Faction.Goal, position);
-            em.AddComponentData(e, new GoalPoint
-            {
-                cell = new int2((int)position.x, (int)position.z),
-                goalIndex = 0,
-            });
+            var e = CreateTarget(em, Faction.DefenderCore, position);
+            em.AddComponent<GoalTowerTag>(e);
             return e;
         }
 
@@ -50,7 +52,7 @@ namespace Wassup.Tests.EditMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(position));
             em.AddComponentData(e, new Health { value = 10f, max = 10f });
-            em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             em.AddComponent<AttackUnitTag>(e);
             em.AddBuffer<IncomingDamage>(e);
             em.AddComponentData(e, new AttackState
@@ -59,7 +61,8 @@ namespace Wassup.Tests.EditMode
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
-                targetMask = (int)(Faction.Defender | Faction.BlockingHazard | Faction.Goal),
+                // 적 base 마스크 — BattleBridge.CreateAttackerEntity 가 굽는 것과 같은 조합.
+                targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
             });
             var outputs = em.AddBuffer<AttackOutputElement>(e);
             outputs.Add(new AttackOutputElement
@@ -79,7 +82,7 @@ namespace Wassup.Tests.EditMode
 
             var enemy = CreateEnemyAttacker(em, new float3(0f, 0f, 0f));
             var goal = CreateGoal(em, new float3(0.5f, 0f, 0f));            // 골이 더 가깝다
-            var defender = CreateTarget(em, Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
 
             Tick(world, simGroup);
 
@@ -128,7 +131,7 @@ namespace Wassup.Tests.EditMode
                 "리뷰 M3 — 골은 FocusUntilDead 잠금에 저장되지 않는다");
 
             // 방어유닛이 배치되면 잠금이 없으므로 즉시 그쪽으로 전환된다.
-            var defender = CreateTarget(em, Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
             Tick(world, simGroup);
             Tick(world, simGroup);
 

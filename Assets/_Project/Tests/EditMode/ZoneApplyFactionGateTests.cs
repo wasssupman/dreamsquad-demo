@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode
     // summon-patrol-defender unit 0 — 존 해저드의 진영 게이트 회귀.
     //
     // 이전 구현은 `PathFollowState` 보유만으로 효과를 걸었다. 그건 "이동체 = 적"이라는
-    // 암묵 전제에 기댄 것이고, 거점 수비 아군(Faction.Defender + PathFollowState)이
+    // 암묵 전제에 기댄 것이고, 거점 수비 아군(Faction.DefenderUnit + PathFollowState)이
     // 그 전제를 깬다. 같은 셀에 아군과 적을 세워두고 **적에게만** 걸리는지 확인한다.
     public class ZoneApplyFactionGateTests
     {
@@ -86,8 +86,8 @@ namespace Wassup.Tests.EditMode
         public void Slow_Zone_Applies_To_Enemy_And_Not_To_Ally()
         {
             AddZoneEffect(CcKind.Slow, param1: 0.5f);
-            var enemy = CreateMover(Faction.Enemy);
-            CreateMover(Faction.Defender);
+            var enemy = CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -100,8 +100,8 @@ namespace Wassup.Tests.EditMode
         public void Dot_Zone_Applies_To_Enemy_And_Not_To_Ally()
         {
             AddZoneEffect(CcKind.DoT, param1: 12f);
-            var enemy = CreateMover(Faction.Enemy);
-            CreateMover(Faction.Defender);
+            var enemy = CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -115,8 +115,8 @@ namespace Wassup.Tests.EditMode
         public void Cc_Zone_Applies_To_Enemy_And_Not_To_Ally()
         {
             AddZoneEffect(CcKind.Stun, param1: 1f);
-            var enemy = CreateMover(Faction.Enemy);
-            CreateMover(Faction.Defender);
+            var enemy = CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -130,8 +130,8 @@ namespace Wassup.Tests.EditMode
         public void Runtime_Event_Is_Not_Emitted_For_Ally()
         {
             AddZoneEffect(CcKind.Slow, param1: 0.5f);
-            var enemy = CreateMover(Faction.Enemy);
-            CreateMover(Faction.Defender);
+            var enemy = CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -144,7 +144,7 @@ namespace Wassup.Tests.EditMode
         public void Ally_Alone_In_Zone_Produces_No_Events()
         {
             AddZoneEffect(CcKind.DoT, param1: 12f);
-            CreateMover(Faction.Defender);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -159,9 +159,9 @@ namespace Wassup.Tests.EditMode
         {
             // 무회귀 확인: 게이트가 적 다중 적용을 막지 않는다.
             AddZoneEffect(CcKind.DoT, param1: 12f);
-            CreateMover(Faction.Enemy);
-            CreateMover(Faction.Enemy);
-            CreateMover(Faction.Defender);
+            CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.EnemyUnit);
+            CreateMover(Faction.DefenderUnit);
 
             Tick();
 
@@ -172,7 +172,7 @@ namespace Wassup.Tests.EditMode
         public void Enemy_Outside_Zone_Cell_Receives_Nothing()
         {
             AddZoneEffect(CcKind.DoT, param1: 12f);
-            CreateMover(Faction.Enemy, new float3(7f, 0f, 7f));
+            CreateMover(Faction.EnemyUnit, new float3(7f, 0f, 7f));
 
             Tick();
 

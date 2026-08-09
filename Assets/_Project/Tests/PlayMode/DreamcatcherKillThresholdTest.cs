@@ -103,7 +103,7 @@ namespace Wassup.Tests.PlayMode
             var enemy = em.CreateEntity();
             em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(0.05f, 0f, 0f)));
             em.AddComponentData(enemy, new Health { value = 1f, max = 1f });
-            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
 
             float t = 0f;

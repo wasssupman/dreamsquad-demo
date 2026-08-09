@@ -164,7 +164,7 @@ namespace Wassup.Tests.PlayMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
             em.AddComponentData(e, new Health { value = hp, max = hp });
-            em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             em.AddComponent<AttackUnitTag>(e);
             em.AddBuffer<IncomingDamage>(e);
             em.AddBuffer<Wassup.Battle.Effects.CcEffect>(e);

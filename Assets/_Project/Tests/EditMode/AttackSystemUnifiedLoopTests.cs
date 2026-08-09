@@ -135,9 +135,9 @@ namespace Wassup.Tests.EditMode
         public void U1_Defender_ProjectileRef_Produces_SpawnRequest_Not_Direct_Damage()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
             _em.AddComponentData(defender, new ProjectileRef
@@ -150,7 +150,7 @@ namespace Wassup.Tests.EditMode
                 splashDamageMul = 1f,
             });
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(2f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(2f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -170,14 +170,14 @@ namespace Wassup.Tests.EditMode
         public void U2_Defender_Melee_AoE_Hits_Two_Targets()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 4f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 attackTargetCount: 2,
                 defenderTag: true);
 
-            var enemy1 = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
-            var enemy2 = CreateTarget(Faction.Enemy, new float3(2f, 0f, 0f), attackerTag: true);
+            var enemy1 = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
+            var enemy2 = CreateTarget(Faction.EnemyUnit, new float3(2f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -193,9 +193,9 @@ namespace Wassup.Tests.EditMode
         public void U3_Defender_DefenderCcData_Enqueues_Knockback_CC()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 3f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
             _em.AddComponentData(defender, new DefenderCcData
@@ -204,7 +204,7 @@ namespace Wassup.Tests.EditMode
                 knockbackDuration = 0.5f,
             });
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -220,9 +220,9 @@ namespace Wassup.Tests.EditMode
         public void U4_Defender_Buff_Multipliers_Applied_To_Damage_And_Cooldown()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 10f, range: 10f, cooldownDuration: 2f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
             // Wire ModifierStats: damageMul = 1.5 × 2.0 = 3.0, attackSpeedMul = 2.0 (cooldown ÷ 2).
@@ -234,7 +234,7 @@ namespace Wassup.Tests.EditMode
             slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
             slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -254,12 +254,12 @@ namespace Wassup.Tests.EditMode
         public void U5_Enemy_Attacks_Defender_Direct_Damage_No_Event()
         {
             var enemy = CreateAttacker(
-                Faction.Enemy, new float3(0f, 0f, 0f),
+                Faction.EnemyUnit, new float3(0f, 0f, 0f),
                 damage: 6f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)(Faction.Defender | Faction.BlockingHazard),
+                targetMask: (int)(Faction.DefenderUnit | Faction.BlockingHazard),
                 attackerTag: true);
 
-            var defender = CreateTarget(Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
 
             Tick();
 
@@ -277,14 +277,14 @@ namespace Wassup.Tests.EditMode
         public void U6_Enemy_Attacks_Hazard_Damages_Hazard()
         {
             var enemy = CreateAttacker(
-                Faction.Enemy, new float3(0f, 0f, 0f),
+                Faction.EnemyUnit, new float3(0f, 0f, 0f),
                 damage: 4f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)(Faction.Defender | Faction.BlockingHazard),
+                targetMask: (int)(Faction.DefenderUnit | Faction.BlockingHazard),
                 attackerTag: true);
 
             // Hazard is closer so it should be preferred target
             var hazard = CreateTarget(Faction.BlockingHazard, new float3(1f, 0f, 0f));
-            var defender = CreateTarget(Faction.Defender, new float3(5f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(Faction.DefenderUnit, new float3(5f, 0f, 0f), defenderTag: true);
 
             Tick();
 
@@ -301,12 +301,12 @@ namespace Wassup.Tests.EditMode
         public void U7_Defender_Fire_Enqueues_UnitAttackVisualEvent()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(2f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(2f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -322,12 +322,12 @@ namespace Wassup.Tests.EditMode
         public void U8_Enemy_Fire_Enqueues_UnitAttackVisualEvent()
         {
             var enemy = CreateAttacker(
-                Faction.Enemy, new float3(0f, 0f, 0f),
+                Faction.EnemyUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)(Faction.Defender | Faction.BlockingHazard),
+                targetMask: (int)(Faction.DefenderUnit | Faction.BlockingHazard),
                 attackerTag: true);
 
-            var defender = CreateTarget(Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
 
             Tick();
 
@@ -345,9 +345,9 @@ namespace Wassup.Tests.EditMode
             // Defender with both DefenderUnitTag and EnemyFaction mask — unusual but
             // tests the self-exclusion guard explicitly.
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Defender,   // would hit itself if no guard
+                targetMask: (int)Faction.DefenderUnit,   // would hit itself if no guard
                 defenderTag: true);
             _em.AddBuffer<IncomingDamage>(defender); // already added by CreateAttacker
 
@@ -366,13 +366,13 @@ namespace Wassup.Tests.EditMode
         {
             // Defender with PendingDeployment should not fire even if in range
             var pendingDefender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
             _em.AddComponent<PendingDeployment>(pendingDefender);
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -388,13 +388,13 @@ namespace Wassup.Tests.EditMode
         public void DeadTag_Excludes_Target_From_Pool()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 5f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
             // Only available target has DeadTag → should not be selected
-            var deadEnemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true, deadTag: true);
+            var deadEnemy = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true, deadTag: true);
 
             Tick();
 
@@ -413,9 +413,9 @@ namespace Wassup.Tests.EditMode
         public void Ballistic_ProjectileRef_Stages_Ballistic_Request_With_Locked_Impact()
         {
             var defender = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 7f, range: 10f, cooldownDuration: 1f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
 
             _em.AddComponentData(defender, new ProjectileRef
@@ -429,7 +429,7 @@ namespace Wassup.Tests.EditMode
                 impactTileRange = 1,
             });
 
-            var enemy = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
 
             Tick();
 
@@ -461,9 +461,9 @@ namespace Wassup.Tests.EditMode
             // 근접 디펜더: ProjectileRef 없음 → RESOLVE 의 outputs(근접) 분기.
             // cooldown 을 dt 보다 작게 둬 매 틱 재발사.
             var melee = CreateAttacker(
-                Faction.Defender, new float3(0f, 0f, 0f),
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
                 damage: 4f, range: 10f, cooldownDuration: 0.01f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
             Assert.IsFalse(_em.HasComponent<ProjectileRef>(melee),
                 "sanity: this defender is melee (no ProjectileRef)");
@@ -485,7 +485,7 @@ namespace Wassup.Tests.EditMode
             });
 
             // 근접 사거리(1타일)에 적.
-            var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),
@@ -523,9 +523,9 @@ namespace Wassup.Tests.EditMode
         {
             // 폭탄맨도 AttackState 를 갖지만(쿨다운 소유) 타겟팅 루프는 타지 않는다.
             var e = CreateAttacker(
-                Faction.Defender, position,
+                Faction.DefenderUnit, position,
                 damage: 0f, range: 5f, cooldownDuration: 0.01f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
             _em.AddComponentData(e, new DeployedFacing { value = facing });
             _em.AddComponentData(e, new ProjectileRef { dataIndex = 0, speed = 10f, visualScale = 1f });
@@ -564,8 +564,8 @@ namespace Wassup.Tests.EditMode
             });
 
             // 반경 안 적 2기. 니들은 **최근접**을 골라야 한다(폭탄 착지셀과 무관).
-            var far = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
-            var near = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var far = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+            var near = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),
@@ -600,9 +600,9 @@ namespace Wassup.Tests.EditMode
             // 캐스터는 공격 사거리가 없다(attackRange 0) — RESOLVE 로는 절대 카운트되지
             // 않는다는 것이 계약 2 의 상호배타 전제다.
             var e = CreateAttacker(
-                Faction.Defender, position,
+                Faction.DefenderUnit, position,
                 damage: 0f, range: 0f, cooldownDuration: 999f,
-                targetMask: (int)Faction.Enemy,
+                targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
             var slots = _em.AddBuffer<DcTriggerSlot>(e);
             slots.Add(new DcTriggerSlot
@@ -626,8 +626,8 @@ namespace Wassup.Tests.EditMode
         public void CastEvent_PokeNeedle_FiresOnFifthCastWithNearestTarget()
         {
             var caster = CreateCasterWithSlot(new float3(0f, 0f, 0f), period: 5);
-            var far = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
-            var near = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var far = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+            var near = CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),
@@ -661,7 +661,7 @@ namespace Wassup.Tests.EditMode
         {
             // enqueue 후 드레인 전에 캐스터가 죽는 창이 있다 — 그 이벤트는 조용히 버린다.
             var caster = CreateCasterWithSlot(new float3(0f, 0f, 0f), period: 1);
-            CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),
@@ -695,7 +695,7 @@ namespace Wassup.Tests.EditMode
                 visualScale = 1f,
                 tileRange = 4,
             });
-            CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),

@@ -64,7 +64,9 @@ namespace Wassup.Battle.Effects
                               .WithAll<Health>()
                               .WithNone<PendingDeployment, DeadTag>())
             {
-                if (((int)faction.ValueRO.value & (int)Faction.Defender) == 0) continue;
+                // battle-structures unit 0 — DefenderUnit 단독. 예전엔 Faction.Defender 였고
+                // 골 타워가 그 비트를 달아 **보스 사냥 필드의 방어유닛 소스로 계수됐다**.
+                if (((int)faction.ValueRO.value & (int)Faction.DefenderUnit) == 0) continue;
                 defenderCells.Add(GridMath.WorldToCell(
                     transform.ValueRO.Position, field.tileSize, field.gridSize, origin: field.origin));
             }

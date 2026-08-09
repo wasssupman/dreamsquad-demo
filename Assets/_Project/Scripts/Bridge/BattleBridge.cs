@@ -4794,7 +4794,7 @@ namespace Wassup.Bridge
 
         // goal-tower-siege(rev 2) — 골 셀마다 **건물형 유닛**을 세운다.
         //
-        // 진영은 `Faction.Defender` 다. 적의 base targetMask 가 이미 `Defender|BlockingHazard`
+        // 진영은 `Faction.DefenderCore`(방어 마음) 다. 적의 base targetMask 가 그 비트를 포함
         // 라서 **타겟팅 코드가 한 줄도 필요 없다** — 전용 Faction 비트도, 골 도달 시 마스크를
         // 열어주는 브리지 훅도, 도발 시스템 패치도 전부 사라졌다(rev 1 의 과설계).
         //
@@ -4823,7 +4823,7 @@ namespace Wassup.Bridge
                 _em.AddComponent<Wassup.Battle.Units.GoalTowerTag>(tower);
                 _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
                 _em.AddBuffer<IncomingDamage>(tower);
-                _em.AddComponentData(tower, new FactionTag { value = Faction.Defender });
+                _em.AddComponentData(tower, new FactionTag { value = Faction.DefenderCore });
                 _em.AddComponentData(tower, LocalTransform.FromPosition(
                     GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
             }
@@ -4880,7 +4880,7 @@ namespace Wassup.Bridge
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
                 // 데이터 등록부를 건드리지 않는다(지우면 안 보이는 적이 타워를 때리고
-                // 데미지 폰트만 허공에 뜬다). 타워가 Faction.Defender 라 적의 base targetMask
+                // 데미지 폰트만 허공에 뜬다). 타워가 Faction.DefenderCore 라 적의 base targetMask
                 // 가 이미 그것을 포함하므로 **여기서 열어줄 것이 없다.**
                 // stress-after-breach — 골이 이미 부서졌으면 때릴 타워가 없다. 공성으로 두면
                 // 적이 눌러앉아 웨이브 전멸 판정을 막으므로 유출(뷰 회수 + 파괴)로 내린다.
@@ -5854,14 +5854,18 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
-            _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(entity, new AttackState
             {
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
                 attackTargetCount = unitData.attackTargetCount,
-                targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
+                // battle-structures unit 0 — 아군 타게팅(힐러)은 DefenderUnit 단독이다.
+                // AnyDefender 로 넓히면 IncomingHeal 버퍼가 없는 거점이 후보에 들어
+                // ECB playback 에서 던진다. 적 타게팅도 EnemyUnit 단독 — 방어유닛이
+                // 적 거점을 때리는 것은 이 spec 범위 밖(결정 4).
+                targetMask = unitData.targetAllies ? (int)Faction.DefenderUnit : (int)Faction.EnemyUnit,
                 hitDelaySec = unitData.hitDelaySec,
             });
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
@@ -5903,7 +5907,7 @@ namespace Wassup.Bridge
                     range = hazardAbility.castRange,
                     cooldownDuration = hazardAbility.cooldown,
                     cooldownRemaining = 0f,
-                    targetMask = (int)Faction.Enemy,
+                    targetMask = (int)Faction.EnemyUnit,
                     dataIndex = hazardDataIndex,
                     kind = hazardAbility.kind,
                     footprintWidth = math.max(1, hazardAbility.footprintWidth),
@@ -6096,14 +6100,14 @@ namespace Wassup.Bridge
             // (킨들러 = 레인저 전용 마스크)이 레인저 대신 순찰병을 쏴서 그 적이 무력화된다.
             _em.AddComponentData(entity, new DefenderClassTag { value = unitData.role });
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
-            _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(entity, new AttackState
             {
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec,
                 attackTargetCount = unitData.attackTargetCount,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
                 hitDelaySec = unitData.hitDelaySec,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
@@ -7361,7 +7365,7 @@ namespace Wassup.Bridge
             // dreamcatcher-orb-dock unit 6 — 스폰 시 적 데이터 등록(킬 각성 피규어 스킨 소스).
             _enemyTypeByEntity[entity] = entry.unitType;
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
-            _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
             // dreamcatcher-awakening-hand unit 1 — bake the death grant so
             // DamageApplicationSystem can stamp it into EnemyKilledEvent.
             // Unconditional attach (0 allowed) keeps the lookup branch-free.
@@ -7407,7 +7411,11 @@ namespace Wassup.Bridge
                     attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
                     // goal-stability unit 2 — 안정도 골 개통(공격 능력 있는 적 전원). 골이 없거나
                     // 전부 M=0 이면 후보 자체가 없어 무해. walk-only 2종의 골 공격은 unit 3.
-                    targetMask = (int)(Faction.Defender | Faction.BlockingHazard | Faction.Goal),
+                    // battle-structures unit 0 — 적의 base 마스크는 «유닛 + 방어 마음» 이다.
+                    // 유일하게 종류 축을 넘는 자리 — 여기서 DefenderCore 가 빠지면 적이 골
+                    // 타워를 못 때려 공성 자체가 사라진다. 최후순위 판정(AttackSystem)이
+                    // 사거리 내 유닛을 먼저 고르므로 «유닛 우선, 없으면 마음» 이 성립한다.
+                    targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
                     hitDelaySec = entry.unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);

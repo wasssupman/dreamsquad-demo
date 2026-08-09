@@ -71,7 +71,7 @@ namespace Wassup.Tests.EditMode
             {
                 range = 1f,
                 cooldownDuration = 1f,
-                targetMask = (int)Faction.Defender,
+                targetMask = (int)Faction.DefenderUnit,
                 attackTargetCount = 1,
             });
             return e;

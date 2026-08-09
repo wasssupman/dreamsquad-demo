@@ -88,13 +88,13 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 10f, max = 10f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponentData(e, new AttackState
             {
                 range = range, cooldownDuration = 10f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Enemy, hitDelaySec = hitDelaySec,
+                attackTargetCount = 1, targetMask = (int)Faction.EnemyUnit, hitDelaySec = hitDelaySec,
             });
             _em.AddComponent<DefenderUnitTag>(e);
             var outputs = _em.AddBuffer<AttackOutputElement>(e);
@@ -109,7 +109,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             return e;
@@ -229,7 +229,7 @@ namespace Wassup.Tests.EditMode
             _em.SetComponentData(def, new AttackState
             {
                 range = 6f, cooldownDuration = 0.1f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Enemy, hitDelaySec = HitDelay,
+                attackTargetCount = 1, targetMask = (int)Faction.EnemyUnit, hitDelaySec = HitDelay,
             });
             var a = CreateEnemy(new float3(2f, 0f, 0f));
             var b = CreateEnemy(new float3(5f, 0f, 0f));
@@ -271,7 +271,7 @@ namespace Wassup.Tests.EditMode
             _em.SetComponentData(def, new AttackState
             {
                 range = Range, cooldownDuration = 0.5f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Enemy, hitDelaySec = HitDelay,
+                attackTargetCount = 1, targetMask = (int)Faction.EnemyUnit, hitDelaySec = HitDelay,
             });
 
             const int N = 12;

@@ -243,7 +243,7 @@ namespace Wassup.Battle.Combat
                                 // 부재 시 Enemy 유지 → 기존 디펜더 경로 byte-identical.
                                 targetFaction =
                                     factionLookup.HasComponent(entity)
-                                    && factionLookup[entity].value == Faction.Enemy
+                                    && factionLookup[entity].value == Faction.EnemyUnit
                                         ? Projectile.ProjectileTargetFaction.Defender
                                         : Projectile.ProjectileTargetFaction.Enemy,
                             });

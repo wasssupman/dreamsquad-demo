@@ -87,14 +87,14 @@ namespace Wassup.Tests.EditMode
         {
             var entity = _em.CreateEntity();
             _em.AddComponent<DefenderUnitTag>(entity);
-            _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new HazardCastState
             {
                 range = range,
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
                 dataIndex = dataIndex,
                 kind = kind,
                 footprintWidth = 5,
@@ -106,7 +106,7 @@ namespace Wassup.Tests.EditMode
         private Entity CreateAttackUnit(float3 worldPos)
         {
             var entity = _em.CreateEntity();
-            _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new PathFollowState { speed = 1f });
             return entity;

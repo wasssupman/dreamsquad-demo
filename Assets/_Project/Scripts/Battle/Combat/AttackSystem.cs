@@ -106,11 +106,13 @@ namespace Wassup.Battle.Combat
             // dreamcatcher-content-2 끝을 보는 눈 — per-attack frontmost lock (RW, defender-owned).
             // goal-tower-siege unit 1 — PastGoal 배제가 사라져 그 lookup 도 함께 없앴다.
             var frontmostLockLookup = SystemAPI.GetComponentLookup<FrontmostAttackLock>(isReadOnly: false);
-            // goal-stability unit 2 — 골 판별(Units 소유, RO). 골은 타겟 최후순위 + 잠금 금지.
-            // 병합(goal-tower-siege 채택): PastGoal 배제가 사라져 pastGoalLookup 은 원격을 따라 제거했다
-            // (병합본에 사용처 0). goalPointLookup 은 잔존 사용처가 있어 유지 — 실맵은 goalMaxStability
-            // 미저작(전 골 0)이라 GoalPoint 엔티티가 스폰되지 않으므로 이 경로는 런타임에 비활성이다.
-            var goalPointLookup = SystemAPI.GetComponentLookup<GoalPoint>(isReadOnly: true);
+            // battle-structures unit 0 — 거점 판별(Units 소유, RO). 거점은 타겟 최후순위 + 잠금 금지.
+            // 판정 키가 GoalPoint 보유에서 **진영 비트**로 옮겨졌다: 잠자는 GoalPoint 엔티티는
+            // 어떤 맵에서도 태어나지 않아 이 계약이 라이브에서 발효된 적이 없었고, 라이브 골
+            // 타워는 그 태그가 없어 최후순위가 아니라 **거리로 경쟁하는 일반 후보**였다.
+            // 이제 DefenderCore 를 단 타워가 이 술어에 걸린다 — 사거리에 방어유닛이 있으면
+            // 적은 유닛을 먼저 때린다.
+            var factionLookup = SystemAPI.GetComponentLookup<FactionTag>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -388,7 +390,7 @@ namespace Wassup.Battle.Combat
                         {
                             for (int ti = 0; ti < targetEntities.Length && !gateOpen; ti++)
                             {
-                                if (((int)targetFactions[ti].value & (int)Faction.Enemy) == 0) continue;
+                                if (((int)targetFactions[ti].value & (int)Faction.EnemyUnit) == 0) continue;
                                 // goal-tower-siege unit 1 — PastGoal 배제 제거(머지 정리).
                                 // 그 태그는 이제 "유출 대기" 가 아니라 "골에 붙어 타워를 때리는 중" 이다 —
                                 // 골을 두들기는 적이야말로 순찰을 부를 이유다.
@@ -453,7 +455,7 @@ namespace Wassup.Battle.Combat
                 // nearest. Gated on DefenderUnitTag so a taunted enemy (also mask == Defender
                 // via TauntAttackGrantSystem) keeps nearest targeting. Same candidate set as
                 // the nearest scan — only the ranking criterion changes (distance → HP ratio).
-                bool rankByHealth = mask == (int)Faction.Defender
+                bool rankByHealth = mask == (int)Faction.DefenderUnit
                                     && defenderTagLookup.HasComponent(attackerEntity);
                 // aggro-targeting Unit 4 — enemy class filter + priority. Defenders have
                 // no EnemyTargetFilter → filterMask -1 / prioClass -1 = legacy nearest.
@@ -523,10 +525,11 @@ namespace Wassup.Battle.Combat
                     int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
                     if (tileDist > tileRange) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
-                    // goal-stability unit 2 — Goal 후보는 nearest/특수 트래커(힐·우선순위·레인·
-                    // frontmost)에서 제외, 최후순위 슬롯으로만. (defender 마스크엔 Goal 이 없어
-                    // 이 분기는 실질 적 전용 — 힐러 rankByHealth 가 골을 힐하는 일도 없다.)
-                    if (goalPointLookup.HasComponent(targetEntities[i]))
+                    // battle-structures unit 0 — 거점 후보는 nearest/특수 트래커(힐·우선순위·
+                    // 레인·frontmost)에서 제외, 최후순위 슬롯으로만. 방어측 지원 마스크는
+                    // DefenderUnit 단독이라(힐러 등) 거점이 애초에 후보에 들지 않는다 —
+                    // 힐러가 버퍼 없는 거점을 힐 대상으로 고르던 경로가 여기서 닫힌다.
+                    if ((((int)targetFactions[i].value) & Factions.AnyStructure) != 0)
                     {
                         if (d2 < goalBestSq)
                         {
@@ -672,12 +675,15 @@ namespace Wassup.Battle.Combat
                         // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
                         // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
                         // invalid lock → adopt the already-computed nearest+filter result (may be Null)
-                        // goal-stability unit 2 (리뷰 M3) — 골은 잠금 대상이 아니다: 잠그면 이후
-                        // 배치된 방어유닛을 사거리에 두고도 골만 계속 때려 최후순위 계약이 깨진다.
-                        // 이 프레임 사격(bestTarget=goal)은 유지하되 락에는 저장하지 않는다.
+                        // goal-stability unit 2 (리뷰 M3) — 거점은 잠금 대상이 아니다: 잠그면 이후
+                        // 배치된 방어유닛을 사거리에 두고도 거점만 계속 때려 최후순위 계약이 깨진다.
+                        // 이 프레임 사격(bestTarget=거점)은 유지하되 락에는 저장하지 않는다.
                         focusLookup[attackerEntity] = new FocusTarget
                         {
-                            current = goalPointLookup.HasComponent(bestTarget) ? Entity.Null : bestTarget,
+                            current = factionLookup.HasComponent(bestTarget)
+                                      && ((int)factionLookup[bestTarget].value & Factions.AnyStructure) != 0
+                                ? Entity.Null
+                                : bestTarget,
                         };
                     }
                 }
@@ -1777,7 +1783,7 @@ namespace Wassup.Battle.Combat
                 // goal-tower-siege unit 1 — PastGoal 배제 제거. 골에 붙은 적은 살아서 타워를
                 // 때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
                 bool eligible = e != self
-                    && ((int)fac[i].value & (int)Faction.Enemy) != 0;
+                    && ((int)fac[i].value & (int)Faction.EnemyUnit) != 0;
                 float3 p = xf[i].Position;
                 int2 c = GridMath.WorldToCell(p, tileSize, gridSize, origin: gridOrigin);
                 scratch[i] = new NearestTargeting.Candidate

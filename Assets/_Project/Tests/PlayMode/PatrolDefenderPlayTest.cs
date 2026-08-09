@@ -98,7 +98,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(em.HasComponent<DefenderUnitTag>(patrol));
             Assert.IsTrue(em.HasComponent<DefenderClassTag>(patrol));
             Assert.IsTrue(em.HasComponent<FactionTag>(patrol));
-            Assert.AreEqual(Faction.Defender, em.GetComponentData<FactionTag>(patrol).value);
+            Assert.AreEqual(Faction.DefenderUnit, em.GetComponentData<FactionTag>(patrol).value);
             Assert.IsFalse(em.HasComponent<DefenderTile>(patrol),
                 "no placement/death-event/awakening farming path");
             Assert.IsFalse(em.HasComponent<AttackUnitTag>(patrol), "not an enemy/leak unit");
