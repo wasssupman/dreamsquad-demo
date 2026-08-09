@@ -31,6 +31,40 @@ namespace Wassup.Battle.Movement
             NativeArray<byte> outMask)
             => BuildNavGrid(in field, hasObstacles, in obstacles).MaterializeWalkMask(outMask);
 
+        // traversal-layers unit 3 — **층 인지 walk 마스크.** 지형은 «셀 층 ∩ 유닛 통행 층»,
+        // 장애물 합성은 `NavGrid` 가 한다(계약 4 — 벽 술어는 하나).
+        //
+        // 이 오버로드가 생긴 이유는 조립 지점이 셋이 됐기 때문이다: 재빌드(슬롯별)·순찰
+        // 필드(유닛별)·그리고 기존 호출처들. `new NavGrid(...)` 를 각자 쓰면 tileSize·origin·
+        // gridSize 를 어디서 가져오는지가 세 벌이 된다 — 이 파일 헤더가 못박은 "조립은 하나"
+        // 계약이 깨진다.
+        //
+        // `outMask` 를 층 마스크 버퍼로 먼저 쓰고 그대로 staticWalk 로 넘긴다(임시 배열 없음).
+        // `MaterializeWalkMask` 가 셀마다 **자기 인덱스만** 읽고 쓰므로 in-place 가 안전하다.
+        public static void FillWalkMask(
+            in FlowFieldSingleton field,
+            byte traversalLayers,
+            bool hasObstacles,
+            in ObstacleSingleton obstacles,
+            NativeArray<byte> outMask)
+        {
+            // cellLayers 미생성(직접 초기화 픽스처) → 현행 walkMask 경로.
+            if (!field.cellLayers.IsCreated || field.cellLayers.Length != outMask.Length)
+            {
+                FillWalkMask(in field, hasObstacles, in obstacles, outMask);
+                return;
+            }
+
+            TraversalSlots.FillWalkMask(in field.cellLayers, traversalLayers, outMask);
+            new NavGrid(
+                staticWalk:   outMask,
+                blockedCells: hasObstacles ? obstacles.blockedCells : default,
+                hasObstacles: hasObstacles,
+                gridSize:     field.gridSize,
+                tileSize:     field.tileSize,
+                origin:       field.origin).MaterializeWalkMask(outMask);
+        }
+
         // Inset to keep the clamped position strictly inside currentCell.
         // WorldToCell rounds 0.5 up to the next cell, so without this offset a position at
         // exactly ±0.5*tileSize would be mapped to the adjacent blocked cell, breaking the

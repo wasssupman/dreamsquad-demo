@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Bridge;
 using Wassup.Data;
 
@@ -431,6 +432,75 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(0, second.DistSlot(1)[2], "재설치 후에도 Path 슬롯이 골을 찾는다");
             }
             finally { masks.Dispose(); map.Dispose(); }
+        }
+
+        // ── unit 3 — 층 인지 walk 마스크 ────────────────────────────────────────
+
+        [Test]
+        public void LayerAwareWalkMask_GroundUnit_WalksPlaceCellsOnly()
+        {
+            // unit 3 의 계약. 같은 맵에서 층이 다르면 **다른 지형**을 본다.
+            // (2x2: (0,0)=Walk (1,0)=Place (0,1)=Deco (1,1)=Walk)
+            var map = MakeMap(withAuthoredMask: false);
+            var outMask = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                var field = Install(map);
+
+                MovementCellTrim.FillWalkMask(in field, (byte)PlacementLayer.Ground,
+                    hasObstacles: false, obstacles: default, outMask);
+                Assert.AreEqual(0, outMask[0], "Walk 칸 — 지면 유닛은 못 지난다");
+                Assert.AreEqual(1, outMask[1], "Place 칸 — 지면 유닛의 지형");
+                Assert.AreEqual(0, outMask[2], "Deco");
+                Assert.AreEqual(0, outMask[3], "Walk");
+            }
+            finally { outMask.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void LayerAwareWalkMask_PathUnit_ReproducesWalkMask()
+        {
+            // 폴백 층(Path)에서는 **현행과 셀 단위로 같다** — unit 3 의 «행동 변화 0» 축.
+            var map = MakeMap(withAuthoredMask: false);
+            var outMask = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                var field = Install(map);
+                MovementCellTrim.FillWalkMask(in field, TraversalSlots.DefaultMask,
+                    hasObstacles: false, obstacles: default, outMask);
+                for (int i = 0; i < 4; i++)
+                    Assert.AreEqual(field.walkMask[i], outMask[i], $"cell {i}");
+            }
+            finally { outMask.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void LayerAwareWalkMask_InPlaceWriteIsSafe()
+        {
+            // 층 마스크를 outMask 에 먼저 쓰고 그대로 staticWalk 로 넘긴다(임시 배열 없음).
+            // MaterializeWalkMask 가 셀마다 자기 인덱스만 읽고 쓰므로 안전하다 — 이 성질이
+            // 깨지면 결과가 조용히 오염되므로 테스트로 고정한다.
+            var map = MakeMap(withAuthoredMask: false);
+            var inPlace = new NativeArray<byte>(4, Allocator.Temp);
+            var viaTemp = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                var field = Install(map);
+                MovementCellTrim.FillWalkMask(in field, TraversalSlots.DefaultMask, false, default, inPlace);
+
+                // 같은 계산을 임시 배열 경유로 — 결과가 같아야 한다.
+                TraversalSlots.FillWalkMask(in field.cellLayers, TraversalSlots.DefaultMask, viaTemp);
+                var tmp = new NativeArray<byte>(4, Allocator.Temp);
+                try
+                {
+                    new NavGrid(viaTemp, default, false, field.gridSize, field.tileSize, field.origin)
+                        .MaterializeWalkMask(tmp);
+                    for (int i = 0; i < 4; i++)
+                        Assert.AreEqual(tmp[i], inPlace[i], $"cell {i} — in-place 가 오염되지 않는다");
+                }
+                finally { tmp.Dispose(); }
+            }
+            finally { inPlace.Dispose(); viaTemp.Dispose(); map.Dispose(); }
         }
 
         [Test]

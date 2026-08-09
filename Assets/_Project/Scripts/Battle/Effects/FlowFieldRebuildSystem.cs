@@ -58,7 +58,6 @@ namespace Wassup.Battle.Effects
             // 물질화는 FillWalkMask 가 그 술어로 해 준다. 인라인 루프는 벽 정의가 바뀔 때
             // 조용히 낡는다(자가 감사에서 발견된 위반).
             var combined = new NativeArray<byte>(n, Allocator.Temp);
-            var slotLayers = new NativeArray<byte>(n, Allocator.Temp);
             var sources = new NativeList<int2>(4, Allocator.Temp);
             try
             {
@@ -70,27 +69,14 @@ namespace Wassup.Battle.Effects
                 // traversal-layers unit 1b — 슬롯마다 재빌드한다. 장애물이 바뀌면 **모든**
                 // 통행 층의 경로가 함께 바뀐다 — 한 슬롯만 갱신하면 다른 층 유닛이 사라진
                 // 장애물을 계속 피해 돈다.
-                bool hasLayers = field.cellLayers.IsCreated && field.cellLayers.Length == n;
                 for (int m = 0; m < field.MaskCount; m++)
                 {
-                    if (hasLayers)
-                    {
-                        // 지형은 «셀 층 ∩ 슬롯 마스크», 장애물 합성은 NavGrid 가 한다(계약 4).
-                        TraversalSlots.FillWalkMask(in field.cellLayers, field.MaskAt(m), slotLayers);
-                        new Wassup.Battle.Movement.NavGrid(
-                            staticWalk:   slotLayers,
-                            blockedCells: hasObstacles ? obstacles.blockedCells : default,
-                            hasObstacles: hasObstacles,
-                            gridSize:     field.gridSize,
-                            tileSize:     field.tileSize,
-                            origin:       field.origin).MaterializeWalkMask(combined);
-                    }
-                    else
-                    {
-                        // cellLayers 미생성(직접 초기화 픽스처) — 현행 walkMask 경로.
-                        Wassup.Battle.Movement.MovementCellTrim.FillWalkMask(
-                            in field, hasObstacles, in obstacles, combined);
-                    }
+                    // traversal-layers unit 3 — 조립은 MovementCellTrim 하나가 소유한다.
+                    // (여기 있던 두 번째 `new NavGrid(...)` 를 걷어냈다 — 조립 인자 6개가
+                    //  두 벌이 되면 벽 정의가 바뀔 때 한쪽이 조용히 낡는다.)
+                    // 픽스처 폴백도 그 안에 있다.
+                    Wassup.Battle.Movement.MovementCellTrim.FillWalkMask(
+                        in field, field.MaskAt(m), hasObstacles, in obstacles, combined);
 
                     FlowFieldBuilder.BuildFromSources(
                         combined, field.gridSize, sources.AsArray(),
@@ -100,7 +86,6 @@ namespace Wassup.Battle.Effects
             finally
             {
                 combined.Dispose();
-                slotLayers.Dispose();
                 sources.Dispose();
             }
 
