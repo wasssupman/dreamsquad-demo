@@ -159,7 +159,7 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
 
 | # | 구분 | 문서 | 목적 | 행동 변화 |
 |---|---|---|---|---|
-| 0 | 리팩터 | `0_faction_cross_bits.md` | `Faction` 교차 비트 재정의 + 그룹 상수 + 라이브 타워 `DefenderCore` 이관 + 잠자는 `GoalPoint` 경로 정리 | 부작용 2건 해소만 |
+| 0 | 리팩터 | `0_faction_cross_bits.md` | `Faction` 교차 비트 재정의 + 그룹 상수 + 라이브 타워 `DefenderCore` 이관 + 잠자는 경로 정리(§결정 6 표) | **있음** — 부작용 2건 해소 **+ 최후순위 신규 도입**(계약 4) |
 | 1 | 데이터 | `1_authored_target_mask.md` | 적 SO 저작 타겟 마스크 → `EnemyTargetFilter.factionMask` + 순수 derive + 베이크. 기본값 = 현행 동치 | **0** |
 | 2 | 시뮬 | `2_taunt_scope_gate.md` | 도발 부착 게이트 = `(저작 & AnyUnit) != 0`. `EnemyAiStateSystem` 미러 점검 | 있음 |
 | 3 | 저작·툴 | `3_structure_authoring.md` | `StructureData` SO + `MapDocument.structures[]` + MapPainter 브러시·검증·모드 배지 + `AllSpawnsReachGoal` 하한 완화 | 0 (저작 없으면) |
@@ -167,6 +167,8 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
 | 5 | 시뮬 | `5_instinct_attack.md` | 본능에 `AttackState` + 투사체 1발. 저작 타겟 마스크 재사용 | 있음 |
 | 6 | 모드 | `6_siege_mode_derivation.md` | 적 마음 존재 → `spawns[]` = 적 마음 셀. 런타임 분기 0 + 페인터 검증 | 있음 |
 | 7 | 인계 | `7_handoff_summary.md` | 종료 요약 | — |
+
+⚠ unit 0 의 «행동 변화» 를 «부작용 2건 해소만» 으로 적었던 rev 3 초판은 **틀렸다**(리뷰 F1). 최후순위가 라이브에서 처음 발효되어 공성 체감이 바뀐다.
 
 **0~2 가 축, 3~5 가 콘텐츠, 6 이 모드다.** 0~2 만 넣고 멈춰도 판은 정상 작동한다. 3~5 는 저작이 없으면 무해하고, 6 은 적 마음이 없으면 무해하다 — 각 구간이 독립적으로 멈출 수 있다.
 
@@ -178,7 +180,11 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
    - **런타임 마스크** = `AttackState.targetMask` — "지금 때릴 수 있는 것". 무기 유무·도발로 변한다.
    - **도발 게이트는 저작 의도를 읽는다.** 런타임 마스크를 읽으면 무기 없는 적(러너·스위프트, 현재 마스크 = 거점 단독)이 도발 불가가 되는 함정에 빠진다 — 도발이 나중에 유닛 비트를 OR 해주는 구조라 순환이다.
 3. **도발 차단은 부착 1지점.** `AggroStateSystem` 의 `Aggroed` 부착 게이트에 술어를 더한다. 보스 면역의 선례를 그대로 따른다 — 소비 지점이 6곳이라 "붙은 것을 무시" 는 비싸다.
-4. **최후순위 계약 유지.** 사거리 내 유닛 후보가 있으면 그쪽이 먼저다. 판정 키를 `GoalPoint` → `(faction & AnyStructure) != 0` 으로 옮긴다. 거점 전담 적에게는 이 규칙이 공전한다(후보가 거점뿐).
+4. **최후순위는 «유지» 가 아니라 «신규 도입» 이다.** (2026-08-09 리뷰 F1 정정)
+   사거리 내 유닛 후보가 있으면 그쪽이 먼저다. 판정 키를 `GoalPoint` → `(faction & AnyStructure) != 0` 으로 옮긴다.
+   ⚠ **라이브에서 이 계약은 한 번도 발효된 적이 없다.** 배제 키가 `goalPointLookup` 인데 라이브 타워는 `GoalTowerTag` 라 안 걸린다 — 지금 타워는 방어유닛과 **거리로 경쟁하는 일반 후보**다. 키를 옮기는 순간 타워가 처음으로 최후순위가 되고, **사거리에 방어유닛이 있으면 적이 타워를 안 때린다**. 공성 체감이 바뀌는 게임플레이 변화이므로 unit 0 을 «부작용 해소만» 으로 적으면 안 된다.
+   ⚠ `GoalTargetingPriorityTests` 는 `Faction.Goal` + `GoalPoint` 합성 엔티티를 쓴다 — **라이브 아키타입(`Faction.Defender` + `GoalTowerTag`)을 한 번도 통과시키지 않는다.** 라이브 아키타입 케이스 추가가 unit 0 완료 기준이다.
+   거점 전담 적에게는 이 규칙이 공전한다(후보가 거점뿐).
 5. **모드는 파생이다.** 적 마음의 유무 → `spawns[]` 채우기. 저작 enum 없음, 런타임 분기 없음.
 6. **마음 개수는 전역 불변식이 아니라 «공성 맵의 저작 규칙» 이다.** (2026-08-09 사용자 결정)
    - **공성 맵**: 방어 마음 정확히 1 · 적 마음 정확히 1. **멀티골 금지** — 페인터가 에러로 잡는다.
@@ -188,11 +194,16 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
    - 라이브 맵 실측: 골 2개 = Serpent·Twin·Zig, 나머지 6장은 1개. **콘텐츠 이관 0** — 이 규칙은 공성 맵에만 걸린다.
 7. **거점은 각자 체력을 갖고, 각자 무너진다.** 현행 «타워 N개가 스칼라 1벌 공유»(`SyncGoalStabilityBars` 주석: *"값은 공유 1개라 두 바가 같은 숫자를 표시한다"*)를 엔티티별 `Health` 로 바꾼다 — 각 타워가 이미 `Health` 를 갖고 있으므로 **미러 스칼라를 걷어내는 방향**이다.
    - 붕괴도 거점 단위다: 무너진 마음의 셀만 유출 지점으로 열리고 나머지는 그대로 선다. 이는 goal-stability 의 원설계(*"엔티티 존재 = 그 셀의 골이 살아있다. 붕괴 = 엔티티 파괴 — 별도 플래그 없음"*)로 **되돌아가는** 것이고, 공유 스칼라는 goal-tower-siege 의 단순화였다.
-   - **구현체가 이미 있다** — `MovementSystem:63-66` 이 매 프레임 «살아있는 골 셀 집합» 을 만들어 그 셀에서 유출을 봉인한다. `GoalPoint` 가 안 태어나 라이브에선 항상 빈 리스트지만, **쿼리를 마음 태그로 갈아끼우면 계약 7 이 그대로 선다.** 라이브 공성(`canSiege` → 브리지 전역 bool `_goalBreached`)은 셀 단위를 표현할 수 없다. **이 게이트를 지우면 안 된다.**
+   - ⚠ **«`MovementSystem` 게이트를 되살리면 된다» 는 앞선 판단은 철회한다** (2026-08-09 리뷰 F3). 두 공성 기계는 **보완이 아니라 대안**이다. 게이트가 마음 셀에서 `PastGoalTag` 를 봉인하면 `UnitLifecycleSystem` 의 goal-reached 루프(`WithAll<PastGoalTag, AttackUnitTag>`)에 아무도 못 들어간다 → ⑴ `AttackState` 없는 Runner·Swift 가 파괴도 안 되고 안정도 피해도 못 줘 «필드에 적 0기» 판정을 영구히 막는 유령이 되고 ⑵ `GoalReachedEvent` 가 안 나가 붕괴 후 유출 처리(`evt.canSiege && _goalBreached`)도 죽는다. **라이브 공성 전체가 깨진다.**
+   - ⚠⚠ **«가만히 두기» 는 선택지가 아니다 — 지뢰다.** `GoalPoint` 를 마음 태그로 흡수하면 게이트 쿼리가 **자동으로 타워를 잡아 저절로 깨어난다**(타워가 그 태그를 다니까). 그러면 위 파손이 unit 0 에서 그대로 터진다. → **unit 0 은 게이트 블록을 삭제한다**(`MovementSystem:63-66` + 소비처 + `GoalSiegeGateTests` 4개). 지운 코드는 git 이 갖고 있고, unit 4 가 그 커밋을 참조 구현으로 쓴다.
+   - 거점 단위 붕괴의 구현은 **unit 4 에서 새로 짓는다.** 후보 둘: ⓐ 브리지의 전역 `_goalBreached` 를 «붕괴한 마음 셀 집합» 으로 확장(라이브 기계 유지, 최소 변경) ⓑ 게이트를 되살리되 `canSiege`/`GoalReachedMarker` 경로를 **같은 커밋에서 은퇴**(두 기계 중 하나만 남긴다). **한쪽만 켜는 중간 상태를 만들지 말 것.**
    - 현행 공유 풀은 분리 복도 컨셉과 어긋난다 — 두 골에 적이 나뉘어 붙으면 **한 바가 두 배 속도로** 깎인다. 거점 단위가 «각자 지킨다» 의도에 맞다.
 8. **거점은 CC·모디파이어의 대상이 아니다.** `CcEffect`/`StatModifierSlot` 버퍼 미부여(현행 골 계약 승계). `CcApplySystem` 이 버퍼 부재를 전제하므로 거점 대상 CC 를 넣으려면 이 계약부터 재검토.
 9. **중립은 비트만 예약한다.** 생산자·소비자 0. 술어가 «중립을 특별 취급» 하지 않는다.
 10. **본능의 공격은 유닛과 같은 파이프라인**을 탄다 — `AttackState` + `AttackOutputElement` + `ProjectileRef`. 전용 공격 시스템을 만들지 않는다.
+11. **`ProjectileTargetFaction` 은 통합하지 않는다** (2026-08-09 리뷰 F6). 투사체 피해풀 선택은 `Defender`/`Enemy` 2값 enum 이 별도로 소유한다(`ProjectileHitSystem` · `BattleBridge:7357`·`:3950` · `BossLeap:243` · `HealthThresholdSystem:246`). 이것은 «누구를 겨누나»(교차 비트)가 아니라 «어느 스냅샷 배열을 훑나»(성능/구조)라 축이 다르다.
+    ⚠ 그래서 **저작 마스크와 피해풀이 갈릴 수 있다** — unit 5(본능 공격)는 본능의 `factionMask` 와 `ProjectileTargetFaction` 이 같은 대상을 가리키는지 **명시적으로 대조**하고, 어긋나면 저작 마스크가 정본이다. 이 대조를 unit 5 완료 기준에 넣는다.
+12. **마음은 통행을 막지 않는다** (2026-08-09 리뷰 F7). 방어 마음은 적이 그 셀에 서야 공성이 성립하고, 적 마음은 스폰 셀이라 그 위에서 적이 태어난다. 통행 차단은 **본능 3×3 본체만**.
 
 ## 배치·통행 배제 (요청 7-2)
 
@@ -209,7 +220,7 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/StructureData.cs` (신설) + `MapDocument.structures[]` (신설) | HP·kind(마음/본능)·footprint·프랍·공격 정의. 라이브 마음은 현재 HP 를 **덱**(`AttackDeck.goalStabilityMax`)에서 받는다 — 이관 여부는 unit 3 |
+| 데이터 SO | `Data/StructureData.cs` (신설) + `MapDocument.structures[]` (신설) | HP·kind(마음/본능)·footprint·프랍·공격 정의. 라이브 마음은 현재 HP 를 **덱**(`AttackDeck.goalStabilityMax`)에서 받고, **그 스칼라가 타워의 존재 조건**이다(`EnsureGoalTowers:4854` 가 `<=0` 이면 안 세운다). `ResetGoalStability` 는 three-minute-survival 계약 9(시계와 짝) + `_goalBreached`/미스로그 리셋도 겸한다 → 이관은 **unit 4** 사안(리뷰 F5, 구 «unit 3» 표기 정정) |
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `EnsureGoalTowers` 를 일반화 | ★Mono 주도. teardown = `DestroyEntitiesByType<StructureTag>` |
 | ECS 컴포넌트 (Units) | `Battle/Units/StructureTag.cs` (신설) + FactionTag·Health·IncomingDamage·LocalTransform + `BlockingHazardCellsBuffer`(3×3) | `GoalTowerTag` 는 존치 — 패배 판정이 그 부재를 읽는다 |
 | 시뮬 시스템 | `Combat/AttackSystem.cs`(최후순위 키·본능 공격) · `Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs`·`UnitLifecycleSystem.cs` · `Effects/ObstacleLifetimeSystem.cs`(다중셀 점유) | 마음은 공격 안 함 — `AttackState` 미부여. 이동 없음 — `PathFollowState` 미부여 |
@@ -238,14 +249,20 @@ goal-tower-siege 가 전용 비트를 «rev 1 의 과설계» 로 제거한 판�
 5. **저작 컬럼을 시트에 넣나** — 기본값: **아니다.** v1 은 SO 직접 저작. 부류는 스탯이 아니라 정체성이라 튜닝 대상이 아니다.
 6. **잠자는 `GoalPoint`/goal-stability 엔티티 경로를 걷어내나** — **확정(2026-08-09 사용자 승인): 걷어내되 범위는 아래로 좁힌다.** 골이 두 벌인 채로 `StructureTag` 를 붙이면 "어느 골에 붙였나" 가 실제 버그가 된다. 단 **`goal-stability` 스펙 문서는 남긴다** — 왜 그 설계였고 왜 접혔는지가 이 spec 의 근거다.
 
-   | 걷어낸다 | 살린다 — 재조준 |
-   |---|---|
-   | `MapDocument.goalMaxStability[]` 저작 축 | `MovementSystem` 셀 단위 공성 게이트 (계약 7 구현체) |
-   | `BattleBridge.SpawnGoalEntities` | 최후순위 판정 (키만 `AnyStructure` 로) |
-   | `GoalPoint` 타입 → `StructureTag` 흡수 | 도발 마스크 OR/원복 |
-   | `BattleBridgeGoalStabilityTests` 4개 | 골 테스트 20개 (타입 치환 2~3줄) |
+   **자리마다 처분이 다르다.** 잠자는 경로는 «엔티티 2벌» 이 아니라 **«소비 기계 3쌍»** 이고, 쌍마다 라이브와의 관계가 다르다 — 하나는 미발효(F1), 하나는 대안(F3), 하나는 중복(F2). 기계적 일괄 치환 금지.
 
-   `GoalCollapsedEventsSingleton` 은 **보류** — 계약 7 의 거점 단위 붕괴가 오히려 이 채널을 필요로 한다. unit 4 에서 페이로드 일반화로 재사용. 근거·오판 기록은 `7_handoff_summary.md` 논박 ⑪·⑫.
+   | 자리 | 처분 | 이유 |
+   |---|---|---|
+   | `MapDocument.goalMaxStability[]` · `SpawnGoalEntities` | **삭제** | 라이브 스폰은 `EnsureGoalTowers` 하나 |
+   | `GoalPoint` 타입 | **`StructureTag` 로 흡수** | 라이브 타워가 그 태그를 단다 |
+   | 최후순위 판정 (`AttackSystem:529`) | **키 치환 + 라이브 테스트 신규** | 계약 4 — **신규 도입**이라 무검증 |
+   | `ProjectileHitSystem:108` 골 풀 + `:529~541` 합류 블록 | **⚠ 삭제 (치환 아님)** | `:98` defender 풀이 **이미** `WithAny<DefenderUnitTag, GoalTowerTag>` 다. 치환하면 타워가 두 풀에 들어 **광역 1발이 2번 때리고 `aoeTargetCap` 도 2칸 소모**. 단일 풀의 `WithAny` 에 마음 태그를 더하는 것으로 족하다 |
+   | `MovementSystem:63-66` 공성 게이트 + `GoalSiegeGateTests` 4개 | **⚠ 삭제** | 태그 흡수만 하면 게이트가 **저절로 깨어나** 라이브 공성이 깨진다(F3). «가만히 두기» 불가. unit 4 가 git 에서 참조 구현으로 되살린다 |
+   | `GoalCollapsedEventsSingleton` | **보류** | 거점 단위 붕괴가 오히려 이 채널을 필요로 한다. unit 4 에서 페이로드 일반화 |
+   | `BattleBridgeGoalStabilityTests` 4개 | **삭제** | 스폰 경로 전용. 계약은 unit 4 `SpawnStructureEntities` 승계 |
+   | 골 테스트 20개 | **타입 치환 2~3줄** | 지우면 unit 0 이 무검증 |
+
+   근거·오판 기록은 `7_handoff_summary.md` 논박 ⑪~⑬.
 
 ## 후속 후보
 

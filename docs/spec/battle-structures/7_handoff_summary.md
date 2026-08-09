@@ -79,7 +79,7 @@ _em.AddComponentData(goal, new FactionTag { value = Faction.Goal });
 | 테스트 | 24개 중 | 판정 |
 |---|---|---|
 | `BattleBridgeGoalStabilityTests` | 4 | **폐기** — 스폰 경로 전용. 계약(멱등·teardown·미저작 시 무스폰)은 unit 4 `SpawnStructureEntities` 로 승계 |
-| `GoalSiegeGateTests` | 4 | **재조준 필수** — 계약 7(거점 단위 붕괴)의 유일한 회귀 안전망. 특히 `Enemy_On_OtherGoalCell_StillLeaks_WhenDifferentGoalAlive` |
+| `GoalSiegeGateTests` | 4 | ⚠ **⑬ F3 에서 «삭제» 로 정정됨** (초판 판정 «재조준 필수» 는 철회). 검증 대상 게이트 자체가 unit 0 에서 삭제된다 |
 | `GoalTargetingPriorityTests` | 3 | **재조준 필수** — 최후순위 = 계약 4. **unit 0 작업 4번의 유일한 안전망** |
 | `GoalTauntGrantTests` | 3 | **재조준 필수** — 마스크 OR/원복 = 계약 2 의 직접 선조. unit 2 가 이 영역 |
 | `GoalProjectileTests` | 3 | **재조준** — 적 투사체가 마음을 맞힌다 / 방어 AoE 는 자기 마음을 안 때린다. 둘 다 살아있는 계약 |
@@ -99,7 +99,36 @@ foreach (var goalPoint in SystemAPI.Query<RefRO<GoalPoint>>().WithNone<DeadTag>(
 
 `GoalPoint` 가 안 태어나니 **이 리스트는 라이브에서 항상 비어 있다.** 실제로 도는 공성은 goal-tower-siege 쪽 — `UnitLifecycleSystem:69` 의 `canSiege = attackStateLookup.HasComponent(entity)` → `GoalReachedMarker` → 브리지의 **전역 bool `_goalBreached`**(`BattleBridge:4931`).
 
-**이것이 unit 0 의 판단을 바꾼다.** 계약 7 은 *"무너진 마음의 셀만 유출로 열리고 나머지는 그대로 선다"* 인데 전역 bool 로는 셀 단위를 표현할 수 없다. 계약 7 을 구현하려면 정확히 저 `aliveGoalCells` 게이트가 필요하다 — **폐기 대상이 아니라 이미 만들어진 구현체**다. `GoalPoint` 쿼리를 마음 태그로 갈아끼우면 살아난다.
+**이것이 unit 0 의 판단을 바꾼다.** 계약 7 은 *"무너진 마음의 셀만 유출로 열리고 나머지는 그대로 선다"* 인데 전역 bool 로는 셀 단위를 표현할 수 없다.
+
+> ⚠ **⑫ 의 결론 «쿼리를 마음 태그로 갈아끼우면 살아난다» 는 ⑬ 에서 철회됐다.** 두 기계는 보완이 아니라 대안이다. 아래 ⑬ F3 참조.
+
+**⑬ 병행 세션 리뷰 (2026-08-09) — F1·F2·F3 전부 코드로 확인됨. unit 0 범위가 틀렸다**
+
+⑪·⑫ 가 «골이 두 벌» 을 한 층 얕게 봤다. **엔티티 2벌이 아니라 «엔티티 2벌 × 소비 기계 3쌍»** 이고, 쌍마다 라이브와 잠자는 짝의 관계가 다르다.
+
+| 소비 기계 | 라이브 | 잠자는 짝 | 관계 | 처분 |
+|---|---|---|---|---|
+| 타겟팅 최후순위 | 배제 없음(타워가 일반 후보) | `goalPointLookup` 배제 | **미발효** | 키 치환 = **신규 도입** |
+| 공성 전환 | `canSiege` → `GoalReachedMarker` → 브리지 | `aliveGoalCells` → `PastGoalTag` 봉인 | **대안(상호 배타)** | 잠자는 쪽 **삭제**(방치 불가 — 아래) |
+| 투사체 광역 풀 | `:98` `WithAny<DefenderUnitTag, GoalTowerTag>` | `:108` `GoalPoint` 풀 + 합류 | **중복** | 잠자는 쪽 **삭제** |
+
+**F1 — 최후순위는 «유지» 가 아니라 «신규 도입» 이다.** 배제 키가 `goalPointLookup` 인데 라이브 타워는 `GoalTowerTag` 라 안 걸린다 → 지금 타워는 방어유닛과 **거리로 경쟁하는 일반 후보**다. 키를 옮기면 사거리에 방어유닛이 있을 때 적이 타워를 안 때린다 — **공성 체감이 바뀌는 게임플레이 변화**다. 그리고 `GoalTargetingPriorityTests` 는 `Faction.Goal` + `GoalPoint` 합성 엔티티라 **라이브 아키타입을 한 번도 통과시키지 않는다** — ⑪ 이 "유일한 안전망" 이라 부른 것이 실은 잠자는 경로만 검증한다. **라이브 아키타입 케이스 추가가 unit 0 완료 기준.**
+
+**F2 — 투사체 골 풀은 치환이 아니라 삭제다.** `ProjectileHitSystem:98` 의 defender 풀이 **이미** `WithAny<DefenderUnitTag, GoalTowerTag>` 다(주석에 이력이 있다: *"보스의 AreaBarrage 가 골에 떨어져도 안정도가 한 톨도 안 줄었다"* 를 고친 자리). `:108` 골 풀은 goal-stability 가 **같은 일을 하려던 죽은 버전**이고, `:529~541` 에서 두 풀을 `inRangeEnts` 에 이어 붙이는데 **중복 제거가 없다**. `GoalPoint` → 마음 태그로 기계적 치환하면 타워가 두 풀에 다 들어 **광역 1발이 2번 때리고 `aoeTargetCap` 도 2칸 소모**한다. → `:108` 풀 + `:529~541` 합류 블록 **삭제**, `:98` 의 `WithAny` 에 마음 태그를 더하는 것으로 족하다.
+
+**F3 — 게이트는 «되살리기» 도 «방치» 도 안 된다. unit 0 에서 삭제한다.** goal-reached 루프는 `WithAll<PastGoalTag, AttackUnitTag>` 다. 게이트가 마음 셀에서 `PastGoalTag` 를 봉인하면 아무도 그 루프에 못 들어간다 → ⑴ `AttackState` 없는 Runner·Swift 가 파괴도 안 되고 안정도 피해도 못 줘 «필드에 적 0기» 판정을 영구히 막는 **유령**이 되고 ⑵ `GoalReachedEvent` 가 안 나가 **붕괴 후 유출 처리도 죽는다**. 
+⚠⚠ **«unit 0 에선 손대지 않는다» 는 초판 대응은 틀렸다 — 방치가 곧 지뢰다.** `GoalPoint` 를 마음 태그로 흡수하는 순간 게이트 쿼리가 **자동으로 타워를 잡아 저절로 깨어난다**(타워가 그 태그를 다니까). 즉 아무것도 안 해도 위 파손이 unit 0 에서 터진다.
+→ **unit 0 은 게이트 블록(`MovementSystem:63-66` + 소비처)과 `GoalSiegeGateTests` 4개를 삭제한다.** 지운 코드는 git 이 갖고 있으니 unit 4 가 그 커밋을 참조 구현으로 쓴다.
+거점 단위 붕괴 구현은 unit 4 결정(ⓐ `_goalBreached` 를 셀 집합으로 확장 / ⓑ 게이트 부활 + `canSiege` 경로를 **같은 커밋에서** 은퇴). **한쪽만 켜는 중간 상태 금지.**
+
+**F4 — 그룹 상수 기계적 치환 금지.** `Faction.Defender` → `AnyDefender` 를 일괄로 밀면 지원계(힐·실드·버프·시너지)가 버퍼 없는 거점에 append 해 **힐러 결함과 같은 계열의 새 예외**를 만든다. 자연 방어가 있는 자리도 있다 — `ZoneApplySystem:45` 은 `WithAll<PathFollowState>` 라 거점이 애초에 안 걸린다. **unit 0 문서가 치환 지점을 자리별로 분류**해야 한다(«유닛만» / «유닛+거점» / «자연 배제»). 계약 1 은 «비트로 판정» 만 말하고 어느 비트를 넣을지는 말하지 않는다.
+
+**F5 — 미러 스칼라 이관은 unit 3 이 아니라 unit 4 다.** `EnsureGoalTowers` 는 `_goalStabilityMax <= 0` 이면 타워를 아예 안 세운다(`:4854`) — **덱 스칼라가 타워의 존재 조건**이다. `ResetGoalStability` 는 three-minute-survival 계약 9(시계와 짝)에 묶여 있고 `_goalBreached`·`_towerMissLogged`·`_leakTypeMissLogged` 리셋도 겸한다. README 파이프라인 표의 «unit 3» 표기를 unit 4 로 정정.
+
+**F6 · F7** — 계약 11·12 로 README 에 편입(투사체 진영 축 미통합 · 마음 통행 비차단).
+
+**리뷰가 방어한 것** (되돌리지 말 것): spawns[] 8개 소비처 감사(줄 참조 5곳 전부 유효) · 1축 교차 비트 · 저작/런타임 마스크 2분 · 모드 enum 기각 · 중립 3비트 예약(제약 8 위반 아님 — 계약 9 가 «술어 특별취급 금지» 로 닫았다).
 
 ## 3. 확정된 사용자 결정
 
@@ -120,18 +149,9 @@ foreach (var goalPoint in SystemAPI.Query<RefRO<GoalPoint>>().WithNone<DeadTag>(
 | 3 | 적 본능의 타겟 | `DefenderUnit` 만(포탑). SO 마스크라 콘텐츠 튜닝 사안 |
 | 4 | 방어 유닛이 적 거점을 때리나 | **아니다**(현행 `EnemyUnit` 유지). 모드별 콘텐츠는 범위 밖 |
 | 5 | 시트 컬럼 | 넣지 않는다. 부류는 스탯이 아니라 정체성 |
-| 6 | 잠자는 `GoalPoint` 경로 | **걷어내되 범위는 아래 표로 좁힌다**(논박 ⑪·⑫). goal-stability **스펙 문서는 남긴다**(이 스펙의 근거) |
+| 6 | 잠자는 `GoalPoint` 경로 | **걷어내되 자리마다 처분이 다르다** — 정본은 **README §결정 6 표**(논박 ⑪~⑬ 반영본). goal-stability **스펙 문서는 남긴다**(이 스펙의 근거) |
 
-**#6 의 확정된 범위** (2026-08-09 사용자 승인):
-
-| 걷어낸다 | 살린다 — 재조준 |
-|---|---|
-| `MapDocument.goalMaxStability[]` 저작 축 | `MovementSystem` 셀 단위 공성 게이트 → **계약 7 의 구현체** |
-| `BattleBridge.SpawnGoalEntities` (중복 스폰 경로) | 최후순위 판정 (키만 `GoalPoint` → `AnyStructure`) |
-| `GoalPoint` **타입** → `StructureTag` 로 흡수 | 도발 마스크 OR/원복 (`TauntAttackGrantSystem`) |
-| `BattleBridgeGoalStabilityTests` 4개 | 나머지 테스트 20개 (타입 치환 2~3줄) |
-
-`GoalCollapsedEventsSingleton` 은 **보류** — 계약 7 이 거점 단위 붕괴를 요구하므로 붕괴 알림 채널이 오히려 필요해진다. unit 4 에서 페이로드 일반화(`goalIndex` → 거점 식별)로 재사용한다.
+⚠ 이 자리에 있던 «걷어낸다 / 살린다» 2열 표는 **논박 ⑬ 에서 폐기**됐다(F2 를 «살린다» 로, F3 을 «살린다» 로 잘못 분류했다). **README §결정 6 의 3열 표를 볼 것.**
 
 ## 5. ⚠ 검증되지 않은 주장 (그대로 믿지 말 것)
 
@@ -146,14 +166,17 @@ foreach (var goalPoint in SystemAPI.Query<RefRO<GoalPoint>>().WithNone<DeadTag>(
 unit 0 이 실제로 하는 일:
 1. `Faction` 을 «진영 × 종류» 교차 비트로 재정의 + `Factions` 그룹 상수(`AnyUnit`/`AnyStructure`/`AnyDefender`/…). 정확한 비트 배치는 README §타겟 비트.
 2. 라이브 골 타워 `FactionTag` 를 `Defender` → `DefenderCore`.
-3. 잠자는 경로 정리 — **§4 «#6 의 확정된 범위» 표대로.** `GoalCollapsedEventsSingleton` 은 건드리지 않는다.
+3. 잠자는 경로 정리 — **README §결정 6 «자리마다 처분이 다르다» 표대로.** 기계적 일괄 치환 금지.
 4. 최후순위 판정 키를 `GoalPoint` 보유 → `(faction & AnyStructure) != 0` 으로 이관(`AttackSystem:529`).
-5. `MovementSystem:63-66` 의 `aliveGoalCells` 쿼리를 마음 태그로 갈아끼운다 — **지우지 말 것**(논박 ⑫).
-6. 부작용 2건이 꺼지는 것을 **의도된 변화로 기록**(행동 무변경 아님).
+   **+ 라이브 아키타입(`Faction.Defender`+`GoalTowerTag`, `GoalPoint` 없음) 케이스를 `GoalTargetingPriorityTests` 에 추가** — 현재 테스트는 잠자는 아키타입만 통과시킨다(논박 ⑬ F1).
+5. `ProjectileHitSystem:108` 골 풀 + `:529~541` 합류 블록 **삭제**. `:98` 의 `WithAny` 에 마음 태그 추가(논박 ⑬ F2). **치환하면 광역 2중 피해.**
+6. `MovementSystem:63-66` 게이트 + 소비처 + `GoalSiegeGateTests` 4개 **삭제**(논박 ⑬ F3). **방치하면 태그 흡수로 저절로 깨어나 라이브 공성이 깨진다.** unit 4 가 git 에서 참조 구현으로 되살린다.
+7. `Faction.Defender` → 그룹 상수 치환 지점을 **자리별로 분류한 표를 unit 0 문서에 넣는다**(«유닛만» / «유닛+거점» / «자연 배제»). 일괄 치환 시 버퍼 없는 거점에 append(논박 ⑬ F4).
+8. **행동 변화를 정직하게 적는다** — «부작용 2건 해소만» 이 아니다. 최후순위 신규 도입(F1)이 공성 체감을 바꾸는 게임플레이 변화다.
 
 리뷰: ECS 시뮬 변경이므로 **`ecs-reviewer`**.
 테스트: 기존 EditMode 전량 그린이 최소 조건. `Faction` 리터럴을 쓰는 테스트가 깨지면 그것이 곧 영향 범위 목록이다.
-**골 테스트 20개는 지우지 말고 타입만 치환한다** — 특히 `GoalTargetingPriorityTests` 는 위 4번의 유일한 안전망이라, 지우면 unit 0 을 무검증으로 하는 셈이다(논박 ⑪).
+**골 테스트 20개는 지우지 말고 타입만 치환한다**(논박 ⑪). 다만 그것만으로는 unit 0 이 검증되지 않는다 — 위 4번의 라이브 케이스 추가가 실질 안전망이다.
 
 ## 7. 워크트리 · 병행 세션 (중요)
 
