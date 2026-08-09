@@ -63,12 +63,26 @@ namespace Wassup.Bridge
                 for (int i = 0; i < n; i++)
                 {
                     walk[i] = (byte)(map.tiles[i] == MapTileType.Walk ? 1 : 0);
-                    // 저작본이 있으면 그것이 정본, 없으면 런타임과 **같은 단일 정의**로 파생.
-                    // 빌더 불변식은 "IsCreated ⇒ placeMask 생성됨" 이지만 픽스처와
-                    // BuildFallbackLinear 경로까지 강제되지는 않아 방어적으로 둔다.
-                    cellLayers[i] = map.placeMask.IsCreated
-                        ? PlacementLayers.Sanitize(map.placeMask[i])
-                        : PlacementLayers.Derive(map.tiles[i]);
+                    // traversal-layers unit 1b 회귀 수리 — **저작된 `placeMask` 를 읽지 않는다.**
+                    // 통행 층은 `tiles` 에서만 파생한다.
+                    //
+                    // 처음엔 `placeMask` 를 정본으로 삼았다(rev 2 계약 1: "셀 층 한 벌을
+                    // 배치·통행이 공유"). **틀렸다.** `placeMask` 의 저작 의미는 «칸의 종류»가
+                    // 아니라 **«어느 유닛이 여기 설 수 있나»** 다. 실측(MapDocument_Test):
+                    // `Walk` 칸 23개에 마스크 0 — 저작자가 "여기 배치 금지"를 칠한 것이고,
+                    // "여기 통행 금지"를 뜻하지 않는다. 그걸 통행으로 읽으면 그 맵에서
+                    // **통로 23칸이 라우팅에서 사라지고** 데코 7칸이 새 통로가 됐다.
+                    //
+                    // 더 나쁜 건 그 다음이다 — 라우팅은 `cellLayers`, 벽 충돌(`NavGrid`)은
+                    // `walkMask` 를 보므로 둘이 갈리면 **필드가 벽 안쪽을 가리키고 trim 이
+                    // 막는다**. "적이 통로에서 안 움직인다"로 나타나고 통행층과 무관한 이동
+                    // 버그로 오진된다.
+                    //
+                    // 파생만 쓰면 `cellLayers` 는 `walkMask`(1비트)의 **N비트 일반화**가 되어
+                    // 정의가 갈릴 수 없다. 물타일이 오면 `MapTileType.Water` → `Derive` 에
+                    // case 한 줄이고, 통행을 **저작**으로 나누고 싶어지면 그때 별도 배열을
+                    // 만든다(그때는 실제 예가 있을 것이다 — 지금은 없다).
+                    cellLayers[i] = PlacementLayers.Derive(map.tiles[i]);
                 }
 
                 // traversal-layers unit 1a·1b — 라우팅은 슬롯별 stride.

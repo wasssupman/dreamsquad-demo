@@ -69,6 +69,27 @@ namespace Wassup.Tests.EditMode
             };
         }
 
+        // 3x1 전부 Walk — 스폰(0,0) → 골(2,0) 이 **직교로** 이어진다.
+        // 2x2 픽스처는 스폰·골이 대각이라 코너컷 방지로 애초에 도달 불가라서
+        // "경로가 살아 있나" 를 물을 수 없다(이 함정을 두 번 밟았다).
+        private GeneratedMap MakeLinearMap()
+        {
+            int n = 3;
+            var tiles = new NativeArray<MapTileType>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Walk;
+            var placeMask = new NativeArray<byte>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++) placeMask[i] = (byte)PlacementLayer.Path;
+            var goals = new NativeArray<int2>(1, Allocator.Persistent);
+            goals[0] = new int2(2, 0);
+            var spawns = new NativeArray<int2>(1, Allocator.Persistent);
+            spawns[0] = new int2(0, 0);
+            return new GeneratedMap
+            {
+                tiles = tiles, placeMask = placeMask, spawns = spawns, goals = goals,
+                goal = new int2(2, 0), gridSize = new int2(3, 1), generatorVersion = 1,
+            };
+        }
+
         private FlowFieldSingleton Install(GeneratedMap map)
         {
             SimFieldInstaller.InstallNavFields(_em, in map, tileSize: 1f, origin: float3.zero, ref _handles);
@@ -76,31 +97,74 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void AuthoredPlaceMask_IsCarriedIntoSim()
+        public void AuthoredPlaceMask_IsIgnored_TraversalDerivesFromTiles()
         {
-            // 저작본이 정본이다 — 타일 종류와 직교하므로 파생값과 달라도 그대로 실린다.
-            byte authored = (byte)(PlacementLayer.Ground | PlacementLayer.Path);
+            // ⚠ 계약이 뒤집혔다 (1b 회귀 수리). 처음엔 저작된 `placeMask` 를 통행 층의
+            // 정본으로 삼았는데 **틀렸다** — 그 저작의 의미는 «어느 유닛이 여기 설 수
+            // 있나»(배치)이지 «지날 수 있나»(통행)가 아니다.
+            //
+            // 실측 근거: MapDocument_Test 는 `Walk` 칸 23개에 마스크 0 을 저작해 뒀다.
+            // "여기 배치 금지"인데, 그걸 통행으로 읽으면 통로 23칸이 라우팅에서 사라진다.
+            byte authored = (byte)PlacementLayer.Ground;   // 파생(Walk→Path)과 다르게 저작
             var map = MakeMap(withAuthoredMask: true, authoredValue: authored);
             try
             {
                 var field = Install(map);
-                Assert.IsTrue(field.cellLayers.IsCreated);
-                for (int i = 0; i < 4; i++)
-                    Assert.AreEqual(authored, field.cellLayers[i], $"cell {i}");
+                Assert.AreEqual((byte)PlacementLayer.Path, field.cellLayers[0],
+                    "Walk 칸은 저작이 뭐든 Path 로 파생된다 — 배치 저작이 통행을 바꾸지 않는다");
+                Assert.AreEqual((byte)PlacementLayer.Ground, field.cellLayers[1], "Place → Ground");
+                Assert.AreEqual((byte)0, field.cellLayers[2], "Deco → 층 없음");
             }
             finally { map.Dispose(); }
         }
 
         [Test]
-        public void AuthoredMask_IsSanitized()
+        public void CellLayers_AreTheNBitGeneralizationOfWalkMask()
         {
-            // 정의되지 않은 비트는 떨어진다 — 런타임과 같은 규칙(PlacementLayers.Sanitize).
-            var map = MakeMap(withAuthoredMask: true, authoredValue: 0xFF);
+            // 파생만 쓰므로 두 정의가 **갈릴 수 없다**. 이것이 1b 회귀 수리의 요점 —
+            // 라우팅(cellLayers)과 벽 충돌(walkMask)이 다른 지형을 보면 필드가 벽 안쪽을
+            // 가리키고 trim 이 막는다("적이 통로에서 안 움직인다").
+            var map = MakeMap(withAuthoredMask: true, authoredValue: 0xFF);   // 저작을 극단으로
             try
             {
                 var field = Install(map);
-                Assert.AreEqual(PlacementLayers.CellBits, field.cellLayers[0],
-                    "All(0xFF)은 유닛 쪽 표현이라 셀에서는 정의된 비트만 남는다");
+                for (int i = 0; i < field.CellCount; i++)
+                {
+                    bool walkable = field.walkMask[i] != 0;
+                    bool opensPath = (field.cellLayers[i] & (byte)PlacementLayer.Path) != 0;
+                    Assert.AreEqual(walkable, opensPath, $"cell {i} — 저작이 뭐든 두 정의는 같다");
+                }
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void SpawnAndGoalLayersClosed_FieldStillRoutes()
+        {
+            // ★ 라이브 경로 회귀. `BattleBridge` 는 필드를 굽기 **직전**(:1061-1070) 스폰·골
+            // 칸의 `placeMask` 를 0 으로 닫는다(`CloseCellLayers` — "적이 튀어나오는 칸 위에
+            // 방어유닛을 못 세운다"는 배치 불변식).
+            //
+            // unit 1b 초판은 `cellLayers = Sanitize(placeMask)` 였다. 그러면 **골의 통행 층이
+            // 0** 이 되고 → `FlowFieldBuilder` 가 `walkMask[srcIdx]==0` 인 소스를 버려 →
+            // **유효 소스 0 → 전 셀 MaxValue/zero → 적이 한 발도 안 움직인다.**
+            //
+            // 파생만 쓰면 배치 저작이 통행에 닿을 수 없어 구조적으로 불가능해진다.
+            // 기존 테스트들이 이걸 못 잡은 이유: `GeneratedMap` 을 직접 만들어 폐쇄를 안 거친다.
+            var map = MakeLinearMap();
+            try
+            {
+                // 라이브가 하는 짓을 그대로 — 스폰(0,0)과 골(2,0)의 배치 층을 닫는다.
+                map.placeMask[map.CellIndex(new int2(0, 0))] = 0;
+                map.placeMask[map.CellIndex(new int2(2, 0))] = 0;
+
+                var field = Install(map);
+                var dist = field.DistSlot(FlowFieldSingleton.PrimarySlot);
+
+                Assert.AreEqual(0, dist[2], "골은 배치가 닫혀도 통행 가능해야 한다 — dist 0");
+                Assert.AreNotEqual(int.MaxValue, dist[0],
+                    "스폰에서 골까지 경로가 살아 있어야 한다 (초판이면 여기가 MaxValue)");
+                Assert.AreEqual(20, dist[0], "직교 2칸 = 10+10");
             }
             finally { map.Dispose(); }
         }
@@ -339,6 +403,34 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(0, outMask[3], "층을 안 여는 칸은 아무도 못 지난다");
             }
             finally { layers.Dispose(); outMask.Dispose(); }
+        }
+
+        [Test]
+        public void MultiSlot_InstallTeardownReinstall_NoLeak()
+        {
+            // ECS 리뷰 M3 — 다중 슬롯이 unit 1b 의 핵심 기여인데 설치→소멸 사이클이
+            // 단일 슬롯으로만 검증돼 있었다. maskValues 가 multi-element 일 때도
+            // Teardown 이 전부 회수하고 재설치가 깨끗한지 본다.
+            var masks = new NativeArray<byte>(2, Allocator.Temp);
+            masks[0] = (byte)PlacementLayer.Ground;
+            masks[1] = (byte)PlacementLayer.Path;
+            var map = MakeLinearMap();
+            try
+            {
+                SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
+                var first = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+                Assert.AreEqual(2, first.MaskCount);
+
+                SimFieldInstaller.Teardown(_world, _em, ref _handles);
+                Assert.Catch(() => { var _ = first.maskValues[0]; }, "maskValues 도 회수된다");
+
+                // 재설치가 깨끗한가 — 이관 전 실패·이중 해제 없이 다시 선다.
+                SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
+                var second = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+                Assert.AreEqual(2, second.MaskCount);
+                Assert.AreEqual(0, second.DistSlot(1)[2], "재설치 후에도 Path 슬롯이 골을 찾는다");
+            }
+            finally { masks.Dispose(); map.Dispose(); }
         }
 
         [Test]
