@@ -22,10 +22,12 @@ MonoBehaviour:
   goal: {x: 15, y: 0}
   goals:
   - {x: 15, y: 0}
-  goalMaxStability:
-  - 0
   spawns:
   - {x: 0, y: 29}
   - {x: 29, y: 29}
+  structures:
+  - cell: {x: 15, y: 15}
+    side: 1
+    data: {fileID: 11400000, guid: 7540efc38821deb478b401efe2c2cf78, type: 2}
   authoringSeed: -1
   generatorVersion: 0
