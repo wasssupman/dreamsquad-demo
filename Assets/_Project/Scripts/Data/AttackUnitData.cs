@@ -13,6 +13,26 @@ namespace Wassup.Data
         public string id;
         public string displayName;
 
+        // traversal-layers unit 2 — 이 유닛이 **지날 수 있는** 층.
+        //
+        // ⚠ 타입이 `PlacementLayer` 인 것은 이름이 거짓말하는 것이다. 통행 판정은
+        // «(셀 층 & 유닛 층) != 0» 이라 **셀과 같은 비트 공간**이어야 하고, 셀 층은
+        // `PlacementLayers.Derive(tiles)` 가 만든다. 같은 비트를 가진 병렬 enum 을 만드는 건
+        // 순수 중복이므로(제약 8) 타입을 재사용한다. 리네임(`PlacementLayer` → `CellLayer`)은
+        // 참조가 40곳 넘어 후속 후보다.
+        //
+        // **배치 층과 다른 축이다.** 배치는 «여기 설 수 있나», 통행은 «여기 지날 수 있나».
+        // 실제로 갈리는 예가 있다 — 스폰·골 칸은 배치가 닫히지만 통행은 반드시 열려야 한다
+        // (README §0 의 회귀가 정확히 이 혼동이었다).
+        //
+        // 폴백 = `Path`(현행 재현). «방어유닛 = 자기 `placementLayers`» 폴백은 방어유닛을
+        // 실제로 움직이는 별도 spec 의 몫이다 — 지금 그렇게 하면 순찰 소환물이 `Ground` 로
+        // 떨어져 앵커가 자기 마스크 밖이 되고 굳는다(README §4).
+        public PlacementLayer traversalLayers = PlacementLayer.None;
+        public PlacementLayer EffectiveTraversalLayers
+            => traversalLayers == PlacementLayer.None ? PlacementLayer.Path : traversalLayers;
+
+
         // enemy-class-system Unit 0 — enemy archetype LABEL only. Behavior is NOT
         // derived from this; it comes from the Behavior fields below (enemy-behavior-components).
         [Header("Class")]

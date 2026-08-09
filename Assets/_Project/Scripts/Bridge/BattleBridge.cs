@@ -6180,6 +6180,9 @@ namespace Wassup.Bridge
             {
                 speed = unitData.moveSpeed,
                 radius = agentRadiusTiles * tileSize,
+                // traversal-layers unit 2 — sim 은 SO 를 못 읽으므로 스폰 시 1회 주입한다.
+                // 폴백(EffectiveTraversalLayers)이 Path 라 저작 전엔 현행과 동일하다.
+                traversalLayers = (byte)unitData.EffectiveTraversalLayers,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Movement.PatrolAnchor
             {
@@ -7552,6 +7555,8 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new PathFollowState
             {
                 speed = entry.unitType.moveSpeed,
+                // traversal-layers unit 2 — 위와 같은 규약(스폰 시 1회 주입, Path 폴백).
+                traversalLayers = (byte)entry.unitType.EffectiveTraversalLayers,
                 // continuous-agent-movement unit 3 — 반지름은 월드 단위로 넘긴다(sim 은 타일을 모른다).
                 radius = agentRadiusTiles * tileSize,
             });
