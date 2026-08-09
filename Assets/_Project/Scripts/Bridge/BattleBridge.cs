@@ -4914,6 +4914,57 @@ namespace Wassup.Bridge
                             {
                                 cell = new int2(cell.x + dx, cell.y + dy),
                             });
+
+                    // battle-structures unit 5 — 본능 공격. 전용 시스템 없음(계약 10):
+                    // AttackState + 출력 + ProjectileRef 를 베이크하면 통합 공격자 루프가
+                    // 유닛과 똑같이 처리한다(적 원거리의 «호밍 → 방어유닛 직격» 경로).
+                    // 마음(Core)은 이 분기 밖 — 공격하지 않는다.
+                    if (s.data.attackDamage > 0f)
+                    {
+                        if (s.data.projectile == null)
+                        {
+                            // 조용한 미발사 방지 — 적 베이크의 «outputs empty → walk-only» 선례.
+                            Debug.LogWarning($"[BattleBridge] {s.data.displayName}: attackDamage={s.data.attackDamage} 인데 projectile 미지정 — 무공격으로 베이크.", s.data);
+                        }
+                        else
+                        {
+                            _em.AddComponentData(entity, new AttackState
+                            {
+                                range = s.data.attackRange,
+                                cooldownDuration = s.data.attackCooldown,
+                                cooldownRemaining = 0f,
+                                attackTargetCount = 1,   // v1 = 투사체 1발 고정
+                                // 저작 타겟 마스크 재사용(unit 1 과 같은 축·같은 폴백).
+                                targetMask = Wassup.Battle.Combat.EnemyTargetDefaults.Resolve(
+                                    (int)s.data.targetFactions),
+                                hitDelaySec = 0f,
+                            });
+                            var outputs = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                            outputs.Add(new Wassup.Battle.Combat.AttackOutputElement
+                            {
+                                value = new Wassup.Data.AttackOutput
+                                {
+                                    kind = Wassup.Data.AttackOutputKind.Damage,
+                                    magnitude = s.data.attackDamage,
+                                },
+                            });
+                            var axes = ResolveProjectileAxes(s.data.projectile.flightMode);
+                            _em.AddComponentData(entity, new ProjectileRef
+                            {
+                                dataIndex = GetOrCreateProjectileDataIndex(s.data.projectile),
+                                speed = s.data.projectile.speed,
+                                hitThreshold = s.data.projectile.hitThreshold,
+                                visualScale = s.data.projectile.visualScale,
+                                onHitEffect = s.data.projectile.onHitEffect,
+                                splashRadius = s.data.projectile.splashRadius,
+                                splashDamageMul = s.data.projectile.splashDamageMul,
+                                movement = axes.movement,
+                                payload = axes.payload,
+                                arcHeight = s.data.projectile.arcHeight,
+                                impactTileRange = s.data.projectile.impactTileRange,
+                            });
+                        }
+                    }
                 }
 
                 // 뷰 — SO 의 viewPrefab 을 셀 중심에 직배치(sim→view 는 BoardSpace.ToView 경유,

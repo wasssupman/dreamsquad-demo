@@ -226,6 +226,99 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse((bool)GetField(_bridge, "_resultShown"));
         }
 
+        // ── unit 5 — 본능 공격 (전용 시스템 없음, 베이크로 통합 루프 합류) ──────
+
+        private StructureData MakeArmedInstinct(float damage, ProjectileData projectile)
+        {
+            var d = MakeStructureData(StructureKind.Instinct, hp: 400f);
+            d.attackDamage = damage;
+            d.attackRange = 4f;
+            d.attackCooldown = 1.25f;
+            d.projectile = projectile;
+            return d;
+        }
+
+        private ProjectileData MakeProjectile()
+        {
+            var p = ScriptableObject.CreateInstance<ProjectileData>();
+            _cleanup.Add(p);
+            return p;
+        }
+
+        [Test]
+        public void ArmedInstinct_BakesAttackPipeline_WithAuthoredMask()
+        {
+            var instinct = MakeArmedInstinct(damage: 25f, MakeProjectile());
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Enemy, data = instinct }));
+
+            Spawn();
+            var em = _world.EntityManager;
+            var e = TowerAt(new int2(5, 4));
+
+            Assert.IsTrue(em.HasComponent<Wassup.Battle.Combat.AttackState>(e), "공격 저작 본능은 AttackState 를 갖는다");
+            var atk = em.GetComponentData<Wassup.Battle.Combat.AttackState>(e);
+            Assert.AreEqual(4f, atk.range, 1e-4f);
+            Assert.AreEqual(1, atk.attackTargetCount, "v1 = 투사체 1발 고정");
+            Assert.AreEqual((int)Faction.DefenderUnit, atk.targetMask,
+                "SO 기본 마스크(DefenderUnit — 포탑)가 그대로 흐른다");
+            Assert.IsTrue(em.HasComponent<Wassup.Battle.Combat.Projectile.ProjectileRef>(e));
+            Assert.GreaterOrEqual(em.GetComponentData<Wassup.Battle.Combat.Projectile.ProjectileRef>(e).dataIndex, 0);
+            var outputs = em.GetBuffer<Wassup.Battle.Combat.AttackOutputElement>(e);
+            Assert.AreEqual(1, outputs.Length);
+            Assert.AreEqual(25f, outputs[0].value.magnitude, 1e-4f);
+        }
+
+        // 발사 실증 — 합성이 아니라 실 AttackSystem 이 브리지가 세운 본능을 처리한다.
+        [Test]
+        public void ArmedInstinct_FiresProjectileRequest_AtDefenderInRange()
+        {
+            var instinct = MakeArmedInstinct(damage: 25f, MakeProjectile());
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Enemy, data = instinct }));
+
+            Spawn();
+            var em = _world.EntityManager;
+            var e = TowerAt(new int2(5, 4));
+            float3 instinctPos = em.GetComponentData<Unity.Transforms.LocalTransform>(e).Position;
+
+            // 사거리 내 방어유닛.
+            var defender = em.CreateEntity();
+            em.AddComponentData(defender, Unity.Transforms.LocalTransform.FromPosition(
+                instinctPos + new float3(2f, 0f, 0f)));
+            em.AddComponentData(defender, new Health { value = 100f, max = 100f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
+            em.AddComponent<Wassup.Battle.Units.DefenderUnitTag>(defender);
+            em.AddBuffer<IncomingDamage>(defender);
+
+            var simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(_world.CreateSystem<Wassup.Battle.Combat.AttackSystem>());
+            _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            Assert.IsTrue(em.HasComponent<Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest>(e),
+                "쿨다운 0 + 사거리 내 대상 → 통합 루프가 투사체 요청을 부착한다");
+            Assert.AreEqual(defender,
+                em.GetComponentData<Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest>(e).target,
+                "겨눈 것 = 저작 마스크의 후보(방어유닛) — 직격 호밍이라 피해풀 축과 갈릴 자리가 없다(계약 11)");
+        }
+
+        [Test]
+        public void ArmedInstinct_WithoutProjectile_WarnsAndBakesUnarmed()
+        {
+            var instinct = MakeArmedInstinct(damage: 25f, projectile: null);
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Enemy, data = instinct }));
+
+            UnityEngine.TestTools.LogAssert.Expect(LogType.Warning,
+                new System.Text.RegularExpressions.Regex("projectile 미지정"));
+            Spawn();
+
+            Assert.IsFalse(_world.EntityManager.HasComponent<Wassup.Battle.Combat.AttackState>(
+                TowerAt(new int2(5, 4))),
+                "조용한 미발사 대신 경고 + 무공격 베이크(적 walk-only 선례)");
+        }
+
         // ── Helpers (GoalTowerArchetypeTests 동형) ──────────────────────────────
 
         private static void CallPrivateMethod(object target, string name)
