@@ -251,5 +251,89 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(IncomingSum(b), 0f, "다음 공격은 새로 고른다");
             Assert.AreEqual(aAfterFirst, IncomingSum(a), 1e-4f, "사거리 밖이 된 1회차 대상은 더 맞지 않는다");
         }
+
+        // ── e2e — 붐비는 스트림에서 «겨눈 대상 ≡ 맞은 대상» ────────────────────
+
+        [Test]
+        public void Crowd_OvertakingStream_HitAlwaysMatchesTheCommittedTarget()
+        {
+            // 실전 조건 재현: Artillery 형(사거리 7)이 서로 다른 속도로 흘러오는 적 12기를
+            // 상대한다. 속도가 달라 **추월이 계속 일어나므로** wind-up 0.3초 안에 최근접
+            // 순위가 수시로 뒤집힌다 — 예전 코드가 엉뚱한 적을 때리던 바로 그 상황이다.
+            //
+            // 같은 런에서 두 수를 센다:
+            //   · mismatchNow        = 겨눈 대상 ≠ 실제 맞은 대상  → **0 이어야 한다**
+            //   · wouldHaveMismatched = 겨눈 대상 ≠ RESOLVE 프레임의 최근접
+            //                          → 예전 코드였다면 어긋났을 횟수. **0 보다 커야**
+            //                            이 시나리오가 결함을 실제로 자극했다는 증거가 된다.
+            const float Range = 7f;
+            var def = CreatePlainDefender(new float3(0f, 0f, 0f), range: Range);
+            _em.SetComponentData(def, new AttackState
+            {
+                range = Range, cooldownDuration = 0.5f, cooldownRemaining = 0f,
+                attackTargetCount = 1, targetMask = (int)Faction.Enemy, hitDelaySec = HitDelay,
+            });
+
+            const int N = 12;
+            var enemies = new Entity[N];
+            var speed = new float[N];
+            var prevDmg = new float[N];
+            for (int i = 0; i < N; i++)
+            {
+                enemies[i] = CreateEnemy(new float3(7.5f - i * 0.55f, 0f, 0f));
+                _em.SetComponentData(enemies[i], new Health { value = 999999f, max = 999999f });
+                speed[i] = 0.6f + 0.11f * (i % 5);   // index 기반 결정론 — 난수 없음
+            }
+
+            int starts = 0, resolves = 0, lapses = 0, mismatchNow = 0, wouldHaveMismatched = 0;
+            Entity committed = Entity.Null;
+            const float Dt = 0.016f;
+
+            for (int f = 0; f < 4000; f++)
+            {
+                for (int i = 0; i < N; i++)
+                {
+                    float nx = _em.GetComponentData<LocalTransform>(enemies[i]).Position.x - speed[i] * Dt;
+                    if (nx < -1.5f) nx = 9f;                       // 재진입 — 스트림 유지
+                    MoveTo(enemies[i], new float3(nx, 0f, 0f));
+                }
+                for (int i = 0; i < N; i++) prevDmg[i] = IncomingSum(enemies[i]);
+
+                bool windUpBefore = _em.GetComponentData<AttackState>(def).hitDelayRemaining > 0f;
+                Tick(Dt);
+                var after = _em.GetComponentData<AttackState>(def);
+
+                if (!windUpBefore && after.hitDelayRemaining > 0f) { committed = after.committedTarget; starts++; }
+                if (!windUpBefore || after.hitDelayRemaining > 0f) continue;
+
+                resolves++;
+                int hitIdx = -1;
+                for (int i = 0; i < N; i++)
+                    if (IncomingSum(enemies[i]) > prevDmg[i] + 1e-5f) { hitIdx = i; break; }
+                if (hitIdx < 0) { lapses++; continue; }
+
+                int committedIdx = -1, nearestIdx = -1;
+                float bestSq = float.MaxValue;
+                for (int i = 0; i < N; i++)
+                {
+                    if (enemies[i] == committed) committedIdx = i;
+                    float ex = _em.GetComponentData<LocalTransform>(enemies[i]).Position.x;
+                    if (math.abs(ex) > Range) continue;
+                    if (ex * ex < bestSq) { bestSq = ex * ex; nearestIdx = i; }
+                }
+                if (hitIdx != committedIdx) mismatchNow++;
+                if (nearestIdx >= 0 && nearestIdx != committedIdx) wouldHaveMismatched++;
+            }
+
+            UnityEngine.Debug.Log(
+                $"[target-persistence unit 0 e2e] START {starts} · RESOLVE {resolves} · 불발 {lapses} | " +
+                $"겨눈≠맞은 {mismatchNow} | 예전이라면 어긋났을 {wouldHaveMismatched} " +
+                $"({(resolves > 0 ? wouldHaveMismatched * 100 / resolves : 0)}%)");
+
+            Assert.Greater(resolves, 50, "시나리오가 충분히 돌아야 통계가 의미 있다");
+            Assert.Greater(wouldHaveMismatched, 0,
+                "이 시나리오가 결함을 자극하지 못하면 아래 단언이 공허해진다");
+            Assert.AreEqual(0, mismatchNow, "겨눈 대상과 맞은 대상은 항상 같아야 한다");
+        }
     }
 }

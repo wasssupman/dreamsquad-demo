@@ -67,7 +67,16 @@ frontmost 블록 **직후**, facing override **직전**에 넣는다. 이 자리
 - [x] compile 에러 0 · EditMode **1993 중 1990 통과 · 실패 0**(나머지 3은 기존 `[Ignore]`)
 - [x] 신규 테스트 7건 (`AttackCommitTests`): ① wind-up 중 더 가까운 적이 나타나도 커밋 대상이 유지된다 ② 커밋 대상이 죽으면 strict lapse(재선정 없음) ③ 사거리 이탈도 lapse ④ `PastGoalTag` 는 lapse 사유가 아니다 ⑤ RESOLVE 후 커밋이 비워진다 ⑥ `hitDelaySec == 0` 이면 거동 불변 ⑦ 다음 공격은 새로 고른다(커밋은 공격 1회만 산다)
 - [x] **기존 타겟팅 테스트 6종이 기대값 갱신 0 으로 그대로 그린** — `AttackSystemMaskTests` · `AttackSystemUnifiedLoopTests` · `EnemyTargetPriorityTests` · `GoalTargetingPriorityTests` · `LowestHealthTargetingTests` · `FrontmostAttackLockTests`. **이것이 «타겟팅 정책을 안 건드렸다»의 증거다** — 하나라도 기대값을 고쳐야 했다면 선정 규칙이 움직인 것이다
-- [ ] **Play 육안**: 빔 레인저가 겨눈 적과 실제로 맞는 적이 일치한다(지금은 어긋난다)
+- [x] **e2e 실측** (`Crowd_OvertakingStream_HitAlwaysMatchesTheCommittedTarget`) — Artillery 형(사거리 7) 하나 vs 서로 다른 속도로 흘러오는 적 12기, 4000프레임(≈64초). 속도는 index 기반 결정론(난수 없음):
+
+  ```
+  START 125 · RESOLVE 125 · 불발 0 | 겨눈≠맞은 0 | 예전이라면 어긋났을 39 (31%)
+  ```
+
+  · **겨눈 대상 ≠ 맞은 대상 = 0.** 125회 전부 일치.
+  · **31% (125회 중 39회)** 는 RESOLVE 시점의 최근접이 커밋 대상과 달랐다 — **예전 코드였다면 그만큼 엉뚱한 적을 때렸다**. 이 수가 0 이면 시나리오가 결함을 자극조차 못 한 것이라 위의 «0» 이 공허해지므로, 테스트가 `wouldHaveMismatched > 0` 도 함께 단언한다.
+  · **불발 0** — strict lapse 로 인한 빈 스윙이 이 시나리오에선 한 번도 없었다(적이 죽지 않고 사거리를 유지하는 조건). 실전에서 대상이 죽는 빈도는 별개이므로 Play 체감으로 확인한다.
+- [ ] **Play 육안**: ① 빔·투사체가 향한 적과 데미지가 뜨는 적이 일치 ② 커밋 대상이 wind-up 중 죽어 생기는 **빈 스윙이 거슬리지 않는지**
 
 ---
 
