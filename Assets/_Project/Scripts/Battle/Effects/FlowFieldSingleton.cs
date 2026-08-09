@@ -9,8 +9,20 @@ namespace Wassup.Battle.Effects
     // Movement 맥락이 읽기 전용으로 consume.
     public struct FlowFieldSingleton : IComponentData
     {
-        public NativeArray<float2> flow;        // [width * height], 각 cell 의 단위 방향. goal = zero.
-        public NativeArray<int>    dist;        // BFS cost from nearest goal. Unreachable = int.MaxValue.
+        // traversal-layers unit 1a — 라우팅은 **슬롯별 flat stride** 다: `[slot * CellCount + cell]`.
+        // 슬롯 = 통행 마스크 하나. 지금은 슬롯 1개뿐이라 인덱스가 셀 인덱스와 같지만,
+        // **직접 인덱싱하지 말고 `FlowSlot(slot)` / `DistSlot(slot)` 뷰를 쓸 것** — 슬롯이
+        // 늘어나는 순간(unit 1b) 직접 인덱싱은 조용히 다른 슬롯을 읽는다.
+        //
+        // ⚠ 왜 싱글턴을 여러 개로 쪼개지 않았나: `SystemAPI.GetSingleton<T>()` 는 매치가
+        // 2개 이상이면 throw 한다. 이 컴포넌트 소비처 15곳 중 11곳은 라우팅을 아예 안 읽고
+        // tileSize/gridSize/origin(=기하)만 읽는다. 그래서 **기하는 1벌, 라우팅만 N벌**이며
+        // 둘은 한 컴포넌트 안에 산다. (`NativeArray<NativeArray<T>>` 는 불법이라 stride 다.)
+        public NativeArray<float2> flow;        // [MaskCount * CellCount] 단위 방향. goal = zero.
+        public NativeArray<int>    dist;        // [MaskCount * CellCount] 골까지 남은 비용. 도달불가 = int.MaxValue.
+        // 슬롯 → 그 슬롯이 라우팅하는 통행 마스크 값. **오름차순**(결정론, 계약 5).
+        // 미생성 = 슬롯 1개(primary). IsCreated 불변식에는 넣지 않는다(픽스처 보호).
+        public NativeArray<byte>   maskValues;
         // continuous-agent-movement unit 1 — 정적 walk 마스크(1 = tiles == Walk)의 단일 소유자.
         // 이전엔 DefenderFieldSingleton 이 들고 있었다(그쪽 주석: "goal field 가 저장하지 않는 값").
         // 정적 벽은 goal field 가 정본이므로 이리로 옮겼고, DefenderFieldSystem 은 읽기만 한다.
@@ -41,6 +53,29 @@ namespace Wassup.Battle.Effects
 
         public bool IsCreated => flow.IsCreated && dist.IsCreated;
 
+        // ── traversal-layers unit 1a — 슬롯 접근 ────────────────────────────────
+        // CellCount 를 필드로 두지 않고 gridSize 에서 파생한다 — 직접 초기화하는 EditMode
+        // 픽스처 수십 개가 새 필드를 안 채워도 그대로 서게 하기 위함이다.
+        public int CellCount => gridSize.x * gridSize.y;
+        public int MaskCount => (flow.IsCreated && CellCount > 0) ? flow.Length / CellCount : 1;
+
+        public const int PrimarySlot = 0;
+
+        // 유닛의 통행 층 → 슬롯. 못 찾으면 primary(현행 동작) — 마스크 미부착 엔티티와
+        // 픽스처가 그대로 돈다.
+        public int SlotFor(byte unitLayers)
+        {
+            if (!maskValues.IsCreated) return PrimarySlot;
+            for (int i = 0; i < maskValues.Length; i++)
+                if (maskValues[i] == unitLayers) return i;
+            return PrimarySlot;
+        }
+
+        // 슬롯의 라우팅을 **길이 CellCount 인 뷰**로 준다. 소비자(순수 함수 포함)는 stride 를
+        // 모른 채 0..n-1 로 인덱싱하면 된다.
+        public NativeArray<float2> FlowSlot(int slot) => flow.GetSubArray(slot * CellCount, CellCount);
+        public NativeArray<int>    DistSlot(int slot) => dist.GetSubArray(slot * CellCount, CellCount);
+
         // multi-goal-map 유닛 2 — 셀이 골인가. goals 설정 시 멤버십(1~4 소량 루프),
         // 아니면 primary goalCell 폴백. goals 를 안 채우는 EditMode 픽스처는 기존 단일-goalCell
         // 동작 그대로 유지 → 도달/wall예외/해저드검증이 골 개수에 무관해진다.
@@ -62,6 +97,7 @@ namespace Wassup.Battle.Effects
             if (goals.IsCreated) goals.Dispose();
             if (walkMask.IsCreated) walkMask.Dispose();
             if (cellLayers.IsCreated) cellLayers.Dispose();
+            if (maskValues.IsCreated) maskValues.Dispose();
         }
     }
 }

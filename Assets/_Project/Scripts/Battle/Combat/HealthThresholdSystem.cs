@@ -306,7 +306,7 @@ namespace Wassup.Battle.Combat
 
             if (!DefenderDensity.TryFindDensestCell(defCells, densityRadius, ff.gridSize, out int2 desiredCell, out _))
                 return false; // 방어유닛 전멸 → skip
-            if (!BlinkMath.TryFindLandingCell(desiredCell, ff.dist, ff.gridSize, math.max(0, maxRingRadius), out int2 landing))
+            if (!BlinkMath.TryFindLandingCell(desiredCell, ff.DistSlot(FlowFieldSingleton.PrimarySlot), ff.gridSize, math.max(0, maxRingRadius), out int2 landing))
                 return false; // 링 상한 내 착지 불가 → skip
             landingCell = landing;
             destWorld = GridMath.CellToWorldCenter(landing, ff.tileSize, 0f, origin: ff.origin);

@@ -910,7 +910,9 @@ namespace Wassup.Bridge
             {
                 var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(spawnCell, field.gridSize);
-                if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
+                // traversal-layers unit 1a — 라우팅은 슬롯별 stride 다. 슬롯 뷰로 읽는다.
+                var spawnFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+                if (idx >= 0 && idx < spawnFlow.Length) flowDir = spawnFlow[idx];
             }
 
             // 폭 중앙 기준 대칭 이산 N-레인 분율 (상단은 topScale 로 좁힘). 스폰 순서 round-robin.
@@ -1903,19 +1905,23 @@ namespace Wassup.Bridge
             outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
             int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어
+            // traversal-layers unit 1a — 예고 라인도 슬롯 뷰로 읽는다. 이동(MovementSystem)과
+            // 같은 슬롯을 봐야 "라인 ≠ 이동선"이 재발하지 않는다.
+            var lineFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+            var lineDist = field.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
             for (int i = 0; i < guard; i++)
             {
                 cell = Wassup.Battle.Movement.GridMath.WorldToCell(
                     pos, field.tileSize, field.gridSize, origin: field.origin);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
-                if (idx < 0 || idx >= field.flow.Length) break;
-                if (field.dist[idx] == 0) break; // 골 도달
+                if (idx < 0 || idx >= lineFlow.Length) break;
+                if (lineDist[idx] == 0) break; // 골 도달
 
                 // unit 10 — 목표점 선택 규칙은 MovementSystem 과 같은 순수 헬퍼 하나다.
                 // (평활화/코너 꼭짓점 → 폴백 필드 스텝 → 골·고립 종료.) 여기 인라인하지
                 // 말 것 — 갈라지면 "라인 ≠ 이동선" 부류가 재발한다.
                 if (!Wassup.Battle.Movement.PathSmoothing.TryStepTarget(
-                        pos, in nav, in field.flow, radius,
+                        pos, in nav, in lineFlow, radius,
                         Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 next))
                     break;
                 pos = next;

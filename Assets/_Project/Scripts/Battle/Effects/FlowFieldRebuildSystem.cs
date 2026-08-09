@@ -46,7 +46,10 @@ namespace Wassup.Battle.Effects
             if (signature == field.blockedSignature) return;   // 내용 무변경 — 헛 재빌드 금지
 
             int w = field.gridSize.x, h = field.gridSize.y, n = w * h;
-            if (field.walkMask.Length != n || field.flow.Length != n || field.dist.Length != n) return;
+            // traversal-layers unit 1a — 라우팅은 stride 이므로 길이는 슬롯 수의 배수다.
+            if (field.walkMask.Length != n
+                || field.flow.Length != field.MaskCount * n
+                || field.dist.Length != field.MaskCount * n) return;
 
             // 정적 지형에서 장애물을 뺀 합성 마스크. walkMask 자체는 덮어쓰지 않는다 —
             // 그건 지형이고 장애물은 별개 층이다.
@@ -67,7 +70,9 @@ namespace Wassup.Battle.Effects
                     sources.Add(field.goalCell);
 
                 FlowFieldBuilder.BuildFromSources(
-                    combined, field.gridSize, sources.AsArray(), field.flow, field.dist);
+                    combined, field.gridSize, sources.AsArray(),
+                    field.FlowSlot(FlowFieldSingleton.PrimarySlot),
+                    field.DistSlot(FlowFieldSingleton.PrimarySlot));
             }
             finally
             {

@@ -67,8 +67,16 @@ namespace Wassup.Bridge
                         : PlacementLayers.Derive(map.tiles[i]);
                 }
 
-                var flow = new NativeArray<float2>(n, Allocator.Persistent);
-                var dist = new NativeArray<int>(n, Allocator.Persistent);
+                // traversal-layers unit 1a — 라우팅은 슬롯별 stride. 지금 슬롯 1개라
+                // 길이가 n 이고 인덱스가 셀 인덱스와 같다(바이트 동일 회귀 축).
+                const int maskCount = 1;
+                var flow = new NativeArray<float2>(maskCount * n, Allocator.Persistent);
+                var dist = new NativeArray<int>(maskCount * n, Allocator.Persistent);
+                // 슬롯 0 이 라우팅하는 통행 마스크 = Path(경로 칸). walkMask 가 tiles==Walk 이고
+                // Walk 는 Path 층을 여므로(PlacementLayers.Derive) 지금은 정확히 같은 집합이다
+                // — unit 1b 가 마스크 기반 빌드로 갈아탈 때 이 등식이 무변경의 근거가 된다.
+                var maskValues = new NativeArray<byte>(maskCount, Allocator.Persistent);
+                maskValues[0] = (byte)PlacementLayer.Path;
                 NativeArray<int2> goalsField = default;
                 try
                 {
@@ -84,7 +92,9 @@ namespace Wassup.Bridge
                     if (hasGoals) goalsField.CopyFrom(map.goals);
                     else goalsField[0] = goal;
 
-                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField, flow, dist);
+                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField,
+                        flow.GetSubArray(FlowFieldSingleton.PrimarySlot * n, n),
+                        dist.GetSubArray(FlowFieldSingleton.PrimarySlot * n, n));
 
                     var data = new FlowFieldSingleton
                     {
@@ -92,6 +102,7 @@ namespace Wassup.Bridge
                         dist = dist,
                         walkMask = walk,
                         cellLayers = cellLayers,
+                        maskValues = maskValues,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -109,6 +120,7 @@ namespace Wassup.Bridge
                 {
                     if (flow.IsCreated) flow.Dispose();
                     if (dist.IsCreated) dist.Dispose();
+                    if (maskValues.IsCreated) maskValues.Dispose();
                     if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
                     throw;
                 }

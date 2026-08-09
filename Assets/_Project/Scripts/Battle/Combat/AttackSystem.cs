@@ -586,7 +586,8 @@ namespace Wassup.Battle.Combat
                             && tgtCell.x >= 0 && tgtCell.x < gridSize.x
                             && tgtCell.y >= 0 && tgtCell.y < gridSize.y)
                         {
-                            fdist = flowField.dist[GridMath.CellIndex(tgtCell, gridSize)];
+                            // traversal-layers unit 1a — 슬롯 뷰(직접 인덱싱 금지).
+                            fdist = flowField.DistSlot(FlowFieldSingleton.PrimarySlot)[GridMath.CellIndex(tgtCell, gridSize)];
                         }
                         if (fdist != FrontmostTargeting.UnreachableDist)
                         {
@@ -1523,7 +1524,7 @@ namespace Wassup.Battle.Combat
                                 {
                                     var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
-                                    float2 flowDir = ff.flow[fIdx];
+                                    float2 flowDir = ff.FlowSlot(FlowFieldSingleton.PrimarySlot)[fIdx];
                                     float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
                                     dir = math.normalizesafe(D - E);
                                     if (math.lengthsq(dir) < 1e-6f)

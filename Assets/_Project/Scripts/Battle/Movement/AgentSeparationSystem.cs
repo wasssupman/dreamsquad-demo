@@ -117,9 +117,11 @@ namespace Wassup.Battle.Movement
                     if (follows[i].holdingGround != 0 && field.flow.IsCreated)
                     {
                         int2 cell = GridMath.WorldToCell(from, field.tileSize, field.gridSize, origin: field.origin);
+                        // traversal-layers unit 1a — 슬롯 뷰로 읽는다(직접 인덱싱 금지).
                         if (nav.InBounds(cell))
                             accumulated = Separation.RejectForwardPush(
-                                accumulated, field.flow[GridMath.CellIndex(cell, field.gridSize)]);
+                                accumulated,
+                                field.FlowSlot(FlowFieldSingleton.PrimarySlot)[GridMath.CellIndex(cell, field.gridSize)]);
                         if (math.lengthsq(accumulated) < 1e-8f) continue;
                     }
 

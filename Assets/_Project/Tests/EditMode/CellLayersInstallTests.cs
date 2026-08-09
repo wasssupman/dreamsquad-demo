@@ -175,6 +175,88 @@ namespace Wassup.Tests.EditMode
             finally { map.Dispose(); }
         }
 
+        // ── unit 1a — 슬롯 stride ──────────────────────────────────────────────
+
+        [Test]
+        public void Install_HasExactlyOneSlot_AndViewCoversWholeGrid()
+        {
+            // 지금은 슬롯 1개다. 이 등식이 «바이트 동일»의 근거 — 슬롯 뷰가 곧 전체 배열이다.
+            var map = MakeMap(withAuthoredMask: false);
+            try
+            {
+                var field = Install(map);
+                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(4, field.CellCount);
+                Assert.AreEqual(field.CellCount, field.FlowSlot(FlowFieldSingleton.PrimarySlot).Length);
+                Assert.AreEqual(field.CellCount, field.DistSlot(FlowFieldSingleton.PrimarySlot).Length);
+                Assert.AreEqual(field.flow.Length, field.MaskCount * field.CellCount);
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void PrimarySlot_RoutesThePathLayer()
+        {
+            // unit 1b 의 무변경 논거를 여기 고정한다: 현재 라우팅은 `walkMask`(= tiles==Walk)
+            // 로 굽는데 `Walk` 는 `Path` 층을 연다(PlacementLayers.Derive). 따라서 1b 가
+            // «(cellLayers & Path) != 0» 기반으로 갈아타도 **같은 집합**이 나온다.
+            var map = MakeMap(withAuthoredMask: false);
+            try
+            {
+                var field = Install(map);
+                Assert.AreEqual((byte)PlacementLayer.Path, field.maskValues[FlowFieldSingleton.PrimarySlot]);
+                for (int i = 0; i < field.CellCount; i++)
+                {
+                    bool walkable = field.walkMask[i] != 0;
+                    bool opensPath = (field.cellLayers[i] & (byte)PlacementLayer.Path) != 0;
+                    Assert.AreEqual(walkable, opensPath, $"cell {i} — walkMask 와 Path 층이 같은 집합");
+                }
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void SlotFor_UnknownMask_FallsBackToPrimary()
+        {
+            // 마스크 미부착 엔티티·픽스처가 그대로 돌아야 한다(현행 동작 보존).
+            var map = MakeMap(withAuthoredMask: false);
+            try
+            {
+                var field = Install(map);
+                Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
+                    field.SlotFor((byte)PlacementLayer.Ground), "등록 안 된 마스크 → primary");
+                Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(0));
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void SlotFor_KnownMask_ReturnsItsSlot()
+        {
+            // unit 1b 가 마스크를 여러 개 실을 때의 계약. 여기선 손으로 구성해 술어만 본다.
+            var masks = new NativeArray<byte>(2, Allocator.Temp);
+            masks[0] = (byte)PlacementLayer.Ground;   // 오름차순(계약 5)
+            masks[1] = (byte)PlacementLayer.Path;
+            try
+            {
+                var field = new FlowFieldSingleton { maskValues = masks, gridSize = new int2(2, 2) };
+                Assert.AreEqual(0, field.SlotFor((byte)PlacementLayer.Ground));
+                Assert.AreEqual(1, field.SlotFor((byte)PlacementLayer.Path));
+            }
+            finally { masks.Dispose(); }
+        }
+
+        [Test]
+        public void MaskCount_DefaultsToOne_WhenFixtureLeavesFlowUncreated()
+        {
+            // 직접 초기화하는 EditMode 픽스처 수십 개가 새 필드를 안 채워도 서야 한다 —
+            // CellCount 를 gridSize 에서 파생하고 MaskCount 를 1 로 떨어뜨리는 이유다.
+            var field = new FlowFieldSingleton { gridSize = new int2(4, 3) };
+            Assert.AreEqual(12, field.CellCount);
+            Assert.AreEqual(1, field.MaskCount);
+            Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(123));
+        }
+
         [Test]
         public void Teardown_IsIdempotent()
         {

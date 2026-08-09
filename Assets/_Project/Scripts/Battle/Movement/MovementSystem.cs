@@ -39,6 +39,11 @@ namespace Wassup.Battle.Movement
             // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
             // 장애물을 합쳐 프레임당 1회 조립하고, 아래 모든 충돌 해결이 이것만 본다.
             var nav = MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacleSingleton);
+            // traversal-layers unit 1a — 라우팅은 슬롯별 stride 다. 지금은 전 엔티티가
+            // primary 슬롯을 쓴다(마스크 축은 unit 2a). 뷰는 길이 CellCount 라 아래 소비자
+            // (순수 함수 포함)는 stride 를 모른 채 셀 인덱스로 읽는다.
+            var goalFlow = field.FlowSlot(FlowFieldSingleton.PrimarySlot);
+            var goalDist = field.DistSlot(FlowFieldSingleton.PrimarySlot);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
@@ -237,14 +242,14 @@ namespace Wassup.Battle.Movement
                 }
                 else
                 {
-                    dir = hunting ? huntField.flow[idx] : field.flow[idx];
+                    dir = hunting ? huntField.flow[idx] : goalFlow[idx];
                     if (math.lengthsq(dir) < 1e-6f)
                     {
                         // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                         // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
                         // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
                         // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
-                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
+                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : goalDist, field.gridSize);
                         if (math.lengthsq(recovDir) < 1e-6f)
                         {
                             // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
@@ -267,7 +272,7 @@ namespace Wassup.Battle.Movement
                         // 목표점 선택 규칙은 예고 라인과 공유(TryStepTarget) — 갈라지면
                         // "라인 ≠ 이동선" 부류가 재발한다.
                         // 사냥 분기는 defender field 를 따르므로 그쪽 flow 로 후보를 만든다.
-                        var smoothFlow = hunting ? huntField.flow : field.flow;
+                        var smoothFlow = hunting ? huntField.flow : goalFlow;
                         if (PathSmoothing.TryStepTarget(
                                 current, in nav, in smoothFlow, follow.ValueRO.radius,
                                 PathSmoothing.DefaultLookahead, out float3 aim))
