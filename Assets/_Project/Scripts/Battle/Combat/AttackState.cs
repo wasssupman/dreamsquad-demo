@@ -27,5 +27,17 @@ namespace Wassup.Battle.Combat
         // 선택한 방향. RESOLVE 재타겟 결과와 무관하게 같은 trigger 기준축을 보존한다.
         public float2 committedDirection;
         public byte hasCommittedDirection;
+
+        // target-persistence unit 0 — START 때 겨눈 **대상**. 위 committedDirection 과 같은
+        // 수명(START → RESOLVE 1회)이고, 그 밖에서는 항상 비어 있다.
+        //
+        // 없으면: START 게이트는 hitDelayRemaining==0 일 때만 걸리는데 타겟 선정 사슬은 매
+        // 프레임 돌고 RESOLVE 는 그 프레임의 bestTarget 을 쓴다 → 방어유닛 24/26 이 가진
+        // hitDelaySec 0.3 동안 대상이 바뀌어 **애니는 A를 향하는데 데미지·투사체·넉백·수면·
+        // 드림캐쳐 payload 는 B로 간다**.
+        //
+        // 「어떻게 고르나」는 건드리지 않는다 — 「고른 뒤 한 공격 안에서 안 바뀐다」만이다.
+        public Entity committedTarget;
+        public byte hasCommittedTarget;
     }
 }

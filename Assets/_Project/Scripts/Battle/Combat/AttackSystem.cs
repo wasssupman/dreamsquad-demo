@@ -723,6 +723,40 @@ namespace Wassup.Battle.Combat
                     }
                 }
 
+                // target-persistence unit 0 — 공격 1회 타겟 커밋. wind-up 중에는 START 에서
+                // 겨눈 대상을 유지한다(판정은 frontmost 블록과 **같은 규칙** — 생존 + 사거리,
+                // 실패면 strict lapse 로 재선정하지 않는다).
+                //
+                // 이 자리인 이유:
+                //  · 어그로(:672~)보다 뒤 + `!aggroed` 게이트 — 사용자 원칙 2가 «어그로 끌림»을
+                //    변경 사유로 명시했다. 어그로가 이겨야 한다.
+                //  · frontmost(:691~)보다 뒤 + `!wantFrontmost` 게이트 — 그쪽이 이미 같은 일을
+                //    한다(중복 방지).
+                //  · facing override(아래)보다 **앞** — 레인 witness 는 타겟이 아니라 발사
+                //    게이트라 그쪽이 이겨야 한다. 뒤에 있으므로 자동으로 그렇게 된다.
+                if (!wantFrontmost
+                    && !aggroLookup.HasComponent(attackerEntity)
+                    && attack.ValueRO.hitDelayRemaining > 0f
+                    && attack.ValueRO.hasCommittedTarget != 0)
+                {
+                    Entity ct = attack.ValueRO.committedTarget;
+                    // PastGoalTag 는 해제 사유가 아니다 — 골에 붙은 적은 살아 있는 유효 대상
+                    // (goal-tower-siege unit 1 선례, frontmost 블록과 동일).
+                    bool ctValid = ct != Entity.Null
+                        && healthLookup.HasComponent(ct) && healthLookup[ct].value > 0f
+                        && !deadLookup.HasComponent(ct);
+                    if (ctValid)
+                    {
+                        float3 ctPos = aggroTransformLookup.HasComponent(ct)
+                            ? aggroTransformLookup[ct].Position : bestTargetPos;
+                        int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
+                        int ctDist = math.max(math.abs(ctCell.x - atkCell.x), math.abs(ctCell.y - atkCell.y));
+                        if (ctDist <= tileRange) { bestTarget = ct; bestTargetPos = ctPos; }
+                        else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
+                    }
+                    else bestTarget = Entity.Null;       // 사망/소멸 → lapse
+                }
+
                 // defender-directional-volley unit 3 — facing 최종 오버라이드. 방향 고정
                 // 유닛에게는 레인 밖 적이 존재하지 않는 것과 같다 — 최근접/우선순위/
                 // frontmost/aggro 가 무엇을 골랐든 레인 witness 로 덮는다(레인이 곧
@@ -778,6 +812,13 @@ namespace Wassup.Battle.Combat
                             attack.ValueRW.committedDirection = committedDirection;
                             attack.ValueRW.hasCommittedDirection = 1;
                         }
+
+                        // target-persistence unit 0 — 겨눈 **대상**도 같이 커밋한다. 방향
+                        // 커밋(위)이 "이번 발사 기준축"을 지키듯 이것은 "이번 발사 대상"을
+                        // 지킨다. hitDelaySec == 0(즉시 RESOLVE)이어도 저장했다가 같은
+                        // 프레임에 해제한다 — 분기를 늘리지 않는다.
+                        attack.ValueRW.committedTarget = bestTarget;
+                        attack.ValueRW.hasCommittedTarget = 1;
 
                         float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
                             ? modifierStatsLookup[attackerEntity].attackSpeedMul
@@ -1640,6 +1681,13 @@ namespace Wassup.Battle.Combat
                 {
                     attack.ValueRW.committedDirection = default;
                     attack.ValueRW.hasCommittedDirection = 0;
+                }
+                // target-persistence unit 0 — 대상 커밋도 같은 자리에서 비운다. 다음 공격은
+                // 그때의 선정 사슬로 다시 고른다(이 unit 은 공격 1회 안만 책임진다).
+                if (doResolve && attack.ValueRO.hasCommittedTarget != 0)
+                {
+                    attack.ValueRW.committedTarget = Entity.Null;
+                    attack.ValueRW.hasCommittedTarget = 0;
                 }
             }
 
