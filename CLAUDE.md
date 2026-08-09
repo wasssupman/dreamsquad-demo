@@ -86,6 +86,7 @@
 | "새 플레이 오브젝트의 생성→렌더 정거장은?" | `docs/reference/object-pipeline-map.md` — 아키타입별 파이프라인 체크표. **플레이 오브젝트 spec README 작성 시 대조 필수** |
 | "점수는 어디서 나오고 얼마인가?" | `docs/reference/score-formula.md` — 출처 3개(시간·스트레스·킬)의 계산·배점·값 바꾸는 곳 요약. 설계 이력은 `docs/spec/battle-score-formula/` |
 | "맵/웨이브 난이도를 조정하려면?" | `docs/reference/map-wave-balancing.md` — 맵 로테이션·웨이브 knob·몬스터 스탯 조정 위치 + **결정론 규칙(waveSeed 비0=같은 맵 같은 웨이브)**. 자주 바꾸는 값 모음 |
+| "적이 어떻게 길을 찾고 움직이나?" | `docs/reference/enemy-movement-algorithm.md` — 프레임 의사결정 순서도(시스템 순서 · MovementSystem 분기 · 평활화 · 충돌 · 분리) + 쓴 알고리즘 계보와 **쓰지 않은 것의 이유** + 값 바꾸는 곳. 설계 이력은 `docs/spec/continuous-agent-movement/` |
 | "무기 궤적을 켜거나 바꾸려면?" | `docs/reference/weapon-trail-authoring.md` — 유닛에 붙이기·룩 추가·모양 튜닝·본 없는 호스트 레시피 + 증상→원인 표. **코드 0 이 원칙**. 설계 이력은 `docs/spec/spine-weapon-trail/` |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
 | "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |
