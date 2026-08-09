@@ -226,6 +226,47 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse((bool)GetField(_bridge, "_resultShown"));
         }
 
+        // 본능 3×3 이 **실제로 통행을 막는다** — 버퍼 존재가 아니라 blockedCells 유입을 잰다.
+        // 투트랙 리뷰 중 자체 적발: ObstacleLifetimeSystem 의 다중셀 루프가
+        // WithAll<BlockingHazard>(컴포넌트) 를 요구해, 버퍼만 든 본능의 셀이 집합에 못
+        // 들어가 통행 차단·필드 리빌드가 전부 무효였다. 버퍼 존재 단정만으로는 못 잡는
+        // 결함이라 이 테스트는 시스템을 실제로 돌린다.
+        [Test]
+        public void InstinctCells_EnterBlockedCells_ViaObstacleLifetimeSystem()
+        {
+            var instinct = MakeStructureData(StructureKind.Instinct, hp: 100f);
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Enemy, data = instinct }));
+            Spawn();
+
+            var em = _world.EntityManager;
+            var blocked = new NativeHashSet<int2>(32, Allocator.Persistent);
+            try
+            {
+                var singleton = em.CreateEntity();
+                em.AddComponentData(singleton, new Wassup.Battle.Effects.ObstacleSingleton
+                {
+                    blockedCells = blocked,
+                });
+
+                var simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+                simGroup.AddSystemToUpdateList(_world.CreateSystem<Wassup.Battle.Effects.ObstacleLifetimeSystem>());
+                _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
+                simGroup.Update();
+
+                Assert.AreEqual(9, blocked.Count, "본능 3×3 아홉 칸이 blockedCells 에 들어간다");
+                Assert.IsTrue(blocked.Contains(new int2(5, 4)), "중심 칸");
+                Assert.IsTrue(blocked.Contains(new int2(4, 3)) && blocked.Contains(new int2(6, 5)), "모서리 칸");
+
+                // 죽은 본능은 그 프레임부터 집합에서 빠진다 — 파괴 전 DeadTag 단계 포함.
+                em.AddComponent<DeadTag>(TowerAt(new int2(5, 4)));
+                _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
+                simGroup.Update();
+                Assert.AreEqual(0, blocked.Count, "붕괴한 본능은 통행을 막지 않는다");
+            }
+            finally { if (blocked.IsCreated) blocked.Dispose(); }
+        }
+
         // ── unit 5 — 본능 공격 (전용 시스템 없음, 베이크로 통합 루프 합류) ──────
 
         private StructureData MakeArmedInstinct(float damage, ProjectileData projectile)
