@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Enemy_Heartseeker
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   id: heartseeker
-  displayName: "마음사냥꾼"
+  displayName: "\uB9C8\uC74C\uC0AC\uB0E5\uAFBC"
   enemyClass: 3
   minWaveNumber: 8
   attackMethod: 1
@@ -44,7 +44,8 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
-  idleAnimation: Walk
+  idleAnimation: Idle
+  walkAnimation: Walk
   attackAnimation: Attack1
   deathAnimation: Die
   spineVisualScale: 1.45
@@ -77,5 +78,5 @@ MonoBehaviour:
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 3
   nightmareMechanics: []
-  killScore: 2
+  killScore: 3
   stabilityDamage: 1
