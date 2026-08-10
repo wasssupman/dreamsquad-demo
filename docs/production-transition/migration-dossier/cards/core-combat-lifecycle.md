@@ -2,7 +2,7 @@
 card_id: MIG-CARD-CORE-001
 title: 핵심 전투 생명주기
 domain: Match lifecycle와 terminal
-status: review_requested
+status: draft
 coverage: partial
 migration_readiness: blocked
 as_of_commit: 2d35df0680ce97d29b78101120cb9fae63c5a8ad
@@ -19,9 +19,15 @@ match terminal에 이르는 최소 gameplay 인과를 다룬다. 활성 spec에�
 demo 의도와 명시적 공백만 기록한다. 이식 대상의 실행 순서, 수치 표현,
 ruleset 값, 통신 계약, score 산식과 mode 설계는 선택하지 않는다.
 
-이 카드는 담당자 검토 전이며, 첫 행동 시점·동시 사건 우선순위·mode별 terminal·
+이 카드는 owner 최종 확인 전이며, 첫 행동 시점·동시 사건 우선순위·mode별 terminal·
 terminal 이후 finality라는 중대 공백이 남아 있으므로 `migration_readiness`는
 `blocked`다.
+
+아래 `intended` 표시는 활성 spec이 나타내는 source-backed Demo 의도 분류이며
+owner 승인이나 migration 채택을 뜻하지 않는다. Owner는
+`MIG-DEC-CORE-001`부터 `MIG-DEC-CORE-006`까지의 확인을 모두 `deferred`로
+보류했으며, 후속 owner review에서 다시 확인해야 한다. `007`부터 `012`까지의
+product decision review는 시작하지 않았다.
 
 ## Gameplay rule statements
 
@@ -151,7 +157,8 @@ terminal 이후 finality라는 중대 공백이 남아 있으므로 `migration_r
 - [x] Mode conflict와 미포함 mode를 명시했다.
 - [x] References가 `as_of_commit`에서 유효하다.
 - [x] 클라이언트 전용 구현·연출 정보를 제외했다.
-- [ ] `MIG-DEC-CORE-001`부터 `MIG-DEC-CORE-006`까지 각각 owner disposition을 받았다.
+- [x] `MIG-DEC-CORE-001`부터 `MIG-DEC-CORE-006`까지 첫 owner disposition을 받았다. 모두 `deferred`다.
+- [ ] `MIG-DEC-CORE-001`부터 `MIG-DEC-CORE-006`까지 후속 owner review에서 재확인했다.
 - [ ] `MIG-DEC-CORE-007` post-terminal finality를 결정하거나 명시적으로 보류했다.
 - [ ] `MIG-DEC-CORE-008` Endless terminal set을 결정하거나 명시적으로 보류했다.
 - [ ] `MIG-DEC-CORE-009` spawn first-action eligibility를 결정하거나 명시적으로 보류했다.
@@ -160,5 +167,5 @@ terminal 이후 finality라는 중대 공백이 남아 있으므로 `migration_r
 - [ ] `MIG-DEC-CORE-012` simultaneous terminal arbitration을 결정하거나 명시적으로 보류했다.
 - [x] Inter-wave clear와 final all-clear를 future wave 유무로 구분했다.
 - [x] `CORE-Q-001`부터 `CORE-Q-006`까지 중앙 decision에 연결했다.
-- [ ] Deferred 또는 unresolved decision이 readiness blocker로 남아 있다.
-- [ ] 담당자 검토가 `review-ledger.md`에 기록됐다.
+- [ ] Deferred 또는 unresolved decision을 해결하거나 freeze accepted gap으로 승인했다.
+- [ ] Card의 최종 owner review가 `review-ledger.md`에 기록됐다.
