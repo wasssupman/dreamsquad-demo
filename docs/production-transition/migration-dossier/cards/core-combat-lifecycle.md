@@ -2,7 +2,7 @@
 card_id: MIG-CARD-CORE-001
 title: 핵심 전투 생명주기
 domain: Match lifecycle와 terminal
-status: draft
+status: review_requested
 coverage: partial
 migration_readiness: blocked
 as_of_commit: 2d35df0680ce97d29b78101120cb9fae63c5a8ad
