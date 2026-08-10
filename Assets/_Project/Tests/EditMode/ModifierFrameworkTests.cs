@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Units;
 
 namespace Wassup.Tests.EditMode
 {
@@ -296,6 +297,44 @@ namespace Wassup.Tests.EditMode
 
             Assert.DoesNotThrow(() => Tick());
             Assert.IsTrue(_stackQueue.IsEmpty());
+        }
+
+        [Test]
+        public void Structure_Is_Completely_Immune_And_Never_Gains_ModifierBuffers()
+        {
+            var structure = _em.CreateEntity();
+            _em.AddComponentData(structure, new StructureTag
+            {
+                cell = new Unity.Mathematics.int2(3, 4),
+                faction = Faction.EnemyCore,
+            });
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = structure,
+                stat = StatKind.DamageMul,
+                op = CombineOp.Multiplicative,
+                magnitude = 0.5f,
+                duration = 2f,
+                source = Entity.Null,
+            });
+            _stackQueue.Enqueue(new StackModifierApplyEvent
+            {
+                target = structure,
+                kind = StackKind.Fire,
+                countDelta = 1,
+                maxStack = 5,
+                perAppDuration = 2f,
+                source = Entity.Null,
+            });
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsTrue(_statQueue.IsEmpty());
+            Assert.IsTrue(_stackQueue.IsEmpty());
+            Assert.IsTrue(_em.Exists(structure));
+            Assert.IsFalse(_em.HasBuffer<StatModifierSlot>(structure));
+            Assert.IsFalse(_em.HasBuffer<StackModifierSlot>(structure));
+            Assert.IsFalse(_em.HasComponent<ModifierStats>(structure));
+            Assert.IsFalse(_em.HasComponent<ModifierStatsDirty>(structure));
         }
 
         // ── Test 3 ────────────────────────────────────────────────────────────────

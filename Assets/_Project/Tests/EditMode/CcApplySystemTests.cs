@@ -4,6 +4,7 @@ using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Units;
 
 namespace Wassup.Tests.EditMode
 {
@@ -223,6 +224,37 @@ namespace Wassup.Tests.EditMode
 
             Assert.DoesNotThrow(() => Tick());
             Assert.IsTrue(_queue.IsEmpty());
+        }
+
+        [Test]
+        public void Structure_Is_Completely_Immune_And_Never_Gains_CcBuffer()
+        {
+            var structure = _em.CreateEntity();
+            _em.AddComponentData(structure, new StructureTag
+            {
+                cell = new int2(3, 4),
+                faction = Faction.EnemyCore,
+            });
+            _queue.Enqueue(new EnemyCcEvent
+            {
+                target = structure,
+                effect = new CcEffect
+                {
+                    kind = CcKind.Sleep,
+                    remainingTime = 2f,
+                },
+            });
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsTrue(_queue.IsEmpty());
+            Assert.DoesNotThrow(() => EffectSpawner.ApplyCc(_em, structure, new CcEffect
+            {
+                kind = CcKind.Impulse,
+                remainingTime = 0.5f,
+            }));
+            Assert.IsTrue(_em.Exists(structure));
+            Assert.IsFalse(_em.HasBuffer<CcEffect>(structure),
+                "Structures are fully CC-immune and must never gain a CcEffect buffer.");
         }
     }
 }

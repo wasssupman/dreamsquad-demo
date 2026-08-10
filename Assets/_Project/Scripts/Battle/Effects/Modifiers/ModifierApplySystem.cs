@@ -3,6 +3,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
@@ -44,6 +45,8 @@ namespace Wassup.Battle.Effects
         {
             var target = ev.target;
             if (!em.Exists(target))
+                return;
+            if (em.HasComponent<StructureTag>(target))
                 return;
 
             if (em.HasBuffer<StatModifierSlot>(target))
@@ -125,6 +128,8 @@ namespace Wassup.Battle.Effects
         {
             var target = ev.target;
             if (!em.Exists(target))
+                return;
+            if (em.HasComponent<StructureTag>(target))
                 return;
 
             if (em.HasBuffer<StackModifierSlot>(target))

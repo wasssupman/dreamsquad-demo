@@ -5469,6 +5469,7 @@ namespace Wassup.Bridge
         private void CheckVictory()
         {
             if (_resultShown) return;
+            if (_enemyCoreMax > 0) return;
             if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
             if (!NoQueuedAttackersRemain()) return;
 
