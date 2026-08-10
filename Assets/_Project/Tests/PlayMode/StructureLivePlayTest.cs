@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Unity.Collections;
@@ -243,7 +244,8 @@ namespace Wassup.Tests.PlayMode
                 "적 마음 인접에 배치할 수 없다 — 마음이 본체 1칸만 닫는다는 계약이 깨졌다");
 
             // 본능에 가장 가까운 합법 칸(9×9 배제 밖)에 저격수.
-            bool sniperPlaced = TryPlaceNearest(bridge, sniper, instinctCell, out var sniperCell);
+            Assert.IsTrue(TryPlaceNearest(bridge, sniper, instinctCell, out var sniperCell),
+                "본능 주변 반경 12 안에 배치 가능한 칸이 없다 — 9×9 배제가 과도하거나 배치가 막혔다");
 
             bridge.StartBattle();
             yield return null;
@@ -274,26 +276,26 @@ namespace Wassup.Tests.PlayMode
             // ── (3) 적 본능 — 사거리가 닿을 때만 단정한다 ──
             // 9×9 배치 배제(체비셰프 ≤ 4)와 본능 사거리(SO 저작)의 관계가 이것을 결정한다.
             // 닿지 않는 저작이면 그것은 미검증이 아니라 **설계 결과**이므로 로그로 남긴다.
-            if (sniperPlaced && em.HasComponent<Health>(instinct))
+            Assert.IsTrue(em.HasComponent<Health>(instinct), "적 본능에 Health");
+            float instinctMax = em.GetComponentData<Health>(instinct).max;
+            float reach = SniperReach(em, bridge, sniperCell, instinct);
+            if (reach > 0f)
             {
-                float instinctMax = em.GetComponentData<Health>(instinct).max;
-                float reach = SniperReach(em, bridge, sniperCell, instinct);
-                if (reach > 0f)
+                Debug.Log($"[unit 11] 저격 사거리 {reach} 로 적 본능 도달 — 피해 단정 실행 "
+                    + $"(저격수 {sniperCell}, 본능 {instinctCell}).");
+                while (em.Exists(instinct)
+                       && em.GetComponentData<Health>(instinct).value >= instinctMax)
                 {
-                    while (em.Exists(instinct)
-                           && em.GetComponentData<Health>(instinct).value >= instinctMax)
-                    {
-                        Assert.Less(Time.unscaledTime - start, TimeoutSec,
-                            "사거리 안인데 적 본능이 깎이지 않는다");
-                        yield return null;
-                    }
+                    Assert.Less(Time.unscaledTime - start, TimeoutSec,
+                        "사거리 안인데 적 본능이 깎이지 않는다");
+                    yield return null;
                 }
-                else
-                {
-                    Debug.Log("[unit 11] 적 본능은 이 저작에서 사거리 교전이 성립하지 않는다 "
-                        + "(9×9 배치 배제 체비셰프 ≤ 4 vs 저격 사거리). 구조적 결과이며 "
-                        + "본능 발사 자체는 EditMode 가 실 AttackSystem 으로 고정한다.");
-                }
+            }
+            else
+            {
+                Debug.Log($"[unit 11] 적 본능이 저격 사거리 밖이다 (저격수 {sniperCell}, "
+                    + $"본능 {instinctCell}) — 이 저작에서는 교전 불가. 발사 로직 자체는 "
+                    + "EditMode 가 실 AttackSystem 으로 고정한다.");
             }
 
             // ── (4) 잔여 0 → 승리 축 ──
@@ -320,27 +322,36 @@ namespace Wassup.Tests.PlayMode
             return found;
         }
 
-        // 목표 셀에 가장 가까운 «배치 가능» 칸(체비셰프 오름차순, 반경 12 상한).
+        // 목표 셀에 가장 가까운 «배치 가능» 칸. **유클리드** 오름차순이다 — 사거리 판정이
+        // 유클리드라서다. 체비셰프 링 순회로 짜면 링의 모서리(√2·r)에 먼저 놓여 사거리
+        // 안인 직선상 칸을 놓친다(구현 중 실제로 그 아티팩트를 만들어 «미도달» 오진했다).
         private static bool TryPlaceNearest(BattleBridge bridge, Wassup.Data.DefenderUnitData u,
             Vector2Int target, out Vector2Int cell)
         {
-            for (int r = 1; r <= 12; r++)
-                for (int dx = -r; dx <= r; dx++)
-                    for (int dy = -r; dy <= r; dy++)
-                    {
-                        if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
-                        int x = target.x + dx, y = target.y + dy;
-                        if (!bridge.CanPlaceDefenderAt(x, y, u, out _)) continue;
-                        if (!bridge.PlaceDefenderAs(x, y, u)) continue;
-                        cell = new Vector2Int(x, y);
-                        return true;
-                    }
+            const int R = 12;
+            var candidates = new List<Vector2Int>();
+            for (int dx = -R; dx <= R; dx++)
+                for (int dy = -R; dy <= R; dy++)
+                    if (dx != 0 || dy != 0) candidates.Add(new Vector2Int(target.x + dx, target.y + dy));
+            candidates.Sort((a, b) =>
+                ((a - target).sqrMagnitude).CompareTo((b - target).sqrMagnitude));
+
+            foreach (var c in candidates)
+            {
+                if (!bridge.CanPlaceDefenderAt(c.x, c.y, u, out _)) continue;
+                if (!bridge.PlaceDefenderAs(c.x, c.y, u)) continue;
+                cell = c;
+                return true;
+            }
             cell = default;
             return false;
         }
 
         // 배치된 저격수의 **런타임** 사거리로 판정한다(SO 값은 스탯 시트가 덮을 수 있다).
         // 반환 > 0 = 사거리 안. 0 = 닿지 않음 또는 저격수를 못 찾음.
+        //
+        // 그 칸의 유닛을 XZ 로만 찾는다 — 배치 유닛은 spawnHeight(0.5) 만큼 떠 있어서
+        // 3D 거리로 비교하면 임계값이 그 오프셋에 묶인다(조용히 «못 찾음» 이 된다).
         private static float SniperReach(EntityManager em, BattleBridge bridge,
             Vector2Int sniperCell, Entity instinct)
         {
@@ -350,15 +361,16 @@ namespace Wassup.Tests.PlayMode
                 ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>(),
                 ComponentType.ReadOnly<Unity.Transforms.LocalTransform>());
             var entities = q.ToEntityArray(Allocator.Temp);
-            float best = 0f;
             float3 instinctPos = em.GetComponentData<Unity.Transforms.LocalTransform>(instinct).Position;
+            float best = 0f, bestXz = float.MaxValue;
             foreach (var e in entities)
             {
                 var xf = em.GetComponentData<Unity.Transforms.LocalTransform>(e);
-                if (math.distance(xf.Position, sniperWorld) > 0.6f) continue;   // 그 칸의 유닛
+                float xz = math.distance(xf.Position.xz, sniperWorld.xz);
+                if (xz > 0.6f || xz >= bestXz) continue;
+                bestXz = xz;
                 float range = em.GetComponentData<Wassup.Battle.Combat.AttackState>(e).range;
-                if (math.distance(xf.Position, instinctPos) <= range) best = range;
-                break;
+                best = math.distance(xf.Position, instinctPos) <= range ? range : 0f;
             }
             entities.Dispose();
             return best;
