@@ -136,6 +136,13 @@ namespace Wassup.Data
                 int countA = rng.NextInt(1, total);
                 int countB = total - countA;
 
+                // structure-hunter-enemy unit 1 — 종류별 동시 등장 상한. rng 를 소비하지 않으므로
+                // 상한 미저작(전부 0)이면 기존 웨이브와 byte-identical 이다.
+                ClampGroupCounts(
+                    pool[aIndex] != null ? pool[aIndex].maxPerWave : 0,
+                    pool[bIndex] != null ? pool[bIndex].maxPerWave : 0,
+                    ref countA, ref countB);
+
                 waves.Add(new GeneratedWave(
                     i,
                     i * interval,
@@ -161,6 +168,10 @@ namespace Wassup.Data
                     int escortCount = rng.NextInt(escortMin, escortMax + 1);
                     // pool 은 boss-free. 호위도 같은 등장 게이트를 따른다(unit 12).
                     var escortType = pool[ResolveWaveEligibleIndex(pool, rng.NextInt(0, pool.Count), i + 1)];
+                    // structure-hunter-enemy unit 1 — 호위에도 같은 상한. 여기가 더 위험하다:
+                    // 일반 웨이브는 종류가 둘로 나뉘지만 호위는 한 종류가 통째로 3~4기다.
+                    if (escortType != null && escortType.maxPerWave > 0)
+                        escortCount = math.min(escortCount, escortType.maxPerWave);
                     var groups = new List<WaveSpawnGroup>
                     {
                         new WaveSpawnGroup(boss, 1),          // 선봉: RoundRobin round 0 = 보스 먼저
@@ -249,6 +260,30 @@ namespace Wassup.Data
             center = math.min(center, maxUnits);
             float jitter = jitterBand > 0 ? (jitter01 * 2f - 1f) * jitterBand : 0f;
             return math.clamp((int)math.round(center + jitter), minUnits, maxUnits);
+        }
+
+        // structure-hunter-enemy unit 1 — 종류별 동시 등장 상한(순수). 0 = 무제한.
+        //
+        // 상한을 넘은 몫은 잘라내고 **여유가 있는 쪽으로 넘겨 웨이브 총량을 보존**한다.
+        // 둘 다 상한이면 총량이 준다 — 그게 상한의 목적이므로 억지로 채우지 않는다.
+        //
+        // rng 를 건드리지 않는 것이 계약이다: 이 함수가 rng 를 소비하면 상한을 저작하지 않은
+        // 기존 덱의 웨이브 스트림까지 흔들려 6개 맵의 난이도 곡선이 조용히 바뀐다.
+        public static void ClampGroupCounts(int maxA, int maxB, ref int countA, ref int countB)
+        {
+            int leftover = 0;
+            if (maxA > 0 && countA > maxA) { leftover += countA - maxA; countA = maxA; }
+            if (maxB > 0 && countB > maxB) { leftover += countB - maxB; countB = maxB; }
+            if (leftover <= 0) return;
+
+            int roomB = maxB > 0 ? math.max(0, maxB - countB) : leftover;
+            int giveB = math.min(leftover, roomB);
+            countB += giveB;
+            leftover -= giveB;
+            if (leftover <= 0) return;
+
+            int roomA = maxA > 0 ? math.max(0, maxA - countA) : leftover;
+            countA += math.min(leftover, roomA);
         }
 
         // wave-pattern unit 12 — 등장 게이트 해소(순수). pool[startIndex] 가 이 웨이브에 등장할 수

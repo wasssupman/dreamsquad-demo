@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: "\uB9C8\uC74C\uC0AC\uB0E5\uAFBC"
   enemyClass: 3
   minWaveNumber: 8
+  maxPerWave: 2
   attackMethod: 1
   targetMode: 1
   engageMovement: 0
@@ -50,11 +51,13 @@ MonoBehaviour:
   deathAnimation: Die
   spineVisualScale: 1.45
   partSkins:
-  - bottom/bottom_c_10
-  - brow/brow_c_2
-  - eyes/eyes_c_3
-  - hair_short/hair_short_c_5
-  - mouth/mouth_c_4
+  - back/back_c_12
+  - bottom/bottom_c_36
+  - brow/brow_c_7
+  - eyes/eyes_c_16
+  - helmet/helmet_c_22
+  - mouth/mouth_c_7
+  - top/top_c_47
   - skin/skin_1
   slotColors:
   - slotName: body
@@ -69,12 +72,10 @@ MonoBehaviour:
     color: {r: 0.45, g: 0.16, b: 0.56, a: 1}
   - slotName: head
     color: {r: 0.45, g: 0.16, b: 0.56, a: 1}
-  - slotName: hair
-    color: {r: 0.14, g: 0.05, b: 0.19, a: 1}
-  - slotName: hair_long
-    color: {r: 0.14, g: 0.05, b: 0.19, a: 1}
-  - slotName: helmet_hair
-    color: {r: 0.14, g: 0.05, b: 0.19, a: 1}
+  - slotName: Back
+    color: {r: 0.24, g: 0.07, b: 0.32, a: 1}
+  - slotName: helmet
+    color: {r: 0.24, g: 0.07, b: 0.32, a: 1}
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 3
   nightmareMechanics: []

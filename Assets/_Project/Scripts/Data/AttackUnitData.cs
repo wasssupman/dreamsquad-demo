@@ -46,6 +46,17 @@ namespace Wassup.Data
         [Tooltip("이 유닛이 등장할 수 있는 가장 이른 웨이브(1부터). 1 = 제한 없음. seed 생성 웨이브에만 적용.")]
         [Min(1)] public int minWaveNumber = 1;
 
+        // structure-hunter-enemy unit 1 — 종류별 동시 등장 상한.
+        // minWaveNumber 가 «언제부터» 라면 이쪽은 «한 번에 몇 마리까지» 다.
+        // 생성기에는 이 축이 없었다: 일반 웨이브는 countA = rng.NextInt(1, total) 로 한 종류가
+        // 최대 maxUnitsPerWave 까지, 보스 웨이브 호위는 3~4기까지 나온다. 기존 적 12종은 전부
+        // 몸으로 막을 수 있어 문제가 되지 않았지만, 유인·차단이 통하지 않는 적(마음사냥꾼)은
+        // 수량이 곧 «막을 수 없는 시간» 이라 상한 없이는 웨이브 하나가 판을 끝낸다.
+        // 0 = 무제한(기본) → 기존 자산 전부 불변. 적용 범위는 minWaveNumber 와 같다
+        // (seed 생성 경로만 — 작성 플랜은 디자이너 명시 배치를 존중한다).
+        [Tooltip("한 웨이브에 이 유닛이 나올 수 있는 최대 수. 0 = 무제한. seed 생성 웨이브에만 적용.")]
+        [Min(0)] public int maxPerWave = 0;
+
         // enemy-behavior-components Unit 0 — behavior-as-data. Selected per-SO and
         // baked to ECS (attackMethod → attack components; EnemyBehavior/EnemyTargetFilter).
         // Decouples function from visuals; lets one class have sub-variants.
