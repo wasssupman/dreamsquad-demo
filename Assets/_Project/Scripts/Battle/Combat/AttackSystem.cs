@@ -744,6 +744,74 @@ namespace Wassup.Battle.Combat
                     }
                 }
 
+                // ═══ target-persistence unit 4 — 방어유닛 지속 락 (원칙 1의 본체) ═══
+                //
+                // 방어유닛은 매 프레임 최근접을 재계산해 왔다. 자기는 고정인데 **적이 계속
+                // 흘러가므로 최근접이 매 순간 바뀐다** — unit 3(적 락)이 `Halt` 적에겐 거의
+                // 무효였던 것과 정반대로, 락이 실제로 일하는 자리다. 동거리 flip-flop 도
+                // 여기서 함께 사라진다(매 프레임 재선정이 없어지면 진동의 원인이 없다).
+                //
+                // **이 자리인 이유** — frontmost 직후, unit 0 커밋 유지 **직전**:
+                //   스윙 진행 중  → unit 0 커밋이 이긴다(한 공격 안에서는 안 바뀐다)
+                //   스윙 사이     → 이 락이 이긴다(공격들 사이에서도 안 바뀐다)
+                // spec README 표의 «facing override 직후»는 **틀렸다** — 그 자리면 wind-up
+                // 커밋을 덮어써 B1(A 겨누고 B 때림)이 부분 부활한다(unit 4 문서 §정정).
+                //
+                // **제외 4종은 누락이 아니라 계약이다**(계약 2):
+                //   facing        — 레인 witness 는 타겟이 아니라 발사 게이트다
+                //   frontmost     — 「끝을 보는 눈」 카드 계약이 "매 공격마다 지금의 최전방"
+                //   힐러          — lowest-health 재랭킹이 정체성
+                //   가디언(D1)    — 어그로 자석이 "아직 어그로 안 걸린 적 우선"으로 신규 팩을
+                //                   흡수한다. primary 를 고정하면 자석이 죽는다
+                // 넷 중 하나라도 "빠뜨렸네" 하고 채우면 그 유닛의 정체성이 조용히 망가진다.
+                //
+                // `!EnemyBehavior` — 순찰병은 적 AI 스택을 물려받아 **unit 3 블록**이 이미
+                // 처리한다. 여기서 비켜주지 않으면 한 프레임에 두 번 잠근다.
+                if (defenderTagLookup.HasComponent(attackerEntity)
+                    && focusLookup.HasComponent(attackerEntity)
+                    && !behaviorLookup.HasComponent(attackerEntity)
+                    && !hasFacing
+                    && !wantFrontmost
+                    && !rankByHealth
+                    && !aggroCapacityLookup.HasComponent(attackerEntity))
+                {
+                    // D5 — CC 중엔 비우고 재잠금도 건너뛴다(unit 3 과 **같은 형태**).
+                    // else 로 감싸지 않으면 해제 분기가 그 프레임 최근접으로 즉시 다시 잠근다.
+                    if (actionLocked)
+                    {
+                        focusLookup[attackerEntity] = new FocusTarget { current = Entity.Null };
+                    }
+                    else
+                    {
+                        Entity dcur = focusLookup[attackerEntity].current;
+                        bool dcurValid = dcur != Entity.Null
+                            && healthLookup.HasComponent(dcur) && healthLookup[dcur].value > 0f
+                            && !deadLookup.HasComponent(dcur);
+                        bool dKeep = false;
+                        float3 dcurPos = bestTargetPos;
+                        if (dcurValid)
+                        {
+                            dcurPos = aggroTransformLookup.HasComponent(dcur)
+                                ? aggroTransformLookup[dcur].Position : bestTargetPos;
+                            int2 dCell = GridMath.WorldToCell(dcurPos, tileSize, gridSize, origin: ffOrigin);
+                            int dDist = math.max(math.abs(dCell.x - atkCell.x), math.abs(dCell.y - atkCell.y));
+                            dKeep = TargetPersistence.KeepsLock(true, dDist, tileRange);
+                        }
+                        if (dKeep)
+                        {
+                            bestTarget = dcur; bestTargetPos = dcurPos;
+                            focusLookup[attackerEntity] = new FocusTarget { current = dcur };
+                        }
+                        else
+                        {
+                            // 사망 ∨ 사거리 이탈 → 해제하고 이미 계산된 pick 을 채택한다.
+                            // 거점을 특별 취급하지 않는다 — battle-structures unit 0 이 그 예외를
+                            // 제거했다(2026-08-09 사용자 확정). 물면 죽거나 벗어날 때까지 유지.
+                            focusLookup[attackerEntity] = new FocusTarget { current = bestTarget };
+                        }
+                    }
+                }
+
                 // target-persistence unit 0 — 공격 1회 타겟 커밋. wind-up 중에는 START 에서
                 // 겨눈 대상을 유지한다(판정은 frontmost 블록과 **같은 규칙** — 생존 + 사거리,
                 // 실패면 strict lapse 로 재선정하지 않는다).

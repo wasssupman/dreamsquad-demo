@@ -6150,6 +6150,12 @@ namespace Wassup.Bridge
                 targetMask = unitData.targetAllies ? (int)Faction.DefenderUnit : (int)Faction.EnemyUnit,
                 hitDelaySec = unitData.hitDelaySec,
             });
+            // target-persistence unit 4 — 방어유닛 지속 락의 그릇. 신규 컴포넌트를 만들지
+            // 않는다 — `FocusTarget` 은 «내가 문 대상»이지 진영을 함의하지 않고, 유지 술어도
+            // `TargetPersistence.KeepsLock` 하나를 공유한다.
+            // 이 경로(배치 방어유닛)는 EnemyBehavior 가 없으므로 AttackSystem 의 **unit 4
+            // 블록**이 처리한다(순찰병은 EnemyBehavior 를 가져 unit 3 적 블록으로 간다).
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
@@ -6375,6 +6381,10 @@ namespace Wassup.Bridge
                 targetMask = (int)Faction.EnemyUnit,
                 hitDelaySec = unitData.hitDelaySec,
             });
+            // target-persistence unit 4 — 순찰병도 락을 받는다. 다만 이 유닛은 EnemyBehavior
+            // (적 AI 스택)를 물려받으므로 **unit 3 의 적 focus 블록**이 처리한다 — unit 4
+            // 블록은 `!EnemyBehavior` 로 이쪽을 비켜준다(이중 처리 방지).
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
             {
                 knockbackDistance   = unitData.knockbackDistance,
