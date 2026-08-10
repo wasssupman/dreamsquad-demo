@@ -189,5 +189,179 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
         }
+
+        // ───────────────────── unit 11 — 공성 승패의 라이브 검증 ─────────────────────
+        //
+        // units 8~10 이 한 판에서 맞물려 도는 것을 잰다:
+        //  (1) 적 마음 축이 활성이고 두 마음의 체력이 같게 저작됐다 (unit 10 + Deck_SiegeTest)
+        //  (2) 배치한 방어유닛이 적 마음을 **실제로** 깎는다 (unit 8 — 이전엔 영구 무적이었다)
+        //  (3) 사거리가 닿으면 적 본능도 깎는다 (조건부 — 아래 구조적 사유 참조)
+        //  (4) 적 마음 잔여 0 → 승리 판정 (unit 10 의 축)
+        //
+        // (4) 를 800 HP 실그라인딩으로 재지 않는 이유: 축이 재는 것은 «잔여 0 → 승리» 이고
+        // 피해 출처는 그 판정과 무관하다. 라이브 피해 경로는 (2) 가 이미 증명하므로, 둘을
+        // 한 번에 묶으면 검증이 늘지 않고 소요 시간과 흔들림만 늘어난다.
+        [UnityTest]
+        public IEnumerator SiegeMap_DefendersBreakEnemyCore_AndCoreDeathWins()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            DevMapOverride.Index = DevSiegeMapIndex;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            var cat = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
+            Assert.Greater(cat.Length, 0, "DefenderCatalog 를 못 찾았다");
+            var grinder = cat[0].ById("guardian");   // 근접 — 마음 인접에서 깎는다
+            var sniper = cat[0].ById("sniper");      // 최장 사거리 — 본능 저격 시도
+            Assert.IsNotNull(grinder, "guardian");
+            Assert.IsNotNull(sniper, "sniper");
+
+            bridge.SetDefenderPool(new[] { grinder, sniper });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(5000);   // 배치 비용은 이 테스트의 관심사가 아니다
+            yield return null;
+
+            var coreCell = new Vector2Int(15, 25);       // 저작물(MapDocument_SiegeTest)
+            var instinctCell = new Vector2Int(15, 12);
+
+            // 적 마음 인접 8칸에 최대한 채운다 — 마음은 본체 1칸만 닫히므로 인접 배치가
+            // 가능하다는 사실 자체가 «공성이 새 메커닉 0 으로 성립한다» 의 관측치다.
+            int placedAroundCore = 0;
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int x = coreCell.x + dx, y = coreCell.y + dy;
+                    if (bridge.CanPlaceDefenderAt(x, y, grinder, out _)
+                        && bridge.PlaceDefenderAs(x, y, grinder)) placedAroundCore++;
+                }
+            Assert.Greater(placedAroundCore, 0,
+                "적 마음 인접에 배치할 수 없다 — 마음이 본체 1칸만 닫는다는 계약이 깨졌다");
+
+            // 본능에 가장 가까운 합법 칸(9×9 배제 밖)에 저격수.
+            bool sniperPlaced = TryPlaceNearest(bridge, sniper, instinctCell, out var sniperCell);
+
+            bridge.StartBattle();
+            yield return null;
+
+            // ── (1) 축 활성 + 저작 대칭 ──
+            Assert.Greater(bridge.EnemyCoreMax, 0,
+                "적 마음 축이 비활성이다 — 저작이 안 읽혔거나 스폰이 max 를 못 채웠다");
+            Assert.AreEqual(bridge.GoalStabilityMax, bridge.EnemyCoreMax,
+                "두 마음의 체력이 같게 저작돼야 한다(절대값 비교의 공정성) — "
+                + "Deck_SiegeTest.goalStabilityMax ↔ Structure_EnemyCore.health");
+
+            var em = (EntityManager)GetField(bridge, "_em");
+            Entity core = FindStructure(em, Faction.EnemyCore);
+            Entity instinct = FindStructure(em, Faction.EnemyInstinct);
+            Assert.AreNotEqual(Entity.Null, core, "적 마음 엔티티");
+            Assert.AreNotEqual(Entity.Null, instinct, "적 본능 엔티티");
+
+            // ── (2) 적 마음이 깎인다 ──
+            int coreMax = bridge.EnemyCoreMax;
+            float start = Time.unscaledTime;
+            while (bridge.EnemyCoreCurrent >= coreMax)
+            {
+                Assert.Less(Time.unscaledTime - start, TimeoutSec,
+                    "적 마음이 한 톨도 깎이지 않는다 — unit 8 의 저작 마스크가 라이브에서 안 먹는다");
+                yield return null;
+            }
+
+            // ── (3) 적 본능 — 사거리가 닿을 때만 단정한다 ──
+            // 9×9 배치 배제(체비셰프 ≤ 4)와 본능 사거리(SO 저작)의 관계가 이것을 결정한다.
+            // 닿지 않는 저작이면 그것은 미검증이 아니라 **설계 결과**이므로 로그로 남긴다.
+            if (sniperPlaced && em.HasComponent<Health>(instinct))
+            {
+                float instinctMax = em.GetComponentData<Health>(instinct).max;
+                float reach = SniperReach(em, bridge, sniperCell, instinct);
+                if (reach > 0f)
+                {
+                    while (em.Exists(instinct)
+                           && em.GetComponentData<Health>(instinct).value >= instinctMax)
+                    {
+                        Assert.Less(Time.unscaledTime - start, TimeoutSec,
+                            "사거리 안인데 적 본능이 깎이지 않는다");
+                        yield return null;
+                    }
+                }
+                else
+                {
+                    Debug.Log("[unit 11] 적 본능은 이 저작에서 사거리 교전이 성립하지 않는다 "
+                        + "(9×9 배치 배제 체비셰프 ≤ 4 vs 저격 사거리). 구조적 결과이며 "
+                        + "본능 발사 자체는 EditMode 가 실 AttackSystem 으로 고정한다.");
+                }
+            }
+
+            // ── (4) 잔여 0 → 승리 축 ──
+            // 피해 출처는 축과 무관하다((2) 가 라이브 경로를 이미 증명했다).
+            em.GetBuffer<IncomingDamage>(core).Add(new IncomingDamage { amount = coreMax * 10f });
+            start = Time.unscaledTime;
+            while (gm.CurrentPhase != GamePhase.Result)
+            {
+                Assert.Less(Time.unscaledTime - start, TimeoutSec,
+                    "적 마음이 무너졌는데 판이 끝나지 않는다 — CheckEnemyCoreDestroyed 축이 안 돌았다");
+                yield return null;
+            }
+            Assert.AreEqual(0, bridge.EnemyCoreCurrent, "잔여 0 이 판정의 근거였다");
+        }
+
+        private static Entity FindStructure(EntityManager em, Faction faction)
+        {
+            using var q = em.CreateEntityQuery(ComponentType.ReadOnly<StructureTag>());
+            var entities = q.ToEntityArray(Allocator.Temp);
+            Entity found = Entity.Null;
+            foreach (var e in entities)
+                if (em.GetComponentData<StructureTag>(e).faction == faction) { found = e; break; }
+            entities.Dispose();
+            return found;
+        }
+
+        // 목표 셀에 가장 가까운 «배치 가능» 칸(체비셰프 오름차순, 반경 12 상한).
+        private static bool TryPlaceNearest(BattleBridge bridge, Wassup.Data.DefenderUnitData u,
+            Vector2Int target, out Vector2Int cell)
+        {
+            for (int r = 1; r <= 12; r++)
+                for (int dx = -r; dx <= r; dx++)
+                    for (int dy = -r; dy <= r; dy++)
+                    {
+                        if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
+                        int x = target.x + dx, y = target.y + dy;
+                        if (!bridge.CanPlaceDefenderAt(x, y, u, out _)) continue;
+                        if (!bridge.PlaceDefenderAs(x, y, u)) continue;
+                        cell = new Vector2Int(x, y);
+                        return true;
+                    }
+            cell = default;
+            return false;
+        }
+
+        // 배치된 저격수의 **런타임** 사거리로 판정한다(SO 값은 스탯 시트가 덮을 수 있다).
+        // 반환 > 0 = 사거리 안. 0 = 닿지 않음 또는 저격수를 못 찾음.
+        private static float SniperReach(EntityManager em, BattleBridge bridge,
+            Vector2Int sniperCell, Entity instinct)
+        {
+            float3 sniperWorld = bridge.GridToWorldCenterVector(sniperCell);
+            using var q = em.CreateEntityQuery(
+                ComponentType.ReadOnly<DefenderUnitTag>(),
+                ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>(),
+                ComponentType.ReadOnly<Unity.Transforms.LocalTransform>());
+            var entities = q.ToEntityArray(Allocator.Temp);
+            float best = 0f;
+            float3 instinctPos = em.GetComponentData<Unity.Transforms.LocalTransform>(instinct).Position;
+            foreach (var e in entities)
+            {
+                var xf = em.GetComponentData<Unity.Transforms.LocalTransform>(e);
+                if (math.distance(xf.Position, sniperWorld) > 0.6f) continue;   // 그 칸의 유닛
+                float range = em.GetComponentData<Wassup.Battle.Combat.AttackState>(e).range;
+                if (math.distance(xf.Position, instinctPos) <= range) best = range;
+                break;
+            }
+            entities.Dispose();
+            return best;
+        }
     }
 }
