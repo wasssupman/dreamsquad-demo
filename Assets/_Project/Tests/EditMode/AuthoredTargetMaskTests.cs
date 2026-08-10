@@ -140,5 +140,201 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(core).Length,
                 "마스크에 있는 유일한 후보인 마음을 때린다");
         }
+
+        // ───────────────────────── unit 8 — 방어 측 (위의 거울) ─────────────────────────
+
+        [Test]
+        public void LegacyDefenderMask_IsEnemyUnitOnly()
+        {
+            Assert.AreEqual((int)Faction.EnemyUnit, DefenderTargetDefaults.LegacyDefenderMask,
+                "unit 8 이전에 리터럴로 박혀 있던 값 — 이것이 적 거점을 무적으로 만들던 원인이다");
+        }
+
+        [Test]
+        public void DefenderResolve_Unauthored_FallsBackToEnemyUnit()
+        {
+            Assert.AreEqual(DefenderTargetDefaults.LegacyDefenderMask,
+                DefenderTargetDefaults.Resolve((int)Faction.None, targetAllies: false),
+                "0 = 미저작 → 적 유닛 단독. 인스펙터에서 비웠을 때의 방어선");
+        }
+
+        [Test]
+        public void DefenderResolve_Authored_IsRespectedVerbatim()
+        {
+            Assert.AreEqual(Factions.AnyEnemy,
+                DefenderTargetDefaults.Resolve(Factions.AnyEnemy, targetAllies: false));
+            Assert.AreEqual((int)Faction.EnemyCore,
+                DefenderTargetDefaults.Resolve((int)Faction.EnemyCore, targetAllies: false),
+                "«적 마음만 노리는 공성 유닛» 이 저작으로 표현 가능해야 한다");
+        }
+
+        // 힐러의 안전선. 아군 타게팅이 AnyDefender 로 넓어지면 IncomingHeal 버퍼가 없는
+        // 거점이 후보에 들어 ECB playback 에서 던진다 — 그래서 DefenderUnit 단독이다.
+        [Test]
+        public void DefenderResolve_TargetAllies_WinsOverAuthoredMask()
+        {
+            Assert.AreEqual((int)Faction.DefenderUnit,
+                DefenderTargetDefaults.Resolve(Factions.AnyEnemy, targetAllies: true),
+                "targetAllies 가 저작 마스크를 이긴다 — 승격하지 않은 이유가 이것이다");
+            Assert.AreEqual((int)Faction.DefenderUnit,
+                DefenderTargetDefaults.Resolve((int)Faction.None, targetAllies: true));
+
+            Assert.AreEqual(0,
+                DefenderTargetDefaults.Resolve(Factions.AnyEnemy, targetAllies: true)
+                    & Factions.AnyStructure,
+                "힐러의 마스크에 거점 비트가 한 개도 없어야 한다");
+        }
+
+        // 실제 에셋 훑기 — 이니셜라이저/폴백 어느 경로든 무장 해제가 없는지.
+        [Test]
+        public void AllDefenderAssets_ResolveToNonZeroMask()
+        {
+            var guids = AssetDatabase.FindAssets("t:DefenderUnitData");
+            Assert.Greater(guids.Length, 0, "방어 SO 를 하나도 못 찾았다 — 경로/타입 확인");
+
+            int healers = 0;
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var so = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(path);
+                if (so == null) continue;
+
+                int resolved = DefenderTargetDefaults.Resolve((int)so.targetFactions, so.targetAllies);
+                Assert.AreNotEqual(0, resolved,
+                    $"{so.name}: 해석된 마스크가 0 이면 이 유닛은 아무것도 못 때린다");
+
+                if (so.targetAllies)
+                {
+                    healers++;
+                    Assert.AreEqual((int)Faction.DefenderUnit, resolved,
+                        $"{so.name}: 아군 타게팅은 DefenderUnit 단독이어야 한다(거점 후보 진입 = 크래시)");
+                }
+            }
+            UnityEngine.Debug.Log($"[unit 8] 방어 SO {guids.Length}종 중 아군 타게팅 {healers}종");
+        }
+
+        // 검증 질문 — 방어유닛이 적 거점을 **실제로** 때리는가. unit 8 이전엔 절대 불가였다.
+        [Test]
+        public void DefenderWithDefaultMask_AttacksEnemyCore_AndPrefersNearerUnit()
+        {
+            using var world = new World("AuthoredTargetMaskTests_DefenderVsCore");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            var defender = em.CreateEntity();
+            em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            em.AddComponentData(defender, new Health { value = 50f, max = 50f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
+            em.AddComponent<DefenderUnitTag>(defender);
+            em.AddBuffer<IncomingDamage>(defender);
+            em.AddComponentData(defender, new AttackState
+            {
+                range = 6f,
+                cooldownDuration = 1f,
+                cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                // 기본 저작(AnyEnemy) — 에셋 이니셜라이저와 같은 값.
+                targetMask = DefenderTargetDefaults.Resolve(Factions.AnyEnemy, targetAllies: false),
+            });
+            var outputs = em.AddBuffer<AttackOutputElement>(defender);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 7f },
+            });
+
+            // 적 마음만 사거리에 있다 — unit 8 이전엔 마스크에 없어 영구 무적이었다.
+            var enemyCore = em.CreateEntity();
+            em.AddComponentData(enemyCore, LocalTransform.FromPosition(new float3(4f, 0f, 0f)));
+            em.AddComponentData(enemyCore, new Health { value = 500f, max = 500f });
+            em.AddComponentData(enemyCore, new FactionTag { value = Faction.EnemyCore });
+            em.AddComponentData(enemyCore, new StructureTag { cell = new int2(4, 0), faction = Faction.EnemyCore });
+            em.AddBuffer<IncomingDamage>(enemyCore);
+
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(enemyCore).Length,
+                "방어유닛이 적 마음을 때린다 — 공성 승리 조건의 물리적 전제");
+
+            // 이제 **더 가까운** 적 유닛을 놓는다. 계약 4: 타입 우선순위 없음, 거리순.
+            var enemyUnit = em.CreateEntity();
+            em.AddComponentData(enemyUnit, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
+            em.AddComponentData(enemyUnit, new Health { value = 30f, max = 30f });
+            em.AddComponentData(enemyUnit, new FactionTag { value = Faction.EnemyUnit });
+            em.AddComponent<AttackUnitTag>(enemyUnit);
+            em.AddBuffer<IncomingDamage>(enemyUnit);
+
+            em.GetBuffer<IncomingDamage>(enemyCore).Clear();
+            var atk = em.GetComponentData<AttackState>(defender);
+            atk.cooldownRemaining = 0f;
+            em.SetComponentData(defender, atk);
+
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            Assert.AreEqual(1, em.GetBuffer<IncomingDamage>(enemyUnit).Length,
+                "가까운 적 유닛이 이긴다 — 거점 타입에 우선순위가 없다(계약 4)");
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(enemyCore).Length,
+                "같은 프레임에 둘 다 때리지 않는다(attackTargetCount = 1)");
+        }
+
+        // 힐러가 적 거점을 고르지 않는다 — 마스크가 DefenderUnit 단독이라는 것의 효과 검증.
+        [Test]
+        public void Healer_DoesNotTargetEnemyCore()
+        {
+            using var world = new World("AuthoredTargetMaskTests_HealerVsCore");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            var healer = em.CreateEntity();
+            em.AddComponentData(healer, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            em.AddComponentData(healer, new Health { value = 50f, max = 50f });
+            em.AddComponentData(healer, new FactionTag { value = Faction.DefenderUnit });
+            em.AddComponent<DefenderUnitTag>(healer);
+            em.AddBuffer<IncomingDamage>(healer);
+            em.AddComponentData(healer, new AttackState
+            {
+                range = 6f,
+                cooldownDuration = 1f,
+                cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                // 저작이 AnyEnemy 여도 targetAllies 가 이긴다.
+                targetMask = DefenderTargetDefaults.Resolve(Factions.AnyEnemy, targetAllies: true),
+            });
+            var outputs = em.AddBuffer<AttackOutputElement>(healer);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Heal, magnitude = 5f },
+            });
+
+            var enemyCore = em.CreateEntity();
+            em.AddComponentData(enemyCore, LocalTransform.FromPosition(new float3(2f, 0f, 0f)));
+            em.AddComponentData(enemyCore, new Health { value = 500f, max = 500f });
+            em.AddComponentData(enemyCore, new FactionTag { value = Faction.EnemyCore });
+            em.AddComponentData(enemyCore, new StructureTag { cell = new int2(2, 0), faction = Faction.EnemyCore });
+            em.AddBuffer<IncomingDamage>(enemyCore);
+
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(enemyCore).Length,
+                "힐러는 적 거점을 후보로 삼지 않는다");
+        }
+
+        // 배치 배제 술어 — 구 B-M9(EnemyInstinct 리터럴)의 일반화.
+        [Test]
+        public void IsHostileInstinct_CoversEnemyAndNeutral_ExcludesDefenderAndCores()
+        {
+            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.EnemyInstinct));
+            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.NeutralInstinct),
+                "중립 본능도 배치 배제를 받는다 — 중립을 여는 날 코드 변경 0");
+            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.DefenderInstinct),
+                "내 본능 주변에는 배치할 수 있다");
+            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyCore),
+                "마음은 본체 1칸만 닫는다 — 여유가 붙으면 인접 배치로 공성하는 경로가 막힌다");
+            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyUnit));
+        }
     }
 }

@@ -38,8 +38,9 @@ namespace Wassup.Data
         // v1 footprint — 마음 1×1 · 본능 3×3 (README 계약 6). 임의 footprint 는 후속 후보.
         public const int CoreFootprint = 1;
         public const int InstinctFootprint = 3;
-        // 적 본능의 배치 배제 여유(README 요청 7-2 — «주변 3타일») = 3×3 본체 + 3 = 9×9.
-        public const int EnemyInstinctPlacementPadding = 3;
+        // 적대적 본능의 배치 배제 여유(README 요청 7-2 — «주변 3타일») = 3×3 본체 + 3 = 9×9.
+        // unit 8 에서 «적» → «적대적»(= 방어 진영이 아닌) 으로 일반화됐다.
+        public const int HostileInstinctPlacementPadding = 3;
 
         // 편 × 종류 → 교차 비트. 거점 아닌 비트는 이 함수에서 나올 수 없다.
         public static Faction DeriveFaction(StructureSide side, StructureKind kind)
@@ -68,6 +69,13 @@ namespace Wassup.Data
 
         public static bool IsCore(Faction faction) => ((int)faction & Factions.AnyCore) != 0;
         public static bool IsInstinct(Faction faction) => ((int)faction & Factions.AnyInstinct) != 0;
+
+        // unit 8 — 배치 배제 여유를 받는 본능. 「방어 진영이 아닌 본능」이 이 자리에서
+        // 표현 가능한 가장 정확한 술어다: GeneratedMap.structures 는 SO 참조를 실을 수
+        // 없어 «방어유닛을 노리는가»(targetFactions)를 볼 수 없다. 중립을 여는 날 코드
+        // 변경 0 으로 걸린다(구 B-M9 — EnemyInstinct 리터럴이던 자리).
+        public static bool IsHostileInstinct(Faction faction)
+            => IsInstinct(faction) && ((int)faction & Factions.AnyDefender) == 0;
     }
 
     // battle-structures unit 3 — 모드는 **파생**이다. 저작 enum 을 두면 «공성인데 적 마음

@@ -1062,8 +1062,10 @@ namespace Wassup.Bridge
                     {
                         var st = _generatedMap.structures[i];
                         int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
-                        if (st.faction == Faction.EnemyInstinct)
-                            half += Wassup.Data.StructurePlacements.EnemyInstinctPlacementPadding;   // 리뷰 A-L1
+                        // battle-structures unit 8 — 「적대적 본능」 술어(구 B-M9: EnemyInstinct
+                        // 리터럴). 판정은 StructurePlacements 소관 — 형제 파생들과 같은 자리.
+                        if (Wassup.Data.StructurePlacements.IsHostileInstinct(st.faction))
+                            half += Wassup.Data.StructurePlacements.HostileInstinctPlacementPadding;   // 리뷰 A-L1
                         for (int dy = -half; dy <= half; dy++)
                             for (int dx = -half; dx <= half; dx++)
                                 CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
@@ -6174,11 +6176,12 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
                 attackTargetCount = unitData.attackTargetCount,
-                // battle-structures unit 0 — 아군 타게팅(힐러)은 DefenderUnit 단독이다.
+                // battle-structures unit 8 — 저작 타겟 마스크(기본 = 적 진영 전부).
+                // 아군 타게팅(힐러)은 여전히 DefenderUnit 단독이고 저작 마스크를 이긴다 —
                 // AnyDefender 로 넓히면 IncomingHeal 버퍼가 없는 거점이 후보에 들어
-                // ECB playback 에서 던진다. 적 타게팅도 EnemyUnit 단독 — 방어유닛이
-                // 적 거점을 때리는 것은 이 spec 범위 밖(결정 4).
-                targetMask = unitData.targetAllies ? (int)Faction.DefenderUnit : (int)Faction.EnemyUnit,
+                // ECB playback 에서 던진다. 판정 전체는 DefenderTargetDefaults 소관.
+                targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
+                    (int)unitData.targetFactions, unitData.targetAllies),
                 hitDelaySec = unitData.hitDelaySec,
             });
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
@@ -6404,7 +6407,10 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec,
                 attackTargetCount = unitData.attackTargetCount,
-                targetMask = (int)Faction.EnemyUnit,
+                // battle-structures unit 8 — 순찰 아군도 같은 저작 축을 쓴다. 배치 방어유닛과
+                // 같은 SO 타입이라 «순찰만 거점을 못 때린다» 는 예외를 만들 이유가 없다.
+                targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
+                    (int)unitData.targetFactions, unitData.targetAllies),
                 hitDelaySec = unitData.hitDelaySec,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
