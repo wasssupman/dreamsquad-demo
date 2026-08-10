@@ -60,6 +60,7 @@ public struct StructureTag : IComponentData { public int2 cell; public Faction f
 미러 스칼라(`_goalStability`)는 **유지한다** — 점수 tie-break(`EncodeSubmission`)·HUD·공개 API 가 읽는 «가장 위험한 골» 캐시로서, 판정은 이미 per-entity Health 다. 계약 7 의 «미러를 걷어낸다» 는 문구는 «미러가 판정을 소유하지 않는다» 로 충족된다(문구보다 좁게 이행 — README 정정 대상).
 
 **본능·적 마음의 붕괴**는 결정 2(v1 = 연출·로그만)를 따른다: 등록부에서 제거 + 게이지 숨김 + 붕괴 VFX. 유출 전환·스트레스는 **방어 마음(골) 전용** — 본능이 부서져도 그 셀이 유출 지점이 되지 않는다.
+(2026-08-10 unit 10 정정) **적 마음**은 이제 그 자리에서 승리 축을 발동한다(계약 15). 본능은 여전히 연출·로그만이고, 유출 전환·스트레스가 방어 마음 전용이라는 것도 그대로다.
 
 `GoalCollapsedEventsSingleton` 은 이 unit 에서도 **생산자를 만들지 않는다**. 붕괴 감지가 브리지 등록부 폴링(엔티티 부재)으로 충분하고, 채널 페이로드(`goalIndex`)가 거점 체계와 안 맞는다(리뷰 M-e). 채널은 후속 후보로 이관하고 존치.
 
