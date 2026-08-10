@@ -1,6 +1,9 @@
 # continuous-agent-movement — 격자 저작 · 연속 이동
 
-상태: **units 0~13 구현 완료 2026-08-09 · Play 육안 게이트 대기** ([9_handoff_summary.md](9_handoff_summary.md) · [11_tangential_speed.md](11_tangential_speed.md) · [12_corridor_clearance.md](12_corridor_clearance.md) · [13_engaged_unit_shove.md](13_engaged_unit_shove.md))
+상태: **units 0~14 완료 2026-08-09 · Play 육안 통과** ([9_handoff_summary.md](9_handoff_summary.md) · [11](11_tangential_speed.md) · [12](12_corridor_clearance.md) · [13](13_engaged_unit_shove.md) · [14](14_portability_audit.md))
+
+- units 11·12·13 = Play 육안 통과 (`722d0fcd` · `4661b843` · `617fcdd7`). unit 14 = 이식성 감사, **문서 전용·코드 변경 0**
+- 이 spec 이 만든 `NavGrid` 는 이후 `traversal-layers` unit 5 에서 **유닛 통행 층별**로 조립되도록 확장됐다(`4cbfe751`). 벽 술어의 단일 소유라는 계약은 그대로고, 입력이 «지형 1장」에서 «유닛이 여는 층」으로 바뀌었다.
 
 - **유닛 반지름 계약 갱신**: 아래 feature-wide 계약의 "0.35" 는 **unit 12 에서 0.25 로 대체**됐다. 0.35 의 근거("지름 0.7 < 1.0 이라 1타일 복도 통과 가능")는 단독 통과만 본 검산이었고, 군집에서는 여유 0.15 가 밀어냄 폭 0.35 보다 작아 교착을 만들었다.
 - **unit 12·13 은 세트다.** 13 만 남기고 12 를 되돌리면 통과가 무너진다 ([13](13_engaged_unit_shove.md) 의 의존성 표 참조).

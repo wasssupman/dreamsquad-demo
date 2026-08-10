@@ -56,3 +56,17 @@
 - **물 적** — README §6. 셀 쪽 변경은 3줄
 - **리팩토링 잔여** (리뷰 P1) — 인라인 체비셰프 12곳 → 기존 `GridMath.ChebyshevDistance` · `AttackSystem` 2곳 → 기존 `TargetPersistence.KeepsLock`
 - **`PlacementLayer` → `CellLayer` 리네임** — 통행에도 쓰이므로 이름이 거짓말한다(참조 40+)
+
+---
+
+## 추가분 — unit 5 (2026-08-10, 이 핸드오프 이후에 붙었다)
+
+**Commit**: `4cbfe751` fix(traversal-layers): unit 5 — 충돌 그리드도 통행 층을 본다
+
+**무슨 일이 있었나**: units 1b·3 은 **라우팅(BFS) 마스크**만 층 인지로 바꿨다. `MovementSystem` 이 충돌·셀 트림에 쓰는 `NavGrid` 는 프레임당 하나였고 그 입력이 `field.walkMask`(= `Path` 전용)로 남아 있었다. 그래서 이 spec 의 **첫 소비자**(순찰병 `Ground|Path`)가 배치지에 서면 자기 칸이 벽으로 읽혀 `PatrolStep.dir` 을 받고도 영원히 clamp 됐다.
+
+**되돌리면 안 되는 것**: `MovementSystem` 의 nav 는 **유닛 통행 층별**이다. 프레임당 하나로 되돌리면 `Path` 아닌 층을 가진 모든 유닛이 즉시 굳는다. 조립은 여전히 `MovementCellTrim` 한 곳이고, 장애물은 마스크에 구워져 나오므로 `NavGrid` 에 다시 넘기지 않는다.
+
+**다음 사람이 읽을 것**: [`5_collision_grid_layers.md`](5_collision_grid_layers.md) 의 «이 결함을 놓친 이유» 섹션. 이동 계약을 바꿀 때 검증 축은 «순수 함수가 옳은 값을 내는가»가 아니라 **«라이브에서 유닛의 셀이 실제로 바뀌는가»** 다. 이 spec 은 그걸 세 라운드 놓쳤다.
+
+**남은 위험**: 위 Follow-up 의 «방어유닛 이동 켜기» 항목이 경고한 앵커 스냅 문제는 `summon-patrol-defender` unit 9 에서 층 인지 스냅(`TryGetPatrolHomeCell`)으로 해소됐다. 다만 **`TryGetNearestWalkCell` 자체는 여전히 `Walk` 하드코딩**이고 다른 호출처(해저드 디버그 스폰 등)가 남아 있다.
