@@ -1,6 +1,6 @@
 # 거점 체계 — 마음 · 본능 (battle-structures)
 
-상태: **완료 2026-08-10** — units 0~6(거점 체계) + units 8~11(공성 승패). 검증: EditMode **2063 / 실패 0 / 의도적 스킵 3** · PlayMode **5/5**
+상태: **완료 2026-08-10** — units 0~6(거점 체계) + units 8~11(공성 승패). 검증: 병합 후 EditMode **2100 / 실패 0 / 의도적 스킵 3** · PlayMode **5/5**
 (rev 3 설계 확정 → 리뷰 F1~F7 → units 0~6 → Play → 리뷰 C-1/H/M/L 반영 → 계약 14 → units 8~11. 인계 = [`7_handoff_summary.md`](7_handoff_summary.md)(0~6) + [`12_handoff_summary.md`](12_handoff_summary.md)(8~11))
 (rev 1 = 방어기제 명칭 / rev 2 = 골 두 벌 발견 / rev 3 = **원점 재설계** — 진영×종류 2축, 마음·본능, 침략/공성 모드)
 
