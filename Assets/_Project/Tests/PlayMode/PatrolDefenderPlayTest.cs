@@ -213,6 +213,36 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(firstPatrol, respawned, "respawn is a new entity version");
             Assert.AreEqual(1, CountWith<PatrolAnchor>(em), "respawn keeps the one-patrol cap");
 
+            // unit 9 — **소환사를 재배치하면 담당 구역과 집이 따라온다.**
+            //
+            // ⚠ 이 축은 **테스트 맨 끝**에 둔다. 재배치는 PendingDeployment 를 붙이는데
+            // AttackSystem 쿼리가 `WithNone<PendingDeployment>` 라 소환사가 공격 루프에서
+            // 빠진다 — 앞에 두면 뒤의 재소환 축이 «소환을 못 해서» 빨개진다(실제로 겪음).
+            // 실경로(TryBeginDefenderRelocation)를 태운다 — RelocatePatrolAnchorFor 를 직접
+            // 부르면 "그 함수가 옳다"만 보이고 "재배치가 그걸 부른다"는 안 보인다.
+            Vector2Int relocTo = default;
+            bool foundReloc = false;
+            for (int x = -24; x < 48 && !foundReloc; x++)
+            for (int y = -24; y < 48 && !foundReloc; y++)
+            {
+                var cand = new Vector2Int(x, y);
+                if (cand == ownerCell) continue;
+                if (!bridge.CanRelocateDefender(ownerCell, cand, out _)) continue;
+                relocTo = cand; foundReloc = true;
+            }
+            Assert.IsTrue(foundReloc, "재배치 가능한 목적 셀이 있어야 이 축을 볼 수 있다");
+            Assert.IsTrue(bridge.TryBeginDefenderRelocation(ownerCell, relocTo, out _, out _),
+                "소환사 재배치가 성사된다");
+
+            var relocCell = new int2(relocTo.x, relocTo.y);
+            var afterAnchor = em.GetComponentData<PatrolAnchor>(respawned);
+            Assert.AreEqual(relocCell, afterAnchor.cell,
+                "박스 중심이 새 소환사 셀을 따라온다 — 배치 프리뷰가 칠하는 곳과 같아야 한다");
+            Assert.AreNotEqual(relocCell, afterAnchor.homeCell, "집은 여전히 소환사 셀이 아니다");
+            Assert.LessOrEqual(GridMath.ChebyshevDistance(afterAnchor.homeCell, relocCell),
+                afterAnchor.tileRadius, "집이 새 구역 안으로 따라온다");
+
+
             bridge.StopBattle();
             yield return null;
             Assert.AreEqual(0, CountWith<PatrolAnchor>(em), "match boundary clears patrol entities");

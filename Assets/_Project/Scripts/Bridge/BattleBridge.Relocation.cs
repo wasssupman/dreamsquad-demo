@@ -101,9 +101,9 @@ namespace Wassup.Bridge
             _defenderByTile[to] = binding;
             _em.SetComponentData(entity, new DefenderTile { cell = new int2(to.x, to.y) });
             _em.AddComponent<PendingDeployment>(entity);
-            // summon-patrol-defender unit 4 — 소환사가 옮겨가면 순찰병의 거점도 따라간다.
-            // 거점은 walk 셀이므로 새 배치 셀 기준으로 **재스냅**한다(계약 4). 재스냅 실패
-            // (주변에 walk 타일 없음)면 기존 거점을 유지한다 — 순찰병을 죽이지 않는다.
+            // summon-patrol-defender unit 4 — 소환사가 옮겨가면 순찰병의 담당 구역도 따라간다.
+            // unit 9 로 계약이 바뀌었다: 중심 = 새 소환사 셀, 집 = 그 **주변**의 통행 가능 칸.
+            // 선정 실패(주변에 설 칸 없음)면 기존 값을 유지한다 — 순찰병을 죽이지 않는다.
             RelocatePatrolAnchorFor(entity, new int2(to.x, to.y));
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{binding.data.displayName}_{to.x}_{to.y}");
