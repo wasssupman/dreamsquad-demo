@@ -241,6 +241,73 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void FrontmostCardHolder_DoesNotLock_TheCardPromisesFreshFrontmostEachAttack()
+        {
+            // 「끝을 보는 눈」 카드 계약이 "매 공격마다 지금의 최전방"이다. 지속 락과 정면 충돌.
+            // wantFrontmost 는 락 컴포넌트 **+ 살아있는 슬롯** 둘 다 요구하므로 둘 다 준다.
+            var def = CreateDefender(new float3(0f, 0f, 0f));
+            _em.AddComponentData(def, new FrontmostAttackLock
+            {
+                active = false, target = Entity.Null, damageMulSnapshot = 1f, targetIsPriority = false,
+            });
+            var mods = _em.AddBuffer<DcAttackModSlot>(def);
+            mods.Add(new DcAttackModSlot { kind = DcAttackModKind.FrontmostTarget, damageMul = 1.2f });
+            CreateEnemy(new float3(1f, 0f, 0f));
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(Entity.Null, LockOf(def),
+                "frontmost 카드 보유자는 지속 락을 받지 않는다 — 제외는 계약이다");
+        }
+
+        [Test]
+        public void DefenderWithEnemyBehavior_IsLeftToTheEnemyBlock_NotDoubleLocked()
+        {
+            // 순찰병은 방어유닛이면서 적 AI 스택(EnemyBehavior)을 물려받는다. unit 3 블록이
+            // 이미 처리하므로 unit 4 블록은 `!EnemyBehavior` 로 비켜준다.
+            //
+            // 관측 방법: targetMode = None 을 준다. 그러면 **적 블록도** 게이트에서 걸러지므로
+            // (targetMode != None 요구) 락이 아무 데서도 안 걸려야 한다. 누가 unit 4 의
+            // `!EnemyBehavior` 게이트를 지우면 여기서 락이 생겨 빨개진다.
+            var def = CreateDefender(new float3(0f, 0f, 0f));
+            _em.AddComponentData(def, new EnemyBehavior
+            {
+                targetMode = EnemyTargetMode.None,
+                engageMovement = EngageMovement.Halt,
+            });
+            CreateEnemy(new float3(1f, 0f, 0f));
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(Entity.Null, LockOf(def),
+                "EnemyBehavior 보유 유닛은 unit 4 블록이 건드리지 않는다 (이중 잠금 방지)");
+        }
+
+        // ───────── ⑤ 계약 6 — 락은 targetMask 를 다시 본다 ─────────
+
+        [Test]
+        public void LockReleases_WhenTheTargetLeavesTheMask()
+        {
+            // 락 이전엔 bestTarget 이 매 프레임 마스크로 재선정돼 이 상황이 불가능했다.
+            // 락이 그 재선정을 건너뛰므로, 런타임 마스크 변경(도발 해제의 previousTargetMask
+            // 원복)이 반영되지 않으면 **마스크 밖 대상을 계속 때린다**.
+            var def = CreateDefender(new float3(0f, 0f, 0f));
+            var foe = CreateEnemy(new float3(1f, 0f, 0f));
+
+            Tick();
+            Assert.AreEqual(foe, LockOf(def), "먼저 잠근다");
+
+            // 마스크에서 EnemyUnit 을 뺀다 — 이제 이 대상은 조준 대상이 아니다.
+            var st = _em.GetComponentData<AttackState>(def);
+            st.targetMask = (int)Faction.BlockingHazard;
+            _em.SetComponentData(def, st);
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(Entity.Null, LockOf(def),
+                "마스크 밖으로 나간 대상은 놓는다 — 계약 6");
+        }
+
+        [Test]
         public void FacingUnit_DoesNotLock_LaneWitnessIsAFireGateNotATarget()
         {
             var facing = CreateDefender(new float3(0f, 0f, 0f));

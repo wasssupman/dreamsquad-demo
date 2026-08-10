@@ -506,9 +506,28 @@ namespace Wassup.Battle.Combat
                 LowestHealthTargeting.Candidate healBest = default;
                 Entity healBestEntity = Entity.Null;
                 float3 healBestPos = default;
+                // target-persistence 계약 6 — 락이 **아직 합법 후보인가**를 이 루프에서 함께 본다.
+                //
+                // 락 이전엔 bestTarget 이 매 프레임 마스크로 재선정돼 «마스크 밖 대상을 계속
+                // 때린다»가 구조적으로 불가능했다. 락이 그 재선정을 건너뛰므로 런타임 마스크
+                // 변경(도발 해제의 previousTargetMask 원복)이 반영되지 않는다.
+                //
+                // **새 ComponentLookup 을 쓰지 않는다.** FactionTag lookup 을 추가했더니
+                // AttackSystem 전체가 `ObjectDisposedException: EntityTypeHandle invalidated by
+                // a structural change` 로 무너졌다(EditMode 25건). 이 루프가 **이미 마스크를
+                // 거르고 있으므로** 여기서 표시하면 조회도 스캔도 추가되지 않는다.
+                //
+                // 후보 스냅샷은 DeadTag·PendingDeployment·UltimateLeapState 를 이미 제외한다 —
+                // 그래서 이 플래그는 «마스크 통과»보다 조금 강한 «이번 프레임 합법 후보»다.
+                // 이탈(판 밖) 보스를 문 락이 풀리는 것도 그 귀결이며 의도한 방향이다.
+                Entity lockedNow = focusLookup.HasComponent(attackerEntity)
+                    ? focusLookup[attackerEntity].current : Entity.Null;
+                bool lockStillCandidate = false;
+
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
+                    if (targetEntities[i] == lockedNow) lockStillCandidate = true;
                     if (targetEntities[i] == attackerEntity) continue;
                     int cclass = defenderClassLookup.HasComponent(targetEntities[i])
                         ? (int)defenderClassLookup[targetEntities[i]].value : -1;
@@ -648,6 +667,7 @@ namespace Wassup.Battle.Combat
                     {
                         Entity cur = focusLookup[attackerEntity].current;
                         bool curValid = cur != Entity.Null
+                            && lockStillCandidate          // 계약 6 — 마스크 밖으로 나가면 놓는다
                             && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
                             && !deadLookup.HasComponent(cur);
                         // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
@@ -785,6 +805,7 @@ namespace Wassup.Battle.Combat
                     {
                         Entity dcur = focusLookup[attackerEntity].current;
                         bool dcurValid = dcur != Entity.Null
+                            && lockStillCandidate          // 계약 6 — 적 락과 같은 규칙
                             && healthLookup.HasComponent(dcur) && healthLookup[dcur].value > 0f
                             && !deadLookup.HasComponent(dcur);
                         bool dKeep = false;
