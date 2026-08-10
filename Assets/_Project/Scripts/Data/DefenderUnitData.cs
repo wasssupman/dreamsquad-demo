@@ -113,7 +113,7 @@ namespace Wassup.Data
         public float placementCooldown = 0f;
 
         [Header("Targeting")]
-        // When true, AttackState.targetMask is set to Faction.Defender (ally targeting).
+        // When true, AttackState.targetMask is set to Faction.DefenderUnit (ally targeting).
         // Use for healers and buff-appliers that target friendly units instead of enemies.
         public bool targetAllies;
 

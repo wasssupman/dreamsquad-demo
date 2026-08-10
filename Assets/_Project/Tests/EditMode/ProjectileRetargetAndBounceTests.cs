@@ -54,7 +54,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponent<AttackUnitTag>(e); // 재조준 후보 풀의 진영 축

@@ -34,20 +34,10 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
+        // battle-structures unit 4(리뷰 M-d) — 손 사본 대신 공용 픽스처 빌더. 빌더와 브리지
+        // 산물의 동일성은 GoalTowerArchetypeTests 가 컴포넌트 집합 단정으로 강제한다.
         private Entity MakeGoal(float3 pos, float m = 300f)
-        {
-            var e = _em.CreateEntity();
-            _em.AddComponentData(e, new GoalPoint
-            {
-                cell = new int2((int)pos.x, (int)pos.z),
-                goalIndex = 0,
-            });
-            _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new Health { value = m, max = m });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Goal });
-            _em.AddBuffer<IncomingDamage>(e);
-            return e;
-        }
+            => StructureFixtures.MakeGoalTower(_em, pos, m);
 
         private Entity MakeEnemy(float3 pos)
         {

@@ -131,7 +131,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddBuffer<CcEffect>(e);
@@ -144,7 +144,7 @@ namespace Wassup.Tests.EditMode
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
                 hitDelaySec = hitDelaySec,
             });
             var outputs = _em.AddBuffer<AttackOutputElement>(e);
@@ -199,7 +199,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 500f, max = 500f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponent<AttackUnitTag>(e);
@@ -210,7 +210,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(float3.zero));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponent<DefenderUnitTag>(e);
@@ -218,7 +218,7 @@ namespace Wassup.Tests.EditMode
             {
                 range = 5f,
                 cooldownDuration = 1f,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
                 attackTargetCount = 1,
                 hitDelaySec = hitDelaySec,
             });

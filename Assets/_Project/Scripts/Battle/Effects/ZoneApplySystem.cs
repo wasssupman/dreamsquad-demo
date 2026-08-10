@@ -45,7 +45,7 @@ namespace Wassup.Battle.Effects
                               .WithAll<PathFollowState>()
                               .WithEntityAccess())
             {
-                if (((int)faction.ValueRO.value & (int)Faction.Enemy) == 0) continue;
+                if (((int)faction.ValueRO.value & (int)Faction.EnemyUnit) == 0) continue;
 
                 int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                 if (!hazardSingleton.cellToEffects.TryGetFirstValue(cell, out var effect, out var iterator)) continue;

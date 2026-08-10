@@ -50,10 +50,10 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Faction_Bitmask_Arithmetic_Matches_Targeting_Rules()
         {
-            Assert.AreEqual(0, (int)Faction.Enemy & (int)Faction.Defender);
-            Assert.AreEqual(0, (int)Faction.Enemy & (int)(Faction.Defender | Faction.BlockingHazard));
-            Assert.AreNotEqual(0, (int)Faction.BlockingHazard & (int)(Faction.Defender | Faction.BlockingHazard));
-            Assert.AreNotEqual(0, (int)Faction.Enemy & (int)Faction.Enemy);
+            Assert.AreEqual(0, (int)Faction.EnemyUnit & (int)Faction.DefenderUnit);
+            Assert.AreEqual(0, (int)Faction.EnemyUnit & (int)(Faction.DefenderUnit | Faction.BlockingHazard));
+            Assert.AreNotEqual(0, (int)Faction.BlockingHazard & (int)(Faction.DefenderUnit | Faction.BlockingHazard));
+            Assert.AreNotEqual(0, (int)Faction.EnemyUnit & (int)Faction.EnemyUnit);
         }
 
         [Test]
@@ -64,19 +64,19 @@ namespace Wassup.Tests.EditMode
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
-            var defender = CreateTarget(em, Faction.Defender, new float3(0f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(0f, 0f, 0f), defenderTag: true);
             em.AddComponentData(defender, new AttackState
             {
                 range = 5f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
             });
             AddDamageOutput(em, defender, 3f);
 
             var hazard = CreateTarget(em, Faction.BlockingHazard, new float3(0.5f, 0f, 0f));
-            var enemy = CreateTarget(em, Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(em, Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
 
             Tick(world, simGroup);
 
@@ -94,19 +94,19 @@ namespace Wassup.Tests.EditMode
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
-            var enemy = CreateTarget(em, Faction.Enemy, new float3(0f, 0f, 0f), attackerTag: true);
+            var enemy = CreateTarget(em, Faction.EnemyUnit, new float3(0f, 0f, 0f), attackerTag: true);
             em.AddComponentData(enemy, new AttackState
             {
                 range = 5f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
-                targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
+                targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard),
             });
             AddDamageOutput(em, enemy, 4f);
 
             var hazard = CreateTarget(em, Faction.BlockingHazard, new float3(0.5f, 0f, 0f));
-            var defender = CreateTarget(em, Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);
+            var defender = CreateTarget(em, Faction.DefenderUnit, new float3(2f, 0f, 0f), defenderTag: true);
 
             Tick(world, simGroup);
 

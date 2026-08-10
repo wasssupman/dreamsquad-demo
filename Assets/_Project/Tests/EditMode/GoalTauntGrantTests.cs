@@ -47,7 +47,7 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.IsTrue(_em.HasComponent<AttackState>(enemy), "도발 grant");
-            Assert.AreEqual((int)Faction.Defender, _em.GetComponentData<AttackState>(enemy).targetMask);
+            Assert.AreEqual((int)Faction.DefenderUnit, _em.GetComponentData<AttackState>(enemy).targetMask);
             Assert.AreEqual(0, _em.GetComponentData<TauntAttackGranted>(enemy).previousTargetMask,
                 "무공격 적 grant 는 previousTargetMask 0 (해제 시 통째 제거 신호)");
 
@@ -66,23 +66,23 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(enemy, new AttackState
             {
                 range = 1.5f, cooldownDuration = 1f, attackTargetCount = 1,
-                targetMask = (int)Faction.Goal,
+                targetMask = (int)Faction.DefenderCore,
             });
             _em.AddBuffer<AttackOutputElement>(enemy);
             _em.AddComponentData(enemy, new Aggroed { guardian = Entity.Null });
 
             Tick();
 
-            Assert.AreEqual((int)(Faction.Goal | Faction.Defender),
+            Assert.AreEqual((int)(Faction.DefenderCore | Faction.DefenderUnit),
                 _em.GetComponentData<AttackState>(enemy).targetMask, "도발 중 Defender 비트 OR");
-            Assert.AreEqual((int)Faction.Goal,
+            Assert.AreEqual((int)Faction.DefenderCore,
                 _em.GetComponentData<TauntAttackGranted>(enemy).previousTargetMask);
 
             _em.RemoveComponent<Aggroed>(enemy);
             Tick();
 
             Assert.IsTrue(_em.HasComponent<AttackState>(enemy), "스폰 grant 소유물 — 해제해도 유지");
-            Assert.AreEqual((int)Faction.Goal, _em.GetComponentData<AttackState>(enemy).targetMask,
+            Assert.AreEqual((int)Faction.DefenderCore, _em.GetComponentData<AttackState>(enemy).targetMask,
                 "해제 시 원래 마스크(Goal 단독)로 원복");
             Assert.IsTrue(_em.HasBuffer<AttackOutputElement>(enemy), "outputs 도 유지");
             Assert.IsFalse(_em.HasComponent<TauntAttackGranted>(enemy));
@@ -92,7 +92,7 @@ namespace Wassup.Tests.EditMode
         public void NormalEnemy_WithDefenderBit_NotTouched()
         {
             // 일반 공격 적(Defender 비트 보유)은 도발 grant 대상이 아니다 — aggro sticky 소관.
-            int mask = (int)(Faction.Defender | Faction.BlockingHazard | Faction.Goal);
+            int mask = (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore);
             var enemy = _em.CreateEntity();
             _em.AddComponentData(enemy, new AttackState
             {

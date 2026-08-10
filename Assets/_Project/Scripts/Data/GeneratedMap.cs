@@ -17,11 +17,13 @@ namespace Wassup.Data
         public NativeArray<int2>        spawns;  // 1~N
         public int2                     goal;    // primary = goals[0] (단일-점 소비자·폴백)
         public NativeArray<int2>        goals;   // multi-goal 목록. 소비 시 미생성/빈이면 [goal] 폴백(유닛 1·3).
-        public NativeArray<float>       goalMaxStability;   // goals 와 index 정렬(같은 길이). 소비 시 미생성/길이 불일치면 전 골 0 폴백(goal-stability 유닛 0).
+        // battle-structures unit 3 — 거점 저작의 런타임 투영(셀 + 교차 비트). 스탯은 SO 에
+        // 남고 브리지가 문서에서 읽는다(unit 4). 미생성/빈 = 거점 없는 맵.
+        public NativeArray<StructurePlacement> structures;
         public int                      seed;
         public int                      generatorVersion;
 
-        // 주의: goals/goalMaxStability 는 IsCreated 불변식에 넣지 않는다 — 안 채우는 생산자(폴백/legacy)와
+        // 주의: goals 는 IsCreated 불변식에 넣지 않는다 — 안 채우는 생산자(폴백/legacy)와
         // 테스트 픽스처가 IsCreated=false 로 뒤집히는 걸 막기 위함(multi-goal-map 유닛 0).
         public bool IsCreated => tiles.IsCreated && spawns.IsCreated;
 
@@ -44,7 +46,7 @@ namespace Wassup.Data
             if (tiles.IsCreated)            tiles.Dispose();
             if (spawns.IsCreated)           spawns.Dispose();
             if (goals.IsCreated)            goals.Dispose();
-            if (goalMaxStability.IsCreated) goalMaxStability.Dispose();
+            if (structures.IsCreated)       structures.Dispose();
             if (mergeDegree.IsCreated) mergeDegree.Dispose();
             if (chokepoint.IsCreated)  chokepoint.Dispose();
             if (propLayerId.IsCreated) propLayerId.Dispose();

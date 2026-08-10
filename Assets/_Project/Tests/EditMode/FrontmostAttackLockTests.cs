@@ -77,13 +77,13 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 10f, max = 10f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponentData(e, new AttackState
             {
                 range = range, cooldownDuration = 1f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Enemy, hitDelaySec = hitDelaySec,
+                attackTargetCount = 1, targetMask = (int)Faction.EnemyUnit, hitDelaySec = hitDelaySec,
             });
             _em.AddComponent<DefenderUnitTag>(e);
             var outputs = _em.AddBuffer<AttackOutputElement>(e);
@@ -101,7 +101,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             return e;

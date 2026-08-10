@@ -13,7 +13,7 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure }
 
         private const float Cell = 26f;
 
@@ -25,7 +25,15 @@ namespace Wassup.EditorTools
         private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
-        private readonly List<float> _goalStability = new();   // _goals 와 index 정렬 — per-goal 최대 안정도 M (goal-stability unit 0)
+        // battle-structures unit 3 — 거점 저작(본능 + 적 마음).
+        //
+        // **방어 마음은 여기 넣지 않는다.** 현행 9장이 전부 goals[] 로 방어 골을 저작하고
+        // 라이브 타워가 이미 DefenderCore 진영이라, structures[] 로 옮기면 «콘텐츠 이관 0»
+        // 이 깨지고 골이 또 두 벌이 된다(이 스펙이 상대해 온 바로 그 병). goals[] 가 방어
+        // 마음의 정본이고, (Defender, Core) 조합은 Validate 가 에러로 막는다.
+        private readonly List<StructureEntry> _structures = new();
+        private StructureSide _structureSide = StructureSide.Enemy;
+        private StructureData _structureData;
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -50,7 +58,7 @@ namespace Wassup.EditorTools
             ResetMaskToDerived();
             _spawns.Clear();
             _goals.Clear();
-            _goalStability.Clear();
+            _structures.Clear();
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
@@ -103,12 +111,9 @@ namespace Wassup.EditorTools
                 foreach (var g in doc.Goals) _goals.Add(new Vector2Int(g.x, g.y));
             else
                 _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
-
-            // 안정도: _goals 와 길이 일치 시 채택, 아니면 전 골 0 (런타임 폴백과 같은 규칙).
-            _goalStability.Clear();
-            var st = doc.GoalMaxStability;
-            for (int i = 0; i < _goals.Count; i++)
-                _goalStability.Add(st != null && st.Count == _goals.Count ? Mathf.Max(0f, st[i]) : 0f);
+            _structures.Clear();
+            if (doc.Structures != null)
+                foreach (var s in doc.Structures) _structures.Add(s);
         }
 
         private void OnGUI()
@@ -117,33 +122,19 @@ namespace Wassup.EditorTools
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField($"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}", EditorStyles.miniLabel);
-            DrawGoalStability();
+            // battle-structures unit 3 — 모드는 파생 배지다(드롭다운이 아니다).
+            var mode = StructureAuthoringRules.DeriveMode(CountEnemyCores());
+            string modeLabel = mode == MapMode.Siege ? "공성"
+                : mode == MapMode.Invalid ? "에러(적 마음 2+)" : "침략";
+            EditorGUILayout.LabelField(
+                $"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}  거점={_structures.Count}  모드={modeLabel}",
+                EditorStyles.miniLabel);
             DrawValidationAndBake();
         }
 
-        // goal-stability unit 0 — per-goal 최대 안정도 M 입력. 0 = 유출 지점 현행, >0 = 공성 대상.
-        private void DrawGoalStability()
-        {
-            SyncGoalStabilityLength();
-            if (_goals.Count == 0) return;
-            EditorGUILayout.LabelField("골 안정도 (0 = 현행 유출, >0 = 공성 대상)", EditorStyles.miniBoldLabel);
-            for (int i = 0; i < _goals.Count; i++)
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    EditorGUILayout.LabelField($"골 ({_goals[i].x},{_goals[i].y})", GUILayout.Width(90));
-                    _goalStability[i] = Mathf.Max(0f, EditorGUILayout.FloatField(_goalStability[i], GUILayout.Width(70)));
-                }
-            }
-        }
-
-        // 도메인 리로드 등으로 두 리스트 길이가 어긋나면 0 패딩/절단으로 재정렬.
-        private void SyncGoalStabilityLength()
-        {
-            while (_goalStability.Count < _goals.Count) _goalStability.Add(0f);
-            while (_goalStability.Count > _goals.Count) _goalStability.RemoveAt(_goalStability.Count - 1);
-        }
+        // battle-structures unit 0 — «골 안정도» 저작 컬럼을 제거했다. 그 값을 읽던 런타임
+        // 경로(SpawnGoalEntities)가 없어져 저작해도 아무 일이 일어나지 않는 입력란이었다.
+        // 거점 체력 저작은 unit 3 의 StructureData 가 맡는다.
 
         // placement-mask unit 4 — 저작된(파생과 상이한) 셀의 테두리 색 = 그 칸이 여는 층.
         private static Color AuthoredLayerColor(byte bits)
@@ -172,7 +163,6 @@ namespace Wassup.EditorTools
             int i = _goals.IndexOf(cell);
             if (i < 0) return;
             _goals.RemoveAt(i);
-            if (i < _goalStability.Count) _goalStability.RemoveAt(i);
         }
 
         private void DrawValidationAndBake()
@@ -236,7 +226,16 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점" }, EditorStyles.toolbarButton);
+                // battle-structures unit 3 — 거점 브러시가 찍을 편 + SO.
+                using (new EditorGUI.DisabledScope(_tool != Tool.Structure))
+                {
+                    _structureSide = GUILayout.Toolbar(_structureSide == StructureSide.Defender ? 0 : 1,
+                        new[] { "방어", "적" }, EditorStyles.toolbarButton, GUILayout.Width(70)) == 0
+                        ? StructureSide.Defender : StructureSide.Enemy;
+                    _structureData = (StructureData)EditorGUILayout.ObjectField(
+                        _structureData, typeof(StructureData), false, GUILayout.Width(130));
+                }
                 // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
                 using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
@@ -376,7 +375,24 @@ namespace Wassup.EditorTools
                         _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
                         _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _goals.Add(cell);
-                        _goalStability.Add(0f);   // 기본 0 = 현행 유지
+                    }
+                    break;
+                case Tool.Structure:
+                    if (!isDown) return; // 토글은 클릭만 (스폰·골과 같은 이유)
+                    {
+                        int existing = _structures.FindIndex(s => s.cell == cell);
+                        if (existing >= 0) { _structures.RemoveAt(existing); break; }
+                        if (_structureData == null)
+                        {
+                            Debug.LogWarning("[MapPainter] 거점 브러시: StructureData 를 먼저 물려라.");
+                            break;
+                        }
+                        _structures.Add(new StructureEntry
+                        {
+                            cell = cell,
+                            side = _structureSide,
+                            data = _structureData,
+                        });
                     }
                     break;
                 case Tool.PlaceMask:
@@ -398,27 +414,57 @@ namespace Wassup.EditorTools
         // ── Validation (unit 1) — 런타임 계약과 일치 ──────────────────────────────
         private bool IsWalk(int x, int y) => InBounds(x, y) && _tiles[Idx(x, y)] == MapTileType.Walk;
 
+        // battle-structures unit 3(투트랙 리뷰 M-a 정정) — 거점 규칙은 런타임
+        // StructureAuthoringRules 가 단일 소유한다. 여기 인라인돼 있던 구현은 에디터
+        // 어셈블리에 갇혀 테스트가 못 보고 인스펙터 우회를 못 막았다.
+        private int CountEnemyCores() => StructureAuthoringRules.CountEnemyCores(_structures);
+
         private List<string> Validate()
         {
             var errs = new List<string>();
             if (_tiles == null) { errs.Add("격자 없음"); return errs; }
 
-            // 런타임 MapConnectivity 가 스폰 <2 를 거부(fallback linear 로 교체)하므로 authoring 에서 ≥2 강제.
-            if (_spawns.Count < 2 || _spawns.Count > 4)
-                errs.Add($"스폰 {_spawns.Count}개 (2~4 필요)");
+            // battle-structures unit 3 — 스폰·골 개수 규칙은 **모드에 따라 다르다**(공성은
+            // spawns 저작 금지·멀티골 금지). 규칙은 런타임 순수 함수 하나가 소유한다 —
+            // 여기 인라인하면 툴과 런타임이 갈린다.
+            StructureAuthoringRules.ValidateMode(
+                CountEnemyCores(), _goals.Count, _spawns.Count, errs);
+            StructureAuthoringRules.ValidateStructures(_structures, _w, _h, errs, _tiles);
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
-            if (_goals.Count < 1 || _goals.Count > 4)
-                errs.Add($"골 {_goals.Count}개 (1~4 필요)");
             foreach (var g in _goals)
                 if (!IsWalk(g.x, g.y)) errs.Add($"골 ({g.x},{g.y}) 이 Walk 아님");
 
             // (2×2 walk 블록 금지는 map-painter-tool unit 4 에서 철회 — 폭 1 은 저작 규칙이었지
             // 런타임 요구가 아니다. flow field/CellTrim 은 임의 폭 walkable 에서 성립.)
 
-            // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인
-            if (_goals.Count > 0 && _spawns.Count > 0)
+            // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인.
+            // 리뷰 A-참고 — 공성 맵은 spawns 저작이 금지라 실제 스폰 = 적 마음 셀(unit 6 파생).
+            // 저작 스폰 대신 파생 스폰을 검사해야 «툴 통과 → 런타임 폴백 선형맵으로 조용히
+            // 증발» 을 막는다.
+            var effectiveSpawns = new List<Vector2Int>(_spawns);
+            if (CountEnemyCores() > 0)
             {
+                effectiveSpawns.Clear();   // 런타임 파생과 동일: 적 마음이 있으면 저작 스폰은 덮인다
+                foreach (var st in _structures)
+                    if (st.data != null && st.side == StructureSide.Enemy && st.data.kind == StructureKind.Core)
+                        effectiveSpawns.Add(st.cell);
+            }
+            if (_goals.Count > 0 && effectiveSpawns.Count > 0)
+            {
+                // 리뷰 H-2 패리티 — 본능 3×3 은 벽이다(런타임 MapConnectivity 와 같은 판정).
+                // 여기서 안 잡으면 «툴은 통과인데 런타임이 fallback» 이 난다.
+                var occluded = new bool[_w * _h];
+                foreach (var st in _structures)
+                {
+                    if (st.data == null || st.data.kind != StructureKind.Instinct) continue;
+                    int half = StructurePlacements.InstinctFootprint / 2;
+                    for (int oy = -half; oy <= half; oy++)
+                        for (int ox = -half; ox <= half; ox++)
+                            if (InBounds(st.cell.x + ox, st.cell.y + oy))
+                                occluded[Idx(st.cell.x + ox, st.cell.y + oy)] = true;
+                }
+
                 var vis = new bool[_w * _h];
                 var q = new Queue<int>();
                 foreach (var g in _goals)
@@ -432,11 +478,11 @@ namespace Wassup.EditorTools
                     for (int k = 0; k < 4; k++)
                     {
                         int nx = cx + dx[k], ny = cy + dy[k];
-                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)])
+                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)] && !occluded[Idx(nx, ny)])
                         { vis[Idx(nx, ny)] = true; q.Enqueue(Idx(nx, ny)); }
                     }
                 }
-                foreach (var s in _spawns)
+                foreach (var s in effectiveSpawns)
                     if (IsWalk(s.x, s.y) && !vis[Idx(s.x, s.y)])
                         errs.Add($"스폰 ({s.x},{s.y}) → 골 미도달");
             }
@@ -493,10 +539,6 @@ namespace Wassup.EditorTools
                 var goals = new NativeArray<int2>(_goals.Count, Allocator.Temp);
                 for (int i = 0; i < _goals.Count; i++) goals[i] = new int2(_goals[i].x, _goals[i].y);
 
-                SyncGoalStabilityLength();
-                var goalStability = new NativeArray<float>(_goals.Count, Allocator.Temp);
-                for (int i = 0; i < _goals.Count; i++) goalStability[i] = Mathf.Max(0f, _goalStability[i]);
-
                 var gm = new GeneratedMap
                 {
                     tiles = tiles,
@@ -508,12 +550,12 @@ namespace Wassup.EditorTools
                     spawns = spawns,
                     goals = goals,
                     goal = _goals.Count > 0 ? goals[0] : new int2(0, 0),   // primary = goals[0]
-                    goalMaxStability = goalStability,
                     seed = -1,
                     generatorVersion = 0,
                 };
-                MapDocumentBuilder.WriteToDocument(target, in gm);
-                goalStability.Dispose();
+                // battle-structures unit 3 — 거점은 관리 참조(StructureData)라 GeneratedMap 이
+                // 왕복시킬 수 없다. 저작 주체가 엔트리를 직접 넘긴다.
+                MapDocumentBuilder.WriteToDocument(target, in gm, _structures.ToArray());
                 goals.Dispose();
                 spawns.Dispose();
             }

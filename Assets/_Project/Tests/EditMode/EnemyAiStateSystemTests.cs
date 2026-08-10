@@ -36,7 +36,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0, 0)));
             _em.AddComponentData(e, new DefenderClassTag { value = cls });
             return e;
@@ -46,12 +46,12 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
-            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0, 0)));
             _em.AddComponentData(e, new AttackState
             {
                 range = range, cooldownDuration = 1f, attackTargetCount = 1,
-                targetMask = (int)Faction.Defender,
+                targetMask = (int)Faction.DefenderUnit,
             });
             _em.AddComponentData(e, new EnemyBehavior { targetMode = mode });
             _em.AddComponentData(e, new EnemyTargetFilter { classMask = -1, priorityClass = -1 });

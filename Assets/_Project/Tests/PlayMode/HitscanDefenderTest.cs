@@ -61,7 +61,7 @@ namespace Wassup.Tests.PlayMode
             var enemy = em.CreateEntity();
             em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(1.6f, 0f, 0f)));
             em.AddComponentData(enemy, new Health { value = Hp, max = Hp });
-            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
             // 배치 조사(DotNearby)가 이 적에게도 DoT 를 건다 — 실적 아키타입처럼 CcEffect 버퍼가
             // 없으면 CcApply 가 던진다. 더미는 실제 적이 가진 것을 갖춰야 한다.

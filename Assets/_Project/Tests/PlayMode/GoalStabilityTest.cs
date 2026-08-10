@@ -16,7 +16,7 @@ namespace Wassup.Tests.PlayMode
     // 하네스는 TallyFlowTest 와 같다 — 디펜더를 한 기도 놓지 않고 웨이브를 전부 당겨
     // 유출을 만든다. 승리 유도는 밸런스 의존이라 불안정하다.
     //
-    // goal-tower-siege — 골 타워는 Faction.Defender 진영의 건물 엔티티이고, 적은 자기
+    // goal-tower-siege — 골 타워는 Faction.DefenderCore 진영의 건물 엔티티이고, 적은 자기
     // 공격으로 그것을 때린다. 즉 이 테스트는 **공성 지속 피해**를 통과 경로로 돈다.
     public class GoalStabilityTest
     {
@@ -85,18 +85,24 @@ namespace Wassup.Tests.PlayMode
             }
 
             Assert.IsTrue(sawDrain, "골이 뚫렸는데 안정도가 한 번도 줄지 않았다");
-            Assert.AreEqual(0, bridge.GoalStabilityCurrent, "안정도는 0 에서 바닥친다(음수 금지)");
+            // battle-structures unit 4(ⓐ) — 붕괴 프레임의 미러는 0(방금 죽은 골)이고, 다음
+            // 프레임부터 **살아남은 골 중 최저**를 보여준다(계약 7 — 골 단위 붕괴). 그래서
+            // «항상 0» 단정은 멀티골 맵에서 계약과 어긋난다. 남는 불변식 = 음수 금지.
+            Assert.GreaterOrEqual(bridge.GoalStabilityCurrent, 0, "안정도는 0 에서 바닥친다(음수 금지)");
 
             // stress-after-breach(2026-08-08) — 안정도 0 은 이제 **패배가 아니라 유출 개통**이다.
             // 스트레스 상한(덱 defeatGoalReachedCount)이 있으면 그때부터 유출 1회 = 스트레스 1이
             // 쌓여 상한에서 패배한다. 상한 0 인 덱만 구 동작(즉시 패배)을 유지한다.
-
-            // 안정도 0 = 패배. 스트레스 한계 패배는 제거됐으므로 종료 경로는 이것뿐이다.
+            //
+            // unit 4(ⓐ) — 유출은 **부서진 복도로의** 도달만 센다. 구 전역 붕괴는 붕괴 순간
+            // 공성 중이던 전원을 한꺼번에 유출로 바꿔 상한이 즉시 찼지만, per-cell 은 그 셀
+            // 몫만 바꾸므로 축적이 느리다 — 대기 상한을 그에 맞춘다(전이 자체가 끊긴 결함과
+            // 밸런스 지연을 여전히 가른다).
             float tallyStart = Time.unscaledTime;
             while (gm.CurrentPhase != GamePhase.Result)
             {
-                Assert.Less(Time.unscaledTime - tallyStart, 10f,
-                    $"안정도 0 인데 Result 로 가지 않았다 — 패배 전이가 끊겼다 (현재 {gm.CurrentPhase}).");
+                Assert.Less(Time.unscaledTime - tallyStart, 60f,
+                    $"첫 골 붕괴 후 60초 안에 Result 로 가지 않았다 — 패배 전이가 끊겼다 (현재 {gm.CurrentPhase}, 스트레스 누적 지연이면 상한 재조정).");
                 yield return null;
             }
         }

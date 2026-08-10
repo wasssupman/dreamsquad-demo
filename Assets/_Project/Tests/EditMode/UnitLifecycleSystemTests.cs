@@ -39,13 +39,6 @@ namespace Wassup.Tests.EditMode
                 if (s.queue.IsCreated) s.queue.Dispose();
             }
             query.Dispose();
-            var collapsedQuery = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
-            if (collapsedQuery.CalculateEntityCount() > 0)
-            {
-                var s = collapsedQuery.GetSingleton<GoalCollapsedEventsSingleton>();
-                if (s.queue.IsCreated) s.queue.Dispose();
-            }
-            collapsedQuery.Dispose();
             _world?.Dispose();
         }
 
@@ -71,7 +64,7 @@ namespace Wassup.Tests.EditMode
             {
                 range = 1f,
                 cooldownDuration = 1f,
-                targetMask = (int)Faction.Defender,
+                targetMask = (int)Faction.DefenderUnit,
                 attackTargetCount = 1,
             });
             return e;
@@ -163,51 +156,9 @@ namespace Wassup.Tests.EditMode
                 "싱글턴이 없어도(fail-open) 공격 수단 없는 적은 파괴된다");
         }
 
-        // ── goal-stability unit 4 — 골 붕괴 이벤트 ─────────────────────────────
-
-        private Entity CreateDeadGoal()
-        {
-            var e = _em.CreateEntity();
-            _em.AddComponentData(e, new GoalPoint { cell = new int2(4, 2), goalIndex = 1 });
-            _em.AddComponentData(e, LocalTransform.FromPosition(new float3(4f, 0f, 2f)));
-            _em.AddComponentData(e, new Health { value = 0f, max = 30f });
-            _em.AddComponent<DeadTag>(e);
-            return e;
-        }
-
-        [Test]
-        public void GoalDead_EnqueuesCollapsedEvent_AndDestroys()
-        {
-            var singletonEntity = _em.CreateEntity();
-            _em.AddComponentData(singletonEntity, new GoalCollapsedEventsSingleton
-            {
-                queue = new NativeQueue<GoalCollapsedEvent>(Allocator.Persistent)
-            });
-            var goal = CreateDeadGoal();
-
-            Tick();
-
-            using var q = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalCollapsedEventsSingleton>());
-            var singleton = q.GetSingleton<GoalCollapsedEventsSingleton>();
-            Assert.AreEqual(1, singleton.queue.Count,
-                "붕괴 이벤트 정확히 1건 — general-dead 루프가 삼키면(WithNone<GoalPoint> 누락) 0건이 된다");
-
-            var evt = singleton.queue.Dequeue();
-            Assert.AreEqual(goal, evt.entity);
-            Assert.AreEqual(new int2(4, 2), evt.cell, "cell 은 destroy 전에 bake 되어야 한다");
-            Assert.AreEqual(1, evt.goalIndex);
-
-            Assert.IsFalse(_em.Exists(goal), "이벤트 enqueue 후 엔티티 파괴");
-        }
-
-        [Test]
-        public void GoalDead_WithoutSink_StillDestroyed()
-        {
-            // fail-open: 채널 없이도(합성 테스트 월드) 붕괴 파괴는 진행된다.
-            var goal = CreateDeadGoal();
-
-            Assert.DoesNotThrow(() => Tick());
-            Assert.IsFalse(_em.Exists(goal));
-        }
+        // battle-structures unit 0 — goal-stability 의 골 붕괴 테스트 2개를 제거했다.
+        // 검증 대상인 «골 사망 루프» 가 삭제됐다(GoalPoint 엔티티는 어떤 맵에서도 스폰되지
+        // 않아 그 루프는 한 번도 발화하지 않았다). 거점 단위 붕괴는 unit 4 가 새로 짓고,
+        // 그때 이 계약을 거점 아키타입으로 다시 세운다.
     }
 }

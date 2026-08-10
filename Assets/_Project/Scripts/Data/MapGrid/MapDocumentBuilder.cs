@@ -34,9 +34,12 @@ namespace Wassup.Data.MapGrid
                     : PlacementLayers.Derive(doc.Tiles[i]);
             }
 
-            var spawns = new NativeArray<int2>(doc.Spawns.Count, allocator);
-            for (int i = 0; i < spawns.Length; i++)
-                spawns[i] = new int2(doc.Spawns[i].x, doc.Spawns[i].y);
+            // unit 6 — 공성 문서는 spawns 를 저작하지 않는다(파생이 채운다). null/0 허용.
+            var docSpawns = doc.Spawns;
+            int spawnCount = docSpawns != null ? docSpawns.Count : 0;
+            var spawns = new NativeArray<int2>(spawnCount, allocator);
+            for (int i = 0; i < spawnCount; i++)
+                spawns[i] = new int2(docSpawns[i].x, docSpawns[i].y);
 
             // 멀티골: doc.Goals 있으면 그대로, 없으면 primary [doc.Goal] 폴백 (유닛 0 계약).
             var docGoals = doc.Goals;
@@ -47,12 +50,53 @@ namespace Wassup.Data.MapGrid
             else
                 goals[0] = new int2(doc.Goal.x, doc.Goal.y);
 
-            // 안정도: doc 배열이 (폴백 후) goals 와 길이 일치할 때만 채택, 아니면 전 골 0 (goal-stability 유닛 0).
-            var docStability = doc.GoalMaxStability;
-            var goalMaxStability = new NativeArray<float>(goals.Length, allocator);
-            if (docStability != null && docStability.Count == goals.Length)
-                for (int i = 0; i < goals.Length; i++)
-                    goalMaxStability[i] = math.max(0f, docStability[i]);
+            // battle-structures unit 3 — 거점 투영. data 가 빈 엔트리는 건너뛴다(저작 사고
+            // 방어 — OnValidate 가 이미 에러로 알린다). 진영은 (편 × 종류) 파생.
+            var docStructures = doc.Structures;
+            int structureCount = 0;
+            if (docStructures != null)
+                for (int i = 0; i < docStructures.Count; i++)
+                    if (docStructures[i].data != null
+                        && StructurePlacements.DeriveFaction(docStructures[i].side, docStructures[i].data.kind)
+                           != Wassup.Battle.Units.Faction.DefenderCore)   // 리뷰 L-12 — 기록 패스와 동일 필터
+                        structureCount++;
+            var structures = new NativeArray<StructurePlacement>(structureCount, allocator);
+            if (structureCount > 0)
+            {
+                int written = 0;
+                for (int i = 0; i < docStructures.Count; i++)
+                {
+                    var s = docStructures[i];
+                    if (s.data == null) continue;
+                    var faction = StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                    // 리뷰 L-12 — 스폰(SpawnStructureEntities)과 같은 필터. 투영에만 남기면
+                    // «placeMask 는 닫혔는데 엔티티는 없는» 셀이 생긴다. 방어 마음의 정본은 goals[].
+                    if (faction == Wassup.Battle.Units.Faction.DefenderCore) continue;
+                    structures[written++] = new StructurePlacement
+                    {
+                        cell = new int2(s.cell.x, s.cell.y),
+                        faction = faction,
+                    };
+                }
+            }
+
+            // battle-structures unit 6 — 공성 모드 파생. **적 마음의 유무가 곧 모드다**:
+            // 적 마음이 있으면 그 셀이 스폰이다(저작 spawns 무시 — «공성 + spawns 저작» 은
+            // 검증 에러지만 뚫고 와도 여기서 덮는다). spawns[] 소비처 8곳은 전부 «셀 좌표
+            // 목록» 만 보므로 이 한 블록으로 하류 전체가 모드를 모른 채 공성으로 돈다.
+            // 공성 규칙(적 마음 정확히 1)은 저작 검증 몫 — 파생은 기계적으로만 처리한다.
+            int enemyCoreCount = 0;
+            for (int i = 0; i < structures.Length; i++)
+                if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore) enemyCoreCount++;
+            if (enemyCoreCount > 0)
+            {
+                spawns.Dispose();
+                spawns = new NativeArray<int2>(enemyCoreCount, allocator);
+                int sw = 0;
+                for (int i = 0; i < structures.Length; i++)
+                    if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore)
+                        spawns[sw++] = structures[i].cell;
+            }
 
             return new GeneratedMap
             {
@@ -65,13 +109,17 @@ namespace Wassup.Data.MapGrid
                 spawns = spawns,
                 goal = goals[0],
                 goals = goals,
-                goalMaxStability = goalMaxStability,
+                structures = structures,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
             };
         }
 
-        public static void WriteToDocument(MapDocument doc, in GeneratedMap map)
+        // battle-structures unit 3 — structures 는 **별도 인자**다. GeneratedMap 은 unmanaged 라
+        // StructureData 참조를 왕복시킬 수 없어, 저작 주체(페인터)가 관리 엔트리를 직접
+        // 넘긴다. null = 거점 저작을 건드리지 않는다(기존 호출자 무회귀).
+        public static void WriteToDocument(MapDocument doc, in GeneratedMap map,
+            StructureEntry[] structures = null)
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
@@ -109,20 +157,14 @@ namespace Wassup.Data.MapGrid
                 goals = new[] { new Vector2Int(map.goal.x, map.goal.y) };
             }
 
-            // 안정도: goals 와 길이 일치 시 보존, 아니면 전 골 0 (goal-stability 유닛 0).
-            var goalStability = new float[goals.Length];
-            if (map.goalMaxStability.IsCreated && map.goalMaxStability.Length == goals.Length)
-                for (int i = 0; i < goals.Length; i++)
-                    goalStability[i] = Mathf.Max(0f, map.goalMaxStability[i]);
-
             doc.SetFrom(
                 map.gridSize.x, map.gridSize.y,
                 tiles, mergeDegree, chokepoint, propLayerId,
                 goals,
                 spawns,
                 map.seed, map.generatorVersion,
-                goalStability,
                 placeMask);
+            if (structures != null) doc.SetStructures(structures);
         }
     }
 }

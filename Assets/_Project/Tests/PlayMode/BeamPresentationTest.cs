@@ -250,7 +250,7 @@ namespace Wassup.Tests.PlayMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
             em.AddComponentData(e, new Health { value = Hp, max = Hp });
-            em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(e);
             // 배치 조사(DotNearby)가 이 적에게 DoT 를 건다 — 실적 아키타입처럼 CcEffect 버퍼가
             // 없으면 CcApply 가 던진다. PlayMode 는 세션을 공유하므로 이 예외가 **다른 테스트**

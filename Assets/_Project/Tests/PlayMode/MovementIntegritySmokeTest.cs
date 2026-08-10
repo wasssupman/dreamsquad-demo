@@ -60,7 +60,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(guardian, LocalTransform.FromPosition(gpos));
             em.AddComponentData(guardian, new AggroCapacity { max = 16, held = 0 });
             em.AddComponentData(guardian, new Health { value = 100000f, max = 100000f });
-            em.AddComponentData(guardian, new FactionTag { value = Faction.Defender });
+            em.AddComponentData(guardian, new FactionTag { value = Faction.DefenderUnit });
             em.AddBuffer<IncomingDamage>(guardian);
             // aggro-tile-chase unit 4 — 히트 구동(b84b6887) 이후 어그로는 "가디언이 때려야"
             // 발생한다. 무장 없는 더미는 AggroHitEvent 를 못 내 sawAggro 가 구조적으로 false
@@ -68,7 +68,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(guardian, new Wassup.Battle.Combat.AttackState
             {
                 range = 8f, cooldownDuration = 0.5f, cooldownRemaining = 0f,
-                attackTargetCount = 4, targetMask = (int)Faction.Enemy,
+                attackTargetCount = 4, targetMask = (int)Faction.EnemyUnit,
             });
             var gOut = em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(guardian);
             gOut.Add(new Wassup.Battle.Combat.AttackOutputElement

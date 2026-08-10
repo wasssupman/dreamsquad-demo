@@ -72,14 +72,14 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
             em.AddComponentData(defender, new Health { value = 10f, max = 10f });
-            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
             em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
             });
             // Wire ModifierStats via StatModifierSlot: damageMul×2, attackSpeedMul×2 (halves cooldown).
             var outputs = em.AddBuffer<AttackOutputElement>(defender);
@@ -103,7 +103,7 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
             em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
-            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(attacker);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
@@ -135,14 +135,14 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
             em.AddComponentData(defender, new Health { value = 10f, max = 10f });
-            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
             em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
-                targetMask = (int)Faction.Enemy,
+                targetMask = (int)Faction.EnemyUnit,
             });
             // modifier-additive-authoring — boost and synergy are increases, so
             // BattleBridge now authors them as additive deltas: +1.0 (×2 boost) and
@@ -167,7 +167,7 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
             em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
-            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(attacker);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
@@ -193,14 +193,14 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
             em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
-            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.EnemyUnit });
             em.AddComponentData(attacker, new AttackState
             {
                 range = 2f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
-                targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
+                targetMask = (int)(Faction.DefenderUnit | Faction.BlockingHazard),
             });
             var outputs = em.AddBuffer<AttackOutputElement>(attacker);
             outputs.Add(new AttackOutputElement
@@ -219,7 +219,7 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
             em.AddComponentData(defender, new Health { value = 10f, max = 10f });
-            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
+            em.AddComponentData(defender, new FactionTag { value = Faction.DefenderUnit });
             em.AddBuffer<IncomingDamage>(defender);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));

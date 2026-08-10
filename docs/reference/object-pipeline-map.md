@@ -48,20 +48,19 @@
 | View/Pool | `Presentation/ProjectileViewPool.cs` | 매 프레임 `SyncTransforms`; muzzle/cast VFX 도 이 풀 (PlayHit/PlayCast, UnitAttackVisualEvents drain) |
 | 씬 wiring | BattleBridge `_projectileViewPool` | |
 
-## 골 타워 (goal-tower-siege)
+## 거점 — 골 타워·본능·적 마음 (battle-structures, 2026-08-10 현행화)
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/AttackDeck.cs` → `goalStabilityMax` | 전용 SO 없음 — 최대치는 맵별 덱이 소유. 적별 피해는 `AttackUnitData.stabilityDamage`(자폭 경로) 또는 그 적의 공격력(공성 경로) |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `EnsureGoalTowers`(StartBattle) | 판 시작 1회 결정론 생성 — 요청 큐 없음(해저드의 staged-request 와 다름). 골 셀마다 1기 |
-| ECS 컴포넌트 (Units) | `Battle/Units/` GoalTowerTag·GoalTowerHealth(싱글턴) + Health·IncomingDamage·FactionTag(`Faction.GoalTower`)·LocalTransform | 체력은 **공유 1풀**: 싱글턴이 정본, 각 타워 Health 는 미러. ★ModifierStats/StatModifierSlot/ShieldSlot/IncomingHeal 부착 금지(MaxHealthScaleSystem 이 max 를 재계산하면 미러가 깨진다) |
-| 시뮬 시스템 | `Battle/Units/GoalTowerDamageSystem.cs` | **`[UpdateBefore(DamageApplicationSystem)]`** 에서 IncomingDamage 를 직접 소비 → 그 시스템이 타워 Health 를 안 건드린다(개별 DeadTag·역산 델타 둘 다 원천 차단) |
-| 이벤트 큐 | **N/A** — 체력은 상태이지 원샷 사건이 아니다. 브리지가 싱글턴을 폴링(`SyncGoalStabilityFromPool`)해 미러·패배 판정 |
-| View | **N/A(재사용)** — 바는 `Presentation/UnitOverheadView.cs` 의 GoalStability 스킨(three-minute-survival unit 1), 구조물 메쉬는 `theme.goalStructureProp`. 신규 프리팹 0 |
-| 씬 wiring | **N/A** — 신규 SerializeField 없음 |
-
-★ 적이 타워를 노리는 조건: `Faction.GoalTower` 는 base `targetMask` 에 없고 **골 도달 시점에만**
-부여된다(`BattleBridge.GrantGoalTowerTarget`). base 에 넣으면 원거리 적이 사거리만큼 떨어져 멈춘다.
+| 데이터 SO | 방어 마음(골 타워): `Data/AttackDeck.cs` `goalStabilityMax`(HP)+`goals[]`(셀) · 본능·적 마음: `Data/StructureData.cs` + `Data/MapGrid/MapDocument.cs` `structures[]`(셀×편×SO) | **HP 소스가 스폰 소스로 갈린다** — goals[]=덱, structures[]=SO. 진영은 (편×종류) 파생(`StructurePlacements.DeriveFaction`) — 거점 아닌 비트가 나올 수 없다. 저작 규칙(모드·겹침·(Defender,Core) 금지·중립 금지·아군사격)은 `StructureAuthoringRules` 가 단일 소유 — 페인터와 `MapDocument.OnValidate` 가 같은 함수 호출 |
+| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnStructureEntities`(StartBattle) | 판 시작 1회 — 요청 큐 없음. `_resolvedMapDoc`(빌드가 보관, teardown/fallback 에서 null)에서 SO 스탯을 읽는다. `(Defender, Core)` 는 스폰에서도 거부(골 두 벌 최후 방어선) |
+| ECS 컴포넌트 (Units) | `StructureTag`(cell+faction — 전 거점) + FactionTag(`DefenderCore`/`EnemyCore`/`*Instinct`)·Health·IncomingDamage·LocalTransform · 방어 마음은 `GoalTowerTag` 추가(패배 판정용) · 본능은 `BlockingHazardCellsBuffer` 3×3 + (공격 저작 시) AttackState·출력·ProjectileRef | 체력은 **거점 단위**(공유 풀 아님 — 계약 7). CC·모디파이어 버퍼 미부여(계약 8). ★**버퍼 보유 = 다중셀 점유 선언** — `ObstacleLifetimeSystem` 이 `BlockingHazard` 컴포넌트가 아니라 버퍼로 blockedCells 를 만든다(리뷰 C-1 정정) |
+| 시뮬 시스템 | 전용 시스템 **0** — 피해는 표준 경로(`DamageApplicationSystem`→DeadTag→`UnitLifecycleSystem` 일반 사망 루프), 본능 공격은 `AttackSystem` 통합 루프(계약 10), 통행은 `ObstacleLifetimeSystem`+`FlowFieldRebuildSystem` 기존 소비 | 마음은 공격·이동 없음(AttackState/PathFollowState 미부여). 적의 base 마스크에 `DefenderCore` 포함 — 거점은 **거리순 일반 후보**(타입 우선순위 없음, 계약 4 폐기) |
+| 붕괴 관측 | 브리지 `SyncGoalStability` — `_structureRegistry`(entity·cell·faction) 폴링으로 «사라진 엔티티의 셀» 특정 | **셀 단위**(ⓐ): 방어 마음 붕괴 → `_breachedCells` + 그 셀만 유출 전환(`OpenGoalCellAfterBreach`). 본능·적 마음은 연출·로그만. ★열기는 미러 갱신 **뒤**(리뷰 A-M1 — 제출값 순서). 붕괴 프레임 미러=0, 다음 프레임부터 생존 골 최저 |
+| 이벤트 큐 | **N/A** — 붕괴 감지는 등록부 폴링. `GoalCollapsedEventsSingleton` 은 생산자 0 존치(페이로드가 골 인덱스 기준이라 거점 체계와 불일치 — 후속에서 재정의) | |
+| View/Pool | 게이지: `SyncGoalOverheadGauges` 가 등록부 순회(defender 색 = 진영 파생) + HUD 바 `SyncGoalStabilityBars`(가장 위험한 골 미러) · 프랍: 골=`theme.goalStructureProp`, 거점=SO `viewPrefab` 을 브리지 Instantiate(Pickup 선례, `ClearStructureViews` 로 teardown) · 붕괴 원샷 `VfxSpawner.SpawnGoalCollapse` | Pool N/A(맵 수명) |
+| 배치·통행 배제 | 맵 빌드 시 `CloseCellLayers` — 본능 footprint(적 본능은 +`EnemyInstinctPlacementPadding` = 9×9) · 연결성: `MapConnectivity`+페인터 BFS 가 본능 footprint 를 벽으로(마음은 비차단, 계약 12) | 공성 모드는 파생 — 적 마음 셀 = spawns[](`ToGeneratedMap` 투영 1곳, 소비처 8곳 무변경) |
+| 씬 wiring | 신규 SerializeField 0 — 기존 게이지/VFX 배선 재사용 | |
 
 ## 해저드 — Zone/Blocking (방어 유닛 HazardCast 능력)
 
@@ -75,17 +74,9 @@
 | View | Zone: `Presentation/HazardVisualLifetime.cs`(self-destroy) / Blocking: `Battle/Effects/BlockingHazardPresenter.cs`(엔티티 추적) | 계열별 뷰 백엔드 다름 |
 | 씬 wiring | BattleBridge (EffectSpawner·vfxSpawner 경유) | |
 
-## 목표지점 — 안정도 골 (goal-stability)
+## ~~목표지점 — 안정도 골 (goal-stability)~~ — 은퇴 (2026-08-10)
 
-| 정거장 | 앵커 | 확인 포인트 |
-|---|---|---|
-| 데이터 SO | `Data/MapGrid/MapDocument.cs` `goalMaxStability[]` (goals 와 index 정렬) | 전용 SO 없음 — 맵 에셋이 per-goal M 소유, MapPainter 가 bake. 부재/길이 불일치 = 전 골 0 = **엔티티 미스폰(현행 유출)** |
-| 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnGoalEntities` (BuildFlowField 직후) | ★Mono 주도 — request 왕복 없음. M>0 골만. teardown = `DestroyEntitiesByType<GoalPoint>` |
-| ECS 컴포넌트 (Units) | `Battle/Units/GoalPoint.cs` + FactionTag{Goal}·Health·IncomingDamage·LocalTransform | blocking hazard 동형 최소 아키타입(1칸·이동/공격/CC/모디파이어 버퍼 없음) |
-| 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(공성 게이트 — 살아있는 골 셀 PastGoalTag 봉인) · `Battle/Combat/AttackSystem.cs`(최후순위 타겟·Focus 잠금 금지) · `Battle/Units/UnitLifecycleSystem.cs`(goal-dead 루프) | ★붕괴 신호 = **엔티티 부재**(플래그/동기화 없음). general-dead 루프는 `WithNone<GoalPoint>` |
-| 이벤트 큐 | `Battle/Units/GoalCollapsedEventsSingleton.cs` (Units→Bridge) | **연출/로그 전용** — 게임 상태 갱신 없음. 생성·drain·Dispose 3종 BattleBridge |
-| View | 유닛 오버헤드 체력바 재사용(`Presentation/UnitOverheadUiLayer.cs` SetUnit — Bridge 가 앵커 직접 투영, `goalOverheadHeight`) + 붕괴 원샷 `VfxSpawner.SpawnGoalCollapse` | ★큐 아님 — Health read-only 폴링. 붕괴 숨김 = EndFrame 자동. 골 구조물 프랍은 장식 유지 |
-| 씬 wiring | `VfxSpawner.goalCollapsePrefab`(록버스트 재사용) | 게이지 계층은 기존 배선 재사용 — 신규 씬 오브젝트 0 |
+이 아키타입의 잠자는 경로(`GoalPoint`/`SpawnGoalEntities`/`goalMaxStability` — 전 맵 미저작이라 런타임에 한 번도 태어나지 않았다)는 **battle-structures unit 0 이 걷어냈다.** «엔티티 존재 = 그 셀의 골이 살아있다» 라는 원설계는 위 **거점(battle-structures)** 아키타입의 셀 단위 붕괴(ⓐ)로 승계됐다. 설계 이력은 `docs/spec/goal-stability/`(문서 보존 — battle-structures 의 근거).
 
 ## 스킬 해저드 — Tornado/Meteor/Portal (플레이어 스킬 탭)
 
