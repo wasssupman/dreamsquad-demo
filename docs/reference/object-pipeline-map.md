@@ -27,7 +27,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/AttackUnitData.cs` (+`EnemyCatalog.cs`) | ★적 스탯 SO 이름이 **AttackUnitData** — "EnemyData" 는 없음. 신규 적은 **EnemyCatalog + AttackDeck/웨이브 pool 노출까지** |
+| 데이터 SO | `Data/AttackUnitData.cs` (+`EnemyCatalog.cs`) | ★적 스탯 SO 이름이 **AttackUnitData** — "EnemyData" 는 없음. 신규 적은 **EnemyCatalog + AttackDeck/웨이브 pool 노출까지**. ⚠ **풀에 1종을 더하면 그 덱의 웨이브가 전부 재추첨된다** — `WavePatternGenerator` 가 `rng.NextInt(0, pool.Count)` 로 뽑아 `waveSeed` 고정이어도 웨이브 1부터 구성이 바뀐다(시드를 갱신해 새 baseline 을 diff 에 드러낼 것). 삽입은 **풀 중간에** — 맨 뒤면 `ResolveWaveEligibleIndex` 의 전방 순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다. **라이브 덱은 7종**(`Serpent·Coil·Twin·Spiral·Zig·Hook·Endless`)이고 열거의 정본은 `WaveKillBudgetPinTests`. 수량 상한은 `maxPerWave`(0=무제한) — 없으면 한 종류가 일반 웨이브 최대 24기 / 보스 호위 3~4기로 나온다 |
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnUnit` | 웨이브 스케줄러가 `Data/AttackDeck.cs`·`WavePlanAsset.cs` 소비 |
 | ECS 컴포넌트 | Units: AttackUnitTag·Health·IncomingDamage · Movement: `PathFollowState` · Combat: AttackState·EnemyBehavior·EnemyAiState | 이동은 적 전용 |
 | 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(flow-field) · `Battle/Combat/AttackSystem.cs`·`EnemyAiStateSystem.cs` | |

@@ -121,6 +121,28 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 거점 사냥꾼 (structure-hunter-enemy — units 0~1 완료 2026-08-11, **사용자 Play 확인 대기**)
+
+유인·차단이 통하지 않는 첫 적(마음사냥꾼). 저작 마스크만으로 도발 면역이 파생되고,
+동시 등장 상한(`maxPerWave`)을 신설해 라이브 덱 7종에 올렸다.
+상세: `docs/spec/structure-hunter-enemy/2_handoff_summary.md`.
+
+- **사용자 Play 체감 확인** [S] · 웨이브 8 이후 실제 등장 + 2기 붙었을 때 골 압박. 스탯(HP 400 / 근접 25 / 속도 2.0 / `maxPerWave` 2)은 계측값이고 체감으로 확정된 적이 없다. (structure-hunter-enemy)
+- **웨이브 재기준 여파 재밸런싱** [M] · 풀에 1종이 늘어 라이브 7덱의 웨이브가 **전부 재추첨**됐다(시드 20260811~17 로 갱신해 명시). 6개 맵의 난이도 곡선이 미검증 상태다 — 마음사냥꾼과 무관한 회귀가 여기서 나올 수 있다. (structure-hunter-enemy)
+- **`Kindler` 가 `Deck_Endless` 풀에 없다** [S] · 이 spec 이 만든 문제는 아니고 이전부터 누락돼 있었다. 무한 모드만 조용히 이 적을 못 본다. 라이브 덱 열거의 정본은 `WaveKillBudgetPinTests`. (structure-hunter-enemy)
+- **본능(Instinct)도 노리는 변형** [S] · 마스크에 `DefenderInstinct` 를 더하면 끝이지만 **현재 맵에 방어 본능 저작이 없다**. (structure-hunter-enemy)
+- **「거점 우선, 유닛도 때림」 변형** [S] · 도발이 걸리는 중간 형태. 지금 후보는 **거리로만 경쟁**하므로(`AttackSystem.cs:109`) faction 우선순위 축이 필요하다. (structure-hunter-enemy)
+- **스폰 예고에서 「유인 불가」 구분 표시** [S] · 지금은 스폰 후에야 안다. (structure-hunter-enemy)
+
+#### 비행 적 (waypoint-flight-enemy — spec 작성됨, **미착수**)
+
+지형을 무시하되 맵에 저작된 궤도로 오는 적. flow field 를 안 보므로 `traversal-layers` 의
+미완 슬롯 배선을 건드리지 않는다. 착수 전 확인된 배선 함정 3개가 README 에 있다.
+상세: `docs/spec/waypoint-flight-enemy/README.md`.
+
+- **units 0~5 전부 미착수** [M] · 저작 축 → 순수 함수 → 켜기(한 커밋) → 뷰 lift → 툴+맵 2~3장 → handoff. (waypoint-flight-enemy)
+- **비행 궤도 예고** [S] · 검증 질문 밖이라 범위에서 뺐다. 붙일 곳은 `SpawnAlertPresenter` 이고 경로 소스가 달라진다. (waypoint-flight-enemy)
+
 #### 목표지점 안정도 (goal-stability — 완료 2026-08-04)
 
 - 실맵 `goalMaxStability` 콘텐츠 값 결정 — 검증용 임시값(전 골 300)은 미커밋. 스트레스 예산과 함께 밸런싱 [S]
