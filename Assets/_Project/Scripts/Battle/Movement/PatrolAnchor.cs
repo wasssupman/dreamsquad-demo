@@ -8,14 +8,20 @@ namespace Wassup.Battle.Movement
     // Movement 소유(이동을 제약하는 값). writer = BattleBridge(스폰 · 소환사 재배치).
     // Effects(PatrolFieldSystem)와 Movement(MovementSystem)는 RO 로 읽는다.
     //
-    // cell 은 **walk 타일**이다 — 소환사 셀이 아니다. 방어유닛 셀은 통상 walkable 이
-    // 아니라서(placement-mask B-1 로 Walk 셀 위 배치도 가능하지만, 그 경우가 아니면)
-    // 소환사 셀을 그대로 거점으로 쓰면 순찰병이 절대 설 수 없는 칸을 향해 영원히
-    // 전진한다. Bridge 가 TryGetNearestWalkCell 로 스냅한 값을 넣는다(README 계약 4)
-    // — 소환사가 Walk 셀 위면 스냅이 자기 셀을 즉시 반환하므로 두 경우 모두 안전.
+    // unit 9 — **중심과 집은 다른 칸이다.** 한 필드가 둘을 겸했더니 소환물이 소환사와
+    // 같은 칸에 겹쳐 스폰됐다(사용자 지적 2026-08-10: "소환물 스폰은 소환사 주변 타일로").
+    //
+    //   cell     = 박스 중심 = **소환사 셀**. 배치 프리뷰가 칠하는 그 중심과 같아야 한다
+    //              — 셋이 갈려 있던 것을 하나로 접은 것이 unit 9 이므로 여기를 옮기면 안 된다.
+    //   homeCell = 대기·복귀 칸 = 소환사 **주변**의 통행 가능한 최근접 칸.
+    //
+    // 겸직을 풀어야 하는 이유는 두 값의 제약이 다르기 때문이다: 중심은 «플레이어가 손가락을
+    // 올린 칸»이라 통행 가능일 필요가 없고, 집은 «순찰병이 실제로 서는 칸»이라 반드시
+    // 통행 가능이어야 한다. 선정은 `BattleBridge.TryGetPatrolHomeCell` 단독 소유.
     public struct PatrolAnchor : IComponentData
     {
         public int2 cell;
-        public int  tileRadius;   // Chebyshev 박스 반경
+        public int2 homeCell;
+        public int  tileRadius;   // Chebyshev 박스 반경 = 소환사 공격범위(타일)
     }
 }

@@ -88,7 +88,7 @@ namespace Wassup.Battle.Effects
 
                 step.ValueRW.dir = PatrolAreaMath.StepDir(
                     areaMask, fullMask, gridSize,
-                    anchor.ValueRO.cell, anchor.ValueRO.tileRadius,
+                    anchor.ValueRO.cell, anchor.ValueRO.homeCell, anchor.ValueRO.tileRadius,
                     selfCell, attackTiles,
                     enemyCells, scratchFlow, scratchDist);
 

@@ -9,14 +9,16 @@ namespace Wassup.Battle.Combat
     // 캐리어 엔티티** 관용구다 — AttackSystem 에서 Bridge 스폰을 요청하는 관용구가 이미
     // 그 자리에 있고, 싱글턴 배선도 CLAUDE.md 채널 목록 갱신도 불요하다.
     //
-    // ownerCell 은 소환사 셀 그대로다. walk 셀 스냅은 **Bridge 가** 한다 —
-    // TryGetNearestWalkCell 이 GeneratedMap 을 보는 Mono 측 API 이기 때문이다.
+    // ownerCell 은 소환사 셀 그대로다. unit 9 이후 이 셀이 **곧 거점**이고, 순찰병이 그
+    // 칸을 밟을 수 없을 때만 Bridge 가 통행 가능 셀로 퇴화 스냅한다 — 그 판정이 셀 층을
+    // 보는 Mono 측 API(GeneratedMap)이기 때문이다.
     public struct PatrolSpawnRequest : IComponentData
     {
         public Entity owner;
         public int2   ownerCell;
         public int    patrolDataIndex;
-        public int    leashTileRadius;
+        // unit 9 — 담당 구역 반경. 소환사 AttackState.range 에서 파생한 타일 수다.
+        public int    coverTileRadius;
     }
 
     // 캐리어 태그. 드레인이 통째로 파괴하고, 매치 경계 정리도 이 타입으로 건다

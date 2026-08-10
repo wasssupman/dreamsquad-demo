@@ -376,13 +376,15 @@ namespace Wassup.Battle.Combat
                             && healthLookup.HasComponent(summoner.current)
                             && healthLookup[summoner.current].value > 0f;
 
-                        // 초회 게이트 — 첫 순찰병은 **거점 구역 안에 적이 있을 때만** 낸다
-                        // (사용자 결정 2026-08-03). 판정 중심은 소환사 셀이다: 실제 거점은
-                        // Bridge 가 walk 셀로 스냅해 정하는데 첫 소환 전엔 그게 아직 없고,
-                        // 스냅 상한이 leash 반경이라 소환사 셀 기준 구역이 실제 구역을
-                        // 보수적으로 감싼다. 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        // 초회 게이트 — 첫 순찰병은 **담당 구역 안에 적이 있을 때만** 낸다
+                        // (사용자 결정 2026-08-03). 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        //
+                        // unit 9 — 중심 = 소환사 셀, 반경 = 이 유닛의 공격범위. 즉 소환사는
+                        // «사거리에 적이 들면 공격(=소환)»하는 평범한 유닛이고, 게이트가 보는
+                        // 박스와 순찰병이 지킬 박스와 배치 프리뷰가 칠한 박스가 **같은 하나**다.
                         float3 sPos = transform.ValueRO.Position;
                         int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
+                        int coverTiles = GridMath.RangeToTiles(attack.ValueRO.range);
                         bool gateOpen = summoner.hasSummonedOnce;
                         if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
                         {
@@ -394,7 +396,7 @@ namespace Wassup.Battle.Combat
                                 // 골을 두들기는 적이야말로 순찰을 부를 이유다.
                                 int2 eCell = GridMath.WorldToCell(
                                     targetTransforms[ti].Position, tileSize, gridSize, origin: ffOrigin);
-                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, summoner.leashTileRadius))
+                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, coverTiles))
                                     gateOpen = true;
                             }
                         }
@@ -408,7 +410,7 @@ namespace Wassup.Battle.Combat
                                 owner = attackerEntity,
                                 ownerCell = sCell,   // 게이트 판정과 **같은 셀**이어야 한다
                                 patrolDataIndex = summoner.patrolDataIndex,
-                                leashTileRadius = summoner.leashTileRadius,
+                                coverTileRadius = coverTiles,
                             });
                             // 소환 = 이 유닛의 공격 사건. 애니/SFX 는 여기서 신호한다.
                             if (attackWriter.HasValue)

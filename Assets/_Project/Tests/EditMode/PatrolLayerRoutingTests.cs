@@ -69,7 +69,7 @@ namespace Wassup.Tests.EditMode
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(atX, 0f, 0f)));
-            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(anchorX, 0), tileRadius = tileRadius });
+            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(anchorX, 0), homeCell = new int2(anchorX, 0), tileRadius = tileRadius });
             _em.AddComponentData(e, new PatrolStep { dir = float2.zero });
             _em.AddComponentData(e, new PathFollowState
             {
@@ -173,7 +173,7 @@ namespace Wassup.Tests.EditMode
             // 이게 이 spec 전체가 «행동 변화 0» 인 근거다.
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
-            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(1, 0), tileRadius = 2 });
+            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(1, 0), homeCell = new int2(1, 0), tileRadius = 2 });
             _em.AddComponentData(e, new PatrolStep { dir = float2.zero });
             _em.AddComponentData(e, new PathFollowState { speed = 1f, radius = 0.25f });  // layers 미주입
 
@@ -188,7 +188,7 @@ namespace Wassup.Tests.EditMode
             // 레거시·픽스처 경로. PathFollowState 자체가 없어도 시스템이 죽지 않는다.
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
-            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(1, 0), tileRadius = 2 });
+            _em.AddComponentData(e, new PatrolAnchor { cell = new int2(1, 0), homeCell = new int2(1, 0), tileRadius = 2 });
             _em.AddComponentData(e, new PatrolStep { dir = float2.zero });
 
             Assert.DoesNotThrow(() => Tick());
