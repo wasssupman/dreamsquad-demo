@@ -41,6 +41,7 @@ rev 1 · 2026-08-10 · **구현 완료.** (rev 0 착수 인계의 논박 기록 
 - **방어 마음의 정본 = `goals[]`**: `(Defender, Core)` 는 검증·스폰 이중 거부 — 풀면 골이 두 벌이 된다
 - **붕괴 열기는 미러 갱신 뒤**(A-M1): 순서를 되돌리면 패배 제출값이 지난 프레임 양수를 싣는다
 - **`_resolvedMapDoc` 은 fallback/hard-fail/teardown 에서 null**(H-3): 빼먹으면 폐기 문서 좌표에 거점이 선다
+- **뷰 정리는 `TeardownGeneratedMap` 소유**(계약 14): `DestroyStructureEntities` 에 `ClearStructureViews` 를 다시 넣으면 `StartBattle` 이 배치 중 세운 프랍을 날린다
 
 ## Follow-up
 
