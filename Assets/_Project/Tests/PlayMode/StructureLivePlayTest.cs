@@ -107,7 +107,9 @@ namespace Wassup.Tests.PlayMode
 
         // 공성 모드 파생(unit 6)의 **라이브** 검증. EditMode 는 ToGeneratedMap 투영만 쟀고,
         // «파생 스폰에서 웨이브가 실제로 나온다» 는 여기서만 확인된다.
-        // 저작물: MapDocument_SiegeTest — 적 마음(15,25) 1기 · 방어 골(15,0) 1개 · spawns 미저작.
+        // 저작물: MapDocument_SiegeTest — 적 마음(15,25) 1기 + 적 본능(15,12) 1기 ·
+        // 방어 골(15,0) 1개 · spawns 미저작. 본능이 스폰→골 직선상에 있어 «막으면 돌아간다» 도
+        // 같은 판에서 실측된다(연결성은 30×30 전면 Walk 라 3×3 로 끊기지 않는다).
         [UnityTest]
         public IEnumerator SiegeMap_DerivesSpawnFromEnemyCore_AndWavesComeFromIt()
         {
@@ -137,11 +139,16 @@ namespace Wassup.Tests.PlayMode
             using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<StructureTag>()))
             {
                 var entities = q.ToEntityArray(Allocator.Temp);
-                bool foundCore = false;
+                bool foundCore = false, foundInstinct = false;
                 foreach (var e in entities)
-                    if (em.GetComponentData<StructureTag>(e).faction == Faction.EnemyCore) { foundCore = true; break; }
+                {
+                    var f = em.GetComponentData<StructureTag>(e).faction;
+                    if (f == Faction.EnemyCore) foundCore = true;
+                    if (f == Faction.EnemyInstinct) foundInstinct = true;
+                }
                 entities.Dispose();
                 Assert.IsTrue(foundCore, "적 마음이 거점 엔티티로 선다(스폰 지점 겸 거점)");
+                Assert.IsTrue(foundInstinct, "같은 판에 적 본능도 선다 — 마음·본능 두 종류가 공존한다");
             }
 
             // ── 웨이브가 그 셀에서 나온다 — 적이 파생 스폰 근처에 실제로 생성되는지 ──
