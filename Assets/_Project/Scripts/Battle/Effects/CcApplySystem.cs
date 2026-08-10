@@ -30,6 +30,10 @@ namespace Wassup.Battle.Effects
             {
                 if (!state.EntityManager.Exists(evt.target))
                     continue;
+                if (state.EntityManager.HasComponent<Wassup.Battle.Units.StructureTag>(evt.target))
+                    continue;
+                if (!state.EntityManager.HasBuffer<CcEffect>(evt.target))
+                    continue;
                 if (bossLookup.HasComponent(evt.target)
                     && CcActionLock.IsBossImmune(evt.effect.kind))
                     continue;

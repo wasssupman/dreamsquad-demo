@@ -177,6 +177,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(em.HasBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e));
             Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e).Length,
                 "3×3 본체가 통행을 막는다(계약 12)");
+            AssertStructureHasNoEffectBuffers(em, e);
         }
 
         [Test]
@@ -195,6 +196,28 @@ namespace Wassup.Tests.EditMode
                 "마음은 통행을 막지 않는다 — 적 마음은 스폰 셀이다(계약 12)");
             Assert.IsFalse(em.HasComponent<GoalTowerTag>(e),
                 "적 마음은 패배 판정(GoalTowerTag 부재 감지) 밖이다");
+            AssertStructureHasNoEffectBuffers(em, e);
+        }
+
+        [Test]
+        public void SiegeCoreAlive_AllWavesCleared_DoesNotUseLegacyVictory()
+        {
+            SetField(_bridge, "_enemyCoreMax", 800);
+            SetField(_bridge, "_enemyCoreCurrent", 800);
+            SetField(_bridge, "_resultShown", false);
+            SetField(_bridge, "_running", true);
+            SetField(_bridge, "_usingGeneratedWaves", false);
+
+            var emptyAttackers = _world.EntityManager.CreateEntityQuery(
+                ComponentType.ReadOnly<AttackUnitTag>());
+            SetField(_bridge, "_aliveAttackersQuery", emptyAttackers);
+            SetField(_bridge, "_aliveAttackersQueryCreated", true);
+
+            CallPrivateMethod(_bridge, "CheckVictory");
+
+            Assert.IsFalse((bool)GetField(_bridge, "_resultShown"),
+                "A live enemy core must suppress the legacy all-waves-cleared victory path.");
+            Assert.IsTrue((bool)GetField(_bridge, "_running"));
         }
 
         [Test]
@@ -374,6 +397,16 @@ namespace Wassup.Tests.EditMode
         {
             var fi = FindField(target, name);
             fi.SetValue(target, value);
+        }
+
+        private static void AssertStructureHasNoEffectBuffers(EntityManager em, Entity structure)
+        {
+            Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.CcEffect>(structure),
+                "Structures must not carry CcEffect buffers.");
+            Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.StatModifierSlot>(structure),
+                "Structures must not carry stat modifier buffers.");
+            Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.StackModifierSlot>(structure),
+                "Structures must not carry stack modifier buffers.");
         }
 
         private static object GetField(object target, string name)

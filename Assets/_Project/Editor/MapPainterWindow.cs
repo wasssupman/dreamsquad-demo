@@ -119,6 +119,7 @@ namespace Wassup.EditorTools
         private void OnGUI()
         {
             DrawToolbar();
+            DrawStructureBrushBar();
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
@@ -227,15 +228,6 @@ namespace Wassup.EditorTools
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
                     new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점" }, EditorStyles.toolbarButton);
-                // battle-structures unit 3 — 거점 브러시가 찍을 편 + SO.
-                using (new EditorGUI.DisabledScope(_tool != Tool.Structure))
-                {
-                    _structureSide = GUILayout.Toolbar(_structureSide == StructureSide.Defender ? 0 : 1,
-                        new[] { "방어", "적" }, EditorStyles.toolbarButton, GUILayout.Width(70)) == 0
-                        ? StructureSide.Defender : StructureSide.Enemy;
-                    _structureData = (StructureData)EditorGUILayout.ObjectField(
-                        _structureData, typeof(StructureData), false, GUILayout.Width(130));
-                }
                 // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
                 using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
@@ -247,6 +239,39 @@ namespace Wassup.EditorTools
                     FillMissingDerivedLayers();
                 if (GUILayout.Button("Mask=파생 리셋", EditorStyles.toolbarButton, GUILayout.Width(96)))
                     ResetMaskToDerived();
+            }
+        }
+
+        // battle-structures — 거점 브러시 전용 행. 툴바 한 줄에 밀어넣었던 시절엔 툴 버튼 7개
+        // 뒤로 밀려 창 폭에 따라 **잘려서 안 보였다**(SO 를 물릴 수 없으면 브러시가 아무것도
+        // 안 한다 → «본능을 설치하는 방법을 못 찾겠다» 가 정확한 증상이었다).
+        private void DrawStructureBrushBar()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                bool active = _tool == Tool.Structure;
+                GUILayout.Label(active ? "거점 브러시 ●" : "거점 브러시 ○",
+                    EditorStyles.miniBoldLabel, GUILayout.Width(84));
+                using (new EditorGUI.DisabledScope(!active))
+                {
+                    GUILayout.Label("편", EditorStyles.miniLabel, GUILayout.Width(16));
+                    _structureSide = GUILayout.Toolbar(_structureSide == StructureSide.Defender ? 0 : 1,
+                        new[] { "방어", "적" }, GUILayout.Width(80)) == 0
+                        ? StructureSide.Defender : StructureSide.Enemy;
+                    GUILayout.Label("SO", EditorStyles.miniLabel, GUILayout.Width(20));
+                    _structureData = (StructureData)EditorGUILayout.ObjectField(
+                        _structureData, typeof(StructureData), false, GUILayout.Width(180));
+                    GUILayout.Label(
+                        _structureData != null
+                            ? $"= {(_structureData.kind == StructureKind.Core ? "마음 1×1" : "본능 3×3")}"
+                            : "← StructureData 를 물려라(마음/본능은 SO 의 kind 가 정한다)",
+                        EditorStyles.miniLabel);
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"배치 {_structures.Count}기", EditorStyles.miniLabel, GUILayout.Width(60));
+                using (new EditorGUI.DisabledScope(_structures.Count == 0))
+                    if (GUILayout.Button("전체 제거", EditorStyles.miniButton, GUILayout.Width(66)))
+                        _structures.Clear();
             }
         }
 
@@ -288,8 +313,46 @@ namespace Wassup.EditorTools
                 }
             }
 
+            DrawStructureOverlay(area);
             HandlePaint(area);
         }
+
+        // battle-structures — 거점 오버레이. 이게 없던 동안은 거점을 찍어도 화면이 그대로였다
+        // (배치 개수만 라벨에 늘었다) — «설치했는데 아무 일도 안 일어난다» 로 보인다.
+        // footprint 전체를 반투명으로 덮고 중심에 편·종류를 적는다: 3×3 본능의 점유 범위가
+        // 곧 통행 차단 범위(계약 13)이므로 저작 중에 그게 보여야 한다.
+        private void DrawStructureOverlay(Rect area)
+        {
+            foreach (var st in _structures)
+            {
+                if (st.data == null) continue;
+                bool instinct = st.data.kind == StructureKind.Instinct;
+                int half = (instinct ? StructurePlacements.InstinctFootprint
+                                     : StructurePlacements.CoreFootprint) / 2;
+                bool enemy = st.side == StructureSide.Enemy;
+                // 적 = 붉은 계열 · 방어 = 청록 계열. 본능은 채움(점유), 마음은 테두리(비차단).
+                Color fill = enemy ? new Color(0.9f, 0.25f, 0.2f, 0.35f)
+                                   : new Color(0.2f, 0.8f, 0.75f, 0.35f);
+                Color edge = enemy ? new Color(1f, 0.4f, 0.3f) : new Color(0.3f, 0.95f, 0.9f);
+
+                for (int dy = -half; dy <= half; dy++)
+                    for (int dx = -half; dx <= half; dx++)
+                    {
+                        int cx = st.cell.x + dx, cy = st.cell.y + dy;
+                        if (!InBounds(cx, cy)) continue;
+                        var rr = CellRect(area, cx, cy);
+                        if (instinct) EditorGUI.DrawRect(rr, fill);
+                    }
+
+                var center = CellRect(area, st.cell.x, st.cell.y);
+                if (!InBounds(st.cell.x, st.cell.y)) continue;
+                DrawMaskBorder(center, edge);
+                GUI.Label(center, enemy ? (instinct ? "敵I" : "敵C") : (instinct ? "防I" : "防C"), CenterLabel);
+            }
+        }
+
+        private Rect CellRect(Rect area, int x, int y)
+            => new Rect(area.x + x * Cell, area.y + (_h - 1 - y) * Cell, Cell - 1f, Cell - 1f);
 
         private static void DrawMaskBorder(Rect r, Color c)
         {

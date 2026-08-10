@@ -28,6 +28,10 @@ namespace Wassup.Battle.Effects
         {
             if (!em.Exists(target))
                 return;
+            if (em.HasComponent<StructureTag>(target))
+                return;
+            if (!em.HasBuffer<CcEffect>(target))
+                return;
             if (em.HasComponent<Wassup.Battle.Combat.BossTag>(target)
                 && CcActionLock.IsBossImmune(effect.kind))
                 return;

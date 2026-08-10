@@ -44,6 +44,9 @@ namespace Wassup.Tests.EditMode
             _em.AddComponent<AttackUnitTag>(e);
             _em.AddComponentData(e, new Health { value = 100, max = 100 });
             _em.AddBuffer<IncomingDamage>(e);
+            // battle-structures unit 9 — 광역 피해자 풀이 FactionTag 로 진영을 가른다.
+            // 프로덕션 적 스폰(BattleBridge:7674)은 항상 이것을 붙이므로 픽스처가 빠뜨린 것이다.
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             return e;
         }
 

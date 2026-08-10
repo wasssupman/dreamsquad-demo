@@ -115,7 +115,24 @@ namespace Wassup.Data
         [Header("Targeting")]
         // When true, AttackState.targetMask is set to Faction.DefenderUnit (ally targeting).
         // Use for healers and buff-appliers that target friendly units instead of enemies.
+        //
+        // battle-structures unit 8 — 아래 targetFactions 보다 **이것이 이긴다.** 승격하지
+        // 않는 이유가 둘이다: ⑴ 승격하면 기존 힐러 에셋의 `targetAllies: 1` 이 죽고
+        // targetFactions 의 이니셜라이저(AnyEnemy)가 이겨 힐러가 적을 때리기 시작한다.
+        // ⑵ 아군 타게팅을 AnyDefender 로 넓히면 IncomingHeal 버퍼가 없는 거점이 후보에
+        // 들어 ECB playback 에서 던진다 — 힐러는 DefenderUnit **단독**이어야 한다.
         public bool targetAllies;
+
+        // battle-structures unit 8 — 이 방어유닛이 노리는 대상(진영 × 종류).
+        // unit 1(적의 EnemyTargetFilter.factionMask)의 거울이며 같은 폴백 규칙을 쓴다.
+        //
+        // 기본 = 적 진영 전부. 필드 이니셜라이저는 **기존 에셋에도 적용된다**(unit 1 §3
+        // 정정에서 실측: YAML 에 키가 없으면 이니셜라이저 값이 남는다) — 즉 마이그레이션
+        // 없이 전 방어유닛이 적 거점을 때릴 수 있게 된다. 그게 이 unit 의 의도다.
+        // 적 거점이 저작되지 않은 맵에서는 해당 비트를 가진 엔티티가 아예 없어 변화 0.
+        [Tooltip("이 유닛이 노리는 대상(진영 × 종류). 비우면(None) 적 유닛만으로 폴백한다. targetAllies 가 켜져 있으면 그것이 이긴다.")]
+        public Wassup.Battle.Units.Faction targetFactions =
+            (Wassup.Battle.Units.Faction)Wassup.Battle.Units.Factions.AnyEnemy;
 
         // defender-ability-assets unit 2 — 능력별 flat 필드 그룹(volley 4·hazard 8·
         // shield 4·bomb 9)은 능력 서브에셋(Data/Abilities/)으로 이관·삭제됨. 파라미터는

@@ -363,6 +363,17 @@ namespace Wassup.Bridge
         // **계약 9(_killScoreTotal 과 같은 규칙)**: 시계가 0 이 되는 지점마다 만피로 돌아간다.
         private int _goalStability;
         private int _goalStabilityMax;
+        // battle-structures unit 10 — **적 마음 축**. 위 방어 마음 축의 거울이고 활성 조건도
+        // 같은 모양이다: `_enemyCoreMax > 0` 이면 이 축이 산다(타이머 축의 `_timerDuration > 0`,
+        // 유출 축의 `StressLimit > 0` 과 같은 형태 — 계약 15).
+        //
+        // 모드 판정을 두지 않는 이유가 여기 있다: 침략 맵은 적 마음이 저작되지 않아 max 가
+        // 0 이므로 이 축이 저절로 죽고, 타이머 만료 비교의 «적 잔여» 도 0 이 되어
+        // `_goalStability >= 0` 이 항상 참 = 기존 victory_timeout 동치가 된다. 침략/공성이
+        // 같은 코드를 탄다. ⚠ 「적 마음 엔티티가 없다」를 축 조건으로 쓰면 침략 맵이 첫
+        // 프레임에 승리한다 — 조건은 「상한이 있었는데 지금 잔여가 0」이다.
+        private int _enemyCoreCurrent;
+        private int _enemyCoreMax;
         // 유출 적의 등록부 조회 실패 경고를 판당 1회로 제한(로그 폭주 방지).
         private bool _leakTypeMissLogged;
         // goal-tower-siege unit 1 — 타워 부재 경고도 판당 1회.
@@ -901,6 +912,9 @@ namespace Wassup.Bridge
         {
             // Tilemap 뷰 잔상 제거 (RebuildDraftMap 재진입 / 전투 종료 안전). Clear 는 idempotent.
             if (tilemapMapView != null) tilemapMapView.Clear();
+            // battle-structures 후속 2 — 거점 프랍도 맵과 같은 수명. 맵 teardown 경로가 5곳
+            // (매치 종료·재빌드 선행·fallback 교체·StopBattle·draft 정리)이라 여기 두면 전부 덮인다.
+            ClearStructureViews();
             if (_generatedMap.IsCreated) _generatedMap.Dispose();
             _generatedMap = default;
         }
@@ -1061,8 +1075,10 @@ namespace Wassup.Bridge
                     {
                         var st = _generatedMap.structures[i];
                         int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
-                        if (st.faction == Faction.EnemyInstinct)
-                            half += Wassup.Data.StructurePlacements.EnemyInstinctPlacementPadding;   // 리뷰 A-L1
+                        // battle-structures unit 8 — 「적대적 본능」 술어(구 B-M9: EnemyInstinct
+                        // 리터럴). 판정은 StructurePlacements 소관 — 형제 파생들과 같은 자리.
+                        if (Wassup.Data.StructurePlacements.IsHostileInstinct(st.faction))
+                            half += Wassup.Data.StructurePlacements.HostileInstinctPlacementPadding;   // 리뷰 A-L1
                         for (int dy = -half; dy <= half; dy++)
                             for (int dx = -half; dx <= half; dx++)
                                 CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
@@ -1171,6 +1187,13 @@ namespace Wassup.Bridge
             {
                 tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
             }
+
+            // battle-structures 후속 2(리뷰 M-5) — 거점 프랍은 **맵 수명**이다.
+            // 엔티티는 StartBattle 이 세우지만(판 수명), 9×9 배치 배제는 이 빌드 시점에 이미
+            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 9×9 만 있고 왜 막혔는지
+            // 보여주는 것이 없는»** 구간이 생긴다 — 플레이어가 알 방법이 없다.
+            // 정리는 TeardownGeneratedMap 이 소유한다(맵과 같은 수명 = 재빌드마다 정확히 1벌).
+            SpawnStructureViews();
 
             // effect-tiles unit 1 — Place 셀 seed 결정론 효과 타일. 페인트는 Initialize(Clear) 이후 계약.
             // dict clear 는 가드 밖 — 이전 빌드 잔존 제거(테마가 효과 타일 없어도).
@@ -2537,6 +2560,8 @@ namespace Wassup.Bridge
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
             SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러 + 패배 판정
+            // battle-structures unit 10 — 적 마음 축. Sync 다음이어야 같은 프레임 패배가 우선한다.
+            CheckEnemyCoreDestroyed();
             CheckTimer();
             CheckVictory();
         }
@@ -4836,6 +4861,10 @@ namespace Wassup.Bridge
         {
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
+            // unit 10 — 적 마음 축도 매치 경계에서 소멸한다. 실제 max 는 스폰이 확정한다
+            // (저작에서 오므로 덱만 보고는 알 수 없다) — 여기서는 «축 비활성» 으로 초기화.
+            _enemyCoreMax = 0;
+            _enemyCoreCurrent = 0;
             _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
             _leakTypeMissLogged = false;
             _towerMissLogged = false;
@@ -4941,6 +4970,12 @@ namespace Wassup.Bridge
                 _em.AddComponentData(entity, new FactionTag { value = faction });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));
 
+                // unit 10 — 적 마음 축의 활성 조건을 여기서 확정한다(저작에서 오므로 덱만
+                // 보고는 알 수 없다). 합으로 두는 이유: 계약 6 은 공성 맵에 적 마음 1개를
+                // 강제하지만, 그 규칙이 완화되어도 판정이 조용히 «첫 마음만» 이 되지 않는다.
+                if (faction == Faction.EnemyCore)
+                    _enemyCoreMax += Mathf.Max(0, Mathf.RoundToInt(s.data.health));
+
                 // 본능 3×3 — 통행 차단은 본체만(계약 12: 마음은 비차단). BlockingHazard
                 // 다중셀 선례(EffectSpawner)와 같은 버퍼라 통행 코드 신설 0.
                 if (Wassup.Data.StructurePlacements.IsInstinct(faction))
@@ -5001,25 +5036,46 @@ namespace Wassup.Bridge
                     }
                 }
 
-                // 뷰 — SO 의 viewPrefab 을 셀 중심에 직배치(sim→view 는 BoardSpace.ToView 경유,
-                // Pickup 선례와 동일). 프리팹 미지정은 무해(게이지만 뜬다).
-                if (s.data.viewPrefab != null)
-                {
-                    float3 simCenter = GridToWorldCenter(s.cell);
-                    var view = Instantiate(s.data.viewPrefab,
-                        (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
-                    view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
-                    _structureViews.Add(view);
-                }
-
+                // 뷰는 여기서 만들지 않는다 — 맵 수명이라 BuildMapForBattle 이 소유한다(후속 2).
                 _structureRegistry.Add((entity, s.cell, faction));
                 spawned++;
             }
+            // unit 10 — 첫 Sync 전에도 타이머 비교가 옳은 값을 보게 한다. Sync 가 매 프레임
+            // 갱신하지만 초기값을 여기서 못 박아 «호출 순서에 의존하지 않는» 상태로 둔다.
+            _enemyCoreCurrent = _enemyCoreMax;
             if (spawned > 0)
-                Debug.Log($"[BattleBridge] Structures spawned: {spawned} (본능/적 마음, SO HP)");
+                Debug.Log($"[BattleBridge] Structures spawned: {spawned} (본능/적 마음, SO HP)"
+                    + (_enemyCoreMax > 0 ? $" · 적 마음 축 활성 (max {_enemyCoreMax})" : string.Empty));
         }
 
-        // 리뷰 H-4 — 뷰 정리는 2곳(여기 + TeardownCurrentBattle의 restart 경로)이 공유한다.
+        // battle-structures 후속 2(리뷰 M-5) — 거점 프랍 생성. **맵 빌드 시점**이라 배치
+        // 페이즈부터 보인다(9×9 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
+        // 있으므로 여기서 등록부를 건드리지 않는다 — 게이지는 등록부 기반이라 전투 시작
+        // 전까지 안 뜨는 게 맞다(체력은 아직 없다).
+        // sim→view 는 BoardSpace.ToView 경유(Pickup 프레젠터 선례). 프리팹 미지정은 무해.
+        private void SpawnStructureViews()
+        {
+            ClearStructureViews();   // 멱등 — 재빌드마다 정확히 1벌
+            var docStructures = _resolvedMapDoc != null ? _resolvedMapDoc.Structures : null;
+            if (docStructures == null) return;
+            for (int i = 0; i < docStructures.Count; i++)
+            {
+                var s = docStructures[i];
+                if (s.data == null || s.data.viewPrefab == null) continue;
+                // 스폰과 같은 필터 — 방어 마음은 goals[] 정본이라 거점 프랍을 세우지 않는다
+                // (골 구조물 프랍은 theme.goalStructureProp 이 이미 담당).
+                if (Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
+                    == Faction.DefenderCore) continue;
+
+                float3 simCenter = GridToWorldCenter(s.cell);
+                var view = Instantiate(s.data.viewPrefab,
+                    (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
+                _structureViews.Add(view);
+            }
+        }
+
+        // 리뷰 H-4 — 뷰 정리는 TeardownGeneratedMap(맵 수명)과 TeardownCurrentBattle 이 공유한다.
         private void ClearStructureViews()
         {
             for (int i = 0; i < _structureViews.Count; i++)
@@ -5029,9 +5085,11 @@ namespace Wassup.Bridge
 
         private void DestroyStructureEntities()
         {
+            // 뷰는 지우지 않는다 — 맵 수명이라 TeardownGeneratedMap 이 소유한다(후속 2).
+            // 여기서 지우면 StartBattle(SpawnStructureEntities → 이 메서드)이 배치 페이즈에
+            // 세워둔 프랍을 매번 날린다.
             _goalTowerCount = 0;
             _structureRegistry.Clear();
-            ClearStructureViews();
             if (!HasLiveEntityManager()) return;
             using var towerQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());
@@ -5044,6 +5102,12 @@ namespace Wassup.Bridge
         // 안정도 읽기 창구. unit 1(게이지)·unit 3(동점 판정)이 이것만 쓴다.
         public int GoalStabilityCurrent => _goalStability;
         public int GoalStabilityMax => _goalStabilityMax;
+
+        // battle-structures unit 10 — 적 마음 축의 읽기 창구(위와 대칭). Max 0 = 이 축 비활성
+        // (= 침략 맵). 3분 만료 판정이 `GoalStabilityCurrent >= EnemyCoreCurrent` 이므로 이 둘을
+        // 읽으면 화면에서 판정을 검산할 수 있다 — 그게 이 API 의 존재 이유다(unit 11 이 소비).
+        public int EnemyCoreCurrent => _enemyCoreCurrent;
+        public int EnemyCoreMax => _enemyCoreMax;
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
@@ -5201,6 +5265,7 @@ namespace Wassup.Bridge
 
             float lowest = float.MaxValue;
             float maxHp = 0f;
+            float enemyCoreRemaining = 0f;   // unit 10 — 적 마음 축의 잔여(같은 순회에 얹는다)
             bool newCoreBreach = false;
             List<Vector2Int> newBreaches = null;   // 붕괴는 드문 사건 — lazy 할당
             for (int i = _structureRegistry.Count - 1; i >= 0; i--)
@@ -5210,6 +5275,9 @@ namespace Wassup.Bridge
                 var health = alive ? _em.GetComponentData<Health>(entity) : default;   // 리뷰 L-11 — 1회 조회
                 if (alive && health.value > 0f)
                 {
+                    // unit 10 — 적 마음은 자기 축의 잔여로 모은다. 방어 미러와 **섞지 않는다**
+                    // (미러는 «가장 위험한 골» 캐시고 이쪽은 «적 본진이 얼마나 남았나» 다).
+                    if (faction == Faction.EnemyCore) enemyCoreRemaining += health.value;
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
                     if (health.value < lowest) lowest = health.value;
                     if (health.max > maxHp) maxHp = health.max;
@@ -5261,6 +5329,13 @@ namespace Wassup.Bridge
             {
                 _goalStability = 0;   // 마음이 하나도 안 남았다
             }
+
+            // unit 10 — 적 마음 잔여 갱신. **판정은 여기서 하지 않는다**: 이 메서드는 아래에서
+            // 조건부 return 이 여럿이라 판정을 넣으면 붕괴 프레임에만 건너뛰어진다. 축의 판정은
+            // CheckEnemyCoreDestroyed 가 소유하고, Update 에서 이 메서드 **다음에** 돈다 —
+            // 그래서 같은 프레임에 방어 마음도 무너졌다면 패배가 먼저 _resultShown 을 세운다.
+            // 표시는 올림(방어 미러와 같은 규칙) — 0.3 남았는데 0 으로 보이면 «죽었는데 안 죽었다».
+            _enemyCoreCurrent = Mathf.Max(0, Mathf.CeilToInt(enemyCoreRemaining));
 
             if (!newCoreBreach) return;
 
@@ -5346,28 +5421,61 @@ namespace Wassup.Bridge
         // stays valid after _running is cleared (used to stamp the result popup).
         private float RemainingBattleSeconds() => Mathf.Max(0f, _timerDuration - (float)_battleClock);
 
+        // battle-structures unit 10 — **적 마음 축**. 방어 마음 축(SyncGoalStability)의 거울이고
+        // 활성 조건도 같은 모양이다: 저작된 상한이 있었는데(`_enemyCoreMax > 0`) 지금 잔여가 0.
+        // 침략 맵은 max 가 0 이라 이 축이 저절로 죽는다 — 모드 분기가 없는 이유(계약 15).
+        //
+        // 감지 기계를 새로 만들지 않는다: 잔여는 SyncGoalStability 의 등록부 순회가 이미 굴리고,
+        // 그 메서드가 Update 에서 이것보다 **먼저** 돌아 같은 프레임 패배가 우선권을 갖는다.
+        private void CheckEnemyCoreDestroyed()
+        {
+            if (_resultShown || _enemyCoreMax <= 0 || _enemyCoreCurrent > 0) return;
+
+            _resultShown = true;
+            _running = false;
+            var score = CalculateBattleScore(defeated: false);
+            GameManager.Instance?.Logger?.SetResult("victory_siege", _goalReachedCount);
+            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
+            BeginTally(win: true, score, RemainingBattleSeconds());
+            Debug.Log("[BattleBridge] VICTORY — 적 마음이 무너졌다(공성).");
+        }
+
         private void CheckTimer()
         {
             if (_resultShown) return;
             if (_timerDuration <= 0f) return;
             if ((float)_battleClock < _timerDuration) return;
 
+            // battle-structures unit 10 — 만료 판정은 «남은 체력의 우위» 비교 **한 줄**이다.
+            // 적 마음 축이 비활성이면 _enemyCoreCurrent = 0 이라 `_goalStability >= 0` 이 항상
+            // 참 = 기존 무조건 승리와 동치다. 침략 맵과 공성 맵이 같은 코드를 탄다(계약 15).
+            // 동률은 승리 — 방어 게임의 «버틴다» 계약(사용자 확정).
+            //
+            // 두 마음의 체력은 **저작으로** 맞춘다(덱 goalStabilityMax ↔ 적 마음 SO health).
+            // 어긋남은 MapDocumentPool.OnValidate 가 경고한다 — 여기서 비율로 정규화하지 않는
+            // 이유는 사용자 결정이 «동일 체력 + 절대값» 이기 때문이다.
+            bool win = _goalStability >= _enemyCoreCurrent;
+
             _resultShown = true;
             _running = false;
             // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
             // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
-            var score = CalculateBattleScore(defeated: false);
+            var score = CalculateBattleScore(defeated: !win);
             int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
+            GameManager.Instance?.Logger?.SetResult(
+                win ? "victory_timeout" : "defeat_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-            BeginTally(win: true, score, 0f); // timer expired → 0 left
-            Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
+            BeginTally(win, score, 0f); // timer expired → 0 left
+            Debug.Log(win
+                ? $"[BattleBridge] VICTORY — timer expired, player survived. (방어 {_goalStability} ≥ 적 {_enemyCoreCurrent})"
+                : $"[BattleBridge] DEFEAT — timer expired, 적 본진이 더 버텼다. (방어 {_goalStability} < 적 {_enemyCoreCurrent})");
         }
 
         // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
         private void CheckVictory()
         {
             if (_resultShown) return;
+            if (_enemyCoreMax > 0) return;
             if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
             if (!NoQueuedAttackersRemain()) return;
 
@@ -6143,11 +6251,12 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
                 attackTargetCount = unitData.attackTargetCount,
-                // battle-structures unit 0 — 아군 타게팅(힐러)은 DefenderUnit 단독이다.
+                // battle-structures unit 8 — 저작 타겟 마스크(기본 = 적 진영 전부).
+                // 아군 타게팅(힐러)은 여전히 DefenderUnit 단독이고 저작 마스크를 이긴다 —
                 // AnyDefender 로 넓히면 IncomingHeal 버퍼가 없는 거점이 후보에 들어
-                // ECB playback 에서 던진다. 적 타게팅도 EnemyUnit 단독 — 방어유닛이
-                // 적 거점을 때리는 것은 이 spec 범위 밖(결정 4).
-                targetMask = unitData.targetAllies ? (int)Faction.DefenderUnit : (int)Faction.EnemyUnit,
+                // ECB playback 에서 던진다. 판정 전체는 DefenderTargetDefaults 소관.
+                targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
+                    (int)unitData.targetFactions, unitData.targetAllies),
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 방어유닛 지속 락의 그릇. 신규 컴포넌트를 만들지
@@ -6378,7 +6487,10 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec,
                 attackTargetCount = unitData.attackTargetCount,
-                targetMask = (int)Faction.EnemyUnit,
+                // battle-structures unit 8 — 순찰 아군도 같은 저작 축을 쓴다. 배치 방어유닛과
+                // 같은 SO 타입이라 «순찰만 거점을 못 때린다» 는 예외를 만들 이유가 없다.
+                targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
+                    (int)unitData.targetFactions, unitData.targetAllies),
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 순찰병도 락을 받는다. 다만 이 유닛은 EnemyBehavior

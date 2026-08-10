@@ -95,11 +95,31 @@ namespace Wassup.Battle.Combat.Projectile
             // 없어서(유닛이 아니다) 여기 빠져 있었고, 그 결과 **보스의 AreaBarrage 가 골에
             // 떨어져도 안정도가 한 톨도 안 줄었다.** 근접 공격은 타겟에 직접 append 라
             // 멀쩡했기 때문에 증상이 "보스만 타워를 못 부순다" 는 형태로 조용했다.
-            var defenderQuery = SystemAPI.QueryBuilder()
-                .WithAny<DefenderUnitTag, GoalTowerTag>()
-                .WithAll<LocalTransform>().Build();
-            var defenderEntities = defenderQuery.ToEntityArray(Allocator.Temp);
-            var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            //
+            // battle-structures unit 9 — **그 수정이 방어 측에만 됐다.** 적 풀은 위
+            // AttackUnitTag 그대로였고, 그래서 같은 증상이 진영만 바꿔 살아 있었다:
+            // 메테오가 적 마음 위에 정확히 떨어져도 0 데미지. 이제 TileAoe 의 피해자 풀은
+            // 진영 양쪽 + 거점을 담은 **한 벌**이고 `FactionTag` 로 가른다.
+            //
+            // 왜 값 필터인가: ECS 쿼리는 `FactionTag` **값**으로 필터할 수 없고(shared
+            // component 가 아니다) `StructureTag` 는 양 진영 공용이라 태그 조합만으로
+            // «적 거점» 을 뽑을 수 없다. 값 필터를 쓸 거라면 스냅샷을 두 벌 뜰 이유가 없다.
+            // 두 벌을 이어 붙이는 대안은 금지 — 중복 제거가 없어 광역 1발이 골을 2번 때린다
+            // (goal-stability 의 별도 «골 풀» 합류가 그렇게 실패했다).
+            //
+            // 편입 범위: `GoalTowerTag` 특례가 은퇴하고(방어 마음은 StructureTag +
+            // DefenderCore 비트로 걸린다) 미래의 방어 본능도 코드 변경 0 으로 걸린다.
+            // `BlockingHazard`(방벽)는 세 태그 중 아무것도 없어 **전에도 두 풀 어디에도
+            // 없었다** — 지금도 광역 피해자가 아니다(동작 보존).
+            // `WithNone<UltimateLeapState>` 가 방어 측에도 걸리게 되지만 그 컴포넌트의 의미가
+            // «판 밖 = 피격 불가» 이므로 어느 진영이 달아도 맞지 않는 것이 맞다.
+            var victimQuery = SystemAPI.QueryBuilder()
+                .WithAny<AttackUnitTag, DefenderUnitTag, StructureTag>()
+                .WithAll<LocalTransform, FactionTag>()
+                .WithNone<UltimateLeapState>().Build();
+            var victimEntities = victimQuery.ToEntityArray(Allocator.Temp);
+            var victimTransforms = victimQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var victimFactions = victimQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
@@ -496,25 +516,30 @@ namespace Wassup.Battle.Combat.Projectile
                         // ballistic are byte-identical to before (N3); the boss
                         // AreaBarrage arm is the only Defender setter (unit 2).
                         bool hitsDefenders = projectile.ValueRO.targetFaction == ProjectileTargetFaction.Defender;
-                        var victims = hitsDefenders ? defenderEntities : aoeEntities;
-                        var victimTransforms = hitsDefenders ? defenderTransforms : aoeTransforms;
+                        // battle-structures unit 9 — 풀 선택이 아니라 **진영 마스크 선택**이다.
+                        // 유닛·거점을 구분하지 않는다: 「상대 진영에 속한 것」이 곧 피해자다.
+                        int wantMask = hitsDefenders
+                            ? Wassup.Battle.Units.Factions.AnyDefender
+                            : Wassup.Battle.Units.Factions.AnyEnemy;
 
                         // bomb-thrower-defender unit 2 — 범위 내 victim 인덱스 + impact
                         // 중심 거리²를 모아 가까운 순 aoeTargetCap 개로 절단(0 = 무제한 =
                         // 레거시 메테오/스킬/보스 경로, byte-identical). 데미지와 CC 를
                         // 같은 capped 집합에 적용. 비폭탄 spawn 은 cap 0·ccKind 0 → 무회귀.
                         // battle-structures unit 0 — 후보를 엔티티 리스트로 수집해 cap 선정에 태운다.
-                        // goal-stability 의 별도 «골 풀» 합류는 제거했다: defender 풀이 이미
-                        // WithAny<DefenderUnitTag, GoalTowerTag> 라 골이 그 안에 있고, 두 풀을
-                        // 이어 붙이면 중복 제거가 없어 광역 1발이 골을 2번 때렸다.
+                        // goal-stability 의 별도 «골 풀» 합류는 제거했다: 풀이 한 벌이라
+                        // 골이 그 안에 있고, 두 풀을 이어 붙이면 중복 제거가 없어 광역 1발이
+                        // 골을 2번 때렸다(unit 9 에서 풀이 한 벌로 합쳐져 이 위험이 구조적으로 사라졌다).
                         var inRangeEnts = new NativeList<Entity>(Allocator.Temp);
                         var inRangeDistSq = new NativeList<float>(Allocator.Temp);
-                        for (int i = 0; i < victims.Length; i++)
+                        for (int i = 0; i < victimEntities.Length; i++)
                         {
+                            // unit 9 — 상대 진영만. 이 한 줄이 «자기편 오폭» 을 막는다.
+                            if (((int)victimFactions[i].value & wantMask) == 0) continue;
                             float3 vpos = victimTransforms[i].Position;
                             int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
-                            inRangeEnts.Add(victims[i]);
+                            inRangeEnts.Add(victimEntities[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;
                             inRangeDistSq.Add(dx * dx + dz * dz);
@@ -582,8 +607,9 @@ namespace Wassup.Battle.Combat.Projectile
             aoeEntities.Dispose();
             aoeTransforms.Dispose();
             aoePositions.Dispose();
-            defenderEntities.Dispose();
-            defenderTransforms.Dispose();
+            victimEntities.Dispose();
+            victimTransforms.Dispose();
+            victimFactions.Dispose();
         }
     }
 }
