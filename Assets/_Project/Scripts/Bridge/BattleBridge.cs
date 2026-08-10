@@ -7576,7 +7576,9 @@ namespace Wassup.Bridge
             {
                 value = Wassup.Battle.Combat.AiState.Marching,
             });
-            if (entry.unitType.targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead)
+            // target-persistence unit 3 — 공격 가능한 **전 적**에게 부착한다(구 FocusUntilDead 한정).
+            // Nearest 4종(Tanker·Debuffer·보스 2종)도 락을 받는다 — D4.
+            if (entry.unitType.targetMode != Wassup.Data.EnemyTargetMode.None)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
 
             int priorityClass = entry.unitType.targetPriorityClass == Wassup.Data.DefenderClass.None

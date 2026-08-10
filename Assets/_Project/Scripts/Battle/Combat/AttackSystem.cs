@@ -642,46 +642,69 @@ namespace Wassup.Battle.Combat
                 // 때까지 유지, 사거리는 발사만 게이팅하고 락은 유지"* 였는데 **사거리 이탈도
                 // 이제 해제 사유다**(D2). 예전 거동은 이탈한 적이 락을 붙든 채 발사를 보류하고
                 // FSM 이 Marching 으로 떨어져 **옆에 방어유닛을 두고 골로 걸어가는** 버그였다.
+                // unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`). `Nearest` 4종도
+                // 락을 받는다 — **보스 2종 포함**(D4: "한 놈 타겟되면 한 놈만 팬다").
+                // BossTag 분기를 넣지 **않는 것**이 그 결정의 구현이다.
+                // ⚠ EnemyAiStateSystem 미러의 게이트와 **항상 같아야 한다**(계약 4).
                 if (behaviorLookup.HasComponent(attackerEntity)
-                    && behaviorLookup[attackerEntity].targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead
+                    && behaviorLookup[attackerEntity].targetMode != Wassup.Data.EnemyTargetMode.None
                     && focusLookup.HasComponent(attackerEntity))
                 {
-                    Entity cur = focusLookup[attackerEntity].current;
-                    bool curValid = cur != Entity.Null
-                        && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
-                        && !deadLookup.HasComponent(cur);
-                    // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
-                    // (EnemyAiStateSystem 미러와 **같은 함수**. 두 벌이면 데드락이 재발한다).
-                    bool keepLock = false;
-                    float3 curPos = bestTargetPos;
-                    if (curValid)
+                    // unit 3 (D5) — 행동정지 CC 중엔 락을 비우고 **재잠금도 건너뛴다**.
+                    // 깨어나는 프레임에 비어 있으므로 자연히 새로 고른다. «해제 순간»을 잡지
+                    // 않는 이유: actionLocked 는 continue 하지 않아 CC 중에도 이 사슬이 돌기
+                    // 때문에 전이 감지용 상태가 필요 없다. CC 중엔 START 자체가 막혀 있어
+                    // 비워도 잃는 것이 없다.
+                    //
+                    // ⚠ **else 로 감싸는 것이 핵심이다.** 비우기만 하고 아래로 흘리면 해제
+                    // 분기가 그 프레임의 최근접으로 **즉시 다시 잠근다** — 초판이 그랬고
+                    // `Cc_ClearsTheLock_WhileActionLocked` 가 빨갛게 잡았다.
+                    //
+                    // committedTarget(한 공격 안의 커밋)은 건드리지 않는다 — 진행 중 스윙은
+                    // 겨눈 대상에 꽂히고 끝난다(기존 계약). 층이 다르다.
+                    if (actionLocked)
                     {
-                        curPos = aggroTransformLookup.HasComponent(cur)
-                            ? aggroTransformLookup[cur].Position : bestTargetPos;
-                        int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                        int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
-                        keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
-                    }
-
-                    if (keepLock)
-                    {
-                        bestTarget = cur; bestTargetPos = curPos;
-                        focusLookup[attackerEntity] = new FocusTarget { current = cur };
+                        focusLookup[attackerEntity] = new FocusTarget { current = Entity.Null };
                     }
                     else
                     {
-                        // 사망/소멸 **또는 사거리 이탈**(D2) → 락 해제.
-                        // 예전엔 이탈 시 bestTarget=Null 로 발사만 보류하고 락을 재저장했다.
-                        // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
-                        // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
-                        // invalid lock → adopt the already-computed nearest+filter result (may be Null)
-                        // goal-stability unit 2 (리뷰 M3) — 골은 잠금 대상이 아니다: 잠그면 이후
-                        // 배치된 방어유닛을 사거리에 두고도 골만 계속 때려 최후순위 계약이 깨진다.
-                        // 이 프레임 사격(bestTarget=goal)은 유지하되 락에는 저장하지 않는다.
-                        focusLookup[attackerEntity] = new FocusTarget
+                        Entity cur = focusLookup[attackerEntity].current;
+                        bool curValid = cur != Entity.Null
+                            && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
+                            && !deadLookup.HasComponent(cur);
+                        // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
+                        // (EnemyAiStateSystem 미러와 **같은 함수**. 두 벌이면 데드락이 재발한다).
+                        bool keepLock = false;
+                        float3 curPos = bestTargetPos;
+                        if (curValid)
                         {
-                            current = goalPointLookup.HasComponent(bestTarget) ? Entity.Null : bestTarget,
-                        };
+                            curPos = aggroTransformLookup.HasComponent(cur)
+                                ? aggroTransformLookup[cur].Position : bestTargetPos;
+                            int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
+                            int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                            keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
+                        }
+
+                        if (keepLock)
+                        {
+                            bestTarget = cur; bestTargetPos = curPos;
+                            focusLookup[attackerEntity] = new FocusTarget { current = cur };
+                        }
+                        else
+                        {
+                            // 사망/소멸 **또는 사거리 이탈**(D2) → 락 해제.
+                            // 예전엔 이탈 시 bestTarget=Null 로 발사만 보류하고 락을 재저장했다.
+                            // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
+                            // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
+                            // invalid lock → adopt the already-computed nearest+filter result (may be Null)
+                            // goal-stability unit 2 (리뷰 M3) — 골은 잠금 대상이 아니다: 잠그면 이후
+                            // 배치된 방어유닛을 사거리에 두고도 골만 계속 때려 최후순위 계약이 깨진다.
+                            // 이 프레임 사격(bestTarget=goal)은 유지하되 락에는 저장하지 않는다.
+                            focusLookup[attackerEntity] = new FocusTarget
+                            {
+                                current = goalPointLookup.HasComponent(bestTarget) ? Entity.Null : bestTarget,
+                            };
+                        }
                     }
                 }
 

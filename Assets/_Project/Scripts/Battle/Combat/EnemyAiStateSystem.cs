@@ -119,9 +119,14 @@ namespace Wassup.Battle.Combat
             in ComponentLookup<EnemyTargetFilter> filterLookup,
             in ComponentLookup<EnemyBehavior> behaviorLookup)
         {
-            // FocusUntilDead 락 미러: 락 타겟만 fire 가능.
+            // 락 미러: 락 타겟만 fire 가능.
+            // target-persistence unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`).
+            // **AttackSystem 의 락 블록 게이트와 항상 같아야 한다**(계약 4) — 갈리면
+            // "락은 있는데 FSM 은 Marching" 데드락이 재발한다. 그게 B2 의 절반이었다.
+            // CC 중 비움(D5)은 여기서 하지 않는다: focus 의 writer 는 AttackSystem 단독이고
+            // 이 미러는 읽기 전용이다. 비워진 값이 그대로 보여 nearest 경로로 흐른다.
             if (behaviorLookup.HasComponent(attacker)
-                && behaviorLookup[attacker].targetMode == EnemyTargetMode.FocusUntilDead
+                && behaviorLookup[attacker].targetMode != EnemyTargetMode.None
                 && focusLookup.HasComponent(attacker))
             {
                 Entity cur = focusLookup[attacker].current;
