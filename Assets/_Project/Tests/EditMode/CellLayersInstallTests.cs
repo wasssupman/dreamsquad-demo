@@ -503,6 +503,58 @@ namespace Wassup.Tests.EditMode
             finally { inPlace.Dispose(); viaTemp.Dispose(); map.Dispose(); }
         }
 
+        // ───────── unit 5 — 충돌 그리드도 층을 본다 ─────────
+        //
+        // 라이브에서 순찰병이 `PatrolStep.dir` 을 받고도 한 칸도 못 움직였다: 경로 탐색만
+        // 층 인지였고 **충돌/트림 NavGrid 는 `walkMask`(Path 전용)** 를 계속 봤기 때문이다.
+        // 배치지에 선 유닛은 자기 칸이 벽으로 읽혀 영원히 clamp 됐다.
+
+        [Test]
+        public void LayeredNav_TreatsPlacementGroundAsWalkable_ForGroundUnits()
+        {
+            var map = MakeMap(withAuthoredMask: false);
+            var scratch = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                var field = Install(map);
+                var place = new int2(1, 0);   // 픽스처의 Place 칸
+                var obstacles = default(ObstacleSingleton);
+
+                var pathOnly = MovementCellTrim.BuildNavGrid(
+                    in field, (byte)PlacementLayer.Path, false, in obstacles, scratch);
+                Assert.IsTrue(pathOnly.IsBlocked(place), "Path 전용 유닛에게 배치지는 벽이다");
+
+                var ground = MovementCellTrim.BuildNavGrid(
+                    in field, (byte)(PlacementLayer.Ground | PlacementLayer.Path), false, in obstacles, scratch);
+                Assert.IsFalse(ground.IsBlocked(place),
+                    "Ground 를 여는 유닛에게 배치지는 통행 가능해야 한다 — 아니면 자기 칸에 갇힌다");
+            }
+            finally { scratch.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void LayeredNav_WithDefaultMask_MatchesLegacyWalkMaskNav()
+        {
+            // 무변경 축 — 적(층 Path)이 보는 벽은 예전 nav 와 셀 단위로 같아야 한다.
+            var map = MakeMap(withAuthoredMask: false);
+            var scratch = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                var field = Install(map);
+                var obstacles = default(ObstacleSingleton);
+                var legacy = MovementCellTrim.BuildNavGrid(in field, false, in obstacles);
+                var layered = MovementCellTrim.BuildNavGrid(
+                    in field, TraversalSlots.DefaultMask, false, in obstacles, scratch);
+                for (int y = 0; y < 2; y++)
+                for (int x = 0; x < 2; x++)
+                {
+                    var c = new int2(x, y);
+                    Assert.AreEqual(legacy.IsBlocked(c), layered.IsBlocked(c), $"cell ({x},{y})");
+                }
+            }
+            finally { scratch.Dispose(); map.Dispose(); }
+        }
+
         [Test]
         public void Teardown_IsIdempotent()
         {

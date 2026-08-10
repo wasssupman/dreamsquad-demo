@@ -65,6 +65,33 @@ namespace Wassup.Battle.Movement
                 origin:       field.origin).MaterializeWalkMask(outMask);
         }
 
+        // traversal-layers unit 5 — **층 인지 NavGrid.** 충돌·셀 트림이 쓰는 벽 질의를
+        // 유닛의 통행 층으로 조립한다.
+        //
+        // unit 1b·3 은 라우팅(BFS) 마스크만 층 인지로 바꿨고, 충돌은 `field.walkMask`
+        // (= Path 전용) 하나를 계속 봤다. 그래서 `Ground|Path` 유닛이 배치지에 서면 그 칸이
+        // 충돌상 벽이라 자기 셀에 영원히 clamp 됐다 — 경로는 찾는데 발을 못 뗐다.
+        //
+        // `scratch` 는 호출자가 들고 다니는 길이 CellCount 버퍼다(프레임당 재사용).
+        // 장애물은 `MaterializeWalkMask` 가 **이미 마스크에 구워** 놓으므로 NavGrid 에 다시
+        // 넘기지 않는다 — 같은 판정에 해시 조회만 사라진다.
+        public static NavGrid BuildNavGrid(
+            in FlowFieldSingleton field,
+            byte traversalLayers,
+            bool hasObstacles,
+            in ObstacleSingleton obstacles,
+            NativeArray<byte> scratch)
+        {
+            FillWalkMask(in field, traversalLayers, hasObstacles, in obstacles, scratch);
+            return new NavGrid(
+                staticWalk:   scratch,
+                blockedCells: default,
+                hasObstacles: false,
+                gridSize:     field.gridSize,
+                tileSize:     field.tileSize,
+                origin:       field.origin);
+        }
+
         // Inset to keep the clamped position strictly inside currentCell.
         // WorldToCell rounds 0.5 up to the next cell, so without this offset a position at
         // exactly ±0.5*tileSize would be mapped to the adjacent blocked cell, breaking the
