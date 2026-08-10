@@ -23,13 +23,15 @@ namespace Wassup.Tests.PlayMode
     public class StructureLivePlayTest
     {
         private const float TimeoutSec = 90f;
+        private const int DevInstinctMapIndex = 6;   // 메인 6장 뒤 dev[0] = MapDocument_Test(적 본능)
+        private const int DevSiegeMapIndex = 8;      // dev[2] = MapDocument_SiegeTest(적 마음, spawns 미저작)
         private int _savedIndex = -1;
 
         [SetUp]
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            DevMapOverride.Index = 6;   // 메인 6장 뒤 dev[0] = MapDocument_Test
+            DevMapOverride.Index = DevInstinctMapIndex;
         }
 
         [TearDown]
@@ -99,6 +101,67 @@ namespace Wassup.Tests.PlayMode
             {
                 Assert.Less(Time.unscaledTime - start, TimeoutSec,
                     "적이 골에 도달하지 못한다 — 본능 3×3 블로커가 경로를 끊었을 수 있다(연결성 회귀)");
+                yield return null;
+            }
+        }
+
+        // 공성 모드 파생(unit 6)의 **라이브** 검증. EditMode 는 ToGeneratedMap 투영만 쟀고,
+        // «파생 스폰에서 웨이브가 실제로 나온다» 는 여기서만 확인된다.
+        // 저작물: MapDocument_SiegeTest — 적 마음(15,25) 1기 · 방어 골(15,0) 1개 · spawns 미저작.
+        [UnityTest]
+        public IEnumerator SiegeMap_DerivesSpawnFromEnemyCore_AndWavesComeFromIt()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            DevMapOverride.Index = DevSiegeMapIndex;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            bridge.BeginPlacement();
+            yield return null;
+
+            // ── 파생: 저작 spawns 가 0인데 런타임 스폰이 적 마음 셀 1개로 채워졌다 ──
+            // (파생이 없으면 spawns 0 → MapConnectivity false → fallback linear 로 교체되어
+            //  격자가 20×10 이 된다. 격자 크기가 곧 «문서가 살아남았나» 의 관측치다.)
+            var map = (Wassup.Data.GeneratedMap)GetField(bridge, "_generatedMap");
+            Assert.AreEqual(new int2(30, 30), map.gridSize,
+                "저작 문서가 살아남았다 — fallback linear(20×10)로 교체되지 않았다");
+            Assert.AreEqual(1, map.spawns.Length, "적 마음 1기 → 파생 스폰 1개");
+            Assert.AreEqual(new int2(15, 25), map.spawns[0], "스폰 = 적 마음 셀");
+
+            // 적 마음 엔티티도 서 있다(스폰 지점이면서 거점).
+            var em = (EntityManager)GetField(bridge, "_em");
+            bridge.StartBattle();
+            yield return null;
+            using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<StructureTag>()))
+            {
+                var entities = q.ToEntityArray(Allocator.Temp);
+                bool foundCore = false;
+                foreach (var e in entities)
+                    if (em.GetComponentData<StructureTag>(e).faction == Faction.EnemyCore) { foundCore = true; break; }
+                entities.Dispose();
+                Assert.IsTrue(foundCore, "적 마음이 거점 엔티티로 선다(스폰 지점 겸 거점)");
+            }
+
+            // ── 웨이브가 그 셀에서 나온다 — 적이 파생 스폰 근처에 실제로 생성되는지 ──
+            for (int i = 0; i < 5 && bridge.NextWaveHasNext; i++) bridge.ForceNextWave();
+            float3 spawnWorld = bridge.GridToWorldCenterVector(new Vector2Int(15, 25));
+            float start = Time.unscaledTime;
+            bool sawEnemyNearSpawn = false;
+            while (!sawEnemyNearSpawn)
+            {
+                Assert.Less(Time.unscaledTime - start, TimeoutSec,
+                    "파생 스폰에서 적이 나오지 않는다 — 웨이브 생성이 spawns[] 를 안 쓰거나 파생이 끊겼다");
+                using (var q = em.CreateEntityQuery(
+                    ComponentType.ReadOnly<AttackUnitTag>(),
+                    ComponentType.ReadOnly<Unity.Transforms.LocalTransform>()))
+                {
+                    var xf = q.ToComponentDataArray<Unity.Transforms.LocalTransform>(Allocator.Temp);
+                    for (int i = 0; i < xf.Length; i++)
+                        if (math.distance(xf[i].Position, spawnWorld) < 6f) { sawEnemyNearSpawn = true; break; }
+                    xf.Dispose();
+                }
                 yield return null;
             }
         }
