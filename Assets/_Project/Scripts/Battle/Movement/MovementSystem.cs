@@ -37,8 +37,21 @@ namespace Wassup.Battle.Movement
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
             // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
-            // 장애물을 합쳐 프레임당 1회 조립하고, 아래 모든 충돌 해결이 이것만 본다.
-            var nav = MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacleSingleton);
+            // 장애물을 합쳐 조립하고, 아래 모든 충돌 해결이 이것만 본다.
+            //
+            // traversal-layers unit 5 — **유닛의 통행 층마다 다른 벽**이다. 예전엔 프레임당
+            // 하나(Path 전용)였는데, 그러면 Ground 를 여는 유닛이 배치지에 서는 순간 자기
+            // 칸이 벽으로 읽혀 영원히 clamp 된다(순찰병이 dir 을 받고도 안 움직였다).
+            // 재조립은 `PatrolFieldSystem` 의 BFS 마스크와 같은 **한-칸 메모**다: 청크 순회라
+            // 같은 층끼리 모여 있어 실제 재조립은 프레임당 층 종류 수(오늘 2)로 떨어진다.
+            var navScratch = new NativeArray<byte>(math.max(1, field.CellCount), Allocator.Temp);
+            byte navLayers = 0;   // 0 = 아직 안 만듦 (유효 층 값은 항상 0 이 아니다)
+            NavGrid nav = default;
+            // traversal-layers unit 1a — 라우팅은 슬롯별 stride 다. 지금은 전 엔티티가
+            // primary 슬롯을 쓴다(마스크 축은 unit 2a). 뷰는 길이 CellCount 라 아래 소비자
+            // (순수 함수 포함)는 stride 를 모른 채 셀 인덱스로 읽는다.
+            var goalFlow = field.FlowSlot(FlowFieldSingleton.PrimarySlot);
+            var goalDist = field.DistSlot(FlowFieldSingleton.PrimarySlot);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
@@ -64,6 +77,17 @@ namespace Wassup.Battle.Movement
                               .WithEntityAccess())
             {
                 float3 current = transform.ValueRO.Position;
+
+                // traversal-layers unit 5 — 이 유닛이 보는 벽. 층이 직전과 같으면 재사용한다.
+                // 0 = 미주입(레거시·픽스처) → 계약대로 Path 로 읽어 현행을 재현한다.
+                byte entityLayers = follow.ValueRO.traversalLayers;
+                if (entityLayers == 0) entityLayers = TraversalSlots.DefaultMask;
+                if (entityLayers != navLayers)
+                {
+                    nav = MovementCellTrim.BuildNavGrid(
+                        in field, entityLayers, hasObstacles, in obstacleSingleton, navScratch);
+                    navLayers = entityLayers;
+                }
 
                 // unit 13 — 기본값은 "정지". 자기주도 변위를 **실제로 적용하는 지점에서만**
                 // 내린다(아래 2곳). 케이스를 열거하지 않으므로 새 continue 경로가 생겨도
@@ -227,14 +251,14 @@ namespace Wassup.Battle.Movement
                 }
                 else
                 {
-                    dir = hunting ? huntField.flow[idx] : field.flow[idx];
+                    dir = hunting ? huntField.flow[idx] : goalFlow[idx];
                     if (math.lengthsq(dir) < 1e-6f)
                     {
                         // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                         // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
                         // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
                         // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
-                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
+                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : goalDist, field.gridSize);
                         if (math.lengthsq(recovDir) < 1e-6f)
                         {
                             // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
@@ -257,7 +281,7 @@ namespace Wassup.Battle.Movement
                         // 목표점 선택 규칙은 예고 라인과 공유(TryStepTarget) — 갈라지면
                         // "라인 ≠ 이동선" 부류가 재발한다.
                         // 사냥 분기는 defender field 를 따르므로 그쪽 flow 로 후보를 만든다.
-                        var smoothFlow = hunting ? huntField.flow : field.flow;
+                        var smoothFlow = hunting ? huntField.flow : goalFlow;
                         if (PathSmoothing.TryStepTarget(
                                 current, in nav, in smoothFlow, follow.ValueRO.radius,
                                 PathSmoothing.DefaultLookahead, out float3 aim))
@@ -322,6 +346,7 @@ namespace Wassup.Battle.Movement
 
             portals.Dispose();
             tornadoFields.Dispose();
+            navScratch.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }

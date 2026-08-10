@@ -117,6 +117,10 @@ namespace Wassup.Bridge
 
         // summon-patrol-defender unit 4 — 소환사 재배치 시 순찰병 거점 재스냅.
         // 소환사가 아니거나(SummonerState 없음) 순찰병이 없으면 no-op.
+        //
+        // unit 9 — 거점 = 새 소환사 셀. 통행 층 판정은 스폰과 **같은 함수**를 쓴다.
+        // 층은 순찰병 엔티티에서 읽는다(스폰 시 주입된 값이 여기 살아 있다) — SO 를 다시
+        // 뒤지지 않는 편이 "지금 이 개체가 어디를 밟을 수 있나"라는 질문에 정확하다.
         private void RelocatePatrolAnchorFor(Entity summoner, int2 newOwnerCell)
         {
             if (!_em.HasComponent<Wassup.Battle.Combat.SummonerState>(summoner)) return;
@@ -126,9 +130,14 @@ namespace Wassup.Bridge
             if (patrol == Entity.Null || !_em.Exists(patrol)) return;
             if (!_em.HasComponent<Wassup.Battle.Movement.PatrolAnchor>(patrol)) return;
 
+            byte layers = _em.HasComponent<Wassup.Battle.Movement.PathFollowState>(patrol)
+                ? _em.GetComponentData<Wassup.Battle.Movement.PathFollowState>(patrol).traversalLayers
+                : (byte)0;
+
             var anchor = _em.GetComponentData<Wassup.Battle.Movement.PatrolAnchor>(patrol);
-            if (!TryGetPatrolAnchorCell(newOwnerCell, anchor.tileRadius, out var anchorCell)) return;
-            anchor.cell = anchorCell;
+            if (!TryGetPatrolHomeCell(newOwnerCell, anchor.tileRadius, layers, out var homeCell)) return;
+            anchor.cell = newOwnerCell;   // 중심은 소환사를 따라간다(프리뷰와 같은 칸)
+            anchor.homeCell = homeCell;
             _em.SetComponentData(patrol, anchor);
         }
 

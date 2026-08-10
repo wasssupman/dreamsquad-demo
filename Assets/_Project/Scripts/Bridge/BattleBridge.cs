@@ -896,7 +896,9 @@ namespace Wassup.Bridge
             {
                 var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_simFields.flowField);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(spawnCell, field.gridSize);
-                if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
+                // traversal-layers unit 1a — 라우팅은 슬롯별 stride 다. 슬롯 뷰로 읽는다.
+                var spawnFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+                if (idx >= 0 && idx < spawnFlow.Length) flowDir = spawnFlow[idx];
             }
 
             // 폭 중앙 기준 대칭 이산 N-레인 분율 (상단은 topScale 로 좁힘). 스폰 순서 round-robin.
@@ -1925,19 +1927,23 @@ namespace Wassup.Bridge
             outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
             int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어
+            // traversal-layers unit 1a — 예고 라인도 슬롯 뷰로 읽는다. 이동(MovementSystem)과
+            // 같은 슬롯을 봐야 "라인 ≠ 이동선"이 재발하지 않는다.
+            var lineFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+            var lineDist = field.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
             for (int i = 0; i < guard; i++)
             {
                 cell = Wassup.Battle.Movement.GridMath.WorldToCell(
                     pos, field.tileSize, field.gridSize, origin: field.origin);
                 int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
-                if (idx < 0 || idx >= field.flow.Length) break;
-                if (field.dist[idx] == 0) break; // 골 도달
+                if (idx < 0 || idx >= lineFlow.Length) break;
+                if (lineDist[idx] == 0) break; // 골 도달
 
                 // unit 10 — 목표점 선택 규칙은 MovementSystem 과 같은 순수 헬퍼 하나다.
                 // (평활화/코너 꼭짓점 → 폴백 필드 스텝 → 골·고립 종료.) 여기 인라인하지
                 // 말 것 — 갈라지면 "라인 ≠ 이동선" 부류가 재발한다.
                 if (!Wassup.Battle.Movement.PathSmoothing.TryStepTarget(
-                        pos, in nav, in field.flow, radius,
+                        pos, in nav, in lineFlow, radius,
                         Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 next))
                     break;
                 pos = next;
@@ -5952,22 +5958,14 @@ namespace Wassup.Bridge
             // defender-ability-assets unit 2 — 폭탄병은 레인도 거짓말(착지 셀만 때린다) →
             // 조준 페이즈(SetAimGuide)와 같은 착지 후보 4셀. 나머지 facing 유닛은 레인 유지.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
-            // summon-patrol-defender unit 5 — 소환사에게 공격범위는 거짓말이다(본인은 안 때린다).
-            // 읽어야 할 정보는 **순찰병이 지킬 거점 반경**이고, 이 유닛에서 배치 판단의 전부가
-            // 그것이다. 판별은 능력 에셋 보유로 한다(id/kind 분기 금지 — beamVfxPrefab 관례).
-            // 중심은 실제 거점과 같게 **walk 셀로 스냅**한다(계약 4). 스냅 실패면 아무것도
-            // 그리지 않는다 — 그 자리에 놓으면 소환이 취소된다는 신호다.
-            var summonPreview = unit.GetAbility<SummonPatrolAbility>();
+            // summon-patrol-defender unit 9 — 소환사 전용 분기를 **삭제**했다.
+            // unit 5 는 "소환사에게 공격범위는 거짓말"이라며 leash 반경을 walk 셀에 스냅해
+            // 따로 그렸는데, 그러면 프리뷰가 그리는 박스와 순찰병이 지키는 박스와 소환
+            // 게이트가 보는 박스가 셋으로 갈린다(실제로 갈려 있었다). 이제 소환사의
+            // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
+            // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
             var bombPreview = unit.GetAbility<BombThrowAbility>();
-            if (summonPreview != null && summonPreview.patrolUnit != null)
-            {
-                if (TryGetPatrolAnchorCell(new int2(center.x, center.y), summonPreview.leashTileRadius, out var leashCell))
-                    tilemapMapView.SetPlacementRange(
-                        new Vector2Int(leashCell.x, leashCell.y), math.max(0, summonPreview.leashTileRadius));
-                else
-                    tilemapMapView.ClearPlacementRange();
-            }
-            else if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
+            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
             else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
@@ -6352,7 +6350,6 @@ namespace Wassup.Bridge
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.SummonerState
                 {
                     patrolDataIndex = RegisterPatrolUnitSO(summonAbility.patrolUnit),
-                    leashTileRadius = math.max(0, summonAbility.leashTileRadius),
                     current = Entity.Null,
                 });
             }
@@ -6445,14 +6442,14 @@ namespace Wassup.Bridge
         // DefenderTile 부착을 한다 — 배치 점유·재배치·DefenderDeathEvent·사직서 드랍을
         // 통째로 끌고 들어온다. 순찰병은 그 어느 것도 타면 안 된다(README 계약 1).
         //
-        // anchorCell 은 **walk 셀**이어야 한다. 호출자가 TryGetNearestWalkCell 로 스냅해
-        // 넘긴다 — 방어유닛 셀은 통상 walkable 이 아니라서(placement-mask B-1 의 Walk 셀
-        // 배치는 예외 — 그땐 스냅이 자기 셀을 반환) 그대로 쓰면 순찰병이 설 수 없는 칸을
-        // 향해 영원히 전진한다(계약 4).
+        // unit 9 — centerCell 은 박스 중심(소환사 셀)이고 homeCell 은 **이 유닛이 밟을 수
+        // 있는 주변 칸**이다. 스폰 위치 = homeCell. 호출자가 TryGetPatrolHomeCell 로 통행
+        // 층을 대조해 넘긴다 — 설 수 없는 칸을 집으로 주면 그 칸을 향해 영원히 전진한다.
         // owner == Entity.Null 이면 SummonedBy 미부착 = 연쇄 소멸 대상 아님(디버그 스폰).
         private Entity CreatePatrolEntity(
             DefenderUnitData unitData,
-            int2 anchorCell,
+            int2 centerCell,
+            int2 homeCell,
             int tileRadius,
             Entity owner)
         {
@@ -6463,11 +6460,11 @@ namespace Wassup.Bridge
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
 
-            var cellV2 = new Vector2Int(anchorCell.x, anchorCell.y);
+            var cellV2 = new Vector2Int(homeCell.x, homeCell.y);
             var pos = GridToWorldCenter(cellV2, spawnHeight);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
 #if UNITY_EDITOR
-            _em.SetName(entity, $"Patrol_{unitData.displayName}_{anchorCell.x}_{anchorCell.y}");
+            _em.SetName(entity, $"Patrol_{unitData.displayName}_{homeCell.x}_{homeCell.y}");
 #endif
             // 계약 1 — DefenderUnitTag 는 선택이 아니다. DestroyBattleEntities 가 타입 기반
             // 파괴라 이 태그가 없으면 매치 경계에서 안 지워지고 앱 수명 world 에 잔존한다.
@@ -6514,10 +6511,14 @@ namespace Wassup.Bridge
             {
                 speed = unitData.moveSpeed,
                 radius = agentRadiusTiles * tileSize,
+                // traversal-layers unit 2 — sim 은 SO 를 못 읽으므로 스폰 시 1회 주입한다.
+                // 폴백(EffectiveTraversalLayers)이 Path 라 저작 전엔 현행과 동일하다.
+                traversalLayers = (byte)unitData.EffectiveTraversalLayers,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Movement.PatrolAnchor
             {
-                cell = anchorCell,
+                cell = centerCell,
+                homeCell = homeCell,
                 tileRadius = math.max(0, tileRadius),
             });
             _em.AddComponentData(entity, new Wassup.Battle.Effects.PatrolStep { dir = float2.zero });
@@ -6580,26 +6581,68 @@ namespace Wassup.Bridge
 
         // summon-patrol-defender unit 2 — 디버그 스폰 공개 API (DebugSpawnHazardAt 동형).
         // 호출자가 준 셀을 walk 셀로 스냅한다. 스냅 실패(맵 미생성/walk 셀 없음) = Entity.Null.
-        // summon-patrol-defender — 거점 스냅 + **거리 상한**.
+        // summon-patrol-defender unit 9 — **거점 = 소환사 셀.** 스냅은 퇴화 분기로만 남는다.
         //
-        // TryGetNearestWalkCell 은 전 그리드를 스캔해 **전역 최근접** walk 타일을 고른다 —
-        // 반경 제한이 없어서 false 는 "맵에 walk 타일이 0개"일 때만 나온다. 그대로 쓰면
-        // "스냅 실패 = 소환 취소"가 사실상 도달 불가한 분기가 되고(완료 기준이 검증 불가해진다),
-        // 실제로 벌어지는 일은 그 반대다: 경로에서 먼 Place 타일에 소환사를 놓으면 거점이
-        // 화면 저쪽 walk 타일로 날아가 순찰병이 소환사와 무관한 자리에 나온다.
+        // unit 2 시절엔 무조건 최근접 walk 셀로 스냅했다. 전제는 "방어유닛 셀은 걸을 수
+        // 없다"였는데 traversal-layers 가 그 전제를 없앴다 — 순찰병이 Ground 를 열면
+        // 소환사가 서 있는 칸에 그대로 설 수 있다. 그래서 통상 경로에서 거점·프리뷰·소환
+        // 게이트가 **같은 셀**을 중심으로 갖는다(셋이 갈려 있던 것이 unit 9 의 동기).
         //
-        // 상한 = leash 반경 자체(SO 값, 제약 6) — "순찰병의 집은 소환사가 주장하는 구역
-        // 안에 있어야 한다". radius 0 은 Place 타일만 남아 항상 실패하므로 최소 1로 본다.
-        private bool TryGetPatrolAnchorCell(int2 ownerCell, int tileRadius, out int2 anchorCell)
+        // 퇴화 분기가 필요한 이유는 통행 층이 **저작 값**이기 때문이다. Path 전용으로 저작된
+        // 소환물은 배치지에 설 수 없고, 그대로 두면 "절대 설 수 없는 칸을 향해 영원히 전진"
+        // 하는 원래의 실패가 재현된다. 그때만 구역 안에서 가장 가까운 통행 가능 셀로 물러선다.
+        //
+        // 탐색을 구역 안으로 제한하는 것은 비용이 아니라 **규칙**이다: 순찰병의 집은 소환사가
+        // 주장하는 구역 안에 있어야 한다. 전 그리드 스캔은 경로에서 먼 곳에 소환사를 놓았을 때
+        // 거점을 화면 저쪽으로 날려버린다. radius 0 은 자기 셀만 남으므로 최소 1로 본다.
+        private bool TryGetPatrolHomeCell(
+            int2 ownerCell, int tileRadius, byte traversalLayers, out int2 homeCell)
         {
-            if (!TryGetNearestWalkCell(ownerCell, out anchorCell)) return false;
-            return GridMath.ChebyshevDistance(anchorCell, ownerCell) <= math.max(1, tileRadius);
+            homeCell = ownerCell;
+            if (!_generatedMap.IsCreated) return false;
+
+            // 0 = 미저작. traversal-layers 계약대로 Path 로 읽어 현행을 재현한다.
+            byte layers = traversalLayers != 0 ? traversalLayers : (byte)PlacementLayer.Path;
+
+            // **소환사 셀은 후보에서 뺀다** — 같은 칸에 스폰되면 둘이 겹쳐 서고, 플레이어에겐
+            // 소환물이 소환사에 박혀 안 움직이는 것으로 읽힌다(사용자 지적 2026-08-10).
+            // 탐색을 구역 안으로 제한하는 것은 비용이 아니라 규칙이다: 순찰병의 집은 소환사가
+            // 주장하는 구역 안에 있어야 한다. 전 그리드 스캔은 경로에서 먼 곳에 소환사를 놓았을
+            // 때 집을 화면 저쪽으로 날려버린다. 최근접부터 고르므로 통상 **인접 칸**이 잡힌다.
+            // 동률은 (y, x) 오름차순 첫 칸 — 결정론(같은 배치 = 같은 집).
+            int limit = math.max(1, tileRadius);
+            int bestDistSq = int.MaxValue;
+            bool found = false;
+            for (int y = ownerCell.y - limit; y <= ownerCell.y + limit; y++)
+            for (int x = ownerCell.x - limit; x <= ownerCell.x + limit; x++)
+            {
+                var candidate = new int2(x, y);
+                if (candidate.Equals(ownerCell)) continue;
+                if (!IsInGeneratedMapBounds(candidate)) continue;
+                if ((PlacementLayers.Derive(_generatedMap.TileAt(candidate)) & layers) == 0) continue;
+
+                int dx = x - ownerCell.x, dy = y - ownerCell.y;
+                int distSq = dx * dx + dy * dy;
+                if (distSq >= bestDistSq) continue;
+
+                bestDistSq = distSq;
+                homeCell = candidate;
+                found = true;
+            }
+            if (found) return true;
+
+            // 주변에 설 칸이 하나도 없다 — 소환을 취소하느니 소환사 셀에 세운다.
+            // (그 칸조차 못 밟으면 진짜 실패다: 설 수 없는 칸을 집으로 주면 영원히 전진한다.)
+            return IsInGeneratedMapBounds(ownerCell)
+                && (PlacementLayers.Derive(_generatedMap.TileAt(ownerCell)) & layers) != 0;
         }
 
         public Entity DebugSpawnPatrolAt(DefenderUnitData unitData, int2 cell, int tileRadius)
         {
-            if (!TryGetPatrolAnchorCell(cell, tileRadius, out var walkCell)) return Entity.Null;
-            return CreatePatrolEntity(unitData, walkCell, tileRadius, Entity.Null);
+            if (unitData == null) return Entity.Null;
+            byte layers = (byte)unitData.EffectiveTraversalLayers;
+            if (!TryGetPatrolHomeCell(cell, tileRadius, layers, out var homeCell)) return Entity.Null;
+            return CreatePatrolEntity(unitData, cell, homeCell, tileRadius, Entity.Null);
         }
 
         // summon-patrol-defender unit 2 — 디버그 스폰의 거점 기준 셀.
@@ -6679,9 +6722,11 @@ namespace Wassup.Bridge
                 var so = _patrolUnitRegistry[req.patrolDataIndex];
                 if (so == null) continue;
 
-                if (!TryGetPatrolAnchorCell(req.ownerCell, req.leashTileRadius, out var anchorCell)) continue;
+                if (!TryGetPatrolHomeCell(
+                        req.ownerCell, req.coverTileRadius,
+                        (byte)so.EffectiveTraversalLayers, out var homeCell)) continue;
 
-                var patrol = CreatePatrolEntity(so, anchorCell, req.leashTileRadius, req.owner);
+                var patrol = CreatePatrolEntity(so, req.ownerCell, homeCell, req.coverTileRadius, req.owner);
                 if (patrol == Entity.Null) continue;
 
                 if (_em.HasComponent<Wassup.Battle.Combat.SummonerState>(req.owner))
@@ -7844,7 +7889,9 @@ namespace Wassup.Bridge
             {
                 value = Wassup.Battle.Combat.AiState.Marching,
             });
-            if (entry.unitType.targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead)
+            // target-persistence unit 3 — 공격 가능한 **전 적**에게 부착한다(구 FocusUntilDead 한정).
+            // Nearest 4종(Tanker·Debuffer·보스 2종)도 락을 받는다 — D4.
+            if (entry.unitType.targetMode != Wassup.Data.EnemyTargetMode.None)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
 
             int priorityClass = entry.unitType.targetPriorityClass == Wassup.Data.DefenderClass.None
@@ -7862,6 +7909,8 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new PathFollowState
             {
                 speed = entry.unitType.moveSpeed,
+                // traversal-layers unit 2 — 위와 같은 규약(스폰 시 1회 주입, Path 폴백).
+                traversalLayers = (byte)entry.unitType.EffectiveTraversalLayers,
                 // continuous-agent-movement unit 3 — 반지름은 월드 단위로 넘긴다(sim 은 타일을 모른다).
                 radius = agentRadiusTiles * tileSize,
             });

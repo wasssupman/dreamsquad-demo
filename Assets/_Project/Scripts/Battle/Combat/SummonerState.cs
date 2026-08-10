@@ -10,10 +10,12 @@ namespace Wassup.Battle.Combat
     // patrolDataIndex 는 Bridge 측 DefenderUnitData 레지스트리 인덱스다. SO 는 managed 라
     // 컴포넌트에 담을 수 없어서 RegisterZoneHazardSO/GetOrCreateProjectileDataIndex 와 같은
     // 인덱스 등록 관용구를 따른다.
+    // unit 9 — **반경을 담지 않는다.** 담당 구역 반경은 이 유닛의 AttackState.range 에서
+    // 파생한다(RangeToTiles). 복제해 두면 소환사가 «공격범위와 다른 구역»을 갖게 되고,
+    // 배치 프리뷰가 그리는 것과 순찰병이 지키는 것이 갈린다.
     public struct SummonerState : IComponentData
     {
         public int    patrolDataIndex;
-        public int    leashTileRadius;
         public Entity current;   // 살아있는 순찰병. Entity.Null = 없음
 
         // 초회 소환 게이트의 소비 여부. false 인 동안엔 **거점 구역 안에 적이 있어야** 소환한다

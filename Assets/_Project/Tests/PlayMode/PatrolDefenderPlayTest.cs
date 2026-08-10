@@ -67,8 +67,8 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.AddCost(100000);
             yield return null;
 
-            Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.leashTileRadius, out var ownerCell),
-                "placeable summoner cell with a leash-local walk anchor");
+            Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell),
+                "placeable summoner cell whose own cell (or a cover-local cell) is traversable");
             Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData), "place summoner");
             Assert.IsTrue(PlaceFirstValid(bridge, healerData, out var healerCell), "place healer");
             Assert.IsTrue(PlaceFirstValid(bridge, shieldData, out var shieldCell), "place shield shuttle");
@@ -94,6 +94,60 @@ namespace Wassup.Tests.PlayMode
             }
             Assert.AreNotEqual(Entity.Null, patrol, "summon request reaches the live patrol entity");
             Assert.AreEqual(1, CountWith<PatrolAnchor>(em), "one patrol per summoner");
+
+            // unit 9 — 담당 구역이 소환사에게서 나오는지. 라이브 맵이 있어야만 성립하는 축이라
+            // EditMode 로 못 내린다(배치 가능 셀·통행 층이 실제 맵 데이터다).
+            var owner2 = new int2(ownerCell.x, ownerCell.y);
+            var liveAnchor = em.GetComponentData<PatrolAnchor>(patrol);
+            Assert.AreEqual(owner2, liveAnchor.cell,
+                "박스 중심 = 소환사 셀. 배치 프리뷰가 칠한 중심과 같아야 한다");
+            Assert.AreEqual(GridMath.RangeToTiles(summonerData.attackRange), liveAnchor.tileRadius,
+                "담당 구역 반경의 유일한 출처는 소환사 attackRange");
+
+            // 스폰/대기 칸은 소환사 **주변**이다 — 같은 칸이면 둘이 겹쳐 서서
+            // 소환물이 소환사에 박힌 것으로 읽힌다(사용자 지적 2026-08-10).
+            Assert.AreNotEqual(owner2, liveAnchor.homeCell, "집은 소환사 셀이 아니다");
+            Assert.LessOrEqual(GridMath.ChebyshevDistance(liveAnchor.homeCell, owner2),
+                liveAnchor.tileRadius, "집은 담당 구역 안이다");
+            Assert.AreEqual(liveAnchor.homeCell, CellOf(em, patrol), "스폰 위치 = 집");
+
+            // 퇴화 분기 — Path 전용으로 저작된 소환물은 배치지에 설 수 없으므로 구역 안
+            // 통행 가능 셀로 물러서야 한다. 물러서지 않으면 설 수 없는 칸을 향해 영원히 전진한다.
+            var snap = typeof(BattleBridge).GetMethod(
+                "TryGetPatrolHomeCell", BindingFlags.NonPublic | BindingFlags.Instance);
+            object[] pathOnly = { owner2, liveAnchor.tileRadius, (byte)PlacementLayer.Path, default(int2) };
+            Assert.IsTrue((bool)snap.Invoke(bridge, pathOnly), "Path 전용 소환물도 집을 찾는다");
+            var degraded = (int2)pathOnly[3];
+            Assert.AreNotEqual(owner2, degraded, "배치지는 Path 를 열지 않는다");
+            Assert.LessOrEqual(GridMath.ChebyshevDistance(degraded, owner2),
+                liveAnchor.tileRadius, "퇴화 집도 담당 구역 안이어야 한다");
+
+            // ───────── traversal-layers unit 5 — **증상 그대로의 단언: "순찰병이 움직인다"** ─────────
+            //
+            // 이 단언이 없어서 같은 버그를 세 번 놓쳤다. 당시 `PatrolStep.dir` 은 정상값
+            // `(-1,0)` 을 내고 있었고 **위치만** 고정돼 있었다(충돌 NavGrid 가 층을 몰라
+            // 배치지를 벽으로 읽었다). 스폰·컴포넌트·앵커·반경·집 좌표 단언은 **전부 통과**했다
+            // — 얼어붙은 순찰병도 그 단언들을 통과하기 때문이다.
+            //
+            // 적 스폰 타이밍에 기대지 않는 결정론 축으로 만든다: 순찰병을 **소환사 셀**
+            // (= 배치지, 구역 안)로 옮기면 집으로 복귀해야 한다. 결함 당시엔 바로 그 칸이
+            // 벽이라 영원히 clamp 됐으므로, 이 단언은 그 결함에서 반드시 빨갛다.
+            var patrolY = em.GetComponentData<LocalTransform>(patrol).Position.y;
+            var ownerPos = em.GetComponentData<LocalTransform>(summoner).Position;
+            MoveTo(em, patrol, new float3(ownerPos.x, patrolY, ownerPos.z));
+            var displaced = CellOf(em, patrol);
+            Assert.AreEqual(owner2, displaced, "테스트 전제: 배치지 칸으로 옮겨졌다");
+
+            bool moved = false;
+            for (int i = 0; i < 300 && !moved; i++)
+            {
+                yield return null;
+                if (!em.Exists(patrol)) break;
+                moved = !CellOf(em, patrol).Equals(displaced);
+            }
+            Assert.IsTrue(em.Exists(patrol), "관찰 중 순찰병이 살아 있어야 판정이 유효하다");
+            Assert.IsTrue(moved,
+                "배치지 위의 순찰병이 한 칸도 못 움직이면 통행 층이 충돌 판정에 안 닿은 것이다");
 
             Assert.IsTrue(em.HasComponent<DefenderUnitTag>(patrol));
             Assert.IsTrue(em.HasComponent<DefenderClassTag>(patrol));
@@ -183,7 +237,7 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.AddCost(100000);
             yield return null;
 
-            Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.leashTileRadius, out var ownerCell));
+            Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell));
             Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData));
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var summoner = EntityAt(bridge, em, ownerCell);
@@ -226,22 +280,27 @@ namespace Wassup.Tests.PlayMode
             return all.Length > 0 ? all[0] : null;
         }
 
+        // unit 9 — 담당 구역은 소환사 attackRange 에서 나오고, 거점 성립 여부는 순찰병의
+        // 통행 층에 달렸다. 두 값을 SO 에서 뽑아 실제 스냅 함수에 그대로 물어본다.
         private static bool FindSummonerCell(
             BattleBridge bridge,
             DefenderUnitData data,
-            int leashRadius,
+            DefenderUnitData patrolUnit,
             out Vector2Int cell)
         {
             var method = typeof(BattleBridge).GetMethod(
-                "TryGetPatrolAnchorCell",
+                "TryGetPatrolHomeCell",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(method, "patrol anchor snap method");
+            Assert.IsNotNull(method, "patrol home cell selector");
+
+            int coverRadius = Wassup.Battle.Movement.GridMath.RangeToTiles(data.attackRange);
+            byte layers = (byte)patrolUnit.EffectiveTraversalLayers;
 
             for (int x = -24; x < 48; x++)
             for (int y = -24; y < 48; y++)
             {
                 if (!bridge.CanPlaceDefenderAt(x, y, data, out _)) continue;
-                object[] args = { new int2(x, y), leashRadius, default(int2) };
+                object[] args = { new int2(x, y), coverRadius, layers, default(int2) };
                 if (!(bool)method.Invoke(bridge, args)) continue;
                 cell = new Vector2Int(x, y);
                 return true;
@@ -341,6 +400,13 @@ namespace Wassup.Tests.PlayMode
             var transform = em.GetComponentData<LocalTransform>(entity);
             transform.Position = position;
             em.SetComponentData(entity, transform);
+        }
+
+        private static int2 CellOf(EntityManager em, Entity entity)
+        {
+            var f = em.CreateEntityQuery(typeof(FlowFieldSingleton)).GetSingleton<FlowFieldSingleton>();
+            return GridMath.WorldToCell(
+                em.GetComponentData<LocalTransform>(entity).Position, f.tileSize, f.gridSize, origin: f.origin);
         }
     }
 }

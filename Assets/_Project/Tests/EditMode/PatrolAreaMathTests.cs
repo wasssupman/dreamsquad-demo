@@ -191,17 +191,45 @@ namespace Wassup.Tests.EditMode
 
         private void SetWall(int2 cell) => _full[GridMath.CellIndex(cell, Grid)] = 0;
 
+        // ───────────── unit 9 — 중심과 집의 분리 ─────────────
+        //
+        // 소환사 셀(중심)에 소환물이 겹쳐 스폰되던 것을 고치면서 두 개념이 갈렸다.
+        // 이 두 테스트가 «정지의 기준은 집이지 중심이 아니다»를 못박는다 — 겸직으로
+        // 되돌리면 둘 중 하나는 반드시 빨개진다.
+
+        [Test]
+        public void Idle_Is_Anchored_To_Home_Not_To_Center()
+        {
+            var center = new int2(4, 4);
+            var home = new int2(5, 4);
+            var dir = Step(center, home, radius: 3, self: home, enemies: new int2[0]);
+            Assert.AreEqual(0f, math.lengthsq(dir), 1e-5f, "집에 서 있으면 정지한다");
+        }
+
+        [Test]
+        public void Standing_On_The_Center_Walks_Back_To_Home()
+        {
+            var center = new int2(4, 4);
+            var home = new int2(5, 4);
+            var dir = Step(center, home, radius: 3, self: center, enemies: new int2[0]);
+            Assert.Greater(dir.x, 0.5f, "중심은 집이 아니다 — 집(+x)으로 물러난다");
+        }
+
+        // unit 9 이전 형태 — 중심과 집이 같은 칸. 기존 테스트의 기대값을 그대로 재현한다.
         private float2 Step(int2 anchor, int radius, int2 self, int2[] enemies, int attackTiles = 1)
+            => Step(anchor, anchor, radius, self, enemies, attackTiles);
+
+        private float2 Step(int2 center, int2 home, int radius, int2 self, int2[] enemies, int attackTiles = 1)
         {
             for (int i = 0; i < _box.Length; i++) _box[i] = 0;
-            PatrolAreaMath.FillAreaMask(_full, Grid, anchor, radius, _box);
+            PatrolAreaMath.FillAreaMask(_full, Grid, center, radius, _box);
 
             var enemyCells = new NativeArray<int2>(enemies.Length, Allocator.Persistent);
             try
             {
                 for (int i = 0; i < enemies.Length; i++) enemyCells[i] = enemies[i];
                 return PatrolAreaMath.StepDir(
-                    _box, _full, Grid, anchor, radius, self, attackTiles,
+                    _box, _full, Grid, center, home, radius, self, attackTiles,
                     enemyCells, _flow, _dist);
             }
             finally

@@ -36,12 +36,16 @@ namespace Wassup.Bridge
         // 호출 전 Teardown 이 선행되어야 한다(멱등성 계약은 호출부에 남겨 순서가 보이게 한다).
         // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수.
+        // traversal-layers unit 1b — `slotMasks` 는 이 매치가 라우팅할 통행 마스크 집합이다
+        // (오름차순·중복 없음이 호출자 책임). 미생성이면 슬롯 1개(`TraversalSlots.DefaultMask`)
+        // 로 떨어져 **현행과 바이트 동일**하다. 실제 수집(로스터 → 집합)은 unit 2a 소관이다.
         public static void InstallNavFields(
             EntityManager em,
             in GeneratedMap map,
             float tileSize,
             float3 origin,
-            ref SimFieldHandles handles)
+            ref SimFieldHandles handles,
+            NativeArray<byte> slotMasks = default)
         {
             int w = map.gridSize.x;
             int h = map.gridSize.y;
@@ -59,16 +63,35 @@ namespace Wassup.Bridge
                 for (int i = 0; i < n; i++)
                 {
                     walk[i] = (byte)(map.tiles[i] == MapTileType.Walk ? 1 : 0);
-                    // 저작본이 있으면 그것이 정본, 없으면 런타임과 **같은 단일 정의**로 파생.
-                    // 빌더 불변식은 "IsCreated ⇒ placeMask 생성됨" 이지만 픽스처와
-                    // BuildFallbackLinear 경로까지 강제되지는 않아 방어적으로 둔다.
-                    cellLayers[i] = map.placeMask.IsCreated
-                        ? PlacementLayers.Sanitize(map.placeMask[i])
-                        : PlacementLayers.Derive(map.tiles[i]);
+                    // traversal-layers unit 1b 회귀 수리 — **저작된 `placeMask` 를 읽지 않는다.**
+                    // 통행 층은 `tiles` 에서만 파생한다.
+                    //
+                    // 처음엔 `placeMask` 를 정본으로 삼았다(rev 2 계약 1: "셀 층 한 벌을
+                    // 배치·통행이 공유"). **틀렸다.** `placeMask` 의 저작 의미는 «칸의 종류»가
+                    // 아니라 **«어느 유닛이 여기 설 수 있나»** 다. 실측(MapDocument_Test):
+                    // `Walk` 칸 23개에 마스크 0 — 저작자가 "여기 배치 금지"를 칠한 것이고,
+                    // "여기 통행 금지"를 뜻하지 않는다. 그걸 통행으로 읽으면 그 맵에서
+                    // **통로 23칸이 라우팅에서 사라지고** 데코 7칸이 새 통로가 됐다.
+                    //
+                    // 더 나쁜 건 그 다음이다 — 라우팅은 `cellLayers`, 벽 충돌(`NavGrid`)은
+                    // `walkMask` 를 보므로 둘이 갈리면 **필드가 벽 안쪽을 가리키고 trim 이
+                    // 막는다**. "적이 통로에서 안 움직인다"로 나타나고 통행층과 무관한 이동
+                    // 버그로 오진된다.
+                    //
+                    // 파생만 쓰면 `cellLayers` 는 `walkMask`(1비트)의 **N비트 일반화**가 되어
+                    // 정의가 갈릴 수 없다. 물타일이 오면 `MapTileType.Water` → `Derive` 에
+                    // case 한 줄이고, 통행을 **저작**으로 나누고 싶어지면 그때 별도 배열을
+                    // 만든다(그때는 실제 예가 있을 것이다 — 지금은 없다).
+                    cellLayers[i] = PlacementLayers.Derive(map.tiles[i]);
                 }
 
-                var flow = new NativeArray<float2>(n, Allocator.Persistent);
-                var dist = new NativeArray<int>(n, Allocator.Persistent);
+                // traversal-layers unit 1a·1b — 라우팅은 슬롯별 stride.
+                int maskCount = (slotMasks.IsCreated && slotMasks.Length > 0) ? slotMasks.Length : 1;
+                var flow = new NativeArray<float2>(maskCount * n, Allocator.Persistent);
+                var dist = new NativeArray<int>(maskCount * n, Allocator.Persistent);
+                var maskValues = new NativeArray<byte>(maskCount, Allocator.Persistent);
+                if (slotMasks.IsCreated && slotMasks.Length > 0) maskValues.CopyFrom(slotMasks);
+                else maskValues[0] = TraversalSlots.DefaultMask;
                 NativeArray<int2> goalsField = default;
                 try
                 {
@@ -84,7 +107,20 @@ namespace Wassup.Bridge
                     if (hasGoals) goalsField.CopyFrom(map.goals);
                     else goalsField[0] = goal;
 
-                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField, flow, dist);
+                    // traversal-layers unit 1b — 슬롯마다 «셀 층 ∩ 슬롯 마스크» 로 굽는다.
+                    // 슬롯이 DefaultMask(Path) 하나면 walk(= tiles==Walk)와 같은 집합이라
+                    // 결과가 현행과 바이트 동일하다(회귀 축).
+                    var slotWalk = new NativeArray<byte>(n, Allocator.Temp);
+                    try
+                    {
+                        for (int m = 0; m < maskCount; m++)
+                        {
+                            TraversalSlots.FillWalkMask(in cellLayers, maskValues[m], slotWalk);
+                            FlowFieldBuilder.BuildFromSources(slotWalk, gridSize, goalsField,
+                                flow.GetSubArray(m * n, n), dist.GetSubArray(m * n, n));
+                        }
+                    }
+                    finally { slotWalk.Dispose(); }
 
                     var data = new FlowFieldSingleton
                     {
@@ -92,6 +128,7 @@ namespace Wassup.Bridge
                         dist = dist,
                         walkMask = walk,
                         cellLayers = cellLayers,
+                        maskValues = maskValues,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -109,6 +146,7 @@ namespace Wassup.Bridge
                 {
                     if (flow.IsCreated) flow.Dispose();
                     if (dist.IsCreated) dist.Dispose();
+                    if (maskValues.IsCreated) maskValues.Dispose();
                     if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
                     throw;
                 }

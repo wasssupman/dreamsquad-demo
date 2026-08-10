@@ -374,13 +374,15 @@ namespace Wassup.Battle.Combat
                             && healthLookup.HasComponent(summoner.current)
                             && healthLookup[summoner.current].value > 0f;
 
-                        // 초회 게이트 — 첫 순찰병은 **거점 구역 안에 적이 있을 때만** 낸다
-                        // (사용자 결정 2026-08-03). 판정 중심은 소환사 셀이다: 실제 거점은
-                        // Bridge 가 walk 셀로 스냅해 정하는데 첫 소환 전엔 그게 아직 없고,
-                        // 스냅 상한이 leash 반경이라 소환사 셀 기준 구역이 실제 구역을
-                        // 보수적으로 감싼다. 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        // 초회 게이트 — 첫 순찰병은 **담당 구역 안에 적이 있을 때만** 낸다
+                        // (사용자 결정 2026-08-03). 구역 술어는 PatrolAreaMath 가 단독 소유한다.
+                        //
+                        // unit 9 — 중심 = 소환사 셀, 반경 = 이 유닛의 공격범위. 즉 소환사는
+                        // «사거리에 적이 들면 공격(=소환)»하는 평범한 유닛이고, 게이트가 보는
+                        // 박스와 순찰병이 지킬 박스와 배치 프리뷰가 칠한 박스가 **같은 하나**다.
                         float3 sPos = transform.ValueRO.Position;
                         int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
+                        int coverTiles = GridMath.RangeToTiles(attack.ValueRO.range);
                         bool gateOpen = summoner.hasSummonedOnce;
                         if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
                         {
@@ -392,7 +394,7 @@ namespace Wassup.Battle.Combat
                                 // 골을 두들기는 적이야말로 순찰을 부를 이유다.
                                 int2 eCell = GridMath.WorldToCell(
                                     targetTransforms[ti].Position, tileSize, gridSize, origin: ffOrigin);
-                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, summoner.leashTileRadius))
+                                if (Wassup.Battle.Effects.PatrolAreaMath.IsInArea(eCell, sCell, coverTiles))
                                     gateOpen = true;
                             }
                         }
@@ -406,7 +408,7 @@ namespace Wassup.Battle.Combat
                                 owner = attackerEntity,
                                 ownerCell = sCell,   // 게이트 판정과 **같은 셀**이어야 한다
                                 patrolDataIndex = summoner.patrolDataIndex,
-                                leashTileRadius = summoner.leashTileRadius,
+                                coverTileRadius = coverTiles,
                             });
                             // 소환 = 이 유닛의 공격 사건. 애니/SFX 는 여기서 신호한다.
                             if (attackWriter.HasValue)
@@ -572,7 +574,8 @@ namespace Wassup.Battle.Combat
                             && tgtCell.x >= 0 && tgtCell.x < gridSize.x
                             && tgtCell.y >= 0 && tgtCell.y < gridSize.y)
                         {
-                            fdist = flowField.dist[GridMath.CellIndex(tgtCell, gridSize)];
+                            // traversal-layers unit 1a — 슬롯 뷰(직접 인덱싱 금지).
+                            fdist = flowField.DistSlot(FlowFieldSingleton.PrimarySlot)[GridMath.CellIndex(tgtCell, gridSize)];
                         }
                         if (fdist != FrontmostTargeting.UnreachableDist)
                         {
@@ -617,47 +620,70 @@ namespace Wassup.Battle.Combat
                 // 때까지 유지, 사거리는 발사만 게이팅하고 락은 유지"* 였는데 **사거리 이탈도
                 // 이제 해제 사유다**(D2). 예전 거동은 이탈한 적이 락을 붙든 채 발사를 보류하고
                 // FSM 이 Marching 으로 떨어져 **옆에 방어유닛을 두고 골로 걸어가는** 버그였다.
+                // unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`). `Nearest` 4종도
+                // 락을 받는다 — **보스 2종 포함**(D4: "한 놈 타겟되면 한 놈만 팬다").
+                // BossTag 분기를 넣지 **않는 것**이 그 결정의 구현이다.
+                // ⚠ EnemyAiStateSystem 미러의 게이트와 **항상 같아야 한다**(계약 4).
                 if (behaviorLookup.HasComponent(attackerEntity)
-                    && behaviorLookup[attackerEntity].targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead
+                    && behaviorLookup[attackerEntity].targetMode != Wassup.Data.EnemyTargetMode.None
                     && focusLookup.HasComponent(attackerEntity))
                 {
-                    Entity cur = focusLookup[attackerEntity].current;
-                    bool curValid = cur != Entity.Null
-                        && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
-                        && !deadLookup.HasComponent(cur);
-                    // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
-                    // (EnemyAiStateSystem 미러와 **같은 함수**. 두 벌이면 데드락이 재발한다).
-                    bool keepLock = false;
-                    float3 curPos = bestTargetPos;
-                    if (curValid)
+                    // unit 3 (D5) — 행동정지 CC 중엔 락을 비우고 **재잠금도 건너뛴다**.
+                    // 깨어나는 프레임에 비어 있으므로 자연히 새로 고른다. «해제 순간»을 잡지
+                    // 않는 이유: actionLocked 는 continue 하지 않아 CC 중에도 이 사슬이 돌기
+                    // 때문에 전이 감지용 상태가 필요 없다. CC 중엔 START 자체가 막혀 있어
+                    // 비워도 잃는 것이 없다.
+                    //
+                    // ⚠ **else 로 감싸는 것이 핵심이다.** 비우기만 하고 아래로 흘리면 해제
+                    // 분기가 그 프레임의 최근접으로 **즉시 다시 잠근다** — 초판이 그랬고
+                    // `Cc_ClearsTheLock_WhileActionLocked` 가 빨갛게 잡았다.
+                    //
+                    // committedTarget(한 공격 안의 커밋)은 건드리지 않는다 — 진행 중 스윙은
+                    // 겨눈 대상에 꽂히고 끝난다(기존 계약). 층이 다르다.
+                    if (actionLocked)
                     {
-                        curPos = aggroTransformLookup.HasComponent(cur)
-                            ? aggroTransformLookup[cur].Position : bestTargetPos;
-                        int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                        int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
-                        keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
-                    }
-
-                    if (keepLock)
-                    {
-                        bestTarget = cur; bestTargetPos = curPos;
-                        focusLookup[attackerEntity] = new FocusTarget { current = cur };
+                        focusLookup[attackerEntity] = new FocusTarget { current = Entity.Null };
                     }
                     else
                     {
-                        // 사망/소멸 **또는 사거리 이탈**(D2) → 락 해제.
-                        // 예전엔 이탈 시 bestTarget=Null 로 발사만 보류하고 락을 재저장했다.
-                        // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
-                        // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
-                        // invalid lock → adopt the already-computed nearest+filter result (may be Null)
-                        //
-                        // battle-structures unit 0 — goal-stability 리뷰 M3 의 «거점은 잠금 대상이
-                        // 아니다» 예외를 제거했다. 거점을 타입으로 특별 취급하는 자리를 남기지
-                        // 않는다는 결정이고(2026-08-09 사용자 확정), 락 유지·해제는
-                        // TargetPersistence.KeepsLock 하나가 소유한다 — 죽거나 사거리를 벗어나면
-                        // 놓는다. FocusUntilDead 가 거점을 물면 그것이 죽을 때까지 유지되는 것이
-                        // 그 저작 모드의 의미다.
-                        focusLookup[attackerEntity] = new FocusTarget { current = bestTarget };
+                        Entity cur = focusLookup[attackerEntity].current;
+                        bool curValid = cur != Entity.Null
+                            && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
+                            && !deadLookup.HasComponent(cur);
+                        // target-persistence unit 2 — 유지 여부는 TargetPersistence 가 정한다
+                        // (EnemyAiStateSystem 미러와 **같은 함수**. 두 벌이면 데드락이 재발한다).
+                        bool keepLock = false;
+                        float3 curPos = bestTargetPos;
+                        if (curValid)
+                        {
+                            curPos = aggroTransformLookup.HasComponent(cur)
+                                ? aggroTransformLookup[cur].Position : bestTargetPos;
+                            int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
+                            int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                            keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
+                        }
+
+                        if (keepLock)
+                        {
+                            bestTarget = cur; bestTargetPos = curPos;
+                            focusLookup[attackerEntity] = new FocusTarget { current = cur };
+                        }
+                        else
+                        {
+                            // 사망/소멸 **또는 사거리 이탈**(D2) → 락 해제.
+                            // 예전엔 이탈 시 bestTarget=Null 로 발사만 보류하고 락을 재저장했다.
+                            // 그 결과 EnemyAiStateSystem 미러가 Marching 을 반환해 **옆에 방어유닛을
+                            // 두고 골로 걸어갔다**(B2). 이제 이미 계산된 pick 을 그대로 채택한다.
+                            // invalid lock → adopt the already-computed nearest+filter result (may be Null)
+                            //
+                            // battle-structures unit 0 — goal-stability 리뷰 M3 의 «거점은 잠금 대상이
+                            // 아니다» 예외를 제거했다. 거점을 타입으로 특별 취급하는 자리를 남기지
+                            // 않는다는 결정이고(2026-08-09 사용자 확정), 락 유지·해제는
+                            // TargetPersistence.KeepsLock 하나가 소유한다 — 죽거나 사거리를 벗어나면
+                            // 놓는다. FocusUntilDead 가 거점을 물면 그것이 죽을 때까지 유지되는 것이
+                            // 그 저작 모드의 의미다.
+                            focusLookup[attackerEntity] = new FocusTarget { current = bestTarget };
+                        }
                     }
                 }
 
@@ -1502,7 +1528,7 @@ namespace Wassup.Battle.Combat
                                 {
                                     var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
-                                    float2 flowDir = ff.flow[fIdx];
+                                    float2 flowDir = ff.FlowSlot(FlowFieldSingleton.PrimarySlot)[fIdx];
                                     float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
                                     dir = math.normalizesafe(D - E);
                                     if (math.lengthsq(dir) < 1e-6f)

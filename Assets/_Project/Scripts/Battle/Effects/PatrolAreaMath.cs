@@ -93,11 +93,16 @@ namespace Wassup.Battle.Effects
         //            포털/토네이도/임펄스는 faction 을 안 보므로 순찰병을 박스 밖으로 민다
         //            (README 계약 6). areaMask 로는 박스 밖 셀 dist 가 int.MaxValue 라
         //            하강이 zero 가 되어 영구 정지한다.
+        // unit 9 — **중심(anchorCell)과 집(homeCell)은 다른 칸이다.**
+        //   anchorCell = 박스 중심(소환사 셀). 구역 판정·사격 위치 수집의 기준.
+        //   homeCell   = 대기·복귀 칸(소환사 주변). "여기 서 있으면 정지"의 기준.
+        // 겸직시키면 소환물이 소환사와 같은 칸에 겹친다(`PatrolAnchor` 주석 참조).
         public static float2 StepDir(
             NativeArray<byte> areaMask,
             NativeArray<byte> fullMask,
             int2 gridSize,
             int2 anchorCell,
+            int2 homeCell,
             int tileRadius,
             int2 selfCell,
             int attackTileRange,
@@ -107,9 +112,9 @@ namespace Wassup.Battle.Effects
         {
             int selfIdx = GridMath.CellIndex(selfCell, gridSize);
 
-            // 박스 밖 = 외력에 밀려남. 마스크 없는 필드로 거점까지 복귀 경로를 잡는다.
+            // 박스 밖 = 외력에 밀려남. 마스크 없는 필드로 **집**까지 복귀 경로를 잡는다.
             if (!IsInArea(selfCell, anchorCell, tileRadius))
-                return DescendToAnchor(fullMask, gridSize, anchorCell, selfCell, scratchFlow, scratchDist);
+                return DescendToHome(fullMask, gridSize, homeCell, selfCell, scratchFlow, scratchDist);
 
             // 구역 안 적 전원의 사격 위치를 소스로 BFS. 도달 = 발사 가능(같은 Chebyshev 메트릭).
             int srcCount = BuildAreaChaseField(
@@ -117,25 +122,25 @@ namespace Wassup.Battle.Effects
                 enemyCells, scratchFlow, scratchDist);
 
             // 소스 0(구역 안에 사격 위치 없음) 또는 도달 불가(벽으로 갈린 구역)면
-            // 적을 포기하고 거점으로 — 좀비 추격을 만들지 않는다.
+            // 적을 포기하고 집으로 — 좀비 추격을 만들지 않는다.
             if (srcCount > 0 && scratchDist[selfIdx] != int.MaxValue)
                 return FlowRecovery.RecoveryDir(selfCell, scratchDist, gridSize);
 
-            if (selfCell.Equals(anchorCell)) return float2.zero;
-            return DescendToAnchor(areaMask, gridSize, anchorCell, selfCell, scratchFlow, scratchDist);
+            if (selfCell.Equals(homeCell)) return float2.zero;
+            return DescendToHome(areaMask, gridSize, homeCell, selfCell, scratchFlow, scratchDist);
         }
 
-        // 거점 1셀을 소스로 BFS 후 하강. CollectDefenderSources 를 쓰지 않는 이유:
-        // 그쪽은 **중심 셀을 제외**한다(방어유닛 자기 셀 = Place = 벽 전제). 거점은
-        // walk 셀이고 순찰병이 실제로 서야 하는 칸이라 소스에서 빠지면 안 된다.
-        private static float2 DescendToAnchor(
-            NativeArray<byte> mask, int2 gridSize, int2 anchorCell, int2 selfCell,
+        // 집 1셀을 소스로 BFS 후 하강. CollectDefenderSources 를 쓰지 않는 이유:
+        // 그쪽은 **중심 셀을 제외**한다(방어유닛 자기 셀 = Place = 벽 전제). 집은
+        // 순찰병이 실제로 서야 하는 칸이라 소스에서 빠지면 안 된다.
+        private static float2 DescendToHome(
+            NativeArray<byte> mask, int2 gridSize, int2 homeCell, int2 selfCell,
             NativeArray<float2> scratchFlow, NativeArray<int> scratchDist)
         {
             var sources = new NativeArray<int2>(1, Allocator.Temp);
             try
             {
-                sources[0] = anchorCell;
+                sources[0] = homeCell;
                 FlowFieldBuilder.BuildFromSources(mask, gridSize, sources, scratchFlow, scratchDist);
                 // `dist[self] == MaxValue` 가드를 두지 않는다. 그 값은 두 상황에서 나온다:
                 //  (1) 진짜 고립(walkable 인데 anchor 와 단절) — 4이웃도 전부 MaxValue 라

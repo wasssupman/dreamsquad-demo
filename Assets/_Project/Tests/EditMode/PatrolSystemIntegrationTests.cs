@@ -168,7 +168,11 @@ namespace Wassup.Tests.EditMode
 
         // ───────────────────────── ③ blind 소환 순환 ─────────────────────────
 
-        private Entity CreateSummoner(float cooldownRemaining, Entity current, bool hasSummonedOnce = true)
+        // unit 9 — 담당 구역 반경의 **유일한 출처는 AttackState.range** 다. 이 헬퍼가
+        // range 를 2 로 두는 것은 이전 SummonerState.leashTileRadius = 2 를 그대로 옮긴
+        // 것이고, 아래 구역 게이트 테스트들의 "안(2) / 밖(4)" 기준이 보존된다.
+        private Entity CreateSummoner(
+            float cooldownRemaining, Entity current, bool hasSummonedOnce = true, float range = 2f)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
@@ -176,7 +180,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddComponentData(e, new AttackState
             {
-                range = 1f,
+                range = range,
                 cooldownDuration = 5f,
                 cooldownRemaining = cooldownRemaining,
                 attackTargetCount = 1,
@@ -185,7 +189,6 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new SummonerState
             {
                 patrolDataIndex = 0,
-                leashTileRadius = 2,
                 current = current,
                 hasSummonedOnce = hasSummonedOnce,
             });
@@ -296,6 +299,23 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.AreEqual(1, CarrierCount(), "구역 안 적이 첫 소환을 연다");
+        }
+
+        // unit 9 — 구역이 **소환사 공격범위에서 파생**되는지. 위 두 테스트가 "반경 2 에서
+        // 2 는 안, 4 는 밖"을 고정하므로, range 만 넓혀 같은 적(4)이 안으로 들어오면 반경의
+        // 출처가 range 라는 것이 증명된다. 상수를 지운 자리에 상수를 다시 심지 않는 축이다.
+        [Test]
+        public void Cover_Radius_Comes_From_The_Summoner_Attack_Range()
+        {
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            CreateLinearFlowField();
+            CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false, range: 4f);
+            CreateEnemyAt(4f);   // 반경 2 였다면 밖(Chebyshev 3), 반경 4 면 안
+
+            Tick();
+
+            Assert.AreEqual(1, CarrierCount(),
+                "공격범위를 넓히면 담당 구역이 함께 넓어져야 한다 — 숫자가 하나뿐이라는 뜻");
         }
 
         [Test]

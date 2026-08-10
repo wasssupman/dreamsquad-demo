@@ -70,7 +70,14 @@ public static bool KeepsLock(bool targetAlive, int tileDistance, int tileRange)
   ③ 사거리 안에 아무도 없으면 `Marching` 이 **맞다**(버그 아님)
   ④ 사거리 안이면 더 가까운 대상이 와도 락을 유지한다(유지 계약 불변)
 - [x] 옛 계약 고정 테스트 2건을 이유와 함께 갱신
-- [ ] **Play 육안**: Focus 적(Needler·Rootcaster·Vanguard)이 방어유닛을 지나친 뒤 **되돌아 교전하거나 다음 방어유닛과 교전**하는가 — 예전엔 그냥 골로 걸어갔다
+- [x] **라이브 계측** (2026-08-10) — 육안 대신 **증상을 직접 셌다**. 두 매치, 방어유닛 8~12기, 샘플 49,682 · Focus 적 91,540 관측:
+
+  ```
+  Focus락_사거리밖 = 0     락 대상이 사거리 밖인 채 유지된 관측 0
+  B2               = 0     "사거리 안에 방어유닛이 있는데 Marching" 프레임 0
+  ```
+
+  두 번째가 **B2 증상 그 자체**다(예전엔 락을 못 놓고 골로 걸어갔다). 육안은 «되돌아 교전하는 장면을 봤다»에 그치지만 이 카운터는 **반례가 한 번이라도 있었는지**를 판정한다 — 그래서 이쪽을 완료 근거로 삼는다.
 
 ## 남은 것
 
@@ -78,4 +85,4 @@ public static bool KeepsLock(bool targetAlive, int tileDistance, int tileRange)
 
 ---
 
-**완료 기준 확인**: (Play 육안 미확인)
+**완료 기준 확인**: 2026-08-10 · 라이브 계측으로 B2 소멸 확인(반례 0 / 91,540 관측) · EditMode 실패 0

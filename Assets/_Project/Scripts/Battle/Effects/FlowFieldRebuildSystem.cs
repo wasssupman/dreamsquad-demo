@@ -46,7 +46,10 @@ namespace Wassup.Battle.Effects
             if (signature == field.blockedSignature) return;   // 내용 무변경 — 헛 재빌드 금지
 
             int w = field.gridSize.x, h = field.gridSize.y, n = w * h;
-            if (field.walkMask.Length != n || field.flow.Length != n || field.dist.Length != n) return;
+            // traversal-layers unit 1a — 라우팅은 stride 이므로 길이는 슬롯 수의 배수다.
+            if (field.walkMask.Length != n
+                || field.flow.Length != field.MaskCount * n
+                || field.dist.Length != field.MaskCount * n) return;
 
             // 정적 지형에서 장애물을 뺀 합성 마스크. walkMask 자체는 덮어쓰지 않는다 —
             // 그건 지형이고 장애물은 별개 층이다.
@@ -58,16 +61,27 @@ namespace Wassup.Battle.Effects
             var sources = new NativeList<int2>(4, Allocator.Temp);
             try
             {
-                Wassup.Battle.Movement.MovementCellTrim.FillWalkMask(
-                    in field, hasObstacles, in obstacles, combined);
-
                 if (field.goals.IsCreated && field.goals.Length > 0)
                     for (int i = 0; i < field.goals.Length; i++) sources.Add(field.goals[i]);
                 else
                     sources.Add(field.goalCell);
 
-                FlowFieldBuilder.BuildFromSources(
-                    combined, field.gridSize, sources.AsArray(), field.flow, field.dist);
+                // traversal-layers unit 1b — 슬롯마다 재빌드한다. 장애물이 바뀌면 **모든**
+                // 통행 층의 경로가 함께 바뀐다 — 한 슬롯만 갱신하면 다른 층 유닛이 사라진
+                // 장애물을 계속 피해 돈다.
+                for (int m = 0; m < field.MaskCount; m++)
+                {
+                    // traversal-layers unit 3 — 조립은 MovementCellTrim 하나가 소유한다.
+                    // (여기 있던 두 번째 `new NavGrid(...)` 를 걷어냈다 — 조립 인자 6개가
+                    //  두 벌이 되면 벽 정의가 바뀔 때 한쪽이 조용히 낡는다.)
+                    // 픽스처 폴백도 그 안에 있다.
+                    Wassup.Battle.Movement.MovementCellTrim.FillWalkMask(
+                        in field, field.MaskAt(m), hasObstacles, in obstacles, combined);
+
+                    FlowFieldBuilder.BuildFromSources(
+                        combined, field.gridSize, sources.AsArray(),
+                        field.FlowSlot(m), field.DistSlot(m));
+                }
             }
             finally
             {

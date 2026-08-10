@@ -25,6 +25,15 @@ namespace Wassup.Battle.Movement
         // 소비: 정지한 유닛은 겹침 밀어냄의 **전진 성분을 거부**한다 — 안 그러면 뒤 무리가
         // 교전 중인 적을 경로 따라 4~9타일 밀어 나른다(실측).
         public byte holdingGround;
+
+        // traversal-layers unit 2 — 이 유닛이 지날 수 있는 층 비트(`PlacementLayer`).
+        //
+        // **새 컴포넌트를 만들지 않는다.** `PathFollowState` 는 이미 «움직이는 모든 주체»에
+        // 붙어 있고(적 스폰·순찰 방어유닛 스폰 두 곳) sim 이 SO 를 못 읽으므로 스폰 시 1회
+        // 주입한다 — 값이 살 자리로 여기가 정확하다.
+        //
+        // 0 = 미주입(레거시·픽스처). 소비자는 0 을 `Path` 로 읽어 현행을 재현한다.
+        public byte traversalLayers;
         // Phase 9: currentWaypointIndex 제거 — flow field 가 대체
         // Phase 9: tileSize 제거 — FlowFieldSingleton.tileSize 가 단일 소스
     }

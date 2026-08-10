@@ -98,4 +98,5 @@ MonoBehaviour:
   weaponTrailPrefab: {fileID: 416037035443229880, guid: badefa6935aa04ba9badb5386cb9a3c8, type: 3}
   weaponTrailEndNormalized: 0.31
   moveSpeed: 2
+  traversalLayers: 3
   walkAnimation: Walk
