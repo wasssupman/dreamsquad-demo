@@ -49,3 +49,6 @@ IsInstinct(faction) && (faction & Factions.AnyDefender) == 0   // 적대적 본�
 - `rg 'targetMask = \(int\)Faction\.EnemyUnit'` **공집합** (`HazardCastState` 제외 — 위 명시)
 - EditMode 전량 무회귀 (기준선 2049 / 실패 0 / 의도적 스킵 3)
 - 침략 맵 게임플레이 변화 **0** 확인 — 적 거점이 없는 맵에서는 `AnyEnemy` 의 거점 비트에 해당하는 엔티티가 아예 없다. 기존 PlayMode 골 3종 그린으로 확인
+
+---
+확인 2026-08-10 · `a63f4351`(+ `.meta` `368edbdf`) — EditMode 2060/실패 0(신설 8개 통과) · `rg 'targetMask = \(int\)Faction\.EnemyUnit'` 공집합(`HazardCastState` 제외) · 침략 맵 무회귀 PlayMode 3종 그린

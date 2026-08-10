@@ -29,7 +29,7 @@
 
 1. 부팅 → `BeginPlacement` → 풀 주입(`SetDefenderPool`) + 코스트 확보
 2. **적 마음 인접 8칸을 채운다.** 적 마음은 1칸만 닫히므로(footprint 1) 인접 배치가 가능하다 — 그 사실 자체가 「공성이 새 메커닉 없이 성립한다」의 관측치다. 배치 0 이면 계약이 깨진 것이므로 실패로 잡는다
-3. 본능에 가장 가까운 합법 칸(체비셰프 오름차순 탐색)에 저격수
+3. 본능에 가장 가까운 합법 칸(**유클리드** 오름차순 탐색)에 저격수
 4. `StartBattle` → **축 활성**(`EnemyCoreMax > 0`) + **저작 대칭**(`EnemyCoreMax == GoalStabilityMax`)
 5. `EnemyCoreCurrent` 가 **줄어드는 것**을 관측 (unit 8 이 라이브에서 발효 — 이전엔 영구 무적)
 6. 저격수가 사거리 안이면 적 본능 `Health` 감소도 관측(조건부 — 위 사유)
@@ -41,7 +41,10 @@
 
 ## 완료 기준
 
-- PlayMode 신설 1개 그린 — 위 5단계 전부
+- PlayMode 신설 1개 그린 — 위 7단계 전부
 - 기존 PlayMode 골 3종(`GoalStabilityTest` · `EndlessModeSmokeTest` · `StructureLivePlayTest` 기존 2개) 그린 = 침략 맵 무회귀
 - EditMode 전량 무회귀 (기준선 2049 / 실패 0 / 의도적 스킵 3)
 - 콘솔 에러 0 (`read_console`)
+
+---
+확인 2026-08-10 · `5f7d1ed5` → `0e0a62c4`(유클리드 정정) — PlayMode 5/5 · 콘솔 실질 에러 0 · 저격 도달 로그 증거: 저격수 (15,17) 사거리 6 → 본능 (15,12) 거리 5

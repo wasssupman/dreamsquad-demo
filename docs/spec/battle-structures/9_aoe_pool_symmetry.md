@@ -44,3 +44,6 @@ victimQuery = WithAny<AttackUnitTag, DefenderUnitTag, StructureTag>
   - 보스 광역(`targetFaction = Defender`)이 **방어 마음을 깎는다** (`GoalTowerTag` 특례 은퇴 후에도 `:95` 가 고친 동작이 보존됨)
 - EditMode 전량 무회귀 (기준선 2049 / 실패 0 / 의도적 스킵 3)
 - 기존 PlayMode 골 3종 그린 — 침략 맵에서 방어유닛이 광역 피해자로 남아 있는지가 여기서 잡힌다
+
+---
+확인 2026-08-10 · `9537a91d` — EditMode 2060/실패 0(신설 3개 통과: 적 거점 편입 · 자기편 오폭 금지 · 방벽 무회귀) · `UltimateLeapState` 는 적 전용이라 방어 측 통합에 영향 없음(`HealthThresholdSystem:190`)
