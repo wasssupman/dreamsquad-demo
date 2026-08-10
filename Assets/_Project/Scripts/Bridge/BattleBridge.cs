@@ -899,6 +899,9 @@ namespace Wassup.Bridge
         {
             // Tilemap 뷰 잔상 제거 (RebuildDraftMap 재진입 / 전투 종료 안전). Clear 는 idempotent.
             if (tilemapMapView != null) tilemapMapView.Clear();
+            // battle-structures 후속 2 — 거점 프랍도 맵과 같은 수명. 맵 teardown 경로가 5곳
+            // (매치 종료·재빌드 선행·fallback 교체·StopBattle·draft 정리)이라 여기 두면 전부 덮인다.
+            ClearStructureViews();
             if (_generatedMap.IsCreated) _generatedMap.Dispose();
             _generatedMap = default;
         }
@@ -1169,6 +1172,13 @@ namespace Wassup.Bridge
             {
                 tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
             }
+
+            // battle-structures 후속 2(리뷰 M-5) — 거점 프랍은 **맵 수명**이다.
+            // 엔티티는 StartBattle 이 세우지만(판 수명), 9×9 배치 배제는 이 빌드 시점에 이미
+            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 9×9 만 있고 왜 막혔는지
+            // 보여주는 것이 없는»** 구간이 생긴다 — 플레이어가 알 방법이 없다.
+            // 정리는 TeardownGeneratedMap 이 소유한다(맵과 같은 수명 = 재빌드마다 정확히 1벌).
+            SpawnStructureViews();
 
             // effect-tiles unit 1 — Place 셀 seed 결정론 효과 타일. 페인트는 Initialize(Clear) 이후 계약.
             // dict clear 는 가드 밖 — 이전 빌드 잔존 제거(테마가 효과 타일 없어도).
@@ -4995,17 +5005,7 @@ namespace Wassup.Bridge
                     }
                 }
 
-                // 뷰 — SO 의 viewPrefab 을 셀 중심에 직배치(sim→view 는 BoardSpace.ToView 경유,
-                // Pickup 선례와 동일). 프리팹 미지정은 무해(게이지만 뜬다).
-                if (s.data.viewPrefab != null)
-                {
-                    float3 simCenter = GridToWorldCenter(s.cell);
-                    var view = Instantiate(s.data.viewPrefab,
-                        (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
-                    view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
-                    _structureViews.Add(view);
-                }
-
+                // 뷰는 여기서 만들지 않는다 — 맵 수명이라 BuildMapForBattle 이 소유한다(후속 2).
                 _structureRegistry.Add((entity, s.cell, faction));
                 spawned++;
             }
@@ -5013,7 +5013,34 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Structures spawned: {spawned} (본능/적 마음, SO HP)");
         }
 
-        // 리뷰 H-4 — 뷰 정리는 2곳(여기 + TeardownCurrentBattle의 restart 경로)이 공유한다.
+        // battle-structures 후속 2(리뷰 M-5) — 거점 프랍 생성. **맵 빌드 시점**이라 배치
+        // 페이즈부터 보인다(9×9 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
+        // 있으므로 여기서 등록부를 건드리지 않는다 — 게이지는 등록부 기반이라 전투 시작
+        // 전까지 안 뜨는 게 맞다(체력은 아직 없다).
+        // sim→view 는 BoardSpace.ToView 경유(Pickup 프레젠터 선례). 프리팹 미지정은 무해.
+        private void SpawnStructureViews()
+        {
+            ClearStructureViews();   // 멱등 — 재빌드마다 정확히 1벌
+            var docStructures = _resolvedMapDoc != null ? _resolvedMapDoc.Structures : null;
+            if (docStructures == null) return;
+            for (int i = 0; i < docStructures.Count; i++)
+            {
+                var s = docStructures[i];
+                if (s.data == null || s.data.viewPrefab == null) continue;
+                // 스폰과 같은 필터 — 방어 마음은 goals[] 정본이라 거점 프랍을 세우지 않는다
+                // (골 구조물 프랍은 theme.goalStructureProp 이 이미 담당).
+                if (Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
+                    == Faction.DefenderCore) continue;
+
+                float3 simCenter = GridToWorldCenter(s.cell);
+                var view = Instantiate(s.data.viewPrefab,
+                    (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
+                _structureViews.Add(view);
+            }
+        }
+
+        // 리뷰 H-4 — 뷰 정리는 TeardownGeneratedMap(맵 수명)과 TeardownCurrentBattle 이 공유한다.
         private void ClearStructureViews()
         {
             for (int i = 0; i < _structureViews.Count; i++)
@@ -5023,9 +5050,11 @@ namespace Wassup.Bridge
 
         private void DestroyStructureEntities()
         {
+            // 뷰는 지우지 않는다 — 맵 수명이라 TeardownGeneratedMap 이 소유한다(후속 2).
+            // 여기서 지우면 StartBattle(SpawnStructureEntities → 이 메서드)이 배치 페이즈에
+            // 세워둔 프랍을 매번 날린다.
             _goalTowerCount = 0;
             _structureRegistry.Clear();
-            ClearStructureViews();
             if (!HasLiveEntityManager()) return;
             using var towerQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>());

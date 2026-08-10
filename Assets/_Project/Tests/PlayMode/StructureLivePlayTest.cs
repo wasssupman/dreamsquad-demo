@@ -59,8 +59,25 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(bridge, "BattleBridge present");
             bridge.BeginPlacement();
             yield return null;
+
+            // ── 후속 2(리뷰 M-5) — 프랍은 **배치 페이즈부터** 보인다 ──
+            // 9×9 배치 배제는 맵 빌드 시 파생되므로, 프랍이 StartBattle 까지 없으면 플레이어는
+            // «막힌 칸» 만 보고 이유를 알 수 없다. 뷰를 맵 수명으로 옮긴 것의 실증.
+            int propsDuringPlacement = 0;
+            foreach (Transform child in bridge.transform)
+                if (child.name.StartsWith("Structure_")) propsDuringPlacement++;
+            Assert.Greater(propsDuringPlacement, 0,
+                "배치 페이즈에 거점 프랍이 보여야 한다 — 뷰가 엔티티(StartBattle)에 묶여 있으면 0 이다");
+
             bridge.StartBattle();
             yield return null;
+
+            // StartBattle 이 프랍을 재생성하거나 날리지 않는다(수명 분리 — 엔티티만 이 시점).
+            int propsAfterStart = 0;
+            foreach (Transform child in bridge.transform)
+                if (child.name.StartsWith("Structure_")) propsAfterStart++;
+            Assert.AreEqual(propsDuringPlacement, propsAfterStart,
+                "StartBattle 은 프랍을 건드리지 않는다(중복 생성·소실 둘 다 금지)");
 
             var em = (EntityManager)GetField(bridge, "_em");
 
