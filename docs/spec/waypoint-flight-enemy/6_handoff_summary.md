@@ -51,6 +51,8 @@
 - `EnemyAiStateSystem`도 AttackSystem과 같은 층 마스크를 읽는다. 빠뜨리면 Path 전용 순찰병이 Air 적만 보고 `Engaging`으로 멈춘다.
 - `HazardEffect.targetTraversalLayers`는 복사본에만 쓰는 `[NonSerialized]` 런타임 스냅샷이다.
 - Air 우선 타겟팅은 없다. 대공사수의 Path·Air 후보는 기존 거리순으로 동등하게 경쟁한다.
+- ⚠ **rev 3 계약 «모든 방어유닛이 비행을 때린다(대공 축 없음)»는 구현에서 사용자 승인으로 반전됐다** — 기존 방어는 Path 전용 폴백이 됐고 고도 타겟층 축이 생겼다. 이전 문서·세션 메모리와 충돌하면 **이쪽(README rev 4 계약 7)이 정본**이다.
+- ⚠ **Skimmer 는 아직 라이브에 안 나온다** — `EnemyCatalog` + `Deck_WaypointLab`(dev 슬롯) 뿐, 라이브 덱 7종 미편입. 반면 **대공사수는 DefenderCatalog 라이브 노출**이라 unit 5 전까지 Air 가치가 잠자는 비대칭 상태다(Path|Air 라 죽은 픽은 아님). 라이브 편입은 unit 5 에서 **웨이브 재추첨 규칙**(structure-hunter unit 1: 시드 재기준·풀 중간 삽입·7종 열거 정본 = `WaveKillBudgetPinTests`·`maxPerWave`)과 함께 처리한다.
 
 ## Resume
 
