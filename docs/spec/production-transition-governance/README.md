@@ -1,6 +1,6 @@
 # production-transition-governance — Foundation + Pilot
 
-> 상태: **Foundation 작업 계획 승인 · D3 완료 · C1/S1 검증 대기 — 2026-08-11**
+> 상태: **Foundation 작업 계획 승인 · C1/S1 완료 · D4 대기 — 2026-08-11**
 >
 > 범위: 문서·정적 검증기만. Runtime, Unity serialized asset, API, package,
 > `ProjectSettings`, 실제 production import는 변경하지 않는다.
@@ -26,7 +26,7 @@
 | D1 | [0_global_cutover_contract.md](0_global_cutover_contract.md) | 전역 정본·package·one-time cutover | 완료 |
 | D2 | [1_registry_and_review_contract.md](1_registry_and_review_contract.md) | registry·review·decision gate | 완료 |
 | D3 | [2_static_validator.md](2_static_validator.md) | preparation/cutover 검증기 | 완료 |
-| C1/S1 | [3_target_intake_alignment.md](3_target_intake_alignment.md) | Client·Server 준비 문서 정합 | 대기 |
+| C1/S1 | [3_target_intake_alignment.md](3_target_intake_alignment.md) | Client·Server 준비 문서 정합 | 완료 |
 | D4 | [4_unit_lifecycle_pilot.md](4_unit_lifecycle_pilot.md) | 세 패키지 연결 pilot | 대기 |
 | D5 | `5_handoff_summary.md` | 검증·장기 갱신 인계 | 대기 |
 
@@ -47,8 +47,9 @@ Demo 저장소의 구현 단위를 나타내며 Client·Server 변경은 각 저
 2026-08-11 사용자 결정으로 Foundation preparation 구조는 승인됐다. Pilot gameplay
 `PT-DEC-UL-001..003`은 모두 `open`으로 보류한다. 이 delivery-level 승인은 위 역할별 exact
 review나 official cutover 승인을 대신하지 않는다. 따라서 `reviews.json`을 추정해 채우거나
-pilot record를 `reviewed`, `ready`, `include`로 승격하지 않으며, 세 저장소 commit/push도
-별도 범위·저장소 승인이 있기 전에는 수행하지 않는다.
+pilot record를 `reviewed`, `ready`, `include`로 승격하지 않는다. 같은 날 사용자가 현재
+Foundation + blocked pilot 범위의 세 저장소 commit 생성을 별도로 승인했으며 push는
+승인하지 않았다.
 
 ## 비범위
 

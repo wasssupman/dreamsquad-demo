@@ -24,7 +24,10 @@ non-authoritative preparation으로 정렬한다.
 
 ## 완료 기준
 
-- [ ] 두 target 저장소가 중간 Demo package를 intake하지 않는다.
-- [ ] 기존 자료가 production gameplay/protocol 승인처럼 읽히지 않는다.
-- [ ] Client 사용자 소유 미추적 파일을 삭제·clean·일괄 대체하지 않는다.
-- [ ] commit/push는 수행하지 않는다.
+- [x] 두 target 저장소가 중간 Demo package를 intake하지 않는다.
+- [x] 기존 자료가 production gameplay/protocol 승인처럼 읽히지 않는다.
+- [x] Client 사용자 소유 미추적 파일을 삭제·clean·일괄 대체하지 않는다.
+- [x] 별도 사용자 승인 뒤 각 target commit만 생성하고 push는 수행하지 않는다.
+
+검증 기록(2026-08-11): Client `6eb2cfbaddc394c298311a127c7b4ef1feab5af0`,
+Game Server `e2aa25f1295f16d917fc9202d661190da3c94be0`; 양쪽 worktree clean, push 없음.
