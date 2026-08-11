@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -33,39 +33,60 @@ namespace Spine {
 	/// <para>
 	/// See <a href="http://esotericsoftware.com/spine-physics-constraints">Physics constraints</a> in the Spine User Guide.</para>
 	/// </summary>
-	public class PhysicsConstraintData : ConstraintData {
+	public class PhysicsConstraintData : ConstraintData<PhysicsConstraint, PhysicsConstraintPose> {
 		internal BoneData bone;
-		internal float x, y, rotate, scaleX, shearX, limit;
-		internal float step, inertia, strength, damping, massInverse, wind, gravity, mix;
+		internal float x, y, rotate, scaleX, shearX, limit, step;
 		internal bool inertiaGlobal, strengthGlobal, dampingGlobal, massGlobal, windGlobal, gravityGlobal, mixGlobal;
+		internal ScaleYMode scaleYMode = ScaleYMode.None;
 
-		public PhysicsConstraintData (string name) : base(name) {
+		public PhysicsConstraintData (string name)
+			: base(name, new PhysicsConstraintPose()) {
+		}
+
+		override public IConstraint Create (Skeleton skeleton) {
+			return new PhysicsConstraint(this, skeleton);
 		}
 
 		/// <summary>The bone constrained by this physics constraint.</summary>
 		public BoneData Bone { get { return bone; } }
 
+		/// <summary>The time in milliseconds required to advance the physics simulation one step.</summary>
 		public float Step { get { return step; } set { step = value; } }
+		/// <summary>Physics influence on x translation, 0-1.</summary>
 		public float X { get { return x; } set { x = value; } }
+		/// <summary>Physics influence on y translation, 0-1.</summary>
 		public float Y { get { return y; } set { y = value; } }
+		/// <summary>Physics influence on rotation, 0-1.</summary>
 		public float Rotate { get { return rotate; } set { rotate = value; } }
+		/// <summary>Physics influence on scaleX, 0-1.</summary>
 		public float ScaleX { get { return scaleX; } set { scaleX = value; } }
+		/// <summary>Physics influence on shearX, 0-1.</summary>
 		public float ShearX { get { return shearX; } set { shearX = value; } }
+		/// <summary>Movement greater than the limit will not have a greater effect on physics.</summary>
 		public float Limit { get { return limit; } set { limit = value; } }
-		public float Inertia { get { return inertia; } set { inertia = value; } }
-		public float Strength { get { return strength; } set { strength = value; } }
-		public float Damping { get { return damping; } set { damping = value; } }
-		public float MassInverse { get { return massInverse; } set { massInverse = value; } }
-		public float Wind { get { return wind; } set { wind = value; } }
-		public float Gravity { get { return gravity; } set { gravity = value; } }
-		/// <summary>A percentage (0-1) that controls the mix between the constrained and unconstrained poses.</summary>
-		public float Mix { get { return mix; } set { mix = value; } }
+
+		/// <summary>
+		/// Determines how the <see cref="BonePose.scaleY"/> changes when <see cref="PhysicsConstraintData.scaleX"/> sets
+		/// <see cref="BonePose.scaleX"/>
+		/// </summary>
+		public ScaleYMode ScaleYMode {
+			get { return scaleYMode; }
+			set { scaleYMode = value; }
+		}
+
+		/// <summary>True when this constraint's inertia is controlled by global slider timelines.</summary>
 		public bool InertiaGlobal { get { return inertiaGlobal; } set { inertiaGlobal = value; } }
+		/// <summary>True when this constraint's strength is controlled by global slider timelines.</summary>
 		public bool StrengthGlobal { get { return strengthGlobal; } set { strengthGlobal = value; } }
+		/// <summary>True when this constraint's damping is controlled by global slider timelines.</summary>
 		public bool DampingGlobal { get { return dampingGlobal; } set { dampingGlobal = value; } }
+		/// <summary>True when this constraint's mass is controlled by global slider timelines.</summary>
 		public bool MassGlobal { get { return massGlobal; } set { massGlobal = value; } }
+		/// <summary>True when this constraint's wind is controlled by global slider timelines.</summary>
 		public bool WindGlobal { get { return windGlobal; } set { windGlobal = value; } }
+		/// <summary>True when this constraint's gravity is controlled by global slider timelines.</summary>
 		public bool GravityGlobal { get { return gravityGlobal; } set { gravityGlobal = value; } }
+		/// <summary>True when this constraint's mix is controlled by global slider timelines.</summary>
 		public bool MixGlobal { get { return mixGlobal; } set { mixGlobal = value; } }
 	}
 }

@@ -4,9 +4,8 @@
 Material:
   serializedVersion: 6
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
   m_Name: SkeletonGraphicFill-CanvasGroupStraight
   m_Shader: {fileID: 4800000, guid: c02377d9afbb50e49ab27049e59fb5f8, type: 3}
   m_ShaderKeywords: _CANVAS_GROUP_COMPATIBLE _STRAIGHT_ALPHA_INPUT _USE8NEIGHBOURHOOD_ON
@@ -68,6 +67,7 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _EnableExternalAlpha: 0
+    - _Fill: 0
     - _FillPhase: 1
     - _Glossiness: 0.5
     - _Metallic: 0
@@ -89,6 +89,7 @@ Material:
     - _ThresholdEnd: 0.25
     - _UVSec: 0
     - _Use8Neighbourhood: 1
+    - _UseScreenSpaceOutlineWidth: 0
     - _UseUIAlphaClip: 0
     - _ZWrite: 1
     m_Colors:
@@ -98,4 +99,3 @@ Material:
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _OutlineColor: {r: 1, g: 1, b: 0, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []

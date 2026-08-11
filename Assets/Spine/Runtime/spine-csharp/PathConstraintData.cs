@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -30,32 +30,28 @@
 using System;
 
 namespace Spine {
-	public class PathConstraintData : ConstraintData {
+	public class PathConstraintData : ConstraintData<PathConstraint, PathConstraintPose> {
 		internal ExposedList<BoneData> bones = new ExposedList<BoneData>();
-		internal SlotData target;
+		internal SlotData slot;
 		internal PositionMode positionMode;
 		internal SpacingMode spacingMode;
 		internal RotateMode rotateMode;
 		internal float offsetRotation;
-		internal float position, spacing, mixRotate, mixX, mixY;
 
-		public PathConstraintData (string name) : base(name) {
+		public PathConstraintData (string name)
+			: base(name, new PathConstraintPose()) {
+		}
+
+		override public IConstraint Create (Skeleton skeleton) {
+			return new PathConstraint(this, skeleton);
 		}
 
 		public ExposedList<BoneData> Bones { get { return bones; } }
-		public SlotData Target { get { return target; } set { target = value; } }
+		public SlotData Slot { get { return slot; } set { slot = value; } }
 		public PositionMode PositionMode { get { return positionMode; } set { positionMode = value; } }
 		public SpacingMode SpacingMode { get { return spacingMode; } set { spacingMode = value; } }
 		public RotateMode RotateMode { get { return rotateMode; } set { rotateMode = value; } }
 		public float OffsetRotation { get { return offsetRotation; } set { offsetRotation = value; } }
-		public float Position { get { return position; } set { position = value; } }
-		public float Spacing { get { return spacing; } set { spacing = value; } }
-		/// <summary> A percentage (0-1) that controls the mix between the constrained and unconstrained rotation.</summary>
-		public float RotateMix { get { return mixRotate; } set { mixRotate = value; } }
-		/// <summary> A percentage (0-1) that controls the mix between the constrained and unconstrained translation X.</summary>
-		public float MixX { get { return mixX; } set { mixX = value; } }
-		/// <summary> A percentage (0-1) that controls the mix between the constrained and unconstrained translation Y.</summary>
-		public float MixY { get { return mixY; } set { mixY = value; } }
 	}
 
 	public enum PositionMode {

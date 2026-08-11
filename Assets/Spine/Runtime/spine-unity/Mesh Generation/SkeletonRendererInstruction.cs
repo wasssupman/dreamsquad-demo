@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -104,18 +104,18 @@ namespace Spine.Unity {
 			attachments.Resize(attachmentCount);
 			Attachment[] attachmentsItems = attachments.Items;
 
-			Slot[] drawOrderItems = instructionsItems[0].skeleton.DrawOrder.Items;
+			Slot[] drawOrderItems = instructionsItems[0].skeleton.DrawOrder.AppliedPose.Items;
 			for (int i = 0; i < attachmentCount; i++) {
 				Slot slot = drawOrderItems[startSlot + i];
 				if (!slot.Bone.Active
 #if SLOT_ALPHA_DISABLES_ATTACHMENT
-					|| slot.A == 0f
+					|| slot.AppliedPose.GetColor().a == 0f
 #endif
 					) {
 					attachmentsItems[i] = null;
 					continue;
 				}
-				attachmentsItems[i] = slot.Attachment;
+				attachmentsItems[i] = slot.AppliedPose.Attachment;
 			}
 
 #endif
@@ -139,19 +139,21 @@ namespace Spine.Unity {
 			other.submeshInstructions.CopyTo(this.submeshInstructions.Items);
 		}
 
-		public static bool GeometryNotEqual (SkeletonRendererInstruction a, SkeletonRendererInstruction b) {
+		public static bool GeometryNotEqual (SkeletonRendererInstruction a, SkeletonRendererInstruction b,
+			bool calledFromMainThread = true) {
+
 #if SPINE_TRIANGLECHECK
 #if UNITY_EDITOR
-			if (!Application.isPlaying)
+			if (calledFromMainThread && !Application.isPlaying)
 				return true;
 #endif
-
 			if (a.hasActiveClipping || b.hasActiveClipping) return true; // Triangles are unpredictable when clipping is active.
+
+			if (a.immutableTriangles != b.immutableTriangles) return true;
+			if (a.immutableTriangles) return false;
 
 			// Everything below assumes the raw vertex and triangle counts were used. (ie, no clipping was done)
 			if (a.rawVertexCount != b.rawVertexCount) return true;
-
-			if (a.immutableTriangles != b.immutableTriangles) return true;
 
 			int attachmentCountB = b.attachments.Count;
 			if (a.attachments.Count != attachmentCountB) return true; // Bounds check for the looped storedAttachments count below.

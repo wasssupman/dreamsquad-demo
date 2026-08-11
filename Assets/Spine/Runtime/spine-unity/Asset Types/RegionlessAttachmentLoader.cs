@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -56,33 +56,29 @@ namespace Spine.Unity {
 			}
 		}
 
-		public RegionAttachment NewRegionAttachment (Skin skin, string name, string path, Sequence sequence) {
-			RegionAttachment attachment = new RegionAttachment(name) {
-				Region = EmptyRegion
-			};
+		public RegionAttachment NewRegionAttachment (Skin skin, string placeholder, string name, string path, Sequence sequence) {
+			RegionAttachment attachment = new RegionAttachment(name, new Sequence(1, false));
 			return attachment;
 		}
 
-		public MeshAttachment NewMeshAttachment (Skin skin, string name, string path, Sequence sequence) {
-			MeshAttachment attachment = new MeshAttachment(name) {
-				Region = EmptyRegion
-			};
+		public MeshAttachment NewMeshAttachment (Skin skin, string placeholder, string name, string path, Sequence sequence) {
+			MeshAttachment attachment = new MeshAttachment(name, new Sequence(1, false));
 			return attachment;
 		}
 
-		public BoundingBoxAttachment NewBoundingBoxAttachment (Skin skin, string name) {
+		public BoundingBoxAttachment NewBoundingBoxAttachment (Skin skin, string placeholder, string name) {
 			return new BoundingBoxAttachment(name);
 		}
 
-		public PathAttachment NewPathAttachment (Skin skin, string name) {
+		public PathAttachment NewPathAttachment (Skin skin, string placeholder, string name) {
 			return new PathAttachment(name);
 		}
 
-		public PointAttachment NewPointAttachment (Skin skin, string name) {
+		public PointAttachment NewPointAttachment (Skin skin, string placeholder, string name) {
 			return new PointAttachment(name);
 		}
 
-		public ClippingAttachment NewClippingAttachment (Skin skin, string name) {
+		public ClippingAttachment NewClippingAttachment (Skin skin, string placeholder, string name) {
 			return new ClippingAttachment(name);
 		}
 	}

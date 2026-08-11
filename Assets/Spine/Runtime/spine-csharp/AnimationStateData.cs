@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -32,7 +32,7 @@ using System.Collections.Generic;
 
 namespace Spine {
 
-	/// <summary>Stores mix (crossfade) durations to be applied when AnimationState animations are changed.</summary>
+	/// <summary>Stores mix (crossfade) durations to be applied when <see cref="AnimationState"/> animations are changed on the same track.</summary>
 	public class AnimationStateData {
 		internal SkeletonData skeletonData;
 		readonly Dictionary<AnimationPair, float> animationToMixTime = new Dictionary<AnimationPair, float>(AnimationPairComparer.Instance);
@@ -64,19 +64,19 @@ namespace Spine {
 		public void SetMix (Animation from, Animation to, float duration) {
 			if (from == null) throw new ArgumentNullException("from", "from cannot be null.");
 			if (to == null) throw new ArgumentNullException("to", "to cannot be null.");
-			AnimationPair key = new AnimationPair(from, to);
+			var key = new AnimationPair(from, to);
 			animationToMixTime.Remove(key);
 			animationToMixTime.Add(key, duration);
 		}
 
 		/// <summary>
-		/// The mix duration to use when changing from the specified animation to the other,
-		/// or the DefaultMix if no mix duration has been set.
+		/// Returns the mix duration to use when changing from the specified animation to the other on the same track,
+		/// or the <see cref="DefaultMix"/> if no mix duration has been set.
 		/// </summary>
 		public float GetMix (Animation from, Animation to) {
 			if (from == null) throw new ArgumentNullException("from", "from cannot be null.");
 			if (to == null) throw new ArgumentNullException("to", "to cannot be null.");
-			AnimationPair key = new AnimationPair(from, to);
+			var key = new AnimationPair(from, to);
 			float duration;
 			if (animationToMixTime.TryGetValue(key, out duration)) return duration;
 			return defaultMix;

@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -44,7 +44,7 @@ namespace Spine.Unity {
 #endif
 	[RequireComponent(typeof(RectTransform)), DisallowMultipleComponent]
 	[AddComponentMenu("Spine/UI/BoneFollowerGraphic")]
-	[HelpURL("http://esotericsoftware.com/spine-unity#BoneFollowerGraphic")]
+	[HelpURL("https://esotericsoftware.com/spine-unity-utility-components#BoneFollowerGraphic")]
 	public class BoneFollowerGraphic : MonoBehaviour {
 		public SkeletonGraphic skeletonGraphic;
 		public SkeletonGraphic SkeletonGraphic {
@@ -130,10 +130,10 @@ namespace Spine.Unity {
 			if (!Application.isPlaying)
 				skeletonTransformIsParent = Transform.ReferenceEquals(skeletonTransform, transform.parent);
 #endif
-
+			Skeleton skeleton = skeletonGraphic.Skeleton;
 			if (bone == null) {
 				if (string.IsNullOrEmpty(boneName)) return;
-				bone = skeletonGraphic.Skeleton.FindBone(boneName);
+				bone = skeleton.FindBone(boneName);
 				if (!SetBone(boneName)) return;
 			}
 
@@ -142,13 +142,38 @@ namespace Spine.Unity {
 
 			float scale = skeletonGraphic.MeshScale;
 			Vector2 offset = skeletonGraphic.MeshOffset;
-
 			float additionalFlipScale = 1;
+
+			float scaleSignX = 1;
+			float scaleSignY = 1;
+			Bone parentBone = bone.Parent;
+			if (followParentWorldScale || followLocalScale || followSkeletonFlip) {
+				Vector3 localScale = new Vector3(1f, 1f, 1f);
+				if (followParentWorldScale && parentBone != null) {
+					float cumulativeScaleX = 1.0f;
+					float cumulativeScaleY = 1.0f;
+					Bone p = parentBone;
+					while (p != null) {
+						cumulativeScaleX *= p.AppliedPose.ScaleX;
+						cumulativeScaleY *= p.AppliedPose.ScaleY;
+						p = p.Parent;
+					};
+					scaleSignX = Mathf.Sign(cumulativeScaleX);
+					scaleSignY = Mathf.Sign(cumulativeScaleY);
+					localScale = new Vector3(parentBone.AppliedPose.WorldScaleX * scaleSignX, parentBone.AppliedPose.WorldScaleY * scaleSignY, 1f);
+				}
+				if (followLocalScale)
+					localScale.Scale(new Vector3(bone.AppliedPose.ScaleX, bone.AppliedPose.ScaleY, 1f));
+				if (followSkeletonFlip)
+					localScale.y *= Mathf.Sign(skeleton.ScaleX * skeleton.ScaleY) * additionalFlipScale;
+				thisTransform.localScale = localScale;
+			}
+
 			if (skeletonTransformIsParent) {
 				// Recommended setup: Use local transform properties if Spine GameObject is the immediate parent
 				thisTransform.localPosition = new Vector3(
-					followXYPosition ? bone.WorldX * scale + offset.x : thisTransform.localPosition.x,
-					followXYPosition ? bone.WorldY * scale + offset.y : thisTransform.localPosition.y,
+					followXYPosition ? bone.AppliedPose.WorldX * scale + offset.x : thisTransform.localPosition.x,
+					followXYPosition ? bone.AppliedPose.WorldY * scale + offset.y : thisTransform.localPosition.y,
 					followZPosition ? (followAttachmentZSpacing ? GetAttachmentZPosition() : 0f) : thisTransform.localPosition.z);
 				if (followBoneRotation) thisTransform.localRotation = bone.GetQuaternion();
 			} else { // For special cases: Use transform world properties if transform relationship is complicated
@@ -156,7 +181,7 @@ namespace Spine.Unity {
 
 				float z0Position = (followZPosition && followAttachmentZSpacing) ? GetAttachmentZPosition() : 0f;
 				Vector3 targetWorldPosition = skeletonTransform.TransformPoint(
-					new Vector3(bone.WorldX * scale + offset.x, bone.WorldY * scale + offset.y, z0Position));
+					new Vector3(bone.AppliedPose.WorldX * scale + offset.x, bone.AppliedPose.WorldY * scale + offset.y, z0Position));
 				if (!followZPosition) targetWorldPosition.z = thisTransform.position.z;
 				if (!followXYPosition) {
 					targetWorldPosition.x = thisTransform.position.x;
@@ -167,7 +192,7 @@ namespace Spine.Unity {
 				Transform transformParent = thisTransform.parent;
 				Vector3 parentLossyScale = transformParent != null ? transformParent.lossyScale : Vector3.one;
 				if (followBoneRotation) {
-					float boneWorldRotation = bone.WorldRotationX;
+					float boneWorldRotation = bone.AppliedPose.WorldRotationX;
 
 					if ((skeletonLossyScale.x * skeletonLossyScale.y) < 0)
 						boneWorldRotation = -boneWorldRotation;
@@ -179,9 +204,11 @@ namespace Spine.Unity {
 						if ((skeletonLossyScale.y * parentLossyScale.y < 0))
 							boneWorldRotation += 180f;
 					}
+					if (followParentWorldScale && scaleSignX < 0)
+						boneWorldRotation += 180f;
 
 					Vector3 worldRotation = skeletonTransform.rotation.eulerAngles;
-					if (followLocalScale && bone.ScaleX < 0) boneWorldRotation += 180f;
+					if (followLocalScale && bone.AppliedPose.ScaleX < 0) boneWorldRotation += 180f;
 					thisTransform.SetPositionAndRotation(targetWorldPosition, Quaternion.Euler(worldRotation.x, worldRotation.y, worldRotation.z + boneWorldRotation));
 				} else {
 					thisTransform.position = targetWorldPosition;
@@ -190,24 +217,13 @@ namespace Spine.Unity {
 				additionalFlipScale = Mathf.Sign(skeletonLossyScale.x * parentLossyScale.x
 												* skeletonLossyScale.y * parentLossyScale.y);
 			}
-
-			Bone parentBone = bone.Parent;
-			if (followParentWorldScale || followLocalScale || followSkeletonFlip) {
-				Vector3 localScale = new Vector3(1f, 1f, 1f);
-				if (followParentWorldScale && parentBone != null)
-					localScale = new Vector3(parentBone.WorldScaleX, parentBone.WorldScaleY, 1f);
-				if (followLocalScale)
-					localScale.Scale(new Vector3(bone.ScaleX, bone.ScaleY, 1f));
-				if (followSkeletonFlip)
-					localScale.y *= Mathf.Sign(bone.Skeleton.ScaleX * bone.Skeleton.ScaleY) * additionalFlipScale;
-				thisTransform.localScale = localScale;
-			}
 		}
 
 		float GetAttachmentZPosition () {
-			int boneIndex = skeletonGraphic.Skeleton.DrawOrder.FindIndex(slot => slot.Bone == bone);
+			var drawOrderPose = skeletonGraphic.Skeleton.DrawOrder.Pose;
+			int boneIndex = drawOrderPose.FindIndex(slot => slot.Bone == bone);
 			if (boneIndex < 0) return 0f;
-			return skeletonGraphic.MeshGenerator.settings.zSpacing * skeletonGraphic.MeshScale * boneIndex;
+			return skeletonGraphic.MeshSettings.zSpacing * skeletonGraphic.MeshScale * boneIndex;
 		}
 	}
 }

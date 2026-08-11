@@ -1,3 +1,1358 @@
+# 4.3
+
+## C
+
+- **Additions**
+  - Added generated slider data `max` APIs.
+  - Added generated physics constraint `ScaleYMode` APIs.
+  - Added generated `Interpolation` and `TrackEntry` mix interpolation APIs for non-linear animation mixing.
+  - Added `spine_slider` and `spine_slider_data` types for slider constraints
+  - Regenerated C bindings for the AnimationState additive/hold rework and Skin placeholder name rename in spine-cpp.
+  - Regenerated C bindings for the updated clipping runtime, including convex and inverse clipping support.
+  - Regenerated linked mesh APIs so source meshes can be resolved from different slots, matching spine-cpp.
+  - Added generated attachment timeline slot APIs, including `spine_attachment_get_timeline_slots()`, `spine_attachment_set_timeline_slots()`, and `spine_attachment_is_timeline_active()`.
+  - Added generated animation color and bone icon size/rotation APIs.
+
+- **Bug fixes**
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed slider sorting crashes when slider animations key slot or constraint timelines.
+  - Fixed bones that don't inherit rotation when parent scale is near zero.
+  - Fixed `BonePose::updateLocalTransform()` for `noScale` and `noScaleOrReflection` inheritance.
+  - Fixed `ScaleYMode_Volume` to avoid extreme scaleY values for very small scaleX factors.
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+  - Fixed `Skeleton::updateWorldTransform()` to avoid copying draw order unless it is constrained.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Improved clipping performance through the updated spine-cpp clipping runtime.
+
+- **Breaking changes**
+  - Removed generated `spine_bone_pose_reset_world()` because resetWorld is an internal implementation detail.
+  - Attachment loader APIs now receive both the skin `placeholder` and resolved attachment `name`.
+  - `spine_animation_state_get_current()` renamed to `spine_animation_state_get_track()`.
+  - Generated mesh attachment APIs now use `source_mesh` naming instead of `parent_mesh` to match spine-cpp, eg `spine_mesh_attachment_get_source_mesh()` / `spine_mesh_attachment_set_source_mesh()`.
+  - `spine_track_entry_get_mix_blend()` / `spine_track_entry_set_mix_blend()` removed. Use `spine_track_entry_get_additive()` / `spine_track_entry_set_additive()` instead.
+  - `spine_track_entry_get_hold_previous()` / `spine_track_entry_set_hold_previous()` removed.
+  - `spine_skin_entry_get_name()` renamed to `spine_skin_entry_get_placeholder_name()`.
+  - Timeline `apply()` signature changed: `spine_mix_blend` and `spine_mix_direction` parameters replaced with `bool fromSetup, bool add, bool out`.
+  - `spine_animation_apply()` signature changed to match.
+  - `spine_curve_timeline1_get_absolute_value()`, `spine_curve_timeline1_get_relative_value()`, `spine_curve_timeline1_get_scale_value()` signatures changed.
+  - Added `spine_slider_timeline` and `spine_slider_mix_timeline` for animating sliders
+  - Added new pose system with `spine_bone_local`, `spine_bone_pose`, and related types
+  - Added `spine_pose`, `spine_posed`, and `spine_posed_active` base types
+  - Regenerated the C API for the sequence attachment refactor in spine-cpp. `spine_region_attachment` and `spine_mesh_attachment` now mirror the new non-null `Sequence` model exposed by the C++ runtime.
+  - IK constraint data now uses `spine_scale_y` instead of the old `uniform` boolean, matching spine-cpp.
+  - `spine_bone_pose_modify_world()` now takes a `spine_skeleton` instead of an update counter.
+  - `spine_ik_constraint_data_get_scale_y()` / `spine_ik_constraint_data_set_scale_y()` and `spine_scale_y` renamed to `spine_ik_constraint_data_get_scale_y_mode()` / `spine_ik_constraint_data_set_scale_y_mode()` and `spine_scale_y_mode`.
+
+- **Breaking changes**
+  - **IMPORTANT**: The C runtime has been completely rewritten as an auto-generated wrapper around the C++ runtime. This is a major breaking change. Users must update their code to use the new API. See https://esotericsoftware.com/spine-c
+  - All types, functions, and headers have been restructured
+  - The new runtime provides full feature parity with C++ through automatic code generation, has nullability annotations and documentation, and supports lightweight RTTI, allowing language specific wrappers to be built around it that expose the full type hierarchy idiomatically. See spine-ios and spine-flutter for examples.
+  - Sequence attachments now follow the spine-cpp sequence refactor. Region and mesh attachments no longer use the old mutable region/UV update path.
+  - Bone setup and unconstrained pose APIs now use `spine_bone_pose` instead of `spine_bone_local`. Generated bindings such as `spine_bone_data_get_setup_pose()` and `spine_bone_get_pose()` now return `spine_bone_pose`.
+  - Renamed setup pose functions:
+    - `spSkeleton_setToSetupPose()` → `spine_skeleton_setup_pose()`
+    - `spSkeleton_setBonesToSetupPose()` → `spine_skeleton_setup_pose_bones()`
+    - `spSkeleton_setSlotsToSetupPose()` → `spine_skeleton_setup_pose_slots()`
+  - `spine_event_data` no longer stores event payload values directly. Use `spine_event_data_get_setup_pose()` and the returned `spine_event` for setup int, float, string, volume, and balance values.
+  - `spine_animation_create()` now takes only the animation name. `spine_animation_set_timelines()` now also requires the animation's bone indices.
+
+### SFML
+
+- **Restructuring**
+  - Reorganized directory structure - merged with C++ SFML into unified structure
+
+- **Breaking changes**
+  - Updated to use new C runtime API
+
+### SDL
+
+- **Additions**
+  - Added CMakePresets.json for modern CMake configuration
+  - Updated examples with improved rendering
+
+- **Restructuring**
+  - Simplified build system with build.sh script
+
+- **Breaking changes**
+  - Updated to use new C runtime API
+  - `spSkeletonDrawable_update()` now takes additional `spine_physics` parameter
+
+### GLFW
+
+- **Additions**
+  - Added CMakePresets.json for modern CMake configuration
+  - Added physics example (physics.cpp)
+  - Added IK following example (ik-following.cpp)
+  - Added dragon sequence examples for binary and JSON loading in both C++ and C:
+    - `dragon.cpp`
+    - `dragon-json.cpp`
+    - `dragon-c.cpp`
+    - `dragon-json-c.cpp`
+  - Added C mirrors for the physics and IK following examples:
+    - `physics-c.cpp`
+    - `ik-following-c.cpp`
+
+- **Restructuring**
+  - Renamed main-cpp-lite.cpp to main-c.cpp
+  - Simplified build system with build.sh script
+  - Fixed the GLFW CMake data copy step to copy shared example assets once, avoiding parallel `copy_directory` races under ninja
+
+- **Breaking changes**
+  - Updated to use new C runtime API
+
+## C++
+
+- **Additions**
+  - Added `SliderData::getMax()` / `setMax()` for nonessential bone-driven slider metadata.
+  - Added `PhysicsConstraintData::getScaleYMode()` / `setScaleYMode()` to control how physics scaleX affects scaleY.
+  - Added `Interpolation` and `TrackEntry::getMixInterpolation()` / `setMixInterpolation()` for non-linear animation mixing.
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Linked meshes can now inherit deform and sequence timelines from source meshes in different slots.
+  - Added `Attachment::getTimelineSlots()`, `Attachment::setTimelineSlots()`, and `Attachment::isTimelineActive()` for attachment timeline propagation across linked meshes.
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes for improved transform handling
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+  - Added `ConstraintTimeline` interface for unified constraint timeline indexing
+  - Added `Animation::getBones()` to get bone indices used by an animation
+  - Added template method `SkeletonData::findConstraint<T>()` for type-safe constraint queries
+  - Added `SkeletonRenderer` class with `RenderCommand` for batched rendering
+  - Added `HasRendererObject` interface for attachments with renderer-specific data
+  - Ported the latest parser fixes from spine-libgdx, including the 4.3 path constraint flag fix and the weighted mesh binary vertex allocation/count fix.
+  - Ported the latest additive timeline updates and alpha/RGB timeline flicker fixes from spine-libgdx.
+  - Ported the AnimationState additive/hold rework from spine-libgdx. `MixBlend` and `MixDirection` are no longer used by timelines. The new system uses `bool fromSetup, bool add, bool out` parameters and a bitmask-based hold system that replaces `holdPrevious` and `interruptAlpha`.
+  - Added `Timeline::getAdditive()` and `Timeline::getInstant()` to query timeline blending capabilities.
+  - Added `TrackEntry::getAdditive()` / `TrackEntry::setAdditive()` to control additive blending per track entry.
+  - Ported the Skin placeholder name rename from spine-libgdx. `Skin::AttachmentMap::Entry::_name` renamed to `_placeholderName`.
+  - Fixed `SkeletonBinary::readLong()` sign extension bug that truncated 64-bit hash values to 32 bits.
+  - Ported the sequence attachment refactor from spine-libgdx. `Sequence` now precomputes per-frame regions, UVs, and region offsets, and `RegionAttachment` / `MeshAttachment` now mirror the libgdx implementation.
+  - Ported the latest clipping runtime changes from spine-libgdx, including convex and inverse clipping support and the inverse clipping crash fix.
+  - Added `ClippingAttachment::getConvex()` / `setConvex()` and `getInverse()` / `setInverse()`.
+  - Added `Animation::getColor()` and `BoneData` icon size/rotation accessors for nonessential editor data.
+
+- **Bug fixes**
+  - Fixed physics constraint rotation, shear, and scale forces using the wrong Y direction in Y-down runtimes.
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed slider sorting crashes when slider animations key slot or constraint timelines.
+  - Fixed `SliderData` leaking its `FromProperty` by adding a destructor that frees `_property` and its `ToProperty` children, matching `TransformConstraintData`.
+  - Fixed bones that don't inherit rotation when parent scale is near zero.
+  - Fixed `BonePose::updateLocalTransform()` for `noScale` and `noScaleOrReflection` inheritance, plus related IK epsilon handling.
+  - Fixed `ScaleYMode_Volume` to avoid extreme scaleY values for very small scaleX factors.
+  - Fixed `InheritTimeline` so inherit keys are applied to the keyed bone instead of an uninitialized bone index.
+  - Fixed `AnimationState` attachment timeline handling so deforms are applied correctly when an attachment is hidden in the setup pose.
+  - Fixed `Skeleton::updateWorldTransform()` to avoid copying draw order unless it is constrained.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Improved clipping performance by computing barycentric data lazily and reusing edge side tests.
+
+- **Breaking changes**
+  - `MathUtil::Epsilon2` renamed to `MathUtil::EpsilonSq`.
+  - `BonePose::modifyWorld()` now takes a `Skeleton &` instead of an update counter.
+  - `BonePose::resetWorld()` is now private.
+  - `AttachmentLoader` methods now receive both the skin `placeholder` and resolved attachment `name`. `Skin::AttachmentMap::Entry::_placeholderName` renamed to `_placeholder`.
+  - `AnimationState::getCurrent()` renamed to `AnimationState::getTrack()`.
+  - `MeshAttachment::getParentMesh()` / `setParentMesh()` renamed to `getSourceMesh()` / `setSourceMesh()`.
+  - Headers reorganized from `spine-cpp/spine-cpp/include/spine/` to `spine-cpp/include/spine/`
+  - Timeline `apply()` signature changed: `MixBlend blend, MixDirection direction` replaced with `bool fromSetup, bool add, bool out`. All timeline subclasses updated.
+  - `Animation::apply()` signature changed to match the new timeline parameters.
+  - `CurveTimeline1::getRelativeValue()`, `getAbsoluteValue()`, and `getScaleValue()` signatures changed from `MixBlend`/`MixDirection` to `bool fromSetup, bool add, bool out`.
+  - `TrackEntry::getHoldPrevious()` / `setHoldPrevious()` removed. Use `TrackEntry::getAdditive()` / `setAdditive()` instead for additive blending.
+  - `TrackEntry::getMixBlend()` / `setMixBlend()` removed.
+  - `TrackEntry::_interruptAlpha` removed.
+  - `Skin::AttachmentMap::Entry::_name` renamed to `_placeholderName`. All `Skin` methods use `placeholderName` parameter names instead of `name`/`attachmentName`.
+  - `AnimationState` hold constants changed: `HoldSubsequent` and `HoldMix` removed, replaced with bitmask system (`Subsequent=0, First=1, Hold=2, HoldFirst=3`).
+  - `Bone` now extends `PosedActive` with separate pose, constrained, and applied states
+  - `IkConstraintData::getUniform()` / `setUniform()` replaced by `getScaleY()` / `setScaleY()` and `ScaleY` (`none`, `uniform`, `volume`).
+  - `IkConstraintData::getScaleY()` / `setScaleY()` and `ScaleY` renamed to `getScaleYMode()` / `setScaleYMode()` and `ScaleYMode`.
+  - `BoneData::getSetupPose()` and `Bone::getPose()` now use `BonePose` instead of `BoneLocal`. Bone timelines and parser setup pose data were updated to match the spine-libgdx `BoneLocal` removal.
+  - Renamed timeline constraint index methods to use unified `getConstraintIndex()`
+  - Changed timeline class hierarchy with new base classes `BoneTimeline`, `SlotCurveTimeline`, and `ConstraintTimeline`
+  - Sequence attachments now use the new non-null `Sequence` model. `RegionAttachment` and `MeshAttachment` were refactored to match spine-libgdx and no longer use the old lazy mutable region update path.
+  - Renamed setup pose methods:
+    ||||
+    |-----|-|-----|
+    | `Skeleton::setToSetupPose()`          |→| `Skeleton::setupPose()` |
+    | `Skeleton::setBonesToSetupPose()`     |→| `Skeleton::setupPoseBones()` |
+    | `Skeleton::setSlotsToSetupPose()`     |→| `Skeleton::setupPoseSlots()` |
+    | Bone::setToSetupPose()                |→| Bone::setupPose() |
+    | Slot::setToSetupPose()                |→| Slot::setupPose() |
+    | IkConstraint::setToSetupPose()        |→| IkConstraint::setupPose() |
+  - `EventData` now stores shared payload defaults in `EventData::getSetupPose()` instead of directly on `EventData`. Use the returned `Event` for setup int, float, string, volume, and balance values.
+  - `Animation` now constructs with only a name. Call `setTimelines(timelines, bones)` and `setDuration()` after loading timelines.
+    | TransformConstraint::setToSetupPose() |→| TransformConstraint::setupPose() |
+    | PathConstraint::setToSetupPose()      |→| PathConstraint::setupPose() |
+    | PhysicsConstraint::setToSetupPose()   |→| PhysicsConstraint::setupPose() |
+  - `Bone` local transform properties moved to `bone.getPose()`:
+    ||||
+    |-----|-|-----|
+    | bone.getX()        |→| bone.getPose().getX()        |
+    | bone.getY()        |→| bone.getPose().getY()        |
+    | bone.getRotation() |→| bone.getPose().getRotation() |
+    | bone.getScaleX()   |→| bone.getPose().getScaleX()   |
+    | bone.getScaleY()   |→| bone.getPose().getScaleY()   |
+    | bone.getShearX()   |→| bone.getPose().getShearX()   |
+    | bone.getShearY()   |→| bone.getPose().getShearY()   |
+  - `Bone` world and applied transform properties moved to `bone.getAppliedPose()`:
+    ||||
+    |-----|-|-----|
+    | bone.getWorldX()        |→| bone.getAppliedPose().getWorldX()        |
+    | bone.getWorldY()        |→| bone.getAppliedPose().getWorldY()        |
+    | bone.getWorldRotationX()|→| bone.getAppliedPose().getWorldRotationX()|
+    | bone.getWorldRotationY()|→| bone.getAppliedPose().getWorldRotationY()|
+    | bone.getWorldScaleX()   |→| bone.getAppliedPose().getWorldScaleX()   |
+    | bone.getWorldScaleY()   |→| bone.getAppliedPose().getWorldScaleY()   |
+    | bone.getA()             |→| bone.getAppliedPose().getA()             |
+    | bone.getB()             |→| bone.getAppliedPose().getB()             |
+    | bone.getC()             |→| bone.getAppliedPose().getC()             |
+    | bone.getD()             |→| bone.getAppliedPose().getD()             |
+  - `Slot` properties moved to `slot.getPose()`:
+    ||||
+    |-----|-|-----|
+    | slot.getColor()             |→| slot.getPose().getColor()             |
+    | slot.getDarkColor()         |→| slot.getPose().getDarkColor()         |
+    | slot.getAttachment()        |→| slot.getPose().getAttachment()        |
+    | slot.getHasSecondColor()    |→| slot.getPose().getHasSecondColor()    |
+    | slot.getDeform()            |→| slot.getPose().getDeform()            |
+  - `IkConstraint` properties moved to `ikConstraint.getPose()`:
+    ||||
+    |-----|-|-----|
+    | ikConstraint.getMix()           |→| ikConstraint.getPose().getMix()           |
+    | ikConstraint.getSoftness()      |→| ikConstraint.getPose().getSoftness()      |
+    | ikConstraint.getBendDirection() |→| ikConstraint.getPose().getBendDirection() |
+    | ikConstraint.getCompress()      |→| ikConstraint.getPose().getCompress()      |
+    | ikConstraint.getStretch()       |→| ikConstraint.getPose().getStretch()       |
+  - `TransformConstraint` properties moved to `transformConstraint.getPose()`:
+    ||||
+    |-----|-|-----|
+    | transformConstraint.getMixRotate() |→| transformConstraint.getPose().getMixRotate() |
+    | transformConstraint.getMixX()      |→| transformConstraint.getPose().getMixX()      |
+    | transformConstraint.getMixY()      |→| transformConstraint.getPose().getMixY()      |
+    | transformConstraint.getMixScaleX() |→| transformConstraint.getPose().getMixScaleX() |
+    | transformConstraint.getMixScaleY() |→| transformConstraint.getPose().getMixScaleY() |
+    | transformConstraint.getMixShearY() |→| transformConstraint.getPose().getMixShearY() |
+  - `PathConstraint` properties moved to `pathConstraint.getPose()`:
+    ||||
+    |-----|-|-----|
+    | pathConstraint.getPosition()   |→| pathConstraint.getPose().getPosition()   |
+    | pathConstraint.getSpacing()    |→| pathConstraint.getPose().getSpacing()    |
+    | pathConstraint.getMixRotate()  |→| pathConstraint.getPose().getMixRotate()  |
+    | pathConstraint.getMixX()       |→| pathConstraint.getPose().getMixX()       |
+    | pathConstraint.getMixY()       |→| pathConstraint.getPose().getMixY()       |
+  - `PhysicsConstraint` properties moved to `physicsConstraint.getPose()`:
+    ||||
+    |-----|-|-----|
+    | physicsConstraint.getMix()         |→| physicsConstraint.getPose().getMix()         |
+    | physicsConstraint.getGravity()     |→| physicsConstraint.getPose().getGravity()     |
+    | physicsConstraint.getStrength()    |→| physicsConstraint.getPose().getStrength()    |
+    | physicsConstraint.getDamping()     |→| physicsConstraint.getPose().getDamping()     |
+    | physicsConstraint.getMassInverse() |→| physicsConstraint.getPose().getMassInverse() |
+    | physicsConstraint.getWind()        |→| physicsConstraint.getPose().getWind()        |
+  - `ConstraintData` properties moved to `constraintData.getSetupPose()`:
+    ||||
+    |-----|-|-----|
+    | ikConstraintData.getMix() |→| ikConstraintData.getSetupPose().getMix() |
+    | ...| |...|
+  - `SkeletonData` now provides a single `ConstraintData` list `getConstraints()` instead of separate lists per constraint type:
+    ||||
+    |-----|-|-----|
+    | skeletonData.getIkConstraints()        |→| Filter skeletonData.getConstraints() for IkConstraintData instances |
+    | skeletonData.getTransformConstraints() |→| Filter skeletonData.getConstraints() for TransformConstraintData instances |
+    | skeletonData.getPathConstraints()      |→| Filter skeletonData.getConstraints() for PathConstraintData instances |
+    | skeletonData.getPhysicsConstraints()   |→| Filter skeletonData.getConstraints() for PhysicsConstraintData instances |
+  - `SkeletonData` now provides unified `findConstraint<T>()` template method:
+    ||||
+    |-----|-|-----|
+    | skeletonData.findIkConstraint(name)        |→| skeletonData.findConstraint<IkConstraintData>(name) |
+    | skeletonData.findTransformConstraint(name) |→| skeletonData.findConstraint<TransformConstraintData>(name) |
+    | skeletonData.findPathConstraint(name)      |→| skeletonData.findConstraint<PathConstraintData>(name) |
+    | skeletonData.findPhysicsConstraint(name)   |→| skeletonData.findConstraint<PhysicsConstraintData>(name) |
+  - `Physics` enum moved from nested `Skeleton::Physics` to standalone `spine::Physics`
+    - `updateWorldTransform(Skeleton::Physics::update)` → `updateWorldTransform(spine::Physics::update)`
+  - Timeline `apply()` methods now take an additional `appliedPose` parameter
+  - Attachment `computeWorldVertices()` methods now take an additional `skeleton` parameter
+  - Renamed timeline constraint index methods to use unified `getConstraintIndex()`
+  - API changes to match reference runtime naming conventions:
+    - `addAnimationWith()` → `addAnimation()`
+    - `setAnimationWith()` → `setAnimation()`
+    - `setMixWith()` → `setMix()`
+    - `setSkinByName()` → `setSkin()`
+    - `getAttachmentByName()` → `getAttachment()`
+
+### Cocos2d-x
+- The runtime has been removed, as Cocos2d-x has not been maintained in years, and the latest version no longer compiles out of the box on macOS, iOS, and other platforms.
+
+### SFML
+
+- **Restructuring**
+  - Reorganized directory structure - merged C and C++ examples into a single structure
+  - Moved from `spine-sfml/c/` and `spine-sfml/cpp/` to unified `spine-sfml/` structure
+  - Added CMakePresets.json for modern CMake configuration
+  - Simplified example structure with single main.cpp
+
+- **Breaking changes**
+  - Updated to use new C++ runtime with all breaking changes above
+
+### UE
+
+- **Additions**
+  - Added Blueprint APIs for `TrackEntry` mix interpolation.
+  - Added convex and inverse clipping support through the updated spine-cpp clipping runtime.
+
+- **Bug fixes**
+  - Fixed `SpineBoneDriverComponent` failing to drive bones affected by constraints.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+
+- **Breaking changes**
+  - Custom C++ `AttachmentLoader` implementations now receive both the skin `placeholder` and resolved attachment `name`.
+  - `USpineSkeletonAnimationComponent::GetCurrent()` renamed to `GetTrack()`.
+  - `USpineWidget::GetCurrent()` renamed to `GetTrack()`.
+  - Updated to use new C++ runtime with all breaking changes above
+
+### Godot
+
+- **Additions**
+  - Added `SpineSliderData.get_max()` / `set_max()` for nonessential bone-driven slider metadata.
+  - Added `SpinePhysicsConstraintData.get_scale_y_mode()` / `set_scale_y_mode()`.
+  - Added `SpineTrackEntry` mix interpolation APIs and `SpineConstant.MixInterpolation`.
+  - Added convex and inverse clipping support through the updated spine-cpp clipping runtime.
+  - Added `SpineSlider` and `SpineSliderData` classes for slider constraints
+  - Added `SpineTrackEntry.get_additive()` / `set_additive()` for additive blending per track entry.
+
+- **Bug fixes**
+  - Fixed `SpineSkeletonDataResource` constraint getters returning null entries and dropping constraints when multiple constraint types are present.
+  - Fixed physics constraint rotation pointing opposite to translation under gravity and vertical wind.
+  - Fixed Godot wrapper crashes from invalid skin attachment lookups, wrong constraint type filtering, stale cached bone/slot wrappers after skeleton rebuilds, dangling `SpineSlotNode` connections after unparenting, and stale Godot 3 wrapper signal connections.
+  - Fixed `SpineSprite` debug drawing and global bone transform helpers to work when a skeleton exists without an animation state.
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed editor crashes when assigning skeleton data with slider animations that key slots or constraints.
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Fixed `SpineAnimationTrack` editor preview paths for nested `AnimationPlayer` roots, and prevented inactive tracks from clearing `SpineSprite` preview animations.
+  - Fixed GDExtension animation mix editing in the Godot inspector.
+  - Fixed `SpineBoneNode` and `SpineSlotNode` transforms when bones use negative scale or shear, and applied `SpineBoneNode` Drive mode before world transforms are computed.
+  - Fixed `SpineSlotNode` and global bone transforms exposing the runtime Y-down coordinate conversion as negative Godot Node2D Y scale.
+  - Fixed Godot 4.7 GDExtension resource loading for raw `.skel`, `.spine-json`, and `.atlas` Spine asset files.
+  - Updated Godot 4.x CI builds to Godot 4.6.2.
+  - Fixed Godot 4.6 Windows editor CI builds by installing Direct3D 12 SDK dependencies before building Godot.
+  - Fixed Godot 4.6 GDExtension builds with the latest `godot-cpp` by including the required `Ref` support header in `SpineCommon.h`, updated `SpineEventData` for the `EventData.setupPose` API change, and refreshed vendored `spine-cpp` sources during clean setup.
+  - Fixed Godot 4.7 module and GDExtension build compatibility.
+  - Fixed Godot 4.7 Windows module CI builds by updating the Godot 4.x SCons dependency.
+  - Fixed Godot 3.6 Windows CI builds by not generating Visual Studio project files when building with MinGW.
+  - Fixed Godot 3.x builds by avoiding the Godot 4-only `Transform2D(Vector2, Vector2, Vector2)` constructor.
+
+- **Breaking changes (since previous 4.3 beta)**
+  - `SpineSkin` attachment method argument names now use `placeholder` instead of `name`.
+  - `SpineTrackEntry.get_hold_previous()` / `set_hold_previous()` removed.
+  - `SpineTrackEntry.get_mix_blend()` / `set_mix_blend()` removed. Use `get_additive()` / `set_additive()` for additive blending.
+  - `SpineConstant.MixBlend` and `SpineConstant.MixDirection` enums removed.
+  - `SpineTimeline.apply()` signature changed: `blend` and `direction` parameters replaced with `from_setup`, `add`, `out`.
+  - `SpineAnimation.apply()` signature changed to match.
+  - `SpineAnimationTrack` property `hold_previous` replaced with `additive`, property `mix_blend` removed.
+  - Added `SpineBoneLocal` and `SpineBonePose` classes for new pose system
+  - Added pose classes for constraints: `SpineIkConstraintPose`, `SpinePathConstraintPose`, `SpinePhysicsConstraintPose`, `SpineSliderPose`, `SpineTransformConstraintPose`
+  - `SpineIkConstraintData.get_scale_y()` / `set_scale_y()` and `SpineConstant.ScaleY` renamed to `get_scale_y_mode()` / `set_scale_y_mode()` and `SpineConstant.ScaleYMode`.
+
+- **Breaking changes**
+  - `SpineAnimationState.get_current()` renamed to `SpineAnimationState.get_track()` in the GDScript API.
+  - Updated to use new C++ pose system internally
+  - `SpineBone.get_pose()` and `SpineBoneData.get_setup_pose()` now return `SpineBonePose` to match the updated spine-cpp bone pose API.
+  - Removed from `SpineBone`: `update_world_transform()`, `set_to_setup_pose()`, `get_world_to_local_rotation_x()`, `get_world_to_local_rotation_y()`
+  - Removed direct property access from `SpineBone`: `get_x()`, `set_x()`, `get_y()`, `set_y()`, `get_rotation()`, `set_rotation()`, etc. - use pose objects instead
+  - `SpineAnimation.apply()` now takes an additional `appliedPose` parameter
+  - Note: `SpineSkeleton` still maintains `set_to_setup_pose()`, `set_bones_to_setup_pose()`, `set_slots_to_setup_pose()` for compatibility
+
+## C#
+
+- **Additions**
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BonePose` and related classes
+  - Added `IPose`, `Posed`, and `PosedActive` base classes for unified pose management
+  - Added `IConstraintTimeline` interface for unified constraint timeline indexing
+  - Added `Animation.Bones` property to get bone indices used by an animation
+  - Added `Skeleton` properties `GravityX`, `GravityY`, `WindX`, `WindY` to allow rotating physics force directions
+  - Added `Color32F` class used in new `.GetColor()` and `.SetColor()` methods replacing `.R` `.G` `.B` `.A` properties
+  - Linked meshes can now inherit deform and sequence timelines from source meshes in different slots
+  - Added `Attachment.TimelineSlots` and `Attachment.IsTimelineActive()` for attachment timeline propagation across linked meshes
+  - Added `DrawOrderFolderTimeline` for animating draw order folders
+  - Added `ClippingAttachment.Convex` and `ClippingAttachment.Inverse`
+  - Added `IkConstraintData.ScaleYMode` enum and `IkConstraintData.ScaleY` to control how IK compress/stretch changes `BonePose.ScaleY`, including volume preservation
+  - Added `allowMissingRegions` parameter to `AtlasAttachmentLoader` constructor to support skeletons exported with per-skin atlases
+  - `TrackEntry.Reverse` animations now fire events. Previously events were not fired when an animation was played in reverse.
+  - Added `TrackEntry.MixInterpolation` for customizable non-linear mixing. Defaults to `Interpolation.Linear` to maintain existing behaviour.
+
+- **Breaking changes**
+  - Color properties `.R` `.G` `.B` `.A` are replaced by `.GetColor()` and `.SetColor()`
+  - Dark color properties `.R2` `.G2` `.B2` are replaced by `.GetDarkColor()` and `.SetDarkColor()`
+  - `Bone` now extends `PosedActive` with separate pose, constrained, and applied states
+  - `Bone` local transform properties moved to `Bone.Pose`:
+    ||||
+    |---------------|-|-------------|
+    | Bone.X        |→| Bone.Pose.X |
+    | Bone.Y        |→| Bone.Pose.Y |
+    | Bone.Rotation |→| Bone.Pose.Rotation |
+    | Bone.ScaleX   |→| Bone.Pose.ScaleX |
+    | Bone.ScaleY   |→| Bone.Pose.ScaleY |
+    | Bone.ShearX   |→| Bone.Pose.ShearX |
+    | Bone.ShearY   |→| Bone.Pose.ShearY |
+  - `Bone` world and applied transform properties moved to `Bone.AppliedPose`:
+    ||||
+    |---------------------|-|--------------------|
+    | Bone.AX             |→| Bone.AppliedPose.X |
+    | Bone.AY             |→| Bone.AppliedPose.Y |
+    | Bone.ARotation      |→| Bone.AppliedPose.Rotation |
+    | Bone.AScaleX        |→| Bone.AppliedPose.ScaleX |
+    | Bone.AScaleY        |→| Bone.AppliedPose.ScaleY |
+    | Bone.AShearX        |→| Bone.AppliedPose.ShearX |
+    | Bone.AShearY        |→| Bone.AppliedPose.ShearY |
+    | Bone.WorldX         |→| Bone.AppliedPose.WorldX |
+    | Bone.WorldY         |→| Bone.AppliedPose.WorldY |
+    | Bone.WorldRotationX |→| Bone.AppliedPose.WorldRotationX |
+    | Bone.WorldRotationY |→| Bone.AppliedPose.WorldRotationY |
+  - `Bone` no longer provides a `Bone.Skeleton` property, constructor no longer takes a `skeleton` parameter
+  - `Slot` properties moved to `SlotPose`, i.e. `Slot.AppliedPose`:
+    ||||
+    |-----------------------|-|-----------------------------|
+    | Slot.Attachment       |→| Slot.AppliedPose.Attachment |
+    | Slot.R .G .B .A       |→| Slot.AppliedPose.GetColor() and Slot.AppliedPose.SetColor() |
+    | Slot.R2 .G2 .B2       |→| Slot.AppliedPose.GetDarkColor() and Slot.AppliedPose.SetDarkColor() |
+    | Slot.HasSecondColor   |→| Slot.AppliedPose.HasDarkColor |
+    | Slot.Deform           |→| Slot.AppliedPose.Deform |
+    | Slot.SequenceIndex    |→| Slot.AppliedPose.SequenceIndex |
+  - `Constraint` properties moved to `Constraint.Pose`:
+    ||||
+    |-----------------------------|-|-----------------------|
+    | IkConstraint.Mix            |→| IkConstraint.Pose.Mix |
+    | IkConstraint.Softness       |→| IkConstraint.Pose.Softness |
+    | IkConstraint.BendDirection  |→| IkConstraint.Pose.BendDirection |
+    | IkConstraint.Compress       |→| IkConstraint.Pose.Compress |
+    | IkConstraint.Stretch        |→| IkConstraint.Pose.Stretch |
+
+    ||||
+    |-------------------------------|-|------------------------------------|
+    | TransformConstraint.MixRotate |→| TransformConstraint.Pose.MixRotate |
+    | TransformConstraint.MixX      |→| TransformConstraint.Pose.MixX |
+    | TransformConstraint.MixY      |→| TransformConstraint.Pose.MixY |
+    | TransformConstraint.MixScaleX |→| TransformConstraint.Pose.MixScaleX |
+    | TransformConstraint.MixScaleY |→| TransformConstraint.Pose.MixScaleY |
+    | TransformConstraint.MixShearY |→| TransformConstraint.Pose.MixShearY |
+
+    ||||
+    |---------------------------|-|------------------------------|
+    | PathConstraint.Position   |→| PathConstraint.Pose.Position |
+    | PathConstraint.Spacing    |→| PathConstraint.Pose.Spacing |
+    | PathConstraint.MixRotate  |→| PathConstraint.Pose.MixRotate |
+    | PathConstraint.MixX       |→| PathConstraint.Pose.MixX |
+    | PathConstraint.MixY       |→| PathConstraint.Pose.MixY |
+
+    ||||
+    |-------------------------------|-|----------------------------|
+    | PhysicsConstraint.Mix         |→| PhysicsConstraint.Pose.Mix |
+    | PhysicsConstraint.Gravity     |→| PhysicsConstraint.Pose.Gravity |
+    | PhysicsConstraint.Strength    |→| PhysicsConstraint.Pose.Strength |
+    | PhysicsConstraint.Damping     |→| PhysicsConstraint.Pose.Damping |
+    | PhysicsConstraint.MassInverse |→| PhysicsConstraint.Pose.MassInverse |
+    | PhysicsConstraint.Wind        |→| PhysicsConstraint.Pose.Wind |
+  - `ConstraintData` properties moved to `ConstraintData.GetSetupPose()`
+    ||||
+    |-----|-|-----|
+    | IkConstraintData.Mix |→| IkConstraintData.GetSetupPose().Mix |
+    | ...| |...|
+
+  - `SkeletonData` now provides a single `IConstraintData` list `SkeletonData.Constraints` instead of separate lists per constraint type
+    ||||
+    |-----|-|-----|
+    | SkeletonData.IkConstraints        |→| SkeletonData.Constraints.OfType\<IkConstraintData\>() |
+    | SkeletonData.TransformConstraints |→| SkeletonData.Constraints.OfType\<TransformConstraintData\>() |
+    | SkeletonData.PathConstraints      |→| SkeletonData.Constraints.OfType\<PathConstraintData\>() |
+    | SkeletonData.PhysicsConstraints   |→| SkeletonData.Constraints.OfType\<PhysicsConstraintData\>() |
+  - `SkeletonData` now provides `SkeletonData.FindConstraint<ConstraintData>()` instead of single find methods per constraint type
+    ||||
+    |-----|-|-----|
+    | SkeletonData.FindIkConstraint        |→| SkeletonData.FindConstraint\<IkConstraintData\>() |
+    | SkeletonData.FindTransformConstraint |→| SkeletonData.FindConstraint\<TransformConstraintData\>() |
+    | SkeletonData.FindPathConstraint      |→| SkeletonData.FindConstraint\<PathConstraintData\>() |
+    | SkeletonData.FindPhysicsConstraint   |→| SkeletonData.FindConstraint\<PhysicsConstraintData\>() |
+  - Renamed setup pose methods:
+    ||||
+    |-----|-|-----|
+    | `Skeleton.SetToSetupPose()`       |→| `Skeleton.SetupPose()` |
+    | `Skeleton.SetBonesToSetupPose()`  |→| `Skeleton.SetupPoseBones()` |
+    | `Skeleton.SetSlotsToSetupPose()`  |→| `Skeleton.SetupPoseSlots()` |
+    | Bone.SetToSetupPose()           |→| Bone.SetupPose() |
+    | Slot.SetToSetupPose()           |→| Slot.SetupPose() |
+    | IkConstraint.SetToSetupPose()   |→| IkConstraint.SetupPose() |
+  - `Skeleton.Physics` was moved to `Physics` directly in `Spine` namespace
+    - `UpdateWorldTransform(Skeleton.Physics.Update)` → `UpdateWorldTransform(Spine.Physics.Update)`
+  - Timeline `Apply()` methods now take an additional `appliedPose` parameter
+  - Attachment `ComputeWorldVertices()` methods now take an additional `skeleton` parameter
+  - Renamed timeline constraint index methods to use unified `ConstraintIndex` property
+  - Reorganized timeline class hierarchy with new base classes
+  - Removed `AtlasAttachmentLoader` method `AtlasRegion FindRegion(string name)` from public interface. Added `protected AtlasRegion FindRegion(string name, string path)` instead which may be overridden instead when deriving your own subclass.
+  - Removed `TrackEntry.HoldPrevious` and `TrackEntry.InterruptAlpha`. New `AnimationState` hold system automatically calculates the required state values.
+  - Removed `BoneLocal` class. `BonePose` now directly implements `IPose<BonePose>` and contains all local pose fields. Replace any use of `BoneLocal` → `BonePose`.
+  - `EventData` no longer stores `Int`, `Float`, `String`, `Volume`, and `Balance` properties directly. Use `EventData.SetupPose` to access the setup pose `Event` which provides these properties instead.
+    ||||
+    |-----|-|-----|
+    | `EventData.Int`     |→| `EventData.SetupPose.Int` |
+    | `EventData.Float`   |→| `EventData.SetupPose.Float` |
+    | `EventData.String`  |→| `EventData.SetupPose.String` |
+    | `EventData.Volume`  |→| `EventData.SetupPose.Volume` |
+    | `EventData.Balance` |→| `EventData.SetupPose.Balance` |
+  - `Timeline.PropertyIds` type changed from `string[]` to `ulong[]`. `Animation.HasTimeline()` parameter and Timeline constructors changed accordingly.
+  - `Skeleton.DrawOrder` type changed from `ExposedList<Slot>` to `DrawOrder` class. Use `Skeleton.DrawOrder.AppliedPose` for rendering and `Skeleton.DrawOrder.Pose` for changing the draw order.
+  - `IkConstraintData.Uniform` replaced by `IkConstraintData.ScaleY`. `IkConstraint.Apply()` methods now take `ScaleY` instead of a `bool uniform` parameter.
+  - `MeshAttachment.ParentMesh` renamed to `MeshAttachment.SourceMesh`
+  - `AttachmentLoader` methods `NewRegionAttachment`, `NewMeshAttachment`, `NewBoundingBoxAttachment`, `NewClippingAttachment`, `NewPathAttachment`, and `NewPointAttachment` now take an additional `string placeholder` parameter. Update any custom `AttachmentLoader` implementations accordingly.
+  - Renamed `Skin.SkinEntry.Name` to `Skin.SkinEntry.Placeholder` to better match Spine editor terminology. Was intermediately renamed to `PlaceholderName` which was then changed to `Placeholder`.
+  - `MathUtils.IInterpolation` class is replaced by new `Interpolation` class, see *Additions* above.
+  - `AnimationState.SetCurrent()` renamed to `AnimationState.SetTrack()`; `AnimationState.GetCurrent()` renamed to `AnimationState.GetTrack()`.
+    ||||
+    |-----|-|-----|
+    | `AnimationState.SetCurrent()`     |→| `AnimationState.SetTrack()` |
+    | `AnimationState.GetCurrent()`     |→| `AnimationState.GetTrack()` |
+  - Ported the AnimationState additive/hold rework from spine-libgdx. `MixBlend`, `MixDirection`, `holdPrevious`, and `interruptAlpha` are no longer used. Timeline mixing now uses `MixFrom`, `add`, and `mixOut` parameters, with hold state calculated automatically.
+  - `Animation.Apply()` and `Timeline.Apply()` now take a `MixFrom` value instead of the previous boolean `fromSetup` argument. Replace `true` with `MixFrom.Setup` and `false` with `MixFrom.Current`. If you upgraded to an intermediate 4.3 runtime that still used `fromSetup`, update those call sites again.
+
+### Unity
+
+- **Officially supported Unity versions are 2017.1-6000.4**.
+
+- **Breaking changes**
+  - Updated to use new C# runtime with all breaking changes above
+  - **MAJOR ARCHITECTURE CHANGE: Main skeleton components have been split into separate rendering and animation components.** Components will be automatically upgraded when scenes/prefabs are opened in the Unity Editor. See the `Documentation/4.3-split-component-upgrade-guide.md` document for detailed migration instructions. The major changes are:
+    - `SkeletonAnimation` is now split into `SkeletonAnimation` + `SkeletonRenderer` components
+    - `SkeletonMecanim` is now split into `SkeletonMecanim` + `SkeletonRenderer` components
+    - `SkeletonGraphic` is now split into `SkeletonAnimation` + `SkeletonGraphic` components
+  - Example skeletons in Spine Examples are now using straight alpha textures and materials for better compatibility with Linear colorspace.
+  - `Skeleton.Physics` was moved to `Physics` directly in `Spine` namespace, thus might clash with `UnityEngine.Physics`.
+    - Spine Physics: `UpdateWorldTransform(Skeleton.Physics.Update)` → `UpdateWorldTransform(Spine.Physics.Update)`
+    - UnityEngine Physics: `Physics.gravity` → `UnityEngine.Physics.gravity`.
+  - `SkeletonRenderer`: `maskInteraction` → `MaskInteraction`.
+  - Removed rather useless old menu entries `GameObject - Spine - SkeletonRenderer` and the like which are spawning e.g. a GameObject with an empty `SkeletonRenderer` component without `SkeletonDataAsset` assigned and thus also not initialized properly.
+  - Removed `attachment.GetRemappedClone()` extension methods. Replace `attachment.GetRemappedClone(parameters)` with `attachment.Copy(); attachment.SetRegion(parameters)`. Removed `AttachmentCloneExtensions` class, `SetRegion` methods are now in `AttachmentRegionExtensions`.
+  - Renamed `ToAtlasRegionPMAClone` to `ToAtlasRegionWithNewPMATexture`.
+  - Renamed `ToRegionAttachmentPMAClone` to `ToRegionAttachmentWithNewPMATexture`.
+  - Removed support for long abandoned thirdparty asset "2D Toolkit" (TK2D) by Unikron Software.
+  - Removed Spine Timeline `Spine Animation State Clip` property `Hold Previous`. New `AnimationState` hold system automatically calculates the required state values.
+  - Removed intermediately added (4.3-beta branch only) `SkeletonAnimation` callbacks `MainThreadStart`, `MainThreadInterrupt`, `MainThreadEnd`, `MainThreadDispose`, `MainThreadComplete` and `MainThreadEvent`. Instead `SkeletonAnimation.AnimationState` and `TrackEntry` events are now automatically  processed on the main thread. There is no longer a change of user code required for these events, and `TrackEntry` events can be utilized directly even with threaded animation enabled.
+  - `SkeletonGraphic` property `CustomSlotMaterials` now properly assigns the override material directly instead of assigning the texture of the override material, which was of little use.
+
+- **Changes of default values**
+  - Changed default atlas texture workflow from PMA to straight alpha textures. This move was done because straight alpha textures are compatible with both Gamma and Linear color space, with the latter being the default for quite some time now in Unity. Note that `PMA Vertex Color` is unaffected and shall be enabled as usual to allow for single-pass additive rendering.
+
+- **Additions**
+  - Added Spine Preferences `Switch Texture Workflow` functionality to quickly switch to the respective PMA or straight-alpha texture and material presets.
+  - Added a workflow mismatch dialog showing whenever problematic PMA vs. straight alpha settings are detected at a newly imported `.atlas.txt` file. Invalid settings include the atlas being PMA and project using Linear color space, and a mismatch of Auto-Import presets set to straight alpha compared to the atlas being PMA and vice versa. The dialog offers an option to automatically fix the problematic setting on the import side and links website documentation for export settings. This dialog can be disabled and re-enabled via Spine preferences.
+  - Added threading support for all skeleton rendering and animation components, disabled by default. Threading can be activated per component or globally via Edit → Preferences → Spine → Threading Defaults. Two threading options are available:
+    - `Threaded MeshGeneration`: Default value for SkeletonRenderer and SkeletonGraphic threaded mesh generation
+    - `Threaded Animation`: Default value for SkeletonAnimation and SkeletonMecanim threaded animation updates
+  - Even when threading is enabled, the threading system defaults to  `SkeletonRenderer` and `SkeletonAnimation` user callbacks like `UpdateWorld` (not including `AnimationState` callbacks) being issued on the main thread to support existing user code. Can be configured via `SkeletonUpdateSystem.Instance.MainThreadUpdateCallbacks = false` to perform callbacks on worker threads if parallel execution is supported and desired by the user code. `OnPostProcessVertices` is an exception, as it it's deliberately left on worker threads so that parallellization can be utilized. Note that most Unity API calls are restricted to the main thread.
+  - Added `SkeletonUpdateSystem.Instance.GroupRenderersBySkeletonType` and `GroupAnimationBySkeletonType` properties. Defaults to disabled. Later when smart partitioning is implemented, enabling this parameter might slightly improve cache locality. Until then having it enabled combined with different skeleton complexity would lead to worse load balancing.
+  - Added previously missing editor drag & drop skeleton instantiation option *SkeletonGraphic (UI) Mecanim* combining components `SkeletonGraphic` and `SkeletonMecanim`.
+  - Added define `SPINE_DISABLE_THREADING` to disable threaded animation and mesh generation entirely, removing the respective code. This define can be set as `Scripting Define Symbols` globally or for selective build profiles where desired.
+  - Added automatic load balancing (work stealing) for improved performance when using threaded animation and mesh generation, enabled by default. Load balancing can be disabled via a new Spine preferences parameter `Threading Defaults - Load Balancing` setting a build define accordingly.
+    Additional configuration parameters `SkeletonUpdateSystem.UpdateChunksPerThread` and `LateUpdateChunksPerThread` are available to fine-tune the chunk count for load balancing. A minimum of 8 chunks is recommended with load balancing enabled. Higher values add higher overhead with potentially detrimental effect on performance.
+  - Spine UI Toolkit UPM package now supports rendering back-face triangles. Enable `Flip Back Faces` to automatically fix back-face geometry in an additional pass (defaults to enabled). Disable the setting to save additional processing overhead.
+  - Spine UI Toolkit UPM package now supports PMA atlas textures. At the `SpineVisualElement` expand `Blend Mode Materials` and hit `Detect Materials` to automatically assign the proper PMA or straight alpha material at `Normal Material`. Unity minimum version increased to 6000.3 which added  support for UI Toolkit materials.
+  - Spine UI Toolkit UPM package now supports all Spine blend modes via blend mode materials and multiple materials per skeleton. Enable `Multiple Materials` (enabled by default), expand `Blend Mode Materials` and hit `Detect Materials` to automatically assign the correct PMA or straight alpha blend mode materials.
+  - Every Spine URP shader now has an `Outline` option to switch to the respective Outline shader variant. Uses multi-pass support of newer URP versions. Requires spine-unity core package version 4.3.44 or newer due to required modifications in custom Sprite Shader GUI.
+  - Added new variants of `GetRepackedSkin` and `GetRepackedAttachments` supporting blend modes. These new variants take a packing configuration input struct `RepackAttachmentsSettings` which provides optional `additiveMaterialSource`, `multiplyMaterialSource` and `screenMaterialSource` properties, enabling blend mode repacking when any is non-null. Create your `RepackAttachmentsSettings` from default settings via `RepackAttachmentsSettings.Default` and then customize settings as needed. Blend mode materials can be set at once using `UseSourceMaterialsFrom(SkeletonDataAsset)` or `UseBlendModeMaterialsFrom(SkeletonDataAsset)`. Uses new `RepackAttachmentsOutput` struct providing `DestroyGeneratedAssets` to easily destroy any previously generated assets.
+  - Updated example scenes to demonstrate new `GetRepackedSkin` variant usage.
+  - AnimationReferenceAsset: Added animation selector drop-down popup next to object assignment field for easy initial assignment and animation switching. Shows red warning color if the assigned AnimationReferenceAsset's SkeletonDataAsset does not match the one at the GameObjects `SkeletonAnimation` component. A mismatch may be intentional for a special split SkeletonDataAsset setup. Warning color can be disabled in `Edit - Preferences - Spine`, `Warnings - SkeletonDataAsset Mismatch Warning`.
+  - AnimationReferenceAssets: The `SkeletonDataAsset` Inspector now generates the set of AnimationReferenceAssets as nested assets below a single asset `<skeletonname>_AnimationReferences.asset` to avoid cluttering the project with hundreds of asset files. This also makes searching the project for a suitable `AnimationReferenceAsset` of a given `SkeletonDataAsset` much faster. Use of existing old individual assets is still supported alongside nested new ones. If you require the old way of creating assets in your project, add `SPINE_INDIVIDUAL_ANIMATION_REFERENCE_ASSETS` to your project's Scripting Define Symbols.
+  - AnimationReferenceAssets: Added Spine Preferences setting `Editor Instantiation` - `Warnings - SkeletonDataAsset Mismatch Warning` to disable the warning color when a different SkeletonDataAsset is detected at the `AnimationReferenceAsset` than at the `SkeletonRenderer` component at the same GameObject or any parent GameObject. Might be valid setup for special AnimationReferenceAsset re-use for identical skeletons.
+  - `SkeletonGraphic` now allows using separate additive Materials despite having `PMA Vertex Colors` enabled (as required for Spine shaders) via the new `Blend Modes` - `Force Additive Material` property in the `Advanced` Inspector section.
+  - `SkeletonGraphic` property `CustomSlotMaterials` now properly assigns the override material directly instead of assigning the texture of the override material, which was of little use. Thus you can now assign a `SkeletonGraphic` compatible material like `SkeletonGraphicAdditive-Straight`.
+  - `SkeletonGraphicCustomMaterials` now exposes `Custom Slot Materials` property for slot material overrides.
+  - Exposed `SpineVisualElement.Initialize` as `public`.
+  - `SkeletonRenderer` and `SkeletonGraphic` classes now provide `PhysicsPositionInheritanceLimit` and `PhysicsRotationInheritanceLimit` properties, exposed in the component Inspector under `Physics Inheritance` as `Limit` properties, below `Position` and `Rotation`.
+  - `SkeletonGraphic` now provides a new method `MatchReferenceRectWithBounds` to adjust the reference rectangle bounds to the mesh bounds for use with automatic layout scale modes. The `Match RectTransform with Mesh` `Match` button is now available outside of `Edit Layout Bounds` mode as well and performs this adjustment for quick one-click setup.
+  - `SkeletonGraphic`: You can now offset the pivot with automatic offset compensation via a newly added blue circle handle. This lets you move the pivot to the skeleton part that you want fixed when auto layout mode scales and moves your skeleton around to fit the RectTransform bounds. It also helps to visualize the current pivot position if you set the pivot numerically via the RectTransform Inspector.
+  - `SkeletonAnimation` received a `DeltaTimeOverride` callback. This allows advancing by custom delta time for e.g. stepped animation updates in a threaded context. The callback may change `UpdateMode` to disable or limit skeleton updates for certain frames. It is called on the main thread once before animation update.
+  - Added sample component `SkeletonAnimationFixedTimestepThreaded` as a replacement component for `SkeletonAnimationFixedTimestep` which was limited to single-threaded use only. This component is using the new `DeltaTimeOverride` event and is thus compatible with both single-threaded and multi-threaded animation.
+
+- **Deprecated**
+
+- **Restructuring (Non-Breaking)**
+  - Spine Examples have been moved and are now part of the main spine-unity UPM package. To import, select the `spine-unity Runtime` package in the Package Manager window, and in the `Samples` tab and hit `Import`.
+
+### MonoGame
+
+- **Breaking changes**
+  - Updated to use new C# runtime with all breaking changes above
+
+## iOS
+
+- **Additions**
+  - Added native AppKit/macOS support to `SpineiOS` and the example app.
+  - Added `SpineTextureFilter` overrides to `SpineUIView` and `SpineView`.
+  - Added generated slider data `max` APIs.
+  - Added generated physics constraint `scaleYMode` APIs.
+  - Added generated `Interpolation` and `TrackEntry` mix interpolation APIs.
+  - Added convex and inverse clipping support through the updated spine-cpp clipping runtime.
+
+- **Bug fixes**
+  - Fixed Metal rendering to honor each atlas page's texture filter, mipmap, and wrap settings.
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed bones that don't inherit rotation when parent scale is near zero.
+  - Fixed `BonePose.updateLocalTransform(_:)` for `noScale` and `noScaleOrReflection` inheritance.
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Improved clipping performance through the updated spine-cpp clipping runtime.
+
+- **Breaking changes**
+  - Removed generated `BonePose.resetWorld(_:)` because resetWorld is an internal implementation detail.
+  - Generated `BonePose.modifyWorld(_:)` now takes a `Skeleton` instead of an update counter.
+  - Generated SpineSwift attachment loader APIs now receive both the skin `placeholder` and resolved attachment `name`.
+  - `AnimationState.getCurrent(_:)` renamed to `AnimationState.getTrack(_:)` in SpineSwift.
+  - SpineSwift mesh attachment APIs now use `sourceMesh` naming instead of `parentMesh` to match spine-cpp.
+  - SpineSwift attachments now expose `timelineSlots` and `isTimelineActive(...)` to match spine-cpp.
+  - SpineSwift IK constraint data now uses `scaleY` instead of the old `uniform` boolean.
+  - SpineSwift IK constraint data `scaleY` and `ScaleY` renamed to `scaleYMode` and `ScaleYMode`.
+
+## Dart
+
+- **Additions**
+  - Added generated slider data `max` APIs.
+  - Added generated physics constraint `scaleYMode` APIs.
+  - Added generated `Interpolation` and `TrackEntry` mix interpolation APIs.
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+
+- **Bug fixes**
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed bones that don't inherit rotation when parent scale is near zero.
+  - Fixed `BonePose.updateLocalTransform()` for `noScale` and `noScaleOrReflection` inheritance.
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Improved clipping performance through the updated spine-cpp clipping runtime.
+
+- **Breaking changes**
+  - Removed generated `BonePose.resetWorld()` because resetWorld is an internal implementation detail.
+  - Generated `BonePose.modifyWorld()` now takes a `Skeleton` instead of an update counter.
+  - Generated Dart attachment loader APIs now receive both the skin `placeholder` and resolved attachment `name`.
+  - `AnimationState.getCurrent()` renamed to `AnimationState.getTrack()`.
+  - The Dart runtime is now fully auto-generated from the C runtime, maintaining the full C++ type hierarchy with proper nullability annotations
+  - `MeshAttachment.parentMesh` is now `MeshAttachment.sourceMesh`, and attachments now expose `timelineSlots` plus `isTimelineActive(...)` to match spine-cpp.
+  - All properties are now exposed as getters and setters instead of methods
+  - API changes to match C++ naming conventions:
+    - `AnimationState.getData()` → `AnimationState.data` (property)
+    - `AnimationState.setAnimationByName()` → `AnimationState.setAnimation()`
+    - `AnimationState.addAnimationByName()` → `AnimationState.addAnimation()`
+    - `AnimationState.getCurrent()` → `AnimationState.getCurrent()`
+    - `Skeleton.setSkinByName()` → `Skeleton.setSkin()`
+    - `Skeleton.setSkin()` → `Skeleton.setSkin2()`
+    - `Skeleton.setToSetupPose()` → `Skeleton.setupPose()`
+    - `Skeleton.setBonesToSetupPose()` → `Skeleton.setupPoseBones()`
+    - `Skeleton.setSlotsToSetupPose()` → `Skeleton.setupPoseSlots()`
+  - Timeline `apply()` methods now take an additional `appliedPose` parameter
+  - `EventData` setup payload access moved to `data.setupPose`
+  - IK constraint data `scaleY` and `ScaleY` renamed to `scaleYMode` and `ScaleYMode`.
+
+### Flutter
+
+- **Additions**
+  - Added generated slider data `max` APIs.
+  - Added generated physics constraint `scaleYMode` APIs.
+  - Added generated `Interpolation` and `TrackEntry` mix interpolation APIs.
+  - Added convex and inverse clipping support through the updated spine-cpp clipping runtime.
+  - Added `fromMemory` methods to `AtlasFlutter`, `SkeletonDataFlutter`, `SkeletonDrawableFlutter`, and `SpineWidget` for loading Spine data from custom sources (memory, encrypted storage, databases, custom caching, etc.)
+  - Added example `load_from_memory.dart` demonstrating how to load all assets into memory and use the `fromMemory` API
+
+- **Bug fixes**
+  - Fixed draw order timelines not mixing out to the setup pose.
+  - Fixed bones that don't inherit rotation when parent scale is near zero.
+  - Fixed `BonePose.updateLocalTransform()` for `noScale` and `noScaleOrReflection` inheritance.
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+  - Fixed constraints so modifying a constrained bone's world transform preserves descendant bone transforms from earlier constraints.
+  - Fixed one-bone IK inheritance calculations in Y-down coordinate systems.
+  - Improved clipping performance through the updated spine-cpp clipping runtime.
+
+- **Breaking changes**
+  - Removed generated `BonePose.resetWorld()` because resetWorld is an internal implementation detail.
+  - Generated Flutter `BonePose.modifyWorld()` now takes a `Skeleton` instead of an update counter.
+  - `AnimationState.getCurrent()` renamed to `AnimationState.getTrack()`.
+  - Generated Flutter attachment loader APIs now receive both the skin `placeholder` and resolved attachment `name`.
+  - Generated Flutter mesh attachment APIs now use `sourceMesh` naming instead of `parentMesh` to match spine-cpp.
+  - Generated Flutter bindings now expose `Attachment.timelineSlots` and `Attachment.isTimelineActive(...)` to match spine-cpp.
+  - Generated Flutter IK constraint data `scaleY` and `ScaleY` renamed to `scaleYMode` and `ScaleYMode`.
+  - Updated to use the new auto-generated Dart runtime with all the Dart API changes above
+  - Generated Flutter bindings now use `BonePose` for bone setup and unconstrained pose accessors to match spine-cpp.
+  - Generated Flutter bindings now expose event setup payloads via `EventData.setupPose` instead of directly on `EventData`.
+  - Generated Flutter bindings now construct `Animation` with only a name, and setting timelines also requires the animation's bone indices.
+  - Generated Flutter IK constraint data now uses `scaleY` instead of the old `uniform` boolean.
+
+## Haxe
+
+- **Additions**
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+  - Added `ConstraintTimeline` interface for unified constraint timeline indexing
+  - Added `Animation.getBones()` to get bone indices used by an animation
+  - Added `Skeleton` properties `windX`, `windY`, `gravityX`, `gravityY` to allow rotating physics force directions
+  - Added `SequenceTimeline` for sequence animation
+  - Added `allowMissingRegions` parameter to `AtlasAttachmentLoader` constructor to support skeletons exported with per-skin atlases
+  - Linked meshes can now inherit deform and sequence timelines from source meshes in different slots
+  - Added `Attachment.timelineSlots` and `Attachment.isTimelineActive()` for attachment timeline propagation across linked meshes
+  - Added `DrawOrderFolderTimeline` for animating draw order folders
+  - Added `Timeline.additive` and `Timeline.instant` to query timeline blending capabilities
+  - Added `TrackEntry.additive` to control additive blending per track entry
+  - Added `TrackEntry.mixInterpolation` and `Interpolation` helpers for non-linear AnimationState mixes
+  - Ported the latest additive timeline updates and alpha/RGB timeline flicker fixes from spine-libgdx
+  - Ported the AnimationState additive/hold rework from spine-libgdx. `MixBlend` and `MixDirection` are no longer used by timelines. The new system uses `fromSetup`, `add`, and `out` parameters and automatically calculates the required hold state values
+  - Ported the Skin placeholder name rename from spine-libgdx. `SkinEntry.name` renamed to `placeholderName` to better match Spine editor terminology
+  - Ported the sequence attachment refactor from spine-libgdx. `Sequence` now precomputes per-frame regions, UVs, and region offsets, and `RegionAttachment` / `MeshAttachment` now mirror the libgdx implementation
+  - Ported the latest clipping runtime changes from spine-libgdx, including convex and inverse clipping support and the inverse clipping crash fix
+  - Added `ClippingAttachment.convex` and `ClippingAttachment.inverse`
+  - Added `Animation.color` for the animation color as it was in Spine when nonessential data is exported
+  - Added `BoneData` icon size and rotation accessors for nonessential editor data
+  - Added `ScaleY` enum and `IkConstraintData.scaleY` to control how IK compress/stretch changes `BonePose.scaleY`, including volume preservation
+  - Fixed `SkeletonData` default FPS and missing `PathAttachment` initialization
+  - BoundsProvider System: added a new flexible BoundsProvider system to improve bounds calculation performance and correctness across all renderers.
+    - Added `BoundsProvider` abstract class with interface for calculating skeleton bounding boxes
+    - Implemented four concrete `BoundsProvider` classes:
+      - `AABBRectangleBoundsProvider` - Uses a simple axis-aligned bounding box rectangle
+      - `CurrentPoseBoundsProvider` - Calculates bounds dynamically from the current skeleton pose
+      - `SetupPoseBoundsProvider` - Uses setup pose bounds (default implementation)
+      - `SkinsAndAnimationBoundsProvider` - Calculates bounds based on specific skins and animations
+
+- **Bug fixes**
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+
+- **Breaking changes**
+  - `Bone` now extends `PosedActive` with separate pose, constrained, and applied states
+  - `Bone` local transform properties moved to `bone.getPose()`:
+    ||||
+    |--------------------------|-|-----------------------------|
+    | bone.x                  |→| bone.getPose().x            |
+    | bone.y                  |→| bone.getPose().y            |
+    | bone.rotation           |→| bone.getPose().rotation     |
+    | bone.scaleX             |→| bone.getPose().scaleX       |
+    | bone.scaleY             |→| bone.getPose().scaleY       |
+    | bone.shearX             |→| bone.getPose().shearX       |
+    | bone.shearY             |→| bone.getPose().shearY       |
+  - `Bone` world and applied transform properties moved to `bone.getAppliedPose()`:
+    ||||
+    |---------------------------|-|-------------------------------------|
+    | bone.ax                   |→| bone.getAppliedPose().x            |
+    | bone.ay                   |→| bone.getAppliedPose().y            |
+    | bone.arotation            |→| bone.getAppliedPose().rotation     |
+    | bone.ascaleX              |→| bone.getAppliedPose().scaleX       |
+    | bone.ascaleY              |→| bone.getAppliedPose().scaleY       |
+    | bone.ashearX              |→| bone.getAppliedPose().shearX       |
+    | bone.ashearY              |→| bone.getAppliedPose().shearY       |
+    | bone.worldX               |→| bone.getAppliedPose().worldX       |
+    | bone.worldY               |→| bone.getAppliedPose().worldY       |
+  - `Bone` no longer provides a `skeleton` property, constructor no longer takes a `skeleton` parameter
+  - `Slot` properties moved to `slot.getAppliedPose()`:
+    ||||
+    |---------------------------|-|-------------------------------------|
+    | slot.attachment           |→| slot.getAppliedPose().attachment   |
+    | slot.deform               |→| slot.getAppliedPose().deform       |
+    | slot.sequenceIndex        |→| slot.getAppliedPose().sequenceIndex |
+  - `Constraint` properties moved to `constraint.getPose()`:
+    ||||
+    |----------------------------------|-|----------------------------------------|
+    | ikConstraint.mix                |→| ikConstraint.getPose().mix            |
+    | ikConstraint.softness           |→| ikConstraint.getPose().softness       |
+    | ikConstraint.bendDirection      |→| ikConstraint.getPose().bendDirection  |
+    | ikConstraint.compress           |→| ikConstraint.getPose().compress       |
+    | ikConstraint.stretch            |→| ikConstraint.getPose().stretch        |
+
+    ||||
+    |--------------------------------------|-|---------------------------------------|
+    | transformConstraint.mixRotate       |→| transformConstraint.getPose().mixRotate |
+    | transformConstraint.mixX            |→| transformConstraint.getPose().mixX    |
+    | transformConstraint.mixY            |→| transformConstraint.getPose().mixY    |
+    | transformConstraint.mixScaleX       |→| transformConstraint.getPose().mixScaleX |
+    | transformConstraint.mixScaleY       |→| transformConstraint.getPose().mixScaleY |
+    | transformConstraint.mixShearY       |→| transformConstraint.getPose().mixShearY |
+
+    ||||
+    |----------------------------------|-|------------------------------------|
+    | pathConstraint.position         |→| pathConstraint.getPose().position |
+    | pathConstraint.spacing          |→| pathConstraint.getPose().spacing  |
+    | pathConstraint.mixRotate        |→| pathConstraint.getPose().mixRotate |
+    | pathConstraint.mixX             |→| pathConstraint.getPose().mixX     |
+    | pathConstraint.mixY             |→| pathConstraint.getPose().mixY     |
+
+    ||||
+    |--------------------------------------|-|---------------------------------------|
+    | physicsConstraint.mix               |→| physicsConstraint.getPose().mix      |
+    | physicsConstraint.gravity           |→| physicsConstraint.getPose().gravity  |
+    | physicsConstraint.strength          |→| physicsConstraint.getPose().strength |
+    | physicsConstraint.damping           |→| physicsConstraint.getPose().damping  |
+    | physicsConstraint.massInverse       |→| physicsConstraint.getPose().massInverse |
+    | physicsConstraint.wind              |→| physicsConstraint.getPose().wind     |
+  - `ConstraintData` properties moved to `constraintData.setup`:
+    ||||
+    |-----|-|-----|
+    | ikConstraintData.mix |→| ikConstraintData.setup.mix |
+    | ...| |...|
+
+  - `SkeletonData` now provides a single `ConstraintData` list `constraints` instead of separate lists per constraint type
+    ||||
+    |-----|-|-----|
+    | skeletonData.ikConstraints        |→| Filter skeletonData.constraints for IkConstraintData instances |
+    | skeletonData.transformConstraints |→| Filter skeletonData.constraints for TransformConstraintData instances |
+    | skeletonData.pathConstraints      |→| Filter skeletonData.constraints for PathConstraintData instances |
+    | skeletonData.physicsConstraints   |→| Filter skeletonData.constraints for PhysicsConstraintData instances |
+  - `SkeletonData` now provides unified `findConstraint()` method with Class parameter:
+    ||||
+    |-----|-|-----|
+    | skeletonData.findIkConstraint(name)        |→| skeletonData.findConstraint(name, IkConstraintData) |
+    | skeletonData.findTransformConstraint(name) |→| skeletonData.findConstraint(name, TransformConstraintData) |
+    | skeletonData.findPathConstraint(name)      |→| skeletonData.findConstraint(name, PathConstraintData) |
+    | skeletonData.findPhysicsConstraint(name)   |→| skeletonData.findConstraint(name, PhysicsConstraintData) |
+  - Renamed setup pose methods:
+    ||||
+    |-----|-|-----|
+    | `Skeleton.setToSetupPose()`       |→| `Skeleton.setupPose()` |
+    | `Skeleton.setBonesToSetupPose()`  |→| `Skeleton.setupPoseBones()` |
+    | `Skeleton.setSlotsToSetupPose()`  |→| `Skeleton.setupPoseSlots()` |
+    | Bone.setToSetupPose()             |→| Bone.setupPose() |
+    | Slot.setToSetupPose()             |→| Slot.setupPose() |
+    | IkConstraint.setToSetupPose()     |→| IkConstraint.setupPose() |
+  - `Physics` enum moved from nested `Skeleton.Physics` to standalone `Physics` class
+    - `updateWorldTransform(Skeleton.Physics.update)` → `updateWorldTransform(Physics.update)`
+  - Timeline `apply()` methods now take `fromSetup`, `add`, `out`, and `appliedPose` parameters instead of `MixBlend` and `MixDirection`
+  - Removed `MixBlend` and `MixDirection`
+  - Removed `TrackEntry.holdPrevious` and internal interrupt alpha state. New `AnimationState` hold system automatically calculates the required state values
+  - Removed `TrackEntry.mixBlend`. Use `TrackEntry.additive` for additive blending
+  - `AnimationState.setCurrent()` renamed to `AnimationState.setTrack()`; `AnimationState.getCurrent()` is deprecated in favor of `AnimationState.getTrack()`
+  - Attachment `computeWorldVertices()` methods now take an additional `skeleton` parameter
+  - `MeshAttachment.getParentMesh()` / `setParentMesh()` renamed to `getSourceMesh()` / `setSourceMesh()`
+  - `RegionAttachment` and `MeshAttachment` now take a non-null `Sequence` in their constructors and use the new sequence attachment model
+  - `SkinEntry.name` renamed to `placeholderName` to better match Spine editor terminology
+  - `AttachmentLoader` methods now receive both the skin `placeholder` and resolved attachment `name`.
+  - `IkConstraintData.uniform` replaced by `IkConstraintData.scaleY`. `IkConstraint.apply()` methods now take `ScaleY` instead of a boolean `uniform` parameter
+  - `IkConstraintData.scaleY` and `ScaleY` renamed to `scaleYMode` and `ScaleYMode`.
+  - Renamed timeline constraint index methods to use unified `getConstraintIndex()`
+
+### Starling
+
+- **Additions**
+  - BoundsProvider Integration
+    - Integrated BoundsProvider system into Starling renderer
+    - Added `boundsProvider` public field for customizing bounds calculation strategy
+    - Added `calculateBounds()` method to recalculate bounds on demand
+    - Constructor now accepts optional third parameter `boundsProvider` (defaults to `SetupPoseBoundsProvider`)
+    - Simplified `getBounds()` implementation to use `BoundsProvider` instead of direct calculation
+  - Added physics position and rotation inheritance settings.
+  - Scale Integration
+    - Connected `SkeletonSprite.scale`, `scaleX`, and `scaleY` properties to `skeleton.scaleX/scaleY` values
+    - Setting scale properties now automatically updates skeleton scale and recalculates bounds
+    - Ensures consistent scaling behavior between display object and skeleton
+
+- **Breaking changes**
+  - Removed `getAnimationBounds()` method - replace with appropriate `BoundsProvider` implementation or create custom one
+  - `hitTest()` now uses `BoundsProvider` using cached bounds from `BoundsProvider` instead of iterating all slots and attachments, for accurate hit testing with animated skeletons, use `CurrentPoseBoundsProvider` and call `calculateBounds()` each frame or on click
+  - Changed `_state` to state (public field)
+  - Changed `_skeleton` to skeleton (public field)
+
+### Flixel
+
+- **Additions**
+  - BoundsProvider Integration
+    - Integrated `BoundsProvider` system matching Starling implementation
+    - Constructor now accepts optional third parameter `boundsProvider` (defaults to `SetupPoseBoundsProvider`)
+    - Added `boundsProvider` public field for customizing bounds calculation strategy
+    - Added `calculateBounds()` method to recalculate bounds on demand
+    - Added `bounds` property to get the bounds coordinates
+  - Added physics position and rotation inheritance settings.
+- **Breaking changes**
+  - `SkeletonSprite` now extends `FlxTypedGroup<FlxObject>` instead of FlxObject. This was necessary because `FlxObject` bounding/hitbox is always connected to its position and size and cannot be offset
+    - This eables proper bounds handling independent of position
+    - Added methods and properties to maintain FlxObject-like API despite extending FlxTypedGroup
+  - Removed `getAnimationBounds()` method - replace with appropriate `BoundsProvider` implementation
+  - Removed `setBoundingBox()` method - use `BoundsProvider` features instead
+
+## Java
+
+- **Additions**
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Reworked AnimationState hold system. Replaced `MixBlend`/`MixDirection` in timeline `apply()` with `boolean fromSetup, boolean add, boolean out`. The new bitmask-based hold system prevents dipping during crossfades without requiring `holdPrevious`.
+  - Added `Timeline.getAdditive()` and `Timeline.getInstant()` to query timeline blending capabilities.
+  - Added `TrackEntry.getAdditive()` / `TrackEntry.setAdditive()` for additive blending per track entry.
+  - Renamed `Skin.SkinEntry.getName()` to `getPlaceholderName()`. All `Skin` methods now use `placeholderName` parameter names.
+
+- **Breaking changes (since previous 4.3 beta)**
+  - `TrackEntry.getHoldPrevious()` / `setHoldPrevious()` removed.
+  - `TrackEntry.getMixBlend()` / `setMixBlend()` removed. Use `TrackEntry.getAdditive()` / `setAdditive()` for additive blending.
+  - `MixBlend` and `MixDirection` enums removed from `Animation`.
+  - Timeline `apply()` signature changed: `MixBlend blend, MixDirection direction` replaced with `boolean fromSetup, boolean add, boolean out`.
+  - `Animation.apply()` signature changed to match.
+  - `CurveTimeline1.getRelativeValue()`, `getAbsoluteValue()`, `getScaleValue()` signatures changed.
+  - `Skin.SkinEntry.getName()` renamed to `getPlaceholderName()`.
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+  - Added `ConstraintTimeline` interface for unified constraint timeline indexing
+  - Added `Animation.getBones()` to get bone indices used by an animation
+  - Added `Skeleton` methods `getGravityX()`, `getGravityY()`, `getWindX()`, `getWindY()` to allow rotating physics force directions
+  - Added `SequenceTimeline` for sequence animation
+  - Added `allowMissingRegions` parameter to `AtlasAttachmentLoader` constructor to support skeletons exported with per-skin atlases
+
+- **Breaking changes**
+  - `Bone` now extends `PosedActive` with separate pose, constrained, and applied states
+  - `Bone` local transform methods moved to `bone.getPose()`:
+    ||||
+    |---------------|-|-------------|
+    | bone.getX()             |→| bone.getPose().getX() |
+    | bone.getY()             |→| bone.getPose().getY() |
+    | bone.getRotation()      |→| bone.getPose().getRotation() |
+    | bone.getScaleX()        |→| bone.getPose().getScaleX() |
+    | bone.getScaleY()        |→| bone.getPose().getScaleY() |
+    | bone.getShearX()        |→| bone.getPose().getShearX() |
+    | bone.getShearY()        |→| bone.getPose().getShearY() |
+    | bone.setX(value)        |→| bone.getPose().setX(value) |
+    | bone.setY(value)        |→| bone.getPose().setY(value) |
+    | bone.setRotation(value) |→| bone.getPose().setRotation(value) |
+    | bone.setScaleX(value)   |→| bone.getPose().setScaleX(value) |
+    | bone.setScaleY(value)   |→| bone.getPose().setScaleY(value) |
+    | bone.setShearX(value)   |→| bone.getPose().setShearX(value) |
+    | bone.setShearY(value)   |→| bone.getPose().setShearY(value) |
+  - `Bone` world and applied transform methods moved to `bone.getAppliedPose()`:
+    ||||
+    |---------------------|-|--------------------|
+    | bone.getAX()             |→| bone.getAppliedPose().getX() |
+    | bone.getAY()             |→| bone.getAppliedPose().getY() |
+    | bone.getARotation()      |→| bone.getAppliedPose().getRotation() |
+    | bone.getAScaleX()        |→| bone.getAppliedPose().getScaleX() |
+    | bone.getAScaleY()        |→| bone.getAppliedPose().getScaleY() |
+    | bone.getAShearX()        |→| bone.getAppliedPose().getShearX() |
+    | bone.getAShearY()        |→| bone.getAppliedPose().getShearY() |
+    | bone.getWorldX()         |→| bone.getAppliedPose().getWorldX() |
+    | bone.getWorldY()         |→| bone.getAppliedPose().getWorldY() |
+    | bone.getWorldRotationX() |→| bone.getAppliedPose().getWorldRotationX() |
+    | bone.getWorldRotationY() |→| bone.getAppliedPose().getWorldRotationY() |
+  - `Bone` no longer provides a `getSkeleton()` method, constructor no longer takes a `skeleton` parameter
+  - `Slot` methods moved to `slot.getAppliedPose()`:
+    ||||
+    |-----------------------|-|-----------------------------|
+    | slot.getAttachment()          |→| slot.getAppliedPose().getAttachment() |
+    | slot.setAttachment(value)     |→| slot.getAppliedPose().setAttachment(value) |
+    | slot.getDeform()              |→| slot.getAppliedPose().getDeform() |
+    | slot.setDeform(value)         |→| slot.getAppliedPose().setDeform(value) |
+    | slot.getSequenceIndex()       |→| slot.getAppliedPose().getSequenceIndex() |
+    | slot.setSequenceIndex(value)  |→| slot.getAppliedPose().setSequenceIndex(value) |
+  - `Constraint` methods moved to `constraint.getPose()`:
+    ||||
+    |-----------------------------|-|-----------------------|
+    | ikConstraint.getMix()                 |→| ikConstraint.getPose().getMix() |
+    | ikConstraint.setMix(value)            |→| ikConstraint.getPose().setMix(value) |
+    | ikConstraint.getSoftness()            |→| ikConstraint.getPose().getSoftness() |
+    | ikConstraint.setSoftness(value)       |→| ikConstraint.getPose().setSoftness(value) |
+    | ikConstraint.getBendDirection()       |→| ikConstraint.getPose().getBendDirection() |
+    | ikConstraint.setBendDirection(value)  |→| ikConstraint.getPose().setBendDirection(value) |
+    | ikConstraint.getCompress()            |→| ikConstraint.getPose().getCompress() |
+    | ikConstraint.setCompress(value)       |→| ikConstraint.getPose().setCompress(value) |
+    | ikConstraint.getStretch()             |→| ikConstraint.getPose().getStretch() |
+    | ikConstraint.setStretch(value)        |→| ikConstraint.getPose().setStretch(value) |
+
+    ||||
+    |------------------------------------------|-|--------------------------------------------------|
+    | transformConstraint.getMixRotate()      |→| transformConstraint.getPose().getMixRotate()    |
+    | transformConstraint.setMixRotate(value) |→| transformConstraint.getPose().setMixRotate(value) |
+    | transformConstraint.getMixX()           |→| transformConstraint.getPose().getMixX()         |
+    | transformConstraint.setMixX(value)      |→| transformConstraint.getPose().setMixX(value)    |
+    | transformConstraint.getMixY()           |→| transformConstraint.getPose().getMixY()         |
+    | transformConstraint.setMixY(value)      |→| transformConstraint.getPose().setMixY(value)    |
+    | transformConstraint.getMixScaleX()      |→| transformConstraint.getPose().getMixScaleX()    |
+    | transformConstraint.setMixScaleX(value) |→| transformConstraint.getPose().setMixScaleX(value) |
+    | transformConstraint.getMixScaleY()      |→| transformConstraint.getPose().getMixScaleY()    |
+    | transformConstraint.setMixScaleY(value) |→| transformConstraint.getPose().setMixScaleY(value) |
+    | transformConstraint.getMixShearY()      |→| transformConstraint.getPose().getMixShearY()    |
+    | transformConstraint.setMixShearY(value) |→| transformConstraint.getPose().setMixShearY(value) |
+
+    ||||
+    |-------------------------------------|-|-----------------------------------------------|
+    | pathConstraint.getPosition()       |→| pathConstraint.getPose().getPosition()       |
+    | pathConstraint.setPosition(value)  |→| pathConstraint.getPose().setPosition(value)  |
+    | pathConstraint.getSpacing()        |→| pathConstraint.getPose().getSpacing()        |
+    | pathConstraint.setSpacing(value)   |→| pathConstraint.getPose().setSpacing(value)   |
+    | pathConstraint.getMixRotate()      |→| pathConstraint.getPose().getMixRotate()      |
+    | pathConstraint.setMixRotate(value) |→| pathConstraint.getPose().setMixRotate(value) |
+    | pathConstraint.getMixX()           |→| pathConstraint.getPose().getMixX()           |
+    | pathConstraint.setMixX(value)      |→| pathConstraint.getPose().setMixX(value)      |
+    | pathConstraint.getMixY()           |→| pathConstraint.getPose().getMixY()           |
+    | pathConstraint.setMixY(value)      |→| pathConstraint.getPose().setMixY(value)      |
+
+    ||||
+    |------------------------------------------|-|---------------------------------------------------|
+    | physicsConstraint.getMix()              |→| physicsConstraint.getPose().getMix()             |
+    | physicsConstraint.setMix(value)         |→| physicsConstraint.getPose().setMix(value)        |
+    | physicsConstraint.getGravity()          |→| physicsConstraint.getPose().getGravity()         |
+    | physicsConstraint.setGravity(value)     |→| physicsConstraint.getPose().setGravity(value)    |
+    | physicsConstraint.getStrength()         |→| physicsConstraint.getPose().getStrength()        |
+    | physicsConstraint.setStrength(value)    |→| physicsConstraint.getPose().setStrength(value)   |
+    | physicsConstraint.getDamping()          |→| physicsConstraint.getPose().getDamping()         |
+    | physicsConstraint.setDamping(value)     |→| physicsConstraint.getPose().setDamping(value)    |
+    | physicsConstraint.getMassInverse()      |→| physicsConstraint.getPose().getMassInverse()     |
+    | physicsConstraint.setMassInverse(value) |→| physicsConstraint.getPose().setMassInverse(value) |
+    | physicsConstraint.getWind()             |→| physicsConstraint.getPose().getWind()            |
+    | physicsConstraint.setWind(value)        |→| physicsConstraint.getPose().setWind(value)       |
+  - `ConstraintData` methods moved to `constraintData.getSetupPose()`:
+    ||||
+    |-----|-|-----|
+    | ikConstraintData.getMix() |→| ikConstraintData.getSetupPose().getMix() |
+    | ...| |...|
+
+  - `SkeletonData` now provides a single `ConstraintData` list `getConstraints()` instead of separate lists per constraint type
+    ||||
+    |-----|-|-----|
+    | SkeletonData.getIkConstraints()        |→| Filter SkeletonData.getConstraints() for IkConstraintData instances |
+    | SkeletonData.getTransformConstraints() |→| Filter SkeletonData.getConstraints() for TransformConstraintData instances |
+    | SkeletonData.getPathConstraints()      |→| Filter SkeletonData.getConstraints() for PathConstraintData instances |
+    | SkeletonData.getPhysicsConstraints()   |→| Filter SkeletonData.getConstraints() for PhysicsConstraintData instances |
+  - `SkeletonData` now provides unified `findConstraint()` method with Class parameter:
+    ||||
+    |-----|-|-----|
+    | SkeletonData.findIkConstraint(name)        |→| SkeletonData.findConstraint(name, IkConstraintData.class) |
+    | SkeletonData.findTransformConstraint(name) |→| SkeletonData.findConstraint(name, TransformConstraintData.class) |
+    | SkeletonData.findPathConstraint(name)      |→| SkeletonData.findConstraint(name, PathConstraintData.class) |
+    | SkeletonData.findPhysicsConstraint(name)   |→| SkeletonData.findConstraint(name, PhysicsConstraintData.class) |
+  - Renamed setup pose methods:
+    ||||
+    |-----|-|-----|
+    | `Skeleton.setToSetupPose()`      |→| `Skeleton.setupPose()` |
+    | `Skeleton.setBonesToSetupPose()` |→| `Skeleton.setupPoseBones()` |
+    | `Skeleton.setSlotsToSetupPose()` |→| `Skeleton.setupPoseSlots()` |
+    | Bone.setToSetupPose()            |→| Bone.setupPose() |
+    | Slot.setToSetupPose()            |→| Slot.setupPose() |
+    | IkConstraint.setToSetupPose()    |→| IkConstraint.setupPose() |
+  - `Physics` enum moved from nested `Skeleton.Physics` to standalone class `Physics`
+    - `updateWorldTransform(Skeleton.Physics.update)` → `updateWorldTransform(Physics.update)`
+  - Timeline `apply()` methods now take an additional `appliedPose` parameter
+  - Attachment `computeWorldVertices()` methods now take an additional `skeleton` parameter
+  - Renamed timeline constraint index methods to use unified `getConstraintIndex()`
+  - Reorganized timeline class hierarchy with `BoneTimeline1`, `BoneTimeline2`, and `SlotCurveTimeline` base classes
+
+### libGDX
+
+- **Breaking changes**
+  - Updated to use new pose system from Java runtime
+
+- **Bug fixes**
+  - Updated the Gradle wrapper and fixed the headless test fat jar task to build included libgdx runtime classpath artifacts before packaging.
+  - Gradle builds now delete stale Eclipse `bin/` output before compiling so removed classes don't linger on Java headless test classpaths.
+  - Updated the libGDX dependency from `1.14.1-SNAPSHOT` to the released `1.14.1`.
+  - Fixed `TwoColorPolygonBatch` ignoring the configured maximum vertex count.
+  - Improved clipping performance by computing barycentric data lazily and reusing edge side tests.
+  - Fixed binary skeleton loading from `FileHandle` to use buffered I/O, avoiding slow per-byte file reads.
+
+### Android
+
+- **Breaking changes**
+  - Updated to use new Java runtime with all breaking changes above
+
+- **Bug fixes**
+  - Updated the Android atlas attachment loader to match the current `AttachmentLoader` method signatures.
+  - Updated the Android examples to use `AnimationState.getTrack()` instead of the removed `getCurrent()` API.
+  - Updated the libGDX dependency from `1.14.1-SNAPSHOT` to the released `1.14.1`.
+  - Updated the bundled spine-libgdx release with the `TwoColorPolygonBatch` max vertices fix and clipping performance improvements.
+  - Fixed large binary skeleton files taking a long time to load from files by buffering spine-libgdx file reads.
+
+## Swift
+
+- **Additions**
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+
+- **Breaking changes**
+  - The Swift runtime is now fully auto-generated from the C runtime, maintaining the full C++ type hierarchy with proper nullability annotations
+  - All properties are now exposed as getters and setters instead of methods
+  - Event setup payloads now live on `EventData.setupPose` instead of directly on `EventData`
+  - API changes to match C++ naming conventions:
+    - `AnimationState.setAnimationByName()` → `AnimationState.setAnimation()`
+    - `AnimationState.addAnimationByName()` → `AnimationState.addAnimation()`
+    - `AnimationState.getCurrent()` → `AnimationState.getCurrent()`
+    - `Skeleton.findSlot(slotName:)` → `Skeleton.findSlot()`
+    - `Skeleton.setToSetupPose()` → `Skeleton.setupPose()`
+    - `Skeleton.setBonesToSetupPose()` → `Skeleton.setupPoseBones()`
+    - `Skeleton.setSlotsToSetupPose()` → `Skeleton.setupPoseSlots()`
+  - Timeline `apply()` methods now take an additional `appliedPose` parameter
+
+### iOS
+
+- **Breaking changes**
+  - Updated to use the new auto-generated Swift runtime with all the Swift API changes above
+  - Generated Swift bindings now use `BonePose` for bone setup and unconstrained pose accessors to match spine-cpp.
+  - Generated Swift bindings now expose event setup payloads via `EventData.setupPose` instead of directly on `EventData`.
+  - Generated Swift bindings now construct `Animation` with only a name, and setting timelines also requires the animation's bone indices.
+
+## TypeScript/JavaScript
+
+- **Additions**
+  - Added `Slider` and `SliderData` classes for slider constraints
+  - Added `SliderTimeline` and `SliderMixTimeline` for animating sliders
+  - Added new pose system with `BoneLocal`, `BonePose`, and related classes
+  - Added `Pose`, `Posed`, and `PosedActive` base classes for unified pose management
+  - Added `ConstraintTimeline` interface for unified constraint timeline indexing
+  - Added `Animation.getBones()` to get bone indices used by an animation
+  - Added `Skeleton` properties `windX`, `windY`, `gravityX`, `gravityY` to allow rotating physics force directions
+  - Added `SequenceTimeline` for sequence animation
+  - Added `allowMissingRegions` parameter to `AtlasAttachmentLoader` constructor to support skeletons exported with per-skin atlases
+  - Added `TextureLoader` type with optional `pma?: boolean` parameter to `AssetManagerBase`. `AssetManagerBase` now tracks and passes PMA metadata from atlas pages to texture loaders, allowing runtimes to automatically premultiply textures on upload
+  - Added `SkeletonRendererCore` class to reduce complexity of runtime-specific render code
+  - Linked meshes can now inherit deform and sequence timelines from source meshes in different slots
+  - Added `Attachment.timelineSlots` and `Attachment.isTimelineActive()` for attachment timeline propagation across linked meshes
+  - Added `DrawOrderFolderTimeline` for animating draw order folders
+  - Added `Timeline.additive` and `Timeline.instant` to query timeline blending capabilities
+  - Added `TrackEntry.additive` to control additive blending per track entry
+  - Added `TrackEntry.mixInterpolation` and `Interpolation` helpers for non-linear AnimationState mixes
+  - Added support for passing `null` as the attachment name to `Skeleton.setAttachment()`
+  - Ported the latest parser fixes from spine-libgdx, including the 4.3 path constraint flag fix and the weighted mesh binary vertex allocation/count fix
+  - Ported the latest additive timeline updates and alpha/RGB timeline flicker fixes from spine-libgdx
+  - Ported the AnimationState additive/hold rework from spine-libgdx. `MixBlend` and `MixDirection` are no longer used by timelines. The new system uses `fromSetup`, `add`, and `out` parameters and automatically calculates the required hold state values
+  - Ported the Skin placeholder name rename from spine-libgdx. `SkinEntry.name` renamed to `placeholderName` to better match Spine editor terminology
+  - Ported the sequence attachment refactor from spine-libgdx. `Sequence` now precomputes per-frame regions, UVs, and region offsets, and `RegionAttachment` / `MeshAttachment` now mirror the libgdx implementation
+  - Ported the latest clipping runtime changes from spine-libgdx, including convex and inverse clipping support and the inverse clipping crash fix
+  - Added `ClippingAttachment.convex` and `ClippingAttachment.inverse`
+  - Added `Animation.color` for the animation color as it was in Spine when nonessential data is exported
+  - Added `BoneData` icon size and rotation accessors for nonessential editor data
+  - Added `ScaleY` enum and `IkConstraintData.scaleY` to control how IK compress/stretch changes `BonePose.scaleY`, including volume preservation
+  - Fixed `SkeletonData` default FPS and missing `PathAttachment` initialization
+  - Fixed reverse IK bend positive logic and transform constraint/slider scaling issues
+
+- **Bug fixes**
+  - Fixed attachment timelines so hidden setup-pose attachments remain hidden while mixing out, preserving deform behavior.
+
+- **Breaking changes**
+  - `Bone` now extends `PosedActive` with separate pose, constrained, and applied states
+  - `Bone` local transform properties moved to `bone.getPose()`:
+    ||||
+    |-------------------------|-|-----------------------------|
+    | bone.x                  |→| bone.getPose().x            |
+    | bone.y                  |→| bone.getPose().y            |
+    | bone.rotation           |→| bone.getPose().rotation     |
+    | bone.scaleX             |→| bone.getPose().scaleX       |
+    | bone.scaleY             |→| bone.getPose().scaleY       |
+    | bone.shearX             |→| bone.getPose().shearX       |
+    | bone.shearY             |→| bone.getPose().shearY       |
+  - `Bone` world and applied transform properties moved to `bone.getAppliedPose()`:
+    ||||
+    |---------------------------|-|-------------------------------------|
+    | bone.ax                   |→| bone.getAppliedPose().x            |
+    | bone.ay                   |→| bone.getAppliedPose().y            |
+    | bone.arotation            |→| bone.getAppliedPose().rotation     |
+    | bone.ascaleX              |→| bone.getAppliedPose().scaleX       |
+    | bone.ascaleY              |→| bone.getAppliedPose().scaleY       |
+    | bone.ashearX              |→| bone.getAppliedPose().shearX       |
+    | bone.ashearY              |→| bone.getAppliedPose().shearY       |
+    | bone.worldX               |→| bone.getAppliedPose().worldX       |
+    | bone.worldY               |→| bone.getAppliedPose().worldY       |
+  - `Bone` no longer provides a `skeleton` property, constructor no longer takes a `skeleton` parameter
+  - `Slot` properties moved to `slot.getAppliedPose()`:
+    ||||
+    |---------------------------|-|-------------------------------------|
+    | slot.attachment           |→| slot.getAppliedPose().attachment   |
+    | slot.deform               |→| slot.getAppliedPose().deform       |
+    | slot.sequenceIndex        |→| slot.getAppliedPose().sequenceIndex |
+  - `Constraint` properties moved to `constraint.getPose()`:
+    ||||
+    |---------------------------------|-|----------------------------------------|
+    | ikConstraint.mix                |→| ikConstraint.getPose().mix            |
+    | ikConstraint.softness           |→| ikConstraint.getPose().softness       |
+    | ikConstraint.bendDirection      |→| ikConstraint.getPose().bendDirection  |
+    | ikConstraint.compress           |→| ikConstraint.getPose().compress       |
+    | ikConstraint.stretch            |→| ikConstraint.getPose().stretch        |
+
+    ||||
+    |-------------------------------------|-|---------------------------------------|
+    | transformConstraint.mixRotate       |→| transformConstraint.getPose().mixRotate |
+    | transformConstraint.mixX            |→| transformConstraint.getPose().mixX    |
+    | transformConstraint.mixY            |→| transformConstraint.getPose().mixY    |
+    | transformConstraint.mixScaleX       |→| transformConstraint.getPose().mixScaleX |
+    | transformConstraint.mixScaleY       |→| transformConstraint.getPose().mixScaleY |
+    | transformConstraint.mixShearY       |→| transformConstraint.getPose().mixShearY |
+
+    ||||
+    |---------------------------------|-|------------------------------------|
+    | pathConstraint.position         |→| pathConstraint.getPose().position |
+    | pathConstraint.spacing          |→| pathConstraint.getPose().spacing  |
+    | pathConstraint.mixRotate        |→| pathConstraint.getPose().mixRotate |
+    | pathConstraint.mixX             |→| pathConstraint.getPose().mixX     |
+    | pathConstraint.mixY             |→| pathConstraint.getPose().mixY     |
+
+    ||||
+    |-------------------------------------|-|---------------------------------------|
+    | physicsConstraint.mix               |→| physicsConstraint.getPose().mix      |
+    | physicsConstraint.gravity           |→| physicsConstraint.getPose().gravity  |
+    | physicsConstraint.strength          |→| physicsConstraint.getPose().strength |
+    | physicsConstraint.damping           |→| physicsConstraint.getPose().damping  |
+    | physicsConstraint.massInverse       |→| physicsConstraint.getPose().massInverse |
+    | physicsConstraint.wind              |→| physicsConstraint.getPose().wind     |
+  - `ConstraintData` properties moved to `constraintData.setupPose`:
+    ||||
+    |-----|-|-----|
+    | ikConstraintData.mix |→| ikConstraintData.setupPose.mix |
+    | ...| |...|
+
+  - `SkeletonData` now provides a single `ConstraintData` list `constraints` instead of separate lists per constraint type
+    ||||
+    |-----|-|-----|
+    | skeletonData.ikConstraints        |→| Filter skeletonData.constraints for IkConstraintData instances |
+    | skeletonData.transformConstraints |→| Filter skeletonData.constraints for TransformConstraintData instances |
+    | skeletonData.pathConstraints      |→| Filter skeletonData.constraints for PathConstraintData instances |
+    | skeletonData.physicsConstraints   |→| Filter skeletonData.constraints for PhysicsConstraintData instances |
+  - `SkeletonData` now provides unified `findConstraint()` method with type constructor parameter:
+    ||||
+    |-----|-|-----|
+    | skeletonData.findIkConstraint(name)        |→| skeletonData.findConstraint(name, IkConstraintData) |
+    | skeletonData.findTransformConstraint(name) |→| skeletonData.findConstraint(name, TransformConstraintData) |
+    | skeletonData.findPathConstraint(name)      |→| skeletonData.findConstraint(name, PathConstraintData) |
+    | skeletonData.findPhysicsConstraint(name)   |→| skeletonData.findConstraint(name, PhysicsConstraintData) |
+  - Renamed setup pose methods:
+    ||||
+    |-----|-|-----|
+    | `Skeleton.setToSetupPose()`       |→| `Skeleton.setupPose()` |
+    | `Skeleton.setBonesToSetupPose()`  |→| `Skeleton.setupPoseBones()` |
+    | `Skeleton.setSlotsToSetupPose()`  |→| `Skeleton.setupPoseSlots()` |
+    | Bone.setToSetupPose()             |→| Bone.setupPose() |
+    | Slot.setToSetupPose()             |→| Slot.setupPose() |
+    | IkConstraint.setToSetupPose()     |→| IkConstraint.setupPose() |
+  - `Physics` enum moved from nested `Skeleton.Physics` to standalone `Physics` export
+    - `updateWorldTransform(Skeleton.Physics.update)` → `updateWorldTransform(Physics.update)`
+  - Timeline `apply()` methods now take `fromSetup`, `add`, `out`, and `appliedPose` parameters instead of `MixBlend` and `MixDirection`
+  - Removed `MixBlend` and `MixDirection`
+  - Removed `TrackEntry.holdPrevious` and internal interrupt alpha state. New `AnimationState` hold system automatically calculates the required state values
+  - Removed `TrackEntry.mixBlend`. Use `TrackEntry.additive` for additive blending
+  - `AnimationState.setCurrent()` renamed to `AnimationState.setTrack()`; `AnimationState.getCurrent()` is deprecated in favor of `AnimationState.getTrack()`
+  - Attachment `computeWorldVertices()` methods now take an additional `skeleton` parameter
+  - `MeshAttachment.getParentMesh()` / `setParentMesh()` renamed to `getSourceMesh()` / `setSourceMesh()`
+  - `RegionAttachment` and `MeshAttachment` now take a non-null `Sequence` in their constructors and use the new sequence attachment model
+  - `EventData` no longer stores `intValue`, `floatValue`, `stringValue`, `volume`, and `balance` directly. Use `eventData.setupPose` to access the setup pose `Event` which provides these properties instead
+  - `SkinEntry.name` renamed to `placeholderName` to better match Spine editor terminology
+  - `AttachmentLoader` methods now receive both the skin `placeholder` and resolved attachment `name`.
+  - `IkConstraintData.uniform` replaced by `IkConstraintData.scaleY`. `IkConstraint.apply()` methods now take `ScaleY` instead of a boolean `uniform` parameter
+  - `IkConstraintData.scaleY` and `ScaleY` renamed to `scaleYMode` and `ScaleYMode`.
+  - Renamed timeline constraint index methods to use unified `getConstraintIndex()`
+  - API changes to match reference runtime naming conventions:
+    - `addAnimationWith()` → `addAnimation()`
+    - `setAnimationWith()` → `setAnimation()`
+    - `setMixWith()` → `setMix()`
+    - `setSkinByName()` → `setSkin()`
+    - `getAttachmentByName()` → `getAttachment()`
+
+### WebGL backend
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - `GLTexture` constructor now requires `pma: boolean` parameter (automatically read from atlas page metadata)
+  - Removed `GLTexture.DISABLE_UNPACK_PREMULTIPLIED_ALPHA_WEBGL` static property
+  - `SkeletonRenderer` and `SkeletonDebugRenderer` no longer have `premultipliedAlpha` property - PMA is handled automatically
+  - `SceneRenderer.drawSkeleton()` and `drawSkeletonDebug()` no longer take `premultipliedAlpha` parameter
+  - `PolygonBatcher.setBlendMode()` no longer takes `premultipliedAlpha` parameter
+  - `LoadingScreen` no longer accepts PMA parameters
+
+### Canvas backend
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+
+### CanvasKit backend
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - Simplified rendering implementation
+
+### Three.js backend
+
+- **Additions**
+  - Added a React Three Fiber example for using `SkeletonMesh` with R3F's `<primitive />` and `useFrame`
+  - Added support for Three.js versions from `0.162.0` up to `0.184.x`
+  - Added physics position and rotation inheritance settings.
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - `AssetManager` constructor no longer takes `pma` parameter - PMA is handled automatically
+
+### Player
+
+- **Additions**
+  - Added support for multiple skins in the skin selector
+  - Added `debug` support as a boolean option
+
+- **Fixes**
+  - Fixed resize mode regressions
+  - The progress bar is now shown only when hovering the bottom bar and can be dragged outside its area
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - Removed `premultipliedAlpha` option from `SpinePlayerConfig` - PMA is now handled automatically
+
+### Pixi v7
+
+- **Additions**
+  - Added static `createOptions` method for Spine initialization config to simplify subclassing
+  - Added `allowMissingRegions` parameter to game object factory
+  - Added physics position and rotation inheritance settings.
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - Deprecated `from()` method in favor of constructor accepting both `SpineOptions` and `SpineFromOptions`
+  - Removed deprecated methods
+
+### Pixi v8
+
+- **Additions**
+  - Added static `createOptions` method for Spine initialization config to simplify subclassing
+  - Added `allowMissingRegions` parameter to game object factory
+  - Added physics position and rotation inheritance settings.
+  - Restored control bones example
+
+- **Fixes**
+  - Fixed clipping regressions
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - Deprecated `from()` method in favor of constructor accepting both `SpineOptions` and `SpineFromOptions`
+
+### Phaser v3
+
+- **Additions**
+  - Added physics position and rotation inheritance settings.
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - `SpinePlugin.spineAtlas()` loader no longer takes `premultipliedAlpha` parameter - PMA is handled automatically
+  - `SpinePlugin.createSkeleton()` no longer takes `premultipliedAlpha` parameter
+
+### Phaser v4
+
+- **Additions**
+  - Added physics position and rotation inheritance settings.
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - `SpinePlugin.spineAtlas()` loader no longer takes `premultipliedAlpha` parameter - PMA is handled automatically
+  - `SpinePlugin.createSkeleton()` no longer takes `premultipliedAlpha` parameter
+
+### Web Components
+
+- **Breaking changes**
+  - Updated to use new TypeScript/JavaScript runtime
+  - Updated skeleton and overlay component implementations
+  - Removed `pma` property from `SpineWebComponentSkeleton` - PMA is handled automatically
+
+## Unreal Engine
+
+- **Bug fixes**
+  - Fixed Spine atlas and skeleton data reimport actions and automatic source change detection in recent Unreal Engine versions.
+  - Fixed editor crashes caused by parsing stale skeleton data while loading assets. Skeleton metadata is now validated and cached during import and reimport.
+
 # 4.2
 
 ## C
@@ -120,10 +1475,10 @@
 - **Breaking changes**
   - Renamed `TrackEntry` `AttachmentThreshold` to `MixAttachmentThreshold`, renamed `DrawOrderThreshold` to `MixDrawOrderThreshold`.
   - Changed signature of `Skeleton.UpdateWorldTransform()` to `UpdateWorldTransform(Skeleton.Physics physics)`. The default replacement for `skeleton.UpdateWorldTransform()` calls is `skeleton.UpdateWorldTransform(Skeleton.Physics.Update)`. If you are certain that a subsequent call to `skeleton.UpdateWorldTransform(Skeleton.Physics.Update)` follows in the same frame, you can pass `Skeleton.Physics.Pose` as argument instead of `Skeleton.Physics.Update`.
-
+  
 ### Unity
 
-- **Officially supported Unity versions are 2017.1-6000.3**.
+- **Officially supported Unity versions are 2017.1-6000.1**.
 
 - **Additions**
 
@@ -177,8 +1532,6 @@
     4. At `Replacement Material` assign e.g. the included _SkeletonGraphicDefaultOutline_ material to replace all materials with this material. Alternatively, if `Multiple CanvasRenderers` is enabled at the reference SkeletonGraphic, you can add entries to the `Replacement Materials` list and at each entry assign the original SkeletonGraphic material (e.g. _SkeletonGraphicDefault_) to be replaced and the respective `Replacement Material` (e.g. _SkeletonGraphicDefaultOutline_).
   - Added option for unsafe direct data loading when loading skeleton binary data to avoid some allocations, enabled via build define `SPINE_ALLOW_UNSAFE`. This define can be set via Spine Preferences, setting `Unsafe Build Defines - Direct data access`. The define is disabled by default to maintain existing behaviour. Changed asmdef setting for spine-unity assembly to allow unsafe code, has no effect other than allowing setting the `SPINE_ALLOW_UNSAFE` define.
   - Added option to `BoneFollower` components to follow attachment Z spacing offset. The Inspector component property can be found under `Follow Z Position` - `Attachment Z Spacing`. Defaults to `false` to maintain existing behaviour.
-  - `SkeletonGraphic` now allows using separate additive Materials despite having `PMA Vertex Colors` enabled (as required for Spine shaders) via the new `Blend Modes` - `Force Additive Material` property in the `Advanced` Inspector section.
-  - Exposed `SpineVisualElement.Initialize` as `public`.
 
 - **Breaking changes**
 
@@ -651,8 +2004,8 @@
     You can leave this parameter disabled when everything is drawn correctly to save the additional performance cost.
   - **Additional Timeline features.** SpineAnimationStateClip now provides a `Speed Multiplier`, a start time offset parameter `Clip In`, support for blending successive animations by overlapping tracks. An additional `Use Blend Duration` parameter _(defaults to true)_ allows for automatic synchronisation of MixDuration with the current overlap blend duration. An additional Spine preferences parameter `Use Blend Duration` has been added which can be disabled to default to the previous behaviour before this update.
   - Additional `SpriteMask and RectMask2D` example scene added for demonstration of mask setup and interaction.
-  - `Real physics hinge chains` for both 2D and 3D physics. The [SkeletonUtilityBone](http://esotericsoftware.com/spine-unity#SkeletonUtilityBone) Inspector provides an interface to create 2D and 3D hinge chains. Previously created chains have only been respecting gravity, but not momentum of the skeleton or parent bones. The new physics rig created when pressing `Create 3D Hinge Chain` and `Create 2D Hinge Chain` creates a more complex setup that also works when flipping the skeleton. Note that the chain root node is no longer parented to bones of the skeleton. This is a requirement in Unity to have momentum applied properly - do not reparent the chain root to bones of your skeleton, or you will loose any momentum applied by the skeleton's movement.
-  - `Outline rendering functionality for all shaders.` Every shader now provides an additional set of `Outline` parameters to enable custom outline rendering. When outline rendering is enabled via the `Material` inspector, it automatically switches the shader to the respective `Spine/Outline` shader variant. Outlines are generated by sampling neighbour pixels, so be sure to add enough transparent padding when exporting your atlas textures to fit the desired outline width. In order to enable outline rendering at a skeleton, it is recommended to first prepare an additional outline material copy and then switch the material of the target skeleton to this material. This prevents unnecessary additional runtime material copies and drawcalls. Material switching can be prepared via a [SkeletonRendererCustomMaterials](http://esotericsoftware.com/spine-unity#SkeletonRendererCustomMaterials) component and then enabled or disabled at runtime. Alternatively, you can also directly modify the `SkeletonRenderer.CustomMaterialOverride` property.
+  - `Real physics hinge chains` for both 2D and 3D physics. The [SkeletonUtilityBone](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtilityBone) Inspector provides an interface to create 2D and 3D hinge chains. Previously created chains have only been respecting gravity, but not momentum of the skeleton or parent bones. The new physics rig created when pressing `Create 3D Hinge Chain` and `Create 2D Hinge Chain` creates a more complex setup that also works when flipping the skeleton. Note that the chain root node is no longer parented to bones of the skeleton. This is a requirement in Unity to have momentum applied properly - do not reparent the chain root to bones of your skeleton, or you will loose any momentum applied by the skeleton's movement.
+  - `Outline rendering functionality for all shaders.` Every shader now provides an additional set of `Outline` parameters to enable custom outline rendering. When outline rendering is enabled via the `Material` inspector, it automatically switches the shader to the respective `Spine/Outline` shader variant. Outlines are generated by sampling neighbour pixels, so be sure to add enough transparent padding when exporting your atlas textures to fit the desired outline width. In order to enable outline rendering at a skeleton, it is recommended to first prepare an additional outline material copy and then switch the material of the target skeleton to this material. This prevents unnecessary additional runtime material copies and drawcalls. Material switching can be prepared via a [SkeletonRendererCustomMaterials](https://esotericsoftware.com/spine-unity-utility-components#SkeletonRendererCustomMaterials) component and then enabled or disabled at runtime. Alternatively, you can also directly modify the `SkeletonRenderer.CustomMaterialOverride` property.
     Outline rendering is fully supported on `SkeletonGraphic` shaders as well.
   - Added `SkeletonRenderer.EditorSkipSkinSync` scripting API property to be able to set custom skins in editor scripts. Enable this property when overwriting the Skeleton's skin from an editor script. Without setting this parameter, changes will be overwritten by the next inspector update. Only affects Inspector synchronisation of skin with `initialSkinName`, not startup initialization.
   - `AtlasUtilities.GetRepackedAttachments()` and `AtlasUtilities.GetRepackedSkin()` provide support for additional texture channels such as normal maps via the optional parameter `additionalTexturePropertyIDsToCopy `. See the spine-unity runtime documentation, section [Combining Skins - Advanced - Runtime Repacking with Normalmaps](http://esotericsoftware.com/spine-unity#Combining-Skins) for further info and example usage code.
@@ -680,7 +2033,7 @@
   - Spine Preferences now provide an **`Atlas Texture Settings`** parameter for applying customizable texture import settings at all newly imported Spine atlas textures.
     When exporting atlas textures from Spine with `Premultiply alpha` enabled (the default), you can leave it at `PMATexturePreset`. If you have disabled `Premultiply alpha`, set it to the included `StraightAlphaTexturePreset` asset. You can also create your own `TextureImporter` `Preset` asset and assign it here (include `PMA` or `Straight` in the name). In Unity versions before 2018.3 you can use `Texture2D` template assets instead of the newer `Preset` assets. Materials created for imported textures will also have the `Straight Alpha Texture` parameter configured accordingly.
   - All `Sprite` shaders (including URP and LWRP extension packages) now provide an additional `Fixed Normal Space` option `World-Space`. PReviously options were limited to `View-Space` and `Model-Space`.
-  - `SkeletonGraphic` now fully supports [`SkeletonUtility`](http://esotericsoftware.com/spine-unity#SkeletonUtility) for generating a hierarchy of [`SkeletonUtilityBones`](http://esotericsoftware.com/spine-unity#SkeletonUtilityBone) in both modes `Follow` and `Override`. This also enables creating hinge chain physics rigs and using `SkeletonUtilityConstraints` such as `SkeletonUtilityGroundConstraint` and `SkeletonUtilityEyeConstraint` on `SkeletonGraphic`.
+  - `SkeletonGraphic` now fully supports [`SkeletonUtility`](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtility) for generating a hierarchy of [`SkeletonUtilityBones`](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtilityBone) in both modes `Follow` and `Override`. This also enables creating hinge chain physics rigs and using `SkeletonUtilityConstraints` such as `SkeletonUtilityGroundConstraint` and `SkeletonUtilityEyeConstraint` on `SkeletonGraphic`.
   - Added **native support for slot blend modes** `Additive`, `Multiply` and `Screen` with automatic assignment at newly imported skeleton assets. `BlendModeMaterialAssets` are now obsolete and replaced by the native properties at `SkeletonDataAsset`. The `SkeletonDataAsset` Inspector provides a new `Blend Modes - Upgrade` button to upgrade an obsolete `BlendModeMaterialAsset` to the native blend modes properties. This upgrade will be performed automatically on imported and re-imported assets.
   - `BoneFollower` and `BoneFollowerGraphic` components now provide better support for following bones when the skeleton's Transform is not the parent of the follower's Transform. Previously e.g. rotating a common parent Transform did not lead to the desired result, as well as negatively scaling a skeleton's Transform when it is not a parent of the follower's Transform.
   - **Linear color space:** Previously Slot colors were not displayed the same in Unity as in the Spine Editor (when configured to display as `Linear` color space in Spine Editor Settings). This is now fixed at all shaders, including URP and LWRP shaders.
@@ -1019,8 +2372,8 @@
     You can leave this parameter disabled when everything is drawn correctly to save the additional performance cost.
   - **Additional Timeline features.** SpineAnimationStateClip now provides a `Speed Multiplier`, a start time offset parameter `Clip In`, support for blending successive animations by overlapping tracks. An additional `Use Blend Duration` parameter _(defaults to true)_ allows for automatic synchronisation of MixDuration with the current overlap blend duration. An additional Spine preferences parameter `Use Blend Duration` has been added which can be disabled to default to the previous behaviour before this update.
   - Additional `SpriteMask and RectMask2D` example scene added for demonstration of mask setup and interaction.
-  - `Real physics hinge chains` for both 2D and 3D physics. The [SkeletonUtilityBone](http://esotericsoftware.com/spine-unity#SkeletonUtilityBone) Inspector provides an interface to create 2D and 3D hinge chains. Previously created chains have only been respecting gravity, but not momentum of the skeleton or parent bones. The new physics rig created when pressing `Create 3D Hinge Chain` and `Create 2D Hinge Chain` creates a more complex setup that also works when flipping the skeleton. Note that the chain root node is no longer parented to bones of the skeleton. This is a requirement in Unity to have momentum applied properly - do not reparent the chain root to bones of your skeleton, or you will loose any momentum applied by the skeleton's movement.
-  - `Outline rendering functionality for all shaders.` Every shader now provides an additional set of `Outline` parameters to enable custom outline rendering. When outline rendering is enabled via the `Material` inspector, it automatically switches the shader to the respective `Spine/Outline` shader variant. Outlines are generated by sampling neighbour pixels, so be sure to add enough transparent padding when exporting your atlas textures to fit the desired outline width. In order to enable outline rendering at a skeleton, it is recommended to first prepare an additional outline material copy and then switch the material of the target skeleton to this material. This prevents unnecessary additional runtime material copies and drawcalls. Material switching can be prepared via a [SkeletonRendererCustomMaterials](http://esotericsoftware.com/spine-unity#SkeletonRendererCustomMaterials) component and then enabled or disabled at runtime. Alternatively, you can also directly modify the `SkeletonRenderer.CustomMaterialOverride` property.
+  - `Real physics hinge chains` for both 2D and 3D physics. The [SkeletonUtilityBone](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtilityBone) Inspector provides an interface to create 2D and 3D hinge chains. Previously created chains have only been respecting gravity, but not momentum of the skeleton or parent bones. The new physics rig created when pressing `Create 3D Hinge Chain` and `Create 2D Hinge Chain` creates a more complex setup that also works when flipping the skeleton. Note that the chain root node is no longer parented to bones of the skeleton. This is a requirement in Unity to have momentum applied properly - do not reparent the chain root to bones of your skeleton, or you will loose any momentum applied by the skeleton's movement.
+  - `Outline rendering functionality for all shaders.` Every shader now provides an additional set of `Outline` parameters to enable custom outline rendering. When outline rendering is enabled via the `Material` inspector, it automatically switches the shader to the respective `Spine/Outline` shader variant. Outlines are generated by sampling neighbour pixels, so be sure to add enough transparent padding when exporting your atlas textures to fit the desired outline width. In order to enable outline rendering at a skeleton, it is recommended to first prepare an additional outline material copy and then switch the material of the target skeleton to this material. This prevents unnecessary additional runtime material copies and drawcalls. Material switching can be prepared via a [SkeletonRendererCustomMaterials](https://esotericsoftware.com/spine-unity-utility-components#SkeletonRendererCustomMaterials) component and then enabled or disabled at runtime. Alternatively, you can also directly modify the `SkeletonRenderer.CustomMaterialOverride` property.
     Outline rendering is fully supported on `SkeletonGraphic` shaders as well.
   - Added `SkeletonRenderer.EditorSkipSkinSync` scripting API property to be able to set custom skins in editor scripts. Enable this property when overwriting the Skeleton's skin from an editor script. Without setting this parameter, changes will be overwritten by the next inspector update. Only affects Inspector synchronisation of skin with `initialSkinName`, not startup initialization.
   - All `Spine/SkeletonGraphic` shaders now provide a parameter `CanvasGroup Compatible` which can be enabled to support `CanvasGroup` alpha blending. For correct results, you should then disable `Pma Vertex Colors` in the `SkeletonGraphic` Inspector, in section `Advanced` (otherwise Slot alpha will be applied twice).
@@ -1046,7 +2399,7 @@
   - Spine Preferences now provide an **`Atlas Texture Settings`** parameter for applying customizable texture import settings at all newly imported Spine atlas textures.
     When exporting atlas textures from Spine with `Premultiply alpha` enabled (the default), you can leave it at `PMATexturePreset`. If you have disabled `Premultiply alpha`, set it to the included `StraightAlphaTexturePreset` asset. You can also create your own `TextureImporter` `Preset` asset and assign it here (include `PMA` or `Straight` in the name). In Unity versions before 2018.3 you can use `Texture2D` template assets instead of the newer `Preset` assets. Materials created for imported textures will also have the `Straight Alpha Texture` parameter configured accordingly.
   - All `Sprite` shaders (including URP and LWRP extension packages) now provide an additional `Fixed Normal Space` option `World-Space`. PReviously options were limited to `View-Space` and `Model-Space`.
-  - `SkeletonGraphic` now fully supports [`SkeletonUtility`](http://esotericsoftware.com/spine-unity#SkeletonUtility) for generating a hierarchy of [`SkeletonUtilityBones`](http://esotericsoftware.com/spine-unity#SkeletonUtilityBone) in both modes `Follow` and `Override`. This also enables creating hinge chain physics rigs and using `SkeletonUtilityConstraints` such as `SkeletonUtilityGroundConstraint` and `SkeletonUtilityEyeConstraint` on `SkeletonGraphic`.
+  - `SkeletonGraphic` now fully supports [`SkeletonUtility`](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtility) for generating a hierarchy of [`SkeletonUtilityBones`](https://esotericsoftware.com/spine-unity-utility-components#SkeletonUtilityBone) in both modes `Follow` and `Override`. This also enables creating hinge chain physics rigs and using `SkeletonUtilityConstraints` such as `SkeletonUtilityGroundConstraint` and `SkeletonUtilityEyeConstraint` on `SkeletonGraphic`.
   - Added `OnMeshAndMaterialsUpdated` callback event to `SkeletonRenderer` and `SkeletonGraphic`. It is issued at the end of `LateUpdate`, before rendering.
   - Added `Skeleton-OutlineOnly` single pass shader to LWRP and URP extension modules. It can be assigned to materials as `Universal Render Pipeline/Spine/Outline/Skeleton-OutlineOnly`. This allows for separate outline child _GameObjects_ that reference the existing Mesh of their parent, and re-draw the mesh using this outline shader.
   - Added example component `RenderExistingMesh` to render a mesh again with different materials, as required by the new `Skeleton-OutlineOnly` shaders.

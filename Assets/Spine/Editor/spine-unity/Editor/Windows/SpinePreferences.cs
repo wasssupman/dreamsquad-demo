@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -47,6 +47,14 @@
 #define HAS_ANY_UNSAFE_OPTIONS
 #endif
 
+#if UNITY_2017_3_OR_NEWER
+#define ALLOWS_CUSTOM_PROFILING
+#endif
+
+#if !SPINE_AUTO_UPGRADE_COMPONENTS_OFF
+#define AUTO_UPGRADE_TO_43_COMPONENTS
+#endif
+
 using System.Threading;
 using UnityEditor;
 using UnityEngine;
@@ -55,6 +63,20 @@ namespace Spine.Unity.Editor {
 
 	public class SpinePreferences : ScriptableObject {
 
+		protected struct TextureWorkflowProperties {
+			public SerializedProperty textureSettingsReference;
+			public SerializedProperty blendModeMaterialAdditive;
+			public SerializedProperty blendModeMaterialMultiply;
+			public SerializedProperty blendModeMaterialScreen;
+
+			public TextureWorkflowProperties (SerializedObject settings) {
+				textureSettingsReference = settings.FindProperty("textureSettingsReference");
+				blendModeMaterialAdditive = settings.FindProperty("blendModeMaterialAdditive");
+				blendModeMaterialMultiply = settings.FindProperty("blendModeMaterialMultiply");
+				blendModeMaterialScreen = settings.FindProperty("blendModeMaterialScreen");
+			}
+		}
+
 #if NEW_PREFERENCES_SETTINGS_PROVIDER
 		static int wasPreferencesDirCreated = 0;
 		static int wasPreferencesAssetCreated = 0;
@@ -62,11 +84,7 @@ namespace Spine.Unity.Editor {
 
 		public const string SPINE_SETTINGS_ASSET_PATH = "Assets/Editor/SpineSettings.asset";
 
-#if SPINE_TK2D
-		internal const float DEFAULT_DEFAULT_SCALE = 1f;
-#else
 		internal const float DEFAULT_DEFAULT_SCALE = 0.01f;
-#endif
 		public float defaultScale = DEFAULT_DEFAULT_SCALE;
 
 		internal const float DEFAULT_DEFAULT_MIX = 0.2f;
@@ -125,12 +143,42 @@ namespace Spine.Unity.Editor {
 			return true;
 		}
 
+		public bool ShowWorkflowMismatchDialog {
+			get { return workflowMismatchDialog; }
+			set { workflowMismatchDialog = value; }
+		}
+
+		public bool ShowSplitComponentChangeWarning {
+			get { return splitComponentChangeWarning; }
+			set {
+				if (splitComponentChangeWarning == value) return;
+
+				SerializedObject serializedSettings = new SerializedObject(this);
+				SerializedProperty splitComponentChangeProperty = serializedSettings.FindProperty("splitComponentChangeWarning");
+				splitComponentChangeProperty.boolValue = value;
+				serializedSettings.ApplyModifiedProperties();
+			}
+		}
+
 		internal const bool DEFAULT_APPLY_ADDITIVE_MATERIAL = false;
 		public bool applyAdditiveMaterial = DEFAULT_APPLY_ADDITIVE_MATERIAL;
 
-		public const string DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL = "SkeletonPMAMultiply";
-		public const string DEFAULT_BLEND_MODE_SCREEN_MATERIAL = "SkeletonPMAScreen";
-		public const string DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL = "SkeletonPMAAdditive";
+		public const string DEFAULT_TEXTURE_PRESET_STRAIGHT = "StraightAlphaPreset";
+		public const string DEFAULT_TEXTURE_PRESET_PMA = "PMATexturePreset";
+		public const string DEFAULT_TEXTURE_PRESET = DEFAULT_TEXTURE_PRESET_STRAIGHT;
+
+		public const string DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL_STRAIGHT = "SkeletonStraightMultiply";
+		public const string DEFAULT_BLEND_MODE_SCREEN_MATERIAL_STRAIGHT = "SkeletonStraightScreen";
+		public const string DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL_STRAIGHT = "SkeletonStraightAdditive";
+
+		public const string DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL_PMA = "SkeletonPMAMultiply";
+		public const string DEFAULT_BLEND_MODE_SCREEN_MATERIAL_PMA = "SkeletonPMAScreen";
+		public const string DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL_PMA = "SkeletonPMAAdditive";
+
+		public const string DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL = DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL_STRAIGHT;
+		public const string DEFAULT_BLEND_MODE_SCREEN_MATERIAL = DEFAULT_BLEND_MODE_SCREEN_MATERIAL_STRAIGHT;
+		public const string DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL = DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL_STRAIGHT;
+
 		public Material blendModeMaterialMultiply = null;
 		public Material blendModeMaterialScreen = null;
 		public Material blendModeMaterialAdditive = null;
@@ -183,6 +231,15 @@ namespace Spine.Unity.Editor {
 
 		internal const bool DEFAULT_SKELETONDATA_ASSET_NO_FILE_ERROR = true;
 		public bool skeletonDataAssetNoFileError = DEFAULT_SKELETONDATA_ASSET_NO_FILE_ERROR;
+
+		internal const bool DEFAULT_WORKFLOW_MISMATCH_DIALOG = true;
+		public bool workflowMismatchDialog = DEFAULT_WORKFLOW_MISMATCH_DIALOG;
+
+		internal const bool DEFAULT_SKELETONDATA_ASSET_MISMATCH_WARNING = true;
+		public bool skeletonDataAssetMismatchWarning = DEFAULT_SKELETONDATA_ASSET_MISMATCH_WARNING;
+
+		internal const bool DEFAULT_SPLIT_COMPONENT_CHANGE_WARNING = true;
+		public bool splitComponentChangeWarning = DEFAULT_SPLIT_COMPONENT_CHANGE_WARNING;
 
 		public const float DEFAULT_MIPMAPBIAS = -0.5f;
 
@@ -294,27 +351,43 @@ namespace Spine.Unity.Editor {
 
 					SpineEditorUtilities.ShaderPropertyField(settings.FindProperty("defaultShader"), new GUIContent("Default Shader"), SpinePreferences.DEFAULT_DEFAULT_SHADER);
 
+					TextureWorkflowProperties textureProperties = new TextureWorkflowProperties(settings);
+
+					EditorGUILayout.Space();
+					using (new GUILayout.HorizontalScope()) {
+						EditorGUILayout.PrefixLabel("Switch Texture Workflow");
+						if (GUILayout.Button(new GUIContent("Straight Alpha", "Assign straight-alpha atlas texture workflow templates."), GUILayout.Width(96)))
+							SwitchToStraightAlphaDefaults(textureProperties);
+						bool isLinearColorSpace = QualitySettings.activeColorSpace == ColorSpace.Linear;
+						using (new EditorGUI.DisabledScope(isLinearColorSpace)) {
+							if (GUILayout.Button(new GUIContent("PMA", isLinearColorSpace ?
+								"[Only supported with Gamma color space]" : "Assign PMA atlas texture workflow templates."), GUILayout.Width(64))) {
+								SwitchToPMADefaults(textureProperties);
+							}
+						}
+					}
 					EditorGUILayout.PropertyField(settings.FindProperty("setTextureImporterSettings"), new GUIContent("Apply Atlas Texture Settings", "Apply reference settings for Texture Importers."));
-					SerializedProperty textureSettingsRef = settings.FindProperty("textureSettingsReference");
-					SpineEditorUtilities.PresetAssetPropertyField(textureSettingsRef, new GUIContent("Atlas Texture Settings", "Apply the selected texture import settings at newly imported atlas textures. When exporting atlas textures from Spine with \"Premultiply alpha\" enabled (the default), you can leave it at \"PMATexturePreset\". If you have disabled \"Premultiply alpha\", set it to \"StraightAlphaTexturePreset\". You can also create your own TextureImporter Preset asset and assign it here."));
+
+					var textureSettingsRef = textureProperties.textureSettingsReference;
+					SpineEditorUtilities.PresetAssetPropertyField(textureSettingsRef, new GUIContent("Atlas Texture Settings",
+						string.Format("Apply the selected texture import settings at newly imported atlas textures.\n\n" +
+						"When exporting atlas textures from Spine with \"Premultiply alpha\" enabled (the default), assign \"{0}\". If you have disabled \"Premultiply alpha\", leave it at \"{1}\".\n\n" +
+						"You can also create your own TextureImporter Preset asset and assign it here.",
+						DEFAULT_TEXTURE_PRESET_PMA, DEFAULT_TEXTURE_PRESET_STRAIGHT)));
 					if (string.IsNullOrEmpty(textureSettingsRef.stringValue)) {
-						string[] pmaTextureSettingsReferenceGUIDS = AssetDatabase.FindAssets("PMATexturePreset");
+						string[] pmaTextureSettingsReferenceGUIDS = AssetDatabase.FindAssets(DEFAULT_TEXTURE_PRESET);
 						if (pmaTextureSettingsReferenceGUIDS.Length > 0) {
 							string assetPath = AssetDatabase.GUIDToAssetPath(pmaTextureSettingsReferenceGUIDS[0]);
 							if (!string.IsNullOrEmpty(assetPath))
 								textureSettingsRef.stringValue = assetPath;
 						}
 					}
-
-					SerializedProperty blendModeMaterialAdditive = settings.FindProperty("blendModeMaterialAdditive");
-					SerializedProperty blendModeMaterialMultiply = settings.FindProperty("blendModeMaterialMultiply");
-					SerializedProperty blendModeMaterialScreen = settings.FindProperty("blendModeMaterialScreen");
 					bool isTexturePresetPMA = IsPMAWorkflow(textureSettingsRef.stringValue);
 					EditorGUILayout.PropertyField(settings.FindProperty("applyAdditiveMaterial"),
 						new GUIContent("Apply Additive Material", "The Default Apply Additive Material setting for newly imported SkeletonDataAssets."));
-					ShowBlendModeMaterialProperty(blendModeMaterialAdditive, "Additive", isTexturePresetPMA);
-					ShowBlendModeMaterialProperty(blendModeMaterialMultiply, "Multiply", isTexturePresetPMA);
-					ShowBlendModeMaterialProperty(blendModeMaterialScreen, "Screen", isTexturePresetPMA);
+					ShowBlendModeMaterialProperty(textureProperties.blendModeMaterialAdditive, "Additive", isTexturePresetPMA);
+					ShowBlendModeMaterialProperty(textureProperties.blendModeMaterialMultiply, "Multiply", isTexturePresetPMA);
+					ShowBlendModeMaterialProperty(textureProperties.blendModeMaterialScreen, "Screen", isTexturePresetPMA);
 				}
 
 				EditorGUILayout.Space();
@@ -324,6 +397,8 @@ namespace Spine.Unity.Editor {
 					EditorGUILayout.PropertyField(settings.FindProperty("textureImporterWarning"), new GUIContent("Texture Settings Warning", "Log a warning and recommendation whenever Texture Import Settings are detected that could lead to undesired effects, e.g. white border artifacts."));
 					EditorGUILayout.PropertyField(settings.FindProperty("componentMaterialWarning"), new GUIContent("Component & Material Warning", "Log a warning and recommendation whenever Component and Material settings are not compatible."));
 					EditorGUILayout.PropertyField(settings.FindProperty("skeletonDataAssetNoFileError"), new GUIContent("SkeletonDataAsset no file Error", "Log an error when querying SkeletonData from SkeletonDataAsset with no json or binary file assigned."));
+					EditorGUILayout.PropertyField(settings.FindProperty("skeletonDataAssetMismatchWarning"), new GUIContent("SkeletonDataAsset Mismatch Warning", "Highlight AnimationReferenceAsset dropdown in red when the reference asset's SkeletonDataAsset does not match the one at the skeleton component."));
+					EditorGUILayout.PropertyField(settings.FindProperty("workflowMismatchDialog"), new GUIContent("Workflow Mismatch Dialog", "Show warning dialog when PMA atlas is detected but not supported with current project settings."));
 					SkeletonDataAsset.errorIfSkeletonFileNullGlobal = settings.FindProperty("skeletonDataAssetNoFileError").boolValue;
 				}
 
@@ -373,33 +448,80 @@ namespace Spine.Unity.Editor {
 				EditorGUILayout.LabelField("Unsafe Build Defines", EditorStyles.boldLabel);
 				using (new GUILayout.HorizontalScope()) {
 					EditorGUILayout.PrefixLabel(new GUIContent("Direct data access", "Allow unsafe direct data access. Currently affects reading .skel.bytes files, reading with fewer allocations."));
-					if (GUILayout.Button("Enable", GUILayout.Width(64)))
-						SpineBuildEnvUtility.EnableBuildDefine(SpineBuildEnvUtility.SPINE_ALLOW_UNSAFE_CODE);
 					if (GUILayout.Button("Disable", GUILayout.Width(64)))
 						SpineBuildEnvUtility.DisableBuildDefine(SpineBuildEnvUtility.SPINE_ALLOW_UNSAFE_CODE);
+					if (GUILayout.Button("Enable", GUILayout.Width(64)))
+						SpineBuildEnvUtility.EnableBuildDefine(SpineBuildEnvUtility.SPINE_ALLOW_UNSAFE_CODE);
 				}
 #endif
-
-#if SPINE_TK2D_DEFINE
-				bool isTK2DDefineSet = true;
+				GUILayout.Space(20);
+				EditorGUILayout.LabelField("Automatic Component Upgrade", EditorStyles.boldLabel);
+#if SPINE_AUTO_UPGRADE_COMPONENTS_OFF
+				bool upgradeComponentsEnabled = false;
 #else
-				bool isTK2DDefineSet = false;
+				bool upgradeComponentsEnabled = true;
 #endif
-				bool isTK2DAllowed = SpineEditorUtilities.SpineTK2DEditorUtility.IsTK2DAllowed;
-				if (SpineEditorUtilities.SpineTK2DEditorUtility.IsTK2DInstalled() || isTK2DDefineSet) {
-					GUILayout.Space(20);
-					EditorGUILayout.LabelField("3rd Party Settings", EditorStyles.boldLabel);
+				using (new GUILayout.HorizontalScope()) {
+					EditorGUILayout.PrefixLabel(new GUIContent("Split Component Upgrade",
+						"Allow automatic upgrade of skeleton components to split components new in version 4.3. " +
+						"Disable once all scenes and prefabs are migrated to avoid unnecessary editor checks."));
+					SpineEditorUtilities.EnableDisableDefineButtons(SpineBuildEnvUtility.SPINE_AUTO_UPGRADE_COMPONENTS_OFF, upgradeComponentsEnabled, invert: true);
+				}
+				using (new EditorGUI.DisabledScope(!upgradeComponentsEnabled)) {
 					using (new GUILayout.HorizontalScope()) {
-						EditorGUILayout.PrefixLabel("Define TK2D");
-						if (isTK2DAllowed && GUILayout.Button("Enable", GUILayout.Width(64)))
-							SpineEditorUtilities.SpineTK2DEditorUtility.EnableTK2D();
-						if (GUILayout.Button("Disable", GUILayout.Width(64)))
-							SpineEditorUtilities.SpineTK2DEditorUtility.DisableTK2D();
+						EditorGUILayout.PrefixLabel(new GUIContent("Upgrade Scenes & Prefabs", "Upgrades all scenes and " +
+						"prefabs in the project to split animation components new in version 4.3."));
+						if (GUILayout.Button("Upgrade All", GUILayout.Width(132))) {
+							if (EditorUtility.DisplayDialog("Upgrade All",
+								"This will open and process all scenes and prefabs in your project to upgrade Spine components to version 4.3.\n\n" +
+								"This process may take a while for large projects.\n\n" +
+								"Make sure to backup your project before proceeding.\n\n" +
+								"Continue?", "Yes, Upgrade", "Cancel")) {
+#if AUTO_UPGRADE_TO_43_COMPONENTS
+							SpineEditorUtilities.UpgradeAllScenesAndPrefabsTo43();
+#endif
+							}
+						}
 					}
-#if !SPINE_TK2D_DEFINE
-					if (!isTK2DAllowed) {
-						EditorGUILayout.LabelField("To allow TK2D support, please modify line 67 in", EditorStyles.boldLabel);
-						EditorGUILayout.LabelField("Spine/Editor/spine-unity/Editor/Util./BuildSettings.cs", EditorStyles.boldLabel);
+				}
+
+				GUILayout.Space(20);
+				EditorGUILayout.LabelField("Threading Defaults", EditorStyles.boldLabel);
+				{
+					bool useThreadedMeshGeneration = RuntimeSettings.UseThreadedMeshGeneration;
+					bool useThreadedAnimation = RuntimeSettings.UseThreadedAnimation;
+					SpineEditorUtilities.BoolRuntimePropertiesField(
+						() => RuntimeSettings.UseThreadedMeshGeneration,
+						value => RuntimeSettings.UseThreadedMeshGeneration = value,
+						new GUIContent("Threaded MeshGeneration", "Global setting for the equally named SkeletonRenderer and SkeletonGraphic Inspector parameter."));
+					SpineEditorUtilities.BoolRuntimePropertiesField(
+						() => RuntimeSettings.UseThreadedAnimation, value => RuntimeSettings.UseThreadedAnimation = value,
+						new GUIContent("Threaded Animation", "Global setting for the equally named SkeletonAnimation and SkeletonGraphic Inspector parameter."));
+
+#if SPINE_DISABLE_LOAD_BALANCING
+					bool loadBalancingEnabled = false;
+#else
+					bool loadBalancingEnabled = true;
+#endif
+					using (new GUILayout.HorizontalScope()) {
+						EditorGUILayout.PrefixLabel(new GUIContent("Load Balancing",
+							"Enable load balancing to better utilize threads." +
+							"Only has an effect when using threaded animation or threaded mesh generation."));
+						SpineEditorUtilities.EnableDisableDefineButtons(SpineBuildEnvUtility.SPINE_DISABLE_LOAD_BALANCING,
+							loadBalancingEnabled, invert: true);
+					}
+
+#if ALLOWS_CUSTOM_PROFILING
+#if SPINE_ENABLE_THREAD_PROFILING
+					bool threadProfilingEnabled = true;
+#else
+					bool threadProfilingEnabled = false;
+#endif
+					using (new GUILayout.HorizontalScope()) {
+						EditorGUILayout.PrefixLabel(new GUIContent("Thread Profiling",
+							"Enable profiling of Spine worker threads in the Unity Profiler. " +
+							"Enable only when needed, as it adds some overhead."));
+						SpineEditorUtilities.EnableDisableDefineButtons(SpineBuildEnvUtility.SPINE_ENABLE_THREAD_PROFILING, threadProfilingEnabled);
 					}
 #endif
 				}
@@ -412,6 +534,52 @@ namespace Spine.Unity.Editor {
 				}
 			}
 			EditorGUIUtility.labelWidth = prevLabelWidth;
+		}
+
+		static void AssignAssetString (SerializedProperty stringProperty, string assetName) {
+			string[] guids = AssetDatabase.FindAssets(assetName);
+			if (guids.Length > 0) {
+				string assetPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+				if (!string.IsNullOrEmpty(assetPath))
+					stringProperty.stringValue = assetPath;
+			}
+		}
+
+		static void AssignAssetReference (SerializedProperty stringProperty, string assetName) {
+			string[] guids = AssetDatabase.FindAssets(assetName);
+			if (guids.Length > 0) {
+				string assetPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+				if (!string.IsNullOrEmpty(assetPath))
+					stringProperty.objectReferenceValue = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+			}
+		}
+
+		public void SwitchToStraightAlphaDefaults () {
+			SerializedObject serializedSettings = new SerializedObject(this);
+			TextureWorkflowProperties properties = new TextureWorkflowProperties(serializedSettings);
+			SwitchToStraightAlphaDefaults(properties);
+			serializedSettings.ApplyModifiedProperties();
+		}
+
+		public void SwitchToPMADefaults () {
+			SerializedObject serializedSettings = new SerializedObject(this);
+			TextureWorkflowProperties properties = new TextureWorkflowProperties(serializedSettings);
+			SwitchToPMADefaults(properties);
+			serializedSettings.ApplyModifiedProperties();
+		}
+
+		static void SwitchToStraightAlphaDefaults (TextureWorkflowProperties properties) {
+			AssignAssetString(properties.textureSettingsReference, DEFAULT_TEXTURE_PRESET_STRAIGHT);
+			AssignAssetReference(properties.blendModeMaterialAdditive, DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL_STRAIGHT);
+			AssignAssetReference(properties.blendModeMaterialMultiply, DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL_STRAIGHT);
+			AssignAssetReference(properties.blendModeMaterialScreen, DEFAULT_BLEND_MODE_SCREEN_MATERIAL_STRAIGHT);
+		}
+
+		static void SwitchToPMADefaults (TextureWorkflowProperties properties) {
+			AssignAssetString(properties.textureSettingsReference, DEFAULT_TEXTURE_PRESET_PMA);
+			AssignAssetReference(properties.blendModeMaterialAdditive, DEFAULT_BLEND_MODE_ADDITIVE_MATERIAL_PMA);
+			AssignAssetReference(properties.blendModeMaterialMultiply, DEFAULT_BLEND_MODE_MULTIPLY_MATERIAL_PMA);
+			AssignAssetReference(properties.blendModeMaterialScreen, DEFAULT_BLEND_MODE_SCREEN_MATERIAL_PMA);
 		}
 #endif // NEW_PREFERENCES_SETTINGS_PROVIDER
 	}

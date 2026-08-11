@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -88,7 +88,7 @@ namespace Spine.Unity {
 
 		public WaitForSpineEvent (SkeletonAnimation skeletonAnimation, Spine.EventData eventDataReference, bool unsubscribeAfterFiring = true) {
 			// If skeletonAnimation is invalid, its state will be null. Subscribe handles null states just fine.
-			Subscribe(skeletonAnimation.state, eventDataReference, unsubscribeAfterFiring);
+			Subscribe(skeletonAnimation.AnimationState, eventDataReference, unsubscribeAfterFiring);
 		}
 
 		public WaitForSpineEvent (Spine.AnimationState state, string eventName, bool unsubscribeAfterFiring = true) {
@@ -97,7 +97,7 @@ namespace Spine.Unity {
 
 		public WaitForSpineEvent (SkeletonAnimation skeletonAnimation, string eventName, bool unsubscribeAfterFiring = true) {
 			// If skeletonAnimation is invalid, its state will be null. Subscribe handles null states just fine.
-			SubscribeByName(skeletonAnimation.state, eventName, unsubscribeAfterFiring);
+			SubscribeByName(skeletonAnimation.AnimationState, eventName, unsubscribeAfterFiring);
 		}
 		#endregion
 

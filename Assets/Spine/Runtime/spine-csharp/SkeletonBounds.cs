@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -75,7 +75,7 @@ namespace Spine {
 			for (int i = 0; i < slotCount; i++) {
 				Slot slot = slots[i];
 				if (!slot.bone.active) continue;
-				BoundingBoxAttachment boundingBox = slot.attachment as BoundingBoxAttachment;
+				BoundingBoxAttachment boundingBox = slot.appliedPose.attachment as BoundingBoxAttachment;
 				if (boundingBox == null) continue;
 				boundingBoxes.Add(boundingBox);
 
@@ -91,7 +91,7 @@ namespace Spine {
 				int count = boundingBox.worldVerticesLength;
 				polygon.Count = count;
 				if (polygon.Vertices.Length < count) polygon.Vertices = new float[count];
-				boundingBox.ComputeWorldVertices(slot, polygon.Vertices);
+				boundingBox.ComputeWorldVertices(skeleton, slot, polygon.Vertices);
 			}
 
 			if (updateAabb) {
