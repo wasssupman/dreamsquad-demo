@@ -7763,13 +7763,16 @@ namespace Wassup.Bridge
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
-                         m.payload.tileRange <= Wassup.Battle.Movement.GridMath.RangeToTiles(unitType.attackRange))
+                         m.payload.tileRange <= 0)
                 {
-                    // boss-mamemo 리뷰 M6 — **빈 도넛 거절.** 자장가의 안쪽 반지름은 host 사거리+1
-                    // 이라(자기 평타가 깨우는 칸 제외) tileRange 가 사거리 이하이면 후보 칸이
-                    // **구조적으로 0** 이다. 위 가드가 막겠다고 선언한 "왜 아무도 안 자는지 모른다"가
-                    // 바로 여기서 재현되므로 같은 급으로 끊는다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 의 tileRange({m.payload.tileRange}) 가 사거리({unitType.attackRange}타일) 이하라 도넛이 비어 아무도 못 잰다 — skipped. 사거리보다 최소 2 크게 잡아라.");
+                    // boss-mamemo 리뷰 M6 — 반경 0 은 host 셀만 보므로 사실상 아무도 못 잰다
+                    // (방어유닛은 보스와 같은 칸에 서지 않는다). 위 가드가 막겠다고 선언한
+                    // "왜 아무도 안 자는지 모른다" 가 여기서도 재현되므로 같은 급으로 끊는다.
+                    //
+                    // ⚠ 한때 이 가드는 «tileRange <= 사거리» 였다(도넛 설계 시절). 도넛은
+                    // **실측으로 폐기**됐다 — 붙는 보스는 사거리 안에서 대부분의 시간을 보내
+                    // 도넛 후보가 마르고 조우당 1회밖에 안 터졌다. 지금은 전 범위 + rank 제외다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)

@@ -82,16 +82,14 @@ namespace Wassup.Tests.PlayMode
             slot.elapsed = 0f;
             slots[lullaby] = slot;
 
-            // 두 방어유닛을 마메모 기준 안/밖으로 옮긴다.
-            //   near = **정확히 사거리 링**(Chebyshev == attackTiles) — 여기가 함정이다.
-            //          공격 판정이 `tileDist > tileRange` 라 이 링은 **때릴 수 있는 칸**이고,
-            //          도넛의 min 이 inclusive 라 +1 을 빠뜨리면 바로 이 칸이 재워진다.
-            //          그리고 보스는 방어유닛을 사냥해 붙으므로 대상이 스스로 이 링에 선다 =
-            //          최빈 케이스다. Chebyshev 1 로 두면 이 경계를 비껴가 구멍이 열린다.
-            //   far  = Chebyshev sleepRange (도넛 바깥 경계 → 재워야 한다)
+            // 규칙은 **rank 제외**다(도넛 아님 — 도넛은 실측으로 폐기됐다, unit 1 문서 참조):
+            // 거리 오름차순 앞에서부터 `attackTargetCount` 기가 **사거리 안이면** 건너뛴다.
+            // 마메모는 attackTargetCount 1 이므로:
+            //   near = 사거리 안 최근접 1기 → **제외**(자기 평타가 곧 깨울 대상)
+            //   far  = 그 밖 → **재운다**
             int attackTiles = AttackTilesOf(em, boss);
-            Assert.Greater(sleepRange, attackTiles + 1,
-                $"저작 sanity: tileRange({sleepRange}) 가 사거리({attackTiles})+1 보다 커야 도넛에 칸이 남는다");
+            Assert.Greater(sleepRange, attackTiles,
+                $"저작 sanity: tileRange({sleepRange}) 가 사거리({attackTiles})보다 커야 밖에 후보가 남는다");
             float tile = ResolveTileSize(em);
             float3 bossPos = em.GetComponentData<LocalTransform>(boss).Position;
             MoveTo(em, eNear, bossPos + new float3(attackTiles * tile, 0f, 0f));
@@ -109,7 +107,8 @@ namespace Wassup.Tests.PlayMode
 
             Assert.IsTrue(farAsleep, "사거리 밖 방어유닛이 잔다 (자장가 발동)");
             Assert.IsFalse(HasCc(em, eNear, CcKind.Sleep),
-                "**사거리 링**의 방어유닛은 안 잔다 — 재우면 마메모 자기 평타가 곧바로 깨워 자기무효화된다");
+                "사거리 안 **최근접 1기**(= 이번 평타 대상)는 안 잔다 — 재워봤자 곧바로 깨운다. "
+                + "단 그 1기만이다: 링 전체를 빼면 붙은 보스의 후보가 통째로 말라 능력이 죽는다");
         }
 
         // 계약: 마메모 자신은 보스라 CC 면역이다("재우는 보스가 자기는 안 잔다").

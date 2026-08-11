@@ -132,12 +132,18 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, SelectRing(cells, new int2(1, 1), 0, -1).Length);
         }
 
-        // 리뷰 H1 회귀 가드 — **사거리 링과 수면 링은 겹치면 안 된다.**
-        // 공격 판정이 `tileDist > tileRange` 면 skip 이라 **경계 링 자체가 사거리 안**이고,
-        // SelectRing 의 min 은 inclusive 다. 그래서 호출처는 `attackTiles + 1` 을 넘겨야 한다.
-        // 여기서 고정하는 것은 그 산수다: min=attackTiles 로 부르면 사거리 링이 딸려온다.
+        // 경계 산수 고정 — `min` 은 **inclusive** 다.
+        //
+        // 자장가는 한때 이 min 에 host 사거리를 넣어 «때릴 수 있는 칸» 을 빼려 했다.
+        // 두 함정이 연달아 있었다: ① 공격 판정이 `tileDist > tileRange` 면 skip 이라
+        // **경계 링 자체가 사거리 안**이고 min 은 inclusive 라 `+1` 이 필요했다.
+        // ② 그걸 고쳐도 **설계가 틀렸다** — 붙는 보스는 사거리 안에서 대부분의 시간을 보내
+        // 도넛 후보가 말라 능력이 조우당 1회로 떨어졌다(실측). 지금은 전 범위 + rank 제외다.
+        //
+        // 이 테스트는 그 히스토리가 아니라 **min inclusive** 라는 사실만 고정한다 —
+        // 누가 다시 링을 빼려 할 때 `+1` 을 빼먹지 않게.
         [Test]
-        public void Ring_MinMustBeAttackTilesPlusOne_ToExcludeAttackableRing()
+        public void Ring_MinIsInclusive_SoExcludingARingNeedsPlusOne()
         {
             var host = new int2(0, 0);
             const int attackTiles = 2;
@@ -146,9 +152,9 @@ namespace Wassup.Tests.EditMode
                 new int2(attackTiles, 0),     // 0: 사거리 링 — 때릴 수 있다 → 재우면 안 된다
                 new int2(attackTiles + 1, 0), // 1: 첫 안전 링
             };
-            // 잘못된 호출(min = attackTiles): 사거리 링이 딸려온다 — 이게 H1 이었다.
+            // min = attackTiles: 사거리 링이 **딸려온다**(inclusive).
             CollectionAssert.AreEqual(new[] { 0, 1 }, SelectRing(cells, host, attackTiles, 4));
-            // 올바른 호출(min = attackTiles + 1): 사거리 링 제외.
+            // min = attackTiles + 1: 사거리 링 제외.
             CollectionAssert.AreEqual(new[] { 1 }, SelectRing(cells, host, attackTiles + 1, 4));
         }
     }

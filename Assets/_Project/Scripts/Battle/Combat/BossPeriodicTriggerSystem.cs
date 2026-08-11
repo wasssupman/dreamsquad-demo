@@ -216,20 +216,21 @@ namespace Wassup.Battle.Combat
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
 
-                                    // 도넛의 안쪽 반지름 = host 사거리 **+1**. 사거리 안은 어차피
-                                    // 자기 평타가 깨우므로 재우면 자기무효화다(AuraPulse 주석).
-                                    // FSM·공격이 "때릴 수 있나" 를 재는 것과 **같은 변환**
-                                    // (GridMath.RangeToTiles)을 쓰되, 그 둘은 `<=` 판정이라
-                                    // **경계 링 자체가 사거리 안**이다(AttackSystem: `tileDist >
-                                    // tileRange` 면 skip). SelectRing 의 min 은 inclusive 이므로
-                                    // +1 을 해야 «때릴 수 있는 칸» 과 «재우는 칸» 이 겹치지 않는다.
-                                    // 그리고 마메모는 방어유닛을 사냥해 **붙는** 보스라 대상이 스스로
-                                    // 경계 링으로 들어온다 — 여기서 1 을 빠뜨리면 최빈 케이스가 곧
-                                    // 자기무효화가 된다.
-                                    int attackTiles = SystemAPI.HasComponent<AttackState>(entity)
-                                        ? GridMath.RangeToTiles(SystemAPI.GetComponent<AttackState>(entity).range)
-                                        : -1;
-                                    AuraPulse.SelectRing(poolCells, hostCell, attackTiles + 1, slot.tileRange, ref pulseTargets);
+                                    // **전 범위**를 후보로 잡는다. 제외는 «내가 지금 때릴 대상»
+                                    // 뿐이고, 그건 아래 cap 선별 뒤 rank 로 뺀다.
+                                    //
+                                    // ⚠ 여기를 도넛(안쪽 반지름 = 사거리)으로 만들면 **능력이 죽는다.**
+                                    // 실측(12초 조우, 방어유닛 4기): 보스는 사냥해서 **붙기 때문에**
+                                    // 조우의 대부분을 사거리 안에서 보내고(268프레임) 도넛은 접근
+                                    // 중에만 점유된다(85프레임) → 자장가가 3.5초 주기인데도
+                                    // **조우당 1회**밖에 안 터졌다. 사용자 보고 "재우는 효과가
+                                    // 발생하지 않는다" 의 실체가 이것이다.
+                                    //
+                                    // 원래 걱정(자기 평타가 재운 유닛을 깨운다)은 사실이지만 규모가
+                                    // 다르다 — `attackTargetCount` 는 1 이라 **한 번에 1기만** 깨우고
+                                    // 나머지는 계속 잔다. 링 전체를 빼는 건 1/3 낭비를 막으려다
+                                    // 발동 자체를 없앤 과잉이었다.
+                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
 
                                     // 후보를 거리²로 좁힌 뒤 cap 적용 — 형제 경로(실드파열
                                     // AreaSleep)와 같은 선별기. 배제는 여기서 끝내야 cap 자리를
@@ -245,16 +246,33 @@ namespace Wassup.Battle.Combat
                                         pulsePicked.Add(pulseTargets[ti]);
                                         pulseDistSq.Add(math.distancesq(poolTransforms[pulseTargets[ti]].Position, hostPos));
                                     }
-                                    // SelectNearest 가 results 를 비우고 채운다 — pulseTargets 는
-                                    // 이미 pulsePicked 로 복사됐으므로 출력으로 재사용해도 안전하다.
-                                    AoeTargetCap.SelectNearest(pulseDistSq.AsArray(), cap, ref pulseTargets);
+                                    // **「내가 때릴 대상」만 rank 로 뺀다.**
+                                    // host 가 이번 공격에 때릴 수 있는 수 = attackTargetCount 이고,
+                                    // AttackSystem 은 사거리 안 **가까운 순**으로 고른다. 그래서 거리
+                                    // 오름차순 정렬의 **앞에서부터 그 수만큼**, 그리고 **사거리 안일
+                                    // 때만** 건너뛰면 «재우자마자 자기가 깨우는» 자리만 정확히 빠진다.
+                                    // 링 전체를 빼면 붙은 보스의 후보가 통째로 마른다(위 주석).
+                                    int skipCount = SystemAPI.HasComponent<AttackState>(entity)
+                                        ? math.max(0, SystemAPI.GetComponent<AttackState>(entity).attackTargetCount)
+                                        : 0;
+                                    int attackTiles = SystemAPI.HasComponent<AttackState>(entity)
+                                        ? GridMath.RangeToTiles(SystemAPI.GetComponent<AttackState>(entity).range)
+                                        : -1;
+                                    // 뺄 만큼 더 뽑아야 실제 재우는 수가 cap 을 유지한다.
+                                    AoeTargetCap.SelectNearest(pulseDistSq.AsArray(), cap + skipCount, ref pulseTargets);
 
-                                    int slept = 0;
-                                    for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                    int slept = 0, skipped = 0;
+                                    for (int ti = 0; ti < pulseTargets.Length && slept < cap; ti++)
                                     {
+                                        int pick = pulsePicked[pulseTargets[ti]];
+                                        if (skipped < skipCount)
+                                        {
+                                            int cheb = GridMath.ChebyshevDistance(poolCells[pick], hostCell);
+                                            if (cheb <= attackTiles) { skipped++; continue; }
+                                        }
                                         ccRW.ValueRW.queue.Enqueue(new EnemyCcEvent
                                         {
-                                            target = poolEntities[pulsePicked[pulseTargets[ti]]],
+                                            target = poolEntities[pick],
                                             effect = new CcEffect
                                             {
                                                 kind = CcKind.Sleep,
