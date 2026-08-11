@@ -81,7 +81,7 @@ MonoBehaviour:
       kind: 16
       magnitude: 3
       projectile: {fileID: 0}
-      tileRange: 5
+      tileRange: 3
       duration: 4
       auraPrefab: {fileID: 0}
       auraScale: 0
