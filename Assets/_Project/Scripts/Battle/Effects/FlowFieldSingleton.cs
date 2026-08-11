@@ -10,7 +10,8 @@ namespace Wassup.Battle.Effects
     public struct FlowFieldSingleton : IComponentData
     {
         // traversal-layers unit 1a — 라우팅은 **슬롯별 flat stride** 다: `[slot * CellCount + cell]`.
-        // 슬롯 = 통행 마스크 하나. 지금은 슬롯 1개뿐이라 인덱스가 셀 인덱스와 같지만,
+        // waypoint-routing unit 1 — 슬롯 = (목적지, 통행 마스크). 경로 없는 맵은
+        // (골, Path) 1개뿐이라 인덱스가 셀 인덱스와 같지만,
         // **직접 인덱싱하지 말고 `FlowSlot(slot)` / `DistSlot(slot)` 뷰를 쓸 것** — 슬롯이
         // 늘어나는 순간(unit 1b) 직접 인덱싱은 조용히 다른 슬롯을 읽는다.
         //
@@ -18,11 +19,14 @@ namespace Wassup.Battle.Effects
         // 2개 이상이면 throw 한다. 이 컴포넌트 소비처 15곳 중 11곳은 라우팅을 아예 안 읽고
         // tileSize/gridSize/origin(=기하)만 읽는다. 그래서 **기하는 1벌, 라우팅만 N벌**이며
         // 둘은 한 컴포넌트 안에 산다. (`NativeArray<NativeArray<T>>` 는 불법이라 stride 다.)
-        public NativeArray<float2> flow;        // [MaskCount * CellCount] 단위 방향. goal = zero.
-        public NativeArray<int>    dist;        // [MaskCount * CellCount] 골까지 남은 비용. 도달불가 = int.MaxValue.
+        public NativeArray<float2> flow;        // [SlotCount * CellCount] 단위 방향. 목적지 = zero.
+        public NativeArray<int>    dist;        // [SlotCount * CellCount] 목적지까지 남은 비용. 도달불가 = int.MaxValue.
         // 슬롯 → 그 슬롯이 라우팅하는 통행 마스크 값. **오름차순**(결정론, 계약 5).
         // 미생성 = 슬롯 1개(primary). IsCreated 불변식에는 넣지 않는다(픽스처 보호).
         public NativeArray<byte>   maskValues;
+        // 슬롯 → 목적지 셀. GoalSentinel 이면 goals 전체를 소스로 쓰는 골 슬롯.
+        // 미생성 = 전 슬롯 골(직접 초기화 픽스처 보호).
+        public NativeArray<int2>   destCells;
         // continuous-agent-movement unit 1 — 정적 walk 마스크(1 = tiles == Walk)의 단일 소유자.
         // 이전엔 DefenderFieldSingleton 이 들고 있었다(그쪽 주석: "goal field 가 저장하지 않는 값").
         // 정적 벽은 goal field 가 정본이므로 이리로 옮겼고, DefenderFieldSystem 은 읽기만 한다.
@@ -57,24 +61,34 @@ namespace Wassup.Battle.Effects
         // CellCount 를 필드로 두지 않고 gridSize 에서 파생한다 — 직접 초기화하는 EditMode
         // 픽스처 수십 개가 새 필드를 안 채워도 그대로 서게 하기 위함이다.
         public int CellCount => gridSize.x * gridSize.y;
-        public int MaskCount => (flow.IsCreated && CellCount > 0) ? flow.Length / CellCount : 1;
+        public int SlotCount => (flow.IsCreated && CellCount > 0) ? flow.Length / CellCount : 1;
+        // traversal-layers 시절 이름을 호출처 호환용으로 유지. 이제 값은 마스크 종류 수가
+        // 아니라 (목적지 × 마스크) 슬롯 수다.
+        public int MaskCount => SlotCount;
 
         public const int PrimarySlot = 0;
+        public static int2 GoalSentinel => new int2(-1, -1);
 
         // 슬롯 → 그 슬롯의 통행 마스크. maskValues 미생성(픽스처)이면 기본 슬롯 마스크.
         public byte MaskAt(int slot)
             => (maskValues.IsCreated && slot < maskValues.Length)
                 ? maskValues[slot] : TraversalSlots.DefaultMask;
 
-        // 유닛의 통행 층 → 슬롯. 못 찾으면 primary(현행 동작) — 마스크 미부착 엔티티와
-        // 픽스처가 그대로 돈다.
-        public int SlotFor(byte unitLayers)
+        public int2 DestinationAt(int slot)
+            => (destCells.IsCreated && slot < destCells.Length)
+                ? destCells[slot] : GoalSentinel;
+
+        // (목적지, 유닛 통행 층) → 슬롯. 완전일치가 없으면 primary(현행 안전망).
+        public int SlotFor(int2 destCell, byte unitLayers)
         {
             if (!maskValues.IsCreated) return PrimarySlot;
             for (int i = 0; i < maskValues.Length; i++)
-                if (maskValues[i] == unitLayers) return i;
+                if (maskValues[i] == unitLayers && DestinationAt(i).Equals(destCell)) return i;
             return PrimarySlot;
         }
+
+        // 기존 호출처는 골 목적지를 묻는 것으로 해석한다.
+        public int SlotFor(byte unitLayers) => SlotFor(GoalSentinel, unitLayers);
 
         // 슬롯의 라우팅을 **길이 CellCount 인 뷰**로 준다. 소비자(순수 함수 포함)는 stride 를
         // 모른 채 0..n-1 로 인덱싱하면 된다.
@@ -103,6 +117,7 @@ namespace Wassup.Battle.Effects
             if (walkMask.IsCreated) walkMask.Dispose();
             if (cellLayers.IsCreated) cellLayers.Dispose();
             if (maskValues.IsCreated) maskValues.Dispose();
+            if (destCells.IsCreated) destCells.Dispose();
         }
     }
 }

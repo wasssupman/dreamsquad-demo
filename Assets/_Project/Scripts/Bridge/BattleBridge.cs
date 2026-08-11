@@ -857,8 +857,42 @@ namespace Wassup.Bridge
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
-            // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
-            SimFieldInstaller.InstallNavFields(_em, in _generatedMap, tileSize, _boardOrigin, ref _simFields);
+            // waypoint-routing unit 1 — 이번 판 공격 로스터의 통행층 합집합. Default(Path)는
+            // 설치자가 슬롯 0에 고정하며, 여기서는 실제 SO 저작값을 중복 없이 전달한다.
+            var traversalMasks = new NativeList<byte>(4, Allocator.Temp);
+            try
+            {
+                var attackPool = ActiveDeck != null ? ActiveDeck.ResolveAttackUnitPool() : null;
+                if (attackPool != null)
+                    for (int i = 0; i < attackPool.Length; i++)
+                        AddTraversalMask(attackPool[i], ref traversalMasks);
+
+                if (ActiveDeck != null)
+                {
+                    AddTraversalMask(ActiveDeck.bossUnit, ref traversalMasks);
+                    if (ActiveDeck.bossPool != null)
+                        for (int i = 0; i < ActiveDeck.bossPool.Length; i++)
+                            AddTraversalMask(ActiveDeck.bossPool[i], ref traversalMasks);
+                }
+
+                // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
+                SimFieldInstaller.InstallNavFields(
+                    _em, in _generatedMap, tileSize, _boardOrigin, ref _simFields,
+                    traversalMasks.AsArray());
+            }
+            finally
+            {
+                traversalMasks.Dispose();
+            }
+        }
+
+        private static void AddTraversalMask(AttackUnitData unit, ref NativeList<byte> masks)
+        {
+            if (unit == null) return;
+            byte candidate = (byte)unit.EffectiveTraversalLayers;
+            for (int i = 0; i < masks.Length; i++)
+                if (masks[i] == candidate) return;
+            masks.Add(candidate);
         }
 
         // battle-structures unit 0 — goal-stability 의 SpawnGoalEntities 를 제거했다.
