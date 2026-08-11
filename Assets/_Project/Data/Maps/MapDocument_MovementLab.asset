@@ -24,5 +24,13 @@ MonoBehaviour:
   spawns:
   - {x: 16, y: 5}
   - {x: 20, y: 2}
+  waypointPaths:
+  - cells:
+    - {x: 16, y: 10}
+    - {x: 8, y: 10}
+  - cells:
+    - {x: 16, y: 4}
+    - {x: 12, y: 7}
+    - {x: 4, y: 7}
   authoringSeed: -1
   generatorVersion: 0

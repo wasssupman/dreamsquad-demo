@@ -74,9 +74,10 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(ea.Count, eb.Count, $"wave {i} entry count");
                 for (int e = 0; e < ea.Count; e++)
                 {
-                    Assert.AreSame(ea[e].unitType, eb[e].unitType, $"wave {i} entry {e} unit");
-                    Assert.AreEqual(ea[e].triggerTimeSec, eb[e].triggerTimeSec, 0.0001f, $"wave {i} entry {e} time");
-                    Assert.AreEqual(ea[e].spawnIndex, eb[e].spawnIndex, $"wave {i} entry {e} lane");
+                    Assert.AreSame(ea[e].entry.unitType, eb[e].entry.unitType, $"wave {i} entry {e} unit");
+                    Assert.AreEqual(ea[e].entry.triggerTimeSec, eb[e].entry.triggerTimeSec, 0.0001f, $"wave {i} entry {e} time");
+                    Assert.AreEqual(ea[e].laneIndex, eb[e].laneIndex, $"wave {i} entry {e} lane");
+                    Assert.AreEqual(ea[e].swarmIndex, eb[e].swarmIndex, $"wave {i} entry {e} swarm");
                 }
             }
         }
@@ -99,12 +100,12 @@ namespace Wassup.Tests.EditMode
                 var entries = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.35f);
 
                 Assert.AreEqual(6, entries.Count);
-                Assert.AreEqual(a, entries[0].unitType); // round 0: A,B,C
-                Assert.AreEqual(b, entries[1].unitType);
-                Assert.AreEqual(c, entries[2].unitType);
-                Assert.AreEqual(b, entries[3].unitType); // round 1: (A done) B,C
-                Assert.AreEqual(c, entries[4].unitType);
-                Assert.AreEqual(b, entries[5].unitType); // round 2: only B
+                Assert.AreEqual(a, entries[0].entry.unitType); // round 0: A,B,C
+                Assert.AreEqual(b, entries[1].entry.unitType);
+                Assert.AreEqual(c, entries[2].entry.unitType);
+                Assert.AreEqual(b, entries[3].entry.unitType); // round 1: (A done) B,C
+                Assert.AreEqual(c, entries[4].entry.unitType);
+                Assert.AreEqual(b, entries[5].entry.unitType); // round 2: only B
             }
             finally
             {
@@ -136,9 +137,9 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(wave.totalCount, entries.Count);
             for (int i = 0; i < entries.Count; i++)
             {
-                Assert.AreEqual(12f + i * plan.intraWaveSpacingSec, entries[i].triggerTimeSec, 0.0001f);
-                Assert.AreEqual(i % 3, entries[i].spawnIndex);
-                Assert.NotNull(entries[i].unitType);
+                Assert.AreEqual(12f + i * plan.intraWaveSpacingSec, entries[i].entry.triggerTimeSec, 0.0001f);
+                Assert.AreEqual(i % 3, entries[i].laneIndex);
+                Assert.NotNull(entries[i].entry.unitType);
             }
         }
 
@@ -152,12 +153,12 @@ namespace Wassup.Tests.EditMode
                 var wave = new GeneratedWave(0, 0f, a, 2, b, 4);
                 var entries = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.35f);
 
-                Assert.AreEqual(a, entries[0].unitType);
-                Assert.AreEqual(b, entries[1].unitType);
-                Assert.AreEqual(a, entries[2].unitType);
-                Assert.AreEqual(b, entries[3].unitType);
-                Assert.AreEqual(b, entries[4].unitType);
-                Assert.AreEqual(b, entries[5].unitType);
+                Assert.AreEqual(a, entries[0].entry.unitType);
+                Assert.AreEqual(b, entries[1].entry.unitType);
+                Assert.AreEqual(a, entries[2].entry.unitType);
+                Assert.AreEqual(b, entries[3].entry.unitType);
+                Assert.AreEqual(b, entries[4].entry.unitType);
+                Assert.AreEqual(b, entries[5].entry.unitType);
             }
             finally
             {
@@ -245,11 +246,11 @@ namespace Wassup.Tests.EditMode
                 var entries = WavePatternGenerator.ExpandWave(wave, 100f, 2, 0.35f); // intraWaveSpacing 무시됨
 
                 Assert.AreEqual(5, entries.Count);
-                Assert.AreEqual(a, entries[0].unitType); Assert.AreEqual(100f, entries[0].triggerTimeSec, 0.0001f);
-                Assert.AreEqual(a, entries[1].unitType); Assert.AreEqual(100.5f, entries[1].triggerTimeSec, 0.0001f);
-                Assert.AreEqual(a, entries[2].unitType); Assert.AreEqual(101f, entries[2].triggerTimeSec, 0.0001f);
-                Assert.AreEqual(b, entries[3].unitType); Assert.AreEqual(104f, entries[3].triggerTimeSec, 0.0001f);
-                Assert.AreEqual(b, entries[4].unitType); Assert.AreEqual(104.5f, entries[4].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(a, entries[0].entry.unitType); Assert.AreEqual(100f, entries[0].entry.triggerTimeSec, 0.0001f);
+                Assert.AreEqual(a, entries[1].entry.unitType); Assert.AreEqual(100.5f, entries[1].entry.triggerTimeSec, 0.0001f);
+                Assert.AreEqual(a, entries[2].entry.unitType); Assert.AreEqual(101f, entries[2].entry.triggerTimeSec, 0.0001f);
+                Assert.AreEqual(b, entries[3].entry.unitType); Assert.AreEqual(104f, entries[3].entry.triggerTimeSec, 0.0001f);
+                Assert.AreEqual(b, entries[4].entry.unitType); Assert.AreEqual(104.5f, entries[4].entry.triggerTimeSec, 0.0001f);
             }
             finally
             {

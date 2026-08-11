@@ -42,6 +42,7 @@ namespace Wassup.Battle.Combat.Projectile
             // place (that buffer is the damage source when present) — bounce unit 2.
             var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
+            var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
             // defender-directional-volley unit 2 — per-projectile victim record so a
             // path sweep damages each target once (read-only: appends go through the
             // ECB alongside the damage that earned them).
@@ -83,8 +84,13 @@ namespace Wassup.Battle.Combat.Projectile
             // Positions snapshot for the pure BounceRetarget.FindNext (architecture-
             // neutral: it takes float3, not LocalTransform/Entity) — bounce unit 2.
             var aoePositions = new NativeArray<float3>(aoeTransforms.Length, Allocator.Temp);
+            var aoeTraversalLayers = new NativeArray<byte>(aoeTransforms.Length, Allocator.Temp);
             for (int i = 0; i < aoeTransforms.Length; i++)
+            {
                 aoePositions[i] = aoeTransforms[i].Position;
+                if (pathFollowLookup.HasComponent(aoeEntities[i]))
+                    aoeTraversalLayers[i] = pathFollowLookup[aoeEntities[i]].traversalLayers;
+            }
 
             // nightmare-catcher unit 4 — defender pool for the faction-
             // parameterized TileAoe (boss AreaBarrage hits defenders, HIGH-1).
@@ -120,6 +126,10 @@ namespace Wassup.Battle.Combat.Projectile
             var victimEntities = victimQuery.ToEntityArray(Allocator.Temp);
             var victimTransforms = victimQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var victimFactions = victimQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+            var victimTraversalLayers = new NativeArray<byte>(victimEntities.Length, Allocator.Temp);
+            for (int i = 0; i < victimEntities.Length; i++)
+                if (pathFollowLookup.HasComponent(victimEntities[i]))
+                    victimTraversalLayers[i] = pathFollowLookup[victimEntities[i]].traversalLayers;
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
@@ -171,7 +181,15 @@ namespace Wassup.Battle.Combat.Projectile
                     case PayloadKind.SingleSplash:
                     {
                         var target = projectile.ValueRO.target;
-                        if (target != Entity.Null && transformLookup.HasComponent(target))
+                        byte directTargetLayers = target != Entity.Null
+                            && pathFollowLookup.HasComponent(target)
+                            ? pathFollowLookup[target].traversalLayers
+                            : (byte)0;
+                        if (target != Entity.Null
+                            && transformLookup.HasComponent(target)
+                            && PlacementLayers.CanTarget(
+                                projectile.ValueRO.targetTraversalLayers,
+                                directTargetLayers))
                         {
                             float3 targetPos = transformLookup[target].Position;
 
@@ -279,6 +297,9 @@ namespace Wassup.Battle.Combat.Projectile
                                 {
                                     var candidate = aoeEntities[i];
                                     if (candidate == target) continue;
+                                    if (!PlacementLayers.CanTarget(
+                                            projectile.ValueRO.targetTraversalLayers,
+                                            aoeTraversalLayers[i])) continue;
                                     float dx = aoeTransforms[i].Position.x - aoeCenter.x;
                                     float dz = aoeTransforms[i].Position.z - aoeCenter.z;
                                     if (dx * dx + dz * dz > splashRadiusSq) continue;
@@ -320,7 +341,8 @@ namespace Wassup.Battle.Combat.Projectile
                                     if (aoeEntities[i] == target) { excludeIdx = i; break; }
 
                                 int nextIdx = BounceRetarget.FindNext(
-                                    targetPos, excludeIdx, aoePositions,
+                                    targetPos, excludeIdx, aoePositions, aoeTraversalLayers,
+                                    projectile.ValueRO.targetTraversalLayers,
                                     projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
 
                                 if (nextIdx >= 0)
@@ -380,6 +402,9 @@ namespace Wassup.Battle.Combat.Projectile
                         var sweptDist = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < aoeEntities.Length; i++)
                         {
+                            if (!PlacementLayers.CanTarget(
+                                    projectile.ValueRO.targetTraversalLayers,
+                                    aoeTraversalLayers[i])) continue;
                             float2 victimPos = aoePositions[i].xz;
                             if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius)) continue;
                             if (pathHitRecordLookup.HasBuffer(entity) &&
@@ -468,7 +493,8 @@ namespace Wassup.Battle.Combat.Projectile
                         if (!survives && next.bounceRemaining > 0 && lastVictimIdx >= 0)
                         {
                             int nextIdx = BounceRetarget.FindNext(
-                                lastVictimPos, lastVictimIdx, aoePositions,
+                                lastVictimPos, lastVictimIdx, aoePositions, aoeTraversalLayers,
+                                next.targetTraversalLayers,
                                 next.bounceTileRange, tileSize, gridSize, ffOrigin);
                             if (nextIdx >= 0)
                             {
@@ -536,6 +562,9 @@ namespace Wassup.Battle.Combat.Projectile
                         {
                             // unit 9 — 상대 진영만. 이 한 줄이 «자기편 오폭» 을 막는다.
                             if (((int)victimFactions[i].value & wantMask) == 0) continue;
+                            if (!PlacementLayers.CanTarget(
+                                    projectile.ValueRO.targetTraversalLayers,
+                                    victimTraversalLayers[i])) continue;
                             float3 vpos = victimTransforms[i].Position;
                             int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
@@ -607,9 +636,11 @@ namespace Wassup.Battle.Combat.Projectile
             aoeEntities.Dispose();
             aoeTransforms.Dispose();
             aoePositions.Dispose();
+            aoeTraversalLayers.Dispose();
             victimEntities.Dispose();
             victimTransforms.Dispose();
             victimFactions.Dispose();
+            victimTraversalLayers.Dispose();
         }
     }
 }

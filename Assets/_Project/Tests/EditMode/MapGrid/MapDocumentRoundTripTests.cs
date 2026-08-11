@@ -205,8 +205,11 @@ namespace Wassup.Tests.EditMode.MapGrid
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
-                byte expected = (byte)(y == 2 ? PlacementLayer.Path : PlacementLayer.Ground);
-                Assert.AreEqual(expected, map.placeMask[y * w + x], $"placeMask[{x},{y}] — 복도행=경로, 나머지=지면");
+                byte expected = y == 2
+                    ? (byte)(PlacementLayer.Path | PlacementLayer.Air)
+                    : (byte)(PlacementLayer.Ground | PlacementLayer.Air);
+                Assert.AreEqual(expected, map.placeMask[y * w + x],
+                    $"placeMask[{x},{y}] — 복도행=경로|Air, 나머지=지면|Air");
             }
 
             ScriptableObject.DestroyImmediate(doc);

@@ -492,7 +492,7 @@ namespace Wassup.Bridge
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
-            public int deckIndex;
+            public int laneIndex;
         }
 
         private void Awake()
@@ -857,8 +857,42 @@ namespace Wassup.Bridge
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
-            // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
-            SimFieldInstaller.InstallNavFields(_em, in _generatedMap, tileSize, _boardOrigin, ref _simFields);
+            // waypoint-routing unit 1 — 이번 판 공격 로스터의 통행층 합집합. Default(Path)는
+            // 설치자가 슬롯 0에 고정하며, 여기서는 실제 SO 저작값을 중복 없이 전달한다.
+            var traversalMasks = new NativeList<byte>(4, Allocator.Temp);
+            try
+            {
+                var attackPool = ActiveDeck != null ? ActiveDeck.ResolveAttackUnitPool() : null;
+                if (attackPool != null)
+                    for (int i = 0; i < attackPool.Length; i++)
+                        AddTraversalMask(attackPool[i], ref traversalMasks);
+
+                if (ActiveDeck != null)
+                {
+                    AddTraversalMask(ActiveDeck.bossUnit, ref traversalMasks);
+                    if (ActiveDeck.bossPool != null)
+                        for (int i = 0; i < ActiveDeck.bossPool.Length; i++)
+                            AddTraversalMask(ActiveDeck.bossPool[i], ref traversalMasks);
+                }
+
+                // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
+                SimFieldInstaller.InstallNavFields(
+                    _em, in _generatedMap, tileSize, _boardOrigin, ref _simFields,
+                    traversalMasks.AsArray());
+            }
+            finally
+            {
+                traversalMasks.Dispose();
+            }
+        }
+
+        private static void AddTraversalMask(AttackUnitData unit, ref NativeList<byte> masks)
+        {
+            if (unit == null) return;
+            byte candidate = (byte)unit.EffectiveTraversalLayers;
+            for (int i = 0; i < masks.Length; i++)
+                if (masks[i] == candidate) return;
+            masks.Add(candidate);
         }
 
         // battle-structures unit 0 — goal-stability 의 SpawnGoalEntities 를 제거했다.
@@ -1312,8 +1346,14 @@ namespace Wassup.Bridge
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
+                int laneCount = math.max(1, _generatedMap.spawns.Length);
                 for (int i = 0; i < ActiveDeck.spawns.Count; i++)
-                    _pending.Add(new PendingSpawnEntry { entry = ActiveDeck.spawns[i], deckIndex = i });
+                    _pending.Add(new PendingSpawnEntry
+                    {
+                        entry = ActiveDeck.spawns[i],
+                        laneIndex = WavePatternGenerator.EffectiveSpawnIndex(
+                            ActiveDeck.spawns[i].spawnIndex, i, laneCount),
+                    });
             }
             _startTime = Time.time;
             _battleClock = 0.0;
@@ -1634,7 +1674,7 @@ namespace Wassup.Bridge
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 타워/거점도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
-            _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
+            _spawnGuideForecast = null; // waypoint-routing unit 7 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
@@ -1749,7 +1789,7 @@ namespace Wassup.Bridge
             _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 상한 간격 기준 시각도 함께
             _usingAuthoredPlan = false;
-            _spawnAlertForecast = null;   // spawn-point-alert unit 3 — 이전 판 예고 이월 방지
+            _spawnGuideForecast = null;   // waypoint-routing unit 7 — 이전 판 예고 이월 방지
 
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
             if (_authoredPlan != null)
@@ -1868,38 +1908,40 @@ namespace Wassup.Bridge
         // 곧 자동 진행이라 "눌러라" 라고 알릴 대상이 없다. `_nextWaveClearReady` 내부 상태와
         // `nextwave-clear-attention` 의 도크 어필도 함께 제거.
 
-        // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
-        // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
-        // 큐잉 시점에 실제 스폰 base 로 1회 계산해 넣는다 — 실스폰과 어긋날 여지가 없고,
-        // 자동/강제/Wave 1 이 모두 같은 경로라 리드인(wave-pattern unit 11) 만큼의 창을 똑같이
-        // 얻는다. 반환 배열은 캐시 참조라 수정 금지.
-        private float[] _spawnAlertForecast;
+        // waypoint-routing unit 7 — **마지막으로 큐잉된 웨이브**의 (스웜 × 실제 lane)별
+        // 첫 스폰과 경로 입력. QueueWave 가 실제 pending 과 같은 상세 펼침 결과에서 1회 만든다.
+        // 반환 배열은 캐시 참조라 수정 금지.
+        private SpawnGuideForecast[] _spawnGuideForecast;
 
-        public bool TryGetSpawnAlertForecast(out float battleClockSec, out float[] laneFirstSpawnSec)
+        public bool TryGetSpawnGuideForecast(
+            out float battleClockSec, out SpawnGuideForecast[] forecasts)
         {
             battleClockSec = (float)_battleClock;
-            laneFirstSpawnSec = null;
-            if (!_running || _spawnAlertForecast == null) return false;
-            // 미래 스폰이 남아 있는 동안만 서빙한다. 웨이브의 뒷 lane 들은 레인 간
-            // intraWaveSpacing 간격으로 늦게 나오므로, 마지막 lane 스폰까지 유지해야 뒷 lane
-            // 예고가 자기 유닛보다 먼저 사라지지 않는다.
-            if (LastSpawnSec(_spawnAlertForecast) <= battleClockSec) return false;
-            laneFirstSpawnSec = _spawnAlertForecast;
+            forecasts = null;
+            if (!_running || _spawnGuideForecast == null) return false;
+            if (LastSpawnSec(_spawnGuideForecast) <= battleClockSec) return false;
+            forecasts = _spawnGuideForecast;
             return true;
         }
 
-        private static float LastSpawnSec(float[] laneFirstSpawnSec)
+        private static float LastSpawnSec(SpawnGuideForecast[] forecasts)
         {
             float last = -1f;
-            for (int i = 0; i < laneFirstSpawnSec.Length; i++)
-                if (laneFirstSpawnSec[i] > last) last = laneFirstSpawnSec[i];
+            for (int i = 0; i < forecasts.Length; i++)
+                if (forecasts[i].firstSpawnSec > last) last = forecasts[i].firstSpawnSec;
             return last;
         }
 
         // spawn-point-alert unit 1(rev) — 스폰→골 대표 경로(sim, 셀 중심 나열. [0]=스폰).
         // 유닛 이동과 같은 goal flow field 의 flow 를 셀 단위로 따라간다(타이브레이크 동일).
         // 트레일 표시 시작 시에만 호출되므로(웨이브당 lane 수 회) 캐시 불요. 뷰 변환은 호출측.
-        public bool TryGetSpawnPathSim(int laneIndex, List<Vector3> outPath)
+        // waypoint-routing unit 7 — 스폰→웨이포인트들→골 대표 경로. 각 구간은 실제
+        // MovementSystem 과 같은 (목적지, 통행층) 슬롯·NavGrid·PathSmoothing 을 사용한다.
+        public bool TryGetSpawnPathSim(
+            int laneIndex,
+            int waypointPathIndex,
+            byte traversalLayers,
+            List<Vector3> outPath)
         {
             if (outPath == null) return false;
             outPath.Clear();
@@ -1918,38 +1960,71 @@ namespace Wassup.Bridge
             var obstacles = default(Wassup.Battle.Effects.ObstacleSingleton);
             bool hasObstacles = _blockedCells.IsCreated;
             if (hasObstacles) obstacles = new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells };
-            var nav = Wassup.Battle.Movement.MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacles);
+            if (traversalLayers == 0) traversalLayers = TraversalSlots.DefaultMask;
+            var navScratch = new NativeArray<byte>(math.max(1, field.CellCount), Allocator.Temp);
+            try
+            {
+                var nav = MovementCellTrim.BuildNavGrid(
+                    in field, traversalLayers, hasObstacles, in obstacles, navScratch);
 
-            float radius = agentRadiusTiles * tileSize;
-            int2 cell = _generatedMap.spawns[laneIndex];
-            float3 pos = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
-                cell, field.tileSize, spawnHeight, origin: field.origin);
-            outPath.Add(new Vector3(pos.x, pos.y, pos.z));
+                float radius = agentRadiusTiles * tileSize;
+                int2 cell = _generatedMap.spawns[laneIndex];
+                float3 pos = GridMath.CellToWorldCenter(
+                    cell, field.tileSize, spawnHeight, origin: field.origin);
+                outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
-            int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어
-            // traversal-layers unit 1a — 예고 라인도 슬롯 뷰로 읽는다. 이동(MovementSystem)과
-            // 같은 슬롯을 봐야 "라인 ≠ 이동선"이 재발하지 않는다.
-            var lineFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
-            var lineDist = field.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+                int waypointCount = field.WaypointCountAt(waypointPathIndex);
+                for (int i = 0; i < waypointCount; i++)
+                {
+                    int2 waypoint = field.WaypointAt(waypointPathIndex, i);
+                    AppendSpawnPathSegment(
+                        in field, in nav, waypoint, traversalLayers, radius,
+                        ref cell, ref pos, outPath);
+                }
+
+                AppendSpawnPathSegment(
+                    in field, in nav, FlowFieldSingleton.GoalSentinel, traversalLayers, radius,
+                    ref cell, ref pos, outPath);
+            }
+            finally
+            {
+                navScratch.Dispose();
+            }
+            return outPath.Count >= 2;
+        }
+
+        private static bool AppendSpawnPathSegment(
+            in FlowFieldSingleton field,
+            in NavGrid nav,
+            int2 destination,
+            byte traversalLayers,
+            float radius,
+            ref int2 cell,
+            ref float3 pos,
+            List<Vector3> outPath)
+        {
+            int slot = field.SlotFor(destination, traversalLayers);
+            var lineFlow = field.FlowSlot(slot);
+            var lineDist = field.DistSlot(slot);
+            int guard = field.CellCount + 1;
             for (int i = 0; i < guard; i++)
             {
-                cell = Wassup.Battle.Movement.GridMath.WorldToCell(
-                    pos, field.tileSize, field.gridSize, origin: field.origin);
-                int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
-                if (idx < 0 || idx >= lineFlow.Length) break;
-                if (lineDist[idx] == 0) break; // 골 도달
+                cell = GridMath.WorldToCell(pos, field.tileSize, field.gridSize, origin: field.origin);
+                int idx = GridMath.CellIndex(cell, field.gridSize);
+                if (idx < 0 || idx >= lineFlow.Length || lineDist[idx] == int.MaxValue) return false;
+                if (lineDist[idx] == 0) return true;
 
-                // unit 10 — 목표점 선택 규칙은 MovementSystem 과 같은 순수 헬퍼 하나다.
-                // (평활화/코너 꼭짓점 → 폴백 필드 스텝 → 골·고립 종료.) 여기 인라인하지
-                // 말 것 — 갈라지면 "라인 ≠ 이동선" 부류가 재발한다.
-                if (!Wassup.Battle.Movement.PathSmoothing.TryStepTarget(
+                // unit 10 — 목표점 선택 규칙은 MovementSystem 과 공유한다. 여기서 별도
+                // 선형 보간/경로 탐색을 만들면 "가이드 ≠ 실제 이동선"이 다시 생긴다.
+                if (!PathSmoothing.TryStepTarget(
                         pos, in nav, in lineFlow, radius,
-                        Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 next))
-                    break;
+                        PathSmoothing.DefaultLookahead, out float3 next))
+                    return false;
+                if (math.distancesq(pos, next) <= 1e-8f) return false;
                 pos = next;
                 outPath.Add(new Vector3(pos.x, pos.y, pos.z));
             }
-            return outPath.Count >= 2;
+            return false;
         }
 
         // three-minute-survival unit 2 — **플레이어 경로는 없어졌다**(NextWaveDock 은 정보 표시
@@ -1998,15 +2073,18 @@ namespace Wassup.Bridge
         {
             // 자동/강제 호출 모두 같은 진입점(전멸 진행·상한 진행·강제 호출·웨이브 1).
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
-            var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-            int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
-            for (int i = 0; i < entries.Count; i++)
-                _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
-
-            // spawn-point-alert unit 3 — 예고는 **이 웨이브의 실제 스폰 base** 로 계산한다(예측 아님).
-            // 자동·강제·Wave 1 이 모두 이 경로를 지나므로 예고 창이 균일하게 생긴다.
-            _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
+            var entries = WavePatternGenerator.ExpandWave(
                 wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
+            for (int i = 0; i < entries.Count; i++)
+                _pending.Add(new PendingSpawnEntry
+                {
+                    entry = entries[i].entry,
+                    laneIndex = entries[i].laneIndex,
+                });
+
+            // waypoint-routing unit 7 — 실제 pending 과 **같은 상세 펼침 결과**에서
+            // (스웜 × 실제 lane) 예고를 만든다. 시간·lane 규칙을 별도로 재연산하지 않는다.
+            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries);
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
@@ -2945,6 +3023,13 @@ namespace Wassup.Bridge
                             // 넘긴다 — ToView 가 sim-Y 를 버리므로 높이를 여기 섞으면 평면화된다.
                             bool leaping = TryGetEnemyViewOverride(entity, out var leapPos, out float leapHeight);
                             if (leaping) world = new Vector3(leapPos.x, leapPos.y, leapPos.z);
+                            // waypoint-routing unit 4 — 상시 비행 lift 는 SO→기존 적 등록부를
+                            // 따라 view 로만 흐른다. sim 위치/타게팅에는 손대지 않는다.
+                            float flightLift = _enemyTypeByEntity.TryGetValue(entity, out var enemyType)
+                                && enemyType != null
+                                ? Mathf.Max(0f, enemyType.flightLift)
+                                : 0f;
+                            float viewFlightHeight = flightLift + (leaping ? leapHeight : 0f);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
                             Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);
@@ -2953,8 +3038,8 @@ namespace Wassup.Bridge
                             bool dimmed = _enemyDimAlpha < 0.999f;
                             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                             {
-                                // 비행 아니면 0 을 써서 스스로 해제된다(별도 clear 경로 불필요).
-                                spineView.SetFlightHeight(leaping ? leapHeight : 0f);
+                                // 지상·비도약이면 0 을 써서 스스로 해제된다(별도 clear 경로 불필요).
+                                spineView.SetFlightHeight(viewFlightHeight);
                                 spineView.UpdatePosition(world);
                                 if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
                                 spineView.SetDimmed(dimmed, _enemyDimAlpha);
@@ -2962,7 +3047,7 @@ namespace Wassup.Bridge
                             }
                             else if (enemyViewPool.TryGet(entity, out var view))
                             {
-                                view.SetFlightHeight(leaping ? leapHeight : 0f);
+                                view.SetFlightHeight(viewFlightHeight);
                                 view.UpdatePosition(world);
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                                 view.SetDimmed(dimmed, _enemyDimAlpha);
@@ -2973,7 +3058,8 @@ namespace Wassup.Bridge
                             {
                                 var h = _em.GetComponentData<Health>(entity);
                                 unitOverheadUiLayer.SetUnit(entity, false, Health.ComputeRatio(h.value, h.max),
-                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor), 0f, GatherOverheadStacks(entity));
+                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor),
+                                    ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                             }
                         }
                     }
@@ -3030,14 +3116,9 @@ namespace Wassup.Bridge
                     && TryGetUnitScreenAnchor(entity, out var defenderScreenAnchor, out var defenderAnchor))
                 {
                     var h = _em.GetComponentData<Health>(entity);
-                    // shield-guardian-defender unit 2 — 실드합 동승(read-only 폴링, 계약 8).
-                    // 정규화(HP+실드 > 100% 압축)는 뷰가 수행.
-                    float defShieldRatio = 0f;
-                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
-                        defShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
-                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio, GatherOverheadStacks(entity));
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor),
+                        ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                 }
             }
             // goal-stability unit 5 — 골 게이지도 유닛과 같은 오버헤드 창(Begin/EndFrame) 안에서 Set.
@@ -3131,14 +3212,24 @@ namespace Wassup.Bridge
                     && TryGetUnitScreenAnchor(entity, out var garScreenAnchor, out var garAnchor))
                 {
                     var h = _em.GetComponentData<Health>(entity);
-                    float garShieldRatio = 0f;
-                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
-                        garShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
-                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        garScreenAnchor, ProjectTileScreenWidth(garAnchor), garShieldRatio, GatherOverheadStacks(entity));
+                        garScreenAnchor, ProjectTileScreenWidth(garAnchor),
+                        ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                 }
             }
+        }
+
+        // shield-guardian-defender unit 2 — 실드합 동승(read-only 폴링, 계약 8).
+        // 정규화(HP+실드 > 100% 압축)는 뷰가 수행.
+        // boss-mamemo unit 2 — 방어유닛·순찰병 두 곳에 복붙돼 있던 3줄을 여기로 모으고
+        // **적 분기를 편입**했다. 적 분기는 이 인자가 리터럴 0f 라 실드를 줘도 게이지가
+        // 안 그려졌다 — 하위 레이어(UnitOverheadUiLayer·UnitOverheadView·enemy skin 의
+        // shield 색)는 이미 진영 무관이었으므로 막힌 곳은 이 호출 하나였다.
+        private float ShieldRatioOf(Entity entity, in Health h)
+        {
+            if (h.max <= 0f || !_em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity)) return 0f;
+            return Wassup.Battle.Units.ShieldMath.Sum(
+                _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
         }
 
         // unit-overhead-ui 확장(unit 8) — 오버헤드 스택행 gather 재사용 버퍼(프레임 GC 회피).
@@ -4032,6 +4123,7 @@ namespace Wassup.Bridge
                 target = req.target,
                 speed = req.speed,
                 damage = req.damage,
+                targetTraversalLayers = req.targetTraversalLayers,
                 hitThreshold = req.hitThreshold,
                 onHitEffect = req.onHitEffect,
                 splashRadius = req.splashRadius,
@@ -4203,7 +4295,8 @@ namespace Wassup.Bridge
         // 재사용 스크래치라 배치마다 할당이 없다(`_dcFiredScratch` 선례).
         private readonly System.Collections.Generic.List<Entity> _onPlaceInRangeScratch = new();
 
-        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(Vector2Int cell, float range)
+        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(
+            Vector2Int cell, float range, byte attackTargetLayers)
         {
             _onPlaceInRangeScratch.Clear();
             if (range <= 0f || !_aliveAttackersQueryCreated) return _onPlaceInRangeScratch;
@@ -4213,12 +4306,21 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
+                if (!CanDefenderTargetMover(attackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, cell, tileRange)) continue;
                 _onPlaceInRangeScratch.Add(e);
             }
             entities.Dispose();
             return _onPlaceInRangeScratch;
+        }
+
+        private bool CanDefenderTargetMover(byte attackTargetLayers, Entity target)
+        {
+            byte targetLayers = _em.HasComponent<PathFollowState>(target)
+                ? _em.GetComponentData<PathFollowState>(target).traversalLayers
+                : (byte)0;
+            return PlacementLayers.CanTarget(attackTargetLayers, targetLayers);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns
@@ -4230,13 +4332,15 @@ namespace Wassup.Bridge
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
 
             int affected = 0;
+            byte attackTargetLayers = (byte)unitData.EffectiveAttackTargetLayers;
 
             // SlowPulse 와 BindNearby 는 예전부터 **같은 효과**다(둘 다 이동속도 배율 감쇠).
             // 문구만 다르고 동작이 같으므로 한 분기로 합쳐 둔다 — 갈라 두면 한쪽만 고쳐진다.
             if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse
                 || unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
             {
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
@@ -4257,7 +4361,8 @@ namespace Wassup.Bridge
                         if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
                 }
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
                     {
@@ -4277,7 +4382,8 @@ namespace Wassup.Bridge
                 // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
                 if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                     {
@@ -4304,7 +4410,8 @@ namespace Wassup.Bridge
                 if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
                     || !_dotApplyQueue.IsCreated) return 0;
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _dotApplyQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
                     {
@@ -4346,7 +4453,8 @@ namespace Wassup.Bridge
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
             {
                 if (unitData.onPlaceMagnitude <= 0f) return 0;
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     if (!_em.HasBuffer<IncomingDamage>(e)) continue;
                     _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
@@ -4408,6 +4516,7 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
                 float along = math.dot(toTarget, forward);
@@ -6257,6 +6366,9 @@ namespace Wassup.Bridge
                 // ECB playback 에서 던진다. 판정 전체는 DefenderTargetDefaults 소관.
                 targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
                     (int)unitData.targetFactions, unitData.targetAllies),
+                targetTraversalLayers = unitData.targetAllies
+                    ? (byte)0
+                    : (byte)unitData.EffectiveAttackTargetLayers,
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 방어유닛 지속 락의 그릇. 신규 컴포넌트를 만들지
@@ -6305,6 +6417,7 @@ namespace Wassup.Bridge
                     cooldownDuration = hazardAbility.cooldown,
                     cooldownRemaining = 0f,
                     targetMask = (int)Faction.EnemyUnit,
+                    targetTraversalLayers = (byte)unitData.EffectiveAttackTargetLayers,
                     dataIndex = hazardDataIndex,
                     kind = hazardAbility.kind,
                     footprintWidth = math.max(1, hazardAbility.footprintWidth),
@@ -6491,6 +6604,9 @@ namespace Wassup.Bridge
                 // 같은 SO 타입이라 «순찰만 거점을 못 때린다» 는 예외를 만들 이유가 없다.
                 targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
                     (int)unitData.targetFactions, unitData.targetAllies),
+                targetTraversalLayers = unitData.targetAllies
+                    ? (byte)0
+                    : (byte)unitData.EffectiveAttackTargetLayers,
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 순찰병도 락을 받는다. 다만 이 유닛은 EnemyBehavior
@@ -6838,7 +6954,8 @@ namespace Wassup.Bridge
             return e;
         }
 
-        public Unity.Entities.Entity SpawnHazardWithVisual(HazardSO so, Unity.Mathematics.int2 cell)
+        public Unity.Entities.Entity SpawnHazardWithVisual(
+            HazardSO so, Unity.Mathematics.int2 cell, byte targetTraversalLayers = 0)
         {
             if (so == null || _em == null)
                 return Unity.Entities.Entity.Null;
@@ -6848,7 +6965,8 @@ namespace Wassup.Bridge
                 return Unity.Entities.Entity.Null;
             }
 
-            var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(_em, so, cell);
+            var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(
+                _em, so, cell, targetTraversalLayers);
             if (e == Unity.Entities.Entity.Null)
                 return e;
 
@@ -7117,7 +7235,7 @@ namespace Wassup.Bridge
 
                     var so = _zoneHazardRegistry[req.dataIndex];
                     if (so == null) continue;
-                    SpawnHazardWithVisual(so, req.centerCell);
+                    SpawnHazardWithVisual(so, req.centerCell, req.targetTraversalLayers);
                 }
                 else if (req.kind == HazardCastKind.Blocking)
                 {
@@ -7389,6 +7507,7 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
+                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, cell, tileRange)) continue;
                 float3 toEnemy = pos - defCenter;
@@ -7529,8 +7648,8 @@ namespace Wassup.Bridge
                 // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
                 // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
                 // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
-                if (m.trigger.kind != Wassup.Data.DcTriggerKind.PeriodicTimer &&
-                    m.trigger.kind != Wassup.Data.DcTriggerKind.HealthThreshold)
+                // boss-mamemo 리뷰 M3 — 판정은 순수 술어 1곳이 소유한다(EditMode 가 고정).
+                if (!Wassup.Battle.Combat.DcTrigger.EnemyTriggerArmed(m.trigger.kind))
                 {
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
                     continue;
@@ -7623,7 +7742,10 @@ namespace Wassup.Bridge
                           m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe ||
                           // ultimate-leap unit 0 — 착지 슬램도 ProjectileSpawnRequest 로 나가므로
                           // SelfTileAoe 와 같은 이유로 dataIndex 가 필수다(아래 loud 거절 참조).
-                          m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap) &&
+                          m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap ||
+                          // boss-mamemo unit 1 — 자장가 펄스 연출(whip 과 같은 hit-VFX 경로).
+                          // 여기선 **선택**이다: 없으면 연출만 없고 수면은 그대로 나간다.
+                          m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep) &&
                          m.payload.projectile != null)
                 {
                     // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
@@ -7644,6 +7766,50 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
                     continue;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
+                         m.payload.magnitude <= 0f)
+                {
+                    // boss-mamemo unit 2 — 실드량 0 은 매 발동 조용한 no-op 이다
+                    // (ShieldMath.Merge 가 amount<=0 을 그냥 return 한다). loud 거절.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 에 magnitude(실드량 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
+                         ((m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold && m.payload.tileRange > 0) ||
+                          (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer && m.payload.tileRange <= 0)))
+                {
+                    // boss-mamemo unit 3 — **미배선 조합 거절.** 실드는 두 능력을 겸하지만 배선은
+                    // 트리거별로 갈라져 있다: 경계 arm = 자기(tileRange 0) · 주기 arm = 반경 확산
+                    // (tileRange>0). 반대로 저작하면 슬롯은 생기는데 아무 arm 도 안 잡아 **조용한
+                    // no-op** 이 된다. 미사용 라이브 경로를 만들지 않는 것이 dreamcatcher-trigger-gates
+                    // 계약("v1 배선 조합 외는 bake loud 거절")의 선례다. 새 조합은 그걸 쓰는 능력이
+                    // 생길 때 배선·테스트와 함께 연다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                         (m.payload.magnitude < 1f || m.payload.duration <= 0f))
+                {
+                    // boss-mamemo unit 1 — 자장가는 magnitude(인원)·duration(초) 둘 다 필요하다.
+                    // 하나라도 비면 arm 이 매 주기 조용히 no-op 이 되어 "왜 아무도 안 자는지"를
+                    // 영영 알 수 없다. SelfTileAoe 의 loud 거절과 같은 이유로 여기서 끊는다.
+                    // (projectile 은 선택이다 — 없으면 연출만 없고 수면은 나간다.)
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 에 magnitude(재울 인원 >=1) 또는 duration(수면 초 >0) 이 없어 매 주기 no-op 이 된다 — skipped.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                         m.payload.tileRange <= 0)
+                {
+                    // boss-mamemo 리뷰 M6 — 반경 0 은 host 셀만 보므로 사실상 아무도 못 잰다
+                    // (방어유닛은 보스와 같은 칸에 서지 않는다). 위 가드가 막겠다고 선언한
+                    // "왜 아무도 안 자는지 모른다" 가 여기서도 재현되므로 같은 급으로 끊는다.
+                    //
+                    // ⚠ 한때 이 가드는 «tileRange <= 사거리» 였다(도넛 설계 시절). 도넛은
+                    // **실측으로 폐기**됐다 — 붙는 보스는 사거리 안에서 대부분의 시간을 보내
+                    // 도넛 후보가 마르고 조우당 1회밖에 안 터졌다. 지금은 전 범위 + rank 제외다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — skipped.");
+                    continue;
+                }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)
                 {
                     // ultimate-leap unit 0 — SelfTileAoe 와 같은 함정: 착지 슬램이
@@ -7660,6 +7826,25 @@ namespace Wassup.Bridge
                 {
                     _dcAuraPool ??= new Wassup.Presentation.DcAuraVisualPool(ResolveUnitViewTransform);
                     _dcAuraPool.Register(entity, m.payload.auraPrefab, m.payload.auraScale);
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield && m.payload.duration > 0f)
+                {
+                    // boss-mamemo unit 2 — 실드에는 시간 만료가 없다(ShieldMath 에 TTL 축 없음).
+                    // duration 을 적어두면 "몇 초 뒤 사라진다" 고 읽히지만 런타임은 무시한다 —
+                    // 조용히 다르게 도는 대신 저작 시점에 말해준다. skip 하지는 않는다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 의 duration({m.payload.duration}) 은 무시된다 — 이 엔진의 실드는 시간이 아니라 피해로만 사라진다.");
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                    m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer &&
+                    m.payload.duration >= m.trigger.periodSeconds)
+                {
+                    // boss-mamemo 리뷰 M7 — **whip 오라와 정반대 방향의 저작 함정.**
+                    // 버프는 duration <= period 면 펄스 사이에 끊겨 점멸하지만(아래 경고),
+                    // CC 는 duration >= period 면 매 주기 같은 대상이 갱신돼 **끊김이 없다** —
+                    // "잠시 재운다" 가 "생존 내내 고착" 이 된다. 깨우는 유일한 수단이 적 평타라
+                    // 단일 대상 보스는 재운 인원을 사실상 회수하지 못한다.
+                    // 의도일 수 있으므로 skip 하지 않고 경고만 한다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep duration({m.payload.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착합니다.");
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
                     m.payload.duration <= m.trigger.periodSeconds)
@@ -7784,8 +7969,8 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            // spawn-point-alert unit 0 — lane 산식은 WavePatternGenerator 로 이관(예보와 공유).
-            int spawnIndex = WavePatternGenerator.EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
+            // waypoint-routing unit 7 — 큐잉 때 상세 펼침이 확정한 실제 lane을 그대로 소비한다.
+            int spawnIndex = pending.laneIndex;
             if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
             {
                 Debug.LogWarning($"[BattleBridge] SpawnEntry.spawnIndex={spawnIndex} out of range (spawns={_generatedMap.spawns.Length}). Fallback to 0.");
@@ -7822,6 +8007,15 @@ namespace Wassup.Bridge
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);
             _em.AddBuffer<DotEffect>(entity); // dot-effect-extraction unit 0
+            // boss-mamemo unit 2 — 적도 실드를 받을 수 있다(마메모의 꿈의 장막·악몽의 가호).
+            // **쌍으로** 붙인다: IncomingShield 드레인이 ShieldSlot 존재로 게이팅돼 있어
+            // (DamageApplicationSystem) 한쪽만 붙이면 부여가 영영 드레인되지 않고 버퍼가
+            // 무한 성장한다. 보스만이 아니라 **적 전원**인 이유는 악몽의 가호의 수혜자가
+            // 호위 잡몹이기 때문 — 조건부 부착은 "누가 받을 수 있나" 를 스폰 시점에 못 박아
+            // arm 의 대상 선정을 왜곡한다. 흡수·오버헤드 게이지는 이미 진영 중립이다.
+            // (거점은 이 경로를 안 타므로 battle-structures 계약 8 은 그대로 지켜진다.)
+            _em.AddBuffer<Wassup.Battle.Units.ShieldSlot>(entity);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingShield>(entity);
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).
@@ -7924,6 +8118,28 @@ namespace Wassup.Bridge
                 // continuous-agent-movement unit 3 — 반지름은 월드 단위로 넘긴다(sim 은 타일을 모른다).
                 radius = agentRadiusTiles * tileSize,
             });
+
+            // waypoint-routing unit 3 — 저작 opt-in. 유효한 경로만 Movement 상태를 붙인다.
+            // 실패는 골 직행으로 안전 폴백하되, 사람에게 보이는 경고는 스폰 1회만 남긴다.
+            int waypointPathIndex = entry.unitType.waypointPathIndex;
+            if (waypointPathIndex >= 0)
+            {
+                bool validPath = waypointPathIndex < _generatedMap.WaypointPathCount;
+                if (validPath)
+                {
+                    _em.AddComponentData(entity, new WaypointFollow
+                    {
+                        pathIndex = waypointPathIndex,
+                        index = 0,
+                    });
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[BattleBridge] {entry.unitType.displayName}: waypointPathIndex={waypointPathIndex} is invalid "
+                        + $"for map paths={_generatedMap.WaypointPathCount} — using goal route.", this);
+                }
+            }
 
             EnsureMonoViewPools();
             bool spineSpawned = spineUnitPool != null &&

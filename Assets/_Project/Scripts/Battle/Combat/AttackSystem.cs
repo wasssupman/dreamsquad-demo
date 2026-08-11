@@ -50,6 +50,15 @@ namespace Wassup.Battle.Combat
             var targetEntities = targetCandidatesQuery.ToEntityArray(Allocator.Temp);
             var targetTransforms = targetCandidatesQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var targetFactions = targetCandidatesQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+            // waypoint-routing unit 4 rev 4 — Movement-owned traversal layer is read
+            // once before any deferred structural changes and aligned with the existing
+            // target snapshot. Targets without PathFollowState (structures/allies) use 0
+            // and keep their faction-only legacy behavior.
+            var targetPathLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+            var targetTraversalLayers = new NativeArray<byte>(targetEntities.Length, Allocator.Temp);
+            for (int i = 0; i < targetEntities.Length; i++)
+                if (targetPathLookup.HasComponent(targetEntities[i]))
+                    targetTraversalLayers[i] = targetPathLookup[targetEntities[i]].traversalLayers;
             // 니들 폴백 선정용 scratch — 예전엔 발동마다 할당/해제했다. 후보 수는
             // 스냅샷 길이로 고정이라 프레임당 1회면 충분하다.
             var needleScratch = new NativeArray<NearestTargeting.Candidate>(
@@ -211,13 +220,15 @@ namespace Wassup.Battle.Combat
 
                         int2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, origin: ffOrigin);
                         int pick = PickFallbackTarget(needleScratch,
-                            targetEntities, targetTransforms, targetFactions,
+                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
                             castEvt.caster, castEvt.casterPos, casterCell,
-                            tileSize, gridSize, ffOrigin, slot.tileRange);
+                            tileSize, gridSize, ffOrigin, slot.tileRange,
+                            castEvt.targetTraversalLayers);
                         // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
                         if (pick >= 0)
                             SpawnNeedleCarrier(ref ecb, slot, castEvt.caster, castEvt.casterPos,
                                 targetEntities[pick], targetTransforms[pick].Position,
+                                castEvt.targetTraversalLayers,
                                 attackOutputLogWriter.HasValue,
                                 attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                     }
@@ -296,6 +307,7 @@ namespace Wassup.Battle.Combat
                                 visualScale = bProjRef.visualScale,
                                 owner = attackerEntity,
                                 targetFaction = ProjectileTargetFaction.Enemy,
+                                targetTraversalLayers = attack.ValueRO.targetTraversalLayers,
                             });
                             // unit 7 — 던지기 공격 애니 + facing(착지셀 방향). 정상 경로와
                             // 동형이나 폭탄 분기는 continue 라 여기서 별도 enqueue.
@@ -336,13 +348,15 @@ namespace Wassup.Battle.Combat
                                     // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
                                     // 진영 Enemy 고정 + PastGoal 제외는 헬퍼가 보장한다.
                                     int pick = PickFallbackTarget(needleScratch,
-                                        targetEntities, targetTransforms, targetFactions,
+                                        targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
                                         attackerEntity, bPos, bCasterCell,
-                                        tileSize, gridSize, ffOrigin, slot.tileRange);
+                                        tileSize, gridSize, ffOrigin, slot.tileRange,
+                                        attack.ValueRO.targetTraversalLayers);
                                     // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
                                     if (pick >= 0)
                                         SpawnNeedleCarrier(ref ecb, slot, attackerEntity, bPos,
                                             targetEntities[pick], targetTransforms[pick].Position,
+                                            attack.ValueRO.targetTraversalLayers,
                                             attackOutputLogWriter.HasValue,
                                             attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                                 }
@@ -389,6 +403,9 @@ namespace Wassup.Battle.Combat
                             for (int ti = 0; ti < targetEntities.Length && !gateOpen; ti++)
                             {
                                 if (((int)targetFactions[ti].value & (int)Faction.EnemyUnit) == 0) continue;
+                                if (!Wassup.Data.PlacementLayers.CanTarget(
+                                        attack.ValueRO.targetTraversalLayers,
+                                        targetTraversalLayers[ti])) continue;
                                 // goal-tower-siege unit 1 — PastGoal 배제 제거(머지 정리).
                                 // 그 태그는 이제 "유출 대기" 가 아니라 "골에 붙어 타워를 때리는 중" 이다 —
                                 // 골을 두들기는 적이야말로 순찰을 부를 이유다.
@@ -527,6 +544,9 @@ namespace Wassup.Battle.Combat
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
+                    if (!Wassup.Data.PlacementLayers.CanTarget(
+                            attack.ValueRO.targetTraversalLayers,
+                            targetTraversalLayers[i])) continue;
                     if (targetEntities[i] == lockedNow) lockStillCandidate = true;
                     if (targetEntities[i] == attackerEntity) continue;
                     int cclass = defenderClassLookup.HasComponent(targetEntities[i])
@@ -1152,6 +1172,7 @@ namespace Wassup.Battle.Combat
                                     arcHeight = projRef.arcHeight,
                                     impactTileRange = projRef.impactTileRange,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    targetTraversalLayers = attack.ValueRO.targetTraversalLayers,
                                     // 끝을 보는 눈 (unit 3) — TileAoe/ballistic priority victim + mul.
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
@@ -1195,6 +1216,7 @@ namespace Wassup.Battle.Combat
                                     bounceTileRange = dcBounceRange,
                                     bounceDamageMul = dcBounceMul,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    targetTraversalLayers = attack.ValueRO.targetTraversalLayers,
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
                                     heavyDamageMul = heavyMul,
@@ -1236,6 +1258,7 @@ namespace Wassup.Battle.Combat
                                         patternTemplate.bounceTileRange = template.bounceTileRange;
                                         patternTemplate.bounceDamageMul = template.bounceDamageMul;
                                         patternTemplate.owner = attackerEntity;
+                                        patternTemplate.targetTraversalLayers = template.targetTraversalLayers;
                                         patternTemplate.priorityTarget = template.priorityTarget;
                                         patternTemplate.priorityDamageMul = template.priorityDamageMul;
                                         patternTemplate.heavyDamageMul = template.heavyDamageMul;
@@ -1282,6 +1305,7 @@ namespace Wassup.Battle.Combat
                                     bounceTileRange = dcBounceRange,
                                     bounceDamageMul = dcBounceMul,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    targetTraversalLayers = attack.ValueRO.targetTraversalLayers,
                                     // 끝을 보는 눈 (unit 3) — homing direct-victim priority + mul.
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
@@ -1315,6 +1339,9 @@ namespace Wassup.Battle.Combat
                                 for (int i = 0; i < targetEntities.Length; i++)
                                 {
                                     if (((int)targetFactions[i].value & mask) == 0) continue;
+                                    if (!Wassup.Data.PlacementLayers.CanTarget(
+                                            attack.ValueRO.targetTraversalLayers,
+                                            targetTraversalLayers[i])) continue;
                                     if (targetEntities[i] == attackerEntity) continue;
                                     float3 tp = targetTransforms[i].Position;
                                     cands[nc] = new AggroCandidate
@@ -1391,6 +1418,9 @@ namespace Wassup.Battle.Combat
                                         {
                                             if (hitMaskO[i]) continue;
                                             if (((int)targetFactions[i].value & mask) == 0) continue;
+                                            if (!Wassup.Data.PlacementLayers.CanTarget(
+                                                    attack.ValueRO.targetTraversalLayers,
+                                                    targetTraversalLayers[i])) continue;
                                             if (targetEntities[i] == attackerEntity) continue;
                                             int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                                             int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
@@ -1708,6 +1738,7 @@ namespace Wassup.Battle.Combat
                                 // owner = 부착된 디펜더(캐리어 아님) — 위협 귀속.
                                 SpawnNeedleCarrier(ref ecb, slot, attackerEntity, atkPos,
                                     bestTarget, bestTargetPos,
+                                    attack.ValueRO.targetTraversalLayers,
                                     attackOutputLogWriter.HasValue,
                                     attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                             }
@@ -1808,6 +1839,7 @@ namespace Wassup.Battle.Combat
             targetTransforms.Dispose();
             castCountedHosts.Dispose();
             targetFactions.Dispose();
+            targetTraversalLayers.Dispose();
         }
 
         // dreamcatcher-new-abilities unit 2 — shatter_hymn 게이트: 대상에 활성 CcEffect
@@ -1823,6 +1855,7 @@ namespace Wassup.Battle.Combat
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,
+            byte targetTraversalLayers,
             bool hasLog, NativeQueue<AttackOutputLogEvent>.ParallelWriter log)
         {
             var carrier = ecb.CreateEntity();
@@ -1838,6 +1871,7 @@ namespace Wassup.Battle.Combat
                 visualScale = slot.visualScale,
                 dataIndex = slot.projectileDataIndex,
                 owner = owner,
+                targetTraversalLayers = targetTraversalLayers,
                 // 대상이 맞기 전에 죽으면 같은 반경 안에서 다시 겨눈다. 니들은 5회에
                 // 한 번 나오는 자원이라 허공에 사라지면 그 주기가 통째로 버려진다.
                 retargetTileRange = slot.tileRange,
@@ -1862,8 +1896,10 @@ namespace Wassup.Battle.Combat
         private static int PickFallbackTarget(
             NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
+            NativeArray<byte> targetTraversalLayers,
             Entity self, float3 selfPos, int2 selfCell,
-            float tileSize, int2 gridSize, float3 gridOrigin, int tileRange)
+            float tileSize, int2 gridSize, float3 gridOrigin, int tileRange,
+            byte attackTargetLayers)
         {
             for (int i = 0; i < ents.Length; i++)
             {
@@ -1871,7 +1907,9 @@ namespace Wassup.Battle.Combat
                 // goal-tower-siege unit 1 — PastGoal 배제 제거. 골에 붙은 적은 살아서 타워를
                 // 때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
                 bool eligible = e != self
-                    && ((int)fac[i].value & (int)Faction.EnemyUnit) != 0;
+                    && ((int)fac[i].value & (int)Faction.EnemyUnit) != 0
+                    && Wassup.Data.PlacementLayers.CanTarget(
+                        attackTargetLayers, targetTraversalLayers[i]);
                 float3 p = xf[i].Position;
                 int2 c = GridMath.WorldToCell(p, tileSize, gridSize, origin: gridOrigin);
                 scratch[i] = new NearestTargeting.Candidate

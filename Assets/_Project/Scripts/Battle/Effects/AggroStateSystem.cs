@@ -44,6 +44,9 @@ namespace Wassup.Battle.Effects
             // battle-structures unit 2 — 도발 범위 게이트용 저작 의도 RO lookup (같은 선례).
             var filterLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.EnemyTargetFilter>(isReadOnly: true);
             var transformLookup = SystemAPI.GetComponentLookup<Unity.Transforms.LocalTransform>(isReadOnly: true);
+            // waypoint-routing unit 4 — Effects 는 Movement 소유 통행층을 RO 로만 읽어
+            // 어그로 추격 필드를 적 자신의 지형 위에 굽는다.
+            var followLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
             var chaseLookup = SystemAPI.GetBufferLookup<AggroChaseCell>(isReadOnly: true);
             bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField) && flowField.IsCreated;
             bool hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
@@ -99,6 +102,7 @@ namespace Wassup.Battle.Effects
                 NativeArray<byte> walkMask = default;
                 NativeArray<Unity.Mathematics.float2> tmpFlow = default;
                 NativeArray<int> tmpDist = default;
+                byte walkMaskLayers = 0;
 
                 while (queue.TryDequeue(out var ev))
                 {
@@ -162,9 +166,18 @@ namespace Wassup.Battle.Effects
                             walkMask = new NativeArray<byte>(n, Allocator.Temp);
                             tmpFlow = new NativeArray<Unity.Mathematics.float2>(n, Allocator.Temp);
                             tmpDist = new NativeArray<int>(n, Allocator.Temp);
-                            // summon-patrol-defender — 벽 술어 + 장애물 합성은 MovementCellTrim 단독 소유.
-                            // (구 인라인 루프. PatrolFieldSystem 과 문자 그대로 같은 코드였다.)
-                            MovementCellTrim.FillWalkMask(in flowField, hasObstacles, in obstacleSingleton, walkMask);
+                        }
+                        byte enemyLayers = followLookup.HasComponent(ev.enemy)
+                            ? followLookup[ev.enemy].traversalLayers
+                            : TraversalSlots.DefaultMask;
+                        if (enemyLayers == 0) enemyLayers = TraversalSlots.DefaultMask;
+                        if (enemyLayers != walkMaskLayers)
+                        {
+                            // waypoint-routing unit 4 — 벽 술어 + 층 + 장애물 합성은
+                            // MovementCellTrim 단독 소유. Air 는 그 안에서 장애물도 건너뛴다.
+                            MovementCellTrim.FillWalkMask(
+                                in flowField, enemyLayers, hasObstacles, in obstacleSingleton, walkMask);
+                            walkMaskLayers = enemyLayers;
                         }
                         int2 gCell = GridMath.WorldToCell(transformLookup[ev.guardian].Position,
                             flowField.tileSize, flowField.gridSize, origin: flowField.origin);

@@ -93,5 +93,19 @@ namespace Wassup.Battle.Combat
             if (trigger == Wassup.Data.DcTriggerKind.AttackN && subject == Wassup.Data.DcGateSubject.EventTarget) return true;
             return false;
         }
+
+        // boss-mamemo 리뷰 M3 — **적/보스 bake 가 여는 트리거 화이트리스트의 단일 SoT.**
+        // 나머지 트리거의 arm 은 defender 게이트가 미개방이라, 적에 베이크하면 슬롯만 생기고
+        // 아무도 안 잡는 침묵 no-op 이 된다(BakeNightmareMechanics 가 이 함수를 보고 거절).
+        //
+        // 이걸 함수로 뺀 이유는 **안전이 우연이 아니게** 하기 위해서다: `boss-mamemo` unit 2 가
+        // 적 전원에게 `ShieldSlot` 을 달면서 `DamageApplicationSystem` 의 실드 파열 감지가
+        // 적에서도 참이 되기 시작했다. 지금 `OnShieldBreak` 가 적에 안 붙는 유일한 이유가 이
+        // 화이트리스트인데, 누가 이 줄을 완화하면 브리지의 파열 드레인
+        // (`CollectShieldBreakTargets` — 대상 풀이 `AttackUnitTag` 하드코딩)이 돌아
+        // **보스의 파열 폭발이 자기 진영을 때린다.** EditMode 가 이 술어를 고정한다.
+        public static bool EnemyTriggerArmed(Wassup.Data.DcTriggerKind kind)
+            => kind == Wassup.Data.DcTriggerKind.PeriodicTimer
+            || kind == Wassup.Data.DcTriggerKind.HealthThreshold;
     }
 }

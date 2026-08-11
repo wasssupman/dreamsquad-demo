@@ -40,6 +40,11 @@ namespace Wassup.Battle.Combat
             var candEntities = candQuery.ToEntityArray(Allocator.Temp);
             var candTransforms = candQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var candFactions = candQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+            var candPathLookup = SystemAPI.GetComponentLookup<PathFollowState>(true);
+            var candTraversalLayers = new NativeArray<byte>(candEntities.Length, Allocator.Temp);
+            for (int i = 0; i < candEntities.Length; i++)
+                if (candPathLookup.HasComponent(candEntities[i]))
+                    candTraversalLayers[i] = candPathLookup[candEntities[i]].traversalLayers;
 
             var attackLookup = SystemAPI.GetComponentLookup<AttackState>(true);
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(true);
@@ -59,6 +64,9 @@ namespace Wassup.Battle.Combat
                 bool hasAttack = attackLookup.HasComponent(enemyEntity);
                 int tileRange = hasAttack ? GridMath.RangeToTiles(attackLookup[enemyEntity].range) : 0;
                 int mask = hasAttack ? attackLookup[enemyEntity].targetMask : 0;
+                byte targetTraversalLayers = hasAttack
+                    ? attackLookup[enemyEntity].targetTraversalLayers
+                    : (byte)0;
 
                 bool aggroed = aggroLookup.HasComponent(enemyEntity);
                 bool guardianInRange = false;
@@ -81,7 +89,9 @@ namespace Wassup.Battle.Combat
                 else if (hasAttack)
                 {
                     hasFireTarget = HasFireTarget(enemyEntity, atkCell, tileRange, mask,
-                        candEntities, candTransforms, candFactions, tileSize, gridSize, ffOrigin,
+                        targetTraversalLayers,
+                        candEntities, candTransforms, candFactions, candTraversalLayers,
+                        tileSize, gridSize, ffOrigin,
                         classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup);
                 }
 
@@ -91,6 +101,7 @@ namespace Wassup.Battle.Combat
             candEntities.Dispose();
             candTransforms.Dispose();
             candFactions.Dispose();
+            candTraversalLayers.Dispose();
         }
 
         // 순수 전이 함수. aggro 우선, 비-aggro 는 "AttackSystem 이 fire 할 타겟 존재" 로 Engaging/Marching.
@@ -107,9 +118,11 @@ namespace Wassup.Battle.Combat
         // 대상만 fire 가능하다(그때만 Engaging).
         static bool HasFireTarget(
             Entity attacker, int2 atkCell, int tileRange, int mask,
+            byte attackTargetLayers,
             in NativeArray<Entity> candEntities,
             in NativeArray<LocalTransform> candTransforms,
             in NativeArray<FactionTag> candFactions,
+            in NativeArray<byte> candTraversalLayers,
             float tileSize, int2 gridSize, float3 ffOrigin,
             in ComponentLookup<DefenderClassTag> classLookup,
             in ComponentLookup<LocalTransform> transformLookup,
@@ -130,7 +143,17 @@ namespace Wassup.Battle.Combat
                 && focusLookup.HasComponent(attacker))
             {
                 Entity cur = focusLookup[attacker].current;
+                bool curStillCandidate = false;
+                for (int i = 0; i < candEntities.Length; i++)
+                {
+                    if (candEntities[i] != cur) continue;
+                    curStillCandidate = ((int)candFactions[i].value & mask) != 0
+                        && PlacementLayers.CanTarget(
+                            attackTargetLayers, candTraversalLayers[i]);
+                    break;
+                }
                 bool curValid = cur != Entity.Null
+                    && curStillCandidate
                     && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
                     && !deadLookup.HasComponent(cur);
                 if (curValid && transformLookup.HasComponent(cur))
@@ -151,6 +174,8 @@ namespace Wassup.Battle.Combat
             for (int i = 0; i < candEntities.Length; i++)
             {
                 if (((int)candFactions[i].value & mask) == 0) continue;
+                if (!PlacementLayers.CanTarget(
+                        attackTargetLayers, candTraversalLayers[i])) continue;
                 if (candEntities[i] == attacker) continue;
                 int cclass = classLookup.HasComponent(candEntities[i]) ? (int)classLookup[candEntities[i]].value : -1;
                 if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;

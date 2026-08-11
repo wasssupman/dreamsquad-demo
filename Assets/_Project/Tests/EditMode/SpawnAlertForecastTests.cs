@@ -73,8 +73,8 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void NoQueuedWave_HasNoForecast()
         {
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out var first), "큐잉 전 예고");
-            Assert.IsNull(first);
+            Assert.IsFalse(_bridge.TryGetSpawnGuideForecast(out _, out var guides), "큐잉 전 예고");
+            Assert.IsNull(guides);
         }
 
         // unit 1 에서는 Wave 1(트리거 0초)이 창을 못 만들어 자연 스킵됐다. 리드인 도입 후에는
@@ -84,14 +84,40 @@ namespace Wassup.Tests.EditMode
         {
             QueueDueWaves(0f);
 
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out float clock, out var first),
+            Assert.IsTrue(_bridge.TryGetSpawnGuideForecast(out float clock, out var guides),
                 "Wave 1 도 예고를 받아야 한다");
             Assert.AreEqual(0f, clock, 0.0001f);
-            Assert.AreEqual(Lanes, first.Length, "lane 수");
             // 웨이브 0 엔트리 4개: base 2 에서 spacing 1 → 2,3,4,5. lane = deckIndex % 3 = 0,1,2,0.
-            Assert.AreEqual(2f, first[0], 0.0001f);
-            Assert.AreEqual(3f, first[1], 0.0001f);
-            Assert.AreEqual(4f, first[2], 0.0001f);
+            Assert.AreEqual(2f, FirstGuideTime(guides, 0), 0.0001f);
+            Assert.AreEqual(3f, FirstGuideTime(guides, 1), 0.0001f);
+            Assert.AreEqual(4f, FirstGuideTime(guides, 2), 0.0001f);
+        }
+
+        [Test]
+        public void WaveOne_GuideForecastPreservesSwarmAndActualLane()
+        {
+            _a.waypointPathIndex = 0;
+            _b.waypointPathIndex = 1;
+            QueueDueWaves(0f);
+
+            Assert.IsTrue(_bridge.TryGetSpawnGuideForecast(out float clock, out var guides));
+            Assert.AreEqual(0f, clock, 0.0001f);
+            Assert.AreEqual(4, guides.Length,
+                "A lane0/lane2 + B lane1/lane0 = 스웜×실제 lane 4개");
+
+            int laneZeroCount = 0;
+            bool hasSwarmA = false;
+            bool hasSwarmB = false;
+            for (int i = 0; i < guides.Length; i++)
+            {
+                if (guides[i].laneIndex != 0) continue;
+                laneZeroCount++;
+                hasSwarmA |= guides[i].swarmIndex == 0 && guides[i].waypointPathIndex == 0;
+                hasSwarmB |= guides[i].swarmIndex == 1 && guides[i].waypointPathIndex == 1;
+            }
+            Assert.AreEqual(2, laneZeroCount, "같은 lane 의 서로 다른 스웜을 병합하지 않는다");
+            Assert.IsTrue(hasSwarmA);
+            Assert.IsTrue(hasSwarmB);
         }
 
         // 당긴 웨이브도 같은 경로(QueueWave)를 지나므로 예고를 받는다. unit 1 의 "강제 호출은
@@ -103,27 +129,27 @@ namespace Wassup.Tests.EditMode
             SetBattleClock(3f);
             _bridge.ForceNextWave();
 
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out _, out var first),
+            Assert.IsTrue(_bridge.TryGetSpawnGuideForecast(out _, out var guides),
                 "당긴 웨이브도 예고를 받아야 한다");
             float earliest = float.MaxValue;
-            for (int i = 0; i < first.Length; i++)
-                if (first[i] >= 0f && first[i] < earliest) earliest = first[i];
+            for (int i = 0; i < guides.Length; i++)
+                if (guides[i].firstSpawnSec < earliest) earliest = guides[i].firstSpawnSec;
             Assert.AreEqual(3f + LeadIn, earliest, 0.0001f, "당긴 시점 + 리드인");
         }
 
         // 마지막 lane 스폰까지는 유지된다(뒷 lane 이 자기 유닛보다 먼저 사라지면 안 된다).
         [Test]
-        public void ForecastSurvivesUntilTheLastLaneSpawn()
+        public void ForecastSurvivesUntilTheLastGuideSpawn()
         {
-            QueueDueWaves(0f);   // lane 시각 2 / 3 / 4
+            QueueDueWaves(0f);   // 스웜×lane 시각 2 / 3 / 4 / 5
 
-            SetBattleClock(3.5f);
-            Assert.IsTrue(_bridge.TryGetSpawnAlertForecast(out _, out _),
-                "아직 lane 2(4초)가 남았다");
+            SetBattleClock(4.5f);
+            Assert.IsTrue(_bridge.TryGetSpawnGuideForecast(out _, out _),
+                "아직 두 번째 스웜 lane 0(5초)가 남았다");
 
-            SetBattleClock(4.1f);
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out _),
-                "마지막 lane 스폰이 지나면 예고가 사라진다");
+            SetBattleClock(5.1f);
+            Assert.IsFalse(_bridge.TryGetSpawnGuideForecast(out _, out _),
+                "마지막 guide 스폰이 지나면 예고가 사라진다");
         }
 
         // 전투가 끝나면 즉시 끊긴다(프레젠터가 잔상 없이 정리하는 근거).
@@ -133,7 +159,7 @@ namespace Wassup.Tests.EditMode
             QueueDueWaves(0f);
             SetField(_bridge, "_running", false);
 
-            Assert.IsFalse(_bridge.TryGetSpawnAlertForecast(out _, out _));
+            Assert.IsFalse(_bridge.TryGetSpawnGuideForecast(out _, out _));
         }
 
         // ---- helpers ----
@@ -148,6 +174,15 @@ namespace Wassup.Tests.EditMode
         }
 
         private void SetBattleClock(float sec) => SetField(_bridge, "_battleClock", (double)sec);
+
+        private static float FirstGuideTime(SpawnGuideForecast[] guides, int laneIndex)
+        {
+            float first = float.MaxValue;
+            for (int i = 0; i < guides.Length; i++)
+                if (guides[i].laneIndex == laneIndex && guides[i].firstSpawnSec < first)
+                    first = guides[i].firstSpawnSec;
+            return first;
+        }
 
         private static AttackUnitData CreateUnit(string name)
         {

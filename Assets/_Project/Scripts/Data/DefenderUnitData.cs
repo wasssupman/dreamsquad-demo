@@ -123,6 +123,16 @@ namespace Wassup.Data
         // 들어 ECB playback 에서 던진다 — 힐러는 DefenderUnit **단독**이어야 한다.
         public bool targetAllies;
 
+        // waypoint-routing unit 4 rev 4 — 공격 가능한 이동체 통행층. `targetFactions`
+        // (진영×종류)와 직교하는 축이며 같은 PlacementLayer 비트 공간을 재사용한다.
+        // 기존 에셋의 미저작 필드는 이니셜라이저 Path가 남고, 명시적 None도 Path로
+        // 폴백한다. 지원형(targetAllies)은 Bridge가 런타임 마스크 0으로 구워 이 필드를
+        // 무시한다 — 아군 방어유닛은 PathFollowState가 없는 고정 유닛이기 때문이다.
+        [Tooltip("이 유닛의 공격이 맞힐 수 있는 적 통행층. 기존 유닛은 Path, 대공 유닛은 Air.")]
+        public PlacementLayer attackTargetLayers = PlacementLayer.Path;
+        public PlacementLayer EffectiveAttackTargetLayers
+            => attackTargetLayers == PlacementLayer.None ? PlacementLayer.Path : attackTargetLayers;
+
         // battle-structures unit 8 — 이 방어유닛이 노리는 대상(진영 × 종류).
         // unit 1(적의 EnemyTargetFilter.factionMask)의 거울이며 같은 폴백 규칙을 쓴다.
         //

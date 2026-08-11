@@ -22,6 +22,18 @@ namespace Wassup.Battle.Combat.Projectile
             float3 hitPos, int excludeIndex,
             NativeArray<float3> positions,
             int tileRange, float tileSize, int2 gridSize, float3 origin)
+            => FindNext(hitPos, excludeIndex, positions, default, 0,
+                tileRange, tileSize, gridSize, origin);
+
+        // waypoint-routing unit 4 rev 4 — same geometry with an optional
+        // traversal-layer eligibility array aligned to positions. Keeping the
+        // original overload preserves every legacy producer/test (mask 0).
+        public static int FindNext(
+            float3 hitPos, int excludeIndex,
+            NativeArray<float3> positions,
+            NativeArray<byte> targetTraversalLayers,
+            byte attackTargetLayers,
+            int tileRange, float tileSize, int2 gridSize, float3 origin)
         {
             if (tileRange <= 0) return -1;
             int2 centerCell = GridMath.WorldToCell(hitPos, tileSize, gridSize, origin);
@@ -30,6 +42,9 @@ namespace Wassup.Battle.Combat.Projectile
             for (int i = 0; i < positions.Length; i++)
             {
                 if (i == excludeIndex) continue;
+                if (targetTraversalLayers.IsCreated
+                    && !Wassup.Data.PlacementLayers.CanTarget(
+                        attackTargetLayers, targetTraversalLayers[i])) continue;
                 float3 pos = positions[i];
                 int2 cell = GridMath.WorldToCell(pos, tileSize, gridSize, origin);
                 if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -262,7 +263,7 @@ namespace Wassup.Tests.EditMode
         }
 
         // 4×3 flow field: y1 행만 walk (goal (0,1)). 나머지 벽(zero-flow).
-        private FlowFieldSingleton MakeFlowField()
+        private FlowFieldSingleton MakeFlowField(bool includeAirLayers = false)
         {
             int2 gridSize = new int2(4, 3);
             var flow = new NativeArray<float2>(12, Allocator.Persistent);
@@ -271,17 +272,24 @@ namespace Wassup.Tests.EditMode
             // 그대로이고 그 의도를 표현하는 수단만 flow=0 → walkMask=0 으로 바뀐다.
             // 이제 벽은 지형이 정하므로 flow 만으로는 y=0/y=2 가 벽이 되지 않는다.
             var walk = new NativeArray<byte>(12, Allocator.Persistent);
+            var cellLayers = includeAirLayers
+                ? new NativeArray<byte>(12, Allocator.Persistent)
+                : default;
             for (int i = 0; i < 12; i++) { flow[i] = float2.zero; dist[i] = int.MaxValue; walk[i] = 0; }
+            if (cellLayers.IsCreated)
+                for (int i = 0; i < 12; i++) cellLayers[i] = (byte)PlacementLayer.Air;
             for (int x = 0; x < 4; x++)
             {
                 int idx = 1 * 4 + x;
                 dist[idx] = x;
                 flow[idx] = x == 0 ? float2.zero : new float2(-1f, 0f); // goal (0,1) 는 zero(특례)
                 walk[idx] = 1;                                          // 통로만 Walk 타일
+                if (cellLayers.IsCreated)
+                    cellLayers[idx] |= (byte)PlacementLayer.Path;
             }
             var f = new FlowFieldSingleton
             {
-                flow = flow, dist = dist, walkMask = walk, gridSize = gridSize,
+                flow = flow, dist = dist, walkMask = walk, cellLayers = cellLayers, gridSize = gridSize,
                 goalCell = new int2(0, 1), tileSize = 1f, origin = float3.zero,
             };
             var s = _em.CreateEntity();
@@ -319,6 +327,31 @@ namespace Wassup.Tests.EditMode
             Hit(g, e);
             _simGroup.Update();
             Assert.IsFalse(_em.HasComponent<Aggroed>(e), "도달 불가(벽/고립 셀) — 거부");
+            f.Dispose();
+        }
+
+        [Test]
+        public void AirEnemy_ChaseFieldUsesAirLayer_AcrossGroundWalls()
+        {
+            var f = MakeFlowField(includeAirLayers: true);
+            var g = MakeGuardian(2, new float3(2f, 0f, 0f));
+            var e = MakeEnemy(new float3(3f, 0f, 2f)); // Path 층에선 고립된 벽 셀
+            _em.AddComponentData(e, new PathFollowState
+            {
+                speed = 1f,
+                radius = 0.25f,
+                traversalLayers = (byte)PlacementLayer.Air,
+            });
+
+            Hit(g, e);
+            _simGroup.Update();
+
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e),
+                "Air 적은 지상 벽 너머 가디언에게도 유인될 수 있어야 한다");
+            Assert.IsTrue(_em.HasBuffer<AggroChaseCell>(e));
+            var chase = _em.GetBuffer<AggroChaseCell>(e);
+            Assert.AreNotEqual(int.MaxValue, chase[2 * 4 + 3].dist,
+                "추격 필드가 적의 Air 층으로 구워져 벽 셀도 도달 가능");
             f.Dispose();
         }
 

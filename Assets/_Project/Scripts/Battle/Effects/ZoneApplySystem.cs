@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Battle.Effects
 {
@@ -40,9 +41,8 @@ namespace Wassup.Battle.Effects
             // 진영을 명시적으로 판정한다. 형태는 HazardCastSystem 의 targetMask 게이트와 같다.
             // 존의 대상 진영은 오늘 적 하나뿐이라 HazardEffect 에 진영 축을 열지 않는다(제약 8) —
             // 아군 대상 존(회복 장판 등)이 실제로 생기면 그때 데이터로 승격한다.
-            foreach (var (transform, faction, entity) in
-                     SystemAPI.Query<RefRO<LocalTransform>, RefRO<FactionTag>>()
-                              .WithAll<PathFollowState>()
+            foreach (var (transform, faction, path, entity) in
+                     SystemAPI.Query<RefRO<LocalTransform>, RefRO<FactionTag>, RefRO<PathFollowState>>()
                               .WithEntityAccess())
             {
                 if (((int)faction.ValueRO.value & (int)Faction.EnemyUnit) == 0) continue;
@@ -52,6 +52,10 @@ namespace Wassup.Battle.Effects
 
                 do
                 {
+                    if (!PlacementLayers.CanTarget(
+                            effect.targetTraversalLayers,
+                            path.ValueRO.traversalLayers)) continue;
+
                     // CcKind.Slow remains in serialized HazardEffect data for SO compatibility.
                     if (effect.kind == CcKind.Slow)
                     {

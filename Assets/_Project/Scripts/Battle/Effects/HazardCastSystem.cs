@@ -6,6 +6,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Battle.Effects
 {
@@ -48,6 +49,7 @@ namespace Wassup.Battle.Effects
             var targetEntities = targetsQuery.ToEntityArray(Allocator.Temp);
             var targetTransforms = targetsQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var targetFactions = targetsQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+            var targetPathStates = targetsQuery.ToComponentDataArray<PathFollowState>(Allocator.Temp);
 
             foreach (var (cast, transform, casterEntity) in
                      SystemAPI.Query<RefRW<HazardCastState>, RefRO<LocalTransform>>()
@@ -74,6 +76,9 @@ namespace Wassup.Battle.Effects
                 {
                     if (targetEntities[i] == casterEntity) continue;
                     if (((int)targetFactions[i].value & mask) == 0) continue;
+                    if (!PlacementLayers.CanTarget(
+                            cast.ValueRO.targetTraversalLayers,
+                            targetPathStates[i].traversalLayers)) continue;
 
                     float3 targetPos = targetTransforms[i].Position;
                     int2 targetCell = GridMath.WorldToCell(targetPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
@@ -111,6 +116,7 @@ namespace Wassup.Battle.Effects
                     height = 1,
                     caster = casterEntity,
                     target = bestTarget,
+                    targetTraversalLayers = cast.ValueRO.targetTraversalLayers,
                 });
 
                 // attack-decoupling unit 4 — 캐스트 성사 = 이 host 의 공격 사건.
@@ -122,6 +128,7 @@ namespace Wassup.Battle.Effects
                     {
                         caster = casterEntity,
                         casterPos = casterPos,
+                        targetTraversalLayers = cast.ValueRO.targetTraversalLayers,
                     });
 
                 cast.ValueRW.cooldownRemaining = cast.ValueRO.cooldownDuration;
@@ -130,6 +137,7 @@ namespace Wassup.Battle.Effects
             targetEntities.Dispose();
             targetTransforms.Dispose();
             targetFactions.Dispose();
+            targetPathStates.Dispose();
         }
     }
 }

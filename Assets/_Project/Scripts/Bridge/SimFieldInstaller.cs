@@ -36,9 +36,9 @@ namespace Wassup.Bridge
         // 호출 전 Teardown 이 선행되어야 한다(멱등성 계약은 호출부에 남겨 순서가 보이게 한다).
         // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수.
-        // traversal-layers unit 1b — `slotMasks` 는 이 매치가 라우팅할 통행 마스크 집합이다
-        // (오름차순·중복 없음이 호출자 책임). 미생성이면 슬롯 1개(`TraversalSlots.DefaultMask`)
-        // 로 떨어져 **현행과 바이트 동일**하다. 실제 수집(로스터 → 집합)은 unit 2a 소관이다.
+        // waypoint-routing unit 1 — `slotMasks` 와 map waypoint 목적지의 곱으로 슬롯을 굽는다.
+        // DefaultMask 를 항상 첫 마스크로 정규화해 슬롯 0 = (골, DefaultMask)를 고정한다.
+        // 미생성이면 슬롯 1개(`TraversalSlots.DefaultMask`)로 떨어져 현행과 byte 동일하다.
         public static void InstallNavFields(
             EntityManager em,
             in GeneratedMap map,
@@ -85,16 +85,64 @@ namespace Wassup.Bridge
                     cellLayers[i] = PlacementLayers.Derive(map.tiles[i]);
                 }
 
-                // traversal-layers unit 1a·1b — 라우팅은 슬롯별 stride.
-                int maskCount = (slotMasks.IsCreated && slotMasks.Length > 0) ? slotMasks.Length : 1;
-                var flow = new NativeArray<float2>(maskCount * n, Allocator.Persistent);
-                var dist = new NativeArray<int>(maskCount * n, Allocator.Persistent);
-                var maskValues = new NativeArray<byte>(maskCount, Allocator.Persistent);
-                if (slotMasks.IsCreated && slotMasks.Length > 0) maskValues.CopyFrom(slotMasks);
-                else maskValues[0] = TraversalSlots.DefaultMask;
+                // 목적지 0은 골 센티널, 이후는 저작 순서대로 중복 제거한 웨이포인트 셀.
+                var destinations = new System.Collections.Generic.List<int2>
+                {
+                    FlowFieldSingleton.GoalSentinel,
+                };
+                if (map.waypointCells.IsCreated)
+                    for (int i = 0; i < map.waypointCells.Length; i++)
+                    {
+                        int2 candidate = map.waypointCells[i];
+                        if (!destinations.Contains(candidate)) destinations.Add(candidate);
+                    }
+
+                // DefaultMask 를 첫 슬롯에 고정하고 나머지는 호출자 순서를 보존해 중복 제거.
+                var masks = new System.Collections.Generic.List<byte> { TraversalSlots.DefaultMask };
+                if (slotMasks.IsCreated)
+                    for (int i = 0; i < slotMasks.Length; i++)
+                    {
+                        byte candidate = slotMasks[i] != 0
+                            ? slotMasks[i]
+                            : TraversalSlots.DefaultMask;
+                        if (!masks.Contains(candidate)) masks.Add(candidate);
+                    }
+
+                int maskCount = masks.Count;
+                int slotCount = destinations.Count * maskCount;
+                NativeArray<float2> flow = default;
+                NativeArray<int> dist = default;
+                NativeArray<byte> maskValues = default;
+                NativeArray<int2> destCells = default;
+                NativeArray<int2> waypointCells = default;
+                NativeArray<int2> waypointRanges = default;
                 NativeArray<int2> goalsField = default;
                 try
                 {
+                    // 연속 Persistent 할당은 첫 할당부터 catch 범위 안에 둔다. 중간 할당 실패가
+                    // 앞선 배열을 고아로 남기면 판 재시작마다 native leak 이 누적된다.
+                    flow = new NativeArray<float2>(slotCount * n, Allocator.Persistent);
+                    dist = new NativeArray<int>(slotCount * n, Allocator.Persistent);
+                    maskValues = new NativeArray<byte>(slotCount, Allocator.Persistent);
+                    destCells = new NativeArray<int2>(slotCount, Allocator.Persistent);
+                    if (map.waypointCells.IsCreated)
+                    {
+                        waypointCells = new NativeArray<int2>(map.waypointCells.Length, Allocator.Persistent);
+                        waypointCells.CopyFrom(map.waypointCells);
+                    }
+                    if (map.waypointRanges.IsCreated)
+                    {
+                        waypointRanges = new NativeArray<int2>(map.waypointRanges.Length, Allocator.Persistent);
+                        waypointRanges.CopyFrom(map.waypointRanges);
+                    }
+                    for (int destinationIndex = 0; destinationIndex < destinations.Count; destinationIndex++)
+                    for (int maskIndex = 0; maskIndex < maskCount; maskIndex++)
+                    {
+                        int slot = destinationIndex * maskCount + maskIndex;
+                        maskValues[slot] = masks[maskIndex];
+                        destCells[slot] = destinations[destinationIndex];
+                    }
+
                     var gridSize = map.gridSize;
                     var goal = map.goal;   // primary = goals[0] (FlowFieldSingleton.goalCell·폴백)
 
@@ -110,17 +158,35 @@ namespace Wassup.Bridge
                     // traversal-layers unit 1b — 슬롯마다 «셀 층 ∩ 슬롯 마스크» 로 굽는다.
                     // 슬롯이 DefaultMask(Path) 하나면 walk(= tiles==Walk)와 같은 집합이라
                     // 결과가 현행과 바이트 동일하다(회귀 축).
-                    var slotWalk = new NativeArray<byte>(n, Allocator.Temp);
+                    NativeArray<byte> slotWalk = default;
+                    NativeArray<int2> waypointSource = default;
                     try
                     {
-                        for (int m = 0; m < maskCount; m++)
+                        slotWalk = new NativeArray<byte>(n, Allocator.Temp);
+                        waypointSource = new NativeArray<int2>(1, Allocator.Temp);
+                        for (int slot = 0; slot < slotCount; slot++)
                         {
-                            TraversalSlots.FillWalkMask(in cellLayers, maskValues[m], slotWalk);
-                            FlowFieldBuilder.BuildFromSources(slotWalk, gridSize, goalsField,
-                                flow.GetSubArray(m * n, n), dist.GetSubArray(m * n, n));
+                            TraversalSlots.FillWalkMask(in cellLayers, maskValues[slot], slotWalk);
+                            int2 destination = destCells[slot];
+                            NativeArray<int2> sources;
+                            if (destination.Equals(FlowFieldSingleton.GoalSentinel))
+                            {
+                                sources = goalsField;
+                            }
+                            else
+                            {
+                                waypointSource[0] = destination;
+                                sources = waypointSource;
+                            }
+                            FlowFieldBuilder.BuildFromSources(slotWalk, gridSize, sources,
+                                flow.GetSubArray(slot * n, n), dist.GetSubArray(slot * n, n));
                         }
                     }
-                    finally { slotWalk.Dispose(); }
+                    finally
+                    {
+                        if (waypointSource.IsCreated) waypointSource.Dispose();
+                        if (slotWalk.IsCreated) slotWalk.Dispose();
+                    }
 
                     var data = new FlowFieldSingleton
                     {
@@ -129,6 +195,9 @@ namespace Wassup.Bridge
                         walkMask = walk,
                         cellLayers = cellLayers,
                         maskValues = maskValues,
+                        destCells = destCells,
+                        waypointCells = waypointCells,
+                        waypointRanges = waypointRanges,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -147,6 +216,9 @@ namespace Wassup.Bridge
                     if (flow.IsCreated) flow.Dispose();
                     if (dist.IsCreated) dist.Dispose();
                     if (maskValues.IsCreated) maskValues.Dispose();
+                    if (destCells.IsCreated) destCells.Dispose();
+                    if (waypointCells.IsCreated) waypointCells.Dispose();
+                    if (waypointRanges.IsCreated) waypointRanges.Dispose();
                     if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
                     throw;
                 }

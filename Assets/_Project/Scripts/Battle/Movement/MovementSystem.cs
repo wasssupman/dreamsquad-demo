@@ -47,12 +47,6 @@ namespace Wassup.Battle.Movement
             var navScratch = new NativeArray<byte>(math.max(1, field.CellCount), Allocator.Temp);
             byte navLayers = 0;   // 0 = 아직 안 만듦 (유효 층 값은 항상 0 이 아니다)
             NavGrid nav = default;
-            // traversal-layers unit 1a — 라우팅은 슬롯별 stride 다. 지금은 전 엔티티가
-            // primary 슬롯을 쓴다(마스크 축은 unit 2a). 뷰는 길이 CellCount 라 아래 소비자
-            // (순수 함수 포함)는 stride 를 모른 채 셀 인덱스로 읽는다.
-            var goalFlow = field.FlowSlot(FlowFieldSingleton.PrimarySlot);
-            var goalDist = field.DistSlot(FlowFieldSingleton.PrimarySlot);
-
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
 
@@ -70,6 +64,8 @@ namespace Wassup.Battle.Movement
             // summon-patrol-defender unit 2 — 거점 순찰 아군의 이동 방향(Effects 소유, RO).
             // PatrolFieldSystem 이 Movement 전에 굽는다. 보유 = patrol 아키타입 판별.
             var patrolStepLookup = SystemAPI.GetComponentLookup<PatrolStep>(isReadOnly: true);
+            // waypoint-routing unit 3 — 진행 인덱스의 유일 writer 는 Movement.
+            var waypointLookup = SystemAPI.GetComponentLookup<WaypointFollow>(isReadOnly: false);
 
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<PathFollowState>>()
@@ -251,14 +247,59 @@ namespace Wassup.Battle.Movement
                 }
                 else
                 {
-                    dir = hunting ? huntField.flow[idx] : goalFlow[idx];
+                    // waypoint-routing unit 3 — 기존 방향/회복/평활화 파이프라인은 그대로 두고
+                    // 읽는 flow 슬롯만 바꾼다. hunting 은 waypoint 보다 우선한다.
+                    // waypoint-routing unit 7 — waypoint 를 끝낸 뒤의 goal 도 이 유닛의 통행층
+                    // 슬롯이어야 한다. Primary(Path) 고정이면 Air/Ground 경로 가이드와 실이동이
+                    // 마지막 구간에서 갈라진다.
+                    int goalSlot = field.SlotFor(FlowFieldSingleton.GoalSentinel, entityLayers);
+                    var routeFlow = field.FlowSlot(goalSlot);
+                    var routeDist = field.DistSlot(goalSlot);
+                    if (hunting)
+                    {
+                        routeFlow = huntField.flow;
+                        routeDist = huntField.dist;
+                    }
+                    else if (waypointLookup.HasComponent(entity))
+                    {
+                        var progress = waypointLookup[entity];
+                        int waypointCount = field.WaypointCountAt(progress.pathIndex);
+                        if (progress.index < waypointCount)
+                        {
+                            int2 currentWaypoint = field.WaypointAt(progress.pathIndex, progress.index);
+                            int currentSlot = field.SlotFor(currentWaypoint, entityLayers);
+                            var currentWaypointDist = field.DistSlot(currentSlot);
+                            bool reachable = currentWaypointDist[idx] != int.MaxValue;
+
+                            WaypointProgress.Step(
+                                cell, currentWaypoint, reachable,
+                                progress.index, waypointCount,
+                                out int nextIndex, out bool advanced, out bool done);
+
+                            if (advanced)
+                            {
+                                progress.index = nextIndex;
+                                waypointLookup[entity] = progress;
+                            }
+
+                            if (!done)
+                            {
+                                int2 destination = field.WaypointAt(progress.pathIndex, nextIndex);
+                                int slot = field.SlotFor(destination, entityLayers);
+                                routeFlow = field.FlowSlot(slot);
+                                routeDist = field.DistSlot(slot);
+                            }
+                        }
+                    }
+
+                    dir = routeFlow[idx];
                     if (math.lengthsq(dir) < 1e-6f)
                     {
                         // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                         // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
                         // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
                         // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
-                        float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : goalDist, field.gridSize);
+                        float2 recovDir = FlowRecovery.RecoveryDir(cell, routeDist, field.gridSize);
                         if (math.lengthsq(recovDir) < 1e-6f)
                         {
                             // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
@@ -281,9 +322,8 @@ namespace Wassup.Battle.Movement
                         // 목표점 선택 규칙은 예고 라인과 공유(TryStepTarget) — 갈라지면
                         // "라인 ≠ 이동선" 부류가 재발한다.
                         // 사냥 분기는 defender field 를 따르므로 그쪽 flow 로 후보를 만든다.
-                        var smoothFlow = hunting ? huntField.flow : goalFlow;
                         if (PathSmoothing.TryStepTarget(
-                                current, in nav, in smoothFlow, follow.ValueRO.radius,
+                                current, in nav, in routeFlow, follow.ValueRO.radius,
                                 PathSmoothing.DefaultLookahead, out float3 aim))
                         {
                             float2 toAim = new float2(aim.x - current.x, aim.z - current.z);

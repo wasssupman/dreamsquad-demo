@@ -294,6 +294,84 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); }
         }
 
+        // ── boss-mamemo unit 0 — 보스 3종 확장 ──────────────────────────────────────
+
+        // 세 번째 보스를 pool 에 넣어도 **잡몹 편성은 안 바뀐다.** 근거는 rng 소비 "횟수" 다:
+        // Random.NextInt(min,max) 는 range 와 무관하게 NextState() 1회만 쓰고(rejection 루프
+        // 없음), 보스 치환은 일반 웨이브 루프가 끝난 뒤에 돈다. 그래서 pool 크기는 스트림의
+        // **위치**를 바꾸지 않고 뽑히는 **값**만 바꾼다 — 보스 종류만 달라진다.
+        //
+        // 이 테스트가 지키는 것: 누군가 pool 크기에 따라 rng 콜 수가 달라지게 만들면
+        // (예: 중복 배제 재추첨, Count>2 분기 추가) escortCount·escortType 이 밀려
+        // **라이브 8덱의 보스 웨이브 구성이 통째로 바뀐다.**
+        [Test]
+        public void ThirdBossInPoolDoesNotChangeEscortComposition()
+        {
+            var a = CreateUnit("BossA");
+            var b = CreateUnit("BossB");
+            var c = CreateUnit("BossC");
+            try
+            {
+                for (int seed = 1; seed <= 20; seed++)
+                {
+                    var two = GenerateBossPool(seed, new[] { a, b });
+                    var three = GenerateBossPool(seed, new[] { a, b, c });
+                    Assert.AreEqual(two.waves.Count, three.waves.Count, $"seed {seed} wave count");
+
+                    for (int i = 0; i < two.waves.Count; i++)
+                    {
+                        var w2 = two.waves[i];
+                        var w3 = three.waves[i];
+                        Assert.AreEqual(w2.groups.Count, w3.groups.Count, $"seed {seed} wave {i} group count");
+
+                        if ((i + 1) % 5 == 0)
+                        {
+                            // 보스 웨이브: 선봉은 종류가 달라질 수 있지만 **호위는 같아야** 한다.
+                            Assert.AreEqual(1, w3.groups[0].count, $"seed {seed} wave {i} 보스 1기");
+                            Assert.IsTrue(w3.groups[0].unit == a || w3.groups[0].unit == b || w3.groups[0].unit == c,
+                                $"seed {seed} wave {i} 선봉이 pool 밖");
+                            Assert.AreSame(w2.groups[1].unit, w3.groups[1].unit, $"seed {seed} wave {i} escortType");
+                            Assert.AreEqual(w2.groups[1].count, w3.groups[1].count, $"seed {seed} wave {i} escortCount");
+                        }
+                        else
+                        {
+                            // 비-보스 웨이브: 완전히 동일.
+                            for (int g = 0; g < w2.groups.Count; g++)
+                            {
+                                Assert.AreSame(w2.groups[g].unit, w3.groups[g].unit, $"seed {seed} wave {i} g{g} unit");
+                                Assert.AreEqual(w2.groups[g].count, w3.groups[g].count, $"seed {seed} wave {i} g{g} count");
+                            }
+                        }
+                    }
+                }
+            }
+            finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); Object.DestroyImmediate(c); }
+        }
+
+        // 3종이 실제로 다 나온다 — 안 그러면 위 테스트는 "2종 pool 을 두 번 돌린 것"과 구분이 안 된다.
+        [Test]
+        public void ThreeBossPoolRotatesAllThree()
+        {
+            var a = CreateUnit("BossA");
+            var b = CreateUnit("BossB");
+            var c = CreateUnit("BossC");
+            try
+            {
+                var seen = new HashSet<AttackUnitData>();
+                for (int seed = 1; seed <= 30; seed++)
+                {
+                    var plan = GenerateBossPool(seed, new[] { a, b, c });
+                    for (int i = 0; i < plan.waves.Count; i++)
+                    {
+                        if ((i + 1) % 5 != 0) continue;
+                        seen.Add(plan.waves[i].groups[0].unit);
+                    }
+                }
+                Assert.AreEqual(3, seen.Count, "30 seed 안에 세 보스가 모두 등장해야 3종 로테이션이 실제로 도는 것");
+            }
+            finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); Object.DestroyImmediate(c); }
+        }
+
         // bossPool 경로는 GenerateBoss 에 인자 하나만 더한 것이다 — 호출을 복제하지 않는다.
         // 복제하면 "bossPool 만 다르다" 는 회귀 테스트의 전제가 두 헬퍼 사이 눈대중 대조로 남고,
         // 한쪽의 180f/10/15/0.35f 를 만지는 순간 서로 다른 두 설정의 비교가 된다.

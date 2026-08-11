@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Movement;
 
 namespace Wassup.Battle.Combat.Projectile
 {
@@ -52,6 +53,7 @@ namespace Wassup.Battle.Combat.Projectile
 
             var retargetEntities = default(NativeArray<Entity>);
             var retargetPositions = default(NativeArray<float3>);
+            var retargetTraversalLayers = default(NativeArray<byte>);
             float tileSize = 1f;
             int2 gridSize = new int2(128, 128);
             float3 ffOrigin = float3.zero;
@@ -76,7 +78,14 @@ namespace Wassup.Battle.Combat.Projectile
                 retargetEntities = q.ToEntityArray(Allocator.Temp);
                 var xf = q.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                 retargetPositions = new NativeArray<float3>(xf.Length, Allocator.Temp);
-                for (int i = 0; i < xf.Length; i++) retargetPositions[i] = xf[i].Position;
+                retargetTraversalLayers = new NativeArray<byte>(xf.Length, Allocator.Temp);
+                var pathLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+                for (int i = 0; i < xf.Length; i++)
+                {
+                    retargetPositions[i] = xf[i].Position;
+                    if (pathLookup.HasComponent(retargetEntities[i]))
+                        retargetTraversalLayers[i] = pathLookup[retargetEntities[i]].traversalLayers;
+                }
                 xf.Dispose();
             }
 
@@ -106,7 +115,9 @@ namespace Wassup.Battle.Combat.Projectile
                             {
                                 float3 here = transform.ValueRO.Position;
                                 repick = BounceRetarget.FindNext(
-                                    here, -1, retargetPositions, rr, tileSize, gridSize, ffOrigin);
+                                    here, -1, retargetPositions, retargetTraversalLayers,
+                                    projectile.ValueRO.targetTraversalLayers,
+                                    rr, tileSize, gridSize, ffOrigin);
                             }
                             if (repick < 0)
                             {
@@ -272,6 +283,7 @@ namespace Wassup.Battle.Combat.Projectile
 
             if (retargetEntities.IsCreated) retargetEntities.Dispose();
             if (retargetPositions.IsCreated) retargetPositions.Dispose();
+            if (retargetTraversalLayers.IsCreated) retargetTraversalLayers.Dispose();
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

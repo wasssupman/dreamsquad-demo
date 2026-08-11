@@ -121,6 +121,20 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 세 번째 보스 마메모 (boss-mamemo — **완료 2026-08-11**, Play 확인 + 코드리뷰 + 재우기 버그 계측·수정까지)
+
+웨이브 회전을 멈춰 점수를 깎는 보스. 아무도 안 죽이면서 시간을 가져간다.
+신규 맥락·시스템·채널 0. 상세: `docs/spec/boss-mamemo/5_handoff_summary.md`.
+
+- **마메모 웨이브 소요 시간 관측** [S] · 이 보스의 정체가 회전 지연이다 — 실전 판에서 마메모 웨이브가 다른 웨이브보다 눈에 띄게 오래 걸리는지가 최종 성립 조건. (~~자장가 발동 횟수 관측~~ 은 `BossLullabyLiveTest` 상시 계측으로 상환 — 그 계측이 도넛 퇴화를 실제로 잡았다.) (boss-mamemo)
+- **악몽의 가호가 골 앞에서 유지되는가** [S] · 호위 이속(2.2~2.5, 러너 7.2) vs 마메모 1.4 → 반경 4 를 약 4초에 이탈한다. 실드가 스폰 직후에만 붙으면 「호위가 골에 눌러앉아 전멸 지연」 논지가 성립하지 않는다. (boss-mamemo)
+- **가호에 대상 수 상한이 없다** [S] · 반경 4 원판(81칸) 전부에 flat 60. 수혜자 EHP 배율이 러너(HP 20) 4.0× ~ 뱅가드(HP 120) 1.5× 로 흔들린다. 필요해지면 cap 축 신설. (boss-mamemo)
+- **적 오버헤드 바 압축** [S] · HP 20 러너가 실드 60 을 받으면 HP 구간이 바의 25%. 적 실드 게이지가 이번에 열려 처음 보이는 현상. (boss-mamemo)
+- **⚠ 자는 캐스터가 계속 시전한다 — 사용자 판정 대기** [M] · `HazardCastSystem`·`ShieldCastSystem` 이 CC 를 안 본다(`shield-guardian-defender` 계약 7 의 **의도**). 스펙은 "캐스터 편성이 자장가의 답" 으로 프레이밍했는데 **사용자는 버그로 읽었다**(Play 관측 2026-08-11). 고치면 가디언·해저드 캐스터 **전원**의 동작이 바뀌므로 별 spec. 당장 안 고치기로 결정됨. (boss-mamemo)
+- **보스 `OnShieldBreak` 개방** [M] · 마메모와 궁합이 가장 좋다(실드 깨지는 순간 반격). 단 **실행기 진영 파라미터화가 선행** — 브리지 파열 드레인의 대상 풀이 `AttackUnitTag` 하드코딩이라 보스가 쓰면 자기 진영을 때린다. 지금은 `DcTrigger.EnemyTriggerArmed` 가 막고 EditMode 가 고정한다. 짱쎈놈 README 의 동일 항목과 병합. (boss-mamemo)
+- **악몽의 늪(자리에 남는 장판)** [L] · 배치 공간 박탈 축. 장판 효과가 `PathFollowState`+적 진영 게이트라 **타일 고정인 방어유닛에게 구조적으로 안 닿는다**. **다음 보스에서 딥하게 논의**(사용자 결정 2026-08-11). (boss-mamemo)
+- **네 번째 보스: 소환형** [L] · 잡몹을 직접 뱉는 물량 축. 소환 페이로드 + 브리지 스폰 seam 필요. (boss-mamemo)
+
 #### 거점 사냥꾼 (structure-hunter-enemy — units 0~1 완료 2026-08-11, **사용자 Play 확인 대기**)
 
 유인·차단이 통하지 않는 첫 적(마음사냥꾼). 저작 마스크만으로 도발 면역이 파생되고,
@@ -134,14 +148,15 @@ code + git history        구현 상세
 - **「거점 우선, 유닛도 때림」 변형** [S] · 도발이 걸리는 중간 형태. 지금 후보는 **거리로만 경쟁**하므로(`AttackSystem.cs:109`) faction 우선순위 축이 필요하다. (structure-hunter-enemy)
 - **스폰 예고에서 「유인 불가」 구분 표시** [S] · 지금은 스폰 후에야 안다. (structure-hunter-enemy)
 
-#### 비행 적 (waypoint-flight-enemy — spec 작성됨, **미착수**)
+#### 비행 적 (waypoint-flight-enemy — units 0~4+7 완료 2026-08-11, 다음 unit 5)
 
-지형을 무시하되 맵에 저작된 궤도로 오는 적. flow field 를 안 보므로 `traversal-layers` 의
-미완 슬롯 배선을 건드리지 않는다. 착수 전 확인된 배선 함정 3개가 README 에 있다.
+맵이 N개 웨이포인트 경로를 저작하고 적 SO가 하나를 선택한다. 기존 flow field를
+`목적지 × 통행층` 슬롯으로 재사용하며, Air 적은 지상 차단을 무시한다.
 상세: `docs/spec/waypoint-flight-enemy/README.md`.
 
-- **units 0~5 전부 미착수** [M] · 저작 축 → 순수 함수 → 켜기(한 커밋) → 뷰 lift → 툴+맵 2~3장 → handoff. (waypoint-flight-enemy)
-- **비행 궤도 예고** [S] · 검증 질문 밖이라 범위에서 뺐다. 붙일 곳은 `SpawnAlertPresenter` 이고 경로 소스가 달라진다. (waypoint-flight-enemy)
+- **unit 5 경로 페인터 + 맵 2~3장** [M] · 유일한 미완료 작업 단위. 기존 저장/bake와 unit 0 검증 함수를 재사용하고, 맵마다 다른 방어 위치를 요구하는지 사용자 Play로 닫는다. (waypoint-flight-enemy)
+- **대공사수 고유 콘텐츠화** [M] · 현재 Path·Air 동시 타겟, 피해 7/주기 0.2초의 양성 대조. 고유 아트·최종 밸런스·Air 우선/추가 피해는 별도 검증. (waypoint-flight-enemy)
+- **잔여 맵 경로 저작** [S] · unit 5는 2~3장까지만 다루며 나머지 맵은 후속 콘텐츠 작업이다. (waypoint-flight-enemy)
 
 #### 목표지점 안정도 (goal-stability — 완료 2026-08-04)
 

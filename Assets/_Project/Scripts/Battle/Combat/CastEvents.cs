@@ -17,6 +17,7 @@ namespace Wassup.Battle.Combat
     {
         public Entity caster;    // 캐스트를 성사시킨 디펜더
         public float3 casterPos; // 발사 원점(드레인 시점 위치 조회를 아끼는 스냅샷)
+        public byte targetTraversalLayers; // waypoint-routing unit 4 rev 4 — cast snapshot
     }
 
     public struct CastEventsSingleton : IComponentData

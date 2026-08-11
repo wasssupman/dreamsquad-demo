@@ -11,6 +11,7 @@ using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Bridge;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -83,7 +84,9 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
-        private Entity CreateCaster(float3 worldPos, float range = 4f, float cooldown = 1f, HazardCastKind kind = HazardCastKind.Zone, int dataIndex = 7)
+        private Entity CreateCaster(float3 worldPos, float range = 4f, float cooldown = 1f,
+            HazardCastKind kind = HazardCastKind.Zone, int dataIndex = 7,
+            PlacementLayer targetLayers = PlacementLayer.None)
         {
             var entity = _em.CreateEntity();
             _em.AddComponent<DefenderUnitTag>(entity);
@@ -95,6 +98,7 @@ namespace Wassup.Tests.EditMode
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
                 targetMask = (int)Faction.EnemyUnit,
+                targetTraversalLayers = (byte)targetLayers,
                 dataIndex = dataIndex,
                 kind = kind,
                 footprintWidth = 5,
@@ -103,12 +107,16 @@ namespace Wassup.Tests.EditMode
             return entity;
         }
 
-        private Entity CreateAttackUnit(float3 worldPos)
+        private Entity CreateAttackUnit(float3 worldPos, PlacementLayer traversalLayer = PlacementLayer.None)
         {
             var entity = _em.CreateEntity();
             _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
-            _em.AddComponentData(entity, new PathFollowState { speed = 1f });
+            _em.AddComponentData(entity, new PathFollowState
+            {
+                speed = 1f,
+                traversalLayers = (byte)traversalLayer,
+            });
             return entity;
         }
 
@@ -182,6 +190,20 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_queue.TryDequeue(out var req));
             Assert.AreEqual(HazardCastKind.Blocking, req.kind);
             Assert.AreEqual(3, req.dataIndex);
+        }
+
+        [Test]
+        public void PathOnly_Caster_Ignores_CloserAir_AndSnapshotsMask()
+        {
+            CreateCaster(new float3(1f, 0f, 1f), targetLayers: PlacementLayer.Path);
+            CreateAttackUnit(new float3(2f, 0f, 1f), PlacementLayer.Air);
+            var pathTarget = CreateAttackUnit(new float3(3f, 0f, 1f), PlacementLayer.Path);
+
+            Tick();
+
+            Assert.IsTrue(_queue.TryDequeue(out var req));
+            Assert.AreEqual(pathTarget, req.target);
+            Assert.AreEqual((byte)PlacementLayer.Path, req.targetTraversalLayers);
         }
 
         [Test]

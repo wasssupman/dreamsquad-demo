@@ -66,10 +66,33 @@ namespace Wassup.Battle.Combat
             var patternLookup = SystemAPI.GetBufferLookup<Projectile.Emission.PatternSlot>(isReadOnly: false);
             var instanceLookup = SystemAPI.GetBufferLookup<Projectile.Emission.EmitterInstance>(isReadOnly: false);
 
-            var whipTargets = new NativeList<int>(Allocator.Temp);
-            NativeArray<Entity> whipEnemyEntities = default, whipDefEntities = default;
-            NativeArray<int2> whipEnemyCells = default;
-            bool whipEnemyPoolBuilt = false, whipDefEntitiesBuilt = false;
+            // boss-mamemo unit 1 — 자장가(AreaSleep) seam. 수면은 대상 진영이 반대일 뿐
+            // 부여 경로는 기존 CC 파이프라인 그대로다 — CcApplySystem 에 대상 진영 게이트가
+            // 없고(거점 skip · 버퍼 부재 skip · 보스 면역만 판정), 방어유닛은 이미 CcEffect
+            // 버퍼를 갖고 AttackSystem 이 공격자의 IsLocked 를 본다. 신규 채널 0.
+            // ⚠ 기존 AreaSleep 실행기(BattleBridge.DrainShieldBreakEvents)는 **쓰지 않는다** —
+            // 그쪽 대상 풀이 AttackUnitTag 하드코딩이라 손대면 실드파열 카드가 깨진다.
+            // payload kind 만 공유하고 실행 경로는 별개다.
+            bool hasCcQ = SystemAPI.TryGetSingletonRW<EnemyCcEventsSingleton>(out var ccRW);
+            // boss-mamemo unit 3 — 악몽의 가호 seam. 가디언 전용 생산자(ShieldCastSystem)를
+            // 재사용하지 않고 그 아래층(Units 소유 IncomingShield 버퍼)에 append 한다.
+            var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
+            var shieldSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.ShieldSlot>(isReadOnly: true);
+            // 실드 부여 원샷 연출 — 가디언이 이미 쓰는 채널(→ VfxSpawner.SpawnShieldGranted).
+            bool hasShieldVfxQ = SystemAPI.TryGetSingletonRW<ShieldGrantedEventsSingleton>(out var shieldVfxRW);
+
+            var pulseTargets = new NativeList<int>(Allocator.Temp);
+            var pulseDistSq = new NativeList<float>(Allocator.Temp);
+            var pulsePicked = new NativeList<int>(Allocator.Temp);
+            // 진영별 후보 풀 — 원래 whip(같은 진영) 전용이었으나 자장가가 **반대 진영**을
+            // 쓰면서 둘 다 어느 payload 에서든 채워질 수 있다. 그래서 이름에서 whip 을 뗀다.
+            NativeArray<Entity> enemyEntities = default, defEntities = default;
+            NativeArray<int2> enemyCells = default;
+            // 자장가의 "가까운 M명" 은 셀이 아니라 **월드 거리²** 로 고른다. 셀 거리는 동률이
+            // 흔하고 그 동률을 쿼리 인덱스 순서가 가르기 때문이다(형제 경로인 실드파열 AreaSleep
+            // 도 월드 거리를 쓴다 — 같은 payload 는 같은 선별 규칙이어야 한다).
+            NativeArray<LocalTransform> enemyTransformsPool = default;
+            bool enemyPoolBuilt = false, defEntitiesBuilt = false;
 
             foreach (var (slotsRef, entity) in
                      SystemAPI.Query<DynamicBuffer<DcTriggerSlot>>()
@@ -108,35 +131,29 @@ namespace Wassup.Battle.Combat
                             {
                                 bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
                                 bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
-                                if (hostIsEnemy && !whipEnemyPoolBuilt)
+                                if (hostIsEnemy && !enemyPoolBuilt)
                                 {
-                                    var enemyQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
-                                    whipEnemyEntities = enemyQuery.ToEntityArray(Allocator.Temp);
-                                    var enemyTransforms = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
-                                    whipEnemyCells = new NativeArray<int2>(enemyTransforms.Length, Allocator.Temp);
-                                    for (int i = 0; i < enemyTransforms.Length; i++)
-                                        whipEnemyCells[i] = GridMath.WorldToCell(enemyTransforms[i].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                    enemyTransforms.Dispose();
-                                    whipEnemyPoolBuilt = true;
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
                                 }
-                                if (hostIsDefender && !whipDefEntitiesBuilt)
+                                if (hostIsDefender && !defEntitiesBuilt)
                                 {
                                     // cells = defCells (동일 쿼리 스냅샷) — entities 만 보충.
-                                    whipDefEntities = defQuery.ToEntityArray(Allocator.Temp);
-                                    whipDefEntitiesBuilt = true;
+                                    defEntities = defQuery.ToEntityArray(Allocator.Temp);
+                                    defEntitiesBuilt = true;
                                 }
                                 if (hostIsEnemy || hostIsDefender) // 진영 불명 host = no-op
                                 {
-                                    var poolEntities = hostIsEnemy ? whipEnemyEntities : whipDefEntities;
-                                    var poolCells = hostIsEnemy ? whipEnemyCells : defCells;
+                                    var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
+                                    var poolCells = hostIsEnemy ? enemyCells : defCells;
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref whipTargets);
+                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
                                     float mul = 1f + slot.magnitude / 100f;
                                     int buffed = 0;
-                                    for (int ti = 0; ti < whipTargets.Length; ti++)
+                                    for (int ti = 0; ti < pulseTargets.Length; ti++)
                                     {
-                                        var target = poolEntities[whipTargets[ti]];
+                                        var target = poolEntities[pulseTargets[ti]];
                                         if (target == entity) continue; // host 자신 제외 — entity 비교 (계약 3)
                                         statEventsRef.ValueRW.queue.Enqueue(new StatModifierApplyEvent
                                         {
@@ -162,6 +179,184 @@ namespace Wassup.Battle.Combat
                                             payload = PayloadKind.SingleSplash,
                                             source = entity,
                                         });
+                                    }
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.AreaSleep)
+                        {
+                            // boss-mamemo unit 1 — 자장가. host 의 **반대 진영** 유닛 중 가까운
+                            // magnitude 명을 duration 초 재운다. whip 오라와 같은 arm·같은 후보
+                            // 풀을 쓰되 진영이 반대이고, 결과가 스탯이 아니라 CC 라는 것만 다르다.
+                            int cap = (int)slot.magnitude;
+                            if (cap >= 1 && slot.duration > 0f && hasCcQ
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
+                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
+                                // 대상 = 반대 진영. 진영 축은 **유닛 태그**다 — FactionTag 을 쓰면
+                                // battle-structures 이후 진영 비트가 거점(마음·본능)을 포함하는데
+                                // 거점엔 CcEffect 버퍼가 없다(CcApplySystem 이 skip 하지만, 애초에
+                                // 후보에 넣으면 cap 자리를 유령이 차지해 실제 대상이 줄어든다).
+                                if (hostIsEnemy && !defEntitiesBuilt)
+                                {
+                                    defEntities = defQuery.ToEntityArray(Allocator.Temp);
+                                    defEntitiesBuilt = true;
+                                }
+                                if (hostIsDefender && !enemyPoolBuilt)
+                                {
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
+                                }
+                                if (hostIsEnemy || hostIsDefender)
+                                {
+                                    var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
+                                    var poolCells = hostIsEnemy ? defCells : enemyCells;
+                                    var poolTransforms = hostIsEnemy ? defTransforms : enemyTransformsPool;
+                                    float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                    int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+
+                                    // **전 범위**를 후보로 잡는다. 제외는 «내가 지금 때릴 대상»
+                                    // 뿐이고, 그건 아래 cap 선별 뒤 rank 로 뺀다.
+                                    //
+                                    // ⚠ 여기를 도넛(안쪽 반지름 = 사거리)으로 만들면 **능력이 죽는다.**
+                                    // 실측(12초 조우, 방어유닛 4기): 보스는 사냥해서 **붙기 때문에**
+                                    // 조우의 대부분을 사거리 안에서 보내고(268프레임) 도넛은 접근
+                                    // 중에만 점유된다(85프레임) → 자장가가 3.5초 주기인데도
+                                    // **조우당 1회**밖에 안 터졌다. 사용자 보고 "재우는 효과가
+                                    // 발생하지 않는다" 의 실체가 이것이다.
+                                    //
+                                    // 원래 걱정(자기 평타가 재운 유닛을 깨운다)은 사실이지만 규모가
+                                    // 다르다 — `attackTargetCount` 는 1 이라 **한 번에 1기만** 깨우고
+                                    // 나머지는 계속 잔다. 링 전체를 빼는 건 1/3 낭비를 막으려다
+                                    // 발동 자체를 없앤 과잉이었다.
+                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
+
+                                    // 후보를 거리²로 좁힌 뒤 cap 적용 — 형제 경로(실드파열
+                                    // AreaSleep)와 같은 선별기. 배제는 여기서 끝내야 cap 자리를
+                                    // 죽은/배치중 유닛이 차지하지 않는다.
+                                    pulseDistSq.Clear();
+                                    pulsePicked.Clear();
+                                    for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                    {
+                                        var cand = poolEntities[pulseTargets[ti]];
+                                        if (cand == entity) continue;
+                                        if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(cand)) continue;
+                                        if (SystemAPI.HasComponent<Wassup.Battle.Units.PendingDeployment>(cand)) continue;
+                                        pulsePicked.Add(pulseTargets[ti]);
+                                        pulseDistSq.Add(math.distancesq(poolTransforms[pulseTargets[ti]].Position, hostPos));
+                                    }
+                                    // **「내가 때릴 대상」만 rank 로 뺀다.**
+                                    // host 가 이번 공격에 때릴 수 있는 수 = attackTargetCount 이고,
+                                    // AttackSystem 은 사거리 안 **가까운 순**으로 고른다. 그래서 거리
+                                    // 오름차순 정렬의 **앞에서부터 그 수만큼**, 그리고 **사거리 안일
+                                    // 때만** 건너뛰면 «재우자마자 자기가 깨우는» 자리만 정확히 빠진다.
+                                    // 링 전체를 빼면 붙은 보스의 후보가 통째로 마른다(위 주석).
+                                    int skipCount = SystemAPI.HasComponent<AttackState>(entity)
+                                        ? math.max(0, SystemAPI.GetComponent<AttackState>(entity).attackTargetCount)
+                                        : 0;
+                                    int attackTiles = SystemAPI.HasComponent<AttackState>(entity)
+                                        ? GridMath.RangeToTiles(SystemAPI.GetComponent<AttackState>(entity).range)
+                                        : -1;
+                                    // 뺄 만큼 더 뽑아야 실제 재우는 수가 cap 을 유지한다.
+                                    AoeTargetCap.SelectNearest(pulseDistSq.AsArray(), cap + skipCount, ref pulseTargets);
+
+                                    int slept = 0, skipped = 0;
+                                    for (int ti = 0; ti < pulseTargets.Length && slept < cap; ti++)
+                                    {
+                                        int pick = pulsePicked[pulseTargets[ti]];
+                                        if (skipped < skipCount)
+                                        {
+                                            int cheb = GridMath.ChebyshevDistance(poolCells[pick], hostCell);
+                                            if (cheb <= attackTiles) { skipped++; continue; }
+                                        }
+                                        ccRW.ValueRW.queue.Enqueue(new EnemyCcEvent
+                                        {
+                                            target = poolEntities[pick],
+                                            effect = new CcEffect
+                                            {
+                                                kind = CcKind.Sleep,
+                                                remainingTime = slot.duration,
+                                            },
+                                        });
+                                        slept++;
+                                    }
+                                    // whip 선례 — 실제로 잰 펄스만 연출한다(효과 없는 연출 금지).
+                                    if (slept > 0 && hasHitQ && slot.projectileDataIndex >= 0)
+                                    {
+                                        hitQueue.Enqueue(new ProjectileHitEvent
+                                        {
+                                            position = hostPos,
+                                            dataIndex = slot.projectileDataIndex,
+                                            payload = PayloadKind.SingleSplash,
+                                            source = entity,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.GrantShield)
+                        {
+                            // boss-mamemo unit 3 — 악몽의 가호. host **와 같은 진영** 유닛
+                            // (host 제외)에게 실드를 나눠준다. 이 arm 은 반경 확산만 배선한다 —
+                            // 자기 실드는 경계 arm 의 꿈의 장막이 소유한다(bake 가 조합을 가른다).
+                            //
+                            // host 제외가 계약인 이유: ShieldMath 는 source 를 병합 키로 쓰므로
+                            // 두 능력이 같은 host 에서 나와 자기 자신에게 겹치면 **한 슬롯을
+                            // 공유**하고, 이쪽이 매 주기 그 잔량을 max 로 재충전해 「경계에 생기는
+                            // 벽」이 「상시 실드」로 붕괴한다.
+                            if (slot.magnitude > 0f && slot.tileRange > 0
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
+                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
+                                if (hostIsEnemy && !enemyPoolBuilt)
+                                {
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
+                                }
+                                if (hostIsDefender && !defEntitiesBuilt)
+                                {
+                                    defEntities = defQuery.ToEntityArray(Allocator.Temp);
+                                    defEntitiesBuilt = true;
+                                }
+                                if (hostIsEnemy || hostIsDefender)
+                                {
+                                    var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
+                                    var poolCells = hostIsEnemy ? enemyCells : defCells;
+                                    var poolTransforms = hostIsEnemy ? enemyTransformsPool : defTransforms;
+                                    float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                    int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
+
+                                    int granted = 0;
+                                    for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                    {
+                                        var target = poolEntities[pulseTargets[ti]];
+                                        if (target == entity) continue;              // host 제외 (위 계약)
+                                        if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(target)) continue;
+                                        if (!shieldSlotLookup.HasBuffer(target)) continue;
+                                        if (!incomingShieldLookup.HasBuffer(target)) continue;
+                                        // 만충이면 Merge 가 max 로 no-op 이라 헛 VFX 만 남는다
+                                        // (가디언 unit 4 선례).
+                                        if (Wassup.Battle.Units.ShieldMath.ValueFromSource(
+                                                shieldSlotLookup[target], entity) >= slot.magnitude) continue;
+                                        incomingShieldLookup[target].Add(new Wassup.Battle.Units.IncomingShield
+                                        {
+                                            source = entity,   // 같은 출처 = max 갱신 → 깎인 만큼만 다시 찬다
+                                            amount = slot.magnitude,
+                                        });
+                                        // boss-mamemo unit 4 — 가디언과 같은 실드 부여 채널(저작 0).
+                                        // **대상 위치에 대상 수만큼** 쏜다 — 가디언(ShieldCastSystem)이
+                                        // 그렇게 한다. host 에서 한 번만 쏘면 "보스가 반짝하고 호위 실드는
+                                        // 소리 없이 생긴다" 가 되어, 같은 채널을 재사용한 이유("같은 사건은
+                                        // 같은 그림")가 정작 깨진다.
+                                        if (hasShieldVfxQ)
+                                            shieldVfxRW.ValueRW.queue.Enqueue(new ShieldGrantedEvent
+                                            {
+                                                position = poolTransforms[pulseTargets[ti]].Position,
+                                            });
+                                        granted++;
                                     }
                                 }
                             }
@@ -209,9 +404,26 @@ namespace Wassup.Battle.Combat
 
             defTransforms.Dispose();
             defCells.Dispose();
-            whipTargets.Dispose();
-            if (whipEnemyPoolBuilt) { whipEnemyEntities.Dispose(); whipEnemyCells.Dispose(); }
-            if (whipDefEntitiesBuilt) whipDefEntities.Dispose();
+            pulseTargets.Dispose();
+            pulseDistSq.Dispose();
+            pulsePicked.Dispose();
+            if (enemyPoolBuilt) { enemyEntities.Dispose(); enemyCells.Dispose(); enemyTransformsPool.Dispose(); }
+            if (defEntitiesBuilt) defEntities.Dispose();
+        }
+
+        // 적 후보 풀 스냅샷 — whip(같은 진영)과 자장가(반대 진영) 두 호출처가 공유한다.
+        // transforms 를 **버리지 않는다**: 자장가의 cap 선별이 월드 거리²를 쓴다.
+        private static void BuildEnemyPool(ref SystemState state, in FlowFieldSingleton ff,
+            ref NativeArray<Entity> entities, ref NativeArray<LocalTransform> transforms,
+            ref NativeArray<int2> cells)
+        {
+            var query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<AttackUnitTag, LocalTransform>().Build(ref state);
+            entities = query.ToEntityArray(Allocator.Temp);
+            transforms = query.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            cells = new NativeArray<int2>(transforms.Length, Allocator.Temp);
+            for (int i = 0; i < transforms.Length; i++)
+                cells[i] = GridMath.WorldToCell(transforms[i].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
         }
     }
 }

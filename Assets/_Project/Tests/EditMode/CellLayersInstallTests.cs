@@ -111,10 +111,11 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual((byte)PlacementLayer.Path, field.cellLayers[0],
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air), field.cellLayers[0],
                     "Walk 칸은 저작이 뭐든 Path 로 파생된다 — 배치 저작이 통행을 바꾸지 않는다");
-                Assert.AreEqual((byte)PlacementLayer.Ground, field.cellLayers[1], "Place → Ground");
-                Assert.AreEqual((byte)0, field.cellLayers[2], "Deco → 층 없음");
+                Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Air),
+                    field.cellLayers[1], "Place → Ground|Air");
+                Assert.AreEqual((byte)PlacementLayer.Air, field.cellLayers[2], "Deco → Air");
             }
             finally { map.Dispose(); }
         }
@@ -178,10 +179,14 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual((byte)PlacementLayer.Path,   field.cellLayers[0], "Walk → Path");
-                Assert.AreEqual((byte)PlacementLayer.Ground, field.cellLayers[1], "Place → Ground");
-                Assert.AreEqual((byte)0,                     field.cellLayers[2], "Deco → 층 없음");
-                Assert.AreEqual((byte)PlacementLayer.Path,   field.cellLayers[3], "Walk → Path");
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+                    field.cellLayers[0], "Walk → Path|Air");
+                Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Air),
+                    field.cellLayers[1], "Place → Ground|Air");
+                Assert.AreEqual((byte)PlacementLayer.Air,
+                    field.cellLayers[2], "Deco → Air");
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+                    field.cellLayers[3], "Walk → Path|Air");
             }
             finally { map.Dispose(); }
         }
@@ -250,11 +255,11 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(1, field.SlotCount);
                 Assert.AreEqual(4, field.CellCount);
                 Assert.AreEqual(field.CellCount, field.FlowSlot(FlowFieldSingleton.PrimarySlot).Length);
                 Assert.AreEqual(field.CellCount, field.DistSlot(FlowFieldSingleton.PrimarySlot).Length);
-                Assert.AreEqual(field.flow.Length, field.MaskCount * field.CellCount);
+                Assert.AreEqual(field.flow.Length, field.SlotCount * field.CellCount);
             }
             finally { map.Dispose(); }
         }
@@ -289,8 +294,10 @@ namespace Wassup.Tests.EditMode
             {
                 var field = Install(map);
                 Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
-                    field.SlotFor((byte)PlacementLayer.Ground), "등록 안 된 마스크 → primary");
-                Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(0));
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Ground),
+                    "등록 안 된 마스크 → primary");
+                Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, 0));
             }
             finally { map.Dispose(); }
         }
@@ -305,21 +312,24 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = new FlowFieldSingleton { maskValues = masks, gridSize = new int2(2, 2) };
-                Assert.AreEqual(0, field.SlotFor((byte)PlacementLayer.Ground));
-                Assert.AreEqual(1, field.SlotFor((byte)PlacementLayer.Path));
+                Assert.AreEqual(0,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Ground));
+                Assert.AreEqual(1,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Path));
             }
             finally { masks.Dispose(); }
         }
 
         [Test]
-        public void MaskCount_DefaultsToOne_WhenFixtureLeavesFlowUncreated()
+        public void SlotCount_DefaultsToOne_WhenFixtureLeavesFlowUncreated()
         {
             // 직접 초기화하는 EditMode 픽스처 수십 개가 새 필드를 안 채워도 서야 한다 —
-            // CellCount 를 gridSize 에서 파생하고 MaskCount 를 1 로 떨어뜨리는 이유다.
+            // CellCount 를 gridSize 에서 파생하고 SlotCount 를 1 로 떨어뜨리는 이유다.
             var field = new FlowFieldSingleton { gridSize = new int2(4, 3) };
             Assert.AreEqual(12, field.CellCount);
-            Assert.AreEqual(1, field.MaskCount);
-            Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(123));
+            Assert.AreEqual(1, field.SlotCount);
+            Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
+                field.SlotFor(FlowFieldSingleton.GoalSentinel, 123));
         }
 
         // ── unit 1b — 마스크 집합 → 슬롯 N개 ──────────────────────────────────
@@ -338,16 +348,19 @@ namespace Wassup.Tests.EditMode
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
 
-                Assert.AreEqual(2, field.MaskCount);
+                Assert.AreEqual(2, field.SlotCount);
                 Assert.AreEqual(field.CellCount * 2, field.flow.Length, "stride");
 
+                // waypoint-routing unit 1 — 입력 순서와 무관하게 골 Path 슬롯은 primary 고정.
+                int pathSlot = field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Path);
+                int groundSlot = field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Ground);
+                Assert.AreEqual(FlowFieldSingleton.PrimarySlot, pathSlot);
+
                 // 골(1,1)은 Walk 라 Path 층에서만 도달 가능하다.
-                var pathDist   = field.DistSlot(1);
-                var groundDist = field.DistSlot(0);
+                var pathDist   = field.DistSlot(pathSlot);
+                var groundDist = field.DistSlot(groundSlot);
                 int goalIdx = 3;   // (1,1)
-                // 이 두 줄이 **비-앨리어싱의 증거**다. 빌드 순서가 슬롯0(Ground) → 슬롯1(Path)
-                // 이므로, 두 슬롯이 같은 메모리를 봤다면 나중에 구운 Path 값이 Ground 를
-                // 덮어써 둘 다 0 이 나온다. 다르게 나온다 = 슬롯이 독립이다.
+                // 결과가 다르다 = 두 슬롯이 같은 stride 를 앨리어싱하지 않는다.
                 Assert.AreEqual(0, pathDist[goalIdx], "Path 슬롯: 골이 자기 층 위라 dist 0");
                 Assert.AreEqual(int.MaxValue, groundDist[goalIdx],
                     "Ground 슬롯: 골 칸이 자기 층을 안 열어 도달 불가");
@@ -369,7 +382,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(1, field.SlotCount);
                 Assert.AreEqual(TraversalSlots.DefaultMask, field.MaskAt(FlowFieldSingleton.PrimarySlot));
 
                 var slotWalk = new NativeArray<byte>(field.CellCount, Allocator.Temp);
@@ -420,7 +433,7 @@ namespace Wassup.Tests.EditMode
             {
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var first = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
-                Assert.AreEqual(2, first.MaskCount);
+                Assert.AreEqual(2, first.SlotCount);
 
                 SimFieldInstaller.Teardown(_world, _em, ref _handles);
                 Assert.Catch(() => { var _ = first.maskValues[0]; }, "maskValues 도 회수된다");
@@ -428,8 +441,10 @@ namespace Wassup.Tests.EditMode
                 // 재설치가 깨끗한가 — 이관 전 실패·이중 해제 없이 다시 선다.
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var second = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
-                Assert.AreEqual(2, second.MaskCount);
-                Assert.AreEqual(0, second.DistSlot(1)[2], "재설치 후에도 Path 슬롯이 골을 찾는다");
+                Assert.AreEqual(2, second.SlotCount);
+                int pathSlot = second.SlotFor(
+                    FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Path);
+                Assert.AreEqual(0, second.DistSlot(pathSlot)[2], "재설치 후에도 Path 슬롯이 골을 찾는다");
             }
             finally { masks.Dispose(); map.Dispose(); }
         }
@@ -472,6 +487,43 @@ namespace Wassup.Tests.EditMode
                     Assert.AreEqual(field.walkMask[i], outMask[i], $"cell {i}");
             }
             finally { outMask.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void AirLayer_OpensEveryTile_AndIgnoresObstacleOverlay()
+        {
+            // waypoint-routing unit 4 — 비행의 규칙 정체성. 같은 cellLayers/허용 술어를
+            // 쓰되 Air 는 모든 타일에 열리고 지상 차단 해저드도 벽으로 합성하지 않는다.
+            var map = MakeMap(withAuthoredMask: false);
+            var masks = new NativeArray<byte>(1, Allocator.Temp);
+            var outMask = new NativeArray<byte>(4, Allocator.Temp);
+            var blocked = new NativeHashSet<int2>(1, Allocator.Temp);
+            masks[0] = (byte)PlacementLayer.Air;
+            blocked.Add(new int2(1, 0)); // Place 셀을 지상 차단
+            try
+            {
+                SimFieldInstaller.InstallNavFields(
+                    _em, in map, 1f, float3.zero, ref _handles, masks);
+                var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+                var obstacles = new ObstacleSingleton { blockedCells = blocked };
+
+                MovementCellTrim.FillWalkMask(
+                    in field, (byte)PlacementLayer.Air, true, in obstacles, outMask);
+
+                for (int i = 0; i < outMask.Length; i++)
+                    Assert.AreEqual(1, outMask[i], $"Air cell {i} — 타일 종류·장애물과 무관");
+
+                int airSlot = field.SlotFor(
+                    FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Air);
+                Assert.AreNotEqual(FlowFieldSingleton.PrimarySlot, airSlot, "Air 전용 슬롯이 설치됨");
+            }
+            finally
+            {
+                blocked.Dispose();
+                outMask.Dispose();
+                masks.Dispose();
+                map.Dispose();
+            }
         }
 
         [Test]

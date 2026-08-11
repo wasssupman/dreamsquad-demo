@@ -56,6 +56,48 @@ namespace Wassup.Data
         }
     }
 
+    // waypoint-routing unit 7 — 실제 스폰 펼침 결과가 어느 WaveSpawnGroup(현재의 스웜
+    // 단위)에서 왔는지 보존한다. SpawnEntry 만 만들고 나중에 그룹을 역추적하면
+    // RoundRobin/PerGroupTimeline 규칙을 예고 쪽에서 다시 구현하게 되므로, 펼칠 때 함께 싣는다.
+    public readonly struct ExpandedWaveSpawn
+    {
+        public readonly SpawnEntry entry;
+        public readonly int swarmIndex;
+        public readonly int laneIndex;
+
+        public ExpandedWaveSpawn(SpawnEntry entry, int swarmIndex, int laneIndex)
+        {
+            this.entry = entry;
+            this.swarmIndex = swarmIndex;
+            this.laneIndex = laneIndex;
+        }
+    }
+
+    // waypoint-routing unit 7 — Presentation 이 경로 가이드 하나를 그리는 데 필요한 plain 값.
+    // SO 참조나 미래 스웜 ID를 넘기지 않는다. 현재 swarmIndex 는 GeneratedWave.groups 인덱스다.
+    public readonly struct SpawnGuideForecast
+    {
+        public readonly int swarmIndex;
+        public readonly int laneIndex;
+        public readonly float firstSpawnSec;
+        public readonly int waypointPathIndex;
+        public readonly byte traversalLayers;
+
+        public SpawnGuideForecast(
+            int swarmIndex,
+            int laneIndex,
+            float firstSpawnSec,
+            int waypointPathIndex,
+            byte traversalLayers)
+        {
+            this.swarmIndex = swarmIndex;
+            this.laneIndex = laneIndex;
+            this.firstSpawnSec = firstSpawnSec;
+            this.waypointPathIndex = waypointPathIndex;
+            this.traversalLayers = traversalLayers;
+        }
+    }
+
     // wave-authoring-test-mode unit 1/6 — 2타입 고정에서 N개 그룹으로 일반화.
     // seed 경로는 2-entry 편의 생성자(RoundRobin) 로 만들어 기존 동작과 byte-identical.
     // 작성 플랜(WavePlanAsset)은 PerGroupTimeline 으로 같은 모델을 채운다.

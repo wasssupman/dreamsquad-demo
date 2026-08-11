@@ -59,6 +59,102 @@ namespace Wassup.Tests.EditMode
             });
         }
 
+        // 3x3: goal=(2,1)은 +x, waypoint=(1,2)는 +z 로 서로 다른 방향을 준다.
+        // 슬롯 선택이 실제 변위로 드러나는 unit 3 증상 픽스처다.
+        private void CreateWaypointFlowField(bool waypointReachable = true)
+        {
+            var gridSize = new int2(3, 3);
+            int n = gridSize.x * gridSize.y;
+            var flow = new NativeArray<float2>(n * 2, Allocator.Persistent);
+            var dist = new NativeArray<int>(n * 2, Allocator.Persistent);
+            var walkMask = new NativeArray<byte>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++)
+            {
+                flow[i] = new float2(1f, 0f);
+                dist[i] = 1;
+                flow[n + i] = new float2(0f, 1f);
+                dist[n + i] = 1;
+                walkMask[i] = 1;
+            }
+            int goalIndex = GridMath.CellIndex(new int2(2, 1), gridSize);
+            int waypointIndex = GridMath.CellIndex(new int2(1, 2), gridSize);
+            flow[goalIndex] = float2.zero;
+            dist[goalIndex] = 0;
+            flow[n + waypointIndex] = float2.zero;
+            dist[n + waypointIndex] = 0;
+            if (!waypointReachable)
+                dist[n + GridMath.CellIndex(new int2(1, 1), gridSize)] = int.MaxValue;
+
+            var masks = new NativeArray<byte>(2, Allocator.Persistent);
+            masks[0] = (byte)PlacementLayer.Path;
+            masks[1] = (byte)PlacementLayer.Path;
+            var destinations = new NativeArray<int2>(2, Allocator.Persistent);
+            destinations[0] = FlowFieldSingleton.GoalSentinel;
+            destinations[1] = new int2(1, 2);
+            var waypointCells = new NativeArray<int2>(1, Allocator.Persistent);
+            waypointCells[0] = new int2(1, 2);
+            var waypointRanges = new NativeArray<int2>(1, Allocator.Persistent);
+            waypointRanges[0] = new int2(0, 1);
+
+            _fieldEntity = _em.CreateEntity();
+            _em.AddComponentData(_fieldEntity, new FlowFieldSingleton
+            {
+                flow = flow,
+                dist = dist,
+                walkMask = walkMask,
+                maskValues = masks,
+                destCells = destinations,
+                waypointCells = waypointCells,
+                waypointRanges = waypointRanges,
+                gridSize = gridSize,
+                goalCell = new int2(2, 1),
+                tileSize = 1f,
+                version = 1,
+            });
+        }
+
+        private void CreateLayeredGoalFlowField()
+        {
+            var gridSize = new int2(3, 3);
+            int n = gridSize.x * gridSize.y;
+            var flow = new NativeArray<float2>(n * 2, Allocator.Persistent);
+            var dist = new NativeArray<int>(n * 2, Allocator.Persistent);
+            var walkMask = new NativeArray<byte>(n, Allocator.Persistent);
+            var cellLayers = new NativeArray<byte>(n, Allocator.Persistent);
+            for (int i = 0; i < n; i++)
+            {
+                flow[i] = new float2(1f, 0f);       // Path goal 슬롯
+                flow[n + i] = new float2(0f, 1f);   // Ground goal 슬롯
+                dist[i] = dist[n + i] = 1;
+                walkMask[i] = 1;
+                cellLayers[i] = (byte)(PlacementLayer.Path | PlacementLayer.Ground);
+            }
+            int groundGoalIndex = GridMath.CellIndex(new int2(1, 2), gridSize);
+            flow[n + groundGoalIndex] = float2.zero;
+            dist[n + groundGoalIndex] = 0;
+
+            var masks = new NativeArray<byte>(2, Allocator.Persistent);
+            masks[0] = (byte)PlacementLayer.Path;
+            masks[1] = (byte)PlacementLayer.Ground;
+            var destinations = new NativeArray<int2>(2, Allocator.Persistent);
+            destinations[0] = destinations[1] = FlowFieldSingleton.GoalSentinel;
+
+            _fieldEntity = _em.CreateEntity();
+            _em.AddComponentData(_fieldEntity, new FlowFieldSingleton
+            {
+                flow = flow,
+                dist = dist,
+                walkMask = walkMask,
+                cellLayers = cellLayers,
+                maskValues = masks,
+                destCells = destinations,
+                gridSize = gridSize,
+                goalCell = new int2(1, 2),
+                tileSize = 1f,
+                version = 1,
+            });
+        }
+
         private Entity CreateUnit(float3 pos, float speed)
         {
             var e = _em.CreateEntity();
@@ -310,6 +406,96 @@ namespace Wassup.Tests.EditMode
             TickSplit(1f);
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Pulse + AttackState 없음 → flow 전진(fallback)");
+        }
+
+        [Test]
+        public void WaypointFollow_UsesWaypointSlot_ThenAdvancesToGoalSlot()
+        {
+            CreateWaypointFlowField();
+            var e = CreateUnit(new float3(1f, 0f, 1f), speed: 0.2f);
+            _em.AddComponentData(e, new WaypointFollow { pathIndex = 0, index = 0 });
+
+            Tick(1f);
+            var towardWaypoint = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.Greater(towardWaypoint.z, 1f, "활성 waypoint 슬롯(+z)을 따라야 한다");
+            Assert.AreEqual(1f, towardWaypoint.x, 1e-4f, "goal 슬롯(+x)은 아직 읽지 않는다");
+
+            _em.SetComponentData(e, LocalTransform.FromPosition(new float3(1f, 0f, 2f)));
+            Tick(1f);
+
+            var progress = _em.GetComponentData<WaypointFollow>(e);
+            var towardGoal = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(1, progress.index, "waypoint 셀 진입 프레임에 진행 인덱스 기록");
+            Assert.Greater(towardGoal.x, 1f, "마지막 waypoint 뒤에는 goal 슬롯(+x)으로 즉시 복귀");
+        }
+
+        [Test]
+        public void WaypointFollow_UnreachableWaypoint_SkipsToGoalSameFrame()
+        {
+            CreateWaypointFlowField(waypointReachable: false);
+            var e = CreateUnit(new float3(1f, 0f, 1f), speed: 0.2f);
+            _em.AddComponentData(e, new WaypointFollow { pathIndex = 0, index = 0 });
+
+            Tick(1f);
+
+            var progress = _em.GetComponentData<WaypointFollow>(e);
+            var pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(1, progress.index, "도달 불가 waypoint 는 건너뛴다");
+            Assert.Greater(pos.x, 1f, "마지막 waypoint skip 뒤 goal 슬롯으로 전진");
+            Assert.AreEqual(1f, pos.z, 1e-4f);
+        }
+
+        [Test]
+        public void WaypointFollow_ChasingPreservesProgress()
+        {
+            CreateWaypointFlowField();
+            var e = CreateEnemy(new float3(1f, 0f, 2f), speed: 0.2f, AiState.Chasing);
+            _em.AddComponentData(e, new WaypointFollow { pathIndex = 0, index = 0 });
+
+            Tick(1f);
+
+            Assert.AreEqual(0, _em.GetComponentData<WaypointFollow>(e).index,
+                "Chasing 분기가 waypoint 진행보다 우선하고 인덱스는 보존");
+            Assert.AreEqual(new float3(1f, 0f, 2f), _em.GetComponentData<LocalTransform>(e).Position);
+
+            var ai = _em.GetComponentData<EnemyAiState>(e);
+            ai.value = AiState.Marching;
+            _em.SetComponentData(e, ai);
+            Tick(1f);
+
+            Assert.AreEqual(1, _em.GetComponentData<WaypointFollow>(e).index,
+                "추격 해제 뒤 보존한 waypoint부터 재개");
+            Assert.Greater(_em.GetComponentData<LocalTransform>(e).Position.x, 1f,
+                "마지막 waypoint였다면 goal 슬롯으로 이어진다");
+        }
+
+        [Test]
+        public void UnitWithoutWaypointFollow_UsesGoalSlot()
+        {
+            CreateWaypointFlowField();
+            var e = CreateUnit(new float3(1f, 0f, 1f), speed: 0.2f);
+
+            Tick(1f);
+
+            var pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.Greater(pos.x, 1f, "미저작 적은 현행 goal 슬롯(+x)");
+            Assert.AreEqual(1f, pos.z, 1e-4f);
+        }
+
+        [Test]
+        public void GoalRoute_UsesUnitsTraversalLayerSlot()
+        {
+            CreateLayeredGoalFlowField();
+            var e = CreateUnit(new float3(1f, 0f, 1f), speed: 0.2f);
+            var follow = _em.GetComponentData<PathFollowState>(e);
+            follow.traversalLayers = (byte)PlacementLayer.Ground;
+            _em.SetComponentData(e, follow);
+
+            Tick(1f);
+
+            var pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(1f, pos.x, 1e-4f, "Primary Path goal 슬롯을 읽으면 안 된다");
+            Assert.Greater(pos.z, 1f, "유닛 통행층과 일치하는 Ground goal 슬롯(+z)을 따라야 한다");
         }
     }
 }

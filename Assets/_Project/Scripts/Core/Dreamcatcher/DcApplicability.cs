@@ -157,6 +157,11 @@ namespace Wassup.Core
                 case DcPayloadKind.SelfStatBuff:
                 case DcPayloadKind.BountyMark:
                 case DcPayloadKind.AreaSleep:
+                // boss-mamemo unit 2 — 실드 부여. self(tileRange 0) / 반경 아군(>0) 어느 쪽이든
+                // host 의 공격 모델과 무관하다. **어느 arm 이 잡느냐**(경계=self / 주기=반경)는
+                // authoring 사실이라 bake 가 판정하고, 여기선 적용성만 본다 — UltimateLeap 이
+                // 보스 전용인데도 여기 있는 것과 같은 이유다(위 주석).
+                case DcPayloadKind.GrantShield:
                 // 발사 명세(projectile-emission-pattern) — host 의 공격 모델과 직교다.
                 // 대상은 패턴의 selection 이 스스로 뽑고(host 가 대상을 줄 필요 없음),
                 // 진영은 host 진영의 반대로 자동 도출되며(spec README 계약 7), 데미지도

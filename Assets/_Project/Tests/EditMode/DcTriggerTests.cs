@@ -253,5 +253,45 @@ namespace Wassup.Tests.EditMode
                 }
             }
         }
+
+        // ── boss-mamemo 리뷰 M3 — 적/보스 트리거 화이트리스트 ────────────────────────
+
+        // 이 테스트가 지키는 것은 **안전이 우연이 아니라는 것**이다.
+        // boss-mamemo unit 2 가 적 전원에게 ShieldSlot 을 달면서 DamageApplicationSystem 의
+        // 실드 파열 감지(Sum>0→0)가 적에서도 참이 되기 시작했다. 지금 OnShieldBreak 가 적에
+        // 안 붙는 유일한 이유가 이 화이트리스트이고, 누가 이걸 완화하면 브리지의 파열 드레인
+        // (CollectShieldBreakTargets — 대상 풀이 AttackUnitTag 하드코딩)이 돌아
+        // **보스의 파열 폭발이 자기 진영을 때린다.**
+        // 여는 것 자체가 금지는 아니다 — 열려면 실행기의 진영 파라미터화가 **선행**이고,
+        // 이 테스트를 빨갛게 만들어 그 사실을 읽게 하는 것이 목적이다.
+        [Test]
+        public void EnemyTriggerArmed_OnlyPeriodicAndHealthThreshold()
+        {
+            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.PeriodicTimer));
+            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.HealthThreshold));
+
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnShieldBreak),
+                "적 실드 파열은 아직 아무것도 하지 않아야 한다 — 열려면 실행기 진영 파라미터화가 선행이다");
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.AttackN));
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDamagedN));
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDeath));
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnKill));
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.None));
+        }
+
+        // 총체성 — 새 트리거 kind 를 추가하면 여기서 분류를 강제당한다(조용한 개방 방지).
+        [Test]
+        public void EnemyTriggerArmed_IsTotalOverAllKinds()
+        {
+            foreach (Wassup.Data.DcTriggerKind kind in
+                     System.Enum.GetValues(typeof(Wassup.Data.DcTriggerKind)))
+            {
+                bool armed = DcTrigger.EnemyTriggerArmed(kind);
+                bool expected = kind == Wassup.Data.DcTriggerKind.PeriodicTimer
+                             || kind == Wassup.Data.DcTriggerKind.HealthThreshold;
+                Assert.AreEqual(expected, armed,
+                    $"신규 트리거 '{kind}' 가 분류되지 않았다 — 적 bake 를 열 것인지 명시하라");
+            }
+        }
     }
 }

@@ -310,35 +310,59 @@ namespace Wassup.Data
             return startIndex;
         }
 
-        // 웨이브가 lane 별로 첫 적을 내보내는 절대 시각(스폰 없는 lane 은 -1).
-        // ExpandWave + EffectiveSpawnIndex 를 실스폰 경로(QueueWave→SpawnUnit)와 동일 규약으로 호출.
-        public static float[] FirstSpawnTimesPerLane(
-            GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
+        // waypoint-routing unit 7 — 상세 펼침에서 (스웜, 실제 lane)별 첫 스폰을 접는다.
+        // lane 하나로 접지 않으므로 같은 lane 의 서로 다른 스웜은 별도 가이드로 남는다.
+        public static SpawnGuideForecast[] BuildSpawnGuideForecasts(
+            IReadOnlyList<ExpandedWaveSpawn> entries)
         {
-            int lanes = math.max(1, laneCount);
-            var result = new float[lanes];
-            for (int i = 0; i < lanes; i++) result[i] = -1f;
+            var result = new List<SpawnGuideForecast>();
+            if (entries == null) return Array.Empty<SpawnGuideForecast>();
 
-            var entries = ExpandWave(wave, baseTriggerTimeSec, laneCount, intraWaveSpacingSec);
             for (int i = 0; i < entries.Count; i++)
             {
-                int lane = EffectiveSpawnIndex(entries[i].spawnIndex, wave.waveIndex * DeckIndexStride + i, lanes);
-                if (result[lane] < 0f || entries[i].triggerTimeSec < result[lane])
-                    result[lane] = entries[i].triggerTimeSec;
+                var expanded = entries[i];
+                var entry = expanded.entry;
+                if (entry == null || entry.unitType == null) continue;
+
+                int existing = -1;
+                for (int j = 0; j < result.Count; j++)
+                    if (result[j].swarmIndex == expanded.swarmIndex
+                        && result[j].laneIndex == expanded.laneIndex)
+                    {
+                        existing = j;
+                        break;
+                    }
+
+                var forecast = new SpawnGuideForecast(
+                    expanded.swarmIndex,
+                    expanded.laneIndex,
+                    entry.triggerTimeSec,
+                    entry.unitType.waypointPathIndex,
+                    (byte)entry.unitType.EffectiveTraversalLayers);
+                if (existing < 0)
+                {
+                    result.Add(forecast);
+                }
+                else if (entry.triggerTimeSec < result[existing].firstSpawnSec)
+                {
+                    result[existing] = forecast;
+                }
             }
-            return result;
+            return result.ToArray();
         }
 
         // RoundRobin(seed): round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, intraWaveSpacing 간격
         //   (2그룹이면 기존 A,B,A,B... 인터리브와 byte-identical).
         // PerGroupTimeline(작성): 그룹마다 triggerOffsetSec 부터 count 마리를 spawnIntervalSec 간격.
-        public static List<SpawnEntry> ExpandWave(GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
+        public static List<ExpandedWaveSpawn> ExpandWave(
+            GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
         {
-            var entries = new List<SpawnEntry>(wave.totalCount);
+            var entries = new List<ExpandedWaveSpawn>(wave.totalCount);
             var groups = wave.groups;
             if (groups == null || groups.Count == 0) return entries;
 
             int localIndex = 0;
+            int baseDeckIndex = wave.waveIndex * DeckIndexStride;
 
             if (wave.expandMode == WaveExpandMode.PerGroupTimeline)
             {
@@ -349,7 +373,7 @@ namespace Wassup.Data
                     for (int k = 0; k < grp.count; k++)
                     {
                         float t = baseTriggerTimeSec + grp.triggerOffsetSec + k * wave.spawnIntervalSec;
-                        AddEntryAt(entries, grp.unit, t, laneCount, ref localIndex);
+                        AddEntryAt(entries, grp.unit, g, t, laneCount, baseDeckIndex, ref localIndex);
                     }
                 }
                 return entries;
@@ -362,7 +386,8 @@ namespace Wassup.Data
                 {
                     if (round >= groups[g].count) continue;
                     if (groups[g].unit == null) continue; // 빈 그룹은 스폰하지 않음(작성 데이터 방어)
-                    AddEntry(entries, groups[g].unit, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
+                    AddEntry(entries, groups[g].unit, g, baseTriggerTimeSec, laneCount,
+                        intraWaveSpacingSec, baseDeckIndex, ref localIndex);
                 }
             return entries;
         }
@@ -384,38 +409,50 @@ namespace Wassup.Data
         }
 
         private static void AddEntry(
-            List<SpawnEntry> entries,
+            List<ExpandedWaveSpawn> entries,
             AttackUnitData unit,
+            int swarmIndex,
             float baseTriggerTimeSec,
             int laneCount,
             float intraWaveSpacingSec,
+            int baseDeckIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
-            entries.Add(new SpawnEntry
-            {
-                triggerTimeSec = baseTriggerTimeSec + localIndex * intraWaveSpacingSec,
-                unitType = unit,
-                spawnIndex = localIndex % lanes,
-            });
+            int authoredSpawnIndex = localIndex % lanes;
+            entries.Add(new ExpandedWaveSpawn(
+                new SpawnEntry
+                {
+                    triggerTimeSec = baseTriggerTimeSec + localIndex * intraWaveSpacingSec,
+                    unitType = unit,
+                    spawnIndex = authoredSpawnIndex,
+                },
+                swarmIndex,
+                EffectiveSpawnIndex(authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
             localIndex++;
         }
 
         // PerGroupTimeline 용 — 절대 시각을 직접 받아 엔트리 추가. lane 은 전역 localIndex 기준.
         private static void AddEntryAt(
-            List<SpawnEntry> entries,
+            List<ExpandedWaveSpawn> entries,
             AttackUnitData unit,
+            int swarmIndex,
             float timeSec,
             int laneCount,
+            int baseDeckIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
-            entries.Add(new SpawnEntry
-            {
-                triggerTimeSec = timeSec,
-                unitType = unit,
-                spawnIndex = localIndex % lanes,
-            });
+            int authoredSpawnIndex = localIndex % lanes;
+            entries.Add(new ExpandedWaveSpawn(
+                new SpawnEntry
+                {
+                    triggerTimeSec = timeSec,
+                    unitType = unit,
+                    spawnIndex = authoredSpawnIndex,
+                },
+                swarmIndex,
+                EffectiveSpawnIndex(authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
             localIndex++;
         }
 

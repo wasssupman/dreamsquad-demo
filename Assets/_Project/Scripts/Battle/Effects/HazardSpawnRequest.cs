@@ -18,5 +18,8 @@ namespace Wassup.Battle.Effects
         public int height;
         public Entity caster;
         public Entity target;
+        // Cast-time target layer snapshot. The spawned zone carries this through
+        // HazardEffect so later entrants obey the same target contract.
+        public byte targetTraversalLayers;
     }
 }
