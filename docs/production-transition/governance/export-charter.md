@@ -1,6 +1,8 @@
 # Production Transition Export Charter
 
-> 상태: **preparing · export-safe reference candidate**
+> **DORMANT · OWNER-GATED · NOT AN EXPORT INSTRUCTION.** Project owner의 명시적 transition 활성화 전에는 실행·검증·후속 작업으로 사용하지 않는다.
+
+> 상태: **dormant preparation artifact — owner activation 전 미활성 · export-safe reference candidate**
 
 이 문서는 미래 freeze snapshot의 `references/governance/transition-charter.md` 위치로
 byte-copy할 수 있는 축약 계약이다. 현재 파일 자체는 official freeze, export 또는 production

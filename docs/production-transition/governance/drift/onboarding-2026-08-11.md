@@ -1,5 +1,7 @@
 # Onboarding Drift — 2026-08-11
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** 이 drift는 Demo 수정 요청이 아니다. Project owner가 transition을 명시적으로 활성화할 때만 재검토한다.
+
 > `record_id`: `PT-DRIFT-ONBOARDING-001`
 >
 > 상태: **stale claim 확인 · resolution 미검토**

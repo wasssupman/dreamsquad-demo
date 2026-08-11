@@ -12,6 +12,8 @@ depends_on: []
 
 # 카드 제목
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** 이 legacy template은 Project owner의 명시적 transition 활성화 전에는 사용하지 않는다.
+
 > Legacy template. 새 record/card는 package별 폴더와
 > [`../../governance/registry.json`](../../governance/registry.json)의 계약을 사용한다.
 

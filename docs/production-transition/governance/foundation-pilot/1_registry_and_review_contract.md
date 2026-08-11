@@ -1,5 +1,7 @@
 # D2 — Registry와 검토 계약
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** 현재 Demo의 spec·작업 큐·검증 gate가 아니며 Project owner의 명시적 transition 활성화 전에는 실행·갱신하지 않는다.
+
 ## 목적
 
 많은 전환 문서를 사람이 다시 분류하지 않도록 package, freshness, owner, review와

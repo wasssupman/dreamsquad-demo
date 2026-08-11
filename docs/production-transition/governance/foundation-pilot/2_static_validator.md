@@ -1,5 +1,7 @@
 # D3 — 정적 검증기
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** 현재 Demo의 spec·작업 큐·검증 gate가 아니며 Project owner의 명시적 transition 활성화 전에는 실행·갱신하지 않는다.
+
 ## 목적
 
 공식 export 전에 registry와 package closure의 구조적 오류를 표준 라이브러리만으로

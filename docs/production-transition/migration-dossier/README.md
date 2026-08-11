@@ -1,5 +1,7 @@
 # Game Server Migration Dossier — Legacy Preparation Index
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > 상태: **historical · stale · preparatory**
 >
 > 근거 기준: `2d35df0680ce97d29b78101120cb9fae63c5a8ad`

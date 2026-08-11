@@ -1,5 +1,7 @@
 # D5 — Foundation + Pilot 인계
 
+> **Dormant owner-only historical record.** 이 문서는 완료된 transition governance foundation/pilot의 이력이며 현재 Demo 설계·구현 정본, 에이전트 task queue 또는 follow-up backlog가 아니다. 재검토·재활성화는 owner의 명시적 요청으로만 한다.
+>
 > 상태: **Foundation 승인 · pilot gameplay decision 3건 open · official cutover blocked**
 
 ## Commit
@@ -31,6 +33,9 @@
 - `docs/production-transition/{shared,client,game-server}/cards/unit-lifecycle.md`
 
 ## Verified
+
+아래 명령과 수치는 owner authorization gate 도입 전 실행 기록이며 현재 실행 예제가 아니다.
+현재 verifier 사용법은 [`tools/README.md`](../../../../tools/README.md)의 owner 전용 구문만 따른다.
 
 - `python tools/verify_production_transition.py prepare`: PASS, errors 0. 미결 review,
   readiness와 decision은 warning으로 정확히 노출.
@@ -72,8 +77,10 @@
 - 두 production 저장소와 Demo 어디에도 `docs/migration-input/<freeze-id>`를 만들지 않았다.
 - Runtime, API, Unity serialized asset, package와 `ProjectSettings`는 변경하지 않았다.
 
-## Follow-up
+## Owner-only non-actionable historical reference
 
-- 변경된 Demo spec과 연결된 domain 하나만 골라 registry와 card를 갱신한다.
-- 실제 transition 결정 때 Product가 production-v1 include/exclude 목록을 잠근다.
-- 공식 freeze 뒤에는 Demo re-freeze 없이 production errata/ADR로 수정한다.
+아래는 당시 남긴 운영 조건을 보존한 것이며 에이전트가 제안·실행·추적할 후속 큐가 아니다.
+
+- Owner가 transition 갱신을 명시적으로 요청한 경우에만 변경된 Demo spec과 연결된 domain을 검토한다.
+- 실제 transition을 owner가 결정한 경우에만 Product가 production-v1 include/exclude 목록을 잠근다.
+- 공식 freeze가 별도 승인되어 실제로 발생한 경우에만 이후 오류를 production errata/ADR로 다룬다.

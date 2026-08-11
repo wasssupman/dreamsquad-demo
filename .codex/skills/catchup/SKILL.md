@@ -36,11 +36,26 @@ Use local files as source of truth. Do not infer status from memory when the rep
 
 ## Finding the Likely Active Spec
 
+### Production-transition firewall
+
+`docs/production-transition/**` is owner-gated dormant downstream material. Unless the
+current user request explicitly activates production-transition work:
+
+- do not read or summarize that subtree;
+- exclude transition-only commits from active-spec and next-work inference;
+- never treat relocated governance/foundation documents as
+  `docs/spec/{feature-slug}` candidates;
+- do not report transition freshness, freeze, cutover, import, or follow-up as Demo work.
+
+Recent commits, stale records, watch-path drift, or links from historical documents are
+not activation. Demo work remains upstream and may proceed while transition material ages.
+
 Use evidence, in this order:
 
 1. User named a spec or feature in the current request.
 2. Dirty worktree paths point into a specific `docs/spec/{feature-slug}/` or feature code area.
-3. Most recent commits mention a spec slug or feature name.
+3. Most recent **Demo-relevant** commits mention a spec slug or feature name. Ignore commits
+   whose changed paths are entirely under `docs/production-transition/**` or transition-only tools.
 4. `docs/spec/README.md` Follow-up Backlog has an item that matches the request.
 5. If none of the above is clear, report "active spec unclear" and list the 2-3 most plausible candidates with evidence.
 
@@ -66,7 +81,8 @@ From `CLAUDE.md`:
 From git:
 
 - Dirty files, grouped as tracked changes and untracked files.
-- Recent commit chain, with the newest 3-5 commits summarized by feature area.
+- Recent Demo-relevant commit chain, with the newest 3-5 commits summarized by feature area.
+  Transition-only commits are omitted unless the user explicitly activated that work.
 - Any mismatch between docs status and recent commits.
 
 From spec README:
@@ -127,5 +143,7 @@ Rules:
 - Do not clean or revert local changes while recovering status.
 - Do not start implementation until the active spec and next work unit are clear enough.
 - If the next task is outside the active spec scope, recommend creating or extending a spec first.
+- Never recommend production-transition maintenance or freeze/cutover as a next Demo task without
+  explicit Project owner transition activation in the current request.
 - If `CLAUDE.md` and a spec conflict, treat `CLAUDE.md` as project workflow policy and the spec README as feature contract; call out the conflict.
 - Handoff summaries are maps, not source of truth. Prefer README/numbered spec files for contract, and code/git history for implementation details.

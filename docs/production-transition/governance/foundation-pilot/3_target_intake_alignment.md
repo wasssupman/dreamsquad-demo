@@ -1,5 +1,7 @@
 # C1/S1 — Production 준비 문서 정합
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** 현재 Demo의 spec·작업 큐·검증 gate가 아니며 Project owner의 명시적 transition 활성화 전에는 외부 저장소 작업을 실행·제안하지 않는다.
+
 ## 목적
 
 Client와 Game Server의 기존 조사 자료를 지우지 않고 전역 Demo 계약 아래의

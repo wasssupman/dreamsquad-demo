@@ -1,6 +1,8 @@
 # Game Server Package
 
-> 상태: **preparing — official Game Server input/implementation 승인 아님**
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
+> 상태: **dormant preparation artifact — owner activation 전 미활성 · official Game Server input/implementation 승인 아님**
 
 Game Server가 production에서 권위 있게 재정의해야 할 gameplay 의미와 acceptance를
 축적한다. Demo의 Unity/ECS 구현 shape를 서버 구조로 복사하지 않는다.

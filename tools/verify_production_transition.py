@@ -30,6 +30,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, 
 SCHEMA_VERSIONS = {1, "1", "1.0"}
 MODES = {"prepare", "cutover"}
 TRANSITION_STATES = {
+    "dormant",
     "preparing",
     "cutover_candidate",
     "cutover_in_progress",
@@ -2016,6 +2017,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("mode", choices=sorted(MODES), help="Preparation audit or strict cutover preflight")
     parser.add_argument(
+        "--project-owner-authorized",
+        action="store_true",
+        help=(
+            "Confirm that the current request explicitly authorizes production-transition "
+            "verification; otherwise the command exits successfully with SKIP"
+        ),
+    )
+    parser.add_argument(
         "--root",
         type=Path,
         default=Path(__file__).resolve().parent.parent,
@@ -2041,6 +2050,26 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not args.project_owner_authorized:
+        reason = (
+            "production-transition verification is dormant until the project owner "
+            "explicitly authorizes it"
+        )
+        if args.json:
+            print(
+                json.dumps(
+                    {"mode": args.mode, "reason": reason, "result": "SKIP"},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    indent=2,
+                )
+            )
+        else:
+            print(f"[SKIP] PROJECT_OWNER_AUTHORIZATION_REQUIRED: {reason}")
+            print(f"mode={args.mode}")
+            print("result=SKIP")
+        return 0
+
     root = args.root.resolve()
     governance = root / "docs" / "production-transition" / "governance"
     report = verify_transition(

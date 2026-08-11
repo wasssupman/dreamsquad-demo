@@ -1,5 +1,7 @@
 # Game Server Card — Authoritative Unit Lifecycle
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > `card_id`: `PT-GS-UL-CARD-001`
 >
 > 상태: **draft · partial · blocked · preparatory**

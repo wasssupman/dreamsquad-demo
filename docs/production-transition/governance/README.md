@@ -1,8 +1,10 @@
 # Transition Governance
 
-> 상태: **preparing**
+> 상태: **dormant · owner-gated**
 >
 > 이 폴더는 official package가 아니라 세 package를 조립·검증하는 control plane이다.
+> 현재 Demo의 정본·작업 후보·검증 gate가 아니며, Project owner의 명시적 활성화 전에는
+> agent가 freshness/review/decision/freeze 후속을 진행하지 않는다.
 
 ## 정본
 
@@ -31,7 +33,8 @@ consumer package이고, `references`는 같은 snapshot 안에서 manifest·gove
 - `completeness`: `none | partial | complete`
 - `readiness`: `blocked | provisional | ready`
 
-Preparation mode는 incomplete/stale/blocked를 허용하지만 정확히 드러내야 한다. Cutover mode의
+Dormant 상태에서는 Demo 변화에 따른 stale 누적을 허용하고 갱신하지 않는다. Project owner가
+활성화한 별도 transition 작업의 preparation mode는 incomplete/stale/blocked를 허용하지만 정확히 드러내야 한다. Cutover mode의
 include record는 `complete/current/reviewed/ready`만 허용한다.
 `blocking_decisions`와 각 decision의 `affected_records`는 양방향 exact mapping이며 unknown
 record/decision이나 한쪽만 있는 edge는 preparation에서도 구조 오류다.
@@ -69,6 +72,8 @@ revision의 독립 reviewer가 될 수 없다. `legacy_reviews`는 감사 이력
 
 ## 금지
 
+- Demo 변경 때문에 이 registry/card/fixture를 갱신하거나 Demo 완료를 차단
+- Project owner의 현재 요청상 명시적 활성화 없이 verifier/freeze/cutover/follow-up 수행
 - preparation 도중 `freezes/` 또는 production `docs/migration-input/` 생성
 - placeholder review/decision으로 strict gate 우회
 - official freeze 뒤 registry를 고쳐 새 Demo export 생성

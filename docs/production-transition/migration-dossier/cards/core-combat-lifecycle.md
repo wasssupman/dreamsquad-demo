@@ -12,6 +12,8 @@ depends_on: []
 
 # 핵심 전투 생명주기
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > 상태: **Historical · stale · preparatory**. 이 multi-area card와 기존 review는 어떤
 > area도 승인하지 않는다. 새 pilot은 package별 `unit-lifecycle` card를 사용한다.
 

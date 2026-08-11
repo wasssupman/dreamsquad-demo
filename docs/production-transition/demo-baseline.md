@@ -1,5 +1,7 @@
 # 데모 기준선
 
+> **DORMANT · OWNER-GATED · NOT CURRENT DEMO BASELINE.** Project owner의 명시적 transition 활성화 전에는 현재 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > 상태: **Historical · stale · preparatory** — 현재 freeze 후보가 아님
 >
 > 기준일: **2026-07-29**

@@ -1,5 +1,7 @@
 # production-transition-governance — Foundation + Pilot
 
+> **Dormant owner-only historical record.** 이 문서는 완료된 transition governance foundation/pilot의 이력이며 현재 Demo 설계·구현 정본, 에이전트 task queue 또는 follow-up backlog가 아니다. 재검토·재활성화는 owner의 명시적 요청으로만 한다.
+>
 > 상태: **Foundation 승인 · D5 완료 · pilot gameplay decision 3건 open · official cutover blocked — 2026-08-11**
 >
 > 범위: 문서·정적 검증기만. Runtime, Unity serialized asset, API, package,
@@ -71,8 +73,10 @@ Foundation + blocked pilot 범위의 세 저장소 commit 생성을 별도로 �
 - 13개 Server domain은 일괄 backfill하지 않는다. 변경된 spec과 연결된 domain만 하나씩
   갱신한다.
 
-## 후속 후보
+## Owner-only non-actionable historical reference
 
-- Product가 transition을 결정할 때 production-v1 include/exclude 목록 확정
-- 실제 freeze publication과 양쪽 production receipt 생성
-- 각 production 저장소의 별도 구현 wave 계획·승인
+아래는 당시 남긴 조건을 보존한 것이며 에이전트가 제안·실행·추적할 후속 큐가 아니다.
+
+- Owner가 transition을 명시적으로 재개할 경우에만 production-v1 include/exclude 목록을 검토한다.
+- 실제 freeze publication과 양쪽 production receipt는 owner가 별도 승인한 경우에만 다룬다.
+- 각 production 저장소의 구현 wave도 해당 저장소 owner의 별도 요청 없이는 계획하지 않는다.

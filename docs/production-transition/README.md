@@ -1,18 +1,29 @@
-# Demo → Production Transition 준비 정본
+# Demo → Production Transition — Owner-gated Dormant 자료
 
-> 상태: **preparing — 공식 transition/freeze/import 미시작**
+> 상태: **dormant — Project owner의 명시적 활성화 전에는 transition/freeze/import 미시작**
 >
-> 문서 정본: 이 파일과 [`governance/`](governance/README.md)
+> 적용 범위: production-transition 준비 자료에만 해당한다. 현재 Demo 정본이 아니다.
 >
 > 2026-07-29 / `44c87885` 기준 자료와 기존 Game Server dossier는
 > **historical · stale · preparatory**다. 현재 gameplay나 production 계약으로 승인되지 않았다.
 
+## Demo firewall — 절대 규칙
+
+- Demo가 유일한 upstream이다. 현재 Demo의 설계·구현·검증은 `CLAUDE.md`, 활성
+  `docs/spec/{feature-slug}/`, TRD/PRD의 적용 가능한 계약과 코드·에셋·테스트를 따른다.
+- 이 subtree는 Project owner가 현재 요청에서 production-transition 작업을 명시적으로
+  활성화한 경우에만 agent가 읽거나 갱신·검증한다. 최근 커밋, stale 상태, watch path 변화는
+  활성화가 아니다.
+- Demo와 불일치하면 이 자료를 stale로 남긴다. Demo를 고치거나 Demo 작업을 지연하지 않는다.
+  Transition freshness/review/decision/verifier는 Demo 완료·검증·커밋 gate가 아니다.
+- Freeze, cutover, production import와 후속 wave의 시점·범위는 Project owner만 결정한다.
+  명시적 활성화 전에는 agent 작업 큐나 후속 후보로 취급하지 않는다.
+
 ## 목적
 
-계속 바뀌는 single-player Demo에서 production 이식에 필요한 사실, 미결 결정과 증거를
-장기간 갱신한다. Product가 production-v1 범위를 잠그는 미래 시점에 Demo를 한 번만
-freeze하고, 같은 freeze ID의 문서를 Client와 Game Server로 한 번의 coordinated event로
-fan-out한다. Production 구현은 그 뒤 각 저장소에서 여러 wave로 진행한다.
+계속 바뀌는 single-player Demo에서 production 이식에 필요할 수 있는 사실, 미결 결정과
+증거를 미리 보관한다. Demo 진행 중에는 동기 갱신 의무가 없으며 stale 누적을 정상으로
+허용한다. Project owner가 별도로 전환을 활성화한 뒤에만 당시 Demo 정본과 재대조한다.
 
 이 문서는 현재 Demo 구현을 바꾸는 gameplay spec도, production protocol/API를 승인하는
 문서도 아니다.
@@ -82,11 +93,13 @@ gate가 결정한다.
 ## Transition lifecycle
 
 ```text
-preparing -> cutover_candidate -> cutover_in_progress -> cutover_complete
-                 |                     |
-                 +-> discard           +-> resume same freeze ID + same bytes only
+dormant -> preparing -> cutover_candidate -> cutover_in_progress -> cutover_complete
+                           |                     |
+                           +-> discard           +-> resume same freeze ID + same bytes only
 ```
 
+- `dormant`: 선행 준비 자료만 보관한다. Demo 변경을 추적·차단하지 않고 agent가 transition
+  후속을 제안하지 않는다. Project owner의 현재 요청상 명시적 활성화만 다음 상태 진입 근거다.
 - `preparing`: Demo 안에서 record를 추가·수정하고 반복 검증한다.
 - `cutover_candidate`: Product가 범위를 제안하고 clean source commit에서 temp dry-run한다.
   오류가 있으면 candidate를 폐기한다. 이것은 freeze가 아니다.
@@ -230,17 +243,18 @@ Preparation은 uncommitted candidate bytes를 허용하지만 strict cutover는 
 candidate Git commit에 결합한다. 형식만 맞는 SHA, untracked source와 dirty byte mismatch는
 publication 전에 실패한다.
 
-## 장기 갱신 절차
+## Owner 활성화 시 reconciliation 참고
 
-1. Demo gameplay/presentation spec이 바뀌면 registry의 `watch_paths`와 대조한다.
-2. 영향 record를 즉시 `stale`로 바꾸고 source commit, claim, fixture를 갱신한다.
-3. 연결된 package card 하나와 decision만 재검토한다. 13개 domain 전체를 일괄 갱신하지 않는다.
-4. exact area/revision/source key로 owner review를 기록한다.
-5. preparation mode와 package dry-run을 반복한다. Production 저장소에는 쓰지 않는다.
-6. 다음 domain은 production-v1 위험, 최근 spec 변경, cross-package dependency 순으로 고른다.
+아래 절차는 Project owner가 production-transition을 명시적으로 활성화한 별도 작업에서만
+수행한다. 평상시 Demo 작업의 완료 기준이나 후속 목록이 아니다.
 
-등록되지 않은 legacy 문서는 자동 current가 아니다. 새 active spec에도 include/defer/exclude
-disposition과 owner가 없으면 cutover candidate가 될 수 없다.
+1. 활성화 시점의 Demo 정본과 registry `watch_paths`를 한 번에 대조한다.
+2. 누적 drift가 있는 record를 stale로 판정하고 필요한 source commit, claim, fixture만 갱신한다.
+3. owner가 정한 범위의 package card와 decision만 재검토한다.
+4. exact area/revision/source key로 owner review를 기록하고 owner-authorized dry-run을 수행한다.
+
+Demo 작업 중에는 이 reconciliation을 선제 수행하지 않는다. 등록되지 않은 문서와 새 Demo
+spec은 transition 후보로 자동 승격되지 않는다.
 
 ## Historical 자료와 알려진 drift
 
@@ -253,13 +267,17 @@ disposition과 owner가 없으면 cutover candidate가 될 수 없다.
 - [`migration-dossier/`](migration-dossier/README.md)는 기존 13-domain Game Server 조사
   자료다. `game-server` package의 legacy input이며 전역 freeze charter가 아니다.
 
-## 실행과 확인
+## Owner-authorized 실행과 확인
+
+다음 명령은 현재 사용자 요청에 Project owner의 명시적 transition 지시가 있을 때만 사용한다.
+플래그가 없으면 verifier는 registry나 Git을 읽지 않고 `SKIP`한다.
 
 ```text
-python tools/verify_production_transition.py prepare
-python tools/verify_production_transition.py cutover
+python tools/verify_production_transition.py prepare --project-owner-authorized
+python tools/verify_production_transition.py cutover --project-owner-authorized
 python -m unittest tools.test_verify_production_transition
 ```
 
-Foundation+pilot의 기대 결과는 preparation 통과, unresolved gameplay decision 때문에 strict
-cutover 실패다. Cutover 실패는 현재 상태의 정확한 표현이지 foundation 실패가 아니다.
+Foundation+pilot 자료의 owner-authorized 기대 결과는 dormant preparation 구조 검증 통과,
+`CUTOVER_STATE` 및 unresolved gameplay decision 때문에 strict cutover 실패다. 이 실패는
+foundation 실패가 아니라 현재 dormant 상태의 owner 전용 역사적 참고이며, cutover 실행·후속 작업 지시가 아니다.

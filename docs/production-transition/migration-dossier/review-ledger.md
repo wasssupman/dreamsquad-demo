@@ -1,5 +1,7 @@
 # Legacy 이식 준비 문서 검토 이력
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** Project owner의 명시적 transition 활성화 전에는 review 요청·승인·후속 작업으로 사용하지 않는다.
+
 > 상태: **Historical · non-approving**
 >
 > 현재 review 정본: [`../governance/reviews.json`](../governance/reviews.json)

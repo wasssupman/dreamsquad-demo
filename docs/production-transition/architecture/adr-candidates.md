@@ -1,5 +1,7 @@
 # ADR Candidates — 정규 프로젝트 결정 대기열
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > 문서 상태: **Historical · stale · preparatory**
 >
 > 기준선: **2026-07-29 / `44c87885`**

@@ -1,5 +1,7 @@
 # Source Map
 
+> **DORMANT · OWNER-GATED · NOT CURRENT DEMO SOURCE MAP.** Project owner의 명시적 transition 활성화 전에는 현재 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
 > 상태: **Historical · stale · preparatory**
 >
 > 확인 기준: **2026-07-29 / `44c87885`**
@@ -14,7 +16,7 @@
 
 ## 전환 해석 규칙
 
-- 데모에서 어떤 규칙·데이터·연출이 Client 코드나 Unity asset에 있다는 사실은 정규 프로젝트의 Client runtime 소유권 근거가 아니다. 현재 위치는 구현 사실로만 기록하고 정규 책임은 [전환 README의 책임 경계](README.md#정규-프로젝트-책임-경계)와 [transition matrix](architecture/transition-matrix.md)로 판정한다.
+- 데모에서 어떤 규칙·데이터·연출이 Client 코드나 Unity asset에 있다는 사실은 정규 프로젝트의 Client runtime 소유권 근거가 아니다. 이 해석은 Project owner가 transition을 활성화한 뒤 [전환 README의 Demo firewall](README.md#demo-firewall--절대-규칙)과 [transition matrix](architecture/transition-matrix.md)를 함께 읽을 때만 적용한다.
 - Product/Game Design이 규칙과 밸런스를 작성·승인하는 책임과 Server가 canonical ruleset을 보관·실행하는 runtime 권위는 구분한다.
 - 규칙 의미와 presentation이 섞인 출처는 한 덩어리로 이전하지 않는다. 예를 들어 `gift-phase`는 선택·허용·상태 전이의 근거와 UI·animation·copy의 근거를 분리하고, 전자는 Server gameplay 계약으로, 후자는 Client presentation 입력으로 해석한다.
 - 순수 계산·test vector는 Server 권위 규칙의 회귀 계약으로 이전할 수 있다. Client가 같은 계산의 일부를 prediction·preview에 사용하더라도 권위 소유권이 공유되는 것은 아니다.

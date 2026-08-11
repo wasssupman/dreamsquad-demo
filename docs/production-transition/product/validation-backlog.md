@@ -1,5 +1,7 @@
 # Product Validation Backlog
 
+> **DORMANT · OWNER-GATED · NOT A DEMO BACKLOG.** 아래 항목은 실행 지시가 아니다. Project owner의 명시적 transition 활성화 전에는 계측·실험·UX 변경을 시작하거나 Demo 완료를 차단하지 않는다.
+
 - 문서 상태: **Historical · stale · preparatory**
 - 기준선: **2026-07-29 / `44c87885`**
 - 목적: Demo pre-freeze와 production 구현 wave에서 다시 검증할 제품 가설, 필요한 데이터,

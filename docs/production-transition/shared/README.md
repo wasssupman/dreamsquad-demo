@@ -1,6 +1,8 @@
 # Shared Package
 
-> 상태: **preparing — official package 아님**
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
+> 상태: **dormant preparation artifact — owner activation 전 미활성 · official package 아님**
 
 Client와 Game Server가 같은 의미를 읽기 위한 transport-neutral package다. Stable ID,
 command intent, authoritative state/event/result와 ordering만 담는다.

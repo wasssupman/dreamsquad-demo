@@ -1,5 +1,7 @@
 # PRD Inputs
 
+> **DORMANT · OWNER-GATED · NOT A DEMO PRD.** Project owner의 명시적 transition 활성화 전에는 Demo 요구사항·작업 후보·완료 기준으로 사용하지 않는다.
+
 - 문서 상태: **Historical · stale · preparatory**
 - 기준선: **2026-07-29 / `44c87885`**
 - 대상 독자: Product, Client, Server

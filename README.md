@@ -36,9 +36,12 @@
 
 1. **`CLAUDE.md`** — 절대 제약·ECS 맥락 경계·워크플로우 (에이전트 정책의 단일 소스)
 2. **`docs/spec/README.md`** — 스펙 구조 + Follow-up Backlog (다음 작업 후보)
-3. **[`docs/production-transition/README.md`](docs/production-transition/README.md)** — 데모 경험을 정규 프로젝트 PRD·ADR 입력으로 옮기는 근거팩
-4. 최근 spec 의 `README.md` + `{N}_handoff_summary.md` — 진행 중 작업 파악 (Claude Code 에선 `catchup` 스킬이 이걸 자동으로 함)
-5. **`docs/reference/lessons/`** — 프로젝트·환경 고유의 함정 모음 (작업 전 一讀 권장)
+3. 최근 Demo spec 의 `README.md` + `{N}_handoff_summary.md` — 진행 중 작업 파악 (Claude Code 에선 `catchup` 스킬이 이걸 자동으로 함)
+4. **`docs/reference/lessons/`** — 프로젝트·환경 고유의 함정 모음 (작업 전 一讀 권장)
+
+`docs/production-transition/`은 기본 읽기 대상이 아니다. Project owner가 현재 요청에서
+production-transition 작업을 명시적으로 활성화한 경우에만 읽는 dormant downstream 자료이며,
+Demo의 설계·구현·검증과 다음 작업 선정에는 사용하지 않는다.
 
 ## 워크플로우 요약
 

@@ -1,6 +1,8 @@
 # Client Package
 
-> 상태: **preparing — official Client input/adoption 아님**
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+
+> 상태: **dormant preparation artifact — owner activation 전 미활성 · official Client input/adoption 아님**
 
 Client가 사용자 intent를 받고 authoritative 결과를 화면에 해석하는 계약을 축적한다.
 Gameplay 결과를 판정하거나 canonical state를 소유하지 않는다.

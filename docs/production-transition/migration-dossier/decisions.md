@@ -1,5 +1,7 @@
 # 게임플레이 결정 등록부
 
+> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** 이 legacy decision은 Demo 규칙을 변경하지 않으며 Project owner의 명시적 transition 활성화 전에는 재검토하지 않는다.
+
 > 상태: **Historical · stale · preparatory**
 >
 > 근거 기준: `2d35df0680ce97d29b78101120cb9fae63c5a8ad`

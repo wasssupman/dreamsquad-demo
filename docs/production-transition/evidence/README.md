@@ -1,5 +1,7 @@
 # Evidence 산출물 가이드
 
+> **DORMANT · OWNER-GATED · NOT A DEMO STUDY BACKLOG.** Project owner의 명시적 transition 활성화 전에는 계측·실험·수집 작업을 시작하거나 Demo 완료를 차단하지 않는다.
+
 > 상태: **Historical · preparatory contract**
 >
 > 기준일: **2026-07-29**

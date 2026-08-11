@@ -1,5 +1,7 @@
 # D1 — 전역 cutover 계약
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** 현재 Demo의 spec·작업 큐·검증 gate가 아니며 Project owner의 명시적 transition 활성화 전에는 실행·갱신하지 않는다.
+
 ## 목적
 
 문서별 freeze나 저장소별 독립 migration을 없애고, 두 production 저장소로 fan-out하는
@@ -7,7 +9,7 @@
 
 ## 변경 대상
 
-- `docs/spec/production-transition-governance/`
+- `docs/production-transition/governance/foundation-pilot/`
 - `docs/production-transition/README.md`
 - `docs/production-transition/{shared,client,game-server,governance}/`
 

@@ -34,17 +34,25 @@ H2 코스트/3분 긴장감 축과 H3 정성 인터뷰 축은 PRD §4에서 별�
 ## verify_production_transition.py
 
 Validates the long-running Demo → Production preparation registry without writing a
-freeze or either production repository.
+freeze or either production repository. The verifier is dormant by default and must
+not be run as part of Demo design, implementation, completion, CI, or hook workflows.
+`--project-owner-authorized` is an explicit declaration that the current request from
+the Project owner authorizes production-transition verification; repository state,
+stale records, recent commits, or agent judgment do not constitute authorization.
 
 ```bash
 # Structural, provenance, hash, freshness, review and package dry-run checks.
 # Incomplete/stale/blocked preparation records are reported as warnings.
-python tools/verify_production_transition.py prepare
+python tools/verify_production_transition.py prepare --project-owner-authorized
 
 # Strict preflight. Requires cutover_candidate state, locked scope,
 # complete/current/reviewed/ready records, decided blockers, and each included
 # source artifact byte-identical to its tracked blob at candidate_source_commit.
-python tools/verify_production_transition.py cutover
+python tools/verify_production_transition.py cutover --project-owner-authorized
+
+# Without explicit Project owner authorization, either mode performs no registry,
+# Git, or watched-path inspection and exits 0 with result=SKIP.
+python tools/verify_production_transition.py prepare
 
 # Negative fixtures for stale paths, blockers, area reviews, closure,
 # path containment/collision, hashes and Shared equality.
@@ -60,3 +68,18 @@ creates `freezes/` or `docs/migration-input/`.
 
 - Python 3.9+
 - Standard library only (no pandas / numpy).
+
+## verify_demo_transition_firewall.py
+
+Read-only Demo governance check. Unlike the owner-gated transition verifier, this command is
+safe for normal Demo validation because it inspects only the isolation boundary and never reads
+transition registry freshness, reviews, decisions, watch-path drift, or Git history.
+
+It rejects transition-only governance under active `docs/spec/`, authoritative transition references
+from active Demo specs/plans, automatic transition-verifier calls from CI/hooks/general scripts,
+missing dormant/owner/Demo-authority policy markers, and runtime/package/settings references.
+
+```bash
+python tools/verify_demo_transition_firewall.py
+python -m unittest tools.test_verify_demo_transition_firewall
+```

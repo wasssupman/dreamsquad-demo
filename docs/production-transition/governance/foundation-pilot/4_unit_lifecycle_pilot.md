@@ -1,5 +1,7 @@
 # D4 — unit-lifecycle 파일럿
 
+> **DORMANT · OWNER-GATED · NON-ACTIONABLE HISTORY.** 현재 Demo의 spec·작업 큐·검증 gate가 아니며 Project owner의 명시적 transition 활성화 전에는 실행·갱신하지 않는다.
+
 ## 목적
 
 `spawn → attack-started → damage → death → despawn` 한 조각으로 Server 권위 의미,

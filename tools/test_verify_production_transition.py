@@ -938,6 +938,76 @@ class VerifyProductionTransitionTests(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertIn("CUTOVER_STATE", self.codes(report))
 
+    def test_dormant_prepare_runs_structural_verification(self) -> None:
+        self.fixture.registry["transition_state"] = "dormant"
+
+        report = self.fixture.verify("prepare")
+
+        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
+        self.assertEqual("dormant", report.transition_state)
+        self.assertNotIn("TRANSITION_STATE", self.codes(report))
+
+    def test_authorized_cli_runs_dormant_prepare_verification(self) -> None:
+        self.fixture.registry["transition_state"] = "dormant"
+        self.fixture.persist()
+        stdout = io.StringIO()
+        with mock.patch.object(verifier, "_git_changed_paths", return_value=([], None)):
+            with contextlib.redirect_stdout(stdout):
+                exit_code = verifier.main(
+                    [
+                        "prepare",
+                        "--root",
+                        str(self.root),
+                        "--project-owner-authorized",
+                        "--json",
+                    ]
+                )
+
+        output = json.loads(stdout.getvalue())
+        self.assertEqual(0, exit_code, output)
+        self.assertTrue(output["ok"])
+        self.assertEqual("prepare", output["mode"])
+        self.assertEqual("dormant", output["transition_state"])
+
+    def test_dormant_cutover_is_rejected(self) -> None:
+        self.fixture.registry["transition_state"] = "dormant"
+
+        report = self.fixture.verify("cutover")
+
+        self.assertFalse(report.ok)
+        self.assertEqual("dormant", report.transition_state)
+        self.assertIn("CUTOVER_STATE", self.codes(report))
+
+    def test_unauthorized_cli_skips_without_entering_verification(self) -> None:
+        empty_root = self.root / "empty-repository"
+        stdout = io.StringIO()
+        with contextlib.ExitStack() as stack:
+            verify_transition = stack.enter_context(
+                mock.patch.object(verifier, "verify_transition")
+            )
+            resolve_cli_path = stack.enter_context(
+                mock.patch.object(verifier, "_resolve_cli_path")
+            )
+            load_json = stack.enter_context(mock.patch.object(verifier, "_load_json"))
+            git_changed_paths = stack.enter_context(
+                mock.patch.object(verifier, "_git_changed_paths")
+            )
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            exit_code = verifier.main(
+                ["prepare", "--root", str(empty_root), "--json"]
+            )
+
+        output = json.loads(stdout.getvalue())
+        self.assertEqual(0, exit_code)
+        self.assertEqual("SKIP", output["result"])
+        self.assertEqual("prepare", output["mode"])
+        self.assertIn("project owner", output["reason"])
+        verify_transition.assert_not_called()
+        resolve_cli_path.assert_not_called()
+        load_json.assert_not_called()
+        git_changed_paths.assert_not_called()
+        self.assertFalse(empty_root.exists())
+
     def test_read_only_cli_does_not_create_freeze_or_target_directories(self) -> None:
         self.fixture.persist()
         stdout = io.StringIO()
@@ -953,7 +1023,13 @@ class VerifyProductionTransitionTests(unittest.TestCase):
                 ):
                     with contextlib.redirect_stdout(stdout):
                         exit_code = verifier.main(
-                            ["cutover", "--root", str(self.root), "--json"]
+                            [
+                                "cutover",
+                                "--root",
+                                str(self.root),
+                                "--project-owner-authorized",
+                                "--json",
+                            ]
                         )
 
         self.assertEqual(0, exit_code, stdout.getvalue())

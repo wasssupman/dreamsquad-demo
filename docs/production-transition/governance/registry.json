@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "transition_state": "preparing",
+  "transition_state": "dormant",
   "candidate_source_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
   "official_freeze": null,
   "source_root": ".",
@@ -19,8 +19,8 @@
       "required_reviewers": ["product-owner", "client-tech-owner", "game-server-tech-owner", "independent-reviewer"],
       "watch_paths": ["CLAUDE.md"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "6d1022d28b4f1e7562da5c0b44beab1fce85418a534907700610c22fd6c49377",
-      "freshness": "current",
+      "document_revision": "e305ce4ae632ede26d435a8c36d34299ffdd60fe0bb4eb8622112f659961aeae",
+      "freshness": "stale",
       "review_status": "draft",
       "disposition": "candidate",
       "completeness": "complete",
@@ -35,7 +35,7 @@
         "PT-SHARED-INDEX-001"
       ],
       "cutover_blocking": true,
-      "sha256": "6d1022d28b4f1e7562da5c0b44beab1fce85418a534907700610c22fd6c49377"
+      "sha256": "e305ce4ae632ede26d435a8c36d34299ffdd60fe0bb4eb8622112f659961aeae"
     },
     {
       "id": "PT-GOV-MANIFEST-SCHEMA-001",
@@ -48,7 +48,7 @@
       "watch_paths": ["CLAUDE.md"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
       "document_revision": "0bafed83d1ff307d211ab4fd60d2402e168d2a46141de3f83ae336aaa25e33a5",
-      "freshness": "current",
+      "freshness": "stale",
       "review_status": "draft",
       "disposition": "candidate",
       "completeness": "complete",
@@ -72,7 +72,7 @@
       "required_reviewers": ["client-tech-owner", "game-server-tech-owner", "independent-reviewer"],
       "watch_paths": ["docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "24aa9cec4bfdf961368dda513de1e791a5136dff9cb2767a21c73ea248bd91c6",
+      "document_revision": "644abb7500854f85b362f4eb57aee3974e7708c727aee3f96c361cd956197703",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -88,7 +88,7 @@
         "PT-SHARED-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "24aa9cec4bfdf961368dda513de1e791a5136dff9cb2767a21c73ea248bd91c6"
+      "sha256": "644abb7500854f85b362f4eb57aee3974e7708c727aee3f96c361cd956197703"
     },
     {
       "id": "PT-SHARED-UL-CARD-001",
@@ -100,7 +100,7 @@
       "required_reviewers": ["product-owner", "client-tech-owner", "game-server-tech-owner", "independent-reviewer"],
       "watch_paths": ["docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "822f66a2a4365cda7c79fe5ad0487c885ba3709fd0be2175e02ed29f77ee56a3",
+      "document_revision": "48695aeee98b84147c21da740a14b5041a9df97bb4311188ea778ede651c29ed",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -115,7 +115,7 @@
         "PT-SHARED-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "822f66a2a4365cda7c79fe5ad0487c885ba3709fd0be2175e02ed29f77ee56a3"
+      "sha256": "48695aeee98b84147c21da740a14b5041a9df97bb4311188ea778ede651c29ed"
     },
     {
       "id": "PT-SHARED-UL-FIXTURE-001",
@@ -152,7 +152,7 @@
       "required_reviewers": ["client-tech-owner", "independent-reviewer"],
       "watch_paths": ["Assets/_Project/Scripts/Bridge/", "Assets/_Project/Scripts/Presentation/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "f1a744857c67dab95b1d94ccde6dac5cc73d0a90e6ea1a6ad76812f0b870b050",
+      "document_revision": "288f5b34eeb99e99e1fcdb64f88816fc8b8adc266d637ba267ce0382d985ceb8",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -168,7 +168,7 @@
         "PT-CLIENT-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "f1a744857c67dab95b1d94ccde6dac5cc73d0a90e6ea1a6ad76812f0b870b050"
+      "sha256": "288f5b34eeb99e99e1fcdb64f88816fc8b8adc266d637ba267ce0382d985ceb8"
     },
     {
       "id": "PT-CLIENT-UL-CARD-001",
@@ -180,7 +180,7 @@
       "required_reviewers": ["product-owner", "client-tech-owner", "independent-reviewer"],
       "watch_paths": ["Assets/_Project/Scripts/Bridge/", "Assets/_Project/Scripts/Presentation/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "2842396992fa3f7d23a4fdf726f5daf22809b187b82eef71dcb2b046f43e4d80",
+      "document_revision": "1996d386a0e1eca98df40294811dcf3e8baa6b719ad85efe898d015cde1333e2",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -197,7 +197,7 @@
         "PT-CLIENT-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "2842396992fa3f7d23a4fdf726f5daf22809b187b82eef71dcb2b046f43e4d80"
+      "sha256": "1996d386a0e1eca98df40294811dcf3e8baa6b719ad85efe898d015cde1333e2"
     },
     {
       "id": "PT-CLIENT-UL-FIXTURE-001",
@@ -237,7 +237,7 @@
       "required_reviewers": ["game-server-tech-owner", "independent-reviewer"],
       "watch_paths": ["docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "7aabf5c3357f140311d0a7e42361374f11d46b47e916f3b25a488bd62a4e1fe4",
+      "document_revision": "6be09a0950862d4581e3713c5fea429c234ee19d9cba23b5c757f5a4627d915a",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -253,7 +253,7 @@
         "PT-GS-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "7aabf5c3357f140311d0a7e42361374f11d46b47e916f3b25a488bd62a4e1fe4"
+      "sha256": "6be09a0950862d4581e3713c5fea429c234ee19d9cba23b5c757f5a4627d915a"
     },
     {
       "id": "PT-GS-UL-CARD-001",
@@ -265,7 +265,7 @@
       "required_reviewers": ["product-owner", "game-server-tech-owner", "independent-reviewer"],
       "watch_paths": ["docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "db03c440942fd893bcfffb774d17756ec9e2179afde0f97c119d127a13841b3b",
+      "document_revision": "8d8e39182ecfce55e802f921e8507fddfc719defa6d3c6880eeb7414d390ce6a",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -281,7 +281,7 @@
         "PT-GS-UL-FIXTURE-001"
       ],
       "cutover_blocking": true,
-      "sha256": "db03c440942fd893bcfffb774d17756ec9e2179afde0f97c119d127a13841b3b"
+      "sha256": "8d8e39182ecfce55e802f921e8507fddfc719defa6d3c6880eeb7414d390ce6a"
     },
     {
       "id": "PT-GS-UL-FIXTURE-001",
@@ -321,7 +321,7 @@
       "required_reviewers": ["product-owner"],
       "watch_paths": ["docs/spec/", "Assets/_Project/Scripts/"],
       "as_of_commit": "44c8788549f1d5997b35d2dbbfc9dc403d9513aa",
-      "document_revision": "eb3197e82ea0b09443d9efeda23741b56b6698fc7e4a95c144af74358df90c9e",
+      "document_revision": "f53d51a40fc87a90e300686c78605af596b6296aee0261df5c18051bc80675ba",
       "freshness": "stale",
       "review_status": "historical",
       "disposition": "reference",
@@ -334,7 +334,7 @@
       "areas": ["PT-AREA-PRODUCT-BASELINE"],
       "references": [],
       "cutover_blocking": false,
-      "sha256": "eb3197e82ea0b09443d9efeda23741b56b6698fc7e4a95c144af74358df90c9e"
+      "sha256": "f53d51a40fc87a90e300686c78605af596b6296aee0261df5c18051bc80675ba"
     },
     {
       "id": "PT-DRIFT-ONBOARDING-001",
@@ -346,7 +346,7 @@
       "required_reviewers": ["product-owner", "client-tech-owner"],
       "watch_paths": ["docs/spec/outgame-tutorial/README.md", "docs/production-transition/demo-baseline.md", "docs/production-transition/product/learning-register.md"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "a2bdd6588f85f0fd5fe0a8032bb39117edeb168eb7cb1dc89c20ac8c8ff0263a",
+      "document_revision": "41a4a117a50fd94801e7cf2d8674d2ce7ba3db931fe3dc63630f368b71937830",
       "freshness": "stale",
       "review_status": "draft",
       "disposition": "reference",
@@ -359,7 +359,7 @@
       "areas": ["PT-AREA-ONBOARDING"],
       "references": ["PT-LEGACY-BASELINE-001"],
       "cutover_blocking": false,
-      "sha256": "a2bdd6588f85f0fd5fe0a8032bb39117edeb168eb7cb1dc89c20ac8c8ff0263a"
+      "sha256": "41a4a117a50fd94801e7cf2d8674d2ce7ba3db931fe3dc63630f368b71937830"
     },
     {
       "id": "PT-LEGACY-GS-DOSSIER-001",
@@ -371,7 +371,7 @@
       "required_reviewers": ["game-server-tech-owner"],
       "watch_paths": ["docs/production-transition/migration-dossier/", "docs/spec/"],
       "as_of_commit": "2d35df0680ce97d29b78101120cb9fae63c5a8ad",
-      "document_revision": "e063b8634d033973adaa66592c6556004a1ff2c100bb7d9df89f513d51427b2e",
+      "document_revision": "268183182e1464e49d03df7ef9264aab7c95d0d6e006732d584054c61998227b",
       "freshness": "stale",
       "review_status": "historical",
       "disposition": "reference",
@@ -384,7 +384,7 @@
       "areas": ["MIG-AREA-001", "MIG-AREA-002", "MIG-AREA-003", "MIG-AREA-004", "MIG-AREA-005", "MIG-AREA-006", "MIG-AREA-007", "MIG-AREA-008", "MIG-AREA-009", "MIG-AREA-010", "MIG-AREA-011", "MIG-AREA-012", "MIG-AREA-013"],
       "references": ["PT-LEGACY-GS-CORE-001"],
       "cutover_blocking": false,
-      "sha256": "e063b8634d033973adaa66592c6556004a1ff2c100bb7d9df89f513d51427b2e"
+      "sha256": "268183182e1464e49d03df7ef9264aab7c95d0d6e006732d584054c61998227b"
     },
     {
       "id": "PT-LEGACY-GS-CORE-001",
@@ -396,7 +396,7 @@
       "required_reviewers": ["product-owner", "game-server-tech-owner"],
       "watch_paths": ["docs/spec/aggro-standoff/", "docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "2d35df0680ce97d29b78101120cb9fae63c5a8ad",
-      "document_revision": "eb2b5bbf976f3da40ebab06d4df9327ff1102bde72ff84e53b4541ce2241ef2e",
+      "document_revision": "90f4023218bcbba3e1395e8c0e7091fc463805d870550c0ad0c2aabeb1528660",
       "freshness": "stale",
       "review_status": "historical",
       "disposition": "reference",
@@ -409,7 +409,7 @@
       "areas": ["MIG-AREA-001", "MIG-AREA-002", "MIG-AREA-004", "MIG-AREA-005", "MIG-AREA-006", "MIG-AREA-007", "MIG-AREA-012", "MIG-AREA-013"],
       "references": [],
       "cutover_blocking": false,
-      "sha256": "eb2b5bbf976f3da40ebab06d4df9327ff1102bde72ff84e53b4541ce2241ef2e"
+      "sha256": "90f4023218bcbba3e1395e8c0e7091fc463805d870550c0ad0c2aabeb1528660"
     }
   ]
 }

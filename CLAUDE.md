@@ -59,7 +59,12 @@
 9. **현재 작업 중인 spec 범위를 넘어서는 기능 구현 금지**. 범위 밖 항목은 별도 spec 초안 또는 해당 spec 폴더의 "후속 후보" 섹션으로 이관 후 대기.
 10. **아키텍처 중립 로직은 순수 함수로 분리** (2026-07-10 사용자 결정): 계산 로직이 Mono/ECS 아키텍처와 **본질적으로** 얽히지 않으면(스탯 모디파이어 결합, 속도·타이밍→배율 변환, 클램프·정규화 등), ISystem/MonoBehaviour 같은 아키텍처 종속 메서드 안에 인라인하지 말고 **plain 값 입력 → plain 값 출력** 순수 static 함수로 둔다. 스탯 모디파이어와 그 적용 산식은 순수하게 값을 **결정**하고, 결정된 값은 각 아키텍처(ECS 시뮬 / Mono 프레젠테이션)가 **알아서 해석·소비**한다(값 자체는 아키텍처를 모른다). 순수 함수는 EditMode 단위 테스트 대상. **모범**: `ModifierMath.CombineMul`(순수 결합) → ECS 가 적용 / 뷰가 해석, `ModifierMathTests` 로 검증. 판정 기준 = "이 계산이 `EntityManager`/`SkeletonAnimation`/`Time` 같은 아키텍처 타입을 실제로 필요로 하는가?" 아니면 순수 함수로 뺀다.
    - **이 원칙의 핵심은 "모디파이어가 값을 순수하게 결정하고 결정된 값이 아키텍처-blind 하게 흐른다"는 *shape* 이지, "모든 수식을 함수로 빼라"가 아니다.** 자명한 한두 줄 산술을 호출처 하나뿐인데 별도 static/타입으로 빼는 건 제약 8("나중을 위한 추상 레이어 금지")과 충돌하는 **과잉 추상화**다. 추출은 로직이 **(a) 비자명(분기·다단계)** 이거나 **(b) 실제 재사용(2+ 호출처)** 이거나 **(c) 회귀 테스트 가치가 있는 sim-critical 계산**(데미지/이동/타겟팅)일 때만. 셋 다 아니고 값이 이미 plain 하게 흐르면 인라인이 맞다.
-
+11. **Production-transition firewall** (2026-08-11 사용자 결정): Demo가 유일한 upstream이다. `docs/production-transition/`은 Project owner가 미래 전환을 위해 미리 보관하는 **dormant downstream 자료**이며 Demo의 설계·구현·검증 정본이 아니다.
+   - 현재 사용자 요청이 production-transition의 시작·갱신·검증을 **명시적으로** 지시하지 않으면 해당 subtree와 전용 verifier를 읽거나 실행하거나 작업 후보로 제안하지 않는다. 최근 커밋, stale 표시, watch path 변화, backlog 링크는 활성화 근거가 아니다.
+   - Demo의 정본 우선순위는 `CLAUDE.md` → 활성 `docs/spec/{feature-slug}/` → `docs/TRD.md`/`docs/PRD.md`의 적용 가능한 Demo 계약 → 코드·에셋·테스트다. Transition 문서와 충돌하면 Demo를 고치는 대신 transition 자료가 stale한 것으로 둔다.
+   - Transition freshness/review/decision/registry/verifier는 Demo 작업의 시작·완료·검증·커밋을 절대 차단하지 않는다. Demo 변경에 맞춘 transition 문서 갱신도 같은 작업에 끼워 넣지 않는다.
+   - Freeze, cutover, production import와 후속 wave의 시점·범위는 Project owner만 결정한다. 명시적 활성화 전 agent는 이를 계획하거나 선제 작업하지 않는다.
+   - Transition과 무관한 Demo 아키텍처 변경은 Demo 목표만으로 별도 승인받고 이 파일과 TRD를 먼저 갱신해야 한다. Transition 문서를 근거로 ECS 경계나 네트워크 금지를 우회할 수 없다.
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
 
 ## 원격 저장소 · 푸시 전략 (2026-07-27 확정)
@@ -77,7 +82,7 @@
 | 상황 | 읽을 문서 |
 |---|---|
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
-| "데모 경험을 정규 프로젝트 PRD·ADR로 옮기려면?" | [`docs/production-transition/README.md`](docs/production-transition/README.md) — 기준선, 제품 학습, 아키텍처 이전 판정, 검증 백로그. **현재 데모 구현을 변경하는 명세가 아님** |
+| "Project owner가 production-transition 작업을 이번 요청에서 명시적으로 지시했나?" | 그때만 [`docs/production-transition/README.md`](docs/production-transition/README.md) 참조. 평상시에는 읽지 않는다. 이 subtree는 **owner-gated dormant downstream**이며 현재 Demo 구현 명세가 아니다. |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |

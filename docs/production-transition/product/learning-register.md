@@ -1,5 +1,7 @@
 # Product Learning Register
 
+> **DORMANT · OWNER-GATED · NOT CURRENT DEMO PRODUCT TRUTH.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·우선순위·검증 gate로 사용하거나 갱신하지 않는다.
+
 - 문서 상태: **Historical · stale · preparatory**
 - 기준선: **2026-07-29 / `44c87885`**
 - 대상 모드: 별도 표기가 없으면 로그인 계정으로 로비에서 시작하는 일반 토너먼트 흐름
