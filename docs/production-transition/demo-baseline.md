@@ -1,6 +1,6 @@
 # 데모 기준선
 
-> 상태: **Draft**
+> 상태: **Historical · stale · preparatory** — 현재 freeze 후보가 아님
 >
 > 기준일: **2026-07-29**
 >
@@ -8,7 +8,8 @@
 >
 > 대상: 일반 데모 플레이 경로. `TestMode`, 에디터의 `BattleScene` 직접 Play, `Endless`는 별도 조건으로 표시한다.
 
-이 문서는 정규 프로젝트를 설계하기 전에 현재 데모가 실제로 무엇을 하는지 동결한 기준선이다.
+이 문서는 2026-07-29 당시 데모가 실제로 무엇을 했는지 기록한 역사적 snapshot이다.
+현행 source와 대조해 registry에서 `current`로 재검토하기 전에는 공식 export할 수 없다.
 구현 여부와 재미 검증 여부를 분리하며, 아래 `E2`는 내부 기능 Play를 뜻할 뿐 재미 가설의 지지를
 뜻하지 않는다. 기록 필드와 판정 규칙은 [README](./README.md)의 공통 기록 계약을 따른다.
 
@@ -372,9 +373,11 @@
 - 다음 검증·결정: snapshot 보존 기간, resume 자격, command deduplication, timeout·forfeit,
   중복 terminal 요청을 `ADR-CAND-009`에서 결정하고 fault-injection으로 검증한다.
 
-## 기준선 승격 조건
+## 역사적 기준선의 재검토 조건
 
 이 문서는 Product·Client·Server 세 역할이 사실관계와 누락을 검토하기 전까지 `Draft`다.
-검토가 끝나면 기준 커밋과 review 기록을 추가해 이 문서만 `Frozen`으로 승격할 수 있다.
+이 문서 하나를 `Frozen`으로 승격하지 않는다. 영향 claim을 새 source commit에서 개별
+registry record로 갱신하고 전역 strict gate를 통과시킨다. 공식 freeze는
+[전역 transition 정본](README.md)에 따라 모든 package에 대해 한 번만 수행한다.
 코드·asset이 바뀌면 기존 기준선을 조용히 덮어쓰지 않고 새 `as_of`를 만들거나 변경 claim을
 `superseded` 처리한다.

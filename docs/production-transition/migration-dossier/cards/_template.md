@@ -12,6 +12,9 @@ depends_on: []
 
 # 카드 제목
 
+> Legacy template. 새 record/card는 package별 폴더와
+> [`../../governance/registry.json`](../../governance/registry.json)의 계약을 사용한다.
+
 ## Scope와 non-goals
 
 이 카드가 다루는 gameplay 의미와 제외 범위를 적는다. 클라이언트 구현 구조, 런타임
@@ -79,5 +82,5 @@ handle 대신 안정적인 domain 용어를 사용한다.
 - [ ] Boundary와 mode 변형이 완전하거나 명시적 gap으로 남아 있다.
 - [ ] References가 `as_of_commit`에서 유효하다.
 - [ ] 클라이언트 전용 구현·연출 정보가 없다.
-- [ ] 중대 공백이 해결되거나 freeze 공백으로 담당자 승인을 받았다.
+- [ ] 모든 cutover-blocking 공백이 `decided`로 해결됐다.
 - [ ] 담당자 검토가 `review-ledger.md`에 기록됐다.

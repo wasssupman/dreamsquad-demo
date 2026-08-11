@@ -1,10 +1,13 @@
 # PRD Inputs
 
-- 문서 상태: **Draft**
+- 문서 상태: **Historical · stale · preparatory**
 - 기준선: **2026-07-29 / `44c87885`**
 - 대상 독자: Product, Client, Server
 - 목적: 데모에서 정규 프로젝트 PRD로 넘길 플레이어 가치, 세션 루프, 요구사항, 성공 지표와 열린 질문을 정리한다.
 - 비목적: 이 문서는 최종 PRD가 아니며 구현 구조, 서버 runtime, 전송 방식, 동기화·복제 해법을 결정하지 않는다.
+
+> 이 문서는 2026-07-29 snapshot에서 출발한 입력 후보다. Product가 production-v1 범위를
+> 결정하고 registry record를 current/reviewed로 만들기 전에는 공식 PRD input이 아니다.
 
 제품 주장은 [Product Learning Register](learning-register.md), 검증 설계는 [Product Validation Backlog](validation-backlog.md), 현재 구현 사실은 [Demo Baseline](../demo-baseline.md)을 기준으로 한다. 기술 선택은 [ADR Candidates](../architecture/adr-candidates.md)에서 별도로 관리한다.
 

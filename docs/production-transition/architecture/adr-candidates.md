@@ -1,12 +1,15 @@
 # ADR Candidates — 정규 프로젝트 결정 대기열
 
-> 문서 상태: **Draft**
+> 문서 상태: **Historical · stale · preparatory**
 >
 > 기준선: **2026-07-29 / `44c87885`**
 >
 > 후보 상태: 전 항목 **Candidate**
 >
 > 이 문서는 공식 ADR이 아니다. 승인 전 `docs/decisions/` 또는 공식 ADR 번호를 만들지 않는다.
+
+> 후보는 미래 freeze의 reference로 이동할 수 있지만 production ADR 승인이나 live protocol
+> 정본이 아니다. 각 후보는 current source와 owner review를 다시 거쳐야 한다.
 
 ## 운영 규칙
 

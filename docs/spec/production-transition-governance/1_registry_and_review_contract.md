@@ -30,7 +30,7 @@ dependency를 기계 검증 가능한 하나의 registry로 묶는다.
 
 ## 완료 기준
 
-- [ ] legacy 문서가 새 정본보다 높은 권위를 주장하지 않는다.
-- [ ] 포함 record의 엄격 gate를 JSON으로 판정할 수 있다.
-- [ ] 다중-area card를 하나의 review로 승인할 수 없다.
-- [ ] watch path와 source commit으로 stale 여부를 다시 계산할 수 있다.
+- [x] legacy 문서가 새 정본보다 높은 권위를 주장하지 않는다.
+- [x] 포함 record의 엄격 gate를 JSON으로 판정할 수 있다.
+- [x] 다중-area card를 하나의 review로 승인할 수 없다.
+- [x] watch path와 source commit으로 stale 여부를 다시 계산할 수 있다.

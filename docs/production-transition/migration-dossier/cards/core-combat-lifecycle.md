@@ -12,6 +12,9 @@ depends_on: []
 
 # 핵심 전투 생명주기
 
+> 상태: **Historical · stale · preparatory**. 이 multi-area card와 기존 review는 어떤
+> area도 승인하지 않는다. 새 pilot은 package별 `unit-lifecycle` card를 사용한다.
+
 ## Scope와 non-goals
 
 Actor가 전투에 들어온 뒤 direct attack, lethal damage 또는 endpoint breach를 거쳐
@@ -167,5 +170,6 @@ product decision review는 시작하지 않았다.
 - [ ] `MIG-DEC-CORE-012` simultaneous terminal arbitration을 결정하거나 명시적으로 보류했다.
 - [x] Inter-wave clear와 final all-clear를 future wave 유무로 구분했다.
 - [x] `CORE-Q-001`부터 `CORE-Q-006`까지 중앙 decision에 연결했다.
-- [ ] Deferred 또는 unresolved decision을 해결하거나 freeze accepted gap으로 승인했다.
+- [ ] Deferred 또는 unresolved decision을 모두 `decided`로 해결했다. Accepted gap으로
+      strict gate를 우회하지 않는다.
 - [ ] Card의 최종 owner review가 `review-ledger.md`에 기록됐다.

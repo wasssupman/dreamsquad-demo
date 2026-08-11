@@ -1,14 +1,36 @@
 # Product Validation Backlog
 
-- 문서 상태: **Draft**
+- 문서 상태: **Historical · stale · preparatory**
 - 기준선: **2026-07-29 / `44c87885`**
-- 목적: 정규 프로젝트 PRD를 확정하기 전에 다시 검증할 제품 가설, 필요한 데이터, 판정 절차를 관리한다.
+- 목적: Demo pre-freeze와 production 구현 wave에서 다시 검증할 제품 가설, 필요한 데이터,
+  판정 절차를 구분해 관리한다.
 
 모든 항목은 실행 전 상태다. 자동 테스트나 내부 기능 Play는 실험 결과로 세지 않는다. 실험을 시작하기 전에 모집 조건, 표본, 성공 문턱, 제외 기준을 고정하고, 종료 후 익명화한 산출물을 [Evidence 규칙](../evidence/README.md)에 따라 연결한다.
 
+우선순위는 실행 stage가 아니라 제품 위험도다. `P0`라도 production vertical slice가 필요한
+항목은 Demo freeze 결과가 될 수 없다. Freeze 전에 고정하는 것은 실험 요구, protocol과 목표
+문턱이며, 실행 결과는 지정된 production-side gate에 축적한다.
+
+| validation_id | execution_stage | blocks_gate | required_artifact |
+|---|---|---|---|
+| `VAL-PROD-001` | `demo-pre-freeze` | `global-freeze` | 익명 세션 퍼널 dataset과 판정보고 |
+| `VAL-PROD-002` | `demo-pre-freeze` | `global-freeze` | 반복 플레이 dataset·인터뷰 코딩 |
+| `VAL-PROD-003` | `demo-pre-freeze` | `global-freeze` | 자원 시계열·관찰 보고 |
+| `VAL-PROD-004` | `demo-pre-freeze` | `global-freeze` | 귀인 인터뷰·평가자 합의 |
+| `VAL-PROD-005` | `demo-pre-freeze` | `global-freeze` | onboarding 비교 결과 |
+| `VAL-PROD-006` | `demo-pre-freeze` | `global-freeze` | Next Wave·점수 민감도 분석 |
+| `VAL-PROD-007` | `demo-pre-freeze` | `none` | 무안내 재현 관찰표 |
+| `VAL-PROD-008` | `production-client-wave` | `client-stage-authoritative-feedback` | 첫 Server-authoritative vertical slice UX evidence |
+| `VAL-PROD-009` | `production-release` | `release` | Replay progression parity와 제품 신뢰 evidence |
+
+`global-freeze` 표시는 Product가 production-v1에 해당 가설을 포함할 때의 gate다. Product가
+기능 자체를 scope에서 제외하면 그 결정을 manifest에 남기며, 나중에 Demo를 두 번째로
+import하지 않는다.
+
 우선순위는 다음과 같다.
 
-- `P0`: 핵심 루프 또는 PRD의 성립 여부를 결정하므로 정규 프로젝트 기획 기준선 전에 실행한다.
+- `P0`: 핵심 루프 또는 PRD의 성립 여부에 큰 위험이 있어 배정된 execution stage의 첫
+  blocking gate 전에 실행한다.
 - `P1`: 핵심 루프를 폐기할 정도는 아니지만 온보딩·밸런스·결과 UX의 방향을 정하므로 첫 제품 검증 빌드에서 실행한다.
 
 ## VAL-PROD-001 — 전체 세션 퍼널과 이탈
@@ -232,6 +254,9 @@
 ## VAL-PROD-008 — 온라인 권위 전환의 반응성과 정정 이해
 
 - 우선순위: `P0`
+- `execution_stage`: `production-client-wave`
+- `blocks_gate`: `client-stage-authoritative-feedback`
+- 선행 조건: Game Server authoritative vertical slice와 통제 가능한 network test harness
 - 연결 학습: `LRN-PROD-010`, `LRN-PROD-012`
 - `claim_kind`: `hypothesis`
 - `evidence_status`: `untested`
@@ -261,6 +286,9 @@
 ## VAL-PROD-009 — Live player와 Replay의 동일 경기 인지와 신뢰
 
 - 우선순위: `P1`
+- `execution_stage`: `production-release`
+- `blocks_gate`: `release`
+- 선행 조건: production Authoritative Match Record와 Replay vertical slice
 - 연결 학습: `LRN-PROD-013`
 - `claim_kind`: `hypothesis`
 - `evidence_status`: `untested`

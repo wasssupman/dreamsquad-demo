@@ -1,10 +1,14 @@
 # Evidence 산출물 가이드
 
-> 상태: **Draft**
+> 상태: **Historical · preparatory contract**
 >
 > 기준일: **2026-07-29**
 >
 > 적용 범위: 정규 프로젝트 PRD/ADR의 근거로 인용할 플레이테스트·로그·설문·인터뷰 산출물
+
+Evidence의 `closed/supported`만으로 current applicability를 뜻하지 않는다. Official include에
+쓰려면 registry에서 해당 freeze의 ruleset/presentation/build와 대조해 `freshness: current`로
+검토해야 한다. 바뀐 watch path와 연결된 evidence는 재검토 전 `stale`다.
 
 이 디렉터리는 “기능이 있다”와 “가설이 지지된다”를 구분하기 위한 evidence 계약을 정의한다.
 현재 inventory는 [데모 기준선 `BASE-009`와 `BASE-010`](../demo-baseline.md)에 기록한다.

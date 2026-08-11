@@ -1,6 +1,6 @@
 # 이식 준비 문서 범위 현황
 
-> 상태: **축적 중**
+> 상태: **Historical · stale · preparatory**
 >
 > 근거 기준: `2d35df0680ce97d29b78101120cb9fae63c5a8ad`
 >
@@ -16,7 +16,8 @@ freeze 범위를 정할 때만 `include`, `defer`, `exclude`로 바꾼다.
 - `disposition`: `candidate | include | defer | exclude`
 - `coverage`: `none | partial | complete`
 - `review_status`: `draft | review_requested | reviewed | stale`
-- `migration_readiness`: `blocked | conditional | ready`
+- `migration_readiness`: `blocked | conditional | ready` (legacy 값. strict gate에서
+  `conditional`은 통과하지 않음)
 
 | area_id | gameplay_area | disposition | card | coverage | review_status | migration_readiness | depends_on | blocking_decisions | as_of_commit | next_trigger |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -34,7 +35,7 @@ freeze 범위를 정할 때만 `include`, `defer`, `exclude`로 바꾼다.
 | `MIG-AREA-012` | Mode와 content rule | `candidate` | [core-combat-lifecycle](cards/core-combat-lifecycle.md) | `partial` | `draft` | `blocked` | `none` | `MIG-DEC-CORE-006`, `MIG-DEC-CORE-008` | `2d35df0680ce97d29b78101120cb9fae63c5a8ad` | Mode별 terminal 의도를 검토하거나 content rule이 바뀔 때 |
 | `MIG-AREA-013` | Score와 result | `candidate` | [core-combat-lifecycle](cards/core-combat-lifecycle.md) | `partial` | `draft` | `blocked` | `MIG-AREA-001`, `MIG-AREA-002`, `MIG-AREA-004`, `MIG-AREA-007`, `MIG-AREA-012` | `MIG-DEC-CORE-004`, `MIG-DEC-CORE-006`, `MIG-DEC-CORE-007`, `MIG-DEC-CORE-010`, `MIG-DEC-CORE-012` | `2d35df0680ce97d29b78101120cb9fae63c5a8ad` | Score·result 의미가 바뀌거나 전용 카드를 작성할 때 |
 
-Freeze 후보가 되려면 `include` 영역의 카드가 모두 `coverage: complete`,
-`review_status: reviewed`여야 한다. Readiness는 `ready`이거나 owner가 가정과 gap을
-승인한 `conditional`이어야 한다. `stale` card가 하나라도 있거나 미결
-`blocking_decisions`가 accepted gap으로 승인되지 않으면 freeze할 수 없다.
+이 표 자체는 Freeze 후보가 아니다. 새 registry의 `include` record만
+`complete + current + reviewed + ready`를 모두 만족하고, 모든 blocking decision이
+`decided`일 때 strict gate를 통과한다. `conditional`과 accepted gap은 readiness를
+해제하지 않는다.

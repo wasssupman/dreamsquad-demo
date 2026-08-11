@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "decisions": [
+    {
+      "id": "PT-DEC-UL-001",
+      "status": "open",
+      "owner": "product-owner",
+      "question": "A newly spawned actor becomes eligible for its first authoritative action at which semantic boundary?",
+      "decision": null,
+      "blocks_cutover": true,
+      "affected_records": [
+        "PT-SHARED-UL-CARD-001",
+        "PT-SHARED-UL-FIXTURE-001",
+        "PT-GS-UL-CARD-001",
+        "PT-GS-UL-FIXTURE-001"
+      ],
+      "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8"
+    },
+    {
+      "id": "PT-DEC-UL-002",
+      "status": "open",
+      "owner": "product-owner",
+      "question": "What timing relationship between attack start and damage resolution is intended gameplay meaning?",
+      "decision": null,
+      "blocks_cutover": true,
+      "affected_records": [
+        "PT-SHARED-UL-CARD-001",
+        "PT-SHARED-UL-FIXTURE-001",
+        "PT-CLIENT-UL-CARD-001",
+        "PT-GS-UL-CARD-001"
+      ],
+      "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8"
+    },
+    {
+      "id": "PT-DEC-UL-003",
+      "status": "open",
+      "owner": "product-owner",
+      "question": "Which authoritative state changes, if any, remain legal after death is decided and before despawn?",
+      "decision": null,
+      "blocks_cutover": true,
+      "affected_records": [
+        "PT-SHARED-UL-CARD-001",
+        "PT-SHARED-UL-FIXTURE-001",
+        "PT-CLIENT-UL-CARD-001",
+        "PT-GS-UL-CARD-001",
+        "PT-CLIENT-UL-FIXTURE-001",
+        "PT-GS-UL-FIXTURE-001"
+      ],
+      "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8"
+    }
+  ]
+}

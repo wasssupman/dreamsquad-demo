@@ -1,10 +1,14 @@
 # Source Map
 
-> 상태: **Draft**
+> 상태: **Historical · stale · preparatory**
 >
 > 확인 기준: **2026-07-29 / `44c87885`**
 >
 > 목적: 각 출처가 증명할 수 있는 범위와 드리프트를 명시한다.
+
+이 목록의 `44c87885` 항목은 current source inventory가 아니다. 각 claim의
+`watch_paths`와 `as_of_commit`을 [`governance/registry.json`](governance/registry.json)에서
+재검토하기 전에는 official package에 포함하지 않는다.
 
 이 문서는 출처를 “최신 문서 하나”로 합치지 않는다. 구현 사실은 코드·에셋·테스트와 활성 spec을 우선하고, PRD·TRD·prototype·milestone은 의도와 역사 근거로 사용한다. 제품 효과는 별도 증거 산출물이 없으면 확인되지 않은 것으로 남긴다.
 

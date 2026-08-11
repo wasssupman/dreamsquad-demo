@@ -1,11 +1,12 @@
 # 게임플레이 결정 등록부
 
-> 상태: **Draft**
+> 상태: **Historical · stale · preparatory**
 >
 > 근거 기준: `2d35df0680ce97d29b78101120cb9fae63c5a8ad`
 
-이 문서는 dossier 카드가 의존하는 gameplay 결정과 질문의 current-state 중앙
-등록부다. `proposed`는 활성 spec에서 확인한 source-backed 규칙을 Demo의 intended
+이 문서는 legacy dossier 카드가 의존했던 gameplay 결정과 질문의 역사적
+등록부다. 현재 decision 정본은 [`../governance/decisions.json`](../governance/decisions.json)이다.
+`proposed`는 활성 spec에서 확인한 source-backed 규칙을 Demo의 intended
 gameplay 의미로 승인할지 owner 확인이 끝나지 않았다는 뜻이다. `open`은 현재
 근거만으로 답할 수 없는 실제 product decision이다. `decided`만 readiness 해제
 근거로 사용할 수 있다. 같은 질문의 상태가 바뀌면 해당 행을 갱신하며 Git

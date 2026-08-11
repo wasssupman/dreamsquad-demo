@@ -1,6 +1,6 @@
 # Engineering Learnings — 데모에서 가져갈 공학적 교훈
 
-> 상태: **Draft**
+> 상태: **Historical · stale · preparatory**
 >
 > 기준선: **2026-07-29 / `44c87885`**
 >
@@ -8,6 +8,10 @@
 >
 > 대상: Product, Client, Server
 >
+
+관찰 사실과 production transfer 결정은 새 registry에서 별도 record로 분리한다. 이 문서의
+`carry` 표현은 current owner approval이 아니다.
+
 > 범위: 정규 프로젝트의 설계 입력. 구현 승인이나 공식 ADR이 아니다.
 
 ## 읽는 규칙

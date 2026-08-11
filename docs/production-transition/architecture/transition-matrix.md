@@ -1,12 +1,15 @@
 # Transition Matrix — Demo → Production
 
-> 상태: **Draft**
+> 상태: **Historical · stale · preparatory**
 >
 > 기준선: **2026-07-29 / `44c87885`**
 >
 > 기본 전제: 정규 프로젝트는 **서버 권위 온라인 게임**, **non-ECS 전투 구조**다. 2026-07-30 책임 경계 결정에 따라 Product/Game Design은 규칙 의도·밸런스·콘텐츠 의미를 작성·승인하고, 서버는 결과에 영향을 주는 gameplay ruleset과 실행을, 클라이언트는 입력 UX와 presentation을 소유한다.
 >
 > 이 표의 `decide`는 선택 완료가 아니라 [ADR 후보](adr-candidates.md)에서 결정을 준비한다는 뜻이다.
+
+> 관찰 사실과 `carry/rebuild/retire` 같은 production 선택은 새 registry에서 별도 ID와
+> owner review를 갖는다. 이 표의 E1 근거가 production 결정을 승인하지 않는다.
 
 ## 판정 기준
 
