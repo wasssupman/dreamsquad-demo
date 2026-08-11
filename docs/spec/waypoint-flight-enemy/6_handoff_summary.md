@@ -8,6 +8,7 @@
 - `5862f67d` — unit 3 웨이포인트 추종 활성화
 - `ede9fc73` — unit 7 스웜별 경로 가이드
 - `258c96ec` — unit 4 Air 통행·비주얼·타겟층과 검증 콘텐츠
+- `c7db37b0` — unit 4 완료 상태·검증·handoff 마감
 
 ## Implemented
 
@@ -50,6 +51,14 @@
 - `EnemyAiStateSystem`도 AttackSystem과 같은 층 마스크를 읽는다. 빠뜨리면 Path 전용 순찰병이 Air 적만 보고 `Engaging`으로 멈춘다.
 - `HazardEffect.targetTraversalLayers`는 복사본에만 쓰는 `[NonSerialized]` 런타임 스냅샷이다.
 - Air 우선 타겟팅은 없다. 대공사수의 Path·Air 후보는 기존 거리순으로 동등하게 경쟁한다.
+
+## Resume
+
+1. `README.md`의 상태·feature-wide 계약을 먼저 읽는다.
+2. 다음 미완료 작업은 `5_painter_and_maps.md` 하나다. unit 5 구현은 아직 시작하지 않았다.
+3. `MapPainterWindow.cs`의 기존 저장/bake 흐름과 unit 0의 `WaypointPathValidation`을 찾아 그대로 재사용한다.
+4. 경로 선택·추가/삭제·순서 클릭·마지막 점 삭제·오버레이만 만든다. 재정렬 UI나 새 검증 규칙은 추가하지 않는다.
+5. 맵은 2~3장까지만 저작하고, 저장→재로드 왕복과 맵별 Play 확인 뒤 사용자 체감 승인을 받는다.
 
 ## Follow-up
 

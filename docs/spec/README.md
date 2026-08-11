@@ -148,14 +148,15 @@ code + git history        구현 상세
 - **「거점 우선, 유닛도 때림」 변형** [S] · 도발이 걸리는 중간 형태. 지금 후보는 **거리로만 경쟁**하므로(`AttackSystem.cs:109`) faction 우선순위 축이 필요하다. (structure-hunter-enemy)
 - **스폰 예고에서 「유인 불가」 구분 표시** [S] · 지금은 스폰 후에야 안다. (structure-hunter-enemy)
 
-#### 비행 적 (waypoint-flight-enemy — spec 작성됨, **미착수**)
+#### 비행 적 (waypoint-flight-enemy — units 0~4+7 완료 2026-08-11, 다음 unit 5)
 
-지형을 무시하되 맵에 저작된 궤도로 오는 적. flow field 를 안 보므로 `traversal-layers` 의
-미완 슬롯 배선을 건드리지 않는다. 착수 전 확인된 배선 함정 3개가 README 에 있다.
+맵이 N개 웨이포인트 경로를 저작하고 적 SO가 하나를 선택한다. 기존 flow field를
+`목적지 × 통행층` 슬롯으로 재사용하며, Air 적은 지상 차단을 무시한다.
 상세: `docs/spec/waypoint-flight-enemy/README.md`.
 
-- **units 0~5 전부 미착수** [M] · 저작 축 → 순수 함수 → 켜기(한 커밋) → 뷰 lift → 툴+맵 2~3장 → handoff. (waypoint-flight-enemy)
-- **비행 궤도 예고** [S] · 검증 질문 밖이라 범위에서 뺐다. 붙일 곳은 `SpawnAlertPresenter` 이고 경로 소스가 달라진다. (waypoint-flight-enemy)
+- **unit 5 경로 페인터 + 맵 2~3장** [M] · 유일한 미완료 작업 단위. 기존 저장/bake와 unit 0 검증 함수를 재사용하고, 맵마다 다른 방어 위치를 요구하는지 사용자 Play로 닫는다. (waypoint-flight-enemy)
+- **대공사수 고유 콘텐츠화** [M] · 현재 Path·Air 동시 타겟, 피해 7/주기 0.2초의 양성 대조. 고유 아트·최종 밸런스·Air 우선/추가 피해는 별도 검증. (waypoint-flight-enemy)
+- **잔여 맵 경로 저작** [S] · unit 5는 2~3장까지만 다루며 나머지 맵은 후속 콘텐츠 작업이다. (waypoint-flight-enemy)
 
 #### 목표지점 안정도 (goal-stability — 완료 2026-08-04)
 
