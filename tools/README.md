@@ -31,6 +31,31 @@ python3 tools/analyze_sessions.py --logs /path/to/logs
 
 H2 코스트/3분 긴장감 축과 H3 정성 인터뷰 축은 PRD §4에서 별도 프로토콜.
 
+## verify_production_transition.py
+
+Validates the long-running Demo → Production preparation registry without writing a
+freeze or either production repository.
+
+```bash
+# Structural, provenance, hash, freshness, review and package dry-run checks.
+# Incomplete/stale/blocked preparation records are reported as warnings.
+python tools/verify_production_transition.py prepare
+
+# Strict preflight. Requires cutover_candidate state, locked scope,
+# complete/current/reviewed/ready records, decided blockers, and each included
+# source artifact byte-identical to its tracked blob at candidate_source_commit.
+python tools/verify_production_transition.py cutover
+
+# Negative fixtures for stale paths, blockers, area reviews, closure,
+# path containment/collision, hashes and Shared equality.
+python -m unittest tools.test_verify_production_transition
+```
+
+The output manifest and package hashes are deterministic in-memory dry-run data. Each
+file keeps its stable record ID, and `governance_attestation` carries the selected
+record gate metadata, exact review tuples, and relevant decisions. The tool never
+creates `freezes/` or `docs/migration-input/`.
+
 ### Requirements
 
 - Python 3.9+

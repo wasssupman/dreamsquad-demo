@@ -44,11 +44,11 @@
 
 ## 완료 기준
 
-- [ ] positive preparation fixture가 통과한다.
-- [ ] stale, blocker, self-review, 다중-area review, closure, path, destination, hash,
+- [x] positive preparation fixture가 통과한다.
+- [x] stale, blocker, self-review, 다중-area review, closure, path, destination, hash,
   Shared mismatch, attestation 누락/비결정성, invalid commit, untracked/dirty source negative
   fixture가 실패한다.
-- [ ] `core.autocrlf=true`인 clean Git checkout에서도 selected transition source bytes와
+- [x] `core.autocrlf=true`인 clean Git checkout에서도 selected transition source bytes와
   candidate commit blob이 동일하고 binary fixture는 byte-identical하게 보존된다.
-- [ ] 실제 pilot은 preparation mode를 통과하고 cutover mode는 미결 결정 때문에 실패한다.
-- [ ] 두 번의 dry-run hash가 동일하다.
+- [x] 실제 pilot은 preparation mode를 통과하고 cutover mode는 미결 결정 때문에 실패한다.
+- [x] 두 번의 dry-run hash가 동일하다.
