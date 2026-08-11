@@ -54,16 +54,15 @@
 - ⚠ **rev 3 계약 «모든 방어유닛이 비행을 때린다(대공 축 없음)»는 구현에서 사용자 승인으로 반전됐다** — 기존 방어는 Path 전용 폴백이 됐고 고도 타겟층 축이 생겼다. 이전 문서·세션 메모리와 충돌하면 **이쪽(README rev 4 계약 7)이 정본**이다.
 - ⚠ **Skimmer 는 아직 라이브에 안 나온다** — `EnemyCatalog` + `Deck_WaypointLab`(dev 슬롯) 뿐, 라이브 덱 7종 미편입. 반면 **대공사수는 DefenderCatalog 라이브 노출**이라 unit 5 전까지 Air 가치가 잠자는 비대칭 상태다(Path|Air 라 죽은 픽은 아님). 라이브 편입은 unit 5 에서 **웨이브 재추첨 규칙**(structure-hunter unit 1: 시드 재기준·풀 중간 삽입·7종 열거 정본 = `WaveKillBudgetPinTests`·`maxPerWave`)과 함께 처리한다.
 
-## Resume
+## Resume (unit 5 구현 후 갱신, 2026-08-11)
 
-1. `README.md`의 상태·feature-wide 계약을 먼저 읽는다.
-2. 다음 미완료 작업은 `5_painter_and_maps.md` 하나다. unit 5 구현은 아직 시작하지 않았다.
-3. `MapPainterWindow.cs`의 기존 저장/bake 흐름과 unit 0의 `WaypointPathValidation`을 찾아 그대로 재사용한다.
-4. 경로 선택·추가/삭제·순서 클릭·마지막 점 삭제·오버레이만 만든다. 재정렬 UI나 새 검증 규칙은 추가하지 않는다.
-5. 맵은 2~3장까지만 저작하고, 저장→재로드 왕복과 맵별 Play 확인 뒤 사용자 체감 승인을 받는다.
+1. **unit 5 구현 완료** — 페인터 경로 브러시(`Tool.Waypoint` + 전용 브러시 바 + 오버레이 + `WaypointAuthoringRules` 그대로 호출) · Serpent/Zig Air 경로 저작 · **Skimmer 라이브 편입**(`Deck_Serpent` 시드→20260821 · `Deck_Zig` →20260825, `minWaveNumber 8`·`maxPerWave 2`).
+2. 검증: `WaypointPathBakeTests` 3건(교체/null 보존/빈 배열 삭제) · 페인터 왕복(라이브 사본 리플렉션) PASS · Serpent 라이브 계측 — 경로 순서 통과 위반 0·데코 통과 5,295프레임·done 후 골 전환 · EditMode 2,171/실패 0 · 두 덱 100웨이브 상한·게이트 위반 0.
+3. **잔여 = 사용자 Play 체감 확인 1건** — Serpent/Zig 에서 웨이브 8+ Skimmer 등장, «다른 자리에 방어(대공사수)를 세우게 되는가».
+4. ⚠ 하네스 함정 2건이 `5_painter_and_maps.md` 하단에 있다 — `Bake` 의 dev 슬롯 자동 등록(스크래치 잔여 참조) · `PendingSpawnEntry.deckIndex`→`laneIndex` 개명.
 
 ## Follow-up
 
-- 다음 작업 단위는 `5_painter_and_maps.md`: 경로 페인터와 맵 2~3장 저작.
-- 나머지 맵, 대공사수 고유 아트·최종 밸런스, Air 우선/추가 피해는 README 후속 후보다.
+- **라이브 지상 경로 적** — 지상 2경로 맵을 라이브에 내려면 경로 따르는 지상 적의 이름·스탯·실루엣 저작이 선행(의도적 범위 축소, unit 5 문서 참조). `Enemy_WaypointBasic/Alt` 는 dev 전용.
+- 나머지 맵 경로 저작, 대공사수 고유 아트·최종 밸런스, Air 우선/추가 피해는 README 후속 후보다.
 - 비방향 defender Entity/Cell 투사체 패턴이 실제 콘텐츠에 들어올 때 emitter 후보에도 타겟층 필터를 추가한다.

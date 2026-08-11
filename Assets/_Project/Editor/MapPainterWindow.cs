@@ -13,7 +13,7 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure, Waypoint }
 
         private const float Cell = 26f;
 
@@ -34,6 +34,11 @@ namespace Wassup.EditorTools
         private readonly List<StructureEntry> _structures = new();
         private StructureSide _structureSide = StructureSide.Enemy;
         private StructureData _structureData;
+        // waypoint-routing unit 5 — 경로 브러시. 편집 사본이고 정본은 MapDocument.waypointPaths.
+        // 재정렬 UI 는 없다(spec 결정) — 잘못 찍으면 뒤에서부터 지운다. 클릭 = 활성 경로에
+        // 지점 추가, 마지막 지점 재클릭 = 그 지점 삭제.
+        private readonly List<List<Vector2Int>> _waypointPaths = new();
+        private int _activeWaypointPath = -1;
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -59,6 +64,8 @@ namespace Wassup.EditorTools
             _spawns.Clear();
             _goals.Clear();
             _structures.Clear();
+            _waypointPaths.Clear();
+            _activeWaypointPath = -1;
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
@@ -114,12 +121,24 @@ namespace Wassup.EditorTools
             _structures.Clear();
             if (doc.Structures != null)
                 foreach (var s in doc.Structures) _structures.Add(s);
+            // waypoint-routing unit 5 — 저작된 경로를 편집 사본으로. 인덱스 = 적 SO 의
+            // waypointPathIndex 가 가리키는 값이므로 순서를 보존해서 싣는다.
+            _waypointPaths.Clear();
+            if (doc.WaypointPaths != null)
+                foreach (var p in doc.WaypointPaths)
+                {
+                    var copy = new List<Vector2Int>();
+                    if (p?.Cells != null) foreach (var c in p.Cells) copy.Add(c);
+                    _waypointPaths.Add(copy);
+                }
+            _activeWaypointPath = _waypointPaths.Count > 0 ? 0 : -1;
         }
 
         private void OnGUI()
         {
             DrawToolbar();
             DrawStructureBrushBar();
+            DrawWaypointBrushBar();
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
@@ -183,6 +202,13 @@ namespace Wassup.EditorTools
             foreach (var g in _goals)
                 if (InBounds(g.x, g.y) && _placeMask[Idx(g.x, g.y)] != DerivedMask(Idx(g.x, g.y)))
                     warnings.Add($"골 ({g.x},{g.y}) 마스크가 파생과 다름 [{LayerLabel(_placeMask[Idx(g.x, g.y)])}] — 런타임은 골 칸을 닫는다");
+            // waypoint-routing unit 5 — 경로 검증은 OnValidate 와 **같은 함수**를 호출한다.
+            // 페인터가 자체 규칙을 갖는 순간 드리프트가 시작된다(StructureAuthoringRules 선례).
+            var wpErrors = new List<string>();
+            WaypointAuthoringRules.ValidatePaths(
+                ToWaypointPathArray(), _w, _h, _tiles, _goals, _spawns, wpErrors, warnings);
+            foreach (var e2 in wpErrors) errors.Add(e2);
+            ok = errors.Count == 0;
             if (warnings.Count > 0)
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                     foreach (var w in warnings)
@@ -227,7 +253,7 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점", "경로" }, EditorStyles.toolbarButton);
                 // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
                 using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
@@ -275,6 +301,54 @@ namespace Wassup.EditorTools
             }
         }
 
+        // waypoint-routing unit 5 — 경로 브러시 행(거점 브러시 바와 같은 이유로 전용 행:
+        // 툴바에 밀어넣으면 창 폭에 따라 잘려 «경로를 추가하는 방법을 못 찾겠다»가 된다).
+        private void DrawWaypointBrushBar()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                bool active = _tool == Tool.Waypoint;
+                GUILayout.Label(active ? "경로 브러시 ●" : "경로 브러시 ○",
+                    EditorStyles.miniBoldLabel, GUILayout.Width(84));
+                using (new EditorGUI.DisabledScope(!active))
+                {
+                    if (_waypointPaths.Count > 0)
+                    {
+                        var labels = new string[_waypointPaths.Count];
+                        for (int i = 0; i < labels.Length; i++)
+                            labels[i] = $"{i}({_waypointPaths[i].Count})";
+                        _activeWaypointPath = GUILayout.Toolbar(
+                            Mathf.Clamp(_activeWaypointPath, 0, _waypointPaths.Count - 1), labels,
+                            GUILayout.Width(Mathf.Min(240, 52 * labels.Length)));
+                    }
+                    else GUILayout.Label("경로 없음 — 추가부터", EditorStyles.miniLabel);
+
+                    if (GUILayout.Button("경로 추가", EditorStyles.miniButton, GUILayout.Width(64)))
+                    {
+                        _waypointPaths.Add(new List<Vector2Int>());
+                        _activeWaypointPath = _waypointPaths.Count - 1;
+                    }
+                    bool hasActive = _activeWaypointPath >= 0 && _activeWaypointPath < _waypointPaths.Count;
+                    using (new EditorGUI.DisabledScope(!hasActive || _waypointPaths[_activeWaypointPath].Count == 0))
+                        if (GUILayout.Button("마지막 점 삭제", EditorStyles.miniButton, GUILayout.Width(88)))
+                            _waypointPaths[_activeWaypointPath].RemoveAt(_waypointPaths[_activeWaypointPath].Count - 1);
+                    using (new EditorGUI.DisabledScope(!hasActive))
+                        // 삭제는 뒤 경로의 인덱스를 앞으로 당긴다 — 적 SO 의 waypointPathIndex 가
+                        // 그 인덱스를 가리키므로 경고를 남겨 저작자가 인지하게 한다.
+                        if (GUILayout.Button("경로 삭제", EditorStyles.miniButton, GUILayout.Width(64)))
+                        {
+                            _waypointPaths.RemoveAt(_activeWaypointPath);
+                            if (_activeWaypointPath >= _waypointPaths.Count)
+                                _activeWaypointPath = _waypointPaths.Count - 1;
+                            Debug.LogWarning("[MapPainter] 경로 삭제 — 뒤 경로들의 인덱스가 한 칸 당겨졌다. "
+                                + "적 SO 의 waypointPathIndex 가 이 맵을 가리키면 재확인 필요.");
+                        }
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.Label($"경로 {_waypointPaths.Count}개", EditorStyles.miniLabel, GUILayout.Width(56));
+            }
+        }
+
         private void DrawGrid()
         {
             if (_tiles == null) return;
@@ -314,8 +388,34 @@ namespace Wassup.EditorTools
             }
 
             DrawStructureOverlay(area);
+            DrawWaypointOverlay(area);
             HandlePaint(area);
         }
+
+        // waypoint-routing unit 5 — 경로 오버레이. 경로별 색 + 순서 번호, 시작(채움)·끝(굵은
+        // 테두리) 강조. 오버레이가 없으면 «찍었는데 화면이 그대로»가 된다(거점 오버레이의 교훈).
+        private void DrawWaypointOverlay(Rect area)
+        {
+            for (int p = 0; p < _waypointPaths.Count; p++)
+            {
+                Color col = WaypointPathColor(p);
+                var cells = _waypointPaths[p];
+                for (int i = 0; i < cells.Count; i++)
+                {
+                    var c = cells[i];
+                    if (!InBounds(c.x, c.y)) continue;   // 격자 밖 지점은 검증 에러가 잡는다
+                    var r = CellRect(area, c.x, c.y);
+                    if (i == 0)
+                        EditorGUI.DrawRect(r, new Color(col.r, col.g, col.b, 0.35f));
+                    DrawMaskBorder(r, i == cells.Count - 1 ? Color.Lerp(col, Color.white, 0.5f) : col);
+                    GUI.Label(r, $"{p}·{i}", CenterLabel);
+                }
+            }
+        }
+
+        // 경로 색 팔레트 — 인덱스에서 결정론적으로 파생(황금각 회전). 저작 세션이 달라도 같은 색.
+        private static Color WaypointPathColor(int index)
+            => Color.HSVToRGB((0.12f + index * 0.38f) % 1f, 0.85f, 1f);
 
         // battle-structures — 거점 오버레이. 이게 없던 동안은 거점을 찍어도 화면이 그대로였다
         // (배치 개수만 라벨에 늘었다) — «설치했는데 아무 일도 안 일어난다» 로 보인다.
@@ -458,6 +558,20 @@ namespace Wassup.EditorTools
                         });
                     }
                     break;
+                case Tool.Waypoint:
+                    if (!isDown) return; // 토글·추가는 클릭만 (스폰·골과 같은 이유)
+                    {
+                        if (_activeWaypointPath < 0 || _activeWaypointPath >= _waypointPaths.Count)
+                        {
+                            Debug.LogWarning("[MapPainter] 경로 브러시: «경로 추가»로 활성 경로를 먼저 만들라.");
+                            break;
+                        }
+                        var path = _waypointPaths[_activeWaypointPath];
+                        // 마지막 지점 재클릭 = 그 지점 삭제(뒤에서부터 지우는 저작 흐름의 단축).
+                        if (path.Count > 0 && path[^1] == cell) path.RemoveAt(path.Count - 1);
+                        else path.Add(cell);
+                    }
+                    break;
                 case Tool.PlaceMask:
                     // 드래그 = 시작 셀의 반전값으로 set (같은 셀 MouseDrag 재토글 깜빡임 방지).
                     // 격자 밖 MouseDown → 진입 드래그도 첫 셀에서 시작값을 잡는다 (MINOR-5).
@@ -472,6 +586,15 @@ namespace Wassup.EditorTools
                         : (byte)(_placeMask[idx] & ~bit);
                     break;
             }
+        }
+
+        // waypoint-routing unit 5 — 편집 사본 → 직렬화 형식. 검증과 Bake 가 같은 변환을 쓴다.
+        private WaypointPath[] ToWaypointPathArray()
+        {
+            var arr = new WaypointPath[_waypointPaths.Count];
+            for (int i = 0; i < arr.Length; i++)
+                arr[i] = new WaypointPath(_waypointPaths[i].ToArray());
+            return arr;
         }
 
         // ── Validation (unit 1) — 런타임 계약과 일치 ──────────────────────────────
@@ -618,7 +741,9 @@ namespace Wassup.EditorTools
                 };
                 // battle-structures unit 3 — 거점은 관리 참조(StructureData)라 GeneratedMap 이
                 // 왕복시킬 수 없다. 저작 주체가 엔트리를 직접 넘긴다.
-                MapDocumentBuilder.WriteToDocument(target, in gm, _structures.ToArray());
+                // waypoint-routing unit 5 — 경로도 같은 이유로 직접 전달. 페인터는 항상 자기
+                // 상태를 넘긴다(빈 상태 Bake = 경로 삭제 — 타일과 같은 «페인터가 정본» 규약).
+                MapDocumentBuilder.WriteToDocument(target, in gm, _structures.ToArray(), ToWaypointPathArray());
                 goals.Dispose();
                 spawns.Dispose();
             }
