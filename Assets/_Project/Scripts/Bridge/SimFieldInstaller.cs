@@ -114,6 +114,8 @@ namespace Wassup.Bridge
                 NativeArray<int> dist = default;
                 NativeArray<byte> maskValues = default;
                 NativeArray<int2> destCells = default;
+                NativeArray<int2> waypointCells = default;
+                NativeArray<int2> waypointRanges = default;
                 NativeArray<int2> goalsField = default;
                 try
                 {
@@ -123,6 +125,16 @@ namespace Wassup.Bridge
                     dist = new NativeArray<int>(slotCount * n, Allocator.Persistent);
                     maskValues = new NativeArray<byte>(slotCount, Allocator.Persistent);
                     destCells = new NativeArray<int2>(slotCount, Allocator.Persistent);
+                    if (map.waypointCells.IsCreated)
+                    {
+                        waypointCells = new NativeArray<int2>(map.waypointCells.Length, Allocator.Persistent);
+                        waypointCells.CopyFrom(map.waypointCells);
+                    }
+                    if (map.waypointRanges.IsCreated)
+                    {
+                        waypointRanges = new NativeArray<int2>(map.waypointRanges.Length, Allocator.Persistent);
+                        waypointRanges.CopyFrom(map.waypointRanges);
+                    }
                     for (int destinationIndex = 0; destinationIndex < destinations.Count; destinationIndex++)
                     for (int maskIndex = 0; maskIndex < maskCount; maskIndex++)
                     {
@@ -184,6 +196,8 @@ namespace Wassup.Bridge
                         cellLayers = cellLayers,
                         maskValues = maskValues,
                         destCells = destCells,
+                        waypointCells = waypointCells,
+                        waypointRanges = waypointRanges,
                         gridSize = gridSize,
                         goalCell = goal,
                         goals = goalsField,
@@ -203,6 +217,8 @@ namespace Wassup.Bridge
                     if (dist.IsCreated) dist.Dispose();
                     if (maskValues.IsCreated) maskValues.Dispose();
                     if (destCells.IsCreated) destCells.Dispose();
+                    if (waypointCells.IsCreated) waypointCells.Dispose();
+                    if (waypointRanges.IsCreated) waypointRanges.Dispose();
                     if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
                     throw;
                 }

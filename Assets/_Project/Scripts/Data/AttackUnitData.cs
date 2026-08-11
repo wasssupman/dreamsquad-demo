@@ -185,5 +185,11 @@ namespace Wassup.Data
 
         public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;
         public float SpineWeaponTrailEndNormalized => weaponTrailEndNormalized;
+
+        // waypoint-routing unit 3 — 맵 waypointPaths 인덱스. -1 = 기존 골 직행.
+        // 스폰 시 맵 경로 존재 여부를 검증하고, 유효할 때만 Movement 컴포넌트를 부착한다.
+        [Header("Waypoint Routing")]
+        [Tooltip("따를 맵 웨이포인트 경로 인덱스. -1 = 사용 안 함(골 직행).")]
+        [Min(-1)] public int waypointPathIndex = -1;
     }
 }

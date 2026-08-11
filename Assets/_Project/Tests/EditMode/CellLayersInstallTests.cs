@@ -250,11 +250,11 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(1, field.SlotCount);
                 Assert.AreEqual(4, field.CellCount);
                 Assert.AreEqual(field.CellCount, field.FlowSlot(FlowFieldSingleton.PrimarySlot).Length);
                 Assert.AreEqual(field.CellCount, field.DistSlot(FlowFieldSingleton.PrimarySlot).Length);
-                Assert.AreEqual(field.flow.Length, field.MaskCount * field.CellCount);
+                Assert.AreEqual(field.flow.Length, field.SlotCount * field.CellCount);
             }
             finally { map.Dispose(); }
         }
@@ -289,8 +289,10 @@ namespace Wassup.Tests.EditMode
             {
                 var field = Install(map);
                 Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
-                    field.SlotFor((byte)PlacementLayer.Ground), "등록 안 된 마스크 → primary");
-                Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(0));
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Ground),
+                    "등록 안 된 마스크 → primary");
+                Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, 0));
             }
             finally { map.Dispose(); }
         }
@@ -305,21 +307,24 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = new FlowFieldSingleton { maskValues = masks, gridSize = new int2(2, 2) };
-                Assert.AreEqual(0, field.SlotFor((byte)PlacementLayer.Ground));
-                Assert.AreEqual(1, field.SlotFor((byte)PlacementLayer.Path));
+                Assert.AreEqual(0,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Ground));
+                Assert.AreEqual(1,
+                    field.SlotFor(FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Path));
             }
             finally { masks.Dispose(); }
         }
 
         [Test]
-        public void MaskCount_DefaultsToOne_WhenFixtureLeavesFlowUncreated()
+        public void SlotCount_DefaultsToOne_WhenFixtureLeavesFlowUncreated()
         {
             // 직접 초기화하는 EditMode 픽스처 수십 개가 새 필드를 안 채워도 서야 한다 —
-            // CellCount 를 gridSize 에서 파생하고 MaskCount 를 1 로 떨어뜨리는 이유다.
+            // CellCount 를 gridSize 에서 파생하고 SlotCount 를 1 로 떨어뜨리는 이유다.
             var field = new FlowFieldSingleton { gridSize = new int2(4, 3) };
             Assert.AreEqual(12, field.CellCount);
-            Assert.AreEqual(1, field.MaskCount);
-            Assert.AreEqual(FlowFieldSingleton.PrimarySlot, field.SlotFor(123));
+            Assert.AreEqual(1, field.SlotCount);
+            Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
+                field.SlotFor(FlowFieldSingleton.GoalSentinel, 123));
         }
 
         // ── unit 1b — 마스크 집합 → 슬롯 N개 ──────────────────────────────────
@@ -338,7 +343,7 @@ namespace Wassup.Tests.EditMode
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
 
-                Assert.AreEqual(2, field.MaskCount);
+                Assert.AreEqual(2, field.SlotCount);
                 Assert.AreEqual(field.CellCount * 2, field.flow.Length, "stride");
 
                 // waypoint-routing unit 1 — 입력 순서와 무관하게 골 Path 슬롯은 primary 고정.
@@ -372,7 +377,7 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual(1, field.MaskCount);
+                Assert.AreEqual(1, field.SlotCount);
                 Assert.AreEqual(TraversalSlots.DefaultMask, field.MaskAt(FlowFieldSingleton.PrimarySlot));
 
                 var slotWalk = new NativeArray<byte>(field.CellCount, Allocator.Temp);
@@ -423,7 +428,7 @@ namespace Wassup.Tests.EditMode
             {
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var first = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
-                Assert.AreEqual(2, first.MaskCount);
+                Assert.AreEqual(2, first.SlotCount);
 
                 SimFieldInstaller.Teardown(_world, _em, ref _handles);
                 Assert.Catch(() => { var _ = first.maskValues[0]; }, "maskValues 도 회수된다");
@@ -431,7 +436,7 @@ namespace Wassup.Tests.EditMode
                 // 재설치가 깨끗한가 — 이관 전 실패·이중 해제 없이 다시 선다.
                 SimFieldInstaller.InstallNavFields(_em, in map, 1f, float3.zero, ref _handles, masks);
                 var second = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
-                Assert.AreEqual(2, second.MaskCount);
+                Assert.AreEqual(2, second.SlotCount);
                 int pathSlot = second.SlotFor(
                     FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Path);
                 Assert.AreEqual(0, second.DistSlot(pathSlot)[2], "재설치 후에도 Path 슬롯이 골을 찾는다");

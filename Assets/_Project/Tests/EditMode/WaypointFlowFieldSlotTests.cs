@@ -59,6 +59,31 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(FlowFieldSingleton.PrimarySlot,
                     field.SlotFor(new int2(4, 2), (byte)PlacementLayer.Path),
                     "미등록 목적지 조합은 primary 폴백");
+                Assert.AreEqual(1, field.WaypointCountAt(0));
+                Assert.AreEqual(2, field.WaypointCountAt(1));
+                Assert.AreEqual(new int2(0, 2), field.WaypointAt(1, 1),
+                    "목적지 중복 제거와 별개로 경로 순서는 보존");
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
+        [Test]
+        public void Teardown_DisposesWaypointRouteProjection()
+        {
+            var map = MakeMap();
+            try
+            {
+                SimFieldInstaller.InstallNavFields(
+                    _em, in map, 1f, float3.zero, ref _handles);
+                var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+
+                SimFieldInstaller.Teardown(_world, _em, ref _handles);
+
+                Assert.Catch(() => { var _ = field.waypointCells[0]; });
+                Assert.Catch(() => { var _ = field.waypointRanges[0]; });
             }
             finally
             {

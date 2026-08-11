@@ -7959,6 +7959,28 @@ namespace Wassup.Bridge
                 radius = agentRadiusTiles * tileSize,
             });
 
+            // waypoint-routing unit 3 — 저작 opt-in. 유효한 경로만 Movement 상태를 붙인다.
+            // 실패는 골 직행으로 안전 폴백하되, 사람에게 보이는 경고는 스폰 1회만 남긴다.
+            int waypointPathIndex = entry.unitType.waypointPathIndex;
+            if (waypointPathIndex >= 0)
+            {
+                bool validPath = waypointPathIndex < _generatedMap.WaypointPathCount;
+                if (validPath)
+                {
+                    _em.AddComponentData(entity, new WaypointFollow
+                    {
+                        pathIndex = waypointPathIndex,
+                        index = 0,
+                    });
+                }
+                else
+                {
+                    Debug.LogWarning(
+                        $"[BattleBridge] {entry.unitType.displayName}: waypointPathIndex={waypointPathIndex} is invalid "
+                        + $"for map paths={_generatedMap.WaypointPathCount} — using goal route.", this);
+                }
+            }
+
             EnsureMonoViewPools();
             bool spineSpawned = spineUnitPool != null &&
                                 spineUnitPool.TrySpawn(entry.unitType, null, entity, spawnWorldPos, "SpineEnemy", out _);

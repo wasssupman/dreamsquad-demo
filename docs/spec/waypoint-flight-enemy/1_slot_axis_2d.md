@@ -32,7 +32,7 @@ destCell = (-1,-1) 센티널 = 골(멀티 소스, goals 배열 전체)
 public int SlotFor(int2 destCell, byte unitLayers)   // 못 찾으면 PrimarySlot
 ```
 
-기존 `SlotFor(byte)` 는 `SlotFor(GoalSentinel, layers)` 위임으로 남긴다(호출처 보존). 교집합 매칭으로의 전환은 traversal-layers D1 그대로 **보류** — 층 값이 합집합에서 나오므로 완전일치가 항상 명중한다. 조용한 폴백 경고는 unit 3(스폰 시 검증)이 담당한다.
+모든 호출처는 목적지를 명시하는 2축 API를 사용한다. 교집합 매칭으로의 전환은 traversal-layers D1 그대로 **보류** — 층 값이 합집합에서 나오므로 완전일치가 항상 명중한다. 조용한 폴백 경고는 unit 3(스폰 시 검증)이 담당한다.
 
 ### 재빌드 — `sources` 를 루프 안으로
 

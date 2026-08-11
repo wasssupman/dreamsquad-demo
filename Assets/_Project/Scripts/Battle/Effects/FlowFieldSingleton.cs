@@ -27,6 +27,12 @@ namespace Wassup.Battle.Effects
         // 슬롯 → 목적지 셀. GoalSentinel 이면 goals 전체를 소스로 쓰는 골 슬롯.
         // 미생성 = 전 슬롯 골(직접 초기화 픽스처 보호).
         public NativeArray<int2>   destCells;
+        // waypoint-routing unit 3 — 저작 경로 순서를 보존하는 평탄 배열.
+        // waypointRanges[path] = (waypointCells start, count). 목적지별 flow 슬롯은 중복 셀을
+        // 하나로 접지만, 이 배열은 «어느 경로의 몇 번째인가»를 보존한다. Effects 가 필드와
+        // 같은 수명으로 소유하고 Movement 는 읽기만 한다.
+        public NativeArray<int2>   waypointCells;
+        public NativeArray<int2>   waypointRanges;
         // continuous-agent-movement unit 1 — 정적 walk 마스크(1 = tiles == Walk)의 단일 소유자.
         // 이전엔 DefenderFieldSingleton 이 들고 있었다(그쪽 주석: "goal field 가 저장하지 않는 값").
         // 정적 벽은 goal field 가 정본이므로 이리로 옮겼고, DefenderFieldSystem 은 읽기만 한다.
@@ -62,10 +68,6 @@ namespace Wassup.Battle.Effects
         // 픽스처 수십 개가 새 필드를 안 채워도 그대로 서게 하기 위함이다.
         public int CellCount => gridSize.x * gridSize.y;
         public int SlotCount => (flow.IsCreated && CellCount > 0) ? flow.Length / CellCount : 1;
-        // traversal-layers 시절 이름을 호출처 호환용으로 유지. 이제 값은 마스크 종류 수가
-        // 아니라 (목적지 × 마스크) 슬롯 수다.
-        public int MaskCount => SlotCount;
-
         public const int PrimarySlot = 0;
         public static int2 GoalSentinel => new int2(-1, -1);
 
@@ -87,8 +89,21 @@ namespace Wassup.Battle.Effects
             return PrimarySlot;
         }
 
-        // 기존 호출처는 골 목적지를 묻는 것으로 해석한다.
-        public int SlotFor(byte unitLayers) => SlotFor(GoalSentinel, unitLayers);
+        public int WaypointCountAt(int pathIndex)
+            => waypointRanges.IsCreated && pathIndex >= 0 && pathIndex < waypointRanges.Length
+                ? waypointRanges[pathIndex].y : 0;
+
+        public int2 WaypointAt(int pathIndex, int waypointIndex)
+        {
+            if (!waypointRanges.IsCreated || !waypointCells.IsCreated
+                || pathIndex < 0 || pathIndex >= waypointRanges.Length)
+                return GoalSentinel;
+
+            int2 range = waypointRanges[pathIndex];
+            if (waypointIndex < 0 || waypointIndex >= range.y)
+                return GoalSentinel;
+            return waypointCells[range.x + waypointIndex];
+        }
 
         // 슬롯의 라우팅을 **길이 CellCount 인 뷰**로 준다. 소비자(순수 함수 포함)는 stride 를
         // 모른 채 0..n-1 로 인덱싱하면 된다.
@@ -118,6 +133,8 @@ namespace Wassup.Battle.Effects
             if (cellLayers.IsCreated) cellLayers.Dispose();
             if (maskValues.IsCreated) maskValues.Dispose();
             if (destCells.IsCreated) destCells.Dispose();
+            if (waypointCells.IsCreated) waypointCells.Dispose();
+            if (waypointRanges.IsCreated) waypointRanges.Dispose();
         }
     }
 }
