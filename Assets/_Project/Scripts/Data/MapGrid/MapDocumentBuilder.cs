@@ -50,6 +50,34 @@ namespace Wassup.Data.MapGrid
             else
                 goals[0] = new int2(doc.Goal.x, doc.Goal.y);
 
+            // waypoint-routing unit 0 — 경로 인덱스를 보존하면서 가변 길이 셀 목록을 flatten.
+            // 외부 배열 null/빈은 NativeArray 미생성으로 남겨 기존 맵의 폴백 모양을 유지한다.
+            NativeArray<int2> waypointCells = default;
+            NativeArray<int2> waypointRanges = default;
+            var docWaypointPaths = doc.WaypointPaths;
+            int waypointPathCount = docWaypointPaths != null ? docWaypointPaths.Count : 0;
+            if (waypointPathCount > 0)
+            {
+                int waypointCellCount = 0;
+                for (int pathIndex = 0; pathIndex < waypointPathCount; pathIndex++)
+                    waypointCellCount += docWaypointPaths[pathIndex]?.Cells?.Count ?? 0;
+
+                waypointCells = new NativeArray<int2>(waypointCellCount, allocator);
+                waypointRanges = new NativeArray<int2>(waypointPathCount, allocator);
+                int written = 0;
+                for (int pathIndex = 0; pathIndex < waypointPathCount; pathIndex++)
+                {
+                    var pathCells = docWaypointPaths[pathIndex]?.Cells;
+                    int pathCellCount = pathCells?.Count ?? 0;
+                    waypointRanges[pathIndex] = new int2(written, pathCellCount);
+                    for (int cellIndex = 0; cellIndex < pathCellCount; cellIndex++)
+                    {
+                        Vector2Int cell = pathCells[cellIndex];
+                        waypointCells[written++] = new int2(cell.x, cell.y);
+                    }
+                }
+            }
+
             // battle-structures unit 3 — 거점 투영. data 가 빈 엔트리는 건너뛴다(저작 사고
             // 방어 — OnValidate 가 이미 에러로 알린다). 진영은 (편 × 종류) 파생.
             var docStructures = doc.Structures;
@@ -109,6 +137,8 @@ namespace Wassup.Data.MapGrid
                 spawns = spawns,
                 goal = goals[0],
                 goals = goals,
+                waypointCells = waypointCells,
+                waypointRanges = waypointRanges,
                 structures = structures,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,

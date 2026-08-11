@@ -48,8 +48,12 @@ public NativeArray<int2> waypointRanges;  // 경로별 (start, count)
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 0 · 기존 EditMode 전량 그린(기존 맵은 경로 미저작이라 무변경)
-- [ ] 투영 테스트: 경로 2개(길이 3·2) 저작 → `GeneratedMap` 에서 flatten 역참조가 저작과 일치
-- [ ] 미저작 폴백 테스트: `waypointPaths` null/빈 → `waypointCells` 미생성, `Dispose` 안전
-- [ ] 검증 테스트: 격자 밖 셀 = 에러 · 골 겹침 = 경고 (순수 함수 직접 호출)
-- [ ] 검증용 맵 1장에 경로 1~2개 수기 저작 완료(YAML 직접 편집 가능 — 씬 아님)
+- [x] 컴파일 에러 0 · 기존 EditMode 전량 그린(기존 맵은 경로 미저작이라 무변경)
+- [x] 투영 테스트: 경로 2개(길이 3·2) 저작 → `GeneratedMap` 에서 flatten 역참조가 저작과 일치
+- [x] 미저작 폴백 테스트: `waypointPaths` null/빈 → `waypointCells` 미생성, `Dispose` 안전
+- [x] 검증 테스트: 격자 밖 셀 = 에러 · 골 겹침 = 경고 (순수 함수 직접 호출)
+- [x] 검증용 맵 1장에 경로 1~2개 수기 저작 완료(YAML 직접 편집 가능 — 씬 아님)
+
+완료 확인: 2026-08-11 — Unity 컴파일 에러 0, EditMode 2,115건 중 실패 0
+(2,112 통과·기존 Ignore 3), `MapDocument_MovementLab` 경로 2개 역직렬화·flatten 투영
+실측 완료. 이 문서와 동일 커밋.

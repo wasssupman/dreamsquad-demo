@@ -17,6 +17,10 @@ namespace Wassup.Data
         public NativeArray<int2>        spawns;  // 1~N
         public int2                     goal;    // primary = goals[0] (단일-점 소비자·폴백)
         public NativeArray<int2>        goals;   // multi-goal 목록. 소비 시 미생성/빈이면 [goal] 폴백(유닛 1·3).
+        // waypoint-routing unit 0 — 가변 길이 경로를 flatten 한 런타임 투영.
+        // waypointRanges[path] = (waypointCells start, count). 미생성/빈 = 경로 없음.
+        public NativeArray<int2>        waypointCells;
+        public NativeArray<int2>        waypointRanges;
         // battle-structures unit 3 — 거점 저작의 런타임 투영(셀 + 교차 비트). 스탯은 SO 에
         // 남고 브리지가 문서에서 읽는다(unit 4). 미생성/빈 = 거점 없는 맵.
         public NativeArray<StructurePlacement> structures;
@@ -30,6 +34,20 @@ namespace Wassup.Data
         public int CellIndex(int2 cell) => cell.y * gridSize.x + cell.x;
 
         public MapTileType TileAt(int2 cell) => tiles[CellIndex(cell)];
+
+        public int WaypointPathCount => waypointRanges.IsCreated ? waypointRanges.Length : 0;
+
+        public int2 WaypointCellAt(int pathIndex, int cellIndex)
+        {
+            if (!waypointRanges.IsCreated || pathIndex < 0 || pathIndex >= waypointRanges.Length)
+                throw new ArgumentOutOfRangeException(nameof(pathIndex));
+
+            int2 range = waypointRanges[pathIndex];
+            if (cellIndex < 0 || cellIndex >= range.y)
+                throw new ArgumentOutOfRangeException(nameof(cellIndex));
+
+            return waypointCells[range.x + cellIndex];
+        }
 
         // placement-mask unit 0/4 — 이 셀이 여는 배치 층 비트. 마스크 미생성(직접 구성 픽스처/
         // legacy 생산자)이면 타일 종류에서 파생 폴백 (goals 를 IsCreated 불변식에서 뺀 것과 같은 보호 전략).
@@ -46,6 +64,8 @@ namespace Wassup.Data
             if (tiles.IsCreated)            tiles.Dispose();
             if (spawns.IsCreated)           spawns.Dispose();
             if (goals.IsCreated)            goals.Dispose();
+            if (waypointCells.IsCreated)    waypointCells.Dispose();
+            if (waypointRanges.IsCreated)   waypointRanges.Dispose();
             if (structures.IsCreated)       structures.Dispose();
             if (mergeDegree.IsCreated) mergeDegree.Dispose();
             if (chokepoint.IsCreated)  chokepoint.Dispose();

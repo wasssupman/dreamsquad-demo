@@ -20,6 +20,9 @@ namespace Wassup.Data.MapGrid
         // «저작해도 아무 일이 없는 필드» 가 남는 것을 막는다. 거점 체력 저작은 unit 3 의
         // StructureData 가 맡는다. (기존 asset 의 YAML 키는 orphan 으로 남지만 무해하다.)
         [SerializeField] private Vector2Int[] spawns;
+        // waypoint-routing unit 0 — 맵이 소유하는 경로 N개. 적 SO 는 배열 인덱스로 참조한다.
+        // null/빈 = 경로 없는 맵(현행 폴백).
+        [SerializeField] private WaypointPath[] waypointPaths;
         // battle-structures unit 3 — 거점 저작(마음·본능). 셀 × 편 × StructureData.
         // 진영은 (편 × data.kind)에서 파생한다 — StructurePlacements.DeriveFaction.
         // 비면 거점 없는 맵(현행 9장 전부) = 행동 변화 0.
@@ -41,6 +44,7 @@ namespace Wassup.Data.MapGrid
         public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
         public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
         public IReadOnlyList<Vector2Int> Spawns => spawns;
+        public IReadOnlyList<WaypointPath> WaypointPaths => waypointPaths;
         public IReadOnlyList<StructureEntry> Structures => structures;   // null/빈 가능 = 거점 없는 맵
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
@@ -75,6 +79,16 @@ namespace Wassup.Data.MapGrid
         internal void SetStructures(StructureEntry[] structuresArr)
         {
             structures = structuresArr;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+        // waypoint-routing unit 0 — SetFrom 은 타일/메타 저장이므로 경로를 암묵적으로 지우지
+        // 않는다. unit 5 페인터와 테스트는 경로 저작만 이 명시 경로로 교체한다.
+        internal void SetWaypointPaths(WaypointPath[] paths)
+        {
+            waypointPaths = paths;
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
@@ -122,6 +136,19 @@ namespace Wassup.Data.MapGrid
             StructureAuthoringRules.ValidateStructures(structures, width, height, authoringErrors, tiles);
             foreach (var e in authoringErrors)
                 Debug.LogError($"[MapDocument] {e}", this);
+
+            var waypointErrors = new List<string>();
+            var waypointWarnings = new List<string>();
+            IReadOnlyList<Vector2Int> waypointGoals = goals != null && goals.Length > 0
+                ? goals
+                : new[] { goal };
+            WaypointAuthoringRules.ValidatePaths(
+                waypointPaths, width, height, tiles, waypointGoals, spawns,
+                waypointErrors, waypointWarnings);
+            foreach (var e in waypointErrors)
+                Debug.LogError($"[MapDocument] {e}", this);
+            foreach (var warning in waypointWarnings)
+                Debug.LogWarning($"[MapDocument] {warning}", this);
         }
 #endif
     }
