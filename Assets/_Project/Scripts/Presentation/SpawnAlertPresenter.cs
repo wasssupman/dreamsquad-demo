@@ -2,19 +2,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Data;
 
 namespace Wassup.Presentation
 {
-    // spawn-point-alert unit 1(rev 3) — 다음 웨이브의 각 스폰 지점에서 골까지, 적 이동 경로를 따라
-    // 그어지는 에너지 라인 예고(명일방주식). 레퍼런스: 적 스폰 직전 스폰→목적지로 빨간 선이
-    // 표시된다(arknights.wiki.gg/wiki/Pathing).
+    // spawn-point-alert unit 1(rev 3) + waypoint-routing unit 7 — 큐잉된 웨이브의
+    // (스웜 × 실제 스폰 레인)마다 적 이동 경로를 따라 그어지는 에너지 라인 예고.
     //
     // 4개 레이어의 합으로 "그냥 빨간 선"이 아닌 VFX 로 만든다:
     //   glow(가산 광휘) + core(흰 중심 코어) + streak(선을 타고 흐르는 에너지) + ring(스폰점 맥동)
     //
     // BattleBridge 예보(read-only) 폴링. 표시 창·트레이싱·흐름 위상 모두 battle 클럭 기준이라
-    // 정지/슬로우 시 자연 동결. Wave 1(0초 트리거)·Next Wave 강제 호출은 표시 창이 성립하지
-    // 않아 자연 스킵(spec 계약).
+    // 정지/슬로우 시 자연 동결. Wave 1·강제 웨이브도 QueueWave 의 같은 예보를 소비한다.
     public class SpawnAlertPresenter : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
@@ -62,7 +61,7 @@ namespace Wassup.Presentation
         [Tooltip("보드 평면 법선(카메라 쪽) 띄움. Ground 타일맵과의 z-fight 회피 전용 — 유닛 가림과 무관.")]
         [SerializeField] private float surfaceOffset = 0.06f;
 
-        private class Lane
+        private class Guide
         {
             public LineRenderer glow;
             public LineRenderer core;
@@ -77,9 +76,10 @@ namespace Wassup.Presentation
             public float retractStartClock;
         }
 
-        private readonly List<Lane> _lanes = new();
+        private readonly List<Guide> _guides = new();
         private readonly List<Vector3> _pathBuffer = new();
         private readonly List<Vector3> _drawBuffer = new();
+        private SpawnGuideForecast[] _activeForecast;
         private Material _glowMat, _coreMat, _streakMat, _ringMat;
         private Texture2D _glowTex, _coreTex, _streakTex, _ringTex;
         private Color _coreBakedColor;
@@ -89,116 +89,126 @@ namespace Wassup.Presentation
         private void Update()
         {
             if (bridge == null) return;
-            bool has = bridge.TryGetSpawnAlertForecast(out float clock, out float[] first);
-            int laneCount = has ? first.Length : 0;
-            EnsureLanes(laneCount);
+            bool has = bridge.TryGetSpawnGuideForecast(out float clock, out var forecasts);
+            int guideCount = has ? forecasts.Length : 0;
+            EnsureGuides(guideCount);
 
-            // 스트릭 위상은 전 lane 공유(머티리얼 1개) — battle 클럭 기준이라 정지 시 동결.
+            // 새 웨이브 배열로 교체되면 같은 pool index 의 이전 스웜 경로가 수렴 연출로
+            // 남지 않게 즉시 끊고 새 예보를 캡처한다.
+            if (_activeForecast != forecasts)
+            {
+                for (int i = 0; i < _guides.Count; i++)
+                    if (_guides[i].shown) HideGuide(_guides[i]);
+                _activeForecast = forecasts;
+            }
+
+            // 스트릭 위상은 전 guide 공유(머티리얼 1개) — battle 클럭 기준이라 정지 시 동결.
             if (_streakMat != null)
                 _streakMat.mainTextureOffset = new Vector2(-clock * streakSpeed, 0f);
             if (_coreMat != null && _coreBakedColor != lineColor)
                 _coreMat.mainTexture = GetCoreTexture(); // 인스펙터 색 변경 즉시 반영
 
-            for (int i = 0; i < _lanes.Count; i++)
+            for (int i = 0; i < _guides.Count; i++)
             {
-                var lane = _lanes[i];
+                var guide = _guides[i];
 
                 // 예보 자체가 없으면(전투 종료·재시작) 잔상 없이 즉시 정리한다.
-                if (!has) { if (lane.shown) HideLane(lane); continue; }
+                if (!has) { if (guide.shown) HideGuide(guide); continue; }
 
-                bool inWindow = i < laneCount && first[i] >= 0f
-                                && clock >= first[i] - leadSec && clock < first[i];
+                bool inWindow = i < guideCount && forecasts[i].firstSpawnSec >= 0f
+                                && clock >= forecasts[i].firstSpawnSec - leadSec
+                                && clock < forecasts[i].firstSpawnSec;
 
                 if (inWindow)
                 {
-                    if (!lane.shown)
+                    if (!guide.shown)
                     {
                         // 표시 시작 시마다 경로 재조회 — 블로킹 해저드 등 flow 변화를 반영한다.
-                        if (!TryCapturePath(lane, i)) continue;
-                        lane.showStartClock = clock;
-                        lane.shown = true;
-                        SetLaneVisible(lane, true);
+                        if (!TryCapturePath(guide, forecasts[i])) continue;
+                        guide.showStartClock = clock;
+                        guide.shown = true;
+                        SetGuideVisible(guide, true);
                     }
-                    lane.retracting = false;
+                    guide.retracting = false;
 
-                    float drawT = drawSec > 0f ? Mathf.Clamp01((clock - lane.showStartClock) / drawSec) : 1f;
-                    BuildSubPolyline(lane, 0f, lane.totalLen * drawT);
-                    PushPositions(lane);
-                    ApplyLaneColors(lane, drawT, clock, 1f);
-                    ApplyRing(lane, drawT, clock, 1f);
+                    float drawT = drawSec > 0f ? Mathf.Clamp01((clock - guide.showStartClock) / drawSec) : 1f;
+                    BuildSubPolyline(guide, 0f, guide.totalLen * drawT);
+                    PushPositions(guide);
+                    ApplyGuideColors(guide, drawT, clock, 1f);
+                    ApplyRing(guide, drawT, clock, 1f);
                     continue;
                 }
 
-                if (!lane.shown) continue;
+                if (!guide.shown) continue;
 
                 // 표시 창 종료(= 첫 적 등장) → 꼬리가 골로 수렴하며 사라진다. 머리는 골에 고정.
-                if (!lane.retracting)
+                if (!guide.retracting)
                 {
-                    lane.retracting = true;
-                    lane.retractStartClock = clock;
+                    guide.retracting = true;
+                    guide.retractStartClock = clock;
                 }
                 float rt = retractSec > 0f
-                    ? Mathf.Clamp01((clock - lane.retractStartClock) / retractSec)
+                    ? Mathf.Clamp01((clock - guide.retractStartClock) / retractSec)
                     : 1f;
-                if (rt >= 1f) { HideLane(lane); continue; }
+                if (rt >= 1f) { HideGuide(guide); continue; }
 
-                float tail = lane.totalLen * Mathf.SmoothStep(0f, 1f, rt); // 가속하며 따라붙는 꼬리
-                if (lane.totalLen - tail < 1e-3f) { HideLane(lane); continue; }
-                BuildSubPolyline(lane, tail, lane.totalLen);
-                PushPositions(lane);
+                float tail = guide.totalLen * Mathf.SmoothStep(0f, 1f, rt); // 가속하며 따라붙는 꼬리
+                if (guide.totalLen - tail < 1e-3f) { HideGuide(guide); continue; }
+                BuildSubPolyline(guide, tail, guide.totalLen);
+                PushPositions(guide);
                 // 마지막 15% 에서만 살짝 페이드 — 수렴이 주 연출이고 페이드는 팝 방지용.
                 // 주의: Unity 의 Mathf.SmoothStep(a,b,t) 는 a~b 를 t 로 보간하는 함수이지
                 // GLSL 의 edge 함수 smoothstep(edge0,edge1,x) 가 아니다. 구간을 edge 로 넘기면
                 // rt=0 에서도 곧바로 0.85 를 돌려줘 알파가 시작하자마자 0.15 로 붕괴한다
                 // (수렴이 안 보이고 "한 번에 사라짐"으로 읽힘). 구간을 먼저 0~1 로 정규화한다.
                 float fade = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.85f, 1f, rt));
-                ApplyLaneColors(lane, 1f, clock, fade);
-                ApplyRing(lane, 1f, clock, (1f - rt) * (1f - rt)); // 꼬리가 떠난 스폰점 링은 빠르게 소멸
+                ApplyGuideColors(guide, 1f, clock, fade);
+                ApplyRing(guide, 1f, clock, (1f - rt) * (1f - rt)); // 꼬리가 떠난 스폰점 링은 빠르게 소멸
             }
         }
 
         // 경로의 [fromLen, toLen] 구간만 뽑는다(arc-length 기준, 양 끝은 세그먼트 보간).
         // 그리기 = [0, len·drawT], 수렴 = [len·retractT, len].
-        private void BuildSubPolyline(Lane lane, float fromLen, float toLen)
+        private void BuildSubPolyline(Guide guide, float fromLen, float toLen)
         {
             _drawBuffer.Clear();
-            fromLen = Mathf.Clamp(fromLen, 0f, lane.totalLen);
-            toLen = Mathf.Clamp(toLen, fromLen, lane.totalLen);
+            fromLen = Mathf.Clamp(fromLen, 0f, guide.totalLen);
+            toLen = Mathf.Clamp(toLen, fromLen, guide.totalLen);
 
-            _drawBuffer.Add(PointAtDistance(lane, fromLen));
-            for (int i = 0; i < lane.points.Count; i++)
+            _drawBuffer.Add(PointAtDistance(guide, fromLen));
+            for (int i = 0; i < guide.points.Count; i++)
             {
-                float c = lane.cumLen[i];
+                float c = guide.cumLen[i];
                 if (c <= fromLen) continue;
                 if (c >= toLen) break;
-                _drawBuffer.Add(lane.points[i]);
+                _drawBuffer.Add(guide.points[i]);
             }
-            _drawBuffer.Add(PointAtDistance(lane, toLen));
+            _drawBuffer.Add(PointAtDistance(guide, toLen));
         }
 
-        private static Vector3 PointAtDistance(Lane lane, float dist)
+        private static Vector3 PointAtDistance(Guide guide, float dist)
         {
-            if (dist <= 0f) return lane.points[0];
-            int last = lane.points.Count - 1;
-            if (dist >= lane.totalLen) return lane.points[last];
+            if (dist <= 0f) return guide.points[0];
+            int last = guide.points.Count - 1;
+            if (dist >= guide.totalLen) return guide.points[last];
             for (int i = 1; i <= last; i++)
             {
-                if (lane.cumLen[i] < dist) continue;
-                float seg = lane.cumLen[i] - lane.cumLen[i - 1];
-                float f = seg > 1e-5f ? (dist - lane.cumLen[i - 1]) / seg : 0f;
-                return Vector3.Lerp(lane.points[i - 1], lane.points[i], f);
+                if (guide.cumLen[i] < dist) continue;
+                float seg = guide.cumLen[i] - guide.cumLen[i - 1];
+                float f = seg > 1e-5f ? (dist - guide.cumLen[i - 1]) / seg : 0f;
+                return Vector3.Lerp(guide.points[i - 1], guide.points[i], f);
             }
-            return lane.points[last];
+            return guide.points[last];
         }
 
-        private void PushPositions(Lane lane)
+        private void PushPositions(Guide guide)
         {
-            SetPositions(lane.glow, _drawBuffer);
-            SetPositions(lane.core, _drawBuffer);
-            if (lane.streak.enabled) SetPositions(lane.streak, _drawBuffer);
+            SetPositions(guide.glow, _drawBuffer);
+            SetPositions(guide.core, _drawBuffer);
+            if (guide.streak.enabled) SetPositions(guide.streak, _drawBuffer);
         }
 
-        private void ApplyLaneColors(Lane lane, float drawT, float clock, float fade)
+        private void ApplyGuideColors(Guide guide, float drawT, float clock, float fade)
         {
             // 그어지는 동안 선단이 밝게 타오르고, 완성 후엔 은은히 숨쉰다.
             float breathe = 1f + 0.12f * Mathf.Sin(clock * 3.4f);
@@ -206,34 +216,34 @@ namespace Wassup.Presentation
 
             var glow = lineColor * (glowStrength * ignite * breathe);
             glow.a = lineColor.a * glowStrength * fade;
-            lane.glow.startColor = glow;
-            lane.glow.endColor = new Color(glow.r, glow.g, glow.b, glow.a * tailAlpha);
+            guide.glow.startColor = glow;
+            guide.glow.endColor = new Color(glow.r, glow.g, glow.b, glow.a * tailAlpha);
 
             // 코어는 RGB 가 텍스처에 구워져 있으므로 tint 는 흰색(밝기 변조만).
             float coreBoost = Mathf.Min(1.6f, ignite * breathe);
             var core = new Color(coreBoost, coreBoost, coreBoost, lineColor.a * fade);
-            lane.core.startColor = core;
-            lane.core.endColor = new Color(core.r, core.g, core.b, core.a * tailAlpha);
+            guide.core.startColor = core;
+            guide.core.endColor = new Color(core.r, core.g, core.b, core.a * tailAlpha);
 
-            if (lane.streak.enabled)
+            if (guide.streak.enabled)
             {
                 var s = Color.Lerp(lineColor, Color.white, 0.5f) * (streakStrength * breathe);
                 s.a = drawT * fade; // 그어지는 동안 함께 등장
-                lane.streak.startColor = s;
-                lane.streak.endColor = s;
+                guide.streak.startColor = s;
+                guide.streak.endColor = s;
             }
         }
 
-        private void ApplyRing(Lane lane, float drawT, float clock, float fade)
+        private void ApplyRing(Guide guide, float drawT, float clock, float fade)
         {
-            if (lane.ring == null) return;
+            if (guide.ring == null) return;
             // 스폰 지점에서 반복 확산하는 맥동 링 — "여기서 나온다"를 못 놓치게.
             float phase = ringPeriod > 0f ? Mathf.Repeat(clock / ringPeriod, 1f) : 0f;
             float scale = ringSize * Mathf.Lerp(0.35f, 1f, phase);
-            lane.ring.transform.localScale = new Vector3(scale, scale, scale);
+            guide.ring.transform.localScale = new Vector3(scale, scale, scale);
             var c = Color.Lerp(lineColor, Color.white, 0.25f);
             c.a = lineColor.a * (1f - phase) * (1f - phase) * drawT * fade;
-            lane.ring.color = c;
+            guide.ring.color = c;
         }
 
         private static void SetPositions(LineRenderer line, List<Vector3> pts)
@@ -242,28 +252,33 @@ namespace Wassup.Presentation
             for (int i = 0; i < pts.Count; i++) line.SetPosition(i, pts[i]);
         }
 
-        private bool TryCapturePath(Lane lane, int laneIndex)
+        private bool TryCapturePath(Guide guide, SpawnGuideForecast forecast)
         {
-            if (!bridge.TryGetSpawnPathSim(laneIndex, _pathBuffer)) return false;
+            if (!bridge.TryGetSpawnPathSim(
+                    forecast.laneIndex,
+                    forecast.waypointPathIndex,
+                    forecast.traversalLayers,
+                    _pathBuffer))
+                return false;
             SimplifyCollinear(_pathBuffer); // 직선 구간 병합 — 코너 정점만 유지(격자 경로라 정확)
 
             Vector3 lift = SurfaceLift();
-            lane.points.Clear();
-            lane.cumLen.Clear();
+            guide.points.Clear();
+            guide.cumLen.Clear();
             for (int i = 0; i < _pathBuffer.Count; i++)
             {
                 Vector3 p = (Vector3)BoardSpace.ToView(_pathBuffer[i]) + lift;
-                lane.points.Add(p);
-                lane.cumLen.Add(i == 0 ? 0f : lane.cumLen[i - 1] + Vector3.Distance(lane.points[i - 1], p));
+                guide.points.Add(p);
+                guide.cumLen.Add(i == 0 ? 0f : guide.cumLen[i - 1] + Vector3.Distance(guide.points[i - 1], p));
             }
-            lane.totalLen = lane.cumLen[lane.cumLen.Count - 1];
-            if (lane.points.Count < 2 || lane.totalLen <= 1e-4f) return false;
+            guide.totalLen = guide.cumLen[guide.cumLen.Count - 1];
+            if (guide.points.Count < 2 || guide.totalLen <= 1e-4f) return false;
 
-            if (lane.ring != null)
+            if (guide.ring != null)
             {
-                lane.ring.transform.position = lane.points[0];
+                guide.ring.transform.position = guide.points[0];
                 var n = BoardSpace.RaycastPlane().normal;
-                lane.ring.transform.rotation = Quaternion.LookRotation(n); // 스프라이트 평면을 보드에 눕힘
+                guide.ring.transform.rotation = Quaternion.LookRotation(n); // 스프라이트 평면을 보드에 눕힘
             }
             return true;
         }
@@ -284,40 +299,40 @@ namespace Wassup.Presentation
             return _camera != null;
         }
 
-        private static void SetLaneVisible(Lane lane, bool on)
+        private static void SetGuideVisible(Guide guide, bool on)
         {
-            lane.glow.enabled = on;
-            lane.core.enabled = on;
-            lane.streak.enabled = on;
-            if (lane.ring != null) lane.ring.enabled = on;
+            guide.glow.enabled = on;
+            guide.core.enabled = on;
+            guide.streak.enabled = on;
+            if (guide.ring != null) guide.ring.enabled = on;
         }
 
-        private void HideLane(Lane lane)
+        private void HideGuide(Guide guide)
         {
-            SetLaneVisible(lane, false);
-            lane.shown = false;
-            lane.retracting = false;
+            SetGuideVisible(guide, false);
+            guide.shown = false;
+            guide.retracting = false;
         }
 
-        private void EnsureLanes(int laneCount)
+        private void EnsureGuides(int guideCount)
         {
-            while (_lanes.Count < laneCount)
+            while (_guides.Count < guideCount)
             {
-                int idx = _lanes.Count;
-                var lane = new Lane
+                int idx = _guides.Count;
+                var guide = new Guide
                 {
-                    glow = CreateLine($"SpawnAlertGlow_{idx}", GetGlowMaterial(),
+                    glow = CreateLine($"SpawnAlertGuideGlow_{idx}", GetGlowMaterial(),
                         lineWidth * glowWidthScale, BoardSortOrder.SpawnAlertOrder),
-                    streak = CreateLine($"SpawnAlertStreak_{idx}", GetStreakMaterial(),
+                    streak = CreateLine($"SpawnAlertGuideStreak_{idx}", GetStreakMaterial(),
                         lineWidth * streakWidthScale, BoardSortOrder.SpawnAlertOrder + 1),
-                    core = CreateLine($"SpawnAlertLine_{idx}", GetCoreMaterial(),
+                    core = CreateLine($"SpawnAlertGuideLine_{idx}", GetCoreMaterial(),
                         lineWidth, BoardSortOrder.SpawnAlertOrder + 2),
-                    ring = ringSize > 0f ? CreateRing($"SpawnAlertRing_{idx}") : null,
+                    ring = ringSize > 0f ? CreateRing($"SpawnAlertGuideRing_{idx}") : null,
                 };
-                if (streakStrength <= 0f) lane.streak.enabled = false;
-                _lanes.Add(lane);
+                if (streakStrength <= 0f) guide.streak.enabled = false;
+                _guides.Add(guide);
             }
-            // laneCount 축소는 맵 재빌드(배틀 재시작) 케이스 — 초과분은 위 표시 루프가 비활성 유지.
+            // guideCount 축소는 다음 웨이브 교체 케이스 — 초과분은 위 표시 루프가 비활성 유지.
         }
 
         private LineRenderer CreateLine(string name, Material mat, float width, int order)

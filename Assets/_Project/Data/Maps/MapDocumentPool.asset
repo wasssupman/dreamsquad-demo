@@ -29,6 +29,6 @@ MonoBehaviour:
   - document: {fileID: 11400000, guid: 0c64c24b54ff04546843d9235f1fc2af, type: 2}
     deck: {fileID: 0}
   - document: {fileID: 11400000, guid: 3f7a1c92e4b84d0aa5c61f28d3907b64, type: 2}
-    deck: {fileID: 0}
+    deck: {fileID: 11400000, guid: 55ab6e9b9a574e48be685c4b03330566, type: 2}
   - document: {fileID: 11400000, guid: 48c39cf2e2328fc40951aca5bb30b04d, type: 2}
     deck: {fileID: 11400000, guid: cef190a09af945abb130f4203c6f9862, type: 2}

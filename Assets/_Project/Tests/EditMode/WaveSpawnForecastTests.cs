@@ -47,7 +47,7 @@ namespace Wassup.Tests.EditMode
         {
             // waveIndex 3 → base deckIndex 3000, 3000%3=0 → entry i 가 lane i%3.
             var wave = new GeneratedWave(3, 30f, _a, 5, _b, 5);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 30f, 3, 0.35f);
+            var first = FirstSpawnTimes(wave, 30f, 3, 0.35f);
 
             Assert.AreEqual(30f, first[0], 1e-4);
             Assert.AreEqual(30.35f, first[1], 1e-4);
@@ -59,7 +59,7 @@ namespace Wassup.Tests.EditMode
         {
             // waveIndex 1 → base deckIndex 1000, 1000%3=1 → entry0 lane1, entry1 lane2, entry2 lane0.
             var wave = new GeneratedWave(1, 0f, _a, 5, _b, 5);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 0f, 3, 0.35f);
+            var first = FirstSpawnTimes(wave, 0f, 3, 0.35f);
 
             Assert.AreEqual(0.70f, first[0], 1e-4);
             Assert.AreEqual(0f, first[1], 1e-4);
@@ -76,7 +76,7 @@ namespace Wassup.Tests.EditMode
                 new WaveSpawnGroup(_b, 4),
             };
             var wave = new GeneratedWave(4, 90f, groups, 0f, WaveExpandMode.RoundRobin);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 90f, 3, 0.35f);
+            var first = FirstSpawnTimes(wave, 90f, 3, 0.35f);
 
             Assert.AreEqual(90f, first[1], 1e-4);   // entry0 = 보스
             Assert.AreEqual(90.35f, first[2], 1e-4); // entry1
@@ -88,7 +88,7 @@ namespace Wassup.Tests.EditMode
         {
             // ExpandWave 의 authored spawnIndex = localIndex % 2 → entry0 lane0, entry1 lane1.
             var wave = new GeneratedWave(2, 10f, _a, 2, _b, 2);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 10f, 2, 0.5f);
+            var first = FirstSpawnTimes(wave, 10f, 2, 0.5f);
 
             Assert.AreEqual(10f, first[0], 1e-4);
             Assert.AreEqual(10.5f, first[1], 1e-4);
@@ -106,7 +106,7 @@ namespace Wassup.Tests.EditMode
                 new WaveSpawnGroup(_b, 1, 0.2f),
             };
             var wave = new GeneratedWave(0, 0f, groups, 0.5f, WaveExpandMode.PerGroupTimeline);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 5f, 3, 0.35f);
+            var first = FirstSpawnTimes(wave, 5f, 3, 0.35f);
 
             Assert.AreEqual(6f, first[0], 1e-4);
             Assert.AreEqual(6.5f, first[1], 1e-4);
@@ -123,11 +123,101 @@ namespace Wassup.Tests.EditMode
                 new WaveSpawnGroup(_b, 1),
             };
             var wave = new GeneratedWave(0, 0f, groups, 0f, WaveExpandMode.RoundRobin);
-            var first = WavePatternGenerator.FirstSpawnTimesPerLane(wave, 0f, 3, 0.35f);
+            var first = FirstSpawnTimes(wave, 0f, 3, 0.35f);
 
             Assert.AreEqual(0f, first[0], 1e-4);
             Assert.AreEqual(0.35f, first[1], 1e-4);
             Assert.AreEqual(-1f, first[2]);
+        }
+
+        [Test]
+        public void DifferentSwarmsOnSameLane_RemainSeparateGuides()
+        {
+            _a.waypointPathIndex = 0;
+            _a.traversalLayers = PlacementLayer.Path;
+            _b.waypointPathIndex = 1;
+            _b.traversalLayers = PlacementLayer.Ground;
+            var wave = new GeneratedWave(0, 0f, new[]
+            {
+                new WaveSpawnGroup(_a, 2),
+                new WaveSpawnGroup(_b, 2),
+            });
+            var detailed = WavePatternGenerator.ExpandWave(wave, 4f, 1, 0.5f);
+
+            var guides = WavePatternGenerator.BuildSpawnGuideForecasts(detailed);
+
+            Assert.AreEqual(2, guides.Length, "같은 lane 이어도 스웜 기준으로 병합하지 않는다");
+            Assert.AreEqual(0, guides[0].swarmIndex);
+            Assert.AreEqual(0, guides[0].laneIndex);
+            Assert.AreEqual(4f, guides[0].firstSpawnSec, 1e-4f);
+            Assert.AreEqual(0, guides[0].waypointPathIndex);
+            Assert.AreEqual((byte)PlacementLayer.Path, guides[0].traversalLayers);
+            Assert.AreEqual(1, guides[1].swarmIndex);
+            Assert.AreEqual(0, guides[1].laneIndex);
+            Assert.AreEqual(4.5f, guides[1].firstSpawnSec, 1e-4f);
+            Assert.AreEqual(1, guides[1].waypointPathIndex);
+            Assert.AreEqual((byte)PlacementLayer.Ground, guides[1].traversalLayers);
+        }
+
+        [Test]
+        public void OneSwarmAcrossLanes_GetsGuidePerActualLane()
+        {
+            var wave = new GeneratedWave(0, 0f, new[] { new WaveSpawnGroup(_a, 3) });
+            var detailed = WavePatternGenerator.ExpandWave(wave, 7f, 2, 0.25f);
+
+            var guides = WavePatternGenerator.BuildSpawnGuideForecasts(detailed);
+
+            Assert.AreEqual(2, guides.Length);
+            Assert.AreEqual(0, guides[0].swarmIndex);
+            Assert.AreEqual(0, guides[1].swarmIndex);
+            Assert.AreEqual(0, guides[0].laneIndex);
+            Assert.AreEqual(1, guides[1].laneIndex);
+            Assert.AreEqual(7f, guides[0].firstSpawnSec, 1e-4f);
+            Assert.AreEqual(7.25f, guides[1].firstSpawnSec, 1e-4f);
+        }
+
+        [Test]
+        public void Expansion_PreservesEntryOrderSwarmOriginAndResolvedLane()
+        {
+            var wave = new GeneratedWave(0, 0f, _a, 2, _b, 1);
+
+            var expanded = WavePatternGenerator.ExpandWave(wave, 3f, 2, 0.4f);
+
+            Assert.AreEqual(3, expanded.Count);
+            CollectionAssert.AreEqual(new[] { 0, 1, 0 }, new[]
+            {
+                expanded[0].swarmIndex,
+                expanded[1].swarmIndex,
+                expanded[2].swarmIndex,
+            });
+            CollectionAssert.AreEqual(new[] { 0, 1, 0 }, new[]
+            {
+                expanded[0].laneIndex,
+                expanded[1].laneIndex,
+                expanded[2].laneIndex,
+            });
+            Assert.AreSame(_a, expanded[0].entry.unitType);
+            Assert.AreSame(_b, expanded[1].entry.unitType);
+            Assert.AreSame(_a, expanded[2].entry.unitType);
+            Assert.AreEqual(3f, expanded[0].entry.triggerTimeSec, 1e-4f);
+            Assert.AreEqual(3.4f, expanded[1].entry.triggerTimeSec, 1e-4f);
+            Assert.AreEqual(3.8f, expanded[2].entry.triggerTimeSec, 1e-4f);
+        }
+
+        private static float[] FirstSpawnTimes(
+            GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float spacing)
+        {
+            var result = new float[laneCount];
+            for (int i = 0; i < result.Length; i++) result[i] = -1f;
+            var expanded = WavePatternGenerator.ExpandWave(
+                wave, baseTriggerTimeSec, laneCount, spacing);
+            for (int i = 0; i < expanded.Count; i++)
+            {
+                int lane = expanded[i].laneIndex;
+                float time = expanded[i].entry.triggerTimeSec;
+                if (result[lane] < 0f || time < result[lane]) result[lane] = time;
+            }
+            return result;
         }
 
         private static AttackUnitData CreateUnit(string name)

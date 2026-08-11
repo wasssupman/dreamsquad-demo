@@ -1,9 +1,13 @@
+using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Bridge;
 using Wassup.Data;
 
@@ -128,6 +132,75 @@ namespace Wassup.Tests.EditMode
             {
                 map.Dispose();
             }
+        }
+
+        [Test]
+        public void SpawnGuidePath_PassesWaypointsInOrderThenGoal()
+        {
+            var map = MakeMap();
+            GameObject go = null;
+            BattleBridge bridge = null;
+            try
+            {
+                SimFieldInstaller.InstallNavFields(
+                    _em, in map, 1f, float3.zero, ref _handles);
+                go = new GameObject("BattleBridge_WaypointGuideTest");
+                bridge = go.AddComponent<BattleBridge>();
+                SetField(bridge, "_em", _em);
+                SetField(bridge, "_generatedMap", map);
+                SetField(bridge, "_simFields", _handles);
+
+                var path = new List<Vector3>();
+                Assert.IsTrue(bridge.TryGetSpawnPathSim(
+                    laneIndex: 0,
+                    waypointPathIndex: 1,
+                    traversalLayers: (byte)PlacementLayer.Path,
+                    outPath: path));
+
+                int firstWaypoint = FindCell(path, new int2(2, 1), map.gridSize);
+                int secondWaypoint = FindCell(path, new int2(0, 2), map.gridSize);
+                int goal = FindCell(path, map.goal, map.gridSize);
+                Assert.GreaterOrEqual(firstWaypoint, 0, "첫 waypoint 를 지나야 한다");
+                Assert.Greater(secondWaypoint, firstWaypoint, "저작 순서대로 두 번째 waypoint 를 지나야 한다");
+                Assert.Greater(goal, secondWaypoint, "마지막 waypoint 뒤 goal 로 이어져야 한다");
+
+                var explicitGoal = new List<Vector3>();
+                Assert.IsTrue(bridge.TryGetSpawnPathSim(
+                    0, -1, (byte)PlacementLayer.Path, explicitGoal));
+                Assert.GreaterOrEqual(FindCell(explicitGoal, map.goal, map.gridSize), 0,
+                    "미저작 적은 goal 경로를 사용한다");
+
+            }
+            finally
+            {
+                // BattleBridge 는 이 픽스처의 NativeArray owner 가 아니다. OnDestroy 의
+                // 일반 teardown 전에 복사 핸들을 비우고 TearDown/finally 에서 한 번만 해제한다.
+                if (bridge != null)
+                {
+                    SetField(bridge, "_generatedMap", default(GeneratedMap));
+                    SetField(bridge, "_simFields", default(SimFieldHandles));
+                }
+                if (go != null) Object.DestroyImmediate(go);
+                map.Dispose();
+            }
+        }
+
+        private static int FindCell(List<Vector3> path, int2 target, int2 gridSize)
+        {
+            for (int i = 0; i < path.Count; i++)
+            {
+                int2 cell = GridMath.WorldToCell((float3)path[i], 1f, gridSize);
+                if (cell.Equals(target)) return i;
+            }
+            return -1;
+        }
+
+        private static void SetField(object target, string name, object value)
+        {
+            var field = target.GetType().GetField(
+                name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.IsNotNull(field, $"Field '{name}' not found");
+            field.SetValue(target, value);
         }
 
         // 5x3 전부 Walk. waypointCells 는 두 경로를 flatten 한 모양이며 (2,1)을 공유한다.

@@ -492,7 +492,7 @@ namespace Wassup.Bridge
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
-            public int deckIndex;
+            public int laneIndex;
         }
 
         private void Awake()
@@ -1346,8 +1346,14 @@ namespace Wassup.Bridge
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
+                int laneCount = math.max(1, _generatedMap.spawns.Length);
                 for (int i = 0; i < ActiveDeck.spawns.Count; i++)
-                    _pending.Add(new PendingSpawnEntry { entry = ActiveDeck.spawns[i], deckIndex = i });
+                    _pending.Add(new PendingSpawnEntry
+                    {
+                        entry = ActiveDeck.spawns[i],
+                        laneIndex = WavePatternGenerator.EffectiveSpawnIndex(
+                            ActiveDeck.spawns[i].spawnIndex, i, laneCount),
+                    });
             }
             _startTime = Time.time;
             _battleClock = 0.0;
@@ -1668,7 +1674,7 @@ namespace Wassup.Bridge
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 타워/거점도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
-            _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
+            _spawnGuideForecast = null; // waypoint-routing unit 7 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
@@ -1783,7 +1789,7 @@ namespace Wassup.Bridge
             _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 상한 간격 기준 시각도 함께
             _usingAuthoredPlan = false;
-            _spawnAlertForecast = null;   // spawn-point-alert unit 3 — 이전 판 예고 이월 방지
+            _spawnGuideForecast = null;   // waypoint-routing unit 7 — 이전 판 예고 이월 방지
 
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
             if (_authoredPlan != null)
@@ -1902,38 +1908,40 @@ namespace Wassup.Bridge
         // 곧 자동 진행이라 "눌러라" 라고 알릴 대상이 없다. `_nextWaveClearReady` 내부 상태와
         // `nextwave-clear-attention` 의 도크 어필도 함께 제거.
 
-        // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
-        // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
-        // 큐잉 시점에 실제 스폰 base 로 1회 계산해 넣는다 — 실스폰과 어긋날 여지가 없고,
-        // 자동/강제/Wave 1 이 모두 같은 경로라 리드인(wave-pattern unit 11) 만큼의 창을 똑같이
-        // 얻는다. 반환 배열은 캐시 참조라 수정 금지.
-        private float[] _spawnAlertForecast;
+        // waypoint-routing unit 7 — **마지막으로 큐잉된 웨이브**의 (스웜 × 실제 lane)별
+        // 첫 스폰과 경로 입력. QueueWave 가 실제 pending 과 같은 상세 펼침 결과에서 1회 만든다.
+        // 반환 배열은 캐시 참조라 수정 금지.
+        private SpawnGuideForecast[] _spawnGuideForecast;
 
-        public bool TryGetSpawnAlertForecast(out float battleClockSec, out float[] laneFirstSpawnSec)
+        public bool TryGetSpawnGuideForecast(
+            out float battleClockSec, out SpawnGuideForecast[] forecasts)
         {
             battleClockSec = (float)_battleClock;
-            laneFirstSpawnSec = null;
-            if (!_running || _spawnAlertForecast == null) return false;
-            // 미래 스폰이 남아 있는 동안만 서빙한다. 웨이브의 뒷 lane 들은 레인 간
-            // intraWaveSpacing 간격으로 늦게 나오므로, 마지막 lane 스폰까지 유지해야 뒷 lane
-            // 예고가 자기 유닛보다 먼저 사라지지 않는다.
-            if (LastSpawnSec(_spawnAlertForecast) <= battleClockSec) return false;
-            laneFirstSpawnSec = _spawnAlertForecast;
+            forecasts = null;
+            if (!_running || _spawnGuideForecast == null) return false;
+            if (LastSpawnSec(_spawnGuideForecast) <= battleClockSec) return false;
+            forecasts = _spawnGuideForecast;
             return true;
         }
 
-        private static float LastSpawnSec(float[] laneFirstSpawnSec)
+        private static float LastSpawnSec(SpawnGuideForecast[] forecasts)
         {
             float last = -1f;
-            for (int i = 0; i < laneFirstSpawnSec.Length; i++)
-                if (laneFirstSpawnSec[i] > last) last = laneFirstSpawnSec[i];
+            for (int i = 0; i < forecasts.Length; i++)
+                if (forecasts[i].firstSpawnSec > last) last = forecasts[i].firstSpawnSec;
             return last;
         }
 
         // spawn-point-alert unit 1(rev) — 스폰→골 대표 경로(sim, 셀 중심 나열. [0]=스폰).
         // 유닛 이동과 같은 goal flow field 의 flow 를 셀 단위로 따라간다(타이브레이크 동일).
         // 트레일 표시 시작 시에만 호출되므로(웨이브당 lane 수 회) 캐시 불요. 뷰 변환은 호출측.
-        public bool TryGetSpawnPathSim(int laneIndex, List<Vector3> outPath)
+        // waypoint-routing unit 7 — 스폰→웨이포인트들→골 대표 경로. 각 구간은 실제
+        // MovementSystem 과 같은 (목적지, 통행층) 슬롯·NavGrid·PathSmoothing 을 사용한다.
+        public bool TryGetSpawnPathSim(
+            int laneIndex,
+            int waypointPathIndex,
+            byte traversalLayers,
+            List<Vector3> outPath)
         {
             if (outPath == null) return false;
             outPath.Clear();
@@ -1952,38 +1960,71 @@ namespace Wassup.Bridge
             var obstacles = default(Wassup.Battle.Effects.ObstacleSingleton);
             bool hasObstacles = _blockedCells.IsCreated;
             if (hasObstacles) obstacles = new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells };
-            var nav = Wassup.Battle.Movement.MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacles);
+            if (traversalLayers == 0) traversalLayers = TraversalSlots.DefaultMask;
+            var navScratch = new NativeArray<byte>(math.max(1, field.CellCount), Allocator.Temp);
+            try
+            {
+                var nav = MovementCellTrim.BuildNavGrid(
+                    in field, traversalLayers, hasObstacles, in obstacles, navScratch);
 
-            float radius = agentRadiusTiles * tileSize;
-            int2 cell = _generatedMap.spawns[laneIndex];
-            float3 pos = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
-                cell, field.tileSize, spawnHeight, origin: field.origin);
-            outPath.Add(new Vector3(pos.x, pos.y, pos.z));
+                float radius = agentRadiusTiles * tileSize;
+                int2 cell = _generatedMap.spawns[laneIndex];
+                float3 pos = GridMath.CellToWorldCenter(
+                    cell, field.tileSize, spawnHeight, origin: field.origin);
+                outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
-            int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어
-            // traversal-layers unit 1a — 예고 라인도 슬롯 뷰로 읽는다. 이동(MovementSystem)과
-            // 같은 슬롯을 봐야 "라인 ≠ 이동선"이 재발하지 않는다.
-            var lineFlow = field.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
-            var lineDist = field.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+                int waypointCount = field.WaypointCountAt(waypointPathIndex);
+                for (int i = 0; i < waypointCount; i++)
+                {
+                    int2 waypoint = field.WaypointAt(waypointPathIndex, i);
+                    AppendSpawnPathSegment(
+                        in field, in nav, waypoint, traversalLayers, radius,
+                        ref cell, ref pos, outPath);
+                }
+
+                AppendSpawnPathSegment(
+                    in field, in nav, FlowFieldSingleton.GoalSentinel, traversalLayers, radius,
+                    ref cell, ref pos, outPath);
+            }
+            finally
+            {
+                navScratch.Dispose();
+            }
+            return outPath.Count >= 2;
+        }
+
+        private static bool AppendSpawnPathSegment(
+            in FlowFieldSingleton field,
+            in NavGrid nav,
+            int2 destination,
+            byte traversalLayers,
+            float radius,
+            ref int2 cell,
+            ref float3 pos,
+            List<Vector3> outPath)
+        {
+            int slot = field.SlotFor(destination, traversalLayers);
+            var lineFlow = field.FlowSlot(slot);
+            var lineDist = field.DistSlot(slot);
+            int guard = field.CellCount + 1;
             for (int i = 0; i < guard; i++)
             {
-                cell = Wassup.Battle.Movement.GridMath.WorldToCell(
-                    pos, field.tileSize, field.gridSize, origin: field.origin);
-                int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
-                if (idx < 0 || idx >= lineFlow.Length) break;
-                if (lineDist[idx] == 0) break; // 골 도달
+                cell = GridMath.WorldToCell(pos, field.tileSize, field.gridSize, origin: field.origin);
+                int idx = GridMath.CellIndex(cell, field.gridSize);
+                if (idx < 0 || idx >= lineFlow.Length || lineDist[idx] == int.MaxValue) return false;
+                if (lineDist[idx] == 0) return true;
 
-                // unit 10 — 목표점 선택 규칙은 MovementSystem 과 같은 순수 헬퍼 하나다.
-                // (평활화/코너 꼭짓점 → 폴백 필드 스텝 → 골·고립 종료.) 여기 인라인하지
-                // 말 것 — 갈라지면 "라인 ≠ 이동선" 부류가 재발한다.
-                if (!Wassup.Battle.Movement.PathSmoothing.TryStepTarget(
+                // unit 10 — 목표점 선택 규칙은 MovementSystem 과 공유한다. 여기서 별도
+                // 선형 보간/경로 탐색을 만들면 "가이드 ≠ 실제 이동선"이 다시 생긴다.
+                if (!PathSmoothing.TryStepTarget(
                         pos, in nav, in lineFlow, radius,
-                        Wassup.Battle.Movement.PathSmoothing.DefaultLookahead, out float3 next))
-                    break;
+                        PathSmoothing.DefaultLookahead, out float3 next))
+                    return false;
+                if (math.distancesq(pos, next) <= 1e-8f) return false;
                 pos = next;
                 outPath.Add(new Vector3(pos.x, pos.y, pos.z));
             }
-            return outPath.Count >= 2;
+            return false;
         }
 
         // three-minute-survival unit 2 — **플레이어 경로는 없어졌다**(NextWaveDock 은 정보 표시
@@ -2032,15 +2073,18 @@ namespace Wassup.Bridge
         {
             // 자동/강제 호출 모두 같은 진입점(전멸 진행·상한 진행·강제 호출·웨이브 1).
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
-            var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-            int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
-            for (int i = 0; i < entries.Count; i++)
-                _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
-
-            // spawn-point-alert unit 3 — 예고는 **이 웨이브의 실제 스폰 base** 로 계산한다(예측 아님).
-            // 자동·강제·Wave 1 이 모두 이 경로를 지나므로 예고 창이 균일하게 생긴다.
-            _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
+            var entries = WavePatternGenerator.ExpandWave(
                 wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
+            for (int i = 0; i < entries.Count; i++)
+                _pending.Add(new PendingSpawnEntry
+                {
+                    entry = entries[i].entry,
+                    laneIndex = entries[i].laneIndex,
+                });
+
+            // waypoint-routing unit 7 — 실제 pending 과 **같은 상세 펼침 결과**에서
+            // (스웜 × 실제 lane) 예고를 만든다. 시간·lane 규칙을 별도로 재연산하지 않는다.
+            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries);
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
@@ -7818,8 +7862,8 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            // spawn-point-alert unit 0 — lane 산식은 WavePatternGenerator 로 이관(예보와 공유).
-            int spawnIndex = WavePatternGenerator.EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
+            // waypoint-routing unit 7 — 큐잉 때 상세 펼침이 확정한 실제 lane을 그대로 소비한다.
+            int spawnIndex = pending.laneIndex;
             if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
             {
                 Debug.LogWarning($"[BattleBridge] SpawnEntry.spawnIndex={spawnIndex} out of range (spawns={_generatedMap.spawns.Length}). Fallback to 0.");
