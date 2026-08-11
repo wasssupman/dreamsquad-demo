@@ -1,6 +1,6 @@
 # production-transition-governance — Foundation + Pilot
 
-> 상태: **Foundation 작업 계획 승인 · D4 pilot 완료(blocked) · D5 대기 — 2026-08-11**
+> 상태: **Foundation 승인 · D5 완료 · pilot gameplay decision 3건 open · official cutover blocked — 2026-08-11**
 >
 > 범위: 문서·정적 검증기만. Runtime, Unity serialized asset, API, package,
 > `ProjectSettings`, 실제 production import는 변경하지 않는다.
@@ -28,7 +28,7 @@
 | D3 | [2_static_validator.md](2_static_validator.md) | preparation/cutover 검증기 | 완료 |
 | C1/S1 | [3_target_intake_alignment.md](3_target_intake_alignment.md) | Client·Server 준비 문서 정합 | 완료 |
 | D4 | [4_unit_lifecycle_pilot.md](4_unit_lifecycle_pilot.md) | 세 패키지 연결 pilot | 완료(blocked 상태 검증) |
-| D5 | `5_handoff_summary.md` | 검증·장기 갱신 인계 | 대기 |
+| D5 | [5_handoff_summary.md](5_handoff_summary.md) | 검증·장기 갱신 인계 | 완료 |
 
 의존 순서는 `D0 → D1 → D2 → (D3, C1, S1) → D4 → D5`다. 문서 번호는
 Demo 저장소의 구현 단위를 나타내며 Client·Server 변경은 각 저장소 정책을 따른다.
