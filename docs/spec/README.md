@@ -160,6 +160,7 @@ code + git history        구현 상세
 
 #### 목표지점 안정도 (goal-stability — 완료 2026-08-04)
 
+- **붕괴 골을 적 라우팅에서 제외** [M] · 골 목적지가 빌드 시 고정이라, 멀티골 맵에서 한 마음이 부서지면 그쪽이 최근접인 적은 **살아있는 마음을 놔두고 부서진 골에서 소멸+유출**된다(2026-08-12 비행 적이 표면화, `waypoint-flight-enemy/6_handoff_summary.md` 조사 기록). **사용자 결정 B — 착수 보류**: 진행 중인 맵 개편으로 폭1 단방향 멀티골 맵이 은퇴 예정이라 시인성 보강(붕괴 프랍 그을림+주저앉음)만 반영. 개편 후에도 멀티골이 남으면 재평가. (waypoint-flight-enemy × goal-stability)
 - 실맵 `goalMaxStability` 콘텐츠 값 결정 — 검증용 임시값(전 골 300)은 미커밋. 스트레스 예산과 함께 밸런싱 [S]
 - 안정도 잔량 점수화 / 스트레스 예산 재균형 — 공성 전환으로 유출 빈도가 구조적으로 줄어 `score-formula` "한계·점당 동조" 경고가 발동한다 [M]
 - 골 피격 데미지 넘버 — `DamageApplicationSystem` 의 `AttackUnitTag` 필터 확장 [S]

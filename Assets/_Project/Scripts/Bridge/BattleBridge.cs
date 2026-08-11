@@ -5481,6 +5481,11 @@ namespace Wassup.Bridge
             if (!HasLiveEntityManager()) return;
             tileHealthGaugeLayer?.Hide(cell);
             vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+            // waypoint-routing 후속(사용자 결정 B, 2026-08-12) — 붕괴한 골의 프랍을 그을린
+            // 붕괴 상태로 전환. 원샷 VFX 만으로는 «이미 뚫린 곳» 이 잔존 표시되지 않아,
+            // 이후 여기 도달한 적의 소멸(유출 전환)이 «살아있는 마음을 안 때리는 버그» 로
+            // 읽혔다(비행 적이 무저항 완주로 이 장면을 100% 노출하며 표면화).
+            tilemapMapView?.MarkGoalCollapsed(cell);
             using var siegeQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalReachedMarker>(),
                 ComponentType.ReadOnly<AttackUnitTag>(),
