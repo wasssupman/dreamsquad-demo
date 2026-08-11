@@ -209,7 +209,7 @@
       "required_reviewers": ["client-tech-owner"],
       "watch_paths": ["Assets/_Project/Scripts/Bridge/", "Assets/_Project/Scripts/Presentation/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "c78dc91730b8a7674131949206a14581a83a5978e9714a67e701d12ca11f2ce2",
+      "document_revision": "fb7932e45c7830e03a1f0aa9e30b05094a6d7da282837e197af3a509fa3443cb",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -225,7 +225,7 @@
         "PT-CLIENT-UL-CARD-001"
       ],
       "cutover_blocking": true,
-      "sha256": "c78dc91730b8a7674131949206a14581a83a5978e9714a67e701d12ca11f2ce2"
+      "sha256": "fb7932e45c7830e03a1f0aa9e30b05094a6d7da282837e197af3a509fa3443cb"
     },
     {
       "id": "PT-GS-INDEX-001",
@@ -293,7 +293,7 @@
       "required_reviewers": ["game-server-tech-owner"],
       "watch_paths": ["docs/spec/attack-hit-delay/", "docs/spec/enemy-ai-fsm/", "Assets/_Project/Scripts/Battle/"],
       "as_of_commit": "a5fa0af677d1337ea45c86d06221e2c89993f4a8",
-      "document_revision": "90af3c561e2393e847553fcf26f9f8c4da815967b98c109ace9fa53fccf82178",
+      "document_revision": "e399e4e1867e25d197de5d155e78aa1ec1c35f2778bb39c766f8efed994d7deb",
       "freshness": "current",
       "review_status": "draft",
       "disposition": "candidate",
@@ -309,7 +309,7 @@
         "PT-GS-UL-CARD-001"
       ],
       "cutover_blocking": true,
-      "sha256": "90af3c561e2393e847553fcf26f9f8c4da815967b98c109ace9fa53fccf82178"
+      "sha256": "e399e4e1867e25d197de5d155e78aa1ec1c35f2778bb39c766f8efed994d7deb"
     },
     {
       "id": "PT-LEGACY-BASELINE-001",

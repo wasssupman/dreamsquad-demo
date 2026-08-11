@@ -23,7 +23,7 @@ Shared semantic vocabulary, Client projection/cue가 실제로 분리·연결되
 
 ## 완료 기준
 
-- [ ] 세 card가 서로의 ID와 dependency를 명시한다.
-- [ ] preparation 검증이 통과한다.
-- [ ] owner review와 gameplay 결정이 없으면 cutover 검증이 의도대로 실패한다.
-- [ ] 코드, Unity asset과 production import가 생기지 않는다.
+- [x] 세 card가 서로의 ID와 dependency를 명시한다.
+- [x] preparation 검증이 통과한다.
+- [x] owner review와 gameplay 결정이 없으면 cutover 검증이 의도대로 실패한다.
+- [x] 코드, Unity asset과 production import가 생기지 않는다.
