@@ -10,9 +10,10 @@
 - Demo D3: `f56c628a414f9c91ce6650e0fff94ce58e3fef99`
 - Demo C1/S1 alignment record: `613d8621d6dabb848a669519cc824ce27554db8a`
 - Demo D4: `b7f4735e2eaf1c2d6f1b7e1bde9f2f4ade61f90e`
-- Somnia Client C1: `6eb2cfbaddc394c298311a127c7b4ef1feab5af0`
+- Somnia Client C1: `372ce99d47c9475b9d660932cd7e76f300095feb`
 - Somnia Game Server S1: `e2aa25f1295f16d917fc9202d661190da3c94be0`
-- D5는 이 handoff를 추가하는 현재 Demo 커밋이다. Push는 수행하지 않았다.
+- Demo D5: `cf79811c5c387fbfff7cbbd024be502c97fe8670`
+- 이 문서의 Client 포인터는 C1 rebase 뒤 갱신했으며 현재 Demo 게시 상태는 Git ref를 정본으로 한다.
 
 ## Implemented
 
@@ -61,7 +62,7 @@
 
 - 2026-08-11 사용자 결정으로 Foundation preparation 구조가 승인됐고, 이후 현재 범위의
   세 저장소 commit 생성도 별도로 승인됐다. 이는 역할별 exact review나 freeze 승인이 아니며
-  push는 승인·수행되지 않았다.
+  당시 push는 승인·수행되지 않았다.
 - `PT-DEC-UL-001..003`은 모두 `open`으로 보류하며 pilot은 `blocked` 상태를 유지한다.
 - 현재 자료는 공식 freeze가 아니며 production input도 아니다.
 - 미결 gameplay decision과 실제 owner review를 자동으로 채우지 않는다.

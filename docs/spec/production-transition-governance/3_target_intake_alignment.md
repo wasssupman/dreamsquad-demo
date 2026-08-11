@@ -29,5 +29,5 @@ non-authoritative preparation으로 정렬한다.
 - [x] Client 사용자 소유 미추적 파일을 삭제·clean·일괄 대체하지 않는다.
 - [x] 별도 사용자 승인 뒤 각 target commit만 생성하고 push는 수행하지 않는다.
 
-검증 기록(2026-08-11): Client `6eb2cfbaddc394c298311a127c7b4ef1feab5af0`,
-Game Server `e2aa25f1295f16d917fc9202d661190da3c94be0`; 양쪽 worktree clean, push 없음.
+검증 기록(2026-08-11): Client `372ce99d47c9475b9d660932cd7e76f300095feb`,
+Game Server `e2aa25f1295f16d917fc9202d661190da3c94be0`; 양쪽 worktree clean, target push 없음.
