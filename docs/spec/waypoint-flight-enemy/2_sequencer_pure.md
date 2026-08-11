@@ -31,6 +31,9 @@ public static void Step(
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 0 · EditMode 전량 그린
-- [ ] 테스트: 미도달 → 유지 / 셀 일치 → 전진 / 마지막 도달 → done / **도달 불가 → 건너뜀** / count 0 → 즉시 done
-- [ ] `WaypointProgress.cs` 에 Unity 참조 0 (`Unity.Mathematics` 만 — battle-sim-extraction 이식 어휘 준수)
+- [x] 컴파일 에러 0 · EditMode 전량 그린
+- [x] 테스트: 미도달 → 유지 / 셀 일치 → 전진 / 마지막 도달 → done / **도달 불가 → 건너뜀** / count 0 → 즉시 done
+- [x] `WaypointProgress.cs` 에 Unity 참조 0 (`Unity.Mathematics` 만 — battle-sim-extraction 이식 어휘 준수)
+
+완료 확인: 2026-08-11 — Unity 컴파일 에러 0, EditMode 2,122건 중 실패 0
+(2,119 통과·기존 Ignore 3). 신규 순수 함수 테스트 5건 전부 통과. 이 문서와 동일 커밋.
