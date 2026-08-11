@@ -78,6 +78,8 @@ namespace Wassup.Battle.Combat
             // 재사용하지 않고 그 아래층(Units 소유 IncomingShield 버퍼)에 append 한다.
             var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
             var shieldSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.ShieldSlot>(isReadOnly: true);
+            // 실드 부여 원샷 연출 — 가디언이 이미 쓰는 채널(→ VfxSpawner.SpawnShieldGranted).
+            bool hasShieldVfxQ = SystemAPI.TryGetSingletonRW<ShieldGrantedEventsSingleton>(out var shieldVfxRW);
 
             var pulseTargets = new NativeList<int>(Allocator.Temp);
             var pulseDistSq = new NativeList<float>(Allocator.Temp);
@@ -321,16 +323,11 @@ namespace Wassup.Battle.Combat
                                         });
                                         granted++;
                                     }
-                                    if (granted > 0 && hasHitQ && slot.projectileDataIndex >= 0)
-                                    {
-                                        hitQueue.Enqueue(new ProjectileHitEvent
-                                        {
-                                            position = hostPos,
-                                            dataIndex = slot.projectileDataIndex,
-                                            payload = PayloadKind.SingleSplash,
-                                            source = entity,
-                                        });
-                                    }
+                                    // boss-mamemo unit 4 — 가디언과 같은 실드 부여 채널을 쓴다
+                                    // (저작 0). 실제로 부여된 펄스만 연출(whip 선례).
+                                    if (granted > 0 && hasShieldVfxQ)
+                                        shieldVfxRW.ValueRW.queue.Enqueue(
+                                            new ShieldGrantedEvent { position = hostPos });
                                 }
                             }
                         }

@@ -72,9 +72,13 @@ namespace Wassup.Battle.Combat
             // boss-mamemo unit 3 — 꿈의 장막(GrantShield) 쓰기 대상. Units 소유 이벤트 버퍼에
             // Combat 이 append 하는 것은 ShieldCastSystem(Effects)의 선례와 같은 모양이다.
             var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
-            // 실드 부여 원샷 연출 — 없으면 무연출(기존 퍼프 컨벤션).
-            bool hasHitQ = SystemAPI.TryGetSingletonRW<Projectile.ProjectileHitEventsSingleton>(out var hitRW);
-            NativeQueue<Projectile.ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
+            // boss-mamemo unit 4 — 실드 부여 원샷 연출은 **가디언과 같은 채널**을 쓴다
+            // (ShieldGrantedEvents → VfxSpawner.SpawnShieldGranted, 이미 배선돼 있다).
+            // 전용 ProjectileData 를 저작하지 않는 이유: "실드가 부여됐다" 는 같은 사건이면
+            // 출처와 무관하게 같은 연출이어야 하고, 그러면 저작이 0 이 된다.
+            // 대가(수용): 이 채널은 position 만 실어 **아군/적 실드 연출을 못 가른다**.
+            // 가르려면 필드 1개 추가가 필요하고, 그건 이 spec 밖이다.
+            bool hasShieldVfxQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>(out var shieldVfxRW);
             // SelfBlink(보스) 채널 — 없으면 blink payload 만 skip(HealthThreshold
             // 평가 자체는 계속 — SelfStatBuff 가 blink 없이 돌아야 함).
             bool hasBlinkQ = SystemAPI.TryGetSingletonRW<BlinkRequestEventsSingleton>(out var blinkRW);
@@ -162,19 +166,18 @@ namespace Wassup.Battle.Combat
                             // [UpdateAfter(DamageApplicationSystem)] 이라 append 는 **다음 프레임**
                             // 드레인에서 슬롯이 된다. 경계를 관통한 그 히트는 이미 지나간 뒤다.
                             if (incomingShieldLookup.HasBuffer(entity))
+                            {
                                 incomingShieldLookup[entity].Add(new Wassup.Battle.Units.IncomingShield
                                 {
                                     source = entity,   // 같은 출처 = max 갱신 (누적 아님)
                                     amount = slot.magnitude,
                                 });
-                            if (hasHitQ && slot.projectileDataIndex >= 0)
-                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
-                                {
-                                    position = transform.ValueRO.Position,
-                                    dataIndex = slot.projectileDataIndex,
-                                    payload = Projectile.PayloadKind.SingleSplash,
-                                    source = entity,
-                                });
+                                // 실제로 부여된 발동만 연출한다(효과 없는 연출 금지 — whip 선례).
+                                if (hasShieldVfxQ)
+                                    shieldVfxRW.ValueRW.queue.Enqueue(
+                                        new Wassup.Battle.Effects.ShieldGrantedEvent
+                                        { position = transform.ValueRO.Position });
+                            }
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfBlink)
                         {
