@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
+  m_Name: Enemy_Boss_Mamemo
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
+  id: boss_mamemo
+  displayName: "\uB9C8\uBA54\uBAA8"
+  traversalLayers: 0
+  enemyClass: 1
+  minWaveNumber: 1
+  maxPerWave: 0
+  attackMethod: 1
+  targetMode: 1
+  engageMovement: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
+  targetFactions: 13
+  health: 1100
+  moveSpeed: 1.4
+  attackRange: 2
+  attackCooldown: 1.5
+  attackTargetCount: 1
+  projectile: {fileID: 0}
+  hitDelaySec: 0.3
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
+  outputs:
+  - kind: 0
+    magnitude: 40
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  walkAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
+  spineVisualScale: 2.9
+  partSkins:
+  - full_skins
+  - helmet/helmet_c_10
+  - brow/brow_c_1
+  - eyes/eyes_c_3
+  - mouth/mouth_c_1
+  - top/top_c_44
+  - gear_right/gear_right_c_6
+  slotColors:
+  - slotName: Back
+    color: {r: 1, g: 1, b: 1, a: 0}
+  - slotName: helmet_back
+    color: {r: 1, g: 1, b: 1, a: 0}
+  - slotName: helmet_
+    color: {r: 0.62, g: 0.62, b: 0.9, a: 1}
+  visualOffset: {x: 0, y: 0, z: 0}
+  awakeningReward: 5
+  nightmareMechanics: []
+  killScore: 10
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
+  stabilityDamage: 5
+  waypointPathIndex: -1

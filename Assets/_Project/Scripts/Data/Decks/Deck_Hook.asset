@@ -42,6 +42,7 @@ MonoBehaviour:
   bossPool:
   - {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
   - {fileID: 11400000, guid: 17460475ac136f04ca0ef3f106dd38b8, type: 2}
+  - {fileID: 11400000, guid: 647e55208559442d69b8359ff08300d1, type: 2}
   bossWaveInterval: 5
   bossEscortMin: 3
   bossEscortMax: 4

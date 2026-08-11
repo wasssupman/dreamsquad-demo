@@ -16,7 +16,7 @@
 |---|---|---|
 | 일반 | Basic · Debuffer · Kindler · Needler · Rootcaster · Runner · Sniper · Swift | 1 |
 | 엘리트 | Tanker · Vanguard | 3 |
-| 보스 | Boss_Jjangssen · Boss_Nightmare | 10 |
+| 보스 | Boss_Jjangssen · Boss_Nightmare · Boss_Mamemo | 10 |
 
 - **놓친 적은 0점**이다. 골을 뚫은 적은 "잡은 것"으로 안 친다(`EnemyKilledEvent` 미발화).
 - **져도 깎이지 않는다.** 산식에 분기가 하나도 없다.
