@@ -69,6 +69,12 @@ namespace Wassup.Battle.Combat
 
             // SelfStatBuff(디펜더 last_stand) 채널 — blink 부재와 무관하게 필요.
             bool hasStatQ = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statRW);
+            // boss-mamemo unit 3 — 꿈의 장막(GrantShield) 쓰기 대상. Units 소유 이벤트 버퍼에
+            // Combat 이 append 하는 것은 ShieldCastSystem(Effects)의 선례와 같은 모양이다.
+            var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
+            // 실드 부여 원샷 연출 — 없으면 무연출(기존 퍼프 컨벤션).
+            bool hasHitQ = SystemAPI.TryGetSingletonRW<Projectile.ProjectileHitEventsSingleton>(out var hitRW);
+            NativeQueue<Projectile.ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
             // SelfBlink(보스) 채널 — 없으면 blink payload 만 skip(HealthThreshold
             // 평가 자체는 계속 — SelfStatBuff 가 blink 없이 돌아야 함).
             bool hasBlinkQ = SystemAPI.TryGetSingletonRW<BlinkRequestEventsSingleton>(out var blinkRW);
@@ -141,6 +147,34 @@ namespace Wassup.Battle.Combat
                                     origin = ModifierOrigin.HealthThreshold,
                                 });
                             }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.GrantShield)
+                        {
+                            // boss-mamemo unit 3 — 꿈의 장막. 경계마다 **자기에게** 실드.
+                            // 이 arm 은 self 만 배선한다(bake 가 tileRange>0 조합을 거절한다) —
+                            // 반경 확산은 주기 arm 의 악몽의 가호가 소유한다.
+                            //
+                            // 쓰기는 Units 소유 IncomingShield 버퍼 append 하나다. 병합(같은 출처
+                            // max)·흡수는 DamageApplicationSystem 이 하고, 가디언 전용 생산자
+                            // (ShieldCastSystem)는 건드리지 않는다.
+                            //
+                            // ⚠ 실드는 이 프레임의 피해를 못 막는다 — 이 시스템이
+                            // [UpdateAfter(DamageApplicationSystem)] 이라 append 는 **다음 프레임**
+                            // 드레인에서 슬롯이 된다. 경계를 관통한 그 히트는 이미 지나간 뒤다.
+                            if (incomingShieldLookup.HasBuffer(entity))
+                                incomingShieldLookup[entity].Add(new Wassup.Battle.Units.IncomingShield
+                                {
+                                    source = entity,   // 같은 출처 = max 갱신 (누적 아님)
+                                    amount = slot.magnitude,
+                                });
+                            if (hasHitQ && slot.projectileDataIndex >= 0)
+                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                {
+                                    position = transform.ValueRO.Position,
+                                    dataIndex = slot.projectileDataIndex,
+                                    payload = Projectile.PayloadKind.SingleSplash,
+                                    source = entity,
+                                });
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfBlink)
                         {

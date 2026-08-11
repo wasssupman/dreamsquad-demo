@@ -3051,7 +3051,8 @@ namespace Wassup.Bridge
                             {
                                 var h = _em.GetComponentData<Health>(entity);
                                 unitOverheadUiLayer.SetUnit(entity, false, Health.ComputeRatio(h.value, h.max),
-                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor), 0f, GatherOverheadStacks(entity));
+                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor),
+                                    ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                             }
                         }
                     }
@@ -3108,14 +3109,9 @@ namespace Wassup.Bridge
                     && TryGetUnitScreenAnchor(entity, out var defenderScreenAnchor, out var defenderAnchor))
                 {
                     var h = _em.GetComponentData<Health>(entity);
-                    // shield-guardian-defender unit 2 — 실드합 동승(read-only 폴링, 계약 8).
-                    // 정규화(HP+실드 > 100% 압축)는 뷰가 수행.
-                    float defShieldRatio = 0f;
-                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
-                        defShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
-                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio, GatherOverheadStacks(entity));
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor),
+                        ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                 }
             }
             // goal-stability unit 5 — 골 게이지도 유닛과 같은 오버헤드 창(Begin/EndFrame) 안에서 Set.
@@ -3209,14 +3205,24 @@ namespace Wassup.Bridge
                     && TryGetUnitScreenAnchor(entity, out var garScreenAnchor, out var garAnchor))
                 {
                     var h = _em.GetComponentData<Health>(entity);
-                    float garShieldRatio = 0f;
-                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
-                        garShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
-                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        garScreenAnchor, ProjectTileScreenWidth(garAnchor), garShieldRatio, GatherOverheadStacks(entity));
+                        garScreenAnchor, ProjectTileScreenWidth(garAnchor),
+                        ShieldRatioOf(entity, h), GatherOverheadStacks(entity));
                 }
             }
+        }
+
+        // shield-guardian-defender unit 2 — 실드합 동승(read-only 폴링, 계약 8).
+        // 정규화(HP+실드 > 100% 압축)는 뷰가 수행.
+        // boss-mamemo unit 2 — 방어유닛·순찰병 두 곳에 복붙돼 있던 3줄을 여기로 모으고
+        // **적 분기를 편입**했다. 적 분기는 이 인자가 리터럴 0f 라 실드를 줘도 게이지가
+        // 안 그려졌다 — 하위 레이어(UnitOverheadUiLayer·UnitOverheadView·enemy skin 의
+        // shield 색)는 이미 진영 무관이었으므로 막힌 곳은 이 호출 하나였다.
+        private float ShieldRatioOf(Entity entity, in Health h)
+        {
+            if (h.max <= 0f || !_em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity)) return 0f;
+            return Wassup.Battle.Units.ShieldMath.Sum(
+                _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
         }
 
         // unit-overhead-ui 확장(unit 8) — 오버헤드 스택행 gather 재사용 버퍼(프레임 GC 회피).
@@ -7725,6 +7731,27 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
                     continue;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
+                         m.payload.magnitude <= 0f)
+                {
+                    // boss-mamemo unit 2 — 실드량 0 은 매 발동 조용한 no-op 이다
+                    // (ShieldMath.Merge 가 amount<=0 을 그냥 return 한다). loud 거절.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 에 magnitude(실드량 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
+                         ((m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold && m.payload.tileRange > 0) ||
+                          (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer && m.payload.tileRange <= 0)))
+                {
+                    // boss-mamemo unit 3 — **미배선 조합 거절.** 실드는 두 능력을 겸하지만 배선은
+                    // 트리거별로 갈라져 있다: 경계 arm = 자기(tileRange 0) · 주기 arm = 반경 확산
+                    // (tileRange>0). 반대로 저작하면 슬롯은 생기는데 아무 arm 도 안 잡아 **조용한
+                    // no-op** 이 된다. 미사용 라이브 경로를 만들지 않는 것이 dreamcatcher-trigger-gates
+                    // 계약("v1 배선 조합 외는 bake loud 거절")의 선례다. 새 조합은 그걸 쓰는 능력이
+                    // 생길 때 배선·테스트와 함께 연다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
+                    continue;
+                }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
                          (m.payload.magnitude < 1f || m.payload.duration <= 0f))
                 {
@@ -7751,6 +7778,13 @@ namespace Wassup.Bridge
                 {
                     _dcAuraPool ??= new Wassup.Presentation.DcAuraVisualPool(ResolveUnitViewTransform);
                     _dcAuraPool.Register(entity, m.payload.auraPrefab, m.payload.auraScale);
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield && m.payload.duration > 0f)
+                {
+                    // boss-mamemo unit 2 — 실드에는 시간 만료가 없다(ShieldMath 에 TTL 축 없음).
+                    // duration 을 적어두면 "몇 초 뒤 사라진다" 고 읽히지만 런타임은 무시한다 —
+                    // 조용히 다르게 도는 대신 저작 시점에 말해준다. skip 하지는 않는다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 의 duration({m.payload.duration}) 은 무시된다 — 이 엔진의 실드는 시간이 아니라 피해로만 사라진다.");
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
                     m.payload.duration <= m.trigger.periodSeconds)
@@ -7913,6 +7947,15 @@ namespace Wassup.Bridge
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);
             _em.AddBuffer<DotEffect>(entity); // dot-effect-extraction unit 0
+            // boss-mamemo unit 2 — 적도 실드를 받을 수 있다(마메모의 꿈의 장막·악몽의 가호).
+            // **쌍으로** 붙인다: IncomingShield 드레인이 ShieldSlot 존재로 게이팅돼 있어
+            // (DamageApplicationSystem) 한쪽만 붙이면 부여가 영영 드레인되지 않고 버퍼가
+            // 무한 성장한다. 보스만이 아니라 **적 전원**인 이유는 악몽의 가호의 수혜자가
+            // 호위 잡몹이기 때문 — 조건부 부착은 "누가 받을 수 있나" 를 스폰 시점에 못 박아
+            // arm 의 대상 선정을 왜곡한다. 흡수·오버헤드 게이지는 이미 진영 중립이다.
+            // (거점은 이 경로를 안 타므로 battle-structures 계약 8 은 그대로 지켜진다.)
+            _em.AddBuffer<Wassup.Battle.Units.ShieldSlot>(entity);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingShield>(entity);
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).

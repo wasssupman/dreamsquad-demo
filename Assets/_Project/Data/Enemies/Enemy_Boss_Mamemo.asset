@@ -92,8 +92,55 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.34
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 19
+      magnitude: 350
+      projectile: {fileID: 0}
+      tileRange: 0
+      duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 2.5
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 19
+      magnitude: 60
+      projectile: {fileID: 0}
+      tileRange: 4
+      duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
   killScore: 10
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5
   waypointPathIndex: -1
+  flightLift: 0

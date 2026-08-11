@@ -74,6 +74,10 @@ namespace Wassup.Battle.Combat
             // 그쪽 대상 풀이 AttackUnitTag 하드코딩이라 손대면 실드파열 카드가 깨진다.
             // payload kind 만 공유하고 실행 경로는 별개다.
             bool hasCcQ = SystemAPI.TryGetSingletonRW<EnemyCcEventsSingleton>(out var ccRW);
+            // boss-mamemo unit 3 — 악몽의 가호 seam. 가디언 전용 생산자(ShieldCastSystem)를
+            // 재사용하지 않고 그 아래층(Units 소유 IncomingShield 버퍼)에 append 한다.
+            var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
+            var shieldSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.ShieldSlot>(isReadOnly: true);
 
             var pulseTargets = new NativeList<int>(Allocator.Temp);
             var pulseDistSq = new NativeList<float>(Allocator.Temp);
@@ -253,6 +257,71 @@ namespace Wassup.Battle.Combat
                                     }
                                     // whip 선례 — 실제로 잰 펄스만 연출한다(효과 없는 연출 금지).
                                     if (slept > 0 && hasHitQ && slot.projectileDataIndex >= 0)
+                                    {
+                                        hitQueue.Enqueue(new ProjectileHitEvent
+                                        {
+                                            position = hostPos,
+                                            dataIndex = slot.projectileDataIndex,
+                                            payload = PayloadKind.SingleSplash,
+                                            source = entity,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.GrantShield)
+                        {
+                            // boss-mamemo unit 3 — 악몽의 가호. host **와 같은 진영** 유닛
+                            // (host 제외)에게 실드를 나눠준다. 이 arm 은 반경 확산만 배선한다 —
+                            // 자기 실드는 경계 arm 의 꿈의 장막이 소유한다(bake 가 조합을 가른다).
+                            //
+                            // host 제외가 계약인 이유: ShieldMath 는 source 를 병합 키로 쓰므로
+                            // 두 능력이 같은 host 에서 나와 자기 자신에게 겹치면 **한 슬롯을
+                            // 공유**하고, 이쪽이 매 주기 그 잔량을 max 로 재충전해 「경계에 생기는
+                            // 벽」이 「상시 실드」로 붕괴한다.
+                            if (slot.magnitude > 0f && slot.tileRange > 0
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
+                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
+                                if (hostIsEnemy && !enemyPoolBuilt)
+                                {
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
+                                }
+                                if (hostIsDefender && !defEntitiesBuilt)
+                                {
+                                    defEntities = defQuery.ToEntityArray(Allocator.Temp);
+                                    defEntitiesBuilt = true;
+                                }
+                                if (hostIsEnemy || hostIsDefender)
+                                {
+                                    var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
+                                    var poolCells = hostIsEnemy ? enemyCells : defCells;
+                                    float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                    int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                    AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
+
+                                    int granted = 0;
+                                    for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                    {
+                                        var target = poolEntities[pulseTargets[ti]];
+                                        if (target == entity) continue;              // host 제외 (위 계약)
+                                        if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(target)) continue;
+                                        if (!shieldSlotLookup.HasBuffer(target)) continue;
+                                        if (!incomingShieldLookup.HasBuffer(target)) continue;
+                                        // 만충이면 Merge 가 max 로 no-op 이라 헛 VFX 만 남는다
+                                        // (가디언 unit 4 선례).
+                                        if (Wassup.Battle.Units.ShieldMath.ValueFromSource(
+                                                shieldSlotLookup[target], entity) >= slot.magnitude) continue;
+                                        incomingShieldLookup[target].Add(new Wassup.Battle.Units.IncomingShield
+                                        {
+                                            source = entity,   // 같은 출처 = max 갱신 → 깎인 만큼만 다시 찬다
+                                            amount = slot.magnitude,
+                                        });
+                                        granted++;
+                                    }
+                                    if (granted > 0 && hasHitQ && slot.projectileDataIndex >= 0)
                                     {
                                         hitQueue.Enqueue(new ProjectileHitEvent
                                         {

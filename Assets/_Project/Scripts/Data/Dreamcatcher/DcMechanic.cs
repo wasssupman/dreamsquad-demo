@@ -92,6 +92,21 @@ namespace Wassup.Data
         // 필드 재사용: duration=예고 초 · magnitude=밀집 탐색 반경 · tileRange=착지 링 상한 ·
         // slamDamage/slamTileRange=착지 피해와 예고 범위. 신규 슬롯 필드 0. append-only.
         UltimateLeap = 18,
+        // boss-mamemo unit 2 — 실드 부여. tileRange 0 = 자신만 / >0 = 반경 내 같은 진영
+        // **유닛(host 제외)**. host 를 포함하면 안 되는 이유가 이 kind 하나로 두 능력을
+        // 표현하기 때문이다: ShieldMath 가 `source` 를 병합 키로 쓰므로 「경계마다 자기
+        // 실드」와 「주기마다 아군 실드」가 같은 host 에서 나오면 **한 슬롯을 공유**하고,
+        // 후자가 전자를 상시 재충전해 "경계에 생기는 벽" 이 "상시 실드" 로 붕괴한다.
+        //
+        // magnitude = 실드량. **duration 은 쓰지 않는다** — 이 엔진의 실드에는 시간 만료가
+        // 없다(ShieldMath 에 TTL 축이 없고 dreamcatcher-shield-break 도 시간만료 경로를
+        // 명시적으로 배제했다). 실드는 깎여야만 사라진다. bake 가 duration>0 저작을 경고한다.
+        //
+        // 실행은 IncomingShield 버퍼 append 다 — 가디언 전용 생산자(ShieldCastSystem,
+        // caster·후보 양쪽 DefenderUnitTag 게이트)를 재사용하지 않고 그 아래층을 쓴다.
+        // 병합(같은 출처 max · 교차 출처 합산)과 흡수는 DamageApplicationSystem 이 이미
+        // 진영 중립으로 한다. append-only.
+        GrantShield = 19,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
