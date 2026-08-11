@@ -1,6 +1,6 @@
 # production-transition-governance — Foundation + Pilot
 
-> 상태: **Foundation 작업 계획 승인 · D0 완료 · D1 대기 — 2026-08-11**
+> 상태: **Foundation 작업 계획 승인 · D1 완료 · D2 대기 — 2026-08-11**
 >
 > 범위: 문서·정적 검증기만. Runtime, Unity serialized asset, API, package,
 > `ProjectSettings`, 실제 production import는 변경하지 않는다.
@@ -23,7 +23,7 @@
 | 순서 | 문서 | 작업 | 상태 |
 |---|---|---|---|
 | D0 | `README.md` | 분산 spec, unit·비범위·승인 gate 고정 | 완료 |
-| D1 | [0_global_cutover_contract.md](0_global_cutover_contract.md) | 전역 정본·package·one-time cutover | 대기 |
+| D1 | [0_global_cutover_contract.md](0_global_cutover_contract.md) | 전역 정본·package·one-time cutover | 완료 |
 | D2 | [1_registry_and_review_contract.md](1_registry_and_review_contract.md) | registry·review·decision gate | 대기 |
 | D3 | [2_static_validator.md](2_static_validator.md) | preparation/cutover 검증기 | 대기 |
 | C1/S1 | [3_target_intake_alignment.md](3_target_intake_alignment.md) | Client·Server 준비 문서 정합 | 대기 |

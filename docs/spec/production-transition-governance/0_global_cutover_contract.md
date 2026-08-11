@@ -24,7 +24,7 @@
 
 ## 완료 기준
 
-- [ ] 전역 정본에 한 번의 freeze 의미와 상태 전이가 있다.
-- [ ] re-freeze, 부분 update, 지속 intake가 허용되지 않는다.
-- [ ] Client와 Server가 동일 freeze ID의 byte-identical Shared를 받는다.
-- [ ] runtime/API/asset/project 설정은 변경되지 않는다.
+- [x] 전역 정본에 한 번의 freeze 의미와 상태 전이가 있다.
+- [x] re-freeze, 부분 update, 지속 intake가 허용되지 않는다.
+- [x] Client와 Server가 동일 freeze ID의 byte-identical Shared를 받는다.
+- [x] runtime/API/asset/project 설정은 변경되지 않는다.
