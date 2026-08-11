@@ -139,6 +139,9 @@ namespace Wassup.Tests.EditMode
                 damage: 5f, range: 10f, cooldownDuration: 1f,
                 targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
+            var attack = _em.GetComponentData<AttackState>(defender);
+            attack.targetTraversalLayers = (byte)PlacementLayer.Path;
+            _em.SetComponentData(defender, attack);
 
             _em.AddComponentData(defender, new ProjectileRef
             {
@@ -156,10 +159,13 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(defender),
                 "Defender with ProjectileRef should have ProjectileSpawnRequest added");
-            Assert.AreEqual(MovementKind.HomingToEntity, _em.GetComponentData<ProjectileSpawnRequest>(defender).movement,
+            var request = _em.GetComponentData<ProjectileSpawnRequest>(defender);
+            Assert.AreEqual(MovementKind.HomingToEntity, request.movement,
                 "default ProjectileRef (movement=0) should stage a homing request");
-            Assert.AreEqual(5f, _em.GetComponentData<ProjectileSpawnRequest>(defender).damage, 1e-4f,
+            Assert.AreEqual(5f, request.damage, 1e-4f,
                 "Projectile defender should snapshot Damage output as projectile damage");
+            Assert.AreEqual((byte)PlacementLayer.Path, request.targetTraversalLayers,
+                "selected target layer mask must survive the AttackState → projectile request seam");
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(enemy).Length,
                 "No direct IncomingDamage when projectile path is taken");
         }

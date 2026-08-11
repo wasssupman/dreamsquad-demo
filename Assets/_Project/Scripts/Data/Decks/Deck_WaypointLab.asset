@@ -20,6 +20,7 @@ MonoBehaviour:
   attackUnitPool:
   - {fileID: 11400000, guid: f205b4c7607f4770b8469ac0a9dcf127, type: 2}
   - {fileID: 11400000, guid: a6d13d7afa1c49f4b9b8ce03a80ad6be, type: 2}
+  - {fileID: 11400000, guid: b12cbe192d5b4e97a6cb0c96211f3e44, type: 2}
   minWaveCount: 2
   maxWaveCount: 2
   minUnitsPerWave: 4

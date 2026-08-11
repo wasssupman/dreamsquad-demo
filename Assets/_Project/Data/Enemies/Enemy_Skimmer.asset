@@ -1,0 +1,82 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
+  m_Name: Enemy_Skimmer
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
+  id: skimmer
+  displayName: Skimmer
+  traversalLayers: 4
+  enemyClass: 3
+  attackMethod: 1
+  targetMode: 2
+  engageMovement: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
+  health: 80
+  moveSpeed: 2.5
+  attackRange: 1
+  attackCooldown: 0.2
+  attackTargetCount: 1
+  projectile: {fileID: 0}
+  hitDelaySec: 0.3
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
+  outputs:
+  - kind: 0
+    magnitude: 10
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
+  spineVisualScale: 1.3
+  partSkins:
+  - bottom/bottom_c_10
+  - brow/brow_c_2
+  - eyes/eyes_c_3
+  - hair_short/hair_short_c_5
+  - mouth/mouth_c_4
+  - skin/skin_1
+  slotColors:
+  - slotName: body
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: leg_l
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: leg_r
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: arm_l
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: arm_r
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: head
+    color: {r: 0.58, g: 0.42, b: 1, a: 1}
+  - slotName: hair
+    color: {r: 0.12, g: 0.05, b: 0.28, a: 1}
+  - slotName: hair_long
+    color: {r: 0.12, g: 0.05, b: 0.28, a: 1}
+  - slotName: helmet_hair
+    color: {r: 0.12, g: 0.05, b: 0.28, a: 1}
+  visualOffset: {x: 0, y: 0, z: 0}
+  awakeningReward: 2
+  nightmareMechanics: []
+  killScore: 1
+  stabilityDamage: 1
+  waypointPathIndex: 0
+  flightLift: 1.4

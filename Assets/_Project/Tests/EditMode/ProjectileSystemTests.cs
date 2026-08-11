@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -37,7 +38,7 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
-        private Entity MakeTarget(float3 pos)
+        private Entity MakeTarget(float3 pos, PlacementLayer traversalLayer = PlacementLayer.None)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
@@ -47,6 +48,11 @@ namespace Wassup.Tests.EditMode
             // battle-structures unit 9 — 광역 피해자 풀이 FactionTag 로 진영을 가른다.
             // 프로덕션 적 스폰(BattleBridge:7674)은 항상 이것을 붙이므로 픽스처가 빠뜨린 것이다.
             _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
+            if (traversalLayer != PlacementLayer.None)
+                _em.AddComponentData(e, new PathFollowState
+                {
+                    traversalLayers = (byte)traversalLayer,
+                });
             return e;
         }
 
@@ -146,6 +152,36 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(50f, nearbyBuf[0].amount, 1e-4f, "splash damage = damage * splashDamageMul");
             Assert.AreEqual(0, farBuf.Length, "attacker outside splashRadius is untouched");
             Assert.AreEqual(0, decoyBuf.Length, "non-AttackUnit entity must be filtered from splash pool");
+        }
+
+        [Test]
+        public void PathOnly_Projectile_DirectAndSplash_DoNotDamageAir()
+        {
+            var directPath = MakeTarget(float3.zero, PlacementLayer.Path);
+            var nearbyPath = MakeTarget(new float3(0.3f, 0f, 0f), PlacementLayer.Path);
+            var nearbyAir = MakeTarget(new float3(0.4f, 0f, 0f), PlacementLayer.Air);
+
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(float3.zero));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                target = directPath,
+                speed = 0f,
+                damage = 100f,
+                hitThreshold = 0.1f,
+                onHitEffect = OnHitEffectType.Splash,
+                splashRadius = 1f,
+                splashDamageMul = 0.5f,
+                targetTraversalLayers = (byte)PlacementLayer.Path,
+            });
+
+            Tick(0.016f);
+
+            Assert.AreEqual(100f, _em.GetBuffer<IncomingDamage>(directPath)[0].amount, 1e-4f);
+            Assert.AreEqual(50f, _em.GetBuffer<IncomingDamage>(nearbyPath)[0].amount, 1e-4f);
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(nearbyAir).Length,
+                "공중 적은 지상탄의 스플래시에도 맞지 않는다");
         }
 
         [Test]
@@ -254,6 +290,33 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, _em.GetBuffer<IncomingDamage>(inRangeDiag).Length);
             Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(inRangeDiag)[0].amount, 1e-3f, "diagonal within range still hit");
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(outOfRange).Length, "outside impactTileRange untouched");
+        }
+
+        [Test]
+        public void PathOnly_TileAoe_DoesNotDamageAirInImpactRange()
+        {
+            var path = MakeTarget(new float3(11f, 0f, 10f), PlacementLayer.Path);
+            var air = MakeTarget(new float3(9f, 0f, 10f), PlacementLayer.Air);
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(10f, 0f, 10f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                movement = MovementKind.BallisticArcToPoint,
+                payload = PayloadKind.TileAoe,
+                origin = new float3(10f, 0f, 10f),
+                impact = new float3(10f, 0f, 10f),
+                flightTime = 0f,
+                impactTileRange = 1,
+                damage = 30f,
+                targetTraversalLayers = (byte)PlacementLayer.Path,
+            });
+
+            Tick(0.016f);
+
+            Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(path)[0].amount, 1e-3f);
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(air).Length,
+                "공중 적은 지상탄의 타일 범위 피해에도 맞지 않는다");
         }
 
         // ── dreamcatcher-content-2 unit 3 (끝을 보는 눈) — priority direct-victim +20% ──

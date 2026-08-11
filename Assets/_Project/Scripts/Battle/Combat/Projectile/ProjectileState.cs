@@ -33,6 +33,11 @@ namespace Wassup.Battle.Combat.Projectile
         // ProjectileSpawnRequest.dataIndex at launch.
         public int dataIndex;
 
+        // waypoint-routing unit 4 rev 4 — launch-time attack target layer mask.
+        // ProjectileHitSystem/MoveSystem use it for direct and secondary victims.
+        // 0 = legacy unfiltered.
+        public byte targetTraversalLayers;
+
         // Runtime arrival flag — set by ProjectileMoveSystem when the trajectory
         // reaches its endpoint; consumed by ProjectileHitSystem to resolve the
         // payload. Each trajectory knows its own arrival condition, so arrival

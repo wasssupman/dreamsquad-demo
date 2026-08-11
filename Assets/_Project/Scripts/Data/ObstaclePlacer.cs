@@ -15,8 +15,14 @@ namespace Wassup.Data
         {
             // 길이 불일치 = 빌더 불변식 밖의 오용 — 저작 의도 판정 불가로 접는다(커빙은 파생 규칙대로).
             if (!placeMask.IsCreated || placeMask.Length != tiles.Length) return false;
+            // waypoint-routing unit 4 — Air 는 **통행**을 위해 Derive 가 전 타일에 여는 층이다.
+            // 구 문서의 placeMask 에는 이 신규 비트가 없으므로 전체 비트를 비교하면 모든 옛 맵을
+            // 수동 배치 저작으로 오판해 커빙이 통째로 꺼진다. 이 함수의 질문은 배치 의도이므로
+            // 실제 배치 브러시가 소유하는 Ground/Path 축만 비교한다.
+            const byte placementBits = (byte)(PlacementLayer.Ground | PlacementLayer.Path);
             for (int i = 0; i < tiles.Length; i++)
-                if (PlacementLayers.Sanitize(placeMask[i]) != PlacementLayers.Derive(tiles[i])) return true;
+                if ((PlacementLayers.Sanitize(placeMask[i]) & placementBits)
+                    != (PlacementLayers.Derive(tiles[i]) & placementBits)) return true;
             return false;
         }
 

@@ -112,7 +112,8 @@ namespace Wassup.Battle.Effects
             return e;
         }
 
-        public static Entity SpawnHazard(EntityManager em, HazardSO so, int2 originCell)
+        public static Entity SpawnHazard(
+            EntityManager em, HazardSO so, int2 originCell, byte targetTraversalLayers = 0)
         {
             if (so == null) return Entity.Null;
 
@@ -131,7 +132,11 @@ namespace Wassup.Battle.Effects
             if (so.effects != null)
             {
                 for (int i = 0; i < so.effects.Length; i++)
-                    effectsBuffer.Add(new HazardEffectsBuffer { effect = so.effects[i] });
+                {
+                    var effect = so.effects[i];
+                    effect.targetTraversalLayers = targetTraversalLayers;
+                    effectsBuffer.Add(new HazardEffectsBuffer { effect = effect });
+                }
             }
 
             return e;

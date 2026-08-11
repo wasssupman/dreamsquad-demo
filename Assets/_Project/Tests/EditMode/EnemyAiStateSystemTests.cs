@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -61,6 +62,19 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
+        private Entity MakeMoverTarget(float x, Faction faction, PlacementLayer traversalLayer)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, new Health { value = 100f, max = 100f });
+            _em.AddComponentData(e, new FactionTag { value = faction });
+            _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0, 0)));
+            _em.AddComponentData(e, new PathFollowState
+            {
+                traversalLayers = (byte)traversalLayer,
+            });
+            return e;
+        }
+
         private AiState StateOf(Entity e) => _em.GetComponentData<EnemyAiState>(e).value;
 
         [Test]
@@ -79,6 +93,28 @@ namespace Wassup.Tests.EditMode
             var enemy = MakeEnemy(0f, 5f);
             _sim.Update();
             Assert.AreEqual(AiState.Marching, StateOf(enemy));
+        }
+
+        [Test]
+        public void PathOnlyPatrol_AirOnlyInRange_Marches_ThenPathTargetEngages()
+        {
+            MakeMoverTarget(2f, Faction.EnemyUnit, PlacementLayer.Air);
+            var patrol = MakeEnemy(0f, 5f);
+            _em.SetComponentData(patrol, new FactionTag { value = Faction.DefenderUnit });
+            var attack = _em.GetComponentData<AttackState>(patrol);
+            attack.targetMask = (int)Faction.EnemyUnit;
+            attack.targetTraversalLayers = (byte)PlacementLayer.Path;
+            _em.SetComponentData(patrol, attack);
+            _em.AddComponentData(patrol, new FocusTarget { current = Entity.Null });
+
+            _sim.Update();
+            Assert.AreEqual(AiState.Marching, StateOf(patrol),
+                "Path 전용 순찰병은 사거리 안의 Air 적 때문에 멈추면 안 된다");
+
+            MakeMoverTarget(3f, Faction.EnemyUnit, PlacementLayer.Path);
+            _sim.Update();
+            Assert.AreEqual(AiState.Engaging, StateOf(patrol),
+                "일치하는 Path 적이 들어오면 기존처럼 교전한다");
         }
 
         [Test]

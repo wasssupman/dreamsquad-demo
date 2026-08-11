@@ -191,5 +191,12 @@ namespace Wassup.Data
         [Header("Waypoint Routing")]
         [Tooltip("따를 맵 웨이포인트 경로 인덱스. -1 = 사용 안 함(골 직행).")]
         [Min(-1)] public int waypointPathIndex = -1;
+
+        // waypoint-routing unit 4 — sim 높이가 아니라 view-space 상시 lift.
+        // 이동 규칙은 traversalLayers=Air 가 소유하고, 이 값은 떠 보이는 표현만 맡는다.
+        // 0 = 지상(기존 적 전부 무변경). Appended last (직렬화 back-compat).
+        [Header("Flight View")]
+        [Tooltip("비행 적의 상시 화면 높이. 0 = 지상. 이동/타게팅 규칙에는 관여하지 않는다.")]
+        [Min(0f)] public float flightLift = 0f;
     }
 }

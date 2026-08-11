@@ -56,10 +56,15 @@ namespace Wassup.Battle.Movement
             }
 
             TraversalSlots.FillWalkMask(in field.cellLayers, traversalLayers, outMask);
+            // waypoint-routing unit 4 — Air 비트가 있으면 지상 차단 해저드는 벽이 아니다.
+            // 라우팅·실이동 충돌·어그로 추격·가이드가 모두 이 조립을 공유하므로 여기서 한 번만
+            // 결정한다. Ground|Air 같은 복합 마스크도 Air 경로를 열었으므로 같은 규칙이다.
+            bool applyObstacles = hasObstacles
+                && (traversalLayers & (byte)Wassup.Data.PlacementLayer.Air) == 0;
             new NavGrid(
                 staticWalk:   outMask,
-                blockedCells: hasObstacles ? obstacles.blockedCells : default,
-                hasObstacles: hasObstacles,
+                blockedCells: applyObstacles ? obstacles.blockedCells : default,
+                hasObstacles: applyObstacles,
                 gridSize:     field.gridSize,
                 tileSize:     field.tileSize,
                 origin:       field.origin).MaterializeWalkMask(outMask);

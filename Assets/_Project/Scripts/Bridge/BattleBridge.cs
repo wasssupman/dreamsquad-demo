@@ -3023,6 +3023,13 @@ namespace Wassup.Bridge
                             // 넘긴다 — ToView 가 sim-Y 를 버리므로 높이를 여기 섞으면 평면화된다.
                             bool leaping = TryGetEnemyViewOverride(entity, out var leapPos, out float leapHeight);
                             if (leaping) world = new Vector3(leapPos.x, leapPos.y, leapPos.z);
+                            // waypoint-routing unit 4 — 상시 비행 lift 는 SO→기존 적 등록부를
+                            // 따라 view 로만 흐른다. sim 위치/타게팅에는 손대지 않는다.
+                            float flightLift = _enemyTypeByEntity.TryGetValue(entity, out var enemyType)
+                                && enemyType != null
+                                ? Mathf.Max(0f, enemyType.flightLift)
+                                : 0f;
+                            float viewFlightHeight = flightLift + (leaping ? leapHeight : 0f);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
                             Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);
@@ -3031,8 +3038,8 @@ namespace Wassup.Bridge
                             bool dimmed = _enemyDimAlpha < 0.999f;
                             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                             {
-                                // 비행 아니면 0 을 써서 스스로 해제된다(별도 clear 경로 불필요).
-                                spineView.SetFlightHeight(leaping ? leapHeight : 0f);
+                                // 지상·비도약이면 0 을 써서 스스로 해제된다(별도 clear 경로 불필요).
+                                spineView.SetFlightHeight(viewFlightHeight);
                                 spineView.UpdatePosition(world);
                                 if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
                                 spineView.SetDimmed(dimmed, _enemyDimAlpha);
@@ -3040,7 +3047,7 @@ namespace Wassup.Bridge
                             }
                             else if (enemyViewPool.TryGet(entity, out var view))
                             {
-                                view.SetFlightHeight(leaping ? leapHeight : 0f);
+                                view.SetFlightHeight(viewFlightHeight);
                                 view.UpdatePosition(world);
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                                 view.SetDimmed(dimmed, _enemyDimAlpha);
@@ -4116,6 +4123,7 @@ namespace Wassup.Bridge
                 target = req.target,
                 speed = req.speed,
                 damage = req.damage,
+                targetTraversalLayers = req.targetTraversalLayers,
                 hitThreshold = req.hitThreshold,
                 onHitEffect = req.onHitEffect,
                 splashRadius = req.splashRadius,
@@ -4287,7 +4295,8 @@ namespace Wassup.Bridge
         // 재사용 스크래치라 배치마다 할당이 없다(`_dcFiredScratch` 선례).
         private readonly System.Collections.Generic.List<Entity> _onPlaceInRangeScratch = new();
 
-        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(Vector2Int cell, float range)
+        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(
+            Vector2Int cell, float range, byte attackTargetLayers)
         {
             _onPlaceInRangeScratch.Clear();
             if (range <= 0f || !_aliveAttackersQueryCreated) return _onPlaceInRangeScratch;
@@ -4297,12 +4306,21 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
+                if (!CanDefenderTargetMover(attackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, cell, tileRange)) continue;
                 _onPlaceInRangeScratch.Add(e);
             }
             entities.Dispose();
             return _onPlaceInRangeScratch;
+        }
+
+        private bool CanDefenderTargetMover(byte attackTargetLayers, Entity target)
+        {
+            byte targetLayers = _em.HasComponent<PathFollowState>(target)
+                ? _em.GetComponentData<PathFollowState>(target).traversalLayers
+                : (byte)0;
+            return PlacementLayers.CanTarget(attackTargetLayers, targetLayers);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns
@@ -4314,13 +4332,15 @@ namespace Wassup.Bridge
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
 
             int affected = 0;
+            byte attackTargetLayers = (byte)unitData.EffectiveAttackTargetLayers;
 
             // SlowPulse 와 BindNearby 는 예전부터 **같은 효과**다(둘 다 이동속도 배율 감쇠).
             // 문구만 다르고 동작이 같으므로 한 분기로 합쳐 둔다 — 갈라 두면 한쪽만 고쳐진다.
             if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse
                 || unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
             {
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
@@ -4341,7 +4361,8 @@ namespace Wassup.Bridge
                         if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
                 }
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
                     {
@@ -4361,7 +4382,8 @@ namespace Wassup.Bridge
                 // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
                 if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                     {
@@ -4388,7 +4410,8 @@ namespace Wassup.Bridge
                 if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
                     || !_dotApplyQueue.IsCreated) return 0;
 
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     _dotApplyQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
                     {
@@ -4430,7 +4453,8 @@ namespace Wassup.Bridge
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
             {
                 if (unitData.onPlaceMagnitude <= 0f) return 0;
-                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                foreach (var e in CollectEnemiesInTileRange(
+                             placedCell, unitData.onPlaceRange, attackTargetLayers))
                 {
                     if (!_em.HasBuffer<IncomingDamage>(e)) continue;
                     _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
@@ -4492,6 +4516,7 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
                 float along = math.dot(toTarget, forward);
@@ -6341,6 +6366,9 @@ namespace Wassup.Bridge
                 // ECB playback 에서 던진다. 판정 전체는 DefenderTargetDefaults 소관.
                 targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
                     (int)unitData.targetFactions, unitData.targetAllies),
+                targetTraversalLayers = unitData.targetAllies
+                    ? (byte)0
+                    : (byte)unitData.EffectiveAttackTargetLayers,
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 방어유닛 지속 락의 그릇. 신규 컴포넌트를 만들지
@@ -6389,6 +6417,7 @@ namespace Wassup.Bridge
                     cooldownDuration = hazardAbility.cooldown,
                     cooldownRemaining = 0f,
                     targetMask = (int)Faction.EnemyUnit,
+                    targetTraversalLayers = (byte)unitData.EffectiveAttackTargetLayers,
                     dataIndex = hazardDataIndex,
                     kind = hazardAbility.kind,
                     footprintWidth = math.max(1, hazardAbility.footprintWidth),
@@ -6575,6 +6604,9 @@ namespace Wassup.Bridge
                 // 같은 SO 타입이라 «순찰만 거점을 못 때린다» 는 예외를 만들 이유가 없다.
                 targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
                     (int)unitData.targetFactions, unitData.targetAllies),
+                targetTraversalLayers = unitData.targetAllies
+                    ? (byte)0
+                    : (byte)unitData.EffectiveAttackTargetLayers,
                 hitDelaySec = unitData.hitDelaySec,
             });
             // target-persistence unit 4 — 순찰병도 락을 받는다. 다만 이 유닛은 EnemyBehavior
@@ -6922,7 +6954,8 @@ namespace Wassup.Bridge
             return e;
         }
 
-        public Unity.Entities.Entity SpawnHazardWithVisual(HazardSO so, Unity.Mathematics.int2 cell)
+        public Unity.Entities.Entity SpawnHazardWithVisual(
+            HazardSO so, Unity.Mathematics.int2 cell, byte targetTraversalLayers = 0)
         {
             if (so == null || _em == null)
                 return Unity.Entities.Entity.Null;
@@ -6932,7 +6965,8 @@ namespace Wassup.Bridge
                 return Unity.Entities.Entity.Null;
             }
 
-            var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(_em, so, cell);
+            var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(
+                _em, so, cell, targetTraversalLayers);
             if (e == Unity.Entities.Entity.Null)
                 return e;
 
@@ -7201,7 +7235,7 @@ namespace Wassup.Bridge
 
                     var so = _zoneHazardRegistry[req.dataIndex];
                     if (so == null) continue;
-                    SpawnHazardWithVisual(so, req.centerCell);
+                    SpawnHazardWithVisual(so, req.centerCell, req.targetTraversalLayers);
                 }
                 else if (req.kind == HazardCastKind.Blocking)
                 {
@@ -7473,6 +7507,7 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
+                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, cell, tileRange)) continue;
                 float3 toEnemy = pos - defCenter;

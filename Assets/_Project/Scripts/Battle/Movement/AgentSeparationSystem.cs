@@ -58,7 +58,6 @@ namespace Wassup.Battle.Movement
         {
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
             bool hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacles);
-            var nav = MovementCellTrim.BuildNavGrid(in field, hasObstacles, in obstacles);
 
             // 스냅샷 — 밀어냄 계산 중에 위치가 갱신되면 순서 의존이 생긴다.
             //
@@ -78,6 +77,10 @@ namespace Wassup.Battle.Movement
             var transforms = query.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var follows   = query.ToComponentDataArray<PathFollowState>(Allocator.Temp);
             var pushes    = new NativeArray<float2>(count, Allocator.Temp);
+            // waypoint-routing unit 4 — 분리 변위도 유닛 자신의 통행층 벽으로 해결한다.
+            // 실제 이동만 Air nav 를 쓰고 여기서 Path nav 로 다시 clamp 하면 겹친 프레임에
+            // 비행 적이 벽/차단 셀 앞에 되밀리는 조용한 예외가 생긴다.
+            var navScratch = new NativeArray<byte>(math.max(1, field.CellCount), Allocator.Temp);
 
             try
             {
@@ -104,10 +107,21 @@ namespace Wassup.Battle.Movement
 
                 // 2단계: 일괄 적용. 밀어낸 결과가 벽을 뚫지 않도록 충돌 해결을 한 번 더 태운다.
                 var lookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: false);
+                byte navLayers = 0;
+                NavGrid nav = default;
                 for (int i = 0; i < count; i++)
                 {
                     if (math.lengthsq(pushes[i]) < 1e-8f) continue;
                     float3 from = transforms[i].Position;
+
+                    byte entityLayers = follows[i].traversalLayers;
+                    if (entityLayers == 0) entityLayers = TraversalSlots.DefaultMask;
+                    if (entityLayers != navLayers)
+                    {
+                        nav = MovementCellTrim.BuildNavGrid(
+                            in field, entityLayers, hasObstacles, in obstacles, navScratch);
+                        navLayers = entityLayers;
+                    }
 
                     // unit 13 — MovementSystem 이 멈춘 유닛(교전·CC·정지)은 **전진 성분의
                     // 밀어냄을 거부**한다. 안 그러면 뒤 무리가 경로를 따라 4~9타일 밀어 나른다.
@@ -119,9 +133,12 @@ namespace Wassup.Battle.Movement
                         int2 cell = GridMath.WorldToCell(from, field.tileSize, field.gridSize, origin: field.origin);
                         // traversal-layers unit 1a — 슬롯 뷰로 읽는다(직접 인덱싱 금지).
                         if (nav.InBounds(cell))
+                        {
+                            int goalSlot = field.SlotFor(FlowFieldSingleton.GoalSentinel, entityLayers);
                             accumulated = Separation.RejectForwardPush(
                                 accumulated,
-                                field.FlowSlot(FlowFieldSingleton.PrimarySlot)[GridMath.CellIndex(cell, field.gridSize)]);
+                                field.FlowSlot(goalSlot)[GridMath.CellIndex(cell, field.gridSize)]);
+                        }
                         if (math.lengthsq(accumulated) < 1e-8f) continue;
                     }
 
@@ -140,6 +157,7 @@ namespace Wassup.Battle.Movement
                 transforms.Dispose();
                 follows.Dispose();
                 pushes.Dispose();
+                navScratch.Dispose();
             }
         }
     }

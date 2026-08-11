@@ -15,5 +15,10 @@ namespace Wassup.Battle.Effects
         // kind 가 DoT 라 이 필드가 없으면 서로 구분되지 않는다.
         // origin 은 저작하지 않는다 — 해저드가 만들면 언제나 DotOrigin.Zone 이다.
         public DotElement element;
+
+        // waypoint-routing unit 4 rev 4 — runtime-only target layer snapshot.
+        // HazardSO authoring leaves this 0; EffectSpawner overwrites the copied
+        // value for defender-cast zones. 0 = legacy unfiltered/player-spawned zone.
+        [System.NonSerialized] public byte targetTraversalLayers;
     }
 }

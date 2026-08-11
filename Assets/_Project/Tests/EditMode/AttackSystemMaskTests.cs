@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -22,7 +23,8 @@ namespace Wassup.Tests.EditMode
             Faction faction,
             float3 position,
             bool defenderTag = false,
-            bool attackerTag = false)
+            bool attackerTag = false,
+            PlacementLayer traversalLayer = PlacementLayer.None)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(position));
@@ -31,6 +33,11 @@ namespace Wassup.Tests.EditMode
             em.AddBuffer<IncomingDamage>(e);
             if (defenderTag) em.AddComponent<DefenderUnitTag>(e);
             if (attackerTag) em.AddComponent<AttackUnitTag>(e);
+            if (traversalLayer != PlacementLayer.None)
+                em.AddComponentData(e, new PathFollowState
+                {
+                    traversalLayers = (byte)traversalLayer,
+                });
             return e;
         }
 
@@ -114,6 +121,56 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, hazardDamage.Length);
             Assert.AreEqual(4f, hazardDamage[0].amount, 1e-4f);
             Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(defender).Length);
+        }
+
+        [Test]
+        public void DefenderTargetLayers_PathOnlyAndCombined_SelectEligibleMovers()
+        {
+            using var world = new World("AttackSystemMaskTests_TraversalLayers");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            var groundDefender = CreateTarget(em, Faction.DefenderUnit, float3.zero, defenderTag: true);
+            em.AddComponentData(groundDefender, new AttackState
+            {
+                range = 5f,
+                cooldownDuration = 1f,
+                attackTargetCount = 1,
+                targetMask = (int)Faction.EnemyUnit,
+                targetTraversalLayers = (byte)PlacementLayer.Path,
+            });
+            AddDamageOutput(em, groundDefender, 3f);
+
+            var nearbyAir = CreateTarget(em, Faction.EnemyUnit, new float3(0.5f, 0f, 0f),
+                attackerTag: true, traversalLayer: PlacementLayer.Air);
+            var fartherPath = CreateTarget(em, Faction.EnemyUnit, new float3(1f, 0f, 0f),
+                attackerTag: true, traversalLayer: PlacementLayer.Path);
+
+            var antiAir = CreateTarget(em, Faction.DefenderUnit, new float3(20f, 0f, 0f), defenderTag: true);
+            em.AddComponentData(antiAir, new AttackState
+            {
+                range = 5f,
+                cooldownDuration = 1f,
+                attackTargetCount = 2,
+                targetMask = (int)Faction.EnemyUnit,
+                targetTraversalLayers = (byte)(PlacementLayer.Path | PlacementLayer.Air),
+            });
+            AddDamageOutput(em, antiAir, 4f);
+
+            var nearbyPath = CreateTarget(em, Faction.EnemyUnit, new float3(20.5f, 0f, 0f),
+                attackerTag: true, traversalLayer: PlacementLayer.Path);
+            var fartherAir = CreateTarget(em, Faction.EnemyUnit, new float3(21f, 0f, 0f),
+                attackerTag: true, traversalLayer: PlacementLayer.Air);
+
+            Tick(world, simGroup);
+
+            Assert.AreEqual(0, em.GetBuffer<IncomingDamage>(nearbyAir).Length,
+                "일반 방어유닛은 더 가까운 공중 적도 건너뛴다");
+            Assert.AreEqual(3f, em.GetBuffer<IncomingDamage>(fartherPath)[0].amount, 1e-4f);
+            Assert.AreEqual(4f, em.GetBuffer<IncomingDamage>(nearbyPath)[0].amount, 1e-4f,
+                "대공사수는 Path 적도 유효 대상으로 삼는다");
+            Assert.AreEqual(4f, em.GetBuffer<IncomingDamage>(fartherAir)[0].amount, 1e-4f);
         }
     }
 }

@@ -24,6 +24,11 @@ namespace Wassup.Battle.Combat.Projectile
         public float visualScale;
         public int dataIndex;
 
+        // waypoint-routing unit 4 rev 4 — moving victim traversal-layer mask.
+        // Copied to ProjectileState so splash/bounce/path-hit/TileAoe obey the
+        // same contract after launch. 0 = legacy unfiltered.
+        public byte targetTraversalLayers;
+
         // ── Homing trajectory ────────────────────────────────────────────────
         public Entity target;
         public float hitThreshold;

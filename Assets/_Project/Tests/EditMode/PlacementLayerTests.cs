@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Collections;
+using UnityEditor;
 using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
@@ -15,10 +16,13 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Derive_MapsTileTypesToLayers()
         {
-            Assert.AreEqual((byte)PlacementLayer.Ground, PlacementLayers.Derive(MapTileType.Place));
-            Assert.AreEqual((byte)PlacementLayer.Path, PlacementLayers.Derive(MapTileType.Walk));
-            Assert.AreEqual(0, PlacementLayers.Derive(MapTileType.Deco), "장식은 어떤 층도 열지 않는다");
-            Assert.AreEqual(0, PlacementLayers.Derive(MapTileType.Env));
+            Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Air),
+                PlacementLayers.Derive(MapTileType.Place));
+            Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+                PlacementLayers.Derive(MapTileType.Walk));
+            Assert.AreEqual((byte)PlacementLayer.Air, PlacementLayers.Derive(MapTileType.Deco),
+                "장식 칸도 Air 층에는 열린 공간");
+            Assert.AreEqual((byte)PlacementLayer.Air, PlacementLayers.Derive(MapTileType.Env));
         }
 
         [Test]
@@ -27,6 +31,67 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual((byte)PlacementLayer.Ground, PlacementLayers.Sanitize(0x81), "0x80 미정의 비트 제거");
             Assert.AreEqual(PlacementLayers.CellBits, PlacementLayers.Sanitize(0xFF), "All(0xFF) 은 셀에선 정의된 층으로 접힘");
             Assert.AreEqual(0, PlacementLayers.Sanitize(0x80));
+        }
+
+        [TestCase(PlacementLayer.Path, PlacementLayer.Path, true)]
+        [TestCase(PlacementLayer.Path, PlacementLayer.Air, false)]
+        [TestCase(PlacementLayer.Air, PlacementLayer.Air, true)]
+        [TestCase(PlacementLayer.Air, PlacementLayer.Path, false)]
+        [TestCase(PlacementLayer.None, PlacementLayer.Air, true)]
+        public void CanTarget_Uses_TraversalLayer_Intersection(
+            PlacementLayer attackLayers, PlacementLayer targetLayers, bool expected)
+        {
+            Assert.AreEqual(expected,
+                PlacementLayers.CanTarget((byte)attackLayers, (byte)targetLayers));
+        }
+
+        [Test]
+        public void DefenderCatalog_ExistingUnitsArePathOnly_AntiAirTargetsPathAndAir()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
+                "Assets/_Project/Data/DefenderCatalog.asset");
+            Assert.IsNotNull(catalog);
+
+            DefenderUnitData antiAir = null;
+            foreach (var unit in catalog.units)
+            {
+                Assert.IsNotNull(unit, "DefenderCatalog contains a null unit");
+                if (unit.id == "anti_air")
+                {
+                    antiAir = unit;
+                    continue;
+                }
+
+                Assert.AreEqual(PlacementLayer.Path, unit.EffectiveAttackTargetLayers,
+                    $"기존 방어유닛 {unit.id}은 공중 적을 공격하면 안 된다");
+            }
+
+            Assert.IsNotNull(antiAir, "신규 대공사수 데이터가 카탈로그에 등록돼야 한다");
+            Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
+                antiAir.EffectiveAttackTargetLayers,
+                "대공사수는 지상과 공중 적을 모두 공격한다");
+            Assert.AreEqual(Wassup.Battle.Units.Faction.EnemyUnit, antiAir.targetFactions);
+            Assert.AreEqual(0.2f, antiAir.attackCooldown, 1e-4f,
+                "대공사수는 로스터의 초고속 공격 주기를 사용한다");
+            Assert.AreEqual(1, antiAir.outputs.Length);
+            Assert.AreEqual(7f, antiAir.outputs[0].magnitude, 1e-4f,
+                "초고속 연사를 상쇄하는 낮은 발당 피해");
+        }
+
+        [Test]
+        public void EnemyCatalog_SkimmerIsSingleTargetFastAttacker()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<EnemyCatalog>(
+                "Assets/_Project/Data/EnemyCatalog.asset");
+            Assert.IsNotNull(catalog);
+
+            var skimmer = catalog.ById("skimmer");
+            Assert.IsNotNull(skimmer, "Skimmer가 EnemyCatalog에 등록돼야 한다");
+            Assert.AreEqual(PlacementLayer.Air, skimmer.EffectiveTraversalLayers);
+            Assert.AreEqual(1, skimmer.attackTargetCount,
+                "Skimmer는 범위형이 아니라 단일 타겟 공격이어야 한다");
+            Assert.AreEqual(0.2f, skimmer.attackCooldown, 1e-4f,
+                "Skimmer는 빠른 공격 주기를 사용한다");
         }
 
         // 2x1 맵: (0,0)=Ground 층만, (1,0)=Path 층만.

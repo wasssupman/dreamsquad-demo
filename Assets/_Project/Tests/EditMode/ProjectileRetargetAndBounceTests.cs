@@ -7,6 +7,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -50,7 +51,7 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
-        private Entity CreateEnemy(float3 pos)
+        private Entity CreateEnemy(float3 pos, PlacementLayer traversalLayer = PlacementLayer.None)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
@@ -58,6 +59,11 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponent<AttackUnitTag>(e); // 재조준 후보 풀의 진영 축
+            if (traversalLayer != PlacementLayer.None)
+                _em.AddComponentData(e, new PathFollowState
+                {
+                    traversalLayers = (byte)traversalLayer,
+                });
             return e;
         }
 
@@ -140,6 +146,24 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(_em.Exists(proj), "opt-in 하지 않은 투사체는 재조준하지 않는다");
         }
 
+        [Test]
+        public void PathOnly_Retarget_IgnoresCloserAirCandidate()
+        {
+            var doomed = CreateEnemy(new float3(3f, 0f, 0f), PlacementLayer.Path);
+            CreateEnemy(new float3(1f, 0f, 0f), PlacementLayer.Air);
+            var path = CreateEnemy(new float3(2f, 0f, 1f), PlacementLayer.Path);
+            var proj = CreateHomingProjectile(float3.zero, doomed, retargetTileRange: 4);
+            var state = _em.GetComponentData<ProjectileState>(proj);
+            state.targetTraversalLayers = (byte)PlacementLayer.Path;
+            _em.SetComponentData(proj, state);
+
+            _em.DestroyEntity(doomed);
+            Tick();
+
+            Assert.IsTrue(_em.Exists(proj));
+            Assert.AreEqual(path, _em.GetComponentData<ProjectileState>(proj).target);
+        }
+
         // ── ② 방향탄 bounce ────────────────────────────────────────────────
 
         [Test]
@@ -212,6 +236,35 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.IsFalse(_em.Exists(proj), "맞힐 적이 하나뿐이면 튕길 곳이 없어 소멸");
+        }
+
+        [Test]
+        public void PathOnly_DirectionalHit_SkipsAirAndHitsPath()
+        {
+            var air = CreateEnemy(new float3(0.7f, 0f, 0f), PlacementLayer.Air);
+            var path = CreateEnemy(new float3(1f, 0f, 0f), PlacementLayer.Path);
+            var proj = _em.CreateEntity();
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0.9f, 0f, 0f)));
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                movement = MovementKind.DirectionalLinear,
+                payload = PayloadKind.PathHit,
+                direction = new float2(1f, 0f),
+                maxDistance = 10f,
+                prevPos = float3.zero,
+                damage = 20f,
+                speed = 8f,
+                hitThreshold = 0.6f,
+                pierceRemaining = 2,
+                targetTraversalLayers = (byte)PlacementLayer.Path,
+            });
+            _em.AddBuffer<PathHitRecord>(proj);
+
+            Tick();
+
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(air).Length);
+            Assert.AreEqual(20f, _em.GetBuffer<IncomingDamage>(path)[0].amount, 1e-3f);
         }
     }
 }

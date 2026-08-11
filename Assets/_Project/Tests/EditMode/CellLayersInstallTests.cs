@@ -111,10 +111,11 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual((byte)PlacementLayer.Path, field.cellLayers[0],
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air), field.cellLayers[0],
                     "Walk 칸은 저작이 뭐든 Path 로 파생된다 — 배치 저작이 통행을 바꾸지 않는다");
-                Assert.AreEqual((byte)PlacementLayer.Ground, field.cellLayers[1], "Place → Ground");
-                Assert.AreEqual((byte)0, field.cellLayers[2], "Deco → 층 없음");
+                Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Air),
+                    field.cellLayers[1], "Place → Ground|Air");
+                Assert.AreEqual((byte)PlacementLayer.Air, field.cellLayers[2], "Deco → Air");
             }
             finally { map.Dispose(); }
         }
@@ -178,10 +179,14 @@ namespace Wassup.Tests.EditMode
             try
             {
                 var field = Install(map);
-                Assert.AreEqual((byte)PlacementLayer.Path,   field.cellLayers[0], "Walk → Path");
-                Assert.AreEqual((byte)PlacementLayer.Ground, field.cellLayers[1], "Place → Ground");
-                Assert.AreEqual((byte)0,                     field.cellLayers[2], "Deco → 층 없음");
-                Assert.AreEqual((byte)PlacementLayer.Path,   field.cellLayers[3], "Walk → Path");
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+                    field.cellLayers[0], "Walk → Path|Air");
+                Assert.AreEqual((byte)(PlacementLayer.Ground | PlacementLayer.Air),
+                    field.cellLayers[1], "Place → Ground|Air");
+                Assert.AreEqual((byte)PlacementLayer.Air,
+                    field.cellLayers[2], "Deco → Air");
+                Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+                    field.cellLayers[3], "Walk → Path|Air");
             }
             finally { map.Dispose(); }
         }
@@ -482,6 +487,43 @@ namespace Wassup.Tests.EditMode
                     Assert.AreEqual(field.walkMask[i], outMask[i], $"cell {i}");
             }
             finally { outMask.Dispose(); map.Dispose(); }
+        }
+
+        [Test]
+        public void AirLayer_OpensEveryTile_AndIgnoresObstacleOverlay()
+        {
+            // waypoint-routing unit 4 — 비행의 규칙 정체성. 같은 cellLayers/허용 술어를
+            // 쓰되 Air 는 모든 타일에 열리고 지상 차단 해저드도 벽으로 합성하지 않는다.
+            var map = MakeMap(withAuthoredMask: false);
+            var masks = new NativeArray<byte>(1, Allocator.Temp);
+            var outMask = new NativeArray<byte>(4, Allocator.Temp);
+            var blocked = new NativeHashSet<int2>(1, Allocator.Temp);
+            masks[0] = (byte)PlacementLayer.Air;
+            blocked.Add(new int2(1, 0)); // Place 셀을 지상 차단
+            try
+            {
+                SimFieldInstaller.InstallNavFields(
+                    _em, in map, 1f, float3.zero, ref _handles, masks);
+                var field = _em.GetComponentData<FlowFieldSingleton>(_handles.flowField);
+                var obstacles = new ObstacleSingleton { blockedCells = blocked };
+
+                MovementCellTrim.FillWalkMask(
+                    in field, (byte)PlacementLayer.Air, true, in obstacles, outMask);
+
+                for (int i = 0; i < outMask.Length; i++)
+                    Assert.AreEqual(1, outMask[i], $"Air cell {i} — 타일 종류·장애물과 무관");
+
+                int airSlot = field.SlotFor(
+                    FlowFieldSingleton.GoalSentinel, (byte)PlacementLayer.Air);
+                Assert.AreNotEqual(FlowFieldSingleton.PrimarySlot, airSlot, "Air 전용 슬롯이 설치됨");
+            }
+            finally
+            {
+                blocked.Dispose();
+                outMask.Dispose();
+                masks.Dispose();
+                map.Dispose();
+            }
         }
 
         [Test]

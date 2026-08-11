@@ -7,6 +7,7 @@ using Unity.Transforms;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -179,7 +180,22 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_dotQueue.IsEmpty());
         }
 
-        private void AddZoneEffect(CcKind kind, float param1, float restDuration = 2f)
+        [Test]
+        public void PathOnly_Zone_Applies_To_PathEnemy_And_Not_AirEnemy()
+        {
+            AddZoneEffect(CcKind.DoT, param1: 12f, targetLayers: PlacementLayer.Path);
+            var pathEnemy = CreateMover(Faction.EnemyUnit, ZoneWorld, PlacementLayer.Path);
+            CreateMover(Faction.EnemyUnit, ZoneWorld, PlacementLayer.Air);
+
+            Tick();
+
+            Assert.AreEqual(1, _dotQueue.Count);
+            Assert.IsTrue(_dotQueue.TryDequeue(out var evt));
+            Assert.AreEqual(pathEnemy, evt.target);
+        }
+
+        private void AddZoneEffect(CcKind kind, float param1, float restDuration = 2f,
+            PlacementLayer targetLayers = PlacementLayer.None)
         {
             _cellToEffects.Add(ZoneCell, new HazardEffect
             {
@@ -189,17 +205,23 @@ namespace Wassup.Tests.EditMode
                 restDuration = restDuration,
                 tickInterval = 0f,
                 element = DotElement.Fire,
+                targetTraversalLayers = (byte)targetLayers,
             });
         }
 
         private Entity CreateMover(Faction faction) => CreateMover(faction, ZoneWorld);
 
-        private Entity CreateMover(Faction faction, float3 worldPos)
+        private Entity CreateMover(Faction faction, float3 worldPos,
+            PlacementLayer traversalLayer = PlacementLayer.None)
         {
             var entity = _em.CreateEntity();
             _em.AddComponentData(entity, new FactionTag { value = faction });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
-            _em.AddComponentData(entity, new PathFollowState { speed = 1f });
+            _em.AddComponentData(entity, new PathFollowState
+            {
+                speed = 1f,
+                traversalLayers = (byte)traversalLayer,
+            });
             return entity;
         }
 

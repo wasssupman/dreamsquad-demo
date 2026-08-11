@@ -18,6 +18,11 @@ namespace Wassup.Battle.Combat
 
         public int targetMask; // (int)Faction bitmask of attackable factions.
 
+        // waypoint-routing unit 4 rev 4 — moving targets' PathFollowState.traversalLayers
+        // filter. Combat owns the runtime snapshot; Movement is read-only. 0 = legacy
+        // unfiltered (enemy attackers / tests / targets with no traversal layer).
+        public byte targetTraversalLayers;
+
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시(현행). config.
         public float hitDelaySec;
         // 진행 중인 타격 지연 남은 시간(초). >0 = 시작됨/타격 전. runtime(Combat 소유).

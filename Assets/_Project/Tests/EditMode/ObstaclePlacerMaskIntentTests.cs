@@ -35,6 +35,24 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void LegacyMaskWithoutAirBit_IsNotAuthoredPlacementIntent()
+        {
+            // waypoint-routing unit 4 — Air 추가 전 문서는 Ground/Path 비트만 저장한다.
+            // 신규 통행 비트 부재가 수동 배치 저작으로 오인되면 모든 옛 맵의 커빙이 꺼진다.
+            var tiles = MakeTiles();
+            var mask = new NativeArray<byte>(4, Allocator.Temp);
+            try
+            {
+                mask[0] = (byte)PlacementLayer.Ground;
+                mask[1] = (byte)PlacementLayer.Path;
+                mask[2] = (byte)PlacementLayer.Ground;
+                mask[3] = 0;
+                Assert.IsFalse(ObstaclePlacer.HasAuthoredMaskIntent(tiles, mask));
+            }
+            finally { tiles.Dispose(); mask.Dispose(); }
+        }
+
+        [Test]
         public void SingleDifferingCell_HasIntent()
         {
             var tiles = MakeTiles();
