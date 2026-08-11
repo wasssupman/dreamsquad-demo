@@ -63,7 +63,7 @@
       (PlacementAura ×3 · StructureLivePlay ×3 · DragCancelZone · DreamCocoon · KindlerFireStack).
       `SceneTransitionSmokeTest` 는 되돌린 판에서 통과 — **flaky** 다.
       또한 units 2·3·4 전후의 전체 실패 목록이 **완전히 동일**했다.
-- [ ] **Play 육안(사용자)** — 아래 4가지
+- [x] **Play 육안(사용자) 확인 완료 2026-08-11** — 아래 4가지. 표식 위치/크기 조정 요청 없음
 
 | 볼 것 | 판정 |
 |---|---|

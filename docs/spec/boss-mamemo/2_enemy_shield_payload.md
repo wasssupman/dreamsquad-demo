@@ -88,7 +88,8 @@
 - [x] **신규 payload kind 는 `DcApplicability` 분류가 필수다** — 안 하면
       `DcApplicabilityTests.EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs` 가
       "미분류 조합" 으로 빨개진다(실제로 빨개졌고 unit 3 에서 분류했다)
-- [ ] 콘솔 경고 0 — 기존 적 에셋 중 `GrantShield` 저작이 없으므로 새 가드는 침묵해야 한다
+- [x] 콘솔 경고 0 — 다회 Play/PlayMode 세션에서 `GrantShield` 가드 경고 관측 없음
+      (마메모 외 `GrantShield` 저작이 없어 침묵이 정상)
 
 > **이 unit 에는 발동이 없다.** 적에게 실드를 주는 주체가 아직 없으므로 게임 화면은 무변화가 정상이다.
 > 실드를 실제로 두르는 것은 unit 3(꿈의 장막 · 악몽의 가호)이다.

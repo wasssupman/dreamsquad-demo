@@ -99,10 +99,10 @@ Count==1 legacy 동치 · 결정론 · 로테이션 · null 필터 · pool 누�
 - [x] **외형 육안** — 오프스크린 렌더로 Idle/Walk/Attack1 × 보스 3종 대조. 마메모가 나이트캡·졸린 눈·
       베개로 한눈에 구분된다
 - [x] `score-formula.md` 보스 행에 `Boss_Mamemo`
-- [ ] **Play 육안(사용자)**: 5웨이브에 마메모가 스폰되고 골 방향으로 걸어간다 + 호위 3~4기
-- [ ] **Play 육안(사용자)**: 다른 웨이브 구성이 이전과 달라 보이지 않는다
-- [ ] 콘솔 경고 0 — 특히 `BakeNightmareMechanics` 가 빈 mechanics 를 **조용히** 지나가는지
-      (경고를 뱉으면 그게 회귀다)
+- [x] **Play 육안(사용자) 확인 완료 2026-08-11** — 테스트 플랜(`WavePlan_MamemoTest`)·실전 덱
+      다회 플레이로 스폰·이동·호위·웨이브 구성 확인
+- [x] 콘솔 경고 0 — 다회 Play/PlayMode 러너 세션에서 bake 경고 관측 없음(콘솔에 남은 것은
+      MCP/GLES 잡음뿐). mechanics 는 unit 1 부터 채워졌으므로 빈-mechanics 침묵 조건은 소멸
 
 > **검증 절차 주의** (README 계약 11): 능력 검증용으로 `bossPool` 을 마메모 단독 고정하면
 > `Count==1` **rng 미소비 경로**로 갈라져 웨이브 편성이 라이브와 달라진다.
