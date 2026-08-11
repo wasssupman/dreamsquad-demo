@@ -7701,7 +7701,10 @@ namespace Wassup.Bridge
                           m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe ||
                           // ultimate-leap unit 0 — 착지 슬램도 ProjectileSpawnRequest 로 나가므로
                           // SelfTileAoe 와 같은 이유로 dataIndex 가 필수다(아래 loud 거절 참조).
-                          m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap) &&
+                          m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap ||
+                          // boss-mamemo unit 1 — 자장가 펄스 연출(whip 과 같은 hit-VFX 경로).
+                          // 여기선 **선택**이다: 없으면 연출만 없고 수면은 그대로 나간다.
+                          m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep) &&
                          m.payload.projectile != null)
                 {
                     // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
@@ -7720,6 +7723,16 @@ namespace Wassup.Bridge
                     // 거절한다(bake 의 기존 loud 거절 선례와 동일 표현). defender 슬롯 경로도
                     // 같은 규칙을 쓴다.
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                         (m.payload.magnitude < 1f || m.payload.duration <= 0f))
+                {
+                    // boss-mamemo unit 1 — 자장가는 magnitude(인원)·duration(초) 둘 다 필요하다.
+                    // 하나라도 비면 arm 이 매 주기 조용히 no-op 이 되어 "왜 아무도 안 자는지"를
+                    // 영영 알 수 없다. SelfTileAoe 의 loud 거절과 같은 이유로 여기서 끊는다.
+                    // (projectile 은 선택이다 — 없으면 연출만 없고 수면은 나간다.)
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 에 magnitude(재울 인원 >=1) 또는 duration(수면 초 >0) 이 없어 매 주기 no-op 이 된다 — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)

@@ -68,7 +68,30 @@ MonoBehaviour:
     color: {r: 0.62, g: 0.62, b: 0.9, a: 1}
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 5
-  nightmareMechanics: []
+  nightmareMechanics:
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 3.5
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 16
+      magnitude: 3
+      projectile: {fileID: 0}
+      tileRange: 5
+      duration: 4
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
   killScore: 10
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
