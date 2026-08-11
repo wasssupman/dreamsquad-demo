@@ -8,12 +8,12 @@ using Wassup.Data.MapGrid;
 
 namespace Wassup.Tests.EditMode
 {
-    // multi-goal-map 유닛 6 회귀 가드 — 풀 맵의 골/복도 불변식(혼합: 분리 2골 또는 수렴 1골).
-    //   • 골 1~2개(사용자 결정: 목표지점 1~2개만).
-    //   • 각 스폰이 골에 도달.
-    //   • 복도는 골 셀에서만 만난다 — 두 스폰의 corridor(non-goal walk)는 겹치지 않는다.
-    //     (분리 맵=완전 분리, 수렴 맵=골에서만 합류. MapConnectivity 는 "아무 골이든 도달"만 봐서
-    //      복도가 non-goal 에서 병합돼도 통과하므로 이 테스트가 유일 가드.)
+    // multi-goal-map 유닛 6 회귀 가드 — 풀 맵의 골/복도 불변식.
+    //
+    // map-rework unit 1 — 불변식이 **컨셉별로 갈라졌다.** 개편된 맵(ReworkedPaths)은
+    // «광장 합류»가 컨셉의 핵심이라 옛 «복도는 골에서만 만난다»가 정의상 성립하지 않는다.
+    // 대신 새 계약(골 1 · 폭1 Walk 0칸 · 4×4 광장 존재)을 고정한다. 미개편 맵은 자기
+    // unit(map-rework 2~5)이 올 때까지 옛 계약을 유지한다 — 개편 중 조용히 썩지 않게.
     public class MultiGoalPoolSeparationTests
     {
         private static readonly string[] PoolPaths =
@@ -25,11 +25,30 @@ namespace Wassup.Tests.EditMode
             "Assets/_Project/Data/Maps/MapDocument_Zig.asset",
         };
 
+        // map-rework 진행표 — 맵 unit 이 완료될 때마다 여기로 옮긴다.
+        private static readonly HashSet<string> ReworkedPaths = new()
+        {
+            "Assets/_Project/Data/Maps/MapDocument_Serpent.asset",   // unit 1
+        };
+
         [Test]
         public void PoolMap_GoalsCapped_And_CorridorsSeparateExceptAtGoals([ValueSource(nameof(PoolPaths))] string path)
         {
             var doc = AssetDatabase.LoadAssetAtPath<MapDocument>(path);
             Assert.IsNotNull(doc, path + " 로드 실패");
+
+            if (ReworkedPaths.Contains(path))
+            {
+                // 새 컨셉 계약 (map-rework 계약 1~3)
+                Assert.AreEqual(1, doc.Goals?.Count ?? 1, $"{path}: 개편 맵의 마음은 1개");
+                var widthWarnings = new List<string>();
+                MapConceptRules.ValidateCorridorWidth(doc.Tiles, doc.Width, doc.Height, widthWarnings);
+                Assert.IsEmpty(widthWarnings, $"{path}: 폭1 Walk 금지 — {string.Join(" / ", widthWarnings)}");
+                Assert.IsTrue(MapConceptRules.HasPlaza(doc.Tiles, doc.Width, doc.Height),
+                    $"{path}: 4×4 광장 없음");
+                // 연결성은 아래 flood 가 계속 확인한다(골 도달 단언 공유).
+            }
+
             var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.Temp);
             try
             {
@@ -47,11 +66,13 @@ namespace Wassup.Tests.EditMode
                     corridors.Add(corridor);
                 }
 
-                for (int a = 0; a < corridors.Count; a++)
-                    for (int b = a + 1; b < corridors.Count; b++)
-                        foreach (var c in corridors[a])
-                            Assert.IsFalse(corridors[b].Contains(c),
-                                $"{path}: 스폰 {a}·{b} 복도가 non-goal 셀 {c} 를 공유(병합) — 골에서만 만나야");
+                // 복도 분리는 **옛 컨셉의 계약**이다 — 개편 맵은 광장 합류가 정의라 제외.
+                if (!ReworkedPaths.Contains(path))
+                    for (int a = 0; a < corridors.Count; a++)
+                        for (int b = a + 1; b < corridors.Count; b++)
+                            foreach (var c in corridors[a])
+                                Assert.IsFalse(corridors[b].Contains(c),
+                                    $"{path}: 스폰 {a}·{b} 복도가 non-goal 셀 {c} 를 공유(병합) — 골에서만 만나야");
             }
             finally { map.Dispose(); }
         }
