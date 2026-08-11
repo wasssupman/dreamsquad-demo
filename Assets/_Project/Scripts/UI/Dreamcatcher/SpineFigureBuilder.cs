@@ -15,25 +15,31 @@ namespace Wassup.UI
         public static bool CanBuild(ISpineUnitVisualData data, Material mat)
             => data != null && data.SpineSkeletonDataAsset != null && mat != null;
 
-        // 기존 SkeletonGraphic 에 스켈레톤/스킨/동결 포즈를 세팅. sizeDelta 는 rig 원본 rect.
-        public static void Setup(SkeletonGraphic sg, ISpineUnitVisualData data, Material mat, string animName)
+        // SkeletonGraphic + SkeletonAnimation 쌍을 만들고 스킨/동결 포즈를 세팅.
+        // sizeDelta 는 rig 원본 rect.
+        public static SkeletonGraphic Build(GameObject go, ISpineUnitVisualData data, Material mat, string animName)
         {
-            sg.material = mat;
+            var components = SkeletonGraphic.AddSkeletonGraphicAnimationComponents(
+                go, data.SpineSkeletonDataAsset, mat);
+            var sg = components.skeletonRenderer;
+            var skeletonAnimation = components.skeletonAnimation;
+
+            sg.allowMultipleCanvasRenderers = true;
             sg.raycastTarget = false;
-            sg.skeletonDataAsset = data.SpineSkeletonDataAsset;
-            sg.Initialize(true);
             if (sg.Skeleton != null)
                 SpineCombinedSkinCache.Apply(sg.Skeleton, data);
             string anim = string.IsNullOrEmpty(animName) ? data.SpineDeathAnimation : animName;
             if (sg.Skeleton != null && !string.IsNullOrEmpty(anim) && sg.Skeleton.Data.FindAnimation(anim) != null)
             {
-                var te = sg.AnimationState.SetAnimation(0, anim, false);
+                var te = skeletonAnimation.AnimationState.SetAnimation(0, anim, false);
                 te.TrackTime = te.AnimationEnd; // 마지막 프레임
-                sg.Update(0f);                  // 포즈 확정
+                skeletonAnimation.Update(0f);   // 포즈 확정
                 sg.UpdateMesh();                // CanvasRenderer 메시 반영
             }
+            skeletonAnimation.enabled = false; // 동결 포즈는 더 이상 애니메이션 갱신 불필요
             sg.freeze = true; // 이후 정지(이동/회전은 transform 만, 메시 재빌드 없음)
             sg.rectTransform.sizeDelta = new Vector2(400f, 600f);
+            return sg;
         }
 
         // dreamcatcher-orb-dock unit 6 — 이미 만들어진(동결된) 미니어처를 다른 유닛 스킨으로
@@ -47,7 +53,8 @@ namespace Wassup.UI
             SpineCombinedSkinCache.Apply(sg.Skeleton, data);
             bool wasFrozen = sg.freeze;
             sg.freeze = false;
-            sg.Update(0f);
+            if (sg.Animation is SkeletonAnimation skeletonAnimation)
+                skeletonAnimation.Update(0f);
             sg.UpdateMesh();
             sg.freeze = wasFrozen;
         }

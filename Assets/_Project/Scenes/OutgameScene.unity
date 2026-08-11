@@ -9243,7 +9243,7 @@ MonoBehaviour:
   catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   stoneCatalog: {fileID: 11400000, guid: c8bc438b0fcdd46d099efeb04b7e8bac, type: 2}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
-  skeletonGraphicMaterial: {fileID: 2100000, guid: 9c6ec24bca5fc42489fe47358fef0d4a, type: 2}
+  skeletonGraphicMaterial: {fileID: 2100000, guid: b66cf7a186d13054989b33a5c90044e4, type: 2}
   font: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   detailWidth: 0.34
   headerHeight: 0.14

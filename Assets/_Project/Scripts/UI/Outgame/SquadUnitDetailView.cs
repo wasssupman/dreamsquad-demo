@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Spine.Unity;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -22,7 +23,9 @@ namespace Wassup.UI
     // skeleton fall back to their portrait sprite.
     public class SquadUnitDetailView : MonoBehaviour
     {
-        [SerializeField] private SkeletonGraphic spineView;   // scene-authored (unit 5)
+        [FormerlySerializedAs("spineView")]
+        [SerializeField] private SkeletonAnimation spineAnimation;
+        [SerializeField] private SkeletonGraphic spineGraphic;
         [SerializeField] private Image portraitFallback;      // shown when no skeleton
         [SerializeField] private Image rarityFrame;           // panel-edge glow tinted by rarity
         [SerializeField] private RectTransform cardRoot;      // procedural card children go here
@@ -81,7 +84,8 @@ namespace Wassup.UI
         {
             EnsureCardBuilt();
             _current = null;
-            if (spineView != null) spineView.gameObject.SetActive(false);
+            var graphic = SpineGraphic;
+            if (graphic != null) graphic.gameObject.SetActive(false);
             if (portraitFallback != null)
             {
                 Sprite icon = stone != null ? stone.icon : null;
@@ -112,23 +116,25 @@ namespace Wassup.UI
 
         private void BindSpine(DefenderUnitData u)
         {
+            var graphic = SpineGraphic;
+            var animation = SpineAnimation;
             var dataAsset = u != null ? u.SpineSkeletonDataAsset : null;
-            bool hasSkeleton = spineView != null && dataAsset != null;
+            bool hasSkeleton = graphic != null && animation != null && dataAsset != null;
 
-            if (spineView != null) spineView.gameObject.SetActive(hasSkeleton);
+            if (graphic != null) graphic.gameObject.SetActive(hasSkeleton);
             if (hasSkeleton)
             {
-                if (spineView.skeletonDataAsset != dataAsset)
+                if (graphic.skeletonDataAsset != dataAsset)
                 {
-                    spineView.skeletonDataAsset = dataAsset;
-                    spineView.Initialize(true);
+                    animation.SkeletonDataAsset = dataAsset;
+                    animation.Initialize(true);
                 }
-                else if (spineView.Skeleton == null)
+                else if (animation.Skeleton == null)
                 {
-                    spineView.Initialize(false);
+                    animation.Initialize(false);
                 }
-                if (spineView.Skeleton != null)
-                    SpineCombinedSkinCache.Apply(spineView.Skeleton, u);
+                if (graphic.Skeleton != null)
+                    SpineCombinedSkinCache.Apply(graphic.Skeleton, u);
                 PlayIdle();
             }
 
@@ -145,12 +151,33 @@ namespace Wassup.UI
 
         private void PlayIdle()
         {
-            if (spineView == null || spineView.AnimationState == null) return;
-            var data = spineView.Skeleton != null ? spineView.Skeleton.Data : null;
+            var animation = SpineAnimation;
+            if (animation == null || animation.AnimationState == null) return;
+            var data = animation.Skeleton != null ? animation.Skeleton.Data : null;
             if (data == null) return;
             string anim = FirstAnimation(data, idleAnimation, "idle", "Idle", "walk", "Walk");
             if (!string.IsNullOrEmpty(anim))
-                spineView.AnimationState.SetAnimation(0, anim, true);
+                animation.AnimationState.SetAnimation(0, anim, true);
+        }
+
+        private SkeletonGraphic SpineGraphic
+        {
+            get
+            {
+                if (spineGraphic == null && spineAnimation != null)
+                    spineGraphic = spineAnimation.Renderer as SkeletonGraphic;
+                return spineGraphic;
+            }
+        }
+
+        private SkeletonAnimation SpineAnimation
+        {
+            get
+            {
+                if (spineAnimation == null && spineGraphic != null)
+                    spineAnimation = spineGraphic.Animation as SkeletonAnimation;
+                return spineAnimation;
+            }
         }
 
         private static string FirstAnimation(Spine.SkeletonData data, params string[] candidates)

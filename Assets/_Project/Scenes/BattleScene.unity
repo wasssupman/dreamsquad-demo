@@ -2061,7 +2061,7 @@ MonoBehaviour:
   figureGravity: 1500
   figureDamping: 0.9
   representativeUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
-  figureSkeletonMaterial: {fileID: 2100000, guid: 9c6ec24bca5fc42489fe47358fef0d4a, type: 2}
+  figureSkeletonMaterial: {fileID: 2100000, guid: b66cf7a186d13054989b33a5c90044e4, type: 2}
   figureAnimation: Idle
   figureScale: 0.22
   figureFlightSeconds: 0.44

@@ -439,8 +439,8 @@ namespace Wassup.Editor.Portraits
 
                 profile.ResolveFraming(defender.id, out Vector2 unitOffset, out float sizeMultiplier);
                 var anchorMidpoint = new Vector2(
-                    (head.WorldX + pelvis.WorldX) * 0.5f,
-                    (head.WorldY + pelvis.WorldY) * 0.5f);
+                    (head.AppliedPose.WorldX + pelvis.AppliedPose.WorldX) * 0.5f,
+                    (head.AppliedPose.WorldY + pelvis.AppliedPose.WorldY) * 0.5f);
                 Vector2 center = anchorMidpoint + profile.AnchorOffset + unitOffset;
                 camera.transform.position = new Vector3(center.x, center.y, -10f);
                 camera.orthographicSize = profile.OrthographicSize * sizeMultiplier;
@@ -559,8 +559,8 @@ namespace Wassup.Editor.Portraits
             DefenderPortraitBakeProfile profile,
             DefenderUnitData defender)
         {
-            SkeletonAnimation skeleton = SkeletonAnimation.NewSkeletonAnimationGameObject(
-                defender.skeletonDataAsset);
+            var components = SkeletonAnimation.NewSkeletonAnimationGameObject(defender.skeletonDataAsset);
+            SkeletonAnimation skeleton = components.skeletonAnimation;
             skeleton.gameObject.name = "__DefenderPortraitSkeleton";
             PreparePreviewObject(skeleton.gameObject, scene);
             skeleton.Initialize(false);
@@ -578,7 +578,7 @@ namespace Wassup.Editor.Portraits
             TrackEntry entry = skeleton.AnimationState.SetAnimation(0, animationName, false);
             entry.TrackTime = Mathf.Clamp(profile.PoseTimeSeconds, 0f, animation.Duration);
             skeleton.Update(0f);
-            skeleton.LateUpdate();
+            components.skeletonRenderer.LateUpdate();
             return skeleton;
         }
 

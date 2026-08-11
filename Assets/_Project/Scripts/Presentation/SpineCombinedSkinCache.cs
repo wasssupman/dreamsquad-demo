@@ -19,7 +19,7 @@ namespace Wassup.Presentation
         private static readonly ConditionalWeakTable<SkeletonData, Dictionary<string, Skin>> Cache = new();
 
         // 스킨 적용 단일 진입점. 파츠 목록이 있으면 combined skin, 없으면 단일 SpineSkinName.
-        // 슬롯 틴트는 SetSlotsToSetupPose "이후" 적용해야 한다(setup pose 가 슬롯 색을 리셋).
+        // 슬롯 틴트는 SetupPoseSlots "이후" 적용해야 한다(setup pose 가 슬롯 색을 리셋).
         public static void Apply(Skeleton skeleton, ISpineUnitVisualData data)
         {
             if (skeleton == null || data == null) return;
@@ -27,7 +27,7 @@ namespace Wassup.Presentation
             if (skin != null)
             {
                 skeleton.SetSkin(skin);
-                skeleton.SetSlotsToSetupPose();
+                skeleton.SetupPoseSlots();
             }
             ApplySlotColors(skeleton, data.SpineSlotColors, data.SpineDisplayName);
         }

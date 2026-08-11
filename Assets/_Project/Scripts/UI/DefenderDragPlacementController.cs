@@ -1357,9 +1357,10 @@ namespace Wassup.UI
             spineChild.transform.SetParent(swingPivot.transform, false);
             spineChild.transform.localScale = Vector3.one * scale;
 
-            var skeleton = spineChild.AddComponent<SkeletonAnimation>();
-            skeleton.skeletonDataAsset = unitData.skeletonDataAsset;
-            skeleton.initialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
+            var components = SkeletonAnimation.AddToGameObject(spineChild, null);
+            var skeleton = components.skeletonAnimation;
+            components.skeletonRenderer.SkeletonDataAsset = unitData.skeletonDataAsset;
+            components.skeletonRenderer.InitialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
             skeleton.Initialize(true);
 
             // unit-parts-appearance 1 — 스폰 경로(SpineUnitView)와 동일한 공용 헬퍼로 일원화.

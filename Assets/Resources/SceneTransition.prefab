@@ -63,6 +63,7 @@ GameObject:
   - component: {fileID: 1000000000000000021}
   - component: {fileID: 1000000000000000022}
   - component: {fileID: 1000000000000000023}
+  - component: {fileID: 110730600161995638}
   m_Layer: 0
   m_Name: Runner1
   m_TagString: Untagged
@@ -107,7 +108,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d85b887af7e6c3f45a2e2d2920d641bc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonGraphic
   m_Material: {fileID: 2100000, guid: 066d2ecbc1c3c0d4292b48cd9b457715, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -118,18 +119,38 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  initialSkinName: full_skins
+  initialFlipX: 0
+  initialFlipY: 0
+  meshSettings:
+    useClipping: 1
+    zSpacing: 0
+    tintBlack: 0
+    canvasGroupCompatible: 1
+    pmaVertexColors: 0
+    addNormals: 0
+    calculateTangents: 0
+    immutableTriangles: 0
+  updateWhenInvisible: 3
+  clearStateOnDisable: 0
+  separatorSlotNames: []
+  enableSeparatorSlots: 0
+  disableRenderingOnOverride: 1
+  physicsPositionInheritanceFactor: {x: 1, y: 1}
+  physicsRotationInheritanceFactor: 1
+  physicsPositionInheritanceLimit: {x: Infinity, y: Infinity}
+  physicsRotationInheritanceLimit: 3.4028235e+38
+  physicsMovementRelativeTo: {fileID: 0}
+  threadedMeshGeneration: 2
+  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
+  freeze: 0
+  allowMultipleCanvasRenderers: 1
+  updateSeparatorPartLocation: 1
+  updateSeparatorPartScale: 0
   additiveMaterial: {fileID: 0}
   multiplyMaterial: {fileID: 0}
   screenMaterial: {fileID: 0}
   forceAdditiveMaterial: 0
-  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
-  initialSkinName: full_skins
-  initialFlipX: 0
-  initialFlipY: 0
-  startingAnimation: Run
-  startingLoop: 1
-  timeScale: 1
-  freeze: 0
   layoutScaleMode: 0
   referenceSize: {x: 1, y: 1}
   pivotOffset: {x: 0, y: 0}
@@ -137,30 +158,51 @@ MonoBehaviour:
   layoutScale: 1
   rectTransformSize: {x: 0, y: 0}
   editReferenceRect: 0
-  updateWhenInvisible: 3
-  allowMultipleCanvasRenderers: 0
   canvasRenderers: []
-  separatorSlotNames: []
-  enableSeparatorSlots: 0
   separatorParts: []
-  updateSeparatorPartLocation: 1
-  updateSeparatorPartScale: 0
   disableMeshAssignmentOnOverride: 1
-  physicsPositionInheritanceFactor: {x: 1, y: 1}
-  physicsRotationInheritanceFactor: 1
-  physicsMovementRelativeTo: {fileID: 0}
-  meshGenerator:
-    settings:
-      useClipping: 1
-      zSpacing: 0
-      tintBlack: 0
-      canvasGroupCompatible: 0
-      pmaVertexColors: 1
-      addNormals: 0
-      calculateTangents: 0
-      immutableTriangles: 0
+  wasDeprecatedTransferred: 1
+  startingAnimationDeprecated: Run
+  startingLoopDeprecated: 1
+  timeScaleDeprecated: 1
+  unscaledTimeDeprecated: 0
+--- !u!114 &110730600161995638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d247ba06193faa74d9335f5481b2b56c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonAnimation
   updateTiming: 1
+  threadedAnimation: 2
+  animationName: Run
+  loop: 1
+  timeScale: 1
   unscaledTime: 0
+  wasDeprecatedTransferred: 1
+  skeletonDataAssetDeprecated: {fileID: 0}
+  initialSkinNameDeprecated:
+  editorSkipSkinSyncDeprecated: 0
+  initialFlipXDeprecated: 0
+  initialFlipYDeprecated: 0
+  updateModeDeprecated: 3
+  updateWhenInvisibleDeprecated: 3
+  separatorSlotNamesDeprecated: []
+  zSpacingDeprecated: 0
+  useClippingDeprecated: 1
+  immutableTrianglesDeprecated: 0
+  pmaVertexColorsDeprecated: 1
+  clearStateOnDisableDeprecated: 0
+  tintBlackDeprecated: 0
+  singleSubmeshDeprecated: 0
+  addNormalsDeprecated: 0
+  calculateTangentsDeprecated: 0
+  maskInteractionDeprecated: 0
 --- !u!1 &1000000000000000030
 GameObject:
   m_ObjectHideFlags: 0
@@ -172,6 +214,7 @@ GameObject:
   - component: {fileID: 1000000000000000031}
   - component: {fileID: 1000000000000000032}
   - component: {fileID: 1000000000000000033}
+  - component: {fileID: 6761679214850573354}
   m_Layer: 0
   m_Name: Runner2
   m_TagString: Untagged
@@ -216,7 +259,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d85b887af7e6c3f45a2e2d2920d641bc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonGraphic
   m_Material: {fileID: 2100000, guid: 066d2ecbc1c3c0d4292b48cd9b457715, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -227,18 +270,38 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  initialSkinName: full_skins
+  initialFlipX: 0
+  initialFlipY: 0
+  meshSettings:
+    useClipping: 1
+    zSpacing: 0
+    tintBlack: 0
+    canvasGroupCompatible: 1
+    pmaVertexColors: 0
+    addNormals: 0
+    calculateTangents: 0
+    immutableTriangles: 0
+  updateWhenInvisible: 3
+  clearStateOnDisable: 0
+  separatorSlotNames: []
+  enableSeparatorSlots: 0
+  disableRenderingOnOverride: 1
+  physicsPositionInheritanceFactor: {x: 1, y: 1}
+  physicsRotationInheritanceFactor: 1
+  physicsPositionInheritanceLimit: {x: Infinity, y: Infinity}
+  physicsRotationInheritanceLimit: 3.4028235e+38
+  physicsMovementRelativeTo: {fileID: 0}
+  threadedMeshGeneration: 2
+  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
+  freeze: 0
+  allowMultipleCanvasRenderers: 1
+  updateSeparatorPartLocation: 1
+  updateSeparatorPartScale: 0
   additiveMaterial: {fileID: 0}
   multiplyMaterial: {fileID: 0}
   screenMaterial: {fileID: 0}
   forceAdditiveMaterial: 0
-  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
-  initialSkinName: full_skins
-  initialFlipX: 0
-  initialFlipY: 0
-  startingAnimation: Run
-  startingLoop: 1
-  timeScale: 1
-  freeze: 0
   layoutScaleMode: 0
   referenceSize: {x: 1, y: 1}
   pivotOffset: {x: 0, y: 0}
@@ -246,30 +309,51 @@ MonoBehaviour:
   layoutScale: 1
   rectTransformSize: {x: 0, y: 0}
   editReferenceRect: 0
-  updateWhenInvisible: 3
-  allowMultipleCanvasRenderers: 0
   canvasRenderers: []
-  separatorSlotNames: []
-  enableSeparatorSlots: 0
   separatorParts: []
-  updateSeparatorPartLocation: 1
-  updateSeparatorPartScale: 0
   disableMeshAssignmentOnOverride: 1
-  physicsPositionInheritanceFactor: {x: 1, y: 1}
-  physicsRotationInheritanceFactor: 1
-  physicsMovementRelativeTo: {fileID: 0}
-  meshGenerator:
-    settings:
-      useClipping: 1
-      zSpacing: 0
-      tintBlack: 0
-      canvasGroupCompatible: 0
-      pmaVertexColors: 1
-      addNormals: 0
-      calculateTangents: 0
-      immutableTriangles: 0
+  wasDeprecatedTransferred: 1
+  startingAnimationDeprecated: Run
+  startingLoopDeprecated: 1
+  timeScaleDeprecated: 1
+  unscaledTimeDeprecated: 0
+--- !u!114 &6761679214850573354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000000000000000030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d247ba06193faa74d9335f5481b2b56c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonAnimation
   updateTiming: 1
+  threadedAnimation: 2
+  animationName: Run
+  loop: 1
+  timeScale: 1
   unscaledTime: 0
+  wasDeprecatedTransferred: 1
+  skeletonDataAssetDeprecated: {fileID: 0}
+  initialSkinNameDeprecated:
+  editorSkipSkinSyncDeprecated: 0
+  initialFlipXDeprecated: 0
+  initialFlipYDeprecated: 0
+  updateModeDeprecated: 3
+  updateWhenInvisibleDeprecated: 3
+  separatorSlotNamesDeprecated: []
+  zSpacingDeprecated: 0
+  useClippingDeprecated: 1
+  immutableTrianglesDeprecated: 0
+  pmaVertexColorsDeprecated: 1
+  clearStateOnDisableDeprecated: 0
+  tintBlackDeprecated: 0
+  singleSubmeshDeprecated: 0
+  addNormalsDeprecated: 0
+  calculateTangentsDeprecated: 0
+  maskInteractionDeprecated: 0
 --- !u!1 &1000000000000000040
 GameObject:
   m_ObjectHideFlags: 0
@@ -325,7 +409,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -462,7 +546,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 2100000, guid: 31b16d9606de5b94da89d0f04a49468a, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -493,6 +577,7 @@ GameObject:
   - component: {fileID: 321415925058562594}
   - component: {fileID: 276445982631320970}
   - component: {fileID: 71648459363212362}
+  - component: {fileID: 516027228446651932}
   m_Layer: 0
   m_Name: Runner0
   m_TagString: Untagged
@@ -537,7 +622,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d85b887af7e6c3f45a2e2d2920d641bc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonGraphic
   m_Material: {fileID: 2100000, guid: 066d2ecbc1c3c0d4292b48cd9b457715, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -548,18 +633,38 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  initialSkinName: full_skins
+  initialFlipX: 0
+  initialFlipY: 0
+  meshSettings:
+    useClipping: 1
+    zSpacing: 0
+    tintBlack: 0
+    canvasGroupCompatible: 1
+    pmaVertexColors: 0
+    addNormals: 0
+    calculateTangents: 0
+    immutableTriangles: 0
+  updateWhenInvisible: 3
+  clearStateOnDisable: 0
+  separatorSlotNames: []
+  enableSeparatorSlots: 0
+  disableRenderingOnOverride: 1
+  physicsPositionInheritanceFactor: {x: 1, y: 1}
+  physicsRotationInheritanceFactor: 1
+  physicsPositionInheritanceLimit: {x: Infinity, y: Infinity}
+  physicsRotationInheritanceLimit: 3.4028235e+38
+  physicsMovementRelativeTo: {fileID: 0}
+  threadedMeshGeneration: 2
+  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
+  freeze: 0
+  allowMultipleCanvasRenderers: 1
+  updateSeparatorPartLocation: 1
+  updateSeparatorPartScale: 0
   additiveMaterial: {fileID: 0}
   multiplyMaterial: {fileID: 0}
   screenMaterial: {fileID: 0}
   forceAdditiveMaterial: 0
-  m_SkeletonColor: {r: 1, g: 1, b: 1, a: 1}
-  initialSkinName: full_skins
-  initialFlipX: 0
-  initialFlipY: 0
-  startingAnimation: Run
-  startingLoop: 1
-  timeScale: 1
-  freeze: 0
   layoutScaleMode: 0
   referenceSize: {x: 1, y: 1}
   pivotOffset: {x: 0, y: 0}
@@ -567,30 +672,51 @@ MonoBehaviour:
   layoutScale: 1
   rectTransformSize: {x: 0, y: 0}
   editReferenceRect: 0
-  updateWhenInvisible: 3
-  allowMultipleCanvasRenderers: 0
   canvasRenderers: []
-  separatorSlotNames: []
-  enableSeparatorSlots: 0
   separatorParts: []
-  updateSeparatorPartLocation: 1
-  updateSeparatorPartScale: 0
   disableMeshAssignmentOnOverride: 1
-  physicsPositionInheritanceFactor: {x: 1, y: 1}
-  physicsRotationInheritanceFactor: 1
-  physicsMovementRelativeTo: {fileID: 0}
-  meshGenerator:
-    settings:
-      useClipping: 1
-      zSpacing: 0
-      tintBlack: 0
-      canvasGroupCompatible: 0
-      pmaVertexColors: 1
-      addNormals: 0
-      calculateTangents: 0
-      immutableTriangles: 0
+  wasDeprecatedTransferred: 1
+  startingAnimationDeprecated: Run
+  startingLoopDeprecated: 1
+  timeScaleDeprecated: 1
+  unscaledTimeDeprecated: 0
+--- !u!114 &516027228446651932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2745184279322016484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d247ba06193faa74d9335f5481b2b56c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonAnimation
   updateTiming: 1
+  threadedAnimation: 2
+  animationName: Run
+  loop: 1
+  timeScale: 1
   unscaledTime: 0
+  wasDeprecatedTransferred: 1
+  skeletonDataAssetDeprecated: {fileID: 0}
+  initialSkinNameDeprecated:
+  editorSkipSkinSyncDeprecated: 0
+  initialFlipXDeprecated: 0
+  initialFlipYDeprecated: 0
+  updateModeDeprecated: 3
+  updateWhenInvisibleDeprecated: 3
+  separatorSlotNamesDeprecated: []
+  zSpacingDeprecated: 0
+  useClippingDeprecated: 1
+  immutableTrianglesDeprecated: 0
+  pmaVertexColorsDeprecated: 1
+  clearStateOnDisableDeprecated: 0
+  tintBlackDeprecated: 0
+  singleSubmeshDeprecated: 0
+  addNormalsDeprecated: 0
+  calculateTangentsDeprecated: 0
+  maskInteractionDeprecated: 0
 --- !u!1 &3466874352544471334
 GameObject:
   m_ObjectHideFlags: 0
@@ -668,7 +794,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
@@ -691,7 +817,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
@@ -720,7 +846,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbe752fbb4d2a499d964022c639f65c9, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SceneTransition
   swapDuration: 1.2
   minLoadingSeconds: 2
@@ -798,7 +924,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.05, g: 0.05, b: 0.07, a: 1}

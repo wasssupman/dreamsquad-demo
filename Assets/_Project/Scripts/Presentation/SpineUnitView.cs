@@ -12,6 +12,7 @@ namespace Wassup.Presentation
     public class SpineUnitView : MonoBehaviour
     {
         private SkeletonAnimation _skeleton;
+        private SkeletonRenderer _skeletonRenderer;
         private ISpineUnitVisualData _visualData;
         private IDefenderSpineExtras _defenderExtras;
         private Entity _entity;
@@ -70,9 +71,11 @@ namespace Wassup.Presentation
             ApplyRenderScale();                // 계약 4 — localScale 직접 대입은 여기서도 하지 않는다
             ApplyRenderPosition(worldPos);
 
-            _skeleton = gameObject.AddComponent<SkeletonAnimation>();
-            _skeleton.skeletonDataAsset = visualData.SpineSkeletonDataAsset;
-            _skeleton.initialSkinName = string.IsNullOrEmpty(visualData.SpineSkinName) ? "default" : visualData.SpineSkinName;
+            var components = SkeletonAnimation.AddToGameObject(gameObject, null);
+            _skeletonRenderer = components.skeletonRenderer;
+            _skeleton = components.skeletonAnimation;
+            _skeletonRenderer.SkeletonDataAsset = visualData.SpineSkeletonDataAsset;
+            _skeletonRenderer.InitialSkinName = string.IsNullOrEmpty(visualData.SpineSkinName) ? "default" : visualData.SpineSkinName;
             _skeleton.Initialize(true);
             _meshRenderer = GetComponent<MeshRenderer>();
 
@@ -129,7 +132,7 @@ namespace Wassup.Presentation
         private bool IsLocomotionLoopPlaying()
         {
             if (_dying || _skeleton == null) return false;
-            var current = _skeleton.AnimationState?.GetCurrent(0);
+            var current = _skeleton.AnimationState?.GetTrack(0);
             return current != null && current.Loop;
         }
 
@@ -362,19 +365,24 @@ namespace Wassup.Presentation
             {
                 if (!_hoverHighlightActive)
                 {
-                    _savedTint = new Color(skel.R, skel.G, skel.B);
+                    Color savedColor = skel.GetColor();
+                    _savedTint = new Color(savedColor.r, savedColor.g, savedColor.b);
                     _hoverHighlightActive = true;
                 }
-                skel.R = tint.r;
-                skel.G = tint.g;
-                skel.B = tint.b;
+                Color color = skel.GetColor();
+                color.r = tint.r;
+                color.g = tint.g;
+                color.b = tint.b;
+                skel.SetColor(color);
             }
             else if (_hoverHighlightActive)
             {
                 _hoverHighlightActive = false;
-                skel.R = _savedTint.r;
-                skel.G = _savedTint.g;
-                skel.B = _savedTint.b;
+                Color color = skel.GetColor();
+                color.r = _savedTint.r;
+                color.g = _savedTint.g;
+                color.b = _savedTint.b;
+                skel.SetColor(color);
             }
         }
 
@@ -387,9 +395,11 @@ namespace Wassup.Presentation
             // 호버 강조 중엔 저장값으로 흡수 — 해제 시 이 색으로 복원된다.
             if (_hoverHighlightActive) { _savedTint = tint; return; }
             var skel = _skeleton.Skeleton;
-            skel.R = tint.r;
-            skel.G = tint.g;
-            skel.B = tint.b;
+            Color color = skel.GetColor();
+            color.r = tint.r;
+            color.g = tint.g;
+            color.b = tint.b;
+            skel.SetColor(color);
         }
 
         // card-fly-to-target-absorb unit 1 — 카드 흡수 묵직 임팩트(타겟 월드 반응).
@@ -469,11 +479,15 @@ namespace Wassup.Presentation
             // 연발 가드(rev 2) — 앞 flash 가 skel 을 흰빛으로 밀어둔 채 새 flash 가 "현재 색"을
             // 캡처하면 복귀 목표가 중간 흰빛으로 오염돼 유닛이 밝게 굳는다. 진행 중이면
             // 기존 restore 를 승계한다(발동 임팩트가 연발 경로를 만들며 노출된 잠재 버그).
+            Color currentColor = skel.GetColor();
             Color restore = _hoverHighlightActive ? _savedTint
-                : (_flashActive ? _flashRestore : new Color(skel.R, skel.G, skel.B));
+                : (_flashActive ? _flashRestore : new Color(currentColor.r, currentColor.g, currentColor.b));
             _flashRestore = restore;
             _flashActive = true;
-            skel.R = 1f; skel.G = 1f; skel.B = 1f;
+            currentColor.r = 1f;
+            currentColor.g = 1f;
+            currentColor.b = 1f;
+            skel.SetColor(currentColor);
             float e = 0f;
             while (e < dur)
             {
@@ -481,9 +495,11 @@ namespace Wassup.Presentation
                 if (_dying || _skeleton == null || _skeleton.Skeleton == null) yield break;
                 float k = Mathf.Clamp01(e / dur);
                 skel = _skeleton.Skeleton;
-                skel.R = Mathf.Lerp(1f, restore.r, k);
-                skel.G = Mathf.Lerp(1f, restore.g, k);
-                skel.B = Mathf.Lerp(1f, restore.b, k);
+                currentColor = skel.GetColor();
+                currentColor.r = Mathf.Lerp(1f, restore.r, k);
+                currentColor.g = Mathf.Lerp(1f, restore.g, k);
+                currentColor.b = Mathf.Lerp(1f, restore.b, k);
+                skel.SetColor(currentColor);
                 yield return null;
             }
             if (!_dying && _skeleton != null && _skeleton.Skeleton != null)
@@ -491,7 +507,11 @@ namespace Wassup.Presentation
                 var s = _skeleton.Skeleton;
                 // 복귀 목표를 다시 저장값 기준으로 — hover 중이면 _savedTint 가 최신 resting.
                 Color target = _hoverHighlightActive ? _savedTint : restore;
-                s.R = target.r; s.G = target.g; s.B = target.b;
+                currentColor = s.GetColor();
+                currentColor.r = target.r;
+                currentColor.g = target.g;
+                currentColor.b = target.b;
+                s.SetColor(currentColor);
             }
             _flashActive = false; // 연발 시 뒤 코루틴이 마지막으로 닫으며 해제
         }
@@ -503,7 +523,11 @@ namespace Wassup.Presentation
         {
             float a = Mathf.Clamp01(alpha);
             if (!_dying && _skeleton != null && _skeleton.Skeleton != null)
-                _skeleton.Skeleton.A = a;
+            {
+                Color color = _skeleton.Skeleton.GetColor();
+                color.a = a;
+                _skeleton.Skeleton.SetColor(color);
+            }
             _blob?.SetDimAlpha(transparent ? a : 1f);
             // 그림자 캐스팅 토글은 상태 변화 시에만 — QuadUnitView 와 일관, 매 프레임 GetComponentsInChildren alloc 방지.
             if (BattleBridge.UseRealShadows && transparent != _shadowTransparent)
@@ -556,7 +580,7 @@ namespace Wassup.Presentation
 
             var rig = Instantiate(prefab, transform);
             _weaponTrail = rig.GetComponent<WeaponTrailRig>();
-            if (_weaponTrail != null) _weaponTrail.Bind(_skeleton);
+            if (_weaponTrail != null) _weaponTrail.Bind(_skeletonRenderer);
         }
 
         // spine-weapon-trail unit 1 — 방출은 **스윙 구간에만** 건다. 종료 시각은
@@ -654,7 +678,7 @@ namespace Wassup.Presentation
         private bool IsAttackAnimationPlaying()
         {
             if (_skeleton == null || string.IsNullOrEmpty(_attackAnimationName)) return false;
-            var current = _skeleton.AnimationState?.GetCurrent(0);
+            var current = _skeleton.AnimationState?.GetTrack(0);
             return current != null
                    && !current.Loop
                    && current.Animation != null
@@ -701,7 +725,7 @@ namespace Wassup.Presentation
             {
                 var bone = _skeleton.Skeleton.FindBone(_defenderExtras.SpineCastAnchorBone);
                 if (bone != null)
-                    return transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+                    return transform.TransformPoint(new Vector3(bone.AppliedPose.WorldX, bone.AppliedPose.WorldY, 0f));
             }
             var off = _defenderExtras.SpineCastAnchorLocalOffset;
             if (_skeleton != null && _skeleton.Skeleton != null && _skeleton.Skeleton.ScaleX < 0f)
@@ -745,7 +769,7 @@ namespace Wassup.Presentation
         {
             if (_dying || _skeleton == null) return;
             if (string.IsNullOrEmpty(ResolveAnimation(_visualData.SpineWalkAnimation))) return;
-            var current = _skeleton.AnimationState?.GetCurrent(0);
+            var current = _skeleton.AnimationState?.GetTrack(0);
             if (current == null || !current.Loop) return; // 원샷 진행 중 — 유지
 
             // _moving 은 UpdateWalkTimeScale 이 이미 갱신(같은 프레임, UpdatePosition 순서).

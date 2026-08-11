@@ -91,8 +91,7 @@ namespace Wassup.UI
             vr.anchorMin = vr.anchorMax = new Vector2(0.5f, 0f);
             vr.pivot = new Vector2(0.5f, 0.5f);
 
-            var sg = go.AddComponent<SkeletonGraphic>();
-            SpineFigureBuilder.Setup(sg, data, mat, animName);
+            var sg = SpineFigureBuilder.Build(go, data, mat, animName);
             go.transform.localScale = Vector3.one * scale;
             return sg;
         }

@@ -130,7 +130,7 @@ namespace Wassup.Core
             if (loadingRunners == null) return;
             _runnerDefaultSkins = new string[loadingRunners.Length];
             for (int i = 0; i < loadingRunners.Length; i++)
-                _runnerDefaultSkins[i] = loadingRunners[i] != null ? loadingRunners[i].initialSkinName : null;
+                _runnerDefaultSkins[i] = loadingRunners[i] != null ? loadingRunners[i].InitialSkinName : null;
         }
 
         private void OnDestroy()
@@ -310,7 +310,7 @@ namespace Wassup.Core
                 if (skin != null)
                 {
                     runner.Skeleton.SetSkin(skin);
-                    runner.Skeleton.SetSlotsToSetupPose();
+                    runner.Skeleton.SetupPoseSlots();
                 }
             }
             PlayRun(runner);
@@ -319,8 +319,9 @@ namespace Wassup.Core
         // Loop the run animation, already in motion before the runner is revealed.
         private void PlayRun(SkeletonGraphic runner)
         {
-            if (runner.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
-                runner.AnimationState.SetAnimation(0, loadingAnimation, true);
+            var animation = runner.Animation as SkeletonAnimation;
+            if (animation != null && animation.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
+                animation.AnimationState.SetAnimation(0, loadingAnimation, true);
         }
 
         // 계약 #7 — all cover motion is unscaled, independent of TimeManager / pause.

@@ -123,6 +123,11 @@ namespace LayerLab.ArtMaker
                     skeletonGraphic = GetComponentInChildren<SkeletonGraphic>();
                 }
             }
+
+            if (skeletonAnimation == null && skeletonGraphic != null)
+            {
+                skeletonAnimation = GetSkeletonGraphicAnimation();
+            }
         }
 
         /// <summary>
@@ -140,7 +145,7 @@ namespace LayerLab.ArtMaker
         /// </summary>
         private void LateUpdate()
         {
-            if (_hasCustomColors && _animationState != null && _animationState.GetCurrent(0) != null)
+            if (_hasCustomColors && _animationState != null && _animationState.GetTrack(0) != null)
             {
                 ApplyCustomColors();
             }
@@ -171,6 +176,11 @@ namespace LayerLab.ArtMaker
         /// </summary>
         private void InitializeSkeletonComponents()
         {
+            if (skeletonAnimation == null && skeletonGraphic != null)
+            {
+                skeletonAnimation = GetSkeletonGraphicAnimation();
+            }
+
             if (skeletonAnimation != null)
             {
                 _skeletonComponent = skeletonAnimation;
@@ -179,14 +189,32 @@ namespace LayerLab.ArtMaker
             }
             else if (skeletonGraphic != null)
             {
-                _skeletonComponent = skeletonGraphic;
                 _skeleton = skeletonGraphic.Skeleton;
-                _animationState = skeletonGraphic.AnimationState;
+                Debug.LogError("SkeletonGraphic requires a companion SkeletonAnimation component in Spine 4.3.");
             }
             else
             {
                 Debug.LogError("PartsManager에 SkeletonAnimation 또는 SkeletonGraphic이 없습니다!");
             }
+        }
+
+        /// <summary>
+        /// Resolve the animation component split from SkeletonGraphic in Spine 4.3.
+        /// </summary>
+        private SkeletonAnimation GetSkeletonGraphicAnimation()
+        {
+            var animation = skeletonGraphic.Animation as SkeletonAnimation;
+            if (animation == null)
+            {
+                animation = skeletonGraphic.GetComponent<SkeletonAnimation>();
+            }
+
+            if (animation != null && skeletonGraphic.Animation == null)
+            {
+                skeletonGraphic.Animation = animation;
+            }
+
+            return animation;
         }
 
         /// <summary>
@@ -628,7 +656,7 @@ namespace LayerLab.ArtMaker
         /// Get skeleton animation
         /// </summary>
         /// <returns>스켈레톤 애니메이션 / Skeleton animation</returns>
-        /// <remarks>SkeletonGraphic 사용 시 null 반환 가능 / May return null when using SkeletonGraphic</remarks>
+        /// <remarks>Spine 4.3 resolves the companion SkeletonAnimation when using SkeletonGraphic.</remarks>
         public SkeletonAnimation GetSkeletonAnimation() => skeletonAnimation;
 
         /// <summary>
@@ -780,7 +808,7 @@ namespace LayerLab.ArtMaker
 
             _combinedSkin.AddSkin(_characterSkin);
             _skeleton.SetSkin(_combinedSkin);
-            _skeleton.SetSlotsToSetupPose();
+            _skeleton.SetupPoseSlots();
 
             if (_hasCustomColors)
             {
@@ -1003,7 +1031,7 @@ namespace LayerLab.ArtMaker
         {
             previousSkin.Clear();
             _skeleton.Skin = repackedSkin;
-            _skeleton.SetSlotsToSetupPose();
+            _skeleton.SetupPoseSlots();
             _animationState.Apply(_skeleton);
 
             AtlasUtilities.ClearCache();

@@ -90,14 +90,14 @@ namespace Wassup.Presentation
             if (skeletonAnimation != null && data.skeletonDataAsset != null)
             {
                 skeletonAnimation.skeletonDataAsset = data.skeletonDataAsset;
-                skeletonAnimation.initialSkinName = string.IsNullOrEmpty(data.spineSkinName) ? "default" : data.spineSkinName;
-                if (!skeletonAnimation.valid)
+                skeletonAnimation.Renderer.InitialSkinName = string.IsNullOrEmpty(data.spineSkinName) ? "default" : data.spineSkinName;
+                if (!skeletonAnimation.IsValid)
                     skeletonAnimation.Initialize(false);
 
                 if (!string.IsNullOrEmpty(data.idleAnimation) &&
                     skeletonAnimation.Skeleton != null &&
                     skeletonAnimation.Skeleton.Data.FindAnimation(data.idleAnimation) != null &&
-                    skeletonAnimation.AnimationState.GetCurrent(0)?.Animation?.Name != data.idleAnimation)
+                    skeletonAnimation.AnimationState.GetTrack(0)?.Animation?.Name != data.idleAnimation)
                 {
                     skeletonAnimation.AnimationState.SetAnimation(0, data.idleAnimation, true);
                 }
