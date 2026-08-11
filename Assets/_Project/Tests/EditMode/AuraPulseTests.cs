@@ -131,5 +131,25 @@ namespace Wassup.Tests.EditMode
             var cells = new[] { new int2(1, 1) };
             Assert.AreEqual(0, SelectRing(cells, new int2(1, 1), 0, -1).Length);
         }
+
+        // 리뷰 H1 회귀 가드 — **사거리 링과 수면 링은 겹치면 안 된다.**
+        // 공격 판정이 `tileDist > tileRange` 면 skip 이라 **경계 링 자체가 사거리 안**이고,
+        // SelectRing 의 min 은 inclusive 다. 그래서 호출처는 `attackTiles + 1` 을 넘겨야 한다.
+        // 여기서 고정하는 것은 그 산수다: min=attackTiles 로 부르면 사거리 링이 딸려온다.
+        [Test]
+        public void Ring_MinMustBeAttackTilesPlusOne_ToExcludeAttackableRing()
+        {
+            var host = new int2(0, 0);
+            const int attackTiles = 2;
+            var cells = new[]
+            {
+                new int2(attackTiles, 0),     // 0: 사거리 링 — 때릴 수 있다 → 재우면 안 된다
+                new int2(attackTiles + 1, 0), // 1: 첫 안전 링
+            };
+            // 잘못된 호출(min = attackTiles): 사거리 링이 딸려온다 — 이게 H1 이었다.
+            CollectionAssert.AreEqual(new[] { 0, 1 }, SelectRing(cells, host, attackTiles, 4));
+            // 올바른 호출(min = attackTiles + 1): 사거리 링 제외.
+            CollectionAssert.AreEqual(new[] { 1 }, SelectRing(cells, host, attackTiles + 1, 4));
+        }
     }
 }

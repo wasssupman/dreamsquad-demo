@@ -216,14 +216,20 @@ namespace Wassup.Battle.Combat
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
 
-                                    // 도넛의 안쪽 반지름 = host 의 사거리(타일). 사거리 안은
-                                    // 어차피 자기 평타가 깨우므로 재우면 자기무효화다 (AuraPulse
-                                    // 주석 참조). FSM 이 "때릴 수 있나" 를 재는 것과 **같은 변환**
-                                    // (GridMath.RangeToTiles)을 써서 두 판정이 갈리지 않게 한다.
-                                    int minTiles = SystemAPI.HasComponent<AttackState>(entity)
+                                    // 도넛의 안쪽 반지름 = host 사거리 **+1**. 사거리 안은 어차피
+                                    // 자기 평타가 깨우므로 재우면 자기무효화다(AuraPulse 주석).
+                                    // FSM·공격이 "때릴 수 있나" 를 재는 것과 **같은 변환**
+                                    // (GridMath.RangeToTiles)을 쓰되, 그 둘은 `<=` 판정이라
+                                    // **경계 링 자체가 사거리 안**이다(AttackSystem: `tileDist >
+                                    // tileRange` 면 skip). SelectRing 의 min 은 inclusive 이므로
+                                    // +1 을 해야 «때릴 수 있는 칸» 과 «재우는 칸» 이 겹치지 않는다.
+                                    // 그리고 마메모는 방어유닛을 사냥해 **붙는** 보스라 대상이 스스로
+                                    // 경계 링으로 들어온다 — 여기서 1 을 빠뜨리면 최빈 케이스가 곧
+                                    // 자기무효화가 된다.
+                                    int attackTiles = SystemAPI.HasComponent<AttackState>(entity)
                                         ? GridMath.RangeToTiles(SystemAPI.GetComponent<AttackState>(entity).range)
-                                        : 0;
-                                    AuraPulse.SelectRing(poolCells, hostCell, minTiles, slot.tileRange, ref pulseTargets);
+                                        : -1;
+                                    AuraPulse.SelectRing(poolCells, hostCell, attackTiles + 1, slot.tileRange, ref pulseTargets);
 
                                     // 후보를 거리²로 좁힌 뒤 cap 적용 — 형제 경로(실드파열
                                     // AreaSleep)와 같은 선별기. 배제는 여기서 끝내야 cap 자리를
@@ -300,6 +306,7 @@ namespace Wassup.Battle.Combat
                                 {
                                     var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
                                     var poolCells = hostIsEnemy ? enemyCells : defCells;
+                                    var poolTransforms = hostIsEnemy ? enemyTransformsPool : defTransforms;
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
@@ -321,13 +328,18 @@ namespace Wassup.Battle.Combat
                                             source = entity,   // 같은 출처 = max 갱신 → 깎인 만큼만 다시 찬다
                                             amount = slot.magnitude,
                                         });
+                                        // boss-mamemo unit 4 — 가디언과 같은 실드 부여 채널(저작 0).
+                                        // **대상 위치에 대상 수만큼** 쏜다 — 가디언(ShieldCastSystem)이
+                                        // 그렇게 한다. host 에서 한 번만 쏘면 "보스가 반짝하고 호위 실드는
+                                        // 소리 없이 생긴다" 가 되어, 같은 채널을 재사용한 이유("같은 사건은
+                                        // 같은 그림")가 정작 깨진다.
+                                        if (hasShieldVfxQ)
+                                            shieldVfxRW.ValueRW.queue.Enqueue(new ShieldGrantedEvent
+                                            {
+                                                position = poolTransforms[pulseTargets[ti]].Position,
+                                            });
                                         granted++;
                                     }
-                                    // boss-mamemo unit 4 — 가디언과 같은 실드 부여 채널을 쓴다
-                                    // (저작 0). 실제로 부여된 펄스만 연출(whip 선례).
-                                    if (granted > 0 && hasShieldVfxQ)
-                                        shieldVfxRW.ValueRW.queue.Enqueue(
-                                            new ShieldGrantedEvent { position = hostPos });
                                 }
                             }
                         }

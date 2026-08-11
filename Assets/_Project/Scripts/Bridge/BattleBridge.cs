@@ -7613,8 +7613,8 @@ namespace Wassup.Bridge
                 // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
                 // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
                 // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
-                if (m.trigger.kind != Wassup.Data.DcTriggerKind.PeriodicTimer &&
-                    m.trigger.kind != Wassup.Data.DcTriggerKind.HealthThreshold)
+                // boss-mamemo 리뷰 M3 — 판정은 순수 술어 1곳이 소유한다(EditMode 가 고정).
+                if (!Wassup.Battle.Combat.DcTrigger.EnemyTriggerArmed(m.trigger.kind))
                 {
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
                     continue;
@@ -7762,6 +7762,16 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 에 magnitude(재울 인원 >=1) 또는 duration(수면 초 >0) 이 없어 매 주기 no-op 이 된다 — skipped.");
                     continue;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                         m.payload.tileRange <= Wassup.Battle.Movement.GridMath.RangeToTiles(unitType.attackRange))
+                {
+                    // boss-mamemo 리뷰 M6 — **빈 도넛 거절.** 자장가의 안쪽 반지름은 host 사거리+1
+                    // 이라(자기 평타가 깨우는 칸 제외) tileRange 가 사거리 이하이면 후보 칸이
+                    // **구조적으로 0** 이다. 위 가드가 막겠다고 선언한 "왜 아무도 안 자는지 모른다"가
+                    // 바로 여기서 재현되므로 같은 급으로 끊는다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 의 tileRange({m.payload.tileRange}) 가 사거리({unitType.attackRange}타일) 이하라 도넛이 비어 아무도 못 잰다 — skipped. 사거리보다 최소 2 크게 잡아라.");
+                    continue;
+                }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)
                 {
                     // ultimate-leap unit 0 — SelfTileAoe 와 같은 함정: 착지 슬램이
@@ -7785,6 +7795,18 @@ namespace Wassup.Bridge
                     // duration 을 적어두면 "몇 초 뒤 사라진다" 고 읽히지만 런타임은 무시한다 —
                     // 조용히 다르게 도는 대신 저작 시점에 말해준다. skip 하지는 않는다.
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 의 duration({m.payload.duration}) 은 무시된다 — 이 엔진의 실드는 시간이 아니라 피해로만 사라진다.");
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
+                    m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer &&
+                    m.payload.duration >= m.trigger.periodSeconds)
+                {
+                    // boss-mamemo 리뷰 M7 — **whip 오라와 정반대 방향의 저작 함정.**
+                    // 버프는 duration <= period 면 펄스 사이에 끊겨 점멸하지만(아래 경고),
+                    // CC 는 duration >= period 면 매 주기 같은 대상이 갱신돼 **끊김이 없다** —
+                    // "잠시 재운다" 가 "생존 내내 고착" 이 된다. 깨우는 유일한 수단이 적 평타라
+                    // 단일 대상 보스는 재운 인원을 사실상 회수하지 못한다.
+                    // 의도일 수 있으므로 skip 하지 않고 경고만 한다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep duration({m.payload.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착합니다.");
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
                     m.payload.duration <= m.trigger.periodSeconds)

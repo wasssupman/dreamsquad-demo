@@ -65,6 +65,7 @@ unit 2 가 깐 배관에 **발동**을 붙인다. 페이로드는 하나(`GrantS
 | 슬롯 | 값 |
 |---|---|
 | ② 꿈의 장막 | `HealthThreshold(fraction 0.34)` × `GrantShield(magnitude 350, tileRange 0)` → **66%·32% 2회** |
+| | ⚠ **버스트 한 방이 두 경계를 관통하면 실드는 1회분만 나온다** — `HealthThresholdEval` 은 경계를 while 로 다 소비하고 fire 를 **1회**만 보고한다(그쪽의 의도된 설계). 실효 HP 가 1800 이 아니라 1450 이 되는 구간이 있다. 「순간 화력 집중」이 공식 대응책이므로 **의도에 부합**한다(리뷰 L3) |
 | ③ 악몽의 가호 | `PeriodicTimer(2.5s)` × `GrantShield(magnitude 60, tileRange 4)` |
 
 주기 **2.5s 와 자장가 3.5s 는 배수 관계가 아니다**(lcm 17.5s) — README 계약 10.

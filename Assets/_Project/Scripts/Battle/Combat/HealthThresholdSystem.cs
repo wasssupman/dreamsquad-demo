@@ -165,7 +165,9 @@ namespace Wassup.Battle.Combat
                             // ⚠ 실드는 이 프레임의 피해를 못 막는다 — 이 시스템이
                             // [UpdateAfter(DamageApplicationSystem)] 이라 append 는 **다음 프레임**
                             // 드레인에서 슬롯이 된다. 경계를 관통한 그 히트는 이미 지나간 뒤다.
-                            if (incomingShieldLookup.HasBuffer(entity))
+                            // magnitude>0 은 bake 가 이미 거절하지만, 주기 arm 쪽이 런타임에도
+                            // 확인하므로 두 arm 의 방어를 대칭으로 맞춘다(리뷰 L6).
+                            if (slot.magnitude > 0f && incomingShieldLookup.HasBuffer(entity))
                             {
                                 incomingShieldLookup[entity].Add(new Wassup.Battle.Units.IncomingShield
                                 {
