@@ -7646,6 +7646,10 @@ namespace Wassup.Bridge
                         Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
                     else if (m.payload.magnitude < 1f)
                         Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
+                    // 조용한 clamp 는 clamp 를 둔 이유를 스스로 무력화한다 — 100 을 타이핑한
+                    // 저작자가 8기를 받고 아무 메시지도 못 받는 것은 위 두 거절과 비대칭이다.
+                    else if (m.payload.magnitude > MaxSplitChildren)
+                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) > {MaxSplitChildren} — {MaxSplitChildren}기로 잘린다.");
                     // ★«자식이 메커닉을 갖고 있나» 가 아니라 «사슬이 순환하나» 를 본다.
                     // 다단계 분열(슬라임 → 중간 → 작은)은 의도이고, 무한 분열을 만드는 것은
                     // 사슬이 자기에게 돌아오는 것뿐이다. 판정은 순수 함수 1곳이 소유한다.
@@ -8211,7 +8215,17 @@ namespace Wassup.Bridge
         // 시에만 분열» 이 코드 추가 없이 성립한다.
         private void SpawnSplitChildren(Wassup.Data.AttackUnitData killedType, Vector3 deathWorldPos)
         {
-            var mechanics = killedType?.nightmareMechanics;
+            // ★null 은 저작 실수가 아니라 **등록부 버그**다 — 모든 적이 CreateEnemyEntity 에서
+            // _enemyTypeByEntity 에 등록되므로, 킬 드레인이 SO 를 못 찾았다면 등록/제거 순서가
+            // 깨진 것이다. 조용히 넘기면 «분열이 안 되는데 이유가 안 보이는» 상태가 된다.
+            if (killedType == null)
+            {
+                Debug.LogWarning("[BattleBridge] 분열 검사: 죽은 적의 AttackUnitData 를 " +
+                                 "_enemyTypeByEntity 에서 못 찾았다 — 등록부 누락(분열 유닛이면 분열이 안 된다).");
+                return;
+            }
+
+            var mechanics = killedType.nightmareMechanics;
             if (mechanics == null || mechanics.Length == 0) return;
 
             for (int i = 0; i < mechanics.Length; i++)
@@ -8223,20 +8237,44 @@ namespace Wassup.Bridge
                 var child = m.payload.splitUnit;
                 // bake 가 이미 loud 거절했으므로 여기서는 조용히 빠진다(같은 에러 2중 스팸 방지).
                 if (child == null) return;
+                // 런타임 최후 방어선 — 직접 자기순환은 bake 경고를 무시하고 플레이하면 판이
+                // 끝나지 않는다(킬마다 개체 배가 → 전멸 판정 영영 불성립). bake 의 사슬 검증이
+                // 정본이고 이 한 줄은 그것을 무시한 경우의 안전판이다(간접 순환은 bake 가 잡는다).
+                if (child == killedType)
+                {
+                    Debug.LogError($"[BattleBridge] {killedType.displayName}: splitUnit 이 자기 자신이다 — " +
+                                   "분열을 건너뛴다(무한 분열 방지). 저작을 고칠 것.");
+                    return;
+                }
 
                 int count = Mathf.Clamp((int)m.payload.magnitude, 0, MaxSplitChildren);
                 if (count <= 0) return;
 
                 // 결정론 — 인덱스 기반 고정 배치다(RNG 금지: 비동기 토너먼트 양측 동일 시뮬).
-                // 반경은 0.5 타일 미만이라 자식들은 부모와 **같은 셀**에 남는다 → flow/goal/
-                // cell-trim 등 셀 단위 시스템이 불변이고, 겹침은 AgentSeparationSystem 이 푼다
-                // (ComputeSpawnLateralOffset 과 같은 원리).
+                //
+                // ★기준점은 **부모의 셀 중심**이다. 부모의 연속 좌표에 오프셋을 더하면 안 된다 —
+                // MovementCellTrim 이 유닛을 셀 중심에서 `0.5·tileSize − 1e-3` 까지 벗어나게
+                // 허용하므로(충돌·분리·평활화가 상시 만드는 상태), 거기에 0.25 를 더하면 자식이
+                // **인접 셀**에 태어난다. 그 셀이 골이면 MovementSystem 이 다음 틱에 PastGoalTag 를
+                // 찍어 «처치했는데 유출» 이 되고, Build/Blocked 셀이면 그 셀 flow 가 0 이라 한
+                // 프레임을 FlowRecovery 로 버린다. (2026-08-12 ECS 리뷰 H1 — 초판 주석이 성립하지
+                // 않는 불변식을 주장했다.)
+                //
+                // 셀 중심 기준 + 반경 0.25 면 |오프셋| < 0.49 라 자식은 부모와 **같은 셀**에 남고
+                // flow/goal/cell-trim 이 불변이다 — ComputeSpawnLateralOffset(셀 중심에 더하고
+                // SpawnSpread.MaxHalfFraction 0.49 로 클램프)과 같은 형태가 된다.
+                // 겹침은 AgentSeparationSystem 이 푼다. y 는 부모 것을 유지(sim 높이 연속).
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
+                int2 parentCell = GridMath.WorldToCell(deathWorldPos, tileSize, grid, origin: _boardOrigin);
+                Vector3 cellCenter = GridToWorldCenterVector(
+                    new Vector2Int(parentCell.x, parentCell.y), deathWorldPos.y);
+
                 float radius = tileSize * 0.25f;
                 for (int c = 0; c < count; c++)
                 {
                     float angle = (Mathf.PI * 2f * c) / count;
                     var offset = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
-                    CreateEnemyEntity(child, deathWorldPos + offset);
+                    CreateEnemyEntity(child, cellCenter + offset);
                 }
                 return; // 첫 SplitOnDeath 슬롯만 (v1) — OnDeath 폭발 선례와 같은 규약
             }

@@ -83,17 +83,53 @@ namespace Wassup.Tests.EditMode
             Object.DestroyImmediate(a); Object.DestroyImmediate(b);
         }
 
+        // 깊이 상한을 **고립** 검증한다 — 단계마다 자식 1기라 자손 총수는 사슬 길이와 같고
+        // MaxTotalOffspring 예산에 안 걸린다. (count=2 로 두면 총수 상한이 먼저 잡아서
+        // 이 테스트가 깊이 상한을 검증하지 못한다 — 실제로 그렇게 빨개졌다.)
         [Test]
         public void ChainLongerThanMaxDepth_IsRejected()
         {
             var units = new AttackUnitData[SplitChain.MaxDepth + 3];
             for (int i = 0; i < units.Length; i++) units[i] = Unit($"u{i}");
-            for (int i = 0; i < units.Length - 1; i++) SetSplit(units[i], units[i + 1]);
+            for (int i = 0; i < units.Length - 1; i++) SetSplit(units[i], units[i + 1], count: 1f);
 
             Assert.IsFalse(SplitChain.Validate(units[0], out string err));
             StringAssert.Contains("단계", err);
 
             foreach (var u in units) Object.DestroyImmediate(u);
+        }
+
+        // 팬아웃 곱 — 깊이·폭 상한이 서로 독립이라 둘 다 통과하면서 폭발하는 저작이 있었다
+        // (폭 8 × 깊이 8 = 8⁸). 그 구멍을 막은 것이 자손 총수 예산이다(리뷰 B-M1).
+        [Test]
+        public void WideAndDeepChain_IsRejected_EvenThoughEachCapPasses()
+        {
+            const int depth = 5;   // MaxDepth(8) 이하 — 깊이 상한은 통과한다
+            var units = new AttackUnitData[depth + 1];
+            for (int i = 0; i < units.Length; i++) units[i] = Unit($"w{i}");
+            // 단계마다 4기 → 4 + 16 + 64 + … 로 예산(32)을 금방 넘는다.
+            for (int i = 0; i < units.Length - 1; i++) SetSplit(units[i], units[i + 1], count: 4f);
+
+            Assert.IsFalse(SplitChain.Validate(units[0], out string err),
+                "폭×깊이 조합이 통과했다 — 두 상한이 서로 독립이라 생기는 구멍");
+            StringAssert.Contains("자손 총수", err);
+
+            foreach (var u in units) Object.DestroyImmediate(u);
+        }
+
+        // 배송 콘텐츠(2단계 × 2기 = 자손 6)는 예산 안이다 — 상한이 정상 저작을 막지 않는 것도
+        // 계약이다.
+        [Test]
+        public void ShippedTwoStageFanout_IsWithinBudget()
+        {
+            var big = Unit("big"); var mid = Unit("mid"); var small = Unit("small");
+            SetSplit(big, mid, count: 2f);
+            SetSplit(mid, small, count: 2f);
+            Assert.IsTrue(SplitChain.Validate(big, out string err), err);
+            Assert.AreEqual(2, SplitChain.CountAt(big));
+            Assert.AreEqual(2, SplitChain.CountAt(mid));
+            Assert.AreEqual(0, SplitChain.CountAt(small), "마지막 단계는 자식이 없다");
+            Object.DestroyImmediate(big); Object.DestroyImmediate(mid); Object.DestroyImmediate(small);
         }
 
         // splitUnit 이 비면 사슬은 그냥 끝난다 — 여기서 «오류» 로 보지 않는다.

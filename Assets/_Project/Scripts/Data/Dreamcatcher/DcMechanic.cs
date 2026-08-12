@@ -110,7 +110,9 @@ namespace Wassup.Data
         // elite-enemy-tier unit 5 — 분열. `OnDeath` 트리거와만 쓴다(슬라임 엘리트).
         // magnitude = 자식 수 · splitUnit = 자식 SO.
         //
-        // ★**이 조합은 DcTriggerSlot 을 만들지 않는다.** 다른 payload 는 전부 슬롯을 굽지만
+        // ★**이 조합은 DcTriggerSlot 엔트리를 만들지 않는다**(버퍼 자체는 붙는다 — bake 가
+        // mechanics 비어있지 않으면 무조건 AddBuffer 하고 이 조합만 엔트리를 건너뛴다).
+        // 다른 payload 는 전부 슬롯을 굽지만
         // 분열은 sim 이 쓸 곳이 없다 — 자식 스폰은 SO·머티리얼·뷰가 필요한 브리지 전용 행위이고,
         // 브리지의 킬 드레인(DrainEnemyKilledEvents)이 `_enemyTypeByEntity` 로 죽은 적의
         // AttackUnitData 를 **이미 손에 들고 있다**(유출 경로가 leakedType.stabilityDamage 를
@@ -243,9 +245,12 @@ namespace Wassup.Data
         // 금지 대상은 Entities/Battle 타입이고 AttackUnitData 는 같은 Wassup.Data 다.
         // null = bake 가 loud 거절. 다른 kind 는 무시.
         //
-        // ⚠ **자식 SO 의 nightmareMechanics 는 비워둔다.** 자식이 분열을 또 선언하면 무한
-        // 분열이 열린다 — 재귀 차단은 세대 카운터가 아니라 이 «자식은 메커닉이 없다» 는
-        // 데이터 구조가 담당한다(2단계 분열이 필요하면 중간 SO 를 하나 더 만든다).
+        // ⚠ **중간 단계는 메커닉을 갖는다 — 다단계 분열이 사양이다**(슬라임: 본체 → 중간 ×2 →
+        // 작은 ×4). 그래서 «자식은 메커닉이 없다» 를 재귀 방어로 쓰지 않는다(초판 규약이었고
+        // 2026-08-12 에 폐기됐다). 무한 분열을 실제로 만드는 것은 **사슬이 자기에게 돌아오는
+        // 것**이므로 판정은 `SplitChain.Validate`(순환·과길이·자손 총수)가 소유하고 bake 가
+        // 호출한다. 저작 규칙은 하나다 — **마지막 단계의 `nightmareMechanics` 를 비워** 사슬을
+        // 끝낼 것.
         public AttackUnitData splitUnit;
     }
 

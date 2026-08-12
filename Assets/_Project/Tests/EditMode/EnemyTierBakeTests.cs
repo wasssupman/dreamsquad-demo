@@ -1,8 +1,10 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Unity.Entities;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wassup.Battle.Combat;
 using Wassup.Bridge;
 using Wassup.Data;
@@ -151,6 +153,121 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(em.HasComponent<BossTag>(e));
 
             Object.DestroyImmediate(unitType);
+        }
+
+        // ── unit 5 — 분열 저작의 bake 거절 (spec 5_enemy_ondeath_split.md 완료 기준) ──
+        // 이 세 분기는 `LogError` 뿐이라 실행 흔적이 콘솔 말고 없다. 그래서 여기서 못 박는다.
+
+        private static AttackUnitData MakeSplitter(AttackUnitData child, float count)
+        {
+            var u = ScriptableObject.CreateInstance<AttackUnitData>();
+            u.displayName = "TestSplitter";
+            u.health = 100f;
+            u.tier = EnemyTier.Elite;
+            u.nightmareMechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SplitOnDeath,
+                        magnitude = count,
+                        splitUnit = child,
+                    },
+                },
+            };
+            return u;
+        }
+
+        [Test]
+        public void Split_NullSplitUnit_IsLoudlyRejected()
+        {
+            var unitType = MakeSplitter(null, 2f);
+            LogAssert.Expect(LogType.Error, new Regex("splitUnit 이 비었다"));
+            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void Split_CountBelowOne_IsLoudlyRejected()
+        {
+            var child = ScriptableObject.CreateInstance<AttackUnitData>();
+            var unitType = MakeSplitter(child, 0f);
+            LogAssert.Expect(LogType.Error, new Regex("< 1"));
+            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
+            Object.DestroyImmediate(unitType); Object.DestroyImmediate(child);
+        }
+
+        // 조용한 clamp 는 clamp 를 둔 이유를 무력화한다 — 100 을 타이핑한 저작자가 8기를
+        // 받고 아무 메시지도 못 받으면 안 된다(리뷰 A-M1).
+        [Test]
+        public void Split_CountAboveCap_IsLoudlyRejected()
+        {
+            var child = ScriptableObject.CreateInstance<AttackUnitData>();
+            var unitType = MakeSplitter(child, 100f);
+            LogAssert.Expect(LogType.Error, new Regex("잘린다"));
+            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
+            Object.DestroyImmediate(unitType); Object.DestroyImmediate(child);
+        }
+
+        [Test]
+        public void Split_CyclicChain_IsLoudlyRejected()
+        {
+            var unitType = ScriptableObject.CreateInstance<AttackUnitData>();
+            unitType.displayName = "Ouroboros";
+            unitType.tier = EnemyTier.Elite;
+            unitType.nightmareMechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SplitOnDeath, magnitude = 2f, splitUnit = unitType,
+                    },
+                },
+            };
+            LogAssert.Expect(LogType.Error, new Regex("순환"));
+            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
+            Object.DestroyImmediate(unitType);
+        }
+
+        // 적에게 소비자가 없는 OnDeath 조합은 침묵하지 않는다(방어유닛 쪽 SelfTileAoe 소비자는
+        // WithAll<DeadTag, DefenderUnitTag> 라 적을 보지 않는다).
+        [Test]
+        public void OnDeath_WithNonSplitPayload_IsLoudlyWarned()
+        {
+            var unitType = ScriptableObject.CreateInstance<AttackUnitData>();
+            unitType.displayName = "TestOnDeathAoe";
+            unitType.tier = EnemyTier.Elite;
+            unitType.nightmareMechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 50f, tileRange = 2 },
+                },
+            };
+            LogAssert.Expect(LogType.Warning, new Regex("defender-gated|미개방"));
+            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
+            Object.DestroyImmediate(unitType);
+        }
+
+        // 카탈로그 전수 pin — 슬라임 사슬만 보는 저작 테스트로는 **미래의 순환 적**을 못 잡는다.
+        // 런타임 카운터를 추가하지 않고 순환을 «돌기 전에» 잡는 가장 싼 자리다(리뷰 A-M2).
+        [Test]
+        public void EveryCatalogEnemy_HasValidSplitChain()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<EnemyCatalog>("Assets/_Project/Data/EnemyCatalog.asset");
+            Assert.IsNotNull(catalog, "EnemyCatalog");
+            Assert.IsNotNull(catalog.units);
+            foreach (var u in catalog.units)
+            {
+                if (u == null) continue;
+                Assert.IsTrue(SplitChain.Validate(u, out string err),
+                    $"{u.displayName}: {err}");
+            }
         }
 
         // 마이그레이션 pin — 라이브 보스 3종이 tier=Boss 를 잃으면 «보스가 잡몹처럼 굴고

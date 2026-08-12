@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Text;
+using Unity.Mathematics;
 
 namespace Wassup.Data
 {
@@ -19,33 +19,68 @@ namespace Wassup.Data
         // 사슬 길이 상한. 저작 사고(아주 긴 체인)까지 잡는 방어선이며 밸런스 값이 아니다.
         public const int MaxDepth = 8;
 
-        // root 에서 OnDeath × SplitOnDeath 를 따라 내려가며 순환·과길이를 찾는다.
-        // 반환 false + error = 저작 오류. 사슬이 없는 유닛(대부분)은 즉시 true.
+        // 사슬 **전체**가 만들 수 있는 자손 총수 상한. 깊이·폭 상한만으로는 부족하다 —
+        // 폭 8 × 깊이 8 저작은 둘 다 통과하면서 8⁸ ≈ 1.7e7 엔티티를 만든다(각각 CreateEntity +
+        // 약 20회 구조 변경 + 뷰). 두 상한이 서로 독립이라 «방어선처럼 보이는데 안 막는» 상태였다
+        // (2026-08-12 ECS 리뷰 M1). 배송 콘텐츠는 2×2 = 총 6 자손이라 여유가 크다.
+        public const int MaxTotalOffspring = 32;
+
+        // root 에서 OnDeath × SplitOnDeath 를 따라 내려가며 순환·과길이·과팬아웃을 찾는다.
+        // 반환 false + error = 저작 오류. 사슬이 없는 유닛(대부분)은 **할당 0 으로** 즉시 true.
         public static bool Validate(AttackUnitData root, out string error)
         {
             error = null;
             if (root == null) return true;
+            // ★조기 반환 — 이 함수는 스폰마다 도는 bake 경로에서 불린다(에디터 전용이 아니다).
+            // 적 대부분은 사슬이 없으므로 여기서 끊어 managed 할당을 아예 만들지 않는다.
+            if (NextInChain(root) == null) return true;
 
             var seen = new HashSet<AttackUnitData>();
-            var path = new StringBuilder();
             AttackUnitData cur = root;
+            int totalOffspring = 0;
+            int generation = 1; // 이 단계에서 태어나는 개체 수(누적곱)
 
             for (int depth = 0; depth <= MaxDepth; depth++)
             {
                 if (!seen.Add(cur))
                 {
-                    error = $"분열 사슬이 순환한다: {path}→ {Name(cur)} (죽을 때마다 자식이 태어나 판이 끝나지 않는다)";
+                    error = $"분열 사슬이 순환한다: {Name(root)} … {Name(cur)} " +
+                            "(죽을 때마다 자식이 태어나 판이 끝나지 않는다)";
                     return false;
                 }
-                path.Append(Name(cur)).Append(' ');
 
                 AttackUnitData next = NextInChain(cur);
                 if (next == null) return true;   // 사슬 종료 — 정상
+
+                // 이 단계의 자손 수 = (직전 세대 수) × (이 유닛의 자식 수).
+                generation = generation * math.max(1, CountAt(cur));
+                totalOffspring += generation;
+                if (totalOffspring > MaxTotalOffspring)
+                {
+                    error = $"분열 사슬의 자손 총수가 {MaxTotalOffspring} 를 넘는다" +
+                            $"(≥{totalOffspring}): {Name(root)} … {Name(cur)} → {Name(next)}";
+                    return false;
+                }
+
                 cur = next;
             }
 
-            error = $"분열 사슬이 {MaxDepth} 단계를 넘는다: {path}… (저작 실수로 보인다)";
+            error = $"분열 사슬이 {MaxDepth} 단계를 넘는다: {Name(root)} … {Name(cur)} (저작 실수로 보인다)";
             return false;
+        }
+
+        // 이 유닛이 죽을 때 태어나는 자식 수(첫 SplitOnDeath 슬롯). 사슬이 없으면 0.
+        public static int CountAt(AttackUnitData unit)
+        {
+            var mechanics = unit?.nightmareMechanics;
+            if (mechanics == null) return 0;
+            for (int i = 0; i < mechanics.Length; i++)
+            {
+                if (mechanics[i].trigger.kind != DcTriggerKind.OnDeath) continue;
+                if (mechanics[i].payload.kind != DcPayloadKind.SplitOnDeath) continue;
+                return (int)mechanics[i].payload.magnitude;
+            }
+            return 0;
         }
 
         // 이 유닛이 죽을 때 태어나는 자식 SO. 없으면 null.

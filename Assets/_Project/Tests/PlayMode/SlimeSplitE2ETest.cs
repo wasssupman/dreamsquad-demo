@@ -80,7 +80,11 @@ namespace Wassup.Tests.PlayMode
 
             // ── 1단계: 본체 → 중간 2기 ──────────────────────────────────────────
             List<Entity> mids = null;
-            for (int i = 0; i < 30 && (mids == null || mids.Count < 2); i++)
+            // 저작 magnitude 가 드리프트하면 «2기 채우면 탈출» 이 3번째 스폰과 레이스한다.
+            // 저작값을 읽어 기대치를 만든다(리뷰 A-L8).
+            int expectedMids = Wassup.Data.SplitChain.CountAt(parentSo);
+            Assert.AreEqual(2, expectedMids, "저작이 2기 분열이 아니다 — 아래 단언의 전제");
+            for (int i = 0; i < 30 && (mids == null || mids.Count < expectedMids); i++)
             {
                 yield return null;
                 mids = FindEnemiesOfType(bridge, em, midSo);
@@ -101,9 +105,11 @@ namespace Wassup.Tests.PlayMode
             {
                 var ch = em.GetComponentData<Health>(c);
                 Assert.AreEqual(parentSo.health * 0.5f, ch.max, 0.01f, "중간 최대체력 = 본체의 50%");
+                // ★셀 동일성으로 단언한다. `planar < TileSize` 는 자식이 **한 셀 온전히**
+                // 떨어져도 통과해서 계약(같은 셀)과 검사가 어긋나 있었다(리뷰 B-H1 잔여).
                 var p = em.GetComponentData<LocalTransform>(c).Position;
-                float planar = Vector2.Distance(new Vector2(deathPos.x, deathPos.z), new Vector2(p.x, p.z));
-                Assert.Less(planar, bridge.TileSize, "자식은 부모가 죽은 자리(같은 셀 안)에 생겨야 한다");
+                Assert.AreEqual(bridge.DebugWorldToCell(deathPos), bridge.DebugWorldToCell(p),
+                    "자식이 부모가 죽은 셀 밖에 태어났다 — 골 셀이면 «처치했는데 유출» 이 된다");
             }
 
             // 분열체가 실제로 **움직인다** — 스폰만 되고 굳는 계열 회귀 방지
@@ -120,6 +126,10 @@ namespace Wassup.Tests.PlayMode
             // ── 2단계: 중간 → 작은 4기 ──────────────────────────────────────────
             mids = FindEnemiesOfType(bridge, em, midSo);
             int midsKilled = mids.Count;
+            // 이동 대기(120프레임) 사이에 중간이 유출되면 midsKilled=0 이 되고 아래 단언이
+            // AreEqual(0, 0) 으로 **진공 통과**한다 — 2단계 회귀가 초록으로 지나간다(리뷰 B-M4).
+            Assert.Greater(midsKilled, 0,
+                "중간 슬라임이 이동 대기 중 전부 사라졌다 — 이 단언은 진공이다(테스트 전제 붕괴)");
             foreach (var c in mids)
                 if (em.Exists(c) && em.HasBuffer<IncomingDamage>(c))
                     em.GetBuffer<IncomingDamage>(c).Add(new IncomingDamage { amount = 99999f });
@@ -148,16 +158,21 @@ namespace Wassup.Tests.PlayMode
                 "중간 슬라임이 다시 태어났다 — 사슬이 순환한다");
         }
 
-        // 드레인 순서 계약(unit 5 ④). 「부모가 마지막 적일 때 웨이브가 안 넘어간다」를 직접
-        // 재현하려면 웨이브 스케줄러 타이밍(_pending·상한 간격·전멸)에 의존해 flaky 해진다.
-        // 그래서 **그 계약이 성립하는 근거 자체**를 단언한다: 킬이 집계된 것이 관측되는 시점에
-        // 자식이 이미 존재한다 = 드레인이 같은 호출에서 스폰한다 = 그 뒤에 오는 QueueDueWaves /
-        // CheckVictory 가 「부모는 없는데 자식도 없는」 틈을 **볼 수 없다**.
+        // 드레인 순서 계약(unit 5 ④) — spec 이 「이 spec 이 만드는 가장 조용한 버그」라 부른 것.
         //
-        // 이 단언이 빨개지는 경우: 분열 스폰을 다음 프레임으로 미루거나(예: 요청 큐에 넣기),
-        // 드레인을 QueueDueWaves 뒤로 되돌리는 변경.
+        // ★초판은 「킬 집계와 자식 존재가 같은 관측에 보인다」를 단언하고 그것이 「드레인을
+        // QueueDueWaves 뒤로 되돌리는 변경」을 잡는다고 주석에 적었다. **거짓이었다**
+        // (2026-08-12 코드리뷰 H1): `_killCount++` 와 분열 스폰은 같은 `while (TryDequeue)`
+        // 이터레이션 안에 있어서 둘의 동시성은 드레인 **자체**의 성질이고, 드레인이 Update 안
+        // 어디에 있든 참이다. 테스트가 그 사이를 관측할 수도 없다(둘이 한 Update 본문 안이라
+        // 어떤 yield 케이던스도 끼어들지 못한다).
+        //
+        // 그래서 spec 이 원래 요구한 **관측 가능한** 단언으로 교체한다: 부모가 마지막 적일 때
+        // 죽여도 `_nextWaveIndex` 가 오르지 않는다. 전제를 리플렉션으로 만들어 스케줄러 타이밍
+        // 의존을 없앤다 — ① 생성 웨이브 모드 ② `_nextWaveIndex >= 1`(first 분기 배제)
+        // ③ `_waveStartSec` 갱신(상한 간격 배제) ④ `_pending` 비움 ⑤ 슬라임이 유일한 적.
         [UnityTest]
-        public IEnumerator SplitChildren_ExistInTheSameObservationAsTheKillCount()
+        public IEnumerator KillingLastSlime_DoesNotAdvanceWave_BecauseChildrenAreBornFirst()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return LoadBattle();
@@ -167,29 +182,42 @@ namespace Wassup.Tests.PlayMode
             bridge.StartBattle();
             for (int i = 0; i < 2; i++) yield return null;
 
+            Assert.IsFalse((bool)GetField(bridge, "_usingAuthoredPlan"),
+                "이 계약은 생성 웨이브 경로에만 있다 — 작성 플랜은 순수 시각 스케줄이라 검증 불가");
+
             var parentSo = LoadEnemy(ParentPath);
             var midSo = LoadEnemy(MidPath);
 
+            // 판을 비우고 슬라임만 남긴다 = 「부모가 마지막 적」 재현.
+            var q = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+            var existing = q.ToEntityArray(Unity.Collections.Allocator.Temp);
+            for (int i = 0; i < existing.Length; i++) em.DestroyEntity(existing[i]);
+            existing.Dispose();
+            ((System.Collections.IList)GetField(bridge, "_pending")).Clear();
+
             var parent = SpawnEnemy(bridge, em, parentSo);
             Assert.AreNotEqual(Entity.Null, parent);
-            for (int i = 0; i < 2; i++) yield return null;
 
-            int killsBefore = KillCount(bridge);
+            // first / capReached 분기를 배제한다.
+            SetField(bridge, "_nextWaveIndex", 1);
+            SetField(bridge, "_waveStartSec", (float)(double)GetField(bridge, "_battleClock"));
+            yield return null;
+
+            int waveBefore = (int)GetField(bridge, "_nextWaveIndex");
             em.GetBuffer<IncomingDamage>(parent).Add(new IncomingDamage { amount = 999999f });
 
-            bool observed = false;
-            for (int i = 0; i < 40 && !observed; i++)
+            // 사망(sim) → 다음 Update 의 드레인에서 자식이 태어난다. 그 Update 안에서
+            // QueueDueWaves 가 「적 0」을 보면 웨이브가 넘어간다 — 그것이 회귀다.
+            List<Entity> kids = null;
+            for (int i = 0; i < 40 && (kids == null || kids.Count < 2); i++)
             {
                 yield return null;
-                if (KillCount(bridge) <= killsBefore) continue;
-                // 킬이 집계된 첫 관측 — 이 순간 자식이 이미 있어야 한다.
-                int childCount = FindEnemiesOfType(bridge, em, midSo).Count;
-                Assert.AreEqual(2, childCount,
-                    "킬이 집계된 시점에 자식이 없다 — 분열 스폰이 킬 드레인과 같은 호출에서 " +
-                    "일어나지 않으면 QueueDueWaves/CheckVictory 가 「부모도 자식도 없는」 틈을 본다");
-                observed = true;
+                kids = FindEnemiesOfType(bridge, em, midSo);
+                Assert.AreEqual(waveBefore, (int)GetField(bridge, "_nextWaveIndex"),
+                    "부모가 마지막 적일 때 죽였는데 웨이브가 넘어갔다 — DrainEnemyKilledEvents 가 " +
+                    "QueueDueWaves 뒤로 돌아갔다(unit 5 ④)");
             }
-            Assert.IsTrue(observed, "킬이 집계되지 않았다 — 드레인 경로 문제");
+            Assert.AreEqual(2, kids.Count, "자식이 안 태어났다 — 이 테스트의 전제가 깨졌다");
         }
 
         // ── helpers ─────────────────────────────────────────────────────────────
@@ -250,6 +278,20 @@ namespace Wassup.Tests.PlayMode
                 if (kv.Value == so && em.Exists(kv.Key) && !em.HasComponent<DeadTag>(kv.Key))
                     result.Add(kv.Key);
             return result;
+        }
+
+        private static object GetField(BattleBridge bridge, string name)
+        {
+            var f = typeof(BattleBridge).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, $"{name} 을 찾지 못했다(이름 변경?)");
+            return f.GetValue(bridge);
+        }
+
+        private static void SetField(BattleBridge bridge, string name, object value)
+        {
+            var f = typeof(BattleBridge).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, $"{name} 을 찾지 못했다(이름 변경?)");
+            f.SetValue(bridge, value);
         }
 
         // 킬 드레인이 실제로 돌았는지의 관측창(그 루프가 매 이벤트마다 올린다).

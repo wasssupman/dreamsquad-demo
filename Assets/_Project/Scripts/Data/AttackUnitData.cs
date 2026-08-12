@@ -150,10 +150,14 @@ namespace Wassup.Data
         [Header("Awakening")]
         public int awakeningReward = 1;
 
-        // nightmare-catcher unit 5 — 나이트매어캐쳐 메커닉 선언(정의 계층 DcMechanic,
-        // ECS 무참조). 비어있지 않으면 이 적이 곧 보스: 스폰 베이크가 BossTag +
-        // ThreatEntry(위협 테이블) + DcTriggerSlot 을 부착한다. 빈 배열/null =
-        // 일반 적 무변경. Appended last (직렬화 back-compat).
+        // nightmare-catcher unit 5 — 특수 메커닉 선언(정의 계층 DcMechanic, ECS 무참조).
+        // 비어있지 않으면 스폰 베이크가 `DcTriggerSlot` 을 부착한다. 빈 배열/null = 무변경.
+        //
+        // ★**«비어있지 않으면 이 적이 곧 보스» 는 더 이상 참이 아니다**(elite-enemy-tier unit 0).
+        // BossTag·ThreatEntry·등장경보는 이제 `tier == EnemyTier.Boss` 에서만 나온다. 그래서
+        // **특수 메커닉을 가진 «보스가 아닌 적»**(엘리트)이 성립한다 — 그게 그 spec 의 요점이다.
+        // 이 필드 이름이 이제 실제 범위보다 좁다(보스 전용이 아니다). rename 하지 않는 이유는
+        // 라이브 에셋들이 이 YAML 키를 들고 있어서다.
         [Header("Nightmare Catcher")]
         public DcMechanic[] nightmareMechanics;
 

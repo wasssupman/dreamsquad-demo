@@ -53,18 +53,22 @@ CC 걸리고, 어그로에 유인되고, 등장 경보도 없다. 즉 *«막을 
 
 ## 유닛 사양 (초기값 — 전부 SO 소유, 튜닝 대상)
 
-### 슬라임 (`slime`, Elite) / 작은 슬라임 (`slime_small`, Normal)
+### 슬라임 사슬 — `slime`(Elite) → `slime_mid` ×2 → `slime_small` ×4
 
-| 항목 | 부모 | 자식 | 근거 |
+| 항목 | `slime` | `slime_mid` ×2 | `slime_small` ×4 |
 |---|---|---|---|
-| health | 120 | **60** | 자식 = 부모의 50%(사용자 지정). 부모는 탱커(100) 위 |
-| outputs | Damage 12 | **Damage 12** | «공격력 등은 그대로 계승»(사용자 지정) |
-| moveSpeed / range / cd | 1.8 / 1 / 0.9 | 동일 | 계승 |
-| enemyClass / attackMethod | Bruiser / Melee | 동일 | 라벨 |
-| killScore / awakening / stability | 3 / 3 / 2 | 1 / 1 / 1 | 엘리트 대역 → 일반 대역 |
-| maxPerWave / minWaveNumber | 1 / 3 | — | 자식은 웨이브 생성 대상이 아니다 |
-| mechanics | `OnDeath × SplitOnDeath(2, slime_small)` | **없음** | 자식은 메커니즘이 없어 **재분열이 구조적으로 불가능** |
-| Spine | idle=walk · walk=walk · attack=**fall-in** · death=**빈 값** | 동일 | sack 애니는 `fall-in`·`walk` **둘뿐**(실측) |
+| health | 120 | **60** | **30** |
+| outputs | Damage 12 | 동일(계승) | 동일(계승) |
+| moveSpeed / range / cd | 1.8 / 1 / 0.9 | 동일 | 동일 |
+| enemyClass / attackMethod | Bruiser / Melee | 동일 | 동일 |
+| killScore / awakening | **3 / 3** | **0 / 0** | **0 / 0** |
+| stabilityDamage | 2 | 1 | 1 |
+| maxPerWave / minWaveNumber | 1 / 3 | — | — |
+| mechanics | `OnDeath × SplitOnDeath(2, slime_mid)` | `OnDeath × SplitOnDeath(2, slime_small)` | **없음 = 사슬 종료** |
+| Spine | idle=walk · walk=walk · attack=**fall-in** · death=**빈 값** | 동일 | 동일 |
+
+단계마다 체력 절반이지만 마릿수가 배라 **유효 체력이 단계마다 유지된다**(각 120) — 슬롯 하나가
+총 360 체력 + 처치 7회다. 상세 근거는 [6_slime_assets.md](6_slime_assets.md).
 
 ### 드래곤 (`dragon`, Elite)
 
@@ -159,12 +163,12 @@ CC 걸리고, 어그로에 유인되고, 등장 경보도 없다. 즉 *«막을 
 
 ## 파이프라인 커버리지
 
-`docs/reference/object-pipeline-map.md` **적(Enemy)** 아키타입 대조. 신규 플레이 오브젝트 3종
-(엘리트 적 2 + 분열 자식 1). 투사체는 기존 에셋 재사용이라 신규 아님.
+`docs/reference/object-pipeline-map.md` **적(Enemy)** 아키타입 대조. 신규 플레이 오브젝트 4종
+(엘리트 적 2 + 분열체 2). 투사체는 기존 에셋 재사용이라 신규 아님.
 
 | 정거장 | 이 spec 에서 |
 |---|---|
-| 데이터 SO | `Enemy_Slime` · `Enemy_Slime_Small` · `Enemy_Dragon` 신규 + `AttackUnitData` 에 `tier` 1필드. **`EnemyCatalog` 3종 등록**. 덱 `attackUnitPool` 노출은 **부모 2종만** — 자식은 분열로만 등장(`Enemy_Skimmer` 의 «풀에 안 넣는다» 선례) |
+| 데이터 SO | `Enemy_Slime` · `Enemy_Slime_Mid` · `Enemy_Slime_Small` · `Enemy_Dragon` 신규 + `AttackUnitData` 에 `tier` 1필드. **`EnemyCatalog` 4종 등록**. 덱 `attackUnitPool` 노출은 **본체 2종만**(슬라임·드래곤) — 분열체는 분열로만 등장(`Enemy_Skimmer` 의 «풀에 안 넣는다» 선례) |
 | 스폰 진입점 | `BattleBridge.SpawnUnit` **본문을 위치 지정 경로로 갈라낸다**(unit 5). 레인 스폰은 그 위 얇은 래퍼가 된다 — `CreatePatrolEntity` 처럼 병렬 복제하지 않는다(적의 표준 세트 전부가 필요) |
 | ECS 컴포넌트 | 표준 세트 그대로. `DcTriggerSlot`(엘리트도 받는다) + `PathFollowState`(Air 층은 값만 다름). **신규 컴포넌트 0** |
 | 시뮬 시스템 | **`AttackSystem` 단 하나**(적 AttackN arm + 콘 적용). 신규 시스템 0 · `ProjectileHitSystem` 무변경(계약 7) · `DamageApplicationSystem` 무변경(unit 5 ②). 콘은 AttackSystem 이 이미 들고 있는 후보 배열 위에서 판정하고, 순회 본문은 private static 으로 뺀다 |
@@ -187,7 +191,8 @@ CC 걸리고, 어그로에 유인되고, 등장 경보도 없다. 즉 *«막을 
    고르는 소비자가 2개 이상 생겼는가» 다 — 그 전에는 같은 과설계가 반복된다.
 2. **브레스 예고(telegraph)** [S] — 계약 9. 공격 애니가 없어 신호가 VFX 하나뿐인 것이 실플레이에서
    읽히지 않으면 `hitDelaySec` + 바닥 링.
-3. **슬라임 2단계 분열** [S] — 중간 SO 1개 추가로 4마리까지. 계약 2 참조.
+3. **슬라임 3단계 이상 분열** [S] — 2단계는 `12923018` 에서 출하됐다. 더 늘리려면 중간 SO 를
+   하나 더 만들면 되고 코드 변경은 0 이다(`SplitChain.MaxTotalOffspring 32` 예산 안에서).
 4. **엘리트 전용 등장 연출·HUD** [M] — 보스경보를 재사용하지 않기로 했으므로(계약 1) 엘리트를
    시각적으로 구분하는 수단이 지금은 스켈레톤 크기뿐이다.
 5. **엘리트 전용 아트** [M] — 둘 다 벤더 Spine 예제 as-is.
