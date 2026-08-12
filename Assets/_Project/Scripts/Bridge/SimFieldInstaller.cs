@@ -33,15 +33,41 @@ namespace Wassup.Bridge
     // MonoBehaviour ↔ ECS 창구는 여전히 BattleBridge 하나다.
     public static class SimFieldInstaller
     {
-        // instinct-content unit 3 — 거점 목적지의 BFS 소스 = footprint 전체(중심 3×3).
-        // 경계·통행 필터는 빌더 소관이라 여기서 복제하지 않는다.
-        private static void FillFootprint(int2 center, NativeArray<int2> outCells)
+        // instinct-content unit 3 rev — 목적지 하나가 BFS 소스로 **어떻게 펼쳐지는가**.
+        // 종류를 나중에 되묻지 않도록 목적지가 자기 펼침 규칙을 들고 다닌다.
+        private readonly struct DestinationSpec
         {
-            int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
+            public readonly int2 cell;    // 슬롯 키(런타임 `SlotFor` 가 쓰는 값)
+            public readonly int  extent;  // 0 = 골(goals 전체가 소스) · 1 = 그 칸 · N = N×N 중심 확장
+
+            private DestinationSpec(int2 cell, int extent) { this.cell = cell; this.extent = extent; }
+
+            public static DestinationSpec Goal => new DestinationSpec(FlowFieldSingleton.GoalSentinel, 0);
+            public static DestinationSpec Single(int2 cell) => new DestinationSpec(cell, 1);
+            public static DestinationSpec Footprint(int2 cell, int size) => new DestinationSpec(cell, size);
+
+            public int SourceCount => extent <= 1 ? 1 : extent * extent;
+        }
+
+        // 같은 셀을 두 번 굽지 않는다 — 슬롯은 (목적지 × 마스크) 곱이라 중복이 그대로 낭비다.
+        private static void AddDestination(
+            System.Collections.Generic.List<DestinationSpec> destinations, DestinationSpec candidate)
+        {
+            for (int i = 0; i < destinations.Count; i++)
+                if (destinations[i].cell.Equals(candidate.cell)) return;
+            destinations.Add(candidate);
+        }
+
+        // 소스 셀 펼치기. 경계·통행 필터는 **빌더 소관**이라 여기서 복제하지 않는다 —
+        // 유효 소스 0 이면 빌더가 전 셀 int.MaxValue 로 두어 «못 가는 목적지» 를 표현한다.
+        private static void FillSources(in DestinationSpec spec, NativeArray<int2> outCells)
+        {
+            if (spec.extent <= 1) { outCells[0] = spec.cell; return; }
+            int half = spec.extent / 2;
             int k = 0;
             for (int dy = -half; dy <= half; dy++)
                 for (int dx = -half; dx <= half; dx++)
-                    outCells[k++] = new int2(center.x + dx, center.y + dy);
+                    outCells[k++] = new int2(spec.cell.x + dx, spec.cell.y + dy);
         }
 
         // 호출 전 Teardown 이 선행되어야 한다(멱등성 계약은 호출부에 남겨 순서가 보이게 한다).
@@ -96,30 +122,30 @@ namespace Wassup.Bridge
                     cellLayers[i] = PlacementLayers.Derive(map.tiles[i]);
                 }
 
-                // 목적지 0은 골 센티널, 이후는 저작 순서대로 중복 제거한 웨이포인트 셀.
-                var destinations = new System.Collections.Generic.List<int2>
+                // 목적지 0은 골 센티널, 이후는 저작 순서대로 중복 제거한 웨이포인트 셀,
+                // 마지막이 거점(instinct-content unit 3). 마음은 이미 골 센티널이라 안 넣는다.
+                //
+                // ⚠ 목적지의 **종류를 목록 멤버십으로 되묻지 않는다.** 「어느 목록에 들어
+                // 있었나」로 종류를 추론하면 unit 1 이 고친 결함과 같은 모양이 된다(그때는
+                // 「버퍼를 들었나」로 통행 차단을 추론해서 건물이 벽이 됐다). 펼침 규칙을
+                // 목적지 자신이 들고 다니게 한다.
+                var destinations = new System.Collections.Generic.List<DestinationSpec>
                 {
-                    FlowFieldSingleton.GoalSentinel,
+                    DestinationSpec.Goal,
                 };
                 if (map.waypointCells.IsCreated)
                     for (int i = 0; i < map.waypointCells.Length; i++)
-                    {
-                        int2 candidate = map.waypointCells[i];
-                        if (!destinations.Contains(candidate)) destinations.Add(candidate);
-                    }
+                        AddDestination(destinations, DestinationSpec.Single(map.waypointCells[i]));
 
-                // instinct-content unit 3 — 방어 본능도 목적지다. 적이 마음으로 직행하는 대신
-                // 가까운 본능을 먼저 고를 수 있으려면 그 셀로 흐르는 슬롯이 있어야 한다.
-                // 마음은 이미 골 센티널이므로 여기 넣지 않는다.
-                var structureDestinations = new System.Collections.Generic.List<int2>();
                 if (map.structures.IsCreated)
                     for (int i = 0; i < map.structures.Length; i++)
                     {
                         var st = map.structures[i];
                         if (st.faction != Wassup.Battle.Units.Faction.DefenderInstinct) continue;
-                        if (destinations.Contains(st.cell)) continue;
-                        destinations.Add(st.cell);
-                        structureDestinations.Add(st.cell);
+                        // 크기는 **종류에서 파생한다**. 상수를 박으면 마음이 목적지가 되는 날
+                        // 1×1 건물이 3×3 을 차지한다고 거짓말한다.
+                        AddDestination(destinations, DestinationSpec.Footprint(
+                            st.cell, Wassup.Data.StructurePlacements.FootprintOf(st.faction)));
                     }
 
                 // DefaultMask 를 첫 슬롯에 고정하고 나머지는 호출자 순서를 보존해 중복 제거.
@@ -165,7 +191,7 @@ namespace Wassup.Bridge
                     {
                         int slot = destinationIndex * maskCount + maskIndex;
                         maskValues[slot] = masks[maskIndex];
-                        destCells[slot] = destinations[destinationIndex];
+                        destCells[slot] = destinations[destinationIndex].cell;
                     }
 
                     var gridSize = map.gridSize;
@@ -184,43 +210,34 @@ namespace Wassup.Bridge
                     // 슬롯이 DefaultMask(Path) 하나면 walk(= tiles==Walk)와 같은 집합이라
                     // 결과가 현행과 바이트 동일하다(회귀 축).
                     NativeArray<byte> slotWalk = default;
-                    NativeArray<int2> waypointSource = default;
-                    NativeArray<int2> footprintSource = default;
+                    NativeArray<int2> sourceScratch = default;
                     try
                     {
                         slotWalk = new NativeArray<byte>(n, Allocator.Temp);
-                        waypointSource = new NativeArray<int2>(1, Allocator.Temp);
-                        footprintSource = new NativeArray<int2>(
-                            Wassup.Data.StructurePlacements.InstinctFootprint
-                            * Wassup.Data.StructurePlacements.InstinctFootprint, Allocator.Temp);
+                        int maxSources = 1;
+                        for (int i = 0; i < destinations.Count; i++)
+                            maxSources = math.max(maxSources, destinations[i].SourceCount);
+                        sourceScratch = new NativeArray<int2>(maxSources, Allocator.Temp);
+
                         for (int slot = 0; slot < slotCount; slot++)
                         {
                             TraversalSlots.FillWalkMask(in cellLayers, maskValues[slot], slotWalk);
-                            int2 destination = destCells[slot];
+                            var spec = destinations[slot / maskCount];
+
+                            // 거점 목적지의 소스가 **footprint 전체**인 이유: 중심 1칸으로 쓰면
+                            // Coil 의 본능 중심 (10,6) 이 Place 타일이라 빌더가 그 소스를 버리고
+                            // 슬롯이 통째로 빈 필드가 된다(Duel 은 9/9 가 Walk 라 혼자서는 이
+                            // 함정을 못 잡는다). 다중 소스라 적은 중심이 아니라 **가장 가까운
+                            // 벽면**에 도착한다 — 건물을 둘러싸고 팬다.
                             NativeArray<int2> sources;
-                            if (destination.Equals(FlowFieldSingleton.GoalSentinel))
+                            if (spec.extent == 0)
                             {
                                 sources = goalsField;
                             }
-                            else if (structureDestinations.Contains(destination))
-                            {
-                                // instinct-content unit 3 — 거점 목적지의 소스는 **footprint 전체**다.
-                                // 중심 1칸으로 쓰면 안 된다: Coil 의 본능 중심 (10,6) 은 Place 타일
-                                // 이라 BuildFromSources 가 그 소스를 버리고 슬롯이 통째로 빈 필드가
-                                // 된다(Duel 은 9/9 가 Walk 라 이 함정을 혼자서는 못 잡는다).
-                                //
-                                // 통행 교집합을 여기서 다시 거르지 않는다 — 빌더가 이미 경계·통행
-                                // 으로 소스를 거르고, 유효 소스 0 이면 전 셀 int.MaxValue 로 두어
-                                // «못 가는 건물» 을 골 폴백 신호로 표현한다(그 규약을 복제하지 않는다).
-                                //
-                                // 다중 소스라 적은 중심이 아니라 **가장 가까운 벽면**에 도착한다.
-                                FillFootprint(destination, footprintSource);
-                                sources = footprintSource;
-                            }
                             else
                             {
-                                waypointSource[0] = destination;
-                                sources = waypointSource;
+                                FillSources(in spec, sourceScratch);
+                                sources = sourceScratch.GetSubArray(0, spec.SourceCount);
                             }
                             FlowFieldBuilder.BuildFromSources(slotWalk, gridSize, sources,
                                 flow.GetSubArray(slot * n, n), dist.GetSubArray(slot * n, n));
@@ -228,8 +245,7 @@ namespace Wassup.Bridge
                     }
                     finally
                     {
-                        if (footprintSource.IsCreated) footprintSource.Dispose();
-                        if (waypointSource.IsCreated) waypointSource.Dispose();
+                        if (sourceScratch.IsCreated) sourceScratch.Dispose();
                         if (slotWalk.IsCreated) slotWalk.Dispose();
                     }
 

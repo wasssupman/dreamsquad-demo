@@ -5083,11 +5083,13 @@ namespace Wassup.Bridge
                 if (faction == Faction.EnemyCore)
                     _enemyCoreMax += Mathf.Max(0, Mathf.RoundToInt(s.data.health));
 
-                // 본능 3×3 — 통행 차단은 본체만(계약 12: 마음은 비차단). BlockingHazard
-                // 다중셀 선례(EffectSpawner)와 같은 버퍼라 통행 코드 신설 0.
+                // 본능 3×3 **점유** 선언 — 차단이 아니다. 사거리를 「가장 가까운 벽면까지」로
+                // 재는 데 쓰이고(AttackSystem), 흐름장 목적지의 BFS 소스가 된다.
+                // 통행을 막는 것은 `BlockingHazard` 컴포넌트를 **함께** 든 방벽뿐이다
+                // (instinct-content unit 1 — 옛 계약 12「본능 footprint 는 벽」은 폐기).
                 if (Wassup.Data.StructurePlacements.IsInstinct(faction))
                 {
-                    int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
+                    int half = Wassup.Data.StructurePlacements.FootprintOf(faction) / 2;
                     var cells = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
                     for (int dy = -half; dy <= half; dy++)
                         for (int dx = -half; dx <= half; dx++)

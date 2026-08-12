@@ -162,7 +162,7 @@ namespace Wassup.Tests.EditMode
         // ── 스폰 — 저작 거점(SO HP) ─────────────────────────────────────────────
 
         [Test]
-        public void AuthoredInstinct_SpawnsWithSoHp_AndNineBlockedCells()
+        public void AuthoredInstinct_SpawnsWithSoHp_AndNineOccupiedCells()
         {
             var instinct = MakeStructureData(StructureKind.Instinct, hp: 321f);
             SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
@@ -176,12 +176,12 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(321f, em.GetComponentData<Health>(e).value, 1e-4f, "HP 는 SO 에서 온다");
             Assert.IsTrue(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e));
             Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e).Length,
-                "3×3 본체가 통행을 막는다(계약 12)");
+                "3×3 본체를 **점유**한다 — 사거리는 가장 가까운 칸까지, 흐름장 소스도 이 9칸이다");
             AssertStructureHasNoEffectBuffers(em, e);
         }
 
         [Test]
-        public void AuthoredEnemyCore_SpawnsWithoutBlocking()
+        public void AuthoredEnemyCore_SpawnsWithoutOccupancyBuffer()
         {
             var core = MakeStructureData(StructureKind.Core, hp: 777f);
             SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
@@ -193,7 +193,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(Entity.Null, e);
             Assert.AreEqual(Faction.EnemyCore, em.GetComponentData<FactionTag>(e).value);
             Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e),
-                "마음은 통행을 막지 않는다 — 적 마음은 스폰 셀이다(계약 12)");
+                "마음은 1×1 이라 다중 셀 점유 선언이 없다 — 적 마음은 스폰 셀이기도 하다");
             Assert.IsFalse(em.HasComponent<GoalTowerTag>(e),
                 "적 마음은 패배 판정(GoalTowerTag 부재 감지) 밖이다");
             AssertStructureHasNoEffectBuffers(em, e);

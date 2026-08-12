@@ -121,6 +121,8 @@ public NativeArray<StructurePlacement> structures;   // GeneratedMap
 
 ## 주의
 
-- 마음은 **통행을 막지 않는다**(계약 12). 본능 3×3 본체만 막고, 그 차단·배치 배제 파생은 unit 4 다.
+- ~~마음은 **통행을 막지 않는다**(계약 12). 본능 3×3 본체만 막고…~~ → **계약 12 폐기**
+  (`instinct-content` unit 1, 2026-08-12): 거점은 마음이든 본능이든 **아무것도 막지 않는다.**
+  3×3 은 차단이 아니라 **점유** 선언이고(사거리·흐름장 소스), 배치 배제는 footprint 뿐이다.
 - `StructureData.targetFactions` 는 unit 1 의 `AttackUnitData.targetFactions` 와 같은 축·같은 의미다. 본능이 «유닛과 같은 파이프라인» 을 타는 근거(계약 10)이고 unit 5 가 소비한다.
 - 거점 체력의 정본은 SO 다. 라이브 마음(현행 골 타워)이 덱(`AttackDeck.goalStabilityMax`)에서 받는 것을 SO 로 옮기는 이관은 **unit 4** 사안이다(리뷰 F5).
