@@ -53,6 +53,13 @@ namespace Wassup.Presentation
         // 되쓰기 때문에 외부에서 런타임에 써봐야 한 프레임 뒤 덮인다. 값을 바꿀 땐 둘을 같이 바꾼다.
         public const int WeaponTrailOrder = 15500;
 
+        // elite-enemy-tier unit 4 — 화염 브레스 원샷. 빔(15000)과 **같은 이유·같은 증상**이다:
+        // VFXPACK_FIRE_WALLCOEUR 프리팹이 order 0~2 로 들어와서 그대로 두면 유닛(Compute =
+        // 수백대) 뒤에 깔리고, 「드래곤 발밑에 눌린 불」로 보인다(사용자 제보 2026-08-13).
+        // 브레스는 시전자 **앞**에 떠야 전방 분사로 읽힌다. 투사체(+1000) 위 · 빔(15000) 아래.
+        // 프리팹 내부의 상대 순서는 이 값에 **더해서** 보존한다(빔과 같은 규약).
+        public const int AreaBreathOrder = 14000;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 

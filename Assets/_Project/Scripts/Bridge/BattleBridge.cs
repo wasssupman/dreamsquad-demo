@@ -8262,6 +8262,8 @@ namespace Wassup.Bridge
         // 매번 재컴파일 왕복이 된다. 사거리 1타일당 배율 + 상한.
         [SerializeField] private float areaBreathVfxScalePerTile = 0.25f;
         [SerializeField] private float areaBreathVfxScaleMax = 1.2f;
+        // 시전자 앞으로 얼마나 내보낼지(사거리 대비 분율). 0 = 시전자에 겹침 = 「발밑에 깔린 불」.
+        [SerializeField] private float areaBreathVfxForwardFactor = 0.45f;
 
         private bool _warnedAreaBreathVfxMissing;
 
@@ -8285,9 +8287,24 @@ namespace Wassup.Bridge
             var aheadSim = new Vector3(dirXZ.x, 0f, dirXZ.y);
             Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToView(aheadSim)
                                 - (Vector3)Wassup.Core.BoardSpace.ToView(Vector3.zero);
+            if (aheadView.sqrMagnitude < 1e-6f) aheadView = Vector3.right;
+            aheadView.Normalize();
             float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;
 
-            var go = Instantiate(areaBreathVfxPrefab, originView, Quaternion.Euler(0f, 0f, angle));
+            // ★**시전자 앞으로 내보낸다.** 원점에 그대로 두면 이펙트가 드래곤에 겹쳐서 「발밑에
+            // 깔린 불」로 보인다(사용자 제보 2026-08-13). 오프셋은 사거리 비례 + 인스펙터 배율.
+            Vector3 spawnPos = originView + aheadView * (rangeWorld * areaBreathVfxForwardFactor);
+
+            // 프리팹은 **직립 화염**(+Y 로 솟는다)이라 −90° 를 더해 +Y 를 조준 방향에 맞춘다.
+            // (초판은 바닥 계열 GroundFire 를 썼는데 그건 보드 평면에 눕도록 저작된 것이라
+            //  기울어진 보드에서 바닥 얼룩으로 보였다.)
+            var go = Instantiate(areaBreathVfxPrefab, spawnPos, Quaternion.Euler(0f, 0f, angle - 90f));
+
+            // ★정렬 — 벤더 프리팹이 order 0~2 로 들어와 유닛(Compute = 수백대) 뒤에 깔린다.
+            // 빔이 겪은 것과 같은 증상이라 같은 규약을 쓴다: 대역 상수를 **더해서** 프리팹 내부의
+            // 상대 순서를 보존한다.
+            foreach (var r in go.GetComponentsInChildren<ParticleSystemRenderer>(true))
+                r.sortingOrder += Wassup.Presentation.BoardSortOrder.AreaBreathOrder;
 
             // ★**콘 기하를 그대로 그리려 하지 않는다.** 초판은 사거리·반각에서 폭을 유도했는데
             // (`rangeWorld × tan(반각) × 2`), 사거리 3타일 · 반각 50° 면 폭이 7.15 유닛이 되어
