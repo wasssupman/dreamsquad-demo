@@ -199,3 +199,9 @@ CC 걸리고, 어그로에 유인되고, 등장 경보도 없다. 즉 *«막을 
 6. **`EnemyKilledEvent` 의 페이로드 태그화** [S] — 각성·점수·킬버스트·분열로 **네 번째** 필드
    append 가 된다(리뷰 M2). 지금은 프레임당 1회 드레인이라 문제가 아니지만, 다섯 번째가 붙기
    전에 «태그 + union» 형태를 검토한다.
+7. **남은 5개 e2e 를 `BattleBridgeTestAccess` 로 이관** [S] — `da2261ae` 가 리플렉션 스폰
+   레시피를 한 자리로 모으고 이 spec 의 2개를 옮겼다. `BossLullabyTest`·`BossLullabyLiveTest`·
+   `BossShieldTest`·`EnemyShieldTest`·`KindlerFireStackE2ETest` 는 각자 사본을 유지한다 —
+   각 spec 의 범위이고, 그 사본들엔 여전히 이름 단언이 없어서 **개명 한 번에 NRE 로 조용히
+   죽는다**(2026-08-11 `deckIndex`→`laneIndex` 가 Kindler 를 그렇게 죽였다). 다음에 그 파일을
+   여는 세션이 같이 옮기는 것이 싸다.
