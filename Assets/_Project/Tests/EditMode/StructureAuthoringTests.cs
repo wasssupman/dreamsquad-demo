@@ -473,10 +473,13 @@ namespace Wassup.Tests.EditMode
 
         // ── 연결성 하한 ─────────────────────────────────────────────────────────
 
-        // 리뷰 H-2 — 본능 3×3 은 연결성 BFS 에서도 벽이다. 반영하지 않으면 복도를 봉인한
-        // 맵이 검사를 통과하고, 적이 스폰에서 정지한 채 웨이브 전멸 판정을 영구히 막는다.
+        // instinct-content unit 1 — 연결성 BFS 가 벽으로 세는 것은 **타일뿐**이다. 거점은
+        // 마음이든 본능이든 통행을 막지 않으므로, 복도를 «봉인» 하는 거점이란 게 없다.
+        //
+        // 옛 리뷰 H-2 는 정반대(본능은 벽)를 단정했다. 그 계약(12)이 폐기되면서 이 단정도
+        // 뒤집힌다 — 지금 이 검사가 false 를 돌려주면 저작 가능한 정상 맵이 툴에서 거절된다.
         [Test]
-        public void AllSpawnsReachGoal_InstinctSealingCorridor_ReturnsFalse()
+        public void AllSpawnsReachGoal_StructuresNeverOccludeCorridor()
         {
             int w = 7, h = 3, n = w * h;
             var tiles = new NativeArray<MapTileType>(n, Allocator.Persistent);
@@ -488,7 +491,7 @@ namespace Wassup.Tests.EditMode
                 for (int i = 0; i < n; i++) tiles[i] = MapTileType.Walk;   // 3줄 전면 Walk
                 spawns[0] = new int2(0, 1);
                 goals[0] = new int2(6, 1);
-                // 3×3 본능이 (3,1) — 높이 3 복도를 정확히 봉인한다.
+                // 3×3 본능이 (3,1) — 높이 3 복도를 footprint 로 정확히 덮는 최악 배치.
                 structures[0] = new StructurePlacement
                 {
                     cell = new int2(3, 1),
@@ -500,16 +503,16 @@ namespace Wassup.Tests.EditMode
                     tiles = tiles, spawns = spawns, goals = goals, structures = structures,
                     gridSize = new int2(w, h), goal = goals[0],
                 };
-                Assert.IsFalse(MapConnectivity.AllSpawnsReachGoal(map),
-                    "복도를 봉인한 본능 — 통과시키면 적이 스폰에서 영구 정지한다");
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map),
+                    "본능은 벽이 아니라 건물이다 — 복도를 덮어도 적은 그 위를 지나간다");
 
-                // 같은 맵에서 본능이 마음이면(비차단, 계약 12) 통과한다.
+                // 마음도 같다 — 거점 종류는 통행에 아무 영향이 없다.
                 structures[0] = new StructurePlacement
                 {
                     cell = new int2(3, 1),
                     faction = Wassup.Battle.Units.Faction.EnemyCore,
                 };
-                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "마음은 통행을 막지 않는다");
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "마음도 통행을 막지 않는다");
             }
             finally
             {

@@ -38,14 +38,10 @@ namespace Wassup.Data
         // v1 footprint — 마음 1×1 · 본능 3×3 (README 계약 6). 임의 footprint 는 후속 후보.
         public const int CoreFootprint = 1;
         public const int InstinctFootprint = 3;
-        // 적대적 본능의 배치 배제 여유(README 요청 7-2 — «주변 3타일») = 3×3 본체 + 3 = 9×9.
-        // unit 8 에서 «적» → «적대적»(= 방어 진영이 아닌) 으로 일반화됐다.
-        // instinct-content unit 0 rev(사용자 결정 2026-08-12) — 본능 주변 배치 배제 폐지(3→0).
-        // 배제는 이제 footprint 3×3(건물 자리) 뿐이다. 원래 값 3은 «링 결투» 구배(합법 배치
-        // 거리 5부터)를 만들었지만, 15×12 보드에서 9×9 무배치는 과했고 인접 유닛도 본능의
-        // 반격(사거리 5가 인접을 덮는다)을 받으므로 근접 러시가 공짜가 아니다. 기계(술어·
-        // 분기)는 유지 — 값만 제품 결정이다.
-        public const int HostileInstinctPlacementPadding = 0;
+        // instinct-content unit 1 — 「적대적 본능의 배치 배제 여유」(구 9×9, 이후 값 0)는
+        // 술어·분기까지 **삭제**됐다. 본능은 자기 footprint 만 차지하는 건물이고, 배치 배제도
+        // 통행 차단도 그 이상 갖지 않는다(사용자 결정 2026-08-12). 되살릴 일이 있으면
+        // «여유 ≥ 사거리 = 아무도 못 쏘는 포탑» 검산부터 하고 축을 새로 세운다.
 
         // 편 × 종류 → 교차 비트. 거점 아닌 비트는 이 함수에서 나올 수 없다.
         public static Faction DeriveFaction(StructureSide side, StructureKind kind)
@@ -75,12 +71,6 @@ namespace Wassup.Data
         public static bool IsCore(Faction faction) => ((int)faction & Factions.AnyCore) != 0;
         public static bool IsInstinct(Faction faction) => ((int)faction & Factions.AnyInstinct) != 0;
 
-        // unit 8 — 배치 배제 여유를 받는 본능. 「방어 진영이 아닌 본능」이 이 자리에서
-        // 표현 가능한 가장 정확한 술어다: GeneratedMap.structures 는 SO 참조를 실을 수
-        // 없어 «방어유닛을 노리는가»(targetFactions)를 볼 수 없다. 중립을 여는 날 코드
-        // 변경 0 으로 걸린다(구 B-M9 — EnemyInstinct 리터럴이던 자리).
-        public static bool IsHostileInstinct(Faction faction)
-            => IsInstinct(faction) && ((int)faction & Factions.AnyDefender) == 0;
     }
 
     // battle-structures unit 3 — 모드는 **파생**이다. 저작 enum 을 두면 «공성인데 적 마음

@@ -41,10 +41,10 @@ namespace Wassup.Tests.EditMode
             em.AddBuffer<IncomingDamage>(e);
             em.AddComponentData(e, new FactionTag { value = faction });
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
-            var cells = em.AddBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e);
+            var cells = em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e);
             for (int dy = -1; dy <= 1; dy++)
                 for (int dx = -1; dx <= 1; dx++)
-                    cells.Add(new Wassup.Battle.Effects.BlockingHazardCellsBuffer
+                    cells.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer
                     {
                         cell = new int2(cell.x + dx, cell.y + dy),
                     });

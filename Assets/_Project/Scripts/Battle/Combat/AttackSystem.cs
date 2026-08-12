@@ -84,7 +84,7 @@ namespace Wassup.Battle.Combat
             var bombLauncherLookup = SystemAPI.GetComponentLookup<BombLauncherState>(isReadOnly: false);
             // summon-patrol-defender unit 3 — 소환사 상태(RO). current 갱신은 Bridge 드레인이 한다.
             var summonerLookup = SystemAPI.GetComponentLookup<SummonerState>(isReadOnly: true);
-            var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
+            var occupiedCellsLookup = SystemAPI.GetBufferLookup<OccupiedCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
             // aggro-targeting Unit 4 — enemy class filter + priority targeting.
@@ -556,7 +556,7 @@ namespace Wassup.Battle.Combat
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
                     int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
                     if (tileDist > tileRange) continue;
-                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
+                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, occupiedCellsLookup, hasFlowField, flowField, out var nearestPos);
                     // battle-structures unit 0 — 거점에 대한 타입 기반 특별 취급은 없다.
                     // 마스크에 들어온 후보는 종류를 묻지 않고 **거리로만** 경쟁한다.
                     // «이 공격자가 거점을 우선하나» 는 공격자 쪽 저작이 정할 문제이고
@@ -1425,7 +1425,7 @@ namespace Wassup.Battle.Combat
                                             int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                                             int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
                                             if (tileDistAoE > tileRange) continue;
-                                            float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
+                                            float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, occupiedCellsLookup, hasFlowField, flowField, out _);
                                             if (rankByHealth)
                                             {
                                                 var h = healthLookup[targetEntities[i]];
@@ -1935,7 +1935,7 @@ namespace Wassup.Battle.Combat
             float3 attackerPos,
             Entity target,
             float3 fallbackTargetPos,
-            BufferLookup<BlockingHazardCellsBuffer> hazardCellsLookup,
+            BufferLookup<OccupiedCellsBuffer> occupiedCellsLookup,
             bool hasFlowField,
             Wassup.Battle.Effects.FlowFieldSingleton flowField,
             out float3 nearestTargetPos)
@@ -1944,10 +1944,10 @@ namespace Wassup.Battle.Combat
             float3 diff = fallbackTargetPos - attackerPos;
             float bestSq = diff.x * diff.x + diff.z * diff.z;
 
-            if (!hasFlowField || !hazardCellsLookup.HasBuffer(target))
+            if (!hasFlowField || !occupiedCellsLookup.HasBuffer(target))
                 return bestSq;
 
-            var cells = hazardCellsLookup[target];
+            var cells = occupiedCellsLookup[target];
             for (int i = 0; i < cells.Length; i++)
             {
                 float3 cellWorld = GridMath.CellToWorldCenter(cells[i].cell, flowField.tileSize, fallbackTargetPos.y, origin: flowField.origin);

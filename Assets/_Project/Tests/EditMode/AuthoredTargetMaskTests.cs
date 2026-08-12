@@ -353,18 +353,26 @@ namespace Wassup.Tests.EditMode
                 "힐러는 적 거점을 후보로 삼지 않는다");
         }
 
-        // 배치 배제 술어 — 구 B-M9(EnemyInstinct 리터럴)의 일반화.
+        // instinct-content unit 1 — 배치 배제는 **건물 자리뿐**이다. 편도 종류도 묻지 않는다.
+        //
+        // 이 자리엔 `IsHostileInstinct` 술어(적/중립 본능만 여유 9×9)를 단정하는 테스트가
+        // 있었다. 술어째 삭제됐다 — 사용자 지시의 「배치 불가」는 건물이 선 칸을 뜻했지,
+        // 본능만 특별히 넓게 막으라는 뜻이 아니었다. 남는 규칙은 footprint 하나다.
         [Test]
-        public void IsHostileInstinct_CoversEnemyAndNeutral_ExcludesDefenderAndCores()
+        public void PlacementExclusion_IsFootprintOnly_ForEveryStructureKind()
         {
-            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.EnemyInstinct));
-            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.NeutralInstinct),
-                "중립 본능도 배치 배제를 받는다 — 중립을 여는 날 코드 변경 0");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.DefenderInstinct),
-                "내 본능 주변에는 배치할 수 있다");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyCore),
-                "마음은 본체 1칸만 닫는다 — 여유가 붙으면 인접 배치로 공성하는 경로가 막힌다");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyUnit));
+            Assert.AreEqual(StructurePlacements.InstinctFootprint,
+                StructurePlacements.FootprintOf(Faction.EnemyInstinct));
+            Assert.AreEqual(StructurePlacements.InstinctFootprint,
+                StructurePlacements.FootprintOf(Faction.DefenderInstinct),
+                "편이 배제 규칙을 가르지 않는다 — 내 본능도 자기 자리를 차지한다");
+            Assert.AreEqual(StructurePlacements.CoreFootprint,
+                StructurePlacements.FootprintOf(Faction.EnemyCore),
+                "마음은 본체 1칸 — 여유가 붙으면 인접 배치로 공성하는 경로가 막힌다");
+
+            Assert.AreEqual(1, StructurePlacements.CoreFootprint / 2 * 2 + 1,
+                "footprint 는 홀수여야 중심 대칭으로 닫힌다");
+            Assert.AreEqual(3, StructurePlacements.InstinctFootprint / 2 * 2 + 1);
         }
     }
 }

@@ -642,19 +642,8 @@ namespace Wassup.EditorTools
             }
             if (_goals.Count > 0 && effectiveSpawns.Count > 0)
             {
-                // 리뷰 H-2 패리티 — 본능 3×3 은 벽이다(런타임 MapConnectivity 와 같은 판정).
-                // 여기서 안 잡으면 «툴은 통과인데 런타임이 fallback» 이 난다.
-                var occluded = new bool[_w * _h];
-                foreach (var st in _structures)
-                {
-                    if (st.data == null || st.data.kind != StructureKind.Instinct) continue;
-                    int half = StructurePlacements.InstinctFootprint / 2;
-                    for (int oy = -half; oy <= half; oy++)
-                        for (int ox = -half; ox <= half; ox++)
-                            if (InBounds(st.cell.x + ox, st.cell.y + oy))
-                                occluded[Idx(st.cell.x + ox, st.cell.y + oy)] = true;
-                }
-
+                // instinct-content unit 1 — 거점 가림 삭제. 런타임 MapConnectivity 와 같은
+                // 판정이라는 패리티는 유지된다 — 그쪽도 이제 타일만 벽으로 센다.
                 var vis = new bool[_w * _h];
                 var q = new Queue<int>();
                 foreach (var g in _goals)
@@ -668,7 +657,7 @@ namespace Wassup.EditorTools
                     for (int k = 0; k < 4; k++)
                     {
                         int nx = cx + dx[k], ny = cy + dy[k];
-                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)] && !occluded[Idx(nx, ny)])
+                        if (IsWalk(nx, ny) && !vis[Idx(nx, ny)])
                         { vis[Idx(nx, ny)] = true; q.Enqueue(Idx(nx, ny)); }
                     }
                 }

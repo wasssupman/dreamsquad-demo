@@ -65,7 +65,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(Entity.Null, e);
             Assert.IsTrue(_em.HasComponent<Obstacle>(e));
             Assert.IsTrue(_em.HasComponent<BlockingHazard>(e));
-            Assert.IsTrue(_em.HasBuffer<BlockingHazardCellsBuffer>(e));
+            Assert.IsTrue(_em.HasBuffer<OccupiedCellsBuffer>(e));
             Assert.IsTrue(_em.HasComponent<Health>(e));
             Assert.IsTrue(_em.HasBuffer<IncomingDamage>(e));
             Assert.IsTrue(_em.HasComponent<FactionTag>(e));
@@ -74,7 +74,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(Faction.BlockingHazard, _em.GetComponentData<FactionTag>(e).value);
             Assert.AreEqual(100f, _em.GetComponentData<Health>(e).max, 1e-4f);
             Assert.AreEqual(3, _em.GetComponentData<BlockingHazard>(e).hazardSoIndex);
-            Assert.AreEqual(9, _em.GetBuffer<BlockingHazardCellsBuffer>(e).Length);
+            Assert.AreEqual(9, _em.GetBuffer<OccupiedCellsBuffer>(e).Length);
             Assert.AreEqual(new int2(4, 4), _em.GetComponentData<Obstacle>(e).cell);
             Assert.AreEqual(GridMath.CellToWorldCenter(new int2(4, 4), 1f), _em.GetComponentData<LocalTransform>(e).Position);
         }

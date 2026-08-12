@@ -1099,20 +1099,18 @@ namespace Wassup.Bridge
                 else
                     CloseCellLayers(_generatedMap.goal);
 
-                // battle-structures unit 4 — 거점 배치 배제(README 요청 7-2). 적 본능은
-                // 3×3 본체 + 주변 3타일 = 9×9 를 닫는다(포탑 사거리 안에 세우는 것 방지).
-                // 그 외 거점(방어 본능·적 마음)은 본체 footprint 만. 빌드 시 파생이며
-                // 저작본을 덮지 않는다 — 위 스폰·골 폐쇄와 같은 자리·같은 성격.
+                // 거점이 선 자리엔 못 놓는다 — 건물이 서 있으니까. 그게 전부다.
+                //
+                // instinct-content unit 1 — 적 본능의 「주변 배치 배제」(구 9×9)는 폐지됐다.
+                // 값(3→0)뿐 아니라 술어·분기까지 지웠다: 사용자 지시는 «배치 불가» 였고 그건
+                // 건물 자리를 뜻했지, 본능만 특별히 넓게 막으라는 뜻이 아니었다. 남은 규칙은
+                // 스폰·골 폐쇄와 완전히 같은 성격 — footprint 만, 빌드 시 파생, 저작본 불변.
                 if (_generatedMap.structures.IsCreated)
                 {
                     for (int i = 0; i < _generatedMap.structures.Length; i++)
                     {
                         var st = _generatedMap.structures[i];
                         int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
-                        // battle-structures unit 8 — 「적대적 본능」 술어(구 B-M9: EnemyInstinct
-                        // 리터럴). 판정은 StructurePlacements 소관 — 형제 파생들과 같은 자리.
-                        if (Wassup.Data.StructurePlacements.IsHostileInstinct(st.faction))
-                            half += Wassup.Data.StructurePlacements.HostileInstinctPlacementPadding;   // 리뷰 A-L1
                         for (int dy = -half; dy <= half; dy++)
                             for (int dx = -half; dx <= half; dx++)
                                 CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
@@ -1223,8 +1221,8 @@ namespace Wassup.Bridge
             }
 
             // battle-structures 후속 2(리뷰 M-5) — 거점 프랍은 **맵 수명**이다.
-            // 엔티티는 StartBattle 이 세우지만(판 수명), 9×9 배치 배제는 이 빌드 시점에 이미
-            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 9×9 만 있고 왜 막혔는지
+            // 엔티티는 StartBattle 이 세우지만(판 수명), footprint 배치 배제는 이 빌드 시점에 이미
+            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 칸만 있고 왜 막혔는지
             // 보여주는 것이 없는»** 구간이 생긴다 — 플레이어가 알 방법이 없다.
             // 정리는 TeardownGeneratedMap 이 소유한다(맵과 같은 수명 = 재빌드마다 정확히 1벌).
             SpawnStructureViews();
@@ -5023,7 +5021,7 @@ namespace Wassup.Bridge
         //                                 GoalTowerTag + StructureTag.
         //   _resolvedMapDoc.Structures  → 본능 + 적 마음. HP = SO(StructureData.health).
         //                                 StructureTag 만. 본능은 3×3 통행 차단 버퍼
-        //                                 (BlockingHazardCellsBuffer — 기존 소비자가 그대로 처리).
+        //                                 (OccupiedCellsBuffer — 기존 소비자가 그대로 처리).
         private void SpawnStructureEntities()
         {
             DestroyStructureEntities();
@@ -5090,10 +5088,10 @@ namespace Wassup.Bridge
                 if (Wassup.Data.StructurePlacements.IsInstinct(faction))
                 {
                     int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
-                    var cells = _em.AddBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(entity);
+                    var cells = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
                     for (int dy = -half; dy <= half; dy++)
                         for (int dx = -half; dx <= half; dx++)
-                            cells.Add(new Wassup.Battle.Effects.BlockingHazardCellsBuffer
+                            cells.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer
                             {
                                 cell = new int2(cell.x + dx, cell.y + dy),
                             });
@@ -5158,7 +5156,7 @@ namespace Wassup.Bridge
         }
 
         // battle-structures 후속 2(리뷰 M-5) — 거점 프랍 생성. **맵 빌드 시점**이라 배치
-        // 페이즈부터 보인다(9×9 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
+        // 페이즈부터 보인다(footprint 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
         // 있으므로 여기서 등록부를 건드리지 않는다 — 게이지는 등록부 기반이라 전투 시작
         // 전까지 안 뜨는 게 맞다(체력은 아직 없다).
         // sim→view 는 BoardSpace.ToView 경유(Pickup 프레젠터 선례). 프리팹 미지정은 무해.
