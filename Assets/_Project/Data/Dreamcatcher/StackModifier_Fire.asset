@@ -20,7 +20,7 @@ MonoBehaviour:
   - atStack: 5
     mode: 1
     derivedKind: 0
-    magnitude: 4
+    magnitude: 10
     duration: 4.85
     stat: 0
     op: 0
