@@ -51,17 +51,37 @@
 - `EnemyAiStateSystem`도 AttackSystem과 같은 층 마스크를 읽는다. 빠뜨리면 Path 전용 순찰병이 Air 적만 보고 `Engaging`으로 멈춘다.
 - `HazardEffect.targetTraversalLayers`는 복사본에만 쓰는 `[NonSerialized]` 런타임 스냅샷이다.
 - Air 우선 타겟팅은 없다. 대공사수의 Path·Air 후보는 기존 거리순으로 동등하게 경쟁한다.
+- ⚠ **rev 3 계약 «모든 방어유닛이 비행을 때린다(대공 축 없음)»는 구현에서 사용자 승인으로 반전됐다** — 기존 방어는 Path 전용 폴백이 됐고 고도 타겟층 축이 생겼다. 이전 문서·세션 메모리와 충돌하면 **이쪽(README rev 4 계약 7)이 정본**이다.
+- ⚠ **Skimmer 는 아직 라이브에 안 나온다** — `EnemyCatalog` + `Deck_WaypointLab`(dev 슬롯) 뿐, 라이브 덱 7종 미편입. 반면 **대공사수는 DefenderCatalog 라이브 노출**이라 unit 5 전까지 Air 가치가 잠자는 비대칭 상태다(Path|Air 라 죽은 픽은 아님). 라이브 편입은 unit 5 에서 **웨이브 재추첨 규칙**(structure-hunter unit 1: 시드 재기준·풀 중간 삽입·7종 열거 정본 = `WaveKillBudgetPinTests`·`maxPerWave`)과 함께 처리한다.
 
-## Resume
+## Resume (unit 5 구현 후 갱신, 2026-08-11)
 
-1. `README.md`의 상태·feature-wide 계약을 먼저 읽는다.
-2. 다음 미완료 작업은 `5_painter_and_maps.md` 하나다. unit 5 구현은 아직 시작하지 않았다.
-3. `MapPainterWindow.cs`의 기존 저장/bake 흐름과 unit 0의 `WaypointPathValidation`을 찾아 그대로 재사용한다.
-4. 경로 선택·추가/삭제·순서 클릭·마지막 점 삭제·오버레이만 만든다. 재정렬 UI나 새 검증 규칙은 추가하지 않는다.
-5. 맵은 2~3장까지만 저작하고, 저장→재로드 왕복과 맵별 Play 확인 뒤 사용자 체감 승인을 받는다.
+1. **unit 5 구현 완료** — 페인터 경로 브러시(`Tool.Waypoint` + 전용 브러시 바 + 오버레이 + `WaypointAuthoringRules` 그대로 호출) · Serpent/Zig Air 경로 저작 · **Skimmer 라이브 편입**(`Deck_Serpent` 시드→20260821 · `Deck_Zig` →20260825, `minWaveNumber 8`·`maxPerWave 2`).
+2. 검증: `WaypointPathBakeTests` 3건(교체/null 보존/빈 배열 삭제) · 페인터 왕복(라이브 사본 리플렉션) PASS · Serpent 라이브 계측 — 경로 순서 통과 위반 0·데코 통과 5,295프레임·done 후 골 전환 · EditMode 2,171/실패 0 · 두 덱 100웨이브 상한·게이트 위반 0.
+3. **잔여 = 사용자 Play 체감 확인 1건** — Serpent/Zig 에서 웨이브 8+ Skimmer 등장, «다른 자리에 방어(대공사수)를 세우게 되는가».
+4. ⚠ 하네스 함정 2건이 `5_painter_and_maps.md` 하단에 있다 — `Bake` 의 dev 슬롯 자동 등록(스크래치 잔여 참조) · `PendingSpawnEntry.deckIndex`→`laneIndex` 개명.
+
+## 사용자 보고 조사 (2026-08-12) — «비행이 마음을 안 패고 바로 누수»
+
+**비행의 공성은 정상이다.** 재현 2회: 마음이 살아 있으면 Engaging → 타워 1000→0 직접 파괴까지 확인.
+증상의 원인은 **기존 규칙 2개의 합성**이다(비행 고유 아님):
+
+1. 적의 골 목적지는 맵 빌드 때 고정 — **마음의 생사를 모른다**(최근접 골로 간다).
+2. **부서진 골 도달 = 즉시 소멸 + 유출 카운트**(stress-after-breach, `canSiege && breached`).
+
+→ 한 마음이 부서진 멀티골 맵에서, 부서진 쪽이 최근접인 적은 **살아있는 마음을 놔두고** 부서진
+골에서 소멸한다. 통제 실험으로 확정: (7,4)만 붕괴시키자 스키머가 교전 0 프레임으로 (7,4)에서
+소멸했고 그동안 (7,6)은 HP 709 로 생존. Serpent 는 두 마음이 2칸 거리라 «살아있는 바 옆에서
+사라지는» 장면이 된다. 지상 적도 동일하나 오는 길에 죽어 관측이 드물고, **비행은 무저항 완주로
+이 장면을 100% 노출**한다. `canSiege=false`(공격 수단 상실) 경로는 코드·실측 양쪽에서 배제됨.
+
+**사용자 결정 B (2026-08-12): 규칙은 의도로 유지, 시인성만 보강.** 근거 — 진행 중인 맵 개편으로
+폭1 단방향(멀티골 협곡) 맵 자체가 은퇴 예정이라 라우팅 재설계에 투자하지 않는다.
+구현: 붕괴한 골 프랍을 **그을린 틴트 + 60% 주저앉음**으로 전환(`TilemapMapView.MarkGoalCollapsed`,
+호출 = `OpenGoalCellAfterBreach` 단일 지점, 아트 0). 스크린샷 검증 — 2칸 거리에서 생존 골과 즉시 구분.
 
 ## Follow-up
 
-- 다음 작업 단위는 `5_painter_and_maps.md`: 경로 페인터와 맵 2~3장 저작.
-- 나머지 맵, 대공사수 고유 아트·최종 밸런스, Air 우선/추가 피해는 README 후속 후보다.
+- **라이브 지상 경로 적** — 지상 2경로 맵을 라이브에 내려면 경로 따르는 지상 적의 이름·스탯·실루엣 저작이 선행(의도적 범위 축소, unit 5 문서 참조). `Enemy_WaypointBasic/Alt` 는 dev 전용.
+- 나머지 맵 경로 저작, 대공사수 고유 아트·최종 밸런스, Air 우선/추가 피해는 README 후속 후보다.
 - 비방향 defender Entity/Cell 투사체 패턴이 실제 콘텐츠에 들어올 때 emitter 후보에도 타겟층 필터를 추가한다.

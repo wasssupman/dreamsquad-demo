@@ -104,6 +104,10 @@ namespace Wassup.Core
         private Transform _ringPropsRoot;
         // prop-placement-layer unit 1 — goal/spawn 구조물 프랍 루트. 부모(90°X)를 역회전 상쇄해 메쉬가 똑바로 선다.
         private Transform _structurePropsRoot;
+        // waypoint-routing 후속(사용자 결정 B, 2026-08-12) — 붕괴한 골의 프랍을 셀로 찾아
+        // «이미 뚫린 곳» 으로 전환하기 위한 추적. 붕괴 후에도 프랍이 멀쩡히 서 있어서
+        // 적이 그 골에서 소멸(유출 전환)하는 것이 «살아있는 마음을 안 때리는 버그» 로 읽혔다.
+        private readonly Dictionary<Vector2Int, GameObject> _goalPropsByCell = new();
         // first-session-tutorial unit 2 — 셀 중심이 아니라 실제 구조물 renderer 중심을 노출한다.
         // 구조물 미사용 테마에서는 같은 API가 셀 중심으로 폴백한다.
         private bool _hasGoalVisualAnchor;
@@ -741,6 +745,7 @@ namespace Wassup.Core
         public void InstantiateStructureProps(in GeneratedMap map, MapThemeData theme, BoardVisualPlan plan)
         {
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
+            _goalPropsByCell.Clear();   // 프랍 루트와 같은 수명 — 재빌드 시 stale 참조 방지
             ResetStructureVisualAnchors(in map);
             if (grid == null || theme == null || !map.IsCreated) return;
             if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
@@ -761,6 +766,7 @@ namespace Wassup.Core
                         var gi = PlaceStructure(theme.goalStructureProp, map.goals[i], plan, theme);
                         if (i == 0) _goalVisualAnchorWorld = ResolveVisualAnchor(gi, _goalVisualAnchorWorld);
                         if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goals[i]), null);
+                        _goalPropsByCell[new Vector2Int(map.goals[i].x, map.goals[i].y)] = gi;
                     }
                 }
                 else
@@ -768,6 +774,7 @@ namespace Wassup.Core
                     var instance = PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
                     _goalVisualAnchorWorld = ResolveVisualAnchor(instance, _goalVisualAnchorWorld);
                     if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
+                    _goalPropsByCell[new Vector2Int(map.goal.x, map.goal.y)] = instance;
                 }
             }
             if (theme.spawnStructureProp != null && theme.spawnStructureProp.prefab != null && map.spawns.IsCreated)
@@ -780,6 +787,30 @@ namespace Wassup.Core
                     if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.spawns[i]), null);
                 }
             }
+        }
+
+        // waypoint-routing 후속(사용자 결정 B) — 붕괴한 골을 «이미 뚫린 곳» 으로 전환.
+        // 프랍 교체 아트가 없으므로(백로그) 코드만으로 읽히게 한다: 그을린 틴트 + 주저앉음.
+        // 스프라이트 프랍은 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
+        // 붕괴 상태는 매치 수명 — 프랍 루트 재빌드가 원복을 겸한다(_goalPropsByCell.Clear).
+        public void MarkGoalCollapsed(Vector2Int cell)
+        {
+            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null) return;
+            var charred = new Color(0.22f, 0.19f, 0.17f, 1f);
+            foreach (var sr in prop.GetComponentsInChildren<SpriteRenderer>())
+                sr.color = charred;
+            var mpb = new MaterialPropertyBlock();
+            foreach (var r in prop.GetComponentsInChildren<Renderer>())
+            {
+                if (r is SpriteRenderer) continue;
+                r.GetPropertyBlock(mpb);
+                mpb.SetColor("_BaseColor", charred);
+                mpb.SetColor("_Color", charred);
+                r.SetPropertyBlock(mpb);
+            }
+            // 주저앉음 — 실루엣 자체가 «무너졌다» 를 말하게 한다. 앵커가 바닥이 아니어도
+            // 60% 스케일이면 붕괴 읽힘이 충분하고 이웃 골(2칸 거리)과 즉시 구분된다.
+            prop.transform.localScale *= 0.6f;
         }
 
         private GameObject PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)

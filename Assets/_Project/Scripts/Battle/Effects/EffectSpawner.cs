@@ -170,9 +170,9 @@ namespace Wassup.Battle.Effects
                 hazardSoIndex = hazardSoIndex,
                 maxHp = so.maxHp,
             });
-            var buffer = em.AddBuffer<BlockingHazardCellsBuffer>(entity);
+            var buffer = em.AddBuffer<OccupiedCellsBuffer>(entity);
             for (int i = 0; i < cells.Count; i++)
-                buffer.Add(new BlockingHazardCellsBuffer { cell = cells[i] });
+                buffer.Add(new OccupiedCellsBuffer { cell = cells[i] });
 
             em.AddComponentData(entity, new Health { value = so.maxHp, max = so.maxHp });
             em.AddBuffer<IncomingDamage>(entity);

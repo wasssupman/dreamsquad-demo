@@ -21,21 +21,51 @@ namespace Wassup.Tests.EditMode
     // 단정하므로, 로드 규칙이 미래에 바뀌어도 무장 해제 회귀를 잡는다.
     public class AuthoredTargetMaskTests
     {
+        // 적의 기본 타겟은 **상대 진영 전부**다 — 열거가 아니라 파생 그룹으로 적는다.
+        //
+        // 이 단언의 값어치는 «29 인지» 가 아니라 «방어측 종류가 늘면 자동으로 그것을 요구하는가»
+        // 다. 방어 진영에 새 종류가 추가되면 `Factions.AnyDefender` 가 커지고 이 테스트가
+        // 기본값에게 그것을 덮으라고 요구한다 — 종류를 추가한 사람이 이 파일을 몰라도 된다.
+        // (2026-08-12: 열거로 적혀 있던 탓에 방어 본능이 «아무 적도 못 보는 무적 포탑» 이었다.)
         [Test]
-        public void LegacyEnemyMask_IsUnitPlusHazardPlusDefenderCore()
+        public void DefaultEnemyMask_CoversWholeOpposingSide()
         {
-            Assert.AreEqual(
-                (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
-                EnemyTargetDefaults.LegacyEnemyMask,
-                "DefenderCore 가 빠지면 적이 골 타워를 못 때려 공성이 사라진다");
+            Assert.AreEqual(Factions.AnyDefender,
+                EnemyTargetDefaults.DefaultEnemyMask & Factions.AnyDefender,
+                "기본 마스크가 방어 진영의 어떤 종류를 빠뜨리면 그 종류는 전 적에게 무적이 된다");
+            Assert.AreNotEqual(0,
+                EnemyTargetDefaults.DefaultEnemyMask & (int)Faction.BlockingHazard,
+                "방벽을 빼면 완전 봉쇄에서 적이 벽을 못 부숴 영구 교착된다");
+        }
+
+        // 저작 = «이 적은 특수하다» 는 선언이다. 특수하지 않은 적은 기본값을 그대로 쓴다.
+        // 목록을 늘리려면 그 적이 왜 특수한지 여기 적어야 한다 — 그게 이 테스트의 역할이다.
+        [Test]
+        public void OnlySpecialEnemies_NarrowTheirTargets()
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:AttackUnitData"))
+            {
+                var so = AssetDatabase.LoadAssetAtPath<AttackUnitData>(AssetDatabase.GUIDToAssetPath(guid));
+                if (so == null) continue;
+                int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
+                if (mask == EnemyTargetDefaults.DefaultEnemyMask) continue;
+
+                // 마음사냥꾼 — 유닛을 노리지 않는 것이 정체성이고, 그래서 도발도 안 걸린다.
+                Assert.AreEqual("heartseeker", so.id,
+                    $"'{so.id}' 가 기본값을 좁혔다. 특수 타게팅이 의도라면 이 목록에 근거와 함께 추가하라");
+                Assert.AreEqual(0, mask & Factions.AnyUnit, "마음사냥꾼은 유닛을 노리지 않는다(도발 면역의 근거)");
+                Assert.AreEqual(Factions.AnyStructure & Factions.AnyDefender,
+                    mask & Factions.AnyDefender,
+                    "마음사냥꾼은 방어측 **거점 전부**(마음·본능)를 노린다 — 절반만 노리면 «거점 전담» 이 거짓말이다");
+            }
         }
 
         [Test]
-        public void Resolve_Unauthored_FallsBackToLegacyMask()
+        public void Resolve_Unauthored_FallsBackToDefaultMask()
         {
-            Assert.AreEqual(EnemyTargetDefaults.LegacyEnemyMask,
+            Assert.AreEqual(EnemyTargetDefaults.DefaultEnemyMask,
                 EnemyTargetDefaults.Resolve((int)Faction.None),
-                "0 = 미저작 → 레거시 마스크. 이게 없으면 기존 에셋이 전부 무장 해제된다");
+                "0 = 미저작 → 기본값. 이게 없으면 인스펙터에서 비운 적이 무장 해제된다");
         }
 
         [Test]
@@ -71,13 +101,13 @@ namespace Wassup.Tests.EditMode
                 if (so.targetFactions == Faction.None)
                 {
                     unauthored.Add(so.name);
-                    Assert.AreEqual(EnemyTargetDefaults.LegacyEnemyMask, resolved,
-                        $"{so.name}: 미저작은 레거시 마스크와 동치여야 한다(행동 변화 0)");
+                    Assert.AreEqual(EnemyTargetDefaults.DefaultEnemyMask, resolved,
+                        $"{so.name}: 미저작은 기본값(상대 진영 전부)과 동치여야 한다");
                 }
             }
             // 진단용 — 미저작 목록이 곧 «아직 저작 안 한 적» 이다. 실패 조건은 아니다.
             if (unauthored.Count > 0)
-                UnityEngine.Debug.Log($"[unit 1] 미저작 적 {unauthored.Count}종 → 레거시 폴백: {string.Join(", ", unauthored)}");
+                UnityEngine.Debug.Log($"[unit 1] 미저작 적 {unauthored.Count}종 → 기본값 폴백: {string.Join(", ", unauthored)}");
         }
 
         // 검증 질문 — 저작만으로 «거점 전담 적» 이 성립하는가.
@@ -323,18 +353,26 @@ namespace Wassup.Tests.EditMode
                 "힐러는 적 거점을 후보로 삼지 않는다");
         }
 
-        // 배치 배제 술어 — 구 B-M9(EnemyInstinct 리터럴)의 일반화.
+        // instinct-content unit 1 — 배치 배제는 **건물 자리뿐**이다. 편도 종류도 묻지 않는다.
+        //
+        // 이 자리엔 `IsHostileInstinct` 술어(적/중립 본능만 여유 9×9)를 단정하는 테스트가
+        // 있었다. 술어째 삭제됐다 — 사용자 지시의 「배치 불가」는 건물이 선 칸을 뜻했지,
+        // 본능만 특별히 넓게 막으라는 뜻이 아니었다. 남는 규칙은 footprint 하나다.
         [Test]
-        public void IsHostileInstinct_CoversEnemyAndNeutral_ExcludesDefenderAndCores()
+        public void PlacementExclusion_IsFootprintOnly_ForEveryStructureKind()
         {
-            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.EnemyInstinct));
-            Assert.IsTrue(StructurePlacements.IsHostileInstinct(Faction.NeutralInstinct),
-                "중립 본능도 배치 배제를 받는다 — 중립을 여는 날 코드 변경 0");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.DefenderInstinct),
-                "내 본능 주변에는 배치할 수 있다");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyCore),
-                "마음은 본체 1칸만 닫는다 — 여유가 붙으면 인접 배치로 공성하는 경로가 막힌다");
-            Assert.IsFalse(StructurePlacements.IsHostileInstinct(Faction.EnemyUnit));
+            Assert.AreEqual(StructurePlacements.InstinctFootprint,
+                StructurePlacements.FootprintOf(Faction.EnemyInstinct));
+            Assert.AreEqual(StructurePlacements.InstinctFootprint,
+                StructurePlacements.FootprintOf(Faction.DefenderInstinct),
+                "편이 배제 규칙을 가르지 않는다 — 내 본능도 자기 자리를 차지한다");
+            Assert.AreEqual(StructurePlacements.CoreFootprint,
+                StructurePlacements.FootprintOf(Faction.EnemyCore),
+                "마음은 본체 1칸 — 여유가 붙으면 인접 배치로 공성하는 경로가 막힌다");
+
+            Assert.AreEqual(1, StructurePlacements.CoreFootprint / 2 * 2 + 1,
+                "footprint 는 홀수여야 중심 대칭으로 닫힌다");
+            Assert.AreEqual(3, StructurePlacements.InstinctFootprint / 2 * 2 + 1);
         }
     }
 }

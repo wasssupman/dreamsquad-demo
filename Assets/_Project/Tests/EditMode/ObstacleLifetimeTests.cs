@@ -163,9 +163,9 @@ namespace Wassup.Tests.EditMode
                 remainingLife = float.PositiveInfinity,
             });
             _em.AddComponentData(e, new BlockingHazard { hazardSoIndex = -1, maxHp = 10f });
-            var buffer = _em.AddBuffer<BlockingHazardCellsBuffer>(e);
+            var buffer = _em.AddBuffer<OccupiedCellsBuffer>(e);
             for (int i = 0; i < cells.Length; i++)
-                buffer.Add(new BlockingHazardCellsBuffer { cell = cells[i] });
+                buffer.Add(new OccupiedCellsBuffer { cell = cells[i] });
             return e;
         }
     }

@@ -1105,20 +1105,18 @@ namespace Wassup.Bridge
                 else
                     CloseCellLayers(_generatedMap.goal);
 
-                // battle-structures unit 4 — 거점 배치 배제(README 요청 7-2). 적 본능은
-                // 3×3 본체 + 주변 3타일 = 9×9 를 닫는다(포탑 사거리 안에 세우는 것 방지).
-                // 그 외 거점(방어 본능·적 마음)은 본체 footprint 만. 빌드 시 파생이며
-                // 저작본을 덮지 않는다 — 위 스폰·골 폐쇄와 같은 자리·같은 성격.
+                // 거점이 선 자리엔 못 놓는다 — 건물이 서 있으니까. 그게 전부다.
+                //
+                // instinct-content unit 1 — 적 본능의 「주변 배치 배제」(구 9×9)는 폐지됐다.
+                // 값(3→0)뿐 아니라 술어·분기까지 지웠다: 사용자 지시는 «배치 불가» 였고 그건
+                // 건물 자리를 뜻했지, 본능만 특별히 넓게 막으라는 뜻이 아니었다. 남은 규칙은
+                // 스폰·골 폐쇄와 완전히 같은 성격 — footprint 만, 빌드 시 파생, 저작본 불변.
                 if (_generatedMap.structures.IsCreated)
                 {
                     for (int i = 0; i < _generatedMap.structures.Length; i++)
                     {
                         var st = _generatedMap.structures[i];
                         int half = Wassup.Data.StructurePlacements.FootprintOf(st.faction) / 2;
-                        // battle-structures unit 8 — 「적대적 본능」 술어(구 B-M9: EnemyInstinct
-                        // 리터럴). 판정은 StructurePlacements 소관 — 형제 파생들과 같은 자리.
-                        if (Wassup.Data.StructurePlacements.IsHostileInstinct(st.faction))
-                            half += Wassup.Data.StructurePlacements.HostileInstinctPlacementPadding;   // 리뷰 A-L1
                         for (int dy = -half; dy <= half; dy++)
                             for (int dx = -half; dx <= half; dx++)
                                 CloseCellLayers(new int2(st.cell.x + dx, st.cell.y + dy));
@@ -1227,8 +1225,8 @@ namespace Wassup.Bridge
             }
 
             // battle-structures 후속 2(리뷰 M-5) — 거점 프랍은 **맵 수명**이다.
-            // 엔티티는 StartBattle 이 세우지만(판 수명), 9×9 배치 배제는 이 빌드 시점에 이미
-            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 9×9 만 있고 왜 막혔는지
+            // 엔티티는 StartBattle 이 세우지만(판 수명), footprint 배치 배제는 이 빌드 시점에 이미
+            // 파생됐다. 뷰를 엔티티에 묶어두면 **배치 페이즈에 «막힌 칸만 있고 왜 막혔는지
             // 보여주는 것이 없는»** 구간이 생긴다 — 플레이어가 알 방법이 없다.
             // 정리는 TeardownGeneratedMap 이 소유한다(맵과 같은 수명 = 재빌드마다 정확히 1벌).
             SpawnStructureViews();
@@ -1998,6 +1996,13 @@ namespace Wassup.Bridge
                     cell, field.tileSize, spawnHeight, origin: field.origin);
                 outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
+                // instinct-content unit 3 — 적은 스폰 시 **거점 하나를 목적지로 고른다**.
+                // 그 선택을 여기서 다시 하지 않으면 예고선만 마음으로 곧장 뻗고 유닛은 거점으로
+                // 꺾어 「가이드 ≠ 실제 이동선」이 된다(사용자 지적 2026-08-12).
+                // 선택은 **스폰 위치에서** 일어나므로 웨이포인트를 밟기 전 좌표로 묻는다.
+                bool hasStructureLeg = TryResolveFirstStructureDestination(
+                    pos, in field, out int2 structureDest);
+
                 int waypointCount = field.WaypointCountAt(waypointPathIndex);
                 for (int i = 0; i < waypointCount; i++)
                 {
@@ -2006,6 +2011,13 @@ namespace Wassup.Bridge
                         in field, in nav, waypoint, traversalLayers, radius,
                         ref cell, ref pos, outPath);
                 }
+
+                // 거점을 부순 뒤에는 재선정으로 다음 목표(결국 마음)로 이어지므로, 예고선도
+                // 「스폰 → 첫 거점 → 마음」 두 구간으로 그린다.
+                if (hasStructureLeg)
+                    AppendSpawnPathSegment(
+                        in field, in nav, structureDest, traversalLayers, radius,
+                        ref cell, ref pos, outPath);
 
                 AppendSpawnPathSegment(
                     in field, in nav, FlowFieldSingleton.GoalSentinel, traversalLayers, radius,
@@ -2016,6 +2028,67 @@ namespace Wassup.Bridge
                 navScratch.Dispose();
             }
             return outPath.Count >= 2;
+        }
+
+        // 예고선의 첫 목적지 = **적이 실제로 고르는 그 목적지**.
+        //
+        // 규칙(`StructureChoice.NearestIndex`)과 정렬 기준(`IsBefore`)을 `StructureDestinationSystem`
+        // 과 **함께 쓴다**. 후보를 모으는 코드만 다르다 — 여긴 `EntityManager`, 저긴 `SystemAPI` 라
+        // 아키텍처가 강제하는 차이다. 규칙까지 두 벌이 되면 이 버그가 그대로 돌아온다.
+        //
+        // 마스크는 기본값을 쓴다. 거점 후보의 진영은 마음/본능뿐이고 **기본 마스크와 마음사냥꾼
+        // 마스크가 그 둘에 대해 같은 답**을 내므로 오늘 저작된 전 적종이 같은 목적지를 고른다.
+        // 거점 종류를 좁게 저작한 적이 생기면 그 적만 예고선과 갈릴 수 있다(그때 웨이브 구성별
+        // 예고가 필요해진다).
+        private bool TryResolveFirstStructureDestination(
+            float3 fromWorld, in Wassup.Battle.Effects.FlowFieldSingleton field, out int2 destCell)
+        {
+            destCell = default;
+            using var q = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.StructureTag>());
+            var entities = q.ToEntityArray(Allocator.Temp);
+            var cells = new NativeList<int2>(8, Allocator.Temp);
+            var world = new NativeList<float2>(8, Allocator.Temp);
+            var factions = new NativeList<int>(8, Allocator.Temp);
+            var isGoal = new NativeList<bool>(8, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(e)) continue;
+                    var tag = _em.GetComponentData<Wassup.Battle.Units.StructureTag>(e);
+                    var w = GridMath.CellToWorldCenter(
+                        tag.cell, field.tileSize, 0f, origin: field.origin);
+                    cells.Add(tag.cell);
+                    world.Add(new float2(w.x, w.z));
+                    factions.Add((int)tag.faction);
+                    isGoal.Add(_em.HasComponent<Wassup.Battle.Units.GoalTowerTag>(e));
+                }
+
+                for (int i = 1; i < cells.Length; i++)
+                    for (int j = i; j > 0 && StructureChoice.IsBefore(cells[j], cells[j - 1]); j--)
+                    {
+                        (cells[j], cells[j - 1]) = (cells[j - 1], cells[j]);
+                        (world[j], world[j - 1]) = (world[j - 1], world[j]);
+                        (factions[j], factions[j - 1]) = (factions[j - 1], factions[j]);
+                        (isGoal[j], isGoal[j - 1]) = (isGoal[j - 1], isGoal[j]);
+                    }
+
+                int pick = StructureChoice.NearestIndex(
+                    new float2(fromWorld.x, fromWorld.z), world.AsArray(), factions.AsArray(),
+                    Wassup.Battle.Combat.EnemyTargetDefaults.DefaultEnemyMask);
+
+                // 마음이 뽑히면 구간을 넣지 않는다 — 뒤이어 붙는 골 구간이 그 답이다.
+                if (pick < 0 || isGoal[pick]) return false;
+                destCell = cells[pick];
+                return true;
+            }
+            finally
+            {
+                isGoal.Dispose(); factions.Dispose(); world.Dispose();
+                cells.Dispose(); entities.Dispose();
+            }
         }
 
         private static bool AppendSpawnPathSegment(
@@ -5124,7 +5197,7 @@ namespace Wassup.Bridge
         //                                 GoalTowerTag + StructureTag.
         //   _resolvedMapDoc.Structures  → 본능 + 적 마음. HP = SO(StructureData.health).
         //                                 StructureTag 만. 본능은 3×3 통행 차단 버퍼
-        //                                 (BlockingHazardCellsBuffer — 기존 소비자가 그대로 처리).
+        //                                 (OccupiedCellsBuffer — 기존 소비자가 그대로 처리).
         private void SpawnStructureEntities()
         {
             DestroyStructureEntities();
@@ -5186,15 +5259,17 @@ namespace Wassup.Bridge
                 if (faction == Faction.EnemyCore)
                     _enemyCoreMax += Mathf.Max(0, Mathf.RoundToInt(s.data.health));
 
-                // 본능 3×3 — 통행 차단은 본체만(계약 12: 마음은 비차단). BlockingHazard
-                // 다중셀 선례(EffectSpawner)와 같은 버퍼라 통행 코드 신설 0.
+                // 본능 3×3 **점유** 선언 — 차단이 아니다. 사거리를 「가장 가까운 벽면까지」로
+                // 재는 데 쓰이고(AttackSystem), 흐름장 목적지의 BFS 소스가 된다.
+                // 통행을 막는 것은 `BlockingHazard` 컴포넌트를 **함께** 든 방벽뿐이다
+                // (instinct-content unit 1 — 옛 계약 12「본능 footprint 는 벽」은 폐기).
                 if (Wassup.Data.StructurePlacements.IsInstinct(faction))
                 {
-                    int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
-                    var cells = _em.AddBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(entity);
+                    int half = Wassup.Data.StructurePlacements.FootprintOf(faction) / 2;
+                    var cells = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
                     for (int dy = -half; dy <= half; dy++)
                         for (int dx = -half; dx <= half; dx++)
-                            cells.Add(new Wassup.Battle.Effects.BlockingHazardCellsBuffer
+                            cells.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer
                             {
                                 cell = new int2(cell.x + dx, cell.y + dy),
                             });
@@ -5259,7 +5334,7 @@ namespace Wassup.Bridge
         }
 
         // battle-structures 후속 2(리뷰 M-5) — 거점 프랍 생성. **맵 빌드 시점**이라 배치
-        // 페이즈부터 보인다(9×9 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
+        // 페이즈부터 보인다(footprint 배치 배제가 이미 파생된 그 시점). 엔티티(판 수명)와 분리돼
         // 있으므로 여기서 등록부를 건드리지 않는다 — 게이지는 등록부 기반이라 전투 시작
         // 전까지 안 뜨는 게 맞다(체력은 아직 없다).
         // sim→view 는 BoardSpace.ToView 경유(Pickup 프레젠터 선례). 프리팹 미지정은 무해.
@@ -5280,6 +5355,8 @@ namespace Wassup.Bridge
                 float3 simCenter = GridToWorldCenter(s.cell);
                 var view = Instantiate(s.data.viewPrefab,
                     (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                // instinct-content unit 0 rev — SO 스케일 knob (프리팹 원본 스케일에 곱).
+                view.transform.localScale *= s.data.viewScale;
                 view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _structureViews.Add(view);
             }
@@ -5582,6 +5659,11 @@ namespace Wassup.Bridge
             if (!HasLiveEntityManager()) return;
             tileHealthGaugeLayer?.Hide(cell);
             vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+            // waypoint-routing 후속(사용자 결정 B, 2026-08-12) — 붕괴한 골의 프랍을 그을린
+            // 붕괴 상태로 전환. 원샷 VFX 만으로는 «이미 뚫린 곳» 이 잔존 표시되지 않아,
+            // 이후 여기 도달한 적의 소멸(유출 전환)이 «살아있는 마음을 안 때리는 버그» 로
+            // 읽혔다(비행 적이 무저항 완주로 이 장면을 100% 노출하며 표면화).
+            tilemapMapView?.MarkGoalCollapsed(cell);
             using var siegeQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalReachedMarker>(),
                 ComponentType.ReadOnly<AttackUnitTag>(),
@@ -5843,6 +5925,15 @@ namespace Wassup.Bridge
                 return false;
             }
 
+            // defender-board-limit 0 — 판 위 동시 존재 상한. 코스트 검사 **앞**이다: 사유
+            // 우선순위가 구조 > 자원이라야 로그와 트레이 표현(소진 > 쿨타임 > 코스트)이 일치한다.
+            // 재배치는 이 함수를 지나지 않으므로(CanRelocateDefender → RelocationCheck) 영향 없다.
+            if (DeployedCountOf(unitData) >= unitData.EffectiveMaxOnBoard)
+            {
+                reason = PlacementRejectReason.LimitReached;
+                return false;
+            }
+
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             if (costRuntime != null && !costRuntime.CanAfford(unitData.cost))
             {
@@ -5852,6 +5943,51 @@ namespace Wassup.Bridge
 
             reason = PlacementRejectReason.None;
             return true;
+        }
+
+        // defender-board-limit 0 — 이 유닛 타입이 지금 판에 몇 기 있나. 상한 판정과 트레이
+        // 소진 표현의 단일 출처다.
+        //
+        // **세는 것이지 저장하는 게 아니다.** _defenderByTile 이 판 위 유닛의 유일한 진실원이고
+        // 사망은 거기서 지워지고(DrainDefenderDeathEvents) 재배치는 엔티티를 유지한 채 키만
+        // 옮긴다 — 세기만 하면 세 경우가 전부 맞는다. 별도 카운터를 두면 대기배치 취소·teardown·
+        // 매치 리셋마다 어긋날 구멍이 생긴다. 파생이라 리셋 훅도 필요 없다(dict 가 비면 자동 0).
+        // 보드는 최대 수십 칸이라 선형 스캔 비용은 무시 가능(TryGetDefenderCell 선례).
+        public int DeployedCountOf(DefenderUnitData unit)
+        {
+            if (unit == null) return 0;
+            int n = 0;
+            foreach (var kv in _defenderByTile)
+            {
+                if (kv.Value.data != unit) continue;
+                // 사망 프레임과 드레인(DrainDefenderDeathEvents) 사이에는 바인딩이 파괴된
+                // 엔티티를 가리킨다. 그건 "판에 서 있는 기수" 가 아니므로 세지 않는다 —
+                // TryGetDeployedEntity 와 같은 판정을 써야 «소진인데 데려갈 유닛이 없는》
+                // 상태가 안 생긴다. _em 이 없으면 확인할 수 없으므로 **세는 쪽**으로 둔다
+                // (상한이 조용히 풀리는 것보다 한 프레임 더 막히는 게 안전하다).
+                if (_em != null && !_em.Exists(kv.Value.entity)) continue;
+                n++;
+            }
+            return n;
+        }
+
+        // defender-board-limit 2 — 이 유닛 타입이 판에 있으면 한 기를 돌려준다(트레이 소진 셀에서
+        // 그 유닛으로 데려가는 경로). 2기 이상일 때 만질 때마다 다음 기로 가는 순환은 후속 후보 —
+        // 상한 1 이 기본이라 후보가 항상 1기다.
+        public bool TryGetDeployedEntity(DefenderUnitData unit, out Entity entity)
+        {
+            if (unit != null)
+            {
+                foreach (var kv in _defenderByTile)
+                {
+                    if (kv.Value.data != unit) continue;
+                    if (_em == null || !_em.Exists(kv.Value.entity)) continue;
+                    entity = kv.Value.entity;
+                    return true;
+                }
+            }
+            entity = Entity.Null;
+            return false;
         }
 
         // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
@@ -6371,6 +6507,10 @@ namespace Wassup.Bridge
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity); // dot-effect-extraction unit 0
             _defenderByTile[cell] = (entity, unitData);
+            // defender-board-limit 1 — 바인딩이 생긴 바로 이 자리가 «판에 올라왔다» 의 유일한
+            // 지점이다(모든 배치 경로가 여기를 지난다). 재배치는 이 함수를 지나지 않으므로
+            // 발화하지 않는다 — 기수가 안 변하니 알릴 것도 없다.
+            DefenderPlaced?.Invoke(entity, unitData);
             _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");

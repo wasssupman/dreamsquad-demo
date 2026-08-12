@@ -18,14 +18,16 @@ namespace Wassup.Tests.PlayMode
     //
     // 저작물: MapDocument_Test(dev 슬롯, 30×30 전면 Walk) 에 적 본능
     // (Structure_TestInstinct — cannon_base_red 프랍, 포탑) 1기를 (15,15) 에 저작해 뒀다.
-    // 이 테스트가 재는 것: 부팅 → 스폰(SO HP·3×3 차단) → 뷰 프랍 → 적이 블로커를
-    // 우회해 여전히 골에 도달(연결성 생존). 본능의 발사 자체는 EditMode 가 실
+    // 이 테스트가 재는 것: 부팅 → 스폰(SO HP·3×3 점유) → 뷰 프랍 → 적이 건물 위를
+    // 지나 골에 도달(비차단 + 연결성 생존). 본능의 발사 자체는 EditMode 가 실
     // AttackSystem 으로 이미 고정했다(ArmedInstinct_FiresProjectileRequest...).
     public class StructureLivePlayTest
     {
         private const float TimeoutSec = 90f;
         private const int DevInstinctMapIndex = 6;   // 메인 6장 뒤 dev[0] = MapDocument_Test(적 본능)
         private const int DevSiegeMapIndex = 8;      // dev[2] = MapDocument_SiegeTest(적 마음, spawns 미저작)
+        private const int CoilMapIndex = 1;          // 주 풀 index 1 = MapDocument_Coil(파수 본능 1기)
+        private static readonly Vector2Int CoilInstinctCell = new Vector2Int(10, 6);
         private int _savedIndex = -1;
 
         [SetUp]
@@ -62,8 +64,8 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             // ── 후속 2(리뷰 M-5) — 프랍은 **배치 페이즈부터** 보인다 ──
-            // 9×9 배치 배제는 맵 빌드 시 파생되므로, 프랍이 StartBattle 까지 없으면 플레이어는
-            // «막힌 칸» 만 보고 이유를 알 수 없다. 뷰를 맵 수명으로 옮긴 것의 실증.
+            // 배치 배제(footprint)는 맵 빌드 시 파생되므로, 프랍이 StartBattle 까지 없으면
+            // 플레이어는 «막힌 칸» 만 보고 이유를 알 수 없다. 뷰를 맵 수명으로 옮긴 것의 실증.
             int propsDuringPlacement = 0;
             foreach (Transform child in bridge.transform)
                 if (child.name.StartsWith("Structure_")) propsDuringPlacement++;
@@ -82,7 +84,7 @@ namespace Wassup.Tests.PlayMode
 
             var em = (EntityManager)GetField(bridge, "_em");
 
-            // ── 스폰: 적 본능이 (15,15) 에 SO HP·3×3 차단으로 선다 ──
+            // ── 스폰: 적 본능이 (15,15) 에 SO HP·3×3 점유로 선다 ──
             using (var q = em.CreateEntityQuery(ComponentType.ReadOnly<StructureTag>()))
             {
                 var entities = q.ToEntityArray(Allocator.Temp);
@@ -98,10 +100,23 @@ namespace Wassup.Tests.PlayMode
                 Assert.AreEqual(new int2(15, 15), em.GetComponentData<StructureTag>(instinct).cell);
                 Assert.AreEqual(500f, em.GetComponentData<Health>(instinct).value, 1e-3f, "HP 는 SO(500)에서");
                 Assert.AreEqual(9,
-                    em.GetBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(instinct).Length,
-                    "3×3 본체 통행 차단");
+                    em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(instinct).Length,
+                    "3×3 점유 — 사거리를 가장 가까운 칸까지로 재기 위한 선언(차단이 아니다)");
                 Assert.IsTrue(em.HasComponent<Wassup.Battle.Combat.AttackState>(instinct),
                     "공격 저작(damage 10 + fireball) → AttackState 베이크");
+            }
+
+            // ── instinct-content unit 1 — 본능은 **길을 막지 않는다** ──
+            // 점유(위 9칸)는 그대로지만 차단 집합엔 한 칸도 들어가지 않는다. 적은 건물 위를
+            // 지나간다. EditMode 는 픽스처 월드에서 이걸 쟀고, 여기서는 **실제 판**이 답한다.
+            using (var oq = em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>()))
+            {
+                var blocked = oq.GetSingleton<Wassup.Battle.Effects.ObstacleSingleton>().blockedCells;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                        Assert.IsFalse(blocked.Contains(new int2(15 + dx, 15 + dy)),
+                            $"본능 footprint ({15 + dx},{15 + dy}) 가 통행 차단 집합에 있다 — 건물이 벽이 됐다");
             }
 
             // ── 뷰: 프랍 인스턴스(cannon_base_red)가 브리지 아래 선다 ──
@@ -110,7 +125,7 @@ namespace Wassup.Tests.PlayMode
                 if (child.name.StartsWith("Structure_")) { viewFound = true; break; }
             Assert.IsTrue(viewFound, "SO.viewPrefab 프랍이 셀 중심에 인스턴스된다");
 
-            // ── 연결성 생존: 3×3 블로커를 우회해 적이 여전히 골에 도달한다 ──
+            // ── 연결성 생존: 적이 여전히 골에 도달한다 ──
             // 디펜더 0 → 적이 골 타워를 공성해 안정도가 준다(= 도달의 관측치).
             for (int i = 0; i < 20 && bridge.NextWaveHasNext; i++) bridge.ForceNextWave();
             int startStability = bridge.GoalStabilityCurrent;
@@ -118,7 +133,7 @@ namespace Wassup.Tests.PlayMode
             while (bridge.GoalStabilityCurrent >= startStability)
             {
                 Assert.Less(Time.unscaledTime - start, TimeoutSec,
-                    "적이 골에 도달하지 못한다 — 본능 3×3 블로커가 경로를 끊었을 수 있다(연결성 회귀)");
+                    "적이 골에 도달하지 못한다 — 거점이 다시 벽이 됐을 수 있다(instinct-content unit 1 회귀)");
                 yield return null;
             }
         }
@@ -191,6 +206,82 @@ namespace Wassup.Tests.PlayMode
             }
         }
 
+        // ───────── instinct-content unit 1 — 본능은 벽이 아니다 (라이브) ─────────
+        //
+        // 저작물: MapDocument_Coil(주 풀 index 1, 15×12) 동쪽 포켓에 파수 본능 1기 (10,6).
+        // dev 슬롯이 아니라 **라이브 맵**을 쓰는 이유: dev 슬롯은 병행 작업이 수시로
+        // 갈아끼우는 스크래치라 고정물로 삼으면 남의 저작에 테스트가 흔들린다
+        // (실제로 MapDocument_Test 가 이 세션 중 13×7 로 덮여 위 테스트가 죽었다).
+        //
+        // 재는 것 둘:
+        //   (1) 통행 — footprint 아홉 칸 중 **한 칸도** 차단 집합에 없다
+        //   (2) 배치 — 거부는 footprint 뿐이고 그 **바로 바깥**은 놓을 수 있다
+        [UnityTest]
+        public IEnumerator Instinct_BlocksNeitherMovementNorNeighborPlacement()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            DevMapOverride.Index = CoilMapIndex;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+
+            var cat = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
+            Assert.Greater(cat.Length, 0, "DefenderCatalog 를 못 찾았다");
+            var unit = cat[0].ById("guardian");
+            Assert.IsNotNull(unit, "guardian");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(5000);
+            yield return null;
+
+            var c = CoilInstinctCell;
+
+            // ── (2) 배치: 건물 자리는 거부, 바로 바깥은 허용 ──
+            // 배제가 footprint 를 넘으면(구 9×9) 바깥 링이 통째로 막혀 이 단정이 죽는다.
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    Assert.IsFalse(bridge.CanPlaceDefenderAt(c.x + dx, c.y + dy, unit, out _),
+                        $"건물 자리 ({c.x + dx},{c.y + dy}) 에 배치가 허용된다");
+
+            int legalJustOutside = 0;
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    if (math.abs(dx) < 2 && math.abs(dy) < 2) continue;   // footprint 링 바깥만
+                    if (bridge.CanPlaceDefenderAt(c.x + dx, c.y + dy, unit, out _)) legalJustOutside++;
+                }
+            Assert.Greater(legalJustOutside, 0,
+                "본능 footprint 바로 바깥에 놓을 칸이 하나도 없다 — 배제가 건물 자리를 넘었다");
+
+            bridge.StartBattle();
+            yield return null;
+
+            var em = (EntityManager)GetField(bridge, "_em");
+
+            // 비어있지 않음 보증 — 본능이 없는 판에서 재면 (1) 은 공허하게 통과한다.
+            Entity instinct = FindStructure(em, Faction.EnemyInstinct);
+            Assert.AreNotEqual(Entity.Null, instinct,
+                "Coil 에 저작된 본능이 라이브에 없다 — 이 테스트는 공허하다(저작이 지워졌는지 확인)");
+            Assert.AreEqual(new int2(c.x, c.y), em.GetComponentData<StructureTag>(instinct).cell);
+            Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(instinct).Length,
+                "점유 선언은 살아 있다 — 사거리를 3×3 옆구리까지로 재기 위한 것");
+
+            // ── (1) 통행: 점유 아홉 칸이 차단 집합에 없다 ──
+            using (var oq = em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>()))
+            {
+                var blocked = oq.GetSingleton<Wassup.Battle.Effects.ObstacleSingleton>().blockedCells;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                        Assert.IsFalse(blocked.Contains(new int2(c.x + dx, c.y + dy)),
+                            $"본능 footprint ({c.x + dx},{c.y + dy}) 가 통행 차단 집합에 있다 — 건물이 다시 벽이 됐다");
+            }
+        }
+
         // ───────────────────── unit 11 — 공성 승패의 라이브 검증 ─────────────────────
         //
         // units 8~10 이 한 판에서 맞물려 도는 것을 잰다:
@@ -214,8 +305,13 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(bridge, "BattleBridge present");
             var cat = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
             Assert.Greater(cat.Length, 0, "DefenderCatalog 를 못 찾았다");
-            var grinder = cat[0].ById("guardian");   // 근접 — 마음 인접에서 깎는다
-            var sniper = cat[0].ById("sniper");      // 최장 사거리 — 본능 저격 시도
+            // defender-board-limit — 이 테스트의 관측치는 «마음 인접 8칸을 최대한 채울 수 있다»
+            // 이므로 근접 유닛을 여러 기 세운다. 라이브 기본값 maxOnBoard=1 이면 1기에서 멈춰
+            // 공성 관측이 무의미해지므로 상한을 푼다 — 카탈로그 에셋이 아니라 **런타임 사본**에만
+            // 쓴다(에셋 직접 수정은 에디터에서 디스크에 박힌다).
+            var grinder = Object.Instantiate(cat[0].ById("guardian")); // 근접 — 마음 인접에서 깎는다
+            grinder.maxOnBoard = 99;
+            var sniper = cat[0].ById("sniper");      // 최장 사거리 — 본능 저격 시도(1기면 충분)
             Assert.IsNotNull(grinder, "guardian");
             Assert.IsNotNull(sniper, "sniper");
 
@@ -243,9 +339,9 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(placedAroundCore, 0,
                 "적 마음 인접에 배치할 수 없다 — 마음이 본체 1칸만 닫는다는 계약이 깨졌다");
 
-            // 본능에 가장 가까운 합법 칸(9×9 배제 밖)에 저격수.
+            // 본능에 가장 가까운 합법 칸(= footprint 바로 바깥)에 저격수.
             Assert.IsTrue(TryPlaceNearest(bridge, sniper, instinctCell, out var sniperCell),
-                "본능 주변 반경 12 안에 배치 가능한 칸이 없다 — 9×9 배제가 과도하거나 배치가 막혔다");
+                "본능 주변 반경 12 안에 배치 가능한 칸이 없다 — 배제가 footprint 를 넘거나 배치가 막혔다");
 
             bridge.StartBattle();
             yield return null;
@@ -274,7 +370,8 @@ namespace Wassup.Tests.PlayMode
             }
 
             // ── (3) 적 본능 — 사거리가 닿을 때만 단정한다 ──
-            // 9×9 배치 배제(체비셰프 ≤ 4)와 본능 사거리(SO 저작)의 관계가 이것을 결정한다.
+            // 배치 배제가 footprint 뿐이라 저격수는 본능 바로 옆에 설 수 있다(instinct-content unit 1).
+            // 그래도 사거리 저작에 따라 안 닿을 수 있다.
             // 닿지 않는 저작이면 그것은 미검증이 아니라 **설계 결과**이므로 로그로 남긴다.
             Assert.IsTrue(em.HasComponent<Health>(instinct), "적 본능에 Health");
             float instinctMax = em.GetComponentData<Health>(instinct).max;

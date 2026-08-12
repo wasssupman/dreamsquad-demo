@@ -55,6 +55,14 @@ namespace Wassup.Bridge
         // 렌더한다(등록부 조회, null 이면 대표 스킨 폴백).
         public event System.Action<int, Vector3, Wassup.Data.ISpineUnitVisualData> EnemyKilledAwakening;
         public event System.Action<Entity, Wassup.Data.DefenderUnitData, Vector3> DefenderDied;
+        // defender-board-limit 1 — 방어유닛이 판에 **올라온** 순간. DefenderDied 의 짝이고,
+        // 둘 다 «바인딩(_defenderByTile)이 바뀌었다» 는 같은 사실을 알린다.
+        //
+        // 트레이 소진 표현이 이 짝을 구독한다. 예전엔 배치 쪽만 UI 이벤트
+        // (DefenderDragPlacementController.PlacementCommitted)를 들었는데, 그러면 드래그를
+        // 지나지 않는 배치 경로(PlaceDefenderAs 직접 호출 등)에서 트레이가 조용히 stale 해진다.
+        // 사망은 브리지가, 배치는 UI 가 알리는 비대칭이 원인이었다 — 둘 다 브리지가 알린다.
+        public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderPlaced;
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 표식 악몽 소멸(처치 또는
         // 유출) 알림. 컨트롤러가 카드 회수(큐 복귀)에 구독한다. 처치/유출의 보상 차이는
         // 이 이벤트가 아니라 표식 시점의 AwakeningReward 베이크가 만든다(처치=배율 보상

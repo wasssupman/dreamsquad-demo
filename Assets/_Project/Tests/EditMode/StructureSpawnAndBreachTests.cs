@@ -162,7 +162,7 @@ namespace Wassup.Tests.EditMode
         // ── 스폰 — 저작 거점(SO HP) ─────────────────────────────────────────────
 
         [Test]
-        public void AuthoredInstinct_SpawnsWithSoHp_AndNineBlockedCells()
+        public void AuthoredInstinct_SpawnsWithSoHp_AndNineOccupiedCells()
         {
             var instinct = MakeStructureData(StructureKind.Instinct, hp: 321f);
             SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
@@ -174,14 +174,14 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(Entity.Null, e, "본능이 스폰된다");
             Assert.AreEqual(Faction.EnemyInstinct, em.GetComponentData<FactionTag>(e).value, "(적 × 본능) 파생");
             Assert.AreEqual(321f, em.GetComponentData<Health>(e).value, 1e-4f, "HP 는 SO 에서 온다");
-            Assert.IsTrue(em.HasBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e));
-            Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e).Length,
-                "3×3 본체가 통행을 막는다(계약 12)");
+            Assert.IsTrue(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e));
+            Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e).Length,
+                "3×3 본체를 **점유**한다 — 사거리는 가장 가까운 칸까지, 흐름장 소스도 이 9칸이다");
             AssertStructureHasNoEffectBuffers(em, e);
         }
 
         [Test]
-        public void AuthoredEnemyCore_SpawnsWithoutBlocking()
+        public void AuthoredEnemyCore_SpawnsWithoutOccupancyBuffer()
         {
             var core = MakeStructureData(StructureKind.Core, hp: 777f);
             SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
@@ -192,8 +192,8 @@ namespace Wassup.Tests.EditMode
             var e = TowerAt(new int2(3, 3));
             Assert.AreNotEqual(Entity.Null, e);
             Assert.AreEqual(Faction.EnemyCore, em.GetComponentData<FactionTag>(e).value);
-            Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.BlockingHazardCellsBuffer>(e),
-                "마음은 통행을 막지 않는다 — 적 마음은 스폰 셀이다(계약 12)");
+            Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e),
+                "마음은 1×1 이라 다중 셀 점유 선언이 없다 — 적 마음은 스폰 셀이기도 하다");
             Assert.IsFalse(em.HasComponent<GoalTowerTag>(e),
                 "적 마음은 패배 판정(GoalTowerTag 부재 감지) 밖이다");
             AssertStructureHasNoEffectBuffers(em, e);
@@ -249,13 +249,16 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse((bool)GetField(_bridge, "_resultShown"));
         }
 
-        // 본능 3×3 이 **실제로 통행을 막는다** — 버퍼 존재가 아니라 blockedCells 유입을 잰다.
-        // 투트랙 리뷰 중 자체 적발: ObstacleLifetimeSystem 의 다중셀 루프가
-        // WithAll<BlockingHazard>(컴포넌트) 를 요구해, 버퍼만 든 본능의 셀이 집합에 못
-        // 들어가 통행 차단·필드 리빌드가 전부 무효였다. 버퍼 존재 단정만으로는 못 잡는
-        // 결함이라 이 테스트는 시스템을 실제로 돌린다.
+        // 본능은 **통행을 막지 않는다** — 건물이지 벽이 아니다(instinct-content unit 1,
+        // 사용자 결정 2026-08-12: 「배치 불가를 얘기했지 통행 불가를 지시하지 않았다」).
+        //
+        // 이 테스트는 battle-structures 시절 정반대(9칸이 들어간다)를 단정했다. 그때의
+        // 결함은 «점유»와 «차단»이 버퍼 하나에 겸직한 것이었고, 당시엔 차단이 맞다고 보아
+        // 컴포넌트 요구를 뗐다. 축을 가른 지금 답은 반대다 — 버퍼는 점유만 말하고,
+        // 차단은 `BlockingHazard` 컴포넌트가 말한다. 버퍼 부재 단정으로는 못 잡는 구분이라
+        // (본능은 버퍼를 **여전히 든다** — 다중 셀 거리 때문에) 시스템을 실제로 돌린다.
         [Test]
-        public void InstinctCells_EnterBlockedCells_ViaObstacleLifetimeSystem()
+        public void InstinctCells_DoNotEnterBlockedCells_ButWallsStillDo()
         {
             var instinct = MakeStructureData(StructureKind.Instinct, hp: 100f);
             SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
@@ -277,15 +280,32 @@ namespace Wassup.Tests.EditMode
                 _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
                 simGroup.Update();
 
-                Assert.AreEqual(9, blocked.Count, "본능 3×3 아홉 칸이 blockedCells 에 들어간다");
-                Assert.IsTrue(blocked.Contains(new int2(5, 4)), "중심 칸");
-                Assert.IsTrue(blocked.Contains(new int2(4, 3)) && blocked.Contains(new int2(6, 5)), "모서리 칸");
+                Assert.AreEqual(0, blocked.Count, "본능 3×3 은 통행을 막지 않는다 — 적은 그 위를 지나간다");
 
-                // 죽은 본능은 그 프레임부터 집합에서 빠진다 — 파괴 전 DeadTag 단계 포함.
-                em.AddComponent<DeadTag>(TowerAt(new int2(5, 4)));
+                // 점유 자체는 살아 있다 — 다중 셀 거리(AttackSystem)가 이 버퍼를 읽는다.
+                var tower = TowerAt(new int2(5, 4));
+                Assert.IsTrue(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(tower),
+                    "차단만 뗐다. 점유 선언은 남는다 — 3×3 옆구리까지가 사거리다");
+                Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(tower).Length);
+
+                // 회귀 방지: 이 변경이 방벽까지 뚫으면 안 된다. 방벽 = 버퍼 + BlockingHazard.
+                var wall = em.CreateEntity();
+                em.AddComponentData(wall, new Wassup.Battle.Effects.BlockingHazard { hazardSoIndex = 0, maxHp = 10f });
+                var wallCells = em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(wall);
+                wallCells.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(1, 1) });
+                wallCells.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(2, 1) });
+
                 _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
                 simGroup.Update();
-                Assert.AreEqual(0, blocked.Count, "붕괴한 본능은 통행을 막지 않는다");
+
+                Assert.AreEqual(2, blocked.Count, "방벽은 **여전히** 막는다 — 컴포넌트가 차단을 말한다");
+                Assert.IsTrue(blocked.Contains(new int2(1, 1)) && blocked.Contains(new int2(2, 1)));
+
+                // 죽은 방벽은 그 프레임부터 집합에서 빠진다 — 파괴 전 DeadTag 단계 포함.
+                em.AddComponent<DeadTag>(wall);
+                _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 0.016f, 0.016f));
+                simGroup.Update();
+                Assert.AreEqual(0, blocked.Count, "붕괴한 방벽은 통행을 막지 않는다");
             }
             finally { if (blocked.IsCreated) blocked.Dispose(); }
         }

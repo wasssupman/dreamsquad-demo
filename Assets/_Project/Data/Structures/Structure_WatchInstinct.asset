@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c952ad4f3f21f814eb6d7be8ea510d68, type: 3}
+  m_Name: Structure_WatchInstinct
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StructureData
+  displayName: "\uD30C\uC218 \uBCF8\uB2A5"
+  kind: 1
+  health: 1000
+  viewPrefab: {fileID: 919132149155446097, guid: 54b032fceb1d7b045914754c68bc9fd6, type: 3}
+  viewScale: 0.4
+  targetFactions: 1
+  attackRange: 5
+  attackCooldown: 1.5
+  attackDamage: 20
+  projectile: {fileID: 11400000, guid: 11cc44871bf54e0c80823bfb65d23086, type: 2}

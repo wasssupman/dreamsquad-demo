@@ -30,30 +30,14 @@ namespace Wassup.Data
             int goalCount = hasGoals ? map.goals.Length : 1;
 
             var reachable = new NativeArray<byte>(n, Allocator.Temp);
-            var occluded = new NativeArray<byte>(n, Allocator.Temp);
             var queue = new NativeQueue<int2>(Allocator.Temp);
             try
             {
-                // battle-structures 리뷰 H-2 — 본능 footprint 는 통행 차단이다(계약 12).
-                // 여기 반영하지 않으면 3×3 이 복도를 봉인한 맵이 검사를 통과하고, 적은
-                // 스폰에서 정지한 채 웨이브 전멸 판정을 영구히 막는다(타이머만 판을 끝냄).
-                // 마음은 비차단이라 제외 — ObstacleLifetimeSystem 이 blockedCells 를 만드는
-                // 기준(BlockingHazardCellsBuffer = 본능 3×3)과 같은 판정이다.
-                if (map.structures.IsCreated)
-                {
-                    for (int s = 0; s < map.structures.Length; s++)
-                    {
-                        var st = map.structures[s];
-                        if (!StructurePlacements.IsInstinct(st.faction)) continue;
-                        int half = StructurePlacements.FootprintOf(st.faction) / 2;
-                        for (int dy = -half; dy <= half; dy++)
-                            for (int dx = -half; dx <= half; dx++)
-                            {
-                                var c = new int2(st.cell.x + dx, st.cell.y + dy);
-                                if (InBounds(c, map.gridSize)) occluded[map.CellIndex(c)] = 1;
-                            }
-                    }
-                }
+                // instinct-content unit 1 — 거점은 **아무것도 막지 않는다**. 옛 리뷰 H-2 는
+                // 본능 3×3 을 벽으로 세워(계약 12) 여기서도 가렸지만, 그 계약은 폐기됐다:
+                // 본능은 벽이 아니라 건물이고, 적은 그 위를 지나간다. 런타임 판정(ObstacleLifetime
+                // System 은 BlockingHazard 를 든 것만 막는다)과 여전히 같은 그림이다 —
+                // 이 BFS 가 벽으로 세는 것은 타일(Walk 아님)뿐이다.
 
                 for (int g = 0; g < goalCount; g++)
                 {
@@ -77,7 +61,6 @@ namespace Wassup.Data
                         int idx = map.CellIndex(next);
                         if (reachable[idx] != 0) continue;
                         if (map.tiles[idx] != MapTileType.Walk) continue;
-                        if (occluded[idx] != 0) continue;   // 리뷰 H-2 — 본능 3×3 은 벽이다
                         reachable[idx] = 1;
                         queue.Enqueue(next);
                     }
@@ -97,7 +80,6 @@ namespace Wassup.Data
             {
                 if (queue.IsCreated) queue.Dispose();
                 if (reachable.IsCreated) reachable.Dispose();
-                if (occluded.IsCreated) occluded.Dispose();
             }
         }
 

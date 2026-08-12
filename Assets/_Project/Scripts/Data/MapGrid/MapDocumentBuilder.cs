@@ -144,8 +144,11 @@ namespace Wassup.Data.MapGrid
         // battle-structures unit 3 — structures 는 **별도 인자**다. GeneratedMap 은 unmanaged 라
         // StructureData 참조를 왕복시킬 수 없어, 저작 주체(페인터)가 관리 엔트리를 직접
         // 넘긴다. null = 거점 저작을 건드리지 않는다(기존 호출자 무회귀).
+        // waypoint-routing unit 5 — waypointPaths: null = 기존 경로 보존(SetFrom 이 경로를
+        // 암묵적으로 지우지 않는다는 unit 0 불변식 유지), 비-null = 통째 교체(빈 배열 = 삭제).
+        // 페인터는 항상 자기 상태를 넘긴다 — 페인터가 연 문서에서는 페인터가 정본이다.
         public static void WriteToDocument(MapDocument doc, in GeneratedMap map,
-            StructureEntry[] structures = null)
+            StructureEntry[] structures = null, WaypointPath[] waypointPaths = null)
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
@@ -185,6 +188,7 @@ namespace Wassup.Data.MapGrid
                 map.seed, map.generatorVersion,
                 placeMask);
             if (structures != null) doc.SetStructures(structures);
+            if (waypointPaths != null) doc.SetWaypointPaths(waypointPaths);
         }
     }
 }

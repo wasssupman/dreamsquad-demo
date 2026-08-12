@@ -66,6 +66,9 @@ namespace Wassup.Battle.Movement
             var patrolStepLookup = SystemAPI.GetComponentLookup<PatrolStep>(isReadOnly: true);
             // waypoint-routing unit 3 — 진행 인덱스의 유일 writer 는 Movement.
             var waypointLookup = SystemAPI.GetComponentLookup<WaypointFollow>(isReadOnly: false);
+            // instinct-content unit 3 — 거점 목적지(Movement 소유). StructureDestinationSystem 이
+            // 이 프레임 앞에서 갱신했고 여기서는 읽기만 한다.
+            var structureDestLookup = SystemAPI.GetComponentLookup<StructureDestination>(isReadOnly: true);
 
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<PathFollowState>>()
@@ -289,6 +292,20 @@ namespace Wassup.Battle.Movement
                                 routeFlow = field.FlowSlot(slot);
                                 routeDist = field.DistSlot(slot);
                             }
+                        }
+                    }
+                    else if (structureDestLookup.HasComponent(entity))
+                    {
+                        // instinct-content unit 3 — 거점 목적지. 저작 웨이포인트보다 **뒤**다:
+                        // 웨이포인트는 맵이 «이 길로 가라» 고 정한 계약이고, 거점 선택은 그 안의
+                        // 전술이다. 순서를 뒤집으면 나중에 저작이 조용히 무시된다.
+                        int slot = field.SlotFor(structureDestLookup[entity].cell, entityLayers);
+                        var destDist = field.DistSlot(slot);
+                        // 그 통행 층으로 못 가는 거점(빈 슬롯 포함)이면 골로 되돌아간다.
+                        if (destDist[idx] != int.MaxValue)
+                        {
+                            routeFlow = field.FlowSlot(slot);
+                            routeDist = destDist;
                         }
                     }
 
