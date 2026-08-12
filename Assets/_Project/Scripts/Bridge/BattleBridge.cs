@@ -1971,6 +1971,13 @@ namespace Wassup.Bridge
                     cell, field.tileSize, spawnHeight, origin: field.origin);
                 outPath.Add(new Vector3(pos.x, pos.y, pos.z));
 
+                // instinct-content unit 3 — 적은 스폰 시 **거점 하나를 목적지로 고른다**.
+                // 그 선택을 여기서 다시 하지 않으면 예고선만 마음으로 곧장 뻗고 유닛은 거점으로
+                // 꺾어 「가이드 ≠ 실제 이동선」이 된다(사용자 지적 2026-08-12).
+                // 선택은 **스폰 위치에서** 일어나므로 웨이포인트를 밟기 전 좌표로 묻는다.
+                bool hasStructureLeg = TryResolveFirstStructureDestination(
+                    pos, in field, out int2 structureDest);
+
                 int waypointCount = field.WaypointCountAt(waypointPathIndex);
                 for (int i = 0; i < waypointCount; i++)
                 {
@@ -1979,6 +1986,13 @@ namespace Wassup.Bridge
                         in field, in nav, waypoint, traversalLayers, radius,
                         ref cell, ref pos, outPath);
                 }
+
+                // 거점을 부순 뒤에는 재선정으로 다음 목표(결국 마음)로 이어지므로, 예고선도
+                // 「스폰 → 첫 거점 → 마음」 두 구간으로 그린다.
+                if (hasStructureLeg)
+                    AppendSpawnPathSegment(
+                        in field, in nav, structureDest, traversalLayers, radius,
+                        ref cell, ref pos, outPath);
 
                 AppendSpawnPathSegment(
                     in field, in nav, FlowFieldSingleton.GoalSentinel, traversalLayers, radius,
@@ -1989,6 +2003,67 @@ namespace Wassup.Bridge
                 navScratch.Dispose();
             }
             return outPath.Count >= 2;
+        }
+
+        // 예고선의 첫 목적지 = **적이 실제로 고르는 그 목적지**.
+        //
+        // 규칙(`StructureChoice.NearestIndex`)과 정렬 기준(`IsBefore`)을 `StructureDestinationSystem`
+        // 과 **함께 쓴다**. 후보를 모으는 코드만 다르다 — 여긴 `EntityManager`, 저긴 `SystemAPI` 라
+        // 아키텍처가 강제하는 차이다. 규칙까지 두 벌이 되면 이 버그가 그대로 돌아온다.
+        //
+        // 마스크는 기본값을 쓴다. 거점 후보의 진영은 마음/본능뿐이고 **기본 마스크와 마음사냥꾼
+        // 마스크가 그 둘에 대해 같은 답**을 내므로 오늘 저작된 전 적종이 같은 목적지를 고른다.
+        // 거점 종류를 좁게 저작한 적이 생기면 그 적만 예고선과 갈릴 수 있다(그때 웨이브 구성별
+        // 예고가 필요해진다).
+        private bool TryResolveFirstStructureDestination(
+            float3 fromWorld, in Wassup.Battle.Effects.FlowFieldSingleton field, out int2 destCell)
+        {
+            destCell = default;
+            using var q = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.StructureTag>());
+            var entities = q.ToEntityArray(Allocator.Temp);
+            var cells = new NativeList<int2>(8, Allocator.Temp);
+            var world = new NativeList<float2>(8, Allocator.Temp);
+            var factions = new NativeList<int>(8, Allocator.Temp);
+            var isGoal = new NativeList<bool>(8, Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(e)) continue;
+                    var tag = _em.GetComponentData<Wassup.Battle.Units.StructureTag>(e);
+                    var w = GridMath.CellToWorldCenter(
+                        tag.cell, field.tileSize, 0f, origin: field.origin);
+                    cells.Add(tag.cell);
+                    world.Add(new float2(w.x, w.z));
+                    factions.Add((int)tag.faction);
+                    isGoal.Add(_em.HasComponent<Wassup.Battle.Units.GoalTowerTag>(e));
+                }
+
+                for (int i = 1; i < cells.Length; i++)
+                    for (int j = i; j > 0 && StructureChoice.IsBefore(cells[j], cells[j - 1]); j--)
+                    {
+                        (cells[j], cells[j - 1]) = (cells[j - 1], cells[j]);
+                        (world[j], world[j - 1]) = (world[j - 1], world[j]);
+                        (factions[j], factions[j - 1]) = (factions[j - 1], factions[j]);
+                        (isGoal[j], isGoal[j - 1]) = (isGoal[j - 1], isGoal[j]);
+                    }
+
+                int pick = StructureChoice.NearestIndex(
+                    new float2(fromWorld.x, fromWorld.z), world.AsArray(), factions.AsArray(),
+                    Wassup.Battle.Combat.EnemyTargetDefaults.DefaultEnemyMask);
+
+                // 마음이 뽑히면 구간을 넣지 않는다 — 뒤이어 붙는 골 구간이 그 답이다.
+                if (pick < 0 || isGoal[pick]) return false;
+                destCell = cells[pick];
+                return true;
+            }
+            finally
+            {
+                isGoal.Dispose(); factions.Dispose(); world.Dispose();
+                cells.Dispose(); entities.Dispose();
+            }
         }
 
         private static bool AppendSpawnPathSegment(

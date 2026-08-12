@@ -27,10 +27,6 @@ namespace Wassup.Battle.Movement
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct StructureDestinationSystem : ISystem
     {
-        // 셀 사전순(x → y). 후보 순서를 이력이 아니라 **좌표**에 묶는 유일한 기준.
-        private static bool IsBefore(int2 a, int2 b)
-            => a.x != b.x ? a.x < b.x : a.y < b.y;
-
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -64,11 +60,10 @@ namespace Wassup.Battle.Movement
                 candidateIsGoal.Add(SystemAPI.HasComponent<GoalTowerTag>(entity));
             }
 
-            // 동률 타이브레이크가 순서에 걸려 있는데 쿼리 순서 = 청크 순서 = 스폰·사망 이력이라
-            // 보장이 아니다. 하나가 죽어 청크가 갈리면 살아남은 후보들의 상대 순서가 조용히
-            // 뒤바뀐다. 후보는 많아야 서너 개라 삽입 정렬로 충분하다.
+            // 정렬 기준은 `StructureChoice.IsBefore` — **예고선과 공유한다**(거기 주석 참조).
+            // 후보는 많아야 서너 개라 삽입 정렬로 충분하다.
             for (int i = 1; i < candidateGrid.Length; i++)
-                for (int j = i; j > 0 && IsBefore(candidateGrid[j], candidateGrid[j - 1]); j--)
+                for (int j = i; j > 0 && StructureChoice.IsBefore(candidateGrid[j], candidateGrid[j - 1]); j--)
                 {
                     (candidateGrid[j], candidateGrid[j - 1]) = (candidateGrid[j - 1], candidateGrid[j]);
                     (candidateCells[j], candidateCells[j - 1]) = (candidateCells[j - 1], candidateCells[j]);
