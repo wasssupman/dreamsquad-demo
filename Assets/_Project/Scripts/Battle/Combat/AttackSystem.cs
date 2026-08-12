@@ -456,6 +456,8 @@ namespace Wassup.Battle.Combat
                 float3 atkPos = transform.ValueRO.Position;
                 int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
                 int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
+                // 사거리 2차 게이트(물리 거리)는 **둘 다 연속 이동**일 때만 — AttackReach 주석.
+                bool attackerIsContinuous = targetPathLookup.HasComponent(attackerEntity);
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
@@ -554,8 +556,8 @@ namespace Wassup.Battle.Combat
                     if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // class not allowed
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
-                    int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
-                    if (tileDist > tileRange) continue;
+                    if (!AttackReach.InReach(atkCell, tgtCell, tileRange, atkPos, targetPos, tileSize,
+                            attackerIsContinuous && targetPathLookup.HasComponent(targetEntities[i]))) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
                     // battle-structures unit 0 — 거점에 대한 타입 기반 특별 취급은 없다.
                     // 마스크에 들어온 후보는 종류를 묻지 않고 **거리로만** 경쟁한다.
@@ -700,7 +702,12 @@ namespace Wassup.Battle.Combat
                                 ? aggroTransformLookup[cur].Position : bestTargetPos;
                             int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
                             int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
-                            keepLock = TargetPersistence.KeepsLock(true, cDist, tileRange);
+                            // 락 유지도 **선정과 같은 술어**를 지나야 한다. 셀만 보면 락을 문 뒤로는
+                            // 2차 게이트가 영영 적용되지 않고, EnemyAiState 쪽 미러(같은 락 블록에
+                            // AttackReach 를 건다)와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
+                            keepLock = AttackReach.InReach(atkCell, cCell, tileRange, atkPos, curPos, tileSize,
+                                           attackerIsContinuous && targetPathLookup.HasComponent(cur))
+                                       && TargetPersistence.KeepsLock(true, cDist, tileRange);
                         }
 
                         if (keepLock)
@@ -836,7 +843,9 @@ namespace Wassup.Battle.Combat
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
                             int2 dCell = GridMath.WorldToCell(dcurPos, tileSize, gridSize, origin: ffOrigin);
                             int dDist = math.max(math.abs(dCell.x - atkCell.x), math.abs(dCell.y - atkCell.y));
-                            dKeep = TargetPersistence.KeepsLock(true, dDist, tileRange);
+                            dKeep = AttackReach.InReach(atkCell, dCell, tileRange, atkPos, dcurPos, tileSize,
+                                        attackerIsContinuous && targetPathLookup.HasComponent(dcur))
+                                    && TargetPersistence.KeepsLock(true, dDist, tileRange);
                         }
                         if (dKeep)
                         {
@@ -880,8 +889,9 @@ namespace Wassup.Battle.Combat
                         float3 ctPos = aggroTransformLookup.HasComponent(ct)
                             ? aggroTransformLookup[ct].Position : bestTargetPos;
                         int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
-                        int ctDist = math.max(math.abs(ctCell.x - atkCell.x), math.abs(ctCell.y - atkCell.y));
-                        if (ctDist <= tileRange) { bestTarget = ct; bestTargetPos = ctPos; }
+                        if (AttackReach.InReach(atkCell, ctCell, tileRange, atkPos, ctPos, tileSize,
+                                attackerIsContinuous && targetPathLookup.HasComponent(ct)))
+                        { bestTarget = ct; bestTargetPos = ctPos; }
                         else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
                     }
                     else bestTarget = Entity.Null;       // 사망/소멸 → lapse

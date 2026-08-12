@@ -34,15 +34,24 @@ namespace Wassup.Battle.Effects
             bool hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacles);
 
             // 적 셀 스냅샷. PastGoalTag(유출 대기)는 제외 — 쫓아갈 이유가 없다.
+            // PathFollowState 를 **요구**한다 — CloseInDir 의 물리 거리 게이트는 «둘 다 연속 이동»
+            // 전제 위에 있는데(AttackReach 참조), 쿼리에서 걸어두면 그 전제가 코드로 강제된다.
+            // 오늘 모든 적은 이 컴포넌트를 갖는다(BattleBridge 스폰). 타일 고정 적이 생기면
+            // 추격 대상에서 빠지는 것이 맞다 — 순찰병은 그런 적에게 다가갈 이유가 없다.
             var enemyQuery = SystemAPI.QueryBuilder()
-                .WithAll<AttackUnitTag, LocalTransform>()
+                .WithAll<AttackUnitTag, LocalTransform, PathFollowState>()
                 .WithNone<DeadTag, PastGoalTag>()
                 .Build();
             var enemyTransforms = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var enemyCells = new NativeArray<int2>(enemyTransforms.Length, Allocator.Temp);
+            // 사거리 2차 게이트(물리 거리)용 월드 위치. 셀과 나란한 배열이다.
+            var enemyWorld = new NativeArray<float3>(enemyTransforms.Length, Allocator.Temp);
             for (int i = 0; i < enemyTransforms.Length; i++)
+            {
                 enemyCells[i] = GridMath.WorldToCell(
                     enemyTransforms[i].Position, flowField.tileSize, gridSize, origin: flowField.origin);
+                enemyWorld[i] = enemyTransforms[i].Position;
+            }
 
             // 구역 무시 walk 마스크. 벽 술어는 MovementCellTrim 이 단독 소유한다.
             //
@@ -90,7 +99,8 @@ namespace Wassup.Battle.Effects
                     areaMask, fullMask, gridSize,
                     anchor.ValueRO.cell, anchor.ValueRO.homeCell, anchor.ValueRO.tileRadius,
                     selfCell, attackTiles,
-                    enemyCells, scratchFlow, scratchDist);
+                    enemyCells, scratchFlow, scratchDist,
+                    transform.ValueRO.Position, enemyWorld, flowField.tileSize);
 
                 areaMask.Dispose();
             }
@@ -99,6 +109,7 @@ namespace Wassup.Battle.Effects
             scratchDist.Dispose();
             fullMask.Dispose();
             enemyCells.Dispose();
+            enemyWorld.Dispose();
             enemyTransforms.Dispose();
         }
     }

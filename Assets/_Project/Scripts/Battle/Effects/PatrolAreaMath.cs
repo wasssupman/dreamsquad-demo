@@ -108,7 +108,10 @@ namespace Wassup.Battle.Effects
             int attackTileRange,
             NativeArray<int2> enemyCells,
             NativeArray<float2> scratchFlow,
-            NativeArray<int> scratchDist)
+            NativeArray<int> scratchDist,
+            float3 selfPos,
+            NativeArray<float3> enemyPositions,
+            float tileSize)
         {
             int selfIdx = GridMath.CellIndex(selfCell, gridSize);
 
@@ -124,10 +127,79 @@ namespace Wassup.Battle.Effects
             // 소스 0(구역 안에 사격 위치 없음) 또는 도달 불가(벽으로 갈린 구역)면
             // 적을 포기하고 집으로 — 좀비 추격을 만들지 않는다.
             if (srcCount > 0 && scratchDist[selfIdx] != int.MaxValue)
-                return FlowRecovery.RecoveryDir(selfCell, scratchDist, gridSize);
+            {
+                float2 chase = FlowRecovery.RecoveryDir(selfCell, scratchDist, gridSize);
+                if (!chase.Equals(float2.zero)) return chase;
+                // 격자상 «사격 칸» 에 도착했다. 하지만 사거리 판정의 2차(물리 거리)는 칸 안
+                // 어디에 섰는지를 본다 — 아직 멀면 **계속 다가간다**. 이 한 줄이 없으면
+                // 격자는 "도착"이라 멈추고 공격은 "멀다"고 거부해 교착이 난다(AttackReach 주석).
+                return CloseInDir(areaMask, gridSize, anchorCell, tileRadius,
+                    selfCell, selfPos, attackTileRange, enemyCells, enemyPositions, tileSize);
+            }
 
             if (selfCell.Equals(homeCell)) return float2.zero;
             return DescendToHome(areaMask, gridSize, homeCell, selfCell, scratchFlow, scratchDist);
+        }
+
+        // 사거리 2차 게이트(물리 거리)를 이동 쪽에서 만족시키는 마지막 접근.
+        // 셀로는 이미 사거리 안이지만 월드 거리가 상한을 넘는 적을 골라, **지배축 cardinal**
+        // 로 한 칸 밀어준다. 대각 벡터를 쓰지 않는 이유는 이동 전반의 규약과 같다 —
+        // 8-이웃 성분은 대각 코너 슬립(백로그 미수리)에 걸린다. 상한이 체비셰프라
+        // 지배축을 줄이는 것이 곧 거리를 줄이는 것이므로 cardinal 로 충분하다.
+        //
+        // 하나도 없으면 zero — «셀도 사거리 안, 물리도 사거리 안» 이므로 정지가 맞다.
+        private static float2 CloseInDir(
+            NativeArray<byte> areaMask, int2 gridSize, int2 anchorCell, int tileRadius,
+            int2 selfCell, float3 selfPos, int attackTileRange,
+            NativeArray<int2> enemyCells, NativeArray<float3> enemyPositions, float tileSize)
+        {
+            if (!enemyPositions.IsCreated || enemyPositions.Length != enemyCells.Length)
+                return float2.zero;
+
+            // 소스 수집(BuildAreaChaseField)이 max(1, range) 로 클램프하므로 여기도 같은 값을 써야
+            // 한다. 갈리면 range 0 유닛이 «BFS 는 사격 칸이라 세우고 여긴 후보를 못 찾는» 교착이 난다.
+            int reach = math.max(1, attackTileRange);
+
+            float bestGap = 0f;
+            float3 bestPos = default;
+            bool found = false;
+            for (int i = 0; i < enemyCells.Length; i++)
+            {
+                // **구역 안 적만** 본다 — BuildAreaChaseField 와 같은 술어. 이게 없으면 구역 밖 적을
+                // 향해 박스를 걸어나가고, 다음 프레임 DescendToHome 이 되돌려 경계에서 진동한다.
+                if (!IsInArea(enemyCells[i], anchorCell, tileRadius)) continue;
+                if (!AttackReach.InCellRange(selfCell, enemyCells[i], reach)) continue;
+                if (AttackReach.InWorldReach(selfPos, enemyPositions[i], reach, tileSize)) continue;
+                float gap = math.max(math.abs(enemyPositions[i].x - selfPos.x),
+                                     math.abs(enemyPositions[i].z - selfPos.z));
+                if (!found || gap < bestGap) { bestGap = gap; bestPos = enemyPositions[i]; found = true; }
+            }
+            if (!found) return float2.zero;
+
+            float dx = bestPos.x - selfPos.x;
+            float dz = bestPos.z - selfPos.z;
+            // 지배축 우선, 막히면 나머지 축. 둘 다 막히면 정지 — raw cardinal 을 그대로 뱉으면
+            // 벽에 밀려 «걷는 애니로 제자리» 가 된다(AgentCollision 이 변위를 먹는다).
+            float2 primary = math.abs(dx) >= math.abs(dz)
+                ? new float2(dx >= 0f ? 1f : -1f, 0f)
+                : new float2(0f, dz >= 0f ? 1f : -1f);
+            if (Passable(areaMask, gridSize, selfCell, primary)) return primary;
+
+            float2 secondary = math.abs(dx) >= math.abs(dz)
+                ? new float2(0f, dz >= 0f ? 1f : -1f)
+                : new float2(dx >= 0f ? 1f : -1f, 0f);
+            if (math.lengthsq(secondary) > 0f && Passable(areaMask, gridSize, selfCell, secondary))
+                return secondary;
+
+            return float2.zero;
+        }
+
+        // 한 칸 앞이 구역 안 통행 가능 셀인가. areaMask 는 walkMask ∩ 박스라 두 조건을 함께 본다.
+        private static bool Passable(NativeArray<byte> mask, int2 gridSize, int2 from, float2 dir)
+        {
+            int2 to = from + new int2((int)dir.x, (int)dir.y);
+            if (to.x < 0 || to.y < 0 || to.x >= gridSize.x || to.y >= gridSize.y) return false;
+            return mask[GridMath.CellIndex(to, gridSize)] != 0;
         }
 
         // 집 1셀을 소스로 BFS 후 하강. CollectDefenderSources 를 쓰지 않는 이유:
