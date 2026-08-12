@@ -23,6 +23,10 @@ namespace Wassup.Tests.EditMode
             "Assets/_Project/Data/Maps/MapDocument_Twin.asset",
             "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",
             "Assets/_Project/Data/Maps/MapDocument_Zig.asset",
+            // map-rework unit 8b — 12×7 소형 맵. **풀 미등록**(풀 파일은 병행 WIP 와 공유라
+            // 건드리지 않는다) 이지만 계약은 여기서 받는다 — 저작물이 규칙 밖에 있으면
+            // 「만들었는데 아무도 안 재는」 맵이 된다.
+            "Assets/_Project/Data/Maps/MapDocument_Comb.asset",
         };
 
         // map-rework 진행표 — 맵 unit 이 완료될 때마다 여기로 옮긴다.
@@ -33,6 +37,7 @@ namespace Wassup.Tests.EditMode
             "Assets/_Project/Data/Maps/MapDocument_Twin.asset",      // unit 3
             "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",    // unit 4
             "Assets/_Project/Data/Maps/MapDocument_Zig.asset",       // unit 5
+            "Assets/_Project/Data/Maps/MapDocument_Comb.asset",      // unit 8b (12×7, 신설)
         };
 
         [Test]
