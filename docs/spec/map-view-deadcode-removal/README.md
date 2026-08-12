@@ -1,7 +1,7 @@
 # Map/View 사장 코드 정리 (map-view-deadcode-removal)
 
 **작성일**: 2026-08-12
-**상태**: 설계 완료 — 구현 대기
+**상태**: **완료 2026-08-12** — unit 0~3 구현·검증·커밋 완료. 인계 요약은 `4_handoff_summary.md`.
 **목표**: 맵/보드 뷰 계층에서 **참조가 0이거나 도달 불가로 확정된** 심볼·에셋을 걷어낸다. 런타임 거동은 한 톨도 바꾸지 않는다.
 
 ## 왜 지금인가
@@ -22,7 +22,7 @@
 | 1 | 삭제 | `1_board_view_mode_collapse.md` | `BoardViewMode` enum 접기 — iso 분기·`isoCellSize`·`BoardSpace.Mode`·`PH_Iso_*` 에셋 제거, 시그니처 3개 정리 |
 | 2 | 삭제 | `2_map_metadata_arrays_removal.md` | 소비자 없는 `mergeDegree`/`chokepoint`/`propLayerId` 3배열 제거 |
 | 3 | 삭제 + 감사 | `3_residual_and_reaudit.md` | `MapDocument.goal`(단수) 폴백 → loud 검증, `PH_Rect_Env.asset`, **삭제 연쇄 재감사** |
-| 4 | Handoff | `4_handoff_summary.md` | 인계 요약 (종료 시 작성) |
+| 4 | Handoff | `4_handoff_summary.md` | 인계 요약 + 커밋 표 + stale 어셈블리 함정 |
 
 의존 순서: `0 → 1 → 2 → 3`. 0 과 1 은 둘 다 `BattleBridge` SerializeField 를 지우므로 연속 처리한다.
 
