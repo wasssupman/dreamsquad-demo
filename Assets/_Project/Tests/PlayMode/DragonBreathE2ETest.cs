@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Unity.Entities;
-using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Wassup.Battle.Units;
 using Wassup.Bridge;
@@ -110,47 +108,17 @@ namespace Wassup.Tests.PlayMode
                 "BattleBridge 가 다시 VFX 프리팹 슬롯을 들고 있다 — 연출 소유권은 VfxSpawner 다");
         }
 
-        // ── helpers (SlimeSplitE2ETest 와 같은 레시피) ──────────────────────────
+        // ── helpers ─────────────────────────────────────────────────────────────
+        // 씬 로드·에셋 직독·리플렉션 스폰은 `BattleBridgeTestAccess` 가 소유한다(초판은
+        // SlimeSplitE2ETest 의 레시피를 복제했다 — 그 복제가 개명 한 번에 테스트를 조용히
+        // 죽인 이력이 있어서 한 자리로 모았다).
 
-        private static IEnumerator LoadBattle()
-        {
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
-            for (int i = 0; i < 6; i++) yield return null;
-        }
+        private static IEnumerator LoadBattle() => BattleBridgeTestAccess.LoadBattleScene();
 
         private static AttackUnitData LoadEnemy(string path)
-        {
-            var u = UnityEditor.AssetDatabase.LoadAssetAtPath<AttackUnitData>(path);
-            Assert.IsNotNull(u, path);
-            return u;
-        }
+            => BattleBridgeTestAccess.LoadEnemy(path);
 
         private static Entity SpawnEnemy(BattleBridge bridge, EntityManager em, AttackUnitData unit)
-        {
-            var bt = typeof(BattleBridge);
-            var pendingType = bt.GetNestedType("PendingSpawnEntry", BindingFlags.NonPublic);
-            var pending = System.Activator.CreateInstance(pendingType);
-            pendingType.GetField("entry").SetValue(pending,
-                new SpawnEntry { triggerTimeSec = 0f, unitType = unit, spawnIndex = 0 });
-            pendingType.GetField("laneIndex").SetValue(pending, 0);
-
-            var known = Snapshot(em);
-            bt.GetMethod("SpawnUnit", BindingFlags.NonPublic | BindingFlags.Instance)
-              .Invoke(bridge, new[] { pending });
-
-            foreach (var e in Snapshot(em))
-                if (!known.Contains(e)) return e;
-            return Entity.Null;
-        }
-
-        private static HashSet<Entity> Snapshot(EntityManager em)
-        {
-            var q = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
-            var arr = q.ToEntityArray(Unity.Collections.Allocator.Temp);
-            var set = new HashSet<Entity>();
-            for (int i = 0; i < arr.Length; i++) set.Add(arr[i]);
-            arr.Dispose();
-            return set;
-        }
+            => BattleBridgeTestAccess.SpawnEnemy(bridge, em, unit);
     }
 }

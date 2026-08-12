@@ -233,10 +233,12 @@ namespace Wassup.Presentation
                 return;
             }
 
-            // sim XZ 방향 → view 방향. 두 점을 옮겨 차분을 쓴다(평면 보드에서 축이 돌기 때문).
-            var aheadSim = new Vector3(aimDirXZ.x, 0f, aimDirXZ.y);
-            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToView(aheadSim)
-                                - (Vector3)Wassup.Core.BoardSpace.ToView(Vector3.zero);
+            // sim XZ 방향 → view 방향. `ToView` 를 두 점에 불러 차분을 내면 안 된다 — 그건
+            // `BoardSpace.ToViewVector` 가 이미 하는 일이고(주석에 용도로 "cast 방향"이 적혀
+            // 있다), 초판은 그걸 손수 복제했다. 위치가 아니라 **방향**이므로 변환의 선형부만
+            // 적용하는 이 API 가 정본이다.
+            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToViewVector(
+                new Vector3(aimDirXZ.x, 0f, aimDirXZ.y));
             if (aheadView.sqrMagnitude < 1e-6f) aheadView = Vector3.right;
             aheadView.Normalize();
             float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;

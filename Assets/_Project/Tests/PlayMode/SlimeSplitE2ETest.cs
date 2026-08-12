@@ -1,11 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Wassup.Battle.Units;
 using Wassup.Bridge;
@@ -221,87 +219,30 @@ namespace Wassup.Tests.PlayMode
         }
 
         // ── helpers ─────────────────────────────────────────────────────────────
+        // 씬 로드·에셋 직독·리플렉션 스폰·브리지 필드 접근은 `BattleBridgeTestAccess` 가
+        // 소유한다. 그 파일의 주석에 「왜 한 자리로 모았나」가 있다(개명 한 번에 테스트가
+        // 조용히 죽은 이력).
 
-        private static IEnumerator LoadBattle()
-        {
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
-            for (int i = 0; i < 6; i++) yield return null;
-        }
+        private static IEnumerator LoadBattle() => BattleBridgeTestAccess.LoadBattleScene();
 
         private static AttackUnitData LoadEnemy(string path)
-        {
-            var u = UnityEditor.AssetDatabase.LoadAssetAtPath<AttackUnitData>(path);
-            Assert.IsNotNull(u, path);
-            return u;
-        }
+            => BattleBridgeTestAccess.LoadEnemy(path);
 
         private static Entity SpawnEnemy(BattleBridge bridge, EntityManager em, AttackUnitData unit)
-        {
-            var bt = typeof(BattleBridge);
-            var pendingType = bt.GetNestedType("PendingSpawnEntry", BindingFlags.NonPublic);
-            var pending = System.Activator.CreateInstance(pendingType);
-            pendingType.GetField("entry").SetValue(pending,
-                new SpawnEntry { triggerTimeSec = 0f, unitType = unit, spawnIndex = 0 });
-            pendingType.GetField("laneIndex").SetValue(pending, 0);
+            => BattleBridgeTestAccess.SpawnEnemy(bridge, em, unit);
 
-            var known = SnapshotAttackers(em);
-            bt.GetMethod("SpawnUnit", BindingFlags.NonPublic | BindingFlags.Instance)
-              .Invoke(bridge, new[] { pending });
-
-            foreach (var e in SnapshotAttackers(em))
-                if (!known.Contains(e)) return e;
-            return Entity.Null;
-        }
-
-        private static HashSet<Entity> SnapshotAttackers(EntityManager em)
-        {
-            var q = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
-            var arr = q.ToEntityArray(Unity.Collections.Allocator.Temp);
-            var set = new HashSet<Entity>();
-            for (int i = 0; i < arr.Length; i++) set.Add(arr[i]);
-            arr.Dispose();
-            return set;
-        }
-
-
-
-        // 어느 엔티티가 어느 SO 에서 나왔는지는 브리지의 _enemyTypeByEntity 만 안다.
-        private static List<Entity> FindEnemiesOfType(BattleBridge bridge, EntityManager em, AttackUnitData so)
-        {
-            var f = typeof(BattleBridge).GetField("_enemyTypeByEntity",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(f, "_enemyTypeByEntity 를 찾지 못했다(이름 변경?)");
-            var dict = (Dictionary<Entity, AttackUnitData>)f.GetValue(bridge);
-
-            var result = new List<Entity>();
-            foreach (var kv in dict)
-                if (kv.Value == so && em.Exists(kv.Key) && !em.HasComponent<DeadTag>(kv.Key))
-                    result.Add(kv.Key);
-            return result;
-        }
+        private static List<Entity> FindEnemiesOfType(
+            BattleBridge bridge, EntityManager em, AttackUnitData so)
+            => BattleBridgeTestAccess.FindEnemiesOfType(bridge, em, so);
 
         private static object GetField(BattleBridge bridge, string name)
-        {
-            var f = typeof(BattleBridge).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(f, $"{name} 을 찾지 못했다(이름 변경?)");
-            return f.GetValue(bridge);
-        }
+            => BattleBridgeTestAccess.Field(bridge, name);
 
         private static void SetField(BattleBridge bridge, string name, object value)
-        {
-            var f = typeof(BattleBridge).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(f, $"{name} 을 찾지 못했다(이름 변경?)");
-            f.SetValue(bridge, value);
-        }
+            => BattleBridgeTestAccess.SetField(bridge, name, value);
 
         // 킬 드레인이 실제로 돌았는지의 관측창(그 루프가 매 이벤트마다 올린다).
         private static int KillCount(BattleBridge bridge)
-        {
-            var f = typeof(BattleBridge).GetField("_killCount",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(f, "_killCount 를 찾지 못했다(이름 변경?)");
-            return (int)f.GetValue(bridge);
-        }
-
+            => (int)BattleBridgeTestAccess.Field(bridge, "_killCount");
     }
 }
