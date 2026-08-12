@@ -1763,6 +1763,40 @@ namespace Wassup.Battle.Combat
                                     "[AttackSystem] 적 host 의 AttackN × ProjectileToTarget — 자기 진영을 쏘게 되므로 건너뛴다. 저작을 고칠 것.");
                                 continue;
                             }
+                            // elite-enemy-tier unit 4 — 화염 브레스. 투사체 캐리어를 만들지 않는다:
+                            // 즉발이고, 이 프레임의 후보 배열이 이미 손에 있다. 순회 본문은 아래
+                            // private static 으로 빼서 1974줄 시스템을 키우지 않고 단위 테스트가
+                            // 가능하게 했다(SpawnNeedleCarrier 선례).
+                            if (slot.payload == Wassup.Data.DcPayloadKind.AreaBreath)
+                            {
+                                float rangeWorld = slot.tileRange * tileSize;
+                                float3 selfPos = transform.ValueRO.Position;
+                                float2 breathDir = math.normalizesafe(
+                                    (bestTargetPos - selfPos).xz, new float2(1f, 0f));
+                                ApplyConeBreath(ref ecb, attackerEntity, selfPos.xz, breathDir,
+                                    slot.coneCosSq, rangeWorld, slot.magnitude,
+                                    mask, attack.ValueRO.targetTraversalLayers,
+                                    targetEntities, targetTransforms, targetFactions, targetTraversalLayers);
+
+                                // 연출 — Burst ISystem 은 VfxSpawner 를 못 부른다. 기존 채널에
+                                // VFX 캐리어로 태운다(신규 큐 0). 드레인은 이 플래그를 보면 애니
+                                // 재생을 건너뛴다(공격 시작 이벤트는 이미 별도로 나갔다).
+                                if (attackWriter.HasValue)
+                                {
+                                    attackWriter.Value.Enqueue(new UnitAttackVisualEvent
+                                    {
+                                        attacker = attackerEntity,
+                                        targetWorld = bestTargetPos,
+                                        attackAnimPeriod = 0f,
+                                        target = bestTarget,
+                                        hasAreaBreath = true,
+                                        breathDir = breathDir,
+                                        breathRangeWorld = rangeWorld,
+                                        breathHalfAngleDeg = slot.coneHalfAngleDeg,
+                                    });
+                                }
+                                continue;
+                            }
                             if (slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
                             {
                                 // Dedicated request-carrier entity: the shooter's own
@@ -1890,6 +1924,43 @@ namespace Wassup.Battle.Combat
         // ⚠ 호출처 3곳(RESOLVE / 폭탄 발사 / 캐스트 드레인)은 전부 defender 게이트 안이라
         // 니들의 재조준 후보 풀(AttackUnitTag = 적 전용)과 진영이 맞는다. 적이 니들을 쏘게
         // 되는 날 이 전제가 깨지면 아군 오사가 되므로, 그때 후보 풀에 진영 축을 넣어야 한다.
+        // elite-enemy-tier unit 4 — 화염 브레스의 피해 적용. plain 배열·plain 값만 받는 순수
+        // static 이라 1974줄 시스템을 키우지 않고 단위 테스트가 가능하다(제약 10 형태).
+        //
+        // ★**세 술어는 생략 불가다.** `targetCandidatesQuery` 는 `FactionTag, Health,
+        // LocalTransform` 의 **전 진영 통합 풀**이고 진영 판정은 공격자 루프 안의 `targetMask` 가
+        // 한다 — 배열이 미리 걸러져 있다고 착각하면 드래곤이 같은 웨이브 동료와 적 마음을 태운다
+        // (2026-08-12 리뷰가 초판 스펙의 그 거짓 전제를 잡았다).
+        //   ① 진영 마스크  ② 통행층 교집합(지상 전용 공격이 Air 로 번지지 않게)  ③ 자기 제외
+        //
+        // `AoeTargetCap` 을 쓰지 않는다 — 부채꼴에 든 전원이 맞는 것이 이 능력의 요점이다.
+        // 위협(`ThreatHitEvent`) 귀속도 하지 않는다 — 위협 테이블은 보스 전용 부속물이다.
+        private static void ApplyConeBreath(
+            ref EntityCommandBuffer ecb,
+            Entity self, float2 selfXZ, float2 dir, float cosSq, float rangeWorld, float damage,
+            int targetMask, byte selfTargetLayers,
+            NativeArray<Entity> targetEntities,
+            NativeArray<LocalTransform> targetTransforms,
+            NativeArray<FactionTag> targetFactions,
+            NativeArray<byte> targetTraversalLayers)
+        {
+            if (damage <= 0f) return;
+            for (int i = 0; i < targetEntities.Length; i++)
+            {
+                if (((int)targetFactions[i].value & targetMask) == 0) continue;          // ①
+                if (!Wassup.Data.PlacementLayers.CanTarget(
+                        selfTargetLayers, targetTraversalLayers[i])) continue;           // ②
+                if (targetEntities[i] == self) continue;                                 // ③
+                if (!TileAoe.IsInCone(selfXZ, targetTransforms[i].Position.xz,
+                        dir, cosSq, rangeWorld)) continue;
+                ecb.AppendToBuffer(targetEntities[i], new IncomingDamage
+                {
+                    amount = damage,
+                    source = self,
+                });
+            }
+        }
+
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,

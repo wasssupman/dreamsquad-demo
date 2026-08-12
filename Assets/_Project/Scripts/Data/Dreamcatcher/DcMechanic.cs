@@ -121,6 +121,18 @@ namespace Wassup.Data
         // 초판 설계는 그 다섯을 다 만들려 했고 리뷰(H2)가 걷어냈다.
         // append-only.
         SplitOnDeath = 20,
+        // elite-enemy-tier unit 4 — 화염 브레스. `AttackN` 과 쓴다(드래곤 3타).
+        // 대상 방향 **부채꼴** 안의 후보 전원에게 즉발 피해. 투사체 캐리어를 만들지 않는다 —
+        // `AttackSystem` 이 그 프레임에 이미 들고 있는 후보 배열 위에서 판정한다.
+        // 필드: magnitude = 피해 · tileRange = 사거리(타일) · coneHalfAngleDeg = 반각.
+        //
+        // ⚠ 반각 정의역은 **(0°, 90°)** 다. 판정이 `normalize` 없는 제곱 비교라 부호 가드가
+        // 필요하고(없으면 등 뒤에 대칭 콘), 그 가드가 90° 에서 정의역을 자른다. 게다가
+        // cos²θ = cos²(180−θ) 라 저작 120° 는 **조용히 60° 콘으로 동작**한다 → bake 가 >= 90 을
+        // loud 거절한다. 저작 초기값 50° — 45° 는 셀 대각선 경계에 정확히 걸려 부동소수 비교가
+        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `TileAoe.IsInCone`.
+        // append-only.
+        AreaBreath = 21,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -252,6 +264,11 @@ namespace Wassup.Data
         // 호출한다. 저작 규칙은 하나다 — **마지막 단계의 `nightmareMechanics` 를 비워** 사슬을
         // 끝낼 것.
         public AttackUnitData splitUnit;
+        // elite-enemy-tier unit 4 — AreaBreath 전용 반각(도). 정의역 (0, 90) — 위 kind 주석 참조.
+        // `duration` 에 겸직시키지 않는다: 그 필드는 이미 3개 kind 가 «시간» 으로 쓰고 있어
+        // 겸직하면 «시간인 줄 알고» 읽는 코드가 생긴다(slamDamage 가 명시 필드가 된 선례와 같은
+        // 판단). 0 = bake 경고. 다른 kind 는 무시. append-only.
+        public float coneHalfAngleDeg;
     }
 
     [Serializable]

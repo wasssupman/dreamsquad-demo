@@ -87,3 +87,10 @@ public static bool EnemyTriggerArmed(DcTriggerKind kind)
 - [ ] **Play: 적이 `AttackN` 을 발동해도 흰색 플래시·«카드 흡수» VFX 가 뜨지 않는다**(H3 게이트).
       방어유닛 카드 발동 시에는 **여전히 뜬다**
 - [ ] 커밋에 콘텐츠 에셋이 **한 개도** 포함되지 않았다 (단독 커밋)
+
+---
+
+**확인 2026-08-13** — 커밋 `a1025d45`(단독). 콘텐츠가 없어 Play 확인 대상은 «무회귀» 다:
+PlayMode 6/6(DreamcatcherGateE2E · HeavyStrike · DefenderApplyStackOutput = 방어유닛 AttackN
+카드 계열 + 슬라임 e2e 2 + 킨들러 e2e). 게이트를 푼 뒤 남긴 두 가드(연출 신호 방어유닛 한정 ·
+적 host 의 `ProjectileToTarget` 런타임 거절)는 리뷰가 잡아준 것이다.

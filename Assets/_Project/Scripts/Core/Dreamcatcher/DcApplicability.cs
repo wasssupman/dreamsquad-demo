@@ -175,6 +175,11 @@ namespace Wassup.Core
                 // 그건 authoring 사실이지 적용성 판정이 아니다. 자식 SO 유효성은 bake 가
                 // 최종 판정한다(위 주석의 분업).
                 case DcPayloadKind.SplitOnDeath:
+                // elite-enemy-tier unit 4 — 화염 브레스. host 의 **공격 모델**과 무관하다(대상은
+                // AttackSystem 의 후보 배열에서 자기가 고르고, 진영은 host 의 targetMask 로 도출).
+                // 실제로는 적 SO 전용이지만 그건 authoring 사실이지 적용성 판정이 아니다 —
+                // SelfBlink·UltimateLeap 과 같은 처지(위 주석). 반각 정의역은 bake 가 판정한다.
+                case DcPayloadKind.AreaBreath:
                     return DcRejectReason.None;
 
                 default:

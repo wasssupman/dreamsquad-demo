@@ -90,5 +90,12 @@ namespace Wassup.Battle.Combat
         // 값을 실어 BossLeapVisualEvent 로 넘기는 역할만 한다. 0 = 슬램 없음.
         public float slamDamage;
         public int slamTileRange;
+
+        // elite-enemy-tier unit 4 — AreaBreath(화염 브레스) 부채꼴.
+        // ★**저작은 도(degree), 런타임은 코사인²** 이다. 변환은 bake 에서 1회 — sim 이 삼각함수를
+        // 부르지 않고, 저작값 하나가 두 표현으로 갈리지 않는다. 판정은 `TileAoe.IsInCone`.
+        // `coneHalfAngleDeg` 는 **뷰가 쓴다**(부채꼴 VFX 폭) — sim 은 cosSq 만 본다.
+        public float coneCosSq;
+        public float coneHalfAngleDeg;
     }
 }

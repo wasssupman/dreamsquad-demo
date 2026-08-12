@@ -3615,6 +3615,18 @@ namespace Wassup.Bridge
             while (_unitAttackVisualQueue.TryDequeue(out var evt))
             {
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
+
+                // elite-enemy-tier unit 4 — 이 플래그가 켜진 이벤트는 «공격 사건» 이 아니라
+                // **VFX 캐리어**다(피해는 Burst ISystem 이 이미 적용했고 그쪽은 VfxSpawner 를 못
+                // 부른다). 공격 시작 이벤트는 RESOLVE 보다 앞서 별도로 나갔으므로 여기서
+                // NotifyAttack 을 다시 부르면 한 프레임에 공격 애니가 두 번 트리거된다.
+                if (evt.hasAreaBreath)
+                {
+                    SpawnAreaBreathVfx(evt.attacker, evt.breathDir,
+                        evt.breathRangeWorld, evt.breathHalfAngleDeg);
+                    continue;
+                }
+
                 spineUnitPool?.NotifyAttack(evt.attacker, targetWorld, evt.attackAnimPeriod);
 
                 var defData = FindDefenderData(evt.attacker);
@@ -7690,6 +7702,10 @@ namespace Wassup.Bridge
                     // boss-jjangssen unit 7 — SelfBlink 착지 슬램(0 = 이동만).
                     slamDamage = math.max(0f, m.payload.slamDamage),
                     slamTileRange = math.max(0, m.payload.slamTileRange),
+                    // elite-enemy-tier unit 4 — 저작 도(degree) → 런타임 코사인². **변환은 여기 1회**
+                    // 이고 sim 은 삼각함수를 부르지 않는다. 정의역 검증은 아래 AreaBreath 분기.
+                    coneHalfAngleDeg = m.payload.coneHalfAngleDeg,
+                    coneCosSq = ConeCosSq(m.payload.coneHalfAngleDeg),
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
                 {
@@ -7699,6 +7715,24 @@ namespace Wassup.Bridge
                     // 조용한 no-op 으로 죽는 대신 여기서 거절 사유를 남긴다.
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
                     continue;
+                }
+                // elite-enemy-tier unit 4 — 화염 브레스 정의역 검증. 판정이 `normalize` 없는 제곱
+                // 비교라 부호 가드가 필요하고(없으면 등 뒤에 대칭 콘) 그 가드가 90° 에서 정의역을
+                // 자른다. 게다가 cos²θ = cos²(180−θ) 라 **저작 120° 는 조용히 60° 콘으로 동작**한다.
+                // 조용한 오동작보다 거절이 낫다.
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBreath)
+                {
+                    if (m.payload.coneHalfAngleDeg >= 90f)
+                    {
+                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 반각({m.payload.coneHalfAngleDeg}°) >= 90 — 제곱 비교의 정의역 밖이라 조용히 (180−각) 콘으로 동작한다. skipped.");
+                        continue;
+                    }
+                    if (m.payload.coneHalfAngleDeg <= 0f)
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 반각이 0 이하 — 정면 한 줄만 맞는다.");
+                    if (m.payload.tileRange <= 0)
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 사거리(tileRange)가 0 — 같은 셀만 맞는다.");
+                    if (m.payload.magnitude <= 0f)
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 피해가 0 이하 — 발동해도 아무 일도 없다.");
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
                 {
@@ -8204,6 +8238,41 @@ namespace Wassup.Bridge
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
 
             return entity;
+        }
+
+        // elite-enemy-tier unit 4 — 화염 브레스 원샷 VFX. 프리팹은 unit 7 이 배선한다 —
+        // **미배선(null)이면 무동작**이고 시뮬은 이미 피해를 적용했으므로 게임 규칙은 온전하다
+        // (연출만 빈다). VfxSpawner 슬롯 관례와 달리 LogError 를 내지 않는 이유가 그것이다.
+        //
+        // 방향은 sim 공간 XZ 로 받아 **view 공간으로 변환해** 회전을 만든다 — sim 방향을 그대로
+        // 쓰면 평면 보드에서 엉뚱한 축으로 돈다(attackVfxFacesTarget 과 같은 함정).
+        [SerializeField] private GameObject areaBreathVfxPrefab;
+        [SerializeField] private float areaBreathVfxLifetime = 1.2f;
+
+        private void SpawnAreaBreathVfx(Entity attacker, float2 dirXZ, float rangeWorld, float halfAngleDeg)
+        {
+            if (areaBreathVfxPrefab == null) return;
+            if (!ResolveBeamViewPos(attacker, true, out var originView)) return;
+
+            // sim XZ 방향 두 점을 view 로 옮겨 화면상의 방향을 구한다.
+            var aheadSim = new Vector3(dirXZ.x, 0f, dirXZ.y);
+            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToView(aheadSim)
+                                - (Vector3)Wassup.Core.BoardSpace.ToView(Vector3.zero);
+            float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;
+
+            var go = Instantiate(areaBreathVfxPrefab, originView, Quaternion.Euler(0f, 0f, angle));
+            // 사거리·반각을 그대로 스케일에 흘린다 — 저작 수치와 화면 크기가 갈리지 않게.
+            float width = Mathf.Max(0.1f, rangeWorld * Mathf.Tan(Mathf.Deg2Rad * Mathf.Max(1f, halfAngleDeg)) * 2f);
+            go.transform.localScale = new Vector3(Mathf.Max(0.1f, rangeWorld), width, 1f);
+            Destroy(go, Mathf.Max(0.1f, areaBreathVfxLifetime));
+        }
+
+        // elite-enemy-tier unit 4 — 저작 반각(도) → 런타임 코사인². 정의역 밖 값은 위 bake 분기가
+        // 이미 거절했으므로 여기서는 변환만 한다(0 이하는 cos²=1 = 정면 한 줄로 자연 귀결).
+        private static float ConeCosSq(float halfAngleDeg)
+        {
+            float c = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(0f, halfAngleDeg));
+            return c * c;
         }
 
         // elite-enemy-tier unit 5 — 분열 상한. 밸런스 값이 아니라 **저작 사고 방어선**이다

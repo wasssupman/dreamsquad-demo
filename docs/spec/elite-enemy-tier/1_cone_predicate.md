@@ -75,3 +75,8 @@ public static bool IsInCone(float2 from, float2 to, float2 dir, float cosSq, flo
       - `from`/`to` 를 **뒤집어** 넣으면 결과가 뒤집힌다(비대칭 술어의 인자 순서 고정)
 - [ ] 기존 `TileAoeTests` 단언 전부 그대로 통과 (`IsInTileRange` 는 건드리지 않았다)
 - [ ] **행동 변화 0** — 소비자가 없으므로 PlayMode 결과가 baseline 과 동일
+
+---
+
+**확인 2026-08-13** — 커밋 `ceb36396`. EditMode 콘 단언 7개 통과(정면·뒤쪽 제외·사거리·
+같은 자리 포함·대각 40°/50° 경계·인자 순서). 소비자 0 이라 Play 확인 대상 없음 — 소비는 unit 4.
