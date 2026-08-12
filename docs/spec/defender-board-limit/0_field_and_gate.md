@@ -81,3 +81,7 @@ if (unitData != null && DeployedCountOf(unitData) >= unitData.EffectiveMaxOnBoar
 - Play 수동 확인: 기본 유닛 2기째 배치 시도 → 거부되고 콘솔에 `LimitReached` 로그.
   같은 유닛 `maxOnBoard` 를 100 으로 올리면 3기 이상 연속 배치가 된다(= 지금과 동일 동작).
 - 유닛이 죽은 뒤 같은 유닛을 다시 배치할 수 있다(카운트가 파생임을 확인하는 축).
+
+> **확인 2026-08-13** · 커밋 `9b629bfd`(구현) · `e8cb3f50`(리뷰 반영) — 사용자 Play 확인 완료.
+> EditMode 2188 통과(신규 9건) · 기존 에셋 27종 전부 `maxOnBoard=1` 실측 ·
+> PlayMode 로그 실측: `Placed → rejected: LimitReached → Defender died; tile freed → Placed`.
