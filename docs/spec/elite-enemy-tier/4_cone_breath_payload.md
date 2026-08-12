@@ -1,18 +1,18 @@
-# 4 — `Cone` 도형 + `AreaBreath` 페이로드 (화염 브레스)
+# 4 — `AreaBreath` 페이로드 (화염 브레스)
 
 ## 목적
 
-드래곤의 3타 브레스를 성립시킨다. `AttackN(3)` 이 발동하면 **대상 방향 부채꼴** 안의 후보 전원에게
-즉발 피해를 준다. `EffectArea` 의 두 번째 소비자가 되어 계약 7(첫 커밋부터 소비자 2개)을 닫는다.
+드래곤의 3타 브레스를 성립시킨다. `AttackN(3)`(unit 3)이 발동하면 **대상 방향 부채꼴** 안의 후보
+전원에게 즉발 피해를 준다. unit 1 의 `TileAoe.IsInCone` 의 유일한 소비자다.
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Battle/Combat/EffectAreaMath.cs` — `Cone` 분기 (unit 1 에서 이미 구현·
-  테스트됨. 여기서는 소비만)
 - `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs` — `DcPayloadKind.AreaBreath` +
   `coneHalfAngleDeg` 필드 (**둘 다 append-only**)
 - `Assets/_Project/Scripts/Battle/Combat/DcTriggerSlot.cs` — 반각 필드 1개
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — bake 분기
+- `Assets/_Project/Scripts/Battle/Combat/UnitAttackVisualEvent.cs` — 브레스 연출 필드 append
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — bake 분기 + `DrainUnitAttackVisualEvents` 에
+  콘 VFX 스폰
 - `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs` — arm (콘 적용)
 
 ## 구현
@@ -35,43 +35,79 @@ grep 돼야 하고, `duration` 은 «시간» 이라는 의미를 이미 갖고 
 
 **투사체 캐리어를 만들지 않는다.** 브레스는 즉발이고(계약 9), `AttackSystem` 은 그 프레임에
 이미 후보 배열(`targetEntities` · `targetTransforms` · `targetFactions` · `targetTraversalLayers`)을
-손에 들고 있다 — 시전자의 타겟 마스크로 걸러진 **진영 대칭 풀**이다. 그 자리에서 순회한다:
+손에 들고 있다. 그 자리에서 순회한다:
 
 ```
 발동 시:
-  dir     = normalize((bestTargetPos - attackerPos).xz)      // 대상 방향
-  origin  = WorldToCell(attackerPos)
-  area    = { Cone, tileRange, dir, coneHalfAngleDeg }
+  dir  = normalize((bestTargetPos - attackerPos).xz)   // 대상 방향(월드)
   for 후보 i:
-      if (!EffectAreaMath.Contains(area, origin, WorldToCell(targetTransforms[i]))) continue
+      if ((targetFactions[i].value & atk.targetMask) == 0) continue   // ① 진영
+      if (통행층 교집합 == 0) continue                                  // ② Air/Path
+      if (targetEntities[i] == attackerEntity) continue                // ③ 자기
+      if (!InCone(attackerPos.xz, targetTransforms[i].Position.xz,
+                  dir, cosSq, rangeWorld)) continue
       ecb.AppendToBuffer(targetEntities[i], new IncomingDamage { amount = magnitude, source = attacker })
 ```
 
-- **대상 진영은 후보 배열이 이미 정한다** — 시전자의 마스크로 만들어진 풀이므로 아군 오사가
-  구조적으로 불가능하다. 진영 파라미터를 새로 넣지 않는다.
+⚠⚠ **위 세 술어는 생략 불가다 — 후보 배열은 진영 필터가 되어 있지 않다.**
+`targetCandidatesQuery`(`AttackSystem.cs:44`)는 `FactionTag, Health, LocalTransform` 의 **전 진영
+통합 풀**이고, 진영 판정은 배열이 아니라 공격자 루프 안의 `int mask = attack.ValueRO.targetMask`
+(≈464행)가 한다. 이 세 줄이 없으면 **드래곤이 같은 웨이브 동료와 적 마음(`EnemyCore`)을 태운다.**
+② 는 지상 전용 공격이 `Air` 로 번지는 것을 막는다(`waypoint-routing` 계약 7).
+
 - **`bestTarget` 이 없으면 발동하지 않는다.** 방향을 만들 수 없다. 카운트는 이미 소비된 상태로
   둔다(기존 계약 5 «반경 안에 적이 없어도 카운트는 소비» 와 동형).
+- **순회 본문을 private static 으로 뺀다**(리뷰 L12). `SpawnNeedleCarrier`(≈`:1865`) 선례대로
+  plain 배열·plain 값만 받게 하면 1974줄 시스템을 키우지 않고 단위 테스트가 가능해진다.
 - **`AoeTargetCap` 을 쓰지 않는다.** 부채꼴에 든 전원이 맞는 것이 이 능력의 요점이다(cap 0 =
   무제한과 동치이므로 호출 자체를 생략).
 - **위협(`ThreatHitEvent`) 귀속을 하지 않는다.** 위협 테이블은 보스 전용 부속물이고 엘리트는
   갖지 않는다(unit 0 계약).
-- **`Air` 층 교집합 게이트를 지킨다.** 적 공격의 대상층 필터는 후보 배열 생성 시 이미 적용되므로
-  추가 판정이 없어야 한다 — 있으면 이중 필터다. 확인만 한다.
 
-### 연출
+### bake 가 지는 두 가지 의무
 
-피해와 같은 프레임에 VFX 를 1회 스폰한다. 브레스는 기존 어느 큐에도 맞지 않으므로
-(`UnitAttackVisualEvents` 는 공격 1회 = 히트 1점 전제) **`VfxSpawner` 직접 호출 계열**에 붙인다 —
-`object-pipeline-map` 의 «VFX(one-shot)» 아키타입 중 «BattleBridge 직접 호출» 분기다.
+술어 자체의 계약은 **unit 1 이 소유**한다(정의역·부호 가드·같은 자리·월드 좌표 근거). 여기서는
+그 계약이 요구하는 저작·bake 쪽 의무만 진다:
+
+1. **`coneHalfAngleDeg >= 90` 을 loud 거절한다.** 제곱 비교의 정의역이 반각 < 90° 이고,
+   `cos²θ = cos²(180−θ)` 라 저작 120° 가 **조용히 60° 콘으로 동작**한다. `<= 0` 은 warning.
+2. **각도 → `cosSq` 변환을 bake 에서 1회** 한다(저작은 도, 슬롯은 코사인²). sim 이 삼각함수를
+   부르지 않고, 저작값 하나가 두 표현으로 갈리지 않는다. 사거리도 같은 자리에서
+   `tileRange × tileSize` 로 환산하거나 arm 이 hoist 한 `tileSize` 를 쓴다.
+
+**저작 초기값은 50° 다 — 45° 가 아니다.** 대각 방향의 내적이 `cos 45°` 와 수학적으로 같은 값이라
+부동소수 비교가 동전 던지기가 되고, 이 프로젝트는 «비동기 토너먼트 양측 동일 시뮬»
+(`AoeTargetCap` 주석)을 결정론 요건으로 두고 Android·iOS·에디터를 동시에 타깃한다.
+
+### 연출 — 채널을 신설하지 않되 필드를 append 한다
+
+⚠ **`AttackSystem` 은 `[BurstCompile] ISystem` 이라 managed `VfxSpawner` 를 부를 수 없다**
+(리뷰 M3 — 초판이 «`VfxSpawner` 직접 호출» 이라고만 써서 이 모순을 놓쳤다).
+
+기존 **`UnitAttackVisualEvent`** 에 필드를 append 한다(`EnemyKilledEvent.hasKillBurst` 선례).
+이 채널이 맞는 이유: ① 브레스는 공격 사건과 **같은 프레임**이고 이 이벤트는 이미 그 프레임에
+발행된다 ② 이미 `attacker`(Entity) + `targetWorld`(float3) 를 실어서 **브리지가 콘 방향을 만들 수
+있다** ③ 소비자가 이미 브리지 드레인(`DrainUnitAttackVisualEvents`)이다.
+
+`DcTriggerFiredEvent` 는 쓰지 않는다 — `host` 하나만 싣고 소비자가 머리 위 아이콘 펄스다.
+
 프리팹·스케일·수명은 unit 7 이 저작한다.
 
 ## 완료 기준
 
 - [ ] compile 통과
-- [ ] EditMode: `Cone` 판정 단언(unit 1) 이 그대로 통과
-- [ ] EditMode 신규: bake 가 `coneHalfAngleDeg <= 0` 저작을 **loud warning** 한다
+- [ ] unit 1 의 콘 단언이 그대로 통과 (이 단위는 술어를 바꾸지 않는다)
+- [ ] EditMode 신규: bake 가 `coneHalfAngleDeg <= 0` 을 **loud warning**, **`>= 90` 을 loud 거절**
+      한다(정의역)
+- [ ] EditMode 신규: bake 가 각도 → `cosSq` 를 굽고, 저작 도(degree)와 런타임 값이 한 지점에서만
+      변환된다
+- [ ] EditMode 신규: 콘 적용 루프(private static 추출분)가 **진영 마스크·통행층·자기 제외** 세
+      술어를 실제로 적용한다 — plain 배열 입력으로 단위 테스트
 - [ ] PlayMode 신규 e2e: 드래곤 1기 + 부채꼴 안 방어유닛 2기 + **부채꼴 밖(옆·뒤)** 방어유닛 2기 →
       3번째 공격에서 **안쪽 2기만** HP 가 줄고 밖의 2기는 무피해
+- [ ] **PlayMode 신규 (아군 오사 회귀 방지)**: 드래곤 콘 안에 **다른 적 유닛과 적 마음**을 두고
+      발동시켜도 **둘 다 무피해**다. ★초판 스펙의 거짓 전제가 만들려던 버그를 이 단언이 막는다
 - [ ] PlayMode: 대상이 없는 프레임에 발동해도 예외·오사가 없다
 - [ ] PlayMode 무회귀 — baseline 대비 실패 집합 동일
-- [ ] 신규 ECS 시스템 0 · 신규 이벤트 채널 0 · 신규 컴포넌트 0 (슬롯 필드 1개만)
+- [ ] 신규 ECS 시스템 0 · **신규 이벤트 채널 0**(`UnitAttackVisualEvent` 필드 append) ·
+      신규 컴포넌트 0 (슬롯 필드만)

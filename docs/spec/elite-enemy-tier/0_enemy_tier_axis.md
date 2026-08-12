@@ -9,7 +9,8 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Data/EnemyTier.cs` (신규)
-- `Assets/_Project/Scripts/Data/AttackUnitData.cs` — `tier` 필드 (**append-only**)
+- `Assets/_Project/Scripts/Data/AttackUnitData.cs` — `tier` 필드 (**append-only**) +
+  `killScore`·`stabilityDamage` 주석 정정 (아래 «선례를 뒤집는다는 사실» 참조)
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `BakeNightmareMechanics`
 - `Assets/_Project/Data/Enemies/Enemy_Boss_{Nightmare,Jjangssen,Mamemo}.asset` — `tier: 2`
 
@@ -46,6 +47,21 @@ if (unitType.tier == EnemyTier.Boss)             // ← 신규 게이트
 **순서를 지킬 것**: `BossTag`/`ThreatEntry` 부착이 `DcTriggerSlot` 의 `AddBuffer` 보다 **앞**이어야
 한다. 현행 주석이 경고하는 대로 `slots` 는 «마지막 `AddBuffer`» 라는 전제로 핸들을 캐시한다 —
 그 뒤에 구조 변경을 하나라도 넣으면 핸들이 죽는다.
+
+### 선례를 뒤집는다는 사실을 명시한다 (리뷰 M7)
+
+`AttackUnitData` 는 **두 곳에서 명시적으로** «티어 enum 을 만들지 않고 이 필드의 값 구간으로만
+티어를 구분한다(제약 8)» 고 선언해뒀다(`killScore` ≈:162, `stabilityDamage` ≈:179).
+이 단위는 그 결정을 뒤집으므로, **두 주석을 같은 커밋에서 정정한다** — 그러지 않으면 코드베이스가
+서로 반대되는 말을 하게 된다.
+
+뒤집는 근거는 취지가 다르다는 것이다: 옛 결정은 «**값 대역을 라벨링하려고** enum 을 만들지 말라»
+였고, 이번 enum 은 «**행동을 게이팅한다**»(`tier == Boss` → `BossTag`·위협테이블·경보). 값 대역은
+여전히 값 대역으로 남고 enum 과 서로 검증하지 않는다(아래 «하지 않는 것»).
+
+⚠ **`Elite` 값 자체에는 아직 코드 소비자가 없다** — 술어는 `tier == Boss` 하나뿐이므로 코드
+동작상 `bool isBoss` 와 차이가 0 이다. 사용자가 «일반/엘리트/보스 3등급» 을 요구했고 저작 축에서
+그 사실이 보여야 해서 enum 으로 둔다(2026-08-12 결정). 엘리트 전용 연출·HUD 는 후속 후보 4.
 
 ### 하지 않는 것
 

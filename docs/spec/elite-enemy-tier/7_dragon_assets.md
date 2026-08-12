@@ -26,8 +26,8 @@ unit 4 의 부채꼴 브레스가 터진다.
 | attackRange / **attackCooldown** | 2 / **1.2** | ★계약 4 — 내리지 말 것 |
 | hitDelaySec | 0.3 | 기존 슈터 관례 |
 | enemyClass / attackMethod | Shooter / Projectile | |
-| **engageMovement** | **`Advance`** | 아래 «애니 하나뿐인 것의 귀결» |
-| targetMode | Nearest | 킨들러의 `FocusUntilDead` 와 달라도 된다 — 스택 5 도달이 목적이 아니라 브레스가 주력 |
+| **engageMovement** | **`Halt`** | 사거리 진입 후 정지 후 사격(킨들러와 동형). 아래 정정 참조 |
+| **targetMode** | **`FocusUntilDead`** | ★`Nearest` 면 **어느 방어유닛도 5스택에 못 간다** — 킨들러 계약이 ★로 표시한 그 함정이다 |
 | outputs | `Damage 6` + `ApplyStack(Fire, +1, perApp 3.0, maxStack 5)` | perApp 3.0 > cd 1.2 (사격 중 스택 만료 방지) |
 | projectile | `Projectile_Enemy_Fireball.asset` **재사용** | 킨들러와 같은 탄. 신규 복제 없음 |
 | killScore / awakeningReward / stabilityDamage | 3 / 3 / 2 | |
@@ -39,6 +39,17 @@ unit 4 의 부채꼴 브레스가 터진다.
 **양쪽 명시 저작**한다. 한쪽만 바꾸면 조용히 어긋난다(`enemy-fire-stack-shooter` 계약 4).
 폴백(`stackMaxStack 0`)에 의존하지 않는다.
 
+**`Halt` + `FocusUntilDead` 로 정정한 이유** (리뷰 HIGH): 초판은 `Advance` + `Nearest` 였고 근거는
+«정지하면 `flying` 이 슬로모로 늘어진다» 였다. **그 버그는 이미 고쳐져 있다** —
+`enemy-walk-anim-speed unit 4` 가 `SpineUnitView.ApplyTimeScale` 을
+`factor = (_moving && IsLocomotionLoopPlaying()) ? _walkFactor : 1f` 로 바꿨고, 주석이
+*«minTimeScale 은 느린 이동 하한이지 정지 유닛에 쓰라는 게 아니다»* 라고 못 박아뒀다. 정지한
+드래곤은 배율 1 = 자연속도로 날갯짓한다(= 제자리 호버링으로 읽힌다).
+
+근거가 사라지면 `Advance` + `Nearest` 는 **설계의 절반을 죽인다**: 이동하며 최근접을 쏘면 대상이
+계속 바뀌어 스택이 5에 도달하지 못하고, 화상이 영영 안 터진다. 아래 완료 기준의 «5스택에서 화상이
+터진다» 와 정면 충돌한다.
+
 ### Spine — 애니가 `flying` 하나뿐인 것의 귀결
 
 | 필드 | 값 |
@@ -49,11 +60,6 @@ unit 4 의 부채꼴 브레스가 터진다.
 | deathAnimation | **빈 값** — 즉시 `Destroy` |
 | spineVisualScale | **측정해서 정한다.** dragon 스켈레톤은 저작 폭 1287 로 매우 커서 큰 축소가 필요하다 |
 | visualOffset | 측정해서 정한다 |
-
-**`engageMovement = Advance` 로 시작하는 이유**: 정지하면 `UpdateWalkTimeScale` 이 로코모션 애니를
-느리게 돌리는데, 드래곤은 그 애니가 `flying` 이라 **날갯짓이 슬로모로 늘어진다.** `AttackUnitData`
-주석이 «정지가 잦은 적은 idle 을 진짜 idle 로» 라고 경고하는 함정이고, 드래곤에는 쓸 idle 이 없다.
-육안으로 어색하지 않으면 원안(`Halt`, 사거리 2 진입 후 정지)으로 되돌린다 → 후속 후보 6.
 
 ### 브레스 VFX
 
@@ -79,5 +85,6 @@ unit 4 의 부채꼴 브레스가 터진다.
 - [ ] Play: 기본공격이 화염 스택을 쌓고 5스택에서 화상이 터진다(오라 점등 육안)
 - [ ] Play: **3번째 공격마다** 부채꼴 화염이 터지고 그 안의 방어유닛만 피해를 받는다
 - [ ] 화상 펄스 확인 — 화상이 **끊긴다**(상시 화상이 아니다). 계약 4 의 부등식이 살아 있다는 증거
-- [ ] `flying` 루프가 공격/사망에서 끊기거나 슬로모로 늘어지지 않는다
+- [ ] `flying` 루프가 공격/사망에서 끊기지 않고, **정지 중에도 자연속도**로 돈다(위 정정의 실측)
+- [ ] Play (아군 오사): 드래곤 브레스가 같은 웨이브 동료·적 마음을 태우지 않는다 (unit 4 계약)
 - [ ] EditMode 전체 통과 — 웨이브 pin 테스트는 새 baseline 으로 갱신하고 커밋 메시지에 명시
