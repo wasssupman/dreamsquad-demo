@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: shield_shuttle
   role: 2
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uC2E4\uB4DC\uC154\uD2C0"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uB3C4\uBC1C \xB7 \uCCB4\uB825
     \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30 \uC2E4\uB4DC"
   health: 1500
-  attackRange: 2
+  attackRange: 1
   attackCooldown: 1.9
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -50,6 +52,8 @@ MonoBehaviour:
   cost: 4
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
   rarity: 2
@@ -60,7 +64,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_18
   - bottom/bottom_c_18
@@ -97,6 +101,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 2859138987981848282, guid: 42d74f8b8abbd401b89a812f414eeda8, type: 3}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SummonGarrisonAbility
   id: summon_patrol
   patrolUnit: {fileID: 11400000, guid: ab4ffa4ce40e84086a899d1cb82af0bb, type: 2}
+  activeAnimation: attack2
+  lostAnimation: attack3

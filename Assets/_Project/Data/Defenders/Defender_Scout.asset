@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: scout
   role: 1
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uC2A4\uCE74\uC6B0\uD2B8"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uCF54\uC2A4\uD2B8 \uD68D\uB4DD\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
@@ -49,6 +51,8 @@ MonoBehaviour:
   cost: 3
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities: []
   rarity: 0
   portrait: {fileID: 21300000, guid: 100560403353144ab98bb6c3c2cec06e, type: 3}
@@ -58,7 +62,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_14
   - bottom/bottom_c_48
@@ -93,6 +97,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

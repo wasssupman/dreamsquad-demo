@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: bastion
   role: 2
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC8FC\uBCC0 \uD3ED\uBC1C \xB7 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218
@@ -35,7 +37,7 @@ MonoBehaviour:
   projectile: {fileID: 0}
   outputs:
   - kind: 0
-    magnitude: 13
+    magnitude: 30
     duration: 0
     stat: 0
     op: 0
@@ -50,6 +52,8 @@ MonoBehaviour:
   cost: 5
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities: []
   rarity: 1
   portrait: {fileID: 21300000, guid: 13dfb8e9adb8646dfa27a34767c8cbca, type: 3}
@@ -59,7 +63,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_12
   - bottom/bottom_c_12
@@ -96,6 +100,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

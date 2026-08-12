@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: bomb_man
   role: 1
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uD3ED\uD0C4\uB9E8"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC9C0\uC815 \uBC29\uD5A5\uC73C\uB85C \uBC94\uC704
     \uD3ED\uD0C4 \uD22C\uCC99\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
@@ -43,6 +45,8 @@ MonoBehaviour:
   cost: 4
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 5d6e7f8a9b0c41d2e3f4a5b6c7d8e9f0, type: 2}
   rarity: 2
@@ -53,7 +57,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - beard/beard_c_3
   - boots/boots_c_25
@@ -89,6 +93,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []
