@@ -264,17 +264,28 @@ namespace Wassup.Tests.EditMode
         // **보스의 파열 폭발이 자기 진영을 때린다.**
         // 여는 것 자체가 금지는 아니다 — 열려면 실행기의 진영 파라미터화가 **선행**이고,
         // 이 테스트를 빨갛게 만들어 그 사실을 읽게 하는 것이 목적이다.
+        // elite-enemy-tier unit 3 — **`AttackN` 이 열렸다.** 위 주석이 요구한 «실행기의 진영
+        // 파라미터화 선행» 을 만족시켰다:
+        //   ① `AttackSystem` RESOLVE arm 의 `[Defender only]` 게이트 제거(술어 = 슬롯 버퍼 존재).
+        //      같은 파일의 다른 `defenderTagLookup` 7곳은 무변경.
+        //   ② `ProjectileToTarget` 은 적 host 에서 런타임 거절 — 그 arm 의 대상 진영이 방어유닛
+        //      전제라 적이 쓰면 자기 진영을 쏜다.
+        //   ③ `DcTriggerFiredEvent` enqueue 는 방어유닛 게이트 유지 — 그 드레인이 뷰를 찾아
+        //      흰 플래시 + «카드 흡수» VFX 를 내고 적도 같은 풀에 있다.
+        // 나머지는 여전히 닫혀 있어야 한다.
         [Test]
-        public void EnemyTriggerArmed_OnlyPeriodicAndHealthThreshold()
+        public void EnemyTriggerArmed_PeriodicHealthThresholdAndAttackN()
         {
             Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.PeriodicTimer));
             Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.HealthThreshold));
+            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.AttackN),
+                "드래곤의 3타 브레스가 이 트리거를 쓴다(unit 3)");
 
             Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnShieldBreak),
                 "적 실드 파열은 아직 아무것도 하지 않아야 한다 — 열려면 실행기 진영 파라미터화가 선행이다");
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.AttackN));
+            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDeath),
+                "분열은 슬롯을 쓰지 않는다 — 브리지 킬 드레인이 SO 를 직독한다(unit 5 ②)");
             Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDamagedN));
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDeath));
             Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnKill));
             Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.None));
         }
@@ -288,7 +299,8 @@ namespace Wassup.Tests.EditMode
             {
                 bool armed = DcTrigger.EnemyTriggerArmed(kind);
                 bool expected = kind == Wassup.Data.DcTriggerKind.PeriodicTimer
-                             || kind == Wassup.Data.DcTriggerKind.HealthThreshold;
+                             || kind == Wassup.Data.DcTriggerKind.HealthThreshold
+                             || kind == Wassup.Data.DcTriggerKind.AttackN;
                 Assert.AreEqual(expected, armed,
                     $"신규 트리거 '{kind}' 가 분류되지 않았다 — 적 bake 를 열 것인지 명시하라");
             }

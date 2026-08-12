@@ -104,8 +104,15 @@ namespace Wassup.Battle.Combat
         // 화이트리스트인데, 누가 이 줄을 완화하면 브리지의 파열 드레인
         // (`CollectShieldBreakTargets` — 대상 풀이 `AttackUnitTag` 하드코딩)이 돌아
         // **보스의 파열 폭발이 자기 진영을 때린다.** EditMode 가 이 술어를 고정한다.
+        // elite-enemy-tier unit 3 — `AttackN` 추가. RESOLVE arm 의 `[Defender only]` 진영
+        // 게이트를 빼서(AttackSystem) 적도 «N번째 공격» 사건을 쓴다 — 드래곤의 3타 브레스.
+        //
+        // ⚠ **`AttackN` 하나만 더한다.** 위 주석이 경고하는 위험은 `OnShieldBreak` 다. `OnDeath`
+        // 도 열지 않는다 — 분열은 슬롯을 쓰지 않고 브리지 킬 드레인이 SO 를 직독한다(unit 5 ②).
+        // 화이트리스트는 kind 단위라 `AttackN` 추가가 그 문들을 열지 않는다.
         public static bool EnemyTriggerArmed(Wassup.Data.DcTriggerKind kind)
             => kind == Wassup.Data.DcTriggerKind.PeriodicTimer
-            || kind == Wassup.Data.DcTriggerKind.HealthThreshold;
+            || kind == Wassup.Data.DcTriggerKind.HealthThreshold
+            || kind == Wassup.Data.DcTriggerKind.AttackN;
     }
 }

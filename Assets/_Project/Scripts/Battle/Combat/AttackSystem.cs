@@ -1699,15 +1699,24 @@ namespace Wassup.Battle.Combat
                         }
                     }
 
-                    // [Defender only] dreamcatcher-unit-trigger unit 2 — triggered card
-                    // slots count once per attack RESOLVE (multi-output attacks still
-                    // count 1; a resolve that lapsed with no valid target counts 0).
-                    // bestTarget is guaranteed alive here: RESOLVE applies damage via
-                    // the deferred IncomingDamage buffer, so nothing in this block can
+                    // dreamcatcher-unit-trigger unit 2 — triggered slots count once per attack
+                    // RESOLVE (multi-output attacks still count 1; a resolve that lapsed with no
+                    // valid target counts 0). bestTarget is guaranteed alive here: RESOLVE applies
+                    // damage via the deferred IncomingDamage buffer, so nothing in this block can
                     // have destroyed it.
                     // 계약 2 — 이번 프레임에 캐스트로 이미 카운트한 host 는 제외(위 드레인 주석).
+                    //
+                    // elite-enemy-tier unit 3 — ★**진영 게이트를 뺐다.** 예전엔 `[Defender only]`
+                    // 로 `defenderTagLookup` 을 요구해서 적은 AttackN 을 영영 못 썼다(드래곤의
+                    // 3타 브레스가 이것 없이는 성립하지 않는다). 새 술어는 **버퍼 존재**뿐이다 —
+                    // 슬롯이 붙은 것 자체가 «이 유닛은 트리거를 갖는다» 는 선언이고, 적에게 슬롯을
+                    // 붙이는 유일한 경로는 `BakeNightmareMechanics`(= 저작된 메커닉)다.
+                    // 진영별 분기를 새로 만들지 않는 것이 요점이다.
+                    //
+                    // ⚠ 같은 파일의 다른 `defenderTagLookup` 게이트 7곳은 **건드리지 않았다**
+                    // (힐 대상 랭킹 · frontmost · 포커스 · HeavyStrike pre-scan · bounce ·
+                    // 위협 귀속 · 공격 시작 타이밍). 전부 방어유닛 전용이어야 하는 기능이다.
                     if (bestTarget != Entity.Null
-                        && defenderTagLookup.HasComponent(attackerEntity)
                         && dcSlotLookup.HasBuffer(attackerEntity)
                         && !castCountedHosts.Contains(attackerEntity))
                     {
@@ -1730,11 +1739,30 @@ namespace Wassup.Battle.Combat
                             slot.counter = dcCounter;
                             dcSlots[si] = slot;
                             if (!dcFired) continue;
-                            if (dcFiredWriter.HasValue) // use-flow unit 3 — 발동 신호
+                            // ★연출 신호는 **방어유닛 한정**으로 남긴다(elite-enemy-tier unit 3).
+                            // 이 큐의 드레인(BattleBridge.DrainDcTriggerFiredEvents)은 카드 행
+                            // 펄스에서 끝나지 않고 `spineUnitPool.TryGet(host)` 로 뷰를 찾아
+                            // `PlayPunch` + `FlashWhite` + «카드 흡수» VFX 를 낸다. 적도 같은 풀에
+                            // 등록돼 있어서, 게이트를 함께 풀면 드래곤이 3타마다 방어유닛 카드
+                            // 연출을 낸다(2026-08-12 코드리뷰 H3 — 「적 host 는 무해하다」가 거짓).
+                            if (dcFiredWriter.HasValue && defenderTagLookup.HasComponent(attackerEntity))
                                 dcFiredWriter.Value.Enqueue(new DcTriggerFiredEvent { host = attackerEntity });
 
                             // dreamcatcher-new-abilities unit 1 — payload 디스패치. AttackN
                             // 슬롯이 발동하면 kind 별로 carrier(투사체)/CC/스택 중 하나를 실행.
+                            //
+                            // ⚠ 적 host 는 **ProjectileToTarget 을 타면 안 된다.** 그 arm 은 대상
+                            // 진영이 방어유닛 전제로 잡혀 있어 적이 쓰면 자기 진영을 쏜다. bake
+                            // 화이트리스트가 1차 방어선이지만 저작으로 뚫릴 수 있어 여기서도 막는다
+                            // (리뷰 잔여위험 2). 적이 쓰는 AttackN 페이로드는 unit 4 의 브레스뿐이다.
+                            if (!defenderTagLookup.HasComponent(attackerEntity)
+                                && slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                            {
+                                // 카운트는 이미 소비됐다(계약 5) — 조용히 넘기지 않는다.
+                                UnityEngine.Debug.LogWarning(
+                                    "[AttackSystem] 적 host 의 AttackN × ProjectileToTarget — 자기 진영을 쏘게 되므로 건너뛴다. 저작을 고칠 것.");
+                                continue;
+                            }
                             if (slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
                             {
                                 // Dedicated request-carrier entity: the shooter's own
