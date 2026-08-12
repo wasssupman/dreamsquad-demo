@@ -89,23 +89,37 @@ namespace Wassup.UI
         // unit 5 — 선택 액션 플립북의 이동모드 버튼이 부르는 외부 진입점(홀드 대체). 버튼(UI) 경유라
         // 보드 press/UI raycast 게이트를 안 탄다. 활성 비행/쿨다운/페이즈/유닛유효만 가드.
         // review H1: _flightGen/_activeFlightEntity 단일 슬롯 → 앞 유닛 비행 중엔 새 진입 거부(고아화 방지).
-        public bool BeginMoveModeFor(Entity entity, Vector2Int cell)
+        // unit 10 — carriedPress: 선택 상태에서 그 유닛 칸을 **끌어서** 들어오는 지름길. 누르고 있던
+        // 손가락을 그대로 목적지 제스처로 잇는다(버튼 경유는 기본값 false — 새 press 를 기다린다).
+        public bool BeginMoveModeFor(Entity entity, Vector2Int cell,
+            bool carriedPress = false, Vector2 pressScreen = default)
+        {
+            if (!CanBeginMoveModeFor(entity, cell)) return false;
+            bridge.TryGetDefenderAt(cell, out _, out var unit, out _);
+            _sourceCell = cell;
+            _unit = unit;
+            _entity = entity;
+            EnterMoveMode(carriedPress, pressScreen);
+            return true;
+        }
+
+        // unit 10 — 위 진입 가드의 read-only 판본. 선택 패널이 "이동" 버튼을 매 프레임 잠그거나
+        // 푸는 데 쓴다. 진입 조건을 두 벌로 적지 않기 위해 BeginMoveModeFor 가 이걸 그대로 탄다.
+        // 코스트가 포함된다 — 못 놓을 걸 알면서 슬로모까지 걸고 들여보내지 않는다(계약 10 rev).
+        public bool CanBeginMoveModeFor(Entity entity, Vector2Int cell)
         {
             if (bridge == null || settings == null) return false;
             if (_moveMode || _activeFlightEntity != Entity.Null) return false;
             if (_entryCooldownRemaining > 0f) return false;
             var gm = GameManager.Instance;
             if (gm == null || gm.CurrentPhase != GamePhase.Battle) return false;
-            if (!bridge.TryGetDefenderAt(cell, out var e, out var unit, out bool busy) || busy || e != entity)
+            if (!bridge.TryGetDefenderAt(cell, out var e, out _, out bool busy) || busy || e != entity)
                 return false;
-            _sourceCell = cell;
-            _unit = unit;
-            _entity = entity;
-            EnterMoveMode();
-            return true;
+            // 제자리 재정비가 항상 가능하므로(unit 9), "코스트만 있으면 어딘가엔 놓을 수 있다" 가 참이다.
+            return bridge.CanRelocateDefender(cell, cell, out _);
         }
 
-        private void EnterMoveMode()
+        private void EnterMoveMode(bool carriedPress = false, Vector2 pressScreen = default)
         {
             _moveMode = true;
             _moveModeElapsed = 0f;
@@ -119,8 +133,12 @@ namespace Wassup.UI
             // unit 9 — 소스 칸을 명시로 되돌려 넣는다: 점유라 스캔에서 빠지는데, 제자리 재정비가
             // 확정이 된 지금은 "여기 놓으면 재정비" 로 읽혀야 한다(취소 버튼 대신 쓰는 어포던스).
             bridge.ShowPlacementHighlight(_unit, _sourceCell);
-            // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
-            _targetPressActive = false;
+            // 버튼 진입 = carried press 없음(목적지 탭/드래그를 이후 새 press 로 받는다).
+            // unit 10 — 칸을 끌어서 들어온 경우엔 그 press 를 **이어받는다**. 원래 누른 지점을
+            // 기준점으로 쥐고 시작하므로, 이미 임계를 넘긴 손가락이 다음 프레임 곧바로 드래그로
+            // 승격돼 조준 오프셋이 끊기지 않는다.
+            _targetPressActive = carriedPress;
+            _targetPressDown = carriedPress ? pressScreen : default;
             _targetDragging = false; // unit 1 — 승격 상태도 진입마다 초기화(이전 제스처 잔재 금지)
             _scoutCell = null;
         }

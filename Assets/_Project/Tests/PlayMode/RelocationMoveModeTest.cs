@@ -31,6 +31,58 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
+        // unit 10 — 코스트가 모자라면 이동모드에 **들어가지 못한다**. 들여보내면 슬로모까지 걸고
+        // 아무 칸에도 못 놓는 상태가 되어, 보드 밖 탭이나 타임아웃으로만 빠져나올 수 있다.
+        // 선택 패널의 "이동" 버튼 잠금이 이 술어를 그대로 읽는다.
+        [UnityTest]
+        public IEnumerator MoveModeEntry_GatedByCost()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var controller = Object.FindObjectOfType<DefenderRelocationController>();
+            controller.enabled = false;
+
+            var fast = ScriptableObject.CreateInstance<RelocationSettings>();
+            fast.entryCooldownSeconds = 0f;
+            fast.moveModeTimeoutSeconds = 30f;
+            SetField(controller, "settings", fast);
+
+            var cat = FindCatalog();
+            var unit = cat.ById("ranger");
+            Assert.Greater(unit.cost, 0, "코스트 게이트를 보려면 유닛 코스트가 0 이 아니어야 한다");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            var cell = SoleCell(bridge);
+            Assert.IsTrue(bridge.TryGetDefenderAt(cell, out var entity, out _, out _), "resolve entity");
+
+            // 코스트를 바닥낸다 — 재생성이 끼지 않게 멈춘다(Battle 진입이 켜 놓는다).
+            gm.CostRuntime.StopRegen();
+            while (gm.CostRuntime.CurrentInt > 0) gm.CostRuntime.TrySpend(1);
+
+            Assert.IsFalse(controller.CanBeginMoveModeFor(entity, cell), "코스트가 없으면 진입 불가");
+            Assert.IsFalse(controller.BeginMoveModeFor(entity, cell), "게이트가 실제 진입도 막는다");
+            Assert.IsFalse(controller.InMoveMode, "이동모드에 들어가지 않았다");
+
+            gm.CostRuntime.AddCost(unit.cost);
+            Assert.IsTrue(controller.CanBeginMoveModeFor(entity, cell), "코스트가 차면 다시 열린다");
+            Assert.IsTrue(controller.BeginMoveModeFor(entity, cell), "진입 성공");
+
+            controller.CancelMoveMode();
+            Object.Destroy(fast);
+        }
+
         // 버그 재현 — 사용자 문장: "재배치 모드 들어갈 때 배치 가능 타일 하이라이트가 동작 안 한다".
         // 단언은 그 문장 그대로다: **이동모드에 있는 동안 하이라이트가 켜져 있다.**
         // 진입 직후 1프레임이 핵심이다 — 재배치는 진입 시 한 번만 켜는데, 배치 드래그 컨트롤러는

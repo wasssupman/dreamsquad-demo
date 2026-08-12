@@ -175,10 +175,12 @@ namespace Wassup.UI
             }
             if (!_pendingTap) return;
 
-            // 이동량이 크면 탭이 아니다(드래그/홀드 의도) — 후보 취소.
+            // 이동량이 크면 탭이 아니다(드래그 의도) — 후보 취소.
+            // unit 10 — 그 드래그가 **선택된 유닛의 칸에서** 시작됐다면 이동모드로 넘긴다.
             if (Vector2.Distance(screenPos, _pendingScreen) > Mathf.Max(1f, tapMoveThreshold))
             {
                 _pendingTap = false;
+                TryDragHandoffToMoveMode(screenPos);
                 return;
             }
             if (pointer.press.wasReleasedThisFrame)
@@ -235,7 +237,39 @@ namespace Wassup.UI
             {
                 bool hasStats = bridge.TryGetUnitStatReadout(_selected, out var stats);
                 panel.SetStats(stats, hasStats);
+
+                // defender-relocation unit 10 — 이동 버튼 잠금/코스트도 같은 프레임 피드에 태운다.
+                // 코스트는 슬로모 중에도 차므로 "모자라서 흐렸다가 모이면 풀린다" 가 보여야 한다.
+                if (relocationController != null &&
+                    bridge.TryGetDefenderCell(_selected, out var moveCell))
+                {
+                    int cost = bridge.TryGetDefenderData(moveCell, out var moveData) && moveData != null
+                        ? moveData.cost : 0;
+                    panel.SetMoveState(relocationController.CanBeginMoveModeFor(_selected, moveCell), cost);
+                }
             }
+        }
+
+        // defender-relocation unit 10 — 선택된 유닛의 칸에서 시작된 드래그를 이동모드로 넘긴다.
+        // 버튼을 거치지 않는 지름길이고, 누르던 손가락이 그대로 목적지 제스처가 된다.
+        //
+        // 호출 자리가 **탭 후보를 취소하는 그 지점**인 것이 요점이다: 임계를 넘는 순간 "탭이
+        // 아니다" 가 확정되고, 그때 비로소 "그럼 이동 드래그다" 가 성립한다. 새 임계를 만들면
+        // 둘 사이에 아무 일도 일어나지 않는 죽은 구간이 생긴다.
+        private void TryDragHandoffToMoveMode(Vector2 screenPos)
+        {
+            if (_selected == Entity.Null || relocationController == null) return;
+            if (!bridge.TryGetDefenderCell(_selected, out var cell)) return;
+            // **누른 지점**이 그 유닛의 칸이어야 한다(빈 보드 드래그는 종전대로 아무 일 없음).
+            // Strict — 보드 밖에서 시작한 드래그가 가장자리 칸으로 clamp 돼 오인되지 않게.
+            if (!bridge.TryScreenToCellStrict(mainCamera, _pendingScreen, out var downCell)) return;
+            if (downCell != cell) return;
+
+            var e = _selected;
+            Close(); // 선택 슬로모/줌/패널을 먼저 반납한다 — relocation 이 자기 lease 를 새로 잡는다
+            // 기준점은 **원래 누른 지점**이다. 손가락은 이미 임계를 넘었으므로 다음 프레임에
+            // 곧바로 드래그로 승격돼 조준 오프셋이 끊기지 않는다.
+            relocationController.BeginMoveModeFor(e, cell, carriedPress: true, pressScreen: _pendingScreen);
         }
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.

@@ -130,6 +130,7 @@ namespace Wassup.UI
         // 액션(이동) — 유닛 주변 플립북을 대체한 진입구. unit 15.
         private RectTransform _moveButton;
         private UnityEngine.UI.Button _moveButtonComp;
+        private TextMeshProUGUI _moveLabel;   // defender-relocation unit 10 — 라벨에 코스트를 싣는다
         private System.Action _onMove;
 
         private bool _visible;
@@ -138,6 +139,36 @@ namespace Wassup.UI
         private void Awake() => Build();
 
         // ── 공개 API ──────────────────────────────────────────────────────────
+
+        // defender-relocation unit 10 — 이동 버튼의 잠금/코스트를 매 프레임 받는다. 코스트는
+        // 슬로모 중에도 계속 차므로 Show 때 한 번 받아서는 "모아지면 풀린다" 를 표현할 수 없다.
+        //
+        // 잠금은 **숨김이 아니라 흐림**이다 — 왜 못 누르는지가 코스트 숫자로 읽혀야 한다.
+        // 래치를 두어 값이 바뀔 때만 문자열·색을 다시 쓴다(매 프레임 TMP 재빌드 방지).
+        private (bool enabled, int cost)? _moveState;
+
+        public void SetMoveState(bool enabled, int cost)
+        {
+            if (!_built || _moveButton == null || !_moveButton.gameObject.activeSelf) return;
+            if (_moveState.HasValue && _moveState.Value.enabled == enabled && _moveState.Value.cost == cost) return;
+            _moveState = (enabled, cost);
+
+            _moveButtonComp.interactable = enabled;
+            if (_moveLabel != null)
+            {
+                _moveLabel.text = cost > 0 ? $"이동  {cost}" : "이동";
+                var c = unitBorder;
+                c.a = enabled ? 1f : 0.4f;
+                _moveLabel.color = c;
+            }
+            var img = _moveButtonComp.targetGraphic as Image;
+            if (img != null)
+            {
+                var c = img.color;
+                c.a = enabled ? 1f : 0.45f;
+                img.color = c;
+            }
+        }
 
         // 구조 갱신(선택/부착 변경). 스탯 값은 SetStats 가 매 프레임 따로 넣는다.
         //
@@ -153,6 +184,7 @@ namespace Wassup.UI
             EnsurePlates();
             _onMove = onMove;
             _moveButton.gameObject.SetActive(onMove != null);
+            _moveState = null; // unit 10 — 대상이 바뀌었으니 잠금 래치를 비운다(다음 push 가 다시 칠한다)
 
             // 측정 전에 루트를 켠다. 비활성 계층에서 AddComponent 된 TMP 는 Awake 가 돌지
             // 않아 기본 설정이 로드되지 않고, 그 상태의 GetPreferredValues 는 정답의 1/10 을
@@ -540,6 +572,7 @@ namespace Wassup.UI
             label.fontStyle = FontStyles.Bold;
             label.color = unitBorder;
             label.text = "이동";
+            _moveLabel = label; // unit 10 — SetMoveState 가 코스트를 실어 다시 쓴다
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.pivot = new Vector2(0.5f, 0.5f);
