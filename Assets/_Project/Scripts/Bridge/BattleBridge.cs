@@ -137,8 +137,6 @@ namespace Wassup.Bridge
         // (신규 SerializeField 는 기존 씬에서 이 initializer 를 받는다).
         [SerializeField] private float goalStabilityBarLift = 1.6f;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
-        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
-        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
         [SerializeField] private float tilemapCharacterScale = 0.42f;
         // tilted-billboard unit 2 — XZ 바닥 + 퍼스펙티브에서 캐릭터가 카메라를 향해 서도록 월드 X 틸트.
@@ -1164,12 +1162,10 @@ namespace Wassup.Bridge
             if (tilemapMapView != null && tilemapMapView.Grid != null)
                 Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize, tilemapMapView.Grid);
 
-            // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
-            // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
-            // camera-direction unit 0 이후 재활성 금지: 카메라 포즈는 CameraDirector 가 매 프레임
-            // 절대값으로 소유한다 — 이 호출을 되살려도 다음 LateUpdate 에 홈 포즈로 되돌려져 무효.
-            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(spec unit 1)로 구현한다.
-            // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
+            // 카메라 포즈는 CameraDirector 가 매 프레임 절대값으로 소유한다 — 여기서 카메라를 직접
+            // 쓰면 다음 LateUpdate 에 홈 포즈로 되돌려져 무효다. 맵 빌드 시점에 카메라를 만지는
+            // 경로를 다시 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
+            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(camera-direction unit 1)로.
 
             // camera-direction unit 8 — 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이
             // 남거나 가장자리가 잘린다. 그리드가 확정된 지금 홈 거리를 다시 잡는다.
@@ -5933,81 +5929,6 @@ namespace Wassup.Bridge
             ApplyEffectTileIfAny(cell, entity); // effect-tiles unit 2 — 가드 뒤 exactly-once (드래그 경로)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
-        }
-
-        // tilemap-view-backend unit 4 — 모드별 ortho 카메라 프리셋 적용. gridSize+tileSize 로 orthographicSize 계산.
-        // 매 맵 빌드마다 호출 — 프리셋+gridSize 에서 결정론적이라 RebuildDraftMap 재진입에도 idempotent.
-        // [은퇴 — camera-direction unit 0] 호출부 없음. 카메라 포즈는 CameraDirector 가 유일 소유 —
-        // 재호출해도 다음 LateUpdate 에 덮여 무효. framing 산식(보드 fit) 참고용으로만 보존.
-        private void ApplyTilemapCameraPreset()
-        {
-            var preset = boardViewMode == Wassup.Core.BoardViewMode.TilemapIso
-                ? tilemapCameraPresetIso : tilemapCameraPresetRect;
-            var cam = Camera.main;
-            if (preset == null || cam == null) return;
-
-            cam.orthographic = preset.orthographic;
-            float aspect = cam.aspect > 0.01f ? cam.aspect : (16f / 9f);
-
-            // tilted-billboard unit 1 — 보드 월드 bounds 산출 (페인트 실측 우선, 없으면 gridSize 추정).
-            Bounds board;
-            if (tilemapMapView != null && tilemapMapView.TryGetBoardWorldBounds(out var b))
-            {
-                board = b;
-            }
-            else
-            {
-                int2 g = _generatedMap.gridSize;
-                float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
-                Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
-                board = new Bounds(centerView, new Vector3(g.x * tileSize, g.y * tileSize, 0f));
-            }
-
-            // 회전 먼저 — framing 은 회전된 카메라 기준으로 계산해야 틸트해도 화면에 꽉/중앙.
-            cam.transform.rotation = Quaternion.Euler(preset.rotationEuler);
-
-            if (preset.orthographic)
-            {
-                // ortho: positionOffset 은 "view 축 거리"로 해석. 보드 중심 정면 배치.
-                float dist = preset.positionOffset.magnitude;
-                if (dist < 0.01f) dist = 20f;
-                cam.transform.position = board.center - cam.transform.forward * dist;
-
-                // orthographicSize: 보드 8코너를 카메라 view 공간 투영해 실제 화면 extent 산출(틸트/iso 자동 보정).
-                Vector3 ext = board.extents;
-                float maxX = 0f, maxY = 0f;
-                for (int sx = -1; sx <= 1; sx += 2)
-                    for (int sy = -1; sy <= 1; sy += 2)
-                        for (int sz = -1; sz <= 1; sz += 2)
-                        {
-                            Vector3 corner = board.center + new Vector3(sx * ext.x, sy * ext.y, sz * ext.z);
-                            Vector3 v = cam.transform.InverseTransformPoint(corner);
-                            maxX = Mathf.Max(maxX, Mathf.Abs(v.x));
-                            maxY = Mathf.Max(maxY, Mathf.Abs(v.y));
-                        }
-                cam.orthographicSize = Mathf.Max(maxY, maxX / aspect) + preset.orthoSizePadding;
-            }
-            else
-            {
-                // 퍼스펙티브: FOV 로 보드 바운딩 구를 화면에 맞춘다. distance = R / sin(fov/2).
-                // 가로 FOV ≥ 세로 FOV(aspect>1)라 세로 기준 구-fit 이면 항상 들어온다. pitch 와 무관하게 추종.
-                cam.fieldOfView = preset.fieldOfView;
-                float radius = board.extents.magnitude;
-                if (radius < 0.01f) radius = 1f;
-                float half = Mathf.Deg2Rad * preset.fieldOfView * 0.5f;
-                float dist = radius / Mathf.Max(0.01f, Mathf.Sin(half)) * preset.perspectiveFitMargin;
-                cam.transform.position = board.center - cam.transform.forward * dist;
-            }
-
-            cam.nearClipPlane = preset.nearClip;
-            cam.farClipPlane = preset.farClip;
-            cam.transparencySortMode = preset.transparencySortMode;
-            cam.transparencySortAxis = preset.sortAxis;
-            if (preset.solidColorBackground)
-            {
-                cam.clearFlags = CameraClearFlags.SolidColor; // skybox 제거
-                cam.backgroundColor = preset.backgroundColor;
-            }
         }
 
         // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
