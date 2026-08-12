@@ -89,7 +89,15 @@ namespace Wassup.UI.Draft
             // 앞 MaxCards 장만 그린다 — 3분 안에 도달하는 것은 10~16웨이브뿐이라 앞부분이
             // 곧 실제로 만나는 전부다.
             int shown = Mathf.Min(plan.waves.Count, MaxCards);
-            for (int i = 0; i < shown; i++) AddWaveCard(plan.waves[i]);
+            // wave-concept-blocks unit 5 — 블록의 **첫 카드에만** 컨셉 라벨을 붙인다. 3웨이브가
+            // 내내 같은 문구를 달면 정보가 아니라 장식이다. 블록 경계는 conceptHoldWaves 를
+            // 다시 계산하지 않고 «직전 카드와 라벨이 다른가» 로 판정한다 — 두 곳에 두면 갈린다.
+            for (int i = 0; i < shown; i++)
+            {
+                bool blockStart = i == 0
+                    || plan.waves[i].conceptLabel != plan.waves[i - 1].conceptLabel;
+                AddWaveCard(plan.waves[i], blockStart);
+            }
             UiLayer.Apply(gameObject);
         }
 
@@ -394,7 +402,7 @@ namespace Wassup.UI.Draft
             _cardRects.Clear();
         }
 
-        private void AddWaveCard(GeneratedWave wave)
+        private void AddWaveCard(GeneratedWave wave, bool blockStart = true)
         {
             var go = new GameObject($"Wave_{wave.waveIndex + 1:00}",
                 typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(LayoutElement));
@@ -429,17 +437,35 @@ namespace Wassup.UI.Draft
             accentRt.pivot     = new Vector2(0f, 0.5f);
             accentRt.anchoredPosition = Vector2.zero;
             accentRt.sizeDelta = new Vector2(8f, 0f);
-            accentGo.GetComponent<Image>().color = new Color(1f, 0.86f, 0.24f, 1f);
+            // unit 5 — 블록 안쪽 카드는 액센트를 죽여 3장이 한 묶음으로 읽히게 한다.
+            bool hasConcept = !string.IsNullOrEmpty(wave.conceptLabel);
+            accentGo.GetComponent<Image>().color = hasConcept && !blockStart
+                ? new Color(0.42f, 0.46f, 0.58f, 1f)
+                : new Color(1f, 0.86f, 0.24f, 1f);
             accentGo.GetComponent<Image>().raycastTarget = false;
 
             AddText(go.transform, "Index", $"W{wave.waveIndex + 1:00}", 38, Color.white, bold: true,
                 new Vector2(0f, 0.55f), new Vector2(0.55f, 1f),
                 new Vector2(20f, 0f), new Vector2(0f, -8f), TextAlignmentOptions.MidlineLeft);
 
-            AddText(go.transform, "Time", $"{wave.triggerTimeSec:0.#}초", 22,
-                new Color(0.7f, 0.78f, 0.92f, 1f), bold: false,
-                new Vector2(0.55f, 0.6f), new Vector2(1f, 1f),
-                new Vector2(0f, 0f), new Vector2(-14f, -6f), TextAlignmentOptions.TopRight);
+            // unit 5 — 컨셉이 있으면 시각(명목 그리드) 대신 라벨을 그린다. 런타임은 이 시각을
+            // 읽지 않으므로(이벤트 구동) 플레이어에게 더 쓸모 있는 정보로 자리를 넘긴다.
+            // 블록 안쪽 카드는 비워 3장이 한 묶음으로 보이게 한다.
+            if (hasConcept)
+            {
+                if (blockStart)
+                    AddText(go.transform, "Concept", wave.conceptLabel, 24,
+                        new Color(1f, 0.86f, 0.24f, 1f), bold: true,
+                        new Vector2(0.45f, 0.6f), new Vector2(1f, 1f),
+                        new Vector2(0f, 0f), new Vector2(-14f, -6f), TextAlignmentOptions.TopRight);
+            }
+            else
+            {
+                AddText(go.transform, "Time", $"{wave.triggerTimeSec:0.#}초", 22,
+                    new Color(0.7f, 0.78f, 0.92f, 1f), bold: false,
+                    new Vector2(0.55f, 0.6f), new Vector2(1f, 1f),
+                    new Vector2(0f, 0f), new Vector2(-14f, -6f), TextAlignmentOptions.TopRight);
+            }
 
             // wave-authoring-test-mode unit 1 — 2줄 고정 → groups N줄 가변.
             // 하단 영역(y 0~0.58)을 그룹 수로 세로 분할, 그룹 수에 따라 폰트 축소.

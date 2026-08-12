@@ -170,7 +170,15 @@ namespace Wassup.UI
                 if (_countdownLabel.gameObject.activeSelf != showCountdown)
                     _countdownLabel.gameObject.SetActive(showCountdown);
                 if (showCountdown)
-                    _countdownLabel.text = $"다음 {Mathf.CeilToInt(toNext)}초";
+                {
+                    // wave-concept-blocks unit 5 — 블록이 바뀌는 순간에만 컨셉을 덧붙인다.
+                    // 블록 안쪽 2·3번째 웨이브에는 안 붙는다(3웨이브 내내 같은 문구 = 장식).
+                    // 신규 UI 오브젝트를 만들지 않으므로 씬 wiring 이 필요 없다.
+                    string concept = bridge.NextWaveStartsBlock ? bridge.NextWaveConceptLabel : "";
+                    _countdownLabel.text = string.IsNullOrEmpty(concept)
+                        ? $"다음 {Mathf.CeilToInt(toNext)}초"
+                        : $"다음 {Mathf.CeilToInt(toNext)}초 · {concept}";
+                }
             }
         }
 
