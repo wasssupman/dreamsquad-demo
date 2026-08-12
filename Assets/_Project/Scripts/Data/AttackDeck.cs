@@ -90,6 +90,19 @@ namespace Wassup.Data
         // "3분 생존" 전제가 성립하지 않았다(검증에서 첫 접촉 몇 초 뒤 패배). 1000 은 사용자 결정.
         [Min(1)] public int goalStabilityMax = 1000;
 
+        // wave-concept-blocks unit 0 — 웨이브 컨셉 블록. Appended last (직렬화 back-compat).
+        //
+        // 컨셉은 웨이브가 아니라 **블록**의 속성이다: 블록 경계에서 하나 뽑고 conceptHoldWaves
+        // 웨이브 동안 컨셉과 lane 배정을 유지한다. 풀이 비면 생성기가 구조적 폴백(슬롯 2개·
+        // lane 무지정·countMul 1 = 현행 동작의 모양)으로 떨어지므로 무회귀 경로가 데이터로
+        // 확보된다.
+        [Header("Wave Concepts")]
+        [Tooltip("웨이브 컨셉 풀. 비우면 현행 동작(랜덤 2종·전 lane 분산)으로 폴백.")]
+        public WaveConceptData[] waveConceptPool = Array.Empty<WaveConceptData>();
+
+        [Tooltip("한 컨셉이 유지되는 웨이브 수(블록 길이). 웨이브당 12~18초라 1이면 반응할 창이 없다.")]
+        [Min(1)] public int conceptHoldWaves = 3;
+
         public int ResolveWaveSeed()
         {
             return waveSeed != 0 ? waveSeed : 1;
