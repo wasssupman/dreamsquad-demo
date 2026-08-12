@@ -1,0 +1,51 @@
+# siege-duel-map — 듀얼 아레나 (공성 모드의 첫 라이브 맵)
+
+> ## 목표 3줄
+>
+> 1. **공성 모드가 처음으로 판에 선다** — 적 마음 1개 저작 = 모드 파생(battle-structures unit 6), 그 셀이 스폰지점.
+> 2. **클래시 로얄 문법의 대치 구도** — 내 마음 ↔ 적 마음 좌우 미러, 각 진영 본능 1기가 서로 다른 레인을 감제.
+> 3. **방어측 본능의 첫 라이브** — «미래의 방어 본능도 코드 변경 0» (파이프라인 맵 주장)의 검증.
+
+상태: **작성됨 2026-08-12** · unit 0 진행
+
+## 구조 (15×12 · 좌우 미러 축 x=7)
+
+```
+PPPPPPPPPPPPPPP
+PWWWWWWWWWWWWWP   ← 상레인 (폭2)
+PWWWWWWWWWWWWWP
+PWWPPDDDDDPPWWP   ← 세로 연결(x1..2 / x12..13) + 배치 포켓(x3..4 / x10..11)
+PWWPPDDDDDPPWWP
+PWWWWDDDDDWWWWP   ← 광장 4×4 (x1..4 / x10..13, y3..6) · 마음: 적 A(2,6) ↔ 내 H(12,6)
+PWWWWDDDDDWWWWP      중앙 숲 x5..9 y3..8: 적 본능 (6,7)·방어 본능 (8,4) — 점대칭
+PWWWWDDDDDWWWWP
+PWWWWDDDDDWWWWP
+PWWWWWWWWWWWWWP   ← 하레인 (폭2)
+PWWWWWWWWWWWWWP
+PPPPPPPPPPPPPPP
+```
+
+- **마음·광장·레인 = 좌우 미러.** 본능 2기는 **점대칭**(180°) — 좌우 미러로 두면 3×3 footprint 가 광장을 침식해 4×4 가 죽는다(기하 제약). 결과적으로 **상레인 = 적 본능 사정권, 하레인 = 방어 본능이 적을 갈아주는 길** — 레인 선택에 의미가 생긴다(CR 의 레인 텍스처).
+- **공성 파생**: 적 마음(2,6) 저작 + `spawns: []` (공성에서 spawns 저작은 검증 에러 — 파생이 채운다). 웨이브가 적 마음에서 나온다.
+- **승패 축**(battle-structures unit 10): 적 마음 파괴 = 승리 · 내 마음 붕괴 = 패배 · 타이머 만료 = **잔여 HP 비교**. 양 마음 HP 1000 대칭(덱 `goalStabilityMax` = `Structure_EnemyHeart.health`).
+- **SO 2개 신설**: `Structure_EnemyHeart`(적 마음, HP 1000 — 시험용 EnemyCore(800)는 SiegeTest 페어 보존을 위해 불변) · `Structure_GuardInstinct`(방어 본능 — `targetFactions = EnemyUnit`. 파수 본능과 수치 대칭: HP 1000·피해 20·사거리 5).
+- **Air 경로** `(8,6)` — 중앙 숲 관통(Deck_Duel 에 Skimmer 포함).
+- **풀 등록은 dev 슬롯** — 라이브 entries 는 시드 맵 배정 결정론이라 확장 = 제품 결정(별도 승인). dev 등록은 페인터 `RegisterToDevSlot` 로 재현 가능해 pool 파일은 커밋하지 않는다(병행 세션 WIP 와 같은 파일).
+
+## 완료 기준
+
+- [x] 공성 파생 확인 — `DeriveMode = Siege` · `ToGeneratedMap.spawns = [(2,6)]`(적 마음 셀) · 라이브에서 스폰 마커·예고 라인이 적 마음에 잡힘
+- [x] 라이브 엔티티 4기: 내 마음(12,6) 1000 ↔ 적 마음(2,6) 1000 · 적 본능(6,7)·방어 본능(8,4) 모두 `hasAttack=True`
+- [x] **HP 레이스 실측** — t=58 에 내 마음 790 vs 적 마음 820: 웨이브는 내 마음을, Cannon 은 적 마음을 깎았다. 공성의 본질(잔여 비교)이 라이브에서 성립. 방어유닛→적 마음 피해 경로 확정
+- [x] **적 마음 파괴 → 즉시 Result 전환**(승리 축 발화, battle-structures unit 10)
+- [x] EditMode 2,177 / 실패 0 · 콘솔 에러 0 · 자가검사(폭1 0 · 광장 · walk 92 전체 연결 · footprint 데코 내·비겹침)
+- [x] 스크린샷 `duel_siege.png` — 좌우 대치 + 예고 라인
+- [ ] **사용자 Play 체감** — 레인 텍스처(상 = 적 본능 사정권 / 하 = 방어 본능 엄호)·HP 레이스 재미
+- [ ] **방어 본능의 발사 직접 계측** — 정황(적 전멸 기여)만 확인. 명시 카운터는 체감 확인 때 함께
+
+## 후속 후보
+
+- **라이브 풀 편입** [S] — 시드 맵 배정 재편 동반, 사용자 결정.
+- **레인 갈래 저작** [M] — 공성 스폰 1개는 필드가 한 레인만 고른다. 상·하 레인 분산은 웨이포인트 경로 저작(지상 경로 적) 또는 스폰 분산 규칙.
+- **적 본능의 마음 사냥꾼 상호작용** 등 emergent 확인.
+- **본능 프랍 진영 구분** [S] — 현재 양측이 같은 빨간 시험 프랍이라 화면에서 아군/적 본능이 구분 안 된다. viewPrefab 분리 또는 진영 틴트.
