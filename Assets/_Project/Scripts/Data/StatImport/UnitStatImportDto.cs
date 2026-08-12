@@ -39,6 +39,8 @@ namespace Wassup.Data.StatImport
         public int? cost;
         // defender-placement-cooldown — 유닛 타입 재배치 대기(초). 0 = 쿨타임 없음.
         public float? placementCooldown;
+        // defender-board-limit 0 — 판 위 동시 존재 상한. 기본 1, 무제한은 큰 수(100).
+        public int? maxOnBoard;
         public int? aggroCapacity;
         public float? aggroRange;
         // dreamcatcher-sheet-sync unit 4 — awakening gauge granted on this

@@ -49,14 +49,18 @@
   감쇠.
 
 `uv0` 만 읽는다 — `Canvas.additionalShaderChannels` 를 건드릴 필요가 없다(이 프로젝트가 한 번 밟은
-지뢰). **머티리얼은 공유 에셋 1개**로 충분하다: 슬롯마다 달라질 유니폼이 없고 애니메이션은 셰이더
-내부 시간이다. 쿨타임 오버레이는 셀마다 `_Fill` 이 달라 인스턴스를 뜨고 `RebuildSlots` 에 누수 방지
-`Destroy` 가 붙어 있는데, **이 이펙트는 그 코드가 아예 안 생긴다.**
+지뢰). **머티리얼은 전 슬롯이 하나를 공유**한다: 슬롯마다 달라질 유니폼이 없고 애니메이션은 셰이더
+내부 시간이다. 쿨타임 오버레이는 셀마다 `_Fill` 이 달라 **슬롯당** 인스턴스를 뜨는데, 이쪽은 1개다.
 
-**knob** (`BattleHudTrayConfig`, 하드코딩 금지 — 제약 6):
-`exhaustedPortraitTint` · `rimFlowMaterial` · `rimFlowColor` · `rimThickness` · `rimSpeed`(회/초) ·
-`rimBandCount` · `rimTailLength` · `rimStrength`. 기본값은 "느리게 도는 2가닥, 은은한 밝기"로 잡고
-육안으로 맞춘다.
+단 공유 에셋을 그대로 쓰지는 않고 **인스턴스 1개**를 뜬다 — 셀 종횡비(`_Aspect`)는 런타임에 밀어야
+하는데(페이즈 전환으로 셀 높이가 바뀐다) 에디터에서 공유 에셋에 `SetFloat` 하면 `.mat` 파일 자체가
+더럽혀지기 때문이다. 수명은 기존 `OnDestroy`(쿨타임 머티리얼 정리 자리)에 한 줄로 합친다.
+
+**knob** — **룩은 머티리얼 에셋(`SlotRimFlow.mat`)이 소유**하고 config 는 `rimFlowMaterial` 참조와
+`exhaustedPortraitTint` 둘만 갖는다. 색·두께·속도·밴드 수를 config 에도 두면 진실원이 둘이 된다 —
+이 셰이더는 소비처가 하나뿐이라(쿨타임 액체가 코스트 물통과 색·방향을 달리해야 했던 것과 다르다)
+역할 구분용 오버라이드가 필요 없다. 머티리얼도 데이터 에셋이라 제약 6(하드코딩 금지)을 만족한다.
+코드가 미는 유니폼은 `_Aspect` 하나뿐 — 그건 룩이 아니라 기하다.
 
 **튜토리얼** — `TryGetAffordableTutorialSlot` 이 소진 슬롯을 후보에서 제외한다(놓을 수 없는 칸을
 가리키지 않게).

@@ -48,7 +48,11 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var gm = Object.FindObjectOfType<GameManager>();
             var cat = FindDefenderCatalog();
-            var unit = cat.ById("ranger");
+            // defender-board-limit — 이 테스트는 자장가 대상이 여럿이어야 성립해 같은 유닛을 4기
+            // 세운다. 라이브 기본값 maxOnBoard=1 이면 1기에서 멈추므로 상한을 푼다 — 카탈로그
+            // 에셋이 아니라 **런타임 사본**에만 쓴다(에셋 직접 수정은 디스크에 박힌다).
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
             Assert.IsNotNull(unit, "ranger");
 
             // 실제 배치 경로 — 좌표를 손으로 주지 않는다.

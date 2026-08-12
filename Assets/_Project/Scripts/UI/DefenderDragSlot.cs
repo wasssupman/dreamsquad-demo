@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
 
@@ -11,6 +12,10 @@ namespace Wassup.UI
         private DefenderUnitData _unitData;
         private DefenderDragPlacementController _controller;
         private CostDisplay _costDisplay;
+        // defender-board-limit 1·2 — 소진 판정(브리지 카운트)과 소진 셀의 목적지(판 위 그 유닛).
+        // 슬롯은 런타임 생성이라 인스펙터 배선이 불가능해 DefenderSelector 가 Bind 로 넘긴다.
+        private BattleBridge _bridge;
+        private DcInspectController _inspect;
         // defender-tap-to-place unit 1 — arm 하이라이트 오버레이(lazy).
         private GameObject _armOverlay;
         // action-tray unit 4 — 비용 부족으로 차단된 드래그 제스처. 이후 OnDrag/OnEndDrag
@@ -18,16 +23,45 @@ namespace Wassup.UI
         private bool _suppressedDrag;
 
         public void Bind(DefenderUnitData unitData, DefenderDragPlacementController controller,
-            CostDisplay costDisplay = null)
+            CostDisplay costDisplay = null, BattleBridge bridge = null, DcInspectController inspect = null)
         {
             _unitData = unitData;
             _controller = controller;
             _costDisplay = costDisplay;
+            _bridge = bridge;
+            _inspect = inspect;
+        }
+
+        // defender-board-limit 1 — 이 유닛이 이미 상한만큼 판에 나가 있나. 최종 권한은 여전히
+        // BattleBridge.CanPlaceDefenderAt(LimitReached) 이고 여기는 사전 차단이다(코스트 선례).
+        private bool IsExhausted()
+        {
+            return _bridge != null && _unitData != null
+                && _bridge.DeployedCountOf(_unitData) >= _unitData.EffectiveMaxOnBoard;
+        }
+
+        // defender-board-limit 2 — 소진 셀의 응답: 판 위 그 유닛으로 데려간다. 탭이든 드래그든
+        // 같은 결과다(계약 5) — 두 제스처의 속마음이 "이 유닛 쓰고 싶다" 하나이기 때문이다.
+        // 그래서 흔들림·링 핑 같은 별도 거부 연출을 만들지 않는다: 카메라가 그 유닛으로 가고
+        // 리티클이 뜨는 것 자체가 응답이다.
+        private void GoToDeployedUnit()
+        {
+            if (_inspect == null || _bridge == null || _unitData == null) return;
+            if (_bridge.TryGetDeployedEntity(_unitData, out var entity))
+                _inspect.SelectDeployed(entity);
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (_unitData == null || _controller == null) return;
+            // defender-board-limit 1 — 소진은 기다려도 안 풀리는 사유라 쿨타임·코스트보다 먼저
+            // 거른다(우선순위 소진 > 쿨타임 > 코스트).
+            if (IsExhausted())
+            {
+                _suppressedDrag = true;
+                GoToDeployedUnit();
+                return;
+            }
             // defender-placement-cooldown 1 — 쿨타임 중이면 세션 자체를 시작하지 않는다
             // (코스트와 독립 사유, 코스트 체크보다 먼저). 남은시간 표시는 unit 2 오버레이.
             var cdRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
@@ -72,6 +106,13 @@ namespace Wassup.UI
             // 단 이미 armed 인 슬롯의 재탭(=해제)은 비용과 무관하게 허용.
             if (!_controller.IsArmed(this))
             {
+                // defender-board-limit 1·2 — 소진 셀은 arm 하지 않고 판 위 그 유닛으로 데려간다
+                // (드래그 경로와 같은 결과 — 계약 5).
+                if (IsExhausted())
+                {
+                    GoToDeployedUnit();
+                    return;
+                }
                 // defender-placement-cooldown 1 — 쿨타임 중이면 arm 하지 않는다. 단 이미 armed
                 // 슬롯의 재탭(=해제)은 위 !IsArmed 가드 밖이라 쿨타임과 무관하게 허용된다.
                 var cdRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;

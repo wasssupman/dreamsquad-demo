@@ -5824,6 +5824,15 @@ namespace Wassup.Bridge
                 return false;
             }
 
+            // defender-board-limit 0 — 판 위 동시 존재 상한. 코스트 검사 **앞**이다: 사유
+            // 우선순위가 구조 > 자원이라야 로그와 트레이 표현(소진 > 쿨타임 > 코스트)이 일치한다.
+            // 재배치는 이 함수를 지나지 않으므로(CanRelocateDefender → RelocationCheck) 영향 없다.
+            if (DeployedCountOf(unitData) >= unitData.EffectiveMaxOnBoard)
+            {
+                reason = PlacementRejectReason.LimitReached;
+                return false;
+            }
+
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             if (costRuntime != null && !costRuntime.CanAfford(unitData.cost))
             {
@@ -5833,6 +5842,42 @@ namespace Wassup.Bridge
 
             reason = PlacementRejectReason.None;
             return true;
+        }
+
+        // defender-board-limit 0 — 이 유닛 타입이 지금 판에 몇 기 있나. 상한 판정과 트레이
+        // 소진 표현의 단일 출처다.
+        //
+        // **세는 것이지 저장하는 게 아니다.** _defenderByTile 이 판 위 유닛의 유일한 진실원이고
+        // 사망은 거기서 지워지고(DrainDefenderDeathEvents) 재배치는 엔티티를 유지한 채 키만
+        // 옮긴다 — 세기만 하면 세 경우가 전부 맞는다. 별도 카운터를 두면 대기배치 취소·teardown·
+        // 매치 리셋마다 어긋날 구멍이 생긴다. 파생이라 리셋 훅도 필요 없다(dict 가 비면 자동 0).
+        // 보드는 최대 수십 칸이라 선형 스캔 비용은 무시 가능(TryGetDefenderCell 선례).
+        public int DeployedCountOf(DefenderUnitData unit)
+        {
+            if (unit == null) return 0;
+            int n = 0;
+            foreach (var kv in _defenderByTile)
+                if (kv.Value.data == unit) n++;
+            return n;
+        }
+
+        // defender-board-limit 2 — 이 유닛 타입이 판에 있으면 한 기를 돌려준다(트레이 소진 셀에서
+        // 그 유닛으로 데려가는 경로). 2기 이상일 때 만질 때마다 다음 기로 가는 순환은 후속 후보 —
+        // 상한 1 이 기본이라 후보가 항상 1기다.
+        public bool TryGetDeployedEntity(DefenderUnitData unit, out Entity entity)
+        {
+            if (unit != null)
+            {
+                foreach (var kv in _defenderByTile)
+                {
+                    if (kv.Value.data != unit) continue;
+                    if (_em == null || !_em.Exists(kv.Value.entity)) continue;
+                    entity = kv.Value.entity;
+                    return true;
+                }
+            }
+            entity = Entity.Null;
+            return false;
         }
 
         // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).

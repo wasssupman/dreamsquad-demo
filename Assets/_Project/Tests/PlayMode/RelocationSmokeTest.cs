@@ -43,7 +43,12 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(bridge, "BattleBridge present");
             var cat = FindCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog present");
-            var unit = cat.ById("ranger");
+            // defender-board-limit — 이 테스트는 같은 유닛을 판에 2기 세운다(재배치 후 원 타일
+            // 재사용). 라이브 기본값 maxOnBoard=1 이면 2기째가 LimitReached 로 막히므로 상한을
+            // 푼다. 카탈로그 에셋이 아니라 **런타임 사본**에만 쓴다 — 에셋 직접 수정은 에디터에서
+            // 디스크에 박힌다.
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
             Assert.IsNotNull(unit, "ranger in catalog");
 
             bridge.SetDefenderPool(new[] { unit });
@@ -113,7 +118,10 @@ namespace Wassup.Tests.PlayMode
             typeof(BattleBridge).GetField("enableAdjacencySynergy", BindingFlags.NonPublic | BindingFlags.Instance)
                 .SetValue(bridge, true);
             var cat = FindCatalog();
-            var unit = cat.ById("ranger");
+            // defender-board-limit — 인접 시너지 검증에 같은 유닛 2기가 필요하다(위와 같은 이유로
+            // 런타임 사본에만 상한을 푼다).
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
             var gm = Object.FindObjectOfType<GameManager>();

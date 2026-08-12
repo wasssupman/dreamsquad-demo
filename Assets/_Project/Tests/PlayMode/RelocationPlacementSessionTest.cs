@@ -51,7 +51,11 @@ namespace Wassup.Tests.PlayMode
             SetField(controller, "settings", fast);
 
             var cat = FindCatalog();
-            var unit = cat.ById("ranger");
+            // defender-board-limit — 이 테스트는 같은 유닛을 판에 2기 세운다(mover + blocker).
+            // 라이브 기본값 maxOnBoard=1 이면 2기째가 LimitReached 로 막히므로 상한을 푼다.
+            // 카탈로그 에셋이 아니라 **런타임 사본**에만 쓴다(에셋 수정은 디스크에 박힌다).
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
             var gm = Object.FindObjectOfType<GameManager>();
@@ -168,7 +172,11 @@ namespace Wassup.Tests.PlayMode
             SetField(controller, "settings", fast);
 
             var cat = FindCatalog();
-            var unit = cat.ById("ranger");
+            // defender-board-limit — 이 테스트는 같은 유닛을 판에 2기 세운다(mover + blocker).
+            // 라이브 기본값 maxOnBoard=1 이면 2기째가 LimitReached 로 막히므로 상한을 푼다.
+            // 카탈로그 에셋이 아니라 **런타임 사본**에만 쓴다(에셋 수정은 디스크에 박힌다).
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
             var gm = Object.FindObjectOfType<GameManager>();

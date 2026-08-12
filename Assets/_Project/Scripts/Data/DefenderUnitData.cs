@@ -110,7 +110,22 @@ namespace Wassup.Data
 
         // defender-placement-cooldown 0 — 배치 성공 후 이 타입 재배치가 막히는 시간(초).
         // 0 = 쿨타임 없음(기존 동작 유지, opt-in). 유닛 타입 단위.
+        //
+        // ⚠ maxOnBoard 가 1 이면 이 값은 죽은 값이다 — 배치 즉시 소진이라 쿨타임이 화면에
+        // 뜨지도 않고, 끝나도 여전히 못 놓는다. 두 knob 은 상보적으로 쓴다:
+        // maxOnBoard 1 = "고유 유닛", maxOnBoard 100 + 쿨타임 = "연사 제어"
+        // (defender-board-limit README 계약 10).
         public float placementCooldown = 0f;
+
+        // defender-board-limit 0 — 판 위 동시 존재 상한. 기본 1 = 이 유닛은 판에 한 기.
+        // **매치당 총 횟수가 아니다** — 죽어서 자리가 비면 다시 배치할 수 있다.
+        // 무제한은 큰 수(100)로 적는다. "0 = 무제한" 은 아래 폴백과 충돌하므로 쓰지 않는다.
+        //
+        // 기존 asset 은 YAML 에 키가 없어 **이니셜라이저**(1)로 채워진다 — 전 유닛이 즉시
+        // 1기 제한이 되는 것이 의도다. 폴백은 인스펙터/시트에서 0·음수가 들어온 경우의 두 번째
+        // 방어선이다(EffectivePlacementLayers 와 같은 2중 구조 — 둘을 함께 유지할 것).
+        public int maxOnBoard = 1;
+        public int EffectiveMaxOnBoard => maxOnBoard <= 0 ? 1 : maxOnBoard;
 
         [Header("Targeting")]
         // When true, AttackState.targetMask is set to Faction.DefenderUnit (ally targeting).

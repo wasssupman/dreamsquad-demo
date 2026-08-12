@@ -41,6 +41,24 @@ MonoBehaviour:
   wellSurfaceColor: {r: 0.88, g: 0.98, b: 1, a: 0.95}
   wellLiquidMaterial: {fileID: 2100000, guid: 5ecd1f6ebf5b243268c5db1f265a6847, type: 2}
   cellNumberFontSize: 64
+  wellBubbleColor: {r: 0.85, g: 0.95, b: 1, a: 0.4}
+  wellRimColor: {r: 0.6, g: 0.9, b: 1, a: 0.5}
+  cooldownLiquidBottom: {r: 0.04, g: 0.05, b: 0.08, a: 1}
+  cooldownLiquidTop: {r: 0.09, g: 0.11, b: 0.16, a: 1}
+  cooldownLiquidSurface: {r: 0.42, g: 0.5, b: 0.66, a: 0.6}
+  cooldownLiquidOpacity: 0.92
+  cooldownTextColor: {r: 1, g: 1, b: 1, a: 1}
+  cooldownFontSize: 38
+  cooldownReadyPopScale: 1.16
+  cooldownReadyPopDuration: 0.22
+  cooldownCellDim: {r: 0.02, g: 0.03, b: 0.06, a: 0.55}
+  cooldownTickPopScale: 1.35
+  cooldownReadyRippleColor: {r: 0.6, g: 0.9, b: 1, a: 0.9}
+  cooldownReadyRippleScale: 1.7
+  cooldownReadyFlashColor: {r: 1, g: 1, b: 1, a: 0.5}
+  cooldownRimColor: {r: 0.55, g: 0.85, b: 1, a: 0.5}
+  exhaustedPortraitTint: {r: 0.42, g: 0.44, b: 0.5, a: 1}
+  rimFlowMaterial: {fileID: 2100000, guid: 1a04965db985a4a6aaa5e88784793fb3, type: 2}
   nameBandHeight: 36
   nameTextHeight: 38
   unaffordableDim: {r: 0.42, g: 0.42, b: 0.45, a: 1}

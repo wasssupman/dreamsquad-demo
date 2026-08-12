@@ -333,6 +333,16 @@ namespace Wassup.UI
         // 부착 0장이어도 "이 유닛을 보고 있다"가 성립한다.
         // unit 11 — 패널도 **항상** 뜬다. 스탯이 생기면서 부착 0장이어도 보여줄 것이 있다
         // (구 "패널은 보여줄 게 있을 때만" 은 부착 목록만 있던 시절의 계약이다).
+        // defender-board-limit 2 — 트레이 소진 셀에서 들어오는 선택. 보드를 직접 탭한 것과
+        // **완전히 같은 사건**이어야 하므로 새 경로를 만들지 않고 Select 를 그대로 탄다
+        // (그래서 각성 손패도 함께 열린다 — "선택 = 손패 등장" 기존 계약, 의도된 결과다).
+        // 재탭 토글은 없다: 트레이 셀은 "가리키기" 전용이고, 닫기는 보드 탭이 소유한다.
+        public void SelectDeployed(Entity entity)
+        {
+            if (entity == Entity.Null) return;
+            Select(entity);
+        }
+
         private void Select(Entity entity)
         {
             // 앵커는 **유효성 확인용**이다 — 살아있는 뷰가 없으면 선택 자체가 성립하지 않는다.

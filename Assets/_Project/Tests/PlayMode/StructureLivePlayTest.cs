@@ -305,8 +305,13 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(bridge, "BattleBridge present");
             var cat = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
             Assert.Greater(cat.Length, 0, "DefenderCatalog 를 못 찾았다");
-            var grinder = cat[0].ById("guardian");   // 근접 — 마음 인접에서 깎는다
-            var sniper = cat[0].ById("sniper");      // 최장 사거리 — 본능 저격 시도
+            // defender-board-limit — 이 테스트의 관측치는 «마음 인접 8칸을 최대한 채울 수 있다»
+            // 이므로 근접 유닛을 여러 기 세운다. 라이브 기본값 maxOnBoard=1 이면 1기에서 멈춰
+            // 공성 관측이 무의미해지므로 상한을 푼다 — 카탈로그 에셋이 아니라 **런타임 사본**에만
+            // 쓴다(에셋 직접 수정은 에디터에서 디스크에 박힌다).
+            var grinder = Object.Instantiate(cat[0].ById("guardian")); // 근접 — 마음 인접에서 깎는다
+            grinder.maxOnBoard = 99;
+            var sniper = cat[0].ById("sniper");      // 최장 사거리 — 본능 저격 시도(1기면 충분)
             Assert.IsNotNull(grinder, "guardian");
             Assert.IsNotNull(sniper, "sniper");
 

@@ -35,6 +35,10 @@ namespace Wassup.UI
         // action-tray unit 4 — 비용 부족 차단 시 rail pulse 피드백 대상. 슬롯이
         // 런타임 생성이라 전역 이벤트 대신 Bind 로 직접 참조를 넘긴다.
         [SerializeField] private CostDisplay costDisplay;
+        // defender-board-limit 2 — 소진 셀을 만졌을 때 데려갈 곳(판 위 그 유닛 선택). 슬롯이
+        // 런타임 생성이라 Bind 로 전달한다(costDisplay 와 같은 경로). 미할당이면 소진 셀은
+        // 차단만 하고 아무 데도 데려가지 않는다.
+        [SerializeField] private DcInspectController dcInspect;
         // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
         // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
         // 패널 크기만 바꾸면 균등 축소된다.
@@ -70,10 +74,21 @@ namespace Wassup.UI
             public TextMeshProUGUI cooldownText;
             public Material cooldownMat; // 셰이더 인스턴스(수명 소유). 폴백(머티리얼 미할당)이면 null.
             public Image cooldownRim;    // 테두리 림 글로우(호흡 펄스). 색 alpha 0 이면 미생성.
+            // defender-board-limit 1 — "출전 중" 테두리 순환. config 에 머티리얼이 없으면 null
+            // (그때는 탈색만 남는다). 소진 여부는 여기에 저장하지 않고 매번 브리지에서 센다 —
+            // SlotVisual 은 struct 라 필드에 쓰면 value-copy 로 소실된다(쿨타임 critic M1 선례).
+            public GameObject rimFlow;
         }
 
         private readonly List<SlotVisual> _slotVisuals = new();
         private int _lastCostSeen = int.MinValue;
+        // defender-board-limit 1 — 테두리 순환 머티리얼 인스턴스. **전 슬롯이 하나를 공유**한다:
+        // 슬롯마다 달라질 유니폼이 없고(애니메이션은 셰이더 내부 시간) 셀 크기도 같다. 쿨타임은
+        // 셀마다 _Fill 이 달라 슬롯당 인스턴스를 뜨지만 여기는 1개면 된다. 인스턴스를 쓰는
+        // 이유는 _Aspect 를 런타임에 밀어야 하는데 config 의 공유 에셋에 쓰면 에디터에서
+        // .mat 파일 자체가 더럽혀지기 때문이다.
+        private Material _rimFlowMat;
+        private static readonly int RimAspectId = Shader.PropertyToID("_Aspect");
         // defender-placement-cooldown 2 — 표시 중 오버레이 유무(만료 프레임에 AnyActive 가 이미
         // false 여도 hide/pop 을 마치도록 순회를 한 프레임 더 돌리는 가드).
         private bool _anyCooldownShown;
@@ -115,6 +130,14 @@ namespace Wassup.UI
                 dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
                 dragPlacementController.PlacementCommitted += OnDefenderPlaced;
             }
+            // defender-board-limit 1 — 소진 상태가 바뀌는 사건은 배치(위 PlacementCommitted)와
+            // 사망 둘뿐이다. 폴링·버전 카운터를 만들지 않고 기존 이벤트 2개로 리페인트한다
+            // (레거시 클릭 배치는 씬에서 꺼져 있어 세 번째 경로가 아니다).
+            if (bridge != null)
+            {
+                bridge.DefenderDied -= OnDefenderDiedRefresh;
+                bridge.DefenderDied += OnDefenderDiedRefresh;
+            }
         }
 
         private void OnDisable()
@@ -125,6 +148,38 @@ namespace Wassup.UI
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (dragPlacementController != null)
                 dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
+            if (bridge != null)
+                bridge.DefenderDied -= OnDefenderDiedRefresh;
+        }
+
+        // defender-board-limit 1 — 유닛이 죽으면 그 타입의 자리가 하나 빈다 → 소진 해제 가능.
+        private void OnDefenderDiedRefresh(Unity.Entities.Entity _, DefenderUnitData __, Vector3 ___)
+            => RefreshExhaustedStates();
+
+        // defender-board-limit 1 — 이 유닛이 이미 상한만큼 판에 나가 있나. 슬롯당 상태로
+        // 저장하지 않고 매번 센다: SlotVisual 이 struct 라 필드 write-back 이 소실되고,
+        // 판 상태(브리지)와 UI 캐시가 갈라질 여지를 아예 만들지 않는다.
+        private bool IsExhausted(DefenderUnitData data)
+        {
+            return bridge != null && data != null
+                && bridge.DeployedCountOf(data) >= data.EffectiveMaxOnBoard;
+        }
+
+        // defender-board-limit 1 — 소진 표현 리페인트. 호출처 3곳: RebuildSlots(초기),
+        // PlacementCommitted(배치로 소진), DefenderDied(사망으로 복귀).
+        // 틴트·경고 글리프는 Update 의 도색 루프가 소유하므로 여기선 재도색을 유도만 한다.
+        private void RefreshExhaustedStates()
+        {
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var v = _slotVisuals[i];
+                bool ex = IsExhausted(v.data);
+                if (v.rimFlow != null && v.rimFlow.activeSelf != ex) v.rimFlow.SetActive(ex);
+                // 우선순위(소진 > 쿨타임): 소진이면 쿨타임 오버레이를 즉시 내린다.
+                if (ex && v.cooldownRoot != null && v.cooldownRoot.activeSelf)
+                    v.cooldownRoot.SetActive(false);
+            }
+            _lastCostSeen = int.MinValue; // 다음 Update 에서 틴트/경고 글리프 강제 재도색
         }
 
         // defender-placement-cooldown 1 — 배치가 성공 확정된 유닛 타입을 쿨타임에 넣는다.
@@ -133,6 +188,7 @@ namespace Wassup.UI
         {
             var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
             if (rt != null && unit != null) rt.StartCooldown(unit, unit.placementCooldown);
+            RefreshExhaustedStates(); // defender-board-limit 1 — 이 배치로 상한에 닿았을 수 있다
         }
 
         // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
@@ -318,6 +374,11 @@ namespace Wassup.UI
 
             if (pool == null || pool.Length == 0) return;
 
+            // defender-board-limit 1 — 테두리 순환 인스턴스 1개(전 슬롯 공유). 재빌드마다
+            // 새로 뜨지 않도록 이미 있으면 재사용한다.
+            if (_rimFlowMat == null && trayConfig != null && trayConfig.rimFlowMaterial != null)
+                _rimFlowMat = new Material(trayConfig.rimFlowMaterial);
+
             // 트레이 폭은 슬롯 수에서 유도된다 — 풀이 확정된 지금이 유일한 산출 시점.
             ApplyTraySize(pool.Length);
 
@@ -335,7 +396,7 @@ namespace Wassup.UI
                     ? Color.clear
                     : (data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray);
                 var dragSlot = go.AddComponent<DefenderDragSlot>();
-                dragSlot.Bind(data, dragPlacementController, costDisplay);
+                dragSlot.Bind(data, dragPlacementController, costDisplay, bridge, dcInspect);
 
                 // defender-portraits 3 — 포트레이트 채움(4px 패딩). raycastTarget=false 라
                 // 드래그 입력은 슬롯 루트(bg Image)가 받는다.
@@ -406,6 +467,24 @@ namespace Wassup.UI
                 if (data.placementCooldown > 0f)
                     BuildCooldownOverlay(go.transform, out cdRoot, out cdFill, out cdText, out cdMat, out cdRim);
 
+                // defender-board-limit 1 — "출전 중" 테두리 순환. 셀 전체를 덮되 셰이더가 가장자리
+                // 링만 그린다(스프라이트 없음 = 흰 1x1). 마지막 형제라 UGUI 상 맨 위에 그려지지만,
+                // 칠하는 픽셀이 바깥 테두리뿐이라 이름 밴드·코스트 칩은 가려지지 않는다 — 소진
+                // 중에도 어느 유닛인지·얼마인지는 읽혀야 한다.
+                GameObject rimFlowGO = null;
+                if (_rimFlowMat != null)
+                {
+                    rimFlowGO = new GameObject("BoardLimitRim", typeof(RectTransform), typeof(Image));
+                    rimFlowGO.transform.SetParent(go.transform, false);
+                    var rimRt = (RectTransform)rimFlowGO.transform;
+                    rimRt.anchorMin = Vector2.zero; rimRt.anchorMax = Vector2.one;
+                    rimRt.offsetMin = Vector2.zero; rimRt.offsetMax = Vector2.zero;
+                    var rimImg = rimFlowGO.GetComponent<Image>();
+                    rimImg.material = _rimFlowMat;
+                    rimImg.raycastTarget = false; // 입력은 슬롯 루트가 받는다
+                    rimFlowGO.SetActive(false);
+                }
+
                 _slotVisuals.Add(new SlotVisual
                 {
                     data = data,
@@ -421,10 +500,14 @@ namespace Wassup.UI
                     cooldownText = cdText,
                     cooldownMat = cdMat,
                     cooldownRim = cdRim,
+                    rimFlow = rimFlowGO,
                 });
             }
 
             UiLayer.Apply(gameObject);
+            // defender-board-limit 1 — 초기 페인트. 배틀 도중 트레이가 재빌드돼도(페이즈 전환 등)
+            // 이미 판에 나가 있는 유닛의 셀이 살아 있는 것처럼 보이지 않는다.
+            RefreshExhaustedStates();
         }
 
         // first-session-tutorial unit 2 — soft recommendation only. Input stays
@@ -440,7 +523,10 @@ namespace Wassup.UI
             for (int i = 0; i < _slotVisuals.Count; i++)
             {
                 var slot = _slotVisuals[i];
+                // defender-board-limit 1 — 소진 셀은 추천 후보가 아니다(놓을 수 없는 칸을 가리키면
+                // 튜토리얼이 막힌다).
                 if (slot.data == null || slot.rect == null || slot.cost > available) continue;
+                if (IsExhausted(slot.data)) continue;
                 bool nonDirectional = !slot.data.RequiresFacing;
                 if (foundNonDirectional && !nonDirectional) continue;
                 if (nonDirectional && !foundNonDirectional)
@@ -551,6 +637,7 @@ namespace Wassup.UI
             // defender-placement-cooldown 2 — 쿨타임 오버레이는 매 프레임(코스트 diff-gate 위)에서
             // 리페인트한다. fillAmount 가 연속 변하므로 diff-gate 에 삼켜지면 안 된다.
             UpdateCooldownOverlays();
+            PushRimGeometry(); // defender-board-limit 1 — 셀 종횡비(페이즈 전환으로 바뀐다)
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             int current = costRuntime != null ? costRuntime.CurrentInt : int.MaxValue;
             if (current == _lastCostSeen) return;
@@ -558,19 +645,39 @@ namespace Wassup.UI
 
             var dim = trayConfig != null ? trayConfig.unaffordableDim : new Color(0.45f, 0.45f, 0.52f, 1f);
             var warn = trayConfig != null ? trayConfig.costWarnColor : new Color(1f, 0.34f, 0.28f, 1f);
+            var exhaustedTint = trayConfig != null
+                ? trayConfig.exhaustedPortraitTint : new Color(0.42f, 0.44f, 0.50f, 1f);
             for (int i = 0; i < _slotVisuals.Count; i++)
             {
                 var v = _slotVisuals[i];
                 bool affordable = current >= v.cost;
+                // defender-board-limit 1 — 우선순위 소진 > 쿨타임 > 코스트. 소진 도색이 여기
+                // 있어야 하는 이유: 이 루프는 코스트가 바뀔 때마다 도는데, 여기서 소진을 안 보면
+                // 코스트가 회복되는 프레임에 흰색으로 되돌아가고 경고 글리프가 되살아난다.
+                bool exhausted = IsExhausted(v.data);
                 if (v.portrait != null)
-                    v.portrait.color = affordable ? Color.white : dim;
+                    v.portrait.color = exhausted ? exhaustedTint : (affordable ? Color.white : dim);
                 else if (v.slotBg != null)
-                    v.slotBg.color = affordable ? v.slotBgBase : dim;
+                    v.slotBg.color = exhausted ? exhaustedTint : (affordable ? v.slotBgBase : dim);
                 if (v.costText != null)
-                    v.costText.color = affordable ? AffordableCostColor : warn;
-                if (v.warnGlyph != null && v.warnGlyph.activeSelf != !affordable)
-                    v.warnGlyph.SetActive(!affordable);
+                    v.costText.color = (affordable || exhausted) ? AffordableCostColor : warn;
+                bool showWarn = !affordable && !exhausted;
+                if (v.warnGlyph != null && v.warnGlyph.activeSelf != showWarn)
+                    v.warnGlyph.SetActive(showWarn);
             }
+        }
+
+        // defender-board-limit 1 — 테두리 SDF 는 셀 종횡비를 알아야 모서리가 타원으로 안 찌그러진다
+        // (PushCooldownGeometry 미러). 전 슬롯이 같은 크기라 대표 슬롯 하나로 충분하고, 공유
+        // 인스턴스 하나에만 밀면 된다. 레이아웃 확정 전(rect 0)에는 건너뛴다.
+        private void PushRimGeometry()
+        {
+            if (_rimFlowMat == null || _slotVisuals.Count == 0) return;
+            var rt = _slotVisuals[0].rect;
+            if (rt == null) return;
+            float w = rt.rect.width, h = rt.rect.height;
+            if (w <= 1f || h <= 1f) return;
+            _rimFlowMat.SetFloat(RimAspectId, w / h);
         }
 
         // defender-placement-cooldown 2 — 매 프레임 쿨타임 오버레이 리페인트. 런타임이 Battle
@@ -593,8 +700,16 @@ namespace Wassup.UI
             {
                 var v = _slotVisuals[i];
                 if (v.cooldownRoot == null) continue; // 쿨다운 없는 유닛(오버레이 미생성)
-                float rem = rt.RemainingFor(v.data);
                 bool shown = v.cooldownRoot.activeSelf;
+                // defender-board-limit 1 — 우선순위: 소진이 쿨타임을 이긴다. 기다려도 안 풀리는
+                // 사유가 이겨야 플레이어가 카운트다운을 헛기다리지 않는다. 종료 플러리시도
+                // 재생하지 않는다(준비된 게 아니라 가려진 것).
+                if (IsExhausted(v.data))
+                {
+                    if (shown) v.cooldownRoot.SetActive(false);
+                    continue;
+                }
+                float rem = rt.RemainingFor(v.data);
                 if (rem > 0f)
                 {
                     if (!shown)
@@ -904,6 +1019,13 @@ namespace Wassup.UI
         {
             for (int i = 0; i < _slotVisuals.Count; i++)
                 DestroyCooldownMat(_slotVisuals[i].cooldownMat);
+            // defender-board-limit 1 — 공유 테두리 머티리얼 인스턴스도 같은 이유로 명시 정리
+            // (슬롯 GO Destroy 로는 GC 되지 않는다). 다만 이쪽은 슬롯당이 아니라 1개.
+            if (_rimFlowMat != null)
+            {
+                DestroyCooldownMat(_rimFlowMat);
+                _rimFlowMat = null;
+            }
         }
 
         // unit-dreamcatcher-inspect unit 0 — 드래그 컨트롤러 도달 경로. 컨트롤러는
