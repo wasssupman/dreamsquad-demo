@@ -34,6 +34,23 @@ unit 0~3 삭제 후 다음을 다시 센다. 참조 0 이 새로 나오면 이 �
 
 ## 완료 기준
 
+> ✅ 검증 2026-08-12 — compile 0 errors, EditMode **2193 중 실패 0**.
+> **guard 유효성**: 임시 테스트 2개로 확인 후 제거 — ① `OnValidate` 가 빈 goals 에 지정 문구로
+> 에러를 뱉는다 ② `ToGeneratedMap` 이 `MapGenerationFailedException` 으로 명확히 실패한다.
+> 둘 다 통과(2195 중 실패 0).
+> Play(BattleScene) 정상, 콘솔 error/warning 0. 맵 9장·`BattleScene.unity` 무변경.
+>
+> **재감사 수확 — 삭제 연쇄 확인** (`Data/TileSets`·`Data/Camera` 전 에셋 guid 역참조):
+> `PH_Rect_Walk` / `PH_Rect_Place` / `PH_Rect_Deco` **3건이 참조 0** 으로 새로 드러나 함께 제거.
+> tilemap-view-backend 시절 placeholder 로, 현행 `TileSet_Desert` 는 전부 다른 타일
+> (`Tile_Sand`·`AutoTile_*` 등)을 쓴다. 나머지 에셋은 전부 참조 ≥1 로 확인.
+>
+> ⚠ **함정 기록**: `MapDocument.cs` 에 `goal` 참조가 한 곳 남아 `Wassup.Runtime` 이 컴파일에
+> 실패했는데, **테스트는 stale 어셈블리로 계속 green 을 냈다.** 콘솔에도 안 잡혔다(반복 refresh 가
+> 소거). `editor_state.compilation.last_domain_reload_after` 가 `last_compile_finished` 보다
+> 과거면 그 테스트 결과는 **믿으면 안 된다**. 진단은 `Editor.log` 의 `error CS` grep 이 유일하게
+> 확실했다. 이 방식을 다음 세션이 재사용할 것.
+
 - Unity compile 0 errors, EditMode 전체 green.
 - `goals` 를 비운 `MapDocument` 를 만들면 `OnValidate` 가 **에러를 뱉는다** (수동 1회 확인 후 되돌림).
 - Map Painter Load → Bake → Load 왕복에서 goals 가 보존된다.

@@ -35,14 +35,19 @@ namespace Wassup.Data.MapGrid
             for (int i = 0; i < spawnCount; i++)
                 spawns[i] = new int2(docSpawns[i].x, docSpawns[i].y);
 
-            // 멀티골: doc.Goals 있으면 그대로, 없으면 primary [doc.Goal] 폴백 (유닛 0 계약).
+            // 멀티골. map-view-deadcode-removal unit 3 — 단수 goal 폴백 제거: goals 는 1개 이상이
+            // 저작 계약이다(MapDocument.OnValidate). 어긴 문서는 조용한 폴백 대신 명확히 실패시킨다
+            // (MapGridBattleAdapter 의 hard-fail 철학과 동일 — 조용한 폴백은 다른 격자계의 골을 만든다).
             var docGoals = doc.Goals;
-            bool hasGoals = docGoals != null && docGoals.Count > 0;
-            var goals = new NativeArray<int2>(hasGoals ? docGoals.Count : 1, allocator);
-            if (hasGoals)
-                for (int i = 0; i < goals.Length; i++) goals[i] = new int2(docGoals[i].x, docGoals[i].y);
-            else
-                goals[0] = new int2(doc.Goal.x, doc.Goal.y);
+            if (docGoals == null || docGoals.Count == 0)
+            {
+                tiles.Dispose();
+                placeMask.Dispose();
+                throw new MapGenerationFailedException(
+                    $"[MapDocumentBuilder] '{doc.name}' 에 goals 가 없다 — 페인터에서 골을 1개 이상 찍고 Bake 할 것.");
+            }
+            var goals = new NativeArray<int2>(docGoals.Count, allocator);
+            for (int i = 0; i < goals.Length; i++) goals[i] = new int2(docGoals[i].x, docGoals[i].y);
 
             // waypoint-routing unit 0 — 경로 인덱스를 보존하면서 가변 길이 셀 목록을 flatten.
             // 외부 배열 null/빈은 NativeArray 미생성으로 남겨 기존 맵의 폴백 모양을 유지한다.

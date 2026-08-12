@@ -107,10 +107,10 @@ namespace Wassup.EditorTools
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
             _goals.Clear();
-            if (doc.Goals != null && doc.Goals.Count > 0)
+            // 빈 goals 는 저작 에러(MapDocument.OnValidate)라 폴백을 두지 않는다 — 비어 있으면
+            // 골 없는 상태로 로드되고, 저장 전 Validate 가 잡는다.
+            if (doc.Goals != null)
                 foreach (var g in doc.Goals) _goals.Add(new Vector2Int(g.x, g.y));
-            else
-                _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
             _structures.Clear();
             if (doc.Structures != null)
                 foreach (var s in doc.Structures) _structures.Add(s);
