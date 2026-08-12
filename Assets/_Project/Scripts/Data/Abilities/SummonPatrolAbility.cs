@@ -20,5 +20,17 @@ namespace Wassup.Data
     public class SummonPatrolAbility : DefenderAbilityData
     {
         public DefenderUnitData patrolUnit;   // 소환할 순찰병 (카탈로그 미등록 에셋)
+
+        // unit 10 — **이 능력이 만든 상태**의 애니 이름. 소환사 유닛 SO 가 아니라 여기 두는 이유:
+        // "소환물이 살아 있다"는 상태를 아는 것은 이 능력이고, ISpineUnitVisualData 는 이미
+        // 멤버가 열둘이다(README 계약 2 — 네 번 커졌다). 한 능력만 쓰는 이름을 공용 인터페이스에
+        // 얹지 않는다. 다른 능력이 자기 상태 애니를 원하면 그 능력 SO 에 같은 모양으로 얹는다.
+        //
+        // 둘 다 비어 있으면 무동작 — 소환사는 평소 idle 루프를 그대로 돈다.
+        [Header("Animation")]
+        [Tooltip("소환물이 살아 있는 동안 반복할 애니. 비우면 평소 idle 유지.")]
+        public string activeAnimation = "";
+        [Tooltip("소환물을 잃은 순간 한 번 재생할 애니. 비우면 조용히 idle 로 복귀.")]
+        public string lostAnimation = "";
     }
 }

@@ -14,6 +14,13 @@ namespace Wassup.Data
         SkeletonDataAsset SpineSkeletonDataAsset { get; }
         string SpineSkinName { get; }
         string SpineIdleAnimation { get; }
+        // summon-patrol-defender unit 10 — idle 변형 풀. 2개 이상이면 루프가 한 바퀴 끝날 때마다
+        // 다음 변형을 뽑아 이어 재생한다(직전과 같은 것은 피한다). 비어 있으면 SpineIdleAnimation
+        // 단일 루프 = 현행 동작이라 미저작 유닛은 무회귀다.
+        // 공용 인터페이스에 두는 이유: **어떤 유닛이든 가질 수 있는 성질**이다. 디펜더 전용
+        // IDefenderSpineExtras 에 넣어 적을 배제하는 방식은 무기 궤적에서 한 번 막다른 길이었다
+        // (그 인터페이스 주석 참조 — 보스/구조물을 넣을 길을 스스로 막았다).
+        IReadOnlyList<string> SpineIdleVariants { get; }
         // enemy-walk-anim-speed unit 4 — 이동 중 재생할 걷기 애니. 비어 있으면
         // 이동/정지 구분 없이 SpineIdleAnimation 단일 루프(현행 동작 = 회귀 없음).
         // 설정 시: 이동 중 이 애니, 정지 중 SpineIdleAnimation 으로 자동 전환.

@@ -58,6 +58,17 @@ namespace Wassup.Presentation
 
         public Entity Entity => _entity;
 
+        // summon-patrol-defender unit 10 — 현재 트랙0 애니 이름(읽기 전용). 테스트가 «지금 무엇을
+        // 재생 중인가»를 단언할 수 있는 유일한 창구다. 상태를 바꾸지 않는다.
+        public string CurrentAnimationName
+        {
+            get
+            {
+                var t = _skeleton?.AnimationState?.GetTrack(0);
+                return t?.Animation != null ? t.Animation.Name : null;
+            }
+        }
+
         public void Spawn(ISpineUnitVisualData visualData, IDefenderSpineExtras defenderExtras, Entity entity, Vector3 worldPos)
         {
             _visualData = visualData;
@@ -561,9 +572,11 @@ namespace Wassup.Presentation
             // spine-weapon-trail unit 1 — 궤적은 공격 사건에 물린다. TimeScale 확정 이후에 호출할 것.
             PlayWeaponTrail(entry);
             // enemy-walk-anim-speed unit 4 — 공격 후 복귀 = 현재 이동상태 로코모션(walk/idle).
+            // unit 10 — 큐에 넣는 복귀 루프에도 변형 순환 훅을 건다. 안 걸면 공격 한 번에
+            // idle 변형이 그 자리에 굳는다(Complete 구독이 그 엔트리에만 붙기 때문).
             string loco = ResolveLocomotionAnimation();
             if (!string.IsNullOrEmpty(loco))
-                state.AddAnimation(0, loco, true, 0f);
+                HookIdleVariantCycle(state.AddAnimation(0, loco, true, 0f), loco);
             // 공격(원샷) 즉시 배율 1 반영 — 다음 UpdatePosition 을 기다리지 않고 이 프레임부터 정상속도.
             ApplyTimeScale();
         }
@@ -623,7 +636,7 @@ namespace Wassup.Presentation
             // enemy-walk-anim-speed unit 4 — 배치 후 복귀도 로코모션 리졸브 경유.
             string loco = ResolveLocomotionAnimation();
             if (!string.IsNullOrEmpty(loco))
-                state.AddAnimation(0, loco, true, 0f);
+                HookIdleVariantCycle(state.AddAnimation(0, loco, true, 0f), loco);
             ApplyTimeScale(); // 배치(원샷) 즉시 배율 1 반영.
             return true;
         }
@@ -747,19 +760,134 @@ namespace Wassup.Presentation
         private void PlayIdleLooping()
         {
             if (_skeleton == null) return;
+            AdvanceIdleVariant(); // unit 10 — 첫 변형 추첨(변형 미저작이면 무동작)
             string animation = ResolveLocomotionAnimation();
             if (!string.IsNullOrEmpty(animation))
-                _skeleton.AnimationState.SetAnimation(0, animation, true);
+                HookIdleVariantCycle(_skeleton.AnimationState.SetAnimation(0, animation, true), animation);
         }
 
         // enemy-walk-anim-speed unit 4 — 현재 이동상태 기준 로코모션 루프 애니 이름.
         // walk 애니(SpineWalkAnimation) 설정 + 이동 중이면 walk, 아니면 idle(폴백 체인 유지).
         // _locoMoving 히스테리시스는 UpdateLocomotionAnimation 이 갱신 — 여기선 읽기만.
+        // summon-patrol-defender unit 10 — 정지 자리는 3단이다: 루프 오버라이드 > idle 변형 > idle.
+        // 이동(walk)이 여전히 최우선이라 오버라이드가 걷기를 덮지 않는다.
         private string ResolveLocomotionAnimation()
         {
             string walk = ResolveAnimation(_visualData.SpineWalkAnimation);
             if (!string.IsNullOrEmpty(walk) && _moving) return walk;
+            if (!string.IsNullOrEmpty(_loopOverride)) return _loopOverride;
+            if (!string.IsNullOrEmpty(_currentIdleVariant)) return _currentIdleVariant;
             return ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
+        }
+
+        // ---- unit 10: 유닛별 애니메이션 구조 -------------------------------------
+        // 뷰는 «언제»를 모른다. 조건(예: 소환물 생존)은 sim 사실이고 BattleBridge 가 읽어
+        // 여기로 **이름만** 밀어 넣는다(절대 제약 1). 이 두 API 는 어떤 유닛에도 쓸 수 있다.
+
+        private string _loopOverride;          // 활성 시 정지 자리를 대체하는 루프
+        private string _overrideClearOneShot;  // 그 루프가 해제되는 순간 낼 원샷
+        private string _currentIdleVariant;    // 현재 재생 중인 idle 변형(없으면 null)
+        private int _idleVariantIndex = -1;
+
+        // 같은 값 재호출은 무동작 — 브리지가 매 프레임 밀어도 애니가 재시작되지 않는다.
+        public void SetLoopOverride(string loopAnim, string onClearOneShot)
+        {
+            string resolved = ResolveAnimation(loopAnim);
+            if (string.IsNullOrEmpty(resolved)) return;
+            _overrideClearOneShot = onClearOneShot;
+            _loopOverride = resolved;
+            // **이미 그 루프가 돌고 있을 때만** 빠진다. 아니면 매 프레임 재시도한다 —
+            // 요청이 원샷(소환 애니) 도중에 오면 그 프레임엔 적용할 수 없는데(계약 4: 원샷을
+            // 자르지 않는다), 한 번만 시도하고 «저장했으니 됐다»고 끝내면 영영 적용되지 않는다.
+            // 그러면 소환사가 능력 루프에 못 들어가고 쿨다운마다 소환 애니만 반복한다
+            // (2026-08-12 사용자 제보 → 프레임 로그로 확인한 실제 원인).
+            // 재시도 비용은 이름 비교 한 번이고, RefreshLocomotionIfLooping 도 같은 이름이면
+            // 아무것도 하지 않으므로 애니가 재시작되지 않는다.
+            var cur = _skeleton?.AnimationState?.GetTrack(0);
+            if (cur != null && cur.Loop && cur.Animation != null && cur.Animation.Name == resolved) return;
+            RefreshLocomotionIfLooping();
+        }
+
+        // 오버라이드가 **걸려 있었을 때만** 원샷을 낸다. 이 엣지 조건이 "소환한 적 없는
+        // 소환사가 판 시작에 상실 모션을 내는" 사고를 막는다.
+        public void ClearLoopOverride()
+        {
+            if (string.IsNullOrEmpty(_loopOverride)) return;
+            _loopOverride = null;
+            string oneShot = ResolveAnimation(_overrideClearOneShot);
+            _overrideClearOneShot = null;
+            if (!string.IsNullOrEmpty(oneShot) && !_dying && _skeleton != null)
+            {
+                // 원샷 뒤 복귀는 로코모션 리졸브 경유 — PlayAttack 과 같은 관용구.
+                var state = _skeleton.AnimationState;
+                // 계약 4 는 **이탈에도** 적용된다. 진행 중인 원샷(소환 drop)을 SetAnimation 으로
+                // 덮으면 잘린다 — 순찰병이 drop 재생 도중 죽는 경우(장판 위 스폰·즉발 AOE)에
+                // 실제로 걸린다. 그 땐 큐에 얹어 소환 동작이 끝난 뒤 상실 모션이 나가게 한다.
+                var current = state.GetTrack(0);
+                bool oneShotPlaying = current != null && !current.Loop;
+                if (oneShotPlaying) state.AddAnimation(0, oneShot, false, 0f);
+                else state.SetAnimation(0, oneShot, false);
+                string loco = ResolveLocomotionAnimation();
+                // 복귀 루프에도 변형 순환 훅을 건다 — PlayAttack/PlayDeploy 와 같은 이유.
+                // 안 걸면 상실 모션 한 번에 idle 변형이 그 자리에 굳는다.
+                if (!string.IsNullOrEmpty(loco))
+                    HookIdleVariantCycle(state.AddAnimation(0, loco, true, 0f), loco);
+                ApplyTimeScale();
+                return;
+            }
+            RefreshLocomotionIfLooping();
+        }
+
+        // 원샷(공격/사망/배치) 진행 중이면 건드리지 않는다 — UpdateLocomotionAnimation 과
+        // 같은 게이트다. 소환 순간의 공격 애니가 오버라이드 진입에 잘리면 안 된다.
+        private void RefreshLocomotionIfLooping()
+        {
+            if (_dying || _skeleton == null) return;
+            var current = _skeleton.AnimationState?.GetTrack(0);
+            if (current == null || !current.Loop) return;
+            string desired = ResolveLocomotionAnimation();
+            if (string.IsNullOrEmpty(desired)) return;
+            if (current.Animation != null && current.Animation.Name == desired) return;
+            var e = _skeleton.AnimationState.SetAnimation(0, desired, true);
+            if (e != null) { e.MixDuration = LocoMixDuration; HookIdleVariantCycle(e, desired); }
+            ApplyTimeScale();
+        }
+
+        // idle 변형: 루프를 **한 바퀴 돌 때마다** 다음 것을 뽑는다. TrackEntry.Complete 는
+        // looping 엔트리에서도 사이클마다 발화한다(AnimationState.cs:551).
+        // ⚠ loop:false 로 이어붙이지 않는다 — IsLocomotionLoopPlaying 과 원샷 게이트가 둘 다
+        // Loop 를 "로코모션이냐 원샷이냐"의 판정 기준으로 쓴다. 원샷으로 만들면 걷기 배율과
+        // 오버라이드 게이트가 동시에 오작동한다.
+        private void HookIdleVariantCycle(TrackEntry entry, string playing)
+        {
+            if (entry == null) return;
+            if (_currentIdleVariant == null || playing != _currentIdleVariant) return;
+            entry.Complete += OnIdleVariantComplete;
+        }
+
+        private void OnIdleVariantComplete(TrackEntry entry)
+        {
+            if (this == null || _dying || _skeleton == null) return;
+            if (!string.IsNullOrEmpty(_loopOverride)) return;   // 오버라이드가 잡고 있으면 변형 순환 중지
+            if (!AdvanceIdleVariant()) return;
+            var e = _skeleton.AnimationState.SetAnimation(0, _currentIdleVariant, true);
+            if (e != null) { e.MixDuration = LocoMixDuration; HookIdleVariantCycle(e, _currentIdleVariant); }
+        }
+
+        // 다음 변형을 뽑아 _currentIdleVariant 를 갱신. 변형이 없거나 1개면 false(현행 유지).
+        // 난수는 **UnityEngine.Random** — 순수 프레젠테이션이라 sim 난수(waveSeed)와 섞지 않는다.
+        private bool AdvanceIdleVariant()
+        {
+            var variants = _visualData?.SpineIdleVariants;
+            int count = variants != null ? variants.Count : 0;
+            if (count <= 1) return false;
+            int next = UnitAnimationChoice.ChooseNext(count, _idleVariantIndex, UnityEngine.Random.value);
+            if (next < 0) return false;
+            string resolved = ResolveAnimation(variants[next]);
+            if (string.IsNullOrEmpty(resolved)) return false;   // 미존재 트랙은 조용히 건너뛴다
+            _idleVariantIndex = next;
+            _currentIdleVariant = resolved;
+            return true;
         }
 
         // enemy-walk-anim-speed unit 4 — 이동/정지에 따라 로코모션 루프를 walk↔idle 전환.
@@ -778,7 +906,7 @@ namespace Wassup.Presentation
             if (current.Animation == null || current.Animation.Name != desired)
             {
                 var e = _skeleton.AnimationState.SetAnimation(0, desired, true);
-                if (e != null) e.MixDuration = LocoMixDuration;
+                if (e != null) { e.MixDuration = LocoMixDuration; HookIdleVariantCycle(e, desired); }
                 ApplyTimeScale();
             }
         }

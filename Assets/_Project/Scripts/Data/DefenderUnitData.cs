@@ -271,6 +271,7 @@ namespace Wassup.Data
         // summon-patrol-defender unit 5 — 단 거점 수비 아군(Patrol)은 이동한다. 그 유닛만
         // walkAnimation 을 채운다. 기존 에셋은 null/"" 이라 현행 동작 그대로다(무회귀).
         public string SpineWalkAnimation => walkAnimation;
+        public IReadOnlyList<string> SpineIdleVariants => idleVariants;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
@@ -311,6 +312,25 @@ namespace Wassup.Data
         // 이동하는 유닛만 채운다. 빈 값 = 단일 idle 루프(기존 방어유닛 동작, 무회귀).
         // 채우면 enemy-walk-anim-speed 의 발 미끄러짐 보정이 로코모션 루프에 함께 붙는다.
         public string walkAnimation = "";
+
+        // ⚠ 임시 보정 — **에셋이 정규화되면 이 필드를 지운다** (사용자 2026-08-12).
+        //
+        // 아웃게임 UI(스쿼드 상세·로딩 러너)는 유닛 크기를 SkeletonGraphic 의 저작된 스케일
+        // 하나로 정하고 spineVisualScale 을 보지 않는다. 모든 유닛이 같은 리그였을 땐 그게 곧
+        // "다 같은 크기"였는데, 고유 리그가 들어오면서 원본 높이 차이가 그대로 화면에 나온다
+        // (CH1 505.67 vs Casual Character 187.92 = 2.69배).
+        //
+        // 근본 해법은 «리그 원본 높이로 정규화» 이거나 애초에 에셋을 같은 기준으로 뽑는 것이고,
+        // 지금 리그가 비정규본이라 **유닛당 보정값 한 칸으로 땜빵**한다. 1 = 보정 없음.
+        [Header("Outgame Scale (임시)")]
+        [Tooltip("아웃게임 UI 전용 크기 보정. 1 = 보정 없음. 리그 정규화 후 제거 예정.")]
+        [Min(0.01f)] public float outgameScaleMul = 1f;
+
+        // summon-patrol-defender unit 10 — idle 변형 풀. 직렬화 순서를 흔들지 않게 맨 뒤.
+        // 비어 있으면 idleAnimation 단일 루프(현행). 2개 이상일 때만 순환이 의미를 갖는다.
+        [Header("Idle Variants")]
+        [Tooltip("대기 중 번갈아 재생할 애니 이름들. 비우면 idleAnimation 단일 루프.")]
+        public List<string> idleVariants = new List<string>();
     }
 
     public enum OnPlaceEffectType

@@ -3105,6 +3105,7 @@ namespace Wassup.Bridge
                 {
                     spineView.UpdatePosition(world);
                     if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                    SyncSummonerAnimationState(entity, kv.Value.data, spineView);
                 }
                 else if (defenderFallbackViewPool != null &&
                          defenderFallbackViewPool.TryGet(entity, out var fallbackView))
@@ -3291,6 +3292,49 @@ namespace Wassup.Bridge
             if (!_em.HasComponent<Health>(entity)) return Color.white;
             var h = _em.GetComponentData<Health>(entity);
             return healthDisplayStyle.EvaluateTint(Health.ComputeRatio(h.value, h.max));
+        }
+
+        // summon-patrol-defender unit 10 — 소환물 생존 여부를 소환사 뷰의 애니 상태로 옮긴다.
+        //
+        // **뷰는 SummonerState 를 모른다**(절대 제약 1). 여기서 sim 사실을 읽어 «이름 2개»만
+        // 밀어 넣고, 엣지 판정(오버라이드가 걸려 있었나)은 뷰가 한다 — 그래서 브리지에
+        // "직전 프레임" 딕셔너리를 만들지 않는다.
+        //
+        // 게이트 순서가 중요하다: SummonerState 보유 확인이 **먼저**다. 통과한 소수만 능력
+        // 목록을 훑으므로 디펜더 전원에 대해 매 프레임 abilities 를 도는 낭비가 없다.
+        private void SyncSummonerAnimationState(Entity summoner, DefenderUnitData data,
+            Wassup.Presentation.SpineUnitView view)
+        {
+            if (view == null || data == null) return;
+            if (!_em.HasComponent<Wassup.Battle.Combat.SummonerState>(summoner)) return;
+
+            var ability = FindSummonPatrolAbility(data);
+            if (ability == null) return;
+            if (string.IsNullOrEmpty(ability.activeAnimation)) return;
+
+            Entity patrol = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(summoner).current;
+            if (IsPatrolAlive(patrol)) view.SetLoopOverride(ability.activeAnimation, ability.lostAnimation);
+            else view.ClearLoopOverride();
+        }
+
+        // README 계약 9 의 생존 술어. **3중이어야 한다** — Exists 만 보면 DeadTag 가 붙고
+        // 실제 파괴되기까지의 프레임 동안 순찰병이 살아 보여서 상실 모션이 늦게 나간다.
+        // (BattleBridge.Relocation 의 검사는 2중인데, 거기선 그 지연이 무해했다.)
+        private bool IsPatrolAlive(Entity patrol)
+        {
+            if (patrol == Entity.Null || !_em.Exists(patrol)) return false;
+            if (_em.HasComponent<DeadTag>(patrol)) return false;
+            if (!_em.HasComponent<Health>(patrol)) return false;
+            return _em.GetComponentData<Health>(patrol).value > 0f;
+        }
+
+        private static SummonPatrolAbility FindSummonPatrolAbility(DefenderUnitData data)
+        {
+            var abilities = data.abilities;
+            if (abilities == null) return null;
+            for (int i = 0; i < abilities.Count; i++)
+                if (abilities[i] is SummonPatrolAbility summon) return summon;
+            return null;
         }
 
         private void DrainDefenderDeathEvents()
@@ -6685,10 +6729,10 @@ namespace Wassup.Bridge
             if (spineUnitPool != null)
             {
                 var spineWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
-                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpinePat", out var patrolView);
-                // unit 6 — 아군 식별 표식. 이 게임에서 움직이는 건 지금까지 전부 적이었다.
-                if (spineSpawned && patrolView != null)
-                    Wassup.Presentation.AllyMarkerDecal.Attach(patrolView.transform);
+                // unit 6 의 발밑 아군 링은 unit 8 에서 제거했다 — 표식이 필요했던 이유가
+                // "순찰병이 적과 같은 스켈레톤·같은 실루엣으로 걸어다닌다" 였는데, 고유 리그(Doll)가
+                // 그 전제를 없앴다. 자세한 경위는 docs/spec/summon-patrol-defender/6_ally_readability.md.
+                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpinePat", out _);
             }
             if (!spineSpawned)
             {
