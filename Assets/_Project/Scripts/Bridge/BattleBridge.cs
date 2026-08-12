@@ -5857,7 +5857,16 @@ namespace Wassup.Bridge
             if (unit == null) return 0;
             int n = 0;
             foreach (var kv in _defenderByTile)
-                if (kv.Value.data == unit) n++;
+            {
+                if (kv.Value.data != unit) continue;
+                // 사망 프레임과 드레인(DrainDefenderDeathEvents) 사이에는 바인딩이 파괴된
+                // 엔티티를 가리킨다. 그건 "판에 서 있는 기수" 가 아니므로 세지 않는다 —
+                // TryGetDeployedEntity 와 같은 판정을 써야 «소진인데 데려갈 유닛이 없는》
+                // 상태가 안 생긴다. _em 이 없으면 확인할 수 없으므로 **세는 쪽**으로 둔다
+                // (상한이 조용히 풀리는 것보다 한 프레임 더 막히는 게 안전하다).
+                if (_em != null && !_em.Exists(kv.Value.entity)) continue;
+                n++;
+            }
             return n;
         }
 
@@ -6472,6 +6481,10 @@ namespace Wassup.Bridge
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity); // dot-effect-extraction unit 0
             _defenderByTile[cell] = (entity, unitData);
+            // defender-board-limit 1 — 바인딩이 생긴 바로 이 자리가 «판에 올라왔다» 의 유일한
+            // 지점이다(모든 배치 경로가 여기를 지난다). 재배치는 이 함수를 지나지 않으므로
+            // 발화하지 않는다 — 기수가 안 변하니 알릴 것도 없다.
+            DefenderPlaced?.Invoke(entity, unitData);
             _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");

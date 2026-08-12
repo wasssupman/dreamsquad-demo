@@ -340,6 +340,12 @@ namespace Wassup.UI
         public void SelectDeployed(Entity entity)
         {
             if (entity == Entity.Null) return;
+            // 보드 탭이 Update 에서 통과해야 하는 두 관문을 **여기서도** 지난다. 트레이 탭은
+            // Update 의 입력 경로를 타지 않으므로 게이트를 물려받지 못한다 — 특히 봉인은
+            // 다음 프레임 Close() 로 되돌릴 수 없다(선택이 손패를 열고, 딜인은 이미 일어난다).
+            // 상한 1 이 기본이라 첫 판에서도 셀이 곧바로 소진되므로 이 경로는 실제로 밟힌다.
+            if (SealedThisMatch()) return;   // 첫 판 각성 봉인 (first-session-tutorial unit 15)
+            if (MustClose()) return;         // 배치 드래그/arm/이동모드가 입력을 쥔 상태
             Select(entity);
         }
 

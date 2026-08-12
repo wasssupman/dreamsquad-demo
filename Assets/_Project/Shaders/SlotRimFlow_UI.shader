@@ -135,7 +135,10 @@ Shader "Wassup/UI/SlotRimFlow"
 
                 // ② 도는 밴드: 중심 기준 각도를 시간으로 밀고, 각 구간 머리에서 꼬리로 감쇠.
                 float ang = atan2(q.y, q.x) * 0.15915494 + 0.5;   // 1/(2pi), 0..1
-                float u = frac(frac(ang - _Time.y * _Speed) * max(_Bands, 1.0));
+                // 밴드 수는 **정수로 스냅**한다. 2.5 같은 값이면 각도 wrap 지점(ang 0↔1)에서
+                // 마지막 밴드가 잘려 이음매가 보인다 — 슬라이더가 연속값이라 밟기 쉬운 함정이다.
+                float bands = max(floor(_Bands), 1.0);
+                float u = frac(frac(ang - _Time.y * _Speed) * bands);
                 float flow = saturate(1.0 - u / max(_Tail, 1e-3));
                 flow *= flow;
 

@@ -130,11 +130,15 @@ namespace Wassup.UI
                 dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
                 dragPlacementController.PlacementCommitted += OnDefenderPlaced;
             }
-            // defender-board-limit 1 — 소진 상태가 바뀌는 사건은 배치(위 PlacementCommitted)와
-            // 사망 둘뿐이다. 폴링·버전 카운터를 만들지 않고 기존 이벤트 2개로 리페인트한다
-            // (레거시 클릭 배치는 씬에서 꺼져 있어 세 번째 경로가 아니다).
+            // defender-board-limit 1 — 소진 상태가 바뀌는 사건은 «바인딩이 생겼다/사라졌다» 둘
+            // 뿐이고, 둘 다 **브리지**가 알린다. 배치 쪽을 UI 이벤트(PlacementCommitted)로 듣던
+            // 시절엔 드래그를 지나지 않는 배치 경로에서 트레이가 조용히 stale 해졌다 —
+            // 사망은 브리지가, 배치는 UI 가 알리는 비대칭이 원인이었다. 폴링·버전 카운터는
+            // 여전히 만들지 않는다.
             if (bridge != null)
             {
+                bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
+                bridge.DefenderPlaced += OnDefenderPlacedRefresh;
                 bridge.DefenderDied -= OnDefenderDiedRefresh;
                 bridge.DefenderDied += OnDefenderDiedRefresh;
             }
@@ -149,8 +153,15 @@ namespace Wassup.UI
             if (dragPlacementController != null)
                 dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
             if (bridge != null)
+            {
+                bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
                 bridge.DefenderDied -= OnDefenderDiedRefresh;
+            }
         }
+
+        // defender-board-limit 1 — 판에 올라오면 그 타입이 상한에 닿았을 수 있다.
+        private void OnDefenderPlacedRefresh(Unity.Entities.Entity _, DefenderUnitData __)
+            => RefreshExhaustedStates();
 
         // defender-board-limit 1 — 유닛이 죽으면 그 타입의 자리가 하나 빈다 → 소진 해제 가능.
         private void OnDefenderDiedRefresh(Unity.Entities.Entity _, DefenderUnitData __, Vector3 ___)
@@ -188,7 +199,9 @@ namespace Wassup.UI
         {
             var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
             if (rt != null && unit != null) rt.StartCooldown(unit, unit.placementCooldown);
-            RefreshExhaustedStates(); // defender-board-limit 1 — 이 배치로 상한에 닿았을 수 있다
+            // 소진 리페인트는 여기가 아니라 bridge.DefenderPlaced 가 맡는다 — 쿨타임은 "드래그
+            // 배치가 성공했다"(재배치 제외)라는 UI 사건이고, 소진은 "판의 기수가 변했다"라는
+            // 상태 사건이라 소유자가 다르다.
         }
 
         // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
