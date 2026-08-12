@@ -35,7 +35,14 @@
   `Placed 레인저 (1,1)` → `rejected: LimitReached` → `Defender died; tile freed` → `Placed (1,1)`.
   상한 100 은 (1,1)(1,2)(1,3) 3연속 배치.
 - 기존 테스트 정정 후 재실행: 재배치 4건 통과.
-- **미검증**: 테두리 순환의 육안 확인(에디터 비포커스라 Play 스크린샷 불가). 아래 Follow-up.
+- **전체 PlayMode 107건 완주** — 25건 실패. `BoardLimitPlacementTest`·`RelocationSmokeTest`·
+  `RelocationPlacementSessionTest` 는 전부 통과.
+- **이 spec 이 실패들의 원인이 아니라는 직접 증거**: Editor.log 전체에서
+  `PlaceDefenderAs rejected …: LimitReached` 는 **정확히 3회**만 찍혔고, 3회 모두
+  `BoardLimitPlacementTest` 의 3차례 실행에서 나온 것이다(그 테스트가 의도적으로 2기째를
+  거부시키는 지점). 나머지 106건 어디에서도 상한 게이트가 발동하지 않았다 — 즉 다른 실패는
+  이 게이트를 지나지도 않았다.
+- **미검증**: 테두리 순환의 육안 확인(Play 스크린샷). 아래 Follow-up.
 
 ## Notes (되돌리면 안 되는 것)
 
@@ -58,13 +65,26 @@
   소진 셀 탭/드래그 → 그 유닛으로 이동 · 사망 후 셀 복귀. 에디터 **포커스** 필요.
 - **테두리 룩 튜닝**: `SlotRimFlow.mat`(색·두께·속도·밴드 수·꼬리·상시 밝기). 현재 값은
   코드 기본값(3초에 한 바퀴, 2가닥)이고 육안 조정 전이다.
-- **전체 PlayMode 스위트 미완주** — 에디터 비포커스에서 54/107 에 스톨(`blocked_reason:
-  editor_unfocused`). 포커스 상태로 1회 완주 필요.
+- **PlayMode 스위트가 전반적으로 붉다 — 이 spec 밖의 문제다.** 107건 중 25건 실패이고 위
+  `LimitReached` 카운트가 인과를 배제한다. 성격별로:
+  - **랜덤 기믹 오염** (가장 많음): 기대 1.0 인데 1.0119999, 1.1 인데 1.112, 0.87 인데 0.859 —
+    매치마다 뽑히는 기믹의 배율이 총합에 섞인다. 기믹을 고정하지 않는 단정들이 흔들린다
+    (`PlacementAura`×3 · `DreamcatcherEffect`×2 · `DreamcatcherCombatDamage`×2 ·
+    `DreamcatcherAttachRequirement` · `DreamcatcherGateE2E`).
+  - **맵 문서 미적용**: `StructureLivePlayTest` 의 형제 단정이 «저작 문서가 살아남았다
+    int2(30,30) 기대 → 실제 int2(26,18)» 로 실패한다. 공성 맵이 안 실려서 마음 인접 배치가
+    0 이 된 것이지 상한 때문이 아니다. 워킹트리에 다른 세션의 `MapDocumentPool.asset` ·
+    `MapDocument_Test.asset` 변경과 미추적 `MapDocument_MovementStress.asset` 이 있다.
+  - **페이즈 계약 변경**: `SquadCarryIn`·`DreamstoneCarryIn` 이 `Placement` 를 기대하는데
+    `Gift` 다 — gimmick-recognition-upgrade 의 리빌 페이즈 도입 이후 계약이 바뀐 자리.
+  - **환경**: `AuthE2ETest`(JSON 캐스트) · `DeckInfoPresetApplyLive`(실계정 로그인 필요).
+  - **순서 의존 플레이키**: `DropDismountTest` 는 스위트에서는 «commit frame: cell occupied»,
+    단독 재실행에서는 `InvalidCastException` 으로 **실패 지점이 달라진다**.
 - **`BossLullabyLiveTest` 은 별건으로 깨져 있다.** 내가 고친 단정("2기 이상")은 통과하고
-  (4기 배치) 그 뒤 «보스가 도넛 안으로 들어온다» 에서 실패한다 — 보스가 5타일까지만 접근한다.
+  (4기 배치) 그 뒤 «보스가 도넛 안으로 들어온다» 에서 실패한다 — 보스가 5타일까지만 접근한다
+  (에디터 포커스 유무와 무관하게 계측치가 동일: 최근접 5~17, 도넛 0프레임).
   원인 후보: 같은 날(2026-08-12) 들어온 `instinct-content` unit 3
   (`7e98b7bc`·`cea20479`·`ebbd681e`, "적이 가까운 거점을 목적지로 삼는다")가 적의 목적지 규칙을
-  바꿨고, 이 테스트는 그 전날(`a6ef2c38`, 08-11) 튜닝된 것이다. 이 spec 의 게이트는 해당
-  테스트에서 **한 번도 발동하지 않는다**(4기 전부 배치 성공)므로 인과에 없다. 판정은
-  instinct-content 담당이 이어받는 것이 맞다.
+  바꿨고, 이 테스트는 그 전날(`a6ef2c38`, 08-11) 튜닝된 것이다. 판정은 instinct-content
+  담당이 이어받는 것이 맞다.
 - 남은 수 표기 · 소진 셀 순환 · 맵 총량 상한 등은 README "후속 후보" 참조.
