@@ -4274,6 +4274,7 @@ MonoBehaviour:
   areaBreathVfxScalePerTile: 0.25
   areaBreathVfxScaleMax: 1.2
   areaBreathVfxForwardFactor: 0.45
+  areaBreathVfxAngleOffset: -90
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

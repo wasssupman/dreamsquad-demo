@@ -1909,6 +1909,26 @@ namespace Wassup.Bridge
         public bool NextWaveAvailable => _running && _usingGeneratedWaves && _wavePlan.waves != null;
         public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
         public int NextWaveNumber => _nextWaveIndex + 1;
+
+        // wave-concept-blocks unit 5 — 블록 전환 예고용 읽기 전용 창구 2개.
+        //
+        // 3분에 10~16웨이브면 웨이브당 12~18초이고 리드인은 2초다. 게다가 전멸시 즉시 다음이라
+        // 잘 막으면 더 짧아진다 — 컨셉을 읽고 대응할 창이 없다. 블록이 3웨이브라 전환이 판당
+        // 4번뿐이므로 그 4번만 미리 알려주면 루프가 성립한다.
+        public string NextWaveConceptLabel =>
+            NextWaveHasNext ? _wavePlan.waves[_nextWaveIndex].conceptLabel : "";
+
+        // 블록 경계 계산을 **브리지가 소유한다.** 도크가 conceptHoldWaves 로 다시 계산하면
+        // 두 곳이 갈린다(생성기의 블록 구획과 표시가 어긋나면 예고가 거짓말이 된다).
+        public bool NextWaveStartsBlock
+        {
+            get
+            {
+                if (!NextWaveHasNext) return false;
+                int hold = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.conceptHoldWaves) : 1;
+                return _nextWaveIndex % hold == 0;
+            }
+        }
         // three-minute-survival unit 2 — `NextWaveClearReady`(클리어 강조)는 은퇴했다. 전멸이
         // 곧 자동 진행이라 "눌러라" 라고 알릴 대상이 없다. `_nextWaveClearReady` 내부 상태와
         // `nextwave-clear-attention` 의 도크 어필도 함께 제거.
@@ -8264,6 +8284,11 @@ namespace Wassup.Bridge
         [SerializeField] private float areaBreathVfxScaleMax = 1.2f;
         // 시전자 앞으로 얼마나 내보낼지(사거리 대비 분율). 0 = 시전자에 겹침 = 「발밑에 깔린 불」.
         [SerializeField] private float areaBreathVfxForwardFactor = 0.45f;
+        // 프리팹의 분사 축을 조준 방향에 맞추는 보정각. 프리팹은 직립(+Y)으로 저작돼 있어
+        // −90 이 기본이다. **분사가 뒤로 나가면 +90 으로 뒤집으면 된다** — 파티클 콘의 축
+        // 부호는 프리팹 저작(ShapeModule.m_Rotation)에 달려 있고 화면을 보지 않고는 확정할 수
+        // 없어서 코드에 박지 않고 여기로 뺐다.
+        [SerializeField] private float areaBreathVfxAngleOffset = -90f;
 
         private bool _warnedAreaBreathVfxMissing;
 
@@ -8298,7 +8323,8 @@ namespace Wassup.Bridge
             // 프리팹은 **직립 화염**(+Y 로 솟는다)이라 −90° 를 더해 +Y 를 조준 방향에 맞춘다.
             // (초판은 바닥 계열 GroundFire 를 썼는데 그건 보드 평면에 눕도록 저작된 것이라
             //  기울어진 보드에서 바닥 얼룩으로 보였다.)
-            var go = Instantiate(areaBreathVfxPrefab, spawnPos, Quaternion.Euler(0f, 0f, angle - 90f));
+            var go = Instantiate(areaBreathVfxPrefab, spawnPos,
+                                Quaternion.Euler(0f, 0f, angle + areaBreathVfxAngleOffset));
 
             // ★정렬 — 벤더 프리팹이 order 0~2 로 들어와 유닛(Compute = 수백대) 뒤에 깔린다.
             // 빔이 겪은 것과 같은 증상이라 같은 규약을 쓴다: 대역 상수를 **더해서** 프리팹 내부의
