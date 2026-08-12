@@ -28,5 +28,9 @@ MonoBehaviour:
   - cells:
     - {x: 3, y: 7}
     - {x: 4, y: 4}
+  structures:
+  - cell: {x: 10, y: 6}
+    side: 1
+    data: {fileID: 11400000, guid: 76f22a24bda441faa865363222e884eb, type: 2}
   authoringSeed: -1
   generatorVersion: 0
