@@ -15,7 +15,14 @@ namespace Wassup.Data
 
         // match-seed-unification — 라이브 경로용. 시드를 외부(GameManager.matchSeed 파생)에서 주입.
         // 덱의 나머지 설정(풀/웨이브 수/spacing)은 그대로 사용.
+        //
+        // wave-concept-blocks unit 2 — laneCount(맵 스폰 수)를 안 주는 레거시 오버로드. 프리뷰·
+        // 테스트용이며 2로 폴백한다. **라이브 경로는 반드시 laneCount 를 넘기는 오버로드를 쓴다**
+        // (계약 6 — 브리핑과 런타임이 다른 값을 쓰면 예고와 실스폰이 갈린다).
         public static GeneratedWavePlan Generate(AttackDeck deck, int seedOverride)
+            => Generate(deck, seedOverride, 2);
+
+        public static GeneratedWavePlan Generate(AttackDeck deck, int seedOverride, int laneCount)
         {
             if (deck == null) throw new ArgumentNullException(nameof(deck));
             return Generate(
@@ -36,7 +43,10 @@ namespace Wassup.Data
                 deck.maxWaveIntervalSec,
                 deck.waveSpawnLeadInSec,
                 deck.bossPool,
-                deck.unitGrowthPerWave);
+                deck.unitGrowthPerWave,
+                deck.waveConceptPool,
+                deck.conceptHoldWaves,
+                laneCount);
         }
 
         public static GeneratedWavePlan Generate(
@@ -62,7 +72,12 @@ namespace Wassup.Data
             // 사이에 끼우면 positional 인자로 호출하는 테스트들이 조용히 다른 값을 받는다.
             IReadOnlyList<AttackUnitData> bossPool = null,
             // three-minute-survival unit 2 — 같은 이유로 맨 뒤에 추가. 1 = 성장 없음.
-            float unitGrowthPerWave = 1f)
+            float unitGrowthPerWave = 1f,
+            // wave-concept-blocks unit 2 — 같은 이유로 맨 뒤에 추가. 풀이 비면(기본) 컨셉 경로를
+            // 타지 않고 아래 레거시 2종 분기가 그대로 돈다 → 기존 편성과 byte-identical.
+            IReadOnlyList<WaveConceptData> waveConceptPool = null,
+            int conceptHoldWaves = 3,
+            int laneCount = 2)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -116,9 +131,135 @@ namespace Wassup.Data
                         "전멸 즉시 진행이 성립하지 않는다 — intraWaveSpacingSec 을 내리거나 maxUnitsPerWave 를 줄여라.");
             }
 
+            // wave-concept-blocks unit 2 — 컨셉은 웨이브가 아니라 **블록**의 속성이다(계약 1).
+            // 블록 경계에서만 컨셉과 lane 배정을 뽑고 conceptHoldWaves 웨이브 동안 재사용한다.
+            // 풀이 비면 concept 이 영구히 null 이라 rng 를 한 번도 안 쓰고 아래 레거시 분기만 돈다.
+            int holdWaves = math.max(1, conceptHoldWaves);
+            int lanes = math.max(1, laneCount);
+            bool hasConceptPool = HasAnyConcept(waveConceptPool);
+            if (laneCount <= 0)
+                Debug.LogWarning("[WavePatternGenerator] laneCount 가 0 이하다 — 1 로 폴백한다. " +
+                                 "라이브 경로는 맵의 스폰 수를 넘겨야 예고와 실스폰이 일치한다(계약 6).");
+
+            WaveConceptData concept = null;
+            var conceptSlots = new List<WaveConceptSlot>();
+            var slotLanes = new List<int>();
+            var slotGroups = new List<int>();
+            int[] slotLaneBuffer = Array.Empty<int>();
+            int[] slotCountBuffer = Array.Empty<int>();
+            int[] slotMaxBuffer = Array.Empty<int>();
+            var chosenIndices = new List<int>();
+            var candidateBuffer = new List<int>();
+            int previousBlock = -1;
+
+            // wave-concept-blocks unit 3 — 보스 후처리가 그 웨이브의 블록 컨셉을 읽는다.
+            // 후처리를 이 루프 안으로 옮기지 않는 이유는 rng 소비 순서다: 옮기면 컨셉 없는
+            // 레거시 덱의 스트림까지 흔들려 무회귀 경로가 깨진다. 그래서 블록별 스냅샷을 남긴다.
+            var conceptByWave = new WaveConceptData[waveCount];
+            var conceptSlotsByWave = new WaveConceptSlot[waveCount][];
+            var conceptLanesByWave = new int[waveCount][];
+            WaveConceptSlot[] blockSlots = null;
+            int[] blockLanes = null;
+
             var waves = new List<GeneratedWave>(waveCount);
             for (int i = 0; i < waveCount; i++)
             {
+                int waveNumberForBlock = i + 1;
+                if (hasConceptPool && i / holdWaves != previousBlock)
+                {
+                    int block = i / holdWaves;
+                    previousBlock = block;
+                    concept = PickConcept(
+                        waveConceptPool, block * holdWaves + 1, lanes, concept, rng.NextFloat());
+
+                    conceptSlots.Clear();
+                    slotGroups.Clear();
+                    if (concept != null && concept.slots != null)
+                        for (int s = 0; s < concept.slots.Length; s++)
+                        {
+                            var slot = concept.slots[s];
+                            if (slot == null) continue;
+                            conceptSlots.Add(slot);
+                            slotGroups.Add(slot.laneGroup);
+                        }
+
+                    if (conceptSlots.Count == 0)
+                    {
+                        concept = null;   // 슬롯이 없으면 편성을 만들 수 없다 → 폴백
+                    }
+                    else
+                    {
+                        if (slotLaneBuffer.Length < conceptSlots.Count)
+                        {
+                            slotLaneBuffer = new int[conceptSlots.Count];
+                            slotCountBuffer = new int[conceptSlots.Count];
+                            slotMaxBuffer = new int[conceptSlots.Count];
+                        }
+                        // AssignLanes 가 false 면 PickConcept 의 게이트가 놓친 경우다(있어선 안 됨).
+                        // 조용히 lane 을 무지정으로 떨어뜨리면 «저작한 lane 이 사라지는» 침묵이 되므로
+                        // 컨셉 자체를 버리고 폴백으로 간다(계약 5 의 «침묵 금지»와 같은 판단).
+                        if (!AssignLanes(slotGroups, lanes, rng.NextInt(), slotLaneBuffer))
+                        {
+                            Debug.LogWarning(
+                                $"[WavePatternGenerator] 컨셉 '{concept.id}' 가 요구하는 lane 수" +
+                                $"({concept.RequiredLaneCount})가 맵 스폰 수({lanes})를 넘어 폴백한다.");
+                            concept = null;
+                        }
+                        else
+                        {
+                            slotLanes.Clear();
+                            for (int s = 0; s < conceptSlots.Count; s++) slotLanes.Add(slotLaneBuffer[s]);
+                            // 블록 스냅샷 — slotLaneBuffer 는 다음 블록에서 덮이므로 복사한다.
+                            blockSlots = conceptSlots.ToArray();
+                            blockLanes = slotLanes.ToArray();
+                        }
+                    }
+                    if (concept == null) { blockSlots = null; blockLanes = null; }
+                }
+
+                conceptByWave[i] = concept;
+                conceptSlotsByWave[i] = blockSlots;
+                conceptLanesByWave[i] = blockLanes;
+
+                if (concept != null)
+                {
+                    // ---- 컨셉 경로 ----
+                    float conceptJitter = rng.NextFloat();
+                    int conceptTotal = ExponentialWaveTotal(
+                        i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, conceptJitter);
+                    DistributeSlotCounts(
+                        conceptTotal, concept.countMul, conceptSlots.Count, maxUnits, slotCountBuffer);
+
+                    chosenIndices.Clear();
+                    for (int s = 0; s < conceptSlots.Count; s++)
+                    {
+                        int picked = PickSlotUnitIndex(
+                            pool, conceptSlots[s], waveNumberForBlock, chosenIndices,
+                            candidateBuffer, concept.id, ref rng);
+                        chosenIndices.Add(picked);
+                        slotMaxBuffer[s] = picked >= 0 && pool[picked] != null ? pool[picked].maxPerWave : 0;
+                    }
+
+                    ClampGroupCounts(slotMaxBuffer, slotCountBuffer, conceptSlots.Count);
+
+                    var conceptGroups = new List<WaveSpawnGroup>(conceptSlots.Count);
+                    for (int s = 0; s < conceptSlots.Count; s++)
+                    {
+                        int picked = chosenIndices[s];
+                        if (picked < 0 || slotCountBuffer[s] <= 0) continue;
+                        conceptGroups.Add(new WaveSpawnGroup(
+                            pool[picked], slotCountBuffer[s], 0f, slotLanes[s]));
+                    }
+
+                    waves.Add(new GeneratedWave(
+                        i, i * interval, conceptGroups, 0f, WaveExpandMode.RoundRobin,
+                        concept.displayName));
+                    continue;
+                }
+
+                // ---- 레거시 2종 경로 (컨셉 없음) ----
+                // 여기는 손대지 않는다. 컨셉 풀이 빈 덱이 **현행과 byte-identical** 해야 무회귀
+                // 경로가 데이터로 성립한다(rng 소비 순서까지 동일).
                 int aIndex = rng.NextInt(0, pool.Count);
                 int bIndex = rng.NextInt(0, pool.Count - 1);
                 if (bIndex >= aIndex) bIndex++;
@@ -166,18 +307,74 @@ namespace Wassup.Data
                     // 웨이브 편성이 무회귀가 된다. 2종+ 부터 선택에 rng 1콜을 쓴다.
                     var boss = bosses.Count == 1 ? bosses[0] : bosses[rng.NextInt(0, bosses.Count)];
                     int escortCount = rng.NextInt(escortMin, escortMax + 1);
-                    // pool 은 boss-free. 호위도 같은 등장 게이트를 따른다(unit 12).
-                    var escortType = pool[ResolveWaveEligibleIndex(pool, rng.NextInt(0, pool.Count), i + 1)];
-                    // structure-hunter-enemy unit 1 — 호위에도 같은 상한. 여기가 더 위험하다:
-                    // 일반 웨이브는 종류가 둘로 나뉘지만 호위는 한 종류가 통째로 3~4기다.
-                    if (escortType != null && escortType.maxPerWave > 0)
-                        escortCount = math.min(escortCount, escortType.maxPerWave);
-                    var groups = new List<WaveSpawnGroup>
+
+                    // wave-concept-blocks unit 3 — 호위가 그 블록 컨셉의 **성질과 위상**을 입는다.
+                    // 그래야 블록의 마지막 웨이브에서 컨셉이 깨지지 않고 보스가 그 블록의
+                    // 클라이맥스가 된다(「원거리」 블록 = 보스가 사거리 호위를 끼고 협공으로 온다).
+                    var blockConcept = conceptByWave[i];
+                    var blockConceptSlots = conceptSlotsByWave[i];
+                    var blockConceptLanes = conceptLanesByWave[i];
+
+                    List<WaveSpawnGroup> groups;
+                    if (blockConcept != null && blockConceptSlots != null && blockConceptSlots.Length > 0)
                     {
-                        new WaveSpawnGroup(boss, 1),          // 선봉: RoundRobin round 0 = 보스 먼저
-                        new WaveSpawnGroup(escortType, escortCount),
-                    };
-                    waves[i] = new GeneratedWave(i, i * interval, groups, 0f, WaveExpandMode.RoundRobin);
+                        int slotCount = blockConceptSlots.Length;
+                        if (slotCountBuffer.Length < slotCount)
+                        {
+                            slotCountBuffer = new int[slotCount];
+                            slotMaxBuffer = new int[slotCount];
+                        }
+                        // ⚠ 호위 예산에는 countMul 을 적용하지 않는다. bossEscortMin/Max 가 이미
+                        // 예산이라 배율을 다시 곱하면 이중 스케일이 된다 — 「중장」(0.4)이면
+                        // 3 × 0.4 = 1.2 로 하한에 먹혀 컨셉마다 호위 수가 제멋대로 달라진다.
+                        // 컨셉이 호위에 주는 것은 성질과 위상이고 수량은 보스 파라미터가 소유한다.
+                        DistributeSlotCounts(escortCount, 1f, slotCount, maxUnits, slotCountBuffer);
+
+                        chosenIndices.Clear();
+                        for (int s = 0; s < slotCount; s++)
+                        {
+                            int picked = PickSlotUnitIndex(
+                                pool, blockConceptSlots[s], i + 1, chosenIndices,
+                                candidateBuffer, blockConcept.id, ref rng);
+                            chosenIndices.Add(picked);
+                            slotMaxBuffer[s] = picked >= 0 && pool[picked] != null
+                                ? pool[picked].maxPerWave : 0;
+                        }
+                        ClampGroupCounts(slotMaxBuffer, slotCountBuffer, slotCount);
+
+                        groups = new List<WaveSpawnGroup>(slotCount + 1)
+                        {
+                            // 선봉: RoundRobin round 0 = 보스 먼저. lane 은 컨셉 첫 슬롯을 따른다 —
+                            // 보스가 서 있는 쪽이 «본대»로 읽힌다.
+                            new WaveSpawnGroup(boss, 1, 0f, blockConceptLanes[0]),
+                        };
+                        for (int s = 0; s < slotCount; s++)
+                        {
+                            int picked = chosenIndices[s];
+                            if (picked < 0 || slotCountBuffer[s] <= 0) continue;
+                            groups.Add(new WaveSpawnGroup(
+                                pool[picked], slotCountBuffer[s], 0f, blockConceptLanes[s]));
+                        }
+                    }
+                    else
+                    {
+                        // 컨셉 없는 덱(레거시/폴백) — 여기는 손대지 않는다. rng 소비까지 현행 그대로.
+                        // pool 은 boss-free. 호위도 같은 등장 게이트를 따른다(unit 12).
+                        var escortType = pool[ResolveWaveEligibleIndex(pool, rng.NextInt(0, pool.Count), i + 1)];
+                        // structure-hunter-enemy unit 1 — 호위에도 같은 상한. 여기가 더 위험하다:
+                        // 일반 웨이브는 종류가 둘로 나뉘지만 호위는 한 종류가 통째로 3~4기다.
+                        if (escortType != null && escortType.maxPerWave > 0)
+                            escortCount = math.min(escortCount, escortType.maxPerWave);
+                        groups = new List<WaveSpawnGroup>
+                        {
+                            new WaveSpawnGroup(boss, 1),      // 선봉: RoundRobin round 0 = 보스 먼저
+                            new WaveSpawnGroup(escortType, escortCount),
+                        };
+                    }
+
+                    waves[i] = new GeneratedWave(
+                        i, i * interval, groups, 0f, WaveExpandMode.RoundRobin,
+                        blockConcept != null ? blockConcept.displayName : "");
                 }
             }
 
@@ -310,6 +507,149 @@ namespace Wassup.Data
             return startIndex;
         }
 
+        // ================= wave-concept-blocks unit 1 — 컨셉 해석 순수 함수 3개 =================
+        // 셋 다 rng 를 받지 않는다. 호출측이 뽑은 plain 값(rollValue/roll01)을 넘겨야 EditMode 로
+        // 결정론을 검증할 수 있다(ExponentialWaveTotal 이 jitter01 을 받는 것과 같은 형태, 제약 10).
+
+        // 곡선 총량 → 슬롯별 개체 수. 균등 분배 + 잔여는 앞 슬롯부터.
+        //
+        // 하한이 `slotCount` 인 것이 중요하다: minUnitsPerWave(5)를 하한으로 쓰면 countMul 0.4 인
+        // 컨셉이 초반 웨이브에서 5기가 되어 배율이 무의미해진다. 상한은 maxUnits 를 존중한다.
+        //
+        // 반환값 = 실제 분배한 합(scaled). 잔여를 랜덤으로 흘리지 않는 것이 계약이다 — 흘리면
+        // 같은 시드에서 결과가 갈린다.
+        public static int DistributeSlotCounts(
+            int total, float countMul, int slotCount, int maxUnits, int[] outCounts)
+        {
+            if (slotCount <= 0) return 0;
+
+            int lo = slotCount;
+            int hi = math.max(lo, maxUnits);
+            float mul = countMul > 0f ? countMul : 1f;
+            int scaled = math.clamp((int)math.round(total * mul), lo, hi);
+
+            int baseShare = scaled / slotCount;
+            int remainder = scaled - baseShare * slotCount;
+            for (int i = 0; i < slotCount; i++)
+            {
+                if (outCounts == null || i >= outCounts.Length) break;
+                outCounts[i] = baseShare + (i < remainder ? 1 : 0);
+            }
+            return scaled;
+        }
+
+        // laneGroup 값들 → 실제 lane 인덱스. 계약 2(lane 은 위상으로만 말한다)의 구현.
+        //
+        // 같은 laneGroup 은 반드시 같은 lane, 다른 laneGroup 은 반드시 다른 lane. 이 두 불변식이
+        // 「원거리」의 협공을 성립시킨다. -1(무지정)은 -1 로 통과해 호출측이 기존
+        // EffectiveSpawnIndex 경로를 타게 한다.
+        //
+        // false = 이 컨셉이 요구하는 lane 수가 맵의 스폰 수를 넘는다 → 호출측이 후보에서 버린다.
+        public static bool AssignLanes(
+            IReadOnlyList<int> laneGroups, int laneCount, int rollValue, int[] outLaneIndex)
+        {
+            int slotCount = laneGroups != null ? laneGroups.Count : 0;
+            if (slotCount == 0) return true;
+            if (laneCount <= 0) return false;
+
+            // 등장 순서대로 distinct 그룹을 세면서 lane 을 배정한다. 슬롯 수가 한 자리라 O(n²) 로 충분.
+            int offset = ((rollValue % laneCount) + laneCount) % laneCount;
+            int assigned = 0;
+            for (int i = 0; i < slotCount; i++)
+            {
+                int group = laneGroups[i];
+                if (group < 0)
+                {
+                    if (outLaneIndex != null && i < outLaneIndex.Length) outLaneIndex[i] = -1;
+                    continue;
+                }
+
+                int firstSeen = -1;
+                for (int j = 0; j < i; j++)
+                    if (laneGroups[j] == group) { firstSeen = j; break; }
+
+                int lane;
+                if (firstSeen >= 0)
+                {
+                    lane = outLaneIndex != null && firstSeen < outLaneIndex.Length
+                        ? outLaneIndex[firstSeen]
+                        : -1;
+                }
+                else
+                {
+                    if (assigned >= laneCount) return false;   // 요구 lane 수 초과
+                    lane = (offset + assigned) % laneCount;
+                    assigned++;
+                }
+                if (outLaneIndex != null && i < outLaneIndex.Length) outLaneIndex[i] = lane;
+            }
+            return true;
+        }
+
+        // 블록 경계에서 컨셉 하나를 뽑는다. 가중치 룰렛 + 게이트 3종 + 직전 배제.
+        //
+        // lane 요구량 검사는 concept.RequiredLaneCount(slots 파생)를 쓴다 — 저작 필드로 두면
+        // 파생값과 갈려 «저작은 2를 요구하는데 슬롯은 3 lane 을 쓰는» 컨셉이 통과한다.
+        //
+        // 직전 배제가 리듬 규칙이다: 같은 컨셉이 두 블록 연속이면 그것이 기본값이 되어 인상이
+        // 죽는다. 배제 때문에 후보가 0이 되면(풀에 1개뿐인 경우) 배제를 풀고 다시 고른다 —
+        // fail-open. null 반환은 «후보 없음»이고 호출측이 구조적 폴백으로 떨어진다.
+        public static WaveConceptData PickConcept(
+            IReadOnlyList<WaveConceptData> pool,
+            int blockFirstWaveNumber,
+            int laneCount,
+            WaveConceptData previousConcept,
+            float roll01)
+        {
+            if (pool == null || pool.Count == 0) return null;
+
+            float totalWeight = SumEligibleWeight(pool, blockFirstWaveNumber, laneCount, previousConcept);
+            if (totalWeight <= 0f)
+            {
+                previousConcept = null;   // 배제 fail-open
+                totalWeight = SumEligibleWeight(pool, blockFirstWaveNumber, laneCount, null);
+                if (totalWeight <= 0f) return null;
+            }
+
+            float target = math.clamp(roll01, 0f, 0.9999f) * totalWeight;
+            float cumulative = 0f;
+            WaveConceptData last = null;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                var candidate = pool[i];
+                if (!IsConceptEligible(candidate, blockFirstWaveNumber, laneCount, previousConcept)) continue;
+                last = candidate;
+                cumulative += candidate.weight;
+                if (cumulative > target) return candidate;
+            }
+            // float 누적 오차로 마지막 경계를 못 넘는 경우의 안전망.
+            return last;
+        }
+
+        private static float SumEligibleWeight(
+            IReadOnlyList<WaveConceptData> pool, int waveNumber, int laneCount, WaveConceptData exclude)
+        {
+            float sum = 0f;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                var candidate = pool[i];
+                if (IsConceptEligible(candidate, waveNumber, laneCount, exclude)) sum += candidate.weight;
+            }
+            return sum;
+        }
+
+        private static bool IsConceptEligible(
+            WaveConceptData concept, int waveNumber, int laneCount, WaveConceptData exclude)
+        {
+            if (concept == null) return false;
+            if (ReferenceEquals(concept, exclude)) return false;
+            if (concept.weight <= 0f) return false;
+            if (concept.EffectiveSlotCount <= 0) return false;
+            if (concept.minWaveNumber > waveNumber) return false;
+            if (concept.RequiredLaneCount > laneCount) return false;
+            return true;
+        }
+
         // waypoint-routing unit 7 — 상세 펼침에서 (스웜, 실제 lane)별 첫 스폰을 접는다.
         // lane 하나로 접지 않으므로 같은 lane 의 서로 다른 스웜은 별도 가이드로 남는다.
         public static SpawnGuideForecast[] BuildSpawnGuideForecasts(
@@ -373,7 +713,8 @@ namespace Wassup.Data
                     for (int k = 0; k < grp.count; k++)
                     {
                         float t = baseTriggerTimeSec + grp.triggerOffsetSec + k * wave.spawnIntervalSec;
-                        AddEntryAt(entries, grp.unit, g, t, laneCount, baseDeckIndex, ref localIndex);
+                        AddEntryAt(entries, grp.unit, g, t, laneCount, baseDeckIndex,
+                            grp.laneIndex, ref localIndex);
                     }
                 }
                 return entries;
@@ -387,7 +728,7 @@ namespace Wassup.Data
                     if (round >= groups[g].count) continue;
                     if (groups[g].unit == null) continue; // 빈 그룹은 스폰하지 않음(작성 데이터 방어)
                     AddEntry(entries, groups[g].unit, g, baseTriggerTimeSec, laneCount,
-                        intraWaveSpacingSec, baseDeckIndex, ref localIndex);
+                        intraWaveSpacingSec, baseDeckIndex, groups[g].laneIndex, ref localIndex);
                 }
             return entries;
         }
@@ -416,10 +757,11 @@ namespace Wassup.Data
             int laneCount,
             float intraWaveSpacingSec,
             int baseDeckIndex,
+            int groupLaneIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
-            int authoredSpawnIndex = localIndex % lanes;
+            int authoredSpawnIndex = ResolveAuthoredLane(groupLaneIndex, localIndex, lanes);
             entries.Add(new ExpandedWaveSpawn(
                 new SpawnEntry
                 {
@@ -428,9 +770,25 @@ namespace Wassup.Data
                     spawnIndex = authoredSpawnIndex,
                 },
                 swarmIndex,
-                EffectiveSpawnIndex(authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
+                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
             localIndex++;
         }
+
+        // wave-concept-blocks unit 2 — 컨셉이 lane 을 지정했으면(≥0) 그 값을 쓰고, 무지정(-1)이면
+        // 기존 «펼침 순번 % lane 수» 규칙을 그대로 쓴다.
+        private static int ResolveAuthoredLane(int groupLaneIndex, int localIndex, int lanes)
+            => groupLaneIndex >= 0
+                ? math.clamp(groupLaneIndex, 0, lanes - 1)
+                : localIndex % lanes;
+
+        // 컨셉이 지정한 lane 은 EffectiveSpawnIndex 를 **우회**한다. 그 함수는 laneCount ≥ 3 에서
+        // authored 값을 버리고 deckIndex 라운드로빈으로 돌리므로, 통과시키면 저작한 lane 이
+        // 3레인 이상 맵에서 조용히 지워진다.
+        private static int ResolveEffectiveLane(
+            int groupLaneIndex, int authoredSpawnIndex, int deckIndex, int lanes)
+            => groupLaneIndex >= 0
+                ? math.clamp(groupLaneIndex, 0, lanes - 1)
+                : EffectiveSpawnIndex(authoredSpawnIndex, deckIndex, lanes);
 
         // PerGroupTimeline 용 — 절대 시각을 직접 받아 엔트리 추가. lane 은 전역 localIndex 기준.
         private static void AddEntryAt(
@@ -440,10 +798,11 @@ namespace Wassup.Data
             float timeSec,
             int laneCount,
             int baseDeckIndex,
+            int groupLaneIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
-            int authoredSpawnIndex = localIndex % lanes;
+            int authoredSpawnIndex = ResolveAuthoredLane(groupLaneIndex, localIndex, lanes);
             entries.Add(new ExpandedWaveSpawn(
                 new SpawnEntry
                 {
@@ -452,8 +811,120 @@ namespace Wassup.Data
                     spawnIndex = authoredSpawnIndex,
                 },
                 swarmIndex,
-                EffectiveSpawnIndex(authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
+                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
             localIndex++;
+        }
+
+        // wave-concept-blocks unit 2 — 종류별 동시 등장 상한의 N슬롯 일반화.
+        //
+        // 2슬롯 ref 버전(위)의 규칙을 그대로 잇는다: 잘린 몫은 **여유 있는 슬롯으로 넘겨 총량을
+        // 보존**하고, 전부 상한이면 총량이 줄어든다(그게 상한의 목적이다). rng 를 소비하지 않는
+        // 것도 계약 그대로 — 소비하면 상한을 저작하지 않은 덱의 스트림까지 흔들린다.
+        public static void ClampGroupCounts(int[] maxPerSlot, int[] counts, int slotCount)
+        {
+            if (maxPerSlot == null || counts == null) return;
+            int n = math.min(slotCount, math.min(maxPerSlot.Length, counts.Length));
+
+            int leftover = 0;
+            for (int i = 0; i < n; i++)
+            {
+                int max = maxPerSlot[i];
+                if (max > 0 && counts[i] > max) { leftover += counts[i] - max; counts[i] = max; }
+            }
+            if (leftover <= 0) return;
+
+            for (int i = 0; i < n && leftover > 0; i++)
+            {
+                int max = maxPerSlot[i];
+                int room = max > 0 ? math.max(0, max - counts[i]) : leftover;
+                int give = math.min(leftover, room);
+                counts[i] += give;
+                leftover -= give;
+            }
+        }
+
+        private static bool HasAnyConcept(IReadOnlyList<WaveConceptData> pool)
+        {
+            if (pool == null) return false;
+            for (int i = 0; i < pool.Count; i++)
+                if (pool[i] != null) return true;
+            return false;
+        }
+
+        // wave-concept-blocks unit 2 — 슬롯 하나가 뽑을 유닛의 pool 인덱스.
+        //
+        // 완화 순서가 설계다(계약 5 fail-open). 가장 덜 해로운 것부터 버린다:
+        //   1) class + altitude + 등장게이트 + 중복배제   ← 정상
+        //   2) 중복배제를 버린다        — 같은 종이 두 슬롯에 들어간다. 무해
+        //   3) 등장게이트를 버린다      — 후반 적이 초반에 나온다. 국소적
+        //   4) class 를 버린다          — 컨셉이 정체성을 잃는다. 경고
+        //   5) altitude 까지 버린다     — **마지막이다.** 지상 컨셉에 비행이 섞이면 대공 없이
+        //                                막을 수 없는 적이 나온다(계약 10). 큰 경고와 함께만.
+        // altitude 를 마지막에 두는 것이 「평소」가 웨이브 1~3 에 비행을 내놓지 않는 구조적 보장이다.
+        private static int PickSlotUnitIndex(
+            List<AttackUnitData> pool,
+            WaveConceptSlot slot,
+            int waveNumber,
+            List<int> alreadyChosen,
+            List<int> candidateBuffer,
+            string conceptId,
+            ref Unity.Mathematics.Random rng)
+        {
+            if (pool == null || pool.Count == 0) return -1;
+
+            if (CollectSlotCandidates(pool, slot, waveNumber, alreadyChosen, true, true, candidateBuffer) == 0 &&
+                CollectSlotCandidates(pool, slot, waveNumber, null, true, true, candidateBuffer) == 0 &&
+                CollectSlotCandidates(pool, slot, 0, null, true, true, candidateBuffer) == 0)
+            {
+                if (CollectSlotCandidates(pool, slot, 0, null, false, true, candidateBuffer) > 0)
+                {
+                    Debug.LogWarning(
+                        $"[WavePatternGenerator] 컨셉 '{conceptId}' 슬롯의 성질 필터" +
+                        $"({slot.classFilter})에 맞는 적이 pool 에 없어 성질을 무시했다. 컨셉이 흐려진다.");
+                }
+                else if (CollectSlotCandidates(pool, slot, 0, null, false, false, candidateBuffer) > 0)
+                {
+                    Debug.LogWarning(
+                        $"[WavePatternGenerator] 컨셉 '{conceptId}' 슬롯의 고도({slot.altitude})에 맞는 적이" +
+                        " pool 에 없어 **고도까지 무시**했다 — 지상 컨셉에 비행이 섞일 수 있다." +
+                        " pool 에 해당 고도의 적을 넣어라.");
+                }
+                else return -1;
+            }
+
+            return candidateBuffer[rng.NextInt(0, candidateBuffer.Count)];
+        }
+
+        private static int CollectSlotCandidates(
+            List<AttackUnitData> pool,
+            WaveConceptSlot slot,
+            int waveNumber,
+            List<int> exclude,
+            bool applyClassFilter,
+            bool applyAltitudeFilter,
+            List<int> outIndices)
+        {
+            outIndices.Clear();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                var unit = pool[i];
+                if (unit == null) continue;
+                if (exclude != null && exclude.Contains(i)) continue;
+                if (waveNumber > 0 && unit.minWaveNumber > waveNumber) continue;
+                if (applyClassFilter && slot.classFilter != EnemyClass.None
+                    && unit.enemyClass != slot.classFilter) continue;
+                if (applyAltitudeFilter && !MatchesAltitude(unit, slot.altitude)) continue;
+                outIndices.Add(i);
+            }
+            return outIndices.Count;
+        }
+
+        // 고도 판정의 단일 지점. Air = 통행층에 Air 비트가 있다, Ground = 없다.
+        public static bool MatchesAltitude(AttackUnitData unit, SlotAltitude altitude)
+        {
+            if (unit == null) return false;
+            bool isAir = (unit.EffectiveTraversalLayers & PlacementLayer.Air) != 0;
+            return altitude == SlotAltitude.Air ? isAir : !isAir;
         }
 
         // null source 허용 — 보스 pool 은 미저작(null)이 정상이다. 잡몹 pool 경로는 상류

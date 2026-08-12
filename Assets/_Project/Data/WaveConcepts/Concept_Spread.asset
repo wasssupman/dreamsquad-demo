@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b2eb9d2e2f3e1384db75b58f99b9afde, type: 3}
+  m_Name: Concept_Spread
+  m_EditorClassIdentifier: 
+  id: spread
+  displayName: "평소"
+  weight: 0.6
+  minWaveNumber: 1
+  countMul: 1
+  slots:
+  - laneGroup: -1
+    classFilter: 0
+    altitude: 0
+  - laneGroup: -1
+    classFilter: 0
+    altitude: 0

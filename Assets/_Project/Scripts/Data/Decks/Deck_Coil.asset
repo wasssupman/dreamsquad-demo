@@ -15,8 +15,8 @@ MonoBehaviour:
   deckId: Deck_Coil
   battleMode: 0
   useGeneratedWaves: 1
-  waveSeed: 20260812
-  waveGeneratorVersion: 2
+  waveSeed: 20260822
+  waveGeneratorVersion: 3
   attackUnitPool:
   - {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
   - {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
@@ -26,6 +26,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5f65ca01e4554dfb8ce75f35c511a3b6, type: 2}
   - {fileID: 11400000, guid: b2784981455b648589a8bd5d8c225424, type: 2}
   - {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
+  - {fileID: 11400000, guid: b12cbe192d5b4e97a6cb0c96211f3e44, type: 2}
   - {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
   - {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
   - {fileID: 11400000, guid: 63427531b931467da2702f09eca696e7, type: 2}
@@ -41,9 +42,7 @@ MonoBehaviour:
   bossUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
   bossPool:
   - {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
-  - {fileID: 11400000, guid: 17460475ac136f04ca0ef3f106dd38b8, type: 2}
-  - {fileID: 11400000, guid: 647e55208559442d69b8359ff08300d1, type: 2}
-  bossWaveInterval: 5
+  bossWaveInterval: 9
   bossEscortMin: 3
   bossEscortMax: 4
   spawns:
@@ -254,3 +253,10 @@ MonoBehaviour:
   defeatGoalReachedCount: 10
   timerDurationSec: 180
   goalStabilityMax: 1000
+  waveConceptPool:
+  - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410001, type: 2}
+  - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410002, type: 2}
+  - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410003, type: 2}
+  - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410004, type: 2}
+  - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410005, type: 2}
+  conceptHoldWaves: 3

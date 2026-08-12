@@ -68,8 +68,12 @@ namespace Wassup.Data
         // 덱을 안 거치는 직접 호출자도 같은 규칙을 받아야 하므로 한 곳에만 둔다).
         [Tooltip("보스 로테이션 풀. 비우면 bossUnit 단일로 폴백. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
         public AttackUnitData[] bossPool = Array.Empty<AttackUnitData>();
-        [Tooltip("매 N번째 웨이브가 보스 웨이브(보스 1기 + 잡몹 호위). <=0 이면 보스 웨이브 없음.")]
-        public int bossWaveInterval = 5;
+        // wave-concept-blocks unit 3 — 5 → 9 (사용자 결정 2026-08-13: 5마다는 너무 잦다).
+        // 9 는 conceptHoldWaves=3 의 **블록 마지막** 웨이브라 「컨셉을 두 웨이브 배우고 세 번째에
+        // 보스가 그 컨셉을 입고 온다」가 성립한다. 10 은 블록의 첫 웨이브라 «새 컨셉 + 보스»가
+        // 겹치고, 최악 케이스 도달(floor(180/20)+1 = 10웨이브)에서 보스를 못 보는 판이 생긴다.
+        [Tooltip("매 N번째 웨이브가 보스 웨이브(보스 1기 + 호위). <=0 이면 보스 웨이브 없음.")]
+        public int bossWaveInterval = 9;
         [Tooltip("보스 웨이브의 잡몹 호위 최소 수")]
         public int bossEscortMin = 3;
         [Tooltip("보스 웨이브의 잡몹 호위 최대 수")]

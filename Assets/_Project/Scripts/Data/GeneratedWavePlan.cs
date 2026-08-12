@@ -47,12 +47,19 @@ namespace Wassup.Data
         public readonly AttackUnitData unit;
         public readonly int count;
         public readonly float triggerOffsetSec;
+        // wave-concept-blocks unit 2 — 컨셉이 지정한 스폰 지점. -1 = 무지정(기존
+        // EffectiveSpawnIndex 경로). ExpandWave 가 이 값을 존중해야 하는 이유는
+        // EffectiveSpawnIndex 가 3레인 이상 맵에서 authored 값을 무시하고 deckIndex 라운드로빈으로
+        // 돌리기 때문이다 — 우회하지 않으면 저작한 lane 이 조용히 지워진다.
+        public readonly int laneIndex;
 
-        public WaveSpawnGroup(AttackUnitData unit, int count, float triggerOffsetSec = 0f)
+        public WaveSpawnGroup(
+            AttackUnitData unit, int count, float triggerOffsetSec = 0f, int laneIndex = -1)
         {
             this.unit = unit;
             this.count = count;
             this.triggerOffsetSec = triggerOffsetSec;
+            this.laneIndex = laneIndex;
         }
     }
 
@@ -109,19 +116,25 @@ namespace Wassup.Data
         public readonly int totalCount;
         public readonly float spawnIntervalSec;       // PerGroupTimeline: count 펼침 간격
         public readonly WaveExpandMode expandMode;
+        // wave-concept-blocks unit 2 — 이 웨이브를 만든 컨셉의 표시 이름. plain string 이다:
+        // 뷰가 WaveConceptData 를 참조하면 프레젠테이션이 저작 데이터에 묶인다(SpawnGuideForecast
+        // 가 plain 값만 넘긴 것과 같은 판단). "" = 컨셉 없음(레거시/폴백 경로).
+        public readonly string conceptLabel;
 
         public GeneratedWave(
             int waveIndex,
             float triggerTimeSec,
             IReadOnlyList<WaveSpawnGroup> groups,
             float spawnIntervalSec = 0f,
-            WaveExpandMode expandMode = WaveExpandMode.RoundRobin)
+            WaveExpandMode expandMode = WaveExpandMode.RoundRobin,
+            string conceptLabel = "")
         {
             this.waveIndex = waveIndex;
             this.triggerTimeSec = triggerTimeSec;
             this.groups = groups;
             this.spawnIntervalSec = spawnIntervalSec;
             this.expandMode = expandMode;
+            this.conceptLabel = conceptLabel ?? "";
             int total = 0;
             if (groups != null)
                 for (int i = 0; i < groups.Count; i++) total += groups[i].count;
