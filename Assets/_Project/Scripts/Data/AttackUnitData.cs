@@ -74,11 +74,17 @@ namespace Wassup.Data
         // 마이그레이션이 아니라 «인스펙터에서 마스크를 비웠을 때 무장 해제되는 것» 방어선이다
         // (기존 에셋 무회귀는 아래 이니셜라이저가 보장한다).
         // 예: DefenderCore 단독으로 두면 «거점만 때리는 적» 이 된다.
+        // siege-duel-map 후속(사용자 결정 2026-08-12) — `DefenderInstinct` 추가.
+        // ⚠ **미저작 적의 실제 기본값은 이 이니셜라이저다**(위 폴백이 아니다). YAML 에 키가
+        // 없으면 이 값이 그대로 남아 `Resolve` 의 «0 = 폴백» 분기를 타지 않는다. 그래서
+        // `LegacyEnemyMask` 만 고치면 미저작 적 15종은 **한 종도 안 바뀐다**(실측으로 확인).
+        // 두 값을 항상 함께 움직일 것 — 이 비대칭이 정확히 이번 수정에서 한 번 헛돌았다.
         [Tooltip("이 적이 노리는 대상(진영 × 종류). 비우면(None) 현행 기본값으로 폴백한다.")]
         public Wassup.Battle.Units.Faction targetFactions =
             Wassup.Battle.Units.Faction.DefenderUnit
             | Wassup.Battle.Units.Faction.BlockingHazard
-            | Wassup.Battle.Units.Faction.DefenderCore;
+            | Wassup.Battle.Units.Faction.DefenderCore
+            | Wassup.Battle.Units.Faction.DefenderInstinct;
 
         public float health = 100f;
         public float moveSpeed = 2f;

@@ -36,10 +36,20 @@ namespace Wassup.Battle.Combat
     {
         // 저작 이전의 적 base 마스크 = 방어유닛 + 방벽 + 방어 마음.
         // DefenderCore 가 빠지면 적이 골 타워를 못 때려 공성이 사라진다.
+        // siege-duel-map 후속(사용자 결정 2026-08-12) — `DefenderInstinct` 를 기본 마스크에 더한다.
+        //
+        // 이 상수는 **방어 본능이 존재하지 않던 시절**(battle-structures unit 1)의 «현행 재현» 값이라
+        // 본능 비트가 빠져 있었다. 듀얼 맵이 방어 본능을 처음 라이브에 올리자 구멍이 드러났다 —
+        // 적 17종 전부(전수 확인) 방어 본능을 후보로도 못 봐서 **일방적으로 맞기만 하는 무적 포탑**이
+        // 됐다(후보 진입 술어가 `(FactionTag & targetMask) != 0` 하나이므로).
+        //
+        // 이름은 그대로 둔다 — «미저작 폴백» 이라는 역할이 바뀐 게 아니라, 그 폴백이 가리키는
+        // 「방어측이 가진 것 전부」에 본능이 추가된 것이다.
         public const int LegacyEnemyMask =
             (int)(Wassup.Battle.Units.Faction.DefenderUnit
                 | Wassup.Battle.Units.Faction.BlockingHazard
-                | Wassup.Battle.Units.Faction.DefenderCore);
+                | Wassup.Battle.Units.Faction.DefenderCore
+                | Wassup.Battle.Units.Faction.DefenderInstinct);
 
         // 0(Faction.None) = 미저작 → 레거시 마스크. 그 외는 저작값을 그대로 존중한다.
         public static int Resolve(int authoredMask)

@@ -21,13 +21,35 @@ namespace Wassup.Tests.EditMode
     // 단정하므로, 로드 규칙이 미래에 바뀌어도 무장 해제 회귀를 잡는다.
     public class AuthoredTargetMaskTests
     {
+        // siege-duel-map 후속(2026-08-12) — 기본 마스크에 DefenderInstinct 가 합류했다.
+        // 이 상수는 「방어측이 가진 것 전부」를 뜻하고, 방어 본능이 라이브에 서면서 그 목록이
+        // 늘었다. 빠져 있던 동안 방어 본능은 **아무 적도 후보로 보지 못하는 무적 포탑**이었다.
         [Test]
-        public void LegacyEnemyMask_IsUnitPlusHazardPlusDefenderCore()
+        public void LegacyEnemyMask_CoversEveryDefenderSideTarget()
         {
             Assert.AreEqual(
-                (int)(Faction.DefenderUnit | Faction.BlockingHazard | Faction.DefenderCore),
+                (int)(Faction.DefenderUnit | Faction.BlockingHazard
+                    | Faction.DefenderCore | Faction.DefenderInstinct),
                 EnemyTargetDefaults.LegacyEnemyMask,
-                "DefenderCore 가 빠지면 적이 골 타워를 못 때려 공성이 사라진다");
+                "DefenderCore 가 빠지면 공성이, DefenderInstinct 가 빠지면 방어 본능이 무적이 된다");
+        }
+
+        // 위 상수만 고치면 **미저작 적은 한 종도 안 바뀐다** — 실제 기본값은 SO 필드
+        // 이니셜라이저이고, 그마저도 Unity 임포트 캐시에 옛 값이 남는다(2026-08-12 실측:
+        // 강제 재임포트·스크립트 리로드로도 13 유지). 그래서 라이브 적은 **명시 저작**으로
+        // 못박았다. 이 테스트가 그 명시 저작의 회귀선이다.
+        [Test]
+        public void EveryEnemyAsset_CanTargetDefenderInstinct()
+        {
+            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:AttackUnitData"))
+            {
+                var so = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.AttackUnitData>(
+                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (so == null) continue;
+                int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
+                Assert.AreNotEqual(0, mask & (int)Faction.DefenderInstinct,
+                    $"'{so.id}' 가 방어 본능을 후보로 못 본다 — 그 본능은 이 적에게 무적이다");
+            }
         }
 
         [Test]
