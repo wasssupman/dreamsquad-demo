@@ -208,9 +208,10 @@ namespace Wassup.EditorTools
             WaypointAuthoringRules.ValidatePaths(
                 ToWaypointPathArray(), _w, _h, _tiles, _goals, _spawns, wpErrors, warnings);
             foreach (var e2 in wpErrors) errors.Add(e2);
-            // map-rework unit 0 — 개편 컨셉 가드(폭≥2 · 광장 1+). 경고 전용 — 비개편 맵의
-            // bake 를 막지 않는다(계약 1). OnValidate 에는 넣지 않는다(임포트 콘솔 소음).
-            MapConceptRules.ValidateCorridorWidth(_tiles, _w, _h, warnings);
+            // map-rework unit 7 — 개편 컨셉 가드(직선은 폭1 · 폭2 제한 · 광장 1+). 경고 전용 —
+            // 비개편 맵의 bake 를 막지 않는다. OnValidate 에는 넣지 않는다(임포트 콘솔 소음).
+            // 저작 중인 `_placeMask` 를 그대로 넘긴다 — 근접 차단칸은 배치 마스크가 정한다.
+            MapConceptRules.ValidateMeleeLanes(_tiles, _placeMask, _w, _h, warnings);
             MapConceptRules.ValidatePlaza(_tiles, _w, _h, warnings);
             ok = errors.Count == 0;
             if (warnings.Count > 0)

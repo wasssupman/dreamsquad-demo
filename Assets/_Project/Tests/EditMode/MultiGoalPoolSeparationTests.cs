@@ -43,11 +43,20 @@ namespace Wassup.Tests.EditMode
 
             if (ReworkedPaths.Contains(path))
             {
-                // 새 컨셉 계약 (map-rework 계약 1~3)
+                // 새 컨셉 계약 (map-rework 계약 1~3, unit 7 에서 폭 규칙 반전)
                 Assert.AreEqual(1, doc.Goals?.Count ?? 1, $"{path}: 개편 맵의 마음은 1개");
-                var widthWarnings = new List<string>();
-                MapConceptRules.ValidateCorridorWidth(doc.Tiles, doc.Width, doc.Height, widthWarnings);
-                Assert.IsEmpty(widthWarnings, $"{path}: 폭1 Walk 금지 — {string.Join(" / ", widthWarnings)}");
+
+                // unit 7 — ~~폭1 금지~~ → **근접이 설 자리를 요구한다.** 옛 계약대로 폭2 로만
+                // 깔았더니 근접 유닛이 판에서 사라졌다(완전차단칸 0%). unit 8~12 가 5맵을
+                // 재저작하면 여기가 초록이 된다 — 그때까지는 이 단언이 **의도적으로 빨갛다**.
+                MapConceptRules.MeasureMeleeLanes(
+                    doc.Tiles, doc.PlaceMask, doc.Width, doc.Height,
+                    out int walk, out int choke, out int width2);
+                Assert.Greater(walk, 0, $"{path}: Walk 칸이 없다");
+                Assert.GreaterOrEqual(choke / (float)walk, MapConceptRules.MinChokeRatio,
+                    $"{path}: 근접 완전차단칸 {choke}/{walk} — 직선 구간이 폭1 이어야 근접이 선다");
+                Assert.LessOrEqual(width2 / (float)walk, MapConceptRules.MaxWidth2Ratio,
+                    $"{path}: 폭2 Walk {width2}/{walk} — 폭2 는 제한적으로");
                 Assert.IsTrue(MapConceptRules.HasPlaza(doc.Tiles, doc.Width, doc.Height),
                     $"{path}: 4×4 광장 없음");
                 // 연결성은 아래 flood 가 계속 확인한다(골 도달 단언 공유).
