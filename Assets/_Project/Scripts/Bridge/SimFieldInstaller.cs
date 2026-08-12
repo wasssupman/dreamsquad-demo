@@ -137,13 +137,19 @@ namespace Wassup.Bridge
                     for (int i = 0; i < map.waypointCells.Length; i++)
                         AddDestination(destinations, DestinationSpec.Single(map.waypointCells[i]));
 
+                // 거점은 **종류를 묻지 않고** 전부 목적지가 된다. 「어느 진영의 무엇만 목적지다」를
+                // 여기서 정하면 필드가 진영 규칙을 알게 되고, 그건 선택의 몫이다 — 누가 어디로
+                // 갈 자격이 있는지는 `StructureDestinationSystem` 이 저작 마스크로 묻는다.
+                // (방어 마음은 `goals[]` 로 저작돼 이미 골 센티널이라 여기 안 들어온다.)
+                //
+                // 아무도 안 가는 거점에도 슬롯이 생기지만 거점은 판당 한 자릿수라 값이 싸고,
+                // 그 대가로 규칙이 한 벌로 유지된다.
                 if (map.structures.IsCreated)
                     for (int i = 0; i < map.structures.Length; i++)
                     {
                         var st = map.structures[i];
-                        if (st.faction != Wassup.Battle.Units.Faction.DefenderInstinct) continue;
-                        // 크기는 **종류에서 파생한다**. 상수를 박으면 마음이 목적지가 되는 날
-                        // 1×1 건물이 3×3 을 차지한다고 거짓말한다.
+                        // 크기는 **종류에서 파생한다**. 상수를 박으면 1×1 마음이 3×3 을
+                        // 차지한다고 거짓말한다.
                         AddDestination(destinations, DestinationSpec.Footprint(
                             st.cell, Wassup.Data.StructurePlacements.FootprintOf(st.faction)));
                     }

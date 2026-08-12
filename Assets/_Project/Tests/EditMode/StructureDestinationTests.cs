@@ -1,8 +1,10 @@
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.Battle.Units;
 
 namespace Wassup.Tests.EditMode
 {
@@ -13,6 +15,15 @@ namespace Wassup.Tests.EditMode
     {
         // ───────────────────── (1) 선택 규칙 ─────────────────────
 
+        private const int All = ~0;
+
+        private static NativeArray<int> Factions(params Faction[] f)
+        {
+            var a = new NativeArray<int>(f.Length, Allocator.Temp);
+            for (int i = 0; i < f.Length; i++) a[i] = (int)f[i];
+            return a;
+        }
+
         [Test]
         public void NearestIndex_PicksClosest()
         {
@@ -20,32 +31,76 @@ namespace Wassup.Tests.EditMode
             cands[0] = new float2(10f, 0f);
             cands[1] = new float2(2f, 0f);
             cands[2] = new float2(5f, 0f);
+            var fac = Factions(Faction.DefenderCore, Faction.DefenderInstinct, Faction.DefenderInstinct);
             try
             {
-                Assert.AreEqual(1, StructureChoice.NearestIndex(float2.zero, cands));
-                Assert.AreEqual(0, StructureChoice.NearestIndex(new float2(11f, 0f), cands));
+                Assert.AreEqual(1, StructureChoice.NearestIndex(float2.zero, cands, fac, All));
+                Assert.AreEqual(0, StructureChoice.NearestIndex(new float2(11f, 0f), cands, fac, All));
             }
-            finally { cands.Dispose(); }
+            finally { fac.Dispose(); cands.Dispose(); }
         }
 
-        // 동률은 **먼저 온 후보**가 이긴다. 후보 순서 = 저작 순서라 같은 판이 같은 답을 낸다.
-        // 흔들면(랜덤 타이브레이크) 리플레이가 갈린다.
+        // 규칙은 종류가 아니라 **마스크**다. 마음도 본능도 같은 후보로 경쟁하고, 코앞의 마음이
+        // 먼 본능을 이긴다 — 이게 「거점은 거리순」의 실체다(종류 우선순위가 아니다).
+        [Test]
+        public void NearestIndex_TheHeartCompetesLikeAnyOtherStructure()
+        {
+            var cands = new NativeArray<float2>(2, Allocator.Temp);
+            cands[0] = new float2(1f, 0f);    // 코앞의 마음
+            cands[1] = new float2(9f, 0f);    // 멀리 있는 본능
+            var fac = Factions(Faction.DefenderCore, Faction.DefenderInstinct);
+            try
+            {
+                Assert.AreEqual(0, StructureChoice.NearestIndex(float2.zero, cands, fac, All),
+                    "코앞의 마음을 두고 먼 본능으로 걸어가면 안 된다");
+            }
+            finally { fac.Dispose(); cands.Dispose(); }
+        }
+
+        // 못 부수는 거점은 후보에서 빠진다 — 그 앞에서 굳지 않게. 마음사냥꾼(마스크 28)처럼
+        // 좁게 저작된 적도 같은 함수 하나로 처리된다.
+        [Test]
+        public void NearestIndex_SkipsStructuresOutsideTheMask()
+        {
+            var cands = new NativeArray<float2>(2, Allocator.Temp);
+            cands[0] = new float2(1f, 0f);    // 적 본능 — 적 입장에선 자기 편
+            cands[1] = new float2(9f, 0f);    // 방어 본능
+            var fac = Factions(Faction.EnemyInstinct, Faction.DefenderInstinct);
+            try
+            {
+                Assert.AreEqual(1, StructureChoice.NearestIndex(
+                        float2.zero, cands, fac, EnemyTargetDefaults.DefaultEnemyMask),
+                    "적은 자기 편 포탑으로 걸어가지 않는다 — 종류 열거 없이 마스크만으로 갈린다");
+                Assert.AreEqual(-1, StructureChoice.NearestIndex(float2.zero, cands, fac, 0),
+                    "마스크가 비면 갈 곳이 없다");
+            }
+            finally { fac.Dispose(); cands.Dispose(); }
+        }
+
+        // 동률은 **먼저 온 후보**가 이긴다. 「먼저」의 기준은 호출자가 정한다 —
+        // `StructureDestinationSystem` 은 후보를 **셀 사전순으로 정렬한 뒤** 넘긴다.
+        //
+        // 처음엔 여기 주석에 «후보 순서 = 저작 순서» 라고 적었는데 **검증 안 한 주장이었다.**
+        // 후보는 ECS 쿼리에서 오고 그 순서는 청크 순서 = 스폰·사망 이력이다. 본능 하나가
+        // 죽어 DeadTag 로 청크가 갈리면 살아남은 후보들의 상대 순서가 조용히 뒤바뀐다.
         [Test]
         public void NearestIndex_TieGoesToTheEarlierCandidate_ForDeterminism()
         {
             var cands = new NativeArray<float2>(2, Allocator.Temp);
             cands[0] = new float2(0f, 3f);
             cands[1] = new float2(3f, 0f);   // 원점에서 거리 동일
-            try { Assert.AreEqual(0, StructureChoice.NearestIndex(float2.zero, cands)); }
-            finally { cands.Dispose(); }
+            var fac = Factions(Faction.DefenderInstinct, Faction.DefenderInstinct);
+            try { Assert.AreEqual(0, StructureChoice.NearestIndex(float2.zero, cands, fac, All)); }
+            finally { fac.Dispose(); cands.Dispose(); }
         }
 
         [Test]
         public void NearestIndex_NoCandidates_ReturnsMinusOne()
         {
             var empty = new NativeArray<float2>(0, Allocator.Temp);
-            try { Assert.AreEqual(-1, StructureChoice.NearestIndex(float2.zero, empty)); }
-            finally { empty.Dispose(); }
+            var fac = new NativeArray<int>(0, Allocator.Temp);
+            try { Assert.AreEqual(-1, StructureChoice.NearestIndex(float2.zero, empty, fac, All)); }
+            finally { fac.Dispose(); empty.Dispose(); }
         }
 
         // ───────────────────── (2) 다중 소스 ─────────────────────
