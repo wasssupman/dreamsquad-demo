@@ -31,6 +31,7 @@ namespace Wassup.Tests.EditMode
             "Assets/_Project/Data/Maps/MapDocument_Serpent.asset",   // unit 1
             "Assets/_Project/Data/Maps/MapDocument_Coil.asset",      // unit 2
             "Assets/_Project/Data/Maps/MapDocument_Twin.asset",      // unit 3
+            "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",    // unit 4
         };
 
         [Test]
