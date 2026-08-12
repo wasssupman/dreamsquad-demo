@@ -8249,9 +8249,22 @@ namespace Wassup.Bridge
         [SerializeField] private GameObject areaBreathVfxPrefab;
         [SerializeField] private float areaBreathVfxLifetime = 1.2f;
 
+        private bool _warnedAreaBreathVfxMissing;
+
         private void SpawnAreaBreathVfx(Entity attacker, float2 dirXZ, float rangeWorld, float halfAngleDeg)
         {
-            if (areaBreathVfxPrefab == null) return;
+            if (areaBreathVfxPrefab == null)
+            {
+                // 조용한 리턴 금지 — 슬롯이 비면 «피해는 들어가는데 화면에 아무것도 없는» 상태가
+                // 되고 그게 버그처럼 읽힌다. 발동마다 스팸하지 않도록 1회만 경고한다.
+                if (!_warnedAreaBreathVfxMissing)
+                {
+                    _warnedAreaBreathVfxMissing = true;
+                    Debug.LogWarning("[BattleBridge] AreaBreath prefab slot empty — 피해는 적용되지만 연출이 없다. " +
+                                     "areaBreathVfxPrefab 을 배선하라.", this);
+                }
+                return;
+            }
             if (!ResolveBeamViewPos(attacker, true, out var originView)) return;
 
             // sim XZ 방향 두 점을 view 로 옮겨 화면상의 방향을 구한다.

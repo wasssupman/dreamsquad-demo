@@ -4268,6 +4268,9 @@ MonoBehaviour:
   resignationViewPrefab: {fileID: 0}
   resignationViewHeight: 0.2
   dcProcImpactMinIntervalSec: 0.25
+  areaBreathVfxPrefab: {fileID: 8217825365897153352, guid: 8c1f52d7a94b46e0bd37f6a2e59c4013,
+    type: 3}
+  areaBreathVfxLifetime: 1.2
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

@@ -57,7 +57,7 @@ MonoBehaviour:
   walkAnimation: flying
   attackAnimation:
   deathAnimation:
-  spineVisualScale: 0.12
+  spineVisualScale: 0.6
   partSkins: []
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
