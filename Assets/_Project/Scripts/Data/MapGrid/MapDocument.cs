@@ -9,9 +9,6 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private int width = 20;
         [SerializeField] private int height = 10;
         [SerializeField] private MapTileType[] tiles;
-        [SerializeField] private byte[] mergeDegree;
-        [SerializeField] private bool[] chokepoint;
-        [SerializeField] private byte[] propLayerId;
         [SerializeField] private byte[] placeMask;     // 0/1. 1 = 배치 가능. 부재/길이 불일치 = tiles==Place 파생 폴백(placement-mask unit 0). 타일 종류와 직교 — Walk 셀도 1 가능.
         [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
         [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
@@ -37,9 +34,6 @@ namespace Wassup.Data.MapGrid
         public int Width => width;
         public int Height => height;
         public IReadOnlyList<MapTileType> Tiles => tiles;
-        public IReadOnlyList<byte> MergeDegree => mergeDegree;
-        public IReadOnlyList<bool> Chokepoint => chokepoint;
-        public IReadOnlyList<byte> PropLayerId => propLayerId;
         public IReadOnlyList<byte> PlaceMask => placeMask;   // null/length-0 가능 — 소비 시 tiles==Place 파생 폴백(ToGeneratedMap)
         public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
         public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
@@ -51,7 +45,7 @@ namespace Wassup.Data.MapGrid
 
         internal void SetFrom(
             int w, int h,
-            MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
+            MapTileType[] t,
             Vector2Int[] goalsArr, Vector2Int[] s,
             int seed, int version,
             byte[] placeMaskArr = null)
@@ -59,9 +53,6 @@ namespace Wassup.Data.MapGrid
             width = w;
             height = h;
             tiles = t;
-            mergeDegree = md;
-            chokepoint = cp;
-            propLayerId = pl;
             placeMask = placeMaskArr;
             goals = goalsArr;
             goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
@@ -106,12 +97,6 @@ namespace Wassup.Data.MapGrid
             int n = width * height;
             if (tiles != null && tiles.Length != n)
                 Debug.LogError($"[MapDocument] tiles.Length={tiles.Length} 가 width*height={n} 와 불일치", this);
-            if (mergeDegree != null && mergeDegree.Length != n)
-                Debug.LogError($"[MapDocument] mergeDegree.Length={mergeDegree.Length} != {n}", this);
-            if (chokepoint != null && chokepoint.Length != n)
-                Debug.LogError($"[MapDocument] chokepoint.Length={chokepoint.Length} != {n}", this);
-            if (propLayerId != null && propLayerId.Length != n)
-                Debug.LogError($"[MapDocument] propLayerId.Length={propLayerId.Length} != {n}", this);
             // placeMask: Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 로드하므로
             // length-0 = 부재 = 파생 폴백으로 유효. 길이 불일치만 에러.
             if (placeMask != null && placeMask.Length > 0 && placeMask.Length != n)

@@ -9,9 +9,6 @@ namespace Wassup.Data
     public struct GeneratedMap : IDisposable
     {
         public NativeArray<MapTileType> tiles;   // gridSize.x * gridSize.y
-        public NativeArray<byte>        mergeDegree;   // path 셀이 인접 path 와 만나는 수. path 외 = 0.
-        public NativeArray<byte>        chokepoint;    // 0/1. degree ≥ 3 인 path 셀만 1.
-        public NativeArray<byte>        propLayerId;   // 장식 풀 인덱스. 기본 0 (없음).
         public NativeArray<byte>        placeMask;     // 셀이 여는 PlacementLayer 비트(unit 0 의 0/1 → unit 4 층 비트필드). 배치 가능성의 정본 — tiles 종류와 직교.
         public int2                     gridSize;
         public NativeArray<int2>        spawns;  // 1~N
@@ -67,10 +64,7 @@ namespace Wassup.Data
             if (waypointCells.IsCreated)    waypointCells.Dispose();
             if (waypointRanges.IsCreated)   waypointRanges.Dispose();
             if (structures.IsCreated)       structures.Dispose();
-            if (mergeDegree.IsCreated) mergeDegree.Dispose();
-            if (chokepoint.IsCreated)  chokepoint.Dispose();
-            if (propLayerId.IsCreated) propLayerId.Dispose();
-            if (placeMask.IsCreated)   placeMask.Dispose();
+            if (placeMask.IsCreated)        placeMask.Dispose();
         }
     }
 }

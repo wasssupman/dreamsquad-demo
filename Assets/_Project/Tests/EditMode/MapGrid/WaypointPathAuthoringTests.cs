@@ -136,7 +136,6 @@ namespace Wassup.Tests.EditMode.MapGrid
             doc.SetFrom(
                 width, height,
                 FilledTiles(width, height, MapTileType.Walk),
-                new byte[count], new bool[count], new byte[count],
                 new[] { new Vector2Int(width - 1, 1) },
                 new[] { new Vector2Int(0, 1) },
                 seed: -1, version: 0);

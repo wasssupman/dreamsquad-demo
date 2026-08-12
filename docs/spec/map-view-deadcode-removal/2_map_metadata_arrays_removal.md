@@ -31,6 +31,16 @@
 
 ## 완료 기준
 
+> ✅ 검증 2026-08-12 — compile 0 errors. EditMode **2193 중 실패 0**.
+> **프로덕션 문서 왕복 검증**: 합성 픽스처로는 부족하다고 보고 임시 테스트를 넣어 **실제 MapDocument
+> 9장 전부**를 `ToGeneratedMap → WriteToDocument` 왕복시켜 width/height·tiles·goals·spawns·placeMask
+> 보존을 단언했다(2194 중 실패 0). 공성 문서(Test·SiegeTest)는 spawns 가 거점에서 파생돼 개수가
+> 바뀌는 것이 정상이라 그 축만 제외. 확인 후 임시 테스트 제거 — 프로덕션 콘텐츠에 의존하는
+> 테스트를 상설화하면 맵 추가 때마다 깨진다.
+> Play(BattleScene) 정상, 콘솔 error/warning 0. **맵 9장 `.asset` 무변경**(orphan 키 잔존, 재직렬화 없음),
+> `BattleScene.unity` 무변경.
+> 부수: `ToGeneratedMap` 이 `doc.MergeDegree[i]` 등을 무가드로 읽던 취약점도 함께 사라졌다.
+
 - Unity compile 0 errors.
 - EditMode 전체 green. `MapDocumentRoundTripTests` 가 남은 축(`tiles`/`placeMask`/`goals`/`spawns`/`seed`/`generatorVersion`)을 여전히 검증한다.
 - **맵 페인터 왕복 검증**: Map Painter 로 기존 맵 1장(예: `MapDocument_Coil`)을 Load → Bake → 다시 Load 했을 때 타일·마스크·spawns·goals·structures 가 동일하다.

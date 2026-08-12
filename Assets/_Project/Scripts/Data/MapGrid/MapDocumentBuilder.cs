@@ -13,9 +13,6 @@ namespace Wassup.Data.MapGrid
             int n = w * h;
 
             var tiles = new NativeArray<MapTileType>(n, allocator);
-            var mergeDegree = new NativeArray<byte>(n, allocator);
-            var chokepoint = new NativeArray<byte>(n, allocator);
-            var propLayerId = new NativeArray<byte>(n, allocator);
             var placeMask = new NativeArray<byte>(n, allocator);
 
             // placeMask: doc 저작본(길이 일치) 채택 + 0/1 정규화, 아니면 tiles==Place 파생.
@@ -26,9 +23,6 @@ namespace Wassup.Data.MapGrid
             for (int i = 0; i < n; i++)
             {
                 tiles[i] = doc.Tiles[i];
-                mergeDegree[i] = doc.MergeDegree[i];
-                chokepoint[i] = (byte)(doc.Chokepoint[i] ? 1 : 0);
-                propLayerId[i] = doc.PropLayerId[i];
                 placeMask[i] = hasAuthoredMask
                     ? PlacementLayers.Sanitize(docMask[i])
                     : PlacementLayers.Derive(doc.Tiles[i]);
@@ -129,9 +123,6 @@ namespace Wassup.Data.MapGrid
             return new GeneratedMap
             {
                 tiles = tiles,
-                mergeDegree = mergeDegree,
-                chokepoint = chokepoint,
-                propLayerId = propLayerId,
                 placeMask = placeMask,
                 gridSize = new int2(w, h),
                 spawns = spawns,
@@ -153,17 +144,11 @@ namespace Wassup.Data.MapGrid
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
-            var mergeDegree = new byte[n];
-            var chokepoint = new bool[n];
-            var propLayerId = new byte[n];
             var placeMask = new byte[n];
 
             for (int i = 0; i < n; i++)
             {
                 tiles[i] = map.tiles[i];
-                mergeDegree[i] = map.mergeDegree[i];
-                chokepoint[i] = map.chokepoint[i] != 0;
-                propLayerId[i] = map.propLayerId[i];
                 // 미생성 map(직접 구성) 은 파생으로 채워 내보냄 — 빌더 경유 map 은 항상 생성돼 있다.
                 placeMask[i] = map.placeMask.IsCreated
                     ? PlacementLayers.Sanitize(map.placeMask[i])
@@ -189,7 +174,7 @@ namespace Wassup.Data.MapGrid
 
             doc.SetFrom(
                 map.gridSize.x, map.gridSize.y,
-                tiles, mergeDegree, chokepoint, propLayerId,
+                tiles,
                 goals,
                 spawns,
                 map.seed, map.generatorVersion,
