@@ -22,6 +22,13 @@ namespace Wassup.Data
         [Tooltip("착지 후 전투 복귀까지 대기(초, Battle 시계 — 슬로모에 정직)")]
         public float redeploySeconds = 1.5f;
 
+        [Header("재정비 보상 (unit 8 소비)")]
+        // 코스트는 여기 없다 — 유닛 SO 의 cost 를 그대로 쓴다(값이 두 곳에 살면 갈린다).
+        [Range(0f, 1f)]
+        [Tooltip("재배치 활성화 시 최대 체력의 몇 배를 회복하는가 (0.5 = 절반). " +
+                 "1 로 올리면 완전 회복 — 싼 탱커가 사실상 불사가 되므로 밸런스 확인 후.")]
+        public float refitHealRatio = 0.5f;
+
         [Header("비행 (unit 3)")]
         [Tooltip("비행 기본 시간(초, Battle 시계)")]
         public float flightBaseSeconds = 0.35f;

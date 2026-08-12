@@ -263,7 +263,8 @@ namespace Wassup.UI
             bridge.FinishDefenderRelocation(to, entity);
             bridge.PulsePlacementHover(to, true); // 기존 착지 타일 팝 재사용
 
-            // 재전개 — Battle 시계 대기 후 활성화(on-place 는 가드 셋으로 미재발화).
+            // 재전개 — Battle 시계 대기 후 활성화. unit 8 부터 이 순간이 재정비의 보상 지점이다:
+            // 밀치기 + on-place 재발동 + 회복이 브리지 꼬리 하나에서 같이 일어난다.
             float wait = settings.redeploySeconds;
             while (wait > 0f)
             {
@@ -271,7 +272,7 @@ namespace Wassup.UI
                 wait -= TimeManager.Instance.DeltaTime(TimeDomain.Battle);
                 yield return null;
             }
-            bridge.ActivateDeployedDefender(to, entity);
+            bridge.ActivateRelocatedDefender(to, entity, settings.refitHealRatio);
             _activeFlightEntity = Entity.Null;
         }
 
@@ -293,7 +294,9 @@ namespace Wassup.UI
             bridge.ClearDefenderViewOverride(entity);
             if (!FlightBindingIntact(to, entity)) return;
             bridge.FinishDefenderRelocation(to, entity);
-            bridge.ActivateDeployedDefender(to, entity);
+            // 즉시형 완결도 같은 꼬리를 탄다 — 중단 경로라고 보상을 떼면 코스트만 낸 유닛이 생긴다.
+            // settings 는 이 컨트롤러의 필수 배선이지만 teardown 중 호출이라 방어적으로 읽는다.
+            bridge.ActivateRelocatedDefender(to, entity, settings != null ? settings.refitHealRatio : 0f);
             if (_activeFlightEntity == entity) _activeFlightEntity = Entity.Null;
         }
 

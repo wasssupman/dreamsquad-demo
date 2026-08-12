@@ -94,8 +94,9 @@ namespace Wassup.Tests.PlayMode
             float3 posAfterFinish = em.GetComponentData<LocalTransform>(entity).Position;
             Assert.Greater(math.distance(posBefore.xz, posAfterFinish.xz), 0.5f, "Finish moves sim position");
 
-            // Activate — 전투 복귀 (on-place 는 _onPlaceTriggeredEntities 가드로 재발화 없음)
-            bridge.ActivateDeployedDefender(to, entity);
+            // Activate — 전투 복귀. unit 8 부터 on-place 는 **재발화한다**(확정 프레임에 재무장).
+            // 효과 타일만 자기 가드로 1회에 남는다.
+            bridge.ActivateRelocatedDefender(to, entity, 0f);
             Assert.IsFalse(em.HasComponent<PendingDeployment>(entity), "PendingDeployment removed on activate");
 
             // 비워진 원 타일에 재배치 성공
@@ -174,6 +175,73 @@ namespace Wassup.Tests.PlayMode
             bridge.ActivateDeployedDefender(to, moved);
             for (int i = 0; i < 3; i++) yield return null;
             Assert.AreEqual(1.0f, SynergyMagnitude(em, entityA), 0.01f, "A recomputed at Activate (to-cell)");
+        }
+
+        // defender-relocation unit 8 — 대가와 보상. 재배치 1회에 코스트가 유닛 코스트만큼 줄고,
+        // 활성화 시점에 최대 체력 비율만큼 회복하며, on-place 가드가 재무장된다.
+        [UnityTest]
+        public IEnumerator Relocate_SpendsCost_AndHealsOnActivate()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var cat = FindCatalog();
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place unit");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var from = SoleCell(bridge);
+            var entity = EntityAt(bridge, em, from);
+
+            // 목적지 확보
+            Vector2Int to = default; bool foundTo = false;
+            for (int x = -24; x < 48 && !foundTo; x++)
+            for (int y = -24; y < 48 && !foundTo; y++)
+            {
+                var c = new Vector2Int(x, y);
+                if (c != from && bridge.CanRelocateDefender(from, c, out _)) { to = c; foundTo = true; }
+            }
+            Assert.IsTrue(foundTo, "a valid relocation target exists");
+
+            // 반피로 만든다 — 만피면 회복이 관측되지 않는다(클램프).
+            var health = em.GetComponentData<Health>(entity);
+            health.value = health.max * 0.25f;
+            em.SetComponentData(entity, health);
+            float hpBefore = health.value;
+            float maxHp = health.max;
+
+            // on-place 재무장 관측: 재배치 전에는 가드에 들어 있어 재발동이 거부된다.
+            Assert.IsFalse(bridge.TriggerDeploymentOnPlaceSkill(from, entity),
+                "on-place is guarded before relocation (exactly-once)");
+
+            float costBefore = gm.CostRuntime.Current;
+            Assert.IsTrue(bridge.TryBeginDefenderRelocation(from, to, out var moved, out _), "begin relocation");
+            Assert.AreEqual(entity, moved, "same entity (재배치는 유닛을 새로 만들지 않는다)");
+            Assert.AreEqual(costBefore - unit.cost, gm.CostRuntime.Current, 0.001f,
+                "확정 프레임에 배치 코스트 전액 차감 (계약 1 rev)");
+
+            bridge.FinishDefenderRelocation(to, moved);
+            bridge.ActivateRelocatedDefender(to, moved, 0.5f);
+            for (int i = 0; i < 3; i++) yield return null; // IncomingHeal 은 DamageApplicationSystem 이 배수
+
+            float hpAfter = em.GetComponentData<Health>(moved).value;
+            Assert.Greater(hpAfter, hpBefore, "활성화 시점에 회복이 들어간다 (계약 12)");
+            Assert.AreEqual(math.min(maxHp, hpBefore + maxHp * 0.5f), hpAfter, maxHp * 0.05f,
+                "회복량 = 최대 체력 × ratio (상한 클램프)");
+
+            // on-place 가 실제로 다시 돌았다는 증거: 활성화가 가드를 **다시** 채웠다.
+            // 재발동이 없었다면 가드가 빈 채라 이 호출이 true 를 냈을 것이다.
+            Assert.IsFalse(bridge.TriggerDeploymentOnPlaceSkill(to, moved),
+                "on-place re-fired at activation and re-armed the guard (계약 4 rev)");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────

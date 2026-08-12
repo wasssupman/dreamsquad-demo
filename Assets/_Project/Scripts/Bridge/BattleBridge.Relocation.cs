@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 using Wassup.Battle.Units;
+using Wassup.Core;   // unit 8 — GameManager.CostRuntime (재배치 코스트)
 using Wassup.Data;
 
 namespace Wassup.Bridge
@@ -77,12 +78,33 @@ namespace Wassup.Bridge
                 ? binding.data.EffectivePlacementLayers : PlacementLayer.Ground;
             reason = RelocationCheck(_generatedMap, _occupiedTiles,
                 new int2(from.x, from.y), new int2(to.x, to.y), has, busy, layers);
-            return reason == PlacementRejectReason.None;
+            if (reason != PlacementRejectReason.None) return false;
+
+            // unit 8 — 코스트는 **공간 판정 뒤**에 본다. 구조 사유가 자원 사유를 이긴다
+            // (defender-board-limit 계약 4 와 같은 순서: 기다려도 안 풀리는 사유가 먼저 보여야 한다).
+            if (!HasCostForRelocation(binding.data))
+            {
+                reason = PlacementRejectReason.InsufficientCost;
+                return false;
+            }
+            return true;
+        }
+
+        // unit 8 — 재배치 코스트 = 그 유닛의 배치 코스트 전액. 배율 노브를 두지 않는다(값이 두 곳에
+        // 살면 갈린다 — 튜닝이 필요해지면 그때 만든다). CostRuntime 부재(테스트 하네스)는 통과시킨다.
+        private bool HasCostForRelocation(DefenderUnitData data)
+        {
+            if (data == null) return true;
+            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            return costRuntime == null || costRuntime.CanAfford(data.cost);
         }
 
         // 확정 프레임 원자 처리 (spec README 계약 5): 점유·바인딩·DefenderTile 을 from→to 로
         // 스왑하고 PendingDeployment 를 재부착(비타겟·비무장·시너지 제외 — 계약 2).
-        // 코스트·on-place·컷신·PlacementCommitted 는 지나지 않는다(계약 1·4·8).
+        // 엔티티 스폰·컷신·PlacementCommitted 는 지나지 않는다(계약 8).
+        //
+        // unit 8 rev — 코스트는 **지난다**. 순서가 계약이다: 판정 → 차감 → 스왑.
+        // 차감 뒤에 실패로 빠지는 경로가 하나라도 생기면 코스트가 증발한다.
         public bool TryBeginDefenderRelocation(Vector2Int from, Vector2Int to, out Entity entity, out PlacementRejectReason reason)
         {
             entity = Entity.Null;
@@ -95,12 +117,27 @@ namespace Wassup.Bridge
             var binding = _defenderByTile[from];
             entity = binding.entity;
 
+            // unit 8 — 차감. CanRelocateDefender 가 이미 봤지만 TrySpend 가 원자 판정이라
+            // 그 사이 코스트를 쓴 다른 경로(각성 카드 등)가 있어도 초과 지출이 없다.
+            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (binding.data != null && costRuntime != null && !costRuntime.TrySpend(binding.data.cost))
+            {
+                reason = PlacementRejectReason.InsufficientCost;
+                Debug.Log($"[BattleBridge] Relocation rejected {from} -> {to}: {reason}");
+                entity = Entity.Null;
+                return false;
+            }
+
             _occupiedTiles.Remove(from);
             _occupiedTiles.Add(to);
             _defenderByTile.Remove(from);
             _defenderByTile[to] = binding;
             _em.SetComponentData(entity, new DefenderTile { cell = new int2(to.x, to.y) });
             _em.AddComponent<PendingDeployment>(entity);
+            // unit 8 — on-place 재무장(계약 4). 이 한 줄이 재발동의 전부다: 착지 후 활성화가 부르는
+            // TriggerDeploymentOnPlaceSkill 이 가드를 통과하게 된다. 효과 타일은 자기 가드를
+            // 따로 쓰므로 여기 딸려오지 않는다(ApplyEffectTileOnce).
+            _onPlaceTriggeredEntities.Remove(entity);
             // summon-patrol-defender unit 4 — 소환사가 옮겨가면 순찰병의 담당 구역도 따라간다.
             // unit 9 로 계약이 바뀌었다: 중심 = 새 소환사 셀, 집 = 그 **주변**의 통행 가능 칸.
             // 선정 실패(주변에 설 칸 없음)면 기존 값을 유지한다 — 순찰병을 죽이지 않는다.
@@ -197,8 +234,49 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // unit 8 — 재배치 활성화 꼬리. 재전개가 끝나 전투에 복귀하는 순간에 일어나는 세 가지를
+        // 한 곳에 묶는다: 밀치기 → 활성화(= on-place 재발동) → 회복. 한 사건으로 읽혀야 한다.
+        //
+        // 밀치기를 확정이 아니라 여기서 부르는 이유: 확정 시점엔 유닛이 아직 비행 중이라 **빈 칸을
+        // 민다**. 즉시 배치 경로(TriggerOnPlaceAndSynergy)가 on-place 와 밀치기를 한 묶음으로
+        // 부르는 것과 같은 모양이고, 드래그 배치만 확정 시점에 부른다.
+        //
+        // healRatio 는 인자로 받는다 — 노브는 컨트롤러(RelocationSettings)가 소유하고 브리지는
+        // 값만 쓴다(RelocationSettings 를 브리지가 직접 참조하면 씬에 두 번째 할당 지점이 생긴다).
+        public void ActivateRelocatedDefender(Vector2Int cell, Entity entity, float healRatio)
+        {
+            // ⚠ 바인딩 확인을 **맨 앞에서** 하고 통째로 물러난다. ActivateDeployedDefender 는
+            // 바인딩이 안 맞으면 조용히 리턴하므로, 순서대로 늘어놓기만 하면 활성화가 실패해도
+            // 회복만 들어가는 구멍이 생긴다.
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
+
+            if (binding.data != null) ApplyOnPlacePush(binding.data, cell);
+            ActivateDeployedDefender(cell, entity);
+            ApplyRefitHeal(entity, healRatio);
+        }
+
+        // unit 8 — 재정비 회복. Units 소유 버퍼에 브리지가 직접 append 하는 것은 DefenderTile 을
+        // 직접 쓰는 것과 같은 격이다(계약 9). 신규 채널 0 — 회복 숫자와 VFX 는 기존
+        // HealAppliedEventsSingleton 경로가 IncomingHeal 배수 시점에 알아서 낸다.
+        private void ApplyRefitHeal(Entity entity, float healRatio)
+        {
+            if (healRatio <= 0f) return;
+            if (!_em.HasComponent<Health>(entity)) return;
+            if (!_em.HasBuffer<Wassup.Battle.Units.IncomingHeal>(entity)) return;
+
+            var health = _em.GetComponentData<Health>(entity);
+            float amount = health.max * healRatio;
+            if (amount <= 0f) return;
+            // 상한 클램프는 DamageApplicationSystem 이 배수하며 수행한다 — 여기서 미리 자르지 않는다
+            // (자르면 그 프레임의 다른 피해와 순서가 얽혀 두 곳이 같은 규칙을 갖게 된다).
+            _em.GetBuffer<Wassup.Battle.Units.IncomingHeal>(entity)
+               .Add(new Wassup.Battle.Units.IncomingHeal { amount = amount });
+            Debug.Log($"[BattleBridge] Refit heal {amount:F0} to {entity.Index} (ratio {healRatio:F2}).");
+        }
+
         // 착지 프레임 — 시뮬 월드 위치를 목적 셀로 (스폰과 같은 y 규칙, 회전·스케일 유지).
-        // 활성화(ActivateDeployedDefender)는 재전개 대기 후 호출자가 수행한다(unit 3).
+        // 활성화(ActivateRelocatedDefender)는 재전개 대기 후 호출자가 수행한다(unit 3).
         public void FinishDefenderRelocation(Vector2Int to, Entity entity)
         {
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
@@ -238,7 +316,9 @@ namespace Wassup.Bridge
                 if (!CanRelocateDefender(from, to, out _)) continue;
                 if (!TryBeginDefenderRelocation(from, to, out var entity, out _)) return false;
                 FinishDefenderRelocation(to, entity);
-                ActivateDeployedDefender(to, entity);
+                // 회복 0 — 디버그 경로엔 RelocationSettings 가 없다. 비율을 여기 적으면
+                // 에셋과 갈리므로 명시적으로 안 준다(코스트·재발동은 라이브와 동일하게 지난다).
+                ActivateRelocatedDefender(to, entity, 0f);
                 return true;
             }
             Debug.LogWarning("[BattleBridge] Debug relocate: no valid target cell.");

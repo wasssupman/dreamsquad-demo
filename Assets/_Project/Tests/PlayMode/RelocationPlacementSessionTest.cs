@@ -106,7 +106,10 @@ namespace Wassup.Tests.PlayMode
             Step(controller, false, false, tgtScreen, 0.02f); // 릴리즈 = 커밋
             Assert.IsFalse(controller.InMoveMode, "commit exits move mode");
             Assert.AreEqual(1f, TimeManager.Instance.ScaleOf(TimeDomain.Battle), 0.001f, "slowmo released on commit");
-            Assert.AreEqual(costBefore, gm.CostRuntime.Current, 0.001f, "relocation costs no cost (계약 1)");
+            // 계약 1 rev (unit 8) — 재배치는 배치 코스트 전액을 낸다. 이 줄은 예전에
+            // "relocation costs no cost" 였다. 프레임이 지나지 않아 재생성이 끼지 않는다.
+            Assert.AreEqual(costBefore - unit.cost, gm.CostRuntime.Current, 0.001f,
+                "relocation spends the unit's placement cost (계약 1 rev)");
             Assert.AreEqual(target2, CellOf(bridge, em, mover), "binding at tap target (확정 프레임)");
             // unit 3 — 커밋 직후는 비행/재전개 중(비타겟·비무장), 활성화는 비동기.
             Assert.IsTrue(em.HasComponent<PendingDeployment>(mover), "pending during flight/redeploy (unit 3)");
