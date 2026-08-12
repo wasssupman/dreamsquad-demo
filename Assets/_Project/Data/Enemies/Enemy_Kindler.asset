@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   id: kindler
   displayName: Kindler
+  traversalLayers: 0
   enemyClass: 4
   minWaveNumber: 2
+  maxPerWave: 0
   attackMethod: 2
   targetMode: 2
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: 2
+  targetFactions: 13
   health: 45
   moveSpeed: 2
   attackRange: 4
@@ -51,7 +54,7 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
   idleAnimation: Walk
-  walkAnimation:
+  walkAnimation: 
   attackAnimation: Attack1
   deathAnimation: Die
   spineVisualScale: 1.3
@@ -110,4 +113,9 @@ MonoBehaviour:
   awakeningReward: 2
   nightmareMechanics: []
   killScore: 1
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []
