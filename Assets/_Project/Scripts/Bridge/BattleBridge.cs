@@ -130,7 +130,6 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
         [Header("Tilemap View Backend (tilemap-view-backend)")]
-        [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.TilemapRect;
         [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
         // three-minute-survival unit 1 — 안정도 바를 골 앵커에서 월드 Y 로 띄우는 양.
         // 구조물 메쉬가 셀 중심보다 높아서 바가 메쉬를 파고드는 것을 막는다. 씬 배선 불요
@@ -1152,7 +1151,7 @@ namespace Wassup.Bridge
                 // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
                 tilemapMapView.Initialize(_generatedMap, tileSize,
                     theme != null && theme.tileSet != null ? theme.tileSet : tileSet,
-                    boardViewMode, UseRealShadows);
+                    UseRealShadows);
             // sim origin 은 무조건 zero (README 계약).
             _boardOrigin = float3.zero;
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
@@ -1160,7 +1159,7 @@ namespace Wassup.Bridge
             // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정. grid 없으면(headless) skip —
             // BoardSpace 는 view 계층 전용이라 sim 빌드에 불필요하고, null 전달은 Configure 가 에러로 거부한다.
             if (tilemapMapView != null && tilemapMapView.Grid != null)
-                Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize, tilemapMapView.Grid);
+                Wassup.Core.BoardSpace.Configure(BoardOrigin, tileSize, tilemapMapView.Grid);
 
             // 카메라 포즈는 CameraDirector 가 매 프레임 절대값으로 소유한다 — 여기서 카메라를 직접
             // 쓰면 다음 LateUpdate 에 홈 포즈로 되돌려져 무효다. 맵 빌드 시점에 카메라를 만지는

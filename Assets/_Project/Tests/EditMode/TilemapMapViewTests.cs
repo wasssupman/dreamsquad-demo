@@ -23,12 +23,13 @@ namespace Wassup.Tests.EditMode
             if (_root != null) Object.DestroyImmediate(_root);
         }
 
-        private TilemapMapView CreateView(GridLayout.CellLayout layout, out Tilemap ground, Vector3 position)
+        // cellLayout/cellSize/회전은 설정하지 않는다 — Initialize→ConfigureGrid 가 소유한다.
+        // 여기서 미리 잡으면 "뷰가 정말 그리드를 구성하는가"를 테스트가 가려버린다.
+        private TilemapMapView CreateView(out Tilemap ground, Vector3 position)
         {
             _root = new GameObject("TilemapBoardTest");
             _root.transform.position = position;
             var grid = _root.AddComponent<Grid>();
-            grid.cellLayout = layout;
 
             ground = CreateTilemapChild("Ground");
             var overlay = CreateTilemapChild("Overlay");
@@ -79,38 +80,39 @@ namespace Wassup.Tests.EditMode
             return map;
         }
 
-        // --- 정합 고정: Tilemap.GetCellCenterWorld ≈ BoardSpace.ToView(셀 중심) (화면 평면) ---
+        // --- 정합 고정: Tilemap.GetCellCenterWorld == BoardSpace.ToView(셀 중심), 3축 전부 ---
 
         [Test]
-        public void TilemapRect_PaintPositions_MatchBoardSpace()
-            => AssertPaintMatchesBoardSpace(GridLayout.CellLayout.Rectangle, BoardViewMode.TilemapRect, 2f);
+        public void PaintPositions_MatchBoardSpace_TileSize2()
+            => AssertPaintMatchesBoardSpace(2f);
 
         [Test]
-        public void TilemapIso_PaintPositions_MatchBoardSpace()
-            => AssertPaintMatchesBoardSpace(GridLayout.CellLayout.Isometric, BoardViewMode.TilemapIso, 1f);
+        public void PaintPositions_MatchBoardSpace_TileSize1()
+            => AssertPaintMatchesBoardSpace(1f);
 
-        private void AssertPaintMatchesBoardSpace(GridLayout.CellLayout layout, BoardViewMode mode, float tileSize)
+        private void AssertPaintMatchesBoardSpace(float tileSize)
         {
             var simOrigin = new float3(2f, 0f, -3f);
-            var view = CreateView(layout, out var ground, new Vector3(0.7f, -0.2f, 0f));
+            var view = CreateView(out var ground, new Vector3(0.7f, -0.2f, 0f));
             var tileSet = ScriptableObject.CreateInstance<TileSetData>();
-            tileSet.isoCellSize = new Vector3(1f, 0.5f, 1f);
 
             var map = BuildMap(5, 4);
             try
             {
-                // Initialize 가 Grid cellLayout/cellSize 를 모드에 맞춰 설정한다 (정합의 출발점).
-                view.Initialize(map, tileSize, tileSet, mode);
-                BoardSpace.Configure(mode, simOrigin, tileSize, view.Grid);
+                // Initialize 가 Grid cellLayout/cellSize/회전을 설정한다 (정합의 출발점).
+                view.Initialize(map, tileSize, tileSet);
+                BoardSpace.Configure(simOrigin, tileSize, view.Grid);
 
                 foreach (var cell in new[] { new int2(0, 0), new int2(1, 0), new int2(0, 1), new int2(4, 3), new int2(2, 1) })
                 {
                     float3 simCenter = GridMath.CellToWorldCenter(cell, tileSize, simOrigin.y, simOrigin);
                     float3 viewCenter = BoardSpace.ToView(simCenter);
                     float3 tileCenter = ground.GetCellCenterWorld(new Vector3Int(cell.x, cell.y, 0));
-                    // 정합은 화면 평면(XY). Z(깊이/sorting) 는 의도적으로 다르다 (BoardSpaceTests 와 동일 규약).
-                    Assert.Less(math.distance(tileCenter.xy, viewCenter.xy), 1e-3f,
-                        $"cell {cell} ({layout}): tilemap {tileCenter}, boardspace {viewCenter}");
+                    // **3축 전부** 일치해야 한다. Tilemap 의 tileAnchor z 를 0 으로 두는 것이
+                    // ConfigureGrid 의 계약이라(z 오프셋 없음), 화면 평면만 비교하면 누군가
+                    // anchor 를 (0.5,0.5,0.5) 로 바꿔도 초록으로 통과해 보드가 조용히 어긋난다.
+                    Assert.Less(math.distance(tileCenter, viewCenter), 1e-3f,
+                        $"cell {cell} (tileSize {tileSize}): tilemap {tileCenter}, boardspace {viewCenter}");
                 }
             }
             finally
@@ -125,7 +127,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void ClearThenInitialize_Twice_LeavesNoStaleTiles()
         {
-            var view = CreateView(GridLayout.CellLayout.Rectangle, out var ground, Vector3.zero);
+            var view = CreateView(out var ground, Vector3.zero);
             var tileSet = ScriptableObject.CreateInstance<TileSetData>();
             var tile = ScriptableObject.CreateInstance<Tile>();
             tileSet.walkTile = tile;
@@ -136,13 +138,13 @@ namespace Wassup.Tests.EditMode
             var map = BuildMap(4, 4); // 전 셀 Walk(0) → walkTile 페인트
             try
             {
-                view.Initialize(map, 1f, tileSet, BoardViewMode.TilemapRect);
+                view.Initialize(map, 1f, tileSet);
                 Assert.AreEqual(16, CountPaintedCells(ground, 4, 4), "첫 페인트 후 16셀");
 
                 view.Clear();
                 Assert.AreEqual(0, CountPaintedCells(ground, 4, 4), "Clear 후 잔상 0");
 
-                view.Initialize(map, 1f, tileSet, BoardViewMode.TilemapRect);
+                view.Initialize(map, 1f, tileSet);
                 Assert.AreEqual(16, CountPaintedCells(ground, 4, 4), "재진입 페인트 후 16셀");
 
                 view.Clear();
@@ -159,7 +161,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void StructureVisualAnchors_UseRendererCenter_AndResetToCellFallback()
         {
-            var view = CreateView(GridLayout.CellLayout.Rectangle, out _, Vector3.zero);
+            var view = CreateView(out _, Vector3.zero);
             var tileSet = ScriptableObject.CreateInstance<TileSetData>();
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
             var prop = ScriptableObject.CreateInstance<PropData>();
@@ -177,7 +179,7 @@ namespace Wassup.Tests.EditMode
             var map = BuildMap(4, 4);
             try
             {
-                view.Initialize(map, 1f, tileSet, BoardViewMode.TilemapRect);
+                view.Initialize(map, 1f, tileSet);
                 Assert.That(view.TryGetGoalVisualAnchor(out var fallbackGoal), Is.True);
                 Assert.That(Vector3.Distance(fallbackGoal,
                     view.CellCenterToWorld(map.goal.x, map.goal.y)), Is.LessThan(1e-4f));

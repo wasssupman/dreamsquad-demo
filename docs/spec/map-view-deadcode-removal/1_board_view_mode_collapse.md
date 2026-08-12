@@ -33,6 +33,15 @@ isometric 은 폐기됐다(2026-08-12 사용자 결정). `BoardViewMode` 는 값
 
 ## 완료 기준
 
+> ✅ 검증 2026-08-12 — compile 0 errors. EditMode **2193 중 실패 0**(2192→2193: iso 3개 제거, 대체 4개 추가).
+> **변이 검증 통과**: `BoardSpace.ToView` 를 grid 위임 없이 rect 수식으로 하드코딩하자 **7개**가 빨개졌고
+> 신규 회전 테스트 3개가 전부 포함됐다(`RotatedNonUniformGrid_RoundTrip` / `_SimCellCenter` /
+> `RotatedGrid_AxisDirections`). 되돌린 뒤 재실행 green — 대체 테스트가 헛돌지 않음을 확인.
+> 셀 중심 비교는 **grid 로컬 공간**으로 바꿨다(월드 XY 비교는 그리드가 회전하면 거짓 실패한다).
+> 페인트 정합은 **3축 전부**로 강화 — `tileAnchor.z=0` 계약이 깨져도 XY 비교는 통과해 버린다.
+> Play(BattleScene) 정상, 보드/프레이밍 unit 0 스크린샷과 동일, 콘솔 error/warning 0.
+> `BattleScene.unity` 무변경(`boardViewMode: 1` 은 orphan 키로 잔존).
+
 - Unity compile 0 errors.
 - EditMode 전체 green. **iso 테스트를 대체한 신규 테스트가 실제로 존재하고 통과**한다 (삭제만 하고 끝내지 않았음을 확인).
 - 대체 테스트가 유효한지 확인: `BoardSpace` 에 rect 수식을 하드코딩하도록 일부러 고치면 그 테스트가 **빨개져야** 한다. 확인 후 되돌린다.

@@ -147,15 +147,15 @@ namespace Wassup.Core
         // 결의 프레젠테이션 상수 — 색 자체는 TileSetData 가 소유하고 여기선 명도만 민다.
         private const float AimArrowLighten = 0.72f;
 
-        // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 모드에 맞춰 설정한 뒤
+        // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
-        public void Initialize(in GeneratedMap map, float tileSize, TileSetData tileSet, BoardViewMode mode,
+        public void Initialize(in GeneratedMap map, float tileSize, TileSetData tileSet,
             bool realShadows = false)
         {
             Clear();
             _gridSize = map.IsCreated ? map.gridSize : default;
             _tileSet = tileSet;
-            ConfigureGrid(tileSize, tileSet, mode, realShadows);
+            ConfigureGrid(tileSize, realShadows);
             PaintGround(in map);
             PaintMarkers(in map);
             CenterBoardAtWorldOrigin(in map);
@@ -170,7 +170,7 @@ namespace Wassup.Core
         private void CenterBoardAtWorldOrigin(in GeneratedMap map)
         {
             if (grid == null || !map.IsCreated) return;
-            // 보드 양 끝 셀의 월드 코너 중점 = 현재 보드 중심(rect/iso 모두 affine 이라 동일).
+            // 보드 양 끝 셀의 월드 코너 중점 = 현재 보드 중심(셀↔월드가 affine 이라 성립).
             Vector3 min = grid.CellToWorld(new Vector3Int(0, 0, 0));
             Vector3 max = grid.CellToWorld(new Vector3Int(map.gridSize.x, map.gridSize.y, 0));
             Vector3 center = (min + max) * 0.5f;
@@ -223,19 +223,11 @@ namespace Wassup.Core
             }
         }
 
-        private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
+        private void ConfigureGrid(float tileSize, bool realShadows)
         {
             if (grid == null) return;
-            if (mode == BoardViewMode.TilemapIso)
-            {
-                grid.cellLayout = GridLayout.CellLayout.Isometric;
-                grid.cellSize = tileSet != null ? tileSet.isoCellSize : new Vector3(1f, 0.5f, 1f);
-            }
-            else // TilemapRect
-            {
-                grid.cellLayout = GridLayout.CellLayout.Rectangle;
-                grid.cellSize = new Vector3(tileSize, tileSize, 1f);
-            }
+            grid.cellLayout = GridLayout.CellLayout.Rectangle;
+            grid.cellSize = new Vector3(tileSize, tileSize, 1f);
 
             // tilted-billboard — 타일맵을 XZ 바닥에 눕힌다(퍼스펙티브 3D 룩). grid 로컬 XY → 월드 XZ.
             // BoardSpace.ToView/ToSim/RaycastPlane 가 모두 grid 기준이라 회전을 자동 추종한다.
@@ -269,9 +261,9 @@ namespace Wassup.Core
         // camera-direction unit 8 — 플레이 그리드(경로·배치 셀)의 월드 bounds.
         // TryGetBoardWorldBounds 는 ground 렌더러 실측이라 주변 데코 지대까지 포함한다
         // (20×12 맵이 35×32 로 잡힌다) — 카메라 프레이밍은 플레이 영역만 담아야 하므로
-        // 여기서는 grid 셀 좌표로 직접 범위를 만든다. iso 마름모는 대각선 양 끝만으로는
-        // 좌우 극단을 놓치므로 4코너를 모두 감싼다. 높이는 0(평면) — 유닛이 솟는 만큼은
-        // fit margin 이 흡수한다.
+        // 여기서는 grid 셀 좌표로 직접 범위를 만든다. **4코너를 모두 감싼다** — grid 는 회전해
+        // 있어서(XZ 바닥 90°X) 마주보는 두 코너만으로는 월드 AABB 의 극단을 놓친다.
+        // 높이는 0(평면) — 유닛이 솟는 만큼은 fit margin 이 흡수한다.
         public bool TryGetPlayfieldWorldBounds(Vector2Int gridSize, out Bounds bounds)
         {
             bounds = default;
@@ -283,7 +275,7 @@ namespace Wassup.Core
             return true;
         }
 
-        // unit 1 — 페인트된 ground 영역의 월드 bounds (카메라 프레이밍용; iso 마름모도 실측).
+        // unit 1 — 페인트된 ground 영역의 월드 bounds (렌더러 실측 — 외곽 링/데코 지대 포함).
         public bool TryGetBoardWorldBounds(out Bounds bounds)
         {
             bounds = default;
