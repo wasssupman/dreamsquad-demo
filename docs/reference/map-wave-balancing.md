@@ -12,6 +12,7 @@
 | **어떤 맵이 등장하나** (맵 추가/제거) | `Assets/_Project/Data/Maps/MapDocumentPool.asset` | `entries` (맵+덱 쌍) |
 | **맵 지형** (경로·스폰·골·배치칸) | `Window/Wassup/Map Painter` 또는 execute_code | MapDocument (tiles/spawns/goals) |
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
+| **웨이브의 «성격»** (편성 컨셉) | `Assets/_Project/Data/WaveConcepts/Concept_*.asset` | 아래 §웨이브 컨셉 블록 |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
 | **특정 몬스터를 초반 웨이브에서 제외** | `Enemy_*.asset` (AttackUnitData) | `minWaveNumber` (기본 1=제한없음, Runner=2) |
 | **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
@@ -27,14 +28,16 @@
 
 | 맵 asset | 덱 | waveSeed |
 |---|---|---|
-| MapDocument_Serpent | Deck_Serpent | 20260801 |
-| MapDocument_Coil | Deck_Coil | 20260802 |
-| MapDocument_Twin | Deck_Twin | 20260803 |
-| MapDocument_Spiral | Deck_Spiral | 20260804 |
-| MapDocument_Zig | Deck_Zig | 20260805 |
-| MapDocument_Hook | Deck_Hook | 20260806 |
+| MapDocument_Serpent | Deck_Serpent | 20260821 | Boss_Nightmare |
+| MapDocument_Coil | Deck_Coil | 20260822 | Boss_Nightmare |
+| MapDocument_Twin | Deck_Twin | 20260823 | Boss_Jjangssen |
+| MapDocument_Spiral | Deck_Spiral | 20260824 | Boss_Jjangssen |
+| MapDocument_Zig | Deck_Zig | 20260825 | Boss_Mamemo |
+| MapDocument_Hook | Deck_Hook | 20260826 | Boss_Mamemo |
 
-- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless`(waveSeed 20260807)는 풀 밖 — `BattleBridge.endlessEncounter` 슬롯이 들고 있다.
+(4번째 열 = 그 맵의 보스. 판당 보스가 1기라 덱마다 **1종을 저작**한다 — 시드 뽑기로는 어차피 맵마다 고정되고 «어느 맵이 어느 보스를 받나»만 시드에 맡겨진다. `wave-concept-blocks` unit 3.)
+
+- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless`(waveSeed 20260827, 보스 로테이션 3종 유지)는 풀 밖 — `BattleBridge.endlessEncounter` 슬롯이 들고 있다.
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
 - 맵 추가 = 풀 `entries` 에 (새 MapDocument, 새 Deck) 한 쌍 추가. **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.
@@ -53,9 +56,10 @@
 | **웨이브마다 수량 평탄** | `unitGrowthPerWave = 1` | (성장 없음) |
 | 웨이브 개수 | `minWaveCount` / `maxWaveCount` | 100 / 100 (**명목** — 아래 참조) |
 | 웨이브 간 상한 간격 | `maxWaveIntervalSec` | 20 |
-| 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | 9종 |
-| 보스 | `bossUnit` · `bossWaveInterval` · `bossEscortMin`/`Max` | Nightmare · 5마다 · 3~4 |
-| 스폰 템포 | `intraWaveSpacingSec` | 1s |
+| 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | **12종**(비행 Skimmer 포함) |
+| 보스 | `bossPool`(덱당 1종) · `bossWaveInterval` · `bossEscortMin`/`Max` | 맵별 1종 · **9마다** · 3~4 |
+| 스폰 템포 | `intraWaveSpacingSec` | **0.5s** |
+| **웨이브 컨셉** | `waveConceptPool` · `conceptHoldWaves` | 5종 · 3웨이브 |
 | **웨이브 시작 → 첫 적 유예** | `waveSpawnLeadInSec` | 2s |
 | 골 안정도 최대치(패배 조건) | `goalStabilityMax` | 20 |
 | 스트레스 한계(계약 카드 지불 대상, **패배와 무관**) | `defeatGoalReachedCount` | 10 |
@@ -88,6 +92,37 @@ floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이
 작성 플랜(`WavePlanAsset`)에는 적용되지 않는다 — 그룹 상대 시각으로 직접 표현한다.
 
 **완전 수제 웨이브**: `useGeneratedWaves=false` + `spawns` 리스트에 (시각, 유닛, 수) 직접 authoring → 생성기 안 씀.
+
+---
+
+## 웨이브 컨셉 블록 (wave-concept-blocks)
+
+**3웨이브마다 편성의 «성격»이 바뀐다.** 컨셉은 웨이브가 아니라 **블록**의 속성이고, 블록 안에서 컨셉과 lane 배정이 고정되고 수량만 곡선을 따라 오른다(배우고 → 대응하고 → 겨우 버티고).
+
+| 컨셉 | 성질 · 위상 | countMul | 게이트 | weight |
+|---|---|---|---|---|
+| 평소 | 무필터 2종 · 전 lane 분산 | 1.0 | 1 | 0.6 |
+| 벌떼 | Runner · 한 lane 집중 | 1.3 | 4 | 1.0 |
+| 중장 | Tanker **단일 슬롯** · 한 lane | 0.4 | 4 | 1.0 |
+| 원거리 | Shooter · **협공(두 lane)** | 0.7 | 7 | 1.0 |
+| 공습 | Air · 한 lane | 0.3 | 4 | 0.6 |
+
+**바꾸고 싶을 때 만지는 곳은 이 표 하나다** — `Assets/_Project/Data/WaveConcepts/Concept_*.asset`. `countMul`·`weight` 는 실측으로 조정할 초기값이다.
+
+규칙 몇 개는 코드가 아니라 **데이터가 소유**한다:
+
+- **블록 0(웨이브 1~3)이 「평소」인 것은 게이트로 성립한다** — 「평소」만 `minWaveNumber 1`, 나머지는 4 이상. `i < 3` 같은 분기는 코드에 없다.
+- **같은 컨셉이 두 블록 연속으로 안 나온다**(직전 배제). 풀에 컨셉이 1개뿐이면 배제를 풀어 fail-open.
+- **`countMul` 이 필요한 이유**: 곡선은 **개체 수**를 내므로 성질을 통일하면 난이도가 성질에 끌려간다(Runner 20hp × 19 = 380 vs Tanker 100hp × 19 = 1,900 — 5배).
+- **비행은 「공습」에서만 나온다.** 성질 컨셉은 전부 `altitude = Ground` 를 명시한다 — 고도와 성질은 직교하므로(Shooter 이면서 비행인 적이 있다) 명시하지 않으면 지상 컨셉에 대공 없이 못 잡는 적이 섞인다.
+- **뭉침은 저작으로 만든다.** 스폰 시 속도를 덮어쓰지 않고(코어 로직 불침범), 슬롯의 `classFilter` 가 속도 폭이 좁은 후보만 남기게 저작한다(Tanker 1종 = 1.5 단일, Air 1종 = 2.5 단일, Runner 2종 = 4.5·5.6).
+- **컨셉 풀을 비우면 현행 동작(랜덤 2종·전 lane 분산)으로 폴백**한다 — rng 소비 순서까지 동일한 무회귀 경로다.
+
+lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다(같은 값 = 같은 lane, `-1` = 무지정). 실제 인덱스는 `waveSeed` 가 고르므로 한 컨셉 풀이 스폰 2~4개인 6맵에 그대로 쓰이고, 같은 「원거리」가 맵마다 다른 복도 쌍이 된다.
+
+⚠ **`laneCount`(맵 스폰 수)는 결정론 키의 일부다.** lane 요구량 게이트가 후보 집합을 바꾸므로 스폰 수가 다른 맵은 컨셉·유닛·수량까지 달라진다. 브리핑과 런타임이 같은 값을 넘겨야 예고와 실스폰이 일치한다.
+
+설계 이력·기각 목록은 `docs/spec/wave-concept-blocks/`.
 
 ---
 
