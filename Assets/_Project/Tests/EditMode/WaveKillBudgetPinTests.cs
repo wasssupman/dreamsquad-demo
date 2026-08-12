@@ -24,8 +24,9 @@ namespace Wassup.Tests.EditMode
             return deck;
         }
 
-        private static bool IsBoss(AttackUnitData u)
-            => u != null && u.nightmareMechanics != null && u.nightmareMechanics.Length > 0;
+        // elite-enemy-tier unit 0 — 판별 기준이 「메커닉 유무」에서 **티어**로 바뀌었다.
+        // 옛 술어를 두면 특수 메커닉을 가진 엘리트가 보스로 집계된다.
+        private static bool IsBoss(AttackUnitData u) => u != null && u.tier == EnemyTier.Boss;
 
         // waveSeed 가 비0 = 고정 오버라이드 → 모든 플레이어가 같은 스케줄을 받는다
         // (BattleBridge.cs:1543). 0 이 되면 매판 랜덤이라 같은 점수라도 난이도가 달라져

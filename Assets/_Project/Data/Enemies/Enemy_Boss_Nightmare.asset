@@ -142,3 +142,4 @@ MonoBehaviour:
   waypointPathIndex: -1
   flightLift: 0
   idleVariants: []
+  tier: 2

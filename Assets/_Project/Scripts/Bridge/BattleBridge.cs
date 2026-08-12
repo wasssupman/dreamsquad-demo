@@ -7557,23 +7557,33 @@ namespace Wassup.Bridge
             return material;
         }
 
-        // nightmare-catcher unit 5 — boss spawn bake (병렬 경로): nightmareMechanics
-        // 를 선언한 적이 곧 보스. BossTag + ThreatEntry(위협 테이블, unit 1) +
-        // DcTriggerSlot 을 부착한다. defender 부착 API(ApplyDreamcatcherCardToUnit —
-        // defender 가드 + 손패 회수 레지스트리)는 의도적으로 미사용: 보스 슬롯은
+        // nightmare-catcher unit 5 — 특수 메커닉 bake (병렬 경로): nightmareMechanics 를 선언한
+        // 적에게 DcTriggerSlot 을 부착한다. defender 부착 API(ApplyDreamcatcherCardToUnit —
+        // defender 가드 + 손패 회수 레지스트리)는 의도적으로 미사용: 이 슬롯은
         // 손패 순환과 무관하고, teardown 은 AttackUnitTag 적 경로 상속(신규 0).
+        //
+        // elite-enemy-tier unit 0 — ★**메커닉 bake 와 보스 부속물이 갈렸다.** 그 앞까지는
+        // 「mechanics 가 비어있지 않다 = 보스」였고, 그래서 특수 메커닉을 준 엘리트가 자동으로
+        // BossTag 를 얻어 CC·어그로 면역까지 딸려왔다(면역 술어들이 전부 BossTag 를 탄다).
+        // 이제 보스 부속물은 `tier == Boss` 만 받고, 슬롯은 티어 무관으로 붙는다.
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
         {
             var mechanics = unitType.nightmareMechanics;
             if (mechanics == null || mechanics.Length == 0) return;
 
-            _em.AddComponent<BossTag>(entity);
-            // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 경보를 구동해
-            // SpawnUnit 재판정(로직 이중화·이중 발화)을 피한다. 재진입 코얼레스는 뷰가 담당.
-            _bossWarning?.Show();
-            // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
-            // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
-            _em.AddBuffer<ThreatEntry>(entity);
+            // ⚠ 보스 부속물은 **아래 AddBuffer<DcTriggerSlot> 보다 앞**이어야 한다 — 그 핸들은
+            // 「마지막 AddBuffer」라는 전제로 루프까지 캐시된다(아래 주석). 여기에 구조 변경을
+            // 추가할 때도 이 순서를 지킬 것.
+            if (unitType.tier == Wassup.Data.EnemyTier.Boss)
+            {
+                _em.AddComponent<BossTag>(entity);
+                // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 경보를 구동해
+                // SpawnUnit 재판정(로직 이중화·이중 발화)을 피한다. 재진입 코얼레스는 뷰가 담당.
+                _bossWarning?.Show();
+                // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
+                // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
+                _em.AddBuffer<ThreatEntry>(entity);
+            }
 
             // projectile-emission-pattern unit 3 — 패턴 버퍼는 **slots 획득 전에** 붙인다.
             // AddBuffer 는 구조 변경이라 이미 잡아둔 DynamicBuffer 핸들을 무효화한다 —

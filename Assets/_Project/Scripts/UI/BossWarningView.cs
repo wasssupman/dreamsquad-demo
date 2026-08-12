@@ -8,7 +8,9 @@ using Wassup.UI.Layout;
 namespace Wassup.UI
 {
     // boss-wave-cadence unit 1 — "꿈결 위기!!" 보스 등장 경보 배너. Show() 한 번으로
-    // 슬램인 → 홀드 → 페이드. BattleBridge 가 보스 스폰 순간(nightmareMechanics 감지) 호출한다.
+    // 슬램인 → 홀드 → 페이드. BattleBridge 가 보스 스폰 순간 호출한다 — 판별 기준은
+    // `AttackUnitData.tier == Boss` 다(elite-enemy-tier unit 0. 그 앞까지는 메커닉 유무였고,
+    // 그래서 특수 메커닉을 가진 엘리트가 등장할 때도 경보가 떴을 것이다).
     // 스타일 언어는 ScoreHudView 차용(런타임 절차 UI + Kanit SDF + PrimeTween), 팔레트만 위기 크림슨.
     public class BossWarningView : MonoBehaviour
     {

@@ -1,0 +1,172 @@
+using System.Reflection;
+using NUnit.Framework;
+using Unity.Entities;
+using UnityEditor;
+using UnityEngine;
+using Wassup.Battle.Combat;
+using Wassup.Bridge;
+using Wassup.Data;
+
+namespace Wassup.Tests.EditMode
+{
+    // elite-enemy-tier unit 0 — 이 spec 의 토대 계약: **특수 메커닉을 가진 «보스가 아닌 적»** 이
+    // 성립하는가.
+    //
+    // 그 앞까지 `BakeNightmareMechanics` 는 「mechanics 가 비어있지 않다 = 보스」로 보고
+    // BossTag·ThreatEntry·등장경보를 붙였다. BossTag 는 CC 면역(CcApplySystem·EffectSpawner)·
+    // 어그로 면역(AggroStateSystem)·이동 분기(MovementSystem)·cleave 예외(AttackSystem)의 게이트라,
+    // 엘리트에게 메커닉 하나를 주는 순간 그 전부가 딸려왔다.
+    //
+    // **bake 를 순수 함수로 추출해 테스트하지 않는다** — 걸리는 것은 EntityManager 를 만지는
+    // 쪽뿐이므로 추출하면 한 번도 깨진 적 없는 절반에 초록불이 켜진다. reflection 으로 진짜
+    // 메서드를 부르는 것이 요점이다(PatternBakeTests 와 같은 레시피·같은 fixture 근거).
+    public class EnemyTierBakeTests
+    {
+        private World _world;
+        private GameObject _go;
+        private BattleBridge _bridge;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _world = new World("EnemyTierBakeTests");
+            _go = new GameObject("BattleBridge_EnemyTierBake");
+            // inactive 상태에서 붙여 Awake/씬 의존 validation 을 실행하지 않는다.
+            _go.SetActive(false);
+            _bridge = _go.AddComponent<BattleBridge>();
+            SetField(_bridge, "_world", _world);
+            SetField(_bridge, "_em", _world.EntityManager);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_go != null) Object.DestroyImmediate(_go);
+            _world?.Dispose();
+        }
+
+        private static void SetField(object target, string name, object value)
+        {
+            var f = target.GetType().GetField(name,
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, $"{name} 필드를 찾지 못했다(이름 변경?)");
+            f.SetValue(target, value);
+        }
+
+        private void InvokeBake(Entity entity, AttackUnitData unitType)
+        {
+            var mi = typeof(BattleBridge).GetMethod("BakeNightmareMechanics",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(mi, "BakeNightmareMechanics 를 찾지 못했다(이름 변경?)");
+            mi.Invoke(_bridge, new object[] { entity, unitType });
+        }
+
+        // 티어와 무관하게 arm 이 열려 있는 트리거(PeriodicTimer)로 만든다 —
+        // 화이트리스트에 막혀 슬롯이 안 생기면 이 테스트가 티어를 검증하지 못한다.
+        private static AttackUnitData MakeUnit(EnemyTier tier)
+        {
+            var u = ScriptableObject.CreateInstance<AttackUnitData>();
+            u.displayName = $"TestUnit_{tier}";
+            u.health = 100f;
+            u.tier = tier;
+            u.nightmareMechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.PeriodicTimer, periodSeconds = 1f },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.AllyMoveSpeedAura,
+                        magnitude = 20f, duration = 1.5f, tileRange = 3,
+                    },
+                },
+            };
+            return u;
+        }
+
+        [Test]
+        public void EliteWithMechanic_GetsSlot_ButNoBossAttachments()
+        {
+            var em = _world.EntityManager;
+            var e = em.CreateEntity();
+            var unitType = MakeUnit(EnemyTier.Elite);
+
+            InvokeBake(e, unitType);
+
+            Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(e),
+                "엘리트도 메커닉 슬롯은 받아야 한다 — 못 받으면 특수 능력이 아예 안 돈다");
+            Assert.AreEqual(1, em.GetBuffer<DcTriggerSlot>(e).Length);
+
+            Assert.IsFalse(em.HasComponent<BossTag>(e),
+                "엘리트에 BossTag 가 붙었다 — CC·어그로 면역이 딸려온다(이 spec 의 핵심 계약 위반)");
+            Assert.IsFalse(em.HasBuffer<ThreatEntry>(e),
+                "위협 테이블은 보스 전용 부속물이다");
+
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void BossWithMechanic_GetsSlotAndBossAttachments()
+        {
+            var em = _world.EntityManager;
+            var e = em.CreateEntity();
+            var unitType = MakeUnit(EnemyTier.Boss);
+
+            InvokeBake(e, unitType);
+
+            Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(e));
+            Assert.IsTrue(em.HasComponent<BossTag>(e), "보스는 BossTag 를 받아야 한다(무회귀)");
+            Assert.IsTrue(em.HasBuffer<ThreatEntry>(e), "위협 테이블은 보스와 항상 동행한다");
+
+            Object.DestroyImmediate(unitType);
+        }
+
+        // 폴백 검증 — 저작 누락(Normal)이 조용히 보스가 되지 않는다. 기존 적 14종이 이 경로다.
+        [Test]
+        public void NormalWithMechanic_GetsSlotOnly()
+        {
+            var em = _world.EntityManager;
+            var e = em.CreateEntity();
+            var unitType = MakeUnit(EnemyTier.Normal);
+
+            InvokeBake(e, unitType);
+
+            Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(e));
+            Assert.IsFalse(em.HasComponent<BossTag>(e));
+
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void NoMechanics_AttachesNothing()
+        {
+            var em = _world.EntityManager;
+            var e = em.CreateEntity();
+            var unitType = ScriptableObject.CreateInstance<AttackUnitData>();
+            unitType.displayName = "TestPlainEnemy";
+
+            InvokeBake(e, unitType);
+
+            Assert.IsFalse(em.HasBuffer<DcTriggerSlot>(e));
+            Assert.IsFalse(em.HasComponent<BossTag>(e));
+
+            Object.DestroyImmediate(unitType);
+        }
+
+        // 마이그레이션 pin — 라이브 보스 3종이 tier=Boss 를 잃으면 «보스가 잡몹처럼 굴고
+        // 경보도 안 뜨는» 형태로 조용히 회귀한다. 에셋 저작 실수를 여기서 잡는다.
+        [TestCase("Assets/_Project/Data/Enemies/Enemy_Boss_Nightmare.asset")]
+        [TestCase("Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset")]
+        [TestCase("Assets/_Project/Data/Enemies/Enemy_Boss_Mamemo.asset")]
+        public void LiveBossAssets_AreTaggedBoss(string path)
+        {
+            var unit = AssetDatabase.LoadAssetAtPath<AttackUnitData>(path);
+            Assert.IsNotNull(unit, $"에셋을 찾지 못했다: {path}");
+            Assert.AreEqual(EnemyTier.Boss, unit.tier,
+                $"{unit.displayName}: tier 가 Boss 가 아니다 — BossTag 가 안 붙어 CC·어그로 면역과 " +
+                "등장경보가 통째로 사라진다");
+            Assert.IsTrue(unit.nightmareMechanics != null && unit.nightmareMechanics.Length > 0,
+                $"{unit.displayName}: 보스인데 메커닉이 없다");
+        }
+    }
+}
