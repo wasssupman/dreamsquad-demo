@@ -50,8 +50,22 @@ public void ShowPlacementHighlight(DefenderUnitData unit, Vector2Int? extraCell 
 // RepaintPlacementHighlight 가 스캔 뒤 extraCell 을 더한다(점유라 스캔에서 빠지므로).
 ```
 
-**남는 취소 경로**: 보드 밖 릴리즈(`TryScreenToCell` 실패) · 타임아웃 8초 · 대상 사망 ·
-트레이 세션 충돌. 밝은 영역 밖이 전부 취소라는 것이 하이라이트로 읽힌다.
+**취소 경로 — `TryScreenToCellStrict` 로 바꿔야 실제로 성립한다.** 구현하며 드러난 사실:
+관대한 `TryScreenToCell` 은 보드 밖을 **가장자리 셀로 clamp 해서 true 를 준다**. 그래서 예전의
+"보드 밖 릴리즈 = 취소" 는 사실상 동작하지 않았다 — 대부분 무효 셀 reject 로 빠져 이동모드에
+갇혔고, 자기 칸 탭이 실질적인 취소를 도맡고 있었다. 그 탭을 확정으로 가져오는 지금 그대로 두면
+**8초 타임아웃 말곤 빠져나갈 길이 없다**. `TryScreenToCellStrict` 가 정확히 이 계약
+("보드 밖 = 취소, 무차감")을 위해 이미 존재하므로 그것으로 바꾼다.
+
+⚠ **릴리즈(`ResolveRelease`)와 hover(`UpdateScout`) 가 같은 판정을 써야 한다.** 한쪽만 Strict 면
+보드 밖에서 가장자리 셀을 보여주다가 릴리즈에서 취소가 나 손과 화면이 어긋난다.
+
+**남는 취소 경로**: 보드 밖 릴리즈(Strict 실패) · 타임아웃 8초 · 대상 사망 · 트레이 세션 충돌.
+밝은 영역 밖이 전부 취소라는 것이 하이라이트로 읽힌다.
+
+⚠ **"옮겨 갈 칸" 을 스캔하는 코드는 소스 칸을 명시로 빼야 한다.** 제자리가 유효해지는 순간
+`CanRelocateDefender(from, from)` 이 true 라, 그냥 스캔하면 소스 칸을 집어 와 아무 이동도 일어나지
+않는다. 실제로 기존 PlayMode 3건이 이걸로 깨졌다(테스트 헬퍼 2곳 + 에디터 디버그 진입점 1곳).
 
 ## 완료 기준
 

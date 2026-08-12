@@ -65,12 +65,16 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(Entity.Null, entity, "source entity resolved");
             float3 posBefore = em.GetComponentData<LocalTransform>(entity).Position;
 
-            // 목적지: from 에서 이동 가능한 첫 유효 셀
+            // 목적지: from 에서 이동 가능한 첫 유효 셀.
+            // unit 9 — from 자신을 **명시로 제외**한다. 제자리 재정비가 유효해져서 스캔이 그냥
+            // 소스 칸을 집어 오고, 그러면 이 테스트가 검증하려는 "이동" 자체가 일어나지 않는다.
             Vector2Int to = default; bool foundTo = false;
             for (int x = -24; x < 48 && !foundTo; x++)
                 for (int y = -24; y < 48 && !foundTo; y++)
-                    if (bridge.CanRelocateDefender(from, new Vector2Int(x, y), out _))
-                    { to = new Vector2Int(x, y); foundTo = true; }
+                {
+                    var c = new Vector2Int(x, y);
+                    if (c != from && bridge.CanRelocateDefender(from, c, out _)) { to = c; foundTo = true; }
+                }
             Assert.IsTrue(foundTo, "valid relocation target exists");
 
             // Begin — 확정 프레임 원자 스왑
@@ -244,7 +248,67 @@ namespace Wassup.Tests.PlayMode
                 "on-place re-fired at activation and re-armed the guard (계약 4 rev)");
         }
 
+        // defender-relocation unit 9 — 제자리 재정비. 같은 칸이 취소가 아니라 확정이고,
+        // 자기 점유를 목적지 점유로 오판하지 않으며, 유닛은 그 칸에 그대로 남는다.
+        [UnityTest]
+        public IEnumerator Relocate_SameCell_IsRefit_NotCancel()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var cat = FindCatalog();
+            var unit = Object.Instantiate(cat.ById("ranger"));
+            unit.maxOnBoard = 99;
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place unit");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var entity = EntityAt(bridge, em, cell);
+
+            // 자기 점유가 Occupied 로 튀지 않는다 — from==to 검사가 공간 판정보다 앞이라는 계약.
+            Assert.IsTrue(bridge.CanRelocateDefender(cell, cell, out var reason),
+                "same cell is a valid refit target");
+            Assert.AreEqual(PlacementRejectReason.None, reason, "제자리 = 사유 없음");
+
+            var health = em.GetComponentData<Health>(entity);
+            health.value = health.max * 0.25f;
+            em.SetComponentData(entity, health);
+            float hpBefore = health.value;
+            float maxHp = health.max;
+            float costBefore = gm.CostRuntime.Current;
+
+            Assert.IsTrue(bridge.TryBeginDefenderRelocation(cell, cell, out var same, out _), "begin refit in place");
+            Assert.AreEqual(entity, same, "same entity");
+            Assert.AreEqual(costBefore - unit.cost, gm.CostRuntime.Current, 0.001f, "제자리도 코스트를 낸다");
+            Assert.AreEqual(cell, CellOfEntity(bridge, entity), "유닛은 그 칸에 그대로 남는다");
+            Assert.IsTrue(em.HasComponent<PendingDeployment>(entity), "제자리도 이탈 구간을 거친다");
+
+            bridge.FinishDefenderRelocation(cell, same);
+            bridge.ActivateRelocatedDefender(cell, same, 0.5f);
+            for (int i = 0; i < 3; i++) yield return null;
+
+            Assert.IsFalse(em.HasComponent<PendingDeployment>(same), "전투 복귀");
+            Assert.Greater(em.GetComponentData<Health>(same).value, hpBefore, "제자리 재정비도 회복한다");
+            Assert.AreEqual(cell, CellOfEntity(bridge, same), "복귀 후에도 같은 칸");
+            Assert.IsTrue(math.abs(maxHp - health.max) < 0.001f, "최대 체력은 건드리지 않는다");
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
+
+        // 엔티티가 실제로 어느 칸에 묶여 있는지 — _defenderByTile 역참조(브리지 read seam).
+        private static Vector2Int CellOfEntity(BattleBridge bridge, Entity e)
+        {
+            Assert.IsTrue(bridge.TryGetDefenderCell(e, out var c), "entity is bound to a cell");
+            return c;
+        }
 
         // 시너지 기여만 격리 판정: StatModifierSlot 버퍼에서 origin=Synergy·DamageMul 슬롯의
         // magnitude 를 직독(read-only). 슬롯 없음 = 중립 1.0.

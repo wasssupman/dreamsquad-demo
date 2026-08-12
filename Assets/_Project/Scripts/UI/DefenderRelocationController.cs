@@ -115,7 +115,10 @@ namespace Wassup.UI
             _hasLease = true;
             if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
                 view.SetHoverHighlight(true, settings.highlightColor);
-            bridge.ShowPlacementHighlight(_unit); // unit 6 — 배치 가능 타일 하이라이트(소스는 점유라 자동 제외). placement-mask unit 4 — 옮기는 유닛의 층 기준.
+            // unit 6 — 배치 가능 타일 하이라이트. placement-mask unit 4 — 옮기는 유닛의 층 기준.
+            // unit 9 — 소스 칸을 명시로 되돌려 넣는다: 점유라 스캔에서 빠지는데, 제자리 재정비가
+            // 확정이 된 지금은 "여기 놓으면 재정비" 로 읽혀야 한다(취소 버튼 대신 쓰는 어포던스).
+            bridge.ShowPlacementHighlight(_unit, _sourceCell);
             // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
             _targetPressActive = false;
             _targetDragging = false; // unit 1 — 승격 상태도 진입마다 초기화(이전 제스처 잔재 금지)
@@ -182,11 +185,17 @@ namespace Wassup.UI
             return PlacementPointerOffset.Apply(screen, dc.PlacementPointerOffsetPx, ramp);
         }
 
-        // 릴리즈 지점 해석: 보드 밖/본인 = 취소, 무효 = reject+유지(unit 2 계약), 유효 = 커밋.
+        // 릴리즈 지점 해석: 보드 밖 = 취소, 무효 = reject+유지(unit 2 계약), 유효 = 커밋.
+        // unit 9 — **본인 칸도 커밋이다**(제자리 재정비). 취소는 보드 밖 릴리즈와 타임아웃이 맡는다
+        // (README 계약 13). 자기 칸을 취소로 되돌리지 말 것 — 그러면 제자리 재정비를 표현할
+        // 제스처가 사라진다.
         private void ResolveRelease(Vector2 screen)
         {
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { CancelMoveMode(); return; }
-            if (cell == _sourceCell) { CancelMoveMode(); return; }
+            // unit 9 — **Strict** 여야 한다. 관대한 TryScreenToCell 은 보드 밖을 가장자리 셀로
+            // clamp 해서 true 를 주므로, 그걸 쓰면 "보드 밖 = 취소" 가 성립하지 않는다(무효 셀
+            // reject 로 빠져 이동모드에 갇힌다). 자기 칸 탭이 확정으로 넘어간 지금 남은 즉시
+            // 취소는 이 경로뿐이라, 여기가 헐거우면 8초 타임아웃 말곤 빠져나갈 길이 없다.
+            if (!bridge.TryScreenToCellStrict(mainCamera, screen, out var cell)) { CancelMoveMode(); return; }
             if (!bridge.CanRelocateDefender(_sourceCell, cell, out _))
             {
                 bridge.FlashPlacementReject(cell); // 기존 reject 피드백 재사용, 이동모드 유지(재시도)
@@ -303,7 +312,9 @@ namespace Wassup.UI
         // hover 스카우트 — 기존 배치 hover/팝 표면 재사용(UpdateBoardScout 미러, 범위 격자는 제외).
         private void UpdateScout(Vector2 screen)
         {
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearScout(); return; }
+            // unit 9 — 릴리즈 해석(ResolveRelease)과 **같은 Strict** 를 써야 한다. 관대한 판정이면
+            // 보드 밖을 가장자리 셀로 보여주다가 릴리즈에서 취소가 나 손과 화면이 어긋난다.
+            if (!bridge.TryScreenToCellStrict(mainCamera, screen, out var cell)) { ClearScout(); return; }
             bool valid = bridge.CanRelocateDefender(_sourceCell, cell, out _);
             bool changed = !_scoutCell.HasValue || _scoutCell.Value != cell;
             if (changed && _scoutCell.HasValue) bridge.ClearPlacementHover(_scoutCell.Value);

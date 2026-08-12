@@ -67,16 +67,40 @@ namespace Wassup.Tests.EditMode
             finally { map.Dispose(); }
         }
 
+        // unit 9 — 같은 칸은 **제자리 재정비 확정**이다(예전엔 SameCell 거부였다).
+        // 두 가지를 한 번에 지킨다: ⑴ 통과한다 ⑵ Occupied 로 오판하지 않는다.
+        // ⑵ 가 중요한 이유 — from 은 아직 점유 집합에 남아 있어서, from==to 검사가
+        // SpatialPlacementCheck 뒤로 밀리면 자기 자리가 "이미 누가 있다" 로 튄다.
         [Test]
-        public void SameCell_ReturnsSameCell_NotOccupied()
+        public void SameCell_IsRefit_NotOccupied()
         {
-            // from 은 점유 집합에 있다 — from == to 검사가 선행돼야 Occupied 로 오판하지 않는다.
             var map = MakeMap();
             try
             {
-                Assert.AreEqual(PlacementRejectReason.SameCell,
-                    BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)), new int2(0, 0), new int2(0, 0),
-                        fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground));
+                var reason = BattleBridge.RelocationCheck(map, OccupiedAt(new Vector2Int(0, 0)),
+                    new int2(0, 0), new int2(0, 0),
+                    fromHasDefender: true, fromBusy: false, layers: PlacementLayer.Ground);
+                Assert.AreNotEqual(PlacementRejectReason.Occupied, reason,
+                    "자기 점유를 목적지 점유로 오판하면 안 된다 (from==to 검사가 공간 판정보다 앞)");
+                Assert.AreEqual(PlacementRejectReason.None, reason, "같은 칸 = 제자리 재정비 확정");
+            }
+            finally { map.Dispose(); }
+        }
+
+        // 소스 사유는 제자리에서도 이긴다 — 재정비라고 죽은 칸/진행중 유닛을 통과시키지 않는다.
+        [Test]
+        public void SameCell_StillRejects_WhenSourceInvalid()
+        {
+            var map = MakeMap();
+            try
+            {
+                var occ = OccupiedAt(new Vector2Int(0, 0));
+                Assert.AreEqual(PlacementRejectReason.NoDefenderAtSource,
+                    BattleBridge.RelocationCheck(map, occ, new int2(0, 0), new int2(0, 0),
+                        fromHasDefender: false, fromBusy: false, layers: PlacementLayer.Ground));
+                Assert.AreEqual(PlacementRejectReason.SourceBusy,
+                    BattleBridge.RelocationCheck(map, occ, new int2(0, 0), new int2(0, 0),
+                        fromHasDefender: true, fromBusy: true, layers: PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
         }

@@ -6002,6 +6002,9 @@ namespace Wassup.Bridge
         // unit 4 — 하이라이트는 유닛 종속: 드는 유닛의 층으로 스캔한다(Ground 유닛이면 배치지면이,
         // Path 유닛이면 경로가 빛난다). 유닛 미상이면 Ground 폴백.
         private DefenderUnitData _placeableHlUnit;
+        // defender-relocation unit 9 — 스캔이 뺀 칸을 되돌려 넣는 예외 1칸(재배치 소스 = 제자리
+        // 재정비 목적지). 상태로 들고 있어야 리페인트를 살아남는다 — ShowPlacementHighlight 주석 참조.
+        private Vector2Int? _placeableHlExtraCell;
 
         // unit 4 리뷰 M-1 — 라이브 맵에서 한 셀의 모든 배치 층을 닫는다(스폰·골 불변식용).
         private void CloseCellLayers(int2 cell)
@@ -6014,10 +6017,18 @@ namespace Wassup.Bridge
         // 표시 여부 read seam — 컨트롤러가 자기 래치와 실제 상태를 대조해 자기치유하기 위함(unit 4 리뷰 C-1).
         public bool IsPlacementHighlightShown => _placeableHlShown;
 
-        public void ShowPlacementHighlight(DefenderUnitData unit)
+        // defender-relocation unit 9 — extraCell 은 스캔이 빼는 칸을 되돌려 넣는 자리다(재배치
+        // 소스 칸은 자기가 점유 중이라 SpatialPlacementCheck 가 Occupied 로 뺀다). 제자리 재정비가
+        // 확정이 된 지금 그 칸은 "못 놓는 칸"이 아니라 "여기 놓으면 재정비" 로 읽혀야 한다.
+        //
+        // ⚠ 인자가 아니라 **상태**로 들고 있어야 한다. RepaintPlacementHighlight 는 매번 처음부터
+        // 다시 계산하고, RefreshPlacementHighlightIfShown 을 통해 배치·재배치 확정마다 다시 불린다 —
+        // 일회성 인자로 넘기면 첫 리페인트에서 조용히 사라진다.
+        public void ShowPlacementHighlight(DefenderUnitData unit, Vector2Int? extraCell = null)
         {
             _placeableHlShown = true;
             _placeableHlUnit = unit;
+            _placeableHlExtraCell = extraCell;
             RepaintPlacementHighlight();
         }
 
@@ -6025,6 +6036,7 @@ namespace Wassup.Bridge
         {
             _placeableHlShown = false;
             _placeableHlUnit = null;
+            _placeableHlExtraCell = null;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
         }
 
@@ -6040,6 +6052,9 @@ namespace Wassup.Bridge
             for (int x = 0; x < w; x++)
                 if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y), layers) == PlacementRejectReason.None)
                     _placeableHlScratch.Add(new Vector2Int(x, y));
+            // unit 9 — 스캔이 뺀 소스 칸을 되돌려 넣는다(제자리 재정비도 유효 목적지다).
+            if (_placeableHlExtraCell.HasValue && !_placeableHlScratch.Contains(_placeableHlExtraCell.Value))
+                _placeableHlScratch.Add(_placeableHlExtraCell.Value);
             tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
         }
 

@@ -25,7 +25,11 @@ namespace Wassup.Bridge
         {
             if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
             if (fromBusy) return PlacementRejectReason.SourceBusy;
-            if (from.Equals(to)) return PlacementRejectReason.SameCell;
+            // unit 9 — 같은 칸 = **제자리 재정비 확정**(was: SameCell 거부 → 컨트롤러가 취소로 해석).
+            // ⚠ 이 검사는 SpatialPlacementCheck 앞에 그대로 있어야 한다 — from 이 아직 점유 집합에
+            // 남아 있어서, 순서가 바뀌면 자기 자리가 Occupied 로 오판된다.
+            // PlacementRejectReason.SameCell 은 enum 에서 지우지 않는다(직렬화 값 보존) — 생산자만 없다.
+            if (from.Equals(to)) return PlacementRejectReason.None;
             // unit 4 — 옮기는 그 유닛의 층으로 목적 셀을 본다(배치와 같은 규칙).
             return SpatialPlacementCheck(map, occupied, to, layers);
         }
@@ -313,6 +317,9 @@ namespace Wassup.Bridge
             for (int x = 0; x < w; x++)
             {
                 var to = new Vector2Int(x, y);
+                // unit 9 — 제자리도 유효 목적지가 됐으므로 명시로 제외한다. 이 디버그 진입점의
+                // 목적은 "이동이 되는가" 를 눈으로 보는 것이라, 소스 칸을 집으면 아무 일도 안 한 것처럼 보인다.
+                if (to == from) continue;
                 if (!CanRelocateDefender(from, to, out _)) continue;
                 if (!TryBeginDefenderRelocation(from, to, out var entity, out _)) return false;
                 FinishDefenderRelocation(to, entity);
