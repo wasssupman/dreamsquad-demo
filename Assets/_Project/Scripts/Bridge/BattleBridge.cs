@@ -478,8 +478,17 @@ namespace Wassup.Bridge
             int waveSeed = d.waveSeed != 0
                 ? d.waveSeed
                 : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
-            return WavePatternGenerator.Generate(d, waveSeed);
+            // wave-concept-blocks unit 2 계약 6 — 브리핑과 런타임은 **같은 laneCount** 를 넘긴다.
+            // 다르면 컨셉 후보 집합이 갈려 예고와 실스폰이 다른 편성을 보여준다.
+            return WavePatternGenerator.Generate(d, waveSeed, GeneratorLaneCount);
         }
+
+        // 맵의 스폰 지점 수. 컨셉의 lane 위상 해석과 후보 게이트의 입력이다(결정론 키의 일부).
+        // 맵 미확정이면 2 로 폴백한다 — 생성기도 같은 값을 기본으로 쓴다.
+        private int GeneratorLaneCount =>
+            _generatedMap.IsCreated && _generatedMap.spawns.Length > 0
+                ? _generatedMap.spawns.Length
+                : 2;
 
         // gimmick-match-integration unit 1 — GameManager 가 배정한 매치 기믹(없으면 null).
         // 3개 소비 지점(config 주입·픽업 스폰 게이트·디버그 로그)의 단일 소스. 시즌 결합 대체.
@@ -1818,7 +1827,8 @@ namespace Wassup.Bridge
                 int waveSeed = ActiveDeck.waveSeed != 0
                     ? ActiveDeck.waveSeed
                     : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
-                _wavePlan = WavePatternGenerator.Generate(ActiveDeck, waveSeed);
+                // unit 2 계약 6 — 브리핑(BuildBriefingWavePlan)과 같은 laneCount 창구를 쓴다.
+                _wavePlan = WavePatternGenerator.Generate(ActiveDeck, waveSeed, GeneratorLaneCount);
                 GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                 return _wavePlan.waves != null && _wavePlan.waves.Count > 0;
             }
@@ -8248,6 +8258,10 @@ namespace Wassup.Bridge
         // 쓰면 평면 보드에서 엉뚱한 축으로 돈다(attackVfxFacesTarget 과 같은 함정).
         [SerializeField] private GameObject areaBreathVfxPrefab;
         [SerializeField] private float areaBreathVfxLifetime = 1.2f;
+        // 연출 크기 튜닝은 **인스펙터에서** 한다(제약 6) — 내가 화면을 못 보므로 코드에 박으면
+        // 매번 재컴파일 왕복이 된다. 사거리 1타일당 배율 + 상한.
+        [SerializeField] private float areaBreathVfxScalePerTile = 0.25f;
+        [SerializeField] private float areaBreathVfxScaleMax = 1.2f;
 
         private bool _warnedAreaBreathVfxMissing;
 
@@ -8274,9 +8288,19 @@ namespace Wassup.Bridge
             float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;
 
             var go = Instantiate(areaBreathVfxPrefab, originView, Quaternion.Euler(0f, 0f, angle));
-            // 사거리·반각을 그대로 스케일에 흘린다 — 저작 수치와 화면 크기가 갈리지 않게.
-            float width = Mathf.Max(0.1f, rangeWorld * Mathf.Tan(Mathf.Deg2Rad * Mathf.Max(1f, halfAngleDeg)) * 2f);
-            go.transform.localScale = new Vector3(Mathf.Max(0.1f, rangeWorld), width, 1f);
+
+            // ★**콘 기하를 그대로 그리려 하지 않는다.** 초판은 사거리·반각에서 폭을 유도했는데
+            // (`rangeWorld × tan(반각) × 2`), 사거리 3타일 · 반각 50° 면 폭이 7.15 유닛이 되어
+            // **화면을 덮었다**. 부채꼴의 «입» 너비는 기하적으로 맞지만 화면에서는 브레스가
+            // 아니라 광역 폭발로 읽힌다.
+            //
+            // 그래서 연출은 **저작된 크기**를 쓴다 — 사거리에 비례하되 인스펙터 배율로 눌러
+            // 「작은 방사형 화염」이 되게 한다. 반각은 이제 **판정 파라미터일 뿐**이고 화면
+            // 크기에 관여하지 않는다(판정과 연출이 갈리는 것을 의도적으로 받아들인다 —
+            // 정확한 콘 시각화는 별도 저작 몫이다).
+            float s = Mathf.Clamp(rangeWorld * areaBreathVfxScalePerTile,
+                                  0.1f, Mathf.Max(0.1f, areaBreathVfxScaleMax));
+            go.transform.localScale = new Vector3(s, s, s);
             Destroy(go, Mathf.Max(0.1f, areaBreathVfxLifetime));
         }
 

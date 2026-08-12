@@ -79,6 +79,28 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(found, "AreaBreath 슬롯이 베이크되지 않았다");
         }
 
+        // 연출 배선 pin — 씬 YAML 을 직접 편집해 붙였으므로(비포커스 에디터에서 씬 전환 모달을
+        // 피하려고) Unity 가 실제로 역직렬화했는지 확인할 자동 수단이 필요하다. 실제로 첫 시도에
+        // 잘못된 fileID 로 `null` 이 됐고 이 단언이 없어서 육안으로만 알 수 있었다.
+        [UnityTest]
+        public IEnumerator BreathVfxPrefab_IsWiredInBattleScene()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return LoadBattle();
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge");
+
+            var f = typeof(BattleBridge).GetField("areaBreathVfxPrefab",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, "areaBreathVfxPrefab 필드를 찾지 못했다(이름 변경?)");
+            var prefab = f.GetValue(bridge) as GameObject;
+            Assert.IsNotNull(prefab,
+                "areaBreathVfxPrefab 이 비었다 — 브레스가 피해만 주고 화면에 아무것도 안 보인다");
+            Assert.IsTrue(prefab.GetComponentInChildren<ParticleSystem>() != null,
+                "배선된 프리팹에 ParticleSystem 이 없다");
+        }
+
         // ★아군 오사 — 콘 안에 **다른 적**을 두고 브레스를 발동시켜도 무피해여야 한다.
         [UnityTest]
         public IEnumerator DragonBreath_DoesNotDamageOtherEnemies()

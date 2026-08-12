@@ -61,16 +61,59 @@ unit 4 의 부채꼴 브레스가 터진다.
 | spineVisualScale | **측정해서 정한다.** dragon 스켈레톤은 저작 폭 1287 로 매우 커서 큰 축소가 필요하다 |
 | visualOffset | 측정해서 정한다 |
 
+### 스케일 — 측정으로 잡는다 (추정 금지)
+
+세 스켈레톤 모두 `SkeletonDataAsset.scale = 0.01` 이라 저작 크기 비교가 그대로 유효하다:
+
+| 스켈레톤 | 저작 크기 | `spineVisualScale` | 화면 실효 |
+|---|---|---|---|
+| Casual Character (기존 적 전원) | 125×188 | 1.3 | 162×244 |
+| sack (슬라임 본체) | 519×813 | 0.55 | 285×447 |
+| **dragon** | **660×643** | **0.6** | **396×386** |
+
+⚠ 초판은 `0.12` 였다 — 잠깐 검토했다가 기각한 `raptor-pro` 의 저작 폭 **1287 을 드래곤 값으로
+착각**해 나온 수이고, 실제로는 잡몹의 1/3 크기(79×77)로 보였다. 스켈레톤을 바꿀 때
+`skeleton.width/height` 를 **다시 읽을 것**.
+
+### facing — 데이터로 정규화한다 (코드 분기 금지)
+
+Dragon 리그는 프로젝트 규약과 **반대 방향**을 본다. 규약은 `SkeletonFlipXModifier` 주석이
+정의한 *«rig faces −x (left) at Skeleton.ScaleX = +1»* 이고 `SpineUnitView.FaceToward` 의 부호
+규칙이 그것을 전제한다.
+
+해법은 `Assets/_Project/Characters/SkeletonFlipX.asset` 을 `dragon_SkeletonData.asset` 의
+`skeletonDataModifiers` 에 넣는 것 — **저작 1줄, 코드 0**. 로드 시 루트 본 setup-pose 의
+`ScaleX` 를 force-negative 로 만들어 리그 전체를 한 번 미러링하고, `FaceToward` 와
+`net facing = Skeleton.ScaleX × rootScaleX` 로 자연 합성된다.
+(`summon-patrol-defender` unit 8 이 세운 규약 — 유닛별 flip 플래그를 런타임에 흘리지 않는다.
+이 모디파이어의 **첫 실사용**이다.)
+
 ### 브레스 VFX
 
-`VFXPACK_FIRE_WALLCOEUR` 는 불꽃/연기 앰비언스 팩이고 부채꼴 프리팹은 없다. 조립한다:
+`Assets/_Project/VFX/AreaBreath_Fire_SKELETON.prefab` — `VFXPACK_FIRE_WALLCOEUR` 의
+`VFX_GroundFire_Line` **복제본**(벤더 원본 직접 참조 금지 — `projectile-ga-reskin` 원칙).
+바꾼 것은 `looping: 1 → 0`(팩은 전부 앰비언스용 루프)과 루트 이름뿐. 3 emitter × 20 = **60 파티클**
+(임팩트 예산 100 안). `_SKELETON` 접미사 유지 — 정식 승격은 사용자 승인 후(스킬 Iron Law).
 
-- 본체: `VFX_GroundFire_Line.prefab` 을 부채꼴로 몇 장 겹치거나 `VFX_Fire.prefab` 을 대상 방향으로
-  늘려 배치
-- 착탄감: `VFX_GroundFire_Circle.prefab` 을 콘 중심선 끝에 1장
-- ⚠ **벤더 원본을 SO/스포너에 직접 참조하지 않는다.** `Assets/_Project/VFX/` 아래 복제본만 연결한다
-  (`projectile-ga-reskin` 공통 원칙)
-- 트리거는 unit 4 가 정한 «`VfxSpawner` 직접 호출» 경로. 슬롯이 null 이면 `LogError` — 코드 폴백 없음
+⚠ **한 번 잘못 만들었다(2026-08-13).** 처음엔 `Meteor_Burst_SKELETON` 을 복제해 `arc`·회전만
+바꿨다 — 「이 프로젝트에서 검증된 화염 원샷」이라는 근거였지만 그건 **방사형 임팩트 버스트**라
+아키타입 자체가 브레스와 다르다. 사용자 판정: *「그냥 화면 덮는 메테오 떨어진 느낌」*.
+형판 재사용이 **아키타입 일치를 대체하지 못한다**.
+
+⚠ **화면을 덮은 실제 원인은 스케일 산식이었다.** 초판은 콘 기하를 그대로 그리려 했다 —
+`폭 = rangeWorld × tan(반각) × 2` → 사거리 3 · 반각 50° 면 **7.15 유닛**. 부채꼴 «입» 너비로는
+기하적으로 맞지만 화면에서는 광역 폭발로 읽힌다. 이제 연출은 **저작된 크기**를 쓴다
+(`areaBreathVfxScalePerTile` × 사거리, `areaBreathVfxScaleMax` 로 상한). 반각은 **판정
+파라미터일 뿐**이고 화면 크기에 관여하지 않는다 — 판정과 연출이 갈리는 것을 의도적으로 받아들인다.
+
+크기 튜닝 knob 을 인스펙터에 둔 이유: 구현자가 화면을 볼 수 없어 코드에 박으면 매번 재컴파일
+왕복이 된다(제약 6 의 정신과도 맞다).
+
+트리거는 unit 4 의 `UnitAttackVisualEvent` 필드 append 경로. 슬롯이 비면 **1회 loud warning** —
+조용한 리턴은 «피해는 들어가는데 화면에 아무것도 없는» 상태를 버그처럼 보이게 한다
+(`unity-vfx-integration` red flag). 배선 자체는 `BreathVfxPrefab_IsWiredInBattleScene` 이 고정한다
+— 씬 YAML 직접 편집이라 자동 검증이 없으면 잘못된 `fileID` 로 `null` 이 된 것을 육안으로만 알 수
+있고, 실제로 첫 시도가 그랬다.
 
 ### 로스터 노출
 
