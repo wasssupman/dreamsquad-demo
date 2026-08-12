@@ -21,43 +21,51 @@ namespace Wassup.Tests.EditMode
     // 단정하므로, 로드 규칙이 미래에 바뀌어도 무장 해제 회귀를 잡는다.
     public class AuthoredTargetMaskTests
     {
-        // siege-duel-map 후속(2026-08-12) — 기본 마스크에 DefenderInstinct 가 합류했다.
-        // 이 상수는 「방어측이 가진 것 전부」를 뜻하고, 방어 본능이 라이브에 서면서 그 목록이
-        // 늘었다. 빠져 있던 동안 방어 본능은 **아무 적도 후보로 보지 못하는 무적 포탑**이었다.
+        // 적의 기본 타겟은 **상대 진영 전부**다 — 열거가 아니라 파생 그룹으로 적는다.
+        //
+        // 이 단언의 값어치는 «29 인지» 가 아니라 «방어측 종류가 늘면 자동으로 그것을 요구하는가»
+        // 다. 방어 진영에 새 종류가 추가되면 `Factions.AnyDefender` 가 커지고 이 테스트가
+        // 기본값에게 그것을 덮으라고 요구한다 — 종류를 추가한 사람이 이 파일을 몰라도 된다.
+        // (2026-08-12: 열거로 적혀 있던 탓에 방어 본능이 «아무 적도 못 보는 무적 포탑» 이었다.)
         [Test]
-        public void LegacyEnemyMask_CoversEveryDefenderSideTarget()
+        public void DefaultEnemyMask_CoversWholeOpposingSide()
         {
-            Assert.AreEqual(
-                (int)(Faction.DefenderUnit | Faction.BlockingHazard
-                    | Faction.DefenderCore | Faction.DefenderInstinct),
-                EnemyTargetDefaults.LegacyEnemyMask,
-                "DefenderCore 가 빠지면 공성이, DefenderInstinct 가 빠지면 방어 본능이 무적이 된다");
+            Assert.AreEqual(Factions.AnyDefender,
+                EnemyTargetDefaults.DefaultEnemyMask & Factions.AnyDefender,
+                "기본 마스크가 방어 진영의 어떤 종류를 빠뜨리면 그 종류는 전 적에게 무적이 된다");
+            Assert.AreNotEqual(0,
+                EnemyTargetDefaults.DefaultEnemyMask & (int)Faction.BlockingHazard,
+                "방벽을 빼면 완전 봉쇄에서 적이 벽을 못 부숴 영구 교착된다");
         }
 
-        // 위 상수만 고치면 **미저작 적은 한 종도 안 바뀐다** — 실제 기본값은 SO 필드
-        // 이니셜라이저이고, 그마저도 Unity 임포트 캐시에 옛 값이 남는다(2026-08-12 실측:
-        // 강제 재임포트·스크립트 리로드로도 13 유지). 그래서 라이브 적은 **명시 저작**으로
-        // 못박았다. 이 테스트가 그 명시 저작의 회귀선이다.
+        // 저작 = «이 적은 특수하다» 는 선언이다. 특수하지 않은 적은 기본값을 그대로 쓴다.
+        // 목록을 늘리려면 그 적이 왜 특수한지 여기 적어야 한다 — 그게 이 테스트의 역할이다.
         [Test]
-        public void EveryEnemyAsset_CanTargetDefenderInstinct()
+        public void OnlySpecialEnemies_NarrowTheirTargets()
         {
-            foreach (var guid in UnityEditor.AssetDatabase.FindAssets("t:AttackUnitData"))
+            foreach (var guid in AssetDatabase.FindAssets("t:AttackUnitData"))
             {
-                var so = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.AttackUnitData>(
-                    UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                var so = AssetDatabase.LoadAssetAtPath<AttackUnitData>(AssetDatabase.GUIDToAssetPath(guid));
                 if (so == null) continue;
                 int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
-                Assert.AreNotEqual(0, mask & (int)Faction.DefenderInstinct,
-                    $"'{so.id}' 가 방어 본능을 후보로 못 본다 — 그 본능은 이 적에게 무적이다");
+                if (mask == EnemyTargetDefaults.DefaultEnemyMask) continue;
+
+                // 마음사냥꾼 — 유닛을 노리지 않는 것이 정체성이고, 그래서 도발도 안 걸린다.
+                Assert.AreEqual("heartseeker", so.id,
+                    $"'{so.id}' 가 기본값을 좁혔다. 특수 타게팅이 의도라면 이 목록에 근거와 함께 추가하라");
+                Assert.AreEqual(0, mask & Factions.AnyUnit, "마음사냥꾼은 유닛을 노리지 않는다(도발 면역의 근거)");
+                Assert.AreEqual(Factions.AnyStructure & Factions.AnyDefender,
+                    mask & Factions.AnyDefender,
+                    "마음사냥꾼은 방어측 **거점 전부**(마음·본능)를 노린다 — 절반만 노리면 «거점 전담» 이 거짓말이다");
             }
         }
 
         [Test]
-        public void Resolve_Unauthored_FallsBackToLegacyMask()
+        public void Resolve_Unauthored_FallsBackToDefaultMask()
         {
-            Assert.AreEqual(EnemyTargetDefaults.LegacyEnemyMask,
+            Assert.AreEqual(EnemyTargetDefaults.DefaultEnemyMask,
                 EnemyTargetDefaults.Resolve((int)Faction.None),
-                "0 = 미저작 → 레거시 마스크. 이게 없으면 기존 에셋이 전부 무장 해제된다");
+                "0 = 미저작 → 기본값. 이게 없으면 인스펙터에서 비운 적이 무장 해제된다");
         }
 
         [Test]
@@ -93,13 +101,13 @@ namespace Wassup.Tests.EditMode
                 if (so.targetFactions == Faction.None)
                 {
                     unauthored.Add(so.name);
-                    Assert.AreEqual(EnemyTargetDefaults.LegacyEnemyMask, resolved,
-                        $"{so.name}: 미저작은 레거시 마스크와 동치여야 한다(행동 변화 0)");
+                    Assert.AreEqual(EnemyTargetDefaults.DefaultEnemyMask, resolved,
+                        $"{so.name}: 미저작은 기본값(상대 진영 전부)과 동치여야 한다");
                 }
             }
             // 진단용 — 미저작 목록이 곧 «아직 저작 안 한 적» 이다. 실패 조건은 아니다.
             if (unauthored.Count > 0)
-                UnityEngine.Debug.Log($"[unit 1] 미저작 적 {unauthored.Count}종 → 레거시 폴백: {string.Join(", ", unauthored)}");
+                UnityEngine.Debug.Log($"[unit 1] 미저작 적 {unauthored.Count}종 → 기본값 폴백: {string.Join(", ", unauthored)}");
         }
 
         // 검증 질문 — 저작만으로 «거점 전담 적» 이 성립하는가.

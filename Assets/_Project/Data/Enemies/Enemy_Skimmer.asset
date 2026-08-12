@@ -21,7 +21,6 @@ MonoBehaviour:
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
-  targetFactions: 29
   minWaveNumber: 8
   maxPerWave: 2
   health: 80
