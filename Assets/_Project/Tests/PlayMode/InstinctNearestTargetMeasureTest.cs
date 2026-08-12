@@ -16,7 +16,9 @@ namespace Wassup.Tests.PlayMode
 {
     // instinct-content unit 2 — 「가까운 거점부터 팬다」가 **저절로** 되는지 잰다.
     //
-    // 이 파일은 단정보다 **관측**이 목적이다. 사용자 판단:
+    // unit 2 에서는 **관측**이 목적이었고(단정은 공허 방지뿐), unit 3 이 목적지 선택을
+    // 세운 뒤 그 관측치가 곧 **완료 기준**이 됐다. 아래 단정 5개는 unit 2 실측에서 전부
+    // 반대였던 값이다 — 되돌아가면 여기가 빨개진다. 사용자 판단:
     //   «오른쪽 끝에서 스폰된 적은 자연스럽게 가까운 본능을 선택하고, 본능이 다 부서지면
     //    자연스럽게 마음이 우선 타겟된다. 별도의 웨이포인트가 필요한 게 아니라고 생각.»
     // 맞다면 목적지 선택 기계를 **만들지 않는다**. 그 판정을 숫자로 받는다.
@@ -156,9 +158,20 @@ namespace Wassup.Tests.PlayMode
                 + $"  남 본능(4,8): footprint 방문 {visitsSouth} · HP {hpSouth}/{maxHp[SouthInstinct]} · 파괴 {deathSouth:F1}s\n"
                 + $"  마음 안정도: {startStability} → {bridge.GoalStabilityCurrent} · 첫 감소 {firstStabilityDropAt:F1}s");
 
-            // 공허 방지 단정만 건다 — 나머지는 판정용 관측치다.
+            // ── 공허 방지 ──
             Assert.Greater(enemiesSeenMax, 0, "적이 한 기도 안 나왔다 — 측정 전체가 공허하다");
             Assert.Greater(visitedAll.Count, 5, "적이 움직이지 않았다 — 측정 전체가 공허하다");
+
+            // ── unit 3 단정 — unit 2 에서 이 셋이 전부 반대였다 ──
+            // (당시: 남 방문 0 · 남 HP 950 · 마음 첫 감소 6.6s < 북 파괴 11.9s)
+            Assert.Greater(visitsSouth, 0,
+                "경로 밖 본능을 아무도 안 친다 — 거점 목적지 선택이 안 걸렸다");
+            Assert.Greater(deathNorth, 0f, "가까운 본능이 안 부서졌다");
+            Assert.Greater(deathSouth, 0f, "두 번째 본능이 안 부서졌다 — 재선정이 안 걸렸다");
+            Assert.Less(deathNorth, deathSouth,
+                "가까운 본능이 먼저 부서져야 한다 — 선택이 «가장 가까운» 을 안 골랐다");
+            Assert.Greater(firstStabilityDropAt, deathNorth,
+                "마음이 본능보다 먼저 깎였다 — 적이 거점을 우회해 마음으로 직행한다");
         }
     }
 }

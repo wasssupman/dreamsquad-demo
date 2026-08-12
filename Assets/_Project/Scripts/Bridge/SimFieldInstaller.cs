@@ -33,6 +33,17 @@ namespace Wassup.Bridge
     // MonoBehaviour ↔ ECS 창구는 여전히 BattleBridge 하나다.
     public static class SimFieldInstaller
     {
+        // instinct-content unit 3 — 거점 목적지의 BFS 소스 = footprint 전체(중심 3×3).
+        // 경계·통행 필터는 빌더 소관이라 여기서 복제하지 않는다.
+        private static void FillFootprint(int2 center, NativeArray<int2> outCells)
+        {
+            int half = Wassup.Data.StructurePlacements.InstinctFootprint / 2;
+            int k = 0;
+            for (int dy = -half; dy <= half; dy++)
+                for (int dx = -half; dx <= half; dx++)
+                    outCells[k++] = new int2(center.x + dx, center.y + dy);
+        }
+
         // 호출 전 Teardown 이 선행되어야 한다(멱등성 계약은 호출부에 남겨 순서가 보이게 한다).
         // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수.
@@ -95,6 +106,20 @@ namespace Wassup.Bridge
                     {
                         int2 candidate = map.waypointCells[i];
                         if (!destinations.Contains(candidate)) destinations.Add(candidate);
+                    }
+
+                // instinct-content unit 3 — 방어 본능도 목적지다. 적이 마음으로 직행하는 대신
+                // 가까운 본능을 먼저 고를 수 있으려면 그 셀로 흐르는 슬롯이 있어야 한다.
+                // 마음은 이미 골 센티널이므로 여기 넣지 않는다.
+                var structureDestinations = new System.Collections.Generic.List<int2>();
+                if (map.structures.IsCreated)
+                    for (int i = 0; i < map.structures.Length; i++)
+                    {
+                        var st = map.structures[i];
+                        if (st.faction != Wassup.Battle.Units.Faction.DefenderInstinct) continue;
+                        if (destinations.Contains(st.cell)) continue;
+                        destinations.Add(st.cell);
+                        structureDestinations.Add(st.cell);
                     }
 
                 // DefaultMask 를 첫 슬롯에 고정하고 나머지는 호출자 순서를 보존해 중복 제거.
@@ -160,10 +185,14 @@ namespace Wassup.Bridge
                     // 결과가 현행과 바이트 동일하다(회귀 축).
                     NativeArray<byte> slotWalk = default;
                     NativeArray<int2> waypointSource = default;
+                    NativeArray<int2> footprintSource = default;
                     try
                     {
                         slotWalk = new NativeArray<byte>(n, Allocator.Temp);
                         waypointSource = new NativeArray<int2>(1, Allocator.Temp);
+                        footprintSource = new NativeArray<int2>(
+                            Wassup.Data.StructurePlacements.InstinctFootprint
+                            * Wassup.Data.StructurePlacements.InstinctFootprint, Allocator.Temp);
                         for (int slot = 0; slot < slotCount; slot++)
                         {
                             TraversalSlots.FillWalkMask(in cellLayers, maskValues[slot], slotWalk);
@@ -172,6 +201,21 @@ namespace Wassup.Bridge
                             if (destination.Equals(FlowFieldSingleton.GoalSentinel))
                             {
                                 sources = goalsField;
+                            }
+                            else if (structureDestinations.Contains(destination))
+                            {
+                                // instinct-content unit 3 — 거점 목적지의 소스는 **footprint 전체**다.
+                                // 중심 1칸으로 쓰면 안 된다: Coil 의 본능 중심 (10,6) 은 Place 타일
+                                // 이라 BuildFromSources 가 그 소스를 버리고 슬롯이 통째로 빈 필드가
+                                // 된다(Duel 은 9/9 가 Walk 라 이 함정을 혼자서는 못 잡는다).
+                                //
+                                // 통행 교집합을 여기서 다시 거르지 않는다 — 빌더가 이미 경계·통행
+                                // 으로 소스를 거르고, 유효 소스 0 이면 전 셀 int.MaxValue 로 두어
+                                // «못 가는 건물» 을 골 폴백 신호로 표현한다(그 규약을 복제하지 않는다).
+                                //
+                                // 다중 소스라 적은 중심이 아니라 **가장 가까운 벽면**에 도착한다.
+                                FillFootprint(destination, footprintSource);
+                                sources = footprintSource;
                             }
                             else
                             {
@@ -184,6 +228,7 @@ namespace Wassup.Bridge
                     }
                     finally
                     {
+                        if (footprintSource.IsCreated) footprintSource.Dispose();
                         if (waypointSource.IsCreated) waypointSource.Dispose();
                         if (slotWalk.IsCreated) slotWalk.Dispose();
                     }
