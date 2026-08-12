@@ -10,7 +10,9 @@
 - `Assets/_Project/Data/Enemies/Enemy_Slime.asset` (신규)
 - `Assets/_Project/Data/Enemies/Enemy_Slime_Small.asset` (신규)
 - `Assets/_Project/Data/EnemyCatalog.asset` — 2종 등록
-- `Assets/_Project/Scripts/Data/Decks/Deck_*.asset` (라이브 7덱) — `attackUnitPool` 에 **부모만**
+- `Assets/_Project/Scripts/Data/WavePlans/WavePlan_SlimeTest.asset` (신규) +
+  `Assets/_Project/Data/Config/TestModeConfig.asset` `planCatalog` 등록 — 검증 경로(아래)
+- ~~`Deck_*.asset` `attackUnitPool`~~ → **별도 커밋으로 분리**(아래 «검증 경로» 참조)
 - Spine: `Assets/Spine Examples/Spine Skeletons/sack/sack-pro_SkeletonData.asset` 참조
 
 ## 구현
@@ -56,10 +58,22 @@
 ### 로스터 노출
 
 - `EnemyCatalog.units` 에 **2종 다** 등록한다(id → SO 해석은 스탯 시트 갱신 경로가 쓴다).
-- `attackUnitPool` 에는 **부모만** 넣는다. 자식은 분열로만 등장한다(`Enemy_Skimmer` 의 «라이브
-  일반 덱에 아직 넣지 않는다» 선례).
-- 삽입 위치는 **풀 중간**. 맨 뒤면 `ResolveWaveEligibleIndex` 의 전방 순환이 초반 웨이브를
-  `pool[0]` 로 쏠리게 한다.
+- `attackUnitPool` 은 **후속 커밋**. 넣을 때 **부모만** 넣고(자식은 분열로만 등장 —
+  `Enemy_Skimmer` 선례) 삽입 위치는 **풀 중간**이다(맨 뒤면 `ResolveWaveEligibleIndex` 의 전방
+  순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다).
+
+## 검증 경로 — 라이브 덱을 건드리지 않는다
+
+⚠ **이 단위에서는 `attackUnitPool` 에 넣지 않는다.** 넣는 순간 그 덱의 웨이브가 1번부터 전부
+재추첨돼서 「슬라임이 동작한다」와 「라이브 밸런스가 바뀐다」가 한 커밋에 섞인다. 대신
+**TEST MODE**(`wave-authoring-test-mode`)로 검증한다:
+
+- `Assets/_Project/Scripts/Data/WavePlans/WavePlan_SlimeTest.asset` — 웨이브 1 = 슬라임 1기
+  (마지막 적 상황 재현) · 웨이브 2 = 슬라임 3기 · 웨이브 3 = 잡몹. `timerDurationSec 0` = endless
+- `Assets/_Project/Data/Config/TestModeConfig.asset` `planCatalog` 에 등록 → 아웃게임
+  **TEST MODE** 버튼에서 「엘리트 슬라임 분열 e2e」 선택
+
+라이브 덱 등록은 **별도 커밋**으로 분리한다(새 웨이브 baseline 을 diff 에 드러내기 위해).
 
 ## 완료 기준
 
@@ -70,6 +84,9 @@
 - [ ] Play: 죽으면 **모션 없이 즉시 사라지고** 같은 자리에 작은 슬라임 2기가 생긴다
 - [ ] Play: 작은 슬라임을 죽여도 더 생기지 않는다
 - [ ] Play: 두 크기가 화면에서 구분된다(스케일 육안)
-- [ ] `WaveKillBudgetPinTests` 를 포함한 EditMode 전체 통과 — 풀이 바뀌면 **웨이브 baseline 이
-      바뀌는 것이 정상**이므로, 실패하는 pin 테스트는 새 baseline 으로 갱신하고 그 사실을 커밋
-      메시지에 명시한다
+- [ ] EditMode 전체 통과. 이 단위는 라이브 풀을 건드리지 않으므로 **웨이브 pin 테스트가
+      그대로 초록이어야 한다**(빨개지면 풀을 잘못 만진 것이다)
+- [ ] 자동 검증(unit 5·6 공통): `SlimeSplitAuthoringTests`(EditMode) + `SlimeSplitE2ETest`
+      (PlayMode) 통과. e2e 는 **`bridge.StartBattle()` 이 필수**다 — `Update` 가
+      `if (!_running) return;` 로 막혀 있어 시작하지 않으면 브리지 드레인이 한 번도 돌지 않고,
+      분열은 그 드레인에 살아 있어서 «자식 0» 이 되며 원인이 구현처럼 보인다(실제로 겪었다)

@@ -20,8 +20,14 @@
 ### 페이로드 저작 축
 
 ```
-DcPayloadKind.AreaBreath = 20        // append-only (직전 = GrantShield = 19)
+DcPayloadKind.AreaBreath = 21        // append-only. 20 은 unit 5 의 SplitOnDeath 가 선점
 ```
+
+★ **`DcApplicability.EvaluateMechanic` 에 분류를 추가해야 한다.** 그 함수의 전수 테스트
+(`DcApplicabilityTests.EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs`)가 (payload ×
+trigger × archetype) 전 조합을 돌며 `Unclassified` 를 잡는다 — 잊으면 EditMode 가 빨개진다
+(unit 5 구현 중 실제로 걸렸다). 브레스는 host 의 공격 모델과 무관하므로 `SelfBlink`·
+`UltimateLeap` 과 같은 자리에 두고 `DcRejectReason.None` 을 반환한다.
 
 필드 재사용 규약을 따른다: `magnitude` = 피해 · `tileRange` = 사거리(타일) · **신규
 `coneHalfAngleDeg`** = 반각(도).

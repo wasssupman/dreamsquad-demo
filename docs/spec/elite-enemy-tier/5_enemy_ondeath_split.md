@@ -8,8 +8,14 @@
 
 - `Assets/_Project/Scripts/Data/Dreamcatcher/DcMechanic.cs` — `DcPayloadKind.SplitOnDeath` +
   `AttackUnitData splitUnit` (**append-only**)
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `BakeNightmareMechanics` 예외 1줄 +
+- `Assets/_Project/Scripts/Core/Dreamcatcher/DcApplicability.cs` — 새 kind 분류(아래 ⚠)
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `BakeNightmareMechanics` 예외 +
   `SpawnUnit` 분해 + `DrainEnemyKilledEvents` 에 분열 스폰 + 드레인 순서
+
+⚠ **새 `DcPayloadKind` 는 `DcApplicability.EvaluateMechanic` 에 분류를 추가해야 한다.**
+전수 테스트(`DcApplicabilityTests.EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs`)가
+(payload × trigger × archetype) 전 조합에서 `Unclassified` 를 잡는다. 분열은 host 의 공격
+모델과 무관하므로 `SelfBlink`·`UltimateLeap` 과 같은 자리에서 `None` 을 반환한다.
 
 **ECS 쪽 변경이 0 이다** — 아래 ② 참조.
 
@@ -18,8 +24,11 @@
 ### ① 저작
 
 ```
-DcPayloadKind.SplitOnDeath = 21      // append-only (unit 4 의 AreaBreath = 20 다음)
+DcPayloadKind.SplitOnDeath = 20      // append-only. 직전 = GrantShield 19
 ```
+
+번호는 **착지 순서**다 — 슬라임(unit 5·6)이 드래곤(unit 4·7)보다 먼저 들어가서 20 을 가져갔고
+`AreaBreath` 가 21 이 된다. 직렬화 값이라 사후 재배치 금지.
 
 `magnitude` = 자식 수 · **신규 `splitUnit`**(`AttackUnitData` 참조) = 자식 SO.
 정의 계층은 SO 참조가 허용된다(`projectile`·`pattern`·`auraPrefab`·`stackModifier` 선례 —

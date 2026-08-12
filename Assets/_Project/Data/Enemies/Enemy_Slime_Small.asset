@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
+  m_Name: Enemy_Slime_Small
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
+  id: slime_small
+  displayName: Small Slime
+  traversalLayers: 0
+  enemyClass: 3
+  minWaveNumber: 1
+  maxPerWave: 0
+  attackMethod: 1
+  targetMode: 2
+  engageMovement: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
+  targetFactions: 13
+  health: 60
+  moveSpeed: 1.8
+  attackRange: 1
+  attackCooldown: 0.9
+  attackTargetCount: 1
+  projectile: {fileID: 0}
+  hitDelaySec: 0.3
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
+  outputs:
+  - kind: 0
+    magnitude: 12
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: 4f6372c21601bf94c9d0190a95e561c2, type: 2}
+  spineSkinName:
+  idleAnimation: walk
+  walkAnimation: walk
+  attackAnimation: fall-in
+  deathAnimation:
+  spineVisualScale: 0.33
+  partSkins: []
+  slotColors: []
+  visualOffset: {x: 0, y: 0, z: 0}
+  awakeningReward: 1
+  nightmareMechanics: []
+  killScore: 1
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
+  stabilityDamage: 1
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []
+  tier: 0
