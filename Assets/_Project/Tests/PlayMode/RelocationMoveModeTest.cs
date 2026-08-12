@@ -31,6 +31,84 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
+        // 버그 재현 — 사용자 문장: "재배치 모드 들어갈 때 배치 가능 타일 하이라이트가 동작 안 한다".
+        // 단언은 그 문장 그대로다: **이동모드에 있는 동안 하이라이트가 켜져 있다.**
+        // 진입 직후 1프레임이 핵심이다 — 재배치는 진입 시 한 번만 켜는데, 배치 드래그 컨트롤러는
+        // 매 프레임 하이라이트를 자기 상태로 되돌린다. 프레임이 흐르지 않으면 증상이 안 보인다.
+        [UnityTest]
+        public IEnumerator MoveMode_KeepsPlacementHighlight_AcrossFrames()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var controller = Object.FindObjectOfType<DefenderRelocationController>();
+            controller.enabled = false; // 재배치의 Update 는 막고 — 배치 컨트롤러 Update 는 살려둔다(그게 범인 후보)
+
+            var fast = ScriptableObject.CreateInstance<RelocationSettings>();
+            fast.entryCooldownSeconds = 0.5f;
+            fast.moveModeTimeoutSeconds = 30f;
+            SetField(controller, "settings", fast);
+
+            var cat = FindCatalog();
+            var unit = cat.ById("ranger");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            // 트레이 슬롯은 **GameManager 의 페이즈 전환**이 만든다(bridge.BeginPlacement 로는 안 생긴다).
+            // 아래 자기치유 검증이 슬롯 하나를 필요로 해서 여기서 태운다.
+            gm.SetPhase(GamePhase.Placement);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            var cell = SoleCell(bridge);
+            Assert.IsTrue(bridge.TryGetDefenderAt(cell, out var entity, out _, out _), "resolve entity");
+            Assert.IsTrue(controller.BeginMoveModeFor(entity, cell), "enter move mode");
+
+            Assert.IsTrue(bridge.IsPlacementHighlightShown, "진입 프레임엔 하이라이트가 켜진다");
+
+            // 프레임을 흘린다 — 여기서 꺼지면 누군가 매 프레임 되돌리고 있는 것이다.
+            for (int i = 0; i < 3; i++) yield return null;
+            Assert.IsTrue(controller.InMoveMode, "여전히 이동모드 (전제)");
+            Assert.IsTrue(bridge.IsPlacementHighlightShown,
+                "이동모드가 유지되는 동안 하이라이트도 유지돼야 한다 — 꺼졌다면 배치 컨트롤러가 되돌린 것");
+
+            controller.CancelMoveMode();
+            Assert.IsFalse(bridge.IsPlacementHighlightShown, "이동모드를 나가면 하이라이트도 꺼진다");
+
+            // 반대 방향(자기치유)도 함께 잠근다 — 이걸 깨면서 위를 고치기 쉽기 때문이다.
+            // placement-mask unit 4(588a99c4)가 넣은 계약: **배치 쪽이 하이라이트를 원하는 동안**
+            // 누가 밖에서 꺼도 배치 컨트롤러가 되살린다.
+            //
+            // ⚠ arm 을 반사로 세울 땐 `_armedUnit` 과 `_armedSlot` 을 **둘 다** 세워야 한다.
+            // UpdateBoardGesture 첫 줄이 `_armedSlot == null → Disarm()` 이라, 유닛만 세우면
+            // 다음 프레임에 arm 이 조용히 풀려 이 테스트가 엉뚱한 실패를 낸다(실제로 그랬다).
+            var drag = Object.FindObjectOfType<DefenderDragPlacementController>();
+            Assert.IsNotNull(drag, "DefenderDragPlacementController wired in scene");
+            var slot = Object.FindObjectOfType<DefenderDragSlot>(includeInactive: true);
+            Assert.IsNotNull(slot, "트레이 슬롯이 있어야 arm 을 흉내낼 수 있다");
+            SetField(drag, "_armedUnit", unit);
+            SetField(drag, "_armedSlot", slot);
+            yield return null;
+            Assert.IsTrue(drag.HasArmedUnit, "arm 이 프레임을 넘겨 유지된다 (전제)");
+            Assert.IsTrue(bridge.IsPlacementHighlightShown, "arm 하면 배치 하이라이트가 뜬다 (전제)");
+
+            bridge.HidePlacementHighlight();   // 밖에서 끈다(재배치 취소가 하는 일)
+            yield return null;
+            Assert.IsTrue(bridge.IsPlacementHighlightShown,
+                "배치가 원하는 동안 밖에서 꺼도 되살아난다 (자기치유 — 켜는 방향은 유지)");
+
+            SetField(drag, "_armedUnit", null);
+            SetField(drag, "_armedSlot", null);
+            Object.Destroy(fast);
+        }
+
         [UnityTest]
         public IEnumerator BeginMoveMode_Slomo_Cancel_Cooldown_Timeout()
         {
