@@ -1,6 +1,8 @@
 # Spec — Defender Board Limit (방어 유닛 동시 배치 상한)
 
-상태: **스펙 작성 2026-08-12 · 구현 대기** (unit 0 착수 승인 대기)
+상태: **units 0~2 구현·자동 검증 완료 2026-08-12** (커밋 `b03c066a` 스펙 · `9b629bfd` 구현)
+— EditMode 2188 통과(0 실패) · 신규 PlayMode 2건 통과. **육안 Play 확인(테두리 순환) 대기**,
+절차는 `3_handoff_summary.md` Follow-up 참조.
 
 ## 검증 질문
 
@@ -56,7 +58,7 @@
 | 0 | 토대 | `0_field_and_gate.md` | SO 필드 + 시트 DTO + 브리지 카운트/`LimitReached` + EditMode |
 | 1 | 표현·차단 | `1_tray_exhausted_state.md` | 슬롯 사전 차단 + 탈색·테두리 순환 셰이더 + 우선순위 규칙 + 튜토리얼 제외 |
 | 2 | 조작 | `2_slot_tap_to_unit.md` | 소진 셀 제스처 → 판 위 그 유닛 선택 |
-| 3 | 인계 | `3_handoff_summary.md` | (구현 종료 시) 커밋/검증/주의점 요약 |
+| 3 | 인계 | `3_handoff_summary.md` | 커밋/검증/주의점 요약 · 남은 육안 확인 절차 |
 
 ## 파이프라인 커버리지
 
