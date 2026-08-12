@@ -109,11 +109,26 @@ Dragon 리그는 프로젝트 규약과 **반대 방향**을 본다. 규약은 `
 크기 튜닝 knob 을 인스펙터에 둔 이유: 구현자가 화면을 볼 수 없어 코드에 박으면 매번 재컴파일
 왕복이 된다(제약 6 의 정신과도 맞다).
 
-트리거는 unit 4 의 `UnitAttackVisualEvent` 필드 append 경로. 슬롯이 비면 **1회 loud warning** —
-조용한 리턴은 «피해는 들어가는데 화면에 아무것도 없는» 상태를 버그처럼 보이게 한다
-(`unity-vfx-integration` red flag). 배선 자체는 `BreathVfxPrefab_IsWiredInBattleScene` 이 고정한다
-— 씬 YAML 직접 편집이라 자동 검증이 없으면 잘못된 `fileID` 로 `null` 이 된 것을 육안으로만 알 수
-있고, 실제로 첫 시도가 그랬다.
+### 연출 소유권 = `VfxSpawner` (브리지 아님)
+
+⚠ **초판은 이 전부를 `BattleBridge` 에 넣었다** — 프리팹 슬롯 + `Instantiate` + 정렬 변이 +
+`Destroy` 타이머 + 튜닝 knob 4개. 브리지는 **ECS 창구**이고 원샷 VFX 의 프리팹 슬롯·스폰·수명은
+`Presentation/VfxSpawner` 가 소유한다(`object-pipeline-map` 의 VFX 아키타입 — «프리팹 소스 =
+VfxSpawner SerializeField 슬롯»). `unity-vfx-integration` 스킬도 «`VfxSpawner` 나 presenter
+계층에 연결» 이라고 명시한다. **2026-08-13 사용자 지적으로 이관.**
+
+현재 형태 — `SpawnHealApplied`/`SpawnGoalCollapse` 와 같은 관용구:
+- `VfxSpawner.SpawnAreaBreath(originView, aimDirXZ, rangeWorld, halfAngleDeg)` 가 슬롯·스폰·
+  정렬·수명을 전부 소유. 슬롯이 비면 `LogWarning` + 링 펄스 폴백
+- 브리지는 드레인에서 **뷰 앵커만 풀어서 넘긴다**(`spineUnitPool` 접근이 거기 있으므로)
+- 수명은 **`ConfigureOneShot`** 이 정한다 — 루프형 벤더 프리팹을 *스폰 인스턴스에서만*
+  단발화하고 자가 파괴 시각을 돌려주는 기존 헬퍼. 그래서 프리팹 복제본의 `looping` 은
+  **건드리지 않는다**(초판은 YAML 에서 껐는데 그것도 관용구 위반이었다 — 「공유 에셋 무접촉」)
+
+트리거는 unit 4 의 `UnitAttackVisualEvent` 필드 append 경로.
+배선은 `BreathVfxPrefab_IsWiredOnVfxSpawner` 가 고정한다 — 씬 YAML 직접 편집이라 자동 검증이
+없으면 잘못된 `fileID` 로 `null` 이 된 것을 육안으로만 알 수 있고 실제로 첫 시도가 그랬다.
+같은 테스트가 **브리지가 슬롯을 되가져가지 않았는지**도 단언한다(소유권 회귀 방지).
 
 ### 로스터 노출
 

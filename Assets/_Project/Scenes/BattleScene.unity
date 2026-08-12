@@ -3988,6 +3988,12 @@ MonoBehaviour:
   shieldGrantedScale: 0.7
   cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   cardAbsorbScale: 0.6
+  areaBreathPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1,
+    type: 3}
+  areaBreathScalePerTile: 0.55
+  areaBreathScaleMax: 2.4
+  areaBreathForwardFactor: 0.45
+  areaBreathAngleOffset: 90
   goalCollapsePrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
   goalCollapseScale: 1.2
 --- !u!4 &1795146347
@@ -4268,13 +4274,6 @@ MonoBehaviour:
   resignationViewPrefab: {fileID: 0}
   resignationViewHeight: 0.2
   dcProcImpactMinIntervalSec: 0.25
-  areaBreathVfxPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1,
-    type: 3}
-  areaBreathVfxLifetime: 1.2
-  areaBreathVfxScalePerTile: 0.25
-  areaBreathVfxScaleMax: 1.2
-  areaBreathVfxForwardFactor: 0.45
-  areaBreathVfxAngleOffset: -90
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

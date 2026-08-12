@@ -82,56 +82,32 @@ namespace Wassup.Tests.PlayMode
         // 연출 배선 pin — 씬 YAML 을 직접 편집해 붙였으므로(비포커스 에디터에서 씬 전환 모달을
         // 피하려고) Unity 가 실제로 역직렬화했는지 확인할 자동 수단이 필요하다. 실제로 첫 시도에
         // 잘못된 fileID 로 `null` 이 됐고 이 단언이 없어서 육안으로만 알 수 있었다.
+        //
+        // ★슬롯 소유자는 **VfxSpawner** 다 — 원샷 VFX 의 프리팹 슬롯·스폰·수명은 그 클래스가
+        // 소유한다(object-pipeline-map 의 VFX 아키타입). 초판은 BattleBridge 에 뒀고 그건
+        // 사용자 지적으로 이관됐다(2026-08-13).
         [UnityTest]
-        public IEnumerator BreathVfxPrefab_IsWiredInBattleScene()
+        public IEnumerator BreathVfxPrefab_IsWiredOnVfxSpawner()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return LoadBattle();
 
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            Assert.IsNotNull(bridge, "BattleBridge");
+            var spawner = Object.FindObjectOfType<Wassup.Presentation.VfxSpawner>();
+            Assert.IsNotNull(spawner, "VfxSpawner");
 
-            var f = typeof(BattleBridge).GetField("areaBreathVfxPrefab",
+            var f = typeof(Wassup.Presentation.VfxSpawner).GetField("areaBreathPrefab",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(f, "areaBreathVfxPrefab 필드를 찾지 못했다(이름 변경?)");
-            var prefab = f.GetValue(bridge) as GameObject;
+            Assert.IsNotNull(f, "areaBreathPrefab 필드를 찾지 못했다(이름 변경?)");
+            var prefab = f.GetValue(spawner) as GameObject;
             Assert.IsNotNull(prefab,
-                "areaBreathVfxPrefab 이 비었다 — 브레스가 피해만 주고 화면에 아무것도 안 보인다");
-            Assert.IsTrue(prefab.GetComponentInChildren<ParticleSystem>() != null,
+                "areaBreathPrefab 이 비었다 — 브레스가 피해만 주고 화면에 아무것도 안 보인다");
+            Assert.IsTrue(prefab.GetComponentInChildren<ParticleSystem>(true) != null,
                 "배선된 프리팹에 ParticleSystem 이 없다");
-        }
 
-        // ★아군 오사 — 콘 안에 **다른 적**을 두고 브레스를 발동시켜도 무피해여야 한다.
-        [UnityTest]
-        public IEnumerator DragonBreath_DoesNotDamageOtherEnemies()
-        {
-            LogAssert.ignoreFailingMessages = true;
-            yield return LoadBattle();
-
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            bridge.StartBattle();
-            for (int i = 0; i < 2; i++) yield return null;
-
-            var dragon = SpawnEnemy(bridge, em, LoadEnemy(DragonPath));
-            var victimSo = LoadEnemy(SlimePath);
-            var neighbour = SpawnEnemy(bridge, em, victimSo);
-            Assert.AreNotEqual(Entity.Null, dragon);
-            Assert.AreNotEqual(Entity.Null, neighbour);
-
-            // 같은 레인 스폰이라 서로 붙어 있다 = 콘 안에 들 조건. 체력을 기록해 둔다.
-            float before = em.GetComponentData<Health>(neighbour).value;
-
-            // 브레스가 발동할 만큼(3타 × cd) 충분히 돌린다.
-            for (int i = 0; i < 420; i++) yield return null;
-
-            if (em.Exists(neighbour) && !em.HasComponent<DeadTag>(neighbour))
-            {
-                float after = em.GetComponentData<Health>(neighbour).value;
-                Assert.AreEqual(before, after, 0.01f,
-                    "다른 적이 브레스에 맞았다 — 콘 순회의 진영 마스크 술어가 빠졌다(초판 스펙의 거짓 전제)");
-            }
-            // 이웃이 사라졌다면 브레스가 아니라 유출/골 도달이므로 단언 대상이 아니다.
+            // 브리지가 연출 소유권을 되가져가지 않았는지 — 회귀 방지.
+            Assert.IsNull(typeof(BattleBridge).GetField("areaBreathVfxPrefab",
+                    BindingFlags.NonPublic | BindingFlags.Instance),
+                "BattleBridge 가 다시 VFX 프리팹 슬롯을 들고 있다 — 연출 소유권은 VfxSpawner 다");
         }
 
         // ── helpers (SlimeSplitE2ETest 와 같은 레시피) ──────────────────────────

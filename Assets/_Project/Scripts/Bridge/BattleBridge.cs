@@ -3652,8 +3652,12 @@ namespace Wassup.Bridge
                 // NotifyAttack 을 다시 부르면 한 프레임에 공격 애니가 두 번 트리거된다.
                 if (evt.hasAreaBreath)
                 {
-                    SpawnAreaBreathVfx(evt.attacker, evt.breathDir,
-                        evt.breathRangeWorld, evt.breathHalfAngleDeg);
+                    // 연출 소유권은 VfxSpawner 다(원샷 VFX 의 프리팹 슬롯·스폰·수명).
+                    // 브리지는 뷰 앵커만 풀어서 넘긴다 — spineUnitPool 접근이 여기 있으므로.
+                    if (vfxSpawner != null && ResolveBeamViewPos(evt.attacker, true, out var breathOrigin))
+                        vfxSpawner.SpawnAreaBreath(breathOrigin,
+                            new Vector2(evt.breathDir.x, evt.breathDir.y),
+                            evt.breathRangeWorld, evt.breathHalfAngleDeg);
                     continue;
                 }
 
@@ -8270,82 +8274,6 @@ namespace Wassup.Bridge
             return entity;
         }
 
-        // elite-enemy-tier unit 4 — 화염 브레스 원샷 VFX. 프리팹은 unit 7 이 배선한다 —
-        // **미배선(null)이면 무동작**이고 시뮬은 이미 피해를 적용했으므로 게임 규칙은 온전하다
-        // (연출만 빈다). VfxSpawner 슬롯 관례와 달리 LogError 를 내지 않는 이유가 그것이다.
-        //
-        // 방향은 sim 공간 XZ 로 받아 **view 공간으로 변환해** 회전을 만든다 — sim 방향을 그대로
-        // 쓰면 평면 보드에서 엉뚱한 축으로 돈다(attackVfxFacesTarget 과 같은 함정).
-        [SerializeField] private GameObject areaBreathVfxPrefab;
-        [SerializeField] private float areaBreathVfxLifetime = 1.2f;
-        // 연출 크기 튜닝은 **인스펙터에서** 한다(제약 6) — 내가 화면을 못 보므로 코드에 박으면
-        // 매번 재컴파일 왕복이 된다. 사거리 1타일당 배율 + 상한.
-        [SerializeField] private float areaBreathVfxScalePerTile = 0.25f;
-        [SerializeField] private float areaBreathVfxScaleMax = 1.2f;
-        // 시전자 앞으로 얼마나 내보낼지(사거리 대비 분율). 0 = 시전자에 겹침 = 「발밑에 깔린 불」.
-        [SerializeField] private float areaBreathVfxForwardFactor = 0.45f;
-        // 프리팹의 분사 축을 조준 방향에 맞추는 보정각. 프리팹은 직립(+Y)으로 저작돼 있어
-        // −90 이 기본이다. **분사가 뒤로 나가면 +90 으로 뒤집으면 된다** — 파티클 콘의 축
-        // 부호는 프리팹 저작(ShapeModule.m_Rotation)에 달려 있고 화면을 보지 않고는 확정할 수
-        // 없어서 코드에 박지 않고 여기로 뺐다.
-        [SerializeField] private float areaBreathVfxAngleOffset = -90f;
-
-        private bool _warnedAreaBreathVfxMissing;
-
-        private void SpawnAreaBreathVfx(Entity attacker, float2 dirXZ, float rangeWorld, float halfAngleDeg)
-        {
-            if (areaBreathVfxPrefab == null)
-            {
-                // 조용한 리턴 금지 — 슬롯이 비면 «피해는 들어가는데 화면에 아무것도 없는» 상태가
-                // 되고 그게 버그처럼 읽힌다. 발동마다 스팸하지 않도록 1회만 경고한다.
-                if (!_warnedAreaBreathVfxMissing)
-                {
-                    _warnedAreaBreathVfxMissing = true;
-                    Debug.LogWarning("[BattleBridge] AreaBreath prefab slot empty — 피해는 적용되지만 연출이 없다. " +
-                                     "areaBreathVfxPrefab 을 배선하라.", this);
-                }
-                return;
-            }
-            if (!ResolveBeamViewPos(attacker, true, out var originView)) return;
-
-            // sim XZ 방향 두 점을 view 로 옮겨 화면상의 방향을 구한다.
-            var aheadSim = new Vector3(dirXZ.x, 0f, dirXZ.y);
-            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToView(aheadSim)
-                                - (Vector3)Wassup.Core.BoardSpace.ToView(Vector3.zero);
-            if (aheadView.sqrMagnitude < 1e-6f) aheadView = Vector3.right;
-            aheadView.Normalize();
-            float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;
-
-            // ★**시전자 앞으로 내보낸다.** 원점에 그대로 두면 이펙트가 드래곤에 겹쳐서 「발밑에
-            // 깔린 불」로 보인다(사용자 제보 2026-08-13). 오프셋은 사거리 비례 + 인스펙터 배율.
-            Vector3 spawnPos = originView + aheadView * (rangeWorld * areaBreathVfxForwardFactor);
-
-            // 프리팹은 **직립 화염**(+Y 로 솟는다)이라 −90° 를 더해 +Y 를 조준 방향에 맞춘다.
-            // (초판은 바닥 계열 GroundFire 를 썼는데 그건 보드 평면에 눕도록 저작된 것이라
-            //  기울어진 보드에서 바닥 얼룩으로 보였다.)
-            var go = Instantiate(areaBreathVfxPrefab, spawnPos,
-                                Quaternion.Euler(0f, 0f, angle + areaBreathVfxAngleOffset));
-
-            // ★정렬 — 벤더 프리팹이 order 0~2 로 들어와 유닛(Compute = 수백대) 뒤에 깔린다.
-            // 빔이 겪은 것과 같은 증상이라 같은 규약을 쓴다: 대역 상수를 **더해서** 프리팹 내부의
-            // 상대 순서를 보존한다.
-            foreach (var r in go.GetComponentsInChildren<ParticleSystemRenderer>(true))
-                r.sortingOrder += Wassup.Presentation.BoardSortOrder.AreaBreathOrder;
-
-            // ★**콘 기하를 그대로 그리려 하지 않는다.** 초판은 사거리·반각에서 폭을 유도했는데
-            // (`rangeWorld × tan(반각) × 2`), 사거리 3타일 · 반각 50° 면 폭이 7.15 유닛이 되어
-            // **화면을 덮었다**. 부채꼴의 «입» 너비는 기하적으로 맞지만 화면에서는 브레스가
-            // 아니라 광역 폭발로 읽힌다.
-            //
-            // 그래서 연출은 **저작된 크기**를 쓴다 — 사거리에 비례하되 인스펙터 배율로 눌러
-            // 「작은 방사형 화염」이 되게 한다. 반각은 이제 **판정 파라미터일 뿐**이고 화면
-            // 크기에 관여하지 않는다(판정과 연출이 갈리는 것을 의도적으로 받아들인다 —
-            // 정확한 콘 시각화는 별도 저작 몫이다).
-            float s = Mathf.Clamp(rangeWorld * areaBreathVfxScalePerTile,
-                                  0.1f, Mathf.Max(0.1f, areaBreathVfxScaleMax));
-            go.transform.localScale = new Vector3(s, s, s);
-            Destroy(go, Mathf.Max(0.1f, areaBreathVfxLifetime));
-        }
 
         // elite-enemy-tier unit 4 — 저작 반각(도) → 런타임 코사인². 정의역 밖 값은 위 bake 분기가
         // 이미 거절했으므로 여기서는 변환만 한다(0 이하는 cos²=1 = 정면 한 줄로 자연 귀결).

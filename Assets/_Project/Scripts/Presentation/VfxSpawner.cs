@@ -34,6 +34,16 @@ namespace Wassup.Presentation
 
         [Header("goal-stability unit 5 — 골 붕괴 원샷")]
         [Tooltip("안정도 0 붕괴 순간 이펙트. v1 은 blocking hazard 파괴 VFX 재사용(정식 아트 후속)")]
+        // elite-enemy-tier unit 4 — 화염 브레스. 튜닝 knob 을 인스펙터에 두는 이유: 구현자가
+        // 화면을 볼 수 없어 코드에 박으면 조정마다 재컴파일 왕복이 된다.
+        [SerializeField] private GameObject areaBreathPrefab;
+        [SerializeField] private float areaBreathScalePerTile = 0.55f;
+        [SerializeField] private float areaBreathScaleMax = 2.4f;
+        // 사거리 대비 전방 오프셋. 0 = 시전자에 겹침.
+        [SerializeField] private float areaBreathForwardFactor = 0.45f;
+        // 분사 축 보정각. **분사가 뒤로 나가면 부호를 뒤집는다**(−90 ↔ +90).
+        [SerializeField] private float areaBreathAngleOffset = 90f;
+
         [SerializeField] private GameObject goalCollapsePrefab;
         [Tooltip("붕괴 이펙트 스케일(타일 1 유닛 기준)")]
         [SerializeField] private float goalCollapseScale = 1.2f;
@@ -198,6 +208,60 @@ namespace Wassup.Presentation
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(goalCollapsePrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, goalCollapseScale);
+            float lifetime = ConfigureOneShot(go);
+            Destroy(go, lifetime);
+        }
+
+        // elite-enemy-tier unit 4 — 드래곤 화염 브레스 원샷. 호출 = BattleBridge 의
+        // UnitAttackVisualEvents 드레인(브레스 플래그 분기).
+        //
+        // ★**초판은 이 전부를 BattleBridge 안에 넣었다** — 프리팹 슬롯·Instantiate·정렬 변이·
+        // Destroy 타이머·튜닝 knob 4개가 브리지에 있었다. 브리지는 ECS 창구이고 원샷 VFX 의
+        // 프리팹 슬롯·스폰·수명은 이 클래스가 소유한다(object-pipeline-map 의 VFX 아키타입).
+        // 2026-08-13 사용자 지적으로 이관.
+        //
+        // `originView` 만 **이미 view 공간**이다 — Spine 뷰 앵커(입 위치)에서 나오므로 브리지가
+        // spineUnitPool 로 풀어서 넘긴다. 방향은 sim XZ 로 받아 여기서 view 로 옮긴다(ToView 1회).
+        public void SpawnAreaBreath(Vector3 originView, Vector2 aimDirXZ, float rangeWorld, float halfAngleDeg)
+        {
+            if (areaBreathPrefab == null)
+            {
+                // 조용한 리턴 금지 — 슬롯이 비면 「피해는 들어가는데 화면에 아무것도 없는」
+                // 상태가 되고 그게 버그처럼 읽힌다(unity-vfx-integration red flag).
+                Debug.LogWarning("[VfxSpawner] areaBreath prefab slot empty, using code fallback");
+                SpawnPlacementRing(originView); // 폴백: 최소한 발동 지점 링 펄스
+                return;
+            }
+
+            // sim XZ 방향 → view 방향. 두 점을 옮겨 차분을 쓴다(평면 보드에서 축이 돌기 때문).
+            var aheadSim = new Vector3(aimDirXZ.x, 0f, aimDirXZ.y);
+            Vector3 aheadView = (Vector3)Wassup.Core.BoardSpace.ToView(aheadSim)
+                                - (Vector3)Wassup.Core.BoardSpace.ToView(Vector3.zero);
+            if (aheadView.sqrMagnitude < 1e-6f) aheadView = Vector3.right;
+            aheadView.Normalize();
+            float angle = Mathf.Atan2(aheadView.y, aheadView.x) * Mathf.Rad2Deg;
+
+            // 시전자 앞으로 내보낸다 — 원점에 두면 드래곤에 겹쳐 「발밑에 깔린 불」이 된다.
+            Vector3 pos = originView + aheadView * (rangeWorld * areaBreathForwardFactor);
+
+            // 프리팹 분사 축 보정. 축 부호는 프리팹 저작(ShapeModule.m_Rotation)에 달려 있어
+            // 화면 없이 확정할 수 없다 → 인스펙터 값으로 둔다(뒤로 나가면 부호만 뒤집는다).
+            var go = Instantiate(areaBreathPrefab, pos,
+                                 Quaternion.Euler(0f, 0f, angle + areaBreathAngleOffset), transform);
+
+            // 연출 크기는 **저작값**이다. 콘 기하(rangeWorld × tan(반각) × 2)를 그대로 쓰면
+            // 사거리 3 · 반각 50° 에서 폭 7.15 유닛이 되어 화면을 덮는다. 반각은 판정
+            // 파라미터일 뿐이고 화면 크기에 관여하지 않는다.
+            float s = Mathf.Clamp(rangeWorld * areaBreathScalePerTile, 0.1f,
+                                  Mathf.Max(0.1f, areaBreathScaleMax));
+            go.transform.localScale = Vector3.one * s;
+
+            // 벤더 프리팹이 order 0~2 로 들어와 유닛(Compute = 수백대) 뒤에 깔린다. 빔이 겪은
+            // 것과 같은 증상이라 같은 규약 — 대역을 **더해서** 프리팹 내부 상대 순서를 보존한다.
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].sortingOrder += BoardSortOrder.AreaBreathOrder;
+
             float lifetime = ConfigureOneShot(go);
             Destroy(go, lifetime);
         }
