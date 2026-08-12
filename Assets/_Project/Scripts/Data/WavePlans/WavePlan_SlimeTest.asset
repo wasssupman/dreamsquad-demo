@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e26b79bbb3da24d79900c004f0d4add0, type: 3}
   m_Name: WavePlan_SlimeTest
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.WavePlanAsset
-  displayName: "엘리트 슬라임 분열 e2e"
+  displayName: "엘리트 슬라임 2단계 분열"
   timerDurationSec: 0
   waves:
   - durationSec: 90

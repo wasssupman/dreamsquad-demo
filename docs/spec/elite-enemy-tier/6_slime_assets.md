@@ -17,27 +17,47 @@
 
 ## 구현
 
-### 저작값 (README 유닛 사양 표가 정본)
+### 저작값 — **2단계 분열** (사용자 결정 2026-08-12)
 
-| | 부모 `slime` | 자식 `slime_small` |
-|---|---|---|
-| tier | **Elite** | **Normal** |
-| health | 120 | **60** (부모의 50%) |
-| outputs | `Damage 12` | **`Damage 12`** (계승) |
-| moveSpeed / attackRange / attackCooldown | 1.8 / 1 / 0.9 | 동일 |
-| enemyClass / attackMethod / targetMode / engageMovement | Bruiser / Melee / Nearest / Halt | 동일 |
-| hitDelaySec | 0.3 | 0.3 |
-| killScore / awakeningReward / stabilityDamage | 3 / 3 / 2 | 1 / 1 / 1 |
-| maxPerWave / minWaveNumber | 1 / 3 | — (생성 대상 아님) |
-| **waypointPathIndex** | **-1** | **-1** |
-| traversalLayers | None(→`Path` 폴백) | 동일 |
-| nightmareMechanics | `OnDeath × SplitOnDeath(magnitude 2, splitUnit = Enemy_Slime_Small)` | **비움** |
+`슬라임 → 중간 ×2 → 작은 ×4`. 단계마다 체력 절반, 공격력은 전 단계 계승.
+
+| | `slime` | `slime_mid` ×2 | `slime_small` ×4 |
+|---|---|---|---|
+| tier | **Elite** | Normal | Normal |
+| health | 120 | **60** | **30** |
+| outputs | `Damage 12` | 동일(계승) | 동일(계승) |
+| moveSpeed / attackRange / attackCooldown | 1.8 / 1 / 0.9 | 동일 | 동일 |
+| enemyClass / attackMethod / targetMode / engageMovement | Bruiser / Melee / FocusUntilDead / Halt | 동일 | 동일 |
+| **awakeningReward** | **3** | **0** | **0** |
+| **killScore** | **3** | **0** | **0** |
+| **stabilityDamage** | 2 | **1** | **1** |
+| spineVisualScale | 0.55 | 0.42 | 0.30 |
+| maxPerWave / minWaveNumber | 1 / 3 | — (생성 대상 아님) | — |
+| **waypointPathIndex** | **-1** | **-1** | **-1** |
+| nightmareMechanics | `OnDeath × SplitOnDeath(2, slime_mid)` | `OnDeath × SplitOnDeath(2, slime_small)` | **비움 = 사슬 종료** |
+
+**보상 불변식 — 분열은 보상을 나누지 않는다.** 분열체의 `awakeningReward`·`killScore` 는 **0** 이고
+총량은 엘리트 본체 하나 몫(각성 3 / 점수 3)이다. 단계를 더 늘려도 총량이 안 변한다.
+근거: 각성 20 = 드림캐쳐 1장(`AwakeningConfig.costSquad/Unit/Active`)이고 **보스가 5** 다.
+자식에 1씩 주면 `3 + 2×2 + 4×1 = 11` 로 웨이브 슬롯 하나가 보스 두 배를 뱉는 **처치 7회짜리
+각성 농장**이 된다.
+
+**반대로 `stabilityDamage` 는 자식에게 남긴다(1씩).** 그건 보상이 아니라 **놓쳤을 때의 대가**라
+마릿수만큼 커지는 것이 맞다 — 4마리가 다 새면 벌이 2 → 4 로 커진다.
+
+⚠ **유효 체력은 단계마다 유지된다**(120 / 2×60 / 4×30 = 각 120). 즉 웨이브 슬롯 하나가 총 360
+체력 + 처치 7회다. `maxPerWave 1` 을 유지할 것.
 
 ⚠ **`waypointPathIndex = -1` 은 계약 3 이다.** 경로를 저작하면 자식이 부모의 순서 진행도를
 물려받지 못해 **부모가 이미 지난 지점으로 되돌아간다.**
 
-⚠ **자식의 `nightmareMechanics` 는 반드시 비어 있어야 한다.** 채우면 무한 분열이 열린다(계약 2 의
-재귀 차단이 이 한 칸이다).
+### 재귀 차단이 «사슬 검증» 으로 옮겨졌다
+
+초판 가드는 «자식이 메커닉을 갖고 있으면 경고» 였고, 1단계에서는 그게 재귀 방어였다.
+**2단계가 의도가 되면 그 경고는 거짓 신호**가 된다(중간은 메커닉을 가져야 한다).
+무한 분열을 실제로 만드는 것은 **사슬이 자기에게 돌아오는 것**이므로 판정을 옮겼다 —
+`Data/SplitChain.cs`(순수 함수, `Validate`/`NextInChain`) + `SplitChainTests`(자기순환·간접순환·
+과길이·null 종료). bake 는 그 술어를 호출해 loud 거절한다.
 
 ### Spine
 

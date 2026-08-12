@@ -7646,9 +7646,11 @@ namespace Wassup.Bridge
                         Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
                     else if (m.payload.magnitude < 1f)
                         Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
-                    else if (m.payload.splitUnit.nightmareMechanics != null
-                             && m.payload.splitUnit.nightmareMechanics.Length > 0)
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: splitUnit '{m.payload.splitUnit.displayName}' 이 메커닉을 갖고 있다 — 분열이 재귀할 수 있다.");
+                    // ★«자식이 메커닉을 갖고 있나» 가 아니라 «사슬이 순환하나» 를 본다.
+                    // 다단계 분열(슬라임 → 중간 → 작은)은 의도이고, 무한 분열을 만드는 것은
+                    // 사슬이 자기에게 돌아오는 것뿐이다. 판정은 순수 함수 1곳이 소유한다.
+                    else if (!Wassup.Data.SplitChain.Validate(unitType, out string splitError))
+                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: {splitError}");
                     continue;
                 }
                 // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트

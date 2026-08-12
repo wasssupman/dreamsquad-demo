@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
-  m_Name: Enemy_Slime
+  m_Name: Enemy_Slime_Mid
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
-  id: slime
-  displayName: Slime
+  id: slime_mid
+  displayName: Mid Slime
   traversalLayers: 0
   enemyClass: 3
-  minWaveNumber: 3
-  maxPerWave: 1
+  minWaveNumber: 1
+  maxPerWave: 0
   attackMethod: 1
   targetMode: 2
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 13
-  health: 120
+  health: 60
   moveSpeed: 1.8
   attackRange: 1
   attackCooldown: 0.9
@@ -50,11 +50,11 @@ MonoBehaviour:
   walkAnimation: walk
   attackAnimation: fall-in
   deathAnimation:
-  spineVisualScale: 0.55
+  spineVisualScale: 0.42
   partSkins: []
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
-  awakeningReward: 3
+  awakeningReward: 0
   nightmareMechanics:
   - trigger:
       kind: 3
@@ -79,12 +79,12 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
-      splitUnit: {fileID: 11400000, guid: 2f8b46e1c3a94d5eb7091d6c8a3e5f47, type: 2}
-  killScore: 3
+      splitUnit: {fileID: 11400000, guid: 5b1e7c4a9d3f4e2ab8c6f0d1a2e3b4c5, type: 2}
+  killScore: 0
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
-  stabilityDamage: 2
+  stabilityDamage: 1
   waypointPathIndex: -1
   flightLift: 0
   idleVariants: []
-  tier: 1
+  tier: 0

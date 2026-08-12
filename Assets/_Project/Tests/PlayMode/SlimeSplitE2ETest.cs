@@ -18,7 +18,7 @@ namespace Wassup.Tests.PlayMode
     // elite-enemy-tier unit 5/6 — 엘리트 슬라임 분열 e2e.
     //
     // 사슬 전체를 태운다: 배송 에셋(Enemy_Slime) 스폰 → 치사 피해 → 킬 이벤트 → 브리지 드레인이
-    // **SO 를 직독**해 자식 2기 스폰 → 자식이 이동 → 자식은 다시 분열하지 않는다.
+    // **SO 를 직독**해 중간 2기 스폰 → 중간을 죽이면 작은 4기 → 작은에서 사슬이 끝난다.
     //
     // 이 테스트가 지키는 것이 왜 «순수 함수 그린» 으로 대체되지 않나: 분열은 슬롯도 이벤트
     // 필드도 sim 변경도 없는 **브리지 드레인 한 곳**이라, 검증할 수 있는 순수 조각이 없다.
@@ -30,6 +30,7 @@ namespace Wassup.Tests.PlayMode
     public class SlimeSplitE2ETest
     {
         private const string ParentPath = "Assets/_Project/Data/Enemies/Enemy_Slime.asset";
+        private const string MidPath = "Assets/_Project/Data/Enemies/Enemy_Slime_Mid.asset";
         private const string ChildPath = "Assets/_Project/Data/Enemies/Enemy_Slime_Small.asset";
 
         [TearDown] public void TearDown() => LogAssert.ignoreFailingMessages = false;
@@ -43,7 +44,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Slime_SplitsIntoTwoChildren_AtDeathSpot_AndChildrenDoNotResplit()
+        public IEnumerator Slime_SplitsTwice_AtDeathSpot_AndChainTerminates()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return LoadBattle();
@@ -60,6 +61,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 2; i++) yield return null;
 
             var parentSo = LoadEnemy(ParentPath);
+            var midSo = LoadEnemy(MidPath);
             var childSo = LoadEnemy(ChildPath);
             Assert.AreEqual(EnemyTier.Elite, parentSo.tier, "슬라임은 엘리트여야 한다");
 
@@ -76,12 +78,12 @@ namespace Wassup.Tests.PlayMode
             var h = em.GetComponentData<Health>(parent);
             em.GetBuffer<IncomingDamage>(parent).Add(new IncomingDamage { amount = h.max * 10f });
 
-            // 사망 → 파괴 → 브리지 드레인(Update 최상단) 까지 몇 프레임.
-            List<Entity> children = null;
-            for (int i = 0; i < 30 && (children == null || children.Count < 2); i++)
+            // ── 1단계: 본체 → 중간 2기 ──────────────────────────────────────────
+            List<Entity> mids = null;
+            for (int i = 0; i < 30 && (mids == null || mids.Count < 2); i++)
             {
                 yield return null;
-                children = FindEnemiesOfType(bridge, em, childSo);
+                mids = FindEnemiesOfType(bridge, em, midSo);
             }
 
             // ★경계 계측 — 「킬 드레인이 돌았나」와 「분열이 돌았나」를 분리한다.
@@ -90,45 +92,60 @@ namespace Wassup.Tests.PlayMode
                 "킬 드레인 자체가 돌지 않았다(_killCount 불변) — EnemyKilledEvent 발화 또는 " +
                 "DrainEnemyKilledEvents 호출 경로 문제. 분열 코드는 아직 의심 대상이 아니다");
 
-            Assert.IsNotNull(children);
-            Assert.AreEqual(2, children.Count,
-                $"자식이 정확히 2기여야 한다(실제 {children?.Count}) — magnitude 저작 또는 드레인 배선");
-            Assert.IsFalse(em.Exists(parent) && !em.HasComponent<DeadTag>(parent),
-                "부모가 살아 있다");
+            Assert.IsNotNull(mids);
+            Assert.AreEqual(2, mids.Count,
+                $"중간 슬라임이 정확히 2기여야 한다(실제 {mids?.Count}) — magnitude 저작 또는 드레인 배선");
+            Assert.IsFalse(em.Exists(parent) && !em.HasComponent<DeadTag>(parent), "부모가 살아 있다");
 
-            // 체력 50% + 죽은 자리
-            foreach (var c in children)
+            foreach (var c in mids)
             {
                 var ch = em.GetComponentData<Health>(c);
-                Assert.AreEqual(parentSo.health * 0.5f, ch.max, 0.01f, "자식 최대체력 = 부모의 50%");
+                Assert.AreEqual(parentSo.health * 0.5f, ch.max, 0.01f, "중간 최대체력 = 본체의 50%");
                 var p = em.GetComponentData<LocalTransform>(c).Position;
                 float planar = Vector2.Distance(new Vector2(deathPos.x, deathPos.z), new Vector2(p.x, p.z));
-                Assert.Less(planar, bridge.TileSize,
-                    "자식은 부모가 죽은 자리(같은 셀 안)에 생겨야 한다");
+                Assert.Less(planar, bridge.TileSize, "자식은 부모가 죽은 자리(같은 셀 안)에 생겨야 한다");
             }
 
-            // 자식이 실제로 **움직인다** — 스폰만 되고 굳는 계열 회귀 방지
+            // 분열체가 실제로 **움직인다** — 스폰만 되고 굳는 계열 회귀 방지
             // (summon-patrol-defender 가 겪은 «뷰가 제자리에 선다» 와 같은 종류).
-            var start = em.GetComponentData<LocalTransform>(children[0]).Position;
+            var start = em.GetComponentData<LocalTransform>(mids[0]).Position;
             for (int i = 0; i < 120; i++) yield return null;
-            if (em.Exists(children[0]))
+            if (em.Exists(mids[0]) && !em.HasComponent<DeadTag>(mids[0]))
             {
-                var now = em.GetComponentData<LocalTransform>(children[0]).Position;
+                var now = em.GetComponentData<LocalTransform>(mids[0]).Position;
                 Assert.Greater(Vector3.Distance(start, now), 0.05f,
-                    "자식이 한 칸도 움직이지 않았다 — PathFollowState bake 또는 임의 위치 스폰 문제");
+                    "분열체가 한 칸도 움직이지 않았다 — PathFollowState bake 또는 임의 위치 스폰 문제");
             }
 
-            // 자식을 죽여도 더 생기지 않는다(재귀 차단이 «자식은 메커닉이 없다» 로 성립).
-            int beforeGrandkids = FindEnemiesOfType(bridge, em, childSo).Count;
-            foreach (var c in children)
+            // ── 2단계: 중간 → 작은 4기 ──────────────────────────────────────────
+            mids = FindEnemiesOfType(bridge, em, midSo);
+            int midsKilled = mids.Count;
+            foreach (var c in mids)
                 if (em.Exists(c) && em.HasBuffer<IncomingDamage>(c))
                     em.GetBuffer<IncomingDamage>(c).Add(new IncomingDamage { amount = 99999f });
 
-            for (int i = 0; i < 30; i++) yield return null;
-            int afterGrandkids = FindEnemiesOfType(bridge, em, childSo).Count;
-            Assert.Less(afterGrandkids, beforeGrandkids,
-                "자식이 죽지 않았거나 손자가 생겼다 — 무한 분열 위험");
-            Assert.AreEqual(0, afterGrandkids, "손자가 생겼다 — 자식의 nightmareMechanics 가 비어야 한다");
+            List<Entity> smalls = null;
+            for (int i = 0; i < 40 && (smalls == null || smalls.Count < midsKilled * 2); i++)
+            {
+                yield return null;
+                smalls = FindEnemiesOfType(bridge, em, childSo);
+            }
+            Assert.AreEqual(midsKilled * 2, smalls.Count,
+                $"중간 {midsKilled}기가 죽으면 작은 슬라임 {midsKilled * 2}기가 나와야 한다(2단계 분열)");
+            foreach (var c in smalls)
+                Assert.AreEqual(LoadEnemy(MidPath).health * 0.5f,
+                    em.GetComponentData<Health>(c).max, 0.01f, "작은 최대체력 = 중간의 50%");
+
+            // ── 사슬 종료: 작은 슬라임을 죽여도 더 안 생긴다 ─────────────────────
+            foreach (var c in smalls)
+                if (em.Exists(c) && em.HasBuffer<IncomingDamage>(c))
+                    em.GetBuffer<IncomingDamage>(c).Add(new IncomingDamage { amount = 99999f });
+
+            for (int i = 0; i < 40; i++) yield return null;
+            Assert.AreEqual(0, FindEnemiesOfType(bridge, em, childSo).Count,
+                "작은 슬라임이 남았거나 다시 태어났다 — 사슬이 끝나지 않는다");
+            Assert.AreEqual(0, FindEnemiesOfType(bridge, em, midSo).Count,
+                "중간 슬라임이 다시 태어났다 — 사슬이 순환한다");
         }
 
         // 드레인 순서 계약(unit 5 ④). 「부모가 마지막 적일 때 웨이브가 안 넘어간다」를 직접
@@ -151,7 +168,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 2; i++) yield return null;
 
             var parentSo = LoadEnemy(ParentPath);
-            var childSo = LoadEnemy(ChildPath);
+            var midSo = LoadEnemy(MidPath);
 
             var parent = SpawnEnemy(bridge, em, parentSo);
             Assert.AreNotEqual(Entity.Null, parent);
@@ -166,7 +183,7 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
                 if (KillCount(bridge) <= killsBefore) continue;
                 // 킬이 집계된 첫 관측 — 이 순간 자식이 이미 있어야 한다.
-                int childCount = FindEnemiesOfType(bridge, em, childSo).Count;
+                int childCount = FindEnemiesOfType(bridge, em, midSo).Count;
                 Assert.AreEqual(2, childCount,
                     "킬이 집계된 시점에 자식이 없다 — 분열 스폰이 킬 드레인과 같은 호출에서 " +
                     "일어나지 않으면 QueueDueWaves/CheckVictory 가 「부모도 자식도 없는」 틈을 본다");

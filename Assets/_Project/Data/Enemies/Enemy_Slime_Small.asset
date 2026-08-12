@@ -24,7 +24,7 @@ MonoBehaviour:
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 13
-  health: 60
+  health: 30
   moveSpeed: 1.8
   attackRange: 1
   attackCooldown: 0.9
@@ -50,13 +50,13 @@ MonoBehaviour:
   walkAnimation: walk
   attackAnimation: fall-in
   deathAnimation:
-  spineVisualScale: 0.33
+  spineVisualScale: 0.3
   partSkins: []
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
-  awakeningReward: 1
+  awakeningReward: 0
   nightmareMechanics: []
-  killScore: 1
+  killScore: 0
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
