@@ -1,7 +1,12 @@
 # summon-patrol-defender — 소환사 & 순찰병 (Patrol)
 
-> 상태: 구현 중 · units 0~6 코드 완료(**unit 6 은 2026-08-12 철회**) · unit 7 Play 검증 중 · unit 9 완료 2026-08-10 (`515e5f00`)
-> · **units 8·10·11·12 구현 완료 2026-08-12** — 사용자 Play 확인 완료. EditMode 2190 중 2187 통과·실패 0 / PlayMode `PatrolDefenderPlayTest` 2/2. 커밋 대기
+> ## 상태: 완료 2026-08-12
+>
+> 작업 단위 **0~12 전부 커밋**(unit 6 은 철회). 인계 지도 = [`13_handoff_summary.md`](13_handoff_summary.md).
+>
+> **최종 검증**: EditMode 2190 중 2187 통과 · 실패 0 · 스킵 3(기존 `[Ignore]`) / PlayMode `PatrolDefenderPlayTest` 2/2 / 사용자 Play 확인(units 8·10·11·12) / 투트랙 코드 리뷰 블로커 반영 후 재검증.
+>
+> **⚠ 미판정 1건** — 이 spec 의 검증 질문("소환사를 뒤에 두고 순찰병을 앞세우는 것이 다른 배치 결정을 만드는가?")에 대한 사용자 판정이 기록되지 않은 채 종료했다. 기능은 돌고 검증됐지만 **이 spec 이 답하려던 질문 자체는 열려 있다.** 잔여 관찰 항목은 `docs/spec/README.md` Follow-up Backlog 로 이관.
 >
 > unit 8 이 «모든 유닛이 한 리그를 공유한다»를 깨면서 파생 작업이 셋 붙었다: 애니 구조(10) · 사거리 2단 게이트(11) · 아웃게임 호환(12).
 >
@@ -105,6 +110,8 @@
 | 씬 wiring | **N/A — 신규 SerializeField 없음.** 기존 `spineUnitPool`/`unitOverheadUiLayer` 를 그대로 쓴다 |
 
 ## 후속 후보
+
+> **spec 종료(2026-08-12)와 함께 아래 항목은 `docs/spec/README.md` 의 Follow-up Backlog 로 이관됐다.** 이 목록은 출처 기록으로 남긴다 — 우선순위와 최신 상태는 그쪽이 정본이다.
 
 - **배치형 이동 아군** [M] · `PatrolAnchor` 만 붙이고 `SummonedBy` 를 안 붙이면 성립한다. 지금은 생성 경로가 소환 하나뿐이라 만들지 않는다(제약 9).
 - **드림캐쳐 소환 페이로드 배선** [M] · `docs/spec/README.md` 의 "드림캐쳐 복합 효과 · lowcost-summon" 과 `dreamcatcher-unit-trigger` 의 "프리미티브 밖 페이로드(소환 — 해당 효과의 파이프라인 신설이 본체)" 가 이 파이프라인을 선결 조건으로 예약해 뒀다. **이 spec 이 그 본체를 만든다.** 카드 배선은 범위 밖 — 종료 시 백로그 항목을 "파이프라인 완료, 남은 것은 카드 배선" 으로 갱신할 것.

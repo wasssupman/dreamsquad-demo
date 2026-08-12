@@ -49,6 +49,11 @@ ArgumentException: Skin not found: full_skins
 - [x] Play 육안 확인 (사용자, 2026-08-12)
 - [ ] 아웃게임 크기 최종 조정 — `0.372` 는 높이 정합 계산값이라 시작점이다. 리그마다 발밑 여백이 달라 눈으로 다듬을 여지가 있다
 
+---
+
+**완료 기준 확인**: 2026-08-12 · 커밋 `5c73c128` · 크래시 2건 수정 + `LoadingRunnerRigTests` 회귀 고정 + 사용자 Play 확인.
+**잔여 1건**: 아웃게임 크기 최종 조정(`outgameScaleMul` = 0.372, 임시) — `docs/spec/README.md` Follow-up Backlog 로 이관.
+
 ## 후속
 
 - **아웃게임 크기 정규화** — 에셋이 정규본이 되면 `outgameScaleMul` 을 1 로 되돌리고 필드째 제거한다. 그때까지 이 필드는 «리그가 비정규본이다»의 표식이다.

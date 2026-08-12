@@ -42,3 +42,8 @@ SystemAPI.Query<RefRO<LocalTransform>>().WithAll<PathFollowState>()
 - [ ] 기존 EditMode 스위트 전량 통과 (회귀 0)
 - [ ] Play: 화염 장판 위를 적이 지나가면 기존과 동일하게 탄다 (육안)
 - [ ] 콘솔 에러/경고 0
+
+---
+
+**완료 기준 확인**: 2026-08-03 · 커밋 `d09cd75d` · 신규 `ZoneApplyFactionGateTests`(212줄)가 진영 게이트와 적 대상 3경로(Slow·DoT·Stack) 무회귀를 EditMode 로 고정한다.
+(체크박스는 당시 세션이 채우지 않았다 — spec 종료 2026-08-12 시점의 소급 기록.)

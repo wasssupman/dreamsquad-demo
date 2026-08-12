@@ -72,6 +72,12 @@
 - [ ] EditMode: `ChooseNext` 단위 테스트 (변형 1개 · 2개 · 3개 · 연속 회피)
 - [ ] EditMode/PlayMode 기존 테스트 무회귀
 
+---
+
+**완료 기준 확인**: 2026-08-12 · 커밋 `67dd9cbe` · EditMode `ChooseNext` 단위 테스트 신설 + 기존 스위트 무회귀(**2190 중 2187 통과 · 실패 0 · 스킵 3**) · PlayMode `PatrolDefenderPlayTest` **2/2** · **사용자 Play 확인 완료**(idle 변형 순환 · `drop`→`attack2` · 순찰병 사망 시 `attack3` 원샷 → idle 복귀). 투트랙 코드 리뷰(code-reviewer + ecs-reviewer) 블로커 반영 후 재검증.
+파츠형 42유닛 무회귀는 **필드 미설정 = 기존 경로**라는 구조로 성립한다(`idleVariants` 빈 배열 → 오버라이드 미진입).
+(체크박스는 당시 세션이 채우지 않았다 — 소급 기록.)
+
 ## 범위 밖
 
 - **`attack1` 을 소환 전용 원샷으로 따로 두기.** 현재 `attackAnimation` 하나가 소환 동작을 겸한다(`drop`). 소환사가 소환 외의 공격을 갖게 되면 그때 나눈다.

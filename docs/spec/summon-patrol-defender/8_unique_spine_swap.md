@@ -98,14 +98,25 @@ CH1/Doll 이 규약(ScaleX=+1 → 왼쪽)과 반대로 보면 `SkeletonFlipXModi
 - [x] 콘솔 에러/경고 0 — `[SpineCombinedSkinCache]` 0건 · `BoneFollower` 본 미발견 0건
 - [x] 회귀: **EditMode 2167 중 2164 통과 · 실패 0 · 스킵 3**(기존 `[Ignore]`) · **PlayMode `PatrolDefenderPlayTest` 2/2**
 - [x] 파츠형 무회귀(데이터 레벨) — 대조군 Scout 이 `partSkins` 10 + `full_skins` 해석 정상, 조합 스킨으로 렌더
+- [x] `spineVisualScale` 을 실제 타일 위에서 확정 — 초안 0.48/0.55 가 `27cb9794` 의 전 방어유닛 ×1.3 패스에서 **소환사 0.624 / 순찰병 0.715** 로 확정됐다
+- [x] **순찰병이 `walk` 로 이동한다** — PlayMode `PatrolDefenderPlayTest` + unit 11(`06b47143`) 의 「사격 칸에 섰지만 물리적으로 멀면 계속 전진」 단언 + 사용자 Play 육안 확인(2026-08-12). 정지 슬라이딩 아님
+- [x] 소환 순간 `drop` 이 재생된다 — unit 10(`67dd9cbe`) 이 `drop` 원샷 → `attack2` 루프로 구조화했고 사용자 Play 확인(2026-08-12)
+- [x] `Assets/_Project/Spine/` 가 .meta 짝과 함께 커밋됐다 — 12 에셋 × .meta = **24 파일 추적 중**(`27cb9794`)
+- [~] 소환사가 전투 밖 3경로에서도 뜬다 — **2/3.** 로딩 러너 · 스쿼드 상세는 unit 12(`5c73c128`)가 실제로 고쳤고 `LoadingRunnerRigTests` 가 카탈로그 전 유닛을 회귀 고정한다. **항아리 피규어(`SpineFigureBuilder`) 미확인**
+- [ ] facing 이 이동/타겟 방향과 맞는다 — `SkeletonFlipXModifier` 교정이 필요했다는 기록이 없고, 맞다는 기록도 없다
 - [ ] 파츠형 무회귀(육안) — 디펜더 로스터 전원 + 적 웨이브 1회. 이 커밋 이후 파츠형 잔존은 **42유닛**(실측)이다
-- [ ] `spineVisualScale` 0.48/0.55 를 실제 타일 위에서 확정 (소환물이 유닛보다 작게 읽히는지 포함)
-- [ ] **순찰병이 `walk` 로 이동한다** — 이 유닛의 핵심. 정지 슬라이딩이면 실패
-- [ ] 소환 순간 `drop` 이 재생된다
-- [ ] facing 이 이동/타겟 방향과 맞는다 (틀리면 `SkeletonFlipXModifier` 로 교정, 코드 0 유지)
-- [ ] 소환사가 전투 밖 3경로에서도 뜬다: 드래그 프리뷰(`DefenderDragPlacementController:1368`) · 스쿼드 상세(`SquadUnitDetailView.BindSpine`) · 항아리 피규어(`SpineFigureBuilder` — SkeletonGraphic 경로가 다른 아틀라스를 처음 만난다)
-- [ ] 소환사 사망이 툭 사라지는 것으로 수용 가능한가 (death 빈칸)
-- [ ] `Assets/_Project/Spine/` 가 .meta 짝과 함께 커밋됐다
+- [ ] 소환사 사망이 툭 사라지는 것으로 수용 가능한가 (death 빈칸) — **순찰병과 사정이 다르다.** 순찰병은 계약 14 대로 death 경로에 아예 도달하지 않지만, 소환사는 `DefenderTile` 이 있어 도달한다. 재생할 트랙이 CH1 에 없을 뿐이라 이건 설계 확정이 아니라 **수용 판정**이다
+
+---
+
+**완료 기준 확인**: 2026-08-12 · 커밋 `27cb9794`(에셋) · 파생 unit 10·12 가 잔여 항목 대부분을 닫았다.
+
+**미확인 4건 → 후속 후보 이관** (`docs/spec/README.md` Follow-up Backlog):
+
+- **파츠형 42유닛 육안 무회귀** — 데이터 레벨 대조군(Scout)만 확인됐다. `LoadingRunnerRigTests` 가 카탈로그 전 유닛의 리그 리졸브·스킨 실존을 자동 고정하지만 그것이 육안 무회귀는 아니다.
+- **항아리 피규어(`SpineFigureBuilder`)** — `SkeletonGraphic` 경로가 새 아틀라스를 처음 만나는 자리. 소환사가 실제로 그 경로에 나타나는지부터 미확인이라 제약 9 로 손대지 않았다(unit 12 후속과 같은 항목).
+- **facing 정합** — 교정이 필요했다는 기록도, 맞다는 기록도 없다.
+- **소환사 death 트랙 부재 수용 판정** — 아트가 생기면 저작만으로 닫힌다(코드 0).
 
 ## 범위 밖
 

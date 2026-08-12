@@ -68,3 +68,9 @@ struct PatrolStep : IComponentData { float2 dir; }
 - [ ] 기존 EditMode 스위트 전량 통과
 - [ ] 이 unit 단독으로는 화면 변화 없음 (`PatrolStep` 소비는 unit 2)
 - [ ] 콘솔 에러/경고 0
+
+---
+
+**완료 기준 확인**: 2026-08-03 · 커밋 `68d2f35c` · 신규 `PatrolAreaMathTests`(213줄)가 박스 안/밖 적·복귀 dir·U자 벽 우회·walk 셀 없음을 EditMode 로 고정한다.
+**이후 두 번 바뀌었다** — `traversal-layers` unit 3(`5df1b930`)이 이 필드를 통행 층 인지로 바꿨고, unit 9(`515e5f00`)가 반경 출처를 소환사 `attackRange` 로 옮겨 `leashTileRadius` 를 은퇴시켰다. **현행 계약은 `9_coverage_from_attack_range.md` 가 정본**이다.
+(체크박스 소급 기록 — 위 주석 참조.)

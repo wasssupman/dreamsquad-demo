@@ -88,3 +88,9 @@ Bridge 드레인: 매 프레임 캐리어를 훑어 `TryGetNearestWalkCell` → 
 - [ ] 소환 순간 공격 애니/SFX 가 재생된다 (`AttackState` 재사용의 귀결)
 - [ ] 전투 종료 후 재진입 시 캐리어·순찰병 잔존 없음
 - [ ] 콘솔 에러/경고 0
+
+---
+
+**완료 기준 확인**: 2026-08-03 · 커밋 `68d2f35c` + 게이트 보정 `83ab214b` · `PatrolSystemIntegrationTests` 8건(`Summoner_Stages_One_Request_When_No_Patrol_Alive` · `Summoner_Does_Not_Stage_While_Patrol_Alive` · `Summoner_Waits_While_Cooldown_Remains` · `First_Summon_*` 4건 · `Respawn_Ignores_The_Gate_Once_Consumed`)이 발화·1기 고정·초회 구역 게이트를 EditMode 로 고정한다.
+⚠ **위 «적이 하나도 없어도 쿨다운 후 순찰병이 나온다» 는 무효다.** 초기 구현은 폭탄맨식 blind 발화였고, 실플레이 확인 중 `83ab214b` 이 **«첫 소환만 구역 게이트»** 로 뒤집었다(README 계약 8).
+(체크박스 소급 기록.)

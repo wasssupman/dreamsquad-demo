@@ -91,3 +91,9 @@ anchor 는 `TryGetNearestWalkCell` 로 스냅한 값을 받는다. 스폰 위치
 - [ ] **전투 종료 후 재진입 시 순찰병이 잔존하지 않는다**
 - [ ] 적 이동(마칭·추격·standoff·보스 hunting) 육안 무회귀
 - [ ] 콘솔 에러/경고 0
+
+---
+
+**완료 기준 확인**: 2026-08-03 · 커밋 `68d2f35c` · `PatrolSystemIntegrationTests` 의 `Patrol_On_Goal_Cell_Does_Not_Get_PastGoalTag` / `NonPatrol_On_Goal_Cell_Still_Gets_PastGoalTag` 가 계약 7(goal 게이트)을 EditMode 로 고정하고, PlayMode `PatrolDefenderPlayTest` 가 스폰→뷰 추종→매치 경계 정리를 라이브로 태운다.
+⚠ **위 본문의 «실효 교전 반경 = `leashTileRadius` + attackRange» 는 낡았다.** unit 9 이후 = **담당 구역(= 소환사 `attackRange`) + 순찰병 `attackRange`** 이고 `leashTileRadius` 는 코드에서 사라졌다(README 계약 5·13).
+(체크박스 소급 기록.)
