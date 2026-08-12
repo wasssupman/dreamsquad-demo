@@ -5179,6 +5179,8 @@ namespace Wassup.Bridge
                 float3 simCenter = GridToWorldCenter(s.cell);
                 var view = Instantiate(s.data.viewPrefab,
                     (Vector3)Wassup.Core.BoardSpace.ToView(simCenter), Quaternion.identity, transform);
+                // instinct-content unit 0 rev — SO 스케일 knob (프리팹 원본 스케일에 곱).
+                view.transform.localScale *= s.data.viewScale;
                 view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _structureViews.Add(view);
             }

@@ -62,7 +62,7 @@
 | 승패 축 | 같은 순회가 적 마음 잔여도 모은다 → `_enemyCoreCurrent`. 판정은 `CheckEnemyCoreDestroyed`(Update 에서 Sync **다음**) · 만료 비교는 `CheckTimer` | ★**모드 분기 없음**(계약 15). 축 활성 = 「저작된 상한 > 0」 — `_timerDuration`/`StressLimit`/`_goalStabilityMax` 와 같은 형태. 만료 판정 `_goalStability >= _enemyCoreCurrent` **한 줄**이 침략(적 잔여 0 → 항상 승리 = 기존 동치)과 공성을 통합. 두 마음 HP 는 저작으로 맞추고 `MapDocumentPool.OnValidate` 가 어긋남을 경고. 읽기 창구 `EnemyCoreCurrent/Max` |
 | 이벤트 큐 | **N/A** — 붕괴 감지는 등록부 폴링. `GoalCollapsedEventsSingleton` 은 생산자 0 존치(페이로드가 골 인덱스 기준이라 거점 체계와 불일치 — 후속에서 재정의) | |
 | View/Pool | 게이지: `SyncGoalOverheadGauges` 가 등록부 순회(defender 색 = 진영 파생) + HUD 바 `SyncGoalStabilityBars`(가장 위험한 골 미러) · 프랍: 골=`theme.goalStructureProp`, 거점=SO `viewPrefab` 을 브리지 Instantiate(Pickup 선례, `ClearStructureViews` 로 teardown) · 붕괴 원샷 `VfxSpawner.SpawnGoalCollapse` | Pool N/A(맵 수명) |
-| 배치·통행 배제 | 맵 빌드 시 `CloseCellLayers` — 본능 footprint(**적대적** 본능은 +`HostileInstinctPlacementPadding` = 9×9, 술어 `StructurePlacements.IsHostileInstinct`) · 연결성: `MapConnectivity`+페인터 BFS 가 본능 footprint 를 벽으로(마음은 비차단, 계약 12) | 공성 모드는 파생 — 적 마음 셀 = spawns[](`ToGeneratedMap` 투영 1곳, 소비처 8곳 무변경). ⚠ 배제 여유 ≥ 본능 사거리면 **본능이 아무도 못 쏜다**(실측: 여유 4 = 사거리 4 → 최근접 합법 칸 거리 5). 마음은 본체 1칸만 닫혀 **인접 배치로 공성**이 성립한다 |
+| 배치·통행 배제 | 맵 빌드 시 `CloseCellLayers` — 본능 footprint 3×3 만(`HostileInstinctPlacementPadding` 은 instinct-content 에서 **0 으로 폐지** — 사용자 결정 2026-08-12. 술어·분기는 잔존) · 연결성: `MapConnectivity`+페인터 BFS 가 본능 footprint 를 벽으로(마음은 비차단, 계약 12) | 공성 모드는 파생 — 적 마음 셀 = spawns[](`ToGeneratedMap` 투영 1곳, 소비처 8곳 무변경). ⚠(패딩>0 이던 시절의 함정, 기록 보존) 배제 여유 ≥ 본능 사거리면 **본능이 아무도 못 쏜다** — 패딩을 되살리면 이 검산부터. 마음은 본체 1칸만 닫혀 **인접 배치로 공성**이 성립한다 |
 | 씬 wiring | 신규 SerializeField 0 — 기존 게이지/VFX 배선 재사용 | |
 
 ## 해저드 — Zone/Blocking (방어 유닛 HazardCast 능력)

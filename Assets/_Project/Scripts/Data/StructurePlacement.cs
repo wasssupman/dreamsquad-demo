@@ -40,7 +40,12 @@ namespace Wassup.Data
         public const int InstinctFootprint = 3;
         // 적대적 본능의 배치 배제 여유(README 요청 7-2 — «주변 3타일») = 3×3 본체 + 3 = 9×9.
         // unit 8 에서 «적» → «적대적»(= 방어 진영이 아닌) 으로 일반화됐다.
-        public const int HostileInstinctPlacementPadding = 3;
+        // instinct-content unit 0 rev(사용자 결정 2026-08-12) — 본능 주변 배치 배제 폐지(3→0).
+        // 배제는 이제 footprint 3×3(건물 자리) 뿐이다. 원래 값 3은 «링 결투» 구배(합법 배치
+        // 거리 5부터)를 만들었지만, 15×12 보드에서 9×9 무배치는 과했고 인접 유닛도 본능의
+        // 반격(사거리 5가 인접을 덮는다)을 받으므로 근접 러시가 공짜가 아니다. 기계(술어·
+        // 분기)는 유지 — 값만 제품 결정이다.
+        public const int HostileInstinctPlacementPadding = 0;
 
         // 편 × 종류 → 교차 비트. 거점 아닌 비트는 이 함수에서 나올 수 없다.
         public static Faction DeriveFaction(StructureSide side, StructureKind kind)

@@ -16,6 +16,7 @@ MonoBehaviour:
   kind: 1
   health: 500
   viewPrefab: {fileID: 919132149155446097, guid: 54b032fceb1d7b045914754c68bc9fd6, type: 3}
+  viewScale: 0.4
   targetFactions: 1
   attackRange: 5
   attackCooldown: 1.5

@@ -25,6 +25,10 @@ namespace Wassup.Data
         [Header("View")]
         [Tooltip("거점 프랍. unit 4 가 소비한다. 후보: KayKit Platformer Pack.")]
         public GameObject viewPrefab;
+        // instinct-content unit 0 rev — 프랍 스케일 knob. 시험용 프리팹이 footprint 3×3 대비
+        // 과대해(사용자 지적) 프리팹 복제 대신 저작값으로 줄인다(제약 6 — 수치는 SO).
+        [Tooltip("프랍 스케일 배율. 1 = 프리팹 원본.")]
+        [Min(0.05f)] public float viewScale = 1f;
 
         // ── 본능 공격 (unit 5 가 소비) ─────────────────────────────────────────
         // 마음은 공격하지 않는다 — AttackState 를 부여받지 않으므로 아래는 무시된다.
