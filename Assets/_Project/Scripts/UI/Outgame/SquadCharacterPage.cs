@@ -67,7 +67,11 @@ namespace Wassup.UI
 
             var spineGo = new GameObject("SpineView", typeof(RectTransform));
             spineGo.transform.SetParent(detail, false);
-            var sg = spineGo.AddComponent<SkeletonGraphic>();
+            var spineComponents = SkeletonGraphic.AddSkeletonGraphicAnimationComponents(
+                spineGo, null, skeletonGraphicMaterial, true);
+            var sg = spineComponents.skeletonRenderer;
+            var skeletonAnimation = spineComponents.skeletonAnimation;
+            sg.allowMultipleCanvasRenderers = true;
             sg.material = skeletonGraphicMaterial;
             sg.raycastTarget = false;
             var sgRt = (RectTransform)spineGo.transform;
@@ -86,7 +90,8 @@ namespace Wassup.UI
             var cardRoot = Rect("CardRoot", detail, new Vector2(0f, cardBottomMargin), new Vector2(1f, cardHeight));
 
             var detailView = detail.gameObject.AddComponent<SquadUnitDetailView>();
-            SetField(detailView, "spineView", sg);
+            SetField(detailView, "spineGraphic", sg);
+            SetField(detailView, "spineAnimation", skeletonAnimation);
             SetField(detailView, "portraitFallback", pf);
             SetField(detailView, "cardRoot", cardRoot);
             SetField(detailView, "font", font);

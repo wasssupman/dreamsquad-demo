@@ -20,18 +20,10 @@ namespace Wassup.Tests.EditMode.MapGrid
             // 작은 직선 path: (0,2) -> (5,2)
             for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
 
-            var mergeDegree = new byte[n];
-            for (int x = 1; x < w - 1; x++) mergeDegree[2 * w + x] = 2;
-            mergeDegree[2 * w + 0] = 1;
-            mergeDegree[2 * w + (w - 1)] = 1;
-
-            var chokepoint = new bool[n];
-            var propLayerId = new byte[n];
-
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(
                 w, h,
-                tiles, mergeDegree, chokepoint, propLayerId,
+                tiles,
                 new[] { new Vector2Int(w - 1, 2) },
                 new[] { new Vector2Int(0, 2) },
                 seed: 42,
@@ -63,12 +55,7 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             Assert.AreEqual(source.Tiles.Count, roundTripped.Tiles.Count);
             for (int i = 0; i < source.Tiles.Count; i++)
-            {
                 Assert.AreEqual(source.Tiles[i], roundTripped.Tiles[i], $"tiles[{i}]");
-                Assert.AreEqual(source.MergeDegree[i], roundTripped.MergeDegree[i], $"mergeDegree[{i}]");
-                Assert.AreEqual(source.Chokepoint[i], roundTripped.Chokepoint[i], $"chokepoint[{i}]");
-                Assert.AreEqual(source.PropLayerId[i], roundTripped.PropLayerId[i], $"propLayerId[{i}]");
-            }
 
             ScriptableObject.DestroyImmediate(source);
             ScriptableObject.DestroyImmediate(roundTripped);
@@ -94,22 +81,19 @@ namespace Wassup.Tests.EditMode.MapGrid
         }
 
         [Test]
-        public void ToGeneratedMap_ProducesAllMetaArrays()
+        public void ToGeneratedMap_ProducesCellArrays()
         {
             var doc = BuildSampleDocument();
             using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
 
             Assert.IsTrue(map.tiles.IsCreated);
-            Assert.IsTrue(map.mergeDegree.IsCreated);
-            Assert.IsTrue(map.chokepoint.IsCreated);
-            Assert.IsTrue(map.propLayerId.IsCreated);
             Assert.IsTrue(map.spawns.IsCreated);
+            // 빌더 산출물 불변식: IsCreated ⇒ placeMask 생성됨 (placement-mask unit 0).
+            Assert.IsTrue(map.placeMask.IsCreated);
 
             int n = map.gridSize.x * map.gridSize.y;
             Assert.AreEqual(n, map.tiles.Length);
-            Assert.AreEqual(n, map.mergeDegree.Length);
-            Assert.AreEqual(n, map.chokepoint.Length);
-            Assert.AreEqual(n, map.propLayerId.Length);
+            Assert.AreEqual(n, map.placeMask.Length);
 
             ScriptableObject.DestroyImmediate(doc);
         }
@@ -124,7 +108,7 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             var goals = new[] { new Vector2Int(5, 2), new Vector2Int(3, 2) };
             var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+            doc.SetFrom(w, h, tiles,
                 goals, new[] { new Vector2Int(0, 2) }, seed: 7, version: 0);
 
             Assert.AreEqual(2, doc.Goals.Count);
@@ -162,7 +146,7 @@ namespace Wassup.Tests.EditMode.MapGrid
             for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+            doc.SetFrom(w, h, tiles,
                 new[] { new Vector2Int(w - 1, 2) }, new[] { new Vector2Int(0, 2) },
                 seed: 42, version: 1,
                 placeMaskArr: mask);
@@ -246,7 +230,6 @@ namespace Wassup.Tests.EditMode.MapGrid
         public void WriteToDocument_UncreatedMask_ExportsDerived()
         {
             // 직접 구성 map(마스크 미생성) 내보내기 — WriteToDocument 의 파생 분기.
-            // (mergeDegree/chokepoint/propLayerId 는 WriteToDocument 가 무가드로 읽으므로 생성 필수.)
             const int w = 4, h = 2; int n = w * h;
             var tiles = new NativeArray<MapTileType>(n, Allocator.TempJob);
             var spawns = new NativeArray<int2>(1, Allocator.TempJob);
@@ -256,9 +239,6 @@ namespace Wassup.Tests.EditMode.MapGrid
             {
                 tiles = tiles,
                 spawns = spawns,
-                mergeDegree = new NativeArray<byte>(n, Allocator.TempJob),
-                chokepoint = new NativeArray<byte>(n, Allocator.TempJob),
-                propLayerId = new NativeArray<byte>(n, Allocator.TempJob),
                 gridSize = new int2(w, h),
             };
             var doc = ScriptableObject.CreateInstance<MapDocument>();

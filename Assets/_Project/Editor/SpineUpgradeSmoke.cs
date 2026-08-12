@@ -36,13 +36,14 @@ public static class SpineUpgradeSmoke
                 if (data.FindAnimation(a) == null) { Debug.LogError($"[SMOKE] {sda.name}: anim '{a}' missing"); ok = false; }
             if (data.FindSkin(t.skin) == null) { Debug.LogError($"[SMOKE] {sda.name}: skin '{t.skin}' missing"); ok = false; }
 
-            var sa = Spine.Unity.SkeletonAnimation.NewSkeletonAnimationGameObject(sda);
+            var components = Spine.Unity.SkeletonAnimation.NewSkeletonAnimationGameObject(sda);
+            var sa = components.skeletonAnimation;
             sa.Initialize(false);
             sa.Skeleton.SetSkin(t.skin);
-            sa.Skeleton.SetSlotsToSetupPose();
+            sa.Skeleton.SetupPoseSlots();
             sa.AnimationState.SetAnimation(0, t.anims[0], true);
             sa.Update(0.1f);
-            Debug.Log($"[SMOKE] {sda.name}: version={data.Version}, skin={t.skin}, anim={t.anims[0]} OK, ScaleX={sa.Skeleton.ScaleX}, A={sa.Skeleton.A}");
+            Debug.Log($"[SMOKE] {sda.name}: version={data.Version}, skin={t.skin}, anim={t.anims[0]} OK, ScaleX={sa.Skeleton.ScaleX}, A={sa.Skeleton.GetColor().a}");
         }
 
         var flip = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Presentation.SkeletonFlipXModifier>(
@@ -54,7 +55,7 @@ public static class SpineUpgradeSmoke
                 "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_SkeletonData.asset");
             var data = sda.GetSkeletonData(false);
             flip.Apply(data);
-            float rootScaleX = data.Bones.Items[0].ScaleX;
+            float rootScaleX = data.Bones.Items[0].GetSetupPose().ScaleX;
             if (rootScaleX >= 0f) { Debug.LogError($"[SMOKE] FlipX modifier no-op: rootScaleX={rootScaleX}"); ok = false; }
             else Debug.Log($"[SMOKE] FlipX modifier OK: rootScaleX={rootScaleX} (in-memory only)");
         }

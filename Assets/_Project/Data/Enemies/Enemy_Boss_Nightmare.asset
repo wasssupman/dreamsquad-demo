@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackUnitData
   id: boss_nightmare
   displayName: "\uB098\uC774\uD2B8\uBA54\uC5B4"
+  traversalLayers: 0
   enemyClass: 1
   minWaveNumber: 1
+  maxPerWave: 0
   attackMethod: 1
   targetMode: 1
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
+  targetFactions: 13
   health: 1000
   moveSpeed: 1
   attackRange: 2
@@ -136,3 +139,6 @@ MonoBehaviour:
   weaponTrailPrefab: {fileID: 980198975920828844, guid: bf5392c35fff74f68a45724df10f60a4, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []

@@ -17,11 +17,28 @@
 | 데이터 SO | `Data/DefenderUnitData.cs` (+`DefenderCatalog.cs`) · 고유능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋, 유닛 `abilities` 리스트로 참조) | 공통 스탯(체력/사거리/쿨다운/코스트)은 유닛 SO, **능력별 파라미터**(volley/hazard/shield/bomb)는 능력 서브에셋. bake = `CreateDefenderEntity` 가 `GetAbility<T>()` 로 해석(defender-ability-assets). 신규 유닛은 **DefenderCatalog 등록까지** (미등록 = 로스터 미노출) |
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `PlaceDefenderAs`→`CreateDefenderEntity` | 플레이어 배치 기반 |
 | ECS 컴포넌트 (Units) | `Battle/Units/` DefenderUnitTag·Health·IncomingDamage·DefenderTile | 능력별 조건부: AttackState / HazardCastState / AggroProvider / DeployedFacing(방향 지정 배치 — 활성화 시 1회 기록) / VolleyFireState(Combat 소유, shotCount>1 만) |
-| 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | 이동 없음(고정) — PathFollowState 미부여 |
+| 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | **타일 배치 방어유닛은** 이동 없음(고정) — PathFollowState 미부여. ★이것은 더 이상 「방어 진영 전체」의 성질이 아니다 — 순찰병이 `PathFollowState` 를 갖고 walk 위를 걷는다(아래 **순찰 아군** 아키타입). 「방어유닛이면 안 움직인다」에 기대는 코드를 새로 쓰지 말 것 |
 | 이벤트 큐 | `Battle/Units/DefenderDeathEventsSingleton.cs` + 공유 UnitAttackVisual/DamageNumber/HealApplied · 연출 전용 `Battle/Combat/KnockupVisualEvents.cs` | drain = `BattleBridge.DrainDefenderDeathEvents`. ★넉업 채널은 **연출 귀속용** — 심의 넉업은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분 못 한다(knockup-fighter-defender unit 3) |
-| View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs`, 폴백 `QuadUnitViewPool.cs` · 지속 빔 = `Presentation/BeamPresenter.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임. ★빔은 고속 틱 공격 사건을 TTL 세션으로 뭉친 결과이지 심 개념이 아니다. 빔 유닛 판별 = SO `beamVfxPrefab` 유무(beam-ranger-defender unit 1) |
+| View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs`, 폴백 `QuadUnitViewPool.cs` · 지속 빔 = `Presentation/BeamPresenter.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임. ★빔은 고속 틱 공격 사건을 TTL 세션으로 뭉친 결과이지 심 개념이 아니다. 빔 유닛 판별 = SO `beamVfxPrefab` 유무(beam-ranger-defender unit 1). ★**리그는 두 분기다** — `partSkins` 가 비면 고유 스켈레톤, 차 있으면 `Casual Character` 파츠 합성(`SpineCombinedSkinCache.ResolveSkin`). 같은 진입점이고 유닛 구조·로직은 어느 쪽도 모른다. 고유 리그 저작은 **코드 0** 이며 facing 규약이 반대인 리그는 `SkeletonFlipXModifier` 로 데이터에서 정규화한다(코드로 분기 금지) — summon-patrol-defender unit 8 |
 | 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `TileHealthGaugeLayer.cs`+`TileHealthGaugeView.cs` | ★큐 아님 — `BattleBridge.SyncMonoUnitViews`가 매 프레임 Health read-only 폴링 |
 | 씬 wiring | BattleBridge SerializeField: spineUnitPool·defenderFallbackViewPool·unitOverheadUiLayer·tileHealthGaugeLayer | Unified/Legacy 상호배타, Spine 실패 시 Quad 폴백 |
+
+## 순찰 아군 (Patrol — summon-patrol-defender, 2026-08-12)
+
+**아군인데 walk 위를 이동하는 첫 유닛.** 위 방어유닛 아키타입에서 **갈라지는 정거장만** 적는다 — 나머지는 방어유닛 표를 그대로 따른다. 이동형 아군을 또 만들면 이 표를 복사한다.
+
+| 정거장 | 앵커 | 방어유닛과 무엇이 다른가 |
+|---|---|---|
+| 데이터 SO | `Data/DefenderUnitData.cs` **재사용** + `Data/Abilities/SummonPatrolAbility.cs`(소환사 쪽) | **신규 SO 타입을 만들지 않았다** — `ISpineUnitVisualData` 구현체 3번째의 확장 비용이 근거. 갭은 필드 2개(`moveSpeed`·`SpineWalkAnimation`)를 **맨 뒤에 덧붙여** 메웠다. ★소환수는 `DefenderCatalog` 에 **등록하지 않는다**(미등록 = 로스터 미노출). 담당 구역 반경은 별도 필드가 아니라 소환사 `attackRange` |
+| 스폰 진입점 | `BattleBridge.CreatePatrolEntity` (소환 발화 + 디버그 메뉴 2경로) | `CreateDefenderEntity` 를 **재사용하지 않는다** — 그쪽은 `_defenderByTile` 등록과 `DefenderTile` 부착을 한다. 요청 전달은 신규 채널이 아니라 `ProjectileRequestCarrier` 와 같은 **캐리어 엔티티** 관용구(`PatrolRequestCarrier`, 수명 1프레임) |
+| ECS 컴포넌트 | 신규 4: `PatrolAnchor`(Movement) · `PatrolStep`(Effects) · `SummonerState`(Combat) · `SummonedBy`(Units) | ★**태그 조합이 계약이다.** `DefenderUnitTag`+`DefenderClassTag` 는 **붙이고**, `DefenderTile`·`AttackUnitTag` 는 **안 붙인다**. 각각의 귀결: 태그 부착 → 매치 경계 정리·힐/실드 편입·클래스 하드 타게팅 정상 / 미부착 → 배치 점유·각성치·**사직서 무한 드랍** 차단. 나중에 `DefenderTile` 을 붙이면 반복 사망 파밍이 조용히 열린다 |
+| 시뮬 시스템 | 신규 2: `Battle/Effects/PatrolFieldSystem.cs` · `Battle/Units/PatrolLifecycleSystem.cs` · 순수 함수 `Battle/Effects/PatrolAreaMath.cs` | 이동은 **기존 BFS·하강을 재사용**한다 — 박스 제약을 walkMask 마스킹으로 표현해 `AggroChaseMath.BuildChaseField` 에 넘긴다. **8-이웃 그리디 금지**(`aggro-tile-chase` 가 벽 고착으로 폐기). 수정 3: `MovementSystem`(dir 분기 + **goal 게이트**) · `ZoneApplySystem`(진영 게이트) · `AttackSystem`(소환 발화) |
+| 이벤트 큐 | **신규 채널 0** | 캐리어 엔티티 관용구라 싱글턴 배선도 CLAUDE.md 채널 목록 갱신도 불요. `DefenderDeathEventsSingleton` 은 `DefenderTile` 미부착으로 미발행 |
+| View/Pool | 기존 `SpineUnitPool` 재사용 · **전용 sync 루프 `BattleBridge.SyncPatrolViews`** | ★없으면 **뷰가 스폰만 되고 영원히 제자리에 선다.** `SyncMonoUnitViews` 의 두 루프는 `AttackUnitTag` 쿼리(적)와 `_defenderByTile` 순회(방어유닛)인데 순찰병은 **둘 다 아니다**. walk 애니는 `SpineWalkAnimation` 을 채워 활성화(타일 방어유닛은 `""`). death 애니는 도달하지 않는다 — `Kill()` 구동원이 `_defenderByTile` 기반 |
+| 체력 표시 | `UnitOverheadUiLayer`/`UnitOverheadView` 기존 폴링을 `SyncPatrolViews` 안에서 호출 | 숨기지 않는다 — 죽고 다시 나는 것이 이 유닛의 핵심 피드백 |
+| 매치 경계 정리 | `BattleBridge.DestroyBattleEntities` — 순찰병 + 요청 캐리어 | `DefenderUnitTag` 부착으로 자동 포함되나 **회귀 방지로 명시 등재**했다. 타입 기반 파괴라 태그가 빠지면 앱 수명 default world 에 잔존한다 |
+| 씬 wiring | **N/A — 신규 SerializeField 0** | 기존 `spineUnitPool`/`unitOverheadUiLayer` 를 그대로 쓴다 |
+| 외력 예외 | — | 포털·토네이도·넉백은 faction 을 보지 않아 순찰병을 박스 밖으로 민다. 계약은 *«자기주도 이동은 박스를 안 벗어난다. 외력은 벗어날 수 있고 다음 틱에 복귀 경로가 잡힌다»* — 필드 계산이 **박스 밖 시작** 입력을 다뤄야 한다 |
 
 ## 적 (Enemy)
 
@@ -29,7 +46,7 @@
 |---|---|---|
 | 데이터 SO | `Data/AttackUnitData.cs` (+`EnemyCatalog.cs`) | ★적 스탯 SO 이름이 **AttackUnitData** — "EnemyData" 는 없음. 신규 적은 **EnemyCatalog + AttackDeck/웨이브 pool 노출까지**. ⚠ **풀에 1종을 더하면 그 덱의 웨이브가 전부 재추첨된다** — `WavePatternGenerator` 가 `rng.NextInt(0, pool.Count)` 로 뽑아 `waveSeed` 고정이어도 웨이브 1부터 구성이 바뀐다(시드를 갱신해 새 baseline 을 diff 에 드러낼 것). 삽입은 **풀 중간에** — 맨 뒤면 `ResolveWaveEligibleIndex` 의 전방 순환이 초반 웨이브를 `pool[0]` 로 쏠리게 한다. **라이브 덱은 7종**(`Serpent·Coil·Twin·Spiral·Zig·Hook·Endless`)이고 열거의 정본은 `WaveKillBudgetPinTests`. 수량 상한은 `maxPerWave`(0=무제한) — 없으면 한 종류가 일반 웨이브 최대 24기 / 보스 호위 3~4기로 나온다 |
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `SpawnUnit` | 웨이브 스케줄러가 `Data/AttackDeck.cs`·`WavePlanAsset.cs` 소비 |
-| ECS 컴포넌트 | Units: AttackUnitTag·Health·IncomingDamage·CcEffect·DotEffect·**ShieldSlot·IncomingShield** · Movement: `PathFollowState` · Combat: AttackState·EnemyBehavior·EnemyAiState | 이동은 적 전용. ★**실드 버퍼는 적 전원**(보스만이 아니다 — `boss-mamemo` unit 2, 마메모가 호위에게 실드를 준다). **쌍으로** 붙여야 한다: `IncomingShield` 드레인이 `ShieldSlot` 존재로 게이팅돼 있어 한쪽만 붙이면 부여가 영영 안 빠지고 버퍼가 무한 성장한다. 따름정리 — `DamageApplicationSystem` 의 실드 파열 감지가 **적에서도 참이 되므로** `OnShieldBreak` 를 적에 여는 것은 실행기 진영 파라미터화가 선행이다(`DcTrigger.EnemyTriggerArmed` 가 막고 `DcTriggerTests` 가 고정) |
+| ECS 컴포넌트 | Units: AttackUnitTag·Health·IncomingDamage·CcEffect·DotEffect·**ShieldSlot·IncomingShield** · Movement: `PathFollowState` · Combat: AttackState·EnemyBehavior·EnemyAiState | ~~이동은 적 전용~~ — **순찰 아군이 깼다**(summon-patrol-defender, 2026-08-12). `PathFollowState`·`EnemyAiState`·`EnemyBehavior` 는 이름만 «Enemy» 이고 진영 중립이다. ★**실드 버퍼는 적 전원**(보스만이 아니다 — `boss-mamemo` unit 2, 마메모가 호위에게 실드를 준다). **쌍으로** 붙여야 한다: `IncomingShield` 드레인이 `ShieldSlot` 존재로 게이팅돼 있어 한쪽만 붙이면 부여가 영영 안 빠지고 버퍼가 무한 성장한다. 따름정리 — `DamageApplicationSystem` 의 실드 파열 감지가 **적에서도 참이 되므로** `OnShieldBreak` 를 적에 여는 것은 실행기 진영 파라미터화가 선행이다(`DcTrigger.EnemyTriggerArmed` 가 막고 `DcTriggerTests` 가 고정) |
 | 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(flow-field) · `Battle/Combat/AttackSystem.cs`·`EnemyAiStateSystem.cs` | |
 | 이벤트 큐 | `Battle/Units/EnemyKilledEventsSingleton.cs`·`GoalReachedEventsSingleton.cs` · `Battle/Effects/EnemyCcEvents.cs` | + 공유 UnitAttackVisual/DamageNumber |
 | View/Pool | `Presentation/SpineUnitPool.cs`(공유) / `QuadUnitViewPool.cs`(enemyViewPool 인스턴스) | 저체력 틴트 = SyncMonoUnitViews 내 |

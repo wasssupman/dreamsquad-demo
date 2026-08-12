@@ -14,12 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   id: swift
   displayName: Swift
+  traversalLayers: 0
   enemyClass: 2
+  minWaveNumber: 1
+  maxPerWave: 0
   attackMethod: 0
   targetMode: 0
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
+  targetFactions: 13
   health: 30
   moveSpeed: 4.5
   attackRange: 1
@@ -36,6 +40,7 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
   idleAnimation: Walk
+  walkAnimation: 
   attackAnimation: Attack1
   deathAnimation: Die
   spineVisualScale: 1.3
@@ -69,4 +74,9 @@ MonoBehaviour:
   awakeningReward: 1
   nightmareMechanics: []
   killScore: 1
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []

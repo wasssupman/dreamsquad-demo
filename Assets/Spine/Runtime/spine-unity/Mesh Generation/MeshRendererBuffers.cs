@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -42,6 +42,7 @@ namespace Spine.Unity {
 		DoubleBuffered<SmartMesh> doubleBufferedMesh;
 		internal readonly ExposedList<Material> submeshMaterials = new ExposedList<Material>();
 		internal Material[] sharedMaterials = new Material[0];
+		internal int previousMaterialHash = 0;
 
 		public void Initialize () {
 			if (doubleBufferedMesh != null) {
@@ -53,32 +54,9 @@ namespace Spine.Unity {
 			}
 		}
 
-		/// <summary>Returns a sharedMaterials array for use on a MeshRenderer.</summary>
-		/// <returns></returns>
-		public Material[] GetUpdatedSharedMaterialsArray () {
-			if (submeshMaterials.Count == sharedMaterials.Length)
-				submeshMaterials.CopyTo(sharedMaterials);
-			else
-				sharedMaterials = submeshMaterials.ToArray();
-
-			return sharedMaterials;
-		}
-
-		/// <summary>Returns true if the materials were modified since the buffers were last updated.</summary>
-		public bool MaterialsChangedInLastUpdate () {
-			int newSubmeshMaterials = submeshMaterials.Count;
-			Material[] sharedMaterials = this.sharedMaterials;
-			if (newSubmeshMaterials != sharedMaterials.Length) return true;
-
-			Material[] submeshMaterialsItems = submeshMaterials.Items;
-			for (int i = 0; i < newSubmeshMaterials; i++)
-				if (!Material.ReferenceEquals(submeshMaterialsItems[i], sharedMaterials[i])) return true; //if (submeshMaterialsItems[i].GetInstanceID() != sharedMaterials[i].GetInstanceID()) return true;
-
-			return false;
-		}
-
-		/// <summary>Updates the internal shared materials array with the given instruction list.</summary>
-		public void UpdateSharedMaterials (ExposedList<SubmeshInstruction> instructions) {
+		/// <summary>Updates an internal materials list with the given instruction list.</summary>
+		public void GatherMaterialsFromInstructions (ExposedList<SubmeshInstruction> instructions,
+			out bool materialsChanged) {
 			int newSize = instructions.Count;
 			{ //submeshMaterials.Resize(instructions.Count);
 				if (newSize > submeshMaterials.Items.Length)
@@ -90,6 +68,22 @@ namespace Spine.Unity {
 			SubmeshInstruction[] instructionsItems = instructions.Items;
 			for (int i = 0; i < newSize; i++)
 				submeshMaterialsItems[i] = instructionsItems[i].material;
+
+			materialsChanged = EvaluateMaterialsChanged();
+		}
+
+		/// <summary>Returns a sharedMaterials array for use on a MeshRenderer.</summary>
+		/// <returns></returns>
+		public Material[] UpdateSharedMaterialsArray () {
+			if (submeshMaterials.Count == sharedMaterials.Length)
+				submeshMaterials.CopyTo(sharedMaterials);
+			else
+				sharedMaterials = submeshMaterials.ToArray();
+			return sharedMaterials;
+		}
+
+		public SmartMesh GetCurrentMesh () {
+			return doubleBufferedMesh.GetCurrent();
 		}
 
 		public SmartMesh GetNextMesh () {
@@ -131,6 +125,22 @@ namespace Spine.Unity {
 				}
 				mesh = null;
 			}
+		}
+
+		/// <summary>Returns true if the materials were modified since the buffers were last updated.</summary>
+		protected bool EvaluateMaterialsChanged () {
+			int submeshMaterialsHash = 0;
+			int newSubmeshMaterials = submeshMaterials.Count;
+			Material[] submeshMaterialsItems = submeshMaterials.Items;
+			for (int i = 0; i < newSubmeshMaterials; i++) {
+				Material material = submeshMaterialsItems[i];
+				if (material == null) continue;
+				int hash = material.GetHashCode() * (i + 1);
+				submeshMaterialsHash += hash;
+			}
+			bool isNewHash = previousMaterialHash != submeshMaterialsHash;
+			previousMaterialHash = submeshMaterialsHash;
+			return isNewHash || (sharedMaterials.Length != newSubmeshMaterials);
 		}
 	}
 }

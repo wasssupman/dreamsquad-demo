@@ -80,7 +80,7 @@ namespace Wassup.Tests.EditMode
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(
                 w, h,
-                tiles, new byte[n], new bool[n], new byte[n],
+                tiles,
                 new[] { new Vector2Int(w - 1, 2) },
                 new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
                 seed: 42,
@@ -237,7 +237,7 @@ namespace Wassup.Tests.EditMode
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(
                 w, h,
-                tiles, new byte[n], new bool[n], new byte[n],
+                tiles,
                 new[] { new Vector2Int(w - 1, 2) },
                 new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
                 seed: 43,

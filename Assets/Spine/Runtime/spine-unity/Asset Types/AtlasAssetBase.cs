@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -29,6 +29,7 @@
 
 #define SPINE_OPTIONAL_ON_DEMAND_LOADING
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -41,6 +42,59 @@ namespace Spine.Unity {
 		public abstract bool IsLoaded { get; }
 		public abstract void Clear ();
 		public abstract Atlas GetAtlas (bool onlyMetaData = false);
+
+		protected void OnEnable () {
+			runtimeMaterialOverrides = null;
+			InitializeRuntimeOverrides();
+		}
+
+		public bool HasMaterialOverrideSets {
+			get {
+#if UNITY_EDITOR
+				if (!Application.isPlaying) {
+					return serializedMaterialOverrides.Count > 0;
+				}
+#endif
+				return serializedMaterialOverrides.Count > 0 ||
+					(runtimeMaterialOverrides != null && runtimeMaterialOverrides.Count > 0);
+			}
+		}
+
+		public MaterialOverrideSet GetMaterialOverrideSet (string name) {
+#if UNITY_EDITOR
+			if (!Application.isPlaying) {
+				return serializedMaterialOverrides.Find(entry => (entry.name == name));
+			}
+#endif
+			InitializeRuntimeOverrides();
+			return runtimeMaterialOverrides.Find(entry => (entry.name == name));
+		}
+
+		public MaterialOverrideSet AddMaterialOverrideSet (string name) {
+
+			var overrideSet = new MaterialOverrideSet(name);
+#if UNITY_EDITOR
+			if (!Application.isPlaying) {
+				serializedMaterialOverrides.Add(overrideSet);
+				return overrideSet;
+			}
+#endif
+			InitializeRuntimeOverrides();
+			runtimeMaterialOverrides.Add(overrideSet);
+			return overrideSet;
+		}
+
+		protected void InitializeRuntimeOverrides () {
+			if (runtimeMaterialOverrides == null) {
+				runtimeMaterialOverrides = new List<MaterialOverrideSet>(serializedMaterialOverrides.Count);
+				foreach (var srcOverrideSet in serializedMaterialOverrides) {
+					runtimeMaterialOverrides.Add(new MaterialOverrideSet(srcOverrideSet));
+				}
+			}
+		}
+
+		[SerializeField] protected List<MaterialOverrideSet> serializedMaterialOverrides = new List<MaterialOverrideSet>();
+		protected List<MaterialOverrideSet> runtimeMaterialOverrides;
 
 #if SPINE_OPTIONAL_ON_DEMAND_LOADING
 		public enum LoadingMode {

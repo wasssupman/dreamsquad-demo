@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -50,6 +50,7 @@ namespace Spine.Unity {
 			};
 		static readonly string NORMALMAP_KEYWORD = "_NORMALMAP";
 		static readonly string CANVAS_GROUP_COMPATIBLE_KEYWORD = "_CANVAS_GROUP_COMPATIBLE";
+		static readonly string TINT_BLACK_KEYWORD = "_TINT_BLACK_ON";
 
 		public static readonly string kPMANotSupportedLinearMessage =
 			"\nWarning: Premultiply-alpha atlas textures not supported in Linear color space!"
@@ -139,7 +140,7 @@ namespace Spine.Unity {
 			bool isProblematic = false;
 			if (material) {
 				isProblematic |= IsMaterialSetupProblematic(material, ref errorMessage);
-				MeshGenerator.Settings settings = skeletonGraphic.MeshGenerator.settings;
+				MeshGenerator.Settings settings = skeletonGraphic.MeshSettings;
 				if (settings.zSpacing == 0) {
 					isProblematic |= IsZSpacingRequired(material, ref errorMessage);
 				}
@@ -327,8 +328,8 @@ namespace Spine.Unity {
 
 		static bool RequiresTintBlack (Material material) {
 			bool isTintBlackShader =
-				material.shader.name.Contains("Spine") &&
-				material.shader.name.Contains("Tint Black");
+				(material.shader.name.Contains("Spine") && material.shader.name.Contains("Tint Black")) ||
+				material.IsKeywordEnabled(TINT_BLACK_KEYWORD);
 			return isTintBlackShader;
 		}
 
@@ -343,7 +344,7 @@ namespace Spine.Unity {
 			Canvas canvas = skeletonGraphic.canvas;
 			if (!canvas)
 				return false;
-			var requiredChannels =
+			AdditionalCanvasShaderChannels requiredChannels =
 				AdditionalCanvasShaderChannels.TexCoord1 |
 				AdditionalCanvasShaderChannels.TexCoord2;
 			return (canvas.additionalShaderChannels & requiredChannels) != requiredChannels;

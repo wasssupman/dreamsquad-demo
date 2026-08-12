@@ -4,7 +4,7 @@ Shader "Spine/SkeletonGraphic Grayscale"
 	{
 		_GrayPhase("Phase", Range(0, 1)) = 1
 		[PerRendererData] _MainTex("Sprite Texture", 2D) = "white" {}
-		[Toggle(_STRAIGHT_ALPHA_INPUT)] _StraightAlphaInput("Straight Alpha Texture", Int) = 0
+		[Toggle(_STRAIGHT_ALPHA_INPUT)] _StraightAlphaInput("Straight Alpha Texture", Int) = 1
 		[Toggle(_CANVAS_GROUP_COMPATIBLE)] _CanvasGroupCompatible("CanvasGroup Compatible", Int) = 1
 
 		[HideInInspector][Enum(UnityEngine.Rendering.CompareFunction)] _StencilComp("Stencil Comparison", Float) = 8

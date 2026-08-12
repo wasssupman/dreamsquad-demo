@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -32,14 +32,17 @@ using System.Collections.Generic;
 
 namespace Spine {
 	/// <summary>Stores the setup pose for an IkConstraint.</summary>
-	public class IkConstraintData : ConstraintData {
-		internal ExposedList<BoneData> bones = new ExposedList<BoneData>();
+	public class IkConstraintData : ConstraintData<IkConstraint, IkConstraintPose> {
+		internal ExposedList<BoneData> bones = new ExposedList<BoneData>(2);
 		internal BoneData target;
-		internal int bendDirection;
-		internal bool compress, stretch, uniform;
-		internal float mix, softness;
+		internal ScaleYMode scaleY = ScaleYMode.None;
 
-		public IkConstraintData (string name) : base(name) {
+		public IkConstraintData (string name)
+			: base(name, new IkConstraintPose()) {
+		}
+
+		override public IConstraint Create (Skeleton skeleton) {
+			return new IkConstraint(this, skeleton);
 		}
 
 		/// <summary>The bones that are constrained by this IK Constraint.</summary>
@@ -54,50 +57,12 @@ namespace Spine {
 		}
 
 		/// <summary>
-		/// A percentage (0-1) that controls the mix between the constrained and unconstrained rotation.
-		/// <para>
-		/// For two bone IK: if the parent bone has local nonuniform scale, the child bone's local Y translation is set to 0.
-		/// </para></summary>
-		public float Mix {
-			get { return mix; }
-			set { mix = value; }
-		}
-
-		/// <summary>For two bone IK, the target bone's distance from the maximum reach of the bones where rotation begins to slow. The bones
-		/// will not straighten completely until the target is this far out of range.</summary>
-		public float Softness {
-			get { return softness; }
-			set { softness = value; }
-		}
-
-		/// <summary>For two bone IK, controls the bend direction of the IK bones, either 1 or -1.</summary>
-		public int BendDirection {
-			get { return bendDirection; }
-			set { bendDirection = value; }
-		}
-
-		/// <summary>For one bone IK, when true and the target is too close, the bone is scaled to reach it.</summary>
-		public bool Compress {
-			get { return compress; }
-			set { compress = value; }
-		}
-
-		/// <summary>When true and the target is out of range, the parent bone is scaled to reach it.
-		/// <para>
-		/// For two bone IK: 1) the child bone's local Y translation is set to 0,
-		/// 2) stretch is not applied if <see cref="Softness"/> is > 0,
-		/// and 3) if the parent bone has local nonuniform scale, stretch is not applied.</para></summary>
-		public bool Stretch {
-			get { return stretch; }
-			set { stretch = value; }
-		}
-
-		/// <summary>
-		/// When true and <see cref="Compress"/> or <see cref="Stretch"/> is used, the bone is scaled on both the X and Y axes.
+		/// Determines how the <see cref="BonePose.scaleY"/> changes when <see cref="IkConstraintPose.Compress"/> or
+		/// <see cref="IkConstraintPose.Stretch"/> set <see cref="BonePose.ScaleX"/>.
 		/// </summary>
-		public bool Uniform {
-			get { return uniform; }
-			set { uniform = value; }
+		public ScaleYMode ScaleY {
+			get { return scaleY; }
+			set { scaleY = value; }
 		}
 	}
 }

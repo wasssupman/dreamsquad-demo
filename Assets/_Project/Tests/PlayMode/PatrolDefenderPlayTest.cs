@@ -166,7 +166,22 @@ namespace Wassup.Tests.PlayMode
 
             for (int i = 0; i < 4; i++) yield return null;
             Assert.IsTrue(bridge.TryGetUnitView(patrol, out var patrolView), "patrol Spine view spawned");
-            Assert.IsTrue(HasAllyMarker(patrolView), "moving ally marker attached to patrol view");
+
+            // unit 10 — 소환물이 살아 있는 동안 소환사는 능력이 저작한 루프(attack2)를 돈다.
+            // 소환 원샷(drop, ~2s)이 끝난 **다음**에 적용되는 것이 정상이므로 여유를 두고 기다린다.
+            // 이 단언이 잡는 회귀: 오버라이드 요청이 원샷 도중에 오면 저장만 되고 영영 적용되지
+            // 않아, 소환사가 쿨다운마다 소환 애니만 반복한다(2026-08-12 사용자 제보).
+            Assert.IsTrue(bridge.TryGetUnitView(summoner, out var summonerView), "summoner Spine view spawned");
+            string activeAnim = summonerData.GetAbility<SummonPatrolAbility>().activeAnimation;
+            Assert.IsFalse(string.IsNullOrEmpty(activeAnim), "summoner ability authors an active animation");
+            float animDeadline = Time.realtimeSinceStartup + 6f;
+            while (summonerView.CurrentAnimationName != activeAnim && Time.realtimeSinceStartup < animDeadline)
+                yield return null;
+            Assert.AreEqual(activeAnim, summonerView.CurrentAnimationName,
+                "소환물 생존 중 소환사가 능력 루프로 들어간다");
+            // unit 6(발밑 아군 링) 단언은 그 unit 이 철회되며 함께 제거했다 — 표식이 필요했던
+            // 근거("순찰병이 적과 같은 스켈레톤·같은 실루엣")를 unit 8 의 고유 리그가 없앴다.
+            // 경위: docs/spec/summon-patrol-defender/6_ally_readability.md 상단.
 
             // 실제 지원 시스템 대상 집합에 순찰병이 들어오는지 검증한다. 배치 셀은 그대로 두고
             // 테스트에서만 캐스터의 sim 위치를 순찰병 곁으로 옮겨 range 변수를 제거한다.
@@ -412,16 +427,6 @@ namespace Wassup.Tests.PlayMode
             var slots = em.GetBuffer<StatModifierSlot>(entity);
             for (int i = 0; i < slots.Length; i++)
                 if (slots[i].header.origin == origin) return true;
-            return false;
-        }
-
-        private static bool HasAllyMarker(Wassup.Presentation.SpineUnitView view)
-        {
-            if (view == null) return false;
-            var renderers = view.GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
-            for (int i = 0; i < renderers.Length; i++)
-                if (renderers[i].sprite != null && renderers[i].sprite.name == "AllyMarkerRing")
-                    return true;
             return false;
         }
 

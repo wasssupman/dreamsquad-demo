@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -54,6 +54,18 @@
 #define HAS_ON_POSTPROCESS_PREFAB
 #endif
 
+#if UNITY_2020_1_OR_NEWER
+#define HAS_EDIT_PREFAB_CONTENTS_SCOPE
+#endif
+
+#if !SPINE_AUTO_UPGRADE_COMPONENTS_OFF
+#define AUTO_UPGRADE_TO_43_COMPONENTS
+#endif
+
+#if UNITY_6000_4_OR_NEWER
+#define HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+#endif
+
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -61,15 +73,22 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Spine.Unity.Editor {
 	using EventType = UnityEngine.EventType;
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+	using EntityIdType = EntityId;
+#else
+	using EntityIdType = System.Int32;
+#endif
 
 	// Analysis disable once ConvertToStaticType
 	[InitializeOnLoad]
 	public partial class SpineEditorUtilities : AssetPostprocessor {
-
+		public const string ReferenceAssetsFolderName = "ReferenceAssets";
+		public const string AnimationReferenceContainerSuffix = "_AnimationReferences";
 		public static string editorPath = "";
 		public static string editorGUIPath = "";
 		public static bool initialized;
@@ -124,7 +143,7 @@ namespace Spine.Unity.Editor {
 
 				renderer.EditorUpdateMeshFilterHideFlags();
 				renderer.Initialize(true, true);
-				renderer.LateUpdateMesh();
+				renderer.UpdateMesh();
 				Mesh mesh = meshFilter.sharedMesh;
 				if (mesh == null) continue;
 
@@ -203,7 +222,10 @@ namespace Spine.Unity.Editor {
 			SceneView.onSceneGUIDelegate += DragAndDropInstantiation.SceneViewDragAndDrop;
 #endif
 
-#if UNITY_2021_2_OR_NEWER
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+			DragAndDrop.RemoveDropHandlerV2(HierarchyHandler.HandleDragAndDrop);
+			DragAndDrop.AddDropHandlerV2(HierarchyHandler.HandleDragAndDrop);
+#elif UNITY_2021_2_OR_NEWER
 			DragAndDrop.RemoveDropHandler(HierarchyHandler.HandleDragAndDrop);
 			DragAndDrop.AddDropHandler(HierarchyHandler.HandleDragAndDrop);
 #else
@@ -232,9 +254,17 @@ namespace Spine.Unity.Editor {
 			EditorApplication.playmodeStateChanged += DataReloadHandler.OnPlaymodeStateChanged;
 			DataReloadHandler.OnPlaymodeStateChanged();
 #endif
+			EditorBridge.OnRequestMarkDirty += OnRequestMarkDirty;
 
 			if (SpineEditorUtilities.Preferences.textureImporterWarning) {
 				IssueWarningsForUnrecommendedTextureSettings();
+			}
+
+#if BUILT_IN_SPRITE_MASK_COMPONENT && AUTO_UPGRADE_TO_43_COMPONENTS
+			SpineMaskUtilities.EditorGatherAtlasAssetsMaskMaterials();
+#endif
+			if (SpineEditorUtilities.Preferences.ShowSplitComponentChangeWarning) {
+				ComponentUpgradeWarningDialog.ShowDialog();
 			}
 
 			initialized = true;
@@ -266,16 +296,9 @@ namespace Spine.Unity.Editor {
 			}
 		}
 
-		public static void ReloadSkeletonDataAssetAndComponent (SkeletonRenderer component) {
+		public static void ReloadSkeletonDataAssetAndComponent (ISkeletonRenderer component) {
 			if (component == null) return;
-			ReloadSkeletonDataAsset(component.skeletonDataAsset);
-			ReinitializeComponent(component);
-		}
-
-		public static void ReloadSkeletonDataAssetAndComponent (SkeletonGraphic component) {
-			if (component == null) return;
-			ReloadSkeletonDataAsset(component.skeletonDataAsset);
-			// Reinitialize.
+			ReloadSkeletonDataAsset(component.SkeletonDataAsset);
 			ReinitializeComponent(component);
 		}
 
@@ -298,32 +321,34 @@ namespace Spine.Unity.Editor {
 			DataReloadHandler.ReloadAnimationReferenceAssets(skeletonDataAsset);
 		}
 
-		public static void ReinitializeComponent (SkeletonRenderer component) {
+		public static void ReinitializeComponent (ISkeletonRenderer component) {
 			if (component == null) return;
 			if (!SkeletonDataAssetIsValid(component.SkeletonDataAsset)) return;
 
-			IAnimationStateComponent stateComponent = component as IAnimationStateComponent;
-			AnimationState oldAnimationState = null;
-			if (stateComponent != null) {
-				oldAnimationState = stateComponent.AnimationState;
-			}
+			component.Initialize(true);
 
-			component.Initialize(true); // implicitly clears any subscribers
-
-			if (oldAnimationState != null) {
-				stateComponent.AnimationState.AssignEventSubscribersFrom(oldAnimationState);
-			}
-			if (stateComponent != null) {
+			if (component.Animation != null) {
 				// Any set animation needs to be applied as well since it might set attachments,
 				// having an effect on generated SpriteMaskMaterials below.
-				stateComponent.AnimationState.Apply(component.skeleton);
+				component.Animation.ApplyAnimation();
 				component.LateUpdate();
 			}
 
 #if BUILT_IN_SPRITE_MASK_COMPONENT
-			SpineMaskUtilities.EditorAssignSpriteMaskMaterials(component);
+			SkeletonRenderer skeletonRenderer = component as SkeletonRenderer;
+			if (skeletonRenderer != null)
+				SpineMaskUtilities.EditorSetupSpriteMaskMaterials(skeletonRenderer);
 #endif
 			component.LateUpdate();
+		}
+
+		public static void ReinitializeComponent (ISkeletonAnimation component) {
+			if (component == null || component.Renderer == null) return;
+			if (!SkeletonDataAssetIsValid(component.Renderer.SkeletonDataAsset)) return;
+
+			component.Initialize(true);
+			component.UpdateOncePerFrame(0);
+			component.Renderer.LateUpdate();
 		}
 
 		public static void ReinitializeComponent (SkeletonGraphic component) {
@@ -336,6 +361,156 @@ namespace Spine.Unity.Editor {
 		public static bool SkeletonDataAssetIsValid (SkeletonDataAsset asset) {
 			return asset != null && asset.GetSkeletonData(quiet: true) != null;
 		}
+
+#if AUTO_UPGRADE_TO_43_COMPONENTS
+		public static void UpgradeAllScenesAndPrefabsTo43 () {
+			int scenesUpdated = 0;
+			int prefabsUpdated = 0;
+			int componentsUpdated = 0;
+
+			// Find all scene assets
+			string[] sceneGuids = AssetDatabase.FindAssets("t:Scene");
+			List<string> scenePaths = new List<string>();
+			foreach (string guid in sceneGuids) {
+				string path = AssetDatabase.GUIDToAssetPath(guid);
+				if (!string.IsNullOrEmpty(path) && !path.StartsWith("Packages/"))
+					scenePaths.Add(path);
+			}
+
+			// Find all prefab assets
+			string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab");
+			List<string> prefabPaths = new List<string>();
+			foreach (string guid in prefabGuids) {
+				string path = AssetDatabase.GUIDToAssetPath(guid);
+				if (!string.IsNullOrEmpty(path) && !path.StartsWith("Packages/"))
+					prefabPaths.Add(path);
+			}
+
+			// Process scenes
+			UnityEngine.SceneManagement.Scene currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+			string currentScenePath = currentScene.path;
+
+			foreach (string scenePath in scenePaths) {
+				try {
+					EditorUtility.DisplayProgressBar("Upgrading Spine Components",
+						"Processing scene: " + Path.GetFileName(scenePath),
+						(float)scenesUpdated / scenePaths.Count);
+
+					// Open the scene
+					UnityEngine.SceneManagement.Scene scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath,
+						UnityEditor.SceneManagement.OpenSceneMode.Single);
+
+					bool sceneModified = false;
+
+					// Find all IUpgradable components in the scene
+					GameObject[] rootObjects = scene.GetRootGameObjects();
+					List<IUpgradable> upgradableComponents = new List<IUpgradable>();
+
+					foreach (GameObject root in rootObjects) {
+						IUpgradable[] componentsInObject = root.GetComponentsInChildren<IUpgradable>(true);
+						upgradableComponents.AddRange(componentsInObject);
+					}
+
+					// Upgrade all found components
+					foreach (IUpgradable upgradable in upgradableComponents) {
+						if (upgradable != null) {
+							upgradable.UpgradeTo43();
+							componentsUpdated++;
+							sceneModified = true;
+						}
+					}
+
+					// Save the scene if modified
+					if (sceneModified) {
+						UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
+						scenesUpdated++;
+					}
+				} catch (System.Exception e) {
+					Debug.LogError(string.Format("Failed to process scene {0}: {1}", scenePath, e.Message));
+				}
+			}
+
+			// Process prefabs
+			for (int i = 0; i < prefabPaths.Count; i++) {
+				string prefabPath = prefabPaths[i];
+				try {
+					EditorUtility.DisplayProgressBar("Migrating Spine Components to 4.3",
+						"Processing prefab: " + Path.GetFileName(prefabPath),
+						(float)(scenePaths.Count + i) / (scenePaths.Count + prefabPaths.Count));
+
+					GameObject prefabRoot = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+					if (prefabRoot != null) {
+						bool prefabModified = false;
+
+#if HAS_EDIT_PREFAB_CONTENTS_SCOPE
+						using (var editingScope = new PrefabUtility.EditPrefabContentsScope(prefabPath)) {
+						    GameObject prefabContents = editingScope.prefabContentsRoot;
+						    IUpgradable[] upgradableComponents = prefabContents.GetComponentsInChildren<IUpgradable>(true);
+						    foreach (IUpgradable upgradable in upgradableComponents) {
+						        if (upgradable != null) {
+						            upgradable.UpgradeTo43();
+						            componentsUpdated++;
+						            prefabModified = true;
+						        }
+						    }
+						    if (prefabModified) {
+						        prefabsUpdated++;
+						    }
+						}
+#else // HAS_EDIT_PREFAB_CONTENTS_SCOPE
+						// Unity 2017.1 compatible approach
+						// Instantiate the prefab temporarily to modify it
+						GameObject tempInstance = PrefabUtility.InstantiatePrefab(prefabRoot) as GameObject;
+						if (tempInstance != null) {
+							// Find all IUpgradable components in the prefab instance
+							IUpgradable[] upgradableComponents = tempInstance.GetComponentsInChildren<IUpgradable>(true);
+
+							// Upgrade all found components
+							foreach (IUpgradable upgradable in upgradableComponents) {
+								if (upgradable != null) {
+									upgradable.UpgradeTo43();
+									componentsUpdated++;
+									prefabModified = true;
+								}
+							}
+
+							if (prefabModified) {
+								// Apply changes back to the prefab asset
+								PrefabUtility.ReplacePrefab(tempInstance, prefabRoot, ReplacePrefabOptions.ConnectToPrefab);
+								prefabsUpdated++;
+							}
+
+							// Clean up the temporary instance
+							GameObject.DestroyImmediate(tempInstance);
+						}
+#endif
+					}
+				} catch (System.Exception e) {
+					Debug.LogError(string.Format("Failed to process prefab {0}: {1}", prefabPath, e.Message));
+				}
+			}
+
+			// Restore original scene if needed
+			if (!string.IsNullOrEmpty(currentScenePath) && currentScenePath != UnityEngine.SceneManagement.SceneManager.GetActiveScene().path) {
+				UnityEditor.SceneManagement.EditorSceneManager.OpenScene(currentScenePath,
+					UnityEditor.SceneManagement.OpenSceneMode.Single);
+			}
+
+			EditorUtility.ClearProgressBar();
+
+			// Show results
+			string message = string.Format("Migration to Spine 4.3 complete!\n\n" +
+				"Scenes processed: {0}/{1}\n" +
+				"Prefabs processed: {2}/{3}\n" +
+				"Components upgraded: {4}",
+				scenesUpdated, scenePaths.Count,
+				prefabsUpdated, prefabPaths.Count,
+				componentsUpdated);
+
+			EditorUtility.DisplayDialog("Spine 4.3 Migration Complete", message, "OK");
+			Debug.Log("[Spine] " + message);
+		}
+#endif // AUTO_UPGRADE_TO_43_COMPONENTS
 
 		public static bool IssueWarningsForUnrecommendedTextureSettings (string texturePath) {
 			TextureImporter texImporter = (TextureImporter)TextureImporter.GetAtPath(texturePath);
@@ -358,13 +533,23 @@ namespace Spine.Unity.Editor {
 			}
 			return true;
 		}
+
+		static void OnRequestMarkDirty (GameObject go) {
+			if (go == null) return;
+
+			EditorApplication.delayCall += () => {
+				if (go == null) return;
+				EditorUtility.SetDirty(go);
+				EditorSceneManager.MarkSceneDirty(go.scene);
+			};
+		}
 		#endregion
 
 		public static class HierarchyHandler {
-			static Dictionary<int, GameObject> skeletonRendererTable = new Dictionary<int, GameObject>();
-			static Dictionary<int, SkeletonUtilityBone> skeletonUtilityBoneTable = new Dictionary<int, SkeletonUtilityBone>();
-			static Dictionary<int, BoundingBoxFollower> boundingBoxFollowerTable = new Dictionary<int, BoundingBoxFollower>();
-			static Dictionary<int, BoundingBoxFollowerGraphic> boundingBoxFollowerGraphicTable = new Dictionary<int, BoundingBoxFollowerGraphic>();
+			static Dictionary<EntityIdType, GameObject> skeletonRendererTable = new Dictionary<EntityIdType, GameObject>();
+			static Dictionary<EntityIdType, SkeletonUtilityBone> skeletonUtilityBoneTable = new Dictionary<EntityIdType, SkeletonUtilityBone>();
+			static Dictionary<EntityIdType, BoundingBoxFollower> boundingBoxFollowerTable = new Dictionary<EntityIdType, BoundingBoxFollower>();
+			static Dictionary<EntityIdType, BoundingBoxFollowerGraphic> boundingBoxFollowerGraphicTable = new Dictionary<EntityIdType, BoundingBoxFollowerGraphic>();
 
 #if NEWPLAYMODECALLBACKS
 			internal static void IconsOnPlaymodeStateChanged (PlayModeStateChange stateChange) {
@@ -381,15 +566,22 @@ namespace Spine.Unity.Editor {
 #else
 				EditorApplication.hierarchyWindowChanged -= IconsOnChanged;
 #endif
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+				EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= IconsOnGUI;
+#else
 				EditorApplication.hierarchyWindowItemOnGUI -= IconsOnGUI;
-
+#endif
 				if (!Application.isPlaying && Preferences.showHierarchyIcons) {
 #if NEWHIERARCHYWINDOWCALLBACKS
 					EditorApplication.hierarchyChanged += IconsOnChanged;
 #else
 					EditorApplication.hierarchyWindowChanged += IconsOnChanged;
 #endif
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+					EditorApplication.hierarchyWindowItemByEntityIdOnGUI += IconsOnGUI;
+#else
 					EditorApplication.hierarchyWindowItemOnGUI += IconsOnGUI;
+#endif
 					IconsOnChanged();
 				}
 			}
@@ -400,24 +592,24 @@ namespace Spine.Unity.Editor {
 				boundingBoxFollowerTable.Clear();
 				boundingBoxFollowerGraphicTable.Clear();
 
-				SkeletonRenderer[] arr = Object.FindObjectsOfType<SkeletonRenderer>();
-				foreach (SkeletonRenderer r in arr)
-					skeletonRendererTable[r.gameObject.GetInstanceID()] = r.gameObject;
+				SkeletonRenderer[] renderers = Object.FindObjectsOfType<SkeletonRenderer>();
+				foreach (SkeletonRenderer r in renderers)
+					skeletonRendererTable[r.gameObject.GetEntityOrInstanceId()] = r.gameObject;
 
-				SkeletonUtilityBone[] boneArr = Object.FindObjectsOfType<SkeletonUtilityBone>();
-				foreach (SkeletonUtilityBone b in boneArr)
-					skeletonUtilityBoneTable[b.gameObject.GetInstanceID()] = b;
+				SkeletonUtilityBone[] utilityBones = Object.FindObjectsOfType<SkeletonUtilityBone>();
+				foreach (SkeletonUtilityBone b in utilityBones)
+					skeletonUtilityBoneTable[b.gameObject.GetEntityOrInstanceId()] = b;
 
-				BoundingBoxFollower[] bbfArr = Object.FindObjectsOfType<BoundingBoxFollower>();
-				foreach (BoundingBoxFollower bbf in bbfArr)
-					boundingBoxFollowerTable[bbf.gameObject.GetInstanceID()] = bbf;
+				BoundingBoxFollower[] bboxFollowers = Object.FindObjectsOfType<BoundingBoxFollower>();
+				foreach (BoundingBoxFollower bbf in bboxFollowers)
+					boundingBoxFollowerTable[bbf.gameObject.GetEntityOrInstanceId()] = bbf;
 
-				BoundingBoxFollowerGraphic[] bbfgArr = Object.FindObjectsOfType<BoundingBoxFollowerGraphic>();
-				foreach (BoundingBoxFollowerGraphic bbf in bbfgArr)
-					boundingBoxFollowerGraphicTable[bbf.gameObject.GetInstanceID()] = bbf;
+				BoundingBoxFollowerGraphic[] bboxFollowersGraphic = Object.FindObjectsOfType<BoundingBoxFollowerGraphic>();
+				foreach (BoundingBoxFollowerGraphic bbf in bboxFollowersGraphic)
+					boundingBoxFollowerGraphicTable[bbf.gameObject.GetEntityOrInstanceId()] = bbf;
 			}
 
-			internal static void IconsOnGUI (int instanceId, Rect selectionRect) {
+			internal static void IconsOnGUI (EntityIdType instanceId, Rect selectionRect) {
 				Rect r = new Rect(selectionRect);
 				if (skeletonRendererTable.ContainsKey(instanceId)) {
 					r.x = r.width - 15;
@@ -459,7 +651,32 @@ namespace Spine.Unity.Editor {
 				}
 			}
 
-#if UNITY_2021_2_OR_NEWER
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+			internal static DragAndDropVisualMode HandleDragAndDrop (EntityId dropTargetEntityId, HierarchyDropFlags dropMode, Transform parentForDraggedObjects, bool perform) {
+				SkeletonDataAsset skeletonDataAsset = DragAndDrop.objectReferences.Length == 0 ? null :
+					DragAndDrop.objectReferences[0] as SkeletonDataAsset;
+				if (skeletonDataAsset == null)
+					return DragAndDropVisualMode.None;
+				if (!perform)
+					return DragAndDropVisualMode.Copy;
+
+				GameObject dropTargetObject = UnityEditor.EditorUtility.EntityIdToObject(dropTargetEntityId) as GameObject;
+				Transform dropTarget = dropTargetObject != null ? dropTargetObject.transform : null;
+				Transform parent = dropTarget;
+				int siblingIndex = 0;
+				if (parent != null) {
+					if (dropMode == HierarchyDropFlags.DropBetween) {
+						parent = dropTarget.parent;
+						siblingIndex = dropTarget ? dropTarget.GetSiblingIndex() + 1 : 0;
+					} else if (dropMode == HierarchyDropFlags.DropAbove) {
+						parent = dropTarget.parent;
+						siblingIndex = dropTarget ? dropTarget.GetSiblingIndex() : 0;
+					}
+				}
+				DragAndDropInstantiation.ShowInstantiateContextMenu(skeletonDataAsset, Vector3.zero, parent, siblingIndex);
+				return DragAndDropVisualMode.Copy;
+			}
+#elif UNITY_2021_2_OR_NEWER
 			internal static DragAndDropVisualMode HandleDragAndDrop (int dropTargetInstanceID, HierarchyDropFlags dropMode, Transform parentForDraggedObjects, bool perform) {
 				SkeletonDataAsset skeletonDataAsset = DragAndDrop.objectReferences.Length == 0 ? null :
 					DragAndDrop.objectReferences[0] as SkeletonDataAsset;
@@ -608,6 +825,7 @@ namespace Spine.Unity.Editor {
 			if (selection == null) return null;
 
 			PropertyInfo animationClipProperty = selection.GetType().GetProperty("animationClip");
+			if (animationClipProperty == null) return null;
 			return animationClipProperty.GetValue(selection, null) as AnimationClip;
 		}
 
@@ -626,6 +844,24 @@ namespace Spine.Unity.Editor {
 
 			object state = stateProperty.GetValue(animEditor, null);
 			return (float)timeProperty.GetValue(state, null);
+		}
+	}
+
+	public static class EntityIdExtensions {
+		internal static EntityIdType GetEntityOrInstanceId (this GameObject gameObject) {
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+			return gameObject.GetEntityId();
+#else
+			return gameObject.GetInstanceID();
+#endif
+		}
+
+		internal static EntityIdType GetEntityOrInstanceId (this Component component) {
+#if HIERARCHY_WINDOW_ENTITY_ID_CALLBACK
+			return component.GetEntityId();
+#else
+			return component.GetInstanceID();
+#endif
 		}
 	}
 }

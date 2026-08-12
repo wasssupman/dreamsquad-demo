@@ -1,6 +1,14 @@
 # summon-patrol-defender — 소환사 & 순찰병 (Patrol)
 
-> 상태: 구현 중 2026-08-03 · units 0~6 코드 완료 · unit 7 Play 검증 중 · unit 8 대기 · **unit 9 완료 2026-08-10** (`515e5f00` · Play 확인 완료)
+> ## 상태: 완료 2026-08-12
+>
+> 작업 단위 **0~12 전부 커밋**(unit 6 은 철회). 인계 지도 = [`13_handoff_summary.md`](13_handoff_summary.md).
+>
+> **최종 검증**: EditMode 2190 중 2187 통과 · 실패 0 · 스킵 3(기존 `[Ignore]`) / PlayMode `PatrolDefenderPlayTest` 2/2 / 사용자 Play 확인(units 8·10·11·12) / 투트랙 코드 리뷰 블로커 반영 후 재검증.
+>
+> **⚠ 미판정 1건** — 이 spec 의 검증 질문("소환사를 뒤에 두고 순찰병을 앞세우는 것이 다른 배치 결정을 만드는가?")에 대한 사용자 판정이 기록되지 않은 채 종료했다. 기능은 돌고 검증됐지만 **이 spec 이 답하려던 질문 자체는 열려 있다.** 잔여 관찰 항목은 `docs/spec/README.md` Follow-up Backlog 로 이관.
+>
+> unit 8 이 «모든 유닛이 한 리그를 공유한다»를 깨면서 파생 작업이 셋 붙었다: 애니 구조(10) · 사거리 2단 게이트(11) · 아웃게임 호환(12).
 >
 > unit 9 이후 저작 기준: 소환사 `attackRange` = 담당 구역 반경, 순찰병 `attackRange` = 사격 거리. **순찰병 사거리 < 담당 구역**이어야 마중 나간다(같으면 집에 선 채로 전부 사거리 안이라 안 움직인다). 현재 시트 = 소환사 4 / 순찰병 1.
 
@@ -25,11 +33,14 @@
 | 2 | A | `2_movement_and_bridge_spawn.md` | `MovementSystem` dir 분기 + goal 게이트 + `CreatePatrolEntity` + 디버그 메뉴 + 매치 경계 정리 |
 | 3 | B | `3_summon_ability_and_fire.md` | `SummonPatrolAbility` + `SummonerState` + 소환 발화(초회 구역 게이트) + 스폰 요청 캐리어 |
 | 4 | B | `4_owner_link_and_respawn.md` | `SummonedBy` 연쇄 소멸 + 재소환 순환 + 재배치 anchor 재스냅 |
-| 5 | 뷰 | `5_view_and_leash_preview.md` | 순찰병 walk 애니 + 소환 VFX + 거점 반경 프리뷰 · **소환사 대기 모션은 unit 8 로 이관**(재생할 트랙이 없음) |
-| 6 | 뷰 | `6_ally_readability.md` | **아군 식별 표식** — 표식 종류가 육안 판정이라 unit 5 에서 분리 |
+| 5 | 뷰 | `5_view_and_leash_preview.md` | 순찰병 walk 애니 + 소환 VFX + 거점 반경 프리뷰 · **소환사 대기 모션은 unit 10 으로 이관**(당시 재생할 트랙이 없었고, 재생 기구는 코드를 요구) |
+| 6 | 뷰 | `6_ally_readability.md` | ~~아군 식별 표식(발밑 링)~~ — **철회 2026-08-12.** unit 8 의 고유 리그가 "적과 같은 실루엣"이라는 전제를 없앴다 |
 | 7 | 에셋 | `7_unit_assets_and_play.md` | 유닛 에셋 저작 + 카탈로그 등록 + Play 검증 |
-| 8 | 에셋 | `8_unique_spine_swap.md` | 고유 스파인 2종 임포트 + 스왑 |
+| 8 | 에셋 | `8_unique_spine_swap.md` (rev 2) | **고유 리그 통로 개통** + CH1/Doll 스왑 — 파츠형 전제를 데이터에서 끈다. **코드 0** |
 | 9 | 계약 | `9_coverage_from_attack_range.md` | **담당 구역 = 소환사 공격범위** — 박스 3개(프리뷰·게이트·순찰) 를 1개로. `leashTileRadius` 은퇴 |
+| 10 | 뷰 | `10_unit_animation_structure.md` | **유닛별 애니메이션 구조** — idle 변형 풀 + 조건 루프 오버라이드 + 전이 원샷. unit 8 의 코드 0 과 양립하지 않아 분리 |
+| 11 | 심 | `11_continuous_melee_reach.md` | **연속↔연속 근접 사거리 2단 게이트** — 셀 판정 + (양쪽 연속일 때만) 물리 거리. 소비처 3곳이 `AttackReach` 하나를 공유 |
+| 12 | 뷰/아웃게임 | `12_outgame_rig_compat.md` | 고유 리그가 아웃게임 UI 를 깨뜨린 3건 — 로딩 러너 크래시 · 스쿼드 상세 지뢰 · 크기 보정(임시) |
 
 **unit 2 까지 끝나면 소환 없이 순찰병이 판에서 동작한다**(디버그 메뉴 스폰으로 검증). 계층 B 는 그 위에 얹힌다. 커밋 경계 = 계층 경계.
 
@@ -80,21 +91,27 @@
 
 13. **담당 구역 = 소환사의 `attackRange`** (unit 9, 사용자 결정 2026-08-10). 능력 에셋에 반경 필드를 두지 않는다 — 쿨다운을 `attackCooldown` 에 맡긴 것과 같은 형태다. 이 한 값을 **배치 프리뷰 · 소환 발동 게이트 · 순찰 구역** 셋이 함께 본다. 두 곳에 두면 갈린다(실제로 갈려서 플레이어가 읽는 약속과 유닛의 행동이 달랐다).
 
+14. **이 spec 의 두 유닛이 게임의 첫 고유 스켈레톤이다** (unit 8 rev 2, 2026-08-12). 오늘까지 디펜더·적 44개 유닛 전원이 `Casual Character` 파츠 리그 하나를 공유했다 — 고유 리그 경로는 코드에 있으나 쓰인 적이 없다. 그 경로는 **`partSkins` 가 비어 있는 것**으로 켜진다(`SpineCombinedSkinCache.ResolveSkin`): 비면 단일 `spineSkinName`, 그것도 비면 스킨 미적용 = 스켈레톤 default. 파츠 합성과 고유 리그는 **같은 진입점의 두 분기**이며 유닛 구조·로직·인터페이스는 어느 쪽도 모른다.
+    - 그래서 스왑은 **코드 0** 이다. 애니 이름 차이는 `SpineUnitView.ResolveAnimation` 의 실존 확인 폴백이 흡수하고(대소문자 구분), facing 규약이 반대인 리그는 `SkeletonFlipXModifier` 로 **데이터에서** 정규화한다. facing 을 코드로 분기하지 말 것 — 그 주석이 명시한 규약이다.
+    - **death 애니는 `DefenderTile` 을 가진 방어유닛만 재생한다.** `Kill()` 의 유일한 구동원이 `DrainDefenderDeathEvents`(`_defenderByTile` 기반)이므로 순찰병(계약 1)과 적은 애니 없이 `Dispose()` 로 사라진다. 순찰병 `deathAnimation` 은 저작해도 도달하지 않는다.
+
 ## 파이프라인 커버리지 (Defender 아키타입 대조)
 
 | 정거장 | 이 spec 에서 |
 |---|---|
-| 데이터 SO | `Defender_Summoner.asset`(소환사) + `Defender_PatrolSoldier.asset`(순찰병, **카탈로그 미등록**) + `SummonPatrolAbility` 서브에셋(Data/Abilities/). 소환사만 `DefenderCatalog` 등록 |
+| 데이터 SO | `Defender_Summoner.asset`(소환사) + `Defender_PatrolSoldier.asset`(순찰병, **카탈로그 미등록**) + `SummonPatrolAbility` 서브에셋(Data/Abilities/). 소환사만 `DefenderCatalog` 등록. **+ 고유 스켈레톤 2종**(`Assets/_Project/Spine/CH1`·`Doll` — 계약 14) |
 | 스폰 진입점 | 소환사 = 기존 `PlaceDefenderAs`→`CreateDefenderEntity`. 순찰병 = **신규 `CreatePatrolEntity`**(소환 발화 + 디버그 메뉴 2 경로) |
 | ECS 컴포넌트 | **신규 4**(순찰병/소환사 본체): `PatrolAnchor`(Movement) · `PatrolStep`(Effects) · `SummonerState`(Combat) · `SummonedBy`(Units). **+ 요청 캐리어 2**(Combat, 수명 1프레임): `PatrolSpawnRequest` · `PatrolRequestCarrier`. 재사용: `EnemyAiState`·`EnemyBehavior{Halt}`·`PathFollowState`·`AttackState`·`DefenderUnitTag`·`DefenderClassTag`. **`DefenderTile` 은 의도적 미부착**(계약 1) |
 | 시뮬 시스템 | **신규 2**: `PatrolFieldSystem`(Effects) · `PatrolLifecycleSystem`(Units, owner 연쇄 소멸). 수정 3: `MovementSystem`(dir 분기+goal 게이트) · `ZoneApplySystem`(진영 게이트) · `AttackSystem`(소환 발화 + 초회 구역 게이트) |
 | 이벤트 큐 | **신규 채널 0.** 순찰병 스폰은 `ProjectileRequestCarrier` 와 같은 **캐리어 엔티티** 관용구를 쓴다(AttackSystem 에서 Bridge 스폰을 요청하는 관용구가 이미 그 자리에 있다) — 싱글턴 배선도 CLAUDE.md 채널 목록 갱신도 불요. `DefenderDeathEventsSingleton` 은 계약 1로 미발행 |
-| View/Pool | 기존 `SpineUnitPool` 재사용(스폰·회수는 `DespawnMissing` 이 자동). **위치 sync 는 전용 루프가 필요하다** — `SyncMonoUnitViews` 의 두 루프는 각각 `AttackUnitTag` 쿼리(적)와 `_defenderByTile` 순회(방어유닛)인데 순찰병은 **둘 다 아니다**. 없으면 뷰가 스폰만 되고 영원히 제자리에 선다 → `SyncPatrolViews`(unit 5) 신설. walk 애니는 `SpineWalkAnimation` 을 채워 활성화(방어유닛은 `""`) |
+| View/Pool | 기존 `SpineUnitPool` 재사용(스폰·회수는 `DespawnMissing` 이 자동). **위치 sync 는 전용 루프가 필요하다** — `SyncMonoUnitViews` 의 두 루프는 각각 `AttackUnitTag` 쿼리(적)와 `_defenderByTile` 순회(방어유닛)인데 순찰병은 **둘 다 아니다**. 없으면 뷰가 스폰만 되고 영원히 제자리에 선다 → `SyncPatrolViews`(unit 5) 신설. walk 애니는 `SpineWalkAnimation` 을 채워 활성화(방어유닛은 `""`). **unit 8 rev 2 부터 이 두 유닛만 고유 리그 분기를 탄다**(계약 14) — 풀·뷰 코드는 동일 |
 | 체력 표시 | **노출한다** — `UnitOverheadUiLayer`/`UnitOverheadView` 기존 폴링 경로를 `SyncPatrolViews` 안에서 호출. HP 보유 완전 유닛이고 죽고 다시 나는 것이 이 유닛의 핵심 피드백이므로 숨기지 않는다 |
 | 매치 경계 정리 | **`DestroyBattleEntities` 에 등재**(unit 2 = 순찰병, unit 3 = 요청 캐리어). 계약 1의 `DefenderUnitTag` 부착으로 순찰병은 자동 포함되나, 회귀 방지를 위해 완료 기준에 명시 |
 | 씬 wiring | **N/A — 신규 SerializeField 없음.** 기존 `spineUnitPool`/`unitOverheadUiLayer` 를 그대로 쓴다 |
 
 ## 후속 후보
+
+> **spec 종료(2026-08-12)와 함께 아래 항목은 `docs/spec/README.md` 의 Follow-up Backlog 로 이관됐다.** 이 목록은 출처 기록으로 남긴다 — 우선순위와 최신 상태는 그쪽이 정본이다.
 
 - **배치형 이동 아군** [M] · `PatrolAnchor` 만 붙이고 `SummonedBy` 를 안 붙이면 성립한다. 지금은 생성 경로가 소환 하나뿐이라 만들지 않는다(제약 9).
 - **드림캐쳐 소환 페이로드 배선** [M] · `docs/spec/README.md` 의 "드림캐쳐 복합 효과 · lowcost-summon" 과 `dreamcatcher-unit-trigger` 의 "프리미티브 밖 페이로드(소환 — 해당 효과의 파이프라인 신설이 본체)" 가 이 파이프라인을 선결 조건으로 예약해 뒀다. **이 spec 이 그 본체를 만든다.** 카드 배선은 범위 밖 — 종료 시 백로그 항목을 "파이프라인 완료, 남은 것은 카드 배선" 으로 갱신할 것.
@@ -103,4 +120,8 @@
 - **`ZoneApplySystem` 아군 대상 존** [S] · unit 0 은 "존은 적에게만" 게이트 하나만 넣는다. 아군 대상 존(회복 장판 등)이 실제로 생기면 그때 `HazardEffect` 에 진영 축을 연다 — 지금 여는 것은 투기(제약 8).
 - **순찰병 어그로 보유** [M] · `AggroCapacity` 를 주면 적을 붙잡아 세우는 성격이 강해진다. 현재는 어그로 없이 `EnemyAiState.Engaging`+`Halt` 로 적이 멈추는 것에 의존한다.
 - **영구 봉쇄 밸런스 감시** [S] · 순찰병이 경로 위에 서면 적이 멈추고, 죽어야 다시 간다. 재소환이 빠르면 봉쇄가 성립한다. 봉쇄를 막는 knob 은 HP 가 아니라 **재소환 쿨다운**이다 — Play 관찰 항목.
-- **아군 이동체 가독성 일반 규칙** [S] · unit 5 는 순찰병 하나에만 식별 처리를 넣는다. 이동형 아군이 늘면 규칙으로 승격.
+- **사거리 술어 미러 동치성 PlayMode 단언** [M] · 코드 리뷰 지적. `AttackReach` 를 쓰는 5곳이 같은 답을 내는지는 지금 **사람이 손으로 맞춘다** — EditMode 는 술어 자체만 검증하고, 술어를 우회하는 경로(락·커밋 재판정)는 커버리지 밖이다. 실제로 그 우회가 리뷰에서 발견됐다. 「락을 문 공격자가 게이트 경계로 벌어졌을 때 `AttackSystem.bestTarget` 과 `EnemyAiState` 가 같은 답을 낸다」를 PlayMode 로 고정하면 이 교착 클래스 전체가 덮인다.
+- **순찰병이 실제로 타격하는지 PlayMode 단언** [S] · 182프레임 교착은 실측으로 발견됐는데 자동 그물이 없다. 「순찰병이 N 프레임 안에 적 HP 를 깎는다」 한 줄이면 «멈추는데 못 때림» 전체를 잡는다.
+- **`EnemySample` 구조체 통합** [S] · `StepDir` 이 `enemyCells`/`enemyPositions` 두 배열의 index 정렬을 **관례로만** 유지한다. 하나로 접으면 길이 불일치 가드(지금은 조용히 정지 = 교착으로 폴백)와 파라미터 과다가 함께 사라진다.
+- **아군 이동체 가독성 일반 규칙** [S] · unit 6 은 철회됐다(고유 리그가 실루엣으로 해결). 다음 이동형 아군이 **파츠형 리그를 재사용**하면 같은 문제가 돌아오므로, 그때 unit 6 본문의 선택지 A/B/C 에서 다시 고른다.
+- **발밑 데칼이 캐릭터 대역으로 끌려간다** [S] · `SpineUnitView.UpdateSortingOrder` 가 `GetComponentsInChildren<Renderer>` 로 자식 렌더러를 전부 캐릭터 order 로 덮어써(궤적 리그만 예외), `BlobShadow` 가 저작한 `ShadowOrder`(-5)가 매 프레임 지워진다. 궤적 리그와 같은 방식(자기 대역 소유)으로 빼는 게 맞지만 리그 종류와 무관하게 **유닛 전원(44)** 의 그림자 정렬이 바뀌므로 육안 확인을 동반한 별도 작업이다. unit 6 철회 시 함께 되돌렸다(2026-08-12).

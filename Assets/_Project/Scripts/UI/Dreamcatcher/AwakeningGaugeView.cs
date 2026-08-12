@@ -267,9 +267,8 @@ namespace Wassup.UI
             // 빨려듦). 미배선 시 원 폴백.
             if (SpineFigureBuilder.CanBuild(representativeUnit, figureSkeletonMaterial))
             {
-                var sg = go.AddComponent<SkeletonGraphic>();
-                SpineFigureBuilder.Setup(sg, representativeUnit, figureSkeletonMaterial, figureAnimation);
-                g = sg;
+                g = SpineFigureBuilder.Build(
+                    go, representativeUnit, figureSkeletonMaterial, figureAnimation);
             }
             else
             {

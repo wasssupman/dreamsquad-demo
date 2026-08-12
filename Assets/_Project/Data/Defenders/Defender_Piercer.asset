@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: piercer
   role: 1
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uD53C\uC5B4\uC11C"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uAE38\uBAA9 \uBC29\uD5A5\uC73C\uB85C \uAC15\uD55C \uD0C4\uD658
     \uBC1C\uC0AC\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 219
-  attackRange: 3
+  attackRange: 2
   attackCooldown: 1.32
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -50,6 +52,8 @@ MonoBehaviour:
   cost: 2
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities: []
   rarity: 0
   portrait: {fileID: 21300000, guid: e03ea9197fff1446ca06a480308e95bb, type: 3}
@@ -59,7 +63,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_4
   - bottom/bottom_c_39
@@ -95,6 +99,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

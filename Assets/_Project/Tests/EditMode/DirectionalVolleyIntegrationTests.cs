@@ -288,7 +288,9 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(shotgunSpec.randomizeShotsPerTrigger);
             Assert.AreEqual(0.006f, shotgunSpec.randomIntervalMinSec, 1e-5f);
             Assert.AreEqual(0.018f, shotgunSpec.randomIntervalMaxSec, 1e-5f);
-            Assert.AreEqual(4f, shotgun.attackRange);
+            // 2026-08-12 밸런스 패스 — 방어유닛 사거리 일괄 하향(샷건너 4 → 2). 시트가 정본이라
+            // 아래 magnitude 와 같은 이유로 여기를 맞춘다.
+            Assert.AreEqual(2f, shotgun.attackRange);
             // 시트(Defenders 탭 `atk`)가 이 값의 source of truth 다 — 로그인 자동 임포트가
             // 매번 에셋에 덮어쓴다. 에셋을 고쳐도 다음 임포트에 되돌아오므로 여기를 맞춘다.
             Assert.AreEqual(12f, shotgun.outputs[0].magnitude);

@@ -9,12 +9,12 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private int width = 20;
         [SerializeField] private int height = 10;
         [SerializeField] private MapTileType[] tiles;
-        [SerializeField] private byte[] mergeDegree;
-        [SerializeField] private bool[] chokepoint;
-        [SerializeField] private byte[] propLayerId;
         [SerializeField] private byte[] placeMask;     // 0/1. 1 = 배치 가능. 부재/길이 불일치 = tiles==Place 파생 폴백(placement-mask unit 0). 타일 종류와 직교 — Walk 셀도 1 가능.
-        [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
-        [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
+        // map-view-deadcode-removal unit 3 — 단수 `goal` 레거시 폴백 축을 제거했다. 9장 전부
+        // goals 를 채우고 안전망(BuildFallbackLinear)도 goals 를 명시 세팅해 폴백 분기가 전부
+        // 도달 불가였다. 폴백을 지우면서 검증을 안 넣으면 «빈 goals 문서» 가 조용한 인덱스
+        // 예외로 바뀌므로, OnValidate 가 loud 하게 잡는다(다른 저작 축과 같은 형태).
+        [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 저작 에러.
         // battle-structures unit 0 — goalMaxStability(per-goal 최대 안정도 M) 저작 축을 제거했다.
         // 전 맵 미저작(0)이라 소비처가 한 번도 엔티티를 만들지 않았고, 읽는 코드를 걷어내
         // «저작해도 아무 일이 없는 필드» 가 남는 것을 막는다. 거점 체력 저작은 unit 3 의
@@ -37,12 +37,9 @@ namespace Wassup.Data.MapGrid
         public int Width => width;
         public int Height => height;
         public IReadOnlyList<MapTileType> Tiles => tiles;
-        public IReadOnlyList<byte> MergeDegree => mergeDegree;
-        public IReadOnlyList<bool> Chokepoint => chokepoint;
-        public IReadOnlyList<byte> PropLayerId => propLayerId;
         public IReadOnlyList<byte> PlaceMask => placeMask;   // null/length-0 가능 — 소비 시 tiles==Place 파생 폴백(ToGeneratedMap)
-        public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
-        public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
+        public Vector2Int Goal => goals[0];                // primary. 빈 goals 는 저작 에러(OnValidate)
+        public IReadOnlyList<Vector2Int> Goals => goals;
         public IReadOnlyList<Vector2Int> Spawns => spawns;
         public IReadOnlyList<WaypointPath> WaypointPaths => waypointPaths;
         public IReadOnlyList<StructureEntry> Structures => structures;   // null/빈 가능 = 거점 없는 맵
@@ -51,7 +48,7 @@ namespace Wassup.Data.MapGrid
 
         internal void SetFrom(
             int w, int h,
-            MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
+            MapTileType[] t,
             Vector2Int[] goalsArr, Vector2Int[] s,
             int seed, int version,
             byte[] placeMaskArr = null)
@@ -59,12 +56,8 @@ namespace Wassup.Data.MapGrid
             width = w;
             height = h;
             tiles = t;
-            mergeDegree = md;
-            chokepoint = cp;
-            propLayerId = pl;
             placeMask = placeMaskArr;
             goals = goalsArr;
-            goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
             spawns = s;
             authoringSeed = seed;
             generatorVersion = version;
@@ -106,19 +99,17 @@ namespace Wassup.Data.MapGrid
             int n = width * height;
             if (tiles != null && tiles.Length != n)
                 Debug.LogError($"[MapDocument] tiles.Length={tiles.Length} 가 width*height={n} 와 불일치", this);
-            if (mergeDegree != null && mergeDegree.Length != n)
-                Debug.LogError($"[MapDocument] mergeDegree.Length={mergeDegree.Length} != {n}", this);
-            if (chokepoint != null && chokepoint.Length != n)
-                Debug.LogError($"[MapDocument] chokepoint.Length={chokepoint.Length} != {n}", this);
-            if (propLayerId != null && propLayerId.Length != n)
-                Debug.LogError($"[MapDocument] propLayerId.Length={propLayerId.Length} != {n}", this);
             // placeMask: Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 로드하므로
             // length-0 = 부재 = 파생 폴백으로 유효. 길이 불일치만 에러.
             if (placeMask != null && placeMask.Length > 0 && placeMask.Length != n)
                 Debug.LogError($"[MapDocument] placeMask.Length={placeMask.Length} != {n} — 소비 시 tiles==Place 파생 폴백", this);
 
+            // unit 3 — 단수 goal 폴백을 걷어냈으므로 «goals 최소 1개» 가 이제 계약이다.
+            // 이걸 loud 로 잡지 않으면 Goal 접근이 조용한 IndexOutOfRange 로 바뀐다.
+            if (goals == null || goals.Length < 1)
+                Debug.LogError("[MapDocument] goals 는 1개 이상이어야 한다 (단수 goal 폴백 제거됨)", this);
+
             // goals 좌표 범위 — 이 파일만 아는 정보(격자 크기 대 좌표)라 여기 남는다.
-            // (Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 직렬화하므로 length<1 은 에러 아님.)
             if (goals != null)
                 foreach (var g in goals)
                     if (g.x < 0 || g.x >= width || g.y < 0 || g.y >= height)
@@ -129,7 +120,7 @@ namespace Wassup.Data.MapGrid
             // 부른다. 이전엔 spawns<1 을 무조건 에러로 잡아 공성 맵(스폰 0 = 파생이 채움)이
             // 페인터를 통과하고도 import 에서 에러를 뱉는 자기모순이 있었다.
             var authoringErrors = new List<string>();
-            int goalCount = (goals != null && goals.Length > 0) ? goals.Length : 1;   // 폴백 [goal]
+            int goalCount = goals?.Length ?? 0;
             StructureAuthoringRules.ValidateMode(
                 StructureAuthoringRules.CountEnemyCores(structures),
                 goalCount, spawns?.Length ?? 0, authoringErrors);
@@ -139,9 +130,9 @@ namespace Wassup.Data.MapGrid
 
             var waypointErrors = new List<string>();
             var waypointWarnings = new List<string>();
-            IReadOnlyList<Vector2Int> waypointGoals = goals != null && goals.Length > 0
-                ? goals
-                : new[] { goal };
+            // goals 가 비면 위에서 이미 에러를 냈다 — 여기선 빈 목록으로 넘겨 경로 검증만 계속한다
+            // (단수 goal 폴백 제거, unit 3).
+            IReadOnlyList<Vector2Int> waypointGoals = goals ?? System.Array.Empty<Vector2Int>();
             WaypointAuthoringRules.ValidatePaths(
                 waypointPaths, width, height, tiles, waypointGoals, spawns,
                 waypointErrors, waypointWarnings);

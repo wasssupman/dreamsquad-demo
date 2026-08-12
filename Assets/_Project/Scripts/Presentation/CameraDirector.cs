@@ -178,7 +178,7 @@ namespace Wassup.Presentation
         //
         // 홈만 갈아끼우는 이유: 페이즈 포즈·드래그 포커스·킥·브리딩이 전부 홈 기준 델타라
         // (CameraComposeMath.Compose) 나머지 연출이 그대로 따라온다. 카메라 transform 을
-        // 직접 쓰면 다음 LateUpdate 에 되돌려져 무효다 — 옛 ApplyTilemapCameraPreset 이 그래서 은퇴했다.
+        // 직접 쓰면 다음 LateUpdate 에 되돌려져 무효다 — 옛 맵빌드 카메라 프리셋 경로가 그래서 제거됐다.
         //
         // 호출 시점은 맵 빌드(보드 bounds 확정) 직후. 그때는 연출 가중치가 없으므로 진행 중
         // 채널을 건드리지 않는다.

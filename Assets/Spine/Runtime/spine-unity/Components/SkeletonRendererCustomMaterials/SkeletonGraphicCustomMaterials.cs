@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -41,11 +41,11 @@ namespace Spine.Unity {
 #else
 	[ExecuteInEditMode]
 #endif
-	[HelpURL("http://esotericsoftware.com/spine-unity#SkeletonGraphicCustomMaterials")]
+	[HelpURL("https://esotericsoftware.com/spine-unity-utility-components#SkeletonGraphicCustomMaterials")]
 	public class SkeletonGraphicCustomMaterials : MonoBehaviour {
-
 		#region Inspector
 		public SkeletonGraphic skeletonGraphic;
+		[SerializeField] protected List<SlotMaterialOverride> customSlotMaterials = new List<SlotMaterialOverride>();
 		[SerializeField] protected List<AtlasMaterialOverride> customMaterialOverrides = new List<AtlasMaterialOverride>();
 		[SerializeField] protected List<AtlasTextureOverride> customTextureOverrides = new List<AtlasTextureOverride>();
 
@@ -91,6 +91,49 @@ namespace Spine.Unity {
 		}
 #endif
 		#endregion
+
+		void SetCustomSlotMaterials () {
+			if (skeletonGraphic == null) {
+				Debug.LogError("skeletonRenderer == null");
+				return;
+			}
+
+			for (int i = 0; i < customSlotMaterials.Count; i++) {
+				SlotMaterialOverride slotMaterialOverride = customSlotMaterials[i];
+				if (!slotMaterialOverride.overrideEnabled || string.IsNullOrEmpty(slotMaterialOverride.slotName))
+					continue;
+
+				Slot slotObject = skeletonGraphic.skeleton.FindSlot(slotMaterialOverride.slotName);
+				if (slotObject != null)
+					skeletonGraphic.CustomSlotMaterials[slotObject] = slotMaterialOverride.material;
+			}
+		}
+
+		void RemoveCustomSlotMaterials () {
+			if (skeletonGraphic == null) {
+				Debug.LogError("skeletonRenderer == null");
+				return;
+			}
+
+			for (int i = 0; i < customSlotMaterials.Count; i++) {
+				SlotMaterialOverride slotMaterialOverride = customSlotMaterials[i];
+				if (string.IsNullOrEmpty(slotMaterialOverride.slotName))
+					continue;
+
+				Slot slotObject = skeletonGraphic.skeleton.FindSlot(slotMaterialOverride.slotName);
+				if (slotObject == null)
+					continue;
+				Material currentMaterial;
+				if (!skeletonGraphic.CustomSlotMaterials.TryGetValue(slotObject, out currentMaterial))
+					continue;
+
+				// Do not revert the material if it was changed by something else
+				if (currentMaterial != slotMaterialOverride.material)
+					continue;
+
+				skeletonGraphic.CustomSlotMaterials.Remove(slotObject);
+			}
+		}
 
 		void SetCustomMaterialOverrides () {
 			if (skeletonGraphic == null) {
@@ -171,6 +214,7 @@ namespace Spine.Unity {
 			}
 
 			skeletonGraphic.Initialize(false);
+			SetCustomSlotMaterials();
 			SetCustomMaterialOverrides();
 			SetCustomTextureOverrides();
 		}
@@ -184,6 +228,7 @@ namespace Spine.Unity {
 
 			RemoveCustomMaterialOverrides();
 			RemoveCustomTextureOverrides();
+			RemoveCustomSlotMaterials();
 		}
 
 		[Serializable]
@@ -205,6 +250,19 @@ namespace Spine.Unity {
 
 			public bool Equals (AtlasTextureOverride other) {
 				return overrideEnabled == other.overrideEnabled && originalTexture == other.originalTexture && replacementTexture == other.replacementTexture;
+			}
+		}
+
+		[Serializable]
+		public struct SlotMaterialOverride : IEquatable<SlotMaterialOverride> {
+			public bool overrideEnabled;
+
+			[SpineSlot]
+			public string slotName;
+			public Material material;
+
+			public bool Equals (SlotMaterialOverride other) {
+				return overrideEnabled == other.overrideEnabled && slotName == other.slotName && material == other.material;
 			}
 		}
 	}

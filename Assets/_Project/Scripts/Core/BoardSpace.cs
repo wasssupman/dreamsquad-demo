@@ -5,28 +5,25 @@ namespace Wassup.Core
 {
     // tilemap-view-backend unit 0 — sim(rect XZ 월드) ↔ view 변환의 유일한 지점.
     // MonoBehaviour 계층 전용. ECS/Burst 에서 호출 금지 (managed GridLayout 의존).
-    // Tilemap 모드의 셀↔월드 정합 권위는 주입된 GridLayout — iso 수식을 여기 하드코딩하지 않는다.
+    // 셀↔월드 정합의 권위는 주입된 GridLayout 이다 — 셀 크기/회전/오프셋 수식을 여기 하드코딩하지
+    // 않는다(그리드 구성이 바뀌면 조용히 어긋난다). BoardSpaceTests 가 이 위임을 못 박는다.
     // sim 좌표 규약은 GridMath 와 동일: 정수배 = 셀 중심 (Tilemap 의 셀 중심은 +0.5 보정).
     public static class BoardSpace
     {
-        private static BoardViewMode _mode = BoardViewMode.TilemapRect;
         private static float3 _simOrigin;
         private static float _tileSize = 1f;
         private static GridLayout _grid;
 
-        public static BoardViewMode Mode => _mode;
-
         // BattleBridge 맵 빌드 시 1회 호출. 정적 상태 쓰기는 이 메서드가 유일하다.
         // grid 없는 잘못된 구성은 받지 않는다 — 마지막 유효 구성을 유지하고 명시 에러.
         // (identity 폴백 모드는 legacy-render-removal unit 3 에서 제거. 사용 전 Configure 가 계약.)
-        public static void Configure(BoardViewMode mode, float3 simOrigin, float tileSize, GridLayout grid)
+        public static void Configure(float3 simOrigin, float tileSize, GridLayout grid)
         {
             if (grid == null)
             {
                 Debug.LogError("[BoardSpace] Tilemap mode requires a GridLayout; ignoring Configure.");
                 return;
             }
-            _mode = mode;
             _simOrigin = simOrigin;
             _tileSize = tileSize > 0f ? tileSize : 1f;
             _grid = grid;

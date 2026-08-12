@@ -88,11 +88,12 @@ namespace Wassup.Battle.Combat
                 }
                 else if (hasAttack)
                 {
-                    hasFireTarget = HasFireTarget(enemyEntity, atkCell, tileRange, mask,
+                    hasFireTarget = HasFireTarget(enemyEntity, atkCell, atkPos, tileRange, mask,
                         targetTraversalLayers,
                         candEntities, candTransforms, candFactions, candTraversalLayers,
                         tileSize, gridSize, ffOrigin,
-                        classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup);
+                        classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup,
+                        candPathLookup);
                 }
 
                 aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget);
@@ -117,7 +118,7 @@ namespace Wassup.Battle.Combat
         // FocusUntilDead 락은 대상이 살아 있고 사거리 안일 때만 유지되며, 유지 중에는 그
         // 대상만 fire 가능하다(그때만 Engaging).
         static bool HasFireTarget(
-            Entity attacker, int2 atkCell, int tileRange, int mask,
+            Entity attacker, int2 atkCell, float3 atkPos, int tileRange, int mask,
             byte attackTargetLayers,
             in NativeArray<Entity> candEntities,
             in NativeArray<LocalTransform> candTransforms,
@@ -130,7 +131,8 @@ namespace Wassup.Battle.Combat
             in ComponentLookup<DeadTag> deadLookup,
             in ComponentLookup<FocusTarget> focusLookup,
             in ComponentLookup<EnemyTargetFilter> filterLookup,
-            in ComponentLookup<EnemyBehavior> behaviorLookup)
+            in ComponentLookup<EnemyBehavior> behaviorLookup,
+            in ComponentLookup<PathFollowState> pathLookup)
         {
             // 락 미러: 락 타겟만 fire 가능.
             // target-persistence unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`).
@@ -158,10 +160,14 @@ namespace Wassup.Battle.Combat
                     && !deadLookup.HasComponent(cur);
                 if (curValid && transformLookup.HasComponent(cur))
                 {
-                    int2 cCell = GridMath.WorldToCell(transformLookup[cur].Position, tileSize, gridSize, origin: ffOrigin);
+                    float3 curPos = transformLookup[cur].Position;
+                    int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
                     int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                    // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
+                    bool curReach = AttackReach.InReach(atkCell, cCell, tileRange, atkPos, curPos, tileSize,
+                        pathLookup.HasComponent(attacker) && pathLookup.HasComponent(cur));
                     // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
-                    if (TargetPersistence.KeepsLock(true, cDist, tileRange)) return true;
+                    if (curReach && TargetPersistence.KeepsLock(true, cDist, tileRange)) return true;
                     // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
                     // 그게 "옆에 방어유닛을 두고 골로 걸어가는" B2 의 절반이었다.
                 }
@@ -179,9 +185,12 @@ namespace Wassup.Battle.Combat
                 if (candEntities[i] == attacker) continue;
                 int cclass = classLookup.HasComponent(candEntities[i]) ? (int)classLookup[candEntities[i]].value : -1;
                 if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;
-                int2 tgtCell = GridMath.WorldToCell(candTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
-                int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
-                if (tileDist <= tileRange) return true;
+                float3 tgtPos = candTransforms[i].Position;
+                int2 tgtCell = GridMath.WorldToCell(tgtPos, tileSize, gridSize, origin: ffOrigin);
+                // 같은 술어(AttackReach) — AttackSystem·PatrolAreaMath 와 한 몸이어야 한다.
+                if (AttackReach.InReach(atkCell, tgtCell, tileRange, atkPos, tgtPos, tileSize,
+                        pathLookup.HasComponent(attacker) && pathLookup.HasComponent(candEntities[i])))
+                    return true;
             }
             return false;
         }

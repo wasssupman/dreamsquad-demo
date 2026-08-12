@@ -130,15 +130,12 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
         [Header("Tilemap View Backend (tilemap-view-backend)")]
-        [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.TilemapRect;
         [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
         // three-minute-survival unit 1 — 안정도 바를 골 앵커에서 월드 Y 로 띄우는 양.
         // 구조물 메쉬가 셀 중심보다 높아서 바가 메쉬를 파고드는 것을 막는다. 씬 배선 불요
         // (신규 SerializeField 는 기존 씬에서 이 initializer 를 받는다).
         [SerializeField] private float goalStabilityBarLift = 1.6f;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
-        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
-        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
         [SerializeField] private float tilemapCharacterScale = 0.42f;
         // tilted-billboard unit 2 — XZ 바닥 + 퍼스펙티브에서 캐릭터가 카메라를 향해 서도록 월드 X 틸트.
@@ -1152,7 +1149,7 @@ namespace Wassup.Bridge
                 // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
                 tilemapMapView.Initialize(_generatedMap, tileSize,
                     theme != null && theme.tileSet != null ? theme.tileSet : tileSet,
-                    boardViewMode, UseRealShadows);
+                    UseRealShadows);
             // sim origin 은 무조건 zero (README 계약).
             _boardOrigin = float3.zero;
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
@@ -1160,20 +1157,18 @@ namespace Wassup.Bridge
             // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정. grid 없으면(headless) skip —
             // BoardSpace 는 view 계층 전용이라 sim 빌드에 불필요하고, null 전달은 Configure 가 에러로 거부한다.
             if (tilemapMapView != null && tilemapMapView.Grid != null)
-                Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize, tilemapMapView.Grid);
+                Wassup.Core.BoardSpace.Configure(BoardOrigin, tileSize, tilemapMapView.Grid);
 
-            // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
-            // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
-            // camera-direction unit 0 이후 재활성 금지: 카메라 포즈는 CameraDirector 가 매 프레임
-            // 절대값으로 소유한다 — 이 호출을 되살려도 다음 LateUpdate 에 홈 포즈로 되돌려져 무효.
-            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(spec unit 1)로 구현한다.
-            // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
+            // 카메라 포즈는 CameraDirector 가 매 프레임 절대값으로 소유한다 — 여기서 카메라를 직접
+            // 쓰면 다음 LateUpdate 에 홈 포즈로 되돌려져 무효다. 맵 빌드 시점에 카메라를 만지는
+            // 경로를 다시 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
+            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(camera-direction unit 1)로.
 
             // camera-direction unit 8 — 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이
             // 남거나 가장자리가 잘린다. 그리드가 확정된 지금 홈 거리를 다시 잡는다.
             // 카메라를 직접 쓰지 않고 소유자(CameraDirector)의 홈만 갱신 — 페이즈/포커스/킥 델타는
             // 홈 기준이라 그대로 따라온다. view·director 부재(headless)면 조용히 skip.
-            // bounds 는 ground 렌더러 실측(TryGetBoardWorldBounds)이 아니라 플레이 그리드다 —
+            // bounds 는 ground 렌더러 실측이 아니라 플레이 그리드다 —
             // 전자는 주변 데코 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다.
             if (tilemapMapView != null && tilemapMapView.TryGetPlayfieldWorldBounds(
                     new Vector2Int(_generatedMap.gridSize.x, _generatedMap.gridSize.y), out var boardBounds))
@@ -3178,6 +3173,7 @@ namespace Wassup.Bridge
                 {
                     spineView.UpdatePosition(world);
                     if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                    SyncSummonerAnimationState(entity, kv.Value.data, spineView);
                 }
                 else if (defenderFallbackViewPool != null &&
                          defenderFallbackViewPool.TryGet(entity, out var fallbackView))
@@ -3364,6 +3360,49 @@ namespace Wassup.Bridge
             if (!_em.HasComponent<Health>(entity)) return Color.white;
             var h = _em.GetComponentData<Health>(entity);
             return healthDisplayStyle.EvaluateTint(Health.ComputeRatio(h.value, h.max));
+        }
+
+        // summon-patrol-defender unit 10 — 소환물 생존 여부를 소환사 뷰의 애니 상태로 옮긴다.
+        //
+        // **뷰는 SummonerState 를 모른다**(절대 제약 1). 여기서 sim 사실을 읽어 «이름 2개»만
+        // 밀어 넣고, 엣지 판정(오버라이드가 걸려 있었나)은 뷰가 한다 — 그래서 브리지에
+        // "직전 프레임" 딕셔너리를 만들지 않는다.
+        //
+        // 게이트 순서가 중요하다: SummonerState 보유 확인이 **먼저**다. 통과한 소수만 능력
+        // 목록을 훑으므로 디펜더 전원에 대해 매 프레임 abilities 를 도는 낭비가 없다.
+        private void SyncSummonerAnimationState(Entity summoner, DefenderUnitData data,
+            Wassup.Presentation.SpineUnitView view)
+        {
+            if (view == null || data == null) return;
+            if (!_em.HasComponent<Wassup.Battle.Combat.SummonerState>(summoner)) return;
+
+            var ability = FindSummonPatrolAbility(data);
+            if (ability == null) return;
+            if (string.IsNullOrEmpty(ability.activeAnimation)) return;
+
+            Entity patrol = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(summoner).current;
+            if (IsPatrolAlive(patrol)) view.SetLoopOverride(ability.activeAnimation, ability.lostAnimation);
+            else view.ClearLoopOverride();
+        }
+
+        // README 계약 9 의 생존 술어. **3중이어야 한다** — Exists 만 보면 DeadTag 가 붙고
+        // 실제 파괴되기까지의 프레임 동안 순찰병이 살아 보여서 상실 모션이 늦게 나간다.
+        // (BattleBridge.Relocation 의 검사는 2중인데, 거기선 그 지연이 무해했다.)
+        private bool IsPatrolAlive(Entity patrol)
+        {
+            if (patrol == Entity.Null || !_em.Exists(patrol)) return false;
+            if (_em.HasComponent<DeadTag>(patrol)) return false;
+            if (!_em.HasComponent<Health>(patrol)) return false;
+            return _em.GetComponentData<Health>(patrol).value > 0f;
+        }
+
+        private static SummonPatrolAbility FindSummonPatrolAbility(DefenderUnitData data)
+        {
+            var abilities = data.abilities;
+            if (abilities == null) return null;
+            for (int i = 0; i < abilities.Count; i++)
+                if (abilities[i] is SummonPatrolAbility summon) return summon;
+            return null;
         }
 
         private void DrainDefenderDeathEvents()
@@ -6027,81 +6066,6 @@ namespace Wassup.Bridge
             return true;
         }
 
-        // tilemap-view-backend unit 4 — 모드별 ortho 카메라 프리셋 적용. gridSize+tileSize 로 orthographicSize 계산.
-        // 매 맵 빌드마다 호출 — 프리셋+gridSize 에서 결정론적이라 RebuildDraftMap 재진입에도 idempotent.
-        // [은퇴 — camera-direction unit 0] 호출부 없음. 카메라 포즈는 CameraDirector 가 유일 소유 —
-        // 재호출해도 다음 LateUpdate 에 덮여 무효. framing 산식(보드 fit) 참고용으로만 보존.
-        private void ApplyTilemapCameraPreset()
-        {
-            var preset = boardViewMode == Wassup.Core.BoardViewMode.TilemapIso
-                ? tilemapCameraPresetIso : tilemapCameraPresetRect;
-            var cam = Camera.main;
-            if (preset == null || cam == null) return;
-
-            cam.orthographic = preset.orthographic;
-            float aspect = cam.aspect > 0.01f ? cam.aspect : (16f / 9f);
-
-            // tilted-billboard unit 1 — 보드 월드 bounds 산출 (페인트 실측 우선, 없으면 gridSize 추정).
-            Bounds board;
-            if (tilemapMapView != null && tilemapMapView.TryGetBoardWorldBounds(out var b))
-            {
-                board = b;
-            }
-            else
-            {
-                int2 g = _generatedMap.gridSize;
-                float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
-                Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
-                board = new Bounds(centerView, new Vector3(g.x * tileSize, g.y * tileSize, 0f));
-            }
-
-            // 회전 먼저 — framing 은 회전된 카메라 기준으로 계산해야 틸트해도 화면에 꽉/중앙.
-            cam.transform.rotation = Quaternion.Euler(preset.rotationEuler);
-
-            if (preset.orthographic)
-            {
-                // ortho: positionOffset 은 "view 축 거리"로 해석. 보드 중심 정면 배치.
-                float dist = preset.positionOffset.magnitude;
-                if (dist < 0.01f) dist = 20f;
-                cam.transform.position = board.center - cam.transform.forward * dist;
-
-                // orthographicSize: 보드 8코너를 카메라 view 공간 투영해 실제 화면 extent 산출(틸트/iso 자동 보정).
-                Vector3 ext = board.extents;
-                float maxX = 0f, maxY = 0f;
-                for (int sx = -1; sx <= 1; sx += 2)
-                    for (int sy = -1; sy <= 1; sy += 2)
-                        for (int sz = -1; sz <= 1; sz += 2)
-                        {
-                            Vector3 corner = board.center + new Vector3(sx * ext.x, sy * ext.y, sz * ext.z);
-                            Vector3 v = cam.transform.InverseTransformPoint(corner);
-                            maxX = Mathf.Max(maxX, Mathf.Abs(v.x));
-                            maxY = Mathf.Max(maxY, Mathf.Abs(v.y));
-                        }
-                cam.orthographicSize = Mathf.Max(maxY, maxX / aspect) + preset.orthoSizePadding;
-            }
-            else
-            {
-                // 퍼스펙티브: FOV 로 보드 바운딩 구를 화면에 맞춘다. distance = R / sin(fov/2).
-                // 가로 FOV ≥ 세로 FOV(aspect>1)라 세로 기준 구-fit 이면 항상 들어온다. pitch 와 무관하게 추종.
-                cam.fieldOfView = preset.fieldOfView;
-                float radius = board.extents.magnitude;
-                if (radius < 0.01f) radius = 1f;
-                float half = Mathf.Deg2Rad * preset.fieldOfView * 0.5f;
-                float dist = radius / Mathf.Max(0.01f, Mathf.Sin(half)) * preset.perspectiveFitMargin;
-                cam.transform.position = board.center - cam.transform.forward * dist;
-            }
-
-            cam.nearClipPlane = preset.nearClip;
-            cam.farClipPlane = preset.farClip;
-            cam.transparencySortMode = preset.transparencySortMode;
-            cam.transparencySortAxis = preset.sortAxis;
-            if (preset.solidColorBackground)
-            {
-                cam.clearFlags = CameraClearFlags.SolidColor; // skybox 제거
-                cam.backgroundColor = preset.backgroundColor;
-            }
-        }
-
         // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
         // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후.
         private void ApplyEnvironmentGating()
@@ -6825,10 +6789,10 @@ namespace Wassup.Bridge
             if (spineUnitPool != null)
             {
                 var spineWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
-                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpinePat", out var patrolView);
-                // unit 6 — 아군 식별 표식. 이 게임에서 움직이는 건 지금까지 전부 적이었다.
-                if (spineSpawned && patrolView != null)
-                    Wassup.Presentation.AllyMarkerDecal.Attach(patrolView.transform);
+                // unit 6 의 발밑 아군 링은 unit 8 에서 제거했다 — 표식이 필요했던 이유가
+                // "순찰병이 적과 같은 스켈레톤·같은 실루엣으로 걸어다닌다" 였는데, 고유 리그(Doll)가
+                // 그 전제를 없앴다. 자세한 경위는 docs/spec/summon-patrol-defender/6_ally_readability.md.
+                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpinePat", out _);
             }
             if (!spineSpawned)
             {

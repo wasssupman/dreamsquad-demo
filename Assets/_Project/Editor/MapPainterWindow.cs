@@ -9,7 +9,7 @@ using Wassup.Data.MapGrid;
 namespace Wassup.EditorTools
 {
     // map-painter-tool unit 0 — MapDocument(수동 맵)을 격자에서 직접 칠해 만드는 에디터 창.
-    // 손으로 다루는 1차 데이터는 Walk/Place + spawns + goal 뿐. mergeDegree/chokepoint 는 Bake 시 계산(unit 1).
+    // 손으로 다루는 1차 데이터는 Walk/Place + placeMask + spawns/goals + structures/waypoints.
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
@@ -114,10 +114,10 @@ namespace Wassup.EditorTools
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
             _goals.Clear();
-            if (doc.Goals != null && doc.Goals.Count > 0)
+            // 빈 goals 는 저작 에러(MapDocument.OnValidate)라 폴백을 두지 않는다 — 비어 있으면
+            // 골 없는 상태로 로드되고, 저장 전 Validate 가 잡는다.
+            if (doc.Goals != null)
                 foreach (var g in doc.Goals) _goals.Add(new Vector2Int(g.x, g.y));
-            else
-                _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
             _structures.Clear();
             if (doc.Structures != null)
                 foreach (var s in doc.Structures) _structures.Add(s);
@@ -687,9 +687,6 @@ namespace Wassup.EditorTools
             int n = _w * _h;
             int maskDiffCount = 0;
             var tiles = new NativeArray<MapTileType>(n, Allocator.Temp);
-            var merge = new NativeArray<byte>(n, Allocator.Temp);
-            var choke = new NativeArray<byte>(n, Allocator.Temp);
-            var prop = new NativeArray<byte>(n, Allocator.Temp);
             var mask = new NativeArray<byte>(n, Allocator.Temp);
             try
             {
@@ -700,17 +697,6 @@ namespace Wassup.EditorTools
                         tiles[i] = _tiles[i];
                         mask[i] = _placeMask[i];
                         if (_placeMask[i] != DerivedMask(i)) maskDiffCount++;
-                        int d = 0;
-                        if (_tiles[i] == MapTileType.Walk)
-                        {
-                            if (IsWalk(x + 1, y)) d++;
-                            if (IsWalk(x - 1, y)) d++;
-                            if (IsWalk(x, y + 1)) d++;
-                            if (IsWalk(x, y - 1)) d++;
-                        }
-                        merge[i] = (byte)d;
-                        choke[i] = (byte)(d >= 3 ? 1 : 0);
-                        prop[i] = 0;
                     }
 
                 var spawns = new NativeArray<int2>(_spawns.Count, Allocator.Temp);
@@ -722,9 +708,6 @@ namespace Wassup.EditorTools
                 var gm = new GeneratedMap
                 {
                     tiles = tiles,
-                    mergeDegree = merge,
-                    chokepoint = choke,
-                    propLayerId = prop,
                     placeMask = mask,
                     gridSize = new int2(_w, _h),
                     spawns = spawns,
@@ -743,7 +726,7 @@ namespace Wassup.EditorTools
             }
             finally
             {
-                tiles.Dispose(); merge.Dispose(); choke.Dispose(); prop.Dispose(); mask.Dispose();
+                tiles.Dispose(); mask.Dispose();
             }
 
             EditorUtility.SetDirty(target);

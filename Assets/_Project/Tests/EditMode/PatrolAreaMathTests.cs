@@ -220,22 +220,107 @@ namespace Wassup.Tests.EditMode
             => Step(anchor, anchor, radius, self, enemies, attackTiles);
 
         private float2 Step(int2 center, int2 home, int radius, int2 self, int2[] enemies, int attackTiles = 1)
+            => StepAt(center, home, radius, self, CellCenter(self), enemies, null, attackTiles);
+
+        private static float3 CellCenter(int2 cell) => new float3(cell.x, 0f, cell.y);
+
+        // 위치까지 주는 형태. selfPos/enemyPos 를 주지 않으면 셀 중심에 선 것으로 본다 —
+        // 기존 테스트의 의미(칸 중앙 정렬)를 그대로 유지한다.
+        private float2 StepAt(int2 center, int2 home, int radius, int2 self, float3 selfPos,
+            int2[] enemies, float3[] enemyPos, int attackTiles = 1, float tileSize = 1f)
         {
             for (int i = 0; i < _box.Length; i++) _box[i] = 0;
             PatrolAreaMath.FillAreaMask(_full, Grid, center, radius, _box);
 
             var enemyCells = new NativeArray<int2>(enemies.Length, Allocator.Persistent);
+            var enemyWorld = new NativeArray<float3>(enemies.Length, Allocator.Persistent);
             try
             {
-                for (int i = 0; i < enemies.Length; i++) enemyCells[i] = enemies[i];
+                for (int i = 0; i < enemies.Length; i++)
+                {
+                    enemyCells[i] = enemies[i];
+                    enemyWorld[i] = enemyPos != null ? enemyPos[i] : CellCenter(enemies[i]);
+                }
                 return PatrolAreaMath.StepDir(
                     _box, _full, Grid, center, home, radius, self, attackTiles,
-                    enemyCells, _flow, _dist);
+                    enemyCells, _flow, _dist, selfPos, enemyWorld, tileSize);
             }
             finally
             {
                 enemyCells.Dispose();
+                enemyWorld.Dispose();
             }
+        }
+
+        // ---- 사거리 2차 게이트(물리 거리) 회귀 ------------------------------------
+        // 격자상 «사격 칸» 에 도착해도, 둘 다 연속 이동이라 칸 안에서 밀려 있으면 실제로는
+        // 못 때린다(사거리 1이 실측 2칸까지 벌어진다). 그때 멈추면 «멈추는데 못 때리는»
+        // 교착이 된다 — 2026-08-12 실측 182프레임. 계속 다가가야 한다.
+
+        [Test]
+        public void OnFiringCell_ButPhysicallyTooFar_KeepsClosing()
+        {
+            var anchor = new int2(5, 5);
+            // 셀은 (6,5)/(7,5) 로 인접(사거리 1 통과)인데 월드는 1.8칸 떨어져 있다.
+            var dir = StepAt(anchor, anchor, radius: 2,
+                self: new int2(6, 5), selfPos: new float3(5.6f, 0f, 5f),
+                enemies: new[] { new int2(7, 5) }, enemyPos: new[] { new float3(7.4f, 0f, 5f) });
+
+            Assert.Greater(dir.x, 0.5f, "물리적으로 머니 적 쪽(+x)으로 계속 다가가야 한다");
+        }
+
+        [Test]
+        public void OnFiringCell_AndPhysicallyClose_Stops()
+        {
+            var anchor = new int2(5, 5);
+            // 같은 셀 배치인데 월드 거리는 1.0 — 상한(1.5) 안이라 정지가 맞다.
+            var dir = StepAt(anchor, anchor, radius: 2,
+                self: new int2(6, 5), selfPos: new float3(6f, 0f, 5f),
+                enemies: new[] { new int2(7, 5) }, enemyPos: new[] { new float3(7f, 0f, 5f) });
+
+            Assert.AreEqual(float2.zero, dir, "사거리 안이면 멈춘다");
+        }
+
+        [Test]
+        public void OnFiringCell_DoesNotChaseAnEnemyOutsideTheBox()
+        {
+            // 코드 리뷰 지적(H2) — 구역 **안** 적 덕에 사격 칸에 섰는데(그 적은 이미 사거리 안),
+            // 구역 **밖** 적이 셀로는 인접하고 물리적으로 멀 때 그쪽으로 끌려가면 안 된다.
+            // 끌려가면 박스를 나가고 다음 프레임 DescendToHome 이 되돌려 경계에서 진동한다.
+            var anchor = new int2(5, 5);
+            var dir = StepAt(anchor, anchor, radius: 1,
+                self: new int2(6, 5), selfPos: new float3(5.6f, 0f, 5f),
+                enemies: new[] { new int2(6, 6), new int2(7, 5) },      // 박스 안 / 박스 밖
+                enemyPos: new[] { new float3(5.6f, 0f, 6f), new float3(7.4f, 0f, 5f) });
+
+            Assert.AreNotEqual(new float2(1f, 0f), dir, "구역 밖 적(+x)을 쫓아 박스를 나가면 안 된다");
+        }
+
+        [Test]
+        public void OnFiringCell_BlockedTowardEnemy_DoesNotPushIntoWall()
+        {
+            // 코드 리뷰 지적(H2) — 접근 방향이 막혔으면 벽으로 밀지 않는다.
+            // 밀면 AgentCollision 이 변위를 먹어 «걷는 애니로 제자리» 가 된다.
+            var anchor = new int2(5, 5);
+            _full[GridMath.CellIndex(new int2(7, 5), Grid)] = 0;   // 적 쪽 진행 칸이 벽
+
+            var dir = StepAt(anchor, anchor, radius: 2,
+                self: new int2(6, 5), selfPos: new float3(5.6f, 0f, 5f),
+                enemies: new[] { new int2(7, 5) }, enemyPos: new[] { new float3(7.4f, 0f, 5f) });
+
+            Assert.AreNotEqual(new float2(1f, 0f), dir, "벽 쪽(+x)으로 밀면 안 된다");
+        }
+
+        [Test]
+        public void OnFiringCell_TooFarDiagonally_ClosesOnDominantAxis()
+        {
+            var anchor = new int2(5, 5);
+            var dir = StepAt(anchor, anchor, radius: 2,
+                self: new int2(6, 5), selfPos: new float3(5.6f, 0f, 4.6f),
+                enemies: new[] { new int2(7, 6) }, enemyPos: new[] { new float3(7.4f, 0f, 6.4f) });
+
+            // 체비셰프 상한이므로 지배축을 줄이는 것이 곧 거리를 줄이는 것이다.
+            Assert.AreNotEqual(float2.zero, dir, "대각으로 멀어도 멈추면 안 된다");
         }
     }
 }

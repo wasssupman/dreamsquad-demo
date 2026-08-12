@@ -248,7 +248,7 @@ namespace Wassup.Tests.EditMode
             for (int x = 0; x < w; x++) tiles[3 * w + x] = MapTileType.Walk;
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+            doc.SetFrom(w, h, tiles,
                 new[] { new Vector2Int(7, 3) },
                 new[] { new Vector2Int(0, 3), new Vector2Int(1, 3) },
                 seed: 7, version: 0);
@@ -377,7 +377,7 @@ namespace Wassup.Tests.EditMode
             for (int x = 0; x < w; x++) tiles[3 * w + x] = MapTileType.Walk;
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(w, h, tiles, new byte[n], new bool[n], new byte[n],
+            doc.SetFrom(w, h, tiles,
                 new[] { new Vector2Int(7, 3) },
                 spawns,
                 seed: 7, version: 0);

@@ -79,7 +79,7 @@ namespace Wassup.Editor
                     {
                         if (!slot.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
                         // setup 색과 같으면 no-op 틴트 — 저장하지 않음 (아트가 색을 안 바꾼 키)
-                        var setup = new Color(slot.R, slot.G, slot.B, slot.A);
+                        Color setup = slot.GetSetupPose().GetColor();
                         if (((Vector4)setup - (Vector4)kv.Value).sqrMagnitude < 1e-6f) continue;
                         colors.Add(new SpineSlotColor { slotName = slot.Name, color = kv.Value });
                     }

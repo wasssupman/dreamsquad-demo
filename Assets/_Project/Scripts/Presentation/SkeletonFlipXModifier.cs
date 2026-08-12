@@ -26,9 +26,10 @@ namespace Wassup.Presentation
         {
             if (skeletonData == null || skeletonData.Bones.Count == 0) return;
             BoneData root = skeletonData.Bones.Items[0];
-            float magnitude = Mathf.Approximately(root.ScaleX, 0f) ? 1f : Mathf.Abs(root.ScaleX);
+            BonePose setupPose = root.GetSetupPose();
+            float magnitude = Mathf.Approximately(setupPose.ScaleX, 0f) ? 1f : Mathf.Abs(setupPose.ScaleX);
             // Force-negative (not toggle) so a reload that re-applies stays mirrored.
-            root.ScaleX = -magnitude;
+            setupPose.ScaleX = -magnitude;
         }
     }
 }

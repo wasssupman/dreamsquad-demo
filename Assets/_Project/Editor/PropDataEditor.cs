@@ -56,9 +56,10 @@ namespace Wassup.Editor
             SkeletonAnimation skeletonAnimation = null;
             if (data.HasSpineVisual)
             {
-                skeletonAnimation = visual.gameObject.AddComponent<SkeletonAnimation>();
-                skeletonAnimation.skeletonDataAsset = data.skeletonDataAsset;
-                skeletonAnimation.initialSkinName = string.IsNullOrEmpty(data.spineSkinName) ? "default" : data.spineSkinName;
+                var components = SkeletonAnimation.AddToGameObject(visual.gameObject, null);
+                skeletonAnimation = components.skeletonAnimation;
+                components.skeletonRenderer.SkeletonDataAsset = data.skeletonDataAsset;
+                components.skeletonRenderer.InitialSkinName = string.IsNullOrEmpty(data.spineSkinName) ? "default" : data.spineSkinName;
                 skeletonAnimation.Initialize(false);
             }
             else

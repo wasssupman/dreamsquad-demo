@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   id: boss_jjangssen
   displayName: "\uC9F1\uC388\uB188"
+  traversalLayers: 0
   enemyClass: 3
   minWaveNumber: 1
+  maxPerWave: 0
   attackMethod: 1
   targetMode: 1
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
+  targetFactions: 13
   health: 950
   moveSpeed: 2.2
   attackRange: 2
@@ -161,3 +164,6 @@ MonoBehaviour:
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []

@@ -139,6 +139,7 @@ namespace Wassup.Data
         public string SpineSkinName => spineSkinName;
         public string SpineIdleAnimation => idleAnimation;
         public string SpineWalkAnimation => walkAnimation;
+        public IReadOnlyList<string> SpineIdleVariants => idleVariants;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
@@ -202,5 +203,12 @@ namespace Wassup.Data
         [Header("Flight View")]
         [Tooltip("비행 적의 상시 화면 높이. 0 = 지상. 이동/타게팅 규칙에는 관여하지 않는다.")]
         [Min(0f)] public float flightLift = 0f;
+
+        // summon-patrol-defender unit 10 — idle 변형 풀. 적도 가질 수 있는 성질이라 공용
+        // 인터페이스에 있고, 여기선 저작 슬롯만 연다. 비어 있음 = 현행(단일 idle 루프).
+        // 지금 이 값을 채운 적 에셋은 없다.
+        [Header("Idle Variants")]
+        [Tooltip("대기 중 번갈아 재생할 애니 이름들. 비우면 idleAnimation 단일 루프.")]
+        public List<string> idleVariants = new List<string>();
     }
 }

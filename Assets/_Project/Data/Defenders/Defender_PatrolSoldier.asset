@@ -14,13 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: patrol_soldier
   role: 3
-  displayName: "\uC21C\uCC30\uBCD1"
+  placementLayers: 1
+  traversalLayers: 3
+  displayName: "\uC18C\uD658\uC0AC\uCAC4"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uADFC\uC811 \uB2E8\uC77C \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uAC70\uC810 \uC8FC\uBCC0\uB9CC
     \uC21C\uCC30"
   health: 300
   attackRange: 1
-  attackCooldown: 0.9
+  attackCooldown: 0.2
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
@@ -35,7 +37,7 @@ MonoBehaviour:
   projectile: {fileID: 0}
   outputs:
   - kind: 0
-    magnitude: 25
+    magnitude: 5
     duration: 0
     stat: 0
     op: 0
@@ -50,30 +52,22 @@ MonoBehaviour:
   cost: 0
   placementCooldown: 0
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities: []
   rarity: 0
   portrait: {fileID: 21300000, guid: a23a525aeebba4a008f7424f308ccf83, type: 3}
   aggroCapacity: 0
-  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
-  spineSkinName: full_skins
-  idleAnimation: Idle
-  attackAnimation: Attack3
-  deathAnimation: Die
-  spineVisualScale: 1.3
-  partSkins:
-  - boots/boots_c_18
-  - bottom/bottom_c_18
-  - brow/brow_c_10
-  - eyes/eyes_c_10
-  - gloves/gloves_c_15
-  - hair_short/hair_short_c_12
-  - mouth/mouth_c_8
-  - gear_right/gear_right_c_30
-  - top/top_c_18
-  - skin/skin_1
+  skeletonDataAsset: {fileID: 11400000, guid: b34a7b51c64cefe48b7d829ab05ac48e, type: 2}
+  spineSkinName: 
+  idleAnimation: walk
+  attackAnimation: attack
+  deathAnimation: 
+  spineVisualScale: 0.715
+  partSkins: []
   slotColors: []
-  dragAnimation: Attack1
-  deployAnimation: Hit
+  dragAnimation: 
+  deployAnimation: 
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
   deployCutsceneFrames: []
@@ -95,8 +89,9 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 0
-  weaponTrailPrefab: {fileID: 416037035443229880, guid: badefa6935aa04ba9badb5386cb9a3c8, type: 3}
+  weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   moveSpeed: 2
-  traversalLayers: 3
-  walkAnimation: Walk
+  walkAnimation: walk
+  outgameScaleMul: 1
+  idleVariants: []

@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: blocking_caster
   role: 4
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uBE14\uB85C\uD0B9\uCE90\uC2A4\uD130"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uAE38\uBAA9\uC5D0 \uBC29\uBCBD \uC8FC\uAE30
     \uC124\uCE58\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
@@ -43,6 +45,8 @@ MonoBehaviour:
   cost: 3
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 4a5b6c7d8e9f40a1b2c3d4e5f6a7b890, type: 2}
   rarity: 2
@@ -53,7 +57,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_15
   - bottom/bottom_c_15
@@ -89,6 +93,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

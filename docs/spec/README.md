@@ -121,6 +121,29 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 소환사 & 순찰병 (summon-patrol-defender — **완료 2026-08-12**, units 0~12 · unit 6 철회)
+
+이 게임의 3번째 유닛 유형 — **아군인데 walk 위를 이동하는 첫 유닛**. 「이동은 적 전용」 전제를 깼고,
+게임 최초의 고유 스파인 리그 2종(CH1·Doll)이 여기서 들어왔다. 신규 이벤트 채널 0.
+상세: `docs/spec/summon-patrol-defender/13_handoff_summary.md` · 파이프라인 = `object-pipeline-map.md` **순찰 아군** 아키타입.
+
+- **⚠ 검증 질문 미판정** [S] · *"소환사를 뒤에 두고 순찰병을 앞세우는 것이, 타일에 유닛을 직접 놓는 것과 다른 배치 결정을 만드는가?"* 기능은 검증됐지만 이 질문의 답이 기록되지 않은 채 종료했다. **순찰병 콘텐츠를 이어서 만들기 전에 이 답부터 받는다.** (summon-patrol-defender)
+- **사거리 술어 미러 동치성 PlayMode 단언** [M] · `AttackReach` 를 쓰는 5곳이 같은 답을 내는지는 지금 **사람이 손으로 맞춘다**. EditMode 는 술어 자체만 보고 술어를 우회하는 경로(락·커밋 재판정)는 커버리지 밖인데, 실제로 그 우회가 코드 리뷰에서 발견됐다. 「락을 문 공격자가 게이트 경계로 벌어졌을 때 `AttackSystem.bestTarget` 과 `EnemyAiState` 가 같은 답을 낸다」를 고정하면 이 교착 클래스 전체가 덮인다. (summon-patrol-defender)
+- **순찰병이 실제로 타격하는지 PlayMode 단언** [S] · 182프레임 교착이 실측으로 발견됐는데 자동 그물이 없다. 「순찰병이 N 프레임 안에 적 HP 를 깎는다」 한 줄이면 «멈추는데 못 때림» 전체를 잡는다. (summon-patrol-defender)
+- **아웃게임 크기 정규화** [S] · `outgameScaleMul`(소환사 0.372)은 임시다. 리그가 정규본이 되면 1 로 되돌리고 **필드째 제거**한다. 그때까지 이 필드는 «리그가 비정규본이다»의 표식. (summon-patrol-defender)
+- **영구 봉쇄 밸런스 감시** [S] · 순찰병이 경로 위에 서면 적이 멈추고(`Engaging`+`Halt`), 죽어야 다시 간다. 재소환이 빠르면 봉쇄가 성립한다. 막는 knob 은 HP 가 아니라 **재소환 쿨다운**이다 — 관찰 기록 없음. (summon-patrol-defender)
+- **보스가 순찰병에 눌러앉는지** [S] · 보스 사냥 대상에 편입되는데(계약 1 의 `DefenderUnitTag` 귀결) 관찰 기록이 없다. (summon-patrol-defender)
+- **파츠형 42유닛 육안 무회귀** [S] · 고유 리그 도입 후 데이터 레벨 대조군(Scout)만 확인됐다. `LoadingRunnerRigTests` 가 카탈로그 전 유닛의 리그 리졸브·스킨 실존을 자동 고정하지만 그것이 육안 무회귀는 아니다. (summon-patrol-defender)
+- **고유 리그 잔여 3경로** [S] · 항아리 피규어(`SpineFigureBuilder` — `SkeletonGraphic` 이 새 아틀라스를 처음 만나는 자리, `sizeDelta` 400×600 고정) · facing 정합 기록 없음 · 소환사 death 트랙 부재 수용 판정. (summon-patrol-defender)
+- **다중 순찰병** [S] · `SummonerState.current` 를 버퍼로 바꾸고 "빈 슬롯이 있으면 소환"으로 규칙 전환. 지금은 1기 고정(사용자 결정 2026-08-03). (summon-patrol-defender)
+- **배치형 이동 아군** [M] · `PatrolAnchor` 만 붙이고 `SummonedBy` 를 안 붙이면 성립한다. 지금 만들지 않는 이유는 생성 경로가 소환 하나뿐이라서다(제약 9). (summon-patrol-defender)
+- **거점 이동 명령** [M] · 플레이어가 드래그로 거점을 재지정. 배치 결정의 성격이 달라지므로 별도 결정. (summon-patrol-defender)
+- **순찰병 어그로 보유** [M] · `AggroCapacity` 를 주면 적을 붙잡아 세우는 성격이 강해진다. 현재는 어그로 없이 `Engaging`+`Halt` 에 의존. (summon-patrol-defender)
+- **`ZoneApplySystem` 아군 대상 존** [S] · unit 0 은 "존은 적에게만" 게이트 하나만 넣었다. 아군 대상 존(회복 장판 등)이 실제로 생기면 그때 `HazardEffect` 에 진영 축을 연다 — 지금 여는 것은 투기(제약 8). (summon-patrol-defender)
+- **`EnemySample` 구조체 통합** [S] · `StepDir` 이 `enemyCells`/`enemyPositions` 두 배열의 index 정렬을 **관례로만** 유지한다. 하나로 접으면 길이 불일치 가드(지금은 조용히 정지 = 교착으로 폴백)와 파라미터 과다가 함께 사라진다. (summon-patrol-defender)
+- **아군 이동체 가독성 일반 규칙** [S] · unit 6(발밑 링)은 고유 리그가 실루엣으로 해결해 철회됐다. 다음 이동형 아군이 **파츠형 리그를 재사용**하면 같은 문제가 돌아온다 — 그때 `6_ally_readability.md` 의 선택지 A/B/C 에서 다시 고른다. (summon-patrol-defender)
+- **발밑 데칼이 캐릭터 대역으로 끌려간다** [S] · `SpineUnitView.UpdateSortingOrder` 가 `GetComponentsInChildren<Renderer>` 로 자식 렌더러를 전부 캐릭터 order 로 덮어써(궤적 리그만 예외), `BlobShadow` 의 `ShadowOrder`(-5)가 매 프레임 지워진다. 궤적 리그처럼 자기 대역을 소유하게 빼는 게 맞지만 **유닛 전원(44)** 의 그림자 정렬이 바뀌므로 육안 확인 동반 별도 작업. unit 6 철회 시 함께 되돌렸다. (summon-patrol-defender)
+
 #### 세 번째 보스 마메모 (boss-mamemo — **완료 2026-08-11**, Play 확인 + 코드리뷰 + 재우기 버그 계측·수정까지)
 
 웨이브 회전을 멈춰 점수를 깎는 보스. 아무도 안 죽이면서 시간을 가져간다.
@@ -621,7 +644,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 #### Outgame / squad / dreamcatcher — 후속 (outgame-scene-and-flow, squad-loadout, ingame-dreamcatcher)
 
 - **드림캐쳐 카드 보유/콘텐츠 확장** [L] · ownedCardIds + 가챠/꿈런 파밍, 카드 콘텐츠 확장(기획 일반10+고유3+무의식2, 신규 메커닉 채널), 무의식 편입. (D 후속) — **다중 덱 수집/전환·이름 편집은 승격** → `docs/spec/page-local-presets/`
-- **드림캐쳐 복합 효과** [L] · row-only/crit/pierce/splash/lowcost-summon/guardian-taunt/match-start-cost + 무의식 2장. 신규 메커닉/채널 필요. 트리거형 메커닉(개별유닛 바인딩 + N회 공격 발동) 토대는 → `docs/spec/dreamcatcher-unit-trigger/` 로 부분 승격 (2026-07-08).
+- **드림캐쳐 복합 효과** [L] · row-only/crit/pierce/splash/lowcost-summon/guardian-taunt/match-start-cost + 무의식 2장. 신규 메커닉/채널 필요. 트리거형 메커닉(개별유닛 바인딩 + N회 공격 발동) 토대는 → `docs/spec/dreamcatcher-unit-trigger/` 로 부분 승격 (2026-07-08). **★`lowcost-summon` 의 소환 파이프라인은 완료됐다** — `summon-patrol-defender`(완료 2026-08-12)가 `CreatePatrolEntity` + `SummonedBy` 연쇄 소멸 + 캐리어 스폰 seam 을 만들었다. 남은 것은 **카드 배선**뿐이고, 그건 이 항목의 다른 효과들보다 싸다.
 - **진짜 MaxHealthMul 채널** [M] · 현재 HP 카드는 DmgTakenMul 프록시. 정확한 max-HP 증가 채널(Health/Units 맥락).
 - **스쿼드 class/특성** [L] · class 라벨(완료, C unit0)을 이용한 슬롯 조건 + 타입별 특성(스탯 합산, 하드캡 15%). 가챠/꿈런 파밍/교환/리롤/등급. — **다중 스쿼드 수집/전환은 승격** → `docs/spec/page-local-presets/`
 - **한글 TMP 폰트** [S] · 현재 LiberationSans only → UI 라벨 영문. 로컬라이즈 패스에서 한글 폰트 에셋 도입.

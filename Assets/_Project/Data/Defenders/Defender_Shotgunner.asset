@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: shotgunner
   role: 1
+  placementLayers: 1
+  traversalLayers: 0
   displayName: "\uC0F7\uAC74\uB9E8"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC9C0\uC815 \uBC29\uD5A5\uC73C\uB85C \uBD80\uCC44\uAF34
     \uC0B0\uD0C4 \uBC1C\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218
     \uD6A8\uACFC: \uC5C6\uC74C"
   health: 200
-  attackRange: 4
+  attackRange: 2
   attackCooldown: 2.2
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -50,6 +52,8 @@ MonoBehaviour:
   cost: 3
   placementCooldown: 4
   targetAllies: 0
+  attackTargetLayers: 2
+  targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: a1464923e05914c5dbda52d6a5821d3b, type: 2}
   rarity: 1
@@ -60,7 +64,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.3
+  spineVisualScale: 1.69
   partSkins:
   - boots/boots_c_16
   - bottom/bottom_c_50
@@ -96,6 +100,10 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

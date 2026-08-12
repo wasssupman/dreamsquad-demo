@@ -104,7 +104,7 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 
 ## 배틀 카메라는 페이즈마다 pitch 가 바뀐다
 
-BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. 실측: **Draft pitch 40° / z=−10.44**, **Battle pitch 58° / z=−7.85**. `ApplyTilemapCameraPreset()` 호출이 주석 처리돼 있어도 페이즈 전환이 카메라를 다시 움직인다.
+BattleScene Main Camera 는 **런타임 정적이 아니다**. 실측: **Draft pitch 40° / z=−10.44**, **Battle pitch 58° / z=−7.85**. 씬에 잡아둔 포즈가 그대로 유지될 거라 가정하면 안 된다 — `CameraDirector` 가 홈 포즈에 페이즈 델타를 얹어 매 프레임 절대값으로 카메라를 소유한다(맵 빌드 시 `FrameBoard` 가 홈 거리까지 다시 잡는다).
 
 - **처방**: 카메라 pitch/거리 의존 값(빌보드 틸트·그림자·framing)은 **스폰 시 1회 bake 금지, 라이브 재계산**(또는 최소 페이즈 전환 시 재계산). 코드만 믿지 말고 Play 에서 여러 페이즈에 걸쳐 측정.
 

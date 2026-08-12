@@ -2,7 +2,7 @@
  * Spine Runtimes License Agreement
  * Last updated April 5, 2025. Replaces all prior versions.
  *
- * Copyright (c) 2013-2025, Esoteric Software LLC
+ * Copyright (c) 2013-2026, Esoteric Software LLC
  *
  * Integration of the Spine Runtimes into software or otherwise creating
  * derivative works of the Spine Runtimes is permitted under the terms and
@@ -50,7 +50,6 @@
 #if UNITY_2020_3_16_OR_NEWER || UNITY_2021_1_17_OR_NEWER || UNITY_2021_2_OR_NEWER
 #define HAS_SAVE_ASSET_IF_DIRTY
 #endif
-
 #define SPINE_OPTIONAL_ON_DEMAND_LOADING
 
 using System.Collections.Generic;

@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   id: runner
   displayName: Runner
+  traversalLayers: 0
   enemyClass: 2
   minWaveNumber: 2
+  maxPerWave: 0
   attackMethod: 0
   targetMode: 0
   engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
+  targetFactions: 13
   health: 20
-  moveSpeed: 7.2
+  moveSpeed: 5.6
   attackRange: 1
   attackCooldown: 1
   attackTargetCount: 1
@@ -71,4 +74,9 @@ MonoBehaviour:
   awakeningReward: 1
   nightmareMechanics: []
   killScore: 1
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
+  waypointPathIndex: -1
+  flightLift: 0
+  idleVariants: []

@@ -50,3 +50,9 @@ struct SummonedBy : IComponentData { public Entity owner; }
 - [ ] 재배치 목적지 주변에 walk 셀이 없으면 순찰병이 죽지 않고 기존 거점을 유지한다
 - [ ] 소환사 2기를 동시 배치하면 각자 순찰병 1기씩 유지한다 (링크 혼선 없음)
 - [ ] 콘솔 에러/경고 0
+
+---
+
+**완료 기준 확인**: 2026-08-03 · 커밋 `68d2f35c` · `PatrolSystemIntegrationTests` 가 양방향 생존 술어(계약 9)를 4건으로 고정하고(`Patrol_Survives_While_Owner_Is_Alive` · `Patrol_Dies_When_Owner_Gets_DeadTag` · `..._Owner_Entity_Is_Destroyed` · `..._Owner_Health_Hits_Zero`), 재소환 순환을 2건으로 고정한다(`Summoner_Restages_When_Current_Handle_Is_Stale` · `..._Current_Is_Dead_But_Not_Destroyed`).
+**재배치 anchor 재스냅은 육안에서 PlayMode 로 승격됐다** — unit 9(`023b4d4e`)가 `TryBeginDefenderRelocation` 실경로로 「중심 = 새 소환사 셀 · 집이 새 구역 안」을 고정한다.
+(체크박스 소급 기록.)
