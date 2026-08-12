@@ -45,6 +45,15 @@ unit 0~3 삭제 후 다음을 다시 센다. 참조 0 이 새로 나오면 이 �
 > tilemap-view-backend 시절 placeholder 로, 현행 `TileSet_Desert` 는 전부 다른 타일
 > (`Tile_Sand`·`AutoTile_*` 등)을 쓴다. 나머지 에셋은 전부 참조 ≥1 로 확인.
 >
+> **2차 재감사(에셋이 아니라 C# 심볼)** — 1차가 에셋만 봐서 놓쳤다. 삭제된 12개 guid 를 파일
+> 타입 제한 없이 전 프로젝트에 훑어 잔존 참조가 `BattleScene` 의 의도된 orphan 키 2줄뿐임을
+> 확인했고(`_Recovery/` 히트는 git 미추적 크래시 덤프라 무관), 이어서 touched 파일의 public
+> 심볼 호출처를 셌다. **`TilemapMapView.TryGetBoardWorldBounds` 가 고아**로 드러났다 —
+> 유일한 실호출처가 unit 0 에서 지운 `ApplyTilemapCameraPreset` 이었다. 제거하면서 두 주석이
+> 담고 있던 지식(렌더러 실측은 외곽 링·데코를 포함해 20×12 → 35×32, 카메라가 54까지 후퇴)은
+> 메서드 이름 없이 `TryGetPlayfieldWorldBounds` 주석에 남겼다.
+> **교훈: 삭제는 연쇄한다. 에셋 재감사만으로는 부족하고 심볼 재감사를 같이 해야 한다.**
+>
 > ⚠ **함정 기록**: `MapDocument.cs` 에 `goal` 참조가 한 곳 남아 `Wassup.Runtime` 이 컴파일에
 > 실패했는데, **테스트는 stale 어셈블리로 계속 green 을 냈다.** 콘솔에도 안 잡혔다(반복 refresh 가
 > 소거). `editor_state.compilation.last_domain_reload_after` 가 `last_compile_finished` 보다

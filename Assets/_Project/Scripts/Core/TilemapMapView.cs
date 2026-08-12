@@ -259,11 +259,11 @@ namespace Wassup.Core
         }
 
         // camera-direction unit 8 — 플레이 그리드(경로·배치 셀)의 월드 bounds.
-        // TryGetBoardWorldBounds 는 ground 렌더러 실측이라 주변 데코 지대까지 포함한다
-        // (20×12 맵이 35×32 로 잡힌다) — 카메라 프레이밍은 플레이 영역만 담아야 하므로
-        // 여기서는 grid 셀 좌표로 직접 범위를 만든다. **4코너를 모두 감싼다** — grid 는 회전해
-        // 있어서(XZ 바닥 90°X) 마주보는 두 코너만으로는 월드 AABB 의 극단을 놓친다.
-        // 높이는 0(평면) — 유닛이 솟는 만큼은 fit margin 이 흡수한다.
+        // **ground 렌더러 실측을 쓰면 안 된다** — 렌더러 bounds 는 외곽 터레인 링과 데코 지대까지
+        // 포함해 20×12 맵이 35×32 로 잡히고, 카메라가 거리 54 까지 물러나 플레이 영역이 화면
+        // 중앙의 작은 조각이 된다. 그래서 grid 셀 좌표로 플레이 범위만 직접 만든다.
+        // **4코너를 모두 감싼다** — grid 는 회전해 있어서(XZ 바닥 90°X) 마주보는 두 코너만으로는
+        // 월드 AABB 의 극단을 놓친다. 높이는 0(평면) — 유닛이 솟는 만큼은 fit margin 이 흡수한다.
         public bool TryGetPlayfieldWorldBounds(Vector2Int gridSize, out Bounds bounds)
         {
             bounds = default;
@@ -272,17 +272,6 @@ namespace Wassup.Core
             bounds.Encapsulate(grid.CellToWorld(new Vector3Int(gridSize.x, 0, 0)));
             bounds.Encapsulate(grid.CellToWorld(new Vector3Int(0, gridSize.y, 0)));
             bounds.Encapsulate(grid.CellToWorld(new Vector3Int(gridSize.x, gridSize.y, 0)));
-            return true;
-        }
-
-        // unit 1 — 페인트된 ground 영역의 월드 bounds (렌더러 실측 — 외곽 링/데코 지대 포함).
-        public bool TryGetBoardWorldBounds(out Bounds bounds)
-        {
-            bounds = default;
-            if (groundTilemap == null) return false;
-            var r = groundTilemap.GetComponent<TilemapRenderer>();
-            if (r == null || r.bounds.size == Vector3.zero) return false;
-            bounds = r.bounds;
             return true;
         }
 
