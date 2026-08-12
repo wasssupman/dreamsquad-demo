@@ -29,6 +29,7 @@ namespace Wassup.Tests.EditMode
         private static readonly HashSet<string> ReworkedPaths = new()
         {
             "Assets/_Project/Data/Maps/MapDocument_Serpent.asset",   // unit 1
+            "Assets/_Project/Data/Maps/MapDocument_Coil.asset",      // unit 2
         };
 
         [Test]
