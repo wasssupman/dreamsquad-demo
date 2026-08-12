@@ -1,31 +1,30 @@
-# Game Server Package
+# Production Game Server Transition Input
 
-> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+> **Dormant · owner-gated · not Demo authority · not Production implementation approval**
 
-> 상태: **dormant preparation artifact — owner activation 전 미활성 · official Game Server input/implementation 승인 아님**
+Production Game Server는 gameplay ruleset, canonical state와 상태 전이, command validation,
+ordering·time·numeric·RNG, score/result의 유일한 실행 권위를 가진다. Demo의 Unity/ECS shape와
+Client presentation을 복사하지 않는다.
 
-Game Server가 production에서 권위 있게 재정의해야 할 gameplay 의미와 acceptance를
-축적한다. Demo의 Unity/ECS 구현 shape를 서버 구조로 복사하지 않는다.
+## 읽기 순서
 
-## 포함
+1. [`../common/README.md`](../common/README.md)
+2. [`rules/authority-and-state.md`](rules/authority-and-state.md)
+3. [`rules/time-ordering-numeric-rng.md`](rules/time-ordering-numeric-rng.md)
+4. [`rules/content-result-and-replay.md`](rules/content-result-and-replay.md)
+5. [`domain-coverage.md`](domain-coverage.md)
+6. [`plans/implementation-waves.md`](plans/implementation-waves.md)
+7. [`plans/acceptance-gates.md`](plans/acceptance-gates.md)
 
-- canonical rules/config/state와 invariant
-- logical command validation과 atomic outcome
-- ordering, time/tick, numeric, stable identity, RNG와 score에 필요한 결정
-- authoritative acceptance fixture와 unresolved gameplay question
+## Production-local 우선순위
+
+Imported 문서는 Somnia Game Server의 master roadmap, AGENTS와 accepted production decision을
+override하지 않는다. Production 구현은 `Somnia.Game.Simulation`의 non-Unity, infrastructure-
+independent deterministic 경계와 `SessionRuntime` 책임을 현지 정본에서 다시 확인한다.
 
 ## 제외
 
-- Client presentation, prefab/VFX/UI와 asset 구현
-- wire/auth/transport의 최종 선택
-- Server implementation plan 자동 승인
-
-## 현재 inventory
-
-- [`cards/unit-lifecycle.md`](cards/unit-lifecycle.md): lifecycle authority pilot
-- Demo source의 `docs/production-transition/migration-dossier/`와 record
-  `PT-LEGACY-GS-DOSSIER-001`: 13-domain historical/stale preparatory 조사. 이 자료의 예전
-  freeze/copy 규칙은 더 이상 정본이 아니며 Server delivery dependency가 아니다.
-
-미래 official destination은
-`docs/migration-input/dreamsquad-demo/<freeze-id>/`이며 preparation 중에는 만들지 않는다.
+- UnityEngine, ECS component/system/update order와 ScriptableObject 구현
+- Client view, prefab, VFX/SFX/UI/camera/haptics timing
+- Host/transport/database/topology의 미승인 선택
+- Public API/DTO/protocol 또는 production dependency 자동 승인

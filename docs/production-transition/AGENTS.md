@@ -11,6 +11,10 @@ This entire subtree is **owner-gated dormant downstream material**.
   explicit Project owner authorization in the current request.
 - Freeze, cutover, production import, and implementation waves are Project owner decisions. They are not
   agent-level next work before explicit activation.
+- Transition maintenance is allowed only as an explicitly requested, separate follow-up task and commit.
+  Never add it to a Demo feature task, spec, test, CI gate, handoff requirement, or completion checklist.
+- `archive/legacy/**` is historical, non-normative, non-export material. Do not inspect it unless the
+  explicitly activated transition task requires historical comparison.
 
 Within an explicitly owner-authorized transition task, `README.md` is the entry point and its governance
 rules apply. These instructions never grant authority to modify runtime Demo code or external production

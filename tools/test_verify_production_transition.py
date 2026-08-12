@@ -4,1037 +4,1129 @@ import contextlib
 import hashlib
 import io
 import json
-import subprocess
+import re
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List
 from unittest import mock
 
 from tools import verify_production_transition as verifier
 
 
-SOURCE_COMMIT = "a" * 40
-DOCUMENT_REVISION = "b" * 64
+SHA_A = "a" * 64
+REVISION = "b" * 40
+FREEZE_ID = "demo-2026-08-12"
 
 
-class TransitionFixture:
-    """Small, self-contained four-partition transition fixture."""
+def _json_bytes(value: Any) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
+
+def _sha256(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _independent_partition_hash(entries: Iterable[Dict[str, Any]]) -> str:
+    rows = [
+        {
+            "audience": entry["audience"],
+            "bytes": entry["bytes"],
+            "path": entry["path"],
+            "sha256": entry["sha256"],
+        }
+        for entry in entries
+    ]
+    rows.sort(key=lambda row: row["path"])
+    raw = json.dumps(
+        rows,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return _sha256(raw)
+
+
+def _coverage(title: str, status: str = "included", blocker: str | None = None) -> str:
+    if blocker is None:
+        blocker = "none" if status in {"included", "excluded"} else "`PT-DEC-TEST-001`"
+    return (
+        f"# {title}\n\n"
+        "| ID | 항목 | 상태 | Blocking decision |\n"
+        "|---|---|---|---|\n"
+        f"| `ROW-001` | representative surface | {status} | {blocker} |\n"
+    )
+
+
+def _rule_document(rule_id: str) -> str:
+    fields = "\n".join(f"- **{label}:** representative value" for label in verifier.RULE_FIELDS)
+    return f"# Rules\n\n## `{rule_id}` — Representative rule\n\n{fields}\n"
+
+
+RULE_IDS_BY_PATH = {
+    "common/rules/authority-identity-and-results.md": "PT-COM-001",
+    "common/rules/ordering-resync-and-versioning.md": "PT-COM-002",
+    "client/rules/authority-and-projection.md": "PT-CLI-001",
+    "client/rules/presentation-and-catalog.md": "PT-CLI-002",
+    "game-server/rules/authority-and-state.md": "PT-SRV-001",
+    "game-server/rules/time-ordering-numeric-rng.md": "PT-SRV-002",
+    "game-server/rules/content-result-and-replay.md": "PT-SRV-003",
+}
+
+
+def _codes(report: verifier.VerificationReport) -> set[str]:
+    return {diagnostic.code for diagnostic in report.diagnostics}
+
+
+def _tree_bytes(root: Path) -> Dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+class LivingFixture:
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.governance = root / "docs" / "production-transition" / "governance"
-        self.registry: Dict[str, Any] = {
-            "schema_version": "1.0",
-            "transition_state": "cutover_candidate",
-            "candidate_source_commit": SOURCE_COMMIT,
-            "destinations": dict(verifier.DESTINATION_TEMPLATES),
-            "records": [],
-        }
-        self.reviews: Dict[str, Any] = {
-            "schema_version": "1.0",
-            "reviews": [],
-            "legacy_reviews": [],
-        }
-        self.decisions: Dict[str, Any] = {
-            "schema_version": "1.0",
-            "decisions": [],
-        }
-        self._seed_valid_records()
+        self.transition = root / "docs" / "production-transition"
+        for relative in verifier.REQUIRED_LIVING_FILES:
+            path = self.transition.joinpath(*Path(relative).parts)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if relative.endswith(".json"):
+                source = Path(__file__).resolve().parents[1] / "docs" / "production-transition" / relative
+                path.write_bytes(source.read_bytes())
+            elif relative == "client/demo-experience-map.md":
+                path.write_text(_coverage("Client coverage", "decision-blocked"), encoding="utf-8")
+            elif relative == "game-server/domain-coverage.md":
+                path.write_text(_coverage("Server coverage", "decision-blocked"), encoding="utf-8")
+            elif relative in RULE_IDS_BY_PATH:
+                path.write_text(_rule_document(RULE_IDS_BY_PATH[relative]), encoding="utf-8")
+            else:
+                path.write_text(f"# {relative}\n", encoding="utf-8")
 
-    def write_source(self, relative: str, text: str) -> str:
-        path = self.root / Path(*relative.split("/"))
+
+class FreezeFixture:
+    def __init__(self, root: Path) -> None:
+        self.freeze = root / FREEZE_ID
+        self.events = root / "audit-events"
+        self.freeze.mkdir()
+        self.events.mkdir()
+        self.files: List[Dict[str, Any]] = []
+        for relative, audience in verifier.REQUIRED_EXPORT_ARTIFACTS:
+            if relative == "client/demo-experience-map.md":
+                text = _coverage("Client coverage")
+            elif relative == "game-server/domain-coverage.md":
+                text = _coverage("Server coverage")
+            elif relative in RULE_IDS_BY_PATH:
+                text = _rule_document(RULE_IDS_BY_PATH[relative])
+            else:
+                text = f"# {relative}\n"
+            self._add_document(relative, audience, text)
+
+        self.destinations = {
+            "client": f"somnia-client/docs/migration-input/dreamsquad-demo/{FREEZE_ID}/",
+            "game-server": f"somnia-game-server/docs/migration-input/dreamsquad-demo/{FREEZE_ID}/",
+        }
+        self.bundle_hashes = {
+            partition: _independent_partition_hash(
+                entry for entry in self.files if entry["audience"] == partition
+            )
+            for partition in ("common", "client", "game-server")
+        }
+        self.manifest: Dict[str, Any] = {
+            "schema_version": "1.0",
+            "freeze_id": FREEZE_ID,
+            "created_at": "2026-08-12T00:01:30Z",
+            "demo_revision": REVISION,
+            "demo_content_sha256": SHA_A,
+            "destinations": dict(self.destinations),
+            "bundle_hashes": dict(self.bundle_hashes),
+            "files": list(self.files),
+        }
+        self.write_manifest()
+        self._write_events_and_receipts()
+
+    def _add_document(self, relative: str, audience: str, text: str) -> None:
+        path = self.freeze.joinpath(*Path(relative).parts)
         path.parent.mkdir(parents=True, exist_ok=True)
         raw = text.encode("utf-8")
         path.write_bytes(raw)
-        return hashlib.sha256(raw).hexdigest()
-
-    def record(
-        self,
-        record_id: str,
-        package: str,
-        source_path: str,
-        target_path: str,
-        area: str,
-        reviewers: Sequence[str],
-        depends_on: Optional[Sequence[str]] = None,
-        references: Optional[Sequence[str]] = None,
-        consumer: Optional[Sequence[str]] = None,
-        watch_paths: Optional[Sequence[str]] = None,
-        text: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        digest = self.write_source(source_path, text or f"# {record_id}\n")
-        return {
-            "id": record_id,
-            "package": package,
-            "source_path": source_path,
-            "target_path": target_path,
-            "owner": f"{record_id.lower()}-author",
-            "consumer": list(consumer or [package]),
-            "required_reviewers": list(reviewers),
-            "as_of_commit": SOURCE_COMMIT,
-            "document_revision": DOCUMENT_REVISION,
-            "watch_paths": list(watch_paths or [f"watched/{record_id}/**"]),
-            "freshness": "current",
-            "review_status": "reviewed",
-            "disposition": "include",
-            "completeness": "complete",
-            "readiness": "ready",
-            "depends_on": list(depends_on or []),
-            "blocking_decisions": [],
-            "areas": [area],
-            "references": list(references or []),
-            "sha256": digest,
-            "implementation_wave": "foundation",
-            "execution_stage": "demo-pre-freeze",
-            "cutover_blocking": True,
-        }
-
-    def approve(self, record: Dict[str, Any], area: str, role: str) -> None:
-        self.reviews["reviews"].append(
+        self.files.append(
             {
-                "area_id": area,
-                "card_id": record["id"],
-                "document_revision": record["document_revision"],
-                "source_commit": record["as_of_commit"],
-                "reviewer_role": role,
-                "reviewed_by": f"{role}-reviewer",
-                "outcome": "approved",
-                "approval": True,
+                "path": relative,
+                "audience": audience,
+                "sha256": _sha256(raw),
+                "bytes": len(raw),
             }
         )
 
-    def decision(
-        self,
-        decision_id: str,
-        status: str,
-        affected_records: Sequence[str],
-        blocks_cutover: bool = True,
-        decision_text: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def add_document_and_refresh(self, relative: str, audience: str, text: str) -> None:
+        """Add a probe document and rebuild every dependent integrity record."""
+
+        self._add_document(relative, audience, text)
+        self._refresh_integrity()
+
+    def remove_document_and_refresh(self, relative: str) -> None:
+        """Remove one payload document and rebuild every dependent integrity record."""
+
+        self.freeze.joinpath(*Path(relative).parts).unlink()
+        self.files = [entry for entry in self.files if entry["path"] != relative]
+        self._refresh_integrity()
+
+    def replace_document_and_refresh(self, relative: str, text: str) -> None:
+        """Replace one payload document and rebuild every dependent integrity record."""
+
+        path = self.freeze.joinpath(*Path(relative).parts)
+        raw = text.encode("utf-8")
+        path.write_bytes(raw)
+        for entry in self.files:
+            if entry["path"] == relative:
+                entry["sha256"] = _sha256(raw)
+                entry["bytes"] = len(raw)
+                break
+        else:
+            raise AssertionError(f"missing fixture document: {relative}")
+        self._refresh_integrity()
+
+    def _refresh_integrity(self) -> None:
+        self.bundle_hashes = {
+            partition: _independent_partition_hash(
+                entry for entry in self.files if entry["audience"] == partition
+            )
+            for partition in ("common", "client", "game-server")
+        }
+        self.manifest["bundle_hashes"] = dict(self.bundle_hashes)
+        self.manifest["files"] = list(self.files)
+        self.write_manifest()
+        self._write_events_and_receipts()
+
+    def write_json(self, relative: str, value: Dict[str, Any]) -> bytes:
+        parts = Path(relative).parts
+        if parts and parts[0] == "events":
+            path = self.events.joinpath(*parts[1:])
+        else:
+            path = self.freeze.joinpath(*parts)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        raw = _json_bytes(value)
+        path.write_bytes(raw)
+        return raw
+
+    def read_json(self, relative: str) -> Dict[str, Any]:
+        parts = Path(relative).parts
+        path = self.events.joinpath(*parts[1:]) if parts and parts[0] == "events" else self.freeze.joinpath(*parts)
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def write_manifest(self) -> bytes:
+        return self.write_json("manifest.json", self.manifest)
+
+    def _event_base(self, event_id: str, event_type: str, approved_at: str) -> Dict[str, Any]:
         return {
-            "id": decision_id,
-            "status": status,
-            "owner": "product-owner",
-            "decision": decision_text,
-            "blocks_cutover": blocks_cutover,
-            "affected_records": list(affected_records),
-            "as_of_commit": SOURCE_COMMIT,
+            "schema_version": "1.0",
+            "event_id": event_id,
+            "event_type": event_type,
+            "acting_role": "project-owner",
+            "project_owner": "owner@example.invalid",
+            "approved_at": approved_at,
+            "approval_reference": f"approval:{event_id}",
+            "demo_revision": REVISION,
+            "demo_content_sha256": SHA_A,
         }
 
-    def add_record(self, record: Dict[str, Any]) -> None:
-        self.registry["records"].append(record)
-        for area in record["areas"]:
-            for role in record["required_reviewers"]:
-                self.approve(record, area, role)
+    def _assigned_entries(self, consumer: str) -> List[Dict[str, Any]]:
+        return [
+            entry
+            for entry in self.files
+            if entry["audience"] in {"common", consumer, "reference"}
+        ]
 
-    def _seed_valid_records(self) -> None:
-        shared = self.record(
-            "SHARED-001",
-            "shared",
-            "docs/production-transition/shared/unit-lifecycle.md",
-            "shared/unit-lifecycle.md",
-            "SHARED-AREA-001",
-            ["client-owner", "server-owner"],
-            consumer=["client", "game-server"],
-            watch_paths=["Assets/Game/**"],
-        )
-        client = self.record(
-            "CLIENT-001",
-            "client",
-            "docs/production-transition/client/unit-lifecycle.md",
-            "client/unit-lifecycle.md",
-            "CLIENT-AREA-001",
-            ["client-owner"],
-            depends_on=["SHARED-001"],
-            references=["SHARED-001"],
-            consumer=["client"],
-        )
-        server = self.record(
-            "SERVER-001",
-            "game-server",
-            "docs/production-transition/game-server/unit-lifecycle.md",
-            "game-server/unit-lifecycle.md",
-            "SERVER-AREA-001",
-            ["server-owner"],
-            depends_on=["SHARED-001"],
-            references=["SHARED-001"],
-            consumer=["game-server"],
-        )
-        references = self.record(
-            "GOV-001",
-            "references",
-            "docs/production-transition/governance/policy.md",
-            "references/policy.md",
-            "GOV-AREA-001",
-            ["transition-reviewer"],
-            references=["SHARED-001"],
-            consumer=["client", "game-server"],
-        )
-        for record in (shared, client, server, references):
-            self.add_record(record)
+    def _write_events_and_receipts(self) -> None:
+        manifest_raw = (self.freeze / "manifest.json").read_bytes()
+        approved = self._event_base("event-approved", "demo-approved", "2026-08-12T00:01:00Z")
+        approved["approved_scope"] = ["client:ROW-001", "game-server:ROW-001"]
+        self.write_json("events/1-demo-approved.json", approved)
 
-    def find(self, record_id: str) -> Dict[str, Any]:
-        return next(record for record in self.registry["records"] if record["id"] == record_id)
+        frozen = self._event_base("event-frozen", "demo-frozen", "2026-08-12T00:02:00Z")
+        frozen.update(
+            {
+                "predecessor_event_id": approved["event_id"],
+                "freeze_id": FREEZE_ID,
+                "manifest_sha256": _sha256(manifest_raw),
+                "common_sha256": self.bundle_hashes["common"],
+                "client_sha256": self.bundle_hashes["client"],
+                "game_server_sha256": self.bundle_hashes["game-server"],
+            }
+        )
+        self.write_json("events/2-demo-frozen.json", frozen)
 
-    def persist(self) -> None:
-        self.governance.mkdir(parents=True, exist_ok=True)
-        (self.governance / "registry.json").write_text(
-            json.dumps(self.registry, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        (self.governance / "reviews.json").write_text(
-            json.dumps(self.reviews, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        (self.governance / "decisions.json").write_text(
-            json.dumps(self.decisions, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        receipt_raw: Dict[str, bytes] = {}
+        for consumer in ("client", "game-server"):
+            assigned = self._assigned_entries(consumer)
+            receipt = {
+                "schema_version": "1.0",
+                "consumer": consumer,
+                "freeze_id": FREEZE_ID,
+                "destination": self.destinations[consumer],
+                "manifest_sha256": _sha256(manifest_raw),
+                "common_sha256": self.bundle_hashes["common"],
+                "assigned_bundle_sha256": self.bundle_hashes[consumer],
+                "file_count": 1 + len(assigned),
+                "byte_count": len(manifest_raw) + sum(entry["bytes"] for entry in assigned),
+                "received_at": "2026-08-12T00:03:00Z",
+                "status": "verified",
+                "verified_by": f"{consumer}-tech-owner",
+            }
+            receipt_raw[consumer] = self.write_json(f"receipts/{consumer}.json", receipt)
 
-    def commit_blobs(self) -> Dict[str, bytes]:
-        result: Dict[str, bytes] = {}
-        for record in self.registry["records"]:
-            path = self.root / Path(*record["source_path"].split("/"))
-            if path.is_file():
-                result[record["source_path"]] = path.read_bytes()
-        return result
-
-    def verify(
-        self,
-        mode: str,
-        changes: Optional[Sequence[str]] = None,
-        **kwargs: Any,
-    ) -> verifier.VerificationReport:
-        self.persist()
-        kwargs.setdefault(
-            "git_blobs_by_commit",
-            {SOURCE_COMMIT: self.commit_blobs()},
+        completed = self._event_base(
+            "event-completed",
+            "transfer-completed",
+            "2026-08-12T00:04:00Z",
         )
-        return verifier.verify_transition(
-            root=self.root,
-            mode=mode,
-            changed_paths_by_commit={SOURCE_COMMIT: list(changes or [])},
-            **kwargs,
+        completed.update(
+            {
+                "predecessor_event_id": frozen["event_id"],
+                "freeze_id": FREEZE_ID,
+                "client_receipt_sha256": _sha256(receipt_raw["client"]),
+                "game_server_receipt_sha256": _sha256(receipt_raw["game-server"]),
+                "destinations": dict(self.destinations),
+            }
         )
+        self.write_json("events/3-transfer-completed.json", completed)
 
 
-class VerifyProductionTransitionTests(unittest.TestCase):
+class AuthorizationTests(unittest.TestCase):
+    def test_prepare_without_authorization_skips_before_verifier(self) -> None:
+        stdout = io.StringIO()
+        with mock.patch.object(verifier, "verify_prepare", side_effect=AssertionError("must not run")):
+            with contextlib.redirect_stdout(stdout):
+                exit_code = verifier.main(["prepare", "--root", "missing-root"])
+        self.assertEqual(0, exit_code)
+        self.assertIn("SKIP", stdout.getvalue())
+
+    def test_cutover_without_authorization_skips_even_without_freeze_dir(self) -> None:
+        stdout = io.StringIO()
+        with mock.patch.object(verifier, "verify_cutover", side_effect=AssertionError("must not run")):
+            with contextlib.redirect_stdout(stdout):
+                exit_code = verifier.main(["cutover", "--root", "missing-root"])
+        self.assertEqual(0, exit_code)
+        self.assertIn("no transition files or Git state were read", stdout.getvalue())
+
+    def test_authorized_cutover_requires_explicit_freeze_dir(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = verifier.main(["cutover", "--project-owner-authorized"])
+        self.assertEqual(2, exit_code)
+        self.assertIn("--freeze-dir", stdout.getvalue())
+
+
+class PrepareTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.fixture = TransitionFixture(self.root)
-
-    @staticmethod
-    def codes(report: verifier.VerificationReport) -> set[str]:
-        return {item.code for item in report.diagnostics}
-
-    def test_valid_cutover_and_target_separation(self) -> None:
-        report = self.fixture.verify("cutover")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        self.assertIn("shared/unit-lifecycle.md", report.target_inventories["client"])
-        self.assertIn("shared/unit-lifecycle.md", report.target_inventories["game-server"])
-        self.assertIn("client/unit-lifecycle.md", report.target_inventories["client"])
-        self.assertNotIn("client/unit-lifecycle.md", report.target_inventories["game-server"])
-        self.assertIn("game-server/unit-lifecycle.md", report.target_inventories["game-server"])
-        self.assertNotIn("game-server/unit-lifecycle.md", report.target_inventories["client"])
-        self.assertIn("references/policy.md", report.target_inventories["client"])
-        self.assertIn("references/policy.md", report.target_inventories["game-server"])
-        self.assertEqual(
-            report.shared_hash,
-            report.package_hashes["shared"],
-        )
-
-    def test_dry_run_manifest_matches_official_shape_and_hashes(self) -> None:
-        freeze_id = "FREEZE-001"
-        transition_id = "TRANSITION-001"
-        report = self.fixture.verify(
-            "cutover",
-            dry_run_freeze_id=freeze_id,
-            dry_run_transition_id=transition_id,
-        )
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        manifest = report.dry_run_manifest
-        self.assertEqual(
-            {
-                "schema_version",
-                "freeze_id",
-                "transition_id",
-                "source_commit",
-                "created_at",
-                "packages",
-                "destinations",
-                "governance_attestation",
-                "aggregate_sha256",
-            },
-            set(manifest),
-        )
-        self.assertEqual(
-            {"shared", "client", "game-server", "references"},
-            set(manifest["packages"]),
-        )
-        self.assertEqual(SOURCE_COMMIT, manifest["source_commit"])
-        self.assertEqual(verifier.DRY_RUN_CREATED_AT, manifest["created_at"])
-        self.assertEqual(freeze_id, manifest["freeze_id"])
-        self.assertEqual(transition_id, manifest["transition_id"])
-        self.assertEqual(
-            f"somnia-client/docs/migration-input/dreamsquad-demo/{freeze_id}/",
-            manifest["destinations"]["client"],
-        )
-        self.assertEqual(
-            f"somnia-game-server/docs/migration-input/dreamsquad-demo/{freeze_id}/",
-            manifest["destinations"]["game-server"],
-        )
-        basis = {key: value for key, value in manifest.items() if key != "aggregate_sha256"}
-        aggregate = hashlib.sha256(
-            json.dumps(
-                basis,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest()
-        self.assertEqual(aggregate, manifest["aggregate_sha256"])
-        payload_hash = hashlib.sha256(
-            json.dumps(
-                manifest,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            ).encode("utf-8")
-        ).hexdigest()
-        self.assertEqual(payload_hash, report.manifest_sha256)
-
-    def test_governance_attestation_and_package_file_shapes_are_exact(self) -> None:
-        report = self.fixture.verify("cutover")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        attestation = report.dry_run_manifest["governance_attestation"]
-        self.assertEqual({"records", "reviews", "decisions"}, set(attestation))
-        self.assertEqual(4, len(attestation["records"]))
-        record_keys = {
-            "record_id",
-            "package",
-            "source_path",
-            "target_path",
-            "owner",
-            "consumer",
-            "required_reviewers",
-            "as_of_commit",
-            "document_revision",
-            "watch_paths",
-            "freshness",
-            "review_status",
-            "disposition",
-            "completeness",
-            "readiness",
-            "implementation_wave",
-            "execution_stage",
-            "depends_on",
-            "references",
-            "areas",
-            "blocking_decisions",
-            "cutover_blocking",
-        }
-        for row in attestation["records"]:
-            self.assertEqual(record_keys, set(row))
-        review_keys = {
-            "area_id",
-            "card_id",
-            "document_revision",
-            "source_commit",
-            "reviewer_role",
-            "reviewed_by",
-            "outcome",
-            "approval",
-        }
-        self.assertTrue(attestation["reviews"])
-        for row in attestation["reviews"]:
-            self.assertEqual(review_keys, set(row))
-        self.assertEqual([], attestation["decisions"])
-
-        file_record_ids = set()
-        for package in report.dry_run_manifest["packages"].values():
-            for file_row in package["files"]:
-                self.assertEqual({"record_id", "path", "size", "sha256"}, set(file_row))
-                file_record_ids.add(file_row["record_id"])
-        self.assertEqual(
-            {row["record_id"] for row in attestation["records"]},
-            file_record_ids,
-        )
-
-    def test_candidate_source_commit_is_required_and_exact_full_sha(self) -> None:
-        del self.fixture.registry["candidate_source_commit"]
-        missing = self.fixture.verify("prepare")
-        self.assertFalse(missing.ok)
-        self.assertIn("REGISTRY_MISSING_FIELDS", self.codes(missing))
-        self.assertIn("CANDIDATE_SOURCE_COMMIT", self.codes(missing))
-
-        self.fixture.registry["candidate_source_commit"] = "c" * 64
-        invalid = self.fixture.verify("prepare")
-        self.assertFalse(invalid.ok)
-        self.assertIn("CANDIDATE_SOURCE_COMMIT", self.codes(invalid))
-
-    def test_cutover_rejects_nonexistent_or_non_commit_candidate(self) -> None:
-        with mock.patch.object(
-            verifier,
-            "_git_object_type",
-            return_value=(None, "object does not exist"),
-        ):
-            nonexistent = self.fixture.verify("cutover", git_blobs_by_commit=None)
-        self.assertFalse(nonexistent.ok)
-        self.assertIn("CUTOVER_CANDIDATE_COMMIT_INVALID", self.codes(nonexistent))
-
-        with mock.patch.object(
-            verifier,
-            "_git_object_type",
-            return_value=("blob", None),
-        ):
-            non_commit = self.fixture.verify("cutover", git_blobs_by_commit=None)
-        self.assertFalse(non_commit.ok)
-        self.assertIn("CUTOVER_CANDIDATE_COMMIT_INVALID", self.codes(non_commit))
-
-    def test_cutover_rejects_selected_source_missing_from_commit(self) -> None:
-        blobs = self.fixture.commit_blobs()
-        client = self.fixture.find("CLIENT-001")
-        del blobs[client["source_path"]]
-
-        report = self.fixture.verify(
-            "cutover",
-            git_blobs_by_commit={SOURCE_COMMIT: blobs},
-        )
-
-        self.assertFalse(report.ok)
-        self.assertIn("CUTOVER_SOURCE_BLOB_MISSING", self.codes(report))
-        self.assertNotIn("CUTOVER_SOURCE_BLOB_MISMATCH", self.codes(report))
-
-    def test_cutover_rejects_selected_source_byte_mismatch(self) -> None:
-        blobs = self.fixture.commit_blobs()
-        client = self.fixture.find("CLIENT-001")
-        blobs[client["source_path"]] = b"different committed bytes\n"
-
-        report = self.fixture.verify(
-            "cutover",
-            git_blobs_by_commit={SOURCE_COMMIT: blobs},
-        )
-
-        self.assertFalse(report.ok)
-        self.assertIn("CUTOVER_SOURCE_BLOB_MISMATCH", self.codes(report))
-        self.assertNotIn("CUTOVER_SOURCE_BLOB_MISSING", self.codes(report))
-
-    def test_nested_transition_attribute_preserves_commit_blob_bytes_with_autocrlf(self) -> None:
-        repository = self.root / "autocrlf-repository"
-        source_relative = "docs/production-transition/shared/nested/source.md"
-        binary_relative = "docs/production-transition/shared/nested/fixture.bin"
-        source = repository / Path(*source_relative.split("/"))
-        binary = repository / Path(*binary_relative.split("/"))
-        attributes = repository / "docs" / "production-transition" / ".gitattributes"
-        source.parent.mkdir(parents=True)
-        attributes.parent.mkdir(parents=True, exist_ok=True)
-        attributes.write_bytes(b"* text=auto eol=lf\n** text=auto eol=lf\n")
-        expected = b"# Selected transition source\n\nLF-only payload.\n"
-        expected_binary = b"\x00binary-with-crlf-like-bytes\r\npayload\r\n\xff"
-        source.write_bytes(expected)
-        binary.write_bytes(expected_binary)
-
-        def git(*arguments: str) -> subprocess.CompletedProcess[bytes]:
-            return subprocess.run(
-                ["git", *arguments],
-                cwd=str(repository),
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
-        git("init")
-        git("config", "user.name", "Transition Test")
-        git("config", "user.email", "transition-test@example.invalid")
-        git("config", "core.autocrlf", "true")
-        git(
-            "add",
-            "--",
-            "docs/production-transition/.gitattributes",
-            source_relative,
-            binary_relative,
-        )
-        git("commit", "-m", "Add selected transition source")
-        candidate_commit = git("rev-parse", "HEAD").stdout.decode("ascii").strip()
-
-        source.unlink()
-        binary.unlink()
-        git("checkout", "--", source_relative, binary_relative)
-        eol_report = git("ls-files", "--eol", "--", source_relative).stdout.decode(
-            "utf-8", errors="replace"
-        )
-        self.assertIn("i/lf", eol_report)
-        self.assertIn("w/lf", eol_report)
-        self.assertIn("attr/text=auto eol=lf", eol_report)
-        binary_eol_report = git("ls-files", "--eol", "--", binary_relative).stdout.decode(
-            "utf-8", errors="replace"
-        )
-        self.assertIn("i/-text", binary_eol_report)
-        self.assertIn("w/-text", binary_eol_report)
-        self.assertIn("attr/text=auto eol=lf", binary_eol_report)
-
-        object_type, type_error = verifier._git_object_type(repository, candidate_commit)
-        committed, blob_error = verifier._git_blob_at_commit(
-            repository,
-            candidate_commit,
-            source_relative,
-        )
-        committed_binary, binary_blob_error = verifier._git_blob_at_commit(
-            repository,
-            candidate_commit,
-            binary_relative,
-        )
-        self.assertIsNone(type_error)
-        self.assertEqual("commit", object_type)
-        self.assertIsNone(blob_error)
-        self.assertIsNone(binary_blob_error)
-        self.assertEqual(expected, source.read_bytes())
-        self.assertEqual(committed, source.read_bytes())
-        self.assertEqual(expected_binary, binary.read_bytes())
-        self.assertEqual(committed_binary, binary.read_bytes())
-
-    def test_destination_typo_is_rejected(self) -> None:
-        self.fixture.registry["destinations"]["client"] = (
-            "somnia-clinet/docs/migration-input/dreamsquad-demo/<freeze-id>/"
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DESTINATION_TEMPLATE", self.codes(report))
-        self.assertIn("DESTINATION_EXPANSION_MISMATCH", self.codes(report))
-
-    def test_destination_swap_is_rejected(self) -> None:
-        destinations = self.fixture.registry["destinations"]
-        destinations["client"], destinations["game-server"] = (
-            destinations["game-server"],
-            destinations["client"],
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DESTINATION_TEMPLATE", self.codes(report))
-        self.assertIn("DESTINATION_EXPANSION_MISMATCH", self.codes(report))
-
-    def test_destination_freeze_id_expansion_mismatch_is_rejected(self) -> None:
-        self.fixture.registry["destinations"]["client"] = (
-            "somnia-client/docs/migration-input/dreamsquad-demo/OTHER-FREEZE/"
-        )
-
-        report = self.fixture.verify("prepare", dry_run_freeze_id="FREEZE-001")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DESTINATION_TEMPLATE", self.codes(report))
-        self.assertIn("DESTINATION_EXPANSION_MISMATCH", self.codes(report))
-
-    def test_prepare_allows_explicit_incomplete_stale_and_blocked(self) -> None:
-        record = self.fixture.find("SHARED-001")
-        record.update(
-            {
-                "disposition": "candidate",
-                "completeness": "partial",
-                "freshness": "stale",
-                "review_status": "draft",
-                "readiness": "blocked",
-                "cutover_blocking": False,
-            }
-        )
-        self.fixture.reviews["reviews"] = [
-            review for review in self.fixture.reviews["reviews"] if review["card_id"] != "SHARED-001"
-        ]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        self.assertIn("PREPARE_GATE_GAP", self.codes(report))
-        self.assertIn("AREA_REVIEW_MISSING", self.codes(report))
-
-    def test_cutover_rejects_non_ready_and_unlocked_scope(self) -> None:
-        record = self.fixture.find("CLIENT-001")
-        record.update(
-            {
-                "disposition": "candidate",
-                "completeness": "partial",
-                "review_status": "draft",
-                "readiness": "blocked",
-                "cutover_blocking": False,
-            }
-        )
-        references = self.fixture.find("GOV-001")
-        references["consumer"] = ["client"]
-        references["references"].append("CLIENT-001")
-
-        report = self.fixture.verify("cutover")
-
-        self.assertFalse(report.ok)
-        self.assertIn("CUTOVER_SCOPE_UNLOCKED", self.codes(report))
-        self.assertIn("CUTOVER_CLOSURE", self.codes(report))
-
-    def test_missing_required_registry_field_fails(self) -> None:
-        del self.fixture.find("CLIENT-001")["consumer"]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("RECORD_MISSING_FIELDS", self.codes(report))
-
-    def test_watch_path_change_invalidates_current_record(self) -> None:
-        report = self.fixture.verify("prepare", changes=["Assets/Game/Unit.cs"])
-
-        self.assertFalse(report.ok)
-        self.assertIn("WATCH_PATH_STALE", self.codes(report))
-
-    def test_unresolved_blocker_fails_cutover_but_is_reported_in_prepare(self) -> None:
-        self.fixture.decisions["decisions"].append(
-            self.fixture.decision("DEC-001", "open", ["SHARED-001"])
-        )
-        shared = self.fixture.find("SHARED-001")
-        shared["blocking_decisions"] = ["DEC-001"]
-        shared["readiness"] = "blocked"
-
-        prepare = self.fixture.verify("prepare")
-        cutover = self.fixture.verify("cutover")
-
-        self.assertTrue(prepare.ok)
-        self.assertIn("UNRESOLVED_BLOCKER", self.codes(prepare))
-        self.assertFalse(cutover.ok)
-        self.assertIn("GLOBAL_CUTOVER_BLOCKER", self.codes(cutover))
-        self.assertIn("CUTOVER_GATE", self.codes(cutover))
-
-    def test_irrelevant_legacy_review_and_decision_are_not_attested(self) -> None:
-        legacy_review = dict(self.fixture.reviews["reviews"][0])
-        legacy_review["reviewed_by"] = "legacy-reviewer"
-        self.fixture.reviews["legacy_reviews"].append(legacy_review)
-        self.fixture.decisions["decisions"].append(
-            self.fixture.decision(
-                "DEC-IRRELEVANT",
-                "decided",
-                [],
-                blocks_cutover=False,
-                decision_text="Not referenced by the selected record set",
-            )
-        )
-
-        report = self.fixture.verify("cutover")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        attestation = report.dry_run_manifest["governance_attestation"]
-        self.assertFalse(
-            any(row["reviewed_by"] == "legacy-reviewer" for row in attestation["reviews"])
-        )
-        self.assertFalse(
-            any(row["id"] == "DEC-IRRELEVANT" for row in attestation["decisions"])
-        )
-
-    def test_relevant_approved_review_and_decided_decision_are_attested(self) -> None:
-        client = self.fixture.find("CLIENT-001")
-        client["blocking_decisions"] = ["DEC-CLIENT-001"]
-        decision = self.fixture.decision(
-            "DEC-CLIENT-001",
-            "decided",
-            ["CLIENT-001"],
-            decision_text="Use confirmed lifecycle projection",
-        )
-        self.fixture.decisions["decisions"].append(decision)
-
-        report = self.fixture.verify("cutover")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        attestation = report.dry_run_manifest["governance_attestation"]
-        approved_review = next(
-            row for row in attestation["reviews"] if row["card_id"] == "CLIENT-001"
-        )
-        self.assertTrue(approved_review["approval"])
-        self.assertEqual("approved", approved_review["outcome"])
-        self.assertEqual(
-            {
-                "id": "DEC-CLIENT-001",
-                "status": "decided",
-                "owner": "product-owner",
-                "decision": "Use confirmed lifecycle projection",
-                "blocks_cutover": True,
-                "affected_records": ["CLIENT-001"],
-                "as_of_commit": SOURCE_COMMIT,
-            },
-            attestation["decisions"][0],
-        )
-
-    def test_decision_affected_record_requires_record_back_reference(self) -> None:
-        self.fixture.decisions["decisions"].append(
-            self.fixture.decision(
-                "DEC-ONE-WAY",
-                "decided",
-                ["CLIENT-001"],
-                decision_text="One-way decision link",
-            )
-        )
-        self.fixture.decisions["decisions"].append(
-            self.fixture.decision(
-                "DEC-UNKNOWN",
-                "decided",
-                ["MISSING-RECORD"],
-                decision_text="Unknown affected record",
-            )
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DECISION_RECORD_LINK_MISMATCH", self.codes(report))
-        self.assertIn("DECISION_AFFECTED_RECORD_UNKNOWN", self.codes(report))
-
-    def test_record_blocking_decision_requires_decision_affected_record(self) -> None:
-        client = self.fixture.find("CLIENT-001")
-        client["blocking_decisions"] = ["DEC-ONE-WAY"]
-        self.fixture.decisions["decisions"].append(
-            self.fixture.decision(
-                "DEC-ONE-WAY",
-                "decided",
-                [],
-                decision_text="Missing affected record link",
-            )
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DECISION_RECORD_LINK_MISMATCH", self.codes(report))
-
-    def test_each_area_requires_exact_review(self) -> None:
-        shared = self.fixture.find("SHARED-001")
-        shared["areas"].append("SHARED-AREA-002")
-
-        report = self.fixture.verify("cutover")
-
-        self.assertFalse(report.ok)
-        self.assertIn("AREA_REVIEW_MISSING", self.codes(report))
-
-    def test_old_document_revision_review_does_not_approve(self) -> None:
-        for review in self.fixture.reviews["reviews"]:
-            if review["card_id"] == "CLIENT-001":
-                review["document_revision"] = "c" * 64
-
-        report = self.fixture.verify("cutover")
-
-        self.assertFalse(report.ok)
-        self.assertIn("AREA_REVIEW_MISSING", self.codes(report))
-
-    def test_record_owner_cannot_approve_own_revision(self) -> None:
-        shared = self.fixture.find("SHARED-001")
-        review = next(
-            row
-            for row in self.fixture.reviews["reviews"]
-            if row["card_id"] == "SHARED-001"
-        )
-        review["reviewed_by"] = shared["owner"]
-
-        report = self.fixture.verify("cutover")
-
-        self.assertFalse(report.ok)
-        self.assertIn("REVIEW_SELF_APPROVAL", self.codes(report))
-
-    def test_unknown_dependency_and_reference_fail_closure(self) -> None:
-        client = self.fixture.find("CLIENT-001")
-        client["depends_on"].append("MISSING-DEP")
-        client["references"].append("MISSING-REF")
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("CLOSURE_UNKNOWN_RECORD", self.codes(report))
-
-    def test_shared_link_to_server_only_artifact_fails_client_snapshot(self) -> None:
-        shared = self.fixture.find("SHARED-001")
-        shared["sha256"] = self.fixture.write_source(
-            shared["source_path"],
-            "[server lifecycle](../game-server/unit-lifecycle.md)\n",
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        failures = [
-            item
-            for item in report.errors
-            if item.code == "TARGET_LINK_CLOSURE" and item.record_id == "SHARED-001"
-        ]
-        self.assertTrue(failures)
-        self.assertTrue(any("client snapshot" in item.message for item in failures))
-        self.assertFalse(any("game-server snapshot" in item.message for item in failures))
-
-    def test_relocated_charter_source_relative_link_fails_target_resolution(self) -> None:
-        charter = self.fixture.find("GOV-001")
-        charter["target_path"] = "references/governance/transition-charter.md"
-        charter["sha256"] = self.fixture.write_source(
-            charter["source_path"],
-            "[shared lifecycle](../shared/unit-lifecycle.md)\n",
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("TARGET_LINK_CLOSURE", self.codes(report))
-        self.assertTrue(
-            any(
-                "references/shared/unit-lifecycle.md" in item.message
-                for item in report.errors
-                if item.code == "TARGET_LINK_CLOSURE"
-            )
-        )
-
-    def test_dependency_missing_from_record_consumer_snapshot_fails(self) -> None:
-        references = self.fixture.find("GOV-001")
-        references["consumer"] = ["client"]
-        references["depends_on"] = ["SERVER-001"]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        failures = [
-            item
-            for item in report.errors
-            if item.code == "TARGET_DEPENDENCY_CLOSURE" and item.record_id == "GOV-001"
-        ]
-        self.assertTrue(failures)
-        self.assertTrue(any("client snapshot" in item.message for item in failures))
-
-    def test_valid_reference_partition_link_with_anchor_passes(self) -> None:
-        references = self.fixture.find("GOV-001")
-        references["sha256"] = self.fixture.write_source(
-            references["source_path"],
-            "[shared lifecycle](../shared/unit-lifecycle.md#confirmed-state)\n",
-        )
-
-        report = self.fixture.verify("prepare")
-
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        self.assertNotIn("TARGET_LINK_CLOSURE", self.codes(report))
-        self.assertNotIn("TARGET_DEPENDENCY_CLOSURE", self.codes(report))
-
-    def test_cross_package_dependency_is_rejected(self) -> None:
-        self.fixture.find("CLIENT-001")["depends_on"].append("SERVER-001")
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("PACKAGE_BOUNDARY", self.codes(report))
-
-    def test_dependency_cycle_is_rejected(self) -> None:
-        # References may depend on any partition; make the shared dependency
-        # point back through references to form a structural cycle.
-        self.fixture.find("GOV-001")["depends_on"] = ["SHARED-001"]
-        self.fixture.find("SHARED-001")["depends_on"] = ["GOV-001"]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("DEPENDENCY_CYCLE", self.codes(report))
-
-    def test_target_path_traversal_is_rejected(self) -> None:
-        self.fixture.find("CLIENT-001")["target_path"] = "../escape.md"
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("PATH_ESCAPE", self.codes(report))
-
-    def test_target_path_casefold_duplicate_is_rejected(self) -> None:
-        duplicate = self.fixture.record(
-            "CLIENT-002",
-            "client",
-            "docs/production-transition/client/second.md",
-            "client/UNIT-LIFECYCLE.md",
-            "CLIENT-AREA-002",
-            ["client-owner"],
-            consumer=["client"],
-        )
-        self.fixture.add_record(duplicate)
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("TARGET_PATH_DUPLICATE", self.codes(report))
-
-    def test_same_source_cannot_be_client_and_server_exclusive(self) -> None:
-        client = self.fixture.find("CLIENT-001")
-        server = self.fixture.find("SERVER-001")
-        server["source_path"] = client["source_path"]
-        server["sha256"] = client["sha256"]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("SOURCE_PATH_DUPLICATE", self.codes(report))
-
-    def test_shared_consumer_mismatch_changes_list_and_hash(self) -> None:
-        self.fixture.find("SHARED-001")["consumer"] = ["client"]
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("SHARED_INVENTORY_MISMATCH", self.codes(report))
-        self.assertIn("SHARED_HASH_MISMATCH", self.codes(report))
-        self.assertIn("PACKAGE_CONSUMER_MISMATCH", self.codes(report))
-
-    def test_sha256_mismatch_is_rejected(self) -> None:
-        self.fixture.find("SERVER-001")["sha256"] = "0" * 64
-
-        report = self.fixture.verify("prepare")
-
-        self.assertFalse(report.ok)
-        self.assertIn("SHA256_MISMATCH", self.codes(report))
-
-    def test_manifest_and_package_hashes_are_order_independent(self) -> None:
-        shared = self.fixture.find("SHARED-001")
-        client = self.fixture.find("CLIENT-001")
-        server = self.fixture.find("SERVER-001")
-        shared["blocking_decisions"] = ["DEC-B", "DEC-A"]
-        client["blocking_decisions"] = ["DEC-A"]
-        server["blocking_decisions"] = ["DEC-B"]
-        self.fixture.decisions["decisions"].extend(
-            [
-                self.fixture.decision(
-                    "DEC-B",
-                    "decided",
-                    ["SERVER-001", "SHARED-001"],
-                    decision_text="Decision B",
-                ),
-                self.fixture.decision(
-                    "DEC-A",
-                    "decided",
-                    ["CLIENT-001", "SHARED-001"],
-                    decision_text="Decision A",
-                ),
-            ]
-        )
-        first = self.fixture.verify("cutover")
-        self.fixture.registry["records"].reverse()
-        self.fixture.reviews["reviews"].reverse()
-        self.fixture.decisions["decisions"].reverse()
-        shared["blocking_decisions"].reverse()
-        for decision in self.fixture.decisions["decisions"]:
-            decision["affected_records"].reverse()
-        second = self.fixture.verify("cutover")
-
+        self.fixture = LivingFixture(self.root)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_valid_living_structure_passes_and_reports_partitions(self) -> None:
+        report = verifier.verify_prepare(self.root)
+        self.assertTrue(report.ok, [item.format() for item in report.diagnostics])
+        self.assertEqual({"common", "client", "game-server", "policy"}, set(report.partition_hashes))
+        self.assertEqual(1, len(report.partitions["policy"]))
+        self.assertEqual("references/transition-policy.md", report.partitions["policy"][0].path)
+
+    def test_prepare_is_deterministic_and_read_only(self) -> None:
+        before = _tree_bytes(self.root)
+        first = verifier.verify_prepare(self.root)
+        second = verifier.verify_prepare(self.root)
+        after = _tree_bytes(self.root)
         self.assertTrue(first.ok)
-        self.assertTrue(second.ok)
-        self.assertEqual(first.manifest_sha256, second.manifest_sha256)
-        self.assertEqual(first.package_hashes, second.package_hashes)
-        self.assertEqual(first.target_inventories, second.target_inventories)
-        self.assertEqual(first.dry_run_manifest, second.dry_run_manifest)
+        self.assertEqual(first.partition_hashes, second.partition_hashes)
+        self.assertEqual(before, after)
 
-    def test_cutover_requires_candidate_state(self) -> None:
-        self.fixture.registry["transition_state"] = "preparing"
+    def test_missing_required_living_file_fails(self) -> None:
+        (self.fixture.transition / "common" / "README.md").unlink()
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("LIVING_STRUCTURE", _codes(report))
 
-        report = self.fixture.verify("cutover")
+    def test_three_schema_files_must_parse_as_json_objects(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        schema.write_text("[not-an-object]", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_JSON", _codes(report))
 
-        self.assertFalse(report.ok)
-        self.assertIn("CUTOVER_STATE", self.codes(report))
+    def test_schema_declares_draft_and_id(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "receipt.schema.json"
+        schema.write_bytes(_json_bytes({"type": "object"}))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_JSON", _codes(report))
 
-    def test_dormant_prepare_runs_structural_verification(self) -> None:
-        self.fixture.registry["transition_state"] = "dormant"
+    def test_empty_object_shaped_schema_contract_fails(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        schema.write_bytes(
+            _json_bytes(
+                {
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
+                    "$id": "https://example.invalid/empty-manifest.json",
+                    "type": "object",
+                    "properties": {},
+                }
+            )
+        )
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
 
-        report = self.fixture.verify("prepare")
+    def test_event_schema_phase_fields_must_match_verifier_exactly(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        approved = value["$defs"]["demoApproved"]
+        approved["required"].append("freeze_id")
+        approved["properties"]["freeze_id"] = {"$ref": "#/$defs/freezeId"}
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
 
-        self.assertTrue(report.ok, [item.as_dict() for item in report.errors])
-        self.assertEqual("dormant", report.transition_state)
-        self.assertNotIn("TRANSITION_STATE", self.codes(report))
+    def test_manifest_schema_reference_route_is_exact(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        reference = value["$defs"]["file"]["allOf"][0]["oneOf"][3]
+        reference["properties"]["path"]["const"] = "references/other.md"
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
 
-    def test_authorized_cli_runs_dormant_prepare_verification(self) -> None:
-        self.fixture.registry["transition_state"] = "dormant"
-        self.fixture.persist()
-        stdout = io.StringIO()
-        with mock.patch.object(verifier, "_git_changed_paths", return_value=([], None)):
-            with contextlib.redirect_stdout(stdout):
-                exit_code = verifier.main(
-                    [
-                        "prepare",
-                        "--root",
-                        str(self.root),
-                        "--project-owner-authorized",
-                        "--json",
-                    ]
+    def test_manifest_schema_null_file_path_is_diagnostic_not_crash(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["file"]["properties"]["path"] = None
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_manifest_schema_unhashable_audience_enum_is_diagnostic_not_crash(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["file"]["properties"]["audience"]["enum"] = [
+            "common",
+            [],
+        ]
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_receipt_schema_null_consumer_is_diagnostic_not_crash(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "receipt.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["properties"]["consumer"] = None
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_manifest_schema_malformed_discriminator_required_is_diagnostic_not_crash(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["file"]["allOf"][0]["oneOf"][0]["required"] = [
+            ["audience"],
+            "path",
+        ]
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_unexpected_schema_constraints_fail_prepare(self) -> None:
+        cases = (
+            ("event root", "event.schema.json", lambda value: value.update({"not": {}})),
+            (
+                "event phase",
+                "event.schema.json",
+                lambda value: value["$defs"]["demoApproved"].update({"not": {}}),
+            ),
+            (
+                "event destinations",
+                "event.schema.json",
+                lambda value: value["$defs"]["destinations"].update({"not": {}}),
+            ),
+            ("manifest root", "manifest.schema.json", lambda value: value.update({"not": {}})),
+            (
+                "manifest destinations",
+                "manifest.schema.json",
+                lambda value: value["properties"]["destinations"].update({"not": {}}),
+            ),
+            (
+                "manifest bundle hashes",
+                "manifest.schema.json",
+                lambda value: value["properties"]["bundle_hashes"].update({"not": {}}),
+            ),
+            (
+                "manifest files",
+                "manifest.schema.json",
+                lambda value: value["properties"]["files"].update({"not": {}}),
+            ),
+            (
+                "manifest file",
+                "manifest.schema.json",
+                lambda value: value["$defs"]["file"].update({"not": {}}),
+            ),
+            (
+                "manifest discriminator wrapper",
+                "manifest.schema.json",
+                lambda value: value["$defs"]["file"]["allOf"][0].update({"not": {}}),
+            ),
+            (
+                "manifest discriminator choice",
+                "manifest.schema.json",
+                lambda value: value["$defs"]["file"]["allOf"][0]["oneOf"][0].update(
+                    {"not": {}}
+                ),
+            ),
+            (
+                "manifest discriminator leaf",
+                "manifest.schema.json",
+                lambda value: value["$defs"]["file"]["allOf"][0]["oneOf"][0][
+                    "properties"
+                ]["path"].update({"not": {}}),
+            ),
+            ("receipt root", "receipt.schema.json", lambda value: value.update({"not": {}})),
+            (
+                "receipt consumer",
+                "receipt.schema.json",
+                lambda value: value["properties"]["consumer"].update({"not": {}}),
+            ),
+            (
+                "receipt discriminator wrapper",
+                "receipt.schema.json",
+                lambda value: value["allOf"][0].update({"not": {}}),
+            ),
+            (
+                "receipt discriminator choice",
+                "receipt.schema.json",
+                lambda value: value["allOf"][0]["oneOf"][0].update({"not": {}}),
+            ),
+            (
+                "receipt discriminator leaf",
+                "receipt.schema.json",
+                lambda value: value["allOf"][0]["oneOf"][0]["properties"]["destination"].update(
+                    {"not": {}}
+                ),
+            ),
+        )
+        for label, filename, mutate in cases:
+            with self.subTest(label=label):
+                schema = self.fixture.transition / "governance" / "schemas" / filename
+                original = schema.read_bytes()
+                value = json.loads(original)
+                mutate(value)
+                schema.write_bytes(_json_bytes(value))
+                report = verifier.verify_prepare(self.root)
+                self.assertIn("SCHEMA_CONTRACT", _codes(report))
+                schema.write_bytes(original)
+
+    def test_manifest_schema_path_rejects_forbidden_segments_and_c1(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        pattern = value["$defs"]["file"]["properties"]["path"]["pattern"]
+        self.assertIsNone(re.fullmatch(pattern, "client/fixture/sample.md"))
+        self.assertIsNone(re.fullmatch(pattern, "client/fixtures/sample.md"))
+        self.assertIsNone(re.fullmatch(pattern, "client/FiXtUrE/sample.md"))
+        self.assertIsNone(re.fullmatch(pattern, "common/a\u0085.md"))
+        self.assertIsNotNone(re.fullmatch(pattern, "client/fixture-old/sample.md"))
+        self.assertIsNotNone(re.fullmatch(pattern, "common/규칙.md"))
+
+    def test_receipt_destination_base_pattern_must_match_verifier(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "receipt.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["properties"]["destination"]["pattern"] = "^invalid-only/$"
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_shared_schema_primitives_must_match_verifier(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["gitRevision"]["pattern"] = "^[a-f0-9]{7}$"
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_event_phase_revision_wiring_must_match_verifier(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["demoApproved"]["properties"]["demo_revision"] = {
+            "$ref": "#/$defs/sha256"
+        }
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_event_approved_scope_shape_must_match_verifier(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["demoApproved"]["properties"]["approved_scope"] = {
+            "type": "string"
+        }
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_rule_block_requires_all_eight_fields(self) -> None:
+        path = self.fixture.transition / "client" / "rules" / "authority-and-projection.md"
+        text = path.read_text(encoding="utf-8")
+        text = text.replace("- **Demo source pointer:** representative value\n", "")
+        path.write_text(text, encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("RULE_CONTRACT", _codes(report))
+
+    def test_rule_ids_must_be_unique_across_living_rules(self) -> None:
+        path = self.fixture.transition / "common" / "rules" / "ordering-resync-and-versioning.md"
+        path.write_text(_rule_document("PT-COM-001"), encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("RULE_CONTRACT", _codes(report))
+
+    def test_broken_living_markdown_link_fails(self) -> None:
+        readme = self.fixture.transition / "client" / "README.md"
+        readme.write_text("# Client\n\n[missing](rules/nope.md)\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("MARKDOWN_LINK", _codes(report))
+
+    def test_nonportable_local_markdown_links_fail_prepare(self) -> None:
+        for target in ("C:/missing.md", "C:\\missing.md", "file:///C:/missing.md"):
+            with self.subTest(target=target):
+                readme = self.fixture.transition / "common" / "README.md"
+                original = readme.read_text(encoding="utf-8")
+                readme.write_text(original + f"\n[x]({target})\n", encoding="utf-8")
+                report = verifier.verify_prepare(self.root)
+                self.assertIn("MARKDOWN_LINK", _codes(report))
+                readme.write_text(original, encoding="utf-8")
+
+    def test_cross_consumer_links_fail_prepare_in_both_directions(self) -> None:
+        cases = (
+            ("client/README.md", "../game-server/README.md"),
+            ("game-server/README.md", "../client/README.md"),
+        )
+        for relative, target in cases:
+            with self.subTest(relative=relative):
+                path = self.fixture.transition.joinpath(*Path(relative).parts)
+                original = path.read_text(encoding="utf-8")
+                path.write_text(original + f"\n[cross]({target})\n", encoding="utf-8")
+                report = verifier.verify_prepare(self.root)
+                self.assertIn("MARKDOWN_LINK_CLOSURE", _codes(report))
+                path.write_text(original, encoding="utf-8")
+
+    def test_reference_and_autolink_cross_consumer_links_fail_prepare(self) -> None:
+        readme = self.fixture.transition / "client" / "README.md"
+        original = readme.read_text(encoding="utf-8")
+        for content in (
+            "\n[server-only][server]\n\n[server]: ../game-server/README.md\n",
+            "\n<../game-server/README.md>\n",
+        ):
+            with self.subTest(content=content):
+                readme.write_text(original + content, encoding="utf-8")
+                report = verifier.verify_prepare(self.root)
+                self.assertIn("MARKDOWN_LINK_CLOSURE", _codes(report))
+                readme.write_text(original, encoding="utf-8")
+
+    def test_archive_markdown_links_are_not_checked(self) -> None:
+        archive = self.fixture.transition / "archive" / "legacy" / "README.md"
+        archive.write_text("# Archive\n\n[historical broken](../../../gone.md)\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertTrue(report.ok, [item.format() for item in report.diagnostics])
+
+    def test_invalid_client_coverage_state_fails(self) -> None:
+        path = self.fixture.transition / "client" / "demo-experience-map.md"
+        path.write_text(_coverage("Client", "maybe"), encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("COVERAGE", _codes(report))
+
+    def test_invalid_server_coverage_state_fails(self) -> None:
+        path = self.fixture.transition / "game-server" / "domain-coverage.md"
+        path.write_text(_coverage("Server", "ready"), encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("COVERAGE", _codes(report))
+
+    def test_all_status_tables_are_checked_not_only_the_first(self) -> None:
+        path = self.fixture.transition / "client" / "demo-experience-map.md"
+        path.write_text(
+            _coverage("Decoy", "included") + "\n" + _coverage("Actual", "invalid"),
+            encoding="utf-8",
+        )
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("COVERAGE", _codes(report))
+
+    def test_legacy_material_cannot_remain_active(self) -> None:
+        legacy = self.fixture.transition / "governance" / "registry.json"
+        legacy.write_text("{}\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("LEGACY_ACTIVE", _codes(report))
+
+    def test_plural_fixtures_are_excluded_from_official_inventory(self) -> None:
+        fixture = self.fixture.transition / "client" / "fixtures" / "sample.md"
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("# fixture\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("EXPORT_INVENTORY", _codes(report))
+        selected = {entry.path for entries in report.partitions.values() for entry in entries}
+        self.assertNotIn("client/fixtures/sample.md", selected)
+
+    def test_singular_fixture_is_excluded_from_official_inventory(self) -> None:
+        fixture = self.fixture.transition / "client" / "fixture" / "sample.md"
+        fixture.parent.mkdir(parents=True)
+        fixture.write_text("# fixture\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("EXPORT_INVENTORY", _codes(report))
+        selected = {entry.path for entries in report.partitions.values() for entry in entries}
+        self.assertNotIn("client/fixture/sample.md", selected)
+
+    def test_c1_path_is_excluded_from_official_inventory(self) -> None:
+        relative = "common/a\u0085.md"
+        path = self.fixture.transition.joinpath(*Path(relative).parts)
+        path.write_text("# invisible path\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("EXPORT_INVENTORY", _codes(report))
+        selected = {entry.path for entries in report.partitions.values() for entry in entries}
+        self.assertNotIn(relative, selected)
+
+    def test_empty_forbidden_consumer_directory_also_fails(self) -> None:
+        (self.fixture.transition / "client" / "evidence").mkdir()
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("FORBIDDEN_PATH", _codes(report))
+
+    def test_non_markdown_consumer_artifact_fails(self) -> None:
+        binary = self.fixture.transition / "common" / "rules" / "fixture.json"
+        binary.write_text("{}\n", encoding="utf-8")
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("EXPORT_INVENTORY", _codes(report))
+
+    def test_archive_maintenance_and_governance_are_not_hashed_into_packages(self) -> None:
+        report = verifier.verify_prepare(self.root)
+        selected = {entry.path for entries in report.partitions.values() for entry in entries}
+        self.assertFalse(any(path.startswith("archive/") for path in selected))
+        self.assertFalse(any(path.startswith("maintenance/") for path in selected))
+        self.assertEqual(
+            {"references/transition-policy.md"},
+            {path for path in selected if path.startswith("references/")},
+        )
+
+
+class CutoverTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.fixture = FreezeFixture(self.root)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_valid_freeze_passes_and_reports_hashes(self) -> None:
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertTrue(report.ok, [item.format() for item in report.diagnostics])
+        self.assertEqual(self.fixture.bundle_hashes["common"], report.partition_hashes["common"])
+        self.assertEqual(
+            _sha256((self.fixture.freeze / "manifest.json").read_bytes()),
+            report.manifest_sha256,
+        )
+
+    def test_cutover_is_read_only(self) -> None:
+        before = _tree_bytes(self.root)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        after = _tree_bytes(self.root)
+        self.assertTrue(report.ok)
+        self.assertEqual(before, after)
+
+    def test_manifest_must_be_valid_json(self) -> None:
+        (self.fixture.freeze / "manifest.json").write_text("{", encoding="utf-8")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_JSON", _codes(report))
+
+    def test_manifest_rejects_extra_field(self) -> None:
+        self.fixture.manifest["registry"] = "legacy"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FIELDS", _codes(report))
+
+    def test_manifest_rejects_path_traversal(self) -> None:
+        self.fixture.manifest["files"][0]["path"] = "common/../escape.md"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_manifest_rejects_case_colliding_duplicate(self) -> None:
+        duplicate = dict(self.fixture.manifest["files"][0])
+        duplicate["path"] = duplicate["path"].upper()
+        self.fixture.manifest["files"].append(duplicate)
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_DUPLICATE", _codes(report))
+
+    def test_manifest_rejects_audience_path_mismatch(self) -> None:
+        entry = next(
+            item for item in self.fixture.manifest["files"] if item["path"].startswith("common/")
+        )
+        entry["audience"] = "client"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUDIENCE_PATH", _codes(report))
+
+    def test_manifest_unhashable_audience_is_diagnostic_not_crash(self) -> None:
+        self.fixture.manifest["files"][0]["audience"] = []
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FIELD_VALUE", _codes(report))
+
+    def test_manifest_control_character_path_is_diagnostic_not_crash(self) -> None:
+        self.fixture.manifest["files"][0]["path"] = "common/a\x00.md"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_manifest_rejects_integrity_consistent_c1_path(self) -> None:
+        self.fixture.add_document_and_refresh("common/a\u0085.md", "common", "# C1 path\n")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_manifest_rejects_additional_reference(self) -> None:
+        extra_path = self.fixture.freeze / "references" / "other.md"
+        extra_path.write_text("# Other\n", encoding="utf-8")
+        raw = extra_path.read_bytes()
+        self.fixture.manifest["files"].append(
+            {
+                "path": "references/other.md",
+                "audience": "reference",
+                "sha256": _sha256(raw),
+                "bytes": len(raw),
+            }
+        )
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUDIENCE_PATH", _codes(report))
+
+    def test_manifest_rejects_non_markdown_artifact(self) -> None:
+        self.fixture.manifest["files"][0]["path"] = "common/data.json"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_file_hash_and_byte_count_are_verified(self) -> None:
+        path = self.fixture.freeze / "common" / "README.md"
+        path.write_text("# changed\n", encoding="utf-8")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FILE_HASH", _codes(report))
+        self.assertIn("FILE_BYTES", _codes(report))
+
+    def test_unlisted_file_fails_inventory(self) -> None:
+        extra = self.fixture.freeze / "client" / "extra.md"
+        extra.write_text("# extra\n", encoding="utf-8")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_INVENTORY", _codes(report))
+
+    def test_required_export_cannot_be_omitted_with_consistent_integrity(self) -> None:
+        self.fixture.remove_document_and_refresh("game-server/plans/implementation-waves.md")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("REQUIRED_EXPORT_INVENTORY", _codes(report))
+
+    def test_uncatalogued_export_cannot_be_added_with_consistent_integrity(self) -> None:
+        self.fixture.add_document_and_refresh("client/extra.md", "client", "# extra\n")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("REQUIRED_EXPORT_INVENTORY", _codes(report))
+
+    def test_frozen_rule_contract_is_revalidated_after_integrity_refresh(self) -> None:
+        relative = "game-server/rules/authority-and-state.md"
+        invalid = _rule_document(RULE_IDS_BY_PATH[relative]).replace(
+            "- **Demo source pointer:** representative value\n",
+            "",
+        )
+        self.fixture.replace_document_and_refresh(relative, invalid)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("RULE_CONTRACT", _codes(report))
+
+    def test_frozen_markdown_links_are_revalidated_after_integrity_refresh(self) -> None:
+        self.fixture.replace_document_and_refresh(
+            "client/README.md",
+            "# Client\n\n[missing](rules/missing.md)\n",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MARKDOWN_LINK", _codes(report))
+
+    def test_frozen_cross_consumer_links_fail_in_both_directions(self) -> None:
+        cases = (
+            ("client/README.md", "../game-server/README.md"),
+            ("game-server/README.md", "../client/README.md"),
+        )
+        for relative, target in cases:
+            with self.subTest(relative=relative):
+                path = self.fixture.freeze.joinpath(*Path(relative).parts)
+                original = path.read_text(encoding="utf-8")
+                self.fixture.replace_document_and_refresh(
+                    relative,
+                    original + f"\n[cross]({target})\n",
                 )
+                report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+                self.assertIn("MARKDOWN_LINK_CLOSURE", _codes(report))
+                self.fixture.replace_document_and_refresh(relative, original)
 
-        output = json.loads(stdout.getvalue())
-        self.assertEqual(0, exit_code, output)
-        self.assertTrue(output["ok"])
-        self.assertEqual("prepare", output["mode"])
-        self.assertEqual("dormant", output["transition_state"])
+    def test_demo_approved_scope_must_exactly_match_included_coverage(self) -> None:
+        approved = self.fixture.read_json("events/1-demo-approved.json")
+        approved["approved_scope"] = ["client:UNRELATED", "game-server:ROW-001"]
+        self.fixture.write_json("events/1-demo-approved.json", approved)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SCOPE", _codes(report))
 
-    def test_dormant_cutover_is_rejected(self) -> None:
-        self.fixture.registry["transition_state"] = "dormant"
+    def test_leading_pipe_optional_coverage_table_is_validated(self) -> None:
+        relative = "client/demo-experience-map.md"
+        path = self.fixture.freeze.joinpath(*Path(relative).parts)
+        original = path.read_text(encoding="utf-8")
+        hidden = (
+            "\nID | 항목 | 상태 | Blocking decision\n"
+            "---|---|---|---\n"
+            "ROW-HIDDEN | hidden surface | decision-blocked | PT-DEC-HIDDEN\n"
+        )
+        self.fixture.replace_document_and_refresh(relative, original + hidden)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("COVERAGE_BLOCKED", _codes(report))
 
-        report = self.fixture.verify("cutover")
+    def test_frozen_reference_and_autolink_cross_consumer_links_fail(self) -> None:
+        relative = "client/README.md"
+        path = self.fixture.freeze.joinpath(*Path(relative).parts)
+        original = path.read_text(encoding="utf-8")
+        for content in (
+            "\n[server-only][server]\n\n[server]: ../game-server/README.md\n",
+            "\n<../game-server/README.md>\n",
+        ):
+            with self.subTest(content=content):
+                self.fixture.replace_document_and_refresh(relative, original + content)
+                report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+                self.assertIn("MARKDOWN_LINK_CLOSURE", _codes(report))
+                self.fixture.replace_document_and_refresh(relative, original)
 
-        self.assertFalse(report.ok)
-        self.assertEqual("dormant", report.transition_state)
-        self.assertIn("CUTOVER_STATE", self.codes(report))
+    def test_frozen_file_uri_link_is_rejected_after_integrity_refresh(self) -> None:
+        self.fixture.replace_document_and_refresh(
+            "client/README.md",
+            "# Client\n\n[local](file:///C:/missing.md)\n",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MARKDOWN_LINK", _codes(report))
 
-    def test_unauthorized_cli_skips_without_entering_verification(self) -> None:
-        empty_root = self.root / "empty-repository"
+    def test_disallowed_plural_fixtures_path_fails(self) -> None:
+        self.fixture.add_document_and_refresh(
+            "client/fixtures/sample.md",
+            "client",
+            "# sample\n",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_disallowed_singular_fixture_path_fails(self) -> None:
+        self.fixture.add_document_and_refresh(
+            "client/fixture/sample.md",
+            "client",
+            "# sample\n",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_PATH", _codes(report))
+
+    def test_bundle_hash_is_recomputed(self) -> None:
+        self.fixture.manifest["bundle_hashes"]["client"] = "c" * 64
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("BUNDLE_HASH", _codes(report))
+
+    def test_event_phase_extra_field_is_rejected(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["freeze_id"] = FREEZE_ID
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FIELDS", _codes(report))
+
+    def test_event_predecessor_chain_is_exact(self) -> None:
+        event = self.fixture.read_json("events/2-demo-frozen.json")
+        event["predecessor_event_id"] = "wrong"
+        self.fixture.write_json("events/2-demo-frozen.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_event_revision_and_freeze_id_match_manifest(self) -> None:
+        event = self.fixture.read_json("events/3-transfer-completed.json")
+        event["demo_revision"] = "c" * 40
+        event["freeze_id"] = "another-freeze"
+        self.fixture.write_json("events/3-transfer-completed.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_CONSISTENCY", _codes(report))
+
+    def test_event_timestamps_must_be_ordered(self) -> None:
+        event = self.fixture.read_json("events/3-transfer-completed.json")
+        event["approved_at"] = "2026-08-11T23:00:00Z"
+        self.fixture.write_json("events/3-transfer-completed.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_manifest_creation_must_follow_approval_and_precede_freeze(self) -> None:
+        self.fixture.manifest["created_at"] = "2026-08-11T23:00:00Z"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_manifest_timestamp_must_use_rfc3339_lexical_form(self) -> None:
+        self.fixture.manifest["created_at"] = "2026-08-12 00:01:30+00:00"
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FIELD_VALUE", _codes(report))
+
+    def test_receipt_time_must_follow_freeze_and_precede_completion(self) -> None:
+        receipt = self.fixture.read_json("receipts/client.json")
+        receipt["received_at"] = "2026-08-13T00:00:00Z"
+        self.fixture.write_json("receipts/client.json", receipt)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_manifest_destination_must_use_freeze_id_suffix(self) -> None:
+        self.fixture.manifest["destinations"]["client"] = (
+            "somnia-client/docs/migration-input/dreamsquad-demo/wrong/"
+        )
+        self.fixture.write_manifest()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("DESTINATION", _codes(report))
+
+    def test_receipt_must_match_assigned_bundle(self) -> None:
+        receipt = self.fixture.read_json("receipts/client.json")
+        receipt["assigned_bundle_sha256"] = "d" * 64
+        self.fixture.write_json("receipts/client.json", receipt)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("RECEIPT", _codes(report))
+
+    def test_receipt_counts_assigned_manifest_inventory(self) -> None:
+        receipt = self.fixture.read_json("receipts/game-server.json")
+        receipt["file_count"] += 1
+        receipt["byte_count"] += 1
+        self.fixture.write_json("receipts/game-server.json", receipt)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("RECEIPT", _codes(report))
+
+    def test_transfer_event_hashes_exact_receipt_bytes(self) -> None:
+        event = self.fixture.read_json("events/3-transfer-completed.json")
+        event["client_receipt_sha256"] = "e" * 64
+        self.fixture.write_json("events/3-transfer-completed.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_CONSISTENCY", _codes(report))
+
+    def test_exactly_three_event_files_are_allowed(self) -> None:
+        self.fixture.write_json("events/4-demo-refrozen.json", {"event_type": "demo-frozen"})
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FREEZE_LAYOUT", _codes(report))
+
+    def test_exactly_two_receipts_are_allowed(self) -> None:
+        self.fixture.write_json("receipts/extra.json", {"consumer": "client"})
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FREEZE_LAYOUT", _codes(report))
+
+    def test_missing_manifest_file_fails(self) -> None:
+        (self.fixture.freeze / "client" / "README.md").unlink()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("MANIFEST_INVENTORY", _codes(report))
+
+    def test_decision_blocked_coverage_cannot_be_frozen(self) -> None:
+        path = self.fixture.freeze / "client" / "demo-experience-map.md"
+        path.write_text(_coverage("Client", "decision-blocked"), encoding="utf-8")
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("COVERAGE_BLOCKED", _codes(report))
+
+    def test_included_coverage_cannot_retain_blocking_decision(self) -> None:
+        path = self.fixture.freeze / "client" / "demo-experience-map.md"
+        path.write_text(
+            _coverage("Client", "included", "`PT-DEC-CLIENT-001`"),
+            encoding="utf-8",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("COVERAGE_BLOCKED", _codes(report))
+
+    def test_decoy_coverage_table_cannot_hide_blocked_rows(self) -> None:
+        path = self.fixture.freeze / "client" / "demo-experience-map.md"
+        path.write_text(
+            _coverage("Decoy", "included") + "\n" + _coverage("Actual", "decision-blocked"),
+            encoding="utf-8",
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("COVERAGE_BLOCKED", _codes(report))
+
+    def test_unexpected_top_level_freeze_entry_fails(self) -> None:
+        (self.fixture.freeze / "maintenance").mkdir()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FREEZE_LAYOUT", _codes(report))
+
+    def test_freeze_directory_name_must_match_manifest_id(self) -> None:
+        wrong = self.root / "wrong-freeze"
+        self.fixture.freeze.rename(wrong)
+        report = verifier.verify_cutover(wrong, self.fixture.events)
+        self.assertIn("FREEZE_ID_PATH", _codes(report))
+
+    def test_cli_accepts_relative_explicit_freeze_dir(self) -> None:
+        canonical_freeze = (
+            self.root
+            / "docs"
+            / "production-transition"
+            / "freezes"
+            / FREEZE_ID
+        )
+        canonical_events = (
+            self.root
+            / "docs"
+            / "production-transition"
+            / "governance"
+            / "audit-events"
+        )
+        canonical_freeze.parent.mkdir(parents=True)
+        canonical_events.parent.mkdir(parents=True)
+        self.fixture.freeze.rename(canonical_freeze)
+        self.fixture.events.rename(canonical_events)
+        self.fixture.freeze = canonical_freeze
+        self.fixture.events = canonical_events
         stdout = io.StringIO()
-        with contextlib.ExitStack() as stack:
-            verify_transition = stack.enter_context(
-                mock.patch.object(verifier, "verify_transition")
-            )
-            resolve_cli_path = stack.enter_context(
-                mock.patch.object(verifier, "_resolve_cli_path")
-            )
-            load_json = stack.enter_context(mock.patch.object(verifier, "_load_json"))
-            git_changed_paths = stack.enter_context(
-                mock.patch.object(verifier, "_git_changed_paths")
-            )
-            stack.enter_context(contextlib.redirect_stdout(stdout))
+        with contextlib.redirect_stdout(stdout):
             exit_code = verifier.main(
-                ["prepare", "--root", str(empty_root), "--json"]
+                [
+                    "cutover",
+                    "--project-owner-authorized",
+                    "--root",
+                    str(self.root),
+                    "--freeze-dir",
+                    f"docs/production-transition/freezes/{FREEZE_ID}",
+                    "--events-dir",
+                    "docs/production-transition/governance/audit-events",
+                ]
             )
-
-        output = json.loads(stdout.getvalue())
-        self.assertEqual(0, exit_code)
-        self.assertEqual("SKIP", output["result"])
-        self.assertEqual("prepare", output["mode"])
-        self.assertIn("project owner", output["reason"])
-        verify_transition.assert_not_called()
-        resolve_cli_path.assert_not_called()
-        load_json.assert_not_called()
-        git_changed_paths.assert_not_called()
-        self.assertFalse(empty_root.exists())
-
-    def test_read_only_cli_does_not_create_freeze_or_target_directories(self) -> None:
-        self.fixture.persist()
-        stdout = io.StringIO()
-        with mock.patch.object(verifier, "_git_changed_paths", return_value=([], None)):
-            with mock.patch.object(verifier, "_git_object_type", return_value=("commit", None)):
-                with mock.patch.object(
-                    verifier,
-                    "_git_blob_at_commit",
-                    side_effect=lambda root, _commit, path: (
-                        (root / Path(*path.split("/"))).read_bytes(),
-                        None,
-                    ),
-                ):
-                    with contextlib.redirect_stdout(stdout):
-                        exit_code = verifier.main(
-                            [
-                                "cutover",
-                                "--root",
-                                str(self.root),
-                                "--project-owner-authorized",
-                                "--json",
-                            ]
-                        )
-
         self.assertEqual(0, exit_code, stdout.getvalue())
-        self.assertFalse((self.root / "docs" / "production-transition" / "freezes").exists())
-        self.assertFalse((self.root / "docs" / "migration-input").exists())
+        self.assertIn("cutover: PASS", stdout.getvalue())
+
+    def test_official_cli_rejects_a_second_freeze_candidate(self) -> None:
+        canonical_freezes = self.root / "docs" / "production-transition" / "freezes"
+        canonical_events = (
+            self.root
+            / "docs"
+            / "production-transition"
+            / "governance"
+            / "audit-events"
+        )
+        canonical_freezes.mkdir(parents=True)
+        canonical_events.parent.mkdir(parents=True)
+        selected = canonical_freezes / FREEZE_ID
+        self.fixture.freeze.rename(selected)
+        self.fixture.events.rename(canonical_events)
+        (canonical_freezes / "second-freeze").mkdir()
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = verifier.main(
+                [
+                    "cutover",
+                    "--project-owner-authorized",
+                    "--root",
+                    str(self.root),
+                    "--freeze-dir",
+                    f"docs/production-transition/freezes/{FREEZE_ID}",
+                    "--events-dir",
+                    "docs/production-transition/governance/audit-events",
+                ]
+            )
+        self.assertEqual(1, exit_code)
+        self.assertIn("ONE_SHOT_LAYOUT", stdout.getvalue())
 
 
 if __name__ == "__main__":

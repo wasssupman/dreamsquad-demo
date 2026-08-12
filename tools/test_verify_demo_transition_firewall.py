@@ -198,6 +198,394 @@ class DemoTransitionFirewallTests(unittest.TestCase):
                 any(item.rule == "active-doc-transition-authority" for item in violations)
             )
 
+    def test_active_safe_notice_cannot_mask_a_positive_authority_tail(self) -> None:
+        statements = (
+            "Production-transition is not a checklist while it dictates Demo behavior.\n",
+            "Production-transition is not a checklist though it is authoritative "
+            "for Demo implementation.\n",
+            "Production-transition is not a checklist / it dictates Demo behavior.\n",
+            "Production-transition is not a Demo source of truth, "
+            "It dictates Demo behavior.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                relative = "docs/spec/live-feature/README.md"
+                fixture.write(relative, statement)
+
+                self.assertTrue(
+                    any(
+                        item.rule in {
+                            "active-doc-transition-authority",
+                            "active-doc-transition-work-item",
+                        }
+                        and item.path == relative
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
+    def test_active_docs_cannot_track_transition_work_items(self) -> None:
+        cases = (
+            (
+                "docs/spec/live-feature/README.md",
+                "Keep this as the production-transition checklist.\n",
+            ),
+            (
+                "docs/spec/live-feature/6_handoff_summary.md",
+                "후속: production-transition 체크리스트로 확인한다.\n",
+            ),
+            (
+                "docs/spec/live-feature/0_contract.md",
+                "production-transition 이전 판정 때 재검토한다.\n",
+            ),
+            (
+                "docs/plans/current-design.md",
+                "Production-transition acceptance gate before completion.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "이번에 고치지 않고 여기 명시만 한다 — "
+                "production-transition 이전 판정 때의 체크리스트.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is a completion condition.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Track production-transition as a work item.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition checklist must be completed. "
+                "Demo implementation is not affected.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition 체크리스트를 완료한다. "
+                "Demo 구현에는 영향이 없다.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth. "
+                "Follow-up: transfer after approval.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition must be reviewed. "
+                "Production-transition is not a Demo checklist.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition 체크리스트로 관리하고 "
+                "후속 항목은 관리하지 않는다.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "TODO: production-transition transfer after approval.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition 작업: 승인 후 이동.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Do not use production-transition as a checklist, "
+                "then transfer after approval.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Do not use production-transition as a checklist and move it to the client.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Do not use production-transition as a checklist, transfer when approved.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth and "
+                "its follow-up is required.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition은 Demo 정본이 아니며 후속은 필요하다.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition은 Demo 체크리스트가 아니며 승인되면 이동.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth — "
+                "Follow-up: transfer.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition은 Demo 정본이 아니다 — 후속: 이관.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, "
+                "Follow-up: transfer.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "production-transition은 Demo 정본이 아니다, 후속: 이관.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, transfer it tomorrow.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth: move it to the client.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, review it tomorrow.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, transfer it if approved.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, but the next step is package preparation.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth and archive it for production.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth and hand over the package.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, the team transfers it tomorrow.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, the owner archives it tomorrow.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, perform cutover tomorrow.\n",
+            ),
+            (
+                "docs/spec/live-feature/README.md",
+                "Production-transition is not a Demo source of truth, migrate it tomorrow.\n",
+            ),
+        )
+        for relative, content in cases:
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                fixture.write(relative, content)
+
+                violations = firewall.verify(fixture.root)
+
+                matches = [
+                    item
+                    for item in violations
+                    if item.rule == "active-doc-transition-work-item"
+                    and item.path == relative
+                ]
+                self.assertEqual(1, len(matches))
+                self.assertEqual(1, matches[0].line)
+
+    def test_explicitly_negated_transition_work_items_are_allowed(self) -> None:
+        statements = (
+            "Production-transition is not a Demo checklist, follow-up, "
+            "completion condition, or gate.\n",
+            "Production-transition은 Demo 체크리스트나 후속 완료 조건이 아니며 "
+            "검증 gate로 사용하지 않는다.\n",
+            "production-transition 체크리스트로 사용하지 않는다.\n",
+            "Do not use production-transition as a checklist.\n",
+            "Production-transition must not be tracked as follow-up.\n",
+            "Do not transfer production-transition to the client.\n",
+            "Production-transition must not be moved.\n",
+            "Production-transition cannot be transferred.\n",
+            "production-transition을 이동하지 않는다.\n",
+            "Never use production-transition as a Demo source of truth.\n",
+            "Production-transition will never be transferred.\n",
+            "Production-transition is not required for Demo work.\n",
+            "production-transition은 Demo 작업에 필요하지 않다.\n",
+            "Production-transition preparation is not a Demo completion gate.\n",
+            "The production-transition archive is historical and not a Demo source of truth.\n",
+            "Production-transition review is not required for Demo work.\n",
+            "Production-transition must not be tracked as follow-up.\n"
+            "  - It is not a checklist.\n"
+            "  - Follow-up is not required.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                fixture.write("docs/spec/live-feature/README.md", statement)
+
+                self.assertEqual([], firewall.verify(fixture.root))
+
+    def test_multiline_transition_work_items_are_rejected_at_reference_line(self) -> None:
+        statements = (
+            "Production-transition is the\nDemo completion gate.\n",
+            "Production-transition을\n후속 체크리스트로 관리한다.\n",
+            "Production-transition:\n- Demo completion gate.\n",
+            "## Production-transition\n- Follow-up: transfer after approval.\n",
+            "| Production-transition |\n| completion gate |\n",
+            "| Production-transition is not a Demo source of truth |\n"
+            "|---|\n| Follow-up: transfer after approval |\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                relative = "docs/spec/live-feature/README.md"
+                fixture.write(relative, "# Live feature\n\n" + statement)
+
+                violations = firewall.verify(fixture.root)
+
+                matches = [
+                    item
+                    for item in violations
+                    if item.path == relative
+                    and item.rule in {
+                        "active-doc-transition-work-item",
+                        "active-doc-transition-authority",
+                    }
+                ]
+                self.assertEqual(1, len(matches))
+                self.assertEqual(3, matches[0].line)
+
+    def test_safe_notice_does_not_exempt_positive_child_item(self) -> None:
+        for separator in ("", "\n"):
+            with self.subTest(separator=repr(separator)), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                relative = "docs/spec/live-feature/README.md"
+                fixture.write(
+                    relative,
+                    "Production-transition is not a Demo source of truth.\n"
+                    + separator
+                    + "- Follow-up: transfer after approval.\n",
+                )
+
+                violations = firewall.verify(fixture.root)
+
+                self.assertTrue(
+                    any(
+                        item.path == relative
+                        and item.rule == "active-doc-transition-work-item"
+                        for item in violations
+                    )
+                )
+
+    def test_plain_safe_notice_scans_the_entire_following_list_block(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = FirewallFixture(Path(temp))
+            relative = "docs/spec/live-feature/README.md"
+            fixture.write(
+                relative,
+                "Production-transition is not a Demo source of truth.\n\n"
+                "- It is not a checklist.\n"
+                "- Follow-up: transfer after approval.\n",
+            )
+
+            self.assertTrue(
+                any(
+                    item.path == relative
+                    and item.rule == "active-doc-transition-work-item"
+                    for item in firewall.verify(fixture.root)
+                )
+            )
+
+    def test_safe_notice_cannot_hide_structural_transition_work(self) -> None:
+        statements = (
+            "- Production-transition is not a Demo source of truth.\n"
+            "- Follow-up: transfer after approval.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- It is not a checklist.\n"
+            "- Follow-up: transfer after approval.\n",
+            "Production-transition is not a Demo source of truth.\n\n"
+            "1. Follow-up: transfer after approval.\n",
+            "Production-transition is not a Demo source of truth.\n\n"
+            "> Follow-up: transfer after approval.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "Use it as the Demo implementation basis.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- The client will import it after approval.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- This package moves to production tomorrow.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- We review and transfer it tomorrow.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- The client imports it tomorrow.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- The server exports it tomorrow.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- The owner approves it tomorrow.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- It is the Demo implementation contract.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- Update it every sprint.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It governs Demo work.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It is canonical for the Demo.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It dictates Demo behavior.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It is binding on the Demo.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "  - It governs Demo work.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                relative = "docs/spec/live-feature/README.md"
+                fixture.write(relative, statement)
+
+                self.assertTrue(
+                    any(
+                        item.path == relative
+                        and item.rule == "active-doc-transition-work-item"
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
+    def test_nested_safe_child_does_not_hide_later_positive_sibling(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = FirewallFixture(Path(temp))
+            relative = "docs/spec/live-feature/README.md"
+            fixture.write(
+                relative,
+                "- Production-transition is not a Demo source of truth.\n"
+                "  - It is not a checklist.\n"
+                "  - Follow-up: transfer after approval.\n",
+            )
+
+            self.assertTrue(
+                any(
+                    item.path == relative
+                    and item.rule == "active-doc-transition-work-item"
+                    for item in firewall.verify(fixture.root)
+                )
+            )
+
+    def test_list_item_indented_continuation_cannot_hide_transition_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = FirewallFixture(Path(temp))
+            relative = "docs/spec/live-feature/README.md"
+            fixture.write(
+                relative,
+                "- Production-transition is not a Demo source of truth.\n"
+                "  Follow-up: transfer after approval.\n",
+            )
+
+            self.assertTrue(
+                any(
+                    item.path == relative
+                    and item.rule == "active-doc-transition-work-item"
+                    for item in firewall.verify(fixture.root)
+                )
+            )
+
     def test_active_docs_cannot_instruct_transition_verifier_execution(self) -> None:
         for relative in (
             "docs/spec/live-feature/README.md",
@@ -302,6 +690,24 @@ class DemoTransitionFirewallTests(unittest.TestCase):
                 )
             )
 
+    def test_root_demo_scripts_cannot_invoke_transition_verifier(self) -> None:
+        for relative in ("validate.ps1", "build.cmd", "check.sh", "run-tests.py"):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                fixture.write(
+                    relative,
+                    "python tools/verify_production_transition.py prepare "
+                    "--project-owner-authorized\n",
+                )
+
+                self.assertTrue(
+                    any(
+                        item.rule == "automatic-transition-verifier"
+                        and item.path == relative
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
     def test_root_policy_documents_require_demo_owner_and_dormant_invariants(self) -> None:
         for relative in ("CLAUDE.md", "README.md", "docs/PRD.md", "docs/TRD.md"):
             with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temp:
@@ -341,6 +747,203 @@ class DemoTransitionFirewallTests(unittest.TestCase):
                 if item.rule == "root-firewall-policy" and item.path == "README.md"
             )
             self.assertIn("default-reading exclusion", match.message)
+
+    def test_root_policy_invariants_do_not_hide_conflicting_transition_authority(self) -> None:
+        cases = {
+            "CLAUDE.md": "Production-transition is a Demo completion gate.\n",
+            "README.md": "Demo implementation must follow production-transition.\n",
+            "docs/PRD.md": "Track production-transition as a Demo work item.\n",
+            "docs/TRD.md": "Production-transition is the architecture source of truth.\n",
+        }
+        for relative, conflict in cases.items():
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                current = (fixture.root / relative).read_text(encoding="utf-8")
+                fixture.write(relative, current + "\n" + conflict)
+
+                violations = firewall.verify(fixture.root)
+
+                self.assertTrue(
+                    any(
+                        item.rule == "root-policy-transition-authority"
+                        and item.path == relative
+                        for item in violations
+                    )
+                )
+
+    def test_root_policy_conflict_negation_must_cover_the_authority_claim(self) -> None:
+        statements = (
+            "Production-transition is the Demo source of truth, but not a checklist.\n",
+            "Production-transition is authoritative for Demo implementation, but not a work item.\n",
+            "Demo implementation must follow production-transition, but transition is not a completion gate.\n",
+            "production-transition은 Demo 정본이지만 체크리스트는 아니다.\n",
+            "Production-transition is not a checklist, but is authoritative for Demo implementation.\n",
+            "Production-transition is not a work item; it is the Demo source of truth.\n",
+            "Production-transition is not a completion gate, however Demo implementation must follow it.\n",
+            "production-transition은 체크리스트가 아니지만 Demo 정본이다.\n",
+            "Production-transition defines the Demo requirements.\n",
+            "Production-transition drives Demo design.\n",
+            "Production-transition dictates Demo behavior.\n",
+            "Production-transition is canonical for the Demo.\n",
+            "Production-transition is binding on Demo implementation.\n",
+            "Treat production-transition as canonical for the Demo.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                current = (fixture.root / "CLAUDE.md").read_text(encoding="utf-8")
+                fixture.write("CLAUDE.md", current + "\n" + statement)
+
+                self.assertTrue(
+                    any(
+                        item.rule == "root-policy-transition-authority"
+                        and item.path == "CLAUDE.md"
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
+    def test_root_policy_allows_a_direct_negated_object_list(self) -> None:
+        statements = (
+            "Production-transition is not a Demo checklist, follow-up, "
+            "completion condition, or gate.\n",
+            "Production-transition preparation, review, freeze, and transfer "
+            "are not required for Demo work.\n",
+            "Production-transition must never be prepared, reviewed, frozen, "
+            "transferred, or imported during Demo work.\n",
+            "Do not prepare, review, freeze, transfer, or import "
+            "production-transition during Demo work.\n",
+            "Production-transition is never reviewed, transferred, or imported "
+            "during Demo work.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                current = (fixture.root / "CLAUDE.md").read_text(encoding="utf-8")
+                fixture.write("CLAUDE.md", current + "\n" + statement)
+
+                self.assertFalse(
+                    any(
+                        item.rule == "root-policy-transition-authority"
+                        and item.path == "CLAUDE.md"
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
+    def test_root_policy_transition_context_cannot_hide_following_work(self) -> None:
+        statements = (
+            "Production-transition is not a Demo source of truth.\n"
+            "It is nevertheless the Demo implementation source of truth.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "Review it weekly and transfer it after approval.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It is not a checklist.\n"
+            "It is nevertheless the Demo implementation source of truth.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It is not a checklist.\n"
+            "Review it weekly and transfer it after approval.\n",
+            "Production-transition is the\nDemo source of truth.\n",
+            "production-transition은 Demo 구현의\n정본이다.\n",
+            "Demo implementation must follow\nproduction-transition.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It is the Demo\nimplementation basis.\n",
+            "11. **Production-transition firewall**\n"
+            "Production-transition is the\nDemo source of truth.\n",
+            "11. **Production-transition firewall**\n"
+            "Production-transition is not a Demo source of truth.\n"
+            "Review it weekly and\ntransfer it after approval.\n",
+            "11. **Production-transition firewall**: "
+            "Production-transition is not a Demo source of truth.\n"
+            "   - It dictates Demo behavior.\n",
+            "11. **Production-transition firewall**: "
+            "Production-transition is not a Demo source of truth.\n"
+            "   - It is binding on Demo implementation.\n",
+            "11. **Production-transition firewall**: "
+            "Production-transition is not a Demo source of truth.\n"
+            "   - Review it weekly and transfer it after approval.\n",
+            "| Production-transition is not a Demo source of truth "
+            "| It dictates Demo behavior |\n",
+            "| Production-transition is not a checklist "
+            "| It is binding on Demo implementation |\n",
+            "Production-transition is not a Demo source of truth: "
+            "It dictates Demo behavior.\n",
+            "Production-transition is not a Demo source of truth, "
+            "It dictates Demo behavior.\n",
+            "Production-transition is not a checklist while it dictates Demo behavior.\n",
+            "Production-transition is not a checklist though it is authoritative "
+            "for Demo implementation.\n",
+            "Production-transition is not a checklist yet it dictates Demo behavior.\n",
+            "Production-transition is not a checklist because it dictates Demo behavior.\n",
+            "Production-transition is not a checklist / it dictates Demo behavior.\n",
+            "Production-transition is not a checklist -> it dictates Demo behavior.\n",
+            "Production-transition is not a Demo source of truth, "
+            "use it for Demo implementation.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "Base Demo implementation on it.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "The Demo must conform to it.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "It guides Demo implementation.\n",
+            "Production-transition is not a Demo source of truth.\n"
+            "Implement the Demo according to it.\n",
+            "Production-transition은 Demo 정본이 아니다.\n"
+            "Demo 구현은 이를 따른다.\n",
+            "Production-transition은 Demo 정본이 아니다.\n"
+            "Demo 구현 시 이를 참고한다.\n",
+            "Production-transition은 Demo 정본이 아니다.\n"
+            "Production-transition을 Demo 구현에 적용한다.\n",
+            "- Production-transition is not a Demo source of truth.\n"
+            "- Review it weekly and transfer it after approval.\n",
+        )
+        for statement in statements:
+            with self.subTest(statement=statement), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                current = (fixture.root / "CLAUDE.md").read_text(encoding="utf-8")
+                fixture.write("CLAUDE.md", current + "\n" + statement)
+
+                self.assertTrue(
+                    any(
+                        item.rule == "root-policy-transition-authority"
+                        and item.path == "CLAUDE.md"
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
+
+    def test_exact_claude_firewall_section_does_not_trust_inserted_children(self) -> None:
+        children = (
+            "   - It dictates Demo behavior.",
+            "   - It is binding on Demo implementation.",
+            "   - Base Demo implementation on it.",
+            "   - The Demo must conform to it.",
+            "   - It guides Demo implementation.",
+            "   - Implement the Demo according to it.",
+            "   - Demo 구현은 이를 따른다.",
+            "   - Demo 구현 시 이를 참고한다.",
+            "   - Production-transition을 Demo 구현에 적용한다.",
+            "   - Review it weekly and transfer it after approval.",
+        )
+        for child in children:
+            with self.subTest(child=child), tempfile.TemporaryDirectory() as temp:
+                fixture = FirewallFixture(Path(temp))
+                current = (fixture.root / "CLAUDE.md").read_text(encoding="utf-8")
+                section = list(firewall.TRUSTED_CLAUDE_FIREWALL_SECTION)
+                section.insert(1, child)
+                fixture.write(
+                    "CLAUDE.md",
+                    current
+                    + "\n"
+                    + "\n".join(section)
+                    + "\n"
+                    + firewall.TRUSTED_CLAUDE_FIREWALL_BOUNDARY
+                    + "\n",
+                )
+
+                self.assertTrue(
+                    any(
+                        item.rule == "root-policy-transition-authority"
+                        and item.path == "CLAUDE.md"
+                        for item in firewall.verify(fixture.root)
+                    )
+                )
 
     def test_demo_policy_documents_cannot_reference_transition_verifier(self) -> None:
         candidates = (

@@ -1,28 +1,28 @@
-# Client Package
+# Production Client Transition Input
 
-> **DORMANT · OWNER-GATED · NOT DEMO AUTHORITY.** Project owner의 명시적 transition 활성화 전에는 Demo 설계·작업 후보·검증 gate로 사용하거나 갱신하지 않는다.
+> **Dormant · owner-gated · not Demo authority · not Production implementation approval**
 
-> 상태: **dormant preparation artifact — owner activation 전 미활성 · official Client input/adoption 아님**
+Production Client는 사용자 intent와 즉시 feedback을 소유하고, authoritative Server 결과를
+화면·소리·촉각으로 해석한다. Gameplay 판정과 canonical state mutation은 소유하지 않는다.
 
-Client가 사용자 intent를 받고 authoritative 결과를 화면에 해석하는 계약을 축적한다.
-Gameplay 결과를 판정하거나 canonical state를 소유하지 않는다.
+## 읽기 순서
 
-## 포함
+1. [`../common/README.md`](../common/README.md)
+2. [`rules/authority-and-projection.md`](rules/authority-and-projection.md)
+3. [`rules/presentation-and-catalog.md`](rules/presentation-and-catalog.md)
+4. [`demo-experience-map.md`](demo-experience-map.md)
+5. [`plans/implementation-waves.md`](plans/implementation-waves.md)
+6. [`plans/acceptance-gates.md`](plans/acceptance-gates.md)
 
-- 사용자 입력 intent, pending/accepted/rejected UX
-- authoritative projection과 correction/resync/reconnect 표현
-- cue deduplication, playback와 stable ID→asset/catalog mapping
-- presentation-only acceptance와 product 이해 검증 요구
+## Production-local 우선순위
+
+Imported 문서는 Somnia Client의 accepted ADR, task router, current project facts와 validation
+matrix를 override하지 않는다. Production 구현은 native Android/iOS 2D mobile, non-ECS,
+feature-first/asmdef boundary와 Addressables 기본 규칙을 현지 정본에서 다시 확인한다.
 
 ## 제외
 
-- 데미지, death, score, terminal과 ordering의 authoritative 판정
-- production wire/auth/transport와 final API
-- 실제 Unity scene/prefab/VFX/runtime 구현
-
-## 현재 inventory
-
-- [`cards/unit-lifecycle.md`](cards/unit-lifecycle.md): lifecycle projection/cue pilot
-- Somnia Client의 기존 `docs/demo-migration/` 문서는 target-side preparatory proposal다.
-  미래 official destination은
-  `docs/migration-input/dreamsquad-demo/<freeze-id>/`이며 지금 생성하지 않는다.
+- Damage/death/score/terminal과 ordering의 authoritative 판정
+- Server runtime, persistence, anti-cheat와 topology
+- Wire/auth/transport 또는 public DTO의 최종 선택
+- Demo Unity scene, ECS bridge, prefab 또는 code의 복사 지시

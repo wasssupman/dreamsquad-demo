@@ -62,7 +62,7 @@
 11. **Production-transition firewall** (2026-08-11 사용자 결정): Demo가 유일한 upstream이다. `docs/production-transition/`은 Project owner가 미래 전환을 위해 미리 보관하는 **dormant downstream 자료**이며 Demo의 설계·구현·검증 정본이 아니다.
    - 현재 사용자 요청이 production-transition의 시작·갱신·검증을 **명시적으로** 지시하지 않으면 해당 subtree와 전용 verifier를 읽거나 실행하거나 작업 후보로 제안하지 않는다. 최근 커밋, stale 표시, watch path 변화, backlog 링크는 활성화 근거가 아니다.
    - Demo의 정본 우선순위는 `CLAUDE.md` → 활성 `docs/spec/{feature-slug}/` → `docs/TRD.md`/`docs/PRD.md`의 적용 가능한 Demo 계약 → 코드·에셋·테스트다. Transition 문서와 충돌하면 Demo를 고치는 대신 transition 자료가 stale한 것으로 둔다.
-   - Transition freshness/review/decision/registry/verifier는 Demo 작업의 시작·완료·검증·커밋을 절대 차단하지 않는다. Demo 변경에 맞춘 transition 문서 갱신도 같은 작업에 끼워 넣지 않는다.
+   - Transition maintenance/change register/coverage/decision/freeze audit는 Demo 작업의 시작·완료·검증·커밋을 절대 차단하지 않는다. Demo 변경에 맞춘 transition 문서 갱신도 같은 작업에 끼워 넣지 않으며, 명시적인 별도 후행 task와 별도 commit에서만 수행한다.
    - Freeze, cutover, production import와 후속 wave의 시점·범위는 Project owner만 결정한다. 명시적 활성화 전 agent는 이를 계획하거나 선제 작업하지 않는다.
    - Transition과 무관한 Demo 아키텍처 변경은 Demo 목표만으로 별도 승인받고 이 파일과 TRD를 먼저 갱신해야 한다. Transition 문서를 근거로 ECS 경계나 네트워크 금지를 우회할 수 없다.
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
