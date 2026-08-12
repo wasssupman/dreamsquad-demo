@@ -9,7 +9,7 @@
 | `da07d74` | unit 1 — `BoardViewMode` 접기 (iso 경로 제거) |
 | `5089fbb` | unit 2 — 소비자 없는 맵 메타 3배열 제거 |
 | `48196f9` | unit 3 — 단수 `goal` 폴백 제거 + 재감사 |
-| (아래) | unit 3 보강 — 심볼 재감사로 드러난 `TryGetBoardWorldBounds` 제거 |
+| `9097be6` | unit 3 보강 — 심볼 재감사로 드러난 `TryGetBoardWorldBounds` 제거 |
 
 ## Implemented
 
