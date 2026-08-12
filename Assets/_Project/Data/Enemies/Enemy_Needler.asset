@@ -23,7 +23,7 @@ MonoBehaviour:
   engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
-  targetFactions: 13
+  targetFactions: 0
   health: 35
   moveSpeed: 2.8
   attackRange: 2

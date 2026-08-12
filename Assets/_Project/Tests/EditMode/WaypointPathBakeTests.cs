@@ -29,9 +29,8 @@ namespace Wassup.Tests.EditMode
             var map = new GeneratedMap
             {
                 tiles = new NativeArray<MapTileType>(n, Allocator.Temp),
-                mergeDegree = new NativeArray<byte>(n, Allocator.Temp),
-                chokepoint = new NativeArray<byte>(n, Allocator.Temp),
-                propLayerId = new NativeArray<byte>(n, Allocator.Temp),
+                // mergeDegree·chokepoint·propLayerId 는 은퇴했다 — 소비자가 없어
+                // map-view-deadcode-removal unit 2 가 GeneratedMap 에서 제거했다.
                 gridSize = new int2(w, h),
                 spawns = new NativeArray<int2>(1, Allocator.Temp),
                 goal = new int2(w - 1, 0),
