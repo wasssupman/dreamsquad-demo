@@ -160,7 +160,10 @@ namespace Wassup.Tests.PlayMode
             var pending = System.Activator.CreateInstance(pendingType);
             pendingType.GetField("entry").SetValue(pending,
                 new SpawnEntry { unitType = unit, spawnIndex = 0, triggerTimeSec = 0f });
-            pendingType.GetField("deckIndex").SetValue(pending, 0);
+            // waypoint-routing unit 7 이 `deckIndex` → `laneIndex` 로 개명했고 이 줄이 따라가지
+            // 못해 GetField 가 null 을 반환, NRE 로 테스트가 죽어 있었다(elite-enemy-tier unit 5
+            // 회귀 확인 중 발견). 이 테스트는 적 스폰 경로의 카나리아라 살려둔다.
+            pendingType.GetField("laneIndex").SetValue(pending, 0);
 
             var before = SnapshotAttackers();
             bridgeType.GetMethod("SpawnUnit", BindingFlags.NonPublic | BindingFlags.Instance)

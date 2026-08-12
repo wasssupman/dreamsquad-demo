@@ -169,6 +169,12 @@ namespace Wassup.Core
                 // hasDamageOutput 어느 축도 게이트가 아니다. 명세 자체의 유효성
                 // (pattern/barrel null)은 bake 가 최종 판정한다(위 주석의 분업).
                 case DcPayloadKind.EmitProjectilePattern:
+                // elite-enemy-tier unit 5 — 분열. host 의 공격 모델과 완전히 무관하다(사망
+                // 사건만 쓴다). UltimateLeap·SelfBlink 와 같은 처지로 여기 둔다: 실제로는
+                // 적 SO 전용이고 **슬롯조차 만들지 않는다**(브리지 킬 드레인이 SO 를 직독) —
+                // 그건 authoring 사실이지 적용성 판정이 아니다. 자식 SO 유효성은 bake 가
+                // 최종 판정한다(위 주석의 분업).
+                case DcPayloadKind.SplitOnDeath:
                     return DcRejectReason.None;
 
                 default:

@@ -107,6 +107,18 @@ namespace Wassup.Data
         // 병합(같은 출처 max · 교차 출처 합산)과 흡수는 DamageApplicationSystem 이 이미
         // 진영 중립으로 한다. append-only.
         GrantShield = 19,
+        // elite-enemy-tier unit 5 — 분열. `OnDeath` 트리거와만 쓴다(슬라임 엘리트).
+        // magnitude = 자식 수 · splitUnit = 자식 SO.
+        //
+        // ★**이 조합은 DcTriggerSlot 을 만들지 않는다.** 다른 payload 는 전부 슬롯을 굽지만
+        // 분열은 sim 이 쓸 곳이 없다 — 자식 스폰은 SO·머티리얼·뷰가 필요한 브리지 전용 행위이고,
+        // 브리지의 킬 드레인(DrainEnemyKilledEvents)이 `_enemyTypeByEntity` 로 죽은 적의
+        // AttackUnitData 를 **이미 손에 들고 있다**(유출 경로가 leakedType.stabilityDamage 를
+        // 읽는 것과 같은 방식). 그래서 인덱스 레지스트리·슬롯 필드·EnemyKilledEvent 필드·
+        // DamageApplicationSystem 스탬프·EnemyTriggerArmed(OnDeath) 개방이 전부 불필요하다.
+        // 초판 설계는 그 다섯을 다 만들려 했고 리뷰(H2)가 걷어냈다.
+        // append-only.
+        SplitOnDeath = 20,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -226,6 +238,15 @@ namespace Wassup.Data
         // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern 선례와 동일 — 금지
         // 대상은 Entities/Battle 타입이다. null = 요약 라인 생략(기존 카드 무변화).
         public StackModifierSO stackModifier;
+        // elite-enemy-tier unit 5 — SplitOnDeath 전용. 죽을 때 태어날 적 SO.
+        // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern·stackModifier 선례와 동일 —
+        // 금지 대상은 Entities/Battle 타입이고 AttackUnitData 는 같은 Wassup.Data 다.
+        // null = bake 가 loud 거절. 다른 kind 는 무시.
+        //
+        // ⚠ **자식 SO 의 nightmareMechanics 는 비워둔다.** 자식이 분열을 또 선언하면 무한
+        // 분열이 열린다 — 재귀 차단은 세대 카운터가 아니라 이 «자식은 메커닉이 없다» 는
+        // 데이터 구조가 담당한다(2단계 분열이 필요하면 중간 SO 를 하나 더 만든다).
+        public AttackUnitData splitUnit;
     }
 
     [Serializable]

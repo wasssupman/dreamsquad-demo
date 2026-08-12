@@ -2591,6 +2591,15 @@ namespace Wassup.Bridge
             // 웨이브/스폰/타이머는 실시간이 아니라 Battle-스케일 클럭을 따른다(정지·슬로우모 반영).
             _battleClock += TimeManager.Instance.DeltaTime(TimeDomain.Battle);
             float t = (float)_battleClock;
+            // elite-enemy-tier unit 5 — ★**QueueDueWaves 보다 먼저** 드레인한다. 분열 자식이
+            // 여기서 태어나기 때문이다. 뒤에 두면(원래 위치) 부모 슬라임이 마지막 생존 적일 때
+            // 자식이 생기기 전에 NoQueuedAttackersRemain() 이 참이 되어 다음 웨이브가 큐잉되고,
+            // CheckVictory 도 같은 술어라 **승리까지 선언될 수 있다** — 「엘리트를 죽이면 판이
+            // 빨라지는」 뒤집힌 인센티브가 된다. 이 드레인은 다른 드레인·스폰 루프에 의존하지
+            // 않는다(킬 버스트는 SpawnProjectile 직접 호출, 점수·각성 중계는 순수 가산,
+            // 등록부 정리와 표식 회수는 순서 무관). 자식은 ECB 가 아니라 직접 AddComponent 라
+            // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
+            DrainEnemyKilledEvents();
             QueueDueWaves(t);
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
@@ -2623,7 +2632,8 @@ namespace Wassup.Bridge
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
             DrainDamageNumberEvents();
-            DrainEnemyKilledEvents();
+            // DrainEnemyKilledEvents 는 이 자리에서 Update 최상단(QueueDueWaves 앞)으로 옮겼다
+            // — elite-enemy-tier unit 5. 되돌리면 분열이 웨이브 회전을 앞당긴다.
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
             DrainPatrolSpawnRequests(); // summon-patrol-defender unit 3 — 소환 요청 캐리어
@@ -3973,6 +3983,12 @@ namespace Wassup.Bridge
                     killedVisual = killedType;
                     _enemyTypeByEntity.Remove(evt.entity);
                 }
+
+                // elite-enemy-tier unit 5 — 분열(슬라임). **여기서 SO 를 직독한다** — 위 등록부가
+                // 죽은 적의 AttackUnitData 를 이미 들고 있어(파괴된 Entity 값도 키 비교는 유효)
+                // 슬롯·이벤트 필드·sim 스탬프가 하나도 필요 없다. 유출(골 도달)은
+                // EnemyKilledEvent 를 발화시키지 않으므로 «체력 소진 시에만 분열» 이 자동 성립한다.
+                SpawnSplitChildren(killedType, (Vector3)evt.position);
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward,
                     Wassup.Core.BoardSpace.ToView((Vector3)evt.position), killedVisual);
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
@@ -7619,6 +7635,22 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: None kind — skipped.");
                     continue;
                 }
+                // elite-enemy-tier unit 5 — 분열은 **의도적 무슬롯**이다. sim 이 쓸 값이 없고
+                // 실행은 브리지 킬 드레인이 SO 를 직독해서 한다(DcPayloadKind.SplitOnDeath 주석).
+                // 아래 화이트리스트에 걸리게 두면 슬라임을 스폰할 때마다 거짓 경고가 뜬다.
+                // 저작 검증만 여기서 하고 슬롯 생성을 건너뛴다.
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnDeath &&
+                    m.payload.kind == Wassup.Data.DcPayloadKind.SplitOnDeath)
+                {
+                    if (m.payload.splitUnit == null)
+                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
+                    else if (m.payload.magnitude < 1f)
+                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
+                    else if (m.payload.splitUnit.nightmareMechanics != null
+                             && m.payload.splitUnit.nightmareMechanics.Length > 0)
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: splitUnit '{m.payload.splitUnit.displayName}' 이 메커닉을 갖고 있다 — 분열이 재귀할 수 있다.");
+                    continue;
+                }
                 // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
                 // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
                 // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
@@ -7917,6 +7949,12 @@ namespace Wassup.Bridge
             };
         }
 
+        // elite-enemy-tier unit 5 — 레인 스폰은 **얇은 래퍼**다. 엔티티 조립 본문은 아래
+        // CreateEnemyEntity 가 갖고, 분열(DrainEnemyKilledEvents)이 그 본문을 재사용한다.
+        //
+        // ★가드 두 개(spawns 비었음 · laneIndex 범위 폴백)는 **래퍼에만** 둔다. 본문으로
+        // 내리면 스폰 지점이 없는 맵에서 분열이 조용히 막힌다 — 「위치 파라미터를 옵셔널로
+        // 하나 추가」안을 기각한 이유가 이것이다(두 경로의 가드가 한 몸이 된다).
         private void SpawnUnit(PendingSpawnEntry pending)
         {
             var entry = pending.entry;
@@ -7932,17 +7970,6 @@ namespace Wassup.Bridge
                 return;
             }
 
-            if (entry.unitType.visualMaterial == null)
-            {
-                Debug.LogWarning("[BattleBridge] visualMaterial null — entity will not render.");
-                return;
-            }
-
-            var entity = _em.CreateEntity();
-#if UNITY_EDITOR
-            _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
-#endif
-
             // waypoint-routing unit 7 — 큐잉 때 상세 펼침이 확정한 실제 lane을 그대로 소비한다.
             int spawnIndex = pending.laneIndex;
             if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
@@ -7956,26 +7983,46 @@ namespace Wassup.Bridge
             // enemy-spawn-positioning 1 — 셀 중심에 sub-cell 측면 오프셋(진행방향 수직)을 더해 스폰 겹침 해소.
             // |오프셋|<0.5·tileSize 라 유닛은 같은 셀에 머문다 → flow/goal/cell-trim 등 셀 단위 시스템 불변.
             spawnWorldPos += ComputeSpawnLateralOffset(spawn);
+
+            CreateEnemyEntity(entry.unitType, spawnWorldPos);
+        }
+
+        // 적 엔티티 조립의 단일 지점. 호출처 2곳 — 레인 스폰(위)과 분열(DrainEnemyKilledEvents).
+        // CreatePatrolEntity 처럼 병렬 복제하지 않은 이유: 분열 자식은 적의 **표준 세트 전부**
+        // (Health·FactionTag·KillScore·버퍼 6종·PathFollowState·AttackState·behavior·뷰 등록)가
+        // 필요해서, 복제하면 다음에 적 스폰에 뭔가 추가될 때 한쪽만 갱신된다.
+        private Entity CreateEnemyEntity(Wassup.Data.AttackUnitData unitType, Vector3 spawnWorldPos)
+        {
+            if (unitType.visualMaterial == null)
+            {
+                Debug.LogWarning("[BattleBridge] visualMaterial null — entity will not render.");
+                return Entity.Null;
+            }
+
+            var entity = _em.CreateEntity();
+#if UNITY_EDITOR
+            _em.SetName(entity, $"Enemy_{unitType.displayName}");
+#endif
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnWorldPos, quaternion.identity, CharacterVisualScale));
 
             _em.AddComponent<AttackUnitTag>(entity);
             // dreamcatcher-orb-dock unit 6 — 스폰 시 적 데이터 등록(킬 각성 피규어 스킨 소스).
-            _enemyTypeByEntity[entity] = entry.unitType;
-            _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
+            _enemyTypeByEntity[entity] = unitType;
+            _em.AddComponentData(entity, new Health { value = unitType.health, max = unitType.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
             // dreamcatcher-awakening-hand unit 1 — bake the death grant so
             // DamageApplicationSystem can stamp it into EnemyKilledEvent.
             // Unconditional attach (0 allowed) keeps the lookup branch-free.
             _em.AddComponentData(entity, new AwakeningReward
             {
-                value = Mathf.Max(0, entry.unitType.awakeningReward),
+                value = Mathf.Max(0, unitType.awakeningReward),
             });
             // battle-score-formula unit 2 — bake the kill score so
             // DamageApplicationSystem can stamp it into EnemyKilledEvent.
             // Unconditional attach (0 allowed) keeps the lookup branch-free.
             _em.AddComponentData(entity, new KillScore
             {
-                value = Mathf.Max(0, entry.unitType.killScore),
+                value = Mathf.Max(0, unitType.killScore),
             });
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
@@ -7993,18 +8040,18 @@ namespace Wassup.Bridge
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).
-            BakeNightmareMechanics(entity, entry.unitType);
+            BakeNightmareMechanics(entity, unitType);
 
             // enemy-behavior-components Unit 2 — attackMethod decides attack components.
             // Defensive (Critic C1): Melee/Projectile with empty outputs → walk-only
             // (no AttackState), never a damage-0 attacker. All hit effects come
             // through outputs[] (AttackOutputElement).
-            var attackMethod = entry.unitType.attackMethod;
-            bool hasAttackOutputs = entry.unitType.outputs != null && entry.unitType.outputs.Length > 0;
+            var attackMethod = unitType.attackMethod;
+            bool hasAttackOutputs = unitType.outputs != null && unitType.outputs.Length > 0;
             bool wantsAttack = attackMethod != Wassup.Data.EnemyAttackMethod.None;
             if (wantsAttack && !hasAttackOutputs)
             {
-                Debug.LogWarning($"[BattleBridge] {entry.unitType.displayName}: attackMethod={attackMethod} but outputs empty — baked as walk-only.");
+                Debug.LogWarning($"[BattleBridge] {unitType.displayName}: attackMethod={attackMethod} but outputs empty — baked as walk-only.");
                 wantsAttack = false;
             }
             // battle-structures unit 1 — 저작 타겟 마스크를 한 번 푼다. 아래 두 곳이 **같은
@@ -8014,36 +8061,36 @@ namespace Wassup.Bridge
             // 미저작(None=0)은 레거시 마스크로 폴백 — 저작자가 인스펙터에서 마스크를 비웠을
             // 때 그 적이 조용히 무장 해제되는 것을 막는다.
             int authoredTargetMask = Wassup.Battle.Combat.EnemyTargetDefaults.Resolve(
-                (int)entry.unitType.targetFactions);
+                (int)unitType.targetFactions);
 
             if (wantsAttack)
             {
                 _em.AddComponentData(entity, new AttackState
                 {
-                    range = entry.unitType.attackRange,
-                    cooldownDuration = entry.unitType.attackCooldown,
+                    range = unitType.attackRange,
+                    cooldownDuration = unitType.attackCooldown,
                     cooldownRemaining = 0f,
-                    attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
+                    attackTargetCount = Mathf.Max(1, unitType.attackTargetCount),
                     targetMask = authoredTargetMask,
-                    hitDelaySec = entry.unitType.hitDelaySec,
+                    hitDelaySec = unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
-                foreach (var output in entry.unitType.outputs)
+                foreach (var output in unitType.outputs)
                     outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
 
-                if (attackMethod == Wassup.Data.EnemyAttackMethod.Projectile && entry.unitType.projectile != null)
-                    BakeProjectileRef(entity, entry.unitType.projectile);   // 리뷰 A-M3 — 단일 베이크
+                if (attackMethod == Wassup.Data.EnemyAttackMethod.Projectile && unitType.projectile != null)
+                    BakeProjectileRef(entity, unitType.projectile);   // 리뷰 A-M3 — 단일 베이크
             }
 
             // aggro-targeting Unit 1 — taunt-attack profile for enemies with no
             // normal outputs (Runner/Swift) so they can hit the guardian while
             // aggroed. AggroAssignmentSystem activates it on aggro, strips on release.
-            if (entry.unitType.aggroAttackDamage > 0f)
+            if (unitType.aggroAttackDamage > 0f)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.AggroAttackProfile
                 {
-                    damage = entry.unitType.aggroAttackDamage,
-                    cooldown = entry.unitType.aggroAttackCooldown,
-                    range = entry.unitType.aggroAttackRange,
+                    damage = unitType.aggroAttackDamage,
+                    cooldown = unitType.aggroAttackCooldown,
+                    range = unitType.aggroAttackRange,
                 });
 
             // battle-structures unit 0 — goal-stability 의 walk-only 골 공격 grant 를 제거했다.
@@ -8058,9 +8105,9 @@ namespace Wassup.Bridge
             // pre-attached for FocusUntilDead (AttackSystem only writes its value).
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyBehavior
             {
-                targetMode = entry.unitType.targetMode,
+                targetMode = unitType.targetMode,
                 // enemy-ai-fsm — SO 의 engageMovement 직접 bake(값 세팅은 unit 4 SO 마이그레이션).
-                engageMovement = entry.unitType.engageMovement,
+                engageMovement = unitType.engageMovement,
             });
             // enemy-ai-fsm Unit 0 — FSM 상태 초기값. EnemyAiStateSystem(unit 1)이 매 틱 갱신.
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState
@@ -8069,33 +8116,33 @@ namespace Wassup.Bridge
             });
             // target-persistence unit 3 — 공격 가능한 **전 적**에게 부착한다(구 FocusUntilDead 한정).
             // Nearest 4종(Tanker·Debuffer·보스 2종)도 락을 받는다 — D4.
-            if (entry.unitType.targetMode != Wassup.Data.EnemyTargetMode.None)
+            if (unitType.targetMode != Wassup.Data.EnemyTargetMode.None)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
 
-            int priorityClass = entry.unitType.targetPriorityClass == Wassup.Data.DefenderClass.None
+            int priorityClass = unitType.targetPriorityClass == Wassup.Data.DefenderClass.None
                 ? -1
-                : (int)entry.unitType.targetPriorityClass;
+                : (int)unitType.targetPriorityClass;
             // 이 부착은 wantsAttack 게이트 **밖**이다 — 무기 없는 적(러너·스위프트)도 저작
             // 의도를 갖는다. 계약 2 의 도발 게이트가 이것을 읽는다.
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
             {
-                classMask = (int)entry.unitType.targetClassMask,
+                classMask = (int)unitType.targetClassMask,
                 priorityClass = priorityClass,
                 factionMask = authoredTargetMask,
             });
 
             _em.AddComponentData(entity, new PathFollowState
             {
-                speed = entry.unitType.moveSpeed,
+                speed = unitType.moveSpeed,
                 // traversal-layers unit 2 — 위와 같은 규약(스폰 시 1회 주입, Path 폴백).
-                traversalLayers = (byte)entry.unitType.EffectiveTraversalLayers,
+                traversalLayers = (byte)unitType.EffectiveTraversalLayers,
                 // continuous-agent-movement unit 3 — 반지름은 월드 단위로 넘긴다(sim 은 타일을 모른다).
                 radius = agentRadiusTiles * tileSize,
             });
 
             // waypoint-routing unit 3 — 저작 opt-in. 유효한 경로만 Movement 상태를 붙인다.
             // 실패는 골 직행으로 안전 폴백하되, 사람에게 보이는 경고는 스폰 1회만 남긴다.
-            int waypointPathIndex = entry.unitType.waypointPathIndex;
+            int waypointPathIndex = unitType.waypointPathIndex;
             if (waypointPathIndex >= 0)
             {
                 bool validPath = waypointPathIndex < _generatedMap.WaypointPathCount;
@@ -8110,25 +8157,25 @@ namespace Wassup.Bridge
                 else
                 {
                     Debug.LogWarning(
-                        $"[BattleBridge] {entry.unitType.displayName}: waypointPathIndex={waypointPathIndex} is invalid "
+                        $"[BattleBridge] {unitType.displayName}: waypointPathIndex={waypointPathIndex} is invalid "
                         + $"for map paths={_generatedMap.WaypointPathCount} — using goal route.", this);
                 }
             }
 
             EnsureMonoViewPools();
             bool spineSpawned = spineUnitPool != null &&
-                                spineUnitPool.TrySpawn(entry.unitType, null, entity, spawnWorldPos, "SpineEnemy", out _);
+                                spineUnitPool.TrySpawn(unitType, null, entity, spawnWorldPos, "SpineEnemy", out _);
             if (!spineSpawned)
             {
-                var mesh = entry.unitType.visualMesh != null
-                    ? entry.unitType.visualMesh
+                var mesh = unitType.visualMesh != null
+                    ? unitType.visualMesh
                     : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
                 enemyViewPool.TrySpawn(
-                    entry.unitType.displayName,
+                    unitType.displayName,
                     entity,
                     spawnWorldPos,
                     mesh,
-                    CreateAttackUnitRuntimeMaterial(entry.unitType.visualMaterial),
+                    CreateAttackUnitRuntimeMaterial(unitType.visualMaterial),
                     CharacterVisualScale,
                     out _);
             }
@@ -8149,6 +8196,48 @@ namespace Wassup.Bridge
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
+
+            return entity;
+        }
+
+        // elite-enemy-tier unit 5 — 분열 상한. 밸런스 값이 아니라 **저작 사고 방어선**이다
+        // (magnitude 에 오타로 100 이 들어가면 한 마리 죽음이 판을 끝낸다).
+        private const int MaxSplitChildren = 8;
+
+        // 죽은 적의 SO 가 `OnDeath × SplitOnDeath` 를 선언했으면 그 자리에 자식을 스폰한다.
+        // 호출처 1곳(DrainEnemyKilledEvents) — 유출 경로는 이 이벤트를 안 타므로 «체력 소진
+        // 시에만 분열» 이 코드 추가 없이 성립한다.
+        private void SpawnSplitChildren(Wassup.Data.AttackUnitData killedType, Vector3 deathWorldPos)
+        {
+            var mechanics = killedType?.nightmareMechanics;
+            if (mechanics == null || mechanics.Length == 0) return;
+
+            for (int i = 0; i < mechanics.Length; i++)
+            {
+                var m = mechanics[i];
+                if (m.trigger.kind != Wassup.Data.DcTriggerKind.OnDeath ||
+                    m.payload.kind != Wassup.Data.DcPayloadKind.SplitOnDeath) continue;
+
+                var child = m.payload.splitUnit;
+                // bake 가 이미 loud 거절했으므로 여기서는 조용히 빠진다(같은 에러 2중 스팸 방지).
+                if (child == null) return;
+
+                int count = Mathf.Clamp((int)m.payload.magnitude, 0, MaxSplitChildren);
+                if (count <= 0) return;
+
+                // 결정론 — 인덱스 기반 고정 배치다(RNG 금지: 비동기 토너먼트 양측 동일 시뮬).
+                // 반경은 0.5 타일 미만이라 자식들은 부모와 **같은 셀**에 남는다 → flow/goal/
+                // cell-trim 등 셀 단위 시스템이 불변이고, 겹침은 AgentSeparationSystem 이 푼다
+                // (ComputeSpawnLateralOffset 과 같은 원리).
+                float radius = tileSize * 0.25f;
+                for (int c = 0; c < count; c++)
+                {
+                    float angle = (Mathf.PI * 2f * c) / count;
+                    var offset = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                    CreateEnemyEntity(child, deathWorldPos + offset);
+                }
+                return; // 첫 SplitOnDeath 슬롯만 (v1) — OnDeath 폭발 선례와 같은 규약
+            }
         }
 
         private Material CreateAttackUnitRuntimeMaterial(Material source)
