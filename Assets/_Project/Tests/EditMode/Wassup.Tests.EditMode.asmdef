@@ -12,6 +12,8 @@
         "Unity.Transforms",
         "Unity.Burst",
         "Unity.TextMeshPro",
+        "spine-unity",
+        "spine-csharp",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

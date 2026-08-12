@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Spine;
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -82,6 +83,12 @@ namespace Wassup.Core
         // Authored skin per runner, captured before any squad injection so the
         // no-squad fallback can restore the generic look (data-driven, no literal).
         private string[] _runnerDefaultSkins;
+        // 저작된 리그. unit 8 이후 러너의 skeletonDataAsset 이 유닛마다 교체되므로,
+        // 스킨만 되돌리면 «마지막 유닛 리그 + 저작 스킨» 이라는 없는 조합이 된다
+        // (고유 리그엔 그 스킨이 없어 FindSkin 이 null → 복원이 조용히 no-op).
+        // SceneTransition 은 DontDestroyOnLoad 라 그 상태가 앱 수명 동안 남는다.
+        private SkeletonDataAsset[] _runnerDefaultDataAssets;
+        private Vector3[] _runnerBaseScales;   // 저작 스케일(임시 리그 보정의 기준)
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -129,8 +136,27 @@ namespace Wassup.Core
         {
             if (loadingRunners == null) return;
             _runnerDefaultSkins = new string[loadingRunners.Length];
+            _runnerDefaultDataAssets = new SkeletonDataAsset[loadingRunners.Length];
+            _runnerBaseScales = new Vector3[loadingRunners.Length];
             for (int i = 0; i < loadingRunners.Length; i++)
+            {
                 _runnerDefaultSkins[i] = loadingRunners[i] != null ? loadingRunners[i].InitialSkinName : null;
+                _runnerDefaultDataAssets[i] = loadingRunners[i] != null ? loadingRunners[i].skeletonDataAsset : null;
+                // 저작된 스케일을 1회 캡처한다 — 보정을 매번 곱하면 로드마다 누적된다.
+                _runnerBaseScales[i] = loadingRunners[i] != null
+                    ? loadingRunners[i].transform.localScale : Vector3.one;
+            }
+        }
+
+        // 임시 리그 크기 보정(DefenderUnitData.outgameScaleMul 주석 참조). 리그가 정규화되면
+        // 이 메서드와 필드를 함께 지운다. unit 이 null 이면 저작값 그대로.
+        private void ApplyRunnerScale(int index, DefenderUnitData unit)
+        {
+            if (_runnerBaseScales == null || index >= _runnerBaseScales.Length) return;
+            var runner = loadingRunners[index];
+            if (runner == null) return;
+            float mul = unit != null ? Mathf.Max(0.01f, unit.outgameScaleMul) : 1f;
+            runner.transform.localScale = _runnerBaseScales[index] * mul;
         }
 
         private void OnDestroy()
@@ -240,11 +266,13 @@ namespace Wassup.Core
                 if (i < units.Count)
                 {
                     ApplyRunnerSkin(runner, units[i]);
+                    ApplyRunnerScale(i, units[i]);
                     runner.gameObject.SetActive(true);
                 }
                 else if (fallback)
                 {
                     RestoreRunnerDefault(runner, i);
+                    ApplyRunnerScale(i, null);   // 저작값 복귀
                     runner.gameObject.SetActive(true);
                 }
                 else
@@ -287,6 +315,14 @@ namespace Wassup.Core
             var dataAsset = unit.SpineSkeletonDataAsset;
             if (dataAsset != null && runner.skeletonDataAsset != dataAsset)
             {
+                // ⚠ 스켈레톤을 바꾸기 **전에** 초기 스킨을 그 유닛 것으로 바꿔야 한다.
+                // Initialize 안의 AssignInitialSkin 이 씬에 저작된 이름(러너는 'full_skins')을
+                // 새 스켈레톤에 적용하는데, 고유 리그(CH1 등)엔 그 스킨이 없어 SetSkin 이
+                // ArgumentException 을 던지고 씬 전환 코루틴이 통째로 죽는다.
+                // SpineUnitView.Spawn 과 **같은 관용구** — 'default' 는 AssignInitialSkin 이
+                // 건너뛰므로 스킨이 하나뿐인 리그에서도 안전하다.
+                runner.InitialSkinName =
+                    string.IsNullOrEmpty(unit.SpineSkinName) ? "default" : unit.SpineSkinName;
                 runner.skeletonDataAsset = dataAsset;
                 runner.Initialize(true);
             }
@@ -296,11 +332,21 @@ namespace Wassup.Core
             }
             if (runner.Skeleton != null)
                 SpineCombinedSkinCache.Apply(runner.Skeleton, unit);
-            PlayRun(runner);
+            PlayRun(runner, unit);
         }
 
         private void RestoreRunnerDefault(SkeletonGraphic runner, int index)
         {
+            // 리그부터 되돌린다 — 직전 전환이 고유 리그를 꽂아 뒀을 수 있다.
+            var authoredData = _runnerDefaultDataAssets != null && index < _runnerDefaultDataAssets.Length
+                ? _runnerDefaultDataAssets[index] : null;
+            if (authoredData != null && runner.skeletonDataAsset != authoredData)
+            {
+                runner.InitialSkinName = _runnerDefaultSkins != null && index < _runnerDefaultSkins.Length
+                    ? _runnerDefaultSkins[index] : null;
+                runner.skeletonDataAsset = authoredData;
+                runner.Initialize(true);
+            }
             if (runner.Skeleton == null) runner.Initialize(false);
             string defaultSkin = _runnerDefaultSkins != null && index < _runnerDefaultSkins.Length
                 ? _runnerDefaultSkins[index] : null;
@@ -317,11 +363,36 @@ namespace Wassup.Core
         }
 
         // Loop the run animation, already in motion before the runner is revealed.
-        private void PlayRun(SkeletonGraphic runner)
+        // unit 은 null 일 수 있다(fallback 경로) — 그 땐 저작된 이름만 본다.
+        private void PlayRun(SkeletonGraphic runner, DefenderUnitData unit = null)
         {
             var animation = runner.Animation as SkeletonAnimation;
-            if (animation != null && animation.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
-                animation.AnimationState.SetAnimation(0, loadingAnimation, true);
+            if (animation == null || animation.AnimationState == null || runner.Skeleton == null) return;
+            // ⚠ AnimationState.SetAnimation(string) 은 애니가 없으면 **예외를 던진다**.
+            // 러너는 이제 유닛마다 다른 리그를 쓸 수 있어(고유 스파인) 'Run' 이 없을 수 있다.
+            string resolved = ResolveRunnerAnimation(runner.Skeleton.Data, loadingAnimation, unit);
+            if (!string.IsNullOrEmpty(resolved))
+                animation.AnimationState.SetAnimation(0, resolved, true);
+        }
+
+        // 러너가 실제로 재생할 수 있는 애니 이름. 저작된 달리기 → 유닛의 걷기 → 유닛의 대기 →
+        // 관례 이름 순. 하나도 없으면 null 이고 호출측은 애니를 걸지 않는다(setup pose 유지).
+        // 달릴 줄 모르는 리그(예: 소환사 CH1)는 서 있는 채로 나온다 — 로딩 화면이 비거나
+        // 씬 전환이 죽는 것보다 낫다.
+        internal static string ResolveRunnerAnimation(SkeletonData data, string authored, ISpineUnitVisualData unit)
+        {
+            if (data == null) return null;
+            if (!string.IsNullOrEmpty(authored) && data.FindAnimation(authored) != null) return authored;
+            if (unit != null)
+            {
+                if (!string.IsNullOrEmpty(unit.SpineWalkAnimation) && data.FindAnimation(unit.SpineWalkAnimation) != null)
+                    return unit.SpineWalkAnimation;
+                if (!string.IsNullOrEmpty(unit.SpineIdleAnimation) && data.FindAnimation(unit.SpineIdleAnimation) != null)
+                    return unit.SpineIdleAnimation;
+            }
+            if (data.FindAnimation("idle") != null) return "idle";
+            if (data.FindAnimation("Idle") != null) return "Idle";
+            return null;
         }
 
         // 계약 #7 — all cover motion is unscaled, independent of TimeManager / pause.

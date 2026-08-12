@@ -26,6 +26,8 @@ namespace Wassup.UI
         [FormerlySerializedAs("spineView")]
         [SerializeField] private SkeletonAnimation spineAnimation;
         [SerializeField] private SkeletonGraphic spineGraphic;
+        private Vector3 _spineBaseScale = Vector3.one;   // 저작 스케일(임시 리그 보정의 기준)
+        private bool _spineBaseCaptured;
         [SerializeField] private Image portraitFallback;      // shown when no skeleton
         [SerializeField] private Image rarityFrame;           // panel-edge glow tinted by rarity
         [SerializeField] private RectTransform cardRoot;      // procedural card children go here
@@ -124,8 +126,21 @@ namespace Wassup.UI
             if (graphic != null) graphic.gameObject.SetActive(hasSkeleton);
             if (hasSkeleton)
             {
+                if (!_spineBaseCaptured)
+                {
+                    // 저작 스케일 1회 캡처 — 보정을 매번 곱하면 유닛을 넘길 때마다 누적된다.
+                    _spineBaseScale = graphic.rectTransform.localScale;
+                    _spineBaseCaptured = true;
+                }
                 if (graphic.skeletonDataAsset != dataAsset)
                 {
+                    // 초기 스킨은 **그 유닛 것**이어야 한다. 씬에 저작된 이름을 다른 리그에 적용하면
+                    // SetSkin 이 ArgumentException 을 던진다(SkeletonRenderer.Common.cs:412-415).
+                    // SpineUnitView.Spawn·SceneTransition 과 같은 관용구.
+                    // 초기 스킨은 렌더러(graphic)가 소유한다 — 4.3 의 분리된 애니메이션 컴포넌트
+                    // 구조에서 SkeletonAnimation 은 이 필드를 갖지 않는다.
+                    graphic.InitialSkinName =
+                        string.IsNullOrEmpty(u.SpineSkinName) ? "default" : u.SpineSkinName;
                     animation.SkeletonDataAsset = dataAsset;
                     animation.Initialize(true);
                 }
@@ -135,6 +150,8 @@ namespace Wassup.UI
                 }
                 if (graphic.Skeleton != null)
                     SpineCombinedSkinCache.Apply(graphic.Skeleton, u);
+                // 임시 리그 크기 보정(DefenderUnitData.outgameScaleMul) — 에셋 정규화 후 제거.
+                graphic.rectTransform.localScale = _spineBaseScale * Mathf.Max(0.01f, u.outgameScaleMul);
                 PlayIdle();
             }
 
