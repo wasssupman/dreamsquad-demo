@@ -1328,11 +1328,22 @@ namespace Wassup.Battle.Combat
                         {
                             // ── Outputs path ────────────────────────────────────────────────
                             // Collect hit targets (same AoE logic as legacy melee path).
-                            // aggro-targeting Unit 8 — sticky enemies hit only the guardian:
-                            // force single-target so the AoE follow-up can't pull in other defenders.
-                            int desiredCount = aggroLookup.HasComponent(attackerEntity)
-                                ? 1
-                                : math.max(1, attack.ValueRO.attackTargetCount);
+                            // elite-whirlpot unit 0 — ★**어그로는 primary 선정만 지배한다.**
+                            // 예전엔 `aggro-targeting` unit 8(MEDIUM 2)이 어그로된 적의
+                            // `attackTargetCount` 를 1 로 접었다. 근거는 「sticky 적은 가디언만
+                            // 때린다」였지만, 계약 4 가 말한 것은 «타겟»(**단수**) = primary 이고
+                            // 광역 폭까지 줄인 것은 그 확장 해석이었다 — 테스트도 없었다.
+                            //
+                            // 그 확장이 만든 결과는 도발과 무관했다: **어그로가 적의 공격 «형태» 를
+                            // 바꿨다.** 광역 적이 붙잡히면 단일 적이 되어 안 붙잡았을 때보다 **덜**
+                            // 때렸다(숨은 방어 버프). 폭은 이제 어그로와 무관하다.
+                            //
+                            // ⚠ **sticky primary override(unit 5)는 그대로다** — 어그로면 bestTarget
+                            // = 링크 가디언이고 사거리 밖이면 미발사다. 그 배타성은 load-bearing:
+                            // 「가디언 없으면 최근접」으로 풀면, 가디언에게 걸어가는 도중 옆 방어유닛이
+                            // 사거리에 들어오는 순간 `EngageMovement.Halt` 로 멈춰 싸우고 가디언에
+                            // **영영 도착하지 않는다.** 고정 = `AggroAoeWidthTests`.
+                            int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
                             var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
                             int hitCount = 0;
 

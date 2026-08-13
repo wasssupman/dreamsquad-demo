@@ -22,8 +22,20 @@ Codex ECS 리뷰(2026-06-18) 지적 반영. 기능 버그(마지막 가디언 �
   - strip: `TauntAttackGranted`, `WithNone<Aggroed>` → 위 3개 제거.
 - `AggroAssignmentSystem` 에서 도발 grant/strip 로직·관련 lookup·`using Wassup.Battle.Combat` 제거. Effects 는 `Aggroed`/`AggroProvider` 만 쓴다.
 
-### MEDIUM 2 — sticky AoE 보조타겟 차단
-`AttackSystem` outputs melee 경로의 `desiredCount` 를 어그로 적이면 1로 강제.
+### MEDIUM 2 — sticky AoE 보조타겟 차단 → **철회됨 (2026-08-14)**
+~~`AttackSystem` outputs melee 경로의 `desiredCount` 를 어그로 적이면 1로 강제.~~
+
+> **`elite-whirlpot` unit 0 이 이 항목을 되돌렸다.** 근거 셋:
+> ① 계약 4 가 말한 것은 «**타겟**»(단수) = primary 이고, 광역 **폭**까지 줄인 것은 확장 해석이었다.
+> ② 이 항목은 **완료 기준에 테스트가 없었다** — 어그로 테스트 4종에 `attackTargetCount` 가
+> 등장하지 않아 2년 가까이 어떤 그물에도 걸리지 않았다.
+> ③ 실제 효과가 도발과 무관했다: **어그로가 적의 공격 «형태» 를 바꿨다.** 광역 적이 붙잡히면
+> 단일 적이 되어 **안 붙잡았을 때보다 덜** 때렸다 — 도발의 대가가 아니라 숨은 방어 버프다.
+>
+> 지금은 폭이 어그로와 무관하고, primary override(unit 5)만 남는다. 이번엔 두 축을 각각
+> `AggroAoeWidthTests` 가 고정한다(폭은 안 접힌다 / 가디언 사거리 밖이면 미발사).
+> 영향받은 기존 콘텐츠: `Enemy_Basic`·`Enemy_Tanker`·`Enemy_WaypointBasic`·
+> `Enemy_WaypointBasicAlt`(count 2) · `Enemy_Boss_Jjangssen`(count 3).
 
 ### MEDIUM 1 — 해제→재획득 1프레임 지연: **의도된 동작**으로 문서화(아래).
 
