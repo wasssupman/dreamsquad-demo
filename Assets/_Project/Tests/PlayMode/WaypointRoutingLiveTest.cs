@@ -322,10 +322,12 @@ namespace Wassup.Tests.PlayMode
         // Duel 은 풀 본편이 아니라 dev 슬롯(6+3=9)이고, dev 엔트리의 deck 이 null 이면 브리지의
         // 직렬화 deck(구 Deck_WaveA — 컨셉 0·보스 0·적 9종)으로 폴백한다. 실제로 그 상태였다.
         // 여기서 재는 것은 «맵이 뜬다» 가 아니라 **그 판의 웨이브가 현행 세대인가** 다.
+        // 풀 6 + dev[3]=Duel(9) · dev[4]=Ford(10) · dev[5]=Isle(11) — 공성 3종.
         [UnityTest]
-        public IEnumerator DuelDevSlot_RunsCurrentGenerationWaves()
+        public IEnumerator SiegeDevSlot_RunsCurrentGenerationWaves(
+            [Values(9, 10, 11)] int slot)
         {
-            DevMapOverride.Index = 9;   // 풀 6 + dev[3] = Duel
+            DevMapOverride.Index = slot;
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
@@ -336,7 +338,7 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             // 공성 파생 — 적 마음 셀이 유일한 스폰이다(레인 1개라 레인 경로 축은 N/A).
-            Assert.IsTrue(bridge.HasGeneratedMap, "Duel 문서가 dev 슬롯 9 로 해석돼야 한다");
+            Assert.IsTrue(bridge.HasGeneratedMap, $"공성 문서가 dev 슬롯 {slot} 로 해석돼야 한다");
 
             bridge.StartBattle();
             yield return null;
@@ -344,7 +346,7 @@ namespace Wassup.Tests.PlayMode
             // 컨셉 라벨이 붙어 있으면 waveConceptPool 이 실제로 돌았다는 뜻이다.
             // 빈 문자열이면 컨셉 없는 덱(WaveA 폴백)이다 — 이 판별이 이 테스트의 핵심이다.
             Assert.IsFalse(string.IsNullOrEmpty(bridge.NextWaveConceptLabel),
-                "웨이브에 컨셉 라벨이 없다 — Duel 이 컨셉 풀 없는 덱(Deck_WaveA 폴백)으로 돌고 있다");
+                $"슬롯 {slot}: 웨이브에 컨셉 라벨이 없다 — 컨셉 풀 없는 덱(Deck_WaveA 폴백)으로 돌고 있다");
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             int spawned = 0;
