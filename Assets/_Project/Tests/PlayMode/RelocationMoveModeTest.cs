@@ -31,6 +31,69 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
+        // 버그 재현 — 사용자 문장: "배치된 유닛의 **초상화**를 D&D 시도하면 바로 유닛 선택 상태로
+        // 넘어간다". 표면은 보드 타일이 아니라 **트레이 슬롯**이다.
+        //
+        // defender-board-limit 계약 5 가 소진 슬롯의 탭·드래그를 **둘 다** "판 위 그 유닛 선택" 으로
+        // 묶어놨다. 재배치에 대가가 없던 시절엔 두 제스처의 속마음이 하나였기 때문인데, 이제
+        // 드래그에는 "저기로 옮긴다"라는 자기 의미가 생겼다. 여기서 가른다:
+        //   탭   = 데려가기(종전)
+        //   드래그 = 집어들기(이동모드)
+        [UnityTest]
+        public IEnumerator ExhaustedSlot_Drag_PicksUpUnit_Tap_GoesToUnit()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var reloc = Object.FindObjectOfType<DefenderRelocationController>();
+            reloc.enabled = false; // 진입만 본다 — 목적지 제스처는 이 테스트 소관이 아니다
+
+            var fast = ScriptableObject.CreateInstance<RelocationSettings>();
+            fast.entryCooldownSeconds = 0f;
+            fast.moveModeTimeoutSeconds = 30f;
+            SetField(reloc, "settings", fast);
+
+            var cat = FindCatalog();
+            var unit = cat.ById("ranger");
+            Assert.AreEqual(1, unit.EffectiveMaxOnBoard, "상한 1 이어야 1기 배치로 슬롯이 소진된다");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            // 트레이 슬롯은 GameManager 의 페이즈 전환이 만든다(bridge.BeginPlacement 로는 안 생긴다).
+            gm.SetPhase(GamePhase.Placement);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender — 이제 슬롯이 소진 상태");
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            var slot = FindSlotFor(unit);
+            Assert.IsNotNull(slot, "레인저 트레이 슬롯");
+
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            Assert.IsNotNull(es, "EventSystem");
+            var ped = new UnityEngine.EventSystems.PointerEventData(es)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(null, slot.transform.position),
+            };
+
+            // ── 탭: 종전대로 데려가기 — 이동모드가 아니다
+            slot.OnPointerClick(ped);
+            Assert.IsFalse(reloc.InMoveMode, "탭은 집어들기가 아니다(데려가기)");
+
+            // ── 드래그: 집어든다
+            slot.OnBeginDrag(ped);
+            Assert.IsTrue(reloc.InMoveMode, "소진 슬롯을 끌면 이동모드로 들어간다");
+            Assert.AreEqual(SoleCell(bridge), reloc.MoveSourceCell, "집어든 대상은 판 위 그 유닛이다");
+
+            reloc.CancelMoveMode();
+            Object.Destroy(fast);
+        }
+
         // unit 10 — 코스트가 모자라면 이동모드에 **들어가지 못한다**. 들여보내면 슬로모까지 걸고
         // 아무 칸에도 못 놓는 상태가 되어, 보드 밖 탭이나 타임아웃으로만 빠져나올 수 있다.
         // 선택 패널의 "이동" 버튼 잠금이 이 술어를 그대로 읽는다.
@@ -224,6 +287,17 @@ namespace Wassup.Tests.PlayMode
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
+
+        // 트레이 슬롯은 런타임 생성이라 이름으로 못 찾는다 — 바인딩된 유닛으로 고른다.
+        private static DefenderDragSlot FindSlotFor(DefenderUnitData unit)
+        {
+            var f = typeof(DefenderDragSlot).GetField("_unitData",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, "_unitData seam");
+            foreach (var s in Object.FindObjectsOfType<DefenderDragSlot>(true))
+                if (ReferenceEquals(f.GetValue(s), unit)) return s;
+            return null;
+        }
 
         private static void Step(DefenderRelocationController c, bool pressStarted, bool pressed, Vector2 screen, float dt)
         {
