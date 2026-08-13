@@ -268,6 +268,49 @@ namespace Wassup.Presentation
             Destroy(go, lifetime);
         }
 
+        // elite-whirlpot unit 1 — 유닛별 «공격 광역» VFX(팽이 회오리). 브레스와 셋이 다르다:
+        //   ① 프리팹이 **인자**다 — 전역 슬롯이 아니라 적 SO 가 소유한다(유닛별 opt-in 이 계약).
+        //   ② 방향이 없다 — 자기중심이라 회전도, 전방 오프셋도 없다.
+        //   ③ `ConfigureOneShot` 을 **부르지 않는다.** 그건 루프 프리팹을 «펑» 한 번으로 바꾸는
+        //      함수인데 여기 필요한 것은 정반대다 — 회전은 «계속» 이어야 한다.
+        //
+        // 지속감은 «수명 이어붙이기» 로 만든다: 방출을 루프로 두고 `sustainSeconds`(= 이번 공격의
+        // 실발사 주기 × 여유)에 파괴하면, 다음 pulse 가 그 전에 겹쳐 들어와 끊김이 없다. 공격이
+        // 멈추면 마지막 인스턴스가 만료돼 저절로 사라진다 — 채널링 상태를 만들지 않는 것이
+        // 요점이다(elite-whirlpot 계약 6). 공유 에셋은 건드리지 않는다(인스턴스 단위 변이).
+        public void SpawnUnitAttackAoe(GameObject prefab, Vector3 originView,
+                                       float radiusTiles, float scalePerTile, float sustainSeconds)
+        {
+            // 미할당이 정상이다 — 적 17종 중 대다수가 이 슬롯을 비워 둔다(AttackUnitData 주석).
+            // 그래서 브레스와 달리 경고하지 않는다.
+            if (prefab == null) return;
+
+            var go = Instantiate(prefab, originView, Quaternion.identity, transform);
+
+            float s = Mathf.Max(0.05f, radiusTiles * Mathf.Max(0.01f, scalePerTile));
+            go.transform.localScale = Vector3.one * s;
+
+            // 회오리는 시전자를 **감싸는** 것이라 유닛 «아래» 대역이다(브레스와 반대 — 그건 앞으로
+            // 뿜는 것이라 위여야 한다). 프리팹 내부 상대 순서는 더해서 보존한다.
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].sortingOrder += BoardSortOrder.UnitAttackAoeOrder;
+
+            // 방출은 루프여야 sustainSeconds 내내 채워진다. 프리팹이 단발로 저작돼 있으면
+            // 주기보다 먼저 말라 회전이 깜빡이므로 여기서 보장한다.
+            var systems = go.GetComponentsInChildren<ParticleSystem>(includeInactive: true);
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var main = systems[i].main;
+                main.loop = true;
+                main.playOnAwake = true;
+                systems[i].Clear(true);
+                systems[i].Play(true);
+            }
+
+            Destroy(go, Mathf.Max(0.1f, sustainSeconds));
+        }
+
         // 루프형 파티클 프리팹을 스폰 인스턴스 단위로 단발화한다. 각 ParticleSystem 의
         // loop 를 끄고 rateOverTime→t0 burst 로 치환해 "펑 터지고 페이드"로 만든 뒤,
         // 자가 파괴 시점(최대 duration+startLifetime)을 반환한다. 공유 에셋은 건드리지 않는다.

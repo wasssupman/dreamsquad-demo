@@ -3840,6 +3840,11 @@ namespace Wassup.Bridge
         // (attack VFX prefab, cast VFX) are gated by FindDefenderData — when
         // the attacker is an enemy, FindDefenderData returns null and only
         // the Spine notify runs.
+        // elite-whirlpot unit 1 — 회오리 인스턴스를 공격 주기보다 이만큼 길게 살린다.
+        // 1.0 이면 다음 pulse 와 정확히 맞닿아 프레임 단위로 빈틈이 생긴다. 여유가 클수록
+        // 동시 인스턴스가 늘어나므로(1.3 = 최대 2개) 겹침 비용과 연속성의 타협점이다.
+        private const float AttackAoeVfxSustainSlack = 1.3f;
+
         private void DrainUnitAttackVisualEvents()
         {
             if (!_unitAttackVisualQueue.IsCreated) return;
@@ -3863,6 +3868,34 @@ namespace Wassup.Bridge
                 }
 
                 spineUnitPool?.NotifyAttack(evt.attacker, targetWorld, evt.attackAnimPeriod);
+
+                // elite-whirlpot unit 1 — 적의 «유닛별 공격 광역» VFX(팽이 회오리). 이 분기는
+                // 반드시 아래 `defData == null → continue` **앞**에 있어야 한다 — 그 아래는 전부
+                // 방어유닛 전용이라 적은 여기서 빠져나간다.
+                //
+                // SO 직독은 분열이 킬 드레인에서 쓴 것과 같은 수법이다: 브리지가 이미
+                // `_enemyTypeByEntity` 로 적의 AttackUnitData 를 손에 들고 있으므로 **sim 이벤트에
+                // 필드를 늘리지 않는다**(신규 채널 0 · 신규 필드 0).
+                //
+                // 「회오리를 갖는가」는 **프리팹 유무**가 결정한다 — id 분기도, attackTargetCount
+                // 판정도 아니다(AttackUnitData 주석의 계약).
+                if (vfxSpawner != null
+                    && _enemyTypeByEntity.TryGetValue(evt.attacker, out var atkType)
+                    && atkType != null && atkType.attackVfxPrefab != null
+                    && ResolveBeamViewPos(evt.attacker, useAnchor: false, out var aoeOriginView))
+                {
+                    // 지속감은 이번 공격의 **실발사 주기**에서 온다. `attackAnimPeriod` 는
+                    // attackSpeedMul 까지 반영된 값이라 공속이 바뀌어도 회오리가 따라간다 —
+                    // 상수로 박으면 버프 상태에서 깜빡인다(빔 세션 TTL 과 같은 근거).
+                    float period = evt.attackAnimPeriod > 0f
+                        ? evt.attackAnimPeriod
+                        : Mathf.Max(0.1f, atkType.attackCooldown);
+                    vfxSpawner.SpawnUnitAttackAoe(
+                        atkType.attackVfxPrefab, aoeOriginView,
+                        radiusTiles: atkType.attackRange,
+                        scalePerTile: atkType.attackVfxScalePerTile,
+                        sustainSeconds: period * AttackAoeVfxSustainSlack);
+                }
 
                 var defData = FindDefenderData(evt.attacker);
                 if (defData == null) continue;

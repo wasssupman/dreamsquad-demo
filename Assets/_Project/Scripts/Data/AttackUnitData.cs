@@ -111,6 +111,23 @@ namespace Wassup.Data
         [Header("Attack Outputs")]
         public AttackOutput[] outputs;
 
+        // elite-whirlpot unit 1 — 적의 «유닛별 공격 VFX». `DefenderUnitData.attackVfxPrefab`
+        // 대칭이며, 적 쪽에는 지금까지 이 축이 아예 없었다(적 연출은 Spine 애니와 투사체뿐).
+        //
+        // ★**어느 적이 이 연출을 갖는지는 이 슬롯의 유무가 결정한다.** id·이름 분기 금지이고
+        // `attackTargetCount > 1` 로도 판정하지 않는다 — 그러면 Basic·Tanker·짱쎈까지 회오리가
+        // 생긴다. 빔 유닛 판정("빔 유닛인가는 SO 의 프리팹 유무가 결정한다")과 같은 규율.
+        //
+        // 미할당이 **기본값이자 정상**이므로(적 17종 전부) 브리지는 경고 없이 넘어간다.
+        // 브레스의 「빈 슬롯 경고」와 다른 이유: 그쪽은 전역 슬롯 하나여서 비어 있으면 곧
+        // 버그이지만, 이쪽은 유닛별 opt-in 이라 비어 있는 것이 대다수의 정상 상태다.
+        [Header("Attack VFX (optional — 슬롯 유무가 곧 opt-in)")]
+        public GameObject attackVfxPrefab;
+        // **타일당** 스케일 — 최종 = 이 값 × `attackRange`. 광역 반경이 `attackRange` 이고
+        // 그게 튜닝 knob 이라, 고정 스케일로 저작하면 반경을 바꿀 때 연출이 조용히 어긋난다.
+        // `VfxSpawner.areaBreathScalePerTile` 이 같은 벤 자리에서 나온 같은 관례다.
+        public float attackVfxScalePerTile = 1f;
+
         public Mesh visualMesh;
         public Material visualMaterial;
 

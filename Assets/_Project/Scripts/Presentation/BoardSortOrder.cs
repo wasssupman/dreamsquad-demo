@@ -60,6 +60,14 @@ namespace Wassup.Presentation
         // 프리팹 내부의 상대 순서는 이 값에 **더해서** 보존한다(빔과 같은 규약).
         public const int AreaBreathOrder = 14000;
 
+        // elite-whirlpot unit 1 — 유닛별 공격 광역 VFX(팽이 회오리). 브레스와 **반대 대역**이다.
+        // 브레스는 시전자 «앞» 으로 뿜는 것이라 유닛 위여야 하지만, 회오리는 시전자를 «감싸는»
+        // 것이라 유닛 위에 두면 몸을 덮어 무엇이 도는지 안 보인다. 그래서 "보드 레이어 <
+        // 유닛 레이어" 규칙(스폰 예고 라인·조준 화살표와 같은 판단)에 따라 음수 대역이다:
+        // 그림자(−5)·타일 게이지(−4) 위 · 유닛(양수) 아래.
+        // 프리팹 내부의 상대 순서(0~2)는 이 값에 **더해서** 보존하므로 −3~−1 을 쓴다.
+        public const int UnitAttackAoeOrder = -3;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 
