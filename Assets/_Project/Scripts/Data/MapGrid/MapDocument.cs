@@ -23,6 +23,14 @@ namespace Wassup.Data.MapGrid
         // waypoint-routing unit 0 — 맵이 소유하는 경로 N개. 적 SO 는 배열 인덱스로 참조한다.
         // null/빈 = 경로 없는 맵(현행 폴백).
         [SerializeField] private WaypointPath[] waypointPaths;
+        // waypoint-routing unit 8 — 스폰(레인)별 **기본** 경로 인덱스. `spawns` 와 같은 순서이고
+        // -1 = 최단거리(현행). 적 SO 의 `waypointPathIndex` 지정이 있으면 그쪽이 이긴다(계약 10).
+        //
+        // 병렬 배열인 이유: `spawns` 의 **순서가 곧 레인 번호**이고 그 순서를 페인터·
+        // `WavePatternGenerator.EffectiveSpawnIndex`·`PendingSpawnEntry.laneIndex` 가 함께 읽는다.
+        // 스폰을 구조체로 승격하면 그 셋이 같이 바뀌는데 필요한 값은 int 하나다.
+        // 길이 불일치·부재는 에러가 아니라 폴백(-1) — 이 필드가 없는 기존 문서가 그대로 서야 한다.
+        [SerializeField] private int[] spawnRoutes;
         // battle-structures unit 3 — 거점 저작(마음·본능). 셀 × 편 × StructureData.
         // 진영은 (편 × data.kind)에서 파생한다 — StructurePlacements.DeriveFaction.
         // 비면 거점 없는 맵(현행 9장 전부) = 행동 변화 0.
@@ -42,6 +50,7 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<Vector2Int> Goals => goals;
         public IReadOnlyList<Vector2Int> Spawns => spawns;
         public IReadOnlyList<WaypointPath> WaypointPaths => waypointPaths;
+        public IReadOnlyList<int> SpawnRoutes => spawnRoutes;   // null/빈 가능 = 전 레인 최단거리
         public IReadOnlyList<StructureEntry> Structures => structures;   // null/빈 가능 = 거점 없는 맵
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
@@ -82,6 +91,17 @@ namespace Wassup.Data.MapGrid
         internal void SetWaypointPaths(WaypointPath[] paths)
         {
             waypointPaths = paths;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+        // waypoint-routing unit 8 — SetFrom/SetWaypointPaths 와 같은 이유로 별도 경로다.
+        // spawnRoutes 는 spawns 와 병렬이라 SetFrom 에 끼우면 «전달 안 하면 지워짐» 이
+        // 암묵 규칙이 된다. 저작 주체(페인터)만 이걸 부른다.
+        internal void SetSpawnRoutes(int[] routes)
+        {
+            spawnRoutes = routes;
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
@@ -136,6 +156,8 @@ namespace Wassup.Data.MapGrid
             WaypointAuthoringRules.ValidatePaths(
                 waypointPaths, width, height, tiles, waypointGoals, spawns,
                 waypointErrors, waypointWarnings);
+            WaypointAuthoringRules.ValidateSpawnRoutes(
+                spawnRoutes, waypointPaths, spawns, waypointErrors, waypointWarnings);
             foreach (var e in waypointErrors)
                 Debug.LogError($"[MapDocument] {e}", this);
             foreach (var warning in waypointWarnings)

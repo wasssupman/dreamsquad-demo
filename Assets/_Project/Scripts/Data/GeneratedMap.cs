@@ -18,6 +18,9 @@ namespace Wassup.Data
         // waypointRanges[path] = (waypointCells start, count). 미생성/빈 = 경로 없음.
         public NativeArray<int2>        waypointCells;
         public NativeArray<int2>        waypointRanges;
+        // waypoint-routing unit 8 — 스폰(레인)별 기본 경로 인덱스. spawns 와 같은 길이로
+        // 정규화돼 들어온다(MapDocumentBuilder). 미생성/빈 = 전 레인 최단거리(-1).
+        public NativeArray<int>         spawnRoutes;
         // battle-structures unit 3 — 거점 저작의 런타임 투영(셀 + 교차 비트). 스탯은 SO 에
         // 남고 브리지가 문서에서 읽는다(unit 4). 미생성/빈 = 거점 없는 맵.
         public NativeArray<StructurePlacement> structures;
@@ -33,6 +36,15 @@ namespace Wassup.Data
         public MapTileType TileAt(int2 cell) => tiles[CellIndex(cell)];
 
         public int WaypointPathCount => waypointRanges.IsCreated ? waypointRanges.Length : 0;
+
+        // waypoint-routing unit 8 — 미생성·범위 밖·음수 인덱스는 전부 -1(최단거리 폴백).
+        // 예외를 던지지 않는다 — 호출부(WavePatternGenerator 등)가 매 스폰마다 부르는 조회다.
+        public int RouteForSpawn(int laneIndex)
+        {
+            if (!spawnRoutes.IsCreated || laneIndex < 0 || laneIndex >= spawnRoutes.Length)
+                return -1;
+            return spawnRoutes[laneIndex];
+        }
 
         public int2 WaypointCellAt(int pathIndex, int cellIndex)
         {
@@ -63,6 +75,7 @@ namespace Wassup.Data
             if (goals.IsCreated)            goals.Dispose();
             if (waypointCells.IsCreated)    waypointCells.Dispose();
             if (waypointRanges.IsCreated)   waypointRanges.Dispose();
+            if (spawnRoutes.IsCreated)      spawnRoutes.Dispose();
             if (structures.IsCreated)       structures.Dispose();
             if (placeMask.IsCreated)        placeMask.Dispose();
         }

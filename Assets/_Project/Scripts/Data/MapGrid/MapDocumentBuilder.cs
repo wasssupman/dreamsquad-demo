@@ -49,6 +49,18 @@ namespace Wassup.Data.MapGrid
             var goals = new NativeArray<int2>(docGoals.Count, allocator);
             for (int i = 0; i < goals.Length; i++) goals[i] = new int2(docGoals[i].x, docGoals[i].y);
 
+            // waypoint-routing unit 8 — 스폰(레인)별 기본 경로를 spawns 개수로 정규화한다
+            // (짧으면 -1 패딩, 길면 절삭) — RouteForSpawn 이 별도 길이 검사 없이 단순해진다.
+            // 문서 배열 null/빈은 waypointCells 와 같은 폴백 모양(미생성)으로 남긴다.
+            NativeArray<int> spawnRoutes = default;
+            var docSpawnRoutes = doc.SpawnRoutes;
+            if (docSpawnRoutes != null && docSpawnRoutes.Count > 0)
+            {
+                spawnRoutes = new NativeArray<int>(spawnCount, allocator);
+                for (int i = 0; i < spawnCount; i++)
+                    spawnRoutes[i] = i < docSpawnRoutes.Count ? docSpawnRoutes[i] : -1;
+            }
+
             // waypoint-routing unit 0 — 경로 인덱스를 보존하면서 가변 길이 셀 목록을 flatten.
             // 외부 배열 null/빈은 NativeArray 미생성으로 남겨 기존 맵의 폴백 모양을 유지한다.
             NativeArray<int2> waypointCells = default;
@@ -123,6 +135,16 @@ namespace Wassup.Data.MapGrid
                 for (int i = 0; i < structures.Length; i++)
                     if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore)
                         spawns[sw++] = structures[i].cell;
+
+                // waypoint-routing unit 8 — 파생 스폰에는 저작 레인 경로가 없다. spawnRoutes 는
+                // «미생성 이거나 정확히 spawns 길이» 라는 불변식을 갖는데(RouteForSpawn 의 전제),
+                // 저작 spawns 로 잰 배열이 여기 남으면 길이가 어긋나 **다른 레인의 경로를 조용히
+                // 읽는다.** 위 spawns 교체와 한 몸으로 처리해야 두 배열이 갈리지 않는다.
+                if (spawnRoutes.IsCreated)
+                {
+                    spawnRoutes.Dispose();
+                    spawnRoutes = default;
+                }
             }
 
             return new GeneratedMap
@@ -135,6 +157,7 @@ namespace Wassup.Data.MapGrid
                 goals = goals,
                 waypointCells = waypointCells,
                 waypointRanges = waypointRanges,
+                spawnRoutes = spawnRoutes,
                 structures = structures,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
@@ -147,8 +170,10 @@ namespace Wassup.Data.MapGrid
         // waypoint-routing unit 5 — waypointPaths: null = 기존 경로 보존(SetFrom 이 경로를
         // 암묵적으로 지우지 않는다는 unit 0 불변식 유지), 비-null = 통째 교체(빈 배열 = 삭제).
         // 페인터는 항상 자기 상태를 넘긴다 — 페인터가 연 문서에서는 페인터가 정본이다.
+        // waypoint-routing unit 8 — spawnRoutes 도 같은 규약: null = 기존 값 보존, 빈 배열 = 삭제.
         public static void WriteToDocument(MapDocument doc, in GeneratedMap map,
-            StructureEntry[] structures = null, WaypointPath[] waypointPaths = null)
+            StructureEntry[] structures = null, WaypointPath[] waypointPaths = null,
+            int[] spawnRoutes = null)
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
@@ -189,6 +214,7 @@ namespace Wassup.Data.MapGrid
                 placeMask);
             if (structures != null) doc.SetStructures(structures);
             if (waypointPaths != null) doc.SetWaypointPaths(waypointPaths);
+            if (spawnRoutes != null) doc.SetSpawnRoutes(spawnRoutes);
         }
     }
 }
