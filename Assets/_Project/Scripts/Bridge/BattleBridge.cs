@@ -343,6 +343,10 @@ namespace Wassup.Bridge
         // three-minute-survival unit 2 — 현재 웨이브가 트리거된 Battle 클럭 시각. 상한 간격의
         // 기준이다(스폰 완료 시각이 아니라 **트리거** 시각). 시계와 함께 리셋된다.
         private float _waveStartSec;
+        // wave-pull-revival unit 0 — 필드를 마지막으로 비운 뒤 당긴 횟수. 겹침 상한의 기준.
+        // **전멸 진행에서만 0 이 된다** — 타임아웃 진행(capReached)에서 리셋하면 «가만히 있기»가
+        // 당김 예산을 벌어준다. 계약 9: 시계가 0 이 되는 지점마다 함께 0.
+        private int _pullsSinceClear;
         private int _goalReachedCount;
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
         // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
@@ -1681,6 +1685,7 @@ namespace Wassup.Bridge
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 타워/거점도 매치와 함께 정리
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 계약 9 (시계와 짝)
+            _pullsSinceClear = 0; // wave-pull-revival unit 0 — 계약 9 (시계와 짝)
             _spawnGuideForecast = null; // waypoint-routing unit 7 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
@@ -1795,6 +1800,7 @@ namespace Wassup.Bridge
             _nextWaveIndex = 0;
             _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 상한 간격 기준 시각도 함께
+            _pullsSinceClear = 0; // wave-pull-revival unit 0 — 겹침 예산도 매치 경계에서 초기화
             _usingAuthoredPlan = false;
             _spawnGuideForecast = null;   // waypoint-routing unit 7 — 이전 판 예고 이월 방지
 
@@ -1885,6 +1891,9 @@ namespace Wassup.Bridge
             QueueWave(_wavePlan.waves[_nextWaveIndex], elapsedSec + SpawnLeadInSec, false, elapsedSec);
             _nextWaveIndex++;
             _waveStartSec = elapsedSec;
+            // wave-pull-revival unit 0 — 겹침 예산은 **필드를 비웠을 때만** 회복한다.
+            // capReached 로 넘어온 것은 «정리했다»가 아니라 «못 정리한 채 하나 더 받았다»다.
+            if (cleared) _pullsSinceClear = 0;
         }
 
         // 상한 간격. 덱이 0(레거시 저작)이면 플랜의 명목 interval 로 폴백해 "상한 없음" 상태를
@@ -1920,6 +1929,44 @@ namespace Wassup.Bridge
         // 4번뿐이므로 그 4번만 미리 알려주면 루프가 성립한다.
         public string NextWaveConceptLabel =>
             NextWaveHasNext ? _wavePlan.waves[_nextWaveIndex].conceptLabel : "";
+
+        // wave-pull-revival unit 3 — 「진출 예상선」. HUD 표시 **전용**이다.
+        //
+        // ⚠ 이 값을 BattleLogger·ScoreMath.EncodeSubmission·결과 화면에 넣지 말 것.
+        // 지금 par 는 서버가 아니라 저작 비율에서 나오는 **가짜**이고(PaceBaseline 주석),
+        // 기록에 새는 순간 가짜 경쟁 수치가 진짜인 척 저장된다.
+        public bool TryGetPaceBaseline(out int expected)
+        {
+            expected = 0;
+            if (!_running || ActiveDeck == null) return false;
+            return PaceBaseline.TryExpectedScore(
+                _wavePlan, (float)_battleClock, ActiveDeck.paceParFraction, out expected);
+        }
+
+        // 매 프레임 HUD 로 밀어준다. HUD 가 브리지를 참조하지 않게 하는 기존 방향
+        // (scoreHud.SetLeakStatus / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
+        private void RefreshPaceHud()
+        {
+            if (scoreHud == null) return;
+            if (TryGetPaceBaseline(out int expected))
+                scoreHud.SetPaceBaseline(expected, _killScoreTotal);
+            else
+                scoreHud.HidePaceBaseline();
+        }
+
+        // wave-pull-revival unit 1 — 다음 웨이브의 **구성**(무엇이 몇 마리). 당김 판단의 재료다.
+        //
+        // 실제 스폰과 같은 데이터에서 나와야 한다(spec 계약 4): 플랜의 그 웨이브 groups 를
+        // 그대로 준다. 당김으로 순서가 앞당겨져도 **내용은 플랜 순서 그대로**이므로
+        // _nextWaveIndex 하나면 충분하다. 플랜은 판 시작에 확정되고 이후 불변이라 매 프레임 읽어도 할당이 없다.
+        public bool TryGetNextWaveComposition(out IReadOnlyList<WaveSpawnGroup> groups)
+        {
+            groups = null;
+            if (!NextWaveHasNext) return false;
+            groups = _wavePlan.waves[_nextWaveIndex].groups;
+            return groups != null && groups.Count > 0;
+        }
+
 
         // 블록 경계 계산을 **브리지가 소유한다.** 도크가 conceptHoldWaves 로 다시 계산하면
         // 두 곳이 갈린다(생성기의 블록 구획과 표시가 어긋나면 예고가 거짓말이 된다).
@@ -2130,10 +2177,64 @@ namespace Wassup.Bridge
             return false;
         }
 
-        // three-minute-survival unit 2 — **플레이어 경로는 없어졌다**(NextWaveDock 은 정보 표시
-        // 전용이고 이 메서드를 부르지 않는다). 메서드 자체는 남는다: PlayMode 스모크
+        // wave-pull-revival unit 0 — 당김 상한. 저작이 비면(0 이하) 폴백 3.
+        // 0 을 «당김 금지»로 읽지 않는 것이 계약이다 — 저작 누락이 조용히 버튼을 죽이면
+        // «왜 안 눌리지»의 원인이 데이터에 있다는 것을 알 방법이 없다.
+        private const int PullCapFallback = 3;
+        private bool _warnedMissingPullCap;
+
+        private int MaxPullsPerClear
+        {
+            get
+            {
+                int authored = ActiveDeck != null ? ActiveDeck.maxPullsPerClear : 0;
+                if (authored > 0) return authored;
+                if (!_warnedMissingPullCap)
+                {
+                    _warnedMissingPullCap = true;
+                    Debug.LogWarning(
+                        $"[BattleBridge] 덱의 maxPullsPerClear 가 저작되지 않았다 — 폴백 {PullCapFallback} 을 쓴다.",
+                        this);
+                }
+                return PullCapFallback;
+            }
+        }
+
+        // ── 당김: 기제(ForceNextWave)와 규칙(TryPullNextWave)을 나눈다 ──────────────
+        //
+        // 상한을 ForceNextWave 안에 넣으면 **기존 PlayMode 스모크 3종이 죽는다** — 그들은
+        // 이 메서드를 판 진행 동력으로 연타한다(TallyFlowTest 20회·EndlessModeSmokeTest 40회).
+        // 상한은 «플레이어 입력에 대한 게임 규칙»이지 스케줄러의 물리 법칙이 아니므로,
+        // 규칙을 한 층 위에 두는 것이 의미와도 맞는다.
+        //
+        // **플레이어 경로는 TryPullNextWave 하나뿐이다.** UI 에서 ForceNextWave 를 직접
+        // 부르지 말 것 — 부르면 상한이 우회된다.
+        public bool PullAvailable => NextWaveHasNext;
+
+        // 상한이 회복되는 사건은 **«필드를 비웠다»** 하나다(QueueDueWaves 의 cleared 분기).
+        // 작성 플랜(_usingAuthoredPlan)은 저작된 시각 타임라인이 정본이라 그 분기를
+        // **구조적으로 지나지 않는다** — 상한을 그대로 걸면 예산이 영영 회복되지 않아
+        // 저작 모드에서 3회 뒤 버튼이 영구 잠긴다. 회복 사건이 없는 모드에는 상한도 없다.
+        private bool PullCapApplies => !_usingAuthoredPlan;
+
+        public bool PullAllowed =>
+            PullAvailable && (!PullCapApplies || _pullsSinceClear < MaxPullsPerClear);
+        public int PullsRemaining =>
+            !PullAvailable ? 0
+            : !PullCapApplies ? MaxPullsPerClear
+            : Mathf.Max(0, MaxPullsPerClear - _pullsSinceClear);
+
+        public bool TryPullNextWave()
+        {
+            if (!PullAllowed) return false;
+            ForceNextWave();
+            return true;
+        }
+
+        // three-minute-survival unit 2 → wave-pull-revival unit 0 — **기제**다. 상한을 보지
+        // 않는다(위 TryPullNextWave 가 규칙 층). PlayMode 스모크
         // (TallyFlowTest·EndlessModeSmokeTest·MovementIntegritySmokeTest)가 이것을 **판 진행
-        // 동력**으로 쓰기 때문이다 — no-op 으로 만들면 그 테스트들이 타임아웃으로 죽는다.
+        // 동력**으로 쓰기 때문에 no-op 으로 만들면 그 테스트들이 타임아웃으로 죽는다.
         public void ForceNextWave()
         {
             if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return;
@@ -2149,6 +2250,7 @@ namespace Wassup.Bridge
                 QueueWave(forced, now + SpawnLeadInSec, true, now);
                 _nextWaveIndex++;
                 _waveStartSec = now;
+                _pullsSinceClear++; // wave-pull-revival unit 0 — 얹은 것을 센다
                 return;
             }
 
@@ -2167,6 +2269,10 @@ namespace Wassup.Bridge
             // unit 11 — 강제 호출도 리드인을 따른다(당긴 웨이브의 첫 적도 리드인 뒤에 나온다).
             QueueWave(wave, elapsedSec + SpawnLeadInSec, true, elapsedSec);
             _nextWaveIndex++;
+            // 작성 플랜은 PullCapApplies 로 상한이 면제되므로 이 증가는 표시에도 판정에도
+            // 쓰이지 않는다. 그래도 올려둔다 — «얹은 횟수»라는 값의 의미가 경로마다 달라지면
+            // 나중에 이 카운터를 다른 곳에서 읽을 때 조용히 틀린다.
+            _pullsSinceClear++;
             // spawn-point-alert unit 3 — 예고는 QueueWave 가 이 웨이브 기준으로 채운다.
             // (unit 1 의 "강제 호출은 예고 없이 즉시 스폰" 계약은 리드인 도입으로 폐기 —
             //  당긴 웨이브도 리드인만큼의 예고 창을 갖는다.)
@@ -2709,6 +2815,7 @@ namespace Wassup.Bridge
             // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
             DrainEnemyKilledEvents();
             QueueDueWaves(t);
+            RefreshPaceHud();
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
                 if (t >= _pending[i].entry.triggerTimeSec)

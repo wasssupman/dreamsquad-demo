@@ -152,6 +152,9 @@ namespace Wassup.Data
             var conceptLanesByWave = new int[waveCount][];
             WaveConceptSlot[] blockSlots = null;
             int[] blockLanes = null;
+            // wave-pull-revival unit 2 — 블록 가운데 웨이브가 쓸 변주 편성(저작 없으면 null).
+            WaveConceptSlot[] blockVariantSlots = null;
+            int[] blockVariantLanes = null;
 
             var waves = new List<GeneratedWave>(waveCount);
             for (int i = 0; i < waveCount; i++)
@@ -162,19 +165,29 @@ namespace Wassup.Data
                     previousBlock = block;
                     concept = ResolveBlockConcept(
                         waveConceptPool, block * holdWaves + 1, lanes, concept,
-                        ref rng, out blockSlots, out blockLanes);
+                        ref rng, out blockSlots, out blockLanes,
+                        out blockVariantSlots, out blockVariantLanes);
                 }
 
+                // wave-pull-revival unit 2 — 블록의 **두 번째** 웨이브만 변주를 입는다.
+                // 첫 웨이브는 성격을 가르치는 자리(순수해야 한다), 마지막은 그 성격의 시험대다.
+                // holdWaves < 3 이면 가운데가 없으므로 적용하지 않는다 — 2 에서 i%2==1 은
+                // 마지막 웨이브라 시험대를 덮어쓴다.
+                bool useVariant = holdWaves >= 3 && i % holdWaves == 1 &&
+                                  blockVariantSlots != null && blockVariantSlots.Length > 0;
+                var waveSlots = useVariant ? blockVariantSlots : blockSlots;
+                var waveLanes = useVariant ? blockVariantLanes : blockLanes;
+
                 conceptByWave[i] = concept;
-                conceptSlotsByWave[i] = blockSlots;
-                conceptLanesByWave[i] = blockLanes;
+                conceptSlotsByWave[i] = waveSlots;
+                conceptLanesByWave[i] = waveLanes;
 
                 if (concept != null)
                 {
                     int conceptTotal = ExponentialWaveTotal(
                         i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, rng.NextFloat());
                     var conceptGroups = BuildConceptGroups(
-                        pool, blockSlots, blockLanes, conceptTotal, concept.countMul,
+                        pool, waveSlots, waveLanes, conceptTotal, concept.countMul,
                         maxUnits, i + 1, concept.id, ref rng);
 
                     waves.Add(new GeneratedWave(
@@ -763,10 +776,14 @@ namespace Wassup.Data
             WaveConceptData previousConcept,
             ref Unity.Mathematics.Random rng,
             out WaveConceptSlot[] slots,
-            out int[] lanes)
+            out int[] lanes,
+            out WaveConceptSlot[] variantSlots,
+            out int[] variantLanes)
         {
             slots = null;
             lanes = null;
+            variantSlots = null;
+            variantLanes = null;
 
             var concept = PickConcept(
                 conceptPool, blockFirstWaveNumber, laneCount, previousConcept, rng.NextFloat());
@@ -792,21 +809,72 @@ namespace Wassup.Data
 
             slots = effectiveSlots;
             lanes = assigned;
+
+            // wave-pull-revival unit 2 — 가운데 웨이브 편성 = **본 편성 + 끼어드는 슬롯**.
+            //
+            // 교체가 아니라 삽입인 이유: 교체하면 가운데 웨이브에 블록의 성격이 통째로 사라져
+            // 「배우고 → 대응하고 → 겨우 버티고」의 압력 상승이 끊긴다. 삽입이면 탱커 블록은
+            // 계속 탱커 블록이면서 「지금 당기면 탱커 위에 저격수가 얹힌다」가 생긴다.
+            //
+            // **rng 를 새로 쓰지 않는다**: 입구는 위에서 확정한 배정을 물려받으므로(계약 5)
+            // AssignLanes 를 다시 부르지 않는다. 덕분에 변주를 저작하지 않은 컨셉은 rng 소비가
+            // 완전히 동일하고, 저작한 컨셉만 편성이 달라진다.
+            var extra = CollectSlots(concept, variant: true);
+            if (extra.Length > 0)
+            {
+                var extraLanes = InheritLanes(extra, effectiveSlots, assigned);
+                variantSlots = Concat(effectiveSlots, extra);
+                variantLanes = Concat(assigned, extraLanes);
+            }
             return concept;
         }
 
-        private static WaveConceptSlot[] CollectSlots(WaveConceptData concept)
+        private static T[] Concat<T>(T[] a, T[] b)
         {
-            if (concept.slots == null) return Array.Empty<WaveConceptSlot>();
+            var result = new T[a.Length + b.Length];
+            Array.Copy(a, 0, result, 0, a.Length);
+            Array.Copy(b, 0, result, a.Length, b.Length);
+            return result;
+        }
+
+        // 변주 슬롯의 입구 = 블록이 이미 확정한 배정. 같은 laneGroup 이 본 편성에 있으면 그
+        // 입구를 쓰고, 없으면(또는 무지정) 본 편성의 입구를 순서대로 재사용한다.
+        // 새로 뽑지 않는 것이 계약이다 — 블록 안에서 입구가 바뀌면 보강 결정이 보상받지 못한다.
+        private static int[] InheritLanes(
+            WaveConceptSlot[] variants, WaveConceptSlot[] mainSlots, int[] mainLanes)
+        {
+            var result = new int[variants.Length];
+            for (int v = 0; v < variants.Length; v++)
+            {
+                int group = variants[v].laneGroup;
+                if (group < 0)
+                {
+                    // 무지정(-1)은 무지정으로 남긴다. 구체 lane 으로 못박으면 「전 lane 분산」이라
+                    // 저작한 슬롯이 한 입구로 몰려 저작 의미가 뒤집힌다(AssignLanes 의 -1 계약).
+                    result[v] = -1;
+                    continue;
+                }
+                int lane = -1;
+                for (int m = 0; m < mainSlots.Length; m++)
+                    if (mainSlots[m].laneGroup == group) { lane = mainLanes[m]; break; }
+                result[v] = lane >= 0 ? lane : mainLanes[v % mainLanes.Length];
+            }
+            return result;
+        }
+
+        private static WaveConceptSlot[] CollectSlots(WaveConceptData concept, bool variant = false)
+        {
+            var source = variant ? concept.variantSlots : concept.slots;
+            if (source == null) return Array.Empty<WaveConceptSlot>();
             int count = 0;
-            for (int i = 0; i < concept.slots.Length; i++)
-                if (concept.slots[i] != null) count++;
+            for (int i = 0; i < source.Length; i++)
+                if (source[i] != null) count++;
             if (count == 0) return Array.Empty<WaveConceptSlot>();
 
             var result = new WaveConceptSlot[count];
             int w = 0;
-            for (int i = 0; i < concept.slots.Length; i++)
-                if (concept.slots[i] != null) result[w++] = concept.slots[i];
+            for (int i = 0; i < source.Length; i++)
+                if (source[i] != null) result[w++] = source[i];
             return result;
         }
 

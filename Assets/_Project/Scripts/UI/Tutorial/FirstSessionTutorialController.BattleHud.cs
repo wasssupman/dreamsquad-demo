@@ -26,8 +26,18 @@ namespace Wassup.UI.Tutorial
         // 수 있다. 자릿수별 조사 계산은 데모 범위에서 과잉이라 현 튜닝(한계 10)에 맞춘다.
         private const string HudHintStressLimitFormat = "스트레스가 {0}이 되면 패배합니다.";
 
+        // wave-pull-revival unit 4 — 당김 안내. three-minute-survival unit 2 가 「점수를 위해
+        // 당겨보라」던 옛 문구와 함께 지웠던 스텝을 되살린다. **문구 방향이 다르다**: 당김은
+        // 이제 항상 옳은 선택이 아니라 «겹칠지 말지»의 판단이라(PRD §4.3), 「누르면 점수」로
+        // 가르치면 첫 판에서 무지성 연타를 배운다. 무엇·대가·언제 세 가지를 말한다.
+        private const string HudHintPullText =
+            "다음 악몽을 미리 부를 수 있어요.\n지금 남은 악몽과 겹치니, 정리가 끝나갈 때 부르세요.";
+
         [Header("Battle HUD hint (unit 19)")]
         [SerializeField] private ScoreHudView scoreHud;
+        // 미배선이어도 동작한다(아래 ResolvePullButtonRect 가 씬에서 찾는다) — 이 필드는
+        // 명시적 배선을 허용하기 위한 것이고, 없어도 안내가 조용히 사라지지 않는다.
+        [SerializeField] private NextWaveDock waveDock;
 
         // unit 19 — 체인 전용 핸들. **`_awakeningRoutine` 을 재사용하지 말 것** — 그 핸들은
         // 각성 0·A·B 단계가 공유하고 ResetAwakeningSession·OnCardPeeked 가 임의로 중단시킨다.
@@ -107,6 +117,9 @@ namespace Wassup.UI.Tutorial
         private IEnumerator BattleHudHintRoutine()
         {
             yield return StressHintSteps();
+            // wave-pull-revival unit 4 — 배치·스트레스를 안 뒤에 당김을 가르친다. 당김은
+            // «판을 안정시킨 다음»의 결정이라 순서를 뒤집으면 배울 수 없다.
+            yield return PullHintSteps();
             _hudHintRoutine = null;
             StopBattleHudHint();
         }
@@ -168,12 +181,70 @@ namespace Wassup.UI.Tutorial
             _stressHintPause = null;
         }
 
-        // three-minute-survival unit 2 — 웨이브 당기기가 사라져 `NextWaveHintSteps`(③④ 다음
-        // 웨이브 안내)를 제거했다. 도크에 누를 버튼이 없고, 전멸하면 자동으로 다음 웨이브가
-        // 오므로 "점수를 위해 당겨보라"는 안내가 거짓이 된다. 문구 상수와 waveDock 참조도 함께.
+        // wave-pull-revival unit 4 — 당김 안내. three-minute-survival unit 2 가 지웠던
+        // 스텝의 복귀다(그때의 근거 「도크에 누를 버튼이 없다」가 사라졌다).
+        //
+        // **상한은 가르치지 않는다.** 첫 판에서 상한에 닿을 만큼 누르는 유저는 드물고, 닿으면
+        // 버튼이 잠기며 「정리하면 다시」를 스스로 말한다. 규칙을 하나 더 얹는 값이 이득보다 크다.
+        private IEnumerator PullHintSteps()
+        {
+            if (!_hudHintActive) yield break;
+
+            yield return WaitForHintTarget(ResolvePullButtonRect);
+            RectTransform plate = ResolvePullButtonRect();
+            if (plate == null || !plate.gameObject.activeInHierarchy)
+            {
+                // fail-open — 안내 한 스텝 때문에 전투 플레이를 잠그지 않는다(클래스 안내와 같은 판단).
+                Debug.LogWarning("[FirstSessionTutorial] 당김 버튼 미표시 — 당김 안내를 생략합니다.", this);
+                yield break;
+            }
+            if (!_hudHintActive) yield break;
+
+            // 스트레스 스텝이 자기 lease 를 이미 반납했으므로 여기서 **새로 잡는다**.
+            // `??=` 인 이유는 그 스텝이 건너뛰어졌거나(배지 미배선) 중간 이탈로 lease 가
+            // 남아 있을 때 **둘째 소유자를 만들지 않기 위해서**다 — 해제는 항상
+            // StopBattleHudHint 하나가 한다(위 필드 주석의 규칙).
+            _stressHintPause ??= TimeManager.Instance.Request(TimeDomain.Battle, 0f);
+
+            guidance.ShowMessage(HudHintPullText, showSkip: false);
+            // 링은 «누를 것» 하나만 감싼다. 판단 재료(예고 줄)는 도크의 별도 패널로 나갔고,
+            // 안내 문구가 가리키는 대상은 버튼이다(NextWaveDock.PullButtonRect 주석).
+            guidance.FocusUi(plate);
+            guidance.SetTapToContinue(true);
+
+            _stressHintTapped = false;
+            _stressHintWaitingTap = true;
+            float elapsed = 0f;
+            float limit = Mathf.Max(0.1f, guidance.StressHintFallbackSeconds);
+            while (!_stressHintTapped && elapsed < limit && _hudHintActive)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            _stressHintWaitingTap = false;
+            if (!_hudHintActive) yield break;
+
+            guidance.SetTapToContinue(false);
+        }
 
         private RectTransform ResolveStressBadgeRect() =>
             scoreHud != null ? scoreHud.StressBadgeRect : null;
+
+        // 씬 배선이 없어도 동작한다. 도크는 BattleScene 에 하나뿐이고 이 경로는 첫 판에
+        // 한 번만 지난다 — 배선 누락으로 안내가 조용히 사라지는 쪽이 훨씬 나쁘다.
+        // 탐색은 **한 번만** 한다. WaitForHintTarget 이 이 함수를 폴링하므로, 도크가 정말
+        // 없을 때 대기 시간 내내 매 프레임 씬 전체를 뒤지게 된다.
+        private bool _waveDockSearched;
+
+        private RectTransform ResolvePullButtonRect()
+        {
+            if (waveDock == null && !_waveDockSearched)
+            {
+                _waveDockSearched = true;
+                waveDock = FindAnyObjectByType<NextWaveDock>(FindObjectsInactive.Include);
+            }
+            return waveDock != null ? waveDock.PullButtonRect : null;
+        }
 
         // FocusUi 는 대상이 activeInHierarchy 가 아니면 **링을 조용히 끈다**(0단계가 빠졌던
         // 함정). HUD 뷰들은 자기 Update 에서 lazily 구독·활성화되고 PhaseChanged 구독자 순서는

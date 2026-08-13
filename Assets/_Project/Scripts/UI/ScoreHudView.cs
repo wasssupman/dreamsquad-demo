@@ -138,6 +138,16 @@ namespace Wassup.UI
         [SerializeField] private float leakPunchScale = 1.18f;
         [SerializeField] private float leakPunchDuration = 0.22f;
 
+        // wave-pull-revival unit 3 — 진출 예상선. **가짜 par 다**(PaceBaseline 주석 참조).
+        [Header("Pace baseline (진출 예상선)")]
+        [SerializeField] private float paceRowHeight = 30f;
+        [SerializeField] private float paceRowGap = 4f;
+        [SerializeField] private float paceFontSize = 22f;
+        [Tooltip("par 에 못 미칠 때")]
+        [SerializeField] private Color paceBehindColor = new Color(1f, 0.62f, 0.42f, 0.98f);
+        [Tooltip("par 를 넘었을 때")]
+        [SerializeField] private Color paceAheadColor = new Color(0.62f, 1f, 0.72f, 0.98f);
+
         private GameObject _panel;
         private Vector2 _panelBasePos;
         private Image _plateImage;
@@ -149,6 +159,9 @@ namespace Wassup.UI
         // first-session-tutorial unit 19 — 튜토리얼 포커스 링이 감쌀 대상. 원래 BuildCanvas
         // 의 지역 변수였고 표시 로직은 쓰지 않는다(노출 전용 승격).
         private RectTransform _leakPlateRect;
+        private TextMeshProUGUI _paceLabel;
+        private int _lastPaceExpected = int.MinValue;
+        private int _lastPaceGap = int.MinValue;
         private bool _built;
         private bool _subscribed;
 
@@ -344,6 +357,50 @@ namespace Wassup.UI
             RefreshLeakDisplay(worsened);
         }
 
+        // wave-pull-revival unit 3 — 「목표 페이스 1,310 · 70점 부족」.
+        //
+        // ⚠ **「진출 예상선」이라고 쓰지 않는다.** 그 문구는 «같은 시드를 돈 10인 분포에서
+        // 나온 실제 컷»을 약속하는데 지금 값은 저작 par 비율에서 나오는 가짜다. 전투 중
+        // 피드백은 매초 들어오고 경기 후 랭킹은 판당 한 번이라, 거짓 컷을 믿고 당김을 멈춘
+        // 플레이어는 **잘못된 습관을 훨씬 강하게 학습한다**. 실제 분포가 붙으면 그때 이름을
+        // 「진출 예상선」으로 올린다(PRD §7.1).
+        //
+        // ⚠ **표시 전용이다.** 로그·제출값·결과 화면에 넣지 말 것(Core/PaceBaseline).
+        //
+        // 줄을 껐다 켜지 않는다 — 앞섰다 뒤졌다 할 때마다 레이아웃이 튀면 읽을 수 없다.
+        // 숨기는 것은 par 자체가 없을 때(HidePaceBaseline)뿐이다.
+        public void SetPaceBaseline(int expected, int current)
+        {
+            if (_paceLabel == null) return;
+            if (!_paceLabel.gameObject.activeSelf) _paceLabel.gameObject.SetActive(true);
+
+            int gap = expected - current;
+            // 값이 안 바뀌면 조립하지 않는다(매초 갱신이라 프레임마다 만들 이유가 없다).
+            if (expected == _lastPaceExpected && gap == _lastPaceGap) return;
+            _lastPaceExpected = expected;
+            _lastPaceGap = gap;
+
+            if (gap > 0)
+            {
+                _paceLabel.text = $"목표 페이스 {expected:N0} · {gap:N0}점 부족";
+                _paceLabel.color = paceBehindColor;
+            }
+            else
+            {
+                _paceLabel.text = $"목표 페이스 {expected:N0} · +{-gap:N0}점";
+                _paceLabel.color = paceAheadColor;
+            }
+        }
+
+        /// <summary>par 를 계산할 수 없을 때(저작 0 이하·플랜 없음) 줄 자체를 숨긴다.</summary>
+        public void HidePaceBaseline()
+        {
+            if (_paceLabel == null || !_paceLabel.gameObject.activeSelf) return;
+            _paceLabel.gameObject.SetActive(false);
+            // 다음 판에서 같은 값이 와도 다시 조립하도록 캐시를 비운다.
+            _lastPaceExpected = _lastPaceGap = int.MinValue;
+        }
+
         private void RefreshLeakDisplay(bool punch)
         {
             if (_leakValue == null) return;
@@ -521,8 +578,18 @@ namespace Wassup.UI
 
         private void OnPhaseChanged(GamePhase phase)
         {
+            // wave-pull-revival unit 3 — **Battle 이 아니면 목표 페이스 줄을 끈다.**
+            //
+            // 브리지의 push(RefreshPaceHud)는 `_running` 아래에 있어 전투가 끝나는 순간
+            // 멈추는데, 이 패널은 Tally 에서 살아남는다(아래 분기). 그러면 4초 동안
+            // **마지막 프레임의 par 가 얼어붙은 채** 그 옆에서 총점이 올라간다 —
+            // 축이 다른 두 숫자가 나란히 서고, 가짜 par 가 최종 기록처럼 보인다(계약 9).
+            // Battle 재진입에서도 첫 push 전 1프레임 동안 이전 판 값이 보이므로 함께 끈다.
+            if (phase != GamePhase.Battle) HidePaceBaseline();
+
             if (phase == GamePhase.Battle)
             {
+                HidePaceBaseline();
                 _targetScore = 0;
                 _shownScore = 0f;
                 _pendingKills = 0;
@@ -573,7 +640,8 @@ namespace Wassup.UI
             _panelBasePos = new Vector2(-cornerPadding, -cornerPadding);
             prt.anchoredPosition = _panelBasePos;
             prt.sizeDelta = new Vector2(plateSize.x,
-                plateTopInset + plateSize.y + leakPlateGap + leakPlateSize.y);
+                plateTopInset + plateSize.y + leakPlateGap + leakPlateSize.y
+                + paceRowGap + paceRowHeight); // wave-pull-revival unit 3 — 예상선 줄 몫
 
             // Caption ("SCORE") is built later inside the badge tab (see below).
 
@@ -704,6 +772,22 @@ namespace Wassup.UI
                 leakPlateSize.y);
             _leakValue.fontStyle = FontStyles.Bold;
             RefreshLeakDisplay(false);
+
+            // wave-pull-revival unit 3 — 스트레스 배지 아래 한 줄. 점수와 **같은 축**이다
+            // (계약 7 로 킬 가중치를 유지했으므로 「N체 부족」이 아니라 「N점 부족」).
+            _paceLabel = MakeText("PaceBaseline", _panel.transform, paceFontSize,
+                new Vector2(0.5f, 0.5f));
+            var paceRt = _paceLabel.rectTransform;
+            paceRt.anchorMin = new Vector2(0.5f, 1f);
+            paceRt.anchorMax = new Vector2(0.5f, 1f);
+            paceRt.pivot = new Vector2(0.5f, 0.5f);
+            paceRt.anchoredPosition = new Vector2(0f,
+                -plateTopInset - plateSize.y - leakPlateGap - leakPlateSize.y
+                - paceRowGap - paceRowHeight * 0.5f);
+            paceRt.sizeDelta = new Vector2(plateSize.x, paceRowHeight);
+            _paceLabel.color = paceBehindColor;
+            _paceLabel.text = "";
+            _paceLabel.gameObject.SetActive(false);
 
             // Fullscreen milestone edge-flash vignette (on the canvas, behind the panel).
             _vignetteImage = MakeImage("MilestoneVignette", transform, vignetteSprite);

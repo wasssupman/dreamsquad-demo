@@ -76,3 +76,9 @@ public void ShowPlacementHighlight(DefenderUnitData unit, Vector2Int? extraCell 
   유닛은 같은 칸에 남는다(`_defenderByTile` 키 불변).
 - **취소 회귀**: 보드 밖 탭 → 코스트 변화 0 · 유닛 상태 변화 0 · 슬로모 해제.
 - 육안: 이동모드 진입 시 **소스 칸이 밝게** 들어온다. 제자리 확정 시 유닛이 폴짝 뛰었다 내려앉는다.
+
+> **확인 2026-08-13** · 커밋 `1e100459` — 사용자 Play 확인 완료.
+> 자동 검증: `RelocationCheckTests` 8/8 · PlayMode 재배치 9/9.
+> 구현 중 드러난 것 두 가지를 위 「구현」에 반영해 뒀다 — 취소가 원래부터 헐거웠다는 것
+> (`TryScreenToCellStrict` 로 전환), 그리고 "옮겨 갈 칸" 스캔이 소스 칸을 집어 기존 3건이
+> 깨졌다는 것(테스트 헬퍼 2곳 + 에디터 디버그 진입점).

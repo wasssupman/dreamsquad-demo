@@ -1,7 +1,7 @@
 # Spec — Defender Relocation (배치 유닛 재배치)
 
-상태: units 0~6 구현 완료 2026-07-24 · **units 8~10 (대가 모델 개정) 구현 완료 2026-08-13
-— 자동 검증 통과, 사용자 Play 육안 확인 대기.** 인계는 `11_handoff_summary.md`.
+상태: units 0~6 구현 완료 2026-07-24 · **units 8~10 (대가 모델 개정) 완료 2026-08-13
+— 자동 검증 + 사용자 Play 확인 통과.** 인계는 `11_handoff_summary.md`.
 
 ## 검증 질문
 

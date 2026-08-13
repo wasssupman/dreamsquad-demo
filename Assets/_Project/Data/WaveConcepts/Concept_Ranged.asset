@@ -24,3 +24,7 @@ MonoBehaviour:
   - laneGroup: 1
     classFilter: 4
     altitude: 0
+  variantSlots:
+  - laneGroup: 0
+    classFilter: 1
+    altitude: 0

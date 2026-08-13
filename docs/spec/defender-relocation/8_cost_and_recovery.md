@@ -82,3 +82,7 @@ public void ActivateRelocatedDefender(Vector2Int cell, Entity entity, float heal
 - **코스트 무한 엔진 회귀**: 스카우트(배치 스킬 = 코스트 획득 1, 코스트 3)를 재배치하면 순손실 2 —
   재배치가 코스트를 만들어내지 않는다.
 - 코스트 부족 상태로 확정을 시도하면 유닛이 제자리에 남고 코스트가 줄지 않는다(유실 없음).
+
+> **확인 2026-08-13** · 커밋 `568d2f9f` — 사용자 Play 확인 완료.
+> 자동 검증: EditMode 2344 중 4 실패(전부 타 세션 `map-rework` 통로 폭 계약, 신규 회귀 0) ·
+> PlayMode 재배치 9/9. 로그 실측 `Refit heal 68 ... ratio 0.50` = 레인저 최대 체력 136 의 절반.
