@@ -220,15 +220,29 @@ class FreezeFixture:
     def write_manifest(self) -> bytes:
         return self.write_json("manifest.json", self.manifest)
 
-    def _event_base(self, event_id: str, event_type: str, approved_at: str) -> Dict[str, Any]:
+    def _event_base(
+        self,
+        event_id: str,
+        event_type: str,
+        approved_at: str,
+        approver: str = "owner@example.invalid",
+    ) -> Dict[str, Any]:
+        role = verifier.EVENT_ROLES[event_type]
         return {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "event_id": event_id,
             "event_type": event_type,
-            "acting_role": "project-owner",
-            "project_owner": "owner@example.invalid",
+            "acting_role": role,
+            "approver": approver,
             "approved_at": approved_at,
             "approval_reference": f"approval:{event_id}",
+            "authority_assignment": {
+                "role": role,
+                "assignee": approver,
+                "assigned_by_project_owner": approver,
+                "assigned_at": "2026-08-11T00:00:00Z",
+                "assignment_reference": f"assignment:{role}",
+            },
             "demo_revision": REVISION,
             "demo_content_sha256": SHA_A,
         }
@@ -386,6 +400,51 @@ class PrepareTests(unittest.TestCase):
         schema.write_bytes(_json_bytes(value))
         report = verifier.verify_prepare(self.root)
         self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_event_schema_authority_assignment_must_match_verifier_exactly(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        assignment = value["$defs"]["authorityAssignment"]
+        assignment["required"].remove("assigned_by_project_owner")
+        assignment["properties"].pop("assigned_by_project_owner")
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_event_schema_phase_assignment_role_is_fixed(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        role = value["$defs"]["demoApproved"]["properties"]["authority_assignment"][
+            "allOf"
+        ][1]["properties"]["role"]
+        self.assertEqual({"const": "game-spec-approver"}, role)
+
+    def test_event_schema_wrong_phase_assignment_role_fails_prepare(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$defs"]["demoApproved"]["properties"]["authority_assignment"]["allOf"][1][
+            "properties"
+        ]["role"]["const"] = "coordinated-transfer-attestor"
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_CONTRACT", _codes(report))
+
+    def test_event_schema_id_and_version_are_canonical_v2(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        self.assertEqual(
+            "https://somnia.local/schemas/dreamsquad-transition-event-v2.json",
+            value["$id"],
+        )
+        self.assertEqual("2.0", value["$defs"]["demoApproved"]["properties"]["schema_version"]["const"])
+
+    def test_noncanonical_event_schema_id_fails_prepare(self) -> None:
+        schema = self.fixture.transition / "governance" / "schemas" / "event.schema.json"
+        value = json.loads(schema.read_text(encoding="utf-8"))
+        value["$id"] = "https://example.invalid/alternate-event.json"
+        schema.write_bytes(_json_bytes(value))
+        report = verifier.verify_prepare(self.root)
+        self.assertIn("SCHEMA_JSON", _codes(report))
 
     def test_manifest_schema_reference_route_is_exact(self) -> None:
         schema = self.fixture.transition / "governance" / "schemas" / "manifest.schema.json"
@@ -726,6 +785,42 @@ class CutoverTests(unittest.TestCase):
             report.manifest_sha256,
         )
 
+    def test_same_assignee_may_approve_all_three_distinct_events(self) -> None:
+        events = [
+            self.fixture.read_json(f"events/{name}")
+            for name in (
+                "1-demo-approved.json",
+                "2-demo-frozen.json",
+                "3-transfer-completed.json",
+            )
+        ]
+        approvers = {event["approver"] for event in events}
+        self.assertEqual({"owner@example.invalid"}, approvers)
+        self.assertTrue(
+            all(
+                event["authority_assignment"]["assigned_by_project_owner"]
+                == event["authority_assignment"]["assignee"]
+                == event["approver"]
+                for event in events
+            )
+        )
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertTrue(report.ok, [item.format() for item in report.diagnostics])
+
+    def test_distinct_assignees_may_approve_the_three_events(self) -> None:
+        assignees = {
+            "1-demo-approved.json": "game-spec@example.invalid",
+            "2-demo-frozen.json": "freeze@example.invalid",
+            "3-transfer-completed.json": "transfer@example.invalid",
+        }
+        for filename, assignee in assignees.items():
+            event = self.fixture.read_json(f"events/{filename}")
+            event["approver"] = assignee
+            event["authority_assignment"]["assignee"] = assignee
+            self.fixture.write_json(f"events/{filename}", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertTrue(report.ok, [item.format() for item in report.diagnostics])
+
     def test_cutover_is_read_only(self) -> None:
         before = _tree_bytes(self.root)
         report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
@@ -937,10 +1032,62 @@ class CutoverTests(unittest.TestCase):
         report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
         self.assertIn("FIELDS", _codes(report))
 
+    def test_event_role_must_match_phase_and_assignment(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["acting_role"] = "demo-freeze-attestor"
+        event["authority_assignment"]["role"] = "demo-freeze-attestor"
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUTHORITY", _codes(report))
+
+    def test_authority_assignment_role_must_match_acting_role(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["authority_assignment"]["role"] = "demo-freeze-attestor"
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUTHORITY", _codes(report))
+
+    def test_authority_assignment_assignee_must_match_approver(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["authority_assignment"]["assignee"] = "different@example.invalid"
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUTHORITY", _codes(report))
+
+    def test_authority_assignment_requires_project_owner_identity(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["authority_assignment"]["assigned_by_project_owner"] = ""
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FIELD_TYPE", _codes(report))
+
+    def test_authority_assignment_must_strictly_precede_event(self) -> None:
+        event = self.fixture.read_json("events/1-demo-approved.json")
+        event["authority_assignment"]["assigned_at"] = event["approved_at"]
+        self.fixture.write_json("events/1-demo-approved.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("AUTHORITY", _codes(report))
+
     def test_event_predecessor_chain_is_exact(self) -> None:
         event = self.fixture.read_json("events/2-demo-frozen.json")
         event["predecessor_event_id"] = "wrong"
         self.fixture.write_json("events/2-demo-frozen.json", event)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_event_id_cannot_be_reused_across_lifecycle_events(self) -> None:
+        approved = self.fixture.read_json("events/1-demo-approved.json")
+        frozen = self.fixture.read_json("events/2-demo-frozen.json")
+        frozen["event_id"] = approved["event_id"]
+        self.fixture.write_json("events/2-demo-frozen.json", frozen)
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("EVENT_SEQUENCE", _codes(report))
+
+    def test_one_approval_reference_cannot_satisfy_multiple_events(self) -> None:
+        approved = self.fixture.read_json("events/1-demo-approved.json")
+        frozen = self.fixture.read_json("events/2-demo-frozen.json")
+        frozen["approval_reference"] = approved["approval_reference"]
+        self.fixture.write_json("events/2-demo-frozen.json", frozen)
         report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
         self.assertIn("EVENT_SEQUENCE", _codes(report))
 
@@ -1016,6 +1163,12 @@ class CutoverTests(unittest.TestCase):
     def test_exactly_two_receipts_are_allowed(self) -> None:
         self.fixture.write_json("receipts/extra.json", {"consumer": "client"})
         report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertIn("FREEZE_LAYOUT", _codes(report))
+
+    def test_server_receipt_alone_cannot_complete_transfer(self) -> None:
+        (self.fixture.freeze / "receipts" / "client.json").unlink()
+        report = verifier.verify_cutover(self.fixture.freeze, self.fixture.events)
+        self.assertFalse(report.ok)
         self.assertIn("FREEZE_LAYOUT", _codes(report))
 
     def test_missing_manifest_file_fails(self) -> None:

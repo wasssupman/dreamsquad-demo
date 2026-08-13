@@ -49,7 +49,7 @@ python tools/verify_production_transition.py prepare --project-owner-authorized
 # arbitrary path, a second freeze candidate, or a second audit-events root.
 # This checks the exact required export
 # catalog, frozen rule/link contracts, manifest files and hashes, both consumer
-# receipts, and the three ordered Project owner audit events held outside the payload.
+# receipts, and the three ordered delegated-authority audit events held outside the payload.
 python tools/verify_production_transition.py cutover --project-owner-authorized \
   --freeze-dir docs/production-transition/freezes/<freeze-id> \
   --events-dir docs/production-transition/governance/audit-events
@@ -78,9 +78,11 @@ uncatalogued document does not make it valid. Frozen rule fields and local Markd
 links are revalidated as well. A receipt's `file_count` and `byte_count` cover the
 actual target delivery (`manifest + common + consumer + policy`). `assigned_bundle_sha256` remains
 the consumer partition hash; manifest and common hashes have their own receipt fields.
-The three Project owner events live in the single canonical external audit directory
+The three delegated-authority events live in the single canonical external audit directory
 `docs/production-transition/governance/audit-events` and are not part of the freeze
-inventory or either target delivery. The low-level verifier used by unit tests may
+inventory or either target delivery. Event v2 requires the event-specific role,
+approver, and Project-owner assignment evidence, with assignment strictly preceding
+approval. The low-level verifier used by unit tests may
 audit temp fixtures; the authorized CLI accepts only the canonical one-shot roots.
 
 The tool uses no Git command and never creates or changes a freeze, receipt, event,

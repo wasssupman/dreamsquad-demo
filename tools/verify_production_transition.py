@@ -6,7 +6,7 @@ The verifier has two deliberately separate modes:
 * ``prepare`` audits the living, rule-and-plan-oriented source documents and
   computes deterministic in-memory partition hashes.
 * ``cutover`` audits an explicitly named immutable freeze directory after the
-  three Project owner events and both consumer receipts exist.
+  three delegated-authority events and both consumer receipts exist.
 
 No mode writes files or invokes Git.  Without ``--project-owner-authorized``
 the CLI exits successfully before inspecting any transition path.
@@ -135,16 +135,43 @@ SCHEMA_FILES = (
     "governance/schemas/receipt.schema.json",
 )
 
+SCHEMA_IDS = {
+    "governance/schemas/event.schema.json": (
+        "https://somnia.local/schemas/dreamsquad-transition-event-v2.json"
+    ),
+    "governance/schemas/manifest.schema.json": (
+        "https://somnia.local/schemas/dreamsquad-transition-manifest-v1.json"
+    ),
+    "governance/schemas/receipt.schema.json": (
+        "https://somnia.local/schemas/dreamsquad-transition-receipt-v1.json"
+    ),
+}
+
 EVENT_BASE_KEYS = {
     "schema_version",
     "event_id",
     "event_type",
     "acting_role",
-    "project_owner",
+    "approver",
     "approved_at",
     "approval_reference",
+    "authority_assignment",
     "demo_revision",
     "demo_content_sha256",
+}
+
+AUTHORITY_ASSIGNMENT_KEYS = {
+    "role",
+    "assignee",
+    "assigned_by_project_owner",
+    "assigned_at",
+    "assignment_reference",
+}
+
+EVENT_ROLES = {
+    "demo-approved": "game-spec-approver",
+    "demo-frozen": "demo-freeze-attestor",
+    "transfer-completed": "coordinated-transfer-attestor",
 }
 
 EVENT_PHASE_KEYS = {
@@ -722,7 +749,7 @@ def _validate_event_schema(value: Dict[str, Any], report: VerificationReport, pa
         "sha256": SHA256_SCHEMA,
         "gitRevision": GIT_REVISION_SCHEMA,
         "eventId": NONEMPTY_STRING_SCHEMA,
-        "owner": NONEMPTY_STRING_SCHEMA,
+        "identity": NONEMPTY_STRING_SCHEMA,
         "approvedAt": DATE_TIME_SCHEMA,
         "approvalReference": NONEMPTY_STRING_SCHEMA,
         "freezeId": FREEZE_ID_SCHEMA,
@@ -734,6 +761,29 @@ def _validate_event_schema(value: Dict[str, Any], report: VerificationReport, pa
             path,
             f"event.$defs.{definition_name}",
         )
+    assignment_properties = _schema_object_contract(
+        definitions.get("authorityAssignment"),
+        AUTHORITY_ASSIGNMENT_KEYS,
+        report,
+        path,
+        "authorityAssignment",
+    )
+    if assignment_properties is not None:
+        assignment_expected: Dict[str, Dict[str, Any]] = {
+            "role": {"enum": list(EVENT_ROLES.values())},
+            "assignee": {"$ref": "#/$defs/identity"},
+            "assigned_by_project_owner": {"$ref": "#/$defs/identity"},
+            "assigned_at": {"$ref": "#/$defs/approvedAt"},
+            "assignment_reference": {"$ref": "#/$defs/approvalReference"},
+        }
+        for field, expected in assignment_expected.items():
+            _schema_fragment(
+                assignment_properties.get(field),
+                expected,
+                report,
+                path,
+                f"event authorityAssignment.{field}",
+            )
     for event_type, definition_name in phase_names.items():
         properties = _schema_object_contract(
             definitions.get(definition_name),
@@ -744,13 +794,24 @@ def _validate_event_schema(value: Dict[str, Any], report: VerificationReport, pa
         )
         if properties is not None:
             expected_properties: Dict[str, Dict[str, Any]] = {
-                "schema_version": {"const": "1.0"},
+                "schema_version": {"const": "2.0"},
                 "event_id": {"$ref": "#/$defs/eventId"},
                 "event_type": {"const": event_type},
-                "acting_role": {"const": "project-owner"},
-                "project_owner": {"$ref": "#/$defs/owner"},
+                "acting_role": {"const": EVENT_ROLES[event_type]},
+                "approver": {"$ref": "#/$defs/identity"},
                 "approved_at": {"$ref": "#/$defs/approvedAt"},
                 "approval_reference": {"$ref": "#/$defs/approvalReference"},
+                "authority_assignment": {
+                    "allOf": [
+                        {"$ref": "#/$defs/authorityAssignment"},
+                        {
+                            "required": ["role"],
+                            "properties": {
+                                "role": {"const": EVENT_ROLES[event_type]},
+                            },
+                        },
+                    ],
+                },
                 "demo_revision": {"$ref": "#/$defs/gitRevision"},
                 "demo_content_sha256": {"$ref": "#/$defs/sha256"},
             }
@@ -1040,8 +1101,12 @@ def _validate_schema_json(transition_root: Path, report: VerificationReport) -> 
             continue
         if value.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
             report.add("SCHEMA_JSON", relative, "schema must declare JSON Schema draft 2020-12")
-        if not isinstance(value.get("$id"), str) or not value.get("$id"):
-            report.add("SCHEMA_JSON", relative, "schema must declare a non-empty $id")
+        if value.get("$id") != SCHEMA_IDS[relative]:
+            report.add(
+                "SCHEMA_JSON",
+                relative,
+                f"schema $id must be {SCHEMA_IDS[relative]}",
+            )
         validators[relative](value, report, relative)
 
 
@@ -1668,17 +1733,66 @@ def _validate_event(
     path: str,
 ) -> Optional[datetime]:
     _exact_keys(value, EVENT_BASE_KEYS | EVENT_PHASE_KEYS[expected_type], report, path, expected_type)
-    if value.get("schema_version") != "1.0":
-        report.add("FIELD_VALUE", path, "event schema_version must be 1.0")
+    if value.get("schema_version") != "2.0":
+        report.add("FIELD_VALUE", path, "event schema_version must be 2.0")
     if value.get("event_type") != expected_type:
         report.add("EVENT_SEQUENCE", path, f"event_type must be {expected_type}")
-    if value.get("acting_role") != "project-owner":
-        report.add("FIELD_VALUE", path, "acting_role must be project-owner")
-    for key in ("event_id", "project_owner", "approval_reference"):
+    expected_role = EVENT_ROLES[expected_type]
+    if value.get("acting_role") != expected_role:
+        report.add("AUTHORITY", path, f"acting_role must be {expected_role}")
+    for key in ("event_id", "approver", "approval_reference"):
         _nonempty_string(value.get(key), report, path, key)
     _pattern_string(value.get("demo_revision"), GIT_REVISION_RE, report, path, "demo_revision")
     _pattern_string(value.get("demo_content_sha256"), SHA256_RE, report, path, "demo_content_sha256")
     timestamp = _timestamp(value.get("approved_at"), report, path, "approved_at")
+
+    assignment = value.get("authority_assignment")
+    assignment_timestamp: Optional[datetime] = None
+    if not isinstance(assignment, dict):
+        report.add("FIELD_TYPE", path, "authority_assignment must be an object")
+    else:
+        _exact_keys(
+            assignment,
+            AUTHORITY_ASSIGNMENT_KEYS,
+            report,
+            path,
+            "authority_assignment",
+        )
+        if assignment.get("role") != value.get("acting_role"):
+            report.add(
+                "AUTHORITY",
+                path,
+                "authority_assignment.role must equal acting_role",
+            )
+        if assignment.get("assignee") != value.get("approver"):
+            report.add(
+                "AUTHORITY",
+                path,
+                "authority_assignment.assignee must equal approver",
+            )
+        for key in (
+            "role",
+            "assignee",
+            "assigned_by_project_owner",
+            "assignment_reference",
+        ):
+            _nonempty_string(assignment.get(key), report, path, f"authority_assignment.{key}")
+        assignment_timestamp = _timestamp(
+            assignment.get("assigned_at"),
+            report,
+            path,
+            "authority_assignment.assigned_at",
+        )
+    if (
+        assignment_timestamp is not None
+        and timestamp is not None
+        and assignment_timestamp >= timestamp
+    ):
+        report.add(
+            "AUTHORITY",
+            path,
+            "authority_assignment.assigned_at must be strictly before approved_at",
+        )
 
     if expected_type == "demo-approved":
         scope = value.get("approved_scope")
@@ -1832,15 +1946,26 @@ def _validate_cutover_documents(
     event_ids = [event.get("event_id") for event in events.values() if isinstance(event.get("event_id"), str)]
     if len(event_ids) != len(set(event_ids)):
         report.add("EVENT_SEQUENCE", "events", "event_id values must be unique")
+    approval_references = [
+        event.get("approval_reference")
+        for event in events.values()
+        if isinstance(event.get("approval_reference"), str)
+    ]
+    if len(approval_references) != len(set(approval_references)):
+        report.add(
+            "EVENT_SEQUENCE",
+            "events",
+            "approval_reference values must be unique; one approval cannot satisfy multiple events",
+        )
 
     if len(timestamps) == 3:
         parsed_by_name = dict(timestamps)
         if not (
             parsed_by_name["demo-approved"]
-            <= parsed_by_name["demo-frozen"]
-            <= parsed_by_name["transfer-completed"]
+            < parsed_by_name["demo-frozen"]
+            < parsed_by_name["transfer-completed"]
         ):
-            report.add("EVENT_SEQUENCE", "events", "event timestamps must be non-decreasing")
+            report.add("EVENT_SEQUENCE", "events", "event timestamps must be strictly increasing")
         if manifest.created_at is not None and not (
             parsed_by_name["demo-approved"]
             <= manifest.created_at
@@ -2116,7 +2241,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--events-dir",
         type=Path,
-        help="explicit external audit directory containing the three Project owner events",
+        help="explicit external audit directory containing the three delegated-authority events",
     )
     return parser
 

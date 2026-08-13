@@ -40,8 +40,8 @@ freeze 때 두 consumer bundle에 byte-identical하게 각각 포함하는 공�
 
 ## 문서 지도와 권위
 
-1. [`governance/transition-policy.md`](governance/transition-policy.md) — 역할, 금지사항,
-   Project owner의 3개 one-shot 사건
+1. [`governance/transition-policy.md`](governance/transition-policy.md) — 역할 위임, 금지사항,
+   세 개의 delegated one-shot 사건
 2. [`governance/one-time-transition-plan.md`](governance/one-time-transition-plan.md) —
    reconciliation부터 receipt까지의 단 한 번인 실행 절차
 3. [`common/`](common/README.md) — 양쪽이 동일하게 보존할 기술 중립 의미
@@ -73,9 +73,11 @@ dormant/preparing
   -> transfer-completed
 ```
 
-세 사건은 Project owner가 각각 한 번 승인한다. Product owner, tech owner 또는 steward의
-승인은 이를 대신하지 않는다. 중단된 copy는 같은 freeze ID와 같은 bytes만 재개할 수 있다.
-Freeze 이후 오류는 production errata/change control로 처리하며 Demo re-freeze나 두 번째
-이동은 허용하지 않는다.
+Project owner는 `game-spec-approver`, `demo-freeze-attestor`,
+`coordinated-transfer-attestor`를 배정하고 transition의 활성화·중단 권한을 유지한다. 각
+담당자는 위임 증거를 첨부해 자신에게 배정된 사건 하나만 승인한다. 현재는 한 사람이 세 역할을
+모두 맡을 수 있지만 서로 다른 ID·시각·predecessor를 가진 사건 세 개가 필요하다. 중단된 copy는
+같은 freeze ID와 같은 bytes만 재개할 수 있다. Freeze 이후 오류는 production errata/change
+control로 처리하며 Demo re-freeze나 두 번째 이동은 허용하지 않는다.
 
 현재 official event와 `freezes/`는 존재하지 않는다.

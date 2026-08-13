@@ -18,4 +18,4 @@
 | `SRV-DOM-009` | Snapshot, reconnect, replay, audit와 observability | Canonical resume/replay/audit input | decision-blocked | `PT-DEC-SERVER-002` |
 
 Final reconciliation에서는 included domain마다 rule ID와 dependent Client surface를 연결한다.
-Excluded domain은 Product owner와 사유를 기록한다. Code path, fixture와 evidence는 넣지 않는다.
+Excluded domain은 `game-spec-approver`와 사유를 기록한다. Code path, fixture와 evidence는 넣지 않는다.

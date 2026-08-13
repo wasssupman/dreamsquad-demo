@@ -11,11 +11,12 @@
 
 ## 1. Final reconciliation
 
-1. Project owner가 reconciliation 범위와 candidate Demo revision을 지정한다.
+1. Project owner가 transition을 활성화하고 reconciliation 범위, candidate Demo revision과 세 역할의
+   담당자를 지정한다. 각 위임에는 Project owner identity, 배정 시각과 근거를 남긴다.
 2. Open change entry와 current Demo source를 한 번 대조한다.
 3. Client experience map과 Server domain coverage를 `included | excluded | decision-blocked`로 확정한다.
 4. Included scope의 blocking decision을 모두 `decided`로 만든다.
-5. Product owner와 두 tech owner가 의미와 consumer-local policy 적합성을 검토한다.
+5. `game-spec-approver`와 두 tech owner가 의미와 consumer-local policy 적합성을 검토한다.
 6. Temp dry-run에서 living file inventory, links, schema, partition과 hashes를 검증한다.
 
 Reconciliation은 Demo content를 수정하지 않는다. 규칙 공백이 있으면 transition 문서를 보완하거나
@@ -23,9 +24,11 @@ scope를 명시적으로 제외하며 Demo spec/code 변경을 요구하지 않�
 
 ## 2. `demo-approved`
 
-Project owner가 `governance/audit-events/1-demo-approved.json`을 한 번 승인한다. Event는
+`game-spec-approver`가 `governance/audit-events/1-demo-approved.json`을 한 번 승인한다. Event는
 candidate Demo revision, transition subtree를 제외한 Demo content SHA-256, approved scope와
-approval reference를 기록한다. `audit-events/`는 official 사건이 생길 때만 만들며 freeze payload가 아니다.
+approval reference 및 Project owner의 해당 역할 위임 증거를 기록한다. `audit-events/`는 official
+사건이 생길 때만 만들며 freeze payload가 아니다.
+`demo-approved`는 lifecycle chain head이므로 `predecessor_event_id`를 갖지 않는다.
 Approved scope는 freeze coverage에서 `included`인 모든 row를 `client:<Surface ID>` 또는
 `game-server:<Domain ID>`로 정규화한 정확한 집합이며, 누락·추가·중복을 허용하지 않는다.
 이후 Demo content가 달라지면 이 transition은 terminal cancel이며 두 번째 approval을 만들지 않는다.
@@ -46,8 +49,9 @@ freezes/<freeze-id>/
 
 Manifest path는 canonical relative POSIX Markdown path여야 하고 Unicode `Cc` 제어 문자를 포함할
 수 없다. `archive`, `maintenance`, `fixture`, `fixtures`, `evidence` path segment도 허용하지 않는다.
-`common`은 각 target inventory에 동일 파일 목록과 bytes로 배정한다. Project owner는 manifest와 세 partition hash를
-고정하는 `governance/audit-events/2-demo-frozen.json`을 한 번 승인한다. 사건 레코드는
+`common`은 각 target inventory에 동일 파일 목록과 bytes로 배정한다. `demo-freeze-attestor`는
+manifest와 세 partition hash를 고정하는 `governance/audit-events/2-demo-frozen.json`을 한 번
+승인한다. 사건에는 당시 역할 위임 증거를 포함한다. 사건 레코드는
 freeze inventory나 consumer 전달 대상이 아니다.
 
 이 시점에 immutable해지는 payload는 manifest, 세 partition과 policy다. `receipts/`는 manifest
@@ -65,17 +69,18 @@ Game Server: somnia-game-server/docs/migration-input/dreamsquad-demo/<freeze-id>
 
 - Client에는 `manifest + common + client + policy`만 복사한다.
 - Game Server에는 `manifest + common + game-server + policy`만 복사한다.
-- 두 target은 복사 전에 source-side 사건의 Project owner 권한·순서·revision·freeze ID를
-  검증하지만 사건 파일 자체를 bundle에 넣지 않는다.
+- 두 target은 복사 전에 source-side 사건의 위임 권한·순서·revision·freeze ID를 검증하지만 사건
+  파일 자체를 bundle에 넣지 않는다.
 - 각 저장소는 현지 정책에 따라 파일 수, byte count, manifest/common/assigned bundle hash를
-  검증하고 receipt를 한 번 작성한다.
+  검증하고 imported tree 밖의 현지 audit 경로에 receipt를 한 번 작성한다. 같은 bytes를 Demo
+  감사본의 `freezes/<freeze-id>/receipts/{client,game-server}.json`으로 반환한다.
 - Copy가 끊기면 같은 freeze ID와 manifest로만 재개한다. 다른 bytes는 새 transfer가 아니다.
 
 ## 5. `transfer-completed`
 
 두 receipt가 [`schemas/receipt.schema.json`](schemas/receipt.schema.json)을 만족하고 audit copy와
-target bytes가 같을 때 Project owner가
-`governance/audit-events/3-transfer-completed.json`을 한 번 승인한다.
+target bytes가 같을 때 `coordinated-transfer-attestor`가 Project owner의 해당 역할 위임 증거를
+첨부해 `governance/audit-events/3-transfer-completed.json`을 한 번 승인한다.
 Receipt와 event 3을 Demo audit copy에 보존하고 같은 coordinated transaction 안에서 두 target의
 intake record에 연결한다.
 
