@@ -30,6 +30,8 @@ MonoBehaviour:
   maxWaveIntervalSec: 20
   unitGrowthPerWave: 1
   waveSpawnLeadInSec: 2.5
+  maxPullsPerClear: 3
+  paceParFraction: 0.92
   bossUnit: {fileID: 0}
   bossPool: []
   bossWaveInterval: 0

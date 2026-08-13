@@ -16,7 +16,7 @@ MonoBehaviour:
   battleMode: 0
   useGeneratedWaves: 1
   waveSeed: 20260822
-  waveGeneratorVersion: 3
+  waveGeneratorVersion: 4
   attackUnitPool:
   - {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
   - {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
@@ -39,6 +39,8 @@ MonoBehaviour:
   maxWaveIntervalSec: 20
   unitGrowthPerWave: 1.12
   waveSpawnLeadInSec: 2
+  maxPullsPerClear: 3
+  paceParFraction: 0.92
   bossUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
   bossPool:
   - {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}

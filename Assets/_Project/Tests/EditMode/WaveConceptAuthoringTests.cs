@@ -118,6 +118,50 @@ namespace Wassup.Tests.EditMode
                 "소수여야 «스킬 한 발 값»으로 번역된다 — 많으면 무력감이 된다");
         }
 
+        // wave-pull-revival unit 2 — 변주가 **고도를 교차하지 못하게** 구조로 막는다.
+        //
+        // 이 코드베이스에는 같은 위험을 구조로 막은 선례가 있다: `SlotAltitude` 에 `Any` 를
+        // 두지 않아 「평소」가 비행을 뽑는 사고가 아예 성립하지 않게 한 것(WaveConceptData.cs).
+        // 「공습 가운데에 지상을 섞지 않는다」는 그 거울상인데(대공에 투자한 플레이어가 그
+        // 웨이브만 헛돈다) 주석으로만 막으면 몇 달 뒤 누가 넣어도 전부 초록이다.
+        //
+        // classFilter 변주는 자유다 — 막는 것은 Ground↔Air 교차뿐이다.
+        [Test]
+        public void VariantSlots_NeverCrossAltitude()
+        {
+            string[] names =
+            {
+                "Concept_Spread", "Concept_Swarm", "Concept_Heavy",
+                "Concept_Ranged", "Concept_Airstrike",
+            };
+            foreach (string name in names)
+            {
+                var c = Concept(name);
+                if (c.variantSlots == null || c.variantSlots.Length == 0) continue;
+
+                var mainAltitudes = new HashSet<SlotAltitude>();
+                foreach (var slot in c.slots)
+                    if (slot != null) mainAltitudes.Add(slot.altitude);
+
+                foreach (var slot in c.variantSlots)
+                {
+                    if (slot == null) continue;
+                    Assert.IsTrue(mainAltitudes.Contains(slot.altitude),
+                        $"{name}: 변주가 본 편성에 없는 고도({slot.altitude})를 끌어온다 — " +
+                        "「공습」 가운데 지상이 섞이면 대공 배치가 그 웨이브만 헛돈다");
+                }
+            }
+        }
+
+        [Test]
+        public void Airstrike_HasNoVariant()
+        {
+            var air = Concept("Concept_Airstrike");
+            Assert.IsTrue(air.variantSlots == null || air.variantSlots.Length == 0,
+                "「공습」은 countMul 0.3 의 소수 압박이라 3연속이어도 지루하지 않다. " +
+                "변주를 넣으면 위 고도 교차 규칙과 정면으로 부딪힌다");
+        }
+
         [Test]
         public void Swarm_IsRunnerClass_WithHigherCount()
         {
@@ -176,9 +220,12 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible()
         {
+            // wave-pull-revival unit 2 — 3 → 4. 묶음 가운데 변주가 들어가면서 컨셉을 쓰는
+            // 덱의 편성이 다시 바뀌었다(변주를 저작한 컨셉이 있는 웨이브부터 슬롯 수가 달라져
+            // 이후 rng 소비가 이동한다). 계약 8 대로 버전으로 표시한다.
             foreach (string name in AllDecks)
-                Assert.AreEqual(3, Deck(name).waveGeneratorVersion,
-                    $"{name}: 컨셉 도입으로 편성이 바뀌었다 — 버전으로 표시한다");
+                Assert.AreEqual(4, Deck(name).waveGeneratorVersion,
+                    $"{name}: 편성이 바뀌었다 — 버전으로 표시한다");
         }
 
         [Test]
@@ -255,7 +302,13 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void HeavyBlocks_AreAllTankers()
+        // wave-pull-revival unit 2 — 계약 개정: 「중장」 묶음의 **첫·마지막** 웨이브는 여전히
+        // 순수 탱커지만, **가운데**에는 변주가 끼어든다(저작 = Concept_Heavy.variantSlots).
+        //
+        // 왜 순수를 통째로 포기하지 않는가: 가운데도 탱커를 계속 포함해야(삽입이지 교체가
+        // 아니다) 「중장 블록」이라는 라벨이 거짓말이 되지 않는다. 그래서 가운데는
+        // 「탱커가 있다 + 탱커 아닌 것도 있다」를 함께 단언한다.
+        public void HeavyBlocks_AreTankersExceptTheMiddleVariant()
         {
             foreach (string name in MapDecks)
             {
@@ -264,13 +317,33 @@ namespace Wassup.Tests.EditMode
                 {
                     var w = plan.waves[i];
                     if (w.conceptLabel != "중장") continue;
+
+                    bool isMiddle = i % 3 == 1;
+                    bool sawTanker = false, sawOther = false;
                     for (int g = 0; g < w.groups.Count; g++)
                     {
                         var u = w.groups[g].unit;
-                        if (u != null && u.tier == EnemyTier.Boss) continue;
-                        Assert.AreEqual(EnemyClass.Tanker, u.enemyClass,
-                            $"{name} 웨이브 {i + 1}: 「중장」에 탱커가 아닌 적이 섞였다");
+                        if (u == null || u.tier == EnemyTier.Boss) continue;
+                        if (u.enemyClass == EnemyClass.Tanker) sawTanker = true;
+                        else sawOther = true;
+
+                        if (!isMiddle)
+                            Assert.AreEqual(EnemyClass.Tanker, u.enemyClass,
+                                $"{name} 웨이브 {i + 1}: 묶음 가운데가 아닌데 「중장」에 탱커가 아닌 적이 섞였다");
                     }
+
+                    if (!isMiddle || (!sawTanker && !sawOther)) continue;
+
+                    Assert.IsTrue(sawTanker,
+                        $"{name} 웨이브 {i + 1}: 「중장」 가운데에서 탱커가 사라졌다 — " +
+                        "변주가 «삽입»이 아니라 «교체»로 동작했다");
+                    // 「탱커가 남아 있다」만 보면 **변주를 통째로 지워도 초록**이다. 저작이
+                    // 있는 컨셉은 가운데에 탱커 아닌 것이 실제로 들어왔는지도 함께 단언한다
+                    // (완화 ladder 가 변주 클래스를 못 뽑아 탱커로 fail-open 한 경우도 잡는다).
+                    if (Concept("Concept_Heavy").variantSlots.Length > 0)
+                        Assert.IsTrue(sawOther,
+                            $"{name} 웨이브 {i + 1}: 「중장」에 변주를 저작했는데 가운데가 여전히 " +
+                            "순수 탱커다 — 변주가 편성에 반영되지 않았다");
                 }
             }
         }
