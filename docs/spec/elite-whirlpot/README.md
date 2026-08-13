@@ -1,8 +1,8 @@
 # elite-whirlpot — 엘리트 적 「Whirlpot」 (구름 화분 팽이)
 
-> 상태: **초안 2026-08-13 — 사용자 승인 대기.** 승인 후 unit 0 부터 순서대로 구현한다.
-> 선행: [`elite-enemy-tier`](../elite-enemy-tier/README.md) (완료 2026-08-13) — `EnemyTier` 축과
-> 적 `AttackN` 개방이 거기서 왔다. 이 spec 은 **그 위에 콘텐츠 1종만 얹는다.**
+> 상태: **구현 중 2026-08-14.** unit 0 → 1 → 2 순서.
+> 선행: [`elite-enemy-tier`](../elite-enemy-tier/README.md) (완료 2026-08-13) — `EnemyTier` 축이
+> 거기서 왔다. 이 spec 은 **그 위에 콘텐츠 1종만 얹는다.**
 
 ## 픽션
 
@@ -23,10 +23,11 @@
 
 ## 검증 질문
 
-> 팽이가 방어유닛에 닿았을 때 **그 자리에 멈춰서** 반경 안의 모든 것을 계속 깎는가?
+> 팽이가 방어유닛에 닿았을 때 **그 자리에 멈춰서** 반경 안의 **전원**을 계속 깎는가?
 > **걸어오는 동안에는 돌지 않는가** — 즉 회전이 교전에서만 나오는가?
-> 회오리가 **끊겨 보이지 않는가**(연출은 지속, 판정은 연타)?
-> 동료 적과 적 마음을 태우지 않는가?
+> **가디언이 붙잡아도 회오리가 접히지 않는가**(unit 0)?
+> 회오리가 끊겨 보이지 않는가(연출은 지속, 판정은 연타)?
+> 동료 적과 적 마음을 때리지 않는가?
 > 기존 엘리트 2종 · 보스 3종 · 일반 14종의 행동은 **무회귀**인가?
 
 ## 기존 엘리트와의 분업
@@ -40,33 +41,49 @@
 로스터의 **첫 「자리를 점거하는 위협」**이다. 그리고 전선의 근접 유닛을 실제로 죽여
 `DefenderDeathEvent` 에 압력을 만든다 — 지금 방어유닛이 죽는 일이 드물다.
 
+## 회오리는 신규 메커니즘이 아니다 — 이미 있던 축이다
+
+초판 설계는 `AreaSpin` payload 를 신설해 `AttackN(1)` 으로 발동시키려 했다. **폐기했다** —
+`AttackUnitData.attackTargetCount` 가 *"melee AoE. **Nearest N in-range targets hit per
+attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 보조 루프가
+
+- `bestTarget` 을 씨앗으로 **최근접 후보를 N-1 회 더** 고르고
+- **세 술어를 이미 적용**한다 — 진영 마스크 · 통행층(`PlacementLayers.CanTarget`) · 자기 제외
+- 범위를 **Chebyshev 타일 거리 ≤ `attackRange`** 로 잰다
+
+즉 내가 새로 쓰려던 것(최근접 N · Chebyshev 반경 · 세 술어)이 **글자 그대로 이미 있다.**
+그리고 죽은 코드가 아니다 — 방어유닛 5종과 보스 짱쎈을 포함해 **10개 에셋이 이미 쓴다.**
+
+그래서 이 spec 의 실질은 **저작 3칸**(`Melee` · `attackRange 2` · `attackTargetCount 10`)이고,
+코드에서 할 일은 그 축을 막고 있던 **공유 규칙 한 줄의 정정**(unit 0)과 **적 쪽 연출 개방**
+(unit 1)뿐이다.
+
 ## Feature-wide 계약
 
-1. **메커니즘은 `AttackN(period=1) × AreaSpin` 하나다.** `PeriodicTimer` 를 쓰지 않는다 —
-   *"공격을 해결했다" = "사거리 안에 대상이 있다" = "멈춰 있다"* 이므로 **「멈춰서 돌 때만
-   돈다」가 트리거에서 저절로 나온다.** 타이머로 하면 걸어오면서도 돌아 실루엣이 무너진다.
-   ★**「돌고 있다」를 표현하는 런타임 상태 변수를 만들지 말 것** — 그 사실은 이미 트리거가 안다.
+1. **이 엘리트는 «메커닉» 이 없다 — 저작된 공격 축으로 성립한다.** `nightmareMechanics` 는
+   비운다. 시스템상 문제 없다: `elite-enemy-tier` unit 0 이 **티어와 메커닉 보유를 이미
+   분리**했다(보스 특권은 `tier == Boss` 에서만 나온다). 다만 그 spec 의 «엘리트 = 특수 메커니즘
+   1개» 라는 *서술*과는 어긋나므로, 팽이의 정체성은 «특수하게 저작된 공격 축» 으로 기록한다.
+   ★**「돌고 있다」를 표현하는 런타임 상태를 만들지 말 것** — 공격 사건이 곧 회전이다.
 2. **「멈춤」은 작업이 아니다.** `engageMovement: Halt` 가 *"타겟 사거리 도달 시 정지하고 공격"*
    이고 **이미 폴백 기본값**이다(`MovementSystem`). 저작 한 칸으로 끝난다.
-3. **원형 도형을 새로 쓰지 않는다.** `TileAoe.IsInTileRange` 가 이미 Chebyshev 원을 잰다 →
-   **신규 순수 함수 0**. 드래곤은 `IsInCone` 을 새로 써야 했지만 팽이는 그것조차 없다.
-   광역 «도형 어휘»(`EffectArea` 계열) 신설 금지 — `elite-enemy-tier` 계약 6 을 계승한다.
-   payload 마다 도형이 상수이므로 이 spec 은 「도형 통합」의 착수 조건을 만들지 않는다.
-4. **콘 순회의 세 술어를 그대로 가져온다** — ① 진영 마스크 ② 통행층 교집합 ③ 자기 제외.
-   `AttackSystem` 후보 배열은 **전 진영 통합 풀**이다. 빠뜨리면 팽이가 동료와 적 마음을 간다.
-   (`elite-enemy-tier` 인계 노트 2 가 지우지 말라고 못 박은 그것.)
-5. **회전 반경 ≥ `attackRange`.** 자기를 때리는 근접 유닛이 원 밖에 있으면 「붙으면 깎인다」가
-   거짓이 된다. bake 가 위반을 경고한다.
+3. **어그로는 primary 선정만 지배한다 — 광역 폭은 어그로와 무관하다**(unit 0).
+   유닛별 예외 플래그를 만들지 않는다. 규칙 하나, 예외 0. 단 **sticky primary override
+   (사거리 밖이면 미발사)는 유지**한다 — 풀면 적이 가디언에 도착하지 못한다.
+4. **판정 술어를 새로 쓰지 않는다.** 진영 마스크·통행층·자기 제외는 광역 보조 루프에 이미
+   있다. 신규 순수 함수 0 · 신규 payload 0.
+5. **반경 = `attackRange`.** 한 필드가 «멈추는 거리» 와 «도는 거리» 를 겸한다 — 팽이에는
+   그게 맞다(닿는 거리 = 도는 거리). 둘을 분리하려면 payload 경로로 돌아가야 한다.
 6. **연출은 지속, 판정은 연타.** 채널링 기계(공격자별 지속 상태 + 틱 시스템 + 중단 규칙)를
    만들지 않는다 — `elite-enemy-tier` 가 드래곤 「지속 콘」을 조사해 **비용 M · 선례 0** 으로
    접었고, 팽이는 그 벽을 우회할 수 있다(회전이 원래 주기 사건이다).
-7. **가장 가까이 붙은 유닛은 두 번 맞는다** — 기본 공격 출력 + 회전. **의도다.** 팽이를
-   껴안은 것이 가장 아픈 게 맞고, 그게 「전선을 갈아낸다」의 실체다.
+7. **어느 적이 회오리를 갖는지는 «프리팹 유무» 가 결정한다.** id·이름 분기 금지이며
+   `attackTargetCount > 1` 로도 판정하지 않는다(Basic·Tanker·짱쎈까지 회오리가 생긴다).
+   빔 유닛 판정과 같은 규율.
 8. **회오리 VFX 는 번아웃 먹구름과 달라야 한다.** 번아웃은 *방어유닛의 상태* 신호이고 이건
    *적의 공격* 신호다. 같은 그림이면 플레이어가 둘을 뒤섞어 읽는다.
-9. **`targetFactions` 를 저작하지 않는다(0 유지).** 기존 에셋 복제로 만들면 `13` 이 묻어와
-   **방어 본능을 못 때린다** — 신규 적 4종이 정확히 그렇게 태어났다(`feda9054`).
-   가드 = `AuthoredTargetMaskTests.OnlySpecialEnemies_NarrowTheirTargets`.
+9. **`targetFactions` 를 저작하지 않는다(0 유지).** 복제로 만들면 `13` 이 묻어와 **방어 본능을
+   못 때린다**(`feda9054`). 가드 = `AuthoredTargetMaskTests`.
 10. **전 수치는 SO** — 하드코딩 금지(제약 6).
 
 ## 유닛 사양 (초기값 제안 — 전부 SO 소유, 튜닝 대상)
@@ -74,28 +91,32 @@
 | 항목 | 값 | 근거 |
 |---|---|---|
 | health / moveSpeed | 320 / **1.2** | 「천천히 와서 박히는 모루」. 현 최저속은 나이트메어 1.0 |
-| attackMethod / attackRange | Melee / 1 | 근접. 원거리 처리로 답을 만들려면 자기는 근접이어야 한다 |
-| attackCooldown | **0.5** | 연타 = 회오리의 체감. 짧게 |
-| outputs | `Damage 4` | ★낮게. 주 피해는 회전이다(계약 7 로 근접 1기는 4+6) |
-| mechanics | `AttackN(1) × AreaSpin` — 피해 **6** · 반경 **2**타일 | 붙은 1기 20 DPS · 반경 내 추가 1기당 12 DPS |
+| attackMethod | **Melee** | `attackTargetCount` 는 melee/outputs 경로 전용 |
+| attackRange | **2** | = 회오리 반경(계약 5). Chebyshev 2 = 5×5 |
+| **attackTargetCount** | **10** | 회오리의 실체. 반경 2 안의 방어유닛 수가 보드 총원보다 적어 실질 **무제한**이고, 10 은 «큰 회오리» 의 선언 겸 안전 상한이다 |
+| attackCooldown | **0.6** | 연타 = 회오리의 체감 |
+| outputs | `Damage` **5** | 대상당 8.3 DPS. 별도 단일 타격은 **없다** |
+| nightmareMechanics | **비움** | 계약 1 |
 | engageMovement / targetMode | **`Halt`** / `Nearest` | 계약 2. 특정 대상을 쫓는 게 아니라 «가장 가까운 것에 박힌다» |
 | traversalLayers | 0(지상 기본) | 비행은 드래곤 몫 |
 | tier | **Elite** | 보스 특권 0 |
 | killScore / awakening / stability | 3 / 3 / 2 | 엘리트 대역 |
 | maxPerWave / minWaveNumber | 1 / **5** | 슬라임 3 · 드래곤 4 다음 자리 |
-| Spine | `cloud-pot` · idle=walk=루프 1개 · attack=**빈 값** · death=**빈 값** | 계약은 [2_whirlpot_assets.md](2_whirlpot_assets.md) |
+| Spine | `cloud-pot` · idle=walk=루프 1개 · attack=**빈 값** · death=**빈 값** | [2_whirlpot_assets.md](2_whirlpot_assets.md) |
+| VFX | `attackVfxPrefab` = 회오리 · `attackVfxScalePerTile` 실측 | [1_whirl_visual.md](1_whirl_visual.md) |
 
 ## 작업 단위
 
 | 파일 | 구분 | 문서 | 목적 |
 |---|---|---|---|
-| 0 | code | [0_area_spin_payload.md](0_area_spin_payload.md) | `AreaSpin` payload + `AttackSystem` arm + EditMode |
-| 1 | code | [1_whirl_visual.md](1_whirl_visual.md) | 지속으로 읽히는 회오리 연출 (원샷 이어붙이기) |
+| 0 | code | [0_aggro_aoe_contract.md](0_aggro_aoe_contract.md) | 어그로 광역 접기 **철회** + 계약을 primary 로 좁힘 + 테스트. **단독 커밋** |
+| 1 | code | [1_whirl_visual.md](1_whirl_visual.md) | 적 SO 에 유닛별 공격 VFX 개방 + 회오리 스폰 |
 | 2 | asset | [2_whirlpot_assets.md](2_whirlpot_assets.md) | `Enemy_Whirlpot` + cloud-pot Spine + 카탈로그/덱 |
 | 3 | docs | `3_handoff_summary.md` | 인계 요약 (구현 종료 시) |
 
-**순서 근거** — 0 이 먼저다(1·2 가 전부 그 payload 를 전제한다). **2 는 마지막** — 아트가
-잘못된 동작을 예쁘게 포장하지 않게 한다(`elite-enemy-tier` 와 같은 근거).
+**순서 근거** — **0 이 먼저이고 단독**이다: 기존 적 5종(보스 포함)이 같은 코드를 타므로
+되돌릴 때 팽이 콘텐츠와 딸려가면 안 된다. **2 는 마지막** — 아트가 잘못된 동작을 예쁘게
+포장하지 않게 한다.
 
 ## 파이프라인 커버리지
 
@@ -103,23 +124,25 @@
 
 | 정거장 | 이 spec 에서 |
 |---|---|
-| 데이터 SO | `Enemy_Whirlpot` 신규 + `EnemyCatalog` 등록 + 라이브 덱 7종 `attackUnitPool` **중간** 삽입. ⚠ 삽입이 웨이브 baseline 을 바꾼다 → `waveSeed` 갱신해 diff 에 드러낸다 |
+| 데이터 SO | `Enemy_Whirlpot` 신규 + `EnemyCatalog` 등록 + 라이브 덱 7종 **중간** 삽입(⚠ `waveSeed` 갱신). `AttackUnitData` 에 연출 필드 2개 append(`attackVfxPrefab`·`attackVfxScalePerTile`) — `DefenderUnitData` 의 같은 필드 대칭 |
 | 등급 축 | `tier: Elite`. 신규 enum 값 0 |
-| 스폰 진입점 | **변경 0** — 레인 스폰(`SpawnUnit` → `CreateEnemyEntity`) 그대로. 위치 지정 스폰이 필요 없다(분열 없음) |
-| ECS 컴포넌트 | **신규 0.** 표준 적 세트 + `DcTriggerSlot`(엘리트도 받는다). 계약 1 이 상태 변수를 금지한다 |
-| 시뮬 시스템 | **`AttackSystem` 단 하나** — `AreaSpin` arm. 신규 시스템 0 · `ProjectileHitSystem` 무변경 |
-| 이벤트 큐 | **신규 채널 0.** 연출은 기존 `UnitAttackVisualEvent` 필드 append(드래곤 브레스 선례) |
-| View/Pool | 기존 `SpineUnitPool`. ★attack·death 애니 빈 값 = `PlayAttack` early-return + 즉시 `Destroy` (드래곤 선례) |
+| 스폰 진입점 | **변경 0** — 레인 스폰(`SpawnUnit` → `CreateEnemyEntity`) 그대로 |
+| ECS 컴포넌트 | **신규 0.** 표준 적 세트. `DcTriggerSlot` 조차 안 받는다(메커닉 없음 = bake 가 버퍼를 안 붙인다) |
+| 시뮬 시스템 | `AttackSystem` **한 줄 삭제**(unit 0). 신규 시스템 0 · 신규 순수 함수 0 |
+| 이벤트 큐 | **신규 채널 0 · 신규 필드 0.** 기존 `UnitAttackVisualEvent` 가 매 공격 START 에 `attacker`+`attackAnimPeriod` 를 이미 싣는다 |
+| View/Pool | 기존 `SpineUnitPool`. ★attack·death 애니 빈 값 = `PlayAttack` early-return + 즉시 `Destroy`(드래곤 선례) |
 | 체력 표시 | 변경 없음 — `UnitOverheadUiLayer` |
-| 씬 wiring | 회오리 프리팹 슬롯 1개(`VfxSpawner`). ★프리팹 슬롯은 **`VfxSpawner` 가 소유** — 브리지에 두지 않는다(`b7750a4b` 에서 이관한 소유권) |
-| VFX | 회오리 = `Assets/_Project/VFX/` 아래 신규 또는 벤더 복제본. ⚠ 벤더 원본 직접 참조 금지 · 번아웃 먹구름과 구분(계약 8) |
+| 씬 wiring | **N/A — 신규 SerializeField 0.** 회오리 프리팹은 **적 SO** 가 갖는다(방어유닛 `attackVfxPrefab` 대칭). `VfxSpawner` 에 슬롯을 만들지 않는 이유 = 유닛별 opt-in 이 필요하고 그게 계약 7 이다 |
+| VFX | 회오리 = `Assets/_Project/VFX/` 아래 신규. ⚠ 벤더 원본 직접 참조 금지 · 번아웃 먹구름과 구분(계약 8) |
 
 ## 후속 후보 (현 spec 범위 밖)
 
 - **회전 예고(telegraph)** — 즉발이고 공격 애니가 없어 신호가 VFX 하나다. 드래곤 브레스와
   같은 상황이며 그때 「지금은 읽힌다」로 판정했다. 안 읽히면 `hitDelaySec` + 바닥 링.
-- **회전 중 이동 저항 / 밀어내기** — 「팽이가 부딪히면 튕겨낸다」. `CcKind.Impulse` 가 있으나
-  **동사가 둘이 되므로** 이 spec 에서 하지 않는다(엘리트 = 메커니즘 1개).
+- **반경과 정지거리 분리** — 계약 5 가 한 필드로 겸직시킨다. 「멀리서 멈춰 크게 돈다」나
+  「붙어서 좁게 돈다」를 저작하려면 그때 payload 경로를 부활시킨다.
+- **`attackTargetCount` 상한 감각** — 10 은 실질 무제한이다. 진짜 상한 knob 이 필요해지면
+  `AoeTargetCap.SelectNearest`(투사체 AoE 가 쓴다)를 melee 경로에도 끌어오는 것이 정석이다.
 - **회오리 반경 시각화** — 반경이 저작값인데 화면에 경계가 없다. 밸런스 튜닝 시 필요해질 수 있다.
 - **VFX 카탈로그 등재** — `common-skill-vfx-reference.md` 에 회오리 항목 신설은 **사용자 승인
   필요**(스킬 규칙). 콘 브레스도 같은 이유로 미등재 상태다.
