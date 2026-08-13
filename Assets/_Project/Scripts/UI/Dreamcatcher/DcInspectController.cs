@@ -248,10 +248,23 @@ namespace Wassup.UI
             }
         }
 
+        // defender-clock-out unit 0 — 이동/재배치는 **퇴근으로 대체**됐다(팀 리뷰 2026-08-13).
+        // 기능 코드(DefenderRelocationController · BattleBridge.Relocation.cs · RelocationSettings ·
+        // 재배치 테스트)는 전부 남기고 **사람이 만지는 진입구만** 끈다. true 로 되돌리면 부활한다.
+        //
+        // ⚠ [SerializeField] 로 노출하지 않는다 — 인스펙터에서 켜고 씬을 저장하면 그 값이 조용히
+        // 리포에 박힌다(이 프로젝트에서 반복된 사고). 진실원은 이 줄 하나다.
+        // const 가 아니라 static readonly 인 이유: const 면 분기가 상수 폴딩돼 도달 불가 경고가 뜬다.
+        private static readonly bool RelocationEnabled = false;
+
         // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
         // 슬롯(DefenderDragSlot)은 런타임 생성이라 인스펙터 배선이 없고, 이미 이 컨트롤러
         // 참조를 Bind 로 받고 있다. **여기 하나만 노출하면 씬 배선이 늘지 않는다.**
-        public DefenderRelocationController Relocation => relocationController;
+        //
+        // defender-clock-out unit 0 — null 을 돌려주면 DefenderDragSlot.TryBeginRelocationFromSlot 이
+        // **자기 폴백**으로 종전 동작(판 위 그 유닛 선택)에 돌아간다. 슬롯 파일은 건드리지 않는다 —
+        // 거기에 두 번째 스위치를 심으면 진실원이 둘이 된다.
+        public DefenderRelocationController Relocation => RelocationEnabled ? relocationController : null;
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
         // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
