@@ -121,6 +121,23 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 엘리트 등급 적 (elite-enemy-tier — **완료 2026-08-13**, units 0~7)
+
+적을 **일반/엘리트/보스** 3등급으로 가른 spec. 보스 특권이 「메커닉 보유」가 아니라 `tier == Boss`
+에서만 나오게 바꿔 **«메커닉을 가진 비보스»** 를 가능하게 했다. 엘리트 2종(슬라임 분열 · 드래곤
+화염 브레스) 출하 + 라이브 덱 7종 편입(`2712aa01`, wave-concept-blocks unit 7).
+상세: `docs/spec/elite-enemy-tier/8_handoff_summary.md` · 파이프라인 = `object-pipeline-map.md` **적** 아키타입.
+
+- **⚠ 밸런스 실전 미검증** [S] · `66004836`(슬라임 피해·체력 ×2 · 드래곤 기본 20 · 브레스 50 · 화염 10/틱)이 TEST MODE 검증만 거친 채 라이브 웨이브에 실렸다. 슬라임은 체력 2배 + 4기 분열이라 웨이브 처리 시간에 직접 영향을 준다. **이 값들의 회귀는 테스트가 잡지 못한다** — 단언이 전부 상대·구조형이다(의도된 것). (elite-enemy-tier)
+- **화염 스택을 출처별로 가르기** [M] · `_stackThresholds` 가 `StackKind` 당 규칙 한 벌이라 드래곤과 Kindler 가 `StackModifier_Fire` 를 **물리적으로 공유**한다. 드래곤 화염을 4→10 으로 올릴 때 Kindler 도 같이 올라갔다(사용자 승인). 따로 주려면 새 StackKind 나 출처별 오버라이드가 필요하다 — `DotOrigin` 2축 분리(dot-effect-extraction unit 0)와 같은 결의 문제다. (elite-enemy-tier)
+- **광역 도형 어휘 통합** [M] · 이 spec 이 접은 것(`EffectArea` 철회). 착수 조건은 «저작이 도형을 고르는 소비자가 2개 이상 생겼는가» — 그 전에는 같은 과설계가 반복된다. 후보: `SingleSplash` splash · `HazardShapeSampler`(managed→Burst) · `AllyBuffFieldSystem` · `AuraPulse` · 어그로 반경. (elite-enemy-tier)
+- **브레스 예고(telegraph)** [S] · 브레스는 즉발이고 공격 애니가 없어 플레이어가 받는 신호가 **VFX 하나뿐**이다. 실플레이에서 안 읽히면 `hitDelaySec` + 바닥 링. 「지속 콘」으로 성격을 바꾸는 선택지도 미결. (elite-enemy-tier)
+- **슬라임 3단계 이상 분열** [S] · 중간 SO 를 하나 더 만들면 되고 **코드 변경 0** 이다(`SplitChain` 예산 깊이 8 · 총 32 안에서). (elite-enemy-tier)
+- **엘리트 전용 등장 연출·HUD·아트** [M] · 보스경보를 재사용하지 않기로 해서(계약 1) 엘리트를 구분하는 수단이 지금은 스켈레톤 크기뿐이다. 둘 다 벤더 Spine 예제 as-is. (elite-enemy-tier)
+- **`EnemyKilledEvent` 페이로드 태그화** [S] · 각성·점수·킬버스트·분열로 **네 번째** 필드 append 가 됐다. 다섯 번째가 붙기 전에 «태그 + union» 검토. (elite-enemy-tier)
+- **남은 5개 e2e 를 `BattleBridgeTestAccess` 로 이관** [S] · `Boss*`·`*Shield*`·`Kindler` 가 리플렉션 스폰 레시피 사본을 유지하고 **이름 단언이 없다** — 개명 한 번에 NRE 로 조용히 죽는다(2026-08-11 `deckIndex`→`laneIndex` 가 Kindler 를 그렇게 죽였다). 그 파일을 여는 다음 세션이 같이 옮기는 것이 싸다. (elite-enemy-tier)
+- **콘 브레스 VFX 카탈로그 항목** [S] · `common-skill-vfx-reference.md` 에 부채꼴 화염 항목이 없다. 스킬 규칙상 **사용자 승인 없이 카탈로그에 추가 금지**라 초안만 있고 미등재. (elite-enemy-tier)
+
 #### 소환사 & 순찰병 (summon-patrol-defender — **완료 2026-08-12**, units 0~12 · unit 6 철회)
 
 이 게임의 3번째 유닛 유형 — **아군인데 walk 위를 이동하는 첫 유닛**. 「이동은 적 전용」 전제를 깼고,
