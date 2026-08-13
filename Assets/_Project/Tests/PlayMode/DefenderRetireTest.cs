@@ -112,6 +112,88 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.RetireDefender(cell), "착지 후에는 퇴근된다");
         }
 
+        // defender-clock-out unit 2 — 퇴근이 그 유닛 타입을 쿨타임에 넣는가. 사망에는 없는
+        // 대가라 DefenderDied 핸들러와 갈라 둔 것이 실제로 성립하는지 잡는다.
+        //
+        // placementCooldown 은 라이브 에셋 기본값이 0("0 = inert")이라 **런타임 사본**에 값을
+        // 넣는다 — 카탈로그 에셋을 직접 고치면 에디터에서 디스크에 박힌다(재배치 스위트 선례).
+        [UnityTest]
+        public IEnumerator Retire_StartsPlacementCooldown_ForThatUnitType()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var unit = Object.Instantiate(FindCatalog().ById("ranger"));
+            unit.placementCooldown = 7f;
+
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            gm.SetPhase(GamePhase.Placement); // 트레이 슬롯은 페이즈 전환이 만든다
+            yield return null;
+
+            var cd = gm.CooldownRuntime;
+            cd.ResetAll();
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            var cell = SoleCell(bridge);
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            Assert.IsTrue(bridge.RetireDefender(cell), "retire");
+            Assert.AreEqual(7f, cd.RemainingFor(unit), 0.01f, "퇴근이 그 타입의 쿨타임을 건다");
+            Assert.IsFalse(cd.IsReady(unit), "쿨타임 중에는 준비되지 않았다");
+
+            // 다 흐르면 풀린다 — StartCooldown 이 등록만 하고 끝나는 게 아니라 실제로 만료한다.
+            cd.Tick(7.01f);
+            Assert.IsTrue(cd.IsReady(unit), "쿨타임이 만료하면 다시 배치 가능");
+            Object.Destroy(unit);
+        }
+
+        // 사망에는 쿨타임이 없다 — 퇴근 핸들러를 DefenderDied 와 합치면 이 단정이 깨진다.
+        // (README 열린 밸런스 항목: 그래서 "죽게 두는 게 빠르다" 가 성립할 수 있다.)
+        [UnityTest]
+        public IEnumerator Death_DoesNotStartPlacementCooldown()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var unit = Object.Instantiate(FindCatalog().ById("ranger"));
+            unit.placementCooldown = 7f;
+
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            gm.SetPhase(GamePhase.Placement);
+            yield return null;
+
+            var cd = gm.CooldownRuntime;
+            cd.ResetAll();
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var entity = EntityAt(bridge, em, cell);
+            gm.SetPhase(GamePhase.Battle);
+            bridge.StartBattle();
+            yield return null;
+
+            var hp = em.GetComponentData<Health>(entity);
+            hp.value = 0f;
+            em.SetComponentData(entity, hp);
+            for (int i = 0; i < 180 && em.Exists(entity); i++) yield return null;
+            Assert.IsFalse(em.Exists(entity), "죽어서 사라졌다");
+
+            Assert.AreEqual(0f, cd.RemainingFor(unit), 0.01f, "사망에는 쿨타임이 붙지 않는다");
+            Object.Destroy(unit);
+        }
+
         // ── helpers (재배치 스위트와 동형) ────────────────────────────────────
 
         private static DefenderCatalog FindCatalog()

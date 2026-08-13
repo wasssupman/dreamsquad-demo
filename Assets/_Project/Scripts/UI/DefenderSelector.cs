@@ -141,6 +141,8 @@ namespace Wassup.UI
                 bridge.DefenderPlaced += OnDefenderPlacedRefresh;
                 bridge.DefenderDied -= OnDefenderDiedRefresh;
                 bridge.DefenderDied += OnDefenderDiedRefresh;
+                bridge.DefenderRetired -= OnDefenderRetired;
+                bridge.DefenderRetired += OnDefenderRetired;
             }
         }
 
@@ -156,6 +158,7 @@ namespace Wassup.UI
             {
                 bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
                 bridge.DefenderDied -= OnDefenderDiedRefresh;
+                bridge.DefenderRetired -= OnDefenderRetired;
             }
         }
 
@@ -166,6 +169,21 @@ namespace Wassup.UI
         // defender-board-limit 1 — 유닛이 죽으면 그 타입의 자리가 하나 빈다 → 소진 해제 가능.
         private void OnDefenderDiedRefresh(Unity.Entities.Entity _, DefenderUnitData __, Vector3 ___)
             => RefreshExhaustedStates();
+
+        // defender-clock-out unit 2 — 퇴근도 자리를 비우지만 **쿨타임이 붙는다.**
+        //
+        // ⚠ DefenderDied 핸들러와 합치지 말 것. 리페인트는 같지만 쿨타임 시작이 사망에는
+        // 없어야 한다 — "죽게 두는 쪽엔 대기가 없고 퇴근에는 있다" 가 이 spec 의 열린 밸런스
+        // 항목이고, 합치는 순간 그 결정이 코드에서 사라진다.
+        //
+        // placementCooldown == 0 이면 StartCooldown 이 no-op 이라 즉시 재배치 가능하다
+        // ("0 = inert"). 그게 옳은 기본값이다 — 쿨타임을 켜는 것은 저작 행위다.
+        private void OnDefenderRetired(Unity.Entities.Entity _, DefenderUnitData data, Vector3 __)
+        {
+            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (rt != null && data != null) rt.StartCooldown(data, data.placementCooldown);
+            RefreshExhaustedStates();
+        }
 
         // defender-board-limit 1 — 이 유닛이 이미 상한만큼 판에 나가 있나. 슬롯당 상태로
         // 저장하지 않고 매번 센다: SlotVisual 이 struct 라 필드 write-back 이 소실되고,

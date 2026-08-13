@@ -99,6 +99,7 @@ namespace Wassup.Core
             {
                 bridge.EnemyKilledAwakening += OnEnemyKilledAwakening;
                 bridge.DefenderDied += OnDefenderDied;
+                bridge.DefenderRetired += OnDefenderRetired; // 퇴근 — 회수만(각성 없음)
                 bridge.EnemyGone += OnEnemyGone; // 살찌운 제물 — 표식 소멸(처치/유출) 회수
             }
         }
@@ -111,6 +112,7 @@ namespace Wassup.Core
             {
                 bridge.EnemyKilledAwakening -= OnEnemyKilledAwakening;
                 bridge.DefenderDied -= OnDefenderDied;
+                bridge.DefenderRetired -= OnDefenderRetired;
                 bridge.EnemyGone -= OnEnemyGone;
             }
         }
@@ -243,14 +245,29 @@ namespace Wassup.Core
         {
             // unit 6 — 죽은 유닛(디펜더도 ISpineUnitVisualData) 스킨을 피규어 소스로 전달.
             GainAwakening(data != null ? data.awakeningReward : 0, sourceWorldPos, data);
+            RecoverCardsHostedBy(entity);
+        }
 
-            // Card recovery: every entry hosted by the dead defender rejoins the
-            // queue at the back (death order = recovery order). Squad entries
-            // (handle>0) also revoke their squad-wide effect (unit 9).
+        // defender-clock-out unit 2 — 퇴근은 **회수만** 한다. 각성 지급이 빠지는 것이
+        // 사망과의 유일한 차이다: 각성은 처치/사망의 보상이지 퇴장의 보상이 아니고,
+        // 주면 배치→퇴근 반복이 게이지 파밍이 된다.
+        private void OnDefenderRetired(Entity entity, DefenderUnitData _, Vector3 __)
+            => RecoverCardsHostedBy(entity);
+
+        // host 에 얹혀 있던 항목을 전부 큐 뒤로 돌려보낸다(퇴장 순서 = 회수 순서).
+        // 호출처 3개: 방어유닛 사망 · 방어유닛 퇴근 · 적 소멸.
+        //
+        // ⚠ 통합 전 두 판본은 **완전히 같지 않았다** — 사망 쪽에만 `handle > 0` 이면
+        // 스쿼드 전역 효과를 회수하는 3줄이 있었다(unit 9). 적 소멸 판본은 "표식은 handle 0
+        // 이라 revoke 가 없다"고 주석으로 단언한다. 통합하면 적 경로가 그 분기를 물려받으므로
+        // 확인했다: 적 부착의 유일한 writer 인 `ApplyBountyMark` 는 **성공 시 0 을 반환**하고
+        // 나머지 경로는 전부 -1(부착 자체가 없음)이다. 따라서 적에게는 분기가 절대 안 탄다.
+        private void RecoverCardsHostedBy(Entity host)
+        {
             if (_deck == null || _attachedTo.Count == 0) return;
             _recoverScratch.Clear();
             foreach (var kv in _attachedTo)
-                if (kv.Value.host == entity) _recoverScratch.Add(kv.Key);
+                if (kv.Value.host == host) _recoverScratch.Add(kv.Key);
             if (_recoverScratch.Count == 0) return;
             foreach (var entryId in _recoverScratch)
             {
@@ -268,21 +285,7 @@ namespace Wassup.Core
         // OnDefenderDied 의 회수 절반과 대칭(각성 지급 없음 — 처치 보상은 배율된
         // EnemyKilledAwakening 가, 유출은 무보상이 각각 자연 처리). 표식은 handle 0
         // (무회수) 이라 revoke 호출도 없다 — 큐 복귀만.
-        private void OnEnemyGone(Entity entity)
-        {
-            if (_deck == null || _attachedTo.Count == 0) return;
-            _recoverScratch.Clear();
-            foreach (var kv in _attachedTo)
-                if (kv.Value.host == entity) _recoverScratch.Add(kv.Key);
-            if (_recoverScratch.Count == 0) return;
-            foreach (var entryId in _recoverScratch)
-            {
-                _attachedTo.Remove(entryId);
-                _deck.Recover(entryId);
-            }
-            HandChanged?.Invoke(HandChangeReason.Recovered);
-            AttachmentsChanged?.Invoke();
-        }
+        private void OnEnemyGone(Entity entity) => RecoverCardsHostedBy(entity);
 
         private void GainAwakening(int reward, Vector3 sourceWorldPos, ISpineUnitVisualData killedVisual)
         {

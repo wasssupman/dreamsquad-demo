@@ -127,11 +127,17 @@ namespace Wassup.UI
         // 부착 섹션
         private RectTransform _attachSection;
         private TextMeshProUGUI _attachLabel;
-        // 액션(이동) — 유닛 주변 플립북을 대체한 진입구. unit 15.
-        private RectTransform _moveButton;
-        private UnityEngine.UI.Button _moveButtonComp;
-        private TextMeshProUGUI _moveLabel;   // defender-relocation unit 10 — 라벨에 코스트를 싣는다
-        private System.Action _onMove;
+        // 액션 슬롯 1칸 — 유닛 주변 플립북을 대체한 진입구. unit 15.
+        //
+        // defender-clock-out unit 2 — **기능 이름을 갖지 않는다.** 예전엔 "이동" 전용이었고
+        // 라벨 문자열까지 뷰 안에 박혀 있었다("이동  {cost}"). 퇴근으로 갈아끼우면서 그대로
+        // "retire 전용" 으로 재특화하면 슬롯이 또 기능에 묶여, 나중에 이동을 되살릴 때
+        // 라벨·시그니처·cost 파라미터를 전부 되돌려야 한다(= "상수 한 줄이면 부활" 이 거짓이 된다).
+        // 그래서 라벨 소유를 컨트롤러로 옮기고 뷰는 **켜짐/꺼짐과 문자열**만 받는다.
+        private RectTransform _actionButton;
+        private UnityEngine.UI.Button _actionButtonComp;
+        private TextMeshProUGUI _actionLabel;
+        private System.Action _onAction;
 
         private bool _visible;
         private bool _built;
@@ -140,28 +146,32 @@ namespace Wassup.UI
 
         // ── 공개 API ──────────────────────────────────────────────────────────
 
-        // defender-relocation unit 10 — 이동 버튼의 잠금/코스트를 매 프레임 받는다. 코스트는
-        // 슬로모 중에도 계속 차므로 Show 때 한 번 받아서는 "모아지면 풀린다" 를 표현할 수 없다.
+        // defender-relocation unit 10 — 액션 버튼의 잠금 상태를 **매 프레임** 받는다. Show 때 한 번
+        // 받아서는 "조건이 풀리면 활성화된다" 를 표현할 수 없다(이동은 코스트가 슬로모 중에도
+        // 차올랐고, 퇴근은 비행 중이던 유닛이 착지한다).
         //
-        // 잠금은 **숨김이 아니라 흐림**이다 — 왜 못 누르는지가 코스트 숫자로 읽혀야 한다.
+        // 잠금은 **숨김이 아니라 흐림**이다 — 버튼이 사라지면 왜 못 하는지가 안 읽힌다.
         // 래치를 두어 값이 바뀔 때만 문자열·색을 다시 쓴다(매 프레임 TMP 재빌드 방지).
-        private (bool enabled, int cost)? _moveState;
+        //
+        // defender-clock-out unit 2 — cost(int) 가 label(string) 에 흡수됐다. 뷰는 무슨 기능인지
+        // 모르고, 라벨 문안은 컨트롤러가 만든다("퇴근" / 부활 시 "이동  {cost}").
+        private (bool enabled, string label)? _actionState;
 
-        public void SetMoveState(bool enabled, int cost)
+        public void SetActionState(bool enabled, string label)
         {
-            if (!_built || _moveButton == null || !_moveButton.gameObject.activeSelf) return;
-            if (_moveState.HasValue && _moveState.Value.enabled == enabled && _moveState.Value.cost == cost) return;
-            _moveState = (enabled, cost);
+            if (!_built || _actionButton == null || !_actionButton.gameObject.activeSelf) return;
+            if (_actionState.HasValue && _actionState.Value.enabled == enabled && _actionState.Value.label == label) return;
+            _actionState = (enabled, label);
 
-            _moveButtonComp.interactable = enabled;
-            if (_moveLabel != null)
+            _actionButtonComp.interactable = enabled;
+            if (_actionLabel != null)
             {
-                _moveLabel.text = cost > 0 ? $"이동  {cost}" : "이동";
+                _actionLabel.text = label ?? "";
                 var c = unitBorder;
                 c.a = enabled ? 1f : 0.4f;
-                _moveLabel.color = c;
+                _actionLabel.color = c;
             }
-            var img = _moveButtonComp.targetGraphic as Image;
+            var img = _actionButtonComp.targetGraphic as Image;
             if (img != null)
             {
                 var c = img.color;
@@ -175,16 +185,16 @@ namespace Wassup.UI
         // unit 11 — **부착 0장이어도 띄운다.** 예전에는 보여줄 카드가 없으면 Hide 했지만
         // ("빈 상태 UI 는 만들지 않는다"), 스탯이 생기면서 0장이어도 보여줄 것이 있다.
         // 부착 섹션만 접는다.
-        // onMove 가 null 이면 이동 버튼을 감춘다(재배치 컨트롤러 미배선 등).
+        // onAction 이 null 이면 액션 버튼을 감춘다(컨트롤러 미배선 등).
         public void Show(string unitName, Sprite portrait,
             IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs,
-            System.Action onMove = null)
+            System.Action onAction = null)
         {
             Build();
             EnsurePlates();
-            _onMove = onMove;
-            _moveButton.gameObject.SetActive(onMove != null);
-            _moveState = null; // unit 10 — 대상이 바뀌었으니 잠금 래치를 비운다(다음 push 가 다시 칠한다)
+            _onAction = onAction;
+            _actionButton.gameObject.SetActive(onAction != null);
+            _actionState = null; // unit 10 — 대상이 바뀌었으니 잠금 래치를 비운다(다음 push 가 다시 칠한다)
 
             // 측정 전에 루트를 켠다. 비활성 계층에서 AddComponent 된 TMP 는 Awake 가 돌지
             // 않아 기본 설정이 로드되지 않고, 그 상태의 GetPreferredValues 는 정답의 1/10 을
@@ -391,10 +401,10 @@ namespace Wassup.UI
             }
 
             // 액션 버튼 — 패널 맨 아래 전폭. 정보(위)와 조작(아래)이 분리돼 읽기 순서가 선다.
-            if (_moveButton.gameObject.activeSelf)
+            if (_actionButton.gameObject.activeSelf)
             {
-                _moveButton.anchoredPosition = new Vector2(pad, -y);
-                _moveButton.sizeDelta = new Vector2(inner, actionButtonHeight);
+                _actionButton.anchoredPosition = new Vector2(pad, -y);
+                _actionButton.sizeDelta = new Vector2(inner, actionButtonHeight);
                 y += actionButtonHeight + sectionGap;
             }
 
@@ -531,7 +541,7 @@ namespace Wassup.UI
             _attachLabel.color = labelColor;
             _attachLabel.characterSpacing = 6f;
 
-            BuildMoveButton();
+            BuildActionButton();
 
             _root.SetActive(false);
             _built = true;
@@ -544,35 +554,35 @@ namespace Wassup.UI
         // 히트 대상이므로 패널 자리에서 막히는 것은 그 버튼 사각형뿐이다.
         // CanvasGroup 의 blocksRaycasts 는 그룹 전체를 껐다 켜므로 Update 에서 _visible 과
         // 함께 움직인다(페이드 아웃 중에 눌리지 않게).
-        private void BuildMoveButton()
+        private void BuildActionButton()
         {
             var go = new GameObject("MoveButton", typeof(RectTransform), typeof(Image),
                 typeof(UnityEngine.UI.Button));
             go.transform.SetParent(_root.transform, false);
-            _moveButton = (RectTransform)go.transform;
-            _moveButton.anchorMin = new Vector2(0f, 1f);
-            _moveButton.anchorMax = new Vector2(0f, 1f);
-            _moveButton.pivot = new Vector2(0f, 1f);
+            _actionButton = (RectTransform)go.transform;
+            _actionButton.anchorMin = new Vector2(0f, 1f);
+            _actionButton.anchorMax = new Vector2(0f, 1f);
+            _actionButton.pivot = new Vector2(0f, 1f);
 
             var img = go.GetComponent<Image>();
             img.sprite = UiRoundedSprite.Make(12f, 2f, fill, unitBorder); // 패널과 같은 색 언어
             img.type = Image.Type.Sliced;
             img.raycastTarget = true; // 계약상 유일한 예외
 
-            _moveButtonComp = go.GetComponent<UnityEngine.UI.Button>();
-            _moveButtonComp.targetGraphic = img;
-            var colors = _moveButtonComp.colors;
+            _actionButtonComp = go.GetComponent<UnityEngine.UI.Button>();
+            _actionButtonComp.targetGraphic = img;
+            var colors = _actionButtonComp.colors;
             colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f, 1f);
             colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
             colors.fadeDuration = 0.06f;
-            _moveButtonComp.colors = colors;
-            _moveButtonComp.onClick.AddListener(() => { if (_onMove != null) _onMove(); });
+            _actionButtonComp.colors = colors;
+            _actionButtonComp.onClick.AddListener(() => { if (_onAction != null) _onAction(); });
 
             var label = BuildLabel(go.transform, "Label", fontActionButton, TextAlignmentOptions.Center);
             label.fontStyle = FontStyles.Bold;
             label.color = unitBorder;
             label.text = "이동";
-            _moveLabel = label; // unit 10 — SetMoveState 가 코스트를 실어 다시 쓴다
+            _actionLabel = label; // unit 10 — SetActionState 가 문안을 실어 다시 쓴다
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.pivot = new Vector2(0.5f, 0.5f);

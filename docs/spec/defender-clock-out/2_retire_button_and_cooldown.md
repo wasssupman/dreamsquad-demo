@@ -89,3 +89,21 @@ revoke 호출도 없다"고 말한다. 통합본은 revoke 분기를 포함하�
 - 육안: 비행 중 유닛을 선택하면 퇴근 버튼이 흐리고, 착지하면 활성화된다.
 - **회귀**: `BoardLimit*` · 재배치 스위트 · 사망 경로 전부 통과.
 - **회귀**: 액션 슬롯 중립화가 **레이아웃을 바꾸지 않는다** — 버튼 위치·크기 불변.
+
+> **자동 검증 2026-08-13** — 컴파일 통과(에러 0).
+> `DefenderRetireTest` **4/4**(신규 2건 포함) · 회귀 5개 클래스 **13/13**(재배치 · BoardLimit×2 ·
+> 순찰병 · PlacementAura) · 회수 경로 **5/5**.
+>
+> 새 단정 2개가 서로를 지킨다: `Retire_StartsPlacementCooldown_ForThatUnitType`(7초가 걸리고
+> `Tick(7.01)` 후 풀린다) ↔ **`Death_DoesNotStartPlacementCooldown`**(사망에는 안 붙는다).
+> 뒤엣것이 "두 핸들러를 합치지 말 것"의 자동 경보다 — 합치면 즉시 빨개진다.
+>
+> **`RecoverCardsHostedBy` 추출의 안전 확인 2단계**:
+> ⑴ 정적 — `ApplyBountyMark` 는 **성공 시 `0`** 을 반환하고 나머지 경로는 전부 `-1`(부착 없음).
+>    적 부착의 handle 은 항상 0 이라 통합본이 물려주는 `handle > 0` revoke 분기는 적에게 안 탄다.
+> ⑵ 동적 — `PlacementAuraTest.Aura_RevokedWhenHostDies_ViaController` 통과. 그 분기를 실제로
+>    지나는 테스트라 revoke 경로가 보존됐음을 확인한다.
+>
+> 검증 중: 다른 세션이 `ScoreHudView.cs` 상단 바 HUD 를 편집하며 두 차례 빌드를 깨뜨렸다
+> (`SetMatchTimer` 시그니처 · `_topBarRoot` 외 필드 20여 개 미선언). **그쪽 파일을 건드리지 않고**
+> 초록이 될 때까지 기다렸다 — 실패 사유가 내 단정이 아니라 그쪽 컴파일 에러 로그였다.
