@@ -119,8 +119,11 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(d.visualMaterial, "null 이면 스폰이 포기된다");
         }
 
+        // wave-concept-blocks unit 7 — 구 `Dragon_IsNotInAnyLiveDeckPool_Yet` 을 뒤집었다.
+        // 그 단언은 «등록은 웨이브 baseline 을 바꾸므로 별도 커밋» 이라는 **연기**를 지키는
+        // 것이었고, 그 커밋이 실제로 왔으므로 이제 등록 자체를 지킨다.
         [Test]
-        public void Dragon_IsNotInAnyLiveDeckPool_Yet()
+        public void Dragon_IsInEveryLiveDeckPool_AndNotAtTheEnd()
         {
             var d = Load(DragonPath);
             string[] decks =
@@ -132,11 +135,12 @@ namespace Wassup.Tests.EditMode
             {
                 var deck = AssetDatabase.LoadAssetAtPath<AttackDeck>(
                     $"Assets/_Project/Scripts/Data/Decks/{name}.asset");
-                if (deck?.attackUnitPool == null) continue;
-                foreach (var u in deck.attackUnitPool)
-                    Assert.AreNotSame(d, u,
-                        $"{name}: 드래곤이 이미 풀에 있다 — 라이브 덱 등록은 웨이브 baseline 을 " +
-                        "바꾸므로 별도 커밋이다");
+                Assert.IsNotNull(deck?.attackUnitPool, name);
+                int index = System.Array.IndexOf(deck.attackUnitPool, d);
+                Assert.GreaterOrEqual(index, 0,
+                    $"{name}: 드래곤이 풀에 없으면 「공습」 컨셉이 스키머만 뽑는다");
+                Assert.Less(index, deck.attackUnitPool.Length - 1,
+                    $"{name}: 맨 뒤면 ResolveWaveEligibleIndex 전방 순환이 초반 웨이브를 pool[0] 로 쏠리게 한다");
             }
         }
     }

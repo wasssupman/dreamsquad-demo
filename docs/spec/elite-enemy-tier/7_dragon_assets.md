@@ -146,3 +146,17 @@ VfxSpawner SerializeField 슬롯»). `unity-vfx-integration` 스킬도 «`VfxSpa
 - [ ] `flying` 루프가 공격/사망에서 끊기지 않고, **정지 중에도 자연속도**로 돈다(위 정정의 실측)
 - [ ] Play (아군 오사): 드래곤 브레스가 같은 웨이브 동료·적 마음을 태우지 않는다 (unit 4 계약)
 - [ ] EditMode 전체 통과 — 웨이브 pin 테스트는 새 baseline 으로 갱신하고 커밋 메시지에 명시
+
+---
+
+**확인 2026-08-13** — 에셋 `903936d0`, 스케일 정정 `c3f29e3d`, facing flip + 벤더 스켈레톤
+추적 `78e3931f`, 브레스 VFX 재작성 `5909a090`·`ef78f937`, 연출 소유권 `b7750a4b`,
+밸런스 `66004836`. 사용자 Play 확인 완료.
+
+Play 에서 확인된 것: Air 이동(지상 차단 무시) · 대공사수 전용 피격 · `flying` 루프 ·
+3회마다 부채꼴 화염 · 화상 펄스(상시 아님) · 아군 오사 없음 · 크기(`spineVisualScale 0.6`) ·
+브레스 방향(`VfxSpawner.areaBreathAngleOffset 90`).
+
+⚠ 브레스 연출 튜닝 knob 4개는 **`VfxSpawner` 인스펙터**에 있다(브리지가 아니다):
+`areaBreathScalePerTile 0.55` · `ScaleMax 2.4` · `ForwardFactor 0.45` · `AngleOffset 90`.
+크기는 콘 기하가 아니라 이 저작값에서 나온다 — 반각은 **판정 전용**이다.

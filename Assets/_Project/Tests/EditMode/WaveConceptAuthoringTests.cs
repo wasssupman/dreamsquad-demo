@@ -109,11 +109,16 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Airstrike_IsASingleAirSlot_AndFew()
+        public void Airstrike_IsTwoAirSlots_AndFew()
         {
             var air = Concept("Concept_Airstrike");
-            Assert.AreEqual(1, air.slots.Length);
-            Assert.AreEqual(SlotAltitude.Air, air.slots[0].altitude);
+            // unit 7 — 슬롯 1 → 2. Air 로스터에 maxPerWave 1 인 드래곤이 들어오면서, 단일 슬롯이면
+            // 드래곤을 뽑는 순간 웨이브가 1기로 붕괴한다(잘린 몫을 넘길 슬롯이 없다).
+            Assert.AreEqual(2, air.slots.Length,
+                "슬롯이 하나면 엘리트(maxPerWave 1)를 뽑을 때 웨이브가 1기로 붕괴한다");
+            foreach (var slot in air.slots)
+                Assert.AreEqual(SlotAltitude.Air, slot.altitude);
+            Assert.AreEqual(1, air.RequiredLaneCount, "공습은 한 입구로 온다");
             Assert.Less(air.countMul, 0.5f,
                 "소수여야 «스킬 한 발 값»으로 번역된다 — 많으면 무력감이 된다");
         }
@@ -203,17 +208,75 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // unit 7 — 구 `EveryLiveDeck_HasExactlyOneAirUnit_ForNow` 를 교체했다. 그 단언은
+        // 「Air 가 늘면 계약 3 을 다시 보라」는 **알람**이었고, 드래곤 편입으로 실제로 울렸다.
+        // 이제 개수가 아니라 계약이 지키려던 것(속도 폭)을 직접 잰다 — Skimmer 2.5 · Dragon 2.0.
         [Test]
-        public void EveryLiveDeck_HasExactlyOneAirUnit_ForNow()
+        public void AirRoster_StaysTightEnoughToClump()
         {
             foreach (string name in AllDecks)
             {
+                float min = float.MaxValue, max = 0f;
                 int air = 0;
                 foreach (var u in Deck(name).attackUnitPool)
-                    if (IsAir(u)) air++;
-                Assert.AreEqual(1, air,
-                    $"{name}: Air 로스터가 늘면 「공습」의 속도 폭이 벌어진다 — 계약 3 을 다시 확인하고 " +
-                    "이 단언을 갱신하라(슬롯을 더 좁히거나 컨셉을 쪼갠다)");
+                {
+                    if (!IsAir(u)) continue;
+                    air++;
+                    if (u.moveSpeed < min) min = u.moveSpeed;
+                    if (u.moveSpeed > max) max = u.moveSpeed;
+                }
+                Assert.Greater(air, 0, $"{name}: Air 가 하나도 없으면 「공습」이 fail-open 으로 지상을 뽑는다");
+                Assert.LessOrEqual(max - min, 1.5f,
+                    $"{name}: Air 속도 폭 {max - min:0.#} — 「공습」이 흩어진다(계약 3). " +
+                    "슬롯을 성질로 더 좁히거나 컨셉을 쪼개라");
+            }
+        }
+
+        // unit 7 — 엘리트는 `maxPerWave = 1` 이다. **단일 슬롯 컨셉이 엘리트를 뽑으면 웨이브가
+        // 1기로 붕괴한다** — ClampGroupCounts 는 잘린 몫을 다른 슬롯으로 넘기는데 넘길 곳이 없다.
+        // 그래서 「공습」을 슬롯 2개로 늘렸고, 이 단언이 그 회귀를 막는다.
+        [Test]
+        public void EliteWaves_DoNotCollapseToASingleUnit()
+        {
+            foreach (string name in MapDecks)
+            {
+                var plan = Plan(name, 3);
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    var w = plan.waves[i];
+                    bool hasElite = false;
+                    for (int g = 0; g < w.groups.Count; g++)
+                    {
+                        var u = w.groups[g].unit;
+                        if (u == null || u.tier != EnemyTier.Elite) continue;
+                        hasElite = true;
+                        Assert.LessOrEqual(w.groups[g].count, 1,
+                            $"{name} 웨이브 {i + 1}: 엘리트 {u.id} 가 maxPerWave 를 넘었다");
+                    }
+                    if (!hasElite) continue;
+                    Assert.Greater(w.totalCount, 1,
+                        $"{name} 웨이브 {i + 1}('{w.conceptLabel}'): 엘리트가 뽑혀 웨이브가 1기로 붕괴했다 " +
+                        "— 그 컨셉의 슬롯이 하나뿐이라 잘린 몫을 넘길 곳이 없다");
+                }
+            }
+        }
+
+        [Test]
+        public void SlimeOffspring_NeverEnterThePool()
+        {
+            string[] offspring =
+            {
+                "Assets/_Project/Data/Enemies/Enemy_Slime_Mid.asset",
+                "Assets/_Project/Data/Enemies/Enemy_Slime_Small.asset",
+            };
+            foreach (string path in offspring)
+            {
+                var child = AssetDatabase.LoadAssetAtPath<AttackUnitData>(path);
+                if (child == null) continue;
+                foreach (string name in AllDecks)
+                    Assert.AreEqual(-1, System.Array.IndexOf(Deck(name).attackUnitPool, child),
+                        $"{name}: {path} 는 killScore 0 인 분열 파생물이다 — 정규 편성에 섞이면 " +
+                        "점수 없는 적이 웨이브를 채운다");
             }
         }
 
@@ -224,8 +287,13 @@ namespace Wassup.Tests.EditMode
             // 덱의 편성이 다시 바뀌었다(변주를 저작한 컨셉이 있는 웨이브부터 슬롯 수가 달라져
             // 이후 rng 소비가 이동한다). 계약 8 대로 버전으로 표시한다.
             foreach (string name in AllDecks)
-                Assert.AreEqual(4, Deck(name).waveGeneratorVersion,
-                    $"{name}: 편성이 바뀌었다 — 버전으로 표시한다");
+                // 3 = 컨셉 도입(wave-concept-blocks unit 2)
+                // 4 = 엘리트 2종 편입(unit 7) **그리고** 묶음 가운데 변주(wave-pull-revival
+                //     unit 2) — 두 작업이 origin 과 로컬에서 **각자 4를 찍었다**
+                // 5 = 그 둘의 병합. 어느 쪽 4 와도 다른 세 번째 baseline 이라 다시 올린다.
+                // 풀이나 편성 규칙이 바뀔 때마다 올린다.
+                Assert.AreEqual(5, Deck(name).waveGeneratorVersion,
+                    $"{name}: 풀/편성이 바뀌었다 — 버전으로 새 baseline 을 표시한다");
         }
 
         [Test]

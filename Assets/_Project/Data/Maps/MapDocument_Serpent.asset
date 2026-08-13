@@ -25,5 +25,10 @@ MonoBehaviour:
   - cells:
     - {x: 2, y: 5}
     - {x: 7, y: 5}
+  - cells:
+    - {x: 11, y: 7}
+  spawnRoutes:
+  - 1
+  - -1
   authoringSeed: -1
   generatorVersion: 0

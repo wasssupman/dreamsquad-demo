@@ -56,11 +56,15 @@ flowchart TD
 
   DIR["④ <b>방향 소스 선택</b>"] --> DS{"어느 필드?"}
   DS -->|순찰병| PS["PatrolStep.dir"]
-  DS -->|보스 사냥| DF["방어유닛 지향 필드"]
+  DS -->|"보스 사냥(hunting)<br/>— 웨이포인트보다 우선"| DF["방어유닛 지향 필드"]
+  DS -->|"웨이포인트 보유<br/>(hunting 아님)"| WP["다음 웨이포인트 목적지 슬롯<br/><i>WaypointProgress.Step 도달 판정</i>"]
+  DS -->|"거점 목적지 보유<br/>(웨이포인트 없음 · 도달 가능)"| SD["거점 셀 슬롯<br/><i>불가하면 골로 폴백</i>"]
   DS -->|그 외| GF["골 플로우 필드"]
 
   PS --> ZF
   DF --> ZF
+  WP --> ZF
+  SD --> ZF
   GF --> ZF
   ZF{"flow ≈ 0 ?"}
   ZF -->|"예 — 밀려나 고립됨"| REC["FlowRecovery<br/>4-이웃 최소 dist 하강"]
@@ -76,6 +80,34 @@ flowchart TD
   CLAMP --> MOVE["⑧ <b>AgentCollision.Resolve</b><br/>축분리 스윕 + 슬라이드 + 접선속도 보존"]
   MOVE --> W(["위치 기록"])
 ```
+
+### 경로 선택 축 — 스폰 시점에 한 번 정해진다 (`waypoint-routing` unit 8·9)
+
+`MovementSystem` 은 `WaypointFollow.pathIndex` 를 **읽기만** 한다. 어느 경로를 탈지는 그보다 앞서 스폰 시점에 한 번 정해지고, 매 프레임 다시 고르지 않는다.
+
+경로 선택 축은 둘이다 — **좁은 쪽(개체)이 이긴다**:
+
+```
+적 SO 지정 (AttackUnitData.waypointPathIndex) >= 0        → 그것    (종의 정체성)
+아니면 레인 기본 (MapDocument.spawnRoutes → GeneratedMap.RouteForSpawn(lane)) → 그것 (맵의 성질)
+둘 다 없으면 -1                                            → 골 직행 (현행, 무회귀)
+```
+
+결정 지점: `BattleBridge.SpawnUnit`(레인 스폰 래퍼가 `RouteForSpawn` 을 조회) → `CreateEnemyEntity`(plain `int laneDefaultPathIndex` 하나만 받는다 — 분열 호출처는 레인이 없어 기본값 -1) → `WaypointRouting.ResolvePathIndex`(순수 함수, 우선순위 소유) → 유효 인덱스면 `WaypointFollow` 부착.
+
+**우선순위를 호출부에서 삼항으로 풀지 않는 이유**: 그러면 "좁은 쪽이 이긴다"는 계약이 코드에만 남고 EditMode 로 고정할 지점이 없어진다. `ResolvePathIndex` 하나가 그 계약의 source of truth 다.
+
+**지금 실제로 도는 것은 SO 지정 축 하나뿐이고, 그것을 쓰는 적은 `Enemy_Skimmer` 하나다**(`waypointPathIndex 0`). 라이브 덱 7종 전부의 `attackUnitPool` 에 있고, 등장 시점은 SO 가 아니라 **컨셉 게이트**가 소유한다(`Concept_Airstrike.minWaveNumber`, `wave-concept-blocks`).
+
+같은 `Air` 통행층인 `Enemy_Dragon` 은 `waypointPathIndex -1` 이다 — **비행과 경로는 직교**라, 날면서도 골 직행이다(그쪽 저작 pin: `DragonBreathAuthoringTests`). 나머지 지상 적도 전부 `-1` 이다. 레인 기본 축(`spawnRoutes`)은 코드·검증까지 끝났지만 **어느 맵도 아직 저작하지 않았다** — 라이브 맵 저작(unit 10)은 `map-rework` 의 지형 변경이 끝난 뒤로 미뤄져 있다. 저작되면 그 맵의 미지정 적 전원이 레인별로 갈라지지만, 아직은 전 맵이 폴백(-1 → 골 직행)이다.
+
+### 도달 판정 — 셀 일치에서 체비셰프 1 이내로
+
+`WaypointProgress.Step` 의 도달 판정은 원래 정확한 셀 일치(`currentCell == waypointCell`)였다. 판당 2기인 Skimmer 에서는 문제없었지만(라이브 계측 5,295프레임, 순서 위반 0), 스웜(20기)에서는 어긋났다 — `AgentSeparationSystem` 의 축분리 스윕이 서로를 밀어내 여러 개체가 **한 칸에 동시에 수렴하지 못한다.** 밀려서 목표 칸을 스치고 지나간 개체는 `advanced` 가 서지 않아 다음 프레임에 그 칸으로 되돌아온다 — 화면에서는 버그로 읽힌다.
+
+지금은 체비셰프 거리 **1 이내**(자기 칸 + 8이웃)면 도달로 인정한다.
+
+⚠ **이 값은 튜닝 손잡이가 아니라 격자 위상이다.** 8이웃 격자에서 "인접 칸"의 정의가 1이지, 맵마다 다르게 저작할 값이 아니다. 저작 필드로 노출하면 순서 관리(`WaypointProgress`)가 이동 방식이나 맵 저작을 알게 되어 순수 함수 계약(계약 1 — plain 값 입력·출력)이 깨진다.
 
 ### ⑤ 평활화 내부 (`PathSmoothing`)
 
@@ -190,3 +222,4 @@ flowchart TD
 | 분리 강도·상한 | `Separation.DefaultStrength` (0.5, **프레임당**) · 상한 = 반지름 |
 | 프레임 변위 상한 | `MovementCellTrim.ClampDisplacement` (0.9타일) |
 | 벽 여유 skin | `AgentCollision.Skin` (1e-3) — 조준점 오프셋과 **공유**한다 |
+| 웨이포인트 도달 판정 반경 | `WaypointProgress.ArrivalChebyshevRadius` (1) — **튜닝 손잡이가 아니라 격자 위상**(8이웃 = 인접). 저작 필드로 노출하지 않는다 |

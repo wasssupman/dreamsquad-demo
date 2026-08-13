@@ -39,6 +39,9 @@ namespace Wassup.EditorTools
         // 지점 추가, 마지막 지점 재클릭 = 그 지점 삭제.
         private readonly List<List<Vector2Int>> _waypointPaths = new();
         private int _activeWaypointPath = -1;
+        // waypoint-routing unit 8 — 레인(스폰)별 기본 경로 인덱스. _spawns 와 같은 순서·같은
+        // 길이를 불변식으로 유지한다(스폰 추가/삭제 지점에서 같이 갱신). -1 = 최단거리(현행).
+        private readonly List<int> _spawnRoutes = new();
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -66,6 +69,7 @@ namespace Wassup.EditorTools
             _structures.Clear();
             _waypointPaths.Clear();
             _activeWaypointPath = -1;
+            _spawnRoutes.Clear();
         }
 
         // placement-mask unit 2 — 파생값 = tiles==Place. 마스크 브러시로 만든 차이만 이 값과 달라진다.
@@ -113,6 +117,13 @@ namespace Wassup.EditorTools
             _spawns.Clear();
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
+            // waypoint-routing unit 8 — spawnRoutes 는 spawns 와 병렬 배열이므로 스폰 개수에
+            // 맞춰 정규화한다. 부족하면 -1(최단거리) 로 채우고, 넘치면 자른다(계약 — 필드 없는
+            // 기존 문서도 전 레인 -1 로 읽혀야 한다).
+            _spawnRoutes.Clear();
+            var sr = doc.SpawnRoutes;
+            for (int i = 0; i < _spawns.Count; i++)
+                _spawnRoutes.Add(sr != null && i < sr.Count ? sr[i] : -1);
             _goals.Clear();
             // 빈 goals 는 저작 에러(MapDocument.OnValidate)라 폴백을 두지 않는다 — 비어 있으면
             // 골 없는 상태로 로드되고, 저장 전 Validate 가 잡는다.
@@ -139,6 +150,7 @@ namespace Wassup.EditorTools
             DrawToolbar();
             DrawStructureBrushBar();
             DrawWaypointBrushBar();
+            DrawSpawnRouteBar();
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
@@ -185,6 +197,17 @@ namespace Wassup.EditorTools
             _goals.RemoveAt(i);
         }
 
+        // waypoint-routing unit 8 — 스폰 제거는 항상 이 메서드를 거친다. _spawnRoutes 가
+        // _spawns 와 같은 인덱스로 병렬이라, 인덱스를 먼저 찾아 같은 자리를 같이 제거해야
+        // 뒤 레인들의 경로 지정이 밀리지 않는다(직접 _spawns.Remove(cell) 호출 금지).
+        private void RemoveSpawn(Vector2Int cell)
+        {
+            int i = _spawns.IndexOf(cell);
+            if (i < 0) return;
+            _spawns.RemoveAt(i);
+            if (i < _spawnRoutes.Count) _spawnRoutes.RemoveAt(i);
+        }
+
         private void DrawValidationAndBake()
         {
             var errors = Validate();
@@ -208,6 +231,12 @@ namespace Wassup.EditorTools
             WaypointAuthoringRules.ValidatePaths(
                 ToWaypointPathArray(), _w, _h, _tiles, _goals, _spawns, wpErrors, warnings);
             foreach (var e2 in wpErrors) errors.Add(e2);
+            // waypoint-routing unit 8 — 같은 자리에 합류. 페인터 자체 규칙을 만들지 않고
+            // OnValidate 와 같은 순수 함수를 호출한다(waypoint-routing unit 5 와 동일 판단).
+            var routeErrors = new List<string>();
+            WaypointAuthoringRules.ValidateSpawnRoutes(
+                ToSpawnRoutesArray(), ToWaypointPathArray(), _spawns, routeErrors, warnings);
+            foreach (var e3 in routeErrors) errors.Add(e3);
             // map-rework unit 7 — 개편 컨셉 가드(직선은 폭1 · 폭2 제한 · 광장 1+). 경고 전용 —
             // 비개편 맵의 bake 를 막지 않는다. OnValidate 에는 넣지 않는다(임포트 콘솔 소음).
             // 저작 중인 `_placeMask` 를 그대로 넘긴다 — 근접 차단칸은 배치 마스크가 정한다.
@@ -338,19 +367,77 @@ namespace Wassup.EditorTools
                         if (GUILayout.Button("마지막 점 삭제", EditorStyles.miniButton, GUILayout.Width(88)))
                             _waypointPaths[_activeWaypointPath].RemoveAt(_waypointPaths[_activeWaypointPath].Count - 1);
                     using (new EditorGUI.DisabledScope(!hasActive))
-                        // 삭제는 뒤 경로의 인덱스를 앞으로 당긴다 — 적 SO 의 waypointPathIndex 가
-                        // 그 인덱스를 가리키므로 경고를 남겨 저작자가 인지하게 한다.
+                        // 삭제는 뒤 경로의 인덱스를 앞으로 당긴다. 이 문서 안의 레인 경로는
+                        // 아래에서 같이 당기지만, **적 SO 의 waypointPathIndex 는 여기서 못
+                        // 고친다**(다른 에셋이다) — 그래서 경고는 남는다.
                         if (GUILayout.Button("경로 삭제", EditorStyles.miniButton, GUILayout.Width(64)))
                         {
-                            _waypointPaths.RemoveAt(_activeWaypointPath);
+                            int removedPath = _activeWaypointPath;
+                            _waypointPaths.RemoveAt(removedPath);
                             if (_activeWaypointPath >= _waypointPaths.Count)
                                 _activeWaypointPath = _waypointPaths.Count - 1;
+
+                            // waypoint-routing unit 8 — 레인 기본 경로를 같이 당긴다. 안 하면
+                            // 「범위 안이라 검증 에러도 안 나는데 다른 경로를 가리키는」 조용한
+                            // 오작동이 된다(계약 9 — 폴백/오배정은 조용하면 안 된다).
+                            // 삭제된 경로를 가리키던 레인은 최단거리로 되돌린다.
+                            for (int lane = 0; lane < _spawnRoutes.Count; lane++)
+                            {
+                                if (_spawnRoutes[lane] == removedPath) _spawnRoutes[lane] = -1;
+                                else if (_spawnRoutes[lane] > removedPath) _spawnRoutes[lane]--;
+                            }
+
                             Debug.LogWarning("[MapPainter] 경로 삭제 — 뒤 경로들의 인덱스가 한 칸 당겨졌다. "
+                                + "이 맵의 레인 기본 경로는 같이 당겼지만, "
                                 + "적 SO 의 waypointPathIndex 가 이 맵을 가리키면 재확인 필요.");
                         }
                 }
                 GUILayout.FlexibleSpace();
                 GUILayout.Label($"경로 {_waypointPaths.Count}개", EditorStyles.miniLabel, GUILayout.Width(56));
+            }
+        }
+
+        // waypoint-routing unit 8 — 레인(스폰)별 기본 경로 지정 바. 경로 브러시가 「경로
+        // 자체」를 편집한다면 이 바는 「그 경로를 어느 레인이 기본으로 타는가」를 편집한다.
+        // 브러시 바가 아니라 항상 펼쳐진 목록이다 — 툴을 안 바꿔도 전 레인을 한눈에 보고
+        // 고쳐야 하기 때문(거점·경로 브러시 바와 달리 _tool 활성 여부에 안 묶는다).
+        private void DrawSpawnRouteBar()
+        {
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                GUILayout.Label("레인 기본 경로", EditorStyles.miniBoldLabel);
+                if (_spawns.Count == 0)
+                {
+                    EditorGUILayout.LabelField("스폰 없음 — 스폰 브러시로 먼저 찍어라", EditorStyles.miniLabel);
+                    return;
+                }
+
+                // 팝업 항목 = 최단거리(-1) + 경로 0..N-1. 경로가 하나도 없으면 최단거리뿐이라
+                // 팝업 자체를 비활성화한다(고를 게 없다 — spec 4).
+                var options = new string[_waypointPaths.Count + 1];
+                options[0] = "최단거리";
+                for (int i = 0; i < _waypointPaths.Count; i++) options[i + 1] = $"경로 {i}";
+
+                for (int lane = 0; lane < _spawns.Count; lane++)
+                {
+                    var s = _spawns[lane];
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        GUILayout.Label($"레인 {lane}", EditorStyles.miniLabel, GUILayout.Width(48));
+                        GUILayout.Label($"({s.x}, {s.y})", EditorStyles.miniLabel, GUILayout.Width(64));
+                        using (new EditorGUI.DisabledScope(_waypointPaths.Count == 0))
+                        {
+                            // 저장값(-1..N-1) → 팝업 인덱스(0..N). 경로가 지워져 저장값이
+                            // 범위를 벗어나도(dangling) 여기서 조용히 고치지 않는다 — 아래
+                            // 클램프는 표시용일 뿐이고, 실제 값은 ValidateSpawnRoutes 가
+                            // 범위 밖 에러로 드러낸다(silent fixup 이 그 에러를 가리면 안 됨).
+                            int stored = lane < _spawnRoutes.Count ? _spawnRoutes[lane] : -1;
+                            int displayIndex = Mathf.Clamp(stored + 1, 0, options.Length - 1);
+                            int newIndex = EditorGUILayout.Popup(displayIndex, options, GUILayout.Width(110));
+                            if (_waypointPaths.Count > 0) _spawnRoutes[lane] = newIndex - 1;
+                        }
+                    }
+                }
             }
         }
 
@@ -516,23 +603,24 @@ namespace Wassup.EditorTools
                 case Tool.Buildable:
                     _tiles[idx] = MapTileType.Place;
                     _placeMask[idx] = DerivedMask(idx);
-                    _spawns.Remove(cell);
+                    RemoveSpawn(cell);
                     RemoveGoal(cell);
                     break;
                 case Tool.Deco:
                     _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
                     _placeMask[idx] = DerivedMask(idx);
-                    _spawns.Remove(cell);
+                    RemoveSpawn(cell);
                     RemoveGoal(cell);
                     break;
                 case Tool.Spawn:
                     if (!isDown) return; // 토글은 클릭만
-                    if (_spawns.Contains(cell)) _spawns.Remove(cell);
+                    if (_spawns.Contains(cell)) RemoveSpawn(cell);
                     else if (_spawns.Count < 4)
                     {
                         _tiles[idx] = MapTileType.Walk; // 스폰은 Walk 셀
                         _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _spawns.Add(cell);
+                        _spawnRoutes.Add(-1);   // waypoint-routing unit 8 — 새 레인은 최단거리부터
                     }
                     break;
                 case Tool.Goal:
@@ -599,6 +687,16 @@ namespace Wassup.EditorTools
             var arr = new WaypointPath[_waypointPaths.Count];
             for (int i = 0; i < arr.Length; i++)
                 arr[i] = new WaypointPath(_waypointPaths[i].ToArray());
+            return arr;
+        }
+
+        // waypoint-routing unit 8 — 같은 이유로 검증·Bake 가 같은 변환을 쓴다. 길이는
+        // 항상 _spawns.Count 에 맞춘다 — _spawnRoutes 가 불변식대로 따라왔어도 방어적으로.
+        private int[] ToSpawnRoutesArray()
+        {
+            var arr = new int[_spawns.Count];
+            for (int i = 0; i < arr.Length; i++)
+                arr[i] = i < _spawnRoutes.Count ? _spawnRoutes[i] : -1;
             return arr;
         }
 
@@ -720,7 +818,10 @@ namespace Wassup.EditorTools
                 // 왕복시킬 수 없다. 저작 주체가 엔트리를 직접 넘긴다.
                 // waypoint-routing unit 5 — 경로도 같은 이유로 직접 전달. 페인터는 항상 자기
                 // 상태를 넘긴다(빈 상태 Bake = 경로 삭제 — 타일과 같은 «페인터가 정본» 규약).
-                MapDocumentBuilder.WriteToDocument(target, in gm, _structures.ToArray(), ToWaypointPathArray());
+                // waypoint-routing unit 8 — spawnRoutes 도 같은 판단: 페인터가 연 문서에서는
+                // 페인터가 정본이라 항상 자기 상태(_spawnRoutes)를 넘긴다.
+                MapDocumentBuilder.WriteToDocument(
+                    target, in gm, _structures.ToArray(), ToWaypointPathArray(), ToSpawnRoutesArray());
                 goals.Dispose();
                 spawns.Dispose();
             }
