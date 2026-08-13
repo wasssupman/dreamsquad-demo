@@ -3841,9 +3841,16 @@ namespace Wassup.Bridge
         // the attacker is an enemy, FindDefenderData returns null and only
         // the Spine notify runs.
         // elite-whirlpot unit 1 — 회오리 인스턴스를 공격 주기보다 이만큼 길게 살린다.
-        // 1.0 이면 다음 pulse 와 정확히 맞닿아 프레임 단위로 빈틈이 생긴다. 여유가 클수록
-        // 동시 인스턴스가 늘어나므로(1.3 = 최대 2개) 겹침 비용과 연속성의 타협점이다.
-        private const float AttackAoeVfxSustainSlack = 1.3f;
+        //
+        // 1.0 은 «맞닿음» 이지 «이어짐» 이 아니다: 새 인스턴스의 파티클은 0에서 차오르므로
+        // 앞 인스턴스가 죽는 순간 뒤 인스턴스가 아직 옅고, 매 pulse 마다 「차오르다 사라지는」
+        // 맥박으로 보인다. 연속으로 읽히려면 **차오르는 구간이 겹쳐야** 한다 → 배수는
+        // 「동시 인스턴스 수」로 읽는 값이다(2.0 = 상시 2개).
+        //
+        // 위로 올릴수록 매끄럽지만 겹친 인스턴스가 그대로 오버드로다. 지금 붙은 프리팹
+        // (Tornado_SKELETON)은 파티클 시스템 3개짜리라 2 를 넘기면 모바일에서 비싸진다.
+        // 육안 확인 후 조정할 값이고, 맥박이 남으면 배수보다 **프리팹 경량화**가 먼저다.
+        private const float AttackAoeVfxSustainSlack = 2f;
 
         private void DrainUnitAttackVisualEvents()
         {
