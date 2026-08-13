@@ -95,3 +95,19 @@ public event System.Action<Entity, DefenderUnitData, Vector3> DefenderRetired;
 - **회귀**: 사망 경로 전체 불변. 추출이 순수 이동임을 기존 스위트가 증명한다 —
   **사망 관련 테스트가 한 건도 수정되지 않아야 한다.**
 - 육안: 퇴근 시 유닛이 사라지고 **사망 애니메이션이 나오지 않는다**.
+
+> **자동 검증 2026-08-13** — 컴파일 통과(에러 0).
+> 신규 `DefenderRetireTest` **2/2** · `PatrolDefenderPlayTest` **3/3**(사망 판본 + 신규 퇴근 판본) ·
+> `PlacementAuraTest`·`SlimeSplitE2ETest` 통과(사망 드레인·OnDeath 분열을 지나는 회귀 축) ·
+> unit 0 스위트 재확인(재배치 4/4 · 재배치+BoardLimit 9/9 · EditMode 8/8).
+> **사망 관련 테스트는 한 건도 수정하지 않았다** — 추출이 순수 이동임을 기존 스위트가 증명한다.
+> 첫 테스트가 우연히 `G3_ClockOut` 기믹 매치에서 돌았다(사직서 기믹 활성 상태에서 `DefenderDied` 0회).
+>
+> **깨끗한 baseline 을 못 떴다 — 대신 도달 불가를 증명했다.** 전체 PlayMode(129건)를 돌렸으나
+> ⑴ `editor_unfocused` 로 라이브 전투 테스트에서 고착(72/129에서 중단), ⑵ 남은 실패 중
+> `DropDismountTest`·`DreamcatcherCursedRelicTest` 2건이 포커스 복구 후에도 재현됐다.
+> `BattleBridge.cs` 에 **다른 세션의 미커밋 타이머 HUD 작업**(`SetTopBar`·`TimerDuration`)이
+> 섞여 있어 stash 로 baseline 을 뜨면 그쪽 작업을 가져가므로, 호출처 전수 조사로 대신했다:
+> `ReleaseDefenderTile` 호출처는 **정확히 2개**(사망 드레인 · `RetireDefender`)이고
+> `RetireDefender` 의 프로덕션 호출처는 **아직 0개**(unit 2 가 버튼을 붙인다).
+> 두 실패 테스트는 방어유닛을 죽이지 않으므로 **바뀐 코드에 도달할 수 없다.** 런타임 예외도 0건.

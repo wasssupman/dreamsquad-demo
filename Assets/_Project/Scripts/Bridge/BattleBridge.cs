@@ -3563,22 +3563,18 @@ namespace Wassup.Bridge
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
-                // dreamcatcher-awakening-hand unit 1 — capture the binding BEFORE
-                // removal so DefenderDied can carry the entity (card-recovery key)
-                // and the SO (awakeningReward) regardless of the spine pool.
-                bool hasBinding = _defenderByTile.TryGetValue(cell, out var binding);
-                // beam unit 1 — 쏘던 유닛이 죽으면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 즉시 끊는다.
-                if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.Item1);
+                // defender-clock-out unit 1 — 판 정리는 퇴근과 공유한다(ReleaseDefenderTile).
+                // 바인딩을 제거 **전에** 받아 오는 계약도 그 안에 있다 — DefenderDied 가 엔티티를
+                // 카드 회수 키로, SO 를 awakeningReward 로 실어야 하기 때문이다.
+                bool hasBinding = ReleaseDefenderTile(cell, out var binding);
+                // ⚠ 뷰 반납은 공유 함수에 넣지 않는다. 사망은 NotifyDeath(=Kill()=deathAnimation,
+                // 기본값 "die"), 퇴근은 Despawn(즉시). 넣었다면 bool playDeathAnim 플래그 파라미터를
+                // 부르게 된다 — 뷰 반납의 주인은 처음부터 호출처다.
                 if (spineUnitPool != null && hasBinding)
                 {
                     spineUnitPool.NotifyDeath(binding.entity);
                     defenderFallbackViewPool?.Despawn(binding.entity);
                 }
-                _defenderByTile.Remove(cell);
-                _occupiedTiles.Remove(cell);
-                RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
-                tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
-                RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
 
                 // content-1 ② (작별 선물) — OnDeath×SelfTileAoe explosion at the dead
@@ -3606,6 +3602,63 @@ namespace Wassup.Bridge
                 if (hasBinding)
                     DefenderDied?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
             }
+        }
+
+        // defender-clock-out unit 1 — **방어 유닛이 판에서 내려왔다.** 원인(사망/퇴근)과 무관한
+        // 결과만 담는다. 호출처 2개(사망 드레인 · RetireDefender)가 공유한다 — 갈라 두면 한쪽만
+        // 고치는 버그가 난다(유령 게이지 · 안 풀리는 점유).
+        //
+        // ⚠ 두 가지가 여기 **없다**:
+        //  ① 뷰 반납 — 사망은 NotifyDeath(사망 애니), 퇴근은 Despawn(즉시)이라 갈린다.
+        //     넣으면 bool playDeathAnim 플래그 파라미터를 부른다.
+        //  ② 엔티티 파괴 — 사망은 UnitLifecycleSystem 이 이미 파괴한 뒤고, 퇴근은 호출자가 한다.
+        //     **파괴 주체는 호출처가 갖는다**는 것이 이 함수의 계약이다.
+        //
+        // ⚠ 바인딩을 제거 **전에** out 으로 넘긴다(엔티티가 카드 회수 키다). 순서를 뒤집으면
+        // 두 호출처가 동시에 깨진다.
+        private bool ReleaseDefenderTile(Vector2Int cell, out (Entity entity, DefenderUnitData data) binding)
+        {
+            bool hasBinding = _defenderByTile.TryGetValue(cell, out binding);
+            // beam unit 1 — 쏘던 유닛이 내려가면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 끊는다.
+            if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.entity);
+            _defenderByTile.Remove(cell);
+            _occupiedTiles.Remove(cell);
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
+            tileHealthGaugeLayer?.Hide(cell);   // unit 3 — 퇴장 시 게이지 제거
+            RecomputeSynergyFor(cell);
+            return hasBinding;
+        }
+
+        // defender-clock-out unit 1 — **퇴근**: 판 위 유닛을 플레이어 의사로 내린다.
+        // 사망이 아니므로 사직서·작별 선물·각성이 일어나지 않는다 — 배제 코드가 있어서가 아니라
+        // **DeadTag 를 안 달고 DefenderDied 를 안 쏘기 때문**이다(사망 경로에 진입 자체를 안 한다).
+        //
+        // ⚠ **defender 엔티티를 브리지가 파괴하는 것은 이 리포의 첫 사례다.** 기존 DestroyEntity
+        // 9건 중 유닛은 적 2건뿐이고(공성 유출 · 골 붕괴) 나머지는 캐리어·필드·구조물이다.
+        // 그래도 성립하는 근거: 퇴근은 UI 기원 행위이고, 브리지가 유일한 Mono↔ECS 게이트웨이이며,
+        // **브리지가 배치한 것을 브리지가 수거하는 대칭**이다. 참조 보유자(FocusTarget ·
+        // SummonerState · Aggroed · 투사체 target)가 전부 매 프레임 Exists/HasComponent 를 첫
+        // 관문으로 쓰므로 dangling 이 없다(사망이 매번 파괴하기에 그 내성은 이미 검증돼 있다).
+        //
+        // 순찰병은 별도 배선이 없다 — PatrolLifecycleSystem 의 소환사 생존 판정 첫 줄이
+        // Exists(owner) 라 **파괴 자체가 신호**다(다음 sim 틱에 회수, 그 1틱은 무해).
+        public bool RetireDefender(Vector2Int cell)
+        {
+            if (_em == null || !_defenderByTile.TryGetValue(cell, out var pre)) return false;
+            if (pre.entity == Entity.Null || !_em.Exists(pre.entity)) return false;
+            // 비행 중(배치/재배치 착지 전)에는 내리지 않는다 — 뷰 오버라이드와 활성화 꼬리가 뜬다.
+            if (_em.HasComponent<PendingDeployment>(pre.entity)) return false;
+            // 이미 죽는 중이면 사망 경로에 양보한다(보상은 죽음의 것이다).
+            if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
+
+            ReleaseDefenderTile(cell, out var binding);
+            // 사망 애니를 타지 않는다(계약 11). unit 3 이 이 자리를 아치 이탈 연출로 확장한다.
+            spineUnitPool?.Despawn(binding.entity);
+            defenderFallbackViewPool?.Despawn(binding.entity);
+            _em.DestroyEntity(binding.entity);
+            Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed, synergy recomputed.");
+            DefenderRetired?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
+            return true;
         }
 
         // dreamcatcher-shield-break unit 2 — 실드 피격 파열 이벤트 드레인. payload 분기:
