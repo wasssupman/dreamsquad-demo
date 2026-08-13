@@ -142,7 +142,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 | 이벤트 큐 | **신규 채널 0 · 신규 필드 0.** 기존 `UnitAttackVisualEvent` 가 매 공격 START 에 `attacker`+`attackAnimPeriod` 를 이미 싣는다 |
 | View/Pool | 기존 `SpineUnitPool`. ★attack·death 애니 빈 값 = `PlayAttack` early-return + 즉시 `Destroy`(드래곤 선례) |
 | 체력 표시 | 변경 없음 — `UnitOverheadUiLayer` |
-| 씬 wiring | **N/A — 신규 SerializeField 0.** 회오리 프리팹은 **적 SO** 가 갖는다(방어유닛 `attackVfxPrefab` 대칭). `VfxSpawner` 에 슬롯을 만들지 않는 이유 = 유닛별 opt-in 이 필요하고 그게 계약 7 이다 |
+| 씬 wiring | **수작업 배선 0.** 회오리 **프리팹**은 적 SO 가 갖는다(방어유닛 `attackVfxPrefab` 대칭) — `VfxSpawner` 에 프리팹 슬롯을 만들지 않는 이유가 계약 7(유닛별 opt-in)이다. 단 **수명 배수 knob 하나**(`unitAttackAoeSustainMul`)는 `VfxSpawner` SerializeField 다(기본값 2 = 배선 불요). 브레스 knob 4개와 같은 자리 — 「수명은 VfxSpawner 소유」(`b7750a4b`)를 지키기 위해 |
 | VFX | 회오리 = `Assets/_Project/VFX/` 아래 신규. ⚠ 벤더 원본 직접 참조 금지 · 번아웃 먹구름과 구분(계약 8) |
 
 ## 후속 후보 (현 spec 범위 밖)
@@ -155,7 +155,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
   `AoeTargetCap.SelectNearest`(투사체 AoE 가 쓴다)를 melee 경로에도 끌어오는 것이 정석이다.
 - **회오리 프리팹 경량화** [S] · 지금 붙은 `Tornado_SKELETON` 은 파티클 시스템 3개(각
   `maxNumParticles 1000`)다. 플레이어 스킬은 한 번에 하나지만 회오리는 **상시 2개가 겹친다**
-  (`AttackAoeVfxSustainSlack`). 모바일 예산(일반 50 / 임팩트 100)과 어긋나므로, 육안에서
+  (`VfxSpawner.unitAttackAoeSustainMul` = 2). 모바일 예산(일반 50 / 임팩트 100)과 어긋나므로, 육안에서
   맥박이나 프레임 저하가 보이면 배수를 올리기 전에 **전용 경량 프리팹**을 만드는 것이 먼저다.
   그때 색도 함께 갈라 플레이어 토네이도와 구분한다(계약 8).
 - **회오리 반경 시각화** — 반경이 저작값인데 화면에 경계가 없다. 밸런스 튜닝 시 필요해질 수 있다.
