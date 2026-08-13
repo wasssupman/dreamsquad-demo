@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Unity.Entities;
@@ -227,6 +228,55 @@ namespace Wassup.Tests.EditMode
                 Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "⑦ 적 마음에서 골까지 못 간다");
             }
             finally { map.Dispose(); }
+        }
+
+        // tutorial-map — 튜토리얼은 「웨이브 N 에 이 유형이 나온다」가 결정적이어야 한다.
+        // 생성 웨이브는 풀에서 무작위 추첨이라 그걸 보장하지 못하므로 **저작 플랜**을 쓴다.
+        // 이 pin 이 지키는 것: 플랜이 실제로 배선돼 있고, 10웨이브이고, 라이브 로스터 전종을
+        // 가르치고, 같은 유형이 첫 등장 웨이브를 잃지 않는다.
+        [Test]
+        public void TutorialEntry_TeachesEveryLiveEnemyTypeInTenWaves()
+        {
+            var pool = UnityEditor.AssetDatabase.LoadAssetAtPath<MapDocumentPool>(
+                "Assets/_Project/Data/Maps/MapDocumentPool.asset");
+            var doc = UnityEditor.AssetDatabase.LoadAssetAtPath<MapDocument>(
+                "Assets/_Project/Data/Maps/MapDocument_Tutorial.asset");
+            Assert.IsNotNull(pool); Assert.IsNotNull(doc);
+
+            MapDocumentPool.Entry entry = default; bool found = false;
+            for (int i = 0; i < pool.DevCount; i++)
+                if (pool.GetDev(i).document == doc) { entry = pool.GetDev(i); found = true; }
+            Assert.IsTrue(found, "튜토리얼 맵이 devEntries 에 없다");
+            Assert.IsNotNull(entry.plan,
+                "엔트리에 플랜이 없다 — 플랜이 없으면 덱의 **생성** 웨이브로 돌아 유형 등장 순서가 " +
+                "무작위가 되고 튜토리얼이 성립하지 않는다");
+            Assert.IsNotNull(entry.deck, "덱이 없으면 누수 한도·마음 체력이 레거시 폴백이 된다");
+
+            var plan = entry.plan;
+            Assert.AreEqual(10, plan.waves.Count, "웨이브 10개가 저작 의도다");
+            Assert.AreEqual(0f, plan.timerDurationSec,
+                "튜토리얼은 시간 압박이 없어야 한다(0 = 전 웨이브 처리 후 승리)");
+
+            // 라이브 로스터 전종이 등장해야 한다 — 「적 유형을 파악한다」가 이 맵의 목적이다.
+            var live = UnityEditor.AssetDatabase.LoadAssetAtPath<AttackDeck>(
+                "Assets/_Project/Scripts/Data/Decks/Deck_Serpent.asset");
+            var taught = new HashSet<AttackUnitData>();
+            foreach (var wave in plan.waves)
+            {
+                Assert.Greater(wave.groups.Count, 0, "빈 웨이브는 가르치는 것이 없다");
+                Assert.Greater(wave.durationSec, 0f);
+                foreach (var g in wave.groups)
+                {
+                    Assert.IsNotNull(g.unit); Assert.Greater(g.count, 0);
+                    Assert.LessOrEqual(g.triggerTimeSec, wave.durationSec,
+                        "그룹 스폰 시각이 웨이브 길이를 넘으면 그 그룹은 다음 웨이브에 섞인다");
+                    taught.Add(g.unit);
+                }
+            }
+            foreach (var unit in live.attackUnitPool)
+                Assert.IsTrue(taught.Contains(unit),
+                    $"라이브 로스터의 '{unit.displayName}' 를 튜토리얼이 가르치지 않는다 — " +
+                    "로스터에 적을 추가하면 이 단언이 튜토리얼 갱신을 요구한다");
         }
 
         private static void CallPrivateMethod(object target, string name)

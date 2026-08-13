@@ -360,6 +360,46 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(spawned, 0, "공성 스폰(적 마음 셀)에서 적이 실제로 나와야 한다");
         }
 
+        // tutorial-map — 엔트리가 실은 저작 플랜이 덱의 생성 웨이브를 실제로 이기는가.
+        //
+        // 판별기는 **컨셉 라벨의 부재**다. 저작 플랜(FromPlanAsset)은 컨셉을 만들지 않으므로
+        // 라벨이 빈다. 반대로 폴백이 일어나면 Deck_Tutorial(Serpent 복제)의 컨셉 풀이 돌아
+        // 라벨이 채워진다 — 즉 라벨이 비어 있음 = 저작 플랜이 쓰이고 있음.
+        [UnityTest]
+        public IEnumerator TutorialDevSlot_UsesAuthoredPlan_NotGeneratedWaves()
+        {
+            DevMapOverride.Index = 12;   // 풀 6 + dev[6] = Tutorial
+            RenderTexture.active = null;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            Assert.IsTrue(bridge.HasGeneratedMap, "튜토리얼 문서가 dev 슬롯 12 로 해석돼야 한다");
+
+            bridge.BeginPlacement();
+            yield return null;
+            bridge.StartBattle();
+            yield return null;
+
+            Assert.IsTrue(string.IsNullOrEmpty(bridge.NextWaveConceptLabel),
+                "컨셉 라벨이 붙어 있다 — 저작 플랜이 아니라 덱의 생성 웨이브로 돌고 있다. "
+                + "MapDocumentPool.Entry.plan 배선 또는 TryInitializeGeneratedWaves 우선순위를 확인하라");
+
+            var world = World.DefaultGameObjectInjectionWorld;
+            Assert.IsNotNull(world, "기본 ECS 월드가 없다");
+            var em = world.EntityManager;
+            int spawned = 0;
+            float deadline = Time.unscaledTime + 10f;
+            while (Time.unscaledTime < deadline && spawned == 0)
+            {
+                using (var query = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>()))
+                    spawned = query.CalculateEntityCount();
+                yield return null;
+            }
+            Assert.Greater(spawned, 0, "저작 웨이브 1 이 실제로 적을 내보내야 한다");
+        }
+
         private static bool PlaceFirstValid(
             BattleBridge bridge, DefenderUnitData unit, out Entity entity)
         {

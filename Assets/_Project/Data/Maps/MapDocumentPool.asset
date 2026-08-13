@@ -38,3 +38,6 @@ MonoBehaviour:
     deck: {fileID: 11400000, guid: 2b9f4e7c81a3d54689c0e2f1a7b36d48, type: 2}
   - document: {fileID: 11400000, guid: c47a2e91b05d43f8ae6b1d3c890f27a5, type: 2}
     deck: {fileID: 11400000, guid: e6d1a83f5c204b79ae83f1c6d09b2547, type: 2}
+  - document: {fileID: 11400000, guid: 1f5b8c3d7a294e60b8d1c4a9f26e35b7, type: 2}
+    deck: {fileID: 11400000, guid: 5c8f1a3e92d74b608ae5c1f7d3b9026a, type: 2}
+    plan: {fileID: 11400000, guid: 9a4e7d2c85f13b60a7c9e1d48b02f653, type: 2}

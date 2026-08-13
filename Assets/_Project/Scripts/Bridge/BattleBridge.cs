@@ -331,6 +331,13 @@ namespace Wassup.Bridge
         private GeneratedWavePlan _wavePlan;
         // wave-authoring-test-mode unit 2 — 테스트 모드 작성 플랜. null 이면 seed 경로.
         private WavePlanAsset _authoredPlan;
+        // tutorial-map — 맵 인카운터가 실어 온 저작 플랜. 테스트 모드 플랜(_authoredPlan)이
+        // 우선하고 이것은 그 다음이다 — 테스트 모드로 특정 플랜을 보려던 사람이 튜토리얼 맵을
+        // 골랐을 때 조용히 덮이면 안 된다.
+        private WavePlanAsset _encounterPlan;
+        // 이번 판이 실제로 쓴 플랜(_authoredPlan 또는 _encounterPlan). 소스가 둘이 된 뒤로
+        // 「_authoredPlan 이 곧 활성 플랜」이 거짓이 됐다 — 로그가 그걸 직접 읽어 NRE 가 났다.
+        private WavePlanAsset _activePlan;
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
         // nextwave-clear-attention unit 0 — 이미 호출된 모든 웨이브의 pending/live 합집합이
@@ -992,6 +999,7 @@ namespace Wassup.Bridge
             // map-pipeline-cleanup unit 2 — 단일 mapDocument 폴백 제거: 풀이 유일 소스.
             MapDocument activeDoc = null;
             _resolvedDeck = deck;
+            _encounterPlan = null;   // tutorial-map — 이월 금지(이전 판의 플랜이 다음 맵에 붙으면 안 된다)
             // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
             // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
             if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
@@ -1039,6 +1047,7 @@ namespace Wassup.Bridge
                 {
                     activeDoc = encounter.document;
                     if (encounter.deck != null) _resolvedDeck = encounter.deck;
+                    _encounterPlan = encounter.plan;   // tutorial-map — 저작 플랜은 맵과 한 몸
                 }
             }
 
@@ -1381,7 +1390,9 @@ namespace Wassup.Bridge
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
             if (_usingAuthoredPlan)
-                Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
+                Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_activePlan?.displayName}' "
+                    + $"(source={(_authoredPlan != null ? "test-mode" : "map-encounter")}) "
+                    + $"waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
             else
                 Debug.Log(_usingGeneratedWaves
                     ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
@@ -1802,25 +1813,30 @@ namespace Wassup.Bridge
             _waveStartSec = 0f;  // three-minute-survival unit 2 — 상한 간격 기준 시각도 함께
             _pullsSinceClear = 0; // wave-pull-revival unit 0 — 겹침 예산도 매치 경계에서 초기화
             _usingAuthoredPlan = false;
+            _activePlan = null;
             _spawnGuideForecast = null;   // waypoint-routing unit 7 — 이전 판 예고 이월 방지
 
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
-            if (_authoredPlan != null)
+            // tutorial-map — 소스 둘: 테스트 모드(_authoredPlan) > 맵 인카운터(_encounterPlan).
+            // 테스트 모드가 이기는 이유는 그쪽이 «지금 이 플랜을 보겠다» 는 명시 지시라서다.
+            WavePlanAsset plan = _authoredPlan != null ? _authoredPlan : _encounterPlan;
+            if (plan != null)
             {
                 try
                 {
-                    _wavePlan = WavePatternGenerator.FromPlanAsset(_authoredPlan);
+                    _wavePlan = WavePatternGenerator.FromPlanAsset(plan);
                     GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                     if (_wavePlan.waves != null && _wavePlan.waves.Count > 0)
                     {
                         _usingAuthoredPlan = true;
+                        _activePlan = plan;   // 활성 플랜의 단일 출처 — 소스가 둘이라 필수
                         return true;
                     }
-                    Debug.LogWarning($"[BattleBridge] Authored plan '{_authoredPlan.name}' has no waves; falling back to seed/legacy.", this);
+                    Debug.LogWarning($"[BattleBridge] Authored plan '{plan.name}' has no waves; falling back to seed/legacy.", this);
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[BattleBridge] Authored plan '{_authoredPlan.name}' failed; falling back. {ex.Message}", this);
+                    Debug.LogError($"[BattleBridge] Authored plan '{plan.name}' failed; falling back. {ex.Message}", this);
                 }
                 _wavePlan = default;
                 _nextWaveIndex = 0;
