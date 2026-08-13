@@ -3658,12 +3658,15 @@ namespace Wassup.Bridge
             // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
             //
             // unit 3 — 연출이 배선돼 있으면 뷰를 **떼어내 넘긴다**(파괴하지 않는다). 엔티티는
-            // 바로 아래에서 사라지지만 뷰만 아치로 떠나간다(보스 도약과 같은 형태). 넘긴 뒤
-            // 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
+            // 바로 아래에서 사라지지만 뷰만 위로 뽑혀 나간다(보스 도약과 같은 형태 — sim 은 즉시
+            // 끝나고 뷰만 남는다). 넘긴 뒤 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
             // 미배선이면 종전대로 즉시 반납(개발 씬·테스트에서 조용히 동작).
+            //
+            // rev 2 — 링을 칠 좌표를 함께 넘긴다. VfxSpawner 가 진입부에서 ToView 하므로
+            // **sim 좌표**여야 한다(이중 변환 금지 — 배치 링 호출부와 같은 규약).
             if (retireFlight != null && spineUnitPool != null
                 && spineUnitPool.Detach(binding.entity, out var retiringView))
-                retireFlight.Fly(retiringView);
+                retireFlight.Fly(retiringView, GridToWorldCenterVector(cell, spawnHeight));
             else
                 spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);

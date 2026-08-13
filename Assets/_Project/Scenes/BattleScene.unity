@@ -2715,12 +2715,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5689b25641a6415299a79e3dbfac812, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DefenderRetireFlight
-  defenderSelector: {fileID: 915292524}
   mainCamera: {fileID: 1420088185}
-  durationSeconds: 0.55
-  riseDistance: 3.4
-  lateralDistance: 0.9
-  endScale: 0.15
+  vfxSpawner: {fileID: 1795146346}
+  anticipationSeconds: 0.1
+  crouchAmount: 0.24
+  crouchDip: 0.14
+  snapSeconds: 0.18
+  riseDistance: 4.6
+  stretchY: 2.3
+  stretchX: 0.2
 --- !u!1 &1279129161
 GameObject:
   m_ObjectHideFlags: 0

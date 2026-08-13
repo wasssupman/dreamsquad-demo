@@ -1,4 +1,33 @@
-# 3 — 퇴근 연출 (사망 애니 배제 · 아치 이탈)
+# 3 — 퇴근 연출 (사망 애니 배제 · 위로 뽑히는 스냅)
+
+> ## ⚠ rev 2 — 아치 이탈 폐기 (2026-08-14, 사용자 평가 "연출이 구리다")
+>
+> rev 1 은 배치 아치를 거꾸로 재생했다(0.55초 곡선 상승 + 축소). **진단은 방향이 아니라 구조였다** —
+> 게임 필은 «예비 → 스냅 → 여운» 인데 rev 1 엔 **가운데만** 있었다:
+> 예고가 없어 무슨 일이 일어나는지 못 읽고, 등속에 가까워 힘이 안 실리고, 0.55초는 전투에 비해 길다.
+>
+> **rev 2 = 3막 ~0.28초:**
+>
+> | 막 | 시간 | 무엇 |
+> |---|---|---|
+> | ① 웅크림 | 0.10s | 눌리며(세로 76%) 살짝 내려앉는다 — "당겨지기 직전" 텐션 |
+> | ② 스냅 | 0.18s | 위로 **뽑혀 나간다.** OutExpo 즉발 가속 + 세로 2.3배·가로 0.2배 stretch |
+> | ③ 여운 | 스냅과 동시 | 떠난 칸에 **배치 링**(`SpawnPlacementRing`) — 올 때 나던 그 링 |
+>
+> **죽음과의 구분이 더 선명해졌다**: 죽음은 아래로 무너지고, 퇴근은 **위로 뽑힌다.**
+> squash&stretch 는 캐주얼 게임의 기본 어휘라 작은 화면에서도 읽힌다.
+>
+> **버린 것**: 아치·베지어·`KeyringSim`·`DragController` lazy 해석. 곡선은 "날아간다"를,
+> 직선 스냅은 "뽑힌다"를 말한다 — 이 연출이 원하는 건 후자다. 컴포넌트가 오히려 짧아졌다.
+> **얻은 것**: `VfxSpawner` 배선 1개(링). `Fly(view, simWorld)` 의 좌표 인자가 **이번엔 실제
+> 소비처**를 갖는다 — `VfxSpawner` 가 진입부에서 `ToView` 하므로 **sim 을 넘겨야** 한다(이중 변환 금지).
+>
+> 아래 rev 1 본문은 "왜 뷰를 떼어내 따로 모는가"(Detach 계약·고아 방지·동시 퇴근)가 여전히
+> 유효하므로 남긴다. 곡선·목적지 관련 서술만 위 표로 대체됐다.
+
+---
+
+# (rev 1 본문 — 구조 근거는 유효, 곡선 서술은 폐기)
 
 ## 목적
 
@@ -90,3 +119,15 @@ UGUI 스크린 공간이고 비행 수학은 전부 뷰/월드 공간(`camUp`·`
 > 씬 배선: `DefenderRetireFlight` 를 `DefenderRelocationController` GO 에 얹고
 > (`defenderSelector`·`mainCamera`), `BattleBridge.retireFlight` 연결 후 BattleScene 저장.
 > 저장 전 `dirty=False` 를 확인했다 — 남의 in-memory WIP 를 베이크할 위험이 없는 상태였다.
+
+> **rev 2 자동 검증 2026-08-14** — 컴파일 통과(CS 에러 0).
+> `DefenderRetireTest` **5/5** · 회귀 6개 클래스 **17/17**.
+> 배선 갱신: `defenderSelector` 제거 → **`vfxSpawner` 추가**(링). BattleScene 재저장.
+> 테스트 러너가 한 번 "failed to initialize" 로 죽어 `manage_editor stop` 후 재시도해 통과했다
+> (이 프로젝트의 알려진 불안정 — 결과가 아니라 러너 초기화 실패다).
+>
+> **튜닝은 전부 인스펙터**(`DefenderRelocationController` GO → `DefenderRetireFlight`):
+> `anticipationSeconds` 0.10 · `crouchAmount` 0.24 · `crouchDip` 0.14 ·
+> `snapSeconds` 0.18 · `riseDistance` 4.6 · `stretchY` 2.3 · `stretchX` 0.2.
+> 더 과격하게 하려면 `stretchY`↑ `stretchX`↓ `snapSeconds`↓, 더 묵직하게 하려면 `crouchAmount`↑
+> `anticipationSeconds`↑.
