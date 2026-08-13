@@ -235,6 +235,10 @@ namespace Wassup.Bridge
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
+        // defender-relocation unit 8 — 효과 타일은 on-place 와 **다른** 가드를 쓴다.
+        // 재배치가 on-place 를 재무장하기 때문(README 계약 4). 왜 함께 풀면 안 되는지는
+        // ApplyEffectTileOnce 주석 참조.
+        private readonly HashSet<Entity> _effectTileAppliedEntities = new();
         // effect-tiles unit 1 — 셀 → 효과 타일 (bridge-side, sim 무관). 맵 빌드마다 재구축.
         private readonly Dictionary<Vector2Int, EffectTileData> _effectTilesByCell = new();
         private readonly List<ProjectileData> _projectileDataByIndex = new();
@@ -1298,6 +1302,7 @@ namespace Wassup.Bridge
             // loadout right after the clear above (single point, see SetDreamstones).
             ApplyPendingDreamstones();
             _onPlaceTriggeredEntities.Clear();
+            _effectTileAppliedEntities.Clear(); // unit 8 — 두 가드는 항상 같은 지점에서 함께 비운다
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
             _synergyPeakCount = 0;
@@ -5997,6 +6002,9 @@ namespace Wassup.Bridge
         // unit 4 — 하이라이트는 유닛 종속: 드는 유닛의 층으로 스캔한다(Ground 유닛이면 배치지면이,
         // Path 유닛이면 경로가 빛난다). 유닛 미상이면 Ground 폴백.
         private DefenderUnitData _placeableHlUnit;
+        // defender-relocation unit 9 — 스캔이 뺀 칸을 되돌려 넣는 예외 1칸(재배치 소스 = 제자리
+        // 재정비 목적지). 상태로 들고 있어야 리페인트를 살아남는다 — ShowPlacementHighlight 주석 참조.
+        private Vector2Int? _placeableHlExtraCell;
 
         // unit 4 리뷰 M-1 — 라이브 맵에서 한 셀의 모든 배치 층을 닫는다(스폰·골 불변식용).
         private void CloseCellLayers(int2 cell)
@@ -6009,10 +6017,18 @@ namespace Wassup.Bridge
         // 표시 여부 read seam — 컨트롤러가 자기 래치와 실제 상태를 대조해 자기치유하기 위함(unit 4 리뷰 C-1).
         public bool IsPlacementHighlightShown => _placeableHlShown;
 
-        public void ShowPlacementHighlight(DefenderUnitData unit)
+        // defender-relocation unit 9 — extraCell 은 스캔이 빼는 칸을 되돌려 넣는 자리다(재배치
+        // 소스 칸은 자기가 점유 중이라 SpatialPlacementCheck 가 Occupied 로 뺀다). 제자리 재정비가
+        // 확정이 된 지금 그 칸은 "못 놓는 칸"이 아니라 "여기 놓으면 재정비" 로 읽혀야 한다.
+        //
+        // ⚠ 인자가 아니라 **상태**로 들고 있어야 한다. RepaintPlacementHighlight 는 매번 처음부터
+        // 다시 계산하고, RefreshPlacementHighlightIfShown 을 통해 배치·재배치 확정마다 다시 불린다 —
+        // 일회성 인자로 넘기면 첫 리페인트에서 조용히 사라진다.
+        public void ShowPlacementHighlight(DefenderUnitData unit, Vector2Int? extraCell = null)
         {
             _placeableHlShown = true;
             _placeableHlUnit = unit;
+            _placeableHlExtraCell = extraCell;
             RepaintPlacementHighlight();
         }
 
@@ -6020,6 +6036,7 @@ namespace Wassup.Bridge
         {
             _placeableHlShown = false;
             _placeableHlUnit = null;
+            _placeableHlExtraCell = null;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
         }
 
@@ -6035,6 +6052,9 @@ namespace Wassup.Bridge
             for (int x = 0; x < w; x++)
                 if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y), layers) == PlacementRejectReason.None)
                     _placeableHlScratch.Add(new Vector2Int(x, y));
+            // unit 9 — 스캔이 뺀 소스 칸을 되돌려 넣는다(제자리 재정비도 유효 목적지다).
+            if (_placeableHlExtraCell.HasValue && !_placeableHlScratch.Contains(_placeableHlExtraCell.Value))
+                _placeableHlScratch.Add(_placeableHlExtraCell.Value);
             tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
         }
 
@@ -6123,7 +6143,7 @@ namespace Wassup.Bridge
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
             _onPlaceTriggeredEntities.Add(entity);
-            ApplyEffectTileIfAny(cell, entity); // effect-tiles unit 2 — 가드 뒤 exactly-once (드래그 경로)
+            ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
         }
@@ -7058,7 +7078,9 @@ namespace Wassup.Bridge
 
         // effect-tiles unit 2 — 셀에 효과 타일이 있으면 배치 유닛에 효과 부여 (기존 modifier 파이프라인).
         // source=배치유닛 + 전용 stackId=2 → merge-key 가 on-place(0)/시너지(1)와 분리 스택, 재호출은 refresh(멱등).
-        // duration=∞ (시너지 관용) — 유닛 제거/재배치 기능이 없어 revocation 불요(spec 후속).
+        // duration=∞ (시너지 관용) — revocation 경로가 없다.
+        // ⚠ defender-relocation unit 8 — "재배치 기능이 없어 불요" 라고 적혀 있던 자리다. 재배치는
+        // 이제 존재하고, 그래서 이 함수는 **엔티티당 1회**로 봉인돼 있다(ApplyEffectTileOnce).
         // EffectTileData.op 를 존중해야 해서 중앙 EnqueueStatModifier(값 기준 op 결정, additive-authoring
         // Policy B) 를 우회하고 직접 enqueue — 타일이 저작한 op 를 그대로 쓴다(정책 non-goal, spec 참조).
         // unit 4 — 다중 stat: entries 루프. stat 이 다르면 같은 stackId 여도 슬롯 분리.
@@ -7083,6 +7105,23 @@ namespace Wassup.Bridge
             }
         }
 
+        // defender-relocation unit 8 — 효과 타일 적용의 유일한 관문(엔티티당 1회).
+        //
+        // on-place 와 가드를 **공유하면 안 된다**: 재배치는 on-place 를 재무장하는데(README 계약 4),
+        // 효과 타일까지 딸려 재적용되면 새 칸 효과가 붙되 **옛 칸 효과가 회수되지 않는다**.
+        // 같은 stat 이면 병합키(source=자기 + stackId=EffectTileStackId + stat)가 refresh 라 겹치지
+        // 않지만, **stat 이 다르면 슬롯이 갈린다** — 공속 타일에서 공격력 타일로 옮기면 공격력이
+        // 붙고 공속이 영원히 남는다(duration=∞ + revocation 없음). 회수를 먼저 만들기 전엔 봉인.
+        //
+        // 효과 타일이 없는 칸에 배치돼도 마킹한다 — 종전 동작 그대로다(옛 가드도 타일 유무와
+        // 무관하게 _onPlaceTriggeredEntities 에 넣었다).
+        private void ApplyEffectTileOnce(Vector2Int cell, Entity entity)
+        {
+            if (entity == Entity.Null) return;
+            if (!_effectTileAppliedEntities.Add(entity)) return;
+            ApplyEffectTileIfAny(cell, entity);
+        }
+
         private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
             // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
@@ -7092,7 +7131,7 @@ namespace Wassup.Bridge
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             ApplyOnPlacePush(unitData, cell);
             _onPlaceTriggeredEntities.Add(entity);
-            ApplyEffectTileIfAny(cell, entity); // effect-tiles unit 2 — 가드 뒤 exactly-once
+            ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             RecomputeSynergyFor(cell);
             LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
         }

@@ -89,11 +89,17 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(controller.InMoveMode, "invalid (occupied) tap keeps move mode");
             Assert.AreEqual(source, CellOf(bridge, em, controller.MoveEntity), "binding unchanged after reject");
 
-            Step(controller, true, true, srcScreen, 0.02f);
-            Step(controller, false, false, srcScreen, 0.02f);
-            Assert.IsFalse(controller.InMoveMode, "self-cell tap cancels move mode");
-            Assert.AreEqual(1f, TimeManager.Instance.ScaleOf(TimeDomain.Battle), 0.001f, "slowmo released on self-cancel");
+            // unit 9 — 취소는 **보드 밖 릴리즈**가 맡는다(자기 칸 탭은 제자리 재정비 확정으로 넘어갔다).
+            // 화면 밖 좌표라 Strict 판정이 false 를 낸다 — 관대한 판정이면 가장자리 셀로 clamp 돼
+            // reject 로 빠지고 이동모드에 갇힌다(그게 Strict 로 바꾼 이유).
+            float costAtCancel = gm.CostRuntime.Current;
+            var offBoard = new Vector2(-200f, -200f);
+            Step(controller, true, true, offBoard, 0.02f);
+            Step(controller, false, false, offBoard, 0.02f);
+            Assert.IsFalse(controller.InMoveMode, "off-board release cancels move mode (계약 13)");
+            Assert.AreEqual(1f, TimeManager.Instance.ScaleOf(TimeDomain.Battle), 0.001f, "slowmo released on cancel");
             Assert.AreEqual(source, CellOf(bridge, em, controller.MoveEntity), "no move on cancel");
+            Assert.AreEqual(costAtCancel, gm.CostRuntime.Current, 0.001f, "취소는 코스트를 쓰지 않는다");
 
             // ── 2) 탭 커밋 (쿨다운 소진 후 재진입)
             for (int i = 0; i < 4; i++) Step(controller, false, false, srcScreen, 0.05f);
@@ -106,7 +112,10 @@ namespace Wassup.Tests.PlayMode
             Step(controller, false, false, tgtScreen, 0.02f); // 릴리즈 = 커밋
             Assert.IsFalse(controller.InMoveMode, "commit exits move mode");
             Assert.AreEqual(1f, TimeManager.Instance.ScaleOf(TimeDomain.Battle), 0.001f, "slowmo released on commit");
-            Assert.AreEqual(costBefore, gm.CostRuntime.Current, 0.001f, "relocation costs no cost (계약 1)");
+            // 계약 1 rev (unit 8) — 재배치는 배치 코스트 전액을 낸다. 이 줄은 예전에
+            // "relocation costs no cost" 였다. 프레임이 지나지 않아 재생성이 끼지 않는다.
+            Assert.AreEqual(costBefore - unit.cost, gm.CostRuntime.Current, 0.001f,
+                "relocation spends the unit's placement cost (계약 1 rev)");
             Assert.AreEqual(target2, CellOf(bridge, em, mover), "binding at tap target (확정 프레임)");
             // unit 3 — 커밋 직후는 비행/재전개 중(비타겟·비무장), 활성화는 비동기.
             Assert.IsTrue(em.HasComponent<PendingDeployment>(mover), "pending during flight/redeploy (unit 3)");
@@ -289,12 +298,16 @@ namespace Wassup.Tests.PlayMode
             return screen;
         }
 
+        // "옮겨 갈 **다른** 칸" 을 찾는다. unit 9 부터 제자리(from==to)도 유효 목적지라
+        // 명시로 빼지 않으면 스캔이 소스 칸을 집어 온다(이동이 일어나지 않는다).
         private static Vector2Int FindRelocTarget(BattleBridge bridge, Vector2Int from)
         {
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
-                    if (bridge.CanRelocateDefender(from, new Vector2Int(x, y), out _))
-                        return new Vector2Int(x, y);
+                {
+                    var c = new Vector2Int(x, y);
+                    if (c != from && bridge.CanRelocateDefender(from, c, out _)) return c;
+                }
             Assert.Fail("no valid relocation target");
             return default;
         }

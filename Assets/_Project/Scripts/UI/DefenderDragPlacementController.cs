@@ -295,8 +295,15 @@ namespace Wassup.UI
             // 재호출이 스킵돼 **이전 유닛의 층**이 계속 그려진다 — 판정은 새 유닛 층을 쓰므로
             // "빛나는데 거부 / 어두운데 성공" 이 된다(판정↔하이라이트 술어 공유 계약 파손).
             // 표시 상태까지 보는 이유: 재배치 컨트롤러가 Hide 를 쏜 뒤에도 여기서 자기치유 재게시된다.
-            bool shown = bridge.IsPlacementHighlightShown;
-            if (desired == _placeableHlDesired && ReferenceEquals(unit, _placeableHlUnit) && shown == desired) return;
+            //
+            // ⚠ 자기치유는 **켜는 방향만**이다. 하이라이트는 이 컨트롤러와 재배치 컨트롤러가
+            // 공유하는 전역 상태인데 **매 프레임 도는 건 이쪽뿐**이다. 그래서 `shown == desired`
+            // 로 양방향 자기치유를 걸면, 재배치가 이동모드 진입에 켜 놓은 하이라이트를 여기서
+            // 매 프레임 도로 꺼버린다(desired=false, shown=true → early-return 이 뚫려 Hide 로 감).
+            // 실제로 그 증상이었다 — 이동모드에 들어가도 배치 가능 타일이 안 보였다.
+            // 끄는 것은 **내가 켰던 것만** 끈다(내 래치가 true 였을 때의 전이).
+            bool needsRepost = desired && !bridge.IsPlacementHighlightShown;
+            if (!needsRepost && desired == _placeableHlDesired && ReferenceEquals(unit, _placeableHlUnit)) return;
             _placeableHlDesired = desired;
             _placeableHlUnit = unit;
             if (desired) bridge.ShowPlacementHighlight(unit);

@@ -40,15 +40,34 @@ namespace Wassup.UI
                 && _bridge.DeployedCountOf(_unitData) >= _unitData.EffectiveMaxOnBoard;
         }
 
-        // defender-board-limit 2 — 소진 셀의 응답: 판 위 그 유닛으로 데려간다. 탭이든 드래그든
-        // 같은 결과다(계약 5) — 두 제스처의 속마음이 "이 유닛 쓰고 싶다" 하나이기 때문이다.
-        // 그래서 흔들림·링 핑 같은 별도 거부 연출을 만들지 않는다: 카메라가 그 유닛으로 가고
+        // defender-board-limit 2 — 소진 셀의 **탭** 응답: 판 위 그 유닛으로 데려간다.
+        // 흔들림·링 핑 같은 별도 거부 연출을 만들지 않는다: 카메라가 그 유닛으로 가고
         // 리티클이 뜨는 것 자체가 응답이다.
         private void GoToDeployedUnit()
         {
             if (_inspect == null || _bridge == null || _unitData == null) return;
             if (_bridge.TryGetDeployedEntity(_unitData, out var entity))
                 _inspect.SelectDeployed(entity);
+        }
+
+        // defender-relocation unit 10 rev — 소진 슬롯의 **드래그** 응답: 판 위 그 유닛을
+        // 집어 든다(이동모드 진입). 손가락은 이미 눌려 있으므로 그대로 목적지 제스처가 된다.
+        //
+        // ⚠ board-limit 계약 5("소진 셀의 탭·드래그가 같은 결과")를 여기서 **가른다**.
+        // 그 계약은 재배치에 대가가 없던 시절 것이다 — 그땐 두 제스처의 속마음이 "이 유닛
+        // 쓰고 싶다" 하나였다. 이제 드래그에는 "저기로 옮긴다"라는 자기 의미가 생겼고,
+        // 탭(데려가기)과 결과가 달라야 한다. 임계는 UGUI 가 이미 가르므로 새로 만들지 않는다.
+        //
+        // 진입에 실패하면(코스트 부족·쿨다운·페이즈) **종전 동작으로 폴백**한다 — 끌었는데
+        // 아무 일도 안 일어나는 것보다 그 유닛을 보여주는 편이 낫다.
+        private void TryBeginRelocationFromSlot(Vector2 pressScreen)
+        {
+            var relocation = _inspect != null ? _inspect.Relocation : null;
+            if (relocation == null || _bridge == null || _unitData == null) { GoToDeployedUnit(); return; }
+            if (!_bridge.TryGetDeployedEntity(_unitData, out var entity)
+                || !_bridge.TryGetDefenderCell(entity, out var cell)) { GoToDeployedUnit(); return; }
+            if (!relocation.BeginMoveModeFor(entity, cell, carriedPress: true, pressScreen: pressScreen))
+                GoToDeployedUnit();
         }
 
         public void OnBeginDrag(PointerEventData eventData)
@@ -58,8 +77,8 @@ namespace Wassup.UI
             // 거른다(우선순위 소진 > 쿨타임 > 코스트).
             if (IsExhausted())
             {
-                _suppressedDrag = true;
-                GoToDeployedUnit();
+                _suppressedDrag = true; // 배치 세션은 시작하지 않는다(이 유닛은 이미 판에 있다)
+                TryBeginRelocationFromSlot(eventData.position); // 드래그 = 집어들기(탭은 데려가기)
                 return;
             }
             // defender-placement-cooldown 1 — 쿨타임 중이면 세션 자체를 시작하지 않는다

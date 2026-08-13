@@ -235,8 +235,23 @@ namespace Wassup.UI
             {
                 bool hasStats = bridge.TryGetUnitStatReadout(_selected, out var stats);
                 panel.SetStats(stats, hasStats);
+
+                // defender-relocation unit 10 — 이동 버튼 잠금/코스트도 같은 프레임 피드에 태운다.
+                // 코스트는 슬로모 중에도 차므로 "모자라서 흐렸다가 모이면 풀린다" 가 보여야 한다.
+                if (relocationController != null &&
+                    bridge.TryGetDefenderCell(_selected, out var moveCell))
+                {
+                    int cost = bridge.TryGetDefenderData(moveCell, out var moveData) && moveData != null
+                        ? moveData.cost : 0;
+                    panel.SetMoveState(relocationController.CanBeginMoveModeFor(_selected, moveCell), cost);
+                }
             }
         }
+
+        // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
+        // 슬롯(DefenderDragSlot)은 런타임 생성이라 인스펙터 배선이 없고, 이미 이 컨트롤러
+        // 참조를 Bind 로 받고 있다. **여기 하나만 노출하면 씬 배선이 늘지 않는다.**
+        public DefenderRelocationController Relocation => relocationController;
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
         // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
