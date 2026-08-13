@@ -317,6 +317,47 @@ namespace Wassup.Tests.PlayMode
                 "전원이 경로를 달았다 — 레인 1 대조군이 사라져 저작 의도(한 레인만 우회)가 깨졌다");
         }
 
+        // siege-duel-map 후속 — 「Duel 에 웨이브 개선이 적용되어 있는지 모르겠다」의 라이브 답.
+        //
+        // Duel 은 풀 본편이 아니라 dev 슬롯(6+3=9)이고, dev 엔트리의 deck 이 null 이면 브리지의
+        // 직렬화 deck(구 Deck_WaveA — 컨셉 0·보스 0·적 9종)으로 폴백한다. 실제로 그 상태였다.
+        // 여기서 재는 것은 «맵이 뜬다» 가 아니라 **그 판의 웨이브가 현행 세대인가** 다.
+        [UnityTest]
+        public IEnumerator DuelDevSlot_RunsCurrentGenerationWaves()
+        {
+            DevMapOverride.Index = 9;   // 풀 6 + dev[3] = Duel
+            RenderTexture.active = null;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            bridge.BeginPlacement();
+            yield return null;
+
+            // 공성 파생 — 적 마음 셀이 유일한 스폰이다(레인 1개라 레인 경로 축은 N/A).
+            Assert.IsTrue(bridge.HasGeneratedMap, "Duel 문서가 dev 슬롯 9 로 해석돼야 한다");
+
+            bridge.StartBattle();
+            yield return null;
+
+            // 컨셉 라벨이 붙어 있으면 waveConceptPool 이 실제로 돌았다는 뜻이다.
+            // 빈 문자열이면 컨셉 없는 덱(WaveA 폴백)이다 — 이 판별이 이 테스트의 핵심이다.
+            Assert.IsFalse(string.IsNullOrEmpty(bridge.NextWaveConceptLabel),
+                "웨이브에 컨셉 라벨이 없다 — Duel 이 컨셉 풀 없는 덱(Deck_WaveA 폴백)으로 돌고 있다");
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            int spawned = 0;
+            float deadline = Time.unscaledTime + 10f;
+            while (Time.unscaledTime < deadline && spawned == 0)
+            {
+                using (var query = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>()))
+                    spawned = query.CalculateEntityCount();
+                yield return null;
+            }
+            Assert.Greater(spawned, 0, "공성 스폰(적 마음 셀)에서 적이 실제로 나와야 한다");
+        }
+
         private static bool PlaceFirstValid(
             BattleBridge bridge, DefenderUnitData unit, out Entity entity)
         {

@@ -32,3 +32,5 @@ MonoBehaviour:
     deck: {fileID: 11400000, guid: 55ab6e9b9a574e48be685c4b03330566, type: 2}
   - document: {fileID: 11400000, guid: 48c39cf2e2328fc40951aca5bb30b04d, type: 2}
     deck: {fileID: 11400000, guid: cef190a09af945abb130f4203c6f9862, type: 2}
+  - document: {fileID: 11400000, guid: b0a057b7bd79423ab3f57395305c27d3, type: 2}
+    deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
