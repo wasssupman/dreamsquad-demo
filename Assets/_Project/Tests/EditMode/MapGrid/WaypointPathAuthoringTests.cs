@@ -306,7 +306,14 @@ namespace Wassup.Tests.EditMode.MapGrid
     // 검증을 통과해야 하며, Skimmer 가 쓰는 경로 0 을 지상 레인이 빼앗으면 안 된다.
     public class LiveMapSpawnRouteAuthoringTests
     {
-        private const string SerpentPath = "Assets/_Project/Data/Maps/MapDocument_Serpent.asset";
+        // 레인 경로를 실제로 저작한 맵. Coil·Twin 은 지형이 이미 두 레인을 다른 진입면으로
+        // 가르고 있어(map-rework 계약 4) 우회를 얹으면 그 분리가 무너진다 — 의도적 미저작이다.
+        private static readonly string[] RoutedMaps =
+        {
+            "Assets/_Project/Data/Maps/MapDocument_Serpent.asset",
+            "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",
+            "Assets/_Project/Data/Maps/MapDocument_Zig.asset",
+        };
 
         private static MapDocument Load(string path)
         {
@@ -338,26 +345,27 @@ namespace Wassup.Tests.EditMode.MapGrid
 
         // 대조군이 없으면 「이 맵은 원래 이렇게 온다」가 화면에서 안 읽힌다.
         [Test]
-        public void Serpent_RoutesOneLane_AndKeepsTheOtherAsShortestPath()
+        public void RoutedMaps_RouteOneLane_AndKeepTheOtherAsShortestPath(
+            [ValueSource(nameof(RoutedMaps))] string path)
         {
-            var routes = Load(SerpentPath).SpawnRoutes;
-            Assert.IsNotNull(routes);
-            Assert.AreEqual(2, routes.Count, "Serpent 은 스폰 2개다");
+            var routes = Load(path).SpawnRoutes;
+            Assert.IsNotNull(routes, $"{path}: 저작 대상인데 spawnRoutes 가 없다");
 
             int routed = 0, shortest = 0;
             foreach (int r in routes) { if (r >= 0) routed++; else shortest++; }
-            Assert.GreaterOrEqual(routed, 1, "한 레인도 우회하지 않으면 이 spec 이 하는 일이 없다");
+            Assert.GreaterOrEqual(routed, 1, $"{path}: 한 레인도 우회하지 않으면 이 spec 이 하는 일이 없다");
             Assert.GreaterOrEqual(shortest, 1,
-                "전 레인이 우회하면 대조가 사라져 «다른 길»이 아니라 «그냥 먼 길»이 된다");
+                $"{path}: 전 레인이 우회하면 대조가 사라져 «다른 길»이 아니라 «그냥 먼 길»이 된다");
         }
 
         // 저작이 검증을 통과한다는 것과 그 값이 **런타임에 도달한다**는 것은 다른 주장이다.
         // 실제 에셋으로 투영까지 돌려 문서→GeneratedMap 경로를 끝까지 확인한다(계약 6 —
         // 순수 함수 그린은 증거가 아니다).
         [Test]
-        public void Serpent_AuthoredLaneRoute_SurvivesProjectionToRuntime()
+        public void AuthoredLaneRoute_SurvivesProjectionToRuntime(
+            [ValueSource(nameof(RoutedMaps))] string path)
         {
-            var doc = Load(SerpentPath);
+            var doc = Load(path);
             var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.Temp);
             try
             {
@@ -386,9 +394,10 @@ namespace Wassup.Tests.EditMode.MapGrid
         // 경로 0 은 Skimmer 의 SO 지정(Air)이 쓴다. 지상 레인 기본이 그걸 가리키면 지상 적이
         // 공중 전용으로 저작된 경로를 타게 되어 두 콘텐츠가 한 저작을 공유한다.
         [Test]
-        public void Serpent_GroundLaneRoute_DoesNotStealTheAirPath()
+        public void GroundLaneRoute_DoesNotStealTheAirPath(
+            [ValueSource(nameof(RoutedMaps))] string path)
         {
-            var doc = Load(SerpentPath);
+            var doc = Load(path);
             var skimmer = UnityEditor.AssetDatabase.LoadAssetAtPath<AttackUnitData>(
                 "Assets/_Project/Data/Enemies/Enemy_Skimmer.asset");
             Assert.IsNotNull(skimmer);
@@ -396,7 +405,7 @@ namespace Wassup.Tests.EditMode.MapGrid
 
             foreach (int r in doc.SpawnRoutes)
                 Assert.AreNotEqual(skimmer.waypointPathIndex, r,
-                    "지상 레인 기본이 Skimmer 의 Air 경로를 가리킨다 — 경로를 하나 더 만들 것");
+                    $"{path}: 지상 레인 기본이 Skimmer 의 Air 경로를 가리킨다 — 경로를 하나 더 만들 것");
         }
     }
 }
