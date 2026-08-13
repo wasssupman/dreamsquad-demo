@@ -412,12 +412,17 @@ namespace Wassup.Tests.EditMode
         public void WaypointFollow_UsesWaypointSlot_ThenAdvancesToGoalSlot()
         {
             CreateWaypointFlowField();
-            var e = CreateUnit(new float3(1f, 0f, 1f), speed: 0.2f);
+            // waypoint-routing unit 9 — 시작 셀이 (1,1) 이었으나 웨이포인트 (1,2) 와 **인접**이라,
+            // 도달 판정이 체비셰프 1 로 완화된 뒤로는 첫 프레임에 이미 «도달» 이 되어 슬롯을
+            // 따라갈 구간 자체가 없었다. 이 테스트가 지키는 계약(웨이포인트로 갈 땐 그 슬롯,
+            // 마지막 뒤엔 골 슬롯)은 그대로이고 픽스처 기하만 옛 계약을 전제했던 것 —
+            // 2칸 떨어진 (1,0) 에서 출발시켜 «따라가는 구간» 을 되살린다.
+            var e = CreateUnit(new float3(1f, 0f, 0f), speed: 0.2f);
             _em.AddComponentData(e, new WaypointFollow { pathIndex = 0, index = 0 });
 
             Tick(1f);
             var towardWaypoint = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.Greater(towardWaypoint.z, 1f, "활성 waypoint 슬롯(+z)을 따라야 한다");
+            Assert.Greater(towardWaypoint.z, 0f, "활성 waypoint 슬롯(+z)을 따라야 한다");
             Assert.AreEqual(1f, towardWaypoint.x, 1e-4f, "goal 슬롯(+x)은 아직 읽지 않는다");
 
             _em.SetComponentData(e, LocalTransform.FromPosition(new float3(1f, 0f, 2f)));

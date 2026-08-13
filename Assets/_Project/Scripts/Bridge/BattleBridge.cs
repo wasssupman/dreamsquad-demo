@@ -8198,14 +8198,20 @@ namespace Wassup.Bridge
             // |오프셋|<0.5·tileSize 라 유닛은 같은 셀에 머문다 → flow/goal/cell-trim 등 셀 단위 시스템 불변.
             spawnWorldPos += ComputeSpawnLateralOffset(spawn);
 
-            CreateEnemyEntity(entry.unitType, spawnWorldPos);
+            // waypoint-routing unit 9 — 레인 기본 경로는 **래퍼가 결정한다.** 위 가드가 클램프한
+            // spawnIndex 를 쓰므로 본문은 가드를 다시 갖지 않는다(★ 규약 유지). 본문은 plain int
+            // 하나만 받고, 분열 경로는 레인이 없으므로 기본값 -1 = 현행(적 SO 지정만 본다).
+            CreateEnemyEntity(entry.unitType, spawnWorldPos, _generatedMap.RouteForSpawn(spawnIndex));
         }
 
         // 적 엔티티 조립의 단일 지점. 호출처 2곳 — 레인 스폰(위)과 분열(DrainEnemyKilledEvents).
         // CreatePatrolEntity 처럼 병렬 복제하지 않은 이유: 분열 자식은 적의 **표준 세트 전부**
         // (Health·FactionTag·KillScore·버퍼 6종·PathFollowState·AttackState·behavior·뷰 등록)가
         // 필요해서, 복제하면 다음에 적 스폰에 뭔가 추가될 때 한쪽만 갱신된다.
-        private Entity CreateEnemyEntity(Wassup.Data.AttackUnitData unitType, Vector3 spawnWorldPos)
+        // waypoint-routing unit 9 — laneDefaultPathIndex 는 «이 레인에서 나온 적의 기본 경로».
+        // 래퍼가 결정해 넘기고, 분열 호출처는 레인이 없으므로 기본값 -1(현행 = 적 SO 지정만).
+        private Entity CreateEnemyEntity(Wassup.Data.AttackUnitData unitType, Vector3 spawnWorldPos,
+            int laneDefaultPathIndex = -1)
         {
             if (unitType.visualMaterial == null)
             {
@@ -8356,7 +8362,11 @@ namespace Wassup.Bridge
 
             // waypoint-routing unit 3 — 저작 opt-in. 유효한 경로만 Movement 상태를 붙인다.
             // 실패는 골 직행으로 안전 폴백하되, 사람에게 보이는 경고는 스폰 1회만 남긴다.
-            int waypointPathIndex = unitType.waypointPathIndex;
+            // unit 9 — 경로 선택 축이 둘이 됐다(계약 10): 적 SO 지정 = 종의 정체성,
+            // 레인 기본 = 맵의 성질. 겹치면 좁은 쪽(개체)이 이긴다. 우선순위는 순수 함수가
+            // 소유해 EditMode 로 고정한다 — 여기서 삼항으로 풀면 계약이 코드에만 남는다.
+            int waypointPathIndex = WaypointRouting.ResolvePathIndex(
+                unitType.waypointPathIndex, laneDefaultPathIndex);
             if (waypointPathIndex >= 0)
             {
                 bool validPath = waypointPathIndex < _generatedMap.WaypointPathCount;
@@ -8370,8 +8380,11 @@ namespace Wassup.Bridge
                 }
                 else
                 {
+                    // 어느 축에서 온 값인지 같이 남긴다 — 저작자가 SO 와 맵 중 어디를 고칠지
+                    // 알아야 한다(계약 9 — 슬롯/경로 폴백은 조용하면 안 된다).
+                    string source = unitType.waypointPathIndex >= 0 ? "unit SO" : "map lane default";
                     Debug.LogWarning(
-                        $"[BattleBridge] {unitType.displayName}: waypointPathIndex={waypointPathIndex} is invalid "
+                        $"[BattleBridge] {unitType.displayName}: waypointPathIndex={waypointPathIndex} ({source}) is invalid "
                         + $"for map paths={_generatedMap.WaypointPathCount} — using goal route.", this);
                 }
             }
