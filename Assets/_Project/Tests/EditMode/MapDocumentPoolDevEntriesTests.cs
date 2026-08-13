@@ -252,6 +252,47 @@ namespace Wassup.Tests.EditMode
                 "무작위가 되고 튜토리얼이 성립하지 않는다");
             Assert.IsNotNull(entry.deck, "덱이 없으면 누수 한도·마음 체력이 레거시 폴백이 된다");
 
+            // 지형이 아니라 **저작**이 경로를 정한다 — 12×7 전면 개방 + 레인마다 웨이포인트.
+            Assert.AreEqual(12, doc.Width); Assert.AreEqual(7, doc.Height);
+            foreach (var t in doc.Tiles)
+                Assert.AreEqual(MapTileType.Walk, t,
+                    "튜토리얼 필드는 전면 개방이다 — 벽이 생기면 경로가 다시 지형에서 나온다");
+
+            // 라이브 맵과 **반대 규칙**: 여기선 전 레인이 경로를 가져야 한다. 라이브는 한 레인을
+            // -1 로 남겨 대조를 만들지만(unit 10), 튜토리얼의 목적은 「경로는 저작이다」를
+            // 보여주는 것이라 최단거리 레인이 남으면 그 메시지가 흐려진다.
+            var routes = doc.SpawnRoutes;
+            Assert.IsNotNull(routes);
+            Assert.AreEqual(doc.Spawns.Count, routes.Count, "레인마다 경로가 하나씩");
+            for (int i = 0; i < routes.Count; i++)
+                Assert.GreaterOrEqual(routes[i], 0,
+                    $"레인 {i} 이 최단거리(-1)다 — 모든 레인이 웨이포인트로 움직여야 한다");
+
+            // 경로 0 은 Air(스키머) 몫이다. 지상 레인이 가져가면 웨이브 7 의 «비행은 다른 길로
+            // 온다» 대조가 사라진다.
+            var skimmer = UnityEditor.AssetDatabase.LoadAssetAtPath<AttackUnitData>(
+                "Assets/_Project/Data/Enemies/Enemy_Skimmer.asset");
+            foreach (int r in routes)
+                Assert.AreNotEqual(skimmer.waypointPathIndex, r,
+                    "지상 레인이 Air 경로를 가져갔다");
+
+            var routeErrors = new List<string>(); var routeWarnings = new List<string>();
+            WaypointAuthoringRules.ValidateSpawnRoutes(
+                routes, doc.WaypointPaths, doc.Spawns, routeErrors, routeWarnings);
+            Assert.IsEmpty(routeErrors, string.Join(" / ", routeErrors));
+            foreach (string w in routeWarnings)
+                Assert.IsFalse(w.Contains("가로지르기"), w);
+
+            var tmap = MapDocumentBuilder.ToGeneratedMap(doc, Unity.Collections.Allocator.Temp);
+            try
+            {
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(tmap), "스폰에서 골까지 못 간다");
+                for (int lane = 0; lane < tmap.spawns.Length; lane++)
+                    Assert.Greater(tmap.waypointRanges[tmap.RouteForSpawn(lane)].y, 0,
+                        $"레인 {lane} 의 경로에 지점이 없다");
+            }
+            finally { tmap.Dispose(); }
+
             var plan = entry.plan;
             Assert.AreEqual(10, plan.waves.Count, "웨이브 10개가 저작 의도다");
             Assert.AreEqual(0f, plan.timerDurationSec,

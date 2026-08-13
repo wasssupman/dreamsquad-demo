@@ -389,15 +389,37 @@ namespace Wassup.Tests.PlayMode
             var world = World.DefaultGameObjectInjectionWorld;
             Assert.IsNotNull(world, "기본 ECS 월드가 없다");
             var em = world.EntityManager;
-            int spawned = 0;
-            float deadline = Time.unscaledTime + 10f;
-            while (Time.unscaledTime < deadline && spawned == 0)
+
+            // 튜토리얼은 **전 레인이 웨이포인트로 움직인다**(목표 최단거리가 아니라 저작 경로).
+            // 레인 0 → 경로 1, 레인 1 → 경로 2 이므로 스폰된 지상 적은 전부 그 둘 중 하나를 단다.
+            int spawned = 0, routed = 0;
+            var seenPaths = new HashSet<int>();
+            var counted = new HashSet<Entity>();
+            float deadline = Time.unscaledTime + 12f;
+            while (Time.unscaledTime < deadline && spawned < 4)
             {
-                using (var query = em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>()))
-                    spawned = query.CalculateEntityCount();
+                using (var query = em.CreateEntityQuery(
+                           ComponentType.ReadOnly<AttackUnitTag>(),
+                           ComponentType.ReadOnly<PathFollowState>()))
+                using (var entities = query.ToEntityArray(Allocator.Temp))
+                {
+                    for (int i = 0; i < entities.Length; i++)
+                    {
+                        Entity e = entities[i];
+                        if (!counted.Add(e)) continue;
+                        spawned++;
+                        if (!em.HasComponent<WaypointFollow>(e)) continue;
+                        routed++;
+                        seenPaths.Add(em.GetComponentData<WaypointFollow>(e).pathIndex);
+                    }
+                }
                 yield return null;
             }
             Assert.Greater(spawned, 0, "저작 웨이브 1 이 실제로 적을 내보내야 한다");
+            Assert.AreEqual(spawned, routed,
+                $"{spawned}기 중 {routed}기만 웨이포인트를 달았다 — 최단거리로 걷는 적이 남아 있다");
+            foreach (int p in seenPaths)
+                Assert.Greater(p, 0, "지상 레인이 Air 경로(0)를 타고 있다");
         }
 
         private static bool PlaceFirstValid(
