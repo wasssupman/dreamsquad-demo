@@ -262,10 +262,11 @@ namespace Wassup.Tests.PlayMode
         // 이 테스트는 **증상 그대로**를 단언한다 — 「내 순수 함수가 옳은 값을 낸다」가 아니라
         // 「라이브 Serpent 판에서 지상 적이 레인 기본 경로를 달고 스폰되는가」. 저작·투영은
         // EditMode 가 이미 지켰으므로, 여기서 빨간불이 뜨면 범인은 스폰 경계다.
-        // 풀 인덱스 0=Serpent, 4=Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다.
+        // 풀 인덱스 1=Coil, 4=Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
+        // (unit 10 rev 3 — 새 경로 50%/62% · 유턴 0).
         [UnityTest]
         public IEnumerator RoutedMap_GroundEnemies_SpawnWithLaneDefaultRoute(
-            [Values(0, 4)] int poolIndex)
+            [Values(1, 4)] int poolIndex)
         {
             DevMapOverride.Index = poolIndex;
             RenderTexture.active = null;

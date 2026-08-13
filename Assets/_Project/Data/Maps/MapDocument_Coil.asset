@@ -28,6 +28,11 @@ MonoBehaviour:
   - cells:
     - {x: 3, y: 7}
     - {x: 4, y: 4}
+  - cells:
+    - {x: 8, y: 9}
+  spawnRoutes:
+  - 1
+  - -1
   structures:
   - cell: {x: 10, y: 6}
     side: 1
