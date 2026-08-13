@@ -65,6 +65,9 @@ namespace Wassup.Bridge
         // 없으면 기존처럼 곧장 배치로 폴백.
         [SerializeField] private GiftPhaseView _giftPhaseView;
         [SerializeField] private Wassup.Presentation.SpineUnitPool spineUnitPool;
+        // defender-clock-out unit 3 — 퇴근 이탈 연출. 미배선이면 즉시 반납으로 폴백한다
+        // (연출은 게임 규칙을 하나도 소유하지 않는다 — 없어도 퇴근은 그대로 성립).
+        [SerializeField] private Wassup.UI.DefenderRetireFlight retireFlight;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
         // placement-enemy-see-through unit 3 — 드래그 배치 중 적 반투명(가려진 뒤 타일 가시성).
@@ -3652,8 +3655,17 @@ namespace Wassup.Bridge
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
             ReleaseDefenderTile(cell, out var binding);
-            // 사망 애니를 타지 않는다(계약 11). unit 3 이 이 자리를 아치 이탈 연출로 확장한다.
-            spineUnitPool?.Despawn(binding.entity);
+            // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
+            //
+            // unit 3 — 연출이 배선돼 있으면 뷰를 **떼어내 넘긴다**(파괴하지 않는다). 엔티티는
+            // 바로 아래에서 사라지지만 뷰만 아치로 떠나간다(보스 도약과 같은 형태). 넘긴 뒤
+            // 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
+            // 미배선이면 종전대로 즉시 반납(개발 씬·테스트에서 조용히 동작).
+            if (retireFlight != null && spineUnitPool != null
+                && spineUnitPool.Detach(binding.entity, out var retiringView))
+                retireFlight.Fly(retiringView);
+            else
+                spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);
             _em.DestroyEntity(binding.entity);
             Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed, synergy recomputed.");

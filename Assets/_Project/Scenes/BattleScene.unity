@@ -2663,6 +2663,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1251145712}
   - component: {fileID: 1251145711}
+  - component: {fileID: 1251145713}
   m_Layer: 0
   m_Name: DefenderRelocationController
   m_TagString: Untagged
@@ -2702,6 +2703,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1251145713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1251145710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5689b25641a6415299a79e3dbfac812, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DefenderRetireFlight
+  defenderSelector: {fileID: 915292524}
+  mainCamera: {fileID: 1420088185}
+  durationSeconds: 0.55
+  riseDistance: 3.4
+  lateralDistance: 0.9
+  endScale: 0.15
 --- !u!1 &1279129161
 GameObject:
   m_ObjectHideFlags: 0
@@ -4215,6 +4234,7 @@ MonoBehaviour:
   _placementPhaseView: {fileID: 1628485822}
   _giftPhaseView: {fileID: 1586207281}
   spineUnitPool: {fileID: 810041860}
+  retireFlight: {fileID: 1251145713}
   enemyViewPool: {fileID: 0}
   defenderFallbackViewPool: {fileID: 0}
   enemyDragDimAlpha: 0.3

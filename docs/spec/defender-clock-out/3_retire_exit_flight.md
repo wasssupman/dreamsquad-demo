@@ -72,3 +72,21 @@ UGUI 스크린 공간이고 비행 수학은 전부 뷰/월드 공간(`camUp`·`
 - 육안: 그 순간 트레이의 그 슬롯이 한 번 반짝이고 쿨타임이 차오르기 시작한다.
 - 육안: 배치 비행과 **같은 곡선 문법**으로 보인다(방향만 반대).
 - **회귀**: 사망은 종전대로 `deathAnimation` 을 재생하고 쓰러진다.
+
+> **자동 검증 2026-08-14** — 컴파일 통과(CS 에러 0).
+> `DefenderRetireTest` **5/5**(신규 `Retire_DetachesView_AndFlightDisposesIt` 포함) ·
+> 회귀 9개 클래스 **23/23**(재배치×3 · BoardLimit×2 · 순찰병 · PlacementAura · BountyMark · SlimeSplit).
+>
+> **구현하며 계획이 두 군데 틀렸다:**
+> ⑴ `dragController` 를 `[SerializeField]` 로 잡으려다 실패 — `DefenderDragPlacementController` 는
+>    씬 직렬화 대상이 아니라 `DefenderSelector` 가 **런타임 `AddComponent`** 로 만든다.
+>    직렬화 필드로 뒀다면 인스펙터에서 영영 비어 곡선이 직선 폴백으로 **조용히 죽었을** 것이다.
+>    `DefenderRelocationController` 가 쓰는 `defenderSelector.DragController` lazy 해석으로 맞췄다.
+> ⑵ `Fly(view, startView)` 의 출발점 인자가 실제로 쓰이지 않았다 — 뷰의 자기 transform 이 더
+>    정확하다(`SpineVisualOffset`·넉업 hop 이 얹혀 있고 그 차이가 곧 "있던 자리에서 뜬다").
+>    인자를 지웠고, unit 1 에 적어둔 "`DefenderRetired` 의 `Vector3` 를 unit 3 이 소비한다" 는
+>    주석도 **사실대로 고쳤다**(소비처 0, 형제 대칭으로 알고 남긴 인자).
+>
+> 씬 배선: `DefenderRetireFlight` 를 `DefenderRelocationController` GO 에 얹고
+> (`defenderSelector`·`mainCamera`), `BattleBridge.retireFlight` 연결 후 BattleScene 저장.
+> 저장 전 `dirty=False` 를 확인했다 — 남의 in-memory WIP 를 베이크할 위험이 없는 상태였다.

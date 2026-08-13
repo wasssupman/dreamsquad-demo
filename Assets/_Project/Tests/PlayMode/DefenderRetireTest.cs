@@ -194,6 +194,61 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(unit);
         }
 
+        // defender-clock-out unit 3 — 퇴근 연출. 잡는 것은 **수명**이다(모양은 육안 몫):
+        //   ⑴ 뷰가 풀에서 빠진다(Detach) — 사망 애니 경로(NotifyDeath)를 안 탄다는 뜻
+        //   ⑵ 비행이 끝나면 그 GameObject 가 파괴된다 — Detach 계약("수명은 호출자 것")의 이행
+        //   ⑶ 두 유닛 연속 퇴근이 각각 끝난다 — 단일 슬롯이 아니라 목록이라는 것
+        [UnityTest]
+        public IEnumerator Retire_DetachesView_AndFlightDisposesIt()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var flight = Object.FindObjectOfType<Wassup.UI.DefenderRetireFlight>();
+            Assert.IsNotNull(flight, "DefenderRetireFlight 가 씬에 배선돼 있어야 한다 (unit 3)");
+
+            var unit = Object.Instantiate(FindCatalog().ById("ranger"));
+            unit.maxOnBoard = 99; // 두 기를 연속 퇴근시킨다
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place #1");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell1 = SoleCell(bridge);
+            var e1 = EntityAt(bridge, em, cell1);
+            Assert.IsTrue(bridge.TryGetUnitView(e1, out var view1), "뷰가 풀에 있다");
+            var go1 = view1.gameObject;
+
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+            Assert.IsTrue(bridge.RetireDefender(cell1), "retire #1");
+
+            // ⑴ 풀에서 빠졌다. 사망 경로(NotifyDeath)였다면 여기서도 빠지지만, 그 경우 뷰는
+            //    사망 애니를 재생하며 자멸한다 — 아래 ⑵ 가 그 차이를 가른다.
+            Assert.IsFalse(bridge.TryGetUnitView(e1, out _), "뷰가 풀에서 떨어졌다");
+            Assert.IsNotNull(go1, "떼어낸 직후에는 아직 살아 있다(비행 중)");
+            Assert.AreEqual(1, flight.InFlightCount, "비행 1건");
+
+            // ⑶ 두 번째를 곧바로 퇴근 — 단일 슬롯이면 첫 비행이 덮여 고아가 된다.
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place #2");
+            var cell2 = SoleCell(bridge);
+            Assert.IsTrue(bridge.RetireDefender(cell2), "retire #2");
+            Assert.AreEqual(2, flight.InFlightCount, "두 비행이 동시에 산다");
+
+            // ⑵ 끝나면 파괴된다. 비행은 Battle 도메인 시계라 프레임을 흘려보낸다.
+            for (int i = 0; i < 300 && flight.InFlightCount > 0; i++) yield return null;
+            Assert.AreEqual(0, flight.InFlightCount, "두 비행 모두 종료");
+            yield return null;
+            Assert.IsTrue(go1 == null, "비행이 끝난 뷰는 파괴된다 (고아 GameObject 0)");
+            Object.Destroy(unit);
+        }
+
         // ── helpers (재배치 스위트와 동형) ────────────────────────────────────
 
         private static DefenderCatalog FindCatalog()

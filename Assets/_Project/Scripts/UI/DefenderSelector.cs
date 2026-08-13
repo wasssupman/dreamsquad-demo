@@ -183,6 +183,30 @@ namespace Wassup.UI
             var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
             if (rt != null && data != null) rt.StartCooldown(data, data.placementCooldown);
             RefreshExhaustedStates();
+            PulseSlotFor(data); // unit 3 — "저기로 갔다" 를 트레이가 자기 공간에서 답한다
+        }
+
+        // defender-clock-out unit 3 — 퇴근한 유닛의 트레이 칸을 1회 튕긴다.
+        //
+        // 퇴근 연출(DefenderRetireFlight)은 유닛을 위로 날려보내고 끝난다. 목적지를 이 슬롯으로
+        // 삼으면 "어디로 갔는지" 가 더 선명하겠지만, 트레이는 **UGUI 스크린 공간**이고 비행 수학은
+        // 전부 뷰/월드 공간(camUp·boardRight·BoardSpace)이다 — 공간을 건너는 변환은 캔버스 모드·
+        // 카메라 설정에 의존해 연출 전체를 그 문제에 건다. 대신 **도착 신호만 트레이가 자기
+        // 공간에서 낸다.** 쿨타임 오버레이가 어차피 이 칸에서 차오르므로 인과가 이어진다.
+        private void PulseSlotFor(DefenderUnitData data)
+        {
+            if (data == null) return;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var v = _slotVisuals[i];
+                if (v.data != data || v.rect == null) continue;
+                // PrimeTween — 이 프로젝트의 UI 연출 표준. 스케일 1회 왕복.
+                PrimeTween.Tween.StopAll(v.rect);
+                v.rect.localScale = Vector3.one;
+                PrimeTween.Tween.PunchScale(v.rect, new Vector3(0.18f, 0.18f, 0f), 0.34f, frequency: 2)
+                    .OnComplete(v.rect, r => { if (r != null) r.localScale = Vector3.one; });
+                return;
+            }
         }
 
         // defender-board-limit 1 — 이 유닛이 이미 상한만큼 판에 나가 있나. 슬롯당 상태로
