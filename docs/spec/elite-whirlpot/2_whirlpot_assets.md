@@ -9,8 +9,15 @@
 
 - `Assets/_Project/Data/Enemies/Enemy_Whirlpot.asset` (+ `.meta`)
 - `EnemyCatalog` — 등록
-- 라이브 덱 7종 `attackUnitPool` (`Serpent`·`Coil`·`Twin`·`Spiral`·`Zig`·`Hook`·`Endless`) — 열거 정본은 `WaveKillBudgetPinTests`
+- 라이브 덱 7종 `attackUnitPool` (`Serpent`·`Coil`·`Twin`·`Spiral`·`Zig`·`Hook`·`Endless`)
+- ★**공성 dev 덱 3종**(`Duel`·`Ford`·`Isle`) — `MapDocumentPoolDevEntriesTests` 가 *"적 풀 크기가
+  라이브와 다르다 — 비행·엘리트가 빠졌을 수 있다"* 로 라이브와의 **동수**를 요구한다
+- ★**`WavePlan_Tutorial.asset`** — `TutorialEntry_TeachesEveryLiveEnemyTypeInTenWaves` 가
+  라이브 풀 전종의 등장을 요구한다. 저작된 10웨이브 플랜이라 자동으로 안 따라온다
 - `Assets/_Project/VFX/` — 회오리 프리팹(unit 1 산출물)을 이 에셋에 배선
+
+> 「라이브 7종만」이 아니다 — **덱 10종 + 튜토리얼 플랜**이 로스터 추가에 연동된다. 세 가드가
+> 각각 다른 이유로 이것을 요구하며, 전부 커밋 전에 빨간불로 알려준다.
 
 ## 구현
 
@@ -50,6 +57,21 @@ heartseeker 하나뿐). **0 으로 두면 기본값 변경을 따라간다 — 2
 
 ★**`.meta` 를 짝으로 커밋한다** — 경로 지정 `git add` 에서 빠지면 다른 머신이 GUID 를
 재생성해 씬/카탈로그 참조가 깨진다.
+
+## ⚠ 실측으로 드러난 함정 — 엘리트를 `Tanker` 로 저작하면 안 된다
+
+초판 저작은 `enemyClass: Tanker`(느리고 단단하니까)였고 그것이 **유일한 지뢰를 정확히 밟았다.**
+
+- 웨이브 컨셉 5종 중 **`Concept_Heavy` 만 슬롯이 1개**이고, 그 슬롯의 `classFilter` 가 **Tanker** 다
+- 엘리트는 `maxPerWave 1` 이 강제된다(`EliteWaves_DoNotCollapseToASingleUnit` 이 별도로 요구)
+- 따라서 Tanker 엘리트가 그 슬롯에 뽑히면 **웨이브 전체가 1기로 붕괴**한다
+
+슬라임(`Bruiser`)·드래곤(`Shooter`)이 무사한 이유는 실력이 아니라 구조다 — 어떤 컨셉도
+`Bruiser(3)` 를 필터하지 않고, Shooter 를 쓰는 `Concept_Ranged` 는 슬롯이 2개다.
+
+→ `enemyClass: Bruiser`. 「근접 광역 난동꾼」에 분류상으로도 더 맞고(슬라임과 같은 반),
+`WhirlpotAuthoringTests.Whirlpot_IsNotTankerClass_...` 가 **원인을 결정론으로** 고정한다
+(`EliteWaves_DoNotCollapseToASingleUnit` 은 «뽑혔을 때만» 보는 시드 의존 관측이다).
 
 ## 완료 기준
 

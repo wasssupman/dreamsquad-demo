@@ -80,8 +80,17 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 7. **어느 적이 회오리를 갖는지는 «프리팹 유무» 가 결정한다.** id·이름 분기 금지이며
    `attackTargetCount > 1` 로도 판정하지 않는다(Basic·Tanker·짱쎈까지 회오리가 생긴다).
    빔 유닛 판정과 같은 규율.
-8. **회오리 VFX 는 번아웃 먹구름과 달라야 한다.** 번아웃은 *방어유닛의 상태* 신호이고 이건
-   *적의 공격* 신호다. 같은 그림이면 플레이어가 둘을 뒤섞어 읽는다.
+8. **회오리 VFX 는 「누가 하는 것인가」가 읽혀야 한다.** 혼동 후보가 둘이다 —
+   ① `Burnout_Smoke`(방어유닛의 *상태*) ② **플레이어의 토네이도 스킬**(`Active_Tornado`).
+   ⚠ **현재는 `Tornado_SKELETON.prefab` 을 그대로 재사용한다**(잠정). 이 프로젝트 자체 에셋이고
+   이미 플레이에서 검증된 회오리라 코드 완성과 동시에 볼 수 있다는 장점이 있지만, **②와 같은
+   그림**이다. 화면에서 혼동되면 복제 후 색을 가른다 — 색이 머티리얼이 아니라 3개 시스템의
+   Color-over-Lifetime 그라디언트에 있어서(`OuterRotatingGale`·`InnerCounterGale`·`DustColumn`)
+   머티리얼 교체로는 안 되고 프리팹 작업이다. 판단은 육안 확인 후.
+11. **엘리트의 `enemyClass` 를 `Tanker` 로 저작하지 않는다.** `Concept_Heavy` 는 웨이브 컨셉
+   5종 중 **유일하게 슬롯이 1개**이고 Tanker 만 필터한다. 엘리트는 `maxPerWave 1` 이 강제되므로
+   그 슬롯에 뽑히면 **웨이브 전체가 1기로 붕괴**한다. 상세와 실측은
+   [2_whirlpot_assets.md](2_whirlpot_assets.md) 하단.
 9. **`targetFactions` 를 저작하지 않는다(0 유지).** 복제로 만들면 `13` 이 묻어와 **방어 본능을
    못 때린다**(`feda9054`). 가드 = `AuthoredTargetMaskTests`.
 10. **전 수치는 SO** — 하드코딩 금지(제약 6).
@@ -98,6 +107,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 | outputs | `Damage` **5** | 대상당 8.3 DPS. 별도 단일 타격은 **없다** |
 | nightmareMechanics | **비움** | 계약 1 |
 | engageMovement / targetMode | **`Halt`** / `Nearest` | 계약 2. 특정 대상을 쫓는 게 아니라 «가장 가까운 것에 박힌다» |
+| **enemyClass** | **`Bruiser`** | ★`Tanker` 금지 — 계약 11(유일한 1슬롯 컨셉이 Tanker 를 필터한다). 분류상으로도 「근접 광역 난동꾼」이 맞다 |
 | traversalLayers | 0(지상 기본) | 비행은 드래곤 몫 |
 | tier | **Elite** | 보스 특권 0 |
 | killScore / awakening / stability | 3 / 3 / 2 | 엘리트 대역 |

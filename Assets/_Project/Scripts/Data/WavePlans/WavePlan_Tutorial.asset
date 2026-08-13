@@ -93,3 +93,6 @@ MonoBehaviour:
     - triggerTimeSec: 4
       unit: {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
       count: 4
+    - triggerTimeSec: 14
+      unit: {fileID: 11400000, guid: 9ed7f6f8f4ed472092fb269bee737d5c, type: 2}
+      count: 1
