@@ -128,10 +128,14 @@ code + git history        구현 상세
 화염 브레스) 출하 + 라이브 덱 7종 편입(`2712aa01`, wave-concept-blocks unit 7).
 상세: `docs/spec/elite-enemy-tier/8_handoff_summary.md` · 파이프라인 = `object-pipeline-map.md` **적** 아키타입.
 
-- **⚠ 밸런스 실전 미검증** [S] · `66004836`(슬라임 피해·체력 ×2 · 드래곤 기본 20 · 브레스 50 · 화염 10/틱)이 TEST MODE 검증만 거친 채 라이브 웨이브에 실렸다. 슬라임은 체력 2배 + 4기 분열이라 웨이브 처리 시간에 직접 영향을 준다. **이 값들의 회귀는 테스트가 잡지 못한다** — 단언이 전부 상대·구조형이다(의도된 것). (elite-enemy-tier)
+- ~~밸런스 실전 미검증~~ · **2026-08-13 라이브 플레이 확인 완료.** `66004836`(슬라임 피해·체력 ×2 · 드래곤 기본 20 · 브레스 50 · 화염 10/틱)로 확정. 이후 이 값을 만질 땐 **테스트가 회귀를 잡지 못한다**는 것만 기억할 것 — 단언이 전부 상대·구조형이다(의도된 것). (elite-enemy-tier)
 - **화염 스택을 출처별로 가르기** [M] · `_stackThresholds` 가 `StackKind` 당 규칙 한 벌이라 드래곤과 Kindler 가 `StackModifier_Fire` 를 **물리적으로 공유**한다. 드래곤 화염을 4→10 으로 올릴 때 Kindler 도 같이 올라갔다(사용자 승인). 따로 주려면 새 StackKind 나 출처별 오버라이드가 필요하다 — `DotOrigin` 2축 분리(dot-effect-extraction unit 0)와 같은 결의 문제다. (elite-enemy-tier)
 - **광역 도형 어휘 통합** [M] · 이 spec 이 접은 것(`EffectArea` 철회). 착수 조건은 «저작이 도형을 고르는 소비자가 2개 이상 생겼는가» — 그 전에는 같은 과설계가 반복된다. 후보: `SingleSplash` splash · `HazardShapeSampler`(managed→Burst) · `AllyBuffFieldSystem` · `AuraPulse` · 어그로 반경. (elite-enemy-tier)
-- **브레스 예고(telegraph)** [S] · 브레스는 즉발이고 공격 애니가 없어 플레이어가 받는 신호가 **VFX 하나뿐**이다. 실플레이에서 안 읽히면 `hitDelaySec` + 바닥 링. 「지속 콘」으로 성격을 바꾸는 선택지도 미결. (elite-enemy-tier)
+- **브레스 «지속 콘» 전환 — 하지 않기로 함(사용자 결정 2026-08-13, 플레이 확인 후)** · 즉발 유지가 현상이다. 재론될 때 **다시 조사하지 않도록** 그때 확인한 비용을 적어둔다 — 셋은 의미가 다르고 비용이 한 자릿수 차이다. (elite-enemy-tier)
+  - **A. 기존 장판(Zone) 재사용 = M 이상.** 두 군데가 막혀 있다. ① `ZoneApplySystem` 이 대상을 `Faction.EnemyUnit` 으로 **하드 게이트**한다(존은 적에게만) — 주석이 「진영 축을 열지 않는다(제약 8)」로 의도적 미개방임을 밝힌다. ② `HazardShape` 에 콘이 없고(`SingleCell`/`Square3x3`/`RadiusSquare`) 샘플러가 **타일 리스트** 기반인데 브레스 판정은 월드 연속이다 — 1~3타일에서 타일 양자화하면 방향이 ~45° 흔들린다(unit 1 이 world-space 를 고른 이유). 게다가 아래 「광역 도형 어휘 통합」의 착수 조건을 **인위적으로 만드는** 셈이라 접었던 과설계가 돌아온다.
+  - **B. 채널링(n초 반복 즉발) = M.** 브레스는 arm 순간 1프레임 즉발이고 **채널링 선례가 0** 이다(`NextAttackDoubleFire` 같은 1회성 플래그만 있다). 공격자별 지속 상태 + 틱 시스템 + 이동·사망·CC 중단 규칙 + 「채널 중 조준 갱신 여부」 설계 결정이 붙는다.
+  - **C. 콘에 걸린 대상에게 DoT = S(반나절).** `DotEffect`+`DotApplyEventsSingleton` 이 있고 생산자 3곳이 같은 패턴이라 `ApplyConeBreath` 에서 `DotApplyEvent` 를 넣고 `DotOrigin` 하나 추가(append-only)면 된다. **단 지속 «콘» 이 아니다** — 맞은 순간 화상이 붙어 걸어나가도 타고 나중에 들어오면 안 탄다. ⚠ 그리고 **드래곤은 이미 지속 피해가 있다**(화염 5스택 → 10/틱 × 4.85초). origin 이 다르면 슬롯이 갈려 **합산**되므로 C 는 신규가 아니라 기존 화상과 겹치는 설계다 — 수치 재조정 동반.
+- **브레스 예고(telegraph)** [S] · 브레스는 즉발이고 공격 애니가 없어 플레이어가 받는 신호가 **VFX 하나뿐**이다. 지금은 읽힌다(2026-08-13 확인). 안 읽히는 상황이 오면 `hitDelaySec` + 바닥 링. (elite-enemy-tier)
 - **슬라임 3단계 이상 분열** [S] · 중간 SO 를 하나 더 만들면 되고 **코드 변경 0** 이다(`SplitChain` 예산 깊이 8 · 총 32 안에서). (elite-enemy-tier)
 - **엘리트 전용 등장 연출·HUD·아트** [M] · 보스경보를 재사용하지 않기로 해서(계약 1) 엘리트를 구분하는 수단이 지금은 스켈레톤 크기뿐이다. 둘 다 벤더 Spine 예제 as-is. (elite-enemy-tier)
 - **`EnemyKilledEvent` 페이로드 태그화** [S] · 각성·점수·킬버스트·분열로 **네 번째** 필드 append 가 됐다. 다섯 번째가 붙기 전에 «태그 + union» 검토. (elite-enemy-tier)
