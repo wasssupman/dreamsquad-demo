@@ -24,7 +24,6 @@ namespace Wassup.Tests.PlayMode
     public class DragonBreathE2ETest
     {
         private const string DragonPath = "Assets/_Project/Data/Enemies/Enemy_Dragon.asset";
-        private const string SlimePath = "Assets/_Project/Data/Enemies/Enemy_Slime.asset";
 
         [TearDown] public void TearDown() => LogAssert.ignoreFailingMessages = false;
 

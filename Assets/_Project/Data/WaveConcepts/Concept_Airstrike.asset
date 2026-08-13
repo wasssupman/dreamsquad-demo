@@ -21,3 +21,6 @@ MonoBehaviour:
   - laneGroup: 0
     classFilter: 0
     altitude: 1
+  - laneGroup: 0
+    classFilter: 0
+    altitude: 1
