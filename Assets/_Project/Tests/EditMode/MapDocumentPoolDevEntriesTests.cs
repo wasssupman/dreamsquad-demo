@@ -314,10 +314,16 @@ namespace Wassup.Tests.EditMode
                     taught.Add(g.unit);
                 }
             }
+            // 이름 목록으로 모아서 한 번에 알린다 — 하나씩 Assert 하면 첫 번째만 보이고,
+            // 무엇이 빠졌는지가 메시지에 안 남는다.
+            var missing = new List<string>();
             foreach (var unit in live.attackUnitPool)
-                Assert.IsTrue(taught.Contains(unit),
-                    $"라이브 로스터의 '{unit.displayName}' 를 튜토리얼이 가르치지 않는다 — " +
-                    "로스터에 적을 추가하면 이 단언이 튜토리얼 갱신을 요구한다");
+                if (unit != null && !taught.Contains(unit)) missing.Add(unit.displayName);
+            Assert.IsEmpty(missing,
+                $"라이브 로스터 {live.attackUnitPool.Length}종 중 튜토리얼이 안 가르치는 것: "
+                + string.Join(", ", missing)
+                + $" (튜토리얼이 가르치는 종 {taught.Count}) — 로스터에 적을 추가하면 "
+                + "이 단언이 튜토리얼 갱신을 요구한다");
         }
 
         private static void CallPrivateMethod(object target, string name)
