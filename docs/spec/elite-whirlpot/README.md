@@ -138,6 +138,34 @@ Ground)을 받는 컨셉은 **「평소」 하나뿐**이다 — 중장=Tanker �
 (`totalCount > 1`)는 통과하지만 wave 60 에 2기는 빈 웨이브에 가깝다. 이 spec 이전에는 「평소」에
 들어갈 수 있는 엘리트가 슬라임 하나뿐이라 **구조적으로 불가능했던 경우**다.
 
+## 밸런스 시트 노출 (실측 2026-08-14)
+
+에셋을 만든 것만으로 **자동 노출된다** — `UnitStatExporter` 가 폴더를 `t:AttackUnitData` 로
+스캔해 `id` 순으로 뽑으므로 등록 목록이 없다. 다음 시트 push 에 `whirlpot` 행이 생긴다.
+
+**시트에서 조정 가능**(`EnemyStatDto`): `health` · `moveSpeed` · `atk` · `attackRange` ·
+`attackCooldown` · **`attackTargetCount`** · `hitDelaySec` · `enemyClass` · `attackMethod` ·
+`targetMode` · `engageMovement` · `targetPriorityClass` · `targetClassMask` · `aggroAttack*` ·
+`awakeningReward` → **회오리 밸런스 knob 이 전부 여기 있다.**
+
+`atk` 는 「Damage 출력이 **정확히 하나**일 때만」 매핑된다(0개·2개+면 셀이 빈다). Whirlpot 은
+계약상 출력이 Damage 하나뿐이라 깨끗이 붙는다.
+
+**시트에 없다**(에셋 전용): `tier` · `minWaveNumber` · `maxPerWave` · `killScore` ·
+`stabilityDamage` · `traversalLayers` · `waypointPathIndex` · `targetFactions` · Spine 애니 ·
+`spineVisualScale` · `nightmareMechanics` · **`attackVfxPrefab`/`attackVfxScalePerTile`**.
+→ 회오리 **연출 크기**는 시트에서 못 만진다. 다만 스케일이 «타일당» 이라 시트에서
+`attackRange` 를 바꾸면 **연출이 자동으로 따라간다**(계약 5 가 값을 하는 자리).
+
+⚠ **경로가 둘이고 가드 적용이 다르다.**
+- **에디터 임포터**(`UnitStatImportWindow`) → 에셋 디스크 기록 → 영구 → EditMode 가드가 **잡는다**
+- **런타임 리프레셔**(dev/QA 버튼, `UnitStatRuntimeRefresher`) → 카탈로그 SO **메모리만** →
+  세션 한정(재시작 시 원복) → 가드가 **못 잡는다**
+
+여기 구체적 위험이 하나 있다: **`enemyClass` 가 시트에 노출돼 있다.** 시트에서 Whirlpot 을
+`Tanker` 로 바꾸면 계약 11 의 「중장 1슬롯 붕괴」가 되살아나는데, 런타임 경로로 바꾸면
+`WhirlpotAuthoringTests` 가 에셋을 읽으므로 **침묵한다.**
+
 ## 작업 단위
 
 | 파일 | 구분 | 문서 | 목적 |
