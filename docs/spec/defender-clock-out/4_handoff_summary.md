@@ -36,6 +36,7 @@
 
 - `DefenderRetireTest` **5/5** · 회귀 9개 클래스 **23/23**(재배치×3 · BoardLimit×2 · 순찰병 ·
   PlacementAura · BountyMark · SlimeSplit) · EditMode `RelocationCheckTests` **8/8**.
+  **rev 3 롤백 후 전부 재실행해 동일 결과 확인**(2026-08-14).
 - **사망 관련 테스트는 한 건도 수정하지 않았다** — `ReleaseDefenderTile` 추출이 순수 이동이라는 증거.
 - 사용자 Play 확인: 퇴근 버튼 · 즉시 퇴장 · 트레이 복귀(2026-08-13, unit 2 시점).
 

@@ -1,7 +1,10 @@
 # Spec — Defender Clock-Out (배치 유닛 퇴근)
 
 상태: **구현 완료 2026-08-14 — units 0~3 커밋.** 자동 검증 전부 통과(퇴근 5/5 · 회귀 23/23 ·
-EditMode 8/8). 남은 것은 **퇴근 이탈 연출 육안 확인**뿐. 인계는 [`4_handoff_summary.md`](4_handoff_summary.md).
+EditMode 8/8). 연출은 rev 2(퇴근 스냅) 확정 — rev 3 키링 회수는 시도 후 **기각**
+(이유는 [`3_retire_exit_flight.md`](3_retire_exit_flight.md) 상단, 재시도 금지 근거 포함).
+남은 것은 **퇴근 스냅 육안 확인**과 **`placementCooldown` 값 저작**뿐.
+인계는 [`4_handoff_summary.md`](4_handoff_summary.md).
 
 ## 검증 질문
 
