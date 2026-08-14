@@ -1971,6 +1971,15 @@ namespace Wassup.Bridge
                 scoreHud.SetPaceBaseline(expected, _killScoreTotal);
             else
                 scoreHud.HidePaceBaseline();
+
+            // battle-hud-legibility — 남은시간·웨이브 진행이 좌하단 도크에서 **좌상단 배지**로
+            // 옮겨왔다(중앙은 전부 보드라 큰 표기는 코너에만 놓인다).
+            // 도크가 직접 읽던 것을 여기서 밀어준다(HUD 는 브리지를 모른다).
+            int total = WaveCountTotal;
+            // **진행 중인** 웨이브 번호다. NextWaveNumber(= _nextWaveIndex + 1)는 «다음에 나올»
+            // 번호라 그대로 쓰면 3번 웨이브와 싸우는 동안 「웨이브 4」가 뜬다.
+            int current = Mathf.Clamp(NextWaveNumber - 1, 1, Mathf.Max(1, total));
+            scoreHud.SetTopBar(TimerRemaining, TimerDuration, current, total);
         }
 
         // wave-pull-revival unit 1 — 다음 웨이브의 **구성**(무엇이 몇 마리). 당김 판단의 재료다.
@@ -5933,6 +5942,11 @@ namespace Wassup.Bridge
         }
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
+
+        // battle-hud-legibility — 이 판이 원래 몇 초짜리였나. HUD 는 이걸 **숫자로 그리지
+        // 않는다**(그리는 것은 TimerRemaining 이다) — 「기준이 있는 판인가」를 묻는 용도다.
+        // 0 이하 = 무한(엔드리스)이고, 그때 호출측은 타이머 배지를 통째로 숨긴다.
+        public float TimerDuration => _timerDuration;
 
         // Seconds left on the match clock at query time — unlike TimerRemaining this
         // stays valid after _running is cleared (used to stamp the result popup).

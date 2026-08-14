@@ -142,6 +142,50 @@ namespace Wassup.UI
         [Header("Pace baseline (진출 예상선)")]
         [SerializeField] private float paceRowHeight = 30f;
         [SerializeField] private float paceRowGap = 4f;
+
+        // next-wave-dock-legibility rev 8 — **상단 중앙 대형 카운트다운.**
+        //
+        // rev 6·7 은 최상단 12px 게이지였고 「전혀 원하던 게 아니다, 잘 보이지도 않는다」로
+        // 반려됐다. 원인 셋:
+        //  ① **바가 정보를 안 준다.** 폭 ~1860px 에 3분을 담으면 1초가 1px 도 안 움직인다.
+        //     결국 진짜 정보는 26pt 숫자 하나였는데, 그건 이 HUD 에서 가장 작은 글자다
+        //     (점수 104 · 스트레스 38).
+        //  ② **시선을 끌어줄 이웃이 없다.** 우상단 점수는 처치마다 펀치·플래시·버스트가
+        //     터져 눈이 자연히 간다. 최상단 띠는 혼자 있었다.
+        //  ③ **시각 문법이 달랐다.** 이 HUD 에서 «중요한 값»은 전부 남색 플레이트 + 골드 탭 +
+        //     굵은 숫자다. 타이머만 얇은 트랙 바를 써서 무의식적으로 «배경 크롬»으로 읽혔다.
+        //
+        // 「시간=자원이니 게이지」라는 전제가 어긋났다. 게이지는 HP·마나처럼 **직접 채우고
+        // 쓰는** 자원의 문법이고, 이 타이머는 **한 방향으로 흐르며 판단을 트리거하는 시계**다.
+        // 경쟁전 시계의 관례는 큰 숫자다.
+        //
+        // 그래서 **점수와 같은 플레이트+탭 문법**을 재사용한다 — 학습 없이 «이것도 1급 스탯»
+        // 으로 읽힌다. 자리는 비어 있던 상단 중앙.
+        [Header("Match timer badge (좌상단 — 메뉴 아이콘 아래)")]
+        [Tooltip("씬 MenuButton 을 햄버거 아이콘으로 줄인 크기. 시간 배지가 그 아래로 내려온다.")]
+        [SerializeField] private float menuIconSize = 72f;
+        [Tooltip("메뉴 아이콘과 시간 배지 사이 간격")]
+        [SerializeField] private float menuGap = 12f;
+        [SerializeField] private Vector2 timerPlateSize = new Vector2(320f, 150f);
+        [SerializeField] private Vector2 timerTabSize = new Vector2(150f, 46f);
+        [SerializeField] private float timerValueFontSize = 76f;
+        [Tooltip("10초 이하에서 자릿수를 줄이고 이 크기로 키운다")]
+        [SerializeField] private float timerFinalFontSize = 96f;
+        [SerializeField] private float timerCaptionFontSize = 20f;
+        [SerializeField] private Color timerNormalColor = Color.white;
+        [Tooltip("30초 이하")]
+        [SerializeField] private Color timerWarnColor = new Color(1f, 0.72f, 0.24f, 1f);
+        [Tooltip("10초 이하")]
+        [SerializeField] private Color timerFinalColor = new Color(1f, 0.33f, 0.28f, 1f);
+        [SerializeField] private float timerWarnSeconds = 30f;
+        [SerializeField] private float timerFinalSeconds = 10f;
+        [Tooltip("초가 바뀔 때 pop 강도(평시 / 30초 / 10초)")]
+        [SerializeField] private float timerTick = 0.12f;
+        [SerializeField] private float timerTickWarn = 0.20f;
+        [SerializeField] private float timerTickFinal = 0.35f;
+        [Tooltip("30초·10초 구간의 숨쉬기 배율 / 주기(초)")]
+        [SerializeField] private Vector2 timerBreathWarn = new Vector2(1.06f, 1.0f);
+        [SerializeField] private Vector2 timerBreathFinal = new Vector2(1.12f, 0.4f);
         [SerializeField] private float paceFontSize = 22f;
         [Tooltip("par 에 못 미칠 때")]
         [SerializeField] private Color paceBehindColor = new Color(1f, 0.62f, 0.42f, 0.98f);
@@ -162,6 +206,17 @@ namespace Wassup.UI
         private TextMeshProUGUI _paceLabel;
         private int _lastPaceExpected = int.MinValue;
         private int _lastPaceGap = int.MinValue;
+        // rev 8 — 상단 중앙 카운트다운 배지
+        private GameObject _timerRoot;
+        private RectTransform _timerPlateRect;
+        private TextMeshProUGUI _timerValue;
+        private RectTransform _timerValueRect;
+        private TextMeshProUGUI _timerWave;
+        private Tween _timerTickTween, _timerBreathTween;
+        private int _lastTimerSec = -1;
+        private int _lastTimerWave = -2, _lastTimerWaveTotal = -2;
+        // 0 = 평시 · 1 = 30초 · 2 = 10초. 구간이 바뀔 때만 색·숨쉬기·폰트를 다시 건다.
+        private int _timerStage = -1;
         private bool _built;
         private bool _subscribed;
 
@@ -187,6 +242,8 @@ namespace Wassup.UI
         private float _shineBaseY;
         private Image _vignetteImage;
         private float _milestoneFlash;
+        // 비네트를 두 곳이 쓴다(점수 마일스톤 · 10초 카운트다운) — 색이 달라서 틴트를 든다.
+        private Color _vignetteTint;
         // 최근 획득 이력 (시각, 점수). burstWindowSec 을 지난 항목은 버린다.
         private readonly System.Collections.Generic.List<(float time, int points)> _burstWindow = new();
         // 한 번 터진 뒤 재무장까지의 쿨다운 — 지속 사격 중 매 프레임 터지는 걸 막는다.
@@ -325,6 +382,7 @@ namespace Wassup.UI
             for (int k = 0; k < _burstWindow.Count; k++) sum += _burstWindow[k].points;
             if (sum < burstScoreThreshold) return;
 
+            _vignetteTint = milestoneColor;   // 카운트다운 플래시와 색이 다르다
             _milestoneFlash = 1f;
             _burstCooldownUntil = now + Mathf.Max(0.05f, milestoneDuration);
         }
@@ -390,6 +448,173 @@ namespace Wassup.UI
                 _paceLabel.text = $"목표 페이스 {expected:N0} · +{-gap:N0}점";
                 _paceLabel.color = paceAheadColor;
             }
+        }
+
+        /// <summary>
+        /// rev 7 — 최상단 바. 브리지가 매 프레임 밀어준다(HUD 가 브리지를 참조하지 않는
+        /// 기존 방향 — SetLeakStatus·SetPaceBaseline 과 같다).
+        /// </summary>
+        /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 바를 숨긴다.</param>
+        /// <summary>
+        /// rev 8 — 상단 중앙 카운트다운. 브리지가 매 프레임 밀어준다(HUD 는 브리지를 모른다 —
+        /// SetLeakStatus·SetPaceBaseline 과 같은 방향).
+        /// </summary>
+        /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 배지를 통째로 숨긴다.</param>
+        public void SetTopBar(float remainingSec, float totalSec, int waveNumber, int waveTotal)
+        {
+            if (_timerRoot == null) return;
+
+            // 무한 모드는 «남은 시간»이 없다 — 시계를 그리면 거짓말이 된다.
+            bool show = totalSec > 0f;
+            if (_timerRoot.activeSelf != show) _timerRoot.SetActive(show);
+            if (!show) return;
+
+            float remaining = Mathf.Max(0f, remainingSec);
+            int stage = remaining <= timerFinalSeconds ? 2
+                      : remaining <= timerWarnSeconds ? 1 : 0;
+            if (stage != _timerStage) ApplyTimerStage(stage);
+
+            if (waveNumber != _lastTimerWave || waveTotal != _lastTimerWaveTotal)
+            {
+                _lastTimerWave = waveNumber;
+                _lastTimerWaveTotal = waveTotal;
+                _timerWave.text = waveTotal > 0
+                    ? $"웨이브 {waveNumber} / {waveTotal}"
+                    : $"웨이브 {waveNumber}";
+            }
+
+            int min = (int)(remaining / 60f);
+            int sec = (int)(remaining % 60f);
+            int shownSec = min * 60 + sec;
+            if (shownSec == _lastTimerSec) return;
+
+            // 10초 이하는 **자릿수를 줄인다**(`0:09` → `9`). 파이널 카운트다운 관례이고,
+            // 같은 폭에 글자가 하나면 그만큼 크게 넣을 수 있다.
+            _timerValue.text = stage == 2 ? $"{sec}" : $"{min}:{sec:D2}";
+
+            // 매초 pop. 구간이 올라갈수록 세진다 — 「몇 초 남았나」가 아니라 「급하다」가 몸에 온다.
+            // 첫 표시(-1)엔 생략, unscaled 라 정지·슬로우 중에도 동작.
+            if (_lastTimerSec >= 0)
+            {
+                if (_timerTickTween.isAlive) _timerTickTween.Stop();
+                _timerValueRect.localScale = Vector3.one;
+                float strength = stage == 2 ? timerTickFinal : stage == 1 ? timerTickWarn : timerTick;
+                _timerTickTween = Tween.PunchScale(_timerValueRect, Vector3.one * strength,
+                    stage == 2 ? 0.32f : 0.24f, useUnscaledTime: true);
+
+                // 10초 구간은 매초 화면 가장자리도 함께 친다 — 트레이를 보고 있어도
+                // 주변시로 잡힌다(점수의 마일스톤 플래시와 같은 비네트를 재사용).
+                if (stage == 2) FlashVignette(timerFinalColor, 0.6f);
+            }
+            _lastTimerSec = shownSec;
+        }
+
+        // 가장자리 플래시 — 점수 마일스톤과 같은 비네트를 재사용한다. 시선이 트레이에 있어도
+        // 주변시로 잡히는 유일한 채널이라 마지막 10초에 매초 친다(강도는 낮게).
+        private void FlashVignette(Color tint, float strength)
+        {
+            if (_vignetteImage == null) return;
+            _vignetteTint = tint;
+            _milestoneFlash = Mathf.Max(_milestoneFlash, strength);
+        }
+
+        // 구간이 바뀔 때만 색·폰트·숨쉬기를 다시 건다(매초 다시 걸면 트윈이 계속 끊긴다).
+        private void ApplyTimerStage(int stage)
+        {
+            _timerStage = stage;
+            var c = stage == 2 ? timerFinalColor : stage == 1 ? timerWarnColor : timerNormalColor;
+            _timerValue.color = c;
+            _timerValue.fontSize = stage == 2 ? timerFinalFontSize : timerValueFontSize;
+            _lastTimerSec = -1;   // 자릿수 표기가 바뀌므로 다음 프레임에 다시 조립
+
+            if (_timerBreathTween.isAlive) _timerBreathTween.Stop();
+            _timerPlateRect.localScale = Vector3.one;
+            if (stage == 0) return;
+
+            var b = stage == 2 ? timerBreathFinal : timerBreathWarn;
+            _timerBreathTween = Tween.Scale(_timerPlateRect, b.x, b.y,
+                Ease.InOutSine, cycles: -1, CycleMode.Yoyo, useUnscaledTime: true);
+        }
+
+        // 점수와 **같은 문법**으로 짓는다: 남색 플레이트 + 골드 탭 + 굵은 숫자.
+        // 다른 문법을 쓰면 «배경 크롬»으로 읽힌다(rev 6·7 이 그랬다).
+        private void BuildTimerBadge(Transform safeAreaRoot)
+        {
+            _timerRoot = new GameObject("MatchTimerBadge", typeof(RectTransform));
+            _timerRoot.transform.SetParent(safeAreaRoot, false);
+            // rev 9 — **좌상단, 메뉴 버튼 아래**다.
+            //
+            // rev 8 은 상단 중앙이었고 「맵 영역을 가린다」로 반려됐다 — 보드가 화면 중앙을
+            // 차지하므로 **중앙 상단도 보드 위**다. 큰 배지를 놓을 수 있는 곳은 코너뿐이고
+            // 우상단은 점수가 이미 쓴다.
+            //
+            // 좌상단에는 씬의 `MenuButton`(햄버거)이 먼저 있다. 그 아래에 **왼쪽 변을 맞춰**
+            // 세로로 정렬한다 — 코너 하나를 두 위젯이 나눠 쓰되 한 줄로 읽히게(사용자 결정).
+            var rootRt = (RectTransform)_timerRoot.transform;
+            rootRt.anchorMin = new Vector2(0f, 1f);
+            rootRt.anchorMax = new Vector2(0f, 1f);
+            rootRt.pivot = new Vector2(0f, 1f);
+            rootRt.anchoredPosition = new Vector2(cornerPadding, -(cornerPadding + menuIconSize + menuGap));
+            rootRt.sizeDelta = timerPlateSize;
+
+            var plate = MakeSolidImage("TimerPlate", _timerRoot.transform);
+            plate.sprite = MakeRoundedRectSprite(
+                plateCornerRadius, plateBorderWidth, plateColor, plateBorderColor);
+            plate.type = Image.Type.Sliced;
+            _timerPlateRect = plate.rectTransform;
+            _timerPlateRect.anchorMin = Vector2.zero;
+            _timerPlateRect.anchorMax = Vector2.one;
+            _timerPlateRect.offsetMin = Vector2.zero;
+            _timerPlateRect.offsetMax = Vector2.zero;
+
+            var tabGO = new GameObject("TimerTab", typeof(RectTransform), typeof(Image));
+            tabGO.transform.SetParent(_timerRoot.transform, false);
+            var tabImg = tabGO.GetComponent<Image>();
+            tabImg.sprite = MakeRoundedRectSprite(timerTabSize.y * 0.5f, 0f, tabColor, tabColor);
+            tabImg.type = Image.Type.Sliced;
+            tabImg.raycastTarget = false;
+            var tabRt = tabImg.rectTransform;
+            tabRt.anchorMin = new Vector2(0.5f, 1f);
+            tabRt.anchorMax = new Vector2(0.5f, 1f);
+            tabRt.pivot = new Vector2(0.5f, 0.5f);
+            tabRt.anchoredPosition = Vector2.zero;   // 플레이트 상단에 걸친다(SCORE 탭과 같다)
+            tabRt.sizeDelta = timerTabSize;
+
+            var tabLabel = MakeText("TimerTabLabel", tabGO.transform, captionFontSize,
+                new Vector2(0.5f, 0.5f));
+            var tlr = tabLabel.rectTransform;
+            tlr.anchorMin = Vector2.zero;
+            tlr.anchorMax = Vector2.one;
+            tlr.offsetMin = Vector2.zero;
+            tlr.offsetMax = Vector2.zero;
+            tabLabel.text = "TIME";
+            tabLabel.fontStyle = FontStyles.Bold;
+            tabLabel.color = tabTextColor;
+
+            _timerValue = MakeText("TimerValue", _timerRoot.transform, timerValueFontSize,
+                new Vector2(0.5f, 0.5f));
+            _timerValueRect = _timerValue.rectTransform;
+            _timerValueRect.anchorMin = new Vector2(0.5f, 0.5f);
+            _timerValueRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _timerValueRect.pivot = new Vector2(0.5f, 0.5f);
+            _timerValueRect.anchoredPosition = new Vector2(0f, 6f);
+            _timerValueRect.sizeDelta = new Vector2(timerPlateSize.x - 24f, timerValueFontSize * 1.3f);
+            _timerValue.fontStyle = FontStyles.Bold;
+            _timerValue.color = timerNormalColor;
+            _timerValue.text = "3:00";
+
+            // 웨이브 진행은 **종속 캡션**이다 — 시간과 동급으로 두던 것이 rev 6·7 에서
+            // 시계를 작아 보이게 만든 원인 중 하나였다.
+            _timerWave = MakeText("TimerWave", _timerRoot.transform, timerCaptionFontSize,
+                new Vector2(0.5f, 0.5f));
+            var wr = _timerWave.rectTransform;
+            wr.anchorMin = new Vector2(0.5f, 0f);
+            wr.anchorMax = new Vector2(0.5f, 0f);
+            wr.pivot = new Vector2(0.5f, 0f);
+            wr.anchoredPosition = new Vector2(0f, 12f);
+            wr.sizeDelta = new Vector2(timerPlateSize.x - 24f, timerCaptionFontSize * 1.4f);
+            _timerWave.color = new Color(0.78f, 0.84f, 0.92f, 0.85f);
+            _timerWave.text = "";
         }
 
         /// <summary>par 를 계산할 수 없을 때(저작 0 이하·플랜 없음) 줄 자체를 숨긴다.</summary>
@@ -524,7 +749,7 @@ namespace Wassup.UI
             if (_vignetteImage != null && _milestoneFlash > 0f)
             {
                 _milestoneFlash = Mathf.Max(0f, _milestoneFlash - dt / Mathf.Max(0.0001f, milestoneDuration));
-                var vc = milestoneColor;
+                var vc = _vignetteTint;
                 vc.a = milestoneFlashAlpha * _milestoneFlash * _milestoneFlash; // ease-out fade
                 _vignetteImage.color = vc;
             }
@@ -536,6 +761,17 @@ namespace Wassup.UI
             if (_colorTween.isAlive) _colorTween.Stop();
             if (_leakPunchTween.isAlive) _leakPunchTween.Stop();
             if (_leakColorTween.isAlive) _leakColorTween.Stop();
+            // rev 9 — 타이머 배지 트윈도 여기서 걷는다. **숨쉬기는 `cycles: -1` 무한**이라
+            // 빠뜨리면 OnDisable·씬 언로드에서 안 멈추고, 다음 판에 플레이트가 커진 채로
+            // 시작하거나 PrimeTween 이 파괴된 rect 를 건드린다.
+            if (_timerTickTween.isAlive) _timerTickTween.Stop();
+            if (_timerBreathTween.isAlive) _timerBreathTween.Stop();
+            if (_timerPlateRect != null) _timerPlateRect.localScale = Vector3.one;
+            if (_timerValueRect != null) _timerValueRect.localScale = Vector3.one;
+            // 구간 캐시도 함께 — 안 비우면 다음 판이 «이미 30초 구간»으로 시작해 색과
+            // 숨쉬기가 안 걸린다(ApplyTimerStage 가 같은 stage 면 건너뛴다).
+            _timerStage = -1;
+            _lastTimerSec = -1;
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
             if (_leakValueRect != null) _leakValueRect.localScale = Vector3.one;
@@ -628,6 +864,10 @@ namespace Wassup.UI
             _built = true;
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 6);
+
+            // rev 8 — 타이머 배지는 점수 패널의 자식이 아니다. 패널은 우상단 코너에 붙고
+            // 폭이 플레이트에 묶여 있어서 상단 중앙에 따로 세운다.
+            BuildTimerBadge(roots.SafeAreaRoot);
 
             // Badge anchored to the screen's top-right corner, cornerPadding px inset.
             // Panel width matches the plate so its centered children hug the right edge.
