@@ -2,6 +2,7 @@ using System.Text;
 using PrimeTween;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
@@ -9,127 +10,143 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // battle-hud-score-timer-menu Unit 1 — 좌하단 도크. 상단 행이 판 카운트다운을 갖는다
-    // (상단 중앙은 점수가 가져갔다).
+    // 좌하단 「다음 웨이브」 알약 버튼 + 그 위 말풍선.
     //
     // ─────────────────────────────────────────────────────────────────────────
-    // next-wave-dock-legibility rev 3 — **한 박스, 두 상태.** (사용자 결정 2026-08-13)
+    // next-wave-dock-legibility rev 7 (시안 A) — 사용자 결정 2026-08-13
     //
-    // rev 1·2 의 실패는 크기 튜닝이 아니라 전제였다: 적 목록을 **항상 띄워두려니**
-    //   · 크게 하면(400×114 패널) 맵을 가리고
-    //   · 작게 하면(320×30 툴팁) 안 읽힌다
-    // 둘 사이에 답이 없다. 그래서 «항상 보인다»를 버렸다.
+    // rev 1~6 이 전부 반려된 원인은 두 개였다:
     //
-    // 남은시간 + 웨이브를 **한 박스**로 묶고, 그 박스가 상태를 바꾼다:
-    //   탭 1 → 본문이 몬스터 정보로 전환   ·   탭 2 → 당김
-    // 목록이 박스 **본문 전체**를 쓰므로 한 줄에 적 하나씩 크게 들어간다. 평소에는
-    // 목록이 화면을 1px 도 안 먹는다.
+    // ① **예약구역을 넘고 있었다.** 배치 트레이는 폭이
+    //    `SafeAreaWidth − cornerReservedWidth(640)` 로 클램프되고 바닥 중앙 정렬이라
+    //    (`DefenderSelector.cs:252·353`), 1920 기준 항상 x 320~1600 을 먹는다.
+    //    **좌측 0~320 이 도크 예산**인데 구 도크는 우측 끝이 328(40+288), rev3 은 352 라
+    //    각각 8px·32px 을 물고 있었다. 크기를 아무리 조정해도 겹침이 안 사라진 이유다.
+    //    **슬롯이 10개가 돼도 트레이는 안 넓어진다** — 클램프가 같고 슬롯만 좁아지므로
+    //    이 예산은 영구적이다.
     //
-    // 지켜야 하는 것 셋:
-    //  ① **남은시간은 두 상태 모두에 남는다.** 헤더가 갖는다 — 미리보기 때문에 시계가
-    //     사라지면 3분 게임에서 가장 중요한 정보가 조작에 인질로 잡힌다.
-    //  ② **자동 복귀**(previewHoldSeconds). 탭 하나로 웨이브 진행 표시가 영영 가려지면 안 된다.
-    //  ③ **잠금은 미리보기 상태에서 사유를 말한다**(spec 계약 3). 잠겼다고 상태 전환을
-    //     막지 않는다 — 왜 못 당기는지 읽을 기회 자체가 사라진다.
+    // ② **상시 표시 면적과 가독성을 동시에 만족시키려 했다.** 크게 하면 맵을 가리고
+    //    작게 하면 안 읽힌다 — 그 사이에 답이 없다.
     //
-    // ⚠ 박스 배경은 `UiRoundedSprite` 로 굽는다. 구 아트(`NextWaveButtonFace` 476×179)는
-    // 9-slice 가 아니고 `preserveAspect` 라 rect 를 키우면 늘어나는 대신 투명 레터박스가
-    // 생긴다 — 그 제약이 rev 1·2 를 288×108 안에 가둔 원인이었다.
+    // 그래서 이 rev 의 규칙은 둘뿐이다:
+    //   · **알약은 절대 리사이즈하지 않는다.** 고정 크기·고정 위치. 커지는 것은 말풍선뿐이고
+    //     말풍선은 탭했을 때만 존재한다.
+    //   · **x ≤ 300 을 넘지 않는다.** 알약도 말풍선도 40~296.
+    //
+    // 그리고 **말 대신 연출**이다. 「탭하면 ~」류 안내문을 전부 걷고, 당길 수 있을 때만
+    // 알약이 반짝이고 화살표가 오르내린다. 잠기면 둘 다 멈춘다 — 상태가 문장이 아니라
+    // 움직임으로 읽힌다.
+    //
+    // 남은시간·웨이브 진행은 **화면 최상단 바**로 나갔다(`ScoreHudView.SetTopBar`).
+    // 읽기만 하는 값이 조작 옆에 있을 이유가 없다.
     // ─────────────────────────────────────────────────────────────────────────
     public class NextWaveDock : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
 
-        [Header("Timer")]
-        [Tooltip("타이머 전용 폰트(미지정 시 기본 TMP). Anton SDF 권장")]
-        [SerializeField] private TMP_FontAsset timerFont;
-        [SerializeField] private float timerFontSize = 56f;
-        [SerializeField] private Color timerColor = Color.white;
-        [SerializeField] private Color timerWarnColor = Color.red;
-        [Tooltip("이 초 미만이면 타이머를 경고색으로")]
-        [SerializeField] private float warnSeconds = 30f;
-        [Tooltip("초가 바뀔 때 pop 강도(일반 / 경고구간)")]
-        [SerializeField] private float tickPunch = 0.16f;
-        [SerializeField] private float tickPunchWarn = 0.36f;
-
-        // 구 `panelSize`·`timerPlateSize`·`timerPlateOffset`·`buttonSize`·`buttonFaceSprite`·
-        // `dockFrameSprite`·`buttonColor`·`buttonFontSize`·`buttonMinFontSize`·
-        // `buttonContentPadding`·`backingColor`·`countdown*` 는 은퇴했다(rev 3 이 박스 하나로
-        // 합치면서 두 플레이트가 사라졌다). 씬 asset 에 orphan 키로 남지만 무해하다
-        // (`fixedWaveIntervalSec` 선례).
-        [Header("Box")]
+        // 구 `panelSize`·`timerPlate*`·`buttonSize`·`buttonFaceSprite`·`dockFrameSprite`·
+        // `buttonColor`·`buttonFontSize`·`buttonMinFontSize`·`buttonContentPadding`·
+        // `backingColor`·`timer*`·`countdown*` 는 은퇴했다. 씬 asset 에 orphan 키로 남지만
+        // 무해하다(`fixedWaveIntervalSec` 선례).
+        //
+        // ⚠ **`panelOffset.x + pillSize.x ≤ 300` 을 지켜라.** 넘으면 배치 트레이와 겹친다
+        // (위 ① 참조). 알약을 키우고 싶으면 폭이 아니라 높이를 키운다. Awake 가 경고한다.
+        [Header("Pill (고정 — 리사이즈 금지)")]
         [SerializeField] private Vector2 panelOffset = new Vector2(40f, 40f);
-        [Tooltip("박스 크기. 본문이 적 3종을 한 줄씩 담을 수 있어야 한다.")]
-        [SerializeField] private Vector2 boxSize = new Vector2(312f, 244f);
-        [SerializeField] private float boxCornerRadius = 20f;
-        [SerializeField] private Color boxFill = new Color(0.05f, 0.10f, 0.26f, 0.95f);
-        [SerializeField] private Color boxBorder = new Color(0.29f, 0.72f, 0.96f, 1f);
-        [Tooltip("미리보기 상태일 때 테두리 색(지금 무엇을 보고 있는지 색으로 구분)")]
-        [SerializeField] private Color boxBorderPreview = new Color(1f, 0.82f, 0.34f, 1f);
-        [SerializeField] private float boxPadding = 14f;
+        [SerializeField] private Vector2 pillSize = new Vector2(256f, 96f);
+        [SerializeField] private float pillCornerRadius = 28f;
+        [SerializeField] private Color pillFill = new Color(0.13f, 0.46f, 0.86f, 1f);
+        [SerializeField] private Color pillBorder = new Color(0.55f, 0.88f, 1f, 1f);
+        [SerializeField] private Color pillLockedFill = new Color(0.24f, 0.28f, 0.34f, 0.95f);
+        [SerializeField] private Color pillLockedBorder = new Color(0.42f, 0.47f, 0.55f, 0.9f);
+        [Tooltip("알약 아래 립(입체감). 누르면 이만큼 내려앉는다.")]
+        [SerializeField] private float pillLip = 6f;
+        [SerializeField] private Color pillLipColor = new Color(0.05f, 0.20f, 0.44f, 1f);
+        [SerializeField] private Color pillLipLockedColor = new Color(0.13f, 0.16f, 0.20f, 0.95f);
+        [SerializeField] private float pillFontSize = 32f;
+        [SerializeField] private Color pillTextColor = Color.white;
+        [SerializeField] private Color pillLockedTextColor = new Color(0.80f, 0.84f, 0.90f, 0.9f);
 
-        // 문구는 **짧게, 크게**다(사용자 결정 2026-08-13). 「남은시간」 캡션처럼 화면이
-        // 스스로 설명하는 것은 뺐다 — 큰 `2:41` 이 카운트다운이라는 건 말 안 해도 읽힌다.
-        [Header("Rows")]
-        [SerializeField] private float headerHeight = 66f;
-        [SerializeField] private float footerHeight = 42f;
-        [Tooltip("본문 — 웨이브 번호 / 적 목록")]
-        [SerializeField] private float bodyFontSize = 31f;
-        [SerializeField] private float bodyMinFontSize = 20f;
-        [Tooltip("본문 보조 줄(컨셉 · 다음 K초)")]
-        [SerializeField] private float bodySubFontSize = 23f;
-        [SerializeField] private float footerFontSize = 23f;
+        [Header("Callout (탭했을 때만)")]
+        [Tooltip("말풍선 폭. 알약과 같게 두면 세로선이 맞아 한 덩어리로 읽힌다.")]
+        [SerializeField] private float calloutWidth = 256f;
+        [SerializeField] private float calloutGap = 14f;
+        [SerializeField] private float calloutPadding = 14f;
+        [SerializeField] private float calloutLineHeight = 34f;
+        [SerializeField] private float calloutCornerRadius = 18f;
+        [SerializeField] private Color calloutFill = new Color(0.04f, 0.09f, 0.22f, 0.96f);
+        [SerializeField] private Color calloutBorder = new Color(0.29f, 0.72f, 0.96f, 1f);
+        [SerializeField] private float calloutFontSize = 27f;
+        [SerializeField] private float calloutMinFontSize = 19f;
+        [SerializeField] private Color calloutTextColor = new Color(0.95f, 0.98f, 1f, 1f);
+        [Tooltip("말풍선이 스스로 닫히기까지의 초(실시간)")]
+        [SerializeField] private float calloutHoldSeconds = 5f;
 
-        [Header("Colors")]
-        [SerializeField] private Color captionColor = new Color(0.5f, 0.92f, 1f, 0.95f);
-        [SerializeField] private Color bodyColor = new Color(0.95f, 0.98f, 1f, 1f);
-        [Tooltip("컨셉(벌떼·중장) 글자색")]
-        [SerializeField] private Color conceptColor = new Color(0.42f, 0.86f, 1f, 1f);
-        [Tooltip("당길 수 있을 때 푸터 색")]
-        [SerializeField] private Color footerReadyColor = new Color(1f, 0.86f, 0.42f, 1f);
-        [Tooltip("잠겼을 때 푸터 색")]
-        [SerializeField] private Color footerLockedColor = new Color(0.78f, 0.82f, 0.88f, 0.85f);
-
-        [Header("Interaction")]
-        [Tooltip("미리보기 상태가 스스로 닫히기까지의 초(실시간). 웨이브 진행 표시가 영영 가려지면 안 된다.")]
-        [SerializeField] private float previewHoldSeconds = 5f;
-        [Tooltip("탭 시 박스 pop 강도")]
+        // 연출은 **두 단계**다. 말풍선을 열기 전(idle)과 연 뒤(armed).
+        //
+        // armed 가 따로 있는 이유: 말풍선을 연 순간이 「한 번 더 누르면 당겨진다」는 유일한
+        // 신호 시점인데, idle 과 같은 세기면 «토글됐다»가 안 읽힌다(사용자 확인). armed 는
+        // 알약이 **숨쉬듯 커졌다 작아지고** 광택이 쉬지 않고 빠르게 흐른다.
+        [Header("연출 — 말 대신 이것이 «누를 수 있음»을 알린다")]
+        [Tooltip("화살표가 오르내리는 폭(px)")]
+        [SerializeField] private float arrowBob = 6f;
+        [SerializeField] private float arrowBobSeconds = 0.7f;
+        [Tooltip("[idle] 광택이 훑는 시간 / 그 뒤 쉬는 시간(초)")]
+        [SerializeField] private float shineSweepSeconds = 1.1f;
+        [SerializeField] private float shineRestSeconds = 1.4f;
+        [Tooltip("[armed] 광택이 훑는 시간 / 쉬는 시간 — 쉬지 않고 빠르게")]
+        [SerializeField] private float armedSweepSeconds = 0.55f;
+        [SerializeField] private float armedRestSeconds = 0.12f;
+        [SerializeField] private float shineWidth = 44f;
+        [SerializeField] private Color shineColor = new Color(1f, 1f, 1f, 0.22f);
+        [Tooltip("[armed] 광택 색 — 더 밝게")]
+        [SerializeField] private Color armedShineColor = new Color(1f, 1f, 1f, 0.42f);
+        [Tooltip("[armed] 알약이 숨쉬는 배율 / 주기(초)")]
+        [SerializeField] private float armedBreathScale = 1.045f;
+        [SerializeField] private float armedBreathSeconds = 0.42f;
+        [Tooltip("[armed] 화살표를 이만큼 더 크게 — «지금이다»")]
+        [SerializeField] private float armedArrowScale = 1.25f;
         [SerializeField] private float tapPunch = 0.10f;
 
         private GameObject _panel;
-        private GameObject _box;
-        private Image _boxImage;
-        private Sprite _boxSpriteIdle;
-        private Sprite _boxSpritePreview;
-        private Button _boxButton;
-        private TextMeshProUGUI _timerLabel;
-        private TextMeshProUGUI _bodyMain;
-        private TextMeshProUGUI _bodySub;
-        private TextMeshProUGUI _footerLabel;
-        private Tween _tapTween;
-        private Tween _tickTween;
-        private bool _built;
-        private bool _subscribed;
+        private GameObject _pillRoot;          // 립(그림자판) — 포커스 링이 가리키는 대상
+        private RectTransform _pillFaceRect;
+        private Image _pillImage;
+        private Image _pillLipImage;
+        private Button _pillButton;
+        private TextMeshProUGUI _pillLabel;
+        private RectTransform _arrowRect;
+        private TextMeshProUGUI _arrowLabel;
+        private RectTransform _shineRect;
+        private Image _shineImage;
+        private GameObject _callout;
+        private RectTransform _calloutRect;
+        private TextMeshProUGUI _calloutLabel;
 
-        // 미리보기 상태(탭 1회로 열리고 previewHoldSeconds 뒤 스스로 닫힌다).
-        private bool _previewOpen;
-        private float _previewClosesAt;
+        private Sprite _pillSpriteReady, _pillSpriteLocked;
+        private Sprite _pillLipSpriteReady, _pillLipSpriteLocked;
 
-        // 매 프레임 문자열 조립을 막는 직전값 캐시. -2 = 아직 표시 전(첫 프레임은 반드시 조립).
-        private int _lastShownSec = -1;
-        private int _lastWaveNum = -2;
-        private int _lastWaveTotal = -2;
-        private int _lastToNextSec = -2;
-        private int _lastFooterKey = int.MinValue;
-        private int _lastPreviewWave = -2;
-        private bool _lastPreviewOpen;
+        private Tween _tapTween, _arrowTween, _breathTween;
+        // 스윕+대기를 Chain 으로 잇기 때문에 Sequence 다(Tween 이 아니다).
+        private Sequence _shineSeq;
+        private bool _built, _subscribed, _pressed;
+        // 지금 도는 연출 단계. null 상태 = 정지.
+        private enum Idle { Off, Ready, Armed }
+        private Idle _idleStage = Idle.Off;
+        private bool _calloutOpen;
+        private float _calloutClosesAt;
+
+        // 매 프레임 문자열 조립을 막는 직전값 캐시.
+        private int _lastStateKey = int.MinValue;
+        private int _lastCalloutWave = -2;
+        private bool _lastCalloutAllowed;
         private readonly StringBuilder _listBuilder = new StringBuilder(128);
 
         // wave-pull-revival unit 4 — 튜토리얼 포커스 링이 감쌀 대상.
         // 선례: ScoreHudView.StressBadgeRect · AwakeningGaugeView.HitRect.
-        // 박스 하나가 정보와 액션을 다 갖고 있으므로 통째로 준다.
+        // **알약만** 준다 — 말풍선은 탭해야 생기고, 링이 가리켜야 할 것은 «누를 대상»이다.
         public RectTransform PullButtonRect =>
-            _box != null ? (RectTransform)_box.transform : null;
+            _pillRoot != null ? (RectTransform)_pillRoot.transform : null;
 
         private void Awake()
         {
@@ -142,11 +159,11 @@ namespace Wassup.UI
             if (_subscribed && GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             _subscribed = false;
-            // 트윈을 남기면 비활성화 중 스케일이 비-단위로 굳고, 씬 언로드 중이면
-            // PrimeTween 이 «OnComplete 무시» 에러를 남긴다.
-            if (_tickTween.isAlive) _tickTween.Stop();
+            // 트윈을 남기면 비활성화 중 스케일·위치가 굳고, 씬 언로드 중이면 PrimeTween 이
+            // «OnComplete 무시» 에러를 남긴다.
+            StopIdleAnimation();
             if (_tapTween.isAlive) _tapTween.Stop();
-            if (_box != null) _box.transform.localScale = Vector3.one;
+            if (_pillRoot != null) _pillRoot.transform.localScale = Vector3.one;
         }
 
         // GameManager.Instance may not be set when OnEnable runs (scene load order), so
@@ -167,14 +184,11 @@ namespace Wassup.UI
             if (_panel == null) return;
             bool battle = phase == GamePhase.Battle;
             if (_panel.activeSelf != battle) _panel.SetActive(battle);
-            if (!battle) return;
-
-            ClosePreview();
-            _lastShownSec = -1;
-            // 표시 캐시도 함께 무효화한다 — 판이 바뀌었는데 직전값이 같으면 조립을 건너뛰어
-            // 이전 판 문구가 그대로 남는다.
-            _lastWaveNum = _lastWaveTotal = _lastToNextSec = _lastPreviewWave = -2;
-            _lastFooterKey = int.MinValue;
+            if (!battle) { StopIdleAnimation(); return; }
+            CloseCallout();
+            // 판이 바뀌었는데 직전값이 같으면 조립을 건너뛰어 이전 판 문구가 남는다.
+            _lastStateKey = int.MinValue;
+            _lastCalloutWave = -2;
         }
 
         private void Update()
@@ -182,169 +196,86 @@ namespace Wassup.UI
             EnsureSubscribed();
             if (bridge == null || _panel == null || !_panel.activeSelf) return;
 
-            // 미리보기는 **실시간**으로 닫힌다(unscaled) — 튜토리얼이 Battle 도메인을 0으로
-            // 세우는 구간에서 영영 안 닫히면 안 된다.
-            if (_previewOpen && Time.unscaledTime >= _previewClosesAt) ClosePreview();
-
-            RefreshTimer();
-            RefreshBody();
-            RefreshFooter();
-        }
-
-        // ── 헤더: 남은시간. **두 상태 모두에 남는다.** ────────────────────────────
-        private void RefreshTimer()
-        {
-            if (_timerLabel == null) return;
-
-            float remaining = Mathf.Max(0f, bridge.TimerRemaining);
-            int min = (int)(remaining / 60f);
-            int sec = (int)(remaining % 60f);
-            int totalSec = min * 60 + sec;
-            bool warn = remaining < warnSeconds;
-
-            if (totalSec != _lastShownSec)
-            {
-                _timerLabel.text = $"{min}:{sec:D2}";
-                // 초가 바뀔 때마다 pop — 카운트다운이 살아있게 느껴지도록. 경고구간은 더 크게.
-                // 첫 표시(_lastShownSec == -1)엔 생략, useUnscaledTime 로 정지/슬로우 중에도 동작.
-                if (_lastShownSec >= 0)
-                {
-                    if (_tickTween.isAlive) _tickTween.Stop();
-                    _timerLabel.rectTransform.localScale = Vector3.one;
-                    _tickTween = Tween.PunchScale(_timerLabel.rectTransform,
-                        Vector3.one * (warn ? tickPunchWarn : tickPunch),
-                        warn ? 0.30f : 0.22f, useUnscaledTime: true);
-                }
-                _lastShownSec = totalSec;
-            }
-
-            _timerLabel.color = warn ? timerWarnColor : timerColor;
-        }
-
-        // ── 본문: 상태에 따라 «웨이브 진행» ↔ «다음에 오는 적» ───────────────────
-        private void RefreshBody()
-        {
-            if (_bodyMain == null) return;
-
             bool available = bridge.NextWaveAvailable;
-            if (_box != null && _box.activeSelf != available) _box.SetActive(available);
-            if (!available) return;
-
-            bool hasNext = bridge.NextWaveHasNext;
-
-            if (_previewOpen)
+            if (_pillRoot != null && _pillRoot.activeSelf != available)
+                _pillRoot.SetActive(available);
+            if (!available)
             {
-                // 웨이브가 바뀔 때만 조립한다(플랜은 판 시작에 확정되고 이후 불변).
-                int wave = bridge.NextWaveNumber;
-                if (_lastPreviewOpen && wave == _lastPreviewWave) return;
-                _lastPreviewOpen = true;
-                _lastPreviewWave = wave;
-
-                string concept = hasNext ? bridge.NextWaveConceptLabel : "";
-                _bodySub.text = concept;
-                _bodySub.color = conceptColor;
-                _bodyMain.text = hasNext ? BuildEnemyList() : "—";
-                _bodyMain.alignment = TextAlignmentOptions.TopLeft;
+                if (_calloutOpen) CloseCallout();
+                StopIdleAnimation();
                 return;
             }
 
-            // ── 기본 상태 ──
-            int total = bridge.WaveCountTotal;
-            // **진행 중인** 웨이브 번호다. `NextWaveNumber`(= _nextWaveIndex + 1)는 "다음에
-            // 나올" 번호라 그대로 쓰면 3번 웨이브와 싸우는 동안 `웨이브 4` 가 뜬다.
-            int current = Mathf.Clamp(bridge.NextWaveNumber - 1, 1, Mathf.Max(1, total));
-            // 0 이하는 «임박»이 아니라 **모름**이다 — `NextWaveSecondsRemaining` 은 첫 웨이브
-            // 전(_nextWaveIndex == 0)에도 0 을 준다. 그 자리를 「곧 도착」으로 메우면 판 시작
-            // 직후 거짓말이 된다.
-            float toNext = bridge.NextWaveSecondsRemaining;
-            int toNextSec = hasNext && toNext > 0f ? Mathf.CeilToInt(toNext) : -1;
+            // 말풍선은 **실시간**으로 닫힌다(unscaled) — 튜토리얼이 Battle 도메인을 0으로
+            // 세우는 구간에서 영영 안 닫히면 안 된다.
+            if (_calloutOpen && Time.unscaledTime >= _calloutClosesAt) CloseCallout();
 
-            if (_lastPreviewOpen || current != _lastWaveNum || total != _lastWaveTotal ||
-                toNextSec != _lastToNextSec)
-            {
-                _lastPreviewOpen = false;
-                _lastWaveNum = current;
-                _lastWaveTotal = total;
-                _lastToNextSec = toNextSec;
-
-                _bodyMain.alignment = TextAlignmentOptions.Center;
-                _bodyMain.text = total > 0 ? $"웨이브 {current} / {total}" : $"웨이브 {current}";
-                _bodySub.color = captionColor;
-                _bodySub.text = toNextSec >= 0 ? $"다음 {toNextSec}초" : "";
-            }
+            RefreshState();
+            if (_calloutOpen) RefreshCallout();
         }
 
-        // ── 푸터: 지금 탭하면 무슨 일이 일어나나 ────────────────────────────────
-        //
-        // 상한에 닿아도 **감추지 않는다**(spec 계약 3). 사라지면 «왜 없지», 무반응이면
-        // «고장났나»가 된다. 그리고 잠금 사유는 시각이 아니라 **사건**으로 말한다 —
-        // 헤더가 초를 세고 있어서 「N초 뒤」로 읽히면 안 된다.
-        private void RefreshFooter()
+        // 알약이 말하는 것은 **한 문장**이다. 나머지는 연출이 말한다.
+        private void RefreshState()
         {
-            if (_footerLabel == null || !bridge.NextWaveAvailable) return;
-
             bool hasNext = bridge.NextWaveHasNext;
             bool allowed = bridge.PullAllowed;
-            int remaining = allowed ? bridge.PullsRemaining : 0;
+            bool live = hasNext && allowed;
 
-            // 조립 회피용 키: (상태, hasNext, allowed, 남은횟수)
-            int key = (_previewOpen ? 1 : 0)
-                    | (hasNext ? 2 : 0)
-                    | (allowed ? 4 : 0)
-                    | (remaining << 3);
-            if (key == _lastFooterKey) return;
-            _lastFooterKey = key;
+            int key = (hasNext ? 1 : 0) | (allowed ? 2 : 0) | (_calloutOpen ? 4 : 0);
+            if (key == _lastStateKey) return;
+            _lastStateKey = key;
 
-            // 문구는 최소로. 「무엇을 하면 무엇이 되는가」한 조각씩만 남긴다.
-            if (!hasNext)
+            _pillButton.interactable = hasNext;
+            _pillImage.sprite = live ? _pillSpriteReady : _pillSpriteLocked;
+            _pillLipImage.sprite = live ? _pillLipSpriteReady : _pillLipSpriteLocked;
+            _pillLabel.color = live ? pillTextColor : pillLockedTextColor;
+            _arrowLabel.color = _pillLabel.color;
+            SetPressed(false);
+
+            // 문구는 둘뿐이다. 「탭하면 ~」류는 없다 — 그건 연출의 몫이다.
+            _pillLabel.text = hasNext ? "다음 웨이브" : "마지막 웨이브";
+            _arrowLabel.enabled = hasNext;
+
+            // 당길 수 있을 때만 살아 움직인다. 잠기면 멈춘다 —
+            // 「지금은 아니다」가 문장이 아니라 정지로 읽힌다.
+            // 말풍선이 열려 있으면 **한 단계 더 세게**(armed) — 「한 번 더」의 신호다.
+            SetIdleStage(!live ? Idle.Off : _calloutOpen ? Idle.Armed : Idle.Ready);
+        }
+
+        private void RefreshCallout()
+        {
+            bool allowed = bridge.PullAllowed;
+            int wave = bridge.NextWaveNumber;
+            // 편성은 웨이브가 바뀔 때만 조립한다(플랜은 판 시작에 확정되고 이후 불변).
+            if (wave == _lastCalloutWave && allowed == _lastCalloutAllowed) return;
+            _lastCalloutWave = wave;
+            _lastCalloutAllowed = allowed;
+
+            string body;
+            int lines;
+            if (!allowed)
             {
-                _footerLabel.text = "마지막 웨이브";
-                _footerLabel.color = footerLockedColor;
-                return;
-            }
-            if (!_previewOpen)
-            {
-                _footerLabel.text = "탭 · 다음 웨이브";
-                _footerLabel.color = footerLockedColor;
-                return;
-            }
-            if (allowed)
-            {
-                // 남은 횟수는 채운 점으로 보여준다 — 숫자로 쓰면 «판 전체 할당량»으로
-                // 읽힌다(「×3」·「3회 남음」이 실제로 두 번 오해받았다). 점은 그냥 «지금
-                // 이만큼 더»로 읽히고 글자 수도 안 먹는다. 복구 조건은 아래 잠금 문구가 말한다.
-                _footerLabel.text = $"당기기 {Pips(remaining)}";
-                _footerLabel.color = footerReadyColor;
+                // 잠긴 이유가 아니라 **무엇을 하면 풀리는지**를 말한다.
+                body = "정리하면 다시";
+                lines = 1;
             }
             else
             {
-                // 왜 잠겼는지가 아니라 **무엇을 하면 풀리는지**를 말한다.
-                _footerLabel.text = "정리하면 다시";
-                _footerLabel.color = footerLockedColor;
+                body = BuildEnemyList(out lines);
+                if (lines == 0) { body = "—"; lines = 1; }
             }
-        }
 
-        // 남은 당김 횟수 = 채운 점. 6개까지만 찍고 그 위는 숫자로 떨어진다(저작이 커져도
-        // 푸터가 안 터지게).
-        private static string Pips(int count)
-        {
-            if (count <= 0) return "";
-            if (count > 6) return $"×{count}";
-            return count switch
-            {
-                1 => "●",
-                2 => "●●",
-                3 => "●●●",
-                4 => "●●●●",
-                5 => "●●●●●",
-                _ => "●●●●●●",
-            };
+            _calloutLabel.text = body;
+            // 말풍선만 내용에 맞춰 자란다(알약은 고정). 평소 2~3종, 보스 웨이브에 최대 5종.
+            float h = calloutPadding * 2f + lines * calloutLineHeight;
+            _calloutRect.sizeDelta = new Vector2(calloutWidth, h);
         }
 
         // 예고는 실스폰과 **같은 데이터**에서 나온다(unit 1 계약 4) — 브리지의 구성 창구를
-        // 그대로 읽는다. 한 줄에 적 하나씩, 본문 전체를 쓴다.
-        private string BuildEnemyList()
+        // 그대로 읽는다. 한 줄에 적 하나씩. 이름 외에 아무 설명도 붙이지 않는다.
+        private string BuildEnemyList(out int lines)
         {
+            lines = 0;
             if (!bridge.TryGetNextWaveComposition(out var groups)) return "";
 
             _listBuilder.Clear();
@@ -358,58 +289,132 @@ namespace Wassup.UI
                         ? g.unit.name
                         : g.unit.displayName)
                     .Append("  ×").Append(g.count);
+                lines++;
             }
             return _listBuilder.ToString();
         }
 
-        // ── 탭: 상태 전환 → 당김 ────────────────────────────────────────────────
+        // ── 탭: 1 = 말풍선 / 2 = 당김 ───────────────────────────────────────────
         //
         // **플레이어 경로는 여기 하나뿐이다.** `BattleBridge.ForceNextWave`(기제)를 직접
         // 부르지 않는다 — 부르면 겹침 상한이 우회된다.
-        private void OnBoxClicked()
+        private void OnPillClicked()
         {
             if (bridge == null || !bridge.NextWaveAvailable) return;
             Punch();
 
-            if (!_previewOpen)
-            {
-                OpenPreview();
-                return;
-            }
+            if (!_calloutOpen) { OpenCallout(); return; }
 
-            // 미리보기 중 두 번째 탭 = 당김. 잠겨 있으면 **닫지 않고** 창을 연장한다 —
-            // 사유를 읽을 시간을 뺏지 않는다.
+            // 잠겨 있으면 닫지 않고 창을 연장한다 — 사유를 읽을 시간을 뺏지 않는다.
             if (!bridge.TryPullNextWave())
             {
-                _previewClosesAt = Time.unscaledTime + previewHoldSeconds;
+                _calloutClosesAt = Time.unscaledTime + calloutHoldSeconds;
                 return;
             }
-            ClosePreview();
+            CloseCallout();
         }
 
-        private void OpenPreview()
+        private void OpenCallout()
         {
-            _previewOpen = true;
-            _previewClosesAt = Time.unscaledTime + previewHoldSeconds;
-            _lastPreviewWave = -2;   // 본문 재조립 강제
-            _lastFooterKey = int.MinValue;
-            if (_boxImage != null && _boxSpritePreview != null) _boxImage.sprite = _boxSpritePreview;
+            _calloutOpen = true;
+            _calloutClosesAt = Time.unscaledTime + calloutHoldSeconds;
+            _lastCalloutWave = -2;          // 내용 재조립 강제
+            _lastStateKey = int.MinValue;   // 연출을 Armed 로 올리도록 상태 재평가
+            _callout.SetActive(true);
+            RefreshCallout();
+            // 살짝 올라오며 나타난다 — 「알약에서 나왔다」가 읽히게.
+            _calloutRect.localScale = new Vector3(1f, 0.86f, 1f);
+            Tween.ScaleY(_calloutRect, 1f, 0.15f, Ease.OutBack, useUnscaledTime: true);
         }
 
-        private void ClosePreview()
+        private void CloseCallout()
         {
-            if (!_previewOpen && _boxImage != null && _boxImage.sprite == _boxSpriteIdle) return;
-            _previewOpen = false;
-            _lastWaveNum = -2;       // 본문 재조립 강제
-            _lastFooterKey = int.MinValue;
-            if (_boxImage != null && _boxSpriteIdle != null) _boxImage.sprite = _boxSpriteIdle;
+            _calloutOpen = false;
+            _lastStateKey = int.MinValue;   // 연출을 Ready 로 되돌리도록 상태 재평가
+            if (_callout != null && _callout.activeSelf) _callout.SetActive(false);
+        }
+
+        // ── 연출 ────────────────────────────────────────────────────────────────
+        //
+        // Off   — 잠김 / 마지막 웨이브. 아무것도 안 움직인다.
+        // Ready — 누를 수 있다. 화살표가 천천히 오르내리고 광택이 가끔 훑는다.
+        // Armed — 말풍선이 열렸다 = **한 번 더 누르면 당겨진다.** 알약이 숨쉬고 화살표가
+        //         커지고 광택이 쉬지 않는다. Ready 와 확실히 달라야 «토글됐다»가 읽힌다.
+        private void SetIdleStage(Idle stage)
+        {
+            if (_idleStage == stage) return;
+            _idleStage = stage;
+
+            if (_arrowTween.isAlive) _arrowTween.Stop();
+            if (_shineSeq.isAlive) _shineSeq.Stop();
+            if (_breathTween.isAlive) _breathTween.Stop();
+            if (_pillFaceRect != null) _pillFaceRect.localScale = Vector3.one;
+
+            if (stage == Idle.Off)
+            {
+                if (_arrowRect != null)
+                {
+                    _arrowRect.anchoredPosition = new Vector2(_arrowRect.anchoredPosition.x, 0f);
+                    _arrowRect.localScale = Vector3.one;
+                }
+                if (_shineImage != null) _shineImage.enabled = false;
+                return;
+            }
+
+            bool armed = stage == Idle.Armed;
+
+            // 화살표: 위아래로. armed 면 더 크게 — «위를 봐라»가 아니라 «지금 눌러라»가 된다.
+            _arrowRect.anchoredPosition = new Vector2(_arrowRect.anchoredPosition.x, 0f);
+            _arrowRect.localScale = Vector3.one * (armed ? armedArrowScale : 1f);
+            _arrowTween = Tween.UIAnchoredPositionY(_arrowRect, armed ? arrowBob * 1.6f : arrowBob,
+                armed ? arrowBobSeconds * 0.6f : arrowBobSeconds,
+                Ease.InOutSine, cycles: -1, CycleMode.Yoyo, useUnscaledTime: true);
+
+            // 숨쉬기는 armed 에서만. 크기가 변하는 것은 **면(face)** 이고 알약 자체의
+            // 레이아웃 크기는 그대로다(«알약은 리사이즈하지 않는다» 규칙 유지 — 스케일이다).
+            if (armed)
+                _breathTween = Tween.Scale(_pillFaceRect, armedBreathScale, armedBreathSeconds,
+                    Ease.InOutSine, cycles: -1, CycleMode.Yoyo, useUnscaledTime: true);
+
+            _shineImage.enabled = true;
+            _shineImage.color = armed ? armedShineColor : shineColor;
+            StartShineSweep();
+        }
+
+        // 스윕 1회 + 대기를 한 사이클로 돌린다. `cycles: -1` 로는 대기 구간을 표현할 수
+        // 없어서(딜레이가 트윈이 아니다) 완료 콜백으로 다시 건다.
+        private void StartShineSweep()
+        {
+            if (_idleStage == Idle.Off || _shineRect == null || !isActiveAndEnabled) return;
+            bool armed = _idleStage == Idle.Armed;
+            float from = -shineWidth;
+            float to = pillSize.x + shineWidth;
+            _shineRect.anchoredPosition = new Vector2(from, 0f);
+            // ⚠ `useUnscaledTime` 은 **Sequence 가 소유한다** — 자식 트윈에 붙이면 PrimeTween 이
+            // 「무시됐다」고 에러를 뱉는다(Sequence.cs:345). 시퀀스에 한 번만 준다.
+            _shineSeq = Sequence.Create(useUnscaledTime: true)
+                .Chain(Tween.UIAnchoredPositionX(_shineRect, from, to,
+                    armed ? armedSweepSeconds : shineSweepSeconds, Ease.InOutQuad))
+                .ChainDelay(armed ? armedRestSeconds : shineRestSeconds)
+                .OnComplete(this, dock => dock.StartShineSweep());
+        }
+
+        private void StopIdleAnimation() => SetIdleStage(Idle.Off);
+
+        private void SetPressed(bool pressed)
+        {
+            if (_pillFaceRect == null) return;
+            if (pressed && (_pillButton == null || !_pillButton.interactable)) return;
+            if (_pressed == pressed) return;
+            _pressed = pressed;
+            _pillFaceRect.anchoredPosition = new Vector2(0f, pressed ? 0f : pillLip);
         }
 
         private void Punch()
         {
-            if (_box == null) return;
+            if (_pillRoot == null) return;
             if (_tapTween.isAlive) _tapTween.Stop();
-            var rt = (RectTransform)_box.transform;
+            var rt = (RectTransform)_pillRoot.transform;
             rt.localScale = Vector3.one;
             _tapTween = Tween.PunchScale(rt, Vector3.one * tapPunch, 0.20f, useUnscaledTime: true);
         }
@@ -420,6 +425,13 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
+            // 이 경고가 뜨면 트레이와 겹친 것이다 — rev 1~6 이 반복한 실수를 여기서 잡는다.
+            float right = panelOffset.x + Mathf.Max(pillSize.x, calloutWidth);
+            if (right > 300f)
+                Debug.LogWarning(
+                    $"[NextWaveDock] 도크 우측 끝이 {right:0} 라 예약구역(300)을 넘는다 — " +
+                    "배치 트레이와 겹친다. 폭이 아니라 높이를 키워라.", this);
+
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
 
             _panel = new GameObject("DockPanel", typeof(RectTransform));
@@ -429,106 +441,175 @@ namespace Wassup.UI
             prt.anchorMax = Vector2.zero;
             prt.pivot = Vector2.zero;
             prt.anchoredPosition = panelOffset;
-            prt.sizeDelta = boxSize;
+            prt.sizeDelta = new Vector2(Mathf.Max(pillSize.x, calloutWidth), pillSize.y + pillLip);
 
-            _box = new GameObject("WaveBox", typeof(RectTransform), typeof(Image));
-            _box.transform.SetParent(_panel.transform, false);
-            var brt = (RectTransform)_box.transform;
-            brt.anchorMin = Vector2.zero;
-            brt.anchorMax = Vector2.one;
-            brt.offsetMin = Vector2.zero;
-            brt.offsetMax = Vector2.zero;
+            BuildPill();
+            BuildCallout();
 
-            // 새 아트를 들이지 않는다 — CostDisplay·ScoreHudView 가 쓰는 같은 경로로 굽는다.
-            // 상태별로 두 장을 미리 구워둔다(매 전환마다 Make 를 부르면 텍스처가 쌓인다).
-            _boxSpriteIdle = UiRoundedSprite.Make(boxCornerRadius, 3f, boxFill, boxBorder);
-            _boxSpritePreview = UiRoundedSprite.Make(boxCornerRadius, 3f, boxFill, boxBorderPreview);
-            _boxImage = _box.GetComponent<Image>();
-            _boxImage.sprite = _boxSpriteIdle;
-            _boxImage.type = Image.Type.Sliced;
-            _boxImage.color = Color.white;
-            _boxImage.raycastTarget = true;
-
-            _boxButton = _box.AddComponent<Button>();
-            _boxButton.targetGraphic = _boxImage;
-            // 색 전이는 상태 스프라이트가 맡는다(ColorTint 가 덧칠하면 소유자가 둘이 된다).
-            _boxButton.transition = Selectable.Transition.None;
-            _boxButton.onClick.AddListener(OnBoxClicked);
-
-            float innerW = boxSize.x - boxPadding * 2f;
-            float bodyH = boxSize.y - boxPadding * 2f - headerHeight - footerHeight;
-
-            // 헤더 — 시계만. 캡션(「남은시간」)은 뺐다: 큰 숫자가 스스로 말한다.
-            _timerLabel = AddLabel("Timer", timerFontSize, timerColor,
-                bold: true, TextAlignmentOptions.Center);
-            if (timerFont != null) _timerLabel.font = timerFont;
-            Place(_timerLabel, boxPadding, boxSize.y - boxPadding - headerHeight,
-                innerW, headerHeight);
-            _timerLabel.text = "3:00";
-
-            // 본문 보조 줄(컨셉 / 다음 K초) — 본문 위쪽
-            _bodySub = AddLabel("BodySub", bodySubFontSize, captionColor,
-                bold: true, TextAlignmentOptions.Center);
-            Place(_bodySub, boxPadding, boxPadding + footerHeight + bodyH - bodySubFontSize * 1.4f,
-                innerW, bodySubFontSize * 1.4f);
-            _bodySub.text = "";
-
-            // 본문 본줄 — 기본: 웨이브 N / M · 미리보기: 적 목록(한 줄에 하나)
-            _bodyMain = AddLabel("BodyMain", bodyFontSize, bodyColor,
-                bold: true, TextAlignmentOptions.Center);
-            _bodyMain.textWrappingMode = TextWrappingModes.NoWrap;
-            _bodyMain.fontSizeMin = bodyMinFontSize;
-            Place(_bodyMain, boxPadding, boxPadding + footerHeight,
-                innerW, bodyH - bodySubFontSize * 1.4f);
-            _bodyMain.text = "";
-
-            // 푸터 — 지금 탭하면 무슨 일이 일어나나
-            _footerLabel = AddLabel("Footer", footerFontSize, footerLockedColor,
-                bold: true, TextAlignmentOptions.Center);
-            Place(_footerLabel, boxPadding, boxPadding, innerW, footerHeight);
-            _footerLabel.text = "";
-
-            _box.SetActive(false);
+            _pillRoot.SetActive(false);
             UiLayer.Apply(gameObject);
         }
 
-        private TextMeshProUGUI AddLabel(
-            string name, float fontSize, Color color, bool bold, TextAlignmentOptions alignment)
+        private void BuildPill()
+        {
+            _pillSpriteReady = UiRoundedSprite.Make(pillCornerRadius, 3f, pillFill, pillBorder);
+            _pillSpriteLocked =
+                UiRoundedSprite.Make(pillCornerRadius, 3f, pillLockedFill, pillLockedBorder);
+            _pillLipSpriteReady =
+                UiRoundedSprite.Make(pillCornerRadius, 0f, pillLipColor, pillLipColor);
+            _pillLipSpriteLocked =
+                UiRoundedSprite.Make(pillCornerRadius, 0f, pillLipLockedColor, pillLipLockedColor);
+
+            // 립(그림자판) — 면 뒤에 pillLip 만큼 내려 깔린다. 이 한 장이 «떠 있다»를 만든다.
+            _pillRoot = new GameObject("Pill", typeof(RectTransform), typeof(Image));
+            _pillRoot.transform.SetParent(_panel.transform, false);
+            var lipRect = (RectTransform)_pillRoot.transform;
+            lipRect.anchorMin = Vector2.zero;
+            lipRect.anchorMax = Vector2.zero;
+            lipRect.pivot = Vector2.zero;
+            lipRect.anchoredPosition = Vector2.zero;
+            lipRect.sizeDelta = new Vector2(pillSize.x, pillSize.y + pillLip);
+            _pillLipImage = _pillRoot.GetComponent<Image>();
+            _pillLipImage.sprite = _pillLipSpriteReady;
+            _pillLipImage.type = Image.Type.Sliced;
+            _pillLipImage.color = Color.white;
+            _pillLipImage.raycastTarget = false;
+
+            var face = new GameObject("Face", typeof(RectTransform), typeof(Image));
+            face.transform.SetParent(_pillRoot.transform, false);
+            _pillFaceRect = (RectTransform)face.transform;
+            _pillFaceRect.anchorMin = Vector2.zero;
+            _pillFaceRect.anchorMax = Vector2.zero;
+            _pillFaceRect.pivot = Vector2.zero;
+            _pillFaceRect.anchoredPosition = new Vector2(0f, pillLip);
+            _pillFaceRect.sizeDelta = pillSize;
+            _pillImage = face.GetComponent<Image>();
+            _pillImage.sprite = _pillSpriteReady;
+            _pillImage.type = Image.Type.Sliced;
+            _pillImage.color = Color.white;
+            _pillImage.raycastTarget = true;
+
+            _pillButton = face.AddComponent<Button>();
+            _pillButton.targetGraphic = _pillImage;
+            // 색은 상태 스프라이트가 소유한다(ColorTint 가 덧칠하면 소유자가 둘이 된다).
+            _pillButton.transition = Selectable.Transition.None;
+            _pillButton.onClick.AddListener(OnPillClicked);
+
+            var trigger = face.AddComponent<EventTrigger>();
+            AddTrigger(trigger, EventTriggerType.PointerDown, () => SetPressed(true));
+            AddTrigger(trigger, EventTriggerType.PointerUp, () => SetPressed(false));
+            AddTrigger(trigger, EventTriggerType.PointerExit, () => SetPressed(false));
+
+            // 광택 밴드 — 면 위를 훑는다.
+            //
+            // ⚠ **반드시 잘려야 한다.** 알파를 낮게 두는 것만으로는 안 된다 — 밴드가 알약
+            // 밖으로 나가 허공에 뜬 흰 막대로 보인다(사용자 확인). `RectMask2D` 로 자른다:
+            // `Mask` 와 달리 스텐실 머티리얼 인스턴스를 만들지 않아 9-slice 가 안 흐려진다
+            // (CostDisplay 가 Mask 를 피한 이유는 머티리얼 인스턴스였지 클리핑이 아니었다).
+            var clip = new GameObject("ShineClip", typeof(RectTransform), typeof(RectMask2D));
+            clip.transform.SetParent(face.transform, false);
+            var clipRect = (RectTransform)clip.transform;
+            clipRect.anchorMin = Vector2.zero;
+            clipRect.anchorMax = Vector2.one;
+            clipRect.offsetMin = Vector2.zero;
+            clipRect.offsetMax = Vector2.zero;
+
+            var shine = new GameObject("Shine", typeof(RectTransform), typeof(Image));
+            shine.transform.SetParent(clip.transform, false);
+            _shineRect = (RectTransform)shine.transform;
+            _shineRect.anchorMin = new Vector2(0f, 0f);
+            _shineRect.anchorMax = new Vector2(0f, 1f);
+            _shineRect.pivot = new Vector2(0f, 0.5f);
+            _shineRect.sizeDelta = new Vector2(shineWidth, 0f);
+            _shineImage = shine.GetComponent<Image>();
+            _shineImage.color = shineColor;
+            _shineImage.raycastTarget = false;
+            _shineImage.enabled = false;
+
+            _pillLabel = AddLabel(face.transform, "Label", pillFontSize, pillTextColor,
+                TextAlignmentOptions.Center, pillFontSize * 0.7f);
+            var lr = _pillLabel.rectTransform;
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = new Vector2(22f, 0f);
+            lr.offsetMax = new Vector2(-44f, 0f);   // 우측은 화살표 몫
+            _pillLabel.text = "다음 웨이브";
+
+            _arrowLabel = AddLabel(face.transform, "Arrow", pillFontSize * 0.9f, pillTextColor,
+                TextAlignmentOptions.Center, pillFontSize * 0.6f);
+            _arrowRect = _arrowLabel.rectTransform;
+            _arrowRect.anchorMin = new Vector2(1f, 0.5f);
+            _arrowRect.anchorMax = new Vector2(1f, 0.5f);
+            _arrowRect.pivot = new Vector2(1f, 0.5f);
+            _arrowRect.anchoredPosition = new Vector2(-14f, 0f);
+            _arrowRect.sizeDelta = new Vector2(34f, 40f);
+            _arrowLabel.text = "▲";
+        }
+
+        private void BuildCallout()
+        {
+            _callout = new GameObject("Callout", typeof(RectTransform), typeof(Image));
+            _callout.transform.SetParent(_panel.transform, false);
+            _calloutRect = (RectTransform)_callout.transform;
+            _calloutRect.anchorMin = Vector2.zero;
+            _calloutRect.anchorMax = Vector2.zero;
+            // pivot 이 바닥이라 sizeDelta 를 키우면 **위로만** 자란다 — 알약을 안 덮는다.
+            _calloutRect.pivot = Vector2.zero;
+            _calloutRect.anchoredPosition = new Vector2(0f, pillSize.y + pillLip + calloutGap);
+            _calloutRect.sizeDelta = new Vector2(calloutWidth, calloutLineHeight * 2f);
+
+            var back = _callout.GetComponent<Image>();
+            back.sprite = UiRoundedSprite.Make(calloutCornerRadius, 3f, calloutFill, calloutBorder);
+            back.type = Image.Type.Sliced;
+            back.color = Color.white;
+            // 말풍선은 읽는 것이지 누르는 것이 아니다 — 히트를 먹으면 그 구간 탭이 죽는다.
+            back.raycastTarget = false;
+
+            _calloutLabel = AddLabel(_callout.transform, "List", calloutFontSize, calloutTextColor,
+                TextAlignmentOptions.Center, calloutMinFontSize);
+            var lr = _calloutLabel.rectTransform;
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = new Vector2(calloutPadding, calloutPadding);
+            lr.offsetMax = new Vector2(-calloutPadding, -calloutPadding);
+            _calloutLabel.text = "";
+
+            _callout.SetActive(false);
+        }
+
+        private static void AddTrigger(
+            EventTrigger trigger, EventTriggerType type, System.Action action)
+        {
+            var entry = new EventTrigger.Entry { eventID = type };
+            entry.callback.AddListener(_ => action());
+            trigger.triggers.Add(entry);
+        }
+
+        private static TextMeshProUGUI AddLabel(
+            Transform parent, string name, float fontSize, Color color,
+            TextAlignmentOptions alignment, float minFontSize)
         {
             var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(_box.transform, false);
+            go.transform.SetParent(parent, false);
             var label = go.AddComponent<TextMeshProUGUI>();
             label.fontSize = fontSize;
-            // 자동 축소를 항상 켠다 — 긴 적 이름(`Waypoint Basic Alt`)도 잘리면 안 된다.
+            // 긴 적 이름(`Waypoint Basic Alt`)도 잘리면 안 된다.
             label.enableAutoSizing = true;
-            label.fontSizeMin = Mathf.Min(bodyMinFontSize, fontSize);
+            label.fontSizeMin = Mathf.Min(minFontSize, fontSize);
             label.fontSizeMax = fontSize;
             label.color = color;
-            if (bold) label.fontStyle = FontStyles.Bold;
+            label.fontStyle = FontStyles.Bold;
             label.alignment = alignment;
             label.overflowMode = TextOverflowModes.Ellipsis;
-            // 박스가 버튼이므로 자식 라벨이 레이캐스트를 먹으면 탭이 통과하지 못한다.
+            // 부모가 버튼이면 자식 라벨이 레이캐스트를 먹어 탭이 통과하지 못한다.
             label.raycastTarget = false;
-            ApplyOutline(label, new Color(0.02f, 0.06f, 0.16f, 1f), bold ? 0.16f : 0.12f);
+            if (label.font != null)
+            {
+                var m = label.fontMaterial;
+                m.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.02f, 0.06f, 0.16f, 1f));
+                m.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.16f);
+            }
             return label;
-        }
-
-        private static void Place(TextMeshProUGUI label, float x, float y, float w, float h)
-        {
-            var rt = label.rectTransform;
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.zero;
-            rt.pivot = Vector2.zero;
-            rt.anchoredPosition = new Vector2(x, y);
-            rt.sizeDelta = new Vector2(w, h);
-        }
-
-        private static void ApplyOutline(TextMeshProUGUI label, Color color, float width)
-        {
-            if (label.font == null) return;
-            var material = label.fontMaterial;
-            material.SetColor(ShaderUtilities.ID_OutlineColor, color);
-            material.SetFloat(ShaderUtilities.ID_OutlineWidth, width);
         }
     }
 }

@@ -31,16 +31,16 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
-        // 버그 재현 — 사용자 문장: "배치된 유닛의 **초상화**를 D&D 시도하면 바로 유닛 선택 상태로
-        // 넘어간다". 표면은 보드 타일이 아니라 **트레이 슬롯**이다.
+        // 표면은 보드 타일이 아니라 **트레이 슬롯**이다(사용자 문장: "배치된 유닛의 **초상화**를 D&D").
         //
-        // defender-board-limit 계약 5 가 소진 슬롯의 탭·드래그를 **둘 다** "판 위 그 유닛 선택" 으로
-        // 묶어놨다. 재배치에 대가가 없던 시절엔 두 제스처의 속마음이 하나였기 때문인데, 이제
-        // 드래그에는 "저기로 옮긴다"라는 자기 의미가 생겼다. 여기서 가른다:
-        //   탭   = 데려가기(종전)
-        //   드래그 = 집어들기(이동모드)
+        // 계보: defender-board-limit 계약 5 가 소진 슬롯의 탭·드래그를 **둘 다** "판 위 그 유닛 선택"
+        // 으로 묶었고 → defender-relocation unit 10 이 "드래그 = 집어들기(이동모드)" 로 갈랐다가 →
+        // **defender-clock-out unit 0 이 다시 합쳤다**(이동은 퇴근으로 대체, 진입구 차단).
+        //
+        // 그래서 이 테스트는 지금 **배선이 끊겼다는 유일한 자동 증거**다. 이동을 되살리려면
+        // DcInspectController.RelocationEnabled 를 true 로 되돌리고 아래 드래그 단정을 뒤집는다.
         [UnityTest]
-        public IEnumerator ExhaustedSlot_Drag_PicksUpUnit_Tap_GoesToUnit()
+        public IEnumerator ExhaustedSlot_BothGestures_GoToUnit_NotMoveMode()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -81,16 +81,15 @@ namespace Wassup.Tests.PlayMode
                 position = RectTransformUtility.WorldToScreenPoint(null, slot.transform.position),
             };
 
-            // ── 탭: 종전대로 데려가기 — 이동모드가 아니다
+            // defender-clock-out unit 0 — 이동 진입구가 끊겼다. 두 제스처가 **다시 합쳐진다**
+            // (board-limit 계약 5 로 복귀: 소진 셀의 모든 제스처 = 판 위 그 유닛 선택).
+            // 이 단정이 곧 "배선이 실제로 끊겼다"는 유일한 증거다. 이동을 되살릴 때 여기를 뒤집는다.
             slot.OnPointerClick(ped);
-            Assert.IsFalse(reloc.InMoveMode, "탭은 집어들기가 아니다(데려가기)");
+            Assert.IsFalse(reloc.InMoveMode, "탭은 데려가기다");
 
-            // ── 드래그: 집어든다
             slot.OnBeginDrag(ped);
-            Assert.IsTrue(reloc.InMoveMode, "소진 슬롯을 끌면 이동모드로 들어간다");
-            Assert.AreEqual(SoleCell(bridge), reloc.MoveSourceCell, "집어든 대상은 판 위 그 유닛이다");
+            Assert.IsFalse(reloc.InMoveMode, "드래그도 데려가기다 — 이동 진입구가 꺼져 있다");
 
-            reloc.CancelMoveMode();
             Object.Destroy(fast);
         }
 

@@ -313,6 +313,58 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(0, CountWith<PatrolAnchor>(em), "no ghost patrol remains");
         }
 
+        // defender-clock-out unit 1 — 위 사망 판본의 **쌍둥이**. 소환사가 죽는 대신 **퇴근**해도
+        // 순찰병이 따라 내려가는가.
+        //
+        // 이 단정만은 반드시 남긴다. 퇴근은 DeadTag 를 달지 않고 브리지가 엔티티를 직접 파괴하는데,
+        // 순찰병 회수는 PatrolLifecycleSystem 이 **Exists(owner) 를 첫 검사로 쓴다**는 사실 하나에
+        // 얹혀 있다. 코드만 읽어서는 자명하지 않은 유일한 cross-system 주장이라, 그 줄이 바뀌면
+        // 유령 순찰병으로 나타난다. 여기가 그 경보다.
+        [UnityTest]
+        public IEnumerator RetiredSummoner_AlsoRemovesPatrol()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return LoadBattleScene();
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var summonerData = FindCatalog().ById("summoner");
+            var ability = summonerData.GetAbility<SummonPatrolAbility>();
+
+            bridge.SetDefenderPool(new[] { summonerData });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+
+            Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell));
+            Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData));
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var summoner = EntityAt(bridge, em, ownerCell);
+
+            bridge.StartBattle();
+            OpenSummonGate(em, summoner);
+            ForceAttackReady(em, summoner);
+
+            Entity patrol = Entity.Null;
+            for (int i = 0; i < 120 && patrol == Entity.Null; i++)
+            {
+                yield return null;
+                patrol = ResolveLivePatrol(em, summoner);
+            }
+            Assert.AreNotEqual(Entity.Null, patrol, "initial patrol spawned");
+
+            Assert.IsTrue(bridge.RetireDefender(ownerCell), "소환사 퇴근");
+            Assert.IsFalse(em.Exists(summoner), "소환사는 즉시 파괴된다(브리지 직접 파괴)");
+
+            // 순찰병 회수는 sim 틱을 한 번 돈다 — PatrolLifecycleSystem 이 Exists(owner)=false 를
+            // 보고 DeadTag 를 붙이면 UnitLifecycleSystem 이 파괴한다. 1틱 지연은 계약대로 무해.
+            for (int i = 0; i < 180 && em.Exists(patrol); i++) yield return null;
+            Assert.IsFalse(em.Exists(patrol), "owner-linked patrol destroyed on retire");
+            for (int i = 0; i < 4; i++) yield return null;
+            Assert.AreEqual(0, CountWith<PatrolAnchor>(em), "no ghost patrol remains");
+        }
+
         private static IEnumerator LoadBattleScene()
         {
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);

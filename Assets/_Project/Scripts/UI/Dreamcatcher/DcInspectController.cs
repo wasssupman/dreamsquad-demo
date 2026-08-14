@@ -236,22 +236,45 @@ namespace Wassup.UI
                 bool hasStats = bridge.TryGetUnitStatReadout(_selected, out var stats);
                 panel.SetStats(stats, hasStats);
 
-                // defender-relocation unit 10 — 이동 버튼 잠금/코스트도 같은 프레임 피드에 태운다.
-                // 코스트는 슬로모 중에도 차므로 "모자라서 흐렸다가 모이면 풀린다" 가 보여야 한다.
-                if (relocationController != null &&
-                    bridge.TryGetDefenderCell(_selected, out var moveCell))
+                // defender-relocation unit 10 — 액션 버튼 잠금도 같은 프레임 피드에 태운다.
+                // Show 때 한 번으로는 "조건이 풀리면 활성화된다" 를 표현할 수 없다.
+                // defender-clock-out unit 2 — 액션의 주인이 이동 → 퇴근으로 바뀌었다.
+                // 비행 중(busy)이면 흐렸다가 착지하면 풀린다.
+                if (bridge.TryGetDefenderCell(_selected, out var actionCell))
                 {
-                    int cost = bridge.TryGetDefenderData(moveCell, out var moveData) && moveData != null
-                        ? moveData.cost : 0;
-                    panel.SetMoveState(relocationController.CanBeginMoveModeFor(_selected, moveCell), cost);
+                    if (RelocationEnabled && relocationController != null)
+                    {
+                        int cost = bridge.TryGetDefenderData(actionCell, out var moveData) && moveData != null
+                            ? moveData.cost : 0;
+                        panel.SetActionState(
+                            relocationController.CanBeginMoveModeFor(_selected, actionCell),
+                            cost > 0 ? $"이동  {cost}" : "이동");
+                    }
+                    else
+                    {
+                        panel.SetActionState(CanRetire(_selected, actionCell), RetireLabel);
+                    }
                 }
             }
         }
 
+        // defender-clock-out unit 0 — 이동/재배치는 **퇴근으로 대체**됐다(팀 리뷰 2026-08-13).
+        // 기능 코드(DefenderRelocationController · BattleBridge.Relocation.cs · RelocationSettings ·
+        // 재배치 테스트)는 전부 남기고 **사람이 만지는 진입구만** 끈다. true 로 되돌리면 부활한다.
+        //
+        // ⚠ [SerializeField] 로 노출하지 않는다 — 인스펙터에서 켜고 씬을 저장하면 그 값이 조용히
+        // 리포에 박힌다(이 프로젝트에서 반복된 사고). 진실원은 이 줄 하나다.
+        // const 가 아니라 static readonly 인 이유: const 면 분기가 상수 폴딩돼 도달 불가 경고가 뜬다.
+        private static readonly bool RelocationEnabled = false;
+
         // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
         // 슬롯(DefenderDragSlot)은 런타임 생성이라 인스펙터 배선이 없고, 이미 이 컨트롤러
         // 참조를 Bind 로 받고 있다. **여기 하나만 노출하면 씬 배선이 늘지 않는다.**
-        public DefenderRelocationController Relocation => relocationController;
+        //
+        // defender-clock-out unit 0 — null 을 돌려주면 DefenderDragSlot.TryBeginRelocationFromSlot 이
+        // **자기 폴백**으로 종전 동작(판 위 그 유닛 선택)에 돌아간다. 슬롯 파일은 건드리지 않는다 —
+        // 거기에 두 번째 스위치를 심으면 진실원이 둘이 된다.
+        public DefenderRelocationController Relocation => RelocationEnabled ? relocationController : null;
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
         // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
@@ -430,6 +453,9 @@ namespace Wassup.UI
 
         // unit 5 — 이동모드 버튼: 선택 해제(패널/줌/플립북) 후 relocation 이 자기 슬로모/하이라이트/
         // 카메라를 새로 잡는다(순차 handoff, lease 겹침 없음).
+        //
+        // defender-clock-out unit 0 — RelocationEnabled=false 인 동안 액션 슬롯의 주인은 퇴근이라
+        // 이 콜백은 배선되지 않는다. 되살릴 땐 아래 액션 배선 3줄(라벨·가드·콜백)을 되돌린다.
         private void OnMovePressed()
         {
             var e = _selected;
@@ -437,6 +463,43 @@ namespace Wassup.UI
             bool hasCell = bridge.TryGetDefenderCell(e, out var cell);
             Close();
             if (hasCell) relocationController.BeginMoveModeFor(e, cell);
+        }
+
+        // ── 퇴근 (defender-clock-out unit 2) ──────────────────────────────────
+
+        // 액션 슬롯 문안. 뷰는 기능을 모르므로 라벨의 주인은 여기다.
+        private const string RetireLabel = "퇴근";
+
+        // 액션 슬롯 1칸의 **현재 주인**을 고른다. 이동을 되살리려면 RelocationEnabled 하나만
+        // true 로 바꾸면 되고, 라벨·가드·콜백이 이 세 곳에서 함께 갈린다.
+        private System.Action ResolveActionCallback()
+        {
+            if (RelocationEnabled) return relocationController != null ? (System.Action)OnMovePressed : null;
+            return bridge != null ? (System.Action)OnRetirePressed : null;
+        }
+
+        // 진입 조건 = 전투 페이즈 + 살아 있는 대상 + 비-busy. 이동 가드에서 코스트·이동모드·
+        // 진입쿨다운을 뺀 형태다(퇴근은 무료이고 모드가 없다).
+        //
+        // 참고: TryGetDefenderAt(…, out busy) 는 BattleBridge.Relocation.cs 에 산다 — 퇴근이
+        // 재배치 파일의 헬퍼를 쓴다는 뜻이라 "이동은 죽었다" 는 절반만 참이다(README 후속 후보).
+        private bool CanRetire(Entity e, Vector2Int cell)
+        {
+            var gm = GameManager.Instance;
+            if (bridge == null || gm == null || gm.CurrentPhase != GamePhase.Battle) return false;
+            return bridge.TryGetDefenderAt(cell, out var found, out _, out bool busy) && !busy && found == e;
+        }
+
+        // 확인 절차 없음 — 누르면 즉시 퇴근한다(계약 8). 되돌릴 수 없다는 사실은 그 유닛의
+        // 트레이 칸에서 쿨타임이 흐르기 시작하는 것으로 사후에 읽힌다.
+        private void OnRetirePressed()
+        {
+            var e = _selected;
+            if (e == Entity.Null || bridge == null) return;
+            if (!bridge.TryGetDefenderCell(e, out var cell)) return;
+            if (!CanRetire(e, cell)) return;
+            Close(); // 대상이 사라지므로 패널·리티클·줌을 먼저 접는다
+            bridge.RetireDefender(cell);
         }
 
         // 부착 목록에서 host 에 걸린 카드만 추린다. 반환 false = 보여줄 게 없다(선택 자체는 유효).
@@ -552,10 +615,10 @@ namespace Wassup.UI
                 unitName = data.displayName;
                 portrait = data.portrait;
             }
-            // unit 15 — 이동 진입구는 이제 패널의 버튼이다(유닛 주변 플립북 폐기).
-            // relocation 미배선이면 콜백을 넘기지 않아 버튼 자체가 뜨지 않는다.
-            panel.Show(unitName, portrait, _cards, _costs,
-                relocationController != null ? (System.Action)OnMovePressed : null);
+            // unit 15 — 진입구는 패널의 액션 버튼 1칸이다(유닛 주변 플립북 폐기).
+            // defender-clock-out unit 2 — 그 1칸의 주인이 이동 → **퇴근**으로 바뀌었다.
+            // 미배선이면 콜백을 넘기지 않아 버튼 자체가 뜨지 않는다(뷰의 기존 계약).
+            panel.Show(unitName, portrait, _cards, _costs, ResolveActionCallback());
         }
 
         // 계약 9 — DreamcatcherHandView.OnPhaseChanged 선례. UGUI 패널은 월드 스프라이트와

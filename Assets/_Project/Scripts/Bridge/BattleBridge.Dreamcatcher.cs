@@ -55,6 +55,15 @@ namespace Wassup.Bridge
         // 렌더한다(등록부 조회, null 이면 대표 스킨 폴백).
         public event System.Action<int, Vector3, Wassup.Data.ISpineUnitVisualData> EnemyKilledAwakening;
         public event System.Action<Entity, Wassup.Data.DefenderUnitData, Vector3> DefenderDied;
+        // defender-clock-out unit 1 — **자발적 퇴근.** DefenderDied 의 형제이고 시그니처도 같다.
+        // 플래그 하나로 합치지 않은 이유: DefenderDied 의 구독자 2개가 퇴근에서 **둘 다 다르게**
+        // 굴어야 한다(트레이는 쿨타임 시작이 붙고, 손패는 각성 지급이 빠진다). 합치면 두 구독자
+        // 전부 if (retired) 를 쓰고 앞으로 붙는 구독자도 그걸 기억해야 한다 — 갈라 두면 잘못
+        // 구독하는 것 자체가 어려워진다.
+        // ⚠ Vector3(셀 view 좌표)는 **현재 소비처가 없다.** DefenderDied 와의 형제 대칭으로 남겨
+        // 뒀다. unit 3 의 퇴근 아치가 이걸 쓸 예정이었으나, 실제로는 떼어낸 뷰의 자기 transform 이
+        // 더 정확해서(SpineVisualOffset·넉업 hop 이 얹혀 있다) 그쪽을 쓴다. 알고 남긴 인자다.
+        public event System.Action<Entity, Wassup.Data.DefenderUnitData, Vector3> DefenderRetired;
         // defender-board-limit 1 — 방어유닛이 판에 **올라온** 순간. DefenderDied 의 짝이고,
         // 둘 다 «바인딩(_defenderByTile)이 바뀌었다» 는 같은 사실을 알린다.
         //
