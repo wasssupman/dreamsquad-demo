@@ -1,0 +1,49 @@
+{
+  "fixture_id": "PT-FIXTURE-UNIT-LIFECYCLE-SHARED-001",
+  "purpose": "transport-neutral semantic ordering validation only",
+  "preconditions": [
+    {
+      "actor_id": "unit:source:1",
+      "lifecycle_state": "alive",
+      "note": "The attacking source existed before this target-lifecycle slice begins."
+    }
+  ],
+  "authoritative_events": [
+    {
+      "authoritative_sequence": 1,
+      "event_id": "event:spawn:1",
+      "event": "unit-spawned",
+      "actor_id": "unit:target:1"
+    },
+    {
+      "authoritative_sequence": 2,
+      "event_id": "event:attack:1",
+      "event": "attack-started",
+      "action_id": "action:attack:1",
+      "source_actor_id": "unit:source:1",
+      "target_actor_id": "unit:target:1"
+    },
+    {
+      "authoritative_sequence": 3,
+      "event_id": "event:damage:1",
+      "event": "damage-applied",
+      "action_id": "action:attack:1",
+      "target_actor_id": "unit:target:1",
+      "result": "lethal"
+    },
+    {
+      "authoritative_sequence": 4,
+      "event_id": "event:death:1",
+      "event": "unit-died",
+      "actor_id": "unit:target:1",
+      "cause_action_id": "action:attack:1"
+    },
+    {
+      "authoritative_sequence": 5,
+      "event_id": "event:despawn:1",
+      "event": "unit-despawned",
+      "actor_id": "unit:target:1",
+      "reason": "death"
+    }
+  ]
+}

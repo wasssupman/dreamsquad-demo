@@ -56,7 +56,7 @@ N타일이 **빨갛게 예고**되며, **2초 후 착지해 범위 피해**를 �
    남아야 한다(셸의 분기 = 이식 비용), (d) 신규 규칙마다 EditMode 동반. 이번 spec 이 재사용하는
    기존 "한 발 걸친" 체인(`DefenderDensity`/`BlinkMath` 의 NativeArray 시그니처,
    `TryResolveBlinkDest` 의 `FlowFieldSingleton` 의존)은 **이번에 고치지 않고** 여기 명시만
-   한다 — production-transition 이전 판정 때의 체크리스트.
+   한다 — 해당 체인을 실제 수정하는 별도 Demo spec에서 재평가할 기술부채다.
 8. **신규 채널 1개** (`UltimateLeapVisualEventsSingleton`, Combat→Bridge). lifecycle 3점 세트
    (생성 Persistent / 싱글턴 파괴 / Dispose)는 브리지 소유. 종료 시 CLAUDE.md 채널 목록에 27번째로
    등재한다.

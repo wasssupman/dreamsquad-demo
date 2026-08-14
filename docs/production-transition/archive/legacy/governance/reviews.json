@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "review_key": [
+    "area_id",
+    "card_id",
+    "document_revision",
+    "source_commit"
+  ],
+  "reviews": [],
+  "legacy_reviews": [
+    {
+      "review_id": "MIG-REVIEW-001",
+      "area_id": null,
+      "card_id": "MIG-CARD-CORE-001",
+      "document_revision": "a7aaf9675f11210ad63cc6f714ce45f2415fcd36",
+      "source_commit": "2d35df0680ce97d29b78101120cb9fae63c5a8ad",
+      "reviewer_role": "repository-owner",
+      "reviewed_by": "repository-owner",
+      "outcome": "deferred",
+      "approval": false,
+      "summary": "Review request was deferred; no gameplay area, production adoption, freeze, or migration kickoff was approved."
+    }
+  ]
+}

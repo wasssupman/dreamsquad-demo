@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://somnia.local/schemas/dreamsquad-transition-receipt-v1.json",
+  "title": "Dreamsquad production intake receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "consumer", "freeze_id", "destination", "manifest_sha256", "common_sha256", "assigned_bundle_sha256", "file_count", "byte_count", "received_at", "status", "verified_by"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "consumer": { "enum": ["client", "game-server"] },
+    "freeze_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "destination": {
+      "type": "string",
+      "pattern": "^somnia-(client|game-server)/docs/migration-input/dreamsquad-demo/[A-Za-z0-9][A-Za-z0-9._-]*/$"
+    },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "common_sha256": { "$ref": "#/$defs/sha256" },
+    "assigned_bundle_sha256": { "$ref": "#/$defs/sha256" },
+    "file_count": { "type": "integer", "minimum": 1 },
+    "byte_count": { "type": "integer", "minimum": 1 },
+    "received_at": { "type": "string", "format": "date-time" },
+    "status": { "const": "verified" },
+    "verified_by": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "required": ["consumer", "destination"],
+          "properties": {
+            "consumer": { "const": "client" },
+            "destination": { "pattern": "^somnia-client/" }
+          }
+        },
+        {
+          "required": ["consumer", "destination"],
+          "properties": {
+            "consumer": { "const": "game-server" },
+            "destination": { "pattern": "^somnia-game-server/" }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

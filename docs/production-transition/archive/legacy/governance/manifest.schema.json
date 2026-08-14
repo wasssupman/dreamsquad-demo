@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dreamsquad-production-transition-manifest-v1",
+  "title": "Dreamsquad Demo production transition freeze manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "freeze_id",
+    "transition_id",
+    "source_commit",
+    "created_at",
+    "governance_attestation",
+    "packages",
+    "destinations",
+    "aggregate_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "freeze_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "transition_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "source_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "governance_attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["records", "reviews", "decisions"],
+      "properties": {
+        "records": { "type": "array", "items": { "$ref": "#/$defs/recordAttestation" } },
+        "reviews": { "type": "array", "items": { "$ref": "#/$defs/reviewAttestation" } },
+        "decisions": { "type": "array", "items": { "$ref": "#/$defs/decisionAttestation" } }
+      }
+    },
+    "packages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared", "client", "game-server", "references"],
+      "properties": {
+        "shared": { "$ref": "#/$defs/package" },
+        "client": { "$ref": "#/$defs/package" },
+        "game-server": { "$ref": "#/$defs/package" },
+        "references": { "$ref": "#/$defs/package" }
+      }
+    },
+    "destinations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client", "game-server"],
+      "properties": {
+        "client": { "type": "string", "pattern": "^somnia-client/docs/migration-input/dreamsquad-demo/[A-Za-z0-9][A-Za-z0-9._-]*/$" },
+        "game-server": { "type": "string", "pattern": "^somnia-game-server/docs/migration-input/dreamsquad-demo/[A-Za-z0-9][A-Za-z0-9._-]*/$" }
+      }
+    },
+    "aggregate_sha256": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "objectId": { "type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$" },
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "path", "size", "sha256"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "recordAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "package",
+        "source_path",
+        "target_path",
+        "owner",
+        "consumer",
+        "required_reviewers",
+        "as_of_commit",
+        "document_revision",
+        "watch_paths",
+        "freshness",
+        "review_status",
+        "disposition",
+        "completeness",
+        "readiness",
+        "depends_on",
+        "references",
+        "areas",
+        "blocking_decisions",
+        "implementation_wave",
+        "execution_stage",
+        "cutover_blocking"
+      ],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1 },
+        "package": { "enum": ["shared", "client", "game-server", "references"] },
+        "source_path": { "type": "string", "minLength": 1 },
+        "target_path": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "consumer": { "$ref": "#/$defs/stringList" },
+        "required_reviewers": { "$ref": "#/$defs/stringList" },
+        "as_of_commit": { "$ref": "#/$defs/objectId" },
+        "document_revision": { "$ref": "#/$defs/hash" },
+        "watch_paths": { "$ref": "#/$defs/stringList" },
+        "freshness": { "enum": ["current", "stale", "historical"] },
+        "review_status": { "enum": ["draft", "review_requested", "reviewed", "historical", "stale"] },
+        "disposition": { "enum": ["candidate", "include", "defer", "exclude", "reference"] },
+        "completeness": { "enum": ["none", "partial", "complete"] },
+        "readiness": { "enum": ["blocked", "provisional", "ready"] },
+        "depends_on": { "$ref": "#/$defs/stringList" },
+        "references": { "$ref": "#/$defs/stringList" },
+        "areas": { "$ref": "#/$defs/stringList" },
+        "blocking_decisions": { "$ref": "#/$defs/stringList" },
+        "implementation_wave": { "type": "string", "minLength": 1 },
+        "execution_stage": { "enum": ["demo-pre-freeze", "production-client-wave", "production-server-wave", "production-release"] },
+        "cutover_blocking": { "type": "boolean" }
+      }
+    },
+    "reviewAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "area_id",
+        "card_id",
+        "document_revision",
+        "source_commit",
+        "reviewer_role",
+        "reviewed_by",
+        "outcome",
+        "approval"
+      ],
+      "properties": {
+        "area_id": { "type": "string", "minLength": 1 },
+        "card_id": { "type": "string", "minLength": 1 },
+        "document_revision": { "$ref": "#/$defs/hash" },
+        "source_commit": { "$ref": "#/$defs/objectId" },
+        "reviewer_role": { "type": "string", "minLength": 1 },
+        "reviewed_by": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["approved", "changes_requested", "deferred", "rejected"] },
+        "approval": { "type": "boolean" }
+      }
+    },
+    "decisionAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "owner", "decision", "blocks_cutover", "affected_records", "as_of_commit"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["open", "proposed", "deferred", "provisional", "conditional", "decided"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "decision": { "type": ["string", "null"] },
+        "blocks_cutover": { "type": "boolean" },
+        "affected_records": { "$ref": "#/$defs/stringList" },
+        "as_of_commit": { "$ref": "#/$defs/objectId" }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "aggregate_sha256"],
+      "properties": {
+        "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+        "aggregate_sha256": { "$ref": "#/$defs/hash" }
+      }
+    }
+  }
+}

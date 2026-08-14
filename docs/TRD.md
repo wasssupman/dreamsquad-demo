@@ -1,6 +1,6 @@
 # TRD — Defense Tournament Prototype
 
-> **역사 보존 배너 — 데모 ECS 제약.** 이 문서는 현재 데모를 만든 Hybrid ECS 경계와 prototype 규칙의 역사적 기준이며 정규 프로젝트 기술 설계가 아니다. 서버 권위·non-ECS 정규 프로젝트로 옮길 원칙과 결정 질문은 [`production-transition/`](production-transition/README.md)에서 관리한다. 본문의 과거 제약은 재작성하지 않는다.
+> **Demo 기술 제약 정본.** 이 문서는 Hybrid ECS 경계와 Demo 금지 패턴의 기준이다. `CLAUDE.md` 또는 owner가 승인한 활성 Demo spec이 명시적으로 대체하기 전까지 계속 구속력을 가진다. `docs/production-transition/`은 owner-gated dormant downstream이며 이 제약을 완화하거나 ECS 제거·네트워크 구현의 근거로 사용할 수 없다.
 >
 > **Technical Requirements Document.** 프로토타입의 기술 스택, 아키텍처 경계, 제약, 금지 패턴, Phase 순서를 단일 참조 문서로 모은다. 이 문서는 에이전트 호출 시 **매번 컨텍스트로 함께 전달되는 문서**이며, 개별 Phase 문서(`PHASE0.md` 등)와 함께 읽힌다.
 >

@@ -1,0 +1,12 @@
+{
+  "fixture_id": "PT-FIXTURE-UNIT-LIFECYCLE-SERVER-001",
+  "shared_fixture": "PT-FIXTURE-UNIT-LIFECYCLE-SHARED-001",
+  "expected_state_order": [
+    "absent",
+    "alive",
+    "dead",
+    "removed"
+  ],
+  "reject_new_action_after_death": true,
+  "preserve_causal_action_after_despawn": true
+}
