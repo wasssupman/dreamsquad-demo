@@ -3691,7 +3691,7 @@ namespace Wassup.Bridge
             // **sim 좌표**여야 한다(이중 변환 금지 — 배치 링 호출부와 같은 규약).
             if (retireFlight != null && spineUnitPool != null
                 && spineUnitPool.Detach(binding.entity, out var retiringView))
-                retireFlight.Fly(retiringView, GridToWorldCenterVector(cell, spawnHeight));
+                retireFlight.Fly(retiringView, GridToWorldCenterVector(cell, spawnHeight), binding.data);
             else
                 spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);

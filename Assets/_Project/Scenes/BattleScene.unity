@@ -2717,13 +2717,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DefenderRetireFlight
   mainCamera: {fileID: 1420088185}
   vfxSpawner: {fileID: 1795146346}
-  anticipationSeconds: 0.1
-  crouchAmount: 0.24
-  crouchDip: 0.14
-  snapSeconds: 0.18
-  riseDistance: 4.6
-  stretchY: 2.3
-  stretchX: 0.2
+  defenderSelector: {fileID: 915292524}
+  hookSeconds: 0.25
+  hookDropDistance: 6
+  resistSeconds: 1.75
+  resistRise: 0.5
+  wiggleHz: 13
+  wiggleAmplitude: 0.16
+  wiggleTiltDegrees: 9
+  tensionStretchY: 1.18
+  popSeconds: 0.4
+  popRise: 9
+  popLateral: 2.6
+  popSpinDegrees: 900
+  popStretchY: 1.5
 --- !u!1 &1279129161
 GameObject:
   m_ObjectHideFlags: 0
