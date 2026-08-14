@@ -306,12 +306,12 @@ namespace Wassup.Tests.EditMode.MapGrid
     // 검증을 통과해야 하며, Skimmer 가 쓰는 경로 0 을 지상 레인이 빼앗으면 안 된다.
     public class LiveMapSpawnRouteAuthoringTests
     {
-        // 레인 경로를 실제로 저작한 맵. Coil·Twin 은 지형이 이미 두 레인을 다른 진입면으로
-        // 가르고 있어(map-rework 계약 4) 우회를 얹으면 그 분리가 무너진다 — 의도적 미저작이다.
+        // 레인 경로를 실제로 저작한 맵. 저작 기준은 unit 10 rev 3 의 셋이다 —
+        // 유턴 0(골에서 멀어졌다 되돌아오지 않는다) · 새 경로 40% 이상 · 진입면 상이.
+        // Serpent·Spiral·Twin 은 후보 최선이 10~26% 라 «보이지 않으면 저작하지 않는다» 로 뺐다.
         private static readonly string[] RoutedMaps =
         {
-            "Assets/_Project/Data/Maps/MapDocument_Serpent.asset",
-            "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",
+            "Assets/_Project/Data/Maps/MapDocument_Coil.asset",
             "Assets/_Project/Data/Maps/MapDocument_Zig.asset",
         };
 

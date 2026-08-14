@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e26b79bbb3da24d79900c004f0d4add0, type: 3}
+  m_Name: WavePlan_Tutorial
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.WavePlanAsset
+  displayName: "튜토리얼 — 적 유형 10웨이브"
+  timerDurationSec: 0
+  waves:
+  - durationSec: 20
+    intervalSec: 0.6
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+      count: 4
+  - durationSec: 20
+    intervalSec: 0.5
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+      count: 3
+    - triggerTimeSec: 6
+      unit: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+      count: 3
+  - durationSec: 22
+    intervalSec: 0.6
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+      count: 2
+    - triggerTimeSec: 8
+      unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+      count: 2
+  - durationSec: 22
+    intervalSec: 0.8
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: cd1692d6a9af9419b9871a40c9e670cc, type: 2}
+      count: 3
+  - durationSec: 24
+    intervalSec: 0.35
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: b2784981455b648589a8bd5d8c225424, type: 2}
+      count: 8
+  - durationSec: 24
+    intervalSec: 0.7
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
+      count: 2
+    - triggerTimeSec: 6
+      unit: {fileID: 11400000, guid: c8c97e20c19b64742b73262253966903, type: 2}
+      count: 3
+  - durationSec: 24
+    intervalSec: 0.8
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: b12cbe192d5b4e97a6cb0c96211f3e44, type: 2}
+      count: 3
+  - durationSec: 26
+    intervalSec: 0.7
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: 5f65ca01e4554dfb8ce75f35c511a3b6, type: 2}
+      count: 2
+    - triggerTimeSec: 7
+      unit: {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
+      count: 2
+  - durationSec: 28
+    intervalSec: 0.7
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: 63427531b931467da2702f09eca696e7, type: 2}
+      count: 3
+    - triggerTimeSec: 9
+      unit: {fileID: 11400000, guid: 7c2d9f3b6a8e4c15b0d7e2f9a3c48d16, type: 2}
+      count: 1
+  - durationSec: 30
+    intervalSec: 0.6
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: 6d3a91f7b2c84e51a8f0c26d94b7e3a5, type: 2}
+      count: 1
+    - triggerTimeSec: 4
+      unit: {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
+      count: 4
+    - triggerTimeSec: 14
+      unit: {fileID: 11400000, guid: 9ed7f6f8f4ed472092fb269bee737d5c, type: 2}
+      count: 1

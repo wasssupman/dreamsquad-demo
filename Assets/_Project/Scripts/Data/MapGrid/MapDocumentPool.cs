@@ -20,6 +20,14 @@ namespace Wassup.Data.MapGrid
 
             [Tooltip("이 맵과 함께 도는 공격 덱(적 웨이브 패턴). null 이면 BattleBridge 의 레거시 deck 폴백.")]
             public Wassup.Data.AttackDeck deck;
+
+            // tutorial-map — 이 맵이 «저작 웨이브»로 도는 경우의 플랜. null = 덱의 생성 웨이브(기본).
+            //
+            // 왜 덱이 아니라 엔트리가 드나: 플랜은 **맵과 한 몸**이다(튜토리얼 10웨이브는 그
+            // 맵의 지형·배치를 전제로 짜인다). 덱에 달면 다른 맵에 그 덱을 붙이는 순간 플랜이
+            // 따라가 무의미해진다. 엔트리는 (문서, 덱)을 이미 한 쌍으로 쥔 유일한 자리다.
+            [Tooltip("저작 웨이브 플랜(튜토리얼·스크립트 인카운터). null = 덱의 생성 웨이브.")]
+            public Wassup.Data.WavePlanAsset plan;
         }
 
         [SerializeField] private List<Entry> entries = new();

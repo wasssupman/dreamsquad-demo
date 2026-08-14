@@ -44,6 +44,16 @@ namespace Wassup.Presentation
         // 분사 축 보정각. **분사가 뒤로 나가면 부호를 뒤집는다**(−90 ↔ +90).
         [SerializeField] private float areaBreathAngleOffset = 90f;
 
+        // elite-whirlpot unit 1 — 유닛별 공격 광역(회오리)의 지속 배수. 수명 = 공격 주기 × 이 값.
+        //
+        // 1.0 은 «맞닿음» 이지 «이어짐» 이 아니다: 새 인스턴스의 파티클은 0에서 차오르므로 앞
+        // 인스턴스가 죽는 순간 뒤가 아직 옅고, 매 pulse 마다 「차오르다 사라지는」 맥박으로 보인다.
+        // 연속으로 읽히려면 **차오르는 구간이 겹쳐야** 한다 → 이 값은 「동시 인스턴스 수」로 읽는다.
+        //
+        // 올릴수록 매끄럽지만 겹친 인스턴스가 그대로 오버드로다. 맥박이 남으면 이 값을 올리기 전에
+        // **프리팹 경량화**를 먼저 볼 것 — 현재 붙은 Tornado 복제는 파티클 시스템 3개짜리다.
+        [SerializeField] private float unitAttackAoeSustainMul = 2f;
+
         [SerializeField] private GameObject goalCollapsePrefab;
         [Tooltip("붕괴 이펙트 스케일(타일 1 유닛 기준)")]
         [SerializeField] private float goalCollapseScale = 1.2f;
@@ -266,6 +276,62 @@ namespace Wassup.Presentation
 
             float lifetime = ConfigureOneShot(go);
             Destroy(go, lifetime);
+        }
+
+        // elite-whirlpot unit 1 — 유닛별 «공격 광역» VFX(팽이 회오리). 브레스와 셋이 다르다:
+        //   ① 프리팹이 **인자**다 — 전역 슬롯이 아니라 적 SO 가 소유한다(유닛별 opt-in 이 계약).
+        //   ② 방향이 없다 — 자기중심이라 회전도, 전방 오프셋도 없다.
+        //   ③ `ConfigureOneShot` 을 **부르지 않는다.** 그건 루프 프리팹을 «펑» 한 번으로 바꾸는
+        //      함수인데 여기 필요한 것은 정반대다 — 회전은 «계속» 이어야 한다.
+        //
+        // 지속감은 «수명 이어붙이기» 로 만든다: 방출을 루프로 두고 공격 주기보다 길게 살리면
+        // 다음 pulse 가 그 전에 겹쳐 들어와 끊김이 없다. 공격이 멈추면 마지막 인스턴스가 만료돼
+        // 저절로 사라진다 — 채널링 상태를 만들지 않는 것이 요점이다(elite-whirlpot 계약 6).
+        // ★**수명 정책(배수)은 이 클래스 소유다** — 호출측은 sim 이 준 «공격 주기» 만 넘긴다.
+        // 초판은 배수 상수를 브리지에 뒀는데, 그건 이 클래스가 브레스에서 이미 되돌려받은
+        // 소유권(프리팹 슬롯·스폰·정렬·**수명**)을 다시 흘리는 것이었다.
+        //
+        // ⚠ 전제: **호출 유닛이 공격 중 정지한다**(`EngageMovement.Halt`). 인스턴스는 스폰
+        // 위치에 고정되고 유닛을 따라가지 않으므로, `Advance` 유닛에 붙이면 회오리가 뒤에 남는다.
+        // 이동 유닛이 실제로 이 슬롯을 쓰게 되면 앵커 추종을 그때 넣는다(지금 넣으면 투기).
+        //
+        // 공유 에셋은 건드리지 않는다(인스턴스 단위 변이).
+        public void SpawnUnitAttackAoe(GameObject prefab, Vector3 originView,
+                                       float radiusTiles, float scalePerTile,
+                                       float attackPeriodSeconds)
+        {
+            // 미할당이 정상이다 — 적 17종 중 대다수가 이 슬롯을 비워 둔다(AttackUnitData 주석).
+            // 그래서 브레스와 달리 경고하지 않는다.
+            if (prefab == null) return;
+
+            var go = Instantiate(prefab, originView, Quaternion.identity, transform);
+
+            float s = Mathf.Max(0.05f, radiusTiles * Mathf.Max(0.01f, scalePerTile));
+            go.transform.localScale = Vector3.one * s;
+
+            // 회오리는 시전자를 **감싸는** 것이라 유닛 «아래» 대역이다(브레스와 반대 — 그건 앞으로
+            // 뿜는 것이라 위여야 한다). 프리팹 내부 상대 순서는 더해서 보존한다.
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].sortingOrder += BoardSortOrder.UnitAttackAoeOrder;
+
+            // ★**이 슬롯에 넣는 프리팹은 루프여야 한다**는 것이 저작 계약이고, 여기서 강제한다 —
+            // 단발로 저작된 프리팹은 주기보다 먼저 말라 회전이 깜빡인다. `ConfigureOneShot` 이
+            // 하는 일(루프→단발)의 정확한 반대이며, 둘을 같은 프리팹에 쓰면 안 된다.
+            // ⚠ 강제이므로 **단발 프리팹을 넣으면 저작된 룩이 달라진다**(계속 뿜는다).
+            var systems = go.GetComponentsInChildren<ParticleSystem>(includeInactive: true);
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var main = systems[i].main;
+                main.loop = true;
+                main.playOnAwake = true;
+                systems[i].Clear(true);
+                systems[i].Play(true);
+            }
+
+            // 하한 1 — 배수가 1 미만이면 인스턴스가 다음 pulse 전에 죽어 깜빡인다(저작 실수 방어).
+            float sustain = attackPeriodSeconds * Mathf.Max(1f, unitAttackAoeSustainMul);
+            Destroy(go, Mathf.Max(0.1f, sustain));
         }
 
         // 루프형 파티클 프리팹을 스폰 인스턴스 단위로 단발화한다. 각 ParticleSystem 의
