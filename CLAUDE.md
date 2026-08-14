@@ -89,6 +89,7 @@
 | "적이 어떻게 길을 찾고 움직이나?" | `docs/reference/enemy-movement-algorithm.md` — 프레임 의사결정 순서도(시스템 순서 · MovementSystem 분기 · 평활화 · 충돌 · 분리) + 쓴 알고리즘 계보와 **쓰지 않은 것의 이유** + 값 바꾸는 곳. 설계 이력은 `docs/spec/continuous-agent-movement/` |
 | "무기 궤적을 켜거나 바꾸려면?" | `docs/reference/weapon-trail-authoring.md` — 유닛에 붙이기·룩 추가·모양 튜닝·본 없는 호스트 레시피 + 증상→원인 표. **코드 0 이 원칙**. 설계 이력은 `docs/spec/spine-weapon-trail/` |
 | "적을 새로 만들거나 등장 조건을 바꾸려면?" | `.claude/skills/enemy-wave-integration/` 스킬 — 풀 삽입 위치·시드 재기준·컨셉 자동 귀속·튜토리얼 로스터 계약. **`AttackUnitData` 신설 또는 `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경 시 필수** |
+| "웨이브 생성 로직을 밸런스로 손보려면?" | 위와 **같은 스킬**. 그 문서의 규칙이 `WavePatternGenerator`·`AttackDeck`·`WaveConceptData`·`WavePlanAsset` 에 매여 있어, 그 코드를 바꾸면 **같은 커밋에서 스킬을 갱신**한다(스킬 안의 「갱신 트리거」 표). 밸런스 값 자체를 바꾸는 위치는 `docs/reference/map-wave-balancing.md` |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
 | "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |
 

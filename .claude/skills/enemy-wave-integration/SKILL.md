@@ -1,6 +1,6 @@
 ---
 name: enemy-wave-integration
-description: Use when adding a new enemy AttackUnitData, or when changing an existing enemy's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit — any of these silently rewrites what every live wave contains. Covers pool insertion position, seed rebaselining, concept assignment, the tutorial roster contract, and the traps that produce collapsed or biased waves.
+description: Use when (a) adding a new enemy AttackUnitData or changing an existing one's minWaveNumber / maxPerWave / enemyClass / traversalLayers / splitUnit, or (b) editing wave generation itself — WavePatternGenerator, AttackDeck fields, WaveConceptData / Concept_* assets, WavePlanAsset. Case (a) silently rewrites what every live wave contains; case (b) invalidates the rules written here, so this skill must be updated in the same commit. Covers pool insertion position, seed rebaselining, concept assignment, the tutorial roster contract, the traps that produce collapsed or biased waves, and how to re-derive every volatile number instead of trusting a frozen one.
 ---
 
 # Enemy → Wave Integration
@@ -16,19 +16,71 @@ description: Use when adding a new enemy AttackUnitData, or when changing an exi
 ```
 적 에셋을 만드는 것과 라이브 풀에 넣는 것은 다른 작업이다.
 넣었으면 웨이브 baseline 을 다시 세우고 검증까지가 한 커밋이다.
+
+그리고 — 웨이브 생성 로직을 바꿨으면 이 스킬을 같은 커밋에서 갱신한다.
 ```
 
 풀에 넣지 않기로 **결정**하는 것도 유효하다(랩 전용·미완성). 다만 그 결정을 spec 에 적어야 하고, 나중에 넣는 커밋이 이 스킬을 다시 태워야 한다.
 
+## ⚠ 이 스킬은 밸런스 작업으로 자주 낡는다
+
+웨이브 생성은 밸런스에 맞춰 계속 바뀐다. **여기 적힌 규칙은 특정 코드에 매여 있고, 그 코드가 바뀌면 규칙이 거짓이 된다.** 그래서 두 가지를 지킨다:
+
+1. **고정 수치를 믿지 마라.** 덱 개수·컨셉 개수·로스터 크기 같은 값은 **아래 「값 재도출」로 그 자리에서 뽑는다.** 이 문서에 숫자를 다시 박지 마라.
+2. **아래 표의 파일을 건드렸으면 이 스킬을 같은 커밋에서 고친다.**
+
+### 갱신 트리거 — 이 파일이 바뀌면 이 주장이 죽는다
+
+| 바뀐 것 | 죽는 주장 | 확인할 절 |
+|---|---|---|
+| `WavePatternGenerator.ResolveWaveEligibleIndex` | 「풀 맨 뒤 금지」의 근거(전방 순환) | 전방 순환 |
+| `WavePatternGenerator.ClampGroupCounts` | 「단일 슬롯 + `maxPerWave 1` = 붕괴」 | 웨이브 붕괴 |
+| `WavePatternGenerator.PickConcept` · `AssignLanes` | 컨셉 후보 게이트(레인 수·`minWaveNumber`) | 컨셉 배정 |
+| `AttackDeck` 필드 추가/삭제 | 정거장 체크표의 「덱에서 손볼 것」 | 정거장 체크표 |
+| `WaveConceptData` · `Concept_*.asset` 슬롯·필터 | 「컨셉 귀속은 자동 파생」·속도 폭 계약 | 컨셉 배정 / 속도 폭 |
+| `WavePlanAsset` · `FromPlanAsset` | 「저작 플랜은 게이트를 안 받는다」 | 저작 플랜 |
+| `AttackUnitData` 의 등장 관련 필드 | When to Use 의 트리거 목록 | frontmatter + When to Use |
+| 라이브 덱·맵 풀 구성 변경 | 정거장 2·7 의 덱 목록 | 값 재도출로 대체됨 |
+
+**갱신은 「문장을 고친다」가 아니라 「코드를 다시 읽고 주장을 재확인한다」다.** 근거를 못 찾으면 그 주장을 지워라 — 틀린 규칙이 없는 규칙보다 나쁘다.
+
+### 값 재도출 (숫자를 외우지 말 것)
+
+```bash
+# 라이브 덱 목록과 각 풀 크기
+for f in Assets/_Project/Scripts/Data/Decks/Deck_*.asset; do
+  echo "$(basename "$f" .asset): $(sed -n '/attackUnitPool:/,/minWaveCount/p' "$f" | grep -c guid)종"
+done
+
+# 어느 덱이 맵 풀에 배선돼 있나 (본편 entries / dev 슬롯)
+grep -A2 -E "^  (entries|devEntries):" Assets/_Project/Data/Maps/MapDocumentPool.asset
+
+# 컨셉과 그 슬롯 필터
+for f in Assets/_Project/Data/WaveConcepts/Concept_*.asset; do
+  echo "== $(basename "$f" .asset)"; grep -E "displayName|laneGroup|classFilter|altitude|countMul|minWaveNumber" "$f"
+done
+
+# 특정 적이 어느 덱에 들어 있나
+grep -l "<enemy-guid>" Assets/_Project/Scripts/Data/Decks/*.asset
+```
+
 ## When to Use
 
-다음 중 하나라도 하면 즉시:
+**(a) 적을 만들거나 등장 조건을 바꿀 때** — 편성이 조용히 바뀐다:
 
 - 신규 `AttackUnitData` 에셋 생성
 - 기존 적의 `minWaveNumber` · `maxPerWave` 변경 (등장 시점·상한이 곧 편성이다)
 - 기존 적의 `enemyClass` · `traversalLayers` 변경 (**어느 컨셉에 걸리는지가 바뀐다**)
 - `splitUnit` 추가 (파생 유닛이 생긴다)
-- `waveConceptPool` · `Concept_*.asset` 의 슬롯·필터 편집
+
+**(b) 웨이브 생성 로직 자체를 밸런스로 손볼 때** — 이 스킬의 규칙이 죽는다:
+
+- `WavePatternGenerator` 의 순수 함수 (`ResolveWaveEligibleIndex`·`ClampGroupCounts`·`PickConcept`·`AssignLanes`·`ExponentialWaveTotal` 등)
+- `AttackDeck` 필드 추가/삭제/의미 변경
+- `WaveConceptData` 또는 `Concept_*.asset` 의 슬롯·필터·가중치
+- `WavePlanAsset` / `FromPlanAsset` 의 변환 규약
+
+(b) 는 코드를 고치고 **끝내지 말고** 위 「갱신 트리거」 표를 따라 이 문서를 같은 커밋에서 재확인한다.
 
 ## 정거장 체크표
 
@@ -37,12 +89,12 @@ description: Use when adding a new enemy AttackUnitData, or when changing an exi
 | # | 정거장 | 확인 |
 |---|---|---|
 | 1 | `Assets/_Project/Data/EnemyCatalog.asset` | 등재 |
-| 2 | 라이브 덱 `attackUnitPool` | Serpent·Coil·Twin·Spiral·Zig·Hook(맵 6종) + Endless + 공성 3종(Duel·Ford·Isle) |
+| 2 | 라이브 덱 `attackUnitPool` | **목록은 「값 재도출」로 뽑아라.** 맵 풀에 배선된 덱 전부 + Endless. 한 덱만 빠지면 그 맵에서만 안 나온다 |
 | 3 | **삽입 위치** | 맨 뒤 금지 — 아래 «전방 순환» 참조 |
 | 4 | `waveSeed` 갱신 + `waveGeneratorVersion` bump | 풀이 바뀌면 편성 전체가 재추첨된다. 새 baseline 을 diff 에 드러내라 |
 | 5 | 컨셉 배정 | `enemyClass` × 통행층이 **자동**으로 정한다. 신규 필터 축을 만들지 마라 |
 | 6 | 튜토리얼 플랜 | `WavePlan_Tutorial` 에 그 적을 가르치는 웨이브. EditMode 가 강제한다 |
-| 7 | dev 덱 | `WaypointLab`·`SiegeTest`·`WaveA/B` 는 판단. 넣지 않았으면 이유를 적어라 |
+| 7 | dev 전용 덱 | 랩·테스트 덱은 판단. 넣지 않았으면 이유를 적어라 |
 
 ## 규칙과 함정
 
@@ -107,3 +159,6 @@ if (unit.minWaveNumber <= waveNumber) return index;
 | "컨셉은 나중에 저작하면 됨" | 컨셉 귀속은 저작이 아니라 **`enemyClass` × 통행층에서 자동 파생**된다. 이미 정해져 있다 |
 | "튜토리얼은 별개 콘텐츠" | EditMode 가 로스터 전종 교습을 요구한다. 빨간불로 돌아온다 |
 | "테스트 초록이니 됐다" | 초록이 **다른 세션이 대신 고쳐서**일 수 있다. 실제로 그런 적이 있다 — 값을 직접 찍어 확인하라 |
+| "스킬에 이렇게 적혀 있으니 맞겠지" | 웨이브 생성은 밸런스로 자주 바뀐다. **주장의 근거 코드를 열어 확인**하고, 어긋나면 스킬을 고쳐라 |
+| "생성 로직만 고쳤으니 스킬은 상관없다" | 이 문서의 규칙 대부분이 그 코드에 매여 있다. 갱신 트리거 표를 보고 같은 커밋에서 재확인한다 |
+| "덱이 N개니까 N개만 넣으면 됨" | 덱 목록은 계속 는다(공성·튜토리얼이 그렇게 늘었다). **매번 재도출**하라 |
