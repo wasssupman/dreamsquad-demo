@@ -115,6 +115,29 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 | Spine | `cloud-pot` · idle=walk=루프 1개 · attack=**빈 값** · death=**빈 값** | [2_whirlpot_assets.md](2_whirlpot_assets.md) |
 | VFX | `attackVfxPrefab` = 회오리 · `attackVfxScalePerTile` 실측 | [1_whirl_visual.md](1_whirl_visual.md) |
 
+## 라이브 등장 빈도 (실측 2026-08-14)
+
+**풀에 넣는 것과 뽑히는 것은 다르다.** 컨셉 블록이 클래스로 슬롯을 거르는데, Whirlpot(Bruiser ·
+Ground)을 받는 컨셉은 **「평소」 하나뿐**이다 — 중장=Tanker · 원거리=Shooter · 벌떼=Runner ·
+공습=Air 필터라 전부 제외된다. 게다가 「평소」는 weight 0.6 으로 가장 낮다.
+
+100웨이브 생성 실측(덱별):
+
+| 덱 | 등장 횟수 | 첫 등장 |
+|---|---|---|
+| Serpent · Zig | 4 | **w17** |
+| Coil · Twin · Spiral · Hook | 2 | **w11** |
+| Endless | 6 | **w12** |
+
+⚠ **일반 플레이 세션에서는 못 볼 가능성이 높다.** 확실히 보려면 **튜토리얼 맵 10웨이브**
+(저작 플랜이라 1기 보장)를 쓴다.
+
+⚠ **2기짜리 웨이브가 새로 가능해졌다.** 「평소」는 무필터 슬롯이 2개인데 이제 그 후보에 **Bruiser
+엘리트가 둘**(슬라임·Whirlpot) 있다. 두 슬롯이 모두 엘리트를 뽑으면 `maxPerWave 1` 이 각각을 1로
+자르고 **잘린 몫은 재분배되지 않아** 웨이브 총원이 2가 된다(w17·w60 에서 실측). 붕괴 가드
+(`totalCount > 1`)는 통과하지만 wave 60 에 2기는 빈 웨이브에 가깝다. 이 spec 이전에는 「평소」에
+들어갈 수 있는 엘리트가 슬라임 하나뿐이라 **구조적으로 불가능했던 경우**다.
+
 ## 작업 단위
 
 | 파일 | 구분 | 문서 | 목적 |
@@ -153,6 +176,13 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
   「붙어서 좁게 돈다」를 저작하려면 그때 payload 경로를 부활시킨다.
 - **`attackTargetCount` 상한 감각** — 10 은 실질 무제한이다. 진짜 상한 knob 이 필요해지면
   `AoeTargetCap.SelectNearest`(투사체 AoE 가 쓴다)를 melee 경로에도 끌어오는 것이 정석이다.
+- **등장 빈도가 너무 낮다면** [S~M] · 실측 2~6회/100웨이브(위 표). 올리는 lever 는 셋이고 성격이
+  다르다: ① 「평소」 `weight` 0.6 → 상향(전 유닛에 영향) ② 다른 컨셉에 Bruiser 슬롯 신설
+  (예 「중장」에 variant 추가 — 단 1슬롯 붕괴 규칙 확인) ③ 엘리트 전용 컨셉 신설. **어느 것도 이
+  spec 범위가 아니다** — 웨이브 컨셉 저작은 `wave-concept-blocks` 소유다.
+- **「평소」 2슬롯이 모두 엘리트일 때의 2기 웨이브** [M] · 잘린 몫이 재분배되지 않아 생긴다. 진짜
+  수리는 「엘리트로 잘린 몫을 다른 슬롯에 넘긴다」이고 그건 `WavePatternGenerator` 소관이다.
+  임시 완화는 「평소」 슬롯을 3개로 늘리는 것(전 웨이브 편성에 영향).
 - **회오리 프리팹 경량화** [S] · 지금 붙은 `Tornado_SKELETON` 은 파티클 시스템 3개(각
   `maxNumParticles 1000`)다. 플레이어 스킬은 한 번에 하나지만 회오리는 **상시 2개가 겹친다**
   (`VfxSpawner.unitAttackAoeSustainMul` = 2). 모바일 예산(일반 50 / 임팩트 100)과 어긋나므로, 육안에서
