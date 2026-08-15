@@ -10,7 +10,7 @@ namespace Wassup.UI.Tutorial
     // 보이는 자리가 곧 가르칠 자리다.
     //
     // GimmickPhaseView 가 홀드/탭 seam 을 소유하고 이 파일은 문구 · 앵커 · 완료 저장만 공급한다.
-    // 본체에서 분리한 이유는 .Gift.cs 와 같다 — 공유 파일에는 lifecycle 호출만 남긴다.
+    // 본체에서 분리한 이유는 .Awakening.cs 와 같다 — 공유 파일에는 lifecycle 호출만 남긴다.
     public sealed partial class FirstSessionTutorialController
     {
         [Header("Gimmick reveal hint")]

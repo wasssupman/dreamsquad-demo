@@ -9,7 +9,7 @@ namespace Wassup.UI.Tutorial
     // "놓으면 이득" 이라는 사실 자체를 배울 자리가 없었다.
     //
     // 첫 판은 core 안내가 배치 구간을 다 쓰므로 제외한다. 리빌 안내(units 23~24) 뒤라는 순서는
-    // 페이즈 흐름(Gift → Gimmick → Placement)이 이미 보장하므로 플래그로 체인하지 않는다.
+    // 페이즈 흐름(Gimmick → Placement)이 이미 보장하므로 플래그로 체인하지 않는다.
     //
     // 본체에서 분리한 이유는 .GimmickReveal.cs 와 같다 — 공유 파일에는 lifecycle 호출만 남긴다.
     public sealed partial class FirstSessionTutorialController

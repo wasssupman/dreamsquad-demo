@@ -25,7 +25,6 @@ namespace Wassup.Tests.EditMode
             var profile = new PlayerProfile();
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
-            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
@@ -97,24 +96,10 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.CompleteCore(profile));
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
-            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsFalse(TutorialProgress.CompleteCore(profile));
 
             Assert.IsTrue(TutorialProgress.CompleteDragAttachHint(profile));
             Assert.IsFalse(TutorialProgress.IsDragAttachHintPending(profile));
-
-            Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
-            Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
-            Assert.IsFalse(TutorialProgress.CompleteGiftTutorial(profile));
-        }
-
-        [Test]
-        public void GiftCompletion_DoesNotTouchOtherVersions()
-        {
-            var profile = new PlayerProfile();
-            Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
-            Assert.IsTrue(TutorialProgress.IsCorePending(profile));
-            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
         }
 
         [Test]
@@ -124,31 +109,9 @@ namespace Wassup.Tests.EditMode
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion + 1,
                 awakeningHintVersion = TutorialProgress.DragAttachHintVersion + 1,
-                giftTutorialVersion = TutorialProgress.GiftTutorialVersion + 1,
             };
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
             Assert.IsFalse(TutorialProgress.IsDragAttachHintPending(profile));
-            Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
-        }
-
-        [Test]
-        public void GiftTutorial_RunsOnlyAfterCoreComplete_NeverAlongsideCore()
-        {
-            var profile = new PlayerProfile();
-            _holder.SetLoadedProfile(profile);
-
-            // First run: core pending → the gift walkthrough must not fire.
-            Assert.IsTrue(TutorialProgress.ShouldRunCore(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
-
-            // Second run: core complete, gift pending → walkthrough fires exactly here.
-            TutorialProgress.CompleteCore(profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
-            Assert.IsTrue(TutorialProgress.ShouldRunGiftTutorial(_holder));
-
-            // Third run: gift complete → normal presentation.
-            TutorialProgress.CompleteGiftTutorial(profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
         }
 
         [Test]
@@ -157,9 +120,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(_holder.profile, "asset default profile is intentionally non-null");
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunDragAttachHint(_holder));
-            // Even with core complete on the asset default, not-loaded blocks gift too.
             TutorialProgress.CompleteCore(_holder.profile);
-            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
 
             _holder.SetLoadedProfile(new PlayerProfile());
             Assert.IsTrue(_holder.IsLoadedThisSession);
@@ -173,10 +134,8 @@ namespace Wassup.Tests.EditMode
             _holder.SetLoadedProfile(null);
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunDragAttachHint(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
             Assert.IsFalse(TutorialProgress.CompleteCore(null));
             Assert.IsFalse(TutorialProgress.CompleteDragAttachHint(null));
-            Assert.IsFalse(TutorialProgress.CompleteGiftTutorial(null));
         }
 
         [Test]
@@ -186,12 +145,14 @@ namespace Wassup.Tests.EditMode
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
                 awakeningHintVersion = TutorialProgress.DragAttachHintVersion,
-                giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
+                giftTutorialVersion = 1,
             };
             var loaded = JsonUtility.FromJson<PlayerProfile>(JsonUtility.ToJson(source));
             Assert.AreEqual(TutorialProgress.CoreVersion, loaded.firstBattleTutorialVersion);
             Assert.AreEqual(TutorialProgress.DragAttachHintVersion, loaded.awakeningHintVersion);
-            Assert.AreEqual(TutorialProgress.GiftTutorialVersion, loaded.giftTutorialVersion);
+            // gift-phase-removal: 워크스루 API 는 사라졌지만 필드는 하위호환으로 남는다.
+            // 상수가 없으니 리터럴로 라운드트립을 계속 지킨다.
+            Assert.AreEqual(1, loaded.giftTutorialVersion);
         }
 
         [Test]
@@ -207,7 +168,6 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, loaded.gimmickRevealHintVersion);
             Assert.IsTrue(TutorialProgress.IsCorePending(loaded));
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(loaded));
-            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbySquadHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(loaded));
@@ -222,7 +182,7 @@ namespace Wassup.Tests.EditMode
                 selectedSquadId = "keep_squad",
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
                 awakeningHintVersion = TutorialProgress.DragAttachHintVersion,
-                giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
+                giftTutorialVersion = 1,
                 lobbyIntroVersion = TutorialProgress.LobbyIntroVersion,
                 lobbyLoadoutHintVersion = TutorialProgress.LobbyLoadoutHintVersion,
             };
@@ -238,7 +198,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(TutorialProgress.ResetAll(null));
 
             // A gift-only stamp must still count as a change.
-            profile.giftTutorialVersion = TutorialProgress.GiftTutorialVersion;
+            profile.giftTutorialVersion = 1;
             Assert.IsTrue(TutorialProgress.ResetAll(profile));
 
             // ...and so must a lobby-only stamp.
@@ -702,12 +662,11 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.ShouldRunGimmickRevealHint(_holder));
 
             // 선물을 건너뛴 계정(TestMode fast-forward 등)도 막히지 않는다 — 체인이 없다는 뜻.
-            var skippedGift = new PlayerProfile
+            var coreOnly = new PlayerProfile
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
             };
-            _holder.SetLoadedProfile(skippedGift);
-            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(skippedGift), "선물은 여전히 미완료");
+            _holder.SetLoadedProfile(coreOnly);
             Assert.IsTrue(TutorialProgress.ShouldRunGimmickRevealHint(_holder),
                 "선물 미완료가 리빌 안내를 막으면 안 된다(챕터 B 결함 재현)");
 
@@ -729,7 +688,6 @@ namespace Wassup.Tests.EditMode
 
             // 리빌 완료가 다른 안내를 소비하면 안 된다.
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
-            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
 
             var ahead = new PlayerProfile

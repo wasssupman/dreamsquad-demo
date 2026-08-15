@@ -219,28 +219,9 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(_pool.Count - 1, picked.Count);
         }
 
-        [Test]
-        public void ResolveRimGift_Excludes_Hidden_Cards_From_Pool_And_Fallback()
-        {
-            // DreamcatcherHandController가 만드는 두 후보 풀 모두에서 visible == 0을
-            // 제외한다. 무의식 풀이 부족하면 fallback을 쓰는 경계도 함께 고정한다.
-            var visibleSubconscious = MakeCard(CardCategory.Subconscious, CardType.Unit, visible: 1);
-            var hiddenSubconscious = MakeCard(CardCategory.Subconscious, CardType.Unit, visible: 0);
-            var visibleFallback = MakeCard(CardCategory.Normal, CardType.Squad, visible: 1);
-            var hiddenFallback = MakeCard(CardCategory.Normal, CardType.Squad, visible: 0);
-            var catalog = MakeCatalog(visibleSubconscious, hiddenSubconscious, visibleFallback, hiddenFallback);
-            var hand = _host.AddComponent<DreamcatcherHandController>();
-
-            typeof(DreamcatcherHandController)
-                .GetField("cardCatalog", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                .SetValue(hand, catalog);
-            var resolve = typeof(DreamcatcherHandController)
-                .GetMethod("ResolveRimGift", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            var picked = (List<DreamcatcherCard>)resolve.Invoke(hand, new object[] { 17 });
-
-            CollectionAssert.AreEquivalent(new[] { visibleSubconscious, visibleFallback }, picked);
-            CollectionAssert.DoesNotContain(picked, hiddenSubconscious);
-            CollectionAssert.DoesNotContain(picked, hiddenFallback);
-        }
+        // gift-phase-removal unit 1 — ResolveRimGift_Excludes_Hidden_Cards_From_Pool_And_Fallback
+        // 는 삭제됐다. 림의 선물이 폐지되면서 그 메서드가 사라졌고(리플렉션 대상 소멸),
+        // 그 케이스가 지키던 "숨김 카드 제외"는 림 풀에만 있던 규칙이다. 덱 페이지 쪽
+        // visible == 0 필터는 그대로 살아 있고 자기 경로에서 지켜진다.
     }
 }

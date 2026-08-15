@@ -89,16 +89,16 @@ namespace Wassup.Tests.PlayMode
             CollectionAssert.DoesNotContain(resolved, catalogIds[0],
                 "확정하지 않은 프리셋의 유닛은 반입되지 않는다");
 
-            // RequestPlacement 뒤에 곧바로 Placement 가 오지 않는다 — gift-phase 가
-            // Placement 앞에 GamePhase.Gift 를 끼워넣었고 그 연출이 수 초 돈다. 이 테스트의
-            // 검증 대상은 **반입 내용**이므로 정확한 프레임 phase 를 핀하지 않고, squad 경로에
-            // 올라탔다는 것(=Draft 가 아니다)만 확인한다. Placement 도달 자체는 기존
-            // SquadCarryInSmokeTest 의 관심사다.
+            // RequestPlacement 뒤에 곧바로 Placement 가 오지 않을 수 있다 — 기믹 리빌이
+            // Placement 앞에서 GamePhase.Gimmick 으로 몇 초 돈다(gift-phase-removal unit 1
+            // 이후 선물 연출은 없다). 이 테스트의 검증 대상은 **반입 내용**이므로 정확한
+            // 프레임 phase 를 핀하지 않고, squad 경로에 올라탔다는 것(=Draft 가 아니다)만
+            // 확인한다. Placement 도달 자체는 기존 SquadCarryInSmokeTest 의 관심사다.
             gm.RequestPlacement();
             yield return null;
             yield return null;
-            Assert.That(gm.CurrentPhase, Is.EqualTo(GamePhase.Gift).Or.EqualTo(GamePhase.Placement),
-                "확정 프리셋이 있으면 draft 가 아니라 gift→placement 경로로 간다");
+            Assert.That(gm.CurrentPhase, Is.EqualTo(GamePhase.Gimmick).Or.EqualTo(GamePhase.Placement),
+                "확정 프리셋이 있으면 draft 가 아니라 gimmick→placement 경로로 간다");
         }
 
         private static T Field<T>(object target, string name) where T : class

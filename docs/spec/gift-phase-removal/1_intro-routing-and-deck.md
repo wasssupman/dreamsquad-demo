@@ -37,9 +37,13 @@
 - 삭제: `BuildGiftDeck` · `ResolveRimGift` · `_giftKind` · `_giftDeckComposed` · `GiftDeckReady` 이벤트 · 공개 API `GiftKind`/`GiftBaseCards`/`GiftAddedCards`/`GiftFinalOrder()` · `giftConfig` SerializeField.
 - 유지: `_giftBaseCards` → `_baseCards` 로 **개명만**. `LogDeck` 이 토너먼트 리포트의 "고른 덱"(baseIds)으로 계속 읽는다 — 지우면 `TournamentMatchReporter.PersistMatchDeck` 이 선물 뺀 덱 정보를 잃는다.
 
-### enum · 테스트
+### enum · 직렬화 에셋
 
-`GamePhase` 에서 `Gift` 제거. `PresetCarryInTest` 의 `GamePhase.Gift` 단언과 그 위 선물 관련 주석을 정리해 `Placement` 도달만 단언한다.
+`GamePhase` 에서 `Gift` 제거. **이 enum 은 int 로 직렬화된다** — `CameraDirectionConfig.asset` 의 `CameraPhasePose.phase`(4개)와 `breathPhases`(3개)를 같은 커밋에서 옮긴다: `phase 1/3/4/5 → 1/2/3/4`, `breathPhases 1,3,4 → 1,2,3`. 옮기지 않으면 배치 포즈가 전투 포즈로, 전투가 결과로 밀리고 브리딩이 배치에서 꺼진 채 결과창에서 켜진다. `GameManager` 의 enum 주석에 이 경고를 남긴다(옛 "직렬화 없음" 주석은 폐기).
+
+### 테스트
+
+ `PresetCarryInTest` 의 `GamePhase.Gift` 단언과 그 위 선물 관련 주석을 정리해 `Placement` 도달만 단언한다.
 
 `SkillLoadoutControllerTests` 의 `ResolveRimGift_Excludes_Hidden_Cards_From_Pool_And_Fallback`(L223)을 **같은 커밋에서 삭제**한다. 이 케이스는 리플렉션으로 `ResolveRimGift` private 메서드를 잡으므로 메서드가 사라지면 리플렉션이 null 을 반환해 실패한다. 그 케이스가 지키던 "숨김 카드 제외"는 림 풀에만 있던 규칙이라 대체 케이스를 만들지 않는다 — 덱빌더 쪽 `visible == 0` 필터는 unit 0 이 손대지 않고 그대로 남는다.
 

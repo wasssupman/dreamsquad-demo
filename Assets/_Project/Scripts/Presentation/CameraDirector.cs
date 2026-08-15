@@ -121,7 +121,7 @@ namespace Wassup.Presentation
             _gm.PhaseChanged += OnPhaseChanged;
             OnPhaseChanged(_gm.CurrentPhase);
             // "활성화 시점 최초 적용만 스냅" — 시작 페이즈가 미등록(hold)이어도 스냅 기회는
-            // 여기서 소진된다. 이후 등록 페이즈 첫 진입(예: squad 플로우 None→Gift→Placement)이
+            // 여기서 소진된다. 이후 등록 페이즈 첫 진입(예: squad 플로우 None→Gimmick→Placement)이
             // 한참 뒤여도 스냅 팝 없이 비행한다.
             _phaseAppliedOnce = true;
         }

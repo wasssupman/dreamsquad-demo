@@ -1,6 +1,6 @@
 # Gift Phase Removal (선물 페이즈 제거)
 
-> 상태: 계획 확정 2026-08-15, 구현 대기. 설계 승인 = 사용자 2026-08-15.
+> 상태: 구현 완료 2026-08-16 (units 0~3). Play 검증은 사용자 pull 후 대기. handoff: `4_handoff_summary.md`
 
 ## 한 줄
 
@@ -35,7 +35,11 @@
 | 3 | `3_tutorial-cleanup.md` | 튜토리얼 | 선물 워크스루 챕터 + `TutorialProgress` Gift API 제거 |
 | 4 | `4_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
 
-unit 1 을 더 잘게 쪼개지 않는 이유: 라우팅·덱 조합·enum 이 서로 물려 있어 중간 상태에서 배치 진입이 깨진다. unit 1 시점에 `GiftPhaseView` 는 아무도 구독하지 않는 죽은 코드가 되지만 컴파일·플레이는 성립하며, **여기서 Play 검증을 마친 뒤** unit 2 에서 지운다.
+### unit 1~3 은 한 커밋으로 합쳤다 (2026-08-15 구현 중 정정)
+
+계획에서는 unit 1 시점에 `GiftPhaseView` 가 "죽은 코드로 남지만 컴파일은 된다"고 봤다. **틀렸다.** `GiftPhaseView` 와 `FirstSessionTutorialController.Gift.cs` 가 unit 1 에서 제거할 `HandController` API(`GiftDeckReady`·`GiftKind`·`GiftBaseCards`·`GiftAddedCards`·`GiftFinalOrder`)와 `TutorialProgress.ShouldRunGiftTutorial` 을 **직접 참조**하므로, 셋을 나눠 커밋하면 어느 순서로도 중간 커밋이 컴파일되지 않는다.
+
+제거 작업의 실제 원자 단위는 **라우팅 + 덱 + 뷰 삭제 + 튜토리얼**이다. 파일별 계약은 각 문서에 그대로 유효하고, 커밋만 하나로 합쳤다.
 
 ## Feature-wide 계약
 
@@ -46,7 +50,7 @@ unit 1 을 더 잘게 쪼개지 않는 이유: 라우팅·덱 조합·enum 이 �
 5. **무의식 카드는 일반 덱 카드다.** 덱빌더/프리셋의 `category == Subconscious` 제외를 제거하고 `DeckRules`(덱 10장, Squad ≤2) 를 그대로 적용한다. `CardCategory.Subconscious` **값 자체는 존속** — 이제 덱 규칙이 아니라 보라 프레임 + "무의식" 칩(`CardCategoryStyle`)이라는 시각 라벨 전용이다.
 6. **첫 판 기믹 리빌 스킵은 현행 유지.** `TutorialProgress.ShouldRunCore` 게이트와 기믹 미배정·config 미배선 스킵 3조건 모두 그대로.
 7. **선물 튜토리얼 챕터는 제거하되 `PlayerProfile.giftTutorialVersion` 필드는 유지**한다(하위호환). `ResetAll`/`ResetAllInJson` 의 초기화 처리도 유지 — 기존 세이브에 남은 값을 계속 정리한다.
-8. **`GamePhase.Gift` enum 값 제거.** 직렬화된 참조가 없음을 확인했다(`CurrentPhase` 는 런타임 프로퍼티뿐).
+8. **`GamePhase.Gift` enum 값 제거 + 직렬화 에셋 동시 마이그레이션.** ⚠ 계획 단계의 "직렬화된 참조 없음" 판단은 **틀렸다** — `CameraDirectionConfig` 가 이 enum 을 int 로 에셋에 박아 둔다(`CameraPhasePose.phase` 4개 + `breathPhases` 3개). 첫 grep 이 `public Wassup.Core.GamePhase[]` 를 네임스페이스 접두사 때문에 놓쳤고, 정작 `GameManager` 의 기존 주석이 이 사실을 경고하고 있었다. 값을 빼면 저장된 정수의 의미가 밀리므로(배치→전투, 전투→결과) **같은 커밋에서 에셋을 옮긴다**: `1/3/4/5 → 1/2/3/4`, `breathPhases 1,3,4 → 1,2,3`.
 9. **ECS/시뮬 변경 0.** 새 맥락·NativeQueue 채널·`BattleBridge` 읽기 경계 변화 없음. `BattleBridge` 는 SerializeField 1개 교체만.
 10. **테스트 케이스 정리는 코드 제거와 같은 커밋에서** 한다. Unity 는 테스트 어셈블리를 통째로 컴파일하므로 케이스 하나가 사라진 API 를 참조하면 EditMode 전체가 깨진다. 해당 지점은 unit 1 의 `SkillLoadoutControllerTests`(리플렉션 `ResolveRimGift`)와 unit 2 의 `DreamcatcherCatalogSyncTests`(`GiftDeckComposer.PickRim`) 두 곳이다.
 

@@ -431,7 +431,7 @@ namespace Wassup.UI
             // drag-cancel-affordance unit 0 — 취소 존 판정. 가상 포인터로 재는 이유는 spec README
             // ("도달성 무손실") 이 소유한다 — raw 로 바꾸면 큰 맵 최하단 행이 배치 불가가 된다.
             // 갱신은 여기 한 곳(가상 포인터가 확정되는 유일한 지점)이고 EndDrag 는 이 값을 읽기만 한다.
-            // activeInHierarchy — 트레이는 페이즈에 따라 숨는다(None/Draft/Gift/Result). 드래그 세션이
+            // activeInHierarchy — 트레이는 페이즈에 따라 숨는다(None/Draft/Gimmick/Result). 드래그 세션이
             // 페이즈 전환을 넘겨 살면 "보이지 않는 취소 영역" 이 되므로 보이는 동안만 판정한다.
             // rect 를 하나만 읽는다는 계약 2 는 유지된다(오프셋을 더하지 않는다).
             _cancelHover = _cancelZone != null && _cancelZone.gameObject.activeInHierarchy && !_simulatedDrag
