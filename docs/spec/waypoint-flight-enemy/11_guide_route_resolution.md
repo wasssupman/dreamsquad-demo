@@ -29,3 +29,5 @@ unit 9 가 스폰(`SpawnUnit` → `CreateEnemyEntity`)의 경로 해석을 `Wayp
 ### 같이 발견된 기존 실패 (이 unit 소관 아님 — 기록)
 
 `ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder` 가 **unit 5 커밋(34c1603f) 이후 계속 빨강**이다. unit 5 가 라이브 밸런스로 `Enemy_Skimmer.minWaveNumber 8` 을 붙였는데, WaypointLab 검증 덱이 같은 SO 를 공유해 **첫 웨이브 Air 전제**(unit 4 저작)가 깨졌다. 이 unit 의 수정 전/후 모두 동일 실패 — 스태시 대조로 확인. 해법 후보는 랩 전용 Air 검증 유닛 신설(라이브 밸런스와 분리). 별도 unit 로 분리.
+
+> **사용자 Play 확인 2026-08-16** — Coil 레인 0 예고선이 우회 경로(웨이포인트 경유)로 표시됨. 커밋 9734019c.

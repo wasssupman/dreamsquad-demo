@@ -36,3 +36,5 @@ unit 3~4 의 라이브 계측 `ValidationWave_ShowsGuides_ThenPassesWaypointsInA
 - `ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder` **초록** — unit 5 이후 처음
 - 실패 3층이 각각 별개 원인이었음을 기록: ① Air 부재(이 unit 의 본체) ② 진입 단언 stale(unit 9 미반영) ③ 차단 셀 단언 stale(동일)
 - 라이브 무회귀: 이 unit 은 라이브 덱·라이브 SO 를 건드리지 않는다(신규 에셋 + 랩 덱 + 테스트뿐)
+
+> **사용자 Play 확인 2026-08-16** — MovementLab 에서 경로 이동이 판 종료 없이 관측됨. 커밋 8f96d9b2 · 0acb6ef1.

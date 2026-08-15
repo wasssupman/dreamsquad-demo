@@ -39,3 +39,5 @@ unit 7 이 「공습」을 슬롯 2개로 넓힌 근거는 «슬롯 간 중복 �
 - `WaveConceptAuthoringTests` 25/25 · EditMode 전량에서 신규 실패 0 (기존 map-rework 폭 계약 4건만 잔존)
 - `GeneratorVersion_IsBumped` = 6 · `WaveSeeds_ArePinnedAndUnique` 불변
 - **Play 확인 (사용자)** — 공습 블록(w4~6)이 드래곤 1 + 스키머 호위로 오는가. EditMode 초록은 「공습이 2기로 온다」 증상 해소의 증거가 아니다
+
+> **사용자 Play 확인 2026-08-16** — 공습 블록이 드래곤 중복 없이 편성됨. 커밋 111dc4fc.
