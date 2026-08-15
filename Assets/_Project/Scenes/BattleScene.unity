@@ -689,6 +689,7 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: 2c83ead52291f493fa48cb3c50739ae3, type: 2}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   placementPhaseView: {fileID: 1628485822}
+  draftController: {fileID: 20521825}
   sortingOrder: 20
   vfxCameraDistance: 6
 --- !u!4 &283596199

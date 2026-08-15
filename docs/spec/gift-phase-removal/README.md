@@ -43,7 +43,8 @@
 
 ## Feature-wide 계약
 
-1. **진입 신호는 `PlacementRequested` + 재시작 2개뿐.** 드래프트(`DraftController.DraftConfirmed`) 경로는 **신설하지도 복원하지도 않는다** (사용자 결정 2026-08-15 — 오래 쓰이지 않는 경로다). 기존 `DraftView` 구독은 건드리지 않는다.
+1. **진입 신호는 `PlacementRequested` · `DraftConfirmed` · 재시작 3개.** 계획 단계에서는 드래프트를 빼기로 했는데(사용자 결정 2026-08-15 — 오래 쓰이지 않는 경로다) 그게 **dead end 를 만들었다**: 삭제한 `GiftPhaseView` 가 `DraftConfirmed` 도 구독하고 있었고, 다른 구독자는 자기 UI 를 숨기는 `DraftView` 뿐이라 드래프트 확정이 배치에 도달하지 못했다(리뷰 C1). `GimmickPhaseView` 가 그 구독을 이어받아 경로를 복원한다 — **드래프트 기능을 되살리는 게 아니라 끊긴 선을 잇는 것**이다.
+   드래프트 기능 자체의 제거는 별도 spec 감이다(사용자 결정 2026-08-16): 코드 7파일 · 참조 12곳 · 직렬화된 `GamePhase.Draft` 재마이그레이션, 그리고 BattleScene 을 직접 로드하는 **PlayMode 테스트 48개**가 이 진입 분기의 `PrepareDraftMap()` 으로 맵이 서는 데 의존한다.
 2. **`GimmickPhaseView` 가 매치 인트로 진입을 소유한다.** `placementPhaseView` 를 SerializeField 로 갖고 연출 종료·스킵 어느 경로로든 스스로 `BeginPlacementPhase()` 를 호출한다. 내부 `_onDone` 은 **"많아야 한 번; 대상이 살아있는 한 정확히 한 번"** 이다 — 유실되면 배치가 영영 시작되지 않는 이 뷰의 단일 최대 위험이라 구조를 지킨다. **씬 teardown 은 의도적 예외**: 시작할 배치가 없으므로 콜백을 버린다(구현 중 `ff54aaf2`·리뷰 M2 — 계획 단계의 "OnDisable 포함" 문구는 틀렸다).
 3. **덱 조합은 Placement 진입 단일 경로**다. 매 배치 진입마다 새로 구성(gift-phase 이전 불변식 복귀)하며 캐시·재사용 플래그를 두지 않는다. 구성은 저장덱 10 + Active 2 = 12장, `MatchSeed` 로 `DreamcatcherCycleDeck` 단일 Fisher-Yates. `DreamcatcherCycleDeck` **무변경**.
 4. **Lucid/Rim 분기 제거.** 추가 2장의 유일한 출처는 `SkillLoadoutController.Picked` → `activeCards` 래핑이다. 매핑 누락 시 기존대로 경고 후 짧은 큐로 진행(동작 변경 없음).

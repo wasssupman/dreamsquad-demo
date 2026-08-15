@@ -32,6 +32,16 @@ namespace Wassup.UI
         [SerializeField] private PlayerProfileSO profileSO;
         [Tooltip("리빌이 끝나면 이 뷰가 직접 배치를 시작한다. 미배선이면 배치에 도달하지 못한다.")]
         [SerializeField] private PlacementPhaseView placementPhaseView;
+        // gift-phase-removal (리뷰 C1) — 레거시 draft 진입도 배치로 이어져야 한다. 삭제한
+        // GiftPhaseView 가 이 신호도 구독하고 있었는데 그걸 안 가져와서, 드래프트 확정이
+        // 배치에 도달하지 못하는 dead end 가 생겼다(DraftConfirmed 의 다른 구독자는
+        // 자기 UI 를 숨기는 DraftView 뿐이다).
+        //
+        // 드래프트를 되살리는 게 아니라 **끊긴 경로를 잇는 것**이다. 기능 자체의 제거는
+        // 범위가 크다 — 코드 7파일 · 참조 12곳 · 직렬화된 GamePhase.Draft 재마이그레이션,
+        // 그리고 BattleScene 을 직접 로드하는 PlayMode 테스트 48개가 이 진입 분기의
+        // PrepareDraftMap() 으로 맵이 서는 데 의존한다. 별도 spec 감이다(사용자 결정 2026-08-16).
+        [SerializeField] private DraftController draftController;
         [Tooltip("배치 HUD(7) 위.")]
         [SerializeField] private int sortingOrder = 20;
         [Tooltip("월드 VFX 를 카메라 앞 몇 미터에 띄울지.")]
@@ -88,6 +98,7 @@ namespace Wassup.UI
         {
             _subscribedManager = gameManager != null ? gameManager : GameManager.Instance;
             if (_subscribedManager != null) _subscribedManager.PlacementRequested += BeginIntro;
+            if (draftController != null) draftController.DraftConfirmed += BeginIntro;
         }
 
         // 뷰가 꺼져도 콜백은 반드시 나간다 — 유실되면 배치 페이즈가 영영 시작되지 않는다.
@@ -96,10 +107,23 @@ namespace Wassup.UI
         {
             if (_subscribedManager != null) _subscribedManager.PlacementRequested -= BeginIntro;
             _subscribedManager = null;
-            // 씬 언로드 / 앱 종료면 시작할 배치가 없다. 여기서 끊어야 Finish 가 만지는 것들
-            // (_panel · placementPhaseView · 앞으로 생길 역참조)이 전부 커버된다 — Finish 안의
-            // 대상 생존 검사 하나에만 기대면 방어선이 한 겹뿐이다(리뷰 M2).
-            if (!gameObject.scene.isLoaded) { _onDone = null; return; }
+            if (draftController != null) draftController.DraftConfirmed -= BeginIntro;
+            // 씬 언로드 / 앱 종료면 시작할 배치가 없다. Finish 를 통째로 태우지 않는 이유는
+            // 그게 만지는 것들(_panel · placementPhaseView · VFX 인스턴스)이 이미 파괴 중일
+            // 수 있어서다(리뷰 M2).
+            //
+            // ⚠ 그래도 **시퀀스는 반드시 멈춘다.** 여기서 조기 return 만 하면 살아있는
+            // 시퀀스가 pending OnComplete(ChainCallback = 0초 Delay + 콜백)를 문 채 파괴돼
+            // PrimeTween 이 "OnComplete callback was ignored" 를 에러로 찍는다. 실제로
+            // 이 경로에서 재현됐다 — 배치를 시작하지 않는 것과 트윈을 정리하는 것은 별개다.
+            if (!gameObject.scene.isLoaded)
+            {
+                _onDone = null;
+                _holding = false;
+                _tutorialMode = false;
+                if (_seq.isAlive) _seq.Stop();
+                return;
+            }
             if (_onDone != null) Finish(stopSeq: true);
         }
 
