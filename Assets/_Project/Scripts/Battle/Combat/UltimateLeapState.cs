@@ -20,6 +20,8 @@ namespace Wassup.Battle.Combat
     //   3. `ProjectileHitSystem` aoeQuery              — splash·TileAoe 피해자 + bounce 후보
     //   4. `ProjectileEmitterSystem` enemyQuery        — 발사 명세 패턴의 적 풀
     //   5. `DamageApplicationSystem` IncomingDamage    — **쿼리 제외가 아니라 버퍼 Clear**
+    //   6. `BattleBridge.IsLegalOnPlaceTarget`         — 배치 스킬(전방 관통 일격)의 후보 집합
+    //      (defender-on-place-skills unit 4 — 리뷰에서 놓친 것이 잡혔다. 이 목록이 일한 사례다)
     //
     // 5번이 이 축의 choke point 다 — 피해 producer 는 7개 파일에 흩어져 있는데 소비 1곳만 막아
     // 전부 커버한다. 1~4 는 "겨누지 않기"(그림), 5 는 "이미 날아온 것 버리기"(규칙)로 역할이 다르다.

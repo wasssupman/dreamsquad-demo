@@ -4932,6 +4932,21 @@ namespace Wassup.Bridge
         // 선 적**(±0.5)이 바로 옆에서도 탈락했다 — 실측 lat=1.0 으로 두 마리가 빠졌다.
         private const float ForwardBurstHalfWidthTiles = 0.6f;
 
+        // unit 4 rev — 후보를 **한 번만** 모은다. 방향 결정과 명중 판정이 같은 집합을 봐야 한다:
+        // 갈라 두면 한쪽만 고쳐진다(초판이 정확히 그랬다 — 방향 선정이 이탈 중인 보스를 후보로
+        // 잡아 총구를 줬고, 그 보스는 피해를 받을 수 없어 일격이 통째로 낭비됐다).
+        private readonly System.Collections.Generic.List<Entity> _forwardBurstScratch = new();
+
+        // 「이번 프레임 합법 후보」 — `AttackSystem` 의 targetCandidatesQuery 와 **같은 집합**이다.
+        // `DeadTag`(파괴 대기)와 `UltimateLeapState`(판 밖 — 들어온 피해를 버린다)를 뺀다.
+        // 빼지 않으면 때릴 수 없는 대상에 총구를 주고, `IncomingDamage` 에 넣기만 하면 올라가는
+        // affected 로그가 거짓 양성이 된다. `UltimateLeapState` 주석의 소비처 목록도 함께 갱신할 것.
+        private bool IsLegalOnPlaceTarget(Entity e)
+            => _em.HasComponent<LocalTransform>(e)
+               && _em.HasBuffer<IncomingDamage>(e)
+               && !_em.HasComponent<DeadTag>(e)
+               && !_em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e);
+
         private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, float3 center, Entity placedEntity)
         {
             if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
@@ -4939,30 +4954,44 @@ namespace Wassup.Bridge
 
             float length = unitData.onPlaceRange * tileSize;
             byte targetLayers = (byte)unitData.EffectiveAttackTargetLayers;
-            float2 forward;
-            if (!TryGetForwardBurstDirection(placedEntity, center, length, targetLayers, out forward)) return 0;
 
-            float width = tileSize * ForwardBurstHalfWidthTiles;
-            float widthSq = width * width;
-            int affected = 0;
-
+            _forwardBurstScratch.Clear();
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < entities.Length; i++)
             {
                 var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                if (!IsLegalOnPlaceTarget(e)) continue;
                 if (!CanDefenderTargetMover(targetLayers, e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                var to = new float2(pos.x - center.x, pos.z - center.z);
+                if (math.lengthsq(to) > length * length) continue;
+                _forwardBurstScratch.Add(e);
+            }
+            entities.Dispose();
+
+            // 사거리 안에 합법 후보가 없으면 사건이 성립하지 않는다.
+            // ⚠ 이 가드는 **방향 퇴화도 막는다**: 후보가 없으면 최근접 방향이 (0,0) 이 되고,
+            // 그러면 along=0 · lateral=|to| 라 방향과 무관하게 반경 0.6칸을 때린다. 이 가드를
+            // 완화하려는 사람은 forward 가 비영이라는 보장을 따로 만들어야 한다.
+            if (_forwardBurstScratch.Count == 0) return 0;
+
+            float2 forward = ResolveForwardBurstDirection(placedEntity, center);
+            float width = tileSize * ForwardBurstHalfWidthTiles;
+            float widthSq = width * width;
+            int affected = 0;
+
+            for (int i = 0; i < _forwardBurstScratch.Count; i++)
+            {
+                var e = _forwardBurstScratch[i];
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
                 float along = math.dot(toTarget, forward);
                 if (along < 0f || along > length) continue;
-                float2 closest = forward * along;
-                float2 lateral = toTarget - closest;
+                float2 lateral = toTarget - forward * along;
                 if (math.lengthsq(lateral) > widthSq) continue;
                 _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
                 affected++;
             }
-            entities.Dispose();
             return affected;
         }
 
@@ -4978,43 +5007,32 @@ namespace Wassup.Bridge
         //      `DeployedFacing` 을 on-place **앞에** 붙여 두는 것이 이걸 위해서였다.
         //   2) 없으면 사거리 안 가장 가까운 적 방향. 조준 UX 가 없는 유닛(마크스맨 등)의 규칙.
         //
-        // **사거리 안에 적이 없으면 조준이 있어도 일어나지 않는다.** 조준은 방향만 정하고
-        // 사건 자체는 적이 있어야 성립한다 — 적이 하나도 없는 배치 페이즈(전투 시작 전)에
-        // 허공을 쏘지 않는다. 배치 페이즈 배치가 이 스킬을 통째로 낭비하는 문제 자체는 별개다
-        // (spec 후속 후보).
-        private bool TryGetForwardBurstDirection(
-            Entity placedEntity, float3 center, float length, byte targetLayers, out float2 forward)
+        // **조준이 최근접보다 세다.** 조준은 방향만 정하고, 사건 성립(후보 존재)은 호출처가
+        // 이미 판정했다. 그래서 조준 방향에 아무도 없어도 발사는 일어나고 명중이 0일 수 있다 —
+        // 어디를 쏠지는 플레이어 몫이라는 뜻이다. 후보가 비어 있지 않은 것은 호출처 계약이다.
+        private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
         {
-            forward = default;
-
-            float2 aim = default;
-            bool hasAim = false;
-            if (placedEntity != Entity.Null && _em.HasComponent<DeployedFacing>(placedEntity))
+            if (placedEntity != Entity.Null && _em.Exists(placedEntity)
+                && _em.HasComponent<DeployedFacing>(placedEntity))
             {
                 var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
-                aim = new float2(facing.x, facing.y);
-                hasAim = math.lengthsq(aim) > 0.001f;
+                var aim = new float2(facing.x, facing.y);
+                if (math.lengthsq(aim) > 0.001f) return math.normalize(aim);
             }
 
+            // 후보가 전부 중심에 겹친 극단에서도 비영 방향을 돌려준다(퇴화 방지).
+            float2 forward = new float2(0f, 1f);
             float bestDistSq = float.MaxValue;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            for (int i = 0; i < entities.Length; i++)
+            for (int i = 0; i < _forwardBurstScratch.Count; i++)
             {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
-                if (!CanDefenderTargetMover(targetLayers, e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
                 var to = new float2(pos.x - center.x, pos.z - center.z);
                 float d2 = math.lengthsq(to);
-                if (d2 < 0.001f || d2 > length * length || d2 >= bestDistSq) continue;
+                if (d2 < 0.001f || d2 >= bestDistSq) continue;
                 bestDistSq = d2;
                 forward = math.normalize(to);
             }
-            entities.Dispose();
-
-            if (bestDistSq == float.MaxValue) return false; // 사거리 안에 적이 없다 = 사건 없음
-            if (hasAim) forward = math.normalize(aim);      // 방향은 조준이 이긴다
-            return true;
+            return forward;
         }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type

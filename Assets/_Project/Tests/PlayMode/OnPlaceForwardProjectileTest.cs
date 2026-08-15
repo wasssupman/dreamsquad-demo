@@ -84,9 +84,13 @@ namespace Wassup.Tests.PlayMode
             {
                 var cell = cells[i];
                 var facing = facings[i];
-                // 조준 방향 2칸 앞에만 적을 둔다. 다른 방향으로 쏘면 0.
-                var target = SpawnDummy(em, bridge.GridToWorldCenterVector(
-                    new Vector2Int(cell.x + facing.x * 2, cell.y + facing.y * 2)));
+                // 조준 방향 3칸 앞 = 맞아야 하는 적.
+                var aimed = SpawnDummy(em, bridge.GridToWorldCenterVector(
+                    new Vector2Int(cell.x + facing.x * 3, cell.y + facing.y * 3)));
+                // 조준과 **직교** 1칸 = 더 가깝지만 맞으면 안 되는 적. 이 대조군이 없으면
+                // 「조준을 무시하고 최근접 적만 쓰는」 구현도 4방향 전부 통과한다.
+                var offAxis = SpawnDummy(em, bridge.GridToWorldCenterVector(
+                    new Vector2Int(cell.x + facing.y, cell.y + facing.x)));
 
                 Entity entity;
                 Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, unit, out entity),
@@ -94,11 +98,16 @@ namespace Wassup.Tests.PlayMode
                 bridge.ActivateDeployedDefender(cell, entity, facing);
                 yield return Frames(10);
 
-                float dealt = Hp - em.GetComponentData<Health>(target).value;
-                em.DestroyEntity(target);
+                float aimedDealt = Hp - em.GetComponentData<Health>(aimed).value;
+                float offAxisDealt = Hp - em.GetComponentData<Health>(offAxis).value;
+                em.DestroyEntity(aimed);
+                em.DestroyEntity(offAxis);
 
-                Assert.Greater(dealt, 0f,
+                Assert.Greater(aimedDealt, 0f,
                     $"조준 {facing} 방향의 적이 맞아야 한다 (배치 {cell}). 0 이면 조준이 무시되고 있다");
+                Assert.AreEqual(0f, offAxisDealt, 0.01f,
+                    $"조준 {facing} 과 직교한 더 가까운 적은 맞으면 안 된다 (배치 {cell}). "
+                    + "맞았다면 조준이 아니라 최근접 적을 쫓고 있거나 통로가 아니라 반경을 때리고 있다");
             }
 
             Object.Destroy(unit);
@@ -134,6 +143,71 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(unit);
 
             Assert.Greater(dealt, 0f, "레인 오프셋만큼 벗어난 적도 통로 안이어야 한다");
+        }
+
+        // 「이번 프레임 합법 후보」 회귀 — 판 밖(궁극기 도약 예고)인 적은 총구를 훔치면 안 된다.
+        //
+        // 그 상태의 적은 `DamageApplicationSystem` 이 IncomingDamage 를 통째로 비우므로 때릴 수
+        // 없는 대상이다. 후보에 남겨 두면 더 가깝다는 이유로 방향을 가져가고, 진짜 적이 있는
+        // 방향은 통째로 버려진다 — 이 커밋이 고치려던 affected=0 이 다른 원인으로 재발한다.
+        [UnityTest]
+        public IEnumerator OutOfPlayEnemy_DoesNotStealTheMuzzle()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var unit = MakeTestUnit("marksman", "test_onplace_forward_legal");
+            Prepare(bridge, gm, unit);
+            var cell = FindPlaceableCell(bridge, unit);
+            Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
+
+            // 판 밖(도약 예고) 적이 **더 가깝다**. remaining 을 길게 줘 테스트 동안 착지하지 않게.
+            var outOfPlay = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
+            em.AddComponentData(outOfPlay, new Wassup.Battle.Combat.UltimateLeapState { remaining = 60f });
+            // 진짜 적은 더 멀고 다른 방향.
+            var real = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 4, cell.y)));
+
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
+            yield return Frames(10);
+
+            float realDealt = Hp - em.GetComponentData<Health>(real).value;
+            em.DestroyEntity(outOfPlay);
+            em.DestroyEntity(real);
+            Object.Destroy(unit);
+
+            Assert.Greater(realDealt, 0f,
+                "판 밖 적이 더 가깝더라도 총구는 때릴 수 있는 적을 향해야 한다. "
+                + "0 이면 후보 필터가 UltimateLeapState 를 빼지 않고 있다");
+        }
+
+        // 사거리 밖 적만 있으면 아무 일도 일어나지 않는다(후보 반경 필터 회귀).
+        [UnityTest]
+        public IEnumerator EnemyBeyondRange_IsNeverHit()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var unit = MakeTestUnit("marksman", "test_onplace_forward_range");
+            Prepare(bridge, gm, unit);
+            var cell = FindPlaceableCell(bridge, unit);
+            Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
+
+            // onPlaceRange(6)보다 훨씬 멀다.
+            int far = (int)unit.onPlaceRange + 6;
+            var beyond = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + far)));
+
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
+            yield return Frames(10);
+
+            float dealt = Hp - em.GetComponentData<Health>(beyond).value;
+            em.DestroyEntity(beyond);
+            Object.Destroy(unit);
+
+            Assert.AreEqual(0f, dealt, 0.01f, "사거리 밖 적은 맞으면 안 된다");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
