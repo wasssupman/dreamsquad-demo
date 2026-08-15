@@ -132,5 +132,93 @@ namespace Wassup.Tests.PlayMode
             Assert.Less(offRatio, 0.35f,
                 "적 다수가 예고선을 벗어나 걷는다 — 가이드와 이동선이 갈렸다(rev 3 회귀)");
         }
+
+        // waypoint-flight-enemy unit 11 — **레인 기본 경로 맵에서도** 예고선이 실제 이동선인가.
+        //
+        // 사용자 실측 증상(2026-08-15): 「웨이포인트 레인인데 경로 가이드가 최단거리로 그려진다」.
+        // 원인은 BuildSpawnGuideForecasts 가 unit.waypointPathIndex(SO 저작, 지상 전원 -1)만 싣고
+        // 맵의 레인 기본(GeneratedMap.RouteForSpawn)을 해석하지 않은 것 — 스폰(SpawnUnit)은 두 축을
+        // WaypointRouting.ResolvePathIndex 로 합치는데 예보만 한 축이었다.
+        //
+        // Coil(풀 1)은 spawnRoutes = [1, -1] — 레인 0 지상이 경로 1(웨이포인트 (8,9))을 기본으로 탄다.
+        [UnityTest]
+        public IEnumerator Coil_RoutedLaneGuide_AdvertisesTheLaneDefaultRoute()
+        {
+            const int CoilMapIndex = 1;
+            LogAssert.ignoreFailingMessages = true;
+            DevMapOverride.Index = CoilMapIndex;
+            RenderTexture.active = null;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            bridge.BeginPlacement();
+            yield return null;
+            bridge.StartBattle();
+            yield return null;
+
+            // ── seam: 예보가 레인 기본 경로를 싣는가 ──
+            Assert.IsTrue(bridge.TryGetSpawnGuideForecast(out _, out var forecasts),
+                "웨이브 1 예보가 없다");
+            int lane0Ground = -1;
+            for (int i = 0; i < forecasts.Length; i++)
+                if (forecasts[i].laneIndex == 0
+                    && (forecasts[i].traversalLayers & (byte)Wassup.Data.PlacementLayer.Air) == 0)
+                { lane0Ground = i; break; }
+            Assert.GreaterOrEqual(lane0Ground, 0, "레인 0 지상 예보가 없다 — 계측 무효");
+            Assert.AreEqual(1, forecasts[lane0Ground].waypointPathIndex,
+                "레인 0 지상 예보가 맵 레인 기본 경로(1)를 싣지 않았다 — 가이드가 최단거리를 그린다");
+
+            // ── 그 예보로 그린 선이 웨이포인트를 실제로 경유하는가 ──
+            var em = (EntityManager)GetField(bridge, "_em");
+            var field = em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.FlowFieldSingleton>())
+                .GetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>();
+            var guide = new List<Vector3>();
+            Assert.IsTrue(bridge.TryGetSpawnPathSim(
+                    forecasts[lane0Ground].laneIndex,
+                    forecasts[lane0Ground].waypointPathIndex,
+                    forecasts[lane0Ground].traversalLayers, guide),
+                "레인 0 예고선을 못 만든다");
+            var wpWorld = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
+                new int2(8, 9), field.tileSize, 0f, origin: field.origin);
+            float wpDist = DistanceToPolyline(new float2(wpWorld.x, wpWorld.z), guide) / field.tileSize;
+            Debug.Log($"[unit11] 레인0 가이드 점 {guide.Count} · 선↔웨이포인트(8,9) 최단 {wpDist:F2} 타일");
+            Assert.Less(wpDist, NearGuideTiles, "레인 0 가이드가 웨이포인트 (8,9) 를 경유하지 않는다");
+
+            // ── 증상 본체: 경로 1 을 실제로 걷는 적들이 그 가이드 근처를 지나가는가 ──
+            int sampled = 0, offGuide = 0;
+            float worstOff = 0f;
+            float t0 = Time.unscaledTime;
+            while (Time.unscaledTime - t0 < 12f)
+            {
+                using (var q = em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Movement.WaypointFollow>(),
+                    ComponentType.ReadOnly<Unity.Transforms.LocalTransform>()))
+                {
+                    var follows = q.ToComponentDataArray<Wassup.Battle.Movement.WaypointFollow>(Allocator.Temp);
+                    var xf = q.ToComponentDataArray<Unity.Transforms.LocalTransform>(Allocator.Temp);
+                    for (int k = 0; k < follows.Length; k++)
+                    {
+                        if (follows[k].pathIndex != 1) continue;   // 레인 0 지상(경로 1)만
+                        float d = DistanceToPolyline(
+                            new float2(xf[k].Position.x, xf[k].Position.z), guide) / field.tileSize;
+                        sampled++;
+                        worstOff = math.max(worstOff, d);
+                        if (d > NearGuideTiles) offGuide++;
+                    }
+                    follows.Dispose(); xf.Dispose();
+                }
+                yield return null;
+            }
+
+            float offRatio = sampled > 0 ? (float)offGuide / sampled : 1f;
+            Debug.Log($"[unit11] 경로1 적 표본 {sampled} · {NearGuideTiles} 타일 초과 이탈 {offGuide} "
+                      + $"({offRatio:P1}) · 최대 이탈 {worstOff:F2} 타일");
+            Assert.Greater(sampled, 30, "경로 1 을 걷는 적 표본이 없다 — 계측이 공허하다");
+            Assert.Less(offRatio, 0.35f,
+                "경로 1 적 다수가 광고된 가이드를 벗어나 걷는다 — 예보와 스폰의 경로 해석이 갈렸다");
+        }
     }
 }

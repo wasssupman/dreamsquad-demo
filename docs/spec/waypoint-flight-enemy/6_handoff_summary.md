@@ -120,3 +120,12 @@
 - **라이브 지상 경로 적** — 지상 2경로 맵을 라이브에 내려면 경로 따르는 지상 적의 이름·스탯·실루엣 저작이 선행(의도적 범위 축소, unit 5 문서 참조). `Enemy_WaypointBasic/Alt` 는 dev 전용.
 - 나머지 맵 경로 저작, 대공사수 고유 아트·최종 밸런스, Air 우선/추가 피해는 README 후속 후보다.
 - 비방향 defender Entity/Cell 투사체 패턴이 실제 콘텐츠에 들어올 때 emitter 후보에도 타겟층 필터를 추가한다.
+
+---
+
+## unit 11 (2026-08-15) — 예고선의 레인 기본 경로 해석
+
+- **증상**: 레인 경로 맵(Coil·Zig)에서 가이드는 최단거리, 유닛은 웨이포인트. 원인 = `BuildSpawnGuideForecasts` 가 SO 축만 실음(unit 9 켜기의 누락분). 상세는 [11](11_guide_route_resolution.md).
+- **수정**: 생성기에 `laneRoutes` 옵셔널 주입 + `WaypointRouting.ResolvePathIndex` 재사용(규칙은 계속 한 곳). `QueueWave` 가 `RouteForSpawn` 배열 전달.
+- **검증**: Coil 재현 빨강 → 초록, EditMode 14/14, Duel 무회귀.
+- ⚠ **`ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder` 는 unit 5(34c1603f) 이후 계속 빨강** — Skimmer `minWaveNumber 8` 이 WaypointLab 첫 웨이브 Air 전제를 깼다. unit 11 무관(스태시 대조 확인). 랩 전용 Air 검증 유닛 신설이 후보.

@@ -2321,7 +2321,16 @@ namespace Wassup.Bridge
 
             // waypoint-routing unit 7 — 실제 pending 과 **같은 상세 펼침 결과**에서
             // (스웜 × 실제 lane) 예고를 만든다. 시간·lane 규칙을 별도로 재연산하지 않는다.
-            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries);
+            // waypoint-flight-enemy unit 11 — 예보도 스폰(SpawnUnit → RouteForSpawn)과 같은
+            // 레인 기본 경로를 해석한다. 이걸 빼먹으면 레인 경로 맵(Coil·Zig)에서 가이드만
+            // 최단거리를 그린다(사용자 지적 2026-08-15).
+            int[] laneRoutes = null;
+            if (_generatedMap.IsCreated)
+            {
+                laneRoutes = new int[laneCount];
+                for (int i = 0; i < laneCount; i++) laneRoutes[i] = _generatedMap.RouteForSpawn(i);
+            }
+            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries, laneRoutes);
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
