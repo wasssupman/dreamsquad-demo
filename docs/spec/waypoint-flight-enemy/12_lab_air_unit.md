@@ -25,6 +25,12 @@ unit 3~4 의 라이브 계측 `ValidationWave_ShowsGuides_ThenPassesWaypointsInA
 | 컨셉 배정 | N/A — 랩 덱은 컨셉 풀 없음(레거시 2종 경로) |
 | 튜토리얼 | N/A — dev 전용 유닛은 교습 로스터 밖 (`TutorialEntry_TeachesEveryLiveEnemyTypeInTenWaves` 는 라이브 로스터만 센다) |
 
+## 보강 (2026-08-16) — 마음 안정도가 관측을 끊는 문제
+
+사용자 Play 관측(「중간에 마음을 공격하니 경로 이동 확인이 불가」)의 원인: 랩 덱 `goalStabilityMax 1000` 대비 랩 유닛 화력이 높아(Air 50dps·지상 20dps, 방어유닛이 없어 적이 안 죽고 누적) **첫 웨이브 도착 ~7초 만에 골 붕괴 → 판 종료**. 마음(Core)은 무공격이라(battle-structures unit 5) 적이 경로를 이탈한 것이 아니라 **판이 일찍 끝난** 것이다.
+
+랩은 이동 관측용이므로 `goalStabilityMax 999999` 로 — 타이머 180초의 누적 공성 피해(~86,000)를 여유 있게 버틴다. 적은 도착 후 마음을 계속 때리며 쌓이지만(정상), 매 웨이브의 경로는 타이머 끝까지 관측 가능하다.
+
 ## 완료 기준
 
 - `ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder` **초록** — unit 5 이후 처음
