@@ -82,4 +82,4 @@ _resultShown/_running  →  BuildTally(취합)  →  Logger(기록)
 - [ ] **Play 육안 미확인**: 승리/패배 각 1회 — 결과 3줄(처치·안정도·도달 웨이브)이
       리팩토링 전과 같고 `complete ok — score=N` 의 `N` 이 총점과 같다
 
-> 2026-08-15 구현. 자동 검증(컴파일·EditMode·PlayMode)까지 완료, 실기 Play 육안 확인은 대기.
+> 2026-08-15 구현 · 커밋 `1e8c1a90`. 자동 검증(컴파일·EditMode·PlayMode)까지 완료, 실기 Play 육안 확인은 대기.
