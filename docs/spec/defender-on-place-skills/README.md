@@ -13,6 +13,7 @@
 | Phase 2 | `2_unit_assignment.md` | Defender 10종 임시 스킬 배정 |
 | Phase 3 | `3_vfx_logging_validation.md` | VFX, log, 검증 기준 |
 | 4 | `4_forward_burst_direction.md` | 전방 관통 일격 조준 방향 + 통로 폭 (버그 수정) |
+| 5 | `5_handoff_summary.md` | unit 4 인계 요약 (커밋 3건 · 되돌린 연출 시도 포함) |
 
 ## 공통 원칙
 
