@@ -37,8 +37,13 @@ namespace Wassup.Data.StatImport
         public float? deployDelaySec;
         public int? attackTargetCount;
         public int? cost;
-        // defender-placement-cooldown — 유닛 타입 재배치 대기(초). 0 = 쿨타임 없음.
+        // defender-placement-cooldown — 배치 성공이 거는 연사 게이트(초). 0 = 없음.
         public float? placementCooldown;
+        // defender-clock-out unit 5 — 이탈(퇴근/사망) 재배치 대기. 사망 초 하나 + 퇴근 비율로
+        // 저작한다(퇴근 초를 따로 두면 뒤집힌 채 조용히 배포된다). 비율은 0~1 이며 시트가
+        // 벗어난 값을 밀어 넣어도 DefenderUnitData 의 Clamp01 이 읽는 자리에서 조인다.
+        public float? deathCooldown;
+        public float? retireCooldownRatio;
         // defender-board-limit 0 — 판 위 동시 존재 상한. 기본 1, 무제한은 큰 수(100).
         public int? maxOnBoard;
         public int? aggroCapacity;

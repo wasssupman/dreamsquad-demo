@@ -117,6 +117,30 @@ namespace Wassup.Data
         // (defender-board-limit README 계약 10).
         public float placementCooldown = 0f;
 
+        // defender-clock-out unit 5 — **이탈 쿨타임.** 위 placementCooldown 과 다른 축이다:
+        // 저건 "방금 놓았다" 가 거는 연사 게이트(maxOnBoard>1 전용)고, 이건 "판에서 자리가
+        // 비었다" 가 거는 재배치 대기다. 트리거는 셋(배치·퇴근·사망)인데 값은 둘이다.
+        //
+        // 퇴근을 별도 초로 저작하지 않고 **비율**로 파생시키는 것이 이 spec 의 계약이다.
+        // 두 초를 독립 저작하면 언젠가 뒤집히고, 그 인버전은 화면에 안 보인다 — 이 필드가
+        // 생기기 전이 정확히 그 상태였다(퇴근 4초 / 사망 0초, 즉 죽게 두는 쪽이 항상 빨랐다).
+        // 0~1 이면 뒤집을 방법이 없다.
+        //
+        // 기존 asset 은 YAML 에 두 키가 없어 **이니셜라이저**로 채워진다(maxOnBoard 와 같은
+        // 수법) — 10 × 0.4 = 퇴근 4초 = 오늘의 라이브 값. 바뀌는 체감은 사망 10초 하나다.
+        public float deathCooldown = 10f;
+
+        [Range(0f, 1f)]
+        public float retireCooldownRatio = 0.4f;
+
+        public float EffectiveDeathCooldown => Mathf.Max(0f, deathCooldown);
+
+        // ⚠ Clamp01 이 진짜 방어선이다. [Range] 는 인스펙터만 막고, 시트 임포터는
+        // 리플렉션으로 필드에 직접 써서 Range 도 OnValidate 도 안 탄다(UnitStatFieldMapper).
+        // 읽는 자리에서 조여야 "퇴근 ≤ 사망" 이 어느 저작 경로로도 안 샌다.
+        public float EffectiveRetireCooldown
+            => EffectiveDeathCooldown * Mathf.Clamp01(retireCooldownRatio);
+
         // defender-board-limit 0 — 판 위 동시 존재 상한. 기본 1 = 이 유닛은 판에 한 기.
         // **매치당 총 횟수가 아니다** — 죽어서 자리가 비면 다시 배치할 수 있다.
         // 무제한은 큰 수(100)로 적는다. "0 = 무제한" 은 아래 폴백과 충돌하므로 쓰지 않는다.

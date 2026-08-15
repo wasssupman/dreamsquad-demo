@@ -52,7 +52,8 @@
 - **`DefenderRetired` 를 `DefenderDied` 에 플래그로 합치지 말 것.** 구독자 2개가 퇴근에서 둘 다
   다르게 군다(트레이는 쿨타임 추가, 손패는 각성 제거).
 - **`DefenderSelector` 의 퇴근 핸들러를 사망 핸들러와 합치지 말 것.**
-  `Death_DoesNotStartPlacementCooldown` 이 그 경보다 — 합치면 즉시 빨개진다.
+  unit 5 로 이유가 **강해졌다** — 예전엔 "한쪽에만 쿨타임이 있다"였고 지금은 "**두 쪽이 서로 다른
+  값을 건다**"다. 경은 `Death_StartsLongerCooldown_ThanRetire`.
 - **`ReleaseDefenderTile` 에 뷰 반납·엔티티 파괴를 넣지 말 것.** 둘 다 호출처마다 달라
   `bool playDeathAnim` 같은 플래그 파라미터를 부르게 된다.
 - **액션 슬롯을 다시 기능 이름으로 특화하지 말 것**(`SetActionState(bool, string)` 유지).
@@ -76,11 +77,14 @@
 
 - **연출은 rev 5 로 확정**(≈1.6초). ⚠ 여기서 더 줄이려면 **키링·저항을 함께 버려야** 한다 —
   rev 3 이 증명한 대로 짧은 연출과 부착 어휘는 양립하지 않는다. 둘은 한 묶음이다.
-- **열린 밸런스**: 사망엔 쿨타임이 없고 퇴근엔 있다 → `placementCooldown` 저작 시 "죽게 두는 게
-  빠른가"를 의식할 것. 실플레이에서 방치가 최적으로 굳으면 사망에도 태우는 rev.
+- ~~**열린 밸런스**: 사망엔 쿨타임이 없고 퇴근엔 있다~~ → **unit 5 에서 닫힘**(2026-08-15).
+  두 출구가 각자 대기를 갖고 퇴근 = 사망 × ratio(0~1)라 뒤집힐 수 없다. `deathCooldown` /
+  `retireCooldownRatio` 는 **시트 저작**(Defenders 탭에 열 2개 추가 필요 — 없으면 이니셜라이저
+  10 / 0.4 로 도는 것이 정상 폴백).
 - **`DcTriggerKind.OnRetire`** (핫식스 드랍 카드 등) — README 후속 후보에 필요 항목·함정 정리됨.
 - **네이밍**: "퇴근"이 시즌 기믹 clock-out 과 화면에서 겹친다. UI 문안만 바꾸면 된다.
-- **`placementCooldown` 값 저작** — 지금 전 유닛 0(= 즉시 재배치). 켜는 것은 저작 행위다.
+- **`placementCooldown` 은 이제 다른 축**(배치가 거는 연사 게이트, `maxOnBoard > 1` 전용).
+  라이브 26종이 4를 들고 있는데 상한 1 이라 죽은 값이다 — 정리하려면 별도 저작 결정.
 
 ## 작업 환경 메모 (이 spec 특유)
 

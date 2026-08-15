@@ -139,8 +139,8 @@ namespace Wassup.UI
             {
                 bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
                 bridge.DefenderPlaced += OnDefenderPlacedRefresh;
-                bridge.DefenderDied -= OnDefenderDiedRefresh;
-                bridge.DefenderDied += OnDefenderDiedRefresh;
+                bridge.DefenderDied -= OnDefenderDied;
+                bridge.DefenderDied += OnDefenderDied;
                 bridge.DefenderRetired -= OnDefenderRetired;
                 bridge.DefenderRetired += OnDefenderRetired;
             }
@@ -157,7 +157,7 @@ namespace Wassup.UI
             if (bridge != null)
             {
                 bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
-                bridge.DefenderDied -= OnDefenderDiedRefresh;
+                bridge.DefenderDied -= OnDefenderDied;
                 bridge.DefenderRetired -= OnDefenderRetired;
             }
         }
@@ -167,23 +167,33 @@ namespace Wassup.UI
             => RefreshExhaustedStates();
 
         // defender-board-limit 1 — 유닛이 죽으면 그 타입의 자리가 하나 빈다 → 소진 해제 가능.
-        private void OnDefenderDiedRefresh(Unity.Entities.Entity _, DefenderUnitData __, Vector3 ___)
-            => RefreshExhaustedStates();
+        // defender-clock-out unit 5 — 그리고 **사망도 이탈 쿨타임을 건다.** unit 2 시절에는
+        // 사망이 공짜였는데, 퇴근에만 대가가 있으니 "죽게 두는 쪽이 항상 빠르다" 였다(인버전).
+        private void OnDefenderDied(Unity.Entities.Entity _, DefenderUnitData data, Vector3 __)
+        {
+            StartExitCooldown(data, data != null ? data.EffectiveDeathCooldown : 0f);
+            RefreshExhaustedStates();
+        }
 
-        // defender-clock-out unit 2 — 퇴근도 자리를 비우지만 **쿨타임이 붙는다.**
+        // defender-clock-out unit 2 — 퇴근도 자리를 비우지만 **더 짧은 쿨타임이 붙는다.**
         //
-        // ⚠ DefenderDied 핸들러와 합치지 말 것. 리페인트는 같지만 쿨타임 시작이 사망에는
-        // 없어야 한다 — "죽게 두는 쪽엔 대기가 없고 퇴근에는 있다" 가 이 spec 의 열린 밸런스
-        // 항목이고, 합치는 순간 그 결정이 코드에서 사라진다.
+        // ⚠ DefenderDied 핸들러와 합치지 말 것(unit 5 로 이유가 강해졌다). 리페인트는 같지만
+        // 거는 값이 다르다 — 퇴근이 사망보다 짧은 것이 "방치보다 회수가 이득"이라는 이 spec 의
+        // 인센티브 전부다. 한 함수로 접으면 그 차이를 담을 자리가 사라진다.
         //
-        // placementCooldown == 0 이면 StartCooldown 이 no-op 이라 즉시 재배치 가능하다
-        // ("0 = inert"). 그게 옳은 기본값이다 — 쿨타임을 켜는 것은 저작 행위다.
+        // 값이 0 이면 StartCooldown 이 no-op 이라 즉시 재배치 가능하다("0 = inert").
         private void OnDefenderRetired(Unity.Entities.Entity _, DefenderUnitData data, Vector3 __)
         {
-            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
-            if (rt != null && data != null) rt.StartCooldown(data, data.placementCooldown);
+            StartExitCooldown(data, data != null ? data.EffectiveRetireCooldown : 0f);
             RefreshExhaustedStates();
             PulseSlotFor(data); // unit 3 — "저기로 갔다" 를 트레이가 자기 공간에서 답한다
+        }
+
+        // 두 이탈 경로가 공유하는 것은 **런타임 도달 방법**뿐이다(값은 각자 정한다).
+        private void StartExitCooldown(DefenderUnitData data, float seconds)
+        {
+            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (rt != null && data != null) rt.StartCooldown(data, seconds);
         }
 
         // defender-clock-out unit 3 — 퇴근한 유닛의 트레이 칸을 1회 튕긴다.
@@ -518,8 +528,13 @@ namespace Wassup.UI
 
                 // defender-placement-cooldown 2 — 쿨다운>0 유닛만 오버레이 생성("0 = inert",
                 // 머티리얼 인스턴스도 절약). 0 유닛은 전 필드 null → 리페인트가 건너뛴다.
+                //
+                // defender-clock-out unit 5 — **쿨타임을 거는 트리거가 셋**이라 게이트도 셋을
+                // 봐야 한다. 이탈 축은 EffectiveDeathCooldown 하나로 충분하다 — 퇴근은 그것의
+                // 0~1 배라 사망이 0 이면 퇴근도 0 이다. 이걸 빼먹으면 placementCooldown 만 0 인
+                // 유닛의 오버레이가 아예 안 만들어져 쿨타임이 걸려도 화면에 안 뜬다.
                 GameObject cdRoot = null; Image cdFill = null; TextMeshProUGUI cdText = null; Material cdMat = null; Image cdRim = null;
-                if (data.placementCooldown > 0f)
+                if (data.placementCooldown > 0f || data.EffectiveDeathCooldown > 0f)
                     BuildCooldownOverlay(go.transform, out cdRoot, out cdFill, out cdText, out cdMat, out cdRim);
 
                 // defender-board-limit 1 — "출전 중" 테두리 순환. 셀 전체를 덮되 셰이더가 가장자리
