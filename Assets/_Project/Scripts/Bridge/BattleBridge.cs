@@ -4891,7 +4891,7 @@ namespace Wassup.Bridge
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
             {
-                affected = ApplyForwardOnPlaceProjectile(unitData, placedCell, GridToWorldCenter(placedCell));
+                affected = ApplyForwardOnPlaceProjectile(unitData, GridToWorldCenter(placedCell), placedEntity);
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.GainCost)
             {
@@ -4928,14 +4928,21 @@ namespace Wassup.Bridge
             return affected;
         }
 
-        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, Vector2Int placedCell, float3 center)
+        // defender-on-place-skills unit 4 — 통로 반폭(타일). 0.45 였을 때 **레인 오프셋만큼 옆으로
+        // 선 적**(±0.5)이 바로 옆에서도 탈락했다 — 실측 lat=1.0 으로 두 마리가 빠졌다.
+        private const float ForwardBurstHalfWidthTiles = 0.6f;
+
+        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, float3 center, Entity placedEntity)
         {
             if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
             if (!_aliveAttackersQueryCreated) return 0;
 
-            float2 forward = FindNearestPathDirection(placedCell);
             float length = unitData.onPlaceRange * tileSize;
-            float width = tileSize * 0.45f;
+            byte targetLayers = (byte)unitData.EffectiveAttackTargetLayers;
+            float2 forward;
+            if (!TryGetForwardBurstDirection(placedEntity, center, length, targetLayers, out forward)) return 0;
+
+            float width = tileSize * ForwardBurstHalfWidthTiles;
             float widthSq = width * width;
             int affected = 0;
 
@@ -4944,7 +4951,7 @@ namespace Wassup.Bridge
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
-                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
+                if (!CanDefenderTargetMover(targetLayers, e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
                 float along = math.dot(toTarget, forward);
@@ -4959,31 +4966,55 @@ namespace Wassup.Bridge
             return affected;
         }
 
-        private float2 FindNearestPathDirection(Vector2Int placedCell)
+        // defender-on-place-skills unit 4 — 전방 관통 일격의 총구 방향.
+        //
+        // 옛 규칙은 "가장 가까운 길 칸 쪽"(`FindNearestPathDirection`)이었고 **삭제했다.** 그 탐색은
+        // 맵을 y·x 오름차순으로 훑으며 동점에서 먼저 찾은 칸을 지켰는데, 배치 셀 이웃이 전부 Walk 이면
+        // (Walk 위 배치 허용 이후로는 보통) 거리 1 동점자 중 남쪽이 항상 이겼다 — 실측 252칸 중 173칸이
+        // (0,-1). 총구가 사실상 남쪽에 고정돼 사용자 플레이 4회 배치가 전부 affected=0 이었다.
+        //
+        // 새 규칙(사용자 결정 2026-08-15):
+        //   1) 조준이 있으면 그 방향. 방향 지정 유닛의 조준을 스킬이 물려받는다 — 활성화가
+        //      `DeployedFacing` 을 on-place **앞에** 붙여 두는 것이 이걸 위해서였다.
+        //   2) 없으면 사거리 안 가장 가까운 적 방향. 조준 UX 가 없는 유닛(마크스맨 등)의 규칙.
+        //
+        // **사거리 안에 적이 없으면 조준이 있어도 일어나지 않는다.** 조준은 방향만 정하고
+        // 사건 자체는 적이 있어야 성립한다 — 적이 하나도 없는 배치 페이즈(전투 시작 전)에
+        // 허공을 쏘지 않는다. 배치 페이즈 배치가 이 스킬을 통째로 낭비하는 문제 자체는 별개다
+        // (spec 후속 후보).
+        private bool TryGetForwardBurstDirection(
+            Entity placedEntity, float3 center, float length, byte targetLayers, out float2 forward)
         {
-            if (!_generatedMap.IsCreated) return new float2(1f, 0f);
+            forward = default;
 
-            int bestDistSq = int.MaxValue;
-            Vector2Int best = placedCell + Vector2Int.right;
-            for (int y = 0; y < _generatedMap.gridSize.y; y++)
-            for (int x = 0; x < _generatedMap.gridSize.x; x++)
+            float2 aim = default;
+            bool hasAim = false;
+            if (placedEntity != Entity.Null && _em.HasComponent<DeployedFacing>(placedEntity))
             {
-                if (_generatedMap.TileAt(new int2(x, y)) != MapTileType.Walk) continue;
-                int dx = x - placedCell.x;
-                int dy = y - placedCell.y;
-                // placement-mask unit 3 — 배치 셀 자신은 제외. B-1 로 Walk 셀 위 배치가 가능해져
-                // 자기 셀이 d2=0 최근접이 되면 zero-길이 가드가 고정 +x 를 쏘던 결함 — 방향의 의미는
-                // "가장 가까운 '경로'를 향해" 이므로 최근접 '타' Walk 셀이 맞다.
-                if (dx == 0 && dy == 0) continue;
-                int d2 = dx * dx + dy * dy;
-                if (d2 >= bestDistSq) continue;
-                bestDistSq = d2;
-                best = new Vector2Int(x, y);
+                var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
+                aim = new float2(facing.x, facing.y);
+                hasAim = math.lengthsq(aim) > 0.001f;
             }
 
-            var dir = new float2(best.x - placedCell.x, best.y - placedCell.y);
-            if (math.lengthsq(dir) < 0.001f) return new float2(1f, 0f);
-            return math.normalize(dir);
+            float bestDistSq = float.MaxValue;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                if (!CanDefenderTargetMover(targetLayers, e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                var to = new float2(pos.x - center.x, pos.z - center.z);
+                float d2 = math.lengthsq(to);
+                if (d2 < 0.001f || d2 > length * length || d2 >= bestDistSq) continue;
+                bestDistSq = d2;
+                forward = math.normalize(to);
+            }
+            entities.Dispose();
+
+            if (bestDistSq == float.MaxValue) return false; // 사거리 안에 적이 없다 = 사건 없음
+            if (hasAim) forward = math.normalize(aim);      // 방향은 조준이 이긴다
+            return true;
         }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
