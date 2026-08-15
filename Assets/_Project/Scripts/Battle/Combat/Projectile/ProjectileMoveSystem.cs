@@ -271,6 +271,43 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
+                    case MovementKind.OrbitAroundPoint:
+                    {
+                        // dreamcatcher-content-4 unit 1 — 한 점을 도는 원운동(화염구).
+                        // 타겟도 착탄 셀도 없다: 중심(origin) · 반경(maxDistance) ·
+                        // 각속도(speed) · 지속(flightTime)이 궤적의 전부다.
+                        //
+                        // prevPos 를 스텝 **전에** 찍는 것은 DirectionalLinear 과
+                        // 공유하는 규약이다 — PathHit 은 그 선분을 스윕해 프레임 사이
+                        // 터널링 없이 맞힌다.
+                        // ⚠ 첫 프레임의 선분만 중심 → 궤도 위 첫 점(반경 길이의 방사선)이다:
+                        // 드레인이 투사체를 궤도 중심에 스폰하기 때문. 화면도 같은 프레임에
+                        // 같은 점프를 보이므로 스윕은 눈에 보이는 궤적과 일치한다(정직한 선분).
+                        float3 currentPos = transform.ValueRO.Position;
+                        projectile.ValueRW.prevPos = currentPos;
+
+                        float elapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = elapsed;
+                        transform.ValueRW.Position = Orbit.Position(
+                            projectile.ValueRO.origin, projectile.ValueRO.maxDistance,
+                            projectile.ValueRO.speed, elapsed);
+
+                        // 접선을 매 프레임 갱신한다. DirectionalLinear 은 발사 시 방향을
+                        // 한 번 굳히면 끝이지만(직선), 궤도는 진행 방향이 계속 바뀌므로
+                        // 여기서 써 주지 않으면 PathHit 의 front-most 정렬이 스폰 시의
+                        // 0 벡터를 계속 본다.
+                        projectile.ValueRW.direction = Orbit.Tangent(
+                            projectile.ValueRO.speed, elapsed);
+
+                        // 도착 = "비행 종료"이지 "착탄"이 아니다 — PathHit 이 이번 프레임의
+                        // 스윕을 마친 뒤 소멸시킨다(DirectionalLinear 의 사거리 소진과 같은 뜻).
+                        // 각속도는 여기서 클램프하지 않는다: 프레임당 회전각 상한은 저작이
+                        // 지고(문서 §4-1), 코드로 조이면 저프레임에서 궤도가 느려진다.
+                        if (elapsed >= projectile.ValueRO.flightTime)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
                     default:
                         // Unhandled movement kind: destroy rather than leak an
                         // immortal entity (no position, no arrival, no resolve). A
