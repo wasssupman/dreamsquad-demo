@@ -1,10 +1,17 @@
 # Spec — Defender Clock-Out (배치 유닛 퇴근)
 
-상태: **구현 완료 2026-08-14 — units 0~3 커밋.** 자동 검증 전부 통과(퇴근 5/5 · 회귀 23/23 ·
-EditMode 8/8). 연출은 rev 2(퇴근 스냅) 확정 — rev 3 키링 회수는 시도 후 **기각**
-(이유는 [`3_retire_exit_flight.md`](3_retire_exit_flight.md) 상단, 재시도 금지 근거 포함).
-남은 것은 **퇴근 스냅 육안 확인**과 **`placementCooldown` 값 저작**뿐.
+상태: **완료 2026-08-15 — units 0~3 + 연출 rev 5 + 코드리뷰 반영.**
+자동 검증 `DefenderRetireTest` **7/7** · 회귀 9개 클래스 **23/23** · EditMode **8/8**.
+**사용자 Play 확인 완료**(2026-08-15). 코드리뷰 2트랙(일반 · ECS 경계) 반영 완료 —
+ECS 경계는 6항목 전부 통과, 일반 리뷰의 실결함 2건 수정.
+
+연출은 **rev 5("퇴근 중": 줄이 걸림 → 박힌 채 움찔 → 카메라로 왔다가 멀어지며 뱅글뱅글 이탈, ~1.6초)**.
+rev 이력과 **rev 3 기각 근거(짧은 연출에 부착 어휘는 안 들어간다)** 는
+[`3_retire_exit_flight.md`](3_retire_exit_flight.md) 상단.
 인계는 [`4_handoff_summary.md`](4_handoff_summary.md).
+
+남은 것은 코드가 아니라 **콘텐츠 결정** 하나 — `placementCooldown` 값 저작(현재 전 유닛 0 = 즉시
+재배치). 켜는 순간 아래 「열린 밸런스 항목」이 실제로 작동하기 시작한다.
 
 ## 검증 질문
 
