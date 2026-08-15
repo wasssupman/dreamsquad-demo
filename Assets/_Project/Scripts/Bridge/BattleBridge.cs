@@ -1963,7 +1963,7 @@ namespace Wassup.Bridge
 
         // wave-pull-revival unit 3 — 「진출 예상선」. HUD 표시 **전용**이다.
         //
-        // ⚠ 이 값을 BattleLogger·ScoreMath.EncodeSubmission·결과 화면에 넣지 말 것.
+        // ⚠ 이 값을 BattleLogger·서버 제출 점수·결과 화면에 넣지 말 것.
         // 지금 par 는 서버가 아니라 저작 비율에서 나오는 **가짜**이고(PaceBaseline 주석),
         // 기록에 새는 순간 가짜 경쟁 수치가 진짜인 척 저장된다.
         public bool TryGetPaceBaseline(out int expected)
@@ -5381,9 +5381,9 @@ namespace Wassup.Bridge
         private int EffectiveLeakLimit()
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
-        // battle-score-formula unit 7 — 스트레스점수의 입력. 점수 계산(CalculateBattleScore)과
-        // 결과 화면 표기(FinishTally)가 **같은 값**을 써야 화면에서 검산된다. 한계는 덱 원본값
+        // battle-score-formula unit 7 — 스트레스 누적/한계의 HUD 표기 짝. 한계는 덱 원본값
         // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
+        // (구 스트레스 **점수**의 입력이기도 했으나 그 축은 unit 3 에서 폐기됐다.)
         private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
         private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
 
@@ -5834,10 +5834,10 @@ namespace Wassup.Bridge
                         newCoreBreach = true;
                         // 리뷰 A-M1 — 여기서 바로 열지 않는다. 열기(유출 전환)는 아래 미러
                         // 갱신 **뒤** — 붕괴가 만든 유출이 이 프레임에 스트레스 상한을 채우면
-                        // 그 사슬(LeakSiegingEnemy → CheckStressDefeat → BeginTally →
-                        // EncodeSubmission)이 _goalStability 를 제출값으로 싣는데, 루프 안에서
-                        // 열면 지난 프레임의 **양수** 미러가 제출된다(구 코드는 0 을 먼저
-                        // 놓았다 — 순서 회귀였다).
+                        // 그 사슬(LeakSiegingEnemy → CheckStressDefeat → EndMatch)이
+                        // 결과 화면에 _goalStability 를 싣는데, 루프 안에서 열면 지난 프레임의
+                        // **양수** 미러가 «부서졌는데 남아 있다» 로 찍힌다.
+                        // (unit 6 이전엔 이 값이 서버 제출값에도 실려 더 무거운 순서였다.)
                         (newBreaches ??= new List<Vector2Int>()).Add(cell);
                     }
                 }
@@ -5895,12 +5895,7 @@ namespace Wassup.Bridge
             }
 
             // 상한 0 = 구 동작 보존: 마음 하나라도 부서지면 즉시 패배.
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: true);
-            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: false, score, RemainingBattleSeconds());
+            EndMatch("defeat", win: false);
             Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
         }
 
@@ -5952,12 +5947,7 @@ namespace Wassup.Bridge
             // 상한의 on/off 는 덱 원본값(StressLimit)이, **문턱값**은 EffectiveLeakLimit()이 정한다 —
             // HUD 분모와 같은 값이어야 화면에서 검산된다(몽마의 계약 선불 차감이 반영된 값).
             if (_resultShown || StressLimit <= 0 || _goalReachedCount < EffectiveLeakLimit()) return;
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: true);
-            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: false, score, RemainingBattleSeconds());
+            EndMatch("defeat", win: false);
             Debug.Log($"[BattleBridge] DEFEAT — 스트레스 상한 도달 ({_goalReachedCount}/{StressLimit}).");
         }
 
@@ -5968,9 +5958,8 @@ namespace Wassup.Bridge
         // 0 이하 = 무한(엔드리스)이고, 그때 호출측은 타이머 배지를 통째로 숨긴다.
         public float TimerDuration => _timerDuration;
 
-        // Seconds left on the match clock at query time — unlike TimerRemaining this
-        // stays valid after _running is cleared (used to stamp the result popup).
-        private float RemainingBattleSeconds() => Mathf.Max(0f, _timerDuration - (float)_battleClock);
+        // unit 7 — `RemainingBattleSeconds()` 는 제거했다. 종료 4경로가 계산해서 넘겼지만
+        // 소비처(구 결과 화면의 「남은 시간」 줄)가 이미 죽어 값이 버려지고 있었다.
 
         // battle-structures unit 10 — **적 마음 축**. 방어 마음 축(SyncGoalStability)의 거울이고
         // 활성 조건도 같은 모양이다: 저작된 상한이 있었는데(`_enemyCoreMax > 0`) 지금 잔여가 0.
@@ -5982,12 +5971,7 @@ namespace Wassup.Bridge
         {
             if (_resultShown || _enemyCoreMax <= 0 || _enemyCoreCurrent > 0) return;
 
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: false);
-            GameManager.Instance?.Logger?.SetResult("victory_siege", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds());
+            EndMatch("victory_siege", win: true);
             Debug.Log("[BattleBridge] VICTORY — 적 마음이 무너졌다(공성).");
         }
 
@@ -6007,16 +5991,7 @@ namespace Wassup.Bridge
             // 이유는 사용자 결정이 «동일 체력 + 절대값» 이기 때문이다.
             bool win = _goalStability >= _enemyCoreCurrent;
 
-            _resultShown = true;
-            _running = false;
-            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
-            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
-            var score = CalculateBattleScore(defeated: !win);
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult(
-                win ? "victory_timeout" : "defeat_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-            BeginTally(win, score, 0f); // timer expired → 0 left
+            EndMatch(win ? "victory_timeout" : "defeat_timeout", win);
             Debug.Log(win
                 ? $"[BattleBridge] VICTORY — timer expired, player survived. (방어 {_goalStability} ≥ 적 {_enemyCoreCurrent})"
                 : $"[BattleBridge] DEFEAT — timer expired, 적 본진이 더 버텼다. (방어 {_goalStability} < 적 {_enemyCoreCurrent})");
@@ -6030,13 +6005,7 @@ namespace Wassup.Bridge
             if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
             if (!NoQueuedAttackersRemain()) return;
 
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: false);
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds());
+            EndMatch("victory", win: true);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
@@ -6060,7 +6029,7 @@ namespace Wassup.Bridge
         // list stays. The popup usually isn't open yet when the response lands
         // (ranking beats the ~4s tally) — ResultScreen holds an early response and
         // opens on it, so this callback stays fire-and-forget.
-        private void ReportMatchResult(int playerScore)
+        private void ReportMatchResult(MatchTally tally)
         {
             // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
             if (IsEndless)
@@ -6069,58 +6038,58 @@ namespace Wassup.Bridge
                 return;
             }
             var logger = GameManager.Instance?.Logger;
-            Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.DeckInfoJson(),
+            // unit 7 — 서버로 가는 값은 여기 하나다. tally 가 「무엇을 제출하나」를 소유하고
+            // 브리지는 그것을 꺼내 실어 보내기만 한다(가공 지점이 남아 있으면 안 된다).
+            Wassup.Core.Api.TournamentMatchReporter.ReportResult(tally.SubmissionScore, logger?.DeckInfoJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
                 // tournament-flow-guards unit 2 — 실제 complete 실패만 알림(논블로킹, 재시도 없음).
                 onError: _ => Wassup.UI.NoticePopup.ShowAlert("점수 전송 실패",
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
         }
 
-        // score-tally-sequence unit 1 — 전투 종료 → 결과 연출 → 결과 화면의 단일 관문.
-        // 종료 3종(패배/버팀승리/전멸승리)이 전부 여기로 들어온다.
+        // three-minute-survival unit 7 — **판 마감의 단일 관문.** 종료 5경로(골붕괴 즉사·
+        // 스트레스 상한·적 마음 붕괴·타이머 만료·전멸)는 판정만 하고 여기로 들어온다.
+        // 예전엔 다섯 곳이 같은 의식 6줄을 복붙했고, 한 줄만 빠뜨려도 조용히 어긋났다.
         //
-        // **서버 제출은 여기서(연출 시작 시점) 한다** — 연출이 끝나길 기다리면 그 사이
-        // 앱이 죽었을 때 기록이 통째로 사라진다. 화면 연출과 기록 전송은 독립이다(계약 3).
+        //   취합(BuildTally) → 기록(로거) → 통보(서버) → 표시(결과 화면)
         //
-        // Tally 동안 전투 HUD 중 ScoreHud 만 살아남는다(연출의 주인공). NextWaveDock·
-        // CostDisplay 등은 `== GamePhase.Battle` 을 보므로 자동으로 꺼진다.
-        // three-minute-survival unit 3 — **합산 연출(탤리)은 제거됐다.** 시간·스트레스 축이
-        // 사라져 더할 것이 없다: 전투 중 HUD 숫자가 이미 최종 점수다. 남기면 내용 없는
-        // 4초 정지가 된다.
+        // **제출이 표시보다 앞이라는 순서는 계약이다**(score-tally-sequence 계약 3) —
+        // 화면을 기다리다 앱이 죽으면 기록이 통째로 사라진다. 둘은 독립이다.
         //
-        // `GamePhase.Tally` 전이는 유지한다 — 전투 HUD 게이팅이 그 페이즈를 읽고, 서버 제출
-        // 지점(연출과 독립이라는 계약 3)도 여기 그대로 있다.
-        private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec)
+        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만(unit 3 — 더할 축이
+        // 없어 내용 없는 4초 정지가 된다) 전투 HUD 게이팅이 그 페이즈를 읽는다. Tally 동안
+        // ScoreHud 만 남고 NextWaveDock·CostDisplay 등은 `== GamePhase.Battle` 로 자동 정리된다.
+        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
+        private void EndMatch(string outcome, bool win)
         {
+            _resultShown = true;
+            _running = false;
+
+            var tally = BuildTally(outcome, win);
+            var logger = GameManager.Instance?.Logger;
+            logger?.SetResult(tally.Outcome, tally.Leaks);
+            logger?.SetScore(tally.Total, tally.KillScore);
+
             GameManager.Instance?.SetPhase(GamePhase.Tally);
-            // 제출값에 동점 판정(남은 안정도)을 실어 보낸다 — 서버는 int 하나만 받는다.
-            ReportMatchResult(ScoreMath.EncodeSubmission(score.Total, _goalStability, _goalStabilityMax));
-            FinishTally(win, score, remainingSec);
+            ReportMatchResult(tally);
+
+            GameManager.Instance?.SetPhase(GamePhase.Result);
+            if (tally.Won) resultScreen?.ShowVictory(tally);
+            else resultScreen?.ShowDefeat(tally);
         }
 
-        // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
-        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
-        private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
-        {
-            GameManager.Instance?.SetPhase(GamePhase.Result);
-            // three-minute-survival unit 3 — 결과 3줄: 처치 수 / 남은 안정도 / 도달 웨이브.
-            // 총점(=처치 점수)은 score.Total 이 들고 온다.
-            var stats = new Wassup.UI.ResultScreen.MatchStats(
-                _killCount, _goalStability, _goalStabilityMax, ReachedWaveNumber, score);
-            if (win) resultScreen?.ShowVictory(score, stats);
-            else resultScreen?.ShowDefeat(score, stats);
-        }
+        // unit 7 — 흩어진 재료를 판 성적 하나로 옮기는 **유일한** 지점. 재료가 늘거나 줄면
+        // 고칠 곳이 여기 하나다(종료 경로는 재료를 만지지 않는다).
+        //
+        // 점수는 처치로만 번다(unit 3) — 시간·스트레스 축과 그 배점(ScoreRulesData)은
+        // 폐기됐고 패배 분기도 없다. 져도 잡은 만큼은 남으므로 `win` 은 산식에 닿지 않는다.
+        private MatchTally BuildTally(string outcome, bool win)
+            => new MatchTally(outcome, win, _killScoreTotal, _killCount,
+                _goalStability, _goalStabilityMax, ReachedWaveNumber, _goalReachedCount);
 
         // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
         // 그대로 쓰면 아직 안 나온 웨이브를 도달로 센다.
         private int ReachedWaveNumber => _nextWaveIndex > 0 ? _nextWaveIndex : 0;
-
-        // three-minute-survival unit 3 — 점수는 처치로만 번다. 시간·스트레스 축과 그 배점
-        // (ScoreRulesData)은 폐기됐고 패배 분기도 없다 — 져도 잡은 만큼은 남는다.
-        // `defeated` 인자는 호출부 3곳(패배·버팀승리·전멸승리)의 의미를 남기기 위해 유지하되
-        // 산식에 영향을 주지 않는다.
-        private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
-            => ScoreMath.Evaluate(_killScoreTotal);
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
         // PlaceDefenderAs with an explicit type, but this path stays for tests

@@ -12,32 +12,28 @@ namespace Wassup.Tests.EditMode
     // (무한 모드의 리스크/리워드 재설계는 spec 후속 후보 — 당기기 제거로 기존 가설이 소멸했다.)
     public class EndlessScoreTests
     {
+        private static MatchTally Tally(int killScore, int leaks)
+            => new MatchTally("victory", true, killScore, killCount: 1,
+                stability: 20, stabilityMax: 20, waveReached: 30, leaks: leaks);
+
         [Test]
         public void EndlessUsesTheSameKillOnlyFormula()
         {
             // 같은 처치 점수면 모드와 무관하게 같은 총점이다 — 산식에 모드 인자가 없다.
-            Assert.AreEqual(1234, ScoreMath.Evaluate(1234).Total);
+            Assert.AreEqual(1234, Tally(1234, leaks: 0).Total);
         }
 
         [Test]
         public void LeaksDoNotReduceScore()
         {
-            // 유출은 안정도를 깎을 뿐 점수를 깎지 않는다(브리지에서 처리, 산식 밖).
+            // 유출은 안정도를 깎을 뿐 점수를 깎지 않는다(브리지에서 처리, 성적 값 밖).
             // 유출이 점수를 깎던 구 스트레스 축이 되살아나면 여기서 잡힌다.
-            var s = ScoreMath.Evaluate(500);
-            Assert.AreEqual(500, s.Total, "산식 입력은 처치 점수 하나뿐이다");
+            Assert.AreEqual(Tally(500, leaks: 0).Total, Tally(500, leaks: 9).Total,
+                "유출 수는 점수에 닿지 않는다");
         }
 
-        [Test]
-        public void StabilityRidesInSubmissionOnly()
-        {
-            // 안정도는 총점을 바꾸지 않고 제출값의 tie-break 자리에만 들어간다.
-            var s = ScoreMath.Evaluate(500);
-            int full = ScoreMath.EncodeSubmission(s.Total, 20, 20);
-            int empty = ScoreMath.EncodeSubmission(s.Total, 0, 20);
-            Assert.AreNotEqual(full, empty, "제출값은 갈린다");
-            Assert.AreEqual(ScoreMath.DecodeKillScore(full), ScoreMath.DecodeKillScore(empty),
-                "표시 점수는 같다");
-        }
+        // unit 6·7 — 「안정도는 제출값의 tie-break 자리에만 들어간다」를 고정하던 테스트는
+        // 그 자리 자체가 폐기되어 삭제했다. 안정도가 점수 경로에 없다는 단언은
+        // MatchTallyTests.SubmissionScore_IgnoresStability 가 갖는다.
     }
 }

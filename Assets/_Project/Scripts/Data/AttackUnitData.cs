@@ -192,8 +192,8 @@ namespace Wassup.Data
         // (Enemy_Tanker 는 Normal 인데 3 이다). Appended last (직렬화 back-compat).
         //
         // three-minute-survival unit 3 — **점수가 처치 축 하나가 되면서 스케일을 재장전했다**:
-        // 일반 1 / 엘리트 3 / 보스 10 (구 100 / 2,000). 화면 숫자가 곧 "얼마나 팼나" 로 읽히고,
-        // 제출값 인코딩(ScoreMath.EncodeSubmission)의 여유도 커진다.
+        // 일반 1 / 엘리트 3 / 보스 10 (구 100 / 2,000). 화면 숫자가 곧 "얼마나 팼나" 로 읽힌다
+        // — unit 6 이후 이 합이 그대로 서버 제출 점수다(가공 없음).
         [Header("Score")]
         [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 일반 1 / 엘리트 3 / 보스 10 기준.")]
         public int killScore = 1;

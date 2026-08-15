@@ -274,9 +274,8 @@ namespace Wassup.UI
             rank.fontStyle = FontStyles.Bold;
             SetRightColumn((RectTransform)rank.transform, TopBand);
 
-            // three-minute-survival unit 3 — 제출값 디코딩(구 포맷은 원값 그대로).
-            int shownScore = Wassup.Core.ScoreMath.DisplayScore(entry.score);
-            var score = CreateLabel(go.transform, "Score", $"{shownScore:N0}점", 24,
+            // three-minute-survival unit 6 — 서버 값 그대로(인코딩 폐기).
+            var score = CreateLabel(go.transform, "Score", $"{entry.score:N0}점", 24,
                 TextAlignmentOptions.BottomRight, SubText);
             SetRightColumn((RectTransform)score.transform, BottomBand);
         }
