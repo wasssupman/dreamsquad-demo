@@ -115,6 +115,8 @@ if (unit.minWaveNumber <= waveNumber) return index;
 
 → 엘리트(보통 `maxPerWave: 1`)를 넣기 전에 그 적이 걸릴 컨셉의 슬롯 수를 확인하라. 슬롯 1개면 컨셉을 2슬롯으로 넓히거나 그 컨셉에 안 걸리게 필터를 조정한다.
 
+⚠ **슬롯을 넓히는 조치는 «그 컨셉의 게이트 웨이브에 서로 다른 후보가 슬롯 수만큼 있을 때만» 유효하다.** 후보가 모자라면 `PickSlotUnitIndex` fail-open ②(중복배제 해제)가 같은 유닛을 두 슬롯에 넣는데, `ClampGroupCounts` 는 **슬롯별** 적용이라 `maxPerWave` 가 슬롯 수만큼 곱해진다(공습 w4~7 Dragon×1+Dragon×1 사고 — wave-concept-blocks unit 8). 컨셉의 `minWaveNumber` 와 후보 유닛들의 `minWaveNumber` 를 맞춰라. `WaveConceptAuthoringTests.ConceptSlots_HaveEnoughDistinctCandidates_AtTheirGateWave` 가 에셋만으로 이 술어를 가드하고, `EliteWaves_DoNotCollapseToASingleUnit` 의 종류합 단언이 결과를 가드한다. 컨셉 게이트는 **블록 첫 웨이브 번호**(1·4·7·10…)로 판정되므로 게이트를 올리는 쪽은 보이는 것보다 늦어진다(8 = 실질 10).
+
 ### 속도 폭 — 컨셉의 「뭉침」 계약
 
 성질 컨셉(벌떼·중장·공습)은 **속도 폭이 좁아 한 덩어리로 온다**는 전제 위에 있다. 같은 필터에 걸리는 적을 추가하면 그 로스터의 속도 폭이 벌어져 덩어리가 흩어진다.

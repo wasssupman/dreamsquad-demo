@@ -235,6 +235,75 @@ namespace Wassup.Tests.EditMode
         // unit 7 — 엘리트는 `maxPerWave = 1` 이다. **단일 슬롯 컨셉이 엘리트를 뽑으면 웨이브가
         // 1기로 붕괴한다** — ClampGroupCounts 는 잘린 몫을 다른 슬롯으로 넘기는데 넘길 곳이 없다.
         // 그래서 「공습」을 슬롯 2개로 늘렸고, 이 단언이 그 회귀를 막는다.
+        // unit 8 — 저작 가드. 컨셉의 게이트 웨이브에서 필터를 통과하는 서로 다른 후보가
+        // 슬롯 수만큼 있어야 한다(전원 상한 없음이면 중복 픽이 무해라 면제). 이게 깨지면
+        // fail-open ②(중복배제 해제)가 같은 유닛을 두 슬롯에 넣고, ClampGroupCounts 는
+        // 슬롯별 적용이라 **maxPerWave 가 슬롯 수만큼 곱해진다** — 「공습」 w4~7 의
+        // Dragon×1+Dragon×1 이 그렇게 태어났다(unit 7 의 「중복 배제로 Dragon+Skimmer」
+        // 전제가 그 창에서 거짓). 게이트 웨이브만 보면 충분하다 — minWaveNumber 는
+        // 웨이브가 오를수록 후보를 추가만 한다.
+        [Test]
+        public void ConceptSlots_HaveEnoughDistinctCandidates_AtTheirGateWave()
+        {
+            foreach (string name in AllDecks)
+            {
+                var deck = Deck(name);
+                if (deck.waveConceptPool == null) continue;
+                foreach (var concept in deck.waveConceptPool)
+                {
+                    if (concept == null || concept.slots == null) continue;
+                    AssertSlotSetHasCandidates(
+                        name, concept, concept.slots, concept.minWaveNumber, "본 편성");
+                    // 변주는 블록 가운데 웨이브(게이트+1)에 본 편성 위로 **끼어든다** —
+                    // 검사 대상은 합쳐진 슬롯 집합이다. holdWaves < 3 이면 변주가 없다.
+                    if (deck.conceptHoldWaves >= 3
+                        && concept.variantSlots != null && concept.variantSlots.Length > 0)
+                    {
+                        var combined = new List<WaveConceptSlot>(concept.slots);
+                        combined.AddRange(concept.variantSlots);
+                        AssertSlotSetHasCandidates(
+                            name, concept, combined.ToArray(), concept.minWaveNumber + 1, "변주(본+삽입)");
+                    }
+                }
+            }
+        }
+
+        private static void AssertSlotSetHasCandidates(
+            string deckName, WaveConceptData concept, WaveConceptSlot[] slots,
+            int waveNumber, string label)
+        {
+            var pool = Deck(deckName).attackUnitPool;
+            int slotCount = 0;
+            foreach (var s in slots) if (s != null) slotCount++;
+            if (slotCount == 0) return;
+
+            // 슬롯별 필터가 다를 수 있으므로(성질×고도) 슬롯마다 후보를 모아 합집합의
+            // distinct 를 센다 — PickSlotUnitIndex 의 중복배제가 그 합집합 위에서 돈다.
+            var distinct = new HashSet<AttackUnitData>();
+            bool allCapFree = true;
+            foreach (var slot in slots)
+            {
+                if (slot == null) continue;
+                foreach (var u in pool)
+                {
+                    if (u == null || u.minWaveNumber > waveNumber) continue;
+                    if (slot.classFilter != EnemyClass.None && u.enemyClass != slot.classFilter) continue;
+                    if (!WavePatternGenerator.MatchesAltitude(u, slot.altitude)) continue;
+                    distinct.Add(u);
+                    if (u.maxPerWave > 0) allCapFree = false;
+                }
+            }
+
+            Assert.Greater(distinct.Count, 0,
+                $"{deckName} 컨셉 '{concept.id}' {label}: 게이트 웨이브 {waveNumber} 에 후보가 0이다 " +
+                "— 컨셉이 열리는 순간 성질/고도 fail-open 으로만 편성된다");
+            if (distinct.Count >= slotCount || allCapFree) return;
+            Assert.Fail(
+                $"{deckName} 컨셉 '{concept.id}' {label}: 게이트 웨이브 {waveNumber} 의 서로 다른 후보 " +
+                $"{distinct.Count} < 슬롯 {slotCount} 인데 상한 있는 유닛이 섞여 있다 — 중복 픽이 " +
+                "maxPerWave 를 슬롯 수만큼 곱한다(컨셉/유닛의 minWaveNumber 게이트를 맞춰라)");
+        }
+
         [Test]
         public void EliteWaves_DoNotCollapseToASingleUnit()
         {
@@ -245,13 +314,22 @@ namespace Wassup.Tests.EditMode
                 {
                     var w = plan.waves[i];
                     bool hasElite = false;
+                    // unit 8 — maxPerWave 는 「종류별」 상한이다. 그룹별로 재면 fail-open 중복
+                    // 픽(같은 유닛 2슬롯)이 각자 상한 안이라 초록으로 샌다 — 종류합으로 잰다.
+                    var perUnit = new Dictionary<AttackUnitData, int>();
                     for (int g = 0; g < w.groups.Count; g++)
                     {
                         var u = w.groups[g].unit;
-                        if (u == null || u.tier != EnemyTier.Elite) continue;
-                        hasElite = true;
-                        Assert.LessOrEqual(w.groups[g].count, 1,
-                            $"{name} 웨이브 {i + 1}: 엘리트 {u.id} 가 maxPerWave 를 넘었다");
+                        if (u == null) continue;
+                        if (u.tier == EnemyTier.Elite) hasElite = true;
+                        perUnit[u] = (perUnit.TryGetValue(u, out int c) ? c : 0) + w.groups[g].count;
+                    }
+                    foreach (var kv in perUnit)
+                    {
+                        if (kv.Key.maxPerWave <= 0) continue;
+                        Assert.LessOrEqual(kv.Value, kv.Key.maxPerWave,
+                            $"{name} 웨이브 {i + 1}('{w.conceptLabel}'): {kv.Key.id} 종류합 {kv.Value} 이 " +
+                            $"maxPerWave {kv.Key.maxPerWave} 를 넘었다 — 중복 픽이 상한을 곱했다");
                     }
                     if (!hasElite) continue;
                     Assert.Greater(w.totalCount, 1,
@@ -291,8 +369,10 @@ namespace Wassup.Tests.EditMode
                 // 4 = 엘리트 2종 편입(unit 7) **그리고** 묶음 가운데 변주(wave-pull-revival
                 //     unit 2) — 두 작업이 origin 과 로컬에서 **각자 4를 찍었다**
                 // 5 = 그 둘의 병합. 어느 쪽 4 와도 다른 세 번째 baseline 이라 다시 올린다.
+                // 6 = Skimmer 게이트 8→4(unit 8) — 공습 w4~7 창의 Dragon 중복 픽 해소.
+                //     풀 불변이라 waveSeed 는 유지, 편성만 바뀌어 버전으로 표시한다.
                 // 풀이나 편성 규칙이 바뀔 때마다 올린다.
-                Assert.AreEqual(5, Deck(name).waveGeneratorVersion,
+                Assert.AreEqual(6, Deck(name).waveGeneratorVersion,
                     $"{name}: 풀/편성이 바뀌었다 — 버전으로 새 baseline 을 표시한다");
         }
 
