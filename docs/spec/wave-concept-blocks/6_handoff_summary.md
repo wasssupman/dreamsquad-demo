@@ -60,7 +60,7 @@
 
 ---
 
-## rev 3 / unit 8 (2026-08-15) — 공습 2기 붕괴
+## rev 3 / unit 8 (2026-08-15) — 공습 2기 붕괴 (커밋 111dc4fc)
 
 - unit 7 의 「공습 2슬롯 = Dragon+Skimmer」 전제가 w4~7 창에서 거짓(Skimmer 게이트 8 > 컨셉 게이트 4) → fail-open 중복 픽 → Dragon×2. 수정 = **Skimmer 게이트 8→4**(사용자 결정 — Airstrike 4→8 은 실질 w10 이라 기각). 상세 [8](8_airstrike_gate.md).
 - 가드 2개 신설/강화: 게이트 웨이브 저작 술어 + 웨이브별 종류합 ≤ maxPerWave. 둘 다 수정 전 빨강 확인.

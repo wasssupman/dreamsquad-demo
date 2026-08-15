@@ -123,7 +123,7 @@
 
 ---
 
-## unit 11 (2026-08-15) — 예고선의 레인 기본 경로 해석
+## unit 11 (2026-08-15) — 예고선의 레인 기본 경로 해석 (커밋 9734019c)
 
 - **증상**: 레인 경로 맵(Coil·Zig)에서 가이드는 최단거리, 유닛은 웨이포인트. 원인 = `BuildSpawnGuideForecasts` 가 SO 축만 실음(unit 9 켜기의 누락분). 상세는 [11](11_guide_route_resolution.md).
 - **수정**: 생성기에 `laneRoutes` 옵셔널 주입 + `WaypointRouting.ResolvePathIndex` 재사용(규칙은 계속 한 곳). `QueueWave` 가 `RouteForSpawn` 배열 전달.
