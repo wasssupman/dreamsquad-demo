@@ -47,5 +47,17 @@ namespace Wassup.Battle.Combat.Projectile
         // sim 은 XZ 곡선만 굴리고 3축의 Y 는 view 공간에서 더한다(BoardSpace 가
         // sim-Y 를 drop 하므로 — BallisticArc 선례).
         BezierHomingToEntity = 5,
+
+        // dreamcatcher-content-4 unit 1 — 한 점을 도는 원운동(궤도 화염구).
+        // **대상 엔티티를 참조하지 않는다** — BallisticArcToPoint 계열이다. 방어유닛은 타일
+        // 고정이라 궤도 중심이 발사 시점 고정점이면 충분하고, 덕분에 host 가 죽거나 퇴근해도
+        // 이미 나간 화염구는 자기 수명을 산다.
+        // 필드 재사용: origin = 궤도 중심 · maxDistance = 반경(월드) · speed = **각속도(rad/s)**
+        // · flightTime/elapsed = 지속/누적 · prevPos = 직전 위치(PathHit 스윕) ·
+        // direction = 접선(front-most 정렬용).
+        // 도착 = `elapsed >= flightTime` → impactReached. ⚠ PathHit 에게 그 플래그는 "착탄"이
+        // 아니라 **"비행 종료"**(최종 스윕 후 소멸)다 — DirectionalLinear 과 공유하는 규약.
+        // sim 은 XZ 평면만 돌고 높이는 뷰가 더한다(BoardSpace 가 sim-Y 를 drop).
+        OrbitAroundPoint = 6,
     }
 }

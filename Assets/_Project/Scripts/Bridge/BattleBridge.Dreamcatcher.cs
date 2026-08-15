@@ -410,6 +410,28 @@ namespace Wassup.Bridge
                     continue;
                 }
 
+                // dreamcatcher-content-4 unit 0 — 주기 트리거의 방어유닛 개방.
+                // BossPeriodicTriggerSystem 은 이미 진영 중립이다(게이트가 DcTriggerSlot 버퍼
+                // 존재뿐). 막고 있던 것은 **이 bake 가 periodSeconds 를 안 실어 보내서**
+                // 슬롯이 0(=no-fire 가드)으로 굳던 것 하나였다 — 아래 슬롯 조립에서 싣는다.
+                // 값이 없는 저작은 조용한 무발동 대신 loud 거절한다(dc-trigger 관례).
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer && m.trigger.periodSeconds <= 0f)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: PeriodicTimer non-positive periodSeconds — skipped.");
+                    continue;
+                }
+
+                // dreamcatcher-content-4 unit 0 — 퇴근 트리거의 v1 배선은 SelfTileAoe 한 쌍뿐이다.
+                // 퇴장 지점(RetireDefender)에는 trigger×payload 디스패처가 없고 운석 cast 하나만
+                // 있으므로, 다른 payload 를 통과시키면 슬롯만 붙고 아무 일도 안 하는 카드가
+                // "부착됨"으로 집계된다(EmitProjectilePattern 거절과 같은 이유).
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnRetire
+                    && m.payload.kind != Wassup.Data.DcPayloadKind.SelfTileAoe)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnRetire 는 SelfTileAoe 만 배선돼 있다 (현재 payload={m.payload.kind}) — skipped.");
+                    continue;
+                }
+
                 // trigger-gates unit 1 — 게이트 배선 검증. 배선 표의 단일 SoT 는
                 // DcTrigger.GateComboSupported — 미배선/퇴화 조합은 조용한 무효과 대신
                 // loud 거절 (기존 bake 가드 컨벤션).
@@ -494,6 +516,10 @@ namespace Wassup.Bridge
                     // 아래 EmitProjectilePattern 거절이 도달 경로를 막지만, 불변식 자체를
                     // 여기서 걸어두어야 다른 kind 가 patternIndex 를 쓰게 될 때 안전하다.
                     patternIndex = -1,
+                    // dreamcatcher-content-4 unit 0 — 주기 트리거 개방(계약 9). 여태 보스 bake
+                    // (BakeNightmareMechanics)만 실어 보내서 카드 주기 슬롯이 조용히 무발동이었다.
+                    // 비-PeriodicTimer 슬롯은 0 = inert 라 기존 카드 전부 무손상.
+                    periodSeconds = m.trigger.periodSeconds,
                     // trigger-gates unit 1 — 게이트 번역 (위 배선 검증 통과분만 착지).
                     gate = m.trigger.gate,
                     gateSubject = m.trigger.gateSubject,
@@ -537,6 +563,63 @@ namespace Wassup.Bridge
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.tileRange = math.max(0, m.payload.tileRange);
                     slot.visualScale = m.payload.projectile.visualScale;
+                    // dreamcatcher-content-4 unit 0 — 낙하 예고 초(SkyFall flightTime).
+                    // AreaBarrage 의 duration=텔레그래프 선례. **OnRetire(퇴근 운석)만 소비**하고
+                    // 기존 SelfTileAoe 카드는 전부 duration 0 이라 즉시 착탄 그대로다.
+                    slot.duration = math.max(0f, m.payload.duration);
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                {
+                    // dreamcatcher-content-4 unit 0 — 궤도 화염구. arm(BossPeriodicTriggerSystem)
+                    // 은 ISystem 이라 SO 를 못 읽는다 → **탄 SO 의 선속도·피격 반경을 여기서
+                    // 구워야 한다.** 셋(speed/hitThreshold/duration) 중 하나라도 빠지면 각각
+                    // "안 도는 구슬 / 아무도 못 맞히는 구슬 / 즉시 사라지는 구슬"이 되고,
+                    // 전부 조용한 실패라 눈으로 원인을 찾기 어렵다.
+                    if (m.payload.projectile == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile without ProjectileData — skipped.");
+                        continue;
+                    }
+                    if (m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    if (m.payload.duration <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile non-positive duration (즉시 사라지는 구슬) — skipped.");
+                        continue;
+                    }
+                    if (m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile tileRange<=0 (궤도 반경 0 — 각속도 산출 불가) — skipped.");
+                        continue;
+                    }
+                    if (m.payload.projectile.speed <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile 탄 SO 의 speed<=0 (안 도는 구슬) — skipped.");
+                        continue;
+                    }
+                    if (m.payload.projectile.hitThreshold <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile 탄 SO 의 hitThreshold<=0 (아무도 못 맞히는 구슬) — skipped.");
+                        continue;
+                    }
+                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                    slot.tileRange = m.payload.tileRange;              // 궤도 반경(타일)
+                    slot.duration = m.payload.duration;                // 지속 초
+                    slot.visualScale = m.payload.projectile.visualScale;
+                    slot.speed = m.payload.projectile.speed;           // **선속도**(arm 이 ÷반경 → 각속도)
+                    slot.hitThreshold = m.payload.projectile.hitThreshold; // 피격 반경
+                    // magnitude(스친 적 피해)는 위 slot 초기화에서 이미 복사됨.
+                    // 재타격 쿨타임은 굽지 않는다 — 탄 SO 소유라 드레인이 dataIndex 로 해석해 채운다.
+
+                    // 저작 경고(거절 아님): 주기 <= 지속이면 화염구가 겹쳐 쌓인다.
+                    // 겹치기가 의도인 저작도 있을 수 있어 경고로만 남긴다
+                    // (AllyMoveSpeedAura 의 반대 방향 경고와 동형).
+                    if (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer
+                        && m.trigger.periodSeconds <= m.payload.duration)
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile periodSeconds({m.trigger.periodSeconds}) <= duration({m.payload.duration}) — 화염구가 겹쳐 쌓입니다.");
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep)
                 {
@@ -708,6 +791,17 @@ namespace Wassup.Bridge
                     if (m.count <= 0)
                     {
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce non-positive count — skipped.");
+                        continue;
+                    }
+                }
+                else if (m.kind == Wassup.Data.DcAttackModKind.DamageVsSleeping)
+                {
+                    // dreamcatcher-content-4 unit 0 — 수면 특효. 배율<=1 은 "특효"가 아니라
+                    // 저작 실수일 가능성이 압도적이다(1=평타, <1=잠든 적에게 오히려 약화).
+                    // HeavyStrike 가 같은 이유로 magnitude<=1 을 거절하는 선례.
+                    if (m.damageMul <= 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: DamageVsSleeping damageMul<=1 (특효가 아님) — skipped.");
                         continue;
                     }
                 }

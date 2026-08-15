@@ -259,6 +259,101 @@ namespace Wassup.Tests.EditMode
                 DreamcatcherCardText.Body(card));
         }
 
+        // content-4 unit 0 — 수면 특효(악몽 사냥). 상시 변조라 "항상" 접두를 쓰고,
+        // "잠든 적에게" 라는 대상 조건이 문안에 반드시 남아야 한다 — 이 조건이 빠지면
+        // 플레이어가 상시 피해 2배 카드로 읽는다.
+        [Test]
+        public void UnitAttackMod_FormatsDamageVsSleeping()
+        {
+            var card = Card(CardType.Unit);
+            card.attackMods = new[]
+            {
+                new DcAttackModSpec { kind = DcAttackModKind.DamageVsSleeping, damageMul = 2f },
+            };
+
+            StringAssert.Contains(
+                "항상 → 잠든 적에게 주는 피해 x2",
+                DreamcatcherCardText.Body(card));
+        }
+
+        // content-4 unit 0 — 궤도 화염구(불꽃 팽이). 재타격 간격은 탄 SO 소유라
+        // 문안이 그 수치를 복제하지 않는다(제약 6) — 지속과 피해만 나온다.
+        [Test]
+        public void UnitMechanic_FormatsSelfOrbitProjectile()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.PeriodicTimer, periodSeconds = 6f },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SelfOrbitProjectile,
+                        magnitude = 20f,
+                        duration = 3f,
+                        tileRange = 1,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "6초마다 → 주위를 도는 화염구 3초 · 스치는 적에게 피해 20",
+                DreamcatcherCardText.Body(card));
+        }
+
+        // content-4 unit 0 — 퇴근 운석(퇴직 위로금). **사망 문안과 갈라져야 한다** —
+        // 두 트리거가 교차 발동하지 않는 것이 이 카드의 계약이라, 문안이 흐리면
+        // 플레이어가 죽어도 터질 거라 기대한다.
+        [Test]
+        public void UnitMechanic_FormatsOnRetireMeteor_AndIsNotDeathWording()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnRetire },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SelfTileAoe,
+                        magnitude = 120f,
+                        tileRange = 1,
+                        duration = 0.8f, // 낙하 예고
+                    },
+                },
+            };
+
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("이 유닛이 퇴근하면 → 0.8초 후 반경 1칸 피해 120", body);
+            StringAssert.DoesNotContain("사망", body);
+        }
+
+        // content-4 unit 0 — 무회귀: duration 0 인 기존 SelfTileAoe 카드(작별 선물 등)는
+        // 예고 접두 없이 종전 문안 그대로여야 한다.
+        [Test]
+        public void UnitMechanic_SelfTileAoe_WithoutDuration_KeepsLegacyWording()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SelfTileAoe,
+                        magnitude = 50f,
+                        tileRange = 1,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "이 유닛이 사망하면 → 반경 1칸 피해 50",
+                DreamcatcherCardText.Body(card));
+        }
+
         [Test]
         public void ActiveSkill_FormatsMultiplierDurationCostAndCooldown()
         {

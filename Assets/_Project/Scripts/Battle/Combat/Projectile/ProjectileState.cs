@@ -90,6 +90,15 @@ namespace Wassup.Battle.Combat.Projectile
         // the first). Owned write after launch: ProjectileHitSystem only.
         public int pierceRemaining;
 
+        // dreamcatcher-content-4 unit 0 — 같은 피해자를 다시 때리기까지의 간격(초).
+        // 값은 탄 SO(ProjectileData.rehitCooldownSec)에서 드레인이 채운다.
+        // 0 = 피해자당 영구 1회(기존 방향탄 동작 — 무회귀 기본값).
+        // >0 이면 ① PathHitRecord 의 nextHitAt 으로 재타격을 허용하고
+        //         ② **pierceRemaining 을 소모하지 않는다**(유일한 종료 조건 = 수명).
+        // 시계는 이 투사체의 `elapsed` 다 — Battle 도메인 시계를 그대로 따라가고
+        // 리플레이 결정론이 투사체 안에서 닫힌다. 소비는 unit 2(ProjectileHitSystem).
+        public float rehitCooldownSec;
+
         // ── Single-splash payload (PayloadKind.SingleSplash) ─────────────────
         public OnHitEffectType onHitEffect;
         public float splashRadius;

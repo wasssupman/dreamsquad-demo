@@ -80,6 +80,11 @@ namespace Wassup.Core
                 case DcTriggerKind.HealthThreshold:
                 case DcTriggerKind.OnKill:
                 case DcTriggerKind.OnShieldBreak:
+                // dreamcatcher-content-4 unit 0 — 퇴근. 사건 지점은 AttackSystem 계열이 아니라
+                // **브리지의 퇴근 경로**(RetireDefender)다. 이 함수가 묻는 것은 "배선돼 있나"
+                // 뿐이고 배선 위치는 묻지 않는다 — OnDeath 가 UnitLifecycleSystem 에,
+                // OnShieldBreak 가 DamageApplicationSystem 에 있는 것과 같다.
+                case DcTriggerKind.OnRetire:
                     return true;
                 default:
                     return false;
@@ -180,6 +185,12 @@ namespace Wassup.Core
                 // 실제로는 적 SO 전용이지만 그건 authoring 사실이지 적용성 판정이 아니다 —
                 // SelfBlink·UltimateLeap 과 같은 처지(위 주석). 반각 정의역은 bake 가 판정한다.
                 case DcPayloadKind.AreaBreath:
+                // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 의 공격 모델과 완전히
+                // 무관하다: 대상을 host 가 줄 필요가 없고(구슬이 스치는 적을 스스로 만난다),
+                // 데미지도 payload 가 자기 값을 가지며, 진영 축은 아예 없다(PathHit 후보 풀이
+                // AttackUnitTag 하드코딩이라 아군을 때리는 경로가 존재하지 않는다).
+                // 탄 SO null·값 유효성은 bake 가 최종 판정한다(위 주석의 분업).
+                case DcPayloadKind.SelfOrbitProjectile:
                     return DcRejectReason.None;
 
                 default:
@@ -209,6 +220,15 @@ namespace Wassup.Core
                 // 우선순위를 덮어써 보너스가 inert 지만, 그 판정은 unit 5 의
                 // 후속(타게팅 규칙 의존 축) — 여기서는 기존 게이트만 미러한다.
                 case DcAttackModKind.FrontmostTarget:
+                    return host.hasDamageOutput
+                        ? DcRejectReason.None : DcRejectReason.NeedsDamageOutput;
+
+                // dreamcatcher-content-4 unit 0 — 수면 특효. 배율을 곱할 **자기 피해**가
+                // 있어야 성립한다(힐러처럼 Damage output 이 없으면 곱할 것이 없다).
+                // 대상 확정(HostProvidesTarget)은 요구하지 않는다 — 판정이 피해자별이라
+                // 근접 cleave/AoE 처럼 host 가 "그 공격의 대상"을 못 주는 경우에도
+                // 맞은 적 각각을 보고 판정할 수 있다(HeavyStrike 와 갈리는 지점).
+                case DcAttackModKind.DamageVsSleeping:
                     return host.hasDamageOutput
                         ? DcRejectReason.None : DcRejectReason.NeedsDamageOutput;
 

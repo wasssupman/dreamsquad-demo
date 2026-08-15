@@ -114,6 +114,14 @@ namespace Wassup.Data
         [Tooltip("관통 예산. 1 = 첫 피격 대상에서 소멸, N = N기 히트 후 소멸. Directional 전용.")]
         public int pierceCount = 1;
 
+        // dreamcatcher-content-4 unit 0 — 탄의 성질이므로 여기 산다(바로 위 pierceCount 와
+        // 같은 자리·같은 역할: 드레인 SpawnProjectile 이 읽어 ProjectileState 로 옮긴다).
+        // 카드 payload / DcTriggerSlot / ProjectileSpawnRequest 로 관통시키지 않는다.
+        [Header("Path-hit 재타격 (PathHit 페이로드)")]
+        [Tooltip("같은 적을 다시 때리기까지의 간격(초). 0 = 적당 1회(기존 방향탄 동작). " +
+                 ">0 이면 관통 예산을 소모하지 않고 수명이 다할 때까지 반복 타격한다 — 궤도 화염구용.")]
+        public float rehitCooldownSec = 0f;
+
         // projectile-emission-pattern unit 1 — 탄의 성질이므로 여기 산다(패턴 SO 는
         // 이 값을 복제하지 않는다 — README 계약 3). 드레인이 읽어 제어점을 산출한다.
         [Header("Bezier homing (flightMode = BezierHoming)")]

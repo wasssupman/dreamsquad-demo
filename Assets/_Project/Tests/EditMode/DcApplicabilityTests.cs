@@ -217,6 +217,26 @@ namespace Wassup.Tests.EditMode
                 Assert.IsTrue(DcApplicability.IsTriggerWired(trigger), $"{trigger} 가 배선 밖으로 빠졌다");
         }
 
+        // content-4 unit 0 — 수면 특효. 곱할 **자기 피해**만 있으면 성립한다.
+        // ⚠ 대상 확정(HostProvidesTarget)을 요구하지 않는 것이 HeavyStrike 와 갈리는
+        // 지점이다 — 판정이 피해자별이라 근접 cleave 처럼 "그 공격의 대상"이 하나로
+        // 확정되지 않는 host 에서도 맞은 적 각각을 보고 판정할 수 있다.
+        [Test]
+        public void DamageVsSleeping_NeedsOnlyDamageOutput()
+        {
+            foreach (DcProjectileRoute route in Enum.GetValues(typeof(DcProjectileRoute)))
+            foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
+                Assert.AreEqual(DcRejectReason.None,
+                    DcApplicability.EvaluateAttackMod(DcAttackModKind.DamageVsSleeping,
+                        Host(archetype, route)),
+                    $"수면 특효는 경로/아키타입에 무관해야 한다 ({archetype}/{route})");
+
+            Assert.AreEqual(DcRejectReason.NeedsDamageOutput,
+                DcApplicability.EvaluateAttackMod(DcAttackModKind.DamageVsSleeping, Healer()));
+            Assert.AreEqual(DcRejectReason.NeedsDamageOutput,
+                DcApplicability.EvaluateAttackMod(DcAttackModKind.DamageVsSleeping, Caster()));
+        }
+
         [Test]
         public void SelfPayloads_ApplyOnEveryArchetype()
         {
@@ -225,6 +245,9 @@ namespace Wassup.Tests.EditMode
                 DcPayloadKind.SelfTileAoe, DcPayloadKind.SelfStatBuff,
                 DcPayloadKind.SelfBlink, DcPayloadKind.AreaSleep,
                 DcPayloadKind.PlacementAura, DcPayloadKind.AllyMoveSpeedAura,
+                // content-4 unit 0 — 궤도 화염구도 self 계열이다: 대상을 host 가 줄 필요가
+                // 없고(구슬이 스치는 적을 스스로 만난다) 진영 축도 없다.
+                DcPayloadKind.SelfOrbitProjectile,
             };
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
             foreach (var kind in selfKinds)

@@ -21,7 +21,18 @@ namespace Wassup.Data
     // AttackSystem RESOLVE 를 타지 않는다. append-only.
     // dreamcatcher-shield-break unit 0 — OnShieldBreak(부여된 실드가 피격으로 완전 소진될 때).
     // 발동 지점 = DamageApplicationSystem 실드 Absorb(시간만료 경로는 없음/배제). append-only.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak }
+    // dreamcatcher-content-4 unit 0 — OnRetire(이 유닛이 퇴근할 때). 발동 지점은 **브리지의
+    // 퇴근 경로**(`BattleBridge.RetireDefender`)이며, 사망 경로를 한 글자도 공유하지 않는다.
+    //
+    // ⚠ **OnDeath 와 교차 발동하지 않는다 — 이것이 이 트리거의 존재 이유다.** 퇴근은 `DeadTag`
+    // 를 달지 않고 `DefenderDied` 를 쏘지 않으므로(defender-clock-out 계약 1) OnDeath 카드가
+    // 퇴근에서 안 터지고, 반대로 이 트리거는 브리지의 퇴근 경로에만 있으므로 사망에서 안 터진다.
+    // 사망 채널에 플래그로 얹었다면 지금 있는 모든 OnDeath 카드가 "진짜 죽은 건가?"를 되물어야
+    // 했다(그 설계는 clock-out rev 1 에서 폐기됐다).
+    //
+    // 적에게는 열리지 않는다 — `DcTrigger.EnemyTriggerArmed` 무변경이 곧 fail-closed 다(적은
+    // 퇴근하지 않는다). append-only.
+    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak, OnRetire }
     // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
     // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
@@ -133,6 +144,22 @@ namespace Wassup.Data
         // 동전 던지기가 된다(결정론 요건). 판정 자체는 `TileAoe.IsInCone`.
         // append-only.
         AreaBreath = 21,
+        // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 셀 중심을 도는 투사체 1개를
+        // `duration` 초 동안 띄우고, 스친 적에게 `magnitude` 피해를 준다(PathHit 스윕).
+        //
+        // **신규 payload 필드 0** — 전부 기존 슬롯 재사용:
+        //   magnitude = 스친 적에게 줄 피해 · duration = 지속 초 · tileRange = 궤도 반경(타일)
+        //   projectile = 탄 SO. 이 SO 가 **뷰 + 선속도(speed) + 피격 반경(hitThreshold) +
+        //   재타격 쿨타임(rehitCooldownSec)** 을 전부 소유한다.
+        //
+        // 재타격 쿨타임을 payload/슬롯/요청 struct 로 관통시키지 않는 이유: `pierceCount` 가
+        // 이미 **탄 SO 에 있고 드레인(SpawnProjectile)이 직접 읽는** 선례다. "탄의 성질은
+        // ProjectileData 가 소유한다"(projectile-emission-pattern 계약 3). 같은 탄 SO 로 다른
+        // 쿨타임이 필요해지면 SO 복제로 갈라진다.
+        //
+        // 궤도 중심은 **발사 시점 고정점**이라 host 를 추적하지 않는다 — 방어유닛은 타일 고정이고,
+        // 덕분에 host 가 죽거나 퇴근해도 이미 나간 화염구는 자기 수명을 산다. append-only.
+        SelfOrbitProjectile = 22,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -283,7 +310,15 @@ namespace Wassup.Data
     // architecture-agnostic contract as the trigger definitions above: pure
     // data, no ECS references; interpretation lives in BattleBridge (bake) and
     // AttackSystem (spawn-time injection). Append new kinds at the end.
-    public enum DcAttackModKind { None, ProjectileBounce, FrontmostTarget }
+    // dreamcatcher-content-4 unit 0 — DamageVsSleeping: 잠든 적을 때리면 그 타격의 피해 ×배율.
+    // **판정은 피해자별**이다 — 잠든 적 옆의 깨어 있는 적은 그대로다. 배율은 기존
+    // `DcAttackModSpec.damageMul` 재사용(2.0 = ×2) → **신규 필드 0**.
+    //
+    // 트리거 축(게이트 × HeavyStrike)으로 만들지 않은 이유: 강공은 그 공격의 **전 victim**
+    // (근접 cleave/splash/bounce)을 배율해서, 잠든 적 옆의 깨어 있는 적까지 2배가 된다(사양 초과).
+    // 적용 지점은 `DamageVsCcMul`(shatter_hymn)이 이미 피해자별로 곱해지는 2곳과 같다 —
+    // 투사체 발사 시 bestTarget 스냅샷 · 근접/AoE 는 hitTarget 별. append-only.
+    public enum DcAttackModKind { None, ProjectileBounce, FrontmostTarget, DamageVsSleeping }
 
     [Serializable]
     public struct DcAttackModSpec

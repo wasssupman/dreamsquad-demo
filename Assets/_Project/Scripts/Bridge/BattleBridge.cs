@@ -4557,6 +4557,11 @@ namespace Wassup.Bridge
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
                 dataIndex = req.dataIndex,
+                // dreamcatcher-content-4 unit 0 — PathHit 재타격 간격은 **탄 SO 소유**다
+                // (바로 아래 Directional 분기의 pierceCount 와 같은 번역자 역할). 요청
+                // struct 에 필드를 만들지 않는 이유가 그것이다 — 발사 주체(카드 arm·
+                // emitter·AttackSystem)는 이 값을 몰라도 된다. 기본 0 = 기존 전 발사 지점 무변화.
+                rehitCooldownSec = projData != null ? math.max(0f, projData.rehitCooldownSec) : 0f,
                 // dreamcatcher-attack-mod-bounce unit 2 — copy bounce params
                 // verbatim; defaults 0 = every existing spawn keeps legacy destroy.
                 bounceRemaining = req.bounceRemaining,
@@ -4642,6 +4647,21 @@ namespace Wassup.Bridge
                 state.maxDistance = req.maxDistance;
                 // pierceCount 는 SO 소유 — SkyFall 의 dropHeight 보충과 같은 번역자 역할.
                 state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
+            }
+            else if (req.movement == MovementKind.OrbitAroundPoint)
+            {
+                // dreamcatcher-content-4 unit 0 — 궤도(화염구). 중심은 발사 시점 고정점이라
+                // 타겟 엔티티를 잡지 않는다. req.speed 는 **각속도(rad/s)** 로 온다 —
+                // 발사 arm(BossPeriodicTriggerSystem)이 슬롯의 선속도 ÷ 반경으로 이미 변환해
+                // 보낸다(그 arm 은 ISystem 이라 SO 를 못 읽으므로 bake 가 구운 값을 쓴다).
+                state.origin = new float3(req.origin.x, spawnHeight, req.origin.z);
+                state.prevPos = spawnPos;
+                state.maxDistance = req.maxDistance;   // 궤도 반경
+                state.speed = req.speed;               // 각속도
+                state.flightTime = math.max(req.flightTime, 0f); // 지속 초
+                // 재타격 쿨타임이 켜진 궤도는 관통 예산을 소모하지 않는다(계약 3) — 그래도
+                // 0 으로 두면 쿨타임이 꺼진 저작에서 첫 피격에 사라진다. 예산은 넉넉히 준다.
+                state.pierceRemaining = int.MaxValue;
             }
             else if (req.movement == MovementKind.SkyFall)
             {
