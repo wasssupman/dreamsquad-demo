@@ -650,6 +650,18 @@ namespace Wassup.Bridge
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 잔여 장판 점등 정리(생명주기 대칭)
+            // defender-clock-out unit 3 — 진행 중 퇴근 연출 정리. 떼어낸(Detach) 뷰는 풀의
+            // _byEntity 에 없어 바로 위 spineUnitPool.DisposeAll() 이 **안 치운다**. 그리고 이
+            // 컴포넌트가 붙은 GO 는 씬 루트라 아무도 비활성화하지 않아 OnDisable 도 안 불린다
+            // — 즉 이 한 줄이 없으면 재시작 시 지난 판 유닛과 키링이 새 판 보드 위에서 논다.
+            //
+            // ⚠⚠ **`?.` 를 쓰지 말 것.** C# 의 null 조건 연산자는 Unity 의 fake-null 을 모른다.
+            // `TeardownCurrentBattle` 은 `OnDestroy` 에서도 불리는데 그 시점엔 이 컴포넌트가 이미
+            // 파괴돼 있어 `retireFlight?.CancelAll()` 이 **MissingReferenceException 을 던지고**,
+            // 그러면 이 메서드가 중단돼 아래 `DestroyEntitiesByType<BattleTimeScale>()` 이 실행되지
+            // 않는다 → 싱글턴이 누수돼 다음 씬에서 "found 2 instances" 로 터진다(실측 2026-08-15).
+            // 형제 줄들이 전부 `if (x != null)` 인 이유가 이것이다(Unity 오버로드 == 가 fake-null 처리).
+            if (retireFlight != null) retireFlight.CancelAll();
             _enemyTypeByEntity.Clear(); // dreamcatcher-orb-dock unit 6 — 적 데이터 등록부 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
@@ -3680,11 +3692,20 @@ namespace Wassup.Bridge
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
             ReleaseDefenderTile(cell, out var binding);
+            // ⚠ **되돌릴 수 없는 sim 변경을 먼저 끝낸다**(코드리뷰 2026-08-15 반영).
+            // 원래는 뷰 처리 뒤에 있었는데, 그 사이의 프레젠테이션 코드(키링 생성 = Shader.Find /
+            // new GameObject, 코루틴 시작)가 던지면 **엔티티는 살아 있는데 바인딩만 사라진**
+            // 반쯤 무너진 상태가 된다. 그 상태의 유닛은 다시 선택·퇴근이 안 되고, 나중에 죽어도
+            // 드레인이 hasBinding=false 라 DefenderDied 가 안 나가 **부착 카드가 영구 소실**된다.
+            // 아래 뷰 경로는 엔티티를 Dictionary 키로만 쓰고 EntityManager 를 만지지 않으므로
+            // 순서를 앞당겨도 무해하다.
+            _em.DestroyEntity(binding.entity);
+
             // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
             //
             // unit 3 — 연출이 배선돼 있으면 뷰를 **떼어내 넘긴다**(파괴하지 않는다). 엔티티는
-            // 바로 아래에서 사라지지만 뷰만 위로 뽑혀 나간다(보스 도약과 같은 형태 — sim 은 즉시
-            // 끝나고 뷰만 남는다). 넘긴 뒤 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
+            // 이미 사라졌고 뷰만 위로 뽑혀 나간다(보스 도약과 같은 형태 — sim 은 즉시 끝나고
+            // 뷰만 남는다). 넘긴 뒤 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
             // 미배선이면 종전대로 즉시 반납(개발 씬·테스트에서 조용히 동작).
             //
             // rev 2 — 링을 칠 좌표를 함께 넘긴다. VfxSpawner 가 진입부에서 ToView 하므로
@@ -3695,7 +3716,6 @@ namespace Wassup.Bridge
             else
                 spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);
-            _em.DestroyEntity(binding.entity);
             Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed, synergy recomputed.");
             DefenderRetired?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
             return true;

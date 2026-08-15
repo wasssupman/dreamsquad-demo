@@ -43,6 +43,7 @@
   **rev 3 롤백 후 전부 재실행해 동일 결과 확인**(2026-08-14).
 - **사망 관련 테스트는 한 건도 수정하지 않았다** — `ReleaseDefenderTile` 추출이 순수 이동이라는 증거.
 - 사용자 Play 확인: 퇴근 버튼 · 즉시 퇴장 · 트레이 복귀(2026-08-13, unit 2 시점).
+- **사용자 Play 확인 2026-08-15 — 연출 rev 5 통과.** 이 spec 의 육안 검증은 이것으로 종료.
 
 ## Notes (되돌리면 안 되는 의도)
 
@@ -73,8 +74,6 @@
 
 ## Follow-up
 
-- **육안 확인 남음**: 퇴근 연출 전체 — 줄이 걸리는 순간 · 움찔거리며 버티는 1.75초 ·
-  뽑히며 뱅글뱅글 튕겨나감 · 배치 링 · 그림자 제거 · 트레이 칸 펄스.
 - **연출은 rev 5 로 확정**(≈1.6초). ⚠ 여기서 더 줄이려면 **키링·저항을 함께 버려야** 한다 —
   rev 3 이 증명한 대로 짧은 연출과 부착 어휘는 양립하지 않는다. 둘은 한 묶음이다.
 - **열린 밸런스**: 사망엔 쿨타임이 없고 퇴근엔 있다 → `placementCooldown` 저작 시 "죽게 두는 게
@@ -92,3 +91,55 @@
 
 `run_tests` 를 `test_names` 로 필터하면 **`total: 0` 인데 `Passed`** 가 나온다(거짓 통과).
 **`group_names`(클래스명)로 돌릴 것.** 신규 테스트 파일은 `scope=all` 리프레시 전엔 안 잡힌다.
+
+## 코드리뷰 반영 (2026-08-15)
+
+두 트랙(일반 · ECS 경계)을 돌렸다. **ECS 경계는 6항목 전부 통과**(고칠 것 없음).
+결정적 근거 하나가 새로 확보됐다 — **이 프로젝트의 Battle 시스템은 `IJobEntity` 를 쓰되 전부
+`.Run()` 이고 `.Schedule()`/`.ScheduleParallel()` 은 `Scripts/Battle/` 전체에 0건**이다.
+그래서 Mono Update 시점의 구조적 변경(`_em.DestroyEntity`)이 강제하는 sync point 가 사실상
+no-op 이다. "사망도 매번 파괴하니 내성이 있다"는 간접 논거를 대체하는 직접 근거다.
+
+일반 리뷰가 찾은 **실결함 2건 + 견고성 2건**을 고쳤다:
+
+1. **teardown 훅 누락(MEDIUM·스펙 요구사항 미이행)** — unit 3 완료 기준이 "비행 중 매치 종료 시
+   고아 0" 을 요구했는데 구현이 없었다. `OnDisable` 에 기댔지만 이 컴포넌트의 GO 는 **씬 루트라
+   매치 재시작으로 비활성화되지 않는다**. `TeardownCurrentBattle` 에 `CancelAll()` 을 추가.
+2. **파괴 순서(MEDIUM)** — `_em.DestroyEntity` 가 프레젠테이션 코드(키링 생성·코루틴 시작) **뒤**에
+   있었다. 그 사이가 던지면 **엔티티는 살아 있는데 바인딩만 사라져** 그 유닛은 다시 못 만지고,
+   나중에 죽어도 `hasBinding=false` 라 `DefenderDied` 가 안 나가 **부착 카드가 영구 소실**된다.
+   되돌릴 수 없는 sim 변경을 `ReleaseDefenderTile` 직후로 올렸다(뷰 경로는 EntityManager 를 안 쓴다).
+3. **`_inFlight.Add` 원자화** — `Run` 코루틴 안에 있어서, GO 비활성 등으로 코루틴이 시작되지
+   않으면 떼어낸 뷰가 풀에도 `_inFlight` 에도 없는 **추적 불가 유령**이 됐다. `Fly` 안
+   `StartCoroutine` 앞으로 옮기고 키링 루트는 `AttachKeyringRoot` 로 이어 붙인다.
+4. **스케일 소유권 주장이 거짓이었다** — `SpineUnitView` 는 자기 코루틴 2개(`PunchRoutine`·
+   `SquashRoutine`)로 `localScale` 을 덮는데 `Detach` 가 그걸 안 멈춘다. `Fly` 에서
+   `view.StopAllCoroutines()` 를 불러 주석이 사실이 되게 했다.
+
+테스트 2건 추가: **teardown 고아 0**(1번의 회귀 가드), **퇴근 시 각성 게이지 불변**(반파밍 계약의
+유일한 방벽 — 그전엔 한 줄도 검증되지 않았다).
+
+### ⚠ 이 과정에서 내가 만든 함정 두 개 (둘 다 테스트가 잡았다)
+
+**⑴ `retireFlight?.CancelAll()` 이 빌드를 무너뜨렸다.** C# 의 `?.` 는 **Unity 의 fake-null 을
+모른다.** `TeardownCurrentBattle` 은 `OnDestroy` 에서도 불리는데 그 시점엔 컴포넌트가 이미 파괴돼
+있어 `MissingReferenceException` 이 나고, 그러면 그 메서드가 **중단돼 뒤의
+`DestroyEntitiesByType<BattleTimeScale>()` 이 실행되지 않는다** → 싱글턴 누수 → 다음 씬에서
+`found 2 instances` 로 5개 테스트가 무너졌다. `if (x != null)` 로 고쳤다 — 그 메서드의 형제 줄들이
+전부 그 형태인 이유가 이것이다. **원인 규명은 신규 테스트를 먼저 빼고 돌려서**(여전히 실패 →
+테스트 탓 아님) 갈랐다.
+
+**⑵ teardown 테스트가 훅을 안 타는 트리거를 썼다.** `BeginPlacement()` 는
+`TeardownCurrentBattle()` 을 **지나지 않는다.** 라이브 경로는 `StopBattle()` 이다
+(`OnRestartRequested` 는 GameManager 주석대로 dormant). 첫 실행에서 이 테스트가 빨개져서 그 사실을
+잡아냈다 — 훅을 안 타는 트리거로 검증하면 통과해도 아무것도 증명하지 못한다.
+
+**검증**: `DefenderRetireTest` **7/7** · 회귀 9개 클래스 **23/23**.
+
+### 안 고친 것 (의도)
+
+- `PulseSlotFor` 의 `Tween.StopAll` 은 실제 경쟁자인 `ReadyFlourishRoutine` **코루틴**을 못 멈춘다
+  → 같은 타입 2기를 연속 퇴근시키면 슬롯 펀치가 씹힌다. **순수 시각 결함**이라 보류.
+- ②→③ 구간 전환 시 `sin(phase)` 가 임의 값이라 최대 0.16 view 단위 · 9° 스냅이 난다(NIT).
+- `CanRetire` 에 `DeadTag` 검사가 없어 죽는 중인 유닛의 버튼이 켜진 채다 — 눌러도 `RetireDefender`
+  가 false 라 규칙은 옳고 입력만 삼켜진다(NIT).

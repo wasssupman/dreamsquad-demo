@@ -112,7 +112,26 @@ namespace Wassup.UI
             var billboard = view.GetComponent<Billboard>();
             if (billboard != null) billboard.enabled = false;
 
+            // 스케일 인수 — SpineUnitView 는 **자기 코루틴 2개**(PunchRoutine·SquashRoutine)를
+            // 갖고 그것들이 ApplyRenderScale 로 localScale 을 매 프레임 덮는다. Detach 는 그걸
+            // 멈추지 않고 _dying 도 false 라 계속 돈다 — 부착 카드가 주기 발동하는 유닛을
+            // 발동 임팩트 중에 퇴근시키면 장력 stretch 가 펀치 배율과 싸워 몸이 깜빡인다.
+            // 여기서 멈춰야 "소유자가 하나뿐" 이 실제로 참이 된다(코드리뷰 2026-08-15).
+            view.StopAllCoroutines();
+
+            // ⚠ **등록을 코루틴 안이 아니라 여기서** 한다. Run 안에 두면 GO 가 비활성이거나
+            // StartCoroutine 앞에서 예외가 날 때 코루틴이 시작되지 않아, 떼어낸 뷰가 풀에도
+            // _inFlight 에도 없는 **추적 불가능한 유령**으로 남는다. Detach = 소유권 이전이므로
+            // 그 이전은 원자적이어야 한다.
+            _inFlight.Add((view, null)); // 키링 루트는 Run 이 만든 뒤 아래에서 채운다
             StartCoroutine(Run(view, simWorld, unitData));
+        }
+
+        // 등록된 뒤 생성되는 키링 루트를 해당 항목에 이어 붙인다(teardown 이 둘 다 치우도록).
+        private void AttachKeyringRoot(SpineUnitView view, GameObject root)
+        {
+            for (int i = 0; i < _inFlight.Count; i++)
+                if (_inFlight[i].view == view) { _inFlight[i] = (view, root); return; }
         }
 
         private IEnumerator Run(SpineUnitView view, Vector3 simWorld, DefenderUnitData unitData)
@@ -132,11 +151,12 @@ namespace Wassup.UI
             // 키링 없이 모션만 — 연출은 게임 규칙을 하나도 소유하지 않는다.
             var drag = DragController;
             var keyring = drag != null ? drag.CreateKeyringHardware(unitData) : default;
-            _inFlight.Add((view, keyring.root));
+            AttachKeyringRoot(view, keyring.root);
 
             // ⚠ localScale/rotation 직접 대입 — SpineUnitView 는 "스케일 쓰기의 단일 지점"을,
-            // Billboard 는 회전을 요구하지만 둘 다 **경합 소유자가 있을 때**의 규칙이다. 떼어낸
-            // 뷰는 매 프레임 피드가 끊겼고 Billboard 도 껐으므로 소유자가 여기 하나뿐이다.
+            // Billboard 는 회전을 요구하지만 둘 다 **경합 소유자가 있을 때**의 규칙이다.
+            // Fly 가 매 프레임 피드(끊김)·Billboard·뷰 자체 코루틴을 전부 정리했으므로
+            // 여기서는 소유자가 하나뿐이다.
 
             // ── ① 연결 ───────────────────────────────────────────────────────
             float t = 0f, dur = Mathf.Max(0.01f, hookSeconds);
@@ -259,10 +279,14 @@ namespace Wassup.UI
             if (view != null) view.Dispose();
         }
 
-        // 매치 teardown · 씬 언로드 · 컴포넌트 비활성 — 진행 중 연출을 무효화하고 전부 치운다.
-        // 풀이 더 이상 모르는 뷰라 여기서 안 치우면 **고아 GameObject 로 남는다**(Detach 의 계약).
-        // 2.4초로 길어진 지금 teardown 과 겹칠 창이 rev 2 보다 훨씬 넓다.
-        private void OnDisable()
+        // 진행 중 연출을 무효화하고 뷰·키링을 전부 치운다. 풀이 더 이상 모르는 뷰라
+        // 여기서 안 치우면 **고아 GameObject 로 남는다**(Detach 의 계약).
+        //
+        // ⚠ **호출처가 둘이고, 실전에서 도는 것은 teardown 쪽이다.** 이 컴포넌트가 붙은 GO 는
+        // 씬 루트라 아무도 비활성화하지 않아 OnDisable 은 씬 언로드에서만 불린다. 매치 재시작
+        // (메뉴 → 다시하기)은 씬을 갈지 않으므로 `BattleBridge.TeardownCurrentBattle` 이
+        // 명시로 이걸 불러야 한다 — 안 그러면 지난 판 유닛이 새 판 보드에서 논다.
+        public void CancelAll()
         {
             StopAllCoroutines();
             for (int i = 0; i < _inFlight.Count; i++)
@@ -272,6 +296,8 @@ namespace Wassup.UI
             }
             _inFlight.Clear();
         }
+
+        private void OnDisable() => CancelAll();
 
         // 테스트용 관측점 — 진행 중인 퇴근 연출 수.
         public int InFlightCount => _inFlight.Count;
