@@ -27,7 +27,6 @@
 | 금 간 성배 | `cracked_grail` | Squad | Squad ≤2 캡에 편입 |
 | 희생계약 | `sub_incubus_pact` | Squad | **카탈로그 미등록 — 덱 페이지에 뜨지 않는다** (아래 참조) |
 | 나비꿈 | `sub_butterfly_dream` | Unit | 무제한 |
-
 | 재앙의 심장 | `calamity_heart` | Unit | 무제한 |
 | 살찌운 제물 | `sub_fattened_offering` | Unit | 무제한. 적 표식 카드 — 드래그 라우팅 기존 그대로 |
 | 느린 각성 | `slow_awakening` | Unit | 무제한. 기존 "제거만 가능·재추가 불가" 마이그레이션 제약 자연 해소 |
@@ -51,4 +50,4 @@
 - [ ] `visible == 0` 으로 숨긴 카드는 여전히 그리드에 없다
 - [ ] 무의식 카드를 포함한 10장 덱을 저장 → 전투 진입 시 그 덱이 손패에 반영
 - [ ] EditMode `DeckRulesTests` · `ProfileStoreDefaultDeckTests` 그린
-- [ ] `DreamcatcherCatalogSyncTests.SubconsciousPool_MatchesCursedGiftRoster`(6장 로스터) 여전히 그린 — 이 unit 은 `category` 값을 바꾸지 않는다는 가드
+- [ ] `DreamcatcherCatalogSyncTests.SubconsciousPool_MatchesCursedRoster`(6장 로스터) 여전히 그린 — 이 unit 은 `category` 값을 바꾸지 않는다는 가드

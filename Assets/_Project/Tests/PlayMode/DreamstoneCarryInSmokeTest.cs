@@ -183,7 +183,7 @@ namespace Wassup.Tests.PlayMode
             // gift-phase-removal unit 1 — 매치 진입은 기믹 리빌을 거친다(기믹이 배정된
             // 경우). 리빌은 수 초 돌므로 프레임 2개로는 못 기다린다. 이 테스트의 관심사는
             // **배치에 도달해 유닛을 놓는 것**이라 도달까지 기다린다.
-            float deadline = Time.realtimeSinceStartup + 15f;
+            float deadline = Time.realtimeSinceStartup + 25f; // 튜토리얼 홀드 폴백 20s 보다 커야 한다(리뷰 H1)
             while (gm.CurrentPhase != GamePhase.Placement && Time.realtimeSinceStartup < deadline)
                 yield return null;
             Assert.AreEqual(GamePhase.Placement, gm.CurrentPhase,

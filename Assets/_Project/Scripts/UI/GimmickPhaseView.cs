@@ -79,18 +79,27 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
+        // 구독 대상은 enable 시점에 **해석해서 캐시**한다. enable/disable 이 각각
+        // `gameManager ?? Instance` 를 다시 풀면 두 시점에 다른 객체로 해석될 여지가 남는다
+        // (지금 씬 배선에서는 도달 불가지만, 구독 누수는 그 여지 자체를 없애는 게 싸다).
+        private GameManager _subscribedManager;
+
         private void OnEnable()
         {
-            var gm = gameManager != null ? gameManager : GameManager.Instance;
-            if (gm != null) gm.PlacementRequested += BeginIntro;
+            _subscribedManager = gameManager != null ? gameManager : GameManager.Instance;
+            if (_subscribedManager != null) _subscribedManager.PlacementRequested += BeginIntro;
         }
 
         // 뷰가 꺼져도 콜백은 반드시 나간다 — 유실되면 배치 페이즈가 영영 시작되지 않는다.
         // 이 유닛의 단일 최대 위험이라 teardown 경로를 전부 여기로 모은다.
         private void OnDisable()
         {
-            var gm = gameManager != null ? gameManager : GameManager.Instance;
-            if (gm != null) gm.PlacementRequested -= BeginIntro;
+            if (_subscribedManager != null) _subscribedManager.PlacementRequested -= BeginIntro;
+            _subscribedManager = null;
+            // 씬 언로드 / 앱 종료면 시작할 배치가 없다. 여기서 끊어야 Finish 가 만지는 것들
+            // (_panel · placementPhaseView · 앞으로 생길 역참조)이 전부 커버된다 — Finish 안의
+            // 대상 생존 검사 하나에만 기대면 방어선이 한 겹뿐이다(리뷰 M2).
+            if (!gameObject.scene.isLoaded) { _onDone = null; return; }
             if (_onDone != null) Finish(stopSeq: true);
         }
 

@@ -3,7 +3,9 @@
 ## Commit
 
 - `4c09d6b1` feat(gift-phase-removal): unit 0 — 무의식 카드 일반 덱 승격
-- (unit 1~3 통합 커밋 — 해시는 커밋 후 기재)
+- `12907cf6` feat(gift-phase-removal): units 1~3 — 선물 페이즈 제거, 매치는 기믹부터
+- `fc3674fe` fix: 스모크 2개가 기믹 리빌을 거쳐 배치에 닿도록
+- `ff54aaf2` fix: 리빌 종료 콜백의 `?.` fake-null 함정 차단
 
 ## Implemented
 

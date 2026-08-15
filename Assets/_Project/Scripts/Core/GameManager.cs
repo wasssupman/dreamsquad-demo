@@ -161,6 +161,14 @@ namespace Wassup.Core
             Application.targetFrameRate = 60;
         }
 
+        // gift-phase-removal unit 1 (리뷰 H2) — PrimeTween 동시 트윈 풀 예약. 원래 이 한 줄은
+        // GiftPhaseView.Awake 에 있었는데, 그 값이 선물 연출을 위해 잡혔을 뿐 효과는
+        // **프로세스 전역**이라(전투 데미지 넘버·VFX·HUD juice 가 같은 풀을 쓴다) 뷰와 함께
+        // 지우면 남은 소비처들이 기본값 200 을 넘길 때 런타임 리사이즈(1회 GC 할당 + 경고)를
+        // 맞는다. 전역 관심사이므로 프레임 캡과 같은 앱 시작 훅으로 옮겨 둔다.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ReserveTweenCapacity() => PrimeTween.PrimeTweenConfig.SetTweensCapacity(400);
+
         private void Awake()
         {
             // 비율 고정 + 영역만 확장: 세로를 1080 으로 캡하고 가로는 물리 화면 aspect 로 계산.

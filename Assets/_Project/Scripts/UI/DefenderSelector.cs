@@ -271,7 +271,7 @@ namespace Wassup.UI
                 OnDraftConfirmed();
             }
             else
-                // gift-phase (review m1) — None/Draft/Gift/Result 에선 숨김(선물 도중 트레이
+                // gift-phase (review m1) — None/Draft/Gimmick/Result 에선 숨김(선물 도중 트레이
                 // 노출 방지, AwakeningGaugeView 와 일관). Battle/Placement 는 위에서 처리.
                 _panel.SetActive(false);
         }

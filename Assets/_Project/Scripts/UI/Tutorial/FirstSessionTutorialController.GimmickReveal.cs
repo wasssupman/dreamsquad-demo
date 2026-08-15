@@ -52,7 +52,7 @@ namespace Wassup.UI.Tutorial
             // ContinueTapped 도 쓰지 않는다 — 클래스 안내·스트레스 정지와 소비자를 다투지 않는다.
             //
             // SetElevated 도 부르지 않는다: guidance 기본 order(1500)가 리빌 패널(20)을 이미
-            // 압도한다. .Gift.cs 의 호출은 order 가 10↔40 이던 시절의 잔재다.
+            // 압도한다. 선물 워크스루의 호출은 order 가 10↔40 이던 시절의 잔재였다(그 챕터는 은퇴).
             _gimmickHintActive = true;
             guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.GimmickReveal);
             guidance.ShowMessage(GimmickRevealHintText, showSkip: false);
@@ -79,7 +79,7 @@ namespace Wassup.UI.Tutorial
             if (!_gimmickHintActive) return;
             _gimmickHintActive = false;
             guidance?.Hide();
-            // 앵커를 되돌리지 않으면 다음 안내(각성 · 선물)가 화면 하단에 엉뚱하게 뜬다.
+            // 앵커를 되돌리지 않으면 다음 안내(각성)가 화면 하단에 엉뚱하게 뜬다.
             guidance?.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
         }
 

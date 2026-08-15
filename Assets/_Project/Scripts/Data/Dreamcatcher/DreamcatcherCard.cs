@@ -24,8 +24,8 @@ namespace Wassup.Data
 
     // dreamcatcher-deck-builder Unit 0 — deck-rule category (deck cap RETIRED, now
     // on CardType.Squad). Reused as a concept label: dreamcatcher-squad-warmup adds
-    // Subconscious(무의식). deck-builder no longer colors/labels by this (dormant for
-    // frame color); a card may still declare its concept here. Append at end.
+    // Subconscious(무의식). 덱 **규칙** 소비처는 없지만 dormant 가 아니다 — CardCategoryStyle
+    // 이 보라 프레임 / 아트 폴백 / "무의식" 칩을 이 값으로 키잉한다. Append at end.
     public enum CardCategory { Normal, Unique, Subconscious }
 
     // dreamcatcher-card-taxonomy — Squad(축 스탯 버프) / Unit(개별 부착 메커니즘).

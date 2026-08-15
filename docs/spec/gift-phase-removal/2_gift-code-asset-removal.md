@@ -21,7 +21,7 @@ unit 1 에서 죽은 코드가 된 선물 페이즈 일체를 제거한다. Play
 
 테스트 케이스 편집 (파일 삭제가 아니라 케이스 제거):
 
-- `Assets/_Project/Tests/EditMode/DreamcatcherCatalogSyncTests.cs` — `RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious`(L175 부근)가 `GiftDeckComposer.PickRim` 을 직접 호출한다. **같은 커밋에서 이 케이스를 삭제**하지 않으면 `GiftDeckComposer.cs` 삭제와 동시에 EditMode 어셈블리 전체가 컴파일 실패한다. 같은 파일의 `SubconsciousPool_MatchesCursedGiftRoster`(6장 로스터 단언)와 카드별 계약 케이스는 **유지** — 카테고리 값과 카드 내용은 이번 스펙에서 바뀌지 않는다.
+- `Assets/_Project/Tests/EditMode/DreamcatcherCatalogSyncTests.cs` — `RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious`(L175 부근)가 `GiftDeckComposer.PickRim` 을 직접 호출한다. **같은 커밋에서 이 케이스를 삭제**하지 않으면 `GiftDeckComposer.cs` 삭제와 동시에 EditMode 어셈블리 전체가 컴파일 실패한다. 같은 파일의 `SubconsciousPool_MatchesCursedRoster`(6장 로스터 단언)와 카드별 계약 케이스는 **유지** — 카테고리 값과 카드 내용은 이번 스펙에서 바뀌지 않는다.
 
 씬/참조 정리:
 
