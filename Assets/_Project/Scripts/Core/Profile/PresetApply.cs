@@ -160,10 +160,15 @@ namespace Wassup.Core
             return kept;
         }
 
-        // 해석 가능 + 숨김(visible 0)/Subconscious(선물 전용) 제외 + 중복 제거 + 덱
-        // 상한 + 타입별 상한. 판정 기준을 페이지의 CanAdd 와 일치시켜, 적용 결과가 그
-        // 페이지에서 손으로 만들 수 있는 덱과 같아지게 한다. 숨김 카드는 어차피 로그인
-        // prune(DeckPrune)이 떼어내므로 여기서 넣어봐야 다음 로그인에 사라진다.
+        // 해석 가능 + 숨김(visible 0) 제외 + 중복 제거 + 덱 상한 + 타입별 상한.
+        // 판정 기준을 페이지의 CanAdd 와 일치시켜, 적용 결과가 그 페이지에서 손으로
+        // 만들 수 있는 덱과 같아지게 한다. 숨김 카드는 어차피 로그인 prune(DeckPrune)이
+        // 떼어내므로 여기서 넣어봐야 다음 로그인에 사라진다.
+        //
+        // gift-phase-removal unit 0 — Subconscious 제외가 여기 있었다(선물 전용 카드였다).
+        // 림의 선물이 폐지되면서 무의식 카드는 일반 덱 카드가 됐고, 그 한 줄은 페이지의
+        // BuildPool 과 **짝**이라 반드시 같이 움직인다 — 한쪽만 풀면 프리셋으로만 넣을 수
+        // 있거나 그 반대인 카드가 생긴다.
         public static List<string> FilterCards(IReadOnlyList<string> ids, DreamcatcherCardCatalog catalog, out int dropped)
         {
             var kept = new List<string>();
@@ -181,7 +186,6 @@ namespace Wassup.Core
                     var card = catalog != null ? catalog.ById(id) : null;
                     if (card == null) continue;
                     if (card.visible == 0) continue;
-                    if (card.category == CardCategory.Subconscious) continue;
                     if (seen.Contains(id)) continue;
                     int typeMax = DeckRules.EffectiveMax(catalog, card.type);
                     if (typeMax >= 0 && DeckRules.TypeCount(kept, catalog, card.type) >= typeMax) continue;

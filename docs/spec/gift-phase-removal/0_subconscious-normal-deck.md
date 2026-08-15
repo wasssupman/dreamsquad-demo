@@ -9,6 +9,8 @@
 - `Assets/_Project/Scripts/UI/Outgame/DreamcatcherDeckPageController.cs` (L106 부근)
 - `Assets/_Project/Scripts/Core/Profile/PresetApply.cs` (L184 부근)
 - `Assets/_Project/Scripts/Data/Dreamcatcher/DreamcatcherCard.cs` (`category` 주석)
+- `Assets/_Project/Scripts/UI/Outgame/DreamcatcherCardBrowser.cs` (클래스 주석)
+- `Assets/_Project/Tests/EditMode/Profile/PresetApplyTests.cs` (`FilterCards_DropsHidden_*` 케이스)
 
 ## 구현
 
@@ -28,6 +30,8 @@
 | 재앙의 심장 | `calamity_heart` | Unit | 무제한 |
 | 살찌운 제물 | `sub_fattened_offering` | Unit | 무제한. 적 표식 카드 — 드래그 라우팅 기존 그대로 |
 | 느린 각성 | `slow_awakening` | Unit | 무제한. 기존 "제거만 가능·재추가 불가" 마이그레이션 제약 자연 해소 |
+
+4. **테스트 갱신** — `PresetApplyTests.FilterCards_DropsHidden_Subconscious_Duplicates_Unresolved` 가 무의식 제외를 단언한다. `FilterCards_DropsHidden_Duplicates_Unresolved` 로 개명하고 무의식 카드가 **살아남는지**를 단언해 승격의 회귀 가드로 뒤집는다(계약 10 — 테스트 갱신은 같은 커밋).
 
 밸런스 재조정은 이 unit 의 스코프가 아니다(README 후속 후보).
 
