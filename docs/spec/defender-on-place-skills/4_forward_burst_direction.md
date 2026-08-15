@@ -56,7 +56,7 @@ On-place 마크스맨: ForwardProjectile affected=0 at (5, 6)
 
 ## 완료 기준
 
-- [x] PlayMode `OnPlaceForwardProjectileTest` green (4/4, 2026-08-15)
+- [x] PlayMode `OnPlaceForwardProjectileTest` green (3/3, 2026-08-15)
   - 조준 없음 + 적이 **북쪽**(고장난 코드가 못 맞히는 방향) → 피해 들어감
   - **조준 4방향을 각각 다른 칸에서** 검사 → 전부 그 방향의 적이 맞음.
     ⚠ 한 방향만 검사하면 안 된다 — 고장난 코드도 셀마다 고정 방향이 있어 우연히 통과한다
@@ -65,4 +65,6 @@ On-place 마크스맨: ForwardProjectile affected=0 at (5, 6)
 - [x] compile 0 error
 - [x] 인접 PlayMode 회귀 15/15 green (Beam·OnPlaceDot·OnPlaceStack·Relocation·PlacementAura·BoardLimit)
 - [ ] 실제 플레이에서 배치 시 콘솔 `On-place ...: ForwardProjectile affected=N` 의 N > 0
-      (적이 사거리 안에 있는 배치에서) — **사용자 확인 대기**
+      (적이 사거리 안에 있는 배치에서) — **사용자 육안 확인 대기**
+
+커밋: `e3c231bf` (2026-08-15, 자동 검증분만 확인)
