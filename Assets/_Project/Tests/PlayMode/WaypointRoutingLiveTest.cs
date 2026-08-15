@@ -176,8 +176,17 @@ namespace Wassup.Tests.PlayMode
 
             for (int frame = 0; frame < 2400 && !reachedGoal; frame++)
             {
-                if (em.Exists(airborne) && CellOf(em, airborne, in field).Equals(airborneBlockedCell))
-                    airborneBlockedCellFrames++;
+                // unit 9 — 도달 반경(체비쇼프 1) 도입 후 정확한 셀 진입은 정상 동작이 아니다:
+                // 인접 셀에서 도착 처리되고 다음 목적지로 꺾는다. Air 가 장애물을 무시했다는
+                // 증거는 «차단 셀을 목적지로 유지하고 그 도달 반경 안까지 실제로 접근»이다
+                // (지상이었다면 그 waypoint 가 도달 불가로 건너뛰어져 접근 자체가 없다).
+                if (em.Exists(airborne))
+                {
+                    int2 airCell = CellOf(em, airborne, in field);
+                    int2 airDelta = airCell - airborneBlockedCell;
+                    if (math.max(math.abs(airDelta.x), math.abs(airDelta.y)) <= 1)
+                        airborneBlockedCellFrames++;
+                }
                 if (em.Exists(groundborne) && CellOf(em, groundborne, in field).Equals(groundBlockedCell))
                     groundBlockedCellFrames++;
 
@@ -192,9 +201,14 @@ namespace Wassup.Tests.PlayMode
                 {
                     Assert.AreEqual(lastIndex + 1, progress.index,
                         "한 프레임에 저작 순서를 건너뛰면 안 된다");
+                    // unit 9 — 도달 판정은 셀 일치가 아니라 **체비쇼프 1 이내**다
+                    // (WaypointProgress.ArrivalChebyshevRadius). 정확한 셀 진입을 요구하면
+                    // 인덱스가 인접 셀에서 오르는 정상 동작이 빨간불이 된다.
                     int2 entered = CellOf(em, routed, in field);
-                    Assert.AreEqual(field.WaypointAt(progress.pathIndex, lastIndex), entered,
-                        $"index {lastIndex} waypoint 셀 진입 프레임");
+                    int2 wp = field.WaypointAt(progress.pathIndex, lastIndex);
+                    int2 delta = entered - wp;
+                    Assert.LessOrEqual(math.max(math.abs(delta.x), math.abs(delta.y)), 1,
+                        $"index {lastIndex} waypoint 진입 프레임 — 도달 반경(체비쇼프 1) 밖 {entered} 에서 인덱스가 올랐다 (waypoint {wp})");
                     entryFrames.Add(frame);
                     lastIndex = progress.index;
                 }
@@ -209,7 +223,8 @@ namespace Wassup.Tests.PlayMode
                 Assert.Greater(entryFrames[i], entryFrames[i - 1], "waypoint 통과 프레임 순서");
             Assert.IsTrue(reachedGoal, "마지막 waypoint 이후 골에 도달");
             Assert.Greater(airborneBlockedCellFrames, 0,
-                "Air 적은 지상 차단 셀을 실제로 통과해야 한다");
+                "Air 적은 지상 차단 셀을 도달 반경(체비쇼프 1) 안까지 실제로 접근해야 한다 " +
+                "— 지상이었다면 도달 불가 건너뜀으로 접근 자체가 없다");
             Assert.AreEqual(0, groundBlockedCellFrames,
                 "같은 판 지상 적은 차단 셀 안으로 들어가면 안 된다");
         }
@@ -443,3 +458,5 @@ namespace Wassup.Tests.PlayMode
                 field.tileSize, field.gridSize, field.origin);
     }
 }
+
+

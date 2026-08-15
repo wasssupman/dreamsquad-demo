@@ -129,3 +129,9 @@
 - **수정**: 생성기에 `laneRoutes` 옵셔널 주입 + `WaypointRouting.ResolvePathIndex` 재사용(규칙은 계속 한 곳). `QueueWave` 가 `RouteForSpawn` 배열 전달.
 - **검증**: Coil 재현 빨강 → 초록, EditMode 14/14, Duel 무회귀.
 - ⚠ **`ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder` 는 unit 5(34c1603f) 이후 계속 빨강** — Skimmer `minWaveNumber 8` 이 WaypointLab 첫 웨이브 Air 전제를 깼다. unit 11 무관(스태시 대조 확인). 랩 전용 Air 검증 유닛 신설이 후보.
+
+## unit 12 (2026-08-15) — 랩 전용 Air 검증 유닛
+
+- `ValidationWave_ShowsGuides` 의 unit 5 이후 빨강을 해소. 실패는 **3층**이었다: ① 랩 덱이 라이브 Skimmer SO 공유 → 게이트 8이 첫 웨이브 Air 를 걸러냄(본체) ② 웨이포인트 진입 단언이 unit 9 도달 반경(체비쇼프 1)을 모름 ③ Air 차단 셀 단언도 동일 — 완화 후 정확 셀 진입은 정상 동작이 아니라 「도달 반경 안 접근」이 올바른 증거. 상세 [12](12_lab_air_unit.md).
+- `Enemy_WaypointAir`(dev 전용, 게이트 1·캡 0) 신설 + 랩 덱 슬롯 교체. **라이브 덱·라이브 SO 무변경.**
+- 교훈: **검증 하네스가 라이브 밸런스 SO 를 공유하면 밸런스 커밋이 하네스를 조용히 부순다.** 랩은 랩 유닛으로.
