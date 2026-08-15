@@ -1,6 +1,6 @@
 # Defense Tournament — 인게임 기획 현황 요약
 
-> **역사 보존 배너 — 2026-05-08 snapshot.** 이 문서는 당시의 draft·flow·수치를 보존하며 현재 구현의 진실원이 아니다. 2026-07-29 기준 실제 흐름은 [`production-transition/demo-baseline.md`](../production-transition/demo-baseline.md)를 우선한다.
+> **역사 보존 배너 — 2026-05-08 snapshot.** 이 문서는 당시의 draft·flow·수치를 보존하며 현재 구현의 진실원이 아니다. 현재 Demo 흐름은 `CLAUDE.md`, 활성 `docs/spec/{feature-slug}/`, 코드·에셋·테스트를 우선한다. Dormant production-transition snapshot을 현재 기준선으로 사용하지 않는다.
 >
 > 작성일: 2026-05-08  
 > 기준: PRD + 전체 spec 문서 + 실제 코드/asset 직접 확인  

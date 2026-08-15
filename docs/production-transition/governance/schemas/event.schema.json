@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://somnia.local/schemas/dreamsquad-transition-event-v2.json",
+  "title": "Dreamsquad one-time transition event",
+  "oneOf": [
+    { "$ref": "#/$defs/demoApproved" },
+    { "$ref": "#/$defs/demoFrozen" },
+    { "$ref": "#/$defs/transferCompleted" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gitRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "eventId": { "type": "string", "minLength": 1 },
+    "identity": { "type": "string", "minLength": 1 },
+    "approvedAt": { "type": "string", "format": "date-time" },
+    "approvalReference": { "type": "string", "minLength": 1 },
+    "freezeId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "authorityAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "assignee",
+        "assigned_by_project_owner",
+        "assigned_at",
+        "assignment_reference"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "game-spec-approver",
+            "demo-freeze-attestor",
+            "coordinated-transfer-attestor"
+          ]
+        },
+        "assignee": { "$ref": "#/$defs/identity" },
+        "assigned_by_project_owner": { "$ref": "#/$defs/identity" },
+        "assigned_at": { "$ref": "#/$defs/approvedAt" },
+        "assignment_reference": { "$ref": "#/$defs/approvalReference" }
+      }
+    },
+    "destinations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["client", "game-server"],
+      "properties": {
+        "client": { "type": "string", "minLength": 1 },
+        "game-server": { "type": "string", "minLength": 1 }
+      }
+    },
+    "demoApproved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "acting_role",
+        "approver",
+        "approved_at",
+        "approval_reference",
+        "authority_assignment",
+        "demo_revision",
+        "demo_content_sha256",
+        "approved_scope"
+      ],
+      "properties": {
+        "schema_version": { "const": "2.0" },
+        "event_id": { "$ref": "#/$defs/eventId" },
+        "event_type": { "const": "demo-approved" },
+        "acting_role": { "const": "game-spec-approver" },
+        "approver": { "$ref": "#/$defs/identity" },
+        "approved_at": { "$ref": "#/$defs/approvedAt" },
+        "approval_reference": { "$ref": "#/$defs/approvalReference" },
+        "authority_assignment": {
+          "allOf": [
+            { "$ref": "#/$defs/authorityAssignment" },
+            {
+              "required": ["role"],
+              "properties": {
+                "role": { "const": "game-spec-approver" }
+              }
+            }
+          ]
+        },
+        "demo_revision": { "$ref": "#/$defs/gitRevision" },
+        "demo_content_sha256": { "$ref": "#/$defs/sha256" },
+        "approved_scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "demoFrozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "acting_role",
+        "approver",
+        "approved_at",
+        "approval_reference",
+        "authority_assignment",
+        "demo_revision",
+        "demo_content_sha256",
+        "predecessor_event_id",
+        "freeze_id",
+        "manifest_sha256",
+        "common_sha256",
+        "client_sha256",
+        "game_server_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "2.0" },
+        "event_id": { "$ref": "#/$defs/eventId" },
+        "event_type": { "const": "demo-frozen" },
+        "acting_role": { "const": "demo-freeze-attestor" },
+        "approver": { "$ref": "#/$defs/identity" },
+        "approved_at": { "$ref": "#/$defs/approvedAt" },
+        "approval_reference": { "$ref": "#/$defs/approvalReference" },
+        "authority_assignment": {
+          "allOf": [
+            { "$ref": "#/$defs/authorityAssignment" },
+            {
+              "required": ["role"],
+              "properties": {
+                "role": { "const": "demo-freeze-attestor" }
+              }
+            }
+          ]
+        },
+        "demo_revision": { "$ref": "#/$defs/gitRevision" },
+        "demo_content_sha256": { "$ref": "#/$defs/sha256" },
+        "predecessor_event_id": { "$ref": "#/$defs/eventId" },
+        "freeze_id": { "$ref": "#/$defs/freezeId" },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "common_sha256": { "$ref": "#/$defs/sha256" },
+        "client_sha256": { "$ref": "#/$defs/sha256" },
+        "game_server_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "transferCompleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "acting_role",
+        "approver",
+        "approved_at",
+        "approval_reference",
+        "authority_assignment",
+        "demo_revision",
+        "demo_content_sha256",
+        "predecessor_event_id",
+        "freeze_id",
+        "client_receipt_sha256",
+        "game_server_receipt_sha256",
+        "destinations"
+      ],
+      "properties": {
+        "schema_version": { "const": "2.0" },
+        "event_id": { "$ref": "#/$defs/eventId" },
+        "event_type": { "const": "transfer-completed" },
+        "acting_role": { "const": "coordinated-transfer-attestor" },
+        "approver": { "$ref": "#/$defs/identity" },
+        "approved_at": { "$ref": "#/$defs/approvedAt" },
+        "approval_reference": { "$ref": "#/$defs/approvalReference" },
+        "authority_assignment": {
+          "allOf": [
+            { "$ref": "#/$defs/authorityAssignment" },
+            {
+              "required": ["role"],
+              "properties": {
+                "role": { "const": "coordinated-transfer-attestor" }
+              }
+            }
+          ]
+        },
+        "demo_revision": { "$ref": "#/$defs/gitRevision" },
+        "demo_content_sha256": { "$ref": "#/$defs/sha256" },
+        "predecessor_event_id": { "$ref": "#/$defs/eventId" },
+        "freeze_id": { "$ref": "#/$defs/freezeId" },
+        "client_receipt_sha256": { "$ref": "#/$defs/sha256" },
+        "game_server_receipt_sha256": { "$ref": "#/$defs/sha256" },
+        "destinations": { "$ref": "#/$defs/destinations" }
+      }
+    }
+  }
+}

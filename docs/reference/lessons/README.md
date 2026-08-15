@@ -2,7 +2,7 @@
 
 이 폴더는 작업 중 반복해서 부딪힌 **프로젝트·환경 고유의 함정과 검증 기법**을 모은다. CLAUDE.md/TRD 가 "규칙"이라면 여기는 "겪어보고 알게 된 것" — fresh clone 한 사람(또는 다른 경로로 재클론한 나)이 같은 지뢰를 다시 밟지 않게 한다.
 
-여기는 데모 저장소를 안전하게 운영한 경험의 진실원이다. 그 경험을 서버 권위·non-ECS 정규 프로젝트에 `carry / adapt / drop / decide`로 해석하는 책임은 [`production-transition/`](../../production-transition/README.md)에 둔다.
+여기는 Demo 저장소를 안전하게 운영한 경험의 진실원이다. 현재 Demo 작업에서는 이 교훈을 활성 spec과 함께 사용하며, dormant production-transition 자료로 역해석하거나 설계를 바꾸지 않는다.
 
 > 출처: 개인 auto-memory 에 쌓였던 지식의 승격본 (spec `docs/spec/workflow-reproducibility/` unit 1). 개인 auto-memory 는 경로별로 분절돼 팀·재클론 간 공유되지 않으므로 레포로 승격했다.
 

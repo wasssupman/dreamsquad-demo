@@ -656,8 +656,6 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 #### 워크플로우 재현성 — 후속 (workflow-reproducibility)
 
-- **문서 수명주기 정리** [S] · [`docs/production-transition/`](../production-transition/README.md) 로 승격(2026-07-29) — PRD/TRD·milestone 에 역사 보존 배너를 두고, 기준선·출처 지도·supersession을 별도 관리한다.
-- **ADR 후보 로그** [M] · [`adr-candidates.md`](../production-transition/architecture/adr-candidates.md) 로 승격(2026-07-29) — 현재는 `ADR-CAND-###` 질문만 관리하며, 승인된 결정이 생길 때만 별도 공식 ADR과 `docs/decisions/`를 만든다.
 - **deepinit ↔ AGENTS symlink 충돌 정책** [S] · deepinit 재실행 시 AGENTS.md 를 실제 파일로 재생성해 symlink 이 풀림 — 재적용 자동화 또는 deepinit 출력 위치 변경.
 - **첫 실전 클론 체크리스트 완주 확인** [S] · 새 머신/팀원 첫 클론에서 루트 README 부트스트랩 체크리스트(훅 승인·Unity 첫 Play) 실전 검증.
 - **thick 하네스 표준화** [S] · OMC/superpowers 를 `enabledPlugins`+`extraKnownMarketplaces` 로 커밋해 팀 동일 오케스트레이션(사용자 결정 시).
@@ -685,6 +683,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Production-transition 준비 자료 격리** → `docs/production-transition/` (owner-gated dormant downstream — Project owner의 명시적 활성화 전에는 Demo 정본·작업 후보·검증 gate가 아니며 이 backlog에서 후속을 추적하지 않음)
 - **뜬 높이의 시각 규칙 + 아치 비행 감각** → `docs/spec/flight-lift-feel/` (완료 2026-08-02, units 0~3, `3743abb0`~`50cafa76` — 공중에 뜬 유닛을 화면이 읽게. **lift(지면에서 뜬 view 공간 높이) 하나에서 유닛 확대·그림자 축소·그림자 페이드를 파생**(`UnitLiftVisual`, 소비처 4개 공유: 드롭 하마·보스 도약·재배치 던지기·넉업 hop) + **ease-out-in 시간 재매핑**(`KeyringSim.FlightTimeRemap`, power=1 항등이라 무회귀 공짜 — 초반 급상승/정점 체공/후반 급하강) + 착지 스쿼시. 원인 진단은 "아치 높이가 시선축에 수직이라 **원근 확대가 구조적으로 0**". 스케일 쓰기를 `ApplyRenderScale` 단일 지점으로 모아 매 프레임 피드 ↔ 펀치/스쿼시 코루틴 경합 제거. 비행 중 블롭은 **아치 기저선**을 접지 앵커로 받아 착지 타일에 남는다(camUp 아치가 유닛 XZ 를 2타일 밀던 문제). **`useRealShadows` 0 으로 PC 도 블롭 전환** — 유닛 그림자는 조명이 아니라 "어느 칸에 있나" 앵커라는 룩 판정. 최종 튜닝: 아치 제어점 6.0(apex 2.4)·블롭 알파 0.5·hangPower 0.7·눌림 0.10/0.05. EditMode 1796/1794, 독립 코드 리뷰 1회(지적 4건 수정: 스쿼시가 프레임레이트 비례로 약해짐·사망 시 확대 굳음 등). **미해결(수용)**: lift 축이 드롭(camUp)과 도약(월드 +Y)에서 pitch 60° 기준 정확히 2배 어긋나 계약 2 의 "같은 높이=같은 크기"가 참이 아님. 후속: 탭 배치 던지기 적용·먼지/카메라 킥·`liftScaleMax` 포화·안드로이드 프로파일)
 - **무의식 저주 유물 2종** → `docs/spec/subconscious-cursed-relics/` (완료 2026-07-15 — 플레이스홀더 `깊은 잠`/`꿈결 가속`을 재앙의 심장(시한부 공속·3타 강공·사망 폭발)과 금이 간 성배(전군 화력↑/생존↓)로 교체. 기존 mechanic/effect 조합만 사용하고 신규 메커니즘·인터페이스·ECS 채널은 추가하지 않음. 기존 `LethalTimer` 중복 부착 사전검증과 회귀 테스트 보강. 신규 2장 및 문자 placeholder 3장 카드 아트 완성.)
 - **Dreamcatcher empower aura** → `docs/spec/dreamcatcher-empower-aura/` (완료 2026-07-15, units 0~3, `34c99cf3`~`33d3b90f` — 구 슬러그 `unit-buff-debuff-aura` 에서 개념 전환. **ModifierOrigin 출처 1급 태깅 프레임워크**(생산자 19곳, `ModifierHeader.origin`, 머지 키 아닌 메타데이터 — 같은 크기 버프도 슬롯 단위로 출처 구분; dispel/UI 재사용 토대) 위에서 **드림캐쳐 출처 스탯 모디파이어가 활성인 유닛에만** 온-바디 파워업 오라(`StatusFxKind.Empowered`, 순수 `ModifierAuraClassifier`, 상태 구동 reconcile·defender 한정, revoke=identity 자동 해제). 드림스톤/시너지/on-place/slow 배제. **버그 2건 수정**: `ApplyActiveDcEffectsTo` 드림스톤 origin 오태깅(`ActiveDcEffect.origin`) · revoke 감소형(Multiplicative) 미중립화(op-aware `EnqueueStatModifierRaw`, PlayMode 회귀). 미의도 `fallbackDeck` 제거. 오라=5요소(쉘·창끝·백라이트·충격파링·스파크) 파랑/주황 이중톤 + 전용 텍스처 2종, `EmpowerAura.prefab` 정식화. EditMode 780/PlayMode 2, 투트랙 리뷰 반영. 후속: 전용 셰이더 글로우·강도별 단계 오라·출처 태그 재사용(dispel/modifier UI))

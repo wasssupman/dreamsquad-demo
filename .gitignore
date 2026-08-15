@@ -29,6 +29,10 @@ ProfilerCaptures/
 .vscode/
 .idea/
 
+# Python tool/test caches
+__pycache__/
+*.py[cod]
+
 # Gradle cache directory
 .gradle/
 

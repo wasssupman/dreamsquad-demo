@@ -1,0 +1,14 @@
+{
+  "fixture_id": "PT-FIXTURE-UNIT-LIFECYCLE-CLIENT-001",
+  "input_fixture": "PT-FIXTURE-UNIT-LIFECYCLE-SHARED-001",
+  "expected_final_lifecycle_state": "removed",
+  "duplicate_event_ids_are_ignored": true,
+  "semantic_cue_order": [
+    "spawn",
+    "attack-started",
+    "damage",
+    "death",
+    "despawn"
+  ],
+  "gameplay_truth_from_animation": false
+}

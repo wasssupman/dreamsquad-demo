@@ -1,223 +1,83 @@
-# 데모 경험의 정규 프로젝트 전환
+# Demo → Production Transition
 
-> 상태: **Draft**
+> 상태: **dormant · owner-gated · not Demo authority**
 >
-> 기준선: **2026-07-29 / `44c87885`**
->
-> 정규 책임 경계 결정: **2026-07-30**
->
-> 대상: Product, Client, Server
->
-> 범위: 데모 근거팩, PRD 입력, ADR 후보
->
-> 비범위: 최종 기획서, 승인된 ADR, 정규 프로젝트 구현 명세
+> Project owner가 현재 요청에서 production-transition 작업을 명시적으로 활성화하지
+> 않았다면 이 subtree를 읽거나 갱신·검증하지 않는다.
 
-이 폴더는 현재 데모에서 확인한 구현 사실과 학습 가설을 정규 프로젝트의 PRD와 ADR을 작성할 수 있는 입력으로 번역한다. 데모 문서를 최신인 것처럼 합치는 대신, 사실·결정·가설과 그 증거 수준을 분리한다.
+## 목적
 
-현재 데모의 정확한 경계는 **클라이언트 권위 전투 시뮬레이션 + Firebase 인증 + 서버 발급 토너먼트 시드·시도 + 결과·랭킹 API**다. 정규 프로젝트는 **서버가 gameplay rule·canonical config·상태 전이·판정·점수의 권위 실행을 소유하고, 클라이언트가 입력 UX와 presentation을 소유하는 온라인 게임**을 목표로 하며, 데모의 ECS 구현은 이식하지 않는다.
+계속 바뀌는 single-player Demo에서 production Client와 authoritative Game Server가
+보존해야 할 **규칙과 구현 계획**을 축적한다. 이 자료는 Demo를 설계하거나 검증하는
+문서가 아니며 Demo와 불일치하면 stale한 downstream으로 남는다.
 
-이 문서 묶음은 정규 프로젝트 구현을 허가하지 않는다. 이 저장소의 ECS 경계와 작업 규칙은 계속 [`CLAUDE.md`](../../CLAUDE.md)와 현재 spec을 따른다.
+Production의 실제 API, DTO, protocol, runtime과 저장 구조는 각 production 저장소의
+정책과 ADR이 결정한다. 이곳의 문서는 그 결정을 대신하지 않는다.
 
-## 정규 프로젝트 책임 경계
+## Demo firewall
 
-여기서 `Game Design`과 `Client presentation`은 같은 “디자인”이 아니다. 규칙을 누가 작성·승인하는지와 runtime에서 누가 그 규칙을 판정하는지도 별개다.
+- Demo가 유일한 upstream이다. Demo 정본은 `CLAUDE.md`, 활성 `docs/spec/**`, 적용 가능한
+  TRD/PRD, 코드·에셋·테스트다.
+- Transition 갱신은 사용자가 명시한 **별도 후행 작업과 별도 commit**으로만 수행한다.
+  Demo feature 작업, CI, 완료 기준, review, build와 같은 작업에 끼워 넣지 않는다.
+- Demo 변경을 watch하거나 freshness를 자동 계산하지 않는다. 누락과 stale을 허용하며
+  official freeze 직전에 한 번만 전수 reconciliation한다.
+- Transition 문서를 근거로 Demo 코드·spec·asset·test를 추가하거나 바꾸지 않는다.
+- `archive/legacy/`와 `maintenance/`는 official bundle 대상이 아니며 정상 탐색 경로도 아니다.
+- Freeze, 이동과 production 구현 activation은 서로 다른 승인이다.
 
-| 영역 | 정규 프로젝트 책임 | 포함 범위 |
+## 두 consumer와 common
+
+Official consumer는 정확히 두 개다.
+
+| Consumer | 책임 | 받는 문서 |
 |---|---|---|
-| Product / Game Design authoring | 규칙 의도, 밸런스, 콘텐츠 의미, UX 목표를 작성·승인 | 플레이어 선택의 의미, 수치 목표, 콘텐츠 정책, 성공 기준 |
-| Server authoritative gameplay | 게임 결과에 영향을 주는 규칙·설정·상태 전이의 정본과 권위 실행 | command 유효성, 비용·쿨다운, 타게팅, 효과·피해, wave·spawn, tick·deadline, gameplay RNG, 승패·점수·보상 |
-| Client presentation | 입력 의도를 수집하고 권위 상태·결과를 시각·청각·촉각 경험으로 표현 | UI, animation, VFX, SFX, camera, haptics, localization, accessibility, cosmetic asset mapping |
-| Protocol boundary | 두 runtime을 stable ID와 의미론적 command·state·event로 연결 | client intent, authoritative tick·state·outcome, version·correlation 정보 |
+| Production Client | 사용자 입력, pending/accepted/rejected/corrected UX, authoritative projection, UI·VFX·SFX·camera·haptics | `common + client + policy` |
+| Production Game Server | gameplay ruleset, command validation, canonical state transition, ordering·time·numeric·RNG, score/result | `common + game-server + policy` |
 
-혼합 요소는 게임 결과에 영향을 주는지를 기준으로 분리한다. 피해 값과 판정 시점은 Server가 소유하고 타격 animation·VFX는 Client가 소유한다. 경기 deadline과 정보 공개 자격은 Server가 소유하고 countdown UI와 공개된 정보의 layout은 Client가 소유한다. tutorial hint는 Client presentation일 수 있지만 command 봉인·허용 규칙은 Server 판정이다.
+[`common/`](common/README.md)은 세 번째 consumer package가 아니다. 한 번 저작하고 official
+freeze 때 두 consumer bundle에 byte-identical하게 각각 포함하는 공통 partition이다.
 
-Client는 반응성을 위해 version이 고정된 최소 prediction·preview 계산을 가질 수 있으나, 이는 버릴 수 있는 비권위 projection이다. Client가 만든 결과·state delta·점수는 권위 입력이 아니며 Server correction·resynchronization이 항상 우선한다. 허용 범위와 reconciliation 방식은 [`ADR-CAND-006`](architecture/adr-candidates.md)에서 결정한다.
+## 문서 지도와 권위
 
-## Replay·관전의 정본과 표현 경계
+1. [`governance/transition-policy.md`](governance/transition-policy.md) — 역할 위임, 금지사항,
+   세 개의 delegated one-shot 사건
+2. [`governance/one-time-transition-plan.md`](governance/one-time-transition-plan.md) —
+   reconciliation부터 receipt까지의 단 한 번인 실행 절차
+3. [`common/`](common/README.md) — 양쪽이 동일하게 보존할 기술 중립 의미
+4. [`client/`](client/README.md), [`game-server/`](game-server/README.md) — consumer별 규칙,
+   coverage와 production 구현 plan
+5. [`governance/decision-register.md`](governance/decision-register.md) — 아직 owner가 결정해야
+   하는 Product/기술 질문
+6. [`maintenance/change-register.md`](maintenance/change-register.md) — 비차단 후행 capture inbox
+7. [`archive/legacy/`](archive/legacy/README.md) — historical, non-normative, non-export
 
-정규 프로젝트에서 경기의 유일한 **authoritative source of truth**는 `Authoritative Match Record`
-(AMR)다. AMR은 논리적 기록 계약이며, 선택한 저장 artifact는 Server가 확정한 tick·상태
-전이·semantic event·stable ID·gameplay RNG 결과, 승패·점수와 ruleset·recording schema 정보를
-직접 저장하거나 결정론적으로 재구성·검증할 수 있어야 한다. Client prediction, network 도착
-시각, camera·UI·prefab·animation·VFX·SFX 명령은 AMR에 포함하지 않는다.
+같은 의미가 여러 문서에 있으면 위 순서를 따른다. Archive의 과거 registry, evidence,
+fixture, ADR 후보와 lifecycle 표현은 living 문서를 override하지 않는다.
+
+## Living 문서 계약
+
+각 규칙은 최소한 `Rule ID / 책임 owner / invariant / 허용·금지 동작 / semantic input·outcome /
+production 제약 / 미결 decision / Demo source pointer`를 가진다. 구현 타입, wire DTO, code path,
+fixture와 commit 증거는 normative 규칙 본문에 복제하지 않는다.
+
+Coverage row는 `included | excluded | decision-blocked` 중 하나다. Dormant 준비 중에는
+`decision-blocked`를 허용하지만 official freeze의 included 범위에는 미결 blocker가 없어야 한다.
+
+## One-time lifecycle
 
 ```text
-Authoritative Match Record
-             │
-   Viewer Projection Policy
-   ┌─────────┼──────────────┐
-Live Player  Replay       Spectator?
-+ prediction + playback     + live/delayed tail
-             clock
-   └─────────┼──────────────┘
-      Client Presentation
+dormant/preparing
+  -> demo-approved
+  -> demo-frozen
+  -> transfer-completed
 ```
 
-| 계층 | 정본과 책임 | 허용되지 않는 것 |
-|---|---|---|
-| Authoritative Match Record | Server가 확정한 tick·상태 전이·semantic event·stable ID·RNG 결과·승패·점수와 ruleset·schema 정보 | Client prediction, camera, prefab, animation, VFX 명령 |
-| Viewer Projection | viewer role·관점·visibility·delay policy에 따라 AMR을 필터링한 순서 있는 semantic stream | 숨은 정보를 Client에 보낸 뒤 표시만 억제하는 방식 |
-| Client Presentation | projection을 UI·camera·animation·VFX·SFX로 표현하고 Replay playback clock을 관리 | 결과 재판정, gameplay state 변경, score·reward 재발행 |
+Project owner는 `game-spec-approver`, `demo-freeze-attestor`,
+`coordinated-transfer-attestor`를 배정하고 transition의 활성화·중단 권한을 유지한다. 각
+담당자는 위임 증거를 첨부해 자신에게 배정된 사건 하나만 승인한다. 현재는 한 사람이 세 역할을
+모두 맡을 수 있지만 서로 다른 ID·시각·predecessor를 가진 사건 세 개가 필요하다. 중단된 copy는
+같은 freeze ID와 같은 bytes만 재개할 수 있다. Freeze 이후 오류는 production errata/change
+control로 처리하며 Demo re-freeze나 두 번째 이동은 허용하지 않는다.
 
-같은 경기를 재생한다는 계약은 다음 세 fidelity를 분리해서 판단한다.
-
-- `simulation_fidelity`: authoritative tick 순서, 상태 전이, stable ID, gameplay RNG 결과,
-  승패·점수는 반드시 일치한다.
-- `observation_fidelity`: 동일한 viewer role과 policy에서는 관찰 가능한 semantic event의
-  누락·추가·순서 오류가 없어야 하며, 허용되지 않은 숨은 정보를 노출하지 않는다.
-- `presentation_fidelity`: 핵심 단서와 인과관계는 이해 가능하게 표현하되 camera, UI 강조,
-  interpolation, cosmetic RNG와 VFX·SFX의 pixel/frame 동일성은 요구하지 않는다.
-
-모드별 계약은 다음과 같다.
-
-- Live player는 Server projection 위에 비권위 local prediction을 잠시 겹칠 수 있지만 Server
-  correction이 항상 우선한다.
-- canonical Replay는 confirmed Server progression만 재생하며 당시 prediction·reversal·network
-  arrival timing을 재연하지 않는다. `Player POV replay` 대신
-  `player-visible authoritative perspective`라는 용어를 사용한다.
-- 실제 사용자가 당시 본 화면이 필요하면 영상 또는 `as-seen presentation trace`를 별도 진단
-  산출물로 보존하고 canonical Replay와 혼합하지 않는다.
-- Spectator가 도입되면 Replay와 같은 Viewer Projection 계약을 사용한다. live/delayed cursor,
-  접근 권한, visibility와 anti-ghosting policy는 Server가 집행한다.
-- 동일한 match와 projection policy를 사용한 완료 Replay와 Spectator stream은 같은 authoritative
-  progression에 수렴해야 한다.
-- Replay의 pause·speed·seek·rewind는 Client presentation clock과 비권위 playback cursor/read
-  model을 변경할 수 있지만 Server authoritative state, 원 경기 결과 또는 다른 Client의 상태를
-  변경하지 않는다.
-
-AMR의 capture·저장·무결성·보존은 [`ADR-CAND-011`](architecture/adr-candidates.md), Replay와
-조건부 Spectator의 projection·playback·호환 정책은
-[`ADR-CAND-012`](architecture/adr-candidates.md)에서 결정한다.
-
-## 목적과 비목표
-
-목적:
-
-- 데모의 현재 구현과 역사 문서를 구분한 기준선을 남긴다.
-- 제품 학습과 아직 검증하지 못한 재미 가설을 분리한다.
-- ECS 구현에서 얻은 원칙을 non-ECS, server-authoritative 구조의 설계 질문으로 변환한다.
-- 정규 프로젝트 PRD와 ADR이 출처와 미결 질문을 추적할 수 있게 한다.
-
-비목표:
-
-- 데모가 재미 검증을 완료했다고 선언하지 않는다.
-- 서버 runtime, transport, tick rate, 수치 표현을 선택하지 않는다.
-- `docs/decisions/` 또는 공식 ADR 번호를 만들지 않는다.
-- 데모 코드·에셋·Unity scene 또는 현재 ECS 규칙을 변경하지 않는다.
-
-## 읽는 순서
-
-1. [`source-map.md`](source-map.md) — 출처별 역할, 기준일, 드리프트와 supersession
-2. [`demo-baseline.md`](demo-baseline.md) — 현재 세션 흐름, 권위 경계, ECS 구조, 검증 상태
-3. [`product/learning-register.md`](product/learning-register.md) — 제품 사실·결정·가설과 이전 판단
-4. [`product/validation-backlog.md`](product/validation-backlog.md) — 정규 프로젝트에서 다시 검증할 실험
-5. [`product/prd-inputs.md`](product/prd-inputs.md) — 기술 해법을 제외한 PRD 입력
-6. [`architecture/engineering-learnings.md`](architecture/engineering-learnings.md) — 유지할 원칙과 폐기할 구현
-7. [`architecture/transition-matrix.md`](architecture/transition-matrix.md) — `carry / adapt / drop / decide` 및 역할 분담
-8. [`architecture/adr-candidates.md`](architecture/adr-candidates.md) — 승인 전 결정 질문
-9. [`evidence/README.md`](evidence/README.md) — 이후 수집할 증거 산출물 규칙
-
-## 문서 상태
-
-| 문서 | 상태 | 다음 게이트 |
-|---|---|---|
-| `source-map.md` | Draft | Product·Client·Server가 출처 역할과 누락을 검토 |
-| `demo-baseline.md` | Draft | 3개 직군 검토 후에만 `Frozen` 승격 |
-| `product/*` | Draft | 플레이테스트 설계와 PRD 작성 시 갱신 |
-| `architecture/*` | Draft | 기술 조사와 ADR 승인 흐름에서 갱신 |
-| `evidence/README.md` | Draft | 리서치·분석 담당자가 저장·익명화 규칙 검토 |
-
-## 공통 기록 계약
-
-주장 단위 레코드는 다음 필드를 사용한다. 표 형식으로 줄여 쓰더라도 의미는 같아야 한다.
-
-```yaml
-id: PT-AREA-001
-statement: "검증하거나 결정할 수 있는 하나의 주장"
-claim_kind: fact                 # fact | decision | hypothesis
-evidence_status: untested        # 아래 상태 목록 참조
-evidence_level: E0               # E0 | E1 | E2 | E3 | E4
-as_of: 2026-07-29
-mode: demo-normal
-conditions: "주장이 성립하는 모드·맵·세션 조건"
-sources:
-  - path: docs/spec/example/README.md
-    commit: 44c87885
-tests: []
-evidence_artifacts: []
-transfer_action: retest          # carry | adapt | retest | drop | decide
-regular_project_impact: "Product·Client·Server에 미치는 영향"
-next_step: "다음 검증 또는 결정"
-```
-
-규칙:
-
-- 한 레코드에는 한 종류의 주장만 둔다. 구현 사실과 재미 가설을 한 문장으로 합치지 않는다.
-- 모든 현재 사실에는 코드·에셋·테스트·최신 spec 중 최소 하나를 연결한다.
-- `as_of`와 적용 모드·조건을 생략하지 않는다.
-- 충돌하는 과거 문서는 조용히 병합하지 않고 `superseded_by`를 기록한다.
-- 모든 값과 산식은 별도 근거가 없으면 “데모 기준값”이다. 정규 프로젝트 요구사항으로 자동 승격하지 않는다.
-
-### `claim_kind`
-
-| 값 | 의미 |
-|---|---|
-| `fact` | 기준 시점에 구현·테스트·관찰로 확인할 수 있는 상태 |
-| `decision` | 데모에서 의도적으로 선택한 규칙이나 범위 |
-| `hypothesis` | 플레이어 반응, 재미, 운영 효과처럼 추가 검증이 필요한 예상 |
-
-### `evidence_status`
-
-| 값 | 의미 |
-|---|---|
-| `untested` | 검증 활동 또는 계측이 없음 |
-| `instrumented` | 측정 경로는 있으나 해석 가능한 결과셋이 없음 |
-| `functional` | 구현·자동 검증 또는 기능 Play로 동작을 확인 |
-| `internal-observed` | 비구조화된 내부 관찰이 있으나 일반화할 수 없음 |
-| `supported` | E3 이상 증거가 사전 정의된 기준을 지지 |
-| `refuted` | E3 이상 증거가 사전 정의된 기준을 반박 |
-| `superseded` | 후속 결정·구현·문서가 이 기록을 대체 |
-
-`functional` 또는 E2는 기능이 작동한다는 뜻일 뿐 재미 가설의 지지 근거가 아니다. `supported`와 `refuted`는 실제 E3 이상 산출물을 연결할 때만 사용한다.
-
-### `evidence_level`
-
-| 수준 | 의미 | 허용되는 결론 |
-|---|---|---|
-| E0 | 문서에 적힌 주장·의도 | 질문과 역사 확인 |
-| E1 | 구현·에셋·자동 검증 | 기능·계약의 존재 확인 |
-| E2 | 내부 기능 Play | 배선·조작성·시각 동작의 제한적 확인 |
-| E3 | 구조화된 정성 플레이테스트 | 표본과 조건 안에서 가설 지지·반박 |
-| E4 | 반복 정량 근거 | 정의된 모집단·버전 안에서 재현된 효과 |
-
-## 진실원 우선순위
-
-주장 종류에 따라 우선순위가 다르다.
-
-구현 사실:
-
-1. 현재 코드·에셋·자동 테스트
-2. 활성 spec의 `README.md`와 작업 단위 계약
-3. handoff summary
-4. 과거 PRD·TRD·prototype·milestone
-
-제품 효과:
-
-1. 익명화된 구조화 플레이테스트·로그 분석 산출물
-2. 사전 등록한 가설·성공 기준
-3. 내부 기능 Play와 구현
-4. 과거 기획 의도
-
-코드는 기능이 존재함을 증명할 수 있지만 재미를 증명하지 않는다. 서버 저장소가 이 근거팩의 범위에 없으므로 서버의 내부 검증 여부는 클라이언트 계약만으로 추정하지 않는다.
-
-## 수명주기와 승격
-
-```text
-Draft → Reviewed → Frozen → Exported 또는 Superseded
-```
-
-- 1차 작성물은 모두 `Draft`다.
-- `demo-baseline.md`는 Product·Client·Server 검토가 끝난 기준 스냅샷만 `Frozen`으로 승격한다.
-- 정규 프로젝트 PRD가 작성되면 `product/prd-inputs.md`를 `Superseded`로 바꾸고 최종 PRD를 연결한다.
-- `ADR-CAND-###`가 승인되면 후보를 `Superseded`로 바꾸고 별도 공식 ADR을 연결한다. 후보 번호를 공식 ADR 번호로 재사용하지 않는다.
-- 기준선 이후 데모가 바뀌면 Frozen 문서를 덮어쓰지 않고 새 기준일의 문서 또는 변경 기록을 만든다.
+현재 official event와 `freezes/`는 존재하지 않는다.
