@@ -2720,17 +2720,20 @@ MonoBehaviour:
   defenderSelector: {fileID: 915292524}
   hookSeconds: 0.25
   hookDropDistance: 6
-  resistSeconds: 1.75
+  resistSeconds: 0.85
   resistRise: 0.5
   wiggleHz: 13
   wiggleAmplitude: 0.16
   wiggleTiltDegrees: 9
   tensionStretchY: 1.18
-  popSeconds: 0.4
-  popRise: 9
-  popLateral: 2.6
-  popSpinDegrees: 900
-  popStretchY: 1.5
+  popSeconds: 0.5
+  popRise: 7
+  popLateral: 1.8
+  popSpinDegrees: 1440
+  popApproachDistance: 7
+  popRecedeDistance: 26
+  popApproachFraction: 0.3
+  popLaunchStretch: 1.35
 --- !u!1 &1279129161
 GameObject:
   m_ObjectHideFlags: 0

@@ -14,12 +14,18 @@ namespace Wassup.UI
     // 유닛은 바닥에 박힌 채 **움찔거리며 버틴다**(나가기 싫다). 그러다 결국 **뽑혀서
     // 뱅글뱅글 돌며 화면 밖으로 튕겨 나간다.**
     //
-    // 4막 (~2.4초):
+    // 3막 (~1.6초, rev 5):
     //   ① 연결(0.25s) — 줄이 위에서 내려와 걸린다. 걸리는 순간 유닛이 한 번 움찔.
-    //   ② 저항(1.75s) — 줄이 팽팽해지고 고리는 올라가는데 **유닛은 거의 안 올라온다.**
+    //   ② 저항(0.85s) — 줄이 팽팽해지고 고리는 올라가는데 **유닛은 거의 안 올라온다.**
     //                   발이 박힌 채 몸만 늘어나고, 고주파 진동(좌우 흔들림 + 미세 회전)이
-    //                   장력과 함께 **점점 커진다.** 이 구간이 이 연출의 내용 전부다.
-    //   ③ 뽑힘(0.40s) — 팡. 배치 링 + 급가속 + **뱅글뱅글 회전** + 좌우로 튕기며 화면 밖.
+    //                   장력과 함께 점점 커진다.
+    //   ③ 뽑힘(0.50s) — 팡. 배치 링 + **카메라 쪽으로 훅 다가왔다가** 가속하며 멀어져 화면 밖.
+    //                   그 내내 **뱅글뱅글 4바퀴**.
+    //
+    // rev 5 변경(사용자): ② 가 1.75초로 **너무 길었다** → 0.85초. ③ 을 더 시원하게 —
+    // depth 축을 넣어 «가까워졌다 멀어진다» 를 만들고 회전을 900°→1440° 로 올렸다.
+    // 퍼스펙티브 카메라(fov 36)라 -forward 이동이 **실제로 확대**되므로 스케일 조작이 없다
+    // (원근이 이미 하는 일을 스케일로 또 하면 두 배로 부푼다).
     //
     // rev 이력: rev 1(0.55s 아치)=밋밋함 · rev 2(0.28s 스냅)=구조는 맞음 · rev 3(스냅+키링)=
     // **부착이 안 읽힘**. rev 3 의 결론은 "0.3초에 부착 어휘는 못 들어간다" 였고, rev 4 는
@@ -53,9 +59,9 @@ namespace Wassup.UI
         [Tooltip("줄이 얼마나 위에서 내려오나(view 단위)")]
         [SerializeField] private float hookDropDistance = 6f;
 
-        [Header("② 저항 — 이 연출의 본문")]
-        [Tooltip("버티는 시간(초). 사용자 지정 ≈2초")]
-        [SerializeField] private float resistSeconds = 1.75f;
+        [Header("② 저항")]
+        [Tooltip("버티는 시간(초). rev 5 — 1.75 는 너무 길었다(사용자)")]
+        [SerializeField] private float resistSeconds = 0.85f;
         [Tooltip("저항 중 실제로 뽑혀 나오는 거리(view 단위). 작을수록 '박혀 있다'")]
         [SerializeField] private float resistRise = 0.5f;
         [Tooltip("움찔 진동 주기(Hz)")]
@@ -67,16 +73,22 @@ namespace Wassup.UI
         [Tooltip("장력으로 몸이 늘어나는 정도(구간 끝 세로 배율)")]
         [SerializeField] private float tensionStretchY = 1.18f;
 
-        [Header("③ 뽑힘")]
-        [SerializeField] private float popSeconds = 0.40f;
-        [Tooltip("뽑힌 뒤 올라가는 거리(view 단위) — 화면 밖까지")]
-        [SerializeField] private float popRise = 9f;
-        [Tooltip("뽑히며 옆으로 튕기는 거리(view 단위)")]
-        [SerializeField] private float popLateral = 2.6f;
-        [Tooltip("뱅글뱅글 총 회전량(도)")]
-        [SerializeField] private float popSpinDegrees = 900f;
-        [Tooltip("뽑힌 직후 세로 배율 — 튕겨나가며 늘어난다")]
-        [SerializeField] private float popStretchY = 1.5f;
+        [Header("③ 뽑힘 — 카메라로 왔다가 멀어지며 이탈")]
+        [SerializeField] private float popSeconds = 0.5f;
+        [Tooltip("올라가는 거리(view 단위)")]
+        [SerializeField] private float popRise = 7f;
+        [Tooltip("옆으로 튕기는 거리(view 단위)")]
+        [SerializeField] private float popLateral = 1.8f;
+        [Tooltip("뱅글뱅글 총 회전량(도). 1440 = 4바퀴")]
+        [SerializeField] private float popSpinDegrees = 1440f;
+        [Tooltip("카메라 쪽으로 얼마나 다가오나(view 단위). 퍼스펙티브라 실제로 커진다")]
+        [SerializeField] private float popApproachDistance = 7f;
+        [Tooltip("그 뒤 멀어지는 거리(view 단위) — 화면 밖까지")]
+        [SerializeField] private float popRecedeDistance = 26f;
+        [Tooltip("다가오는 데 쓰는 구간 비율(0~1). 나머지는 멀어진다")]
+        [SerializeField, Range(0.05f, 0.9f)] private float popApproachFraction = 0.3f;
+        [Tooltip("발사 순간 세로로 늘어나는 배율. 곧 1 로 돌아온다 — 회전 중엔 균일해야 안 깨진다")]
+        [SerializeField] private float popLaunchStretch = 1.35f;
 
         // 동시 퇴근이 가능하므로 **단일 슬롯이 아니라 목록**이다. 2.4초로 길어진 지금은 겹칠
         // 확률이 rev 2 보다 훨씬 높다. teardown 에서 뷰와 키링 루트를 **쌍으로** 정리한다.
@@ -155,7 +167,9 @@ namespace Wassup.UI
                 elapsed += dt;
                 phase += dt * wiggleHz;
                 float p = Mathf.Clamp01(elapsed / total);          // 장력 진행도
-                float ramp = p * p;                                // 후반에 급격히 몸부림친다
+                // rev 5 — 구간이 0.85초로 짧아졌다. p² 램프는 앞 절반이 거의 정지라 짧은 창을
+                // 낭비한다. 바닥값을 깔아 **처음부터 떨고 갈수록 심해지게** 바꾼다.
+                float ramp = Mathf.Lerp(0.35f, 1f, p);
                 float w = Mathf.Sin(phase * Mathf.PI * 2f);
 
                 view.transform.position = basePos
@@ -174,8 +188,10 @@ namespace Wassup.UI
             if (vfxSpawner != null) vfxSpawner.SpawnPlacementRing(simWorld);
 
             Vector3 popFrom = basePos + up * resistRise;
-            Vector3 popScale = Vector3.Scale(baseScale, new Vector3(1f, tensionStretchY, 1f));
-            Vector3 endScale = Vector3.Scale(baseScale, new Vector3(1f, popStretchY, 1f));
+            Vector3 tensionScale = Vector3.Scale(baseScale, new Vector3(1f, tensionStretchY, 1f));
+            Vector3 launchScale = Vector3.Scale(baseScale, new Vector3(1f, popLaunchStretch, 1f));
+            Vector3 camFwd = cam != null ? cam.transform.forward : Vector3.forward;
+            float approachFrac = Mathf.Clamp(popApproachFraction, 0.05f, 0.9f);
 
             t = 0f; dur = Mathf.Max(0.01f, popSeconds);
             while (t < 1f)
@@ -184,9 +200,32 @@ namespace Wassup.UI
                 t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / dur;
                 float k = Mathf.Clamp01(t);
                 float e = k >= 1f ? 1f : 1f - Mathf.Pow(2f, -9f * k); // OutExpo — 팡
-                view.transform.position = popFrom + up * (popRise * e) + right * (popLateral * e);
-                view.transform.localScale = Vector3.Lerp(popScale, endScale, e);
+
+                // rev 5 — **카메라로 왔다가 멀어진다.** 퍼스펙티브(fov 36)라 -forward 로
+                // 다가가면 실제로 커지므로 별도 스케일 조작이 필요 없다(중복 적용 금지 —
+                // 원근이 이미 하는 일을 스케일로 또 하면 두 배로 부푼다).
+                // ⚠ 소팅은 sortingOrder 가 소유하므로 앞으로 나와도 다른 것에 가려지지 않는다.
+                float depth = k < approachFrac
+                    // ㉠ 다가옴: 0 → -approach. OutQuad 로 훅 다가온다.
+                    ? -popApproachDistance * (1f - Mathf.Pow(1f - k / approachFrac, 2f))
+                    // ㉡ 멀어짐: -approach → +recede. InQuad 로 가속하며 빠진다.
+                    : Mathf.Lerp(-popApproachDistance, popRecedeDistance,
+                                 Mathf.Pow((k - approachFrac) / (1f - approachFrac), 2f));
+
+                view.transform.position = popFrom
+                    + up * (popRise * e)
+                    + right * (popLateral * e)
+                    + camFwd * depth;
+
+                // 발사 순간만 늘어나고 곧 **균일 배율로 복귀**한다 — 회전 중에 비균일 스케일이
+                // 남아 있으면 매 프레임 실루엣이 찌그러져 보인다.
+                float settle = Mathf.Clamp01(k / 0.35f);
+                view.transform.localScale = Vector3.Lerp(
+                    Vector3.Lerp(tensionScale, launchScale, Mathf.Clamp01(k / 0.12f)),
+                    baseScale, settle);
+
                 // 뱅글뱅글 — 회전은 **선형**으로 돌린다(감속시키면 도는 게 멈춰 보인다).
+                // 축은 camera.forward = 화면 평면 회전 = 보이는 그대로의 z축 스핀.
                 view.transform.rotation = baseRot * Quaternion.AngleAxis(popSpinDegrees * k, spinAxis);
                 DrawKeyring(keyring, view, up, 0f); // 줄이 딸려 올라가며 같이 사라진다
                 yield return null;
