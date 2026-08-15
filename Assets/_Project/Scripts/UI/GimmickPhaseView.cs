@@ -276,7 +276,16 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
             var callback = _onDone;
             _onDone = null;
-            callback?.Invoke();
+            // gift-phase-removal unit 1 — ⚠ `?.` 는 **델리게이트가 null 인지**만 본다. 대상
+            // MonoBehaviour 가 이미 파괴됐어도 델리게이트는 살아 있어서 그대로 호출되고,
+            // 씬 teardown(OnDisable → Finish) 에서 MissingReferenceException 이 난다
+            // (프로젝트 lessons 의 `?.` fake-null 함정). 대상 생존은 Unity 의 ==
+            // 연산자로 따로 확인한다 — `_onDone` 은 항상 placementPhaseView 의 메서드다
+            // (BeginIntro 가 그렇게만 세팅하고, 미배선이면 진입 자체를 거절한다).
+            //
+            // 씬이 내려가는 중이라면 시작할 배치도 없으므로 호출하지 않는 것이 옳다.
+            // "정확히 한 번" 계약은 여전히 지켜진다 — 위에서 _onDone 을 먼저 비웠다.
+            if (callback != null && placementPhaseView != null) callback.Invoke();
         }
 
         private void Populate(GimmickData g)
