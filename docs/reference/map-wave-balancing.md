@@ -137,6 +137,9 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 - **`waveSeed` 를 0 으로 만들면 매판 달라진다 — 절대 금지.** (실증: 각 덱 3회 생성 시 유닛·수량까지 완전 일치.)
 - 매판 랜덤인 건 "**어느 맵이 나오냐**"(`fixedMapSeed=0`)뿐. 특정 맵이 나오면 그 맵 웨이브는 항상 같음.
 - 새 맵/덱 추가 시에도 **덱 waveSeed 를 비0 유니크 값**으로.
+- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 라이브 덱 동일 값, 현재 6). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)가 숫자를 하드코딩하므로 **같은 커밋에서** 갱신한다.
+
+⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WavePatternGenerator`·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
 
 ---
 
