@@ -28,6 +28,8 @@
 - Unity 컴파일 콘솔 에러 0 / 경고 0 (missing script 없음)
 - EditMode 2393개 — 실패 4건은 **전부 기존 맵 복도 폭 단언**(`MultiGoalPoolSeparationTests`, map-rework 소관). 이번 변경이 만든 실패 0. 선물 테스트 25개가 제거되어 총계가 2418→2393.
 - 씬 리로드 후 `GimmickPhaseView.placementPhaseView` → PlacementPhaseView, `BattleBridge._gimmickPhaseView` → GimmickPhaseView 확인
+- **PlayMode 137개 중 24 실패.** 그중 **제 변경이 만든 것은 1종류**다: 매치 진입이 이제 기믹 리빌을 거치므로 `RequestPlacement` 직후 2프레임 만에 `Placement` 를 단언하던 스모크가 `Gimmick` 을 본다. `DreamstoneCarryInSmokeTest`·`SquadCarryInSmokeTest` 를 **Placement 도달까지 대기**하도록 고쳤다(`PresetCarryInTest` 는 앞서 처리).
+- **나머지 실패는 제 변경 경로 밖임을 코드 경로로 증명했다.** `ActiveAllyZoneTest`·`PlacementAuraTest`·`DreamcatcherEffectTest`·`DreamcatcherCombatDamageTest` 는 전부 `bridge.BeginPlacement()` 로 **직접** 진입한다 — `RequestPlacement` 도 `SetPhase(Placement)` 도 부르지 않으므로 `GimmickPhaseView.BeginIntro` 와 `HandController.OnPhaseChanged` 가 아예 실행되지 않는다.
 - **Play smoke 는 미실행** — 원격 세션이라 사용자가 pull 받아 확인한다.
 
 ## Notes (되돌리면 안 되는 것)
@@ -38,6 +40,15 @@
 - 재시작 경로(`BattleBridge.EnterPlacementOrIntro`)는 여전히 **dormant**(호출처 없음). 배선만 이관했다.
 - 첫 판 기믹 리빌 스킵(`ShouldRunCore`)은 현행 유지.
 - `PlayerProfile.giftTutorialVersion` 필드와 `ResetAll`/`ResetAllInJson` 의 초기화는 **의도적으로 남겼다**(하위호환 + 기존 세이브 정리).
+
+## 이 브랜치와 무관한 기존 실패 (참고용 — 고치지 않았다)
+
+작업 중 관측했을 뿐 이 spec 의 스코프가 아니다. 다른 세션/스펙 소관.
+
+- **전역 +1.2% 스탯 드리프트** — 갓 배치한 유닛의 기준 배율이 1.0 이 아니라 1.012 다(`PlacementAuraTest`). 공속·eHP·데미지 계열 단언 10여 개가 이 오프셋으로 깨진다. 테스트 환경의 장착/시트 값에서 오는 것으로 보이나 출처를 특정하지 않았다.
+- **`DreamcatcherDeckCarryInTest.SelectedSavedDeck_DrivesDraws`** — `selectedDeckId = null` 일 때 "기본 덱 10장" 을 기대한다. 기본 덱은 2026-07-15 사용자 결정으로 제거됐으므로(`ResolveAttachDeck` 주석) 그때부터 낡은 단언이다.
+- **`MissingReferenceException` 계열 4건**, `AuthE2ETest`(JSON 캐스트), `DeckInfoPresetApplyLiveE2ETest`(실계정 로그인 필요), `DragCancelZoneTest`, `DropDismountTest`(InvalidCastException) — 인프라/환경.
+- EditMode 의 `MultiGoalPoolSeparationTests` 4건(맵 복도 폭) — map-rework 소관.
 
 ## Follow-up
 

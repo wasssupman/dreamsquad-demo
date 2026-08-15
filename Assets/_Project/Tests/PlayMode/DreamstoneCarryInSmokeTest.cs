@@ -180,10 +180,14 @@ namespace Wassup.Tests.PlayMode
             // presses START to advance. Simulate that here (SquadCarryInSmokeTest).
             Assert.AreNotEqual(GamePhase.Draft, gm.CurrentPhase, "squad mode skips draft");
             gm.RequestPlacement();
-            yield return null;
-            yield return null;
+            // gift-phase-removal unit 1 — 매치 진입은 기믹 리빌을 거친다(기믹이 배정된
+            // 경우). 리빌은 수 초 돌므로 프레임 2개로는 못 기다린다. 이 테스트의 관심사는
+            // **배치에 도달해 유닛을 놓는 것**이라 도달까지 기다린다.
+            float deadline = Time.realtimeSinceStartup + 15f;
+            while (gm.CurrentPhase != GamePhase.Placement && Time.realtimeSinceStartup < deadline)
+                yield return null;
             Assert.AreEqual(GamePhase.Placement, gm.CurrentPhase,
-                "after map-setup START, squad mode enters Placement");
+                "after map-setup START, squad mode enters Placement (기믹 리빌을 거쳐서라도)");
 
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(1000);
