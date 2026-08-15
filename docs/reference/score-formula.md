@@ -1,15 +1,16 @@
 # 점수 산식 — 어디서 나오고 얼마인가
 
-> 한 판 끝나면 나오는 최종 점수의 전부. 계산은 `Scripts/Core/ScoreMath.cs` 한 곳에서만 한다.
+> 한 판 끝나면 나오는 최종 점수의 전부. 판의 성적은 `Scripts/Core/MatchTally.cs` 값 하나로
+> 취합되고(조립 지점 = `BattleBridge.BuildTally`), 서버로 가는 수는 그 `SubmissionScore` 하나다.
 > 값은 적 SO(`Data/Enemies/*.asset` → `killScore`)에서 온다 — 코드에 숫자가 박혀 있지 않다.
 > 상세 설계·결정 이력은 `docs/spec/three-minute-survival/`. 구 3축 산식은 `docs/spec/battle-score-formula/`.
 
 ## 한 줄 요약
 
-**잡은 만큼 받는다.** 점수원은 처치 하나뿐이고, 져도 남는다.
+**잡은 만큼 받는다.** 점수원은 처치 하나뿐이고, 져도 남는다. 서버에도 이 수가 그대로 간다.
 
 ```
-총점 = 처치한 적의 killScore 합
+총점 = 제출값 = 처치한 적의 killScore 합
 ```
 
 | 티어 | 자산 | `killScore` |
@@ -36,23 +37,38 @@
 `Data/Config/ScoreRules.asset`(`ScoreRulesData`)은 공급할 값이 남지 않아 빈 SO 다 —
 씬 참조가 있어 타입만 남겼고, 실제 삭제는 에디터에서 에셋·씬을 함께 정리할 때 한다.
 
-## 동점은 남은 골 안정도로 가른다
+## 서버에 보내는 수 = 화면에 보이는 수 (2026-08-15)
 
-서버는 int 점수 **하나만** 받는다(`TournamentApi`). 그래서 동점 판정을 값에 싣는다:
+가공이 없다. 서버는 int 점수 하나만 받고(`TournamentApi`), 거기 들어가는 값이 곧 총점이다.
 
 ```
-제출값 = 1,000,000,000 + killScore합 × 1000 + 안정도permille(0~999)
-표시값 = (제출값 − 오프셋) / 1000        // 오프셋 미만 = 구 포맷 → 원값 그대로
+제출값 = killScore합          // 전투 중 HUD 숫자와 완전히 같은 수
+표시값 = 서버가 준 score      // 변환 없음
 ```
 
-- **오프셋이 필요한 이유**: 구 총점은 현실적으로 1~3만이라 `/1000` 하면 10~30 이라는
-  그럴듯한 가짜 점수가 되어 신규 기록과 구분이 불가능하다. 신규 기록이 구 기록보다 항상
-  위로 정렬되는 것은 의도다 — 룰이 다른 기록이다.
-- **permille 을 쓰는 이유**: 맵별 안정도 최대치가 달라도 인코딩이 깨지지 않고 비율 비교가 공정하다.
-- 안정도 버킷이 1000 미만이라 **처치 1점 차이를 안정도가 뒤집지 못한다.**
-- 디코딩 지점 3곳: 결과 화면 · `LeaderboardList` · `TournamentHistoryPanel`
-  (모두 `ScoreMath.DisplayScore`).
-- `killScore합` 상한 = `ScoreMath.MaxEncodableKillScore`(1,147,482). 초과분은 saturate.
+- **동점은 그냥 동점이다.** 정렬은 서버 규칙에 맡긴다.
+- 상한·saturate 도 없다 — 인코딩이 만들던 제약이었다.
+- 구 인코딩 기록(`1,000,047,599` 같은 값)은 **변환하지 않는다**(사용자 결정).
+  리더보드·히스토리에 원값 그대로 뜨고, 룰이 다른 데모 기록이라 그대로 둔다.
+
+> **은퇴한 인코딩(2026-08-07 ~ 08-15)**: `1,000,000,000 + killScore합 × 1000 +
+> 안정도permille` 로 동점 판정을 값에 실었다. 안정도가 점수에 섞이는 것을 없애면서
+> 디코딩 3곳(`ScoreMath.DisplayScore`)과 함께 통째로 제거했다 — `docs/spec/three-minute-survival/6_score_submit_raw.md`.
+> 이어 unit 7 이 `ScoreMath` 자체를 `MatchTally` 로 흡수했다(점수 정본이 둘이 되지 않게).
+
+## 마감 파이프라인 — 취합 → 기록 → 통보 → 표시
+
+종료 5경로(골붕괴 즉사·스트레스 상한·적 마음 붕괴·타이머 만료·전멸)는 **판정만** 하고
+`BattleBridge.EndMatch(outcome, win)` 한 곳으로 들어온다.
+
+| 단계 | 어디 | 하는 일 |
+|---|---|---|
+| 취합 | `BattleBridge.BuildTally` | 흩어진 재료(처치 점수·마리 수·안정도·도달 웨이브·유출)를 `MatchTally` 하나로 |
+| 기록 | `BattleLogger.SetResult/SetScore` | 로컬 `GameLogs` 배틀 로그 |
+| 통보 | `TournamentMatchReporter.ReportResult` | `tally.SubmissionScore` 를 서버로 |
+| 표시 | `ResultScreen.ShowVictory/ShowDefeat` | 총점 + 3줄 |
+
+**제출이 표시보다 앞이라는 순서는 계약이다** — 화면을 기다리다 앱이 죽으면 기록이 사라진다.
 
 ## 골 안정도 (패배 조건)
 
@@ -100,5 +116,5 @@
 도달 웨이브    14
 ```
 
-안정도 백분율을 함께 내는 이유는 동점 판정 기준이 비율(permille)이라 화면에서 그 근거가
-읽혀야 하기 때문이다.
+안정도 백분율은 «얼마나 버텼나» 를 읽히게 하는 정보 줄이다. 점수와는 무관하다
+(동점 판정에 쓰이던 시절의 근거는 2026-08-15 에 사라졌다).

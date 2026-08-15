@@ -119,7 +119,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         // 계약 2 — 종료 후 HUD 숫자가 총점과 정확히 같아야 한다.
-        // ScoreMath 를 여기서 다시 부르지 않는다. 산식을 두 번 구현하면 회귀 검출력이 없다 —
+        // 산식을 여기서 다시 계산하지 않는다. 두 번 구현하면 회귀 검출력이 없다 —
         // Bridge 가 기록한 값을 읽어 대조한다. 점수 축이 처치 하나라 총점 == kill_score 다.
         private void AssertTotalPreserved()
         {

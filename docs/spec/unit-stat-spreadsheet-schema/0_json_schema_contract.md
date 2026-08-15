@@ -37,7 +37,9 @@
 | `deployDelaySec` | number | `deployDelaySec` | |
 | `attackTargetCount` | integer | `attackTargetCount` | |
 | `cost` | integer | `cost` | |
-| `placementCooldown` | number | `placementCooldown` | 재배치 대기(초), 0 = 없음 |
+| `placementCooldown` | number | `placementCooldown` | 배치 성공이 거는 연사 게이트(초), 0 = 없음. `maxOnBoard > 1` 전용 |
+| `deathCooldown` | number | `deathCooldown` | **사망**으로 자리가 빈 뒤 재배치 대기(초), 0 = 없음 |
+| `retireCooldownRatio` | number | `retireCooldownRatio` | **퇴근** 대기 = `deathCooldown × 이 값`. 0~1 (벗어난 값은 읽는 자리에서 Clamp01 — 퇴근이 사망보다 길어질 수 없다) |
 | `aggroCapacity` | integer | `aggroCapacity` | |
 | `aggroRange` | number | `aggroRange` | |
 

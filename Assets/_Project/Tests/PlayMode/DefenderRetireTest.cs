@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -112,13 +113,14 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.RetireDefender(cell), "착지 후에는 퇴근된다");
         }
 
-        // defender-clock-out unit 2 — 퇴근이 그 유닛 타입을 쿨타임에 넣는가. 사망에는 없는
-        // 대가라 DefenderDied 핸들러와 갈라 둔 것이 실제로 성립하는지 잡는다.
+        // defender-clock-out unit 2 → unit 5 — 퇴근이 그 유닛 타입을 쿨타임에 넣는가.
+        // unit 5 부터는 사망에도 대가가 있으므로 이 테스트가 잡는 것은 "대가의 유무"가 아니라
+        // **퇴근이 자기 값(사망의 ratio 배)을 쓴다**는 것이다.
         //
-        // placementCooldown 은 라이브 에셋 기본값이 0("0 = inert")이라 **런타임 사본**에 값을
-        // 넣는다 — 카탈로그 에셋을 직접 고치면 에디터에서 디스크에 박힌다(재배치 스위트 선례).
+        // 값은 **런타임 사본**에 넣는다 — 카탈로그 에셋을 직접 고치면 에디터에서 디스크에
+        // 박힌다(재배치 스위트 선례).
         [UnityTest]
-        public IEnumerator Retire_StartsPlacementCooldown_ForThatUnitType()
+        public IEnumerator Retire_StartsRetireCooldown_ForThatUnitType()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -126,7 +128,8 @@ namespace Wassup.Tests.PlayMode
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var unit = Object.Instantiate(FindCatalog().ById("ranger"));
-            unit.placementCooldown = 7f;
+            unit.deathCooldown = 20f;
+            unit.retireCooldownRatio = 0.35f; // → 퇴근 7초
 
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
@@ -144,7 +147,8 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             Assert.IsTrue(bridge.RetireDefender(cell), "retire");
-            Assert.AreEqual(7f, cd.RemainingFor(unit), 0.01f, "퇴근이 그 타입의 쿨타임을 건다");
+            Assert.AreEqual(7f, cd.RemainingFor(unit), 0.01f,
+                "퇴근이 거는 것은 사망 초가 아니라 그 ratio 배다 (20 × 0.35)");
             Assert.IsFalse(cd.IsReady(unit), "쿨타임 중에는 준비되지 않았다");
 
             // 다 흐르면 풀린다 — StartCooldown 이 등록만 하고 끝나는 게 아니라 실제로 만료한다.
@@ -153,10 +157,14 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(unit);
         }
 
-        // 사망에는 쿨타임이 없다 — 퇴근 핸들러를 DefenderDied 와 합치면 이 단정이 깨진다.
-        // (README 열린 밸런스 항목: 그래서 "죽게 두는 게 빠르다" 가 성립할 수 있다.)
+        // defender-clock-out unit 5 — **이 테스트는 뒤집혔다.** 원래 이름은
+        // `Death_DoesNotStartPlacementCooldown` 이었고 "사망에는 대가가 없다"를 지키는 경비였다.
+        // 그 계약이 만든 것은 인버전이었다 — 퇴근 4초 / 사망 0초 = 죽게 두는 쪽이 항상 빠름.
+        // unit 5 가 그 계약을 폐기하고, 이제 잡는 것은 **사망이 퇴근보다 길다**는 방향이다.
+        //
+        // 초 값이 아니라 부등호를 단정한다 — 밸런스 숫자는 시트에서 바뀌지만 방향은 규칙이다.
         [UnityTest]
-        public IEnumerator Death_DoesNotStartPlacementCooldown()
+        public IEnumerator Death_StartsLongerCooldown_ThanRetire()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -164,7 +172,8 @@ namespace Wassup.Tests.PlayMode
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var unit = Object.Instantiate(FindCatalog().ById("ranger"));
-            unit.placementCooldown = 7f;
+            unit.deathCooldown = 20f;
+            unit.retireCooldownRatio = 0.35f;
 
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
@@ -190,7 +199,9 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 180 && em.Exists(entity); i++) yield return null;
             Assert.IsFalse(em.Exists(entity), "죽어서 사라졌다");
 
-            Assert.AreEqual(0f, cd.RemainingFor(unit), 0.01f, "사망에는 쿨타임이 붙지 않는다");
+            Assert.AreEqual(20f, cd.RemainingFor(unit), 0.01f, "사망도 이탈 쿨타임을 건다");
+            Assert.Greater(cd.RemainingFor(unit), unit.EffectiveRetireCooldown,
+                "방치가 회수보다 이득이면 퇴근 버튼은 존재 이유가 없다 — 이 부등호가 이 spec 이다");
             Object.Destroy(unit);
         }
 
@@ -247,6 +258,101 @@ namespace Wassup.Tests.PlayMode
             yield return null;
             Assert.IsTrue(go1 == null, "비행이 끝난 뷰는 파괴된다 (고아 GameObject 0)");
             Object.Destroy(unit);
+        }
+
+        // 코드리뷰 2026-08-15 — unit 3 완료 기준("비행 중 매치를 종료해도 고아 GameObject 가 0")에
+        // **테스트가 없어서 구현 누락이 통과했다.** teardown 훅이 실제로 없었고, 그 결과 재시작 시
+        // 지난 판 유닛과 키링이 새 판 보드 위에서 놀았다. 이 테스트가 그 회귀 가드다.
+        //
+        // ⚠ OnDisable 에 기대면 안 된다 — 이 컴포넌트가 붙은 GO 는 씬 루트라 매치 재시작으로는
+        // 비활성화되지 않는다. BattleBridge.TeardownCurrentBattle 의 명시 호출만이 유효 경로다.
+        [UnityTest]
+        public IEnumerator RetireFlight_IsCancelled_OnMatchTeardown_NoOrphans()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var flight = Object.FindObjectOfType<Wassup.UI.DefenderRetireFlight>();
+            Assert.IsNotNull(flight, "DefenderRetireFlight 배선");
+
+            var unit = FindCatalog().ById("ranger");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var entity = EntityAt(bridge, em, cell);
+            Assert.IsTrue(bridge.TryGetUnitView(entity, out var view), "뷰가 풀에 있다");
+            var go = view.gameObject;
+
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+            Assert.IsTrue(bridge.RetireDefender(cell), "retire");
+            Assert.AreEqual(1, flight.InFlightCount, "비행 중");
+            Assert.IsNotNull(go, "아직 살아 있다");
+
+            // 비행이 끝나기 **전에** 매치를 종료한다.
+            // ⚠ `BeginPlacement()` 로는 안 된다 — 그건 `TeardownCurrentBattle()` 을 **지나지
+            // 않는다**(확인함). 라이브 teardown 경로는 `StopBattle()` 이다
+            // (`OnRestartRequested` 는 GameManager 주석대로 dormant).
+            // 이 테스트가 처음 실패해서 그 사실을 잡아냈다 — 훅을 안 타는 트리거로 검증하면
+            // 통과해도 아무것도 증명하지 못한다.
+            bridge.StopBattle();
+            yield return null;
+
+            Assert.AreEqual(0, flight.InFlightCount, "teardown 이 진행 중 비행을 취소한다");
+            Assert.IsTrue(go == null, "떼어낸 뷰가 파괴된다 (고아 0)");
+            Assert.AreEqual(0, GameObject.FindObjectsByType<UnityEngine.LineRenderer>(FindObjectsSortMode.None)
+                .Count(l => l != null && l.transform.root != null
+                            && l.transform.root.name.Contains("RelocationKeyring")),
+                "키링 루트도 남지 않는다");
+        }
+
+        // 코드리뷰 2026-08-15 — feature 계약 5(카드 회수)와 unit 2 의 **반파밍 결정**
+        // ("각성은 퇴장의 보상이 아니다 — 주면 배치→퇴근 반복이 게이지 파밍")이 한 줄도
+        // 검증되지 않고 있었다. DreamcatcherHandController 의 퇴근 핸들러를 사망 핸들러와
+        // 합치는 리팩터가 들어오면 파밍이 조용히 부활하고 아무 테스트도 안 빨개진다.
+        [UnityTest]
+        public IEnumerator Retire_RecoversCards_ButGrantsNoAwakening()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var hand = Object.FindObjectOfType<DreamcatcherHandController>();
+            Assert.IsNotNull(hand, "DreamcatcherHandController");
+
+            var unit = FindCatalog().ById("ranger");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            gm.SetPhase(GamePhase.Placement); // 덱 구성 = 배치 진입에서 일어난다
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place defender");
+            var cell = SoleCell(bridge);
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            int gaugeBefore = hand.Gauge;
+            Assert.IsTrue(bridge.RetireDefender(cell), "retire");
+            for (int i = 0; i < 4; i++) yield return null;
+
+            // 각성은 **사망의 보상**이다. 퇴근에 주면 배치→퇴근 반복이 파밍이 된다.
+            Assert.AreEqual(gaugeBefore, hand.Gauge,
+                "퇴근은 각성 게이지를 올리지 않는다 (반파밍 계약)");
+            Assert.Greater(unit.awakeningReward, 0,
+                "대조 전제: 이 유닛은 사망 시 지급할 각성이 있다 — 없으면 위 단정이 공허하다");
         }
 
         // ── helpers (재배치 스위트와 동형) ────────────────────────────────────

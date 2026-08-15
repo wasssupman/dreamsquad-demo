@@ -104,60 +104,13 @@ namespace Wassup.UI
             if (lobbyButton != null) lobbyButton.onClick.RemoveListener(OnLobbyClicked);
         }
 
-        // End-of-match summary stats shown on the result popup (null → hidden).
-        //
-        // battle-score-formula unit 4 — HasBreakdown 이면 점수 3축을, 아니면 기존
-        // 남은 시간/유출을 보여준다. 옛 오버로드 호출부가 남아 있어 둘 다 지원한다.
-        public readonly struct MatchStats
-        {
-            public readonly float RemainingSec;
-            public readonly int Leaks; // 구 경로 전용 — 유출 수 그대로
-            public readonly bool HasBreakdown;
+        // three-minute-survival unit 7 — 결과 화면의 입력은 **판 성적 값 하나**(`MatchTally`)다.
+        // 예전엔 UI 전용 `MatchStats` 가 따로 있었고, 그 안에 호출자 0인 구 경로
+        // (`HasBreakdown` 분기 + 남은시간/유출 2줄 + 오버로드 6개)가 남아 있었다.
+        public void ShowDefeat(MatchTally tally) => ShowResult("패배", tally);
+        public void ShowVictory(MatchTally tally) => ShowResult("승리", tally);
 
-            // three-minute-survival unit 3 — 결과 3줄의 입력. 점수 축이 하나(처치)로 줄어
-            // 3축 분해(시간/스트레스/처치)를 대체한다.
-            //   처치 N기 · 남은 안정도 X / Max · 도달 웨이브 N
-            public readonly int KillCount, Stability, StabilityMax, WaveReached, KillScore;
-
-            public MatchStats(float remainingSec, int leaks)
-            {
-                RemainingSec = remainingSec; Leaks = leaks;
-                HasBreakdown = false;
-                KillCount = Stability = StabilityMax = WaveReached = KillScore = 0;
-            }
-
-            public MatchStats(int killCount, int stability, int stabilityMax, int waveReached,
-                ScoreMath.BattleScore score)
-            {
-                RemainingSec = 0f; Leaks = 0;
-                HasBreakdown = true;
-                KillCount = killCount;
-                Stability = stability;
-                StabilityMax = stabilityMax;
-                WaveReached = waveReached;
-                KillScore = score.Kill;
-            }
-        }
-
-        public void ShowDefeat() => ShowResult("패배", 0, null);
-        public void ShowDefeat(int playerScore) => ShowResult("패배", playerScore, null);
-        public void ShowDefeat(int playerScore, float remainingSec, int leaks)
-            => ShowResult("패배", playerScore, new MatchStats(remainingSec, leaks));
-        public void ShowVictory() => ShowResult("승리", 0, null);
-        public void ShowVictory(int playerScore) => ShowResult("승리", playerScore, null);
-        public void ShowVictory(int playerScore, float remainingSec, int leaks)
-            => ShowResult("승리", playerScore, new MatchStats(remainingSec, leaks));
-
-        // three-minute-survival unit 3 — 총점(=처치 점수)과 3줄 통계. 총점은 score.Total 이라
-        // 따로 받지 않는다. **화면에 뜨는 총점은 디코딩된 값이 아니라 원본 처치 점수다** —
-        // 제출값 인코딩은 서버 전송에만 쓴다(BattleBridge.BeginTally).
-        public void ShowDefeat(ScoreMath.BattleScore score, MatchStats stats)
-            => ShowResult("패배", score.Total, stats);
-
-        public void ShowVictory(ScoreMath.BattleScore score, MatchStats stats)
-            => ShowResult("승리", score.Total, stats);
-
-        private void ShowResult(string resultText, int playerScore, MatchStats? stats)
+        private void ShowResult(string resultText, MatchTally tally)
         {
             if (!_built) BuildCanvas();
             resultLabel.text = resultText;
@@ -166,39 +119,23 @@ namespace Wassup.UI
 
             if (heroScoreLabel != null)
             {
-                heroScoreLabel.text = playerScore.ToString("N0");
+                // 총점 = 처치 점수. 서버에 올라간 수와 같은 값이다(가공 없음 — unit 6).
+                heroScoreLabel.text = tally.Total.ToString("N0");
                 heroScoreLabel.color = win ? goldColor : defeatColor;
             }
 
             // The stat rows are generic StatRow values so battle-score-formula could
             // swap what they carry without touching any layout code here.
-            if (stats.HasValue && stats.Value.HasBreakdown)
+            //
+            // 점수 분모(예산 만점)는 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
+            // **현실적으로 도달 불가**인데, 그런 수치를 옆에 세우면 항상 한참 못 미친
+            // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
+            SetStatRows(new[]
             {
-                // 점수 분모(예산 만점)는 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
-                // **현실적으로 도달 불가**인데, 그런 수치를 옆에 세우면 항상 한참 못 미친
-                // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
-                //
-                // unit 7 — 원시 상태 2줄이 그 **위**에 온다: "이 상태였고 → 그래서 이 점수".
-                // 점수 쪽 라벨에 `점수` 를 붙이는 이유는 전투 HUD 가 유출 배지를 `스트레스`
-                // 로 부르기 때문이다(ScoreHudView) — 접미사가 없으면 같은 화면의
-                // `스트레스 3 / 10` 과 `스트레스 6,300` 이 갈리지 않는다.
-                var s = stats.Value;
-                SetStatRows(new[]
-                {
-                    StatRow.State("처치", $"{s.KillCount:N0}기"),
-                    StatRow.State("남은 안정도", StabilityText(s.Stability, s.StabilityMax)),
-                    StatRow.State("도달 웨이브", $"{s.WaveReached:N0}"),
-                });
-            }
-            else if (stats.HasValue)
-            {
-                SetStatRows(new[]
-                {
-                    StatRow.State("남은 시간", ClockText(stats.Value.RemainingSec)),
-                    StatRow.State("유출", stats.Value.Leaks.ToString()),
-                });
-            }
-            else SetStatRows(null);
+                StatRow.State("처치", $"{tally.KillCount:N0}기"),
+                StatRow.State("남은 안정도", StabilityText(tally.Stability, tally.StabilityMax)),
+                StatRow.State("도달 웨이브", $"{tally.WaveReached:N0}"),
+            });
 
             // A ranking that landed while we were closed (the response usually beats
             // the ~4s tally sequence) was held by UpdateLeaderboard — consume it so
@@ -213,7 +150,7 @@ namespace Wassup.UI
                 _heldRanking = null;
                 _heldOwnUserId = null;
             }
-            if (rows == null) rows = BuildPendingRows(playerScore);
+            if (rows == null) rows = BuildPendingRows(tally.Total);
             RenderRows(rows);
             UpdateCaption(rows);
             gameObject.SetActive(true);
@@ -495,12 +432,8 @@ namespace Wassup.UI
 
             // Score (right). Bold and a step above the name — a leaderboard is read
             // down the score column.
-            // three-minute-survival unit 3 — 서버 제출값은 인코딩돼 있다(동점 판정을 값에
-            // 실었다). 이 화면의 리더보드도 LeaderboardList·히스토리와 **같은 규칙**으로
-            // 디코딩해야 한다 — 여기만 빠지면 랭킹 응답 도착 순간 10억대 숫자가 뜬다.
-            string scoreText = row.IsWaiting
-                ? "-"
-                : Wassup.Core.ScoreMath.DisplayScore(row.Score).ToString("N0");
+            // three-minute-survival unit 6 — 서버가 준 점수를 그대로 그린다(인코딩 폐기).
+            string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
             var score = CreateLabel(go.transform, "Score", scoreText, 38, TextAlignmentOptions.MidlineRight, textColor);
             if (!row.IsWaiting) score.fontStyle = FontStyles.Bold;
             var scoreRt = (RectTransform)score.transform;

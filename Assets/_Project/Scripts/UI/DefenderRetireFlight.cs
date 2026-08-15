@@ -3,59 +3,104 @@ using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
+using Wassup.Data;
 using Wassup.Presentation;
 
 namespace Wassup.UI
 {
-    // defender-clock-out unit 3 rev 2 — **퇴근 스냅.**
+    // defender-clock-out unit 3 rev 4 — **"퇴근 중".**
     //
-    // rev 1 은 배치 아치를 거꾸로 재생했다(0.55초 동안 곡선으로 떠감). 사용자 평가: 밋밋하다.
-    // 진단은 방향이 아니라 **구조**였다 — 게임 필은 «예비 → 스냅 → 여운» 인데 rev 1 엔 가운데만
-    // 있었다. 예고가 없으니 무슨 일이 일어나는지 못 읽고, 등속에 가까우니 힘이 안 실리고,
-    // 0.55초는 전투 흐름에 비해 길다.
+    // 컨셉(사용자 지정): 퇴근은 **시간이 걸리는 사건**이다. 키링 줄이 걸려 위로 당기는데
+    // 유닛은 바닥에 박힌 채 **움찔거리며 버틴다**(나가기 싫다). 그러다 결국 **뽑혀서
+    // 뱅글뱅글 돌며 화면 밖으로 튕겨 나간다.**
     //
-    // rev 2 의 3막 (~0.28초):
-    //   ① 웅크림(0.10s) — 눌리며 살짝 내려앉는다. "당겨지기 직전" 텐션.
-    //   ② 스냅(0.18s)  — 위로 **뽑혀 나간다.** 즉발 가속 + 세로로 길게 늘어나며(squash&stretch)
-    //                    가늘어져 사라진다. 만화적 yoink.
-    //   ③ 여운        — 떠난 칸에 **배치 링**이 한 번. 올 때 나던 그 링이 갈 때도 난다.
+    // 3막 (~1.6초, rev 5):
+    //   ① 연결(0.25s) — 줄이 위에서 내려와 걸린다. 걸리는 순간 유닛이 한 번 움찔.
+    //   ② 저항(0.85s) — 줄이 팽팽해지고 고리는 올라가는데 **유닛은 거의 안 올라온다.**
+    //                   발이 박힌 채 몸만 늘어나고, 고주파 진동(좌우 흔들림 + 미세 회전)이
+    //                   장력과 함께 점점 커진다.
+    //   ③ 뽑힘(0.50s) — 팡. 배치 링 + **카메라 쪽으로 훅 다가왔다가** 가속하며 멀어져 화면 밖.
+    //                   그 내내 **뱅글뱅글 4바퀴**.
     //
-    // 죽음과의 구분이 rev 1 보다 선명해졌다: 죽음은 **아래로 무너지고**, 퇴근은 **위로 뽑힌다.**
-    // 아치·베지어는 버렸다 — 곡선은 "날아간다"를, 직선 스냅은 "뽑힌다"를 말한다. 그래서
-    // DragController lazy 해석(KeyringSim 곡선)도 함께 사라졌다.
+    // rev 5 변경(사용자): ② 가 1.75초로 **너무 길었다** → 0.85초. ③ 을 더 시원하게 —
+    // depth 축을 넣어 «가까워졌다 멀어진다» 를 만들고 회전을 900°→1440° 로 올렸다.
+    // 퍼스펙티브 카메라(fov 36)라 -forward 이동이 **실제로 확대**되므로 스케일 조작이 없다
+    // (원근이 이미 하는 일을 스케일로 또 하면 두 배로 부푼다).
+    //
+    // rev 이력: rev 1(0.55s 아치)=밋밋함 · rev 2(0.28s 스냅)=구조는 맞음 · rev 3(스냅+키링)=
+    // **부착이 안 읽힘**. rev 3 의 결론은 "0.3초에 부착 어휘는 못 들어간다" 였고, rev 4 는
+    // **길이를 늘려 그 제약을 없앤다** — 저항이 곧 콘텐츠이므로 2초가 지루하지 않다.
+    //
+    // ⚠ 회전은 `Billboard`(Tilted) 컴포넌트가 매 LateUpdate 로 소유한다. 뱅글뱅글을 위해
+    // 떼어낸 뷰에서 그것을 **끄고 회전을 인수**한다(안 끄면 다음 프레임에 덮인다).
     public class DefenderRetireFlight : MonoBehaviour
     {
         [SerializeField] private Camera mainCamera;
-        [Tooltip("떠난 칸에 칠 링. 배치 때 나는 그 링과 같은 것.")]
+        [Tooltip("뽑히는 순간 떠난 칸에 칠 링. 배치 때 나는 그 링과 같은 것.")]
         [SerializeField] private VfxSpawner vfxSpawner;
+        // 키링 하드웨어(고리+줄)의 소유자. 씬 직렬화 대상이 아니라 DefenderSelector 가 런타임
+        // AddComponent 로 만들므로 재배치 컨트롤러와 같은 lazy 해석을 쓴다.
+        [SerializeField] private DefenderSelector defenderSelector;
 
-        [Header("① 웅크림")]
-        [Tooltip("초. Battle 도메인 — 슬로모를 따른다")]
-        [SerializeField] private float anticipationSeconds = 0.10f;
-        [Tooltip("눌리는 정도. 0.24 = 세로 76%")]
-        [SerializeField, Range(0f, 0.6f)] private float crouchAmount = 0.24f;
-        [Tooltip("웅크릴 때 내려앉는 거리(view 단위)")]
-        [SerializeField] private float crouchDip = 0.14f;
+        private DefenderDragPlacementController _dragCached;
+        private DefenderDragPlacementController DragController
+        {
+            get
+            {
+                if (_dragCached == null && defenderSelector != null)
+                    _dragCached = defenderSelector.DragController;
+                return _dragCached;
+            }
+        }
 
-        [Header("② 스냅")]
-        [SerializeField] private float snapSeconds = 0.18f;
-        [Tooltip("위로 뽑혀 올라가는 거리(view 단위)")]
-        [SerializeField] private float riseDistance = 4.6f;
-        [Tooltip("끝에서의 세로 배율 — 길게 늘어난다")]
-        [SerializeField] private float stretchY = 2.3f;
-        [Tooltip("끝에서의 가로 배율 — 가늘어지며 사라진다")]
-        [SerializeField, Range(0.01f, 1f)] private float stretchX = 0.2f;
+        [Header("① 연결")]
+        [Tooltip("줄이 내려와 걸리기까지(초, Battle 도메인)")]
+        [SerializeField] private float hookSeconds = 0.25f;
+        [Tooltip("줄이 얼마나 위에서 내려오나(view 단위)")]
+        [SerializeField] private float hookDropDistance = 6f;
 
-        // 동시 퇴근이 가능하므로 **단일 슬롯이 아니라 목록**이다(재배치는 이동모드가 하나뿐이라
-        // 단일 슬롯이었다). teardown 에서 전부 정리해야 고아가 안 남는다.
-        private readonly List<SpineUnitView> _inFlight = new List<SpineUnitView>();
+        [Header("② 저항")]
+        [Tooltip("버티는 시간(초). rev 5 — 1.75 는 너무 길었다(사용자)")]
+        [SerializeField] private float resistSeconds = 0.85f;
+        [Tooltip("저항 중 실제로 뽑혀 나오는 거리(view 단위). 작을수록 '박혀 있다'")]
+        [SerializeField] private float resistRise = 0.5f;
+        [Tooltip("움찔 진동 주기(Hz)")]
+        [SerializeField] private float wiggleHz = 13f;
+        [Tooltip("움찔 좌우 진폭(view 단위, 구간 끝 기준). 앞쪽은 작게 시작한다")]
+        [SerializeField] private float wiggleAmplitude = 0.16f;
+        [Tooltip("움찔 회전 진폭(도, 구간 끝 기준)")]
+        [SerializeField] private float wiggleTiltDegrees = 9f;
+        [Tooltip("장력으로 몸이 늘어나는 정도(구간 끝 세로 배율)")]
+        [SerializeField] private float tensionStretchY = 1.18f;
+
+        [Header("③ 뽑힘 — 카메라로 왔다가 멀어지며 이탈")]
+        [SerializeField] private float popSeconds = 0.5f;
+        [Tooltip("올라가는 거리(view 단위)")]
+        [SerializeField] private float popRise = 7f;
+        [Tooltip("옆으로 튕기는 거리(view 단위)")]
+        [SerializeField] private float popLateral = 1.8f;
+        [Tooltip("뱅글뱅글 총 회전량(도). 1440 = 4바퀴")]
+        [SerializeField] private float popSpinDegrees = 1440f;
+        [Tooltip("카메라 쪽으로 얼마나 다가오나(view 단위). 퍼스펙티브라 실제로 커진다")]
+        [SerializeField] private float popApproachDistance = 7f;
+        [Tooltip("그 뒤 멀어지는 거리(view 단위) — 화면 밖까지")]
+        [SerializeField] private float popRecedeDistance = 26f;
+        [Tooltip("다가오는 데 쓰는 구간 비율(0~1). 나머지는 멀어진다")]
+        [SerializeField, Range(0.05f, 0.9f)] private float popApproachFraction = 0.3f;
+        [Tooltip("발사 순간 세로로 늘어나는 배율. 곧 1 로 돌아온다 — 회전 중엔 균일해야 안 깨진다")]
+        [SerializeField] private float popLaunchStretch = 1.35f;
+
+        // 동시 퇴근이 가능하므로 **단일 슬롯이 아니라 목록**이다. 2.4초로 길어진 지금은 겹칠
+        // 확률이 rev 2 보다 훨씬 높다. teardown 에서 뷰와 키링 루트를 **쌍으로** 정리한다.
+        private readonly List<(SpineUnitView view, GameObject keyringRoot)> _inFlight =
+            new List<(SpineUnitView, GameObject)>();
 
         // BattleBridge 가 퇴근 확정 시 호출한다. view 는 이미 풀에서 떼어진 상태이고,
         // **이 시점부터 수명은 여기 것**이다(SpineUnitPool.Detach 의 계약).
         //
-        // simWorld 는 링을 칠 좌표다 — VfxSpawner 가 진입부에서 ToView 하므로 **sim 을 넘긴다**
+        // simWorld = 링을 칠 좌표. VfxSpawner 가 진입부에서 ToView 하므로 **sim 을 넘긴다**
         // (이중 변환 금지). 뷰의 transform 은 view 공간이라 이 용도로 쓸 수 없다.
-        public void Fly(SpineUnitView view, Vector3 simWorld)
+        public void Fly(SpineUnitView view, Vector3 simWorld, DefenderUnitData unitData)
         {
             if (view == null) return;
             // 그림자는 지면에 남는다 — 유닛이 뽑혀 올라가는 동안 원래 칸에 원본 크기로 눌러앉아
@@ -63,79 +108,196 @@ namespace Wassup.UI
             var blob = view.GetComponentInChildren<BlobShadow>(true);
             if (blob != null) Destroy(blob.gameObject);
 
-            _inFlight.Add(view);
-            StartCoroutine(Run(view, simWorld));
+            // 회전 인수 — Billboard 가 살아 있으면 매 LateUpdate 에 우리 회전이 덮인다.
+            var billboard = view.GetComponent<Billboard>();
+            if (billboard != null) billboard.enabled = false;
+
+            // 스케일 인수 — SpineUnitView 는 **자기 코루틴 2개**(PunchRoutine·SquashRoutine)를
+            // 갖고 그것들이 ApplyRenderScale 로 localScale 을 매 프레임 덮는다. Detach 는 그걸
+            // 멈추지 않고 _dying 도 false 라 계속 돈다 — 부착 카드가 주기 발동하는 유닛을
+            // 발동 임팩트 중에 퇴근시키면 장력 stretch 가 펀치 배율과 싸워 몸이 깜빡인다.
+            // 여기서 멈춰야 "소유자가 하나뿐" 이 실제로 참이 된다(코드리뷰 2026-08-15).
+            view.StopAllCoroutines();
+
+            // ⚠ **등록을 코루틴 안이 아니라 여기서** 한다. Run 안에 두면 GO 가 비활성이거나
+            // StartCoroutine 앞에서 예외가 날 때 코루틴이 시작되지 않아, 떼어낸 뷰가 풀에도
+            // _inFlight 에도 없는 **추적 불가능한 유령**으로 남는다. Detach = 소유권 이전이므로
+            // 그 이전은 원자적이어야 한다.
+            _inFlight.Add((view, null)); // 키링 루트는 Run 이 만든 뒤 아래에서 채운다
+            StartCoroutine(Run(view, simWorld, unitData));
         }
 
-        private IEnumerator Run(SpineUnitView view, Vector3 simWorld)
+        // 등록된 뒤 생성되는 키링 루트를 해당 항목에 이어 붙인다(teardown 이 둘 다 치우도록).
+        private void AttachKeyringRoot(SpineUnitView view, GameObject root)
+        {
+            for (int i = 0; i < _inFlight.Count; i++)
+                if (_inFlight[i].view == view) { _inFlight[i] = (view, root); return; }
+        }
+
+        private IEnumerator Run(SpineUnitView view, Vector3 simWorld, DefenderUnitData unitData)
         {
             Vector3 basePos = view.transform.position;
             Vector3 baseScale = view.transform.localScale;
+            Quaternion baseRot = view.transform.rotation; // Billboard 가 마지막에 세운 틸트가 기준
             var cam = mainCamera != null ? mainCamera : Camera.main;
             Vector3 up = cam != null ? cam.transform.up : Vector3.up;
+            Vector3 right = cam != null
+                ? Vector3.ProjectOnPlane(cam.transform.right, BoardSpace.RaycastPlane().normal).normalized
+                : Vector3.right;
+            Vector3 spinAxis = cam != null ? cam.transform.forward : Vector3.forward; // 화면 평면 회전
 
-            // ⚠ localScale 직접 대입 — SpineUnitView 는 "스케일 쓰기의 단일 지점"(ApplyRenderScale)
-            // 을 요구하지만 그 규칙은 **경합하는 소유자가 둘 이상일 때**의 것이다. 떼어낸 뷰는
-            // 매 프레임 피드도 코루틴도 붙어 있지 않아 소유자가 여기 하나뿐이다.
+            // 뽑는 주체. 하드웨어는 배치·재배치와 **같은 소스**(CreateKeyringHardware →
+            // BuildRingAndCord) 라 룩이 저절로 일치한다. 미배선(테스트·트레이 미준비)이면
+            // 키링 없이 모션만 — 연출은 게임 규칙을 하나도 소유하지 않는다.
+            var drag = DragController;
+            var keyring = drag != null ? drag.CreateKeyringHardware(unitData) : default;
+            AttachKeyringRoot(view, keyring.root);
 
-            // ── ① 웅크림 ─────────────────────────────────────────────────────
-            float t = 0f;
-            float dur = Mathf.Max(0.01f, anticipationSeconds);
+            // ⚠ localScale/rotation 직접 대입 — SpineUnitView 는 "스케일 쓰기의 단일 지점"을,
+            // Billboard 는 회전을 요구하지만 둘 다 **경합 소유자가 있을 때**의 규칙이다.
+            // Fly 가 매 프레임 피드(끊김)·Billboard·뷰 자체 코루틴을 전부 정리했으므로
+            // 여기서는 소유자가 하나뿐이다.
+
+            // ── ① 연결 ───────────────────────────────────────────────────────
+            float t = 0f, dur = Mathf.Max(0.01f, hookSeconds);
             while (t < 1f)
             {
-                if (view == null) { Finish(view); yield break; }
+                if (view == null) { Finish(view, keyring); yield break; }
                 t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / dur;
                 float k = Mathf.Clamp01(t);
-                float e = 1f - (1f - k) * (1f - k); // OutQuad — 빠르게 눌렸다가 버틴다
-                view.transform.position = basePos - up * (crouchDip * e);
-                view.transform.localScale = Vector3.Scale(baseScale,
-                    new Vector3(1f + crouchAmount * 0.7f * e, 1f - crouchAmount * e, 1f));
+                float e = 1f - (1f - k) * (1f - k); // OutQuad — 줄이 탁 내려온다
+                // 걸리는 순간 한 번 움찔: 구간 끝 20% 에서만 짧게 흔든다.
+                float hit = k > 0.8f ? Mathf.Sin((k - 0.8f) / 0.2f * Mathf.PI) : 0f;
+                view.transform.position = basePos + right * (hit * wiggleAmplitude * 0.5f);
+                DrawKeyring(keyring, view, up, hookDropDistance * (1f - e));
                 yield return null;
             }
 
-            // ── ③ 여운(링)은 **스냅과 동시에** 친다 ──────────────────────────
-            // 웅크림에 치면 배치처럼 읽히고, 끝나고 치면 인과가 늦다. 뽑히는 순간이 사건이다.
+            // ── ② 저항 — 박혀서 움찔거린다 ────────────────────────────────────
+            // 고리는 계속 올라가는데 유닛은 resistRise 만큼만 따라온다. 그 **차이가 장력**이고,
+            // 장력이 몸을 늘리고 진동을 키운다. 세 값(고리 높이·몸 늘어남·진동 진폭)이 같은
+            // 진행도 하나에서 나오므로 서로 어긋나지 않는다.
+            float elapsed = 0f;
+            float total = Mathf.Max(0.01f, resistSeconds);
+            float phase = 0f;
+            while (elapsed < total)
+            {
+                if (view == null) { Finish(view, keyring); yield break; }
+                float dt = TimeManager.Instance.DeltaTime(TimeDomain.Battle);
+                elapsed += dt;
+                phase += dt * wiggleHz;
+                float p = Mathf.Clamp01(elapsed / total);          // 장력 진행도
+                // rev 5 — 구간이 0.85초로 짧아졌다. p² 램프는 앞 절반이 거의 정지라 짧은 창을
+                // 낭비한다. 바닥값을 깔아 **처음부터 떨고 갈수록 심해지게** 바꾼다.
+                float ramp = Mathf.Lerp(0.35f, 1f, p);
+                float w = Mathf.Sin(phase * Mathf.PI * 2f);
+
+                view.transform.position = basePos
+                    + up * (resistRise * p)
+                    + right * (w * wiggleAmplitude * ramp);
+                view.transform.localScale = Vector3.Scale(baseScale,
+                    new Vector3(1f, Mathf.Lerp(1f, tensionStretchY, p), 1f));
+                view.transform.rotation =
+                    baseRot * Quaternion.AngleAxis(w * wiggleTiltDegrees * ramp, spinAxis);
+                DrawKeyring(keyring, view, up, 0f);
+                yield return null;
+            }
+
+            // ── ③ 뽑힘 ───────────────────────────────────────────────────────
+            // 링은 **뽑히는 순간**에 친다. 연결/저항 때 치면 배치처럼 읽히고, 끝나고 치면 늦다.
             if (vfxSpawner != null) vfxSpawner.SpawnPlacementRing(simWorld);
 
-            // ── ② 스냅 ───────────────────────────────────────────────────────
-            Vector3 crouchPos = basePos - up * crouchDip;
-            Vector3 crouchScale = Vector3.Scale(baseScale,
-                new Vector3(1f + crouchAmount * 0.7f, 1f - crouchAmount, 1f));
-            Vector3 endScale = Vector3.Scale(baseScale, new Vector3(stretchX, stretchY, 1f));
+            Vector3 popFrom = basePos + up * resistRise;
+            Vector3 tensionScale = Vector3.Scale(baseScale, new Vector3(1f, tensionStretchY, 1f));
+            Vector3 launchScale = Vector3.Scale(baseScale, new Vector3(1f, popLaunchStretch, 1f));
+            Vector3 camFwd = cam != null ? cam.transform.forward : Vector3.forward;
+            float approachFrac = Mathf.Clamp(popApproachFraction, 0.05f, 0.9f);
 
-            t = 0f;
-            dur = Mathf.Max(0.01f, snapSeconds);
+            t = 0f; dur = Mathf.Max(0.01f, popSeconds);
             while (t < 1f)
             {
-                if (view == null) { Finish(view); yield break; }
+                if (view == null) { Finish(view, keyring); yield break; }
                 t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / dur;
                 float k = Mathf.Clamp01(t);
-                // OutExpo — 첫 프레임에 이미 크게 튄다. 이게 "뽑혔다"의 정체이고,
-                // rev 1 의 등속 아치가 놓쳤던 것이다.
-                float e = k >= 1f ? 1f : 1f - Mathf.Pow(2f, -10f * k);
-                view.transform.position = crouchPos + up * (riseDistance * e);
-                view.transform.localScale = Vector3.Lerp(crouchScale, endScale, e);
+                float e = k >= 1f ? 1f : 1f - Mathf.Pow(2f, -9f * k); // OutExpo — 팡
+
+                // rev 5 — **카메라로 왔다가 멀어진다.** 퍼스펙티브(fov 36)라 -forward 로
+                // 다가가면 실제로 커지므로 별도 스케일 조작이 필요 없다(중복 적용 금지 —
+                // 원근이 이미 하는 일을 스케일로 또 하면 두 배로 부푼다).
+                // ⚠ 소팅은 sortingOrder 가 소유하므로 앞으로 나와도 다른 것에 가려지지 않는다.
+                float depth = k < approachFrac
+                    // ㉠ 다가옴: 0 → -approach. OutQuad 로 훅 다가온다.
+                    ? -popApproachDistance * (1f - Mathf.Pow(1f - k / approachFrac, 2f))
+                    // ㉡ 멀어짐: -approach → +recede. InQuad 로 가속하며 빠진다.
+                    : Mathf.Lerp(-popApproachDistance, popRecedeDistance,
+                                 Mathf.Pow((k - approachFrac) / (1f - approachFrac), 2f));
+
+                view.transform.position = popFrom
+                    + up * (popRise * e)
+                    + right * (popLateral * e)
+                    + camFwd * depth;
+
+                // 발사 순간만 늘어나고 곧 **균일 배율로 복귀**한다 — 회전 중에 비균일 스케일이
+                // 남아 있으면 매 프레임 실루엣이 찌그러져 보인다.
+                float settle = Mathf.Clamp01(k / 0.35f);
+                view.transform.localScale = Vector3.Lerp(
+                    Vector3.Lerp(tensionScale, launchScale, Mathf.Clamp01(k / 0.12f)),
+                    baseScale, settle);
+
+                // 뱅글뱅글 — 회전은 **선형**으로 돌린다(감속시키면 도는 게 멈춰 보인다).
+                // 축은 camera.forward = 화면 평면 회전 = 보이는 그대로의 z축 스핀.
+                view.transform.rotation = baseRot * Quaternion.AngleAxis(popSpinDegrees * k, spinAxis);
+                DrawKeyring(keyring, view, up, 0f); // 줄이 딸려 올라가며 같이 사라진다
                 yield return null;
             }
 
-            Finish(view);
+            Finish(view, keyring);
         }
 
-        private void Finish(SpineUnitView view)
+        // 고리를 머리 위 rope 길이에 두고 줄을 머리까지 잇는다 — 재배치 비행의 UpdateKeyring 과
+        // 같은 기하다. extraLift = "아직 다 안 내려온" 여분 높이(연결 구간에서만 > 0).
+        //
+        // 재배치는 스무스 추종(sway 근사)을 썼지만 여기서는 **즉시 추종**이다. 저항 구간의 움찔은
+        // 고주파라 관성을 넣으면 줄이 뭉개지고, 뽑힘은 순간이라 뒤처지면 "따라간다"로 읽힌다.
+        private static void DrawKeyring(DefenderDragPlacementController.KeyringHardware kr,
+            SpineUnitView view, Vector3 up, float extraLift)
         {
-            _inFlight.Remove(view);
+            if (!kr.valid || view == null) return;
+            Vector3 head = view.transform.position + up * view.ApproxWorldHeight;
+            Vector3 ringPos = head + up * (kr.ropeWorld + extraLift);
+            kr.ring.position = ringPos;
+            kr.cord.SetPosition(0, ringPos);
+            kr.cord.SetPosition(1, head);
+        }
+
+        private void Finish(SpineUnitView view, DefenderDragPlacementController.KeyringHardware keyring)
+        {
+            // 머티리얼은 드래그 컨트롤러 공유 — 루트만 파괴한다(재배치 HideKeyring 과 동일 규약).
+            if (keyring.root != null) Destroy(keyring.root);
+            for (int i = _inFlight.Count - 1; i >= 0; i--)
+                if (_inFlight[i].view == view) _inFlight.RemoveAt(i);
             if (view != null) view.Dispose();
         }
 
-        // 매치 teardown · 씬 언로드 · 컴포넌트 비활성 — 진행 중 연출을 무효화하고 뷰를 치운다.
-        // 풀이 더 이상 모르는 뷰라 여기서 안 치우면 **고아 GameObject 로 남는다**(Detach 의 계약).
-        private void OnDisable()
+        // 진행 중 연출을 무효화하고 뷰·키링을 전부 치운다. 풀이 더 이상 모르는 뷰라
+        // 여기서 안 치우면 **고아 GameObject 로 남는다**(Detach 의 계약).
+        //
+        // ⚠ **호출처가 둘이고, 실전에서 도는 것은 teardown 쪽이다.** 이 컴포넌트가 붙은 GO 는
+        // 씬 루트라 아무도 비활성화하지 않아 OnDisable 은 씬 언로드에서만 불린다. 매치 재시작
+        // (메뉴 → 다시하기)은 씬을 갈지 않으므로 `BattleBridge.TeardownCurrentBattle` 이
+        // 명시로 이걸 불러야 한다 — 안 그러면 지난 판 유닛이 새 판 보드에서 논다.
+        public void CancelAll()
         {
             StopAllCoroutines();
             for (int i = 0; i < _inFlight.Count; i++)
-                if (_inFlight[i] != null) _inFlight[i].Dispose();
+            {
+                if (_inFlight[i].keyringRoot != null) Destroy(_inFlight[i].keyringRoot);
+                if (_inFlight[i].view != null) _inFlight[i].view.Dispose();
+            }
             _inFlight.Clear();
         }
+
+        private void OnDisable() => CancelAll();
 
         // 테스트용 관측점 — 진행 중인 퇴근 연출 수.
         public int InFlightCount => _inFlight.Count;

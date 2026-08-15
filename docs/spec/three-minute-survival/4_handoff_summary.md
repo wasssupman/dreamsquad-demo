@@ -1,4 +1,4 @@
-# 4 — Handoff (units 0~3 구현, 커밋 전)
+# 4 — Handoff (units 0~3 구현, 커밋 전 / units 6~7 추가)
 
 ## Commit
 
@@ -6,6 +6,17 @@
 - `a7d1b015` feat(three-minute-survival): units 0~3 — 안정도 패배·처치 점수·이벤트 구동 웨이브
 
 **푸시 안 함**(승인제). Unity 검증은 커밋 이후로 넘겼다 — 아래 "Verified/Follow-up" 참조.
+
+## units 6~7 (2026-08-15 · `1e8c1a90`) — 점수 제출 생값화 + 마감 파이프라인
+
+- **unit 6**: 제출값 인코딩(`1e9 + kill×1000 + 안정도permille`)과 디코딩 3곳을 통째로 제거.
+  **서버에 가는 수 = 화면에 보이는 수 = 처치 점수 합**. 안정도는 점수 경로에서 완전히 빠졌고
+  동점은 그냥 동점이다. 구 인코딩 기록은 변환하지 않고 원값(10억대)으로 둔다(사용자 결정).
+- **unit 7**: 판 마감을 `BattleBridge.EndMatch` 단일 관문으로 수렴 — 종료 5경로가 복붙하던
+  의식 6줄이 한 줄씩으로. 취합(`BuildTally` → `MatchTally`) → 기록 → 통보 → 표시.
+  `ScoreMath` 는 `MatchTally` 에 흡수·삭제(점수 정본이 둘이 되지 않게). 동작 변경 0.
+- 검증: 컴파일 0 에러 · EditMode 56/56 · PlayMode `TallyFlowTest` 초록.
+  **Play 육안 확인은 대기**(`6_score_submit_raw.md`·`7_match_end_pipeline.md` 완료 기준 참조).
 
 ## Implemented
 
@@ -21,15 +32,16 @@
   당기기 UI 제거(도크 = `웨이브 N / M` + 다음 N초), 클리어 어필·`NextWaveClearReady` 은퇴.
   브리핑 스트립 카드 상한 12.
 - **점수**(unit 3): `ScoreMath.Evaluate(killScoreTotal)` — 처치만. `killScore` 재장전
-  (1/3/10). 제출값 = `1e9 + 처치점수×1000 + 안정도permille`, 표시 3곳 디코딩.
+  (1/3/10). ~~제출값 = `1e9 + 처치점수×1000 + 안정도permille`, 표시 3곳 디코딩~~ →
+  **unit 6(2026-08-15): 인코딩 폐기, 제출·표시 모두 생값.**
   탤리 제거(스크립트·씬 오브젝트 삭제), 결과 3줄(처치 N기 / 남은 안정도 X/Max (Y%) / 도달 웨이브).
   `ScoreRulesData` 빈 SO 로 은퇴, 로거 `time_score`/`stress_score` 은퇴.
 
 ## Key Files
 
 - `Scripts/Bridge/BattleBridge.cs` — 안정도 상태·유출 차감·패배, `QueueDueWaves`(이벤트 구동),
-  `SyncGoalStabilityBars`, `BeginTally`(제출 인코딩)
-- `Scripts/Core/ScoreMath.cs` — 산식 + 인코딩/디코딩(순수)
+  `SyncGoalStabilityBars`, `EndMatch`/`BuildTally`(unit 7 — 마감 단일 관문)
+- `Scripts/Core/MatchTally.cs` — 판 성적 값(순수). unit 7 이 `ScoreMath.cs` 를 흡수·삭제
 - `Scripts/Data/WavePatternGenerator.cs` — `ExponentialWaveTotal`, 스폰 창 경고
 - `Scripts/Data/AttackDeck.cs` · `AttackUnitData.cs` — 신규 필드 4개
 - `Scripts/Presentation/UnitOverheadView.cs` · `UnitOverheadUiLayer.cs` · `Data/UnitOverheadUiStyle.cs`
@@ -55,7 +67,9 @@
   그대로 반복한다.
 - **스폰 창 불변식**을 깨면 전멸 진행이 조용히 죽는다. 수량 상한↑ ⇒ spacing↓.
 - **`ForceNextWave` 를 no-op 으로 만들지 말 것** — PlayMode 스모크 3개가 판 진행 동력으로 쓴다.
-- **제출값 오프셋**(1e9)을 지우면 구 기록이 10~30 짜리 가짜 점수로 디코딩된다.
+- ~~**제출값 오프셋**(1e9)을 지우면 구 기록이 10~30 짜리 가짜 점수로 디코딩된다.~~
+  → **unit 6 이 인코딩 자체를 제거**했다(디코딩도 없으니 가짜 점수 경로가 없다).
+  안정도를 다시 점수에 섞지 말 것 — 그게 이 unit 의 요청이었다.
 - 튜토리얼 패배 문구는 `ShowsStressLimit` 가드가 자동 생략한다 — 사용자 작성 문구를 건드리지 않았다.
 - 스트레스·몽마의 계약은 **의도적으로 남겼다**(사용자 결정). 계약 코스트가 사실상 0 이 되는
   부작용은 README 후속 후보.

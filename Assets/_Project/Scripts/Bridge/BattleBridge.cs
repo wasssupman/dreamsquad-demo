@@ -650,6 +650,18 @@ namespace Wassup.Bridge
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 잔여 장판 점등 정리(생명주기 대칭)
+            // defender-clock-out unit 3 — 진행 중 퇴근 연출 정리. 떼어낸(Detach) 뷰는 풀의
+            // _byEntity 에 없어 바로 위 spineUnitPool.DisposeAll() 이 **안 치운다**. 그리고 이
+            // 컴포넌트가 붙은 GO 는 씬 루트라 아무도 비활성화하지 않아 OnDisable 도 안 불린다
+            // — 즉 이 한 줄이 없으면 재시작 시 지난 판 유닛과 키링이 새 판 보드 위에서 논다.
+            //
+            // ⚠⚠ **`?.` 를 쓰지 말 것.** C# 의 null 조건 연산자는 Unity 의 fake-null 을 모른다.
+            // `TeardownCurrentBattle` 은 `OnDestroy` 에서도 불리는데 그 시점엔 이 컴포넌트가 이미
+            // 파괴돼 있어 `retireFlight?.CancelAll()` 이 **MissingReferenceException 을 던지고**,
+            // 그러면 이 메서드가 중단돼 아래 `DestroyEntitiesByType<BattleTimeScale>()` 이 실행되지
+            // 않는다 → 싱글턴이 누수돼 다음 씬에서 "found 2 instances" 로 터진다(실측 2026-08-15).
+            // 형제 줄들이 전부 `if (x != null)` 인 이유가 이것이다(Unity 오버로드 == 가 fake-null 처리).
+            if (retireFlight != null) retireFlight.CancelAll();
             _enemyTypeByEntity.Clear(); // dreamcatcher-orb-dock unit 6 — 적 데이터 등록부 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
@@ -1951,7 +1963,7 @@ namespace Wassup.Bridge
 
         // wave-pull-revival unit 3 — 「진출 예상선」. HUD 표시 **전용**이다.
         //
-        // ⚠ 이 값을 BattleLogger·ScoreMath.EncodeSubmission·결과 화면에 넣지 말 것.
+        // ⚠ 이 값을 BattleLogger·서버 제출 점수·결과 화면에 넣지 말 것.
         // 지금 par 는 서버가 아니라 저작 비율에서 나오는 **가짜**이고(PaceBaseline 주석),
         // 기록에 새는 순간 가짜 경쟁 수치가 진짜인 척 저장된다.
         public bool TryGetPaceBaseline(out int expected)
@@ -3689,22 +3701,30 @@ namespace Wassup.Bridge
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
             ReleaseDefenderTile(cell, out var binding);
+            // ⚠ **되돌릴 수 없는 sim 변경을 먼저 끝낸다**(코드리뷰 2026-08-15 반영).
+            // 원래는 뷰 처리 뒤에 있었는데, 그 사이의 프레젠테이션 코드(키링 생성 = Shader.Find /
+            // new GameObject, 코루틴 시작)가 던지면 **엔티티는 살아 있는데 바인딩만 사라진**
+            // 반쯤 무너진 상태가 된다. 그 상태의 유닛은 다시 선택·퇴근이 안 되고, 나중에 죽어도
+            // 드레인이 hasBinding=false 라 DefenderDied 가 안 나가 **부착 카드가 영구 소실**된다.
+            // 아래 뷰 경로는 엔티티를 Dictionary 키로만 쓰고 EntityManager 를 만지지 않으므로
+            // 순서를 앞당겨도 무해하다.
+            _em.DestroyEntity(binding.entity);
+
             // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
             //
             // unit 3 — 연출이 배선돼 있으면 뷰를 **떼어내 넘긴다**(파괴하지 않는다). 엔티티는
-            // 바로 아래에서 사라지지만 뷰만 위로 뽑혀 나간다(보스 도약과 같은 형태 — sim 은 즉시
-            // 끝나고 뷰만 남는다). 넘긴 뒤 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
+            // 이미 사라졌고 뷰만 위로 뽑혀 나간다(보스 도약과 같은 형태 — sim 은 즉시 끝나고
+            // 뷰만 남는다). 넘긴 뒤 뷰의 수명은 연출 소유다 — SpineUnitPool.Detach 의 계약.
             // 미배선이면 종전대로 즉시 반납(개발 씬·테스트에서 조용히 동작).
             //
             // rev 2 — 링을 칠 좌표를 함께 넘긴다. VfxSpawner 가 진입부에서 ToView 하므로
             // **sim 좌표**여야 한다(이중 변환 금지 — 배치 링 호출부와 같은 규약).
             if (retireFlight != null && spineUnitPool != null
                 && spineUnitPool.Detach(binding.entity, out var retiringView))
-                retireFlight.Fly(retiringView, GridToWorldCenterVector(cell, spawnHeight));
+                retireFlight.Fly(retiringView, GridToWorldCenterVector(cell, spawnHeight), binding.data);
             else
                 spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);
-            _em.DestroyEntity(binding.entity);
             Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed, synergy recomputed.");
             DefenderRetired?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
             return true;
@@ -4880,7 +4900,7 @@ namespace Wassup.Bridge
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
             {
-                affected = ApplyForwardOnPlaceProjectile(unitData, placedCell, GridToWorldCenter(placedCell));
+                affected = ApplyForwardOnPlaceProjectile(unitData, GridToWorldCenter(placedCell), placedEntity);
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.GainCost)
             {
@@ -4917,62 +4937,111 @@ namespace Wassup.Bridge
             return affected;
         }
 
-        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, Vector2Int placedCell, float3 center)
+        // defender-on-place-skills unit 4 — 통로 반폭(타일). 0.45 였을 때 **레인 오프셋만큼 옆으로
+        // 선 적**(±0.5)이 바로 옆에서도 탈락했다 — 실측 lat=1.0 으로 두 마리가 빠졌다.
+        private const float ForwardBurstHalfWidthTiles = 0.6f;
+
+        // unit 4 rev — 후보를 **한 번만** 모은다. 방향 결정과 명중 판정이 같은 집합을 봐야 한다:
+        // 갈라 두면 한쪽만 고쳐진다(초판이 정확히 그랬다 — 방향 선정이 이탈 중인 보스를 후보로
+        // 잡아 총구를 줬고, 그 보스는 피해를 받을 수 없어 일격이 통째로 낭비됐다).
+        private readonly System.Collections.Generic.List<Entity> _forwardBurstScratch = new();
+
+        // 「이번 프레임 합법 후보」 — `AttackSystem` 의 targetCandidatesQuery 와 **같은 집합**이다.
+        // `DeadTag`(파괴 대기)와 `UltimateLeapState`(판 밖 — 들어온 피해를 버린다)를 뺀다.
+        // 빼지 않으면 때릴 수 없는 대상에 총구를 주고, `IncomingDamage` 에 넣기만 하면 올라가는
+        // affected 로그가 거짓 양성이 된다. `UltimateLeapState` 주석의 소비처 목록도 함께 갱신할 것.
+        private bool IsLegalOnPlaceTarget(Entity e)
+            => _em.HasComponent<LocalTransform>(e)
+               && _em.HasBuffer<IncomingDamage>(e)
+               && !_em.HasComponent<DeadTag>(e)
+               && !_em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e);
+
+        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, float3 center, Entity placedEntity)
         {
             if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
             if (!_aliveAttackersQueryCreated) return 0;
 
-            float2 forward = FindNearestPathDirection(placedCell);
             float length = unitData.onPlaceRange * tileSize;
-            float width = tileSize * 0.45f;
-            float widthSq = width * width;
-            int affected = 0;
+            byte targetLayers = (byte)unitData.EffectiveAttackTargetLayers;
 
+            _forwardBurstScratch.Clear();
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             for (int i = 0; i < entities.Length; i++)
             {
                 var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
-                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
+                if (!IsLegalOnPlaceTarget(e)) continue;
+                if (!CanDefenderTargetMover(targetLayers, e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                var to = new float2(pos.x - center.x, pos.z - center.z);
+                if (math.lengthsq(to) > length * length) continue;
+                _forwardBurstScratch.Add(e);
+            }
+            entities.Dispose();
+
+            // 사거리 안에 합법 후보가 없으면 사건이 성립하지 않는다.
+            // ⚠ 이 가드는 **방향 퇴화도 막는다**: 후보가 없으면 최근접 방향이 (0,0) 이 되고,
+            // 그러면 along=0 · lateral=|to| 라 방향과 무관하게 반경 0.6칸을 때린다. 이 가드를
+            // 완화하려는 사람은 forward 가 비영이라는 보장을 따로 만들어야 한다.
+            if (_forwardBurstScratch.Count == 0) return 0;
+
+            float2 forward = ResolveForwardBurstDirection(placedEntity, center);
+            float width = tileSize * ForwardBurstHalfWidthTiles;
+            float widthSq = width * width;
+            int affected = 0;
+
+            for (int i = 0; i < _forwardBurstScratch.Count; i++)
+            {
+                var e = _forwardBurstScratch[i];
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
                 float along = math.dot(toTarget, forward);
                 if (along < 0f || along > length) continue;
-                float2 closest = forward * along;
-                float2 lateral = toTarget - closest;
+                float2 lateral = toTarget - forward * along;
                 if (math.lengthsq(lateral) > widthSq) continue;
                 _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
                 affected++;
             }
-            entities.Dispose();
             return affected;
         }
 
-        private float2 FindNearestPathDirection(Vector2Int placedCell)
+        // defender-on-place-skills unit 4 — 전방 관통 일격의 총구 방향.
+        //
+        // 옛 규칙은 "가장 가까운 길 칸 쪽"(`FindNearestPathDirection`)이었고 **삭제했다.** 그 탐색은
+        // 맵을 y·x 오름차순으로 훑으며 동점에서 먼저 찾은 칸을 지켰는데, 배치 셀 이웃이 전부 Walk 이면
+        // (Walk 위 배치 허용 이후로는 보통) 거리 1 동점자 중 남쪽이 항상 이겼다 — 실측 252칸 중 173칸이
+        // (0,-1). 총구가 사실상 남쪽에 고정돼 사용자 플레이 4회 배치가 전부 affected=0 이었다.
+        //
+        // 새 규칙(사용자 결정 2026-08-15):
+        //   1) 조준이 있으면 그 방향. 방향 지정 유닛의 조준을 스킬이 물려받는다 — 활성화가
+        //      `DeployedFacing` 을 on-place **앞에** 붙여 두는 것이 이걸 위해서였다.
+        //   2) 없으면 사거리 안 가장 가까운 적 방향. 조준 UX 가 없는 유닛(마크스맨 등)의 규칙.
+        //
+        // **조준이 최근접보다 세다.** 조준은 방향만 정하고, 사건 성립(후보 존재)은 호출처가
+        // 이미 판정했다. 그래서 조준 방향에 아무도 없어도 발사는 일어나고 명중이 0일 수 있다 —
+        // 어디를 쏠지는 플레이어 몫이라는 뜻이다. 후보가 비어 있지 않은 것은 호출처 계약이다.
+        private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
         {
-            if (!_generatedMap.IsCreated) return new float2(1f, 0f);
-
-            int bestDistSq = int.MaxValue;
-            Vector2Int best = placedCell + Vector2Int.right;
-            for (int y = 0; y < _generatedMap.gridSize.y; y++)
-            for (int x = 0; x < _generatedMap.gridSize.x; x++)
+            if (placedEntity != Entity.Null && _em.Exists(placedEntity)
+                && _em.HasComponent<DeployedFacing>(placedEntity))
             {
-                if (_generatedMap.TileAt(new int2(x, y)) != MapTileType.Walk) continue;
-                int dx = x - placedCell.x;
-                int dy = y - placedCell.y;
-                // placement-mask unit 3 — 배치 셀 자신은 제외. B-1 로 Walk 셀 위 배치가 가능해져
-                // 자기 셀이 d2=0 최근접이 되면 zero-길이 가드가 고정 +x 를 쏘던 결함 — 방향의 의미는
-                // "가장 가까운 '경로'를 향해" 이므로 최근접 '타' Walk 셀이 맞다.
-                if (dx == 0 && dy == 0) continue;
-                int d2 = dx * dx + dy * dy;
-                if (d2 >= bestDistSq) continue;
-                bestDistSq = d2;
-                best = new Vector2Int(x, y);
+                var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
+                var aim = new float2(facing.x, facing.y);
+                if (math.lengthsq(aim) > 0.001f) return math.normalize(aim);
             }
 
-            var dir = new float2(best.x - placedCell.x, best.y - placedCell.y);
-            if (math.lengthsq(dir) < 0.001f) return new float2(1f, 0f);
-            return math.normalize(dir);
+            // 후보가 전부 중심에 겹친 극단에서도 비영 방향을 돌려준다(퇴화 방지).
+            float2 forward = new float2(0f, 1f);
+            float bestDistSq = float.MaxValue;
+            for (int i = 0; i < _forwardBurstScratch.Count; i++)
+            {
+                var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
+                var to = new float2(pos.x - center.x, pos.z - center.z);
+                float d2 = math.lengthsq(to);
+                if (d2 < 0.001f || d2 >= bestDistSq) continue;
+                bestDistSq = d2;
+                forward = math.normalize(to);
+            }
+            return forward;
         }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
@@ -5370,9 +5439,9 @@ namespace Wassup.Bridge
         private int EffectiveLeakLimit()
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
-        // battle-score-formula unit 7 — 스트레스점수의 입력. 점수 계산(CalculateBattleScore)과
-        // 결과 화면 표기(FinishTally)가 **같은 값**을 써야 화면에서 검산된다. 한계는 덱 원본값
+        // battle-score-formula unit 7 — 스트레스 누적/한계의 HUD 표기 짝. 한계는 덱 원본값
         // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
+        // (구 스트레스 **점수**의 입력이기도 했으나 그 축은 unit 3 에서 폐기됐다.)
         private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
         private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
 
@@ -5823,10 +5892,10 @@ namespace Wassup.Bridge
                         newCoreBreach = true;
                         // 리뷰 A-M1 — 여기서 바로 열지 않는다. 열기(유출 전환)는 아래 미러
                         // 갱신 **뒤** — 붕괴가 만든 유출이 이 프레임에 스트레스 상한을 채우면
-                        // 그 사슬(LeakSiegingEnemy → CheckStressDefeat → BeginTally →
-                        // EncodeSubmission)이 _goalStability 를 제출값으로 싣는데, 루프 안에서
-                        // 열면 지난 프레임의 **양수** 미러가 제출된다(구 코드는 0 을 먼저
-                        // 놓았다 — 순서 회귀였다).
+                        // 그 사슬(LeakSiegingEnemy → CheckStressDefeat → EndMatch)이
+                        // 결과 화면에 _goalStability 를 싣는데, 루프 안에서 열면 지난 프레임의
+                        // **양수** 미러가 «부서졌는데 남아 있다» 로 찍힌다.
+                        // (unit 6 이전엔 이 값이 서버 제출값에도 실려 더 무거운 순서였다.)
                         (newBreaches ??= new List<Vector2Int>()).Add(cell);
                     }
                 }
@@ -5884,12 +5953,7 @@ namespace Wassup.Bridge
             }
 
             // 상한 0 = 구 동작 보존: 마음 하나라도 부서지면 즉시 패배.
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: true);
-            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: false, score, RemainingBattleSeconds());
+            EndMatch("defeat", win: false);
             Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
         }
 
@@ -5941,12 +6005,7 @@ namespace Wassup.Bridge
             // 상한의 on/off 는 덱 원본값(StressLimit)이, **문턱값**은 EffectiveLeakLimit()이 정한다 —
             // HUD 분모와 같은 값이어야 화면에서 검산된다(몽마의 계약 선불 차감이 반영된 값).
             if (_resultShown || StressLimit <= 0 || _goalReachedCount < EffectiveLeakLimit()) return;
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: true);
-            GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: false, score, RemainingBattleSeconds());
+            EndMatch("defeat", win: false);
             Debug.Log($"[BattleBridge] DEFEAT — 스트레스 상한 도달 ({_goalReachedCount}/{StressLimit}).");
         }
 
@@ -5957,9 +6016,8 @@ namespace Wassup.Bridge
         // 0 이하 = 무한(엔드리스)이고, 그때 호출측은 타이머 배지를 통째로 숨긴다.
         public float TimerDuration => _timerDuration;
 
-        // Seconds left on the match clock at query time — unlike TimerRemaining this
-        // stays valid after _running is cleared (used to stamp the result popup).
-        private float RemainingBattleSeconds() => Mathf.Max(0f, _timerDuration - (float)_battleClock);
+        // unit 7 — `RemainingBattleSeconds()` 는 제거했다. 종료 4경로가 계산해서 넘겼지만
+        // 소비처(구 결과 화면의 「남은 시간」 줄)가 이미 죽어 값이 버려지고 있었다.
 
         // battle-structures unit 10 — **적 마음 축**. 방어 마음 축(SyncGoalStability)의 거울이고
         // 활성 조건도 같은 모양이다: 저작된 상한이 있었는데(`_enemyCoreMax > 0`) 지금 잔여가 0.
@@ -5971,12 +6029,7 @@ namespace Wassup.Bridge
         {
             if (_resultShown || _enemyCoreMax <= 0 || _enemyCoreCurrent > 0) return;
 
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: false);
-            GameManager.Instance?.Logger?.SetResult("victory_siege", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(score.Total, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds());
+            EndMatch("victory_siege", win: true);
             Debug.Log("[BattleBridge] VICTORY — 적 마음이 무너졌다(공성).");
         }
 
@@ -5996,16 +6049,7 @@ namespace Wassup.Bridge
             // 이유는 사용자 결정이 «동일 체력 + 절대값» 이기 때문이다.
             bool win = _goalStability >= _enemyCoreCurrent;
 
-            _resultShown = true;
-            _running = false;
-            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
-            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
-            var score = CalculateBattleScore(defeated: !win);
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult(
-                win ? "victory_timeout" : "defeat_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-            BeginTally(win, score, 0f); // timer expired → 0 left
+            EndMatch(win ? "victory_timeout" : "defeat_timeout", win);
             Debug.Log(win
                 ? $"[BattleBridge] VICTORY — timer expired, player survived. (방어 {_goalStability} ≥ 적 {_enemyCoreCurrent})"
                 : $"[BattleBridge] DEFEAT — timer expired, 적 본진이 더 버텼다. (방어 {_goalStability} < 적 {_enemyCoreCurrent})");
@@ -6019,13 +6063,7 @@ namespace Wassup.Bridge
             if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
             if (!NoQueuedAttackersRemain()) return;
 
-            _resultShown = true;
-            _running = false;
-            var score = CalculateBattleScore(defeated: false);
-            int playerScore = score.Total;
-            GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds());
+            EndMatch("victory", win: true);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
@@ -6049,7 +6087,7 @@ namespace Wassup.Bridge
         // list stays. The popup usually isn't open yet when the response lands
         // (ranking beats the ~4s tally) — ResultScreen holds an early response and
         // opens on it, so this callback stays fire-and-forget.
-        private void ReportMatchResult(int playerScore)
+        private void ReportMatchResult(MatchTally tally)
         {
             // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
             if (IsEndless)
@@ -6058,58 +6096,58 @@ namespace Wassup.Bridge
                 return;
             }
             var logger = GameManager.Instance?.Logger;
-            Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.DeckInfoJson(),
+            // unit 7 — 서버로 가는 값은 여기 하나다. tally 가 「무엇을 제출하나」를 소유하고
+            // 브리지는 그것을 꺼내 실어 보내기만 한다(가공 지점이 남아 있으면 안 된다).
+            Wassup.Core.Api.TournamentMatchReporter.ReportResult(tally.SubmissionScore, logger?.DeckInfoJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
                 // tournament-flow-guards unit 2 — 실제 complete 실패만 알림(논블로킹, 재시도 없음).
                 onError: _ => Wassup.UI.NoticePopup.ShowAlert("점수 전송 실패",
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
         }
 
-        // score-tally-sequence unit 1 — 전투 종료 → 결과 연출 → 결과 화면의 단일 관문.
-        // 종료 3종(패배/버팀승리/전멸승리)이 전부 여기로 들어온다.
+        // three-minute-survival unit 7 — **판 마감의 단일 관문.** 종료 5경로(골붕괴 즉사·
+        // 스트레스 상한·적 마음 붕괴·타이머 만료·전멸)는 판정만 하고 여기로 들어온다.
+        // 예전엔 다섯 곳이 같은 의식 6줄을 복붙했고, 한 줄만 빠뜨려도 조용히 어긋났다.
         //
-        // **서버 제출은 여기서(연출 시작 시점) 한다** — 연출이 끝나길 기다리면 그 사이
-        // 앱이 죽었을 때 기록이 통째로 사라진다. 화면 연출과 기록 전송은 독립이다(계약 3).
+        //   취합(BuildTally) → 기록(로거) → 통보(서버) → 표시(결과 화면)
         //
-        // Tally 동안 전투 HUD 중 ScoreHud 만 살아남는다(연출의 주인공). NextWaveDock·
-        // CostDisplay 등은 `== GamePhase.Battle` 을 보므로 자동으로 꺼진다.
-        // three-minute-survival unit 3 — **합산 연출(탤리)은 제거됐다.** 시간·스트레스 축이
-        // 사라져 더할 것이 없다: 전투 중 HUD 숫자가 이미 최종 점수다. 남기면 내용 없는
-        // 4초 정지가 된다.
+        // **제출이 표시보다 앞이라는 순서는 계약이다**(score-tally-sequence 계약 3) —
+        // 화면을 기다리다 앱이 죽으면 기록이 통째로 사라진다. 둘은 독립이다.
         //
-        // `GamePhase.Tally` 전이는 유지한다 — 전투 HUD 게이팅이 그 페이즈를 읽고, 서버 제출
-        // 지점(연출과 독립이라는 계약 3)도 여기 그대로 있다.
-        private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec)
+        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만(unit 3 — 더할 축이
+        // 없어 내용 없는 4초 정지가 된다) 전투 HUD 게이팅이 그 페이즈를 읽는다. Tally 동안
+        // ScoreHud 만 남고 NextWaveDock·CostDisplay 등은 `== GamePhase.Battle` 로 자동 정리된다.
+        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
+        private void EndMatch(string outcome, bool win)
         {
+            _resultShown = true;
+            _running = false;
+
+            var tally = BuildTally(outcome, win);
+            var logger = GameManager.Instance?.Logger;
+            logger?.SetResult(tally.Outcome, tally.Leaks);
+            logger?.SetScore(tally.Total, tally.KillScore);
+
             GameManager.Instance?.SetPhase(GamePhase.Tally);
-            // 제출값에 동점 판정(남은 안정도)을 실어 보낸다 — 서버는 int 하나만 받는다.
-            ReportMatchResult(ScoreMath.EncodeSubmission(score.Total, _goalStability, _goalStabilityMax));
-            FinishTally(win, score, remainingSec);
+            ReportMatchResult(tally);
+
+            GameManager.Instance?.SetPhase(GamePhase.Result);
+            if (tally.Won) resultScreen?.ShowVictory(tally);
+            else resultScreen?.ShowDefeat(tally);
         }
 
-        // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
-        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
-        private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
-        {
-            GameManager.Instance?.SetPhase(GamePhase.Result);
-            // three-minute-survival unit 3 — 결과 3줄: 처치 수 / 남은 안정도 / 도달 웨이브.
-            // 총점(=처치 점수)은 score.Total 이 들고 온다.
-            var stats = new Wassup.UI.ResultScreen.MatchStats(
-                _killCount, _goalStability, _goalStabilityMax, ReachedWaveNumber, score);
-            if (win) resultScreen?.ShowVictory(score, stats);
-            else resultScreen?.ShowDefeat(score, stats);
-        }
+        // unit 7 — 흩어진 재료를 판 성적 하나로 옮기는 **유일한** 지점. 재료가 늘거나 줄면
+        // 고칠 곳이 여기 하나다(종료 경로는 재료를 만지지 않는다).
+        //
+        // 점수는 처치로만 번다(unit 3) — 시간·스트레스 축과 그 배점(ScoreRulesData)은
+        // 폐기됐고 패배 분기도 없다. 져도 잡은 만큼은 남으므로 `win` 은 산식에 닿지 않는다.
+        private MatchTally BuildTally(string outcome, bool win)
+            => new MatchTally(outcome, win, _killScoreTotal, _killCount,
+                _goalStability, _goalStabilityMax, ReachedWaveNumber, _goalReachedCount);
 
         // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
         // 그대로 쓰면 아직 안 나온 웨이브를 도달로 센다.
         private int ReachedWaveNumber => _nextWaveIndex > 0 ? _nextWaveIndex : 0;
-
-        // three-minute-survival unit 3 — 점수는 처치로만 번다. 시간·스트레스 축과 그 배점
-        // (ScoreRulesData)은 폐기됐고 패배 분기도 없다 — 져도 잡은 만큼은 남는다.
-        // `defeated` 인자는 호출부 3곳(패배·버팀승리·전멸승리)의 의미를 남기기 위해 유지하되
-        // 산식에 영향을 주지 않는다.
-        private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
-            => ScoreMath.Evaluate(_killScoreTotal);
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
         // PlaceDefenderAs with an explicit type, but this path stays for tests
