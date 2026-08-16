@@ -199,26 +199,10 @@ namespace Wassup.Tests.EditMode
             AssertStructureHasNoEffectBuffers(em, e);
         }
 
-        [Test]
-        public void SiegeCoreAlive_AllWavesCleared_DoesNotUseLegacyVictory()
-        {
-            SetField(_bridge, "_enemyCoreMax", 800);
-            SetField(_bridge, "_enemyCoreCurrent", 800);
-            SetField(_bridge, "_resultShown", false);
-            SetField(_bridge, "_running", true);
-            SetField(_bridge, "_usingGeneratedWaves", false);
-
-            var emptyAttackers = _world.EntityManager.CreateEntityQuery(
-                ComponentType.ReadOnly<AttackUnitTag>());
-            SetField(_bridge, "_aliveAttackersQuery", emptyAttackers);
-            SetField(_bridge, "_aliveAttackersQueryCreated", true);
-
-            CallPrivateMethod(_bridge, "CheckVictory");
-
-            Assert.IsFalse((bool)GetField(_bridge, "_resultShown"),
-                "A live enemy core must suppress the legacy all-waves-cleared victory path.");
-            Assert.IsTrue((bool)GetField(_bridge, "_running"));
-        }
+        // three-minute-kill-race unit 0 — `SiegeCoreAlive_AllWavesCleared_DoesNotUseLegacyVictory`
+        // 는 삭제했다. 「살아 있는 적 마음이 구 전멸 승리를 억제한다」를 고정하던 테스트인데,
+        // 그 승리 경로(`CheckVictory`) 자체가 은퇴해 억제할 대상이 없다. 판을 끝내는 것은
+        // 3분 만료와 유저 제출뿐이고, 그 성질은 `StructureLivePlayTest` (4) 가 지킨다.
 
         [Test]
         public void DefenderCoreEntry_IsNotSpawned_GoalsArrayIsTheSource()

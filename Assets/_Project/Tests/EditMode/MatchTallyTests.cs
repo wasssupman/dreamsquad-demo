@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode
     public class MatchTallyTests
     {
         private static MatchTally Tally(int killScore, int stability = 12, int stabilityMax = 20)
-            => new MatchTally("victory", true, killScore, killCount: 3,
+            => new MatchTally("complete", killScore, killCount: 3,
                 stability, stabilityMax, waveReached: 7, leaks: 2);
 
         [Test]
@@ -44,7 +44,7 @@ namespace Wassup.Tests.EditMode
         public void NegativeCounts_ClampToZero()
         {
             Assert.AreEqual(0, Tally(-5).Total);
-            Assert.AreEqual(0, new MatchTally("defeat", false, 0, -3, 0, 20, 0, 0).KillCount);
+            Assert.AreEqual(0, new MatchTally("complete", 0, -3, 0, 20, 0, 0).KillCount);
         }
 
         [Test]
@@ -64,11 +64,13 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void CarriesResultLabels()
         {
-            var t = new MatchTally("defeat_timeout", false, 9, 4, 0, 20, 11, 5);
-            Assert.AreEqual("defeat_timeout", t.Outcome, "배틀 로그 라벨");
-            Assert.IsFalse(t.Won);
+            var t = new MatchTally("submitted", 9, 4, 0, 20, 11, 5);
+            Assert.AreEqual("submitted", t.Outcome, "배틀 로그 라벨");
             Assert.AreEqual(11, t.WaveReached);
             Assert.AreEqual(5, t.Leaks);
+            // three-minute-kill-race unit 0 — 마음이 0 이어도 그것 때문에 달라지는 것은 없다.
+            // 승패를 담는 필드가 아예 없으므로 «졌다» 를 표현할 자리가 존재하지 않는다.
+            Assert.AreEqual(9, t.SubmissionScore, "안정도 0 이어도 제출값은 처치 점수 그대로");
         }
     }
 }

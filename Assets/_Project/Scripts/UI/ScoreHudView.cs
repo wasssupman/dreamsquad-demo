@@ -844,7 +844,7 @@ namespace Wassup.UI
             else if (phase == GamePhase.Tally)
             {
                 // **_pendingKills 를 비우지 않는다.** 같은 Update 안에서
-                // DrainEnemyKilledEvents → CheckVictory → SetPhase(Tally) 가 돌기 때문에,
+                // DrainEnemyKilledEvents → (마감 판정) → SetPhase(Tally) 가 돌기 때문에,
                 // 여기서 비우면 LateUpdate 게이트에 걸려 **판을 끝낸 그 킬만** 펀치·플래시·
                 // 스파크·틱 사운드를 통째로 못 받는다. 하필 preRollSec("마지막 킬을 눈으로
                 // 마무리할 시간") 동안 그게 그대로 노출된다.

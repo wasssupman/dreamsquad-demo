@@ -13,7 +13,7 @@ namespace Wassup.Tests.EditMode
     public class EndlessScoreTests
     {
         private static MatchTally Tally(int killScore, int leaks)
-            => new MatchTally("victory", true, killScore, killCount: 1,
+            => new MatchTally("complete", killScore, killCount: 1,
                 stability: 20, stabilityMax: 20, waveReached: 30, leaks: leaks);
 
         [Test]

@@ -18,10 +18,10 @@ namespace Wassup.Core
     /// </summary>
     public readonly struct MatchTally
     {
-        /// <summary>배틀 로그에 남는 결과 라벨(`victory` · `victory_siege` · `victory_timeout` ·
-        /// `defeat` · `defeat_timeout`). 화면 승패는 <see cref="Won"/> 이 갖는다.</summary>
+        /// <summary>배틀 로그에 남는 결과 라벨. three-minute-kill-race unit 0 이후 값은
+        /// `complete`(3분 완주) 하나이고, unit 3 이 `submitted`(유저 제출)를 더한다.
+        /// **승패를 담는 자리는 없다** — 그 개념이 사라졌고, 자리를 남기면 조용히 되살아난다.</summary>
         public readonly string Outcome;
-        public readonly bool Won;
 
         /// <summary>처치한 적의 killScore 합(일반 1 / 엘리트 3 / 보스 10). 유출당한 적은
         /// 포함되지 않는다 — 그쪽은 `EnemyKilledEvent` 를 발화하지 않는다.</summary>
@@ -37,11 +37,10 @@ namespace Wassup.Core
         /// <summary>골을 뚫린 횟수(스트레스). 점수와 무관하며 로그·배지용 집계다.</summary>
         public readonly int Leaks;
 
-        public MatchTally(string outcome, bool won, int killScore, int killCount,
+        public MatchTally(string outcome, int killScore, int killCount,
             int stability, int stabilityMax, int waveReached, int leaks)
         {
             Outcome = outcome;
-            Won = won;
             KillScore = killScore > 0 ? killScore : 0;
             KillCount = killCount > 0 ? killCount : 0;
             Stability = stability;

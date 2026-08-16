@@ -32,7 +32,8 @@ namespace Wassup.UI
         // No serialized fields: keeps the scene component (and its diff) clean.
         private static readonly Color goldColor = new Color(1f, 0.78f, 0.28f, 1f);
         private static readonly Color navyFill = new Color(0.05f, 0.06f, 0.10f, 0.98f);
-        private static readonly Color defeatColor = new Color(1f, 0.42f, 0.42f, 1f);
+        // three-minute-kill-race unit 0 — 패배색은 제거했다. 판에서 지는 일이 없어져
+        // 이 색을 칠할 상태가 존재하지 않는다.
         private const string GoldHex = "FFC747"; // goldColor, for rich-text emphasis
 
         // Row palette — kept private; these are visual constants, not tuning knobs.
@@ -105,23 +106,22 @@ namespace Wassup.UI
         }
 
         // three-minute-survival unit 7 — 결과 화면의 입력은 **판 성적 값 하나**(`MatchTally`)다.
-        // 예전엔 UI 전용 `MatchStats` 가 따로 있었고, 그 안에 호출자 0인 구 경로
-        // (`HasBreakdown` 분기 + 남은시간/유출 2줄 + 오버로드 6개)가 남아 있었다.
-        public void ShowDefeat(MatchTally tally) => ShowResult("패배", tally);
-        public void ShowVictory(MatchTally tally) => ShowResult("승리", tally);
-
-        private void ShowResult(string resultText, MatchTally tally)
+        //
+        // three-minute-kill-race unit 0 — 입구가 승/패 둘에서 **하나**로 줄었다. 판에서 지는
+        // 일이 없어졌으므로 «어느 쪽으로 끝났나» 를 물을 자리가 없다. 라벨은 `결과` 고정이고
+        // 색 분기도 사라졌다(패배색은 이제 쓰이지 않는다).
+        // 줄 구성·문구 다듬기는 unit 4 몫 — 여기서는 승패 축만 걷어낸다.
+        public void Show(MatchTally tally)
         {
             if (!_built) BuildCanvas();
-            resultLabel.text = resultText;
-            bool win = resultText == "승리";
-            if (tabImage != null) tabImage.color = win ? goldColor : defeatColor;
+            resultLabel.text = "결과";
+            if (tabImage != null) tabImage.color = goldColor;
 
             if (heroScoreLabel != null)
             {
                 // 총점 = 처치 점수. 서버에 올라간 수와 같은 값이다(가공 없음 — unit 6).
                 heroScoreLabel.text = tally.Total.ToString("N0");
-                heroScoreLabel.color = win ? goldColor : defeatColor;
+                heroScoreLabel.color = goldColor;
             }
 
             // The stat rows are generic StatRow values so battle-score-formula could

@@ -2856,9 +2856,9 @@ namespace Wassup.Bridge
             float t = (float)_battleClock;
             // elite-enemy-tier unit 5 — ★**QueueDueWaves 보다 먼저** 드레인한다. 분열 자식이
             // 여기서 태어나기 때문이다. 뒤에 두면(원래 위치) 부모 슬라임이 마지막 생존 적일 때
-            // 자식이 생기기 전에 NoQueuedAttackersRemain() 이 참이 되어 다음 웨이브가 큐잉되고,
-            // CheckVictory 도 같은 술어라 **승리까지 선언될 수 있다** — 「엘리트를 죽이면 판이
-            // 빨라지는」 뒤집힌 인센티브가 된다. 이 드레인은 다른 드레인·스폰 루프에 의존하지
+            // 자식이 생기기 전에 NoQueuedAttackersRemain() 이 참이 되어 다음 웨이브가 큐잉된다
+            // — 「엘리트를 죽이면 판이 빨라지는」 뒤집힌 인센티브가 된다. (구 CheckVictory 도
+            // 같은 술어라 승리까지 선언됐었다 — 그 판정은 kill-race unit 0 에서 은퇴.) 이 드레인은 다른 드레인·스폰 루프에 의존하지
             // 않는다(킬 버스트는 SpawnProjectile 직접 호출, 점수·각성 중계는 순수 가산,
             // 등록부 정리와 표식 회수는 순서 무관). 자식은 ECB 가 아니라 직접 AddComponent 라
             // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
@@ -2906,11 +2906,10 @@ namespace Wassup.Bridge
             DrainHazardDestroyedEvents();
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
-            SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러 + 패배 판정
-            // battle-structures unit 10 — 적 마음 축. Sync 다음이어야 같은 프레임 패배가 우선한다.
-            CheckEnemyCoreDestroyed();
+            SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러(연출·로그 전용)
+            // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
+            // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
-            CheckVictory();
         }
 
         private void LateUpdate()
@@ -4617,9 +4616,18 @@ namespace Wassup.Bridge
             // 착탄 셀에서 떨어져야 하므로, 궤적의 불변식을 궤적 소유 지점인 여기서
             // 강제한다. (기존 Meteor/구 barrage arm 은 origin==impact 로 보내와서
             // 바이트 동일하고, emitter 처럼 origin=시전자 인 주체만 정정된다.)
+            // dreamcatcher-content-4 리뷰 M3 — 궤도는 **궤도 위 시작점(위상 0)** 에서 태어난다.
+            // 중심에서 태우면 첫 프레임 스윕 선분이 «중심 → 반경 끝» 인 **방사선**이 되어,
+            // 호스트 발밑(고리 안쪽)의 적까지 딱 한 번 맞는다 — 어느 계약에도 없는 피해 사건이다.
+            // (뷰에는 궤도 arm 이 없어 그 선분을 그리지도 않으므로 «화면과 일치하는 정직한 선분»
+            //  이라는 변명도 성립하지 않는다. 1프레임 뷰 점프도 같이 사라진다.)
+            // 위상 규약은 Orbit.Position 한 곳에만 산다 — 여기서 다시 유도하지 않는다.
             var spawnPos = req.movement == MovementKind.SkyFall
                 ? new float3(req.impact.x, spawnHeight, req.impact.z)
-                : new float3(req.origin.x, spawnHeight, req.origin.z);
+                : req.movement == MovementKind.OrbitAroundPoint
+                    ? Wassup.Battle.Combat.Projectile.Orbit.Position(
+                        new float3(req.origin.x, spawnHeight, req.origin.z), req.maxDistance, req.speed, 0f)
+                    : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
 
@@ -4739,9 +4747,15 @@ namespace Wassup.Bridge
                 state.maxDistance = req.maxDistance;   // 궤도 반경
                 state.speed = req.speed;               // 각속도
                 state.flightTime = math.max(req.flightTime, 0f); // 지속 초
-                // 재타격 쿨타임이 켜진 궤도는 관통 예산을 소모하지 않는다(계약 3) — 그래도
-                // 0 으로 두면 쿨타임이 꺼진 저작에서 첫 피격에 사라진다. 예산은 넉넉히 준다.
-                state.pierceRemaining = int.MaxValue;
+                // 관통 예산은 **탄 SO 소유**다(Directional 과 같은 자리·같은 규약).
+                // 재타격이 켜진 정상 궤도는 이 값을 읽지도 쓰지도 않으므로(계약 3 — 유일한
+                // 종료 조건은 수명) 무슨 값이든 무해하다. 이 값이 일하는 것은 **비정상 경로**
+                // 하나뿐이다: 기록 버퍼가 없거나 쿨타임이 0 인 궤도. 그때 예산이 «적당 1회»
+                // 상한이 되어 탄이 곧 사라진다.
+                // ⚠ 예전엔 여기 int.MaxValue 를 박았는데, 그러면 그 비정상 경로가
+                // **매 프레임 전원 타격 + 영원히 안 죽는 탄** 이 된다(리뷰 M1). 눈에 띄게
+                // 일찍 죽는 편이 조용히 30배 때리는 것보다 낫다.
+                state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
             }
             else if (req.movement == MovementKind.SkyFall)
             {
@@ -5826,15 +5840,14 @@ namespace Wassup.Bridge
                 // 다른 쪽 도달은 여전히 공성이다.
                 bool breached = _breachedCells.Contains(NearestGoalCell(evt.position));
 
-                // stress-after-breach(2026-08-08) — 스트레스는 **부서진 골로의 유출만** 센다.
-                // 붕괴 전 도달은 공성(안정도 피해)이거나 자폭(안정도 피해)이라 안정도 축이
-                // 이미 그것을 세고 있다. 여기서도 세면 한 사건이 두 축을 깎아, 안정도가
-                // 멀쩡한데 스트레스 상한으로 먼저 죽는다(1000 남았는데 패배가 실측됐다).
+                // stress-after-breach(2026-08-08) — 유출은 **부서진 골로 들어온 것만** 센다.
+                // 붕괴 전 도달은 공성이라 그 적이 아직 필드에 살아 있고(= 아직 잡을 수 있다)
+                // 유출이 아니다. three-minute-kill-race unit 0 — 이 카운터는 이제 아무것도
+                // 판정하지 않는다. 「못 잡은 적이 몇 마리인가」를 세는 집계일 뿐이다.
                 if (breached)
                 {
                     _goalReachedCount++;
                     RefreshLeakHud();
-                    CheckStressDefeat();
                 }
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
@@ -6020,10 +6033,8 @@ namespace Wassup.Bridge
                 _goalStability = 0;   // 마음이 하나도 안 남았다
             }
 
-            // unit 10 — 적 마음 잔여 갱신. **판정은 여기서 하지 않는다**: 이 메서드는 아래에서
-            // 조건부 return 이 여럿이라 판정을 넣으면 붕괴 프레임에만 건너뛰어진다. 축의 판정은
-            // CheckEnemyCoreDestroyed 가 소유하고, Update 에서 이 메서드 **다음에** 돈다 —
-            // 그래서 같은 프레임에 방어 마음도 무너졌다면 패배가 먼저 _resultShown 을 세운다.
+            // unit 10 — 적 마음 잔여 갱신. **판정은 아무데서도 하지 않는다**(kill-race unit 0):
+            // 적 마음이 무너져도 판은 계속되고, 이 미러는 연출·로그의 입력일 뿐이다.
             // 표시는 올림(방어 미러와 같은 규칙) — 0.3 남았는데 0 으로 보이면 «죽었는데 안 죽었다».
             _enemyCoreCurrent = Mathf.Max(0, Mathf.CeilToInt(enemyCoreRemaining));
 
@@ -6034,18 +6045,10 @@ namespace Wassup.Bridge
                 for (int i = 0; i < newBreaches.Count; i++)
                     OpenGoalCellAfterBreach(newBreaches[i]);
 
-            // stress-after-breach (2026-08-08 사용자 결정) — 골 파괴는 더 이상 그 자체로 패배가
-            // 아니다. 상한이 있으면 그 셀이 **유출 지점으로 전환**되고(위에서 이미 열었다),
-            // 부서진 셀로의 유출 1회 = 스트레스 1 이 상한에 닿을 때 패배한다.
-            if (StressLimit > 0)
-            {
-                Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 스트레스 {_goalReachedCount}/{StressLimit} 에서 패배.");
-                return;
-            }
-
-            // 상한 0 = 구 동작 보존: 마음 하나라도 부서지면 즉시 패배.
-            EndMatch("defeat", win: false);
-            Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
+            // three-minute-kill-race unit 0 — **골 붕괴는 아무것도 판정하지 않는다.** 그 셀이
+            // 유출 지점으로 열리는 것(위)이 전부다. 예전엔 여기서 즉시 패배(상한 0) 또는
+            // 스트레스 상한 패배로 이어졌는데, 이제 마음은 판정 권한이 0 이다(계약).
+            Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 판은 계속된다.");
         }
 
         // 붕괴 처리(ⓐ: **그 셀만**) — 그 셀에서 공성 중이던 적을 유출로 전환한다. 다른 골의
@@ -6087,18 +6090,11 @@ namespace Wassup.Bridge
             _enemyTypeByEntity.Remove(entity);
             _em.DestroyEntity(entity);
             RefreshLeakHud();
-            CheckStressDefeat();
         }
 
-        // 스트레스 상한 패배. 상한 0 = 이 경로 없음(골 파괴가 즉시 패배를 소유).
-        private void CheckStressDefeat()
-        {
-            // 상한의 on/off 는 덱 원본값(StressLimit)이, **문턱값**은 EffectiveLeakLimit()이 정한다 —
-            // HUD 분모와 같은 값이어야 화면에서 검산된다(몽마의 계약 선불 차감이 반영된 값).
-            if (_resultShown || StressLimit <= 0 || _goalReachedCount < EffectiveLeakLimit()) return;
-            EndMatch("defeat", win: false);
-            Debug.Log($"[BattleBridge] DEFEAT — 스트레스 상한 도달 ({_goalReachedCount}/{StressLimit}).");
-        }
+        // three-minute-kill-race unit 0 — `CheckStressDefeat()` 는 제거했다. 유출은 이제
+        // 아무것도 깎지 않고 «못 잡은 적 = 못 번 점수 + 못 번 각성치» 라는 기회비용만 남는다.
+        // 카운터(`_goalReachedCount`)는 HUD·로그 집계로 계속 쓴다.
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
 
@@ -6110,52 +6106,24 @@ namespace Wassup.Bridge
         // unit 7 — `RemainingBattleSeconds()` 는 제거했다. 종료 4경로가 계산해서 넘겼지만
         // 소비처(구 결과 화면의 「남은 시간」 줄)가 이미 죽어 값이 버려지고 있었다.
 
-        // battle-structures unit 10 — **적 마음 축**. 방어 마음 축(SyncGoalStability)의 거울이고
-        // 활성 조건도 같은 모양이다: 저작된 상한이 있었는데(`_enemyCoreMax > 0`) 지금 잔여가 0.
-        // 침략 맵은 max 가 0 이라 이 축이 저절로 죽는다 — 모드 분기가 없는 이유(계약 15).
+        // three-minute-kill-race unit 0 — 판정 2개를 제거했다:
         //
-        // 감지 기계를 새로 만들지 않는다: 잔여는 SyncGoalStability 의 등록부 순회가 이미 굴리고,
-        // 그 메서드가 Update 에서 이것보다 **먼저** 돌아 같은 프레임 패배가 우선권을 갖는다.
-        private void CheckEnemyCoreDestroyed()
-        {
-            if (_resultShown || _enemyCoreMax <= 0 || _enemyCoreCurrent > 0) return;
-
-            EndMatch("victory_siege", win: true);
-            Debug.Log("[BattleBridge] VICTORY — 적 마음이 무너졌다(공성).");
-        }
-
+        // - `CheckEnemyCoreDestroyed()` (적 마음 붕괴 = 즉시 승리) — 이제 부숴도 판은 계속된다.
+        //   `_enemyCoreCurrent` 미러는 연출·로그용으로 남는다.
+        // - `CheckVictory()` (웨이브 전멸 = 즉시 승리) — 3분에 소진 불가라 이미 사문화였다.
+        //   짝인 `NoQueuedAttackersRemain()` 은 **유지**한다: 웨이브 케이던스의 동력이다.
+        //
+        // 판을 끝내는 것은 시계 하나뿐이고, unit 3 의 유저 제출이 두 번째로 붙는다.
         private void CheckTimer()
         {
             if (_resultShown) return;
             if (_timerDuration <= 0f) return;
             if ((float)_battleClock < _timerDuration) return;
 
-            // battle-structures unit 10 — 만료 판정은 «남은 체력의 우위» 비교 **한 줄**이다.
-            // 적 마음 축이 비활성이면 _enemyCoreCurrent = 0 이라 `_goalStability >= 0` 이 항상
-            // 참 = 기존 무조건 승리와 동치다. 침략 맵과 공성 맵이 같은 코드를 탄다(계약 15).
-            // 동률은 승리 — 방어 게임의 «버틴다» 계약(사용자 확정).
-            //
-            // 두 마음의 체력은 **저작으로** 맞춘다(덱 goalStabilityMax ↔ 적 마음 SO health).
-            // 어긋남은 MapDocumentPool.OnValidate 가 경고한다 — 여기서 비율로 정규화하지 않는
-            // 이유는 사용자 결정이 «동일 체력 + 절대값» 이기 때문이다.
-            bool win = _goalStability >= _enemyCoreCurrent;
-
-            EndMatch(win ? "victory_timeout" : "defeat_timeout", win);
-            Debug.Log(win
-                ? $"[BattleBridge] VICTORY — timer expired, player survived. (방어 {_goalStability} ≥ 적 {_enemyCoreCurrent})"
-                : $"[BattleBridge] DEFEAT — timer expired, 적 본진이 더 버텼다. (방어 {_goalStability} < 적 {_enemyCoreCurrent})");
-        }
-
-        // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
-        private void CheckVictory()
-        {
-            if (_resultShown) return;
-            if (_enemyCoreMax > 0) return;
-            if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
-            if (!NoQueuedAttackersRemain()) return;
-
-            EndMatch("victory", win: true);
-            Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+            // **만료 = 완주다.** 예전엔 여기서 두 마음의 남은 체력을 견줘 승/패를 갈랐는데
+            // (battle-structures 계약 15 «버틴다»), 패배가 사라지면서 견줄 것이 없어졌다.
+            EndMatch("complete");
+            Debug.Log($"[BattleBridge] COMPLETE — 3분 완주. (처치 {_killCount}기 · 유출 {_goalReachedCount})");
         }
 
         // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
@@ -6196,25 +6164,28 @@ namespace Wassup.Bridge
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
         }
 
-        // three-minute-survival unit 7 — **판 마감의 단일 관문.** 종료 5경로(골붕괴 즉사·
-        // 스트레스 상한·적 마음 붕괴·타이머 만료·전멸)는 판정만 하고 여기로 들어온다.
-        // 예전엔 다섯 곳이 같은 의식 6줄을 복붙했고, 한 줄만 빠뜨려도 조용히 어긋났다.
+        // three-minute-survival unit 7 — **판 마감의 단일 관문.**
         //
         //   취합(BuildTally) → 기록(로거) → 통보(서버) → 표시(결과 화면)
+        //
+        // three-minute-kill-race unit 0 — 여기로 들어오는 경로가 **하나**로 줄었다(3분 만료).
+        // 판정 4개(골붕괴 즉사·스트레스 상한·적 마음 붕괴·웨이브 전멸)가 은퇴했기 때문이다.
+        // unit 3 의 유저 제출이 두 번째 경로로 붙는다. **그 둘 말고 이 메서드를 부르는 코드를
+        // 새로 만들지 말 것** — 그게 곧 패배 조건의 부활이다(feature 계약).
         //
         // **제출이 표시보다 앞이라는 순서는 계약이다**(score-tally-sequence 계약 3) —
         // 화면을 기다리다 앱이 죽으면 기록이 통째로 사라진다. 둘은 독립이다.
         //
-        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만(unit 3 — 더할 축이
-        // 없어 내용 없는 4초 정지가 된다) 전투 HUD 게이팅이 그 페이즈를 읽는다. Tally 동안
-        // ScoreHud 만 남고 NextWaveDock·CostDisplay 등은 `== GamePhase.Battle` 로 자동 정리된다.
-        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
-        private void EndMatch(string outcome, bool win)
+        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만 전투 HUD 게이팅이 그
+        // 페이즈를 읽는다. Tally 동안 ScoreHud 만 남고 NextWaveDock·CostDisplay 등은
+        // `== GamePhase.Battle` 로 자동 정리된다. ⚠ 이 enum 은 `CameraDirectionConfig.asset` 에
+        // 정수로 직렬화되므로 값을 빼거나 끼우지 말 것.
+        private void EndMatch(string outcome)
         {
             _resultShown = true;
             _running = false;
 
-            var tally = BuildTally(outcome, win);
+            var tally = BuildTally(outcome);
             var logger = GameManager.Instance?.Logger;
             logger?.SetResult(tally.Outcome, tally.Leaks);
             logger?.SetScore(tally.Total, tally.KillScore);
@@ -6223,17 +6194,16 @@ namespace Wassup.Bridge
             ReportMatchResult(tally);
 
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            if (tally.Won) resultScreen?.ShowVictory(tally);
-            else resultScreen?.ShowDefeat(tally);
+            resultScreen?.Show(tally);
         }
 
         // unit 7 — 흩어진 재료를 판 성적 하나로 옮기는 **유일한** 지점. 재료가 늘거나 줄면
         // 고칠 곳이 여기 하나다(종료 경로는 재료를 만지지 않는다).
         //
-        // 점수는 처치로만 번다(unit 3) — 시간·스트레스 축과 그 배점(ScoreRulesData)은
-        // 폐기됐고 패배 분기도 없다. 져도 잡은 만큼은 남으므로 `win` 은 산식에 닿지 않는다.
-        private MatchTally BuildTally(string outcome, bool win)
-            => new MatchTally(outcome, win, _killScoreTotal, _killCount,
+        // 점수는 처치로만 번다 — 시간·스트레스 축과 그 배점(ScoreRulesData)은 폐기됐고,
+        // three-minute-kill-race unit 0 이후로는 승패 자체가 없어 분기가 하나도 없다.
+        private MatchTally BuildTally(string outcome)
+            => new MatchTally(outcome, _killScoreTotal, _killCount,
                 _goalStability, _goalStabilityMax, ReachedWaveNumber, _goalReachedCount);
 
         // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
@@ -8299,6 +8269,19 @@ namespace Wassup.Bridge
                     // enum 값은 append-only 계약상 남아 있으므로, 옛 authoring 이
                     // 조용한 no-op 으로 죽는 대신 여기서 거절 사유를 남긴다.
                     Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
+                    continue;
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                {
+                    // dreamcatcher-content-4 리뷰 M4 — 궤도 화염구는 **방어유닛 전용**이다.
+                    // EnemyTriggerArmed 가 PeriodicTimer 를 열어 두므로 적 SO 저작이 여기까지
+                    // 오는데, 이 공통 슬롯 조립에는 speed/hitThreshold/projectileDataIndex 가 없어
+                    // 슬롯이 만들어져도 arm 의 가드에 걸려 **조용히 발동이 소모**된다.
+                    // 더 중요한 건 그 가드가 지금 fail-closed 인 이유가 «우연히 speed 가 0» 이라는
+                    // 것이다 — 누가 다른 payload 때문에 공통 조립에 speed 를 올리는 순간,
+                    // PathHit 후보 풀이 AttackUnitTag 하드코딩이라 **보스의 화염구가 자기편
+                    // 잡몹을 때린다.** 우연에 기대지 않고 여기서 끊는다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfOrbitProjectile 은 방어유닛 전용이다(PathHit 후보 풀이 AttackUnitTag 하드코딩 — 적이 쏘면 자기편을 때린다) — skipped.");
                     continue;
                 }
                 // elite-enemy-tier unit 4 — 화염 브레스 정의역 검증. 판정이 `normalize` 없는 제곱
