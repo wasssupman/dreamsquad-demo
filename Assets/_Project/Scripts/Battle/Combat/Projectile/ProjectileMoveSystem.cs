@@ -290,14 +290,14 @@ namespace Wassup.Battle.Combat.Projectile
                         projectile.ValueRW.elapsed = elapsed;
                         transform.ValueRW.Position = Orbit.Position(
                             projectile.ValueRO.origin, projectile.ValueRO.maxDistance,
-                            projectile.ValueRO.speed, elapsed);
+                            projectile.ValueRO.speed, elapsed, projectile.ValueRO.orbitPhase);
 
                         // 접선을 매 프레임 갱신한다. DirectionalLinear 은 발사 시 방향을
                         // 한 번 굳히면 끝이지만(직선), 궤도는 진행 방향이 계속 바뀌므로
                         // 여기서 써 주지 않으면 PathHit 의 front-most 정렬이 스폰 시의
                         // 0 벡터를 계속 본다.
                         projectile.ValueRW.direction = Orbit.Tangent(
-                            projectile.ValueRO.speed, elapsed);
+                            projectile.ValueRO.speed, elapsed, projectile.ValueRO.orbitPhase);
 
                         // 도착 = "비행 종료"이지 "착탄"이 아니다 — PathHit 이 이번 프레임의
                         // 스윕을 마친 뒤 소멸시킨다(DirectionalLinear 의 사거리 소진과 같은 뜻).

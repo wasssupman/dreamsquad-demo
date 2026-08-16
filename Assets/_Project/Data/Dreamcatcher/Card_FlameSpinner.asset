@@ -44,6 +44,7 @@ MonoBehaviour:
       slamTileRange: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
+      orbitCount: 2
       coneHalfAngleDeg: 0
   attackMods: []
   type: 1

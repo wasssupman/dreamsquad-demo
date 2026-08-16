@@ -630,6 +630,10 @@ namespace Wassup.Bridge
                     slot.visualScale = m.payload.projectile.visualScale;
                     slot.speed = m.payload.projectile.speed;           // **선속도**(arm 이 ÷반경 → 각속도)
                     slot.hitThreshold = m.payload.projectile.hitThreshold; // 피격 반경
+                    // 구슬 개수 → `period` 슬롯. PeriodicTimer 에게 그 필드는 AttackN 전용이라
+                    // 비어 있다(이 struct 의 필드 재사용 규율 그대로). 0/1 = 1개.
+                    slot.period = (ushort)math.clamp(
+                        m.payload.orbitCount <= 0 ? 1 : m.payload.orbitCount, 1, 16);
                     // magnitude(스친 적 피해)는 위 slot 초기화에서 이미 복사됨.
                     // 재타격 쿨타임은 굽지 않는다 — 탄 SO 소유라 드레인이 dataIndex 로 해석해 채운다.
 

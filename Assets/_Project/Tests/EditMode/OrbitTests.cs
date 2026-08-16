@@ -157,5 +157,69 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1f, math.length(tan), Eps);
             Assert.IsFalse(math.any(math.isnan(tan)));
         }
+
+        // ── content-4 unit 8 — 위상 분할(구슬 여러 개) ────────────────────────
+
+        // n개를 «균등» 배치한다는 말이 실제로 참인가: 이웃 간 각 간격이 전부 2π/n 이고
+        // 모두 같은 원 위에 있다. 눈으로는 «두 개가 돈다» 로 뭉뚱그려 보여서, 한쪽이
+        // 살짝 어긋나 있어도 알아채기 어렵다.
+        [Test]
+        public void PhaseOf_SpreadsEvenlyAroundTheCircle()
+        {
+            var center = new float3(2f, 0f, -1f);
+            const float radius = 1.3f, w = 4f, t = 0.37f;
+
+            for (int n = 1; n <= 4; n++)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    var p = Orbit.Position(center, radius, w, t, Orbit.PhaseOf(i, n));
+                    Assert.AreEqual(radius, math.length((p - center).xz), Eps,
+                        $"n={n} i={i} — 같은 원 위");
+                }
+                // 이웃 간 각 간격 = 2π/n (마지막→처음 포함해 한 바퀴를 정확히 채운다)
+                if (n < 2) continue;
+                float expected = 2f * math.PI / n;
+                for (int i = 0; i < n; i++)
+                {
+                    var a = (Orbit.Position(center, radius, w, t, Orbit.PhaseOf(i, n)) - center).xz;
+                    var b = (Orbit.Position(center, radius, w, t, Orbit.PhaseOf((i + 1) % n, n)) - center).xz;
+                    float ang = math.abs(math.atan2(b.y, b.x) - math.atan2(a.y, a.x));
+                    if (ang > math.PI) ang = 2f * math.PI - ang;
+                    Assert.AreEqual(math.min(expected, 2f * math.PI - expected), ang, 1e-4f,
+                        $"n={n} i={i} — 이웃 간격");
+                }
+            }
+        }
+
+        // 위상은 **각도만** 옮긴다 — 수명(elapsed)을 앞당기지 않는다. elapsed 오프셋으로
+        // 흉내내면 그 구슬만 일찍 죽기 때문에 별도 축으로 둔 것이고, 그 이유를 고정한다.
+        [Test]
+        public void Phase_ShiftsAngleOnly_NotTheClock()
+        {
+            var center = float3.zero;
+            const float radius = 1f, w = 2f;
+            float phase = Orbit.PhaseOf(1, 2);              // 180°
+
+            // 같은 elapsed 에서 위상만큼 회전한 위치와 같다.
+            var shifted = Orbit.Position(center, radius, w, 0.6f, phase);
+            var rotated = Orbit.Position(center, radius, w, 0.6f + phase / w);
+            AssertClose(rotated, shifted, "위상 = 각도 오프셋");
+
+            // 그리고 두 구슬은 항상 정반대편이다.
+            for (float t = 0f; t < 2f; t += 0.13f)
+            {
+                var a = Orbit.Position(center, radius, w, t, 0f);
+                var b = Orbit.Position(center, radius, w, t, phase);
+                AssertClose(center, (a + b) * 0.5f, $"t={t} — 중심 대칭");
+            }
+        }
+
+        [Test]
+        public void PhaseOf_SingleOrb_IsZero()
+        {
+            Assert.AreEqual(0f, Orbit.PhaseOf(0, 1), Eps);
+            Assert.AreEqual(0f, Orbit.PhaseOf(0, 0), Eps, "0 개 저작도 안전하게 0");
+        }
     }
 }

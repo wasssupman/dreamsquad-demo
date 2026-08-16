@@ -4618,7 +4618,8 @@ namespace Wassup.Bridge
                 ? new float3(req.impact.x, spawnHeight, req.impact.z)
                 : req.movement == MovementKind.OrbitAroundPoint
                     ? Wassup.Battle.Combat.Projectile.Orbit.Position(
-                        new float3(req.origin.x, spawnHeight, req.origin.z), req.maxDistance, req.speed, 0f)
+                        new float3(req.origin.x, spawnHeight, req.origin.z), req.maxDistance,
+                        req.speed, 0f, req.orbitPhase)
                     : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
@@ -4738,6 +4739,7 @@ namespace Wassup.Bridge
                 state.prevPos = spawnPos;
                 state.maxDistance = req.maxDistance;   // 궤도 반경
                 state.speed = req.speed;               // 각속도
+                state.orbitPhase = req.orbitPhase;      // 균등 배치용 각도 오프셋
                 state.flightTime = math.max(req.flightTime, 0f); // 지속 초
                 // 관통 예산은 **탄 SO 소유**다(Directional 과 같은 자리·같은 규약).
                 // 재타격이 켜진 정상 궤도는 이 값을 읽지도 쓰지도 않으므로(계약 3 — 유일한

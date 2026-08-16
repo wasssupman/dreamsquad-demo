@@ -500,9 +500,17 @@ namespace Wassup.Battle.Combat
                             {
                                 float radius = slot.tileRange * ff.tileSize;
                                 var center = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                // content-4 unit 8 — 구슬 개수. bake 가 `period` 슬롯에 구웠다
+                                // (PeriodicTimer 에게 그 필드는 AttackN 전용이라 비어 있다).
+                                // 균등 배치는 **위상**으로 한다 — 같은 궤도·같은 수명·같은 각속도로
+                                // 돌면서 시작 각도만 2π/n 씩 어긋난다. 캐리어는 개수만큼 나간다.
+                                int orbCount = slot.period > 0 ? slot.period : 1;
+                                for (int oi = 0; oi < orbCount; oi++)
+                                {
                                 var carrier = ecb.CreateEntity();
                                 ecb.AddComponent(carrier, new Projectile.ProjectileSpawnRequest
                                 {
+                                    orbitPhase = Projectile.Orbit.PhaseOf(oi, orbCount),
                                     movement = Projectile.MovementKind.OrbitAroundPoint,
                                     payload  = Projectile.PayloadKind.PathHit,
                                     origin   = center,          // 궤도 중심(발사 시점 고정)
@@ -533,6 +541,7 @@ namespace Wassup.Battle.Combat
                                             : (byte)0,
                                 });
                                 ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
+                                }
                             }
                         }
                         else

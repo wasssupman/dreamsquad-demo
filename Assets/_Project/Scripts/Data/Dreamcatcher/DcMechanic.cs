@@ -305,6 +305,12 @@ namespace Wassup.Data
         // 호출한다. 저작 규칙은 하나다 — **마지막 단계의 `nightmareMechanics` 를 비워** 사슬을
         // 끝낼 것.
         public AttackUnitData splitUnit;
+        // dreamcatcher-content-4 unit 8 — SelfOrbitProjectile 전용 **구슬 개수**(0/1 = 1개).
+        // 명시 필드인 이유는 `slamDamage`·`coneHalfAngleDeg` 와 같다 — 이 payload 가 쓰는
+        // 스칼라는 전부 임자가 있다(magnitude=피해 · duration=지속 · tileRange=궤도 반경).
+        // 개수를 그중 하나에 겸직시키면 읽는 쪽이 «이게 반경인가 개수인가» 를 매번 되묻는다.
+        // 배치는 위상 균등 분할(2π/n) — 같은 궤도·같은 수명, 시작 각도만 어긋난다.
+        public int orbitCount;
         // elite-enemy-tier unit 4 — AreaBreath 전용 반각(도). 정의역 (0, 90) — 위 kind 주석 참조.
         // `duration` 에 겸직시키지 않는다: 그 필드는 이미 3개 kind 가 «시간» 으로 쓰고 있어
         // 겸직하면 «시간인 줄 알고» 읽는 코드가 생긴다(slamDamage 가 명시 필드가 된 선례와 같은

@@ -114,6 +114,12 @@ namespace Wassup.Battle.Combat.Projectile
         // victim of the shot (근접 cleave/splash/bounce 포함 — 강공은 한 방 통째).
         // Default 0 = inert (실적용 mul>0?mul:1). Wired in unit 1, applied unit 2.
         public float heavyDamageMul;
+
+        // ── Orbit phase (content-4 unit 8) ───────────────────────────────────
+        // 궤도 구슬의 각도 오프셋(rad). **per-shot 값이라 탄 SO 가 아니라 요청이 나른다** —
+        // 같은 SO 로 여러 구슬을 서로 다른 위상에 띄우는 것이 이 값의 존재 이유다.
+        // 기본 0 = 단일 구슬/비궤도 = 종전 동작.
+        public float orbitPhase;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData
