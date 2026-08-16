@@ -3692,6 +3692,25 @@ namespace Wassup.Bridge
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
             ReleaseDefenderTile(cell, out var binding);
+
+            // dreamcatcher-content-4 unit 5 (퇴직 위로금) — 퇴근 사건의 payload 를 **파괴 직전에
+            // 슬롯에서 직독**한다. 사망 경로는 payload 를 DefenderDeathEvent 에 미리 구워 나르는데,
+            // 그건 드레인이 도는 시점에 엔티티가 이미 없기 때문이다. 퇴근은 **파괴 주체가 바로
+            // 여기**라서 그 우회가 필요 없다 — 아직 살아 있는 엔티티의 버퍼를 그냥 읽으면 된다.
+            //
+            // ⚠ **브리지가 defender 엔티티의 트리거 슬롯을 읽는 첫 사례다.** 여태 슬롯 소비는
+            // 전부 Combat 시스템 몫이었고 브리지는 bake(쓰기)만 했다. 그래도 성립하는 근거:
+            // "퇴근" 이라는 사건은 sim 에 존재하지 않는다 — DeadTag 를 안 다는 것이 곧 이 카드의
+            // 계약이라(defender-clock-out 계약 1) 사건 지점이 브리지 말고는 없다.
+            //
+            // 스냅샷으로 뜨는 이유 둘: ① 바로 아래에서 엔티티가 파괴된다 ② cast(SpawnProjectile)
+            // 가 구조 변경이라 DynamicBuffer 핸들이 그 자리에서 무효화된다.
+            // isReadOnly: 슬롯 쓰기는 Combat 소유다(맥락 경계) — 브리지는 bake 때 말고는 읽기만 한다.
+            var retireSlots = default(NativeArray<DcTriggerSlot>);
+            if (_em.HasBuffer<DcTriggerSlot>(binding.entity))
+                retireSlots = _em.GetBuffer<DcTriggerSlot>(binding.entity, isReadOnly: true)
+                                 .ToNativeArray(Allocator.Temp);
+
             // ⚠ **되돌릴 수 없는 sim 변경을 먼저 끝낸다**(코드리뷰 2026-08-15 반영).
             // 원래는 뷰 처리 뒤에 있었는데, 그 사이의 프레젠테이션 코드(키링 생성 = Shader.Find /
             // new GameObject, 코루틴 시작)가 던지면 **엔티티는 살아 있는데 바인딩만 사라진**
@@ -3700,6 +3719,58 @@ namespace Wassup.Bridge
             // 아래 뷰 경로는 엔티티를 Dictionary 키로만 쓰고 EntityManager 를 만지지 않으므로
             // 순서를 앞당겨도 무해하다.
             _em.DestroyEntity(binding.entity);
+
+            // dreamcatcher-content-4 unit 5 — **비워진 그 칸에 운석이 떨어진다.** 실행 형태는
+            // 기존 SelfTileAoe 그대로다(SkyFall × TileAoe 투사체 하나 — 작별 선물·실드 파열
+            // 폭발과 같은 경로). 파괴 뒤에 쏘지만 스냅샷만 참조하므로 소멸한 엔티티를 만지지 않는다.
+            //
+            // **전 매칭 슬롯이 발동한다** — 카드를 2장 붙였으면 운석 2발. OnDeath 의 "첫 매칭
+            // 슬롯만" 은 사망 이벤트 struct 가 payload 필드를 한 벌만 실어서 생긴 제약이었고,
+            // 여기는 버퍼를 직독하므로 해당 없다(HealthThreshold 가 슬롯당 발동인 것과 같은 자리).
+            //
+            // 값은 전부 **이 카드가 소유한다**(계약 7-1) — 액티브 카드 운석(SkillData)·시즌 기믹
+            // 폭격(ClockOutGimmickData)과 겉모습(탄 SO)만 공유하고 피해·반경·예고는 독립이다.
+            if (retireSlots.IsCreated)
+            {
+                var impactWorld = GridToWorldCenter(cell, spawnHeight); // 비워진 칸 중심 — 슬롯 불변
+                for (int i = 0; i < retireSlots.Length; i++)
+                {
+                    var slot = retireSlots[i];
+                    // 이 루프는 host 의 **전체** 슬롯 버퍼를 훑는다 — 다른 트리거(공격 N회·
+                    // 실드 파열 …)의 슬롯이 같은 버퍼에 섞여 있으므로 두 축을 다 본다.
+                    if (slot.trigger != Wassup.Data.DcTriggerKind.OnRetire) continue;
+                    if (slot.payload != Wassup.Data.DcPayloadKind.SelfTileAoe) continue;
+                    // bake 가 탄 SO·양수 magnitude 를 이미 강제한다(그래서 여기 걸리는 슬롯은
+                    // 없어야 한다). 그럼에도 확인하는 이유는 값이 빈 슬롯을 그대로 쏘면
+                    // SpawnProjectile 이 dataIndex 범위 경고를 뱉고 조용히 드롭하기 때문 —
+                    // "안 터지는 카드" 의 원인이 로그 한 줄로 흐려진다.
+                    if (slot.projectileDataIndex < 0 || slot.magnitude <= 0f) continue;
+
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement        = MovementKind.SkyFall,
+                        payload         = PayloadKind.TileAoe,
+                        origin          = impactWorld,
+                        impact          = impactWorld,
+                        damage          = slot.magnitude,
+                        impactTileRange = slot.tileRange,
+                        // 낙하 예고 초. bake 가 payload.duration 을 이 슬롯에 실었다(계약 8 —
+                        // AreaBarrage 의 duration=텔레그래프 선례). 0 이면 즉시 착탄.
+                        flightTime      = slot.duration,
+                        dataIndex       = slot.projectileDataIndex,
+                        // arcHeight 는 **비워 둔다** — 드레인이 탄 SO 의 dropHeight 로 보충한다
+                        // (보스 융단폭격과 같은 처리). 여기서 SO 를 다시 읽으면 낙하 높이의
+                        // 출처가 둘이 된다.
+                        visualScale     = slot.visualScale > 0f ? slot.visualScale : 1f,
+                        targetFaction   = ProjectileTargetFaction.Enemy,
+                        // owner 는 비운다 — 퇴근한 유닛은 **이미 없다**. 실드 파열 폭발이
+                        // owner=host 로 킬을 귀속시키는 것과 갈리는 지점이다(그쪽 host 는
+                        // 같은 프레임에 죽어도 파괴는 다음 틱이라 키로서 유효하다).
+                        owner           = Entity.Null,
+                    }, Entity.Null);
+                }
+                retireSlots.Dispose();
+            }
 
             // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
             //
