@@ -191,6 +191,12 @@ namespace Wassup.Core
                 // 실제로는 적 SO 전용이지만 그건 authoring 사실이지 적용성 판정이 아니다 —
                 // SelfBlink·UltimateLeap 과 같은 처지(위 주석). 반각 정의역은 bake 가 판정한다.
                 case DcPayloadKind.AreaBreath:
+                // on-place-skill-rework unit 4 — 범위 도발. host 의 **공격 모델**과 무관하다:
+                // 대상은 반경이 정하고(host 가 줄 필요 없음), 데미지 출력이 아예 없으며,
+                // 진영은 어그로 파이프라인이 고정한다 → targetsEnemies / HostProvidesTarget /
+                // hasDamageOutput 어느 축도 게이트가 아니다. 실제 유효성(가디언인가 ·
+                // duration/tileRange)은 bake 가 loud 로 판정한다(위 주석의 분업).
+                case DcPayloadKind.AreaTaunt:
                 // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 의 공격 모델과 완전히
                 // 무관하다: 대상을 host 가 줄 필요가 없고(구슬이 스치는 적을 스스로 만난다),
                 // 데미지도 payload 가 자기 값을 가지며, 진영 축은 아예 없다(PathHit 후보 풀이

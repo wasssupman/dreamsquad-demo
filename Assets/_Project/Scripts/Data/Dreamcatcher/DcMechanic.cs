@@ -164,6 +164,16 @@ namespace Wassup.Data
         // 궤도 중심은 **발사 시점 고정점**이라 host 를 추적하지 않는다 — 방어유닛은 타일 고정이고,
         // 덕분에 host 가 죽거나 퇴근해도 이미 나간 화염구는 자기 수명을 산다. append-only.
         SelfOrbitProjectile = 22,
+        // on-place-skill-rework unit 4 — 범위 도발(배스티온 배치 스킬). host 반경 tileRange 안
+        // 적 전원을 duration 초 동안 host 에게 어그로시킨다.
+        //
+        // 기존 어휘로 표현되지 않아 만들었다: `ApplyCcToTarget`(10)은 **맞은 대상 1기**라 범위가
+        // 아니고, `AreaSleep`(16)은 범위지만 수면 전용이며 **도발은 CC 가 아니라 타게팅 상태**다.
+        //
+        // host 는 가디언(AggroCapacity 보유)이어야 한다 — 어그로는 그 컴포넌트가 곧 표식이다.
+        // 실행은 어그로 획득 요청 큐(AggroAcquireEvent, kind=Taunt)로 넘기고 게이트 판정은
+        // 전부 AggroStateSystem(Effects)이 소유한다 — 여기서 복제하면 둘이 갈린다. append-only.
+        AreaTaunt = 23,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의

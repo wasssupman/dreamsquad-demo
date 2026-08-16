@@ -107,9 +107,24 @@ mechanics[0]:
 `AttackState`+`AttackOutputElement` 가 통째로 제거된다. 5마리 동시 만료 = 한 틱 구조 변경 5회.
 기능 문제는 아니나 육안 검증에서 한 프레임 튐이 보일 수 있다.
 
+## ⚠ 테스트 더미는 실제 적의 부품 셋을 갖춰야 한다 (실측 2026-08-16)
+
+도발은 **sim 게이트를 여럿 통과해야** 성립하는데, 합성 더미가 그 게이트가 읽는 부품을 빠뜨리면
+제품이 멀쩡해도 테스트가 빨개진다. 이번에 셋에 연달아 걸렸다:
+
+| 빠진 부품 | 증상 |
+|---|---|
+| `PathFollowState` | 통행 층이 0 = 무제한으로 조기 통과 → **층 게이트가 죽어도 초록** |
+| Walk 아닌 칸에 배치 | 도달 가능 게이트가 거절 → 5기 중 1기만 걸림 |
+| `EnemyAiState` | `MovementSystem` 이 `Marching` 으로 떨어뜨려 **골로 걸어간다**(실측 2.46 → 5.39) |
+
+`defender-on-place-skills` 후속 후보의 「테스트 더미가 통행 층을 안 가진다」가 가리키던 공백이
+실은 더 넓다. 이 unit 의 테스트는 셋을 다 갖춘 더미를 쓰고, 적을 놓을 칸은
+`FlowFieldSingleton.walkMask` 로 **실제 Walk 칸**을 찾아 고른다(맵이 바뀌어도 안 깨진다).
+
 ## 완료 기준
 
-- [ ] compile 0 error · `DcApplicability` 전수 테스트 green
+- [x] compile 0 error · `DcApplicability` 전수 테스트 green (2026-08-16)
 - [ ] PlayMode `OnPlaceTauntNearbyTest`
   - 반경 2 안 적 5마리(상한 2 초과) → **전원** `Aggroed`, `guardian == 배스티온`
   - 반경 밖 적 → `Aggroed` 없음

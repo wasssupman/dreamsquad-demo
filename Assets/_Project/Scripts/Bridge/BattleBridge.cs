@@ -8470,6 +8470,23 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
                     continue;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaTaunt)
+                {
+                    // on-place-skill-rework unit 4 — 범위 도발 저작 검증. arm 은 [BurstCompile]
+                    // 이라 로그를 못 내므로 여기서 loud 하게 끊는다(기존 bake 거절 선례와 동형).
+                    if (m.payload.duration <= 0f || m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaTaunt 에 duration(도발 초 >0) 또는 tileRange(반경 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
+                        continue;
+                    }
+                    // 어그로는 `AggroCapacity` 보유(=가디언)에서만 성립한다. 비-가디언에 붙이면
+                    // 드레인이 조용히 버리므로 "왜 아무도 안 끌려오는지" 를 영영 알 수 없다.
+                    if (!_em.HasComponent<Wassup.Battle.Effects.AggroCapacity>(entity))
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaTaunt 는 가디언 전용이다(aggroCapacity > 0 이어야 AggroCapacity 가 붙는다) — skipped.");
+                        continue;
+                    }
+                }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
                          (m.payload.magnitude < 1f || m.payload.duration <= 0f))
                 {

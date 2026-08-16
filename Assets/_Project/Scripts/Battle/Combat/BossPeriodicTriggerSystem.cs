@@ -98,6 +98,15 @@ namespace Wassup.Battle.Combat
             // 실드 부여 원샷 연출 — 가디언이 이미 쓰는 채널(→ VfxSpawner.SpawnShieldGranted).
             bool hasShieldVfxQ = SystemAPI.TryGetSingletonRW<ShieldGrantedEventsSingleton>(out var shieldVfxRW);
 
+            // on-place-skill-rework unit 4 — 범위 도발 seam. 어그로 상태는 Effects 소유라
+            // 여기선 **획득 요청만** 넣는다(히트 획득이 AttackSystem 에서 같은 큐를 쓰는 것과
+            // 같은 형태). 게이트 판정은 전부 AggroStateSystem 이 한다.
+            bool hasAcquireQ = SystemAPI.TryGetSingletonRW<AggroAcquireEventsSingleton>(out var acquireRW);
+            NativeQueue<AggroAcquireEvent> acquireQueue = hasAcquireQ ? acquireRW.ValueRW.queue : default;
+            // 가디언 표식(존재 자체가 가디언) + 통행 층 게이트용 RO lookup.
+            var capacityLookup = SystemAPI.GetComponentLookup<AggroCapacity>(isReadOnly: true);
+            var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+
             var pulseTargets = new NativeList<int>(Allocator.Temp);
             var pulseDistSq = new NativeList<float>(Allocator.Temp);
             var pulsePicked = new NativeList<int>(Allocator.Temp);
@@ -417,6 +426,54 @@ namespace Wassup.Battle.Combat
                                     pat.fireCountBase += pat.spec.shots.Length;
                                     pats[slot.patternIndex] = pat;
                                     instanceLookup[entity].Add(inst);
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.AreaTaunt)
+                        {
+                            // on-place-skill-rework unit 4 — 범위 도발. host 반경 안 적 전원을
+                            // duration 초 어그로시킨다.
+                            //
+                            // **게이트를 복제하지 않는다.** 보스 면역 · 유닛 미조준 적 · 공격 수단
+                            // 부재 · 도달 불가 판정은 전부 AggroStateSystem(Effects) 소유다. 여기서
+                            // 미리 걸러도 같은 판정이 두 곳에 생기고, 둘이 갈리는 순간 한쪽만
+                            // 고쳐진다(defender-on-place-skills unit 4 의 후보 집합 결함과 같은 형태).
+                            // 저작 검증(duration/tileRange/가디언 여부)은 bake 가 loud 로 한다 —
+                            // 이 시스템은 [BurstCompile] 이라 여기선 로그를 낼 수 없다.
+                            if (slot.duration > 0f && slot.tileRange > 0 && hasAcquireQ
+                                && capacityLookup.HasComponent(entity)
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                if (!enemyPoolBuilt)
+                                {
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
+                                }
+                                float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                AuraPulse.SelectTargets(enemyCells, hostCell, slot.tileRange, ref pulseTargets);
+                                // ⚠ **통행 층 게이트는 여기서 건다.** 브리지 헬퍼
+                                // (CollectEnemiesInTileRange → CanDefenderTargetMover)를 못 쓰므로
+                                // baked 마스크로 같은 판정을 한다. 빼면 **근접 가디언이 하늘의 적을
+                                // 끌어온다**(배스티온 attackTargetLayers 는 지상만이다).
+                                byte hostLayers = SystemAPI.HasComponent<AttackState>(entity)
+                                    ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                    : (byte)0;
+                                for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                {
+                                    var victim = enemyEntities[pulseTargets[ti]];
+                                    byte victimLayers = pathFollowLookup.HasComponent(victim)
+                                        ? pathFollowLookup[victim].traversalLayers
+                                        : (byte)0;
+                                    if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, victimLayers))
+                                        continue;
+                                    acquireQueue.Enqueue(new AggroAcquireEvent
+                                    {
+                                        guardian = entity,
+                                        enemy = victim,
+                                        kind = AggroAcquireKind.Taunt,
+                                        durationSec = slot.duration,
+                                    });
                                 }
                             }
                         }
