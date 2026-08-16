@@ -252,11 +252,22 @@ namespace Wassup.Tests.PlayMode
             // 기대치는 **SO 에서 유도한다** — 리터럴로 박으면 밸런스를 조정할 때마다 낡는다.
             float authoredDps = so.outputs[0].magnitude / so.attackCooldown;
 
-            Debug.Log($"[WhirlpotRepro] 실측 {dps:F2} DPS / 저작 {authoredDps:F2} DPS · {elapsed:F2}초 {dealt:F0} 피해");
-            Assert.Greater(dps, authoredDps * 0.5f,
+            // 임계도 «틱 수»로 유도한다. 초판은 저작 DPS 의 0.5 배라는 매직 넘버였는데,
+            // 그 0.5 는 「6초 창에 9틱이냐 10틱이냐」라는 **위상 오차 1틱**을 덮으려고 고른 값이다.
+            // 그런데 그 오차 비율은 쿨다운에 반비례한다 — 쿨다운 0.6 이면 10%, 0.3 이면 5%,
+            // 1.5 로 늘리면 25% 다. 고정 배수는 어느 한 쪽에서 반드시 틀린다(느슨해 회귀를
+            // 놓치거나, 빡빡해 flaky 하거나). 「기대 틱 수 − 1」로 두면 어느 쿨다운에서도
+            // 정확히 위상 오차 한 틱만 봐준다.
+            int expectedTicks = Mathf.Max(1, Mathf.FloorToInt(elapsed / so.attackCooldown) - 1);
+            float minDealt = expectedTicks * so.outputs[0].magnitude;
+
+            Debug.Log($"[WhirlpotRepro] 실측 {dps:F2} DPS / 저작 {authoredDps:F2} DPS · "
+                      + $"{elapsed:F2}초 {dealt:F0} 피해 (최소 기대 {minDealt:F0} = {expectedTicks}틱)");
+            Assert.GreaterOrEqual(dealt, minDealt,
                 $"★{elapsed:F1}초 동안 {dealt:F0} 피해 = {dps:F1} DPS. 저작은 {authoredDps:F1} DPS "
-                + $"(magnitude {so.outputs[0].magnitude} / cooldown {so.attackCooldown}) 다. "
-                + "절반 미만이면 회오리가 연타되지 않고 간헐적으로만 성사되는 것 — "
+                + $"(magnitude {so.outputs[0].magnitude} / cooldown {so.attackCooldown}) 이므로 "
+                + $"최소 {expectedTicks}틱 × {so.outputs[0].magnitude} = {minDealt:F0} 은 들어와야 한다. "
+                + "모자라면 회오리가 연타되지 않고 간헐적으로만 성사되는 것 — "
                 + "「돌고 있는데 아무 일도 안 일어난다」의 실체다.");
         }
 
@@ -366,12 +377,30 @@ namespace Wassup.Tests.PlayMode
 
         // 기믹 config 엔티티 4종을 지운다(브리지의 private DestroyEntitiesByType 대응).
         // 이 엔티티들은 뷰/등록부를 갖지 않는 순수 sim config 라 직접 파괴가 안전하다.
+        //
+        // ⚠ 이 목록은 **손으로 유지하는 사본**이라 기믹이 늘면 조용히 새는 구조다(새 기믹의
+        // config 가 남아 HP 델타를 흔들어도 아래 AssertNoGimmickConfig 조차 그 타입을 모른다).
+        // 그래서 개수를 GimmickData 구현체 수와 대조해 «늘어났다»를 실패로 만든다.
         private void ClearGimmickConfigs()
         {
+            AssertGimmickRosterUnchanged();
             DestroyAllWith<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyAllWith<Wassup.Battle.Effects.RedBullGimmickConfig>();
             DestroyAllWith<Wassup.Battle.Effects.ClockOutGimmickConfig>();
             DestroyAllWith<Wassup.Battle.Effects.OnsenGimmickConfig>();
+        }
+
+        private const int KnownGimmickKinds = 4;
+
+        private static void AssertGimmickRosterUnchanged()
+        {
+            int concrete = 0;
+            foreach (var t in typeof(GimmickData).Assembly.GetTypes())
+                if (t.IsSubclassOf(typeof(GimmickData)) && !t.IsAbstract) concrete++;
+            Assert.AreEqual(KnownGimmickKinds, concrete,
+                $"GimmickData 구현체가 {KnownGimmickKinds} → {concrete} 로 바뀌었다. "
+                + "ClearGimmickConfigs / AssertNoGimmickConfig 에 새 config 타입을 추가하고 "
+                + "KnownGimmickKinds 를 갱신할 것 — 안 하면 새 기믹이 이 측정을 조용히 오염시킨다.");
         }
 
         private void DestroyAllWith<T>() where T : unmanaged, IComponentData
