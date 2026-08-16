@@ -101,7 +101,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 |---|---|---|
 | health / moveSpeed | 320 / **1.2** | 「천천히 와서 박히는 모루」. 현 최저속은 나이트메어 1.0 |
 | attackMethod | **Melee** | `attackTargetCount` 는 melee/outputs 경로 전용 |
-| attackRange | **2** | = 회오리 반경(계약 5). Chebyshev 2 = 5×5 |
+| attackRange | **1** | = 회오리 반경(계약 5). Chebyshev 1 = 3×3. ⚠ 초판 2(5×5)는 **근접 적 10종 중 혼자만 2**여서, `Halt` 가 사거리에 닿는 순간 세우는 탓에 대상에서 **2타일 떨어져 멈췄다** — 「먼데 서서 아무것도 안 하는」 그림의 절반이 이 값이었다(제보 2026-08-16). 1 로 내려 붙어서 돈다. 대가는 판정 축소(5×5→3×3)이고, **연출도 같이 반값이 되므로 `attackVfxScalePerTile` 로 보정해야 한다**(계약 5 가 한 필드로 겸직시키는 값의 대가) |
 | **attackTargetCount** | **10** | 회오리의 실체. 반경 2 안의 방어유닛 수가 보드 총원보다 적어 실질 **무제한**이고, 10 은 «큰 회오리» 의 선언 겸 안전 상한이다 |
 | attackCooldown | **0.3** | 연타 = 회오리의 체감. 로스터에서 Skimmer·WaypointAir(0.2) 다음으로 짧다 |
 | outputs | `Damage` **8** | 대상당 **26.7 DPS**. 별도 단일 타격은 **없다**. ⚠ 초판 5/0.6(8.3 DPS)은 **피해를 주는 적 전체에서 꼴찌**였다 — 웨이브 1 잡몹 `Enemy_Basic`(20 DPS)의 **절반 이하**라 「전선의 근접 유닛을 실제로 죽인다」(위 분업표)에 구조적으로 도달할 수 없었다. 8/0.3 은 레인저(135)를 5.1초·가디언(600)을 22.5초에 죽인다. 잡몹 위 · 근접 상위종(Tanker 33 · Vanguard 44) 아래 자리다. **총량보다 틱 간격이 요점** — 같은 DPS 라도 0.3 이 「갈린다」로 읽힌다(2026-08-16 사용자 결정) |
@@ -113,7 +113,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 | killScore / awakening / stability | 3 / 3 / 2 | 엘리트 대역 |
 | maxPerWave / minWaveNumber | 1 / **5** | 슬라임 3 · 드래곤 4 다음 자리 |
 | Spine | `cloud-pot` · idle=walk=루프 1개 · attack=**빈 값** · death=**빈 값** | [2_whirlpot_assets.md](2_whirlpot_assets.md) |
-| VFX | `attackVfxPrefab` = 회오리 · `attackVfxScalePerTile` 실측 | [1_whirl_visual.md](1_whirl_visual.md) |
+| VFX | `attackVfxPrefab` = 회오리 · `attackVfxScalePerTile` **1.5** | 화면 크기 = `attackRange × scalePerTile`. 사거리 2→1 로 반값이 되는 것을 보정하고 **한 단계 더 키웠다**(1.0 → 1.5, 판정은 5×5→3×3 이라 회오리가 판정을 훨씬 크게 덮는다). ⚠ **체감 크기는 기계로 못 잰다** — bounds 로 재던 테스트는 흩어진 파티클 AABB 를 재서 localScale 0.5 에 15타일을 냈고(보드가 15×11) 삭제했다. 육안 검수 몫이다. [1_whirl_visual.md](1_whirl_visual.md) |
 
 ## 라이브 등장 빈도 (실측 2026-08-14)
 

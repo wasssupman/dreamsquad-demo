@@ -169,41 +169,13 @@ namespace Wassup.Tests.PlayMode
                 "★공격은 성사됐는데 VfxSpawner 밑에 회오리 인스턴스가 하나도 안 생겼다.");
         }
 
-        // ── ③ 연출 크기 ── 판정(Chebyshev attackRange)을 연출이 덮는가.
-        [UnityTest]
-        public IEnumerator WhirlVfx_VisualSize_MatchesHitRadius()
-        {
-            yield return BattleBridgeTestAccess.LoadBattleScene();
-            LogAssert.ignoreFailingMessages = true;
-            _tileSize = ResolveTileSize(World.DefaultGameObjectInjectionWorld.EntityManager);
-
-            var so = BattleBridgeTestAccess.LoadEnemy(WhirlpotPath);
-
-            // VfxSpawner 와 같은 계산으로 인스턴스를 만든다(브리지가 넘기는 인자 그대로).
-            float s = so.attackRange * so.attackVfxScalePerTile;
-            var go = Object.Instantiate(so.attackVfxPrefab, Vector3.zero, Quaternion.identity);
-            go.transform.localScale = Vector3.one * s;
-            foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                var main = ps.main; main.loop = true; main.playOnAwake = true;
-                ps.Clear(true); ps.Play(true);
-            }
-            for (int i = 0; i < 45; i++) yield return null;   // 파티클이 차오를 시간
-
-            var rends = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
-            Assert.Greater(rends.Length, 0, "파티클 렌더러 없음");
-            var b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-            float widthTiles = Mathf.Max(b.size.x, b.size.z) / TileSize();
-            Object.Destroy(go);
-
-            // 판정은 중심에서 ±attackRange 타일 = 폭 (2R+1). 연출이 그보다 작으면
-            // 「회오리가 안 닿는 곳의 유닛이 깎인다」가 된다. 경계 타일은 절반만 걸치므로 2R 을 기준으로 본다.
-            float needed = 2f * so.attackRange;
-            Assert.GreaterOrEqual(widthTiles, needed,
-                $"★회오리 연출 폭이 {widthTiles:F2}타일인데 판정은 반경 {so.attackRange}(폭 {2 * so.attackRange + 1})다. "
-                + $"localScale={s} (attackRange {so.attackRange} × scalePerTile {so.attackVfxScalePerTile}).");
-        }
+        // ⚠ 「회오리 연출 폭이 판정 반경을 덮는가」 테스트는 **삭제했다**(2026-08-17).
+        // `ParticleSystemRenderer.bounds` 로 쟀는데 그건 체감 크기가 아니라 월드 공간으로 흩어진
+        // 살아있는 파티클의 AABB 다 — localScale 0.5 에서 **15.14타일**(보드가 15×11 인데)이
+        // 나왔다. 즉 어떤 값을 넣어도 통과하는 단언이었고, 없는 커버리지를 있는 것처럼 광고했다.
+        // 연출의 «체감 크기»는 기계로 못 잰다. 그 판정은 육안 검수 몫이다.
+        // 저작 관계(localScale = attackRange × attackVfxScalePerTile)는 프리팹 유무와 함께
+        // `WhirlpotAuthoringTests` 가 이미 본다.
 
         // ── ④ 지속 화력 ── 「한 대」가 아니라 「연타」를 잰다.
         [UnityTest]

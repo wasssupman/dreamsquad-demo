@@ -26,7 +26,7 @@ MonoBehaviour:
   targetFactions: 0
   health: 320
   moveSpeed: 1.2
-  attackRange: 2
+  attackRange: 1
   attackCooldown: 0.3
   attackTargetCount: 10
   projectile: {fileID: 0}
@@ -44,7 +44,7 @@ MonoBehaviour:
     stackMaxStack: 0
   attackVfxPrefab: {fileID: 889267158399032795, guid: 32d572044989a4f0fbb7b5e12a117035,
     type: 3}
-  attackVfxScalePerTile: 0.5
+  attackVfxScalePerTile: 1.5
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: 9dd558761bfa4274584a8e92095c37ab, type: 2}
