@@ -1,10 +1,11 @@
 # dreamcatcher-content-4 — 신규 드림캐쳐 3장 (궤도 화염구 · 수면 특효 · 퇴근 운석)
 
-상태: **완료 2026-08-16** — units 0~7 구현·커밋 + **사용자 Play 확인 완료**.
+상태: **완료 2026-08-16** — units 0~8 구현·커밋 + **사용자 Play 확인 완료**.
 인계는 [`6_handoff_summary.md`](6_handoff_summary.md).
 
 투트랙 리뷰: Track B(ECS) **APPROVE** · Track A(품질) REQUEST CHANGES → 지적 반영 완료(`2ef68650`).
-Play 확인에서 나온 3건(차폐 소팅 · 부착 즉시 발동 · 크기/지속)은 unit 7(`a36e784e`).
+Play 확인에서 나온 것: 차폐 소팅·부착 즉시 발동·크기/지속 = unit 7(`a36e784e`) ·
+화염구 2개 = unit 8(`d09a2a99`) · 주기 5초 = `b4ebad82`.
 
 검증: EditMode **2446 전량**(잔여 실패 5건은 이 작업과 무관한 사전 실패 — 맵 문서 4 · Whirlpot 1) ·
 PlayMode 이 feature 분 **12/12**(퇴근 교차 무발동 3 + 수면 배율 2 포함, 포커스 on/off 2회 연속) ·
@@ -172,8 +173,10 @@ PlayMode 이 feature 분 **12/12**(퇴근 교차 무발동 3 + 수면 배율 2 �
 
 ## 후속 후보 (현 스코프 밖)
 
-- **화염구 다중화** — 지금은 1개. 2~3개를 균등 위상으로 띄우려면 발사 arm 이 `count` 만큼
-  시작 각도를 나눠 쏘면 된다(궤적·히트 무변경). 체감 보고 판단.
+- ~~**화염구 다중화**~~ → **완료 (unit 8, `d09a2a99`)**. 예고대로 궤적·히트 무변경이었고
+  발사 arm 이 `Orbit.PhaseOf` 로 위상을 나눠 쏘는 것이 전부였다. 현재 저작 = 2개.
+  3개 이상도 카드 `orbitCount` 값만 바꾸면 된다(bake 가 1~16 클램프).
+  ⚠ 개수는 DPS 에 선형이다 — 늘릴 때 `magnitude` 를 같이 본다.
 - **`BossPeriodicTriggerSystem` 개명** — 이름이 거짓이 된다(방어유닛도 탄다). `PeriodicTriggerSystem`
   으로 기계적 rename. 이번 spec 에 넣지 않는 이유는 **병렬 레인의 배타 소유 파일을 rename 하면
   세 레인이 전부 리베이스**되기 때문. 수렴 후 별도 커밋.
