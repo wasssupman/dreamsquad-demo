@@ -739,6 +739,17 @@ namespace Wassup.Bridge
                     continue;
                 }
 
+                // on-place-skill-rework unit 0 — 배치 트리거는 **카드가 쓸 수 없다.** 카드는 전투
+                // 중 이미 판에 있는 유닛에 붙으므로, 붙는 순간 배치 사건은 이미 지나갔다. 슬롯은
+                // 생기는데 `JustDeployed` 가 다시는 안 붙어 **붙는데 영영 안 터지는** 카드가 된다
+                // (위 EmitProjectilePattern 거절과 같은 «조용한 no-op 금지» 선례).
+                // 배치 스킬은 유닛 자기 규칙(UnitSkillAbility)으로만 선언한다.
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnPlace)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnPlace 는 카드 경로에 쓸 수 없다(부착 시점엔 배치 사건이 이미 지났다) — skipped.");
+                    continue;
+                }
+
                 // dreamcatcher-content-3 unit 4 — HealthThreshold 상태 bake 를 payload-불문
                 // 공통 블록으로 호이스팅. 기존엔 SelfStatBuff 분기 안에만 있어 진동갑주
                 // (HealthThreshold×SelfTileAoe)가 fraction 0(inert)으로 잠들었다. 가드·

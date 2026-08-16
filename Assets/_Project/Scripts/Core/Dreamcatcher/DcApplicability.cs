@@ -85,6 +85,12 @@ namespace Wassup.Core
                 // 뿐이고 배선 위치는 묻지 않는다 — OnDeath 가 UnitLifecycleSystem 에,
                 // OnShieldBreak 가 DamageApplicationSystem 에 있는 것과 같다.
                 case DcTriggerKind.OnRetire:
+                // on-place-skill-rework unit 0 — 배치. 사건 지점은 브리지의 배치 확정 경로가
+                // 붙이는 `JustDeployed` 태그이고 소비는 BossPeriodicTriggerSystem 이다.
+                // ⚠ 이 함수는 "배선돼 있나"만 묻는다. **카드가 이 트리거를 쓸 수 있는지는 별개**이며,
+                // 카드 bake 가 loud 거절한다(카드는 배치 후에 붙어 영영 안 터진다) —
+                // `EmitProjectilePattern` 이 카드 경로에서 거절되는 것과 같은 자리·같은 이유.
+                case DcTriggerKind.OnPlace:
                     return true;
                 default:
                     return false;

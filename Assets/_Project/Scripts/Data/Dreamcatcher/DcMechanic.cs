@@ -32,7 +32,11 @@ namespace Wassup.Data
     //
     // 적에게는 열리지 않는다 — `DcTrigger.EnemyTriggerArmed` 무변경이 곧 fail-closed 다(적은
     // 퇴근하지 않는다). append-only.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak, OnRetire }
+    // on-place-skill-rework unit 0 — OnPlace(9): 「이 유닛이 판에 놓여 활성화된 순간」.
+    // 발화 1회, 카운터 없음. 방어유닛 자기 규칙(UnitSkillAbility) 전용이며 **카드 경로는
+    // loud 거절**한다 — 카드는 배치 «후» 에 붙으므로 붙어도 영영 안 터진다.
+    // append-only: 에셋이 이 enum 을 int 로 직렬화한다.
+    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak, OnRetire, OnPlace }
     // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
     // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛

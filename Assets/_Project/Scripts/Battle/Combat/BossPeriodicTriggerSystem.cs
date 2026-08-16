@@ -29,8 +29,17 @@ namespace Wassup.Battle.Combat
     // nightmare-whip-aura unit 1 — second payload arm on the same tick:
     // AllyMoveSpeedAura pulses a MoveSpeedMul modifier (TTL) onto same-faction
     // units in range via StatModifierApplyEvents; release is TTL expiry only.
+    // on-place-skill-rework unit 0 — 두 번째 트리거 축: `OnPlace`(방어유닛 배치). 브리지가
+    // 배치 확정 시 `JustDeployed` 태그를 붙이고 여기서 그 프레임에 슬롯을 발화·태그 제거한다.
+    // payload arm 은 PeriodicTimer 와 **공유**한다 — 그게 이 시스템에 얹은 이유다(브리지에
+    // 실행부를 두면 `EmitProjectilePattern` arm 의 세 번째 사본이 된다).
+    //
+    // ⚠ 순서 계약: `ProjectileEmitterSystem` 이 `[UpdateAfter(this)]` 라 패턴은 같은 프레임에
+    // 나가고, `AreaTaunt`(unit 4)가 같은 틱에 어그로를 붙이려면 `AggroStateSystem` 보다 앞이어야
+    // 한다. 속성이 없으면 1프레임 지연이 빌드마다 달라진다.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    [UpdateBefore(typeof(Wassup.Battle.Effects.AggroStateSystem))]
     public partial struct BossPeriodicTriggerSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -115,14 +124,29 @@ namespace Wassup.Battle.Combat
                 // foreach 변수는 readonly — DynamicBuffer 는 뷰 struct 라 로컬
                 // 복사가 같은 버퍼 메모리를 가리킨다(CS1654 회피 관용구).
                 var slots = slotsRef;
+                // on-place-skill-rework unit 0 — 배치 사건은 엔티티 단위라 슬롯 루프 밖에서
+                // 1회만 묻는다. 태그 제거는 아래 별도 패스가 ECB 로 한다(버퍼 순회 중 구조 변경 금지).
+                bool justDeployed = SystemAPI.HasComponent<JustDeployed>(entity);
                 for (int si = 0; si < slots.Length; si++)
                 {
                     var slot = slots[si];
-                    if (slot.trigger != Wassup.Data.DcTriggerKind.PeriodicTimer) continue;
 
-                    float elapsed = slot.elapsed;
-                    bool fired = DcTrigger.PeriodicTick(ref elapsed, dt, slot.periodSeconds);
-                    slot.elapsed = elapsed;
+                    // 트리거별 발화 판정. **payload arm 은 아래에서 공유**한다 — 트리거는
+                    // "언제" 만 답하고 "무엇을" 은 payload 소유다.
+                    bool fired;
+                    if (slot.trigger == Wassup.Data.DcTriggerKind.PeriodicTimer)
+                    {
+                        float elapsed = slot.elapsed;
+                        fired = DcTrigger.PeriodicTick(ref elapsed, dt, slot.periodSeconds);
+                        slot.elapsed = elapsed;
+                    }
+                    else if (slot.trigger == Wassup.Data.DcTriggerKind.OnPlace)
+                    {
+                        // 1회성. 재무장은 브리지가 태그를 다시 붙일 때만(재배치).
+                        fired = justDeployed;
+                    }
+                    else continue;
+
                     if (fired)
                     {
                         if (slot.payload == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura)
@@ -453,12 +477,22 @@ namespace Wassup.Battle.Combat
                             // projectile-emission-pattern unit 4 — AreaBarrage arm 은
                             // 제거됐다(융단폭격은 EmitProjectilePattern 으로 이관). enum
                             // 값은 append-only 계약상 남아 있고 bake 가 loud 거절한다.
-                            UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] PeriodicTimer slot fired with unhandled payload kind.");
+                            UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] slot fired with unhandled payload kind.");
                         }
                     }
                     slots[si] = slot;
                 }
             }
+
+            // on-place-skill-rework unit 0 — 배치 태그는 **1프레임**이다. 슬롯 유무와 무관하게
+            // 이번 업데이트에서 전부 걷는다(슬롯이 없는 유닛에 남으면 다음 배치 사건과 섞인다).
+            // 브리지는 `DcTriggerSlot` 버퍼가 있는 유닛에만 태그를 붙이므로, 태그가 존재하는
+            // 프레임엔 `RequireForUpdate<DcTriggerSlot>` 이 항상 만족돼 이 패스가 반드시 돈다.
+            // ⚠ ECB 인 이유: 위 foreach 가 아직 살아 있는 쿼리 이터레이션이다.
+            // (태그는 zero-size 라 `RefRO<JustDeployed>` 로 순회할 수 없다 — 쿼리 일괄 제거.)
+            var justDeployedQuery = SystemAPI.QueryBuilder().WithAll<JustDeployed>().Build();
+            if (!justDeployedQuery.IsEmpty)
+                ecb.RemoveComponent<JustDeployed>(justDeployedQuery, EntityQueryCaptureMode.AtPlayback);
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
