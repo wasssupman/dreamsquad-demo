@@ -184,52 +184,92 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                                 // 탄이 대상을 따라가므로 접으면 한 명이 정말 공짜로 산다.
                                 if (binding == BindingClass.Cell)
                                 {
-                                    // ── 셀 바인딩: 칸을 모아 접고, 정렬한 뒤, 순서대로 시차를 준다 ──
-                                    var firedCells = new NativeList<int2>(fanCount, Allocator.Temp);
+                                    // ── 셀 바인딩: 후보마다 1발. **접지 않는다** ──
+                                    //
+                                    // unit 8 — 「1:1」의 뜻이 *칸당 1발*(unit 1)에서 **적당 1발**로
+                                    // 되돌아왔다. unit 1 이 접은 이유는 셀 낙하탄의 착탄이 칸 범위
+                                    // 판정(`TileAoe`)이라 같은 칸에 2발을 떨어뜨리면 두 적이 서로의
+                                    // 폭발에 함께 맞아 각자 2배를 받았기 때문이다(실측 2기 → 각 160).
+                                    //
+                                    // 그 원인을 착탄 쪽에서 없앴다: **각 발이 «자기 적»(`target`)을
+                                    // 싣고, `ProjectileHitSystem` 의 TileAoe 팔이 target 이 지정된
+                                    // 탄은 그 적만 때린다.** 그래서 접지 않아도 적당 정확히 저작
+                                    // 피해이고, 발수는 적 수를 따라간다. 칸을 벗어난 적은 여전히
+                                    // 회피한다(tile 판정은 그대로) — 연출이 «빈 땅에 떨어졌는데
+                                    // 맞았다» 고 거짓말하지 않는다.
+                                    var fanPool = new NativeList<int>(fanCount, Allocator.Temp);
+                                    var fanRank = new NativeList<long>(fanCount, Allocator.Temp);
                                     for (int c = 0; c < fanCount; c++)
                                     {
-                                        int2 cellOf = poolCells[scoped ? scopedIdx[c] : c];
-                                        bool already = false;
-                                        for (int k = 0; k < firedCells.Length; k++)
-                                            if (firedCells[k].x == cellOf.x && firedCells[k].y == cellOf.y)
-                                            { already = true; break; }
-                                        if (!already) firedCells.Add(cellOf);
+                                        int pi = scoped ? scopedIdx[c] : c;
+                                        int2 cellOf = poolCells[pi];
+                                        fanPool.Add(pi);
+                                        fanRank.Add((long)cellOf.y * ff.gridSize.x + cellOf.x);
                                     }
 
                                     // **낙하 순서는 row-major 셀 rank 로 고정한다.** 후보 배열 순서는
-                                    // ECS 청크 순서라 프레임마다 다를 수 있는데, 시차를 주는 순간
-                                    // 「누가 먼저 맞나」가 결과에 영향을 준다(늦게 맞는 적은 걸어
-                                    // 나갈 시간이 더 있다). `PatternTargeting` 이 같은 이유로 rank 를
-                                    // 쓰며, 화면에서도 한 방향으로 쓸어가는 그림이 된다.
-                                    for (int a = 1; a < firedCells.Length; a++)
+                                    // ECS 청크 순서라 프레임마다 다를 수 있고, 시차가 있으면 늦게
+                                    // 맞는 적이 걸어 나갈 시간을 더 얻는다 — 순서가 결과를 바꾼다.
+                                    // 같은 칸끼리는 pool index 로 안정 tie-break 한다(rank 만으로는
+                                    // 동순위라 청크 순서가 다시 새어 든다).
+                                    for (int a = 1; a < fanPool.Length; a++)
                                     {
-                                        var key = firedCells[a];
-                                        long kk = (long)key.y * ff.gridSize.x + key.x;
+                                        int keyPi = fanPool[a];
+                                        long keyRank = fanRank[a];
                                         int b = a - 1;
-                                        while (b >= 0 &&
-                                               (long)firedCells[b].y * ff.gridSize.x + firedCells[b].x > kk)
-                                        { firedCells[b + 1] = firedCells[b]; b--; }
-                                        firedCells[b + 1] = key;
+                                        while (b >= 0 && (fanRank[b] > keyRank ||
+                                                          (fanRank[b] == keyRank && fanPool[b] > keyPi)))
+                                        {
+                                            // 두 배열은 **lockstep** 으로 옮긴다.
+                                            fanPool[b + 1] = fanPool[b];
+                                            fanRank[b + 1] = fanRank[b];
+                                            b--;
+                                        }
+                                        fanPool[b + 1] = keyPi;
+                                        fanRank[b + 1] = keyRank;
                                     }
 
                                     float stagger = math.max(0f, inst.spec.fanOutStaggerSec);
-                                    for (int k = 0; k < firedCells.Length; k++)
+                                    long prevRank = long.MinValue;
+                                    int cellSlot = -1;   // 칸 순번 = 시차 slot
+                                    int inCell = 0;      // 그 칸 안에서 몇 번째 발인가
+                                    for (int k = 0; k < fanPool.Length; k++)
                                     {
+                                        if (fanRank[k] != prevRank)
+                                        { prevRank = fanRank[k]; cellSlot++; inCell = 0; }
+                                        else inCell++;
+
+                                        int pi = fanPool[k];
                                         var fanReq = inst.template;
                                         fanReq.origin = hostPos;
+                                        // 이 발의 임자. 착탄 팔이 이 값으로 «그 적만» 을 고른다.
+                                        fanReq.target = poolEntities[pi];
+                                        fanReq.damage = order.damage;
+                                        // 같은 칸의 2번째 발부터는 살짝 비켜 떨어뜨린다 — 안 하면
+                                        // 정확히 겹쳐서 한 발로 보인다(발수를 늘린 목적이 사라진다).
+                                        // 오프셋 반경은 0.5 타일 미만이라 착탄 칸이 바뀌지 않는다:
+                                        // 바뀌면 그 발의 임자가 tile 판정에서 탈락해 헛방이 된다.
                                         fanReq.impact = GridMath.CellToWorldCenter(
-                                            firedCells[k], ff.tileSize, 0f, origin: ff.origin);
+                                                            poolCells[pi], ff.tileSize, 0f, origin: ff.origin)
+                                                        + (inCell == 0 ? float3.zero
+                                                                       : SubCellOffset(inCell, ff.tileSize));
                                         // 시차는 **낙하 시간**에 준다 — 발사는 한 프레임에 다 나가고
                                         // 착탄만 순서대로 밀린다(연타로 읽힌다). `DrainMeteorBarrage`
                                         // 의 `landed * staggerSec` 관용구와 동형.
-                                        fanReq.flightTime = order.telegraphSec + k * stagger;
-                                        fanReq.damage = order.damage;
+                                        //
+                                        // ⚠ slot 은 **칸** 이 세고, 같은 칸의 여분 발은 그 slot **안** 을
+                                        // 채운다(`1 - 1/(j+1)` 은 항상 1 미만). 전역 순번으로 밀면
+                                        // 뭉친 웨이브에서 폭격이 적 수만큼 길어져 앞뒤 착탄 간격이
+                                        // 저작값과 무관해진다 — 쓸어가는 길이는 «칸 수» 가 정해야 한다.
+                                        fanReq.flightTime = order.telegraphSec + cellSlot * stagger
+                                            + (inCell == 0 ? 0f : stagger * (1f - 1f / (inCell + 1f)));
                                         fanReq.dataIndex = order.barrelDataIndex;
                                         var fanCarrier = ecb.CreateEntity();
                                         ecb.AddComponent(fanCarrier, fanReq);
                                         ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
                                     }
-                                    firedCells.Dispose();
+                                    fanRank.Dispose();
+                                    fanPool.Dispose();
                                     continue; // 이 shot 의 전개 완료
                                 }
 
@@ -331,6 +371,17 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
             if (defBuilt) { defEntities.Dispose(); defCells.Dispose(); }
             if (enemyBuilt) { enemyEntities.Dispose(); enemyCells.Dispose(); }
+        }
+
+        // unit 8 — 한 칸 안 여분 연출 낙하의 착지점. 황금각 결정론이라 j 만으로 갈리고
+        // 프레임/시드에 의존하지 않는다. 반경 0.28 타일 < 0.5 라 옆 칸으로 넘어가지 않는다 —
+        // 피해 0 이라 넘어가도 판정에는 무해하지만, 연출이 «저 칸도 맞았다» 고 거짓말하지
+        // 않게 안에 둔다. 호출처 하나 · 시각 전용이라 별도 순수 타입으로 빼지 않는다(제약 10).
+        private static float3 SubCellOffset(int j, float tileSize)
+        {
+            float ang = j * 2.3999632f;
+            float rad = 0.28f * tileSize;
+            return new float3(math.cos(ang) * rad, 0f, math.sin(ang) * rad);
         }
 
         // 잠근 대상의 이번 프레임 후보 index. 없으면 -1(대상 소멸/유출).

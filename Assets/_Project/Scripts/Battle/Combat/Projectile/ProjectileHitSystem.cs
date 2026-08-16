@@ -614,10 +614,26 @@ namespace Wassup.Battle.Combat.Projectile
                         // goal-stability 의 별도 «골 풀» 합류는 제거했다: 풀이 한 벌이라
                         // 골이 그 안에 있고, 두 풀을 이어 붙이면 중복 제거가 없어 광역 1발이
                         // 골을 2번 때렸다(unit 9 에서 풀이 한 벌로 합쳐져 이 위험이 구조적으로 사라졌다).
+                        // on-place-skill-rework unit 8 — **임자 있는 낙하탄은 그 적만 때린다.**
+                        // 셀 낙하는 `impactTileRange 0` 이어도 칸 «범위» 판정이라, 같은 칸의 적
+                        // 2기에 1:1 로 2발을 떨어뜨리면 둘이 서로의 폭발에 함께 맞아 각자 2배를
+                        // 받는다(실측 160). unit 1 은 이걸 발사 쪽에서 «칸당 1발» 로 접어 막았고,
+                        // 그 대가로 뭉친 적에게 미사일이 1발만 떨어져 발수가 적 수와 어긋났다.
+                        //
+                        // 원인은 착탄이 «겨냥» 을 모른다는 것이었다. target 이 실린 탄은 그 적만
+                        // 고른다 — 그러면 접지 않아도 적당 정확히 저작 피해다. 칸을 벗어난 적은
+                        // 아래 tile 판정에서 탈락해 **여전히 회피**한다(연출도 거짓말하지 않는다).
+                        //
+                        // 기존 TileAoe 발사(보스 barrage · 메테오 · 진동갑주 · ballistic 평타 ·
+                        // 패턴 템플릿)는 **전부 target 을 비워 둔다** — 감사 완료. 그래서 이 게이트는
+                        // 새 fan-out 만 켠다. TileAoe 요청에 target 을 싣는 새 발사처를 만들 때는
+                        // 「광역이 단일 대상으로 쪼그라든다」를 의도한 것인지 먼저 확인할 것.
+                        Entity designated = projectile.ValueRO.target;
                         var inRangeEnts = new NativeList<Entity>(Allocator.Temp);
                         var inRangeDistSq = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < victimEntities.Length; i++)
                         {
+                            if (designated != Entity.Null && victimEntities[i] != designated) continue;
                             // unit 9 — 상대 진영만. 이 한 줄이 «자기편 오폭» 을 막는다.
                             if (((int)victimFactions[i].value & wantMask) == 0) continue;
                             if (!PlacementLayers.CanTarget(

@@ -132,8 +132,14 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(authored, d2, 0.01f, "인접 적 2 의 피해가 저작값과 다르다");
         }
 
-        // 같은 칸 적 둘 → **미사일 한 발, 둘 다 저작 피해만큼**. 「1:1」의 뜻이 *적 1기당 1발*이
-        // 아니라 **칸당 1발**이라는 핀이다(셀 낙하탄은 반경 0 이어도 그 칸 전원을 때린다).
+        // 같은 칸 적 둘 → **미사일 두 발, 둘 다 저작 피해만큼**.
+        //
+        // 이 둘이 함께 걸려야 unit 8 이 성립한다:
+        //  · 발수 = 적 수 — 칸당 1발로 접혀 있던 시절(unit 1) 3기가 뭉치면 1발만 떨어졌다.
+        //  · 적당 피해 = 저작값 — 접기를 **게이트 없이** 풀면 셀 낙하탄이 `impactTileRange 0`
+        //    이어도 그 칸 전원을 때리므로(TileAoe) 각자 2배를 맞는다.
+        // 즉 각 발이 «자기 적»(`ProjectileState.target`)만 때려야 한다. 한쪽만 재면 나머지
+        // 한쪽이 조용히 깨진다 — 실제로 unit 1 의 테스트가 `> 0` 만 재서 과피해를 놓쳤다.
         [UnityTest]
         public IEnumerator TwoEnemiesInSameCell_EachTakeExactlyOneShot()
         {
@@ -152,12 +158,28 @@ namespace Wassup.Tests.PlayMode
             var b = SpawnDummy(em, bridge, target);
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
-            yield return Frames(60);
+
+            // 발수는 **동시 생존 최대치**로 센다. 갈래는 한 프레임에 다 발사되고 시차는
+            // 낙하 시간에만 들어가므로(emitter 주석), 발사 직후 프레임에 전부 살아 있다.
+            int maxAlive = 0;
+            using (var q = em.CreateEntityQuery(
+                       ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileState>()))
+            {
+                for (int f = 0; f < 60; f++)
+                {
+                    maxAlive = Mathf.Max(maxAlive, q.CalculateEntityCount());
+                    yield return null;
+                }
+            }
 
             float da = Hp - em.GetComponentData<Health>(a).value;
             float db = Hp - em.GetComponentData<Health>(b).value;
             em.DestroyEntity(a); em.DestroyEntity(b);
             Object.Destroy(cannon);
+
+            Assert.AreEqual(2, maxAlive,
+                $"같은 칸 적 2기에 미사일이 {maxAlive}발 떨어졌다 — 발수는 적 수를 따라야 한다" +
+                " (1발이면 칸당 1발로 접힌 것, 3발 이상이면 여분이 새는 것)");
 
             // ⚠ **「둘 다 맞았다」로는 부족하다.** 셀을 겨누는 낙하탄은 `impactTileRange 0` 이라도
             // 그 칸의 **전원**을 때린다(TileAoe). 같은 칸에 미사일을 두 발 떨어뜨리면 두 적이

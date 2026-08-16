@@ -66,6 +66,7 @@ Boss 고 게이트는 슬롯 유무다. 없는 것은 **`OnPlace` 트리거**와
 | 5 | 말파이트 | `5_malphite_stun.md` | 범위·지속 상향 + 띄움 길이 분리 (레거시 경로 잔존) |
 | 6 | 문안·검증 | `6_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
 | 7 | 인계 | `7_handoff_summary.md` | 커밋·계약·실측 요약 |
+| 8 | 캐논 rev | `8_visual_density_fanout.md` | 미사일 1발 = 적 1기 — 착탄에 임자(`target`) 게이트를 넣어 unit 1 의 «칸당 1발» 접기 제거 |
 
 > 순서 근거: 0 → 1 → 2 가 캐논 사슬(0·1 은 각자 단독으로 아무 동작도 안 한다 —
 > `projectile-emission-pattern` unit 2 선례). 3 → 4 가 배스티온 사슬. 5 는 독립. 6 은 마지막.
