@@ -4897,9 +4897,24 @@ namespace Wassup.Bridge
                     });
                     // unit 3 — 공격 넉업과 같은 연출 경로. 여기는 이미 브리지(뷰 접근 가능)라
                     // 큐를 거치지 않고 직접 재생한다.
+                    //
+                    // on-place-skill-rework unit 5 — **띄움 길이는 스턴 길이와 다르다.**
+                    // 심의 사실은 처음부터 「스턴」이고 「공중」은 뷰가 붙이는 해석이라
+                    // (knockup-fighter-defender unit 3), 스턴을 3초로 늘리면서 체공까지 3초가
+                    // 되면 지진 충격이 아니라 무중력이 된다. `knockupOnHitSec` 은 **이 유닛이
+                    // 적을 띄우는 길이**라는 하나의 성질이라(평타든 배치든 같은 높이·같은 체공)
+                    // 새 필드를 만들지 않고 그 값을 쓴다.
+                    //
+                    // `min` 인 이유: 스턴보다 오래 떠 있으면 **땅에 닿기 전에 적이 다시 움직이는**
+                    // 역전이 난다. 0 이면(띄우지 않는 유닛) 종전대로 스턴 길이를 따른다.
                     if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
                         && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
-                        hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
+                    {
+                        float hopSec = unitData.knockupOnHitSec > 0f
+                            ? math.min(unitData.knockupOnHitSec, unitData.onPlaceDuration)
+                            : unitData.onPlaceDuration;
+                        hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
+                    }
                     affected++;
                 }
             }
