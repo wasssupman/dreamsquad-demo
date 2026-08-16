@@ -1,6 +1,6 @@
 # three-minute-kill-race — 패배 없는 3분 킬 경쟁
 
-> 상태: **units 0~4 구현 완료 · 검증 진행** 2026-08-16 (origin/main `49554c6d` 기준으로 대조 완료)
+> 상태: **units 0~4 완료 · 자동 검증 통과 · Play 육안 확인 대기** 2026-08-16 (origin/main `49554c6d` 기준으로 대조 완료)
 > 선행: `three-minute-survival`(units 0~7 — 안정도 패배·처치 점수·마감 파이프라인),
 > `goal-tower-siege`(공성 모델), `battle-structures`(적 마음 축)
 > 정본 갱신 대상: `docs/reference/score-formula.md`, `docs/reference/ingame-flow.md`
@@ -64,9 +64,9 @@
 |---|---|---|---|
 | 0 | `0_defeat_axis_retire.md` | 브리지 + 코어 | 패배·강제 종료 4판정 제거, `MatchTally.Won` 은퇴 · **완료(37cbb659)** |
 | 1 | `1_one_kill_one_point.md` | 데이터 + 코어 | `killScore` 티어 은퇴 → 1킬 1점 · **완료(2b6362e9)** |
-| 2 | `2_heart_no_gauge.md` | 프레젠테이션 | 마음 게이지 2종 제거 → 균열 연출 · 스트레스 분모 off · **구현됨** |
-| 3 | `3_player_submit.md` | UI + 브리지 | 햄버거 버튼 정체 전환(P1 = 60s) → 결과 화면 · **구현됨** |
-| 4 | `4_result_no_verdict.md` | UI | 승/패 표기 없음 · 중복 줄 통합(3줄→2줄) · **구현됨** |
+| 2 | `2_heart_no_gauge.md` | 프레젠테이션 | 마음 게이지 2종 제거 → 균열 연출 · 스트레스 분모 off · **완료(16ac6667)** |
+| 3 | `3_player_submit.md` | UI + 브리지 | 햄버거 버튼 정체 전환(P1 = 60s) → 결과 화면 · **완료(16ac6667)** |
+| 4 | `4_result_no_verdict.md` | UI | 승/패 표기 없음 · 중복 줄 통합(3줄→2줄) · **완료(16ac6667)** |
 | 5 | `5_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
 
 의존: `0 → 3`(제출이 마감 관문을 재사용한다), `1 → 4`(점수 단위가 화면 줄 수를 정한다).
@@ -177,3 +177,29 @@ B 로 갈 거면 unit 1 착수 전에 알려달라.
   점수원이 될지 연출로 남을지 별도 결정.
 - **조기 제출의 동기** [S] · 무페널티라 «3분을 다 쓰지 않을 이유» 가 지금은 없다. 시간 절약
   외의 이유가 필요한지 플레이 후 판단.
+
+## 검증 (2026-08-16)
+
+- **컴파일 0 에러**
+- **EditMode 2435/2435 완주 · 신규 실패 0건.** 실패 5건은 전부 사전 실패이고 머지 직후
+  관측한 목록과 **정확히 동일**하다: `MultiGoalPoolSeparationTests` 4건(맵 복도 폭 —
+  map-rework 소관) · `WhirlpotAuthoringTests`(`MissingReferenceException` — 인프라).
+  둘 다 `gift-phase-removal` handoff 가 기존 실패로 기록해 두었다.
+- **PlayMode 가드 3종 초록**: `TallyFlowTest` · `GoalStabilityTest` ·
+  `StructureLivePlayTest.SiegeMap_DefendersBreakEnemyCore_...`
+
+> ⚠ **`TallyFlowTest` 는 배치 실행에서 빨개진다** — 단언이 아니라 PrimeTween 로그 누출
+> (`Tween's OnComplete callback was ignored`)이다. **단독 실행에서는 통과**(7.1s)하므로
+> 앞선 테스트가 남긴 시퀀스가 씬 언로드에서 터지는 **순서 아티팩트**이지 회귀가 아니다.
+> 같은 계열 증상을 `gift-phase-removal` 커밋 `2e4aaf63`(teardown `_seq.Stop()` 누락)이
+> 한 번 고쳤다 — 남은 것은 다른 시퀀스이고 이 spec 범위 밖이다.
+
+### Play 육안 확인 목록 (전부 대기)
+
+1. 마음을 전부 내줘도 판이 안 끝나고 3분을 채운다 → 결과 화면
+2. 마음 위에 **바도 숫자도 없다**. 맞을수록 프랍이 단계적으로 그을리고 0 에서 주저앉는다
+3. 본능·적 마음의 바는 **그대로 있다**(제거 대상이 아니었다)
+4. 스트레스 배지가 `3` 으로만 뜬다(`3 / 10` 아님)
+5. 60초 전 햄버거 → 「나가기」(로비) · 60초 후 → 「제출」(결과 화면, 총점 = 그때 처치 수)
+6. 보스를 잡아도 +1, 슬라임은 원본+파생 전부 +1씩
+7. 결과 화면 스탯이 2줄이고 히어로가 `47기` 로 읽힌다

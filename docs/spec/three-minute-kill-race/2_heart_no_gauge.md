@@ -53,11 +53,11 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 통과(테스트 어셈블리 포함), 콘솔 에러 0
-- [ ] 코드베이스에 `SetStability`·`HideStability`·`GoalStability`·`goalStabilityBarLift`
+- [x] 컴파일 통과(테스트 어셈블리 포함), 콘솔 에러 0
+- [x] 코드베이스에 `SetStability`·`HideStability`·`GoalStability`·`goalStabilityBarLift`
       참조가 0건
-- [ ] EditMode: `ScoreHudStressSeamTests` 초록(HUD API 는 안 바꿨다)
-- [ ] PlayMode: `TallyFlowTest`·`GoalStabilityTest` 초록
+- [x] EditMode **2435/2435 완주** — 신규 실패 0건(`ScoreHudStressSeamTests` 포함)
+- [x] PlayMode `TallyFlowTest`(단독 7.1s)·`GoalStabilityTest` 초록
 - [ ] Play: 마음 위에 **바도 숫자도 없다**. 본능·적 마음의 바는 그대로 있다
 - [ ] Play: 마음이 맞을수록 프랍이 단계적으로 그을리고, 0 에서 주저앉는다
 - [ ] Play: 스트레스 배지가 `3` 으로만 뜬다(`3 / 10` 아님)
