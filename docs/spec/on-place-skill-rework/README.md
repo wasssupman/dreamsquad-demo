@@ -1,6 +1,7 @@
 # on-place-skill-rework — 배치 스킬을 공용 트리거×페이로드 위로 + 3종 재설계
 
-> 상태: **초안 rev3 2026-08-16** (units 0~6 미착수, 사용자 승인 대기)
+> 상태: **구현 완료 2026-08-16** (units 0~6). 사용자 육안 Play 확인 + 시트 `desc` 갱신 대기.
+> 인계: `7_handoff_summary.md`
 > rev3 = 투트랙 스펙 리뷰(설계 critic + ecs-reviewer, 양측 REQUEST CHANGES) 반영 +
 > 사용자 결정 2건(캐논 = 1:1 융단폭격 / 이관 방향 = 규칙으로 수렴, 이번 범위는 신규 2종).
 >
@@ -63,6 +64,7 @@ Boss 고 게이트는 슬롯 유무다. 없는 것은 **`OnPlace` 트리거**와
 | 4 | 배스티온 | `4_taunt_bastion.md` | `AreaTaunt` 페이로드 + 에셋 |
 | 5 | 말파이트 | `5_malphite_stun.md` | 범위·지속 상향 + 띄움 길이 분리 (레거시 경로 잔존) |
 | 6 | 문안·검증 | `6_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
+| 7 | 인계 | `7_handoff_summary.md` | 커밋·계약·실측 요약 |
 
 > 순서 근거: 0 → 1 → 2 가 캐논 사슬(0·1 은 각자 단독으로 아무 동작도 안 한다 —
 > `projectile-emission-pattern` unit 2 선례). 3 → 4 가 배스티온 사슬. 5 는 독립. 6 은 마지막.

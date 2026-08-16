@@ -192,5 +192,53 @@ namespace Wassup.Tests.EditMode
                 }
             }
         }
+
+        // on-place-skill-rework unit 6 — **전수 순회로 «조용히 빈 문안» 을 막는다.**
+        //
+        // `OnPlaceClause` 의 `default: return ""` 는 신규 enum 멤버가 아무 말 없이 설명을
+        // 비우게 한다(그 파일 주석이 스스로 경고한다). 규칙 경로(`OnPlaceRuleClause`)도
+        // 같은 형태를 갖게 됐으므로, 두 어휘를 함께 순회해 배선 누락을 컴파일이 아니라
+        // 테스트로 잡는다 — `DcApplicabilityTests` 의 전수 검사와 같은 안전망이다.
+        [Test]
+        public void EveryOnPlaceEffectKind_HasAClause()
+        {
+            var missing = new System.Collections.Generic.List<string>();
+            foreach (OnPlaceEffectType kind in System.Enum.GetValues(typeof(OnPlaceEffectType)))
+            {
+                if (kind == OnPlaceEffectType.None) continue;
+                var probe = ScriptableObject.CreateInstance<DefenderUnitData>();
+                probe.onPlaceEffect = kind;
+                string s = UnitKitSummary.Build(probe);
+                if (!s.Contains("배치")) missing.Add(kind.ToString());
+                Object.DestroyImmediate(probe);
+            }
+            CollectionAssert.IsEmpty(missing,
+                "배치 문안이 없는 OnPlaceEffectType 이 있다 — 신규 멤버를 추가하고 " +
+                "OnPlaceClause 를 안 늘리면 설명이 조용히 빈다: " + string.Join(", ", missing));
+        }
+
+        // 규칙 경로도 같은 안전망. 라이브 유닛이 실제로 쓰는 조합(OnPlace × payload)이
+        // 문안을 갖는지 카탈로그에서 확인한다 — 합성 SO 로는 능력 참조를 만들 수 없다.
+        [Test]
+        public void RuleDrivenOnPlaceUnits_HaveAClause()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
+                "Assets/_Project/Data/DefenderCatalog.asset");
+            Assert.IsNotNull(catalog);
+            foreach (var unit in catalog.units)
+            {
+                if (unit == null) continue;
+                var ability = unit.GetAbility<UnitSkillAbility>();
+                if (ability?.mechanics == null) continue;
+                bool hasOnPlaceRule = false;
+                foreach (var m in ability.mechanics)
+                    if (m.trigger.kind == DcTriggerKind.OnPlace) hasOnPlaceRule = true;
+                if (!hasOnPlaceRule) continue;
+
+                Assert.That(UnitKitSummary.Build(unit), Does.Contain("배치"),
+                    $"{unit.id}: 배치 규칙이 있는데 문안이 비었다 — OnPlaceRuleClause 에 " +
+                    "그 payload 를 배선하라(조용히 비는 것이 이 테스트가 막는 것이다)");
+            }
+        }
     }
 }
