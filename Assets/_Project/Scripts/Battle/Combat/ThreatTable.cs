@@ -15,7 +15,7 @@ namespace Wassup.Battle.Combat
         public float cumulativeDamage;
     }
 
-    // Combat→Combat attribution channel (AggroHitEvents pattern). Damage
+    // Combat→Combat attribution channel (AggroAcquireEvents pattern). Damage
     // producers (AttackSystem melee, ProjectileHitSystem impacts) enqueue only
     // when the victim carries a ThreatEntry buffer AND the attacker is a live
     // defender entity — bridge-cast skills (player Meteor, owner == Null) never

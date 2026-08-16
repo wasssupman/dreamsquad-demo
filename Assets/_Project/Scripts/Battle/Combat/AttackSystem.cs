@@ -134,9 +134,9 @@ namespace Wassup.Battle.Combat
                 attackOutputLogWriter = attackOutputLogSingleton.ValueRW.queue.AsParallelWriter();
 
             // aggro-targeting Unit 11 — 가디언 명중 → Effects 로 넘길 히트 채널 writer.
-            NativeQueue<Wassup.Battle.Effects.AggroHitEvent>.ParallelWriter? aggroHitWriter = null;
-            if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroHitEventsSingleton>(out var aggroHitSingleton))
-                aggroHitWriter = aggroHitSingleton.ValueRW.queue.AsParallelWriter();
+            NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent>.ParallelWriter? aggroAcquireWriter = null;
+            if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroAcquireEventsSingleton>(out var aggroAcquireSingleton))
+                aggroAcquireWriter = aggroAcquireSingleton.ValueRW.queue.AsParallelWriter();
 
             // nightmare-catcher unit 1 — 보스 위협 귀속 채널 + 게이트 lookup.
             // enqueue 는 피격자가 ThreatEntry 버퍼 보유(보스 베이크) && 공격자가
@@ -1622,13 +1622,15 @@ namespace Wassup.Battle.Combat
                             // aggro-targeting Unit 11 — 가디언 명중분을 Effects 로 넘긴다.
                             // Aggroed 부착/capacity 게이트/선점은 AggroStateSystem(Effects)이
                             // 드레인 시 판정 — Combat 은 "때렸다" 사실만 전달(맥락 경계).
-                            if (isGuardian && aggroHitWriter.HasValue)
+                            if (isGuardian && aggroAcquireWriter.HasValue)
                             {
                                 for (int ti = 0; ti < hitCount; ti++)
-                                    aggroHitWriter.Value.Enqueue(new Wassup.Battle.Effects.AggroHitEvent
+                                    aggroAcquireWriter.Value.Enqueue(new Wassup.Battle.Effects.AggroAcquireEvent
                                     {
                                         guardian = attackerEntity,
                                         enemy = hitTargets[ti],
+                                        // 명중 획득 — 상한·선점 게이트를 전부 통과해야 붙고 무기한이다.
+                                        kind = Wassup.Battle.Effects.AggroAcquireKind.Hit,
                                     });
                             }
 

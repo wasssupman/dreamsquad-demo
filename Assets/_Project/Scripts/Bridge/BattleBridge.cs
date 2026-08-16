@@ -405,7 +405,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
-        private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
+        private NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent> _aggroAcquireEventQueue;
         // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
@@ -763,7 +763,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
-            DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.AggroAcquireEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
@@ -794,7 +794,7 @@ namespace Wassup.Bridge
             if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
-            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            if (_aggroAcquireEventQueue.IsCreated) _aggroAcquireEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
@@ -1509,10 +1509,10 @@ namespace Wassup.Bridge
             // aggro-targeting Unit 11 — Combat→Effects 히트 채널. AttackSystem(Combat)이
             // 가디언 명중을 enqueue, AggroStateSystem(Effects)이 드레인해 Aggroed 부착.
             // 브리지는 lifecycle 만 관리(드레인 안 함 — 순수 ECS 내부 통신).
-            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
-            _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
-            var aggroHitSingleton = _em.CreateEntity();
-            _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
+            if (_aggroAcquireEventQueue.IsCreated) _aggroAcquireEventQueue.Dispose();
+            _aggroAcquireEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent>(Allocator.Persistent);
+            var aggroAcquireSingleton = _em.CreateEntity();
+            _em.AddComponentData(aggroAcquireSingleton, new Wassup.Battle.Effects.AggroAcquireEventsSingleton { queue = _aggroAcquireEventQueue });
 
             // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 해저드
             // 캐스터는 attackRange 0 이라 RESOLVE 에 못 가므로 캐스트 성사가 곧 그
@@ -6916,7 +6916,7 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
             // (존재=가디언 표식). Fighter/Ranger (aggroCapacity == 0) get none. 획득은
-            // 히트 구동(AttackSystem RESOLVE→AggroHitEvent) — 별도 range 없음.
+            // 히트 구동(AttackSystem RESOLVE→AggroAcquireEvent) — 별도 range 없음.
             if (unitData.aggroCapacity > 0)
             {
                 _em.AddComponentData(entity, new Wassup.Battle.Effects.AggroCapacity

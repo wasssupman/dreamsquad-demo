@@ -45,8 +45,9 @@ rename 실측 범위: Assets 10파일 23줄 + 주석 인용 4곳 + `CLAUDE.md` 1
 **파일명 `AggroHitEvents.cs` 도 같이 바꾼다.** `durationSec > 0` 매직 플래그를 안 쓰는 이유:
 우회 대상(상한·선점)이 지속시간과 논리적으로 무관하다 — 지속 0인 도발도 표현 가능해야 한다.
 
-> 덤: `docs/spec/aggro-targeting/11_combat-hit-arm.md` 가 이 파일 경로를 `Battle/Combat/` 으로
-> 잘못 적어 뒀다(실제 `Battle/Effects/`). 같이 고친다.
+> ⚠ **완료된 spec 문서의 옛 타입명은 고치지 않는다.** `docs/spec/aggro-targeting/` 여러 문서가
+> `AggroHitEvent(s)` 를 언급하는데, 그건 그 시점에 사실이었던 서술이다(스펙 = 역사서).
+> 지금 이름은 이 문서와 코드가 소유한다.
 
 ### `Aggroed.remainingTime` (Effects 소유)
 
@@ -119,6 +120,16 @@ TimeManager Battle 도메인 시계. `CcDecaySystem` 과 같은 시계라 슬로
 
 → 드레인 안에서 `(tileRange, layerMask)` 키로 **필드를 재사용**하고, 필요하면 후보 상한을 둔다
 (`AoeTargetCap` 선례). 완료 기준에 부하 측정을 넣는다.
+
+### Pass 4 — 도발된 적의 chase field 재굽기 (구현 중 발견)
+
+아래 `FlowFieldRebuildSystem` 분기가 도발된 적의 **필드만** 떼고 `Aggroed` 를 남기는데,
+그 시스템의 기존 주석이 경고한다: **「버퍼만 지우면 안 된다 — chase 분기는 필드를 못 찾으면
+그 자리에 정지하므로 적이 얼어붙는다.」** 그래서 떼기만 하면 도발이 유지되는 대신 좀비가 된다.
+
+→ `AggroStateSystem` 에 재굽기 패스를 더한다: `Aggroed` 인데 `AggroChaseCell` 이 없고
+`remainingTime > 0` 인 적의 필드를 다시 굽는다. 드레인과 같은 walkMask/tmp/메모를 재사용하며,
+이번 틱에 부착한 것(`claimed`/`tauntClaimed`)은 이미 버퍼를 달았으므로 건너뛴다.
 
 ### `FlowFieldRebuildSystem` — 도발 분기
 
