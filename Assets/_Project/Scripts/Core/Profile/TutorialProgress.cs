@@ -13,7 +13,9 @@ namespace Wassup.Core
         // 드래그 쪽 저장 위치는 기존 `awakeningHintVersion` 필드다(JSON 호환 — PlayerProfile 주석).
         public const int DragAttachHintVersion = 1;
         public const int TapAttachHintVersion = 1;
-        public const int GiftTutorialVersion = 1;
+        // gift-phase-removal unit 1 — 선물 워크스루는 폐지됐다(보여줄 연출이 사라졌다).
+        // `PlayerProfile.giftTutorialVersion` 필드와 아래 ResetAll* 의 초기화는 **남긴다**:
+        // 기존 세이브에 남은 값을 계속 정리해야 하고, JSON 하위호환도 지킨다.
         public const int LobbyIntroVersion = 1;
         // unit 11 — 로드아웃 시퀀스는 스텝 3개다: 스쿼드(이 토큰) → 드림캐쳐 덱 → (키링) →
         // 재출발 START. const 이름과 JSON 필드명은 짝이라 그대로 두고, 의미는 API 이름이 나른다.
@@ -47,21 +49,13 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession &&
             IsDragAttachHintPending(holder.profile) && IsTapAttachHintPending(holder.profile);
 
-        // unit 6 — the gift walkthrough runs on the first battle where the gift
-        // presentation is actually visible: core must be complete (the first run
-        // suppresses the presentation entirely), so this can never be true while
-        // ShouldRunCore is true for the same holder.
-        public static bool ShouldRunGiftTutorial(PlayerProfileSO holder) =>
-            holder != null && holder.IsLoadedThisSession && holder.profile != null &&
-            !IsCorePending(holder.profile) && IsGiftTutorialPending(holder.profile);
-
         // outgame-tutorial unit 0 — chapter A greets the first lobby reveal.
         public static bool ShouldRunLobbyIntro(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsLobbyIntroPending(holder.profile);
 
         // 로드아웃 시퀀스는 스텝 4개다: 스쿼드 → 드림캐쳐 덱 → 키링 → 재출발 START.
         // 각 단계가 앞 단계의 완료를 전제하므로 동시에 pending 될 수 없고, 순서를 위한 별도
-        // 상태가 필요 없다(ShouldRunGiftTutorial 선례와 동형).
+        // 상태가 필요 없다.
         //
         // unit 0 — 첫 스텝은 인게임 core 튜토리얼 완료를 전제한다. 그 플래그의 실제 의미는
         // "core 튜토리얼이 발동해 Battle 페이즈에 도달했다" 라, fail-open 경로를 탄 계정은
@@ -99,7 +93,7 @@ namespace Wassup.Core
         // unit 26 — 효과 타일 배치 안내. 리빌 안내와 마찬가지로 **아무것도 체인하지 않는다**
         // (형제 게이트의 fail-open 결함 — 위 주석 참조). "두 번째 판 이후" 라는 순서는
         // 컨트롤러가 `_awakeningLockedThisMatch`(= 첫 판) 로 가르고, 리빌 뒤라는 순서는
-        // 페이즈 흐름(Gift → Gimmick → Placement)이 이미 보장한다.
+        // 페이즈 흐름(Gimmick → Placement)이 이미 보장한다.
         public static bool ShouldRunEffectTileHint(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession &&
             IsEffectTileHintPending(holder.profile);
@@ -123,9 +117,6 @@ namespace Wassup.Core
 
         public static bool IsTapAttachHintPending(PlayerProfile profile) =>
             profile != null && profile.awakeningTapAttachHintVersion < TapAttachHintVersion;
-
-        public static bool IsGiftTutorialPending(PlayerProfile profile) =>
-            profile != null && profile.giftTutorialVersion < GiftTutorialVersion;
 
         public static bool IsLobbyIntroPending(PlayerProfile profile) =>
             profile != null && profile.lobbyIntroVersion < LobbyIntroVersion;
@@ -189,13 +180,6 @@ namespace Wassup.Core
         {
             if (profile == null || profile.awakeningTapAttachHintVersion >= TapAttachHintVersion) return false;
             profile.awakeningTapAttachHintVersion = TapAttachHintVersion;
-            return true;
-        }
-
-        public static bool CompleteGiftTutorial(PlayerProfile profile)
-        {
-            if (profile == null || profile.giftTutorialVersion >= GiftTutorialVersion) return false;
-            profile.giftTutorialVersion = GiftTutorialVersion;
             return true;
         }
 

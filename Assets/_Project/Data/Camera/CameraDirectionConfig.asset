@@ -28,7 +28,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-  - phase: 3
+  - phase: 2
     localPosOffset: {x: 0, y: 0, z: -0.8}
     pitchOffset: -5
     fovOffset: 0
@@ -39,7 +39,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-  - phase: 4
+  - phase: 3
     localPosOffset: {x: 0, y: 0, z: 0}
     pitchOffset: 0
     fovOffset: 0
@@ -50,7 +50,7 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-  - phase: 5
+  - phase: 4
     localPosOffset: {x: 0, y: 0, z: 1}
     pitchOffset: 0
     fovOffset: -2
@@ -114,5 +114,5 @@ MonoBehaviour:
     phase01: 0.67
     posWeight: {x: 0, y: 0.3}
     pitchWeight: 1
-  breathPhases: 010000000300000004000000
+  breathPhases: 010000000200000003000000
   breathFadeSec: 1.5

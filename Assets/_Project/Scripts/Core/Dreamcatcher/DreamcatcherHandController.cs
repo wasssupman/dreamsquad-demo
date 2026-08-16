@@ -31,8 +31,6 @@ namespace Wassup.Core
         // translated to its wrapping Active card via this serialized list.
         [SerializeField] private SkillLoadoutController skillLoadout;
         [SerializeField] private DreamcatcherCard[] activeCards;
-        // gift-phase unit 1 — 선물 이벤트 가중치/무의식 수량. 없으면 Lucid 고정 폴백.
-        [SerializeField] private GiftConfig giftConfig;
 
         public enum HandChangeReason { Reset, Used, Recovered }
 
@@ -49,18 +47,6 @@ namespace Wassup.Core
         // HandChanged is a superset: Active use fires Used without an attach change.
         public event System.Action AttachmentsChanged;
 
-        // gift-phase unit 1 — Gift 페이즈에서 덱 조합이 끝나 GiftPhaseView 가 읽을 수
-        // 있게 됐음을 알린다(연출 시작 트리거).
-        public event System.Action GiftDeckReady;
-
-        public GiftKind GiftKind => _giftKind;
-        public IReadOnlyList<DreamcatcherCard> GiftBaseCards => _giftBaseCards;
-        public IReadOnlyList<DreamcatcherCard> GiftAddedCards => _giftAddedCards;
-        // 확정 12장 순서 = 실제 사이클 큐 초기 순서(연출 착지 대상). handSize=TotalCount 로
-        // 전체 큐를 순서대로 반환. 부착 0 인 Gift 시점엔 12장 전부.
-        public List<DreamcatcherCycleDeck.Entry> GiftFinalOrder() =>
-            _deck != null ? _deck.Hand(_deck.TotalCount) : new List<DreamcatcherCycleDeck.Entry>();
-
         public int Gauge { get; private set; }
         public int GaugeMax => config != null ? config.gaugeMax : 100;
         public int HandSize => config != null ? config.handSize : 5;
@@ -71,16 +57,10 @@ namespace Wassup.Core
         public float EnemyPickRadiusTiles => config != null ? config.enemyPickRadiusTiles : 1.5f;
 
         private DreamcatcherCycleDeck _deck;
-        // gift-phase unit 1 — 선물 페이즈에서 확정한 조합 캐시. 배치 진입 시 _deck 재사용
-        // (이중 셔플 방지: DreamcatcherCycleDeck 무변경, 연출은 GiftFinalOrder 로 순서 읽음).
-        private GiftKind _giftKind = GiftKind.Lucid;
-        private List<DreamcatcherCard> _giftBaseCards = new List<DreamcatcherCard>();
-        private List<DreamcatcherCard> _giftAddedCards = new List<DreamcatcherCard>();
+        // gift-phase-removal unit 1 — 저장 덱(선물을 뺀 "고른 덱"). LogDeck 이 토너먼트
+        // 리포트의 baseIds 로 읽는 유일한 출처다.
+        private List<DreamcatcherCard> _baseCards = new List<DreamcatcherCard>();
         private List<DreamcatcherCard> _lastComposedCards = new List<DreamcatcherCard>();
-        // gift-phase (review M1) — 이번 배치 진입에서 Gift 가 덱을 구성했는지. 배치 진입 시
-        // 소비한다. false 면 매 진입마다 새로 구성(원래 "배치 진입마다 재구성" 불변식) →
-        // gift 우회 폴백 경로에서 재시작 시 stale/소비된 _deck 재사용을 막는다.
-        private bool _giftDeckComposed;
         // entryId → (host defender, revocation handle). handle 0 = 무회수(엔티티 부착
         // Unit 카드: 슬롯이 엔티티와 함께 소멸, revoke 대상 없음). handle>0 = host 사망 시
         // revoke(Squad hosted 버프 unit 9 · placement-aura 오라). placement-aura unit 2 —
@@ -117,19 +97,15 @@ namespace Wassup.Core
             }
         }
 
-        // gift-phase unit 1 — Gift 진입 시 덱을 조합·구성(단일 셔플, _deck 생성),
-        // Placement 진입 시 그 _deck 을 재사용하며 게이지/부착만 리셋. Gift 우회 경로면
-        // Placement 에서 폴백 구성(기존 동작). 구독은 OnEnable/OnDisable 대칭 유지.
+        // gift-phase-removal unit 1 — 덱 구성은 **배치 진입 단일 경로**다. 선물 페이즈가
+        // 있던 시절엔 Gift 에서 미리 만들어 캐시하고 여기서 재사용했지만(연출 순서 ==
+        // 인게임 순서를 맞추려고), 그 연출이 사라지면서 캐시의 이유도 함께 사라졌다.
+        // 매 배치 진입마다 새로 구성한다 — gift-phase 이전의 원래 불변식.
         private void OnPhaseChanged(GamePhase phase)
         {
-            if (phase == GamePhase.Gift) { BuildGiftDeck(); return; }
             if (phase != GamePhase.Placement) return;
 
-            // Gift 페이즈가 이번 진입에서 _deck 을 구성했으면 그대로 재사용(이중 셔플 방지,
-            // 연출 순서 == 인게임 순서). 아니면(Gift 우회) 매 진입마다 새로 구성한다.
-            // 플래그는 진입마다 소비 — 다음 진입은 다시 Gift 구성 or 폴백을 강제한다.
-            if (!_giftDeckComposed) BuildFallbackDeck();
-            _giftDeckComposed = false;
+            BuildDeck();
             _attachedTo.Clear();
             AttachmentsChanged?.Invoke();
             Gauge = config != null ? Mathf.Clamp(config.gaugeStart, 0, config.gaugeMax) : 0;
@@ -138,58 +114,19 @@ namespace Wassup.Core
             LogDeck(_lastComposedCards);
         }
 
-        // Gift 진입 시 선물 이벤트를 결정하고 확정 12장 덱을 구성한다. _deck 을 1회
-        // 생성(단일 Fisher-Yates)하고 배치 진입 시 재사용. 게이지/부착 리셋은 배치에서
-        // — Gift 동안 인게임 핸드는 아직 등장하지 않는다.
-        private void BuildGiftDeck()
+        // 저장 덱 10 + 공용 Active 2 = 12장. 시드는 매치 시드 하나이고 셔플은
+        // DreamcatcherCycleDeck 생성자의 단일 Fisher-Yates 가 전담한다(여기서 섞지 않는다).
+        //
+        // gift-phase-removal unit 1 — 루시드/림 분기는 폐지됐다. 추가 2장의 유일한 출처는
+        // 이 매치의 스킬 롤(SkillLoadoutController)이며, 무의식 카드는 저장 덱에 직접
+        // 넣는 일반 카드가 됐다(unit 0).
+        private void BuildDeck()
         {
-            int seed = GameManager.Instance != null ? GameManager.Instance.MatchSeed : 0;
-            _giftBaseCards = ResolveAttachDeck();
-            _giftKind = giftConfig != null
-                ? GiftDeckComposer.PickKind(seed, giftConfig.lucidWeight, giftConfig.rimWeight)
-                : GiftKind.Lucid;
-
-            _giftAddedCards = new List<DreamcatcherCard>();
-            if (_giftKind == GiftKind.Lucid) AppendActiveCards(_giftAddedCards);
-            else _giftAddedCards.AddRange(ResolveRimGift(seed));
-
-            _lastComposedCards = new List<DreamcatcherCard>(_giftBaseCards);
-            _lastComposedCards.AddRange(_giftAddedCards);
-            _deck = new DreamcatcherCycleDeck(_lastComposedCards, seed);
-            _giftDeckComposed = true; // 배치 진입이 이 _deck 을 재사용하도록(review M1)
-            GiftDeckReady?.Invoke();
-        }
-
-        // Gift 우회(직접 배치 진입) 안전 폴백 — 기존 동작 그대로(저장10 + 롤 Active).
-        private void BuildFallbackDeck()
-        {
-            _giftKind = GiftKind.Lucid;
-            _giftBaseCards = ResolveAttachDeck();
-            _giftAddedCards = new List<DreamcatcherCard>();
-            AppendActiveCards(_giftAddedCards);
-            _lastComposedCards = new List<DreamcatcherCard>(_giftBaseCards);
-            _lastComposedCards.AddRange(_giftAddedCards);
+            _baseCards = ResolveAttachDeck();
+            _lastComposedCards = new List<DreamcatcherCard>(_baseCards);
+            AppendActiveCards(_lastComposedCards);
             int seed = GameManager.Instance != null ? GameManager.Instance.MatchSeed : 0;
             _deck = new DreamcatcherCycleDeck(_lastComposedCards, seed);
-        }
-
-        // 림의 선물: 카탈로그의 무의식(Subconscious) 카드에서 시드로 N장. 풀 부족분은
-        // non-Active·non-Subconscious 카드에서 임의 폴백(안전장치, unit 2 저작 후 미발동).
-        // 숨김(visible == 0) 카드는 풀/폴백 양쪽에서 제외(card-visibility unit 4).
-        private List<DreamcatcherCard> ResolveRimGift(int seed)
-        {
-            var pool = new List<DreamcatcherCard>();
-            var fallback = new List<DreamcatcherCard>();
-            if (cardCatalog != null && cardCatalog.cards != null)
-                foreach (var c in cardCatalog.cards)
-                {
-                    if (c == null) continue;
-                    if (c.visible == 0) continue; // 숨김 카드는 선물 풀에서도 제외 (card-visibility unit 4)
-                    if (c.category == CardCategory.Subconscious) pool.Add(c);
-                    else if (c.type != CardType.Active) fallback.Add(c);
-                }
-            int count = giftConfig != null ? giftConfig.rimGiftCount : 2;
-            return GiftDeckComposer.PickRim(pool, fallback, count, seed);
         }
 
         // Saved deck (validated, catalog-resolved) → serialized fallback.
@@ -491,10 +428,10 @@ namespace Wassup.Core
             var ids = new List<string>(cards.Count);
             foreach (var card in cards)
                 if (card != null) ids.Add(card.id);
-            // tournament-deck-info unit 1 — 선물을 뺀 "고른 덱"도 같이 기록한다.
-            // _giftBaseCards 가 ResolveAttachDeck() 결과 = 저장 덱(또는 기본 덱)이다.
-            var baseIds = new List<string>(_giftBaseCards.Count);
-            foreach (var card in _giftBaseCards)
+            // tournament-deck-info unit 1 — 롤된 Active 를 뺀 "고른 덱"도 같이 기록한다.
+            // _baseCards 가 ResolveAttachDeck() 결과 = 저장 덱이다.
+            var baseIds = new List<string>(_baseCards.Count);
+            foreach (var card in _baseCards)
                 if (card != null) baseIds.Add(card.id);
 
             // 머지 해소(2026-07-31): page-local-presets 가 SelectedDeck → CommittedDeck 으로

@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
-  m_Name: Enemy_Skimmer
+  m_Name: Enemy_WaypointAir
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
-  id: skimmer
-  displayName: Skimmer
+  id: waypoint_air
+  displayName: WaypointAir
   traversalLayers: 4
   enemyClass: 3
   attackMethod: 1
@@ -21,8 +21,8 @@ MonoBehaviour:
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
-  minWaveNumber: 4
-  maxPerWave: 2
+  minWaveNumber: 1
+  maxPerWave: 0
   health: 80
   moveSpeed: 2.5
   attackRange: 1

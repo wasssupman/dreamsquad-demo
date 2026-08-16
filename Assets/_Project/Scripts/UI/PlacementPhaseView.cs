@@ -16,7 +16,7 @@ namespace Wassup.UI
         public event System.Action PlacementReady;
 
         [SerializeField] private BattleBridge bridge;
-        // gift-phase (review m2) — draftController 구독은 GiftPhaseView 로 이관되어 미사용,
+        // gift-phase-removal — draftController 구독은 이관 후 미사용,
         // 필드 제거.
         [SerializeField] private GameManager gameManager;
         // DirectionAimController is created at runtime by DefenderSelector, so the

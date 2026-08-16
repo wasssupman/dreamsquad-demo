@@ -85,7 +85,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SubconsciousPool_MatchesCursedGiftRoster()
+        public void SubconsciousPool_MatchesCursedRoster()
         {
             var actual = new List<string>();
             foreach (var card in LoadAllCards())
@@ -171,32 +171,11 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(30, m.payload.tileRange, "받는 피해 감소 %");
         }
 
-        [Test]
-        public void RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious()
-        {
-            // subconscious-curse-expansion unit 4 — 실 카탈로그 풀(6장) 림 추출 통합:
-            // 여러 시드에 걸쳐 항상 서로 다른 2장 + 전부 무의식 + 폴백 미발동, 그리고
-            // 신규 3장이 실제로 추출 가능한지(시드 유니온) 확인.
-            var pool = new List<DreamcatcherCard>();
-            foreach (var card in LoadAllCards())
-                if (card.category == CardCategory.Subconscious) pool.Add(card);
-            Assert.AreEqual(6, pool.Count, "무의식 풀 6장");
-
-            var seenIds = new HashSet<string>();
-            for (int seed = 0; seed < 64; seed++)
-            {
-                var picked = Wassup.Core.GiftDeckComposer.PickRim(pool, null, 2, seed);
-                Assert.AreEqual(2, picked.Count, $"seed {seed}: 2장");
-                Assert.AreNotSame(picked[0], picked[1], $"seed {seed}: 서로 다른 카드");
-                Assert.AreEqual(CardCategory.Subconscious, picked[0].category);
-                Assert.AreEqual(CardCategory.Subconscious, picked[1].category);
-                seenIds.Add(picked[0].id);
-                seenIds.Add(picked[1].id);
-            }
-            Assert.IsTrue(seenIds.Contains("sub_butterfly_dream"), "호접몽 추출 가능");
-            Assert.IsTrue(seenIds.Contains("sub_incubus_pact"), "몽마의 계약 추출 가능");
-            Assert.IsTrue(seenIds.Contains("sub_fattened_offering"), "살찌운 제물 추출 가능");
-        }
+        // gift-phase-removal unit 1 — RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious
+        // 는 삭제됐다. 림의 선물(시드 2장 추출)이 폐지되면서 GiftDeckComposer 자체가
+        // 사라졌기 때문이다. 이 파일이 지키던 나머지 계약 — 무의식 로스터 6장과 카드별
+        // 트리거/페이로드 — 은 위아래 케이스에 그대로 남아 있고, 이제 그 6장은 선물이
+        // 아니라 **저장 덱에 직접 넣어** 판에 들어온다(unit 0).
 
         [Test]
         public void CursedRelicAssets_MatchAuthoredContracts()

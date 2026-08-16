@@ -61,9 +61,9 @@ namespace Wassup.Bridge
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
         [SerializeField] private PlacementPhaseView _placementPhaseView;
-        // gift-phase unit 3 — 재시작도 선물 페이즈를 거친다. 배선되면 BeginGift() 로,
-        // 없으면 기존처럼 곧장 배치로 폴백.
-        [SerializeField] private GiftPhaseView _giftPhaseView;
+        // gift-phase-removal unit 1 — 재시작도 매치 인트로(기믹 리빌)를 거친다. 배선되면
+        // BeginIntro() 로, 없으면 곧장 배치로 폴백.
+        [SerializeField] private Wassup.UI.GimmickPhaseView _gimmickPhaseView;
         [SerializeField] private Wassup.Presentation.SpineUnitPool spineUnitPool;
         // defender-clock-out unit 3 — 퇴근 이탈 연출. 미배선이면 즉시 반납으로 폴백한다
         // (연출은 게임 규칙을 하나도 소유하지 않는다 — 없어도 퇴근은 그대로 성립).
@@ -567,23 +567,23 @@ namespace Wassup.Bridge
             }
         }
 
-        // gift-phase unit 3 — 재시작 진입은 선물 페이즈를 거친다(배선 시). 미배선이면
-        // 기존처럼 곧장 배치로(HandController 가 Placement 에서 폴백 구성).
-        private void EnterPlacementOrGift()
+        // gift-phase-removal unit 1 — 재시작 진입은 매치 인트로(기믹 리빌)를 거친다(배선 시).
+        // 미배선이면 곧장 배치로(HandController 가 Placement 진입에서 덱을 구성한다).
+        private void EnterPlacementOrIntro()
         {
-            if (_giftPhaseView != null) _giftPhaseView.BeginGift();
+            if (_gimmickPhaseView != null) _gimmickPhaseView.BeginIntro();
             else _placementPhaseView?.BeginPlacementPhase();
         }
 
         // result-screen-lobby-exit unit 0 — 결과창 버튼이 "로비로" 가 되면서 호출처가
         // 없다(끊긴 배선이 아니라 의도). 재시작을 되살릴 때 다시 구독하면 되도록
-        // 로직은 남겨둔다. EnterPlacementOrGift / ReLogSkillLoadoutForNewSession 도
+        // 로직은 남겨둔다. EnterPlacementOrIntro / ReLogSkillLoadoutForNewSession 도
         // 이 경로 전용이라 함께 대기 상태다.
         private void OnRestartRequested()
         {
             if (_world == null)
             {
-                EnterPlacementOrGift();
+                EnterPlacementOrIntro();
                 return;
             }
 
@@ -606,7 +606,7 @@ namespace Wassup.Bridge
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
             _resultShown = false;
-            EnterPlacementOrGift();
+            EnterPlacementOrIntro();
         }
 
         private void ReLogSkillLoadoutForNewSession(Logging.BattleLogger logger)
@@ -2333,7 +2333,16 @@ namespace Wassup.Bridge
 
             // waypoint-routing unit 7 — 실제 pending 과 **같은 상세 펼침 결과**에서
             // (스웜 × 실제 lane) 예고를 만든다. 시간·lane 규칙을 별도로 재연산하지 않는다.
-            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries);
+            // waypoint-flight-enemy unit 11 — 예보도 스폰(SpawnUnit → RouteForSpawn)과 같은
+            // 레인 기본 경로를 해석한다. 이걸 빼먹으면 레인 경로 맵(Coil·Zig)에서 가이드만
+            // 최단거리를 그린다(사용자 지적 2026-08-15).
+            int[] laneRoutes = null;
+            if (_generatedMap.IsCreated)
+            {
+                laneRoutes = new int[laneCount];
+                for (int i = 0; i < laneCount; i++) laneRoutes[i] = _generatedMap.RouteForSpawn(i);
+            }
+            _spawnGuideForecast = WavePatternGenerator.BuildSpawnGuideForecasts(entries, laneRoutes);
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");

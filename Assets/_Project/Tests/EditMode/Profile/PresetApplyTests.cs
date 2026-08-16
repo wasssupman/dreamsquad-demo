@@ -264,18 +264,21 @@ namespace Wassup.Tests.EditMode.Profile
         }
 
         [Test]
-        public void FilterCards_DropsHidden_Subconscious_Duplicates_Unresolved()
+        public void FilterCards_DropsHidden_Duplicates_Unresolved()
         {
             var catalog = CardCatalog(
                 Card("c_ok"),
                 Card("c_hidden", visible: 0),
-                Card("c_gift", category: CardCategory.Subconscious));
+                Card("c_sub", category: CardCategory.Subconscious));
 
             var kept = PresetApply.FilterCards(
-                new[] { "c_ok", "c_hidden", "c_gift", "c_ok", "c_GHOST" }, catalog, out int dropped);
+                new[] { "c_ok", "c_hidden", "c_sub", "c_ok", "c_GHOST" }, catalog, out int dropped);
 
-            CollectionAssert.AreEqual(new[] { "c_ok" }, kept);
-            Assert.AreEqual(4, dropped);
+            // gift-phase-removal unit 0 — 무의식은 **더 이상 제외되지 않는다**. 선물 전용
+            // 카드였을 땐 여기서 떨어뜨렸지만 이제 일반 덱 카드라, 남는 제외 사유는
+            // 숨김·중복·미해석 셋뿐이다. 이 단언이 그 승격의 회귀 가드다.
+            CollectionAssert.AreEqual(new[] { "c_ok", "c_sub" }, kept);
+            Assert.AreEqual(3, dropped);
         }
 
         // ---- 공통 경계 -------------------------------------------------------

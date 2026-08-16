@@ -10,8 +10,8 @@ namespace Wassup.UI
     // dreamcatcher-deck-page unit 1 — the right 2/3 collection grid. Card cells
     // (art + category frame + name + deck-count badge). Mirrors SquadRosterBrowser's
     // scroll/grid machinery; the difference is a COUNT badge (a card may sit in the
-    // deck multiple times) instead of a boolean. Subconscious filtering is the
-    // caller's job (only non-addable cards are passed in).
+    // deck multiple times) instead of a boolean. 어떤 카드를 보여줄지는 호출측이
+    // 정한다 — 이 뷰는 넘겨받은 목록을 그리기만 한다.
     public class DreamcatcherCardBrowser : MonoBehaviour
     {
         [SerializeField] private TMP_FontAsset font;

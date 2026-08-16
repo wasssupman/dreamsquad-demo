@@ -19,14 +19,30 @@ namespace Wassup.UI
     // 3비트 ~2초: ① 도장(딤+틴트+아이콘) → ② 명명(룰 라벨+정서 카피) → ③ 한 줄 후 퇴장.
     // 끝나면 흔적 없이 사라진다 — 배치 화면에 기믹 UI 를 남기지 않는 게 계약이다.
     //
-    // 진입은 GiftPhaseView.ProceedToPlacement() 단일 퍼널에서만. 스타일 선례는 BossWarningView.
+    // gift-phase-removal unit 1 — **매치 인트로의 진입 소유자**. 예전엔 선물 페이즈가
+    // 진입 신호를 받아 연출을 돌린 뒤 이 뷰를 불렀지만, 선물이 폐지되면서 그 신호를
+    // 직접 받는다: PlacementRequested(실전 경로는 SquadPrepView 의 MAP SETUP 확정) 와
+    // 재시작(BattleBridge). 연출이 끝나거나 스킵되면 스스로 배치를 시작한다.
+    // 스타일 선례는 BossWarningView.
     public class GimmickPhaseView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
         [SerializeField] private GimmickRevealConfig config;
         [Tooltip("첫 판 판정용. 미배선이면 fail-open — 리빌은 정상 재생된다.")]
         [SerializeField] private PlayerProfileSO profileSO;
-        [Tooltip("선물 연출(30)과 배치 HUD(7) 사이.")]
+        [Tooltip("리빌이 끝나면 이 뷰가 직접 배치를 시작한다. 미배선이면 배치에 도달하지 못한다.")]
+        [SerializeField] private PlacementPhaseView placementPhaseView;
+        // gift-phase-removal (리뷰 C1) — 레거시 draft 진입도 배치로 이어져야 한다. 삭제한
+        // GiftPhaseView 가 이 신호도 구독하고 있었는데 그걸 안 가져와서, 드래프트 확정이
+        // 배치에 도달하지 못하는 dead end 가 생겼다(DraftConfirmed 의 다른 구독자는
+        // 자기 UI 를 숨기는 DraftView 뿐이다).
+        //
+        // 드래프트를 되살리는 게 아니라 **끊긴 경로를 잇는 것**이다. 기능 자체의 제거는
+        // 범위가 크다 — 코드 7파일 · 참조 12곳 · 직렬화된 GamePhase.Draft 재마이그레이션,
+        // 그리고 BattleScene 을 직접 로드하는 PlayMode 테스트 48개가 이 진입 분기의
+        // PrepareDraftMap() 으로 맵이 서는 데 의존한다. 별도 spec 감이다(사용자 결정 2026-08-16).
+        [SerializeField] private DraftController draftController;
+        [Tooltip("배치 HUD(7) 위.")]
         [SerializeField] private int sortingOrder = 20;
         [Tooltip("월드 VFX 를 카메라 앞 몇 미터에 띄울지.")]
         [SerializeField] private float vfxCameraDistance = 6f;
@@ -52,7 +68,7 @@ namespace Wassup.UI
         private Sequence _seq;
         private float _startedAt;
         // first-session-tutorial unit 24 — 튜토리얼 홀드. 진입 시 캐시하고 연출 도중 재평가하지
-        // 않는다(선물 unit 7 선례). `_holding` 이 해제의 단일 가드다 — 탭과 만료 폴백이
+        // 않는다. `_holding` 이 해제의 단일 가드다 — 탭과 만료 폴백이
         // 경쟁하므로, 먼저 진입한 쪽이 이걸 내려 두 번째를 막는다.
         private bool _tutorialMode;
         private bool _holding;
@@ -73,10 +89,41 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
+        // 구독 대상은 enable 시점에 **해석해서 캐시**한다. enable/disable 이 각각
+        // `gameManager ?? Instance` 를 다시 풀면 두 시점에 다른 객체로 해석될 여지가 남는다
+        // (지금 씬 배선에서는 도달 불가지만, 구독 누수는 그 여지 자체를 없애는 게 싸다).
+        private GameManager _subscribedManager;
+
+        private void OnEnable()
+        {
+            _subscribedManager = gameManager != null ? gameManager : GameManager.Instance;
+            if (_subscribedManager != null) _subscribedManager.PlacementRequested += BeginIntro;
+            if (draftController != null) draftController.DraftConfirmed += BeginIntro;
+        }
+
         // 뷰가 꺼져도 콜백은 반드시 나간다 — 유실되면 배치 페이즈가 영영 시작되지 않는다.
         // 이 유닛의 단일 최대 위험이라 teardown 경로를 전부 여기로 모은다.
         private void OnDisable()
         {
+            if (_subscribedManager != null) _subscribedManager.PlacementRequested -= BeginIntro;
+            _subscribedManager = null;
+            if (draftController != null) draftController.DraftConfirmed -= BeginIntro;
+            // 씬 언로드 / 앱 종료면 시작할 배치가 없다. Finish 를 통째로 태우지 않는 이유는
+            // 그게 만지는 것들(_panel · placementPhaseView · VFX 인스턴스)이 이미 파괴 중일
+            // 수 있어서다(리뷰 M2).
+            //
+            // ⚠ 그래도 **시퀀스는 반드시 멈춘다.** 여기서 조기 return 만 하면 살아있는
+            // 시퀀스가 pending OnComplete(ChainCallback = 0초 Delay + 콜백)를 문 채 파괴돼
+            // PrimeTween 이 "OnComplete callback was ignored" 를 에러로 찍는다. 실제로
+            // 이 경로에서 재현됐다 — 배치를 시작하지 않는 것과 트윈을 정리하는 것은 별개다.
+            if (!gameObject.scene.isLoaded)
+            {
+                _onDone = null;
+                _holding = false;
+                _tutorialMode = false;
+                if (_seq.isAlive) _seq.Stop();
+                return;
+            }
             if (_onDone != null) Finish(stopSeq: true);
         }
 
@@ -92,31 +139,36 @@ namespace Wassup.UI
 
         // unit 24 — 튜토리얼 홀드 seam. 문구는 구독자(FirstSessionTutorialController) 소관이고
         // 이 뷰는 문구를 모른다. 구독자가 없어도 탭 진행은 뷰 단독으로 동작한다.
-        // 홀드가 하나뿐이라 선물의 GiftTutorialHold 같은 enum 은 두지 않는다.
+        // 홀드가 하나뿐이라 종류를 가르는 enum 은 두지 않는다.
         public event Action TutorialHoldEntered;
         public event Action TutorialHoldReleased;
 
-        /// 선물 페이즈가 배치로 넘어가기 직전에 호출. onDone 은 어떤 경로로든 정확히 한 번 불린다.
-        public void BeginReveal(Action onDone)
+        /// 매치 인트로 진입점. 진입 신호(PlacementRequested / 재시작)가 직접 부른다.
+        /// 리빌을 재생하든 스킵하든 **어떤 경로로든 정확히 한 번** 배치를 시작한다 —
+        /// `_onDone` 이 그 보장의 주체이고, 이 클래스의 단일 최대 위험이라 구조를 지킨다.
+        public void BeginIntro()
         {
             // 재진입(이전 리빌이 아직 살아있음) — 앞 것을 먼저 닫아 콜백을 흘리지 않는다.
             if (_onDone != null) Finish(stopSeq: true);
-            _onDone = onDone;
+            if (placementPhaseView == null)
+            {
+                Debug.LogError("[GimmickPhaseView] placementPhaseView 미배선 — 배치 페이즈에 도달할 수 없다.", this);
+                return;
+            }
+            _onDone = placementPhaseView.BeginPlacementPhase;
 
             var gm = gameManager != null ? gameManager : GameManager.Instance;
             var gimmick = gm != null ? gm.AssignedGimmick : null;
 
-            // 스킵 — 페이즈 전이 없이 즉시 배치로. 첫 판 판정을 여기서 하는 이유:
-            // 훅 지점(ProceedToPlacement)이 튜토리얼 스킵 경로까지 삼키는 퍼널이라
-            // GiftPhaseView 의 판정만으로는 이 리빌이 뚫고 나온다.
+            // 스킵 — 페이즈 전이 없이 즉시 배치로. 첫 판(core 튜토리얼 진행 중)은 배치·각성
+            // 학습에 집중시키고 리빌을 보여주지 않는다(gimmick-recognition-upgrade 의 결정 유지).
             if (gimmick == null || config == null || TutorialProgress.ShouldRunCore(profileSO))
             {
                 Finish(stopSeq: false);
                 return;
             }
 
-            // unit 24 — 구독자가 없으면 홀드하지 않는다. 선물(unit 7)은 "구독자 없어도 뷰 단독
-            // 진행" 이지만 여기선 그러면 안 된다: 완료 저장의 주인이 구독자라, 미배선 상태에서
+            // unit 24 — 구독자가 없으면 홀드하지 않는다: 완료 저장의 주인이 구독자라, 미배선 상태에서
             // 홀드하면 문구 없는 정지가 **매 판** 반복된다(저장할 사람이 없으니 영원히 pending).
             // 참조 누락은 "안내 생략" 으로 떨어지는 것이 이 프로젝트의 fail-open 계약이다.
             _tutorialMode = TutorialHoldEntered != null &&
@@ -198,7 +250,7 @@ namespace Wassup.UI
             if (_onDone == null) return; // 이미 정리된 뒤 도착한 콜백
             _holding = true;
             // grace 를 오탭 debounce 로 재사용한다 — 홀드 진입 순간의 잔여 탭이 문구를
-            // 읽기도 전에 소진시키는 걸 막는다(선물 unit 7 과 같은 처리).
+            // 읽기도 전에 소진시키는 걸 막는다.
             _holdStartedAt = Time.unscaledTime;
             _startedAt = _holdStartedAt;
             TutorialHoldEntered?.Invoke();
@@ -232,10 +284,10 @@ namespace Wassup.UI
         private void OnPanelTapped()
         {
             if (_onDone == null) return;
-            // grace — 연출 시작 직후 오탭이 통째로 날리는 걸 막는다(GiftPhaseView 선례).
+            // grace — 연출 시작 직후 오탭이 통째로 날리는 걸 막는다.
             if (config != null && Time.unscaledTime - _startedAt < config.tapSkipGraceSec) return;
             // unit 24 — 튜토리얼 모드에서 탭은 **홀드 중일 때만** 진행시킨다. 홀드 전 탭이
-            // 연출을 통째로 날리면 읽을 것이 사라진다(기존 탭 스킵 비활성 — 선물과 같은 결정).
+            // 연출을 통째로 날리면 읽을 것이 사라진다.
             if (_tutorialMode)
             {
                 ReleaseTutorialHold();
@@ -257,7 +309,16 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
             var callback = _onDone;
             _onDone = null;
-            callback?.Invoke();
+            // gift-phase-removal unit 1 — ⚠ `?.` 는 **델리게이트가 null 인지**만 본다. 대상
+            // MonoBehaviour 가 이미 파괴됐어도 델리게이트는 살아 있어서 그대로 호출되고,
+            // 씬 teardown(OnDisable → Finish) 에서 MissingReferenceException 이 난다
+            // (프로젝트 lessons 의 `?.` fake-null 함정). 대상 생존은 Unity 의 ==
+            // 연산자로 따로 확인한다 — `_onDone` 은 항상 placementPhaseView 의 메서드다
+            // (BeginIntro 가 그렇게만 세팅하고, 미배선이면 진입 자체를 거절한다).
+            //
+            // 씬이 내려가는 중이라면 시작할 배치도 없으므로 호출하지 않는 것이 옳다.
+            // "정확히 한 번" 계약은 여전히 지켜진다 — 위에서 _onDone 을 먼저 비웠다.
+            if (callback != null && placementPhaseView != null) callback.Invoke();
         }
 
         private void Populate(GimmickData g)
@@ -528,7 +589,7 @@ namespace Wassup.UI
 
         private static Color WithAlpha(Color c, float a) => new Color(c.r, c.g, c.b, a);
 
-        // 풀블리드 딤에 붙는 경량 탭 캐처(GiftPhaseView 선례).
+        // 풀블리드 딤에 붙는 경량 탭 캐처.
         private sealed class TapCatcher : MonoBehaviour, IPointerClickHandler
         {
             public Action Clicked;

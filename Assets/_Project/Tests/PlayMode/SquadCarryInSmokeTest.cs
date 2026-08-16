@@ -69,10 +69,14 @@ namespace Wassup.Tests.PlayMode
             // player presses START to advance. Simulate that here.
             Assert.AreNotEqual(GamePhase.Draft, gm.CurrentPhase, "squad mode skips draft");
             gm.RequestPlacement();
-            yield return null;
-            yield return null;
+            // gift-phase-removal unit 1 — 매치 진입은 기믹 리빌을 거친다(기믹이 배정된
+            // 경우). 리빌은 수 초 돌므로 프레임 2개로는 못 기다린다. 이 스모크의 계약은
+            // "squad 반입이 결국 배치에 닿는다" 이므로 도달까지 기다린다.
+            float deadline = Time.realtimeSinceStartup + 25f; // 튜토리얼 홀드 폴백 20s 보다 커야 한다(리뷰 H1)
+            while (gm.CurrentPhase != GamePhase.Placement && Time.realtimeSinceStartup < deadline)
+                yield return null;
             Assert.AreEqual(GamePhase.Placement, gm.CurrentPhase,
-                "after map-setup START, squad mode enters Placement");
+                "after map-setup START, squad mode enters Placement (기믹 리빌을 거쳐서라도)");
         }
     }
 }

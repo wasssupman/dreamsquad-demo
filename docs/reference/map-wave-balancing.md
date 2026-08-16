@@ -115,7 +115,8 @@ floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이
 - **같은 컨셉이 두 블록 연속으로 안 나온다**(직전 배제). 풀에 컨셉이 1개뿐이면 배제를 풀어 fail-open.
 - **`countMul` 이 필요한 이유**: 곡선은 **개체 수**를 내므로 성질을 통일하면 난이도가 성질에 끌려간다(Runner 20hp × 19 = 380 vs Tanker 100hp × 19 = 1,900 — 5배).
 - **비행은 「공습」에서만 나온다.** 성질 컨셉은 전부 `altitude = Ground` 를 명시한다 — 고도와 성질은 직교하므로(Shooter 이면서 비행인 적이 있다) 명시하지 않으면 지상 컨셉에 대공 없이 못 잡는 적이 섞인다.
-- **뭉침은 저작으로 만든다.** 스폰 시 속도를 덮어쓰지 않고(코어 로직 불침범), 슬롯의 `classFilter` 가 속도 폭이 좁은 후보만 남기게 저작한다(Tanker 1종 = 1.5 단일, Air 1종 = 2.5 단일, Runner 2종 = 4.5·5.6).
+- **뭉침은 저작으로 만든다.** 스폰 시 속도를 덮어쓰지 않고(코어 로직 불침범), 슬롯의 `classFilter` 가 속도 폭이 좁은 후보만 남기게 저작한다(Tanker 1종 = 1.5 단일, Air 2종 = 2.0·2.5 폭 0.5, Runner 2종 = 4.5·5.6).
+- **컨셉 게이트와 로스터 게이트를 맞춰라.** 컨셉이 열리는 웨이브에 필터 통과 후보가 슬롯 수보다 적으면 중복 픽이 `maxPerWave` 를 슬롯 수만큼 곱한다(공습 w4~7 Dragon×2 사고 — wave-concept-blocks unit 8). `ConceptSlots_HaveEnoughDistinctCandidates_AtTheirGateWave` 가 에셋만으로 가드한다. Skimmer 게이트는 8→**4**(공습 게이트와 정렬, 2026-08-15).
 - **컨셉 풀을 비우면 현행 동작(랜덤 2종·전 lane 분산)으로 폴백**한다 — rng 소비 순서까지 동일한 무회귀 경로다.
 - ⚠ **엘리트를 `Tanker` 로 저작하면 안 된다**(elite-whirlpot unit 2, 2026-08-14). 「중장」이 **유일한 1슬롯 컨셉**이고 Tanker 만 필터하는데, 엘리트는 `maxPerWave 1` 이 강제되므로(`EliteWaves_DoNotCollapseToASingleUnit`) 그 슬롯에 뽑히는 순간 **웨이브 전체가 1기로 붕괴**한다. 슬라임(Bruiser)·드래곤(Shooter)이 무사한 것은 구조 덕이다 — 어떤 컨셉도 `Bruiser` 를 필터하지 않고 Shooter 를 쓰는 「원거리」는 슬롯이 2개다. 신규 엘리트는 **`Bruiser` 또는 `Shooter`** 로 저작하고, 1슬롯 컨셉을 새로 만들 땐 그 필터에 엘리트가 들어올 수 있는지 먼저 볼 것.
 
@@ -136,6 +137,9 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 - **`waveSeed` 를 0 으로 만들면 매판 달라진다 — 절대 금지.** (실증: 각 덱 3회 생성 시 유닛·수량까지 완전 일치.)
 - 매판 랜덤인 건 "**어느 맵이 나오냐**"(`fixedMapSeed=0`)뿐. 특정 맵이 나오면 그 맵 웨이브는 항상 같음.
 - 새 맵/덱 추가 시에도 **덱 waveSeed 를 비0 유니크 값**으로.
+- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 라이브 덱 동일 값, 현재 6). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)가 숫자를 하드코딩하므로 **같은 커밋에서** 갱신한다.
+
+⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WavePatternGenerator`·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
 
 ---
 

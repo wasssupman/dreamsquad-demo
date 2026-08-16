@@ -24,8 +24,8 @@ namespace Wassup.Data
 
     // dreamcatcher-deck-builder Unit 0 — deck-rule category (deck cap RETIRED, now
     // on CardType.Squad). Reused as a concept label: dreamcatcher-squad-warmup adds
-    // Subconscious(무의식). deck-builder no longer colors/labels by this (dormant for
-    // frame color); a card may still declare its concept here. Append at end.
+    // Subconscious(무의식). 덱 **규칙** 소비처는 없지만 dormant 가 아니다 — CardCategoryStyle
+    // 이 보라 프레임 / 아트 폴백 / "무의식" 칩을 이 값으로 키잉한다. Append at end.
     public enum CardCategory { Normal, Unique, Subconscious }
 
     // dreamcatcher-card-taxonomy — Squad(축 스탯 버프) / Unit(개별 부착 메커니즘).
@@ -63,10 +63,11 @@ namespace Wassup.Data
         // 백필하지 않는다(id 처럼 비면 매칭이 깨지는 키가 아니라 기본값이 곧 정답).
         public int visible = 1;
         public CardTargetAxis axis;
-        // deck-builder no longer keys deck rules on this (that moved to CardType), but it
-        // is load-bearing: DeckBuilderView reads category==Subconscious for the 무의식
-        // frame/art-fallback color, and gift-phase uses it for the Rim(림의 선물) 풀 필터 +
-        // 덱빌더 제외.
+        // deck-builder no longer keys deck rules on this (that moved to CardType).
+        // gift-phase-removal unit 0 — 림의 선물이 폐지되면서 마지막 **규칙** 소비처(Rim 풀
+        // 필터 + 덱빌더 제외)도 사라졌다. 이제 이 필드는 순수한 **시각 라벨**이다:
+        // CardCategoryStyle 이 Subconscious 를 보라 프레임 + "무의식" 칩으로 그린다.
+        // 덱에 넣을 수 있는지는 오직 DeckRules(10장 · Squad ≤2)와 visible 이 정한다.
         public CardCategory category = CardCategory.Normal;
         public CardEffect[] effects; // usually 1; fortress has 2
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck

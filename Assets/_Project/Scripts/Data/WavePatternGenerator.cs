@@ -564,8 +564,15 @@ namespace Wassup.Data
 
         // waypoint-routing unit 7 — 상세 펼침에서 (스웜, 실제 lane)별 첫 스폰을 접는다.
         // lane 하나로 접지 않으므로 같은 lane 의 서로 다른 스웜은 별도 가이드로 남는다.
+        //
+        // waypoint-flight-enemy unit 11 — laneRoutes(레인별 기본 경로, 미지정 -1)를 옵셔널로 받아
+        // SO 저작과 **스폰과 같은 규칙**(WaypointRouting.ResolvePathIndex — SO > 레인 기본)으로
+        // 합친다. SpawnGuideForecast 의 다른 필드(laneIndex·traversalLayers)는 전부 해석된 런타임
+        // 값인데 waypointPathIndex 만 날 SO 값이었던 비대칭이 「가이드는 최단거리, 유닛은 웨이포인트」
+        // 버그의 정체다. 생성기는 Data 레이어라 맵을 모르므로 호출측(QueueWave)이 배열로 주입한다.
         public static SpawnGuideForecast[] BuildSpawnGuideForecasts(
-            IReadOnlyList<ExpandedWaveSpawn> entries)
+            IReadOnlyList<ExpandedWaveSpawn> entries,
+            IReadOnlyList<int> laneRoutes = null)
         {
             var result = new List<SpawnGuideForecast>();
             if (entries == null) return Array.Empty<SpawnGuideForecast>();
@@ -585,11 +592,16 @@ namespace Wassup.Data
                         break;
                     }
 
+                int laneDefault = laneRoutes != null
+                    && expanded.laneIndex >= 0 && expanded.laneIndex < laneRoutes.Count
+                    ? laneRoutes[expanded.laneIndex]
+                    : -1;
                 var forecast = new SpawnGuideForecast(
                     expanded.swarmIndex,
                     expanded.laneIndex,
                     entry.triggerTimeSec,
-                    entry.unitType.waypointPathIndex,
+                    Wassup.Battle.Movement.WaypointRouting.ResolvePathIndex(
+                        entry.unitType.waypointPathIndex, laneDefault),
                     (byte)entry.unitType.EffectiveTraversalLayers);
                 if (existing < 0)
                 {

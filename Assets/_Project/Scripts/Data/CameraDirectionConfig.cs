@@ -178,7 +178,10 @@ namespace Wassup.Data
         public float breathRotAmp = 0.06f;
         [Tooltip("합성 파동(주기+시작위상+축 가중). 비우면 브리딩 끔. 주기를 비정수비로 두면 반복이 덜 보인다.")]
         public CameraBreathWave[] breathWaves = System.Array.Empty<CameraBreathWave>();
-        [Tooltip("브리딩이 켜지는 페이즈 (기본 Draft/Placement/Battle — Gift/Result 는 자체 연출과 간섭 방지).")]
+        // gift-phase-removal unit 1 — ⚠ 이 배열은 **enum 값이 직렬화**된다(에셋에 정수로 박힌다).
+        // GamePhase 에서 값을 빼거나 순서를 바꾸면 저장된 정수의 의미가 밀리므로,
+        // 반드시 CameraDirectionConfig.asset 의 breathPhases 도 같은 커밋에서 마이그레이션한다.
+        [Tooltip("브리딩이 켜지는 페이즈 (기본 Draft/Placement/Battle — Result 는 자체 연출과 간섭 방지).")]
         public Wassup.Core.GamePhase[] breathPhases =
         {
             Wassup.Core.GamePhase.Draft,

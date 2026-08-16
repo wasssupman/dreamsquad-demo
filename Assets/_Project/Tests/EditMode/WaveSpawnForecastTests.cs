@@ -159,6 +159,54 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual((byte)PlacementLayer.Ground, guides[1].traversalLayers);
         }
 
+        // waypoint-flight-enemy unit 11 — 예보의 경로 해석 = 스폰의 경로 해석.
+        // (SO 저작 > 레인 기본 > 최단거리) 우선순위를 WaypointRouting.ResolvePathIndex 로 공유한다.
+        [Test]
+        public void LaneDefaultRoute_ResolvesIntoForecast_WhenUnitHasNoAuthoredPath()
+        {
+            _a.waypointPathIndex = -1;
+            var wave = new GeneratedWave(0, 0f, new[] { new WaveSpawnGroup(_a, 3) });
+            var detailed = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.25f);
+
+            var guides = WavePatternGenerator.BuildSpawnGuideForecasts(detailed, new[] { 2, -1 });
+
+            Assert.AreEqual(2, guides.Length);
+            Assert.AreEqual(0, guides[0].laneIndex);
+            Assert.AreEqual(2, guides[0].waypointPathIndex, "레인 0 은 기본 경로 2 를 실어야 한다");
+            Assert.AreEqual(1, guides[1].laneIndex);
+            Assert.AreEqual(-1, guides[1].waypointPathIndex, "레인 1 은 미지정(-1) 그대로");
+        }
+
+        [Test]
+        public void AuthoredUnitPath_BeatsLaneDefaultRoute()
+        {
+            _a.waypointPathIndex = 0;   // 종의 정체성(예: Skimmer Air 경로)이 레인 기본을 이긴다
+            var wave = new GeneratedWave(0, 0f, new[] { new WaveSpawnGroup(_a, 2) });
+            var detailed = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.25f);
+
+            var guides = WavePatternGenerator.BuildSpawnGuideForecasts(detailed, new[] { 2, 2 });
+
+            Assert.AreEqual(2, guides.Length);
+            Assert.AreEqual(0, guides[0].waypointPathIndex);
+            Assert.AreEqual(0, guides[1].waypointPathIndex);
+        }
+
+        [Test]
+        public void NoLaneRoutes_KeepsShortestPathMarker()
+        {
+            _a.waypointPathIndex = -1;
+            var wave = new GeneratedWave(0, 0f, new[] { new WaveSpawnGroup(_a, 2) });
+            var detailed = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.25f);
+
+            // null(미주입)과 짧은 배열(레인 수 부족) 모두 예외 없이 -1 로 남는다.
+            var noRoutes = WavePatternGenerator.BuildSpawnGuideForecasts(detailed);
+            var shortRoutes = WavePatternGenerator.BuildSpawnGuideForecasts(detailed, new[] { -1 });
+
+            Assert.AreEqual(-1, noRoutes[0].waypointPathIndex);
+            Assert.AreEqual(-1, noRoutes[1].waypointPathIndex);
+            Assert.AreEqual(-1, shortRoutes[1].waypointPathIndex, "배열 밖 레인은 -1 폴백");
+        }
+
         [Test]
         public void OneSwarmAcrossLanes_GetsGuidePerActualLane()
         {

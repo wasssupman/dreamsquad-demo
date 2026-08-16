@@ -8,8 +8,11 @@ namespace Wassup.UI
 {
     // dreamcatcher-deck-page unit 3 — orchestrator. Owns the detail view, card
     // browser and deck strip and drives the working deck. Feature parity with the
-    // retired DreamcatcherDeckBuilderView: add(cap)/remove/duplicates, Subconscious
-    // excluded from the add pool (removable if already in deck).
+    // retired DreamcatcherDeckBuilderView: add(cap)/remove/duplicates.
+    //
+    // gift-phase-removal unit 0 — Subconscious 는 더 이상 풀에서 빠지지 않는다. 선물
+    // 전용이라 제외했던 것인데 림의 선물이 폐지되면서 일반 덱 카드가 됐다. 이제 덱 규칙
+    // (DeckRules: 10장 · Squad ≤2)만이 무엇을 넣을 수 있는지 결정한다.
     //
     // page-local-presets unit 4 — **편집은 더 이상 즉시 저장되지 않는다.** 예전 주석의
     // "Edits persist immediately" 는 폐기됐다: 편집은 작업본만 바꾸고 [저장]이 유일한
@@ -33,7 +36,7 @@ namespace Wassup.UI
         [NonSerialized] internal Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
 
         private readonly List<string> _working = new List<string>();
-        private readonly List<DreamcatcherCard> _pool = new List<DreamcatcherCard>(); // addable (non-Subconscious)
+        private readonly List<DreamcatcherCard> _pool = new List<DreamcatcherCard>(); // addable (visible cards)
         private string _selectedCardId; // grid/deck 어느 쪽을 눌러도 이 카드가 상세 대상
         private bool _wired;
 
@@ -103,7 +106,6 @@ namespace Wassup.UI
             {
                 var c = catalog.ById(id);
                 if (c == null) continue;
-                if (c.category == CardCategory.Subconscious) continue; // gift-phase only, not addable
                 // dreamcatcher-card-visibility unit 1 — 시트에서 숨긴 카드. _pool 이 곧
                 // 그리드 소스이자 추가 가능 목록이라 이 한 줄이 "보이지도, 넣을 수도 없다"를
                 // 동시에 만든다. 이미 덱에 있는 숨김 카드를 여기서 빼지는 않는다 — 페이지
@@ -114,7 +116,7 @@ namespace Wassup.UI
         }
 
         // unit 6 — deck cards first (deck order, matching the strip; pool members
-        // only, so Subconscious stays out of the grid), the rest in catalog order.
+        // only, so hidden cards stay out of the grid), the rest in catalog order.
         // Re-shown on every deck edit so the invariant holds live. The seen set
         // collapses duplicate ids from legacy saved decks to one cell.
         private List<DreamcatcherCard> SortedPool()
@@ -408,7 +410,7 @@ namespace Wassup.UI
 
         // deck-info-preset-apply unit 4 — 예약 소비(스쿼드 컨트롤러와 동형). 적용 = 생성 +
         // 작업본 세팅, 저장이 아니다. 카드는 AddCard 를 거치지 않는다 — 필터가 이미 CanAdd
-        // 와 같은 규칙(상한·타입 제한·중복·숨김·Subconscious)을 적용했고, AddCard 는 매
+        // 와 같은 규칙(상한·타입 제한·중복·숨김)을 적용했고, AddCard 는 매
         // 장마다 브라우저 재정렬과 RefreshAll 을 돈다(10장이면 10번).
         private void ApplyStaged(PresetApply.Request req)
         {

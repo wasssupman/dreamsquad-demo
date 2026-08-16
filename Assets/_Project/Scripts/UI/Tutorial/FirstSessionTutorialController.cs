@@ -69,7 +69,6 @@ namespace Wassup.UI.Tutorial
                 guidance.ContinueTapped += OnContinueTapped;
             }
             SubscribeAwakening();
-            SubscribeGift();
             SubscribeGimmickReveal();
         }
 
@@ -91,7 +90,6 @@ namespace Wassup.UI.Tutorial
                 guidance.ContinueTapped -= OnContinueTapped;
             }
             UnsubscribeAwakening();
-            UnsubscribeGift();
             UnsubscribeGimmickReveal();
             UnsubscribeDrag();
             EndCore(restoreNormalPlacement: true);

@@ -7,17 +7,21 @@ using Wassup.Logging;
 
 namespace Wassup.Core
 {
-    // gift-phase unit 0 — Gift 를 Placement 앞에 삽입(선물 페이즈=배치 직전).
-    // 직렬화 필드/순서비교 없음(전부 == 비교)이라 정수 시프트 무해.
-    // score-tally-sequence unit 1 — Tally 는 Battle 과 Result 사이의 결과 연출 구간이다.
-    // 흐름상으론 Battle 다음이지만 **값은 반드시 맨 뒤**에 둔다: CameraDirectionConfig 의
-    // CameraPhasePose.phase / breathPhases 가 이 enum 을 int 로 직렬화하고 있어
-    // (Assets/_Project/Data/Camera/CameraDirectionConfig.asset — phase: 1/3/4/5),
-    // 중간에 끼우면 Result 가 5→6 으로 밀려 카메라 설정이 통째로 어긋난다.
-    // 그래서 값 순서 != 시간 순서다. Tally 는 Battle 뒤에, Gimmick 은 Gift 와 Placement
-    // 사이에 일어나지만 둘 다 맨 뒤에 붙는다. 전 코드가 == 비교라 순서 의존은 없다.
+    // ⚠ **이 enum 은 int 로 직렬화된다.** CameraDirectionConfig 의 CameraPhasePose.phase 와
+    // breathPhases 가 값을 에셋에 정수로 박아 둔다
+    // (Assets/_Project/Data/Camera/CameraDirectionConfig.asset — phase: 1/2/3/4).
+    // 값을 빼거나 중간에 끼우면 저장된 정수의 의미가 통째로 밀리므로, **같은 커밋에서
+    // 그 에셋도 마이그레이션**해야 한다.
+    //
+    // score-tally-sequence unit 1 — Tally 는 Battle 과 Result 사이의 결과 연출 구간이고
+    // Gimmick 은 Placement 앞이지만, 둘 다 **값은 맨 뒤**에 붙인다(위 직렬화 때문).
+    // 그래서 값 순서 != 시간 순서다. 전 코드가 == 비교라 순서 의존은 없다.
     // 미등록 페이즈는 CameraDirector 가 hold 로 처리하므로 포즈 엔트리도 필요 없다.
-    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result, Tally, Gimmick }
+    //
+    // gift-phase-removal unit 1 — Gift 제거(값 2). 뒤 값이 한 칸씩 당겨졌고 위 에셋의
+    // phase 4개 + breathPhases 3개를 같은 커밋에서 옮겼다. "직렬화 없음" 이라던 옛 주석은
+    // 틀렸다 — 이 경고가 그 대체물이다.
+    public enum GamePhase { None, Draft, Placement, Battle, Result, Tally, Gimmick }
 
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
@@ -156,6 +160,14 @@ namespace Wassup.Core
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 60;
         }
+
+        // gift-phase-removal unit 1 (리뷰 H2) — PrimeTween 동시 트윈 풀 예약. 원래 이 한 줄은
+        // GiftPhaseView.Awake 에 있었는데, 그 값이 선물 연출을 위해 잡혔을 뿐 효과는
+        // **프로세스 전역**이라(전투 데미지 넘버·VFX·HUD juice 가 같은 풀을 쓴다) 뷰와 함께
+        // 지우면 남은 소비처들이 기본값 200 을 넘길 때 런타임 리사이즈(1회 GC 할당 + 경고)를
+        // 맞는다. 전역 관심사이므로 프레임 캡과 같은 앱 시작 훅으로 옮겨 둔다.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ReserveTweenCapacity() => PrimeTween.PrimeTweenConfig.SetTweensCapacity(400);
 
         private void Awake()
         {
