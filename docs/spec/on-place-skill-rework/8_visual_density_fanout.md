@@ -76,7 +76,7 @@ flightTime = telegraph + cellSlot*stagger + (j==0 ? 0 : stagger*(1 - 1/(j+1)))
 ## 완료 기준
 
 - [x] compile 0 error (2026-08-16)
-- [ ] PlayMode `OnPlaceSkyStrikeTest`
+- [x] PlayMode `OnPlaceSkyStrikeTest` **5/5 green** (2026-08-16, 18.6s)
   - **같은 칸 2기 → 각자 정확히 저작 피해**(160 아님) — unit 1 리뷰가 잡은 과피해 회귀 핀,
     절대 약화 금지
   - **같은 칸 2기 → 스폰된 투사체 2발**(1발 아님) — 이 unit 의 핵심 단언
@@ -84,6 +84,24 @@ flightTime = telegraph + cellSlot*stagger + (j==0 ? 0 : stagger*(1 - 1/(j+1)))
 - [ ] EditMode `ProjectileSystemTests` · `ProjectileEmitterIntegrationTests` ·
       `PathHitRehitCooldownTests` 등 기존 투사체 핀 green (임자 게이트가 target 없는 기존
       TileAoe 를 건드리지 않았다는 증거)
+
+### ⚠ 이 테스트는 «판 위 남의 공격원» 을 같이 재고 있었다 (2026-08-16)
+
+처음 돌렸을 때 5개가 전부 빨갰다. **제품 결함이 아니었다** — 제품 코드 3개를 직전 커밋으로
+되돌려도 같은 5개가 같은 값(40·100·20)으로 실패했다. 통제 실험으로 가른 pre-existing 부패다.
+
+깨진 전제는 「판 위 적은 내 더미뿐 · 투사체는 내 미사일뿐」이었다:
+
+- **본능 구조물이 더미를 쏜다**(`Structures spawned: 5`) → +20 이 얹혀 80 이 100 으로,
+  스코프 **밖** 더미가 20~40 을 받아 「반경 게이트가 죽었다」로 오진. `MakeCannon` 이
+  캐논 **자기** 평타는 `attackRange 0` 으로 막아 뒀지만 **남의** 공격원은 아무도 안 막았다.
+- **웨이브 적이 스코프에 들어와 자기 미사일을 받는다**(`Wave 1 queued (6 spawns)`) →
+  더미 2기에 3발이 세어져 「여분이 샌다」로 오진.
+
+고친 방식: 배치 전 AttackState 전량 제거(그 시점엔 구조물뿐) + 발수는 **임자가 우리 더미인
+탄만** 센다. 교훈 — **배틀 씬을 띄우는 PlayMode 핀에서 «절대 피해량» 을 재면 안 된다.**
+콘텐츠(구조물·기믹·웨이브)가 붙을 때마다 조용히 의미가 바뀌고, 어느 날 남의 변경 때문에
+빨개져서 «내 코드가 깼나» 를 먼저 의심하게 만든다.
 - [x] Play 육안: 적이 뭉친 칸에 미사일이 **겹치지 않고 적 수만큼** 떨어진다 (사용자 확인 2026-08-16)
 - [ ] Play 육안: 착탄 additive 이펙트가 과하지 않은지 — 발수가 늘면 그만큼 늘어난다
 
