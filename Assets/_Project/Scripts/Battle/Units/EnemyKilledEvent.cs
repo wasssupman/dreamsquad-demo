@@ -24,10 +24,9 @@ namespace Wassup.Battle.Units
         // Appended last.
         public Entity entity;
 
-        // battle-score-formula unit 2 — final-score contribution of this kill,
-        // copied from the enemy's baked KillScore at enqueue time (same reason as
-        // awakeningReward above). Appended last; 0 when the component was absent.
-        public int killScore;
+        // three-minute-kill-race unit 1 — `killScore` 는 제거했다. **이벤트 1건 = 1점**이라
+        // 실을 값이 없다. `awakeningReward` 는 남는다(각성치는 여전히 적별로 다르다) —
+        // 나란히 있던 두 축의 대칭이 깨지는 것이 이 unit 의 요점이다.
 
         // dreamcatcher-content-3 unit 3 (시체폭발) — killer 의 OnKill×SelfTileAoe 첫 매칭
         // 슬롯을 킬 시점에 스탬프(DefenderDeathEvent.hasOnDeathAoe 선례 — 드레인 시점엔

@@ -132,7 +132,7 @@ namespace Wassup.UI
             // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
             SetStatRows(new[]
             {
-                StatRow.State("처치", $"{tally.KillCount:N0}기"),
+                StatRow.State("처치", $"{tally.Kills:N0}기"),
                 StatRow.State("남은 안정도", StabilityText(tally.Stability, tally.StabilityMax)),
                 StatRow.State("도달 웨이브", $"{tally.WaveReached:N0}"),
             });

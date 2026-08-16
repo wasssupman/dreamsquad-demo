@@ -182,21 +182,10 @@ namespace Wassup.Data
         [Header("Nightmare Catcher")]
         public DcMechanic[] nightmareMechanics;
 
-        // battle-score-formula unit 0 — 이 적을 **처치**했을 때 얻는 점수.
-        // 유출당하면 얻지 못한다(EnemyKilledEvent 는 goal-reach 경로에서 발화하지
-        // 않는다 — EnemyKilledEvent.cs 주석). ~~티어 enum 을 만들지 않고 이 필드의
-        // 값 구간으로만 티어를 구분한다(제약 8).~~ → **elite-enemy-tier unit 0 이 이 결정을
-        // 뒤집었다**: 등급이 행동을 게이팅하게 되면서(BossTag) `tier` 필드가 생겼다. 취지가
-        // 다르다 — 옛 결정은 «값 대역을 라벨링하려고 enum 을 만들지 말라» 였고 새 필드는
-        // «행동을 가른다». 이 필드는 여전히 **밸런스 값**이고 `tier` 와 서로 검증하지 않는다
-        // (Enemy_Tanker 는 Normal 인데 3 이다). Appended last (직렬화 back-compat).
-        //
-        // three-minute-survival unit 3 — **점수가 처치 축 하나가 되면서 스케일을 재장전했다**:
-        // 일반 1 / 엘리트 3 / 보스 10 (구 100 / 2,000). 화면 숫자가 곧 "얼마나 팼나" 로 읽힌다
-        // — unit 6 이후 이 합이 그대로 서버 제출 점수다(가공 없음).
-        [Header("Score")]
-        [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 일반 1 / 엘리트 3 / 보스 10 기준.")]
-        public int killScore = 1;
+        // three-minute-kill-race unit 1 — **`killScore` 필드는 은퇴했다.** 개체 1킬 = 1점이고
+        // 예외가 없다(보스도 분열체도 1). 점수를 등급으로 가르던 축이 사라졌으므로 이 자리에
+        // 밸런스 값을 다시 만들지 말 것 — 강함의 차이는 체력·공격력·등장 빈도로 표현한다.
+        // 처치 보상 중 **적별로 다른 것은 `awakeningReward` 하나**다.
 
         // spine-weapon-trail unit 3 — 무기 궤적. 적/보스도 대상이다(디펜더 종속 해제).
         // 미할당 = 무궤적이라 잡몹 전원은 현행 그대로. Appended last (직렬화 back-compat).
@@ -205,8 +194,8 @@ namespace Wassup.Data
         [Range(0.05f, 1f)] public float weaponTrailEndNormalized = 0.31f;
 
         // three-minute-survival unit 0 — 이 적이 골을 뚫었을 때 골 안정도에서 깎는 양.
-        // killScore(처치 보상)와 **반대 축**이다: 이쪽은 놓쳤을 때의 대가다. ~~티어 enum 을
-        // 만들지 않고 값 구간으로 일반/엘리트/보스를 구분한다(제약 8, killScore 선례).~~
+        // 처치 보상과 **반대 축**이다: 이쪽은 놓쳤을 때의 대가다. ~~티어 enum 을
+        // 만들지 않고 값 구간으로 일반/엘리트/보스를 구분한다(제약 8).~~
         // → elite-enemy-tier unit 0 이 `tier` 필드를 만들었다(위 killScore 주석과 같은 근거).
         // 이 필드는 여전히 밸런스 값이며 `tier` 와 서로 검증하지 않는다.
         // 기본 1 = 미저작 자산도 유출이 무해해지지 않는다.
@@ -241,7 +230,7 @@ namespace Wassup.Data
         // elite-enemy-tier unit 0 — 등급 축. **BossTag·위협테이블·등장경보의 유일한 출처**다
         // (그 앞까지는 「nightmareMechanics 가 비어있지 않으면 곧 보스」였다 —
         // BattleBridge.BakeNightmareMechanics). 폴백 Normal 이라 기존 에셋 17종 중 보스 3종에만
-        // Boss 를 찍으면 무회귀다. 값 대역(killScore/stabilityDamage)과는 독립 축이다 —
+        // Boss 를 찍으면 무회귀다. 값 대역(stabilityDamage)과는 독립 축이다 —
         // 근거는 EnemyTier.cs 주석. Appended last (직렬화 back-compat).
         [Header("Tier")]
         [Tooltip("일반/엘리트/보스. BossTag·위협테이블·등장경보는 Boss 에서만 나온다. " +

@@ -12,8 +12,8 @@ namespace Wassup.Tests.EditMode
     // (무한 모드의 리스크/리워드 재설계는 spec 후속 후보 — 당기기 제거로 기존 가설이 소멸했다.)
     public class EndlessScoreTests
     {
-        private static MatchTally Tally(int killScore, int leaks)
-            => new MatchTally("complete", killScore, killCount: 1,
+        private static MatchTally Tally(int kills, int leaks)
+            => new MatchTally("complete", kills,
                 stability: 20, stabilityMax: 20, waveReached: 30, leaks: leaks);
 
         [Test]

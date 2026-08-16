@@ -15,7 +15,7 @@ namespace Wassup.UI
     // Same-frame kills (AoE wipes) coalesce into one intensity-scaled hit.
     //
     // score-tally-sequence unit 0 — 더 이상 표시 전용이 아니다. 이 숫자는 최종 점수의
-    // **킬축과 같은 값**이고(적별 AttackUnitData.killScore 합), 결과 연출이 여기서
+    // **킬축과 같은 값**이고(잡은 마리 수 — kill-race unit 1), 결과 연출이 여기서
     // 이어서 시간·스트레스를 더한다.
     public class ScoreHudView : MonoBehaviour
     {
@@ -329,11 +329,11 @@ namespace Wassup.UI
         // Called by BattleBridge once per enemy kill drained from EnemyKilledEvents.
         // Accumulates only; the visual hit is flushed in LateUpdate (see above).
         //
-        // score-tally-sequence unit 0 — points 는 이제 그 적의 AttackUnitData.killScore
-        // 다(잡몹 100 / 보스 2,000). 예전엔 처치당 고정 10 이었고, 그래서 이 HUD 숫자가
-        // 최종 점수의 킬축과 15배 어긋나 있었다. 이제 같은 값이라 결과 연출이 여기서
-        // 이어서 시간·스트레스를 더할 수 있다.
-        public void OnEnemyKilled(int points) => AddScore(points);
+        // three-minute-kill-race unit 1 — **1킬 = 1점이라 가산량 인자가 사라졌다.**
+        // 이 HUD 숫자가 곧 최종 점수이고 서버에 올라가는 수다(가공 지점이 하나도 없다).
+        // 이력: 예전엔 처치당 고정 10 → 적별 killScore(잡몹 100 / 보스 2,000) → 티어
+        // (1/3/10) 를 거쳤다. 그 축이 은퇴하면서 «몇 마리 잡았나» 하나로 수렴했다.
+        public void OnEnemyKilled() => AddScore(1);
 
         // score-tally-sequence unit 2 — 처치가 아닌 가산(결과 연출의 축 합산).
         // 펀치·플래시·버스트 판정을 처치와 똑같이 태운다: 큰 값이 한 번에 들어오면

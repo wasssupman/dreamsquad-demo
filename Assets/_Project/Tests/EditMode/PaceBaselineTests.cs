@@ -9,7 +9,7 @@ namespace Wassup.Tests.EditMode
     // wave-pull-revival unit 3 — 진출 예상선(가짜 par).
     //
     // 고정하는 것: ①저작이 없으면 «표시 안 함»이지 0 이 아니다 ②경사로 오른다(계단 금지)
-    // ③범위 밖 시각에서 값이 튀지 않는다 ④killScore 가중치를 그대로 존중한다(계약 7).
+    // ③범위 밖 시각에서 값이 튀지 않는다 ④마릿수를 그대로 센다(unit 1 — 가중치 없음).
     //
     // ①이 중요한 이유: par 0 을 그리면 화면에 「+1,240점」이 떠서 **항상 앞서고 있다는
     // 거짓말**이 된다. 실패가 조용하고 그럴듯해서 눈으로는 안 잡힌다.
@@ -25,28 +25,29 @@ namespace Wassup.Tests.EditMode
             _created.Clear();
         }
 
-        private AttackUnitData Enemy(string id, int killScore)
+        private AttackUnitData Enemy(string id)
         {
             var unit = ScriptableObject.CreateInstance<AttackUnitData>();
             _created.Add(unit);
             unit.id = id;
             unit.displayName = id;
-            unit.killScore = killScore;
             return unit;
         }
 
         // 웨이브 3개: 20초 간격, 각각 10점 / 20점 / 30점.
+        // three-minute-kill-race unit 1 — **1킬 = 1점**이라 점수 = 마릿수다.
+        // 예전엔 3웨이브를 「탱커(killScore 3) 10기」로 30점을 만들었다.
         private GeneratedWavePlan Plan()
         {
-            var basic = Enemy("basic", 1);
-            var tanker = Enemy("tanker", 3);
+            var basic = Enemy("basic");
+            var tanker = Enemy("tanker");
             var waves = new List<GeneratedWave>
             {
                 new(0, 0f, new List<WaveSpawnGroup> { new(basic, 10, 0f, 0) }, 0f,
                     WaveExpandMode.RoundRobin, "a"),
                 new(1, 20f, new List<WaveSpawnGroup> { new(basic, 20, 0f, 0) }, 0f,
                     WaveExpandMode.RoundRobin, "a"),
-                new(2, 40f, new List<WaveSpawnGroup> { new(tanker, 10, 0f, 0) }, 0f,
+                new(2, 40f, new List<WaveSpawnGroup> { new(tanker, 30, 0f, 0) }, 0f,
                     WaveExpandMode.RoundRobin, "a"),
             };
             return new GeneratedWavePlan(1, 4, 180f, 20f, 0.5f, waves, 2f);
@@ -111,13 +112,14 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void 킬_가중치를_존중한다()
+        public void 마릿수를_그대로_센다()
         {
             var plan = Plan();
-            // 마지막 웨이브는 killScore 3 짜리 10기 = 30점. 가중치를 무시하면 10 이 된다.
+            // unit 1 — 등급 가중이 없다. 마지막 웨이브 30기 = 30점이고, 누적 60 이다.
+            // 여기에 가중치가 되살아나면(예: 탱커 3배) 이 값이 60 을 넘어간다.
             Assert.IsTrue(PaceBaseline.TryExpectedScore(plan, 9999f, 1f, out int total));
             Assert.AreEqual(60, total,
-                "가중치(탱커 3점)를 무시하고 마릿수로 셌다 — 계약 7 위반");
+                "par 가 마릿수 합(10+20+30)과 다르다 — 등급 가중이 되살아났다");
         }
 
         [Test]

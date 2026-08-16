@@ -129,7 +129,9 @@ if (unit.minWaveNumber <= waveNumber) return index;
 
 ### 분열체·파생 유닛은 풀에 넣지 않는다
 
-`splitUnit` 으로만 생성되는 파생(예: `Slime_Mid`·`Slime_Small`)은 보통 `killScore 0`·`awakeningReward 0` 이다. 풀에 넣으면 **점수 없는 적이 정규 편성에 섞인다.**
+`splitUnit` 으로만 생성되는 파생(예: `Slime_Mid`·`Slime_Small`)은 `awakeningReward 0` 이다. 풀에 넣으면 **보상 없는 적이 정규 편성에 섞이고**, 부모 없이 튀어나와 저작 의도(엘리트 하나가 쪼개진다)가 무너진다.
+
+> `killScore` 로도 이걸 걸렀던 시절이 있으나 그 필드는 은퇴했다 — **1킬 = 1점, 예외 없음**(three-minute-kill-race unit 1). 분열체도 1점이므로 슬라임 편성량은 이제 **점수 효율**에 직접 영향을 준다.
 
 ## 워크플로
 

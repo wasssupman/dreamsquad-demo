@@ -353,8 +353,8 @@ namespace Wassup.Tests.EditMode
                 if (child == null) continue;
                 foreach (string name in AllDecks)
                     Assert.AreEqual(-1, System.Array.IndexOf(Deck(name).attackUnitPool, child),
-                        $"{name}: {path} 는 killScore 0 인 분열 파생물이다 — 정규 편성에 섞이면 " +
-                        "점수 없는 적이 웨이브를 채운다");
+                        $"{name}: {path} 는 **분열로만 태어나는 파생물**이다 — 정규 편성에 " +
+                        "직접 넣으면 부모 없이 튀어나온다(각성도 0이라 보상 없는 적이 웨이브를 채운다)");
             }
         }
 

@@ -5,23 +5,23 @@ namespace Wassup.Tests.EditMode
 {
     // three-minute-survival unit 7 — 판 성적 값의 계약을 고정한다(구 ScoreMathTests).
     //
-    // 총점 = 처치한 적의 killScore 합. 산식에 분기가 없다 — 시간·스트레스 축과
-    // "패배 시 0" 예외는 폐기됐다(져도 잡은 만큼은 남는다).
+    // 총점 = **잡은 마리 수**다(kill-race unit 1 — 1킬 1점, 예외 없음). 산식에 분기가
+    // 없다 — 시간·스트레스 축과 "패배 시 0" 예외는 폐기됐고, 애초에 패배가 없다.
     //
     // unit 6 — **서버에 보내는 수 = 총점**이다. 인코딩(BASE + kill×1000 + 안정도permille)과
     // 디코딩은 제거됐다. 안정도가 다시 제출값에 새어 들어가면 SubmissionScore 단언이 잡는다.
     public class MatchTallyTests
     {
-        private static MatchTally Tally(int killScore, int stability = 12, int stabilityMax = 20)
-            => new MatchTally("complete", killScore, killCount: 3,
+        private static MatchTally Tally(int kills, int stability = 12, int stabilityMax = 20)
+            => new MatchTally("complete", kills,
                 stability, stabilityMax, waveReached: 7, leaks: 2);
 
         [Test]
-        public void Total_IsKillScoreSum()
+        public void Total_IsKillCount()
         {
             var t = Tally(47);
-            Assert.AreEqual(47, t.KillScore);
-            Assert.AreEqual(47, t.Total, "처치 축이 유일하므로 총점 == 처치 점수");
+            Assert.AreEqual(47, t.Kills);
+            Assert.AreEqual(47, t.Total, "1킬 1점이므로 총점 == 잡은 마리 수");
         }
 
         [Test]
@@ -44,7 +44,7 @@ namespace Wassup.Tests.EditMode
         public void NegativeCounts_ClampToZero()
         {
             Assert.AreEqual(0, Tally(-5).Total);
-            Assert.AreEqual(0, new MatchTally("complete", 0, -3, 0, 20, 0, 0).KillCount);
+            Assert.AreEqual(0, new MatchTally("complete", -3, 0, 20, 0, 0).Kills);
         }
 
         [Test]
@@ -54,7 +54,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void LargeKillScore_IsNotRescaled()
+        public void LargeKillCount_IsNotRescaled()
         {
             // unit 6 — 상한·saturate 는 인코딩이 만들던 제약이었다. 이제 어떤 값이든
             // 손대지 않고 그대로 나간다(구 상한 1,147,482 를 넘겨 확인).
@@ -64,7 +64,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void CarriesResultLabels()
         {
-            var t = new MatchTally("submitted", 9, 4, 0, 20, 11, 5);
+            var t = new MatchTally("submitted", 9, 0, 20, 11, 5);
             Assert.AreEqual("submitted", t.Outcome, "배틀 로그 라벨");
             Assert.AreEqual(11, t.WaveReached);
             Assert.AreEqual(5, t.Leaks);
