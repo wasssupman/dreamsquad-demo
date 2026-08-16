@@ -27,7 +27,7 @@ MonoBehaviour:
   health: 320
   moveSpeed: 1.2
   attackRange: 2
-  attackCooldown: 0.6
+  attackCooldown: 0.3
   attackTargetCount: 10
   projectile: {fileID: 0}
   hitDelaySec: 0
@@ -36,7 +36,7 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 15
+    magnitude: 8
     duration: 0
     stat: 0
     op: 0
