@@ -43,9 +43,9 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 4
-  onPlaceRange: 2
-  onPlaceMagnitude: 80
+  onPlaceEffect: 0
+  onPlaceRange: 0
+  onPlaceMagnitude: 0
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
@@ -54,7 +54,8 @@ MonoBehaviour:
   targetAllies: 0
   attackTargetLayers: 2
   targetFactions: 98
-  abilities: []
+  abilities:
+  - {fileID: 11400000, guid: 58f5834510e24bb5a95294846a07ef6f, type: 2}
   rarity: 0
   portrait: {fileID: 21300000, guid: 2abbcbcffe13b483b84442ec55a34871, type: 3}
   aggroCapacity: 0
