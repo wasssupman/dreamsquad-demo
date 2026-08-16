@@ -82,7 +82,7 @@ unit 3 이 `"submitted"` 를 더한다.
 - [x] PlayMode `GoalStabilityTest` 초록(19.3s) — 마음이 무너진 뒤 5초를 더 돌려도 Result 가 아니다
 - [x] PlayMode `StructureLivePlayTest.SiegeMap_DefendersBreakEnemyCore...` 초록 —
       적 마음을 부숴도 판이 안 끝난다
-- [ ] **Play 육안 미확인**: 마음을 전부 내주고도 3분을 채우고 결과 화면이 뜬다
+- [x] Play 확인(2026-08-16): 마음을 전부 내주고도 3분을 채우고 결과 화면이 뜬다
 
 ### 관측된 사전 실패 (이 unit 과 무관 — 고치지 않았다)
 

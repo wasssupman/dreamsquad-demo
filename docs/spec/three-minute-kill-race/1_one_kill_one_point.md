@@ -54,9 +54,9 @@
 - [x] EditMode 39/39 — `MatchTallyTests`·`EndlessScoreTests`·`PaceBaselineTests`·
       `SlimeSplitAuthoringTests`·`WaveKillBudgetPinTests`·`StructureSpawnAndBreachTests`
 - [x] PlayMode `TallyFlowTest` 초록(6.8s)
-- [ ] **Play 육안 미확인**: 보스를 잡아도 점수가 **1** 오른다. 슬라임을 끝까지 쪼개 잡으면 **원본+파생 전부**
+- [x] Play 확인(2026-08-16): 보스를 잡아도 점수가 **1** 오른다. 슬라임을 끝까지 쪼개 잡으면 **원본+파생 전부**
       1점씩 들어온다
-- [ ] **Play 육안 미확인**: 결과 화면의 「점수」와 「처치 N기」가 같은 수다(두 줄 통합은 unit 4)
+- [x] Play 확인(2026-08-16): 결과 화면의 「점수」와 「처치 N기」가 같은 수다(두 줄 통합은 unit 4)
 
 ### 티어 규칙을 단언하던 테스트 4개 (같은 unit 에서 이관)
 

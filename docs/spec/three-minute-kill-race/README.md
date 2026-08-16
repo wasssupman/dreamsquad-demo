@@ -1,6 +1,7 @@
 # three-minute-kill-race — 패배 없는 3분 킬 경쟁
 
-> 상태: **units 0~4 완료 · 자동 검증 통과 · Play 육안 확인 대기** 2026-08-16 (origin/main `49554c6d` 기준으로 대조 완료)
+> 상태: **완료 2026-08-16** (units 0~4 · 자동 검증 + Play 육안 확인 통과)
+> 인계: `5_handoff_summary.md` (origin/main `49554c6d` 기준으로 대조 완료)
 > 선행: `three-minute-survival`(units 0~7 — 안정도 패배·처치 점수·마감 파이프라인),
 > `goal-tower-siege`(공성 모델), `battle-structures`(적 마음 축)
 > 정본 갱신 대상: `docs/reference/score-formula.md`, `docs/reference/ingame-flow.md`
@@ -67,7 +68,7 @@
 | 2 | `2_heart_no_gauge.md` | 프레젠테이션 | 마음 게이지 2종 제거 → 균열 연출 · 스트레스 분모 off · **완료(16ac6667)** |
 | 3 | `3_player_submit.md` | UI + 브리지 | 햄버거 버튼 정체 전환(P1 = 60s) → 결과 화면 · **완료(16ac6667)** |
 | 4 | `4_result_no_verdict.md` | UI | 승/패 표기 없음 · 중복 줄 통합(3줄→2줄) · **완료(16ac6667)** |
-| 5 | `5_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
+| 5 | `5_handoff_summary.md` | 인계 | **작성 완료** |
 
 의존: `0 → 3`(제출이 마감 관문을 재사용한다), `1 → 4`(점수 단위가 화면 줄 수를 정한다).
 `0 → 4`(승패 필드가 사라진 뒤 화면 정리). `2` 는 독립 — 아무 때나 된다.
@@ -194,7 +195,7 @@ B 로 갈 거면 unit 1 착수 전에 알려달라.
 > 같은 계열 증상을 `gift-phase-removal` 커밋 `2e4aaf63`(teardown `_seq.Stop()` 누락)이
 > 한 번 고쳤다 — 남은 것은 다른 시퀀스이고 이 spec 범위 밖이다.
 
-### Play 육안 확인 목록 (전부 대기)
+### Play 육안 확인 (2026-08-16 통과)
 
 1. 마음을 전부 내줘도 판이 안 끝나고 3분을 채운다 → 결과 화면
 2. 마음 위에 **바도 숫자도 없다**. 맞을수록 프랍이 단계적으로 그을리고 0 에서 주저앉는다
