@@ -1,6 +1,11 @@
 # test-suite-fast-lane — 테스트 절차 개편: 핵심만 빠르게, 밸런스에 면역으로
 
-상태: 계획 (사용자 승인 대기) 2026-08-16
+상태: **완료 2026-08-16** (units 0~3 · `dd3642a8` `eff16758` `0f1ca944` + 이 커밋)
+
+결과: EditMode 가 코어(2,233개 26초, 시트·에셋 편집에 면역) / Assets(161개 5초) 두
+lane 으로 갈렸고 **둘 다 상시 빨강 0**. 밸런스 리터럴 pin 제거로 시트 튜닝이 테스트를
+깨지 않는다. PlayMode 실패 12→9 이며 남은 9건은 전부 원인·다음 행동이 기록됐다.
+실행 절차 정본은 `docs/reference/test-procedure.md`.
 
 ## 진단 (2026-08-16 실측 + 전수 분류)
 
@@ -28,7 +33,8 @@
 | 0 | asmdef 분리 | `0_assets_asmdef_split.md` | 실제 SO 로드 테스트를 `Wassup.Tests.EditMode.Assets` 로 분리(통이동 18 + 혼합 8은 메서드 추출) → 코어 lane 확보 | 완료 `dd3642a8` |
 | 1 | de-pin | `1_depin_balance_literals.md` | 시트 DTO 필드 리터럴 4파일 + 개수 pin 을 부호·구조 단언으로 전환 | 완료 `eff16758` |
 | 2 | 신호 청산 | `2_red_signal_cleanup.md` | EditMode 상시 빨강(MultiGoal 4→pending 목록+래칫) + PlayMode 사전 실패 재측정·triage | 진행 중 |
-| 3 | 절차 문서화 | `3_test_procedure_doc.md` | `docs/reference/test-procedure.md` 신설 + CLAUDE.md 참조표 1줄 | 대기 |
+| 3 | 절차 문서화 | `3_test_procedure_doc.md` | `docs/reference/test-procedure.md` 신설 + CLAUDE.md 참조표 · TRD 4.5 정정 | 완료 |
+| 4 | handoff | `4_handoff_summary.md` | 인계 지도 | 완료 |
 
 ## 공통 계약
 
