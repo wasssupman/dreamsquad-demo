@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
 
@@ -163,36 +162,6 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual("파이터 · 근접형.", UnitKitSummary.Describe(u));
         }
 
-        [Test]
-        public void CatalogDescriptions_UseThreeFixedSections()
-        {
-            var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
-                "Assets/_Project/Data/DefenderCatalog.asset");
-            Assert.IsNotNull(catalog);
-            Assert.IsNotNull(catalog.units);
-            Assert.IsNotEmpty(catalog.units);
-
-            string[] prefixes = { "기본 기능: ", "배치 스킬: ", "특수 효과: " };
-            const int maxCharactersPerLine = 28; // detail card: font 34, 148px = 3 single-line rows
-            foreach (var unit in catalog.units)
-            {
-                Assert.IsNotNull(unit, "DefenderCatalog contains a null unit");
-                string description = UnitKitSummary.Describe(unit).Replace("\r\n", "\n");
-                string[] lines = description.Split('\n');
-                Assert.AreEqual(3, lines.Length, $"{unit.id}: description must have exactly 3 lines");
-
-                for (int i = 0; i < prefixes.Length; i++)
-                {
-                    Assert.That(lines[i], Does.StartWith(prefixes[i]),
-                        $"{unit.id}: line {i + 1} must start with '{prefixes[i]}'");
-                    Assert.IsNotEmpty(lines[i].Substring(prefixes[i].Length).Trim(),
-                        $"{unit.id}: line {i + 1} body must not be empty");
-                    Assert.LessOrEqual(lines[i].Length, maxCharactersPerLine,
-                        $"{unit.id}: line {i + 1} must stay on one visual row");
-                }
-            }
-        }
-
         // on-place-skill-rework unit 6 — **전수 순회로 «조용히 빈 문안» 을 막는다.**
         //
         // `OnPlaceClause` 의 `default: return ""` 는 신규 enum 멤버가 아무 말 없이 설명을
@@ -217,28 +186,8 @@ namespace Wassup.Tests.EditMode
                 "OnPlaceClause 를 안 늘리면 설명이 조용히 빈다: " + string.Join(", ", missing));
         }
 
-        // 규칙 경로도 같은 안전망. 라이브 유닛이 실제로 쓰는 조합(OnPlace × payload)이
-        // 문안을 갖는지 카탈로그에서 확인한다 — 합성 SO 로는 능력 참조를 만들 수 없다.
-        [Test]
-        public void RuleDrivenOnPlaceUnits_HaveAClause()
-        {
-            var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
-                "Assets/_Project/Data/DefenderCatalog.asset");
-            Assert.IsNotNull(catalog);
-            foreach (var unit in catalog.units)
-            {
-                if (unit == null) continue;
-                var ability = unit.GetAbility<UnitSkillAbility>();
-                if (ability?.mechanics == null) continue;
-                bool hasOnPlaceRule = false;
-                foreach (var m in ability.mechanics)
-                    if (m.trigger.kind == DcTriggerKind.OnPlace) hasOnPlaceRule = true;
-                if (!hasOnPlaceRule) continue;
-
-                Assert.That(UnitKitSummary.Build(unit), Does.Contain("배치"),
-                    $"{unit.id}: 배치 규칙이 있는데 문안이 비었다 — OnPlaceRuleClause 에 " +
-                    "그 payload 를 배선하라(조용히 비는 것이 이 테스트가 막는 것이다)");
-            }
-        }
+        // 규칙 경로의 같은 안전망(`RuleDrivenOnPlaceUnits_HaveAClause`)은 실제
+        // DefenderCatalog 를 읽으므로 EditModeAssets/UnitKitCatalogTests.cs 에 있다
+        // (test-suite-fast-lane unit 0 — 코어 lane 은 실에셋을 로드하지 않는다).
     }
 }

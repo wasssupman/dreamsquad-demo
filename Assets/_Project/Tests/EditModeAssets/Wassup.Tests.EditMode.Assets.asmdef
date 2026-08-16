@@ -1,0 +1,37 @@
+{
+    "name": "Wassup.Tests.EditMode.Assets",
+    "rootNamespace": "Wassup.Tests.EditMode",
+    "references": [
+        "Wassup.Runtime",
+        "Wassup.Editor.UnitStatImport",
+        "Wassup.Editor.MobileBuild",
+        "Wassup.SheetSync",
+        "Wassup.Tests.EditMode",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Transforms",
+        "Unity.Burst",
+        "Unity.TextMeshPro",
+        "spine-unity",
+        "spine-csharp",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

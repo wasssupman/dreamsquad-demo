@@ -122,8 +122,10 @@ namespace Wassup.Tests.EditMode
             var m = butterfly.mechanics[0];
             Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
             Assert.AreEqual(DcPayloadKind.DreamCocoon, m.payload.kind);
-            Assert.AreEqual(35f, m.payload.magnitude, 0.001f, "완주 버프 %");
-            Assert.AreEqual(4f, m.payload.duration, 0.001f, "잠 초");
+            // magnitude·duration 은 DcSheet(mechanics 행) 소유 — 값은 자유 튜닝, 구조만 잠근다
+            // (test-suite-fast-lane unit 1, 전례: WaveKillBudgetPinTests).
+            Assert.Greater(m.payload.magnitude, 0f, "완주 버프 % 가 0 이면 고치가 보상 없는 잠이 된다");
+            Assert.Greater(m.payload.duration, 0f, "잠 0 초면 고치가 즉시 깨어 수면 단계가 사라진다");
             Assert.AreEqual(CardBuffKind.AttackDamage, m.payload.buffStat);
         }
 
@@ -142,7 +144,8 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardTargetAxis.All, pact.axis);
             Assert.AreEqual(1, pact.effects.Length);
             Assert.AreEqual(CardBuffKind.AttackDamage, pact.effects[0].kind);
-            Assert.AreEqual(25f, pact.effects[0].percent, 0.001f, "전군 공격력 +25%");
+            Assert.Greater(pact.effects[0].percent, 0f,
+                "percent 는 DcSheet 소유 — 여기서는 버프 부호(+)만 잠근다. 값은 자유 튜닝 (unit 1)");
             Assert.IsEmpty(pact.mechanics);
             Assert.IsEmpty(pact.attackMods);
             Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
@@ -167,8 +170,10 @@ namespace Wassup.Tests.EditMode
             var m = offering.mechanics[0];
             Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
             Assert.AreEqual(DcPayloadKind.BountyMark, m.payload.kind);
-            Assert.AreEqual(3f, m.payload.magnitude, 0.001f, "각성 배율 ×3");
-            Assert.AreEqual(30, m.payload.tileRange, "받는 피해 감소 %");
+            // magnitude(각성 배율)·tileRange(받는 피해 감소 % 로 재해석) 는 DcSheet 소유 (unit 1).
+            Assert.Greater(m.payload.magnitude, 1f, "배율이 1 이하면 «살찌운» 제물이 아니다");
+            Assert.That(m.payload.tileRange, Is.InRange(1, 99),
+                "피해 감소 % — 0 이면 무의미하고 100 이상이면 무적이 된다");
         }
 
         // gift-phase-removal unit 1 — RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious
@@ -189,17 +194,19 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CardTargetAxis.All, heart.axis);
             Assert.IsEmpty(heart.effects);
             Assert.AreEqual(3, heart.mechanics.Length);
+            // 수치(magnitude·duration·period·tileRange)는 DcSheet 소유 — 자유 튜닝.
+            // 여기서는 3-메커닉 구성(kind·trigger)과 부호·배율 구조만 잠근다 (unit 1).
             Assert.AreEqual(DcPayloadKind.SelfBuffLethal, heart.mechanics[0].payload.kind);
-            Assert.AreEqual(100f, heart.mechanics[0].payload.magnitude);
-            Assert.AreEqual(6f, heart.mechanics[0].payload.duration);
+            Assert.Greater(heart.mechanics[0].payload.magnitude, 0f);
+            Assert.Greater(heart.mechanics[0].payload.duration, 0f);
             Assert.AreEqual(DcTriggerKind.AttackN, heart.mechanics[1].trigger.kind);
-            Assert.AreEqual(3, heart.mechanics[1].trigger.period);
+            Assert.Greater(heart.mechanics[1].trigger.period, 0, "AttackN 주기 0 이면 트리거가 죽는다");
             Assert.AreEqual(DcPayloadKind.HeavyStrike, heart.mechanics[1].payload.kind);
-            Assert.AreEqual(2f, heart.mechanics[1].payload.magnitude);
+            Assert.Greater(heart.mechanics[1].payload.magnitude, 1f, "강타 배율이 1 이하면 강타가 아니다");
             Assert.AreEqual(DcTriggerKind.OnDeath, heart.mechanics[2].trigger.kind);
             Assert.AreEqual(DcPayloadKind.SelfTileAoe, heart.mechanics[2].payload.kind);
-            Assert.AreEqual(400f, heart.mechanics[2].payload.magnitude);
-            Assert.AreEqual(2, heart.mechanics[2].payload.tileRange);
+            Assert.Greater(heart.mechanics[2].payload.magnitude, 0f);
+            Assert.Greater(heart.mechanics[2].payload.tileRange, 0);
             Assert.AreSame(byId["farewell"].mechanics[0].payload.projectile,
                 heart.mechanics[2].payload.projectile);
             Assert.AreEqual("dreamcatcher_card_24", heart.art.name);
@@ -211,9 +218,10 @@ namespace Wassup.Tests.EditMode
             Assert.IsEmpty(grail.mechanics);
             Assert.AreEqual(2, grail.effects.Length);
             Assert.AreEqual(CardBuffKind.AttackDamage, grail.effects[0].kind);
-            Assert.AreEqual(70f, grail.effects[0].percent);
             Assert.AreEqual(CardBuffKind.EffectiveHealth, grail.effects[1].kind);
-            Assert.AreEqual(-40f, grail.effects[1].percent);
+            // percent 는 DcSheet 소유 — 성배의 정체성은 값이 아니라 **부호**다(딜 ↑ · 체력 ↓).
+            Assert.Greater(grail.effects[0].percent, 0f, "공격 버프 부호가 뒤집혔다");
+            Assert.Less(grail.effects[1].percent, 0f, "체력 말루스 부호가 뒤집혔다 — 저주가 축복이 된다");
             Assert.AreEqual("dreamcatcher_card_25", grail.art.name);
         }
 

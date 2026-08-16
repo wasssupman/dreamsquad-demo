@@ -16,10 +16,6 @@ namespace Wassup.Tests.EditMode
     public class ProfileStoreDefaultDeckTests
     {
         private const int DeckSize = 8;
-        private const string DefaultDeckPath =
-            "Assets/_Project/Data/Dreamcatcher/DreamcatcherDeck_Default.asset";
-        private const string CardCatalogPath =
-            "Assets/_Project/Data/Dreamcatcher/DreamcatcherCardCatalog.asset";
 
         private string _path;
         private readonly List<Object> _created = new List<Object>();
@@ -230,29 +226,6 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsNotNull(reloaded.CommittedDeck());
             Assert.IsTrue(DeckRules.Validate(reloaded.CommittedDeck().cardIds, cards, out var reason), reason);
-        }
-
-        [Test]
-        public void AuthoredDefaultDeck_IsExpectedVisibleValidStarter()
-        {
-            var source = AssetDatabase.LoadAssetAtPath<DreamcatcherDeck>(DefaultDeckPath);
-            var catalog = AssetDatabase.LoadAssetAtPath<DreamcatcherCardCatalog>(CardCatalogPath);
-            Assert.IsNotNull(source);
-            Assert.IsNotNull(catalog);
-
-            string[] expected =
-            {
-                "ranger_atk", "poke_needle", "ranger_as", "bouncy_bead", "guardian_as",
-                "thornmail", "ranger_hp", "guardian_hp", "farewell", "guardian_fortress",
-            };
-            CollectionAssert.AreEqual(expected, source.cards.Select(c => c != null ? c.id : null));
-            Assert.That(source.cards, Has.All.Matches<DreamcatcherCard>(
-                c => c != null && c.visible != 0), "기본 덱은 숨김 카드나 null을 포함하면 안 된다");
-
-            var profile = ProfileStore.CreateDefault(null, source, catalog);
-            Assert.IsNotNull(profile.CommittedDeck());
-            CollectionAssert.AreEqual(expected, profile.CommittedDeck().cardIds);
-            Assert.IsTrue(DeckRules.Validate(profile.CommittedDeck().cardIds, catalog, out var reason), reason);
         }
 
         // ---- EnsureDefaultStones (스타터 드림스톤 시드) ----

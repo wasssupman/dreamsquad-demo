@@ -60,11 +60,11 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(10, resolved.Count, "resolved 10 from saved deck");
             Assert.IsTrue(resolved.All(c => c.id == "ranger_atk"), "all from saved deck");
 
-            // no selection → fallback to serialized deck (the default 10)
+            // no selection → 폴백 덱은 **의도적으로 제거**됐다 (사용자 결정 2026-07-15,
+            // DreamcatcherHandController.ResolveAttachDeck) — 무선택이면 부착덱이 비어야 한다.
             profile.selectedDeckId = null;
             var fallback = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveAttachDeck");
-            Assert.AreEqual(10, fallback.Count, "fallback default deck has 10");
-            Assert.IsTrue(fallback.Any(c => c.id != "ranger_atk"), "fallback is the default mix, not the saved deck");
+            Assert.AreEqual(0, fallback.Count, "폴백 덱 제거 — 무선택은 0장이어야 한다");
         }
 
         private static object GetField(object o, string name) =>

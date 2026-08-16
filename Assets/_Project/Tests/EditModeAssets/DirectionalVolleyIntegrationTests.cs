@@ -288,12 +288,12 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(shotgunSpec.randomizeShotsPerTrigger);
             Assert.AreEqual(0.006f, shotgunSpec.randomIntervalMinSec, 1e-5f);
             Assert.AreEqual(0.018f, shotgunSpec.randomIntervalMaxSec, 1e-5f);
-            // 2026-08-12 밸런스 패스 — 방어유닛 사거리 일괄 하향(샷건너 4 → 2). 시트가 정본이라
-            // 아래 magnitude 와 같은 이유로 여기를 맞춘다.
-            Assert.AreEqual(2f, shotgun.attackRange);
-            // 시트(Defenders 탭 `atk`)가 이 값의 source of truth 다 — 로그인 자동 임포트가
-            // 매번 에셋에 덮어쓴다. 에셋을 고쳐도 다음 임포트에 되돌아오므로 여기를 맞춘다.
-            Assert.AreEqual(12f, shotgun.outputs[0].magnitude);
+            // attackRange·magnitude 는 시트(Defenders 탭)가 정본이고 로그인 자동 임포트가
+            // 매번 에셋에 덮어쓴다 — 값은 자유 튜닝 대상이라 리터럴로 못박지 않는다
+            // (test-suite-fast-lane unit 1, 전례: WaveKillBudgetPinTests). 여기서 지키는
+            // 것은 «사거리와 피해가 살아 있다» 는 구조뿐이다.
+            Assert.Greater(shotgun.attackRange, 0f, "사거리 0 이면 샷건이 영원히 침묵한다");
+            Assert.Greater(shotgun.outputs[0].magnitude, 0f, "피해 0 이면 10발이 전부 공포탄이다");
             Assert.AreEqual(14f, shotgun.projectile.speed);
             Assert.AreEqual(0.7f, shotgun.projectile.visualScale, 1e-5f);
             Assert.AreSame(

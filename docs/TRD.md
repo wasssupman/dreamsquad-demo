@@ -277,7 +277,9 @@ ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. �
 
 - ECS 시스템은 `EntityManager` 없이도 단위 테스트 가능하게 핵심 계산 함수를 분리
 - 과도한 추상화는 금지. 커버리지는 목표가 아니며, **핵심 로직의 회귀 방지 수준**이면 충분
-- 각 Phase는 최소 1개의 EditMode 테스트와 1개의 PlayMode 테스트를 요구 (Phase 문서에서 구체화)
+- 실행 절차·lane 구분·수치 단언 규율은 [`docs/reference/test-procedure.md`](reference/test-procedure.md) 가 정본
+  (~~각 Phase는 최소 1개의 EditMode + 1개의 PlayMode 테스트를 요구~~ 는 프로토타이핑 시절 규칙 —
+  현재는 spec 작업 단위의 "완료 기준" 섹션이 그 자리를 대신한다)
 
 ---
 

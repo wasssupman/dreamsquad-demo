@@ -86,8 +86,10 @@ namespace Wassup.Tests.PlayMode
             ushort firstStackId = _em.GetComponentData<DreamCocoon>(_defender).stackId;
 
             var card2 = MakeCocoonCard(durationSec: 30f, percent: 35f);
+            // 문구 정본은 BattleBridge.Dreamcatcher.cs 의 DuplicateState 가드 —
+            // «already has {payload.kind} state» 형식 (fast-lane unit 2 에서 동기).
             LogAssert.Expect(LogType.Warning,
-                "[BattleBridge] ApplyDreamcatcherCardToUnit('cocoon_test'): target already has DreamCocoon — card not attached.");
+                "[BattleBridge] ApplyDreamcatcherCardToUnit('cocoon_test'): target already has DreamCocoon state — card not attached.");
             int handle = _bridge.ApplyDreamcatcherCardToUnit(_defender, card2);
 
             Assert.AreEqual(-1, handle, "이중 부착 거절(무차감 규약)");
