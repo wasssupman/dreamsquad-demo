@@ -520,6 +520,15 @@ namespace Wassup.Bridge
                     // (BakeNightmareMechanics)만 실어 보내서 카드 주기 슬롯이 조용히 무발동이었다.
                     // 비-PeriodicTimer 슬롯은 0 = inert 라 기존 카드 전부 무손상.
                     periodSeconds = m.trigger.periodSeconds,
+                    // **카드는 부착 즉시 첫 발동한다**(사용자 결정 2026-08-16). 누산기를 주기만큼
+                    // 채워 구우면 다음 틱에 바로 터진다(PeriodicTick 은 `elapsed += dt` 뒤 임계를
+                    // 보므로 첫 프레임에 넘는다. 나머지는 이월돼 이후 주기는 정확히 유지된다).
+                    //
+                    // 왜 필요한가: 카드는 **전투 중에** 붙는다. 보스 스킬처럼 스폰과 함께 시작하는
+                    // 것과 달리, 붙이자마자 주기만큼 아무 일도 안 일어나면 플레이어에겐 «안 붙었다»
+                    // 로 읽힌다(불꽃 팽이 6초). 보스 bake 는 이 줄을 타지 않으므로 무영향.
+                    elapsed = m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer
+                        ? m.trigger.periodSeconds : 0f,
                     // trigger-gates unit 1 — 게이트 번역 (위 배선 검증 통과분만 착지).
                     gate = m.trigger.gate,
                     gateSubject = m.trigger.gateSubject,

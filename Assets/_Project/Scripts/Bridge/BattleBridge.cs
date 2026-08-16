@@ -2973,6 +2973,27 @@ namespace Wassup.Bridge
                     frame.flightTime = state.flightTime;
                     frame.elapsed = state.elapsed;
                     frame.arcHeight = state.arcHeight;
+                    // dreamcatcher-content-4 — 궤도구만 **보드 깊이 소팅**을 받는다.
+                    // 나머지 탄은 «날아가 사라지는 것» 이라 항상 위(플랫 +1000)가 맞지만,
+                    // 유닛을 도는 구슬은 뒤로 갔을 때 몸에 가려야 «돈다» 로 읽힌다.
+                    //
+                    // 깊이는 셀 Y 다 — 유닛과 **같은 식**(BoardSortOrder.Compute)을 써야
+                    // 서로 끼어들 수 있다. offset 3 = 같은 셀 tie 를 피하면서, 한 칸 뒤면
+                    // −10 대역(확실히 뒤), 한 칸 앞이면 +10 대역(확실히 앞)이 되게 하는 값.
+                    // 좌우 극점은 살짝 앞으로 읽힌다(구슬이 옆에 있을 땐 어느 쪽이든 무방).
+                    // ⚠ **sim 좌표를 넘긴다 — view 좌표가 아니다.** `BoardSpace.ToView` 는
+                    // 평면 보드라 sim-Y 를 drop 하고 z 를 화면 높이로 접어서, view 로 셀을
+                    // 역산하면 행 정렬이 통째로 무너진다(`SpineUnitView.UpdateSortingOrder`
+                    // 가 같은 이유로 `_simWorld` 를 쓴다 — 그 주석이 이 함정을 경고한다).
+                    if (state.movement == MovementKind.OrbitAroundPoint && _generatedMap.IsCreated)
+                    {
+                        var simPos = frame.simPosition;
+                        frame.boardSortOrder = Wassup.Presentation.BoardSortOrder.ComputeFromWorld(
+                            _generatedMap.gridSize,
+                            new Vector3(simPos.x, simPos.y, simPos.z),
+                            tileSize,
+                            offset: Wassup.Presentation.BoardSortOrder.CharacterOffset + 2);
+                    }
                 }
                 _projectileViewPool.SyncTransform(entity, frame);
             }

@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: flame_orb
   speed: 5
-  hitThreshold: 0.55
-  visualScale: 1
+  hitThreshold: 0.8
+  visualScale: 2.7
   visualHeightOffset: 0.3
   projectilePrefab: {fileID: 6487987637173855206, guid: 1b50ad197c844b0a93ba5f742bb9e3cd, type: 3}
   hitPrefab: {fileID: 3911334593277181048, guid: 57a9bd4551de4b76bdfd3e17b8bb4b2d, type: 3}
