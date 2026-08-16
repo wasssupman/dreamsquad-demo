@@ -34,11 +34,11 @@ namespace Wassup.Tests.EditMode
                 antiAir.EffectiveAttackTargetLayers,
                 "대공사수는 지상과 공중 적을 모두 공격한다");
             Assert.AreEqual(Wassup.Battle.Units.Faction.EnemyUnit, antiAir.targetFactions);
-            Assert.AreEqual(0.2f, antiAir.attackCooldown, 1e-4f,
-                "대공사수는 로스터의 초고속 공격 주기를 사용한다");
+            // cooldown·magnitude 는 시트 소유 — 값은 자유 튜닝, 여기서는 구조만
+            // (test-suite-fast-lane unit 1).
+            Assert.Greater(antiAir.attackCooldown, 0f, "쿨다운 0 이면 매 프레임 발사로 폭주한다");
             Assert.AreEqual(1, antiAir.outputs.Length);
-            Assert.AreEqual(7f, antiAir.outputs[0].magnitude, 1e-4f,
-                "초고속 연사를 상쇄하는 낮은 발당 피해");
+            Assert.Greater(antiAir.outputs[0].magnitude, 0f, "피해 0 이면 대공이 장식이 된다");
         }
 
         [Test]
@@ -53,8 +53,8 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(PlacementLayer.Air, skimmer.EffectiveTraversalLayers);
             Assert.AreEqual(1, skimmer.attackTargetCount,
                 "Skimmer는 범위형이 아니라 단일 타겟 공격이어야 한다");
-            Assert.AreEqual(0.2f, skimmer.attackCooldown, 1e-4f,
-                "Skimmer는 빠른 공격 주기를 사용한다");
+            Assert.Greater(skimmer.attackCooldown, 0f,
+                "쿨다운은 시트 소유 — 값은 자유 튜닝, 0 만 아니면 된다");
         }
     }
 }

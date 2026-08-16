@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using Wassup.Data;
@@ -17,6 +18,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotEmpty(guids);
 
             int structuredCount = 0;
+            var unstructured = new List<string>();
             foreach (var guid in guids)
             {
                 var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(
@@ -29,7 +31,7 @@ namespace Wassup.Tests.EditMode
                         ? (card.mechanics != null && card.mechanics.Length > 0)
                           || (card.attackMods != null && card.attackMods.Length > 0)
                         : card.skill != null;
-                if (!hasStructuredData) continue;
+                if (!hasStructuredData) { unstructured.Add(card.name); continue; }
 
                 structuredCount++;
                 string body = DreamcatcherCardText.Body(card);
@@ -44,7 +46,12 @@ namespace Wassup.Tests.EditMode
 
             }
 
-            Assert.AreEqual(44, structuredCount, "all current Dreamcatcher cards should be data-formatted");
+            // «현재 44장» 같은 개수 스냅샷은 카드를 추가할 때마다 깨진다 — 원 의도인
+            // «모든 카드가 데이터 정형(effects/mechanics/skill 저작)» 을 직접 단언한다
+            // (test-suite-fast-lane unit 1).
+            Assert.IsEmpty(unstructured,
+                $"데이터 정형이 아닌 카드: [{string.Join(", ", unstructured)}] — 문안이 구형 fallback 으로 조립된다");
+            Assert.Greater(structuredCount, 0, "정형 카드가 하나도 없다 — 스캔 경로 확인");
         }
 
         [Test]
