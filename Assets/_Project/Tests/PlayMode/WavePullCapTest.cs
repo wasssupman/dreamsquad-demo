@@ -70,7 +70,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0, cap = _bridge.PullsRemaining; i < cap; i++) _bridge.TryPullNextWave();
             Assert.IsFalse(_bridge.PullAllowed, "전제: 상한에 닿아 있어야 한다");
 
-            // 기존 스모크 3종(TallyFlowTest·EndlessModeSmokeTest·MovementIntegritySmokeTest)이
+            // 기존 스모크 2종(TallyFlowTest·MovementIntegritySmokeTest)이
             // 이 경로를 판 진행 동력으로 연타한다. 여기가 막히면 그들이 타임아웃으로 죽는다.
             int before = NextWaveIndex();
             _bridge.ForceNextWave();

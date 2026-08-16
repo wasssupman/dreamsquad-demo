@@ -33,9 +33,6 @@ namespace Wassup.Bridge
         // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
         // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
         [SerializeField] private MapDocumentPool mapPool;
-        // endless-mode unit 2 — 무한 모드 전용 (맵, 덱) 인카운터. 공용 mapPool 에 넣지 않아
-        // 랜덤/토너먼트 맵 선택이 절대 안 뽑는다(계약 5). DevMapOverride.Endless 로만 진입.
-        [SerializeField] private MapDocumentPool.Entry endlessEncounter;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
@@ -478,10 +475,6 @@ namespace Wassup.Bridge
         // 거점 스탯(체력·프랍·공격)은 GeneratedMap 이 실을 수 없는 SO 참조라, 스폰(unit 4)이
         // 저작 엔트리를 다시 읽을 창구가 필요하다. 빌드가 끝나면 사라지던 지역 변수였다.
         private Wassup.Data.MapGrid.MapDocument _resolvedMapDoc;
-
-        // endless-mode unit 2 — 현재 배틀이 무한 모드인가. BattleBridge 만 이 값으로 분기한다
-        // (진입/간격은 데이터 구동, 누수/시간축/토너먼트 리포트는 아래 각 지점에서 이 플래그로).
-        private bool IsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -1013,16 +1006,10 @@ namespace Wassup.Bridge
             MapDocument activeDoc = null;
             _resolvedDeck = deck;
             _encounterPlan = null;   // tutorial-map — 이월 금지(이전 판의 플랜이 다음 맵에 붙으면 안 된다)
-            // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
-            // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
-            if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
-                && MapGridBattleAdapter.IsUsableDocument(endlessEncounter.document))
-            {
-                activeDoc = endlessEncounter.document;
-                _resolvedDeck = endlessEncounter.deck;
-                Debug.Log("[BattleBridge] map source = ENDLESS encounter (DevMapOverride.Endless).");
-            }
-            else if (mapPool != null && mapPool.Count > 0)
+            // endless-mode-removal unit 0 — 엔드리스 전용 인카운터 분기는 제거했다. 그 분기는
+            // mapPool 을 건드리지 않는 **선행** 분기였으므로, 빼도 아래 인덱스 계산은 한 줄도
+            // 안 바뀐다 — 랜덤/토너먼트 맵 배정이 byte-identical 로 남는다.
+            if (mapPool != null && mapPool.Count > 0)
             {
                 int poolIndex;
                 string poolSource;
@@ -1415,7 +1402,7 @@ namespace Wassup.Bridge
             if (_usingAuthoredPlan)
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_activePlan?.displayName}' "
                     + $"(source={(_authoredPlan != null ? "test-mode" : "map-encounter")}) "
-                    + $"waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
+                    + $"waves={_wavePlan.waves.Count} timer={_timerDuration:F0}s.");
             else
                 Debug.Log(_usingGeneratedWaves
                     ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
@@ -2250,7 +2237,7 @@ namespace Wassup.Bridge
         // ── 당김: 기제(ForceNextWave)와 규칙(TryPullNextWave)을 나눈다 ──────────────
         //
         // 상한을 ForceNextWave 안에 넣으면 **기존 PlayMode 스모크 3종이 죽는다** — 그들은
-        // 이 메서드를 판 진행 동력으로 연타한다(TallyFlowTest 20회·EndlessModeSmokeTest 40회).
+        // 이 메서드를 판 진행 동력으로 연타한다(TallyFlowTest 20회 등).
         // 상한은 «플레이어 입력에 대한 게임 규칙»이지 스케줄러의 물리 법칙이 아니므로,
         // 규칙을 한 층 위에 두는 것이 의미와도 맞는다.
         //
@@ -2280,7 +2267,7 @@ namespace Wassup.Bridge
 
         // three-minute-survival unit 2 → wave-pull-revival unit 0 — **기제**다. 상한을 보지
         // 않는다(위 TryPullNextWave 가 규칙 층). PlayMode 스모크
-        // (TallyFlowTest·EndlessModeSmokeTest·MovementIntegritySmokeTest)가 이것을 **판 진행
+        // (TallyFlowTest·MovementIntegritySmokeTest)가 이것을 **판 진행
         // 동력**으로 쓰기 때문에 no-op 으로 만들면 그 테스트들이 타임아웃으로 죽는다.
         public void ForceNextWave()
         {
@@ -6203,12 +6190,8 @@ namespace Wassup.Bridge
         // opens on it, so this callback stays fire-and-forget.
         private void ReportMatchResult(MatchTally tally)
         {
-            // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
-            if (IsEndless)
-            {
-                Debug.Log("[BattleBridge] ENDLESS — 토너먼트 리포트 스킵.");
-                return;
-            }
+            // endless-mode-removal unit 0 — 「무한 모드는 리포트하지 않는다」 가드는 제거했다.
+            // 이제 **모든 판이 토너먼트에 올라간다** — 엔드리스가 하던 일이 정확히 이것 하나였다.
             var logger = GameManager.Instance?.Logger;
             // unit 7 — 서버로 가는 값은 여기 하나다. tally 가 「무엇을 제출하나」를 소유하고
             // 브리지는 그것을 꺼내 실어 보내기만 한다(가공 지점이 남아 있으면 안 된다).

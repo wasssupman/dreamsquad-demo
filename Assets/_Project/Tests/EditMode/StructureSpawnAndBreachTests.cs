@@ -148,7 +148,7 @@ namespace Wassup.Tests.EditMode
 
             // 붕괴 프레임 — «가장 위험한 골» 은 방금 0 이 되어 죽은 그 골이다. 생존 골 체력으로
             // 덮으면 HUD 에 «부서졌는데 1000» 이 뜨고, StressLimit 0 즉시 패배는 이 값으로
-            // 얼어붙는다(PlayMode GoalStability/EndlessSmoke 가 이 계약을 라이브로 잰다).
+            // 얼어붙는다(PlayMode GoalStabilityTest 가 이 계약을 라이브로 잰다).
             CallPrivateMethod(_bridge, "SyncGoalStability");
             Assert.AreEqual(0, _bridge.GoalStabilityCurrent, "붕괴 프레임의 미러는 0");
 

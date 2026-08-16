@@ -236,7 +236,6 @@ namespace Wassup.Tests.EditMode
                 Assert.IsNotNull(deck, name);
                 Assert.AreEqual(9, deck.bossWaveInterval, $"{name}: 보스 간격");
             }
-            Assert.AreEqual(9, Load("Deck_Endless").bossWaveInterval, "Endless 도 같은 간격");
         }
 
         // 판당 보스가 1기면 3종 풀에서 시드로 뽑는 것은 의미가 없다 — waveSeed 고정이라
@@ -259,8 +258,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void EveryLiveDeck_HasABossAssigned()
         {
-            var all = new List<string>(MapDecks) { "Deck_Endless" };
-            foreach (string name in all)
+            foreach (string name in MapDecks)
             {
                 var deck = Load(name);
                 bool hasPool = deck.bossPool != null && deck.bossPool.Length > 0 && deck.bossPool[0] != null;
@@ -268,13 +266,9 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        [Test]
-        public void EndlessDeck_KeepsTheRotation()
-        {
-            var deck = Load("Deck_Endless");
-            Assert.Greater(deck.bossPool.Length, 1,
-                "무한 모드는 판이 길어 여러 기를 만나므로 로테이션을 유지한다");
-        }
+        // endless-mode-removal unit 0 — `EndlessDeck_KeepsTheRotation` 은 삭제했다.
+        // 「무한 모드는 판이 길어 여러 기를 만난다」를 고정했는데 그 모드도 덱도 사라졌다.
+        // (실제로는 Deck_Endless 도 timerDurationSec 180 이라 판이 길지도 않았다.)
 
         // 6맵에 3종을 배분한다 — 한 종이 어느 맵에도 안 가면 만든 보스가 낭비된다.
         [Test]

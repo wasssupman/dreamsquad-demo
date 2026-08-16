@@ -24,7 +24,7 @@ namespace Wassup.Tests.EditMode
         private static readonly string[] AllDecks =
         {
             "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral", "Deck_Zig", "Deck_Hook",
-            "Deck_Endless",
+           
         };
 
         private static AttackDeck Deck(string name)

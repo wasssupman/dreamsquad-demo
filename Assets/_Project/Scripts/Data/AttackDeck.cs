@@ -9,10 +9,9 @@ namespace Wassup.Data
     {
         public string deckId = "WaveA";
 
-        // endless-mode unit 0 — 배틀 모드. Main=기존 토너먼트, Endless=스코어어택 무한 모드.
-        // BattleBridge 만 읽어 분기(간격/누수/시간축/리포트). 기본 Main 이라 기존 덱 동작 불변.
-        [Header("Battle Mode")]
-        public BattleMode battleMode = BattleMode.Main;
+        // endless-mode-removal unit 0 — `battleMode` 필드는 제거했다. 실제로 그 축이 하던 일은
+        // 「토너먼트 리포트 스킵」 하나였고, 그건 모드가 아니라 플래그로 충분했다. 모드 축이
+        // 다시 필요해지면 «그 모드가 무엇을 다르게 하는가» 를 한 줄로 답할 수 있을 때 만든다.
 
         [Header("Generated Waves")]
         public bool useGeneratedWaves = true;

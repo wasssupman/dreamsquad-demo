@@ -24,14 +24,11 @@ namespace Wassup.Tests.PlayMode
     {
         private const int WaypointLabMapIndex = 7; // main 6장 + dev[1] MovementLab
         private int _savedIndex;
-        private bool _savedEndless;
 
         [SetUp]
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            _savedEndless = DevMapOverride.Endless;
-            DevMapOverride.Endless = false;
             DevMapOverride.Index = WaypointLabMapIndex;
         }
 
@@ -39,7 +36,6 @@ namespace Wassup.Tests.PlayMode
         public void TearDown()
         {
             DevMapOverride.Index = _savedIndex;
-            DevMapOverride.Endless = _savedEndless;
         }
 
         [UnityTearDown]

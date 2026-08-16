@@ -72,7 +72,6 @@ namespace Wassup.Tests.EditMode
         {
             // BattleBridgeDraftMapTests 픽스처 미러 + DevMapOverride 세이브/복원.
             int prevIndex = DevMapOverride.Index;
-            bool prevEndless = DevMapOverride.Endless;
 
             var world = new World("MapPoolDevEntriesTests");
             var deck = ScriptableObject.CreateInstance<AttackDeck>();
@@ -91,7 +90,6 @@ namespace Wassup.Tests.EditMode
                 SetField(bridge, "_world", world);
                 SetField(bridge, "_em", world.EntityManager);
 
-                DevMapOverride.Endless = false;
                 DevMapOverride.Index = pool.Count;   // 풀 뒤 첫 dev 슬롯
 
                 CallPrivateMethod(bridge, "EnsureQueriesAndQueues");
@@ -104,7 +102,6 @@ namespace Wassup.Tests.EditMode
             finally
             {
                 DevMapOverride.Index = prevIndex;
-                DevMapOverride.Endless = prevEndless;
                 Object.DestroyImmediate(go);
                 Object.DestroyImmediate(pool);
                 Object.DestroyImmediate(poolDoc);

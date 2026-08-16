@@ -226,7 +226,8 @@ namespace Wassup.UI
         private int _leakCurrent;
         private int _leakLimit;
         private bool _hasLeakSnapshot;
-        // endless-mode — 무한 모드는 죽는 한계가 없어 "/한계" 와 위기색을 숨긴다(누수 개수만 표시).
+        // three-minute-kill-race unit 2 — 죽는 한계가 없어 "/한계"·위기색을 숨긴다(누수 개수만).
+        // 이제 **모든 판**의 규칙이다. 두 갈래는 ScoreHudStressSeamTests 가 둘 다 검증한다.
         private bool _leakShowLimit = true;
         private Tween _punchTween;
         private Tween _colorTween;
@@ -641,7 +642,7 @@ namespace Wassup.UI
             }
             else
             {
-                // endless-mode — 죽는 한계가 없으니 "/한계"·위기색 숨김, 누수 개수만.
+                // three-minute-kill-race unit 2 — 죽는 한계가 없으니 "/한계"·위기색 숨김.
                 _leakValue.text = $"{_leakCurrent}";
                 targetColor = leakNormalColor;
             }

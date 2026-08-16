@@ -31,27 +31,13 @@ namespace Wassup.UI
             int count = pool != null ? pool.Count : 0;
             if (count <= 0) return;
 
-            // endless-mode unit 3 — 스텝 사이클에 ENDLESS 슬롯(마지막 인덱스 다음)을 추가.
             // map-painter-tool unit 5 — 풀 뒤에 dev 슬롯(devEntries, 시드 선택 미포함)을 이어붙인다.
-            // 슬롯 [0..count-1]=풀, [count..count+dev-1]=dev 맵, 마지막=무한 모드. OFF 는 별도(OFF 버튼).
-            int steppable = count + (pool != null ? pool.DevCount : 0);
-            int total = steppable + 1;
-            int cur;
-            if (DevMapOverride.Endless) cur = steppable;
-            else if (DevMapOverride.HasIndex) cur = DevMapOverride.Index;
-            else cur = dir > 0 ? -1 : total;                    // OFF 진입: ▶=0, ◀=ENDLESS
-            int next = ((cur + dir) % total + total) % total;
-
-            if (next >= steppable)                              // ENDLESS 슬롯
-            {
-                DevMapOverride.Endless = true;
-                DevMapOverride.Index = -1;                      // 인덱스 off (무한이 우선하지만 표시 정합)
-            }
-            else
-            {
-                DevMapOverride.Endless = false;
-                DevMapOverride.Index = next;
-            }
+            // 슬롯 [0..count-1]=풀, [count..count+dev-1]=dev 맵. OFF 는 별도(OFF 버튼).
+            // endless-mode-removal unit 0 — 마지막의 ENDLESS 슬롯이 빠져 total == steppable 이다.
+            int total = count + (pool != null ? pool.DevCount : 0);
+            if (total <= 0) return;
+            int cur = DevMapOverride.HasIndex ? DevMapOverride.Index : (dir > 0 ? -1 : total);
+            DevMapOverride.Index = ((cur + dir) % total + total) % total;
             Refresh();
         }
 
@@ -64,7 +50,6 @@ namespace Wassup.UI
         private void Refresh()
         {
             if (label == null) return;
-            if (DevMapOverride.Endless) { label.text = "ENDLESS"; return; }
             if (!DevMapOverride.HasIndex) { label.text = "MAP?"; return; }
 
             int i = DevMapOverride.Index;
