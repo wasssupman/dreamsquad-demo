@@ -161,25 +161,12 @@ namespace Wassup.Tests.PlayMode
 
             // 발수는 **동시 생존 최대치**로 센다. 갈래는 한 프레임에 다 발사되고 시차는
             // 낙하 시간에만 들어가므로(emitter 주석), 발사 직후 프레임에 전부 살아 있다.
-            //
-            // ⚠ 전체 투사체를 세면 안 된다 — 판에는 웨이브 적도 걸어 들어오고(`Wave 1 queued`)
-            // 그놈이 스코프에 들어오면 **자기 미사일**을 하나 더 받는다. 실측으로 더미 2기에
-            // 3발이 세어져 「여분이 샌다」로 오진됐다. 우리가 물어보는 것은 «이 두 적에게 몇
-            // 발이 갔나» 이므로 **임자(`target`)가 우리 더미인 탄만** 센다 — unit 8 이 각 발에
-            // 임자를 실어서 이 구분이 가능해졌다.
             int maxAlive = 0;
-            using (var q = em.CreateEntityQuery(
-                       ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileState>()))
+            using (var projectiles = em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileState>()))
             {
                 for (int f = 0; f < 60; f++)
                 {
-                    var states = q.ToComponentDataArray<Wassup.Battle.Combat.Projectile.ProjectileState>(
-                        Unity.Collections.Allocator.Temp);
-                    int mine = 0;
-                    for (int s = 0; s < states.Length; s++)
-                        if (states[s].target == a || states[s].target == b) mine++;
-                    states.Dispose();
-                    maxAlive = Mathf.Max(maxAlive, mine);
+                    maxAlive = Mathf.Max(maxAlive, MissilesAimedAt(projectiles, a, b));
                     yield return null;
                 }
             }
@@ -341,23 +328,46 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(100000);
             bridge.StartBattle();
+            SilenceOtherAttackers();
+        }
 
-            // ⚠ **판 위에 우리 더미만 있는 게 아니다.** 맵이 본능/적 마음 구조물을 스폰하고
-            // (`[BattleBridge] Structures spawned: 5`) 본능은 `attackDamage` 로 AttackState 를
-            // 달고 적을 쏜다(BattleBridge 의 구조물 bake). 그 피해가 더미에 얹히면 «미사일이
-            // 저작값만큼 때렸나» 를 잴 수 없다 — 실측으로 더미가 80 대신 100 을 받았고,
-            // 스코프 **밖** 더미까지 20~40 을 받아 「반경 게이트가 죽었다」로 **오진**됐다.
-            // (캐논 자기 평타는 MakeCannon 이 attackRange 0 으로 이미 막았다. 빠진 건 남의
-            //  공격원이었다.)
-            //
-            // 배치 전이라 지금 AttackState 를 가진 것은 구조물뿐이다 — 여기서 벗기면
-            // 방어유닛/투사체 경로는 손대지 않고 «다른 공격원» 만 사라진다.
+        // 이 파일의 모든 단언은 «캐논의 배치 폭격이 얼마나 때렸나» 를 묻는다. 그러려면 판 위에
+        // 때리는 것이 그것뿐이어야 하는데, 배틀 씬은 비어 있지 않다 — 맵이 본능 구조물을
+        // 스폰하고(`Structures spawned: 5`) 본능은 `attackDamage` 로 AttackState 를 달고 적을
+        // 쏜다. `MakeCannon` 이 캐논 **자기** 평타를 attackRange 0 으로 막는 것과 같은 이유로,
+        // **남의** 공격원도 꺼야 한다.
+        //
+        // 안 끄면 조용히 오진된다(실측): 더미가 80 대신 100 을 받고, 스코프 **밖** 더미까지
+        // 20~40 을 받아 「반경 게이트가 죽었다」로 읽힌다.
+        //
+        // 배치 전이라 지금 AttackState 를 가진 것은 구조물뿐이다 — 방어유닛/투사체 경로는
+        // 손대지 않는다.
+        private static void SilenceOtherAttackers()
+        {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            using (var atkQ = em.CreateEntityQuery(
+            using (var attackers = em.CreateEntityQuery(
                        ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>()))
             {
-                if (!atkQ.IsEmpty) em.RemoveComponent<Wassup.Battle.Combat.AttackState>(atkQ);
+                if (!attackers.IsEmpty)
+                    em.RemoveComponent<Wassup.Battle.Combat.AttackState>(attackers);
             }
+        }
+
+        // 임자(`ProjectileState.target`)가 이 두 적인 탄만 센다.
+        //
+        // 전체 투사체를 세면 안 된다 — 판에는 웨이브 적도 걸어 들어오고(`Wave 1 queued`)
+        // 그놈이 스코프에 들어오면 **자기 미사일**을 하나 더 받는다. 실측으로 더미 2기에
+        // 3발이 세어져 「여분이 샌다」로 오진됐다. unit 8 이 각 발에 임자를 실어서 이 구분이
+        // 가능해졌다.
+        private static int MissilesAimedAt(EntityQuery projectiles, Entity a, Entity b)
+        {
+            var states = projectiles.ToComponentDataArray<ProjectileState>(
+                Unity.Collections.Allocator.Temp);
+            int count = 0;
+            for (int i = 0; i < states.Length; i++)
+                if (states[i].target == a || states[i].target == b) count++;
+            states.Dispose();
+            return count;
         }
 
         private static Entity SpawnDummy(EntityManager em, BattleBridge bridge, Vector2Int cell)
