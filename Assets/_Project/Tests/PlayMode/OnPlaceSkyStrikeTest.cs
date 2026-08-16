@@ -142,6 +142,7 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             var cannon = MakeCannon("test_skystrike_samecell");
+            float authored = AuthoredDamage(cannon);
             Prepare(bridge, gm, cannon);
             var cell = FindPlaceableCell(bridge, cannon);
 
@@ -157,8 +158,13 @@ namespace Wassup.Tests.PlayMode
             em.DestroyEntity(a); em.DestroyEntity(b);
             Object.Destroy(cannon);
 
-            Assert.Greater(da, 0f, "같은 칸 적 A 무피해 — dedupe 하면 한 명이 공짜로 산다");
-            Assert.Greater(db, 0f, "같은 칸 적 B 무피해");
+            // ⚠ **「둘 다 맞았다」로는 부족하다.** 셀을 겨누는 낙하탄은 `impactTileRange 0` 이라도
+            // 그 칸의 **전원**을 때린다(TileAoe). 같은 칸에 미사일을 두 발 떨어뜨리면 두 적이
+            // 각각 **두 발씩** 맞아 피해가 2배가 된다 — spec 이 못 박은 「적당 정확히 80」이 깨진다.
+            // 그래서 «맞았나» 가 아니라 «얼마나» 를 잰다.
+            Assert.AreEqual(authored, da, 0.01f,
+                $"같은 칸 적 A 의 피해가 저작값과 다르다({da}) — 셀을 겹쳐 겨누면 서로의 폭발에 함께 맞는다");
+            Assert.AreEqual(authored, db, 0.01f, $"같은 칸 적 B 의 피해가 저작값과 다르다({db})");
         }
 
         // 반경 밖에만 적이 있으면 그 적은 무사하다 — 「후보 0 이면 조용히 소모」 경로가

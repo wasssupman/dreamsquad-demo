@@ -57,7 +57,7 @@ fan-out  : shot 1회 → 스코프 안 후보 전부      → 요청 n 개 (동�
 - `reselectPerShot` 는 fan-out 에서 **의미가 없다**(잠글 단일 대상이 없다). 잠금 경로를 아예
   타지 않으며, 저작이 false 여도 무해하다.
 
-**결정론**: fan-out 은 스코프 안 모든 후보를 **정확히 1회** 맞히므로 `PatternTargeting` 의 선택
+**결정론**: fan-out 은 스코프 안 모든 후보를(셀 바인딩이면 모든 **칸**을) **정확히 1회** 맞히므로 `PatternTargeting` 의 선택
 규칙 자체를 타지 않는다 — 「중복 셀은 스냅샷 index 로 tie-break」 구멍이 **결과에 영향을 주지
 않는다**(누가 맞았나가 순서와 무관하다).
 ⚠ 이 면제는 fan-out 한정이다 — 단일 선택(RoundRobin/Shuffle) 경로의 후속 후보
@@ -77,9 +77,12 @@ static int Filter(in NativeArray<int2> candidateCells, int2 hostCell, int tileRa
 ```
 
 - `tileRange <= 0` → 전량 통과(현행 동작). **이 arm 이 무회귀의 근거다.**
-- **셀 중복 제거를 하지 않는다.** 같은 칸에 적 둘이면 후보도 둘이다 — 캐논은 **적 1기당 1발**
-  (1:1 타격)이 사양이므로 dedupe 하면 한 명이 공짜로 산다.
-  (rev2 초안은 dedupe 를 넣었다가 이 사양에서 뒤집혔다. 되돌리지 말 것.)
+- **셀 중복 제거를 여기서 하지 않는다.** 이 함수는 **반경 필터**이고 「한 칸에 몇 발이냐」는
+  궤적의 성질이라 소비자가 정한다 — 셀을 겨누는 궤적은 emitter 가 **칸당 1발**로 접고,
+  엔티티를 겨누는 궤적은 안 접는다.
+  ⚠ 처음엔 「1:1 이라 접으면 한 명이 공짜로 산다」로 아예 안 접었는데, **그 전제가 셀
+  바인딩에서 거짓**이었다(리뷰 지적 → 실측): `TileAoe` 는 `impactTileRange 0` 이어도 그 칸
+  전원을 때리므로 접어도 아무도 안 살고, 안 접으면 오히려 **각자 N배**를 맞는다(2기 → 각 160).
 - 결과는 **원본 index 오름차순**이다.
 
 ### emitter 결선
@@ -117,17 +120,17 @@ warn 경로가 **없다**(실제로는 방향탄을 쏜다). 이 폴더를 건�
 
 ## 완료 기준
 
-- [ ] compile 0 error (신규 `.cs` — `refresh_unity scope=all`)
-- [ ] **`grep "using Unity.Entities"` 가 `PatternScope.cs` 에서 0건** (계약 1 기계 검증)
-- [ ] EditMode `PatternScopeTests`
+- [x] compile 0 error (신규 `.cs` — `refresh_unity scope=all`)
+- [x] **`grep "using Unity.Entities"` 가 `PatternScope.cs` 에서 0건** (계약 1 기계 검증)
+- [x] EditMode `PatternScopeTests`
   - `tileRange 0` → 전량 통과 + 원본 순서 보존 (**무회귀 핀**)
   - 반경 안/밖 분리가 Chebyshev 로 맞음
-  - **같은 셀 후보 3개 → 결과 3개**(dedupe 하지 않는다 — 1:1 사양 핀)
+  - **같은 셀 후보 3개 → 결과 3개**(이 함수는 반경 필터일 뿐 — 칸 접기는 emitter 몫)
   - 반환값이 **원본 index** 다 (scoped index 가 새지 않는다)
   - 반경 안 후보 0 → 반환 0
-- [ ] EditMode: `TryToSpec` 이 신규 필드 2개를 복사한다 (**조용한 0 = 맵 전체 폭격** 방지 핀)
-- [ ] EditMode `EmitterTickTests`·`PatternTargetingTests` **무변경 전량 통과**(이 unit 이 그
+- [x] EditMode: `TryToSpec` 이 신규 필드 2개를 복사한다 (**조용한 0 = 맵 전체 폭격** 방지 핀)
+- [x] EditMode `EmitterTickTests`·`PatternTargetingTests` **무변경 전량 통과**(이 unit 이 그
       두 파일을 안 건드린다는 증거)
-- [ ] PlayMode 는 이 unit 에서 돌리지 않는다 — 사슬 끝(unit 2)이 자연스러운 관측점
+- [x] PlayMode 는 이 unit 에서 돌리지 않는다 — 사슬 끝(unit 2)이 자연스러운 관측점
       («적마다 미사일 1발»)으로 scope·fan-out·트리거를 한 번에 검증한다
       (2026-08-16 사용자 결정: unit 단위 PlayMode → 사슬 끝 1회)

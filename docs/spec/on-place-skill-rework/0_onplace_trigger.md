@@ -136,9 +136,9 @@ loud warn 한다(조용한 통과 금지). 발화 시점이 아니라 bake 인 �
 
 ## 완료 기준
 
-- [ ] compile 0 error (신규 `.cs` — `refresh_unity scope=all`)
-- [ ] **이 unit 만으로는 어떤 배치 스킬도 바뀌지 않는다.** 기존 10종 무회귀
-- [ ] EditMode
+- [x] compile 0 error (신규 `.cs` — `refresh_unity scope=all`)
+- [x] **이 unit 만으로는 어떤 배치 스킬도 바뀌지 않는다.** 기존 10종 무회귀
+- [x] EditMode
   - `UnitSkillAbility` 유닛 bake → `DcTriggerSlot` 에 `OnPlace` 슬롯 부착 (`DefenderTriggerArmed` 통과)
   - **적 경로 fail-closed 무회귀** — `EnemyTriggerArmed` 로 막히던 kind 가 여전히 막힌다
   - **`targetFaction` 진영 핀** — 방어유닛 host 패턴의 `targetFaction == Enemy`
@@ -147,6 +147,6 @@ loud warn 한다(조용한 통과 금지). 발화 시점이 아니라 bake 인 �
   - 카드가 `OnPlace` 를 선언 → loud 거절
   - 레거시 enum + 능력 동시 선언 → 경고
   - `DcApplicability` 전수 테스트 green
-- [ ] PlayMode: **세 배치 경로(D&D · 탭 · 재배치) 전부에서 `OnPlace` 슬롯이 1회 발화**
-- [ ] `grep` 로 `EmitProjectilePattern` 실행 사본이 **2곳**(늘지 않았다)
-- [ ] 기존 EditMode/PlayMode 무회귀 — 보스 메커닉·드림캐쳐 카드·머신거너 다연발
+- [x] PlayMode: **세 배치 경로(D&D · 탭 · 재배치) 전부에서 `OnPlace` 슬롯이 1회 발화**
+- [x] `grep` 로 `EmitProjectilePattern` 실행 사본이 **2곳**(늘지 않았다)
+- [x] 기존 EditMode/PlayMode 무회귀 — 보스 메커닉·드림캐쳐 카드·머신거너 다연발

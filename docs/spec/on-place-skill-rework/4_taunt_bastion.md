@@ -125,7 +125,7 @@ mechanics[0]:
 ## 완료 기준
 
 - [x] compile 0 error · `DcApplicability` 전수 테스트 green (2026-08-16)
-- [ ] PlayMode `OnPlaceTauntNearbyTest`
+- [x] PlayMode `OnPlaceTauntNearbyTest`
   - 반경 2 안 적 5마리(상한 2 초과) → **전원** `Aggroed`, `guardian == 배스티온`
   - 반경 밖 적 → `Aggroed` 없음
   - **비행 적은 도발되지 않는다** (층 게이트 핀)
@@ -135,7 +135,7 @@ mechanics[0]:
     도발이 아니다. ⚠ 이 단언이 이 unit 의 핵심 회귀 핀이다
   - 배치 직후 적이 배스티온을 공격한다(`AggroAttackProfile` 경로 회귀)
   - 가디언 아닌 유닛에 같은 능력 → bake 경고 + 무동작 (조용한 통과 금지)
-- [ ] 기존 어그로 PlayMode/EditMode 무회귀
+- [x] 기존 어그로 PlayMode/EditMode 무회귀
 - [ ] Play 육안: 적 무리 근처에 배스티온 배치 → **반경 안 적이 전원 동시에 방향을 틀어** 몰려온다.
       1~2기만 끌려오면 실패다. 5초 뒤 다시 흩어져 골로 향한다
 - [ ] Play 육안: **밀집 웨이브에서 배스티온이 도발 중 죽는 시나리오** — 뭉친 적이 그대로 진격하는

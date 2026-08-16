@@ -462,6 +462,14 @@ namespace Wassup.Battle.Combat
                                 for (int ti = 0; ti < pulseTargets.Length; ti++)
                                 {
                                     var victim = enemyEntities[pulseTargets[ti]];
+                                    // README 계약 9 — 「이번 프레임 합법 후보」만 본다.
+                                    // `BuildEnemyPool` 은 arm 셋이 공유하는 헬퍼라 쿼리를 바꾸지
+                                    // 않고 여기서 거른다(아래 통행 층 게이트와 같은 방식).
+                                    // ⚠ `AggroStateSystem` 드레인에는 `UltimateLeapState` 게이트가
+                                    // **없다** — 오늘은 보스 면역이 우연히 가려 줄 뿐이라,
+                                    // 엘리트에 궁극기 도약이 열리면 그대로 구멍이 된다.
+                                    if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(victim)) continue;
+                                    if (SystemAPI.HasComponent<UltimateLeapState>(victim)) continue;
                                     byte victimLayers = pathFollowLookup.HasComponent(victim)
                                         ? pathFollowLookup[victim].traversalLayers
                                         : (byte)0;

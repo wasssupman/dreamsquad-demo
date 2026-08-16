@@ -64,16 +64,17 @@ dry-run 이 없어 돌리면 즉시 에셋에 쓴다(`project_sheet_verify_reado
 
 ## 완료 기준
 
-- [ ] EditMode `UnitKitSummaryTests` — 규칙만 가진 유닛(캐논·배스티온)이 **빈 문자열을 내지 않음**
-- [ ] EditMode — **`OnPlaceEffectType` 과 배치 payload kind 를 `Enum.GetValues` 로 전수 순회**해
+- [x] EditMode `UnitKitSummaryTests` — 규칙만 가진 유닛(캐논·배스티온)이 **빈 문자열을 내지 않음**
+- [x] EditMode — **`OnPlaceEffectType` 과 배치 payload kind 를 `Enum.GetValues` 로 전수 순회**해
       빈 문자열이 없음을 고정한다. 지금은 `default: return ""` 함정이 테스트로 안 잡혀 있어
       같은 사고가 두 번 난다(`DcApplicabilityTests` 의 전수 검사 선례)
 - [ ] 세 유닛의 캐릭터 페이지/카드 설명이 새 문안으로 뜬다(로비 → 스쿼드)
-- [ ] **검증 질문 ① 확인**: unit 2 커밋의 `.cs` 변경이 테스트 파일 외 0
+      ⚠ **시트 `desc` 갱신이 선행이다**(사용자 작업). 코드는 desc 가 비었을 때의 폴백만 고쳤다
+- [x] **검증 질문 ① 확인**: unit 2 커밋의 `.cs` 변경이 테스트 파일 외 0
 - [ ] **검증 질문 ② 육안 확인** — 배치 순간의 그림만 보고 무슨 일이 일어났는지 말할 수 있는가:
   - 캐논 → 반경 안에 미사일이 흩어져 내려와 터진다
   - 배스티온 → 적들이 경로를 버리고 몰려온다, 5초 뒤 흩어진다
   - 말파이트 → 튀어올랐다 떨어진 뒤 한동안 굳어 있다
-- [ ] 전체 회귀: EditMode 전량 · on-place/어그로/투사체 PlayMode 전량
+- [x] 전체 회귀: EditMode 전량 · on-place/어그로/투사체 PlayMode 전량
       (기존 실패 5건은 사전 실패로 분리 보고)
-- [ ] `7_handoff_summary.md` 작성 + README 상태 라인 「완료 YYYY-MM-DD」
+- [x] `7_handoff_summary.md` 작성 + README 상태 라인 「완료 YYYY-MM-DD」

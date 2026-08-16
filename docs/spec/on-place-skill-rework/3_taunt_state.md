@@ -74,7 +74,10 @@ public struct Aggroed : IComponentData
 `remainingTime > 0` 이면 `SystemAPI.Time.DeltaTime` 만큼 감소(`BattleSimGroup` =
 TimeManager Battle 도메인 시계. `CcDecaySystem` 과 같은 시계라 슬로모에서 CC 와 도발이 갈리지
 않는다). 0 이하 → **가디언 생존과 무관하게 해제**, 기존 해제 경로 그대로(`Aggroed` +
-`AggroChaseCell` 동시 제거). 가디언 사망 판정을 **먼저** 하므로 도발 중 배스티온이 죽어도 즉시 풀린다.
+`AggroChaseCell` 동시 제거).
+⚠ 코드상 **만료 판정이 가디언 사망 판정보다 앞**이다(둘 다 해제로 끝나 결과는 같다 — 순서를
+적어 두는 것은 다음 사람이 문서와 다른 코드를 보고 멈추지 않게 하기 위함이다). 도발 중
+배스티온이 죽으면 만료를 기다리지 않고 즉시 풀린다.
 
 ### `AggroStateSystem` — Pass 3 (획득)
 
@@ -103,10 +106,12 @@ TimeManager Battle 도메인 시계. `CcDecaySystem` 과 같은 시계라 슬로
    → Taunt 는 이 두 조건을 건너뛰고, 대신 **이미 도발 중이면 갱신**(`remainingTime = max(기존, 요청)`
    — CC 갱신 관례. 겹친 배치가 시간을 깎지 않게). 같은 틱 Taunt 중복은 별도 집합으로 막는다.
    `runningHeld` 이중 계상도 함께 막는다.
-3. **chase 를 다시 못 구우면 도발을 거절한다.** override 시 `ecb.AddBuffer<AggroChaseCell>` 는
+3. **옛 chase field 가 남아 있는데 새로 못 구우면 도발을 거절한다.** override 시 `ecb.AddBuffer<AggroChaseCell>` 는
    기존 버퍼를 덮으므로 정상 경로는 stale 이 아니다. 진짜 구멍은 flow field/transform 이 없어
    `attachField` 를 못 세우는 경우 — `Aggroed.guardian` 만 바뀌고 **옛 가디언 기준 필드**가 남아
-   적이 엉뚱한 쪽으로 걸어간다. → 그 경우 도발을 **붙이지 않는다.**
+   적이 엉뚱한 쪽으로 걸어간다. → **버퍼가 실제로 남아 있을 때만** 거절한다.
+   ⚠ flow field 가 없는 합성 월드에는 버퍼 자체가 없어 낡은 경로가 존재하지 않는다 — 거기서는
+   기존 계약대로(기하 생략하고 부착만) 붙는다. 「필드를 못 구우면 무조건 거절」이 아니다.
 4. **`runningHeld` 를 도발도 올리는지 정한다.** 어느 쪽도 방어 가능하지만 테스트가 하나를
    인코딩하므로 계약으로 적는다. **올린다**(같은 틱에 히트가 남은 자리를 다시 세지 않도록).
    ⚠ `AggroPolicy.CanAcquire` 의 3번째 인자는 프로덕션 dead(`false` 고정) — "겸사겸사" 고치지 말 것.
@@ -152,18 +157,21 @@ TimeManager Battle 도메인 시계. `CcDecaySystem` 과 같은 시계라 슬로
 
 ## 완료 기준
 
-- [ ] compile 0 error · `grep AggroHitEvent` 잔여 0 (파일명 포함)
-- [ ] **NativeQueue 채널 수 불변(28개)**. CLAUDE.md 는 이름만 갱신
-- [ ] 이 unit 만으로는 도발이 일어나지 않는다. 기존 어그로 동작 무변경
-- [ ] EditMode `AggroStateSystemTests` 추가
+- [x] compile 0 error · `grep AggroHitEvent` 잔여 0 (파일명 포함)
+- [x] **NativeQueue 채널 수 불변(28개)**. CLAUDE.md 는 이름만 갱신
+- [x] 이 unit 만으로는 도발이 일어나지 않는다. 기존 어그로 동작 무변경
+- [x] EditMode `AggroStateSystemTests` 추가 (24/24)
   - 도발 → capacity(2) 초과 5마리 전원 `Aggroed`
   - `remainingTime` 경과 → 전원 해제 · `AggroChaseCell` 도 제거
   - 도발 중 가디언 사망 → 즉시 해제
   - **같은 틱에 Hit 이 먼저 온 적에게 Taunt 가 걸린다** (게이트 분리 핀 — rev2 가 정반대로 서술했다)
   - **타 가디언에서 가져온 적의 `AggroChaseCell` 이 새 가디언 기준**이다 → 이동 방향 단언
-  - chase 를 못 굽는 상황(flow field 부재) → **도발이 붙지 않는다**
+  - **옛 chase field 가 남아 있는데** 새로 못 구우면 override 거절(flow field 부재 = 버퍼도
+    없음이라 이 경우가 아니다 — 거기서는 기존 계약대로 붙는다)
   - 보스 · 유닛 미조준 적 · 공격 수단 없는 적 · 도달 불가 적 → 도발 안 걸림
   - 무기한 어그로(`remainingTime == 0`)는 시간이 지나도 해제되지 않음 (**기존 픽스처 8곳 보호 핀**)
-  - 도발 중 장애물 signature 변경 → **도발 유지**(필드만 재구축)
-- [ ] **부하**: 반경 2 · 적 15기 도발 1회의 드레인 프레임 시간 측정. 필드 재사용 전/후 비교
-- [ ] 기존 EditMode/PlayMode 무회귀 — 특히 히트 획득 상한/선점 테스트
+  - ⚠ 도발 중 장애물 signature 변경 → **미테스트**(합성 월드엔 flow field 가 없고 라이브도
+    `Obstacle` 생산자가 디버그 메뉴뿐이라 휴면 — 리뷰 지적. 그 경로가 열릴 때 PlayMode 필요)
+- [ ] **부하**: 반경 2 · 적 15기 도발 1회의 드레인 프레임 시간 측정 — **미측정**. 1-entry 메모로
+      BFS 는 접었으나 `AggroChaseCell` 버퍼 복사(그리드 전체 × 적 수)는 남아 있다(리뷰 지적)
+- [x] 기존 EditMode/PlayMode 무회귀 — 특히 히트 획득 상한/선점 테스트

@@ -109,11 +109,13 @@ namespace Wassup.Data
                 if (m.trigger.kind != DcTriggerKind.OnPlace) continue;
                 switch (m.payload.kind)
                 {
-                    case DcPayloadKind.EmitProjectilePattern: return "배치 시 주변 적 전원에게 낙하 폭격";
+                    case DcPayloadKind.EmitProjectilePattern: return "배치 시 주변 적 머리 위로 미사일 낙하";
                     case DcPayloadKind.AreaTaunt:             return "배치 시 주변 적을 한꺼번에 끌어모음";
-                    // ⚠ 위 default 와 같은 함정이다 — 배선하지 않은 payload 는 조용히 문안이
-                    // 빈다. `UnitKitSummaryTests` 의 전수 순회가 이걸 잡는다.
-                    default: return "";
+                    // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
+                    // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
+                    // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
+                    // `UnitKitSummaryTests` 의 전수 순회가 배선 누락 자체를 잡는다.
+                    default: continue;
                 }
             }
             return "";

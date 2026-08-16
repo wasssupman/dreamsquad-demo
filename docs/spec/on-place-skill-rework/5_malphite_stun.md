@@ -66,11 +66,11 @@ hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
 
 ## 완료 기준
 
-- [ ] compile 0 error
-- [ ] PlayMode
+- [x] compile 0 error
+- [x] PlayMode
   - 반경 2 안 적 전원 `CcEffect{kind=Stun}` 3초 · 반경 밖 적 무영향
   - 3초 동안 적이 **이동하지 않는다**(전후 위치 비교). 지속만 늘리고 정지가 안 되면 의미 없음
   - 3초 뒤 다시 이동
-- [ ] 기존 `KnockupOnHitTest` 무회귀 — 평타 넉업(0.8)은 그대로
+- [x] 기존 `KnockupOnHitTest` 무회귀 — 평타 넉업(0.8)은 그대로
 - [ ] Play 육안: 적 무리 위에 말파이트 배치 → **튀어올랐다 떨어진 뒤 한동안 굳어 있다.**
       떠 있는 채로 3초를 버티지 않는다

@@ -1374,6 +1374,18 @@ namespace Wassup.Bridge
             }
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
+
+            // on-place-skill-rework 리뷰 반영 — **배치 페이즈에 쌓인 발사 요청을 버린다.**
+            // `DrainProjectileSpawnRequests` 는 `Update` 의 `if (!_running) return;` 아래라
+            // 전투 시작 전에는 돌지 않는데, sim(emitter)은 `_running` 을 모르고 캐리어를 만든다.
+            // 그래서 배치 페이즈에 캐논을 놓으면 캐리어가 파괴되지 않고 남아, **여기서
+            // `_running` 이 켜지는 순간 낡은 좌표로 일제히 터진다**(실측 캐리어 3개).
+            // 정리 시점은 판 종료(`DestroyBattleEntities`)뿐이라 그 사이 창이 비어 있었다.
+            //
+            // ⚠ 「배치 페이즈에 배치한 스킬은 낭비된다」는 기존 사양 그대로다(README 후속 후보
+            // 「배치 페이즈 발동 정책」). 이 줄이 고치는 것은 **낭비가 뒤늦게 터지는 것**뿐이다.
+            DestroyEntitiesByType<ProjectileRequestCarrier>();
+
             _pending.Clear();
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
@@ -8411,6 +8423,14 @@ namespace Wassup.Bridge
                     {
                         Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
                     }
+                    // on-place-skill-rework 리뷰 반영 — fan-out 은 후보 **전원**에게 1발씩
+                    // 나가므로 범위 제한이 없으면 **맵 전체 적 수만큼** 캐리어가 한 shot 에
+                    // 생긴다(상한도 없다). 조용한 폭주를 bake 에서 끊는 이 파일의 관례대로 거절.
+                    if (pattern.fanOutToAllCandidates && pattern.scopeTileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: fanOutToAllCandidates 인데 scopeTileRange 가 0 — 맵 전체 적에게 동시 발사가 된다 — skipped. 반경을 지정하라.");
+                        continue;
+                    }
                     // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
                     //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
                     //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
@@ -8655,6 +8675,17 @@ namespace Wassup.Bridge
                 targetFaction = hostIsEnemy
                     ? ProjectileTargetFaction.Defender
                     : ProjectileTargetFaction.Enemy,
+                // on-place-skill-rework 리뷰 반영 — **통행 층도 host 사양을 따른다.**
+                // 안 실으면 0 = 무제한이라(`PlacementLayers.CanTarget` 이 0 을 무조건 통과)
+                // **지상만 때리는 유닛의 패턴이 비행 적을 때린다.** 캐논의 배치 폭격이 정확히
+                // 그랬다 — 레거시 `MeleeBurst` 는 `CanDefenderTargetMover` 로 비행을 뺐는데
+                // 규칙 경로로 옮기면서 그 게이트를 잃었다(같은 spec 의 도발은 명시적으로 막았다).
+                // 방어유닛 발 투사체가 전부 `AttackState.targetTraversalLayers` 를 싣는 것과
+                // 같은 규약이며, 궤도 화염구 arm 의 선례와도 동형이다.
+                targetTraversalLayers =
+                    _em.HasComponent<Wassup.Battle.Combat.AttackState>(owner)
+                        ? _em.GetComponentData<Wassup.Battle.Combat.AttackState>(owner).targetTraversalLayers
+                        : (byte)0,
             };
         }
 

@@ -173,6 +173,18 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                                                                 fanCount > 0 ? (scoped ? scopedIdx[0] : 0) : -1);
                                 if (order.targetCandidateIndex < 0) continue;
 
+                                // ⚠ **셀을 겨누는 궤적은 칸당 1발이다.** 겨눈 칸에 이미 쏜 발이
+                                // 있으면 건너뛴다. 안 그러면 같은 칸의 적들이 서로의 폭발에
+                                // 함께 맞아 **각자 N배**를 받는다(실측: 2기가 각각 160) —
+                                // `TileAoe` 는 `impactTileRange 0` 이어도 **그 칸 전원**을 때리기
+                                // 때문이다. 「1:1」의 뜻은 *적 1기당 1발* 이 아니라 **칸당 1발**이고,
+                                // 그래야 «적당 정확히 저작 피해» 가 실제로 성립한다.
+                                //
+                                // 엔티티를 겨누는 궤적은 접지 않는다 — 거기서는 같은 칸이라도
+                                // 탄이 대상을 따라가므로 접으면 한 명이 정말 공짜로 산다.
+                                var firedCells = binding == BindingClass.Cell
+                                    ? new NativeList<int2>(fanCount, Allocator.Temp)
+                                    : default;
                                 for (int c = 0; c < fanCount; c++)
                                 {
                                     int pi = scoped ? scopedIdx[c] : c;
@@ -185,8 +197,16 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                                     }
                                     else if (binding == BindingClass.Cell)
                                     {
+                                        int2 cellOf = poolCells[pi];
+                                        bool already = false;
+                                        for (int k = 0; k < firedCells.Length; k++)
+                                            if (firedCells[k].x == cellOf.x && firedCells[k].y == cellOf.y)
+                                            { already = true; break; }
+                                        if (already) continue;
+                                        firedCells.Add(cellOf);
+
                                         fanReq.impact = GridMath.CellToWorldCenter(
-                                            poolCells[pi], ff.tileSize, 0f, origin: ff.origin);
+                                            cellOf, ff.tileSize, 0f, origin: ff.origin);
                                         fanReq.flightTime = order.telegraphSec;
                                     }
                                     else continue;
@@ -197,6 +217,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                                     ecb.AddComponent(fanCarrier, fanReq);
                                     ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
                                 }
+                                if (firedCells.IsCreated) firedCells.Dispose();
                                 continue; // 이 shot 의 전개 완료
                             }
 

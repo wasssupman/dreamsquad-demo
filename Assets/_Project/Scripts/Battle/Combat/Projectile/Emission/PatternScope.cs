@@ -19,9 +19,14 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // 잠금 경로(`IndexOf(poolEntities, target)` → `poolCells[cellIdx]`)가 다른 index
         // 공간을 섞어 엉뚱한 칸을 때리거나 범위를 벗어난다.
         //
-        // ⚠ **셀 중복을 제거하지 않는다.** 같은 칸에 적이 둘이면 후보도 둘이다 —
-        // fan-out 의 사양이 «적 1기당 1발»(1:1 타격)이라 dedupe 하면 한 명이 공짜로 산다.
-        // (rev2 초안은 dedupe 를 넣었다가 이 사양에서 뒤집혔다. 되돌리지 말 것.)
+        // 셀 중복을 여기서 제거하지 않는다 — 이 함수는 **반경 필터**이고 「한 칸에 몇 발이냐」는
+        // 궤적의 성질이라 소비자가 정한다. 셀을 겨누는 궤적(SkyFall 등)은 emitter 의 fan-out
+        // 루프가 칸당 1발로 접고(그 주석 참조), 엔티티를 겨누는 궤적은 접지 않는다.
+        //
+        // ⚠ 처음엔 이 함수에서 dedupe 하려다 «적 1기당 1발이라 접으면 한 명이 공짜로 산다» 는
+        // 이유로 뺐는데, **그 전제가 셀 바인딩에서는 거짓이었다** — `TileAoe` 는
+        // `impactTileRange 0` 이어도 그 칸 전원을 때리므로 접어도 아무도 안 살고, 안 접으면
+        // 오히려 각자 N배를 맞는다(실측 2기 → 각 160). 판단을 소비자로 내린 이유가 이것이다.
         //
         // tileRange <= 0 = 전량 통과(현행 동작) — 이 arm 이 무회귀의 근거다.
         public static int Filter(in NativeArray<int2> candidateCells, int2 hostCell,
