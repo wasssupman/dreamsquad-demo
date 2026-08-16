@@ -104,7 +104,7 @@ attack**"* 로 이미 그 일을 한다. `AttackSystem`(≈1407~1465)의 광역 
 | attackRange | **2** | = 회오리 반경(계약 5). Chebyshev 2 = 5×5 |
 | **attackTargetCount** | **10** | 회오리의 실체. 반경 2 안의 방어유닛 수가 보드 총원보다 적어 실질 **무제한**이고, 10 은 «큰 회오리» 의 선언 겸 안전 상한이다 |
 | attackCooldown | **0.6** | 연타 = 회오리의 체감 |
-| outputs | `Damage` **5** | 대상당 8.3 DPS. 별도 단일 타격은 **없다** |
+| outputs | `Damage` **15** | 대상당 **25 DPS**. 별도 단일 타격은 **없다**. ⚠ 초판 5(8.3 DPS)는 **피해를 주는 적 전체에서 꼴찌**였다 — 웨이브 1 잡몹 `Enemy_Basic`(20 DPS)의 **절반 이하**라 「전선의 근접 유닛을 실제로 죽인다」(위 분업표)에 구조적으로 도달할 수 없었다. HP 320 이 버티는 동안 레인저(135)를 5.4초·가디언(600)을 24초에 죽이는 값으로 올렸다(2026-08-16 사용자 결정). 잡몹 위 · 근접 상위종(Tanker 33 · Vanguard 44) 아래 자리다 |
 | nightmareMechanics | **비움** | 계약 1 |
 | engageMovement / targetMode | **`Halt`** / `Nearest` | 계약 2. 특정 대상을 쫓는 게 아니라 «가장 가까운 것에 박힌다» |
 | **enemyClass** | **`Bruiser`** | ★`Tanker` 금지 — 계약 11(유일한 1슬롯 컨셉이 Tanker 를 필터한다). 분류상으로도 「근접 광역 난동꾼」이 맞다 |
@@ -191,7 +191,7 @@ Ground)을 받는 컨셉은 **「평소」 하나뿐**이다 — 중장=Tanker �
 | ECS 컴포넌트 | **신규 0.** 표준 적 세트. `DcTriggerSlot` 조차 안 받는다(메커닉 없음 = bake 가 버퍼를 안 붙인다) |
 | 시뮬 시스템 | `AttackSystem` **한 줄 삭제**(unit 0). 신규 시스템 0 · 신규 순수 함수 0 |
 | 이벤트 큐 | **신규 채널 0 · 신규 필드 0.** 기존 `UnitAttackVisualEvent` 가 매 공격 START 에 `attacker`+`attackAnimPeriod` 를 이미 싣는다 |
-| View/Pool | 기존 `SpineUnitPool`. ★attack·death 애니 빈 값 = `PlayAttack` early-return + 즉시 `Destroy`(드래곤 선례) |
+| View/Pool | 기존 `SpineUnitPool`. ★attack·death 애니 빈 값 = `PlayAttack` early-return + 즉시 `Destroy`(드래곤 선례). ⚠ **Spine 원본이 `Assets/Spine Examples/`(벤더 트리)에 있다** — 이 트리는 대부분 미추적이고 「실제로 쓰는 것만 골라 `git add`」하는 관례로 운영된다. cloud-pot 폴더가 그 add 에서 빠져 다른 머신에서 GUID 가 해소되지 않았고, `TrySpawn` 실패 → `visualMesh` 빈 값 → **builtin Quad + `visualMaterial`(= `Enemy_Basic_Mat`)** 폴백으로 «잡몹처럼 생긴 쿼드»가 됐다(2026-08-16, `64492da1`). 벤더 트리 에셋을 쓰는 유닛을 추가하면 **원본 폴더의 스테이징을 따로 확인**할 것 — SO 만 커밋해도 로컬에선 멀쩡히 보인다 |
 | 체력 표시 | 변경 없음 — `UnitOverheadUiLayer` |
 | 씬 wiring | **수작업 배선 0.** 회오리 **프리팹**은 적 SO 가 갖는다(방어유닛 `attackVfxPrefab` 대칭) — `VfxSpawner` 에 프리팹 슬롯을 만들지 않는 이유가 계약 7(유닛별 opt-in)이다. 단 **수명 배수 knob 하나**(`unitAttackAoeSustainMul`)는 `VfxSpawner` SerializeField 다(기본값 2 = 배선 불요). 브레스 knob 4개와 같은 자리 — 「수명은 VfxSpawner 소유」(`b7750a4b`)를 지키기 위해 |
 | VFX | 회오리 = `Assets/_Project/VFX/` 아래 신규. ⚠ 벤더 원본 직접 참조 금지 · 번아웃 먹구름과 구분(계약 8) |
