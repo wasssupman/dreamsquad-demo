@@ -55,5 +55,10 @@ namespace Wassup.Data
         // 기존 동작(shot 당 후보 1개 선택). 갈래 수는 발사 시점의 사실이므로 스케줄
         // (`EmitterRuntime.burstRemaining`)이 아니라 한 발의 전개에서 처리한다.
         public bool fanOutToAllCandidates;
+        // fan-out 갈래 사이 **착탄** 시차(초). 0 = 동시. 셀을 겨누는 궤적 전용이다 —
+        // 그 궤적만 `flightTime` 을 낙하 예고로 쓴다(엔티티 추적탄은 속도로 날아간다).
+        // 낙하 순서는 row-major 셀 rank 로 고정한다(청크 순서에 의존하면 «누가 먼저 맞나» 가
+        // 프레임마다 달라지고, 시차가 있으면 그게 결과를 바꾼다).
+        public float fanOutStaggerSec;
     }
 }

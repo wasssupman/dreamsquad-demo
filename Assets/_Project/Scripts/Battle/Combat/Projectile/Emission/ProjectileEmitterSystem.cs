@@ -182,42 +182,74 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                                 //
                                 // 엔티티를 겨누는 궤적은 접지 않는다 — 거기서는 같은 칸이라도
                                 // 탄이 대상을 따라가므로 접으면 한 명이 정말 공짜로 산다.
-                                var firedCells = binding == BindingClass.Cell
-                                    ? new NativeList<int2>(fanCount, Allocator.Temp)
-                                    : default;
-                                for (int c = 0; c < fanCount; c++)
+                                if (binding == BindingClass.Cell)
                                 {
-                                    int pi = scoped ? scopedIdx[c] : c;
-                                    var fanReq = inst.template;
-                                    fanReq.origin = hostPos;
-                                    if (binding == BindingClass.Entity)
+                                    // ── 셀 바인딩: 칸을 모아 접고, 정렬한 뒤, 순서대로 시차를 준다 ──
+                                    var firedCells = new NativeList<int2>(fanCount, Allocator.Temp);
+                                    for (int c = 0; c < fanCount; c++)
                                     {
-                                        fanReq.target = poolEntities[pi];
-                                        fanReq.swingIndex = order.shotIndex;
-                                    }
-                                    else if (binding == BindingClass.Cell)
-                                    {
-                                        int2 cellOf = poolCells[pi];
+                                        int2 cellOf = poolCells[scoped ? scopedIdx[c] : c];
                                         bool already = false;
                                         for (int k = 0; k < firedCells.Length; k++)
                                             if (firedCells[k].x == cellOf.x && firedCells[k].y == cellOf.y)
                                             { already = true; break; }
-                                        if (already) continue;
-                                        firedCells.Add(cellOf);
-
-                                        fanReq.impact = GridMath.CellToWorldCenter(
-                                            cellOf, ff.tileSize, 0f, origin: ff.origin);
-                                        fanReq.flightTime = order.telegraphSec;
+                                        if (!already) firedCells.Add(cellOf);
                                     }
-                                    else continue;
 
+                                    // **낙하 순서는 row-major 셀 rank 로 고정한다.** 후보 배열 순서는
+                                    // ECS 청크 순서라 프레임마다 다를 수 있는데, 시차를 주는 순간
+                                    // 「누가 먼저 맞나」가 결과에 영향을 준다(늦게 맞는 적은 걸어
+                                    // 나갈 시간이 더 있다). `PatternTargeting` 이 같은 이유로 rank 를
+                                    // 쓰며, 화면에서도 한 방향으로 쓸어가는 그림이 된다.
+                                    for (int a = 1; a < firedCells.Length; a++)
+                                    {
+                                        var key = firedCells[a];
+                                        long kk = (long)key.y * ff.gridSize.x + key.x;
+                                        int b = a - 1;
+                                        while (b >= 0 &&
+                                               (long)firedCells[b].y * ff.gridSize.x + firedCells[b].x > kk)
+                                        { firedCells[b + 1] = firedCells[b]; b--; }
+                                        firedCells[b + 1] = key;
+                                    }
+
+                                    float stagger = math.max(0f, inst.spec.fanOutStaggerSec);
+                                    for (int k = 0; k < firedCells.Length; k++)
+                                    {
+                                        var fanReq = inst.template;
+                                        fanReq.origin = hostPos;
+                                        fanReq.impact = GridMath.CellToWorldCenter(
+                                            firedCells[k], ff.tileSize, 0f, origin: ff.origin);
+                                        // 시차는 **낙하 시간**에 준다 — 발사는 한 프레임에 다 나가고
+                                        // 착탄만 순서대로 밀린다(연타로 읽힌다). `DrainMeteorBarrage`
+                                        // 의 `landed * staggerSec` 관용구와 동형.
+                                        fanReq.flightTime = order.telegraphSec + k * stagger;
+                                        fanReq.damage = order.damage;
+                                        fanReq.dataIndex = order.barrelDataIndex;
+                                        var fanCarrier = ecb.CreateEntity();
+                                        ecb.AddComponent(fanCarrier, fanReq);
+                                        ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
+                                    }
+                                    firedCells.Dispose();
+                                    continue; // 이 shot 의 전개 완료
+                                }
+
+                                // ── 엔티티 바인딩: 접지 않는다(탄이 대상을 따라가므로 같은 칸이라도
+                                //    접으면 한 명이 정말 공짜로 산다). 시차도 주지 않는다 — 이 궤적은
+                                //    `flightTime` 을 낙하 예고로 쓰지 않는다(속도로 날아간다).
+                                for (int c = 0; c < fanCount; c++)
+                                {
+                                    int pi = scoped ? scopedIdx[c] : c;
+                                    if (binding != BindingClass.Entity) continue;
+                                    var fanReq = inst.template;
+                                    fanReq.origin = hostPos;
+                                    fanReq.target = poolEntities[pi];
+                                    fanReq.swingIndex = order.shotIndex;
                                     fanReq.damage = order.damage;
                                     fanReq.dataIndex = order.barrelDataIndex;
                                     var fanCarrier = ecb.CreateEntity();
                                     ecb.AddComponent(fanCarrier, fanReq);
                                     ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
                                 }
-                                if (firedCells.IsCreated) firedCells.Dispose();
                                 continue; // 이 shot 의 전개 완료
                             }
 

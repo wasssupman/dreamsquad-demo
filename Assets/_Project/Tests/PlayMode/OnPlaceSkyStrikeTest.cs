@@ -23,7 +23,7 @@ namespace Wassup.Tests.PlayMode
     // 한 번에 증명되는 것:
     //  unit 0 — 배치 사건이 OnPlace 슬롯을 발화시킨다(캐논은 에셋만 바뀌었다)
     //  unit 1 — scopeTileRange 가 후보를 반경으로 자른다 · fanOut 이 전원에게 1발씩
-    //  unit 2 — 저작값(80 · 예고 0.4 · impactTileRange 0)이 그대로 흐른다
+    //  unit 2 — 저작값(피해 · 예고 · 연타 시차 · impactTileRange 0)이 그대로 흐른다
     //
     // ⚠ 적을 **캐논 북쪽**에도 두고 반경 밖에도 둔다. "전원" 과 "반경" 은 서로를 가려주지
     // 못한다 — 반경 게이트가 죽어도 전원 단언은 통과하고, fan-out 이 죽어도 반경 밖
@@ -132,9 +132,10 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(authored, d2, 0.01f, "인접 적 2 의 피해가 저작값과 다르다");
         }
 
-        // 같은 칸 적 둘 → **미사일도 둘**. unit 1 이 셀 dedupe 를 하지 않는 이유의 핀.
+        // 같은 칸 적 둘 → **미사일 한 발, 둘 다 저작 피해만큼**. 「1:1」의 뜻이 *적 1기당 1발*이
+        // 아니라 **칸당 1발**이라는 핀이다(셀 낙하탄은 반경 0 이어도 그 칸 전원을 때린다).
         [UnityTest]
-        public IEnumerator TwoEnemiesInSameCell_BothGetTheirOwnMissile()
+        public IEnumerator TwoEnemiesInSameCell_EachTakeExactlyOneShot()
         {
             yield return LoadBattle();
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -165,6 +166,55 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(authored, da, 0.01f,
                 $"같은 칸 적 A 의 피해가 저작값과 다르다({da}) — 셀을 겹쳐 겨누면 서로의 폭발에 함께 맞는다");
             Assert.AreEqual(authored, db, 0.01f, $"같은 칸 적 B 의 피해가 저작값과 다르다({db})");
+        }
+
+        // 연타 — 갈래가 **동시에** 떨어지지 않는다.
+        //
+        // ⚠ 관측을 「연출이 예쁜가」가 아니라 **「착탄 시각이 실제로 갈리는가」**로 잰다:
+        // 먼저 떨어질 칸의 적이 피해를 받은 프레임에, 나중 칸의 적은 아직 멀쩡해야 한다.
+        // 시차가 0 이면(또는 정렬이 죽으면) 둘이 같은 프레임에 맞아 이 단언이 빨개진다.
+        [UnityTest]
+        public IEnumerator FanOutImpacts_AreStaggered_NotSimultaneous()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var cannon = MakeCannon("test_skystrike_stagger");
+            float stagger = AuthoredStagger(cannon);
+            Assert.Greater(stagger, 0f, "연타 사양이라 시차가 저작돼 있어야 한다");
+            Prepare(bridge, gm, cannon);
+            var cell = FindPlaceableCell(bridge, cannon);
+
+            // row-major rank 로 정렬하므로 **y 가 작은 칸이 먼저** 떨어진다.
+            var firstCell = new Vector2Int(cell.x, cell.y - 1);
+            var lastCell = new Vector2Int(cell.x, cell.y + 2);
+            var first = SpawnDummy(em, bridge, firstCell);
+            var last = SpawnDummy(em, bridge, lastCell);
+
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+
+            // 「먼저 맞은 쪽이 있는데 나중 쪽은 아직 안 맞은」 프레임이 존재하는가.
+            bool sawGap = false;
+            for (int f = 0; f < 90 && !sawGap; f++)
+            {
+                bool firstHit = em.GetComponentData<Health>(first).value < Hp;
+                bool lastHit = em.GetComponentData<Health>(last).value < Hp;
+                if (firstHit && !lastHit) sawGap = true;
+                yield return null;
+            }
+            yield return Frames(40);
+
+            float dFirst = Hp - em.GetComponentData<Health>(first).value;
+            float dLast = Hp - em.GetComponentData<Health>(last).value;
+            em.DestroyEntity(first); em.DestroyEntity(last);
+            Object.Destroy(cannon);
+
+            Assert.Greater(dFirst, 0f, "먼저 떨어질 칸의 적이 안 맞았다");
+            Assert.Greater(dLast, 0f, "나중 칸의 적이 결국 안 맞았다 — 시차가 낙하를 삼키면 안 된다");
+            Assert.IsTrue(sawGap,
+                $"두 칸이 같은 프레임에 터졌다 — 시차({stagger}s)가 착탄에 반영되지 않았다");
         }
 
         // 반경 밖에만 적이 있으면 그 적은 무사하다 — 「후보 0 이면 조용히 소모」 경로가
@@ -246,6 +296,10 @@ namespace Wassup.Tests.PlayMode
         // 이건 이 spec 의 결함이 아니라 **배치 페이즈의 사실**이며, README 후속 후보
         // 「배치 페이즈 발동 정책」이 가리키는 비용이 캐논에서 어떻게 나타나는지의 실물이다
         // (피해가 낭비되는 정도가 아니라 요청이 큐에 쌓인 채 남는다).
+        // 저작값은 하드코딩하지 않는다 — 연타 간격은 Play 튜닝 대상이다.
+        private static float AuthoredStagger(DefenderUnitData unit)
+            => unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.pattern.fanOutStaggerSec;
+
         private static void Prepare(BattleBridge bridge, GameManager gm, DefenderUnitData unit)
         {
             bridge.SetDefenderPool(new[] { unit });

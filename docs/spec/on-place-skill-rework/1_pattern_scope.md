@@ -2,7 +2,7 @@
 
 ## 목적
 
-발사 명세 패턴에 **두 축**을 연다.
+발사 명세 패턴에 **세 축**을 연다.
 
 1. **범위**(`scopeTileRange`) — 후보 풀을 host 주변 N타일로 좁힌다. 지금은 맵 전체 고정이라
    "주변 2타일 안 적에게"를 데이터로 표현할 수 없다(캐논이 배치되자마자 맵 반대편을 폭격한다).
@@ -10,13 +10,14 @@
 2. **전 후보 1:1**(`fanOutToAllCandidates`) — 스코프 안 **모든** 후보에게 정확히 1회씩 쏜다.
    v1 은 발수가 저작 고정(`shots` 목록)이고 발마다 후보 **하나**를 뽑는 구조라 "전원에게 1발씩"을
    표현할 수 없다.
+3. **연타**(`fanOutStaggerSec`) — 갈래 사이 착탄 시차. 0 = 동시(기본).
 
-이 unit 만으로는 어떤 발사도 바뀌지 않는다(두 축 모두 기본값 = 현행).
+이 unit 만으로는 어떤 발사도 바뀌지 않는다(세 축 모두 기본값 = 현행).
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Data/ProjectilePatternData.cs` — 필드 2개 + `TryToSpec` 복사
-- `Assets/_Project/Scripts/Data/PatternSpec.cs` — 같은 필드 2개 (unmanaged 미러)
+- `Assets/_Project/Scripts/Data/ProjectilePatternData.cs` — 필드 3개 + `TryToSpec` 복사
+- `Assets/_Project/Scripts/Data/PatternSpec.cs` — 같은 필드 3개 (unmanaged 미러)
 - 신규 `Assets/_Project/Scripts/Battle/Combat/Projectile/Emission/PatternScope.cs` — 순수함수
 - `.../Emission/ProjectileEmitterSystem.cs` — 스코프 필터 + fan-out 전개
 - 신규 `Assets/_Project/Tests/EditMode/PatternScopeTests.cs`
@@ -63,10 +64,18 @@ fan-out  : shot 1회 → 스코프 안 후보 전부      → 요청 n 개 (동�
 ⚠ 이 면제는 fan-out 한정이다 — 단일 선택(RoundRobin/Shuffle) 경로의 후속 후보
 「defender 패턴 개통 시 안정 키 필요」는 **그대로 살아 있다.**
 
-⚠ **동시 착탄이다(v1).** 발 사이 캐스케이드(융단폭격이 줄지어 떨어지는 느낌)는 요청마다
-`flightTime += k * stagger` 한 줄이면 되지만 저작 필드가 하나 더 늘어난다 —
-`DrainMeteorBarrageRequests` 의 `landed * meteorStaggerSec` 관용구가 선례다. Play 에서 동시
-착탄이 밋밋하면 그때 연다(후속 후보).
+**연타(`fanOutStaggerSec`)** — 갈래 사이 **착탄** 시차(초). 0 = 동시.
+사용자 요청(2026-08-16, 동시 착탄이 밋밋함)으로 열었고 `DrainMeteorBarrageRequests` 의
+`landed * meteorStaggerSec` 관용구와 동형이다.
+
+- 시차는 **발사가 아니라 착탄**에 준다(`flightTime + k * stagger`). 미사일은 한 프레임에 다
+  나가고 떨어지는 순간만 밀려, 하늘에 여러 발이 떠 있다가 순서대로 꽂히는 그림이 된다.
+- ⚠ **낙하 순서를 row-major 셀 rank 로 고정한다.** 시차를 주는 순간 「누가 먼저 맞나」가
+  **결과에 영향**을 준다(늦게 맞는 적은 걸어 나갈 시간이 더 있다). 후보 배열은 ECS 청크
+  순서라 그대로 두면 같은 배치가 매번 다른 결과를 낸다 — `PatternTargeting` 이 같은 이유로
+  rank 를 쓰고, 덤으로 화면에서 한 방향으로 쓸어가는 그림이 된다.
+- 셀을 겨누는 궤적 전용이다. 엔티티 추적탄은 `flightTime` 을 낙하 예고로 쓰지 않아(속도로
+  날아간다) 시차를 주면 값이 다른 뜻으로 실린다.
 
 ### `PatternScope` (순수 계층 — 아키텍처 무참조)
 
@@ -128,7 +137,7 @@ warn 경로가 **없다**(실제로는 방향탄을 쏜다). 이 폴더를 건�
   - **같은 셀 후보 3개 → 결과 3개**(이 함수는 반경 필터일 뿐 — 칸 접기는 emitter 몫)
   - 반환값이 **원본 index** 다 (scoped index 가 새지 않는다)
   - 반경 안 후보 0 → 반환 0
-- [x] EditMode: `TryToSpec` 이 신규 필드 2개를 복사한다 (**조용한 0 = 맵 전체 폭격** 방지 핀)
+- [x] EditMode: `TryToSpec` 이 신규 필드를 복사한다 (**조용한 0 = 맵 전체 폭격** 방지 핀)
 - [x] EditMode `EmitterTickTests`·`PatternTargetingTests` **무변경 전량 통과**(이 unit 이 그
       두 파일을 안 건드린다는 증거)
 - [x] PlayMode 는 이 unit 에서 돌리지 않는다 — 사슬 끝(unit 2)이 자연스러운 관측점

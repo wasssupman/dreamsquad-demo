@@ -25,3 +25,4 @@ MonoBehaviour:
   telegraphSec: 0.4
   scopeTileRange: 2
   fanOutToAllCandidates: 1
+  fanOutStaggerSec: 0.08

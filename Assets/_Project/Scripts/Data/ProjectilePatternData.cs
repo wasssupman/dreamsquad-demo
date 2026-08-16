@@ -81,6 +81,11 @@ namespace Wassup.Data
                  "false = 기존 동작(shot 당 후보 1개 선택). 같은 칸에 적이 둘이면 2발 나간다.")]
         public bool fanOutToAllCandidates = false;
 
+        [Tooltip("fan-out 갈래 사이 착탄 시차(초). 0 = 전부 동시. 0.05~0.1 이면 한 방향으로 " +
+                 "줄지어 떨어지는 «연타» 로 읽힌다. 셀을 겨누는 궤적(SkyFall 등) 전용.")]
+        [Min(0f)]
+        public float fanOutStaggerSec = 0f;
+
         // 정의 계층 → unmanaged 미러. barrelDataIndex 는 아키텍처가 해석하는
         // 핸들이므로 호출자(bake seam)가 넘긴다 — 이 SO 는 레지스트리를 모른다.
         public bool TryToSpec(int barrelDataIndex, out PatternSpec spec)
@@ -124,6 +129,7 @@ namespace Wassup.Data
                 // PatternSpec 의 유일한 writer 라 SO 에만 필드를 더하면 아무도 안 알려준다.
                 scopeTileRange = Mathf.Max(0, scopeTileRange),
                 fanOutToAllCandidates = fanOutToAllCandidates,
+                fanOutStaggerSec = Mathf.Max(0f, fanOutStaggerSec),
             };
             return true;
         }
