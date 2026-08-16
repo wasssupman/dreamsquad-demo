@@ -161,13 +161,25 @@ namespace Wassup.Tests.PlayMode
 
             // 발수는 **동시 생존 최대치**로 센다. 갈래는 한 프레임에 다 발사되고 시차는
             // 낙하 시간에만 들어가므로(emitter 주석), 발사 직후 프레임에 전부 살아 있다.
+            //
+            // ⚠ 전체 투사체를 세면 안 된다 — 판에는 웨이브 적도 걸어 들어오고(`Wave 1 queued`)
+            // 그놈이 스코프에 들어오면 **자기 미사일**을 하나 더 받는다. 실측으로 더미 2기에
+            // 3발이 세어져 「여분이 샌다」로 오진됐다. 우리가 물어보는 것은 «이 두 적에게 몇
+            // 발이 갔나» 이므로 **임자(`target`)가 우리 더미인 탄만** 센다 — unit 8 이 각 발에
+            // 임자를 실어서 이 구분이 가능해졌다.
             int maxAlive = 0;
             using (var q = em.CreateEntityQuery(
                        ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileState>()))
             {
                 for (int f = 0; f < 60; f++)
                 {
-                    maxAlive = Mathf.Max(maxAlive, q.CalculateEntityCount());
+                    var states = q.ToComponentDataArray<Wassup.Battle.Combat.Projectile.ProjectileState>(
+                        Unity.Collections.Allocator.Temp);
+                    int mine = 0;
+                    for (int s = 0; s < states.Length; s++)
+                        if (states[s].target == a || states[s].target == b) mine++;
+                    states.Dispose();
+                    maxAlive = Mathf.Max(maxAlive, mine);
                     yield return null;
                 }
             }
@@ -329,6 +341,23 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(100000);
             bridge.StartBattle();
+
+            // ⚠ **판 위에 우리 더미만 있는 게 아니다.** 맵이 본능/적 마음 구조물을 스폰하고
+            // (`[BattleBridge] Structures spawned: 5`) 본능은 `attackDamage` 로 AttackState 를
+            // 달고 적을 쏜다(BattleBridge 의 구조물 bake). 그 피해가 더미에 얹히면 «미사일이
+            // 저작값만큼 때렸나» 를 잴 수 없다 — 실측으로 더미가 80 대신 100 을 받았고,
+            // 스코프 **밖** 더미까지 20~40 을 받아 「반경 게이트가 죽었다」로 **오진**됐다.
+            // (캐논 자기 평타는 MakeCannon 이 attackRange 0 으로 이미 막았다. 빠진 건 남의
+            //  공격원이었다.)
+            //
+            // 배치 전이라 지금 AttackState 를 가진 것은 구조물뿐이다 — 여기서 벗기면
+            // 방어유닛/투사체 경로는 손대지 않고 «다른 공격원» 만 사라진다.
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            using (var atkQ = em.CreateEntityQuery(
+                       ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>()))
+            {
+                if (!atkQ.IsEmpty) em.RemoveComponent<Wassup.Battle.Combat.AttackState>(atkQ);
+            }
         }
 
         private static Entity SpawnDummy(EntityManager em, BattleBridge bridge, Vector2Int cell)
