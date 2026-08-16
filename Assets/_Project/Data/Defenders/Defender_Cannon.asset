@@ -18,8 +18,8 @@ MonoBehaviour:
   traversalLayers: 0
   displayName: "\uCE90\uB17C"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
-    \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801\uC5D0\uAC8C \uD3ED\uBC1C \uD53C\uD574\n\uD2B9\uC218
-    \uD6A8\uACFC: \uC5C6\uC74C"
+    \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801 \uC804\uC6D0\uC5D0\uAC8C \uBBF8\uC0AC\uC77C\uC774
+    \uD558\uB098\uC529 \uB5A8\uC5B4\uC9D0\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 450
   attackRange: 3
   attackCooldown: 2.4
@@ -51,6 +51,9 @@ MonoBehaviour:
   onPlaceTickInterval: 0
   cost: 4
   placementCooldown: 4
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 2
   targetFactions: 98
