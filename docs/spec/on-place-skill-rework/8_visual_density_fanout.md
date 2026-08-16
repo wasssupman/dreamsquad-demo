@@ -81,9 +81,11 @@ flightTime = telegraph + cellSlot*stagger + (j==0 ? 0 : stagger*(1 - 1/(j+1)))
     절대 약화 금지
   - **같은 칸 2기 → 스폰된 투사체 2발**(1발 아님) — 이 unit 의 핵심 단언
   - 반경 밖 적 무피해 · 비행 적 무피해(층 게이트) · 시차 무회귀
-- [ ] EditMode `ProjectileSystemTests` · `ProjectileEmitterIntegrationTests` ·
-      `PathHitRehitCooldownTests` 등 기존 투사체 핀 green (임자 게이트가 target 없는 기존
-      TileAoe 를 건드리지 않았다는 증거)
+- [x] EditMode 기존 투사체 핀 **63/63 green** (2026-08-16, 2.1s) — `ProjectileSystemTests` ·
+      `ProjectileEmitterIntegrationTests` · `ProjectileRetargetAndBounceTests` ·
+      `PathHitRehitCooldownTests` · `PatternScopeTests` · `PatternBakeTests`.
+      그중 `TileAoe_Payload_Damages_Every_Enemy_In_Impact_Range` 가 임자 게이트의 무회귀
+      증거다 — target 없는 기존 광역은 그대로 **칸 전원**을 때린다.
 
 ### ⚠ 이 테스트는 «판 위 남의 공격원» 을 같이 재고 있었다 (2026-08-16)
 
