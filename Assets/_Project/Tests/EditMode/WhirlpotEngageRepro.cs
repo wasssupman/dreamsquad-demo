@@ -125,6 +125,39 @@ namespace Wassup.Tests.EditMode
         // ⚠ hitDelaySec > 0 대조군은 여기서 만들 수 없다 — 수동으로 Update 하는 월드는
         // DeltaTime 이 0 이라 hitDelayRemaining 이 영영 줄지 않는다. 그 축은 PlayMode 소관.
 
+        // ── 자기 피해 ── 「셀프 데미지를 입는 느낌」 보고(2026-08-16)를 그대로 단언한다.
+        // 방어유닛은 AttackState 가 없어 반격할 수 없으므로, 팽이 HP 가 줄면 출처는 자기 공격뿐이다.
+        [Test]
+        public void Whirl_DoesNotDamageItsOwnCaster()
+        {
+            var whirlpot = MakeWhirlpot(float3.zero, hitDelaySec: 0f);
+            MakeDefender(new float3(1f, 0f, 0f));
+            MakeDefender(new float3(0f, 0f, 1f));
+            float hp0 = _em.GetComponentData<Health>(whirlpot).value;
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(whirlpot).Length,
+                "★팽이 자신의 IncomingDamage 에 항목이 들어갔다 = 회오리가 시전자를 때린다.");
+            Assert.AreEqual(hp0, _em.GetComponentData<Health>(whirlpot).value, 0.001f,
+                "★반격할 수 없는 방어유닛만 있는데 팽이 HP 가 줄었다.");
+        }
+
+        // 동료 적도 때리지 않는다 — 광역의 진영 술어. 「셀프」로 보이는 또 다른 후보다.
+        [Test]
+        public void Whirl_DoesNotDamageFellowEnemies()
+        {
+            MakeWhirlpot(float3.zero, hitDelaySec: 0f);
+            var ally = MakeWhirlpot(new float3(1f, 0f, 0f), hitDelaySec: 0f);
+            MakeDefender(new float3(0f, 0f, 1f));   // 발사 조건(사거리 안 방어유닛)
+            float allyHp0 = _em.GetComponentData<Health>(ally).value;
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(allyHp0, _em.GetComponentData<Health>(ally).value, 0.001f,
+                "★회오리가 같은 진영 적을 때린다 — targetMask 가 무너진 것이다.");
+        }
+
         // ── 경계 ③ 광역 ── 회오리가 반경 안 전원에 퍼지는가.
         [Test]
         public void Boundary3_WhirlSpreadsToEveryoneInRadius()

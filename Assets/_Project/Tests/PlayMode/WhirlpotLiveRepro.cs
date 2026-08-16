@@ -260,6 +260,43 @@ namespace Wassup.Tests.PlayMode
                 + "「돌고 있는데 아무 일도 안 일어난다」의 실체다.");
         }
 
+        // ── 자기 피해 ── 「셀프 데미지를 입는 느낌」 보고(2026-08-16)의 라이브 판정.
+        //
+        // EditMode 는 합성 월드라 「라이브에도 없다」를 말해주지 못한다. 여기서는 실제 씬에서
+        // **방어유닛의 AttackState 를 떼어 반격을 없앤 뒤** 팽이 HP 를 본다 — 회오리가 도는 동안
+        // 팽이 HP 가 1 이라도 줄면 출처는 자기 공격이거나 필드다.
+        [UnityTest]
+        public IEnumerator Whirlpot_TakesNoDamage_WhenNothingCanHitBack()
+        {
+            yield return SetupBattle("ranger");
+
+            // 반격 제거 — 여전히 합법 타겟이지만 쏘지는 못한다.
+            _em.RemoveComponent<AttackState>(_defender);
+
+            var so = BattleBridgeTestAccess.LoadEnemy(WhirlpotPath);
+            var whirlpot = BattleBridgeTestAccess.SpawnEnemy(_bridge, _em, so);
+            TeleportTo(whirlpot, DefenderPos());
+            PurgeOtherEnemies(whirlpot);
+
+            float potHp0 = Hp(whirlpot);
+            float defHp0 = Hp(_defender);
+            for (int i = 0; i < 180; i++)
+            {
+                PurgeOtherEnemies(whirlpot);
+                yield return null;
+                if (!_em.Exists(whirlpot) || !_em.Exists(_defender)) break;
+            }
+
+            Assert.Less(Hp(_defender), defHp0, "선행 조건: 회오리가 실제로 돌아야 한다");
+            Assert.AreEqual(potHp0, Hp(whirlpot), 0.001f,
+                $"★반격할 수 있는 것이 없는데 팽이 HP 가 {potHp0} → {Hp(whirlpot)} 로 줄었다 = 자기 피해.");
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(whirlpot).Length,
+                "★팽이 자신의 IncomingDamage 에 항목이 남아 있다.");
+
+            Debug.Log($"[WhirlpotRepro] 자기피해 검사: 팽이 {potHp0:F0}→{Hp(whirlpot):F0} · " +
+                      $"방어유닛 {defHp0:F0}→{Hp(_defender):F0}");
+        }
+
         // ── setup ───────────────────────────────────────────────────────────
         private IEnumerator SetupBattle(string defenderId)
         {
