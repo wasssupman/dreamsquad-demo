@@ -73,9 +73,9 @@ namespace Wassup.Tests.PlayMode
             _phases.Clear();
             _gm.PhaseChanged += OnPhase;
 
-            // 디펜더를 한 기도 놓지 않는다 — 전 웨이브를 당기면 유출이 빠르게 쌓여 패배로
-            // 끝난다. 승리 유도는 밸런스 의존이라 불안정하다. 검증 대상인 흐름 계약은
-            // 승패와 무관하게 동일하게 지난다.
+            // three-minute-kill-race unit 0 — 예전엔 «디펜더를 안 놓으면 유출이 쌓여 패배로
+            // 끝난다» 로 판을 마감시켰다. 패배가 사라져 그 길이 없다. 이제 판을 끝내는 것은
+            // **시계 하나**이므로 아래 RunToEnd 가 제한시간을 줄여 만료로 몬다.
             _bridge.BeginPlacement();
             yield return null;
         }
@@ -84,9 +84,15 @@ namespace Wassup.Tests.PlayMode
         {
             _bridge.StartBattle();
             // three-minute-survival unit 2 — 플레이어 경로는 사라졌지만 ForceNextWave 는
-            // 테스트 진행 동력으로 남아 있다. 디펜더를 놓지 않았으므로 유출이 쌓여
-            // 안정도 0 = 패배로 끝난다.
+            // 테스트 진행 동력으로 남아 있다(킬이 실제로 나야 총점 보존을 검산할 수 있다).
             for (int i = 0; i < 20 && _bridge.NextWaveHasNext; i++) _bridge.ForceNextWave();
+
+            // three-minute-kill-race unit 0 — **제한시간을 줄여 만료로 몬다.** StartBattle 이
+            // 덱에서 `_timerDuration`(180초)을 읽은 **뒤**에 덮어써야 한다. 판을 끝내는 경로가
+            // 시계 하나뿐이므로, 이걸 안 하면 3분을 통째로 기다려야 하고 그건 이 테스트의
+            // 타임아웃(90초)을 넘는다. 줄이는 것은 **대기 시간**일 뿐 검증 대상인 흐름
+            // (Battle → Tally → Result + 총점 보존)은 그대로다.
+            SetPrivate(_bridge, "_timerDuration", 3f);
 
             float start = Time.unscaledTime;
             while (_gm.CurrentPhase != GamePhase.Result)
@@ -101,6 +107,13 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
             yield return null;
+        }
+
+        private static void SetPrivate(object target, string field, object value)
+        {
+            var f = target.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, $"BattleBridge.{field} 가 없다 — 하네스가 낡았다");
+            f.SetValue(target, value);
         }
 
         // ── 단언 ──────────────────────────────────────────────────────────────

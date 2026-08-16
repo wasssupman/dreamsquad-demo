@@ -12,14 +12,14 @@ using Wassup.Data;
 namespace Wassup.Tests.EditMode
 {
     // aggro-targeting Unit 12/14 — 히트 구동 AggroStateSystem 회귀. 근접 즉시 배정을
-    // 폐기했으므로 획득은 AggroHitEvent 드레인으로만 일어난다. capacity 게이트, 선점,
+    // 폐기했으므로 획득은 AggroAcquireEvent 드레인으로만 일어난다. capacity 게이트, 선점,
     // 사망 해제, orphan 해제, H1(같은 틱 상한 초과 방지), 도발 grant/strip 을 고정.
     public class AggroStateSystemTests
     {
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
-        private NativeQueue<AggroHitEvent> _hitQueue;
+        private NativeQueue<AggroAcquireEvent> _hitQueue;
 
         [SetUp]
         public void SetUp()
@@ -31,9 +31,9 @@ namespace Wassup.Tests.EditMode
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<TauntAttackGrantSystem>());
 
             // Combat→Effects 히트 채널 싱글턴(테스트 하네스가 브리지 역할).
-            _hitQueue = new NativeQueue<AggroHitEvent>(Allocator.Persistent);
+            _hitQueue = new NativeQueue<AggroAcquireEvent>(Allocator.Persistent);
             var singleton = _em.CreateEntity();
-            _em.AddComponentData(singleton, new AggroHitEventsSingleton { queue = _hitQueue });
+            _em.AddComponentData(singleton, new AggroAcquireEventsSingleton { queue = _hitQueue });
         }
 
         [TearDown]
@@ -66,7 +66,7 @@ namespace Wassup.Tests.EditMode
         }
 
         private void Hit(Entity guardian, Entity enemy)
-            => _hitQueue.Enqueue(new AggroHitEvent { guardian = guardian, enemy = enemy });
+            => _hitQueue.Enqueue(new AggroAcquireEvent { guardian = guardian, enemy = enemy });
 
         private int AggroedCount()
         {
@@ -376,6 +376,170 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(_em.HasComponent<Aggroed>(runner));
             Assert.IsFalse(_em.HasComponent<AttackState>(runner), "해제 시 도발 공격 strip");
             Assert.IsFalse(_em.HasComponent<TauntAttackGranted>(runner));
+        }
+
+        // ── on-place-skill-rework unit 3 — 시한 도발 ─────────────────────────
+        //
+        // 도발은 히트 어그로와 **세 가지만** 다르다: 시간이 있고, 상한을 무시하고, 선점을
+        // 가져온다. 나머지 게이트(보스 면역 · 유닛 미조준 · 공격 수단 · 도달 가능)는 공유하며
+        // 그건 기존 테스트가 이미 고정한다.
+
+        private void Taunt(Entity guardian, Entity enemy, float durationSec)
+            => _hitQueue.Enqueue(new AggroAcquireEvent
+            {
+                guardian = guardian,
+                enemy = enemy,
+                kind = AggroAcquireKind.Taunt,
+                durationSec = durationSec,
+            });
+
+        // dt 를 실어 한 틱 돌린다. 합성 월드의 기본 시간은 0 이라 만료가 영원히 안 온다.
+        private void UpdateWithDelta(float dt)
+        {
+            _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + dt, dt));
+            _simGroup.Update();
+        }
+
+        [Test]
+        public void Taunt_BypassesCapacity_AllTargetsAggroed()
+        {
+            var g = MakeGuardian(2, float3.zero);   // 상한 2
+            var enemies = new Entity[5];
+            for (int i = 0; i < 5; i++) { enemies[i] = MakeEnemy(new float3(i, 0, 0)); Taunt(g, enemies[i], 5f); }
+
+            _simGroup.Update();
+
+            Assert.AreEqual(5, AggroedCount(),
+                "도발은 상한을 우회해야 한다 — 상한 2 에 5기가 전부 걸려야 한다");
+            for (int i = 0; i < 5; i++)
+                Assert.AreEqual(g, _em.GetComponentData<Aggroed>(enemies[i]).guardian);
+        }
+
+        [Test]
+        public void Taunt_ExpiresAfterDuration_AndReleases()
+        {
+            var g = MakeGuardian(2, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            Taunt(g, e, 1f);
+
+            _simGroup.Update();
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e), "부착");
+
+            UpdateWithDelta(0.5f);
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e), "절반 지났을 뿐인데 풀렸다");
+
+            UpdateWithDelta(0.6f);   // 누적 1.1s > 1s
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e), "만료됐는데 안 풀렸다");
+        }
+
+        // **기존 계약 회귀 핀** — 0 = 무기한 sentinel. 이게 깨지면 히트 어그로가 첫 틱에 풀린다.
+        [Test]
+        public void HitAggro_IsIndefinite_AndNeverTimesOut()
+        {
+            var g = MakeGuardian(2, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            Hit(g, e);
+
+            _simGroup.Update();
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e));
+            Assert.AreEqual(0f, _em.GetComponentData<Aggroed>(e).remainingTime,
+                "히트 획득은 remainingTime 0(무기한)이어야 한다");
+
+            for (int i = 0; i < 5; i++) UpdateWithDelta(10f);
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e), "무기한 어그로가 시간으로 풀렸다");
+        }
+
+        // 도발 중 가디언이 죽으면 만료를 기다리지 않는다.
+        [Test]
+        public void Taunt_ReleasesImmediately_WhenGuardianDies()
+        {
+            var g = MakeGuardian(2, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            Taunt(g, e, 60f);
+            _simGroup.Update();
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e));
+
+            _em.SetComponentData(g, new Health { value = 0f, max = 100f });
+            _simGroup.Update();
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e), "가디언이 죽었는데 도발이 남았다");
+        }
+
+        // 선점 우회 — 최근 우선. 만료 후엔 이전 가디언으로 **복귀하지 않는다**.
+        [Test]
+        public void Taunt_TakesEnemyFromAnotherGuardian_AndFullyReleasesOnExpiry()
+        {
+            var g1 = MakeGuardian(4, float3.zero);
+            var g2 = MakeGuardian(4, new float3(5, 0, 0));
+            var e = MakeEnemy(new float3(1, 0, 0));
+
+            Hit(g1, e);
+            _simGroup.Update();
+            Assert.AreEqual(g1, _em.GetComponentData<Aggroed>(e).guardian, "먼저 문 가디언");
+
+            Taunt(g2, e, 1f);
+            _simGroup.Update();
+            Assert.AreEqual(g2, _em.GetComponentData<Aggroed>(e).guardian,
+                "도발이 선점을 가져오지 못했다(최근 우선)");
+
+            UpdateWithDelta(1.5f);
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e),
+                "만료 시 완전 해제여야 한다 — 이전 가디언으로 복귀하지 않는다");
+        }
+
+        // ⚠ **N4 회귀 핀.** 게이트를 한 줄로 합치면 히트가 먼저 dequeue 되면서 적을 claimed 에
+        // 넣고, 뒤이은 도발이 같은 줄에 걸려 조용히 탈락한다. 브리지(Mono)와 AttackSystem(sim)이
+        // 같은 큐를 쓰므로 이 혼재는 예외가 아니라 평상이다.
+        [Test]
+        public void HitThenTaunt_SameTick_TauntStillWins()
+        {
+            var g1 = MakeGuardian(4, float3.zero);
+            var g2 = MakeGuardian(4, new float3(5, 0, 0));
+            var e = MakeEnemy(new float3(1, 0, 0));
+
+            Hit(g1, e);            // 먼저 큐에 들어간다
+            Taunt(g2, e, 5f);      // 같은 틱, 뒤에
+
+            _simGroup.Update();
+
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e));
+            Assert.AreEqual(g2, _em.GetComponentData<Aggroed>(e).guardian,
+                "같은 틱에 히트가 먼저 와도 도발이 이겨야 한다");
+            Assert.Greater(_em.GetComponentData<Aggroed>(e).remainingTime, 0f, "시한이 실려야 한다");
+        }
+
+        // 겹친 배치가 남은 시간을 깎지 않는다(더 긴 쪽으로 갱신 — CC 갱신 관례).
+        [Test]
+        public void Taunt_Refresh_KeepsTheLongerRemainder()
+        {
+            var g = MakeGuardian(2, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+
+            Taunt(g, e, 10f);
+            _simGroup.Update();
+            Taunt(g, e, 2f);       // 더 짧은 도발이 덧씌워도
+            _simGroup.Update();
+
+            Assert.Greater(_em.GetComponentData<Aggroed>(e).remainingTime, 2.5f,
+                "짧은 도발이 긴 잔여를 깎았다");
+        }
+
+        // 같은 틱 도발 중복은 한 번만 센다(runningHeld 이중 계상 방지).
+        [Test]
+        public void Taunt_DuplicateInSameTick_IsIdempotent()
+        {
+            var g = MakeGuardian(2, float3.zero);
+            var e = MakeEnemy(new float3(1, 0, 0));
+            Taunt(g, e, 5f);
+            Taunt(g, e, 5f);
+            _simGroup.Update();
+
+            Assert.AreEqual(1, AggroedCount());
+
+            // ⚠ `held` 는 Pass 1·2 가 매 틱 full recompute 하는데 부착은 ECB(틱 끝)라, 부착한
+            // 틱에는 아직 0 이다. 한 틱 더 돌려야 보인다 — `runningHeld` 는 **틱 내** 이중
+            // 계상만 막는 로컬 상태이고 권위가 아니다.
+            _simGroup.Update();
+            Assert.AreEqual(1, _em.GetComponentData<AggroCapacity>(g).held, "held 이중 계상");
         }
     }
 }

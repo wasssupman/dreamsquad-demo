@@ -90,19 +90,20 @@ namespace Wassup.Tests.PlayMode
             // «항상 0» 단정은 멀티골 맵에서 계약과 어긋난다. 남는 불변식 = 음수 금지.
             Assert.GreaterOrEqual(bridge.GoalStabilityCurrent, 0, "안정도는 0 에서 바닥친다(음수 금지)");
 
-            // stress-after-breach(2026-08-08) — 안정도 0 은 이제 **패배가 아니라 유출 개통**이다.
-            // 스트레스 상한(덱 defeatGoalReachedCount)이 있으면 그때부터 유출 1회 = 스트레스 1이
-            // 쌓여 상한에서 패배한다. 상한 0 인 덱만 구 동작(즉시 패배)을 유지한다.
+            // three-minute-kill-race unit 0 — **안정도 0 은 이제 아무것도 끝내지 않는다.**
+            // 예전엔 여기서 Result 도달을 기다렸다(안정도 0 = 패배, 또는 스트레스 상한 패배).
+            // 그 두 판정이 은퇴하면서 고정할 성질이 정반대가 됐다: **마음을 다 내줘도 판은
+            // 계속된다.** 판을 끝내는 것은 3분 만료와 유저 제출뿐이다(feature 계약).
             //
-            // unit 4(ⓐ) — 유출은 **부서진 복도로의** 도달만 센다. 구 전역 붕괴는 붕괴 순간
-            // 공성 중이던 전원을 한꺼번에 유출로 바꿔 상한이 즉시 찼지만, per-cell 은 그 셀
-            // 몫만 바꾸므로 축적이 느리다 — 대기 상한을 그에 맞춘다(전이 자체가 끊긴 결함과
-            // 밸런스 지연을 여전히 가른다).
-            float tallyStart = Time.unscaledTime;
-            while (gm.CurrentPhase != GamePhase.Result)
+            // 이 하네스는 브리지를 직접 몰아 `CurrentPhase` 가 Battle 로 가지 않으므로(위 주의),
+            // 예전에 이 테스트가 본 유일한 페이즈 전이가 `EndMatch → Result` 였다. 그래서
+            // 「Result 가 아니다」가 곧 「마감이 안 불렸다」의 정확한 관측이다.
+            float watchStart = Time.unscaledTime;
+            while (Time.unscaledTime - watchStart < 5f)
             {
-                Assert.Less(Time.unscaledTime - tallyStart, 60f,
-                    $"첫 골 붕괴 후 60초 안에 Result 로 가지 않았다 — 패배 전이가 끊겼다 (현재 {gm.CurrentPhase}, 스트레스 누적 지연이면 상한 재조정).");
+                Assert.AreNotEqual(GamePhase.Result, gm.CurrentPhase,
+                    "마음이 무너졌다고 판이 끝났다 — 패배 축이 되살아났다"
+                    + "(계약: 종료는 3분 만료와 유저 제출뿐)");
                 yield return null;
             }
         }

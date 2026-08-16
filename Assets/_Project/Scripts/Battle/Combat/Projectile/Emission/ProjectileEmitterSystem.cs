@@ -112,6 +112,31 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
                     }
 
+                    // on-place-skill-rework unit 1 — 반경 스코프. **인스턴스당 1회**만 만든다:
+                    // 풀은 프레임-로컬이고 hostCell 은 버스트 내내 고정이라 발마다 다시 걸러도
+                    // 결과가 같은데, 발-루프 안에 두면 Temp 가 host×instance×shot 만큼 쌓인다.
+                    // scope 0(기존 패턴)은 **할당도 분기도 없이** 원본 풀을 그대로 쓴다.
+                    var scopedIdx = default(NativeArray<int>);
+                    var scopedCells = default(NativeArray<int2>);
+                    int scopedCount = 0;
+                    bool scoped = false;
+                    if (shots > 0 && binding != BindingClass.Direction && inst.spec.scopeTileRange > 0)
+                    {
+                        var srcCells = hostIsEnemy ? defCells : enemyCells;
+                        int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                        var raw = new NativeArray<int>(srcCells.Length, Allocator.Temp);
+                        scopedCount = PatternScope.Filter(srcCells, hostCell, inst.spec.scopeTileRange, raw);
+                        scopedIdx = new NativeArray<int>(scopedCount, Allocator.Temp);
+                        scopedCells = new NativeArray<int2>(scopedCount, Allocator.Temp);
+                        for (int k = 0; k < scopedCount; k++)
+                        {
+                            scopedIdx[k] = raw[k];
+                            scopedCells[k] = srcCells[raw[k]];
+                        }
+                        raw.Dispose();
+                        scoped = true;
+                    }
+
                     // 발마다 — Advance 가 반환한 발수를 전부 소비한다. 이 루프가 없으면
                     // burstRemaining 은 N 만큼 차감됐는데 캐리어는 1개만 생겨 나머지가
                     // 증발하고(shot 목록 사문화), continue 가 아래 write-back·완주
@@ -136,8 +161,107 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
                             var poolCells = hostIsEnemy ? defCells : enemyCells;
 
-                            int idx = PatternTargeting.Select(poolCells, inst.spec.selection,
+                            // on-place-skill-rework unit 1 — fan-out: 이 shot 이 스코프 안 후보
+                            // **전원** 에게 1발씩 나간다(1:1 융단폭격). 갈래마다 다른 것은 타겟뿐이라
+                            // BuildOrder 는 shot 당 1회만 부른다 — 카운터도 1회만 전진한다.
+                            // 잠금(`reselectPerShot`)은 잠글 단일 대상이 없어 이 경로를 타지 않는다.
+                            if (inst.spec.fanOutToAllCandidates)
+                            {
+                                int fanCount = scoped ? scopedCount : poolCells.Length;
+                                // 후보 0 이면 기존 규약대로 발사를 소모하고 넘어간다(위상 보존).
+                                order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime,
+                                                                fanCount > 0 ? (scoped ? scopedIdx[0] : 0) : -1);
+                                if (order.targetCandidateIndex < 0) continue;
+
+                                // ⚠ **셀을 겨누는 궤적은 칸당 1발이다.** 겨눈 칸에 이미 쏜 발이
+                                // 있으면 건너뛴다. 안 그러면 같은 칸의 적들이 서로의 폭발에
+                                // 함께 맞아 **각자 N배**를 받는다(실측: 2기가 각각 160) —
+                                // `TileAoe` 는 `impactTileRange 0` 이어도 **그 칸 전원**을 때리기
+                                // 때문이다. 「1:1」의 뜻은 *적 1기당 1발* 이 아니라 **칸당 1발**이고,
+                                // 그래야 «적당 정확히 저작 피해» 가 실제로 성립한다.
+                                //
+                                // 엔티티를 겨누는 궤적은 접지 않는다 — 거기서는 같은 칸이라도
+                                // 탄이 대상을 따라가므로 접으면 한 명이 정말 공짜로 산다.
+                                if (binding == BindingClass.Cell)
+                                {
+                                    // ── 셀 바인딩: 칸을 모아 접고, 정렬한 뒤, 순서대로 시차를 준다 ──
+                                    var firedCells = new NativeList<int2>(fanCount, Allocator.Temp);
+                                    for (int c = 0; c < fanCount; c++)
+                                    {
+                                        int2 cellOf = poolCells[scoped ? scopedIdx[c] : c];
+                                        bool already = false;
+                                        for (int k = 0; k < firedCells.Length; k++)
+                                            if (firedCells[k].x == cellOf.x && firedCells[k].y == cellOf.y)
+                                            { already = true; break; }
+                                        if (!already) firedCells.Add(cellOf);
+                                    }
+
+                                    // **낙하 순서는 row-major 셀 rank 로 고정한다.** 후보 배열 순서는
+                                    // ECS 청크 순서라 프레임마다 다를 수 있는데, 시차를 주는 순간
+                                    // 「누가 먼저 맞나」가 결과에 영향을 준다(늦게 맞는 적은 걸어
+                                    // 나갈 시간이 더 있다). `PatternTargeting` 이 같은 이유로 rank 를
+                                    // 쓰며, 화면에서도 한 방향으로 쓸어가는 그림이 된다.
+                                    for (int a = 1; a < firedCells.Length; a++)
+                                    {
+                                        var key = firedCells[a];
+                                        long kk = (long)key.y * ff.gridSize.x + key.x;
+                                        int b = a - 1;
+                                        while (b >= 0 &&
+                                               (long)firedCells[b].y * ff.gridSize.x + firedCells[b].x > kk)
+                                        { firedCells[b + 1] = firedCells[b]; b--; }
+                                        firedCells[b + 1] = key;
+                                    }
+
+                                    float stagger = math.max(0f, inst.spec.fanOutStaggerSec);
+                                    for (int k = 0; k < firedCells.Length; k++)
+                                    {
+                                        var fanReq = inst.template;
+                                        fanReq.origin = hostPos;
+                                        fanReq.impact = GridMath.CellToWorldCenter(
+                                            firedCells[k], ff.tileSize, 0f, origin: ff.origin);
+                                        // 시차는 **낙하 시간**에 준다 — 발사는 한 프레임에 다 나가고
+                                        // 착탄만 순서대로 밀린다(연타로 읽힌다). `DrainMeteorBarrage`
+                                        // 의 `landed * staggerSec` 관용구와 동형.
+                                        fanReq.flightTime = order.telegraphSec + k * stagger;
+                                        fanReq.damage = order.damage;
+                                        fanReq.dataIndex = order.barrelDataIndex;
+                                        var fanCarrier = ecb.CreateEntity();
+                                        ecb.AddComponent(fanCarrier, fanReq);
+                                        ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
+                                    }
+                                    firedCells.Dispose();
+                                    continue; // 이 shot 의 전개 완료
+                                }
+
+                                // ── 엔티티 바인딩: 접지 않는다(탄이 대상을 따라가므로 같은 칸이라도
+                                //    접으면 한 명이 정말 공짜로 산다). 시차도 주지 않는다 — 이 궤적은
+                                //    `flightTime` 을 낙하 예고로 쓰지 않는다(속도로 날아간다).
+                                for (int c = 0; c < fanCount; c++)
+                                {
+                                    int pi = scoped ? scopedIdx[c] : c;
+                                    if (binding != BindingClass.Entity) continue;
+                                    var fanReq = inst.template;
+                                    fanReq.origin = hostPos;
+                                    fanReq.target = poolEntities[pi];
+                                    fanReq.swingIndex = order.shotIndex;
+                                    fanReq.damage = order.damage;
+                                    fanReq.dataIndex = order.barrelDataIndex;
+                                    var fanCarrier = ecb.CreateEntity();
+                                    ecb.AddComponent(fanCarrier, fanReq);
+                                    ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
+                                }
+                                continue; // 이 shot 의 전개 완료
+                            }
+
+                            // 스코프가 있으면 선택은 **스코프 배열 안에서** 하고, 결과 index 는
+                            // 반드시 원본 풀 index 로 되돌린다 — 아래 잠금 경로가
+                            // `IndexOf(poolEntities, …)` 로 원본 index 를 만들어 쓰기 때문에
+                            // 두 index 공간이 섞이면 엉뚱한 칸을 때리거나 범위를 벗어난다.
+                            // (gridSize 는 원본 그대로 넘긴다 — rank 가 row-major 키를 만든다.)
+                            int sel = PatternTargeting.Select(scoped ? scopedCells : poolCells,
+                                                              inst.spec.selection,
                                                               inst.runtime.fireCount, ff.gridSize);
+                            int idx = sel < 0 ? -1 : (scoped ? scopedIdx[sel] : sel);
                             // 명령 완성은 로직 계층이 한다(카운터 전진 포함).
                             order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime, idx);
 
@@ -194,6 +318,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         ecb.AddComponent(carrier, req);
                         ecb.AddComponent<ProjectileRequestCarrier>(carrier);
                     }
+
+                    if (scoped) { scopedIdx.Dispose(); scopedCells.Dispose(); }
 
                     if (EmitterTick.IsComplete(inst.runtime)) instances.RemoveAtSwapBack(i);
                     else instances[i] = inst;

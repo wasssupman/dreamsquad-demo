@@ -44,7 +44,7 @@ namespace Wassup.Core
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var wave = plan.waves[i];
-                float waveScore = WaveKillScore(wave);
+                float waveScore = WaveKillCount(wave);
                 float start = wave.triggerTimeSec;
                 // 마지막 웨이브의 창은 플랜의 명목 간격을 쓴다(상수를 박으면 간격이 다른
                 // 덱에서 마지막 구간만 이상하게 가팔라진다).
@@ -87,8 +87,9 @@ namespace Wassup.Core
             return true;
         }
 
-        /// <summary>한 웨이브를 전부 잡았을 때 벌리는 점수(가중치 포함).</summary>
-        public static int WaveKillScore(in GeneratedWave wave)
+        /// <summary>한 웨이브를 전부 잡았을 때 벌리는 점수. three-minute-kill-race unit 1 —
+        /// 1킬 = 1점이라 **마리 수 합**이 곧 점수다(가중치 없음).</summary>
+        public static int WaveKillCount(in GeneratedWave wave)
         {
             if (wave.groups == null) return 0;
             int total = 0;
@@ -96,8 +97,9 @@ namespace Wassup.Core
             {
                 var group = wave.groups[g];
                 if (group.unit == null || group.count <= 0) continue;
-                // 분열체처럼 killScore 0 인 적은 par 에도 0 이다(보상 불변식과 같은 축).
-                total += group.unit.killScore * group.count;
+                // unit 1 — 분열체도 1점이다(예외 없음, 2026-08-16 사용자 결정 A). 다만
+                // par 는 **편성에 적힌 마리 수**만 세므로 쪼개져 늘어나는 몫은 안 들어간다.
+                total += group.count;
             }
             return total;
         }

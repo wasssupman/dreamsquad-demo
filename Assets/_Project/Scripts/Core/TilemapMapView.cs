@@ -793,21 +793,50 @@ namespace Wassup.Core
         // 프랍 교체 아트가 없으므로(백로그) 코드만으로 읽히게 한다: 그을린 틴트 + 주저앉음.
         // 스프라이트 프랍은 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
         // 붕괴 상태는 매치 수명 — 프랍 루트 재빌드가 원복을 겸한다(_goalPropsByCell.Clear).
-        public void MarkGoalCollapsed(Vector2Int cell)
+        // three-minute-kill-race unit 2 — **마음의 남은 체력은 균열로만 보인다**(게이지 금지).
+        // `MarkGoalCollapsed`(붕괴)의 형제이고 같은 제약을 따른다: 프랍 교체 아트가 없으므로
+        // 코드만으로 읽히게 한다 — 단계가 올라갈수록 그을린다.
+        //
+        // **단계로 양자화하는 것이 핵심이다.** 체력 비율을 연속으로 틴트하면 매 프레임 미세
+        // 변화라 아무도 못 읽는다. 단계가 있어야 「금이 하나 더 갔다」가 **사건**으로 보인다.
+        // 호출자는 단계가 바뀔 때만 부른다(브리지가 셀별 마지막 단계를 기억한다).
+        //
+        // stage: 0 = 온전(원색) · 1~3 = 진행. 0 단계 복구도 지원한다(힐러가 마음을 고치면
+        // 색이 돌아와야 «회복됐다» 가 읽힌다).
+        public void SetGoalCrack(Vector2Int cell, int stage)
         {
             if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null) return;
-            var charred = new Color(0.22f, 0.19f, 0.17f, 1f);
+            stage = Mathf.Clamp(stage, 0, 3);
+            // 온전(1,1,1) → 3단계(0.42,0.36,0.32). 붕괴색(0.22,0.19,0.17)보다 밝게 남겨
+            // «금이 갔다» 와 «무너졌다» 가 한눈에 갈린다.
+            float k = stage / 3f;
+            var tint = new Color(
+                Mathf.Lerp(1f, 0.42f, k),
+                Mathf.Lerp(1f, 0.36f, k),
+                Mathf.Lerp(1f, 0.32f, k), 1f);
+            ApplyPropTint(prop, tint);
+        }
+
+        // 스프라이트는 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
+        private static void ApplyPropTint(GameObject prop, Color tint)
+        {
             foreach (var sr in prop.GetComponentsInChildren<SpriteRenderer>())
-                sr.color = charred;
+                sr.color = tint;
             var mpb = new MaterialPropertyBlock();
             foreach (var r in prop.GetComponentsInChildren<Renderer>())
             {
                 if (r is SpriteRenderer) continue;
                 r.GetPropertyBlock(mpb);
-                mpb.SetColor("_BaseColor", charred);
-                mpb.SetColor("_Color", charred);
+                mpb.SetColor("_BaseColor", tint);
+                mpb.SetColor("_Color", tint);
                 r.SetPropertyBlock(mpb);
             }
+        }
+
+        public void MarkGoalCollapsed(Vector2Int cell)
+        {
+            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null) return;
+            ApplyPropTint(prop, new Color(0.22f, 0.19f, 0.17f, 1f));
             // 주저앉음 — 실루엣 자체가 «무너졌다» 를 말하게 한다. 앵커가 바닥이 아니어도
             // 60% 스케일이면 붕괴 읽힘이 충분하고 이웃 골(2칸 거리)과 즉시 구분된다.
             prop.transform.localScale *= 0.6f;

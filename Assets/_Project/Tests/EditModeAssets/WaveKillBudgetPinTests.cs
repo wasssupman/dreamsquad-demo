@@ -72,15 +72,19 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // 킬 예산은 **스폰 구성에서 나온다**(계약 7). 상수로 박으면 안 되고, 유닛별
-        // killScore 가 0 으로 비어 있어도 안 된다 — 그러면 킬축이 통째로 죽는다.
+        // 킬 예산은 **스폰 구성에서 나온다**(계약 7). 상수로 박으면 안 된다.
+        //
+        // three-minute-kill-race unit 1 — 예산 = **스폰 마리 수**다. 유닛별 `killScore` 로
+        // 가중하던 축이 은퇴했으므로 「모든 유닛이 값을 지닌다」·「보스가 잡몹보다 비싸다」
+        // 단언도 함께 사라졌다. 등급은 이제 점수와 아무 관계가 없다(1킬 = 1점, 예외 없음) —
+        // 그 단언을 되살리면 그게 곧 티어 가중의 부활이다.
         [Test]
-        public void KillBudget_ComesFromActualSpawns_AndEveryUnitCarriesValue()
+        public void KillBudget_ComesFromActualSpawns()
         {
             var deck = LoadDeck();
             var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
 
-            int spawns = 0, budget = 0, bosses = 0;
+            int spawns = 0, bosses = 0;
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var groups = plan.waves[i].groups;
@@ -88,23 +92,14 @@ namespace Wassup.Tests.EditMode
                 {
                     var u = groups[g].unit;
                     if (u == null) continue;
-                    Assert.Greater(u.killScore, 0, $"'{u.id}' 의 killScore 가 0 — 처치해도 점수가 안 붙는다");
                     int count = groups[g].count;
                     spawns += count;
-                    budget += u.killScore * count;
                     if (IsBoss(u)) bosses += count;
                 }
             }
 
-            Assert.Greater(spawns, 0, "스폰이 하나도 없다");
-            Assert.Greater(budget, 0, "킬 예산이 0");
+            Assert.Greater(spawns, 0, "스폰이 하나도 없다 — 킬 예산이 0 이라는 뜻이다");
             Assert.Greater(bosses, 0, "보스가 하나도 없다 — 보스 편성 계약 확인");
-            // 보스가 잡몹보다 확실히 비싸야 한다 — **상대 비교**다. 예전엔 잡몹 기본값 100 을
-            // 리터럴로 박았는데, 티어 재장전(three-minute-survival unit 3)으로 스케일이 바뀌면
-            // 구조가 멀쩡한데도 빨개진다.
-            var mob = deck.ResolveAttackUnitPool()[0];
-            Assert.Greater(deck.bossUnit.killScore, mob.killScore,
-                $"보스 killScore({deck.bossUnit.killScore}) 가 잡몹({mob.id}={mob.killScore}) 이하");
         }
 
         // three-minute-survival unit 2 — **스폰 창 불변식**. 구 `LastSpawn_FitsInsideTheTimeLimit`

@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
 
@@ -162,5 +161,33 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(UnitKitSummary.Build(u), UnitKitSummary.Describe(u));
             Assert.AreEqual("파이터 · 근접형.", UnitKitSummary.Describe(u));
         }
+
+        // on-place-skill-rework unit 6 — **전수 순회로 «조용히 빈 문안» 을 막는다.**
+        //
+        // `OnPlaceClause` 의 `default: return ""` 는 신규 enum 멤버가 아무 말 없이 설명을
+        // 비우게 한다(그 파일 주석이 스스로 경고한다). 규칙 경로(`OnPlaceRuleClause`)도
+        // 같은 형태를 갖게 됐으므로, 두 어휘를 함께 순회해 배선 누락을 컴파일이 아니라
+        // 테스트로 잡는다 — `DcApplicabilityTests` 의 전수 검사와 같은 안전망이다.
+        [Test]
+        public void EveryOnPlaceEffectKind_HasAClause()
+        {
+            var missing = new System.Collections.Generic.List<string>();
+            foreach (OnPlaceEffectType kind in System.Enum.GetValues(typeof(OnPlaceEffectType)))
+            {
+                if (kind == OnPlaceEffectType.None) continue;
+                var probe = ScriptableObject.CreateInstance<DefenderUnitData>();
+                probe.onPlaceEffect = kind;
+                string s = UnitKitSummary.Build(probe);
+                if (!s.Contains("배치")) missing.Add(kind.ToString());
+                Object.DestroyImmediate(probe);
+            }
+            CollectionAssert.IsEmpty(missing,
+                "배치 문안이 없는 OnPlaceEffectType 이 있다 — 신규 멤버를 추가하고 " +
+                "OnPlaceClause 를 안 늘리면 설명이 조용히 빈다: " + string.Join(", ", missing));
+        }
+
+        // 규칙 경로의 같은 안전망(`RuleDrivenOnPlaceUnits_HaveAClause`)은 실제
+        // DefenderCatalog 를 읽으므로 EditModeAssets/UnitKitCatalogTests.cs 에 있다
+        // (test-suite-fast-lane unit 0 — 코어 lane 은 실에셋을 로드하지 않는다).
     }
 }

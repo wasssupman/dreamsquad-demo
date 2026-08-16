@@ -137,7 +137,6 @@ namespace Wassup.Bridge
         // three-minute-survival unit 1 — 안정도 바를 골 앵커에서 월드 Y 로 띄우는 양.
         // 구조물 메쉬가 셀 중심보다 높아서 바가 메쉬를 파고드는 것을 막는다. 씬 배선 불요
         // (신규 SerializeField 는 기존 씬에서 이 initializer 를 받는다).
-        [SerializeField] private float goalStabilityBarLift = 1.6f;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
         [SerializeField] private float tilemapCharacterScale = 0.42f;
@@ -367,15 +366,14 @@ namespace Wassup.Bridge
         // **계약 9: _battleClock 이 0 이 되는 모든 지점에서 함께 0 이 되어야 한다.**
         // _goalReachedCount 처럼 BeginPlacement 에만 두면, teardown 없는 StartBattle
         // 재호출에서 시계만 리셋되고 이 값은 이월돼 이전 판 점수가 얹힌다.
-        private int _killScoreTotal;
         // three-minute-survival unit 3 — 처치 **마리 수**(점수와 별개 축, 결과 화면 표기용).
-        // 계약 9: _killScoreTotal 과 같은 지점에서 함께 0 이 된다.
+        // 계약 9: 시계(_battleClock)가 0 이 되는 지점마다 함께 0 이 된다.
         private int _killCount;
         // three-minute-survival unit 0 — 골 안정도. **브리지가 소유하는 값**이다: 유출 1회당
         // 즉발 차감이라 시뮬 상태가 필요 없어 ECS 컴포넌트/시스템을 만들지 않는다(적이 골에
         // 살아남아 때리는 지속 피해 모델은 goal-tower-siege spec 의 몫).
         // 유출한 적의 AttackUnitData.stabilityDamage 만큼 깎이고 0 이면 패배다.
-        // **계약 9(_killScoreTotal 과 같은 규칙)**: 시계가 0 이 되는 지점마다 만피로 돌아간다.
+        // **계약 9(_killCount 와 같은 규칙)**: 시계가 0 이 되는 지점마다 만피로 돌아간다.
         private int _goalStability;
         private int _goalStabilityMax;
         // battle-structures unit 10 — **적 마음 축**. 위 방어 마음 축의 거울이고 활성 조건도
@@ -407,7 +405,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
-        private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
+        private NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent> _aggroAcquireEventQueue;
         // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
@@ -765,7 +763,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
-            DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.AggroAcquireEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
@@ -796,7 +794,7 @@ namespace Wassup.Bridge
             if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
-            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            if (_aggroAcquireEventQueue.IsCreated) _aggroAcquireEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
@@ -1336,7 +1334,6 @@ namespace Wassup.Bridge
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
-            _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
             _killCount = 0;
             ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 이전 판의 타워/거점 정리
@@ -1377,6 +1374,18 @@ namespace Wassup.Bridge
             }
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
+
+            // on-place-skill-rework 리뷰 반영 — **배치 페이즈에 쌓인 발사 요청을 버린다.**
+            // `DrainProjectileSpawnRequests` 는 `Update` 의 `if (!_running) return;` 아래라
+            // 전투 시작 전에는 돌지 않는데, sim(emitter)은 `_running` 을 모르고 캐리어를 만든다.
+            // 그래서 배치 페이즈에 캐논을 놓으면 캐리어가 파괴되지 않고 남아, **여기서
+            // `_running` 이 켜지는 순간 낡은 좌표로 일제히 터진다**(실측 캐리어 3개).
+            // 정리 시점은 판 종료(`DestroyBattleEntities`)뿐이라 그 사이 창이 비어 있었다.
+            //
+            // ⚠ 「배치 페이즈에 배치한 스킬은 낭비된다」는 기존 사양 그대로다(README 후속 후보
+            // 「배치 페이즈 발동 정책」). 이 줄이 고치는 것은 **낭비가 뒤늦게 터지는 것**뿐이다.
+            DestroyEntitiesByType<ProjectileRequestCarrier>();
+
             _pending.Clear();
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
@@ -1392,7 +1401,6 @@ namespace Wassup.Bridge
             }
             _startTime = Time.time;
             _battleClock = 0.0;
-            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _killCount = 0;
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
             // goal-tower-siege unit 0 — 맵·월드가 준비된 뒤 골 셀마다 타워를 세운다.
@@ -1513,10 +1521,10 @@ namespace Wassup.Bridge
             // aggro-targeting Unit 11 — Combat→Effects 히트 채널. AttackSystem(Combat)이
             // 가디언 명중을 enqueue, AggroStateSystem(Effects)이 드레인해 Aggroed 부착.
             // 브리지는 lifecycle 만 관리(드레인 안 함 — 순수 ECS 내부 통신).
-            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
-            _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
-            var aggroHitSingleton = _em.CreateEntity();
-            _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
+            if (_aggroAcquireEventQueue.IsCreated) _aggroAcquireEventQueue.Dispose();
+            _aggroAcquireEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent>(Allocator.Persistent);
+            var aggroAcquireSingleton = _em.CreateEntity();
+            _em.AddComponentData(aggroAcquireSingleton, new Wassup.Battle.Effects.AggroAcquireEventsSingleton { queue = _aggroAcquireEventQueue });
 
             // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 해저드
             // 캐스터는 attackRange 0 이라 RESOLVE 에 못 가므로 캐스트 성사가 곧 그
@@ -1705,7 +1713,6 @@ namespace Wassup.Bridge
             _pendingDreamstones = null;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
-            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _killCount = 0;
             ResetGoalStability(); // three-minute-survival unit 0 — 계약 9 (시계와 짝)
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 타워/거점도 매치와 함께 정리
@@ -1980,7 +1987,7 @@ namespace Wassup.Bridge
         {
             if (scoreHud == null) return;
             if (TryGetPaceBaseline(out int expected))
-                scoreHud.SetPaceBaseline(expected, _killScoreTotal);
+                scoreHud.SetPaceBaseline(expected, _killCount);
             else
                 scoreHud.HidePaceBaseline();
 
@@ -2856,9 +2863,9 @@ namespace Wassup.Bridge
             float t = (float)_battleClock;
             // elite-enemy-tier unit 5 — ★**QueueDueWaves 보다 먼저** 드레인한다. 분열 자식이
             // 여기서 태어나기 때문이다. 뒤에 두면(원래 위치) 부모 슬라임이 마지막 생존 적일 때
-            // 자식이 생기기 전에 NoQueuedAttackersRemain() 이 참이 되어 다음 웨이브가 큐잉되고,
-            // CheckVictory 도 같은 술어라 **승리까지 선언될 수 있다** — 「엘리트를 죽이면 판이
-            // 빨라지는」 뒤집힌 인센티브가 된다. 이 드레인은 다른 드레인·스폰 루프에 의존하지
+            // 자식이 생기기 전에 NoQueuedAttackersRemain() 이 참이 되어 다음 웨이브가 큐잉된다
+            // — 「엘리트를 죽이면 판이 빨라지는」 뒤집힌 인센티브가 된다. (구 CheckVictory 도
+            // 같은 술어라 승리까지 선언됐었다 — 그 판정은 kill-race unit 0 에서 은퇴.) 이 드레인은 다른 드레인·스폰 루프에 의존하지
             // 않는다(킬 버스트는 SpawnProjectile 직접 호출, 점수·각성 중계는 순수 가산,
             // 등록부 정리와 표식 회수는 순서 무관). 자식은 ECB 가 아니라 직접 AddComponent 라
             // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
@@ -2906,11 +2913,10 @@ namespace Wassup.Bridge
             DrainHazardDestroyedEvents();
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
-            SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러 + 패배 판정
-            // battle-structures unit 10 — 적 마음 축. Sync 다음이어야 같은 프레임 패배가 우선한다.
-            CheckEnemyCoreDestroyed();
+            SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러(연출·로그 전용)
+            // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
+            // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
-            CheckVictory();
         }
 
         private void LateUpdate()
@@ -2967,6 +2973,27 @@ namespace Wassup.Bridge
                     frame.flightTime = state.flightTime;
                     frame.elapsed = state.elapsed;
                     frame.arcHeight = state.arcHeight;
+                    // dreamcatcher-content-4 — 궤도구만 **보드 깊이 소팅**을 받는다.
+                    // 나머지 탄은 «날아가 사라지는 것» 이라 항상 위(플랫 +1000)가 맞지만,
+                    // 유닛을 도는 구슬은 뒤로 갔을 때 몸에 가려야 «돈다» 로 읽힌다.
+                    //
+                    // 깊이는 셀 Y 다 — 유닛과 **같은 식**(BoardSortOrder.Compute)을 써야
+                    // 서로 끼어들 수 있다. offset 3 = 같은 셀 tie 를 피하면서, 한 칸 뒤면
+                    // −10 대역(확실히 뒤), 한 칸 앞이면 +10 대역(확실히 앞)이 되게 하는 값.
+                    // 좌우 극점은 살짝 앞으로 읽힌다(구슬이 옆에 있을 땐 어느 쪽이든 무방).
+                    // ⚠ **sim 좌표를 넘긴다 — view 좌표가 아니다.** `BoardSpace.ToView` 는
+                    // 평면 보드라 sim-Y 를 drop 하고 z 를 화면 높이로 접어서, view 로 셀을
+                    // 역산하면 행 정렬이 통째로 무너진다(`SpineUnitView.UpdateSortingOrder`
+                    // 가 같은 이유로 `_simWorld` 를 쓴다 — 그 주석이 이 함정을 경고한다).
+                    if (state.movement == MovementKind.OrbitAroundPoint && _generatedMap.IsCreated)
+                    {
+                        var simPos = frame.simPosition;
+                        frame.boardSortOrder = Wassup.Presentation.BoardSortOrder.ComputeFromWorld(
+                            _generatedMap.gridSize,
+                            new Vector3(simPos.x, simPos.y, simPos.z),
+                            tileSize,
+                            offset: Wassup.Presentation.BoardSortOrder.CharacterOffset + 2);
+                    }
                 }
                 _projectileViewPool.SyncTransform(entity, frame);
             }
@@ -3397,47 +3424,11 @@ namespace Wassup.Bridge
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
             // three-minute-survival unit 1 — 골 안정도 바. EndFrame 뒤에 둔다(유닛 풀의
             // _seen 소거와 무관한 별도 슬롯이라 순서 의존은 없지만, 유닛 바 위에 그려진다).
-            if (unifiedOverhead) SyncGoalStabilityBars();
         }
 
-        // three-minute-survival unit 1 — 골 셀마다 안정도 바 1개. 값은 공유 1개라 두 바가 같은
-        // 숫자를 밀살 표시한다. 전투 중에만 보이고 그 외에는 슬롯을 접는다.
-        private void SyncGoalStabilityBars()
-        {
-            if (!_running || _goalStabilityMax <= 0 || !_generatedMap.IsCreated)
-            {
-                unitOverheadUiLayer.HideStability();
-                return;
-            }
-            var cam = Camera.main;
-            if (cam == null) return;
-
-            float ratio = Wassup.Battle.Units.Health.ComputeRatio(_goalStability, _goalStabilityMax);
-            string label = _goalStability.ToString();
-            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
-            int count = hasList ? _generatedMap.goals.Length : 1;
-            for (int i = 0; i < count; i++)
-            {
-                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
-                // primary 골은 구조물 시각 앵커를 쓴다(구조물이 없는 테마는 셀 중심으로 폴백).
-                Vector3 world;
-                if (i == 0 && tilemapMapView != null && tilemapMapView.TryGetGoalVisualAnchor(out var anchor))
-                    world = anchor;
-                else
-                    // sim → view 변환을 반드시 거친다. GridToWorldCenterVector 만 쓰면
-                    // Tilemap 모드에서 반 타일 어긋나 바가 모서리에 놓인다(:2764 선례).
-                    world = GridCellToViewCenter(new Vector2Int(cell.x, cell.y));
-                world.y += goalStabilityBarLift;
-
-                Vector3 sp = cam.WorldToScreenPoint(world);
-                if (sp.z <= 0f) continue; // 카메라 뒤 — 투영이 뒤집힌다
-                Vector3 half = Vector3.right * (tileSize * 0.5f);
-                Vector3 a = cam.WorldToScreenPoint(world - half);
-                Vector3 b = cam.WorldToScreenPoint(world + half);
-                float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
-                unitOverheadUiLayer.SetStability(i, ratio, label, new Vector2(sp.x, sp.y), tileScreenWidth);
-            }
-        }
+        // three-minute-kill-race unit 2 — `SyncGoalStabilityBars()` 는 제거했다.
+        // 마음의 남은 수치를 **바·숫자로 그리지 않는다**(게이지 형태 금지). 그 정보는
+        // 프랍의 균열 단계로만 보인다 — TilemapMapView.SetGoalCrack.
 
         // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
         //
@@ -3701,6 +3692,25 @@ namespace Wassup.Bridge
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
             ReleaseDefenderTile(cell, out var binding);
+
+            // dreamcatcher-content-4 unit 5 (퇴직 위로금) — 퇴근 사건의 payload 를 **파괴 직전에
+            // 슬롯에서 직독**한다. 사망 경로는 payload 를 DefenderDeathEvent 에 미리 구워 나르는데,
+            // 그건 드레인이 도는 시점에 엔티티가 이미 없기 때문이다. 퇴근은 **파괴 주체가 바로
+            // 여기**라서 그 우회가 필요 없다 — 아직 살아 있는 엔티티의 버퍼를 그냥 읽으면 된다.
+            //
+            // ⚠ **브리지가 defender 엔티티의 트리거 슬롯을 읽는 첫 사례다.** 여태 슬롯 소비는
+            // 전부 Combat 시스템 몫이었고 브리지는 bake(쓰기)만 했다. 그래도 성립하는 근거:
+            // "퇴근" 이라는 사건은 sim 에 존재하지 않는다 — DeadTag 를 안 다는 것이 곧 이 카드의
+            // 계약이라(defender-clock-out 계약 1) 사건 지점이 브리지 말고는 없다.
+            //
+            // 스냅샷으로 뜨는 이유 둘: ① 바로 아래에서 엔티티가 파괴된다 ② cast(SpawnProjectile)
+            // 가 구조 변경이라 DynamicBuffer 핸들이 그 자리에서 무효화된다.
+            // isReadOnly: 슬롯 쓰기는 Combat 소유다(맥락 경계) — 브리지는 bake 때 말고는 읽기만 한다.
+            var retireSlots = default(NativeArray<DcTriggerSlot>);
+            if (_em.HasBuffer<DcTriggerSlot>(binding.entity))
+                retireSlots = _em.GetBuffer<DcTriggerSlot>(binding.entity, isReadOnly: true)
+                                 .ToNativeArray(Allocator.Temp);
+
             // ⚠ **되돌릴 수 없는 sim 변경을 먼저 끝낸다**(코드리뷰 2026-08-15 반영).
             // 원래는 뷰 처리 뒤에 있었는데, 그 사이의 프레젠테이션 코드(키링 생성 = Shader.Find /
             // new GameObject, 코루틴 시작)가 던지면 **엔티티는 살아 있는데 바인딩만 사라진**
@@ -3709,6 +3719,58 @@ namespace Wassup.Bridge
             // 아래 뷰 경로는 엔티티를 Dictionary 키로만 쓰고 EntityManager 를 만지지 않으므로
             // 순서를 앞당겨도 무해하다.
             _em.DestroyEntity(binding.entity);
+
+            // dreamcatcher-content-4 unit 5 — **비워진 그 칸에 운석이 떨어진다.** 실행 형태는
+            // 기존 SelfTileAoe 그대로다(SkyFall × TileAoe 투사체 하나 — 작별 선물·실드 파열
+            // 폭발과 같은 경로). 파괴 뒤에 쏘지만 스냅샷만 참조하므로 소멸한 엔티티를 만지지 않는다.
+            //
+            // **전 매칭 슬롯이 발동한다** — 카드를 2장 붙였으면 운석 2발. OnDeath 의 "첫 매칭
+            // 슬롯만" 은 사망 이벤트 struct 가 payload 필드를 한 벌만 실어서 생긴 제약이었고,
+            // 여기는 버퍼를 직독하므로 해당 없다(HealthThreshold 가 슬롯당 발동인 것과 같은 자리).
+            //
+            // 값은 전부 **이 카드가 소유한다**(계약 7-1) — 액티브 카드 운석(SkillData)·시즌 기믹
+            // 폭격(ClockOutGimmickData)과 겉모습(탄 SO)만 공유하고 피해·반경·예고는 독립이다.
+            if (retireSlots.IsCreated)
+            {
+                var impactWorld = GridToWorldCenter(cell, spawnHeight); // 비워진 칸 중심 — 슬롯 불변
+                for (int i = 0; i < retireSlots.Length; i++)
+                {
+                    var slot = retireSlots[i];
+                    // 이 루프는 host 의 **전체** 슬롯 버퍼를 훑는다 — 다른 트리거(공격 N회·
+                    // 실드 파열 …)의 슬롯이 같은 버퍼에 섞여 있으므로 두 축을 다 본다.
+                    if (slot.trigger != Wassup.Data.DcTriggerKind.OnRetire) continue;
+                    if (slot.payload != Wassup.Data.DcPayloadKind.SelfTileAoe) continue;
+                    // bake 가 탄 SO·양수 magnitude 를 이미 강제한다(그래서 여기 걸리는 슬롯은
+                    // 없어야 한다). 그럼에도 확인하는 이유는 값이 빈 슬롯을 그대로 쏘면
+                    // SpawnProjectile 이 dataIndex 범위 경고를 뱉고 조용히 드롭하기 때문 —
+                    // "안 터지는 카드" 의 원인이 로그 한 줄로 흐려진다.
+                    if (slot.projectileDataIndex < 0 || slot.magnitude <= 0f) continue;
+
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement        = MovementKind.SkyFall,
+                        payload         = PayloadKind.TileAoe,
+                        origin          = impactWorld,
+                        impact          = impactWorld,
+                        damage          = slot.magnitude,
+                        impactTileRange = slot.tileRange,
+                        // 낙하 예고 초. bake 가 payload.duration 을 이 슬롯에 실었다(계약 8 —
+                        // AreaBarrage 의 duration=텔레그래프 선례). 0 이면 즉시 착탄.
+                        flightTime      = slot.duration,
+                        dataIndex       = slot.projectileDataIndex,
+                        // arcHeight 는 **비워 둔다** — 드레인이 탄 SO 의 dropHeight 로 보충한다
+                        // (보스 융단폭격과 같은 처리). 여기서 SO 를 다시 읽으면 낙하 높이의
+                        // 출처가 둘이 된다.
+                        visualScale     = slot.visualScale > 0f ? slot.visualScale : 1f,
+                        targetFaction   = ProjectileTargetFaction.Enemy,
+                        // owner 는 비운다 — 퇴근한 유닛은 **이미 없다**. 실드 파열 폭발이
+                        // owner=host 로 킬을 귀속시키는 것과 갈리는 지점이다(그쪽 host 는
+                        // 같은 프레임에 죽어도 파괴는 다음 틱이라 키로서 유효하다).
+                        owner           = Entity.Null,
+                    }, Entity.Null);
+                }
+                retireSlots.Dispose();
+            }
 
             // 사망 애니를 타지 않는다(계약 11) — NotifyDeath(=Kill()=deathAnimation) 대신 여기로.
             //
@@ -4346,12 +4408,12 @@ namespace Wassup.Bridge
             if (!_enemyKilledEventQueue.IsCreated) return;
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
-                scoreHud?.OnEnemyKilled(evt.killScore);
+                scoreHud?.OnEnemyKilled();
                 // battle-score-formula unit 2 — 최종 점수용 누적.
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
                 // (예전엔 처치당 고정 +10 이라 15배 어긋나 있었다). 두 경로가 같은
-                // evt.killScore 를 쓰므로 전투 중 HUD 숫자 == _killScoreTotal 이다.
-                _killScoreTotal += evt.killScore;
+                // three-minute-kill-race unit 1 — **1킬 = 1점**이라 누적이 하나다.
+                // 전투 중 HUD 숫자 == _killCount == 최종 점수.
                 // three-minute-survival unit 3 — 점수는 티어 가중이라 "처치 수" 와 다르다
                 // (잡몹 10 + 보스 1 = 20점). 결과 화면이 `처치 N기` 를 따로 보여주므로
                 // 마리 수를 별도로 센다.
@@ -4381,7 +4443,7 @@ namespace Wassup.Bridge
                 float time = LogElapsedTime;
                 var logger = GameManager.Instance?.Logger;
                 logger?.RecordKill(string.Empty, new Vector2Int(cell.x, cell.y), time);
-                logger?.AddScoreEvent("enemy_killed", evt.killScore, time);
+                logger?.AddScoreEvent("enemy_killed", 1, time);
 
                 // 시체폭발 (content-3 unit 3) — 킬 셀 중심 즉발 TileAoe. OnDeath 폭발
                 // (DrainDefenderDeathEvents)과 동형. owner=killer 로 폭발발 킬의 OnKill
@@ -4546,9 +4608,19 @@ namespace Wassup.Bridge
             // 착탄 셀에서 떨어져야 하므로, 궤적의 불변식을 궤적 소유 지점인 여기서
             // 강제한다. (기존 Meteor/구 barrage arm 은 origin==impact 로 보내와서
             // 바이트 동일하고, emitter 처럼 origin=시전자 인 주체만 정정된다.)
+            // dreamcatcher-content-4 리뷰 M3 — 궤도는 **궤도 위 시작점(위상 0)** 에서 태어난다.
+            // 중심에서 태우면 첫 프레임 스윕 선분이 «중심 → 반경 끝» 인 **방사선**이 되어,
+            // 호스트 발밑(고리 안쪽)의 적까지 딱 한 번 맞는다 — 어느 계약에도 없는 피해 사건이다.
+            // (뷰에는 궤도 arm 이 없어 그 선분을 그리지도 않으므로 «화면과 일치하는 정직한 선분»
+            //  이라는 변명도 성립하지 않는다. 1프레임 뷰 점프도 같이 사라진다.)
+            // 위상 규약은 Orbit.Position 한 곳에만 산다 — 여기서 다시 유도하지 않는다.
             var spawnPos = req.movement == MovementKind.SkyFall
                 ? new float3(req.impact.x, spawnHeight, req.impact.z)
-                : new float3(req.origin.x, spawnHeight, req.origin.z);
+                : req.movement == MovementKind.OrbitAroundPoint
+                    ? Wassup.Battle.Combat.Projectile.Orbit.Position(
+                        new float3(req.origin.x, spawnHeight, req.origin.z), req.maxDistance,
+                        req.speed, 0f, req.orbitPhase)
+                    : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
 
@@ -4566,6 +4638,11 @@ namespace Wassup.Bridge
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
                 dataIndex = req.dataIndex,
+                // dreamcatcher-content-4 unit 0 — PathHit 재타격 간격은 **탄 SO 소유**다
+                // (바로 아래 Directional 분기의 pierceCount 와 같은 번역자 역할). 요청
+                // struct 에 필드를 만들지 않는 이유가 그것이다 — 발사 주체(카드 arm·
+                // emitter·AttackSystem)는 이 값을 몰라도 된다. 기본 0 = 기존 전 발사 지점 무변화.
+                rehitCooldownSec = projData != null ? math.max(0f, projData.rehitCooldownSec) : 0f,
                 // dreamcatcher-attack-mod-bounce unit 2 — copy bounce params
                 // verbatim; defaults 0 = every existing spawn keeps legacy destroy.
                 bounceRemaining = req.bounceRemaining,
@@ -4650,6 +4727,28 @@ namespace Wassup.Bridge
                 state.direction = math.normalize(dir);
                 state.maxDistance = req.maxDistance;
                 // pierceCount 는 SO 소유 — SkyFall 의 dropHeight 보충과 같은 번역자 역할.
+                state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
+            }
+            else if (req.movement == MovementKind.OrbitAroundPoint)
+            {
+                // dreamcatcher-content-4 unit 0 — 궤도(화염구). 중심은 발사 시점 고정점이라
+                // 타겟 엔티티를 잡지 않는다. req.speed 는 **각속도(rad/s)** 로 온다 —
+                // 발사 arm(BossPeriodicTriggerSystem)이 슬롯의 선속도 ÷ 반경으로 이미 변환해
+                // 보낸다(그 arm 은 ISystem 이라 SO 를 못 읽으므로 bake 가 구운 값을 쓴다).
+                state.origin = new float3(req.origin.x, spawnHeight, req.origin.z);
+                state.prevPos = spawnPos;
+                state.maxDistance = req.maxDistance;   // 궤도 반경
+                state.speed = req.speed;               // 각속도
+                state.orbitPhase = req.orbitPhase;      // 균등 배치용 각도 오프셋
+                state.flightTime = math.max(req.flightTime, 0f); // 지속 초
+                // 관통 예산은 **탄 SO 소유**다(Directional 과 같은 자리·같은 규약).
+                // 재타격이 켜진 정상 궤도는 이 값을 읽지도 쓰지도 않으므로(계약 3 — 유일한
+                // 종료 조건은 수명) 무슨 값이든 무해하다. 이 값이 일하는 것은 **비정상 경로**
+                // 하나뿐이다: 기록 버퍼가 없거나 쿨타임이 0 인 궤도. 그때 예산이 «적당 1회»
+                // 상한이 되어 탄이 곧 사라진다.
+                // ⚠ 예전엔 여기 int.MaxValue 를 박았는데, 그러면 그 비정상 경로가
+                // **매 프레임 전원 타격 + 영원히 안 죽는 탄** 이 된다(리뷰 M1). 눈에 띄게
+                // 일찍 죽는 편이 조용히 30배 때리는 것보다 낫다.
                 state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
             }
             else if (req.movement == MovementKind.SkyFall)
@@ -4833,9 +4932,24 @@ namespace Wassup.Bridge
                     });
                     // unit 3 — 공격 넉업과 같은 연출 경로. 여기는 이미 브리지(뷰 접근 가능)라
                     // 큐를 거치지 않고 직접 재생한다.
+                    //
+                    // on-place-skill-rework unit 5 — **띄움 길이는 스턴 길이와 다르다.**
+                    // 심의 사실은 처음부터 「스턴」이고 「공중」은 뷰가 붙이는 해석이라
+                    // (knockup-fighter-defender unit 3), 스턴을 3초로 늘리면서 체공까지 3초가
+                    // 되면 지진 충격이 아니라 무중력이 된다. `knockupOnHitSec` 은 **이 유닛이
+                    // 적을 띄우는 길이**라는 하나의 성질이라(평타든 배치든 같은 높이·같은 체공)
+                    // 새 필드를 만들지 않고 그 값을 쓴다.
+                    //
+                    // `min` 인 이유: 스턴보다 오래 떠 있으면 **땅에 닿기 전에 적이 다시 움직이는**
+                    // 역전이 난다. 0 이면(띄우지 않는 유닛) 종전대로 스턴 길이를 따른다.
                     if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
                         && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
-                        hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
+                    {
+                        float hopSec = unitData.knockupOnHitSec > 0f
+                            ? math.min(unitData.knockupOnHitSec, unitData.onPlaceDuration)
+                            : unitData.onPlaceDuration;
+                        hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
+                    }
                     affected++;
                 }
             }
@@ -5449,7 +5563,12 @@ namespace Wassup.Bridge
         // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
         // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: StressLimit > 0);
+            // three-minute-kill-race unit 2 — **분모를 떼고 누적 수량만 표기한다.**
+            // 한계가 아무것도 판정하지 않는데 `3 / 10` 이 떠 있으면 거짓말이다. 한계 «값»
+            // 자체는 계속 넘긴다 — 튜토리얼이 «스냅샷이 왔는가» 를 _leakLimit 으로 판정한다.
+            // 그 튜토리얼의 「N이 되면 패배합니다」 문구는 ShowsStressLimit 가드에 걸려
+            // 자동으로 빠진다(패배가 없어졌으니 그 문장은 거짓말이다).
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
 
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
@@ -5461,6 +5580,7 @@ namespace Wassup.Bridge
             _enemyCoreMax = 0;
             _enemyCoreCurrent = 0;
             _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
+            _goalCrackStage.Clear();  // unit 2 — 균열 단계도 같은 규칙(프랍 루트 재빌드가 색을 원복한다)
             _leakTypeMissLogged = false;
             _towerMissLogged = false;
         }
@@ -5735,15 +5855,14 @@ namespace Wassup.Bridge
                 // 다른 쪽 도달은 여전히 공성이다.
                 bool breached = _breachedCells.Contains(NearestGoalCell(evt.position));
 
-                // stress-after-breach(2026-08-08) — 스트레스는 **부서진 골로의 유출만** 센다.
-                // 붕괴 전 도달은 공성(안정도 피해)이거나 자폭(안정도 피해)이라 안정도 축이
-                // 이미 그것을 세고 있다. 여기서도 세면 한 사건이 두 축을 깎아, 안정도가
-                // 멀쩡한데 스트레스 상한으로 먼저 죽는다(1000 남았는데 패배가 실측됐다).
+                // stress-after-breach(2026-08-08) — 유출은 **부서진 골로 들어온 것만** 센다.
+                // 붕괴 전 도달은 공성이라 그 적이 아직 필드에 살아 있고(= 아직 잡을 수 있다)
+                // 유출이 아니다. three-minute-kill-race unit 0 — 이 카운터는 이제 아무것도
+                // 판정하지 않는다. 「못 잡은 적이 몇 마리인가」를 세는 집계일 뿐이다.
                 if (breached)
                 {
                     _goalReachedCount++;
                     RefreshLeakHud();
-                    CheckStressDefeat();
                 }
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
@@ -5855,6 +5974,19 @@ namespace Wassup.Bridge
         // Health 0) 엔티티의 셀을 특정한다. 구현이 count 비교였던 시절엔 «하나 부서짐 = 전부
         // 파괴 + 전역 전환» 이라 계약 7 을 표현할 수 없었다.
         // 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)는 그대로다 — 브리지는 관측만 한다.
+        // unit 2 — 골 셀별 마지막 균열 단계. 매치 경계에서 비운다(_breachedCells 와 같은 규칙).
+        private readonly Dictionary<Vector2Int, int> _goalCrackStage = new();
+
+        // 남은 비율 → 4단계(온전/1/2/3). 경계를 넉넉히 잡아 «맞자마자 새까매지는» 인상을 피한다.
+        private void PushGoalCrack(Vector2Int cell, in Health health)
+        {
+            float ratio = Health.ComputeRatio(health.value, health.max);
+            int stage = ratio > 0.75f ? 0 : ratio > 0.5f ? 1 : ratio > 0.25f ? 2 : 3;
+            if (_goalCrackStage.TryGetValue(cell, out int prev) && prev == stage) return;
+            _goalCrackStage[cell] = stage;
+            tilemapMapView?.SetGoalCrack(cell, stage);
+        }
+
         private void SyncGoalStability()
         {
             // 리뷰 M-7 — 게이트는 등록부 유무다. 구 _goalTowerCount 게이트는 «골 타워 개수»
@@ -5880,6 +6012,11 @@ namespace Wassup.Bridge
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
                     if (health.value < lowest) lowest = health.value;
                     if (health.max > maxHp) maxHp = health.max;
+                    // three-minute-kill-race unit 2 — 마음의 남은 체력은 **균열로만** 보인다.
+                    // 이 순회가 이미 셀과 Health 를 들고 있어 새 기계가 필요 없다(적 마음
+                    // 잔여를 같은 순회에 얹은 선례). push 는 단계가 바뀔 때만 — 매 프레임
+                    // 틴트를 다시 쓰면 렌더러 순회가 공짜가 아니고, 단계가 사건으로도 안 읽힌다.
+                    PushGoalCrack(cell, health);
                     continue;
                 }
 
@@ -5929,10 +6066,8 @@ namespace Wassup.Bridge
                 _goalStability = 0;   // 마음이 하나도 안 남았다
             }
 
-            // unit 10 — 적 마음 잔여 갱신. **판정은 여기서 하지 않는다**: 이 메서드는 아래에서
-            // 조건부 return 이 여럿이라 판정을 넣으면 붕괴 프레임에만 건너뛰어진다. 축의 판정은
-            // CheckEnemyCoreDestroyed 가 소유하고, Update 에서 이 메서드 **다음에** 돈다 —
-            // 그래서 같은 프레임에 방어 마음도 무너졌다면 패배가 먼저 _resultShown 을 세운다.
+            // unit 10 — 적 마음 잔여 갱신. **판정은 아무데서도 하지 않는다**(kill-race unit 0):
+            // 적 마음이 무너져도 판은 계속되고, 이 미러는 연출·로그의 입력일 뿐이다.
             // 표시는 올림(방어 미러와 같은 규칙) — 0.3 남았는데 0 으로 보이면 «죽었는데 안 죽었다».
             _enemyCoreCurrent = Mathf.Max(0, Mathf.CeilToInt(enemyCoreRemaining));
 
@@ -5943,18 +6078,10 @@ namespace Wassup.Bridge
                 for (int i = 0; i < newBreaches.Count; i++)
                     OpenGoalCellAfterBreach(newBreaches[i]);
 
-            // stress-after-breach (2026-08-08 사용자 결정) — 골 파괴는 더 이상 그 자체로 패배가
-            // 아니다. 상한이 있으면 그 셀이 **유출 지점으로 전환**되고(위에서 이미 열었다),
-            // 부서진 셀로의 유출 1회 = 스트레스 1 이 상한에 닿을 때 패배한다.
-            if (StressLimit > 0)
-            {
-                Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 스트레스 {_goalReachedCount}/{StressLimit} 에서 패배.");
-                return;
-            }
-
-            // 상한 0 = 구 동작 보존: 마음 하나라도 부서지면 즉시 패배.
-            EndMatch("defeat", win: false);
-            Debug.Log("[BattleBridge] DEFEAT — 골이 부서졌다(스트레스 상한 0).");
+            // three-minute-kill-race unit 0 — **골 붕괴는 아무것도 판정하지 않는다.** 그 셀이
+            // 유출 지점으로 열리는 것(위)이 전부다. 예전엔 여기서 즉시 패배(상한 0) 또는
+            // 스트레스 상한 패배로 이어졌는데, 이제 마음은 판정 권한이 0 이다(계약).
+            Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 판은 계속된다.");
         }
 
         // 붕괴 처리(ⓐ: **그 셀만**) — 그 셀에서 공성 중이던 적을 유출로 전환한다. 다른 골의
@@ -5996,18 +6123,11 @@ namespace Wassup.Bridge
             _enemyTypeByEntity.Remove(entity);
             _em.DestroyEntity(entity);
             RefreshLeakHud();
-            CheckStressDefeat();
         }
 
-        // 스트레스 상한 패배. 상한 0 = 이 경로 없음(골 파괴가 즉시 패배를 소유).
-        private void CheckStressDefeat()
-        {
-            // 상한의 on/off 는 덱 원본값(StressLimit)이, **문턱값**은 EffectiveLeakLimit()이 정한다 —
-            // HUD 분모와 같은 값이어야 화면에서 검산된다(몽마의 계약 선불 차감이 반영된 값).
-            if (_resultShown || StressLimit <= 0 || _goalReachedCount < EffectiveLeakLimit()) return;
-            EndMatch("defeat", win: false);
-            Debug.Log($"[BattleBridge] DEFEAT — 스트레스 상한 도달 ({_goalReachedCount}/{StressLimit}).");
-        }
+        // three-minute-kill-race unit 0 — `CheckStressDefeat()` 는 제거했다. 유출은 이제
+        // 아무것도 깎지 않고 «못 잡은 적 = 못 번 점수 + 못 번 각성치» 라는 기회비용만 남는다.
+        // 카운터(`_goalReachedCount`)는 HUD·로그 집계로 계속 쓴다.
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
 
@@ -6019,52 +6139,46 @@ namespace Wassup.Bridge
         // unit 7 — `RemainingBattleSeconds()` 는 제거했다. 종료 4경로가 계산해서 넘겼지만
         // 소비처(구 결과 화면의 「남은 시간」 줄)가 이미 죽어 값이 버려지고 있었다.
 
-        // battle-structures unit 10 — **적 마음 축**. 방어 마음 축(SyncGoalStability)의 거울이고
-        // 활성 조건도 같은 모양이다: 저작된 상한이 있었는데(`_enemyCoreMax > 0`) 지금 잔여가 0.
-        // 침략 맵은 max 가 0 이라 이 축이 저절로 죽는다 — 모드 분기가 없는 이유(계약 15).
+        // ── 유저 제출 (three-minute-kill-race unit 3) ────────────────────────────
         //
-        // 감지 기계를 새로 만들지 않는다: 잔여는 SyncGoalStability 의 등록부 순회가 이미 굴리고,
-        // 그 메서드가 Update 에서 이것보다 **먼저** 돌아 같은 프레임 패배가 우선권을 갖는다.
-        private void CheckEnemyCoreDestroyed()
-        {
-            if (_resultShown || _enemyCoreMax <= 0 || _enemyCoreCurrent > 0) return;
+        // **판을 끝낼 수 있는 사람은 유저뿐이다** — 3분 만료 말고는 이 경로 하나다.
+        // 시스템이 판을 끝내는 판정은 unit 0 에서 전부 은퇴했다.
 
-            EndMatch("victory_siege", win: true);
-            Debug.Log("[BattleBridge] VICTORY — 적 마음이 무너졌다(공성).");
+        /// <summary>제출 개방까지 필요한 경과(초). P1 — 튜닝 대상.</summary>
+        public const float SubmitUnlockSec = 60f;
+
+        /// <summary>「제출」이 열렸는가. 시계는 **Battle 도메인**(`_battleClock`)이다 —
+        /// `Time.time` 을 쓰면 메뉴를 열어 둔 시간까지 세어 «안 싸웠는데 열린다».</summary>
+        public bool CanSubmit => _running && !_resultShown && (float)_battleClock >= SubmitUnlockSec;
+
+        /// <summary>현재 킬로 성적을 확정하고 판을 끝낸다. 페널티 없음.
+        /// 마감 파이프라인(취합 → 기록 → 통보 → 표시)을 그대로 탄다 — 제출 전용 경로를
+        /// 따로 만들지 않는 것이 unit 0 단일 관문의 값어치다.</summary>
+        public void SubmitMatch()
+        {
+            if (!CanSubmit) return;   // 재진입·조기 호출 방어(_resultShown 도 여기 포함)
+            EndMatch("submitted");
+            Debug.Log($"[BattleBridge] SUBMITTED — 유저 제출. (처치 {_killCount}기 · 경과 {(float)_battleClock:F1}s)");
         }
 
+        // three-minute-kill-race unit 0 — 판정 2개를 제거했다:
+        //
+        // - `CheckEnemyCoreDestroyed()` (적 마음 붕괴 = 즉시 승리) — 이제 부숴도 판은 계속된다.
+        //   `_enemyCoreCurrent` 미러는 연출·로그용으로 남는다.
+        // - `CheckVictory()` (웨이브 전멸 = 즉시 승리) — 3분에 소진 불가라 이미 사문화였다.
+        //   짝인 `NoQueuedAttackersRemain()` 은 **유지**한다: 웨이브 케이던스의 동력이다.
+        //
+        // 판을 끝내는 것은 시계 하나뿐이고, unit 3 의 유저 제출이 두 번째로 붙는다.
         private void CheckTimer()
         {
             if (_resultShown) return;
             if (_timerDuration <= 0f) return;
             if ((float)_battleClock < _timerDuration) return;
 
-            // battle-structures unit 10 — 만료 판정은 «남은 체력의 우위» 비교 **한 줄**이다.
-            // 적 마음 축이 비활성이면 _enemyCoreCurrent = 0 이라 `_goalStability >= 0` 이 항상
-            // 참 = 기존 무조건 승리와 동치다. 침략 맵과 공성 맵이 같은 코드를 탄다(계약 15).
-            // 동률은 승리 — 방어 게임의 «버틴다» 계약(사용자 확정).
-            //
-            // 두 마음의 체력은 **저작으로** 맞춘다(덱 goalStabilityMax ↔ 적 마음 SO health).
-            // 어긋남은 MapDocumentPool.OnValidate 가 경고한다 — 여기서 비율로 정규화하지 않는
-            // 이유는 사용자 결정이 «동일 체력 + 절대값» 이기 때문이다.
-            bool win = _goalStability >= _enemyCoreCurrent;
-
-            EndMatch(win ? "victory_timeout" : "defeat_timeout", win);
-            Debug.Log(win
-                ? $"[BattleBridge] VICTORY — timer expired, player survived. (방어 {_goalStability} ≥ 적 {_enemyCoreCurrent})"
-                : $"[BattleBridge] DEFEAT — timer expired, 적 본진이 더 버텼다. (방어 {_goalStability} < 적 {_enemyCoreCurrent})");
-        }
-
-        // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
-        private void CheckVictory()
-        {
-            if (_resultShown) return;
-            if (_enemyCoreMax > 0) return;
-            if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
-            if (!NoQueuedAttackersRemain()) return;
-
-            EndMatch("victory", win: true);
-            Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+            // **만료 = 완주다.** 예전엔 여기서 두 마음의 남은 체력을 견줘 승/패를 갈랐는데
+            // (battle-structures 계약 15 «버틴다»), 패배가 사라지면서 견줄 것이 없어졌다.
+            EndMatch("complete");
+            Debug.Log($"[BattleBridge] COMPLETE — 3분 완주. (처치 {_killCount}기 · 유출 {_goalReachedCount})");
         }
 
         // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
@@ -6105,44 +6219,47 @@ namespace Wassup.Bridge
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
         }
 
-        // three-minute-survival unit 7 — **판 마감의 단일 관문.** 종료 5경로(골붕괴 즉사·
-        // 스트레스 상한·적 마음 붕괴·타이머 만료·전멸)는 판정만 하고 여기로 들어온다.
-        // 예전엔 다섯 곳이 같은 의식 6줄을 복붙했고, 한 줄만 빠뜨려도 조용히 어긋났다.
+        // three-minute-survival unit 7 — **판 마감의 단일 관문.**
         //
         //   취합(BuildTally) → 기록(로거) → 통보(서버) → 표시(결과 화면)
+        //
+        // three-minute-kill-race unit 0 — 여기로 들어오는 경로가 **하나**로 줄었다(3분 만료).
+        // 판정 4개(골붕괴 즉사·스트레스 상한·적 마음 붕괴·웨이브 전멸)가 은퇴했기 때문이다.
+        // unit 3 의 유저 제출이 두 번째 경로로 붙는다. **그 둘 말고 이 메서드를 부르는 코드를
+        // 새로 만들지 말 것** — 그게 곧 패배 조건의 부활이다(feature 계약).
         //
         // **제출이 표시보다 앞이라는 순서는 계약이다**(score-tally-sequence 계약 3) —
         // 화면을 기다리다 앱이 죽으면 기록이 통째로 사라진다. 둘은 독립이다.
         //
-        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만(unit 3 — 더할 축이
-        // 없어 내용 없는 4초 정지가 된다) 전투 HUD 게이팅이 그 페이즈를 읽는다. Tally 동안
-        // ScoreHud 만 남고 NextWaveDock·CostDisplay 등은 `== GamePhase.Battle` 로 자동 정리된다.
-        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
-        private void EndMatch(string outcome, bool win)
+        // `GamePhase.Tally` 전이는 유지한다: 합산 연출 자체는 은퇴했지만 전투 HUD 게이팅이 그
+        // 페이즈를 읽는다. Tally 동안 ScoreHud 만 남고 NextWaveDock·CostDisplay 등은
+        // `== GamePhase.Battle` 로 자동 정리된다. ⚠ 이 enum 은 `CameraDirectionConfig.asset` 에
+        // 정수로 직렬화되므로 값을 빼거나 끼우지 말 것.
+        private void EndMatch(string outcome)
         {
             _resultShown = true;
             _running = false;
 
-            var tally = BuildTally(outcome, win);
+            var tally = BuildTally(outcome);
             var logger = GameManager.Instance?.Logger;
             logger?.SetResult(tally.Outcome, tally.Leaks);
-            logger?.SetScore(tally.Total, tally.KillScore);
+            // 로그 스키마의 score/kill_score 두 필드는 유지한다 — 이제 같은 값이 들어간다.
+            logger?.SetScore(tally.Total, tally.Kills);
 
             GameManager.Instance?.SetPhase(GamePhase.Tally);
             ReportMatchResult(tally);
 
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            if (tally.Won) resultScreen?.ShowVictory(tally);
-            else resultScreen?.ShowDefeat(tally);
+            resultScreen?.Show(tally);
         }
 
         // unit 7 — 흩어진 재료를 판 성적 하나로 옮기는 **유일한** 지점. 재료가 늘거나 줄면
         // 고칠 곳이 여기 하나다(종료 경로는 재료를 만지지 않는다).
         //
-        // 점수는 처치로만 번다(unit 3) — 시간·스트레스 축과 그 배점(ScoreRulesData)은
-        // 폐기됐고 패배 분기도 없다. 져도 잡은 만큼은 남으므로 `win` 은 산식에 닿지 않는다.
-        private MatchTally BuildTally(string outcome, bool win)
-            => new MatchTally(outcome, win, _killScoreTotal, _killCount,
+        // 점수는 처치로만 번다 — 시간·스트레스 축과 그 배점(ScoreRulesData)은 폐기됐고,
+        // three-minute-kill-race unit 0 이후로는 승패 자체가 없어 분기가 하나도 없다.
+        private MatchTally BuildTally(string outcome)
+            => new MatchTally(outcome, _killCount,
                 _goalStability, _goalStabilityMax, ReachedWaveNumber, _goalReachedCount);
 
         // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
@@ -6423,6 +6540,7 @@ namespace Wassup.Bridge
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
+            MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
@@ -6848,7 +6966,7 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
             // (존재=가디언 표식). Fighter/Ranger (aggroCapacity == 0) get none. 획득은
-            // 히트 구동(AttackSystem RESOLVE→AggroHitEvent) — 별도 range 없음.
+            // 히트 구동(AttackSystem RESOLVE→AggroAcquireEvent) — 별도 range 없음.
             if (unitData.aggroCapacity > 0)
             {
                 _em.AddComponentData(entity, new Wassup.Battle.Effects.AggroCapacity
@@ -6983,6 +7101,25 @@ namespace Wassup.Bridge
             {
                 Debug.LogWarning(
                     $"[BattleBridge] {unitData.displayName}: DirectionalVolleyAbility needs defender projectile — pattern skipped.");
+            }
+
+            // on-place-skill-rework unit 0 — 방어유닛 자기 규칙(트리거 × 페이로드) bake.
+            //
+            // ⚠ **반드시 BakeDefenderDirectionalPattern 뒤**다. `AttackSystem` 의 다연발 경로는
+            // `PatternSlot` 버퍼의 **slots[0] 하나만** 읽는데, `AddBuffer` 가 add-or-get 이라 두
+            // 슬롯이 공존하고 index 0 을 누가 갖느냐가 이 호출 순서로만 정해진다. 앞으로 옮기면
+            // **머신거너 다연발이 배치 스킬 패턴을 쏜다.** EditMode 가 이 순서를 고정한다.
+            var skillAbility = unitData.GetAbility<UnitSkillAbility>();
+            if (skillAbility != null && skillAbility.mechanics != null && skillAbility.mechanics.Length > 0)
+            {
+                // 과도기 충돌: 레거시 enum 경로와 규칙 경로가 한 유닛에서 둘 다 돌면 배치 순간에
+                // 두 사건이 겹친다. 조용히 통과시키지 않는다(기존 bake 거절 선례와 같은 자리).
+                if (unitData.onPlaceEffect != OnPlaceEffectType.None)
+                    Debug.LogWarning(
+                        $"[BattleBridge] {unitData.displayName}: onPlaceEffect({unitData.onPlaceEffect}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 둘 다 발동한다. 하나로 정리하라.");
+
+                BakeUnitMechanics(entity, skillAbility.mechanics, hostIsEnemy: false,
+                    maxHpRef: unitData.health, ownerLabel: unitData.displayName, enemyOwner: null);
             }
 
             // modifier-framework unit 5: attach AttackOutputElement buffer when SO defines outputs.
@@ -7403,6 +7540,22 @@ namespace Wassup.Bridge
             ApplyEffectTileIfAny(cell, entity);
         }
 
+        // on-place-skill-rework unit 0 — 규칙 경로(`DcTriggerKind.OnPlace`)의 발화 신호.
+        // 브리지는 **사건만 알리고** 실행은 BossPeriodicTriggerSystem 이 한다 — 그래야
+        // payload arm 사본이 늘지 않고, 배치 확정 지점이 셋이어도 태그 부착만 지키면 된다.
+        //
+        // ⚠ `DcTriggerSlot` 버퍼가 있는 유닛에만 붙인다. 소비 시스템이 그 버퍼를
+        // `RequireForUpdate` 하므로, 슬롯이 하나도 없는 세계에서 태그만 붙으면 시스템이 안 돌아
+        // 태그가 다음 프레임으로 새어 나간다.
+        // ⚠ 레거시 `_onPlaceTriggeredEntities` 와 **권위가 다르다**(JustDeployed.cs 주석 참조).
+        private void MarkJustDeployedForRules(Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            if (!_em.HasBuffer<DcTriggerSlot>(entity)) return;
+            if (!_em.HasComponent<Wassup.Battle.Units.JustDeployed>(entity))
+                _em.AddComponent<Wassup.Battle.Units.JustDeployed>(entity);
+        }
+
         private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
             // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
@@ -7411,6 +7564,7 @@ namespace Wassup.Bridge
             // rules decide whether the placed defender is included.
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             ApplyOnPlacePush(unitData, cell);
+            MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             RecomputeSynergyFor(cell);
@@ -7794,6 +7948,10 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
+                // three-minute-kill-race unit 2 — **내 마음은 바를 달지 않는다**(게이지 형태
+                // 금지). 이 루프는 등록부 전체를 그리므로 마음도 여기서 한 번 더 바를 받고
+                // 있었다(전용 안정도 바와 별개). 본능·적 마음은 대상이 아니라 그대로 둔다.
+                if (faction == Faction.DefenderCore) continue;
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
@@ -8106,6 +8264,22 @@ namespace Wassup.Bridge
                 // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
                 _em.AddBuffer<ThreatEntry>(entity);
             }
+            BakeUnitMechanics(entity, mechanics, hostIsEnemy: true, maxHpRef: unitType.health,
+                ownerLabel: unitType.displayName, enemyOwner: unitType);
+        }
+
+        // on-place-skill-rework unit 0 — **진영 중립 메커닉 bake.** 구 BakeNightmareMechanics 의
+        // 본문이며, 적 전용이던 세 가지를 파라미터로 끌어올렸다:
+        //   ① hostIsEnemy — BuildPatternTemplate 이 이 값으로 targetFaction 을 파생시킨다.
+        //      빠뜨리면 **방어유닛이 쏜 패턴이 방어유닛을 때린다.**
+        //   ② maxHpRef    — HealthThreshold 트리거의 기준 최대 체력.
+        //   ③ 허용 트리거 화이트리스트 — 적/방어유닛이 여는 문이 다르다(DcTrigger).
+        // 보스 부속물(BossTag·ThreatEntry·경보)은 적 호출처에 남는다.
+        //
+        // enemyOwner 는 SplitOnDeath 사슬 검증에만 쓰이는 적 전용 참조다(방어유닛은 null).
+        private void BakeUnitMechanics(Entity entity, Wassup.Data.DcMechanic[] mechanics,
+            bool hostIsEnemy, float maxHpRef, string ownerLabel, AttackUnitData enemyOwner)
+        {
 
             // projectile-emission-pattern unit 3 — 패턴 버퍼는 **slots 획득 전에** 붙인다.
             // AddBuffer 는 구조 변경이라 이미 잡아둔 DynamicBuffer 핸들을 무효화한다 —
@@ -8138,7 +8312,7 @@ namespace Wassup.Bridge
                 if (m.trigger.kind == Wassup.Data.DcTriggerKind.None ||
                     m.payload.kind == Wassup.Data.DcPayloadKind.None)
                 {
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: None kind — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: None kind — skipped.");
                     continue;
                 }
                 // elite-enemy-tier unit 5 — 분열은 **의도적 무슬롯**이다. sim 이 쓸 값이 없고
@@ -8149,27 +8323,33 @@ namespace Wassup.Bridge
                     m.payload.kind == Wassup.Data.DcPayloadKind.SplitOnDeath)
                 {
                     if (m.payload.splitUnit == null)
-                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
+                        Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: SplitOnDeath 인데 splitUnit 이 비었다 — 죽어도 안 갈라진다.");
                     else if (m.payload.magnitude < 1f)
-                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
+                        Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) < 1 — 자식이 0기다.");
                     // 조용한 clamp 는 clamp 를 둔 이유를 스스로 무력화한다 — 100 을 타이핑한
                     // 저작자가 8기를 받고 아무 메시지도 못 받는 것은 위 두 거절과 비대칭이다.
                     else if (m.payload.magnitude > MaxSplitChildren)
-                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) > {MaxSplitChildren} — {MaxSplitChildren}기로 잘린다.");
+                        Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: SplitOnDeath magnitude({m.payload.magnitude}) > {MaxSplitChildren} — {MaxSplitChildren}기로 잘린다.");
                     // ★«자식이 메커닉을 갖고 있나» 가 아니라 «사슬이 순환하나» 를 본다.
                     // 다단계 분열(슬라임 → 중간 → 작은)은 의도이고, 무한 분열을 만드는 것은
                     // 사슬이 자기에게 돌아오는 것뿐이다. 판정은 순수 함수 1곳이 소유한다.
-                    else if (!Wassup.Data.SplitChain.Validate(unitType, out string splitError))
-                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: {splitError}");
+                    else if (enemyOwner != null && !Wassup.Data.SplitChain.Validate(enemyOwner, out string splitError))
+                        Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: {splitError}");
                     continue;
                 }
                 // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
                 // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
                 // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
                 // boss-mamemo 리뷰 M3 — 판정은 순수 술어 1곳이 소유한다(EditMode 가 고정).
-                if (!Wassup.Battle.Combat.DcTrigger.EnemyTriggerArmed(m.trigger.kind))
+                // on-place-skill-rework unit 0 — 화이트리스트는 **진영별로 갈린다.** 적 목록은
+                // 자기진영 타격 사고를 막는 문이라(DcTrigger.EnemyTriggerArmed 주석) 방어유닛
+                // 전용 트리거를 섞지 않는다.
+                bool triggerArmed = hostIsEnemy
+                    ? Wassup.Battle.Combat.DcTrigger.EnemyTriggerArmed(m.trigger.kind)
+                    : Wassup.Battle.Combat.DcTrigger.DefenderTriggerArmed(m.trigger.kind);
+                if (!triggerArmed)
                 {
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
                     continue;
                 }
 
@@ -8188,7 +8368,7 @@ namespace Wassup.Bridge
                     periodSeconds = m.trigger.periodSeconds,
                     fraction = m.trigger.fraction,
                     nextBoundaryIndex = 1,
-                    maxHpRef = unitType.health,
+                    maxHpRef = maxHpRef,
                     duration = math.max(0f, m.payload.duration),
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
@@ -8207,7 +8387,20 @@ namespace Wassup.Bridge
                     // (융단폭격은 EmitProjectilePattern + Pattern_* asset 으로 이관).
                     // enum 값은 append-only 계약상 남아 있으므로, 옛 authoring 이
                     // 조용한 no-op 으로 죽는 대신 여기서 거절 사유를 남긴다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
+                    continue;
+                }
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                {
+                    // dreamcatcher-content-4 리뷰 M4 — 궤도 화염구는 **방어유닛 전용**이다.
+                    // EnemyTriggerArmed 가 PeriodicTimer 를 열어 두므로 적 SO 저작이 여기까지
+                    // 오는데, 이 공통 슬롯 조립에는 speed/hitThreshold/projectileDataIndex 가 없어
+                    // 슬롯이 만들어져도 arm 의 가드에 걸려 **조용히 발동이 소모**된다.
+                    // 더 중요한 건 그 가드가 지금 fail-closed 인 이유가 «우연히 speed 가 0» 이라는
+                    // 것이다 — 누가 다른 payload 때문에 공통 조립에 speed 를 올리는 순간,
+                    // PathHit 후보 풀이 AttackUnitTag 하드코딩이라 **보스의 화염구가 자기편
+                    // 잡몹을 때린다.** 우연에 기대지 않고 여기서 끊는다.
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SelfOrbitProjectile 은 방어유닛 전용이다(PathHit 후보 풀이 AttackUnitTag 하드코딩 — 적이 쏘면 자기편을 때린다) — skipped.");
                     continue;
                 }
                 // elite-enemy-tier unit 4 — 화염 브레스 정의역 검증. 판정이 `normalize` 없는 제곱
@@ -8218,15 +8411,15 @@ namespace Wassup.Bridge
                 {
                     if (m.payload.coneHalfAngleDeg >= 90f)
                     {
-                        Debug.LogError($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 반각({m.payload.coneHalfAngleDeg}°) >= 90 — 제곱 비교의 정의역 밖이라 조용히 (180−각) 콘으로 동작한다. skipped.");
+                        Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBreath 반각({m.payload.coneHalfAngleDeg}°) >= 90 — 제곱 비교의 정의역 밖이라 조용히 (180−각) 콘으로 동작한다. skipped.");
                         continue;
                     }
                     if (m.payload.coneHalfAngleDeg <= 0f)
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 반각이 0 이하 — 정면 한 줄만 맞는다.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBreath 반각이 0 이하 — 정면 한 줄만 맞는다.");
                     if (m.payload.tileRange <= 0)
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 사거리(tileRange)가 0 — 같은 셀만 맞는다.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBreath 사거리(tileRange)가 0 — 같은 셀만 맞는다.");
                     if (m.payload.magnitude <= 0f)
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} mechanic {i}: AreaBreath 피해가 0 이하 — 발동해도 아무 일도 없다.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBreath 피해가 0 이하 — 발동해도 아무 일도 없다.");
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
                 {
@@ -8235,13 +8428,13 @@ namespace Wassup.Bridge
                     var pattern = m.payload.pattern;
                     if (pattern == null || pattern.barrel == null)
                     {
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
                         continue;
                     }
                     if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity))
                     {
                         // 사전 스캔과 어긋난 경우(도달 불가) — 조용한 오발사보다 경고.
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: pattern buffer missing — skipped.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: pattern buffer missing — skipped.");
                         continue;
                     }
                     int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
@@ -8251,7 +8444,15 @@ namespace Wassup.Bridge
                     if (pattern.barrel.flightMode == Wassup.Data.ProjectileFlightMode.SkyFall
                         && pattern.telegraphSec <= 0f)
                     {
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
+                    }
+                    // on-place-skill-rework 리뷰 반영 — fan-out 은 후보 **전원**에게 1발씩
+                    // 나가므로 범위 제한이 없으면 **맵 전체 적 수만큼** 캐리어가 한 shot 에
+                    // 생긴다(상한도 없다). 조용한 폭주를 bake 에서 끊는 이 파일의 관례대로 거절.
+                    if (pattern.fanOutToAllCandidates && pattern.scopeTileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: fanOutToAllCandidates 인데 scopeTileRange 가 0 — 맵 전체 적에게 동시 발사가 된다 — skipped. 반경을 지정하라.");
+                        continue;
                     }
                     // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
                     //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
@@ -8260,7 +8461,7 @@ namespace Wassup.Bridge
                     {
                         int shotCount = pattern.shots?.Length ?? 0;
                         Debug.LogWarning(
-                            $"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: " +
+                            $"[BattleBridge] {ownerLabel} mechanic {i}: " +
                             $"invalid projectile shot sequence/binding contract (shots={shotCount}, " +
                             $"capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
                             $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}, " +
@@ -8272,7 +8473,7 @@ namespace Wassup.Bridge
                     patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
                     {
                         spec = patternSpec,
-                        template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: true),
+                        template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: hostIsEnemy),
                         fireCountBase = 0,
                     });
                     slot.patternIndex = patternSlots.Length - 1;
@@ -8303,7 +8504,7 @@ namespace Wassup.Bridge
                     // 조용히 inert 가 되면 "왜 폭발이 없는지" 를 영영 알 수 없으므로 loud 하게
                     // 거절한다(bake 의 기존 loud 거절 선례와 동일 표현). defender 슬롯 경로도
                     // 같은 규칙을 쓴다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
@@ -8311,7 +8512,7 @@ namespace Wassup.Bridge
                 {
                     // boss-mamemo unit 2 — 실드량 0 은 매 발동 조용한 no-op 이다
                     // (ShieldMath.Merge 가 amount<=0 을 그냥 return 한다). loud 거절.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 에 magnitude(실드량 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 에 magnitude(실드량 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
@@ -8324,8 +8525,25 @@ namespace Wassup.Bridge
                     // no-op** 이 된다. 미사용 라이브 경로를 만들지 않는 것이 dreamcatcher-trigger-gates
                     // 계약("v1 배선 조합 외는 bake loud 거절")의 선례다. 새 조합은 그걸 쓰는 능력이
                     // 생길 때 배선·테스트와 함께 연다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
                     continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaTaunt)
+                {
+                    // on-place-skill-rework unit 4 — 범위 도발 저작 검증. arm 은 [BurstCompile]
+                    // 이라 로그를 못 내므로 여기서 loud 하게 끊는다(기존 bake 거절 선례와 동형).
+                    if (m.payload.duration <= 0f || m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaTaunt 에 duration(도발 초 >0) 또는 tileRange(반경 >0) 가 없어 매 발동 no-op 이 된다 — skipped.");
+                        continue;
+                    }
+                    // 어그로는 `AggroCapacity` 보유(=가디언)에서만 성립한다. 비-가디언에 붙이면
+                    // 드레인이 조용히 버리므로 "왜 아무도 안 끌려오는지" 를 영영 알 수 없다.
+                    if (!_em.HasComponent<Wassup.Battle.Effects.AggroCapacity>(entity))
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaTaunt 는 가디언 전용이다(aggroCapacity > 0 이어야 AggroCapacity 가 붙는다) — skipped.");
+                        continue;
+                    }
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
                          (m.payload.magnitude < 1f || m.payload.duration <= 0f))
@@ -8334,7 +8552,7 @@ namespace Wassup.Bridge
                     // 하나라도 비면 arm 이 매 주기 조용히 no-op 이 되어 "왜 아무도 안 자는지"를
                     // 영영 알 수 없다. SelfTileAoe 의 loud 거절과 같은 이유로 여기서 끊는다.
                     // (projectile 은 선택이다 — 없으면 연출만 없고 수면은 나간다.)
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 에 magnitude(재울 인원 >=1) 또는 duration(수면 초 >0) 이 없어 매 주기 no-op 이 된다 — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaSleep 에 magnitude(재울 인원 >=1) 또는 duration(수면 초 >0) 이 없어 매 주기 no-op 이 된다 — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
@@ -8347,7 +8565,7 @@ namespace Wassup.Bridge
                     // ⚠ 한때 이 가드는 «tileRange <= 사거리» 였다(도넛 설계 시절). 도넛은
                     // **실측으로 폐기**됐다 — 붙는 보스는 사거리 안에서 대부분의 시간을 보내
                     // 도넛 후보가 마르고 조우당 1회밖에 안 터졌다. 지금은 전 범위 + rank 제외다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — skipped.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaSleep 의 tileRange 가 0 이라 host 셀만 본다 — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.UltimateLeap)
@@ -8356,7 +8574,7 @@ namespace Wassup.Bridge
                     // ProjectileSpawnRequest 하나로 표현되고 드레인이 dataIndex<0 이면 요청을
                     // 통째로 버린다 → **연출뿐 아니라 피해까지 사라진다.** 조용히 "이탈만 하고
                     // 아무 일도 안 일어나는" 궁극기가 되므로 loud 하게 거절한다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: UltimateLeap 에 ProjectileData(착지 슬램 view) 가 없어 슬램 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: UltimateLeap 에 ProjectileData(착지 슬램 view) 가 없어 슬램 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
                     continue;
                 }
                 // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언 부착 오라(kind 무관):
@@ -8372,7 +8590,7 @@ namespace Wassup.Bridge
                     // boss-mamemo unit 2 — 실드에는 시간 만료가 없다(ShieldMath 에 TTL 축 없음).
                     // duration 을 적어두면 "몇 초 뒤 사라진다" 고 읽히지만 런타임은 무시한다 —
                     // 조용히 다르게 도는 대신 저작 시점에 말해준다. skip 하지는 않는다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: GrantShield 의 duration({m.payload.duration}) 은 무시된다 — 이 엔진의 실드는 시간이 아니라 피해로만 사라진다.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 의 duration({m.payload.duration}) 은 무시된다 — 이 엔진의 실드는 시간이 아니라 피해로만 사라진다.");
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep &&
                     m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer &&
@@ -8384,7 +8602,7 @@ namespace Wassup.Bridge
                     // "잠시 재운다" 가 "생존 내내 고착" 이 된다. 깨우는 유일한 수단이 적 평타라
                     // 단일 대상 보스는 재운 인원을 사실상 회수하지 못한다.
                     // 의도일 수 있으므로 skip 하지 않고 경고만 한다.
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaSleep duration({m.payload.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착합니다.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaSleep duration({m.payload.duration}) >= periodSeconds({m.trigger.periodSeconds}) — 수면이 끊기지 않아 대상이 생존 내내 고착합니다.");
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
                     m.payload.duration <= m.trigger.periodSeconds)
@@ -8392,7 +8610,7 @@ namespace Wassup.Bridge
                     // nightmare-whip-aura unit 1 — authoring 계약: duration >
                     // periodSeconds (merge-refresh 유지). 위반은 펄스 사이 버프
                     // 만료(점멸) — 경고만, skip 하지 않는다(테스트 자유 유지).
-                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AllyMoveSpeedAura duration({m.payload.duration}) <= periodSeconds({m.trigger.periodSeconds}) — 버프가 펄스 사이에 만료(점멸)합니다.");
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AllyMoveSpeedAura duration({m.payload.duration}) <= periodSeconds({m.trigger.periodSeconds}) — 버프가 펄스 사이에 만료(점멸)합니다.");
                 }
                 slots.Add(slot);
             }
@@ -8480,6 +8698,17 @@ namespace Wassup.Bridge
                 targetFaction = hostIsEnemy
                     ? ProjectileTargetFaction.Defender
                     : ProjectileTargetFaction.Enemy,
+                // on-place-skill-rework 리뷰 반영 — **통행 층도 host 사양을 따른다.**
+                // 안 실으면 0 = 무제한이라(`PlacementLayers.CanTarget` 이 0 을 무조건 통과)
+                // **지상만 때리는 유닛의 패턴이 비행 적을 때린다.** 캐논의 배치 폭격이 정확히
+                // 그랬다 — 레거시 `MeleeBurst` 는 `CanDefenderTargetMover` 로 비행을 뺐는데
+                // 규칙 경로로 옮기면서 그 게이트를 잃었다(같은 spec 의 도발은 명시적으로 막았다).
+                // 방어유닛 발 투사체가 전부 `AttackState.targetTraversalLayers` 를 싣는 것과
+                // 같은 규약이며, 궤도 화염구 arm 의 선례와도 동형이다.
+                targetTraversalLayers =
+                    _em.HasComponent<Wassup.Battle.Combat.AttackState>(owner)
+                        ? _em.GetComponentData<Wassup.Battle.Combat.AttackState>(owner).targetTraversalLayers
+                        : (byte)0,
             };
         }
 
@@ -8526,7 +8755,7 @@ namespace Wassup.Bridge
 
         // 적 엔티티 조립의 단일 지점. 호출처 2곳 — 레인 스폰(위)과 분열(DrainEnemyKilledEvents).
         // CreatePatrolEntity 처럼 병렬 복제하지 않은 이유: 분열 자식은 적의 **표준 세트 전부**
-        // (Health·FactionTag·KillScore·버퍼 6종·PathFollowState·AttackState·behavior·뷰 등록)가
+        // (Health·FactionTag·버퍼 6종·PathFollowState·AttackState·behavior·뷰 등록)가
         // 필요해서, 복제하면 다음에 적 스폰에 뭔가 추가될 때 한쪽만 갱신된다.
         // waypoint-routing unit 9 — laneDefaultPathIndex 는 «이 레인에서 나온 적의 기본 경로».
         // 래퍼가 결정해 넘기고, 분열 호출처는 레인이 없으므로 기본값 -1(현행 = 적 SO 지정만).
@@ -8557,13 +8786,8 @@ namespace Wassup.Bridge
             {
                 value = Mathf.Max(0, unitType.awakeningReward),
             });
-            // battle-score-formula unit 2 — bake the kill score so
-            // DamageApplicationSystem can stamp it into EnemyKilledEvent.
-            // Unconditional attach (0 allowed) keeps the lookup branch-free.
-            _em.AddComponentData(entity, new KillScore
-            {
-                value = Mathf.Max(0, unitType.killScore),
-            });
+            // three-minute-kill-race unit 1 — `KillScore` bake 은 사라졌다(1킬 = 1점).
+            // 위 AwakeningReward 는 남는다 — 각성치는 여전히 적별로 다르다.
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);

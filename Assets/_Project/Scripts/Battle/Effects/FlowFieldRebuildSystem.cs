@@ -110,12 +110,24 @@ namespace Wassup.Battle.Effects
         // 정지하므로, 적이 얼어붙는다.
         private void InvalidateChaseFields(ref SystemState state)
         {
+            // on-place-skill-rework unit 3 — ⚠ **시한 도발은 여기서 풀면 안 된다.** 위 논거
+            // (「다음 히트에 재획득시킨다」)는 히트 구동에만 성립한다. 배치 도발은 1회성이라
+            // 재획득 경로가 없어, 도발 5초 중 장애물이 하나 깔리면 프레임 하나에 통째로 풀리고
+            // 플레이어는 「가끔 안 걸린다」로 겪는다.
+            //
+            // 그래서 도발된 적은 **필드만** 떼고 Aggroed 는 남긴다. AggroStateSystem 이 다음
+            // 틱에 다시 구워 준다(그 시스템이 [UpdateBefore(MovementSystem)] 라 얼어붙는 프레임
+            // 은 없다). 히트 어그로는 종전대로 통째로 해제한다.
+            //
+            // ⚠ 현재 `Obstacle` 생산자는 디버그 메뉴뿐이라 이 경로는 **휴면**이다. 해저드가
+            // 장애물이 되는 순간 라이브가 되므로 규칙을 미리 박아 둔다.
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            foreach (var (_, entity) in
+            foreach (var (aggro, entity) in
                      SystemAPI.Query<RefRO<Aggroed>>().WithAll<AggroChaseCell>().WithEntityAccess())
             {
                 ecb.RemoveComponent<AggroChaseCell>(entity);
-                ecb.RemoveComponent<Aggroed>(entity);
+                if (aggro.ValueRO.remainingTime <= 0f)
+                    ecb.RemoveComponent<Aggroed>(entity);
             }
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

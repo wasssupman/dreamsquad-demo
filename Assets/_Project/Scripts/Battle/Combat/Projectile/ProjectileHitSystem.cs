@@ -44,9 +44,15 @@ namespace Wassup.Battle.Combat.Projectile
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
             var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
             // defender-directional-volley unit 2 — per-projectile victim record so a
-            // path sweep damages each target once (read-only: appends go through the
-            // ECB alongside the damage that earned them).
-            var pathHitRecordLookup = SystemAPI.GetBufferLookup<PathHitRecord>(isReadOnly: true);
+            // path sweep damages each target once.
+            // RW (dreamcatcher-content-4 unit 2): a rehit cooldown has to *rewrite* the
+            // victim's slot, and the ECB has no "modify buffer element N" operation —
+            // only AppendToBuffer and SetBuffer (whole-buffer replace). So the record
+            // write left the ECB entirely and both the add and the update are direct.
+            // Same shape as the outputs decay above; this is a main-thread
+            // ISystem.OnUpdate and the buffer belongs to the projectile currently being
+            // iterated, so it never aliases the query.
+            var pathHitRecordLookup = SystemAPI.GetBufferLookup<PathHitRecord>(isReadOnly: false);
             bool hasStatQ = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasStackQ = SystemAPI.TryGetSingleton<StackModifierApplyEventsSingleton>(out var stackEvents);
             // nightmare-catcher unit 1 — 보스 위협 귀속: 피격자가 ThreatEntry 버퍼
@@ -385,6 +391,9 @@ namespace Wassup.Battle.Combat.Projectile
                         // spent. Enemy pool only (splash/bounce precedent); damage is
                         // the pre-summed Damage total on state, so non-Damage outputs
                         // are a follow-up exactly as with TileAoe (v1 is Damage-only).
+                        //
+                        // dreamcatcher-content-4 unit 2 — "at most once" is now "at most
+                        // once per rehit window"; rehitCooldownSec 0 keeps it literal.
                         if (!transformLookup.HasComponent(entity)) break;
 
                         float2 prev = projectile.ValueRO.prevPos.xz;
@@ -394,12 +403,43 @@ namespace Wassup.Battle.Combat.Projectile
                         int budget = projectile.ValueRO.pierceRemaining;
                         float dmg = projectile.ValueRO.damage;
 
+                        // dreamcatcher-content-4 unit 2 — 재타격 쿨타임(계약 3). >0 이면
+                        // 같은 적을 쿨타임마다 다시 때리고 **관통 예산을 소모하지 않는다**:
+                        // 궤도 화염구의 유일한 종료 조건은 수명이라, 예산을 깎으면 몇 명 스치고
+                        // N초를 못 채운 채 사라진다. 예산을 **읽지도** 않는 이유도 같다 —
+                        // pierceCount 0 으로 저작된 탄이 조용히 아무도 못 때리거나 1 이면
+                        // 프레임당 한 명으로 잘려, 「수명이 유일한 종료 조건」이 거짓이 된다.
+                        // 0 = 기존 방향탄(샷건너·머신거너) 그대로.
+                        float rehitCooldown = projectile.ValueRO.rehitCooldownSec;
+                        // 시계는 투사체 자기 시계(elapsed) — 이동 arm 이 굴린다. 궤도가 굴리고
+                        // DirectionalLinear 는 굴리지 않으므로, 방향탄에 이 값을 켜면 첫 타 뒤
+                        // 창이 영영 안 열려 **기존 1회 동작으로 안전하게 퇴화**한다(오작동 아님).
+                        float now = projectile.ValueRO.elapsed;
+
+                        // 프로덕션에선 브리지 드레인이 PathHit 스폰마다 이 버퍼를 붙인다
+                        // (BattleBridge). 없는 채로 도는 탄이 있어도 기록만 건너뛰고 굴러간다 —
+                        // ECB append 시절엔 그런 탄이 **플레이백을 통째로 끊어** 뒤따르는
+                        // SetComponent/DestroyEntity 까지 날렸다(직접 쓰기의 부수 효과).
+                        bool hasRecords = pathHitRecordLookup.HasBuffer(entity);
+                        // ⚠ **기록 없이는 재타격을 켜지 않는다**(ECS 리뷰 M1). 재타격 레짐에서
+                        // 기록은 «장식» 이 아니라 **유일한 방어선**이다 — 관통 예산도 안 깎으므로,
+                        // 버퍼가 없으면 스윕 안의 적 전원을 **프레임마다** 때린다(60fps·3초면
+                        // 의도의 ~30배). 지금은 PathHit 스폰 seam 이 하나뿐이고 거기서 무조건
+                        // 버퍼를 붙여 도달 불가지만, 조용한 fail-open 을 남겨두지 않는다.
+                        // 이 한 줄로 버퍼 없는 탄은 «적당 1회» 로 안전 퇴화한다.
+                        bool rehits = rehitCooldown > 0f && hasRecords;
+
                         // 방향탄 bounce — 관통을 다 쓴 지점(마지막 victim)에서 튕긴다.
                         int lastVictimIdx = -1;
                         float3 lastVictimPos = default;
 
                         var sweptIdx = new NativeList<int>(Allocator.Temp);
                         var sweptDist = new NativeList<float>(Allocator.Temp);
+                        // 후보의 기록 슬롯(-1 = 미기록)을 같이 들고 간다 — 실제로 때릴 때 두 번째
+                        // 스캔 없이 그 슬롯을 갱신하려는 것. 아래 루프가 버퍼에 하는 일은 append
+                        // 와 제자리 덮어쓰기뿐이라 **원소가 이동하지 않는다** — 그래서 여기서
+                        // 잡아 둔 인덱스가 프레임 끝까지 유효하다.
+                        var sweptRec = new NativeList<int>(Allocator.Temp);
                         for (int i = 0; i < aoeEntities.Length; i++)
                         {
                             if (!PlacementLayers.CanTarget(
@@ -407,15 +447,18 @@ namespace Wassup.Battle.Combat.Projectile
                                     aoeTraversalLayers[i])) continue;
                             float2 victimPos = aoePositions[i].xz;
                             if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius)) continue;
-                            if (pathHitRecordLookup.HasBuffer(entity) &&
-                                PathHitRecord.Contains(pathHitRecordLookup[entity], aoeEntities[i])) continue;
+                            int recIdx = -1;
+                            if (hasRecords && !PathHitRecord.CanHit(
+                                    pathHitRecordLookup[entity], aoeEntities[i],
+                                    now, rehitCooldown, out recIdx)) continue;
                             sweptIdx.Add(i);
                             sweptDist.Add(math.dot(victimPos - prev, dir));
+                            sweptRec.Add(recIdx);
                         }
 
                         // Front-most first: a 1-pierce shot must stop at the nearest
                         // enemy it crossed, and snapshot order carries no meaning.
-                        while (budget > 0 && sweptIdx.Length > 0)
+                        while ((rehits || budget > 0) && sweptIdx.Length > 0)
                         {
                             int nearest = 0;
                             for (int k = 1; k < sweptIdx.Length; k++)
@@ -429,7 +472,18 @@ namespace Wassup.Battle.Combat.Projectile
                                 ecb.AppendToBuffer(victim, new IncomingDamage { amount = vdmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victim, threatOwner, vdmg);
                             }
-                            ecb.AppendToBuffer(entity, new PathHitRecord { value = victim });
+                            // 기록은 **갱신이지 추가가 아니다** — 매 바퀴 append 하면 궤도
+                            // 화염구의 버퍼가 수명 내내 자란다. ECB 를 못 쓰는 이유는 lookup
+                            // 선언부 주석 참조(원소 수정 오퍼레이션이 없다).
+                            if (hasRecords)
+                            {
+                                // cooldown 0 이면 nextHitAt 은 읽히지 않는 값이라 분기 불요.
+                                var record = new PathHitRecord { value = victim, nextHitAt = now + rehitCooldown };
+                                var records = pathHitRecordLookup[entity];
+                                int recIdx = sweptRec[nearest];
+                                if (recIdx >= 0) records[recIdx] = record;
+                                else records.Add(record);
+                            }
 
                             if (hasHitChannel)
                                 hitQueue.Enqueue(new ProjectileHitEvent
@@ -458,18 +512,22 @@ namespace Wassup.Battle.Combat.Projectile
                             lastVictimIdx = sweptIdx[nearest];
                             lastVictimPos = victimPos;
 
-                            budget--;
+                            if (!rehits) budget--;
                             sweptIdx.RemoveAtSwapBack(nearest);
                             sweptDist.RemoveAtSwapBack(nearest);
+                            sweptRec.RemoveAtSwapBack(nearest);
                         }
                         sweptIdx.Dispose();
                         sweptDist.Dispose();
+                        sweptRec.Dispose();
 
                         // Out of budget = spent; impactReached = flew its full range.
+                        // 재타격 탄은 예산을 안 깎으므로 예산 게이트도 안 본다(계약 3) —
+                        // 남은 종료 조건은 수명뿐이다.
                         var next = projectile.ValueRO;
                         next.pierceRemaining = budget;
                         bool dirty = budget != projectile.ValueRO.pierceRemaining;
-                        survives = budget > 0 && !projectile.ValueRO.impactReached;
+                        survives = (rehits || budget > 0) && !projectile.ValueRO.impactReached;
 
                         // ── 통통구슬 × 방향탄 (defender-directional-volley 후속 결정) ──
                         // 이 탄이 더 뚫을 수 없게 된 순간(예산 소진 또는 사거리 끝) bounce 가

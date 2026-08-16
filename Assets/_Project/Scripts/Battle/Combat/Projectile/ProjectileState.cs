@@ -67,6 +67,20 @@ namespace Wassup.Battle.Combat.Projectile
         public float3 control1;
         public float3 control2;
 
+        // ── Orbit trajectory (MovementKind.OrbitAroundPoint, content-4) ───────
+        // 전용 필드는 `orbitPhase` 하나뿐이고 나머지는 위/아래 슬롯을 빌려 쓴다.
+        // 빌린 의미를 여기 모아 둔다:
+        //   origin      = 궤도 **중심**(발사 시점 고정, 타겟 엔티티 무참조)
+        //   maxDistance = 궤도 **반경**(월드) ← DirectionalLinear 의 사거리 슬롯
+        //   speed       = **각속도**(rad/s, 음수 = 역회전) ← 월드 속도가 아니다.
+        //                 발사 arm 이 «탄 SO 선속도 ÷ 반경» 으로 변환해 보낸다
+        //   flightTime  = 지속 초 · elapsed = 누적 (도착 = 수명 종료)
+        //   prevPos     = 직전 위치(PathHit 스윕) · direction = 접선(front-most 정렬)
+        //   hitThreshold= **피격 반경** — 궤도 반경과 다른 축이다(굵기 vs 넓이)
+        //   orbitPhase  = 각도 오프셋(rad). 여러 구슬을 같은 궤도에 균등 배치한다.
+        //                 elapsed 오프셋으로 대신할 수 없다 — 그건 수명도 앞당긴다.
+        public float orbitPhase;
+
         // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
         // Extra hold at the cell after travel completes (elapsed >= flightTime)
         // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no
@@ -89,6 +103,15 @@ namespace Wassup.Battle.Combat.Projectile
         // Remaining victims this shot may damage before despawning (1 = stop at
         // the first). Owned write after launch: ProjectileHitSystem only.
         public int pierceRemaining;
+
+        // dreamcatcher-content-4 unit 0 — 같은 피해자를 다시 때리기까지의 간격(초).
+        // 값은 탄 SO(ProjectileData.rehitCooldownSec)에서 드레인이 채운다.
+        // 0 = 피해자당 영구 1회(기존 방향탄 동작 — 무회귀 기본값).
+        // >0 이면 ① PathHitRecord 의 nextHitAt 으로 재타격을 허용하고
+        //         ② **pierceRemaining 을 소모하지 않는다**(유일한 종료 조건 = 수명).
+        // 시계는 이 투사체의 `elapsed` 다 — Battle 도메인 시계를 그대로 따라가고
+        // 리플레이 결정론이 투사체 안에서 닫힌다. 소비는 unit 2(ProjectileHitSystem).
+        public float rehitCooldownSec;
 
         // ── Single-splash payload (PayloadKind.SingleSplash) ─────────────────
         public OnHitEffectType onHitEffect;

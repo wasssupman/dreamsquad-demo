@@ -10,7 +10,7 @@ namespace Wassup.Battle.Combat
     // DcTriggerSlot 카운터는 Combat 소유라(spec 계약 7), 직접 쓰지 않고 이 큐로
     // 넘겨 AttackSystem 이 드레인한다.
     //
-    // 채널은 **소비자 맥락**에 둔다 — AggroHitEvent(Combat 생산 → Effects 소비 →
+    // 채널은 **소비자 맥락**에 둔다 — AggroAcquireEvent(Combat 생산 → Effects 소비 →
     // Effects 네임스페이스)의 정확한 대칭이다. 큐 lifecycle 은 BattleBridge 소유
     // (생성 Persistent / 싱글턴 엔티티 파괴 / Dispose 3점 세트).
     public struct CastEvent

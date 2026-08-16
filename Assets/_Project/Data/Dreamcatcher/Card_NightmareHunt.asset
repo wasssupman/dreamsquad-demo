@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_NightmareHunt
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: nightmare_hunt
+  displayName: "악몽사냥"
+  axis: 3
+  category: 1
+  effects: []
+  art: {fileID: 0}
+  mechanics: []
+  attackMods:
+  - kind: 3
+    count: 0
+    tileRange: 0
+    damageMul: 2
+  type: 1
+  skill: {fileID: 0}
+  description: "항상 → 잠든 적에게 주는 피해 x2"
+  leakAllowanceCost: 0

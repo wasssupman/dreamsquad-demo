@@ -134,9 +134,9 @@ namespace Wassup.Battle.Combat
                 attackOutputLogWriter = attackOutputLogSingleton.ValueRW.queue.AsParallelWriter();
 
             // aggro-targeting Unit 11 — 가디언 명중 → Effects 로 넘길 히트 채널 writer.
-            NativeQueue<Wassup.Battle.Effects.AggroHitEvent>.ParallelWriter? aggroHitWriter = null;
-            if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroHitEventsSingleton>(out var aggroHitSingleton))
-                aggroHitWriter = aggroHitSingleton.ValueRW.queue.AsParallelWriter();
+            NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent>.ParallelWriter? aggroAcquireWriter = null;
+            if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroAcquireEventsSingleton>(out var aggroAcquireSingleton))
+                aggroAcquireWriter = aggroAcquireSingleton.ValueRW.queue.AsParallelWriter();
 
             // nightmare-catcher unit 1 — 보스 위협 귀속 채널 + 게이트 lookup.
             // enqueue 는 피격자가 ThreatEntry 버퍼 보유(보스 베이크) && 공격자가
@@ -1049,6 +1049,24 @@ namespace Wassup.Battle.Combat
                     float attackerVsCc = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].damageVsCcMul
                         : 1f;
+                    // dreamcatcher-content-4 unit 4 (악몽 사냥) — 잠든 적에게만 붙는 상시 배율.
+                    // 여기서는 **공격자 쪽 값만** 접는다. 실제 곱은 아래 두 피해 지점에서
+                    // 그 victim 이 자고 있을 때만 일어난다(shatter_hymn 과 같은 형태) —
+                    // 판정이 피해자별이라 잠든 적 옆의 깨어 있는 적은 기준값 그대로다.
+                    // 복수 부착은 곱으로 중첩(ProjectileBounce 의 damageMul 집계와 같은 관례).
+                    // HasBuffer 가 먼저인 이유: 이 버퍼는 카드를 실제로 부착한 방어유닛에만
+                    // 존재하므로(bake 가 DefenderUnitTag 를 요구) 대부분의 공격자는 여기서
+                    // 즉시 빠져 추가 비용이 0 이다 — defender 태그를 따로 볼 필요가 없다.
+                    float dcSleepMul = 1f;
+                    if (dcAttackModLookup.HasBuffer(attackerEntity))
+                    {
+                        var sleepMods = dcAttackModLookup[attackerEntity];
+                        for (int si = 0; si < sleepMods.Length; si++)
+                        {
+                            if (sleepMods[si].kind != Wassup.Data.DcAttackModKind.DamageVsSleeping) continue;
+                            dcSleepMul *= sleepMods[si].damageMul;
+                        }
+                    }
                     // dreamcatcher-content-2 끝을 보는 눈 (unit 3) — the locked primary's +20%.
                     // Only when the lock is active AND the pick was a real frontmost (not a
                     // fallback nearest). fmPrioMul stays 0 (inert) otherwise; the melee arm
@@ -1145,6 +1163,14 @@ namespace Wassup.Battle.Combat
                                         && ccActionLookup.HasBuffer(bestTarget)
                                         && AnyActiveCc(ccActionLookup[bestTarget]))
                                         amount *= attackerVsCc;
+                                    // 악몽 사냥 — 같은 스냅샷 기준(발사 시점 의도 대상)이되
+                                    // **Sleep 만** 본다. CC 전반으로 넓히면 기절/출혈한 적까지
+                                    // 배율돼 shatter_hymn 과 구분이 사라진다.
+                                    if (bestTarget != Entity.Null
+                                        && dcSleepMul != 1f
+                                        && ccActionLookup.HasBuffer(bestTarget)
+                                        && AnyActiveSleep(ccActionLookup[bestTarget]))
+                                        amount *= dcSleepMul;
                                     o.magnitude = amount;
                                     projectileDamage += amount;
                                     if (attackOutputLogWriter.HasValue)
@@ -1495,6 +1521,12 @@ namespace Wassup.Battle.Combat
                                             float dmg = o.magnitude * damageMul;
                                             if (attackerVsCc != 1f && ccActionLookup.HasBuffer(hitTarget) && AnyActiveCc(ccActionLookup[hitTarget]))
                                                 dmg *= attackerVsCc;
+                                            // 악몽 사냥 — 이 hitTarget 이 «자고 있을 때만». 같은
+                                            // 공격의 cleave 로 함께 맞은 깨어 있는 적은 기준값
+                                            // 그대로다. 이 자리가 강공(HeavyStrike, 전 victim
+                                            // 배율)과 갈리는 지점이라 카드가 사양 초과가 아니다.
+                                            if (dcSleepMul != 1f && ccActionLookup.HasBuffer(hitTarget) && AnyActiveSleep(ccActionLookup[hitTarget]))
+                                                dmg *= dcSleepMul;
                                             // 끝을 보는 눈 (unit 3) — only the locked primary victim takes
                                             // +20%; secondaries/AoE stay base. Same dmg feeds IncomingDamage
                                             // AND ThreatTable.TryCredit below (no threat desync, HIGH 5).
@@ -1590,13 +1622,15 @@ namespace Wassup.Battle.Combat
                             // aggro-targeting Unit 11 — 가디언 명중분을 Effects 로 넘긴다.
                             // Aggroed 부착/capacity 게이트/선점은 AggroStateSystem(Effects)이
                             // 드레인 시 판정 — Combat 은 "때렸다" 사실만 전달(맥락 경계).
-                            if (isGuardian && aggroHitWriter.HasValue)
+                            if (isGuardian && aggroAcquireWriter.HasValue)
                             {
                                 for (int ti = 0; ti < hitCount; ti++)
-                                    aggroHitWriter.Value.Enqueue(new Wassup.Battle.Effects.AggroHitEvent
+                                    aggroAcquireWriter.Value.Enqueue(new Wassup.Battle.Effects.AggroAcquireEvent
                                     {
                                         guardian = attackerEntity,
                                         enemy = hitTargets[ti],
+                                        // 명중 획득 — 상한·선점 게이트를 전부 통과해야 붙고 무기한이다.
+                                        kind = Wassup.Battle.Effects.AggroAcquireKind.Hit,
                                     });
                             }
 
@@ -2048,6 +2082,19 @@ namespace Wassup.Battle.Combat
         {
             for (int i = 0; i < buf.Length; i++)
                 if (buf[i].remainingTime > 0f) return true;
+            return false;
+        }
+
+        // dreamcatcher-content-4 unit 4 (악몽 사냥) — «이 적이 자고 있나». AnyActiveCc 를
+        // kind 파라미터로 일반화하지 않는다: 호출처가 각각 2벌뿐이고, 두 술어가 각자
+        // 이름을 갖는 편이 «CC 전반(shatter_hymn) vs 수면만(악몽 사냥)» 이라는 두 카드의
+        // 차이를 호출 지점에서 바로 읽히게 한다(제약 8 — 소비자 없는 추상화 금지).
+        // 무한 수면은 remainingTime = +∞ 로 표현되므로 > 0 이 그대로 커버한다.
+        private static bool AnyActiveSleep(in DynamicBuffer<Wassup.Battle.Effects.CcEffect> buf)
+        {
+            for (int i = 0; i < buf.Length; i++)
+                if (buf[i].remainingTime > 0f
+                    && buf[i].kind == Wassup.Battle.Effects.CcKind.Sleep) return true;
             return false;
         }
 

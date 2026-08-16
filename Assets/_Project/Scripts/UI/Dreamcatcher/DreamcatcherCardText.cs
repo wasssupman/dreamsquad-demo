@@ -208,6 +208,11 @@ namespace Wassup.UI
                     line = AlwaysPrefix + "목표 지점에 가장 가까운 적 우선 공격"
                          + $" · 해당 적 직접 피해 {SignedPercent((mod.damageMul - 1f) * 100f)}";
                     return true;
+                // content-4 unit 0 — 수면 특효. "잠든 적에게만" 이 카드 판단의 핵심이라
+                // 대상 조건을 문안 앞에 둔다(ApplyCcToTarget 의 Sleep 문안과 같은 판단).
+                case DcAttackModKind.DamageVsSleeping:
+                    line = AlwaysPrefix + $"잠든 적에게 주는 피해 {Multiplier(mod.damageMul)}";
+                    return true;
                 default:
                     return false;
             }
@@ -249,7 +254,12 @@ namespace Wassup.UI
                     effect = $"대상에게 추가 투사체 피해 {Count(payload.magnitude)}";
                     break;
                 case DcPayloadKind.SelfTileAoe:
-                    effect = $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
+                    // content-4 unit 0 — duration>0 = 낙하 예고(퇴근 운석). 기존 SelfTileAoe
+                    // 카드는 전부 0 이라 문안이 바뀌지 않는다. 접두 형태는 액티브 운석 문안
+                    // (BuildSkillLine 의 warningSec)과 같게 맞춘다.
+                    effect = payload.duration > 0f
+                        ? $"{Duration(payload.duration)} 후 반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}"
+                        : $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
                     break;
                 case DcPayloadKind.NextAttackDoubleFire:
                     effect = "다음 공격 2연발";
@@ -289,6 +299,12 @@ namespace Wassup.UI
                 case DcPayloadKind.AreaSleep:
                     effect = $"반경 {Count(payload.tileRange)}칸 내 적 최대 "
                            + $"{Count(payload.magnitude)}명 수면 {Duration(payload.duration)}";
+                    break;
+                // content-4 unit 0 — 궤도 화염구. 재타격 간격은 탄 SO 소유라 이 문안이 모른다
+                // (수치를 문자열에 복제하지 않는다 — 제약 6). 반복 타격이라는 **사실**만 적는다.
+                case DcPayloadKind.SelfOrbitProjectile:
+                    effect = $"주위를 도는 화염구 {Duration(payload.duration)}"
+                           + $" · 스치는 적에게 피해 {Count(payload.magnitude)}";
                     break;
                 default:
                     return false;
@@ -443,6 +459,12 @@ namespace Wassup.UI
                     return true;
                 case DcTriggerKind.OnShieldBreak:
                     text = "실드 파괴 시";
+                    return true;
+                // content-4 unit 0 — 퇴근. 사망("이 유닛이 사망하면")과 **문안에서도 갈라야**
+                // 한다 — 두 트리거가 교차 발동하지 않는다는 것이 이 카드의 계약이라,
+                // 문안이 흐리면 플레이어가 죽어도 터질 거라 기대한다.
+                case DcTriggerKind.OnRetire:
+                    text = "이 유닛이 퇴근하면";
                     return true;
                 default:
                     text = null;

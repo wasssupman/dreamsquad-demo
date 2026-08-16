@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.SceneManagement;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Bridge;
@@ -353,6 +355,188 @@ namespace Wassup.Tests.PlayMode
                 "퇴근은 각성 게이지를 올리지 않는다 (반파밍 계약)");
             Assert.Greater(unit.awakeningReward, 0,
                 "대조 전제: 이 유닛은 사망 시 지급할 각성이 있다 — 없으면 위 단정이 공허하다");
+        }
+
+        // ── dreamcatcher-content-4 unit 5 (퇴직 위로금) ───────────────────────
+        //
+        // 이 카드의 load-bearing 계약은 **퇴근 ≠ 사망의 교차 무발동**이다. 아래 3건이 그 양방향을
+        // 고정한다 — 하나라도 빠지면 "퇴근에서만 터진다"가 검증되지 않는다:
+        //   ① OnRetire 카드 + 퇴근 = 비워진 칸에 운석이 떨어진다
+        //   ② OnRetire 카드 + 사망 = 운석이 없다
+        //   ③ OnDeath 카드 + 퇴근 = 폭발이 없다 (위 스위트의 "퇴근은 사망의 결과를 하나도
+        //      일으키지 않는다" 단정의 payload 판 — DefenderDied 카운트가 아니라 실제 피해로)
+        //
+        // host 를 **힐러**로 고른 이유: 공격 출력이 힐(45)뿐이라 host 자신은 더미를 때리지 않는다.
+        //
+        // ⚠ 다만 «더미의 유일한 데미지 소스가 운석» 은 **거짓이다**(2026-08-16 실측). 대조군
+        // (카드 0 · 퇴근 0 · 사망 0)으로 재보니 인접 더미가 **20씩 약 1.5초 주기로** 깎였고,
+        // 12칸 밖 더미는 0 이었다. 판 위 방어유닛은 힐러 하나뿐이고 힐러의 attackCooldown 은
+        // 3.15초라 host 의 공격도 아니다 — StartBattle 이 돌린 **라이브 웨이브가 만드는 주변
+        // 피해**이며 이 feature 와 무관하다.
+        //
+        // 그래서 단정을 «체력이 정확히 그대로» 에서 **«운석 한 발만큼 빠졌나/안 빠졌나»** 로
+        // 바꾼다. 주변 피해(수십)와 운석(137)은 자릿수가 달라 판별이 흐려지지 않는다.
+        // 절대값 단정으로 되돌리지 말 것 — 웨이브 구성이 바뀔 때마다 깨진다.
+
+        private const float MeteorDamage = 137f;   // 다른 어떤 소스와도 겹치지 않는 값
+        private const float DummyHp = 5000f;
+        private const float MeteorWarnSec = 0.25f; // 낙하 예고. 에셋(0.8초)보다 짧게 — 테스트 시간
+
+        [UnityTest]
+        public IEnumerator Retire_WithOnRetireCard_DropsMeteorOnVacatedCell()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            yield return PlaceHealerWithCard(bridge, MakeRetireMeteorCard());
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var host = EntityAt(bridge, em, cell);
+            var dummy = MakeEnemyDummy(em,
+                em.GetComponentData<LocalTransform>(host).Position + new float3(TileSize(bridge), 0f, 0f));
+
+            Assert.IsTrue(bridge.RetireDefender(cell), "retire");
+            yield return RunSeconds(MeteorWarnSec + 1.5f);
+
+            float drop = DummyHp - em.GetComponentData<Health>(dummy).value;
+            Assert.GreaterOrEqual(drop, MeteorDamage,
+                "퇴근한 칸에 운석이 떨어져 인접 더미를 카드가 가진 flat 피해만큼 깎는다");
+            Assert.Less(drop, MeteorDamage * 2f,
+                "운석은 한 발이다 — 두 발 몫이 빠졌으면 슬롯이 중복 발동한 것이다");
+        }
+
+        [UnityTest]
+        public IEnumerator Death_WithOnRetireCard_DropsNoMeteor()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            yield return PlaceHealerWithCard(bridge, MakeRetireMeteorCard());
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var host = EntityAt(bridge, em, cell);
+            var dummy = MakeEnemyDummy(em,
+                em.GetComponentData<LocalTransform>(host).Position + new float3(TileSize(bridge), 0f, 0f));
+
+            // 같은 유닛을 **죽인다**. 여기서 운석이 떨어지면 두 사건이 한 채널을 공유한다는 뜻이다.
+            var hp = em.GetComponentData<Health>(host);
+            em.SetComponentData(host, new Health { value = 0f, max = hp.max });
+            for (int i = 0; i < 180 && em.Exists(host); i++) yield return null;
+            Assert.IsFalse(em.Exists(host), "대조 전제: 실제로 죽어서 사라졌다");
+
+            yield return RunSeconds(MeteorWarnSec + 1.5f); // 떨어졌다면 이미 착탄했을 시간
+            Assert.Less(DummyHp - em.GetComponentData<Health>(dummy).value, MeteorDamage,
+                "사망은 OnRetire 를 발동시키지 않는다 (퇴근 전용 사건)");
+        }
+
+        [UnityTest]
+        public IEnumerator Retire_WithOnDeathCard_DoesNotExplode()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            yield return PlaceHealerWithCard(bridge, MakeFarewellCard());
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cell = SoleCell(bridge);
+            var host = EntityAt(bridge, em, cell);
+            var dummy = MakeEnemyDummy(em,
+                em.GetComponentData<LocalTransform>(host).Position + new float3(TileSize(bridge), 0f, 0f));
+
+            Assert.IsTrue(bridge.RetireDefender(cell), "retire");
+            yield return RunSeconds(1.5f);
+            Assert.Less(DummyHp - em.GetComponentData<Health>(dummy).value, MeteorDamage,
+                "퇴근은 작별 선물(OnDeath 폭발)을 일으키지 않는다 — 역방향 무발동");
+        }
+
+        // 힐러 1기 배치 + 카드 부착 + StartBattle 까지. 세 케이스가 완전히 같은 무대를 쓴다.
+        private static IEnumerator PlaceHealerWithCard(BattleBridge bridge, DreamcatcherCard card)
+        {
+            var gm = Object.FindObjectOfType<GameManager>();
+            var healer = FindCatalog().ById("healer");
+            Assert.IsNotNull(healer, "healer defender data (공격 출력 없음 = 더미의 유일 소스가 운석)");
+
+            bridge.SetDefenderPool(new[] { healer });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, healer), "place healer");
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var host = EntityAt(bridge, em, SoleCell(bridge));
+            Assert.AreNotEqual(Entity.Null, host, "host resolved");
+            Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(host, card), 0,
+                "카드 부착 (bake 통과)");
+
+            bridge.StartBattle(); // 투사체 sim 이 도는 상태에서 검증한다
+            yield return null;
+        }
+
+        private static Entity MakeEnemyDummy(EntityManager em, float3 pos)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, LocalTransform.FromPosition(pos));
+            em.AddComponentData(e, new Health { value = DummyHp, max = DummyHp });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
+            em.AddComponent<AttackUnitTag>(e);
+            em.AddBuffer<IncomingDamage>(e);
+            em.AddBuffer<Wassup.Battle.Effects.CcEffect>(e);
+            em.AddBuffer<Wassup.Battle.Effects.StackModifierSlot>(e);
+            return e;
+        }
+
+        private static DreamcatcherCard MakeRetireMeteorCard() => MakeSelfTileAoeCard(
+            "test_severance_meteor", DcTriggerKind.OnRetire, MeteorWarnSec);
+
+        // 대조군 — 작별 선물(사망 폭발). 예고 없이 즉시 착탄(기존 카드는 전부 duration 0).
+        private static DreamcatcherCard MakeFarewellCard() => MakeSelfTileAoeCard(
+            "test_farewell", DcTriggerKind.OnDeath, 0f);
+
+        private static DreamcatcherCard MakeSelfTileAoeCard(string id, DcTriggerKind trigger, float warnSec)
+        {
+            var view = UnityEditor.AssetDatabase.LoadAssetAtPath<ProjectileData>(
+                UnityEditor.AssetDatabase.GUIDToAssetPath("1705ed345dda4014bc5b6019f1a84e77"));
+            Assert.IsNotNull(view, "AOE-view ProjectileData (Projectile_Meteor)");
+
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = id;
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new[] { new DcMechanic {
+                trigger = new DcTriggerSpec { kind = trigger },
+                payload = new DcPayloadSpec
+                {
+                    kind = DcPayloadKind.SelfTileAoe,
+                    magnitude = MeteorDamage,
+                    tileRange = 1,
+                    duration = warnSec, // SelfTileAoe 의 duration = 낙하 예고 초 (content-4 계약 8)
+                    projectile = view,
+                },
+            }};
+            return card;
+        }
+
+        // 이름을 붙여 단언한다 — 필드가 개명되면 NRE 대신 이유가 뜬다(BattleBridgeTestAccess 규약).
+        private static float TileSize(BattleBridge bridge)
+        {
+            var f = typeof(BattleBridge).GetField("tileSize", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f, "BattleBridge.tileSize 를 찾지 못했다(이름 변경?)");
+            return (float)f.GetValue(bridge);
+        }
+
+        private static IEnumerator RunSeconds(float seconds)
+        {
+            float t = 0f;
+            while (t < seconds) { t += Time.deltaTime; yield return null; }
         }
 
         // ── helpers (재배치 스위트와 동형) ────────────────────────────────────

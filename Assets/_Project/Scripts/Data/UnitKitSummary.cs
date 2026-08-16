@@ -43,7 +43,11 @@ namespace Wassup.Data
             }
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");
-            string onPlace = OnPlaceClause(u.onPlaceEffect);
+            // on-place-skill-rework unit 6 — 배치 스킬의 출처가 둘이다: 레거시 enum 과
+            // 규칙(UnitSkillAbility). 규칙을 먼저 보고, 없을 때만 enum 으로 떨어진다 —
+            // 둘 다 선언된 유닛은 bake 가 경고하므로 여기선 한 줄만 낸다.
+            string onPlace = OnPlaceRuleClause(u);
+            if (string.IsNullOrEmpty(onPlace)) onPlace = OnPlaceClause(u.onPlaceEffect);
             if (!string.IsNullOrEmpty(onPlace))
                 traits.Add(onPlace);
             if (u.GetAbility<HazardCastAbility>() != null)
@@ -86,6 +90,35 @@ namespace Wassup.Data
                 // OnPlaceEffectType 을 늘리면 여기도 같이 늘릴 것.
                 default: return "";
             }
+        }
+
+        // on-place-skill-rework unit 6 — 규칙(트리거 × 페이로드)으로 선언된 배치 스킬의 문안.
+        //
+        // 「어그로」가 아니라 **「도발」** 계열 어휘를 쓴다(게임 문안의 기존 표현).
+        // ⚠ 배스티온은 **두 도발을 화면에서 갈라야 한다** — 이미 `특수 효과: 공격한 적 도발`
+        // 이 있고, 같은 단어·같은 상태(Aggroed)·같은 아이콘이라 플레이어가 구분할 수 없다.
+        // sim 상 차이(상한 무시·즉시·시한)는 전부 숫자고 화면에 그 어휘가 없다. 눈에 보이는
+        // 유일한 차이가 **「전원 / 한꺼번에」** 이므로 그 축으로 가른다.
+        private static string OnPlaceRuleClause(DefenderUnitData u)
+        {
+            var ability = u.GetAbility<UnitSkillAbility>();
+            if (ability?.mechanics == null) return "";
+            for (int i = 0; i < ability.mechanics.Length; i++)
+            {
+                var m = ability.mechanics[i];
+                if (m.trigger.kind != DcTriggerKind.OnPlace) continue;
+                switch (m.payload.kind)
+                {
+                    case DcPayloadKind.EmitProjectilePattern: return "배치 시 주변 적 머리 위로 미사일 낙하";
+                    case DcPayloadKind.AreaTaunt:             return "배치 시 주변 적을 한꺼번에 끌어모음";
+                    // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
+                    // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
+                    // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
+                    // `UnitKitSummaryTests` 의 전수 순회가 배선 누락 자체를 잡는다.
+                    default: continue;
+                }
+            }
+            return "";
         }
     }
 }

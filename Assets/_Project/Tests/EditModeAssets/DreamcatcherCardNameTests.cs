@@ -34,6 +34,8 @@ namespace Wassup.Tests.EditMode
             { "ember_bite", "출혈" },
             { "execution_strike", "처형타" },
             { "eye_on_the_end", "우선조준" },
+            // content-4 unit 3 — 궤도 화염구.
+            { "flame_spinner", "불꽃팽이" },
             { "farewell", "사망폭발" },
             { "sub_fattened_offering", "제물표식" },
             // content-3 unit 6 — "빙결" 은 Ice 스택 라벨(동상이 쌓는 것)과 충돌해
@@ -50,10 +52,16 @@ namespace Wassup.Tests.EditMode
             { "last_stand", "빈사폭주" },
             { "lullaby_dart", "자장가" },
             { "nightmare_afterglow", "킬딜" },
+            // content-4 unit 4 — 수면 특효. spec 의 가칭 "악몽 사냥" 은 이 목록의
+            // 축약 규약(공백 없는 4~5자)에 맞춰 붙여 쓴다.
+            { "nightmare_hunt", "악몽사냥" },
             { "poke_needle", "비수" },
             { "ranger_as", "레인저속" },
             { "ranger_atk", "레인저딜" },
             { "ranger_hp", "레인저체" },
+            // content-4 unit 5 — 퇴근 운석. 이 목록은 **전수형**이라(카드 수 == 항목 수)
+            // 카드 에셋만 추가하고 여기를 잊으면 즉시 실패한다 — 의도된 fail-closed.
+            { "severance_meteor", "퇴직위로금" },
             { "shatter_hymn", "CC딜" },
             { "shield_burst", "실드폭발" },
             { "shield_lull", "실드수면" },

@@ -43,18 +43,22 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 4
-  onPlaceRange: 1
-  onPlaceMagnitude: 50
+  onPlaceEffect: 0
+  onPlaceRange: 0
+  onPlaceMagnitude: 0
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
   cost: 5
   placementCooldown: 4
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 2
   targetFactions: 98
-  abilities: []
+  abilities:
+  - {fileID: 11400000, guid: 5a040ae407c4461ba142c7c70f0a99d7, type: 2}
   rarity: 1
   portrait: {fileID: 21300000, guid: 13dfb8e9adb8646dfa27a34767c8cbca, type: 3}
   aggroCapacity: 2
@@ -80,7 +84,7 @@ MonoBehaviour:
   slotColors: []
   dragAnimation: Attack1
   deployAnimation: Hit
-  placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
+  placementVfxPrefab: {fileID: 6530448752386012335, guid: 70cf5e20a31bb114192f0654eb83960c, type: 3}
   attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
   deployCutsceneFrames: []
   deployCutsceneFps: 24
@@ -93,9 +97,9 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 2
-  onPlacePushDuration: 0.2
-  onPlacePushRadius: 3
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45

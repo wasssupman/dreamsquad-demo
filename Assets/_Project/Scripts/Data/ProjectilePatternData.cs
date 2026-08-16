@@ -71,6 +71,21 @@ namespace Wassup.Data
         [Min(0f)]
         public float telegraphSec = 0f;
 
+        [Header("Scope / Fan-out")]
+        [Tooltip("후보를 host 셀 기준 Chebyshev 반경(타일)으로 제한. 0 = 맵 전체(기존 동작). " +
+                 "«주변 N타일 안 적에게» 를 데이터로 표현하는 축.")]
+        [Min(0)]
+        public int scopeTileRange = 0;
+
+        [Tooltip("한 shot 이 스코프 안 적 **전원** 에게 1발씩 나간다(1:1 융단폭격). " +
+                 "false = 기존 동작(shot 당 후보 1개 선택). 같은 칸에 적이 둘이면 2발 나간다.")]
+        public bool fanOutToAllCandidates = false;
+
+        [Tooltip("fan-out 갈래 사이 착탄 시차(초). 0 = 전부 동시. 0.05~0.1 이면 한 방향으로 " +
+                 "줄지어 떨어지는 «연타» 로 읽힌다. 셀을 겨누는 궤적(SkyFall 등) 전용.")]
+        [Min(0f)]
+        public float fanOutStaggerSec = 0f;
+
         // 정의 계층 → unmanaged 미러. barrelDataIndex 는 아키텍처가 해석하는
         // 핸들이므로 호출자(bake seam)가 넘긴다 — 이 SO 는 레지스트리를 모른다.
         public bool TryToSpec(int barrelDataIndex, out PatternSpec spec)
@@ -110,6 +125,11 @@ namespace Wassup.Data
                 randomIntervalMaxSec = Mathf.Max(0f, randomIntervalMaxSec),
                 reselectPerShot = reselectPerShot,
                 telegraphSec = Mathf.Max(0f, telegraphSec),
+                // ⚠ 여기 복사를 빠뜨리면 **조용한 0 = 맵 전체 폭격**이다. 이 함수가
+                // PatternSpec 의 유일한 writer 라 SO 에만 필드를 더하면 아무도 안 알려준다.
+                scopeTileRange = Mathf.Max(0, scopeTileRange),
+                fanOutToAllCandidates = fanOutToAllCandidates,
+                fanOutStaggerSec = Mathf.Max(0f, fanOutStaggerSec),
             };
             return true;
         }

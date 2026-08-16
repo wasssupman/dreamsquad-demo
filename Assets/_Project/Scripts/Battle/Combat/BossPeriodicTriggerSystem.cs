@@ -13,8 +13,12 @@ namespace Wassup.Battle.Combat
     // nightmare-catcher unit 2 — PeriodicTimer × AreaBarrage arm. Gated on
     // DcTriggerSlot buffer presence only (faction-neutral by construction —
     // no BossTag/DefenderUnitTag in the gate, spec unit 4): any slot carrier
-    // with a PeriodicTimer slot ticks here; defender card slots are skipped by
-    // trigger-kind dispatch (their periodSeconds is 0 anyway — 계약 9 guard).
+    // with a PeriodicTimer slot ticks here.
+    //
+    // ⚠ dreamcatcher-content-4 unit 0 — **방어유닛 카드 슬롯도 여기서 돈다.** 예전 주석은
+    // "디펜더 카드는 periodSeconds 가 0 이라 건너뛴다" 였는데, 그건 카드 bake 가 그 값을
+    // 안 실어 보내서 생긴 **우연**이었다(조용한 무발동). 이제 bake 가 싣고 <=0 은 loud
+    // 거절한다 — 이 시스템의 진영 중립성이 «설계» 에서 «실제» 가 된 지점이다.
     //
     // Fire = one SkyFall×TileAoe carrier request into the existing projectile
     // drain (dc-trigger contract 6: the slot owner's own attack may stage a
@@ -25,8 +29,17 @@ namespace Wassup.Battle.Combat
     // nightmare-whip-aura unit 1 — second payload arm on the same tick:
     // AllyMoveSpeedAura pulses a MoveSpeedMul modifier (TTL) onto same-faction
     // units in range via StatModifierApplyEvents; release is TTL expiry only.
+    // on-place-skill-rework unit 0 — 두 번째 트리거 축: `OnPlace`(방어유닛 배치). 브리지가
+    // 배치 확정 시 `JustDeployed` 태그를 붙이고 여기서 그 프레임에 슬롯을 발화·태그 제거한다.
+    // payload arm 은 PeriodicTimer 와 **공유**한다 — 그게 이 시스템에 얹은 이유다(브리지에
+    // 실행부를 두면 `EmitProjectilePattern` arm 의 세 번째 사본이 된다).
+    //
+    // ⚠ 순서 계약: `ProjectileEmitterSystem` 이 `[UpdateAfter(this)]` 라 패턴은 같은 프레임에
+    // 나가고, `AreaTaunt`(unit 4)가 같은 틱에 어그로를 붙이려면 `AggroStateSystem` 보다 앞이어야
+    // 한다. 속성이 없으면 1프레임 지연이 빌드마다 달라진다.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    [UpdateBefore(typeof(Wassup.Battle.Effects.AggroStateSystem))]
     public partial struct BossPeriodicTriggerSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
@@ -41,6 +54,10 @@ namespace Wassup.Battle.Combat
             // BattleSimGroup dt — TimeManager Battle-domain scaled (slomo 포함).
             float dt = SystemAPI.Time.DeltaTime;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
+            // dreamcatcher-content-4 unit 3 — 궤도 화염구가 캐리어 entity 를 만든다(구조 변경).
+            // 이 시스템의 다른 arm 들은 큐/버퍼만 만져서 여태 ECB 가 없었다. 슬롯 루프 도중
+            // 구조 변경을 즉시 하면 순회 중인 버퍼 뷰가 무효화되므로 ECB 로 미룬다.
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // 방어유닛 셀 스냅샷 — whip 오라의 defender-host 경로가 쓴다(entities 는
             // 아래에서 보충). projectile-emission-pattern unit 4 로 융단폭격 진앙이
@@ -81,6 +98,15 @@ namespace Wassup.Battle.Combat
             // 실드 부여 원샷 연출 — 가디언이 이미 쓰는 채널(→ VfxSpawner.SpawnShieldGranted).
             bool hasShieldVfxQ = SystemAPI.TryGetSingletonRW<ShieldGrantedEventsSingleton>(out var shieldVfxRW);
 
+            // on-place-skill-rework unit 4 — 범위 도발 seam. 어그로 상태는 Effects 소유라
+            // 여기선 **획득 요청만** 넣는다(히트 획득이 AttackSystem 에서 같은 큐를 쓰는 것과
+            // 같은 형태). 게이트 판정은 전부 AggroStateSystem 이 한다.
+            bool hasAcquireQ = SystemAPI.TryGetSingletonRW<AggroAcquireEventsSingleton>(out var acquireRW);
+            NativeQueue<AggroAcquireEvent> acquireQueue = hasAcquireQ ? acquireRW.ValueRW.queue : default;
+            // 가디언 표식(존재 자체가 가디언) + 통행 층 게이트용 RO lookup.
+            var capacityLookup = SystemAPI.GetComponentLookup<AggroCapacity>(isReadOnly: true);
+            var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+
             var pulseTargets = new NativeList<int>(Allocator.Temp);
             var pulseDistSq = new NativeList<float>(Allocator.Temp);
             var pulsePicked = new NativeList<int>(Allocator.Temp);
@@ -107,14 +133,29 @@ namespace Wassup.Battle.Combat
                 // foreach 변수는 readonly — DynamicBuffer 는 뷰 struct 라 로컬
                 // 복사가 같은 버퍼 메모리를 가리킨다(CS1654 회피 관용구).
                 var slots = slotsRef;
+                // on-place-skill-rework unit 0 — 배치 사건은 엔티티 단위라 슬롯 루프 밖에서
+                // 1회만 묻는다. 태그 제거는 아래 별도 패스가 ECB 로 한다(버퍼 순회 중 구조 변경 금지).
+                bool justDeployed = SystemAPI.HasComponent<JustDeployed>(entity);
                 for (int si = 0; si < slots.Length; si++)
                 {
                     var slot = slots[si];
-                    if (slot.trigger != Wassup.Data.DcTriggerKind.PeriodicTimer) continue;
 
-                    float elapsed = slot.elapsed;
-                    bool fired = DcTrigger.PeriodicTick(ref elapsed, dt, slot.periodSeconds);
-                    slot.elapsed = elapsed;
+                    // 트리거별 발화 판정. **payload arm 은 아래에서 공유**한다 — 트리거는
+                    // "언제" 만 답하고 "무엇을" 은 payload 소유다.
+                    bool fired;
+                    if (slot.trigger == Wassup.Data.DcTriggerKind.PeriodicTimer)
+                    {
+                        float elapsed = slot.elapsed;
+                        fired = DcTrigger.PeriodicTick(ref elapsed, dt, slot.periodSeconds);
+                        slot.elapsed = elapsed;
+                    }
+                    else if (slot.trigger == Wassup.Data.DcTriggerKind.OnPlace)
+                    {
+                        // 1회성. 재무장은 브리지가 태그를 다시 붙일 때만(재배치).
+                        fired = justDeployed;
+                    }
+                    else continue;
+
                     if (fired)
                     {
                         if (slot.payload == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura)
@@ -388,6 +429,121 @@ namespace Wassup.Battle.Combat
                                 }
                             }
                         }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.AreaTaunt)
+                        {
+                            // on-place-skill-rework unit 4 — 범위 도발. host 반경 안 적 전원을
+                            // duration 초 어그로시킨다.
+                            //
+                            // **게이트를 복제하지 않는다.** 보스 면역 · 유닛 미조준 적 · 공격 수단
+                            // 부재 · 도달 불가 판정은 전부 AggroStateSystem(Effects) 소유다. 여기서
+                            // 미리 걸러도 같은 판정이 두 곳에 생기고, 둘이 갈리는 순간 한쪽만
+                            // 고쳐진다(defender-on-place-skills unit 4 의 후보 집합 결함과 같은 형태).
+                            // 저작 검증(duration/tileRange/가디언 여부)은 bake 가 loud 로 한다 —
+                            // 이 시스템은 [BurstCompile] 이라 여기선 로그를 낼 수 없다.
+                            if (slot.duration > 0f && slot.tileRange > 0 && hasAcquireQ
+                                && capacityLookup.HasComponent(entity)
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                if (!enemyPoolBuilt)
+                                {
+                                    BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                    enemyPoolBuilt = true;
+                                }
+                                float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                AuraPulse.SelectTargets(enemyCells, hostCell, slot.tileRange, ref pulseTargets);
+                                // ⚠ **통행 층 게이트는 여기서 건다.** 브리지 헬퍼
+                                // (CollectEnemiesInTileRange → CanDefenderTargetMover)를 못 쓰므로
+                                // baked 마스크로 같은 판정을 한다. 빼면 **근접 가디언이 하늘의 적을
+                                // 끌어온다**(배스티온 attackTargetLayers 는 지상만이다).
+                                byte hostLayers = SystemAPI.HasComponent<AttackState>(entity)
+                                    ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                    : (byte)0;
+                                for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                {
+                                    var victim = enemyEntities[pulseTargets[ti]];
+                                    // README 계약 9 — 「이번 프레임 합법 후보」만 본다.
+                                    // `BuildEnemyPool` 은 arm 셋이 공유하는 헬퍼라 쿼리를 바꾸지
+                                    // 않고 여기서 거른다(아래 통행 층 게이트와 같은 방식).
+                                    // ⚠ `AggroStateSystem` 드레인에는 `UltimateLeapState` 게이트가
+                                    // **없다** — 오늘은 보스 면역이 우연히 가려 줄 뿐이라,
+                                    // 엘리트에 궁극기 도약이 열리면 그대로 구멍이 된다.
+                                    if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(victim)) continue;
+                                    if (SystemAPI.HasComponent<UltimateLeapState>(victim)) continue;
+                                    byte victimLayers = pathFollowLookup.HasComponent(victim)
+                                        ? pathFollowLookup[victim].traversalLayers
+                                        : (byte)0;
+                                    if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, victimLayers))
+                                        continue;
+                                    acquireQueue.Enqueue(new AggroAcquireEvent
+                                    {
+                                        guardian = entity,
+                                        enemy = victim,
+                                        kind = AggroAcquireKind.Taunt,
+                                        durationSec = slot.duration,
+                                    });
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                        {
+                            // dreamcatcher-content-4 unit 3 (불꽃 팽이) — host 셀 중심을 도는
+                            // 화염구 하나를 duration 초 동안 띄운다. 캐리어 entity 로
+                            // ProjectileSpawnRequest 스테이징(진동갑주 SelfTileAoe 선례) —
+                            // 브리지 드레인이 스폰 후 캐리어를 파괴한다.
+                            //
+                            // ⚠ **이 arm 은 ISystem 이라 SO 를 읽을 수 없다.** 선속도·피격 반경은
+                            // bake 가 탄 SO 에서 슬롯에 구워 놨고(unit 0), 재타격 쿨타임은 아예
+                            // 싣지 않는다 — 드레인이 dataIndex 로 SO 를 해석해 채운다.
+                            if (slot.tileRange > 0 && slot.duration > 0f && slot.speed > 0f
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                float radius = slot.tileRange * ff.tileSize;
+                                var center = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                // content-4 unit 8 — 구슬 개수. bake 가 `period` 슬롯에 구웠다
+                                // (PeriodicTimer 에게 그 필드는 AttackN 전용이라 비어 있다).
+                                // 균등 배치는 **위상**으로 한다 — 같은 궤도·같은 수명·같은 각속도로
+                                // 돌면서 시작 각도만 2π/n 씩 어긋난다. 캐리어는 개수만큼 나간다.
+                                int orbCount = slot.period > 0 ? slot.period : 1;
+                                for (int oi = 0; oi < orbCount; oi++)
+                                {
+                                var carrier = ecb.CreateEntity();
+                                ecb.AddComponent(carrier, new Projectile.ProjectileSpawnRequest
+                                {
+                                    orbitPhase = Projectile.Orbit.PhaseOf(oi, orbCount),
+                                    movement = Projectile.MovementKind.OrbitAroundPoint,
+                                    payload  = Projectile.PayloadKind.PathHit,
+                                    origin   = center,          // 궤도 중심(발사 시점 고정)
+                                    impact   = center,
+                                    damage   = slot.magnitude,  // flat — attacker damageMul 미적용(계약 10)
+                                    maxDistance = radius,       // 궤도 반경
+                                    // **각속도 = 선속도 ÷ 반경.** 슬롯의 speed 는 탄 SO 의 월드 속도라
+                                    // 반경을 키워도 «도는 체감»이 유지된다(각속도를 직접 저작하면
+                                    // 큰 원에서 갑자기 빨라진다). radius>0 은 위 가드가 보장.
+                                    speed    = slot.speed / radius,
+                                    flightTime = slot.duration, // 지속 초 → 수명
+                                    hitThreshold = slot.hitThreshold, // 피격 반경(궤도 반경과 다른 축)
+                                    dataIndex = slot.projectileDataIndex,
+                                    visualScale = slot.visualScale > 0f ? slot.visualScale : 1f,
+                                    owner = entity,             // 위협 귀속
+                                    // targetFaction 은 싣지 않는다 — PathHit 의 후보 풀은
+                                    // AttackUnitTag 하드코딩이라 이 페이로드에 진영 축이 없다.
+                                    //
+                                    // ⚠ **통행 층은 host 사양을 따른다**(ECS 리뷰 M2). 안 실으면
+                                    // 0 = 무제한이라(`PlacementLayers.CanTarget` 이 0 을 무조건
+                                    // 통과시킨다) **지상만 때리는 유닛에 이 카드를 붙이면 그 유닛이
+                                    // 못 때리는 비행 적을 화염구는 때린다** — 카드가 유닛의 근본
+                                    // 제약을 우회하는 뒷문이 된다. 방어유닛 발 투사체가 전부
+                                    // AttackState.targetTraversalLayers 를 싣는 것과 같은 규약.
+                                    targetTraversalLayers =
+                                        SystemAPI.HasComponent<AttackState>(entity)
+                                            ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                            : (byte)0,
+                                });
+                                ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
+                                }
+                            }
+                        }
                         else
                         {
                             // Payload landed without its arm — fail loudly instead
@@ -395,12 +551,25 @@ namespace Wassup.Battle.Combat
                             // projectile-emission-pattern unit 4 — AreaBarrage arm 은
                             // 제거됐다(융단폭격은 EmitProjectilePattern 으로 이관). enum
                             // 값은 append-only 계약상 남아 있고 bake 가 loud 거절한다.
-                            UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] PeriodicTimer slot fired with unhandled payload kind.");
+                            UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] slot fired with unhandled payload kind.");
                         }
                     }
                     slots[si] = slot;
                 }
             }
+
+            // on-place-skill-rework unit 0 — 배치 태그는 **1프레임**이다. 슬롯 유무와 무관하게
+            // 이번 업데이트에서 전부 걷는다(슬롯이 없는 유닛에 남으면 다음 배치 사건과 섞인다).
+            // 브리지는 `DcTriggerSlot` 버퍼가 있는 유닛에만 태그를 붙이므로, 태그가 존재하는
+            // 프레임엔 `RequireForUpdate<DcTriggerSlot>` 이 항상 만족돼 이 패스가 반드시 돈다.
+            // ⚠ ECB 인 이유: 위 foreach 가 아직 살아 있는 쿼리 이터레이션이다.
+            // (태그는 zero-size 라 `RefRO<JustDeployed>` 로 순회할 수 없다 — 쿼리 일괄 제거.)
+            var justDeployedQuery = SystemAPI.QueryBuilder().WithAll<JustDeployed>().Build();
+            if (!justDeployedQuery.IsEmpty)
+                ecb.RemoveComponent<JustDeployed>(justDeployedQuery, EntityQueryCaptureMode.AtPlayback);
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
 
             defTransforms.Dispose();
             defCells.Dispose();

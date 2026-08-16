@@ -63,7 +63,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(guardian, new FactionTag { value = Faction.DefenderUnit });
             em.AddBuffer<IncomingDamage>(guardian);
             // aggro-tile-chase unit 4 — 히트 구동(b84b6887) 이후 어그로는 "가디언이 때려야"
-            // 발생한다. 무장 없는 더미는 AggroHitEvent 를 못 내 sawAggro 가 구조적으로 false
+            // 발생한다. 무장 없는 더미는 AggroAcquireEvent 를 못 내 sawAggro 가 구조적으로 false
             // 였다(스모크 부채). 광역 공격을 부여해 히트→어그로→추격 체인을 실제로 돌린다.
             em.AddComponentData(guardian, new Wassup.Battle.Combat.AttackState
             {

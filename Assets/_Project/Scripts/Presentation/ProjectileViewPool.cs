@@ -18,6 +18,13 @@ namespace Wassup.Presentation
         public float flightTime;
         public float elapsed;
         public float arcHeight;
+        // dreamcatcher-content-4 — **보드 깊이 소팅**(0 = 미사용). 투사체는 기본적으로
+        // `ProjectileOffset`(+1000) 플랫 오프셋이라 깊이와 무관하게 항상 유닛 위에 그려진다.
+        // 대부분의 탄(날아가서 사라짐)은 그게 맞지만, **유닛을 도는 궤도구**는 뒤로 갔을 때
+        // 몸에 가려야 «돈다» 로 읽힌다. 그 경우에만 브리지가 셀 기준 order 를 계산해 싣고,
+        // 뷰는 그대로 적용한다 — 보드 좌표(gridSize/tileSize) 지식은 브리지가 소유한다는
+        // 이 struct 의 원래 계약 그대로다.
+        public int boardSortOrder;
     }
 
     // Attached once to each instantiated view — caches component arrays so ApplyMpb,
@@ -25,6 +32,10 @@ namespace Wassup.Presentation
     public class ViewRendererCache : MonoBehaviour
     {
         public Renderer[] renderers;
+        // 프리팹이 저작한 **원래** sortingOrder (플랫 오프셋을 더하기 전). 깊이 소팅으로
+        // 매 프레임 절대값을 다시 쓰는 경로가 렌더러 간 상대 순서(mesh/trail/flare)를
+        // 보존하려면 기준점이 필요하다 — 이미 오프셋이 더해진 값에서 되돌릴 수는 없다.
+        public int[] baseSortingOrders;
         public TrailRenderer[] trails;
         // Top-level particle systems only. Play(true) cascades to children/subemitters,
         // so restarting only roots preserves authored trigger relationships.
@@ -235,6 +246,22 @@ namespace Wassup.Presentation
             view.transform.position = ProjectHeight(
                 groundPos, presentationHeight + state.heightOffset);
 
+            // dreamcatcher-content-4 — 보드 깊이 소팅(궤도구). 0 = 미사용이라 기존 탄은
+            // 스폰 시 한 번 더해진 플랫 오프셋(+1000)을 그대로 쓴다 — 이 분기에 안 들어온다.
+            // 켜진 경우 프리팹 원래 order 를 기준으로 절대값을 다시 써서, 유닛 뒤로 돌면
+            // 몸에 가리고 앞으로 오면 덮는다. 렌더러 간 상대 순서는 base 로 보존된다.
+            if (frame.boardSortOrder != 0
+                && view.TryGetComponent<ViewRendererCache>(out var sortCache)
+                && sortCache.baseSortingOrders != null)
+            {
+                var rs = sortCache.renderers;
+                for (int i = 0; i < rs.Length; i++)
+                {
+                    if (rs[i] == null) continue;
+                    rs[i].sortingOrder = sortCache.baseSortingOrders[i] + frame.boardSortOrder;
+                }
+            }
+
             switch (state.facing)
             {
                 case ProjectileFacing.AlongVelocity:
@@ -417,8 +444,13 @@ namespace Wassup.Presentation
                 view.transform, view.GetComponentsInChildren<ParticleSystem>(includeInactive: true));
             // 투사체/hit/cast VFX 를 유닛 스프라이트 위로. Instantiate 당 1회만(풀 재사용은
             // stack.Pop 으로 빠져 스킵) → 누적 없음. 렌더러 간 상대 순서(mesh/trail/flare)는 보존.
-            foreach (var r in rc.renderers)
-                r.sortingOrder += BoardSortOrder.ProjectileOffset;
+            // 깊이 소팅 경로가 기준으로 쓸 원래 값을 **더하기 전에** 저장한다.
+            rc.baseSortingOrders = new int[rc.renderers.Length];
+            for (int i = 0; i < rc.renderers.Length; i++)
+            {
+                rc.baseSortingOrders[i] = rc.renderers[i].sortingOrder;
+                rc.renderers[i].sortingOrder += BoardSortOrder.ProjectileOffset;
+            }
             return view;
         }
 

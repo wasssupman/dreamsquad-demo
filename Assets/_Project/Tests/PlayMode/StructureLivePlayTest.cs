@@ -395,17 +395,24 @@ namespace Wassup.Tests.PlayMode
                     + "EditMode 가 실 AttackSystem 으로 고정한다.");
             }
 
-            // ── (4) 잔여 0 → 승리 축 ──
+            // ── (4) 잔여 0 → **판은 계속된다** ──
+            // three-minute-kill-race unit 0 — 적 마음 붕괴가 승리를 선언하던 축(구
+            // `CheckEnemyCoreDestroyed`)은 은퇴했다. 이제 고정할 성질은 그 반대다:
+            // **부숴도 판이 안 끝난다.** 판을 끝내는 것은 3분 만료와 유저 제출뿐이다.
             // 피해 출처는 축과 무관하다((2) 가 라이브 경로를 이미 증명했다).
             em.GetBuffer<IncomingDamage>(core).Add(new IncomingDamage { amount = coreMax * 10f });
             start = Time.unscaledTime;
-            while (gm.CurrentPhase != GamePhase.Result)
+            while (bridge.EnemyCoreCurrent > 0)
             {
                 Assert.Less(Time.unscaledTime - start, TimeoutSec,
-                    "적 마음이 무너졌는데 판이 끝나지 않는다 — CheckEnemyCoreDestroyed 축이 안 돌았다");
+                    "적 마음에 치사량을 넣었는데 잔여가 0 으로 내려가지 않는다");
                 yield return null;
             }
-            Assert.AreEqual(0, bridge.EnemyCoreCurrent, "잔여 0 이 판정의 근거였다");
+            // 붕괴 직후 몇 프레임을 더 돌린다 — 종료가 한 프레임 늦게 터지는 것도 잡아야 한다.
+            for (int i = 0; i < 30; i++) yield return null;
+            Assert.AreNotEqual(GamePhase.Result, gm.CurrentPhase,
+                "적 마음이 무너졌다고 판이 끝났다 — 강제 종료 축이 되살아났다"
+                + "(계약: 종료는 3분 만료와 유저 제출뿐)");
         }
 
         private static Entity FindStructure(EntityManager em, Faction faction)

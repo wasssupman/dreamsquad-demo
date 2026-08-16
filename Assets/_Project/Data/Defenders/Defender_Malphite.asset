@@ -44,9 +44,9 @@ MonoBehaviour:
     stackKind: 0
     stackMaxStack: 0
   onPlaceEffect: 9
-  onPlaceRange: 1
+  onPlaceRange: 2
   onPlaceMagnitude: 0
-  onPlaceDuration: 0.8
+  onPlaceDuration: 3
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
   cost: 5

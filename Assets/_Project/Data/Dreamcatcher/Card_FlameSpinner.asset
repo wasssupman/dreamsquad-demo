@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_FlameSpinner
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: flame_spinner
+  displayName: "불꽃팽이"
+  visible: 1
+  axis: 3
+  category: 1
+  effects: []
+  art: {fileID: 0}
+  mechanics:
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 5
+      fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 22
+      magnitude: 20
+      projectile: {fileID: 11400000, guid: d5a6a699111744548faf5f3e91d2cabc, type: 2}
+      tileRange: 1
+      duration: 5
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 2
+      coneHalfAngleDeg: 0
+  attackMods: []
+  type: 1
+  skill: {fileID: 0}
+  description: "5초마다 → 주위를 도는 화염구
+    5초 · 스치는 적에게 피해 20"
+  leakAllowanceCost: 0
+  attachType: 0
+  attachValue:

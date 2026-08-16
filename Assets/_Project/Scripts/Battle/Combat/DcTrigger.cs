@@ -114,5 +114,19 @@ namespace Wassup.Battle.Combat
             => kind == Wassup.Data.DcTriggerKind.PeriodicTimer
             || kind == Wassup.Data.DcTriggerKind.HealthThreshold
             || kind == Wassup.Data.DcTriggerKind.AttackN;
+
+        // on-place-skill-rework unit 0 — **방어유닛 자기 규칙 bake 가 여는 트리거 화이트리스트.**
+        // 위 적 화이트리스트와 같은 목적(조용한 no-op 금지)이되 **별개 술어**다.
+        //
+        // 왜 위 함수에 OnPlace 를 더하지 않는가: `EnemyTriggerArmed` 는 "적에 baked 될 때
+        // 안전한가" 라는 질문이고, 그 안전이 위 주석이 경고하는 자기진영 타격(OnShieldBreak 등)을
+        // 막는 유일한 문이다. 방어유닛 전용 트리거를 그 목록에 섞으면 두 질문이 한 술어에 겹쳐
+        // 다음 사람이 어느 쪽 근거로 완화해도 되는지 알 수 없게 된다.
+        //
+        // v1 은 `OnPlace` 하나다. 레거시 `OnPlaceEffectType` 8종을 규칙으로 이관할 때도 늘 것은
+        // payload 어휘이지 트리거가 아니다. 방어유닛 사건인 `OnRetire` 는 **카드 전용**이라
+        // 여기 없다 — 유닛이 자기 규칙으로 퇴근 스킬을 선언하는 소비자가 생기면 그때 연다.
+        public static bool DefenderTriggerArmed(Wassup.Data.DcTriggerKind kind)
+            => kind == Wassup.Data.DcTriggerKind.OnPlace;
     }
 }

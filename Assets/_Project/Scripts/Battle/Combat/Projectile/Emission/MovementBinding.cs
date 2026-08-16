@@ -14,7 +14,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // 분류 누락은 EditMode 핀으로 잡는다 — MovementBindingTests 가 이 상수와
         // Enum.GetValues 길이를 대조하므로, 새 MovementKind 를 추가하면 테스트가
         // 실패하고 여기 분류를 갱신하게 된다.
-        public const int KnownKindCount = 6;
+        public const int KnownKindCount = 7;
 
         public static BindingClass Of(MovementKind kind)
         {
@@ -27,6 +27,11 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                 case MovementKind.BallisticArcToPoint:
                 case MovementKind.SkyFall:
                 case MovementKind.GrenadeToCell:
+                // dreamcatcher-content-4 unit 0 — 궤도(화염구)는 **셀 바인딩**이다:
+                // 궤도 중심이 발사 시점에 고정되고 타겟 엔티티를 잡지 않는다.
+                // 위 주석이 예고한 "오비트 = emitter 변경 0" 이 실제로 성립하는 지점 —
+                // 이 한 줄 말고 emitter 는 손대지 않는다.
+                case MovementKind.OrbitAroundPoint:
                     return BindingClass.Cell;
 
                 case MovementKind.DirectionalLinear:

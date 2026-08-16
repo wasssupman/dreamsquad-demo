@@ -22,20 +22,26 @@ namespace Wassup.Battle.Combat
         public DcPayloadKind payload;
         public float magnitude; // flat damage — attacker damageMul intentionally not applied
 
-        // ProjectileToTarget only — baked from ProjectileData at attach time
-        // (AttackSystem cannot read managed SOs). projectileDataIndex lifetime =
-        // session: _projectileDataByIndex is never reset by BeginPlacement.
+        // Baked from ProjectileData at attach time (ISystem cannot read managed SOs).
+        // projectileDataIndex lifetime = session: _projectileDataByIndex is never
+        // reset by BeginPlacement.
+        //   ProjectileToTarget : speed = 월드 속도 · hitThreshold = 도달 판정 반경
+        //   SelfOrbitProjectile: speed = **궤도 선속도**(arm 이 ÷반경 → 각속도) ·
+        //                        hitThreshold = **피격 반경**(궤도 반경과 다른 축!)
         public int projectileDataIndex;
         public float speed;
         public float hitThreshold;
         public float visualScale;
         // dreamcatcher-content-1 — SelfTileAoe(OnDeath 폭발): AOE 반경(타일). 기본 0.
         // nightmare-catcher — AreaBarrage: 진앙 AoE 반경 / SelfBlink: 착지 탐색 반경.
+        // content-4 — SelfOrbitProjectile: **궤도 반경**(타일). 피격 반경은 hitThreshold 다.
         public int tileRange;
 
         // ── nightmare-catcher unit 5 — periodic/threshold trigger state +
-        // barrage payload params. periodSeconds/elapsed/fireCount 는 보스 스폰
-        // 경로만 bake(디펜더 카드는 0=inert). fraction/maxHpRef/nextBoundaryIndex
+        // barrage payload params. ⚠ dreamcatcher-content-4 unit 0 — periodSeconds 는
+        // 이제 **카드 bake 도 싣는다**(불꽃 팽이). 예전 주석의 "보스 스폰 경로만 bake
+        // (디펜더 카드는 0=inert)" 는 그 값을 안 실어 보내 생긴 조용한 무발동이었고,
+        // 지금은 <=0 저작이 loud 거절된다. fraction/maxHpRef/nextBoundaryIndex
         // 는 dreamcatcher-kill-and-threshold unit 1 에서 디펜더 last_stand
         // (HealthThreshold×SelfStatBuff)도 bake 한다. Owned writes stay Combat:
         // elapsed/fireCount = BossPeriodicTriggerSystem, nextBoundaryIndex =
@@ -49,6 +55,9 @@ namespace Wassup.Battle.Combat
         public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
         public float duration;        // AreaBarrage 낙하 텔레그래프 초 → SkyFall flightTime
                                       // nightmare-whip-aura — AllyMoveSpeedAura: 펄스당 modifier TTL 초
+                                      // content-4 — SelfOrbitProjectile: 화염구 **지속 초**(수명)
+                                      // content-4 — SelfTileAoe: **낙하 예고 초**(퇴근 운석만 소비.
+                                      //   기존 SelfTileAoe 카드는 전부 0 이라 즉시 착탄 그대로)
 
         // dreamcatcher-new-abilities unit 0 — 온-히트 payload 선택자. bake 시 데이터
         // 계층 DcCcKind/DcStackKind 를 Battle enum 으로 번역 저장(hot path 무번역).

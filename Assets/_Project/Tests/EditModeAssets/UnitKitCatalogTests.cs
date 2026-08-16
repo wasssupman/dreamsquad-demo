@@ -37,5 +37,31 @@ namespace Wassup.Tests.EditMode
                 }
             }
         }
+
+        // on-place-skill-rework unit 6 — 규칙 경로의 «조용히 빈 문안» 안전망.
+        // 라이브 유닛이 실제로 쓰는 조합(OnPlace × payload)이 문안을 갖는지 카탈로그에서
+        // 확인한다 — 합성 SO 로는 능력 참조를 만들 수 없다. (enum 전수 순회 쪽
+        // `EveryOnPlaceEffectKind_HasAClause` 는 합성 픽스처라 코어 lane 에 남아 있다.)
+        [Test]
+        public void RuleDrivenOnPlaceUnits_HaveAClause()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
+                "Assets/_Project/Data/DefenderCatalog.asset");
+            Assert.IsNotNull(catalog);
+            foreach (var unit in catalog.units)
+            {
+                if (unit == null) continue;
+                var ability = unit.GetAbility<UnitSkillAbility>();
+                if (ability?.mechanics == null) continue;
+                bool hasOnPlaceRule = false;
+                foreach (var m in ability.mechanics)
+                    if (m.trigger.kind == DcTriggerKind.OnPlace) hasOnPlaceRule = true;
+                if (!hasOnPlaceRule) continue;
+
+                Assert.That(UnitKitSummary.Build(unit), Does.Contain("배치"),
+                    $"{unit.id}: 배치 규칙이 있는데 문안이 비었다 — OnPlaceRuleClause 에 " +
+                    "그 payload 를 배선하라(조용히 비는 것이 이 테스트가 막는 것이다)");
+            }
+        }
     }
 }

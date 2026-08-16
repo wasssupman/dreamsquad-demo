@@ -48,5 +48,17 @@ namespace Wassup.Data
         // SkyFall 낙하 예고 초. ProjectileData 에 대응 필드가 없는 유일한 값이라
         // 패턴이 소유한다(그 외 탄 파라미터는 barrel 소유 — README 계약 3).
         public float telegraphSec;
+        // on-place-skill-rework unit 1 — 후보 풀을 host 셀 기준 Chebyshev 반경으로 제한.
+        // 0 = 맵 전체(v1 동작). 탄의 성질이 아니라 **후보 선택의 성질**이라 패턴 소유다.
+        public int scopeTileRange;
+        // 한 shot 이 스코프 안 후보 **전원** 에게 1발씩 나간다(1:1 융단폭격). false =
+        // 기존 동작(shot 당 후보 1개 선택). 갈래 수는 발사 시점의 사실이므로 스케줄
+        // (`EmitterRuntime.burstRemaining`)이 아니라 한 발의 전개에서 처리한다.
+        public bool fanOutToAllCandidates;
+        // fan-out 갈래 사이 **착탄** 시차(초). 0 = 동시. 셀을 겨누는 궤적 전용이다 —
+        // 그 궤적만 `flightTime` 을 낙하 예고로 쓴다(엔티티 추적탄은 속도로 날아간다).
+        // 낙하 순서는 row-major 셀 rank 로 고정한다(청크 순서에 의존하면 «누가 먼저 맞나» 가
+        // 프레임마다 달라지고, 시차가 있으면 그게 결과를 바꾼다).
+        public float fanOutStaggerSec;
     }
 }

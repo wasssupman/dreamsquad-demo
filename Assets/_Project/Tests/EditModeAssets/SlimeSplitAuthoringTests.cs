@@ -83,21 +83,24 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(EnemyTier.Normal, Load(MidPath).tier, "분열체는 일반 등급이다");
         }
 
-        // 분열은 보상을 나누지 않는다 — 총량은 엘리트 본체 하나 몫이고 단계를 늘려도 안 변한다.
-        // 반대로 안정도 피해(놓쳤을 때의 대가)는 자식에게 남겨 마릿수만큼 커진다.
+        // 분열은 **각성**을 나누지 않는다 — 총량은 엘리트 본체 하나 몫이고 단계를 늘려도
+        // 안 변한다. 안정도 피해(놓쳤을 때의 대가)는 자식에게 남겨 마릿수만큼 커진다.
+        //
+        // three-minute-kill-race unit 1 — **점수는 이제 마릿수만큼 늘어난다**(결정 A,
+        // 2026-08-16): 1킬 = 1점에 예외가 없어 분열체도 1점이다. 「분열체는 0점」 단언은
+        // 그래서 삭제했다 — 슬라임 편성량은 웨이브 밸런스에서 조정할 문제이지 점수 산식의
+        // 예외가 아니다. 각성 쪽 0 은 그대로다(처치 7회짜리 각성 농장 방지).
         [Test]
-        public void SplitOffspring_GiveNoRewards_ButStillHurtOnLeak()
+        public void SplitOffspring_GiveNoAwakening_ButStillHurtOnLeak()
         {
             var parent = Load(ParentPath);
             Assert.Greater(parent.awakeningReward, 0, "본체가 각성을 낸다");
-            Assert.Greater(parent.killScore, 0, "본체가 점수를 낸다");
 
             foreach (string path in new[] { MidPath, ChildPath })
             {
                 var u = Load(path);
                 Assert.AreEqual(0, u.awakeningReward,
                     $"{u.displayName}: 분열체가 각성을 주면 처치 7회짜리 각성 농장이 된다(보스보다 많아진다)");
-                Assert.AreEqual(0, u.killScore, $"{u.displayName}: 점수도 같은 이유로 0");
                 Assert.GreaterOrEqual(u.stabilityDamage, 1,
                     $"{u.displayName}: 유출 대가는 0 이면 안 된다 — 분열이 «놓쳐도 무해» 가 된다");
             }
