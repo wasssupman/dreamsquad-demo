@@ -58,8 +58,10 @@ namespace Wassup.Tests.PlayMode
             int slotsBefore = hadSlotsBefore ? em.GetBuffer<DcTriggerSlot>(defender).Length : 0;
 
             var card = MakeCompositeLethalCard();
+            // 문구 정본은 BattleBridge.Dreamcatcher.cs 의 DuplicateState 가드 —
+            // «already has {payload.kind} state» 형식 (fast-lane unit 2 에서 동기).
             LogAssert.Expect(LogType.Warning,
-                "[BattleBridge] ApplyDreamcatcherCardToUnit('calamity_test'): target already has LethalTimer — card not attached.");
+                "[BattleBridge] ApplyDreamcatcherCardToUnit('calamity_test'): target already has SelfBuffLethal state — card not attached.");
             int handle = bridge.ApplyDreamcatcherCardToUnit(defender, card);
 
             Assert.AreEqual(-1, handle);

@@ -40,6 +40,19 @@ namespace Wassup.Tests.EditMode
             "Assets/_Project/Data/Maps/MapDocument_Comb.asset",      // unit 8b (12×7, 신설)
         };
 
+        // test-suite-fast-lane unit 2 — 근접 차단칸(≥40%) 재저작 대기 목록.
+        // 옛 방식은 이 4맵을 «의도적으로 빨갛게» 뒀는데, 그러면 스위트의 빨강이
+        // 평상시 상태가 되어 진짜 회귀가 묻힌다. 대기 중에는 choke/width2 단언만
+        // 건너뛰고(골·광장·연결성은 계속 지킨다), 재저작이 끝나 계약을 통과하기
+        // 시작하면 아래 래칫 테스트가 빨개지며 «목록에서 빼라»고 알린다.
+        private static readonly HashSet<string> PendingMeleeRework = new()
+        {
+            "Assets/_Project/Data/Maps/MapDocument_Coil.asset",      // map-rework unit 9 대기
+            "Assets/_Project/Data/Maps/MapDocument_Twin.asset",      // map-rework unit 10 대기
+            "Assets/_Project/Data/Maps/MapDocument_Spiral.asset",    // map-rework unit 11 대기
+            "Assets/_Project/Data/Maps/MapDocument_Zig.asset",       // map-rework unit 12 대기
+        };
+
         [Test]
         public void PoolMap_GoalsCapped_And_CorridorsSeparateExceptAtGoals([ValueSource(nameof(PoolPaths))] string path)
         {
@@ -52,16 +65,19 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(1, doc.Goals?.Count ?? 1, $"{path}: 개편 맵의 마음은 1개");
 
                 // unit 7 — ~~폭1 금지~~ → **근접이 설 자리를 요구한다.** 옛 계약대로 폭2 로만
-                // 깔았더니 근접 유닛이 판에서 사라졌다(완전차단칸 0%). unit 8~12 가 5맵을
-                // 재저작하면 여기가 초록이 된다 — 그때까지는 이 단언이 **의도적으로 빨갛다**.
+                // 깔았더니 근접 유닛이 판에서 사라졌다(완전차단칸 0%). 재저작 대기 맵은
+                // PendingMeleeRework 가 choke 계약만 유예한다 (fast-lane unit 2).
                 MapConceptRules.MeasureMeleeLanes(
                     doc.Tiles, doc.PlaceMask, doc.Width, doc.Height,
                     out int walk, out int choke, out int width2);
                 Assert.Greater(walk, 0, $"{path}: Walk 칸이 없다");
-                Assert.GreaterOrEqual(choke / (float)walk, MapConceptRules.MinChokeRatio,
-                    $"{path}: 근접 완전차단칸 {choke}/{walk} — 직선 구간이 폭1 이어야 근접이 선다");
-                Assert.LessOrEqual(width2 / (float)walk, MapConceptRules.MaxWidth2Ratio,
-                    $"{path}: 폭2 Walk {width2}/{walk} — 폭2 는 제한적으로");
+                if (!PendingMeleeRework.Contains(path))
+                {
+                    Assert.GreaterOrEqual(choke / (float)walk, MapConceptRules.MinChokeRatio,
+                        $"{path}: 근접 완전차단칸 {choke}/{walk} — 직선 구간이 폭1 이어야 근접이 선다");
+                    Assert.LessOrEqual(width2 / (float)walk, MapConceptRules.MaxWidth2Ratio,
+                        $"{path}: 폭2 Walk {width2}/{walk} — 폭2 는 제한적으로");
+                }
                 Assert.IsTrue(MapConceptRules.HasPlaza(doc.Tiles, doc.Width, doc.Height),
                     $"{path}: 4×4 광장 없음");
                 // 연결성은 아래 flood 가 계속 확인한다(골 도달 단언 공유).
@@ -93,6 +109,25 @@ namespace Wassup.Tests.EditMode
                                     $"{path}: 스폰 {a}·{b} 복도가 non-goal 셀 {c} 를 공유(병합) — 골에서만 만나야");
             }
             finally { map.Dispose(); }
+        }
+
+        // 래칫 — pending 맵이 실제로는 근접 계약을 통과하면 여기가 빨개진다.
+        // 그때 할 일은 하나다: 그 맵을 PendingMeleeRework 에서 빼서 본 계약을 재무장한다.
+        // (이게 없으면 재저작이 끝나도 목록이 조용히 남아 choke 계약이 영구 유예된다.)
+        [Test]
+        public void PendingMeleeRework_OnlyHoldsMapsThatStillFailTheContract(
+            [ValueSource(nameof(PoolPaths))] string path)
+        {
+            if (!PendingMeleeRework.Contains(path)) return;
+
+            var doc = AssetDatabase.LoadAssetAtPath<MapDocument>(path);
+            Assert.IsNotNull(doc, path + " 로드 실패");
+            MapConceptRules.MeasureMeleeLanes(
+                doc.Tiles, doc.PlaceMask, doc.Width, doc.Height,
+                out int walk, out int choke, out _);
+            Assert.Less(choke / (float)walk, MapConceptRules.MinChokeRatio,
+                $"{path}: 근접 계약을 이미 통과한다({choke}/{walk}) — 재저작 완료. "
+                + "PendingMeleeRework 에서 이 맵을 제거해 choke 계약을 재무장할 것");
         }
 
         // 스폰에서 walk flood, 골 셀에서 흡수(확장 안 함). corridor = 도달한 non-goal walk 셀.

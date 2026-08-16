@@ -16,6 +16,9 @@ namespace Wassup.Tests.PlayMode
         private const string BaseUrl = "https://dev-api-somnia.cashroyale.games";
         private const float StepTimeoutSec = 20f;
 
+        // fast-lane unit 2 — dev 서버 상태(계정 중복·응답 스키마 변동)에 좌우되는
+        // 환경 의존 테스트라 기본 실행에서 제외한다. Test Runner 에서 직접 선택하면 돈다.
+        [Explicit("live dev-server dependent — run by explicit selection only")]
         [UnityTest]
         public IEnumerator AuthChain_SignUp_SignIn_Refresh_KeepsIdentity()
         {

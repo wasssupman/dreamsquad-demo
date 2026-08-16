@@ -23,12 +23,12 @@
 
 ## 작업 단위
 
-| # | 작업 구분 | 문서 | 목적 |
-|---|---|---|---|
-| 0 | asmdef 분리 | `0_assets_asmdef_split.md` | 실제 SO 로드 테스트 ~23파일을 `Wassup.Tests.EditMode.Assets` 로 이동(.meta 동반) → 코어 lane 확보 |
-| 1 | de-pin | `1_depin_balance_literals.md` | 시트 필드 리터럴 4파일 + 개수 pin 3곳을 `WaveKillBudgetPinTests` 패턴으로 전환 |
-| 2 | 신호 청산 | `2_red_signal_cleanup.md` | EditMode 상시 빨강 5건 + PlayMode 사전 실패 13건 triage (기대값 갱신 / Ignore+사유 / 환경 의존 격리) |
-| 3 | 절차 문서화 | `3_test_procedure_doc.md` | `docs/reference/test-procedure.md` 신설 + CLAUDE.md 참조표 1줄 |
+| # | 작업 구분 | 문서 | 목적 | 상태 |
+|---|---|---|---|---|
+| 0 | asmdef 분리 | `0_assets_asmdef_split.md` | 실제 SO 로드 테스트를 `Wassup.Tests.EditMode.Assets` 로 분리(통이동 18 + 혼합 8은 메서드 추출) → 코어 lane 확보 | 완료 `dd3642a8` |
+| 1 | de-pin | `1_depin_balance_literals.md` | 시트 DTO 필드 리터럴 4파일 + 개수 pin 을 부호·구조 단언으로 전환 | 완료 `eff16758` |
+| 2 | 신호 청산 | `2_red_signal_cleanup.md` | EditMode 상시 빨강(MultiGoal 4→pending 목록+래칫) + PlayMode 사전 실패 재측정·triage | 진행 중 |
+| 3 | 절차 문서화 | `3_test_procedure_doc.md` | `docs/reference/test-procedure.md` 신설 + CLAUDE.md 참조표 1줄 | 대기 |
 
 ## 공통 계약
 
