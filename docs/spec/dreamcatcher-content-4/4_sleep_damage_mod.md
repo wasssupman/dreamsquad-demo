@@ -89,3 +89,7 @@ Units   : × dmgTakenMul  →  실드 흡수  →  HP 차감      (DamageApplica
 - **무회귀**: `shatter_hymn`(DamageVsCc) 기존 PlayMode green. 둘 다 걸었을 때 중첩(×2 ×n)이
   나오는 것을 케이스 1건으로 남긴다.
 - 컴파일까지만 확인하고 **커밋하지 않는다**(README 계약 P3). 테스트 실행은 오케스트레이터가 한다.
+
+---
+
+확인 완료 2026-08-16 (사용자 Play 확인) — 커밋 `71da7335`

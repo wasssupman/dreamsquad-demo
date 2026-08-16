@@ -96,3 +96,7 @@ PathHit 투사체에 `PathHitRecord` 버퍼가 붙는 것은 기존 브리지 �
 `ProjectileHitSystem.cs` 의 **PathHit arm 과 그 lookup 선언 줄**만 만진다. 같은 파일의
 SingleSplash/TileAoe/bounce arm 은 건드리지 않는다 — 회귀 표면이 그쪽으로 번지면 무회귀 증명이
 이 unit 의 범위를 넘어간다.
+
+---
+
+확인 완료 2026-08-16 (사용자 Play 확인) — 커밋 `e87e563a` (+ 리뷰 반영 `2ef68650`)

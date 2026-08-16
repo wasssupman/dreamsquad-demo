@@ -1,11 +1,16 @@
 # dreamcatcher-content-4 — 신규 드림캐쳐 3장 (궤도 화염구 · 수면 특효 · 퇴근 운석)
 
-상태: **units 0~5 구현·커밋 완료 2026-08-16** (`afbda28d` · `fa3a5eff` · `e87e563a` · `71da7335` · `a630d32e`,
-업스트림 머지 `49554c6d`). 투트랙 리뷰 Track B(ECS) **APPROVE** — MEDIUM 4건 반영 완료.
-**사용자 Play 육안 확인 대기** (불꽃 팽이가 실제로 도는 그림 · 반복 타격 계측 · 30fps 현 함정).
+상태: **완료 2026-08-16** — units 0~7 구현·커밋 + **사용자 Play 확인 완료**.
+인계는 [`6_handoff_summary.md`](6_handoff_summary.md).
 
-검증: EditMode **2419/2419 실행**(잔여 실패 5건은 이 작업과 무관한 사전 실패 — 맵 문서 4 · Whirlpot 1) ·
-PlayMode 이 feature 분 **12/12**(퇴근 교차 무발동 3 + 수면 배율 2 포함, 포커스 on/off 2회 연속).
+투트랙 리뷰: Track B(ECS) **APPROVE** · Track A(품질) REQUEST CHANGES → 지적 반영 완료(`2ef68650`).
+Play 확인에서 나온 3건(차폐 소팅 · 부착 즉시 발동 · 크기/지속)은 unit 7(`a36e784e`).
+
+검증: EditMode **2446 전량**(잔여 실패 5건은 이 작업과 무관한 사전 실패 — 맵 문서 4 · Whirlpot 1) ·
+PlayMode 이 feature 분 **12/12**(퇴근 교차 무발동 3 + 수면 배율 2 포함, 포커스 on/off 2회 연속) ·
+궤도 × 재타격 **end-to-end 3건**.
+
+**남은 것**: 시트 push 1회(카드 3장, 계약 13) · 원격 푸시(사용자 승인 대기).
 
 ## 상위 목표
 
@@ -34,7 +39,7 @@ PlayMode 이 feature 분 **12/12**(퇴근 교차 무발동 3 + 수면 배율 2 �
 | `3_flame_spinner_card.md` | 레인 A | 카드 | 주기 트리거 arm(화염구 발사) + 카드 에셋 |
 | `4_sleep_damage_mod.md` | 레인 B | 카드 | 수면 대상 피해 배율 2지점 적용 + 카드 에셋 |
 | `5_retire_meteor_card.md` | 레인 C | 카드 | 퇴근 경로 슬롯 직독 → 운석 cast + 카드 에셋 |
-| `6_handoff_summary.md` | 오케스트레이터 | (종료 시) | 인계 요약 |
+| `6_handoff_summary.md` | 오케스트레이터 | 인계 | 커밋·검증·되돌리면 안 되는 것 |
 
 ## 병렬 실행 구조 (2026-08-16 사용자 결정)
 

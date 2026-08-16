@@ -81,3 +81,7 @@ public static float3 Position(float3 center, float radius, float angularSpeed, f
 - 기존 궤적 5종 EditMode 무회귀.
 - **컴파일만 확인하고 커밋하지 않는다**(README 계약 P3). Play 검증은 unit 3 에서 화염구가
   실제로 날아갈 때 한다.
+
+---
+
+확인 완료 2026-08-16 (사용자 Play 확인) — 커밋 `fa3a5eff`
