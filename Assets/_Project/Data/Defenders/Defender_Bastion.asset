@@ -51,6 +51,9 @@ MonoBehaviour:
   onPlaceTickInterval: 0
   cost: 5
   placementCooldown: 4
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 2
   targetFactions: 98
@@ -81,7 +84,7 @@ MonoBehaviour:
   slotColors: []
   dragAnimation: Attack1
   deployAnimation: Hit
-  placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
+  placementVfxPrefab: {fileID: 6530448752386012335, guid: 70cf5e20a31bb114192f0654eb83960c, type: 3}
   attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
   deployCutsceneFrames: []
   deployCutsceneFps: 24
