@@ -8,14 +8,15 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // ⚠ 진단용 임시 재현 — Whirlpot 이 「멈추는데 데미지를 안 넣는다」는 보고를 경계별로 계측한다.
+    // 광역 근접 적의 sim 거동 가드. 저작값 pin 이 아니다(그건 WhirlpotAuthoringTests 소유).
     //
-    // 기존 AggroAoeWidthTests 는 EnemyAiState 를 **안 붙인다.** 그러면 AttackSystem 의
-    // `aiStateLookup.HasComponent` 가 false 라 stateAllowsFire 가 무조건 true 가 되고,
-    // FSM 게이트(AttackSystem.cs:933)를 한 번도 통과시키지 않는다. 라이브 적은 그 컴포넌트를
-    // 가지므로 그 차이를 여기서 재현한다.
+    // ★존재 이유 — 기존 `AggroAoeWidthTests` 는 `EnemyAiState` 를 **안 붙인다.** 그러면
+    // AttackSystem 의 `aiStateLookup.HasComponent` 가 false 라 `stateAllowsFire` 가 무조건
+    // true 가 되고, 「적은 Engaging|Standoff 에서만 발사」 게이트(AttackSystem.cs:933)를
+    // **한 번도 통과시키지 않는다.** 라이브 적은 그 컴포넌트를 가지므로 그 차이를 여기서 메운다.
     //
-    // 경계 3개를 각각 단언한다: ① FSM 이 Engaging 인가 ② 발사가 성사되는가 ③ 광역이 퍼지는가
+    // 단언 4축: ① FSM 이 Engaging 에 닿는가 ② 발사가 성사되는가 ③ 시전자/아군을 제외하는가
+    //           ④ 광역이 반경 경계까지 퍼지고 밖은 안 닿는가
     public class WhirlpotEngageRepro
     {
         private World _world;
@@ -43,9 +44,17 @@ namespace Wassup.Tests.EditMode
             _world.GetExistingSystem<AttackSystem>().Update(_world.Unmanaged);
         }
 
-        // Enemy_Whirlpot.asset 의 저작값을 그대로 옮긴다. hitDelaySec 만 인자다 —
-        // 로스터 23종 중 Whirlpot 만 0 이고 나머지 22종이 0.25~0.3 이라, 그 축을 분리해서 본다.
-        private Entity MakeWhirlpot(float3 pos, float hitDelaySec)
+        // ⚠ 이 값들은 에셋의 **사본이 아니라 대표값**이다. 초판 주석은 「Enemy_Whirlpot.asset 의
+        // 저작값을 그대로 옮긴다」였는데, 밸런스를 한 번 조정하자마자 어긋났다(에셋 8/0.3 vs
+        // 여기 5/0.6). 이 어셈블리는 AssetDatabase 를 안 쓰므로 에셋을 읽어 동기화할 수도 없다.
+        //
+        // 그래서 **역할을 갈랐다**: 저작값 pin 은 `WhirlpotAuthoringTests`(EditModeAssets) 소유이고,
+        // 이 파일은 «광역 근접 적의 sim 거동»(FSM 발사 게이트 · 자기/아군 제외 · 반경 확산)만 본다.
+        // 그 단언들은 구체적 수치와 무관하다 — 단 `Range` 만은 예외라 상수로 묶는다(반경 경계
+        // 테스트의 배치 좌표가 이 값에 매여 있어서, 둘이 따로 놀면 조용히 무의미해진다).
+        private const float Range = 2f;
+
+        private Entity MakeWhirlpot(float3 pos)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
@@ -55,12 +64,14 @@ namespace Wassup.Tests.EditMode
             _em.AddComponent<AttackUnitTag>(e);
             _em.AddComponentData(e, new AttackState
             {
-                range = 2f,
+                range = Range,
                 cooldownDuration = 0.6f,
                 cooldownRemaining = 0f,
                 attackTargetCount = 10,
                 targetMask = EnemyTargetDefaults.Resolve(0),   // targetFactions 0 = 미저작 → 기본
-                hitDelaySec = hitDelaySec,
+                // 0 = 즉시 RESOLVE. 수동 Update 월드는 DeltaTime 이 0 이라 hitDelay 를 tick 할 수
+                // 없으므로 이 어셈블리에서 0 이외의 값은 관측 불가다(그 축은 PlayMode 소관).
+                hitDelaySec = 0f,
             });
             var ob = _em.AddBuffer<AttackOutputElement>(e);
             ob.Add(new AttackOutputElement
@@ -100,7 +111,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Boundary1_FsmReachesEngaging_WhenDefenderAdjacent()
         {
-            var whirlpot = MakeWhirlpot(float3.zero, hitDelaySec: 0f);
+            var whirlpot = MakeWhirlpot(float3.zero);
             MakeDefender(new float3(1f, 0f, 0f));
 
             Tick();
@@ -113,7 +124,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Boundary2_AdjacentDefender_TakesDamage()
         {
-            MakeWhirlpot(float3.zero, hitDelaySec: 0f);
+            MakeWhirlpot(float3.zero);
             var defender = MakeDefender(new float3(1f, 0f, 0f));
 
             Tick();
@@ -125,19 +136,54 @@ namespace Wassup.Tests.EditMode
         // ⚠ hitDelaySec > 0 대조군은 여기서 만들 수 없다 — 수동으로 Update 하는 월드는
         // DeltaTime 이 0 이라 hitDelayRemaining 이 영영 줄지 않는다. 그 축은 PlayMode 소관.
 
+        // ── 자기 피해 ── 「셀프 데미지를 입는 느낌」 보고(2026-08-16)를 그대로 단언한다.
+        // 방어유닛은 AttackState 가 없어 반격할 수 없으므로, 팽이 HP 가 줄면 출처는 자기 공격뿐이다.
+        [Test]
+        public void Whirl_DoesNotDamageItsOwnCaster()
+        {
+            var whirlpot = MakeWhirlpot(float3.zero);
+            MakeDefender(new float3(1f, 0f, 0f));
+            MakeDefender(new float3(0f, 0f, 1f));
+            float hp0 = _em.GetComponentData<Health>(whirlpot).value;
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(whirlpot).Length,
+                "★팽이 자신의 IncomingDamage 에 항목이 들어갔다 = 회오리가 시전자를 때린다.");
+            Assert.AreEqual(hp0, _em.GetComponentData<Health>(whirlpot).value, 0.001f,
+                "★반격할 수 없는 방어유닛만 있는데 팽이 HP 가 줄었다.");
+        }
+
+        // 동료 적도 때리지 않는다 — 광역의 진영 술어. 「셀프」로 보이는 또 다른 후보다.
+        [Test]
+        public void Whirl_DoesNotDamageFellowEnemies()
+        {
+            MakeWhirlpot(float3.zero);
+            var ally = MakeWhirlpot(new float3(1f, 0f, 0f));
+            MakeDefender(new float3(0f, 0f, 1f));   // 발사 조건(사거리 안 방어유닛)
+            float allyHp0 = _em.GetComponentData<Health>(ally).value;
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(allyHp0, _em.GetComponentData<Health>(ally).value, 0.001f,
+                "★회오리가 같은 진영 적을 때린다 — targetMask 가 무너진 것이다.");
+        }
+
         // ── 경계 ③ 광역 ── 회오리가 반경 안 전원에 퍼지는가.
         [Test]
         public void Boundary3_WhirlSpreadsToEveryoneInRadius()
         {
-            MakeWhirlpot(float3.zero, hitDelaySec: 0f);
+            MakeWhirlpot(float3.zero);
             var near = MakeDefender(new float3(1f, 0f, 0f));
-            var diagonal = MakeDefender(new float3(2f, 0f, 2f));   // Chebyshev 2 = 반경 경계
-            var outside = MakeDefender(new float3(4f, 0f, 0f));
+            // 좌표를 Range 에서 유도한다 — 리터럴로 두면 반경을 바꿨을 때 「경계」와 「밖」이
+            // 조용히 둘 다 안쪽이 되어 테스트가 통과한 채 의미를 잃는다.
+            var boundary = MakeDefender(new float3(Range, 0f, Range));       // Chebyshev == Range
+            var outside = MakeDefender(new float3(Range + 2f, 0f, 0f));      // Chebyshev > Range
 
             Tick();
 
             Assert.Greater(Hits(near), 0, "최근접이 primary 다.");
-            Assert.Greater(Hits(diagonal), 0, "반경 2 대각도 회오리 안이다(Chebyshev).");
+            Assert.Greater(Hits(boundary), 0, $"반경 {Range} 대각도 회오리 안이다(Chebyshev).");
             Assert.AreEqual(0, Hits(outside), "반경 밖은 안 맞는다.");
         }
     }
