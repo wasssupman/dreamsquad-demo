@@ -84,5 +84,14 @@ flightTime = telegraph + cellSlot*stagger + (j==0 ? 0 : stagger*(1 - 1/(j+1)))
 - [ ] EditMode `ProjectileSystemTests` · `ProjectileEmitterIntegrationTests` ·
       `PathHitRehitCooldownTests` 등 기존 투사체 핀 green (임자 게이트가 target 없는 기존
       TileAoe 를 건드리지 않았다는 증거)
-- [ ] Play 육안: 적이 뭉친 칸에 미사일이 **겹치지 않고 적 수만큼** 떨어진다
+- [x] Play 육안: 적이 뭉친 칸에 미사일이 **겹치지 않고 적 수만큼** 떨어진다 (사용자 확인 2026-08-16)
 - [ ] Play 육안: 착탄 additive 이펙트가 과하지 않은지 — 발수가 늘면 그만큼 늘어난다
+
+### 실측 스냅샷 (라이브 배틀, 2026-08-16)
+
+배치된 캐논 엔티티: `trig[1] OnPlace->EmitProjectilePattern(patIdx=0)` · `PatternSlot=1`.
+bake 체인이 정상이라는 확인이다.
+
+⚠ 스냅샷을 배치 **직후가 아닌 시점**에 찍으면 `Emitter=0 · 캐리어=0 · 투사체=0` 으로 보인다 —
+OnPlace 버스트는 한 번에 끝나고 캐리어는 같은 프레임에 드레인되기 때문이다. 이 값들로
+「안 쏜다」를 판정하지 말 것. 발사 여부는 **배치 프레임**에서만 관측된다.
