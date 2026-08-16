@@ -298,5 +298,90 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, DamageCount(enemy), "마지막 스윕은 정상 해결하고 나서 사라진다");
             Assert.IsFalse(_em.Exists(proj), "수명이 끝나면 재타격 탄도 소멸한다");
         }
+
+        // ── ③ 궤도 × 재타격 end-to-end (content-4 리뷰 M5) ──────────────────────
+        //
+        // 위 케이스들은 전부 DirectionalLinear 픽스처 + `AdvanceProjectileClock` 수동 시계다.
+        // 그래서 **이 feature 의 헤드라인 동작** — 「궤도 arm 이 elapsed 를 굴려 재타격 창이
+        // 열린다」 — 를 지나가는 테스트가 하나도 없었다. 그 연결이 끊기면 화염구는 바퀴당
+        // 1타로 **조용히 퇴화**하고 EditMode 는 전부 초록이다. 여기서 수동 시계를 쓰지 않는
+        // 것이 이 케이스의 존재 이유다.
+        // pierce 기본 1 = 탄 SO 의 pierceCount 를 드레인이 싣는 프로덕션 모양. 재타격이
+        // 정상 동작하는 한 이 값은 읽히지 않는다(계약 3) — 비정상 경로의 상한일 뿐이다.
+        private Entity CreateOrbiter(float radius, float angularSpeed, float lifetime,
+                                     float rehitCooldownSec, float hitThreshold = 0.55f,
+                                     int pierce = 1)
+        {
+            var start = Orbit.Position(float3.zero, radius, angularSpeed, 0f);
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, LocalTransform.FromPosition(start));
+            _em.AddComponent<ProjectileTag>(e);
+            _em.AddComponentData(e, new ProjectileState
+            {
+                movement = MovementKind.OrbitAroundPoint,
+                payload = PayloadKind.PathHit,
+                origin = float3.zero,          // 궤도 중심
+                maxDistance = radius,          // 궤도 반경
+                speed = angularSpeed,          // 각속도(rad/s)
+                flightTime = lifetime,         // 지속 = 유일한 종료 조건
+                prevPos = start,
+                damage = 20f,
+                hitThreshold = hitThreshold,
+                pierceRemaining = pierce,
+                rehitCooldownSec = rehitCooldownSec,
+            });
+            _em.AddBuffer<PathHitRecord>(e);
+            return e;
+        }
+
+        [Test]
+        public void Orbit_DrivesItsOwnClock_SoRehitWindowActuallyOpens()
+        {
+            // 링 위(반경 1, 위상 0)에 적을 둔다 — 구슬이 한 바퀴 돌 때마다 스친다.
+            var enemy = CreateEnemy(1f);
+            // ω = 2π rad/s → 1초에 한 바퀴. 쿨타임 0.5초 < 1바퀴라 «바퀴마다 1타» 가 상한이다.
+            var proj = CreateOrbiter(radius: 1f, angularSpeed: math.PI * 2f,
+                                     lifetime: 3.05f, rehitCooldownSec: 0.5f);
+
+            for (int i = 0; i < 30; i++) Tick(0.1f);   // 3초
+
+            // 수동 시계 없이 **이동 arm 이 굴린 elapsed** 로 창이 열려야 나오는 수다.
+            Assert.GreaterOrEqual(DamageCount(enemy), 3,
+                "3초/3바퀴면 최소 바퀴당 1타는 들어간다 — 1타뿐이면 궤도가 elapsed 를 안 굴린 것이다");
+            Assert.LessOrEqual(DamageCount(enemy), 6,
+                "쿨타임이 창을 막지 못하면 프레임마다 맞아 30타가 된다");
+        }
+
+        [Test]
+        public void Orbit_LifetimeIsTheOnlyTerminator_PierceNeverConsumed()
+        {
+            var enemy = CreateEnemy(1f);
+            var proj = CreateOrbiter(radius: 1f, angularSpeed: math.PI * 2f,
+                                     lifetime: 1.05f, rehitCooldownSec: 0.5f);
+
+            for (int i = 0; i < 10; i++) Tick(0.1f);   // 1초 — 아직 수명 안 끝남
+            Assert.IsTrue(_em.Exists(proj), "관통 예산을 소모하지 않으므로 스쳐도 살아 있다");
+            Assert.AreEqual(1, _em.GetComponentData<ProjectileState>(proj).pierceRemaining,
+                "계약 3 — 재타격 레짐은 예산을 읽지도 쓰지도 않는다(1 로 태워도 안 깎인다)");
+
+            Tick(0.1f);                                // 수명 초과
+            Assert.IsFalse(_em.Exists(proj), "유일한 종료 조건은 수명이다");
+        }
+
+        // 리뷰 M1 — 기록 버퍼가 없으면 재타격을 켜지 않는다(fail-open 차단).
+        [Test]
+        public void Rehit_WithoutRecordBuffer_DegradesToOncePerVictim()
+        {
+            var enemy = CreateEnemy(1f);
+            var proj = CreateOrbiter(radius: 1f, angularSpeed: math.PI * 2f,
+                                     lifetime: 3.05f, rehitCooldownSec: 0.5f);
+            _em.RemoveComponent<PathHitRecord>(proj);   // 기록 없는 탄(프로덕션엔 없는 상태)
+
+            for (int i = 0; i < 30; i++) Tick(0.1f);
+
+            Assert.AreEqual(1, DamageCount(enemy),
+                "기록이 없으면 «적당 1회» 로 안전 퇴화한다 — 매 프레임 타격(fail-open)이 아니다");
+            Assert.IsFalse(_em.Exists(proj), "예산을 다 쓴 탄은 사라진다 — 불멸 탄이 남지 않는다");
+        }
     }
 }

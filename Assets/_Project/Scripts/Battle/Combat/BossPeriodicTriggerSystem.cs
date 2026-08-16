@@ -13,8 +13,12 @@ namespace Wassup.Battle.Combat
     // nightmare-catcher unit 2 — PeriodicTimer × AreaBarrage arm. Gated on
     // DcTriggerSlot buffer presence only (faction-neutral by construction —
     // no BossTag/DefenderUnitTag in the gate, spec unit 4): any slot carrier
-    // with a PeriodicTimer slot ticks here; defender card slots are skipped by
-    // trigger-kind dispatch (their periodSeconds is 0 anyway — 계약 9 guard).
+    // with a PeriodicTimer slot ticks here.
+    //
+    // ⚠ dreamcatcher-content-4 unit 0 — **방어유닛 카드 슬롯도 여기서 돈다.** 예전 주석은
+    // "디펜더 카드는 periodSeconds 가 0 이라 건너뛴다" 였는데, 그건 카드 bake 가 그 값을
+    // 안 실어 보내서 생긴 **우연**이었다(조용한 무발동). 이제 bake 가 싣고 <=0 은 loud
+    // 거절한다 — 이 시스템의 진영 중립성이 «설계» 에서 «실제» 가 된 지점이다.
     //
     // Fire = one SkyFall×TileAoe carrier request into the existing projectile
     // drain (dc-trigger contract 6: the slot owner's own attack may stage a
@@ -427,6 +431,17 @@ namespace Wassup.Battle.Combat
                                     owner = entity,             // 위협 귀속
                                     // targetFaction 은 싣지 않는다 — PathHit 의 후보 풀은
                                     // AttackUnitTag 하드코딩이라 이 페이로드에 진영 축이 없다.
+                                    //
+                                    // ⚠ **통행 층은 host 사양을 따른다**(ECS 리뷰 M2). 안 실으면
+                                    // 0 = 무제한이라(`PlacementLayers.CanTarget` 이 0 을 무조건
+                                    // 통과시킨다) **지상만 때리는 유닛에 이 카드를 붙이면 그 유닛이
+                                    // 못 때리는 비행 적을 화염구는 때린다** — 카드가 유닛의 근본
+                                    // 제약을 우회하는 뒷문이 된다. 방어유닛 발 투사체가 전부
+                                    // AttackState.targetTraversalLayers 를 싣는 것과 같은 규약.
+                                    targetTraversalLayers =
+                                        SystemAPI.HasComponent<AttackState>(entity)
+                                            ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                            : (byte)0,
                                 });
                                 ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
                             }

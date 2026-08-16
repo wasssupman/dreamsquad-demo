@@ -67,6 +67,16 @@ namespace Wassup.Battle.Combat.Projectile
         public float3 control1;
         public float3 control2;
 
+        // ── Orbit trajectory (MovementKind.OrbitAroundPoint, content-4) ───────
+        // 전용 필드 0 — 위/아래 슬롯을 빌려 쓴다. 빌린 의미를 여기 모아 둔다:
+        //   origin      = 궤도 **중심**(발사 시점 고정, 타겟 엔티티 무참조)
+        //   maxDistance = 궤도 **반경**(월드) ← DirectionalLinear 의 사거리 슬롯
+        //   speed       = **각속도**(rad/s, 음수 = 역회전) ← 월드 속도가 아니다.
+        //                 발사 arm 이 «탄 SO 선속도 ÷ 반경» 으로 변환해 보낸다
+        //   flightTime  = 지속 초 · elapsed = 누적 (도착 = 수명 종료)
+        //   prevPos     = 직전 위치(PathHit 스윕) · direction = 접선(front-most 정렬)
+        //   hitThreshold= **피격 반경** — 궤도 반경과 다른 축이다(굵기 vs 넓이)
+
         // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
         // Extra hold at the cell after travel completes (elapsed >= flightTime)
         // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no

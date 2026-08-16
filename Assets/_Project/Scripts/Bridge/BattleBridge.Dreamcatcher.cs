@@ -570,6 +570,16 @@ namespace Wassup.Bridge
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
                 {
+                    // 리뷰 M3 — **트리거 축 가드**. 발동 arm 은 BossPeriodicTriggerSystem 하나뿐이라
+                    // AttackN/HealthThreshold 로 저작하면 슬롯은 붙고 발동마다 각 시스템의
+                    // "unhandled payload kind" 경고만 뜨면서 카드는 "부착됨"으로 집계된다.
+                    // 바로 위 OnRetire 가드가 정확히 같은 이유로 반대 방향을 막고 있다 —
+                    // 한쪽만 비워두면 저작 foot-gun 이 남는다.
+                    if (m.trigger.kind != Wassup.Data.DcTriggerKind.PeriodicTimer)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile 은 PeriodicTimer 만 배선돼 있다 (현재 trigger={m.trigger.kind}) — skipped.");
+                        continue;
+                    }
                     // dreamcatcher-content-4 unit 0 — 궤도 화염구. arm(BossPeriodicTriggerSystem)
                     // 은 ISystem 이라 SO 를 못 읽는다 → **탄 SO 의 선속도·피격 반경을 여기서
                     // 구워야 한다.** 셋(speed/hitThreshold/duration) 중 하나라도 빠지면 각각

@@ -411,7 +411,6 @@ namespace Wassup.Battle.Combat.Projectile
                         // 프레임당 한 명으로 잘려, 「수명이 유일한 종료 조건」이 거짓이 된다.
                         // 0 = 기존 방향탄(샷건너·머신거너) 그대로.
                         float rehitCooldown = projectile.ValueRO.rehitCooldownSec;
-                        bool rehits = rehitCooldown > 0f;
                         // 시계는 투사체 자기 시계(elapsed) — 이동 arm 이 굴린다. 궤도가 굴리고
                         // DirectionalLinear 는 굴리지 않으므로, 방향탄에 이 값을 켜면 첫 타 뒤
                         // 창이 영영 안 열려 **기존 1회 동작으로 안전하게 퇴화**한다(오작동 아님).
@@ -422,6 +421,13 @@ namespace Wassup.Battle.Combat.Projectile
                         // ECB append 시절엔 그런 탄이 **플레이백을 통째로 끊어** 뒤따르는
                         // SetComponent/DestroyEntity 까지 날렸다(직접 쓰기의 부수 효과).
                         bool hasRecords = pathHitRecordLookup.HasBuffer(entity);
+                        // ⚠ **기록 없이는 재타격을 켜지 않는다**(ECS 리뷰 M1). 재타격 레짐에서
+                        // 기록은 «장식» 이 아니라 **유일한 방어선**이다 — 관통 예산도 안 깎으므로,
+                        // 버퍼가 없으면 스윕 안의 적 전원을 **프레임마다** 때린다(60fps·3초면
+                        // 의도의 ~30배). 지금은 PathHit 스폰 seam 이 하나뿐이고 거기서 무조건
+                        // 버퍼를 붙여 도달 불가지만, 조용한 fail-open 을 남겨두지 않는다.
+                        // 이 한 줄로 버퍼 없는 탄은 «적당 1회» 로 안전 퇴화한다.
+                        bool rehits = rehitCooldown > 0f && hasRecords;
 
                         // 방향탄 bounce — 관통을 다 쓴 지점(마지막 victim)에서 튕긴다.
                         int lastVictimIdx = -1;
