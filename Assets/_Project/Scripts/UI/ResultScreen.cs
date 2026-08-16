@@ -119,21 +119,24 @@ namespace Wassup.UI
 
             if (heroScoreLabel != null)
             {
-                // 총점 = 처치 점수. 서버에 올라간 수와 같은 값이다(가공 없음 — unit 6).
-                heroScoreLabel.text = tally.Total.ToString("N0");
+                // three-minute-kill-race unit 4 — **히어로 숫자에 단위를 붙인다.** 라벨이
+                // `결과` 하나뿐이라 맨 숫자로는 이게 뭔지 화면에서 안 읽힌다. `점` 이 아니라
+                // `기` 인 이유: 규칙이 «1킬 1점» 이라 마리 수가 곧 점수이고, 플레이어가 세는
+                // 단위는 마리다. 이 수가 그대로 서버에 올라간다(가공 없음 — unit 6).
+                heroScoreLabel.text = $"{tally.Total:N0}<size=55%>기</size>";
                 heroScoreLabel.color = goldColor;
             }
 
             // The stat rows are generic StatRow values so battle-score-formula could
             // swap what they carry without touching any layout code here.
             //
-            // 점수 분모(예산 만점)는 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
-            // **현실적으로 도달 불가**인데, 그런 수치를 옆에 세우면 항상 한참 못 미친
-            // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
+            // unit 4 — **「처치」 줄을 뺐다.** 히어로 숫자가 곧 처치 수여서(1킬 1점) 두 줄이
+            // 정확히 같은 수였고, 그러면 화면이 «다른 두 지표» 를 약속해놓고 안 지킨다.
+            // 남는 둘은 총점이 **아닌** 것들이다 — 얼마나 버텼고 어디까지 갔나.
+            // 「안정도」는 게이지가 있던 시절의 계기판 어휘라 게임 언어로 바꿨다(unit 2).
             SetStatRows(new[]
             {
-                StatRow.State("처치", $"{tally.Kills:N0}기"),
-                StatRow.State("남은 안정도", StabilityText(tally.Stability, tally.StabilityMax)),
+                StatRow.State("남은 마음", StabilityText(tally.Stability, tally.StabilityMax)),
                 StatRow.State("도달 웨이브", $"{tally.WaveReached:N0}"),
             });
 

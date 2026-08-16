@@ -1,6 +1,6 @@
 # three-minute-kill-race — 패배 없는 3분 킬 경쟁
 
-> 상태: **초안 · 승인 대기** 2026-08-16 (origin/main `49554c6d` 기준으로 대조 완료)
+> 상태: **units 0~4 구현 완료 · 검증 진행** 2026-08-16 (origin/main `49554c6d` 기준으로 대조 완료)
 > 선행: `three-minute-survival`(units 0~7 — 안정도 패배·처치 점수·마감 파이프라인),
 > `goal-tower-siege`(공성 모델), `battle-structures`(적 마음 축)
 > 정본 갱신 대상: `docs/reference/score-formula.md`, `docs/reference/ingame-flow.md`
@@ -62,11 +62,11 @@
 
 | # | 문서 | 작업 구분 | 목적 |
 |---|---|---|---|
-| 0 | `0_defeat_axis_retire.md` | 브리지 + 코어 | 패배·강제 종료 4판정 제거, `MatchTally.Won` 은퇴, 종료 = 만료 하나 · **구현됨(검증 대기)** |
-| 1 | `1_one_kill_one_point.md` | 데이터 + 코어 | `killScore` 티어 은퇴 → 1킬 1점. 점수 축과 처치 수를 한 축으로 |
-| 2 | `2_heart_no_gauge.md` | 프레젠테이션 | 마음 게이지 바 제거 → 균열 연출. 판정 권한 0 |
-| 3 | `3_player_submit.md` | UI + 브리지 | 햄버거 버튼 정체 전환(P1 = 60s), 제출 → 결과 화면, 종료 권한 이관 |
-| 4 | `4_result_no_verdict.md` | UI | 승/패 표기·색 분기 제거, 점수·처치 두 줄 통합 |
+| 0 | `0_defeat_axis_retire.md` | 브리지 + 코어 | 패배·강제 종료 4판정 제거, `MatchTally.Won` 은퇴 · **완료(37cbb659)** |
+| 1 | `1_one_kill_one_point.md` | 데이터 + 코어 | `killScore` 티어 은퇴 → 1킬 1점 · **완료(2b6362e9)** |
+| 2 | `2_heart_no_gauge.md` | 프레젠테이션 | 마음 게이지 2종 제거 → 균열 연출 · 스트레스 분모 off · **구현됨** |
+| 3 | `3_player_submit.md` | UI + 브리지 | 햄버거 버튼 정체 전환(P1 = 60s) → 결과 화면 · **구현됨** |
+| 4 | `4_result_no_verdict.md` | UI | 승/패 표기 없음 · 중복 줄 통합(3줄→2줄) · **구현됨** |
 | 5 | `5_handoff_summary.md` | 인계 | 구현 종료 시 작성 |
 
 의존: `0 → 3`(제출이 마감 관문을 재사용한다), `1 → 4`(점수 단위가 화면 줄 수를 정한다).

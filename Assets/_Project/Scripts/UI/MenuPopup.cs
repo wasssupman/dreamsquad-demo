@@ -29,6 +29,10 @@ namespace Wassup.UI
         private GameObject _root;
         private Button _resumeButton;
         private Button _exitButton;
+        private TextMeshProUGUI _exitLabel;
+        private Image _exitImage;
+        private bool _submitMode;
+        private Wassup.Bridge.BattleBridge _bridge;
         private bool _built;
         private bool _open;
         private TimeLease _pauseLease;
@@ -54,6 +58,7 @@ namespace Wassup.UI
             _open = true;
             _pauseLease = TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority: 100);
             if (_root != null) _root.SetActive(true);
+            RefreshExitButton();
             if (wavePatternStrip != null)
             {
                 // random-map-pool unit 7 — 표시 직전에 이번 판(선택된 맵)의 실전 웨이브 플랜으로
@@ -86,8 +91,39 @@ namespace Wassup.UI
 
         private void OnResume() => Close();
 
+        // three-minute-kill-race unit 3 — **버튼 하나가 P1 을 기점으로 정체를 바꾼다.**
+        // 여는 순간 한 번만 판정하면 되는 이유: 팝업이 열려 있는 동안 전투는 멈춰 있어
+        // (Open 이 Battle 도메인 0배속 lease 를 잡는다) 시계가 안 흐른다 — 열린 채로
+        // 정체가 바뀌는 일이 구조적으로 없다.
+        //
+        // 「포기」류 어휘를 제출 버튼에 쓰지 않는다(사용자 확정). 0점 포기는 제출이
+        // 불가능한 60초 동안에만 존재하고, 그 뒤로는 사라진다.
+        private void RefreshExitButton()
+        {
+            // 브리지 참조는 여기서 찾는다(의도된 예외 — spec unit 3 §4). 원칙은 SerializeField
+            // 배선이지만 BattleScene 이 다른 세션의 미커밋 WIP 를 물고 있어 지금 저장하면
+            // 그 작업이 통째로 박힌다. 팝업은 드물게 열리므로 1회 탐색이 무해하다.
+            if (_bridge == null) _bridge = FindFirstObjectByType<Wassup.Bridge.BattleBridge>();
+            _submitMode = _bridge != null && _bridge.CanSubmit;
+
+            if (_exitLabel != null) _exitLabel.text = _submitMode ? "제출" : "나가기";
+            if (_exitImage != null)
+                _exitImage.color = _submitMode
+                    ? new Color(0.16f, 0.42f, 0.62f, 0.96f)   // 제출 = 확정. 경고색이 아니다
+                    : new Color(0.6f, 0.2f, 0.2f, 0.96f);     // 나가기 = 0점 포기
+        }
+
         private void OnExit()
         {
+            // unit 3 — 제출이 열렸으면 이 버튼은 **성적 확정**이다: 현재 킬로 판을 끝내고
+            // 결과 화면으로 간다(로비 직행 아님 — 확정해놓고 리더보드를 못 보면 안 된다).
+            if (_submitMode && _bridge != null)
+            {
+                Close();                 // 일시정지 lease 를 놓아야 마감이 정상 진행된다
+                _bridge.SubmitMatch();
+                return;
+            }
+
             // Release the pause before leaving; the scene teardown + TimeManager.ResetAll
             // at the match boundary also clears it, so double-release is harmless.
             if (_open) { _pauseLease.Dispose(); _open = false; }
@@ -127,6 +163,8 @@ namespace Wassup.UI
                 new Color(0.16f, 0.5f, 0.28f, 0.96f), OnResume);
             _exitButton = MakeButton("ExitButton", "나가기", new Vector2(150f, 120f),
                 new Color(0.6f, 0.2f, 0.2f, 0.96f), OnExit);
+            _exitImage = _exitButton.GetComponent<Image>();
+            _exitLabel = _exitButton.GetComponentInChildren<TextMeshProUGUI>();
 
             UiLayer.Apply(gameObject);
         }

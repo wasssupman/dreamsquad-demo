@@ -31,7 +31,6 @@ namespace Wassup.Presentation
         // three-minute-survival unit 1 — Rebuild 판정의 기준. _defender 는 카드행 게이트로만
         // 남는다(Defender 스킨에서만 카드가 뜬다).
         private OverheadBarSkin _skinKind;
-        private TMP_Text _valueLabel;
         private bool _defender;
         private float _ratio = 1f;
         private float _trailRatio = 1f;
@@ -42,13 +41,13 @@ namespace Wassup.Presentation
         private UnitOverheadUiStyle _style;
         private UnitOverheadUiStyle.BarSkin _skin;
 
-        // three-minute-survival unit 1 — `bool defender` → OverheadBarSkin. valueLabel 은
-        // 골 안정도 스킨 전용(유닛 바에는 숫자가 없다) — null 이면 라벨을 숨긴다.
+        // three-minute-survival unit 1 — `bool defender` → OverheadBarSkin.
+        // three-minute-kill-race unit 2 — `valueLabel` 인자는 제거했다. 바 위 수치는 골 안정도
+        // 스킨 전용이었고 그 스킨 자체가 은퇴했다(마음은 게이지로 그리지 않는다).
         public void Show(Vector2 anchorLocal, float tileWidthReference, OverheadBarSkin skinKind, float ratio,
             IReadOnlyList<DreamcatcherCard> cards, UnitOverheadUiStyle style,
             UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f,
-            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null,
-            string valueLabel = null)
+            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null)
         {
             if (style == null || sprites == null) return;
             if (!_built || _skinKind != skinKind || _sprites != sprites) Rebuild(skinKind, style, sprites);
@@ -103,25 +102,7 @@ namespace Wassup.Presentation
 
             float cardRowHeight = ShowCards(defender ? cards : null, tileWidthReference, width);
             ShowStacks(stacks, stackIcons, tileWidthReference, width, cardRowHeight);
-            ShowValueLabel(valueLabel, width, vertical.x);
             gameObject.SetActive(true);
-        }
-
-        // three-minute-survival unit 1 — 바 **위**의 현재 수치. 골 안정도 스킨에서만 생성된다
-        // (Rebuild 가 _valueLabel 을 만드는 조건). 유닛 바는 valueLabel = null 로 들어와 무동작.
-        private void ShowValueLabel(string text, float barWidth, float barBottomY)
-        {
-            if (_valueLabel == null) return;
-            bool visible = !string.IsNullOrEmpty(text);
-            _valueLabel.gameObject.SetActive(visible);
-            if (!visible) return;
-            var rt = _valueLabel.rectTransform;
-            rt.sizeDelta = new Vector2(barWidth, _style.StabilityLabelFontSize * 1.2f);
-            rt.anchoredPosition = new Vector2(
-                0f, barBottomY + _skin.height + _style.StabilityLabelGap);
-            _valueLabel.fontSize = _style.StabilityLabelFontSize;
-            _valueLabel.color = _style.StabilityLabelColor;
-            if (_valueLabel.text != text) _valueLabel.text = text;
         }
 
         public void Hide()
@@ -150,7 +131,6 @@ namespace Wassup.Presentation
             }
             _cards.Clear();
             _stacks.Clear();
-            _valueLabel = null; // 위 루프가 자식을 전부 파괴했다 — 아래에서 스킨에 따라 재생성.
             _skinKind = skinKind;
             _defender = defender;
             _style = style;
@@ -194,17 +174,6 @@ namespace Wassup.Presentation
             hi.pivot = new Vector2(0f, 1f);
             _highlightImage = AddImage(hi.gameObject, null, Image.Type.Simple);
 
-            // three-minute-survival unit 1 — 수치 라벨은 안정도 스킨에서만 존재한다.
-            if (skinKind == OverheadBarSkin.GoalStability)
-            {
-                var labelRt = MakeRect("Value", _root);
-                labelRt.anchorMin = labelRt.anchorMax = new Vector2(0.5f, 0f);
-                labelRt.pivot = new Vector2(0.5f, 0f);
-                _valueLabel = labelRt.gameObject.AddComponent<TextMeshProUGUI>();
-                _valueLabel.alignment = TextAlignmentOptions.Center;
-                _valueLabel.enableWordWrapping = false;
-                _valueLabel.raycastTarget = false;
-            }
             _built = true;
         }
 

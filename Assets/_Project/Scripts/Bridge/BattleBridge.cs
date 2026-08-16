@@ -137,7 +137,6 @@ namespace Wassup.Bridge
         // three-minute-survival unit 1 — 안정도 바를 골 앵커에서 월드 Y 로 띄우는 양.
         // 구조물 메쉬가 셀 중심보다 높아서 바가 메쉬를 파고드는 것을 막는다. 씬 배선 불요
         // (신규 SerializeField 는 기존 씬에서 이 initializer 를 받는다).
-        [SerializeField] private float goalStabilityBarLift = 1.6f;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
         [SerializeField] private float tilemapCharacterScale = 0.42f;
@@ -3392,47 +3391,11 @@ namespace Wassup.Bridge
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
             // three-minute-survival unit 1 — 골 안정도 바. EndFrame 뒤에 둔다(유닛 풀의
             // _seen 소거와 무관한 별도 슬롯이라 순서 의존은 없지만, 유닛 바 위에 그려진다).
-            if (unifiedOverhead) SyncGoalStabilityBars();
         }
 
-        // three-minute-survival unit 1 — 골 셀마다 안정도 바 1개. 값은 공유 1개라 두 바가 같은
-        // 숫자를 밀살 표시한다. 전투 중에만 보이고 그 외에는 슬롯을 접는다.
-        private void SyncGoalStabilityBars()
-        {
-            if (!_running || _goalStabilityMax <= 0 || !_generatedMap.IsCreated)
-            {
-                unitOverheadUiLayer.HideStability();
-                return;
-            }
-            var cam = Camera.main;
-            if (cam == null) return;
-
-            float ratio = Wassup.Battle.Units.Health.ComputeRatio(_goalStability, _goalStabilityMax);
-            string label = _goalStability.ToString();
-            bool hasList = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
-            int count = hasList ? _generatedMap.goals.Length : 1;
-            for (int i = 0; i < count; i++)
-            {
-                int2 cell = hasList ? _generatedMap.goals[i] : _generatedMap.goal;
-                // primary 골은 구조물 시각 앵커를 쓴다(구조물이 없는 테마는 셀 중심으로 폴백).
-                Vector3 world;
-                if (i == 0 && tilemapMapView != null && tilemapMapView.TryGetGoalVisualAnchor(out var anchor))
-                    world = anchor;
-                else
-                    // sim → view 변환을 반드시 거친다. GridToWorldCenterVector 만 쓰면
-                    // Tilemap 모드에서 반 타일 어긋나 바가 모서리에 놓인다(:2764 선례).
-                    world = GridCellToViewCenter(new Vector2Int(cell.x, cell.y));
-                world.y += goalStabilityBarLift;
-
-                Vector3 sp = cam.WorldToScreenPoint(world);
-                if (sp.z <= 0f) continue; // 카메라 뒤 — 투영이 뒤집힌다
-                Vector3 half = Vector3.right * (tileSize * 0.5f);
-                Vector3 a = cam.WorldToScreenPoint(world - half);
-                Vector3 b = cam.WorldToScreenPoint(world + half);
-                float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
-                unitOverheadUiLayer.SetStability(i, ratio, label, new Vector2(sp.x, sp.y), tileScreenWidth);
-            }
-        }
+        // three-minute-kill-race unit 2 — `SyncGoalStabilityBars()` 는 제거했다.
+        // 마음의 남은 수치를 **바·숫자로 그리지 않는다**(게이지 형태 금지). 그 정보는
+        // 프랍의 균열 단계로만 보인다 — TilemapMapView.SetGoalCrack.
 
         // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
         //
@@ -5550,7 +5513,12 @@ namespace Wassup.Bridge
         // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
         // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: StressLimit > 0);
+            // three-minute-kill-race unit 2 — **분모를 떼고 누적 수량만 표기한다.**
+            // 한계가 아무것도 판정하지 않는데 `3 / 10` 이 떠 있으면 거짓말이다. 한계 «값»
+            // 자체는 계속 넘긴다 — 튜토리얼이 «스냅샷이 왔는가» 를 _leakLimit 으로 판정한다.
+            // 그 튜토리얼의 「N이 되면 패배합니다」 문구는 ShowsStressLimit 가드에 걸려
+            // 자동으로 빠진다(패배가 없어졌으니 그 문장은 거짓말이다).
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
 
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
@@ -5562,6 +5530,7 @@ namespace Wassup.Bridge
             _enemyCoreMax = 0;
             _enemyCoreCurrent = 0;
             _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
+            _goalCrackStage.Clear();  // unit 2 — 균열 단계도 같은 규칙(프랍 루트 재빌드가 색을 원복한다)
             _leakTypeMissLogged = false;
             _towerMissLogged = false;
         }
@@ -5955,6 +5924,19 @@ namespace Wassup.Bridge
         // Health 0) 엔티티의 셀을 특정한다. 구현이 count 비교였던 시절엔 «하나 부서짐 = 전부
         // 파괴 + 전역 전환» 이라 계약 7 을 표현할 수 없었다.
         // 표준 사망 경로(DeadTag → UnitLifecycleSystem 파괴)는 그대로다 — 브리지는 관측만 한다.
+        // unit 2 — 골 셀별 마지막 균열 단계. 매치 경계에서 비운다(_breachedCells 와 같은 규칙).
+        private readonly Dictionary<Vector2Int, int> _goalCrackStage = new();
+
+        // 남은 비율 → 4단계(온전/1/2/3). 경계를 넉넉히 잡아 «맞자마자 새까매지는» 인상을 피한다.
+        private void PushGoalCrack(Vector2Int cell, in Health health)
+        {
+            float ratio = Health.ComputeRatio(health.value, health.max);
+            int stage = ratio > 0.75f ? 0 : ratio > 0.5f ? 1 : ratio > 0.25f ? 2 : 3;
+            if (_goalCrackStage.TryGetValue(cell, out int prev) && prev == stage) return;
+            _goalCrackStage[cell] = stage;
+            tilemapMapView?.SetGoalCrack(cell, stage);
+        }
+
         private void SyncGoalStability()
         {
             // 리뷰 M-7 — 게이트는 등록부 유무다. 구 _goalTowerCount 게이트는 «골 타워 개수»
@@ -5980,6 +5962,11 @@ namespace Wassup.Bridge
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
                     if (health.value < lowest) lowest = health.value;
                     if (health.max > maxHp) maxHp = health.max;
+                    // three-minute-kill-race unit 2 — 마음의 남은 체력은 **균열로만** 보인다.
+                    // 이 순회가 이미 셀과 Health 를 들고 있어 새 기계가 필요 없다(적 마음
+                    // 잔여를 같은 순회에 얹은 선례). push 는 단계가 바뀔 때만 — 매 프레임
+                    // 틴트를 다시 쓰면 렌더러 순회가 공짜가 아니고, 단계가 사건으로도 안 읽힌다.
+                    PushGoalCrack(cell, health);
                     continue;
                 }
 
@@ -6101,6 +6088,28 @@ namespace Wassup.Bridge
 
         // unit 7 — `RemainingBattleSeconds()` 는 제거했다. 종료 4경로가 계산해서 넘겼지만
         // 소비처(구 결과 화면의 「남은 시간」 줄)가 이미 죽어 값이 버려지고 있었다.
+
+        // ── 유저 제출 (three-minute-kill-race unit 3) ────────────────────────────
+        //
+        // **판을 끝낼 수 있는 사람은 유저뿐이다** — 3분 만료 말고는 이 경로 하나다.
+        // 시스템이 판을 끝내는 판정은 unit 0 에서 전부 은퇴했다.
+
+        /// <summary>제출 개방까지 필요한 경과(초). P1 — 튜닝 대상.</summary>
+        public const float SubmitUnlockSec = 60f;
+
+        /// <summary>「제출」이 열렸는가. 시계는 **Battle 도메인**(`_battleClock`)이다 —
+        /// `Time.time` 을 쓰면 메뉴를 열어 둔 시간까지 세어 «안 싸웠는데 열린다».</summary>
+        public bool CanSubmit => _running && !_resultShown && (float)_battleClock >= SubmitUnlockSec;
+
+        /// <summary>현재 킬로 성적을 확정하고 판을 끝낸다. 페널티 없음.
+        /// 마감 파이프라인(취합 → 기록 → 통보 → 표시)을 그대로 탄다 — 제출 전용 경로를
+        /// 따로 만들지 않는 것이 unit 0 단일 관문의 값어치다.</summary>
+        public void SubmitMatch()
+        {
+            if (!CanSubmit) return;   // 재진입·조기 호출 방어(_resultShown 도 여기 포함)
+            EndMatch("submitted");
+            Debug.Log($"[BattleBridge] SUBMITTED — 유저 제출. (처치 {_killCount}기 · 경과 {(float)_battleClock:F1}s)");
+        }
 
         // three-minute-kill-race unit 0 — 판정 2개를 제거했다:
         //
@@ -7889,6 +7898,10 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
+                // three-minute-kill-race unit 2 — **내 마음은 바를 달지 않는다**(게이지 형태
+                // 금지). 이 루프는 등록부 전체를 그리므로 마음도 여기서 한 번 더 바를 받고
+                // 있었다(전용 안정도 바와 별개). 본능·적 마음은 대상이 아니라 그대로 둔다.
+                if (faction == Faction.DefenderCore) continue;
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
