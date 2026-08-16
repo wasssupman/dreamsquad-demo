@@ -637,11 +637,14 @@ namespace Wassup.Bridge
                     // magnitude(스친 적 피해)는 위 slot 초기화에서 이미 복사됨.
                     // 재타격 쿨타임은 굽지 않는다 — 탄 SO 소유라 드레인이 dataIndex 로 해석해 채운다.
 
-                    // 저작 경고(거절 아님): 주기 <= 지속이면 화염구가 겹쳐 쌓인다.
-                    // 겹치기가 의도인 저작도 있을 수 있어 경고로만 남긴다
+                    // 저작 경고(거절 아님): 주기가 지속보다 **짧으면** 화염구가 겹쳐 쌓인다.
+                    // ⚠ 판정은 `<` 다 — 정확히 같으면(주기 5 = 지속 5) 앞 구슬이 사라지는
+                    // 순간 다음이 나와 **끊김 없이 이어지는** 것이지 쌓이는 게 아니다.
+                    // `<=` 로 두면 그 저작에서 매 부착마다 오경보가 뜬다(2026-08-16 실사용).
+                    // 겹치기가 의도인 저작도 있을 수 있어 거절이 아니라 경고로만 남긴다
                     // (AllyMoveSpeedAura 의 반대 방향 경고와 동형).
                     if (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer
-                        && m.trigger.periodSeconds <= m.payload.duration)
+                        && m.trigger.periodSeconds < m.payload.duration)
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfOrbitProjectile periodSeconds({m.trigger.periodSeconds}) <= duration({m.payload.duration}) — 화염구가 겹쳐 쌓입니다.");
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep)

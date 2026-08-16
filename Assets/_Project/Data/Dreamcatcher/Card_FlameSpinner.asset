@@ -23,7 +23,7 @@ MonoBehaviour:
   - trigger:
       kind: 4
       period: 0
-      periodSeconds: 6
+      periodSeconds: 5
       fraction: 0
       gate: 0
       gateSubject: 0
@@ -49,7 +49,7 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "6초마다 → 주위를 도는 화염구
+  description: "5초마다 → 주위를 도는 화염구
     5초 · 스치는 적에게 피해 20"
   leakAllowanceCost: 0
   attachType: 0
