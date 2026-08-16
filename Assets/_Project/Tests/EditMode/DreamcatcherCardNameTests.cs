@@ -34,6 +34,8 @@ namespace Wassup.Tests.EditMode
             { "ember_bite", "출혈" },
             { "execution_strike", "처형타" },
             { "eye_on_the_end", "우선조준" },
+            // content-4 unit 3 — 궤도 화염구.
+            { "flame_spinner", "불꽃팽이" },
             { "farewell", "사망폭발" },
             { "sub_fattened_offering", "제물표식" },
             // content-3 unit 6 — "빙결" 은 Ice 스택 라벨(동상이 쌓는 것)과 충돌해

@@ -465,8 +465,8 @@ namespace Wassup.Tests.EditMode
             }
 
             // 이 수는 «폴더에 있는 카드 에셋 수»다 — content-4 이전 44 + 악몽 사냥 +
-            // 퇴직 위로금 = 46. 남은 불꽃 팽이가 착지하면 47.
-            Assert.AreEqual(46, structuredCount, "all current Dreamcatcher cards should be data-formatted");
+            // 퇴직 위로금 + 불꽃 팽이 = 47.
+            Assert.AreEqual(47, structuredCount, "all current Dreamcatcher cards should be data-formatted");
         }
 
         // ── dreamcatcher-attach-requirement unit 4: 부착 제한 접두 ────────────────

@@ -41,6 +41,10 @@ namespace Wassup.Battle.Combat
             // BattleSimGroup dt — TimeManager Battle-domain scaled (slomo 포함).
             float dt = SystemAPI.Time.DeltaTime;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
+            // dreamcatcher-content-4 unit 3 — 궤도 화염구가 캐리어 entity 를 만든다(구조 변경).
+            // 이 시스템의 다른 arm 들은 큐/버퍼만 만져서 여태 ECB 가 없었다. 슬롯 루프 도중
+            // 구조 변경을 즉시 하면 순회 중인 버퍼 뷰가 무효화되므로 ECB 로 미룬다.
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // 방어유닛 셀 스냅샷 — whip 오라의 defender-host 경로가 쓴다(entities 는
             // 아래에서 보충). projectile-emission-pattern unit 4 로 융단폭격 진앙이
@@ -388,6 +392,45 @@ namespace Wassup.Battle.Combat
                                 }
                             }
                         }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                        {
+                            // dreamcatcher-content-4 unit 3 (불꽃 팽이) — host 셀 중심을 도는
+                            // 화염구 하나를 duration 초 동안 띄운다. 캐리어 entity 로
+                            // ProjectileSpawnRequest 스테이징(진동갑주 SelfTileAoe 선례) —
+                            // 브리지 드레인이 스폰 후 캐리어를 파괴한다.
+                            //
+                            // ⚠ **이 arm 은 ISystem 이라 SO 를 읽을 수 없다.** 선속도·피격 반경은
+                            // bake 가 탄 SO 에서 슬롯에 구워 놨고(unit 0), 재타격 쿨타임은 아예
+                            // 싣지 않는다 — 드레인이 dataIndex 로 SO 를 해석해 채운다.
+                            if (slot.tileRange > 0 && slot.duration > 0f && slot.speed > 0f
+                                && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                float radius = slot.tileRange * ff.tileSize;
+                                var center = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                var carrier = ecb.CreateEntity();
+                                ecb.AddComponent(carrier, new Projectile.ProjectileSpawnRequest
+                                {
+                                    movement = Projectile.MovementKind.OrbitAroundPoint,
+                                    payload  = Projectile.PayloadKind.PathHit,
+                                    origin   = center,          // 궤도 중심(발사 시점 고정)
+                                    impact   = center,
+                                    damage   = slot.magnitude,  // flat — attacker damageMul 미적용(계약 10)
+                                    maxDistance = radius,       // 궤도 반경
+                                    // **각속도 = 선속도 ÷ 반경.** 슬롯의 speed 는 탄 SO 의 월드 속도라
+                                    // 반경을 키워도 «도는 체감»이 유지된다(각속도를 직접 저작하면
+                                    // 큰 원에서 갑자기 빨라진다). radius>0 은 위 가드가 보장.
+                                    speed    = slot.speed / radius,
+                                    flightTime = slot.duration, // 지속 초 → 수명
+                                    hitThreshold = slot.hitThreshold, // 피격 반경(궤도 반경과 다른 축)
+                                    dataIndex = slot.projectileDataIndex,
+                                    visualScale = slot.visualScale > 0f ? slot.visualScale : 1f,
+                                    owner = entity,             // 위협 귀속
+                                    // targetFaction 은 싣지 않는다 — PathHit 의 후보 풀은
+                                    // AttackUnitTag 하드코딩이라 이 페이로드에 진영 축이 없다.
+                                });
+                                ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
+                            }
+                        }
                         else
                         {
                             // Payload landed without its arm — fail loudly instead
@@ -401,6 +444,9 @@ namespace Wassup.Battle.Combat
                     slots[si] = slot;
                 }
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
 
             defTransforms.Dispose();
             defCells.Dispose();
