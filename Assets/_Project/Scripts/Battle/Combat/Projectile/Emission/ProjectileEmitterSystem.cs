@@ -112,6 +112,31 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
                     }
 
+                    // on-place-skill-rework unit 1 — 반경 스코프. **인스턴스당 1회**만 만든다:
+                    // 풀은 프레임-로컬이고 hostCell 은 버스트 내내 고정이라 발마다 다시 걸러도
+                    // 결과가 같은데, 발-루프 안에 두면 Temp 가 host×instance×shot 만큼 쌓인다.
+                    // scope 0(기존 패턴)은 **할당도 분기도 없이** 원본 풀을 그대로 쓴다.
+                    var scopedIdx = default(NativeArray<int>);
+                    var scopedCells = default(NativeArray<int2>);
+                    int scopedCount = 0;
+                    bool scoped = false;
+                    if (shots > 0 && binding != BindingClass.Direction && inst.spec.scopeTileRange > 0)
+                    {
+                        var srcCells = hostIsEnemy ? defCells : enemyCells;
+                        int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
+                        var raw = new NativeArray<int>(srcCells.Length, Allocator.Temp);
+                        scopedCount = PatternScope.Filter(srcCells, hostCell, inst.spec.scopeTileRange, raw);
+                        scopedIdx = new NativeArray<int>(scopedCount, Allocator.Temp);
+                        scopedCells = new NativeArray<int2>(scopedCount, Allocator.Temp);
+                        for (int k = 0; k < scopedCount; k++)
+                        {
+                            scopedIdx[k] = raw[k];
+                            scopedCells[k] = srcCells[raw[k]];
+                        }
+                        raw.Dispose();
+                        scoped = true;
+                    }
+
                     // 발마다 — Advance 가 반환한 발수를 전부 소비한다. 이 루프가 없으면
                     // burstRemaining 은 N 만큼 차감됐는데 캐리어는 1개만 생겨 나머지가
                     // 증발하고(shot 목록 사문화), continue 가 아래 write-back·완주
@@ -136,8 +161,54 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
                             var poolCells = hostIsEnemy ? defCells : enemyCells;
 
-                            int idx = PatternTargeting.Select(poolCells, inst.spec.selection,
+                            // on-place-skill-rework unit 1 — fan-out: 이 shot 이 스코프 안 후보
+                            // **전원** 에게 1발씩 나간다(1:1 융단폭격). 갈래마다 다른 것은 타겟뿐이라
+                            // BuildOrder 는 shot 당 1회만 부른다 — 카운터도 1회만 전진한다.
+                            // 잠금(`reselectPerShot`)은 잠글 단일 대상이 없어 이 경로를 타지 않는다.
+                            if (inst.spec.fanOutToAllCandidates)
+                            {
+                                int fanCount = scoped ? scopedCount : poolCells.Length;
+                                // 후보 0 이면 기존 규약대로 발사를 소모하고 넘어간다(위상 보존).
+                                order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime,
+                                                                fanCount > 0 ? (scoped ? scopedIdx[0] : 0) : -1);
+                                if (order.targetCandidateIndex < 0) continue;
+
+                                for (int c = 0; c < fanCount; c++)
+                                {
+                                    int pi = scoped ? scopedIdx[c] : c;
+                                    var fanReq = inst.template;
+                                    fanReq.origin = hostPos;
+                                    if (binding == BindingClass.Entity)
+                                    {
+                                        fanReq.target = poolEntities[pi];
+                                        fanReq.swingIndex = order.shotIndex;
+                                    }
+                                    else if (binding == BindingClass.Cell)
+                                    {
+                                        fanReq.impact = GridMath.CellToWorldCenter(
+                                            poolCells[pi], ff.tileSize, 0f, origin: ff.origin);
+                                        fanReq.flightTime = order.telegraphSec;
+                                    }
+                                    else continue;
+
+                                    fanReq.damage = order.damage;
+                                    fanReq.dataIndex = order.barrelDataIndex;
+                                    var fanCarrier = ecb.CreateEntity();
+                                    ecb.AddComponent(fanCarrier, fanReq);
+                                    ecb.AddComponent<ProjectileRequestCarrier>(fanCarrier);
+                                }
+                                continue; // 이 shot 의 전개 완료
+                            }
+
+                            // 스코프가 있으면 선택은 **스코프 배열 안에서** 하고, 결과 index 는
+                            // 반드시 원본 풀 index 로 되돌린다 — 아래 잠금 경로가
+                            // `IndexOf(poolEntities, …)` 로 원본 index 를 만들어 쓰기 때문에
+                            // 두 index 공간이 섞이면 엉뚱한 칸을 때리거나 범위를 벗어난다.
+                            // (gridSize 는 원본 그대로 넘긴다 — rank 가 row-major 키를 만든다.)
+                            int sel = PatternTargeting.Select(scoped ? scopedCells : poolCells,
+                                                              inst.spec.selection,
                                                               inst.runtime.fireCount, ff.gridSize);
+                            int idx = sel < 0 ? -1 : (scoped ? scopedIdx[sel] : sel);
                             // 명령 완성은 로직 계층이 한다(카운터 전진 포함).
                             order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime, idx);
 
@@ -194,6 +265,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         ecb.AddComponent(carrier, req);
                         ecb.AddComponent<ProjectileRequestCarrier>(carrier);
                     }
+
+                    if (scoped) { scopedIdx.Dispose(); scopedCells.Dispose(); }
 
                     if (EmitterTick.IsComplete(inst.runtime)) instances.RemoveAtSwapBack(i);
                     else instances[i] = inst;

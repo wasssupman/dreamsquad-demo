@@ -18,9 +18,10 @@
 - `Assets/_Project/Scripts/Data/ProjectilePatternData.cs` — 필드 2개 + `TryToSpec` 복사
 - `Assets/_Project/Scripts/Data/PatternSpec.cs` — 같은 필드 2개 (unmanaged 미러)
 - 신규 `Assets/_Project/Scripts/Battle/Combat/Projectile/Emission/PatternScope.cs` — 순수함수
-- `.../Emission/EmitterTick.cs` — `Begin` 에 후보 수 전달
-- `.../Emission/ProjectileEmitterSystem.cs` — 스코프 필터 + fan-out 발수
-- 신규 `Assets/_Project/Tests/EditMode/PatternScopeTests.cs` + `EmitterTickTests` 케이스
+- `.../Emission/ProjectileEmitterSystem.cs` — 스코프 필터 + fan-out 전개
+- 신규 `Assets/_Project/Tests/EditMode/PatternScopeTests.cs`
+
+> `EmitterTick`·`EmitterRuntime`·`PatternTargeting` 은 **무변경**이다.
 
 ## 구현
 
@@ -36,29 +37,36 @@ bool fanOutToAllCandidates = false; // false = 현행(발마다 후보 1개 선�
 ⚠ **`TryToSpec`(`ProjectilePatternData.cs:76~`)이 `PatternSpec` 의 유일한 writer 다.** 두 struct 에만
 필드를 더하고 여기를 잊으면 **조용한 0 = 맵 전체 폭격**이 된다. 완료 기준에 복사 단언을 둔다.
 
-### fan-out 의미 — `shots` 계약을 깨지 않는다
+### fan-out 의미 — 스케줄러를 한 줄도 안 건드린다
 
-`shots` 는 **「한 표적에게 몇 발」** 로 읽는다. fan-out 은 그 스케줄을 후보마다 반복한다:
+**한 shot 이 스코프 안 후보 «전원» 에게 1발씩 나간다.** `shots` 는 그대로 「몇 번의 일제사격」이고,
+fan-out 은 그 한 번의 사격이 몇 갈래로 갈라지는지만 바꾼다.
 
 ```
-burstRemaining = fanOut ? (후보 수 × shots.Length) : shots.Length
-selection      = RoundRobin  →  k = fireCount % n  →  후보 0..n-1 을 정확히 1회씩 순회
-baseFireCount  = 0           →  rank 0 부터 시작 (시드가 0 이 아니면 순회가 어긋난다)
+비-fanout: shot 1회 → PatternTargeting.Select 로 후보 1개 → 요청 1개
+fan-out  : shot 1회 → 스코프 안 후보 전부      → 요청 n 개 (동시)
 ```
 
-- `EmitterTick.Begin(ref rt, spec, baseFireCount, candidateCount)` 로 후보 수를 받는다.
-  **후보 수는 발화 시점에만 알 수 있다** — 그래서 순수 계층이 세지 않고 아키텍처가 세어 넘긴다
-  (`ShotOrder` 가 Entity 를 모르는 것과 같은 분업).
-- `reselectPerShot` 는 fan-out 에서 **참이어야 한다**(발마다 다른 후보). false 와 조합되면
-  loud warn 후 fan-out 을 끈다 — 잠금과 순회는 양립 불가다.
-- 후보 0 → `burstRemaining = 0`. **발사가 아예 시작되지 않는다**(발사 소모도 없다).
-  ⚠ 현행 "후보 0 이면 발사를 소모하고 skip" 과 다른 동작이며, fan-out 한정이다.
+- **`EmitterTick`·`EmitterRuntime` 무변경.** 초안은 `burstRemaining = shots × 후보수` 로 발수를
+  동적으로 만들려 했는데, 그러면 순수 스케줄러가 «후보 수» 라는 아키텍처 지식을 받아야 하고
+  `Advance` 의 shot index 계산까지 바뀐다. 갈래 수는 **발사 시점의 아키텍처 사실**이므로
+  스케줄이 아니라 **한 발의 전개**에서 처리한다.
+- `PatternLogic.BuildOrder` 는 **shot 당 1회** 부른다(카운터 전진도 1회). 갈래마다 다른 것은
+  타겟뿐이고 damage·telegraph·barrel 은 같은 order 를 공유한다.
+- 후보 0 → 기존과 동일하게 **발사를 소모하고 skip**(위상 보존 규약 유지).
+- `reselectPerShot` 는 fan-out 에서 **의미가 없다**(잠글 단일 대상이 없다). 잠금 경로를 아예
+  타지 않으며, 저작이 false 여도 무해하다.
 
-**결정론**: fan-out 은 모든 후보를 **정확히 1회** 맞히므로 rank tie-break 순서가 바뀌어도
-결과(누가 몇 대 맞았나)가 동일하다. `PatternTargeting.cs` 의 「중복 셀은 스냅샷 index 로
-tie-break」 구멍이 **fan-out 경로에서는 결과에 영향을 주지 않는다.**
+**결정론**: fan-out 은 스코프 안 모든 후보를 **정확히 1회** 맞히므로 `PatternTargeting` 의 선택
+규칙 자체를 타지 않는다 — 「중복 셀은 스냅샷 index 로 tie-break」 구멍이 **결과에 영향을 주지
+않는다**(누가 맞았나가 순서와 무관하다).
 ⚠ 이 면제는 fan-out 한정이다 — 단일 선택(RoundRobin/Shuffle) 경로의 후속 후보
 「defender 패턴 개통 시 안정 키 필요」는 **그대로 살아 있다.**
+
+⚠ **동시 착탄이다(v1).** 발 사이 캐스케이드(융단폭격이 줄지어 떨어지는 느낌)는 요청마다
+`flightTime += k * stagger` 한 줄이면 되지만 저작 필드가 하나 더 늘어난다 —
+`DrainMeteorBarrageRequests` 의 `landed * meteorStaggerSec` 관용구가 선례다. Play 에서 동시
+착탄이 밋밋하면 그때 연다(후속 후보).
 
 ### `PatternScope` (순수 계층 — 아키텍처 무참조)
 
@@ -117,11 +125,9 @@ warn 경로가 **없다**(실제로는 방향탄을 쏜다). 이 폴더를 건�
   - **같은 셀 후보 3개 → 결과 3개**(dedupe 하지 않는다 — 1:1 사양 핀)
   - 반환값이 **원본 index** 다 (scoped index 가 새지 않는다)
   - 반경 안 후보 0 → 반환 0
-- [ ] EditMode `EmitterTickTests` 추가
-  - fan-out: 후보 5 × shots 1 → 정확히 5발, RoundRobin 이 rank 0..4 를 **각 1회**
-  - fan-out + `reselectPerShot=false` → loud warn + fan-out off
-  - fan-out + 후보 0 → 0발, 발사 소모 없음
-  - **비-fan-out 경로 전량 무회귀**
-- [ ] EditMode: `TryToSpec` 이 신규 필드 2개를 복사한다 (조용한 0 방지 핀)
-- [ ] EditMode: `reselectPerShot=false × scope>0` → 잠금 대상 셀이 원본 index 로 해석된다
-- [ ] PlayMode: 보스 융단폭격·나이트메어 미사일·머신거너 다연발이 **이전과 동일**(두 필드 기본값 경로)
+- [ ] EditMode: `TryToSpec` 이 신규 필드 2개를 복사한다 (**조용한 0 = 맵 전체 폭격** 방지 핀)
+- [ ] EditMode `EmitterTickTests`·`PatternTargetingTests` **무변경 전량 통과**(이 unit 이 그
+      두 파일을 안 건드린다는 증거)
+- [ ] PlayMode 는 이 unit 에서 돌리지 않는다 — 사슬 끝(unit 2)이 자연스러운 관측점
+      («적마다 미사일 1발»)으로 scope·fan-out·트리거를 한 번에 검증한다
+      (2026-08-16 사용자 결정: unit 단위 PlayMode → 사슬 끝 1회)
