@@ -565,8 +565,18 @@ namespace Wassup.Bridge
                     // 맞히는» 탄이 된다 — 로그 한 줄 없이 조용하다. 거리·속도 0 은 드레인이
                     // 잡지만 그건 **발사할 때마다** 경고라 부착 시점에 끊는 게 맞다.
                     // 형제 payload(SelfOrbitProjectile)가 같은 셋을 같은 형태로 거절한다.
-                    if (Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(dcAxes.movement)
-                        == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction)
+                    var dcBinding = Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(dcAxes.movement);
+                    // ⚠ **셀 바인딩은 이 경로에 배선돼 있지 않다.** 발사 arm(SpawnNeedleCarrier)은
+                    // `target` 은 늘 싣지만 `impact` 를 **한 번도 채우지 않는다** — 그래서
+                    // SkyFall·BallisticToCell 탄으로 저작하면 착탄점이 (0,0,0) 이라 **보드 원점에
+                    // 떨어진다**. 궤적을 저작에 개방한 것이 이 뒷문을 열었으므로 여기서 닫는다.
+                    // (개통하려면 arm 이 대상 셀을 계산해 실어야 한다 — 별도 작업.)
+                    if (dcBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Cell)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 셀 바인딩 탄({m.payload.projectile.flightMode})은 이 payload 에 미배선 — 착탄점이 없어 보드 원점에 떨어진다 — skipped.");
+                        continue;
+                    }
+                    if (dcBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction)
                     {
                         if (m.payload.projectile.hitThreshold <= 0f)
                         {

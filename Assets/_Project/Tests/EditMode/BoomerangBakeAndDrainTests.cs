@@ -229,6 +229,30 @@ namespace Wassup.Tests.EditMode
             Object.DestroyImmediate(card);
         }
 
+        // 셀 바인딩 탄(하늘낙하·포물선)은 이 payload 에 미배선이다 — 발사 arm 이 착탄점을
+        // 안 채워서 **보드 원점에 떨어진다.** 궤적을 저작에 개방한 것이 이 뒷문을 열었다.
+        [Test]
+        public void Bake_CellBindingProjectile_IsRejected_NotSilentlyDroppedAtOrigin()
+        {
+            var defender = NewDefender();
+            var skyFallSo = ScriptableObject.CreateInstance<ProjectileData>();
+            skyFallSo.id = "test_skyfall";
+            skyFallSo.flightMode = ProjectileFlightMode.SkyFall;
+            skyFallSo.speed = 5f;
+            skyFallSo.hitThreshold = 0.5f;
+
+            var card = MakeCard("test_cell_binding", DcPayloadKind.ProjectileToTarget,
+                                DcTriggerKind.AttackN, skyFallSo, tileRange: 4);
+
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("셀 바인딩 탄"));
+            Assert.AreEqual(-1, _bridge.ApplyDreamcatcherCardToUnit(defender, card));
+            Assert.IsFalse(_em.HasBuffer<DcTriggerSlot>(defender)
+                           && _em.GetBuffer<DcTriggerSlot>(defender).Length > 0);
+
+            Object.DestroyImmediate(card);
+            Object.DestroyImmediate(skyFallSo);
+        }
+
         // ── 잿불 bake (unit 4 완료 기준) ──────────────────────────────────────────
 
         [Test]
