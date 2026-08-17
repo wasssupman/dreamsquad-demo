@@ -23,10 +23,14 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(source);
             Assert.IsNotNull(catalog);
 
+            // 2026-08-17 재구성 — 옛 기본 덱 10장 중 6장(레인저 3종·가디언 3종)이 시트에서
+            // `visible 0` 이 되면서 신규 프로필의 기본 덱이 DeckPrune 에 4장으로 잘렸다.
+            // **사용자가 실제로 쓰는 덱(profile 의 deck_1) 10장을 그대로 기본 덱으로 삼는다** —
+            // 전부 Unit 이라 Squad 는 0장이다(상한 2, 살아있는 Squad 카드는 CC딜 하나뿐).
             string[] expected =
             {
-                "ranger_atk", "poke_needle", "ranger_as", "bouncy_bead", "guardian_as",
-                "thornmail", "ranger_hp", "guardian_hp", "farewell", "guardian_fortress",
+                "poke_needle", "bouncy_bead", "frost_arrow", "flame_spinner", "severance_meteor",
+                "shield_lull", "moth_swarm", "boomerang", "ember_field", "frenzy",
             };
             CollectionAssert.AreEqual(expected, source.cards.Select(c => c != null ? c.id : null));
             Assert.That(source.cards, Has.All.Matches<DreamcatcherCard>(

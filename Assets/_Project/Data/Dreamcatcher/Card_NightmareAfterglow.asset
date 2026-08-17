@@ -51,7 +51,7 @@ MonoBehaviour:
   type: 1
   skill: {fileID: 0}
   description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
-    \uACF5\uACA9\uB825 + 50% \xB7 3\uCD08"
+    \uACF5\uACA9\uB825 +50% \xB7 3\uCD08"
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 
