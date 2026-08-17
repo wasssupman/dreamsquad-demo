@@ -263,13 +263,13 @@ namespace Wassup.Tests.PlayMode
                 "지상 전용 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
             Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
                 antiAir.EffectiveAttackTargetLayers,
-                "대공사수는 지상+공중 — 두 마스크가 갈려서 구워지는 것이 이 테스트의 요점");
+                "밀당맨는 지상+공중 — 두 마스크가 갈려서 구워지는 것이 이 테스트의 요점");
             Assert.AreEqual((byte)antiAir.EffectiveAttackTargetLayers,
                 em.GetComponentData<AttackState>(antiAirEntity).targetTraversalLayers,
                 "지상+공중 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
             Assert.AreEqual(0.2f,
                 em.GetComponentData<AttackState>(antiAirEntity).cooldownDuration, 1e-4f,
-                "대공사수의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
+                "밀당맨의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
             var antiAirOutputs = em.GetBuffer<AttackOutputElement>(antiAirEntity);
             Assert.AreEqual(1, antiAirOutputs.Length);
             Assert.AreEqual(7f, antiAirOutputs[0].value.magnitude, 1e-4f,

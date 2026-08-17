@@ -169,7 +169,7 @@ namespace Wassup.Tests.EditMode
                 "일반 방어유닛은 더 가까운 공중 적도 건너뛴다");
             Assert.AreEqual(3f, em.GetBuffer<IncomingDamage>(fartherPath)[0].amount, 1e-4f);
             Assert.AreEqual(4f, em.GetBuffer<IncomingDamage>(nearbyPath)[0].amount, 1e-4f,
-                "대공사수는 Path 적도 유효 대상으로 삼는다");
+                "Path|Air 유닛은 Path 적도 유효 대상으로 삼는다");
             Assert.AreEqual(4f, em.GetBuffer<IncomingDamage>(fartherAir)[0].amount, 1e-4f);
         }
     }

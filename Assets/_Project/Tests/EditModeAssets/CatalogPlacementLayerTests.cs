@@ -41,7 +41,9 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(GroundOnlyDefenderIds.Length, groundOnlySeen,
                 "지상 전용 예외 목록의 유닛이 카탈로그에서 사라지면 이 테스트가 침묵한다");
-            Assert.IsNotNull(antiAir, "대공사수 데이터가 카탈로그에 등록돼야 한다");
+            // id 는 `anti_air` 그대로다 — 표시 이름만 「밀당맨」으로 바뀌었다(2026-08-17).
+            // id 를 바꾸면 저장된 덱(profile.json)이 Validate 에 걸려 안 열린다.
+            Assert.IsNotNull(antiAir, "밀당맨(anti_air) 데이터가 카탈로그에 등록돼야 한다");
             Assert.AreEqual(Wassup.Battle.Units.Faction.EnemyUnit, antiAir.targetFactions);
             // cooldown·magnitude 는 시트 소유 — 값은 자유 튜닝, 여기서는 구조만
             // (test-suite-fast-lane unit 1).

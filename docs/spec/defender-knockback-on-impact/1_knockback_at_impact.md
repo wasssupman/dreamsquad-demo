@@ -44,7 +44,7 @@
 ### 저작 위치는 왜 유닛인가
 
 넉백은 **유닛의 성질**이다. 탄 SO 로 옮기면 같은 화살(`Projectile_Arrow13_GA`)을 공유하는
-대공사수와 마크스맨이 함께 밀게 된다. 유닛이 화살을 바꿔도 넉백은 따라가야 한다.
+밀당맨과 마크스맨이 함께 밀게 된다. 유닛이 화살을 바꿔도 넉백은 따라가야 한다.
 
 ## 완료 기준
 
@@ -54,6 +54,6 @@
 - [x] `U3c_ProjectileDefender_DefersKnockbackToImpact` — 발사 시점에 안 건다(증상 회귀 가드)
 - [x] `U3b_Knockback_WithoutTravelDirection_EmitsNothing` — phantom impulse 금지
 - [x] EditMode 2318 통과 / 0 실패
-- [ ] Play 육안: 대공사수 앞을 지나는 적이 **맞는 순간** 살짝 뒤로 튕기는지 (사용자 확인 대기)
+- [ ] Play 육안: 밀당맨 앞을 지나는 적이 **맞는 순간** 살짝 뒤로 튕기는지 (사용자 확인 대기)
 
 확인: 2026-08-17 · 코드/테스트 완료, 육안 확인 대기

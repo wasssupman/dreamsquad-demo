@@ -237,7 +237,7 @@ code + git history        구현 상세
 상세: `docs/spec/waypoint-flight-enemy/README.md`.
 
 - **unit 5 경로 페인터 + 맵 2~3장** [M] · 유일한 미완료 작업 단위. 기존 저장/bake와 unit 0 검증 함수를 재사용하고, 맵마다 다른 방어 위치를 요구하는지 사용자 Play로 닫는다. (waypoint-flight-enemy)
-- **대공사수 고유 콘텐츠화** [M] · 현재 Path·Air 동시 타겟, 피해 7/주기 0.2초의 양성 대조. 고유 아트·최종 밸런스·Air 우선/추가 피해는 별도 검증. (waypoint-flight-enemy)
+- **밀당맨(구 대공사수) 고유 콘텐츠화** [S] · ~~Path·Air 동시 타겟이 정체성~~ → **2026-08-17 로 소멸**: 아틸러리·폭탄맨을 뺀 전 방어유닛이 `Path|Air` 가 됐다(사용자 결정). 대신 **매 피격 넉백**(0.3칸/0.08초)이 새 정체성이 되고 이름도 그걸 따라갔다 — `docs/spec/defender-knockback-on-impact/`. `id` 는 `anti_air` 유지. 남은 것은 고유 아트·최종 밸런스와 **시트 반영**(`displayName`/`desc` 는 시트 소유라 미반영 시 로그인 임포트가 되돌림). (waypoint-flight-enemy)
 - **잔여 맵 경로 저작** [S] · unit 5는 2~3장까지만 다루며 나머지 맵은 후속 콘텐츠 작업이다. (waypoint-flight-enemy)
 
 #### 목표지점 안정도 (goal-stability — 완료 2026-08-04)
