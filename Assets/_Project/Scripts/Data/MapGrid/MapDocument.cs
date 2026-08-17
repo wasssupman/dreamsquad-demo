@@ -153,13 +153,12 @@ namespace Wassup.Data.MapGrid
             // goals 가 비면 위에서 이미 에러를 냈다 — 여기선 빈 목록으로 넘겨 경로 검증만 계속한다
             // (단수 goal 폴백 제거, unit 3).
             IReadOnlyList<Vector2Int> waypointGoals = goals ?? System.Array.Empty<Vector2Int>();
-            WaypointAuthoringRules.ValidatePaths(
-                waypointPaths, width, height, tiles, waypointGoals, spawns,
-                waypointErrors, waypointWarnings);
-            // siege-lane-spawn unit 1 — 공성이면 레인의 정본은 저작 spawns(0개)가 아니라 파생
-            // 스폰이다. 저작 spawns 를 그대로 넘기면 «어느 레인에도 안 붙는다» 거짓 경고가
-            // 나오고 인덱스 범위 검증은 통째로 스킵된다. 파생 규칙은 CollectDerivedSiegeSpawns
-            // 단일 소스(빌더와 같은 오프셋·순서).
+            // siege-lane-spawn unit 1 — 공성이면 레인/스폰의 정본은 저작 spawns(0개)가 아니라
+            // 파생 스폰이다. 저작 spawns 를 넘기면 ⑴ ValidateSpawnRoutes 의 «어느 레인에도 안
+            // 붙는다» 거짓 경고 + 인덱스 범위 검증 전체 스킵, ⑵ ValidatePaths 의 «경로 지점이
+            // 스폰 셀과 겹친다» 경고가 파생 스폰을 못 본다(리뷰 F5 — 스폰 위 경유지는 체비셰프
+            // 도달 판정 때문에 스폰 프레임에 소비돼 레인이 조용히 죽는다). 파생 규칙은
+            // CollectDerivedSiegeSpawns 단일 소스(빌더와 같은 오프셋·순서).
             IReadOnlyList<Vector2Int> laneSpawns = spawns;
             if (StructureAuthoringRules.CountEnemyCores(structures) > 0)
             {
@@ -167,6 +166,9 @@ namespace Wassup.Data.MapGrid
                 StructureAuthoringRules.CollectDerivedSiegeSpawns(structures, derived);
                 laneSpawns = derived;
             }
+            WaypointAuthoringRules.ValidatePaths(
+                waypointPaths, width, height, tiles, waypointGoals, laneSpawns,
+                waypointErrors, waypointWarnings);
             WaypointAuthoringRules.ValidateSpawnRoutes(
                 spawnRoutes, waypointPaths, laneSpawns, waypointErrors, waypointWarnings);
             foreach (var e in waypointErrors)

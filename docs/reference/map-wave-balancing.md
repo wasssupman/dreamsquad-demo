@@ -56,17 +56,20 @@
 | **웨이브마다 수량 평탄** | `unitGrowthPerWave = 1` | (성장 없음) |
 | 웨이브 개수 | `minWaveCount` / `maxWaveCount` | 100 / 100 (**명목** — 아래 참조) |
 | 웨이브 간 상한 간격 | `maxWaveIntervalSec` | 20 |
-| 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | **12종**(비행 Skimmer 포함) |
+| 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | 값 재도출로 확인(스킬 「값 재도출」 — 숫자를 여기 얼리지 않는다) |
 | 보스 | `bossPool`(덱당 1종) · `bossWaveInterval` · `bossEscortMin`/`Max` | 맵별 1종 · **9마다** · 3~4 |
 | 스폰 템포 | `intraWaveSpacingSec` | **0.5s** |
 | **웨이브 컨셉** | `waveConceptPool` · `conceptHoldWaves` | 5종 · 3웨이브 |
+| **두 단계 곡선 + 클라이맥스**(공성 전용) | `waveRampBreakWave` · `waveRampBreakUnits` | 공성 3덱 15 · 12 / 라이브 0(끔) — break 전 평탄, 후 지수 + 변주 상시. **breakWave 값 변경 = 변주 구간 이동 = rng 갈림 → 시드 스캐너 재실행**(wave-ramp-two-phase) |
 | **웨이브 시작 → 첫 적 유예** | `waveSpawnLeadInSec` | 2s |
 | 골 안정도 최대치(패배 조건) | `goalStabilityMax` | 20 |
 | 스트레스 한계(계약 카드 지불 대상, **패배와 무관**) | `defeatGoalReachedCount` | 10 |
 | 제한 시간 | `timerDurationSec` | 180 |
 
 **수량 결정 방식**(three-minute-survival unit 2): **완만한 지수 성장**.
-`total_i = clamp(round(base × growth^i) + jitter, base, cap)` — base=`minUnitsPerWave`,
+`total_i = clamp(round(base × growth^i) + jitter, base, cap)` — 단 `waveRampBreakWave ≥ 2` 인
+덱(공성)은 break 전 구간이 `lerp(base, breakUnits, i/(break−1))` 평탄 상승으로 대체된다
+(wave-ramp-two-phase unit 0). — base=`minUnitsPerWave`,
 growth=`unitGrowthPerWave`, cap=`maxUnitsPerWave`, jitter 폭=`waveCountJitter`(waveSeed 파생).
 구 선형 ramp(전체 웨이브 수로 나눈 보간)는 은퇴 — 웨이브 상한이 100(명목)이 되면서 분모가
 의미를 잃었다. 일반 웨이브 = **2종류**(countA+countB 분할). 보스 웨이브 = 보스1 + 호위 치환.
@@ -137,7 +140,7 @@ lane 은 절대 인덱스가 아니라 `laneGroup` **위상**으로 저작한다
 - **`waveSeed` 를 0 으로 만들면 매판 달라진다 — 절대 금지.** (실증: 각 덱 3회 생성 시 유닛·수량까지 완전 일치.)
 - 매판 랜덤인 건 "**어느 맵이 나오냐**"(`fixedMapSeed=0`)뿐. 특정 맵이 나오면 그 맵 웨이브는 항상 같음.
 - 새 맵/덱 추가 시에도 **덱 waveSeed 를 비0 유니크 값**으로.
-- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 라이브 덱 동일 값, 현재 6). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)가 숫자를 하드코딩하므로 **같은 커밋에서** 갱신한다.
+- **편성이 바뀌는 조정을 했으면 `waveGeneratorVersion` 을 +1 한다** (전 컨셉 덱 동일 값, 현재 7). 수량 knob·게이트·풀·컨셉 어느 쪽이든 결과 편성이 달라지면 대상이다. `waveSeed` 는 그대로 — 시드는 「같은 맵 같은 웨이브」의 키고, 버전은 「baseline 이 언제 바뀌었나」의 표식이다. pin 테스트(`GeneratorVersion_IsBumped_SoTheNewBaselineIsVisible`)가 숫자를 하드코딩하므로 **같은 커밋에서** 갱신한다.
 
 ⚠ **여기서 값만 바꾸면 안 되는 변경**: 적 SO 신설, `minWaveNumber`/`maxPerWave`/`enemyClass`/`traversalLayers` 변경, `WavePatternGenerator`·컨셉 슬롯/필터·`WavePlanAsset` 로직 변경 — 이 경우 **`.claude/skills/enemy-wave-integration` 스킬이 필수**다(풀 삽입 위치·게이트 정합·튜토리얼 로스터 계약·가드 테스트까지 그쪽이 강제). 이 문서는 «어느 값이 어디 있나»의 정본이고, «바꿀 때 뭘 같이 해야 하나»의 정본은 그 스킬이다.
 

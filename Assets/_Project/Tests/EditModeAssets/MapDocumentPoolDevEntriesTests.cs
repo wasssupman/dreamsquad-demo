@@ -283,6 +283,29 @@ namespace Wassup.Tests.EditMode
             finally { map.Dispose(); }
         }
 
+        // siege-lane-spawn 리뷰 F13 — 공성 라우트 감사. 라이브 라우트 감사
+        // (LiveMapSpawnRouteAuthoringTests)는 «저작 spawns = 레인» 전제라 공성 문서를 못 덮는다
+        // (spawns 0 ≠ 파생 2 라 그 테스트들의 불변식 자체가 안 맞는다). 여기서 파생 스폰 기준으로
+        // 같은 순수 함수를 태운다 — dangling 경로 인덱스가 초록으로 새는 것을 막는다.
+        [Test]
+        public void SiegeMap_AuthoredRoutes_PassLaneValidation(
+            [ValueSource(nameof(SiegeMaps))] string mapName)
+        {
+            var doc = UnityEditor.AssetDatabase.LoadAssetAtPath<MapDocument>(
+                $"Assets/_Project/Data/Maps/MapDocument_{mapName}.asset");
+            Assert.IsNotNull(doc);
+
+            var derived = new List<Vector2Int>();
+            StructureAuthoringRules.CollectDerivedSiegeSpawns(doc.Structures, derived);
+            Assert.AreEqual(StructurePlacements.SiegeSpawnOffsets.Length, derived.Count);
+
+            var errors = new List<string>();
+            var warnings = new List<string>();
+            WaypointAuthoringRules.ValidateSpawnRoutes(
+                doc.SpawnRoutes, doc.WaypointPaths, derived, errors, warnings);
+            Assert.IsEmpty(errors, $"{mapName}: " + string.Join(" / ", errors));
+        }
+
         // 골 플로우 필드를 굽고(순수 FlowFieldBuilder) 스폰에서 흘러가며 중앙 열(x = W/2)을
         // 처음 지나는 y 를 잰다. 프로덕션과 같은 빌더를 쓰므로 «최단이 어느 다리를 고르나»의
         // 정본 판정이다 — 테스트 안에서 경로 규칙을 재구현하지 않는다.

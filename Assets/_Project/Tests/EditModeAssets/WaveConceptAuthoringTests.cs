@@ -308,8 +308,15 @@ namespace Wassup.Tests.EditMode
         public void EliteWaves_DoNotCollapseToASingleUnit()
         {
             foreach (string name in MapDecks)
-            {
-                var plan = Plan(name, 3);
+                AssertNoEliteCollapse(name, Plan(name, 3));
+            // 리뷰 F11 — 공성 3덱이 이 가드의 최대 위험군이다: 클라이맥스(w15+)는 변주가
+            // **매 웨이브** 붙어 fail-open 중복 픽 기회가 가장 많고, unit 2 가 Air 캡을 올렸다.
+            foreach (string name in SiegeDecks)
+                AssertNoEliteCollapse(name, Plan(name, StructurePlacements.SiegeSpawnOffsets.Length));
+        }
+
+        private static void AssertNoEliteCollapse(string name, GeneratedWavePlan plan)
+        {
                 for (int i = 0; i < plan.waves.Count; i++)
                 {
                     var w = plan.waves[i];
@@ -336,7 +343,6 @@ namespace Wassup.Tests.EditMode
                         $"{name} 웨이브 {i + 1}('{w.conceptLabel}'): 엘리트가 뽑혀 웨이브가 1기로 붕괴했다 " +
                         "— 그 컨셉의 슬롯이 하나뿐이라 잘린 몫을 넘길 곳이 없다");
                 }
-            }
         }
 
         [Test]
@@ -364,7 +370,7 @@ namespace Wassup.Tests.EditMode
             // wave-pull-revival unit 2 — 3 → 4. 묶음 가운데 변주가 들어가면서 컨셉을 쓰는
             // 덱의 편성이 다시 바뀌었다(변주를 저작한 컨셉이 있는 웨이브부터 슬롯 수가 달라져
             // 이후 rng 소비가 이동한다). 계약 8 대로 버전으로 표시한다.
-            foreach (string name in AllDecks)
+            foreach (string name in System.Linq.Enumerable.Concat(AllDecks, SiegeDecks))
                 // 3 = 컨셉 도입(wave-concept-blocks unit 2)
                 // 4 = 엘리트 2종 편입(unit 7) **그리고** 묶음 가운데 변주(wave-pull-revival
                 //     unit 2) — 두 작업이 origin 과 로컬에서 **각자 4를 찍었다**
@@ -374,6 +380,8 @@ namespace Wassup.Tests.EditMode
                 // 7 = 공습 상한 상향 Dragon 1→2·Skimmer 2→4 (wave-ramp-two-phase unit 2) —
                 //     rng 불변(재추첨 없음), 공습 웨이브 수량만 는다. 시드 유지, v6 과 같은 판단.
                 // 풀이나 편성 규칙이 바뀔 때마다 올린다.
+                // 리뷰 F11 — 공성 3덱도 같은 pin 을 받는다(아래 Concat). laneCount·ramp·시드가
+                // 한꺼번에 바뀐 덱들이 버전 가드 밖이면 다음 편집이 baseline 표시를 건너뛴다.
                 Assert.AreEqual(7, Deck(name).waveGeneratorVersion,
                     $"{name}: 풀/편성이 바뀌었다 — 버전으로 새 baseline 을 표시한다");
         }
@@ -392,9 +400,14 @@ namespace Wassup.Tests.EditMode
         {
             int lanes = StructurePlacements.SiegeSpawnOffsets.Length;   // 공성 파생 스폰 수 = 2
             var plan = Plan(name, lanes);
+            // 리뷰 F10 — 본편 = break **이전**(w1 ~ break−1). break 웨이브 자체는 클라이맥스의
+            // 첫 웨이브(inClimax: i+1 >= break)라 포함하면 창이 부풀려진다. 경계는 덱 필드에서
+            // 읽는다 — 리터럴 15 를 테스트에 얼리지 않는다.
+            int breakWave = Deck(name).waveRampBreakWave;
+            int mainWaves = breakWave >= 2 ? breakWave - 1 : 15;
             var labels = new HashSet<string>();
             bool air = false;
-            for (int i = 0; i < 15 && i < plan.waves.Count; i++)
+            for (int i = 0; i < mainWaves && i < plan.waves.Count; i++)
             {
                 labels.Add(plan.waves[i].conceptLabel);
                 if (plan.waves[i].conceptLabel == "공습") air = true;
@@ -445,8 +458,10 @@ namespace Wassup.Tests.EditMode
             foreach (string name in SiegeDecks)
             {
                 var plan = Plan(name, lanes);
+                int breakWave = Deck(name).waveRampBreakWave;
+                int mainWaves = breakWave >= 2 ? breakWave - 1 : 15;   // 리뷰 F10 과 같은 창
                 var sb = new StringBuilder();
-                for (int i = 0; i < 15 && i < plan.waves.Count; i += 3)
+                for (int i = 0; i < mainWaves && i < plan.waves.Count; i += 3)
                     sb.Append(plan.waves[i].conceptLabel).Append('>');
                 string seq = sb.ToString();
                 foreach (var kv in seqs)

@@ -913,10 +913,15 @@ namespace Wassup.Data
                 int lane = -1;
                 for (int m = 0; m < mainSlots.Length; m++)
                     if (mainSlots[m].laneGroup == group) { lane = mainLanes[m]; break; }
-                // 앞선 변주 슬롯이 같은 그룹이면 그 배정을 공유한다(같은 그룹 = 같은 레인 불변식).
-                if (lane < 0)
+                if (lane < 0 && openNewLanes)
+                {
+                    // 앞선 변주 슬롯이 같은 그룹이면 그 배정을 공유한다(같은 그룹 = 같은 레인
+                    // 불변식). **게이트 안이어야 한다** — 밖에 두면 off(라이브) 덱에서 미지
+                    // 그룹 2+ 슬롯의 접힘이 기존(슬롯별 v%len)과 달라져 byte-identical 이 깨진다
+                    // (리뷰 F4 — 현행 컨셉은 변주 1슬롯뿐이라 잠복이었다).
                     for (int p = 0; p < v; p++)
                         if (variants[p].laneGroup == group && result[p] >= 0) { lane = result[p]; break; }
+                }
                 if (lane < 0 && openNewLanes)
                 {
                     for (; probe < laneCount; probe++)

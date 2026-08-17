@@ -97,13 +97,18 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void TwoPhase_BreakUnitsBelowMin_ClampsToMin()
+        public void TwoPhase_BreakUnitsBelowMin_BehavesExactlyAsMin()
         {
-            // breakUnits < minUnits 저작 실수 — 평탄 구간이 min 아래로 내려가면 안 된다.
-            const int min = 5, max = 24;
-            for (int i = 0; i < 20; i++)
-                Assert.GreaterOrEqual(
-                    WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 0, 0f, 15, 2), min);
+            // 리뷰 F12 — 구 단언(결과 ≥ min)은 함수 끝의 clamp 만으로 참인 동어반복이었다.
+            // 가드(max(min, breakUnits))가 실제로 지키는 것은 **클라이맥스 기점**이다: 승격이
+            // 없으면 지수 기점이 2 가 되어 clamp 를 벗어난 뒤에도 후반 총량이 주저앉는다
+            // (i=break+9 에서 15 대신 6). 그래서 «breakUnits < min = min 과 완전 동일»로 pin.
+            const int min = 5, max = 24, brk = 15;
+            for (int i = 0; i < 40; i++)
+                Assert.AreEqual(
+                    WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 0, 0f, brk, min),
+                    WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 0, 0f, brk, 2),
+                    $"wave index {i}: breakUnits < min 은 min 으로 승격되어야 한다");
         }
 
         [Test]

@@ -43,6 +43,7 @@ namespace Wassup.Data.MapGrid
             {
                 tiles.Dispose();
                 placeMask.Dispose();
+                spawns.Dispose();   // 리뷰 F9 — 위에서 이미 할당됨. 안 지우면 Persistent 누수.
                 throw new MapGenerationFailedException(
                     $"[MapDocumentBuilder] '{doc.name}' 에 goals 가 없다 — 페인터에서 골을 1개 이상 찍고 Bake 할 것.");
             }

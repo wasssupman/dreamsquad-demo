@@ -27,7 +27,7 @@
 
 ## Feature-wide 계약
 
-1. **곡선은 rng 를 소비하지 않는다** (실측 확인: 곡선·상한 변경에도 컨셉 시퀀스 불변). `ExponentialWaveTotal` 확장은 plain 입력 → plain 출력 순수 함수 유지(제약 10). 곡선: `center = i < break ? lerp(min, breakUnits, i/break) : breakUnits × growth^(i−break)`, `maxUnits` 클램프 유지.
+1. **곡선은 rng 를 소비하지 않는다** (실측 확인: 곡선·상한 변경에도 컨셉 시퀀스 불변). `ExponentialWaveTotal` 확장은 plain 입력 → plain 출력 순수 함수 유지(제약 10). 곡선: `center = i < break ? lerp(min, breakUnits, i/break) : breakUnits × growth^(i−break)`, `maxUnits` 클램프 유지. ⚠(리뷰 F2 정정) 중립은 **곡선 수치**(min/max/growth/breakUnits)에 한한다 — **`breakWave` 값 변경은 변주 상시 구간을 옮겨 rng 가 갈린다** → break 튜닝 후엔 시드 스캐너 재실행이 필수.
 2. **break 필드 하나가 클라이맥스 전체의 게이트다.** 곡선 전환·변주 상시·변주 신규 레인이 모두 `waveRampBreakWave > 0` 에서만 켜진다 — 목표 문장(«그 이후부터 지수 상승과 타입을 섞는다»)이 knob 하나로 표현된다. 라이브 덱은 off 라 세 가지 모두 현행 그대로.
 3. **변주 격상의 그라데이션**: break 전 = 블록 가운데 1/3(현행), break 후 = 3/3. 협공 빈도가 이 비율로 상승한다. 3단계 세분화는 실측 후 후속 후보.
 4. `InheritLanes` 의 기존 계약(«본 편성 레인은 블록 안에서 불변»)은 유지된다 — 새 laneGroup 이 **추가 레인을 여는 것**이지 기존 입구를 옮기는 게 아니다. 주석의 근거를 같이 갱신한다.
@@ -45,6 +45,9 @@
 
 ## 후속 후보
 
+- **평소·공습 variantSlots 저작** (리뷰 F14) — 두 컨셉은 변주 미저작이라 클라이맥스 혼합이
+  그 블록에선 무효(0/3)다. 계약 3 의 «3/3»은 변주를 저작한 컨셉(벌떼·중장·원거리)에 한한다.
+  저작 여부·내용은 밸런스 결정이라 사용자 몫.
 - **라이브 6덱 확대** — 공성 검증 후 break 필드 설정 + 시드 재선정 (사용자 결정)
 - **변주 격상 3단계 세분화** (1/3 → 2/3 → 3/3)
 - **Air 적 신규** — 공습 로스터 확장의 정공법 (이번엔 상한 상향으로 대체)

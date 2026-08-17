@@ -35,6 +35,8 @@
 - **오프라인 시뮬은 시드 선정에 쓰지 마라**: PickConcept float32 누적 경계에서 실 생성기와
   시드별로 갈린다(실측 — 포트 후보 2/3 이 빨강). 재선정은 `Scan_SiegeSeedCandidates`
   (Explicit)로. MCP 러너는 Explicit 를 이름으로도 못 고르니 잠시 속성을 떼고 돌려라.
+- **`waveRampBreakWave` 값을 튜닝하면 시드가 죽는다**(리뷰 F2): 변주 상시 구간이 이동해
+  그 지점부터 rng 가 갈린다 — break 변경 커밋은 반드시 스캐너 재실행 + 시드 재선정 동반.
 - 변주 계약 ①~③(wave-pull-revival)은 **게이트 off 덱의 계약**으로 스코프 명시됨.
 - 버전 7 bump 는 컨셉 덱 11개만 — SiegeTest/WaypointLab(v2)은 Dragon/Skimmer 가 없어 무영향.
 

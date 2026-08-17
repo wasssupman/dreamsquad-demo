@@ -128,9 +128,13 @@ if (unit.minWaveNumber <= waveNumber) return index;
 
 `AttackDeck.waveRampBreakWave`/`waveRampBreakUnits`(wave-ramp-two-phase)가 저작된 덱(공성 계열)은
 break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부터 지수다. 이 필드는 클라이맥스
-변주 격상(상시 변주·신규 레인 개방)의 게이트도 겸한다. **곡선은 rng 를 소비하지 않으므로**
-값을 바꿔도 컨셉 시퀀스·유닛 추첨은 불변이다(`RampCurve_DoesNotDisturbConceptSequenceOrPicks`
-가 pin). 0 = 끔 = 기존 지수 — 라이브 덱이 이 상태다.
+변주 격상(상시 변주·신규 레인 개방)의 게이트도 겸한다. 0 = 끔 = 기존 지수 — 라이브 덱이 이 상태다.
+
+⚠ **rng 중립의 정확한 범위** (리뷰 F2 정정): **곡선 수치**(min/max/growth/`breakUnits`)는 rng
+무소비라 바꿔도 컨셉 시퀀스·유닛 추첨이 불변이다(`RampCurve_DoesNotDisturbConceptSequenceOrPicks`
+가 이 절반을 pin — 변주 미저작 컨셉 기준). 그러나 **`breakWave` 값을 바꾸면 변주 상시 구간이
+이동해 그 지점부터 슬롯 수 = rng 소비가 갈린다** — break 를 튜닝했으면 반드시 시드 스캐너
+(`Scan_SiegeSeedCandidates`)를 다시 돌려 시드를 재선정하라.
 
 ### 저작 플랜은 게이트를 받지 않는다
 

@@ -227,15 +227,28 @@ namespace Wassup.EditorTools
                     warnings.Add($"골 ({g.x},{g.y}) 마스크가 파생과 다름 [{LayerLabel(_placeMask[Idx(g.x, g.y)])}] — 런타임은 골 칸을 닫는다");
             // waypoint-routing unit 5 — 경로 검증은 OnValidate 와 **같은 함수**를 호출한다.
             // 페인터가 자체 규칙을 갖는 순간 드리프트가 시작된다(StructureAuthoringRules 선례).
+            // siege-lane-spawn 리뷰 F5/F6 — 공성이면 레인/스폰의 정본은 파생 스폰이다(OnValidate
+            // 와 같은 단일 소스). 저작 _spawns(공성 = 0개)를 넘기면 스폰 겹침 경고가 파생 스폰을
+            // 못 보고, 레인 검증은 통째로 스킵된다. routes 도 저작 원본(_spawnRoutes)을 그대로
+            // 검증한다 — ToSpawnRoutesArray 는 저작 spawns 길이로 절삭해 공성에선 항상 빈 배열이다.
+            IReadOnlyList<Vector2Int> laneSpawns = _spawns;
+            int[] routesToValidate = ToSpawnRoutesArray();
+            if (CountEnemyCores() > 0)
+            {
+                var derived = new List<Vector2Int>();
+                StructureAuthoringRules.CollectDerivedSiegeSpawns(_structures, derived);
+                laneSpawns = derived;
+                routesToValidate = _spawnRoutes.ToArray();
+            }
             var wpErrors = new List<string>();
             WaypointAuthoringRules.ValidatePaths(
-                ToWaypointPathArray(), _w, _h, _tiles, _goals, _spawns, wpErrors, warnings);
+                ToWaypointPathArray(), _w, _h, _tiles, _goals, laneSpawns, wpErrors, warnings);
             foreach (var e2 in wpErrors) errors.Add(e2);
             // waypoint-routing unit 8 — 같은 자리에 합류. 페인터 자체 규칙을 만들지 않고
             // OnValidate 와 같은 순수 함수를 호출한다(waypoint-routing unit 5 와 동일 판단).
             var routeErrors = new List<string>();
             WaypointAuthoringRules.ValidateSpawnRoutes(
-                ToSpawnRoutesArray(), ToWaypointPathArray(), _spawns, routeErrors, warnings);
+                routesToValidate, ToWaypointPathArray(), laneSpawns, routeErrors, warnings);
             foreach (var e3 in routeErrors) errors.Add(e3);
             // map-rework unit 7 — 개편 컨셉 가드(직선은 폭1 · 폭2 제한 · 광장 1+). 경고 전용 —
             // 비개편 맵의 bake 를 막지 않는다. OnValidate 에는 넣지 않는다(임포트 콘솔 소음).
@@ -734,10 +747,11 @@ namespace Wassup.EditorTools
             var effectiveSpawns = new List<Vector2Int>(_spawns);
             if (CountEnemyCores() > 0)
             {
-                effectiveSpawns.Clear();   // 런타임 파생과 동일: 적 마음이 있으면 저작 스폰은 덮인다
-                foreach (var st in _structures)
-                    if (st.data != null && st.side == StructureSide.Enemy && st.data.kind == StructureKind.Core)
-                        effectiveSpawns.Add(st.cell);
+                // 리뷰 F7 — 파생 규칙을 여기 재기술하지 않는다(마음 셀 flood 는 4번째 사본이었다).
+                // 런타임 파생과 같은 셀(마음 + SiegeSpawnOffsets)에서 흘려야 «툴 통과 → 런타임
+                // 폴백» 이 안 생긴다. 단일 소스 = CollectDerivedSiegeSpawns.
+                effectiveSpawns.Clear();
+                StructureAuthoringRules.CollectDerivedSiegeSpawns(_structures, effectiveSpawns);
             }
             if (_goals.Count > 0 && effectiveSpawns.Count > 0)
             {
@@ -820,8 +834,13 @@ namespace Wassup.EditorTools
                 // 상태를 넘긴다(빈 상태 Bake = 경로 삭제 — 타일과 같은 «페인터가 정본» 규약).
                 // waypoint-routing unit 8 — spawnRoutes 도 같은 판단: 페인터가 연 문서에서는
                 // 페인터가 정본이라 항상 자기 상태(_spawnRoutes)를 넘긴다.
+                // siege-lane-spawn 리뷰 F1 — **공성은 예외다**: 페인터 상태는 저작 spawns(0개)
+                // 길이라 항상 빈 배열이 되고, WriteToDocument 는 빈 배열을 «삭제»로 해석해
+                // 손저작 레인 경로를 무음으로 지운다. 공성 routes 는 페인터가 정본이 아니므로
+                // null(보존)을 넘긴다 — 저작은 에셋 직접 편집(spec 계약).
                 MapDocumentBuilder.WriteToDocument(
-                    target, in gm, _structures.ToArray(), ToWaypointPathArray(), ToSpawnRoutesArray());
+                    target, in gm, _structures.ToArray(), ToWaypointPathArray(),
+                    CountEnemyCores() > 0 ? null : ToSpawnRoutesArray());
                 goals.Dispose();
                 spawns.Dispose();
             }

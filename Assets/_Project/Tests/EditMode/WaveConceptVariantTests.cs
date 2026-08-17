@@ -322,6 +322,56 @@ namespace Wassup.Tests.EditMode
             AssertVariantLane(onPlan, expectNewLane: true, "on");
         }
 
+        // 리뷰 F4 — 미지 그룹 **2+ 슬롯**의 접힘. 같은-그룹 공유 스캔이 게이트(openNewLanes)
+        // 밖에 있으면 off(라이브) 덱에서 두 슬롯이 한 레인으로 몰려 기존 접힘(슬롯별 v%len)과
+        // 달라진다 — 현행 컨셉은 변주 1슬롯뿐이라 잠복이었고, 이 pin 이 그 침묵을 깬다.
+        [Test]
+        public void 미지_그룹_다중_변주슬롯_접힘은_게이트_상태를_따른다()
+        {
+            WaveConceptData C() => Concept("pincer",
+                new[] { Slot(0, EnemyClass.Runner), Slot(1, EnemyClass.Tanker) },
+                new[] { Slot(2, EnemyClass.Shooter), Slot(2, EnemyClass.Shooter) });
+
+            void Lanes(GeneratedWavePlan plan, out int runner, out int tanker, List<int> shooters)
+            {
+                shooters.Clear(); runner = -999; tanker = -999;
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    var shooterLanes = new List<int>();
+                    int r = -999, t = -999;
+                    foreach (var g in plan.waves[i].groups)
+                    {
+                        if (g.unit == null) continue;
+                        if (g.unit.enemyClass == EnemyClass.Runner) r = g.laneIndex;
+                        if (g.unit.enemyClass == EnemyClass.Tanker) t = g.laneIndex;
+                        if (g.unit.enemyClass == EnemyClass.Shooter) shooterLanes.Add(g.laneIndex);
+                    }
+                    if (shooterLanes.Count == 2 && r != -999 && t != -999)
+                    { runner = r; tanker = t; shooters.AddRange(shooterLanes); return; }
+                }
+                Assert.Fail("변주 2슬롯이 함께 뽑힌 웨이브가 없다 — 검사가 공회전했다");
+            }
+
+            var offDeck = Deck(new[] { C() });
+            var offShooters = new List<int>();
+            Lanes(WavePatternGenerator.Generate(offDeck, offDeck.waveSeed, 3),
+                out int offRunner, out int offTanker, offShooters);
+            // off = 기존 접힘: v0 → mainLanes[0](러너 레인), v1 → mainLanes[1](탱커 레인).
+            Assert.AreEqual(offRunner, offShooters[0], "off: 첫 변주는 본 편성 첫 입구로 접힌다");
+            Assert.AreEqual(offTanker, offShooters[1], "off: 둘째 변주는 본 편성 둘째 입구로 접힌다");
+
+            var onDeck = Deck(new[] { C() });
+            onDeck.waveRampBreakWave = 4;
+            onDeck.waveRampBreakUnits = 8;
+            var onShooters = new List<int>();
+            Lanes(WavePatternGenerator.Generate(onDeck, onDeck.waveSeed, 3),
+                out int onRunner, out int onTanker, onShooters);
+            // on = 같은 그룹 = 같은 새 레인(미사용 레인 하나를 공유).
+            Assert.AreEqual(onShooters[0], onShooters[1], "on: 같은 laneGroup 은 같은 레인을 공유한다");
+            Assert.AreNotEqual(onRunner, onShooters[0], "on: 새 전선은 본 편성 레인이 아니다");
+            Assert.AreNotEqual(onTanker, onShooters[0]);
+        }
+
         // holdWaves 2 는 «가운데»가 없다 — i%2==1 은 마지막이라 시험대를 덮어쓴다.
         [Test]
         public void holdWaves가_3미만이면_변주가_적용되지_않는다()

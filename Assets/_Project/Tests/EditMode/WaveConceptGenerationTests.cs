@@ -394,8 +394,9 @@ namespace Wassup.Tests.EditMode
         // laneCount 는 결정론 키의 일부다 — lane 요구량 게이트가 후보 집합을 바꾼다.
         // 이것이 계약 6(브리핑과 런타임이 같은 값을 넘긴다)이 필요한 이유다.
         // wave-ramp-two-phase unit 0 — 수량 곡선은 rng 를 소비하지 않는다는 계약의 생성 결과 pin.
-        // 곡선(두 단계)이 켜져도 컨셉 시퀀스와 유닛 추첨은 그대로여야 한다 — 흔들리면 시드
-        // 재선정(unit 3)의 술어가 곡선 튜닝 때마다 다시 깨진다.
+        // ⚠ 스코프(리뷰 F3): 이 pin 은 **곡선 절반만** 잰다 — 아래 컨셉들은 변주 미저작이라
+        // useVariant 게이트가 양쪽 다 꺼져 있다. break **값** 변경이 변주 상시 구간을 옮겨
+        // rng 를 가르는 것은 의도된 동작이고(클라이맥스 pin 이 커버), 여기의 주장이 아니다.
         [Test]
         public void RampCurve_DoesNotDisturbConceptSequenceOrPicks()
         {
