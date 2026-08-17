@@ -1,6 +1,6 @@
 # dreamcatcher-berserker — 광전사 드림캐쳐
 
-> 상태: 작성됨 2026-08-17 (스펙 리뷰 반영 rev 1) · units 0~2 미착수
+> 상태: **완료 2026-08-17** (units 0~2 구현·Play 확인·푸시) · 인계는 [3_handoff_summary.md](3_handoff_summary.md)
 
 ## 상위 목표
 
@@ -45,6 +45,7 @@
 | 0 | 엔진 | [0_stacking_merge.md](0_stacking_merge.md) | 스탯 모디파이어 병합에 **누적 상한** 축 추가 |
 | 1 | 엔진 | [1_maxstacks_and_attack_arm.md](1_maxstacks_and_attack_arm.md) | 최대 중첩 저작 개방 + 「공격 N회 × 자기 버프」 arm 신설 |
 | 2 | 저작 | [2_frenzy_card.md](2_frenzy_card.md) | 광란 카드 · 문안 · 카탈로그 |
+| 3 | 인계 | [3_handoff_summary.md](3_handoff_summary.md) | 커밋 지도 · 되돌리면 안 되는 것 |
 
 ## feature-wide 계약
 

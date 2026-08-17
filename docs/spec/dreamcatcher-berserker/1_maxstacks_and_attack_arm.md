@@ -91,3 +91,6 @@ origin       = ModifierOrigin.Dreamcatcher
 - [ ] EditMode — 공격 3회 = magnitude 가 3단계로 자라고, **상한 초과 공격에도 지속은 갱신된다**
 - [ ] EditMode — 공격을 멈추고 지속이 지나면 슬롯이 사라진다(전량 소멸)
 - [ ] Console — 이 조합에서 `unhandled payload kind` 경고가 더 이상 안 뜬다
+
+> 확인 2026-08-17 — EditMode 2504 중 2501 통과 · 0 실패. 커밋 `e4afa642`.
+> ⚠ 공격 arm 은 병행 세션이 `a4818537`(넉백 작업)에 함께 커밋했다 — 아래 인계 요약 참조.
