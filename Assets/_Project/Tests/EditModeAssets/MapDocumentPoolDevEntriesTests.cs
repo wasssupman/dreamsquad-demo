@@ -133,15 +133,22 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(pool); Assert.IsNotNull(duelDoc); Assert.IsNotNull(live);
 
             AttackDeck duelDeck = null;
+            for (int i = 0; i < pool.Count; i++)
+                if (pool.Get(i).document == duelDoc) duelDeck = pool.Get(i).deck;
             for (int i = 0; i < pool.DevCount; i++)
                 if (pool.GetDev(i).document == duelDoc) duelDeck = pool.GetDev(i).deck;
 
             Assert.IsNotNull(duelDeck,
-                $"{mapName} 이 devEntries 에 없거나 deck 이 비었다 — deck 이 null 이면 구 Deck_WaveA 로 "
+                $"{mapName} 이 풀 어디에도 없거나 deck 이 비었다 — deck 이 null 이면 구 Deck_WaveA 로 "
                 + "폴백해 컨셉·보스·엘리트가 전부 빠진 판이 된다");
 
-            // 본편 Count 불변 = 시드/토너먼트 맵 선택에 Duel 이 불가시.
-            Assert.AreEqual(6, pool.Count, "dev 슬롯 추가가 본편 Count 를 건드리면 시드 결정론이 바뀐다");
+            // duel-live-focus unit 0 — 라이브 풀은 Duel 한 장이다(사용자 결정 2026-08-17).
+            // 시드/토너먼트 배정은 seed % 1 = 0 이라 모두가 같은 판에 선다. 나머지 12장은
+            // dev 슬롯(스테퍼)에만 있고, 되돌리기 = entries 에 다시 올리기.
+            Assert.AreEqual(1, pool.Count,
+                "라이브 풀이 1장이 아니다 — 스테퍼를 끄면 다시 여러 맵이 시드로 배정된다");
+            Assert.AreEqual("MapDocument_Duel", pool.Get(0).document.name,
+                "라이브 노출은 Duel 하나다");
 
             Assert.IsTrue(duelDeck.useGeneratedWaves, "생성 웨이브를 써야 컨셉 블록이 돈다");
             Assert.AreEqual(live.waveGeneratorVersion, duelDeck.waveGeneratorVersion,
@@ -200,19 +207,40 @@ namespace Wassup.Tests.EditMode
                 "③ 마음이 좌우 미러가 아니면 HP 레이스가 불공평해진다");
             Assert.AreEqual(goal.y, heart.y, "③ 같은 행이어야 미러다");
 
-            // ④ 배치 가능 칸이 전부 내 진영(미러축 왼쪽)에 있다.
+            // ④ 배치칸은 **적 거점 앞**까지다 (duel-live-focus unit 1 에서 재정식화).
+            //
+            // 옛 단언은 「전부 미러축 왼쪽」이었다. 사용자 결정(2026-08-17)으로 Duel 의 전선이
+            // 강 건너 적 본능 앞까지 밀려 그 형태는 깨졌다. 남는 원칙은 «적 건물 옆·뒤에는 못
+            // 놓는다» 이고, 경계값은 문서 자신의 거점에서 도출한다(하드코딩 금지).
+            //
+            // ⚠ **Ground 만 세면 안 된다.** 이 맵 가족의 내부는 전부 Walk 라 파생 마스크가 Path
+            // 를 열고, 가디언(placementLayers = Path)이 적 마음 뒤까지 놓이던 구멍이 실제로 있었다 —
+            // 옛 단언이 Ground 만 세어 못 잡았다.
             var mask = doc.PlaceMask;
             Assert.IsNotNull(mask); Assert.AreEqual(doc.Width * doc.Height, mask.Count,
                 "placeMask 를 손저작해야 한다 — 파생 폴백은 Walk→Path 만 열어 Ground 배치칸이 0 이 된다");
-            int placeable = 0, wrongSide = 0;
+
+            int frontierX = doc.Width;   // 적 거점의 가장 서쪽 칸 = 배치가 닿으면 안 되는 첫 열
+            foreach (var s in doc.Structures)
+            {
+                if (s.data == null) continue;
+                var f = StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                if (((int)f & Wassup.Battle.Units.Factions.AnyEnemy) == 0) continue;
+                frontierX = Mathf.Min(frontierX, s.cell.x - StructurePlacements.FootprintOf(f) / 2);
+            }
+            Assert.Less(frontierX, doc.Width, "적 거점이 없다 — ① 이 먼저 깨졌어야 한다");
+
+            const byte placeBits = (byte)(PlacementLayer.Ground | PlacementLayer.Path);
+            int placeable = 0, beyondFront = 0;
             for (int i = 0; i < mask.Count; i++)
             {
-                if ((mask[i] & (byte)PlacementLayer.Ground) == 0) continue;
-                placeable++;
-                if (i % doc.Width >= doc.Width / 2) wrongSide++;
+                if ((mask[i] & placeBits) == 0) continue;
+                if ((mask[i] & (byte)PlacementLayer.Ground) != 0) placeable++;
+                if (i % doc.Width >= frontierX) beyondFront++;
             }
             Assert.Greater(placeable, 40, "④ 배치칸이 너무 적으면 판이 성립하지 않는다");
-            Assert.AreEqual(0, wrongSide, "④ 적 진영·중립 지대에 배치칸이 열려 있다 — 전선이 무너진다");
+            Assert.AreEqual(0, beyondFront,
+                $"④ 적 거점 전선(x={frontierX}) 너머에 배치층이 열려 있다 — 적 건물 옆·뒤에 세울 수 있게 된다");
 
             // ⑤ 강(Env)이 존재하고, 그 열이 부분만 열려 지상 전선을 만든다.
             int env = 0;

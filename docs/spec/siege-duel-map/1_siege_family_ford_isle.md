@@ -67,6 +67,8 @@ x=8 을 y=4/7 로 건너 섬에 들어가고, x=12 를 y=4/7 로 건너 나간�
 
 **본편 `entries` 가 아니라 `devEntries` 다.** 본편에 넣으면 `Count` 가 6→8 이 되어 라이브 6맵의 시드·토너먼트 배정이 전부 재추첨된다.
 
+> **2026-08-17**: 라이브 풀이 Duel 한 장이 되면서 슬롯이 밀렸다 — Ford·Isle 은 10·11 그대로지만 나머지는 전부 이동(`duel-live-focus` README 의 슬롯 표).
+
 ## 완료 기준
 
 - **EditMode** — `SiegeMap_KeepsDuelDesignPhilosophy(Duel|Ford|Isle)` 철학 7개 · `SiegeDevSlot_IsWiredWithCurrentGenerationDeck` 세대 일치(라이브 덱과 **대조**) → 2,410 중 실패 4(전부 `map-rework` 폭 계약 대기, 무관)

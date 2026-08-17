@@ -116,13 +116,15 @@ y0  ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 
 **본편 `entries` 가 아니라 `devEntries` 다.** 본편에 넣으면 `Count` 가 6→7 이 되어 **6맵 전부의 시드·토너먼트 배정이 재추첨**된다. 「라이브 풀 편입」은 그 재편을 동반하는 별건이라 아래 후속 후보로 남긴다.
 
+> **⚠ 위 두 문단은 2026-08-17 로 옛 상태다.** 라이브 풀이 **Duel 한 장**이 되면서 Duel 은 `entries[0]` = **스테퍼 슬롯 0** 이고, 나머지 12장이 dev 슬롯으로 내려갔다 — `docs/spec/duel-live-focus/`.
+
 **레인 경로 축은 적용되지 않는다** — 공성 파생이라 `spawns` 가 저작이 아니고(적 마음 셀 1개), `waypoint-routing` unit 8 이 공성일 때 `spawnRoutes` 를 버린다. 스폰이 1개라 「레인마다 다른 길」자체가 성립하지 않는다. 다만 `waypointPaths[0] = (10,5)` 는 살아 있어 **적 SO 축**(`waypointPathIndex`)은 그대로 작동한다 — Skimmer 가 그 지점을 거쳐 온다.
 
 회귀선 2개: `MapDocumentPoolDevEntriesTests.DuelDevSlot_IsWiredWithCurrentGenerationDeck`(세대 일치를 라이브 덱과 **대조**해서 묻는다 — 라이브가 올라가면 이 단언이 자동으로 따라온다) · `WaypointRoutingLiveTest.DuelDevSlot_RunsCurrentGenerationWaves`(실제 판에서 컨셉 라벨이 붙는가).
 
 ## 후속 후보
 
-- **라이브 풀 편입** [S] — 시드 맵 배정 재편 동반(`Count` 6→7 = 6맵 재추첨), 사용자 결정. 지금은 dev 슬롯 9 로만 진입한다.
+- ~~**라이브 풀 편입** [S]~~ → **완료 2026-08-17** (`duel-live-focus` unit 0). 편입 정도가 아니라 **라이브 풀 = Duel 한 장**이 됐다 — 스테퍼를 끄면 언제나 Duel.
 - **레인 갈래 저작** [M] — 공성 스폰 1개는 필드가 한 레인만 고른다. 상·하 레인 분산은 **적 SO 축의 경로 저작**(지상 경로 적) 또는 스폰 분산 규칙. `spawnRoutes`(레인 축)는 공성에서 구조적으로 불가.
 - **적 본능의 마음 사냥꾼 상호작용** 등 emergent 확인.
 - **본능 프랍 진영 구분** [S] — 4기가 전부 같은 빨간 시험 프랍이라 화면에서 아군/적이 구분 안 된다. viewPrefab 분리 또는 진영 틴트. **rev 3 에서 4기가 되며 체감 우선순위가 올라갔다.**
