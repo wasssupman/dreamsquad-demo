@@ -774,9 +774,23 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfStatBuff unmappable buffStat ({m.payload.buffStat}) — skipped.");
                         continue;
                     }
+                    // dreamcatcher-berserker unit 1 — 최대 중첩. >0 이면 재발동이 덮어쓰기가
+                    // 아니라 누적이 된다(상한 = 1회분 × 중첩). 저작 자리로 tileRange 를 쓰는 것은
+                    // ApplyStackToTarget 이 같은 칸을 최대 중첩으로 쓰는 선례와 같고, 시트
+                    // DTO 에도 이미 있어 저작 경로가 공짜로 열린다. 0 = 기존 덮어쓰기.
+                    //
+                    // 배율 <=1 은 누적이 성립하지 않는다 — FromMultiplier 가 그 값을 **곱셈
+                    // 버킷**으로 보내는데 곱셈 값을 더하면 의미가 뒤집힌다(0.9 + 0.9 = 1.8 =
+                    // 오히려 강화). 조용히 이상하게 도느니 loud 로 세운다.
+                    if (m.payload.tileRange > 0 && buffMult <= 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfStatBuff 최대 중첩({m.payload.tileRange})은 배율 > 1 에서만 성립한다 (현재 배율 {buffMult}) — skipped.");
+                        continue;
+                    }
                     slot.buffStat = buffStat;
                     slot.magnitude = buffMult;
                     slot.duration = m.payload.duration;
+                    slot.tileRange = math.max(0, m.payload.tileRange);
                     // stackId 는 StatModifier 네임스페이스의 단일 할당자에서(squad 이펙트와
                     // 공유) — instanceId 잘라쓰기(네임스페이스 오염) 대신. 슬롯당 고정 →
                     // 매 킬/틱 refresh.

@@ -41,6 +41,15 @@ namespace Wassup.Battle.Effects
         // merge key: (source, stat, op, stackId)
         // refresh: remaining = max(old, new), magnitude = new
         // new slot when no match
+        //
+        // dreamcatcher-berserker unit 0 — ev.magnitudeCap > 0 이면 magnitude 가 **덮어쓰기가
+        // 아니라 누적**이 된다(min(cap, 기존 + 새 값)). 광란(공격마다 공속이 쌓임)이 서는 축.
+        // 상한은 magnitude 만 막고 **remaining 은 막지 않는다** — 최대 중첩에 도달해도 매
+        // 발동이 지속을 갱신해야 한다. 이 둘을 같이 막으면 「가장 뜨거운 지점에서 버프가 스스로
+        // 꺼지는」 결함이 생긴다(스택 임계 방식을 안 쓴 이유와 같은 함정).
+        //
+        // 누적을 여기(병합)에 두고 생산자에 두지 않는 이유: 생산자가 현재값을 읽으려면 Effects
+        // 소유 버퍼를 Combat/Units 이 들여다봐야 하고, 읽은 시점과 병합 시점이 벌어진다.
         private static void ApplyStat(EntityManager em, EntityCommandBuffer ecb, StatModifierApplyEvent ev)
         {
             var target = ev.target;
@@ -71,7 +80,12 @@ namespace Wassup.Battle.Effects
                             },
                             stat      = ev.stat,
                             op        = ev.op,
-                            magnitude = ev.magnitude,
+                            // 상한이 있을 때만 누적. 슬롯을 새로 만드는 아래 두 경로는 기존값이
+                            // 0 이고 상한은 항상 1회분 이상이라(상한 = 1회분 × 최대 중첩) 클램프가
+                            // 무의미해 여기 한 곳에만 둔다.
+                            magnitude = ev.magnitudeCap > 0f
+                                ? math.min(ev.magnitudeCap, slot.magnitude + ev.magnitude)
+                                : ev.magnitude,
                         };
                         MarkDirty(em, target);
                         return;

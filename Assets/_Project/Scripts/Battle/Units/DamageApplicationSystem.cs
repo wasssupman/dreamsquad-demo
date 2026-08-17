@@ -402,7 +402,9 @@ namespace Wassup.Battle.Units
                             var ks = kSlots[s];
                             if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill ||
                                 ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
-                            // 비스택 refresh: 슬롯 고정 stackId 로 재부여 → 지속만 갱신.
+                            // 슬롯 고정 stackId 로 재부여. 최대 중첩(ks.tileRange)이 0 이면 지속만
+                            // 갱신되는 비스택 refresh 이고, >0 이면 매 킬마다 상한까지 누적된다
+                            // (dreamcatcher-berserker unit 1 — 짱빠른/짱쎈버서커가 이 자리에 선다).
                             // duration<=0 = 영구(Infinity, HealthThresholdSystem 과 동일 컨벤션).
                             // op/magnitude 는 FromMultiplier 로 분류 → +% 는 Additive 버킷(squad/
                             // on-place %-buff 와 동일 스택 규칙, modifier-additive-authoring).
@@ -417,6 +419,7 @@ namespace Wassup.Battle.Units
                                 duration = ttl,
                                 source = killerSource,
                                 stackId = ks.statBuffStackId,
+                                magnitudeCap = ModifierAuthoring.StackCap(ks.magnitude, ks.tileRange),
                                 origin = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher,
                             });
                         }

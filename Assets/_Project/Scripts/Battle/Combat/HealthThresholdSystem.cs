@@ -148,6 +148,9 @@ namespace Wassup.Battle.Combat
                                     duration = ttl,
                                     source = entity,
                                     stackId = slot.statBuffStackId,
+                                    // dreamcatcher-berserker unit 1 — 최대 중첩(slot.tileRange)이
+                                    // 있으면 경계를 넘을 때마다 누적된다. 0 = 기존 덮어쓰기.
+                                    magnitudeCap = ModifierAuthoring.StackCap(slot.magnitude, slot.tileRange),
                                     origin = ModifierOrigin.HealthThreshold,
                                 });
                             }
