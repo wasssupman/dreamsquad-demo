@@ -187,9 +187,14 @@ namespace Wassup.Core.Api
             if (!UserSession.HasAccount) return; // guest — nothing to report
             if (string.IsNullOrEmpty(_attemptId))
             {
-                // play failed, or its response is still in flight — a match that
-                // ends inside the play round-trip is dropped, not queued (demo).
-                Debug.LogWarning("[TournamentReporter] no attemptId; complete skipped.");
+                // 셋 중 하나다: (1) 이 판이 애초에 참가 신청을 발행하지 않았다 — 로비 게이트를
+                // 거치지 않은 진입(TestMode · 에디터 직접 Play · tutorial-offline-match 의
+                // 튜토리얼 판), (2) play 가 실패했다, (3) 응답이 아직 왕복 중이다(그 창에서 끝난
+                // 판은 큐잉하지 않고 버린다 — 데모).
+                // **(1) 은 정상 경로다.** 예전 문구는 이상 신호로만 읽혔는데, 지금은 실플레이어의
+                // 첫 판이 여기로 온다 — 이걸 결함으로 오인해 추적하지 말 것.
+                Debug.LogWarning("[TournamentReporter] attemptId 없음 — complete 생략 "
+                    + "(참가 신청을 발행하지 않은 판이거나, play 실패/왕복 중).");
                 return;
             }
             if (_completeSent)

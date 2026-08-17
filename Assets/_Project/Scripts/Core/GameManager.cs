@@ -107,6 +107,12 @@ namespace Wassup.Core
         // 카운터와 안내가 같은 것을 세야 한다. 그래서 호출처가 둘이다 —
         // `SetPhase(Result)` 와 `MenuPopup.OnExit`.
         //
+        // tutorial-offline-match unit 0 — 첫 튜토리얼 판은 이제 참가 신청을 안 해서 히스토리에
+        // 남지 않는데, 여기서는 **그대로 센다**. 아래 Test Mode 가 이미 "안 남는데 세는" 선례이고,
+        // 챕터 D 안내가 뜨는 시점(2판)엔 실전 판이 최소 1건 남아 있어 안내가 깨지지 않는다.
+        // 빼려면 "이 판은 서버 판인가" 를 새로 들어야 하는데(게스트도 세므로 attemptId 부재로는
+        // 못 가른다) 얻는 것에 비해 비싸다 — tutorial-offline-match 계약 6.
+        //
         // Test Mode 도 포함한다 — 이쪽은 "판을 해봤나" 라는 경험 신호이지 토너먼트 집계가
         // 아니다. (엔드리스 배제와의 비대칭을 설명하던 문장은 endless-mode-removal unit 0 에서
         // 그 모드가 사라져 지웠다.) 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는

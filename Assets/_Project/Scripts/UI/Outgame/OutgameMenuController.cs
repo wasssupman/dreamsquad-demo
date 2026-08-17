@@ -200,6 +200,25 @@ namespace Wassup.UI
                 gatePopup.Show(_shortfalls, OnOpenSquad, OnOpenDreamcatcher);
                 return;
             }
+            // tutorial-offline-match unit 0 — 첫 인게임 튜토리얼이 뜨는 판은 토너먼트에
+            // 올리지 않는다. 참가 신청을 발행하지 않으므로 그 판은 attempt 를 갖지 않고,
+            // 점수 제출·나가기 마감은 attemptId 부재로 스스로 스킵된다(게스트 판과 같은 모양).
+            //
+            // 판정은 배틀 씬이 "이 판에 튜토리얼을 띄울까" 를 정할 때 쓰는 **바로 그 호출**이다
+            // (계약 1). 별도 플래그를 두면 두 곳이 다른 값을 봐서 "튜토리얼이 뜨는 판" 과
+            // "서버에 안 올리는 판" 이 어긋난다.
+            //
+            // 리포터 상태는 여기서 건드리지 않는다 — 배틀 진입의 `BeginMatch()` 가 adopt 할
+            // 것이 없어 리셋하므로 직전 판의 attemptId 가 새지 않는다(TestMode 와 같은 경로,
+            // tournament-flow-guards unit 8). `_starting` 도 걸지 않는다: 기다릴 왕복이 없어
+            // 풀어 줄 지점이 없고(게이트 경로는 콜백에서 푼다), 연타 이중 로드는
+            // `SceneTransition` 자신의 `_transitioning` 가드가 막는다.
+            if (TutorialProgress.ShouldRunCore(profileSO))
+            {
+                Debug.Log("[OutgameMenuController] 튜토리얼 판 — 토너먼트 참가 신청 생략.");
+                SceneTransition.Go(SceneNames.Battle);
+                return;
+            }
             // tournament-flow-guards unit 1 — play 응답을 확인하고서야 입장한다. 응답으로
             // attemptId 를 확보하면 배틀로 전환하고, 실패/무응답이면 입장하지 않고 알린다.
             // 대기 중 재진입 차단(중복 play = 중복 서버 락). ShowBusy 딤이 입력도 막는다.

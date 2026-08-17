@@ -37,6 +37,7 @@
 
 1. **입장은 play 성공에 게이트된다** (로그인 계정 한정). 성공의 정의 = 응답에서 **attemptId + seed 확보** (HTTP 200 만으론 불충분 — attemptId 빈 응답으로 입장하면 그 버그가 그대로 재발).
 2. **게스트는 게이트 대상 아님.** `!UserSession.HasAccount` 면 play 자체가 없으므로 즉시 입장(현행 유지).
+   - 2026-08-17 rev — **비게이트 케이스가 둘이 됐다.** 로그인 계정이라도 **첫 인게임 튜토리얼 판**은 참가 신청을 발행하지 않고 즉시 입장한다(`docs/spec/tutorial-offline-match/`). 계약 1 의 "로그인 계정 한정" 은 이제 "로그인 계정의 **토너먼트 판** 한정" 으로 읽는다. 발행 창구가 `BeginMatchFromLobby` 하나라는 unit 8 계약은 그대로다 — 튜토리얼 판은 그 창구를 안 부를 뿐이다.
 3. **`_lobbyIssued` 채택 유지.** await 성공 후에도 `_lobbyIssued=true` 로 배틀씬 `GameManager.OnEnable.BeginMatch` 가 **재발행 없이 adopt**. 한 판 = 엔트리 1개 불변.
 4. **선발행(로비 play)의 목적 유지** — 응답의 `tournament.seed` 를 맵 빌드 전에 확보. await 로 시드는 오히려 입장 전 확정된다.
 5. **score 전송 로직은 현행 `ReportResult` 그대로.** play 정상 + 세션 유지면 그대로 보내는 게 정답. 추가는 **complete 실패 시 알림뿐** — 논블로킹, **재시도 없음**. 결과 화면/로컬 점수/씬 전환에 무영향.
