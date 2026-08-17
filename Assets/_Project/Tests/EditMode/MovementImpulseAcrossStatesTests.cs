@@ -12,7 +12,7 @@ namespace Wassup.Tests.EditMode
 {
     // defender-knockback-on-impact unit 2 — 「넉백은 상태와 무관하다」.
     //
-    // 사용자 증상: 「밀당맨이 제자리 공격 중인 킨들러를 못 민다」. 원인은 생산이 아니라
+    // 사용자 증상: 「넉백머신이 제자리 공격 중인 킨들러를 못 민다」. 원인은 생산이 아니라
     // 소비였다 — impulse 소비는 `MovementSystem` 에 한 줄뿐인데(`CcKind.Impulse` 전수
     // 조사: 생산자 4 · 소비자 1), 자기주도 이동을 하지 않는 상태들이 **그 줄에 닿기 전에
     // `continue` 로 빠져나간다.** 못 쓴 impulse 는 `CcDecaySystem` 이 소비 여부와 무관하게
