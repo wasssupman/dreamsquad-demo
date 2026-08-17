@@ -371,8 +371,10 @@ namespace Wassup.Tests.EditMode
                 // 5 = 그 둘의 병합. 어느 쪽 4 와도 다른 세 번째 baseline 이라 다시 올린다.
                 // 6 = Skimmer 게이트 8→4(unit 8) — 공습 w4~7 창의 Dragon 중복 픽 해소.
                 //     풀 불변이라 waveSeed 는 유지, 편성만 바뀌어 버전으로 표시한다.
+                // 7 = 공습 상한 상향 Dragon 1→2·Skimmer 2→4 (wave-ramp-two-phase unit 2) —
+                //     rng 불변(재추첨 없음), 공습 웨이브 수량만 는다. 시드 유지, v6 과 같은 판단.
                 // 풀이나 편성 규칙이 바뀔 때마다 올린다.
-                Assert.AreEqual(6, Deck(name).waveGeneratorVersion,
+                Assert.AreEqual(7, Deck(name).waveGeneratorVersion,
                     $"{name}: 풀/편성이 바뀌었다 — 버전으로 새 baseline 을 표시한다");
         }
 

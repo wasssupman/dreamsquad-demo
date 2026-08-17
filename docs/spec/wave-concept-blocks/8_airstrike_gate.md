@@ -33,6 +33,10 @@ unit 7 이 「공습」을 슬롯 2개로 넓힌 근거는 «슬롯 간 중복 �
 
 `Concept_Airstrike.countMul 0.3` 은 사실상 죽은 값이다 — Air cap 합이 3(Dragon 1 + Skimmer 2)이라 w8+ 공습 총량은 곡선과 무관하게 3 근처에 붙는다. 후반 공습이 쉬어가는 웨이브가 되는지는 실측 후 판단(후속 후보).
 
+> **해소 (2026-08-17)**: `wave-ramp-two-phase` unit 2 가 Dragon 1→2·Skimmer 2→4 로 상향해
+> Air cap 합 6. 클라이맥스(지수 구간)에서 공습이 3 에 고정되던 구멍이 풀렸다. countMul 0.3
+> 은 이제 총량이 20 을 넘는 구간에서만 cap 에 먹힌다.
+
 ## 완료 기준
 
 - 가드 2개: 수정 전 빨강(Serpent 공습 후보 1<2 · Coil w4 dragon 종류합 2>1) → 수정 후 초록

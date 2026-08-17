@@ -17,7 +17,7 @@ MonoBehaviour:
   traversalLayers: 4
   enemyClass: 4
   minWaveNumber: 4
-  maxPerWave: 1
+  maxPerWave: 2
   attackMethod: 2
   targetMode: 2
   engageMovement: 0

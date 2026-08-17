@@ -22,7 +22,7 @@ MonoBehaviour:
   targetPriorityClass: 0
   targetClassMask: -1
   minWaveNumber: 4
-  maxPerWave: 2
+  maxPerWave: 4
   health: 80
   moveSpeed: 2.5
   attackRange: 1
