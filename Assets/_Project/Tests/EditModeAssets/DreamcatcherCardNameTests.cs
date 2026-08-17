@@ -46,6 +46,8 @@ namespace Wassup.Tests.EditMode
             // 카드 선택 화면에서 동상과 서로를 잡아먹었다. 시트 authoring 값으로 통일.
             { "frost_arrow", "스턴메이커" },
             { "frostbite", "동상" },
+            // berserker unit 2 — 누적 자기 버프 1호(공격마다 공속이 쌓인다).
+            { "frenzy", "광란" },
             { "gale_shove", "밀치기" },
             { "guardian_as", "가디언속" },
             { "guardian_fortress", "가디언벽" },

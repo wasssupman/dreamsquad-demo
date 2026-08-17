@@ -292,9 +292,17 @@ namespace Wassup.UI
                     effect = $"대상에게 {StackLabel(payload.stackKind)} {Count(payload.magnitude)}스택"
                            + $" · {Duration(payload.duration)}";
                     break;
+                // berserker unit 1 — tileRange > 0 이면 재발동이 덮어쓰기가 아니라 **누적**이다
+                // (광란). 중첩과 상한을 말해주지 않으면 「+8%」만 보고 약한 카드로 읽힌다.
+                // 상한 %는 문자열에 박지 않고 저작값에서 뽑는다(제약 6) — 시트가 배율이나
+                // 중첩 중 하나만 바꿔도 문안이 따라간다.
                 case DcPayloadKind.SelfStatBuff:
+                    bool stacks = payload.tileRange > 0;
                     effect = $"{BuffLabel(payload.buffStat)} {SignedPercent(payload.magnitude)}";
-                    if (payload.duration > 0f) effect += $" · {Duration(payload.duration)}";
+                    if (stacks) effect += $" 중첩 (최대 {Count(payload.tileRange)}중첩";
+                    if (payload.duration > 0f)
+                        effect += stacks ? $" · {Duration(payload.duration)})" : $" · {Duration(payload.duration)}";
+                    else if (stacks) effect += ")";
                     else if (mechanic.trigger.kind == DcTriggerKind.HealthThreshold)
                         effect += " · 전투 중 1회";
                     else effect += " · 남은 전투 동안";
