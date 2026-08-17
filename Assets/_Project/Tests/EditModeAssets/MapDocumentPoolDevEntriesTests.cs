@@ -239,6 +239,82 @@ namespace Wassup.Tests.EditMode
             finally { map.Dispose(); }
         }
 
+        // siege-lane-spawn unit 2 — 두 레인이 실제로 다른 길로 가는가.
+        // Duel: 지형(다리 2쌍 y2·3 / y8·9)이 가른다 — routes 비움, 플로우 최단이 스폰별로 갈린다.
+        // Ford·Isle: 중앙이 한 덩어리(여울/개방)라 지형이 못 가른다 — 레인 경로 저작이 가른다.
+        // path 0 은 공중 예약(Enemy_Skimmer.waypointPathIndex = 0, SO 축 > 레인 축)이라 1·2 만 유효.
+        [Test]
+        public void SiegeMap_TwoLanes_TakeDistinctPaths(
+            [ValueSource(nameof(SiegeMaps))] string mapName)
+        {
+            var doc = UnityEditor.AssetDatabase.LoadAssetAtPath<MapDocument>(
+                $"Assets/_Project/Data/Maps/MapDocument_{mapName}.asset");
+            Assert.IsNotNull(doc);
+
+            Vector2Int heart = default; bool found = false;
+            foreach (var s in doc.Structures)
+                if (s.data != null && StructurePlacements.DeriveFaction(s.side, s.data.kind)
+                    == Wassup.Battle.Units.Faction.EnemyCore) { heart = s.cell; found = true; }
+            Assert.IsTrue(found);
+
+            var map = MapDocumentBuilder.ToGeneratedMap(doc, Unity.Collections.Allocator.Temp);
+            try
+            {
+                Assert.AreEqual(2, map.spawns.Length);
+                if (mapName == "Duel")
+                {
+                    Assert.AreEqual(-1, map.RouteForSpawn(0), "Duel 은 지형이 가른다 — routes 비움");
+                    Assert.AreEqual(-1, map.RouteForSpawn(1));
+                    int y0 = MidColumnCrossingY(in map, map.spawns[0]);
+                    int y1 = MidColumnCrossingY(in map, map.spawns[1]);
+                    Assert.Less(y0, heart.y, "하단 스폰은 하단 다리로 건너야 한다");
+                    Assert.Greater(y1, heart.y, "상단 스폰은 상단 다리로 건너야 한다");
+                }
+                else
+                {
+                    int r0 = map.RouteForSpawn(0), r1 = map.RouteForSpawn(1);
+                    Assert.Greater(r0, 0, "path 0 은 공중 예약 — 레인 경로는 1부터");
+                    Assert.Greater(r1, 0);
+                    Assert.AreNotEqual(r0, r1, "두 레인이 같은 경로면 합류라 저작 의미가 없다");
+                    Assert.Less(map.WaypointCellAt(r0, 0).y, heart.y, "lane 0(하단 스폰) → 하단 경유");
+                    Assert.Greater(map.WaypointCellAt(r1, 0).y, heart.y, "lane 1(상단 스폰) → 상단 경유");
+                }
+            }
+            finally { map.Dispose(); }
+        }
+
+        // 골 플로우 필드를 굽고(순수 FlowFieldBuilder) 스폰에서 흘러가며 중앙 열(x = W/2)을
+        // 처음 지나는 y 를 잰다. 프로덕션과 같은 빌더를 쓰므로 «최단이 어느 다리를 고르나»의
+        // 정본 판정이다 — 테스트 안에서 경로 규칙을 재구현하지 않는다.
+        private static int MidColumnCrossingY(in GeneratedMap map, Unity.Mathematics.int2 spawn)
+        {
+            int w = map.gridSize.x, h = map.gridSize.y, n = w * h;
+            var walk = new Unity.Collections.NativeArray<byte>(n, Unity.Collections.Allocator.Temp);
+            var flow = new Unity.Collections.NativeArray<Unity.Mathematics.float2>(n, Unity.Collections.Allocator.Temp);
+            var dist = new Unity.Collections.NativeArray<int>(n, Unity.Collections.Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < n; i++)
+                    walk[i] = map.tiles[i] == MapTileType.Walk ? (byte)1 : (byte)0;
+                Wassup.Battle.Effects.FlowFieldBuilder.Build(walk, map.gridSize, map.goal, flow, dist);
+
+                var c = spawn;
+                for (int step = 0; step < n; step++)
+                {
+                    if (c.x == w / 2) return c.y;
+                    var f = flow[c.y * w + c.x];
+                    var d = new Unity.Mathematics.int2(
+                        f.x > 0.01f ? 1 : (f.x < -0.01f ? -1 : 0),
+                        f.y > 0.01f ? 1 : (f.y < -0.01f ? -1 : 0));
+                    if (d.x == 0 && d.y == 0) break;
+                    c += d;
+                }
+                Assert.Fail($"스폰 {spawn} 이 중앙 열에 도달하지 못했다 — 플로우가 끊겼다");
+                return -1;
+            }
+            finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
+        }
+
         // tutorial-map — 튜토리얼은 「웨이브 N 에 이 유형이 나온다」가 결정적이어야 한다.
         // 생성 웨이브는 풀에서 무작위 추첨이라 그걸 보장하지 못하므로 **저작 플랜**을 쓴다.
         // 이 pin 이 지키는 것: 플랜이 실제로 배선돼 있고, 10웨이브이고, 라이브 로스터 전종을
