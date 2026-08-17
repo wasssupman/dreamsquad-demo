@@ -379,9 +379,12 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_patternA.TryToSpec(0, out _));
         }
 
-        // 카드(defender) 경로는 미배선이다 — 조용히 붙어 "부착됨" 으로 집계되면 안 된다.
+        // dreamcatcher-content-5 unit 5 — 카드(defender) 경로 **개통**. 이 테스트는 여태
+        // 「거절된다」를 고정했고(그때는 그것이 계약이었다) 이제 「실제로 붙고 쏜다」를 고정한다.
+        // 핵심 단언은 여전히 «조용한 no-op 금지» 다 — 붙었다면 patternIndex 가 진짜 슬롯을
+        // 가리켜야 하고, 아니면 붙지 말아야 한다.
         [Test]
-        public void CardPath_EmitProjectilePattern_IsRejected_NotSilentlyAttached()
+        public void CardPath_EmitProjectilePattern_AttachesWithARealPatternSlot()
         {
             var em = _world.EntityManager;
             var defender = em.CreateEntity();
@@ -392,14 +395,94 @@ namespace Wassup.Tests.EditMode
             card.type = CardType.Unit;
             card.mechanics = new[] { PatternMechanic(_patternA, 1f) };
 
-            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("카드\\(defender\\) 경로 미배선"));
-            int attached = _bridge.ApplyDreamcatcherCardToUnit(defender, card);
+            // 반환값은 «부착 개수» 가 아니라 **오라 핸들**이다(오라 없으면 0). 아무것도
+            // 안 붙었을 때만 -1 이라, 개통 여부의 단언은 «-1 이 아니다» 다.
+            int handle = _bridge.ApplyDreamcatcherCardToUnit(defender, card);
 
-            Assert.AreEqual(-1, attached, "부착된 게 없으면 -1 — '부착됨' 으로 집계되면 안 된다");
-            Assert.IsFalse(em.HasBuffer<DcTriggerSlot>(defender) && em.GetBuffer<DcTriggerSlot>(defender).Length > 0,
-                "슬롯이 붙으면 안 된다");
+            Assert.AreNotEqual(-1, handle, "붙었으면 -1 이 아니다 — 개통 전에는 -1 이었다");
+            Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(defender));
+            var slots = em.GetBuffer<DcTriggerSlot>(defender);
+            Assert.AreEqual(1, slots.Length);
+
+            // 발동 arm 이 보는 세 조건(patternIndex >= 0 · 두 버퍼 존재)이 전부 성립해야
+            // 실제로 발사된다. 하나라도 빠지면 «붙었는데 아무 일 없는» 카드가 된다.
+            Assert.GreaterOrEqual(slots[0].patternIndex, 0, "슬롯이 진짜 패턴을 가리켜야 한다");
+            Assert.IsTrue(em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender));
+            Assert.IsTrue(em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(defender));
+            Assert.AreEqual(1,
+                em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender).Length);
 
             Object.DestroyImmediate(card);
+        }
+
+        // ECS 리뷰 H2/M2 — 발동 arm 은 주기 트리거 하나뿐이라 다른 트리거로 저작하면
+        // **붙는데 영영 안 터진다.** 거절이 패턴 슬롯 append 보다 **앞**이어야 주인 없는
+        // 슬롯도 안 남는다(그게 M2 였다). 두 가지를 한 테스트로 고정한다.
+        [Test]
+        public void CardPath_NonPeriodicTrigger_IsRejected_AndLeavesNoPatternSlot()
+        {
+            var em = _world.EntityManager;
+            var defender = em.CreateEntity();
+            em.AddComponent<Wassup.Battle.Units.DefenderUnitTag>(defender);
+
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = "attackn_pattern_card";
+            card.type = CardType.Unit;
+            var mech = PatternMechanic(_patternA, 1f);
+            mech.trigger.kind = DcTriggerKind.AttackN;   // 발동 arm 이 없는 축
+            mech.trigger.period = 3;
+            card.mechanics = new[] { mech };
+
+            LogAssert.Expect(LogType.Warning,
+                new System.Text.RegularExpressions.Regex("PeriodicTimer 만 배선"));
+            int handle = _bridge.ApplyDreamcatcherCardToUnit(defender, card);
+
+            Assert.AreEqual(-1, handle, "붙은 게 없으면 -1");
+            Assert.IsFalse(em.HasBuffer<DcTriggerSlot>(defender)
+                           && em.GetBuffer<DcTriggerSlot>(defender).Length > 0,
+                "트리거 슬롯이 붙으면 안 된다");
+            bool leaked = em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender)
+                          && em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender).Length > 0;
+            Assert.IsFalse(leaked, "거절됐는데 주인 없는 패턴 슬롯이 남으면 안 된다");
+
+            Object.DestroyImmediate(card);
+        }
+
+        // 살아 있는 유닛에 두 장이 붙어도 서로의 슬롯을 지우지 않는다 — 유닛 스폰 경로를
+        // 그대로 복붙하면(무조건 새 버퍼) 두 번째가 첫 번째를 밟아 첫 카드의 인덱스가
+        // stale 이 된다. 카드는 «전투 중 살아 있는 엔티티» 에 붙는다는 것이 그 차이다.
+        [Test]
+        public void CardPath_TwoPatternCards_KeepIndependentSlots()
+        {
+            var em = _world.EntityManager;
+            var defender = em.CreateEntity();
+            em.AddComponent<Wassup.Battle.Units.DefenderUnitTag>(defender);
+
+            var cardA = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            cardA.id = "pattern_card_a";
+            cardA.type = CardType.Unit;
+            cardA.mechanics = new[] { PatternMechanic(_patternA, 1f) };
+
+            var cardB = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            cardB.id = "pattern_card_b";
+            cardB.type = CardType.Unit;
+            cardB.mechanics = new[] { PatternMechanic(_patternA, 2f) };
+
+            _bridge.ApplyDreamcatcherCardToUnit(defender, cardA);
+            _bridge.ApplyDreamcatcherCardToUnit(defender, cardB);
+
+            var patternSlots = em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender);
+            Assert.AreEqual(2, patternSlots.Length, "두 번째가 첫 번째를 지우면 안 된다");
+
+            var slots = em.GetBuffer<DcTriggerSlot>(defender);
+            Assert.AreEqual(2, slots.Length);
+            Assert.AreNotEqual(slots[0].patternIndex, slots[1].patternIndex,
+                "두 카드가 같은 슬롯을 가리키면 발사 카운터를 서로 밟는다");
+            Assert.GreaterOrEqual(slots[0].patternIndex, 0);
+            Assert.Less(slots[1].patternIndex, patternSlots.Length);
+
+            Object.DestroyImmediate(cardA);
+            Object.DestroyImmediate(cardB);
         }
 
         private static void SetField(object target, string name, object value)

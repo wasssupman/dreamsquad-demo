@@ -10,27 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 57583d0eae98a4723adcd8b7082d6d7d, type: 3}
-  m_Name: Projectile_CannonStrike
+  m_Name: Projectile_Moth
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
-  id: cannon_strike
-  speed: 0
-  hitThreshold: 0.3
-  visualScale: 6
-  visualHeightOffset: 0
-  projectilePrefab: {fileID: 6487987637173855206, guid: 29a9704bef55c3240bfe88bfc33c71cc, type: 3}
-  hitPrefab: {fileID: 3911334593277181048, guid: 252e45bbff96e814b8cc8641fe650525, type: 3}
+  id: moth
+  speed: 7
+  hitThreshold: 0.35
+  visualScale: 5
+  visualHeightOffset: 0.8
+  projectilePrefab: {fileID: 935282937514642825, guid: d6df65fd448514925a9696081cca2240, type: 3}
+  hitPrefab: {fileID: 0}
   facing: 0
-  spinSpeed: 360
+  spinSpeed: 0
   preserveVfxColors: 1
   tintColor: {r: 1, g: 1, b: 1, a: 1}
   emissionMultiplier: 1
-  scaleJitter: 0
+  scaleJitter: 0.15
   hueJitter: 0
   rotationJitter: 0
   textureVariants: []
   selectMode: 0
   hitVfxLifetime: 0
-  hitVfxScale: 2.5
+  hitVfxScale: 1
   castPrefab: {fileID: 0}
   castVfxLifetime: 0
   onHitEffect: 0
@@ -38,12 +38,15 @@ MonoBehaviour:
   onHitDuration: 0
   splashRadius: 0
   splashDamageMul: 0.5
-  flightMode: 6
-  arcHeight: 0
-  impactTileRange: 0
-  minFlightTime: 0
+  flightMode: 3
+  arcHeight: 2
+  impactTileRange: 1
+  minFlightTime: 0.3
   pierceCount: 1
-  bezierLateral: 0
+  rehitCooldownSec: 0
+  knockbackDistance: 0
+  knockbackDuration: 0
+  bezierLateral: 1.6
   bezierForwardBias: 0.35
-  dropHeight: 9
-  fallPortion: 0.35
+  dropHeight: 6
+  fallPortion: 1

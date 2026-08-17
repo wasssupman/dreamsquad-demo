@@ -266,7 +266,144 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(0f, d, 0.001f, "반경 밖 적이 맞았다");
         }
 
+        // ── unit 9 — 낡은 조준(stale aim) ────────────────────────────────────
+        //
+        // **위 5개가 초록인데도 실전에서 피해가 0 이던 이유가 여기 있다: 위 더미들은 가만히
+        // 서 있다.** 캐논 미사일은 발사 시점의 **칸**을 겨누고 `impactTileRange 0` 이라 착탄
+        // 시점에 **같은 칸에 있어야만** 맞는데, 안 움직이는 더미는 칸을 벗어날 수 없다.
+        //
+        // 실전 수치(라이브 월드 실측): 예고 0.40s × 적 속도 2.00 = **0.80타일** 이동, 칸 소속
+        // 유지 폭은 중심 ±0.50타일. 즉 **최소 예고에도 벗어나고** 뒤 슬롯(0.72s = 1.44타일)은
+        // 전원 벗어난다. unit 8 이 임자 게이트를 넣기 전엔 그 칸에 **누가 있든** 때려서
+        // 행군하는 뒤 적이 빈 칸을 채웠고, 조준이 낡았다는 사실이 그렇게 가려져 있었다.
+        //
+        // ⚠ 이동을 경로 추종에 맡기지 않는다 — 맵·통행 층·시드에 묶이면 테스트가 부서진다.
+        // **옮기는 폭만** 실측에서 가져오고 변위는 직접 준다.
+        [UnityTest]
+        public IEnumerator MovedDuringTelegraph_StillTakesDamage()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var cannon = MakeCannon("test_skystrike_moved");
+            Prepare(bridge, gm, cannon);
+            var cell = FindPlaceableCell(bridge, cannon);
+            float tile = TileSize(bridge);
+
+            var victim = SpawnDummy(em, bridge, new Vector2Int(cell.x + 1, cell.y));
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+
+            // 탄이 실제로 뜬 뒤에 옮긴다 — 발사 전에 옮기면 새 칸을 겨눠서 결함이 숨는다.
+            bool launched = false;
+            using (var projectiles = em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileState>()))
+            {
+                for (int f = 0; f < 30 && !launched; f++)
+                {
+                    // ⚠ 두 인자에 같은 적을 넘긴다. `Entity.Null` 을 넘기면 임자 없는 탄
+                    // (메테오 등 기존 TileAoe 발사)이 세어져 «떴다» 가 거짓이 된다.
+                    launched = MissilesAimedAt(projectiles, victim, victim) > 0;
+                    if (!launched) yield return null;
+                }
+            }
+
+            // 자기 칸을 **벗어나는** 변위(0.8타일 > 경계 0.5타일). 스코프 안에는 남는다.
+            var before = em.GetComponentData<LocalTransform>(victim).Position;
+            em.SetComponentData(victim, LocalTransform.FromPosition(
+                new float3(before.x + 0.8f * tile, before.y, before.z)));
+            yield return Frames(90);
+
+            float dmg = Hp - em.GetComponentData<Health>(victim).value;
+            em.DestroyEntity(victim);
+            Object.Destroy(cannon);
+
+            Assert.IsTrue(launched, "미사일이 아예 뜨지 않았다 — 이 테스트가 재는 것은 착탄이다");
+            Assert.Greater(dmg, 0f,
+                "예고 중 자기 칸을 벗어난 적이 **아무 피해도 받지 않았다**. 탄은 «칸»(발사 시점)을" +
+                " 겨누는데 페이로드는 «적»(착탄 시점)을 본다 — 조준이 둘이라 예고 시간만큼 어긋난다.");
+        }
+
+        // 같은 칸 두 발이 **화면에서 갈리는가**. unit 8 은 여분 발을 0.28타일만 비켜
+        // 떨어뜨렸는데 미사일 `visualScale` 이 6 이다 — 완전히 겹쳐 한 발로 보인다
+        // (제보: 「범위 안 5~7기인데 낙하가 2개」).
+        //
+        // 착탄점 «거리» 로 재는 이유: 발수(위 `TwoEnemiesInSameCell…`)는 이미 초록인데도
+        // 화면에는 안 보였다. 발수와 시인성은 서로를 가려주지 못한다.
+        [UnityTest]
+        public IEnumerator BunchedEnemies_LandOnDistinctPoints()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var cannon = MakeCannon("test_skystrike_distinct");
+            Prepare(bridge, gm, cannon);
+            var cell = FindPlaceableCell(bridge, cannon);
+            float tile = TileSize(bridge);
+
+            var target = new Vector2Int(cell.x + 1, cell.y + 1);
+            var a = SpawnDummy(em, bridge, target);
+            var b = SpawnDummy(em, bridge, target);
+
+            // ⚠ `SpawnDummy` 는 둘을 **정확히 같은 좌표**에 놓는다. 실제 판에서는 분리 반경이
+            // 적들을 갈라놓지만 더미에는 그 시스템이 없다 — 그대로 두면 착탄점이 같은 것이
+            // 당연해져서 이 테스트가 아무것도 못 잰다. 같은 칸 **안에서** 갈라 놓는다:
+            // ±0.3타일이면 둘 다 같은 칸으로 반올림된다(칸 경계는 ±0.5).
+            var center = em.GetComponentData<LocalTransform>(a).Position;
+            em.SetComponentData(a, LocalTransform.FromPosition(
+                new float3(center.x - 0.3f * tile, center.y, center.z)));
+            em.SetComponentData(b, LocalTransform.FromPosition(
+                new float3(center.x + 0.3f * tile, center.y, center.z)));
+
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+
+            float3 ia = default, ib = default;
+            bool got = false;
+            using (var projectiles = em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileState>()))
+            {
+                for (int f = 0; f < 60 && !got; f++)
+                {
+                    got = TryGetImpacts(projectiles, a, b, out ia, out ib);
+                    if (!got) yield return null;
+                }
+            }
+
+            em.DestroyEntity(a); em.DestroyEntity(b);
+            Object.Destroy(cannon);
+
+            Assert.IsTrue(got, "같은 칸 두 적을 겨눈 탄 2발을 못 찾았다");
+            float apart = math.distance(new float2(ia.x, ia.z), new float2(ib.x, ib.z));
+            Assert.GreaterOrEqual(apart, 0.5f * tile,
+                $"같은 칸 두 발의 착탄점이 {apart / tile:F2}타일밖에 안 떨어져 있다 — 미사일" +
+                " visualScale 이 6 이라 화면에서 한 발로 접힌다(발수를 늘린 목적이 사라진다).");
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
+
+        // 인접 셀 중심 간 거리 = 타일 크기. 상수로 박지 않는다(맵이 정한다).
+        private static float TileSize(BattleBridge bridge)
+            => (bridge.GridToWorldCenterVector(new Vector2Int(1, 0))
+                - bridge.GridToWorldCenterVector(new Vector2Int(0, 0))).magnitude;
+
+        // 두 적을 각각 겨눈 탄의 착탄점. 둘 다 살아 있는 프레임에만 true.
+        private static bool TryGetImpacts(EntityQuery projectiles, Entity a, Entity b,
+                                          out float3 ia, out float3 ib)
+        {
+            ia = default; ib = default;
+            bool hasA = false, hasB = false;
+            var states = projectiles.ToComponentDataArray<ProjectileState>(
+                Unity.Collections.Allocator.Temp);
+            for (int i = 0; i < states.Length; i++)
+            {
+                if (states[i].target == a && !hasA) { ia = states[i].impact; hasA = true; }
+                else if (states[i].target == b && !hasB) { ib = states[i].impact; hasB = true; }
+            }
+            states.Dispose();
+            return hasA && hasB;
+        }
+
 
         private static IEnumerator LoadBattle()
         {

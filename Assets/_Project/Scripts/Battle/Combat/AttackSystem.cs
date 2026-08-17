@@ -228,7 +228,7 @@ namespace Wassup.Battle.Combat
                         if (pick >= 0)
                             SpawnNeedleCarrier(ref ecb, slot, castEvt.caster, castEvt.casterPos,
                                 targetEntities[pick], targetTransforms[pick].Position,
-                                castEvt.targetTraversalLayers,
+                                castEvt.targetTraversalLayers, tileSize,
                                 attackOutputLogWriter.HasValue,
                                 attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                     }
@@ -356,7 +356,7 @@ namespace Wassup.Battle.Combat
                                     if (pick >= 0)
                                         SpawnNeedleCarrier(ref ecb, slot, attackerEntity, bPos,
                                             targetEntities[pick], targetTransforms[pick].Position,
-                                            attack.ValueRO.targetTraversalLayers,
+                                            attack.ValueRO.targetTraversalLayers, tileSize,
                                             attackOutputLogWriter.HasValue,
                                             attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                                 }
@@ -1855,7 +1855,7 @@ namespace Wassup.Battle.Combat
                                 // owner = 부착된 디펜더(캐리어 아님) — 위협 귀속.
                                 SpawnNeedleCarrier(ref ecb, slot, attackerEntity, atkPos,
                                     bestTarget, bestTargetPos,
-                                    attack.ValueRO.targetTraversalLayers,
+                                    attack.ValueRO.targetTraversalLayers, tileSize,
                                     attackOutputLogWriter.HasValue,
                                     attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                             }
@@ -2009,14 +2009,34 @@ namespace Wassup.Battle.Combat
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,
-            byte targetTraversalLayers,
+            byte targetTraversalLayers, float tileSize,
             bool hasLog, NativeQueue<AttackOutputLogEvent>.ParallelWriter log)
         {
+            // dreamcatcher-content-5 unit 3 — **탄 에셋의 궤적을 존중한다.** 여기가 여태
+            // (HomingToEntity, SingleSplash)를 하드코딩해서, 저작자가 탄 SO 에 어떤 비행을
+            // 골라도 유도탄으로 나갔다. 축은 bake 가 ResolveProjectileAxes 로 구워 보낸다.
+            // 기본값(0,0)이 그 레거시 짝이라 기존 카드(비수)는 무변화다.
+            var movement = slot.projectileMovement;
+            var payload = slot.projectilePayload;
+
+            // 방향 바인딩 궤적(왕복 = 부메랑)은 타겟 엔티티를 잡지 않는다 — 발사 시점의
+            // 대상 방향을 축으로 굳히고 거리로 산다. 두 값 다 여기서 이미 손에 있다.
+            bool directional = MovementBinding.Of(movement) == BindingClass.Direction;
+            float2 axis = float2.zero;
+            if (directional)
+            {
+                float3 d = targetPos - origin;
+                d.y = 0f;
+                // 같은 셀이면 축이 없다 — 드레인이 loud 거절하므로 여기선 0 을 그대로 보낸다
+                // (조용히 임의 방향을 지어내면 저작 실수가 안 보인다).
+                axis = math.lengthsq(d) > 1e-6f ? math.normalize(d.xz) : float2.zero;
+            }
+
             var carrier = ecb.CreateEntity();
             ecb.AddComponent(carrier, new ProjectileSpawnRequest
             {
-                movement = MovementKind.HomingToEntity,
-                payload = PayloadKind.SingleSplash,
+                movement = movement,
+                payload = payload,
                 target = target,
                 origin = origin,
                 damage = slot.magnitude, // flat — 계약 7(공격자 damageMul 미적용)
@@ -2026,9 +2046,15 @@ namespace Wassup.Battle.Combat
                 dataIndex = slot.projectileDataIndex,
                 owner = owner,
                 targetTraversalLayers = targetTraversalLayers,
+                direction = axis,
+                // 방향 바인딩에서 tileRange 는 **날아가는 거리**로 읽는다(아래 재조준 참조).
+                maxDistance = directional ? slot.tileRange * tileSize : 0f,
                 // 대상이 맞기 전에 죽으면 같은 반경 안에서 다시 겨눈다. 니들은 5회에
                 // 한 번 나오는 자원이라 허공에 사라지면 그 주기가 통째로 버려진다.
-                retargetTileRange = slot.tileRange,
+                // ⚠ 방향 바인딩에는 **겨눌 대상 엔티티가 없어** 재조준이 성립하지 않는다.
+                // 지금은 사전 스캔이 호밍으로 좁혀져 있어 실어도 무해하지만 그건 우연한
+                // 무해이므로 0 으로 명시한다 — 같은 필드가 두 의미를 동시에 갖지 않는다.
+                retargetTileRange = directional ? 0 : slot.tileRange,
             });
             ecb.AddComponent<ProjectileRequestCarrier>(carrier);
             if (hasLog)

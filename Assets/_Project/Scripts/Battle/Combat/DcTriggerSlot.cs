@@ -32,6 +32,21 @@ namespace Wassup.Battle.Combat
         public float speed;
         public float hitThreshold;
         public float visualScale;
+        // dreamcatcher-content-5 unit 0 — 탄 SO 의 flightMode 를 bake 가 ECS 축으로 번역해
+        // 싣는다(ResolveProjectileAxes — 저작→축 번역의 단일 지점). 위 speed/hitThreshold 와
+        // 같은 자리·같은 이유(ISystem 이 managed SO 를 못 읽는다).
+        //
+        // 왜 필요했나: `ProjectileToTarget` 발사 arm 이 여태 (HomingToEntity, SingleSplash)
+        // 를 **하드코딩**해서, 저작자가 탄 SO 에 어떤 비행을 골라도 유도탄으로 나갔다.
+        // 기본값(0,0)이 바로 그 레거시 짝이라 기존 카드는 무변화다.
+        public Projectile.MovementKind projectileMovement;
+        public Projectile.PayloadKind projectilePayload;
+        // dreamcatcher-content-5 unit 4 — SpawnHazard(잿불)가 깔 장판 SO 의 브리지
+        // 레지스트리 인덱스. 소비는 **Units 맥락의 킬 처리**(RO 읽어 킬 이벤트에 스탬프)
+        // 이고 실제 스폰은 브리지다 — 시체폭발과 같은 형태.
+        // ⚠ **-1 이 «없음»** 이다(struct default 0 은 유효 index 다 — patternIndex 선례).
+        // projectileDataIndex 를 겸직시키지 않는 이유: 레지스트리가 다르다.
+        public int hazardDataIndex;
         // dreamcatcher-content-1 — SelfTileAoe(OnDeath 폭발): AOE 반경(타일). 기본 0.
         // nightmare-catcher — AreaBarrage: 진앙 AoE 반경 / SelfBlink: 착지 탐색 반경.
         // content-4 — SelfOrbitProjectile: **궤도 반경**(타일). 피격 반경은 hitThreshold 다.

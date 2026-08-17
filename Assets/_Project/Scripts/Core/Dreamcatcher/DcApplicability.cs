@@ -89,7 +89,7 @@ namespace Wassup.Core
                 // 붙이는 `JustDeployed` 태그이고 소비는 BossPeriodicTriggerSystem 이다.
                 // ⚠ 이 함수는 "배선돼 있나"만 묻는다. **카드가 이 트리거를 쓸 수 있는지는 별개**이며,
                 // 카드 bake 가 loud 거절한다(카드는 배치 후에 붙어 영영 안 터진다) —
-                // `EmitProjectilePattern` 이 카드 경로에서 거절되는 것과 같은 자리·같은 이유.
+                // 같은 자리에서 트리거 축 가드들이 하는 일과 동형이다.
                 case DcTriggerKind.OnPlace:
                     return true;
                 default:
@@ -203,6 +203,12 @@ namespace Wassup.Core
                 // AttackUnitTag 하드코딩이라 아군을 때리는 경로가 존재하지 않는다).
                 // 탄 SO null·값 유효성은 bake 가 최종 판정한다(위 주석의 분업).
                 case DcPayloadKind.SelfOrbitProjectile:
+                // dreamcatcher-content-5 unit 4 — 장판 설치(잿불). host 의 공격 모델과 무관하다:
+                // 사건(처치)이 위치를 주고, 피해·지속·모양은 전부 해저드 SO 가 가지며, 진영 축은
+                // 장판 파이프라인이 고정한다 → targetsEnemies / HostProvidesTarget /
+                // hasDamageOutput 어느 축도 게이트가 아니다. SO null·트리거 축은 bake 가
+                // 최종 판정한다(위 주석의 분업).
+                case DcPayloadKind.SpawnHazard:
                     return DcRejectReason.None;
 
                 default:

@@ -23,6 +23,8 @@ namespace Wassup.Tests.EditMode
             { "all_atk", "올딜" },
             { "all_move", "올이속" },
             { "bouncy_bead", "튕구슬" },
+            // content-5 unit 3 — 왕복 궤적 + 관통탄 넉백.
+            { "boomerang", "부메랑" },
             { "sub_butterfly_dream", "나비꿈" },
             { "calamity_heart", "시한폭탄" },
             { "cornered_burst", "궁지폭발" },
@@ -32,6 +34,8 @@ namespace Wassup.Tests.EditMode
             { "cracked_grail", "피값딜" },
             { "devouring_craving", "킬속" },
             { "ember_bite", "출혈" },
+            // content-5 unit 4 — 처치 자리 장판.
+            { "ember_field", "잿불" },
             { "execution_strike", "처형타" },
             { "eye_on_the_end", "우선조준" },
             // content-4 unit 3 — 궤도 화염구.
@@ -55,6 +59,8 @@ namespace Wassup.Tests.EditMode
             // content-4 unit 4 — 수면 특효. spec 의 가칭 "악몽 사냥" 은 이 목록의
             // 축약 규약(공백 없는 4~5자)에 맞춰 붙여 쓴다.
             { "nightmare_hunt", "악몽사냥" },
+            // content-5 unit 6 — 발사 명세 카드 1호.
+            { "moth_swarm", "불나방떼" },
             { "poke_needle", "비수" },
             { "ranger_as", "레인저속" },
             { "ranger_atk", "레인저딜" },

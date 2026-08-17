@@ -47,6 +47,16 @@ namespace Wassup.Data
         // flightMode 어휘엔 없었다 — 발사 명세(패턴)가 데이터로 SkyFall 탄을
         // 지정할 수 있어야 하므로 개통한다. (SkyFall, TileAoe) 로 매핑.
         SkyFall,
+        // dreamcatcher-content-5 unit 0 — 발사 축을 따라 나갔다 돌아오는 왕복.
+        // (BoomerangReturn, PathHit) 로 매핑 — 경로를 훑는 궤적이라 페이로드는
+        // Directional 과 같은 짝이다.
+        Boomerang,
+        // on-place-skill-rework unit 10 — 낙하 텔레그래프 × **적 하나**.
+        // (SkyFallOnEntity, SingleSplash) 로 매핑. 위 `SkyFall` 과 그림은 같고
+        // **조준이 다르다**(칸 ↔ 적) — 「반경 안 적 전원에게 1발씩」처럼 발수가 적 수를
+        // 따라야 하는 폭격이 이 축을 쓴다. 칸 폭격(메테오·보스 barrage)은 `SkyFall` 이다.
+        // ⚠ 새 멤버는 **끝에 붙인다** — 중간에 끼우면 기존 에셋의 직렬화 값이 밀린다.
+        SkyFallOnTarget,
     }
 
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
@@ -121,6 +131,22 @@ namespace Wassup.Data
         [Tooltip("같은 적을 다시 때리기까지의 간격(초). 0 = 적당 1회(기존 방향탄 동작). " +
                  ">0 이면 관통 예산을 소모하지 않고 수명이 다할 때까지 반복 타격한다 — 궤도 화염구용.")]
         public float rehitCooldownSec = 0f;
+
+        // dreamcatcher-content-5 unit 0 — 넉백도 탄의 성질이라 같은 자리에 둔다
+        // (위 rehitCooldownSec·pierceCount 와 동일: 드레인이 읽어 ProjectileState 로).
+        // **부메랑 전용이 아니라 PathHit 공통 축**이며 0 = 꺼짐이라 기존 관통탄 전부 무변화.
+        //
+        // 저작 단위가 「거리 ÷ 시간」인 것은 근접 넉백(CcData.knockbackDistance /
+        // knockbackDuration)의 기존 관례를 그대로 따른 것이다 — 속도를 직접 저작하게 하면
+        // 같은 개념에 어휘가 둘 생긴다. 드레인이 속도로 환산해 싣는다.
+        //
+        // ⚠ 거리는 짧게(비틀거리는 정도), 시간은 넉넉히. 근거는 **밀기가 적을 골 쪽으로
+        // 보낼 수 있다**는 것이지 이동 시스템의 프레임 변위 상한이 아니다 — 그 상한은
+        // 저작값의 수십 배라 실제로는 걸리지 않는다.
+        [Tooltip("스친 적을 진행 방향으로 미는 거리(월드). 0 = 넉백 없음(기존 관통탄 동작).")]
+        public float knockbackDistance = 0f;
+        [Tooltip("넉백이 지속되는 시간(초). 거리÷시간이 밀리는 속도가 된다. 0 = 넉백 없음.")]
+        public float knockbackDuration = 0f;
 
         // projectile-emission-pattern unit 1 — 탄의 성질이므로 여기 산다(패턴 SO 는
         // 이 값을 복제하지 않는다 — README 계약 3). 드레인이 읽어 제어점을 산출한다.

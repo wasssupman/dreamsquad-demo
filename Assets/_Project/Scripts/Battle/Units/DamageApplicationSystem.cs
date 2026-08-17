@@ -35,6 +35,9 @@ namespace Wassup.Battle.Units
         private BufferLookup<IncomingShield> _incomingShieldLookup;
         // ultimate-leap unit 2 — 이탈(판 밖) 판정. Combat 소유 컴포넌트를 Units 가 RO 로 읽는다.
         private ComponentLookup<Wassup.Battle.Combat.UltimateLeapState> _ultimateLeapLookup;
+        // dreamcatcher-content-5 unit 4 — 잿불이 물려줄 통행 층(killer 사양). 위 UltimateLeapState
+        // 와 같은 형태의 Combat→Units RO 읽기다.
+        private ComponentLookup<Wassup.Battle.Combat.AttackState> _attackStateLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -48,6 +51,7 @@ namespace Wassup.Battle.Units
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
             _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
             _ultimateLeapLookup = state.GetComponentLookup<Wassup.Battle.Combat.UltimateLeapState>(isReadOnly: true);
+            _attackStateLookup = state.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
             _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
             _dcTriggerSlotLookup = state.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
             _shieldSlotLookup = state.GetBufferLookup<ShieldSlot>(isReadOnly: false);
@@ -78,6 +82,7 @@ namespace Wassup.Battle.Units
             _shieldSlotLookup.Update(ref state);
             _incomingShieldLookup.Update(ref state);
             _ultimateLeapLookup.Update(ref state);
+            _attackStateLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -320,19 +325,42 @@ namespace Wassup.Battle.Units
                         float burstDamage = 0f;
                         int burstTileRange = 0;
                         int burstDataIndex = -1;
+                        // content-5 unit 4 (잿불) — 같은 루프에서 장판 슬롯도 본다. 두 payload 는
+                        // 배타가 아니다(한 유닛이 시체폭발과 잿불을 같이 가질 수 있다).
+                        bool hasKillHazard = false;
+                        int hazardDataIndex = -1;
+                        byte hazardTargetLayers = 0;
                         if (killerSource != Entity.Null && _dcTriggerSlotLookup.HasBuffer(killerSource))
                         {
                             var bSlots = _dcTriggerSlotLookup[killerSource];
                             for (int s = 0; s < bSlots.Length; s++)
                             {
                                 var bs = bSlots[s];
-                                if (bs.trigger != Wassup.Data.DcTriggerKind.OnKill ||
-                                    bs.payload != Wassup.Data.DcPayloadKind.SelfTileAoe) continue;
-                                hasKillBurst = true;
-                                burstDamage = bs.magnitude;
-                                burstTileRange = bs.tileRange;
-                                burstDataIndex = bs.projectileDataIndex;
-                                break;
+                                if (bs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
+                                if (bs.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                                {
+                                    if (hasKillBurst) continue;   // 첫 매칭만(OnDeath v1 선례)
+                                    hasKillBurst = true;
+                                    burstDamage = bs.magnitude;
+                                    burstTileRange = bs.tileRange;
+                                    burstDataIndex = bs.projectileDataIndex;
+                                }
+                                else if (bs.payload == Wassup.Data.DcPayloadKind.SpawnHazard
+                                         && bs.hazardDataIndex >= 0)
+                                {
+                                    if (hasKillHazard) continue;
+                                    // ⚠ 통행 층은 **killer 가 살아 있는 지금** 읽는다. 드레인 시점엔
+                                    // 파괴됐을 수 있고, 그때 0 으로 새면 무제한 통과가 되어 지상
+                                    // 전용 유닛의 불씨가 비행 적을 태운다(계약: content-4 3-1 대칭).
+                                    //
+                                    // 사양을 모르면 **아예 안 깐다**(fail-closed). 초판은 0 을 폴백으로
+                                    // 썼는데 그건 바로 위 문장이 막으려던 구멍을 그대로 여는 값이다
+                                    // (`PlacementLayers.CanTarget(0, x)` 는 무조건 참) — 리뷰 M3.
+                                    if (!_attackStateLookup.HasComponent(killerSource)) continue;
+                                    hasKillHazard = true;
+                                    hazardDataIndex = bs.hazardDataIndex;
+                                    hazardTargetLayers = _attackStateLookup[killerSource].targetTraversalLayers;
+                                }
                             }
                         }
                         enemyKilledSingleton.ValueRW.queue.Enqueue(new EnemyKilledEvent
@@ -352,6 +380,11 @@ namespace Wassup.Battle.Units
                             burstTileRange = burstTileRange,
                             burstDataIndex = burstDataIndex,
                             killer = killerSource,
+                            // content-5 unit 4 (잿불) — 시체폭발과 나란한 스탬프. 둘은 배타가
+                            // 아니라 한 킬이 폭발과 불씨를 동시에 낼 수 있다.
+                            hasKillHazard = hasKillHazard,
+                            hazardDataIndex = hazardDataIndex,
+                            hazardTargetLayers = hazardTargetLayers,
                         });
                     }
 
