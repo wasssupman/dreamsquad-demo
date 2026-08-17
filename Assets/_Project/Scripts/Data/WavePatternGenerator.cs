@@ -148,6 +148,9 @@ namespace Wassup.Data
 
             WaveConceptData concept = null;
             int previousBlock = -1;
+            // wave-ramp-two-phase unit 0/1 — break 필드 하나가 클라이맥스 전체(곡선 전환·변주
+            // 상시·변주 신규 레인)의 게이트다. off(라이브 덱 기본값) = 세 가지 전부 현행 그대로.
+            bool rampActive = rampBreakWave >= 2 && rampBreakUnits > 0;
 
             // wave-concept-blocks unit 3 — 보스 후처리가 그 웨이브의 블록 컨셉을 읽는다.
             // 후처리를 이 루프 안으로 옮기지 않는 이유는 rng 소비 순서다: 옮기면 컨셉 없는
@@ -169,7 +172,7 @@ namespace Wassup.Data
                     int block = i / holdWaves;
                     previousBlock = block;
                     concept = ResolveBlockConcept(
-                        waveConceptPool, block * holdWaves + 1, lanes, concept,
+                        waveConceptPool, block * holdWaves + 1, lanes, concept, rampActive,
                         ref rng, out blockSlots, out blockLanes,
                         out blockVariantSlots, out blockVariantLanes);
                 }
@@ -178,7 +181,12 @@ namespace Wassup.Data
                 // 첫 웨이브는 성격을 가르치는 자리(순수해야 한다), 마지막은 그 성격의 시험대다.
                 // holdWaves < 3 이면 가운데가 없으므로 적용하지 않는다 — 2 에서 i%2==1 은
                 // 마지막 웨이브라 시험대를 덮어쓴다.
-                bool useVariant = holdWaves >= 3 && i % holdWaves == 1 &&
+                //
+                // wave-ramp-two-phase unit 1 — 클라이맥스(break 이후)는 **매 웨이브**가 변주다.
+                // «첫 웨이브 = 성격 교습» 전제는 본편의 것이고, break 뒤는 교습이 끝난 구간이라
+                // 전부 시험대다(협공 빈도 그라데이션: 본편 1/3 → 클라이맥스 3/3). off = 현행.
+                bool inClimax = rampActive && i + 1 >= rampBreakWave;
+                bool useVariant = (inClimax || (holdWaves >= 3 && i % holdWaves == 1)) &&
                                   blockVariantSlots != null && blockVariantSlots.Length > 0;
                 var waveSlots = useVariant ? blockVariantSlots : blockSlots;
                 var waveLanes = useVariant ? blockVariantLanes : blockLanes;
@@ -811,6 +819,9 @@ namespace Wassup.Data
             int blockFirstWaveNumber,
             int laneCount,
             WaveConceptData previousConcept,
+            // wave-ramp-two-phase unit 1 — 덱의 break 게이트. 켜지면 변주의 미지 laneGroup 이
+            // 미사용 레인을 연다(InheritLanes). rng 를 안 쓰므로 블록 경계의 소비 순서는 불변.
+            bool openVariantLanes,
             ref Unity.Mathematics.Random rng,
             out WaveConceptSlot[] slots,
             out int[] lanes,
@@ -859,7 +870,7 @@ namespace Wassup.Data
             var extra = CollectSlots(concept, variant: true);
             if (extra.Length > 0)
             {
-                var extraLanes = InheritLanes(extra, effectiveSlots, assigned);
+                var extraLanes = InheritLanes(extra, effectiveSlots, assigned, laneCount, openVariantLanes);
                 variantSlots = Concat(effectiveSlots, extra);
                 variantLanes = Concat(assigned, extraLanes);
             }
@@ -877,10 +888,18 @@ namespace Wassup.Data
         // 변주 슬롯의 입구 = 블록이 이미 확정한 배정. 같은 laneGroup 이 본 편성에 있으면 그
         // 입구를 쓰고, 없으면(또는 무지정) 본 편성의 입구를 순서대로 재사용한다.
         // 새로 뽑지 않는 것이 계약이다 — 블록 안에서 입구가 바뀌면 보강 결정이 보상받지 못한다.
+        //
+        // wave-ramp-two-phase unit 1 — openNewLanes(덱 break 게이트)가 켜지면 **본 편성에 없는
+        // laneGroup** 은 미사용 레인을 연다(낮은 번호부터, rng 무소비 결정론 — 같은 그룹은 같은
+        // 레인 공유, 소진 시 접힘 폴백). «보강 결정 보상» 계약이 지키는 것은 본 편성 레인의
+        // 안정성이지 변주가 새 전선을 여는 것의 금지가 아니다 — 기존 입구는 옮기지 않는다.
+        // off(라이브 덱) = 기존 접힘 그대로라 공유 컨셉 에셋에 새 laneGroup 을 저작해도 무변경.
         private static int[] InheritLanes(
-            WaveConceptSlot[] variants, WaveConceptSlot[] mainSlots, int[] mainLanes)
+            WaveConceptSlot[] variants, WaveConceptSlot[] mainSlots, int[] mainLanes,
+            int laneCount, bool openNewLanes)
         {
             var result = new int[variants.Length];
+            int probe = 0;   // 미사용 레인 스캔 커서 — 그룹마다 앞으로만 이동(결정론)
             for (int v = 0; v < variants.Length; v++)
             {
                 int group = variants[v].laneGroup;
@@ -894,6 +913,22 @@ namespace Wassup.Data
                 int lane = -1;
                 for (int m = 0; m < mainSlots.Length; m++)
                     if (mainSlots[m].laneGroup == group) { lane = mainLanes[m]; break; }
+                // 앞선 변주 슬롯이 같은 그룹이면 그 배정을 공유한다(같은 그룹 = 같은 레인 불변식).
+                if (lane < 0)
+                    for (int p = 0; p < v; p++)
+                        if (variants[p].laneGroup == group && result[p] >= 0) { lane = result[p]; break; }
+                if (lane < 0 && openNewLanes)
+                {
+                    for (; probe < laneCount; probe++)
+                    {
+                        bool used = false;
+                        for (int m = 0; m < mainLanes.Length && !used; m++)
+                            if (mainLanes[m] == probe) used = true;
+                        for (int p = 0; p < v && !used; p++)
+                            if (result[p] == probe) used = true;
+                        if (!used) { lane = probe++; break; }
+                    }
+                }
                 result[v] = lane >= 0 ? lane : mainLanes[v % mainLanes.Length];
             }
             return result;

@@ -25,6 +25,6 @@ MonoBehaviour:
     classFilter: 2
     altitude: 0
   variantSlots:
-  - laneGroup: 0
+  - laneGroup: 1
     classFilter: 4
     altitude: 0

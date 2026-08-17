@@ -36,6 +36,7 @@ description: Use when (a) adding a new enemy AttackUnitData or changing an exist
 | `WavePatternGenerator.ResolveWaveEligibleIndex` | 「풀 맨 뒤 금지」의 근거(전방 순환) | 전방 순환 |
 | `WavePatternGenerator.ClampGroupCounts` | 「단일 슬롯 + `maxPerWave 1` = 붕괴」 | 웨이브 붕괴 |
 | `WavePatternGenerator.PickConcept` · `AssignLanes` | 컨셉 후보 게이트(레인 수·`minWaveNumber`) | 컨셉 배정 |
+| `WavePatternGenerator.InheritLanes` · `useVariant` 게이트 · `waveRampBreak*` 필드 | 「두 단계 곡선 덱」 절 전체(rng 중립·상시 변주·신규 레인) | 두 단계 곡선 덱 |
 | `AttackDeck` 필드 추가/삭제 | 정거장 체크표의 「덱에서 손볼 것」 | 정거장 체크표 |
 | `WaveConceptData` · `Concept_*.asset` 슬롯·필터 | 「컨셉 귀속은 자동 파생」·속도 폭 계약 | 컨셉 배정 / 속도 폭 |
 | `WavePlanAsset` · `FromPlanAsset` | 「저작 플랜은 게이트를 안 받는다」 | 저작 플랜 |

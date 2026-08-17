@@ -247,6 +247,81 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // ── wave-ramp-two-phase unit 1 — 클라이맥스 변주 격상 ────────────────────
+
+        // break 이후는 매 웨이브가 변주(3/3), 그 전은 기존 가운데(1/3). 게이트 = 덱 break 필드.
+        [Test]
+        public void 클라이맥스에서는_변주가_상시다()
+        {
+            var deck = Deck(new[]
+            {
+                Concept("swarm",
+                    new[] { Slot(0, EnemyClass.Runner) },
+                    new[] { Slot(0, EnemyClass.Shooter) }),
+            });
+            deck.minWaveCount = deck.maxWaveCount = 12;
+            deck.waveRampBreakWave = 7;
+            deck.waveRampBreakUnits = 8;
+            var plan = WavePatternGenerator.Generate(deck, deck.waveSeed, 2);
+
+            for (int i = 0; i < plan.waves.Count; i++)
+            {
+                bool hasShooter = false;
+                foreach (var g in plan.waves[i].groups)
+                    if (g.unit != null && g.unit.enemyClass == EnemyClass.Shooter) hasShooter = true;
+                if (i + 1 >= 7)
+                    Assert.IsTrue(hasShooter, $"웨이브 {i + 1}: 클라이맥스인데 변주가 빠졌다");
+                else if (i % 3 != 1)
+                    Assert.IsFalse(hasShooter, $"웨이브 {i + 1}: 본편 비-가운데 웨이브에 변주가 붙었다");
+            }
+        }
+
+        // 게이트 on: 본 편성에 없는 laneGroup 의 변주는 미사용 레인을 연다(새 전선).
+        // 게이트 off: 기존 접힘 — 공유 컨셉 에셋에 laneGroup 1 을 저작해도 라이브는 무변경.
+        [Test]
+        public void 미지_laneGroup_변주는_게이트가_켜진_덱에서만_새_레인을_연다()
+        {
+            WaveConceptData Swarm() => Concept("swarm",
+                new[] { Slot(0, EnemyClass.Runner), Slot(0, EnemyClass.Runner) },
+                new[] { Slot(1, EnemyClass.Shooter) });   // 본 편성에 없는 그룹 1
+
+            var off = Deck(new[] { Swarm() });
+            var offPlan = WavePatternGenerator.Generate(off, off.waveSeed, 2);
+
+            var on = Deck(new[] { Swarm() });
+            on.waveRampBreakWave = 4;
+            on.waveRampBreakUnits = 8;
+            var onPlan = WavePatternGenerator.Generate(on, on.waveSeed, 2);
+
+            // 검사 대상 = 변주가 붙는 웨이브(off 는 가운데, on 은 클라이맥스 포함 전부).
+            void AssertVariantLane(GeneratedWavePlan plan, bool expectNewLane, string label)
+            {
+                bool sawVariant = false;
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    int mainLane = -999, variantLane = -999;
+                    foreach (var g in plan.waves[i].groups)
+                    {
+                        if (g.unit == null) continue;
+                        if (g.unit.enemyClass == EnemyClass.Runner) mainLane = g.laneIndex;
+                        if (g.unit.enemyClass == EnemyClass.Shooter) variantLane = g.laneIndex;
+                    }
+                    if (variantLane == -999 || mainLane == -999) continue;
+                    sawVariant = true;
+                    if (expectNewLane)
+                        Assert.AreNotEqual(mainLane, variantLane,
+                            $"{label} 웨이브 {i + 1}: 게이트 on 인데 변주가 본 레인으로 접혔다");
+                    else
+                        Assert.AreEqual(mainLane, variantLane,
+                            $"{label} 웨이브 {i + 1}: 게이트 off 인데 변주가 새 레인을 열었다 — 라이브 회귀");
+                }
+                Assert.IsTrue(sawVariant, $"{label}: 변주 웨이브가 하나도 없다 — 검사가 공회전했다");
+            }
+
+            AssertVariantLane(offPlan, expectNewLane: false, "off");
+            AssertVariantLane(onPlan, expectNewLane: true, "on");
+        }
+
         // holdWaves 2 는 «가운데»가 없다 — i%2==1 은 마지막이라 시험대를 덮어쓴다.
         [Test]
         public void holdWaves가_3미만이면_변주가_적용되지_않는다()
