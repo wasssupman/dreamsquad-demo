@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_NightmareAfterglow
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: nightmare_afterglow
-  displayName: "\uD0AC\uB51C"
+  displayName: "\uC9F1\uC388\uBC84\uC11C\uCEE4"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,20 +25,33 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 12
-      magnitude: 15
+      magnitude: 50
       projectile: {fileID: 0}
       tileRange: 0
-      duration: 5
+      duration: 3
       auraPrefab: {fileID: 0}
       auraScale: 0
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
   description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
-    \uACF5\uACA9\uB825 +15% \xB7 5\uCD08"
+    \uACF5\uACA9\uB825 +50% \xB7 3\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

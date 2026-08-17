@@ -174,10 +174,26 @@ namespace Wassup.Core
             if (selected != null && selected.IsEmpty() && catalog != null)
             {
                 int i = 0;
-                foreach (var id in catalog.AllIds())
+                // 어느 유닛을 줄지는 카탈로그가 **저작으로** 정한다(defaultSquadUnits).
+                // 비어 있으면 예전 동작 — 배열 앞에서부터. 그 폴백은 카탈로그 순서에
+                // 시작 편성이 딸려가는 암묵 규칙이라 저작이 있으면 그쪽이 이긴다.
+                var authored = catalog.defaultSquadUnits;
+                if (authored != null && authored.Length > 0)
                 {
-                    if (i >= SquadPreset.SlotCount) break;
-                    selected.unitIds[i++] = id;
+                    for (int a = 0; a < authored.Length && i < SquadPreset.SlotCount; a++)
+                    {
+                        var u = authored[a];
+                        if (u == null || string.IsNullOrEmpty(u.id)) continue; // 미배정 칸은 건너뛴다
+                        selected.unitIds[i++] = u.id;
+                    }
+                }
+                if (i == 0)
+                {
+                    foreach (var id in catalog.AllIds())
+                    {
+                        if (i >= SquadPreset.SlotCount) break;
+                        selected.unitIds[i++] = id;
+                    }
                 }
             }
         }

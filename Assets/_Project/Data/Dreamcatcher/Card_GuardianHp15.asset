@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: guardian_hp
   displayName: "\uAC00\uB514\uC5B8\uCCB4"
+  visible: 0
   axis: 1
   category: 0
   effects:
@@ -27,3 +28,5 @@ MonoBehaviour:
   description: "\uD56D\uC0C1 \u2192 \uAC00\uB514\uC5B8 \uC544\uAD70 \uCCB4\uB825
     +15%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

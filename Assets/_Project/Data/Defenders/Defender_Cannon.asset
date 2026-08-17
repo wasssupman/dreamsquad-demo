@@ -20,9 +20,9 @@ MonoBehaviour:
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC8FC\uBCC0 2\uD0C0\uC77C \uC801 \uC804\uC6D0\uC5D0\uAC8C \uBBF8\uC0AC\uC77C
     \uB099\uD558\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
-  health: 450
+  health: 400
   attackRange: 3
-  attackCooldown: 2.4
+  attackCooldown: 1.5
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
@@ -49,10 +49,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
-  cost: 4
+  cost: 5
   placementCooldown: 4
   deathCooldown: 10
-  retireCooldownRatio: 0.4
+  retireCooldownRatio: 0.6
   maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 6

@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_LullabyDart
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: lullaby_dart
-  displayName: "자장가"
+  displayName: "\uC790\uC7A5\uAC00"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 5
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 10
       magnitude: 0
@@ -35,8 +39,19 @@ MonoBehaviour:
       ccKind: 2
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "5번째 공격마다 → 대상에게 수면 2.5초 (피격 시 해제)"
+  description: "5\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uB300\uC0C1\uC5D0\uAC8C
+    \uC218\uBA74 2.5\uCD08 (\uD53C\uACA9 \uC2DC \uD574\uC81C)"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

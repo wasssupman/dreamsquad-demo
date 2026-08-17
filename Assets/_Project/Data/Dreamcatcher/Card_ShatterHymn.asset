@@ -14,16 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: shatter_hymn
   displayName: "CC\uB51C"
+  visible: 1
   axis: 3
   category: 1
   effects:
   - kind: 5
-    percent: 25
+    percent: 50
   art: {fileID: 21300000, guid: 24716a26eb264ed6a929ffaf2be0ee61, type: 3}
   mechanics: []
   attackMods: []
   type: 0
   skill: {fileID: 0}
   description: "\uD56D\uC0C1 \u2192 CC \uC0C1\uD0DC \uC801\uC5D0\uAC8C \uBAA8\uB4E0
-    \uC544\uAD70 \uD53C\uD574 +25%"
+    \uC544\uAD70 \uD53C\uD574 +50%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

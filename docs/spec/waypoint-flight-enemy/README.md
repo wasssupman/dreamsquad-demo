@@ -56,7 +56,7 @@ rev 1 은 **웨이포인트를 비행 전용 기능**으로 설계했다. 궤도
 > `CanTarget` 술어는 이 spec 이 만든 그대로다. 지상 전용 예외의 정본 목록은
 > `CatalogPlacementLayerTests.GroundOnlyDefenderIds`.
 >
-> 그 결과 **`대공사수` 는 같은 날 `밀당맨` 으로 개명됐다** — 유일한 대공이라는 정체성이 사라진
+> 그 결과 **`대공사수` 는 같은 날 `넉백머신` 으로 개명됐다** — 유일한 대공이라는 정체성이 사라진
 > 자리를 「매 피격 넉백」이 대신했다. `id` 는 `anti_air` 그대로다(저장 덱 보호). 아래 문서에서
 > 「대공사수」로 읽히는 곳은 전부 이 유닛이며, 새 계약은 `docs/spec/defender-knockback-on-impact/`.
 

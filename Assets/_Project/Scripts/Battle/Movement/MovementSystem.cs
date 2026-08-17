@@ -111,14 +111,50 @@ namespace Wassup.Battle.Movement
                 bool locked = (ccLookup.HasBuffer(entity) && CcActionLock.IsLocked(ccLookup[entity]))
                               || leapFlightLookup.HasComponent(entity);
 
-                if (ai == AiState.Standoff) continue; // 정지
+                // defender-knockback-on-impact unit 2 — 넉백(외력)을 **분기 앞에서** 합성한다.
+                // 아래 조기 이탈 경로들이 예전 소비 지점(flow-step 근처)에 닿기 전에 continue
+                // 해서 넉백이 통째로 증발했다 — Halt 적 18종 + 도발된 전 적. 못 쓴 impulse 는
+                // `CcDecaySystem`(UpdateAfter)이 소비 여부와 무관하게 만료시켜 조용히 사라진다.
+                //
+                // ⚠ **당김(pull)은 여기로 못 올린다.** 당김은 `cell` 에 의존하고 그 값은 포탈
+                // 텔레포트 이후여야 정확한데, Standoff/Chasing 은 포탈 **전에** 이탈한다.
+                // 그래서 넉백만 올리고 당김은 제자리에 둔다(추격에 당김을 주는 것은 후속 후보).
+                // ⚠ `speedMul` 도 같이 올리지 않는다 — flowStep 전용이라 외력과 무관하다.
+                float3 impulseDisplacement = float3.zero;
+                if (ccLookup.HasBuffer(entity))
+                {
+                    var ccBuf = ccLookup[entity];
+                    for (int i = 0; i < ccBuf.Length; i++)
+                        if (ccBuf[i].kind == CcKind.Impulse)
+                            impulseDisplacement += ccBuf[i].vector * dt;
+                }
+                bool hasImpulse = math.lengthsq(impulseDisplacement) > 1e-8f;
+
+                if (ai == AiState.Standoff)
+                {
+                    // 정지 — 자기주도 이동 0. 외력은 그대로 받는다(self=0 ≠ 계산 건너뜀).
+                    if (hasImpulse)
+                        transform.ValueRW.Position = ComposeMove(
+                            current, float3.zero, impulseDisplacement,
+                            field.tileSize, follow.ValueRO.radius, in nav);
+                    continue;
+                }
 
                 if (ai == AiState.Chasing)
                 {
-                    if (locked) continue; // 잠/스턴: 제자리(자기주도 self-walk 정지)
+                    if (locked)
+                    {
+                        // 잠/스턴: 자기주도 self-walk 만 정지. 외력 유지는 위 :106 계약 그대로.
+                        if (hasImpulse)
+                            transform.ValueRW.Position = ComposeMove(
+                                current, float3.zero, impulseDisplacement,
+                                field.tileSize, follow.ValueRO.radius, in nav);
+                        continue;
+                    }
                     // aggro-tile-chase unit 2 — chase field(dist) 하강. dir zero = 목적지
                     // (사거리 내 walk 셀, dist 0) 도착 또는 고립 — 정지. 도착 셀은 정의상
                     // 발사 조건 충족 → 다음 틱 EnemyAiStateSystem 이 Standoff 전이.
+                    bool chaseMoved = false;
                     if (chaseLookup.HasBuffer(entity))
                     {
                         var chase = chaseLookup[entity];
@@ -131,11 +167,12 @@ namespace Wassup.Battle.Movement
                             {
                                 float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
                                     ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                                float3 desiredChase = current + new float3(chaseDir.x, 0f, chaseDir.y)
+                                float3 chaseStep = new float3(chaseDir.x, 0f, chaseDir.y)
                                     * (follow.ValueRO.speed * aggroSpeedMul * dt);
-                                desiredChase = MovementCellTrim.ClampDisplacement(current, desiredChase, field.tileSize);
-                                transform.ValueRW.Position = AgentCollision.Resolve(
-                                    current, desiredChase, follow.ValueRO.radius, in nav);
+                                transform.ValueRW.Position = ComposeMove(
+                                    current, chaseStep, impulseDisplacement,
+                                    field.tileSize, follow.ValueRO.radius, in nav);
+                                chaseMoved = true;
                                 follow.ValueRW.holdingGround = 0;   // unit 13 — 자기주도 이동함
                                 // defender-knockback-on-impact unit 0 — 진행 방향 기록.
                                 // chaseDir 은 위 게이트에서 이미 길이 > 1e-6 이 보장된다.
@@ -143,6 +180,13 @@ namespace Wassup.Battle.Movement
                             }
                         }
                     }
+                    // 추격 필드가 없거나 목적지 도착(dir 0)이라 자기 이동이 0이었어도
+                    // 외력은 받는다. 위 self 경로가 이미 합성에 넣었으므로 여기선 안 움직인
+                    // 경우만 처리한다(두 번 적용 금지).
+                    if (!chaseMoved && hasImpulse)
+                        transform.ValueRW.Position = ComposeMove(
+                            current, float3.zero, impulseDisplacement,
+                            field.tileSize, follow.ValueRO.radius, in nav);
                     continue; // chasing: skip flow/portal/tornado/goal (필드 없으면 정지 — 합성 테스트 월드)
                 }
 
@@ -222,12 +266,13 @@ namespace Wassup.Battle.Movement
                         advance = false; // Halt
                     if (locked || !advance)
                     {
-                        // 정지(halt/잠금) 중에도 외력(pull)은 적용 — 기존 "Halt 도 당겨짐" 거동 보존.
-                        if (hasPull)
-                        {
-                            float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                            transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
-                        }
+                        // 정지(halt/잠금) 중에도 외력은 적용 — 기존 "Halt 도 당겨짐" 거동 보존.
+                        // unit 2: 그 외력에 **넉백이 빠져 있었다.** 사용자 증상(제자리 공격 중인
+                        // 킨들러가 안 밀림)이 정확히 이 자리다 — Halt 는 적 18종의 기본값이다.
+                        if (hasPull || hasImpulse)
+                            transform.ValueRW.Position = ComposeMove(
+                                current, float3.zero, pullDisplacement + impulseDisplacement,
+                                field.tileSize, follow.ValueRO.radius, in nav);
                         continue;
                     }
                 }
@@ -243,11 +288,10 @@ namespace Wassup.Battle.Movement
                     {
                         // 거점 도착·사격 위치 도달·고립 = 정지. goal field 기반 zero-flow recovery 로
                         // 떨어뜨리지 않는다 — 그 dist 는 순찰병의 목적지와 무관하다.
-                        if (hasPull)
-                        {
-                            float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                            transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
-                        }
+                        if (hasPull || hasImpulse)
+                            transform.ValueRW.Position = ComposeMove(
+                                current, float3.zero, pullDisplacement + impulseDisplacement,
+                                field.tileSize, follow.ValueRO.radius, in nav);
                         continue;
                     }
                 }
@@ -322,12 +366,13 @@ namespace Wassup.Battle.Movement
                         float2 recovDir = FlowRecovery.RecoveryDir(cell, routeDist, field.gridSize);
                         if (math.lengthsq(recovDir) < 1e-6f)
                         {
-                            // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
-                            if (hasPull)
-                            {
-                                float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
-                                transform.ValueRW.Position = AgentCollision.Resolve(current, desiredPull, follow.ValueRO.radius, in nav);
-                            }
+                            // truly isolated cell — 자기주도 이동은 없지만 외력은 적용 (unit 3).
+                            // 사방이 벽이면 clamp/Resolve 가 0으로 접고, 열린 이웃이 있으면
+                            // 그쪽으로 밀린다 — 갇힌 유닛을 넉백으로 빼내는 것이 맞는 동작이다.
+                            if (hasPull || hasImpulse)
+                                transform.ValueRW.Position = ComposeMove(
+                                    current, float3.zero, pullDisplacement + impulseDisplacement,
+                                    field.tileSize, follow.ValueRO.radius, in nav);
                             continue;
                         }
                         dir = recovDir;
@@ -355,25 +400,13 @@ namespace Wassup.Battle.Movement
                 float speedMul = modifierStatsLookup.HasComponent(entity)
                     ? modifierStatsLookup[entity].moveSpeedMul
                     : 1f;
-                float3 impulseDisplacement = float3.zero;
-                if (ccLookup.HasBuffer(entity))
-                {
-                    var ccBuf = ccLookup[entity];
-                    for (int i = 0; i < ccBuf.Length; i++)
-                    {
-                        var cc = ccBuf[i];
-                        switch (cc.kind)
-                        {
-                            case CcKind.Impulse: impulseDisplacement += cc.vector * dt; break;
-                        }
-                    }
-                }
+                // (unit 2 — impulseDisplacement 합성은 분기 앞으로 올라갔다. 여기 있던 시절엔
+                //  조기 이탈 경로 여섯이 이 줄에 닿지 못해 넉백이 그 상태들에서 증발했다.)
                 float2 stepDir = math.normalizesafe(dir); // Phase 9: FlowFieldBuilder writes unit vectors;
                                                            // normalizesafe defensively handles future diagonal/non-unit flow
                                                            // and returns zero for <1e-6 magnitude (already guarded above).
                 // combat-action-lock — 잠/스턴: 자기주도 flow-step 0, 넉백(impulse)은 유지.
                 float3 flowStep = locked ? float3.zero : new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
-                float3 desired = current + flowStep + impulseDisplacement;
 
                 // unit 13 — 자기주도 변위가 실제로 있을 때만 "이동 중". 외력(impulse/pull)만
                 // 있는 프레임은 정지로 남는다 — 밀려나는 유닛은 자리를 지키는 쪽이 맞다.
@@ -400,15 +433,12 @@ namespace Wassup.Battle.Movement
                 // 스폰 측면 분산은 이제 recenter 가 되돌리지 않는다 — 유지되는 편이 낫고,
                 // 뭉침은 AgentSeparationSystem(unit 8)이 담당한다.
 
-                // aggro-tile-chase unit 3 — tornado pull 가산 (flow/impulse/recenter 와 합성).
-                desired += pullDisplacement;
-
-                // aggro-tile-chase unit 2 — 프레임 변위 상한(터널링 차단), trim 전제 보존.
-                desired = MovementCellTrim.ClampDisplacement(current, desired, field.tileSize);
-                // Cell-trim (option B): keep impulse/recenter from pushing into wall/obstacle cells.
-                desired = AgentCollision.Resolve(current, desired, follow.ValueRO.radius, in nav);
-
-                transform.ValueRW.Position = desired;
+                // unit 2 — 다른 여섯 경로와 **같은 합성 지점**을 쓴다. 자기 이동 = flowStep,
+                // 외력 = 넉백 + 토네이도 당김. 변위 상한(터널링 차단)과 벽 밀어넣기 차단은
+                // ComposeMove 안에 있다(aggro-tile-chase unit 2·3 의 동작 그대로).
+                transform.ValueRW.Position = ComposeMove(
+                    current, flowStep, impulseDisplacement + pullDisplacement,
+                    field.tileSize, follow.ValueRO.radius, in nav);
             }
 
             portals.Dispose();
@@ -416,6 +446,29 @@ namespace Wassup.Battle.Movement
             navScratch.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+        }
+
+        // defender-knockback-on-impact unit 2 — **변위 합성의 단일 지점.**
+        //
+        // 이 3줄이 예전엔 7곳에 복붙돼 있었고 각 복사본이 **서로 다른 힘 부분집합**만
+        // 알았다. 넉백이 나중에 추가되면서 메인 한 곳만 갱신되고 나머지 여섯이 뒤처져,
+        // 교전·도발·순찰·고립 상태의 적이 통째로 넉백 면역이 됐다. 힘이 하나 더 생겨도
+        // 같은 일이 반복되지 않도록 합성을 여기 하나로 모은다.
+        //
+        // 힘은 두 종류다:
+        //   self     = 자기주도 이동(flow / chase / patrol). 「멈춤」 = 이 값이 0.
+        //   external = 외력(넉백 + 당김). 상태와 무관하게 항상 적용된다.
+        //
+        // plain 값만 받고 plain 값을 낸다(제약 10) — 호출처 7곳 + sim-critical 이동이라
+        // 추출 기준을 충족한다. clamp 는 터널링 차단(프레임 변위 상한), Resolve 는
+        // 벽/장애물 밀어넣기 차단이며 둘 다 기존 동작 그대로다.
+        private static float3 ComposeMove(
+            float3 current, float3 selfDisp, float3 externalDisp,
+            float tileSize, float radius, in NavGrid nav)
+        {
+            float3 desired = current + selfDisp + externalDisp;
+            desired = MovementCellTrim.ClampDisplacement(current, desired, tileSize);
+            return AgentCollision.Resolve(current, desired, radius, in nav);
         }
     }
 }

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_power_surge
   displayName: "\uACF5\uACA9\uD3ED\uC99D"
+  visible: 1
   axis: 0
   category: 0
   effects: []
@@ -22,5 +23,9 @@ MonoBehaviour:
   attackMods: []
   type: 2
   skill: {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
-  description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 \uBC18\uACBD 1\uCE78 \uC544\uAD70 \uACF5\uACA9\uB825 x2 \xB7 8\uCD08 \xB7 \uBE44\uC6A9 3 \xB7 \uC7AC\uC0AC\uC6A9 30\uCD08"
+  description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 \uBC18\uACBD 1\uCE78 \uC544\uAD70
+    \uACF5\uACA9\uB825 x2 \xB7 8\uCD08 \xB7 \uBE44\uC6A9 3 \xB7 \uC7AC\uC0AC\uC6A9
+    30\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

@@ -20,6 +20,9 @@ MonoBehaviour:
   elevatedSortingOrder: 1501
   messageSize: {x: 880, y: 116}
   messageTopOffset: 184
+  hudHintMessageTopOffset: 310
+  revealHintMessageTopOffset: 880
+  effectTileHintMessageTopOffset: 120
   messageFill: {r: 0.025, g: 0.045, b: 0.09, a: 0.96}
   messageBorder: {r: 1, g: 0.78, b: 0.24, a: 1}
   messageText: {r: 1, g: 0.97, b: 0.88, a: 1}
@@ -31,6 +34,7 @@ MonoBehaviour:
   pointerBob: 10
   spawnMarkerColor: {r: 1, g: 0.34, b: 0.24, a: 1}
   goalMarkerColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+  effectTileMarkerColor: {r: 0.35, g: 0.95, b: 0.85, a: 1}
   worldMarkerFontSize: 24
   worldMarkerLabelOffset: 76
   worldMarkerMessageTopOffset: 320
@@ -39,3 +43,7 @@ MonoBehaviour:
   awakeningPromptSeconds: 3.5
   cardInstructionSeconds: 3
   classHintFallbackSeconds: 12
+  hudHintLineSeconds: 3
+  hudHintTargetWaitSeconds: 1
+  stressHintDelaySeconds: 2
+  stressHintFallbackSeconds: 12

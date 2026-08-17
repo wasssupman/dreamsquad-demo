@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_tornado
   displayName: "\uD68C\uC624\uB9AC"
+  visible: 1
   axis: 0
   category: 0
   effects: []
@@ -26,3 +27,5 @@ MonoBehaviour:
     \uC911\uC2EC\uC73C\uB85C \uB04C\uC5B4\uB2F9\uAE40 \xB7 \uB04C\uC5B4\uB2F9\uAE40
     \uC18D\uB3C4 6 \xB7 2\uCD08 \xB7 \uBE44\uC6A9 3 \xB7 \uC7AC\uC0AC\uC6A9 12\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

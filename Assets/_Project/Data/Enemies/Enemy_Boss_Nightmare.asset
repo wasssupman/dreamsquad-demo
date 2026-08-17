@@ -25,7 +25,7 @@ MonoBehaviour:
   targetClassMask: -1
   targetFactions: 0
   health: 1000
-  moveSpeed: 1
+  moveSpeed: 1.5
   attackRange: 2
   attackCooldown: 1.2
   attackTargetCount: 1
@@ -36,12 +36,14 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 100
+    magnitude: 30
     duration: 0
     stat: 0
     op: 0
     stackKind: 0
     stackMaxStack: 0
+  attackVfxPrefab: {fileID: 0}
+  attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
@@ -89,6 +91,10 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   - trigger:
       kind: 4
       period: 0
@@ -112,6 +118,10 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   - trigger:
       kind: 4
       period: 0
@@ -135,7 +145,10 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
-  killScore: 10
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   weaponTrailPrefab: {fileID: 980198975920828844, guid: bf5392c35fff74f68a45724df10f60a4, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5

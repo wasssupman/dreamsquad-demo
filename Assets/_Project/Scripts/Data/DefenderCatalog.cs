@@ -10,6 +10,17 @@ namespace Wassup.Data
     {
         public DefenderUnitData[] units;
 
+        // 2026-08-17 — 신규 프로필이 받는 **시작 스쿼드**(저작). 비어 있으면 예전처럼
+        // `units` 앞에서부터 슬롯 수만큼 집어온다.
+        //
+        // 이 필드를 만든 이유: 시작 스쿼드가 「카탈로그 배열 순서」라는 **암묵 규칙**이었다.
+        // 유닛을 추가하거나 순서를 바꾸면 신규 유저의 첫 편성이 조용히 달라지는데, 그 둘은
+        // 아무 관계가 없다(카탈로그 순서는 목록 UI 의 순서다). 어느 유닛을 줄지는 코드가
+        // 아니라 저작이 정한다 — `EnsureDefaultStones` 의 authored 배열과 같은 정책이다.
+        //
+        // 「비어 있을 때만 시드」 규칙은 그대로다. 플레이어가 채운 스쿼드는 덮지 않는다.
+        public DefenderUnitData[] defaultSquadUnits;
+
         public DefenderUnitData ById(string id)
         {
             if (string.IsNullOrEmpty(id) || units == null) return null;

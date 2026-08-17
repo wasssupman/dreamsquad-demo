@@ -474,7 +474,10 @@ namespace Wassup.UI
                     text = trigger.period == 1 ? "공격마다" : $"{Count(trigger.period)}번째 공격마다";
                     return trigger.period > 0;
                 case DcTriggerKind.OnDamagedN:
-                    text = $"{Count(trigger.period)}번째 피격마다";
+                    // period 1 은 "1번째 피격마다"가 아니라 "피격마다" — 바로 위 AttackN 과
+                    // 같은 예외다. 시트가 궁지폭발을 2→1 로 바꾸면서 그 어색한 문장이 실제로
+                    // 나왔다(2026-08-17).
+                    text = trigger.period == 1 ? "피격마다" : $"{Count(trigger.period)}번째 피격마다";
                     return trigger.period > 0;
                 case DcTriggerKind.OnDeath:
                     text = "이 유닛이 사망하면";

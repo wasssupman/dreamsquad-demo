@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: bouncy_bead
   displayName: "\uD295\uAD6C\uC2AC"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -29,3 +30,5 @@ MonoBehaviour:
   description: "\uD56D\uC0C1 \u2192 \uACF5\uACA9 \uD22C\uC0AC\uCCB4\uAC00 \uCD5C\uB300
     3\uCE78 \uBC94\uC704 \uB0B4 2\uD68C \uD295\uAE40 (\uAC10\uC1E0 \uC5C6\uC74C)"
   leakAllowanceCost: 0
+  attachType: 1
+  attachValue: Ranger

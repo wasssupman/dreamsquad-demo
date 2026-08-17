@@ -22,7 +22,7 @@ namespace Wassup.Tests.PlayMode
     // 순수 Step이 아니라 스폰 부착 → 필드 슬롯 → Movement 소비 → 골 도달의 전 구간을 센다.
     public class WaypointRoutingLiveTest
     {
-        private const int WaypointLabMapIndex = 7; // main 6장 + dev[1] MovementLab
+        private const int WaypointLabMapIndex = 8; // 라이브 풀 1장(Duel) + dev[7] MovementLab
         private int _savedIndex;
 
         [SetUp]
@@ -263,17 +263,22 @@ namespace Wassup.Tests.PlayMode
                 "지상 전용 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
             Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
                 antiAir.EffectiveAttackTargetLayers,
-                "밀당맨는 지상+공중 — 두 마스크가 갈려서 구워지는 것이 이 테스트의 요점");
+                "넉백머신는 지상+공중 — 두 마스크가 갈려서 구워지는 것이 이 테스트의 요점");
             Assert.AreEqual((byte)antiAir.EffectiveAttackTargetLayers,
                 em.GetComponentData<AttackState>(antiAirEntity).targetTraversalLayers,
                 "지상+공중 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
-            Assert.AreEqual(0.2f,
+            // ⚠ 수치를 리터럴로 걸지 않는다 — **시트가 정본**이다(사용자 결정 2026-08-17).
+            // 이 단언이 보는 것은 「저작이 런타임으로 그대로 구워지는가」이지 그 값이 얼마인가가
+            // 아니다. 예전엔 7f·0.2f 가 박혀 있어 시트에서 발당 피해를 6 으로 내리자 곧바로
+            // 빨간불이 됐다 — 밸런스 조정이 테스트 실패가 되면 안 된다.
+            Assert.AreEqual(antiAir.attackCooldown,
                 em.GetComponentData<AttackState>(antiAirEntity).cooldownDuration, 1e-4f,
-                "밀당맨의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
+                "저작된 공격 주기가 실제 런타임에 베이크돼야 한다");
             var antiAirOutputs = em.GetBuffer<AttackOutputElement>(antiAirEntity);
-            Assert.AreEqual(1, antiAirOutputs.Length);
-            Assert.AreEqual(7f, antiAirOutputs[0].value.magnitude, 1e-4f,
-                "낮은 발당 피해가 실제 런타임 출력에 베이크돼야 한다");
+            Assert.AreEqual(antiAir.outputs.Length, antiAirOutputs.Length,
+                "저작된 출력 개수가 그대로 베이크돼야 한다");
+            Assert.AreEqual(antiAir.outputs[0].magnitude, antiAirOutputs[0].value.magnitude, 1e-4f,
+                "저작된 발당 피해가 실제 런타임 출력에 베이크돼야 한다");
         }
 
         // waypoint-routing unit 9/10 — 사용자 증상 계측: 「Serpent 을 웨이브 7까지 해도
@@ -282,11 +287,11 @@ namespace Wassup.Tests.PlayMode
         // 이 테스트는 **증상 그대로**를 단언한다 — 「내 순수 함수가 옳은 값을 낸다」가 아니라
         // 「라이브 Serpent 판에서 지상 적이 레인 기본 경로를 달고 스폰되는가」. 저작·투영은
         // EditMode 가 이미 지켰으므로, 여기서 빨간불이 뜨면 범인은 스폰 경계다.
-        // 풀 인덱스 1=Coil, 4=Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
+        // 슬롯 2=Coil, 5=Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
         // (unit 10 rev 3 — 새 경로 50%/62% · 유턴 0).
         [UnityTest]
         public IEnumerator RoutedMap_GroundEnemies_SpawnWithLaneDefaultRoute(
-            [Values(1, 4)] int poolIndex)
+            [Values(2, 5)] int poolIndex)
         {
             DevMapOverride.Index = poolIndex;
             RenderTexture.active = null;
@@ -339,13 +344,13 @@ namespace Wassup.Tests.PlayMode
 
         // siege-duel-map 후속 — 「Duel 에 웨이브 개선이 적용되어 있는지 모르겠다」의 라이브 답.
         //
-        // Duel 은 풀 본편이 아니라 dev 슬롯(6+3=9)이고, dev 엔트리의 deck 이 null 이면 브리지의
+        // Duel 은 라이브 풀 본편(슬롯 0)이고 Ford·Isle 은 dev 슬롯이다. dev 엔트리의 deck 이 null 이면 브리지의
         // 직렬화 deck(구 Deck_WaveA — 컨셉 0·보스 0·적 9종)으로 폴백한다. 실제로 그 상태였다.
         // 여기서 재는 것은 «맵이 뜬다» 가 아니라 **그 판의 웨이브가 현행 세대인가** 다.
-        // 풀 6 + dev[3]=Duel(9) · dev[4]=Ford(10) · dev[5]=Isle(11) — 공성 3종.
+        // entries[0]=Duel(0) · dev[9]=Ford(10) · dev[10]=Isle(11) — 공성 3종.
         [UnityTest]
         public IEnumerator SiegeDevSlot_RunsCurrentGenerationWaves(
-            [Values(9, 10, 11)] int slot)
+            [Values(0, 10, 11)] int slot)
         {
             DevMapOverride.Index = slot;
             RenderTexture.active = null;
@@ -388,7 +393,7 @@ namespace Wassup.Tests.PlayMode
         [UnityTest]
         public IEnumerator TutorialDevSlot_UsesAuthoredPlan_NotGeneratedWaves()
         {
-            DevMapOverride.Index = 12;   // 풀 6 + dev[6] = Tutorial
+            DevMapOverride.Index = 12;   // 라이브 풀 1장 + dev[11] = Tutorial
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;

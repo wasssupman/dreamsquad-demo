@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: ranger_atk
   displayName: "\uB808\uC778\uC800\uB51C"
+  visible: 0
   axis: 0
   category: 0
   effects:
@@ -27,3 +28,5 @@ MonoBehaviour:
   description: "\uD56D\uC0C1 \u2192 \uB808\uC778\uC800 \uC544\uAD70 \uACF5\uACA9\uB825
     +10%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

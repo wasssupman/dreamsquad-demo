@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_CorneredBurst
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: cornered_burst
-  displayName: "궁지폭발"
+  displayName: "\uAD81\uC9C0\uD3ED\uBC1C"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -21,7 +22,7 @@ MonoBehaviour:
   mechanics:
   - trigger:
       kind: 2
-      period: 2
+      period: 1
       periodSeconds: 0
       fraction: 0
       gate: 1
@@ -38,8 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "HP 30% 이하일 때 2번째 피격마다 → 반경 1칸 피해 20"
+  description: "HP 30% \uC774\uD558\uC77C \uB54C \uD53C\uACA9\uB9C8\uB2E4 \u2192
+    \uBC18\uACBD 1\uCE78 \uD53C\uD574 20"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

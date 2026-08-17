@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_Frenzy
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: frenzy
-  displayName: "광란"
+  displayName: "\uAD11\uB780"
   visible: 1
   axis: 3
   category: 1
@@ -50,8 +50,8 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "공격마다 → 공격 속도 +8% 중첩
-    (최대 10중첩 \xB7 4초)"
+  description: "\uACF5\uACA9\uB9C8\uB2E4 \u2192 \uACF5\uACA9 \uC18D\uB3C4 +8% \uC911\uCCA9
+    (\uCD5C\uB300 10\uC911\uCCA9 \xB7 4\uCD08)"
   leakAllowanceCost: 0
   attachType: 0
-  attachValue:
+  attachValue: 
