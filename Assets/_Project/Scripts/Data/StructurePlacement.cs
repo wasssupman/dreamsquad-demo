@@ -68,6 +68,16 @@ namespace Wassup.Data
         public static int FootprintOf(Faction faction)
             => ((int)faction & Factions.AnyInstinct) != 0 ? InstinctFootprint : CoreFootprint;
 
+        // siege-lane-spawn unit 0/1 — 공성 파생 스폰 = 마음 셀 + 이 오프셋들.
+        // **배열 순서가 곧 레인 번호다**: [하단(y−1), 상단(y+1)] = lane 0, 1.
+        // 빌더(파생)·OnValidate(레인 검증)·테스트가 같은 배열을 봐야 순서 규칙이 두 벌로
+        // 갈리지 않는다 — 갈리면 레인별 spawnRoutes 가 서로 바뀐다.
+        public static readonly UnityEngine.Vector2Int[] SiegeSpawnOffsets =
+        {
+            new UnityEngine.Vector2Int(0, -1),
+            new UnityEngine.Vector2Int(0,  1),
+        };
+
         public static bool IsCore(Faction faction) => ((int)faction & Factions.AnyCore) != 0;
         public static bool IsInstinct(Faction faction) => ((int)faction & Factions.AnyInstinct) != 0;
 
@@ -171,10 +181,27 @@ namespace Wassup.Data
             if (structures == null) return 0;
             int n = 0;
             for (int i = 0; i < structures.Count; i++)
-                if (structures[i].data != null
-                    && structures[i].side == StructureSide.Enemy
-                    && structures[i].data.kind == StructureKind.Core) n++;
+                if (IsEnemyCore(structures[i])) n++;
             return n;
+        }
+
+        private static bool IsEnemyCore(StructureEntry s)
+            => s.data != null && s.side == StructureSide.Enemy && s.data.kind == StructureKind.Core;
+
+        // siege-lane-spawn unit 1 — 저작측 파생 스폰 목록(빌더와 같은 규칙·순서). OnValidate 가
+        // 레인 검증(ValidateSpawnRoutes)에 넘긴다 — 저작 spawns(공성 = 0개)를 넘기면 «어느
+        // 레인에도 안 붙는다» 는 거짓 경고가 나오고 인덱스 범위 검증이 통째로 스킵된다.
+        public static void CollectDerivedSiegeSpawns(
+            IReadOnlyList<StructureEntry> structures, List<UnityEngine.Vector2Int> outCells)
+        {
+            outCells.Clear();
+            if (structures == null) return;
+            for (int i = 0; i < structures.Count; i++)
+            {
+                if (!IsEnemyCore(structures[i])) continue;
+                for (int o = 0; o < StructurePlacements.SiegeSpawnOffsets.Length; o++)
+                    outCells.Add(structures[i].cell + StructurePlacements.SiegeSpawnOffsets[o]);
+            }
         }
 
         // 방어 마음은 goals[] 로 저작한다(현행 승계) — defenderGoalCount 는 그 개수다.

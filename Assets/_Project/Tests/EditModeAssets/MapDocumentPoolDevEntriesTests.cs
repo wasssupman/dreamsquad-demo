@@ -156,10 +156,13 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(live.bossWaveInterval, duelDeck.bossWaveInterval);
             Assert.AreEqual(1, duelDeck.bossPool.Length, "맵당 보스 1종");
 
-            // 공성 맵이라 레인 경로 축은 적용되지 않는다(파생 스폰). 저작하지 않은 것이 계약이다.
-            Assert.IsTrue(duelDoc.SpawnRoutes == null || duelDoc.SpawnRoutes.Count == 0,
-                "공성 문서에 spawnRoutes 를 저작하면 파생 스폰과 길이가 갈린다 — 투영이 버리지만 "
-                + "저작 자체를 하지 않는 것이 계약이다");
+            // siege-lane-spawn unit 1 — 단언 반전: 공성 레인 경로가 부활했다. 계약은 «비움
+            // (전 레인 최단거리) 또는 정확히 파생 스폰 수» — 길이가 어긋나면 빌더가 버린다(경고).
+            int derivedSpawnCount = StructurePlacements.SiegeSpawnOffsets.Length;
+            Assert.IsTrue(duelDoc.SpawnRoutes == null || duelDoc.SpawnRoutes.Count == 0
+                || duelDoc.SpawnRoutes.Count == derivedSpawnCount,
+                $"공성 문서의 spawnRoutes 는 비우거나 파생 스폰 수({derivedSpawnCount})와 정확히 "
+                + "일치해야 한다 — 어긋난 길이는 빌더가 버려 저작이 조용히 죽는다");
         }
 
         // siege-duel-map — **제작 철학을 회귀선으로 박는다.** 공성 맵이 늘어날 때 좌표만 베끼고

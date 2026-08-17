@@ -156,8 +156,19 @@ namespace Wassup.Data.MapGrid
             WaypointAuthoringRules.ValidatePaths(
                 waypointPaths, width, height, tiles, waypointGoals, spawns,
                 waypointErrors, waypointWarnings);
+            // siege-lane-spawn unit 1 — 공성이면 레인의 정본은 저작 spawns(0개)가 아니라 파생
+            // 스폰이다. 저작 spawns 를 그대로 넘기면 «어느 레인에도 안 붙는다» 거짓 경고가
+            // 나오고 인덱스 범위 검증은 통째로 스킵된다. 파생 규칙은 CollectDerivedSiegeSpawns
+            // 단일 소스(빌더와 같은 오프셋·순서).
+            IReadOnlyList<Vector2Int> laneSpawns = spawns;
+            if (StructureAuthoringRules.CountEnemyCores(structures) > 0)
+            {
+                var derived = new List<Vector2Int>();
+                StructureAuthoringRules.CollectDerivedSiegeSpawns(structures, derived);
+                laneSpawns = derived;
+            }
             WaypointAuthoringRules.ValidateSpawnRoutes(
-                spawnRoutes, waypointPaths, spawns, waypointErrors, waypointWarnings);
+                spawnRoutes, waypointPaths, laneSpawns, waypointErrors, waypointWarnings);
             foreach (var e in waypointErrors)
                 Debug.LogError($"[MapDocument] {e}", this);
             foreach (var warning in waypointWarnings)

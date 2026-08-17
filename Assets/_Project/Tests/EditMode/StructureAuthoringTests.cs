@@ -431,6 +431,68 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
         }
 
+        // ── siege-lane-spawn unit 1 — 공성 spawnRoutes 재구축 ─────────────────────
+
+        [Test]
+        public void SiegeDoc_SpawnRoutes_MatchingDerivedCount_AreAdopted()
+        {
+            var core = ScriptableObject.CreateInstance<StructureData>();
+            core.kind = StructureKind.Core;
+            var doc = BuildDocumentWithSpawns(new Vector2Int[0], new[]
+            {
+                new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Enemy, data = core },
+            });
+            doc.SetSpawnRoutes(new[] { 5, 7 });   // 빌더는 검증하지 않는다 — 인덱스 검증은 OnValidate 몫
+            try
+            {
+                using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+                Assert.AreEqual(5, map.RouteForSpawn(0), "lane 0(하단) = 저작 routes[0]");
+                Assert.AreEqual(7, map.RouteForSpawn(1), "lane 1(상단) = 저작 routes[1]");
+            }
+            finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void SiegeDoc_SpawnRoutes_LengthMismatch_AreDiscardedWithWarning()
+        {
+            var core = ScriptableObject.CreateInstance<StructureData>();
+            core.kind = StructureKind.Core;
+            var doc = BuildDocumentWithSpawns(new Vector2Int[0], new[]
+            {
+                new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Enemy, data = core },
+            });
+            doc.SetSpawnRoutes(new[] { 3 });   // 파생 스폰 2 ≠ 저작 1 — 침묵 금지, 버리고 경고
+            try
+            {
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Warning,
+                    new System.Text.RegularExpressions.Regex("spawnRoutes 1개가 파생 스폰 2개와 달라"));
+                using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+                Assert.AreEqual(-1, map.RouteForSpawn(0), "폐기 = 전 레인 최단거리 폴백");
+                Assert.AreEqual(-1, map.RouteForSpawn(1));
+            }
+            finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void DerivedSiegeSpawns_FollowOffsetOrder_BottomThenTop()
+        {
+            var core = ScriptableObject.CreateInstance<StructureData>();
+            core.kind = StructureKind.Core;
+            try
+            {
+                var cells = new List<Vector2Int>();
+                StructureAuthoringRules.CollectDerivedSiegeSpawns(new[]
+                {
+                    new StructureEntry { cell = new Vector2Int(4, 3), side = StructureSide.Enemy, data = core },
+                }, cells);
+                // 순서 = 레인 번호. 빌더와 같은 SiegeSpawnOffsets 단일 소스를 쓴다.
+                Assert.AreEqual(2, cells.Count);
+                Assert.AreEqual(new Vector2Int(4, 2), cells[0], "하단 = lane 0");
+                Assert.AreEqual(new Vector2Int(4, 4), cells[1], "상단 = lane 1");
+            }
+            finally { Object.DestroyImmediate(core); }
+        }
+
         [Test]
         public void InvasionDoc_NoEnemyCore_KeepsAuthoredSpawns()
         {

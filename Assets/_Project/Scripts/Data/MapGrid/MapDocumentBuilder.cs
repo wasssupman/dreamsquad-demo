@@ -137,24 +137,39 @@ namespace Wassup.Data.MapGrid
                 // 줄로 왔다 — 플로우 필드는 결정론이라 동률이어도 갈라지지 않으므로, 스폰을 나누는
                 // 것이 유일한 분산 수단이다. Walk/경계 보장은 저작 검증(ValidateStructures) 몫 —
                 // 파생은 여기서도 기계적으로만 처리한다.
-                spawns = new NativeArray<int2>(enemyCoreCount * 2, allocator);
+                var offsets = StructurePlacements.SiegeSpawnOffsets;
+                spawns = new NativeArray<int2>(enemyCoreCount * offsets.Length, allocator);
                 int sw = 0;
                 for (int i = 0; i < structures.Length; i++)
                     if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore)
                     {
                         var heart = structures[i].cell;
-                        spawns[sw++] = new int2(heart.x, heart.y - 1);
-                        spawns[sw++] = new int2(heart.x, heart.y + 1);
+                        for (int o = 0; o < offsets.Length; o++)
+                            spawns[sw++] = new int2(heart.x + offsets[o].x, heart.y + offsets[o].y);
                     }
 
-                // waypoint-routing unit 8 — 파생 스폰에는 저작 레인 경로가 없다. spawnRoutes 는
-                // «미생성 이거나 정확히 spawns 길이» 라는 불변식을 갖는데(RouteForSpawn 의 전제),
-                // 저작 spawns 로 잰 배열이 여기 남으면 길이가 어긋나 **다른 레인의 경로를 조용히
-                // 읽는다.** 위 spawns 교체와 한 몸으로 처리해야 두 배열이 갈리지 않는다.
+                // siege-lane-spawn unit 1 — 레인 경로 부활. 위에서 만든 spawnRoutes 는 저작
+                // spawns(공성 = 0개) 길이라 파생 스폰과 반드시 어긋난다 — 조건화가 아니라
+                // **재구축**이다. 저작 길이가 파생 스폰 수와 정확히 같을 때만 채택한다(불변식
+                // «미생성 이거나 정확히 spawns 길이» = RouteForSpawn 의 전제 유지). 어긋나면
+                // 버리고 경고한다 — 조용히 다른 레인의 경로를 읽는 것도(구 waypoint-routing
+                // unit 8 이 막던 사고), 저작이 조용히 지워지는 것도 막는다.
                 if (spawnRoutes.IsCreated)
                 {
                     spawnRoutes.Dispose();
                     spawnRoutes = default;
+                }
+                if (docSpawnRoutes != null && docSpawnRoutes.Count > 0)
+                {
+                    if (docSpawnRoutes.Count == spawns.Length)
+                    {
+                        spawnRoutes = new NativeArray<int>(spawns.Length, allocator);
+                        for (int i = 0; i < spawns.Length; i++) spawnRoutes[i] = docSpawnRoutes[i];
+                    }
+                    else
+                        Debug.LogWarning(
+                            $"[MapDocumentBuilder] '{doc.name}' spawnRoutes {docSpawnRoutes.Count}개가 " +
+                            $"파생 스폰 {spawns.Length}개와 달라 버린다 — 레인 수만큼 저작하라.");
                 }
             }
 
