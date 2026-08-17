@@ -46,6 +46,66 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(w15, w9, $"후반 도달 구간도 계속 올라야 한다(w9={w9}, w15={w15})");
         }
 
+        // ── wave-ramp-two-phase unit 0 — 두 단계 곡선 ─────────────────────────────
+
+        [Test]
+        public void TwoPhase_Off_IsIdenticalToLegacy()
+        {
+            const int min = 5, max = 24;
+            for (int i = 0; i < 40; i++)
+                for (int j = 0; j <= 4; j++)
+                {
+                    float j01 = j / 4f;
+                    Assert.AreEqual(
+                        WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 1, j01),
+                        WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 1, j01, 0, 0),
+                        $"break 미저작(0)은 레거시와 완전히 같아야 한다 (wave {i}, j {j01})");
+                    // breakUnits 0 도 끔이다 — 반쪽 저작이 곡선을 죽이지 않게.
+                    Assert.AreEqual(
+                        WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 1, j01),
+                        WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 1, j01, 15, 0));
+                }
+        }
+
+        [Test]
+        public void TwoPhase_FlatPhase_RisesLinearlyToBreakUnits()
+        {
+            const int min = 5, max = 24, brkWave = 15, brkUnits = 12;
+            int prev = int.MinValue;
+            for (int i = 0; i < brkWave - 1; i++)
+            {
+                int total = WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 0, 0f, brkWave, brkUnits);
+                Assert.GreaterOrEqual(total, prev, $"평탄 구간은 단조 비감소 (wave {i})");
+                Assert.LessOrEqual(total, brkUnits, $"평탄 구간은 breakUnits 를 넘지 않는다 (wave {i})");
+                prev = total;
+            }
+            // 경계 웨이브(인덱스 break−1) = breakUnits — 평탄의 종점이자 지수의 기점.
+            Assert.AreEqual(brkUnits,
+                WavePatternGenerator.ExponentialWaveTotal(brkWave - 1, min, max, 1.12f, 0, 0f, brkWave, brkUnits));
+        }
+
+        [Test]
+        public void TwoPhase_Climax_GrowsExponentiallyFromBreakUnits_AndSaturates()
+        {
+            const int min = 5, max = 24, brkWave = 15, brkUnits = 12;
+            int atBreak = WavePatternGenerator.ExponentialWaveTotal(brkWave - 1, min, max, 1.12f, 0, 0f, brkWave, brkUnits);
+            int later = WavePatternGenerator.ExponentialWaveTotal(brkWave + 4, min, max, 1.12f, 0, 0f, brkWave, brkUnits);
+            Assert.Greater(later, atBreak, "클라이맥스는 breakUnits 기점으로 계속 오른다");
+            Assert.AreEqual(max,
+                WavePatternGenerator.ExponentialWaveTotal(99, min, max, 1.12f, 0, 0f, brkWave, brkUnits),
+                "지수 구간도 maxUnits 상한을 존중한다");
+        }
+
+        [Test]
+        public void TwoPhase_BreakUnitsBelowMin_ClampsToMin()
+        {
+            // breakUnits < minUnits 저작 실수 — 평탄 구간이 min 아래로 내려가면 안 된다.
+            const int min = 5, max = 24;
+            for (int i = 0; i < 20; i++)
+                Assert.GreaterOrEqual(
+                    WavePatternGenerator.ExponentialWaveTotal(i, min, max, 1.12f, 0, 0f, 15, 2), min);
+        }
+
         [Test]
         public void StaysWithinBounds_ForAnyJitter()
         {

@@ -46,7 +46,9 @@ namespace Wassup.Data
                 deck.unitGrowthPerWave,
                 deck.waveConceptPool,
                 deck.conceptHoldWaves,
-                laneCount);
+                laneCount,
+                deck.waveRampBreakWave,
+                deck.waveRampBreakUnits);
         }
 
         public static GeneratedWavePlan Generate(
@@ -77,7 +79,10 @@ namespace Wassup.Data
             // 타지 않고 아래 레거시 2종 분기가 그대로 돈다 → 기존 편성과 byte-identical.
             IReadOnlyList<WaveConceptData> waveConceptPool = null,
             int conceptHoldWaves = 3,
-            int laneCount = 2)
+            int laneCount = 2,
+            // wave-ramp-two-phase unit 0 — 같은 이유로 맨 뒤에 추가. 0 = 기존 지수(무회귀).
+            int rampBreakWave = 0,
+            int rampBreakUnits = 0)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -185,7 +190,8 @@ namespace Wassup.Data
                 if (concept != null)
                 {
                     int conceptTotal = ExponentialWaveTotal(
-                        i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, rng.NextFloat());
+                        i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, rng.NextFloat(),
+                        rampBreakWave, rampBreakUnits);
                     var conceptGroups = BuildConceptGroups(
                         pool, waveSlots, waveLanes, conceptTotal, concept.countMul,
                         maxUnits, i + 1, concept.id, ref rng);
@@ -212,7 +218,8 @@ namespace Wassup.Data
                 // wave-pattern unit 7 — 수량 램프. NextFloat 1콜은 기존 NextInt 1콜과 rng
                 // 소비 수가 같아 아래 countA·보스 후처리의 rng 정렬이 불변이다.
                 float jitter01 = rng.NextFloat();
-                int total = ExponentialWaveTotal(i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, jitter01);
+                int total = ExponentialWaveTotal(i, minUnits, maxUnits, unitGrowthPerWave, waveCountJitter, jitter01,
+                    rampBreakWave, rampBreakUnits);
                 int countA = rng.NextInt(1, total);
                 int countB = total - countA;
 
@@ -356,14 +363,32 @@ namespace Wassup.Data
         // 결정론 검증 가능 — 제약 10). growth^i 는 i 가 커지면 폭발하므로 maxUnits 클램프가
         // 유일한 상한이다.
         public static int ExponentialWaveTotal(
-            int waveIndex, int minUnits, int maxUnits, float growth, int jitterBand, float jitter01)
+            int waveIndex, int minUnits, int maxUnits, float growth, int jitterBand, float jitter01,
+            // wave-ramp-two-phase unit 0 — 두 단계 곡선(옵트인). 맨 뒤 append: positional 호출자
+            // (기존 테스트·생성기)가 조용히 다른 값을 받는 것을 막는다(boss-jjangssen unit 0 관례).
+            // break 미저작(<2 또는 units<=0)이면 아래 레거시 지수와 완전히 같은 경로다.
+            int rampBreakWave = 0, int rampBreakUnits = 0)
         {
             if (maxUnits < minUnits) { int t = minUnits; minUnits = maxUnits; maxUnits = t; }
             float g = growth > 1f ? growth : 1f;
             int i = waveIndex > 0 ? waveIndex : 0;
             // pow 로 한 번에 구한다 — 누적 곱은 웨이브 인덱스마다 값이 달라지는 것을 막지 못하고
             // (같은 결과) 호출당 루프만 늘린다.
-            float center = minUnits * math.pow(g, i);
+            float center;
+            if (rampBreakWave >= 2 && rampBreakUnits > 0)
+            {
+                // 본편(w1~break)은 평탄 상승(min → breakUnits), break 웨이브부터 breakUnits 를
+                // 기점으로 기존 지수 — «난이도 낮은 다양한 본편 + 클라이맥스»(wave-ramp-two-phase).
+                // rng 를 소비하지 않는 계약은 그대로다: jitter01 은 호출측이 뽑아 넘기는 plain
+                // 입력이라 곡선 모양이 바뀌어도 컨셉 시퀀스·유닛 추첨이 흔들리지 않는다.
+                int breakIdx = rampBreakWave - 1;   // 웨이브 N = 인덱스 N−1
+                float breakUnits = math.max(minUnits, rampBreakUnits);
+                center = i < breakIdx
+                    ? math.lerp(minUnits, breakUnits, (float)i / breakIdx)
+                    : breakUnits * math.pow(g, i - breakIdx);
+            }
+            else
+                center = minUnits * math.pow(g, i);
             // 지수 구간에서 center 가 maxUnits 를 크게 넘어가면 float 이 커져 jitter 가 묻힌다.
             // 클램프를 먼저 걸어 jitter 가 상한 근처에서도 살아 있게 한다.
             center = math.min(center, maxUnits);

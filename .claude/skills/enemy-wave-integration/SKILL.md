@@ -123,6 +123,14 @@ if (unit.minWaveNumber <= waveNumber) return index;
 
 → 추가 후 그 컨셉 로스터의 `moveSpeed` 최대−최소를 재라. 기존 pin(예: Air 로스터 폭 ≤ 1.5)이 그 계약을 지킨다.
 
+### 두 단계 곡선 덱 — break 뒤는 다른 판이다
+
+`AttackDeck.waveRampBreakWave`/`waveRampBreakUnits`(wave-ramp-two-phase)가 저작된 덱(공성 계열)은
+break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부터 지수다. 이 필드는 클라이맥스
+변주 격상(상시 변주·신규 레인 개방)의 게이트도 겸한다. **곡선은 rng 를 소비하지 않으므로**
+값을 바꿔도 컨셉 시퀀스·유닛 추첨은 불변이다(`RampCurve_DoesNotDisturbConceptSequenceOrPicks`
+가 pin). 0 = 끔 = 기존 지수 — 라이브 덱이 이 상태다.
+
 ### 저작 플랜은 게이트를 받지 않는다
 
 `WavePlanAsset`(튜토리얼·테스트 모드)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **튜토리얼 웨이브 3 에 놓을 수 있다.** 교습 순서는 게이트가 아니라 저작이 정한다.

@@ -393,6 +393,43 @@ namespace Wassup.Tests.EditMode
 
         // laneCount 는 결정론 키의 일부다 — lane 요구량 게이트가 후보 집합을 바꾼다.
         // 이것이 계약 6(브리핑과 런타임이 같은 값을 넘긴다)이 필요한 이유다.
+        // wave-ramp-two-phase unit 0 — 수량 곡선은 rng 를 소비하지 않는다는 계약의 생성 결과 pin.
+        // 곡선(두 단계)이 켜져도 컨셉 시퀀스와 유닛 추첨은 그대로여야 한다 — 흔들리면 시드
+        // 재선정(unit 3)의 술어가 곡선 튜닝 때마다 다시 깨진다.
+        [Test]
+        public void RampCurve_DoesNotDisturbConceptSequenceOrPicks()
+        {
+            var pool = GroundPool();
+            var concepts = new[]
+            {
+                Concept("a", 1f, 1, (0, EnemyClass.Runner, SlotAltitude.Ground)),
+                Concept("b", 1f, 1, (0, EnemyClass.Shooter, SlotAltitude.Ground)),
+            };
+            var deck = Deck(pool, concepts, waveCount: 21);
+            var plain = WavePatternGenerator.Generate(deck, 20260813, 2);
+            deck.waveRampBreakWave = 15;
+            deck.waveRampBreakUnits = 12;
+            var ramped = WavePatternGenerator.Generate(deck, 20260813, 2);
+
+            Assert.AreEqual(plain.waves.Count, ramped.waves.Count);
+            bool anyCountDiffers = false;
+            for (int i = 0; i < plain.waves.Count; i++)
+            {
+                Assert.AreEqual(plain.waves[i].conceptLabel, ramped.waves[i].conceptLabel,
+                    $"웨이브 {i + 1}: 곡선이 컨셉 시퀀스를 흔들었다 — rng 소비가 갈렸다");
+                Assert.AreEqual(plain.waves[i].groups.Count, ramped.waves[i].groups.Count);
+                for (int g = 0; g < plain.waves[i].groups.Count; g++)
+                {
+                    Assert.AreEqual(plain.waves[i].groups[g].unit, ramped.waves[i].groups[g].unit,
+                        $"웨이브 {i + 1} 그룹 {g}: 유닛 추첨이 갈렸다");
+                    Assert.AreEqual(plain.waves[i].groups[g].laneIndex, ramped.waves[i].groups[g].laneIndex);
+                    if (plain.waves[i].groups[g].count != ramped.waves[i].groups[g].count)
+                        anyCountDiffers = true;
+                }
+            }
+            Assert.IsTrue(anyCountDiffers, "수량이 하나도 안 달라졌다 — 곡선이 적용되지 않은 것이다");
+        }
+
         [Test]
         public void LaneCount_IsPartOfTheDeterminismKey()
         {

@@ -132,6 +132,19 @@ namespace Wassup.Data
         [Tooltip("한 컨셉이 유지되는 웨이브 수(블록 길이). 웨이브당 12~18초라 1이면 반응할 창이 없다.")]
         [Min(1)] public int conceptHoldWaves = 3;
 
+        // wave-ramp-two-phase unit 0 — 두 단계 수량 곡선(옵트인). Appended last (직렬화 back-compat).
+        //
+        // breakWave 미저작(0) = 기존 지수 그대로 → 라이브 덱 무회귀가 데이터로 성립한다.
+        // 저작 시: 본편(w1~break)은 min → breakUnits 평탄 상승, break 웨이브부터 breakUnits 를
+        // 기점으로 unitGrowthPerWave 지수 — «난이도 낮은 다양한 본편 + 클라이맥스».
+        // 이 필드는 unit 1 의 클라이맥스 변주 격상(상시 변주·신규 레인 개방)의 게이트도 겸한다 —
+        // 목표 문장(«그 이후부터 지수 상승과 타입을 섞는다»)이 knob 하나로 표현된다.
+        [Header("Wave Ramp (wave-ramp-two-phase)")]
+        [Tooltip("두 단계 곡선의 경계 웨이브(그 웨이브부터 지수·변주 상시). 0 = 끔(기존 지수).")]
+        [Min(0)] public int waveRampBreakWave;
+        [Tooltip("경계 웨이브에서의 수량 — 평탄 구간의 종점이자 지수 구간의 기점. breakWave > 0 일 때만 의미.")]
+        [Min(0)] public int waveRampBreakUnits;
+
         public int ResolveWaveSeed()
         {
             return waveSeed != 0 ? waveSeed : 1;
