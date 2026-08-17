@@ -378,11 +378,91 @@ namespace Wassup.Tests.EditMode
                     $"{name}: 풀/편성이 바뀌었다 — 버전으로 새 baseline 을 표시한다");
         }
 
+        // wave-ramp-two-phase unit 3 — 공성 3덱. 본편 다양성 술어의 대상이자 시드 유일성에 편입.
+        private static readonly string[] SiegeDecks = { "Deck_Duel", "Deck_Ford", "Deck_Isle" };
+
+        // 본편(w1~15) 다양성 — 시드가 고정이라 이 술어는 확률이 아니라 **시드 선정의 결과**다.
+        // 깨지면 편성 규칙/풀이 바뀐 것이니 시드를 다시 골라야 한다(스킬 「값 재도출」 규율).
+        // 5종 전부가 아니라 4종+ 로 pin 하는 이유: 5 를 못박으면 풀·컨셉 후속 편집이 이유 없이
+        // 깨진다(밸런스 리터럴 금지). 공습 포함은 별도 요구 — 이 spec 의 출발점이 «공중 웨이브가
+        // 안 나온다» 였다.
+        [Test]
+        public void SiegeDecks_MainPhase_ShowsFourPlusConcepts_IncludingAirstrike(
+            [ValueSource(nameof(SiegeDecks))] string name)
+        {
+            int lanes = StructurePlacements.SiegeSpawnOffsets.Length;   // 공성 파생 스폰 수 = 2
+            var plan = Plan(name, lanes);
+            var labels = new HashSet<string>();
+            bool air = false;
+            for (int i = 0; i < 15 && i < plan.waves.Count; i++)
+            {
+                labels.Add(plan.waves[i].conceptLabel);
+                if (plan.waves[i].conceptLabel == "공습") air = true;
+            }
+            Assert.GreaterOrEqual(labels.Count, 4,
+                $"{name}: 본편(w1~15)에 컨셉 4종+ 가 나와야 한다 — 현재 {string.Join(", ", labels)}");
+            Assert.IsTrue(air, $"{name}: 본편에 공습이 없다 — 이 spec 의 출발 증상 재발");
+        }
+
+        // 시드 재도출 스캐너(수동 실행 전용). 오프라인 포트는 PickConcept 룰렛의 float32 누적
+        // 경계에서 시드별로 어긋날 수 있다 — **시드 선정은 반드시 이 스캐너(실제 생성기)로**.
+        // 공성 3덱은 풀·파라미터가 같아 후보가 서로 통용된다. 결과는 Debug.Log.
+        // ⚠ MCP 러너의 test_names 필터는 Explicit 를 선택하지 못한다 — 재수확이 필요하면
+        // Explicit 를 잠시 떼고 이름으로 실행한 뒤 되돌려라(Unity Test Runner 창에서는 그대로
+        // 더블클릭 실행 가능).
+        [Test, Explicit("시드 재선정 때만 수동 실행 — enemy-wave-integration 스킬 「값 재도출」")]
+        public void Scan_SiegeSeedCandidates()
+        {
+            int lanes = StructurePlacements.SiegeSpawnOffsets.Length;
+            var deck = Deck("Deck_Duel");
+            int found = 0;
+            var sb = new StringBuilder("[SeedScan] w1~15 컨셉 4종+ 및 공습 포함:\n");
+            for (int seed = 20260850; seed <= 20261300 && found < 24; seed++)
+            {
+                var plan = WavePatternGenerator.Generate(deck, seed, lanes);
+                var labels = new HashSet<string>(); bool air = false;
+                var seq = new StringBuilder();
+                for (int i = 0; i < 15 && i < plan.waves.Count; i++)
+                {
+                    labels.Add(plan.waves[i].conceptLabel);
+                    if (plan.waves[i].conceptLabel == "공습") air = true;
+                    if (i % 3 == 0) seq.Append(plan.waves[i].conceptLabel).Append('>');
+                }
+                if (labels.Count < 4 || !air) continue;
+                found++;
+                // 콘솔 API 가 멀티라인 로그를 첫 줄만 주므로 후보는 줄 단위로 찍는다.
+                UnityEngine.Debug.Log($"[SeedScan] {seed} [{labels.Count}종] {seq}");
+            }
+            UnityEngine.Debug.Log(sb.ToString());
+            Assert.GreaterOrEqual(found, 3, "후보가 3개 미만 — 스캔 범위를 넓혀라");
+        }
+
+        [Test]
+        public void SiegeDecks_MainPhase_SequencesDiffer()
+        {
+            int lanes = StructurePlacements.SiegeSpawnOffsets.Length;
+            var seqs = new Dictionary<string, string>();
+            foreach (string name in SiegeDecks)
+            {
+                var plan = Plan(name, lanes);
+                var sb = new StringBuilder();
+                for (int i = 0; i < 15 && i < plan.waves.Count; i += 3)
+                    sb.Append(plan.waves[i].conceptLabel).Append('>');
+                string seq = sb.ToString();
+                foreach (var kv in seqs)
+                    Assert.AreNotEqual(kv.Value, seq,
+                        $"{name} 과 {kv.Key} 의 본편 시퀀스가 같다 — 맵마다 다른 판이어야 한다");
+                seqs[name] = seq;
+            }
+        }
+
         [Test]
         public void WaveSeeds_ArePinnedAndUnique()
         {
             var seen = new Dictionary<int, string>();
-            foreach (string name in AllDecks)
+            // wave-ramp-two-phase unit 3 — 공성 3덱 편입. Duel 이 Serpent 시드를 재사용하던
+            // 이력이 있다 — 같은 풀에서 같은 시드는 같은 편성 = 맵 개성 소멸.
+            foreach (string name in System.Linq.Enumerable.Concat(AllDecks, SiegeDecks))
             {
                 int seed = Deck(name).waveSeed;
                 Assert.AreNotEqual(0, seed, $"{name}: 0 이면 매판 달라진다");

@@ -15,7 +15,7 @@ MonoBehaviour:
   deckId: Deck_Duel
   battleMode: 0
   useGeneratedWaves: 1
-  waveSeed: 20260841
+  waveSeed: 20260868
   waveGeneratorVersion: 7
   attackUnitPool:
   - {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
