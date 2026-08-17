@@ -43,6 +43,10 @@ namespace Wassup.Battle.Combat.Projectile
             var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
             var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+            // defender-knockback-on-impact unit 1 — 사수의 넉백 저작(Combat 소유, RO).
+            // 넉백은 **유닛의 성질**이지 화살의 성질이 아니라 탄 SO 로 옮기지 않는다 —
+            // 같은 화살을 쓰는 다른 유닛(마크스맨)에 새지 않게 하려는 것이기도 하다.
+            var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             // defender-directional-volley unit 2 — per-projectile victim record so a
             // path sweep damages each target once.
             // RW (dreamcatcher-content-4 unit 2): a rehit cooldown has to *rewrite* the
@@ -276,6 +280,45 @@ namespace Wassup.Battle.Combat.Projectile
                                 float dmg = (target == prioTarget ? projectile.ValueRO.damage * prioMul : projectile.ValueRO.damage) * heavyMul;
                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = dmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
+                            }
+
+                            // defender-knockback-on-impact unit 1 — 유닛 넉백은 **맞는 순간** 난다.
+                            // 발사 시점의 AttackSystem 은 이 payload 에서 넉백을 걸지 않고 여기로
+                            // 넘긴다(그쪽 `knockbackAtImpact`). 사거리 4·탄속 12 면 즉시 걸 때
+                            // 0.33초 먼저 밀려, 0.2초마다 쏘는 유닛에서는 한 발치를 넘는 어긋남이었다.
+                            //
+                            // 방향 = **피격자가 가던 방향의 반대** 하나다(사용자 결정 B, 2026-08-17).
+                            // ⚠ 탄의 진행 방향을 쓸 수 없다 — 유도탄은 도착할 때 좌표가 대상과
+                            // 정확히 같아져서(`ProjectileMoveSystem`: dist <= step → newPos = targetPos)
+                            // 진행 벡터가 0 이 된다. 훑는 탄(PathHit)의 넉백이 스윕 방향을 쓰는 것과
+                            // 규칙이 다른 것은 의도다 — 그쪽은 「지나가며 밀어낸다」가 곧 그 능력이다.
+                            //
+                            // 사수가 비행 중에 죽으면 넉백도 없다 — 위협 귀속과 같은 규약.
+                            // 방향이 없는 대상(스폰 직후·구조물)은 밀지 않는다.
+                            if (hasCcQ
+                                && damageBufferLookup.HasBuffer(target)
+                                && defenderCcLookup.HasComponent(threatOwner)
+                                && pathFollowLookup.HasComponent(target))
+                            {
+                                var ownerCc = defenderCcLookup[threatOwner];
+                                float2 travel = pathFollowLookup[target].lastMoveDir;
+                                if (ownerCc.knockbackDistance > 0f
+                                    && ownerCc.knockbackDuration > 0f
+                                    && math.lengthsq(travel) > 1e-6f)
+                                {
+                                    float2 kb = -math.normalize(travel)
+                                                * (ownerCc.knockbackDistance / ownerCc.knockbackDuration);
+                                    ccQueue.Enqueue(new EnemyCcEvent
+                                    {
+                                        target = target,
+                                        effect = new CcEffect
+                                        {
+                                            kind = CcKind.Impulse,
+                                            vector = new float3(kb.x, 0f, kb.y),
+                                            remainingTime = ownerCc.knockbackDuration,
+                                        },
+                                    });
+                                }
                             }
 
                             // Combat→Presentation: one hit event per direct target —

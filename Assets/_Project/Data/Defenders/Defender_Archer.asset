@@ -137,8 +137,8 @@ MonoBehaviour:
   deployCutsceneDepth:
   - {fileID: 2800000, guid: d0df50777d1614e849e649050a656aab, type: 3}
   deployCutsceneTiltGain: 1
-  knockbackDistance: 2
-  knockbackDuration: 0.2
+  knockbackDistance: 0
+  knockbackDuration: 0
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2

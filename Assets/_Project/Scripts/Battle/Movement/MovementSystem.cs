@@ -137,6 +137,9 @@ namespace Wassup.Battle.Movement
                                 transform.ValueRW.Position = AgentCollision.Resolve(
                                     current, desiredChase, follow.ValueRO.radius, in nav);
                                 follow.ValueRW.holdingGround = 0;   // unit 13 — 자기주도 이동함
+                                // defender-knockback-on-impact unit 0 — 진행 방향 기록.
+                                // chaseDir 은 위 게이트에서 이미 길이 > 1e-6 이 보장된다.
+                                follow.ValueRW.lastMoveDir = math.normalize(chaseDir);
                             }
                         }
                     }
@@ -374,7 +377,14 @@ namespace Wassup.Battle.Movement
 
                 // unit 13 — 자기주도 변위가 실제로 있을 때만 "이동 중". 외력(impulse/pull)만
                 // 있는 프레임은 정지로 남는다 — 밀려나는 유닛은 자리를 지키는 쪽이 맞다.
-                if (math.lengthsq(flowStep) > 1e-12f) follow.ValueRW.holdingGround = 0;
+                if (math.lengthsq(flowStep) > 1e-12f)
+                {
+                    follow.ValueRW.holdingGround = 0;
+                    // defender-knockback-on-impact unit 0 — 진행 방향 기록. flowStep 은
+                    // 웨이포인트·흐름장·복구를 이미 거친 **최종 자기주도 변위**라, 어느
+                    // 경로로 결정됐든 이 한 줄이 실제 진행 방향을 잡는다.
+                    follow.ValueRW.lastMoveDir = math.normalize(flowStep.xz);
+                }
 
                 // [은퇴] enemy-tile-movement-integrity unit 1 의 LateralRecenter 를 여기서 걷어냈다.
                 //

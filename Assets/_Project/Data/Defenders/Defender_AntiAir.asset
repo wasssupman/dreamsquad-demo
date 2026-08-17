@@ -85,8 +85,8 @@ MonoBehaviour:
   deployCutsceneOffset: {x: 0, y: 0}
   deployCutsceneDepth: []
   deployCutsceneTiltGain: 1
-  knockbackDistance: 0
-  knockbackDuration: 0
+  knockbackDistance: 0.3
+  knockbackDuration: 0.08
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
