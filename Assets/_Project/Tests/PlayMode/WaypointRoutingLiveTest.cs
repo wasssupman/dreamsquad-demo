@@ -267,13 +267,18 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual((byte)antiAir.EffectiveAttackTargetLayers,
                 em.GetComponentData<AttackState>(antiAirEntity).targetTraversalLayers,
                 "지상+공중 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
-            Assert.AreEqual(0.2f,
+            // ⚠ 수치를 리터럴로 걸지 않는다 — **시트가 정본**이다(사용자 결정 2026-08-17).
+            // 이 단언이 보는 것은 「저작이 런타임으로 그대로 구워지는가」이지 그 값이 얼마인가가
+            // 아니다. 예전엔 7f·0.2f 가 박혀 있어 시트에서 발당 피해를 6 으로 내리자 곧바로
+            // 빨간불이 됐다 — 밸런스 조정이 테스트 실패가 되면 안 된다.
+            Assert.AreEqual(antiAir.attackCooldown,
                 em.GetComponentData<AttackState>(antiAirEntity).cooldownDuration, 1e-4f,
-                "넉백머신의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
+                "저작된 공격 주기가 실제 런타임에 베이크돼야 한다");
             var antiAirOutputs = em.GetBuffer<AttackOutputElement>(antiAirEntity);
-            Assert.AreEqual(1, antiAirOutputs.Length);
-            Assert.AreEqual(7f, antiAirOutputs[0].value.magnitude, 1e-4f,
-                "낮은 발당 피해가 실제 런타임 출력에 베이크돼야 한다");
+            Assert.AreEqual(antiAir.outputs.Length, antiAirOutputs.Length,
+                "저작된 출력 개수가 그대로 베이크돼야 한다");
+            Assert.AreEqual(antiAir.outputs[0].magnitude, antiAirOutputs[0].value.magnitude, 1e-4f,
+                "저작된 발당 피해가 실제 런타임 출력에 베이크돼야 한다");
         }
 
         // waypoint-routing unit 9/10 — 사용자 증상 계측: 「Serpent 을 웨이브 7까지 해도

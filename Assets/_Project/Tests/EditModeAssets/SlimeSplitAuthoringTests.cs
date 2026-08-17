@@ -40,9 +40,15 @@ namespace Wassup.Tests.EditMode
             Assert.GreaterOrEqual(m.payload.magnitude, 1f, "자식 수가 1 미만이면 분열이 소멸이다");
         }
 
-        // 2단계 분열: 슬라임 → 중간 ×2 → 작은 ×4. 단계마다 체력 절반 · 공격력 계승.
+        // 2단계 분열: 슬라임 → 중간 ×2 → 작은 ×4. **배선과 출력 형상**만 못 박는다.
+        //
+        // ⚠ 체력·공격력 수치는 단언하지 않는다 — **시트가 정본**이다(사용자 결정 2026-08-17).
+        // 예전엔 「단계마다 체력 절반」·「공격력 그대로 계승」을 리터럴로 걸었는데, 시트에서
+        // 슬라임 사슬을 500/250/150 으로 조정하자 밸런스 조정이 곧 테스트 실패가 됐다.
+        // 테스트가 지킬 것은 **배선이 끊기면 죽어도 안 갈라진다** 는 구조이지 튜닝 값이 아니다
+        // (test-procedure 의 「밸런스 수치를 리터럴로 못박지 않는다」 규율).
         [Test]
-        public void Chain_IsParentToMidToSmall_HalvingHealth_InheritingAttack()
+        public void Chain_IsParentToMidToSmall_WithInheritedOutputShape()
         {
             var parent = Load(ParentPath);
             var mid = Load(MidPath);
@@ -52,19 +58,14 @@ namespace Wassup.Tests.EditMode
             Assert.AreSame(small, SplitChain.NextInChain(mid), "중간 → 작은 배선(guid)");
             Assert.IsNull(SplitChain.NextInChain(small), "작은 슬라임에서 사슬이 끝나야 한다");
 
-            Assert.AreEqual(parent.health * 0.5f, mid.health, 0.01f, "중간 체력 = 본체의 50%");
-            Assert.AreEqual(mid.health * 0.5f, small.health, 0.01f, "작은 체력 = 중간의 50%");
-
             foreach (var u in new[] { mid, small })
             {
+                Assert.Greater(u.health, 0f, $"{u.displayName}: 체력 0 이면 스폰 즉시 소멸한다");
                 Assert.IsNotNull(u.outputs);
                 Assert.AreEqual(parent.outputs.Length, u.outputs.Length, $"{u.displayName}: 공격 출력 형상 계승");
                 for (int i = 0; i < parent.outputs.Length; i++)
-                {
-                    Assert.AreEqual(parent.outputs[i].kind, u.outputs[i].kind);
-                    Assert.AreEqual(parent.outputs[i].magnitude, u.outputs[i].magnitude, 0.01f,
-                        $"{u.displayName}: 공격력은 그대로 계승한다(사용자 지정)");
-                }
+                    Assert.AreEqual(parent.outputs[i].kind, u.outputs[i].kind,
+                        $"{u.displayName}: 출력 종류가 갈리면 분열체가 다른 공격을 한다");
             }
         }
 
