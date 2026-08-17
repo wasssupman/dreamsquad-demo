@@ -37,7 +37,17 @@ namespace Wassup.Tests.PlayMode
         private bool _queriesCreated;
         private float _tileSize = 1f;
 
-        [TearDown] public void TearDown() => LogAssert.ignoreFailingMessages = false;
+        // duel-live-focus — 이 계측은 자기 판을 선언한다(라이브 풀이 바뀌어도 같은 판에서 잰다).
+        private int _savedMap;
+        [SetUp]
+        public void PinMap() => _savedMap = BattleBridgeTestAccess.PinMap();
+
+        [TearDown]
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            BattleBridgeTestAccess.RestoreMap(_savedMap);
+        }
 
         [UnityTearDown]
         public IEnumerator UnityTearDown()

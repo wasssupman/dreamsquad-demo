@@ -24,9 +24,10 @@ namespace Wassup.Tests.PlayMode
     public class StructureLivePlayTest
     {
         private const float TimeoutSec = 90f;
-        private const int DevInstinctMapIndex = 6;   // 메인 6장 뒤 dev[0] = MapDocument_Test(적 본능)
-        private const int DevSiegeMapIndex = 8;      // dev[2] = MapDocument_SiegeTest(적 마음, spawns 미저작)
-        private const int CoilMapIndex = 1;          // 주 풀 index 1 = MapDocument_Coil(파수 본능 1기)
+        // 맵은 이름으로 고른다(BattleBridgeTestAccess.MapSlot) — 풀 순서가 바뀌어도 안 밀린다.
+        private const string InstinctMap = "Test";       // 적 본능 1기 저작
+        private const string SiegeMap = "SiegeTest";     // 적 마음(spawns 미저작)
+        private const string CoilMap = "Coil";           // 파수 본능 1기
         private static readonly Vector2Int CoilInstinctCell = new Vector2Int(10, 6);
         private int _savedIndex = -1;
 
@@ -34,7 +35,7 @@ namespace Wassup.Tests.PlayMode
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            DevMapOverride.Index = DevInstinctMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(InstinctMap);
         }
 
         [TearDown]
@@ -147,7 +148,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator SiegeMap_DerivesSpawnFromEnemyCore_AndWavesComeFromIt()
         {
             LogAssert.ignoreFailingMessages = true;
-            DevMapOverride.Index = DevSiegeMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(SiegeMap);
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
@@ -220,7 +221,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Instinct_BlocksNeitherMovementNorNeighborPlacement()
         {
             LogAssert.ignoreFailingMessages = true;
-            DevMapOverride.Index = CoilMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(CoilMap);
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
@@ -297,7 +298,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator SiegeMap_DefendersBreakEnemyCore_AndCoreDeathWins()
         {
             LogAssert.ignoreFailingMessages = true;
-            DevMapOverride.Index = DevSiegeMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(SiegeMap);
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 

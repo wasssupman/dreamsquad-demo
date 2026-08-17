@@ -23,8 +23,17 @@ namespace Wassup.Tests.PlayMode
     // 드레인(_running) 요구로 bridge.StartBattle() 후 검증한다 (실웨이브 공존 허용).
     public class DreamcatcherGateE2ETest
     {
+        // duel-live-focus — 이 계측은 자기 판을 선언한다(라이브 풀이 바뀌어도 같은 판에서 잰다).
+        private int _savedMap;
+        [SetUp]
+        public void PinMap() => _savedMap = BattleBridgeTestAccess.PinMap();
+
         [TearDown]
-        public void TearDown() => LogAssert.ignoreFailingMessages = false;
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            BattleBridgeTestAccess.RestoreMap(_savedMap);
+        }
 
         [UnityTest]
         public IEnumerator CorneredBurst_CountsOnlyBelowGate_AndBlastsAdjacent()

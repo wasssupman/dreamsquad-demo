@@ -39,6 +39,49 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 6; i++) yield return null;
         }
 
+        // duel-live-focus — **맵은 이름으로 고른다.** 스테퍼 슬롯 번호(= 라이브 풀 크기 + dev
+        // 순번)를 상수로 박으면 풀을 한 장이라도 옮길 때마다 테스트가 **조용히 다른 판을 잰다**
+        // (빨간불이 아니라 «측정이 거짓말»이 되는 실패라 더 나쁘다). 실제로 라이브 풀이
+        // 6장 → 1장(Duel)이 되면서 열 개의 상수가 한꺼번에 밀렸다.
+        //
+        // ⚠ 씬 로드 **전**에 불러야 한다 — 맵은 GameManager 부팅 흐름(PrepareDraftMap)에서
+        // 서므로, 로드 뒤에 인덱스를 바꾸면 이미 다른 맵이 서 있다.
+        public static int MapSlot(string documentName)
+        {
+            const string poolPath = "Assets/_Project/Data/Maps/MapDocumentPool.asset";
+            var pool = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.MapGrid.MapDocumentPool>(poolPath);
+            Assert.IsNotNull(pool, $"맵 풀을 로드하지 못했다: {poolPath}");
+
+            string assetName = "MapDocument_" + documentName;
+            // 슬롯 배치는 BattleBridge.BuildMapForBattle 과 같다: [0..Count-1] = 라이브 풀,
+            // [Count..Count+DevCount-1] = dev 슬롯.
+            for (int i = 0; i < pool.Count; i++)
+                if (pool.Get(i).document != null && pool.Get(i).document.name == assetName) return i;
+            for (int i = 0; i < pool.DevCount; i++)
+                if (pool.GetDev(i).document != null && pool.GetDev(i).document.name == assetName)
+                    return pool.Count + i;
+
+            Assert.Fail($"'{assetName}' 이 맵 풀(라이브 {pool.Count} + dev {pool.DevCount})에 없다");
+            return -1;
+        }
+
+        // 씬을 띄워 **전투를 계측하는 테스트는 자기 판을 선언한다.** 선언하지 않으면 그때그때
+        // 라이브 풀 0번을 물려받고, 풀이 바뀌는 날 «계속 다른 판에서 재고 있었다» 가 된다 —
+        // 2026-08-17 에 라이브 맵이 Serpent → Duel 로 바뀌며 4개 테스트가 정확히 그렇게 깨졌다
+        // (Duel 은 본능 포탑 4기가 서 있어서 «반격할 게 없다» 같은 전제가 통째로 거짓이 된다).
+        //
+        // 기본값은 이 테스트들이 실제로 쓰여진 판이다. 판 자체가 논점인 테스트만 다른 이름을 준다.
+        public const string DefaultMap = "Serpent";
+
+        public static int PinMap(string documentName = DefaultMap)
+        {
+            int saved = Wassup.Core.DevMapOverride.Index;
+            Wassup.Core.DevMapOverride.Index = MapSlot(documentName);
+            return saved;   // PlayerPrefs 는 머신 상태 — 반드시 원복한다
+        }
+
+        public static void RestoreMap(int saved) => Wassup.Core.DevMapOverride.Index = saved;
+
         // ⚠ AssetDatabase 직독이다. 라이브 덱 풀에 없는 적(엘리트 검증 대상)은 씬 로드로
         // 메모리에 올라오지 않아 Resources.FindObjectsOfTypeAll 로는 찾을 수 없다.
         public static AttackUnitData LoadEnemy(string path)

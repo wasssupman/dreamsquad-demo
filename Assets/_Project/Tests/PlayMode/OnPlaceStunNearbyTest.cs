@@ -27,8 +27,17 @@ namespace Wassup.Tests.PlayMode
     {
         private const float Hp = 100000f;
 
+        // duel-live-focus — 이 계측은 자기 판을 선언한다(라이브 풀이 바뀌어도 같은 판에서 잰다).
+        private int _savedMap;
+        [SetUp]
+        public void PinMap() => _savedMap = BattleBridgeTestAccess.PinMap();
+
         [TearDown]
-        public void TearDown() => LogAssert.ignoreFailingMessages = false;
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            BattleBridgeTestAccess.RestoreMap(_savedMap);
+        }
 
         // 반경 2 안 적이 멈추고, 반경 밖 적은 계속 간다.
         [UnityTest]

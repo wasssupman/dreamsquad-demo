@@ -22,14 +22,14 @@ namespace Wassup.Tests.PlayMode
     // 순수 Step이 아니라 스폰 부착 → 필드 슬롯 → Movement 소비 → 골 도달의 전 구간을 센다.
     public class WaypointRoutingLiveTest
     {
-        private const int WaypointLabMapIndex = 8; // 라이브 풀 1장(Duel) + dev[7] MovementLab
+        private const string WaypointLabMap = "MovementLab";
         private int _savedIndex;
 
         [SetUp]
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            DevMapOverride.Index = WaypointLabMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(WaypointLabMap);
         }
 
         [TearDown]
@@ -287,13 +287,13 @@ namespace Wassup.Tests.PlayMode
         // 이 테스트는 **증상 그대로**를 단언한다 — 「내 순수 함수가 옳은 값을 낸다」가 아니라
         // 「라이브 Serpent 판에서 지상 적이 레인 기본 경로를 달고 스폰되는가」. 저작·투영은
         // EditMode 가 이미 지켰으므로, 여기서 빨간불이 뜨면 범인은 스폰 경계다.
-        // 슬롯 2=Coil, 5=Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
+        // Coil·Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
         // (unit 10 rev 3 — 새 경로 50%/62% · 유턴 0).
         [UnityTest]
         public IEnumerator RoutedMap_GroundEnemies_SpawnWithLaneDefaultRoute(
-            [Values(2, 5)] int poolIndex)
+            [Values("Coil", "Zig")] string mapName)
         {
-            DevMapOverride.Index = poolIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(mapName);
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
@@ -330,7 +330,7 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
 
-            Debug.Log($"[레인경로 계측] map={poolIndex} 지상 {seenGround}기 = 경로1 {groundWithRoute} + 무경로 "
+            Debug.Log($"[레인경로 계측] map={mapName} 지상 {seenGround}기 = 경로1 {groundWithRoute} + 무경로 "
                 + $"{groundWithoutRoute} · 공중 {air}기");
 
             Assert.Greater(seenGround, 0, "지상 적이 한 기도 안 스폰됐다 — 계측 자체가 무효");
@@ -344,15 +344,14 @@ namespace Wassup.Tests.PlayMode
 
         // siege-duel-map 후속 — 「Duel 에 웨이브 개선이 적용되어 있는지 모르겠다」의 라이브 답.
         //
-        // Duel 은 라이브 풀 본편(슬롯 0)이고 Ford·Isle 은 dev 슬롯이다. dev 엔트리의 deck 이 null 이면 브리지의
-        // 직렬화 deck(구 Deck_WaveA — 컨셉 0·보스 0·적 9종)으로 폴백한다. 실제로 그 상태였다.
-        // 여기서 재는 것은 «맵이 뜬다» 가 아니라 **그 판의 웨이브가 현행 세대인가** 다.
-        // entries[0]=Duel(0) · dev[9]=Ford(10) · dev[10]=Isle(11) — 공성 3종.
+        // 엔트리의 deck 이 null 이면 브리지의 직렬화 deck(구 Deck_WaveA — 컨셉 0·보스 0·적 9종)으로
+        // 폴백한다. 실제로 그 상태였다. 여기서 재는 것은 «맵이 뜬다» 가 아니라 **그 판의 웨이브가
+        // 현행 세대인가** 다. 공성 3종.
         [UnityTest]
         public IEnumerator SiegeDevSlot_RunsCurrentGenerationWaves(
-            [Values(0, 10, 11)] int slot)
+            [Values("Duel", "Ford", "Isle")] string mapName)
         {
-            DevMapOverride.Index = slot;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(mapName);
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
@@ -363,7 +362,7 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             // 공성 파생 — 적 마음 셀이 유일한 스폰이다(레인 1개라 레인 경로 축은 N/A).
-            Assert.IsTrue(bridge.HasGeneratedMap, $"공성 문서가 dev 슬롯 {slot} 로 해석돼야 한다");
+            Assert.IsTrue(bridge.HasGeneratedMap, $"공성 문서 {mapName} 이 해석돼야 한다");
 
             bridge.StartBattle();
             yield return null;
@@ -371,7 +370,7 @@ namespace Wassup.Tests.PlayMode
             // 컨셉 라벨이 붙어 있으면 waveConceptPool 이 실제로 돌았다는 뜻이다.
             // 빈 문자열이면 컨셉 없는 덱(WaveA 폴백)이다 — 이 판별이 이 테스트의 핵심이다.
             Assert.IsFalse(string.IsNullOrEmpty(bridge.NextWaveConceptLabel),
-                $"슬롯 {slot}: 웨이브에 컨셉 라벨이 없다 — 컨셉 풀 없는 덱(Deck_WaveA 폴백)으로 돌고 있다");
+                $"{mapName}: 웨이브에 컨셉 라벨이 없다 — 컨셉 풀 없는 덱(Deck_WaveA 폴백)으로 돌고 있다");
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             int spawned = 0;
@@ -393,7 +392,7 @@ namespace Wassup.Tests.PlayMode
         [UnityTest]
         public IEnumerator TutorialDevSlot_UsesAuthoredPlan_NotGeneratedWaves()
         {
-            DevMapOverride.Index = 12;   // 라이브 풀 1장 + dev[11] = Tutorial
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Tutorial");
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;

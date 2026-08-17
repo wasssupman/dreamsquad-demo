@@ -25,7 +25,6 @@ namespace Wassup.Tests.PlayMode
     // 이 증상이 사라졌다고 말할 수 없다(CLAUDE.md 버그 수정 절차).
     public class SpawnGuideMatchesWalkTest
     {
-        private const int DuelMapIndex = 9;
         private const float MeasureSec = 25f;
         private const float NearGuideTiles = 1.6f;   // 분리·평활화로 선에서 이만큼은 벌어진다
 
@@ -67,7 +66,7 @@ namespace Wassup.Tests.PlayMode
         public IEnumerator Duel_EnemiesWalkAlongTheAdvertisedGuideLine()
         {
             LogAssert.ignoreFailingMessages = true;
-            DevMapOverride.Index = DuelMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Duel");
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
@@ -140,13 +139,12 @@ namespace Wassup.Tests.PlayMode
         // 맵의 레인 기본(GeneratedMap.RouteForSpawn)을 해석하지 않은 것 — 스폰(SpawnUnit)은 두 축을
         // WaypointRouting.ResolvePathIndex 로 합치는데 예보만 한 축이었다.
         //
-        // Coil(풀 1)은 spawnRoutes = [1, -1] — 레인 0 지상이 경로 1(웨이포인트 (8,9))을 기본으로 탄다.
+        // Coil 은 spawnRoutes = [1, -1] — 레인 0 지상이 경로 1(웨이포인트 (8,9))을 기본으로 탄다.
         [UnityTest]
         public IEnumerator Coil_RoutedLaneGuide_AdvertisesTheLaneDefaultRoute()
         {
-            const int CoilMapIndex = 1;
             LogAssert.ignoreFailingMessages = true;
-            DevMapOverride.Index = CoilMapIndex;
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Coil");
             RenderTexture.active = null;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;

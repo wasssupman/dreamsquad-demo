@@ -188,7 +188,7 @@ code + git history        구현 상세
 웨이브 회전을 멈춰 점수를 깎는 보스. 아무도 안 죽이면서 시간을 가져간다.
 신규 맥락·시스템·채널 0. 상세: `docs/spec/boss-mamemo/5_handoff_summary.md`.
 
-- **마메모 웨이브 소요 시간 관측** [S] · 이 보스의 정체가 회전 지연이다 — 실전 판에서 마메모 웨이브가 다른 웨이브보다 눈에 띄게 오래 걸리는지가 최종 성립 조건. (~~자장가 발동 횟수 관측~~ 은 `BossLullabyLiveTest` 상시 계측으로 상환 — 그 계측이 도넛 퇴화를 실제로 잡았다.) (boss-mamemo)
+- **마메모 웨이브 소요 시간 관측** [S] · 이 보스의 정체가 회전 지연이다 — 실전 판에서 마메모 웨이브가 다른 웨이브보다 눈에 띄게 오래 걸리는지가 최종 성립 조건. (~~자장가 발동 횟수 관측~~ 은 `BossLullabyLiveTest` 상시 계측으로 상환했었으나 **그 테스트는 2026-08-17 삭제** — 랜덤 매치 시드 위에서 emergent 타이밍을 단언하는 계측형이라 통과/실패가 운이었다. 관측이 다시 필요하면 결정론적 픽스처로 새로 쓴다.) (boss-mamemo)
 - **악몽의 가호가 골 앞에서 유지되는가** [S] · 호위 이속(2.2~2.5, 러너 7.2) vs 마메모 1.4 → 반경 4 를 약 4초에 이탈한다. 실드가 스폰 직후에만 붙으면 「호위가 골에 눌러앉아 전멸 지연」 논지가 성립하지 않는다. (boss-mamemo)
 - **가호에 대상 수 상한이 없다** [S] · 반경 4 원판(81칸) 전부에 flat 60. 수혜자 EHP 배율이 러너(HP 20) 4.0× ~ 뱅가드(HP 120) 1.5× 로 흔들린다. 필요해지면 cap 축 신설. (boss-mamemo)
 - **적 오버헤드 바 압축** [S] · HP 20 러너가 실드 60 을 받으면 HP 구간이 바의 25%. 적 실드 게이지가 이번에 열려 처음 보이는 현상. (boss-mamemo)
@@ -406,8 +406,30 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
   **PrimeTween «Tween's OnComplete callback was ignored» 에러 1개**(Sequence 1.32s)가 그때
   돌던 테스트에 임의 귀속되는 것(EntitiesAssetGC NRE 와 같은 패턴). gift-phase-removal 의
   트윈 풀·teardown 작업(`2e4aaf63`·`abf0115a`)과 시기 일치 — **그 spec 후속으로 라우팅.**
-- **`BossLullabyLiveTest`** [S] · flaky — 같은 날 1회차 통과, 2회차 실패(도넛 체류 0프레임).
-  실플레이 계측형이라 판 전개에 따라 표본이 비는 창이 있다 — 계측 창 보강 후보. (boss-mamemo)
+- ~~**`BossLullabyLiveTest`**~~ · **삭제 2026-08-17** (duel-live-focus). flaky 의 원인이 계측 창이
+  아니라 «랜덤 매치 시드 위 emergent 타이밍 단언» 이라는 설계였다. 같은 이유로
+  `InstinctNearestTargetMeasureTest`·`MapCrowdClearanceTest` 도 함께 삭제.
+  ⚠ **군집 통과 교착의 회귀 가드가 이로써 없어졌다** — 되살릴 땐 결정론적 픽스처로.
+
+**추가 5건 — 2026-08-17 전체 실행에서 새로 분류** (duel-live-focus 의 PlayMode 재측정.
+전부 이 spec 과 무관하다는 근거를 함께 적는다 — 근거 없는 «무관» 은 다음 세션에서 다시 의심받는다):
+
+- **`OnPlaceTauntNearbyTest.FlyingEnemy_IsNotTaunted`** [M] · 「비행 적이 근접 가디언에게 끌려왔다」.
+  **맵을 Serpent 로 고정해도 재현**되므로 판 문제가 아니다. 오늘 확정된 «아틸러리·폭탄맨을 뺀 전
+  방어유닛 `Path|Air`» 결정이 도발 대상 층 게이트를 통과시킨 것으로 보인다 — 그 작업으로 라우팅.
+- **`SlimeSplitE2ETest`** [S] · 작은 슬라임 = 중간의 50%(125) 기대, 실측 150. **적 에셋은 git clean**
+  (디스크 250/150 = 60%)이고 `SlimeSplitAuthoringTests`(디스크 직독)는 통과한다 — 즉 시트↔SO
+  드리프트이거나 기대값 stale. 밸런스 쪽으로 라우팅.
+- **`StructureLivePlayTest.SiegeMap_DerivesSpawnFromEnemyCore_AndWavesComeFromIt`** [S] · `spawns.Length`
+  1 기대, 실측 2. `StructurePlacements.SiegeSpawnOffsets` 가 2개(하단·상단)이므로 **코드상 항상 2** —
+  `siege-lane-spawn` unit 0 이 파생 스폰을 2개로 바꿀 때 갱신되지 않은 stale 단언.
+- **`StructureLivePlayTest.Structures_BootOnDevMap_SpawnBlockAndSurviveConnectivity`** [S] · 거점 프랍 0.
+  `MapDocument_Test.asset` 이 **다른 세션의 미커밋 편집**으로 `structures:` 블록이 통째로 삭제된 상태다
+  (`git diff` 확인). 그 세션의 작업이 커밋되면 자연 해소 또는 그쪽에서 갱신.
+- **`WhirlpotLiveRepro.Whirlpot_SustainsDps_NotJustOneHit`** [M] · 6초 144 피해(24.0 DPS) < 저작 152.
+  맵 고정 후에도 남는다 — 회오리 연타 성사율 문제. (elite-whirlpot)
+  ※ 같은 파일의 다른 2건(`TakesNoDamage`·`WalksIn_ThenEngages`)은 **맵 미선언**이 원인이었고
+  `PinMap` 으로 해소됐다.
 
 > **배치 실행(`-batchmode -nographics`)으로 재면 부풀어 보인다** —
 > `EntitiesAssetGC.GetAdditionalRoots` NRE 가 GC 타이밍에 터져 임의 귀속된다.
