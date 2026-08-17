@@ -67,3 +67,5 @@ MovementKind         → BindingClass                 순수  (MovementBinding.O
 - 기존 SkyFall 소비자(메테오 barrage · 보스 AreaBarrage · 진동갑주 · `BallisticToCell` 평타)는
   `flightMode` 무변경 → **동작 바이트 동일**.
 - Play 육안: 미사일이 적 위에서 터진다 · 뭉친 적에게도 발수가 적 수를 따라간다.
+
+확인 2026-08-17 · 커밋 `8995140e`

@@ -53,4 +53,8 @@ unit 1·8 이 「칸 조준 궤적으로 적 조준을 흉내내려고」 넣은
 - `PatternTargetingTests.MovementBinding_ClassifiesEveryKnownKind` 초록 — 분류 전수 + 새 핀.
 - 코드량: fan-out 분기 118줄 → 85줄, 헬퍼 `SubCellOffset` 제거, 착탄 게이트 1줄 제거.
   **순 삭제**이고 추가된 것은 궤적 1종이다.
-- 남은 것: **Play 육안**(미사일이 적 위에서 터지는가 · 뭉친 적에게 발수가 적 수를 따라가는가).
+- Play 육안 **확인됨**(사용자, 2026-08-17).
+
+확인 2026-08-17 · 커밋 `8995140e` (units 9~11 한 커밋. dreamcatcher-content-5 가 같은 파일
+5개에 얽혀 있고 `ProjectileMoveSystem` 이 신규 `Boomerang.cs` 를 호출해 분리하면 컴파일되지
+않는 트리가 남아 동반 커밋했다).
