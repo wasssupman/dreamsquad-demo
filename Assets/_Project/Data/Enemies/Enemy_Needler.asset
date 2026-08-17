@@ -24,7 +24,7 @@ MonoBehaviour:
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 0
-  health: 35
+  health: 45
   moveSpeed: 1.3
   attackRange: 2
   attackCooldown: 0.35
@@ -36,7 +36,7 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 10
+    magnitude: 20
     duration: 0
     stat: 0
     op: 0

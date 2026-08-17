@@ -24,7 +24,7 @@ MonoBehaviour:
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 0
-  health: 25
+  health: 40
   moveSpeed: 2.5
   attackRange: 1
   attackCooldown: 1

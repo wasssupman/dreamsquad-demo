@@ -49,7 +49,7 @@ MonoBehaviour:
   onPlaceDuration: 1.5
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
-  cost: 3
+  cost: 2
   placementCooldown: 4
   deathCooldown: 10
   retireCooldownRatio: 0.4

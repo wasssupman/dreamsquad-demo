@@ -21,7 +21,7 @@ MonoBehaviour:
     \uB9E4\uC6B0 \uBE60\uB974\uAC8C \uC5F0\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
     \uD6A8\uACFC: \uB109\uBC31 \uD22C\uC0AC\uCCB4 \uBC1C\uC0AC"
   health: 300
-  attackRange: 4
+  attackRange: 3
   attackCooldown: 0.2
   hitDelaySec: 0
   deployDelaySec: 0
@@ -37,7 +37,7 @@ MonoBehaviour:
   projectile: {fileID: 11400000, guid: 7a28b52abfc76442fab4980e2e6a41a9, type: 2}
   outputs:
   - kind: 0
-    magnitude: 7
+    magnitude: 6
     duration: 0
     stat: 0
     op: 0
@@ -102,7 +102,7 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
-  awakeningReward: 4
+  awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   moveSpeed: 1.5
