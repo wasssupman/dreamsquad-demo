@@ -228,7 +228,7 @@ namespace Wassup.Battle.Combat
                         if (pick >= 0)
                             SpawnNeedleCarrier(ref ecb, slot, castEvt.caster, castEvt.casterPos,
                                 targetEntities[pick], targetTransforms[pick].Position,
-                                castEvt.targetTraversalLayers,
+                                castEvt.targetTraversalLayers, tileSize,
                                 attackOutputLogWriter.HasValue,
                                 attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                     }
@@ -356,7 +356,7 @@ namespace Wassup.Battle.Combat
                                     if (pick >= 0)
                                         SpawnNeedleCarrier(ref ecb, slot, attackerEntity, bPos,
                                             targetEntities[pick], targetTransforms[pick].Position,
-                                            attack.ValueRO.targetTraversalLayers,
+                                            attack.ValueRO.targetTraversalLayers, tileSize,
                                             attackOutputLogWriter.HasValue,
                                             attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                                 }
@@ -1120,6 +1120,11 @@ namespace Wassup.Battle.Combat
                     // All defender/enemy hit effects come through AttackOutputElement.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
+                    // defender-knockback-on-impact unit 1 — 이 공격의 넉백을 **착탄까지 미뤘나.**
+                    // 직격 victim 이 있는 유도탄에서만 켜지며, 그때 실제 발동은
+                    // ProjectileHitSystem 의 SingleSplash 분기가 한다.
+                    bool knockbackAtImpact = false;
+
                     if (hasOutputs)
                     {
                         var outputs = outputBufferLookup[attackerEntity];
@@ -1323,6 +1328,12 @@ namespace Wassup.Battle.Combat
                             }
                             else
                             {
+                                // defender-knockback-on-impact unit 1 — 유도탄은 직격 victim 이
+                                // 있으므로 넉백을 착탄까지 넘긴다. TileAoe 같은 직격 없는 payload 는
+                                // 넘길 대상이 없어 기존대로 발사 시점에 건다(조용히 사라지지 않게).
+                                if (projRef.payload == PayloadKind.SingleSplash)
+                                    knockbackAtImpact = true;
+
                                 ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
                                 {
                                     movement = MovementKind.HomingToEntity,
@@ -1683,43 +1694,35 @@ namespace Wassup.Battle.Combat
                         && defenderCcLookup.HasComponent(attackerEntity))
                     {
                         var ccData = defenderCcLookup[attackerEntity];
-                        if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
+                        if (!knockbackAtImpact
+                            && ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
                         {
-                            // Physical collision direction:
-                            //   D = projectile travel (defender→enemy)
-                            //   E = enemy travel (flow at enemy cell)
-                            //   dir = normalize(D - E)  ← relative-velocity impulse direction
-                            // Falls back to D when flow field unavailable (tests).
-                            float3 D = math.normalizesafe(bestTargetPos - atkPos);
-                            D.y = 0f;
-                            // Guard: attacker colocated with target → D≈0 → no meaningful direction.
-                            // Skip impulse (otherwise dir would degenerate to -E and push the enemy
-                            // backward along its flow path, an unintended side effect).
-                            if (math.lengthsq(D) > 1e-6f)
+                            // defender-knockback-on-impact unit 1 (사용자 결정 B, 2026-08-17) —
+                            // 미는 방향은 **적이 가던 방향의 반대** 하나다.
+                            //
+                            // [은퇴] 이전엔 상대속도 합이었다: D(사수→적) − E(적 진행). 그 식은
+                            // 적이 사수를 **지나쳐 멀어질 때** 두 성분이 상쇄돼 무너진다 —
+                            // 근처에선 옆으로 밀리고, 정확히 일직선이면 폴백이 D 로 떨어져
+                            // **적의 진행 방향 = 골 쪽으로 밀어준다.** 게다가 E 를 흐름장의
+                            // PrimarySlot 에서 읽어서 비행 적·추격 중인 적은 애초에 틀린 방향이었다.
+                            //
+                            // 디펜스에서 「밀어낸다」는 사수가 어디 서 있든 같은 뜻이어야 한다.
+                            // 진행 방향은 이제 Movement 가 관측해 기록한다(PathFollowState.lastMoveDir).
+                            // 방향이 없는 대상(스폰 직후·고정 구조물)은 밀지 않는다.
+                            float2 travel = targetPathLookup.HasComponent(bestTarget)
+                                ? targetPathLookup[bestTarget].lastMoveDir
+                                : float2.zero;
+                            if (math.lengthsq(travel) > 1e-6f)
                             {
-                                float3 dir;
-                                if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ff))
-                                {
-                                    var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                    int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
-                                    float2 flowDir = ff.FlowSlot(FlowFieldSingleton.PrimarySlot)[fIdx];
-                                    float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
-                                    dir = math.normalizesafe(D - E);
-                                    if (math.lengthsq(dir) < 1e-6f)
-                                        dir = D; // fallback when D == E (hit from behind)
-                                }
-                                else
-                                {
-                                    dir = D;
-                                }
-                                float speed = ccData.knockbackDistance / ccData.knockbackDuration;
+                                float2 kb = -math.normalize(travel)
+                                            * (ccData.knockbackDistance / ccData.knockbackDuration);
                                 ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                                 {
                                     target = bestTarget,
                                     effect = new Wassup.Battle.Effects.CcEffect
                                     {
                                         kind = Wassup.Battle.Effects.CcKind.Impulse,
-                                        vector = dir * speed,
+                                        vector = new float3(kb.x, 0f, kb.y),
                                         remainingTime = ccData.knockbackDuration,
                                     },
                                 });
@@ -1855,7 +1858,7 @@ namespace Wassup.Battle.Combat
                                 // owner = 부착된 디펜더(캐리어 아님) — 위협 귀속.
                                 SpawnNeedleCarrier(ref ecb, slot, attackerEntity, atkPos,
                                     bestTarget, bestTargetPos,
-                                    attack.ValueRO.targetTraversalLayers,
+                                    attack.ValueRO.targetTraversalLayers, tileSize,
                                     attackOutputLogWriter.HasValue,
                                     attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                             }
@@ -1907,6 +1910,45 @@ namespace Wassup.Battle.Combat
                                         perAppDuration = slot.duration,
                                         source         = attackerEntity,
                                     });
+                            }
+                            else if (slot.payload == Wassup.Data.DcPayloadKind.SelfStatBuff)
+                            {
+                                // dreamcatcher-berserker unit 1 — 광란. N번째 공격마다 **자기에게**
+                                // 스탯 버프. 조립은 경계 arm(HealthThresholdSystem)·처치 arm
+                                // (DamageApplicationSystem)과 같은 모양이다 — 같은 FromMultiplier,
+                                // 같은 statBuffStackId, 같은 「지속 <=0 = 영구」 해석.
+                                //
+                                // 이 조합은 여태 **붙지만 안 터졌다**: 부착 판정(DcApplicability)이
+                                // self 계열로 통과시키고 bake 도 슬롯을 굽는데 여기 arm 이 없어서
+                                // 아래 unhandled 경고로 떨어지고 카운트만 태웠다.
+                                //
+                                // ⚠ origin 을 경계 arm 에서 복사하지 말 것 — 그쪽 값
+                                // (HealthThreshold)은 「빈사에서 켜졌다」는 뜻이라 상태FX 가 다르게
+                                // 읽는다. 공격으로 쌓이는 이 버프는 드림캐쳐 출처다.
+                                //
+                                // 위 ProjectileToTarget 과 달리 적 host 를 막지 않는다 — 대상이
+                                // 자기 자신뿐이라 아군 오사 경로가 존재하지 않는다.
+                                if (hasStatQ)
+                                {
+                                    float buffTtl = slot.duration > 0f ? slot.duration : float.PositiveInfinity;
+                                    Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(
+                                        slot.magnitude, out var selfBuffOp, out var selfBuffMag);
+                                    statModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                                    {
+                                        target    = attackerEntity,
+                                        stat      = slot.buffStat,
+                                        op        = selfBuffOp,
+                                        magnitude = selfBuffMag,
+                                        duration  = buffTtl,
+                                        source    = attackerEntity,
+                                        stackId   = slot.statBuffStackId,
+                                        // 최대 중첩이 있으면 공격마다 상한까지 누적, 0 이면 덮어쓰기.
+                                        magnitudeCap = Wassup.Battle.Effects.ModifierAuthoring
+                                            .StackCap(slot.magnitude, slot.tileRange),
+                                        origin    = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher,
+                                    });
+                                }
+                                // 채널이 없으면 조용히 건너뛴다(카운트는 이미 소비됨 — 경계 arm 과 동일).
                             }
                             else if (slot.payload == Wassup.Data.DcPayloadKind.HeavyStrike)
                             {
@@ -2009,14 +2051,34 @@ namespace Wassup.Battle.Combat
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,
-            byte targetTraversalLayers,
+            byte targetTraversalLayers, float tileSize,
             bool hasLog, NativeQueue<AttackOutputLogEvent>.ParallelWriter log)
         {
+            // dreamcatcher-content-5 unit 3 — **탄 에셋의 궤적을 존중한다.** 여기가 여태
+            // (HomingToEntity, SingleSplash)를 하드코딩해서, 저작자가 탄 SO 에 어떤 비행을
+            // 골라도 유도탄으로 나갔다. 축은 bake 가 ResolveProjectileAxes 로 구워 보낸다.
+            // 기본값(0,0)이 그 레거시 짝이라 기존 카드(비수)는 무변화다.
+            var movement = slot.projectileMovement;
+            var payload = slot.projectilePayload;
+
+            // 방향 바인딩 궤적(왕복 = 부메랑)은 타겟 엔티티를 잡지 않는다 — 발사 시점의
+            // 대상 방향을 축으로 굳히고 거리로 산다. 두 값 다 여기서 이미 손에 있다.
+            bool directional = MovementBinding.Of(movement) == BindingClass.Direction;
+            float2 axis = float2.zero;
+            if (directional)
+            {
+                float3 d = targetPos - origin;
+                d.y = 0f;
+                // 같은 셀이면 축이 없다 — 드레인이 loud 거절하므로 여기선 0 을 그대로 보낸다
+                // (조용히 임의 방향을 지어내면 저작 실수가 안 보인다).
+                axis = math.lengthsq(d) > 1e-6f ? math.normalize(d.xz) : float2.zero;
+            }
+
             var carrier = ecb.CreateEntity();
             ecb.AddComponent(carrier, new ProjectileSpawnRequest
             {
-                movement = MovementKind.HomingToEntity,
-                payload = PayloadKind.SingleSplash,
+                movement = movement,
+                payload = payload,
                 target = target,
                 origin = origin,
                 damage = slot.magnitude, // flat — 계약 7(공격자 damageMul 미적용)
@@ -2026,9 +2088,15 @@ namespace Wassup.Battle.Combat
                 dataIndex = slot.projectileDataIndex,
                 owner = owner,
                 targetTraversalLayers = targetTraversalLayers,
+                direction = axis,
+                // 방향 바인딩에서 tileRange 는 **날아가는 거리**로 읽는다(아래 재조준 참조).
+                maxDistance = directional ? slot.tileRange * tileSize : 0f,
                 // 대상이 맞기 전에 죽으면 같은 반경 안에서 다시 겨눈다. 니들은 5회에
                 // 한 번 나오는 자원이라 허공에 사라지면 그 주기가 통째로 버려진다.
-                retargetTileRange = slot.tileRange,
+                // ⚠ 방향 바인딩에는 **겨눌 대상 엔티티가 없어** 재조준이 성립하지 않는다.
+                // 지금은 사전 스캔이 호밍으로 좁혀져 있어 실어도 무해하지만 그건 우연한
+                // 무해이므로 0 으로 명시한다 — 같은 필드가 두 의미를 동시에 갖지 않는다.
+                retargetTileRange = directional ? 0 : slot.tileRange,
             });
             ecb.AddComponent<ProjectileRequestCarrier>(carrier);
             if (hasLog)

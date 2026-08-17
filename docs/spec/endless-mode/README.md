@@ -1,6 +1,13 @@
 # Endless Mode (무한 모드)
 
-> 상태: **완료 2026-07-25** — unit 0~4 구현·검증·커밋 (인계: `5_handoff_summary.md`).
+> 상태: **폐기 2026-08-16** — 모드 자체가 제거됐다. 제거 근거·범위는
+> `docs/spec/endless-mode-removal/`. 이 문서는 **역사로만** 남긴다.
+>
+> ⚠ 여기 적힌 「무한 모드」는 이름과 실물이 달랐다: `Deck_Endless` 의
+> `timerDurationSec` 는 180 이었고, 실제로 이 모드가 하던 일은 **토너먼트 리포트 스킵**
+> 하나 + dev 맵 강제 진입뿐이었다. 판 길이가 무한이었던 적은 없다.
+>
+> 구 상태: 완료 2026-07-25 — unit 0~4 구현·검증·커밋 (인계: `5_handoff_summary.md`).
 > 브레인스토밍: `docs/plans/2026-07-24-endless-mode-design.md`
 
 ## 상위 목표

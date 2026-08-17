@@ -352,6 +352,43 @@ namespace Wassup.Tests.EditMode
                 "쿨타임이 창을 막지 못하면 프레임마다 맞아 30타가 된다");
         }
 
+        // content-5 (2026-08-17) — **주인이 사라지면 구슬도 사라진다.** content-4 는 반대를
+        // 계약으로 적었고(자기 수명을 산다) 화면에서 «빈 자리에서 혼자 도는 구슬» 이 됐다.
+        // 퇴근도 같은 경로다 — 퇴근은 엔티티를 파괴하므로 이 판정 하나가 둘 다 덮는다.
+        [Test]
+        public void Orbit_DespawnsWhenItsOwnerIsGone()
+        {
+            var host = _em.CreateEntity();
+            _em.AddComponentData(host, LocalTransform.FromPosition(float3.zero));
+
+            var enemy = CreateEnemy(1f);
+            var proj = CreateOrbiter(radius: 1f, angularSpeed: math.PI * 2f,
+                                     lifetime: 5f, rehitCooldownSec: 0.5f);
+            var st = _em.GetComponentData<ProjectileState>(proj);
+            st.owner = host;
+            _em.SetComponentData(proj, st);
+
+            for (int i = 0; i < 5; i++) Tick(0.1f);
+            Assert.IsTrue(_em.Exists(proj), "주인이 살아 있는 동안은 돈다");
+
+            _em.DestroyEntity(host);          // 사망/퇴근 = 엔티티 소멸
+            Tick(0.1f);
+            Assert.IsFalse(_em.Exists(proj), "주인이 사라지면 수명이 남아도 즉시 사라진다");
+        }
+
+        // 주인을 안 실은 궤도(테스트 픽스처·브리지 캐스트)는 종전대로 수명까지 산다 —
+        // owner 가 Entity.Null 이면 판정을 건너뛴다(무회귀).
+        [Test]
+        public void Orbit_WithoutOwner_StillLivesItsFullLifetime()
+        {
+            var proj = CreateOrbiter(radius: 1f, angularSpeed: math.PI * 2f,
+                                     lifetime: 1.05f, rehitCooldownSec: 0.5f);
+            for (int i = 0; i < 10; i++) Tick(0.1f);
+            Assert.IsTrue(_em.Exists(proj), "owner 미지정은 종전 동작");
+            Tick(0.1f);
+            Assert.IsFalse(_em.Exists(proj), "그래도 수명은 지킨다");
+        }
+
         [Test]
         public void Orbit_LifetimeIsTheOnlyTerminator_PierceNeverConsumed()
         {
@@ -382,6 +419,134 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, DamageCount(enemy),
                 "기록이 없으면 «적당 1회» 로 안전 퇴화한다 — 매 프레임 타격(fail-open)이 아니다");
             Assert.IsFalse(_em.Exists(proj), "예산을 다 쓴 탄은 사라진다 — 불멸 탄이 남지 않는다");
+        }
+
+        // ── ③ 왕복(부메랑) × 넉백 — dreamcatcher-content-5 units 1·2 ──────────
+        //
+        // 궤도와 같은 이유로 **수동 시계를 쓰지 않는다**: 이 궤적도 자기 elapsed 를 굴려야
+        // 재타격 창이 열리고, 그 연결이 끊기면 부메랑은 다리당 1타로 조용히 퇴화한다.
+
+        private Entity CreateBoomerang(float maxDistance, float speed, float rehitCooldownSec,
+                                       float knockbackSpeed = 0f, float knockbackDuration = 0f,
+                                       float hitThreshold = 0.55f, int pierce = 1)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, LocalTransform.FromPosition(float3.zero));
+            _em.AddComponent<ProjectileTag>(e);
+            _em.AddComponentData(e, new ProjectileState
+            {
+                movement = MovementKind.BoomerangReturn,
+                payload = PayloadKind.PathHit,
+                origin = float3.zero,            // 발사점 = 귀환점
+                direction = new float2(1f, 0f),  // 발사 축(불변)
+                maxDistance = maxDistance,
+                speed = speed,
+                prevPos = float3.zero,
+                damage = 20f,
+                hitThreshold = hitThreshold,
+                pierceRemaining = pierce,
+                rehitCooldownSec = rehitCooldownSec,
+                knockbackSpeed = knockbackSpeed,
+                knockbackDuration = knockbackDuration,
+            });
+            _em.AddBuffer<PathHitRecord>(e);
+            return e;
+        }
+
+        // 넉백은 Combat→Effects 큐로 나간다. 이 픽스처의 월드엔 그 싱글턴이 없으므로
+        // (히트 시스템이 옵셔널 게이트로 조용히 건너뛴다) 넉백을 볼 테스트만 만들어 쓴다.
+        private Unity.Collections.NativeQueue<EnemyCcEvent> CreateCcQueue()
+        {
+            var q = new Unity.Collections.NativeQueue<EnemyCcEvent>(
+                Unity.Collections.Allocator.Persistent);
+            _em.AddComponentData(_em.CreateEntity(), new EnemyCcEventsSingleton { queue = q });
+            return q;
+        }
+
+        [Test]
+        public void Boomerang_DrivesItsOwnClock_AndHitsOnBothLegs()
+        {
+            // 편도 4 · 속도 8 → 왕복 1초. 경로 위 x=1 의 적은 나갈 때/돌아올 때 스친다
+            // (두 타격 간격 = 2*(4-1)/8 = 0.75초 > 쿨타임 0.3).
+            var enemy = CreateEnemy(1f);
+            var proj = CreateBoomerang(maxDistance: 4f, speed: 8f, rehitCooldownSec: 0.3f);
+
+            for (int i = 0; i < 10; i++) Tick(0.1f);   // 1초 = 정확히 왕복
+
+            Assert.AreEqual(2, DamageCount(enemy),
+                "나갈 때 한 번, 돌아올 때 한 번 — 1타면 elapsed 가 안 굴러간 것이다");
+        }
+
+        // 끝쪽 적은 두 통과가 겹쳐 **한 번만** 맞는다. 버그가 아니라 기하의 결과이며
+        // 저작(쿨타임)이 그 경계를 정한다 — 경계식을 여기 고정한다.
+        [Test]
+        public void Boomerang_FarEnemy_IsHitOnce_BecauseThePassesCoincide()
+        {
+            var far = CreateEnemy(3.9f);
+            CreateBoomerang(maxDistance: 4f, speed: 8f, rehitCooldownSec: 0.3f);
+
+            for (int i = 0; i < 10; i++) Tick(0.1f);
+
+            Assert.AreEqual(1, DamageCount(far),
+                "경계 = maxDistance - (쿨타임*속도)/2 = 4 - 1.2 = 2.8 타일. 그 바깥은 1타다");
+        }
+
+        [Test]
+        public void Boomerang_DespawnsAfterRoundTrip_NotBeforeAndNotNever()
+        {
+            var proj = CreateBoomerang(maxDistance: 4f, speed: 8f, rehitCooldownSec: 0.3f);
+
+            for (int i = 0; i < 9; i++) Tick(0.1f);    // 0.9초 — 아직 귀환 전
+            Assert.IsTrue(_em.Exists(proj), "왕복 전에 사라지면 안 된다");
+
+            Tick(0.1f);                                 // 1.0초 = 왕복 완료
+            Assert.IsFalse(_em.Exists(proj), "왕복 완료가 유일한 종료 조건이다");
+        }
+
+        // 이 spec 의 헤드라인 — **나갈 때 밀고 돌아올 때 당긴다.** 다리를 판별하는 상태가
+        // 코드에 없으므로, 이것이 참이라는 증거는 이 테스트뿐이다.
+        [Test]
+        public void Boomerang_Knockback_PushesOutboundThenPullsBack()
+        {
+            var q = CreateCcQueue();
+            try
+            {
+                var enemy = CreateEnemy(1f);
+                CreateBoomerang(maxDistance: 4f, speed: 8f, rehitCooldownSec: 0.3f,
+                                knockbackSpeed: 1.6f, knockbackDuration: 0.25f);
+
+                for (int i = 0; i < 10; i++) Tick(0.1f);
+
+                Assert.AreEqual(2, q.Count, "타격마다 넉백 하나 — 피해 없는 프레임은 밀지 않는다");
+                var first = q.Dequeue();
+                var second = q.Dequeue();
+
+                Assert.AreEqual(CcKind.Impulse, first.effect.kind);
+                Assert.AreEqual(enemy, first.target);
+                Assert.Greater(first.effect.vector.x, 0f, "나갈 때는 진행 방향(+X)으로 민다");
+                Assert.Less(second.effect.vector.x, 0f, "돌아올 때는 반대(-X)로 딸려온다");
+                Assert.AreEqual(1.6f, math.length(first.effect.vector), 1e-3f,
+                    "세기 = 거리÷시간(드레인이 환산해 실은 속도)");
+                Assert.AreEqual(0.25f, first.effect.remainingTime, 1e-4f);
+            }
+            finally { q.Dispose(); }
+        }
+
+        // 무회귀 — 넉백 미저작(0)이면 이벤트가 **하나도** 나가지 않는다.
+        [Test]
+        public void Knockback_ZeroAuthoring_EmitsNothing()
+        {
+            var q = CreateCcQueue();
+            try
+            {
+                CreateEnemy(1f);
+                CreateBoomerang(maxDistance: 4f, speed: 8f, rehitCooldownSec: 0.3f);
+
+                for (int i = 0; i < 10; i++) Tick(0.1f);
+
+                Assert.AreEqual(0, q.Count, "기존 관통탄(샷건너 등)은 한 글자도 달라지면 안 된다");
+            }
+            finally { q.Dispose(); }
         }
     }
 }

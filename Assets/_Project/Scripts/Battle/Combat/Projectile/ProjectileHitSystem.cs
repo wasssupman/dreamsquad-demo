@@ -43,6 +43,10 @@ namespace Wassup.Battle.Combat.Projectile
             var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
             var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
+            // defender-knockback-on-impact unit 1 — 사수의 넉백 저작(Combat 소유, RO).
+            // 넉백은 **유닛의 성질**이지 화살의 성질이 아니라 탄 SO 로 옮기지 않는다 —
+            // 같은 화살을 쓰는 다른 유닛(마크스맨)에 새지 않게 하려는 것이기도 하다.
+            var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             // defender-directional-volley unit 2 — per-projectile victim record so a
             // path sweep damages each target once.
             // RW (dreamcatcher-content-4 unit 2): a rehit cooldown has to *rewrite* the
@@ -278,6 +282,45 @@ namespace Wassup.Battle.Combat.Projectile
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
                             }
 
+                            // defender-knockback-on-impact unit 1 — 유닛 넉백은 **맞는 순간** 난다.
+                            // 발사 시점의 AttackSystem 은 이 payload 에서 넉백을 걸지 않고 여기로
+                            // 넘긴다(그쪽 `knockbackAtImpact`). 사거리 4·탄속 12 면 즉시 걸 때
+                            // 0.33초 먼저 밀려, 0.2초마다 쏘는 유닛에서는 한 발치를 넘는 어긋남이었다.
+                            //
+                            // 방향 = **피격자가 가던 방향의 반대** 하나다(사용자 결정 B, 2026-08-17).
+                            // ⚠ 탄의 진행 방향을 쓸 수 없다 — 유도탄은 도착할 때 좌표가 대상과
+                            // 정확히 같아져서(`ProjectileMoveSystem`: dist <= step → newPos = targetPos)
+                            // 진행 벡터가 0 이 된다. 훑는 탄(PathHit)의 넉백이 스윕 방향을 쓰는 것과
+                            // 규칙이 다른 것은 의도다 — 그쪽은 「지나가며 밀어낸다」가 곧 그 능력이다.
+                            //
+                            // 사수가 비행 중에 죽으면 넉백도 없다 — 위협 귀속과 같은 규약.
+                            // 방향이 없는 대상(스폰 직후·구조물)은 밀지 않는다.
+                            if (hasCcQ
+                                && damageBufferLookup.HasBuffer(target)
+                                && defenderCcLookup.HasComponent(threatOwner)
+                                && pathFollowLookup.HasComponent(target))
+                            {
+                                var ownerCc = defenderCcLookup[threatOwner];
+                                float2 travel = pathFollowLookup[target].lastMoveDir;
+                                if (ownerCc.knockbackDistance > 0f
+                                    && ownerCc.knockbackDuration > 0f
+                                    && math.lengthsq(travel) > 1e-6f)
+                                {
+                                    float2 kb = -math.normalize(travel)
+                                                * (ownerCc.knockbackDistance / ownerCc.knockbackDuration);
+                                    ccQueue.Enqueue(new EnemyCcEvent
+                                    {
+                                        target = target,
+                                        effect = new CcEffect
+                                        {
+                                            kind = CcKind.Impulse,
+                                            vector = new float3(kb.x, 0f, kb.y),
+                                            remainingTime = ownerCc.knockbackDuration,
+                                        },
+                                    });
+                                }
+                            }
+
                             // Combat→Presentation: one hit event per direct target —
                             // splash secondary damage gets no extra VFX (intentional).
                             if (hasHitChannel)
@@ -429,6 +472,24 @@ namespace Wassup.Battle.Combat.Projectile
                         // 이 한 줄로 버퍼 없는 탄은 «적당 1회» 로 안전 퇴화한다.
                         bool rehits = rehitCooldown > 0f && hasRecords;
 
+                        // dreamcatcher-content-5 unit 2 — 스친 적을 **그 프레임 진행 방향**으로
+                        // 민다. 값은 탄 SO 소유이고 0 = 꺼짐이라 기존 관통탄은 전부 무변화.
+                        //
+                        // 방향을 `dir`(= state.direction)이 아니라 **스윕 벡터**에서 뽑는 이유:
+                        // 왕복(부메랑)에서 그 필드는 **발사 축이라 돌아올 때도 안 뒤집힌다**
+                        // (뒤집으면 궤적이 깨진다 — MovementKind.BoomerangReturn 주석).
+                        // 실제로 움직인 방향만이 「맞은 순간의 진행 방향」이고, 왕복이 두 다리에서
+                        // 반대 힘이 되는 것은 그 결과다(계약 5 — 다리 상태를 어디에도 안 둔다).
+                        //
+                        // 퇴화(변위 0)면 쏘지 않는다 — 방향 없는 넉백 방출은 근접 경로도 막는다.
+                        float kbSpeed = projectile.ValueRO.knockbackSpeed;
+                        float2 kbSweep = curr - prev;
+                        bool knocks = kbSpeed > 0f
+                                      && projectile.ValueRO.knockbackDuration > 0f
+                                      && hasCcQ
+                                      && math.lengthsq(kbSweep) > 1e-8f;
+                        float2 kbDir = knocks ? math.normalize(kbSweep) : float2.zero;
+
                         // 방향탄 bounce — 관통을 다 쓴 지점(마지막 victim)에서 튕긴다.
                         int lastVictimIdx = -1;
                         float3 lastVictimPos = default;
@@ -452,7 +513,12 @@ namespace Wassup.Battle.Combat.Projectile
                                     pathHitRecordLookup[entity], aoeEntities[i],
                                     now, rehitCooldown, out recIdx)) continue;
                             sweptIdx.Add(i);
-                            sweptDist.Add(math.dot(victimPos - prev, dir));
+                            // content-5 — front-most 정렬 기준을 **그 프레임의 실제 이동 방향**으로
+                            // 바꾼다. `dir`(= state.direction)은 왕복에서 **발사 축이라 귀환 다리에서도
+                            // 안 뒤집힌다** → 「가장 앞」이 실제로는 「가장 늦게 닿는」 적이 됐다.
+                            // DirectionalLinear 은 두 값이 같아 무회귀. 넉백이 같은 이유로 이미
+                            // 스윕에서 방향을 뽑는데(아래) 정렬만 옛 기준으로 남아 있었다.
+                            sweptDist.Add(math.dot(victimPos - prev, math.normalizesafe(curr - prev, dir)));
                             sweptRec.Add(recIdx);
                         }
 
@@ -471,6 +537,25 @@ namespace Wassup.Battle.Combat.Projectile
                                 float vdmg = (victim == prioTarget ? dmg * prioMul : dmg) * heavyMul;
                                 ecb.AppendToBuffer(victim, new IncomingDamage { amount = vdmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victim, threatOwner, vdmg);
+
+                                // content-5 unit 2 — 넉백은 **피해가 실제로 들어간 그 순간에만** 나간다.
+                                // ⚠ 그래서 이 블록 **안**에 있다 — 밖에 두면 피해 버퍼가 없는 대상을
+                                // 밀어서 주석과 코드가 갈린다(리뷰 L3).
+                                // 재타격 쿨타임에 막혀 이 루프에 못 들어온 프레임은 밀지도 않는다 —
+                                // 안 그러면 스치는 내내 매 프레임 밀려 적이 날아간다.
+                                // ⚠ 병합 키가 kind 하나라 피해자당 Impulse 슬롯은 **게임 전체에 하나**다:
+                                // 남은 시간은 max, 방향은 나중 것이 덮어쓴다(CcEffectMerge).
+                                if (knocks)
+                                    ccQueue.Enqueue(new EnemyCcEvent
+                                    {
+                                        target = victim,
+                                        effect = new CcEffect
+                                        {
+                                            kind = CcKind.Impulse,
+                                            vector = new float3(kbDir.x, 0f, kbDir.y) * kbSpeed,
+                                            remainingTime = projectile.ValueRO.knockbackDuration,
+                                        },
+                                    });
                             }
                             // 기록은 **갱신이지 추가가 아니다** — 매 바퀴 append 하면 궤도
                             // 화염구의 버퍼가 수명 내내 자란다. ECB 를 못 쓰는 이유는 lookup
@@ -484,6 +569,7 @@ namespace Wassup.Battle.Combat.Projectile
                                 if (recIdx >= 0) records[recIdx] = record;
                                 else records.Add(record);
                             }
+
 
                             if (hasHitChannel)
                                 hitQueue.Enqueue(new ProjectileHitEvent
@@ -614,6 +700,22 @@ namespace Wassup.Battle.Combat.Projectile
                         // goal-stability 의 별도 «골 풀» 합류는 제거했다: 풀이 한 벌이라
                         // 골이 그 안에 있고, 두 풀을 이어 붙이면 중복 제거가 없어 광역 1발이
                         // 골을 2번 때렸다(unit 9 에서 풀이 한 벌로 합쳐져 이 위험이 구조적으로 사라졌다).
+                        // on-place-skill-rework unit 11 — **이 팔은 `target` 을 읽지 않는다.**
+                        // 「그 칸에 있는 것을 때린다」 한 문장이 이 페이로드의 전부다.
+                        //
+                        // unit 8 이 여기에 임자(`target`) 게이트를 넣었다가 unit 11 에서 걷어냈다.
+                        // 목적은 「반경 안 적 전원에게 1발씩」이었는데, 셀 낙하탄에 적 조준을 얹으면
+                        // **한 탄에 조준이 둘**이 된다: 궤적은 발사 시점의 칸에 고정되고(다시 조준하지
+                        // 않는 것이 예고의 사양이다) 페이로드는 착탄 시점의 적을 본다. 실측 예고
+                        // 0.40s × 적 속도 2.00 = 0.80타일 이동인데 칸 소속 유지 폭은 ±0.50타일 →
+                        // 최소 예고에도 벗어나 **피해 0**(뒤 슬롯 0.72s=1.44타일은 전원 헛방).
+                        // 게이트 이전엔 그 칸에 **누가 있든** 때려서 행군하는 뒤 적이 빈 칸을 채웠고,
+                        // 조준이 낡았다는 사실이 그렇게 가려져 있었다.
+                        //
+                        // 지금 「적 단위 폭격」은 `SkyFallOnEntity`(하늘낙하 × 적 조준) + `SingleSplash`
+                        // 가 담당한다 — 조준이 하나라 어긋날 것이 없다. ⚠ 그러니 **이 팔에 `target`
+                        // 을 다시 들이지 말 것.** 대상 하나를 때리고 싶으면 페이로드를 바꾸는 것이
+                        // 맞고, 광역을 단일 대상으로 좁히는 게이트는 같은 결함을 다시 만든다.
                         var inRangeEnts = new NativeList<Entity>(Allocator.Temp);
                         var inRangeDistSq = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < victimEntities.Length; i++)

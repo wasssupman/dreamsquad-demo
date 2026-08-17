@@ -202,7 +202,11 @@ namespace Wassup.Presentation
                 // 시작 프레임에 시작 높이에서 등장(transform 이 그 높이를 유지하고
                 // 있어 트레일 스트릭 없음, 파티클은 활성화 시점에 신선 재생).
                 // 텔레그래프(flightTime·데미지 타이밍)는 불변, 시각만 바뀐다.
-                else if (frame.movement == MovementKind.SkyFall)
+                // on-place-skill-rework unit 10 — 적 조준 낙하탄(`SkyFallOnEntity`)도 같은 낙하
+                // 연출을 쓴다. sim 이 XZ 를 임자에게 붙여 주므로 뷰는 «높이만» 담당한다는 이 arm
+                // 의 계약이 그대로 성립한다 — 화면에서는 미사일이 적을 따라 내려온다.
+                else if (frame.movement == MovementKind.SkyFall
+                         || frame.movement == MovementKind.SkyFallOnEntity)
                 {
                     float p = SkyFall.Progress(frame.elapsed, frame.flightTime);
                     float fp = state.fallPortion;

@@ -8,31 +8,42 @@ namespace Wassup.Tests.EditMode
     // 층 비트필드 판정 로직 테스트(합성 맵)는 코어 lane 에 남는다.
     public class CatalogPlacementLayerTests
     {
+        // 2026-08-17 사용자 결정 — 지상 전용으로 남는 방어유닛의 **전체 목록**.
+        // 이 둘의 공격은 지면 착탄 폭발이라 하늘의 적에게 닿지 않는다.
+        private static readonly string[] GroundOnlyDefenderIds = { "artillery", "bomb_man" };
+
         [Test]
-        public void DefenderCatalog_ExistingUnitsArePathOnly_AntiAirTargetsPathAndAir()
+        public void DefenderCatalog_AllTargetPathAndAir_ExceptArtilleryAndBombMan()
         {
             var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
                 "Assets/_Project/Data/DefenderCatalog.asset");
             Assert.IsNotNull(catalog);
 
             DefenderUnitData antiAir = null;
+            int groundOnlySeen = 0;
             foreach (var unit in catalog.units)
             {
                 Assert.IsNotNull(unit, "DefenderCatalog contains a null unit");
-                if (unit.id == "anti_air")
+                if (unit.id == "anti_air") antiAir = unit;
+
+                if (System.Array.IndexOf(GroundOnlyDefenderIds, unit.id) >= 0)
                 {
-                    antiAir = unit;
+                    groundOnlySeen++;
+                    Assert.AreEqual(PlacementLayer.Path, unit.EffectiveAttackTargetLayers,
+                        $"{unit.id} 는 지상 전용 예외라 공중 적을 공격하면 안 된다");
                     continue;
                 }
 
-                Assert.AreEqual(PlacementLayer.Path, unit.EffectiveAttackTargetLayers,
-                    $"기존 방어유닛 {unit.id}은 공중 적을 공격하면 안 된다");
+                Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
+                    unit.EffectiveAttackTargetLayers,
+                    $"방어유닛 {unit.id} 은 지상과 공중 적을 모두 공격해야 한다");
             }
 
-            Assert.IsNotNull(antiAir, "신규 대공사수 데이터가 카탈로그에 등록돼야 한다");
-            Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
-                antiAir.EffectiveAttackTargetLayers,
-                "대공사수는 지상과 공중 적을 모두 공격한다");
+            Assert.AreEqual(GroundOnlyDefenderIds.Length, groundOnlySeen,
+                "지상 전용 예외 목록의 유닛이 카탈로그에서 사라지면 이 테스트가 침묵한다");
+            // id 는 `anti_air` 그대로다 — 표시 이름만 「밀당맨」으로 바뀌었다(2026-08-17).
+            // id 를 바꾸면 저장된 덱(profile.json)이 Validate 에 걸려 안 열린다.
+            Assert.IsNotNull(antiAir, "밀당맨(anti_air) 데이터가 카탈로그에 등록돼야 한다");
             Assert.AreEqual(Wassup.Battle.Units.Faction.EnemyUnit, antiAir.targetFactions);
             // cooldown·magnitude 는 시트 소유 — 값은 자유 튜닝, 여기서는 구조만
             // (test-suite-fast-lane unit 1).

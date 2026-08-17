@@ -120,7 +120,6 @@ namespace Wassup.Tests.EditMode
                 "Assets/_Project/Scripts/Data/Decks/Deck_Spiral.asset",
                 "Assets/_Project/Scripts/Data/Decks/Deck_Zig.asset",
                 "Assets/_Project/Scripts/Data/Decks/Deck_Hook.asset",
-                "Assets/_Project/Scripts/Data/Decks/Deck_Endless.asset",
             };
 
             foreach (string path in paths)

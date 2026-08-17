@@ -14,7 +14,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // 분류 누락은 EditMode 핀으로 잡는다 — MovementBindingTests 가 이 상수와
         // Enum.GetValues 길이를 대조하므로, 새 MovementKind 를 추가하면 테스트가
         // 실패하고 여기 분류를 갱신하게 된다.
-        public const int KnownKindCount = 7;
+        public const int KnownKindCount = 9;
 
         public static BindingClass Of(MovementKind kind)
         {
@@ -22,6 +22,10 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             {
                 case MovementKind.HomingToEntity:
                 case MovementKind.BezierHomingToEntity:
+                // on-place-skill-rework unit 10 — 하늘낙하 × 적 조준. `SkyFall`(아래 Cell 목록)과
+                // **그림은 같고 조준이 다르다** — 그 차이가 사는 곳이 바로 이 표다. 셀 낙하탄에
+                // 임자를 실어 흉내내면 한 탄에 조준이 둘이 되어 예고 시간만큼 어긋난다(unit 8 결함).
+                case MovementKind.SkyFallOnEntity:
                     return BindingClass.Entity;
 
                 case MovementKind.BallisticArcToPoint:
@@ -35,6 +39,11 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                     return BindingClass.Cell;
 
                 case MovementKind.DirectionalLinear:
+                // dreamcatcher-content-5 unit 0 — 왕복(부메랑)은 **방향 바인딩**이다:
+                // 타겟 엔티티도 착탄 셀도 잡지 않고 발사 축으로 나갔다 돌아온다.
+                // 위 주석이 예고한 "기존 바인딩으로 분류되는 새 궤적은 emitter 변경 0"
+                // 이 다시 성립하는 지점 — 이 한 줄 말고 emitter 는 손대지 않는다.
+                case MovementKind.BoomerangReturn:
                     return BindingClass.Direction;
 
                 default:

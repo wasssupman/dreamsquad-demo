@@ -33,9 +33,6 @@ namespace Wassup.Bridge
         // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
         // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
         [SerializeField] private MapDocumentPool mapPool;
-        // endless-mode unit 2 — 무한 모드 전용 (맵, 덱) 인카운터. 공용 mapPool 에 넣지 않아
-        // 랜덤/토너먼트 맵 선택이 절대 안 뽑는다(계약 5). DevMapOverride.Endless 로만 진입.
-        [SerializeField] private MapDocumentPool.Entry endlessEncounter;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
@@ -478,10 +475,6 @@ namespace Wassup.Bridge
         // 거점 스탯(체력·프랍·공격)은 GeneratedMap 이 실을 수 없는 SO 참조라, 스폰(unit 4)이
         // 저작 엔트리를 다시 읽을 창구가 필요하다. 빌드가 끝나면 사라지던 지역 변수였다.
         private Wassup.Data.MapGrid.MapDocument _resolvedMapDoc;
-
-        // endless-mode unit 2 — 현재 배틀이 무한 모드인가. BattleBridge 만 이 값으로 분기한다
-        // (진입/간격은 데이터 구동, 누수/시간축/토너먼트 리포트는 아래 각 지점에서 이 플래그로).
-        private bool IsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -1013,16 +1006,10 @@ namespace Wassup.Bridge
             MapDocument activeDoc = null;
             _resolvedDeck = deck;
             _encounterPlan = null;   // tutorial-map — 이월 금지(이전 판의 플랜이 다음 맵에 붙으면 안 된다)
-            // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
-            // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
-            if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
-                && MapGridBattleAdapter.IsUsableDocument(endlessEncounter.document))
-            {
-                activeDoc = endlessEncounter.document;
-                _resolvedDeck = endlessEncounter.deck;
-                Debug.Log("[BattleBridge] map source = ENDLESS encounter (DevMapOverride.Endless).");
-            }
-            else if (mapPool != null && mapPool.Count > 0)
+            // endless-mode-removal unit 0 — 엔드리스 전용 인카운터 분기는 제거했다. 그 분기는
+            // mapPool 을 건드리지 않는 **선행** 분기였으므로, 빼도 아래 인덱스 계산은 한 줄도
+            // 안 바뀐다 — 랜덤/토너먼트 맵 배정이 byte-identical 로 남는다.
+            if (mapPool != null && mapPool.Count > 0)
             {
                 int poolIndex;
                 string poolSource;
@@ -1415,7 +1402,7 @@ namespace Wassup.Bridge
             if (_usingAuthoredPlan)
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_activePlan?.displayName}' "
                     + $"(source={(_authoredPlan != null ? "test-mode" : "map-encounter")}) "
-                    + $"waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
+                    + $"waves={_wavePlan.waves.Count} timer={_timerDuration:F0}s.");
             else
                 Debug.Log(_usingGeneratedWaves
                     ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
@@ -2250,7 +2237,7 @@ namespace Wassup.Bridge
         // ── 당김: 기제(ForceNextWave)와 규칙(TryPullNextWave)을 나눈다 ──────────────
         //
         // 상한을 ForceNextWave 안에 넣으면 **기존 PlayMode 스모크 3종이 죽는다** — 그들은
-        // 이 메서드를 판 진행 동력으로 연타한다(TallyFlowTest 20회·EndlessModeSmokeTest 40회).
+        // 이 메서드를 판 진행 동력으로 연타한다(TallyFlowTest 20회 등).
         // 상한은 «플레이어 입력에 대한 게임 규칙»이지 스케줄러의 물리 법칙이 아니므로,
         // 규칙을 한 층 위에 두는 것이 의미와도 맞는다.
         //
@@ -2280,7 +2267,7 @@ namespace Wassup.Bridge
 
         // three-minute-survival unit 2 → wave-pull-revival unit 0 — **기제**다. 상한을 보지
         // 않는다(위 TryPullNextWave 가 규칙 층). PlayMode 스모크
-        // (TallyFlowTest·EndlessModeSmokeTest·MovementIntegritySmokeTest)가 이것을 **판 진행
+        // (TallyFlowTest·MovementIntegritySmokeTest)가 이것을 **판 진행
         // 동력**으로 쓰기 때문에 no-op 으로 만들면 그 테스트들이 타임아웃으로 죽는다.
         public void ForceNextWave()
         {
@@ -4464,6 +4451,23 @@ namespace Wassup.Bridge
                         owner = evt.killer,
                     }, Entity.Null);
                 }
+
+                // 잿불 (content-5 unit 4) — 처치한 **그 자리**에 장판. 위 시체폭발과 같은
+                // 자리·같은 형태이고, 실제 스폰만 투사체 대신 해저드 파이프라인을 탄다
+                // (모양·반경·지속·효과·틱·뷰가 전부 그 SO 소유 — 계약 9).
+                //
+                // 통행 층은 킬 시점에 구워져 왔다. 여기서 killer 를 다시 읽지 않는 이유는
+                // 동귀어진이면 이미 파괴돼 0(=무제한 통과)으로 새기 때문이다.
+                if (evt.hasKillHazard)
+                {
+                    if (evt.hazardDataIndex >= 0 && evt.hazardDataIndex < _zoneHazardRegistry.Count)
+                        SpawnHazardWithVisual(
+                            _zoneHazardRegistry[evt.hazardDataIndex], cell, evt.hazardTargetLayers);
+                    else
+                        // 「불씨가 안 깔린다」는 육안으로 추적이 어려운 증상이라 조용히 넘기지
+                        // 않는다(형제 드레인 DrainHazardSpawnRequests 와 같은 관례) — 리뷰 M5.
+                        Debug.LogWarning($"[BattleBridge] kill hazard index out of range: {evt.hazardDataIndex} / {_zoneHazardRegistry.Count} — 불씨를 깔지 못했다.");
+                }
             }
         }
 
@@ -4614,7 +4618,18 @@ namespace Wassup.Bridge
             // (뷰에는 궤도 arm 이 없어 그 선분을 그리지도 않으므로 «화면과 일치하는 정직한 선분»
             //  이라는 변명도 성립하지 않는다. 1프레임 뷰 점프도 같이 사라진다.)
             // 위상 규약은 Orbit.Position 한 곳에만 산다 — 여기서 다시 유도하지 않는다.
+            // on-place-skill-rework unit 10 — 적 조준 낙하탄의 착탄점은 **임자의 현재 위치**다.
+            // 발사 주체(emitter Entity fan-out)는 `impact` 를 싣지 않는다 — Entity 바인딩이라
+            // 조준이 엔티티 하나뿐이기 때문이다. 여기서 한 번 해석해 스폰 위치를 잡고,
+            // 이후 갱신은 Move arm 이 프레임마다 한다(조준의 소유자는 궤적이다).
+            if (req.movement == MovementKind.SkyFallOnEntity
+                && req.target != Entity.Null && _em.HasComponent<LocalTransform>(req.target))
+            {
+                var aimPos = _em.GetComponentData<LocalTransform>(req.target).Position;
+                req.impact = new float3(aimPos.x, 0f, aimPos.z);
+            }
             var spawnPos = req.movement == MovementKind.SkyFall
+                            || req.movement == MovementKind.SkyFallOnEntity
                 ? new float3(req.impact.x, spawnHeight, req.impact.z)
                 : req.movement == MovementKind.OrbitAroundPoint
                     ? Wassup.Battle.Combat.Projectile.Orbit.Position(
@@ -4643,6 +4658,14 @@ namespace Wassup.Bridge
                 // struct 에 필드를 만들지 않는 이유가 그것이다 — 발사 주체(카드 arm·
                 // emitter·AttackSystem)는 이 값을 몰라도 된다. 기본 0 = 기존 전 발사 지점 무변화.
                 rehitCooldownSec = projData != null ? math.max(0f, projData.rehitCooldownSec) : 0f,
+                // content-5 unit 2 — 넉백도 탄 SO 소유(위와 같은 자리·같은 번역자 역할).
+                // 저작은 「거리 ÷ 시간」이고 sim 이 쓰는 것은 속도라 **여기서 환산**한다 —
+                // 근접 넉백(knockbackDistance / knockbackDuration)의 기존 관례와 같은 식.
+                // 시간이 0 이면 나눗셈이 성립하지 않으므로 둘 다 0(=꺼짐)으로 흘린다.
+                // 둘 다 양수일 때만 켠다 — 한쪽만 저작된 값은 «넉백 없음» 이다(거리 없이
+                // 시간만, 시간 없이 거리만은 의미가 없고 후자는 0 나눗셈이다).
+                knockbackSpeed = KnockbackOn(projData) ? projData.knockbackDistance / projData.knockbackDuration : 0f,
+                knockbackDuration = KnockbackOn(projData) ? projData.knockbackDuration : 0f,
                 // dreamcatcher-attack-mod-bounce unit 2 — copy bounce params
                 // verbatim; defaults 0 = every existing spawn keeps legacy destroy.
                 bounceRemaining = req.bounceRemaining,
@@ -4729,6 +4752,34 @@ namespace Wassup.Bridge
                 // pierceCount 는 SO 소유 — SkyFall 의 dropHeight 보충과 같은 번역자 역할.
                 state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
             }
+            else if (req.movement == MovementKind.BoomerangReturn)
+            {
+                // dreamcatcher-content-5 unit 1 — 왕복(부메랑). 발사점이 곧 귀환점이라
+                // 타겟 엔티티를 잡지 않는다(궤도와 같은 계열). 축은 여기서 한 번 정규화해
+                // sim 이 매 프레임 normalize 하지 않게 한다 — Directional 과 같은 규약.
+                //
+                // 퇴화 저작은 바로 위 Directional 과 **같은 이유로 같은 형태로 막는다**:
+                // 축이 0 이거나 속도가 0 이면 왕복 완료 조건(speed*elapsed >= 2*maxDistance)이
+                // 영원히 거짓이고, 재타격이 켜진 탄은 관통 예산도 안 깎아 **불멸 투사체**가
+                // 된다. maxDistance 0 도 같은 부류다(태어난 자리에서 영원히 스윕).
+                float2 axis = req.direction;
+                if (math.lengthsq(axis) < 1e-6f || req.speed <= 0f || req.maxDistance <= 0f)
+                {
+                    Debug.LogWarning($"[BattleBridge] Boomerang cannot travel (axis={axis}, speed={req.speed}, dist={req.maxDistance}); dropping.");
+                    _em.DestroyEntity(entity);
+                    if (hasSnapshot) outputSnapshot.Dispose();
+                    return Entity.Null;
+                }
+                state.origin = spawnPos;
+                // ⚠ prevPos 를 0 으로 두면 첫 스윕 선분이 **맵 원점 → 발사점**이 되어
+                // 그 선 위 적 전원을 때린다(궤도가 content-4 리뷰 M3 에서 겪은 결함).
+                state.prevPos = spawnPos;
+                state.direction = math.normalize(axis);   // 발사 축 — sim 이 되먹이지 않는다
+                state.maxDistance = req.maxDistance;      // 편도 거리
+                // 관통 예산은 탄 SO 소유(Directional·Orbit 과 같은 자리). 재타격이 켜진
+                // 정상 부메랑은 이 값을 소모하지 않으므로(계약 3) 비정상 경로의 안전망이다.
+                state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
+            }
             else if (req.movement == MovementKind.OrbitAroundPoint)
             {
                 // dreamcatcher-content-4 unit 0 — 궤도(화염구). 중심은 발사 시점 고정점이라
@@ -4751,7 +4802,12 @@ namespace Wassup.Bridge
                 // 일찍 죽는 편이 조용히 30배 때리는 것보다 낫다.
                 state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
             }
-            else if (req.movement == MovementKind.SkyFall)
+            // on-place-skill-rework unit 10 — 적 조준 낙하탄도 같은 필드 규약을 쓴다
+            // (arcHeight = 낙하 시작 높이 · flightTime = 예고). 다른 것은 조준뿐이고
+            // 그 갱신은 Move arm 이 소유한다. `impactTileRange` 는 SingleSplash 짝이라
+            // 읽히지 않는다 — 값을 그대로 흘려도 무해하다.
+            else if (req.movement == MovementKind.SkyFall
+                     || req.movement == MovementKind.SkyFallOnEntity)
             {
                 // Sky-fall (unit 7): sim holds at the cell-locked impact; flightTime
                 // is request-carried (Meteor's warningSec), not speed-derived — the
@@ -4805,14 +4861,16 @@ namespace Wassup.Bridge
             // 풀링 TrailRenderer 가 지면→하늘 스트릭을 긋지 않는다.
             if (projData != null && projData.projectilePrefab != null)
             {
-                float initialDrop = req.movement == MovementKind.SkyFall ? projData.dropHeight : 0f;
+                bool fallsFromSky = req.movement == MovementKind.SkyFall
+                                    || req.movement == MovementKind.SkyFallOnEntity;
+                float initialDrop = fallsFromSky ? projData.dropHeight : 0f;
                 // projectile-shot-sequence unit 5 — emitter carrier는 일회성 request
                 // entity라 view가 없다. 실제 공격자(req.owner)를 우선하고 owner 없는
                 // legacy 요청만 drain의 shooter를 fallback으로 쓴다. SkyFall은 유닛
                 // 발사가 아니라 impact cell에서 내려오므로 anchor를 적용하지 않는다.
                 bool hasLaunchAnchor = false;
                 Vector3 launchAnchor = default;
-                if (req.movement != MovementKind.SkyFall && spineUnitPool != null)
+                if (!fallsFromSky && spineUnitPool != null)
                 {
                     Entity visualOwner = req.owner != Entity.Null ? req.owner : shooter;
                     if (visualOwner != Entity.Null)
@@ -5537,8 +5595,21 @@ namespace Wassup.Bridge
                 // 이 축은 여태 ApplyMeteor 하드코딩으로만 존재했다 — 패턴이 데이터로
                 // SkyFall 탄을 지정할 수 있어야 하므로 flightMode 어휘에 편입한다.
                 ProjectileFlightMode.SkyFall => (MovementKind.SkyFall, PayloadKind.TileAoe),
+                // on-place-skill-rework unit 10 — 낙하 텔레그래프 × **적 하나**.
+                // 위 SkyFall 과 그림은 같고 조준이 다르다. 이 짝이 없어서 unit 1·8 이 셀 조준
+                // 궤적으로 적 조준을 흉내냈고, 한 탄에 조준이 둘이 되어 예고 시간만큼 어긋났다.
+                ProjectileFlightMode.SkyFallOnTarget => (MovementKind.SkyFallOnEntity, PayloadKind.SingleSplash),
+                // dreamcatcher-content-5 unit 0 — 왕복(부메랑) × 경로 스윕.
+                // Directional 과 같은 페이로드 짝이다 — 둘 다 «비행 중 스치는 것을 때리고
+                // 비행이 끝나면 소멸» 이라 착탄 지점 개념이 없다.
+                ProjectileFlightMode.Boomerang => (MovementKind.BoomerangReturn, PayloadKind.PathHit),
                 _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
             };
+
+        // content-5 unit 2 — 넉백은 「거리 ÷ 시간」 저작이라 **둘 다 양수일 때만** 성립한다.
+        // 두 필드가 서로를 게이트하던 형태(각자 상대를 검사)를 하나로 접었다.
+        private static bool KnockbackOn(ProjectileData p)
+            => p != null && p.knockbackDistance > 0f && p.knockbackDuration > 0f;
 
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
@@ -6203,12 +6274,8 @@ namespace Wassup.Bridge
         // opens on it, so this callback stays fire-and-forget.
         private void ReportMatchResult(MatchTally tally)
         {
-            // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
-            if (IsEndless)
-            {
-                Debug.Log("[BattleBridge] ENDLESS — 토너먼트 리포트 스킵.");
-                return;
-            }
+            // endless-mode-removal unit 0 — 「무한 모드는 리포트하지 않는다」 가드는 제거했다.
+            // 이제 **모든 판이 토너먼트에 올라간다** — 엔드리스가 하던 일이 정확히 이것 하나였다.
             var logger = GameManager.Instance?.Logger;
             // unit 7 — 서버로 가는 값은 여기 하나다. tally 가 「무엇을 제출하나」를 소유하고
             // 브리지는 그것을 꺼내 실어 보내기만 한다(가공 지점이 남아 있으면 안 된다).
@@ -8373,6 +8440,10 @@ namespace Wassup.Bridge
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
                     patternIndex = -1,
+                    // content-5 리뷰 M1 — 카드 bake 는 걸었는데 여기만 빠져 있었다.
+                    // struct 기본값 0 은 **유효한 장판 index** 라, OnKill 이 이 경로에
+                    // 열리는 날 조용히 «0번 장판» 이 깔린다(DcTriggerSlot 필드 주석의 계약).
+                    hazardDataIndex = -1,
                     // boss-jjangssen unit 7 — SelfBlink 착지 슬램(0 = 이동만).
                     slamDamage = math.max(0f, m.payload.slamDamage),
                     slamTileRange = math.max(0, m.payload.slamTileRange),
@@ -8437,45 +8508,12 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: pattern buffer missing — skipped.");
                         continue;
                     }
-                    int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
-                    // SkyFall 패턴은 낙하 예고가 곧 그 스킬의 정체다 — 0 이면 텔레그래프
-                    // 없이 즉착탄하므로 조용히 넘기지 않는다(구 arm 은 authoring 이 duration 을
-                    // 요구했다).
-                    if (pattern.barrel.flightMode == Wassup.Data.ProjectileFlightMode.SkyFall
-                        && pattern.telegraphSec <= 0f)
-                    {
-                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
-                    }
-                    // on-place-skill-rework 리뷰 반영 — fan-out 은 후보 **전원**에게 1발씩
-                    // 나가므로 범위 제한이 없으면 **맵 전체 적 수만큼** 캐리어가 한 shot 에
-                    // 생긴다(상한도 없다). 조용한 폭주를 bake 에서 끊는 이 파일의 관례대로 거절.
-                    if (pattern.fanOutToAllCandidates && pattern.scopeTileRange <= 0)
-                    {
-                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: fanOutToAllCandidates 인데 scopeTileRange 가 0 — 맵 전체 적에게 동시 발사가 된다 — skipped. 반경을 지정하라.");
+                    if (!TryBuildPatternSlot(pattern, entity, hostIsEnemy,
+                                             $"{ownerLabel} mechanic {i}", out var builtSlot))
                         continue;
-                    }
-                    // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
-                    //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
-                    //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
-                    if (!pattern.TryToSpec(barrelIndex, out var patternSpec))
-                    {
-                        int shotCount = pattern.shots?.Length ?? 0;
-                        Debug.LogWarning(
-                            $"[BattleBridge] {ownerLabel} mechanic {i}: " +
-                            $"invalid projectile shot sequence/binding contract (shots={shotCount}, " +
-                            $"capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
-                            $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}, " +
-                            $"selection={pattern.selection}, flight={pattern.barrel.flightMode}) — skipped.");
-                        continue;
-                    }
                     // 사용 직전 재획득(위 주석 참조).
                     var patternSlots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
-                    patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
-                    {
-                        spec = patternSpec,
-                        template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: hostIsEnemy),
-                        fireCountBase = 0,
-                    });
+                    patternSlots.Add(builtSlot);
                     slot.patternIndex = patternSlots.Length - 1;
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
@@ -8669,6 +8707,71 @@ namespace Wassup.Bridge
         // 3요건 중 ②를 선불). 타겟 의존 필드(target/impact/swingIndex)는 비운 채 남기고
         // emitter 가 발마다 채운다. **드레인이 SO 에서 직접 읽는 값은 싣지 않는다** —
         // dropHeight(기존), 베지어 lateral/forwardBias(unit 1).
+        // dreamcatcher-content-5 unit 5 — 발사 명세 → PatternSlot 값 조립 + 저작 유효성.
+        // 적/유닛 bake 와 **카드 bake 가 공유**한다(전에는 적 경로에만 있었다). 버퍼 취급은
+        // 호출자가 한다 — 적 경로는 사전 스캔과의 불일치를 거절하고, 카드 경로는 살아 있는
+        // 엔티티에 붙이므로 add-or-get 이 필요해 요구가 서로 다르다.
+        private bool TryBuildPatternSlot(
+            Wassup.Data.ProjectilePatternData pattern, Entity host, bool hostIsEnemy, string label,
+            out Wassup.Battle.Combat.Projectile.Emission.PatternSlot built)
+        {
+            built = default;
+            int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
+            // SkyFall 패턴은 낙하 예고가 곧 그 스킬의 정체다 — 0 이면 텔레그래프
+            // 없이 즉착탄하므로 조용히 넘기지 않는다(구 arm 은 authoring 이 duration 을
+            // 요구했다).
+            if (pattern.barrel.flightMode == Wassup.Data.ProjectileFlightMode.SkyFall
+                && pattern.telegraphSec <= 0f)
+            {
+                Debug.LogWarning($"[BattleBridge] {label}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
+            }
+            // on-place-skill-rework 리뷰 반영 — fan-out 은 후보 **전원**에게 1발씩
+            // 나가므로 범위 제한이 없으면 **맵 전체 적 수만큼** 캐리어가 한 shot 에
+            // 생긴다(상한도 없다). 조용한 폭주를 bake 에서 끊는 이 파일의 관례대로 거절.
+            if (pattern.fanOutToAllCandidates && pattern.scopeTileRange <= 0)
+            {
+                Debug.LogWarning($"[BattleBridge] {label}: fanOutToAllCandidates 인데 scopeTileRange 가 0 — 맵 전체 적에게 동시 발사가 된다 — skipped. 반경을 지정하라.");
+                return false;
+            }
+            // on-place-skill-rework unit 11 — fan-out 은 **적 조준 궤적 전용**이다.
+            // 셀 조준 궤적은 발사 시점의 칸에 위치를 고정하고 다시 조준하지 않는다(예고의
+            // 사양). 거기에 «적 전원에게 1발씩» 을 얹으면 한 탄에 조준이 둘이 되어 예고
+            // 시간만큼 어긋난다 — 실측 예고 0.40s × 적 속도 2.00 = 0.80타일 > 칸 유지 폭
+            // 0.50타일 이라 피해가 통째로 0 이 됐다(unit 8 회귀). 칸 폭격을 원하면
+            // fan-out 을 끄고 단일 선택으로 쏘고, 적 단위 폭격은 `SkyFallOnTarget` 을 쓴다.
+            var fanBinding = Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(
+                ResolveProjectileAxes(pattern.barrel.flightMode).movement);
+            if (pattern.fanOutToAllCandidates
+                && fanBinding != Wassup.Battle.Combat.Projectile.Emission.BindingClass.Entity)
+            {
+                Debug.LogWarning(
+                    $"[BattleBridge] {label}: fanOutToAllCandidates 인데 탄의 조준이 {fanBinding} 다 — " +
+                    "적 단위 fan-out 은 Entity 조준 궤적만 쓸 수 있다(SkyFallOnTarget 등) — skipped.");
+                return false;
+            }
+            // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
+            //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
+            //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
+            if (!pattern.TryToSpec(barrelIndex, out var patternSpec))
+            {
+                int shotCount = pattern.shots?.Length ?? 0;
+                Debug.LogWarning(
+                    $"[BattleBridge] {label}: " +
+                    $"invalid projectile shot sequence/binding contract (shots={shotCount}, " +
+                    $"capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
+                    $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}, " +
+                    $"selection={pattern.selection}, flight={pattern.barrel.flightMode}) — skipped.");
+                return false;
+            }
+            built = new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
+            {
+                spec = patternSpec,
+                template = BuildPatternTemplate(pattern, barrelIndex, host, hostIsEnemy: hostIsEnemy),
+                fireCountBase = 0,
+            };
+            return true;
+        }
+
         private ProjectileSpawnRequest BuildPatternTemplate(
             Wassup.Data.ProjectilePatternData pattern, int barrelDataIndex, Entity owner, bool hostIsEnemy)
         {

@@ -107,9 +107,9 @@ namespace Wassup.Core
         // 카운터와 안내가 같은 것을 세야 한다. 그래서 호출처가 둘이다 —
         // `SetPhase(Result)` 와 `MenuPopup.OnExit`.
         //
-        // Test Mode 도 엔드리스도 포함한다. `ReportMatchResult` 가 `IsEndless` 를 배제하는 것과
-        // 대칭이 아닌 건 의도다(그쪽은 토너먼트 집계라 모드를 가려야 하고, 이쪽은 "판을
-        // 해봤나" 라는 경험 신호다). 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는
+        // Test Mode 도 포함한다 — 이쪽은 "판을 해봤나" 라는 경험 신호이지 토너먼트 집계가
+        // 아니다. (엔드리스 배제와의 비대칭을 설명하던 문장은 endless-mode-removal unit 0 에서
+        // 그 모드가 사라져 지웠다.) 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는
         // 배치 전 StartTestModeMatch 에서 1회 소비돼 Result 시점엔 이미 Active=false 라,
         // 여기에 그 가드를 넣으면 아무 일도 하지 않는 죽은 코드가 된다.
         //

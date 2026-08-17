@@ -18,8 +18,8 @@ MonoBehaviour:
   traversalLayers: 0
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
-    \uC2A4\uD0AC: \uC8FC\uBCC0 \uD3ED\uBC1C \xB7 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218
-    \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801 \uB3C4\uBC1C"
+    \uC2A4\uD0AC: \uC8FC\uBCC0 2\uD0C0\uC77C \uAD11\uC5ED \uB3C4\uBC1C 5\uCD08\n\uD2B9\uC218
+    \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC774 \uB098\uB97C \uB178\uB9BC"
   health: 2070
   attackRange: 1
   attackCooldown: 1.5
@@ -55,7 +55,7 @@ MonoBehaviour:
   retireCooldownRatio: 0.4
   maxOnBoard: 1
   targetAllies: 0
-  attackTargetLayers: 2
+  attackTargetLayers: 6
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 5a040ae407c4461ba142c7c70f0a99d7, type: 2}

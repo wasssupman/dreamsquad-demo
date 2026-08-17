@@ -14,6 +14,8 @@
 | 리뷰 | `020f301d` | 투트랙 코드리뷰 반영 — 아래 「리뷰가 잡은 것」 |
 | 연타 | `5528148b` | 캐논 낙하 시차 `fanOutStaggerSec`(사용자 요청) |
 | 연출 | `4b684cef` | 배스티온 배치 VFX `FireAoeVFX` → `EarthAura` — **에셋만** (`4_taunt_bastion.md` 「연출」) |
+| 8 | `e78fb31b` | 미사일 1발 = 적 1기 — 착탄에 임자(`target`) 게이트, unit 1 의 «칸당 1발» 접기 제거 |
+| 8 test | `9fc36c2f`·`258265a0` | 캐논 핀이 «판 위 남의 공격원» 을 같이 재던 pre-existing 부패 수정 + 헬퍼 정리 |
 
 ⚠ unit 0 의 `BattleBridge.cs` 변경분(`BakeUnitMechanics` 본문 · `MarkJustDeployedForRules` ·
 방어유닛 bake 호출)은 **병행 세션이 같은 파일을 통째로 스테이징하면서 `2b6362e9` 에 딸려
@@ -54,6 +56,10 @@
 - 신규 PlayMode: `OnPlaceRuleTriggerTest` 6 · `OnPlaceSkyStrikeTest` 4 ·
   `OnPlaceTauntNearbyTest` 4 · `OnPlaceStunNearbyTest` 3
 - 회귀 PlayMode: on-place 4종 · 재배치 · 보스 자장가/실드 · 드림캐쳐 4종 · 투사체 스택 · 평타 넉업
+- **unit 8** (2026-08-16): PlayMode `OnPlaceSkyStrikeTest` 5/5 · EditMode 투사체 핀 63/63
+  (`ProjectileSystemTests` 외 5개). 무회귀 증거는
+  `TileAoe_Payload_Damages_Every_Enemy_In_Impact_Range` — 임자 없는 기존 광역은 그대로
+  칸 전원을 때린다. Play 육안도 사용자 확인 완료.
 
 ## Notes (되돌리지 말 것)
 
@@ -117,8 +123,11 @@ teardown · 계약 ②③④⑤⑩ · 제약 6·10 · GUID 배선 4건 · 테스
 
 ## Follow-up
 
-- **사용자 육안 Play 확인 미완** — 6_text_and_validation.md 의 검증 질문 ② 및 밸런스 시나리오
-  (배스티온이 도발 중 죽으면 뭉친 적이 그대로 진격 / 세 유닛 반경이 전부 2 라 겹치는 콤보).
+- **밸런스 시나리오 육안 미완** — 6_text_and_validation.md 의 검증 질문 ② (배스티온이 도발 중
+  죽으면 뭉친 적이 그대로 진격 / 세 유닛 반경이 전부 2 라 겹치는 콤보). 캐논 폭격 자체는 확인됨.
+- **배틀 PlayMode 핀의 「절대 피해량」 측정 함정을 lessons 로 승격 검토** — unit 8 에서 5개
+  핀이 남의 콘텐츠(본능 구조물·웨이브) 때문에 빨개져 「내 코드가 깼나」를 먼저 의심하게 만들었다.
+  이 spec 밖에서도 재발할 성질이라 `docs/reference/lessons/` 후보다(상세는 `8_visual_density_fanout.md`).
 - **시트 `desc` 3줄 갱신 미완** — `desc` 는 시트가 정본이라 코드/에셋에서 못 고친다.
   문안 초안은 6_text_and_validation.md 표 참조.
 - **도발 지속(5초) 상태 연출 없음** — 배치 순간 `EarthAura` 원샷이 전부다(~1.2초에 강제 파괴).

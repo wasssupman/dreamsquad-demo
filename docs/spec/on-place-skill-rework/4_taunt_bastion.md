@@ -60,6 +60,10 @@ arm 이 시스템으로 가면 그 헬퍼를 못 쓰므로 **baked 마스크로 
 `attackTargetLayers` 가 ECS 에 baked 돼 있는지 먼저 확인하고, 없으면 unit 0 에서 굽는다.
 게이트를 빼면 **하늘의 적이 근접 가디언에게 끌려온다.**
 
+> 2026-08-17 — 게이트 자체는 그대로 필요하지만 **배스티온의 저작이 `Path | Air`(6) 로 바뀌었다**
+> (아틸러리·폭탄맨만 지상 전용). 그래서 오늘의 배스티온 도발은 **비행 적도 끌어온다** — 게이트가
+> 죽은 게 아니라 통과시키는 것이 의도다. 지상 전용 유닛에 도발이 붙는 날 이 문단이 다시 산다.
+
 ⚠ **`BossPeriodicTriggerSystem` 은 `[BurstCompile]`** — arm 안에서 `Debug.LogWarning` 불가.
 저작 검증(`duration <= 0` · `tileRange <= 0` · host 가 가디언이 아님)은 **bake 시점 loud warn** 으로
 낸다. 특히 `tileRange 0` 은 조용히 0명이 되므로 가드가 실제로 필요하다.

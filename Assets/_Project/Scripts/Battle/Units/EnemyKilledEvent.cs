@@ -38,5 +38,20 @@ namespace Wassup.Battle.Units
         public int burstTileRange;
         public int burstDataIndex;
         public Entity killer;
+
+        // dreamcatcher-content-5 unit 4 (잿불) — killer 의 OnKill×SpawnHazard 첫 매칭 슬롯을
+        // **킬 시점에** 스탬프. 바로 위 시체폭발과 같은 형태이며 같은 이유다: 드레인 시점엔
+        // 슬롯을 못 읽는다. 실행 = 브리지 드레인의 SpawnHazardWithVisual(장판 파이프라인).
+        //
+        // ⚠ 통행 층을 **여기서 같이 굽는다** — 브리지가 killer 에서 읽으려 하면 killer 가
+        // 이미 파괴됐을 때(동귀어진) 0 으로 새고, `PlacementLayers.CanTarget` 은 0 을 무조건
+        // 통과시켜 «지상만 때리는 유닛의 불씨가 비행 적을 태우는» 뒷문이 된다.
+        // killer 생존이 보장되는 유일한 시점이 이 프레임이다.
+        // ⚠ **bool 플래그로 «있음» 을 표현한다** — index 의 struct 기본값 0 은 유효한 장판
+        // index 라, 플래그 없이 index 만 두면 스탬프하지 않은 이벤트가 0번 장판을 깐다
+        // (hasKillBurst 가 같은 이유로 존재한다). Appended last; 기본값 = 무장판.
+        public bool hasKillHazard;
+        public int hazardDataIndex;
+        public byte hazardTargetLayers;
     }
 }

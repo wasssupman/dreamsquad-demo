@@ -24,14 +24,11 @@ namespace Wassup.Tests.PlayMode
     {
         private const int WaypointLabMapIndex = 7; // main 6장 + dev[1] MovementLab
         private int _savedIndex;
-        private bool _savedEndless;
 
         [SetUp]
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            _savedEndless = DevMapOverride.Endless;
-            DevMapOverride.Endless = false;
             DevMapOverride.Index = WaypointLabMapIndex;
         }
 
@@ -39,7 +36,6 @@ namespace Wassup.Tests.PlayMode
         public void TearDown()
         {
             DevMapOverride.Index = _savedIndex;
-            DevMapOverride.Endless = _savedEndless;
         }
 
         [UnityTearDown]
@@ -240,31 +236,40 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(bridge, "BattleBridge present");
             var catalogs = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
             Assert.Greater(catalogs.Length, 0, "DefenderCatalog present");
-            var archer = catalogs[0].ById("archer");
+            // 2026-08-17 — 지상 전용 대조군은 아틸러리다(아처를 포함한 나머지 방어유닛은
+            // 전부 Path|Air 로 바뀌었다). 이 테스트가 보는 것은 «어느 유닛이 대공인가»가
+            // 아니라 «저작 마스크가 런타임 AttackState 로 그대로 구워지는가» 이므로
+            // 기대값은 리터럴이 아니라 SO 에서 읽는다.
+            var artillery = catalogs[0].ById("artillery");
             var antiAir = catalogs[0].ById("anti_air");
-            Assert.IsNotNull(archer, "일반 방어유닛 대조군");
-            Assert.IsNotNull(antiAir, "신규 대공사수");
+            Assert.IsNotNull(artillery, "지상 전용 대조군");
+            Assert.IsNotNull(antiAir, "지상+공중 방어유닛");
 
-            bridge.SetDefenderPool(new[] { archer, antiAir });
+            bridge.SetDefenderPool(new[] { artillery, antiAir });
             bridge.BeginPlacement();
             var gameManager = GameManager.Instance;
             Assert.IsNotNull(gameManager);
             gameManager.CostRuntime.ResetToStart();
             gameManager.CostRuntime.AddCost(1000);
 
-            Assert.IsTrue(PlaceFirstValid(bridge, archer, out var archerEntity));
+            Assert.IsTrue(PlaceFirstValid(bridge, artillery, out var artilleryEntity));
             Assert.IsTrue(PlaceFirstValid(bridge, antiAir, out var antiAirEntity));
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            Assert.AreEqual((byte)PlacementLayer.Path,
-                em.GetComponentData<AttackState>(archerEntity).targetTraversalLayers,
-                "일반 방어유닛의 실제 런타임 AttackState는 지상(Path) 전용");
-            Assert.AreEqual((byte)(PlacementLayer.Path | PlacementLayer.Air),
+            Assert.AreEqual(PlacementLayer.Path, artillery.EffectiveAttackTargetLayers,
+                "아틸러리는 지상 전용 예외 — 이 전제가 깨지면 아래 대조가 의미를 잃는다");
+            Assert.AreEqual((byte)artillery.EffectiveAttackTargetLayers,
+                em.GetComponentData<AttackState>(artilleryEntity).targetTraversalLayers,
+                "지상 전용 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
+            Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
+                antiAir.EffectiveAttackTargetLayers,
+                "밀당맨는 지상+공중 — 두 마스크가 갈려서 구워지는 것이 이 테스트의 요점");
+            Assert.AreEqual((byte)antiAir.EffectiveAttackTargetLayers,
                 em.GetComponentData<AttackState>(antiAirEntity).targetTraversalLayers,
-                "대공사수의 실제 런타임 AttackState는 Path와 Air를 모두 포함");
+                "지상+공중 저작이 실제 런타임 AttackState 로 그대로 구워져야 한다");
             Assert.AreEqual(0.2f,
                 em.GetComponentData<AttackState>(antiAirEntity).cooldownDuration, 1e-4f,
-                "대공사수의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
+                "밀당맨의 초고속 공격 주기가 실제 런타임에 베이크돼야 한다");
             var antiAirOutputs = em.GetBuffer<AttackOutputElement>(antiAirEntity);
             Assert.AreEqual(1, antiAirOutputs.Length);
             Assert.AreEqual(7f, antiAirOutputs[0].value.magnitude, 1e-4f,

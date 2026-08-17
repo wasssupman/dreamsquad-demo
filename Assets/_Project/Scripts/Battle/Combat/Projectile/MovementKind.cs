@@ -49,9 +49,15 @@ namespace Wassup.Battle.Combat.Projectile
         BezierHomingToEntity = 5,
 
         // dreamcatcher-content-4 unit 1 — 한 점을 도는 원운동(궤도 화염구).
-        // **대상 엔티티를 참조하지 않는다** — BallisticArcToPoint 계열이다. 방어유닛은 타일
-        // 고정이라 궤도 중심이 발사 시점 고정점이면 충분하고, 덕분에 host 가 죽거나 퇴근해도
-        // 이미 나간 화염구는 자기 수명을 산다.
+        // **위치 계산에 대상 엔티티를 참조하지 않는다** — 중심은 발사 시점 고정점이다
+        // (방어유닛은 타일 고정이라 그것으로 충분하다).
+        //
+        // ⚠ **단 주인이 사라지면 구슬도 사라진다**(content-5, 2026-08-17 사용자 결정).
+        // content-4 는 반대로 «host 가 죽거나 퇴근해도 이미 나간 화염구는 자기 수명을 산다»
+        // 를 계약으로 적었는데, 화면에서는 **주인 없는 빈 자리에서 혼자 도는 구슬**이었다.
+        // 궤도는 «누구 주위를 돈다» 가 정의라 주인이 없으면 의미가 없다 — 다른 궤적
+        // (직선·왕복·호밍)은 던지면 제 갈 길을 가는 것이 사양이므로 이 규칙을 공유하지 않는다.
+        // 판정은 `owner` 생존이며 ProjectileMoveSystem 의 이 arm 이 소유한다.
         // 필드 재사용: origin = 궤도 중심 · maxDistance = 반경(월드) · speed = **각속도(rad/s)**
         // · flightTime/elapsed = 지속/누적 · prevPos = 직전 위치(PathHit 스윕) ·
         // direction = 접선(front-most 정렬용).
@@ -59,5 +65,45 @@ namespace Wassup.Battle.Combat.Projectile
         // 아니라 **"비행 종료"**(최종 스윕 후 소멸)다 — DirectionalLinear 과 공유하는 규약.
         // sim 은 XZ 평면만 돌고 높이는 뷰가 더한다(BoardSpace 가 sim-Y 를 drop).
         OrbitAroundPoint = 6,
+
+        // dreamcatcher-content-5 unit 1 — 발사 축을 따라 나갔다 **돌아오는** 직선 왕복.
+        // OrbitAroundPoint 과 마찬가지로 **대상 엔티티를 참조하지 않는다**(발사점이 고정점).
+        // 필드 재사용: origin = 발사점(= 귀환점) · direction = **발사 축(불변)** ·
+        // maxDistance = 편도 거리(월드) · speed = 선속도 · elapsed = 누적 ·
+        // prevPos = 직전 위치(PathHit 스윕).
+        //
+        // ⚠ **`direction` 을 되먹이지 말 것.** 이 궤적에서 그 필드는 위치 계산의 **입력**이라,
+        // 「지금 돌아오는 중이니 뒤집자」로 매 프레임 갱신하면 다음 프레임이
+        // `origin − axis*(…)` 를 내고 **발사점 뒤로 날아간다**(초판 설계의 실제 결함).
+        // 궤도가 같은 함정을 피한 것은 거기서 direction 이 접선 = **파생값**이었기 때문이다.
+        // 「지금 어느 다리인가」는 어디에도 저장하지 않는다 — 진행 방향이 필요한 곳(넉백)은
+        // 그 프레임 스윕 `pos − prevPos` 를, 화면 facing 은 뷰의 직전 위치 차이를 쓴다.
+        //
+        // 도착 = `speed*elapsed >= 2*maxDistance`(왕복 완료) → impactReached.
+        // PathHit 에게 그 플래그는 "착탄"이 아니라 **"비행 종료"**(최종 스윕 후 소멸)다 —
+        // DirectionalLinear·OrbitAroundPoint 과 공유하는 규약.
+        BoomerangReturn = 7,
+
+        // on-place-skill-rework unit 10 — 하늘에서 떨어지지만 **적을 겨누는** 낙하탄.
+        //
+        // `SkyFall`(위)과 같은 그림, **다른 조준**이다. 저쪽은 셀 바인딩이라 발사 시점의 칸에
+        // 위치를 고정하고 다시 조준하지 않는다(예고가 움직이면 안 되므로 의도된 설계). 이쪽은
+        // **엔티티 바인딩**이라 위치가 임자의 live 위치를 따른다 — `HomingToEntity` 가 그러는
+        // 것과 같은 이유이며, 예외가 아니라 **바인딩의 정의**다.
+        //
+        // ⚠ **이 축이 없어서 났던 사고를 다시 만들지 말 것.** unit 1·8 은 「반경 안 적 전원에게
+        // 1발씩」을 셀 바인딩 궤적으로 표현하려 했다. unit 1 은 칸당 1발로 접어 발수가 적 수와
+        // 어긋났고, unit 8 은 요청에 `target` 을 실어 `TileAoe` 팔이 임자만 고르게 했다 — 그러자
+        // **한 탄에 조준이 둘**(궤적=칸/발사시점, 페이로드=적/착탄시점)이 되어 예고 시간만큼
+        // 어긋났다. 실측: 예고 0.40s × 적 속도 2.00 = **0.80타일** 이동인데 칸 소속 유지 폭은
+        // 중심 ±0.50타일 → 최소 예고에도 벗어나 **피해 0**. 뒤 슬롯(0.72s=1.44타일)은 전원 헛방.
+        // unit 8 이전엔 `target` 이 비어 그 칸에 **누가 있든** 때려서 행군하는 뒤 적이 빈 칸을
+        // 채웠고, 조준이 낡았다는 사실이 그렇게 가려져 있었다.
+        //
+        // 도착 = `SkyFall.Arrived(elapsed, flightTime)` — 시간 도착이 곧 **예고**의 정의다.
+        // 필드 재사용은 `SkyFall` 과 같다: arcHeight = 낙하 시작 높이(view 전용) ·
+        // flightTime/elapsed = 예고/누적. 페이로드는 `SingleSplash`(대상 하나) 짝이다 —
+        // tile 판정도 임자 게이트도 타지 않는다.
+        SkyFallOnEntity = 8,
     }
 }

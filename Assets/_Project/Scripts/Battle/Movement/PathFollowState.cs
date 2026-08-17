@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Wassup.Battle.Movement
 {
@@ -34,6 +35,23 @@ namespace Wassup.Battle.Movement
         //
         // 0 = 미주입(레거시·픽스처). 소비자는 0 을 `Path` 로 읽어 현행을 재현한다.
         public byte traversalLayers;
+
+        // defender-knockback-on-impact unit 0 — 이 유닛이 **마지막으로 자기 힘으로 움직인
+        // 방향**(정규화, sim 평면). Movement 소유 쓰기 · 다른 맥락은 RO.
+        //
+        // 기록 방식은 위 `holdingGround` 와 **같은 자리·같은 철학**이다: 케이스를 열거하지
+        // 않고 자기주도 변위를 실제로 적용하는 지점에서만 적는다. 그래서 흐름장·웨이포인트·
+        // 추격·복구 어느 경로로 움직였든 값이 맞고, 새 이동 분기가 생겨도 자동으로 편입된다.
+        //
+        // ★ **흐름장을 대신 읽으면 안 된다.** 넉백 방향을 「그 칸의 기본 흐름」에서 뽑던 것이
+        // 이 필드를 만든 이유다 — 비행 적은 웨이포인트를 따라가고 추격 중인 적은 추격장을
+        // 따라가므로 그 칸의 기본 흐름은 **그 적의 실제 진행 방향이 아니다.** 대공 유닛의
+        // 주 표적이 정확히 그 비행 적이라 이 어긋남은 기능의 핵심에서 틀리는 형태였다.
+        //
+        // 멈춘 프레임에는 갱신하지 않는다 — 교전 중 정지한 적도 직전 진행 방향을 유지해야
+        // 뒤로 밀 수 있다. 0 = 한 번도 움직인 적 없음(스폰 직후 · 합성 픽스처 · 고정 구조물).
+        // 소비자는 0 을 「방향 없음 = 밀지 않음」으로 읽는다.
+        public float2 lastMoveDir;
         // Phase 9: currentWaypointIndex 제거 — flow field 가 대체
         // Phase 9: tileSize 제거 — FlowFieldSingleton.tileSize 가 단일 소스
     }

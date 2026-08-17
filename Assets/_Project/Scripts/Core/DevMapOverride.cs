@@ -11,17 +11,11 @@ namespace Wassup.Core
     public static class DevMapOverride
     {
         private const string Key = "dev_forceMapIndex";
-        private const string EndlessKey = "dev_forceEndless";
 
         public static bool HasIndex => Index >= 0;
 
-        // endless-mode unit 2 — 무한 모드 강제 진입 토글(개발용). BattleBridge 가 풀 선택 이전에 확인한다.
-        // 공용 mapPool 밖 전용 endlessEncounter 로 들어가는 유일한 스위치(랜덤/토너먼트는 절대 안 뽑음).
-        public static bool Endless
-        {
-            get => PlayerPrefs.GetInt(EndlessKey, 0) != 0;
-            set { PlayerPrefs.SetInt(EndlessKey, value ? 1 : 0); PlayerPrefs.Save(); }
-        }
+        // endless-mode-removal unit 0 — `Endless` 토글은 제거했다(모드 자체가 사라졌다).
+        // 아래 맵 인덱스 강제와 dev 슬롯은 **별개 기능이라 그대로 남는다.**
 
         // -1 = off(기존 시드 로직). 0+ = 강제 풀 인덱스.
         public static int Index
@@ -33,7 +27,6 @@ namespace Wassup.Core
         public static void Clear()
         {
             PlayerPrefs.DeleteKey(Key);
-            PlayerPrefs.DeleteKey(EndlessKey);
             PlayerPrefs.Save();
         }
     }

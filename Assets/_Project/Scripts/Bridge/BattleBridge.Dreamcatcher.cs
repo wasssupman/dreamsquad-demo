@@ -424,7 +424,7 @@ namespace Wassup.Bridge
                 // dreamcatcher-content-4 unit 0 — 퇴근 트리거의 v1 배선은 SelfTileAoe 한 쌍뿐이다.
                 // 퇴장 지점(RetireDefender)에는 trigger×payload 디스패처가 없고 운석 cast 하나만
                 // 있으므로, 다른 payload 를 통과시키면 슬롯만 붙고 아무 일도 안 하는 카드가
-                // "부착됨"으로 집계된다(EmitProjectilePattern 거절과 같은 이유).
+                // "부착됨"으로 집계된다(같은 함수의 트리거 축 가드들과 같은 이유).
                 if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnRetire
                     && m.payload.kind != Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {
@@ -516,6 +516,8 @@ namespace Wassup.Bridge
                     // 아래 EmitProjectilePattern 거절이 도달 경로를 막지만, 불변식 자체를
                     // 여기서 걸어두어야 다른 kind 가 patternIndex 를 쓰게 될 때 안전하다.
                     patternIndex = -1,
+                    // content-5 unit 0 — 같은 불변식(0 은 유효 index 다). SpawnHazard 분기만 채운다.
+                    hazardDataIndex = -1,
                     // dreamcatcher-content-4 unit 0 — 주기 트리거 개방(계약 9). 여태 보스 bake
                     // (BakeNightmareMechanics)만 실어 보내서 카드 주기 슬롯이 조용히 무발동이었다.
                     // 비-PeriodicTimer 슬롯은 0 = inert 라 기존 카드 전부 무손상.
@@ -550,6 +552,48 @@ namespace Wassup.Bridge
                     slot.speed = m.payload.projectile.speed;
                     slot.hitThreshold = m.payload.projectile.hitThreshold;
                     slot.visualScale = m.payload.projectile.visualScale;
+                    // dreamcatcher-content-5 unit 0 — **탄 에셋의 궤적을 존중한다.** 여태 발사
+                    // arm(SpawnNeedleCarrier)이 (Homing, SingleSplash)를 하드코딩해 저작이
+                    // 무시됐다. 번역은 ResolveProjectileAxes 단일 지점을 쓴다.
+                    // 기존 카드(비수)의 탄은 Homing 이라 축이 종전과 같다 — 무회귀.
+                    var dcAxes = ResolveProjectileAxes(m.payload.projectile.flightMode);
+                    slot.projectileMovement = dcAxes.movement;
+                    slot.projectilePayload = dcAxes.payload;
+                    // ⚠ **방향 바인딩(부메랑 등)은 유효 저작의 요구가 다르다.** 호밍은 대상을
+                    // 쫓아가 hitThreshold 가 «도달 판정» 이라 관대하지만, 경로를 훑는 탄에게
+                    // 그 값은 **스치는 굵기**라 0 이면 «정상으로 날아갔다 돌아오는데 아무도 못
+                    // 맞히는» 탄이 된다 — 로그 한 줄 없이 조용하다. 거리·속도 0 은 드레인이
+                    // 잡지만 그건 **발사할 때마다** 경고라 부착 시점에 끊는 게 맞다.
+                    // 형제 payload(SelfOrbitProjectile)가 같은 셋을 같은 형태로 거절한다.
+                    var dcBinding = Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(dcAxes.movement);
+                    // ⚠ **셀 바인딩은 이 경로에 배선돼 있지 않다.** 발사 arm(SpawnNeedleCarrier)은
+                    // `target` 은 늘 싣지만 `impact` 를 **한 번도 채우지 않는다** — 그래서
+                    // SkyFall·BallisticToCell 탄으로 저작하면 착탄점이 (0,0,0) 이라 **보드 원점에
+                    // 떨어진다**. 궤적을 저작에 개방한 것이 이 뒷문을 열었으므로 여기서 닫는다.
+                    // (개통하려면 arm 이 대상 셀을 계산해 실어야 한다 — 별도 작업.)
+                    if (dcBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Cell)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 셀 바인딩 탄({m.payload.projectile.flightMode})은 이 payload 에 미배선 — 착탄점이 없어 보드 원점에 떨어진다 — skipped.");
+                        continue;
+                    }
+                    if (dcBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction)
+                    {
+                        if (m.payload.projectile.hitThreshold <= 0f)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 경로 스윕 탄의 hitThreshold<=0 — 아무도 못 맞힌다 — skipped.");
+                            continue;
+                        }
+                        if (m.payload.projectile.speed <= 0f)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 경로 스윕 탄의 speed<=0 — 날아가지 못한다 — skipped.");
+                            continue;
+                        }
+                        if (m.payload.tileRange <= 0)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 방향 바인딩에서 tileRange 는 **날아가는 거리**다 — 0 이면 발사 자체가 성립하지 않는다 — skipped.");
+                            continue;
+                        }
+                    }
                     // attack-decoupling unit 2 — 폴백 탐색 반경(host 가 대상을 못 고를 때만
                     // 쓰인다). 0 이하는 "폴백 없음"이지 "발동 불가"가 아니다 — host 우선
                     // 경로(현재 전부)는 반경과 무관하게 정상 동작한다(spec 계약 3).
@@ -576,6 +620,24 @@ namespace Wassup.Bridge
                     // AreaBarrage 의 duration=텔레그래프 선례. **OnRetire(퇴근 운석)만 소비**하고
                     // 기존 SelfTileAoe 카드는 전부 duration 0 이라 즉시 착탄 그대로다.
                     slot.duration = math.max(0f, m.payload.duration);
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SpawnHazard)
+                {
+                    // content-5 unit 4 — 잿불. 카드는 「어떤 불씨를」만 말하고 모양·반경·지속·
+                    // 효과·틱·뷰는 전부 그 SO 소유다(계약 9). 여기서 하는 일은 인덱스 등록뿐.
+                    if (m.payload.hazard == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SpawnHazard without HazardSO — skipped.");
+                        continue;
+                    }
+                    // 트리거 축 가드 — 발동 지점은 킬 처리 하나뿐이다(SelfOrbitProjectile 이
+                    // PeriodicTimer 만 배선한 것과 같은 이유: 조용한 무발동 금지).
+                    if (m.trigger.kind != Wassup.Data.DcTriggerKind.OnKill)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SpawnHazard 는 OnKill 만 배선돼 있다 (현재 trigger={m.trigger.kind}) — skipped.");
+                        continue;
+                    }
+                    slot.hazardDataIndex = RegisterZoneHazardSO(m.payload.hazard);
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
                 {
@@ -712,9 +774,23 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfStatBuff unmappable buffStat ({m.payload.buffStat}) — skipped.");
                         continue;
                     }
+                    // dreamcatcher-berserker unit 1 — 최대 중첩. >0 이면 재발동이 덮어쓰기가
+                    // 아니라 누적이 된다(상한 = 1회분 × 중첩). 저작 자리로 tileRange 를 쓰는 것은
+                    // ApplyStackToTarget 이 같은 칸을 최대 중첩으로 쓰는 선례와 같고, 시트
+                    // DTO 에도 이미 있어 저작 경로가 공짜로 열린다. 0 = 기존 덮어쓰기.
+                    //
+                    // 배율 <=1 은 누적이 성립하지 않는다 — FromMultiplier 가 그 값을 **곱셈
+                    // 버킷**으로 보내는데 곱셈 값을 더하면 의미가 뒤집힌다(0.9 + 0.9 = 1.8 =
+                    // 오히려 강화). 조용히 이상하게 도느니 loud 로 세운다.
+                    if (m.payload.tileRange > 0 && buffMult <= 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfStatBuff 최대 중첩({m.payload.tileRange})은 배율 > 1 에서만 성립한다 (현재 배율 {buffMult}) — skipped.");
+                        continue;
+                    }
                     slot.buffStat = buffStat;
                     slot.magnitude = buffMult;
                     slot.duration = m.payload.duration;
+                    slot.tileRange = math.max(0, m.payload.tileRange);
                     // stackId 는 StatModifier 네임스페이스의 단일 할당자에서(squad 이펙트와
                     // 공유) — instanceId 잘라쓰기(네임스페이스 오염) 대신. 슬롯당 고정 →
                     // 매 킬/틱 refresh.
@@ -749,10 +825,64 @@ namespace Wassup.Bridge
                 // 설명 텍스트도 공란. 이 spec 이 인용해 온 "조용한 no-op 금지"(dc-trigger
                 // 선례)를 지켜 loud 거절한다. 개통하려면 defender 에도 PatternSlot/
                 // EmitterInstance 부착 + BuildPatternTemplate(hostIsEnemy:false) 이 필요하다.
+                // dreamcatcher-content-5 unit 5 — 카드 경로 **개통**. 여태 여기서 loud 거절했고
+                // (슬롯이 patternIndex=0 으로 붙어 아무 일도 안 하는 카드가 «부착됨» 이 되는 것을
+                // 막으려고) 그 사이 defender 템플릿·적용성·발동 arm 은 전부 완성됐다 — 남은 것이
+                // 이 bake 하나였다.
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
                 {
-                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: EmitProjectilePattern 은 카드(defender) 경로 미배선 — skipped.");
-                    continue;
+                    var pattern = m.payload.pattern;
+                    if (pattern == null || pattern.barrel == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
+                        continue;
+                    }
+                    // ⚠ **트리거 축 가드** — 이 payload 의 발동 arm 은 BossPeriodicTriggerSystem
+                    // 하나뿐이고 거기서 발화하는 트리거는 PeriodicTimer 와 OnPlace 뿐이다
+                    // (OnPlace 는 카드 경로에서 아래가 따로 거절한다). 그러므로 AttackN·OnKill·
+                    // HealthThreshold 로 저작하면 **슬롯은 붙고 발사는 영원히 없다** — 이번
+                    // 변경이 없애려던 「조용한 no-op」 그 자체다. 형제 payload 둘(SpawnHazard →
+                    // OnKill · SelfOrbitProjectile → PeriodicTimer)이 같은 가드를 갖는다.
+                    //
+                    // 이 가드는 **아래 패턴 슬롯 append 보다 앞에** 있어야 한다 — 뒤에 두면
+                    // 거절된 mechanic 이 주인 없는 PatternSlot 을 남긴다(ECS 리뷰 M2).
+                    if (m.trigger.kind != Wassup.Data.DcTriggerKind.PeriodicTimer)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: EmitProjectilePattern 은 PeriodicTimer 만 배선돼 있다 (현재 trigger={m.trigger.kind}) — skipped.");
+                        continue;
+                    }
+                    // ⚠ **직선탄 유닛의 기본 공격이 0번 패턴 슬롯을 읽는다**(AttackSystem 의
+                    // 다연발 경로). 그 유닛이 자기 패턴을 안 가진 «패턴 없는 방향 단발» 저작이면
+                    // 카드 슬롯이 index 0 을 차지해 **기본 공격이 카드 패턴을 쏘게 된다.**
+                    // 카드가 유닛의 공격을 바꿔치는 것은 어떤 카드의 사양도 아니므로 loud 거절한다.
+                    // (유닛이 자기 패턴을 이미 가졌으면 카드는 1번 이후라 안전하다.)
+                    bool hostFiresDirectional =
+                        _em.HasComponent<ProjectileRef>(defender)
+                        && _em.GetComponentData<ProjectileRef>(defender).movement == MovementKind.DirectionalLinear;
+                    bool hostHasOwnPattern =
+                        _em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender)
+                        && _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender).Length > 0;
+                    if (hostFiresDirectional && !hostHasOwnPattern)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: host 가 «패턴 없는 방향 단발» 이라 이 카드의 패턴이 0번 슬롯이 되어 **기본 공격을 바꿔친다** — skipped.");
+                        continue;
+                    }
+                    if (!TryBuildPatternSlot(pattern, defender, hostIsEnemy: false,
+                                             $"Card '{card.id}' mechanic {i}", out var cardPatternSlot))
+                        continue;
+                    // 살아 있는 엔티티라 **add-or-get** 이 필요하다(유닛 경로는 스폰 시점이라
+                    // 무조건 AddBuffer 해도 됐다). 기존 슬롯을 보존해야 같은 유닛에 두 장이
+                    // 붙어도 서로의 발사 카운터를 밟지 않는다.
+                    // ⚠ 두 버퍼 추가는 **DcTriggerSlot 핸들을 잡기 전에** 끝난다 — 구조 변경이
+                    // 기존 버퍼 핸들을 무효화하기 때문(유닛 경로 주석과 같은 경고).
+                    if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender))
+                        _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender);
+                    if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(defender))
+                        _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(defender);
+                    var cardPatternSlots =
+                        _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender);
+                    cardPatternSlots.Add(cardPatternSlot);
+                    slot.patternIndex = cardPatternSlots.Length - 1;
                 }
 
                 // on-place-skill-rework unit 0 — 배치 트리거는 **카드가 쓸 수 없다.** 카드는 전투

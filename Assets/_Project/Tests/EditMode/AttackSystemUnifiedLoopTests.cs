@@ -7,6 +7,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -211,6 +212,9 @@ namespace Wassup.Tests.EditMode
             });
 
             var enemy = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+            // defender-knockback-on-impact unit 1 — 미는 방향은 **적이 가던 방향의 반대**라
+            // 피격자의 진행 방향이 곧 이 CC 의 입력이다. 이 적은 −X 로(= 사수 쪽으로) 걷는다.
+            _em.AddComponentData(enemy, new PathFollowState { lastMoveDir = new float2(-1f, 0f) });
 
             Tick();
 
@@ -218,6 +222,68 @@ namespace Wassup.Tests.EditMode
             var ev = _ccQueue.Dequeue();
             Assert.AreEqual(enemy, ev.target);
             Assert.AreEqual(CcKind.Impulse, ev.effect.kind);
+            // 방향 = 진행 반대(+X), 속력 = 거리 ÷ 지속 = 2 / 0.5 = 4.
+            Assert.AreEqual(4f, ev.effect.vector.x, 1e-4f, "진행 방향의 반대로 민다");
+            Assert.AreEqual(0f, ev.effect.vector.z, 1e-4f);
+            Assert.AreEqual(0.5f, ev.effect.remainingTime, 1e-4f);
+        }
+
+        // defender-knockback-on-impact unit 1 — 진행 방향을 모르는 대상은 밀지 않는다.
+        // 스폰 직후 한 프레임과 고정 구조물이 이 경로다(구조물은 PathFollowState 자체가 없다).
+        [Test]
+        public void U3b_Knockback_WithoutTravelDirection_EmitsNothing()
+        {
+            var defender = CreateAttacker(
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
+                damage: 3f, range: 10f, cooldownDuration: 1f,
+                targetMask: (int)Faction.EnemyUnit,
+                defenderTag: true);
+            _em.AddComponentData(defender, new DefenderCcData
+            {
+                knockbackDistance = 2f,
+                knockbackDuration = 0.5f,
+            });
+
+            CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+
+            Tick();
+
+            Assert.AreEqual(0, _ccQueue.Count,
+                "진행 방향이 없으면 밀 방향도 없다 — phantom impulse 를 쏘지 않는다");
+        }
+
+        // defender-knockback-on-impact unit 1 — 유도탄을 쏘는 유닛은 **발사 시점에 넉백을
+        // 걸지 않는다.** 화살이 맞는 순간 ProjectileHitSystem 이 건다. 이 단언이 무너지면
+        // 사거리 × 탄속만큼 넉백이 앞당겨지는 원래 증상이 되돌아온다.
+        [Test]
+        public void U3c_ProjectileDefender_DefersKnockbackToImpact()
+        {
+            var defender = CreateAttacker(
+                Faction.DefenderUnit, new float3(0f, 0f, 0f),
+                damage: 3f, range: 10f, cooldownDuration: 1f,
+                targetMask: (int)Faction.EnemyUnit,
+                defenderTag: true);
+            _em.AddComponentData(defender, new DefenderCcData
+            {
+                knockbackDistance = 2f,
+                knockbackDuration = 0.5f,
+            });
+            _em.AddComponentData(defender, new ProjectileRef
+            {
+                speed = 12f,
+                hitThreshold = 0.35f,
+                movement = MovementKind.HomingToEntity,
+                payload = PayloadKind.SingleSplash,
+            });
+
+            var enemy = CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+            _em.AddComponentData(enemy, new PathFollowState { lastMoveDir = new float2(-1f, 0f) });
+
+            Tick();
+
+            Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(defender), "유도탄은 발사된다");
+            Assert.AreEqual(0, _ccQueue.Count,
+                "넉백은 착탄까지 미뤄진다 — 발사 시점에 걸면 사거리만큼 먼저 밀린다");
         }
 
         // ─── U4: Defender with damageMul (×1.5 boost + ×2.0 synergy) and attackSpeedMul (×2) via ModifierStats ───

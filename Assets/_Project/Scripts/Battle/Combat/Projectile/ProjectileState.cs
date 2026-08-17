@@ -81,6 +81,18 @@ namespace Wassup.Battle.Combat.Projectile
         //                 elapsed 오프셋으로 대신할 수 없다 — 그건 수명도 앞당긴다.
         public float orbitPhase;
 
+        // ── Boomerang trajectory (MovementKind.BoomerangReturn, content-5) ────
+        // **전용 필드 0** — 전부 아래/위 슬롯을 빌린다:
+        //   origin      = 발사점(= 귀환점, 고정)  ·  speed = 선속도
+        //   direction   = **발사 축(불변)** ← DirectionalLinear 과 같은 슬롯·같은 의미
+        //   maxDistance = 편도 거리(월드)   ·  elapsed = 누적(도착 = 왕복 완료)
+        //   prevPos     = 직전 위치(PathHit 스윕)  ·  hitThreshold = 피격 반경
+        //
+        // ⚠ `direction` 은 이 궤적에서 **위치 계산의 입력**이다. 「돌아오는 중이니 뒤집자」로
+        // 갱신하면 다음 프레임이 발사점 뒤를 계산한다 — 궤도가 direction 을 매 프레임 쓰는
+        // 것과 정반대이므로(거긴 접선 = 파생값) 그 arm 을 복제하지 말 것.
+        // 「지금 어느 다리인가」는 **어디에도 저장하지 않는다**(content-5 계약 5).
+
         // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
         // Extra hold at the cell after travel completes (elapsed >= flightTime)
         // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no
@@ -112,6 +124,14 @@ namespace Wassup.Battle.Combat.Projectile
         // 시계는 이 투사체의 `elapsed` 다 — Battle 도메인 시계를 그대로 따라가고
         // 리플레이 결정론이 투사체 안에서 닫힌다. 소비는 unit 2(ProjectileHitSystem).
         public float rehitCooldownSec;
+
+        // dreamcatcher-content-5 unit 2 — 스친 적을 **그 프레임 진행 방향**으로 미는 넉백.
+        // 값은 탄 SO(ProjectileData.knockbackDistance/Duration)에서 드레인이 채우며,
+        // 여기에는 이미 **속도로 환산된** 값이 온다(거리÷시간). 0 = 꺼짐(기존 관통탄 무변화).
+        // 방향은 상태가 아니라 스윕(pos−prevPos)에서 뽑는다 — 왕복이 두 다리에서 반대 힘이
+        // 되는 것은 그 결과다. 소비는 ProjectileHitSystem 의 PathHit arm.
+        public float knockbackSpeed;
+        public float knockbackDuration;
 
         // ── Single-splash payload (PayloadKind.SingleSplash) ─────────────────
         public OnHitEffectType onHitEffect;

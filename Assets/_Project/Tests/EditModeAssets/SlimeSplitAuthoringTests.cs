@@ -142,7 +142,7 @@ namespace Wassup.Tests.EditMode
             string[] decks =
             {
                 "Deck_Serpent", "Deck_Coil", "Deck_Twin", "Deck_Spiral",
-                "Deck_Zig", "Deck_Hook", "Deck_Endless",
+                "Deck_Zig", "Deck_Hook",
             };
             foreach (string name in decks)
             {

@@ -149,6 +149,10 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(BindingClass.Cell, MovementBinding.Of(MovementKind.SkyFall));
             Assert.AreEqual(BindingClass.Cell, MovementBinding.Of(MovementKind.GrenadeToCell));
             Assert.AreEqual(BindingClass.Direction, MovementBinding.Of(MovementKind.DirectionalLinear));
+            // on-place-skill-rework unit 10 — **`SkyFall` 과 짝지어 고정한다.** 그림이 같아서
+            // 나중에 「낙하탄이니 Cell 이겠지」로 잘못 옮겨질 수 있는데, 그 순간 한 탄에 조준이
+            // 둘이 되어 예고 시간만큼 어긋난 그 결함(피해 0)이 되돌아온다.
+            Assert.AreEqual(BindingClass.Entity, MovementBinding.Of(MovementKind.SkyFallOnEntity));
         }
     }
 }

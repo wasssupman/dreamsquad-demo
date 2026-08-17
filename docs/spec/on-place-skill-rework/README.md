@@ -1,6 +1,10 @@
 # on-place-skill-rework — 배치 스킬을 공용 트리거×페이로드 위로 + 3종 재설계
 
-> 상태: **구현 완료 2026-08-16** (units 0~6). 사용자 육안 Play 확인 + 시트 `desc` 갱신 대기.
+> 상태: units 0~11 구현 완료 (9~11 = 2026-08-17, 커밋 `8995140e`, 사용자 육안 확인됨).
+> units 9~11 배경 — unit 8 이 넣은 임자 게이트가
+> 실전에서 회귀를 만들었다(예고 중 이동한 적에게 **피해 0**, 뭉친 적의 낙하가 한 발로 접힘).
+> 원인은 상수가 아니라 구조다: **탄 하나에 조준이 둘**(궤적=칸/발사시점, 페이로드=적/착탄시점).
+> 자세히는 `10_skyfall_on_target_axis.md`.
 > 인계: `7_handoff_summary.md`
 > rev3 = 투트랙 스펙 리뷰(설계 critic + ecs-reviewer, 양측 REQUEST CHANGES) 반영 +
 > 사용자 결정 2건(캐논 = 1:1 융단폭격 / 이관 방향 = 규칙으로 수렴, 이번 범위는 신규 2종).
@@ -66,6 +70,10 @@ Boss 고 게이트는 슬롯 유무다. 없는 것은 **`OnPlace` 트리거**와
 | 5 | 말파이트 | `5_malphite_stun.md` | 범위·지속 상향 + 띄움 길이 분리 (레거시 경로 잔존) |
 | 6 | 문안·검증 | `6_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
 | 7 | 인계 | `7_handoff_summary.md` | 커밋·계약·실측 요약 |
+| 8 | 캐논 rev | `8_visual_density_fanout.md` | 미사일 1발 = 적 1기 — 착탄에 임자(`target`) 게이트를 넣어 unit 1 의 «칸당 1발» 접기 제거 |
+| 9 | 재현 | `9_stale_aim_repro.md` | 낡은 조준을 빨갛게 — 예고 중 이동한 적에게 피해 0 · 같은 칸 착탄점 0.28타일. **가만히 있는 더미가 이 결함을 가렸다** |
+| 10 | 축 개통 | `10_skyfall_on_target_axis.md` | 근본 수정 — 「하늘낙하 × **적** 조준」 짝(`SkyFallOnTarget`)을 열어 탄의 조준을 하나로 되돌린다 |
+| 11 | 철거 | `11_remove_dual_aim.md` | unit 1 접기 · unit 8 게이트 · `SubCellOffset` 삭제(소비자 0). `TileAoe` 가 다시 순수 광역 |
 
 > 순서 근거: 0 → 1 → 2 가 캐논 사슬(0·1 은 각자 단독으로 아무 동작도 안 한다 —
 > `projectile-emission-pattern` unit 2 선례). 3 → 4 가 배스티온 사슬. 5 는 독립. 6 은 마지막.

@@ -38,7 +38,7 @@ MonoBehaviour:
   onHitDuration: 0
   splashRadius: 0
   splashDamageMul: 0.5
-  flightMode: 4
+  flightMode: 6
   arcHeight: 0
   impactTileRange: 0
   minFlightTime: 0

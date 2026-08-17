@@ -251,7 +251,13 @@ namespace Wassup.UI
             switch (payload.kind)
             {
                 case DcPayloadKind.ProjectileToTarget:
-                    effect = $"대상에게 추가 투사체 피해 {Count(payload.magnitude)}";
+                    // content-5 unit 3 — 이 payload 는 이제 **탄 에셋의 궤적을 따른다**.
+                    // 왕복(부메랑)은 «대상에게» 가 아니라 경로를 훑고 돌아오므로 문안이
+                    // 갈려야 한다 — 판정은 탄 SO 를 읽어서 하고 문자열에 수치를 복제하지 않는다.
+                    effect = payload.projectile != null
+                             && payload.projectile.flightMode == ProjectileFlightMode.Boomerang
+                        ? $"부메랑이 날아갔다 돌아오며 스치는 적에게 피해 {Count(payload.magnitude)}"
+                        : $"대상에게 추가 투사체 피해 {Count(payload.magnitude)}";
                     break;
                 case DcPayloadKind.SelfTileAoe:
                     // content-4 unit 0 — duration>0 = 낙하 예고(퇴근 운석). 기존 SelfTileAoe
@@ -286,9 +292,17 @@ namespace Wassup.UI
                     effect = $"대상에게 {StackLabel(payload.stackKind)} {Count(payload.magnitude)}스택"
                            + $" · {Duration(payload.duration)}";
                     break;
+                // berserker unit 1 — tileRange > 0 이면 재발동이 덮어쓰기가 아니라 **누적**이다
+                // (광란). 중첩과 상한을 말해주지 않으면 「+8%」만 보고 약한 카드로 읽힌다.
+                // 상한 %는 문자열에 박지 않고 저작값에서 뽑는다(제약 6) — 시트가 배율이나
+                // 중첩 중 하나만 바꿔도 문안이 따라간다.
                 case DcPayloadKind.SelfStatBuff:
+                    bool stacks = payload.tileRange > 0;
                     effect = $"{BuffLabel(payload.buffStat)} {SignedPercent(payload.magnitude)}";
-                    if (payload.duration > 0f) effect += $" · {Duration(payload.duration)}";
+                    if (stacks) effect += $" 중첩 (최대 {Count(payload.tileRange)}중첩";
+                    if (payload.duration > 0f)
+                        effect += stacks ? $" · {Duration(payload.duration)})" : $" · {Duration(payload.duration)}";
+                    else if (stacks) effect += ")";
                     else if (mechanic.trigger.kind == DcTriggerKind.HealthThreshold)
                         effect += " · 전투 중 1회";
                     else effect += " · 남은 전투 동안";
@@ -306,6 +320,23 @@ namespace Wassup.UI
                     effect = $"주위를 도는 화염구 {Duration(payload.duration)}"
                            + $" · 스치는 적에게 피해 {Count(payload.magnitude)}";
                     break;
+                // content-5 unit 4 — 잿불(장판 설치). **수치를 하나도 적지 않는다** — 피해·
+                // 지속·반경이 전부 해저드 SO 소유라 여기서 읽으면 문자열 복제가 된다(제약 6).
+                // 카드가 말할 수 있는 것은 「무슨 일이 일어나는가」뿐이다.
+                case DcPayloadKind.SpawnHazard:
+                    effect = "그 자리에 불씨를 남긴다";
+                    break;
+                // content-5 unit 5 — 발사 명세. 발수·피해는 **패턴 SO 에서 읽는다**(문자열
+                // 복제 금지 — 제약 6). 「어떻게 흩어지나」는 selection/재추첨 조합이라
+                // 문안으로 옮기지 않는다 — 눈으로 보이는 사실만 적는다.
+                case DcPayloadKind.EmitProjectilePattern:
+                {
+                    var pat = payload.pattern;
+                    if (pat == null) return false;
+                    int shotCount = pat.shots != null ? pat.shots.Length : 0;
+                    effect = $"주변 적에게 {Count(shotCount)}발 발사 · 발당 피해 {Count(pat.damage)}";
+                    break;
+                }
                 default:
                     return false;
             }

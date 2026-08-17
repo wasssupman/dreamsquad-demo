@@ -1,9 +1,12 @@
 using NUnit.Framework;
+using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
@@ -109,6 +112,84 @@ namespace Wassup.Tests.EditMode
             var buffer = _em.GetBuffer<IncomingDamage>(target);
             Assert.AreEqual(1, buffer.Length);
             Assert.AreEqual(42f, buffer[0].amount, 1e-3f);
+        }
+
+        // defender-knockback-on-impact unit 1 — 사용자 증상: "넉백이 발사 시점에 걸리는 느낌".
+        // 실제로 그랬다 — 유닛 넉백은 AttackSystem 이 공격 성사 순간에 걸었고 화살은 그때
+        // 막 출발했다. 이 테스트가 단언하는 것은 **증상 그대로**다: 화살이 맞는 그 순간에
+        // 넉백이 나고, 방향은 적이 가던 방향의 반대다.
+        [Test]
+        public void Hit_EmitsOwnerKnockback_OppositeVictimTravel()
+        {
+            var ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
+            try
+            {
+                var ccSingleton = _em.CreateEntity();
+                _em.AddComponentData(ccSingleton, new EnemyCcEventsSingleton { queue = ccQueue });
+
+                // 사수 = 넉백을 저작한 방어유닛. 넉백은 유닛 소유라 화살 SO 가 아니라
+                // 여기(DefenderCcData)에서 나온다.
+                var shooter = _em.CreateEntity();
+                _em.AddComponentData(shooter, LocalTransform.FromPosition(new float3(-5f, 0f, 0f)));
+                _em.AddComponent<DefenderUnitTag>(shooter);
+                _em.AddComponentData(shooter, new DefenderCcData
+                {
+                    knockbackDistance = 0.3f,
+                    knockbackDuration = 0.08f,
+                });
+
+                // 적은 +Z 로 걷는 중 → 밀리는 방향은 −Z 여야 한다.
+                var target = MakeTarget(new float3(0.1f, 0f, 0f));
+                _em.AddComponentData(target, new PathFollowState { lastMoveDir = new float2(0f, 1f) });
+
+                var proj = MakeProjectile(new float3(0f, 0f, 0f), target, speed: 100f, damage: 7f, hitThreshold: 0.5f);
+                var st = _em.GetComponentData<ProjectileState>(proj);
+                st.owner = shooter;
+                _em.SetComponentData(proj, st);
+
+                Tick(0.016f);
+
+                Assert.AreEqual(1, ccQueue.Count, "착탄 순간에 넉백이 한 번 난다");
+                var ev = ccQueue.Dequeue();
+                Assert.AreEqual(target, ev.target);
+                Assert.AreEqual(CcKind.Impulse, ev.effect.kind);
+                // 속력 = 거리 ÷ 지속 = 0.3 / 0.08 = 3.75, 방향 = 진행(+Z)의 반대(−Z).
+                Assert.AreEqual(-3.75f, ev.effect.vector.z, 1e-3f, "적이 가던 방향의 반대로 민다");
+                Assert.AreEqual(0f, ev.effect.vector.x, 1e-3f);
+                Assert.AreEqual(0.08f, ev.effect.remainingTime, 1e-4f);
+            }
+            finally { ccQueue.Dispose(); }
+        }
+
+        // 사수가 넉백을 저작하지 않았으면 착탄해도 아무도 밀지 않는다 — 기존 투사체 전부
+        // (마크스맨이 같은 화살을 쓴다)가 이 경로로 무변화임을 고정한다.
+        [Test]
+        public void Hit_WithoutOwnerKnockbackAuthoring_EmitsNothing()
+        {
+            var ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
+            try
+            {
+                var ccSingleton = _em.CreateEntity();
+                _em.AddComponentData(ccSingleton, new EnemyCcEventsSingleton { queue = ccQueue });
+
+                var shooter = _em.CreateEntity();
+                _em.AddComponentData(shooter, LocalTransform.FromPosition(new float3(-5f, 0f, 0f)));
+                _em.AddComponent<DefenderUnitTag>(shooter);
+                _em.AddComponentData(shooter, new DefenderCcData()); // 넉백 미저작
+
+                var target = MakeTarget(new float3(0.1f, 0f, 0f));
+                _em.AddComponentData(target, new PathFollowState { lastMoveDir = new float2(0f, 1f) });
+
+                var proj = MakeProjectile(new float3(0f, 0f, 0f), target, speed: 100f, damage: 7f, hitThreshold: 0.5f);
+                var st = _em.GetComponentData<ProjectileState>(proj);
+                st.owner = shooter;
+                _em.SetComponentData(proj, st);
+
+                Tick(0.016f);
+
+                Assert.AreEqual(0, ccQueue.Count, "넉백 미저작 투사체는 아무도 밀지 않는다");
+            }
+            finally { ccQueue.Dispose(); }
         }
 
         [Test]

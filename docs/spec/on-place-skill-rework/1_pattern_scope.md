@@ -92,6 +92,9 @@ static int Filter(in NativeArray<int2> candidateCells, int2 hostCell, int tileRa
   ⚠ 처음엔 「1:1 이라 접으면 한 명이 공짜로 산다」로 아예 안 접었는데, **그 전제가 셀
   바인딩에서 거짓**이었다(리뷰 지적 → 실측): `TileAoe` 는 `impactTileRange 0` 이어도 그 칸
   전원을 때리므로 접어도 아무도 안 살고, 안 접으면 오히려 **각자 N배**를 맞는다(2기 → 각 160).
+  ⚠ **접기는 unit 8 에서 없어졌다** — 원인이 발사가 아니라 착탄에 있었기 때문이다(각 발이
+  임자 `target` 을 싣고 `TileAoe` 팔이 그 적만 고른다). 이 함수 자체는 그때도 안 바뀌었다.
+  현행 계약은 `8_visual_density_fanout.md` 가 소유한다.
 - 결과는 **원본 index 오름차순**이다.
 
 ### emitter 결선

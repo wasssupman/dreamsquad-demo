@@ -217,6 +217,40 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
+                    case MovementKind.SkyFallOnEntity:
+                    {
+                        // on-place-skill-rework unit 10 — 위 SkyFall 과 **그림은 같고 조준이
+                        // 다르다**: 이 궤적은 Entity 바인딩이라 위치가 임자의 live 위치를 따른다.
+                        // HomingToEntity 가 그러는 것과 같은 이유이며 예외가 아니라 바인딩의
+                        // 정의다 — 「임자가 실렸으면 추적한다」를 셀 궤적에 특례로 얹으면 한 탄에
+                        // 조준이 둘로 남는다(unit 8 결함의 재발).
+                        //
+                        // sim 은 XZ 만 붙인다. 낙하 높이는 뷰가 arcHeight 로 더한다
+                        // (BoardSpace 가 sim-Y 를 drop 하므로 — SkyFall 과 같은 규약).
+                        // 도착은 **시간**이다: 예고 = flightTime. 거리로 도착을 판정하면
+                        // (HomingToEntity 처럼) 위치가 이미 임자에 붙어 있어 첫 프레임에 터진다.
+                        float fallElapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = fallElapsed;
+
+                        var fallTarget = projectile.ValueRO.target;
+                        // ⚠ 대상이 사라졌으면 **파괴하지 않고** 마지막 조준점에 그대로 떨어뜨린다.
+                        // 예고를 띄운 뒤 조용히 지우면 화면에서 미사일이 공중에서 증발한다.
+                        // 피해는 SingleSplash 팔이 대상 부재로 알아서 0 이 된다(이미 죽은 적).
+                        if (fallTarget != Entity.Null && transformLookup.HasComponent(fallTarget)
+                            && !deadLookup.HasComponent(fallTarget))
+                        {
+                            float3 tp = transformLookup[fallTarget].Position;
+                            float keepY = transform.ValueRO.Position.y;
+                            transform.ValueRW.Position = new float3(tp.x, keepY, tp.z);
+                            // 뷰의 착탄 연출(hit VFX 위치)도 같은 점을 봐야 한다.
+                            projectile.ValueRW.impact = new float3(tp.x, keepY, tp.z);
+                        }
+
+                        if (SkyFall.Arrived(fallElapsed, projectile.ValueRO.flightTime))
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
                     case MovementKind.DirectionalLinear:
                     {
                         // defender-directional-volley unit 2 — straight flight along
@@ -283,6 +317,26 @@ namespace Wassup.Battle.Combat.Projectile
                         // ⚠ 첫 프레임의 선분만 중심 → 궤도 위 첫 점(반경 길이의 방사선)이다:
                         // 드레인이 투사체를 궤도 중심에 스폰하기 때문. 화면도 같은 프레임에
                         // 같은 점프를 보이므로 스윕은 눈에 보이는 궤적과 일치한다(정직한 선분).
+                        // dreamcatcher-content-5 — **주인이 사라지면 구슬도 사라진다.**
+                        // content-4 계약 2 는 그 반대였다("host 가 죽거나 퇴근해도 이미 나간
+                        // 화염구는 자기 수명을 산다") — 궤적이 발사 시점 고정점을 돌기 때문에
+                        // 코드상 성립하는 동작이었고, 그때는 그걸 계약으로 적었다.
+                        // 실제로 보면 **주인 없는 자리에서 혼자 도는 구슬**이라 뒤집는다
+                        // (2026-08-17 사용자 결정).
+                        //
+                        // 궤도에만 거는 이유: 이 궤적은 «누구 주위를 돈다» 가 정의라 주인이
+                        // 없으면 의미가 없다. 나머지 궤적(직선·왕복·호밍)은 던지면 제 갈 길을
+                        // 가는 것이 사양이므로 여기 끌어들이지 않는다.
+                        // 퇴근도 같은 경로로 덮인다 — 퇴근은 엔티티를 파괴하므로 HasComponent 가 거짓이 된다.
+                        var orbitOwner = projectile.ValueRO.owner;
+                        if (orbitOwner != Entity.Null
+                            && (!transformLookup.HasComponent(orbitOwner)
+                                || deadLookup.HasComponent(orbitOwner)))
+                        {
+                            ecb.DestroyEntity(entity);
+                            break;
+                        }
+
                         float3 currentPos = transform.ValueRO.Position;
                         projectile.ValueRW.prevPos = currentPos;
 
@@ -304,6 +358,39 @@ namespace Wassup.Battle.Combat.Projectile
                         // 각속도는 여기서 클램프하지 않는다: 프레임당 회전각 상한은 저작이
                         // 지고(문서 §4-1), 코드로 조이면 저프레임에서 궤도가 느려진다.
                         if (elapsed >= projectile.ValueRO.flightTime)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
+                    case MovementKind.BoomerangReturn:
+                    {
+                        // dreamcatcher-content-5 unit 1 — 발사 축을 따라 나갔다 돌아온다.
+                        // 타겟도 착탄 셀도 없다: 발사점(origin) · 축(direction) ·
+                        // 편도 거리(maxDistance) · 선속도(speed)가 궤적의 전부다.
+                        //
+                        // prevPos 를 스텝 **전에** 찍는 것은 DirectionalLinear·Orbit 과
+                        // 공유하는 규약 — PathHit 이 그 선분을 스윕한다.
+                        float3 currentPos = transform.ValueRO.Position;
+                        projectile.ValueRW.prevPos = currentPos;
+
+                        float elapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = elapsed;
+                        transform.ValueRW.Position = Boomerang.Position(
+                            projectile.ValueRO.origin, projectile.ValueRO.direction,
+                            projectile.ValueRO.maxDistance, projectile.ValueRO.speed,
+                            elapsed, out _);
+
+                        // ⚠ **`direction` 을 쓰지 않는다.** 궤도 arm 이 바로 위에서 매 프레임
+                        // 접선을 써 넣는 것과 정반대이며, 그 형태를 여기 복제하면 궤적이
+                        // 깨진다 — 이 궤적에서 direction 은 위 Position 의 **입력**이라
+                        // 되먹이는 순간 다음 프레임이 발사점 뒤를 계산한다.
+                        // 진행 방향이 필요한 곳(넉백)은 히트 시스템이 스윕(pos−prevPos)에서
+                        // 뽑고, 화면 facing 은 뷰가 직전 위치와의 차이로 만든다(계약 5).
+
+                        // 도착 = "비행 종료"(왕복 완료)이지 "착탄"이 아니다 — PathHit 이
+                        // 이번 프레임 스윕을 마친 뒤 소멸시킨다.
+                        if (Boomerang.IsComplete(projectile.ValueRO.maxDistance,
+                                                 projectile.ValueRO.speed, elapsed))
                             projectile.ValueRW.impactReached = true;
                         break;
                     }

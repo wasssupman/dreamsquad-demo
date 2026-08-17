@@ -174,6 +174,23 @@ namespace Wassup.Data
         // 실행은 어그로 획득 요청 큐(AggroAcquireEvent, kind=Taunt)로 넘기고 게이트 판정은
         // 전부 AggroStateSystem(Effects)이 소유한다 — 여기서 복제하면 둘이 갈린다. append-only.
         AreaTaunt = 23,
+        // dreamcatcher-content-5 unit 4 — 장판 설치(잿불). `OnKill` 과 쓴다 —
+        // 처치한 **그 자리**에 해저드를 깐다(시체폭발 `OnKill × SelfTileAoe` 가 이미
+        // 죽은 자리에서 터지는 선례와 같은 형태: 킬 이벤트 스탬프 → 브리지 드레인).
+        //
+        // **신규 payload 스칼라 0** — 카드는 「어떤 불씨를」만 말한다:
+        //   hazard = 깔 장판 SO. 모양·반경·**지속**·효과·틱·뷰가 전부 그 SO 소유다.
+        //
+        // ⚠ **지속을 카드에 싣지 않은 것은 의도다.** 해저드 수명은 sim(Hazard.remainingLife)
+        // 과 뷰(HazardVisualLifetime)가 **둘 다 SO 값을 직접 읽고** 오버라이드 파라미터가
+        // 없다. 뚫으려면 Effects 맥락의 스폰 시그니처까지 바꿔야 하는데 소비자는 카드
+        // 한 장뿐이라 과잉이고(제약 8), 무엇보다 한쪽만 밀면 **심과 뷰의 수명이 갈린다**.
+        // 다른 지속이 필요하면 SO 를 복제해 가른다(탄 SO 복제 관례와 동일).
+        //
+        // ⚠ 스폰은 **브리지 전용 행위**다 — SO·머티리얼·뷰 프리팹이 필요해 sim 이 만들 수
+        // 없다(SplitOnDeath 가 전용 큐·레지스트리를 전부 걷어낸 것과 같은 이유).
+        // append-only.
+        SpawnHazard = 24,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -311,6 +328,11 @@ namespace Wassup.Data
         // 개수를 그중 하나에 겸직시키면 읽는 쪽이 «이게 반경인가 개수인가» 를 매번 되묻는다.
         // 배치는 위상 균등 분할(2π/n) — 같은 궤도·같은 수명, 시작 각도만 어긋난다.
         public int orbitCount;
+        // dreamcatcher-content-5 unit 0 — SpawnHazard 전용. 깔 장판 SO.
+        // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern·stackModifier·splitUnit
+        // 선례와 동일하다 — 금지 대상은 Entities/Battle 타입이고 HazardSO 는 같은 Wassup.Data
+        // 다. null = bake 가 loud 거절. 다른 kind 는 무시.
+        public HazardSO hazard;
         // elite-enemy-tier unit 4 — AreaBreath 전용 반각(도). 정의역 (0, 90) — 위 kind 주석 참조.
         // `duration` 에 겸직시키지 않는다: 그 필드는 이미 3개 kind 가 «시간» 으로 쓰고 있어
         // 겸직하면 «시간인 줄 알고» 읽는 코드가 생긴다(slamDamage 가 명시 필드가 된 선례와 같은
