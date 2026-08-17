@@ -417,9 +417,88 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(air, $"{name}: 본편에 공습이 없다 — 이 spec 의 출발 증상 재발");
         }
 
+        // 사용자 결정 2026-08-17 — «본편에 보스 제외 모든 적이 각 웨이브 타입에 맞게 섞여 나온다».
+        // 컨셉 다양성만으로는 부족했다: Bruiser 5종이 무필터 「평소」로만 들어와, 시드가 컨셉을
+        // 고르게 돌리면 오히려 Bruiser 문이 좁아져 Whirlpot·Heartseeker 가 본편에서 사라졌다
+        // (사용자 Play 제보). 「중장」에 Bruiser 본 슬롯을 준 뒤 이 술어로 시드를 골랐다.
+        // 보스는 bossPool 소속(후처리 삽입)이라 카운트에서 뺀다 — 안 빼면 보스 웨이브가
+        // 종류 하나를 대신 채워 14종을 15종으로 오판한다.
+        [Test]
+        public void SiegeDecks_MainPhase_ShowsEveryNonBossEnemy(
+            [ValueSource(nameof(SiegeDecks))] string name)
+        {
+            var deck = Deck(name);
+            var plan = Plan(name, StructurePlacements.SiegeSpawnOffsets.Length);
+            int breakWave = deck.waveRampBreakWave;
+            int mainWaves = breakWave >= 2 ? breakWave - 1 : 15;
+
+            var seen = new HashSet<AttackUnitData>();
+            for (int i = 0; i < mainWaves && i < plan.waves.Count; i++)
+                foreach (var g in plan.waves[i].groups)
+                    if (g.unit != null && System.Array.IndexOf(deck.attackUnitPool, g.unit) >= 0)
+                        seen.Add(g.unit);
+
+            var missing = new List<string>();
+            foreach (var u in deck.attackUnitPool)
+                if (u != null && !seen.Contains(u)) missing.Add(u.id);
+            Assert.IsEmpty(missing,
+                $"{name}: 본편(w1~{mainWaves})에 안 나오는 적이 있다 — {string.Join(", ", missing)}. " +
+                "그 적의 클래스를 받는 컨셉 슬롯이 있는지 확인하고, 없으면 슬롯을 주거나 시드를 다시 골라라 " +
+                "(Scan_FullRosterSeeds)");
+        }
+
         // 시드 재도출 스캐너(수동 실행 전용). 오프라인 포트는 PickConcept 룰렛의 float32 누적
         // 경계에서 시드별로 어긋날 수 있다 — **시드 선정은 반드시 이 스캐너(실제 생성기)로**.
         // 공성 3덱은 풀·파라미터가 같아 후보가 서로 통용된다. 결과는 Debug.Log.
+        // «w1~break-1 에 보스 제외 풀 전 종 등장» 시드 탐색. 상살툴(리팼 없이 생성기가
+        // 정본). 공성 3덱은 풀·파라밌턼가 같아 후보가 서로 통용된다.
+        [Test, Explicit("시드 재선정 때만 수동 실행")]
+        public void Scan_FullRosterSeeds()
+        {
+            int lanes = StructurePlacements.SiegeSpawnOffsets.Length;
+            var deck = Deck("Deck_Duel");
+            int poolSize = deck.attackUnitPool.Length;
+            int breakWave = deck.waveRampBreakWave;
+            int mainWaves = breakWave >= 2 ? breakWave - 1 : 15;
+            int best = 0, hits = 0;
+            for (int seed = 20260850; seed <= 20264000; seed++)
+            {
+                var plan = WavePatternGenerator.Generate(deck, seed, lanes);
+                var seen = new HashSet<string>();
+                var labels = new HashSet<string>();
+                for (int i = 0; i < mainWaves && i < plan.waves.Count; i++)
+                {
+                    labels.Add(plan.waves[i].conceptLabel);
+                    foreach (var g in plan.waves[i].groups)
+                        // 보스는 풀 밖(bossPool)에서 후처리로 끼므로 제외한다 — 안 빼면
+                        // 보스 웨이브(w9)가 종류 하나를 대신 채워 14종을 15종으로 오판한다.
+                        if (g.unit != null && System.Array.IndexOf(deck.attackUnitPool, g.unit) >= 0)
+                            seen.Add(g.unit.id);
+                }
+                if (seen.Count > best)
+                {
+                    best = seen.Count;
+                    var miss = new List<string>();
+                    foreach (var u in deck.attackUnitPool)
+                        if (u != null && !seen.Contains(u.id)) miss.Add(u.id);
+                    UnityEngine.Debug.Log($"[RosterScan] best {seed}: {seen.Count}/{poolSize} 종, 컨셉 {labels.Count} " +
+                        $"| 미등장: {string.Join(",", miss)}");
+                }
+                if (seen.Count == poolSize && labels.Count >= 4 && labels.Contains("공습"))
+                {
+                    hits++;
+                    if (hits <= 14)
+                    {
+                        var seq = new StringBuilder();
+                        for (int i = 0; i < mainWaves && i < plan.waves.Count; i += 3)
+                            seq.Append(plan.waves[i].conceptLabel).Append('>');
+                        UnityEngine.Debug.Log($"[RosterScan] FULL {seed}: 컨셉 {labels.Count}종 {seq}");
+                    }
+                }
+            }
+            UnityEngine.Debug.Log($"[RosterScan] mainWaves={mainWaves} poolSize={poolSize} 최대달성={best} 전종시드={hits}");
+        }
+
         // ⚠ MCP 러너의 test_names 필터는 Explicit 를 선택하지 못한다 — 재수확이 필요하면
         // Explicit 를 잠시 떼고 이름으로 실행한 뒤 되돌려라(Unity Test Runner 창에서는 그대로
         // 더블클릭 실행 가능).
