@@ -374,7 +374,10 @@ namespace Wassup.Tests.EditMode
             const int w = 8, h = 6; int n = w * h;
             var tiles = new MapTileType[n];
             for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
-            for (int x = 0; x < w; x++) tiles[3 * w + x] = MapTileType.Walk;
+            // siege-lane-spawn unit 0 — 파생 스폰이 마음의 하단/상단 셀이라 복도가 3줄(y=2..4)
+            // 이어야 스폰 클러스터가 Walk 다. 구 픽스처(한 줄 y=3)는 마음 셀 스폰 시절의 것.
+            for (int x = 0; x < w; x++)
+                for (int y = 2; y <= 4; y++) tiles[y * w + x] = MapTileType.Walk;
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(w, h, tiles,
@@ -386,11 +389,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SiegeDoc_EnemyCoreCell_BecomesTheSpawn_AndPassesConnectivity()
+        public void SiegeDoc_EnemyCoreFlanks_BecomeTheSpawns_AndPassConnectivity()
         {
             var core = ScriptableObject.CreateInstance<StructureData>();
             core.kind = StructureKind.Core;
-            // 공성 문서: spawns 미저작(빈 배열) + 적 마음 1 (Walk 복도 y=3 위).
+            // 공성 문서: spawns 미저작(빈 배열) + 적 마음 1 (Walk 복도 y=2..4 가운데).
             var doc = BuildDocumentWithSpawns(new Vector2Int[0], new[]
             {
                 new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Enemy, data = core },
@@ -398,10 +401,13 @@ namespace Wassup.Tests.EditMode
             try
             {
                 using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
-                Assert.AreEqual(1, map.spawns.Length, "적 마음 1 = 스폰 1 (파생)");
-                Assert.AreEqual(new int2(0, 3), map.spawns[0], "스폰 = 적 마음 셀");
+                // siege-lane-spawn unit 0 — 파생 스폰 = 마음의 하단·상단 2셀. 순서가 곧 레인
+                // 번호라(하단 = lane 0) 여기서 pin 한다 — 뒤집히면 레인별 spawnRoutes 가 서로 바뀐다.
+                Assert.AreEqual(2, map.spawns.Length, "적 마음 1 = 파생 스폰 2 (하단·상단)");
+                Assert.AreEqual(new int2(0, 2), map.spawns[0], "하단(y−1) 먼저 = lane 0");
+                Assert.AreEqual(new int2(0, 4), map.spawns[1], "상단(y+1) = lane 1");
                 Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map),
-                    "공성 문서가 처음으로 연결성을 통과한다 — unit 3 M-b 의 전제가 풀렸다");
+                    "파생 스폰 둘 다에서 골까지 가야 한다");
             }
             finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
         }
@@ -418,8 +424,9 @@ namespace Wassup.Tests.EditMode
             try
             {
                 using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
-                Assert.AreEqual(1, map.spawns.Length, "표현 불가능해야 할 상태를 런타임에서도 화해시킨다");
-                Assert.AreEqual(new int2(0, 3), map.spawns[0]);
+                Assert.AreEqual(2, map.spawns.Length, "표현 불가능해야 할 상태를 런타임에서도 화해시킨다");
+                Assert.AreEqual(new int2(0, 2), map.spawns[0]);
+                Assert.AreEqual(new int2(0, 4), map.spawns[1]);
             }
             finally { Object.DestroyImmediate(doc); Object.DestroyImmediate(core); }
         }
@@ -457,16 +464,20 @@ namespace Wassup.Tests.EditMode
                 {
                     new StructureEntry { cell = new Vector2Int(2, 2), side = StructureSide.Enemy, data = core },
                 }, w, h, errs, tiles);
-                Assert.AreEqual(1, errs.Count,
-                    "적 마음 = 파생 스폰 — Walk 가 아니면 연결성이 런타임 hard-fail 하므로 저작에서 잡는다");
+                // siege-lane-spawn unit 0 — 스폰 클러스터 = 마음·하단·상단 3셀. 셋 다 비-Walk 라
+                // 셀별 에러 3건 — 연결성 런타임 hard-fail 을 저작에서 잡는다.
+                Assert.AreEqual(3, errs.Count,
+                    "스폰 클러스터(마음·하단·상단) 3셀이 전부 비-Walk 면 셀별로 잡힌다");
 
                 errs.Clear();
-                tiles[2 * w + 2] = MapTileType.Walk;
+                tiles[1 * w + 2] = MapTileType.Walk;   // 하단
+                tiles[2 * w + 2] = MapTileType.Walk;   // 마음
+                tiles[3 * w + 2] = MapTileType.Walk;   // 상단
                 StructureAuthoringRules.ValidateStructures(new[]
                 {
                     new StructureEntry { cell = new Vector2Int(2, 2), side = StructureSide.Enemy, data = core },
                 }, w, h, errs, tiles);
-                Assert.IsEmpty(errs, "Walk 위 적 마음은 통과");
+                Assert.IsEmpty(errs, "스폰 클러스터 3셀이 Walk 면 통과");
             }
             finally { Object.DestroyImmediate(core); }
         }

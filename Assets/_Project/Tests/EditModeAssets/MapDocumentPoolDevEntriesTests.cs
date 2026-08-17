@@ -224,8 +224,14 @@ namespace Wassup.Tests.EditMode
             var map = MapDocumentBuilder.ToGeneratedMap(doc, Unity.Collections.Allocator.Temp);
             try
             {
-                Assert.AreEqual(1, map.spawns.Length, "② 파생 스폰은 적 마음 1기다");
-                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "⑦ 적 마음에서 골까지 못 간다");
+                // siege-lane-spawn unit 0 — 파생 스폰 = 마음의 하단·상단 2셀, 순서가 곧 레인 번호.
+                // 뒤집히면 레인별 spawnRoutes 가 서로 바뀌므로 순서를 실 맵에서도 pin 한다.
+                Assert.AreEqual(2, map.spawns.Length, "② 파생 스폰 = 마음 하단·상단 2셀");
+                Assert.AreEqual(new Unity.Mathematics.int2(heart.x, heart.y - 1), map.spawns[0],
+                    "파생 순서 = 하단(y−1) 먼저 = lane 0");
+                Assert.AreEqual(new Unity.Mathematics.int2(heart.x, heart.y + 1), map.spawns[1],
+                    "상단(y+1) = lane 1");
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(map), "⑦ 파생 스폰 둘 다에서 골까지 가야 한다");
             }
             finally { map.Dispose(); }
         }

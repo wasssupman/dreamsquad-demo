@@ -193,7 +193,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(Entity.Null, e);
             Assert.AreEqual(Faction.EnemyCore, em.GetComponentData<FactionTag>(e).value);
             Assert.IsFalse(em.HasBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e),
-                "마음은 1×1 이라 다중 셀 점유 선언이 없다 — 적 마음은 스폰 셀이기도 하다");
+                "마음은 1×1 이라 다중 셀 점유 선언이 없다");
             Assert.IsFalse(em.HasComponent<GoalTowerTag>(e),
                 "적 마음은 패배 판정(GoalTowerTag 부재 감지) 밖이다");
             AssertStructureHasNoEffectBuffers(em, e);

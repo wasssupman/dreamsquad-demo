@@ -123,12 +123,27 @@ namespace Wassup.Data
                     || s.cell.y - half < 0 || s.cell.y + half >= height)
                     errors.Add($"거점 {s.cell}({s.data.kind}) 이 격자를 벗어난다 (반경 {half}, 격자 {width}×{height})");
 
-                // 적 마음 = 파생 스폰(unit 6) — Walk 가 아니면 연결성이 런타임 hard-fail.
-                if (faction == Wassup.Battle.Units.Faction.EnemyCore
-                    && tiles != null && tiles.Count == width * height
-                    && s.cell.x >= 0 && s.cell.x < width && s.cell.y >= 0 && s.cell.y < height
-                    && tiles[s.cell.y * width + s.cell.x] != MapTileType.Walk)
-                    errors.Add($"적 마음 {s.cell} 이 Walk 셀이 아니다 — 공성 스폰 지점은 Walk 여야 한다");
+                // 적 마음 → 파생 스폰 = 마음의 하단(y−1)·상단(y+1) 셀(siege-lane-spawn unit 0,
+                // MapDocumentBuilder 와 같은 규칙). 스폰 클러스터(마음·하단·상단) 3셀이 Walk 가
+                // 아니면 연결성 BFS 가 도달 못 해 런타임 hard-fail. 상/하단이 격자 밖이면 파생
+                // 자체가 불가능하다 — 이건 타일과 무관한 기하 규칙이라 tiles 없이도 검사한다.
+                if (faction == Wassup.Battle.Units.Faction.EnemyCore)
+                {
+                    if (s.cell.y - 1 < 0 || s.cell.y + 1 >= height)
+                        errors.Add($"적 마음 {s.cell} 의 상/하단이 격자를 벗어난다 — 파생 스폰(마음 y±1)이 불가능하다");
+                    else if (tiles != null && tiles.Count == width * height
+                        && s.cell.x >= 0 && s.cell.x < width)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            int sy = s.cell.y + dy;
+                            if (tiles[sy * width + s.cell.x] == MapTileType.Walk) continue;
+                            errors.Add(dy == 0
+                                ? $"적 마음 {s.cell} 이 Walk 셀이 아니다 — 스폰 클러스터(마음·하단·상단)는 Walk 여야 한다"
+                                : $"적 마음 {s.cell} 의 {(dy < 0 ? "하단" : "상단")} ({s.cell.x},{sy}) 이 Walk 가 아니다 — 파생 스폰 셀이다");
+                        }
+                    }
+                }
 
                 // 리뷰 M-8 — 아군 사격 저작 함정. SO 의 targetFactions 는 진영을 모르고
                 // (기본 DefenderUnit = 적 본능용 포탑), 진영은 배치가 정한다 — 그래서

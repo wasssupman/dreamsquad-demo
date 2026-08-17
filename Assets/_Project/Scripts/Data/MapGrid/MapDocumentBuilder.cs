@@ -130,11 +130,22 @@ namespace Wassup.Data.MapGrid
             if (enemyCoreCount > 0)
             {
                 spawns.Dispose();
-                spawns = new NativeArray<int2>(enemyCoreCount, allocator);
+                // siege-lane-spawn unit 0 — 파생 스폰 = 마음 셀이 아니라 그 **하단(y−1)·상단(y+1)**
+                // 2셀이다. 순서 계약: [하단, 상단] = lane 0, 1 — spawnRoutes 인덱스·레인 번호·스폰
+                // 예고가 이 순서를 공유한다(테스트 pin). 단일 스폰(마음 셀)은 반 칸 어긋난 미러축
+                // (격자 높이 짝수 = 축이 y+0.5) 때문에 항상 한쪽 통로가 최단이 되어 전 웨이브가 한
+                // 줄로 왔다 — 플로우 필드는 결정론이라 동률이어도 갈라지지 않으므로, 스폰을 나누는
+                // 것이 유일한 분산 수단이다. Walk/경계 보장은 저작 검증(ValidateStructures) 몫 —
+                // 파생은 여기서도 기계적으로만 처리한다.
+                spawns = new NativeArray<int2>(enemyCoreCount * 2, allocator);
                 int sw = 0;
                 for (int i = 0; i < structures.Length; i++)
                     if (structures[i].faction == Wassup.Battle.Units.Faction.EnemyCore)
-                        spawns[sw++] = structures[i].cell;
+                    {
+                        var heart = structures[i].cell;
+                        spawns[sw++] = new int2(heart.x, heart.y - 1);
+                        spawns[sw++] = new int2(heart.x, heart.y + 1);
+                    }
 
                 // waypoint-routing unit 8 — 파생 스폰에는 저작 레인 경로가 없다. spawnRoutes 는
                 // «미생성 이거나 정확히 spawns 길이» 라는 불변식을 갖는데(RouteForSpawn 의 전제),
