@@ -55,7 +55,7 @@ MonoBehaviour:
   retireCooldownRatio: 0.4
   maxOnBoard: 1
   targetAllies: 0
-  attackTargetLayers: 2
+  attackTargetLayers: 6
   targetFactions: 98
   abilities: []
   rarity: 2

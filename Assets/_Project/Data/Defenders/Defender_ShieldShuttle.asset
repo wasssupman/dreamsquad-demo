@@ -52,7 +52,7 @@ MonoBehaviour:
   cost: 4
   placementCooldown: 4
   targetAllies: 0
-  attackTargetLayers: 2
+  attackTargetLayers: 6
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}

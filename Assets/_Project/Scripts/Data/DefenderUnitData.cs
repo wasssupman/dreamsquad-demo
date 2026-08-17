@@ -167,7 +167,12 @@ namespace Wassup.Data
         // 기존 에셋의 미저작 필드는 이니셜라이저 Path가 남고, 명시적 None도 Path로
         // 폴백한다. 지원형(targetAllies)은 Bridge가 런타임 마스크 0으로 구워 이 필드를
         // 무시한다 — 아군 방어유닛은 PathFollowState가 없는 고정 유닛이기 때문이다.
-        [Tooltip("이 유닛의 공격이 맞힐 수 있는 적 통행층. 기존 유닛은 Path, 대공 유닛은 Air.")]
+        // 2026-08-17 사용자 결정 — 방어유닛의 기본은 «지상+공중 둘 다»(Path|Air) 다.
+        // 지상 전용(Path)으로 남는 것은 아틸러리·폭탄맨 둘뿐이며, 그 둘의 착탄이 지면
+        // 폭발이라는 점이 예외의 근거다. 이니셜라이저는 Path 그대로 둔다 — 여기 있는
+        // 27개 에셋이 전부 키를 명시하고 있어 이 값은 신규 저작에만 닿고, 신규 유닛의
+        // 기본을 바꾸는 것은 별도 결정이다.
+        [Tooltip("이 유닛의 공격이 맞힐 수 있는 적 통행층. 기본은 Path|Air(지상+공중). 지상 전용은 아틸러리·폭탄맨뿐.")]
         public PlacementLayer attackTargetLayers = PlacementLayer.Path;
         public PlacementLayer EffectiveAttackTargetLayers
             => attackTargetLayers == PlacementLayer.None ? PlacementLayer.Path : attackTargetLayers;

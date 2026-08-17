@@ -59,7 +59,7 @@ namespace Wassup.Tests.PlayMode
             // Air 통행층이 실제로 베이크됐는가 — 이동 규칙의 출처다.
             var pf = em.GetComponentData<Wassup.Battle.Movement.PathFollowState>(dragon);
             Assert.AreEqual((byte)PlacementLayer.Air, pf.traversalLayers,
-                "Air 층이 안 베이크되면 지상 차단에 막히고 대공사수 전용도 성립하지 않는다");
+                "Air 층이 안 베이크되면 지상 차단에 막혀 «비행» 이 성립하지 않는다");
 
             // 브레스 슬롯의 cosSq 가 bake 에서 변환됐는가(저작은 도, 런타임은 코사인²).
             var slots = em.GetBuffer<Wassup.Battle.Combat.DcTriggerSlot>(dragon);

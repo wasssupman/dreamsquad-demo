@@ -52,7 +52,7 @@ MonoBehaviour:
   cost: 4
   placementCooldown: 4
   targetAllies: 0
-  attackTargetLayers: 2
+  attackTargetLayers: 6
   targetFactions: 98
   abilities: []
   rarity: 2

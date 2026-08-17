@@ -31,7 +31,7 @@ namespace Wassup.Tests.EditMode
             var d = Load(DragonPath);
             Assert.AreEqual(EnemyTier.Elite, d.tier);
             Assert.AreEqual(PlacementLayer.Air, d.EffectiveTraversalLayers,
-                "비행 = Air 통행층이다(이동 규칙의 출처). 지상 차단을 무시하고 대공사수만 때린다");
+                "비행 = Air 통행층이다(이동 규칙의 출처). 지상 차단을 무시하고 날아온다");
             Assert.Greater(d.flightLift, 0f, "떠 보이는 표현이 없으면 «비행» 이 화면에서 안 읽힌다");
             Assert.AreEqual(-1, d.waypointPathIndex);
         }
