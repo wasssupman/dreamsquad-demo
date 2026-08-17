@@ -85,7 +85,9 @@ namespace Wassup.Tests.EditMode
                 damage = 25f,
                 hitThreshold = 0.5f,
                 visualScale = 1f,
-                dataIndex = -1,          // 뷰 없음(EditMode 픽스처)
+                // ⚠ dataIndex 는 **레지스트리 인덱스**다 — -1 은 드레인이 맨 앞에서 거절한다.
+                // 탄 SO 를 실제로 등록해 얻는다(브리지가 bake 에서 하는 것과 같은 경로).
+                dataIndex = RegisterProjectile(_boomerangSo),
             };
             var mi = typeof(BattleBridge).GetMethod("SpawnProjectile",
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -156,11 +158,28 @@ namespace Wassup.Tests.EditMode
             return card;
         }
 
+        private int RegisterProjectile(ProjectileData so)
+        {
+            var mi = typeof(BattleBridge).GetMethod("GetOrCreateProjectileDataIndex",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(mi, "GetOrCreateProjectileDataIndex 를 찾지 못했다");
+            return (int)mi.Invoke(_bridge, new object[] { so });
+        }
+
+        // 부착 preflight 는 host **종속** 조건을 본다 — `ProjectileToTarget` 은 「적을 겨누는
+        // host」를 요구하므로(힐러 거절) 마스크가 없는 맨 엔티티는 내 가드에 닿기도 전에
+        // 거절된다. 실제 방어유닛이 스폰 시 갖는 최소 상태를 여기서 재현한다.
         private Entity NewDefender()
         {
             var e = _em.CreateEntity();
             _em.AddComponent<Wassup.Battle.Units.DefenderUnitTag>(e);
             _em.AddComponentData(e, LocalTransform.FromPosition(float3.zero));
+            _em.AddComponentData(e, new AttackState
+            {
+                range = 3f,
+                cooldownDuration = 1f,
+                targetMask = (int)Wassup.Battle.Units.Faction.EnemyUnit,
+            });
             return e;
         }
 
