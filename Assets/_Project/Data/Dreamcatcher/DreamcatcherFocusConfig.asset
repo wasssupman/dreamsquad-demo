@@ -34,7 +34,7 @@ MonoBehaviour:
   reticlePopScale: 1.14
   reticleInvalidGap: 10
   lockSwitchHysteresisPx: 40
-  calloutScreenOffset: {x: 0, y: 96}
+  calloutFrameGap: 24
   calloutIconSize: 56
   calloutBgColor: {r: 0.06, g: 0.05, b: 0.13, a: 0.92}
   calloutBorderColor: {r: 0.42, g: 0.95, b: 1, a: 0.9}
@@ -53,3 +53,6 @@ MonoBehaviour:
   confirmPulseSec: 0.28
   confirmPulseMinRadius: 120
   enableHaptic: 1
+  enableFocusTint: 1
+  focusTintValid: {r: 0.6, g: 1, b: 1, a: 1}
+  focusTintInvalid: {r: 1, g: 0.52, b: 0.56, a: 1}

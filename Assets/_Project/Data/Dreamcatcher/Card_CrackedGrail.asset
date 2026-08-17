@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: cracked_grail
   displayName: "\uD53C\uAC12\uB51C"
+  visible: 0
   axis: 3
   category: 2
   effects:
@@ -29,3 +30,5 @@ MonoBehaviour:
   description: "\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70 \uACF5\uACA9\uB825
     +70% \xB7 \uBAA8\uB4E0 \uC544\uAD70 \uCCB4\uB825 -40%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

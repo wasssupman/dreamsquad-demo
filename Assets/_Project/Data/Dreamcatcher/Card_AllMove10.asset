@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: all_move
   displayName: "\uC62C\uC774\uC18D"
+  visible: 0
   axis: 3
   category: 0
   effects:
@@ -27,3 +28,5 @@ MonoBehaviour:
   description: "\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70 \uC774\uB3D9 \uC18D\uB3C4
     +10%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

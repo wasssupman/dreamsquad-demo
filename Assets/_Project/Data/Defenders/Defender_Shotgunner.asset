@@ -20,9 +20,9 @@ MonoBehaviour:
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC9C0\uC815 \uBC29\uD5A5\uC73C\uB85C \uBD80\uCC44\uAF34
     \uC0B0\uD0C4 \uBC1C\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218
     \uD6A8\uACFC: \uC5C6\uC74C"
-  health: 200
+  health: 500
   attackRange: 2
-  attackCooldown: 2.2
+  attackCooldown: 3
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
@@ -37,7 +37,7 @@ MonoBehaviour:
   projectile: {fileID: 11400000, guid: adebb00e97ea24b27ba84eb656f3bc4c, type: 2}
   outputs:
   - kind: 0
-    magnitude: 12
+    magnitude: 25
     duration: 0
     stat: 0
     op: 0
@@ -51,6 +51,9 @@ MonoBehaviour:
   onPlaceTickInterval: 0
   cost: 3
   placementCooldown: 4
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 6
   targetFactions: 98

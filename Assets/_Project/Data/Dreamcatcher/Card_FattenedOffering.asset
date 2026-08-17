@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: sub_fattened_offering
   displayName: "\uC81C\uBB3C\uD45C\uC2DD"
+  visible: 0
   axis: 3
   category: 2
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 15
       magnitude: 3
@@ -35,6 +39,14 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
@@ -42,3 +54,5 @@ MonoBehaviour:
     -30%\n\uD45C\uC2DD \uB300\uC0C1 \uCC98\uCE58 \uC2DC \u2192 \uAC01\uC131\uCE58
     x3\n\uD45C\uC2DD \uB300\uC0C1 \uC774\uD0C8 \uC2DC \u2192 \uBCF4\uC0C1 \uC5C6\uC74C"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

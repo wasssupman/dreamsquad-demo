@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: slow_awakening
   displayName: "\uACF5\uC18D\uAC01\uC131"
+  visible: 1
   axis: 3
   category: 2
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 8
       magnitude: 50
@@ -35,9 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uD638\uC2A4\uD2B8 \uC0DD\uC874 \uC911 \u2192 \uC0C8 \uC720\uB2DB
-    \uBC30\uCE58 2\uCD08 \uD6C4 \uACF5\uACA9 \uC18D\uB3C4 +50%"
+  description: "\uC0C8\uB85C \uBC30\uCE58\uB41C \uC720\uB2DB\uC740 2\uCD08 \uD6C4
+    \uACF5\uACA9 \uC18D\uB3C4 +50%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: eye_on_the_end
   displayName: "\uC6B0\uC120\uC870\uC900"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -30,3 +31,5 @@ MonoBehaviour:
     \uAC00\uAE4C\uC6B4 \uC801 \uC6B0\uC120 \uACF5\uACA9 \xB7 \uD574\uB2F9 \uC801
     \uC9C1\uC811 \uD53C\uD574 +20%"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

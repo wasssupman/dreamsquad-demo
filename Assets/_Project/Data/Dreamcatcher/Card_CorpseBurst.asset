@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_CorpseBurst
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: corpse_burst
-  displayName: "시체폭발"
+  displayName: "\uC2DC\uCCB4\uD3ED\uBC1C"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 2
       magnitude: 25
@@ -35,8 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "이 유닛이 적을 처치하면 → 반경 1칸 피해 25"
+  description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
+    \uBC18\uACBD 1\uCE78 \uD53C\uD574 25"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

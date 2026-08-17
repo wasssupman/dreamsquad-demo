@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_meteor
   displayName: "\uC6B4\uC11D"
+  visible: 1
   axis: 0
   category: 0
   effects: []
@@ -25,3 +26,5 @@ MonoBehaviour:
   description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 1.5\uCD08 \uD6C4 \uBC18\uACBD 2\uCE78
     \uD53C\uD574 40 \xB7 \uBE44\uC6A9 4 \xB7 \uC7AC\uC0AC\uC6A9 18\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

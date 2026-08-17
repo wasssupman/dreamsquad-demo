@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_TremorPlate
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: tremor_plate
-  displayName: "진동갑주"
+  displayName: "\uC9C4\uB3D9\uAC11\uC8FC"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0.7
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 2
       magnitude: 15
@@ -35,8 +39,18 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "HP 30% 이하 → 반경 1칸 피해 15"
+  description: "HP 30% \uC774\uD558 \u2192 \uBC18\uACBD 1\uCE78 \uD53C\uD574 15"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

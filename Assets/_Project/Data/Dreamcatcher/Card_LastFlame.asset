@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: last_flame
   displayName: "\uBD88\uAF43\uD3ED\uC8FC"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 4
       magnitude: 90
@@ -35,9 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
   description: "\uBD80\uCC29 \uC989\uC2DC \u2192 \uACF5\uACA9 \uC18D\uB3C4 +90% \xB7
     5\uCD08 \uD6C4 \uC0AC\uB9DD"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

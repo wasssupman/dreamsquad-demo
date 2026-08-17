@@ -12,8 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eccede3d4b4f10b4b9ffbb0ff4d24709, type: 3}
   m_Name: RelocationSettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.RelocationSettings
-  holdSeconds: 1
   entryCooldownSeconds: 3
   moveModeTimeoutSeconds: 8
   highlightColor: {r: 0.45, g: 0.9, b: 1, a: 1}
   redeploySeconds: 1.5
+  refitHealRatio: 0.5
+  flightBaseSeconds: 0.35
+  flightSecondsPerUnit: 0.04
+  flightMaxSeconds: 0.9
+  flightRingFollow: 0.08

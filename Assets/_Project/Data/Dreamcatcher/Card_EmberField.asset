@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_EmberField
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: ember_field
-  displayName: "잿불"
+  displayName: "\uC7BF\uBD88"
   visible: 1
   axis: 3
   category: 1
@@ -44,13 +44,14 @@ MonoBehaviour:
       slamTileRange: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
-      hazard: {fileID: 11400000, guid: 5c0f1a3d7b2e4f8a9c6d1e0b3a5f7c92, type: 2}
       orbitCount: 0
+      hazard: {fileID: 11400000, guid: 5c0f1a3d7b2e4f8a9c6d1e0b3a5f7c92, type: 2}
       coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192 \uADF8 \uC790\uB9AC\uC5D0 \uBD88\uC528\uB97C \uB0A8\uAE34\uB2E4"
+  description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
+    \uADF8 \uC790\uB9AC\uC5D0 \uD654\uC5FC \uC7A5\uD310\uC744 \uB0A8\uAE34\uB2E4"
   leakAllowanceCost: 0
   attachType: 0
-  attachValue:
+  attachValue: 

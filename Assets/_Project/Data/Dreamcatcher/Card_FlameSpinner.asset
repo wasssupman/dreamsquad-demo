@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_FlameSpinner
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: flame_spinner
-  displayName: "불꽃팽이"
+  displayName: "\uBD88\uAF43\uD33D\uC774"
   visible: 1
   axis: 3
   category: 1
@@ -45,12 +45,13 @@ MonoBehaviour:
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
       orbitCount: 2
+      hazard: {fileID: 0}
       coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "5초마다 → 주위를 도는 화염구
-    5초 · 스치는 적에게 피해 20"
+  description: "5\uCD08\uB9C8\uB2E4 \u2192 \uC8FC\uC704\uB97C \uB3C4\uB294 \uD654\uC5FC\uAD6C
+    5\uCD08 \xB7 \uC2A4\uCE58\uB294 \uC801\uC5D0\uAC8C \uD53C\uD574 20"
   leakAllowanceCost: 0
   attachType: 0
-  attachValue:
+  attachValue: 

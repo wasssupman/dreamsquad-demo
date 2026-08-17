@@ -25,7 +25,7 @@ MonoBehaviour:
   targetClassMask: -1
   targetFactions: 0
   health: 60
-  moveSpeed: 1.8
+  moveSpeed: 1.7
   attackRange: 1
   attackCooldown: 1.5
   attackTargetCount: 1
@@ -42,21 +42,22 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
+  attackVfxPrefab: {fileID: 0}
+  attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: 4f6372c21601bf94c9d0190a95e561c2, type: 2}
-  spineSkinName:
+  spineSkinName: 
   idleAnimation: walk
   walkAnimation: walk
   attackAnimation: fall-in
-  deathAnimation:
+  deathAnimation: 
   spineVisualScale: 0.3
   partSkins: []
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 0
   nightmareMechanics: []
-  killScore: 0
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 1

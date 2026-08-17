@@ -16,9 +16,11 @@ MonoBehaviour:
   role: 1
   placementLayers: 1
   traversalLayers: 2
-  displayName: "\uBC00\uB2F9\uB9E8"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB0AE\uC740 \uD53C\uD574\uC758 \uD0C4\uC744 \uB9E4\uC6B0 \uBE60\uB974\uAC8C \uC5F0\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uB9E4 \uD53C\uACA9\uB9C8\uB2E4 \uC801\uC744 \uC0B4\uC9DD \uB4A4\uB85C \uBC00\uC5B4\uB0C4"
-  health: 248
+  displayName: "\uB300\uACF5\uC0AC\uC218"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB0AE\uC740 \uD53C\uD574\uC758 \uB300\uACF5\uD0C4\uC744
+    \uB9E4\uC6B0 \uBE60\uB974\uAC8C \uC5F0\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
+    \uD6A8\uACFC: \uC9C0\uC0C1\uACFC \uACF5\uC911 \uC801 \uBAA8\uB450 \uACF5\uACA9"
+  health: 300
   attackRange: 4
   attackCooldown: 0.2
   hitDelaySec: 0
@@ -49,6 +51,9 @@ MonoBehaviour:
   onPlaceTickInterval: 0
   cost: 3
   placementCooldown: 4
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 6
   targetFactions: 2
@@ -100,3 +105,7 @@ MonoBehaviour:
   awakeningReward: 4
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
+  moveSpeed: 1.5
+  walkAnimation: 
+  outgameScaleMul: 1
+  idleVariants: []

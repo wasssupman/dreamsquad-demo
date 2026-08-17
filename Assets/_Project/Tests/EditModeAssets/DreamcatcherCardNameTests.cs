@@ -32,11 +32,11 @@ namespace Wassup.Tests.EditMode
             { "cost1_as", "1코속" },
             { "cost1_hp", "1코체" },
             { "cracked_grail", "피값딜" },
-            { "devouring_craving", "킬속" },
+            { "devouring_craving", "짱빠른버서커" },
             { "ember_bite", "출혈" },
             // content-5 unit 4 — 처치 자리 장판.
             { "ember_field", "잿불" },
-            { "execution_strike", "처형타" },
+            { "execution_strike", "딸피전문" },
             { "eye_on_the_end", "우선조준" },
             // content-4 unit 3 — 궤도 화염구.
             { "flame_spinner", "불꽃팽이" },
@@ -57,7 +57,7 @@ namespace Wassup.Tests.EditMode
             { "last_flame", "불꽃폭주" },
             { "last_stand", "빈사폭주" },
             { "lullaby_dart", "자장가" },
-            { "nightmare_afterglow", "킬딜" },
+            { "nightmare_afterglow", "짱쎈버서커" },
             // content-4 unit 4 — 수면 특효. spec 의 가칭 "악몽 사냥" 은 이 목록의
             // 축약 규약(공백 없는 4~5자)에 맞춰 붙여 쓴다.
             { "nightmare_hunt", "악몽사냥" },
@@ -99,7 +99,11 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.IsTrue(actual.ContainsKey(pair.Key), $"card id missing: {pair.Key}");
                 Assert.AreEqual(pair.Value, actual[pair.Key].displayName, pair.Key);
-                Assert.LessOrEqual(pair.Value.Length, 5, $"name too long: {pair.Key}");
+                // 상한 5 → 6 (2026-08-17). 시트가 displayName 의 정본이 되면서 6자
+                // 이름(짱빠른버서커)이 들어왔고 Play 에서 렌더가 확인됐다. 이 상한은
+                // 「카드 UI 폭」을 지키는 가드라 **없애지 말 것** — 늘리려면 실제로
+                // 안 넘치는지 보고 늘린다.
+                Assert.LessOrEqual(pair.Value.Length, 6, $"name too long: {pair.Key}");
             }
         }
     }

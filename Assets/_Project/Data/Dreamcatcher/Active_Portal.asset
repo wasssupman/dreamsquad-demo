@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_portal
   displayName: "\uD3EC\uD0C8"
+  visible: 1
   axis: 0
   category: 0
   effects: []
@@ -26,3 +27,5 @@ MonoBehaviour:
     \uC801\uC744 \uCD9C\uAD6C\uB85C \uC774\uB3D9 \xB7 8\uCD08 \xB7 \uBE44\uC6A9 3
     \xB7 \uC7AC\uC0AC\uC6A9 14\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

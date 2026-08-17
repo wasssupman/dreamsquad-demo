@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_MothSwarm
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: moth_swarm
-  displayName: "불나방떼"
+  displayName: "\uBD88\uB098\uBC29\uB5BC"
   visible: 1
   axis: 3
   category: 1
@@ -44,13 +44,14 @@ MonoBehaviour:
       slamTileRange: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 0}
-      hazard: {fileID: 0}
       orbitCount: 0
+      hazard: {fileID: 0}
       coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "3\uCD08\uB9C8\uB2E4 \u2192 \uC8FC\uBCC0 \uC801\uC5D0\uAC8C 10\uBC1C \uBC1C\uC0AC \u00B7 \uBC1C\uB2F9 \uD53C\uD574 7.2"
+  description: "3\uCD08\uB9C8\uB2E4 \u2192 \uC8FC\uBCC0 \uC801\uC5D0\uAC8C 10\uBC1C
+    \uBC1C\uC0AC \xB7 \uBC1C\uB2F9 \uD53C\uD574 7"
   leakAllowanceCost: 0
   attachType: 0
-  attachValue:
+  attachValue: 

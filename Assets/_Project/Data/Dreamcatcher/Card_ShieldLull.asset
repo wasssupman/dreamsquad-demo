@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: shield_lull
   displayName: "\uC2E4\uB4DC\uC218\uBA74"
+  visible: 1
   axis: 3
   category: 0
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 16
       magnitude: 2
@@ -35,9 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
   description: "\uC2E4\uB4DC \uD30C\uAD34 \uC2DC \u2192 \uBC18\uACBD 1\uCE78 \uB0B4
     \uC801 \uCD5C\uB300 2\uBA85 \uC218\uBA74 2.5\uCD08"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

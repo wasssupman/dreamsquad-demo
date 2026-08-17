@@ -18,6 +18,7 @@ MonoBehaviour:
   summaryLeadSec: 0.35
   summaryHoldSec: 2.2
   tapSkipGraceSec: 0.25
+  tutorialHoldFallbackSec: 20
   dimAlpha: 0.82
   tintAlpha: 0.12
   iconSize: 260

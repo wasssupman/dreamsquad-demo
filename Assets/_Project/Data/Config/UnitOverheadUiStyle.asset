@@ -18,10 +18,22 @@ MonoBehaviour:
   cardHeight: 28.8
   cardSpacing: 4
   cardRowTileWidthFraction: 0.92
+  cardPulseScale: 1.8
+  cardPulseSec: 0.4
+  cardPulseRingScale: 1.6
+  cardPulseRingColor: {r: 0.55, g: 0.95, b: 1, a: 0.9}
   cardPlate: {r: 0.035, g: 0.055, b: 0.09, a: 0.96}
   unitCardBorder: {r: 0.08, g: 0.82, b: 0.9, a: 1}
   squadCardBorder: {r: 1, g: 0.72, b: 0.12, a: 1}
   damageTrailCatchup: 2.8
+  stackGap: 4
+  stackIconHeight: 22
+  stackSpacing: 3
+  stackRowMax: 4
+  stackRowTileWidthFraction: 0.92
+  stackBadgeColor: {r: 1, g: 1, b: 1, a: 1}
+  stackBadgePlate: {r: 0.05, g: 0.06, b: 0.09, a: 0.9}
+  stackBadgeHeightFraction: 0.5
   defender:
     tileWidthFraction: 0.88
     minWidth: 96

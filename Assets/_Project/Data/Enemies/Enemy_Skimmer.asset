@@ -16,15 +16,16 @@ MonoBehaviour:
   displayName: Skimmer
   traversalLayers: 4
   enemyClass: 3
+  minWaveNumber: 4
+  maxPerWave: 4
   attackMethod: 1
   targetMode: 2
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
-  minWaveNumber: 4
-  maxPerWave: 4
+  targetFactions: 29
   health: 80
-  moveSpeed: 2.5
+  moveSpeed: 1.3
   attackRange: 1
   attackCooldown: 0.2
   attackTargetCount: 1
@@ -41,11 +42,14 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
+  attackVfxPrefab: {fileID: 0}
+  attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
   idleAnimation: Walk
+  walkAnimation: 
   attackAnimation: Attack1
   deathAnimation: Die
   spineVisualScale: 1.3
@@ -78,7 +82,10 @@ MonoBehaviour:
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 2
   nightmareMechanics: []
-  killScore: 1
+  weaponTrailPrefab: {fileID: 0}
+  weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
   waypointPathIndex: 0
   flightLift: 1.4
+  idleVariants: []
+  tier: 0

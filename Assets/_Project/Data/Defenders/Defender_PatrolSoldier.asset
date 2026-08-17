@@ -51,6 +51,9 @@ MonoBehaviour:
   onPlaceTickInterval: 0
   cost: 0
   placementCooldown: 0
+  deathCooldown: 10
+  retireCooldownRatio: 0.4
+  maxOnBoard: 1
   targetAllies: 0
   attackTargetLayers: 6
   targetFactions: 98

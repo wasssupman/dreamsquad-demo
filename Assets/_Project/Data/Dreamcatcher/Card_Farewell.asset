@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: farewell
   displayName: "\uC0AC\uB9DD\uD3ED\uBC1C"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,6 +25,9 @@ MonoBehaviour:
       period: 0
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 2
       magnitude: 500
@@ -35,9 +39,19 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
+      stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   attackMods: []
   type: 1
   skill: {fileID: 0}
   description: "\uC774 \uC720\uB2DB\uC774 \uC0AC\uB9DD\uD558\uBA74 \u2192 \uBC18\uACBD
     2\uCE78 \uD53C\uD574 500"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

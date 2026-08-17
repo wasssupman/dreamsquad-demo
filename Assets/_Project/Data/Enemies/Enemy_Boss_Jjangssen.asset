@@ -25,7 +25,7 @@ MonoBehaviour:
   targetClassMask: -1
   targetFactions: 0
   health: 950
-  moveSpeed: 2.2
+  moveSpeed: 2
   attackRange: 2
   attackCooldown: 0.6
   attackTargetCount: 3
@@ -36,12 +36,14 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 30
+    magnitude: 40
     duration: 0
     stat: 0
     op: 0
     stackKind: 0
     stackMaxStack: 0
+  attackVfxPrefab: {fileID: 0}
+  attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
@@ -91,6 +93,10 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   - trigger:
       kind: 5
       period: 0
@@ -114,6 +120,10 @@ MonoBehaviour:
       slamDamage: 50
       slamTileRange: 1
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   - trigger:
       kind: 5
       period: 0
@@ -137,6 +147,10 @@ MonoBehaviour:
       slamDamage: 50
       slamTileRange: 1
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   - trigger:
       kind: 5
       period: 0
@@ -160,7 +174,10 @@ MonoBehaviour:
       slamDamage: 100
       slamTileRange: 2
       stackModifier: {fileID: 0}
-  killScore: 10
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 5

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: sub_incubus_pact
   displayName: "\uD76C\uC0DD\uACC4\uC57D"
+  visible: 1
   axis: 3
   category: 2
   effects:
@@ -28,3 +29,5 @@ MonoBehaviour:
     -1 (\uD658\uBD88 \uC5C6\uC74C)\n\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70
     \uACF5\uACA9\uB825 +25%"
   leakAllowanceCost: 1
+  attachType: 0
+  attachValue: 

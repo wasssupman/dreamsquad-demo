@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_NightmareHunt
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: nightmare_hunt
-  displayName: "악몽사냥"
+  displayName: "\uC545\uBABD\uC0AC\uB0E5"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -26,5 +27,8 @@ MonoBehaviour:
     damageMul: 2
   type: 1
   skill: {fileID: 0}
-  description: "항상 → 잠든 적에게 주는 피해 x2"
+  description: "\uD56D\uC0C1 \u2192 \uC7A0\uB4E0 \uC801\uC5D0\uAC8C \uC8FC\uB294
+    \uD53C\uD574 x2"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

@@ -25,7 +25,7 @@ MonoBehaviour:
   targetClassMask: -1
   targetFactions: 0
   health: 35
-  moveSpeed: 2.8
+  moveSpeed: 1.3
   attackRange: 2
   attackCooldown: 0.35
   attackTargetCount: 1
@@ -36,12 +36,14 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 3
+    magnitude: 10
     duration: 0
     stat: 0
     op: 0
     stackKind: 0
     stackMaxStack: 0
+  attackVfxPrefab: {fileID: 0}
+  attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 07906d96f84be4033b643c2dfa06b95b, type: 2}
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
@@ -80,10 +82,10 @@ MonoBehaviour:
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 2
   nightmareMechanics: []
-  killScore: 1
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
   stabilityDamage: 1
   waypointPathIndex: -1
   flightLift: 0
   idleVariants: []
+  tier: 0
