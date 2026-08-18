@@ -66,6 +66,7 @@
 
 - **접근 C**: `MapTileType` 은퇴 — 마스크 묶음(blockMask+placeMask+cellLayers) 정본화, tiles 합성 제거. footprint 별 차단 층 선언("공중도 못 넘는 프랍")도 여기서.
 - **shape mask footprint** — L자/비사각 대형 구조물.
+- **물 영역 (배치층 Water)** [S~M] — «물엔 특정 유닛만 배치» 룰은 기존 비트 교집합 기계가 그대로 받는다 (2026-08-18 분석): `WaterZone` 마커 + 빌더 규칙 1개(셀 tiles=Deco·placeMask=Water — placeMask 직접 조립 계약 3 덕에 «통행상 벽 + 배치 가능» 표현 가능) + `PlacementLayer.Water` 비트 append. 물 **적**(수영)까지 오면 tiles 합성 3값(Walk/Deco/Water) 개정 필요 — 기계 견적은 traversal-layers §6 (3줄 + 슬롯 0).
 - **공격/투사체 지형 LOS** — 3D 프랍 관통 사격, v1 수용. 눈에 거슬리면 착수.
 - **웨이브 열린 마당 재밸런스** — `MapConceptRules` tiles 직독 게이트 재검토 + `enemy-wave-integration` 스킬 갱신 + 기존 덱/플랜 재저작.
 - **기존 라이브 맵 9종 재저작 계획** — 파일럿 검증 통과 후 별도 결정 (사용자 D5: 전면 교체 방향).
