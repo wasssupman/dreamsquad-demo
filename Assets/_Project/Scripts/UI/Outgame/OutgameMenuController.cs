@@ -135,6 +135,29 @@ namespace Wassup.UI
             ApplyAuthGate();
         }
 
+        // 개발용 트레이 버튼 — 튜토리얼 진행을 즉시 초기화한다(확인 팝업 없음).
+        //
+        // tutorial-content-teardown 으로 진행 필드가 전부 걷혀서 **지금은 초기화할 상태가
+        // 없다.** 버튼과 배선은 재설계가 다시 쓰려고 남긴 것이다(사용자 결정) — 새 튜토리얼이
+        // 자기 진행 스키마를 잡으면 그 초기화를 여기에 채운다. 옛 구현은 76038c26^ 참조:
+        // 프로필 JSON 에서 튜토리얼 토큰만 패치하고 타임스탬프 백업을 남겼다(전체 재직렬화를
+        // 피해 새 클라이언트가 쓴 계정 필드를 잃지 않으려는 것). 디스크 교체가 성공한 뒤에만
+        // 로드된 인스턴스를 동기화해 메모리와 디스크가 어긋나지 않게 했다.
+        //
+        // ⚠ matchesPlayed 는 여기서 건드리지 않는다. 그건 튜토리얼 진행이 아니라 매치 이력이고,
+        // 지금은 「계정의 첫 판은 토너먼트에 올리지 않는다」(서버 complete 500 우회)의 유일한
+        // 신호다 — 여기서 0 으로 되돌리면 다음 판이 조용히 토너먼트에서 빠진다.
+        public void OnResetTutorial()
+        {
+            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null)
+            {
+                Debug.LogError("[OutgameMenuController] 프로필 로드 전에는 튜토리얼을 초기화할 수 없다.", this);
+                return;
+            }
+
+            Debug.Log("[OutgameMenuController] 초기화할 튜토리얼 진행이 없다 — 재설계가 진행 스키마를 잡으면 여기에 채운다.", this);
+        }
+
         // tutorial-content-teardown unit 1 — 「이 계정의 첫 판인가」. matchesPlayed 는
         // GameManager 가 **판이 끝날 때**(Result 전이 · 나가기) 올리는 매치 이력이라 튜토리얼 진행이 아니다
         // (그래서 RESET TUTORIAL 이 건드리지 않았고, 튜토리얼이 사라져도 남는다).
