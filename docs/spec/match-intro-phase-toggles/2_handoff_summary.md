@@ -3,6 +3,7 @@
 ## Commit
 
 - `b79859a7` — feat(match-intro-phase-toggles): units 0~1 — 배치 페이즈를 끄면 3초 뒤 전투가 자동으로 시작된다
+- 리뷰 반영 후속 커밋 — 게이트 술어 일치(중대) · 터치 가드 주석 정정 · `[Min(0f)]`
 
 units 0·1 이 한 커밋이다. 연출과 배관이 `PlacementPhaseView` 한 파일 안에서 맞물려, 나눴다면 unit 0 커밋이 컴파일·테스트되지 않은 중간 구현을 담게 된다.
 
@@ -37,12 +38,15 @@ units 0·1 이 한 커밋이다. 연출과 배관이 `PlacementPhaseView` 한 �
 - **배치 페이즈 진입을 건너뛰지 마라.** 트레이 슬롯 구성이 `DefenderSelector.OnPhaseChanged` 의 `Placement` 분기에 매달려 있고 `Battle` 분기는 트레이를 켜지 않는다. 페이즈를 건너뛰면 전투 내내 빈 트레이다.
 - **전투 시작 호출부를 늘리지 마라.** `FinishPlacement()` 가 페이즈 전이·코스트 리젠·`StartBattle()` 을 한 묶음으로 갖는다.
 - **`TickAutoStart` 의 튜토리얼 게이트를 지우지 마라.** 효과 타일 안내는 `ShouldRunCore=false`(두 번째 판 이후)에서 `BeginTutorialGate()` 를 건다. 멈추지 않으면 안내가 3초에 잘린 채 `CompleteEffectTileProgress()` 로 저장돼 영영 안 뜬다.
-- **`_shownTick == 0` 자물쇠**는 `FinishPlacement` 가 자기 가드로 거절할 때 GO! 가 매 프레임 재진입해 아웃트로를 죽이는 것을 막는다.
+- **`TickAutoStart` 의 게이트와 `FinishPlacement` 의 가드는 같은 술어여야 한다**(`CanFinishPlacement`). 게이트를 느슨하게 두면 종료가 거절당한 프레임에 `_remaining` 이 0으로 눌리고 `_shownTick == 0` 자물쇠가 재시도를 막아 **판이 벽돌이 된다**(카운트다운 0 · 차단막 올라간 채 · 전투 미시작). 둘은 반드시 같이 움직인다. 지금 도달 경로는 재시작(`BattleBridge.OnRestartRequested`, 현재 미구독)뿐이라 잠복 상태다 — 재시작을 되살릴 때 이 쌍을 먼저 확인할 것.
 - 일시정지 메뉴 버튼(캔버스 1000)과 튜토리얼 안내(1500)는 차단막(7) **위**다 — 의도된 것이다. 막는 대상은 배치 입력이지 화면 전체가 아니다.
 
 ## Follow-up
 
 - **실스쿼드 판 확인** — 검증에 쓴 테스트 모드 판은 저장 스쿼드가 비어 트레이 슬롯이 **채워지는 것**까지는 못 봤다(패널 활성만 확인). 실제 스쿼드로 한 판이면 닫힌다.
+- **효과 타일 안내 × 자동 시작 = 제품 결정 대기.** 두 번째 판에서 안내가 뜨면 카운트다운이 멈추고(잘림·헛소진은 막힘) 플레이어가 탭할 때까지 최대 12초(`TutorialGuidanceStyle.classHintFallbackSeconds`) 기다린다. 그동안 차단막이 올라가 있어 «빛나는 타일에 배치하면 강해진다» 를 읽고도 배치할 수 없다. 선택지: ① 지금대로(탭하면 진행) ② 자동 시작 모드에선 이 안내를 억제 ③ 전투 중으로 미룸. 기능 결함이 아니라 온보딩 설계 판단이라 미결로 둔다.
+- **차단막은 자기 캔버스만 막는다.** 지금 Placement 창에 뜨는 UI 중 7 위는 없지만(각성 7·NextWaveDock 7 은 Battle 페이즈 게이트로 부재, DcInspectPanel 9 는 손패 탭이 유일 진입), **정렬이 아니라 페이즈 게이트가 안전의 근거**다. Placement 중에 열리는 UI 를 새로 만들면 무증상으로 뚫린다.
+- **테스트가 이 feature 의 위험을 덮지 않는다.** `UseAutoStart` 4조합은 분기 선택만 본다. 실제 위험(게이트 술어 일치·튜토리얼 홀드)은 `Update` 안이라 커버가 없다 — «EditMode 2,546 pass» 를 이 feature 의 안전 증거로 읽지 말 것.
 - 카운트다운 효과음(틱 3 + GO 1) — README 후속 후보.
 - 자동 시작 판의 시작 코스트 재조정 — 배치 창이 없으면 첫 웨이브 전 배치량이 0이라 체감 난도가 오른다. 밸런스 결정.
 - `placementPhaseEnabled` 는 **기본 true(현행)** 로 두었다. 끄려면 `BattleConfig.asset` 체크박스 하나.

@@ -151,9 +151,14 @@ namespace Wassup.UI
             PlacementReady?.Invoke();
         }
 
-        // 자동 시작 창에는 입력이 없다(계약 5). 배치 경로가 트레이/손패 드래그 하나뿐이라
-        // 전면 raycast 블로커로 닫힌다 — 클릭 배치(현재 은퇴)가 되살아나도 그쪽의
-        // IsPointerOverGameObject 가드가 같은 블로커에 걸린다.
+        // 자동 시작 창에는 입력이 없다(계약 5). 배치 경로가 트레이(캔버스 4)/손패(5) 드래그
+        // 하나뿐이라 이 캔버스(7)의 전면 raycast 블로커로 닫힌다. 실측: 카운트다운 중 화면
+        // 7x7 격자 49점 전부 최상단 히트가 InputBlocker.
+        //
+        // ⚠ 클릭 배치(현재 은퇴)를 되살릴 거면 이 블로커에 기대지 마라 — PlacementInput 의
+        // 가드는 no-arg IsPointerOverGameObject 라 **터치에서 UI 를 못 거른다**(마우스
+        // pointerId 만 조회). 그 함정의 수정 선례는 DefenderDragPlacementController.PointerOverUi.
+        // 안드로이드가 주 타겟이라 에디터 마우스 검증으로는 잡히지 않는다.
         private void ApplyOverlayMode()
         {
             if (_banner != null) _banner.SetActive(!_autoStart);
@@ -200,22 +205,31 @@ namespace Wassup.UI
         // 0 은 표시하지 않는다 — 0에 닿는 순간이 곧 GO! 이자 전투 시작이다.
         private void TickAutoStart()
         {
-            // ⚠ 튜토리얼이 카운트다운을 잡는 동안은 시간을 흘리지 않는다.
-            // 계약 6은 **첫 판**(ShouldRunCore)만 자동 시작에서 빼는데, 튜토리얼 게이트를 쓰는
-            // 경로가 하나 더 있다 — 효과 타일 안내(FirstSessionTutorialController.EffectTile)는
-            // **두 번째 판 이후**라 ShouldRunCore=false 에서 돌고, 그래서 자동 시작과 겹친다.
-            // 여기서 멈추지 않으면 안내가 3초에 잘린 채 완료로 저장돼(CompleteEffectTileProgress)
-            // 플레이어는 그 안내를 영영 못 읽는다.
-            // 배치 입력은 여전히 막혀 있다 — 안내 캔버스(1500)가 차단막(7) 위라 탭 진행만 살아 있다.
-            if (!PlacementPhasePolicy.CanFinish(_tutorialHold, _tutorialStartUnlocked, false)) return;
+            // ⚠ 종료를 거절할 상태면 시간도 흘리지 않는다. **아래 FinishPlacement 와 같은
+            // 술어를 써야 한다** — 여기서 `interactionBlocked=false` 로 못박고 통과시키면,
+            // 종료가 거절당한 프레임에 `_remaining` 이 0으로 눌리고 재시도 자물쇠(_shownTick)만
+            // 남아 판이 벽돌이 된다(카운트다운 0 · 차단막 올라간 채 · 전투 미시작).
+            //
+            // 이 게이트가 잡는 것 둘:
+            // ① 튜토리얼 홀드 — 계약 6은 **첫 판**(ShouldRunCore)만 자동 시작에서 빼는데,
+            //    게이트를 쓰는 경로가 하나 더 있다. 효과 타일 안내는 **두 번째 판 이후**라
+            //    ShouldRunCore=false 에서 돈다. 멈추지 않으면 안내가 3초에 잘린 채 완료로
+            //    저장돼(CompleteEffectTileProgress) 플레이어가 영영 못 읽는다.
+            //    (안내 캔버스 1500 이 차단막 7 위라 탭 진행은 살아 있다.)
+            // ② 드래그/조준 진행 중 — 자동 시작 창에선 차단막이 새 드래그를 막지만, 창에
+            //    **들어올 때** 이미 물고 있던 세션은 막지 못한다(재시작 경로가 되살아나면
+            //    도달한다 — BattleBridge.OnRestartRequested 는 현재 미구독). 30초 경로가
+            //    같은 상태에서 카운트다운을 멈추는 것과 동일하게 처리한다.
+            if (!CanFinishPlacement()) return;
 
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f)
             {
                 _remaining = 0f;
-                // GO! 는 한 번만. FinishPlacement 는 자기 가드(CanFinishPlacement)로 거절할 수
-                // 있는데, 그러면 여기가 매 프레임 재진입해 펀치 트윈을 다시 깔고 아웃트로를
-                // 죽인다(= 전투도 안 시작되고 화면도 굳는다). _shownTick 0 이 그 재진입 자물쇠다.
+                // GO! 는 한 번만. 위 게이트가 FinishPlacement 와 같은 술어라 여기 도달하면
+                // 종료는 성공이 보장되고, 이 자물쇠는 벨트앤서스펜더로 남는다.
+                // (게이트를 다시 느슨하게 바꾸면 이 자물쇠가 자가치유를 막는 쪽으로 돌변한다 —
+                //  거절당한 뒤 영원히 재시도하지 않게 되므로 둘은 반드시 같이 움직인다.)
                 if (_shownTick == 0) return;
                 _shownTick = 0;
                 ShowBigLabel("GO!", countdownFinalColor);

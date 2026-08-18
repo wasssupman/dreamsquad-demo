@@ -22,6 +22,7 @@ namespace Wassup.Data
         public bool placementPhaseEnabled = true;
 
         [Tooltip("placementPhaseEnabled=false 일 때 자동 시작까지의 카운트다운(초).")]
+        [Min(0f)]
         public float autoStartCountdownSeconds = 3f;
     }
 }
