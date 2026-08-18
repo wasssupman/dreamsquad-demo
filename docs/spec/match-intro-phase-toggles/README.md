@@ -1,6 +1,6 @@
 # match-intro-phase-toggles
 
-> 상태: 작성됨 2026-08-18 — 구현 전. 매치 인트로 두 페이즈(기믹 리빌 · 배치)를 `BattleConfig` 플래그로 끌 수 있게 한다.
+> 상태: **완료 2026-08-18** (units 0~1, `b79859a7`). 인계: [`2_handoff_summary.md`](2_handoff_summary.md). 매치 인트로 두 페이즈(기믹 리빌 · 배치)를 `BattleConfig` 플래그로 끌 수 있게 한다.
 
 ## 상위 목표
 
@@ -40,7 +40,7 @@
 |---|---|---|---|
 | 0 | 배관 | `0_placement_toggle_and_auto_start.md` | `BattleConfig` 2필드 + `GameManager` 노출 + 자동 시작 분기 + 입력 차단 + 기믹 값 확정 |
 | 1 | 연출 | `1_countdown_presentation.md` | 중앙 대형 3·2·1 → GO! 펀치 카운트다운 |
-| 2 | handoff | `2_handoff_summary.md` | 종료/인계 요약 (구현 후 작성) |
+| 2 | handoff | `2_handoff_summary.md` | 종료/인계 요약 |
 
 ## 파이프라인 커버리지
 

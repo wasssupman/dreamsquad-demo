@@ -59,3 +59,5 @@ public static bool UseAutoStart(bool placementPhaseEnabled, bool tutorialCore)
 - 자동 시작으로 들어간 판에서 트레이 슬롯이 채워져 있고 코스트가 리젠된다(계약 3 회귀 확인).
 - **두 번째 판**(효과 타일 안내가 뜨는 판)에서 플래그를 꺼도 안내가 3초에 잘리지 않는다 — 카운트다운이 멈췄다가 탭 이후 재개된다(계약 6 ②).
 - 콘솔에 `[GameManager] gimmick=none` (에셋 `gimmickEnabled: 0` 확정) + 리빌 오버레이 미노출.
+
+> 확인 2026-08-18 — EditMode 2,549 (0 fail) · Play 실측(자동 시작 3초 · 격자 49점 전부 차단막 · 플래그 on 무변화). 커밋 `b79859a7`.

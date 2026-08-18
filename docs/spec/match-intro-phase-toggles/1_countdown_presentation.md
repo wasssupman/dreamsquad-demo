@@ -28,3 +28,5 @@
 - `placementPhaseEnabled=false` Play: 중앙에 3 → 2 → 1 → GO! 가 각 1초 간격으로 펀치와 함께 표시되고, GO! 가 사라지는 동안 전투가 이미 진행 중이다.
 - GO! 표시 중 트레이 드래그가 **된다**(블로커 해제 확인 — unit 0 완료 기준의 연장).
 - 콘솔 에러 0. 특히 PrimeTween `OnComplete callback was ignored` 경고가 없어야 한다(패널 비활성 타이밍과 트윈 수명 충돌 신호).
+
+> 확인 2026-08-18 — Play 실측 3→2→1→GO! 각 1초, 아웃트로 후 패널 자동 종료, PrimeTween 경고 0. 커밋 `b79859a7`.
