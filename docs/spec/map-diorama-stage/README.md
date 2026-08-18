@@ -8,6 +8,14 @@
 
 맵 저작을 "MapPainter 로 셀 칠하기(MapDocument)"에서 **"씬에서 Ground + 프랍을 자유 배치하는 디오라마 스테이지 프리팹"** 으로 전면 교체한다. 프랍의 명시 선언(footprint/마커)을 셀로 양자화해 논리 격자를 자동 파생하고, 이동은 **열린 마당**(walkable = 차단되지 않은 모든 셀)이 된다. 비주얼은 스테이지 프리팹 그 자체 — 바닥 타일맵 페인팅은 은퇴한다. **심(`GeneratedMap` 이하 Battle 전체)은 무변경.**
 
+**지향점 (2026-08-18 사용자 확인)**: «Ground(터레인/메쉬, 예 100×100)를 만들고 스크립트를 붙이면 의도한 논리 타일맵이 구성되고 그 자체로 게임 진행이 가능하다.» 단 세 가지 정정이 이 지향의 계약이다:
+- ① 논리는 터레인 표면이 아니라 **선언**에서 나온다 — 시스템은 터레인의 높이/텍스처/콜라이더를 읽지 않는다(D6: 선언 정본). **최소 플레이 가능 스테이지 = Ground + `MapStage` + `SpawnMarker`×2 + `GoalMarker`×1** — 차단 프랍 0개여도 판이 성립한다.
+- ② 100×100 전체가 플레이 필드가 아니다 — 격자는 playArea rect(모바일 가독 스케일)에만 깔리고 잉여는 배경이다(계약 4).
+- ③ 플레이 영역의 시각 바닥은 평평해야 한다(D4: 논리 Y=0) — 굴곡 터레인은 유닛/오버레이와 시각 충돌한다. 굴곡은 playArea 밖 배경에만. 터레인 저작은 «평평한 메쉬와 동일 취급»이며 높이/텍스처/콜라이더를 논리가 읽는 별도 검증은 없다.
+- ④ **이동은 연속 월드 좌표, 판정은 셀** — 이것은 현행 심이 이미 그렇게 동작한다(부드러운 이동·평활화·충돌은 연속 좌표, 벽/배치/사거리 소스는 셀). 이 spec 은 셀 데이터의 **출처**만 바꾼다. 단 지형 메쉬에 그려 넣은 시각적 길은 논리가 모른다 — 적이 그 길을 따르게 하려면 `RouteMarker` 로 동선을 저작해야 한다(안 하면 골 직행).
+
+**검증 무대 = KayKit 더미맵** (2026-08-18 사용자 결정): unit 2 픽스처·unit 5 파일럿 모두 `Assets/KayKit` Platformer Pack 조립로 만들고, 이 spec 의 모든 Play/육안 검증은 그 더미맵에서 진행한다.
+
 ## 작업 단위 목록
 
 | 파일 | 작업 구분 | 목적 |
@@ -17,21 +25,23 @@
 | [2_bridge_build_path.md](2_bridge_build_path.md) | 빌드 경로 | `BattleBridge` 문서 경로 → 스테이지 경로 교체 + `MapStagePool` |
 | [3_overlay_view_split.md](3_overlay_view_split.md) | 뷰 은퇴/존치 | 바닥 페인팅 은퇴 · 오버레이 7채널 존치 · `BoardSortOrder` 간격 수정 |
 | [4_goal_spawn_marker_views.md](4_goal_spawn_marker_views.md) | 뷰 재귀속 | 골/스폰 앵커·균열·붕괴 연출을 마커 뷰로 이관 |
-| [5_pilot_map_playmode.md](5_pilot_map_playmode.md) | 검증 | 파일럿 스테이지 1개 + PlayMode 스모크 + 육안 검증 축 4종 |
+| [5_pilot_map_playmode.md](5_pilot_map_playmode.md) | 검증 | 파일럿 스테이지 1개 + 육안 검증 축 5종 (PlayMode 스모크는 unit 2 로 이동 — critic M-12) |
 | [6_portal_prop.md](6_portal_prop.md) | 선택 | 포탈 프랍 → `PortalLink` 엔티티 배선 (v1 필수 아님) |
+| [7_legacy_retirement.md](7_legacy_retirement.md) | 은퇴 | `MapDocument` 계열·`MapPainterWindow`·구 Assets lane 테스트 3파일 처분 (critic M-3·M-4) |
 
 ## Feature-wide 계약
 
 1. **정본 = `MapStage` 프리팹 1개.** 저작도 비주얼도 그 프리팹이다. `MapDocument`/`MapPainter` 는 이 브랜치에서 은퇴한다.
 2. **`GeneratedMap` 구조체 무변경.** `tiles` 는 **합성**한다 — 열린 셀=`Walk`, 차단 셀=`Deco`. 목적은 기존 파생식(`walkMask`·`cellLayers`·픽업 후보 Walk∪Place)을 무수정으로 살리는 것. 합성 규칙 변경/`MapTileType` 은퇴는 접근 C(후속 spec) 몫.
-3. **placeMask 는 빌더가 직접 조립한다** — 열린 셀 = `Ground|Path|Air`, 차단 셀·BlockZone = 0. `PlacementLayers.Derive` 폴백에 기대지 않는다 (Place 타일이 없으므로 폴백은 오답).
+3. **placeMask 는 빌더가 직접 조립한다** — 열린 셀 **기본** = `Ground|Path|Air`, 차단 셀 = 0. `PlacementLayers.Derive` 폴백에 기대지 않는다 (Place 타일이 없으므로 폴백은 오답). **`PlacementBlockZone` 은 옛 마스크 브러시의 후계이며 «전선»(여기 너머 배치 금지) 저작의 필수 수단이다** — 블랭킷 개방만 있으면 가디언(`placementLayers=Path` 단독 유닛)이 어디에나 놓이는, 이미 겪은 구멍이 맵 전체로 확장된다(critic C-2 · `MapDocumentPoolDevEntriesTests` ④ 가드의 의미를 스테이지가 승계). 주의: 배치 Air(차단 셀=0)와 통행 Air(`Derive(Deco)`=Air — 공중 적은 프랍 위를 넘는다)는 **다른 배열**이다.
 4. **격자 = playArea rect 만.** Ground 가 그보다 커도 잉여는 셀 없는 순수 배경(서라운드 링의 후계). 카메라 프레이밍(`TryGetPlayfieldWorldBounds`)은 격자 기준이라 무변경.
 5. **결정론은 명시 인덱스가 정본.** `SpawnMarker.laneIndex`·루트 인덱스는 저작 필드. 빌더 출력은 씬 계층 순서에 비의존(차단은 OR 라 순서 무관, 목록형은 인덱스 정렬). laneCount(=스폰 수)는 웨이브 결정론 키 — 스테이지 교체 시 웨이브가 바뀌는 것은 정상.
 6. **심 코드 변경 0.** `Battle/**`·`GeneratedMap`·`FlowField*`·`NavGrid`·`SpatialPlacementCheck` 를 수정하지 않는다. 유일한 예외는 뷰 유틸 `BoardSortOrder`(간격 버그 수정, unit 3).
-7. **`BoardSpace` 계약 유지.** `Grid` 가 좌표 권위, sim origin = `float3.zero`, `ToView` 의 Y-폐기(평면 보드) 유지 — 높이는 논리에 없다(사용자 결정 D4).
+7. **`BoardSpace` 계약 유지.** `Grid` 가 좌표 권위, sim origin = `float3.zero`, `ToView` 의 Y-폐기(평면 보드) 유지 — 높이는 논리에 없다(사용자 결정 D4). **`grid.transform` 의 writer 는 스테이지 정렬 하나뿐이다** — `CenterBoardAtWorldOrigin`(현행 유일 writer)은 unit 2 에서 즉시 제거한다. writer 가 둘이면 프랍과 논리 셀이 조용히 어긋나고, 어긋난 채로도 격자 기준 완료 기준은 전부 통과한다(critic C-1).
 8. **순수 코어 분리** (CLAUDE.md 제약 10): 양자화·마스크 조립·마커 수집은 plain 값 입출력 static 함수 — EditMode 테스트 대상. Mono 스캔 레이어는 얇게.
-9. **안전망 유지**: `MapConnectivity.AllSpawnsReachGoal` 실패 시 `BuildFallbackLinear` — 기존 계약 그대로.
-10. **밸런스 품질은 완료 기준 밖.** 열린 마당의 웨이브/덱 재밸런스(`MapConceptRules` tiles 직독 게이트 포함)는 별도 트랙 — 이 spec 은 파일럿 맵의 기능 검증까지만.
+9. **안전망 재정의 — 연결성 실패 = 하드 실패** (critic M-1 로 개정): `MapConnectivity.AllSpawnsReachGoal` 실패 시 `MapGenerationFailedException` 동형으로 즉시 실패한다. 디오라마에서 연결성 실패는 저작 오류이고, 조용한 `BuildFallbackLinear` 교체는 절차 생성기의 유물이다 — unit 3 이후 폴백 맵은 렌더러가 없어 검은 판이 된다.
+10. **밸런스 품질은 완료 기준 밖.** 열린 마당의 웨이브/덱 재밸런스는 별도 트랙 — 이 spec 은 파일럿 맵의 기능 검증까지만. (정정 2026-08-18: `WavePatternGenerator` 는 tiles 를 읽지 않는다 — 컨셉 게이트는 laneCount 축(계약 5)이 전부. `MapConceptRules` 는 페인터 저작 경고 전용이라 페인터와 함께 은퇴한다.)
+11. **이 브랜치에서 공성·본능·적 마음·강(Env)은 비가용.** `structures` 는 빈 배열(전 소비처 `IsCreated` 가드 확인됨), `_resolvedMapDoc` 은 영구 null — 거점 엔티티가 스폰되지 않는다. `StructureMarker`/`Env` 저작은 후속. `MapStagePool` 은 `WarnOnSiegeCoreHpMismatch` 를 승계하지 않는다.
 
 ## 파이프라인 커버리지
 
@@ -47,6 +57,10 @@
 | 씬 wiring | 씬 theme SO + tilemap GameObject | `MapStagePool` SerializeField + `OverlayView`(unit 3). Play 검증 = unit 5 |
 
 골/스폰 구조물 프랍(거점 아키타입의 View 정거장 일부)은 unit 4 가 마커 뷰로 승계한다. 맵 구조 변경이 확정되면 `object-pipeline-map.md` 의 프랍/타일 표를 같은 커밋에서 갱신한다(워크플로우 5).
+
+## 미결 (착수 전 확정 — critic C-2)
+
+**가디언(`Defender_Guardian`, `placementLayers=Path` 단독 유닛)의 열린 마당 정체성.** 현행 라이브에서 가디언의 정체성은 «Path(경로) 칸에만 선다»인데, 열린 마당은 기본적으로 전 셀이 Path 를 연다. 선택지: (a) 전 마당 배치 허용(정체성 완화) (b) BlockZone/전선 저작으로만 제한 (c) Path 층 자체 은퇴. **unit 1 의 마스크 조립식이 이 결정에 걸려 있으므로 착수 전 사용자 결정 필요.**
 
 ## 후속 후보
 

@@ -6,10 +6,10 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Core/MapStage/GoalMarker.cs` · `SpawnMarker.cs` — 뷰 훅 추가
+- `Assets/_Project/Scripts/Core/MapStage/GoalMarker.cs` · `SpawnMarker.cs` — 뷰 훅 추가. **주의 (critic Minor 3)**: `GoalMarker` 에 안정도 필드를 넣지 않는다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유(설계문서 표의 "(+ 안정도 파라미터)" 표기는 오기)
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SetGoalCrack` 호출(:6058) · `MarkGoalCollapsed` 호출(:6171) 재배선 + 마커 등록부
-- `Assets/_Project/Scripts/UI/Tutorial/FirstSessionTutorialController.cs` — 앵커 소스 교체 (:169, :183)
-- `TilemapMapView.cs` — `InstantiateStructureProps`·`_goalPropsByCell`·앵커/균열/붕괴 API 삭제 (unit 3 에서 이관 대기로 남겨둔 것)
+- `Assets/_Project/Scripts/UI/Tutorial/FirstSessionTutorialController.cs` — **`VisualPlan` 의존 전체 교체 (critic M-6)**: 앵커(:169, :183)만이 아니라 `mapView.VisualPlan`(:161)·`plan.spawns`(:164-168)·`plan.goal`(:181/185) 전부 — 스폰/골 정보는 브리지 경유 마커 소스로. `BattleScene.unity:3408` `mapView` 참조 해제 포함
+- 은퇴 (unit 3 에서 이관): `TilemapMapView` 의 `InstantiateStructureProps`·`_goalPropsByCell`·앵커/균열/붕괴 API + **`BoardVisualPlan` 계열 7파일** (`BoardVisualPlan`/`Builder`/`BoardVisualCell`/`BoardVisualRegion`/`BoardZoneType`/`BoardDecorAnchor` — 단 `BoardDecorAnchorType` 은 50개 PropData 에셋 직렬화 잔존으로 **파일 유지**, critic M-7) + `PropInstanceUtil` 시그니처 축소(`plan.gridSize` → `gridSize`)
 
 ## 구현
 

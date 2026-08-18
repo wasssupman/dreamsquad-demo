@@ -40,7 +40,7 @@ GeneratedMap (구조체 무변경)                                ← 심 계약
 | `MapStage` (루트) | 격자 원점 + playArea rect(셀 단위) 선언. Ground 사이즈에서 자동 제안 버튼, 수동 트림 가능 | `gridSize`. **격자 = playArea 만** — Ground 가 그보다 크면 나머지는 셀 없는 순수 배경(현 서라운드 링의 후계) |
 | `PropFootprint` | 점유 footprint(w×h) + 앵커 오프셋 선언. 기즈모로 차단 셀 실시간 표시 | 해당 셀 차단 → `tiles=Deco`, placeMask=0 |
 | `SpawnMarker` | **명시적 `laneIndex`** (씬 계층 순서 금지 — 결정론) | `spawns[]` (laneCount = 웨이브 결정론 키) |
-| `GoalMarker` | 골 위치 (+ 안정도 파라미터) | `goals[]`. 열린 셀 위 필수(검증) |
+| `GoalMarker` | 골 위치 (안정도 필드 없음 — HP 는 `AttackDeck.goalStabilityMax` 단독 소유, critic 정정) | `goals[]`. 열린 셀 위 필수(검증) |
 | `RouteMarker` | 웨이포인트 체인(경로 index + 순번). 선택적 | `waypointCells/Ranges`, `spawnRoutes` |
 | `PlacementBlockZone` | 배치 금지 영역(rect). 선택적 | 해당 셀 placeMask 차감 |
 
@@ -79,7 +79,8 @@ GeneratedMap (구조체 무변경)                                ← 심 계약
 | **«Place=벽» 전제 3곳** — `CollectDefenderSources`(중심 셀 제외, `FlowFieldBuilder:172`), `TryGetNearestWalkCell`(`BattleBridge:2599`), `PatrolAreaMath:206` | 방어유닛 발밑 = Place = 벽. traversal-layers §5 가 "방어유닛 이동 spec 몫"으로 미룸 | 발밑이 Walk 가 되어 전제가 **지금 뒤집힘**. 앵커 스냅은 자기 셀 반환(개선), 순찰 영역에 소환사 셀이 포함됨 | 코드 무변경 · **순찰 소환물 행동 육안 검증 필수** |
 | **어그로 추격** (`AggroChaseMath` — 사거리 디스크 내 Walk 셀 BFS) | 복도만 추격 경로 | 마당 전체가 경로 — 추격 소스 셀 급증, 포위 형태로 접근 | 무변경 · 성능/그림 확인 |
 | **cellLayers 파생** — Place 소멸로 `Ground` 통행 비트 공집합, 차단 셀(Deco)→`Air` | `Ground\|Path` 순찰병은 Place+Walk 를 돎 | 순찰병은 Path 만으로 전 마당. **공중(Air) 적은 차단 프랍 위를 넘는다** (바위 위 비행 — 의도로 수용) | 무변경 · "공중도 못 넘는 프랍"(절벽 등)은 표현 불가 → 후속(접근 C 에서 footprint 별 차단 층) |
-| **웨이브 컨셉 게이팅** — `MapConceptRules` 가 tiles 를 직접 읽음(2×2 Walk 검사 등) | 복도 지형 기준으로 컨셉 게이트 | 거의 전 셀 Walk → 게이트가 다르게 열려 **웨이브 내용이 변함** | 밸런스 트랙 소관 · `enemy-wave-integration` 스킬 갱신 트리거 |
+| **웨이브 컨셉 게이팅** — ~~`MapConceptRules` 가 tiles 직독~~ (critic 정정 2026-08-18: `MapConceptRules` 소비처는 페인터 경고·테스트뿐, `WavePatternGenerator` 는 tiles 를 안 읽음) | 컨셉 게이트는 **laneCount 축**이 전부 | 스폰 수가 같으면 웨이브 불변 — 열린 마당 자체는 게이트에 무영향 | 밸런스 트랙은 «내용 변화»가 아니라 «난이도 체감 변화»(경로 단축·분산) 대응 |
+| **효과 타일 분포** — `EffectTilePlacer` 가 `PlaceableAt(Ground)` 로 후보 선정 (critic Minor 2) | Place 셀(배치지) 위주 | 전 마당이 후보 — 경로 위까지 퍼짐 (placement-mask 계약 6 과는 정합) | 무변경 · 파일럿 육안으로 분포 확인 |
 | **사직서 메테오 barrage** — Walk 셀 전수 수집 후 타격 (`BattleBridge:4531`) | 복도 셀만 후보 | 마당 전체가 후보 — 타격 분산 급증 | 무변경 · 밸런스 트랙에서 재조정 |
 | **공격/투사체 LOS 없음** — Battle 에 지형 차폐 개념 자체가 없음 (이동 LOS 만 존재, `PathSmoothing`) | Deco 벽 너머 사격이 평면 타일이라 안 보였음 | 3D 프랍(바위/집)을 **관통 사격이 눈에 띔** | v1 수용(캐주얼) · 후속 후보 |
 | **연결성/구조물 검증** — `MapConnectivity` 가 스폰·골 모두 Walk 요구, `StructurePlacement:155` 동일 | 저작 규칙으로 보장 | 마커 린트가 보장해야 — "스폰/골이 차단 셀 위" 검출 | 마커 린트 항목에 포함 (아래 검증 갱신) |

@@ -15,8 +15,8 @@
 
 **`MapStage`** (스테이지 프리팹 루트에 1개):
 - `Vector2Int playAreaCells` — 격자 크기 (= `GeneratedMap.gridSize`)
-- `Vector3 gridOriginLocal` — 셀 (0,0) 의 최소 모서리가 놓이는 스테이지 로컬 위치
-- tileSize 는 보유하지 않는다 — `BattleBridge.tileSize` 가 단일 소스(기존 계약)
+- `Vector3 gridOriginLocal` — 셀 (0,0) 의 최소 모서리가 놓이는 **스테이지 로컬** 위치. **의미 계약 (critic C-1)**: 이 필드가 sim(0,0)↔뷰 대응의 유일한 저작 지점이고, 런타임 정렬(unit 2)이 `grid.transform` 을 이것에 맞춘다. `grid.transform` 의 다른 writer 는 존재하지 않는다(`CenterBoardAtWorldOrigin` 은 unit 2 에서 제거).
+- `float previewTileSize = 1` — **에디터 기즈모 표시 전용** (프리팹 격리 모드엔 `BattleBridge` 가 없어 필요). 런타임 양자화는 항상 `BattleBridge.tileSize` 인자를 받는다. 두 값이 다르면 기즈모가 거짓말하므로 unit 1 의 린트가 경고한다.
 - 에디터 버튼: "Ground 렌더러 바운즈에서 playArea 제안" (자동 제안 → 수동 트림)
 
 **`PropFootprint`**: `Vector2Int size`(w×h, 최소 1×1) + `Vector2Int anchorOffset`. 차지 셀 = 프랍 위치의 양자화 앵커 셀 + offset 에서 size 만큼. 에디터 버튼: "렌더러/콜라이더 바운즈에서 footprint 제안" (제안일 뿐, 선언이 정본 — 사용자 결정 D6).
