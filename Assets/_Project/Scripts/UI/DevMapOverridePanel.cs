@@ -2,7 +2,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
-using Wassup.Data.MapGrid;
 
 namespace Wassup.UI
 {

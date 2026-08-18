@@ -174,9 +174,6 @@ namespace Wassup.Bridge
         [SerializeField] private float liftShadowMinAlpha = 0.35f;
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
         [SerializeField] private bool useRealShadows = true;
-        [Range(0.1f, 1f)]
-        [Tooltip("tilemap-world-surround unit 5 — 모바일에서 배경/원경 프랍 수를 줄이는 예산 배율(1=풀, 0.5=절반). 데스크톱/에디터는 무시.")]
-        [SerializeField] private float mobilePropBudgetScale = 0.5f;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
@@ -1054,8 +1051,6 @@ namespace Wassup.Bridge
         // map-pipeline-cleanup unit 2 — legacy 옵션/설정 에셋 제거 후 FallbackLinear 전용 상수.
         // 값은 제거 시점 라이브와 동일(MapGenerationOptions.Default 20×10 / MapGenerationSettings 1).
         private static readonly int2 FallbackGridSize = new int2(20, 10);
-        private const int FallbackGeneratorVersion = 1;
-        private const int FallbackSpawnLaneCount = 2;
 
         private void BuildMapForBattle()
         {
