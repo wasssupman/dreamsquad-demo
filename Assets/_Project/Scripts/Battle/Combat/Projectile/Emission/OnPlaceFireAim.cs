@@ -45,7 +45,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                 float2 to = candidateXZ[i] - hostXZ;
                 float d2 = math.lengthsq(to);
                 // 중심에 정확히 겹친 후보는 방향을 못 준다(정규화가 NaN). 배제하고 다음 후보로.
-                if (d2 <= DegenerateDistSq || d2 >= bestDistSq) continue;
+                if (d2 < DegenerateDistSq || d2 >= bestDistSq) continue;
                 bestDistSq = d2;
                 best = to;
                 pickedIndex = i;
@@ -64,7 +64,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // 미배치/퇴화만 0 근처다.
         public const float AimEpsilonSq = 0.001f;
 
-        // 후보가 host 와 같은 지점인지 판정하는 하한². 레거시 경로가 쓰던 값과 같다.
+        // 후보가 host 와 같은 지점인지 판정하는 하한². **비교도 레거시와 같은 `<` 다** — 정확히
+        // 이 값인 후보 하나가 갈리는 차이지만, 무회귀는 «거의 같다» 가 아니다(리뷰 L2).
         public const float DegenerateDistSq = 0.001f;
     }
 }

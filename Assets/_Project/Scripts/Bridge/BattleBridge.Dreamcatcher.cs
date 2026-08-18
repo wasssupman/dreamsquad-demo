@@ -867,6 +867,17 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: host 가 «패턴 없는 방향 단발» 이라 이 카드의 패턴이 0번 슬롯이 되어 **기본 공격을 바꿔친다** — skipped.");
                         continue;
                     }
+                    // on-place-shuttle-shotgun unit 2 — 유닛 경로와 **같은 가드**(거기 주석 참조).
+                    // 방향 패턴의 사거리는 payload 저작값이라 0 이면 사거리 0 인 탄이 되어 발사해도
+                    // 아무 일도 안 일어난다. 한쪽 bake 에만 걸면 카드 저작이 그 구멍으로 샌다.
+                    if (Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(
+                            ResolveProjectileAxes(pattern.barrel.flightMode).movement)
+                            == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction
+                        && m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 방향 패턴인데 payload tileRange 가 0 이다 — 사거리 0 인 탄이라 발사해도 아무 일도 안 일어난다 — skipped. 사거리를 지정하라.");
+                        continue;
+                    }
                     if (!TryBuildPatternSlot(pattern, defender, hostIsEnemy: false,
                                              $"Card '{card.id}' mechanic {i}", out var cardPatternSlot))
                         continue;

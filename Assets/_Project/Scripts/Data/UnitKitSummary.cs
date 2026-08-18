@@ -122,9 +122,12 @@ namespace Wassup.Data
                         if (m.payload.pattern != null && m.payload.pattern.barrel != null
                             && m.payload.pattern.barrel.flightMode == ProjectileFlightMode.Directional)
                         {
+                            // 방향의 주어는 유닛마다 다르다 — 조준 UX 가 있으면 «지정 방향», 없으면
+                            // «가까운 적». 문안이 없는 조작을 약속하지 않게 여기서 갈라 준다(리뷰 L1).
+                            string aimWord = u.RequiresFacing ? "지정 방향으로" : "가까운 적 쪽으로";
                             return m.payload.pattern.barrel.knockbackDistance > 0f
-                                ? "배치 시 가까운 적 쪽으로 충격파 · 밀어냄"
-                                : "배치 시 가까운 적 쪽으로 일제 사격";
+                                ? $"배치 시 {aimWord} 충격파 · 밀어냄"
+                                : $"배치 시 {aimWord} 일제 사격";
                         }
                         // 반경은 패턴이 소유한다(`scopeTileRange`). 패턴 미배선이면 bake 가 loud
                         // 로 거절하므로 여기선 숫자 없이 낸다.
