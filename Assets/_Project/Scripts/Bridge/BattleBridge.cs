@@ -474,7 +474,6 @@ namespace Wassup.Bridge
         // battle-structures unit 3 — 풀에서 고른 맵 문서를 들고 있는다(_resolvedDeck 과 대칭).
         // 거점 스탯(체력·프랍·공격)은 GeneratedMap 이 실을 수 없는 SO 참조라, 스폰(unit 4)이
         // 저작 엔트리를 다시 읽을 창구가 필요하다. 빌드가 끝나면 사라지던 지역 변수였다.
-        private Wassup.Data.MapGrid.MapDocument _resolvedMapDoc;
         // map-diorama-stage unit 2 — 현재 판의 스테이지 인스턴스(= 맵 비주얼). 맵과 같은 수명 —
         // 파괴는 TeardownGeneratedMap 이 소유해 teardown 5경로(매치 종료·재빌드 선행·빌드 실패·
         // StopBattle·draft 정리) 전부를 덮는다.
@@ -641,7 +640,6 @@ namespace Wassup.Bridge
             _structureRegistry.Clear(); // battle-structures unit 4 — 거점 등록부도 같은 지점에서
             ClearStructureViews();      // 리뷰 H-4 — restart 경로는 DestroyStructureEntities 를 안 거쳐
                                         // 지난 판 프랍이 배치 페이즈 내내 남는다(픽업/사직서 뷰와 같은 사고 유형)
-            _resolvedMapDoc = null;     // 리뷰 H-3 — 지난 판 문서의 거점이 다음 판에 스폰되는 것 + SO 앱수명 참조 방지
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
@@ -1078,7 +1076,6 @@ namespace Wassup.Bridge
             // map-pipeline-cleanup unit 2 — 단일 mapDocument 폴백 제거: 풀이 유일 소스.
             Wassup.Core.MapStage stagePrefab = null;
             _resolvedDeck = deck;
-            _resolvedMapDoc = null;   // 스테이지 경로엔 문서가 없다 — 거점 스폰은 계약 11 로 비가용
             _encounterPlan = null;   // tutorial-map — 이월 금지(이전 판의 플랜이 다음 맵에 붙으면 안 된다)
             // endless-mode-removal unit 0 — 엔드리스 전용 인카운터 분기는 제거했다. 그 분기는
             // mapPool 을 건드리지 않는 **선행** 분기였으므로, 빼도 아래 인덱스 계산은 한 줄도
@@ -5786,7 +5783,8 @@ namespace Wassup.Bridge
             }
 
             // ── 저작 거점(본능 + 적 마음) — unit 3 의 _resolvedMapDoc 에서 SO 스탯을 읽는다 ──
-            var docStructures = _resolvedMapDoc != null ? _resolvedMapDoc.Structures : null;
+            // map-diorama-stage unit 7 — 문서 은퇴. 거점 저작은 계약 11 로 비가용(후속 StructureMarker).
+            System.Collections.Generic.IReadOnlyList<Wassup.Data.StructureEntry> docStructures = null;
             if (docStructures == null) return;
             int spawned = 0;
             for (int i = 0; i < docStructures.Count; i++)
@@ -5897,7 +5895,8 @@ namespace Wassup.Bridge
         private void SpawnStructureViews()
         {
             ClearStructureViews();   // 멱등 — 재빌드마다 정확히 1벌
-            var docStructures = _resolvedMapDoc != null ? _resolvedMapDoc.Structures : null;
+            // map-diorama-stage unit 7 — 문서 은퇴. 거점 저작은 계약 11 로 비가용(후속 StructureMarker).
+            System.Collections.Generic.IReadOnlyList<Wassup.Data.StructureEntry> docStructures = null;
             if (docStructures == null) return;
             for (int i = 0; i < docStructures.Count; i++)
             {
