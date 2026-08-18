@@ -24,9 +24,9 @@ B1~B4 가 올라탈 바닥을 만든다: **정지/재개 · 딤+구멍 · 카운
 
 `Interaction` 도메인은 건드리지 않는다 — UI·드래그·안내 연출은 계속 흘러야 한다.
 (프로젝트 전체에서 `Interaction` 에 스케일을 요청하는 코드는 없다 → 러너의
-`DeltaTime(Interaction)` 은 항상 unscaled 이고 타임아웃은 정지 중에도 정상적으로 흐른다.)
+`DeltaTime(Interaction)` 은 항상 unscaled 이라 고정 대기(연출 비트)는 정지 중에도 흐른다.)
 
-**lease 는 구간이 소유한다**(계약 7). 성공·타임아웃·스킵·취소가 전부 같은 해제 지점을
+**lease 는 구간이 소유한다**(계약 7). 성공·스킵·취소·판 종료가 전부 같은 해제 지점을
 지나고, `OnDisable`/`OnDestroy` 에서도 반납한다. 해제를 성공 경로에만 걸면 스텝 하나를
 흘려보낸 순간 판이 0배속으로 남는다 — `EndMatch` 에는 `TimeManager.ResetAll()` 이 없어
 이 판 안에서 스스로 풀어야 한다.
@@ -40,7 +40,11 @@ B1~B4 가 올라탈 바닥을 만든다: **정지/재개 · 딤+구멍 · 카운
 붙이면 안 된다** — 두 뷰가 각자 `UiCanvasSetup.Ensure` 를 불러 한 sortingOrder 를 다툰다.
 **형제 GameObject 를 새로 만든다**(OutgameScene 의 `Dim`/`Guidance` 구조와 동형).
 
-**딤은 전 구간 떠 있다**(계약 5). 정지 여부와 딤은 **별개 축**이다 — 재개 구간
+**딤은 전 구간 떠 있다**(계약 5).
+
+⚠ `overlay.Show()` 는 **멱등이 아니다** — 알파를 0으로 되돌리고 페이드를 다시 돌린다.
+스텝마다 부르면 «전 구간» 이라던 딤이 경계마다 깜빡인다(입력 차단은 유지되고 보이는 것만
+어긋난다). 표시 여부를 기억해 **전이할 때만** 부른다. 정지 여부와 딤은 **별개 축**이다 — 재개 구간
 (`onPlaceWatchSeconds` · `resumeBeforeAttachSeconds`)에서도 딤을 유지해 플레이어가
 캐논이나 각성 카드를 먼저 소비하지 못하게 한다. 그 소비가 곧 B3·B4 의 스킵 조건이다.
 
@@ -70,8 +74,8 @@ B1~B4 가 올라탈 바닥을 만든다: **정지/재개 · 딤+구멍 · 카운
 
 **배선(SerializeField)**: `PlayerProfileSO` · `FirstRunTutorialConfig` ·
 `TutorialGuidanceView` · `OutgameTutorialOverlay` · `BattleBridge` · `PlacementPhaseView` ·
-`DefenderSelector` · `DreamcatcherHandView` · `DreamcatcherHandController` ·
-`DcInspectController` · 보드 카메라. 씬 작업이 이 unit 의 절반이다.
+`DefenderSelector` · `DreamcatcherHandView` · `DreamcatcherHandController` · 보드 카메라.
+씬 작업이 이 unit 의 절반이다.
 
 ## 완료 기준
 

@@ -25,6 +25,7 @@ namespace Wassup.UI.Tutorial
         private const string OnPlaceText = "강력한 배치스킬들을 활용하여 전황을 유리하게 이끌어 보세요";
         private const string ReselectText = "다시 캐논 유닛을 선택 해보세요";
         private const string ReselectFallbackFormat = "다시 {0} 유닛을 선택 해보세요";
+        private const string SelectHostFormat = "{0} 유닛을 선택 해보세요";
         private const string CardText = "하단 드림캐쳐 4개중 맘에 드는것을 터치 해보세요";
         private const string CardFallbackText = "하단 드림캐쳐 중 맘에 드는것을 터치 해보세요";
         private const string AttachDoneText = "드림캐쳐를 유닛에게 부착하여 더 강해질 가능성을 열어보세요!";
@@ -112,6 +113,17 @@ namespace Wassup.UI.Tutorial
                 _battleStarted = true;
                 StartCoroutine(RunBattle());
             }
+            else if (phase == GamePhase.Result || phase == GamePhase.Tally)
+            {
+                // ⚠ 판이 먼저 끝날 수 있다. 온보딩 판은 60초이고 스텝에는 타임아웃이 없어
+                // (계약 11) 대기 중인 코루틴은 **스스로 깨어나지 않는다** — 끊어주지 않으면
+                // 딤과 0배속이 결과 화면 위에 그대로 남는다.
+                //
+                // Close 가 완료 기록까지 판정한다: 직전에 B4 를 끝냈으면 기록되고, 대기 중에
+                // 끝났으면 기록되지 않아 다음 판에 처음부터 다시 뜬다.
+                StopAllCoroutines();
+                Close();
+            }
         }
 
         // ── B1 맵 설명 ──────────────────────────────────────────────────────
@@ -123,7 +135,6 @@ namespace Wassup.UI.Tutorial
         {
             if (placementPhaseView != null) placementPhaseView.BeginIntroHold(config.introHoldMaxSeconds);
 
-            guidance.ShowMessage(PlaceableText, false);
             for (int i = 0; i < config.briefingCycles; i++)
             {
                 ShowPlaceable();
@@ -211,24 +222,26 @@ namespace Wassup.UI.Tutorial
             // 적이 영원히 안 온다. 배치 영역 하이라이트를 켜둬서 문구의 «배치 영역» 이
             // 화면에서 실제로 보이게 한다.
             //
-            // ⚠ 기준은 **시간이 아니라 사건**이다. 배치 영역 진입으로 잡으면 너무 일러
-            // (Duel 은 배치 영역이 x≤14 로 넓어 적이 스폰 직후 걸린다) 문구가 0초 노출되고
-            // «그냥 지나간» 것처럼 보인다. 강(Env 타일)은 맵 한가운데를 가르는 눈에 보이는
-            // 경계라 «저기까지 왔다» 가 화면에서 읽힌다.
+            // ⚠ 기준은 **시간이 아니라 사건**이다 — 적이 «강»(Env 타일)을 건너오는 순간.
+            // 강은 맵 한가운데를 가르는 눈에 보이는 경계라 «저기까지 왔다» 가 화면에서 읽힌다.
+            // 배치 영역 진입은 기준으로 너무 이르다 — Duel 은 배치 영역이 x≤14 라 적이 스폰
+            // 직후 걸려 문구가 0초 노출된다(그래서 폐기했다).
             //
-            // 강이 없는 맵을 위한 폴백은 배치 영역 진입이다 — 없으면 조건이 영영 안 서고,
-            // 타임아웃이 없으므로(계약 11) 그대로 멈춘다.
-            if (!_placed && bridge != null)
+            // 브리지는 «Env 타일이 있나 / 적이 그 타일 몇 칸 안인가» 라는 **중립 질문**만 답한다.
+            // «Env = 접근선» 이라는 해석은 여기 있다.
+            //
+            // ⚠ 강이 없는 맵이면 **기다리지 않고 건너뛴다**(계약 11). 배치 영역 진입으로
+            // 떨어뜨리면 방금 폐기한 기준이 조용히 되살아나고, 조건이 영영 안 서게 두면
+            // 타임아웃이 없어 그대로 멈춘다.
+            if (!_placed && bridge != null && bridge.MapHasTile(MapTileType.Env))
             {
-                bool useRiver = bridge.MapHasEnvTiles;
                 ShowPlaceable();
                 guidance.ClearFocus();
                 DimOnly();
                 Unfreeze();
                 guidance.ShowMessage(EnemyApproachText, false);
-                yield return WaitFor(() => _placed || (useRiver
-                    ? bridge.AnyEnemyNearEnvTile(config.riversideTiles)
-                    : bridge.AnyEnemyInPlacementArea(tutorialUnit)));
+                yield return WaitFor(() => _placed
+                    || bridge.AnyEnemyWithinTilesOf(MapTileType.Env, config.riversideTiles));
                 Freeze();
             }
 
@@ -249,7 +262,7 @@ namespace Wassup.UI.Tutorial
                 //
                 // 대가: 이 짧은 구간에 플레이어가 손패를 열어 각성을 쓸 수 있다. 배치하는
                 // 즉시 끝나는 구간이라 받아들인다 — 막으면 배치 자체가 불가능해진다.
-                overlay.Hide();
+                HideDim();
                 guidance.ShowMessage(PlaceText, false);
                 yield return WaitFor(() => _placed);
             }
@@ -286,7 +299,7 @@ namespace Wassup.UI.Tutorial
             // 대가로 이 창에 각성을 먼저 쓸 수 있지만(게이지 여유가 정확히 0), 안내가 손패를
             // 가리키지 않는 구간이라 위험이 낮고, 무엇보다 대상이 죽는 쪽이 확실한 실패다.
             guidance.Hide();
-            overlay.Hide();
+            HideDim();
             Unfreeze();
             yield return WaitUnscaled(config.resumeBeforeAttachSeconds);
 
@@ -299,10 +312,12 @@ namespace Wassup.UI.Tutorial
 
             // 4.1 보드의 캐논 선택. 대상이 캐논이 아니면 **문구도 그 유닛 이름으로 바꾼다** —
             // 캐논이라 말하며 딴 유닛을 가리키지 않는다.
-            string reselectText = hostUnit == tutorialUnit
-                ? ReselectText
-                : string.Format(ReselectFallbackFormat,
-                    hostUnit != null ? hostUnit.displayName : "배치한");
+            // 유닛 이름이 캐논이 아니면 문구도 그 이름으로 바꾼다. 그리고 B3 를 건너뛴 판은
+            // 유닛을 한 번도 안 골랐으므로 «다시» 가 거짓이다 — 그때는 첫 안내 어투로 간다.
+            string hostName = hostUnit != null ? hostUnit.displayName : "배치한";
+            string reselectText = !_b3Completed
+                ? string.Format(SelectHostFormat, hostName)
+                : (hostUnit == tutorialUnit ? ReselectText : string.Format(ReselectFallbackFormat, hostName));
             if (!TryMakeWorldProxy(_hostEntity, out var hostRect)) yield break;
 
             _selectionSet = false;
@@ -312,7 +327,17 @@ namespace Wassup.UI.Tutorial
             if (!alreadySelected)
             {
                 Focus(hostRect, reselectText);
-                yield return WaitFor(() => _selectionSet);
+                // ⚠ 구멍을 한 번만 잡으면 안 된다 — 4.2 카드와 **같은 이유**다. 프록시는
+                // WorldToScreenPoint 를 한 번 계산해 박고, 오버레이는 대상 rect 의 코너 «변화»
+                // 만 추적한다. 그런데 카메라는 CameraDirector 의 브리딩·킥으로 상시 미세하게
+                // 움직여서 구멍이 유닛에서 벗어난다 → 유닛 탭은 딤에 막히고, 구멍 안 탭은 빈
+                // 보드라 선택이 안 울려 정지 상태로 영영 멈춘다(타임아웃이 없다).
+                while (!_selectionSet)
+                {
+                    if (TryMakeWorldProxy(_hostEntity, out var live) && live != null)
+                        overlay.SetHoles(new[] { live });
+                    yield return null;
+                }
             }
             if (handView != null) handView.SelectionTargetSet -= OnSelectionSet;
 
@@ -325,10 +350,27 @@ namespace Wassup.UI.Tutorial
             // 는 코너 «변화» 만 추적한다) → 구멍 0개 = 풀 dim 이라 카드를 못 누른다. 실제로
             // 그렇게 물렸다. 그래서 **부착이 성사될 때까지 매 프레임 구성을 보고 바뀌면 다시
             // 잡는다** — 딜인이 늦게 끝난 카드도 그때 열린다.
-            yield return WaitFor(() => AttachableCardCount() > 0);
-            if (AttachableCardCount() == 0) yield break;
+            // ⚠⚠ **여기서 조건 대기를 하면 앱이 잠긴다.** 손패가 열릴 때까지 무조건 기다리면,
+            // 낼 수 있는 카드가 0인 판에서 영영 안 깨어난다 — 각성 게이지는 **적 처치로만**
+            // 오르는데(GainAwakening) 정지 중엔 킬이 없어 0에서 벗어날 길이 없다. 게다가 매치
+            // 타이머도 Battle 도메인이라 멈춰 있어 Result 전이가 오지 않는다 → 계약 13 의
+            // 정리 경로조차 발동하지 않는다. 풀 dim + 0배속 + 안 끝나는 판 = 강종 외 탈출구 없음.
+            // 도달 경로는 흔하다: 재개 구간(딤 없음)에 각성 카드를 한 장 쓰면 여유가 0이 된다.
+            //
+            // 그래서 **딜인만 상한 대기**하고(카드가 활성화되는 데 몇 프레임 걸린다), 그러고도
+            // 0이면 계약 11 대로 **기다리지 말고 건너뛴다**. 상한 대기는 조건 대기가 아니다.
+            float grace = 0f;
+            while (AttachableCardCount() == 0 && grace < config.cardDealInGraceSeconds)
+            {
+                grace += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (AttachableCardCount() == 0)
+            {
+                Debug.Log("[FirstRunTutorial] 낼 수 있는 드림캐쳐가 없다 — 부착 구간을 건너뛴다.", this);
+                yield break;
+            }
             _attachBaseline = handController != null ? handController.AttachCountOf(_hostEntity) : -1;
-            if (handController != null) handController.AttachmentsChanged += OnAttachmentsChanged;
             guidance.ClearFocus();
 
             int shownCount = -1;
@@ -339,13 +381,12 @@ namespace Wassup.UI.Tutorial
                 if (now != shownCount)
                 {
                     shownCount = now;
-                    overlay.SetHoles(CollectAttachableCardRects(out _));
-                    // 문구는 «몇 장» 이 바뀔 때만 갱신한다 — 매번 부르면 말풍선이 다시 뜬다.
+                    overlay.SetHoles(CollectAttachableCardRects());
+                    // 구멍이 바뀔 때만 문구도 같이 갱신한다(매 프레임 문자열 재대입 회피).
                     guidance.ShowMessage(now == 4 ? CardText : CardFallbackText, false);
                 }
                 yield return null;
             }
-            if (handController != null) handController.AttachmentsChanged -= OnAttachmentsChanged;
 
             // 4.3 마무리 — 문구만(구멍 없음)
             guidance.ClearFocus();
@@ -362,12 +403,13 @@ namespace Wassup.UI.Tutorial
             ClearHighlights();
             guidance.ClearFocus();
             guidance.Hide();
-            overlay.Hide();
+            HideDim();
             Unfreeze();
             DestroyWorldProxy();
 
-            // ⚠ 스킵/타임아웃으로 끝난 판은 완료로 기록하지 않는다(계약 11). 1회성이라
-            // 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼 기회를 영영 잃는다.
+            // ⚠ 선행조건 부재로 건너뛰었거나 대기 중에 판이 먼저 끝난 경우는 완료로 기록하지
+            // 않는다(계약 11). 1회성이라 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼
+            // 기회를 영영 잃는다.
             if (_b3Completed && _b4Completed && profileSO != null && profileSO.profile != null)
             {
                 profileSO.profile.firstRunTutorialDone = true;
@@ -399,18 +441,35 @@ namespace Wassup.UI.Tutorial
             _frozen = false;
         }
 
-        private void DimOnly()
+        // ⚠ Show() 는 멱등이 아니다 — 알파를 0으로 되돌리고 페이드를 다시 돌린다. 스텝마다
+        // 부르면 계약 5 가 «전 구간» 이라고 못박은 딤이 경계마다 깜빡인다(입력 차단은 유지되고
+        // 보이는 것만 어긋난다). 그래서 표시 여부를 여기서 기억하고 전이할 때만 부른다.
+        private bool _dimShown;
+
+        private void ShowDim()
         {
             overlay.SetSortingOrder(guidance.DimSortingOrder);
-            overlay.SetHoles(null);
+            if (_dimShown) return;
             overlay.Show();
+            _dimShown = true;
+        }
+
+        private void HideDim()
+        {
+            overlay.Hide();
+            _dimShown = false;
+        }
+
+        private void DimOnly()
+        {
+            overlay.SetHoles(null);
+            ShowDim();
         }
 
         private void Focus(RectTransform target, string text)
         {
-            overlay.SetSortingOrder(guidance.DimSortingOrder);
             overlay.SetHoles(new[] { target });
-            overlay.Show();
+            ShowDim();
             guidance.ShowMessage(text, false);
             guidance.FocusUi(target);
         }
@@ -425,15 +484,12 @@ namespace Wassup.UI.Tutorial
                 drag.PlacementCommitted -= OnPlaced;
             }
             if (handView != null) handView.SelectionTargetSet -= OnSelectionSet;
-            if (handController != null) handController.AttachmentsChanged -= OnAttachmentsChanged;
         }
 
         private void OnArmed(DefenderUnitData _) => _armed = true;
         private void OnDragStarted() => _armed = true;
         private void OnPlaced(DefenderUnitData _) => _placed = true;
         private void OnSelectionSet() => _selectionSet = true;
-        // AttachmentsChanged 는 회수로도 울린다 — 여기서는 신호만 받고 판정은 등록부 카운트로 한다.
-        private void OnAttachmentsChanged() { }
 
         // 부착 호스트 해결: 온보딩이 가리키던 유닛 우선, 없으면 살아 있는 배치 유닛 아무나.
         // TryGetDeployedEntity 는 _em.Exists 로 생존까지 본다 — 죽은 유닛은 여기서 걸러진다.
@@ -478,7 +534,7 @@ namespace Wassup.UI.Tutorial
                 var go = new GameObject("TutorialWorldProxy", typeof(RectTransform));
                 _worldProxy = (RectTransform)go.transform;
                 _worldProxy.SetParent(host, false);
-                _worldProxy.sizeDelta = new Vector2(180f, 180f);
+                _worldProxy.sizeDelta = Vector2.one * config.focusHoleSize;
             }
             Vector3 screen = boardCamera.WorldToScreenPoint(anchor.position);
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(host, screen, null, out var local)) return false;
@@ -518,15 +574,13 @@ namespace Wassup.UI.Tutorial
             return n;
         }
 
-        private RectTransform[] CollectAttachableCardRects(out int count)
+        private RectTransform[] CollectAttachableCardRects()
         {
-            count = 0;
             if (handView == null || handView.Slots == null) return null;
             var list = new System.Collections.Generic.List<RectTransform>();
             var slots = handView.Slots;
             for (int i = 0; i < slots.Count; i++)
                 if (IsAttachableSlot(slots[i])) list.Add(slots[i].rect);
-            count = list.Count;
             return list.ToArray();
         }
 

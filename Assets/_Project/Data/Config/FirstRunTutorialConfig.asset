@@ -20,4 +20,6 @@ MonoBehaviour:
   onPlaceWatchSeconds: 2
   resumeBeforeAttachSeconds: 5
   attachSettleSeconds: 2
+  cardDealInGraceSeconds: 2
+  focusHoleSize: 180
   introHoldMaxSeconds: 30

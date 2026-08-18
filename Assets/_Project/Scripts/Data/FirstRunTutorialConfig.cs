@@ -40,6 +40,15 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("부착 연출 후 마무리 문구까지(초).")]
         public float attachSettleSeconds = 2f;
+        [Min(0f)]
+        [Tooltip("유닛 선택 후 손패가 딜인돼 카드가 활성화될 때까지의 **상한** 대기(초). " +
+                 "지나도 낼 수 있는 카드가 0이면 부착 구간을 건너뛴다 — 조건 대기로 두면 앱이 잠긴다.")]
+        public float cardDealInGraceSeconds = 2f;
+
+        [Header("포커스")]
+        [Min(1f)]
+        [Tooltip("보드 위 유닛을 가리킬 때 뚫는 구멍의 한 변(px). 이 값이 «플레이어가 유닛을 맞출 수 있는가» 를 정한다.")]
+        public float focusHoleSize = 180f;
 
         [Header("안전망")]
         // 스텝 타임아웃은 두지 않는다(사용자 결정). 안내가 요구한 행동을 할 때까지 기다린다 —

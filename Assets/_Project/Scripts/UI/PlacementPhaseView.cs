@@ -151,13 +151,18 @@ namespace Wassup.UI
                 ? (battleCfg != null ? battleCfg.autoStartCountdownSeconds : 3f)
                 : (cfg != null ? cfg.placementPhaseDuration : 30f);
 
+            // ⚠ **SetPhase 보다 먼저** 지운다. SetPhase 는 PhaseChanged 를 동기 호출하고,
+            // 온보딩 컨트롤러는 그 자리에서 코루틴을 시작해 첫 문장으로 BeginIntroHold 를
+            // 부른다 — 리셋이 뒤에 있으면 방금 세운 홀드를 지워 카운트다운이 안 붙잡히고
+            // 맵 설명이 3·2·1·GO! 위에서 돈다. 지금 안 터지는 건 구독 시점이 늦어서일 뿐이라
+            // (gimmickEnabled 를 켜면 그대로 발현된다) 순서에 기대지 않는다.
+            _introHeld = false;   // 판마다 새로 시작한다 — 지난 판의 홀드를 물려받지 않는다.
             if (gameManager != null) gameManager.SetPhase(GamePhase.Placement);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.ResetToStart();
             // defender-placement-cooldown 0 — 배치 페이즈 진입마다 잔여 쿨타임 소거(매치 시작·재시작·리드로우 커버).
             if (gameManager != null && gameManager.CooldownRuntime != null) gameManager.CooldownRuntime.ResetAll();
             if (bridge != null) bridge.BeginPlacement();
 
-            _introHeld = false;   // 판마다 새로 시작한다 — 지난 판의 홀드를 물려받지 않는다.
             _remaining = duration;
             _active = true;
             _panel.SetActive(true);

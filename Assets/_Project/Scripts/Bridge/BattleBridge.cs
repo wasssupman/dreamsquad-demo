@@ -6527,34 +6527,33 @@ namespace Wassup.Bridge
         //
         // ⚠ 자기 플래그가 따로 있어야 한다. RepaintPlacementHighlight 는 _placeableHlShown 으로
         // early-return 하므로, 그것만 보면 가능 하이라이트를 안 켠 상태에서 불가가 안 칠해진다.
+        // 기준 유닛은 _placeableHlUnit 하나로 충분하다 — 두 하이라이트는 한 스캔의 두 갈래라
+        // 정의상 같은 층 마스크를 쓴다. 필드를 둘로 두면 «서로 다른 유닛으로 켜진» 상태가
+        // 표현 가능해지고, 그건 unit 1 이 피하려던 «판정식이 갈린다» 와 같은 종류의 여지다.
         private bool _blockedHlShown;
-        private DefenderUnitData _blockedHlUnit;
         private readonly List<Vector2Int> _blockedHlScratch = new List<Vector2Int>();
 
-        // first-run-tutorial unit 5 — «악몽이 강가까지 왔는가».
+        // first-run-tutorial unit 5 — «어떤 종류의 타일이 이 맵에 있는가» · «적이 그 타일에서
+        // 몇 칸 안까지 왔는가». 둘 다 **중립 질문**이다 — «접근선» 이나 «강» 같은 온보딩
+        // 어휘는 여기 두지 않는다. 이 파일이 이미 9천 줄이라 해석은 호출자가 갖는다.
         //
-        // 배치 영역 진입(AnyEnemyInPlacementArea)은 기준으로 너무 이르다 — Duel 은 배치 영역이
-        // x≤14 로 넓어서 적이 스폰 직후 곧바로 걸린다. 강(Env 타일)은 맵 한가운데를 가르는
-        // 눈에 보이는 경계라, «저기까지 왔다» 가 화면에서 읽힌다.
-        //
-        // 열 좌표를 박지 않는다 — Env 타일 자체를 기준으로 삼으므로 강이 어디에 어떤 모양으로
-        // 나 있든 같은 규칙이 선다(Duel 은 x=10 열에 건널목 4칸이 뚫려 있다).
-        public bool MapHasEnvTiles
+        // 게이트웨이에 있는 이유는 하나뿐이다: 적 위치가 ECS 에 있어서다(제약 1). 지형만
+        // 묻는 질문이면 맵 데이터로 밖에서 답할 수 있지만, 이 둘은 적과 지형을 동시에 본다.
+        public bool MapHasTile(MapTileType kind)
         {
-            get
-            {
-                if (!_generatedMap.IsCreated) return false;
-                for (int y = 0; y < _generatedMap.gridSize.y; y++)
-                for (int x = 0; x < _generatedMap.gridSize.x; x++)
-                    if (_generatedMap.TileAt(new int2(x, y)) == MapTileType.Env) return true;
-                return false;
-            }
+            if (!_generatedMap.IsCreated) return false;
+            var size = _generatedMap.gridSize;
+            for (int y = 0; y < size.y; y++)
+            for (int x = 0; x < size.x; x++)
+                if (_generatedMap.TileAt(new int2(x, y)) == kind) return true;
+            return false;
         }
 
-        public bool AnyEnemyNearEnvTile(int radiusTiles)
+        public bool AnyEnemyWithinTilesOf(MapTileType kind, int radiusTiles)
         {
             if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
             int r = Mathf.Max(0, radiusTiles);
+            var size = _generatedMap.gridSize;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             try
             {
@@ -6563,36 +6562,14 @@ namespace Wassup.Bridge
                     var e = entities[i];
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    var cell = GridMath.WorldToCell(pos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+                    var cell = GridMath.WorldToCell(pos, tileSize, size, origin: _boardOrigin);
                     for (int dy = -r; dy <= r; dy++)
                     for (int dx = -r; dx <= r; dx++)
                     {
                         int nx = cell.x + dx, ny = cell.y + dy;
-                        if (nx < 0 || nx >= _generatedMap.gridSize.x || ny < 0 || ny >= _generatedMap.gridSize.y) continue;
-                        if (_generatedMap.TileAt(new int2(nx, ny)) == MapTileType.Env) return true;
+                        if (nx < 0 || nx >= size.x || ny < 0 || ny >= size.y) continue;
+                        if (_generatedMap.TileAt(new int2(nx, ny)) == kind) return true;
                     }
-                }
-            }
-            finally { entities.Dispose(); }
-            return false;
-        }
-
-        public bool AnyEnemyInPlacementArea(DefenderUnitData unit)
-        {
-            if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
-            var layers = unit != null ? unit.EffectivePlacementLayers : PlacementLayer.Ground;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            try
-            {
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    var cell = GridMath.WorldToCell(pos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
-                    if (cell.x < 0 || cell.x >= _generatedMap.gridSize.x
-                        || cell.y < 0 || cell.y >= _generatedMap.gridSize.y) continue;
-                    if (_generatedMap.PlaceableAt(cell, layers)) return true;
                 }
             }
             finally { entities.Dispose(); }
@@ -6602,18 +6579,22 @@ namespace Wassup.Bridge
         public void ShowBlockedHighlight(DefenderUnitData unit)
         {
             _blockedHlShown = true;
-            _blockedHlUnit = unit;
+            _placeableHlUnit = unit;
             RepaintPlacementHighlight();
         }
 
         public void HideBlockedHighlight()
         {
             _blockedHlShown = false;
-            _blockedHlUnit = null;
             if (tilemapMapView != null) tilemapMapView.ClearBlockedHighlight();
         }
 
-        public void RefreshPlacementHighlightIfShown() { if (_placeableHlShown) RepaintPlacementHighlight(); }
+        // 술어를 RepaintPlacementHighlight 와 맞춘다 — 둘이 갈리면 불가 하이라이트만 켜진
+        // 상태에서 배치/재배치 확정 후 리페인트가 조용히 건너뛰어진다.
+        public void RefreshPlacementHighlightIfShown()
+        {
+            if (_placeableHlShown || _blockedHlShown) RepaintPlacementHighlight();
+        }
 
         private void RepaintPlacementHighlight()
         {
@@ -6622,8 +6603,7 @@ namespace Wassup.Bridge
 
             // first-run-tutorial unit 1 — 두 하이라이트는 **한 스캔의 두 갈래**다.
             // 기준 유닛은 켜져 있는 쪽이 준다(둘 다 켜져 있으면 같은 유닛이어야 정합).
-            var hlUnit = _placeableHlShown ? _placeableHlUnit : _blockedHlUnit;
-            var layers = hlUnit != null ? hlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
+            var layers = _placeableHlUnit != null ? _placeableHlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
             _placeableHlScratch.Clear();
             _blockedHlScratch.Clear();
             int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
