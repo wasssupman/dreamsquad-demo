@@ -71,6 +71,9 @@ N/A — UI 컨트롤러·프로필 필드 제거만 다룬다. 플레이 오브�
 
 ## 후속 후보
 
+> 재설계가 시작됐다 → [`docs/spec/first-run-tutorial/`](../first-run-tutorial/README.md) (2026-08-18).
+> 아래 항목 중 도구 정리 두 건은 그 spec 의 후속 후보로 이관됐다.
+
 - `TutorialGuidanceStyle` 의 사라진 스텝 전용 필드(`classHintFallbackSeconds` 등) 정리 — 재설계가 무엇을 쓸지 정해진 뒤.
 - 도구 계층의 이름 재정리(`Tutorial*` → 안내 도구를 뜻하는 이름) — 재설계와 함께.
 - 온보딩 없는 상태의 첫 판 이탈률 관측 — 재설계의 기준선이 된다.
