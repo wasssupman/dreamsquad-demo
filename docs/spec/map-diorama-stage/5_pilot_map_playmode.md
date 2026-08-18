@@ -31,4 +31,4 @@
 - [ ] 육안 검증 축 5종 기록 완료 — 수용 불가 판정이 나오면 해당 축을 후속 spec 후보로 격상하고 이 spec 은 기록으로 닫는다
 - [ ] `docs/reference/object-pipeline-map.md` 프랍/타일 표 갱신 (구조 변경 확정 — 워크플로우 5)
 
-확인 2026-08-19 — MapStage_Pilot.prefab 생성(MapStageDummyGenerator MenuItem, 16×10 · barrier 남북 링 · 내부 차단 3 · 효과 타일 허용) + 풀 dev 등록. 전체 스위트: EditMode 두 lane 그린(직전 2524) · PlayMode 148 pass / 18 잔존(US-004b 판정 기록 — 순서 오염 10은 DC-attach×선행 테스트 상호작용으로 맵 결백 실증, 환경 의심 5, 개별 3 → US-007 후속 조사로 격상). 육안 검증 축 5종은 사용자 확인 대기 항목으로 보고.
+확인 2026-08-19 — MapStage_Pilot.prefab 생성(MapStageDummyGenerator MenuItem, 16×10 · barrier 남북 링 · 내부 차단 3 · 효과 타일 허용) + 풀 dev 등록. 전체 스위트: EditMode 두 lane 그린(직전 2524) · PlayMode 148 pass / 18 잔존(US-004b 판정 기록 — 기하 오염 15건은 스트라이드 이격으로 해소(33→18), 잔존 10건은 순서 의존·기제 미확인 — main 기준선 대조까지 유·무죄 미결. 환경 의심 4 + 브랜치 BattleScene 편집 의심 1(SceneTransition), 개별 3 → US-007 후속 조사로 격상). 육안 검증 축 5종은 사용자 확인 대기 항목으로 보고.

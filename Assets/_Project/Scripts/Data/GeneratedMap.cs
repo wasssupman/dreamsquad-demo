@@ -5,7 +5,8 @@ using Unity.Mathematics;
 namespace Wassup.Data
 {
     // Phase 10: 판 1회용 맵 데이터. BattleBridge 가 owner.
-    // MapDocumentBuilder.ToGeneratedMap(authored 풀) / BuildFallbackLinear(connectivity 안전망)로 생성.
+    // map-diorama-stage — 생산자는 DioramaMapBuilder.Assemble(스테이지 스캔). 연결성 실패는 하드 실패
+    // (BuildFallbackLinear 폴백 은퇴 — 테스트 픽스처 빌더로만 잔존).
     public struct GeneratedMap : IDisposable
     {
         public NativeArray<MapTileType> tiles;   // gridSize.x * gridSize.y

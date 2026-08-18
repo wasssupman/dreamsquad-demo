@@ -34,3 +34,5 @@
 - [ ] 픽스처 스테이지로 에디터 Play: 위 스모크와 동일 시나리오 육안 + **프랍-격자 정렬 확인**(gridOriginLocal≠0 인 픽스처로 — C-1 회귀 축)
 - [ ] DevMapOverride 스테퍼로 entry 전환 + "Dev 엔트리 등록" 버튼 동작
 - [ ] 풀 선정 결정론 EditMode 테스트 (같은 시드 = 같은 entry)
+
+확인 기록 추기(아키텍트 D5) — 배치 판정(열린·차단·BlockZone)은 순수 계산이라 EditMode(`DioramaMapBuilderTests.Assemble_BlockZone_ClosesPlacement_KeepsTraversal` 등)로 커버하는 것으로 치환했다. PlayMode 스모크는 이동(셀 변화·전진 ≥4셀)·차단 침범 0 만 단언한다.

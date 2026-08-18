@@ -1,6 +1,6 @@
 # map-diorama-stage — 맵 저작을 디오라마 스테이지로 전환 (접근 A)
 
-상태: **설계 승인 2026-08-18 · 미착수** (별도 브랜치 작업 예정 — 브랜치 생성은 unit 0 착수 시)
+상태: **units 0~5·7 구현·검증 완료 2026-08-19** (브랜치 feature/map-diorama-stage · unit 6 포탈 = v1 제외) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
 
 설계 근거·결정 이력·전투 접점 감사: [`docs/plans/2026-08-18-map-diorama-stage-design.md`](../../plans/2026-08-18-map-diorama-stage-design.md)
 
