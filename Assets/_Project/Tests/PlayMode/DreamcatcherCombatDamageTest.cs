@@ -174,8 +174,11 @@ namespace Wassup.Tests.PlayMode
 
         private static bool PlaceFirstValid(BattleBridge bridge, DefenderUnitData u)
         {
-            for (int x = -24; x < 48; x++)
-                for (int y = -24; y < 48; y++)
+            // map-diorama-stage US-004b — 이격(스트라이드 3) 배치: 열린 마당에서 연속 셀 배치가
+            // 인접 오라류 효과(OnPlace 등)를 서로에게 옮겨 고정값 계측을 오염시켰다(프로브 실증).
+            // 구 복도 맵의 «배치지가 흩어져 있던» 기하 의미론을 테스트 쪽에서 복원한다.
+            for (int x = -24; x < 48; x += 3)
+                for (int y = -24; y < 48; y += 3)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
                         return bridge.PlaceDefenderAs(x, y, u);
             return false;
