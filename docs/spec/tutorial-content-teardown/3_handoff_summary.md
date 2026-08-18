@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (units 0~2, 한 커밋 — 해시는 커밋 후 기재)
+- `76038c26` — feat(tutorial-content-teardown): units 0~2 — 튜토리얼 콘텐츠를 걷고 안내 도구만 남긴다 (45 files, +176 / **-4,540**)
 
 세 유닛을 한 커밋에 담았다. 유닛 경계가 「호출자 → 피호출자」라 중간 상태가 컴파일되지 않는다 — unit 0·1 이 호출자를 걷어야 unit 2 가 `TutorialProgress` 를 지울 수 있고, 반대로 unit 2 를 미루면 그 파일이 호출자 없이 남아 teardown 이 절반만 끝난 채 main 에 들어간다.
 
