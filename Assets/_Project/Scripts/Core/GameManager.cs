@@ -128,7 +128,7 @@ namespace Wassup.Core
         private bool _matchRecorded;
 
         // 교체 가능한 저장 seam. 이 프로젝트의 프로필 쓰기 주체는 전부 이걸 갖는다
-        // (FirstSessionTutorialController · OutgameTutorialController · SquadCharacterPageController).
+        // (SquadCharacterPageController 등. 튜토리얼 컨트롤러 둘은 tutorial-content-teardown 으로 은퇴).
         // 없으면 증가 로직에 테스트를 붙일 때 개발자의 실제 profile.json 을 재작성하게 된다.
         [System.NonSerialized] internal System.Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
 

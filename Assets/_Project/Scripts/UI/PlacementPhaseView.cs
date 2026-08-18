@@ -25,12 +25,6 @@ namespace Wassup.UI
         // countdown must all wait until a drag/directional aim has settled.
         [SerializeField] private DefenderSelector defenderSelector;
 
-        // match-intro-phase-toggles unit 0 — 첫 판 판정용. 튜토리얼은 배치를 직접 가르치는 판이라
-        // 자동 시작 플래그를 무시한다(계약 6). 미배선이면 ShouldRunCore=false → 자동 시작이
-        // 정상 동작하는 fail-open.
-        [Tooltip("첫 판 판정용. 미배선이면 fail-open — 플래그대로 자동 시작한다.")]
-        [SerializeField] private PlayerProfileSO profileSO;
-
         [Header("자동 시작 카운트다운 (placementPhaseEnabled=false)")]
         [Tooltip("중앙 대형 숫자 폰트. 미지정 시 startLabelFont → TMP 기본 순으로 폴백")]
         [SerializeField] private TMP_FontAsset countdownFont;
@@ -81,8 +75,6 @@ namespace Wassup.UI
         private float _remaining;
         private bool _active;
         private bool _built;
-        private bool _tutorialHold;
-        private bool _tutorialStartUnlocked;
         private bool _startAvailable;
         // match-intro-phase-toggles — 자동 시작 모드 상태. BeginPlacementPhase 에서 1회 확정하고
         // 창이 도는 동안 재평가하지 않는다.
@@ -110,8 +102,6 @@ namespace Wassup.UI
         private void OnDisable()
         {
             SetStartJuice(false);
-            _tutorialHold = false;
-            _tutorialStartUnlocked = false;
             _startAvailable = false;
             // ⚠ 살아있는 시퀀스는 반드시 멈춘다. pending ChainCallback 을 문 채 파괴되면
             // PrimeTween 이 "OnComplete callback was ignored" 를 에러로 찍는다
@@ -130,8 +120,7 @@ namespace Wassup.UI
             // 유닛 트레이가 Placement 진입 신호에서 슬롯을 구성하므로(DefenderSelector.OnPhaseChanged)
             // 페이즈를 건너뛰면 전투 내내 트레이가 빈 채로 남는다.
             _autoStart = PlacementPhasePolicy.UseAutoStart(
-                battleCfg == null || battleCfg.placementPhaseEnabled,
-                TutorialProgress.ShouldRunCore(profileSO));
+                battleCfg == null || battleCfg.placementPhaseEnabled);
             float duration = _autoStart
                 ? (battleCfg != null ? battleCfg.autoStartCountdownSeconds : 3f)
                 : (cfg != null ? cfg.placementPhaseDuration : 30f);
@@ -188,11 +177,6 @@ namespace Wassup.UI
             if (interactionBlocked)
             {
                 _countdownLabel.text = aiming ? "공격 방향을 정해주세요" : "배치 중";
-                return;
-            }
-            if (_tutorialHold)
-            {
-                _countdownLabel.text = "배치 연습";
                 return;
             }
             _remaining -= Time.deltaTime;
@@ -264,40 +248,12 @@ namespace Wassup.UI
             FinishPlacement();
         }
 
-        // first-session-tutorial unit 2 — countdown ownership stays here. The
-        // tutorial only requests/revokes a gate; it never writes _remaining.
-        public void BeginTutorialGate()
-        {
-            if (!_active) return;
-            _tutorialHold = true;
-            _tutorialStartUnlocked = false;
-            if (_countdownLabel != null) _countdownLabel.text = "배치 연습";
-            RefreshStartAvailability();
-        }
-
-        public void UnlockTutorialStart()
-        {
-            if (!_active || !_tutorialHold) return;
-            _tutorialStartUnlocked = true;
-            RefreshStartAvailability();
-        }
-
-        public void EndTutorialGate(bool restoreNormalPlacement)
-        {
-            _tutorialHold = false;
-            _tutorialStartUnlocked = false;
-            if (!_active) return;
-            RefreshStartAvailability(animateWhenAvailable: restoreNormalPlacement);
-        }
-
         private void FinishPlacement()
         {
             // All callers converge here so a same-frame Skip/Start click or countdown
             // expiry cannot bypass the runtime interaction guard.
             if (!CanFinishPlacement()) return;
             _active = false;
-            _tutorialHold = false;
-            _tutorialStartUnlocked = false;
             _startAvailable = false;
             SetStartJuice(false);
             HideOverlay();
@@ -330,8 +286,7 @@ namespace Wassup.UI
         {
             if (!_active) return false;
             bool interactionBlocked = IsPlacementInteractionBlocked(out _);
-            return PlacementPhasePolicy.CanFinish(
-                _tutorialHold, _tutorialStartUnlocked, interactionBlocked);
+            return PlacementPhasePolicy.CanFinish(interactionBlocked);
         }
 
         private bool IsPlacementInteractionBlocked(out bool aiming)
@@ -355,8 +310,7 @@ namespace Wassup.UI
                 return;
             }
             bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked(out _);
-            bool available = PlacementPhasePolicy.CanFinish(
-                _tutorialHold, _tutorialStartUnlocked, blocked);
+            bool available = PlacementPhasePolicy.CanFinish(blocked);
             if (_startAvailable == available &&
                 (_startButtonWrap == null || _startButtonWrap.activeSelf == available) &&
                 (_startButton == null || _startButton.interactable == available)) return;
@@ -568,13 +522,14 @@ namespace Wassup.UI
 
     internal static class PlacementPhasePolicy
     {
-        public static bool CanFinish(bool tutorialHold, bool tutorialStartUnlocked,
-            bool placementInteractionBlocked) =>
-            (!tutorialHold || tutorialStartUnlocked) && !placementInteractionBlocked;
+        public static bool CanFinish(bool placementInteractionBlocked) =>
+            !placementInteractionBlocked;
 
         // match-intro-phase-toggles unit 0 — 배치 창을 열지 3초 뒤 자동으로 닫을지.
-        // 첫 판 튜토리얼은 배치를 직접 가르치는 판이라 플래그를 무시한다(계약 6).
-        public static bool UseAutoStart(bool placementPhaseEnabled, bool tutorialCore) =>
-            !placementPhaseEnabled && !tutorialCore;
+        // tutorial-content-teardown unit 0 — 첫 판 튜토리얼 예외는 걷혔다. 튜토리얼 콘텐츠가
+        // 사라져 «첫 판만 30초» 가 유령 규칙이 되기 때문이다(그 spec 계약 3).
+        // 이제 플래그가 곧 진실이다.
+        public static bool UseAutoStart(bool placementPhaseEnabled) =>
+            !placementPhaseEnabled;
     }
 }

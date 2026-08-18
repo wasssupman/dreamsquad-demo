@@ -291,7 +291,7 @@ namespace Wassup.UI.Tutorial
 
         // unit 8 — 선물 튜토리얼 동안만 elevated order 로 올린다. unit 14 부터 세 order 는
         // TutorialGuidanceStyle 이 소유한다. Hide 는 정렬을 건드리지 않으므로 원복은
-        // 호출자(FirstSessionTutorialController)의 종료 경로가 명시 수행한다.
+        // 호출자의 종료 경로가 명시 수행한다(구 FirstSessionTutorialController — 콘텐츠 은퇴 후엔 재설계가 그 자리다).
         public void SetElevated(bool elevated)
         {
             if (!_built) BuildCanvas();

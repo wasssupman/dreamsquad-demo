@@ -43,7 +43,6 @@ namespace Wassup.UI
         [SerializeField] private CanvasGroup devButtonsGroup;
         // outgame-tutorial unit 4 — 로비 차단형 온보딩. 호출 위치가 계약의 일부다:
         // Awake 말미(프로필 로드 이후)와 ApplyAuthGate 양쪽에서 부른다.
-        [SerializeField] private OutgameTutorialController outgameTutorial;
 
         // Reused across clicks; LoadoutGate.Check clears it on entry.
         private readonly System.Collections.Generic.List<LoadoutShortfall> _shortfalls =
@@ -86,13 +85,6 @@ namespace Wassup.UI
             // 튜토리얼 통지는 바로 아래 한 줄이 소유한다(여기서 겹쳐 부르지 않는다).
             ClosePanels(false);
 
-            // outgame-tutorial unit 4 — 프로필 로드 이후여야 한다. ApplyAuthGate 는
-            // 이 메서드의 첫 줄이라 그 시점 profileSO.profile 은 곧 교체될 인스턴스이고,
-            // 전투 복귀 경로에서는 UserSession 이 이미 signed-in 이라 onSignedIn 이
-            // 재발화하지 않는다 — 그래서 **전투 복귀 경로**에서는 이 호출이 챕터 B 의 유일한
-            // 진입점이다. (진입점 전체는 셋: 여기 · ApplyAuthGate · ClosePanels 의 로비 복귀.
-            // 마지막 것은 unit 6 의 챕터 C 가 추가했고 B 도 같이 태운다.)
-            if (outgameTutorial != null) outgameTutorial.OnLobbyShown(UserSession.IsSignedIn);
         }
 
         private void OnDestroy()
@@ -130,11 +122,6 @@ namespace Wassup.UI
                 if (historyBtn != null)
                     historyBtn.gameObject.SetActive(UserSession.HasAccount);
             }
-
-            // 로그인 완료(onSignedIn)와 로그아웃(OnResetAccount) 전이를 받는다.
-            // Awake 경로에서는 아직 프로필이 로드되기 전이라 컨트롤러가 요청만
-            // 래치하고, 실제 시작은 Awake 말미 호출과 자신의 Start 에서 일어난다.
-            if (outgameTutorial != null) outgameTutorial.OnLobbyShown(signedIn);
         }
 
         // outgame-login-gate unit 3 — dev button: forget the account and fall
@@ -148,32 +135,16 @@ namespace Wassup.UI
             ApplyAuthGate();
         }
 
-        // first-session-tutorial replay — dev tray button. This is intentionally
-        // immediate (no confirmation popup) and resets only tutorial progress.
-        // Keep the already-loaded profile synchronized so the next BattleScene
-        // transition in this Play session sees the reset without reloading lobby.
-        public void OnResetTutorial()
-        {
-            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null)
-            {
-                Debug.LogError("[OutgameMenuController] Cannot reset tutorial before the profile is loaded.", this);
-                return;
-            }
-
-            try
-            {
-                bool changed = ProfileStore.ResetTutorialProgressAt(
-                    ProfileStore.Path, profileSO.profile, out string backupPath);
-                if (changed)
-                    Debug.Log($"[OutgameMenuController] Tutorial progress reset. backup={backupPath}", this);
-                else
-                    Debug.Log("[OutgameMenuController] Tutorial progress was already reset.", this);
-            }
-            catch (System.Exception exception)
-            {
-                Debug.LogException(exception, this);
-            }
-        }
+        // tutorial-content-teardown unit 1 — 「이 계정의 첫 판인가」. matchesPlayed 는
+        // GameManager 가 **판이 끝날 때**(Result 전이 · 나가기) 올리는 매치 이력이라 튜토리얼 진행이 아니다
+        // (그래서 RESET TUTORIAL 이 건드리지 않았고, 튜토리얼이 사라져도 남는다).
+        // 프로필 미로드/부재면 false — 우회는 «확실히 첫 판일 때만» 도는 쪽이 안전하다
+        // (오판하면 정상 유저의 판이 토너먼트에서 통째로 빠진다).
+        //
+        // static 으로 두는 이유는 이 한 줄이 **서버 버그 우회의 유일한 관문**이기 때문이다
+        // (제약 10 (c) — 회귀 테스트 가치). 지우거나 뒤집으면 첫 판 유저가 complete 500 을 맞는다.
+        internal static bool IsFirstMatch(PlayerProfile profile) =>
+            profile != null && profile.matchesPlayed == 0;
 
         // A-stage: load BattleScene as-is. C wires the squad/dreamcatcher carry-in.
         // Scene names live in SceneNames to keep the two LoadScene call sites in sync.
@@ -200,22 +171,30 @@ namespace Wassup.UI
                 gatePopup.Show(_shortfalls, OnOpenSquad, OnOpenDreamcatcher);
                 return;
             }
-            // tutorial-offline-match unit 0 — 첫 인게임 튜토리얼이 뜨는 판은 토너먼트에
-            // 올리지 않는다. 참가 신청을 발행하지 않으므로 그 판은 attempt 를 갖지 않고,
-            // 점수 제출·나가기 마감은 attemptId 부재로 스스로 스킵된다(게스트 판과 같은 모양).
+            // tutorial-offline-match unit 0 — **계정의 첫 판은 토너먼트에 올리지 않는다.**
+            // 참가 신청을 발행하지 않으므로 그 판은 attempt 를 갖지 않고, 점수 제출·나가기
+            // 마감은 attemptId 부재로 스스로 스킵된다(게스트 판과 같은 모양).
             //
-            // 판정은 배틀 씬이 "이 판에 튜토리얼을 띄울까" 를 정할 때 쓰는 **바로 그 호출**이다
-            // (계약 1). 별도 플래그를 두면 두 곳이 다른 값을 봐서 "튜토리얼이 뜨는 판" 과
-            // "서버에 안 올리는 판" 이 어긋난다.
+            // ⚠ 이 우회를 지우면 서버 `complete` 500 이 첫 판 유저에게 그대로 노출된다
+            // (커밋 f082b59f 는 클라 측 처리만 고쳤고 서버는 그대로다).
+            //
+            // tutorial-content-teardown unit 1 — 판정 신호가 바뀌었다. 원래는 배틀 씬이
+            // "이 판에 튜토리얼을 띄울까" 를 정하는 `TutorialProgress.ShouldRunCore` 를
+            // **공유**했는데, 튜토리얼 콘텐츠가 걷히면서 그 술어가 사라졌다. 대신
+            // `matchesPlayed == 0` 을 읽는다 — 「이 계정의 첫 판인가」를 튜토리얼 상태를
+            // 경유하지 않고 직접 말하므로 이 우회의 의도에 더 가깝다.
             //
             // 리포터 상태는 여기서 건드리지 않는다 — 배틀 진입의 `BeginMatch()` 가 adopt 할
             // 것이 없어 리셋하므로 직전 판의 attemptId 가 새지 않는다(TestMode 와 같은 경로,
             // tournament-flow-guards unit 8). `_starting` 도 걸지 않는다: 기다릴 왕복이 없어
             // 풀어 줄 지점이 없고(게이트 경로는 콜백에서 푼다), 연타 이중 로드는
             // `SceneTransition` 자신의 `_transitioning` 가드가 막는다.
-            if (TutorialProgress.ShouldRunCore(profileSO))
+            // ⚠ `IsLoadedThisSession` 은 옛 술어(ShouldRunCore)가 갖고 있던 가드다. 빼면
+            // 미로드 프로필의 빈 인메모리 인스턴스가 matchesPlayed 0 으로 읽혀 **정상 유저의
+            // 판이 토너먼트에서 빠진다**. 우회의 안전한 방향은 «확실할 때만 켠다» 쪽이다.
+            if (profileSO != null && profileSO.IsLoadedThisSession && IsFirstMatch(profileSO.profile))
             {
-                Debug.Log("[OutgameMenuController] 튜토리얼 판 — 토너먼트 참가 신청 생략.");
+                Debug.Log("[OutgameMenuController] 계정 첫 판 — 토너먼트 참가 신청 생략.");
                 SceneTransition.Go(SceneNames.Battle);
                 return;
             }
@@ -339,12 +318,6 @@ namespace Wassup.UI
             // 상태에서는 계속 숨겨야 하므로 signedIn 을 반영한다(Awake 진입 시에도 안전).
             if (menuRoot != null) menuRoot.SetActive(UserSession.IsSignedIn);
             SetDevButtonsVisible(true);
-
-            // outgame-tutorial unit 6 — "챕터 B 완료 → 패널 열림 → 닫힘" 이 정확히 이 경로다.
-            // OnLobbyShown 은 멱등하고 `_step != None` 가드가 재진입을 막으므로 신규 메서드를
-            // 만들지 않는다. 복귀가 아닌 호출에서 부르지 않는 것이 이 조건의 전부다.
-            if (restoreLobby && outgameTutorial != null)
-                outgameTutorial.OnLobbyShown(UserSession.IsSignedIn);
         }
 
         // Dev buttons live on the lobby layer only: fade + disable their raycasts

@@ -100,7 +100,6 @@ namespace Wassup.UI
         private bool _built;
         private bool _open;
         private GamePhase _phase;
-        private bool _suppressed;
         private int _lastShown = -1;
         private float _normalized;
         private float _readyThreshold = 1f;
@@ -367,26 +366,12 @@ namespace Wassup.UI
             ApplyPanelVisibility();
         }
 
-        // first-session-tutorial unit 15 — "이 판은 각성이 봉인됐다"를 읽기 전용으로 공개한다.
-        // 소비자가 둘이 됐다: 이 뷰(항아리 표시를 끈다)와 DcInspectController(선택을 막는다 —
-        // 선택이 손패를 열기 때문). 소유는 여전히 여기이고 쓰기 창구는 SetSuppressed 하나다.
-        public bool IsSuppressed => _suppressed;
-
-        // first-session-tutorial — 첫 판은 배치만으로 승부를 보게 각성 UI 를 감춘다.
-        // 표시 소유자는 여전히 이 뷰. FirstSessionTutorialController 가 SetSuppressed 로 갱신.
-        public void SetSuppressed(bool suppressed)
-        {
-            if (_suppressed == suppressed) return;
-            _suppressed = suppressed;
-            ApplyPanelVisibility();
-        }
-
         private void ApplyPanelVisibility()
         {
             if (_panel == null) return;
             // 캐시한 _phase 를 읽는다(GameManager.Instance.CurrentPhase 직독 금지 —
             // 같은 PhaseChanged 이벤트 안에서 구독자 순서에 따라 값이 갈린다).
-            if (!_suppressed && _phase == GamePhase.Battle)
+            if (_phase == GamePhase.Battle)
             {
                 _panel.SetActive(true);
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);

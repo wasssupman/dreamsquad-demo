@@ -39,7 +39,8 @@ float duration = _autoStart ? (bcfg != null ? bcfg.autoStartCountdownSeconds : 3
 
 - START 버튼 래퍼를 켜지 않는다 — `RefreshStartAvailability` 가 조기 반환한다(`_autoStart` 면 항상 unavailable).
 - **전면 raycast 블로커**를 켠다. 패널 최상위에 `Image`(alpha 0, `raycastTarget=true`, anchor stretch). 트레이·손패 드래그가 시작조차 못 하고, 클릭 배치가 되살아나도 `IsPointerOverGameObject()` 가 이 블로커에 걸린다.
-- `Update()` 의 `IsPlacementInteractionBlocked` 분기는 `_autoStart` 에서 도달 불가다(입력이 없다). 다만 **튜토리얼 홀드는 도달 가능하다** — `TickAutoStart` 는 매 프레임 `PlacementPhasePolicy.CanFinish(_tutorialHold, _tutorialStartUnlocked, false)` 로 게이트하고 거짓이면 시간을 흘리지 않는다. 계약 6이 배제하는 것은 **첫 판**뿐이고, 효과 타일 안내(`FirstSessionTutorialController.EffectTile`)는 두 번째 판 이후라 `ShouldRunCore=false` 에서 게이트를 건다.
+- `Update()` 의 `IsPlacementInteractionBlocked` 분기는 `TickAutoStart` 가 `CanFinishPlacement()` 로 게이트한다 — 종료를 거절할 상태면 시간도 흘리지 않는다(`a1392b4d`).
+  ⚠ **이 항목의 튜토리얼 부분은 `tutorial-content-teardown` unit 0 으로 폐기됐다.** 튜토리얼 홀드 축이 사라져 `UseAutoStart` 는 인자 하나(`placementPhaseEnabled`)가 됐고, `CanFinish` 도 `interactionBlocked` 하나만 본다.
 - `FinishPlacement()` 는 그대로 호출한다(계약 4). 블로커는 여기서 즉시 끈다 — 전투가 시작된 뒤에도 입력이 막혀 있으면 안 된다.
 
 **PlacementPhasePolicy** — 같은 파일 하단, `CanFinish` 옆.
@@ -57,7 +58,6 @@ public static bool UseAutoStart(bool placementPhaseEnabled, bool tutorialCore)
 - `placementPhaseEnabled=true`(기본): Play 진입 → 30초 카운트다운 · START 버튼 · 트레이 드래그 배치 전부 현행 그대로.
 - `placementPhaseEnabled=false`: Play 진입 → 3초 후 자동 전투 시작. 그 3초 동안 **트레이 드래그·손패 탭이 먹지 않는다**. 전투 시작 후에는 정상적으로 배치된다(블로커 해제 확인).
 - 자동 시작으로 들어간 판에서 트레이 슬롯이 채워져 있고 코스트가 리젠된다(계약 3 회귀 확인).
-- **두 번째 판**(효과 타일 안내가 뜨는 판)에서 플래그를 꺼도 안내가 3초에 잘리지 않는다 — 카운트다운이 멈췄다가 탭 이후 재개된다(계약 6 ②).
 - 콘솔에 `[GameManager] gimmick=none` (에셋 `gimmickEnabled: 0` 확정) + 리빌 오버레이 미노출.
 
 > 확인 2026-08-18 — EditMode 2,549 (0 fail) · Play 실측(자동 시작 3초 · 격자 49점 전부 차단막 · 플래그 on 무변화). 커밋 `b79859a7`.

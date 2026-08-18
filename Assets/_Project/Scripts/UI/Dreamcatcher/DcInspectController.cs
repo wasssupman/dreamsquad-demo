@@ -120,22 +120,6 @@ namespace Wassup.UI
         {
             if (bridge == null || mainCamera == null) return;
 
-            // first-session-tutorial unit 15 — 첫 판 각성 봉인. MustClose 와 자리는 같지만 이유가
-            // 다르다: MustClose 는 "보드 입력의 주인이 바뀜"(일시적), 이쪽은 "이 판엔 기능 자체가
-            // 없음"(판 전체). 선택이 손패를 열기 때문에(Select → OpenForSelection) 선택을 막지
-            // 않으면 숨겨둔 손패가 그대로 딜인되고, 게이지 20 · 카드 비용 20 이라 첫 판에 카드를
-            // 실제로 쓸 수 있다.
-            //
-            // MustClose 처럼 매 프레임 Close() 를 부르지 않는다. 그 규약은 배치 드래그가 수
-            // 프레임짜리라 성립하는데, 봉인은 첫 판 내내 참이라 panel.Hide() 와 stale lease
-            // Release 가 수천 프레임 헛돈다. 선택이 없으면 정리할 것도 없다.
-            if (SealedThisMatch())
-            {
-                _pendingTap = false;
-                if (_selected != Entity.Null) Close();
-                return;
-            }
-
             // 배치 드래그/arm 또는 이동모드가 입력을 쥐면 선택 자체를 닫는다(계약 8).
             // 손패 오픈·조준은 여기가 아니라 TapGated — 선택과 공존해야 한다(selection-hand-attach 계약 2).
             if (MustClose()) { _pendingTap = false; Close(); return; }
@@ -279,11 +263,6 @@ namespace Wassup.UI
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
         // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
         // 전제이기 때문이다. 여기 남은 둘은 "보드 입력의 주인이 아예 바뀌는" 경우다.
-        // first-session-tutorial unit 15 — 첫 판 각성 봉인 여부. 사실의 소유자는
-        // AwakeningGaugeView 이고 손패 뷰가 릴레이한다(신규 씬 배선 없이 기존 참조로).
-        // 미배선/튜토리얼 부재면 false — fail-open 이라 선택이 정상 동작한다.
-        private bool SealedThisMatch() => handView != null && handView.AwakeningSealedThisMatch;
-
         private bool MustClose()
         {
             // 컨트롤러가 아직 AddComponent 되기 전이면 null — 드래그 중일 수 없으므로 통과.
@@ -325,9 +304,6 @@ namespace Wassup.UI
         // 무관하게 손패까지 걷는다(계약 7 — 항아리 단독 오픈의 바깥 탭 dismiss 보존).
         private void OnBoardTapped(Vector2 screenPos)
         {
-            // unit 15 — 첫 판엔 손패가 안 열려 캐처 자체가 없지만, 폴백 경로로도 선택이
-            // 되살아나지 않게 방어적으로 막는다.
-            if (SealedThisMatch()) return;
             // 이동모드/배치 드래그가 입력 주인일 때는 캐처 클릭으로 선택이 오염되지 않게(critic M6).
             if (MustClose()) return;
             if (TryPick(screenPos, out var entity) && entity != _selected)
@@ -378,11 +354,9 @@ namespace Wassup.UI
         public void SelectDeployed(Entity entity)
         {
             if (entity == Entity.Null) return;
-            // 보드 탭이 Update 에서 통과해야 하는 두 관문을 **여기서도** 지난다. 트레이 탭은
-            // Update 의 입력 경로를 타지 않으므로 게이트를 물려받지 못한다 — 특히 봉인은
-            // 다음 프레임 Close() 로 되돌릴 수 없다(선택이 손패를 열고, 딜인은 이미 일어난다).
-            // 상한 1 이 기본이라 첫 판에서도 셀이 곧바로 소진되므로 이 경로는 실제로 밟힌다.
-            if (SealedThisMatch()) return;   // 첫 판 각성 봉인 (first-session-tutorial unit 15)
+            // 보드 탭이 Update 에서 통과해야 하는 관문을 **여기서도** 지난다. 트레이 탭은
+            // Update 의 입력 경로를 타지 않으므로 게이트를 물려받지 못한다.
+            // (tutorial-content-teardown unit 0 — 첫 판 각성 봉인 관문은 함께 걷혔다.)
             if (MustClose()) return;         // 배치 드래그/arm/이동모드가 입력을 쥔 상태
             Select(entity);
         }

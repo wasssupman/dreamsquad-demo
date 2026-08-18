@@ -3375,39 +3375,13 @@ GameObject:
   m_Component:
   - component: {fileID: 1572896088}
   - component: {fileID: 1572896087}
-  - component: {fileID: 1572896086}
   m_Layer: 0
-  m_Name: FirstSessionTutorial
+  m_Name: TutorialGuidance
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1572896086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1572896085}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 51e3e73f1575f4fdba65d717ba8ca3bb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstSessionTutorialController
-  handController: {fileID: 2054561897}
-  gaugeView: {fileID: 1012444854}
-  handView: {fileID: 1558370269}
-  scoreHud: {fileID: 1279129162}
-  waveDock: {fileID: 1151968987}
-  gimmickView: {fileID: 283596198}
-  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
-  gameManager: {fileID: 1495062450}
-  placementView: {fileID: 1628485822}
-  defenderSelector: {fileID: 915292524}
-  mapView: {fileID: 172395674}
-  mainCamera: {fileID: 1420088185}
-  guidance: {fileID: 1572896087}
 --- !u!114 &1572896087
 MonoBehaviour:
   m_ObjectHideFlags: 0

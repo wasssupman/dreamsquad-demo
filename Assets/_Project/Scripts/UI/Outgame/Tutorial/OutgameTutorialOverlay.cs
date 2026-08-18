@@ -39,7 +39,7 @@ namespace Wassup.UI
         private readonly List<Vector3> _cornerCache = new List<Vector3>();
         private readonly Vector3[] _corners = new Vector3[4];
 
-        // first-session-tutorial unit 14 — OutgameTutorialController 가 공용
+        // first-session-tutorial unit 14 — 구 OutgameTutorialController(은퇴)가 공용
         // TutorialGuidanceStyle 의 dim order 를 전달한다. lazy build 전후 모두 안전하다.
         public void SetSortingOrder(int sortingOrder)
         {

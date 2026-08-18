@@ -40,29 +40,22 @@ namespace Wassup.Tests.EditMode
 
     public class TutorialInteractionAndSafeAreaTests
     {
-        [TestCase(false, false, false, true)]
-        [TestCase(true, false, false, false)]
-        [TestCase(true, true, false, true)]
-        [TestCase(false, false, true, false)]
-        [TestCase(true, true, true, false)]
-        public void PlacementPolicy_InteractionBlockAlwaysWins(bool tutorialHold,
-            bool tutorialUnlocked, bool interactionBlocked, bool expected)
+        // tutorial-content-teardown unit 0 — 튜토리얼 홀드 축이 걷히면서 술어가 한 인자로
+        // 줄었다. 남은 규칙 하나: **드래그/조준이 물려 있으면 배치를 끝내지 않는다.**
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void PlacementPolicy_InteractionBlockAlwaysWins(bool interactionBlocked, bool expected)
         {
-            Assert.AreEqual(expected, PlacementPhasePolicy.CanFinish(
-                tutorialHold, tutorialUnlocked, interactionBlocked));
+            Assert.AreEqual(expected, PlacementPhasePolicy.CanFinish(interactionBlocked));
         }
 
-        // match-intro-phase-toggles unit 0 — 배치 페이즈를 끄면 3초 자동 시작, 단 첫 판
-        // 튜토리얼은 배치를 직접 가르치는 판이라 플래그를 무시한다(계약 6).
-        [TestCase(true, false, false)]   // 현행 배치(플래그 on)
-        [TestCase(false, false, true)]   // 자동 시작
-        [TestCase(false, true, false)]   // 튜토리얼이 이긴다
-        [TestCase(true, true, false)]
-        public void PlacementPolicy_TutorialOverridesAutoStart(bool placementPhaseEnabled,
-            bool tutorialCore, bool expected)
+        // match-intro-phase-toggles unit 0 + tutorial-content-teardown unit 0 —
+        // 첫 판 예외가 사라져 플래그가 곧 진실이다.
+        [TestCase(true, false)]   // 현행 배치(플래그 on)
+        [TestCase(false, true)]   // 자동 시작
+        public void PlacementPolicy_FlagIsTheOnlyTruth(bool placementPhaseEnabled, bool expected)
         {
-            Assert.AreEqual(expected, PlacementPhasePolicy.UseAutoStart(
-                placementPhaseEnabled, tutorialCore));
+            Assert.AreEqual(expected, PlacementPhasePolicy.UseAutoStart(placementPhaseEnabled));
         }
 
         [Test]

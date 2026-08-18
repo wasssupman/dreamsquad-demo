@@ -16,56 +16,15 @@ namespace Wassup.Core
         // 확장 판매")이 되면 SO 로 이관한다.
         public const int MaxPresets = 30;
 
-        // first-session-tutorial unit 0 — independent, versioned onboarding
-        // progress. Additive JSON fields intentionally default to 0 for profiles
-        // written before the tutorial existed; schemaVersion stays unchanged.
-        public int firstBattleTutorialVersion;
-        // unit 17 — 이 필드는 이제 **드래그 부착 안내**(항아리로 연 손패)만 뜻한다. 이름을
-        // 좁히지 않는 이유는 JSON 호환이다 — 바꾸면 기존 프로필의 진행이 0 으로 읽혀
-        // 튜토리얼이 되살아난다. 의미는 TutorialProgress 의 API 이름이 나른다.
-        public int awakeningHintVersion;
-        // unit 17 — 탭 즉발 부착 안내(선택으로 연 손패). 위와 **독립**이다: 두 안내는 서로
-        // 다른 조작을 가르치므로 하나를 봤다고 다른 하나가 필요 없어지지 않는다.
-        public int awakeningTapAttachHintVersion;
-        // first-session-tutorial unit 6 — gift-phase walkthrough, shown once on
-        // the first battle where the gift presentation is visible (core done).
-        public int giftTutorialVersion;
-        // outgame-tutorial unit 0 — blocking lobby onboarding. A runs on the first
-        // lobby reveal, B once the in-game core tutorial is done and the player is
-        // back in the lobby. Same additive-field rule as the three above.
-        public int lobbyIntroVersion;
-        // unit 11 — 이 필드는 이제 로드아웃 시퀀스의 **첫 스텝(스쿼드)** 만 뜻한다. 이름을
-        // 좁히지 않는 이유는 JSON 호환이다(awakeningHintVersion 과 같은 이유) — 바꾸면 기존
-        // 프로필의 진행이 0 으로 읽혀 온보딩이 되살아난다. 의미는 API 이름이 나른다.
-        public int lobbyLoadoutHintVersion;
-        // outgame-tutorial unit 11 — 로드아웃 시퀀스 2번째 스텝(드림캐쳐 덱 페이지).
-        // Additive like the rest — 0 means pending.
-        public int lobbyDeckHintVersion;
-        // outgame-tutorial unit 6 — chapter C: the first time the player closes a
-        // panel and the lobby comes back, it asks them to actually drag a lobby
-        // character. Additive like the rest — 0 means pending.
-        public int lobbyKeyringHintVersion;
-        // outgame-tutorial unit 11 — 로드아웃 시퀀스의 마지막 스텝(재출발 START 포커스).
-        // 키링을 놓아 착지한 뒤에 뜬다. Additive like the rest — 0 means pending.
-        public int lobbyStartHintVersion;
-        // first-session-tutorial unit 23 — the gimmick reveal hold. The reveal is
-        // skipped entirely on the first match (GimmickPhaseView gates on
-        // ShouldRunCore), so this fires on the first reveal the player ever sees.
-        // Additive like the rest — 0 means pending.
-        public int gimmickRevealHintVersion;
-        // outgame-tutorial unit 8 — 챕터 D 가 "두 번째 판 이후" 를 판정하는 **독립 신호**.
-        // 앞 챕터 완료를 체인하면 선행 안내가 fail-open 경로를 탄 계정이 뒤 안내를 영영 못 본다.
+        // tutorial-content-teardown unit 2 — 튜토리얼 진행 필드 12개는 걷혔다. 재설계가
+        // 자기 스키마를 새로 잡는다. 기존 세이브에 남은 옛 키는 JsonUtility 가 조용히 버리고
+        // 다음 저장에서 사라진다(마이그레이션 없음 · schemaVersion 불변).
         //
-        // 위 버전 토큰들과 성격이 다르다 — **튜토리얼 진행이 아니라 매치 이력**이므로
-        // TutorialProgress.ResetAll 이 건드리지 않는다. RESET TUTORIAL 후에 안내를 다시 보려고
-        // 두 판을 더 뛸 필요가 없어야 하고, 의미상으로도 리셋 대상이 아니다.
+        // 매치 이력. 튜토리얼 진행이 **아니었기 때문에** 튜토리얼과 함께 죽지 않았고, 지금은
+        // 「이 계정의 첫 판인가」의 유일한 소유자다 — OutgameMenuController.IsFirstMatch 가
+        // 이걸 읽어 첫 판을 토너먼트에 올리지 않는다(tutorial-offline-match 우회).
+        // GameManager 가 **판이 끝날 때** 1 올린다 — 호출처 둘: SetPhase(Result) 와 MenuPopup 의 나가기.
         public int matchesPlayed;
-        // outgame-tutorial unit 8 — 챕터 D(히스토리 버튼). Additive like the rest — 0 means pending.
-        public int lobbyHistoryHintVersion;
-        // first-session-tutorial unit 26 — 두 번째 판 배치 구간의 효과 타일("빛나는 타일") 안내.
-        // 맵에 효과 타일이 0개일 수 있으므로(desert 테마) 그 판에서는 저장하지 않고 미룬다.
-        // Additive like the rest — 0 means pending.
-        public int effectTileHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.
