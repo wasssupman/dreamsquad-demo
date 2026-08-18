@@ -21,6 +21,10 @@ namespace Wassup.Core
         [Tooltip("에디터 기즈모 표시 전용 셀 크기. 런타임 양자화 정본은 BattleBridge.tileSize — 두 값이 다르면 unit 1 린트가 경고한다.")]
         [Min(0.01f)] public float previewTileSize = 1f;
 
+        [Tooltip("US-004b — 이 스테이지에서 시즌 효과 타일 배치를 끈다. 열린 마당에서는 효과 타일이 전 셀 후보라 " +
+                 "고정 셀 계측(e2e 픽스처)이 오염된다 — 테스트 스테이지는 켜고, 본편 맵은 저작 선택.")]
+        public bool suppressEffectTiles;
+
         void OnValidate()
         {
             playAreaCells = Vector2Int.Max(playAreaCells, Vector2Int.one);

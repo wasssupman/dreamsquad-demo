@@ -46,22 +46,24 @@ namespace Wassup.Tests.PlayMode
         //
         // ⚠ 씬 로드 **전**에 불러야 한다 — 맵은 GameManager 부팅 흐름(PrepareDraftMap)에서
         // 서므로, 로드 뒤에 인덱스를 바꾸면 이미 다른 맵이 서 있다.
-        public static int MapSlot(string documentName)
+        public static int MapSlot(string mapName)
         {
-            const string poolPath = "Assets/_Project/Data/Maps/MapDocumentPool.asset";
-            var pool = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.MapGrid.MapDocumentPool>(poolPath);
+            // map-diorama-stage US-004b — 문서 풀 → 스테이지 풀 포트. 이름 규약만
+            // MapDocument_ → MapStage_ 로 바뀌고 «이름으로 고른다» 규율은 그대로다.
+            const string poolPath = "Assets/_Project/Data/Maps/MapStagePool.asset";
+            var pool = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.MapStagePool>(poolPath);
             Assert.IsNotNull(pool, $"맵 풀을 로드하지 못했다: {poolPath}");
 
-            string assetName = "MapDocument_" + documentName;
+            string assetName = "MapStage_" + mapName;
             // 슬롯 배치는 BattleBridge.BuildMapForBattle 과 같다: [0..Count-1] = 라이브 풀,
             // [Count..Count+DevCount-1] = dev 슬롯.
             for (int i = 0; i < pool.Count; i++)
-                if (pool.Get(i).document != null && pool.Get(i).document.name == assetName) return i;
+                if (pool.Get(i).stage != null && pool.Get(i).stage.name == assetName) return i;
             for (int i = 0; i < pool.DevCount; i++)
-                if (pool.GetDev(i).document != null && pool.GetDev(i).document.name == assetName)
+                if (pool.GetDev(i).stage != null && pool.GetDev(i).stage.name == assetName)
                     return pool.Count + i;
 
-            Assert.Fail($"'{assetName}' 이 맵 풀(라이브 {pool.Count} + dev {pool.DevCount})에 없다");
+            Assert.Fail($"'{assetName}' 이 스테이지 풀(라이브 {pool.Count} + dev {pool.DevCount})에 없다");
             return -1;
         }
 

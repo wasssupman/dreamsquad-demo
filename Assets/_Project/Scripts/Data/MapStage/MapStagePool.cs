@@ -39,6 +39,18 @@ namespace Wassup.Data
         public Entry GetDev(int index) => devEntries[index];
 
 #if UNITY_EDITOR
+        // US-004b — 기존 dev 엔트리의 덱/플랜 짝을 갱신 (구 문서 풀의 «맵마다 그 맵의 적 패턴» 승계).
+        public bool EditorSetDevPairing(MapStage stage, AttackDeck deck, WavePlanAsset plan)
+        {
+            for (int i = 0; i < devEntries.Count; i++)
+                if (devEntries[i].stage == stage)
+                {
+                    devEntries[i] = new Entry { stage = stage, deck = deck, plan = plan };
+                    return true;
+                }
+            return false;
+        }
+
         // MapStage 인스펙터 "Dev 엔트리 등록" 버튼 전용 — 본편/devEntries 어디에도 없는 스테이지만 추가.
         public bool EditorRegisterDevStage(MapStage stage)
         {

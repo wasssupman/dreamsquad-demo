@@ -88,8 +88,106 @@ namespace Wassup.EditorTools
             switch (task)
             {
                 case "unit2_setup": return Unit2Setup();
+                case "unit4b_stages": return Unit4bStages();
                 default: return $"ERROR|unknown task '{task}'";
             }
+        }
+
+        // US-004b — e2e 가 이름으로 pin 하는 맵들의 스테이지 픽스처를 생성해 dev 슬롯에 등록.
+        // v2: ① 효과 타일 억제(고정 셀 계측 오염 방지) ② 구 문서 풀에서 덱/플랜 짝 승계
+        // ③ 루트 저작 — Coil/Zig 는 lane0→경로1(레인 기본 경로 계약), MovementLab 은 경로 0/1 두 스웜.
+        static string Unit4bStages()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                return "ERROR|Play 중 — 정지 후 재실행";
+            var log = new StringBuilder("OK");
+            var pool = AssetDatabase.LoadAssetAtPath<MapStagePool>(
+                "Assets/_Project/Data/Maps/MapStagePool.asset");
+            if (pool == null) return "ERROR|MapStagePool.asset 없음 (unit2_setup 선행)";
+            var docPool = AssetDatabase.LoadAssetAtPath<Wassup.Data.MapGrid.MapDocumentPool>(
+                "Assets/_Project/Data/Maps/MapDocumentPool.asset");
+
+            // 픽스처(엔트리 0)도 억제 플래그 소급.
+            const string fixturePath = "Assets/_Project/Prefabs/Maps/MapStage_Fixture.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(fixturePath) != null)
+            {
+                using (var scope = new PrefabUtility.EditPrefabContentsScope(fixturePath))
+                    scope.prefabContentsRoot.GetComponent<MapStage>().suppressEffectTiles = true;
+                log.Append("\nFixture: suppressEffectTiles 적용");
+            }
+
+            foreach (var name in new[] { "Serpent", "Duel", "Coil", "Zig", "Tutorial", "MovementLab", "Ford", "Isle" })
+            {
+                string path = $"Assets/_Project/Prefabs/Maps/MapStage_{name}.prefab";
+                var root = new GameObject($"MapStage_{name}");
+                try
+                {
+                    var stage = root.AddComponent<MapStage>();
+                    stage.playAreaCells = new Vector2Int(12, 8);
+                    stage.gridOriginLocal = new Vector3(0f, 0.02f, 0f);
+                    stage.previewTileSize = 1f;
+                    stage.suppressEffectTiles = true;   // e2e 고정 셀 계측 보호
+                    for (int gy = 0; gy < 8; gy += 4)
+                    for (int gx = 0; gx < 12; gx += 4)
+                        PlaceGroundPiece(root.transform, "green/platform_4x4x1_green.prefab",
+                            new Vector2Int(gx, gy), log);
+
+                    // 루트 구성: routedLane0 = Coil/Zig(레인 0 기본 경로 = 1 계약),
+                    // dualRoutes = MovementLab(경로 0/1 두 스웜 검증).
+                    bool routedLane0 = name == "Coil" || name == "Zig";
+                    bool dualRoutes = name == "MovementLab" || name == "Tutorial";   // Tutorial: 저작 플랜이 경로 인덱스를 참조
+
+                    // 경로 0 = 공중(플랜/종 저작 전용) 예약, 지상 레인은 경로 1 — Tutorial 플랜
+                    // 검증(«지상 레인이 Air 경로(0)를 타면 안 된다»)과 Coil/Zig 레인 기본 경로 계약 공용.
+                    int laneRoute = (routedLane0 || dualRoutes) ? 1 : -1;
+                    AddChild(root, "flag_spawn0", "green/flag_A_green.prefab", new Vector2Int(0, 2),
+                        go => { var m = go.AddComponent<SpawnMarker>(); m.laneIndex = 0; m.routeIndex = laneRoute; });
+                    AddChild(root, "flag_spawn1", "green/flag_A_green.prefab", new Vector2Int(0, 5),
+                        go => { var m = go.AddComponent<SpawnMarker>(); m.laneIndex = 1;
+                                m.routeIndex = dualRoutes ? 1 : -1; });
+                    AddChild(root, "goal_sign", "neutral/signage_finish.prefab", new Vector2Int(11, 4),
+                        go => go.AddComponent<GoalMarker>());
+                    AddChild(root, "block_pillar", "neutral/pillar_2x2x2.prefab", new Vector2Int(5, 3),
+                        go => go.AddComponent<PropFootprint>().size = new Vector2Int(2, 2));
+
+                    if (routedLane0 || dualRoutes)
+                    {
+                        // 경로 0: 아래로 도는 우회 / 경로 1: 위로 도는 우회 — 직행과 확실히 구분.
+                        AddChild(root, "route_0_0", "neutral/sign.prefab", new Vector2Int(3, 0),
+                            go => { var r = go.AddComponent<RouteMarker>(); r.routeIndex = 0; r.order = 0; });
+                        AddChild(root, "route_0_1", "neutral/sign.prefab", new Vector2Int(9, 0),
+                            go => { var r = go.AddComponent<RouteMarker>(); r.routeIndex = 0; r.order = 1; });
+                        AddChild(root, "route_1_0", "neutral/sign.prefab", new Vector2Int(3, 7),
+                            go => { var r = go.AddComponent<RouteMarker>(); r.routeIndex = 1; r.order = 0; });
+                        AddChild(root, "route_1_1", "neutral/sign.prefab", new Vector2Int(9, 7),
+                            go => { var r = go.AddComponent<RouteMarker>(); r.routeIndex = 1; r.order = 1; });
+                    }
+
+                    var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+                    var stageComp = prefab.GetComponent<MapStage>();
+                    bool added = pool.EditorRegisterDevStage(stageComp);
+
+                    // 구 문서 풀에서 같은 이름의 덱/플랜 짝 승계 (deck null = 레거시 폴백 함정 방지).
+                    AttackDeck deck = null; WavePlanAsset plan = null;
+                    if (docPool != null)
+                    {
+                        string docName = "MapDocument_" + name;
+                        for (int i = 0; i < docPool.Count; i++)
+                            if (docPool.Get(i).document != null && docPool.Get(i).document.name == docName)
+                            { deck = docPool.Get(i).deck; plan = docPool.Get(i).plan; break; }
+                        if (deck == null)
+                            for (int i = 0; i < docPool.DevCount; i++)
+                                if (docPool.GetDev(i).document != null && docPool.GetDev(i).document.name == docName)
+                                { deck = docPool.GetDev(i).deck; plan = docPool.GetDev(i).plan; break; }
+                    }
+                    bool paired = pool.EditorSetDevPairing(stageComp, deck, plan);
+                    log.Append($"\n{name}: prefab ok, dev {(added ? "신규" : "기존")}, deck={(deck ? deck.name : "null")} plan={(plan ? plan.name : "null")} paired={paired}");
+                }
+                finally { UnityEngine.Object.DestroyImmediate(root); }
+            }
+            EditorUtility.SetDirty(pool);
+            AssetDatabase.SaveAssets();
+            return log.ToString();
         }
 
         // unit 2 — ① KayKit 최소 픽스처 스테이지 프리팹 ② MapStagePool.asset(덱/플랜은 구 문서 풀

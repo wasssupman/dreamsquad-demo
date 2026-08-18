@@ -21,6 +21,10 @@ namespace Wassup.Tests.PlayMode
     // 이 테스트가 재는 것: 부팅 → 스폰(SO HP·3×3 점유) → 뷰 프랍 → 적이 건물 위를
     // 지나 골에 도달(비차단 + 연결성 생존). 본능의 발사 자체는 EditMode 가 실
     // AttackSystem 으로 이미 고정했다(ArmedInstinct_FiresProjectileRequest...).
+    // map-diorama-stage US-004b — 거점(본능/적 마음)은 스테이지 브랜치에서 비가용(README 계약 11:
+    // structures 빈 배열·_resolvedMapDoc 영구 null). StructureMarker 저작이 후속으로 들어올 때
+    // 스테이지 픽스처와 함께 재활성화한다 — 삭제가 아니라 사유 명시 Ignore (판정 기록).
+    [NUnit.Framework.Ignore("map-diorama-stage 계약 11 — 거점 비가용. StructureMarker 후속에서 재활성화")]
     public class StructureLivePlayTest
     {
         private const float TimeoutSec = 90f;

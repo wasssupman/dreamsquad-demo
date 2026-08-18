@@ -1301,7 +1301,10 @@ namespace Wassup.Bridge
             // effect-tiles unit 1 — Place 셀 seed 결정론 효과 타일. 페인트는 Initialize(Clear) 이후 계약.
             // dict clear 는 가드 밖 — 이전 빌드 잔존 제거(테마가 효과 타일 없어도).
             _effectTilesByCell.Clear();
-            if (tilemapMapView != null && theme != null &&
+            // US-004b — 스테이지가 효과 타일을 억제할 수 있다. 열린 마당에서는 전 셀이 후보라
+            // 고정 셀 계측(e2e)이 오염된다 — 픽스처 스테이지 저작 스위치.
+            bool stageSuppressesEffectTiles = _stageInstance != null && _stageInstance.suppressEffectTiles;
+            if (!stageSuppressesEffectTiles && tilemapMapView != null && theme != null &&
                 theme.effectTiles != null && theme.effectTiles.Length > 0 && theme.effectTileCount > 0)
             {
                 tilemapMapView.SetEffectTileMaterial(theme.effectTileMaterial); // 펄스 발광 머티리얼(있으면)

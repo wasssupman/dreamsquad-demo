@@ -47,6 +47,17 @@ namespace Wassup.Tests.PlayMode
             return fi.GetValue(target);
         }
 
+        private static class BattleBridgeDraftMapAccess
+        {
+            internal static Wassup.Data.GeneratedMap GeneratedMapOf(BattleBridge bridge)
+            {
+                var fi = typeof(BattleBridge).GetField("_generatedMap",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Assert.IsNotNull(fi, "_generatedMap 필드를 찾지 못했다(이름 변경?)");
+                return (Wassup.Data.GeneratedMap)fi.GetValue(bridge);
+            }
+        }
+
         private static float DistanceToPolyline(float2 p, List<Vector3> path)
         {
             float best = float.MaxValue;
@@ -179,11 +190,18 @@ namespace Wassup.Tests.PlayMode
                     forecasts[lane0Ground].waypointPathIndex,
                     forecasts[lane0Ground].traversalLayers, guide),
                 "레인 0 예고선을 못 만든다");
+            // map-diorama-stage US-004b — 웨이포인트를 하드코딩(구 Coil 의 (8,9))하지 않고
+            // **라이브 맵의 레인 기본 경로에서 유도**한다 — 맵 비의존 규율(테스트가 지형을
+            // 소유하지 않는다). 단언의 의미는 동일: 가이드가 그 레인의 경로 웨이포인트를 경유한다.
+            var gmMap = BattleBridgeDraftMapAccess.GeneratedMapOf(bridge);
+            int lane0Path = gmMap.RouteForSpawn(0);
+            Assert.GreaterOrEqual(lane0Path, 0, "레인 0 에 기본 경로가 저작돼 있어야 한다");
+            var wpCell = gmMap.WaypointCellAt(lane0Path, 0);
             var wpWorld = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
-                new int2(8, 9), field.tileSize, 0f, origin: field.origin);
+                wpCell, field.tileSize, 0f, origin: field.origin);
             float wpDist = DistanceToPolyline(new float2(wpWorld.x, wpWorld.z), guide) / field.tileSize;
-            Debug.Log($"[unit11] 레인0 가이드 점 {guide.Count} · 선↔웨이포인트(8,9) 최단 {wpDist:F2} 타일");
-            Assert.Less(wpDist, NearGuideTiles, "레인 0 가이드가 웨이포인트 (8,9) 를 경유하지 않는다");
+            Debug.Log($"[unit11] 레인0 가이드 점 {guide.Count} · 선↔웨이포인트{wpCell} 최단 {wpDist:F2} 타일");
+            Assert.Less(wpDist, NearGuideTiles, $"레인 0 가이드가 웨이포인트 {wpCell} 를 경유하지 않는다");
 
             // ── 증상 본체: 경로 1 을 실제로 걷는 적들이 그 가이드 근처를 지나가는가 ──
             int sampled = 0, offGuide = 0;
