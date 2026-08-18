@@ -580,6 +580,55 @@ namespace Wassup.UI
             RefreshExhaustedStates();
         }
 
+        // first-run-tutorial unit 5 — **지목**. 위의 TryGetAffordableTutorialSlot 은 «지금 살 수
+        // 있는 아무 슬롯»을 주는 **추천**이라 여기에 못 쓴다: 온보딩은 캐논 하나를 가리켜야 하고,
+        // 못 누르는 슬롯을 가리키면 안내가 막힌다.
+        //
+        // rect 만 준다. 「지금 지불 가능한가」는 호출자가 따로 묻는다 — 정지 중에는 코스트도
+        // 쿨타임도 회복되지 않아 «기다리면 가능해진다»가 없으므로, 그 판정은 정지 **전에**
+        // 한 번 하고 불가면 구간 자체를 건너뛴다.
+        // first-run-tutorial unit 6 — 온보딩이 가리키던 유닛이 죽었을 때 살아 있는 대체 대상을
+        // 찾기 위한 순회 창구. 리스트를 통째로 노출하면 struct value-copy 로 새 배열이 뜨므로
+        // 인덱스 접근만 연다(SlotVisual 은 struct 라 밖으로 내보내지 않는다).
+        public int SlotCount => _slotVisuals.Count;
+
+        public DefenderUnitData SlotUnitAt(int index)
+            => (index >= 0 && index < _slotVisuals.Count) ? _slotVisuals[index].data : null;
+
+        public bool TryGetSlotRect(DefenderUnitData unit, out RectTransform target)
+        {
+            target = null;
+            if (unit == null) return false;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data != unit || slot.rect == null) continue;
+                target = slot.rect;
+                return true;
+            }
+            return false;
+        }
+
+        // first-run-tutorial unit 5 — 정지 전 지불 판정. 소진(보드 상한)·비용 초과·쿨타임 중
+        // 하나라도 걸리면 그 슬롯은 지금 누를 수 없다.
+        public bool IsSlotUsableNow(DefenderUnitData unit)
+        {
+            if (unit == null) return false;
+            var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            int available = runtime != null ? runtime.CurrentInt : int.MinValue;
+            var cooldown = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data != unit) continue;
+                if (slot.cost > available) return false;
+                if (IsExhausted(slot.data)) return false;
+                if (cooldown != null && cooldown.RemainingFor(slot.data) > 0f) return false;
+                return true;
+            }
+            return false;
+        }
+
         // first-session-tutorial unit 2 — soft recommendation only. Input stays
         // available on every slot; this never changes affordability or selection.
         public bool TryGetAffordableTutorialSlot(out RectTransform target)

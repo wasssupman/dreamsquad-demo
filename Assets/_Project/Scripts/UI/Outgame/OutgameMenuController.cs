@@ -41,6 +41,9 @@ namespace Wassup.UI
         // 로비 레이어 전용: 패널이 열리면 숨긴다. GameObject.active 대신 CanvasGroup 을
         // 토글해 DevOnlyGroup 의 빌드 게이트(비-dev 빌드에서 GO 비활성화)와 충돌하지 않는다.
         [SerializeField] private CanvasGroup devButtonsGroup;
+        // first-run-tutorial unit 2 — 로비 차단형 온보딩. 호출 위치가 계약의 일부다:
+        // Awake 말미(프로필 로드 이후)와 ApplyAuthGate(로그인 직후) 양쪽에서 부른다.
+        [SerializeField] private LobbyTutorialStep lobbyTutorial;
         // outgame-tutorial unit 4 — 로비 차단형 온보딩. 호출 위치가 계약의 일부다:
         // Awake 말미(프로필 로드 이후)와 ApplyAuthGate 양쪽에서 부른다.
 
@@ -84,7 +87,26 @@ namespace Wassup.UI
             // restoreLobby=false — 이건 패널 가시성 초기화지 로비 복귀가 아니다. 이 시점의
             // 튜토리얼 통지는 바로 아래 한 줄이 소유한다(여기서 겹쳐 부르지 않는다).
             ClosePanels(false);
+            TryShowLobbyTutorial();
+        }
 
+        // first-run-tutorial unit 2 — 두 호출 지점이 공유하는 자리. 딤을 띄울지 말지의 판정을
+        // 여기 모아 둔다(스텝은 «어떻게 띄우나» 만 안다).
+        private void TryShowLobbyTutorial()
+        {
+            if (lobbyTutorial == null || !UserSession.IsSignedIn) return;
+            var p = profileSO != null ? profileSO.profile : null;
+            // 로드아웃이 모자라면 START 가 팝업을 띄우는데 그 팝업이 딤 아래로 깔려 로비가 잠긴다.
+            // 참조가 하나라도 비면 «모자라다» 쪽으로 판정한다 — 잠그느니 안 띄우는 게 낫다.
+            bool loadoutReady = gatePopup != null && catalog != null && cardCatalog != null
+                                && LoadoutGate.Check(p, catalog, cardCatalog, _shortfalls);
+            RectTransform startRect = null;
+            if (menuRoot != null)
+            {
+                var startBtn = menuRoot.transform.Find("StartButton");
+                if (startBtn != null) startRect = startBtn as RectTransform;
+            }
+            lobbyTutorial.TryShow(profileSO, startRect, loadoutReady);
         }
 
         private void OnDestroy()
@@ -122,6 +144,11 @@ namespace Wassup.UI
                 if (historyBtn != null)
                     historyBtn.gameObject.SetActive(UserSession.HasAccount);
             }
+
+            // first-run-tutorial unit 2 — 로그인 직후가 두 번째 호출 지점이다.
+            // 로그아웃으로 로비가 닫히면 딤도 같이 내린다(그 상태에서 START 는 없다).
+            if (signedIn) TryShowLobbyTutorial();
+            else if (lobbyTutorial != null) lobbyTutorial.HideIfShown();
         }
 
         // outgame-login-gate unit 3 — dev button: forget the account and fall
@@ -137,16 +164,16 @@ namespace Wassup.UI
 
         // 개발용 트레이 버튼 — 튜토리얼 진행을 즉시 초기화한다(확인 팝업 없음).
         //
-        // tutorial-content-teardown 으로 진행 필드가 전부 걷혀서 **지금은 초기화할 상태가
-        // 없다.** 버튼과 배선은 재설계가 다시 쓰려고 남긴 것이다(사용자 결정) — 새 튜토리얼이
-        // 자기 진행 스키마를 잡으면 그 초기화를 여기에 채운다. 옛 구현은 76038c26^ 참조:
-        // 프로필 JSON 에서 튜토리얼 토큰만 패치하고 타임스탬프 백업을 남겼다(전체 재직렬화를
-        // 피해 새 클라이언트가 쓴 계정 필드를 잃지 않으려는 것). 디스크 교체가 성공한 뒤에만
-        // 로드된 인스턴스를 동기화해 메모리와 디스크가 어긋나지 않게 했다.
+        // first-run-tutorial unit 0 — 1회성 시퀀스를 다시 보게 하는 유일한 수단이다.
         //
-        // ⚠ matchesPlayed 는 여기서 건드리지 않는다. 그건 튜토리얼 진행이 아니라 매치 이력이고,
-        // 지금은 「계정의 첫 판은 토너먼트에 올리지 않는다」(서버 complete 500 우회)의 유일한
-        // 신호다 — 여기서 0 으로 되돌리면 다음 판이 조용히 토너먼트에서 빠진다.
+        // ⚠ 옛 구현과 다른 점을 알고 버린다: 옛 RESET 은 프로필 JSON 에서 튜토리얼 토큰만
+        // 패치했다(전체 재직렬화를 피해 새 클라이언트가 쓴 계정 필드를 잃지 않으려는 것).
+        // ProfileStore.Save 는 통 재직렬화다. 지금은 클라이언트가 하나뿐이고 개발 버튼이라
+        // 받아들인다 — 계정 필드를 외부에서 쓰는 주체가 생기면 그때 토큰 패치로 되돌린다.
+        //
+        // ⚠ matchesPlayed 는 건드리지 않는다. 그건 튜토리얼 진행이 아니라 매치 이력이고,
+        // 「계정의 첫 판은 토너먼트에 올리지 않는다」의 유일한 신호라 여기서 0 으로 되돌리면
+        // 다음 판이 조용히 토너먼트에서 빠진다.
         public void OnResetTutorial()
         {
             if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null)
@@ -155,11 +182,10 @@ namespace Wassup.UI
                 return;
             }
 
-            Debug.Log("[OutgameMenuController] 초기화할 튜토리얼 진행이 없다 — 재설계가 진행 스키마를 잡으면 여기에 채운다.", this);
+            profileSO.profile.firstRunTutorialDone = false;
+            ProfileStore.Save(profileSO.profile);
+            Debug.Log("[OutgameMenuController] 튜토리얼 진행 초기화 — 다음 로비 진입부터 다시 뜬다.", this);
         }
-
-        // tutorial-content-teardown unit 1 — 「이 계정의 첫 판인가」. matchesPlayed 는
-        // GameManager 가 **판이 끝날 때**(Result 전이 · 나가기) 올리는 매치 이력이라 튜토리얼 진행이 아니다
         // (그래서 RESET TUTORIAL 이 건드리지 않았고, 튜토리얼이 사라져도 남는다).
         // 프로필 미로드/부재면 false — 우회는 «확실히 첫 판일 때만» 도는 쪽이 안전하다
         // (오판하면 정상 유저의 판이 토너먼트에서 통째로 빠진다).

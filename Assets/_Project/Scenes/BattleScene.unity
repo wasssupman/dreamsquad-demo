@@ -687,7 +687,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.GimmickPhaseView
   gameManager: {fileID: 1495062450}
   config: {fileID: 11400000, guid: 2c83ead52291f493fa48cb3c50739ae3, type: 2}
-  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   placementPhaseView: {fileID: 1628485822}
   draftController: {fileID: 20521825}
   sortingOrder: 20
@@ -3375,6 +3374,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1572896088}
   - component: {fileID: 1572896087}
+  - component: {fileID: 1572896089}
   m_Layer: 0
   m_Name: TutorialGuidance
   m_TagString: Untagged
@@ -3410,6 +3410,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1572896089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0df364dfc705480e83313f1548a65a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstRunTutorialController
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  config: {fileID: 11400000, guid: 81065656c695c4f6d8efdf526857e58c, type: 2}
+  tutorialUnit: {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
+  guidance: {fileID: 1572896087}
+  overlay: {fileID: 2020984179}
+  gameManager: {fileID: 1495062450}
+  bridge: {fileID: 1939688408}
+  placementPhaseView: {fileID: 1628485822}
+  defenderSelector: {fileID: 915292524}
+  handView: {fileID: 1558370269}
+  handController: {fileID: 2054561897}
+  boardCamera: {fileID: 1420088185}
 --- !u!1 &1606569294
 GameObject:
   m_ObjectHideFlags: 0
@@ -3664,7 +3688,13 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   gameManager: {fileID: 1495062450}
   defenderSelector: {fileID: 915292524}
-  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  countdownFont: {fileID: 0}
+  countdownFontSize: 260
+  countdownColor: {r: 1, g: 0.97, b: 0.88, a: 1}
+  countdownFinalColor: {r: 1, g: 0.72, b: 0.25, a: 1}
+  countdownPunchScale: 1.6
+  countdownPunchDuration: 0.25
+  countdownOutroDuration: 0.35
   startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
   startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
   startBorderColor: {r: 1, g: 0.9, b: 0.55, a: 1}
@@ -4249,6 +4279,52 @@ Transform:
   - {fileID: 808760337}
   m_Father: {fileID: 1495062451}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2020984178
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2020984180}
+  - component: {fileID: 2020984179}
+  m_Layer: 0
+  m_Name: TutorialDim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2020984179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2020984178}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0498815edee8a463e964eeb0c012387c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.OutgameTutorialOverlay
+  holePadding: 6
+  fadeSeconds: 0.22
+--- !u!4 &2020984180
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2020984178}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2039038639
 GameObject:
   m_ObjectHideFlags: 0
@@ -4336,7 +4412,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f76bf930b1cf2004ab994885fe7336d8, type: 2}
   - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
   - {fileID: 11400000, guid: 58eb9d4db7ed0364fbdcf8139fa49763, type: 2}
-  giftConfig: {fileID: 11400000, guid: 1859c4cd9e9fa442a8efc392bfc5d292, type: 2}
 --- !u!4 &2054561898
 Transform:
   m_ObjectHideFlags: 0
@@ -4384,3 +4459,4 @@ SceneRoots:
   - {fileID: 1251145712}
   - {fileID: 1090654030}
   - {fileID: 283596199}
+  - {fileID: 2020984180}

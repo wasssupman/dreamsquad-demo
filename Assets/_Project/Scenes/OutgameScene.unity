@@ -2429,6 +2429,7 @@ MonoBehaviour:
   lobbyCharactersRoot: {fileID: 959132312}
   gatePopup: {fileID: 382824359}
   devButtonsGroup: {fileID: 84156796}
+  lobbyTutorial: {fileID: 1320334838}
 --- !u!4 &401263284
 Transform:
   m_ObjectHideFlags: 0
@@ -5479,6 +5480,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1320334837}
+  - component: {fileID: 1320334838}
   m_Layer: 0
   m_Name: TutorialTools
   m_TagString: Untagged
@@ -5503,6 +5505,20 @@ Transform:
   - {fileID: 1811690502}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1320334838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1320334835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 629a61e59deb74aeca5a4b3437d3333b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyTutorialStep
+  overlay: {fileID: 1149938026}
+  guidance: {fileID: 1811690501}
 --- !u!1 &1331003219
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6a8dea9d1a764c16b08eaef6358c4b9, type: 3}
+  m_Name: FirstRunTutorialConfig
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.FirstRunTutorialConfig
+  briefingHoldSeconds: 1.2
+  briefingCycles: 2
+  goalMessageSeconds: 2.5
+  battleFreezeAtSeconds: 4
+  onPlaceWatchSeconds: 2
+  resumeBeforeAttachSeconds: 5
+  attachSettleSeconds: 2
+  stepTimeoutSeconds: 20
+  introHoldMaxSeconds: 30

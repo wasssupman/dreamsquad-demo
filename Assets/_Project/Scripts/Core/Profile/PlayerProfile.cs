@@ -26,6 +26,15 @@ namespace Wassup.Core
         // GameManager 가 **판이 끝날 때** 1 올린다 — 호출처 둘: SetPhase(Result) 와 MenuPopup 의 나가기.
         public int matchesPlayed;
 
+        // first-run-tutorial unit 0 — 계정 첫 판 온보딩을 봤는가. **matchesPlayed 와 겸직시키지
+        // 말 것** — 그건 「첫 판은 토너먼트에 올리지 않는다」(서버 complete 500 우회)의 신호이고,
+        // 한 필드가 두 규칙을 지면 한쪽을 끄는 순간 다른 쪽이 조용히 바뀐다.
+        //
+        // **정상 완료에서만 true 가 된다.** 스텝을 스킵/타임아웃으로 흘려보낸 판은 기록하지
+        // 않는다 — 1회성이라 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼 기회를 잃는다.
+        // 개발 트레이 RESET TUTORIAL 이 이 값을 false 로 되돌린다.
+        public bool firstRunTutorialDone;
+
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.
 

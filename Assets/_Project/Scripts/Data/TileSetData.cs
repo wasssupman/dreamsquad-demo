@@ -81,6 +81,17 @@ namespace Wassup.Data
         [Tooltip("드래그/arm 시작 시 하이라이트가 0→placeableColor.a 로 차오르는 시간(초). unscaledTime 기준. 정적(펄스 없음).")]
         public float placeableFadeInDuration = 0.2f;
 
+        // first-run-tutorial unit 1 — 배치 **불가** 칸(가능 칸의 여집합). 온보딩 맵 설명 전용이고
+        // 일반 배치/드래그에서는 켜지 않는다 — 드래그 중에 화면 절반이 빨개지면 정작 놓을 곳이 안 보인다.
+        //
+        // placeableTile 을 빌려 쓰지 않고 자기 필드를 갖는다: 슬랩은 자체 m_Color 가 회색(0.80)이라
+        // tint 를 곱하면 색이 죽고, 무엇보다 두 채널이 한 참조를 공유하면 한쪽 저작이 다른 쪽을 끌고 간다.
+        // 기본 배선은 telegraphTile 과 같은 흰색 solid(TileFlags.None)라 아래 tint 가 원색으로 실린다.
+        [Tooltip("배치 불가 칸을 덮는 타일. 흰색 solid 여야 tint 가 제 색으로 나온다. 미할당 시 뷰가 no-op.")]
+        public TileBase blockedTile;
+        [Tooltip("배치 불가 하이라이트 tint. placeableColor(시안)와 한눈에 갈리는 계열이어야 한다.")]
+        public Color blockedColor = new Color(1f, 0.35f, 0.35f, 0.45f);
+
         [Header("Surround terrain ring (tilemap-world-surround)")]
         [Tooltip("플레이 보드 밖 외곽 링에 칠할 터레인 타일. 비면 decoTile(grass) 폴백.")]
         public TileBase terrainTile;

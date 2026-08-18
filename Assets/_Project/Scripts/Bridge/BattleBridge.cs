@@ -6505,22 +6505,65 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
         }
 
+        // first-run-tutorial unit 1 — 배치 **불가** 칸(가능 칸의 여집합 전체). 온보딩 맵 설명 전용.
+        //
+        // 여집합을 따로 계산하지 않고 **같은 스캔의 else 가지**를 쓴다 — 두 벌의 판정식을 두면
+        // 어느 날 갈려서 같은 칸이 양쪽에 칠해진다. 그래서 리페인트도 아래 한 함수가 소유한다.
+        //
+        // ⚠ 자기 플래그가 따로 있어야 한다. RepaintPlacementHighlight 는 _placeableHlShown 으로
+        // early-return 하므로, 그것만 보면 가능 하이라이트를 안 켠 상태에서 불가가 안 칠해진다.
+        private bool _blockedHlShown;
+        private DefenderUnitData _blockedHlUnit;
+        private readonly List<Vector2Int> _blockedHlScratch = new List<Vector2Int>();
+
+        public void ShowBlockedHighlight(DefenderUnitData unit)
+        {
+            _blockedHlShown = true;
+            _blockedHlUnit = unit;
+            RepaintPlacementHighlight();
+        }
+
+        public void HideBlockedHighlight()
+        {
+            _blockedHlShown = false;
+            _blockedHlUnit = null;
+            if (tilemapMapView != null) tilemapMapView.ClearBlockedHighlight();
+        }
+
         public void RefreshPlacementHighlightIfShown() { if (_placeableHlShown) RepaintPlacementHighlight(); }
 
         private void RepaintPlacementHighlight()
         {
-            if (!_placeableHlShown || tilemapMapView == null || !_generatedMap.IsCreated) return;
+            if (tilemapMapView == null || !_generatedMap.IsCreated) return;
+            if (!_placeableHlShown && !_blockedHlShown) return;
+
+            // first-run-tutorial unit 1 — 두 하이라이트는 **한 스캔의 두 갈래**다.
+            // 기준 유닛은 켜져 있는 쪽이 준다(둘 다 켜져 있으면 같은 유닛이어야 정합).
+            var hlUnit = _placeableHlShown ? _placeableHlUnit : _blockedHlUnit;
+            var layers = hlUnit != null ? hlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
             _placeableHlScratch.Clear();
-            var layers = _placeableHlUnit != null ? _placeableHlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
+            _blockedHlScratch.Clear();
             int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
+            {
+                var cell = new Vector2Int(x, y);
                 if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y), layers) == PlacementRejectReason.None)
-                    _placeableHlScratch.Add(new Vector2Int(x, y));
+                    _placeableHlScratch.Add(cell);
+                else
+                    _blockedHlScratch.Add(cell);
+            }
             // unit 9 — 스캔이 뺀 소스 칸을 되돌려 넣는다(제자리 재정비도 유효 목적지다).
+            // ⚠ 되넣은 칸은 위 else 가지에서 이미 blocked 로 갔다 — 동시 표시일 때 양쪽에 들지
+            // 않도록 여기서 빼준다. 맵 설명은 extraCell 이 없어 실무상 안 걸리지만 규칙은 한 곳에 둔다.
             if (_placeableHlExtraCell.HasValue && !_placeableHlScratch.Contains(_placeableHlExtraCell.Value))
+            {
                 _placeableHlScratch.Add(_placeableHlExtraCell.Value);
-            tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+                _blockedHlScratch.Remove(_placeableHlExtraCell.Value);
+            }
+
+            if (_placeableHlShown) tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+            if (_blockedHlShown) tilemapMapView.SetBlockedHighlight(_blockedHlScratch);
         }
 
         // Explicit-type placement (Phase 4). Used by DefenderSelector after the

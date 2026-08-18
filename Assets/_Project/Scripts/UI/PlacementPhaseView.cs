@@ -109,6 +109,32 @@ namespace Wassup.UI
             if (_bigSeq.isAlive) _bigSeq.Stop();
         }
 
+        // first-run-tutorial unit 3 — 온보딩 맵 설명이 카운트다운 앞에 들어갈 자리를 만든다.
+        // 카운트다운은 3초 + 전면 입력 차단이라 그 안에는 아무 설명도 못 들어간다.
+        private bool _introHeld;
+        private float _introHoldUntil;   // unscaledTime. 상한이 없으면 Release 를 못 부른 순간 판이 영영 3에 멈춘다.
+
+        public void BeginIntroHold(float maxSeconds)
+        {
+            _introHeld = true;
+            _introHoldUntil = Time.unscaledTime + Mathf.Max(1f, maxSeconds);
+        }
+
+        public void ReleaseIntroHold() => _introHeld = false;
+
+        // 상한 자가 해제 — 컨트롤러가 죽거나 예외로 Release 를 못 불러도 판은 시작된다.
+        private bool IsIntroHeld()
+        {
+            if (!_introHeld) return false;
+            if (Time.unscaledTime >= _introHoldUntil)
+            {
+                _introHeld = false;
+                Debug.LogWarning("[PlacementPhaseView] 인트로 홀드 상한 만료 — 자가 해제한다.", this);
+                return false;
+            }
+            return true;
+        }
+
         public void BeginPlacementPhase()
         {
             if (!_built) BuildCanvas();
@@ -131,6 +157,7 @@ namespace Wassup.UI
             if (gameManager != null && gameManager.CooldownRuntime != null) gameManager.CooldownRuntime.ResetAll();
             if (bridge != null) bridge.BeginPlacement();
 
+            _introHeld = false;   // 판마다 새로 시작한다 — 지난 판의 홀드를 물려받지 않는다.
             _remaining = duration;
             _active = true;
             _panel.SetActive(true);
@@ -286,7 +313,7 @@ namespace Wassup.UI
         {
             if (!_active) return false;
             bool interactionBlocked = IsPlacementInteractionBlocked(out _);
-            return PlacementPhasePolicy.CanFinish(interactionBlocked);
+            return PlacementPhasePolicy.CanFinish(interactionBlocked, IsIntroHeld());
         }
 
         private bool IsPlacementInteractionBlocked(out bool aiming)
@@ -310,7 +337,7 @@ namespace Wassup.UI
                 return;
             }
             bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked(out _);
-            bool available = PlacementPhasePolicy.CanFinish(blocked);
+            bool available = PlacementPhasePolicy.CanFinish(blocked, IsIntroHeld());
             if (_startAvailable == available &&
                 (_startButtonWrap == null || _startButtonWrap.activeSelf == available) &&
                 (_startButton == null || _startButton.interactable == available)) return;
@@ -522,8 +549,12 @@ namespace Wassup.UI
 
     internal static class PlacementPhasePolicy
     {
-        public static bool CanFinish(bool placementInteractionBlocked) =>
-            !placementInteractionBlocked;
+        // first-run-tutorial unit 3 — 인트로 홀드가 두 번째 인자로 들어왔다.
+        // **홀드를 TickAutoStart 쪽에만 넣으면 안 된다** — 종료 게이트와 종료 가드가 서로 다른
+        // 술어를 보게 되고, 그게 a1392b4d 가 고친 «판이 벽돌이 되는» 함정이다. 두 소비자가
+        // 같은 함수를 지나게 해서 갈릴 여지를 없앤다.
+        public static bool CanFinish(bool placementInteractionBlocked, bool introHeld) =>
+            !placementInteractionBlocked && !introHeld;
 
         // match-intro-phase-toggles unit 0 — 배치 창을 열지 3초 뒤 자동으로 닫을지.
         // tutorial-content-teardown unit 0 — 첫 판 튜토리얼 예외는 걷혔다. 튜토리얼 콘텐츠가

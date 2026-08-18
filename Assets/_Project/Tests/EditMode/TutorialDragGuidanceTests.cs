@@ -40,13 +40,19 @@ namespace Wassup.Tests.EditMode
 
     public class TutorialInteractionAndSafeAreaTests
     {
-        // tutorial-content-teardown unit 0 — 튜토리얼 홀드 축이 걷히면서 술어가 한 인자로
-        // 줄었다. 남은 규칙 하나: **드래그/조준이 물려 있으면 배치를 끝내지 않는다.**
-        [TestCase(false, true)]
-        [TestCase(true, false)]
-        public void PlacementPolicy_InteractionBlockAlwaysWins(bool interactionBlocked, bool expected)
+        // first-run-tutorial unit 3 — 술어가 두 인자로 돌아왔다(인트로 홀드).
+        // 규칙 둘: 드래그/조준이 물려 있으면 끝내지 않고, 온보딩이 붙잡고 있어도 끝내지 않는다.
+        //
+        // ⚠ 이 함수가 **하나**여야 한다는 것이 계약이다. TickAutoStart 와 FinishPlacement 가
+        // 서로 다른 술어를 보면 종료가 거절된 프레임에 카운트다운만 0으로 눌려 판이 벽돌이
+        // 된다(a1392b4d). 그래서 두 소비자가 다 여기를 지난다.
+        [TestCase(false, false, true)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        [TestCase(true, true, false)]
+        public void PlacementPolicy_BlockOrHoldStopsFinish(bool interactionBlocked, bool introHeld, bool expected)
         {
-            Assert.AreEqual(expected, PlacementPhasePolicy.CanFinish(interactionBlocked));
+            Assert.AreEqual(expected, PlacementPhasePolicy.CanFinish(interactionBlocked, introHeld));
         }
 
         // match-intro-phase-toggles unit 0 + tutorial-content-teardown unit 0 —
