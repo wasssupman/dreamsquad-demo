@@ -416,16 +416,118 @@ namespace Wassup.Battle.Combat
                                 if (slot.patternIndex < pats.Length)
                                 {
                                     var pat = pats[slot.patternIndex];
-                                    var inst = new Projectile.Emission.EmitterInstance
+                                    var template = pat.template;
+
+                                    // on-place-shuttle-shotgun unit 1 — **방향 바인딩 탄은 여기서
+                                    // 조준을 확정해야 한다.** 원점·방향·최대거리는 «발사 시점의 값»
+                                    // 이라 bake 가 템플릿에 채울 수 없고(평타는 AttackSystem 의
+                                    // RESOLVE 가 같은 일을 한다), 안 채우면 방향 (0,0) 인 탄이 나간다.
+                                    // 캐논은 적 조준(SkyFallOnEntity)이라 이 축을 밟지 않았다.
+                                    //
+                                    // ⚠ **이미 조준된 템플릿은 건드리지 않는다.** 이 arm 은 방향
+                                    // 스냅샷을 미리 실어 보내는 소비자와 공유된다(무타겟 방향 패턴 —
+                                    // `ProjectileEmitterIntegrationTests.DirectionPattern_FiresWithoutTargets…`
+                                    // 가 "host 현재 위치로 snapshot 원점을 덮으면 안 된다" 로 고정).
+                                    // 그쪽은 후보가 0이어도 발사한다. 그래서 «방향이 비어 있다» 를
+                                    // 아직 조준되지 않은 템플릿의 표식으로 쓴다 — 유닛 능력 bake 는
+                                    // origin·direction·maxDistance 를 하나도 채우지 않는다.
+                                    bool fire = true;
+                                    bool needsAim = math.lengthsq(template.direction)
+                                                    < Projectile.Emission.OnPlaceFireAim.AimEpsilonSq;
+                                    if (needsAim
+                                        && Projectile.Emission.MovementBinding.Of(template.movement)
+                                            == Projectile.Emission.BindingClass.Direction
+                                        && SystemAPI.HasComponent<LocalTransform>(entity))
                                     {
-                                        spec = pat.spec,
-                                        template = pat.template,
-                                        lockedTarget = Entity.Null,
-                                    };
-                                    Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
-                                    pat.fireCountBase += pat.spec.shots.Length;
-                                    pats[slot.patternIndex] = pat;
-                                    instanceLookup[entity].Add(inst);
+                                        float3 hostPos3 = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                        float2 hostXZ = new float2(hostPos3.x, hostPos3.z);
+
+                                        // 조준은 Units 소유(`DeployedFacing`, 배치 확정 1회 기록 후
+                                        // 불변) — Combat 은 **읽기만** 한다.
+                                        bool hasAim = SystemAPI.HasComponent<Wassup.Battle.Units.DeployedFacing>(entity);
+                                        float2 aim = float2.zero;
+                                        if (hasAim)
+                                        {
+                                            var f = SystemAPI.GetComponent<Wassup.Battle.Units.DeployedFacing>(entity).value;
+                                            aim = new float2(f.x, f.y);
+                                        }
+
+                                        // 조준이 없을 때만 후보를 본다 — 조준이 방향을 이미 정했으면
+                                        // 풀을 만들 이유가 없다(지연 빌드 플래그는 arm 들이 공유).
+                                        // ⚠ 배열은 조준이 있어도 **길이 0 으로 실체를 만든다**:
+                                        // 미할당(default) NativeArray 를 넘기면 퇴화 조준(값 0)이
+                                        // 최근접 경로로 흐를 때 그 배열을 읽는다.
+                                        var aimCandidates = new NativeArray<float2>(0, Allocator.Temp);
+                                        int candidateCount = 0;
+                                        if (!hasAim)
+                                        {
+                                            if (!enemyPoolBuilt)
+                                            {
+                                                BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
+                                                enemyPoolBuilt = true;
+                                            }
+                                            // ⚠ `BuildEnemyPool` 은 **필터가 하나도 없다**(arm 셋이
+                                            // 공유하는 원본 스냅샷). 안 거르면 시체나 «내가 못 때리는
+                                            // 층» 의 적이 총구를 가져가고, 그 탄은 통행 층 게이트에
+                                            // 막혀 아무도 못 맞힌다. 사거리를 안 걸면 맵 반대편 적
+                                            // 하나가 방향을 정해 허공에 쏜다. 도발 arm 과 같은 게이트다.
+                                            int2 hostCell = GridMath.WorldToCell(hostPos3, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                            AuraPulse.SelectTargets(enemyCells, hostCell, slot.tileRange, ref pulseTargets);
+                                            byte hostLayers = SystemAPI.HasComponent<AttackState>(entity)
+                                                ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                                : (byte)0;
+                                            aimCandidates.Dispose();
+                                            aimCandidates = new NativeArray<float2>(pulseTargets.Length, Allocator.Temp);
+                                            for (int ti = 0; ti < pulseTargets.Length; ti++)
+                                            {
+                                                var cand = enemyEntities[pulseTargets[ti]];
+                                                if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(cand)) continue;
+                                                if (SystemAPI.HasComponent<UltimateLeapState>(cand)) continue;
+                                                byte candLayers = pathFollowLookup.HasComponent(cand)
+                                                    ? pathFollowLookup[cand].traversalLayers
+                                                    : (byte)0;
+                                                if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, candLayers))
+                                                    continue;
+                                                var p = enemyTransformsPool[pulseTargets[ti]].Position;
+                                                aimCandidates[candidateCount++] = new float2(p.x, p.z);
+                                            }
+                                        }
+
+                                        fire = Projectile.Emission.OnPlaceFireAim.TryResolve(
+                                            hostXZ, hasAim, aim,
+                                            aimCandidates.GetSubArray(0, candidateCount),
+                                            out float2 dir, out _);
+                                        if (fire)
+                                        {
+                                            template.origin = hostPos3;
+                                            template.direction = dir;
+                                            // 사거리는 payload 저작값 — 평타(`tileRange * tileSize`)와
+                                            // 같은 월드 단위다. `damage` 는 채우지 않는다: emitter 가
+                                            // 명령값(`order.damage` = 패턴 SO)으로 항상 덮는다.
+                                            template.maxDistance = slot.tileRange * ff.tileSize;
+                                        }
+                                        aimCandidates.Dispose();
+                                    }
+
+                                    // 조준도 합법 후보도 없으면 **발사하지 않는다** — 방향 (0,0) 인
+                                    // 탄을 내보내는 대신 사건을 없던 것으로 한다. 발사 카운터도
+                                    // 전진시키지 않아 다음 발동이 같은 위상에서 시작한다.
+                                    // ⚠ `break`/`continue` 로 빠져나가지 말 것: 이 루프 끝의
+                                    // `slots[si] = slot` write-back(트리거 상태 영속)을 건너뛰고
+                                    // 뒤 슬롯도 통째로 잃는다.
+                                    if (fire)
+                                    {
+                                        var inst = new Projectile.Emission.EmitterInstance
+                                        {
+                                            spec = pat.spec,
+                                            template = template,
+                                            lockedTarget = Entity.Null,
+                                        };
+                                        Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
+                                        pat.fireCountBase += pat.spec.shots.Length;
+                                        pats[slot.patternIndex] = pat;
+                                        instanceLookup[entity].Add(inst);
+                                    }
                                 }
                             }
                         }
