@@ -3690,6 +3690,7 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   gameManager: {fileID: 1495062450}
   defenderSelector: {fileID: 915292524}
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
   startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
   startBorderColor: {r: 1, g: 0.9, b: 0.55, a: 1}

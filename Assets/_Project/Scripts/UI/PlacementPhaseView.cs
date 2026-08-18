@@ -25,6 +25,25 @@ namespace Wassup.UI
         // countdown must all wait until a drag/directional aim has settled.
         [SerializeField] private DefenderSelector defenderSelector;
 
+        // match-intro-phase-toggles unit 0 — 첫 판 판정용. 튜토리얼은 배치를 직접 가르치는 판이라
+        // 자동 시작 플래그를 무시한다(계약 6). 미배선이면 ShouldRunCore=false → 자동 시작이
+        // 정상 동작하는 fail-open.
+        [Tooltip("첫 판 판정용. 미배선이면 fail-open — 플래그대로 자동 시작한다.")]
+        [SerializeField] private PlayerProfileSO profileSO;
+
+        [Header("자동 시작 카운트다운 (placementPhaseEnabled=false)")]
+        [Tooltip("중앙 대형 숫자 폰트. 미지정 시 startLabelFont → TMP 기본 순으로 폴백")]
+        [SerializeField] private TMP_FontAsset countdownFont;
+        [SerializeField] private float countdownFontSize = 260f;
+        [SerializeField] private Color countdownColor = new Color(1f, 0.97f, 0.88f, 1f);
+        [Tooltip("마지막 1초와 GO! 강조색")]
+        [SerializeField] private Color countdownFinalColor = new Color(1f, 0.72f, 0.25f, 1f);
+        [Tooltip("숫자가 바뀔 때 찍히는 펀치 배수")]
+        [SerializeField] private float countdownPunchScale = 1.6f;
+        [SerializeField] private float countdownPunchDuration = 0.25f;
+        [Tooltip("GO! 가 커지며 사라지는 시간. 전투는 이미 시작된 뒤라 연출만 남는다")]
+        [SerializeField] private float countdownOutroDuration = 0.35f;
+
         // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)에 배치 + 캐주얼
         // 배경 그래픽 슬롯. startButtonBackground 할당 시 그 스프라이트, 비면 UiRoundedSprite
         // 절차 플레이트(다크 네이비 + 골드 테두리) 폴백. 실제 그래픽은 unit 1(Codex).
@@ -65,6 +84,16 @@ namespace Wassup.UI
         private bool _tutorialHold;
         private bool _tutorialStartUnlocked;
         private bool _startAvailable;
+        // match-intro-phase-toggles — 자동 시작 모드 상태. BeginPlacementPhase 에서 1회 확정하고
+        // 창이 도는 동안 재평가하지 않는다.
+        private bool _autoStart;
+        private GameObject _banner;
+        private GameObject _blocker;
+        private TextMeshProUGUI _bigLabel;
+        private RectTransform _bigLabelRt;
+        private CanvasGroup _bigLabelGroup;
+        private Sequence _bigSeq;
+        private int _shownTick = -1;
 
         public RectTransform StartButtonRect => _startButtonRt;
         public bool IsPlacementActive => _active;
@@ -84,13 +113,28 @@ namespace Wassup.UI
             _tutorialHold = false;
             _tutorialStartUnlocked = false;
             _startAvailable = false;
+            // ⚠ 살아있는 시퀀스는 반드시 멈춘다. pending ChainCallback 을 문 채 파괴되면
+            // PrimeTween 이 "OnComplete callback was ignored" 를 에러로 찍는다
+            // (GimmickPhaseView.OnDisable 에서 실제로 재현된 경로).
+            if (_bigSeq.isAlive) _bigSeq.Stop();
         }
 
         public void BeginPlacementPhase()
         {
             if (!_built) BuildCanvas();
             var cfg = gameManager != null ? gameManager.CostConfig : null;
-            float duration = cfg != null ? cfg.placementPhaseDuration : 30f;
+            var battleCfg = gameManager != null ? gameManager.BattleConfig : null;
+
+            // match-intro-phase-toggles unit 0 — 배치 창을 열지, 3초 뒤 자동으로 닫을지.
+            // 아래 진입 묶음(페이즈 전이·코스트·쿨타임·bridge.BeginPlacement)은 **두 경로 공통**이다:
+            // 유닛 트레이가 Placement 진입 신호에서 슬롯을 구성하므로(DefenderSelector.OnPhaseChanged)
+            // 페이즈를 건너뛰면 전투 내내 트레이가 빈 채로 남는다.
+            _autoStart = PlacementPhasePolicy.UseAutoStart(
+                battleCfg == null || battleCfg.placementPhaseEnabled,
+                TutorialProgress.ShouldRunCore(profileSO));
+            float duration = _autoStart
+                ? (battleCfg != null ? battleCfg.autoStartCountdownSeconds : 3f)
+                : (cfg != null ? cfg.placementPhaseDuration : 30f);
 
             if (gameManager != null) gameManager.SetPhase(GamePhase.Placement);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.ResetToStart();
@@ -101,14 +145,39 @@ namespace Wassup.UI
             _remaining = duration;
             _active = true;
             _panel.SetActive(true);
+            ApplyOverlayMode();
             _startAvailable = false;
             RefreshStartAvailability();
             PlacementReady?.Invoke();
         }
 
+        // 자동 시작 창에는 입력이 없다(계약 5). 배치 경로가 트레이/손패 드래그 하나뿐이라
+        // 전면 raycast 블로커로 닫힌다 — 클릭 배치(현재 은퇴)가 되살아나도 그쪽의
+        // IsPointerOverGameObject 가드가 같은 블로커에 걸린다.
+        private void ApplyOverlayMode()
+        {
+            if (_banner != null) _banner.SetActive(!_autoStart);
+            if (_blocker != null) _blocker.SetActive(_autoStart);
+            _shownTick = -1;
+            if (_bigSeq.isAlive) _bigSeq.Stop();
+            if (_bigLabel != null)
+            {
+                _bigLabel.gameObject.SetActive(_autoStart);
+                _bigLabel.text = string.Empty;
+            }
+            if (_bigLabelRt != null) _bigLabelRt.localScale = Vector3.one;
+            // 지난 판의 아웃트로가 알파를 0으로 두고 끝난다 — 재진입마다 되돌린다.
+            if (_bigLabelGroup != null) _bigLabelGroup.alpha = 1f;
+        }
+
         private void Update()
         {
             if (!_active) return;
+            if (_autoStart)
+            {
+                TickAutoStart();
+                return;
+            }
             bool interactionBlocked = IsPlacementInteractionBlocked(out bool aiming);
             RefreshStartAvailability(interactionBlocked);
             if (interactionBlocked)
@@ -124,6 +193,51 @@ namespace Wassup.UI
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f) { _remaining = 0f; FinishPlacement(); return; }
             _countdownLabel.text = $"배치 단계  ·  {Mathf.CeilToInt(_remaining)}초";
+        }
+
+        // match-intro-phase-toggles unit 1 — 브롤스타즈식 카운트다운. 남은 초의 올림값이
+        // 바뀌는 프레임에만 숫자를 찍고 펀치를 한 번 친다(매 프레임 문자열 재대입 금지).
+        // 0 은 표시하지 않는다 — 0에 닿는 순간이 곧 GO! 이자 전투 시작이다.
+        private void TickAutoStart()
+        {
+            // ⚠ 튜토리얼이 카운트다운을 잡는 동안은 시간을 흘리지 않는다.
+            // 계약 6은 **첫 판**(ShouldRunCore)만 자동 시작에서 빼는데, 튜토리얼 게이트를 쓰는
+            // 경로가 하나 더 있다 — 효과 타일 안내(FirstSessionTutorialController.EffectTile)는
+            // **두 번째 판 이후**라 ShouldRunCore=false 에서 돌고, 그래서 자동 시작과 겹친다.
+            // 여기서 멈추지 않으면 안내가 3초에 잘린 채 완료로 저장돼(CompleteEffectTileProgress)
+            // 플레이어는 그 안내를 영영 못 읽는다.
+            // 배치 입력은 여전히 막혀 있다 — 안내 캔버스(1500)가 차단막(7) 위라 탭 진행만 살아 있다.
+            if (!PlacementPhasePolicy.CanFinish(_tutorialHold, _tutorialStartUnlocked, false)) return;
+
+            _remaining -= Time.deltaTime;
+            if (_remaining <= 0f)
+            {
+                _remaining = 0f;
+                // GO! 는 한 번만. FinishPlacement 는 자기 가드(CanFinishPlacement)로 거절할 수
+                // 있는데, 그러면 여기가 매 프레임 재진입해 펀치 트윈을 다시 깔고 아웃트로를
+                // 죽인다(= 전투도 안 시작되고 화면도 굳는다). _shownTick 0 이 그 재진입 자물쇠다.
+                if (_shownTick == 0) return;
+                _shownTick = 0;
+                ShowBigLabel("GO!", countdownFinalColor);
+                FinishPlacement();
+                return;
+            }
+            int tick = Mathf.CeilToInt(_remaining);
+            if (tick == _shownTick) return;
+            _shownTick = tick;
+            ShowBigLabel(tick.ToString(), tick <= 1 ? countdownFinalColor : countdownColor);
+        }
+
+        private void ShowBigLabel(string text, Color color)
+        {
+            if (_bigLabel == null || _bigLabelRt == null) return;
+            if (_bigSeq.isAlive) _bigSeq.Stop();
+            _bigLabel.text = text;
+            _bigLabel.color = color;
+            _bigLabelRt.localScale = Vector3.one * countdownPunchScale;
+            // useUnscaledTime — START 주스와 같은 규율. 인트로는 도메인 시간 제어 밖이다.
+            _bigSeq = Sequence.Create(useUnscaledTime: true)
+                .Group(Tween.Scale(_bigLabelRt, Vector3.one, countdownPunchDuration, Ease.OutBack));
         }
 
         private void OnStartClicked()
@@ -172,10 +286,30 @@ namespace Wassup.UI
             _tutorialStartUnlocked = false;
             _startAvailable = false;
             SetStartJuice(false);
-            _panel.SetActive(false);
+            HideOverlay();
             if (gameManager != null) gameManager.SetPhase(GamePhase.Battle);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.BeginRegen();
             if (bridge != null) bridge.StartBattle();
+        }
+
+        // 패널을 닫는 유일한 지점. 자동 시작 모드에서는 GO! 아웃트로가 끝난 뒤 닫히지만,
+        // **입력 차단막은 즉시 내린다** — 전투는 이미 시작됐고 남은 것은 잔상뿐이다.
+        private void HideOverlay()
+        {
+            if (_blocker != null) _blocker.SetActive(false);
+            if (!_autoStart || _bigLabelRt == null || _bigLabelGroup == null)
+            {
+                _panel.SetActive(false);
+                return;
+            }
+
+            var panel = _panel;
+            if (_bigSeq.isAlive) _bigSeq.Stop();
+            _bigSeq = Sequence.Create(useUnscaledTime: true)
+                .Group(Tween.Scale(_bigLabelRt, Vector3.one * (countdownPunchScale * 1.25f),
+                    countdownOutroDuration, Ease.OutQuad))
+                .Group(Tween.Alpha(_bigLabelGroup, 0f, countdownOutroDuration, Ease.InQuad))
+                .ChainCallback(() => { if (panel != null) panel.SetActive(false); });
         }
 
         private bool CanFinishPlacement()
@@ -197,6 +331,15 @@ namespace Wassup.UI
             bool animateWhenAvailable = true)
         {
             if (!_active) return;
+            // 자동 시작 창에는 START 가 없다 — 기다릴 대상이 카운트다운뿐이다.
+            if (_autoStart)
+            {
+                _startAvailable = false;
+                if (_startButtonWrap != null) _startButtonWrap.SetActive(false);
+                if (_startButton != null) _startButton.interactable = false;
+                SetStartJuice(false);
+                return;
+            }
             bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked(out _);
             bool available = PlacementPhasePolicy.CanFinish(
                 _tutorialHold, _tutorialStartUnlocked, blocked);
@@ -250,6 +393,7 @@ namespace Wassup.UI
 
             // Top-center countdown banner
             var banner = new GameObject("Banner", typeof(RectTransform), typeof(Image));
+            _banner = banner;
             banner.transform.SetParent(_panel.transform, false);
             var brt = (RectTransform)banner.transform;
             brt.anchorMin = new Vector2(0.5f, 1f);
@@ -352,7 +496,59 @@ namespace Wassup.UI
                 mat.SetFloat(ShaderUtilities.ID_OutlineWidth, startLabelOutlineWidth);
             }
 
+            BuildAutoStartOverlay();
+
             UiLayer.Apply(gameObject);
+        }
+
+        // match-intro-phase-toggles unit 0/1 — 자동 시작 전용 오버레이. 두 조각 다 기본 비활성이라
+        // 배치 페이즈가 켜져 있는 판에서는 존재하지 않는 것과 같다.
+        // 형제 순서 = 차단막 → 숫자. 숫자는 차단막 위에 그려지고 raycast 는 차단막이 전부 먹는다.
+        private void BuildAutoStartOverlay()
+        {
+            var blockerGO = new GameObject("InputBlocker", typeof(RectTransform), typeof(Image));
+            _blocker = blockerGO;
+            blockerGO.transform.SetParent(_panel.transform, false);
+            var blrt2 = (RectTransform)blockerGO.transform;
+            blrt2.anchorMin = Vector2.zero;
+            blrt2.anchorMax = Vector2.one;
+            blrt2.offsetMin = Vector2.zero;
+            blrt2.offsetMax = Vector2.zero;
+            var blockerImg = blockerGO.GetComponent<Image>();
+            blockerImg.color = new Color(0f, 0f, 0f, 0f); // 보이지 않지만 포인터는 전부 먹는다
+            blockerImg.raycastTarget = true;
+            blockerGO.SetActive(false);
+
+            var bigGO = new GameObject("CountdownNumber", typeof(RectTransform), typeof(CanvasGroup));
+            bigGO.transform.SetParent(_panel.transform, false);
+            _bigLabelRt = (RectTransform)bigGO.transform;
+            _bigLabelRt.anchorMin = new Vector2(0.5f, 0.5f);
+            _bigLabelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            _bigLabelRt.pivot = new Vector2(0.5f, 0.5f);
+            _bigLabelRt.anchoredPosition = Vector2.zero;
+            _bigLabelRt.sizeDelta = new Vector2(700f, 360f);
+            _bigLabelGroup = bigGO.GetComponent<CanvasGroup>();
+            _bigLabelGroup.blocksRaycasts = false;
+            _bigLabelGroup.interactable = false;
+
+            _bigLabel = bigGO.AddComponent<TextMeshProUGUI>();
+            var font = countdownFont != null ? countdownFont : startLabelFont;
+            if (font != null) _bigLabel.font = font;
+            _bigLabel.text = string.Empty;
+            _bigLabel.fontSize = countdownFontSize;
+            _bigLabel.color = countdownColor;
+            _bigLabel.alignment = TextAlignmentOptions.Center;
+            _bigLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            _bigLabel.raycastTarget = false;
+            // START 라벨과 같은 스티커 외곽선(인스턴스 머티리얼, 공용 아틀라스 무변경).
+            if (startLabelOutlineWidth > 0f && _bigLabel.fontMaterial != null)
+            {
+                var mat = _bigLabel.fontMaterial;
+                mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+                mat.SetColor(ShaderUtilities.ID_OutlineColor, startLabelOutlineColor);
+                mat.SetFloat(ShaderUtilities.ID_OutlineWidth, startLabelOutlineWidth);
+            }
+            bigGO.SetActive(false);
         }
     }
 
@@ -361,5 +557,10 @@ namespace Wassup.UI
         public static bool CanFinish(bool tutorialHold, bool tutorialStartUnlocked,
             bool placementInteractionBlocked) =>
             (!tutorialHold || tutorialStartUnlocked) && !placementInteractionBlocked;
+
+        // match-intro-phase-toggles unit 0 — 배치 창을 열지 3초 뒤 자동으로 닫을지.
+        // 첫 판 튜토리얼은 배치를 직접 가르치는 판이라 플래그를 무시한다(계약 6).
+        public static bool UseAutoStart(bool placementPhaseEnabled, bool tutorialCore) =>
+            !placementPhaseEnabled && !tutorialCore;
     }
 }

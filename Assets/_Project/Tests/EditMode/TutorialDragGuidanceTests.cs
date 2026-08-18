@@ -52,6 +52,19 @@ namespace Wassup.Tests.EditMode
                 tutorialHold, tutorialUnlocked, interactionBlocked));
         }
 
+        // match-intro-phase-toggles unit 0 — 배치 페이즈를 끄면 3초 자동 시작, 단 첫 판
+        // 튜토리얼은 배치를 직접 가르치는 판이라 플래그를 무시한다(계약 6).
+        [TestCase(true, false, false)]   // 현행 배치(플래그 on)
+        [TestCase(false, false, true)]   // 자동 시작
+        [TestCase(false, true, false)]   // 튜토리얼이 이긴다
+        [TestCase(true, true, false)]
+        public void PlacementPolicy_TutorialOverridesAutoStart(bool placementPhaseEnabled,
+            bool tutorialCore, bool expected)
+        {
+            Assert.AreEqual(expected, PlacementPhasePolicy.UseAutoStart(
+                placementPhaseEnabled, tutorialCore));
+        }
+
         [Test]
         public void SafeAreaLayout_FitsAndClampsPulsingFocus()
         {

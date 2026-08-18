@@ -61,6 +61,9 @@ namespace Wassup.Core
         public CostRuntime CostRuntime => costRuntime;
         public PlacementCooldownRuntime CooldownRuntime => cooldownRuntime;
         public CostConfig CostConfig => costConfig;
+        // match-intro-phase-toggles unit 0 — 인트로 페이즈 토글의 소유자. 판정은 페이즈를 소유한
+        // 뷰(PlacementPhaseView)가 하고 여기서 대행하지 않는다 — CostConfig 와 같은 형태.
+        public BattleConfig BattleConfig => battleConfig;
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
