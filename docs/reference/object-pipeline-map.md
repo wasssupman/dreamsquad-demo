@@ -218,16 +218,18 @@ one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, 
 | 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다 |
 | 씬 wiring | `SpawnAlertPresenter` GameObject + `bridge` 참조 | |
 
-## 프랍/타일 (맵 데코)
+## 맵 스테이지/프랍 (map-diorama-stage, 2026-08-19 전면 교체)
+
+절차 산포 프랍·바닥 타일 페인팅 체계는 은퇴했다(`BackgroundPropPlacer`/`TilemapPropScatter`/`BoardVisualPlan` 계열/`PaintGround`). 맵 = **디오라마 스테이지 프리팹**이 정본이자 비주얼이다.
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/MapThemeData.cs` + `Data/PropData.cs` + `Data/TileSetData.cs` | |
-| ECS | N/A — 배틀 런타임 무관, 맵 빌드 1회 생성 | seed 결정론(비동기 토너먼트 양측 동일) |
-| 배치 계산 | `Data/BackgroundPropPlacer.cs` (순수 static) | |
-| 인스턴스화 | `BattleBridge`(맵 빌드) → `Core/TilemapMapView.cs` InstantiateProp | 모바일 prop budget 솎음 |
-| View | `Presentation/PropBillboard.cs`(프리팹 authored) / `TilemapPropScatter.cs`(독립 tilemap 데코 — Bridge/ECS 무관) | |
-| 씬 wiring | 씬 theme SO + tilemap GameObject | `unity-prop-tile-authoring` 스킬 |
+| 저작(프리팹) | `Assets/_Project/Prefabs/Maps/MapStage_*.prefab` — 루트 `Core/MapStage/MapStage.cs` + 프랍에 `PropFootprint`/`SpawnMarker`/`GoalMarker`/`RouteMarker`/`PlacementBlockZone` | 역할 컴포넌트 없는 프랍 = 순수 장식. 기즈모가 차지 셀 실시간 표시. 절차 조립 예시 = `Editor/MapStageDummyGenerator.cs` |
+| 풀 | `Data/MapStage/MapStagePool.cs` → `Data/Maps/MapStagePool.asset` (프리팹+덱+플랜 짝) | 인덱스 선정 의미는 구 문서 풀과 동일(dev 슬롯 시드 불가시). `MapStage` 인스펙터 "Dev 엔트리 등록" 버튼 |
+| 논리 파생 | `Core/MapStage/MapStageScanner.cs`(스캔) → `Data/MapStage/DioramaMapBuilder.cs`(Validate+Assemble, 순수) → `GeneratedMap` | tiles 합성: 열림=Walk/차단=Deco. placeMask 직접 조립(기본 `Ground\|Path\|Air`, BlockZone 차감). 연결성 실패 = 하드 실패(폴백 리니어 은퇴) |
+| ECS | N/A — 프랍은 배틀 런타임 무관, footprint 는 빌드 시 GeneratedMap 으로만 반영 | 스테이지 인스턴스 수명 = `TeardownGeneratedMap` |
+| View | 스테이지 인스턴스 그 자체(`BattleBridge._stageInstance`) + 오버레이 전용 `Core/TilemapMapView.cs`(격자 = `AlignGridTo` 단일 writer) | 골 균열/붕괴·튜토리얼 앵커 = `GoalMarker`/`SpawnMarker` 뷰 훅 (브리지 마커 등록부 경유) |
+| 씬 wiring | BattleBridge `mapPool` → `MapStagePool.asset` | 효과 타일 억제 = `MapStage.suppressEffectTiles`(e2e 픽스처 계측 보호) |
 
 ---
 

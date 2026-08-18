@@ -89,6 +89,9 @@ namespace Wassup.EditorTools
             {
                 case "unit2_setup": return Unit2Setup();
                 case "unit4b_stages": return Unit4bStages();
+                case "unit5_pilot":
+                    MapStageDummyGenerator.GeneratePilot();
+                    return "OK|pilot generated";
                 default: return $"ERROR|unknown task '{task}'";
             }
         }
