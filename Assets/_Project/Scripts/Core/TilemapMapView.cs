@@ -98,19 +98,13 @@ namespace Wassup.Core
         private static readonly int FillColorId = Shader.PropertyToID("_FillColor");
         private static readonly int QuadCellsId = Shader.PropertyToID("_QuadCells");
         // tilemap-world-surround unit 2 — 배경 프랍 호스트(Deco) 판정용 셀/리전 메타 + 프랍 인스턴스 루트.
-        private BoardVisualPlan _visualPlan;
         // tilemap-world-surround unit 4 — 외곽 링 원경 프랍 인스턴스 루트.
         // prop-placement-layer unit 1 — goal/spawn 구조물 프랍 루트. 부모(90°X)를 역회전 상쇄해 메쉬가 똑바로 선다.
-        private Transform _structurePropsRoot;
         // waypoint-routing 후속(사용자 결정 B, 2026-08-12) — 붕괴한 골의 프랍을 셀로 찾아
         // «이미 뚫린 곳» 으로 전환하기 위한 추적. 붕괴 후에도 프랍이 멀쩡히 서 있어서
         // 적이 그 골에서 소멸(유출 전환)하는 것이 «살아있는 마음을 안 때리는 버그» 로 읽혔다.
-        private readonly Dictionary<Vector2Int, GameObject> _goalPropsByCell = new();
         // first-session-tutorial unit 2 — 셀 중심이 아니라 실제 구조물 renderer 중심을 노출한다.
         // 구조물 미사용 테마에서는 같은 API가 셀 중심으로 폴백한다.
-        private bool _hasGoalVisualAnchor;
-        private Vector3 _goalVisualAnchorWorld;
-        private readonly List<Vector3> _spawnVisualAnchorsWorld = new();
         // first-session-tutorial unit 26 — 효과 타일이 칠해진 셀. 튜토리얼 마커 조회용이며
         // 소유권은 BattleBridge._effectTilesByCell 에 있다(여기는 "보이는 곳" 미러).
         private readonly List<Vector2Int> _effectTileCells = new();
@@ -120,26 +114,6 @@ namespace Wassup.Core
         private Tilemap _effectTilemap;
 
         public Grid Grid => grid;
-        public BoardVisualPlan VisualPlan => _visualPlan;
-
-        public bool TryGetGoalVisualAnchor(out Vector3 worldPosition)
-        {
-            worldPosition = _goalVisualAnchorWorld;
-            return _hasGoalVisualAnchor;
-        }
-
-        public bool TryGetSpawnVisualAnchor(int index, out Vector3 worldPosition)
-        {
-            if (index >= 0 && index < _spawnVisualAnchorsWorld.Count)
-            {
-                worldPosition = _spawnVisualAnchorsWorld[index];
-                return true;
-            }
-
-            worldPosition = default;
-            return false;
-        }
-
         // 평면 빌보드 프랍이 바닥 타일과 z-fight 나지 않도록 살짝 띄우는 world +Y 오프셋.
         private const float PropGroundLift = 0.02f;
         // defender-directional-volley unit 9 — 조준 화살표도 같은 이유로 띄운다. 프랍보다
@@ -163,9 +137,7 @@ namespace Wassup.Core
             PaintMarkers(in map);
             // map-diorama-stage unit 2 (critic C-1) — CenterBoardAtWorldOrigin 은 제거됐다.
             // grid.transform 의 유일한 writer 는 브리지의 스테이지 정렬(AlignGridTo)이다.
-            // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타.
-            _visualPlan = map.IsCreated ? BoardVisualPlanBuilder.Build(map, map.seed) : null;
-            ResetStructureVisualAnchors(in map);
+            // map-diorama-stage unit 4 — VisualPlan/구조물 앵커 은퇴: 프랍·앵커는 스테이지 마커 소유.
         }
 
         // map-diorama-stage unit 2 (critic C-1) — grid.transform 의 유일한 writer.
@@ -197,9 +169,6 @@ namespace Wassup.Core
             _placeableActive = false;
             ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
             ClearTelegraphCells(); // ultimate-leap unit 4 — 예고가 맵 너머로 살아남지 않게
-            if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
-            _hasGoalVisualAnchor = false;
-            _spawnVisualAnchorsWorld.Clear();
             _effectTileCells.Clear(); // unit 26 — 타일맵을 비웠으니 기억도 비운다(맵 리빌드 경계)
         }
 
@@ -624,187 +593,6 @@ namespace Wassup.Core
             }
             sr.gameObject.SetActive(false);
             _commitPopCo = null;
-        }
-
-        // prop-placement-layer unit 0 — 단일 프랍 인스턴스화(배경/구조물 공통 재사용 지점).
-        // resolved PropData 를 받는다 — placement.propIndex 로 playAreaProps 를 재조회하지 않는다
-        // (구조물 프랍은 playAreaProps 밖이라 이게 필수 계약).
-        // rotation 은 부모(BackgroundProps/그 외 root, XZ 바닥 90°) 상속 — Euler(0,yaw,0) 강제 시
-        // 부모 90° 를 무시해 visualOffset 이 월드 +y 로 적용되는 공중부양 버그. yaw 는 PropBillboard 가 override.
-        private GameObject InstantiateProp(PropData prop, PropPlacement placement,
-                                           BoardVisualPlan plan, MapThemeData theme, Transform root)
-        {
-            float centerX = placement.x + (placement.width - 1) * 0.5f;
-            float centerY = placement.y + (placement.height - 1) * 0.5f;
-            var instance = Instantiate(prop.prefab, root);
-            instance.name = $"{prop.name}_{placement.x}_{placement.y}";
-            instance.transform.position = CellCenterToWorld(centerX, centerY);
-            instance.transform.localScale = Vector3.one * placement.scale;
-            PropInstanceUtil.ApplyPropSorting(instance, prop, placement, plan);
-            PropInstanceUtil.DisablePropDebugMarkers(instance);
-            // 프랍 그림자 = 프리팹 authored 블롭 (shadow-polish unit 6). 런타임 부착 없음 — 프리팹이 source of truth.
-            if (theme.propGlobalTint != Color.white)
-                PropInstanceUtil.ApplyPropGlobalTint(instance, theme.propGlobalTint);
-            return instance;
-        }
-
-        // prop-placement-layer unit 1 — goal/spawn 셀에 3D 메쉬 구조물 프랍을 세운다.
-        // 메쉬는 빌보드 아님 → 부모(XZ 바닥 90°X)를 역회전(-90°X)한 root 아래 두면 identity 로 똑바로 선다.
-        // 구조물이 놓인 셀의 placeholder 마커 타일(overlay)은 제거. sim(GeneratedMap/FlowField) 무변경.
-        public void InstantiateStructureProps(in GeneratedMap map, MapThemeData theme, BoardVisualPlan plan)
-        {
-            if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
-            _goalPropsByCell.Clear();   // 프랍 루트와 같은 수명 — 재빌드 시 stale 참조 방지
-            ResetStructureVisualAnchors(in map);
-            if (grid == null || theme == null || !map.IsCreated) return;
-            if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
-
-            var root = new GameObject("StructureProps");
-            _structurePropsRoot = root.transform;
-            _structurePropsRoot.SetParent(transform, false);
-            // 부모(grid, 월드 90°X) 상쇄 → root 월드 업라이트. 메쉬 child 는 회전 없이 똑바로 선다.
-            _structurePropsRoot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
-
-            if (theme.goalStructureProp != null && theme.goalStructureProp.prefab != null)
-            {
-                // multi-goal-map — 골 구조물 goals 순회(폴백 map.goal). 비주얼 앵커는 primary(goals[0]) 유지.
-                if (map.goals.IsCreated && map.goals.Length > 0)
-                {
-                    for (int i = 0; i < map.goals.Length; i++)
-                    {
-                        var gi = PlaceStructure(theme.goalStructureProp, map.goals[i], plan, theme);
-                        if (i == 0) _goalVisualAnchorWorld = ResolveVisualAnchor(gi, _goalVisualAnchorWorld);
-                        if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goals[i]), null);
-                        _goalPropsByCell[new Vector2Int(map.goals[i].x, map.goals[i].y)] = gi;
-                    }
-                }
-                else
-                {
-                    var instance = PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
-                    _goalVisualAnchorWorld = ResolveVisualAnchor(instance, _goalVisualAnchorWorld);
-                    if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
-                    _goalPropsByCell[new Vector2Int(map.goal.x, map.goal.y)] = instance;
-                }
-            }
-            if (theme.spawnStructureProp != null && theme.spawnStructureProp.prefab != null && map.spawns.IsCreated)
-            {
-                for (int i = 0; i < map.spawns.Length; i++)
-                {
-                    var instance = PlaceStructure(theme.spawnStructureProp, map.spawns[i], plan, theme);
-                    _spawnVisualAnchorsWorld[i] = ResolveVisualAnchor(
-                        instance, _spawnVisualAnchorsWorld[i]);
-                    if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.spawns[i]), null);
-                }
-            }
-        }
-
-        // waypoint-routing 후속(사용자 결정 B) — 붕괴한 골을 «이미 뚫린 곳» 으로 전환.
-        // 프랍 교체 아트가 없으므로(백로그) 코드만으로 읽히게 한다: 그을린 틴트 + 주저앉음.
-        // 스프라이트 프랍은 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
-        // 붕괴 상태는 매치 수명 — 프랍 루트 재빌드가 원복을 겸한다(_goalPropsByCell.Clear).
-        // three-minute-kill-race unit 2 — **마음의 남은 체력은 균열로만 보인다**(게이지 금지).
-        // `MarkGoalCollapsed`(붕괴)의 형제이고 같은 제약을 따른다: 프랍 교체 아트가 없으므로
-        // 코드만으로 읽히게 한다 — 단계가 올라갈수록 그을린다.
-        //
-        // **단계로 양자화하는 것이 핵심이다.** 체력 비율을 연속으로 틴트하면 매 프레임 미세
-        // 변화라 아무도 못 읽는다. 단계가 있어야 「금이 하나 더 갔다」가 **사건**으로 보인다.
-        // 호출자는 단계가 바뀔 때만 부른다(브리지가 셀별 마지막 단계를 기억한다).
-        //
-        // stage: 0 = 온전(원색) · 1~3 = 진행. 0 단계 복구도 지원한다(힐러가 마음을 고치면
-        // 색이 돌아와야 «회복됐다» 가 읽힌다).
-        public void SetGoalCrack(Vector2Int cell, int stage)
-        {
-            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null) return;
-            stage = Mathf.Clamp(stage, 0, 3);
-            // 온전(1,1,1) → 3단계(0.42,0.36,0.32). 붕괴색(0.22,0.19,0.17)보다 밝게 남겨
-            // «금이 갔다» 와 «무너졌다» 가 한눈에 갈린다.
-            float k = stage / 3f;
-            var tint = new Color(
-                Mathf.Lerp(1f, 0.42f, k),
-                Mathf.Lerp(1f, 0.36f, k),
-                Mathf.Lerp(1f, 0.32f, k), 1f);
-            ApplyPropTint(prop, tint);
-        }
-
-        // 스프라이트는 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
-        private static void ApplyPropTint(GameObject prop, Color tint)
-        {
-            foreach (var sr in prop.GetComponentsInChildren<SpriteRenderer>())
-                sr.color = tint;
-            var mpb = new MaterialPropertyBlock();
-            foreach (var r in prop.GetComponentsInChildren<Renderer>())
-            {
-                if (r is SpriteRenderer) continue;
-                r.GetPropertyBlock(mpb);
-                mpb.SetColor("_BaseColor", tint);
-                mpb.SetColor("_Color", tint);
-                r.SetPropertyBlock(mpb);
-            }
-        }
-
-        public void MarkGoalCollapsed(Vector2Int cell)
-        {
-            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null) return;
-            ApplyPropTint(prop, new Color(0.22f, 0.19f, 0.17f, 1f));
-            // 주저앉음 — 실루엣 자체가 «무너졌다» 를 말하게 한다. 앵커가 바닥이 아니어도
-            // 60% 스케일이면 붕괴 읽힘이 충분하고 이웃 골(2칸 거리)과 즉시 구분된다.
-            prop.transform.localScale *= 0.6f;
-        }
-
-        private GameObject PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)
-        {
-            var footprint = prop.Footprint;
-            var placement = new PropPlacement(0, cell.x, cell.y, footprint.x, footprint.y, 0u, 0f, prop.visualScale, -1);
-            return InstantiateProp(prop, placement, plan, theme, _structurePropsRoot);
-        }
-
-        private void ResetStructureVisualAnchors(in GeneratedMap map)
-        {
-            _hasGoalVisualAnchor = map.IsCreated;
-            _goalVisualAnchorWorld = map.IsCreated
-                ? CellCenterToWorld(map.goal.x, map.goal.y)
-                : default;
-            _spawnVisualAnchorsWorld.Clear();
-            if (!map.IsCreated) return;
-
-            for (int i = 0; i < map.spawns.Length; i++)
-            {
-                int2 spawn = map.spawns[i];
-                _spawnVisualAnchorsWorld.Add(CellCenterToWorld(spawn.x, spawn.y));
-            }
-        }
-
-        private static Vector3 ResolveVisualAnchor(GameObject instance, Vector3 fallback)
-        {
-            if (instance == null) return fallback;
-
-            bool hasBounds = false;
-            Bounds visualBounds = default;
-            var renderers = instance.GetComponentsInChildren<Renderer>(false);
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                var renderer = renderers[i];
-                if (renderer == null || !renderer.enabled || IsNonVisualAnchorRenderer(renderer)) continue;
-                if (!hasBounds)
-                {
-                    visualBounds = renderer.bounds;
-                    hasBounds = true;
-                }
-                else
-                {
-                    visualBounds.Encapsulate(renderer.bounds);
-                }
-            }
-
-            return hasBounds ? visualBounds.center : fallback;
-        }
-
-        private static bool IsNonVisualAnchorRenderer(Renderer renderer)
-        {
-            string objectName = renderer.gameObject.name.ToLowerInvariant();
-            return objectName.Contains("shadow") || objectName.Contains("marker") ||
-                   objectName.Contains("footprint") || objectName.Contains("debug") ||
-                   objectName.Contains("bounds");
         }
 
         // effect-tiles unit 1 — 효과 타일 페인트. Initialize(Clear 포함) 이후 호출 계약 (아니면 지워짐).

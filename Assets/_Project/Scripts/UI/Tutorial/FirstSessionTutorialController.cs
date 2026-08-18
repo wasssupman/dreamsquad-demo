@@ -35,7 +35,10 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private GameManager gameManager;
         [SerializeField] private PlacementPhaseView placementView;
         [SerializeField] private DefenderSelector defenderSelector;
+        // map-diorama-stage unit 4 — 골/스폰 앵커 소스를 뷰에서 브리지(마커 등록부)로 교체.
+        // mapView 는 효과 타일 힌트(EffectTile partial — 오버레이 도메인, 존치)만 계속 쓴다.
         [SerializeField] private TilemapMapView mapView;
+        [SerializeField] private Wassup.Bridge.BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private TutorialGuidanceView guidance;
 
@@ -158,17 +161,14 @@ namespace Wassup.UI.Tutorial
         {
             float total = Mathf.Clamp(guidance.GoalBeatSeconds, 4f, 6f);
             float half = total * 0.5f;
-            var plan = mapView != null ? mapView.VisualPlan : null;
+            if (bridge == null) bridge = FindAnyObjectByType<Wassup.Bridge.BattleBridge>();
             var camera = mainCamera != null ? mainCamera : Camera.main;
 
-            if (plan != null && mapView != null && camera != null)
+            if (bridge != null && camera != null)
             {
-                for (int i = 0; i < plan.spawns.Length; i++)
+                for (int i = 0; i < bridge.SpawnLaneCount; i++)
                 {
-                    var cell = plan.spawns[i];
-                    Vector3 world = mapView.TryGetSpawnVisualAnchor(i, out var visualAnchor)
-                        ? visualAnchor
-                        : mapView.CellCenterToWorld(cell.x, cell.y);
+                    if (!bridge.TryGetSpawnVisualAnchor(i, out var world)) continue;
                     guidance.ShowWorldMarker(camera,
                         world,
                         i == 0 ? "적 등장" : null,
@@ -178,13 +178,11 @@ namespace Wassup.UI.Tutorial
             yield return WaitUnscaled(half);
             if (!_coreActive || _coreStep != CoreStep.Goal) yield break;
 
-            if (plan != null && mapView != null && camera != null)
+            if (bridge != null && camera != null
+                && bridge.TryGetGoalVisualAnchor(out var goalWorld))
             {
-                Vector3 world = mapView.TryGetGoalVisualAnchor(out var visualAnchor)
-                    ? visualAnchor
-                    : mapView.CellCenterToWorld(plan.goal.x, plan.goal.y);
                 guidance.ShowWorldMarker(camera,
-                    world,
+                    goalWorld,
                     "방어 목표", guidance.GoalMarkerColor,
                     preferLabelAbove: true);
             }

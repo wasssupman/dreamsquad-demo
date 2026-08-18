@@ -479,6 +479,10 @@ namespace Wassup.Bridge
         // 파괴는 TeardownGeneratedMap 이 소유해 teardown 5경로(매치 종료·재빌드 선행·빌드 실패·
         // StopBattle·draft 정리) 전부를 덮는다.
         private Wassup.Core.MapStage _stageInstance;
+        // map-diorama-stage unit 4 — 골/스폰 마커 등록부. 구 TilemapMapView._goalPropsByCell 의
+        // 후계(브리지 소유). 골 균열/붕괴 연출과 튜토리얼 앵커가 여기서 마커를 찾는다.
+        private readonly Dictionary<Vector2Int, Wassup.Core.GoalMarker> _goalMarkersByCell = new();
+        private readonly List<Wassup.Core.SpawnMarker> _spawnMarkersByLane = new();
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -973,6 +977,61 @@ namespace Wassup.Bridge
         }
 
         // Phase 10A (P10A-04A): GeneratedMap dispose 멱등. 재시작/redraft 시 TearDown 후 재생성.
+        // map-diorama-stage unit 4 — 스테이지 인스턴스에서 마커 등록부 구축. 셀 양자화는
+        // 스캐너와 같은 단일 산식(MapStageMath) — 기즈모·빌더·등록부가 같은 셀을 본다.
+        private void BuildStageMarkerRegistry()
+        {
+            _goalMarkersByCell.Clear();
+            _spawnMarkersByLane.Clear();
+            if (_stageInstance == null) return;
+            foreach (var g in _stageInstance.GetComponentsInChildren<Wassup.Core.GoalMarker>(false))
+            {
+                Vector3 local = _stageInstance.transform.InverseTransformPoint(g.transform.position);
+                Vector2Int cell = Wassup.Data.MapStageMath.LocalToCell(
+                    local, _stageInstance.gridOriginLocal, tileSize);
+                _goalMarkersByCell[cell] = g;
+            }
+            _spawnMarkersByLane.AddRange(
+                _stageInstance.GetComponentsInChildren<Wassup.Core.SpawnMarker>(false));
+            _spawnMarkersByLane.Sort((a, b) => a.laneIndex.CompareTo(b.laneIndex));
+        }
+
+        // map-diorama-stage unit 4 — 튜토리얼 포커스 앵커 (구 TilemapMapView.TryGet*VisualAnchor 승계).
+        // 마커가 없으면 셀 중심의 뷰 좌표로 폴백 — 구 의미와 동일.
+        public bool TryGetGoalVisualAnchor(out Vector3 world)
+        {
+            world = default;
+            if (!_generatedMap.IsCreated) return false;
+            var primary = new Vector2Int(_generatedMap.goal.x, _generatedMap.goal.y);
+            if (_goalMarkersByCell.TryGetValue(primary, out var marker) && marker != null)
+            {
+                world = marker.VisualAnchor();
+                return true;
+            }
+            world = CellCenterView(_generatedMap.goal);
+            return true;
+        }
+
+        public int SpawnLaneCount => _generatedMap.IsCreated ? _generatedMap.spawns.Length : 0;
+
+        public bool TryGetSpawnVisualAnchor(int laneIndex, out Vector3 world)
+        {
+            world = default;
+            if (!_generatedMap.IsCreated || laneIndex < 0 || laneIndex >= _generatedMap.spawns.Length)
+                return false;
+            if (laneIndex < _spawnMarkersByLane.Count && _spawnMarkersByLane[laneIndex] != null)
+            {
+                world = _spawnMarkersByLane[laneIndex].VisualAnchor();
+                return true;
+            }
+            world = CellCenterView(_generatedMap.spawns[laneIndex]);
+            return true;
+        }
+
+        private Vector3 CellCenterView(int2 cell)
+            => Wassup.Core.BoardSpace.ToView(
+                Wassup.Battle.Movement.GridMath.CellToWorldCenter(cell, tileSize, 0f, float3.zero));
+
         private void TeardownGeneratedMap()
         {
             // Tilemap 뷰 잔상 제거 (RebuildDraftMap 재진입 / 전투 종료 안전). Clear 는 idempotent.
@@ -980,6 +1039,8 @@ namespace Wassup.Bridge
             // battle-structures 후속 2 — 거점 프랍도 맵과 같은 수명. 맵 teardown 경로가 5곳
             // (매치 종료·재빌드 선행·빌드 실패·StopBattle·draft 정리)이라 여기 두면 전부 덮인다.
             ClearStructureViews();
+            _goalMarkersByCell.Clear();   // unit 4 — 마커 등록부는 스테이지와 같은 수명
+            _spawnMarkersByLane.Clear();
             // map-diorama-stage unit 2 — 스테이지 인스턴스(맵 비주얼)도 맵과 같은 수명.
             // EditMode(라이브 경로 테스트)에서는 Destroy 가 불법이라 즉시 파괴로 분기.
             if (_stageInstance != null)
@@ -1226,11 +1287,9 @@ namespace Wassup.Bridge
             // 놓은 셀 위에 절차 프랍을 범람시킨다. 프랍은 이제 스테이지 프리팹의 저작물이 전부다.
             // (BackgroundPropPlacer/InstantiateRingProps 코드 은퇴는 unit 3 소관.)
 
-            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍. unit 4 이관까지 유지.
-            if (tilemapMapView != null && theme != null)
-            {
-                tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
-            }
+            // map-diorama-stage unit 4 — 골/스폰 구조물 프랍 인스턴스화 은퇴. 골/스폰의 «몸»은
+            // 스테이지 프리팹에 저작된 프랍이고, 연출 훅(앵커·균열·붕괴)은 마커가 소유한다.
+            BuildStageMarkerRegistry();
 
             // battle-structures 후속 2(리뷰 M-5) — 거점 프랍은 **맵 수명**이다.
             // 엔티티는 StartBattle 이 세우지만(판 수명), footprint 배치 배제는 이 빌드 시점에 이미
@@ -6046,7 +6105,8 @@ namespace Wassup.Bridge
             int stage = ratio > 0.75f ? 0 : ratio > 0.5f ? 1 : ratio > 0.25f ? 2 : 3;
             if (_goalCrackStage.TryGetValue(cell, out int prev) && prev == stage) return;
             _goalCrackStage[cell] = stage;
-            tilemapMapView?.SetGoalCrack(cell, stage);
+            if (_goalMarkersByCell.TryGetValue(cell, out var crackMarker) && crackMarker != null)
+                crackMarker.SetCrackStage(stage);   // unit 4 — 마커 뷰가 균열 연출 소유
         }
 
         private void SyncGoalStability()
@@ -6159,7 +6219,8 @@ namespace Wassup.Bridge
             // 붕괴 상태로 전환. 원샷 VFX 만으로는 «이미 뚫린 곳» 이 잔존 표시되지 않아,
             // 이후 여기 도달한 적의 소멸(유출 전환)이 «살아있는 마음을 안 때리는 버그» 로
             // 읽혔다(비행 적이 무저항 완주로 이 장면을 100% 노출하며 표면화).
-            tilemapMapView?.MarkGoalCollapsed(cell);
+            if (_goalMarkersByCell.TryGetValue(cell, out var collapseMarker) && collapseMarker != null)
+                collapseMarker.MarkCollapsed();   // unit 4 — 마커 뷰가 붕괴 연출 소유
             using var siegeQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<Wassup.Battle.Units.GoalReachedMarker>(),
                 ComponentType.ReadOnly<AttackUnitTag>(),

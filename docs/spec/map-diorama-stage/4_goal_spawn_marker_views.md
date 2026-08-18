@@ -24,3 +24,5 @@
 - [ ] 골 피격 → 균열 단계 진행, 안정도 0 → 붕괴 표시가 스테이지 프랍에서 재생 (Play 육안)
 - [ ] 재판(리트라이) 시 균열/붕괴 상태 원복 확인
 - [ ] `TilemapMapView` 에 구조물 프랍 코드 잔존 0 (grep `_goalPropsByCell`)
+
+확인 2026-08-18 — EditMode 두 lane 2524 그린 + PlayMode 스모크 Passed. 마커 뷰 훅(MarkerVisual 헬퍼)·브리지 등록부·튜토리얼 브리지 앵커 교체(직렬화 bridge 필드 + FindAnyObjectByType 폴백 — 씬 배선 불요) 완료. mapView 필드는 효과 타일 힌트(오버레이 도메인) 전용으로 잔존. BoardVisualPlan 계열 10파일 + PropInstanceUtil/PropPlacement 은퇴 (BoardDecorAnchorType 은 50개 PropData 에셋 직렬화로 파일 유지).

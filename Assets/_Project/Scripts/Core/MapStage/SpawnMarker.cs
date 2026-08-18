@@ -14,6 +14,12 @@ namespace Wassup.Core
         [Tooltip("이 레인의 기본 웨이포인트 경로(RouteMarker.routeIndex). -1 = 골 직행(열린 마당 기본값). MapDocument.spawnRoutes 의 후계.")]
         [Min(-1)] public int routeIndex = -1;
 
+        [Tooltip("unit 4 — 튜토리얼 포커스 앵커 대상 루트. 비면 이 오브젝트 자신.")]
+        public Transform visualRoot;
+
+        public Vector3 VisualAnchor()
+            => MarkerVisual.AnchorOf(visualRoot != null ? visualRoot : transform);
+
 #if UNITY_EDITOR
         void OnDrawGizmos()
         {

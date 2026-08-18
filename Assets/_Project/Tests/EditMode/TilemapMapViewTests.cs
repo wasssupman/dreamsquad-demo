@@ -190,50 +190,37 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        [Test]
-        public void StructureVisualAnchors_UseRendererCenter_AndResetToCellFallback()
-        {
-            var view = CreateView(out _, Vector3.zero);
-            var tileSet = ScriptableObject.CreateInstance<TileSetData>();
-            var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            var prop = ScriptableObject.CreateInstance<PropData>();
-            var prefab = new GameObject("StructureVisual");
-            prefab.transform.SetParent(_root.transform, false);
-            var mesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            mesh.name = "VisibleMesh";
-            mesh.transform.SetParent(prefab.transform, false);
-            mesh.transform.localPosition = Vector3.up;
-            prop.prefab = prefab;
-            prop.visualScale = 1f;
-            theme.goalStructureProp = prop;
-            theme.spawnStructureProp = prop;
+        // --- map-diorama-stage unit 4: 골 마커 뷰 훅 (구조물 프랍 경로의 후계) ---
 
-            var map = BuildMap(4, 4);
+        [Test]
+        public void GoalMarker_AnchorUsesRendererCenter_CrackAndCollapseTintScale()
+        {
+            var root = new GameObject("GoalMarkerHost");
             try
             {
-                view.Initialize(map, 1f, tileSet);
-                Assert.That(view.TryGetGoalVisualAnchor(out var fallbackGoal), Is.True);
-                Assert.That(Vector3.Distance(fallbackGoal,
-                    view.CellCenterToWorld(map.goal.x, map.goal.y)), Is.LessThan(1e-4f));
+                var marker = root.AddComponent<Wassup.Core.GoalMarker>();
+                var mesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                mesh.transform.SetParent(root.transform, false);
+                mesh.transform.localPosition = Vector3.up;   // 렌더러 중심 = +1Y
 
-                view.InstantiateStructureProps(map, theme, view.VisualPlan);
+                Assert.That(marker.VisualAnchor().y, Is.EqualTo(1f).Within(1e-4f),
+                    "앵커는 렌더러 바운즈 중심 (구 ResolveVisualAnchor 의미 승계)");
 
-                Assert.That(view.TryGetGoalVisualAnchor(out var goalAnchor), Is.True);
-                Assert.That(view.TryGetSpawnVisualAnchor(0, out var spawnAnchor), Is.True);
-                Assert.That(goalAnchor.y - fallbackGoal.y, Is.EqualTo(1f).Within(1e-4f));
-                Assert.That(spawnAnchor.y - view.CellCenterToWorld(
-                    map.spawns[0].x, map.spawns[0].y).y, Is.EqualTo(1f).Within(1e-4f));
+                // 균열 3단계 — 메쉬는 MPB 로 틴트 (공용 머티리얼 무오염 계약 승계).
+                marker.SetCrackStage(3);
+                var mpb = new MaterialPropertyBlock();
+                mesh.GetComponent<Renderer>().GetPropertyBlock(mpb);
+                Assert.That(mpb.GetColor("_BaseColor").r, Is.EqualTo(0.42f).Within(1e-3f));
 
-                view.Clear();
-                Assert.That(view.TryGetGoalVisualAnchor(out _), Is.False);
-                Assert.That(view.TryGetSpawnVisualAnchor(0, out _), Is.False);
+                // 붕괴 — 60% 주저앉음, 중복 호출은 무해(스케일 1회만).
+                Vector3 before = root.transform.localScale;
+                marker.MarkCollapsed();
+                marker.MarkCollapsed();
+                Assert.That(root.transform.localScale.x, Is.EqualTo(before.x * 0.6f).Within(1e-4f));
             }
             finally
             {
-                map.Dispose();
-                Object.DestroyImmediate(prop);
-                Object.DestroyImmediate(theme);
-                Object.DestroyImmediate(tileSet);
+                Object.DestroyImmediate(root);
             }
         }
     }
