@@ -11,6 +11,9 @@ namespace Wassup.Core
         [Tooltip("레인 번호(0부터 연속). 웨이브 생성 결정론 키 — 씬 계층 순서가 아니라 이 값이 정본.")]
         [Min(0)] public int laneIndex;
 
+        [Tooltip("이 레인의 기본 웨이포인트 경로(RouteMarker.routeIndex). -1 = 골 직행(열린 마당 기본값). MapDocument.spawnRoutes 의 후계.")]
+        [Min(-1)] public int routeIndex = -1;
+
 #if UNITY_EDITOR
         void OnDrawGizmos()
         {

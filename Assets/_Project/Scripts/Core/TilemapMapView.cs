@@ -162,23 +162,21 @@ namespace Wassup.Core
             ConfigureGrid(tileSize, realShadows);
             PaintGround(in map);
             PaintMarkers(in map);
-            CenterBoardAtWorldOrigin(in map);
+            // map-diorama-stage unit 2 (critic C-1) — CenterBoardAtWorldOrigin 은 제거됐다.
+            // grid.transform 의 유일한 writer 는 브리지의 스테이지 정렬(AlignGridTo)이다.
             // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타.
             _visualPlan = map.IsCreated ? BoardVisualPlanBuilder.Build(map, map.seed) : null;
             ResetStructureVisualAnchors(in map);
         }
 
-        // tilted-billboard unit 1 — 보드 중앙을 월드 원점(X·Z=0)에 맞춘다. XZ 바닥이라 수평면(X,Z)만 정렬,
-        // Y(바닥 높이)는 보존. Tilemap 모드는 sim origin=0, 월드 배치는 grid.transform 권위라 view 전용 변경 — sim 무영향.
-        // ToView/ToSim/RaycastPlane 모두 grid 기준 live 라 정합 유지. 맵 크기 달라져도 재계산·idempotent.
-        private void CenterBoardAtWorldOrigin(in GeneratedMap map)
+        // map-diorama-stage unit 2 (critic C-1) — grid.transform 의 유일한 writer.
+        // 셀 (0,0)의 최소 모서리를 지정 월드 위치(=스테이지의 gridOriginLocal)에 맞춘다.
+        // 구 CenterBoardAtWorldOrigin(-= 상대 이동)은 은퇴 — writer 가 둘이면 프랍-논리 정렬이
+        // 조용히 깨지고, 격자 기준 검증은 전부 통과한 채로 깨진다.
+        public void AlignGridTo(Vector3 cellZeroMinCornerWorld)
         {
-            if (grid == null || !map.IsCreated) return;
-            // 보드 양 끝 셀의 월드 코너 중점 = 현재 보드 중심(셀↔월드가 affine 이라 성립).
-            Vector3 min = grid.CellToWorld(new Vector3Int(0, 0, 0));
-            Vector3 max = grid.CellToWorld(new Vector3Int(map.gridSize.x, map.gridSize.y, 0));
-            Vector3 center = (min + max) * 0.5f;
-            grid.transform.position -= new Vector3(center.x, 0f, center.z);
+            if (grid == null) return;
+            grid.transform.position = cellZeroMinCornerWorld;
         }
 
         public void Clear()

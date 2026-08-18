@@ -6,9 +6,11 @@
 
 ## 변경 대상
 
-- 신규 `Assets/_Project/Scripts/Data/MapStage/DioramaMapBuilder.cs` — 순수 코어 + 얇은 스캔 진입점
+- 신규 `Assets/_Project/Scripts/Data/MapStage/DioramaMapBuilder.cs` — 순수 코어 (`StageScan` plain 타입 + `Validate` + `Assemble`)
+- 신규 `Assets/_Project/Scripts/Core/MapStage/MapStageScanner.cs` — 얇은 스캔 (구현 시 Data→Core 역참조를 피해 Core 로 분리 — Core 가 Data 를 보는 기존 방향 유지)
+- `SpawnMarker.cs` — `routeIndex(-1=직행)` 필드 추가 (레인→경로 매핑의 저작 지점 — `MapDocument.spawnRoutes` 의 후계. unit 0 에서 미정의였던 매핑 seam 확정)
 - 신규 `Assets/_Project/Tests/EditMode/DioramaMapBuilderTests.cs`
-- 참조(무수정): `GeneratedMap.cs` · `MapConnectivity.cs` · `PlacementLayer.cs`
+- 참조(무수정): `GeneratedMap.cs` · `MapConnectivity.cs` · `PlacementLayer.cs` · `MapGenerationFailedException.cs`(Assemble 형식 오류가 이 예외로 실패 — 브리지 hard-fail 동형)
 
 ## 구현
 
@@ -33,3 +35,5 @@
 - [ ] EditMode 테스트 그린: 양자화 경계(셀 경계선 위 프랍·음수 로컬 좌표) · footprint 부분 걸침(안쪽 셀 차단) · blocked OR 순서 비의존 · placeMask 조립 · **BlockZone 차감 셀에서 `PlaceableAt(Ground)`·`PlaceableAt(Path)` 모두 false** (critic C-2) · laneIndex 정렬/중복 검출 · 루트 flatten 왕복 · 스폰/골 차단 셀 검출
 - [ ] 조립 결과가 `MapConnectivity` 를 통과하는 픽스처 1개 + 통과 못 하는 픽스처 1개 (음성 대조군)
 - [ ] `GeneratedMap` 필드 중 미기입이 없는지 전수 대조 (필드 추가 회귀 방지 — 테스트에 명시)
+
+확인 2026-08-18 — EditMode 두 lane 전체 그린(2544 pass · 실패 0 · 기지 스킵 3), `DioramaMapBuilderTests` 전부 포함. 스캐너는 구현 시 Core 로 분리(변경 대상 절 참조), `SpawnMarker.routeIndex` 추가. 스폰 하한은 리뷰 반영으로 «< 2 = 형식 오류»(멀티레인 계약·MapConnectivity 승계).

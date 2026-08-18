@@ -33,3 +33,5 @@
 - [ ] 빈 씬에 `MapStage` + 프랍 몇 개를 놓고 기즈모로 차지 셀·playArea·스폰 라벨이 보인다 (에디터 육안)
 - [ ] 제안 버튼 2종(playArea/footprint)이 동작한다
 - [ ] 런타임 로직 0 확인 — Update/Awake 등 수명 메서드 없음
+
+확인 2026-08-18 · 커밋 `c05d1993` — 컴파일 에러 0 사용자 확인 (최초 CS0118: `Wassup.Editor` 네임스페이스 충돌 → `UnityEditor.Editor` 완전 수식으로 수정). 기즈모/버튼 육안은 파일럿 저작 시(unit 5) 재확인.

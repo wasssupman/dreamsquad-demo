@@ -30,9 +30,9 @@ namespace Wassup.Bridge
     {
         [SerializeField] private AttackDeck deck;
         [Header("Map Grid")]
-        // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
-        // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
-        [SerializeField] private MapDocumentPool mapPool;
+        // map-diorama-stage unit 2 — (스테이지 프리팹, 덱, 플랜) 인코운터 풀. 맵 생산의 유일 경로.
+        // 인덱스 선정 의미는 MapDocumentPool 시절과 동일(맵마다 그 맵의 적 패턴, dev 슬롯 불가시).
+        [SerializeField] private MapStagePool mapPool;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
@@ -475,6 +475,10 @@ namespace Wassup.Bridge
         // 거점 스탯(체력·프랍·공격)은 GeneratedMap 이 실을 수 없는 SO 참조라, 스폰(unit 4)이
         // 저작 엔트리를 다시 읽을 창구가 필요하다. 빌드가 끝나면 사라지던 지역 변수였다.
         private Wassup.Data.MapGrid.MapDocument _resolvedMapDoc;
+        // map-diorama-stage unit 2 — 현재 판의 스테이지 인스턴스(= 맵 비주얼). 맵과 같은 수명 —
+        // 파괴는 TeardownGeneratedMap 이 소유해 teardown 5경로(매치 종료·재빌드 선행·빌드 실패·
+        // StopBattle·draft 정리) 전부를 덮는다.
+        private Wassup.Core.MapStage _stageInstance;
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -974,8 +978,16 @@ namespace Wassup.Bridge
             // Tilemap 뷰 잔상 제거 (RebuildDraftMap 재진입 / 전투 종료 안전). Clear 는 idempotent.
             if (tilemapMapView != null) tilemapMapView.Clear();
             // battle-structures 후속 2 — 거점 프랍도 맵과 같은 수명. 맵 teardown 경로가 5곳
-            // (매치 종료·재빌드 선행·fallback 교체·StopBattle·draft 정리)이라 여기 두면 전부 덮인다.
+            // (매치 종료·재빌드 선행·빌드 실패·StopBattle·draft 정리)이라 여기 두면 전부 덮인다.
             ClearStructureViews();
+            // map-diorama-stage unit 2 — 스테이지 인스턴스(맵 비주얼)도 맵과 같은 수명.
+            // EditMode(라이브 경로 테스트)에서는 Destroy 가 불법이라 즉시 파괴로 분기.
+            if (_stageInstance != null)
+            {
+                if (Application.isPlaying) Destroy(_stageInstance.gameObject);
+                else DestroyImmediate(_stageInstance.gameObject);
+                _stageInstance = null;
+            }
             if (_generatedMap.IsCreated) _generatedMap.Dispose();
             _generatedMap = default;
         }
@@ -1003,8 +1015,9 @@ namespace Wassup.Bridge
             // tournament-seed-map-select unit 2 — 인덱스 소스: fixedMapSeed(디버그) >
             // 서버 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 폴백 0번.
             // map-pipeline-cleanup unit 2 — 단일 mapDocument 폴백 제거: 풀이 유일 소스.
-            MapDocument activeDoc = null;
+            Wassup.Core.MapStage stagePrefab = null;
             _resolvedDeck = deck;
+            _resolvedMapDoc = null;   // 스테이지 경로엔 문서가 없다 — 거점 스폰은 계약 11 로 비가용
             _encounterPlan = null;   // tutorial-map — 이월 금지(이전 판의 플랜이 다음 맵에 붙으면 안 된다)
             // endless-mode-removal unit 0 — 엔드리스 전용 인카운터 분기는 제거했다. 그 분기는
             // mapPool 을 건드리지 않는 **선행** 분기였으므로, 빼도 아래 인덱스 계산은 한 줄도
@@ -1043,69 +1056,57 @@ namespace Wassup.Bridge
                 var encounter = poolIndex >= mapPool.Count
                     ? mapPool.GetDev(poolIndex - mapPool.Count)
                     : mapPool.Get(poolIndex);
-                if (MapGridBattleAdapter.IsUsableDocument(encounter.document))
+                if (encounter.stage != null)
                 {
-                    activeDoc = encounter.document;
+                    stagePrefab = encounter.stage;
                     if (encounter.deck != null) _resolvedDeck = encounter.deck;
                     _encounterPlan = encounter.plan;   // tutorial-map — 저작 플랜은 맵과 한 몸
                 }
             }
 
-            // map-pipeline-cleanup unit 2/4 — legacy 맵 소스 스위치·절차 폴백 제거:
-            // battle-structures unit 3 — 고른 문서를 보관한다. 거점 스탯(SO 참조)은
-            // GeneratedMap 이 실을 수 없어 스폰(unit 4)이 저작 엔트리를 다시 읽어야 한다.
-            _resolvedMapDoc = activeDoc;
+            // map-diorama-stage unit 2 — 스테이지 프리팹이 유일 맵 소스. 없으면 hard-fail.
+            if (stagePrefab == null)
+            {
+                Debug.LogError("[BattleBridge] 맵 스테이지 프리팹이 없다 — MapStagePool 엔트리를 확인할 것.", this);
+                _generatedMap = default;
+                return;
+            }
 
-            // authored 풀 문서 → ToGeneratedMap 이 유일 경로. unusable 문서는 hard-fail.
+            // 인스턴스가 곧 비주얼이다. 루트는 원점·무회전으로 고정 — gridOriginLocal(스테이지
+            // 로컬)이 그대로 월드 좌표가 되어 격자 정렬(아래 AlignGridTo)이 단순해진다.
+            _stageInstance = Instantiate(stagePrefab);
+            _stageInstance.name = stagePrefab.name;
+            _stageInstance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            // 리뷰 M-2 — 스케일도 고정. 스캐너는 로컬(스케일 나눔)로 양자화하고 격자는 월드
+            // (스케일 곱)로 정렬하므로, 루트 스케일≠1 이면 프랍과 셀이 조용히 어긋난다(C-1 재발 경로).
+            _stageInstance.transform.localScale = Vector3.one;
+
+            // 프랍 선언 스캔 → 조립. 형식 오류·연결성 실패 = hard-fail — 조용한 폴백 맵 교체
+            // (BuildFallbackLinear)는 은퇴했다(README 계약 9 개정: 디오라마에서 연결성 실패는
+            // 저작 오류이고, 폴백 맵은 unit 3 이후 렌더러가 없다). 실패 시 스테이지 인스턴스는
+            // TeardownGeneratedMap 이 함께 정리한다.
             try
             {
-                _generatedMap = MapGridBattleAdapter.Build(activeDoc);
+                var scan = Wassup.Core.MapStageScanner.Scan(_stageInstance, tileSize);
+                _generatedMap = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
             }
             catch (MapGenerationFailedException ex)
             {
                 Debug.LogError($"[BattleBridge] {ex.Message}", this);
-                _generatedMap = default;
-                _resolvedMapDoc = null;   // 리뷰 H-3 — 실패한 문서의 거점이 다음 판에 스폰되면 안 된다
+                TeardownGeneratedMap();
                 return;
             }
 
-            // authored 문서는 Validator 없이 그대로 반환되므로 connectivity 를 여기서 검사한다.
             if (!MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
-                Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
+                Debug.LogError("[BattleBridge] 스테이지 연결성 실패(스폰→골 도달 불가) — 차단 프랍 배치를 확인할 것.", this);
                 TeardownGeneratedMap();
-                _generatedMap = BattleMapBuilder.BuildFallbackLinear(
-                    FallbackGridSize, seed, FallbackGeneratorVersion, FallbackSpawnLaneCount);
-                // 리뷰 H-3 — 폐기된 문서를 계속 들고 있으면 그 좌표(다른 격자계)에 거점이
-                // 서고, 공성 파생 스폰은 사라져 공성 맵이 조용히 침략 맵이 된다.
-                _resolvedMapDoc = null;
+                return;
             }
 
-            // tilemap-world-surround unit 1 — MapGrid 내부에 장식 Deco 셀을 데이터로 designate (배경 프랍 호스트).
-            // theme.keepRatio<1 일 때만. Walk 경로 불변·시드 결정적. 페인트/VisualPlan(아래) 전에 실행해야 반영된다.
-            // random-map-pool — 커빙 시드는 맵 정체성(_generatedMap.seed)에서 뽑는다: 문서맵은 authoringSeed
-            // (맵당 고정)라 배치칸이 매판 고정, 절차맵은 gen seed(matchSeed 파생)라 매판 변동 유지.
-            // (matchSeed 파생 local seed 를 쓰면 fixedMapSeed=0 일 때 같은 문서맵도 배치칸이 매판 섞였다.)
-            // map-painter unit 3 — 맵에 authored Deco(페인터로 명시 지정)가 있으면 시드 커빙 완전 스킵:
-            // 지정한 Place/Deco 배치판을 그대로 존중한다. all-Place 문서/절차맵만 시드 커빙.
-            bool hasAuthoredDeco = false;
-            if (_generatedMap.IsCreated)
-                for (int i = 0; i < _generatedMap.tiles.Length; i++)
-                    if (_generatedMap.tiles[i] == MapTileType.Deco) { hasAuthoredDeco = true; break; }
-            // placement-mask unit 1 — 마스크가 파생값(tiles==Place)과 상이 = 마스크 브러시로 저작된
-            // 수동 배치판 ⇒ 커빙 skip (authored-Deco 규칙과 동형). 파생 마스크는 상이 셀 0 → 기존대로 커빙.
-            bool hasAuthoredMaskIntent = _generatedMap.IsCreated
-                && ObstaclePlacer.HasAuthoredMaskIntent(_generatedMap.tiles, _generatedMap.placeMask);
-            if (theme != null
-                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated && !hasAuthoredDeco
-                && !hasAuthoredMaskIntent)
-            {
-                var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(_generatedMap.seed ^ 0x5A5A5A) | 1u);
-                ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,
-                    _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
-                // 커빙은 파생-마스크 맵에서만 도니 재파생이 정확히 동기다 (placement-mask unit 1).
-                ObstaclePlacer.RederivePlaceMask(_generatedMap.tiles, _generatedMap.placeMask);
-            }
+            // map-diorama-stage unit 2 — 시드 커빙(ObstaclePlacer.DesignateDeco) 블록은 제거했다.
+            // 발동 시 RederivePlaceMask 가 마스크를 Derive(Walk→Path)로 되써 Ground 유닛 전원이
+            // 배치 불가가 된다(critic M-3). 차단/배치판은 이제 프랍 선언이 전부다.
 
             // placement-mask unit 4 리뷰 M-1 — 스폰·골 칸은 배치 불가(런타임 불변식).
             // Walk→Path 파생 때문에 Path 층 유닛에게 스폰/골 칸까지 열려 버리는데(스폰·골은 정의상
@@ -1171,6 +1172,15 @@ namespace Wassup.Bridge
 
             // view-init 는 view 부재 시 조용히 skip — headless(EditMode 테스트) sim 빌드 계약.
             // 실제 씬의 오배선 감지는 Awake 의 null 체크가 담당한다 (Awake 는 EditMode 테스트에서 안 불림).
+            // map-diorama-stage unit 2 (critic C-1) — grid.transform 의 **유일한** writer.
+            // 셀 (0,0) 최소 모서리를 스테이지의 gridOriginLocal 에 맞춘다. CenterBoardAtWorldOrigin
+            // (구 writer)은 제거됨 — writer 가 둘이면 프랍과 논리 셀이 조용히 어긋난다.
+            // 리뷰 M-1 — Initialize **앞**에서 정렬한다: Initialize 내부의 구조물 뷰 앵커 리셋이
+            // grid.transform 을 라이브로 읽으므로, 뒤에 정렬하면 앵커가 옛 포즈로 굳는다
+            // (페인트류는 전부 셀 좌표라 순서 무관 — 확인됨).
+            if (tilemapMapView != null && tilemapMapView.Grid != null && _stageInstance != null)
+                tilemapMapView.AlignGridTo(
+                    _stageInstance.transform.TransformPoint(_stageInstance.gridOriginLocal));
             if (tilemapMapView != null)
                 // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
                 tilemapMapView.Initialize(_generatedMap, tileSize,
@@ -1211,31 +1221,12 @@ namespace Wassup.Bridge
             // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
             _spawnSpreadCounter = 0;
 
-            // props — grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재).
-            // tilemap-world-surround unit 2: MapGrid 라도 내부 Deco 가 생기면 prop placer 가 채운다.
-            if (theme != null && theme.playAreaProps != null && theme.playAreaProps.Length > 0)
-            {
-                if (tilemapMapView != null)
-                {
-                    // unit 5 — 모바일 프랍 예산: 배경 프랍을 배율만큼 솎는다(앞쪽=중앙/가장자리 우선 보존, 필러 컷).
-                    float propScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
-                    var plan = tilemapMapView.VisualPlan;
-                    // unit 10 — 빌보드 틸트가 있어 occlusion 인지 배치(큰 프랍이 플레이 +y 가림 방지).
-                    var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed, occlusionAware: true);
-                    if (propScale < 1f && placements.Count > 0)
-                        placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
-                    tilemapMapView.InstantiateBackgroundProps(plan, theme, placements);
-                }
-            }
+            // map-diorama-stage unit 2 (critic M-8) — 절차 배경/링 프랍 인스턴스화는 차단했다.
+            // 합성 tiles 에서 Deco→Env zone 이라 BackgroundPropPlacer 가 아티스트가 이미 프랍을
+            // 놓은 셀 위에 절차 프랍을 범람시킨다. 프랍은 이제 스테이지 프리팹의 저작물이 전부다.
+            // (BackgroundPropPlacer/InstantiateRingProps 코드 은퇴는 unit 3 소관.)
 
-            // 원경 — 외곽 터레인 링 위 저밀도 프랍. 그림자 OFF(원경). 모바일은 밀도 배율로 솎음.
-            if (tilemapMapView != null && theme != null)
-            {
-                float ringScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
-                tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, ringScale);
-            }
-
-            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍. playAreaProps 와 독립 가드.
+            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍. unit 4 이관까지 유지.
             if (tilemapMapView != null && theme != null)
             {
                 tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);

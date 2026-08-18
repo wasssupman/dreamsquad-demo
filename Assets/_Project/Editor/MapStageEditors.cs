@@ -81,6 +81,31 @@ namespace Wassup.EditorTools
                 }
                 else Debug.LogWarning("[MapStage] 자식 렌더러가 없어 playArea 를 제안할 수 없다.");
             }
+
+            // unit 2 — «스크립트 붙이면 그 자체로 게임 진행 가능»의 마지막 마일: 풀 수동 편집 없이
+            // dev 슬롯에 등록해 DevMapOverride 스테퍼로 바로 Play (MapPainter dev 등록 선례 승계).
+            if (GUILayout.Button("Dev 엔트리로 등록 (MapStagePool)"))
+            {
+                var prefab = PrefabUtility.GetCorrespondingObjectFromSource(stage) ?? stage;
+                if (!EditorUtility.IsPersistent(prefab))
+                {
+                    // 씬 오브젝트를 에셋(풀)에 넣으면 저장 시 참조가 조용히 null 이 된다 — 프리팹만 허용.
+                    Debug.LogWarning("[MapStage] 프리팹이 아니다 — 먼저 프리팹으로 저장한 뒤 등록할 것.");
+                    return;
+                }
+                var guids = AssetDatabase.FindAssets("t:MapStagePool");
+                if (guids.Length == 0) { Debug.LogWarning("[MapStage] MapStagePool 에셋이 없다."); return; }
+                if (guids.Length > 1) Debug.LogWarning($"[MapStage] MapStagePool 이 {guids.Length}개 — 첫 번째에만 등록한다.");
+                var pool = AssetDatabase.LoadAssetAtPath<Wassup.Data.MapStagePool>(
+                    AssetDatabase.GUIDToAssetPath(guids[0]));
+                if (pool.EditorRegisterDevStage(prefab))
+                {
+                    EditorUtility.SetDirty(pool);
+                    AssetDatabase.SaveAssets();
+                    Debug.Log($"[MapStage] '{prefab.name}' 을 dev 슬롯에 등록했다.");
+                }
+                else Debug.Log($"[MapStage] '{prefab.name}' 은 이미 풀에 있다 — 등록 생략.");
+            }
         }
     }
 

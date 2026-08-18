@@ -70,21 +70,23 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Bridge_DevIndexBeyondPool_ResolvesDevEntry()
         {
-            // BattleBridgeDraftMapTests 픽스처 미러 + DevMapOverride 세이브/복원.
+            // map-diorama-stage unit 2 — 브리지 풀이 MapStagePool 로 바뀌어 스테이지 픽스처로 재작성.
+            // pin 하는 계약은 동일: dev 인덱스(Count+0)가 devEntries[0] 로 해석된다.
+            // 풀 본편(8×6)과 dev(9×6)를 격자 크기로 구분한다(스테이지는 seed 저작이 없다 — 관례 -1).
             int prevIndex = DevMapOverride.Index;
 
             var world = new World("MapPoolDevEntriesTests");
             var deck = ScriptableObject.CreateInstance<AttackDeck>();
-            var poolDoc = MakeUsableDoc(42);
-            var devDoc = MakeUsableDoc(99);
-            var pool = ScriptableObject.CreateInstance<MapDocumentPool>();
+            var poolStage = MakeUsableStage("MapStage_PoolFixture", 8);
+            var devStage = MakeUsableStage("MapStage_DevFixture", 9);
+            var pool = ScriptableObject.CreateInstance<Wassup.Data.MapStagePool>();
             var go = new GameObject("BattleBridge_DevSlotTest");
+            var bridge = go.AddComponent<BattleBridge>();
             try
             {
-                AddPoolEntry(pool, poolDoc);
-                Assert.IsTrue(pool.EditorRegisterDevDocument(devDoc));
+                AddStagePoolEntry(pool, poolStage);
+                Assert.IsTrue(pool.EditorRegisterDevStage(devStage));
 
-                var bridge = go.AddComponent<BattleBridge>();
                 SetField(bridge, "deck", deck);
                 SetField(bridge, "mapPool", pool);
                 SetField(bridge, "_world", world);
@@ -96,19 +98,60 @@ namespace Wassup.Tests.EditMode
                 CallPrivateMethod(bridge, "BuildMapForBattle");
 
                 Assert.IsTrue(bridge.HasGeneratedMap);
-                Assert.AreEqual(99, GetGeneratedMapSeed(bridge),
-                    "dev 인덱스(Count+0)는 devEntries[0] 문서로 해석되어야 한다");
+                Assert.AreEqual(9, GetGeneratedMap(bridge).gridSize.x,
+                    "dev 인덱스(Count+0)는 devEntries[0] 스테이지(9×6)로 해석되어야 한다");
             }
             finally
             {
                 DevMapOverride.Index = prevIndex;
+                CallPrivateMethod(bridge, "TeardownGeneratedMap");   // 스테이지 인스턴스·Persistent 정리
                 Object.DestroyImmediate(go);
                 Object.DestroyImmediate(pool);
-                Object.DestroyImmediate(poolDoc);
-                Object.DestroyImmediate(devDoc);
+                Object.DestroyImmediate(poolStage.gameObject);
+                Object.DestroyImmediate(devStage.gameObject);
                 Object.DestroyImmediate(deck);
                 world.Dispose();
             }
+        }
+
+        // map-diorama-stage unit 2 — 스테이지 픽스처(코드 조립, 프리팹 불요). w×6 열린 마당 + 스폰 2 + 골 1.
+        private static Wassup.Core.MapStage MakeUsableStage(string name, int width)
+        {
+            var root = new GameObject(name);
+            var stage = root.AddComponent<Wassup.Core.MapStage>();
+            stage.playAreaCells = new Vector2Int(width, 6);
+            stage.gridOriginLocal = Vector3.zero;
+
+            AddStageChild<Wassup.Core.SpawnMarker>(root, new Vector2Int(0, 1), m => m.laneIndex = 0);
+            AddStageChild<Wassup.Core.SpawnMarker>(root, new Vector2Int(0, 4), m => m.laneIndex = 1);
+            AddStageChild<Wassup.Core.GoalMarker>(root, new Vector2Int(width - 1, 3), _ => { });
+            return stage;
+        }
+
+        private static void AddStageChild<T>(GameObject stageRoot, Vector2Int cell, System.Action<T> init)
+            where T : Component
+        {
+            var child = new GameObject($"{typeof(T).Name}_{cell.x}_{cell.y}");
+            child.transform.SetParent(stageRoot.transform, false);
+            child.transform.localPosition = new Vector3(cell.x + 0.5f, 0f, cell.y + 0.5f);
+            init(child.AddComponent<T>());
+        }
+
+        private static void AddStagePoolEntry(Wassup.Data.MapStagePool pool, Wassup.Core.MapStage stage)
+        {
+            var fi = typeof(Wassup.Data.MapStagePool).GetField("entries",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.IsNotNull(fi, "MapStagePool.entries field not found");
+            var list = (System.Collections.IList)fi.GetValue(pool);
+            list.Add(new Wassup.Data.MapStagePool.Entry { stage = stage, deck = null });
+        }
+
+        private static GeneratedMap GetGeneratedMap(BattleBridge bridge)
+        {
+            var fi = typeof(BattleBridge).GetField("_generatedMap",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.IsNotNull(fi, "_generatedMap field not found");
+            return (GeneratedMap)fi.GetValue(bridge);
         }
 
         // siege-duel-map 후속(라이브 풀 편입) — Duel 을 dev 슬롯에 배선한 계약 pin.

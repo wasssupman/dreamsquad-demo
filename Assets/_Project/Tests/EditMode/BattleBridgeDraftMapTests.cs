@@ -4,97 +4,95 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Wassup.Bridge;
+using Wassup.Core;
 using Wassup.Data;
-using Wassup.Data.MapGrid;
 
 namespace Wassup.Tests.EditMode
 {
     // Unit 4 — BattleBridge draft-map prebuild contracts.
-    // map-pipeline-cleanup unit 2 — fixture 를 legacy MapData 주입에서 **라이브 경로**
-    // (mapPool → MapGridBattleAdapter → ToGeneratedMap)로 재작성. 검증하는 라이프사이클
-    // 계약(빌드/재빌드/BeginPlacement 무재빌드/폴백 빌드)은 동일하다.
+    // map-diorama-stage unit 2 — 픽스처를 문서 풀(MapDocumentPool)에서 **스테이지 풀**
+    // (MapStagePool → 프리팹 인스턴스화 → 스캔 → Assemble)로 재작성. 검증하는 라이프사이클
+    // 계약(빌드/재빌드/BeginPlacement 무재빌드)은 동일하고, 안전망 계약은 개정을 따른다:
+    // 연결성 실패 = 폴백 리니어가 아니라 **하드 실패**(README 계약 9).
     //
     // Fixture notes:
     //   • PrepareDraftMap() always overwrites _world with World.DefaultGameObjectInjectionWorld,
-    //     which is null in EditMode tests (no domain reload / no default world bootstrap).
-    //     We therefore replicate PrepareDraftMap's internal steps via reflection:
-    //       1. Inject _world / _em (already done in SetUp).
-    //       2. Call EnsureQueriesAndQueues() (private).
-    //       3. Call BuildMapForBattle() (private).
-    //     This is the identical code path that would run if the world were available.
-    //   • RebuildDraftMap() works directly because it checks _world != null before proceeding.
+    //     which is null in EditMode tests. We replicate its internals via reflection
+    //     (EnsureQueriesAndQueues + BuildMapForBattle) — identical code path.
+    //   • 스테이지 «프리팹»은 씬 GameObject 템플릿로 대신한다 — Instantiate(Component) 는
+    //     프리팹/씬 오브젝트를 구분하지 않으므로 라이브 경로와 같은 코드가 돈다.
     public class BattleBridgeDraftMapTests
     {
         private World _world;
         private GameObject _go;
         private BattleBridge _bridge;
         private AttackDeck _deck;
-        private MapDocument _doc;
-        private MapDocumentPool _pool;
+        private MapStage _stageTemplate;
+        private MapStagePool _pool;
 
         [SetUp]
         public void SetUp()
         {
-            // Real ECS world — needed by EnsureQueriesAndQueues / BuildFlowField.
             _world = new World("BattleBridgeDraftMapTests");
 
             _deck = ScriptableObject.CreateInstance<AttackDeck>();
-            _doc  = BuildUsableDocument();
-            _pool = ScriptableObject.CreateInstance<MapDocumentPool>();
-            AddPoolEntry(_pool, _doc, deck: null); // deck null → serialized deck 폴백 계약
+            _stageTemplate = BuildUsableStage();
+            _pool = ScriptableObject.CreateInstance<MapStagePool>();
+            AddPoolEntry(_pool, _stageTemplate, deck: null); // deck null → serialized deck 폴백 계약
 
-            // BattleBridge as a plain GameObject (Awake not called in EditMode).
-            _go     = new GameObject("BattleBridge_Test");
+            _go = new GameObject("BattleBridge_Test");
             _bridge = _go.AddComponent<BattleBridge>();
 
-            SetField(_bridge, "deck",    _deck);
+            SetField(_bridge, "deck", _deck);
             SetField(_bridge, "mapPool", _pool);
-
-            // Inject the test World so ECS operations work.
             SetField(_bridge, "_world", _world);
-            SetField(_bridge, "_em",    _world.EntityManager);
+            SetField(_bridge, "_em", _world.EntityManager);
         }
 
         [TearDown]
         public void TearDown()
         {
-            if (_go   != null) Object.DestroyImmediate(_go);
+            // 스테이지 인스턴스·GeneratedMap 정리(Persistent 누수/씬 잔존 방지) — 라이브와 같은 경로.
+            if (_bridge != null) CallPrivateMethod(_bridge, "TeardownGeneratedMap");
+            if (_go != null) Object.DestroyImmediate(_go);
             if (_deck != null) Object.DestroyImmediate(_deck);
-            if (_doc  != null) Object.DestroyImmediate(_doc);
+            if (_stageTemplate != null) Object.DestroyImmediate(_stageTemplate.gameObject);
             if (_pool != null) Object.DestroyImmediate(_pool);
-            // World owns NativeContainers — dispose last.
             _world?.Dispose();
         }
 
-        // 최소 usable 문서: 6×4, y=2 복도 Walk, 스폰 2(connectivity 는 스폰 ≥2 요구), 골 1.
-        private static MapDocument BuildUsableDocument()
+        // 최소 usable 스테이지: 8×6 열린 마당, 스폰 2(lane 0·1), 골 1, 내부 차단 프랍 1.
+        internal static MapStage BuildUsableStage(string name = "MapStage_TestFixture")
         {
-            const int w = 6;
-            const int h = 4;
-            int n = w * h;
+            var root = new GameObject(name);
+            var stage = root.AddComponent<MapStage>();
+            stage.playAreaCells = new Vector2Int(8, 6);
+            stage.gridOriginLocal = Vector3.zero;
+            stage.previewTileSize = 1f;
 
-            var tiles = new MapTileType[n];
-            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
-            for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
-
-            var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(
-                w, h,
-                tiles,
-                new[] { new Vector2Int(w - 1, 2) },
-                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
-                seed: 42,
-                version: 1);
-            return doc;
+            AddMarker<SpawnMarker>(root, new Vector2Int(0, 1), m => m.laneIndex = 0);
+            AddMarker<SpawnMarker>(root, new Vector2Int(0, 4), m => m.laneIndex = 1);
+            AddMarker<GoalMarker>(root, new Vector2Int(7, 3), _ => { });
+            AddMarker<PropFootprint>(root, new Vector2Int(3, 3), f => f.size = Vector2Int.one);
+            return stage;
         }
 
-        private static void AddPoolEntry(MapDocumentPool pool, MapDocument doc, AttackDeck deck)
+        internal static void AddMarker<T>(GameObject stageRoot, Vector2Int cell, System.Action<T> init)
+            where T : Component
         {
-            var fi = typeof(MapDocumentPool).GetField("entries",
+            var go = new GameObject($"{typeof(T).Name}_{cell.x}_{cell.y}");
+            go.transform.SetParent(stageRoot.transform, false);
+            go.transform.localPosition = new Vector3(cell.x + 0.5f, 0f, cell.y + 0.5f); // 셀 중심
+            init(go.AddComponent<T>());
+        }
+
+        internal static void AddPoolEntry(MapStagePool pool, MapStage stage, AttackDeck deck)
+        {
+            var fi = typeof(MapStagePool).GetField("entries",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(fi, "MapDocumentPool.entries field not found");
+            Assert.IsNotNull(fi, "MapStagePool.entries field not found");
             var list = (System.Collections.IList)fi.GetValue(pool);
-            list.Add(new MapDocumentPool.Entry { document = doc, deck = deck });
+            list.Add(new MapStagePool.Entry { stage = stage, deck = deck });
         }
 
         // Case 1 — Internal prepare path sets HasGeneratedMap to true.
@@ -106,44 +104,48 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_bridge.HasGeneratedMap);
         }
 
-        // Case 2 — 풀 문서 경로가 실제로 쓰였다(폴백 리니어가 아니라 doc authoringSeed).
+        // Case 2 — 풀 스테이지 경로가 실제로 쓰였다: 격자 = 스테이지 playArea, 수동 저작 관례 seed(-1).
         [Test]
-        public void PrepareDraftMap_UsesPoolDocument()
+        public void PrepareDraftMap_UsesPoolStage()
         {
             CallPrepareDraftMapInternal(_bridge);
-            Assert.AreEqual(42, GetGeneratedMapSeed(_bridge),
-                "GeneratedMap must come from the pool document (authoringSeed), not a fallback");
+            var gm = GetGeneratedMap(_bridge);
+            Assert.AreEqual(new Unity.Mathematics.int2(8, 6), gm.gridSize,
+                "GeneratedMap 은 풀 스테이지의 playArea 에서 나와야 한다");
+            Assert.AreEqual(-1, gm.seed, "디오라마 스테이지는 수동 저작 관례 seed(-1)");
+            Assert.IsNotNull(GetStageInstance(_bridge), "스테이지 인스턴스(비주얼)가 서 있어야 한다");
         }
 
         // Case 3 — BeginPlacement after an already-built map does not rebuild
-        //           (seed stays the same; no new BuildMapForBattle invocation).
+        //           (스테이지 인스턴스 참조가 그대로 = BuildMapForBattle 재호출 없음).
         [Test]
         public void BeginPlacement_AfterPrepare_DoesNotRebuild()
         {
             CallPrepareDraftMapInternal(_bridge);
-            Assert.IsTrue(_bridge.HasGeneratedMap);
+            var instanceBefore = GetStageInstance(_bridge);
+            Assert.IsNotNull(instanceBefore);
 
-            int seedBefore = GetGeneratedMapSeed(_bridge);
             CallBeginPlacementInternal(_bridge);
-            int seedAfter = GetGeneratedMapSeed(_bridge);
 
-            Assert.AreEqual(seedBefore, seedAfter,
+            Assert.AreSame(instanceBefore, GetStageInstance(_bridge),
                 "BeginPlacement must not rebuild map when one already exists");
         }
 
-        // Case 4 — RebuildDraftMap disposes old map and creates a new valid one.
+        // Case 4 — RebuildDraftMap disposes old map/stage and creates new ones.
         [Test]
         public void RebuildDraftMap_DisposesOldAndCreatesNew()
         {
             CallPrepareDraftMapInternal(_bridge);
-            Assert.IsTrue(_bridge.HasGeneratedMap, "map must exist after first prepare");
+            var instanceBefore = GetStageInstance(_bridge);
+            Assert.IsNotNull(instanceBefore, "stage instance must exist after first prepare");
 
-            // RebuildDraftMap works directly: _world is non-null so it skips PrepareDraftMap fallback.
             _bridge.RebuildDraftMap();
 
             Assert.IsTrue(_bridge.HasGeneratedMap, "HasGeneratedMap must stay true after rebuild");
-            var gm = GetGeneratedMap(_bridge);
-            Assert.IsTrue(gm.IsCreated, "rebuilt GeneratedMap.IsCreated must be true");
+            Assert.IsTrue(GetGeneratedMap(_bridge).IsCreated);
+            var instanceAfter = GetStageInstance(_bridge);
+            Assert.IsNotNull(instanceAfter, "rebuild must stand a new stage instance");
+            Assert.AreNotSame(instanceBefore, instanceAfter, "rebuild must replace the stage instance");
         }
 
         // Case 5 — When no map has been built, the fallback path in BeginPlacement builds one.
@@ -156,56 +158,51 @@ namespace Wassup.Tests.EditMode
                 "BeginPlacement fallback must build map when none exists");
         }
 
-        // ── map-pipeline-cleanup feature-end 리뷰 반영 — 리팩터가 중앙화한 안전망 계약 ──
-
-        // Case 6 — connectivity 실패 문서 → FallbackLinear 대체(절차 폴백 제거 후 유일한 런타임 안전망).
+        // Case 6 — 연결성 실패 스테이지 → **하드 실패**(맵 없음). 조용한 폴백 리니어는 은퇴했다
+        //          (README 계약 9 — unit 3 이후 폴백 맵은 렌더러가 없다).
         [Test]
-        public void BuildMap_UnconnectedDocument_FallsBackToLinear()
+        public void BuildMap_UnconnectedStage_HardFails_NoMap()
         {
-            var badDoc = BuildUnconnectedDocument();
-            var badPool = ScriptableObject.CreateInstance<MapDocumentPool>();
-            AddPoolEntry(badPool, badDoc, deck: null);
+            var walledStage = BuildUsableStage("MapStage_Walled");
+            // 골 앞 세로 벽(x=6 전체) — 골 셀 자체는 열림(형식 오류 아님), 연결성만 실패.
+            AddMarker<PropFootprint>(walledStage.gameObject, new Vector2Int(6, 0),
+                f => f.size = new Vector2Int(1, 6));
+            var badPool = ScriptableObject.CreateInstance<MapStagePool>();
+            AddPoolEntry(badPool, walledStage, deck: null);
             SetField(_bridge, "mapPool", badPool);
             try
             {
-                LogAssert.Expect(LogType.Warning,
-                    "[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.");
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("연결성 실패"));
                 CallPrepareDraftMapInternal(_bridge);
 
-                Assert.IsTrue(_bridge.HasGeneratedMap, "fallback must still produce a map");
-                var gm = GetGeneratedMap(_bridge);
-                Assert.AreEqual(new Unity.Mathematics.int2(20, 10), gm.gridSize,
-                    "fallback linear must use FallbackGridSize (20x10)");
-                Assert.AreEqual(2, gm.spawns.Length, "fallback linear must use FallbackSpawnLaneCount (2)");
-                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(gm), "fallback map must be playable");
+                Assert.IsFalse(_bridge.HasGeneratedMap,
+                    "connectivity failure must hard-fail with no map (no silent fallback)");
+                Assert.IsNull(GetStageInstance(_bridge), "실패 시 스테이지 인스턴스도 정리돼야 한다");
             }
             finally
             {
-                Object.DestroyImmediate(badDoc);
+                Object.DestroyImmediate(walledStage.gameObject);
                 Object.DestroyImmediate(badPool);
             }
         }
 
-        // Case 7 — 선택된 풀 엔트리가 unusable → hard-fail: 크래시 없이 맵 없음(LogError + 정지).
+        // Case 7 — 선택된 풀 엔트리의 stage 가 null → hard-fail: 크래시 없이 맵 없음.
         [Test]
-        public void BuildMap_UnusableSelectedEntry_HardFails_NoMap()
+        public void BuildMap_NullStageEntry_HardFails_NoMap()
         {
-            var emptyDoc = ScriptableObject.CreateInstance<MapDocument>(); // Width 0 → unusable
-            var badPool = ScriptableObject.CreateInstance<MapDocumentPool>();
-            AddPoolEntry(badPool, emptyDoc, deck: null);
+            var badPool = ScriptableObject.CreateInstance<MapStagePool>();
+            AddPoolEntry(badPool, null, deck: null);
             SetField(_bridge, "mapPool", badPool);
             try
             {
-                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(
-                    "usable MapDocument"));
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("스테이지 프리팹이 없다"));
                 CallPrepareDraftMapInternal(_bridge);
 
                 Assert.IsFalse(_bridge.HasGeneratedMap,
-                    "unusable entry must hard-fail with no map (no silent fallback)");
+                    "null stage entry must hard-fail with no map");
             }
             finally
             {
-                Object.DestroyImmediate(emptyDoc);
                 Object.DestroyImmediate(badPool);
             }
         }
@@ -222,41 +219,15 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(_bridge.HasGeneratedMap, "guard must block map build without a pool");
         }
 
-        // 좌측 복도(스폰 2)와 골이 단절된 문서 — ToGeneratedMap 은 성공하지만 connectivity 실패.
-        private static MapDocument BuildUnconnectedDocument()
-        {
-            const int w = 6;
-            const int h = 4;
-            int n = w * h;
-
-            var tiles = new MapTileType[n];
-            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
-            for (int x = 0; x <= 2; x++) tiles[2 * w + x] = MapTileType.Walk; // 좌측 섬
-            tiles[2 * w + (w - 1)] = MapTileType.Walk;                        // 골 섬(단절)
-
-            var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(
-                w, h,
-                tiles,
-                new[] { new Vector2Int(w - 1, 2) },
-                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
-                seed: 43,
-                version: 1);
-            return doc;
-        }
-
         // -----------------------------------------------------------------------
         // Helpers
 
-        // Replicates PrepareDraftMap's internals without touching World.DefaultGameObjectInjectionWorld.
         private static void CallPrepareDraftMapInternal(BattleBridge bridge)
         {
             CallPrivateMethod(bridge, "EnsureQueriesAndQueues");
             CallPrivateMethod(bridge, "BuildMapForBattle");
         }
 
-        // Replicates BeginPlacement's internals without touching World.DefaultGameObjectInjectionWorld.
-        // Mirrors the non-coroutine branch: EnsureQueriesAndQueues + fallback BuildMapForBattle.
         private static void CallBeginPlacementInternal(BattleBridge bridge)
         {
             CallPrivateMethod(bridge, "EnsureQueriesAndQueues");
@@ -265,7 +236,7 @@ namespace Wassup.Tests.EditMode
                 CallPrivateMethod(bridge, "BuildMapForBattle");
         }
 
-        private static void CallPrivateMethod(object target, string name)
+        internal static void CallPrivateMethod(object target, string name)
         {
             var mi = target.GetType().GetMethod(name,
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -273,7 +244,7 @@ namespace Wassup.Tests.EditMode
             mi.Invoke(target, null);
         }
 
-        private static void SetField(object target, string name, object value)
+        internal static void SetField(object target, string name, object value)
         {
             var type = target.GetType();
             FieldInfo fi = null;
@@ -287,7 +258,7 @@ namespace Wassup.Tests.EditMode
             fi.SetValue(target, value);
         }
 
-        private static GeneratedMap GetGeneratedMap(BattleBridge bridge)
+        internal static GeneratedMap GetGeneratedMap(BattleBridge bridge)
         {
             var fi = typeof(BattleBridge).GetField("_generatedMap",
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -295,7 +266,12 @@ namespace Wassup.Tests.EditMode
             return (GeneratedMap)fi.GetValue(bridge);
         }
 
-        private static int GetGeneratedMapSeed(BattleBridge bridge)
-            => GetGeneratedMap(bridge).seed;
+        internal static MapStage GetStageInstance(BattleBridge bridge)
+        {
+            var fi = typeof(BattleBridge).GetField("_stageInstance",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(fi, "_stageInstance field not found (이름 변경?)");
+            return (MapStage)fi.GetValue(bridge);
+        }
     }
 }

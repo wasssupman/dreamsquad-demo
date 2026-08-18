@@ -1,115 +1,106 @@
 using System.Collections.Generic;
-using System.Reflection;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
+using Wassup.Core;
 using Wassup.Data;
-using Wassup.Data.MapGrid;
 
 namespace Wassup.Tests.EditMode
 {
-    // placement-mask unit 3 — 라이브 경로(mapPool → BuildMapForBattle) 에서 B-1 계약 검증.
-    //   ① Walk 셀 mask=1 → 배치 가능, Place 셀 mask=0 → 배치 불가 (마스크가 정본)
-    //   ② tiles(통행/walkMask 의 유일한 파생원) 는 마스크와 무관하게 불변 — "적 행동 불변" 의
-    //      메커니즘 축. 도달 시간 e2e 는 Play 육안 검증(스펙 unit 3)이 담당한다.
-    // 픽스처는 BattleBridgeDraftMapTests 와 동일한 reflection 패턴(풀 주입 — 실 풀 미오염).
+    // placement-mask unit 3 → map-diorama-stage unit 2 재작성 — 라이브 경로
+    // (mapPool → BuildMapForBattle, 스테이지 스캔)에서 B-1/마스크 계약 검증:
+    //   ① 열린 셀 = 기본 Ground|Path|Air 개방(계약 3) — Ground 유닛도 Path 유닛도 선다
+    //   ② PlacementBlockZone = 옛 마스크 브러시의 후계 — 차감 셀은 전 층 배치 불가,
+    //      단 tiles(walkMask 파생원)는 불변 = 통행 불변 (critic C-2 전선 가드의 승계)
+    //   ③ 스폰·골 칸은 런타임 불변식(CloseCellLayers)이 전 층 폐쇄 (unit 4 리뷰 M-1 승계)
+    // 픽스처는 BattleBridgeDraftMapTests 의 스테이지 템플릿 헬퍼를 공유한다.
     public class PlacementMaskLivePathTests
     {
         private World _world;
         private GameObject _go;
         private BattleBridge _bridge;
         private AttackDeck _deck;
-        private MapDocument _doc;
-        private MapDocumentPool _pool;
+        private MapStage _stageTemplate;
+        private MapStagePool _pool;
 
-        private const int W = 6, H = 4;
-        private static readonly int2 MaskedWalkCell = new int2(3, 2);   // 복도 위 배치 허용 셀
-        private static readonly int2 MaskedOffPlaceCell = new int2(0, 0);   // 배치 금지된 Place 셀
+        private static readonly int2 OpenCell = new int2(2, 2);
+        private static readonly int2 BlockedCell = new int2(3, 3);      // PropFootprint (픽스처 내장)
+        private static readonly Vector2Int ZoneCell = new Vector2Int(5, 1); // PlacementBlockZone
 
         [SetUp]
         public void SetUp()
         {
             _world = new World("PlacementMaskLivePathTests");
             _deck = ScriptableObject.CreateInstance<AttackDeck>();
-            _doc = BuildMaskedDocument();
-            _pool = ScriptableObject.CreateInstance<MapDocumentPool>();
-            AddPoolEntry(_pool, _doc);
+
+            _stageTemplate = BattleBridgeDraftMapTests.BuildUsableStage("MapStage_MaskFixture");
+            BattleBridgeDraftMapTests.AddMarker<PlacementBlockZone>(
+                _stageTemplate.gameObject, ZoneCell, z => z.size = Vector2Int.one);
+
+            _pool = ScriptableObject.CreateInstance<MapStagePool>();
+            BattleBridgeDraftMapTests.AddPoolEntry(_pool, _stageTemplate, deck: null);
 
             _go = new GameObject("BattleBridge_MaskTest");
             _bridge = _go.AddComponent<BattleBridge>();
-            SetField(_bridge, "deck", _deck);
-            SetField(_bridge, "mapPool", _pool);
-            SetField(_bridge, "_world", _world);
-            SetField(_bridge, "_em", _world.EntityManager);
+            BattleBridgeDraftMapTests.SetField(_bridge, "deck", _deck);
+            BattleBridgeDraftMapTests.SetField(_bridge, "mapPool", _pool);
+            BattleBridgeDraftMapTests.SetField(_bridge, "_world", _world);
+            BattleBridgeDraftMapTests.SetField(_bridge, "_em", _world.EntityManager);
+
+            BattleBridgeDraftMapTests.CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
+            BattleBridgeDraftMapTests.CallPrivateMethod(_bridge, "BuildMapForBattle");
+            Assert.IsTrue(_bridge.HasGeneratedMap, "픽스처 스테이지는 usable — 맵 빌드 성공");
         }
 
         [TearDown]
         public void TearDown()
         {
+            if (_bridge != null)
+                BattleBridgeDraftMapTests.CallPrivateMethod(_bridge, "TeardownGeneratedMap");
             if (_go != null) Object.DestroyImmediate(_go);
             if (_deck != null) Object.DestroyImmediate(_deck);
-            if (_doc != null) Object.DestroyImmediate(_doc);
+            if (_stageTemplate != null) Object.DestroyImmediate(_stageTemplate.gameObject);
             if (_pool != null) Object.DestroyImmediate(_pool);
             _world?.Dispose();
         }
 
-        // 6×4, y=2 복도 Walk, 스폰 2, 골 1 (BattleBridgeDraftMapTests 의 usable 문서와 동형)
-        // + placeMask: 파생값 위에 Walk 셀 (3,2) 허용 / Place 셀 (0,0) 금지.
-        private static MapDocument BuildMaskedDocument()
+        [Test]
+        public void LivePath_OpenCell_OpensGroundAndPath_BlockedCell_ClosesAll()
         {
-            int n = W * H;
-            var tiles = new MapTileType[n];
-            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
-            for (int x = 0; x < W; x++) tiles[2 * W + x] = MapTileType.Walk;
+            var gm = BattleBridgeDraftMapTests.GetGeneratedMap(_bridge);
+            var none = new HashSet<Vector2Int>();
 
-            var mask = new byte[n];
-            for (int i = 0; i < n; i++) mask[i] = PlacementLayers.Derive(tiles[i]);
-            mask[2 * W + 3] = (byte)PlacementLayer.Ground;   // MaskedWalkCell — 경로 셀에 Ground 층 개방
-            mask[0 * W + 0] = 0;   // MaskedOffPlaceCell — 지면 셀을 닫음
-
-            var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(
-                W, H,
-                tiles,
-                new[] { new Vector2Int(W - 1, 2) },
-                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
-                seed: 77, version: 1,
-                placeMaskArr: mask);
-            return doc;
+            Assert.AreEqual(PlacementRejectReason.None,
+                BattleBridge.SpatialPlacementCheck(gm, none, OpenCell, PlacementLayer.Ground),
+                "열린 마당 셀 — Ground 유닛 배치 가능 (계약 3 기본 개방)");
+            Assert.AreEqual(PlacementRejectReason.None,
+                BattleBridge.SpatialPlacementCheck(gm, none, OpenCell, PlacementLayer.Path),
+                "열린 마당 셀 — Path 유닛(가디언, D7 결정 (a))도 배치 가능");
+            Assert.AreEqual(PlacementRejectReason.NotBuildable,
+                BattleBridge.SpatialPlacementCheck(gm, none, BlockedCell, PlacementLayer.Ground),
+                "차단 프랍 셀 — 배치 불가");
         }
 
         [Test]
-        public void LivePath_WalkCellMasked_IsPlaceable_PlaceCellMaskedOff_IsNot()
+        public void LivePath_BlockZone_ClosesPlacement_KeepsTraversal()
         {
-            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
-            CallPrivateMethod(_bridge, "BuildMapForBattle");
-            Assert.IsTrue(_bridge.HasGeneratedMap, "masked doc 은 usable — 맵 빌드 성공");
-
-            var gm = GetGeneratedMap(_bridge);
-            Assert.AreEqual(77, gm.seed, "풀 문서 경로 사용(폴백 아님)");
-
+            var gm = BattleBridgeDraftMapTests.GetGeneratedMap(_bridge);
             var none = new HashSet<Vector2Int>();
-            Assert.AreEqual(PlacementRejectReason.None,
-                BattleBridge.SpatialPlacementCheck(gm, none, MaskedWalkCell, PlacementLayer.Ground),
-                "Walk 셀 mask=1 → 배치 가능 (B-1)");
+            var zone = new int2(ZoneCell.x, ZoneCell.y);
+
             Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                BattleBridge.SpatialPlacementCheck(gm, none, MaskedOffPlaceCell, PlacementLayer.Ground),
-                "Place 셀 mask=0 → 배치 불가");
-            Assert.AreEqual(PlacementRejectReason.None,
-                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 1), PlacementLayer.Ground),
-                "마스크 안 건드린 Place 셀은 그대로 배치 가능");
+                BattleBridge.SpatialPlacementCheck(gm, none, zone, PlacementLayer.All),
+                "BlockZone 셀 — 전 층 배치 불가 (옛 마스크 브러시/전선 가드의 후계, critic C-2)");
+            Assert.AreEqual(MapTileType.Walk, gm.TileAt(zone),
+                "BlockZone 은 배치만 닫는다 — tiles(walkMask 파생원)는 Walk 그대로 = 통행 불변");
         }
 
         [Test]
         public void LivePath_SpawnAndGoalCells_AreClosedForAllLayers()
         {
-            // unit 4 리뷰 M-1 — Walk→Path 파생이 스폰·골 칸까지 열어버리는 걸 런타임 불변식이 막는다.
-            // 문서/커빙 의미는 그대로고 라이브 맵에만 덮는다.
-            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
-            CallPrivateMethod(_bridge, "BuildMapForBattle");
-            var gm = GetGeneratedMap(_bridge);
+            var gm = BattleBridgeDraftMapTests.GetGeneratedMap(_bridge);
             var none = new HashSet<Vector2Int>();
 
             for (int i = 0; i < gm.spawns.Length; i++)
@@ -123,74 +114,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void LivePath_PathLayerOpensRoadCells_ButNotSpawnGoal()
+        public void LivePath_TilesSynthesis_OpenWalk_BlockedDeco()
         {
-            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
-            CallPrivateMethod(_bridge, "BuildMapForBattle");
-            var gm = GetGeneratedMap(_bridge);
-            var none = new HashSet<Vector2Int>();
-
-            // (2,2) 는 복도 한가운데 — 스폰(0,2)/(1,2) 도 골(5,2) 도 아니다.
-            Assert.AreEqual(PlacementRejectReason.None,
-                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 2), PlacementLayer.Path),
-                "경로 층 유닛은 파생만으로 도로 칸에 선다");
-            Assert.AreEqual(PlacementRejectReason.NotBuildable,
-                BattleBridge.SpatialPlacementCheck(gm, none, new int2(2, 2), PlacementLayer.Ground),
-                "지면 층 유닛은 같은 도로 칸에 못 선다");
-        }
-
-        [Test]
-        public void LivePath_TilesUnchangedByMask_WalkabilitySourceIntact()
-        {
-            CallPrivateMethod(_bridge, "EnsureQueriesAndQueues");
-            CallPrivateMethod(_bridge, "BuildMapForBattle");
-
-            var gm = GetGeneratedMap(_bridge);
-            var docTiles = _doc.Tiles;
-            for (int i = 0; i < docTiles.Count; i++)
-                Assert.AreEqual(docTiles[i], gm.tiles[i],
-                    $"tiles[{i}] — 마스크는 tiles(walkMask 파생원)를 건드리지 않는다 (B-1 통행 불변)");
-        }
-
-        // ── helpers (BattleBridgeDraftMapTests 미러) ─────────────────────────────
-
-        private static void AddPoolEntry(MapDocumentPool pool, MapDocument doc)
-        {
-            var fi = typeof(MapDocumentPool).GetField("entries",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(fi, "MapDocumentPool.entries field not found");
-            var list = (System.Collections.IList)fi.GetValue(pool);
-            list.Add(new MapDocumentPool.Entry { document = doc, deck = null });
-        }
-
-        private static void CallPrivateMethod(object target, string name)
-        {
-            var mi = target.GetType().GetMethod(name,
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(mi, $"Method '{name}' not found on {target.GetType().Name}");
-            mi.Invoke(target, null);
-        }
-
-        private static void SetField(object target, string name, object value)
-        {
-            var type = target.GetType();
-            FieldInfo fi = null;
-            while (fi == null && type != null)
-            {
-                fi = type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance
-                                       | BindingFlags.Public);
-                type = type.BaseType;
-            }
-            Assert.IsNotNull(fi, $"Field '{name}' not found on {target.GetType().Name}");
-            fi.SetValue(target, value);
-        }
-
-        private static GeneratedMap GetGeneratedMap(BattleBridge bridge)
-        {
-            var fi = typeof(BattleBridge).GetField("_generatedMap",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.IsNotNull(fi, "_generatedMap field not found");
-            return (GeneratedMap)fi.GetValue(bridge);
+            var gm = BattleBridgeDraftMapTests.GetGeneratedMap(_bridge);
+            Assert.AreEqual(MapTileType.Walk, gm.TileAt(OpenCell), "열린 셀 = Walk (계약 2 합성)");
+            Assert.AreEqual(MapTileType.Deco, gm.TileAt(BlockedCell), "차단 셀 = Deco (계약 2 합성)");
         }
     }
 }

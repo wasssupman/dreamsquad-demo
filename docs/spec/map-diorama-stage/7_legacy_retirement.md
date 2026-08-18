@@ -9,7 +9,7 @@
 - 삭제: `Assets/_Project/Editor/MapPainterWindow.cs` · `Assets/_Project/Scripts/Data/MapGrid/` 의 `MapDocument.cs`/`MapDocumentBuilder.cs`/`MapDocumentPool.cs`/`MapGridBattleAdapter.cs`/`MapConceptRules.cs`(페인터 경고 전용 — 계약 10 정정 근거) · `Assets/_Project/Scripts/Data/ObstaclePlacer.cs`(호출부는 unit 2 가 제거)
 - 삭제(에셋): `Assets/_Project/Data/Maps/MapDocument_*.asset` 14종 + `MapDocumentPool.asset` — **.meta 짝 명시 add**
 - 구 Assets lane 테스트 3파일 처분 (critic M-4): `MapDocumentPoolDevEntriesTests.cs` · `MultiGoalPoolSeparationTests.cs` · `LiveMapSpawnRouteAuthoringTests.cs` — 삭제가 아니라 **의미 승계 여부를 파일별 판정**: ④ 전선 가드는 스테이지 기준 재작성(계약 3 의 BlockZone 가드), 나머지는 스테이지 저작 린트(unit 1)가 대체하면 삭제
-- 잔존 확인: `MapConnectivity.cs`(스테이지 경로가 계속 사용) · `BattleMapBuilder.cs`(폴백 은퇴로 소비처 0 이면 함께 삭제) · `GeneratedMap`/`MapTileType`/`PlacementLayer`(접근 C 전까지 유지)
+- 잔존 확인: `MapConnectivity.cs`(스테이지 경로가 계속 사용) · `MapGenerationFailedException.cs`(**DioramaMapBuilder.Assemble 이 던진다** — MapGrid 폴더에 있지만 삭제 금지, 이동만 허용) · `BattleMapBuilder.cs`(폴백 은퇴로 소비처 0 이면 함께 삭제) · `GeneratedMap`/`MapTileType`/`PlacementLayer`(접근 C 전까지 유지)
 
 ## 구현
 

@@ -11,7 +11,8 @@ namespace Wassup.UI
     // 값은 DevMapOverride(PlayerPrefs)에 저장 → 다음 배틀 진입 시 BattleBridge 가 최우선으로 읽는다.
     public class DevMapOverridePanel : MonoBehaviour
     {
-        [SerializeField] private MapDocumentPool pool;
+        // map-diorama-stage unit 2 — 문서 풀 → 스테이지 풀 교체 (구조·인덱스 의미 동일).
+        [SerializeField] private Wassup.Data.MapStagePool pool;
         [SerializeField] private TMP_Text label;    // "5:Hook" 또는 "OFF"
         [SerializeField] private Button prevButton;  // ◀
         [SerializeField] private Button nextButton;  // ▶
@@ -58,12 +59,12 @@ namespace Wassup.UI
             {
                 // dev 슬롯 — 풀 본편과 구분되는 라벨(시드 선택에 안 잡히는 맵임을 표시).
                 int d = i - count;
-                var devDoc = pool.GetDev(d).document;
-                label.text = $"D{d}:{(devDoc != null ? devDoc.name.Replace("MapDocument_", "") : "?")}";
+                var devStage = pool.GetDev(d).stage;
+                label.text = $"D{d}:{(devStage != null ? devStage.name.Replace("MapStage_", "") : "?")}";
                 return;
             }
-            string name = (pool != null && i >= 0 && i < count && pool.Get(i).document != null)
-                ? pool.Get(i).document.name.Replace("MapDocument_", "")
+            string name = (pool != null && i >= 0 && i < count && pool.Get(i).stage != null)
+                ? pool.Get(i).stage.name.Replace("MapStage_", "")
                 : "?";
             label.text = $"{i}:{name}";
         }
