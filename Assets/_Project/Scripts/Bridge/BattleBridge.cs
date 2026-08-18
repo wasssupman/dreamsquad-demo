@@ -1373,6 +1373,13 @@ namespace Wassup.Bridge
             // 「배치 페이즈 발동 정책」). 이 줄이 고치는 것은 **낭비가 뒤늦게 터지는 것**뿐이다.
             DestroyEntitiesByType<ProjectileRequestCarrier>();
 
+            // on-place-shuttle-shotgun unit 2 — **배치 페이즈에 쌓인 실드 부여 연출도 버린다.**
+            // 위 캐리어와 같은 창(窓)의 다른 얼굴이다: 실드셔틀을 배치 페이즈에 놓으면 sim 이
+            // 실드를 즉시 붙이지만(그건 정상 — 상태라 드레인이 필요 없다) 부여 VFX 이벤트는
+            // `_running` 아래 드레인이라 큐에 남아, 여기서 **전투 시작 순간 일제히 터진다**.
+            // 실드는 이미 붙어 있으므로 연출만 뒤늦게 오는 것이고, 그건 사건이 아니라 잔상이다.
+            if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Clear();
+
             _pending.Clear();
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
@@ -7303,6 +7310,14 @@ namespace Wassup.Bridge
                 if (unitData.onPlaceEffect != OnPlaceEffectType.None)
                     Debug.LogWarning(
                         $"[BattleBridge] {unitData.displayName}: onPlaceEffect({unitData.onPlaceEffect}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 둘 다 발동한다. 하나로 정리하라.");
+                // on-place-shuttle-shotgun unit 2 — **밀쳐냄은 enum 과 독립 필드군이다.**
+                // 위 경고는 `onPlaceEffect` 만 보는데, `onPlacePush*` 는 그것이 None 이어도
+                // 배치 순간 반경 안 적을 민다(샷건맨이 그랬다). 규칙 경로와 겹치면 한 배치에서
+                // 반대 방향 두 힘이 걸려 **어느 쪽도 안 읽힌다**(배스티온 선례). 시트 임포트나
+                // 다른 세션이 값을 되살려도 조용하지 않게 여기서 같이 잡는다.
+                if (unitData.onPlacePushDistance > 0f)
+                    Debug.LogWarning(
+                        $"[BattleBridge] {unitData.displayName}: onPlacePushDistance({unitData.onPlacePushDistance}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 밀쳐냄과 규칙이 겹친다. 밀쳐냄을 0 으로 끄거나 규칙을 지워라.");
 
                 BakeUnitMechanics(entity, skillAbility.mechanics, hostIsEnemy: false,
                     maxHpRef: unitData.health, ownerLabel: unitData.displayName, enemyOwner: null);
@@ -8627,6 +8642,19 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: pattern buffer missing — skipped.");
                         continue;
                     }
+                    // on-place-shuttle-shotgun unit 2 — 방향 패턴의 사거리는 **payload 저작값**이다
+                    // (`slot.tileRange × tileSize` → `maxDistance`). 0 이면 arm 이 방향을 채워도
+                    // 사거리 0 인 탄이 나가 즉시 착탄 판정에 걸리고, 스윕 길이가 0 이라 넉백 조건도
+                    // 거짓이 된다 — **완전 무동작**. 여기서 끊는다(TryBuildPatternSlot 은 payload 를
+                    // 모르므로 이 검증만 호출처 몫이다).
+                    if (Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(
+                            ResolveProjectileAxes(pattern.barrel.flightMode).movement)
+                            == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction
+                        && m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: 방향 패턴인데 payload tileRange 가 0 이다 — 사거리 0 인 탄이라 발사해도 아무 일도 안 일어난다 — skipped. 사거리를 지정하라.");
+                        continue;
+                    }
                     if (!TryBuildPatternSlot(pattern, entity, hostIsEnemy,
                                              $"{ownerLabel} mechanic {i}", out var builtSlot))
                         continue;
@@ -8682,7 +8710,13 @@ namespace Wassup.Bridge
                     // no-op** 이 된다. 미사용 라이브 경로를 만들지 않는 것이 dreamcatcher-trigger-gates
                     // 계약("v1 배선 조합 외는 bake loud 거절")의 선례다. 새 조합은 그걸 쓰는 능력이
                     // 생길 때 배선·테스트와 함께 연다.
-                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
+                    //
+                    // on-place-shuttle-shotgun unit 0 — **`OnPlace × tileRange>0` 이 그렇게 열린
+                    // 세 번째 조합이다**(실드셔틀 배치 보호막). arm 은 트리거가 아니라 payload 로
+                    // 분기하므로 코드 추가 없이 반경 확산을 그대로 탄다.
+                    // ⚠ 이 거절을 «화이트리스트» 로 조이지 말 것 — 위 두 조합만 남기면 배치
+                    // 보호막이 **조용히** 죽는다. 현재 형태(블랙리스트 2조합)를 유지한다.
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer/OnPlace 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaTaunt)
@@ -8871,6 +8905,17 @@ namespace Wassup.Bridge
             // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
             //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
             //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
+            // on-place-shuttle-shotgun unit 2 — **방향 바인딩 패턴의 조용한 no-op 3종.**
+            // 이 함수는 규칙 경로(유닛 능력 · 드림캐쳐 카드) 전용이다 — 평타 다연발은
+            // `BakeDefenderDirectionalPattern` 이 따로 굽고 `AttackSystem` 이 발사한다.
+            // 그래서 여기 경고는 평타 저작을 건드리지 않는다.
+            if (fanBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction)
+            {
+                if (pattern.damage <= 0f)
+                    Debug.LogWarning($"[BattleBridge] {label}: 방향 패턴인데 damage 가 0 이하다 — 규칙 경로는 패턴 SO 의 damage 를 그대로 쓴다(평타처럼 output 이 덮지 않는다). 넉백만 노린 저작이 아니라면 값을 넣어라.");
+                if (pattern.randomizeShotsPerTrigger)
+                    Debug.LogWarning($"[BattleBridge] {label}: randomizeShotsPerTrigger 는 **규칙 경로에서 아무 일도 하지 않는다**(랜덤화는 AttackSystem 평타 경로에만 있다). 발마다 다르게 퍼뜨리려면 shots 의 directionT 를 저작으로 벌려라 — 안 그러면 전탄이 같은 방향으로 겹친다.");
+            }
             if (!pattern.TryToSpec(barrelIndex, out var patternSpec))
             {
                 int shotCount = pattern.shots?.Length ?? 0;

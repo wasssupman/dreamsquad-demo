@@ -115,6 +115,17 @@ namespace Wassup.Data
                 switch (m.payload.kind)
                 {
                     case DcPayloadKind.EmitProjectilePattern:
+                        // ⚠ **같은 payload 가 두 그림이다.** 낙하 융단폭격(캐논)과 방향 발사
+                        // (샷건맨)가 같은 «발사 명세» 를 쓰므로, 문안은 탄의 **궤적**으로 갈라야
+                        // 한다. 안 가르면 샷건맨 충격파가 "미사일 낙하" 로 소개된다(실측 오문안).
+                        // 판정은 데이터 계층 enum 하나로 끝난다 — Battle 타입은 참조하지 않는다.
+                        if (m.payload.pattern != null && m.payload.pattern.barrel != null
+                            && m.payload.pattern.barrel.flightMode == ProjectileFlightMode.Directional)
+                        {
+                            return m.payload.pattern.barrel.knockbackDistance > 0f
+                                ? "배치 시 가까운 적 쪽으로 충격파 · 밀어냄"
+                                : "배치 시 가까운 적 쪽으로 일제 사격";
+                        }
                         // 반경은 패턴이 소유한다(`scopeTileRange`). 패턴 미배선이면 bake 가 loud
                         // 로 거절하므로 여기선 숫자 없이 낸다.
                         return m.payload.pattern != null && m.payload.pattern.scopeTileRange > 0

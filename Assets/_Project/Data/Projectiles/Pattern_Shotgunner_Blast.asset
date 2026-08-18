@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
+  m_Name: Pattern_Shotgunner_Blast
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  id: shotgunner_blast
+  barrel: {fileID: 11400000, guid: c3c7bf7537d947278f27b931df1ff7c2, type: 2}
+  damage: 25
+  selection: 2
+  minAngleDeg: -40
+  maxAngleDeg: 40
+  shots:
+  - directionT: 0
+    intervalAfterPreviousSec: 0
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0
+  - directionT: 1
+    intervalAfterPreviousSec: 0
+  randomizeShotsPerTrigger: 0
+  randomIntervalMinSec: 0
+  randomIntervalMaxSec: 0
+  reselectPerShot: 0
+  telegraphSec: 0
+  scopeTileRange: 0
+  fanOutToAllCandidates: 0
+  fanOutStaggerSec: 0
