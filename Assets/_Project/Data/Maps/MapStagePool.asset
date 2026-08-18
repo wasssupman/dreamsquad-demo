@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da44bb02b4117934b9e27d8d391d1062, type: 3}
+  m_Name: MapStagePool
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapStagePool
+  entries:
+  - stage: {fileID: 5896130528328174862, guid: 72f3bff62c28b0246922df6786958a56, type: 3}
+    deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
+    plan: {fileID: 0}
+  devEntries: []

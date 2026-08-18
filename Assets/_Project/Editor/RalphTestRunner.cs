@@ -28,12 +28,22 @@ namespace Wassup.EditorTools
             public string[] groups;        // 선택 — 정규식 (풀네임)
         }
 
+        static double _nextPollAt;
+
         static RalphTestRunner()
         {
             // 도메인 리로드마다 콜백 재등록 — PlayMode 리로드를 건너 RunFinished 를 받기 위함.
             var api = ScriptableObject.CreateInstance<TestRunnerApi>();
             api.RegisterCallbacks(new ResultWriter());
             EditorApplication.delayCall += TryStart;
+            // 스크립트 변경(=리로드) 없이 요청 파일만 갱신되는 경우를 위해 상시 폴링(3초 스로틀).
+            // TryStart 는 토큰/결과 가드로 멱등이라 반복 호출이 안전하다.
+            EditorApplication.update += () =>
+            {
+                if (EditorApplication.timeSinceStartup < _nextPollAt) return;
+                _nextPollAt = EditorApplication.timeSinceStartup + 3.0;
+                TryStart();
+            };
         }
 
         [MenuItem("Window/Wassup/Ralph/Run Requested Tests")]
@@ -48,19 +58,30 @@ namespace Wassup.EditorTools
             try
             {
                 if (!File.Exists(RequestPath)) return;
+                // 도메인 상태 가드(IsRunActive 류)는 쓰지 않는다 — IsRunActive 는 이 UTF 버전에
+                // 없고(CS0117), isPlaying 가드는 플레이 진입 리로드의 짧은 창에서 레이스가 실측됐다.
+                // 재진입 방지는 아래 파일 마커 신선도가 단독 담당한다.
                 // 에디터 태스크(에셋 생성 → 임포트/리로드 유발)가 대기 중이면 테스트는 다음 리로드로 —
                 // 테스트 실행 중 에셋 임포트가 끼어드는 충돌 방지.
                 if (RalphEditorTasks.HasPendingTask()) return;
                 var req = JsonUtility.FromJson<Request>(File.ReadAllText(RequestPath));
                 if (req == null || string.IsNullOrEmpty(req.token)) return;
                 string done = File.Exists(TokenPath) ? File.ReadAllText(TokenPath).Trim() : "";
-                // 같은 토큰이라도 최종 결과가 없으면 재시도 — 에셋 임포트발 도메인 리로드가
-                // Execute 직후의 실행을 삼키는 경우가 실제로 있었다(u2-setup 직후). 진행 중이던
-                // 실행도 리로드가 이미 죽였으므로 재실행은 안전하다.
-                if (done == req.token && File.Exists(FinalPath(req.token))) return;
+                if (done == req.token)
+                {
+                    if (File.Exists(FinalPath(req.token))) return;   // 완료
+                    // 재시도 판정은 **파일 마커 신선도**로만 — IsRunActive/isPlaying 은 플레이 진입
+                    // 리로드의 짧은 창에서 전부 거짓이 되는 레이스가 실측됐다(smoke-02/04 이중
+                    // Execute 사멸 + 무한 kill-restart). 콜백이 마커를 계속 갱신하므로 진행 중이면
+                    // 항상 신선하고, 죽은 런만 10분 뒤 재시도된다.
+                    if (File.Exists(MarkerPath(req.token))
+                        && (DateTime.UtcNow - File.GetLastWriteTimeUtc(MarkerPath(req.token))).TotalSeconds < 600)
+                        return;
+                }
 
                 Directory.CreateDirectory(Dir);
                 File.WriteAllText(TokenPath, req.token);   // 실행 전에 sentinel — 리로드 재진입 방지
+                File.WriteAllText(MarkerPath(req.token), DateTime.UtcNow.ToString("o"));
                 File.WriteAllText(TmpPath(req.token), $"RUNSTART|{DateTime.Now:HH:mm:ss}|{req.mode}\n");
 
                 var filter = new Filter
@@ -85,11 +106,19 @@ namespace Wassup.EditorTools
 
         internal static string TmpPath(string token) => $"{Dir}/test_result_{token}.tmp";
         internal static string FinalPath(string token) => $"{Dir}/test_result_{token}.txt";
+        internal static string MarkerPath(string token) => $"{Dir}/running_{token}.marker";
+
+        static void TouchMarker()
+        {
+            string token = ActiveToken();
+            if (!string.IsNullOrEmpty(token))
+                File.WriteAllText(MarkerPath(token), DateTime.UtcNow.ToString("o"));
+        }
 
         class ResultWriter : ICallbacks
         {
-            public void RunStarted(ITestAdaptor testsToRun) { }
-            public void TestStarted(ITestAdaptor test) { }
+            public void RunStarted(ITestAdaptor testsToRun) => TouchMarker();
+            public void TestStarted(ITestAdaptor test) => TouchMarker();
 
             public void TestFinished(ITestResultAdaptor result)
             {
@@ -110,6 +139,7 @@ namespace Wassup.EditorTools
                 string final = FinalPath(token);
                 if (File.Exists(final)) File.Delete(final);
                 File.Move(tmp, final);
+                if (File.Exists(MarkerPath(token))) File.Delete(MarkerPath(token));
                 Debug.Log($"[RalphTestRunner] done token={token} → {final}");
             }
         }

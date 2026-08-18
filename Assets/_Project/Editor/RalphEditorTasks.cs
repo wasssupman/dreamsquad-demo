@@ -24,9 +24,18 @@ namespace Wassup.EditorTools
         [Serializable]
         class Request { public string token; public string task; }
 
+        static double _nextPollAt;
+
         static RalphEditorTasks()
         {
             EditorApplication.delayCall += TryRun;
+            // 리로드 없이 요청 파일만 갱신되는 경우 대비 상시 폴링(3초 스로틀, TryRun 은 토큰 멱등).
+            EditorApplication.update += () =>
+            {
+                if (EditorApplication.timeSinceStartup < _nextPollAt) return;
+                _nextPollAt = EditorApplication.timeSinceStartup + 3.0;
+                TryRun();
+            };
         }
 
         [MenuItem("Window/Wassup/Ralph/Run Requested Editor Task")]
