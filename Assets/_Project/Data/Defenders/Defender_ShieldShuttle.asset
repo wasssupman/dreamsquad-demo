@@ -59,6 +59,7 @@ MonoBehaviour:
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
+  - {fileID: 11400000, guid: 527f7e823e20464fb745d8c418a0e4e1, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 6418d1fd7f1c44234af1bd185238dfe6, type: 3}
   aggroCapacity: 2

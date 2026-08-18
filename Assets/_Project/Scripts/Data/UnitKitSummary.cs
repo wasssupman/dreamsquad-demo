@@ -124,6 +124,13 @@ namespace Wassup.Data
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 광역 도발"
                             : "배치 시 광역 도발";
+                    // on-place-shuttle-shotgun unit 0 — 배치 즉시 주변 아군 보호막.
+                    // 「자신 제외」를 문안에 넣지 않는 것은 다른 절들과 같은 규율이다:
+                    // 이 요약은 **무슨 일이 일어나는가**만 말하고 예외는 스펙이 갖는다.
+                    case DcPayloadKind.GrantShield:
+                        return m.payload.tileRange > 0
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 아군에게 보호막"
+                            : "배치 시 주변 아군에게 보호막";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
