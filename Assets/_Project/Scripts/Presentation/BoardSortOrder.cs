@@ -6,9 +6,14 @@ namespace Wassup.Presentation
     public static class BoardSortOrder
     {
         public const int CharacterOffset = 1;
-        // 투사체 VFX: 유닛 order(Compute 최대 ≈ 보드행×10+열, 수백대) 보다 확실히 위,
+        // 투사체 VFX: 유닛 order(Compute 최대 = 보드높이×행간격+폭, 아래 참조) 보다 확실히 위,
         // 데미지 숫자(32000)·UI 아래. 근접 시 적 스프라이트에 가려지지 않게.
-        public const int ProjectileOffset = 1000;
+        // map-diorama-stage unit 3 — 1000→4000: 행 간격이 폭 종속(max(10, w+2))이 되면서
+        // playArea 상한(48×48 ⇒ 최대 ≈ 2448)이 구 대역(1000)을 넘는다. BoardSortOrderTests 가
+        // «Compute 최대 < ProjectileOffset» 를 상한 값으로 고정한다.
+        public const int ProjectileOffset = 4000;
+        // Compute 가 지원하는 playArea 상한(셀). 이를 넘는 스테이지는 대역 재설계가 필요하다.
+        public const int MaxGridSide = 48;
         // tilted-billboard unit 3 — 블롭 그림자: 바닥 타일맵(ground −20 / overlay −10) 위, 캐릭터(양수) 아래.
         public const int ShadowOrder = -5;
         // unit-health-display unit 2 — 적 피격 마이크로바: 캐릭터·투사체(1000) 위, 데미지 숫자(32000) 아래.
@@ -68,8 +73,13 @@ namespace Wassup.Presentation
         // 프리팹 내부의 상대 순서(0~2)는 이 값에 **더해서** 보존하므로 −3~−1 을 쓴다.
         public const int UnitAttackAoeOrder = -3;
 
+        // map-diorama-stage unit 3 — 행 간격을 상수 10 에서 폭 종속으로. 간격 < 폭이면 뒷줄
+        // 오른쪽 유닛이 앞줄 왼쪽 유닛을 덮는다(폭 13~30 맵에서 실측된 기존 결함). +2 여유는
+        // CharacterOffset(+1) 류의 행내 오프셋이 다음 행과 겹치지 않게 하는 완충.
+        public static int RowStride(int2 gridSize) => math.max(10, gridSize.x + 2);
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
-            => (gridSize.y - cellY) * 10 + cellX + offset;
+            => (gridSize.y - cellY) * RowStride(gridSize) + cellX + offset;
 
         public static int ComputeFromWorld(int2 gridSize, Vector3 world, float tileSize, int offset = 0)
         {

@@ -3528,7 +3528,6 @@ GameObject:
   - component: {fileID: 1627119920}
   - component: {fileID: 1627119922}
   - component: {fileID: 1627119921}
-  - component: {fileID: 1627119923}
   m_Layer: 0
   m_Name: PropsTilemap
   m_TagString: Untagged
@@ -3645,41 +3644,6 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
---- !u!114 &1627119923
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627119919}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 459f0fa86604f4ea2b0f9413be7a0272, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.TilemapPropScatter
-  groundTilemap: {fileID: 1520756905}
-  propsTilemap: {fileID: 1627119922}
-  decoGroundTile: {fileID: 11400000, guid: c8c3e25b24f1d451dbcc18d6d753abd3, type: 2}
-  propTiles:
-  - {fileID: 11400000, guid: b8e814086d3a840d68429e364630a717, type: 2}
-  - {fileID: 11400000, guid: 6cea08e6a8dc844fea60f464b21cad0d, type: 2}
-  - {fileID: 11400000, guid: 633e5de12b2354085a7795f2867669ab, type: 2}
-  - {fileID: 11400000, guid: 1450f5fb2a8054e0d865d252f4c0eec4, type: 2}
-  - {fileID: 11400000, guid: 4f954d50655794c15897f9265151504d, type: 2}
-  - {fileID: 11400000, guid: 0d93784617ff84e48957936e6819e2f5, type: 2}
-  - {fileID: 11400000, guid: 3dd9ed930f56b4a26abfdfb4b61e03ac, type: 2}
-  - {fileID: 11400000, guid: a17d3d317d6344cae97f7a67cf31284e, type: 2}
-  weights:
-  - 0.24
-  - 0.04
-  - 0.08
-  - 0.1
-  - 0.2
-  - 0.11
-  - 0.11
-  - 0.12
-  density: 0.45
-  seedSalt: 12345
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0

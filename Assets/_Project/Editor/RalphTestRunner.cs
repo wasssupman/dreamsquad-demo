@@ -64,6 +64,10 @@ namespace Wassup.EditorTools
                 // 에디터 태스크(에셋 생성 → 임포트/리로드 유발)가 대기 중이면 테스트는 다음 리로드로 —
                 // 테스트 실행 중 에셋 임포트가 끼어드는 충돌 방지.
                 if (RalphEditorTasks.HasPendingTask()) return;
+                // 요청 처리 전 리프레시 — update-폴링 경로는 에셋 임포트를 유발하지 않아 편집/삭제가
+                // 어셈블리에 반영되지 않은 채 옛 테스트가 돌았다(u3 실사고). 변경 없으면 no-op.
+                AssetDatabase.Refresh();
+                if (EditorApplication.isCompiling) return;   // 컴파일 시작됐으면 리로드 후 새 코드로 재진입
                 var req = JsonUtility.FromJson<Request>(File.ReadAllText(RequestPath));
                 if (req == null || string.IsNullOrEmpty(req.token)) return;
                 string done = File.Exists(TokenPath) ? File.ReadAllText(TokenPath).Trim() : "";

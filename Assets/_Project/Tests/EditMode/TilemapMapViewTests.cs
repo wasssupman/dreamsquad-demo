@@ -122,11 +122,13 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // --- Clear → Initialize 재진입에 잔상/누수 없음 ---
+        // --- map-diorama-stage unit 3: 바닥 페인팅 은퇴 pin + Clear 재진입 무잔상 ---
 
         [Test]
-        public void ClearThenInitialize_Twice_LeavesNoStaleTiles()
+        public void Initialize_PaintsNoGroundTiles_RetirementPinned()
         {
+            // 바닥 비주얼은 스테이지 프리팹 소유 — Initialize 가 ground 에 무엇이든 칠하면
+            // 은퇴한 PaintGround 가 되살아난 회귀다 (디오라마 바닥과 z-fight).
             var view = CreateView(out var ground, Vector3.zero);
             var tileSet = ScriptableObject.CreateInstance<TileSetData>();
             var tile = ScriptableObject.CreateInstance<Tile>();
@@ -135,25 +137,55 @@ namespace Wassup.Tests.EditMode
             tileSet.envTile = tile;
             tileSet.decoTile = tile;
 
-            var map = BuildMap(4, 4); // 전 셀 Walk(0) → walkTile 페인트
+            var map = BuildMap(4, 4);
             try
             {
                 view.Initialize(map, 1f, tileSet);
-                Assert.AreEqual(16, CountPaintedCells(ground, 4, 4), "첫 페인트 후 16셀");
+                Assert.AreEqual(0, CountPaintedCells(ground, 4, 4), "바닥 페인팅은 은퇴했다 — 0셀");
 
                 view.Clear();
-                Assert.AreEqual(0, CountPaintedCells(ground, 4, 4), "Clear 후 잔상 0");
-
-                view.Initialize(map, 1f, tileSet);
-                Assert.AreEqual(16, CountPaintedCells(ground, 4, 4), "재진입 페인트 후 16셀");
-
-                view.Clear();
-                Assert.AreEqual(0, CountPaintedCells(ground, 4, 4), "재진입 Clear 후 잔상 0");
+                view.Initialize(map, 1f, tileSet);   // 재진입 무예외 + 여전히 0
+                Assert.AreEqual(0, CountPaintedCells(ground, 4, 4), "재진입 후에도 0셀");
             }
             finally
             {
                 map.Dispose();
                 Object.DestroyImmediate(tile);
+                Object.DestroyImmediate(tileSet);
+            }
+        }
+
+        // --- map-diorama-stage unit 2/3 (critic C-1·M-3): 격자 정렬의 유일 writer 가드 ---
+
+        [Test]
+        public void AlignGridTo_PlacesCellZeroMinCorner_AtGivenWorldPosition()
+        {
+            var view = CreateView(out var ground, new Vector3(5f, 1f, -2f));
+            var tileSet = ScriptableObject.CreateInstance<TileSetData>();
+            var map = BuildMap(5, 4);
+            try
+            {
+                view.Initialize(map, 1f, tileSet);
+                // 스테이지 gridOriginLocal(월드) 상당의 임의 비0 좌표 — 정렬 후 셀 (0,0) 최소
+                // 모서리가 정확히 그 자리여야 한다 (C-1: 프랍-논리 정렬의 자동 회귀망).
+                var target = new Vector3(3f, 0.02f, -2f);
+                view.AlignGridTo(target);
+
+                Vector3 cellZeroCorner = ground.CellToWorld(new Vector3Int(0, 0, 0));
+                Assert.Less(Vector3.Distance(cellZeroCorner, target), 1e-4f,
+                    $"cell(0,0) corner {cellZeroCorner} != align target {target}");
+
+                // BoardSpace 정합도 정렬을 따라온다. sim 은 **정수 = 셀 중심** 계약이라
+                // 셀 (0,0)의 sim 중심은 (0,0) — GridMath 헬퍼로 규약을 코드에서 가져온다.
+                BoardSpace.Configure(new float3(0f, 0f, 0f), 1f, view.Grid);
+                float3 simCenter = GridMath.CellToWorldCenter(new int2(0, 0), 1f, 0f, float3.zero);
+                float3 viewCenter = BoardSpace.ToView(simCenter);
+                Vector3 tileCenter = ground.GetCellCenterWorld(new Vector3Int(0, 0, 0));
+                Assert.Less(math.distance((float3)tileCenter, viewCenter), 1e-3f);
+            }
+            finally
+            {
+                map.Dispose();
                 Object.DestroyImmediate(tileSet);
             }
         }
