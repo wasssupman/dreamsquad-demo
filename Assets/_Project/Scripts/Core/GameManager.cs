@@ -41,6 +41,12 @@ namespace Wassup.Core
         // squad-loadout Unit 3 — squad carry-in source (drives the squad branch
         // in Start; null/empty → existing draft path).
         [SerializeField] private PlayerProfileSO profileSO;
+        // first-run-tutorial — 온보딩이 도는 판의 저작 웨이브(쉬운 웨이브 + 60초 제한).
+        // 플랜 한 장이 웨이브와 제한시간을 **둘 다** 정한다(_usingAuthoredPlan 이면 브리지가
+        // deck.timerDurationSec 대신 plan.timerDurationSec 을 쓴다) — 그래서 덱도 맵도
+        // 복사하지 않는다. 다만 플랜이 쓰는 적은 **덱 풀 안**이어야 한다: NavGrid 통행 층이
+        // ActiveDeck.ResolveAttackUnitPool 기준으로 구워져, 풀 밖 적은 길찾기가 깨진다.
+        [SerializeField] private WavePlanAsset firstRunTutorialWavePlan;
         [SerializeField] private DefenderCatalog catalog;
         // dreamstone-loadout Unit 3 — resolves SquadPreset.stoneIds to assets for carry-in.
         [SerializeField] private DreamstoneCatalog stoneCatalog;
@@ -366,6 +372,17 @@ namespace Wassup.Core
                     draftController.BeginDraft();
                 }
                 return;
+            }
+            // first-run-tutorial — 온보딩 판은 저작 웨이브로 돈다. 정상 스쿼드 반입은 그대로고
+            // 웨이브만 갈아끼운다(테스트 모드와 달리 디펜더 프리셋을 쓰지 않는다).
+            // 이 판은 토너먼트에 올라가지 않는다 — OutgameMenuController.OnStartGame 이 참가
+            // 신청 자체를 생략한다. 둘이 같은 술어(ShouldRun)를 읽어야 «쉬운 판이 제출되는»
+            // 어긋남이 안 생긴다.
+            if (firstRunTutorialWavePlan != null && profileSO != null && profileSO.IsLoadedThisSession
+                && FirstRunTutorialConfig.ShouldRun(profileSO.profile))
+            {
+                battleBridge.SetAuthoredWavePlan(firstRunTutorialWavePlan);
+                Debug.Log($"[GameManager] 온보딩 판 — 저작 웨이브 '{firstRunTutorialWavePlan.displayName}' 적용.");
             }
             battleBridge.SetDefenderPool(units.ToArray());
             LogSquadCarryIn(squad, units);

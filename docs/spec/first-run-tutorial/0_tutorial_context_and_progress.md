@@ -30,9 +30,8 @@
 
 **`matchesPlayed` 를 읽지 않는다** (계약 2).
 
-**완료 기록 시점은 B4 정상 종료뿐이다.** 로비 스텝만 보고 끄지 않고, **B3·B4 가 스킵/
-타임아웃으로 끝난 판도 기록하지 않는다**(계약 11). 판을 중간에 나간 사람도 다음 판에서
-처음부터 다시 본다.
+**완료 기록 시점은 B4 정상 종료뿐이다.** 로비 스텝만 보고 끄지 않고, **선행조건이 없어
+건너뛴 판도 기록하지 않는다**(계약 11). 판을 중간에 나간 사람도 다음 판에서 처음부터 다시 본다.
 
 **타이밍 SO.**
 
@@ -41,13 +40,14 @@
 | `briefingHoldSeconds` | 1.2 | 맵 설명에서 한 면(가능/불가)을 보여주는 시간 |
 | `briefingCycles` | 2 | 가능 ↔ 불가 왕복 횟수 |
 | `goalMessageSeconds` | 2.5 | "게임목표" 문구 노출 |
+| `riversideTiles` | 1 | 3.1b 를 끝내는 기준 — 적이 강(`Env` 타일)에서 이 반경 안까지 왔을 때. **시간이 아니라 사건** |
 | `battleFreezeAtSeconds` | 4 | 전투 시작 후 첫 정지까지. **적이 화면에 들어와 있어야 의미가 생기므로 실측 튜닝 대상** |
 | `onPlaceWatchSeconds` | 2 | 배치 후 정지를 풀어 배치 스킬을 보여주는 시간 |
 | `resumeBeforeAttachSeconds` | 5 | B3 종료 후 다시 정지할 때까지 |
 | `attachSettleSeconds` | 2 | 부착 연출 후 마무리 문구까지 |
-| `stepTimeoutSeconds` | 20 | 스텝이 응답을 못 받았을 때 흘려보내는 상한(계약 11) |
 
-`targetCell` 은 두지 않는다 — B3 는 지정 칸을 강제하지 않는다(unit 5).
+`targetCell` 도 `stepTimeoutSeconds` 도 두지 않는다 — B3 는 지정 칸을 강제하지 않고(unit 5),
+스텝은 타임아웃 없이 기다린다(계약 11). 남는 상한은 `introHoldMaxSeconds` 하나다.
 
 **배선**: 컨트롤러의 `[SerializeField]` 하나면 된다. `GameManager` 에 노출할 이유가 없다
 (`TutorialGuidanceView.style` 과 같은 형태).

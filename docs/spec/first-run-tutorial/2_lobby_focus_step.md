@@ -28,9 +28,24 @@ guidance.FocusUi(startButtonRect)
 
 `IntroText = "누가 더 많은 악몽을 제거 하는지 시작해 보시죠"` (원문 그대로).
 
-**호출 지점이 계약의 일부다.** 옛 컨트롤러와 같은 두 곳에서 부른다 —
-`Awake` 말미(프로필 로드 이후)와 `ApplyAuthGate`(로그인 직후). 로그인 전에는
-띄우지 않는다. 판정은 unit 0 의 `ShouldRun × IsLoadedThisSession`.
+**호출 지점이 계약의 일부다.** 두 곳에서 부른다 — **`Start`**(프로필 로드 이후)와
+`ApplyAuthGate`(로그인 직후). 로그인 전에는 띄우지 않는다. 판정은 unit 0 의
+`ShouldRun × IsLoadedThisSession`.
+
+### ⚠ `Awake` 에서 띄우면 안 된다 (옛 컨트롤러의 관용구를 버린 자리)
+
+`TutorialGuidanceView.Awake` 는 `BuildCanvas(); Hide();` 를 부른다. `Awake` 안에서 안내를
+띄우면 **그 뷰의 `Awake` 가 아직 안 돈 경우 방금 띄운 문구와 포커스 링을 그 `Hide()` 가
+지운다.** 딤과 구멍은 다른 컴포넌트(`OutgameTutorialOverlay`)라 남으므로 화면은
+«버튼만 포커스되고 텍스트만 없는» 모양이 된다. 셋 중 아무도 `[DefaultExecutionOrder]` 를
+갖지 않아 `Awake` 순서 보장이 없다.
+
+**간헐적으로 보였던 이유**: 로그인 화면을 거치는 «차가운 시작» 은 `onSignedIn` 콜백에서
+띄워 모든 `Awake` 이후라 멀쩡했고, 세션 복구·판 종료 후 로비 복귀 같은 «따뜻한 시작» 만
+`Awake` 안에서 띄워 지워졌다.
+
+`Start` 는 모든 `Awake` 뒤에 돈다. `ApplyAuthGate` 는 `Awake` 첫 줄에서도 불리므로
+`_started` 전에는 넘긴다(곧 `Start` 가 띄운다).
 
 ### ⚠ 로드아웃 게이트와 겹치면 로비가 잠긴다
 

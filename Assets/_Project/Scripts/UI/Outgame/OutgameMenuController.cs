@@ -87,6 +87,26 @@ namespace Wassup.UI
             // restoreLobby=false — 이건 패널 가시성 초기화지 로비 복귀가 아니다. 이 시점의
             // 튜토리얼 통지는 바로 아래 한 줄이 소유한다(여기서 겹쳐 부르지 않는다).
             ClosePanels(false);
+        }
+
+        private bool _started;
+
+        // first-run-tutorial — **Awake 가 아니라 Start 다.**
+        //
+        // TutorialGuidanceView.Awake 는 `BuildCanvas(); Hide();` 를 부른다. Awake 안에서
+        // 안내를 띄우면 그 뷰의 Awake 가 아직 안 돈 경우 방금 띄운 문구와 포커스 링을
+        // Hide() 가 그대로 지운다 — 딤과 구멍은 다른 컴포넌트(OutgameTutorialOverlay)라
+        // 남아서 «버튼만 포커스되고 텍스트만 없는» 화면이 된다. 셋 중 아무도
+        // [DefaultExecutionOrder] 를 갖지 않아 Awake 순서 보장이 없다.
+        //
+        // 간헐적이었던 이유: 로그인 화면을 거치는 «차가운 시작» 은 onSignedIn 콜백에서
+        // 띄워 모든 Awake 이후라 멀쩡했고, 세션 복구·판 종료 후 로비 복귀 같은 «따뜻한
+        // 시작» 만 Awake 안에서 띄워 지워졌다.
+        //
+        // Start 는 모든 Awake 뒤에 돈다 — 이 순서 의존이 통째로 사라진다.
+        private void Start()
+        {
+            _started = true;
             TryShowLobbyTutorial();
         }
 
@@ -147,7 +167,10 @@ namespace Wassup.UI
 
             // first-run-tutorial unit 2 — 로그인 직후가 두 번째 호출 지점이다.
             // 로그아웃으로 로비가 닫히면 딤도 같이 내린다(그 상태에서 START 는 없다).
-            if (signedIn) TryShowLobbyTutorial();
+            //
+            // ⚠ ApplyAuthGate 는 Awake 첫 줄에서도 불린다. 그때 띄우면 위 Start 주석의
+            // 순서 함정에 그대로 걸리므로 _started 전에는 넘긴다 — Start 가 곧 띄운다.
+            if (signedIn) { if (_started) TryShowLobbyTutorial(); }
             else if (lobbyTutorial != null) lobbyTutorial.HideIfShown();
         }
 
@@ -241,9 +264,22 @@ namespace Wassup.UI
             // ⚠ `IsLoadedThisSession` 은 옛 술어(ShouldRunCore)가 갖고 있던 가드다. 빼면
             // 미로드 프로필의 빈 인메모리 인스턴스가 matchesPlayed 0 으로 읽혀 **정상 유저의
             // 판이 토너먼트에서 빠진다**. 우회의 안전한 방향은 «확실할 때만 켠다» 쪽이다.
-            if (profileSO != null && profileSO.IsLoadedThisSession && IsFirstMatch(profileSO.profile))
+            //
+            // first-run-tutorial — **온보딩이 도는 판도 올리지 않는다.** 사유가 위와 다르다:
+            // 그 판은 60초짜리 저작 웨이브(WavePlan_FirstRunTutorial)로 돌아 라이브 3분 판과
+            // 조건이 아예 다르고, 온보딩은 완주할 때까지 반복되므로 **첫 판이 아닌 판에서도**
+            // 돌 수 있다. matchesPlayed == 0 만 보면 그 판들이 그대로 히스토리에 남는다.
+            //
+            // 두 조건을 합치지 않고 나란히 둔다 — 하나는 서버 500 회피(첫 판), 하나는
+            // 「이 판은 정상 경기가 아니다」(튜토리얼)라 한쪽을 끌 때 다른 쪽이 따라 꺼지면 안 된다.
+            bool tutorialMatch = profileSO != null && profileSO.IsLoadedThisSession
+                                 && FirstRunTutorialConfig.ShouldRun(profileSO.profile);
+            if (profileSO != null && profileSO.IsLoadedThisSession
+                && (IsFirstMatch(profileSO.profile) || tutorialMatch))
             {
-                Debug.Log("[OutgameMenuController] 계정 첫 판 — 토너먼트 참가 신청 생략.");
+                Debug.Log(tutorialMatch
+                    ? "[OutgameMenuController] 온보딩 판 — 토너먼트 참가 신청 생략."
+                    : "[OutgameMenuController] 계정 첫 판 — 토너먼트 참가 신청 생략.");
                 SceneTransition.Go(SceneNames.Battle);
                 return;
             }

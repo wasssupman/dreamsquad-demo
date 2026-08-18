@@ -26,6 +26,9 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("전투 시작 후 첫 정지까지(초). **적이 화면에 들어와 있어야 의미가 생기므로 실측 튜닝 대상.**")]
         public float battleFreezeAtSeconds = 4f;
+        [Min(0)]
+        [Tooltip("\"악몽이 배치 영역 안으로 들어오면!\" 을 끝내는 기준 — 적이 강(Env 타일)에서 이 반경 안까지 왔을 때. 시간이 아니라 사건이 기준이다.")]
+        public int riversideTiles = 1;
         [Min(0f)]
         [Tooltip("배치 후 정지를 풀어 배치 스킬이 적을 때리는 것을 보여주는 시간(초).")]
         public float onPlaceWatchSeconds = 2f;
@@ -39,9 +42,10 @@ namespace Wassup.Data
         public float attachSettleSeconds = 2f;
 
         [Header("안전망")]
-        [Min(1f)]
-        [Tooltip("스텝이 응답을 못 받았을 때 흘려보내는 상한(초). 만료된 판은 완료로 기록하지 않는다.")]
-        public float stepTimeoutSeconds = 20f;
+        // 스텝 타임아웃은 두지 않는다(사용자 결정). 안내가 요구한 행동을 할 때까지 기다린다 —
+        // 흘려보낸 판은 어차피 완료로 기록되지 않아 다음 판에 처음부터 다시 뜨기 때문이다.
+        // 아래 홀드 상한은 성격이 다르다: 컨트롤러가 죽어 Release 를 못 부르면 카운트다운이
+        // 3에서 영영 멈추고 전투가 시작조차 못 한다 — 이건 플레이어가 풀 수 없는 상태다.
         [Min(1f)]
         [Tooltip("카운트다운 홀드 상한(초). 컨트롤러가 죽어 Release 를 못 불러도 스스로 풀린다.")]
         public float introHoldMaxSeconds = 30f;

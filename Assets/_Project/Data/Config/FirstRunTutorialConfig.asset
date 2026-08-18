@@ -16,8 +16,8 @@ MonoBehaviour:
   briefingCycles: 2
   goalMessageSeconds: 2.5
   battleFreezeAtSeconds: 4
+  riversideTiles: 1
   onPlaceWatchSeconds: 2
   resumeBeforeAttachSeconds: 5
   attachSettleSeconds: 2
-  stepTimeoutSeconds: 20
   introHoldMaxSeconds: 30

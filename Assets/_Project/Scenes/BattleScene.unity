@@ -3078,6 +3078,7 @@ MonoBehaviour:
   battleConfig: {fileID: 11400000, guid: f918b11de1877d74f8cc5dd41ed85b4c, type: 2}
   skillLoadout: {fileID: 1495062453}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  firstRunTutorialWavePlan: {fileID: 11400000, guid: 901b886ae0d514c26ab2199a27d7e250, type: 2}
   catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   stoneCatalog: {fileID: 11400000, guid: c8bc438b0fcdd46d099efeb04b7e8bac, type: 2}
   debugFixedMatchSeed: 0

@@ -5191,29 +5191,37 @@ namespace Wassup.Bridge
         // **조준이 최근접보다 세다.** 조준은 방향만 정하고, 사건 성립(후보 존재)은 호출처가
         // 이미 판정했다. 그래서 조준 방향에 아무도 없어도 발사는 일어나고 명중이 0일 수 있다 —
         // 어디를 쏠지는 플레이어 몫이라는 뜻이다. 후보가 비어 있지 않은 것은 호출처 계약이다.
+        //
+        // on-place-shuttle-shotgun unit 1 — 판정 자체는 **순수 함수 `OnPlaceFireAim` 가 소유**한다.
+        // 규칙 경로(배치 스킬의 방향 발사)가 두 번째 소비자가 되면서 뽑았다 — 두 벌로 두면 한쪽만
+        // 고쳐지는 날이 온다. 여기 남는 것은 «엔티티에서 값을 꺼내는 일» 과 **레거시 폴백** 뿐이다.
         private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
         {
-            if (placedEntity != Entity.Null && _em.Exists(placedEntity)
-                && _em.HasComponent<DeployedFacing>(placedEntity))
+            bool hasAim = placedEntity != Entity.Null && _em.Exists(placedEntity)
+                          && _em.HasComponent<DeployedFacing>(placedEntity);
+            float2 aim = float2.zero;
+            if (hasAim)
             {
                 var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
-                var aim = new float2(facing.x, facing.y);
-                if (math.lengthsq(aim) > 0.001f) return math.normalize(aim);
+                aim = new float2(facing.x, facing.y);
             }
 
-            // 후보가 전부 중심에 겹친 극단에서도 비영 방향을 돌려준다(퇴화 방지).
-            float2 forward = new float2(0f, 1f);
-            float bestDistSq = float.MaxValue;
+            var candidates = new Unity.Collections.NativeArray<float2>(
+                _forwardBurstScratch.Count, Unity.Collections.Allocator.Temp);
             for (int i = 0; i < _forwardBurstScratch.Count; i++)
             {
                 var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
-                var to = new float2(pos.x - center.x, pos.z - center.z);
-                float d2 = math.lengthsq(to);
-                if (d2 < 0.001f || d2 >= bestDistSq) continue;
-                bestDistSq = d2;
-                forward = math.normalize(to);
+                candidates[i] = new float2(pos.x, pos.z);
             }
-            return forward;
+            bool ok = Wassup.Battle.Combat.Projectile.Emission.OnPlaceFireAim.TryResolve(
+                new float2(center.x, center.z), hasAim, aim, candidates, out float2 dir, out _);
+            candidates.Dispose();
+
+            // ⚠ **레거시 폴백 유지가 무회귀의 조건이다.** 순수 함수는 "쏠 방향이 없다"에 false 를
+            // 주지만, 이 경로는 후보가 전부 중심에 겹친 극단에서도 **발사했다**(호출처가 후보
+            // 존재를 이미 판정했으므로 여기서 취소하면 규칙이 바뀐다). 규칙 경로는 반대로
+            // 취소한다 — 그 갈림은 호출처의 계약이지 판정 함수의 계약이 아니다.
+            return ok ? dir : new float2(0f, 1f);
         }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
@@ -6515,6 +6523,74 @@ namespace Wassup.Bridge
         private bool _blockedHlShown;
         private DefenderUnitData _blockedHlUnit;
         private readonly List<Vector2Int> _blockedHlScratch = new List<Vector2Int>();
+
+        // first-run-tutorial unit 5 — «악몽이 강가까지 왔는가».
+        //
+        // 배치 영역 진입(AnyEnemyInPlacementArea)은 기준으로 너무 이르다 — Duel 은 배치 영역이
+        // x≤14 로 넓어서 적이 스폰 직후 곧바로 걸린다. 강(Env 타일)은 맵 한가운데를 가르는
+        // 눈에 보이는 경계라, «저기까지 왔다» 가 화면에서 읽힌다.
+        //
+        // 열 좌표를 박지 않는다 — Env 타일 자체를 기준으로 삼으므로 강이 어디에 어떤 모양으로
+        // 나 있든 같은 규칙이 선다(Duel 은 x=10 열에 건널목 4칸이 뚫려 있다).
+        public bool MapHasEnvTiles
+        {
+            get
+            {
+                if (!_generatedMap.IsCreated) return false;
+                for (int y = 0; y < _generatedMap.gridSize.y; y++)
+                for (int x = 0; x < _generatedMap.gridSize.x; x++)
+                    if (_generatedMap.TileAt(new int2(x, y)) == MapTileType.Env) return true;
+                return false;
+            }
+        }
+
+        public bool AnyEnemyNearEnvTile(int radiusTiles)
+        {
+            if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
+            int r = Mathf.Max(0, radiusTiles);
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    var cell = GridMath.WorldToCell(pos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+                    for (int dy = -r; dy <= r; dy++)
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        int nx = cell.x + dx, ny = cell.y + dy;
+                        if (nx < 0 || nx >= _generatedMap.gridSize.x || ny < 0 || ny >= _generatedMap.gridSize.y) continue;
+                        if (_generatedMap.TileAt(new int2(nx, ny)) == MapTileType.Env) return true;
+                    }
+                }
+            }
+            finally { entities.Dispose(); }
+            return false;
+        }
+
+        public bool AnyEnemyInPlacementArea(DefenderUnitData unit)
+        {
+            if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
+            var layers = unit != null ? unit.EffectivePlacementLayers : PlacementLayer.Ground;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    var cell = GridMath.WorldToCell(pos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+                    if (cell.x < 0 || cell.x >= _generatedMap.gridSize.x
+                        || cell.y < 0 || cell.y >= _generatedMap.gridSize.y) continue;
+                    if (_generatedMap.PlaceableAt(cell, layers)) return true;
+                }
+            }
+            finally { entities.Dispose(); }
+            return false;
+        }
 
         public void ShowBlockedHighlight(DefenderUnitData unit)
         {

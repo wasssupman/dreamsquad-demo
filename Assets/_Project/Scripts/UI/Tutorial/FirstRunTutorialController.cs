@@ -20,6 +20,7 @@ namespace Wassup.UI.Tutorial
         private const string BlockedText = "배치 불가 영역";
         private const string GoalText = "게임목표: 최대한 많은 악몽 처치";
         private const string PickText = "유닛을 터치 해보세요";
+        private const string EnemyApproachText = "악몽이 배치 영역 안으로 들어오면!";
         private const string PlaceText = "적들의 머리위에 캐논을 배치 해보세요!";
         private const string OnPlaceText = "강력한 배치스킬들을 활용하여 전황을 유리하게 이끌어 보세요";
         private const string ReselectText = "다시 캐논 유닛을 선택 해보세요";
@@ -195,7 +196,41 @@ namespace Wassup.UI.Tutorial
                 drag.PlacementCommitted += OnPlaced;
             }
             Focus(slotRect, PickText);
-            yield return WaitFor(() => _armed || _placed, config.stepTimeoutSeconds);
+            yield return WaitFor(() => _armed || _placed);
+
+            // 3.1b 악몽이 배치 영역 안으로 들어올 때까지 기다린다.
+            //
+            // ⚠ 이 대기가 없으면 «적들의 머리위에 배치해보세요» 가 적이 아직 배치 영역 밖에
+            // 있을 때 뜬다 — 문장과 화면이 어긋나고, 그렇게 놓은 배치 스킬은 아무도 못 때려서
+            // 바로 다음 문구인 «전황을 유리하게» 가 통째로 희석된다(실제 Play 에서 그랬다).
+            //
+            // Duel 기준 적 구조물은 x=16·18 이고 배치 영역은 x≤14 라, 적은 **배치 불가 구역에서
+            // 나와 배치 영역으로 걸어 들어온다** — 기다릴 만한 사건이 실제로 존재한다.
+            //
+            // 입력은 막은 채(딤 유지, 구멍 없음) **시간만 흘린다** — 정지 상태로 기다리면
+            // 적이 영원히 안 온다. 배치 영역 하이라이트를 켜둬서 문구의 «배치 영역» 이
+            // 화면에서 실제로 보이게 한다.
+            //
+            // ⚠ 기준은 **시간이 아니라 사건**이다. 배치 영역 진입으로 잡으면 너무 일러
+            // (Duel 은 배치 영역이 x≤14 로 넓어 적이 스폰 직후 걸린다) 문구가 0초 노출되고
+            // «그냥 지나간» 것처럼 보인다. 강(Env 타일)은 맵 한가운데를 가르는 눈에 보이는
+            // 경계라 «저기까지 왔다» 가 화면에서 읽힌다.
+            //
+            // 강이 없는 맵을 위한 폴백은 배치 영역 진입이다 — 없으면 조건이 영영 안 서고,
+            // 타임아웃이 없으므로(계약 11) 그대로 멈춘다.
+            if (!_placed && bridge != null)
+            {
+                bool useRiver = bridge.MapHasEnvTiles;
+                ShowPlaceable();
+                guidance.ClearFocus();
+                DimOnly();
+                Unfreeze();
+                guidance.ShowMessage(EnemyApproachText, false);
+                yield return WaitFor(() => _placed || (useRiver
+                    ? bridge.AnyEnemyNearEnvTile(config.riversideTiles)
+                    : bridge.AnyEnemyInPlacementArea(tutorialUnit)));
+                Freeze();
+            }
 
             // 3.2 배치 — 어느 칸에 놓든 통과시킨다.
             // 딤+구멍으로는 드롭 칸을 제한할 수 없다(트레이→보드 드래그는 이미 시작된 UGUI
@@ -204,9 +239,19 @@ namespace Wassup.UI.Tutorial
             {
                 ShowPlaceable();
                 guidance.ClearFocus();
-                overlay.SetHoles(null);   // 보드 전체를 연다 — 구멍으로 칸을 못 막으므로 막는 척하지 않는다
+                // ⚠ **이 구간만 딤을 내린다.** 배치는 보드 입력을 요구하는데 딤은 보드 탭을
+                // 막는다(슬롯을 탭해 arm 한 뒤 보드를 탭하는 경로가 그대로 죽는다).
+                //
+                // `SetHoles(null)` 로 열 수 없다 — 그건 «구멍 없는 풀 dim» 이다(도구의 문서
+                // 주석 그대로). 보드는 UGUI 가 아니라 감쌀 RectTransform 이 없고, 애초에
+                // 구멍으로는 드롭 «칸» 을 제한할 수도 없다(트레이→보드 드래그는 이미 시작된
+                // UGUI 드래그라 딤을 통과하고 드롭 셀은 보드 레이캐스트가 정한다).
+                //
+                // 대가: 이 짧은 구간에 플레이어가 손패를 열어 각성을 쓸 수 있다. 배치하는
+                // 즉시 끝나는 구간이라 받아들인다 — 막으면 배치 자체가 불가능해진다.
+                overlay.Hide();
                 guidance.ShowMessage(PlaceText, false);
-                yield return WaitFor(() => _placed, config.stepTimeoutSeconds);
+                yield return WaitFor(() => _placed);
             }
             ClearHighlights();
             if (drag != null)
@@ -215,7 +260,6 @@ namespace Wassup.UI.Tutorial
                 drag.UserDragStarted -= OnDragStarted;
                 drag.PlacementCommitted -= OnPlaced;
             }
-            if (!_placed) yield break;   // 타임아웃 — 완료로 치지 않는다(계약 11)
 
             // 3.3 배치 스킬 관람 — **정지를 푼다**(딤은 유지). 멈춘 채 문구만 띄우면
             // "전황을 유리하게"가 말뿐이 된다. 발동 자체는 기존 경로가 한다.
@@ -232,24 +276,33 @@ namespace Wassup.UI.Tutorial
 
         private IEnumerator RunAttach()
         {
-            // 재개 구간. 딤은 유지한다 — 이 창을 열면 플레이어가 각성 카드를 먼저 써버릴 수
-            // 있고, 게이지 여유는 정확히 0(시작 20 / 부착 비용 20)이라 그 즉시 아래가 사라진다.
+            // 재개 구간은 **진짜 플레이**다 — 딤을 내린다.
+            //
+            // ⚠ 여기에 딤을 켜두면 B4 가 구조적으로 실패한다. Duel 은 배치 가능 칸이 곧 적이
+            // 걷는 길이라, 방금 놓은 캐논 한 기가 5초를 혼자 버티지 못하고 죽는다. 그런데
+            // 플레이어는 딤에 묶여 유닛을 더 놓지도 못하고 그걸 구경만 하게 된다 — 그리고
+            // 부착할 대상이 없어 튜토리얼이 조용히 닫힌다(실제로 그렇게 물렸다).
+            //
+            // 대가로 이 창에 각성을 먼저 쓸 수 있지만(게이지 여유가 정확히 0), 안내가 손패를
+            // 가리키지 않는 구간이라 위험이 낮고, 무엇보다 대상이 죽는 쪽이 확실한 실패다.
             guidance.Hide();
-            DimOnly();
+            overlay.Hide();
             Unfreeze();
             yield return WaitUnscaled(config.resumeBeforeAttachSeconds);
 
+            // 부착할 유닛이 살아 있을 때까지 기다린다(딤은 계속 내려둔 채 — 플레이어가 더 놓을
+            // 수 있어야 한다). 즉시 포기하면 캐논이 죽은 판은 전부 B4 를 못 본다.
+            yield return WaitFor(() => TryResolveHost(out _, out _));
+            if (!TryResolveHost(out _hostEntity, out var hostUnit)) yield break;
+
             Freeze();
 
-            // 4.1 보드의 캐논 선택. 대상이 죽었으면 살아 있는 배치 유닛으로 바꾸고
-            // **문구도 그 유닛 이름으로 바꾼다** — 캐논이라 말하며 딴 유닛을 가리키지 않는다.
-            string reselectText = ReselectText;
-            if (bridge == null || !bridge.TryGetDeployedEntity(tutorialUnit, out _hostEntity) || _hostEntity == Entity.Null)
-            {
-                if (bridge == null || !TryGetAnyDeployed(out _hostEntity, out var fallbackUnit)) yield break;
-                reselectText = string.Format(ReselectFallbackFormat,
-                    fallbackUnit != null ? fallbackUnit.displayName : "배치한");
-            }
+            // 4.1 보드의 캐논 선택. 대상이 캐논이 아니면 **문구도 그 유닛 이름으로 바꾼다** —
+            // 캐논이라 말하며 딴 유닛을 가리키지 않는다.
+            string reselectText = hostUnit == tutorialUnit
+                ? ReselectText
+                : string.Format(ReselectFallbackFormat,
+                    hostUnit != null ? hostUnit.displayName : "배치한");
             if (!TryMakeWorldProxy(_hostEntity, out var hostRect)) yield break;
 
             _selectionSet = false;
@@ -259,28 +312,40 @@ namespace Wassup.UI.Tutorial
             if (!alreadySelected)
             {
                 Focus(hostRect, reselectText);
-                yield return WaitFor(() => _selectionSet, config.stepTimeoutSeconds);
+                yield return WaitFor(() => _selectionSet);
             }
             if (handView != null) handView.SelectionTargetSet -= OnSelectionSet;
-            if (!_selectionSet && !alreadySelected) yield break;
 
             // 4.2 카드 선택 — 지금 부착 가능한 Unit 카드에만 구멍을 뚫는다.
             // 액티브 카드는 즉발 탭이 거절되고(끌어서 사용) 커밋 경로가 AttachmentsChanged 를
             // 발화하지 않아, 열어두면 각성을 쓰고도 안내가 안 넘어간다.
-            var holes = CollectAttachableCardRects(out int openCount);
-            if (openCount == 0) yield break;
+            //
+            // ⚠ **구멍을 한 번만 잡으면 안 된다.** 선택 직후엔 손패가 아직 딜인 중이라 카드가
+            // 비활성이고, SetHoles 는 비활성 대상을 버린 뒤 다시 담지 않는다(오버레이 LateUpdate
+            // 는 코너 «변화» 만 추적한다) → 구멍 0개 = 풀 dim 이라 카드를 못 누른다. 실제로
+            // 그렇게 물렸다. 그래서 **부착이 성사될 때까지 매 프레임 구성을 보고 바뀌면 다시
+            // 잡는다** — 딜인이 늦게 끝난 카드도 그때 열린다.
+            yield return WaitFor(() => AttachableCardCount() > 0);
+            if (AttachableCardCount() == 0) yield break;
             _attachBaseline = handController != null ? handController.AttachCountOf(_hostEntity) : -1;
             if (handController != null) handController.AttachmentsChanged += OnAttachmentsChanged;
             guidance.ClearFocus();
-            overlay.SetHoles(holes);
-            guidance.ShowMessage(openCount == 4 ? CardText : CardFallbackText, false);
-            yield return WaitFor(() => _attachBaseline >= 0 && handController != null
-                                       && handController.AttachCountOf(_hostEntity) > _attachBaseline,
-                                 config.stepTimeoutSeconds);
+
+            int shownCount = -1;
+            while (!(handController != null && _attachBaseline >= 0
+                     && handController.AttachCountOf(_hostEntity) > _attachBaseline))
+            {
+                int now = AttachableCardCount();
+                if (now != shownCount)
+                {
+                    shownCount = now;
+                    overlay.SetHoles(CollectAttachableCardRects(out _));
+                    // 문구는 «몇 장» 이 바뀔 때만 갱신한다 — 매번 부르면 말풍선이 다시 뜬다.
+                    guidance.ShowMessage(now == 4 ? CardText : CardFallbackText, false);
+                }
+                yield return null;
+            }
             if (handController != null) handController.AttachmentsChanged -= OnAttachmentsChanged;
-            bool attached = handController != null && _attachBaseline >= 0
-                            && handController.AttachCountOf(_hostEntity) > _attachBaseline;
-            if (!attached) yield break;
 
             // 4.3 마무리 — 문구만(구멍 없음)
             guidance.ClearFocus();
@@ -370,6 +435,21 @@ namespace Wassup.UI.Tutorial
         // AttachmentsChanged 는 회수로도 울린다 — 여기서는 신호만 받고 판정은 등록부 카운트로 한다.
         private void OnAttachmentsChanged() { }
 
+        // 부착 호스트 해결: 온보딩이 가리키던 유닛 우선, 없으면 살아 있는 배치 유닛 아무나.
+        // TryGetDeployedEntity 는 _em.Exists 로 생존까지 본다 — 죽은 유닛은 여기서 걸러진다.
+        private bool TryResolveHost(out Entity entity, out DefenderUnitData unit)
+        {
+            entity = Entity.Null;
+            unit = null;
+            if (bridge == null) return false;
+            if (bridge.TryGetDeployedEntity(tutorialUnit, out entity) && entity != Entity.Null)
+            {
+                unit = tutorialUnit;
+                return true;
+            }
+            return TryGetAnyDeployed(out entity, out unit);
+        }
+
         private bool TryGetAnyDeployed(out Entity entity, out DefenderUnitData unit)
         {
             entity = Entity.Null;
@@ -415,6 +495,29 @@ namespace Wassup.UI.Tutorial
             _worldProxy = null;
         }
 
+        // «지금 구멍을 뚫을 수 있는 카드» 의 단일 술어. 세는 곳과 모으는 곳이 갈리면
+        // 「n장 있다고 세어놓고 0개를 넘기는」 상태가 생긴다 — 실제로 그렇게 물렸다.
+        //
+        // ⚠ activeInHierarchy 를 여기서 본다. SetHoles 는 비활성 대상을 **버리고**, 버린 것은
+        // 다시 담기지 않는다(오버레이의 LateUpdate 는 코너 «변화» 만 추적한다). 손패 딜인이
+        // 끝나기 전에 넘기면 구멍 0개 = 풀 dim 이 되어 카드를 못 누른다.
+        private bool IsAttachableSlot(DreamcatcherHandView.CardSlot slot)
+        {
+            if (slot == null || slot.rect == null || slot.card == null) return false;
+            if (!slot.rect.gameObject.activeInHierarchy) return false;
+            if (slot.card.type == CardType.Active) return false;   // 즉발 탭 거절 + AttachmentsChanged 미발화
+            return slot.Playable;
+        }
+
+        private int AttachableCardCount()
+        {
+            if (handView == null || handView.Slots == null) return 0;
+            int n = 0;
+            var slots = handView.Slots;
+            for (int i = 0; i < slots.Count; i++) if (IsAttachableSlot(slots[i])) n++;
+            return n;
+        }
+
         private RectTransform[] CollectAttachableCardRects(out int count)
         {
             count = 0;
@@ -422,13 +525,7 @@ namespace Wassup.UI.Tutorial
             var list = new System.Collections.Generic.List<RectTransform>();
             var slots = handView.Slots;
             for (int i = 0; i < slots.Count; i++)
-            {
-                var slot = slots[i];
-                if (slot == null || slot.rect == null || slot.card == null) continue;
-                if (slot.card.type == CardType.Active) continue;   // 즉발 탭 거절 + AttachmentsChanged 미발화
-                if (!slot.Playable) continue;
-                list.Add(slot.rect);
-            }
+                if (IsAttachableSlot(slots[i])) list.Add(slots[i].rect);
             count = list.Count;
             return list.ToArray();
         }
@@ -440,15 +537,16 @@ namespace Wassup.UI.Tutorial
             while (t < seconds) { t += Time.unscaledDeltaTime; yield return null; }
         }
 
-        private static IEnumerator WaitFor(System.Func<bool> done, float timeout)
+        // **타임아웃이 없다**(사용자 결정). 안내가 요구한 행동을 할 때까지 기다린다 —
+        // 흘려보내면 그 판은 어차피 완료로 기록되지 않아 다음 판에 처음부터 다시 뜬다.
+        // 「기다린다」가 「또 처음부터」보다 낫다.
+        //
+        // 대신 **모든 조건 대기는 만족 가능해야 한다**. 선행조건이 없으면 기다리지 말고
+        // 진입 전에 건너뛴다(캐논이 소진/쿨타임이면 3.1 을 안 열고, 낼 수 있는 카드가 0이면
+        // 4.2 를 안 연다). 정지 중에는 코스트·쿨타임이 안 도니 «기다리면 가능해진다»가 없다.
+        private static IEnumerator WaitFor(System.Func<bool> done)
         {
-            float t = 0f;
-            while (t < timeout)
-            {
-                if (done()) yield break;
-                t += Time.unscaledDeltaTime;
-                yield return null;
-            }
+            while (!done()) yield return null;
         }
     }
 }
