@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text;
 using System.Xml;
 using NUnit.Framework;
 using UnityEditor;
@@ -70,6 +72,27 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.AreEqual("preferExternal",
                 ((XmlElement)document.DocumentElement).GetAttribute("installLocation", AndroidNamespace),
                 "installLocation 은 APK 설치 위치라 저장 데이터와 무관하다 — 건드리지 않는다");
+        }
+
+        // 빌드 실패 재현 (2026-08-18): 선언이 `encoding="utf-16"` 인데 파일은 UTF-8 로
+        // 저장돼 안드로이드 매니페스트 병합기가 `Error parsing …/AndroidManifest.xml` 로
+        // 빌드를 죽였다. 결과 문자열을 LoadXml 로 되읽는 검사는 **선언을 무시**하므로
+        // 이걸 못 잡는다 — 병합기와 같은 입장(바이트 스트림)에서 읽어야 한다.
+        [Test]
+        public void DisableBackup_OutputSurvivesAUtf8FileRoundTrip()
+        {
+            var patched = AndroidBackupOptOut.DisableBackup(GeneratedManifest);
+            StringAssert.Contains("encoding=\"utf-8\"", patched);
+
+            var document = new XmlDocument();
+            using (var stream = new MemoryStream(new UTF8Encoding(false).GetBytes(patched)))
+            {
+                document.Load(stream);   // 선언과 바이트가 어긋나면 여기서 던진다
+            }
+
+            Assert.AreEqual("false",
+                ((XmlElement)document.SelectSingleNode("/manifest/application"))
+                    .GetAttribute("allowBackup", AndroidNamespace));
         }
 
         // 백업 차단의 짝. 공유 저장소(Android/data/<패키지>)에 세이브를 두면 기기·롬에 따라

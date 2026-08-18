@@ -46,11 +46,21 @@ namespace Wassup.Editor.MobileBuild
 
             application.SetAttribute("allowBackup", AndroidNamespace, "false");
 
-            using (var writer = new StringWriter())
+            using (var writer = new Utf8StringWriter())
             {
                 document.Save(writer);
                 return writer.ToString();
             }
+        }
+
+        // XmlDocument.Save(TextWriter) 는 선언부의 encoding 을 **writer 의 Encoding** 에서
+        // 가져온다. 기본 StringWriter 는 UTF-16 이라 결과물이 `encoding="utf-16"` 으로
+        // 시작하는데 파일은 UTF-8 로 저장된다 — 선언과 실제가 어긋나 안드로이드 매니페스트
+        // 병합기가 `Error parsing …/AndroidManifest.xml` 로 빌드를 죽인다(2026-08-18 실측).
+        // 선언 인코딩과 저장 인코딩을 한 타입에 묶어 둘이 갈릴 수 없게 한다.
+        private sealed class Utf8StringWriter : StringWriter
+        {
+            public override Encoding Encoding => new UTF8Encoding(false);
         }
 
 #if UNITY_ANDROID
