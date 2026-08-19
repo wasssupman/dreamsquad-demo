@@ -64,15 +64,11 @@ namespace Wassup.Data
                  "없는 카드는 무시하고 경고를 남긴다(편성을 조작하지 않는다). 비우면 기존대로 전량 셔플.")]
         public DreamcatcherCard[] firstHandCards = System.Array.Empty<DreamcatcherCard>();
 
-        [Header("포커스")]
+        [Header("차단막")]
         [Range(0f, 1f)]
         [Tooltip("배틀 구간 차단막의 불투명도. **0 = 보이지 않는 차단막**(입력만 막고 화면은 그대로). " +
                  "판이 도는 동안 화면을 덮는 게 어색해서 0 이 기본이다. 로비는 정지 화면이라 이 값을 쓰지 않는다.")]
         public float dimOpacity;
-
-        [Min(1f)]
-        [Tooltip("보드 위 유닛을 가리킬 때 뚫는 구멍의 한 변(px). 이 값이 «플레이어가 유닛을 맞출 수 있는가» 를 정한다.")]
-        public float focusHoleSize = 180f;
 
         [Header("안전망")]
         // 스텝 타임아웃은 두지 않는다(사용자 결정). 안내가 요구한 행동을 할 때까지 기다린다 —

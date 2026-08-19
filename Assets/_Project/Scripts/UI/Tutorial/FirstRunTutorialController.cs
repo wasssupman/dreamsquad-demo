@@ -77,7 +77,6 @@ namespace Wassup.UI.Tutorial
         private bool _b3Completed;
         private bool _b4Completed;
 
-        private RectTransform _worldProxy;
 
         private void Start()
         {
@@ -346,13 +345,13 @@ namespace Wassup.UI.Tutorial
             // 부착할 유닛이 없을 때만 차단막을 내려 **더 놓을 기회**를 준다. 이게 안전 밸브다 —
             // 놓았던 캐논이 죽은 판도 B4 를 볼 수 있어야 하고, 그건 플레이어가 손을 써야 한다.
             // 있으면 열지 않는다(위 이유).
-            if (!TryResolveHost(out _, out _))
+            if (!TryResolveHost(out _, out _, out _))
             {
                 HideDim();
-                yield return WaitFor(() => TryResolveHost(out _, out _));
+                yield return WaitFor(() => TryResolveHost(out _, out _, out _));
                 DimOnly();
             }
-            if (!TryResolveHost(out _hostEntity, out var hostUnit)) yield break;
+            if (!TryResolveHost(out _hostEntity, out var hostUnit, out var hostRect)) yield break;
 
             Freeze();
 
@@ -380,24 +379,9 @@ namespace Wassup.UI.Tutorial
                 ? string.Format(SelectHostFormat, hostName)
                 : (hostUnit == tutorialUnit ? ReselectText : string.Format(ReselectFallbackFormat, hostName));
 
-            // **트레이 셀로 유도한다** — 보드에 놓인 유닛을 직접 찍게 하지 않는다.
-            //
-            // 소진된 셀(보드 상한만큼 나가 있는 유닛)을 탭하면 게임이 이미 «판 위 그 유닛으로
-            // 데려간다»(DefenderDragSlot.GoToDeployedUnit → DcInspectController.SelectDeployed).
-            // 캐논은 maxOnBoard 1 이라 배치하는 순간 그 상태가 되므로, **이미 있는 게임 어휘를
-            // 가르치는 것**이 되고 구멍도 안정적인 UI rect 하나면 된다.
-            //
-            // 셀이 소진이 아니면(대체 호스트가 상한 여유를 가진 경우) 그 탭은 선택이 아니라
-            // 배치 arm 이 된다 — 그때만 보드 프록시로 떨어진다.
-            bool slotSelects = hostUnit != null && bridge != null
-                && bridge.DeployedCountOf(hostUnit) >= hostUnit.EffectiveMaxOnBoard
-                && defenderSelector != null
-                && defenderSelector.TryGetSlotRect(hostUnit, out _);
-
-            RectTransform hostRect = null;
-            if (slotSelects) defenderSelector.TryGetSlotRect(hostUnit, out hostRect);
-            else if (!TryMakeWorldProxy(_hostEntity, out hostRect)) yield break;
-            if (hostRect == null) yield break;
+            // 대상 rect 는 **트레이 셀**이다(TryResolveHost 가 이미 보장한다) — 보드에 놓인
+            // 유닛을 직접 찍게 하지 않는다. 이미 있는 게임 어휘를 가르치는 것이고, 구멍도
+            // 고정 UI rect 하나라 카메라를 따라다닐 필요가 없다.
 
             _selectionSet = false;
             if (handView != null) handView.SelectionTargetSet += OnSelectionSet;
@@ -405,16 +389,11 @@ namespace Wassup.UI.Tutorial
             bool alreadySelected = handView != null && handView.SelectionTarget == _hostEntity;
             if (!alreadySelected)
             {
+                // 구멍을 매 프레임 다시 잡지 않는다 — 트레이 셀은 고정 UI rect 라 오버레이의
+                // 코너 추적(LateUpdate)만으로 따라간다. 4.2 카드가 매 프레임 다시 잡는 건
+                // 딜인으로 «없다가 생기는» 대상이라서고, 여기는 그 조건이 없다.
                 Focus(hostRect, reselectText);
-                // 보드 프록시로 떨어진 경우엔 구멍을 매 프레임 다시 잡아야 한다 — 4.2 카드와
-                // 같은 이유이고, 여기서는 카메라(CameraDirector 의 브리딩·킥)가 움직이는 쪽이다.
-                // 트레이 셀은 고정 UI rect 라 오버레이의 코너 추적만으로 충분하다.
-                while (!_selectionSet)
-                {
-                    if (!slotSelects && TryMakeWorldProxy(_hostEntity, out var live) && live != null)
-                        overlay.SetHoles(new[] { live });
-                    yield return null;
-                }
+                yield return WaitFor(() => _selectionSet);
             }
             if (handView != null) handView.SelectionTargetSet -= OnSelectionSet;
 
@@ -482,7 +461,6 @@ namespace Wassup.UI.Tutorial
             guidance.Hide();
             HideDim();
             Unfreeze();
-            DestroyWorldProxy();
 
             // ⚠ 선행조건 부재로 건너뛰었거나 대기 중에 판이 먼저 끝난 경우는 완료로 기록하지
             // 않는다(계약 11). 1회성이라 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼
@@ -574,62 +552,43 @@ namespace Wassup.UI.Tutorial
 
         // 부착 호스트 해결: 온보딩이 가리키던 유닛 우선, 없으면 살아 있는 배치 유닛 아무나.
         // TryGetDeployedEntity 는 _em.Exists 로 생존까지 본다 — 죽은 유닛은 여기서 걸러진다.
-        private bool TryResolveHost(out Entity entity, out DefenderUnitData unit)
+        // 부착 대상 = **트레이 셀로 선택할 수 있는** 배치 유닛. 이게 B4 의 유일한 불변식이고
+        // 4.1 은 여기서 나온 rect 를 그대로 쓴다(분기 없음).
+        //
+        // 왜 «선택 가능» 까지 묶는가: selection-entry-narrowing 이후 **보드 탭은 유닛을 고르지
+        // 않는다**(DcInspectController.BoardTapSelectEnabled=false — 모든 보드 탭이 해제다).
+        // 진입구는 소진된 트레이 셀 탭 하나뿐이므로(GoToDeployedUnit → SelectDeployed),
+        // «배치돼 있다» 만으로 대상을 고르면 셀이 소진이 아닌 유닛에서 조건이 영영 안 서고
+        // 타임아웃이 없어(계약 11) 그대로 멈춘다. 그래서 판정에 소진까지 포함한다.
+        //
+        // 우선순위는 온보딩이 가리키던 유닛 → 그 밖의 아무 유닛(캐논이 죽은 판 대비).
+        private bool TryResolveHost(out Entity entity, out DefenderUnitData unit, out RectTransform slotRect)
         {
-            entity = Entity.Null;
+            if (TrySelectableHost(tutorialUnit, out entity, out slotRect)) { unit = tutorialUnit; return true; }
             unit = null;
-            if (bridge == null) return false;
-            if (bridge.TryGetDeployedEntity(tutorialUnit, out entity) && entity != Entity.Null)
-            {
-                unit = tutorialUnit;
-                return true;
-            }
-            return TryGetAnyDeployed(out entity, out unit);
-        }
-
-        private bool TryGetAnyDeployed(out Entity entity, out DefenderUnitData unit)
-        {
+            slotRect = null;
             entity = Entity.Null;
-            unit = null;
-            if (defenderSelector == null || bridge == null) return false;
+            if (defenderSelector == null) return false;
             for (int i = 0; i < defenderSelector.SlotCount; i++)
             {
                 var u = defenderSelector.SlotUnitAt(i);
-                if (u == null) continue;
-                if (bridge.TryGetDeployedEntity(u, out entity) && entity != Entity.Null) { unit = u; return true; }
+                if (u == null || u == tutorialUnit) continue;
+                if (!TrySelectableHost(u, out entity, out slotRect)) continue;
+                unit = u;
+                return true;
             }
             return false;
         }
 
-        // 보드 위 유닛을 구멍/포커스의 대상으로 쓰려면 화면 좌표를 감싸는 RectTransform 이 필요하다.
-        // 오버레이의 host root(ScreenSpaceOverlay)에 매달아 좌표계를 맞춘다.
-        private bool TryMakeWorldProxy(Entity entity, out RectTransform rect)
+        private bool TrySelectableHost(DefenderUnitData unit, out Entity entity, out RectTransform slotRect)
         {
-            rect = null;
-            if (bridge == null || boardCamera == null) return false;
-            if (!bridge.TryGetUnitViewAnchor(entity, out var anchor) || anchor == null) return false;
-            var host = overlay.EnsureHostRoot();
-            if (host == null) return false;
-            if (_worldProxy == null)
-            {
-                var go = new GameObject("TutorialWorldProxy", typeof(RectTransform));
-                _worldProxy = (RectTransform)go.transform;
-                _worldProxy.SetParent(host, false);
-                _worldProxy.sizeDelta = Vector2.one * config.focusHoleSize;
-            }
-            Vector3 screen = boardCamera.WorldToScreenPoint(anchor.position);
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(host, screen, null, out var local)) return false;
-            _worldProxy.anchoredPosition = local;
-            _worldProxy.gameObject.SetActive(true);
-            rect = _worldProxy;
-            return true;
-        }
-
-        private void DestroyWorldProxy()
-        {
-            if (_worldProxy == null) return;
-            Destroy(_worldProxy.gameObject);
-            _worldProxy = null;
+            entity = Entity.Null;
+            slotRect = null;
+            if (unit == null || bridge == null || defenderSelector == null) return false;
+            if (!bridge.TryGetDeployedEntity(unit, out entity) || entity == Entity.Null) return false;
+            // 소진 = 보드 상한만큼 나가 있다 = 그 셀의 탭이 «판 위 유닛으로 데려간다».
+            if (bridge.DeployedCountOf(unit) < unit.EffectiveMaxOnBoard) return false;
+            return defenderSelector.TryGetSlotRect(unit, out slotRect) && slotRect != null;
         }
 
         // «지금 구멍을 뚫을 수 있는 카드» 의 단일 술어. 세는 곳과 모으는 곳이 갈리면
@@ -637,7 +596,7 @@ namespace Wassup.UI.Tutorial
         //
         // ⚠ activeInHierarchy 를 여기서 본다. SetHoles 는 비활성 대상을 **버리고**, 버린 것은
         // 다시 담기지 않는다(오버레이의 LateUpdate 는 코너 «변화» 만 추적한다). 손패 딜인이
-        // 끝나기 전에 넘기면 구멍 0개 = 풀 dim 이 되어 카드를 못 누른다.
+        // 끝나기 전에 넘기면 구멍 0개 = 전면 차단이 되어 카드를 못 누른다.
         private bool IsAttachableSlot(DreamcatcherHandView.CardSlot slot)
         {
             if (slot == null || slot.rect == null || slot.card == null) return false;
