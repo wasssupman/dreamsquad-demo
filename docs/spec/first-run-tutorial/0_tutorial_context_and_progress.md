@@ -43,7 +43,7 @@
 | `riversideTiles` | 1 | 3.1b 를 끝내는 기준 — 적이 강(`Env` 타일)에서 이 반경 안까지 왔을 때. **시간이 아니라 사건** |
 | `battleFreezeAtSeconds` | 4 | 전투 시작 후 첫 정지까지. **적이 화면에 들어와 있어야 의미가 생기므로 실측 튜닝 대상** |
 | `onPlaceWatchSeconds` | 2 | 배치 후 정지를 풀어 배치 스킬을 보여주는 시간 |
-| `resumeBeforeAttachSeconds` | 5 | B3 종료 후 다시 정지할 때까지 |
+| `resumeBeforeAttachSeconds` | 2 | B3 종료 후 다시 정지할 때까지. **안내가 없는 구간이라 길면 «끊긴» 느낌** — 5초는 길었다 |
 | `attachSettleSeconds` | 2 | 부착 연출 후 마무리 문구까지 |
 
 `targetCell` 도 `stepTimeoutSeconds` 도 두지 않는다 — B3 는 지정 칸을 강제하지 않고(unit 5),

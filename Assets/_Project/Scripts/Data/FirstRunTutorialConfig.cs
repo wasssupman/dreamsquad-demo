@@ -47,8 +47,10 @@ namespace Wassup.Data
         [Tooltip("\"충분한 양의 에너지를 모았네요!\" — 각성 항아리를 가리키는 시간(초). 유닛 재선택 안내 직전.")]
         public float jarHintSeconds = 2f;
         [Min(0f)]
-        [Tooltip("B3 종료 후 다시 정지할 때까지 판을 정상 속도로 돌리는 시간(초).")]
-        public float resumeBeforeAttachSeconds = 5f;
+        [Tooltip("B3 종료 후 다시 정지할 때까지 판을 정상 속도로 돌리는 시간(초). " +
+                 "**안내가 없는 구간이라 길면 «끊긴» 느낌이 난다** — 5초는 길었다. " +
+                 "부착 대상이 없을 때는 이 시간과 무관하게 살아있는 유닛이 생길 때까지 더 기다린다.")]
+        public float resumeBeforeAttachSeconds = 2f;
         [Min(0f)]
         [Tooltip("부착 연출 후 마무리 문구까지(초).")]
         public float attachSettleSeconds = 2f;

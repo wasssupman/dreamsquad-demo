@@ -21,7 +21,7 @@ MonoBehaviour:
   skillHintSeconds: 2.5
   onPlaceWatchSeconds: 2
   jarHintSeconds: 2
-  resumeBeforeAttachSeconds: 5
+  resumeBeforeAttachSeconds: 2
   attachSettleSeconds: 2
   cardDealInGraceSeconds: 2
   firstHandCards:
