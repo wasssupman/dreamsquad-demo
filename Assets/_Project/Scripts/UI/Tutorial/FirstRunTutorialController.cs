@@ -19,6 +19,10 @@ namespace Wassup.UI.Tutorial
         private const string PlaceableText = "배치가능영역";
         private const string BlockedText = "배치 불가 영역";
         private const string GoalText = "게임목표: 최대한 많은 악몽 처치";
+        private const string GoalIntroText = "스폰된 악몽은 목표지점을 향합니다.";
+        private const string DefendIntroText = "유닛의 배치와 드림캐쳐의 조합으로 악몽을 막아보세요";
+        private const string GoalMarkerLabel = "목표지점";
+        private const string JarHintText = "충분한 양의 에너지를 모았네요!";
         private const string PickText = "유닛을 터치 해보세요";
         private const string EnemyApproachText = "악몽이 배치 영역 안으로 들어오면!";
         private const string SkillHintText = "캐논은 3타일 영역에 강력한 폭격을 합니다!";
@@ -48,6 +52,8 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private DefenderSelector defenderSelector;
         [SerializeField] private DreamcatcherHandView handView;
         [SerializeField] private DreamcatcherHandController handController;
+        [Tooltip("각성 항아리 독. 4.0 에서 «에너지가 찼다» 를 가리킨다. 비면 그 구간을 건너뛴다.")]
+        [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private Camera boardCamera;
 
         private bool _running;
@@ -181,7 +187,27 @@ namespace Wassup.UI.Tutorial
             // (maxOnBoard 1) 각성 카드를 먼저 써서(게이지 여유 정확히 0) 아래 구간이
             // 통째로 스킵 조건에 걸린다. 강제는 연출이 아니라 시퀀스의 성립 조건이다.
             DimOnly();
-            yield return WaitUnscaled(config.battleFreezeAtSeconds);
+
+            // B2b 목표 소개 — GO! 직후의 빈 구간을 채운다.
+            //
+            // 여기는 원래 «아무 입력도 안 되는데 아무 말도 안 하는» 4초였다. 첫 판 유저에게
+            // 그 침묵은 «멈춘 건가?» 로 읽힌다. 적이 어디로 가는지와 무엇으로 막는지를
+            // 이 자리에서 말한다 — 뒤따르는 모든 스텝의 전제다.
+            float introSpent = 0f;
+            if (bridge != null && boardCamera != null && bridge.TryGetGoalViewAnchor(out var goalWorld))
+                guidance.ShowWorldMarker(boardCamera, goalWorld, GoalMarkerLabel, guidance.GoalMarkerColor);
+            guidance.ShowMessage(GoalIntroText, false);
+            yield return WaitUnscaled(config.goalIntroSeconds);
+            introSpent += config.goalIntroSeconds;
+
+            guidance.ShowMessage(DefendIntroText, false);
+            yield return WaitUnscaled(config.goalIntroSeconds);
+            introSpent += config.goalIntroSeconds;
+            guidance.ClearWorldMarkers();
+
+            // 소개가 짧게 끝나면 남은 만큼만 더 기다린다 — 길면 그대로 이어간다.
+            if (introSpent < config.battleFreezeAtSeconds)
+                yield return WaitUnscaled(config.battleFreezeAtSeconds - introSpent);
 
             yield return RunPickAndPlace();
             yield return RunAttach();
@@ -318,6 +344,23 @@ namespace Wassup.UI.Tutorial
             if (!TryResolveHost(out _hostEntity, out var hostUnit)) yield break;
 
             Freeze();
+
+            // 4.0 항아리 소개 — 「왜 지금 유닛을 다시 고르나」의 근거를 먼저 준다.
+            //
+            // 배치 뒤 여기까지가 길게 비어 있었다. 각성 항아리를 가리켜 «쓸 수 있는 힘이
+            // 찼다» 를 먼저 말하면, 이어지는 «유닛을 선택» 이 그 힘을 쓰기 위한 동작으로 읽힌다.
+            //
+            // 구멍은 뚫지 않는다(SetHoles(null)) — 가리키기만 하는 구간이라 지금 항아리를
+            // 누르면 대상 없이 손패만 열려서 다음 스텝이 꼬인다. 링은 «여길 봐라» 만 한다.
+            if (gaugeView != null && gaugeView.HitRect != null)
+            {
+                overlay.SetHoles(null);
+                ShowDim();
+                guidance.ShowMessage(JarHintText, false);
+                guidance.FocusUi(gaugeView.HitRect);
+                yield return WaitUnscaled(config.jarHintSeconds);
+                guidance.ClearFocus();
+            }
 
             // 4.1 유닛 선택. 유닛 이름이 캐논이 아니면 문구도 그 이름으로 바꾸고, B3 를 건너뛴
             // 판은 유닛을 한 번도 안 골랐으므로 «다시» 를 뺀다.

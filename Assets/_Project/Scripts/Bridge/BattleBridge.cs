@@ -4352,6 +4352,15 @@ namespace Wassup.Bridge
 
         // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
         // 읽기 전용 위임(뷰가 EntityManager/뷰 풀을 모르게 유지).
+        // first-run-tutorial — 목표 지점의 **실제 구조물 중심**(셀 중심이 아니다). 뷰 포워딩이라
+        // ECS 를 타지 않지만, 컨트롤러가 TilemapMapView 를 직접 들지 않게 여기로 통일한다
+        // (TryGetUnitViewAnchor 와 같은 창구).
+        public bool TryGetGoalViewAnchor(out Vector3 worldPosition)
+        {
+            worldPosition = default;
+            return tilemapMapView != null && tilemapMapView.TryGetGoalVisualAnchor(out worldPosition);
+        }
+
         public bool TryGetUnitViewAnchor(Entity entity, out Transform anchor)
         {
             anchor = ResolveUnitViewTransform(entity);

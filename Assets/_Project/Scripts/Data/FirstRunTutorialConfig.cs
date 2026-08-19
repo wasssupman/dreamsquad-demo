@@ -22,6 +22,11 @@ namespace Wassup.Data
         [Tooltip("\"게임목표\" 문구 노출 시간(초).")]
         public float goalMessageSeconds = 2.5f;
 
+        [Header("전투 인트로 (B2b)")]
+        [Min(0f)]
+        [Tooltip("GO! 직후 목표 소개 문구 하나당 노출(초). 두 문구가 이어진다 — 합이 battleFreezeAtSeconds 보다 짧으면 남은 만큼 더 기다린다.")]
+        public float goalIntroSeconds = 2.5f;
+
         [Header("첫 배치 (B3)")]
         [Min(0f)]
         [Tooltip("전투 시작 후 첫 정지까지(초). **적이 화면에 들어와 있어야 의미가 생기므로 실측 튜닝 대상.**")]
@@ -38,6 +43,9 @@ namespace Wassup.Data
         public float onPlaceWatchSeconds = 2f;
 
         [Header("드림캐쳐 부착 (B4)")]
+        [Min(0f)]
+        [Tooltip("\"충분한 양의 에너지를 모았네요!\" — 각성 항아리를 가리키는 시간(초). 유닛 재선택 안내 직전.")]
+        public float jarHintSeconds = 2f;
         [Min(0f)]
         [Tooltip("B3 종료 후 다시 정지할 때까지 판을 정상 속도로 돌리는 시간(초).")]
         public float resumeBeforeAttachSeconds = 5f;
