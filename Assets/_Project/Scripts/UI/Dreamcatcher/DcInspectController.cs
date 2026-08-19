@@ -486,12 +486,6 @@ namespace Wassup.UI
         {
             var gm = GameManager.Instance;
             if (bridge == null || gm == null || gm.CurrentPhase != GamePhase.Battle) return false;
-            // dreamcatcher-retire-recall unit 3 — 손패 드래그/조준 중에는 퇴근을 잠근다.
-            // 퇴근이 「인수인계」를 통해 카드 큐 **앞**에 항목을 꽂을 수 있게 되면서, 조준 중인
-            // 카드가 손패 창 밖으로 밀리는 경로가 생겼다(밀린 채 드롭하면 효과만 적용되고
-            // 차감·소모가 안 된다 — CommitAttach 에 롤백이 없다). 이 판정이 그 계약을 **코드로**
-            // 강제한다. 매 프레임 피드라 버튼 흐림도 같이 따라온다.
-            if (handView != null && handView.InteractionActive) return false;
             return bridge.TryGetDefenderAt(cell, out var found, out _, out bool busy) && !busy && found == e;
         }
 

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -356,6 +357,160 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(unit.awakeningReward, 0,
                 "대조 전제: 이 유닛은 사망 시 지급할 각성이 있다 — 없으면 위 단정이 공허하다");
         }
+
+        // ── dreamcatcher-retire-recall unit 1 (인수인계) ──────────────────────
+        //
+        // load-bearing 계약 셋을 두 테스트가 나눠 고정한다:
+        //   ① 나머지 부착분이 **부착 순서 그대로** 큐 맨 앞으로 (retire)
+        //   ② 선언 카드 자신은 맨 뒤 (retire · README 계약 2)
+        //   ③ **사망에서는 안 일어난다** (death · 계약 12 의 회귀 방어선 — 앞 삽입이 비동기가
+        //      되는 순간 조준 중 손패 창이 밀려 CommitAttach 가 롤백 없이 실패한다)
+        //
+        // ⚠ 부착 순서를 **entryId 오름차순과 어긋나게** 만든다(둘째를 먼저 붙인다). 같으면
+        // 이 테스트가 이 unit 이 새로 만든 축(부착 seq)을 아무것도 증명하지 못한다.
+        // ⚠ 채움 카드 3장을 큐에 남긴다. 큐가 비면 «앞으로»와 «뒤로»가 같은 화면이 되어
+        // ③ 이 공허해진다.
+
+        [UnityTest]
+        public IEnumerator Retire_WithHandoverCard_RecallsOthersToFront_SelfToBack()
+        {
+            yield return SetupHandoverBoard();
+
+            Assert.IsTrue(_bridge.RetireDefender(_cell), "retire");
+            for (int i = 0; i < 3; i++) yield return null;
+
+            var hand = _deck.Hand(6);
+            Assert.AreEqual(6, hand.Count, "전부 큐로 돌아왔다");
+            Assert.AreEqual("test_second", hand[0].card.id, "부착 1번이 맨 앞");
+            Assert.AreEqual("test_first", hand[1].card.id, "부착 2번이 그다음 (부착 순서 보존)");
+            Assert.AreEqual("test_handover", hand[5].card.id, "선언 카드 자신은 맨 뒤");
+
+            Object.Destroy(_ctrlGo);
+        }
+
+        [UnityTest]
+        public IEnumerator Death_WithHandoverCard_RecoversToBack_AsBefore()
+        {
+            yield return SetupHandoverBoard();
+
+            InvokeOnDefenderDied(_ctrl, _host, FindCatalog().ById("ranger"));
+            for (int i = 0; i < 3; i++) yield return null;
+
+            var hand = _deck.Hand(6);
+            Assert.AreEqual(6, hand.Count);
+            StringAssert.StartsWith("test_filler", hand[0].card.id,
+                "사망 회수는 앞을 건드리지 않는다 — 맨 앞은 여전히 채움 카드");
+            Assert.AreEqual("test_second", hand[3].card.id, "회수분은 큐 뒤에 부착 순서로 붙는다");
+            Assert.AreEqual("test_first", hand[4].card.id);
+            Assert.AreEqual("test_handover", hand[5].card.id);
+
+            Object.Destroy(_ctrlGo);
+        }
+
+        private BattleBridge _bridge;
+        private DreamcatcherHandController _ctrl;
+        private DreamcatcherCycleDeck _deck;
+        private GameObject _ctrlGo;
+        private Vector2Int _cell;
+        private Entity _host;
+
+        // 배치된 ranger 하나에 [second → first → handover] 를 **그 순서로** 부착한다.
+        // 컨트롤러는 실제 CommitAttach 경로를 타야 한다(부착 seq 는 거기서만 기록된다).
+        private IEnumerator SetupHandoverBoard()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            _bridge = Object.FindObjectOfType<BattleBridge>();
+            var unit = FindCatalog().ById("ranger");
+            _bridge.SetDefenderPool(new[] { unit });
+            _bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(_bridge, unit), "place defender");
+            _cell = SoleCell(_bridge);
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            _host = EntityAt(_bridge, em, _cell);
+            Assert.AreNotEqual(Entity.Null, _host, "host resolved");
+
+            // 실제 컨트롤러(비활성 → 필드 주입 → 활성) — PlacementAuraTest 선례.
+            // handSize 를 덱 크기와 맞춰 셔플이 부착 가능 여부를 흔들지 않게 한다.
+            var cfg = ScriptableObject.CreateInstance<AwakeningConfig>();
+            cfg.costUnit = 0; cfg.handSize = 6; cfg.maxAttachPerUnit = 3;
+            var cards = new List<DreamcatcherCard>
+            {
+                MakeSelfTileAoeCard("test_first", DcTriggerKind.OnDeath, 0f),
+                MakeSelfTileAoeCard("test_second", DcTriggerKind.OnDeath, 0f),
+                MakeHandoverCard(),
+                MakePlainCard("test_filler0"), MakePlainCard("test_filler1"), MakePlainCard("test_filler2"),
+            };
+            _deck = new DreamcatcherCycleDeck(cards, seed: 0);
+
+            _ctrlGo = new GameObject("HandController_Handover");
+            _ctrlGo.SetActive(false);
+            _ctrl = _ctrlGo.AddComponent<DreamcatcherHandController>();
+            SetField(_ctrl, "bridge", _bridge);
+            SetField(_ctrl, "config", cfg);
+            SetField(_ctrl, "_deck", _deck);
+            _ctrlGo.SetActive(true);
+
+            // 부착 순서 ≠ entryId 순서 (second 를 먼저).
+            Assert.IsTrue(_ctrl.CommitAttach(EntryOf(_deck, "test_second"), _host), "attach second");
+            Assert.IsTrue(_ctrl.CommitAttach(EntryOf(_deck, "test_first"), _host), "attach first");
+            Assert.IsTrue(_ctrl.CommitAttach(EntryOf(_deck, "test_handover"), _host), "attach handover");
+            Assert.AreEqual(3, _deck.QueueCount, "채움 3장만 큐에 남는다");
+
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+        }
+
+        private static DreamcatcherCard MakeHandoverCard()
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = "test_handover";
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new[] { new DcMechanic {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.OnRetire },
+                payload = new DcPayloadSpec { kind = DcPayloadKind.RecallAttachedToFront },
+            }};
+            return card;
+        }
+
+        // 큐 채움 전용 — 부착되지 않으므로 mechanics 가 필요 없다.
+        private static DreamcatcherCard MakePlainCard(string id)
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = id;
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new DcMechanic[0];
+            return card;
+        }
+
+        private static int EntryOf(DreamcatcherCycleDeck deck, string cardId)
+        {
+            foreach (var e in deck.Hand(64))
+                if (e.card != null && e.card.id == cardId) return e.entryId;
+            Assert.Fail($"'{cardId}' not in queue");
+            return -1;
+        }
+
+        private static void SetField(object obj, string name, object value)
+            => obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).SetValue(obj, value);
+
+        private static void InvokeOnDefenderDied(DreamcatcherHandController ctrl, Entity host, DefenderUnitData data)
+            => typeof(DreamcatcherHandController)
+                .GetMethod("OnDefenderDied", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(ctrl, new object[] { host, data, Vector3.zero });
 
         // ── dreamcatcher-content-4 unit 5 (퇴직 위로금) ───────────────────────
         //

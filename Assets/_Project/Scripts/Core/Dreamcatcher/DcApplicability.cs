@@ -115,6 +115,12 @@ namespace Wassup.Core
                 && !HostProvidesTarget(host.archetype))
                 return DcRejectReason.NeedsTargetContext;
 
+            // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op)은 kind 별 case 가 아니라
+            // **카테고리 술어**로 통과시킨다. host 의 공격 모델과 무관한 정도가 아니라 판 위에서
+            // 일어나는 일이 아니기 때문이다(사건이 신호를 주고 실행은 DreamcatcherHandController).
+            // 두 번째 손패 op 가 와도 이 줄은 그대로다 — 트리거 축은 bake 가 최종 판정한다.
+            if (DcPayloadKinds.IsHandOp(payload.kind)) return DcRejectReason.None;
+
             switch (payload.kind)
             {
                 // 비수 — 니들은 host 의 대상으로 날아가고(host 우선), host 가

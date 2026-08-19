@@ -328,6 +328,34 @@ namespace Wassup.Tests.EditMode
             StringAssert.DoesNotContain("사망", body);
         }
 
+        // retire-recall unit 0 — 인수인계. **"다른"이 load-bearing 단어다**: 선언한 카드
+        // 자신은 맨 뒤로 가므로, 단독 부착이면 아무 일도 일어나지 않는다. 문안에서 그 단어가
+        // 빠지면 화면이 거짓말을 한다. 수치는 한 칸도 읽지 않으므로 숫자가 새어나오면 안 된다.
+        [Test]
+        public void UnitMechanic_FormatsRetireRecall_AndSaysOthersOnly()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.OnRetire },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.RecallAttachedToFront,
+                        // 저작 실수로 값이 들어와도 문안이 그것을 읽지 않는다는 것까지 고정한다.
+                        magnitude = 2f,
+                        tileRange = 3,
+                    },
+                },
+            };
+
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("이 유닛이 퇴근하면 → 함께 붙은 다른 드림캐쳐가 손패 맨 앞으로", body);
+            StringAssert.DoesNotContain("2장", body);
+            StringAssert.DoesNotContain("사망", body);
+        }
+
         // content-4 unit 0 — 무회귀: duration 0 인 기존 SelfTileAoe 카드(작별 선물 등)는
         // 예고 접두 없이 종전 문안 그대로여야 한다.
         [Test]

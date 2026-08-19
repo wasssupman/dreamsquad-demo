@@ -66,9 +66,14 @@ namespace Wassup.Core
         // revoke(Squad hosted 버프 unit 9 · placement-aura 오라). placement-aura unit 2 —
         // 예전 -1 관례는 폐기(ApplyDreamcatcherCardToUnit 이 int 규약으로 0/>0 반환).
         // Reverse scan on death is O(attached).
-        private readonly Dictionary<int, (Entity host, int handle)> _attachedTo =
-            new Dictionary<int, (Entity, int)>();
+        // dreamcatcher-retire-recall unit 1 — seq = **부착 순서**. Dictionary 순회 순서는
+        // 제거가 섞이면 보장이 없어서(그래서 GetAttachments 가 entryId 로 정렬한다) 지금까지
+        // 회수는 "맨 뒤로 몰아넣기"라 순서가 안 보였다. 「인수인계」는 순서가 곧 기능이다.
+        private readonly Dictionary<int, (Entity host, int handle, int seq)> _attachedTo =
+            new Dictionary<int, (Entity, int, int)>();
+        private int _attachSeq;
         private readonly List<int> _recoverScratch = new List<int>();
+        private readonly List<int> _frontScratch = new List<int>();
         private readonly List<int> _attachReadScratch = new List<int>();
 
         private void OnEnable()
@@ -107,6 +112,7 @@ namespace Wassup.Core
 
             BuildDeck();
             _attachedTo.Clear();
+            _attachSeq = 0;
             AttachmentsChanged?.Invoke();
             Gauge = config != null ? Mathf.Clamp(config.gaugeStart, 0, config.gaugeMax) : 0;
             GaugeChanged?.Invoke(Gauge);
@@ -164,7 +170,6 @@ namespace Wassup.Core
             return pinned;
         }
 
-
         // Saved deck (validated, catalog-resolved) → serialized fallback.
         private List<DreamcatcherCard> ResolveAttachDeck()
         {
@@ -218,16 +223,21 @@ namespace Wassup.Core
         {
             // unit 6 — 죽은 유닛(디펜더도 ISpineUnitVisualData) 스킨을 피규어 소스로 전달.
             GainAwakening(data != null ? data.awakeningReward : 0, sourceWorldPos, data);
-            RecoverCardsHostedBy(entity);
+            RecoverCardsHostedBy(entity, retired: false);
         }
 
         // defender-clock-out unit 2 — 퇴근은 **회수만** 한다. 각성 지급이 빠지는 것이
         // 사망과의 유일한 차이다: 각성은 처치/사망의 보상이지 퇴장의 보상이 아니고,
         // 주면 배치→퇴근 반복이 게이지 파밍이 된다.
         private void OnDefenderRetired(Entity entity, DefenderUnitData _, Vector3 __)
-            => RecoverCardsHostedBy(entity);
+            => RecoverCardsHostedBy(entity, retired: true);
 
-        // host 에 얹혀 있던 항목을 전부 큐 뒤로 돌려보낸다(퇴장 순서 = 회수 순서).
+        // host 에 얹혀 있던 항목을 큐로 돌려보낸다 — 기본은 맨 뒤(퇴장 순서 = 회수 순서).
+        // dreamcatcher-retire-recall unit 1 — 예외 하나: **퇴근**이고 그 host 에 「인수인계」가
+        // 붙어 있었으면 나머지 부착분이 **부착 순서 그대로 큐 맨 앞**으로 간다(선언 카드 자신은
+        // 맨 뒤). 앞 삽입이 손패 창을 밀어내는 유일한 연산이라 퇴근(플레이어 탭)에만 붙인다 —
+        // 사망 경로에 얹지 말 것(spec 계약 12: CommitAttach 는 브리지 적용 뒤 창 밖이면
+        // 롤백 없이 실패한다).
         // 호출처 3개: 방어유닛 사망 · 방어유닛 퇴근 · 적 소멸.
         //
         // ⚠ 통합 전 두 판본은 **완전히 같지 않았다** — 사망 쪽에만 `handle > 0` 이면
@@ -235,30 +245,76 @@ namespace Wassup.Core
         // 이라 revoke 가 없다"고 주석으로 단언한다. 통합하면 적 경로가 그 분기를 물려받으므로
         // 확인했다: 적 부착의 유일한 writer 인 `ApplyBountyMark` 는 **성공 시 0 을 반환**하고
         // 나머지 경로는 전부 -1(부착 자체가 없음)이다. 따라서 적에게는 분기가 절대 안 탄다.
-        private void RecoverCardsHostedBy(Entity host)
+        private void RecoverCardsHostedBy(Entity host, bool retired)
         {
             if (_deck == null || _attachedTo.Count == 0) return;
             _recoverScratch.Clear();
             foreach (var kv in _attachedTo)
                 if (kv.Value.host == host) _recoverScratch.Add(kv.Key);
             if (_recoverScratch.Count == 0) return;
+            // 부착 순서 오름차순. 앞으로 보낼 때 이 순서가 곧 손패 순서다(retire-recall 계약 3).
+            _recoverScratch.Sort(CompareByAttachSeq);
+
+            // dreamcatcher-retire-recall unit 1 — 「인수인계」 활성 판정. 퇴근이면서 이 host 에
+            // 선언 카드가 하나라도 있으면 켜진다(여러 장이어도 결과는 같다).
+            bool recall = false;
+            if (retired)
+            {
+                foreach (var entryId in _recoverScratch)
+                    if (_deck.TryGetCard(entryId, out var c) && DeclaresRetireRecall(c)) { recall = true; break; }
+            }
+
+            _frontScratch.Clear();
             foreach (var entryId in _recoverScratch)
             {
                 int handle = _attachedTo[entryId].handle;
                 if (handle > 0 && bridge != null)
                     bridge.RevokeDreamcatcherEffects(handle);
                 _attachedTo.Remove(entryId);
-                _deck.Recover(entryId);
+                // 앞으로 가는 것: 앞당김이 켜져 있고, **선언 카드 자신이 아니고**(계약 2),
+                // 상한이 남았을 때. 그 외는 전부 기존 경로(큐 맨 뒤).
+                bool toFront = recall
+                    && _deck.TryGetCard(entryId, out var card)
+                    && !DeclaresRetireRecall(card);
+                if (toFront) _frontScratch.Add(entryId);
+                else _deck.Recover(entryId);
             }
+            if (_frontScratch.Count > 0) _deck.RecoverToFront(_frontScratch);
+
             HandChanged?.Invoke(HandChangeReason.Recovered);
             AttachmentsChanged?.Invoke(); // 위 early-return 들을 지나면 회수가 1건 이상
+        }
+
+        private int CompareByAttachSeq(int a, int b)
+            => _attachedTo[a].seq.CompareTo(_attachedTo[b].seq);
+
+        // dreamcatcher-retire-recall unit 1 — 이 카드가 퇴근 회수 앞당김을 선언했는가.
+        // 판정 조건은 bake(BattleBridge.ApplyDreamcatcherCardToUnit)와 **완전히 같아야 한다**
+        // — 한쪽만 넓히면 "붙는데 무효" 또는 "검증 없이 발동"이 된다. 그래서 셋을 다 본다:
+        //   ① type == Unit — Squad 는 mechanics 를 읽지 않는 다른 apply 경로라 bake 의
+        //      트리거 화이트리스트를 아예 안 탄다(그 카드가 여기서만 동작하면 관문이 없다)
+        //   ② payload == RecallAttachedToFront   ③ trigger == OnRetire
+        //
+        // 두 번째 손패 op 가 오면 이 함수를 kind 를 돌려주는 형태로 일반화하고 컨트롤러가
+        // kind 로 분기한다 — 지금 미리 만들지 않는다(카드별 헬퍼가 늘어나는 것이 신호다).
+        private static bool DeclaresRetireRecall(DreamcatcherCard card)
+        {
+            if (card == null || card.type != CardType.Unit || card.mechanics == null) return false;
+            for (int i = 0; i < card.mechanics.Length; i++)
+            {
+                var m = card.mechanics[i];
+                if (m.payload.kind != DcPayloadKind.RecallAttachedToFront) continue;
+                if (m.trigger.kind != DcTriggerKind.OnRetire) continue;
+                return true;
+            }
+            return false;
         }
 
         // subconscious-curse-expansion unit 2 — 표식 악몽 소멸(처치/유출) 회수.
         // OnDefenderDied 의 회수 절반과 대칭(각성 지급 없음 — 처치 보상은 배율된
         // EnemyKilledAwakening 가, 유출은 무보상이 각각 자연 처리). 표식은 handle 0
         // (무회수) 이라 revoke 호출도 없다 — 큐 복귀만.
-        private void OnEnemyGone(Entity entity) => RecoverCardsHostedBy(entity);
+        private void OnEnemyGone(Entity entity) => RecoverCardsHostedBy(entity, retired: false);
 
         private void GainAwakening(int reward, Vector3 sourceWorldPos, ISpineUnitVisualData killedVisual)
         {
@@ -334,7 +390,7 @@ namespace Wassup.Core
         private bool AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
         {
             if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
-            _attachedTo[entryId] = (host, handle);
+            _attachedTo[entryId] = (host, handle, _attachSeq++);
             AttachmentsChanged?.Invoke();
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);

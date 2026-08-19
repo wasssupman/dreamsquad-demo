@@ -326,6 +326,13 @@ namespace Wassup.UI
                 case DcPayloadKind.SpawnHazard:
                     effect = "그 자리에 불씨를 남긴다";
                     break;
+                // dreamcatcher-retire-recall unit 0 — 인수인계. **"다른"이 계약이다**
+                // (선언한 카드 자신은 맨 뒤로 간다 — README 계약 2). 단독 부착이면 아무 일도
+                // 일어나지 않는다는 사실이 이 한 단어에 걸려 있으므로 지우지 말 것.
+                // 수치 칸은 하나도 읽지 않는다 — 이 payload 에는 저작 손잡이가 없다(계약 4).
+                case DcPayloadKind.RecallAttachedToFront:
+                    effect = "함께 붙은 다른 드림캐쳐가 손패 맨 앞으로";
+                    break;
                 // content-5 unit 5 — 발사 명세. 발수·피해는 **패턴 SO 에서 읽는다**(문자열
                 // 복제 금지 — 제약 6). 「어떻게 흩어지나」는 selection/재추첨 조합이라
                 // 문안으로 옮기지 않는다 — 눈으로 보이는 사실만 적는다.

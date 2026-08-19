@@ -410,6 +410,37 @@ namespace Wassup.Bridge
                     continue;
                 }
 
+                // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) payload.
+                // 실행자가 sim 도 브리지도 아니라 DreamcatcherHandController 다 → **슬롯을 굽지
+                // 않는다.** 브리지가 하는 일은 "이 선언이 유효하다"를 인정하는 것뿐이고,
+                // attached++ 가 필요한 이유는 attached==0 이면 아래에서 -1(부착 거절, 무차감)이
+                // 되기 때문이다 — sim 기여가 0 이어도 카드는 실제로 일한다.
+                // (PlacementAura 가 엔티티에 아무것도 안 쓰고 카운트만 하는 것과 같은 모양.)
+                //
+                // 트리거 화이트리스트: 손패 컨트롤러가 host 귀속으로 볼 수 있는 사건은
+                // DefenderRetired / DefenderDied / EnemyGone 뿐이고 지금 배선된 것은 퇴근 하나다.
+                // sim 트리거(AttackN·OnKill·PeriodicTimer …)와 조합하면 슬롯도 없고 사건도 안 와서
+                // **영영 안 터지는 카드**가 되므로 조용히 통과시키지 않는다(기존 bake 가드 관례).
+                if (Wassup.Data.DcPayloadKinds.IsHandOp(m.payload.kind))
+                {
+                    if (m.trigger.kind != Wassup.Data.DcTriggerKind.OnRetire)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 손패 조작 payload({m.payload.kind}) 는 OnRetire 에만 배선돼 있다 (현재 trigger={m.trigger.kind}) — skipped.");
+                        continue;
+                    }
+                    // 이 분기는 아래 게이트 검증 블록보다 **위**에 있어 continue 하면 그 검증을
+                    // 건너뛴다. 게이트를 저작하면 조용히 무시되므로(이 파일의 관례를 깨는
+                    // 유일한 경로가 된다) 여기서 직접 거절한다. GateComboSupported 는 어차피
+                    // OnRetire × 모든 게이트를 미지원으로 판정한다.
+                    if (m.trigger.gate != Wassup.Data.DcGateKind.None)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 손패 조작 payload 에는 게이트가 배선돼 있지 않다 (gate={m.trigger.gate}) — skipped.");
+                        continue;
+                    }
+                    attached++;
+                    continue;
+                }
+
                 // dreamcatcher-content-4 unit 0 — 주기 트리거의 방어유닛 개방.
                 // BossPeriodicTriggerSystem 은 이미 진영 중립이다(게이트가 DcTriggerSlot 버퍼
                 // 존재뿐). 막고 있던 것은 **이 bake 가 periodSeconds 를 안 실어 보내서**
@@ -421,10 +452,13 @@ namespace Wassup.Bridge
                     continue;
                 }
 
-                // dreamcatcher-content-4 unit 0 — 퇴근 트리거의 v1 배선은 SelfTileAoe 한 쌍뿐이다.
-                // 퇴장 지점(RetireDefender)에는 trigger×payload 디스패처가 없고 운석 cast 하나만
-                // 있으므로, 다른 payload 를 통과시키면 슬롯만 붙고 아무 일도 안 하는 카드가
-                // "부착됨"으로 집계된다(같은 함수의 트리거 축 가드들과 같은 이유).
+                // dreamcatcher-content-4 unit 0 — 퇴근 트리거가 **슬롯으로** 여는 배선은
+                // SelfTileAoe 한 쌍뿐이다. 퇴장 지점(RetireDefender)에는 trigger×payload
+                // 디스패처가 없고 운석 cast 하나만 있으므로, 다른 payload 를 통과시키면 슬롯만
+                // 붙고 아무 일도 안 하는 카드가 "부착됨"으로 집계된다(같은 함수의 트리거 축
+                // 가드들과 같은 이유).
+                // ⚠ 손패 조작 payload 는 이 가드에 도달하지 않는다 — 위에서 슬롯 없이 처리하고
+                // continue 한다(dreamcatcher-retire-recall unit 0).
                 if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnRetire
                     && m.payload.kind != Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {

@@ -57,4 +57,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f8c1b7d0a2e49f6835cd41b96e07a2f, type: 2}
   - {fileID: 11400000, guid: 8e4a2c05d7b143f9862ba1e07c53d94f, type: 2}
   - {fileID: 11400000, guid: 3c8e5b21d7f9426a91c4e0d83b56f7a2, type: 2}
+  - {fileID: 11400000, guid: 80443dea41b4f4143bee2d4395d92d8b, type: 2}
   ruleConfig: {fileID: 11400000, guid: 6466c645017304a0b99fde28e6a1f1da, type: 2}

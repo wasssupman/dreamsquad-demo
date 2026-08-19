@@ -15,6 +15,11 @@ namespace Wassup.Core
     // - Unit use → entry leaves the queue (attached, out-of-pool) until
     //   Recover() appends it to the back (host defender died).
     // - Same card SO twice in the deck = two independent entries (entryId).
+    // - ⚠ 손패 창(front-N) 멤버십은 **플레이어가 쓸 때까지 유지**된다 — 기존 연산이 전부 이
+    //   성질을 지켰다(Use* 는 뒤를 앞으로 당기고, Recover 는 맨 뒤 append 라 인덱스 불변).
+    //   RecoverToFront 가 이 성질을 깨는 첫 연산이라 **플레이어 조작 시점에만** 불린다
+    //   (dreamcatcher-retire-recall 계약 12 — DcInspectController.CanRetire 가 강제).
+    //   앞을 건드리는 연산을 새로 만들 때 이 줄을 먼저 읽을 것.
     public class DreamcatcherCycleDeck
     {
         public struct Entry
