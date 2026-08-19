@@ -66,16 +66,24 @@ flourish 가 유일한 범위 피드백이다.
   두 번째 on/off 스위치가 아니다.
 - **커밋(코스트 차감·엔티티 스폰)이 탭 순간으로 앞당겨진다.** D&D 와 같은 구조가 된 결과다.
 
-## 남은 정리 (Play 확인 후)
+## 정리 (Play 확인 후 수행 — 2026-08-19)
 
-되돌릴 가능성이 있어 지금은 남겼다. 체감이 확정되면 지운다.
+고스트 던지기가 사라지면서 도달 불가가 된 것들을 지웠다. **살아 있는 스위치는 손대지 않았다** —
+`selection-entry-narrowing` 의 세 스위치처럼 «정책으로 꺼둔» 코드는 되돌릴 수 있어야 하므로 남기고,
+여기서 지운 것은 «경로째 삭제돼 되돌릴 대상이 없는» 것뿐이다.
 
-- `DragSwaySettings` 의 `tapTravelDuration`/`tapTravelScaleMin`/`Max`/`tapSettleDistance`/
-  `tapSettleSpeed`/`tapSettleMaxDuration`/`tapFollowSmoothTime` — 소비처 0.
-- `tapArcHeightFactor`/`tapArcLateralFactor`/`tapThrow*` 는 **살아 있다** — 소유자가 탭 배치에서
-  재배치 비행(`ComputeThrowArc`)으로 넘어갔을 뿐이다. 이름을 옮길지는 별도 판단.
-- `DefenderDragPlacementController._simFocusCell` 과 `Update` 의 `_simulatedDrag` 분기
-  (포커스 락 · SmoothDamp 추종) — 세션이 한 프레임이라 도달 불가.
+- **`_simulatedDrag` 필드 전면 삭제**(+ `_simFocusCell`, `_tapFlightSeq`). 시뮬 세션이 한 프레임도
+  살지 않으므로 이 플래그의 **모든 읽기 지점이 도달 불가**였다 — `Update` 의 포커스 락·SmoothDamp
+  추종, 하이라이트 파생, 취소 존 판정, `SetHover` 의 사거리 억제, 취소 라벨 게이트. 전부 «참» 쪽으로
+  접었다. `BeginDrag(simulated:)` **매개변수는 남는다**(Disarm 알림·flourish 취소·UserDragStarted·
+  컷신 범위 — 넷 다 커밋 전에 판단된다).
+- `ResolveFocusAndTarget(lockCell:)` 매개변수 제거 → 구 `else` 본문이 본체가 됐다. 액체 하이라이트의
+  «탭이면 스트레치 0» 분기도 함께 사라진다.
+- `DragSwaySettings` 죽은 노브 7개 삭제(`tapTravelDuration`/`tapTravelScale{Min,Max}`/
+  `tapSettle{Distance,Speed,MaxDuration}`/`tapFollowSmoothTime`) + `.asset` 키 정리.
+- `tapArc*`/`tapThrow*` 는 **남긴다** — 소유자가 탭 배치에서 재배치 비행(`ComputeThrowArc`)으로
+  넘어갔을 뿐 소비처가 있다. 개명하면 저작값이 든 `.asset` 키가 갈리므로, 이름은 두고 **유래와 현재
+  소유자를 SO 주석에 적었다**.
 
 ## 완료 기준
 
