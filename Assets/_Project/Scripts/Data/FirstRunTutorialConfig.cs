@@ -46,6 +46,11 @@ namespace Wassup.Data
         public float cardDealInGraceSeconds = 2f;
 
         [Header("포커스")]
+        [Range(0f, 1f)]
+        [Tooltip("배틀 구간 차단막의 불투명도. **0 = 보이지 않는 차단막**(입력만 막고 화면은 그대로). " +
+                 "판이 도는 동안 화면을 덮는 게 어색해서 0 이 기본이다. 로비는 정지 화면이라 이 값을 쓰지 않는다.")]
+        public float dimOpacity;
+
         [Min(1f)]
         [Tooltip("보드 위 유닛을 가리킬 때 뚫는 구멍의 한 변(px). 이 값이 «플레이어가 유닛을 맞출 수 있는가» 를 정한다.")]
         public float focusHoleSize = 180f;

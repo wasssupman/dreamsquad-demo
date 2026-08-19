@@ -60,13 +60,25 @@ namespace Wassup.UI
             Tapped = null;
         }
 
-        public void Show()
+        public void Show() => Show(1f);
+
+        // first-run-tutorial — targetAlpha 0 = **보이지 않는 차단막**.
+        //
+        // 조각들은 알파와 무관하게 raycastTarget 을 들고 있고, UGUI 레이캐스트는 CanvasGroup 의
+        // alpha 가 아니라 blocksRaycasts 를 본다. 그래서 알파를 0으로 두면 «입력은 막되 화면은
+        // 어둡지 않은» 상태가 된다 — 판이 도는 동안 화면을 덮는 게 어색하다는 판단이 있었고,
+        // 온보딩의 배틀 구간은 이 모드를 쓴다. 로비는 정지 화면이라 기존대로 딤을 보여준다.
+        //
+        // 구멍은 그대로 동작한다(조각이 아예 없는 진짜 빈 영역이라 알파와 무관).
+        public void Show(float targetAlpha)
         {
             EnsureBuilt();
             _root.SetActive(true);
             _fade.Stop();
+            float a = Mathf.Clamp01(targetAlpha);
+            if (a <= 0f) { _group.alpha = 0f; return; }   // 페이드할 것이 없다
             _group.alpha = 0f;
-            _fade = Tween.Alpha(_group, 1f, fadeSeconds, Ease.OutQuad);
+            _fade = Tween.Alpha(_group, a, fadeSeconds, Ease.OutQuad);
         }
 
         public void Hide()

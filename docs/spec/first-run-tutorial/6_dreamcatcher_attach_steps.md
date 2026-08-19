@@ -28,13 +28,18 @@ B3 이 끝나면 정지를 풀고 `resumeBeforeAttachSeconds` 동안 판을 정�
 
 ### 4.1 보드의 캐논 선택
 
-대상은 **트레이 셀이 아니라 보드에 배치된 캐논**이다 — 드림캐쳐는 배치된 유닛에만 붙는다.
-unit 5 에서 놓은 유닛의 화면 좌표를 감싸는 임시 `RectTransform` 을 구멍으로 열고
+대상은 **트레이 셀**이다 — 보드에 놓인 유닛을 직접 찍게 하지 않는다.
 포커스 링 + `"다시 캐논 유닛을 선택 해보세요"` (원문 그대로).
 
-좌표는 기존 API 로 얻는다: `BattleBridge.TryGetDeployedEntity(DefenderUnitData, out Entity)`
-→ `TryGetUnitViewAnchor(Entity, out Transform)`. (배치 칸을 알고 있으면
-`GridCellToViewCenter(Vector2Int)` 도 있다.)
+**이미 있는 게임 어휘를 가르치는 것**이기 때문이다: 소진된 셀(보드 상한만큼 나가 있는 유닛)을
+탭하면 게임이 이미 «판 위 그 유닛으로 데려간다»(`DefenderDragSlot.GoToDeployedUnit` →
+`DcInspectController.SelectDeployed`). 캐논은 `maxOnBoard: 1` 이라 배치하는 순간 그 상태가 된다.
+덤으로 구멍이 **고정 UI rect** 하나라 카메라 움직임을 따라갈 필요가 없다.
+
+⚠ 셀이 소진이 아니면(대체 호스트가 상한 여유를 가진 경우) 그 탭은 선택이 아니라 **배치 arm**
+이 된다 — 그때만 보드 유닛 좌표를 감싸는 임시 `RectTransform` 으로 떨어지고, 그 경우엔 구멍을
+매 프레임 다시 잡아야 한다(카메라가 브리딩·킥으로 움직인다). 좌표는
+`BattleBridge.TryGetDeployedEntity` → `TryGetUnitViewAnchor` 로 얻는다.
 
 완료 조건 = `DreamcatcherHandView.SelectionTargetSet`.
 

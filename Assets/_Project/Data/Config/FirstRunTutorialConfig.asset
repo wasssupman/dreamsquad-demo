@@ -21,5 +21,6 @@ MonoBehaviour:
   resumeBeforeAttachSeconds: 5
   attachSettleSeconds: 2
   cardDealInGraceSeconds: 2
+  dimOpacity: 0
   focusHoleSize: 180
   introHoldMaxSeconds: 30

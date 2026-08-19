@@ -310,15 +310,31 @@ namespace Wassup.UI.Tutorial
 
             Freeze();
 
-            // 4.1 보드의 캐논 선택. 대상이 캐논이 아니면 **문구도 그 유닛 이름으로 바꾼다** —
-            // 캐논이라 말하며 딴 유닛을 가리키지 않는다.
-            // 유닛 이름이 캐논이 아니면 문구도 그 이름으로 바꾼다. 그리고 B3 를 건너뛴 판은
-            // 유닛을 한 번도 안 골랐으므로 «다시» 가 거짓이다 — 그때는 첫 안내 어투로 간다.
+            // 4.1 유닛 선택. 유닛 이름이 캐논이 아니면 문구도 그 이름으로 바꾸고, B3 를 건너뛴
+            // 판은 유닛을 한 번도 안 골랐으므로 «다시» 를 뺀다.
             string hostName = hostUnit != null ? hostUnit.displayName : "배치한";
             string reselectText = !_b3Completed
                 ? string.Format(SelectHostFormat, hostName)
                 : (hostUnit == tutorialUnit ? ReselectText : string.Format(ReselectFallbackFormat, hostName));
-            if (!TryMakeWorldProxy(_hostEntity, out var hostRect)) yield break;
+
+            // **트레이 셀로 유도한다** — 보드에 놓인 유닛을 직접 찍게 하지 않는다.
+            //
+            // 소진된 셀(보드 상한만큼 나가 있는 유닛)을 탭하면 게임이 이미 «판 위 그 유닛으로
+            // 데려간다»(DefenderDragSlot.GoToDeployedUnit → DcInspectController.SelectDeployed).
+            // 캐논은 maxOnBoard 1 이라 배치하는 순간 그 상태가 되므로, **이미 있는 게임 어휘를
+            // 가르치는 것**이 되고 구멍도 안정적인 UI rect 하나면 된다.
+            //
+            // 셀이 소진이 아니면(대체 호스트가 상한 여유를 가진 경우) 그 탭은 선택이 아니라
+            // 배치 arm 이 된다 — 그때만 보드 프록시로 떨어진다.
+            bool slotSelects = hostUnit != null && bridge != null
+                && bridge.DeployedCountOf(hostUnit) >= hostUnit.EffectiveMaxOnBoard
+                && defenderSelector != null
+                && defenderSelector.TryGetSlotRect(hostUnit, out _);
+
+            RectTransform hostRect = null;
+            if (slotSelects) defenderSelector.TryGetSlotRect(hostUnit, out hostRect);
+            else if (!TryMakeWorldProxy(_hostEntity, out hostRect)) yield break;
+            if (hostRect == null) yield break;
 
             _selectionSet = false;
             if (handView != null) handView.SelectionTargetSet += OnSelectionSet;
@@ -327,14 +343,12 @@ namespace Wassup.UI.Tutorial
             if (!alreadySelected)
             {
                 Focus(hostRect, reselectText);
-                // ⚠ 구멍을 한 번만 잡으면 안 된다 — 4.2 카드와 **같은 이유**다. 프록시는
-                // WorldToScreenPoint 를 한 번 계산해 박고, 오버레이는 대상 rect 의 코너 «변화»
-                // 만 추적한다. 그런데 카메라는 CameraDirector 의 브리딩·킥으로 상시 미세하게
-                // 움직여서 구멍이 유닛에서 벗어난다 → 유닛 탭은 딤에 막히고, 구멍 안 탭은 빈
-                // 보드라 선택이 안 울려 정지 상태로 영영 멈춘다(타임아웃이 없다).
+                // 보드 프록시로 떨어진 경우엔 구멍을 매 프레임 다시 잡아야 한다 — 4.2 카드와
+                // 같은 이유이고, 여기서는 카메라(CameraDirector 의 브리딩·킥)가 움직이는 쪽이다.
+                // 트레이 셀은 고정 UI rect 라 오버레이의 코너 추적만으로 충분하다.
                 while (!_selectionSet)
                 {
-                    if (TryMakeWorldProxy(_hostEntity, out var live) && live != null)
+                    if (!slotSelects && TryMakeWorldProxy(_hostEntity, out var live) && live != null)
                         overlay.SetHoles(new[] { live });
                     yield return null;
                 }
@@ -450,7 +464,11 @@ namespace Wassup.UI.Tutorial
         {
             overlay.SetSortingOrder(guidance.DimSortingOrder);
             if (_dimShown) return;
-            overlay.Show();
+            // ⚠ **보이지 않는 차단막**(알파 0). 판이 도는 동안 화면을 어둡게 덮는 게 어색하다는
+            // 판단이다 — 입력만 막고 시야는 그대로 둔다. 조각은 알파와 무관하게 raycastTarget 을
+            // 들고 있고 레이캐스트는 blocksRaycasts 를 보므로 차단력은 그대로다.
+            // 무엇을 눌러야 하는지는 딤 대비가 아니라 **포커스 링**이 말한다.
+            overlay.Show(config.dimOpacity);
             _dimShown = true;
         }
 
