@@ -1,7 +1,7 @@
 # defender-drop-dismount
 
 > 상태: **완료 2026-07-28** (unit 0~5 구현 + Play 육안 확인, 커밋 `ad886013`~`35bb5642`, 인계 `6_handoff_summary.md`)
-> · **unit 7 추가 2026-08-19** — 배치 3종 착지 통일(계약 1 뒤집음). 구현·컴파일 확인, Play 확인 대기.
+> · **unit 7 완료 2026-08-19** — 배치 3종 착지 통일(계약 1 뒤집음). 사용자 Play 확인, 커밋 `7608ef0a`.
 > 선행 의존: 배치 셀 판정 손가락 기준 수정(`DefenderDragPlacementController._fingerBoardWorld`, 2026-07-28 작업, 커밋 대기 중)이 먼저 커밋되어야 한다. 이 spec 은 그 수정으로 생긴 "매달린 유닛 ↔ 판정 타일" 간격을 연출로 메운다.
 
 ## 목표
