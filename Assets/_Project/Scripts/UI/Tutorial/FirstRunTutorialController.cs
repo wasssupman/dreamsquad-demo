@@ -334,13 +334,24 @@ namespace Wassup.UI.Tutorial
             // 대가로 이 창에 각성을 먼저 쓸 수 있지만(게이지 여유가 정확히 0), 안내가 손패를
             // 가리키지 않는 구간이라 위험이 낮고, 무엇보다 대상이 죽는 쪽이 확실한 실패다.
             guidance.Hide();
-            HideDim();
             Unfreeze();
+
+            // ⚠ 이 구간은 **차단막을 유지한다**(보기만 하는 구간). 열어두면 플레이어가 트레이의
+            // 캐논 셀을 탭할 수 있고, 배치 후 그 셀은 «소진» 이라 탭이 곧 **판 위 유닛 선택**이다
+            // (DefenderDragSlot.GoToDeployedUnit). 그러면 손패가 미리 열린 채 항아리 안내가 뜨고,
+            // 이어지는 «다시 유닛을 선택» 은 이미 끝난 일을 시키는 말이 된다.
+            DimOnly();
             yield return WaitUnscaled(config.resumeBeforeAttachSeconds);
 
-            // 부착할 유닛이 살아 있을 때까지 기다린다(딤은 계속 내려둔 채 — 플레이어가 더 놓을
-            // 수 있어야 한다). 즉시 포기하면 캐논이 죽은 판은 전부 B4 를 못 본다.
-            yield return WaitFor(() => TryResolveHost(out _, out _));
+            // 부착할 유닛이 없을 때만 차단막을 내려 **더 놓을 기회**를 준다. 이게 안전 밸브다 —
+            // 놓았던 캐논이 죽은 판도 B4 를 볼 수 있어야 하고, 그건 플레이어가 손을 써야 한다.
+            // 있으면 열지 않는다(위 이유).
+            if (!TryResolveHost(out _, out _))
+            {
+                HideDim();
+                yield return WaitFor(() => TryResolveHost(out _, out _));
+                DimOnly();
+            }
             if (!TryResolveHost(out _hostEntity, out var hostUnit)) yield break;
 
             Freeze();
