@@ -38,7 +38,7 @@ MonoBehaviour:
   projectile: {fileID: 0}
   outputs:
   - kind: 0
-    magnitude: 58
+    magnitude: 40
     duration: 0
     stat: 0
     op: 0
