@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
   id: cannon_strike
   barrel: {fileID: 11400000, guid: 17cda1f91b50401dbc84b3ee99a06ec5, type: 2}
-  damage: 80
+  damage: 200
   selection: 0
   minAngleDeg: 0
   maxAngleDeg: 0
   shots:
   - directionT: 0.5
     intervalAfterPreviousSec: 0
+  randomizeShotsPerTrigger: 0
+  randomIntervalMinSec: 0
+  randomIntervalMaxSec: 0
   reselectPerShot: 1
   telegraphSec: 0.4
-  scopeTileRange: 2
+  scopeTileRange: 3
   fanOutToAllCandidates: 1
   fanOutStaggerSec: 0.08
