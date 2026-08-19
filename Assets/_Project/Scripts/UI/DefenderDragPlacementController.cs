@@ -127,7 +127,6 @@ namespace Wassup.UI
         private bool _simulatedDrag; // defender-tap-to-place — 시뮬(탭) 경로 표시. 공격 범위 프리뷰 억제.
         // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
         private Vector2Int? _simFocusCell;
-        private int _tapFlightSeq;
         // placement-armed-board-drag unit 0 — armed 유닛의 보드 프레스-드래그-릴리즈 제스처 상태.
         // press 가 보드에서 시작(가드 통과)되면 active, 이동 임계 초과 시 dragging 승격. release 에서
         // dragging=커밋(시뮬 비행) / 아니면 탭(범위 피크는 unit 2). 시간 delta 로 판정하지 않는다(이동량만).
@@ -252,7 +251,11 @@ namespace Wassup.UI
             _session = BuildSession(unitData);
             // defender-deploy-cutscene unit 3/8 — 프레임이 있으면 좌하단 컷신 1회 재생(자동 종료).
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
-            if (Cfg.enableDeployCutscene && _cutscenePlayer != null &&
+            //
+            // drop-dismount unit 7 — **시뮬 경로는 제외한다.** 탭 배치는 세션이 한 프레임이라
+            // CommitPlacementAt 의 ForceStopAndReset 이 같은 프레임에 컷신을 죽인다 — 켜 두면
+            // 좌하단이 1프레임 번쩍일 뿐이다. 컷신은 «들고 있는 동안» 의 연출이고 탭에는 그 구간이 없다.
+            if (!simulated && Cfg.enableDeployCutscene && _cutscenePlayer != null &&
                 unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0)
             {
                 // depth-parallax unit 7 — 색+뎁스 lockstep 재생(5-arg). 뎁스 미할당이면 null 전달=색만(패럴랙스 없음).
@@ -913,7 +916,11 @@ namespace Wassup.UI
         {
             // 비행 중에만 범위 표시(sim 경로라 비행이 스스로 안 그리고 CleanupSession clear 만 하므로 매 프레임 재확인).
             // 배치(착지=커밋)로 비행 세션이 끝나면 곧바로 소거 — linger 없음(다른 배치 동작과 동일).
-            while (_session.active && _simulatedDrag)
+            // unit 7 — 시뮬 세션은 이제 **한 프레임짜리**라(커밋이 탭 프레임) 여기에 걸어두면 flourish 가
+            // 즉시 꺼진다. 범위는 **하마 비행이 사는 동안** 유지하고 착지에 걷는다 — 탭에는 스카우트
+            // 구간이 없어(D&D 의 드래그 · 탭투프레스의 프레스-드래그와 다른 점) 이 flourish 가 유일한
+            // 범위 피드백이기 때문이다. 하마가 안 떴으면(폴백) 둘 다 거짓이라 즉시 소거된다.
+            while (_session.active || _activeDismounts.ContainsValue(cell))
             {
                 bridge.SetPlacementRange(cell, unit);
                 yield return null;
@@ -944,101 +951,58 @@ namespace Wassup.UI
             return es.IsPointerOverGameObject();
         }
 
-        // defender-tap-to-place unit 0 — 탭 배치: 트레이(fromScreen)에서 targetCell 로 드래그를 스크립트로 재생.
-        // 진짜 드래그처럼 BeginDrag→UpdateDrag(트윈)→확정 을 구동 → 키링/hover/throttle/팝/deploy 전부 재사용.
+        // defender-tap-to-place unit 0 — 탭/보드드래그 릴리스 배치.
+        //
+        // drop-dismount unit 7 (2026-08-19) — **구조가 바뀌었다.** 예전엔 키링에 매달린 고스트가
+        // 트레이에서 타일까지 던져지는 아치를 1.5초 날고, 타일 바로 위에 정착한 **뒤에** 커밋했다.
+        // 그래서 실유닛은 그 자리에 팝했고, 하마(下馬)를 붙여도 낙차가 없어 제자리 홉이 됐다.
+        //
+        // 이제 트레이 D&D 와 **같은 구조**다: 집은 곳에서 놓는 순간 커밋하고, 실유닛이 거기서
+        // 타일까지 날아가 착지한다. D&D 의 «집은 곳» 이 키링에 매달린 위치라면, 탭의 «집은 곳» 은
+        // **트레이 유닛 셀**이다. 비행·착지·잔류는 전부 `StartDropDismount` 가 가져간다.
+        //
+        // 그래서 코루틴이 아니다 — 세션은 이 한 프레임만 살아서 고리·줄 하드웨어와 커밋 꼬리를
+        // 빌려주고 곧바로 정리된다. 딸려오는 것 둘(수용됨):
+        //   · 비행 시간이 하마의 0.45s 상한을 따른다(계약 3 — 공중 유닛이 활성이 되면 안 된다).
+        //   · 배치 컷신은 재생 창이 없다 — 아래 BeginDrag 에서 시뮬 경로를 아예 제외한다.
         public void SimulateDragTo(DefenderUnitData unit, Vector2 fromScreen, Vector2Int targetCell)
         {
             if (unit == null || bridge == null || _session.active) return;
-            StartCoroutine(RunSimulatedDrag(unit, fromScreen, targetCell));
-        }
-
-        private IEnumerator RunSimulatedDrag(DefenderUnitData unit, Vector2 fromScreen, Vector2Int targetCell)
-        {
-            BeginDrag(unit, fromScreen, simulated: true); // 시뮬 경로(범위 억제)
-            if (!_session.active) yield break;
-            int gen = _sessionGen; // review fix — 이 코루틴이 소유한 세션 세대. 새 드래그가 시작되면 불일치 → 물러남.
+            BeginDrag(unit, fromScreen, simulated: true);
+            if (!_session.active) return;
             if (mainCamera == null) mainCamera = Camera.main;
-            var cfg = Cfg;
-            var camT = mainCamera.transform;
+            if (mainCamera == null) { CleanupSession(); return; }
 
-            // 월드 공간 비행: 유닛 발점을 tray→타일 로 월드에서 직접 트윈하고, 키링(고리/줄/유닛 추종)은 config 대로
-            // 따라오게 한다. 스크린 역산·스큐·비행 중 카메라 dolly 에 흔들리지 않는다(이전 스크린 역산 방식의 오배치 원인).
-            float totalDrop = _session.unitHeight + cfg.ropeLength * _session.visualScale;
-            Vector3 endFeet = bridge.GridCellToViewCenter(targetCell);      // 보드 평면 위 셀 중심(월드)
+            var camT = mainCamera.transform;
+            var cfg = Cfg;
+            Vector3 endFeet = bridge.GridCellToViewCenter(targetCell);
             Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
             if (Vector3.Dot(boardN, camT.position - endFeet) < 0f) boardN = -boardN; // 카메라 쪽
-            Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet);     // 트레이 슬롯 → 보드 발점(폴백=endFeet)
-            // unit 6 — 선택 타일 발 위치가 불변 기준. 유닛/고리 최종점은 여기서 한 번만 파생한다.
-            Vector3 unitLift = boardN * previewHeight;
-            Vector3 ringLift = camT.up * totalDrop;
-            Vector3 finalUnitTarget = endFeet + unitLift;
-            Vector3 finalRing = endFeet + ringLift;
+            Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet); // 트레이 슬롯 → 보드 평면 발점
 
-            // 비행 시간 = 기준 × (start→end 화면거리 / 화면세로), 0.25~1.5배.
-            Vector2 sScr = (Vector2)mainCamera.WorldToScreenPoint(startFeet);
-            Vector2 eScr = (Vector2)mainCamera.WorldToScreenPoint(endFeet);
-            float distScale = Mathf.Clamp(Vector2.Distance(sScr, eScr) / Mathf.Max(Screen.height, 1f),
-                cfg.tapTravelScaleMin, cfg.tapTravelScaleMax);
-            float dur = Mathf.Max(cfg.tapTravelDuration * distScale, 0.05f);
-
-            // 렌더 활성 + 추종 시작점.
+            // 하마의 출발 자세 = 트레이 유닛 셀. `StartDropDismount` 는 `_unitPosWorld` 를 시작점으로,
+            // `DetachKeyringRemnant` 는 `ring.position` 을 잔류 고리 위치로 캡처한다 — 둘 다 여기서 세운다.
+            float totalDrop = _session.unitHeight + cfg.ropeLength * _session.visualScale;
             _onBoard = true; _posInit = true;
-            _simFocusCell = targetCell; // unit 4 — 비행 내내 선택 타일에 포커스 고정
-            _unitPosWorld = startFeet + unitLift;
-            _unitVelWorld = Vector3.zero;
-            if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
+            _unitPosWorld = _unitTargetWorld = startFeet + boardN * previewHeight;
+            _unitVelWorld = Vector3.zero; // 잔여 스윙 없음 → 반동은 순수 dip(Hermite 접선 0)
+            _ringWorld = startFeet + camT.up * totalDrop;
+            _lastAimScreenPos = _lastRawScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld);
 
-            // unit 6 — 3차 던지기: 시작은 앞·위, 도착은 낮게 두어 상승/하강 접선을 분리한다.
-            // unit 5 의 결정론 좌우 변주는 두 제어점에 같은 오프셋으로 유지 → 중간에만 휘고 endpoint 는 정확.
-            // defender-relocation unit 6 — 곡선 계산은 KeyringSim.ThrowArcControls 로 추출(재배치 비행과 공유).
-            Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
-            KeyringSim.ThrowArcControls(startFeet, endFeet, camT.up, boardRight,
-                cfg.tapArcHeightFactor, cfg.tapArcLateralFactor, cfg.tapThrowLaunchControl, cfg.tapThrowLandingControl,
-                _tapFlightSeq++, out Vector3 controlA, out Vector3 controlB);
-
-            float t = 0f;
-            while (t < 1f && _session.active && _sessionGen == gen)
+            // 고리·줄 트랜스폼은 평소 Update 의 추종 블록이 세우는데, 이 경로는 그 블록을 **한 번도
+            // 지나지 않는다**(같은 프레임에 세션이 끝난다). 여기서 직접 세우지 않으면 잔류 고리가
+            // 원점에 남아 화면 구석에서 페이드한다.
+            Vector3 headPos = _unitPosWorld + camT.up * _session.unitHeight;
+            if (_session.ring != null) _session.ring.position = _ringWorld;
+            if (_session.endNode != null) _session.endNode.position = headPos;
+            if (_session.cordLine != null)
             {
-                t += Time.unscaledDeltaTime / dur;
-                float linearT = Mathf.Clamp01(t);
-                // unit 6 rev — 곡선의 중후반 공간 속도 증가를 시간 이징으로 상쇄한다.
-                // 빠르게 던져지고 도착할수록 감속하며, CubicBezier endpoint 는 그대로 정확하다.
-                float flightT = 1f - Mathf.Pow(1f - linearT, 3f); // OutCubic
-                Vector3 feet = KeyringSim.CubicBezier(startFeet, controlA, controlB, endFeet, flightT);
-                _unitTargetWorld = feet + unitLift;                                 // 유닛 추종 목표
-                _ringWorld = feet + ringLift;                                       // 고리 = 발 위 totalDrop(camUp)
-                // 카메라 포커스 피드. 시뮬 경로는 월드에서 역산한 값이 곧 실제 포커스라 raw==가상
-                // (ToPlacementPointer seam 을 지나지 않는다 — 탭 비행이 한 칸 위로 날면 안 된다).
-                _lastAimScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld);
-                _lastRawScreenPos = _lastAimScreenPos;
-                yield return null;
+                if (_session.cordLine.positionCount != 2) _session.cordLine.positionCount = 2;
+                _session.cordLine.SetPosition(0, _ringWorld);
+                _session.cordLine.SetPosition(1, headPos);
             }
-            if (!_session.active || _sessionGen != gen) yield break; // 세션이 바뀜(새 드래그/정리) → 커밋 없이 물러남
 
-            // unit 6 — 고리는 선택 타일 기준 최종점에 고정. 비행부터 이어진 비진동 추종으로 실제 프리뷰가
-            // 거리+속도 조건을 만족할 때까지 짧게 정착한다. 제한시간은 실패 안전망.
-            _unitTargetWorld = finalUnitTarget;
-            _ringWorld = finalRing;
-            _lastAimScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
-            _lastRawScreenPos = _lastAimScreenPos;
-            float settleElapsed = 0f;
-            while (_session.active && _sessionGen == gen)
-            {
-                bool closeEnough = Vector3.Distance(_unitPosWorld, finalUnitTarget) <= cfg.tapSettleDistance;
-                bool slowEnough = _unitVelWorld.magnitude <= cfg.tapSettleSpeed;
-                if ((closeEnough && slowEnough) || settleElapsed >= cfg.tapSettleMaxDuration)
-                    break;
-
-                settleElapsed += Time.unscaledDeltaTime;
-                yield return null;
-            }
-            if (!_session.active || _sessionGen != gen) yield break;
-
-            // 정상/타임아웃 모두 보정 프레임을 노출하지 않는다. 착지 팝과 공용 커밋 꼬리를 같은 프레임에 실행.
-            _unitPosWorld = finalUnitTarget;
-            _unitVelWorld = Vector3.zero;
             _debounce = default;
-            bridge?.PulsePlacementHover(targetCell, _session.isValidTile);
             CommitPlacementAt(targetCell);
         }
 
@@ -1063,14 +1027,21 @@ namespace Wassup.UI
                 // defender-deploy-cutscene unit 8 — 배치 완료는 컷씬보다 절대 우선.
                 // 플립북/hold/slide-out 어느 단계든 즉시 숨기고 다음 배치를 위해 틸트까지 원복한다.
                 _cutscenePlayer?.ForceStopAndReset();
-                // defender-drop-dismount unit 2 — 실드래그 릴리스만(계약 1: 탭/armed 보드드래그의
-                // 시뮬 비행은 자체 고스트가 이미 날았음). CleanupSession 전에 고스트 실좌표를 캡처해
-                // 실유닛 뷰를 하마 궤적으로 날린다. facing 유닛도 병행(계약 8) — aim 은 셀 기준 로직이라
+                // defender-drop-dismount unit 2 — CleanupSession 전에 고스트 실좌표를 캡처해 실유닛
+                // 뷰를 하마 궤적으로 날린다. facing 유닛도 병행(계약 8) — aim 은 셀 기준 로직이라
                 // 뷰 비행과 무충돌.
                 // unit 3 — facing 여부를 먼저 확정: 비-facing 드롭은 스폰 연출을 착지 프레임으로 이관하고
                 // (RunDeployment 는 시계만 유지), facing 은 aim 경로 연출 현행 유지(이중 재생 방지).
+                //
+                // unit 7 (2026-08-19) — **`!_simulatedDrag` 게이트 제거.** 배치 방식 3종(트레이 D&D ·
+                // 탭투플레이스 · armed 보드 프레스-드래그)이 같은 착지를 갖는다. 구 계약 1("실드래그
+                // 릴리스만")의 근거였던 "시뮬은 자체 고스트가 이미 날았다" 는 **도착까지**의 이야기고,
+                // 하마는 **도착 이후**(반동→솟음→스틱 착지→스쿼시→고리·줄 잔류)라 겹치지 않는다.
+                // 시뮬 경로도 커밋 프레임에 `_onBoard/_posInit/_unitPosWorld` 가 서 있어 캡처가 성립한다
+                // (RunSimulatedDrag 가 정착 직후 최종 좌표로 하드셋). 거리가 짧아도 apex 절대 하한
+                // (dropArcMinHeight)이 납작해지는 것을 막는다 — 그 노브가 정확히 이 경우를 위해 있다.
                 bool facing = session.unit != null && session.unit.RequiresFacing && _aimController != null;
-                bool dismount = !_simulatedDrag && StartDropDismount(session.unit, cell, entity, presentAtLanding: !facing);
+                bool dismount = StartDropDismount(session.unit, cell, entity, presentAtLanding: !facing);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.

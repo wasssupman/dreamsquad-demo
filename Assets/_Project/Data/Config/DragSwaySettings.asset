@@ -22,7 +22,7 @@ MonoBehaviour:
   ringRadius: 0.24
   charmDrop: 0
   style: {fileID: 11400000, guid: 8ddb116cb88747dabf6a8881495f1815, type: 2}
-  enableDeployCutscene: 1
+  enableDeployCutscene: 0
   deployCutsceneSwipeRefSpeed: 925
   deployCutsceneSwipeSmoothing: 13.81
   placementStickMargin: 0.607

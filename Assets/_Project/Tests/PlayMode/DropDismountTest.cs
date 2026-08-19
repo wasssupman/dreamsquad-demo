@@ -16,7 +16,7 @@ namespace Wassup.Tests.PlayMode
     // defender-drop-dismount unit 5 — 하마 비행 계약 회귀 가드.
     //   계약 5: 핸드오프 팝 0(고스트 마지막 발점 ≈ 첫 오버라이드)
     //   계약 4: 활성화 시계 commit 기준(deploymentDuration), 착지 ≤ 활성화
-    //   계약 1: 탭(시뮬) 경로는 dismount 미발동
+    //   계약 1 rev(unit 7): 배치 3종(트레이 D&D · 탭투플레이스 · armed 보드드래그) 전부 dismount 발동
     //   계약 7: 비행은 세션 독립(새 드래그가 이전 비행을 죽이지 않음)
     public class DropDismountTest
     {
@@ -117,7 +117,12 @@ namespace Wassup.Tests.PlayMode
             Assert.Less(Vector3.Distance(viewT.position, restPos), 0.05f,
                 $"착지 앵커({restPos})는 실제 렌더 좌표({viewT.position})와 일치(ToView 출력 미러)");
 
-            // ── 4) 탭(시뮬) 경로 게이트: dismount 미발동 = 오버라이드 미등록 ──
+            // ── 4) 탭(시뮬) 경로도 **같은 착지**: dismount 발동 = 오버라이드 등록 → 착지에 해제 ──
+            //
+            // unit 7 (2026-08-19) — 구 계약 1("적용 범위 = 실드래그 릴리스만")을 **뒤집은** 단정이다.
+            // 배치 방식 3종(트레이 D&D · 탭투플레이스 · armed 보드 프레스-드래그)이 같은 하마 착지를
+            // 갖는다. 뒤 둘은 `SimulateDragTo` 한 입구로 모이므로 이 한 케이스가 둘을 함께 지킨다.
+            // 세 경로가 다시 갈리면(= `_simulatedDrag` 게이트가 되살아나면) 여기가 빨개진다.
             var cellB = FindValidCellWithScreen(bridge, cam, unit, out _, exclude: cellA);
             int overrideSightings = 0;
             ctrl.SimulateDragTo(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f), cellB);
@@ -130,12 +135,18 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
             Assert.AreNotEqual(Entity.Null, entityB, "tap placement landed");
-            for (int i = 0; i < 3; i++)
+            // 하마 비행 창(dropTotalSeconds, deploymentDuration 으로 클램프)이 도는 동안 오버라이드가
+            // 살아 있어야 한다. 상한 2s 는 안전망 — 그 안에 반드시 착지한다(계약 3).
+            float tapFlightDeadline = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < tapFlightDeadline && GetOverride(bridge, entityB).HasValue)
             {
-                if (OverrideCount(bridge) > 0) overrideSightings++;
+                overrideSightings++;
                 yield return null;
             }
-            Assert.AreEqual(0, overrideSightings, "탭 경로는 dismount(뷰 오버라이드) 미발동(계약 1)");
+            Assert.Greater(overrideSightings, 0,
+                "탭 경로도 dismount(뷰 오버라이드) 발동 — 배치 3종 착지 통일(unit 7)");
+            Assert.IsFalse(GetOverride(bridge, entityB).HasValue,
+                "탭 경로 하마도 착지 프레임에 오버라이드를 해제한다(붙박이 없음)");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
