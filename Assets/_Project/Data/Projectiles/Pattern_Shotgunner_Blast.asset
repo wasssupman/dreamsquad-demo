@@ -14,14 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
   id: shotgunner_blast
   barrel: {fileID: 11400000, guid: c3c7bf7537d947278f27b931df1ff7c2, type: 2}
-  damage: 25
+  damage: 15
   selection: 2
   minAngleDeg: -40
   maxAngleDeg: 40
   shots:
   - directionT: 0
     intervalAfterPreviousSec: 0
+  - directionT: 0.25
+    intervalAfterPreviousSec: 0
   - directionT: 0.5
+    intervalAfterPreviousSec: 0
+  - directionT: 0.75
     intervalAfterPreviousSec: 0
   - directionT: 1
     intervalAfterPreviousSec: 0

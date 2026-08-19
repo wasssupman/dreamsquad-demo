@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Projectile_ShotgunBlast
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: shotgun_blast
-  speed: 12
+  speed: 6
   hitThreshold: 1.2
   visualScale: 2
   visualHeightOffset: 0.7
