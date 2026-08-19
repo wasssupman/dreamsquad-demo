@@ -1,10 +1,10 @@
 # on-place-shuttle-shotgun — 실드셔틀·샷건맨 배치 스킬
 
-> 상태: **units 0~4 구현·커밋 완료 · Play 육안 검증 대기** (2026-08-19).
+> 상태: **완료 2026-08-19** — units 0~4 구현·커밋 + 투트랙 코드 리뷰 반영 + 사용자 Play 확인 + 시트 `desc` 반영.
 > 커밋 `4aafe374`(unit 0) · `368c72b1`(unit 1) · `7aa1288b`(units 2~4).
 > ⚠ unit 1 의 브리지 조각(`ResolveForwardBurstDirection` 이 순수 함수를 쓰도록)은 워크트리를
 > 공유한 다른 세션 커밋 `52aba94d` 에 딸려 들어갔다 — 코드는 정상이고 위치만 다르다.
-> 검증: EditMode 2517개 중 실패 0. **Play 육안 검증과 시트 `desc` 반영이 남았다.**
+> 검증: EditMode 2517개 중 실패 0 · 사용자 Play 확인 · 시트 push 완료(desc 3칸, added 0).
 > 선행/모체: `docs/spec/on-place-skill-rework/`(트리거×페이로드 위의 배치 스킬 · `OnPlace` 트리거 ·
 > 능력 SO = 방어유닛 자기 규칙의 집), `docs/spec/defender-directional-volley/`(방향 유닛·`DeployedFacing`),
 > `docs/spec/defender-on-place-skills/`(레거시 배치 효과 · 전방 발사 방향 규칙),
@@ -50,7 +50,7 @@
 | 1 ✅`368c72b1` | 토대 | `1_directional_snapshot.md` | 규칙 경로의 방향 바인딩 발사 개통 — 원점·방향·사거리 스냅샷 + 후보 필터 + 방향 결정 순수 함수 공유 |
 | 2 ✅`7aa1288b` | 가드 | `2_authoring_guards.md` | 조용히 죽는 저작을 loud 로(검증 3건) + push 공존 경고 + 배치 페이즈 실드 VFX 정리 |
 | 3 ✅`7aa1288b` | 샷건맨 | `3_shotgun_blast.md` | 탄 SO + 패턴 SO + 능력 SO, 레거시 밀쳐냄 3필드 0 |
-| 4 ⚠`7aa1288b` | 문안·검증 | `4_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
+| 4 ✅`7aa1288b` | 문안·검증 | `4_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
 
 > 순서 근거: 0 은 완전 독립(먼저 굴려서 규칙 경로가 살아있음을 확인). 1 → 3 이 샷건맨 사슬이고
 > 1 은 단독으로 아무 동작도 안 한다(캐논의 0·1 선례). 2 는 1 의 저작 표면을 안전하게 만드는

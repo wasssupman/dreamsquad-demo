@@ -62,3 +62,5 @@
       한다. 「배치 규칙이 있는데 문안이 비면 실패」하는 전수 테스트(`UnitKitCatalogTests
       .RuleDrivenOnPlaceUnits_HaveAClause`)가 있어서, 에셋만 넣으면 그 테스트가 빨개진다.
       조용히 비는 것을 막으려고 만들어 둔 가드다
+
+> ✅ 사용자 Play 확인 2026-08-19. 커밋 `4aafe374`·`368c72b1`·`7aa1288b`·`71446582`·`09ca7a2b`·`13e19e9e`·`7851ac18`·`c280ea62`·`a6e42d3a`·`85fe2c13`·`765970fa`.
