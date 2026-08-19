@@ -76,6 +76,19 @@ namespace Wassup.UI
         public event System.Action Toggled;
         public RectTransform HitRect => _panel != null ? (RectTransform)_panel.transform : null;
 
+        // 2026-08-19 사용자 결정 — **항아리 탭 진입구를 끈다.** 드림캐쳐 손패는 이제 유닛
+        // 선택으로만 열린다(DcInspectController.Select → DreamcatcherHandView.OpenForSelection).
+        // 항아리는 각성치 판독 표면(큰 숫자·채움·피규어·ready 림)으로 그대로 남는다.
+        //
+        // 끄면 히트도 함께 놓는다(raycastTarget=false) — 그러지 않으면 손패가 열린 동안
+        // 항아리 위가 dismiss 캐처에 닿지 않는 죽은 구역이 된다. 놓아주면 그 탭이 캐처로
+        // 내려가 «바깥 탭 = 닫기» 가 항아리 위에서도 성립한다.
+        //
+        // ⚠ [SerializeField] 로 노출하지 않는다 — 인스펙터에서 켜고 씬을 저장하면 그 값이
+        // 조용히 리포에 박힌다(DcInspectController.RelocationEnabled 와 같은 사유).
+        // 진실원은 이 줄 하나다. true 로 되돌리면 Toggled 배선째 종전 동작이 부활한다.
+        private static readonly bool JarTapEnabled = false;
+
         // dreamcatcher-orb-dock unit 1 — DreamcatcherHandView.Start 가 트레이 RectTransform 을
         // 넘겨준다(씬 배선 없이 기존 참조로). LateUpdate 가 트레이 우측 엣지에 독을 정렬.
         public void BindTray(RectTransform trayRect) => _trayRect = trayRect;
@@ -543,14 +556,19 @@ namespace Wassup.UI
 
             var hitGraphic = _panel.GetComponent<Image>();
             hitGraphic.color = new Color(1f, 1f, 1f, 0.001f);
+            hitGraphic.raycastTarget = JarTapEnabled;
             var button = _panel.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = hitGraphic;
-            button.onClick.AddListener(() =>
+            button.interactable = JarTapEnabled;
+            if (JarTapEnabled)
             {
-                SoundManager.Instance?.PlayUiTick();
-                Toggled?.Invoke();
-            });
+                button.onClick.AddListener(() =>
+                {
+                    SoundManager.Instance?.PlayUiTick();
+                    Toggled?.Invoke();
+                });
+            }
 
             var visualGO = new GameObject("JarVisual", typeof(RectTransform));
             visualGO.transform.SetParent(_panel.transform, false);

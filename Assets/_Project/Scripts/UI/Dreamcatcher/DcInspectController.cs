@@ -210,7 +210,8 @@ namespace Wassup.UI
                 return;
             }
             _anchorMissFrames = 0;
-            if (cameraDirector != null && !AimingNow()) cameraDirector.SetInspectFocus(anchor.position);
+            if (InspectZoomEnabled && cameraDirector != null && !AimingNow())
+                cameraDirector.SetInspectFocus(anchor.position);
 
             // unit 11 — 실효 스탯은 매 프레임 갱신한다. 대상이 1 엔티티라 비용이 무시할 만하고
             // (이 메서드가 이미 매 프레임 앵커를 조회한다), HP 가 뚝뚝 끊기지 않는다.
@@ -250,6 +251,26 @@ namespace Wassup.UI
         // 리포에 박힌다(이 프로젝트에서 반복된 사고). 진실원은 이 줄 하나다.
         // const 가 아니라 static readonly 인 이유: const 면 분기가 상수 폴딩돼 도달 불가 경고가 뜬다.
         private static readonly bool RelocationEnabled = false;
+
+        // 2026-08-19 사용자 결정 — **보드에 놓인 유닛을 직접 탭해 선택하는 경로를 끈다.**
+        // 선택 진입구는 하단 트레이 셀 하나로 좁힌다(DefenderDragSlot.GoToDeployedUnit →
+        // SelectDeployed). 유닛은 전부 maxOnBoard 1 이라 배치하는 순간 그 셀이 «소진» 이 되고,
+        // 소진 셀의 탭은 이미 «판 위 그 유닛으로 데려간다» 였다 — 새 어휘가 아니라 남은 어휘다.
+        // (FirstRunTutorialController 4.1 이 이미 트레이 셀로 유도한다 — 그 주석 참조.)
+        //
+        // 끈 뒤에도 보드 탭 자체는 살아 있다: 이제 **해제 제스처 전용**이다(선택/손패 걷기).
+        // 그래서 TryPick 호출만 사라지고 Close 경로는 그대로다.
+        private static readonly bool BoardTapSelectEnabled = false;
+
+        // 2026-08-19 사용자 결정 — **선택 줌(인스펙트 포커스)을 끈다.** 카메라는 홈 포즈를
+        // 유지한다. 피드를 끊는 쪽으로 끈다(CameraDirectionConfig 의 inspectDolly/FovDelta/
+        // LookWeight 를 0 으로 만드는 대신) — 그래야 프레이밍 바이어스까지 한 번에 멎고,
+        // 같은 채널을 쓰는 DirectionAimController(방향 지정 조준 셀 포커스)는 영향이 없다.
+        // 피드가 끊기면 CameraDirector 가 2프레임 staleness 로 자동 해제한다.
+        //
+        // ⚠ 두 플래그 모두 [SerializeField] 금지 · const 아닌 static readonly (const 면
+        // 분기가 상수 폴딩돼 «도달 불가» 경고가 뜨고 TryPick 이 미사용으로 잡힌다).
+        private static readonly bool InspectZoomEnabled = false;
 
         // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
         // 슬롯(DefenderDragSlot)은 런타임 생성이라 인스펙터 배선이 없고, 이미 이 컨트롤러
@@ -306,12 +327,14 @@ namespace Wassup.UI
         {
             // 이동모드/배치 드래그가 입력 주인일 때는 캐처 클릭으로 선택이 오염되지 않게(critic M6).
             if (MustClose()) return;
-            if (TryPick(screenPos, out var entity) && entity != _selected)
+            // BoardTapSelectEnabled=false — 보드 탭은 더 이상 유닛을 고르지 않는다. 선택 전환은
+            // 트레이 셀을 다시 탭하는 경로로만 일어난다(SelectDeployed 는 전환도 겸한다).
+            if (BoardTapSelectEnabled && TryPick(screenPos, out var entity) && entity != _selected)
             {
                 Select(entity); // 전환(무선택 상태의 첫 선택도 이 경로) — 손패는 유지된다
                 return;
             }
-            CloseByIntent(); // 빈 보드 또는 선택 유닛 재탭
+            CloseByIntent(); // 빈 보드 · 선택 유닛 재탭 · (선택 꺼짐) 모든 보드 탭 = 해제
         }
 
         // 닫기 의도 탭 전용 — 선택이 없어도 손패를 걷는다. Close() 는 "선택이 있었을 때만"
@@ -326,6 +349,8 @@ namespace Wassup.UI
 
         private void HandleTap(Vector2 screenPos)
         {
+            // BoardTapSelectEnabled=false — 보드 raw 탭은 «해제» 만 한다. 선택은 트레이 셀 전용.
+            if (!BoardTapSelectEnabled) { Close(); return; }
             if (!TryPick(screenPos, out var entity)) { Close(); return; } // 빈 보드 → 닫기
             if (entity == _selected) { Close(); return; }                 // 재탭 → 토글
             Select(entity);
@@ -461,6 +486,12 @@ namespace Wassup.UI
         {
             var gm = GameManager.Instance;
             if (bridge == null || gm == null || gm.CurrentPhase != GamePhase.Battle) return false;
+            // dreamcatcher-retire-recall unit 3 — 손패 드래그/조준 중에는 퇴근을 잠근다.
+            // 퇴근이 「인수인계」를 통해 카드 큐 **앞**에 항목을 꽂을 수 있게 되면서, 조준 중인
+            // 카드가 손패 창 밖으로 밀리는 경로가 생겼다(밀린 채 드롭하면 효과만 적용되고
+            // 차감·소모가 안 된다 — CommitAttach 에 롤백이 없다). 이 판정이 그 계약을 **코드로**
+            // 강제한다. 매 프레임 피드라 버튼 흐림도 같이 따라온다.
+            if (handView != null && handView.InteractionActive) return false;
             return bridge.TryGetDefenderAt(cell, out var found, out _, out bool busy) && !busy && found == e;
         }
 
