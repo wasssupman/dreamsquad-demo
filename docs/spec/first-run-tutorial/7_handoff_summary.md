@@ -2,10 +2,16 @@
 
 ## Commit
 
-- `66673d05` docs — spec 최초 작성 (설계 critic 3종 반영 rev 2 포함)
+- `66673d05` docs — spec 최초 작성 (설계 critic 3종 반영)
 - `cacee249` feat — units 0~6 구현
 - `52aba94d` feat — Play 검증 결함 4건 수정 + 온보딩 전용 웨이브(60초)
-- (이 문서와 같은 커밋) refactor — 구현 critic 반영
+- `8b034824` refactor — 구현 critic 반영(앱 잠김 1건 · 순서 함정 1건 · 브리지 축소)
+- `1f9c3aa4` feat — 투명 차단막 + 4.1 트레이 셀 유도
+- `333d811b` feat — 접근 기준을 목표 거리로 · 1웨이브 15 동시 · 무기 소개 스텝
+- `bb1ab110` feat — 죽은 구간 둘을 안내로(목표 소개 · 항아리 소개)
+- `ceaf6f16` feat — 첫 손패 저작(부메랑·튕구슬·비수·불나방떼)
+- `0d263011` tune — B3→B4 공백 5→2초
+- `ee8aa690` fix — B3→B4 대기에서 유닛이 미리 선택되던 것
 
 ## Implemented
 
@@ -32,9 +38,11 @@
 
 ## Verified
 
-- EditMode 코어 2,334(0 fail · 3 사전 skip) · 에셋 177/177
-- Play 로 배치·부착·반복 결함을 재현한 뒤 수정 확인(라이브 계측: `targets`/`holes`/`scale`/`deployed`)
-- 씬 배선 참조 12/12 non-null
+- EditMode 2,514 (0 fail · 3 사전 skip · 코어+에셋 합산)
+- **사용자 Play 확인 2026-08-19** — 전 구간 통과. 진행 중 잡아 고친 것: 배치 불가(딤),
+  드림캐쳐 선택 불가(구멍 타이밍), B4 미개시(재개 구간 딤), 로비 문구 누락(Awake 순서),
+  3.1b 0초 노출, B3→B4 공백, 유닛 미리 선택.
+- 씬 배선 참조 13/13 non-null (컨트롤러) + GameManager 3건
 
 ## Notes — 되돌리면 안 되는 것
 
@@ -66,8 +74,7 @@
 
 ## Follow-up
 
-- **Play 재검증** — 리팩토링(구멍 매 프레임 갱신 · 카드 상한 대기 · 홀드 순서 · 판 종료
-  중단)과 UX 변경(투명 차단막 · 4.1 트레이 셀) 이후 전 구간을 한 번 태워야 한다.
+- **미푸시** — 위 커밋 중 `bb1ab110` 이후 4건이 아직 origin/main 에 없다(푸시는 사용자 승인제).
 - **문구 다듬기** — 현재는 사용자 원문 그대로(띄어쓰기 포함).
 - **`battleFreezeAtSeconds` 실측 튜닝** — 정지 시점에 적이 화면에 있어야 한다.
 - **`TryGetAffordableTutorialSlot`** — teardown 이 남긴 프로덕션 소비자 0 API. 정리 후보.

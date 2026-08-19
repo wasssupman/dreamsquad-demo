@@ -1,6 +1,6 @@
 # First-Run Tutorial — 계정 첫 판 온보딩
 
-상태: **구현 완료 2026-08-19** · rev 3(설계 critic 3종 + Play 검증 + 구현 critic 반영) · units 0~6
+상태: **완료 2026-08-19** — 구현·리팩토링·**사용자 Play 확인** 종료. units 0~6 + handoff
 
 `tutorial-content-teardown` 이 비워둔 자리에 새 온보딩을 짓는다. 로비에서 시작해
 **한 판 안에서** 유닛 선택 → 배치 → 배치 스킬 → 드림캐쳐 부착까지 잇는 1회성 시퀀스다.
