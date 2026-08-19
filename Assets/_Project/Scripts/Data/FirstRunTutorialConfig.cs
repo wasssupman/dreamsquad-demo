@@ -57,6 +57,11 @@ namespace Wassup.Data
                  "지나도 낼 수 있는 카드가 0이면 부착 구간을 건너뛴다 — 조건 대기로 두면 앱이 잠긴다.")]
         public float cardDealInGraceSeconds = 2f;
 
+        [Header("첫 손패 저작")]
+        [Tooltip("온보딩 판의 첫 손패에 이 순서로 올린다. **저장 덱에 실제로 든 카드만** 옮겨진다 — " +
+                 "없는 카드는 무시하고 경고를 남긴다(편성을 조작하지 않는다). 비우면 기존대로 전량 셔플.")]
+        public DreamcatcherCard[] firstHandCards = System.Array.Empty<DreamcatcherCard>();
+
         [Header("포커스")]
         [Range(0f, 1f)]
         [Tooltip("배틀 구간 차단막의 불투명도. **0 = 보이지 않는 차단막**(입력만 막고 화면은 그대로). " +

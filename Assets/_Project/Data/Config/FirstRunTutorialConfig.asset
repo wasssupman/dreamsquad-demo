@@ -15,13 +15,20 @@ MonoBehaviour:
   briefingHoldSeconds: 1.2
   briefingCycles: 2
   goalMessageSeconds: 2.5
+  goalIntroSeconds: 2.5
   battleFreezeAtSeconds: 4
   approachGoalTiles: 5
   skillHintSeconds: 2.5
   onPlaceWatchSeconds: 2
+  jarHintSeconds: 2
   resumeBeforeAttachSeconds: 5
   attachSettleSeconds: 2
   cardDealInGraceSeconds: 2
+  firstHandCards:
+  - {fileID: 11400000, guid: 6b2d9f41a8e34c07b5d1e63f0a97284c, type: 2}
+  - {fileID: 11400000, guid: a60e2cbefa8954855bf7c0129892a24b, type: 2}
+  - {fileID: 11400000, guid: ed2cffff28d764997ae36e747277286a, type: 2}
+  - {fileID: 11400000, guid: 8e4a2c05d7b143f9862ba1e07c53d94f, type: 2}
   dimOpacity: 0
   focusHoleSize: 180
   introHoldMaxSeconds: 30

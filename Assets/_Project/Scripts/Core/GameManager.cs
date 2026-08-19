@@ -47,6 +47,10 @@ namespace Wassup.Core
         // 복사하지 않는다. 다만 플랜이 쓰는 적은 **덱 풀 안**이어야 한다: NavGrid 통행 층이
         // ActiveDeck.ResolveAttackUnitPool 기준으로 구워져, 풀 밖 적은 길찾기가 깨진다.
         [SerializeField] private WavePlanAsset firstRunTutorialWavePlan;
+        [Tooltip("온보딩 수치·문구 config. 여기서는 첫 손패 저작(firstHandCards)만 읽는다.")]
+        [SerializeField] private FirstRunTutorialConfig firstRunTutorialConfig;
+        [Tooltip("온보딩 첫 손패를 넣을 대상. 판정 소비처를 늘리지 않으려고 GameManager 가 대신 밀어준다.")]
+        [SerializeField] private DreamcatcherHandController dreamcatcherHand;
         [SerializeField] private DefenderCatalog catalog;
         // dreamstone-loadout Unit 3 — resolves SquadPreset.stoneIds to assets for carry-in.
         [SerializeField] private DreamstoneCatalog stoneCatalog;
@@ -378,11 +382,24 @@ namespace Wassup.Core
             // 이 판은 토너먼트에 올라가지 않는다 — OutgameMenuController.OnStartGame 이 참가
             // 신청 자체를 생략한다. 둘이 같은 술어(ShouldRun)를 읽어야 «쉬운 판이 제출되는»
             // 어긋남이 안 생긴다.
-            if (firstRunTutorialWavePlan != null && profileSO != null && profileSO.IsLoadedThisSession
+            //
+            // ⚠ 온보딩 판정(ShouldRun)의 소비처를 늘리지 않으려고 첫 손패 저작도 **여기서**
+            // 함께 넣는다. 손패 컨트롤러가 스스로 판정하게 두면 술어 소비처가 넷이 되고,
+            // 그중 하나만 어긋나도 «쉬운 판인데 손패는 랜덤» 같은 반쪽 상태가 생긴다.
+            if (profileSO != null && profileSO.IsLoadedThisSession
                 && FirstRunTutorialConfig.ShouldRun(profileSO.profile))
             {
-                battleBridge.SetAuthoredWavePlan(firstRunTutorialWavePlan);
-                Debug.Log($"[GameManager] 온보딩 판 — 저작 웨이브 '{firstRunTutorialWavePlan.displayName}' 적용.");
+                if (firstRunTutorialWavePlan != null)
+                {
+                    battleBridge.SetAuthoredWavePlan(firstRunTutorialWavePlan);
+                    Debug.Log($"[GameManager] 온보딩 판 — 저작 웨이브 '{firstRunTutorialWavePlan.displayName}' 적용.");
+                }
+                var firstHand = firstRunTutorialConfig != null ? firstRunTutorialConfig.firstHandCards : null;
+                if (dreamcatcherHand != null && firstHand != null && firstHand.Length > 0)
+                {
+                    dreamcatcherHand.SetTutorialFirstHand(firstHand);
+                    Debug.Log($"[GameManager] 온보딩 판 — 첫 손패 {firstHand.Length}장 저작 적용.");
+                }
             }
             battleBridge.SetDefenderPool(units.ToArray());
             LogSquadCarryIn(squad, units);

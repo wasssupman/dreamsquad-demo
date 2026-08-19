@@ -125,9 +125,45 @@ namespace Wassup.Core
             _baseCards = ResolveAttachDeck();
             _lastComposedCards = new List<DreamcatcherCard>(_baseCards);
             AppendActiveCards(_lastComposedCards);
+            int pinned = PinTutorialFirstHand(_lastComposedCards);
             int seed = GameManager.Instance != null ? GameManager.Instance.MatchSeed : 0;
-            _deck = new DreamcatcherCycleDeck(_lastComposedCards, seed);
+            _deck = new DreamcatcherCycleDeck(_lastComposedCards, seed, pinned);
         }
+
+        // first-run-tutorial — 온보딩 판의 «첫 손패». GameManager 가 판 시작 전에 넣어두고
+        // (웨이브 플랜 주입과 같은 자리 · 같은 술어), 여기서는 그 카드들을 앞으로 끌어온다.
+        //
+        // **덱에 실제로 든 카드만 옮긴다** — 없는 카드를 끼워 넣으면 온보딩이 저장 덱을
+        // 조작하는 셈이 되고(계약 4: 편성은 프로필 기본값 그대로), 부착 후 사이클에도
+        // 정체불명 항목이 남는다. 저작 목록이 덱과 어긋나면 그만큼만 고정된다.
+        private List<DreamcatcherCard> _tutorialFirstHand;
+
+        public void SetTutorialFirstHand(IReadOnlyList<DreamcatcherCard> cards)
+        {
+            _tutorialFirstHand = (cards == null || cards.Count == 0)
+                ? null : new List<DreamcatcherCard>(cards);
+        }
+
+        private int PinTutorialFirstHand(List<DreamcatcherCard> composed)
+        {
+            if (_tutorialFirstHand == null || composed == null) return 0;
+            int pinned = 0;
+            for (int i = 0; i < _tutorialFirstHand.Count; i++)
+            {
+                var want = _tutorialFirstHand[i];
+                if (want == null) continue;
+                int at = composed.IndexOf(want);
+                if (at < pinned) continue;   // 덱에 없거나(-1) 이미 고정 구간에 있다
+                composed.RemoveAt(at);
+                composed.Insert(pinned, want);
+                pinned++;
+            }
+            if (pinned < _tutorialFirstHand.Count)
+                Debug.LogWarning($"[DreamcatcherHand] 온보딩 첫 손패 {_tutorialFirstHand.Count}장 중 " +
+                                 $"{pinned}장만 덱에 있어 그만큼만 고정했다.", this);
+            return pinned;
+        }
+
 
         // Saved deck (validated, catalog-resolved) → serialized fallback.
         private List<DreamcatcherCard> ResolveAttachDeck()
