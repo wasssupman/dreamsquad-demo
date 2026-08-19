@@ -18,8 +18,9 @@
 ## 변경 대상
 
 - **신규** `Assets/_Project/VFX/Projectiles/vfx_Projectile_ShotgunBlast_Green.prefab`
-  (`Assets/VFXPACK_FIRE_WALLCOEUR/Prefab/VFX_Fire_Green.prefab` **복사본 + 새 GUID** — 벤더 팩은
+  (`Assets/VFXPACK_FIRE_WALLCOEUR/Prefab/VFX_Smoke_Green.prefab` **복사본 + 새 GUID** — 벤더 팩은
   건드리지 않고 머티리얼·텍스처만 참조하는 관례, 커밋 `5f0d1241` 선례)
+  ⚠ 처음엔 `VFX_Fire_Green` 을 썼다가 **사용자 판단으로 교체**(2026-08-19) — 불꽃은 탄으로 안 읽혔다.
 - **신규** `Assets/_Project/Data/Projectiles/Projectile_ShotgunBlast.asset` (`Projectile_ShotgunPellet` 복제)
 - **신규** `Assets/_Project/Data/Projectiles/Pattern_Shotgunner_Blast.asset` (`Pattern_Defender_Shotgunner` 복제)
 - **신규** `Assets/_Project/Data/Abilities/Ability_OnPlaceBlast_Shotgunner.asset` (`UnitSkillAbility`)
@@ -39,13 +40,18 @@
 | `flightMode` | Directional | Directional 유지 | 방향 바인딩(unit 1 이 연 축) |
 | `projectilePrefab` | shard | **초록 불꽃 복사본** | 사용자 지정 2026-08-18 — WALLCOEUR 팩 초록 화염 |
 
-**탄 뷰 프리팹** — `VFX_Fire_Green` 복사본에서 손볼 것(원본은 **횃불용 정지 화염**이다):
+**탄 뷰 프리팹** — `VFX_Smoke_Green` 복사본에서 손볼 것(원본은 **제자리에서 피어오르는 연기**다):
 - `scalingMode` 를 **Hierarchy** 로. 벤더 기본값이 Local 이라 그대로 두면 **탄 SO 의 `visualScale`
   이 파티클에 안 먹는다** — 커밋 `5f0d1241` 이 같은 팩에서 밟았던 함정이다.
-- ⚠ **시뮬레이션 공간을 Local 로 바꾼다.** 벤더 원본은 **World** 다(YAML 의 `moveWithTransform 1` 을
-  Local 로 읽으면 안 된다 — 런타임 `main.simulationSpace` 는 World 로 나온다, 실측 2026-08-19).
-  World 인 채로 날리면 불꽃이 탄을 따라오지 않고 **궤적에 흩뿌려진다**. 아래 머즐은 반대로
-  World 여야 하므로, 이 프리팹은 **루트 Local + 머즐 자식 World** 조합이다.
+- **꼬리가 이동 방향으로 눕게 하는 세 값**(사용자 요청 2026-08-19 — 원본은 꼬리가 하늘로 향한다):
+  ① `gravityModifier` 를 **0** 으로. 원본이 **−0.1~−0.3(음수)** 이라 연기가 위로 떠오른다 — 이것이
+  「꼬리가 하늘로」의 진짜 원인이다. ② 시뮬레이션 공간 **World** 유지(원본 그대로) — 지나온 자리에
+  남아야 꼬리가 생긴다. ③ 방출을 **시간이 아니라 거리 기준**(`rateOverDistance 7`)으로. 시간 기준이면
+  탄속에 따라 꼬리 간격이 들쭉날쭉해진다.
+- 꼬리가 **뒤로 갈수록 작아지고 옅어지게**: `sizeOverLifetime` 1→0.15, `colorOverLifetime` 알파 1→0.
+  원본은 ColorModule 이 꺼져 있어 꼬리 끝이 뚝 끊긴다. 이걸 안 하면 초록 덩어리가 소시지처럼 뭉친다(실측).
+- 알갱이는 작고 성기게(`startSize` 0.22~0.38 · `startLifetime` 0.22~0.34). 크고 촘촘하면 개별
+  퍼프가 겹쳐 **한 덩어리**가 된다.
 - looping + playOnAwake 라 풀링 뷰로 그대로 쓸 수 있고, 무버·리지드바디·콜라이더가 없어 벗길 것도 없다.
 - 초록은 머티리얼이 아니라 **파티클 시작 색**에서 나온다(팩 공용 화염 머티리얼 재사용).
   더 진하거나 밝게 원하면 이 색만 만진다.
