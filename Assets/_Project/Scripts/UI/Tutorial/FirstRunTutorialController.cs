@@ -21,6 +21,7 @@ namespace Wassup.UI.Tutorial
         private const string GoalText = "게임목표: 최대한 많은 악몽 처치";
         private const string PickText = "유닛을 터치 해보세요";
         private const string EnemyApproachText = "악몽이 배치 영역 안으로 들어오면!";
+        private const string SkillHintText = "캐논은 3타일 영역에 강력한 폭격을 합니다!";
         private const string PlaceText = "적들의 머리위에 캐논을 배치 해보세요!";
         private const string OnPlaceText = "강력한 배치스킬들을 활용하여 전황을 유리하게 이끌어 보세요";
         private const string ReselectText = "다시 캐논 유닛을 선택 해보세요";
@@ -222,18 +223,13 @@ namespace Wassup.UI.Tutorial
             // 적이 영원히 안 온다. 배치 영역 하이라이트를 켜둬서 문구의 «배치 영역» 이
             // 화면에서 실제로 보이게 한다.
             //
-            // ⚠ 기준은 **시간이 아니라 사건**이다 — 적이 «강»(Env 타일)을 건너오는 순간.
-            // 강은 맵 한가운데를 가르는 눈에 보이는 경계라 «저기까지 왔다» 가 화면에서 읽힌다.
-            // 배치 영역 진입은 기준으로 너무 이르다 — Duel 은 배치 영역이 x≤14 라 적이 스폰
-            // 직후 걸려 문구가 0초 노출된다(그래서 폐기했다).
+            // ⚠ 기준은 **시간이 아니라 사건**이다 — 적이 **내 영역 깊숙이** 들어오는 순간.
             //
-            // 브리지는 «Env 타일이 있나 / 적이 그 타일 몇 칸 안인가» 라는 **중립 질문**만 답한다.
-            // «Env = 접근선» 이라는 해석은 여기 있다.
-            //
-            // ⚠ 강이 없는 맵이면 **기다리지 않고 건너뛴다**(계약 11). 배치 영역 진입으로
-            // 떨어뜨리면 방금 폐기한 기준이 조용히 되살아나고, 조건이 영영 안 서게 두면
-            // 타임아웃이 없어 그대로 멈춘다.
-            if (!_placed && bridge != null && bridge.MapHasTile(MapTileType.Env))
+            // 척도는 «내 목표까지의 거리» 다(approachGoalTiles). 배치 영역 진입은 너무 이르고
+            // (Duel 은 배치 영역이 x≤14 라 스폰 직후 걸려 문구가 0초 노출된다), 강(Env 타일)
+            // 도달은 아직 멀어 배치 스킬이 한 무리를 못 덮는다. 목표 거리는 «얼마나 들어왔나»
+            // 를 직접 말하고, 목표는 모든 맵에 있어 «이 맵엔 기준이 없다» 도 생기지 않는다.
+            if (!_placed && bridge != null)
             {
                 ShowPlaceable();
                 guidance.ClearFocus();
@@ -241,8 +237,21 @@ namespace Wassup.UI.Tutorial
                 Unfreeze();
                 guidance.ShowMessage(EnemyApproachText, false);
                 yield return WaitFor(() => _placed
-                    || bridge.AnyEnemyWithinTilesOf(MapTileType.Env, config.riversideTiles));
+                    || bridge.AnyEnemyWithinTilesOfGoal(config.approachGoalTiles));
                 Freeze();
+            }
+
+            // 3.1c 무기 소개 — 왜 «머리 위에» 놓아야 하는지의 근거를 먼저 준다.
+            //
+            // 적이 몰려 선 화면을 정지시켜 둔 채 읽는다(입력은 차단막이 막는다). 여기서
+            // 근거를 안 주면 다음 문구가 «시키니까 하는» 지시로만 남는다.
+            //
+            // ⚠ "3타일" 은 실제 값이다 — Pattern_Cannon_Strike.scopeTileRange = 3.
+            // 그 값을 바꾸면 이 문구도 같이 바꾼다(문구가 스펙을 주장하고 있다).
+            if (!_placed)
+            {
+                guidance.ShowMessage(SkillHintText, false);
+                yield return WaitUnscaled(config.skillHintSeconds);
             }
 
             // 3.2 배치 — 어느 칸에 놓든 통과시킨다.

@@ -27,8 +27,12 @@ namespace Wassup.Data
         [Tooltip("전투 시작 후 첫 정지까지(초). **적이 화면에 들어와 있어야 의미가 생기므로 실측 튜닝 대상.**")]
         public float battleFreezeAtSeconds = 4f;
         [Min(0)]
-        [Tooltip("\"악몽이 배치 영역 안으로 들어오면!\" 을 끝내는 기준 — 적이 강(Env 타일)에서 이 반경 안까지 왔을 때. 시간이 아니라 사건이 기준이다.")]
-        public int riversideTiles = 1;
+        [Tooltip("접근 대기를 끝내는 기준 — 적이 **내 목표에서 이 칸 수 안**까지 들어왔을 때. " +
+                 "시간이 아니라 사건이 기준이다. Duel 기준: 목표 x=2, 강 x=10 → 5 면 강 안쪽 3칸(x≈7).")]
+        public int approachGoalTiles = 5;
+        [Min(0f)]
+        [Tooltip("\"캐논은 3타일 영역에 강력한 폭격을 합니다!\" 노출(초). 배치 안내 직전, 적이 몰려 선 화면을 정지시킨 채 읽는 구간.")]
+        public float skillHintSeconds = 2.5f;
         [Min(0f)]
         [Tooltip("배치 후 정지를 풀어 배치 스킬이 적을 때리는 것을 보여주는 시간(초).")]
         public float onPlaceWatchSeconds = 2f;

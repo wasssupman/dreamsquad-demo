@@ -100,7 +100,11 @@
 13. **판이 먼저 끝날 수 있다.** 온보딩 판은 60초이고 스텝에 타임아웃이 없어 대기 중인
     시퀀스는 스스로 깨어나지 않는다 — `Result`/`Tally` 전이에서 시퀀스를 끊고 딤·정지를
     정리한다. 그러지 않으면 결과 화면 위에 딤과 0배속이 남는다.
-14. **온보딩 판은 전용 웨이브로 돈다.** `WavePlan_FirstRunTutorial`(60초 · 4웨이브 · 적 20).
+14. **온보딩 판은 전용 웨이브로 돈다.** `WavePlan_FirstRunTutorial`(60초 · 4웨이브 · 적 32).
+    **1웨이브는 기본몹 15을 시작 직후 한꺼번에** 낸다 — 캐논의 3타일 폭격이 한 무리를 덮는
+    장면을 만들기 위해서다. **레인은 저작하지 않는다**: 그룹에 레인이 없으면 `ExpandGroup` 이
+    `localIndex % laneCount` 로 라운드로빈하고, Duel 은 적 마음 1개에서 `SiegeSpawnOffsets` 로
+    스폰 2개가 파생돼 `laneCount = 2` → 8/7 로 갈린다. 레인을 박으면 오히려 한쪽으로 몰린다.
     저작 플랜 한 장이 **웨이브와 제한시간을 둘 다** 정하므로 맵도 덱도 복사하지 않는다
     (`GameManager` 가 `SetAuthoredWavePlan` 으로 주입). 다만 플랜이 쓰는 적은 **덱 풀 안**이어야
     한다 — NavGrid 통행 층이 `ActiveDeck.ResolveAttackUnitPool` 기준으로 구워져 풀 밖 적은

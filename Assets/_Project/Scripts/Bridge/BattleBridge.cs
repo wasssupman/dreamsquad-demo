@@ -6533,26 +6533,23 @@ namespace Wassup.Bridge
         private bool _blockedHlShown;
         private readonly List<Vector2Int> _blockedHlScratch = new List<Vector2Int>();
 
-        // first-run-tutorial unit 5 — «어떤 종류의 타일이 이 맵에 있는가» · «적이 그 타일에서
-        // 몇 칸 안까지 왔는가». 둘 다 **중립 질문**이다 — «접근선» 이나 «강» 같은 온보딩
-        // 어휘는 여기 두지 않는다. 이 파일이 이미 9천 줄이라 해석은 호출자가 갖는다.
+        // first-run-tutorial unit 5 — «적이 내 목표에서 몇 칸 안까지 들어왔는가».
         //
-        // 게이트웨이에 있는 이유는 하나뿐이다: 적 위치가 ECS 에 있어서다(제약 1). 지형만
-        // 묻는 질문이면 맵 데이터로 밖에서 답할 수 있지만, 이 둘은 적과 지형을 동시에 본다.
-        public bool MapHasTile(MapTileType kind)
-        {
-            if (!_generatedMap.IsCreated) return false;
-            var size = _generatedMap.gridSize;
-            for (int y = 0; y < size.y; y++)
-            for (int x = 0; x < size.x; x++)
-                if (_generatedMap.TileAt(new int2(x, y)) == kind) return true;
-            return false;
-        }
-
-        public bool AnyEnemyWithinTilesOf(MapTileType kind, int radiusTiles)
+        // 온보딩이 "적들의 머리위에 배치해보세요" 를 적이 아직 멀리 있을 때 띄우면 문장과
+        // 화면이 어긋나고, 그렇게 놓은 배치 스킬은 아무도 못 때려서 이어지는 «전황을
+        // 유리하게» 가 통째로 희석된다. 그 순간을 기다리는 판정이다. 적 위치는 ECS 에
+        // 있으므로 **이 게이트웨이 안에** 둔다(제약 1).
+        //
+        // 기준을 **내 목표까지의 거리**로 잡는 이유: «내 영역으로 얼마나 들어왔나» 를 직접
+        // 말하는 유일한 척도이고, 목표는 모든 맵에 있어서 «이 맵엔 기준이 없다» 가 생기지
+        // 않는다(강/Env 타일을 기준으로 삼던 시절엔 강 없는 맵을 위한 폴백이 따로 필요했다).
+        //
+        // 체비셰프 거리다 — 격자 이동이 8방향이라 «몇 칸 남았나» 의 체감과 일치한다.
+        // 목표가 여럿이면 가장 가까운 것 기준(멀티골 맵은 각 골이 자기 복도를 갖는다).
+        public bool AnyEnemyWithinTilesOfGoal(int tiles)
         {
             if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
-            int r = Mathf.Max(0, radiusTiles);
+            int r = Mathf.Max(0, tiles);
             var size = _generatedMap.gridSize;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             try
@@ -6563,18 +6560,30 @@ namespace Wassup.Bridge
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
                     var cell = GridMath.WorldToCell(pos, tileSize, size, origin: _boardOrigin);
-                    for (int dy = -r; dy <= r; dy++)
-                    for (int dx = -r; dx <= r; dx++)
-                    {
-                        int nx = cell.x + dx, ny = cell.y + dy;
-                        if (nx < 0 || nx >= size.x || ny < 0 || ny >= size.y) continue;
-                        if (_generatedMap.TileAt(new int2(nx, ny)) == kind) return true;
-                    }
+                    if (NearestGoalDistance(cell) <= r) return true;
                 }
             }
             finally { entities.Dispose(); }
             return false;
         }
+
+        private int NearestGoalDistance(int2 cell)
+        {
+            int best = int.MaxValue;
+            if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
+            {
+                for (int g = 0; g < _generatedMap.goals.Length; g++)
+                    best = math.min(best, ChebyshevDistance(cell, _generatedMap.goals[g]));
+            }
+            else
+            {
+                best = ChebyshevDistance(cell, _generatedMap.goal);   // goals 미생성 폴백(GeneratedMap 계약)
+            }
+            return best;
+        }
+
+        private static int ChebyshevDistance(int2 a, int2 b)
+            => math.max(math.abs(a.x - b.x), math.abs(a.y - b.y));
 
         public void ShowBlockedHighlight(DefenderUnitData unit)
         {
