@@ -26,7 +26,7 @@ MonoBehaviour:
       kind: 17
       magnitude: 0
       projectile: {fileID: 0}
-      tileRange: 3
+      tileRange: 4
       duration: 0
       auraPrefab: {fileID: 0}
       auraScale: 0
@@ -37,3 +37,7 @@ MonoBehaviour:
       slamDamage: 0
       slamTileRange: 0
       stackModifier: {fileID: 0}
+      splitUnit: {fileID: 0}
+      orbitCount: 0
+      hazard: {fileID: 0}
+      coneHalfAngleDeg: 0

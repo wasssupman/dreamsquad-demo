@@ -90,8 +90,10 @@
   매번 같은 모양인 것은 의도다 — 편차는 저작이 소유한다(구조적 결정론).
 - `scopeTileRange` / `fanOutToAllCandidates` 는 **쓰지 않는다**(방향 바인딩은 후보를 고르지 않는다).
 
-**능력 SO**: `OnPlace`(9) × `EmitProjectilePattern`(17), `pattern` = 위, `tileRange` = `3`
-(방향 후보 탐색 반경 **겸** 산탄 사거리 — unit 1 ②③).
+**능력 SO**: `OnPlace`(9) × `EmitProjectilePattern`(17), `pattern` = 위, `tileRange` = `4`.
+⚠ 이 한 값이 **셋을 동시에** 움직인다 — 조준 후보 탐색 반경 · 탄의 사거리(`maxDistance`) ·
+그 결과인 비행 시간(사거리 ÷ 탄속). 올리면 더 먼 적까지 겨누므로 **연출 조정이 아니라 밸런스
+변경**이고, 꼬리 수명도 같이 봐야 한다(unit 1 ②③).
 
 **유닛 에셋**: `onPlacePushDistance/Duration/Radius` 를 전부 `0`(README 계약 11).
 시트 임포트는 이 3필드를 모르므로(DTO 에 없다) 로비 진입으로 되살아나지 않는다.
