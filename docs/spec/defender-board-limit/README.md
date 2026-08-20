@@ -1,7 +1,7 @@
 # Spec — Defender Board Limit (방어 유닛 동시 배치 상한)
 
-상태: **units 0~2 완료 2026-08-13** · **unit 4(표현 rev) 완료 2026-08-21.**
-units 0~2 · unit 4 모두 구현 + 사용자 Play 확인 완료.
+상태: **units 0~2 완료 2026-08-13** · **unit 4(표현 rev) 완료 2026-08-21** (`9e77fb9e`).
+units 0~2 · unit 4 모두 구현 + 코드 리뷰 반영 + 사용자 Play 확인 완료.
 커밋 `b03c066a`(스펙) · `9b629bfd`(구현) · `e8cb3f50`(리뷰 반영) · `bca19093`·`9cf721ff`(인계).
 EditMode 2188 통과(0 실패) · board-limit PlayMode 3건 통과 · 재배치 회귀 4건 통과.
 인계는 `3_handoff_summary.md`.

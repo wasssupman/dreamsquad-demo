@@ -105,7 +105,7 @@ unit 1 은 소진 셀을 **죽은 칸**으로 만들었고 unit 2 가 거기에 
 - 호흡은 **0.5초 간격 스크린샷 2장의 포트레이트 크기 차이**로 확인한다(정지 1장으로는 증명 불가 —
   battle-tray-cost-well 교훈).
 
-> **확인 2026-08-21** — 사용자 Play 확인 완료. Unity 셰이더 컴파일 클린(`ShaderUtil` 메시지 0),
+> **확인 2026-08-21** · 커밋 `9e77fb9e` — 사용자 Play 확인 완료. Unity 셰이더 컴파일 클린(`ShaderUtil` 메시지 0),
 > EditMode 2518건 실행 · 실패 1건은 **기존 실패**(`UnitKitCatalogTests` malphite 2행 30자 > 상한 28,
 > 유닛 문안 길이 문제라 이 unit 과 무관 — HEAD 에서도 빨갛다).
 >
