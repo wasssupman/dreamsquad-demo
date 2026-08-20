@@ -375,7 +375,7 @@ namespace Wassup.Bridge
         private int _goalStabilityMax;
         // battle-structures unit 10 — **적 마음 축**. 위 방어 마음 축의 거울이고 활성 조건도
         // 같은 모양이다: `_enemyCoreMax > 0` 이면 이 축이 산다(타이머 축의 `_timerDuration > 0`,
-        // 유출 축의 `StressLimit > 0` 과 같은 형태 — 계약 15).
+        // 유출 축의 `defeatGoalReachedCount > 0` 과 같은 형태 — 계약 15).
         //
         // 모드 판정을 두지 않는 이유가 여기 있다: 침략 맵은 적 마음이 저작되지 않아 max 가
         // 0 이므로 이 축이 저절로 죽고, 타이머 만료 비교의 «적 잔여» 도 0 이 되어
@@ -1328,7 +1328,6 @@ namespace Wassup.Bridge
             _killCount = 0;
             ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 이전 판의 타워/거점 정리
-            RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -1980,7 +1979,7 @@ namespace Wassup.Bridge
         }
 
         // 매 프레임 HUD 로 밀어준다. HUD 가 브리지를 참조하지 않게 하는 기존 방향
-        // (scoreHud.SetLeakStatus / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
+        // (scoreHud.SetTopBar / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
         private void RefreshPaceHud()
         {
             if (scoreHud == null) return;
@@ -5698,22 +5697,9 @@ namespace Wassup.Bridge
         private int EffectiveLeakLimit()
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
-        // battle-score-formula unit 7 — 스트레스 누적/한계의 HUD 표기 짝. 한계는 덱 원본값
-        // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
-        // (구 스트레스 **점수**의 입력이기도 했으나 그 축은 unit 3 에서 폐기됐다.)
-        private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
-        private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
-
-        // three-minute-survival unit 0 — 분모와 위기색은 한계가 패배를 만들 때만 참이었다.
-        // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
-        // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
-        private void RefreshLeakHud()
-            // three-minute-kill-race unit 2 — **분모를 떼고 누적 수량만 표기한다.**
-            // 한계가 아무것도 판정하지 않는데 `3 / 10` 이 떠 있으면 거짓말이다. 한계 «값»
-            // 자체는 계속 넘긴다 — 튜토리얼이 «스냅샷이 왔는가» 를 _leakLimit 으로 판정한다.
-            // 그 튜토리얼의 「N이 되면 패배합니다」 문구는 ShowsStressLimit 가드에 걸려
-            // 자동으로 빠진다(패배가 없어졌으니 그 문장은 거짓말이다).
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
+        // 유출 누적(_goalReachedCount)은 HUD 에 그리지 않는다 — 아무것도 판정하지 않는
+        // 수치를 점수 옆에 세워두면 «관리해야 할 자원»으로 잘못 읽힌다. 카운터 자체는
+        // 살아 있고 완주 로그와 MatchTally 집계로만 나간다.
 
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
@@ -5994,7 +5980,6 @@ namespace Wassup.Bridge
             if (cost <= 0) return false;
             if (RemainingLeakAllowance() - cost < 1) return false;
             _leakAllowancePenalty += cost;
-            RefreshLeakHud();
             return true;
         }
 
@@ -6015,7 +6000,6 @@ namespace Wassup.Bridge
                 if (breached)
                 {
                     _goalReachedCount++;
-                    RefreshLeakHud();
                 }
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
@@ -6275,7 +6259,6 @@ namespace Wassup.Bridge
             NotifyEnemyGoneIfMarked(entity);
             _enemyTypeByEntity.Remove(entity);
             _em.DestroyEntity(entity);
-            RefreshLeakHud();
         }
 
         // three-minute-kill-race unit 0 — `CheckStressDefeat()` 는 제거했다. 유출은 이제

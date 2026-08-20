@@ -70,8 +70,6 @@ namespace Wassup.UI
         [Header("Screen feedback")]
         [Tooltip("처치 시 패널 UI-space 셰이크 강도(px). 배틀 카메라는 안 건드림.")]
         [SerializeField] private float kickStrength = 11f;
-        [Tooltip("처치 시 패널 회전 펀치(도)")]
-        [SerializeField] private float kickRotation = 3f;
         [SerializeField] private float kickDuration = 0.3f;
         // score-tally-sequence unit 0 — 가장자리 플래시는 **순간 화력** 기준이다.
         // 원래는 누계 N 점마다(milestoneInterval) 터졌는데, 킬점수 축척으로 바뀐 뒤
@@ -123,20 +121,6 @@ namespace Wassup.UI
         [SerializeField] private Color tabColor = new Color(1f, 0.78f, 0.28f, 1f);
         [SerializeField] private Color tabTextColor = new Color(0.1f, 0.08f, 0.04f, 1f);
         [SerializeField] private Vector2 tabSize = new Vector2(196f, 46f);
-
-        [Header("Leak limit badge (score companion)")]
-        [SerializeField] private Vector2 leakPlateSize = new Vector2(360f, 64f);
-        [SerializeField] private float leakPlateGap = 10f;
-        [SerializeField] private Vector2 leakTabSize = new Vector2(112f, 42f);
-        [SerializeField] private float leakValueFontSize = 38f;
-        [SerializeField] private Color leakNormalColor = new Color(1f, 0.9f, 0.66f, 1f);
-        [SerializeField] private Color leakWarningColor = new Color(1f, 0.58f, 0.2f, 1f);
-        [SerializeField] private Color leakCriticalColor = new Color(1f, 0.25f, 0.2f, 1f);
-        [SerializeField] private Color leakFlashColor = Color.white;
-        [Min(1), SerializeField] private int leakWarningRemaining = 3;
-        [Min(0), SerializeField] private int leakCriticalRemaining = 1;
-        [SerializeField] private float leakPunchScale = 1.18f;
-        [SerializeField] private float leakPunchDuration = 0.22f;
 
         // wave-pull-revival unit 3 — 진출 예상선. **가짜 par 다**(PaceBaseline 주석 참조).
         [Header("Pace baseline (진출 예상선)")]
@@ -198,11 +182,6 @@ namespace Wassup.UI
         private TextMeshProUGUI _caption;
         private TextMeshProUGUI _value;
         private RectTransform _valueRect;
-        private TextMeshProUGUI _leakValue;
-        private RectTransform _leakValueRect;
-        // first-session-tutorial unit 19 — 튜토리얼 포커스 링이 감쌀 대상. 원래 BuildCanvas
-        // 의 지역 변수였고 표시 로직은 쓰지 않는다(노출 전용 승격).
-        private RectTransform _leakPlateRect;
         private TextMeshProUGUI _paceLabel;
         private int _lastPaceExpected = int.MinValue;
         private int _lastPaceGap = int.MinValue;
@@ -223,16 +202,8 @@ namespace Wassup.UI
         private int _targetScore;
         private float _shownScore;
         private int _pendingKills;
-        private int _leakCurrent;
-        private int _leakLimit;
-        private bool _hasLeakSnapshot;
-        // three-minute-kill-race unit 2 — 죽는 한계가 없어 "/한계"·위기색을 숨긴다(누수 개수만).
-        // 이제 **모든 판**의 규칙이다. 두 갈래는 ScoreHudStressSeamTests 가 둘 다 검증한다.
-        private bool _leakShowLimit = true;
         private Tween _punchTween;
         private Tween _colorTween;
-        private Tween _leakPunchTween;
-        private Tween _leakColorTween;
         private ScoreBurstPool _burstPool;
         private Image _glowImage;
         private RectTransform _glowRect;
@@ -250,7 +221,6 @@ namespace Wassup.UI
         // 한 번 터진 뒤 재무장까지의 쿨다운 — 지속 사격 중 매 프레임 터지는 걸 막는다.
         private float _burstCooldownUntil;
         private Tween _kickPosTween;
-        private Tween _kickRotTween;
         private float _soundHeat;
 
         private void Awake()
@@ -388,34 +358,6 @@ namespace Wassup.UI
             _burstCooldownUntil = now + Mathf.Max(0.05f, milestoneDuration);
         }
 
-        // first-session-tutorial unit 19 — 첫 판 전투 HUD 안내가 읽는 읽기 전용 seam.
-        // 선례: AwakeningGaugeView.HitRect · PlacementPhaseView.StartButtonRect.
-        //
-        // 배지 **플레이트**(LeakPlate)를 준다 — _leakValueRect(숫자만)를 주면 링이 왼쪽
-        // 캡션 `스트레스` 를 감싸지 못해 무엇을 가리키는지가 안 보인다.
-        public RectTransform StressBadgeRect => _leakPlateRect;
-        // 안내 문구가 가리키는 수치는 **화면 배지의 그 숫자**다(= 분모 EffectiveLeakLimit).
-        // 결과 화면의 덱 원본값과 다를 수 있으므로 여기서 스냅샷을 그대로 읽는다.
-        public int StressLimit => _leakLimit;
-        // 엔드리스는 분모를 표기하지 않고 유출로 패배하지도 않는다 → 패배 조건 문구를 생략해야 한다.
-        public bool ShowsStressLimit => _leakShowLimit;
-
-        // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
-        // GoalReached count and effective defeat limit. Store the snapshot even while
-        // the Battle-only panel is hidden; unit 1 renders it without duplicating math.
-        public void SetLeakStatus(int current, int limit, bool showLimit = true)
-        {
-            int nextCurrent = Mathf.Max(0, current);
-            int nextLimit = Mathf.Max(0, limit);
-            bool worsened = _hasLeakSnapshot &&
-                (nextCurrent > _leakCurrent || nextLimit < _leakLimit);
-            _leakCurrent = nextCurrent;
-            _leakLimit = nextLimit;
-            _leakShowLimit = showLimit;
-            _hasLeakSnapshot = true;
-            RefreshLeakDisplay(worsened);
-        }
-
         // wave-pull-revival unit 3 — 「목표 페이스 1,310 · 70점 부족」.
         //
         // ⚠ **「진출 예상선」이라고 쓰지 않는다.** 그 문구는 «같은 시드를 돈 10인 분포에서
@@ -453,12 +395,12 @@ namespace Wassup.UI
 
         /// <summary>
         /// rev 7 — 최상단 바. 브리지가 매 프레임 밀어준다(HUD 가 브리지를 참조하지 않는
-        /// 기존 방향 — SetLeakStatus·SetPaceBaseline 과 같다).
+        /// 기존 방향 — SetPaceBaseline 과 같다).
         /// </summary>
         /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 바를 숨긴다.</param>
         /// <summary>
         /// rev 8 — 상단 중앙 카운트다운. 브리지가 매 프레임 밀어준다(HUD 는 브리지를 모른다 —
-        /// SetLeakStatus·SetPaceBaseline 과 같은 방향).
+        /// SetPaceBaseline 과 같은 방향).
         /// </summary>
         /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 배지를 통째로 숨긴다.</param>
         public void SetTopBar(float remainingSec, float totalSec, int waveNumber, int waveTotal)
@@ -627,44 +569,6 @@ namespace Wassup.UI
             _lastPaceExpected = _lastPaceGap = int.MinValue;
         }
 
-        private void RefreshLeakDisplay(bool punch)
-        {
-            if (_leakValue == null) return;
-
-            Color targetColor;
-            if (_leakShowLimit)
-            {
-                _leakValue.text = $"{_leakCurrent} / {_leakLimit}";
-                int remaining = _leakLimit - _leakCurrent;
-                targetColor = remaining <= leakCriticalRemaining
-                    ? leakCriticalColor
-                    : remaining <= leakWarningRemaining ? leakWarningColor : leakNormalColor;
-            }
-            else
-            {
-                // three-minute-kill-race unit 2 — 죽는 한계가 없으니 "/한계"·위기색 숨김.
-                _leakValue.text = $"{_leakCurrent}";
-                targetColor = leakNormalColor;
-            }
-
-            if (!punch || _panel == null || !_panel.activeSelf)
-            {
-                _leakValue.color = targetColor;
-                if (_leakValueRect != null) _leakValueRect.localScale = Vector3.one;
-                return;
-            }
-
-            if (_leakPunchTween.isAlive) _leakPunchTween.Stop();
-            if (_leakColorTween.isAlive) _leakColorTween.Stop();
-            _leakValueRect.localScale = Vector3.one;
-            _leakValue.color = leakFlashColor;
-            float strength = Mathf.Max(0f, leakPunchScale - 1f);
-            _leakPunchTween = Tween.PunchScale(_leakValueRect, Vector3.one * strength,
-                leakPunchDuration, useUnscaledTime: true);
-            _leakColorTween = Tween.Color(_leakValue, leakFlashColor, targetColor,
-                leakPunchDuration, Ease.OutQuad, useUnscaledTime: true);
-        }
-
         private void TriggerHit(int killCount)
         {
             if (_valueRect == null || _value == null) return;
@@ -696,15 +600,23 @@ namespace Wassup.UI
             _shineT = 0f;
 
             // UI-space panel kick (battle camera is never touched).
+            //
+            // **회전 펀치는 쓰지 않는다.** PunchLocalRotation 은 «현재» 회전을 기준으로
+            // 흔들고 끝날 때 그 기준으로 되돌리는데, 연속 처치는 이 트윈을 중간에 Stop
+            // 시킨다 — 되돌림이 안 걸린 각도가 다음 펀치의 기준이 되어 누적되고, 몰아치면
+            // 배지가 통째로 뒤집힌 채로 남았다. 위치 흔들림만으로 타격감은 충분하다.
+            //
+            // 같은 이유로 흔들기 전에 기준 위치로 되돌린다(스케일 펀치가 localScale 을
+            // 1 로 되돌리고 시작하는 것과 같은 방어).
             if (_panel != null)
             {
                 if (_kickPosTween.isAlive) _kickPosTween.Stop();
-                if (_kickRotTween.isAlive) _kickRotTween.Stop();
+                var kickRt = (RectTransform)_panel.transform;
+                kickRt.anchoredPosition = _panelBasePos;
+                kickRt.localRotation = Quaternion.identity;
                 float ks = kickStrength * intensity;
                 _kickPosTween = Tween.ShakeLocalPosition(_panel.transform,
                     new Vector3(ks, ks * 0.6f, 0f), kickDuration, useUnscaledTime: true);
-                _kickRotTween = Tween.PunchLocalRotation(_panel.transform,
-                    new Vector3(0f, 0f, kickRotation * intensity), kickDuration, useUnscaledTime: true);
             }
 
             // Burst edge-flash — 최근 burstWindowSec 안에 번 점수가 임계를 넘으면 터진다.
@@ -760,8 +672,6 @@ namespace Wassup.UI
         {
             if (_punchTween.isAlive) _punchTween.Stop();
             if (_colorTween.isAlive) _colorTween.Stop();
-            if (_leakPunchTween.isAlive) _leakPunchTween.Stop();
-            if (_leakColorTween.isAlive) _leakColorTween.Stop();
             // rev 9 — 타이머 배지 트윈도 여기서 걷는다. **숨쉬기는 `cycles: -1` 무한**이라
             // 빠뜨리면 OnDisable·씬 언로드에서 안 멈추고, 다음 판에 플레이트가 커진 채로
             // 시작하거나 PrimeTween 이 파괴된 rect 를 건드린다.
@@ -775,7 +685,6 @@ namespace Wassup.UI
             _lastTimerSec = -1;
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
-            if (_leakValueRect != null) _leakValueRect.localScale = Vector3.one;
             _burstPool?.ClearAll();
 
             _glowFlash = 0f;
@@ -785,7 +694,6 @@ namespace Wassup.UI
             if (_shineImage != null) { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
 
             if (_kickPosTween.isAlive) _kickPosTween.Stop();
-            if (_kickRotTween.isAlive) _kickRotTween.Stop();
             if (_panel != null)
             {
                 var prt = (RectTransform)_panel.transform;
@@ -836,7 +744,6 @@ namespace Wassup.UI
                 StopFeedbackTweens();
                 if (_value != null) { _value.text = "0"; _value.color = baseColor; }
                 if (_valueRect != null) _valueRect.localScale = Vector3.one;
-                RefreshLeakDisplay(false);
                 if (_panel != null) _panel.SetActive(true);
             }
             // score-tally-sequence unit 1 — Tally(결과 연출)에서는 패널을 유지한다.
@@ -881,7 +788,7 @@ namespace Wassup.UI
             _panelBasePos = new Vector2(-cornerPadding, -cornerPadding);
             prt.anchoredPosition = _panelBasePos;
             prt.sizeDelta = new Vector2(plateSize.x,
-                plateTopInset + plateSize.y + leakPlateGap + leakPlateSize.y
+                plateTopInset + plateSize.y
                 + paceRowGap + paceRowHeight); // wave-pull-revival unit 3 — 예상선 줄 몫
 
             // Caption ("SCORE") is built later inside the badge tab (see below).
@@ -964,57 +871,7 @@ namespace Wassup.UI
             _caption.characterSpacing = 6f;
             _caption.color = tabTextColor;
 
-            // Leak companion badge: same navy/gold material language as the score,
-            // but a compact horizontal hierarchy so the score remains dominant.
-            var leakPlate = MakeSolidImage("LeakPlate", _panel.transform);
-            leakPlate.sprite = MakeRoundedRectSprite(plateCornerRadius * 0.72f,
-                plateBorderWidth, plateColor, plateBorderColor);
-            leakPlate.type = Image.Type.Sliced;
-            var leakPlateRt = leakPlate.rectTransform;
-            _leakPlateRect = leakPlateRt;
-            leakPlateRt.anchorMin = new Vector2(0.5f, 1f);
-            leakPlateRt.anchorMax = new Vector2(0.5f, 1f);
-            leakPlateRt.pivot = new Vector2(0.5f, 1f);
-            leakPlateRt.anchoredPosition = new Vector2(0f,
-                -plateTopInset - plateSize.y - leakPlateGap);
-            leakPlateRt.sizeDelta = leakPlateSize;
-
-            var leakTab = MakeSolidImage("LeakTab", _panel.transform);
-            leakTab.sprite = MakeRoundedRectSprite(leakTabSize.y * 0.5f, 0f, tabColor, tabColor);
-            leakTab.type = Image.Type.Sliced;
-            var leakTabRt = leakTab.rectTransform;
-            leakTabRt.anchorMin = new Vector2(0.5f, 1f);
-            leakTabRt.anchorMax = new Vector2(0.5f, 1f);
-            leakTabRt.pivot = new Vector2(0f, 1f);
-            leakTabRt.anchoredPosition = new Vector2(-leakPlateSize.x * 0.5f + 10f,
-                -plateTopInset - plateSize.y - leakPlateGap - (leakPlateSize.y - leakTabSize.y) * 0.5f);
-            leakTabRt.sizeDelta = leakTabSize;
-
-            var leakCaption = MakeText("LeakCaption", leakTab.transform, captionFontSize * 0.72f,
-                new Vector2(0.5f, 0.5f));
-            var leakCaptionRt = leakCaption.rectTransform;
-            leakCaptionRt.anchorMin = Vector2.zero;
-            leakCaptionRt.anchorMax = Vector2.one;
-            leakCaptionRt.offsetMin = Vector2.zero;
-            leakCaptionRt.offsetMax = Vector2.zero;
-            leakCaption.text = "스트레스";
-            leakCaption.fontStyle = FontStyles.Bold;
-            leakCaption.color = tabTextColor;
-
-            _leakValue = MakeText("LeakValue", _panel.transform, leakValueFontSize,
-                new Vector2(0.5f, 0.5f));
-            _leakValueRect = _leakValue.rectTransform;
-            _leakValueRect.anchorMin = new Vector2(0.5f, 1f);
-            _leakValueRect.anchorMax = new Vector2(0.5f, 1f);
-            _leakValueRect.pivot = new Vector2(0.5f, 0.5f);
-            _leakValueRect.anchoredPosition = new Vector2(leakTabSize.x * 0.5f,
-                -plateTopInset - plateSize.y - leakPlateGap - leakPlateSize.y * 0.5f);
-            _leakValueRect.sizeDelta = new Vector2(leakPlateSize.x - leakTabSize.x - 32f,
-                leakPlateSize.y);
-            _leakValue.fontStyle = FontStyles.Bold;
-            RefreshLeakDisplay(false);
-
-            // wave-pull-revival unit 3 — 스트레스 배지 아래 한 줄. 점수와 **같은 축**이다
+            // wave-pull-revival unit 3 — 점수 배지 아래 한 줄. 점수와 **같은 축**이다
             // (계약 7 로 킬 가중치를 유지했으므로 「N체 부족」이 아니라 「N점 부족」).
             _paceLabel = MakeText("PaceBaseline", _panel.transform, paceFontSize,
                 new Vector2(0.5f, 0.5f));
@@ -1023,8 +880,7 @@ namespace Wassup.UI
             paceRt.anchorMax = new Vector2(0.5f, 1f);
             paceRt.pivot = new Vector2(0.5f, 0.5f);
             paceRt.anchoredPosition = new Vector2(0f,
-                -plateTopInset - plateSize.y - leakPlateGap - leakPlateSize.y
-                - paceRowGap - paceRowHeight * 0.5f);
+                -plateTopInset - plateSize.y - paceRowGap - paceRowHeight * 0.5f);
             paceRt.sizeDelta = new Vector2(plateSize.x, paceRowHeight);
             _paceLabel.color = paceBehindColor;
             _paceLabel.text = "";
