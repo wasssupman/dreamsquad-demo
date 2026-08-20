@@ -5024,6 +5024,20 @@ namespace Wassup.Bridge
                             : unitData.onPlaceDuration;
                         hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
                     }
+                    // 지진은 「멈춘다」만이 아니라 「아프다」이기도 하다 (사용자 결정 2026-08-19).
+                    // `onPlaceMagnitude` 는 **배치 스킬의 세기**라는 공용 축이고 다른 arm 이 이미
+                    // 자기 뜻으로 소비한다(MeleeBurst=피해 · DotNearby=틱당 피해 · GainCost=코스트
+                    // · ApplyStackNearby=스택 수) — 이 arm 만 그 필드를 안 읽고 있었다. 새 필드도
+                    // 새 enum 값도 아니고, 0 이면 종전대로 CC 만 건다.
+                    //
+                    // ⚠ 이 arm 은 규칙 경로(트리거 × 페이로드)로 이관될 예정이다
+                    // (`docs/spec/onplace-area-cc/` — 보류 중). 그때 이 값은 `SelfTileAoe`
+                    // payload 의 magnitude 로 그대로 따라간다. 여기서 값을 늘릴 때 **반경은
+                    // `onPlaceRange` 하나**라는 사실을 유지할 것 — 멈춘 적과 아픈 적의 집합이
+                    // 갈리면 화면에서 규칙을 읽을 수 없다.
+                    if (unitData.onPlaceMagnitude > 0f && _em.HasBuffer<IncomingDamage>(e))
+                        _em.GetBuffer<IncomingDamage>(e).Add(
+                            new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
             }
