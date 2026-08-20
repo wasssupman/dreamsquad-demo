@@ -458,6 +458,10 @@ namespace Wassup.Bridge
         // unit 4 — 저작 거점의 뷰 인스턴스(SO.viewPrefab). Pickup 프레젠터 선례: 브리지가
         // 만들고 teardown 이 지운다. 골 타워 프랍은 기존 경로(MapThemeData.goalStructureProp) 유지.
         private readonly List<GameObject> _structureViews = new();
+        // instinct-turret-readout unit 1 — 본능 프랍의 포신 조준 프리젠터. **셀로 잇는다**:
+        // 뷰는 맵 수명(배치 페이즈부터 보인다)이고 엔티티는 판 수명이라 엔티티 참조로 묶으면
+        // 매 판 재배선이 필요하다. 셀은 두 수명 모두에서 불변이다.
+        private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureTurretView> _structureTurretsByCell = new();
         [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
         [SerializeField] private float goalOverheadHeight = 1.1f;
 
@@ -4055,6 +4059,32 @@ namespace Wassup.Bridge
                         attackPeriodSeconds: period);
                 }
 
+                // instinct-turret-readout unit 1 — 본능의 포신 조준. 이 분기는 반드시 아래
+                // `defData == null → continue` **앞**에 있어야 한다(회오리 VFX 와 같은 이유):
+                // 그 아래는 전부 방어유닛 전용이라 거점은 거기까지 못 간다.
+                //
+                // 본능은 스파인 풀에도 `_enemyTypeByEntity` 에도 없어 위 소비자 전부를 그냥
+                // 통과했다 — 사건은 오는데 받는 사람이 없던 자리다. 신규 큐 0.
+                if (_structureTurretsByCell.Count > 0 && HasLiveEntityManager()
+                    && _em.Exists(evt.attacker)
+                    && _em.HasComponent<Wassup.Battle.Units.StructureTag>(evt.attacker))
+                {
+                    var atkCell = _em.GetComponentData<Wassup.Battle.Units.StructureTag>(evt.attacker).cell;
+                    // 셀 중복 저작(같은 칸 거점 2개)은 여기서 막지 않는다 — 규칙 주인은
+                    // StructureAuthoringRules.ValidateStructures(footprint 겹침 = 에러)다.
+                    if (_structureTurretsByCell.TryGetValue(new Vector2Int(atkCell.x, atkCell.y), out var turret)
+                        && turret != null
+                        // 공격자 위치는 기존 헬퍼가 푼다 — 거점은 스파인 풀에 없어
+                        // LocalTransform → 뷰 공간 폴백으로 떨어진다(셀 중심 재계산 불필요).
+                        && ResolveBeamViewPos(evt.attacker, useAnchor: false, out var turretView))
+                    {
+                        // 방향은 **뷰 공간**에서 구한다 — 보드는 grid 가 월드 90°X 로 누운
+                        // 평면이라 sim 벡터를 그대로 쓰면 엉뚱한 축으로 돈다(방어유닛의
+                        // attackVfxFacesTarget 이 같은 이유로 그렇게 한다).
+                        turret.AimAt((Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - turretView);
+                    }
+                }
+
                 var defData = FindDefenderData(evt.attacker);
                 if (defData == null) continue;
 
@@ -5906,6 +5936,13 @@ namespace Wassup.Bridge
                 view.transform.localScale *= s.data.viewScale;
                 view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _structureViews.Add(view);
+                // instinct-turret-readout unit 1 — 포신을 가진 프랍이면 셀로 등록해 둔다.
+                // 「포신을 갖는가」는 **컴포넌트 유무**가 결정한다(kind 분기도 id 분기도 없다).
+                // 자식까지 훑는다 — 지금 두 변형은 루트에 달고 있지만, 리그가 깊어진 프랍이
+                // 프리젠터를 자식에 달면 루트 전용 탐색은 **경고도 없이** 조준을 끈다(리뷰 low).
+                // 거점이 포신을 안 갖는 것 자체는 정상이라(마음) 미발견은 경고 대상이 아니다.
+                var turret = view.GetComponentInChildren<Wassup.Presentation.StructureTurretView>();
+                if (turret != null) _structureTurretsByCell[s.cell] = turret;
             }
         }
 
@@ -5915,6 +5952,7 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureViews.Count; i++)
                 if (_structureViews[i] != null) Destroy(_structureViews[i]);
             _structureViews.Clear();
+            _structureTurretsByCell.Clear();   // 프리젠터는 뷰와 같은 수명 — stale 참조 방지
         }
 
         private void DestroyStructureEntities()
