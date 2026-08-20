@@ -1,5 +1,12 @@
 # 3 — 목표 페이스 (가짜 기준선)
 
+> **상태: 은퇴 2026-08-20** — 사용자 지시로 화면에서 제거했다. 점수 배지 아래 한 줄
+> (`목표 페이스 N · M점 부족`)과 그 뒤의 `Core/PaceBaseline`, `AttackDeck.paceParFraction`,
+> `BattleBridge.TryGetPaceBaseline`, `ScoreHudView.SetPaceBaseline`/`HidePaceBaseline` 이
+> 모두 사라졌다(브리지의 매 프레임 push 는 타이머 배지만 남아 `RefreshTimerHud` 로 개명).
+> 아래 본문은 **왜 그렇게 만들었나**의 기록으로 남긴다 — 서버 분포가 붙어 진짜 컷을
+> 그릴 때 여기서부터 다시 읽는다(PRD §7.1).
+
 ## 목적
 
 전투 중에 «지금 이 페이스면 진출권 안인가»를 보여준다. 이게 있어야 당김이 **압박**을 갖는다 — 안전하게 버티면 이기는 게임이면 당길 이유가 없고, 「70점 부족」이 떠 있으면 당김은 그 70점을 만들 유일한 수단이 된다.

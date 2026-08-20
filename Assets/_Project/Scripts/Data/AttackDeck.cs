@@ -69,19 +69,6 @@ namespace Wassup.Data
         [Tooltip("필드를 비운 뒤 당길 수 있는 최대 횟수. 전멸하면 0으로 리셋. 0 이하=폴백 3.")]
         public int maxPullsPerClear = 3;
 
-        // wave-pull-revival unit 3 — 「진출 예상선」 par 비율.
-        // par(t) = 기본 진행으로 t 까지 나왔을 적의 점수 합 × 이 값.
-        //
-        // **이 기준선은 가짜다** — 진짜는 같은 시드를 돈 10인 분포에서 나와야 하는데(PRD §7.1)
-        // 경기 중 서버 조회 경로가 없다. 감각을 먼저 확인하기 위한 임시 par 이며, 서버가
-        // 생기면 PaceBaseline 안만 바뀐다.
-        //
-        // 값 감각: 1.0 = 나온 적을 전부 잡는 페이스(당김 없이는 거의 불가능). 「조금 부족」이
-        // 대부분의 시간 동안 떠 있어야 압박이 된다 — 항상 앞서면 장식이고 항상 크게 뒤지면
-        // 포기하게 된다. **0 이하 = 표시 안 함**(0 을 par 로 읽으면 «항상 앞섬» 거짓말이 된다).
-        [Tooltip("진출 예상선 par 비율. 기본 진행 적 점수 × 이 값. 0 이하=표시 안 함. 현재 값은 서버 없는 임시 par.")]
-        public float paceParFraction = 0.92f;
-
         [Header("Boss Waves")]
         [Tooltip("보스 웨이브에 스폰할 보스 유닛. null이면 보스 웨이브 없음. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
         public AttackUnitData bossUnit;

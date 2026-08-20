@@ -122,10 +122,21 @@ namespace Wassup.UI
         [SerializeField] private Color tabTextColor = new Color(0.1f, 0.08f, 0.04f, 1f);
         [SerializeField] private Vector2 tabSize = new Vector2(196f, 46f);
 
-        // wave-pull-revival unit 3 — 진출 예상선. **가짜 par 다**(PaceBaseline 주석 참조).
-        [Header("Pace baseline (진출 예상선)")]
-        [SerializeField] private float paceRowHeight = 30f;
-        [SerializeField] private float paceRowGap = 4f;
+        // 웨이브 진행은 원래 좌상단 시간 배지의 **종속 캡션**이었다(작은 회색 한 줄).
+        // 시계 밑에 붙어 있으니 «시간에 딸린 부연»으로 읽혔는데, 실제로는 판을 읽는 1급
+        // 정보다 — 지금 몇 번째 파도이고 몇 개가 남았는가. 그래서 은퇴한 스트레스 배지가
+        // 쓰던 자리와 문법(점수 아래 컴패니언 플레이트 + 골드 탭)을 그대로 물려받는다.
+        [Header("Wave badge (score companion)")]
+        [SerializeField] private Vector2 wavePlateSize = new Vector2(360f, 64f);
+        [SerializeField] private float wavePlateGap = 10f;
+        [SerializeField] private Vector2 waveTabSize = new Vector2(112f, 42f);
+        [SerializeField] private float waveValueFontSize = 38f;
+        [SerializeField] private Color waveValueColor = new Color(1f, 0.9f, 0.66f, 1f);
+        [Tooltip("웨이브가 넘어갈 때 숫자 펀치 배수")]
+        [SerializeField] private float wavePunchScale = 1.18f;
+        [SerializeField] private float wavePunchDuration = 0.22f;
+        [Tooltip("웨이브가 넘어가는 순간 플래시 색")]
+        [SerializeField] private Color waveFlashColor = Color.white;
 
         // next-wave-dock-legibility rev 8 — **상단 중앙 대형 카운트다운.**
         //
@@ -170,11 +181,6 @@ namespace Wassup.UI
         [Tooltip("30초·10초 구간의 숨쉬기 배율 / 주기(초)")]
         [SerializeField] private Vector2 timerBreathWarn = new Vector2(1.06f, 1.0f);
         [SerializeField] private Vector2 timerBreathFinal = new Vector2(1.12f, 0.4f);
-        [SerializeField] private float paceFontSize = 22f;
-        [Tooltip("par 에 못 미칠 때")]
-        [SerializeField] private Color paceBehindColor = new Color(1f, 0.62f, 0.42f, 0.98f);
-        [Tooltip("par 를 넘었을 때")]
-        [SerializeField] private Color paceAheadColor = new Color(0.62f, 1f, 0.72f, 0.98f);
 
         private GameObject _panel;
         private Vector2 _panelBasePos;
@@ -182,18 +188,17 @@ namespace Wassup.UI
         private TextMeshProUGUI _caption;
         private TextMeshProUGUI _value;
         private RectTransform _valueRect;
-        private TextMeshProUGUI _paceLabel;
-        private int _lastPaceExpected = int.MinValue;
-        private int _lastPaceGap = int.MinValue;
         // rev 8 — 상단 중앙 카운트다운 배지
         private GameObject _timerRoot;
         private RectTransform _timerPlateRect;
         private TextMeshProUGUI _timerValue;
         private RectTransform _timerValueRect;
-        private TextMeshProUGUI _timerWave;
+        private TextMeshProUGUI _waveValue;
+        private RectTransform _waveValueRect;
+        private Tween _wavePunchTween, _waveColorTween;
         private Tween _timerTickTween, _timerBreathTween;
         private int _lastTimerSec = -1;
-        private int _lastTimerWave = -2, _lastTimerWaveTotal = -2;
+        private int _lastWaveNumber = -2;
         // 0 = 평시 · 1 = 30초 · 2 = 10초. 구간이 바뀔 때만 색·숨쉬기·폰트를 다시 건다.
         private int _timerStage = -1;
         private bool _built;
@@ -358,53 +363,22 @@ namespace Wassup.UI
             _burstCooldownUntil = now + Mathf.Max(0.05f, milestoneDuration);
         }
 
-        // wave-pull-revival unit 3 — 「목표 페이스 1,310 · 70점 부족」.
-        //
-        // ⚠ **「진출 예상선」이라고 쓰지 않는다.** 그 문구는 «같은 시드를 돈 10인 분포에서
-        // 나온 실제 컷»을 약속하는데 지금 값은 저작 par 비율에서 나오는 가짜다. 전투 중
-        // 피드백은 매초 들어오고 경기 후 랭킹은 판당 한 번이라, 거짓 컷을 믿고 당김을 멈춘
-        // 플레이어는 **잘못된 습관을 훨씬 강하게 학습한다**. 실제 분포가 붙으면 그때 이름을
-        // 「진출 예상선」으로 올린다(PRD §7.1).
-        //
-        // ⚠ **표시 전용이다.** 로그·제출값·결과 화면에 넣지 말 것(Core/PaceBaseline).
-        //
-        // 줄을 껐다 켜지 않는다 — 앞섰다 뒤졌다 할 때마다 레이아웃이 튀면 읽을 수 없다.
-        // 숨기는 것은 par 자체가 없을 때(HidePaceBaseline)뿐이다.
-        public void SetPaceBaseline(int expected, int current)
-        {
-            if (_paceLabel == null) return;
-            if (!_paceLabel.gameObject.activeSelf) _paceLabel.gameObject.SetActive(true);
-
-            int gap = expected - current;
-            // 값이 안 바뀌면 조립하지 않는다(매초 갱신이라 프레임마다 만들 이유가 없다).
-            if (expected == _lastPaceExpected && gap == _lastPaceGap) return;
-            _lastPaceExpected = expected;
-            _lastPaceGap = gap;
-
-            if (gap > 0)
-            {
-                _paceLabel.text = $"목표 페이스 {expected:N0} · {gap:N0}점 부족";
-                _paceLabel.color = paceBehindColor;
-            }
-            else
-            {
-                _paceLabel.text = $"목표 페이스 {expected:N0} · +{-gap:N0}점";
-                _paceLabel.color = paceAheadColor;
-            }
-        }
-
         /// <summary>
         /// rev 7 — 최상단 바. 브리지가 매 프레임 밀어준다(HUD 가 브리지를 참조하지 않는
-        /// 기존 방향 — SetPaceBaseline 과 같다).
+        /// 기존 방향 — OnEnemyKilled 와 같다).
         /// </summary>
         /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 바를 숨긴다.</param>
         /// <summary>
         /// rev 8 — 상단 중앙 카운트다운. 브리지가 매 프레임 밀어준다(HUD 는 브리지를 모른다 —
-        /// SetPaceBaseline 과 같은 방향).
+        /// OnEnemyKilled 와 같은 방향).
         /// </summary>
         /// <param name="totalSec">판 전체 길이. 0 이하 = 무한 → 배지를 통째로 숨긴다.</param>
-        public void SetTopBar(float remainingSec, float totalSec, int waveNumber, int waveTotal)
+        public void SetTopBar(float remainingSec, float totalSec, int waveNumber)
         {
+            // 웨이브 배지는 시계와 **다른 배지**다 — 시계의 무한모드 게이트(아래 early
+            // return) 뒤에 두면 무한 판에서 파도 수가 영영 안 갱신된다.
+            RefreshWaveBadge(waveNumber);
+
             if (_timerRoot == null) return;
 
             // 무한 모드는 «남은 시간»이 없다 — 시계를 그리면 거짓말이 된다.
@@ -416,15 +390,6 @@ namespace Wassup.UI
             int stage = remaining <= timerFinalSeconds ? 2
                       : remaining <= timerWarnSeconds ? 1 : 0;
             if (stage != _timerStage) ApplyTimerStage(stage);
-
-            if (waveNumber != _lastTimerWave || waveTotal != _lastTimerWaveTotal)
-            {
-                _lastTimerWave = waveNumber;
-                _lastTimerWaveTotal = waveTotal;
-                _timerWave.text = waveTotal > 0
-                    ? $"웨이브 {waveNumber} / {waveTotal}"
-                    : $"웨이브 {waveNumber}";
-            }
 
             int min = (int)(remaining / 60f);
             int sec = (int)(remaining % 60f);
@@ -540,33 +505,51 @@ namespace Wassup.UI
             _timerValueRect.anchorMin = new Vector2(0.5f, 0.5f);
             _timerValueRect.anchorMax = new Vector2(0.5f, 0.5f);
             _timerValueRect.pivot = new Vector2(0.5f, 0.5f);
-            _timerValueRect.anchoredPosition = new Vector2(0f, 6f);
+            // 웨이브 캡션이 아래를 쓰던 시절엔 +6 으로 올려 잡았다. 캡션이 점수 아래 자기
+            // 배지로 나간 뒤로는 그만큼 아래가 비어 시계가 떠 보인다 — TIME 탭이 상단을
+            // 잠식하는 만큼 내려서 «남은 안쪽 공간»의 중앙에 둔다.
+            _timerValueRect.anchoredPosition = new Vector2(0f, -9f);
             _timerValueRect.sizeDelta = new Vector2(timerPlateSize.x - 24f, timerValueFontSize * 1.3f);
             _timerValue.fontStyle = FontStyles.Bold;
             _timerValue.color = timerNormalColor;
             _timerValue.text = "3:00";
 
-            // 웨이브 진행은 **종속 캡션**이다 — 시간과 동급으로 두던 것이 rev 6·7 에서
-            // 시계를 작아 보이게 만든 원인 중 하나였다.
-            _timerWave = MakeText("TimerWave", _timerRoot.transform, timerCaptionFontSize,
-                new Vector2(0.5f, 0.5f));
-            var wr = _timerWave.rectTransform;
-            wr.anchorMin = new Vector2(0.5f, 0f);
-            wr.anchorMax = new Vector2(0.5f, 0f);
-            wr.pivot = new Vector2(0.5f, 0f);
-            wr.anchoredPosition = new Vector2(0f, 12f);
-            wr.sizeDelta = new Vector2(timerPlateSize.x - 24f, timerCaptionFontSize * 1.4f);
-            _timerWave.color = new Color(0.78f, 0.84f, 0.92f, 0.85f);
-            _timerWave.text = "";
+            // 웨이브 진행은 여기 종속 캡션으로 살던 것을 점수 아래 자기 배지로 옮겼다
+            // (BuildCanvas 의 WavePlate). 시계는 이제 «남은 시간» 하나만 말한다.
         }
 
-        /// <summary>par 를 계산할 수 없을 때(저작 0 이하·플랜 없음) 줄 자체를 숨긴다.</summary>
-        public void HidePaceBaseline()
+        // 웨이브 배지 갱신. 탭이 「웨이브」를 이미 말하므로 숫자만 쓴다(스트레스 배지와
+        // 같은 분업) — 값이 안 바뀌면 조립도 펀치도 하지 않는다.
+        //
+        // **총 개수(`N / M`)는 내보내지 않는다**(2026-08-20 사용자 지시). 지금 몇 번째
+        // 파도인가만 말한다.
+        private void RefreshWaveBadge(int waveNumber)
         {
-            if (_paceLabel == null || !_paceLabel.gameObject.activeSelf) return;
-            _paceLabel.gameObject.SetActive(false);
-            // 다음 판에서 같은 값이 와도 다시 조립하도록 캐시를 비운다.
-            _lastPaceExpected = _lastPaceGap = int.MinValue;
+            if (_waveValue == null) return;
+            if (waveNumber == _lastWaveNumber) return;
+
+            bool advanced = _lastWaveNumber >= 0 && waveNumber > _lastWaveNumber;
+            _lastWaveNumber = waveNumber;
+            _waveValue.text = waveNumber.ToString();
+
+            // 파도가 넘어간 순간에만 펀치한다. 첫 표기(판 시작)에는 펀치하지 않는다 —
+            // 아무 일도 안 일어났는데 섬광이 뜬다.
+            if (!advanced || _panel == null || !_panel.activeSelf)
+            {
+                _waveValue.color = waveValueColor;
+                if (_waveValueRect != null) _waveValueRect.localScale = Vector3.one;
+                return;
+            }
+
+            if (_wavePunchTween.isAlive) _wavePunchTween.Stop();
+            if (_waveColorTween.isAlive) _waveColorTween.Stop();
+            _waveValueRect.localScale = Vector3.one;
+            _waveValue.color = waveFlashColor;
+            float strength = Mathf.Max(0f, wavePunchScale - 1f);
+            _wavePunchTween = Tween.PunchScale(_waveValueRect, Vector3.one * strength,
+                wavePunchDuration, useUnscaledTime: true);
+            _waveColorTween = Tween.Color(_waveValue, waveFlashColor, waveValueColor,
+                wavePunchDuration, Ease.OutQuad, useUnscaledTime: true);
         }
 
         private void TriggerHit(int killCount)
@@ -681,8 +664,14 @@ namespace Wassup.UI
             if (_timerValueRect != null) _timerValueRect.localScale = Vector3.one;
             // 구간 캐시도 함께 — 안 비우면 다음 판이 «이미 30초 구간»으로 시작해 색과
             // 숨쉬기가 안 걸린다(ApplyTimerStage 가 같은 stage 면 건너뛴다).
+            if (_wavePunchTween.isAlive) _wavePunchTween.Stop();
+            if (_waveColorTween.isAlive) _waveColorTween.Stop();
+            if (_waveValueRect != null) _waveValueRect.localScale = Vector3.one;
+            if (_waveValue != null) _waveValue.color = waveValueColor;
             _timerStage = -1;
             _lastTimerSec = -1;
+            // 다음 판이 같은 «1» 로 시작해도 다시 조립하도록 캐시를 비운다.
+            _lastWaveNumber = -2;
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
             _burstPool?.ClearAll();
@@ -723,18 +712,8 @@ namespace Wassup.UI
 
         private void OnPhaseChanged(GamePhase phase)
         {
-            // wave-pull-revival unit 3 — **Battle 이 아니면 목표 페이스 줄을 끈다.**
-            //
-            // 브리지의 push(RefreshPaceHud)는 `_running` 아래에 있어 전투가 끝나는 순간
-            // 멈추는데, 이 패널은 Tally 에서 살아남는다(아래 분기). 그러면 4초 동안
-            // **마지막 프레임의 par 가 얼어붙은 채** 그 옆에서 총점이 올라간다 —
-            // 축이 다른 두 숫자가 나란히 서고, 가짜 par 가 최종 기록처럼 보인다(계약 9).
-            // Battle 재진입에서도 첫 push 전 1프레임 동안 이전 판 값이 보이므로 함께 끈다.
-            if (phase != GamePhase.Battle) HidePaceBaseline();
-
             if (phase == GamePhase.Battle)
             {
-                HidePaceBaseline();
                 _targetScore = 0;
                 _shownScore = 0f;
                 _pendingKills = 0;
@@ -788,8 +767,7 @@ namespace Wassup.UI
             _panelBasePos = new Vector2(-cornerPadding, -cornerPadding);
             prt.anchoredPosition = _panelBasePos;
             prt.sizeDelta = new Vector2(plateSize.x,
-                plateTopInset + plateSize.y
-                + paceRowGap + paceRowHeight); // wave-pull-revival unit 3 — 예상선 줄 몫
+                plateTopInset + plateSize.y + wavePlateGap + wavePlateSize.y);
 
             // Caption ("SCORE") is built later inside the badge tab (see below).
 
@@ -871,20 +849,55 @@ namespace Wassup.UI
             _caption.characterSpacing = 6f;
             _caption.color = tabTextColor;
 
-            // wave-pull-revival unit 3 — 점수 배지 아래 한 줄. 점수와 **같은 축**이다
-            // (계약 7 로 킬 가중치를 유지했으므로 「N체 부족」이 아니라 「N점 부족」).
-            _paceLabel = MakeText("PaceBaseline", _panel.transform, paceFontSize,
+            // Wave companion badge: 점수와 같은 남색/골드 문법이되 납작한 가로 위계라
+            // 점수가 계속 주인공이다(은퇴한 스트레스 배지가 쓰던 비율 그대로).
+            var wavePlate = MakeSolidImage("WavePlate", _panel.transform);
+            wavePlate.sprite = MakeRoundedRectSprite(plateCornerRadius * 0.72f,
+                plateBorderWidth, plateColor, plateBorderColor);
+            wavePlate.type = Image.Type.Sliced;
+            var wavePlateRt = wavePlate.rectTransform;
+            wavePlateRt.anchorMin = new Vector2(0.5f, 1f);
+            wavePlateRt.anchorMax = new Vector2(0.5f, 1f);
+            wavePlateRt.pivot = new Vector2(0.5f, 1f);
+            wavePlateRt.anchoredPosition = new Vector2(0f,
+                -plateTopInset - plateSize.y - wavePlateGap);
+            wavePlateRt.sizeDelta = wavePlateSize;
+
+            var waveTab = MakeSolidImage("WaveTab", _panel.transform);
+            waveTab.sprite = MakeRoundedRectSprite(waveTabSize.y * 0.5f, 0f, tabColor, tabColor);
+            waveTab.type = Image.Type.Sliced;
+            var waveTabRt = waveTab.rectTransform;
+            waveTabRt.anchorMin = new Vector2(0.5f, 1f);
+            waveTabRt.anchorMax = new Vector2(0.5f, 1f);
+            waveTabRt.pivot = new Vector2(0f, 1f);
+            waveTabRt.anchoredPosition = new Vector2(-wavePlateSize.x * 0.5f + 10f,
+                -plateTopInset - plateSize.y - wavePlateGap - (wavePlateSize.y - waveTabSize.y) * 0.5f);
+            waveTabRt.sizeDelta = waveTabSize;
+
+            var waveCaption = MakeText("WaveCaption", waveTab.transform, captionFontSize * 0.72f,
                 new Vector2(0.5f, 0.5f));
-            var paceRt = _paceLabel.rectTransform;
-            paceRt.anchorMin = new Vector2(0.5f, 1f);
-            paceRt.anchorMax = new Vector2(0.5f, 1f);
-            paceRt.pivot = new Vector2(0.5f, 0.5f);
-            paceRt.anchoredPosition = new Vector2(0f,
-                -plateTopInset - plateSize.y - paceRowGap - paceRowHeight * 0.5f);
-            paceRt.sizeDelta = new Vector2(plateSize.x, paceRowHeight);
-            _paceLabel.color = paceBehindColor;
-            _paceLabel.text = "";
-            _paceLabel.gameObject.SetActive(false);
+            var waveCaptionRt = waveCaption.rectTransform;
+            waveCaptionRt.anchorMin = Vector2.zero;
+            waveCaptionRt.anchorMax = Vector2.one;
+            waveCaptionRt.offsetMin = Vector2.zero;
+            waveCaptionRt.offsetMax = Vector2.zero;
+            waveCaption.text = "웨이브";
+            waveCaption.fontStyle = FontStyles.Bold;
+            waveCaption.color = tabTextColor;
+
+            _waveValue = MakeText("WaveValue", _panel.transform, waveValueFontSize,
+                new Vector2(0.5f, 0.5f));
+            _waveValueRect = _waveValue.rectTransform;
+            _waveValueRect.anchorMin = new Vector2(0.5f, 1f);
+            _waveValueRect.anchorMax = new Vector2(0.5f, 1f);
+            _waveValueRect.pivot = new Vector2(0.5f, 0.5f);
+            _waveValueRect.anchoredPosition = new Vector2(waveTabSize.x * 0.5f,
+                -plateTopInset - plateSize.y - wavePlateGap - wavePlateSize.y * 0.5f);
+            _waveValueRect.sizeDelta = new Vector2(wavePlateSize.x - waveTabSize.x - 32f,
+                wavePlateSize.y);
+            _waveValue.fontStyle = FontStyles.Bold;
+            _waveValue.color = waveValueColor;
+            _waveValue.text = "-";
 
             // Fullscreen milestone edge-flash vignette (on the canvas, behind the panel).
             _vignetteImage = MakeImage("MilestoneVignette", transform, vignetteSprite);

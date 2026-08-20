@@ -1965,37 +1965,21 @@ namespace Wassup.Bridge
         public string NextWaveConceptLabel =>
             NextWaveHasNext ? _wavePlan.waves[_nextWaveIndex].conceptLabel : "";
 
-        // wave-pull-revival unit 3 — 「진출 예상선」. HUD 표시 **전용**이다.
-        //
-        // ⚠ 이 값을 BattleLogger·서버 제출 점수·결과 화면에 넣지 말 것.
-        // 지금 par 는 서버가 아니라 저작 비율에서 나오는 **가짜**이고(PaceBaseline 주석),
-        // 기록에 새는 순간 가짜 경쟁 수치가 진짜인 척 저장된다.
-        public bool TryGetPaceBaseline(out int expected)
-        {
-            expected = 0;
-            if (!_running || ActiveDeck == null) return false;
-            return PaceBaseline.TryExpectedScore(
-                _wavePlan, (float)_battleClock, ActiveDeck.paceParFraction, out expected);
-        }
-
         // 매 프레임 HUD 로 밀어준다. HUD 가 브리지를 참조하지 않게 하는 기존 방향
         // (scoreHud.SetTopBar / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
-        private void RefreshPaceHud()
+        private void RefreshTimerHud()
         {
             if (scoreHud == null) return;
-            if (TryGetPaceBaseline(out int expected))
-                scoreHud.SetPaceBaseline(expected, _killCount);
-            else
-                scoreHud.HidePaceBaseline();
 
             // battle-hud-legibility — 남은시간·웨이브 진행이 좌하단 도크에서 **좌상단 배지**로
             // 옮겨왔다(중앙은 전부 보드라 큰 표기는 코너에만 놓인다).
             // 도크가 직접 읽던 것을 여기서 밀어준다(HUD 는 브리지를 모른다).
-            int total = WaveCountTotal;
+            //
             // **진행 중인** 웨이브 번호다. NextWaveNumber(= _nextWaveIndex + 1)는 «다음에 나올»
             // 번호라 그대로 쓰면 3번 웨이브와 싸우는 동안 「웨이브 4」가 뜬다.
-            int current = Mathf.Clamp(NextWaveNumber - 1, 1, Mathf.Max(1, total));
-            scoreHud.SetTopBar(TimerRemaining, TimerDuration, current, total);
+            // 총 개수는 클램프 상한으로만 쓰고 화면에 내보내지 않는다(HUD 는 현재 번호만 받는다).
+            int current = Mathf.Clamp(NextWaveNumber - 1, 1, Mathf.Max(1, WaveCountTotal));
+            scoreHud.SetTopBar(TimerRemaining, TimerDuration, current);
         }
 
         // wave-pull-revival unit 1 — 다음 웨이브의 **구성**(무엇이 몇 마리). 당김 판단의 재료다.
@@ -2868,7 +2852,7 @@ namespace Wassup.Bridge
             // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
             DrainEnemyKilledEvents();
             QueueDueWaves(t);
-            RefreshPaceHud();
+            RefreshTimerHud();
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
                 if (t >= _pending[i].entry.triggerTimeSec)
