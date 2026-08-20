@@ -41,4 +41,4 @@
 - [x] Unity 임포트/컴파일 에러 0. Assets lane 회귀 테스트를 추가하고 동일 계약의 정적 전수 검사를 통과했다.
 - [x] OutgameScene 드림캐쳐 컬렉션·상세 팝업에서 신규 아트가 잘림/빈 슬롯 없이 표시된다.
 
-완료 확인: 2026-08-20 — 사용자 Play 육안 확인 통과. visible 37장 art·고유 경로·1024×1536·Sprite importer 계약 정적 전수 검사와 Unity 컴파일 0 에러를 확인했다. `Wassup.Tests.EditMode.Assets` 실행 요청은 도메인 리로드 중 MCP 세션 단절로 결과를 회수하지 못했으며, 신규 `DreamcatcherCardArtTests`가 같은 계약을 회귀 고정한다. 구현은 이 문서와 동일 커밋.
+완료 확인: 2026-08-20 — 사용자 Play 육안 확인 통과. visible 37장 art·고유 경로·1024×1536·Sprite importer 계약 정적 전수 검사와 Unity 컴파일 0 에러를 확인했다. `Wassup.Tests.EditMode.Assets` 실행 요청은 도메인 리로드 중 MCP 세션 단절로 결과를 회수하지 못했으며, 신규 `DreamcatcherCardArtTests`가 같은 계약을 회귀 고정한다. 구현 커밋 `b796562a`.

@@ -2,7 +2,7 @@
 
 ## Commit
 
-- 구현: 이 문서와 동일 커밋. 정확한 해시는 후속 docs 기록에 기입한다.
+- `b796562a` feat(dreamcatcher): overhaul visible card art
 
 ## Implemented
 
