@@ -20,6 +20,7 @@ bloom/sunrays/dithering/dat.gui/스크린샷 등 부가기능은 **전부 제외
 | 2 | 런타임 | `2_fluid_paint_sim.md` | `FluidPaintSim` MonoBehaviour — Blit 패스 체인 step(dt) + `Splat()` API + 자율 앰비언트 드라이버 |
 | 3 | 검증 배선 | `3_scratch_quad_prototype.md` | 스크래치 쿼드/RawImage 에 dye RT 표시 → Play 로 룩 시각 검증 (unity-feature-wiring) |
 | 4 | 표면 어댑터 | `4_surface_adapter.md` | 진짜 표면(코스트 셀 배경 vs Dreamcatcher BG)에 얇게 배선. **타겟은 unit 3 확인 후 확정** |
+| 6 | 수명주기 버그 수정 | `6_active_target_release.md` | 마지막 Blit 대상이 활성인 프레임에도 소유 RT를 에러 없이 해제 |
 
 작업 단위 파일은 해당 단위 착수 시점에 작성/구현한다(한 번에 한 파일). 계약이 바뀌면 이 README 를 갱신한다.
 
