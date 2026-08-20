@@ -109,7 +109,16 @@ namespace Wassup.UI
         {
             _units.Clear();
             if (catalog != null)
-                foreach (var id in catalog.AllIds()) { var u = catalog.ById(id); if (u != null) _units.Add(u); }
+                foreach (var id in catalog.AllIds())
+                {
+                    var u = catalog.ById(id);
+                    if (u == null) continue;
+                    // defender-unit-visibility unit 1 — 저작으로 숨긴 유닛은 목록에 없다.
+                    // _units 가 그리드 소스이자 "고를 수 있는 후보" 목록이라 이 한 지점이
+                    // 「보이지도 않고 넣을 수도 없다」를 동시에 만든다.
+                    if (u.visible == 0) continue;
+                    _units.Add(u);
+                }
             _stones.Clear();
             if (stoneCatalog != null)
                 foreach (var id in stoneCatalog.AllIds()) { var s = stoneCatalog.ById(id); if (s != null) _stones.Add(s); }
@@ -521,6 +530,18 @@ namespace Wassup.UI
             RefreshBarState();
         }
 
+        // defender-unit-visibility unit 1 — 「고를 수 있는 후보」의 단일 정의는 _units 다
+        // (BuildLists 가 숨김 유닛을 걸러 만든 목록). catalog.ById 는 **후보 판정이 아니다** —
+        // 그건 저장된 id 를 푸는 해석기라 숨김 유닛도 계속 풀어준다(그래야 이미 편성된
+        // 숨김 유닛이 헤더 슬롯에 그려지고 뺄 수 있다).
+        private bool IsSelectable(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return false;
+            for (int i = 0; i < _units.Count; i++)
+                if (_units[i].id == id) return true;
+            return false;
+        }
+
         private void ToggleUnit(string id)
         {
             if (string.IsNullOrEmpty(id)) return;
@@ -528,9 +549,16 @@ namespace Wassup.UI
             if (idx >= 0)
             {
                 _workingUnits[idx] = "";
+                // 숨긴 유닛은 편성에서 빠지는 순간 어느 목록에도 없다. 상세가 계속 그것을
+                // 붙들고 있으면 버튼이 [출전]로 바뀌어 다시 넣을 수 있다 — 그리드에서
+                // 사라진 유닛을 재편성하는 뒷문이다. 선택을 후보로 옮긴다.
+                if (!IsSelectable(id)) _selectedUnitId = FirstWorkingUnitOrDefault();
             }
             else
             {
+                // 목록에 없는 유닛은 편성에 넣을 수 없다. 위의 선택 이동이 뒷문을 닫지만,
+                // 넣는 경로 자체에 불변식을 두어야 다른 호출처가 생겨도 샐 곳이 없다.
+                if (!IsSelectable(id)) return;
                 int empty = _workingUnits.FindIndex(string.IsNullOrEmpty);
                 if (empty < 0) return; // 만석 — 무시
                 _workingUnits[empty] = id;
