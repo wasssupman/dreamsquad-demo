@@ -252,15 +252,17 @@ namespace Wassup.UI
         // const 가 아니라 static readonly 인 이유: const 면 분기가 상수 폴딩돼 도달 불가 경고가 뜬다.
         private static readonly bool RelocationEnabled = false;
 
-        // 2026-08-19 사용자 결정 — **보드에 놓인 유닛을 직접 탭해 선택하는 경로를 끈다.**
-        // 선택 진입구는 하단 트레이 셀 하나로 좁힌다(DefenderDragSlot.GoToDeployedUnit →
-        // SelectDeployed). 유닛은 전부 maxOnBoard 1 이라 배치하는 순간 그 셀이 «소진» 이 되고,
-        // 소진 셀의 탭은 이미 «판 위 그 유닛으로 데려간다» 였다 — 새 어휘가 아니라 남은 어휘다.
-        // (FirstRunTutorialController 4.1 이 이미 트레이 셀로 유도한다 — 그 주석 참조.)
+        // 2026-08-19 사용자 결정으로 **보드에 놓인 유닛을 직접 탭해 선택하는 경로를 껐다가**,
+        // 2026-08-20 사용자 요청으로 **다시 켠다** — 판 위 유닛을 찍으면 상세가 떠야 한다.
         //
-        // 끈 뒤에도 보드 탭 자체는 살아 있다: 이제 **해제 제스처 전용**이다(선택/손패 걷기).
-        // 그래서 TryPick 호출만 사라지고 Close 경로는 그대로다.
-        private static readonly bool BoardTapSelectEnabled = false;
+        // 켜진 지금 선택 진입구는 둘이다. 보드 유닛 탭(HandleTap · OnBoardTapped → TryPick →
+        // Select)과 하단 트레이 소진 셀 탭(DefenderDragSlot.GoToDeployedUnit → SelectDeployed).
+        // 후자는 이 게이트를 지나지 않는 **별도 입구**라 스위치 값과 무관하게 늘 산다 —
+        // 입구가 갈라져 있다는 것이 한쪽만 끌 수 있었던 이유고, 되켜도 그대로다.
+        //
+        // 꺼져 있는 동안 보드 탭은 «해제 제스처» 전용이었다. 켜도 해제는 사라지지 않는다:
+        // 빈 보드 탭(TryPick 실패)과 선택 유닛 재탭(entity == _selected)이 종전대로 걷는다.
+        private static readonly bool BoardTapSelectEnabled = true;
 
         // 2026-08-19 사용자 결정 — **선택 줌(인스펙트 포커스)을 끈다.** 카메라는 홈 포즈를
         // 유지한다. 피드를 끊는 쪽으로 끈다(CameraDirectionConfig 의 inspectDolly/FovDelta/
@@ -268,8 +270,9 @@ namespace Wassup.UI
         // 같은 채널을 쓰는 DirectionAimController(방향 지정 조준 셀 포커스)는 영향이 없다.
         // 피드가 끊기면 CameraDirector 가 2프레임 staleness 로 자동 해제한다.
         //
-        // ⚠ 두 플래그 모두 [SerializeField] 금지 · const 아닌 static readonly (const 면
-        // 분기가 상수 폴딩돼 «도달 불가» 경고가 뜨고 TryPick 이 미사용으로 잡힌다).
+        // ⚠ 이 파일의 스위치는 전부 [SerializeField] 금지 · const 아닌 static readonly
+        // (const 면 분기가 상수 폴딩돼 «도달 불가» 경고가 뜨고 게이트 안 헬퍼가 미사용으로
+        // 잡힌다). 인스펙터로 노출하면 켠 값이 씬 저장에 조용히 박힌다 — 진실원은 이 줄들이다.
         private static readonly bool InspectZoomEnabled = false;
 
         // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
@@ -327,8 +330,9 @@ namespace Wassup.UI
         {
             // 이동모드/배치 드래그가 입력 주인일 때는 캐처 클릭으로 선택이 오염되지 않게(critic M6).
             if (MustClose()) return;
-            // BoardTapSelectEnabled=false — 보드 탭은 더 이상 유닛을 고르지 않는다. 선택 전환은
-            // 트레이 셀을 다시 탭하는 경로로만 일어난다(SelectDeployed 는 전환도 겸한다).
+            // BoardTapSelectEnabled — 켜져 있으면 보드 탭이 유닛을 고른다(전환 포함).
+            // 꺼져 있으면 이 분기를 건너뛰어 모든 보드 탭이 해제가 되고, 선택 전환은
+            // 트레이 셀 재탭만 남는다(SelectDeployed 는 전환도 겸한다).
             if (BoardTapSelectEnabled && TryPick(screenPos, out var entity) && entity != _selected)
             {
                 Select(entity); // 전환(무선택 상태의 첫 선택도 이 경로) — 손패는 유지된다
@@ -349,7 +353,7 @@ namespace Wassup.UI
 
         private void HandleTap(Vector2 screenPos)
         {
-            // BoardTapSelectEnabled=false — 보드 raw 탭은 «해제» 만 한다. 선택은 트레이 셀 전용.
+            // BoardTapSelectEnabled 가 꺼지면 보드 raw 탭은 «해제» 만 한다(선택은 트레이 셀 전용).
             if (!BoardTapSelectEnabled) { Close(); return; }
             if (!TryPick(screenPos, out var entity)) { Close(); return; } // 빈 보드 → 닫기
             if (entity == _selected) { Close(); return; }                 // 재탭 → 토글

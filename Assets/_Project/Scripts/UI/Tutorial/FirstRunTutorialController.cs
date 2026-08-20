@@ -758,11 +758,12 @@ namespace Wassup.UI.Tutorial
         // 부착 대상 = **트레이 셀로 선택할 수 있는** 배치 유닛. 이게 B4 의 유일한 불변식이고
         // 4.1 은 여기서 나온 rect 를 그대로 쓴다(분기 없음).
         //
-        // 왜 «선택 가능» 까지 묶는가: selection-entry-narrowing 이후 **보드 탭은 유닛을 고르지
-        // 않는다**(DcInspectController.BoardTapSelectEnabled=false — 모든 보드 탭이 해제다).
-        // 진입구는 소진된 트레이 셀 탭 하나뿐이므로(GoToDeployedUnit → SelectDeployed),
-        // «배치돼 있다» 만으로 대상을 고르면 셀이 소진이 아닌 유닛에서 조건이 영영 안 서고
-        // 타임아웃이 없어(계약 11) 그대로 멈춘다. 그래서 판정에 소진까지 포함한다.
+        // 왜 «선택 가능» 까지 묶는가: 4.1 이 뚫는 구멍이 **트레이 셀 rect** 하나이기 때문이다.
+        // 소진된 셀만 «판 위 그 유닛으로 데려간다»(GoToDeployedUnit → SelectDeployed) — 소진이
+        // 아닌 셀을 가리키면 그 탭은 배치 드래그를 열 뿐이라 조건이 영영 안 서고 타임아웃이
+        // 없어(계약 11) 그대로 멈춘다. 그래서 판정에 소진까지 포함한다.
+        // (보드 유닛 직접 탭은 2026-08-20 에 다시 켜졌다 — DcInspectController.
+        // BoardTapSelectEnabled=true. 플레이어가 그쪽으로 선택해도 완료 이벤트는 같다.)
         //
         // 우선순위는 온보딩이 가리키던 유닛 → 그 밖의 아무 유닛(캐논이 죽은 판 대비).
         private bool TryResolveHost(out Entity entity, out DefenderUnitData unit, out RectTransform slotRect)

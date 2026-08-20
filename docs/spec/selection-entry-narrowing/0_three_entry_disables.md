@@ -23,6 +23,10 @@
 
 ### B. 보드 유닛 탭 (`BoardTapSelectEnabled = false`)
 
+> ⚠ **2026-08-20 unit 1 에서 되켰다** (`= true`). 아래 서술은 unit 0 시점의 계약이다 —
+> 게이트 지점(`HandleTap` · `OnBoardTapped`)과 트레이 경로가 갈려 있다는 설명은 그대로
+> 유효하고, 값만 뒤집혔다. `1_board_tap_reenable.md` 참조.
+
 선택을 만드는 지점 둘만 게이트한다.
 
 - `HandleTap` (손패 닫힘 · raw 포인터 경로) → 게이트가 닫히면 `Close()` 후 반환.
