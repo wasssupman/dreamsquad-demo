@@ -57,7 +57,11 @@ MonoBehaviour:
   cooldownReadyRippleScale: 1.7
   cooldownReadyFlashColor: {r: 1, g: 1, b: 1, a: 0.5}
   cooldownRimColor: {r: 0.55, g: 0.85, b: 1, a: 0.5}
-  exhaustedPortraitTint: {r: 0.42, g: 0.44, b: 0.5, a: 1}
+  exhaustedPortraitTint: {r: 0.85, g: 0.86, b: 0.9, a: 1}
+  exhaustedBreathAmplitude: 0.02
+  exhaustedBreathPeriod: 2.2
+  rimBleedPx: 4
+  exhaustedTapPunch: 0.09
   rimFlowMaterial: {fileID: 2100000, guid: 1a04965db985a4a6aaa5e88784793fb3, type: 2}
   nameBandHeight: 36
   nameTextHeight: 38

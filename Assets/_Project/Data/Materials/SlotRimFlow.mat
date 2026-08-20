@@ -31,20 +31,26 @@ Material:
     m_Floats:
     - _Aspect: 1.3
     - _Bands: 2
-    - _BaseAlpha: 0.22
+    - _Bleed: 0.09
+    - _BaseAlpha: 0.4
     - _ColorMask: 15
+    - _CoreBoost: 0.75
+    - _Glow: 0.13
+    - _Head: 0.12
+    - _GlowInner: 0.5
+    - _GlowStrength: 0.65
     - _Radius: 0.28
-    - _RimThickness: 0.08
-    - _Speed: 0.35
+    - _RimThickness: 0.095
+    - _Speed: 0.5
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _Strength: 1.2
-    - _Tail: 0.55
+    - _Strength: 2.6
+    - _Tail: 0.65
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _RimColor: {r: 0.54999995, g: 0.9, b: 1, a: 1}
+    - _RimColor: {r: 1, g: 0.72, b: 0.3, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
