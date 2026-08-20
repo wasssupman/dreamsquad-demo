@@ -495,6 +495,7 @@ MonoBehaviour:
   commitPopValidColor: {r: 0.35, g: 1, b: 0.9, a: 1}
   commitPopInvalidColor: {r: 1, g: 0.4, b: 0.32, a: 1}
   allyZoneColor: {r: 0.42, g: 0.95, b: 0.72, a: 0.42}
+  landingTelegraphColor: {r: 1, g: 0.45, b: 0.08, a: 0.42}
   liquidValidBorder: {r: 0.45, g: 1, b: 0.55, a: 0.95}
   liquidValidFill: {r: 0.35, g: 0.95, b: 0.45, a: 0.45}
   liquidInvalidBorder: {r: 1, g: 0.45, b: 0.35, a: 0.95}
@@ -1599,8 +1600,8 @@ MonoBehaviour:
   hpBarHeight: 12
   attachArtHeight: 78
   descMaxLines: 2
-  actionButtonHeight: 60
-  fontActionButton: 26
+  actionButtonHeight: 120
+  fontActionButton: 32
   fill: {r: 0.07, g: 0.06, b: 0.13, a: 1}
   squadBorder: {r: 1, g: 0.82, b: 0.35, a: 1}
   unitBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
@@ -2135,6 +2136,119 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d235e802afed8684fa12f6d2d87d8fa5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PlacementCooldownRuntime
+--- !u!1 &1050621156
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1050621160}
+  - component: {fileID: 1050621159}
+  - component: {fileID: 1050621158}
+  - component: {fileID: 1050621157}
+  m_Layer: 0
+  m_Name: Plane
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!64 &1050621157
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1050621156}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &1050621158
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1050621156}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: e4c16cb995f8c4e07bd03167abf15d25, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1050621159
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1050621156}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1050621160
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1050621156}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1072617483
 GameObject:
   m_ObjectHideFlags: 0
@@ -2466,44 +2580,43 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.NextWaveDock
   bridge: {fileID: 1939688408}
-  timerFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  timerFontSize: 40
-  timerColor: {r: 1, g: 1, b: 1, a: 1}
-  timerWarnColor: {r: 1, g: 0, b: 0, a: 1}
-  warnSeconds: 30
-  tickPunch: 0.16
-  tickPunchWarn: 0.36
-  panelSize: {x: 288, y: 168}
   panelOffset: {x: 40, y: 40}
-  timerPlateSize: {x: 264, y: 80}
-  timerPlateOffset: {x: 8, y: 104}
-  buttonSize: {x: 288, y: 108}
-  dockFrameSprite: {fileID: 21300000, guid: 238188419280461bb3401c9dc5644aec, type: 3}
-  buttonFaceSprite: {fileID: 21300000, guid: 4bf3b1cb9224409fb02949fdd0e7bb8a, type: 3}
-  attentionRingSprite: {fileID: 21300000, guid: e799ce1ded4334d849337fde927aee59, type: 3}
-  buttonColor: {r: 0.12, g: 0.42, b: 0.82, a: 0.95}
-  buttonFontSize: 28
-  buttonMinFontSize: 22
-  buttonContentPadding: {x: 30, y: 18, z: 86, w: 18}
-  disabledContentColor: {r: 0.58, g: 0.66, b: 0.78, a: 0.9}
-  pressScale: {x: 1.02, y: 0.92, z: 1}
-  releaseDuration: 0.14
-  releaseOvershoot: 1.04
-  backingColor: {r: 0, g: 0, b: 0, a: 0.45}
-  clearReadyColor: {r: 1, g: 0.72, b: 0.12, a: 1}
-  attentionEntryDuration: 0.48
-  attentionEntryScale: 1.1
-  attentionPeriod: 1.5
-  attentionHopDuration: 0.34
-  attentionHopHeight: 7
-  attentionBumpScale: 0.08
-  attentionLean: -4
-  attentionNudge: {x: 7, y: 2}
-  chevronKick: 9
-  pulseRingDuration: 0.72
-  pulseRingStagger: 0.18
-  pulseRingExpansion: 1.28
-  pulseRingThickness: 4
+  pillSize: {x: 256, y: 96}
+  pillCornerRadius: 28
+  pillFill: {r: 0.13, g: 0.46, b: 0.86, a: 1}
+  pillBorder: {r: 0.55, g: 0.88, b: 1, a: 1}
+  pillLockedFill: {r: 0.24, g: 0.28, b: 0.34, a: 0.95}
+  pillLockedBorder: {r: 0.42, g: 0.47, b: 0.55, a: 0.9}
+  pillLip: 6
+  pillLipColor: {r: 0.05, g: 0.2, b: 0.44, a: 1}
+  pillLipLockedColor: {r: 0.13, g: 0.16, b: 0.2, a: 0.95}
+  pillFontSize: 32
+  pillTextColor: {r: 1, g: 1, b: 1, a: 1}
+  pillLockedTextColor: {r: 0.8, g: 0.84, b: 0.9, a: 0.9}
+  calloutWidth: 256
+  calloutGap: 14
+  calloutPadding: 14
+  calloutLineHeight: 34
+  calloutCornerRadius: 18
+  calloutFill: {r: 0.04, g: 0.09, b: 0.22, a: 0.96}
+  calloutBorder: {r: 0.29, g: 0.72, b: 0.96, a: 1}
+  calloutFontSize: 27
+  calloutMinFontSize: 19
+  calloutTextColor: {r: 0.95, g: 0.98, b: 1, a: 1}
+  calloutHoldSeconds: 5
+  arrowBob: 6
+  arrowBobSeconds: 0.7
+  shineSweepSeconds: 1.1
+  shineRestSeconds: 1.4
+  armedSweepSeconds: 0.55
+  armedRestSeconds: 0.12
+  shineWidth: 44
+  shineColor: {r: 1, g: 1, b: 1, a: 0.22}
+  armedShineColor: {r: 1, g: 1, b: 1, a: 0.42}
+  armedBreathScale: 1.045
+  armedBreathSeconds: 0.42
+  armedArrowScale: 1.25
+  tapPunch: 0.1
 --- !u!1 &1192245888
 GameObject:
   m_ObjectHideFlags: 0
@@ -2837,6 +2950,28 @@ MonoBehaviour:
   leakCriticalRemaining: 1
   leakPunchScale: 1.18
   leakPunchDuration: 0.22
+  paceRowHeight: 30
+  paceRowGap: 4
+  menuIconSize: 72
+  menuGap: 12
+  timerPlateSize: {x: 320, y: 150}
+  timerTabSize: {x: 150, y: 46}
+  timerValueFontSize: 76
+  timerFinalFontSize: 96
+  timerCaptionFontSize: 20
+  timerNormalColor: {r: 1, g: 1, b: 1, a: 1}
+  timerWarnColor: {r: 1, g: 0.72, b: 0.24, a: 1}
+  timerFinalColor: {r: 1, g: 0.33, b: 0.28, a: 1}
+  timerWarnSeconds: 30
+  timerFinalSeconds: 10
+  timerTick: 0.12
+  timerTickWarn: 0.2
+  timerTickFinal: 0.35
+  timerBreathWarn: {x: 1.06, y: 1}
+  timerBreathFinal: {x: 1.12, y: 0.4}
+  paceFontSize: 22
+  paceBehindColor: {r: 1, g: 0.62, b: 0.42, a: 0.98}
+  paceAheadColor: {r: 0.62, g: 1, b: 0.72, a: 0.98}
 --- !u!4 &1279129163
 Transform:
   m_ObjectHideFlags: 0
@@ -3427,7 +3562,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstRunTutorialController
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   config: {fileID: 11400000, guid: 81065656c695c4f6d8efdf526857e58c, type: 2}
-  tutorialUnit: {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
+  primaryUnit: {fileID: 11400000, guid: cd6a7140f394c4a7696c89dc281c43fb, type: 2}
+  secondaryUnit: {fileID: 11400000, guid: 6a21d7b1946364db3b771ed34b91fd44, type: 2}
   guidance: {fileID: 1572896087}
   overlay: {fileID: 2020984179}
   gameManager: {fileID: 1495062450}
@@ -3437,6 +3573,7 @@ MonoBehaviour:
   handView: {fileID: 1558370269}
   handController: {fileID: 2054561897}
   gaugeView: {fileID: 1012444854}
+  inspectPanel: {fileID: 751645447}
   boardCamera: {fileID: 1420088185}
 --- !u!1 &1606569294
 GameObject:
@@ -3980,12 +4117,12 @@ MonoBehaviour:
   shieldGrantedScale: 0.7
   cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   cardAbsorbScale: 0.6
-  areaBreathPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1,
-    type: 3}
+  areaBreathPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1, type: 3}
   areaBreathScalePerTile: 0.55
   areaBreathScaleMax: 2.4
   areaBreathForwardFactor: 0.45
   areaBreathAngleOffset: 90
+  unitAttackAoeSustainMul: 2
   goalCollapsePrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
   goalCollapseScale: 1.2
 --- !u!4 &1795146347
@@ -4181,15 +4318,18 @@ MonoBehaviour:
   bossLeapHangPower: 0.7
   bossLeapLandingSquash: 0.1
   bossLeapLandingSquashSeconds: 0.05
+  ultimateLeapAscendSeconds: 0.45
+  ultimateLeapDescendSeconds: 0.25
+  ultimateLeapHeight: 14
+  ultimateLeapLandingSquash: 0.14
+  ultimateLeapLandingSquashSeconds: 0.06
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
   mapPool: {fileID: 11400000, guid: 947db597914b146e8b8551fc3b0820db, type: 2}
-  endlessEncounter:
-    document: {fileID: 11400000, guid: 71a5b7c02d53247139cbcc3014ba7310, type: 2}
-    deck: {fileID: 11400000, guid: 1183549c15c80af4389c3f5ee5a88497, type: 2}
   fixedMapSeed: 0
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
   tileSize: 1
   spawnHeight: 0.5
+  agentRadiusTiles: 0.25
   resultScreen: {fileID: 441089446}
   scoreRules: {fileID: 11400000, guid: ea92938112fe1419293896ad962aa1c6, type: 2}
   defenderPool:
@@ -4231,11 +4371,8 @@ MonoBehaviour:
   _bossWarning: {fileID: 322840704}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}
-  boardViewMode: 1
   tilemapMapView: {fileID: 172395674}
   tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
-  tilemapCameraPresetRect: {fileID: 11400000, guid: 73ae958cfa7504f9c9fcdec440db387e, type: 2}
-  tilemapCameraPresetIso: {fileID: 11400000, guid: 3d42947ee5b244f2dbf7438570a204a8, type: 2}
   tilemapCharacterScale: 0.504
   tilemapBillboardTilt: 45
   propDistanceTiltFactor: 0.78
@@ -4266,6 +4403,7 @@ MonoBehaviour:
   pickupOverrideMaterial: {fileID: 2100000, guid: b671d65788615a142a9cd6aa0e69066d, type: 2}
   resignationViewPrefab: {fileID: 0}
   resignationViewHeight: 0.2
+  goalOverheadHeight: 1.1
   dcProcImpactMinIntervalSec: 0.25
 --- !u!4 &1939688409
 Transform:
@@ -4463,4 +4601,5 @@ SceneRoots:
   - {fileID: 1251145712}
   - {fileID: 1090654030}
   - {fileID: 283596199}
+  - {fileID: 1050621160}
   - {fileID: 2020984180}

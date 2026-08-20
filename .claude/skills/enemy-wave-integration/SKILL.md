@@ -39,7 +39,7 @@ description: Use when (a) adding a new enemy AttackUnitData or changing an exist
 | `WavePatternGenerator.InheritLanes` · `useVariant` 게이트 · `waveRampBreak*` 필드 | 「두 단계 곡선 덱」 절 전체(rng 중립·상시 변주·신규 레인) | 두 단계 곡선 덱 |
 | `AttackDeck` 필드 추가/삭제 | 정거장 체크표의 「덱에서 손볼 것」 | 정거장 체크표 |
 | `WaveConceptData` · `Concept_*.asset` 슬롯·필터 | 「컨셉 귀속은 자동 파생」·속도 폭 계약 | 컨셉 배정 / 속도 폭 |
-| `WavePlanAsset` · `FromPlanAsset` | 「저작 플랜은 게이트를 안 받는다」 | 저작 플랜 |
+| `WavePlanAsset` · `FromPlanAsset` | 「저작 플랜은 게이트를 안 받는다」 · 「저작 플랜도 레인을 지정할 수 있다」 | 저작 플랜 (2절) |
 | `AttackUnitData` 의 등장 관련 필드 | When to Use 의 트리거 목록 | frontmatter + When to Use |
 | 라이브 덱·맵 풀 구성 변경 | 정거장 2·7 의 덱 목록 | 값 재도출로 대체됨 |
 
@@ -139,6 +139,28 @@ break 웨이브까지 수량이 **평탄**(min → breakUnits)하고 그 뒤부�
 ### 저작 플랜은 게이트를 받지 않는다
 
 `WavePlanAsset`(튜토리얼·테스트 모드)은 `minWaveNumber` 를 무시한다 — 적용 범위가 seed 생성 경로뿐이다. 그래서 게이트 8 인 적도 **튜토리얼 웨이브 3 에 놓을 수 있다.** 교습 순서는 게이트가 아니라 저작이 정한다.
+
+### 저작 플랜도 레인을 지정할 수 있다 (2026-08-20 신설)
+
+`AuthoredSpawnGroup.laneIndex` — **-1 = 무지정(기본)**, ≥0 = 그 스폰 지점으로 고정.
+`FromPlanAsset` 이 런타임 `WaveSpawnGroup.laneIndex` 로 그대로 넘기고, `ExpandWave` →
+`ResolveAuthoredLane`(펼침 순번 대신 지정값) · `ResolveEffectiveLane`(`EffectiveSpawnIndex`
+우회)이 존중한다. 범위를 넘으면 clamp.
+
+**무지정이 기본인 이유는 그게 «갈라짐»이기 때문이다.** 무지정이면 `localIndex % laneCount`
+라운드로빈이라 스폰이 여러 곳으로 흩어진다(Duel 은 적 마음 1개에서 `SiegeSpawnOffsets` 로
+스폰 2개가 파생돼 `laneCount = 2` → 15마리면 8/7). **레인을 박는다는 것은 곧 한쪽으로
+몰겠다는 선언**이고, 그건 «배치 스킬 한 번이 한 덩어리를 덮는 장면» 같은 **저작 의도가
+있을 때만** 한다. 아무 생각 없이 박으면 반대쪽 레인이 통째로 비어 판이 반쪽이 된다.
+
+⚠ **키가 빠진 그룹에 기대지 말 것.** 필드 초기화값(-1)이 적용되는지 타입 기본값(0)이
+적용되는지에 기대면, 후자일 때 **모든 저작 플랜이 레인 0 으로 고정**되는 조용한 회귀가
+난다. 그래서 도입 시점에 `Assets/_Project/Scripts/Data/WavePlans/*.asset` 8장의 그룹
+56개 전부에 `laneIndex` 를 명시해 두었다 — 새 그룹을 손으로 쓸 때도 명시하라.
+
+레인 고정이 **어디서 눈에 보이는지**도 알아둘 것: `waypointPathIndex: -1` 인 적(대부분)은
+골로 직행하므로 골 근처에서는 어차피 한 줄로 수렴한다. 레인이 바꾸는 것은 주로 **스폰
+쪽 그림**이다.
 
 ### 분열체·파생 유닛은 풀에 넣지 않는다
 

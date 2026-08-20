@@ -20,8 +20,10 @@ MonoBehaviour:
   approachGoalTiles: 5
   skillHintSeconds: 2.5
   onPlaceWatchSeconds: 2
+  retireWatchSeconds: 1.7
+  retirePanelGraceSeconds: 2
   jarHintSeconds: 2
-  resumeBeforeAttachSeconds: 2
+  resumeBeforeAttachSeconds: 0.5
   attachSettleSeconds: 2
   cardDealInGraceSeconds: 2
   firstHandCards:

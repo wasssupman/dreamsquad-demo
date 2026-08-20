@@ -467,7 +467,7 @@ namespace Wassup.UI
         // ── 퇴근 (defender-clock-out unit 2) ──────────────────────────────────
 
         // 액션 슬롯 문안. 뷰는 기능을 모르므로 라벨의 주인은 여기다.
-        private const string RetireLabel = "퇴근";
+        private const string RetireLabel = "철수";
 
         // 액션 슬롯 1칸의 **현재 주인**을 고른다. 이동을 되살리려면 RelocationEnabled 하나만
         // true 로 바꾸면 되고, 라벨·가드·콜백이 이 세 곳에서 함께 갈린다.

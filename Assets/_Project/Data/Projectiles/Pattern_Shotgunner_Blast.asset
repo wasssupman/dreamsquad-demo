@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
   id: shotgunner_blast
   barrel: {fileID: 11400000, guid: c3c7bf7537d947278f27b931df1ff7c2, type: 2}
-  damage: 40
+  damage: 100
   selection: 2
   minAngleDeg: -40
   maxAngleDeg: 40

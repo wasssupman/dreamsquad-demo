@@ -205,7 +205,10 @@ namespace Wassup.UI
                 return;
             }
 
+            // unit 10 — 두 필드를 **함께** 되돌린다. 하나만 되돌리면 재실행한 판이 끝난 뒤
+            // 복귀 로비의 배웅이 안 뜬다(이미 봤다고 기록돼 있으므로).
             profileSO.profile.firstRunTutorialDone = false;
+            profileSO.profile.firstRunLobbyOutroDone = false;
             ProfileStore.Save(profileSO.profile);
             Debug.Log("[OutgameMenuController] 튜토리얼 진행 초기화 — 다음 로비 진입부터 다시 뜬다.", this);
         }

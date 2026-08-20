@@ -41,5 +41,14 @@ namespace Wassup.Data
         public AttackUnitData unit;
 
         [Min(1)] public int count = 1;
+
+        // first-run-tutorial unit 8 — 스폰 지점 저작. -1 = 무지정(기존 동작:
+        // 펼침 순번 % 레인 수 라운드로빈). 런타임 WaveSpawnGroup 은 처음부터 이 축을
+        // 갖고 있었고 ExpandWave/ResolveAuthoredLane 이 존중하는데, 저작 표면만 없어서
+        // FromPlanAsset 이 3인자 생성자로만 불렀다 — 그 구멍을 막는다.
+        //
+        // 온보딩 1웨이브가 이 값을 쓴다: 배치 스킬 한 번이 한 덩어리를 통째로 처리하는
+        // 장면을 만들려면 적이 한 레인으로 와야 한다(spec 계약 14 rev).
+        [Min(-1)] public int laneIndex = -1;
     }
 }

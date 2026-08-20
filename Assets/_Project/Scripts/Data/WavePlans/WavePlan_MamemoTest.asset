@@ -21,6 +21,8 @@ MonoBehaviour:
     - triggerTimeSec: 5
       unit: {fileID: 11400000, guid: 647e55208559442d69b8359ff08300d1, type: 2}
       count: 1
+      laneIndex: -1
     - triggerTimeSec: 9
       unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
       count: 3
+      laneIndex: -1

@@ -15,21 +15,44 @@ namespace Wassup.UI.Tutorial
     // «무엇을 열어둘지» 둘뿐이다. 대신 눌러주는 동작은 없다.
     public sealed class FirstRunTutorialController : MonoBehaviour
     {
-        // 문구는 사용자 원문 그대로다(띄어쓰기 포함). 다듬는 것은 후속 후보.
+        // units 0~7 의 문구는 사용자 원문 그대로다(띄어쓰기 포함). unit 9 가 새로 넣은
+        // 문구는 초안이며 조정 가능하다.
+        //
+        // ⚠ **유닛 이름이 박힌 문구는 배선된 유닛과 같아야 한다.** 포맷(`{0}`)으로 빼지
+        // 않은 이유는 한국어 조사다 — «말파이트는 / 샷건맨은», «말파이트를 / 샷건맨을» 처럼
+        // 받침에 따라 갈려서 한 포맷으로는 문법이 깨진다. 대신 이름이 필요 없는 자리
+        // (선택 유도)는 조사 중립형 포맷을 쓴다.
+
+        // 공통
         private const string PlaceableText = "배치가능영역";
         private const string BlockedText = "배치 불가 영역";
         private const string GoalText = "게임목표: 최대한 많은 악몽 처치";
         private const string GoalIntroText = "스폰된 악몽은 목표지점을 향합니다.";
         private const string DefendIntroText = "유닛의 배치와 드림캐쳐의 조합으로 악몽을 막아보세요";
         private const string GoalMarkerLabel = "목표지점";
-        private const string JarHintText = "충분한 양의 에너지를 모았네요!";
-        private const string PickText = "유닛을 터치 해보세요";
         private const string EnemyApproachText = "악몽이 배치 영역 안으로 들어오면!";
-        private const string SkillHintText = "캐논은 3타일 영역에 강력한 폭격을 합니다!";
-        private const string PlaceText = "적들의 머리위에 캐논을 배치 해보세요!";
+
+        // B3a — 말파이트(주변 2타일 3초 광역 스턴)
+        private const string PickText = "유닛을 터치 해보세요";
+        private const string PrimarySkillText = "말파이트는 주변 악몽을 3초간 기절시킵니다!";
+        private const string PrimaryPlaceText = "악몽 무리 위에 말파이트를 배치 해보세요!";
+        private const string PrimaryDoneText = "배치 스킬은 놓는 즉시 한 번 터집니다";
+
+        // B3b — 퇴근. ⚠ 문구의 «철수» 는 **버튼 라벨과 같은 말이어야 한다**
+        // (`DcInspectController.RetireLabel`). 기능 이름은 퇴근(defender-clock-out)이지만
+        // 화면에 뜨는 글자가 정본이다 — 안내가 «퇴근», 버튼이 «철수» 면 무엇을 누르라는지가
+        // 어긋난다. 라벨을 바꾸면 이 줄도 같이 바꾼다.
+        private const string RetireHintText = "지친 유닛은 철수시켜 자리를 비울 수 있습니다";
+
+        // B3c — 샷건맨(가까운 적 쪽 부채꼴 산탄 + 밀어냄)
+        private const string SecondaryPickFormat = "이번엔 {0} 유닛을 터치 해보세요";
+        private const string SecondarySkillText = "샷건맨은 가까운 악몽들을 밀어냅니다!";
+        private const string SecondaryPlaceText = "빈 자리에 샷건맨을 배치 해보세요!";
         private const string OnPlaceText = "강력한 배치스킬들을 활용하여 전황을 유리하게 이끌어 보세요";
-        private const string ReselectText = "다시 캐논 유닛을 선택 해보세요";
-        private const string ReselectFallbackFormat = "다시 {0} 유닛을 선택 해보세요";
+
+        // B4 — 드림캐쳐 부착
+        private const string JarHintText = "충분한 양의 에너지를 모았네요!";
+        private const string ReselectFormat = "다시 {0} 유닛을 선택 해보세요";
         private const string SelectHostFormat = "{0} 유닛을 선택 해보세요";
         private const string CardText = "하단 드림캐쳐 4개중 맘에 드는것을 터치 해보세요";
         private const string CardFallbackText = "하단 드림캐쳐 중 맘에 드는것을 터치 해보세요";
@@ -37,8 +60,13 @@ namespace Wassup.UI.Tutorial
 
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private FirstRunTutorialConfig config;
-        [Tooltip("온보딩이 가리킬 유닛(캐논). 문구의 «캐논»과 같은 것이어야 한다.")]
-        [SerializeField] private DefenderUnitData tutorialUnit;
+        [Tooltip("B3a·B3b 가 가리킬 첫 유닛(말파이트). 배치 스킬 문구가 이 유닛의 효과를 " +
+                 "주장하므로 바꾸면 PrimarySkillText·PrimaryPlaceText 도 같이 바꾼다.")]
+        [SerializeField] private DefenderUnitData primaryUnit;
+        [Tooltip("B3c 가 가리킬 두 번째 유닛(샷건맨). 퇴근으로 빈 자리를 메운다. " +
+                 "SecondarySkillText·SecondaryPlaceText 가 이 유닛을 주장한다. " +
+                 "**B4 의 부착 대상도 이쪽이 우선**이다.")]
+        [SerializeField] private DefenderUnitData secondaryUnit;
 
         [Header("안내 도구 (teardown 이 남긴 것만 쓴다)")]
         [SerializeField] private TutorialGuidanceView guidance;
@@ -54,6 +82,8 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private DreamcatcherHandController handController;
         [Tooltip("각성 항아리 독. 4.0 에서 «에너지가 찼다» 를 가리킨다. 비면 그 구간을 건너뛴다.")]
         [SerializeField] private AwakeningGaugeView gaugeView;
+        [Tooltip("유닛 인스펙트 패널. B3b 가 여기서 «퇴근» 버튼 rect 를 얻는다. 비면 퇴근 구간을 건너뛴다.")]
+        [SerializeField] private DcInspectPanelView inspectPanel;
         [SerializeField] private Camera boardCamera;
 
         private bool _running;
@@ -70,6 +100,11 @@ namespace Wassup.UI.Tutorial
         private bool _armed;
         private bool _placed;
         private bool _selectionSet;
+        private bool _retired;
+        // ⚠ 지금 어느 유닛의 배치를 기다리는가. 두 유닛이 같은 `_placed`/`_armed` 를 쓰므로
+        // 이것이 없으면 «샷건맨을 놓으세요» 구간에서 다른 유닛을 놓아도 통과한다
+        // (그 구간은 차단막을 내리므로 실제로 가능한 조작이다).
+        private DefenderUnitData _awaitingUnit;
         private int _attachBaseline = -1;
         private Entity _hostEntity = Entity.Null;
 
@@ -162,14 +197,14 @@ namespace Wassup.UI.Tutorial
         {
             if (bridge == null) return;
             bridge.HideBlockedHighlight();
-            bridge.ShowPlacementHighlight(tutorialUnit);
+            bridge.ShowPlacementHighlight(primaryUnit);
         }
 
         private void ShowBlocked()
         {
             if (bridge == null) return;
             bridge.HidePlacementHighlight();
-            bridge.ShowBlockedHighlight(tutorialUnit);
+            bridge.ShowBlockedHighlight(primaryUnit);
         }
 
         private void ClearHighlights()
@@ -208,53 +243,95 @@ namespace Wassup.UI.Tutorial
             if (introSpent < config.battleFreezeAtSeconds)
                 yield return WaitUnscaled(config.battleFreezeAtSeconds - introSpent);
 
-            yield return RunPickAndPlace();
+            yield return RunB3();
             yield return RunAttach();
 
             Close();
         }
 
-        private IEnumerator RunPickAndPlace()
+        // B3 전체 — 세 블록을 순서대로 돌리고, **셋 다 완주해야** 완료로 찍는다(계약 11·19).
+        //
+        // 블록 하나가 선행조건 부재로 스킵되면 `_b3Completed` 는 거짓으로 남고, 그 판은
+        // 완료로 기록되지 않아 다음 판에 처음부터 다시 뜬다. 퇴근을 검증 질문에 넣어놓고
+        // 스킵해도 완료로 찍으면 「핵심을 한 번도 못 본 계정」이 그대로 생긴다.
+        private IEnumerator RunB3()
+        {
+            bool a = false, b = false, c = false;
+
+            yield return RunPickAndPlace(
+                primaryUnit, waitForApproach: true,
+                PickText, PrimarySkillText, PrimaryPlaceText, PrimaryDoneText,
+                ok => a = ok);
+            if (!a) yield break;
+
+            yield return RunRetire(primaryUnit, ok => b = ok);
+            if (!b) yield break;
+
+            // ⚠ 접근 대기는 B3a 의 소유다(계약 17). 여기서 다시 기다리면
+            // `AnyEnemyWithinTilesOfGoal` 이 이미 참이라 문구가 0프레임 노출된다.
+            yield return RunPickAndPlace(
+                secondaryUnit, waitForApproach: false,
+                SecondaryUnitName(SecondaryPickFormat), SecondarySkillText, SecondaryPlaceText, OnPlaceText,
+                ok => c = ok);
+            if (!c) yield break;
+
+            _b3Completed = true;
+        }
+
+        private string SecondaryUnitName(string format)
+            => string.Format(format, secondaryUnit != null ? secondaryUnit.displayName : "다음");
+
+        // 선택 → (접근 대기) → 무기 소개 → 배치 → 배치 스킬 관람 → 마무리 문구.
+        // 유닛과 문구를 인자로 받아 **두 번 돈다**(말파이트 · 샷건맨).
+        private IEnumerator RunPickAndPlace(
+            DefenderUnitData unit, bool waitForApproach,
+            string pickText, string skillHintText, string placeText, string doneText,
+            System.Action<bool> report)
         {
             // ⚠ 지불 판정은 **정지 전에** 한다. 정지 중에는 코스트도 쿨타임도 회복되지 않아
             // 「기다리면 가능해진다」가 없다 — 불가면 아예 멈추지 않고 건너뛴다.
-            if (defenderSelector == null || !defenderSelector.IsSlotUsableNow(tutorialUnit)) yield break;
-            if (!defenderSelector.TryGetSlotRect(tutorialUnit, out var slotRect) || slotRect == null) yield break;
+            if (unit == null || defenderSelector == null) yield break;
+            if (!defenderSelector.IsSlotUsableNow(unit)) yield break;
+            if (!defenderSelector.TryGetSlotRect(unit, out var slotRect) || slotRect == null) yield break;
 
             Freeze();
 
             // 3.1 유닛 터치
+            //
+            // ⚠ 플래그는 **블록마다 리셋한다.** 두 유닛이 같은 필드를 공유하므로, 안 지우면
+            // 두 번째 블록이 첫 배치의 잔상으로 진입 즉시 통과한다.
             var drag = defenderSelector.DragController;
+            _awaitingUnit = unit;
             _armed = false;
+            _placed = false;
             if (drag != null)
             {
                 drag.Armed += OnArmed;          // 탭 배치
                 drag.UserDragStarted += OnDragStarted;  // ⚠ 드래그는 Armed 를 안 낸다 — 둘 다 받아야 한다
                 drag.PlacementCommitted += OnPlaced;
             }
-            Focus(slotRect, PickText);
+            Focus(slotRect, pickText);
             yield return WaitFor(() => _armed || _placed);
 
-            // 3.1b 악몽이 배치 영역 안으로 들어올 때까지 기다린다.
+            // 3.1b 악몽이 배치 영역 안으로 들어올 때까지 기다린다. **첫 블록만** 돈다.
             //
-            // ⚠ 이 대기가 없으면 «적들의 머리위에 배치해보세요» 가 적이 아직 배치 영역 밖에
-            // 있을 때 뜬다 — 문장과 화면이 어긋나고, 그렇게 놓은 배치 스킬은 아무도 못 때려서
-            // 바로 다음 문구인 «전황을 유리하게» 가 통째로 희석된다(실제 Play 에서 그랬다).
+            // ⚠ 이 대기가 없으면 «적들 위에 배치해보세요» 가 적이 아직 배치 영역 밖에 있을 때
+            // 뜬다 — 문장과 화면이 어긋나고, 그렇게 놓은 배치 스킬은 아무도 못 때려서 바로
+            // 다음 문구가 통째로 희석된다(실제 Play 에서 그랬다).
             //
-            // Duel 기준 적 구조물은 x=16·18 이고 배치 영역은 x≤14 라, 적은 **배치 불가 구역에서
-            // 나와 배치 영역으로 걸어 들어온다** — 기다릴 만한 사건이 실제로 존재한다.
-            //
-            // 입력은 막은 채(딤 유지, 구멍 없음) **시간만 흘린다** — 정지 상태로 기다리면
+            // 입력은 막은 채(차단막 유지, 구멍 없음) **시간만 흘린다** — 정지 상태로 기다리면
             // 적이 영원히 안 온다. 배치 영역 하이라이트를 켜둬서 문구의 «배치 영역» 이
             // 화면에서 실제로 보이게 한다.
             //
-            // ⚠ 기준은 **시간이 아니라 사건**이다 — 적이 **내 영역 깊숙이** 들어오는 순간.
-            //
-            // 척도는 «내 목표까지의 거리» 다(approachGoalTiles). 배치 영역 진입은 너무 이르고
+            // ⚠ 기준은 **시간이 아니라 사건**이다 — 적이 **내 목표 가까이** 들어오는 순간.
+            // 척도는 «내 목표까지의 거리»(approachGoalTiles): 배치 영역 진입은 너무 이르고
             // (Duel 은 배치 영역이 x≤14 라 스폰 직후 걸려 문구가 0초 노출된다), 강(Env 타일)
-            // 도달은 아직 멀어 배치 스킬이 한 무리를 못 덮는다. 목표 거리는 «얼마나 들어왔나»
-            // 를 직접 말하고, 목표는 모든 맵에 있어 «이 맵엔 기준이 없다» 도 생기지 않는다.
-            if (!_placed && bridge != null)
+            // 도달은 아직 멀다. 목표 거리는 «얼마나 들어왔나» 를 직접 말하고, 목표는 모든
+            // 맵에 있어 «이 맵엔 기준이 없다» 도 생기지 않는다.
+            //
+            // ⚠ 두 번째 블록은 이 대기를 **돌지 않는다**(계약 17) — 조건이 이미 참이라
+            // 문구가 0프레임 뜬다.
+            if (waitForApproach && !_placed && bridge != null)
             {
                 ShowPlaceable();
                 guidance.ClearFocus();
@@ -266,39 +343,66 @@ namespace Wassup.UI.Tutorial
                 Freeze();
             }
 
-            // 3.1c 무기 소개 — 왜 «머리 위에» 놓아야 하는지의 근거를 먼저 준다.
+            // 3.1c 무기 소개 — 왜 «무리 위에» 놓아야 하는지의 근거를 먼저 준다.
             //
             // 적이 몰려 선 화면을 정지시켜 둔 채 읽는다(입력은 차단막이 막는다). 여기서
             // 근거를 안 주면 다음 문구가 «시키니까 하는» 지시로만 남는다.
             //
-            // ⚠ "3타일" 은 실제 값이다 — Pattern_Cannon_Strike.scopeTileRange = 3.
-            // 그 값을 바꾸면 이 문구도 같이 바꾼다(문구가 스펙을 주장하고 있다).
+            // ⚠ 이 문구들은 **유닛 에셋의 값을 주장한다** — 말파이트 `onPlaceDuration: 3`,
+            // 샷건맨 `Pattern_Shotgunner_Blast`(밀어냄). 그 값을 바꾸면 문구도 같이 바꾼다.
             if (!_placed)
             {
-                guidance.ShowMessage(SkillHintText, false);
+                guidance.ShowMessage(skillHintText, false);
                 yield return WaitUnscaled(config.skillHintSeconds);
             }
 
             // 3.2 배치 — 어느 칸에 놓든 통과시킨다.
             // 딤+구멍으로는 드롭 칸을 제한할 수 없다(트레이→보드 드래그는 이미 시작된 UGUI
-            // 드래그라 딤을 통과하고 드롭 셀은 보드 레이캐스트가 정한다). 원문도 영역 지시다.
+            // 드래그라 딤을 통과하고 드롭 셀은 보드 레이캐스트가 정한다). 문구도 영역 지시다.
             if (!_placed)
             {
                 ShowPlaceable();
                 guidance.ClearFocus();
-                // ⚠ **이 구간만 딤을 내린다.** 배치는 보드 입력을 요구하는데 딤은 보드 탭을
-                // 막는다(슬롯을 탭해 arm 한 뒤 보드를 탭하는 경로가 그대로 죽는다).
+                // ⚠ **이 구간만 차단막을 내린다.** 배치는 보드 입력을 요구하는데 차단막은 보드
+                // 탭을 막는다(슬롯을 탭해 arm 한 뒤 보드를 탭하는 경로가 그대로 죽는다).
                 //
                 // `SetHoles(null)` 로 열 수 없다 — 그건 «구멍 없는 풀 dim» 이다(도구의 문서
                 // 주석 그대로). 보드는 UGUI 가 아니라 감쌀 RectTransform 이 없고, 애초에
-                // 구멍으로는 드롭 «칸» 을 제한할 수도 없다(트레이→보드 드래그는 이미 시작된
-                // UGUI 드래그라 딤을 통과하고 드롭 셀은 보드 레이캐스트가 정한다).
+                // 구멍으로는 드롭 «칸» 을 제한할 수도 없다.
                 //
-                // 대가: 이 짧은 구간에 플레이어가 손패를 열어 각성을 쓸 수 있다. 배치하는
-                // 즉시 끝나는 구간이라 받아들인다 — 막으면 배치 자체가 불가능해진다.
+                // 대가: 이 짧은 구간에 플레이어가 손패를 열어 각성을 쓰거나 **다른 유닛을
+                // 놓을** 수 있다. 배치하는 즉시 끝나는 구간이라 받아들인다 — 막으면 배치
+                // 자체가 불가능해진다. 대신 `OnPlaced` 가 **유닛을 확인**해서 엉뚱한 배치로는
+                // 넘어가지 않는다.
+                //
+                // ⚠⚠ **그 유닛 확인이 곧 앱 잠김의 재료다.** 이 구간은 차단막만 내리고
+                // **정지는 유지**하는데, 코스트는 Battle 도메인이라 정지 중 1도 회복되지
+                // 않는다. 플레이어가 다른 유닛들을 놓아 잔여 코스트를 대상 유닛 밑으로
+                // 떨어뜨리면 «그 유닛의 배치» 는 **영영 불가능**해지고, 매치 타이머도 멈춰
+                // 있어 Result 전이(계약 13 의 정리 경로)조차 오지 않는다 → 강종 외 탈출구가
+                // 없다. 유닛 확인이 없던 시절엔 엉뚱한 배치가 그냥 통과해서 이 상태가
+                // 없었다 — 가드를 조이면서 새로 생긴 구멍이다.
+                //
+                // 그래서 대기 술어에 **«아직 지불 가능한가»** 를 함께 건다(계약 11 —
+                // 만족 불가면 기다리지 말고 나간다). 배치에 성공해도 슬롯은 «소진» 이라
+                // 이 술어가 참이 되므로, 판정은 반드시 `_placed` 로 한다.
                 HideDim();
-                guidance.ShowMessage(PlaceText, false);
-                yield return WaitFor(() => _placed);
+                guidance.ShowMessage(placeText, false);
+                yield return WaitFor(() => _placed || !defenderSelector.IsSlotUsableNow(unit));
+                if (!_placed)
+                {
+                    Debug.Log($"[FirstRunTutorial] '{unit.displayName}' 를 더 이상 놓을 수 없다" +
+                              " (코스트/쿨타임) — 이 배치 구간을 건너뛴다.", this);
+                    if (drag != null)
+                    {
+                        drag.Armed -= OnArmed;
+                        drag.UserDragStarted -= OnDragStarted;
+                        drag.PlacementCommitted -= OnPlaced;
+                    }
+                    _awaitingUnit = null;
+                    ClearHighlights();
+                    yield break;
+                }
             }
             ClearHighlights();
             if (drag != null)
@@ -307,8 +411,9 @@ namespace Wassup.UI.Tutorial
                 drag.UserDragStarted -= OnDragStarted;
                 drag.PlacementCommitted -= OnPlaced;
             }
+            _awaitingUnit = null;
 
-            // 3.3 배치 스킬 관람 — **정지를 푼다**(딤은 유지). 멈춘 채 문구만 띄우면
+            // 3.3 배치 스킬 관람 — **정지를 푼다**(차단막은 유지). 멈춘 채 문구만 띄우면
             // "전황을 유리하게"가 말뿐이 된다. 발동 자체는 기존 경로가 한다.
             guidance.Hide();
             DimOnly();
@@ -316,10 +421,96 @@ namespace Wassup.UI.Tutorial
             yield return WaitUnscaled(config.onPlaceWatchSeconds);
 
             Freeze();
-            guidance.ShowMessage(OnPlaceText, false);
+            guidance.ShowMessage(doneText, false);
             yield return WaitUnscaled(config.goalMessageSeconds);
-            _b3Completed = true;
+            report(true);
         }
+
+        // B3b — 놓은 유닛을 **되돌린다**. 튜토리얼은 퇴근 버튼을 가리키기만 하고,
+        // 퇴근 자체는 기존 경로(DcInspectController → BattleBridge.RetireDefender)가 한다.
+        private IEnumerator RunRetire(DefenderUnitData unit, System.Action<bool> report)
+        {
+            // 선행조건: 그 유닛이 아직 살아 있고 **트레이 셀로 고를 수 있어야** 한다.
+            // 죽었으면 조건이 영영 안 서고 타임아웃이 없다(계약 11) — 진입 전에 건너뛴다.
+            // 미배선은 **조용히 지나가면 안 된다**: 이 블록이 스킵되면 `_b3Completed` 가
+            // 거짓으로 남아 그 계정은 이후 모든 판이 온보딩 판(60초 · 토너먼트 제외)으로
+            // 돈다. 콘솔에 이유가 찍혀야 배선 실수를 알아챌 수 있다.
+            if (unit == null) yield break;
+            if (inspectPanel == null || handView == null)
+            {
+                Debug.LogWarning("[FirstRunTutorial] inspectPanel/handView 미배선 — 퇴근 구간을 건너뛴다.", this);
+                yield break;
+            }
+            if (!TrySelectableHost(unit, out var entity, out var slotRect))
+            {
+                Debug.Log($"[FirstRunTutorial] '{unit.displayName}' 를 트레이 셀로 고를 수 없다" +
+                          " (사망/미배치) — 퇴근 구간을 건너뛴다.", this);
+                yield break;
+            }
+
+            // ⑦ 트레이 셀 탭 → 유닛 선택. 손패도 같이 열리지만(선택의 부수 효과) 구멍이
+            // 퇴근 버튼 하나뿐이라 조작은 막힌다. 손패의 슬로모(priority 50)는 정지(100)를
+            // 이기지 못한다.
+            _selectionSet = false;
+            handView.SelectionTargetSet += OnSelectionSet;
+            bool alreadySelected = handView.SelectionTarget == entity;
+            if (!alreadySelected)
+            {
+                Focus(slotRect, string.Format(ReselectFormat, unit.displayName));
+                yield return WaitFor(() => _selectionSet);
+            }
+            handView.SelectionTargetSet -= OnSelectionSet;
+
+            // ⑧ 퇴근 버튼. 패널은 lazy build 라 선택 직후 몇 프레임 rect 가 null 이다 —
+            // **상한 대기**로 받고(조건 대기가 아니다) 그래도 없으면 블록을 건너뛴다.
+            float grace = 0f;
+            while (inspectPanel.ActionRect == null && grace < config.retirePanelGraceSeconds)
+            {
+                grace += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            var actionRect = inspectPanel.ActionRect;
+            if (actionRect == null)
+            {
+                Debug.Log("[FirstRunTutorial] 퇴근 버튼을 찾지 못했다 — 퇴근 구간을 건너뛴다.", this);
+                yield break;
+            }
+
+            // ⚠ 대기 술어에 «패널이 아직 열려 있나» 를 함께 건다. 구멍이 트레이 셀에 남아
+            // 있는 grace 구간에 같은 셀을 다시 탭하면 그것은 «닫기» 이고(선택 토글),
+            // 패널이 접히면 이 버튼은 영영 안 눌린다 — 정지 중이라 판도 안 끝난다.
+            // `ActionRect` 가 `_visible`·`interactable` 까지 보므로 그 순간 null 이 되고,
+            // 여기서 빠져나가 다음 판에 처음부터 다시 뜬다(계약 11).
+            _retired = false;
+            if (bridge != null) bridge.DefenderRetired += OnRetired;
+            Focus(actionRect, RetireHintText);
+            yield return WaitFor(() => _retired || inspectPanel.ActionRect == null);
+            if (bridge != null) bridge.DefenderRetired -= OnRetired;
+            if (!_retired)
+            {
+                Debug.Log("[FirstRunTutorial] 퇴근 전에 선택이 풀렸다 — 퇴근 구간을 건너뛴다.", this);
+                yield break;
+            }
+
+            // ⑨ 퇴근 비행 관람 — **정지를 푼다.**
+            //
+            // ⚠ DefenderRetireFlight 는 `TimeManager.DeltaTime(TimeDomain.Battle)` 로 도는
+            // 3막 1.6초 연출이다(연결 0.25 → 저항 0.85 → 뽑힘 0.50). 정지한 채 기다리면
+            // 유닛이 공중에 멈춘 채 B3c 의 정지 스텝 셋을 통과해 **샷건맨 관람 창에서야**
+            // 마저 날아간다. `Time.timeScale` 이 항상 1이라 코루틴 WaitForSeconds 가 정지
+            // 중에도 흐르는 것과 다른 이야기다 — 이 연출은 도메인 델타를 직접 읽는다.
+            //
+            // 이 1.7초는 보드에 방어 유닛이 **하나도 없는** 구간이고, 그게 「자리가 비었다」의
+            // 그림이다. 대상이 이미 판을 떠났으므로 맞을 유닛도 없다.
+            guidance.ClearFocus();
+            guidance.Hide();
+            DimOnly();
+            Unfreeze();
+            yield return WaitUnscaled(config.retireWatchSeconds);
+            Freeze();
+            report(true);
+        }
+
 
         private IEnumerator RunAttach()
         {
@@ -375,9 +566,10 @@ namespace Wassup.UI.Tutorial
             // 4.1 유닛 선택. 유닛 이름이 캐논이 아니면 문구도 그 이름으로 바꾸고, B3 를 건너뛴
             // 판은 유닛을 한 번도 안 골랐으므로 «다시» 를 뺀다.
             string hostName = hostUnit != null ? hostUnit.displayName : "배치한";
-            string reselectText = !_b3Completed
-                ? string.Format(SelectHostFormat, hostName)
-                : (hostUnit == tutorialUnit ? ReselectText : string.Format(ReselectFallbackFormat, hostName));
+            // B3 를 흘려보낸 판은 유닛을 한 번도 안 골랐으므로 «다시» 를 뺀다.
+            string reselectText = _b3Completed
+                ? string.Format(ReselectFormat, hostName)
+                : string.Format(SelectHostFormat, hostName);
 
             // 대상 rect 는 **트레이 셀**이다(TryResolveHost 가 이미 보장한다) — 보드에 놓인
             // 유닛을 직접 찍게 하지 않는다. 이미 있는 게임 어휘를 가르치는 것이고, 구멍도
@@ -543,14 +735,25 @@ namespace Wassup.UI.Tutorial
                 drag.PlacementCommitted -= OnPlaced;
             }
             if (handView != null) handView.SelectionTargetSet -= OnSelectionSet;
+            if (bridge != null) bridge.DefenderRetired -= OnRetired;
         }
 
-        private void OnArmed(DefenderUnitData _) => _armed = true;
-        private void OnDragStarted() => _armed = true;
-        private void OnPlaced(DefenderUnitData _) => _placed = true;
+        // ⚠ **어느 유닛인지 본다.** 배치 스텝은 차단막을 내리는 구간이라 플레이어가 다른
+        // 셀을 눌러 엉뚱한 유닛을 놓을 수 있고, 그걸 통과시키면 그 블록이 가르치려던
+        // 배치 스킬을 한 번도 안 보고 넘어간다. `UserDragStarted` 만 유닛을 안 실어 오므로
+        // 그것만 «기다리는 유닛이 있으면» 으로 받는다(드래그 대상은 arm 된 셀 하나다).
+        private void OnArmed(DefenderUnitData unit) { if (Matches(unit)) _armed = true; }
+        private void OnDragStarted() { if (_awaitingUnit != null) _armed = true; }
+        private void OnPlaced(DefenderUnitData unit) { if (Matches(unit)) _placed = true; }
         private void OnSelectionSet() => _selectionSet = true;
+        private void OnRetired(Entity _, DefenderUnitData __, Vector3 ___) => _retired = true;
 
-        // 부착 호스트 해결: 온보딩이 가리키던 유닛 우선, 없으면 살아 있는 배치 유닛 아무나.
+        private bool Matches(DefenderUnitData unit) => _awaitingUnit == null || unit == _awaitingUnit;
+
+        // 부착 호스트 해결: **마지막으로 놓은 유닛(샷건맨) 우선**, 그다음 말파이트, 그다음
+        // 트레이의 아무 유닛. 퇴근한 말파이트는 배치 엔티티가 없어 자동 탈락하지만 순서를
+        // 명시해 둔다 — 둘 다 살아 있는 판(퇴근 블록을 건너뛴 판)에서 문구가 가리키는 대상이
+        // «방금 놓은 것» 이 되게 하려는 것이다.
         // TryGetDeployedEntity 는 _em.Exists 로 생존까지 본다 — 죽은 유닛은 여기서 걸러진다.
         // 부착 대상 = **트레이 셀로 선택할 수 있는** 배치 유닛. 이게 B4 의 유일한 불변식이고
         // 4.1 은 여기서 나온 rect 를 그대로 쓴다(분기 없음).
@@ -564,7 +767,8 @@ namespace Wassup.UI.Tutorial
         // 우선순위는 온보딩이 가리키던 유닛 → 그 밖의 아무 유닛(캐논이 죽은 판 대비).
         private bool TryResolveHost(out Entity entity, out DefenderUnitData unit, out RectTransform slotRect)
         {
-            if (TrySelectableHost(tutorialUnit, out entity, out slotRect)) { unit = tutorialUnit; return true; }
+            if (TrySelectableHost(secondaryUnit, out entity, out slotRect)) { unit = secondaryUnit; return true; }
+            if (TrySelectableHost(primaryUnit, out entity, out slotRect)) { unit = primaryUnit; return true; }
             unit = null;
             slotRect = null;
             entity = Entity.Null;
@@ -572,7 +776,7 @@ namespace Wassup.UI.Tutorial
             for (int i = 0; i < defenderSelector.SlotCount; i++)
             {
                 var u = defenderSelector.SlotUnitAt(i);
-                if (u == null || u == tutorialUnit) continue;
+                if (u == null || u == primaryUnit || u == secondaryUnit) continue;
                 if (!TrySelectableHost(u, out entity, out slotRect)) continue;
                 unit = u;
                 return true;

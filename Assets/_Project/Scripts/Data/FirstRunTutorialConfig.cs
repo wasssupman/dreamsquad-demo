@@ -36,11 +36,23 @@ namespace Wassup.Data
                  "시간이 아니라 사건이 기준이다. Duel 기준: 목표 x=2, 강 x=10 → 5 면 강 안쪽 3칸(x≈7).")]
         public int approachGoalTiles = 5;
         [Min(0f)]
-        [Tooltip("\"캐논은 3타일 영역에 강력한 폭격을 합니다!\" 노출(초). 배치 안내 직전, 적이 몰려 선 화면을 정지시킨 채 읽는 구간.")]
+        [Tooltip("배치 스킬 소개 문구의 노출(초). 배치 안내 직전, 적이 몰려 선 화면을 정지시킨 채 읽는 구간. " +
+                 "unit 9 부터 **두 블록이 같은 값을 쓴다**(말파이트 · 샷건맨).")]
         public float skillHintSeconds = 2.5f;
         [Min(0f)]
         [Tooltip("배치 후 정지를 풀어 배치 스킬이 적을 때리는 것을 보여주는 시간(초).")]
         public float onPlaceWatchSeconds = 2f;
+
+        [Header("퇴근 (B3b)")]
+        [Min(0f)]
+        [Tooltip("퇴근 비행을 보여주는 시간(초). **이 구간은 정지를 푼다** — " +
+                 "DefenderRetireFlight 는 Battle 도메인 델타로 도는 3막 1.6초 연출이라 " +
+                 "정지한 채 기다리면 유닛이 공중에 멈춘 채 뒤 스텝들을 통과한다.")]
+        public float retireWatchSeconds = 1.7f;
+        [Min(0f)]
+        [Tooltip("유닛 선택 후 인스펙트 패널의 액션 버튼이 뜰 때까지의 **상한** 대기(초). " +
+                 "지나도 안 뜨면 퇴근 블록을 건너뛴다 — 조건 대기로 두면 앱이 잠긴다.")]
+        public float retirePanelGraceSeconds = 2f;
 
         [Header("드림캐쳐 부착 (B4)")]
         [Min(0f)]
@@ -49,8 +61,11 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("B3 종료 후 다시 정지할 때까지 판을 정상 속도로 돌리는 시간(초). " +
                  "**안내가 없는 구간이라 길면 «끊긴» 느낌이 난다** — 5초는 길었다. " +
+                 "unit 9 에서 2 → 0.5: 바로 앞이 샷건맨 배치 스킬 관람 2초(정지 해제)라 " +
+                 "이 창이 메우려던 끊김이 이미 없고, 퇴근 관람이 새로 쓰는 예산을 여기서 반납한다 " +
+                 "(spec 계약 19 — 정지 해제 총합 < 2웨이브 첫 스폰 16.0초). " +
                  "부착 대상이 없을 때는 이 시간과 무관하게 살아있는 유닛이 생길 때까지 더 기다린다.")]
-        public float resumeBeforeAttachSeconds = 2f;
+        public float resumeBeforeAttachSeconds = 0.5f;
         [Min(0f)]
         [Tooltip("부착 연출 후 마무리 문구까지(초).")]
         public float attachSettleSeconds = 2f;
