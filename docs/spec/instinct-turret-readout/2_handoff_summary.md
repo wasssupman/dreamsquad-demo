@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (unit 0~1 커밋 해시 기입 예정) `feat(instinct-turret-readout): 아군 본능은 노랗고 포신은 겨눈 쪽으로 돈다`
+- `92333fbd` feat(instinct-turret-readout): units 0~1 — 아군 본능은 노랗고 포신은 겨눈 쪽으로 돈다
 
 ## Implemented
 
