@@ -1,12 +1,12 @@
 # dreamcatcher-card-art
 
-> 상태: 완료 2026-07-08 (units 0~6, Play 검증 완료, 커밋 `63d44050`, branch `feature/dreamcatcher-card-art`)
+> 상태: 완료 2026-08-20 (unit 7 — visible 카드 아이콘 아트 전면 개편, 사용자 Play 확인)
 > 선행: `dreamcatcher-deck-builder`(완료, 페이지·덱규칙·카탈로그), `ingame-dreamcatcher`(완료, 카드 데이터).
-> handoff → `4_handoff_summary.md`.
+> handoff → `8_handoff_summary.md`.
 
 ## 검증 질문
 
-OutgameScene 드림캐쳐 페이지에서, 각 드림캐쳐 카드가 **배정된 타로풍 아트 이미지 + 효과 텍스트를 세로(Column)로** 표시하고, 보유 컬렉션과 덱 슬롯이 **라인당 5개 카드 그리드(보유는 세로 스크롤)** 로 보이는가? 카드는 10종이며 각 카드의 아트는 `DreamcatcherCard` SO 필드로 배정되는가? 새 드림캐쳐를 추가할 때 SO+아트+카탈로그 등록만으로 페이지에 자동 렌더되는가?
+OutgameScene 드림캐쳐 페이지에서, `visible != 0` 인 모든 카드가 **이름·설명의 핵심 동작만 남긴 단순 아이콘 아트**로 표시되고, 보유 컬렉션과 덱 슬롯이 **라인당 5개 카드 그리드(보유는 세로 스크롤)** 로 보이는가? 각 카드의 아트는 `DreamcatcherCard` SO 필드로 배정되며, 새 드림캐쳐를 추가할 때 SO+아트+카탈로그 등록만으로 페이지에 자동 렌더되는가?
 
 ## 상위 목표
 
@@ -31,10 +31,13 @@ OutgameScene 드림캐쳐 페이지에서, 각 드림캐쳐 카드가 **배정�
 | 4 | 인계 | `4_handoff_summary.md` | 세션 인계 요약 |
 | 5 | 레이어/스타일 | `5_devlayer_and_confirm_polish.md` | 개발버튼 로비 레이어 전용화 + 확정영역(MY DECK) 프레임 스타일 + 상·하단 동일폭 정렬 |
 | 6 | 카드 팝업 | `6_card_detail_popup.md` | 카드=이미지 전용, 탭 시 효과 모달 팝업(액션+X+바깥클릭 닫힘) |
+| 7 | 아트 개편 | `7_visible_card_icon_overhaul.md` | `visible != 0` 전 카드의 복잡한 타로풍 아트를 단순 아이콘 아트로 교체·추가 |
+| 8 | 인계 | `8_handoff_summary.md` | unit 7 구현·검증 결과와 다음 확인 지점 |
 
 ## Feature-wide 계약
 
-- **아트 배정 = SO 필드**: `DreamcatcherCard.art` (`Sprite`, nullable). 뷰는 art 있으면 이미지, 없으면 색상 폴백.
+- **아트 배정 = SO 필드**: `DreamcatcherCard.art` (`Sprite`, nullable). 뷰는 art 있으면 이미지, 없으면 색상 폴백. 실제 노출 카드(`visible != 0`)는 art 누락 없이 유지한다.
+- **아트 방향**: 카드 `displayName` + `description`을 생성 프롬프트의 정본으로 삼는다. 한 카드에 큰 중앙 심볼 하나와 필요한 최소 효과선만 사용하며, 텍스트·숫자·카드 테두리·서사 배경·타로/RPG 장식은 이미지에 넣지 않는다.
 - **카드 풀 10종**: 기존 6 + 신규 4(Normal, 기존 `CardBuffKind`/`CardTargetAxis` 채널만). `DreamcatcherCardCatalog` 가 단일 목록.
 - **덱 규칙 불변**: `DeckRules`(정확히 10·고유≤2) 그대로. 카드 풀만 커짐.
 - **효과 텍스트**: axis(RANGER/GUARDIAN/COST-1/ALL) + 버프 라인(ATK/AS/HP/MOVE/COST ±%). `DreamcatcherSelectionView.Summary` 표기 규약과 정합.

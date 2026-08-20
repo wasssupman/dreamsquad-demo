@@ -18,7 +18,7 @@ MonoBehaviour:
   axis: 3
   category: 1
   effects: []
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 5f735109c8cb56200226feba0c50145f, type: 3}
   mechanics:
   - trigger:
       kind: 4
