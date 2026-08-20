@@ -505,7 +505,7 @@ namespace Wassup.UI
                 // 한다 — 두 트리거가 교차 발동하지 않는다는 것이 이 카드의 계약이라,
                 // 문안이 흐리면 플레이어가 죽어도 터질 거라 기대한다.
                 case DcTriggerKind.OnRetire:
-                    text = "이 유닛이 퇴근하면";
+                    text = "이 유닛이 철수하면";
                     return true;
                 default:
                     text = null;

@@ -50,7 +50,7 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uC774 \uC720\uB2DB\uC774 \uD1F4\uADFC\uD558\uBA74 \u2192 \uD568\uAED8
+  description: "\uC774 \uC720\uB2DB\uC774 \uCCA0\uC218\uD558\uBA74 \u2192 \uD568\uAED8
     \uBD99\uC740 \uB2E4\uB978 \uB4DC\uB9BC\uCE90\uCCD0\uAC00 \uC190\uD328 \uB9E8
     \uC55E\uC73C\uB85C"
   leakAllowanceCost: 0

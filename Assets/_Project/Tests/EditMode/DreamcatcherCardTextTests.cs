@@ -324,7 +324,7 @@ namespace Wassup.Tests.EditMode
             };
 
             string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("이 유닛이 퇴근하면 → 0.8초 후 반경 1칸 피해 120", body);
+            StringAssert.Contains("이 유닛이 철수하면 → 0.8초 후 반경 1칸 피해 120", body);
             StringAssert.DoesNotContain("사망", body);
         }
 
@@ -351,7 +351,7 @@ namespace Wassup.Tests.EditMode
             };
 
             string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("이 유닛이 퇴근하면 → 함께 붙은 다른 드림캐쳐가 손패 맨 앞으로", body);
+            StringAssert.Contains("이 유닛이 철수하면 → 함께 붙은 다른 드림캐쳐가 손패 맨 앞으로", body);
             StringAssert.DoesNotContain("2장", body);
             StringAssert.DoesNotContain("사망", body);
         }
