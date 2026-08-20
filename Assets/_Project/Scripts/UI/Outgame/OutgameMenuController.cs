@@ -114,7 +114,12 @@ namespace Wassup.UI
         // 여기 모아 둔다(스텝은 «어떻게 띄우나» 만 안다).
         private void TryShowLobbyTutorial()
         {
-            if (lobbyTutorial == null || !UserSession.IsSignedIn) return;
+            if (lobbyTutorial == null || !UserSession.IsSignedIn)
+            {
+                // 진단 계측 — 이 게이트에 막히면 스텝은 판정조차 못 한다(로그 없음이 곧 침묵이었다).
+                Debug.Log($"[LobbyTutorial] 게이트 — step배선={(lobbyTutorial != null)} signedIn={UserSession.IsSignedIn}", this);
+                return;
+            }
             var p = profileSO != null ? profileSO.profile : null;
             // 로드아웃이 모자라면 START 가 팝업을 띄우는데 그 팝업이 딤 아래로 깔려 로비가 잠긴다.
             // 참조가 하나라도 비면 «모자라다» 쪽으로 판정한다 — 잠그느니 안 띄우는 게 낫다.

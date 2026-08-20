@@ -34,9 +34,15 @@ namespace Wassup.UI
         public void TryShow(PlayerProfileSO profileSO, RectTransform startButton, bool loadoutReady)
         {
             if (_shown) return;
-            if (profileSO == null || !profileSO.IsLoadedThisSession) return;
+            if (profileSO == null || !profileSO.IsLoadedThisSession)
+            {
+                // 진단 계측 — 로비 안내가 «왜» 안 떴는지 로그로 남긴다. 이 결정 지점에
+                // 기록이 없어서 «첫 판 뒤 배웅이 안 뜬다» 를 로그로 판별할 수 없었다.
+                Debug.Log("[LobbyTutorial] 생략 — 이번 세션에 로드된 프로필이 아니다.", this);
+                return;
+            }
             var profile = profileSO.profile;
-            if (profile == null) return;
+            if (profile == null) { Debug.Log("[LobbyTutorial] 생략 — profile == null.", this); return; }
 
             // unit 10 — 두 모드. 인트로 = «아직 안 봤다», 아웃트로 = «배틀은 끝냈는데 배웅을
             // 아직 안 봤다». 둘 다 아니면 뜨지 않는다.
@@ -46,6 +52,9 @@ namespace Wassup.UI
             // 「이제 진짜 승부」라고 말하는 것이 사실과 맞는다.
             bool intro = FirstRunTutorialConfig.ShouldRun(profile);
             bool outro = !intro && !profile.firstRunLobbyOutroDone;
+            Debug.Log($"[LobbyTutorial] 판정 — done={profile.firstRunTutorialDone} " +
+                      $"outroDone={profile.firstRunLobbyOutroDone} intro={intro} outro={outro} " +
+                      $"loadoutReady={loadoutReady} start={(startButton != null)}", this);
             if (!intro && !outro) return;
 
             // ⚠ 로드아웃이 모자란 계정에는 딤을 띄우지 않는다.
@@ -54,7 +63,7 @@ namespace Wassup.UI
             // 그러면 START 를 눌러도 화면이 그대로이고 다른 버튼은 전부 막혀 빠져나갈 길이 없다.
             // 신규 계정은 ProfileStore 시드로 통과하므로 정상 경로에는 영향이 없다 — 위험한 것은
             // RESET 재실행 계정과 id 리네임으로 저장 덱 Validate 가 깨진 계정이다.
-            if (!loadoutReady) return;
+            if (!loadoutReady) { Debug.Log("[LobbyTutorial] 생략 — 로드아웃 게이트 미충족.", this); return; }
 
             if (overlay == null || guidance == null || startButton == null)
             {
@@ -68,6 +77,7 @@ namespace Wassup.UI
             overlay.Show();
             guidance.ShowMessage(intro ? IntroText : OutroText, false);
             guidance.FocusUi(startButton);
+            Debug.Log($"[LobbyTutorial] 표시 — {(intro ? "인트로" : "배웅")}", this);
 
             // 아웃트로는 **띄운 시점에** 기록한다(계약 18). 배틀 구간처럼 「완주해야 기록」이
             // 아닌 이유: 이 스텝에서 플레이어가 해낼 행동이 START 하나뿐이고 그건 스텝의
