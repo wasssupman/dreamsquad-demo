@@ -5455,6 +5455,23 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // placement-armed-board-drag unit 4 — 화면 → 보드 **소수** 셀좌표. clamp 도 bounds 판정도 하지
+        // 않고 좌표만 넘긴다: 격자 밖 관용을 얼마나 줄지는 `PlacementCellSnap.Resolve` 가 단독으로
+        // 소유하는 정책이고(트레이 D&D 가 이미 그걸 쓴다), 여기서 한 번 더 판정하면 규칙이 두 곳으로
+        // 갈라져 한쪽만 튜닝되는 드리프트가 생긴다. 반환 frac 은 `DebugWorldToCellFractional` 과
+        // 같은 공간(셀 중심=정수) — 즉 `GridMath.WorldToCell` 과 드리프트 없음.
+        public bool TryScreenToBoardFrac(Camera cam, Vector2 screenPos, out Vector2 frac)
+        {
+            frac = default;
+            if (cam == null) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+            frac = DebugWorldToCellFractional(world);
+            return true;
+        }
+
         // subconscious-curse-expansion unit 3 (살찌운 제물) — 드롭 지점 최근접 적 픽.
         // 반경 = radiusTiles × tileSize(유클리드 xz, 셀 양자화 없이 평면 히트 그대로).
         // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 entity index

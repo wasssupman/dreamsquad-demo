@@ -16,6 +16,8 @@
 - **탭**: 기존 클릭과 동일하게 즉시 비행 배치 + 공격범위를 **비행 중에만** 노출(배치=착지 시 소거, linger 없음).
 - 배치 커밋은 tap·drag 모두 기존 시뮬 비행(`SimulateDragTo`, tray→cell) 재사용 → `CommitPlacementAt`→`TryBeginDefenderDeployment` 공용 꼬리(directional/일반 분기 불변).
 - 무효셀 탭/드래그 릴리즈 = `FlashPlacementReject` + arm 유지. 성공 배치는 arm 해제.
+  - **⚠ unit 4(2026-08-20)가 뒤집음**: 무효셀 = reject + **Disarm**, 맵 밖 = 취소음 + **Disarm**.
+    셀 판정도 `TryResolveArmedCell`(D&D 와 같은 격자 밖 관용)로 이동. 최신은 `4_invalid_release_disarm.md`.
 - `DcInspectController.Blocked()` 에 `drag.HasArmedUnit` 추가 — armed 동안 보드 press 는 배치 제스처 단독 소유(계약 11 aim-mode race 재생산 방지).
 
 ## Key Files

@@ -29,6 +29,8 @@
      ray→RaycastPlane→ToSim→DebugWorldToCell 수동 복제 금지(bridge 주석 "new call sites MUST use this").
   7. `bridge.CanPlaceDefenderAt(cell, _armedUnit)` 유효 → `SimulateDragTo(_armedUnit, _armedFromScreen, cell)`
      (내부 BeginDrag 가 Disarm). 무효 → `FlashPlacementReject(cell)`, **arm 유지**(재시도 가능).
+     - **⚠ 뒤집힘**: `placement-armed-board-drag` unit 4(2026-08-20) 이후 무효셀은 **arm 해제**다.
+       보드 탭 경로 자체도 그 spec 의 프레스-드래그 상태기계로 대체됐다(unit 0).
 - **공격 범위 억제**: 탭 시뮬 경로는 범위 프리뷰 미노출. `_simulatedDrag` 는 `BeginDrag(unit, screen, simulated:true)`
   가 **CleanupSession 직후·첫 내부 UpdateDrag 전에** 세팅(이후 세팅하면 첫 프레임에 범위가 켜져 안 꺼지는 버그 —
   리뷰로 확정·수정). `SetHover` 는 이 플래그면 `SetPlacementRange` 만 스킵(hover/팝/키링 유지). 실제 D&D 는 범위 노출.
@@ -36,6 +38,7 @@
 ## 완료 기준
 
 - Play(배치 페이즈): 슬롯 탭(arm) → 유효 타일 탭 → 유닛이 슬롯에서 그 타일로 비행·배치(탭한 칸 정확 안착).
-- 무효 타일 탭 → 빨강 reject + arm 유지. 드래그 배치 공존. 탭 경로에서 공격 범위 안 뜸(드래그는 뜸).
+- 무효 타일 탭 → 빨강 reject + arm 유지(**unit 4 이후: reject + arm 해제**). 드래그 배치 공존.
+  탭 경로에서 공격 범위 안 뜸(드래그는 뜸 — armed-board-drag unit 2 이후 탭도 비행 중 노출).
 - 스킬 조준(IsAiming) 중 보드 탭 → 배치 미발화. (실기기) UI 위 탭이 보드로 관통하지 않음.
 - 사용자 Play 확인 후 `3_handoff_summary.md` 작성 + 커밋.

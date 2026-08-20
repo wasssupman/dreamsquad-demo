@@ -1,5 +1,9 @@
 # 0 — 보드 제스처 상태기계 + 드래그-릴리즈 커밋
 
+> **⚠ unit 4 가 이 계약을 뒤집었다 (2026-08-20).** 무효셀/맵 밖 릴리즈는 이제 **arm 을 해제**한다
+> (릴리즈는 언제나 제스처를 끝낸다). 아래 «arm 유지» 서술은 당시 계약의 기록이다 —
+> 현재 계약은 `4_invalid_release_disarm.md` 와 README 를 본다.
+
 **작업 구분**: feature (선행 없음, 이 spec 의 토대)
 
 ## 목적
@@ -34,10 +38,12 @@ arm 된 유닛으로 보드를 조작하는 입력을, "탭=즉시 시뮬 비행
 
 ```
 if (!bridge.TryScreenToCell(cam, screen, out cell)) return;   // 보드 밖 릴리즈 = 취소(arm 유지)
+                                                              // ← unit 4: 판정은 TryResolveArmedCell(관용 공유),
+                                                              //   결과는 취소음 + Disarm
 if (bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _))
     SimulateDragTo(_armedUnit, _armedFromScreen, cell);        // 기존 tray→cell 비행 재사용(내부 BeginDrag 가 Disarm)
 else
-    bridge.FlashPlacementReject(cell);                         // arm 유지(재시도)
+    bridge.FlashPlacementReject(cell);                         // arm 유지(재시도) ← unit 4: + Disarm()
 ```
 
 `SimulateDragTo` 인자는 호출 전에 `_armedUnit/_armedFromScreen` 로 평가되므로, 내부 `BeginDrag→Disarm` 이

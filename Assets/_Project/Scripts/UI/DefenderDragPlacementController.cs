@@ -762,8 +762,10 @@ namespace Wassup.UI
                 if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
                 if (PointerOverUi()) return; // UI 탭(슬롯 arm 등) 제외 — 터치는 touchId 로 판정
                 _boardDownScreen = pointer.position.ReadValue();
-                // 셀 변환은 bridge.TryScreenToCell 단일 소스(수동 레이캐스트 복제 금지). 보드 밖 프레스는 제스처 개시 안 함.
-                if (!bridge.TryScreenToCell(mainCamera, _boardDownScreen, out _)) return;
+                // unit 4 — **맵 밖 프레스도 제스처를 연다.** 예전엔 여기서 셀이 안 나오면 제스처를
+                // 시작하지 않았는데, 그러면 배경을 눌렀다 떼는 동작이 아무 데도 도달하지 못해
+                // 선택이 그대로 남았다. 릴리즈가 «배치 아니면 해제» 를 단독으로 결정하려면
+                // 그 릴리즈가 반드시 이 상태기계 안에서 일어나야 한다.
                 _boardGestureActive = true;
                 _boardDragging = false;
                 CancelTapPlaceRangePeek();   // unit 2 — 직전 탭 배치 range flourish 정지(새 제스처 우선)
@@ -800,12 +802,39 @@ namespace Wassup.UI
             UpdateBoardScout(ToPlacementPointer(cur, ramp));
         }
 
+        // placement-armed-board-drag unit 4 — armed 보드 경로(스카우트·릴리즈 공용)의 셀 판정.
+        //
+        // **트레이 D&D 와 같은 관용 노브를 태운다.** 배치 판정 포인터는 손가락보다 화면 위로
+        // `placementPointerOffsetHeightRatio`(65px@1080) 올라가 있어서, 최상단 행을 노리고 끌면
+        // 조준점이 격자 위로 한 칸 넘어가기 쉽다. D&D 는 `placementOutsideToleranceCells`(=1) 로
+        // 그 오버슛을 용서해 테두리 칸에 붙여주고 2칸 이상 나가야 취소한다 — armed 경로만 관용 0 이면
+        // **같은 손동작이 한쪽은 배치, 한쪽은 선택 해제**가 된다(최상단 행 도달성은
+        // `DragPlacementReachTest` 가 지키는 계약이다).
+        //
+        // 관용 규칙 자체는 여기서 재구현하지 않고 `PlacementCellSnap.Resolve` 를 그대로 부른다 —
+        // 정책이 두 곳에 살면 한쪽만 튜닝된다. 히스테리시스는 **0**: armed 스카우트는 세션의
+        // throttle/밴드 없이 매 프레임 생 판정하는 게 unit 1 계약이라, 관용만 공유하고 밴드는 안 쓴다.
+        private bool TryResolveArmedCell(Vector2 screen, out Vector2Int cell)
+        {
+            cell = default;
+            if (bridge == null || mainCamera == null) return false;
+            if (!bridge.TryScreenToBoardFrac(mainCamera, screen, out var frac)) return false;
+            var resolved = PlacementCellSnap.Resolve(null, frac, 0f,
+                bridge.DebugGridSize, Cfg.placementOutsideToleranceCells);
+            if (!resolved.HasValue) return false;
+            cell = resolved.Value;
+            return true;
+        }
+
         // placement-armed-board-drag unit 1 — 세션 없는 range-only 스카우트. 드래그 세션 SetHover 의 표시 계약을
         // 미러하되(범위·팝은 셀 변경 시만, hover 는 매 프레임), 키링 유닛은 띄우지 않는다. 유닛은 트레이에 남는다.
         private void UpdateBoardScout(Vector2 screen)
         {
             if (bridge == null || _armedUnit == null) return;
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearBoardScout(); return; }
+            // unit 4 — 릴리즈와 **같은 판정**을 써야 한다. 관대한 clamp 변환은 배경 위에서도 가장자리
+            // 칸을 비추는데 릴리즈가 그걸 취소로 버리면 하이라이트가 거짓말한다
+            // ("하이라이트는 어느 순간에도 거짓말하지 않는다").
+            if (!TryResolveArmedCell(screen, out var cell)) { ClearBoardScout(); return; }
 
             bool valid = bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _);
             bridge.SetPlacementRangeValidity(valid); // unit 3 — 스카우트도 같은 적색 채널(매 프레임, 전이만 반응)
@@ -838,13 +867,38 @@ namespace Wassup.UI
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
+        // unit 4 — 못 놓는 자리에서 손을 떼면 **선택까지 풀린다**(아래 ResolveArmedRelease 단일 꼬리).
         private void CommitBoardDrag(Vector2 screen)
         {
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) return; // 보드 밖 릴리즈 = 취소(arm 유지)
-            if (bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _))
-                SimulateDragTo(_armedUnit, _armedFromScreen, cell); // 내부 BeginDrag 가 Disarm(=arm 해제=배치 확정)
-            else
-                bridge.FlashPlacementReject(cell); // arm 유지(재시도)
+            if (!ResolveArmedRelease(screen, out var cell, out var unit)) return;
+            SimulateDragTo(unit, _armedFromScreen, cell); // 내부 BeginDrag 가 Disarm(=arm 해제=배치 확정)
+        }
+
+        // unit 4 — armed 보드 제스처의 **공용 릴리즈 꼬리**. 탭·드래그가 같은 규칙을 쓴다:
+        //   유효셀 = 배치(true 반환) · 무효셀 = 거부 표시 후 해제 · 맵 밖 = 취소음 후 해제.
+        // 즉 릴리즈는 언제나 제스처를 끝낸다 — 손을 뗐는데 선택이 남아 있는 상태가 없다.
+        // 셀 판정을 `TryResolveArmedCell` 에 맡기는 이유: 관대한 clamp 변환은 맵 밖을 가장자리 셀로
+        // 접어 true 를 주므로 배경에 놓아도 그 칸이 배치 가능하면 배치된다(= "배치 불가한 곳에 놓으면
+        // 취소" 가 성립하지 않는다). 반대로 관용 0 의 하드 판정은 가장자리 오버슛을 전부 취소로
+        // 돌려 D&D 와 조작감이 갈린다 — 그래서 D&D 와 같은 관용을 태운 그 함수를 쓴다.
+        private bool ResolveArmedRelease(Vector2 screen, out Vector2Int cell, out DefenderUnitData unit)
+        {
+            unit = _armedUnit; // SimulateDragTo 내부 BeginDrag→Disarm 이 비우기 전에 캡처
+            if (!TryResolveArmedCell(screen, out cell))
+            {
+                // 칸 없음 = 거부가 아니라 취소. 트레이 D&D 의 칸 없음 릴리즈와 같은 소리를 쓴다
+                // (drag-cancel-affordance unit 3 — 사용자에겐 "되돌렸다" 라는 같은 사건).
+                SoundManager.Instance?.PlayCardReturn();
+                Disarm();
+                return false;
+            }
+            if (!bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out _))
+            {
+                bridge.FlashPlacementReject(cell); // 왜 안 놓였는지는 칸이 말한다
+                Disarm();                          // 그리고 원래 플레이 상태로 — 내부에서 ResetBoardGesture
+                return false;
+            }
+            return true;
         }
 
         // placement-armed-board-drag unit 0 — 제스처 상태 리셋(드래그 커밋·무효셀 탭·arm 해제 경유).
@@ -856,21 +910,12 @@ namespace Wassup.UI
         }
 
         // placement-armed-board-drag unit 2 — 탭(무이동 릴리즈) = 기존 클릭 배치와 동일 액션 + 범위 노출.
-        // 유효셀: 즉시 비행 배치 + 착지 셀에 범위 flourish. 무효셀: reject + 스카우트 범위 짧게 유지 후 소거(arm 유지).
+        // 유효셀: 즉시 비행 배치 + 착지 셀에 범위 flourish. 무효셀/맵 밖: unit 4 공용 꼬리가 해제한다.
         private void HandleBoardTap(Vector2 screen)
         {
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ResetBoardGesture(); return; } // 보드 밖 = 취소
-            var unit = _armedUnit; // SimulateDragTo 내부 BeginDrag→Disarm 이 비우기 전에 캡처
-            if (bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out _))
-            {
-                SimulateDragTo(unit, _armedFromScreen, cell); // 즉시 비행 배치(내부 BeginDrag 가 스카우트/arm 정리)
-                StartTapPlaceRangePeek(cell, unit);           // 비행 시작 후 범위 재노출(재확인 flourish)
-            }
-            else
-            {
-                bridge.FlashPlacementReject(cell); // 배치 없이 거부 — arm 유지(재시도)
-                ResetBoardGesture();               // 스카우트 범위 즉시 소거(비행 안 하므로 범위 안 남김)
-            }
+            if (!ResolveArmedRelease(screen, out var cell, out var unit)) return;
+            SimulateDragTo(unit, _armedFromScreen, cell); // 즉시 비행 배치(내부 BeginDrag 가 스카우트/arm 정리)
+            StartTapPlaceRangePeek(cell, unit);           // 비행 시작 후 범위 재노출(재확인 flourish)
         }
 
         // placement-armed-board-drag unit 2 — 유효셀 탭 배치의 범위 flourish. 배치 세션이 CleanupSession 으로
