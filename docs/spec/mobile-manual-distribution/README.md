@@ -25,6 +25,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 10 | `10_ios_no_allow_debugging.md` | iOS IL2CPP archive 4GB 한계 회피를 위해 Ad Hoc 디버거 제외 |
 | 11 | `11_landscape_autorotation_regression.md` | 가로 양방향 자동회전을 빌드 계약으로 고정하고 iOS 고정 방향 회귀 차단 |
 | 12 | `12_ios_native_landscape_contract.md` | iOS 네이티브·런타임·최종 IPA의 가로 전용 계약 강제 및 검증 |
+| 13 | `13_unity_serialization_hygiene.md` | Unity 6.4 Spine 직렬화 no-op을 빌드 후 안전하게 원복 |
 
 ## Feature-wide 계약
 
@@ -69,6 +70,9 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   이름의 플랫폼 확장자 복사본으로도 제공한다. `both`의 두 파일은 같은 실행 시각을 공유한다.
 - 서명 파일·비밀번호·private key·산출물은 저장소나 로그에 기록하지 않는다.
 - Somnia와 앱 ID가 같으므로 두 앱은 같은 기기에 공존하지 않으며 저장 데이터가 이어질 수 있다.
+- Unity가 빌드 중 자동 저장하는 직렬화 변경은 **명시적으로 byte-level 변형을 검증할 수 있는
+  경로만** 원복한다. 알려지지 않은 tracked·untracked 변경은 절대 삭제하거나 숨기지 않고
+  빌드를 실패시킨다.
 
 ## 실산출물 검증 기록
 
