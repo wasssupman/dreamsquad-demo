@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 221518ef91623a7438a71fef23660601, type: 3}
   m_Name: WhiteBalance
   m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.WhiteBalance
-  active: 0
+  active: 1
   temperature:
     m_OverrideState: 1
-    m_Value: -0.9
+    m_Value: 1
   tint:
     m_OverrideState: 1
     m_Value: 0
@@ -235,19 +235,19 @@ MonoBehaviour:
     m_Value: 1
   threshold:
     m_OverrideState: 1
-    m_Value: 0.88
+    m_Value: 0.42
   intensity:
     m_OverrideState: 1
-    m_Value: 0.36
+    m_Value: 0.37
   scatter:
     m_OverrideState: 1
-    m_Value: 0.589
+    m_Value: 0.03
   clamp:
     m_OverrideState: 1
     m_Value: 65475.18
   tint:
     m_OverrideState: 1
-    m_Value: {r: 0, g: 0, b: 0, a: 1}
+    m_Value: {r: 0.8254717, g: 1, b: 0.88655657, a: 1}
   highQualityFiltering:
     m_OverrideState: 0
     m_Value: 0
@@ -282,19 +282,19 @@ MonoBehaviour:
   active: 1
   postExposure:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.4
   contrast:
     m_OverrideState: 1
-    m_Value: 13.4
+    m_Value: -18
   colorFilter:
     m_OverrideState: 1
-    m_Value: {r: 1, g: 1, b: 1, a: 1}
+    m_Value: {r: 1.2311444, g: 1.2311444, b: 1.2311444, a: 1}
   hueShift:
     m_OverrideState: 1
     m_Value: 0
   saturation:
     m_OverrideState: 1
-    m_Value: 41.1
+    m_Value: 34
 --- !u!114 &-2288545467794466540
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -313,33 +313,33 @@ MonoBehaviour:
     m_Value: 1
   gaussianStart:
     m_OverrideState: 1
-    m_Value: 28.3
+    m_Value: 28.32892
   gaussianEnd:
     m_OverrideState: 1
-    m_Value: 30
+    m_Value: 30.00892
   gaussianMaxRadius:
     m_OverrideState: 1
-    m_Value: 1.237
+    m_Value: 1.5
   highQualitySampling:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0
   focusDistance:
-    m_OverrideState: 0
-    m_Value: 10
+    m_OverrideState: 1
+    m_Value: 6.14
   aperture:
-    m_OverrideState: 0
-    m_Value: 5.6
+    m_OverrideState: 1
+    m_Value: 13.2
   focalLength:
-    m_OverrideState: 0
-    m_Value: 50
+    m_OverrideState: 1
+    m_Value: 151
   bladeCount:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 5
   bladeCurvature:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 1
   bladeRotation:
-    m_OverrideState: 0
+    m_OverrideState: 1
     m_Value: 0
 --- !u!114 &11400000
 MonoBehaviour:
@@ -376,7 +376,7 @@ MonoBehaviour:
   active: 1
   mode:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 2
   neutralHDRRangeReductionMode:
     m_OverrideState: 0
     m_Value: 2
