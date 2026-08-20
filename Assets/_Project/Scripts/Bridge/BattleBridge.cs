@@ -4990,6 +4990,12 @@ namespace Wassup.Bridge
             {
                 // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
                 // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
+                //
+                // ⚠ **이 arm 은 스턴이 있어야 성립한다.** 아래 `onPlaceMagnitude` 피해는 그
+                // 위에 얹힌 부수 효과이므로, `onPlaceDuration 0` + `onPlaceMagnitude > 0`
+                // (피해만 주는 배치)으로 저작하면 여기서 **조용히 끝난다** — 침묵이 의도다.
+                // 피해만 주는 배치는 `MeleeBurst` 가 이미 하는 일이라, 가드를 쪼개 문을 열면
+                // 같은 일을 하는 저작 경로가 둘이 된다(제약 8).
                 if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
 
                 foreach (var e in CollectEnemiesInTileRange(
