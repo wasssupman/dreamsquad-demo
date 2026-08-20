@@ -49,6 +49,10 @@ namespace Wassup.Data
         public float boardFramePullback = 4f;
         [Tooltip("보드를 화면에서 위로 올리는 양(월드 유닛). + = 보드 상승(하단 HUD 클리어). 내부적으로 카메라 하강.")]
         public float boardFrameRaiseY = 2f;
+        [Tooltip("DoF 블러가 시작되는 위치. 보드 깊이 범위 기준(0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤). 절대 거리로 두면 화면비마다 블러 영역이 달라져 폰에서 사라진다 — unit 9.")]
+        public float dofBlurStartT = 0.6f;
+        [Tooltip("DoF 블러가 최대가 되는 위치(같은 보드 깊이 기준). dofBlurStartT 보다 커야 한다.")]
+        public float dofBlurEndT = 0.88f;
 
         [Header("배틀 구두점 (unit 2) — additive 전용, 카메라 탈취 없음")]
         [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인. [은퇴 — 줌은 pulseDolly 가 담당] 0 권장.")]

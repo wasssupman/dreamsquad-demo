@@ -31,6 +31,43 @@ namespace Wassup.Presentation
             return Mathf.Max(0f, t) * Mathf.Max(0.01f, margin);
         }
 
+        // camera-direction unit 9 — 보드 깊이에 정규화한 피사계 심도(DoF) 거리.
+        //
+        // gaussianStart/End 를 월드 절대 거리로 저작하면 화면비가 바뀌는 순간 그림이 무너진다.
+        // FitDistance 가 aspect 로 카메라 거리를 정하기 때문이다(tanH = tanV·aspect) — 가로가
+        // 넓은 기기일수록 카메라가 보드에 더 붙고, 고정 임계값은 화면 밖으로 밀려난다.
+        // 실측: 16:9 게임뷰 27.7 → 19.5:9 폰 25.3(-2.45), 블러가 걸리는 영역 화면 상단 25% → 7%.
+        //
+        // 그래서 임계값을 **보드 깊이 범위 안의 위치**로 저작한다(0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤).
+        // 보드의 view 공간 깊이 폭은 맵이 정하고 화면비와 무관하므로, 카메라가 당겨지면 임계값도
+        // 같이 당겨진다 — "보드 뒤쪽부터 흐려진다"가 모든 화면비에서 같은 그림으로 유지된다.
+        //
+        // localCorners 는 FitDistance 와 같은 버퍼(카메라 회전 기준 로컬 코너),
+        // camDistance 는 실제로 적용된 최종 거리(fit + pullback)다.
+        // 보드가 카메라 뒤에 있는 등 프레이밍이 성립하지 않으면 false — 호출부가 DoF 를 건드리지 않는다.
+        public static bool DofRange(Vector3[] localCorners, float camDistance, float startT, float endT,
+                                    out float start, out float end)
+        {
+            start = 0f;
+            end = 0f;
+            if (localCorners == null || localCorners.Length == 0) return false;
+
+            float nearZ = float.MaxValue, farZ = float.MinValue;
+            for (int i = 0; i < localCorners.Length; i++)
+            {
+                float z = localCorners[i].z + camDistance;
+                if (z < nearZ) nearZ = z;
+                if (z > farZ) farZ = z;
+            }
+            if (nearZ <= 0f) return false; // 보드가 카메라 뒤 — 프레이밍 실패
+
+            float span = Mathf.Max(1e-3f, farZ - nearZ);
+            start = Mathf.Max(0f, nearZ + span * startT);
+            // URP 는 end < start 를 방어하지 않는다(램프 폭이 음수가 되면 블러가 뒤집힌다).
+            end = Mathf.Max(nearZ + span * endT, start + 1e-3f);
+            return true;
+        }
+
         // 수직 FOV(도) + aspect → (tanH, tanV). aspect 가 비정상이면 16:9 로 폴백한다
         // (Camera.aspect 는 게임뷰가 0 폭일 때 0 이 될 수 있다).
         public static void FrustumTangents(float verticalFovDeg, float aspect, out float tanH, out float tanV)

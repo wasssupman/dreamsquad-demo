@@ -24,6 +24,8 @@
 | 5 | 연출 | `5_drag_focus.md` | 드래그 포커스 — 스와이프 중 유닛 줌인 + 방향 lookat 리드 |
 | 6 | 설정 | `6_drag_focus_only.md` | 드래그 포커스를 제외한 모든 카메라 연출 비활성화 |
 | 7 | 튜닝 | `7_drag_focus_return_tuning.md` | 포커스 복귀 이징·드래그 추종 감속 |
+| 8 | 토대 | `8_board_fit_home.md` | 맵 크기에 맞춰 홈 포즈 거리 자동 계산 (board fit) + HUD 클리어 오프셋 |
+| 9 | 결함 | `9_board_fit_dof.md` | DoF 임계 거리를 보드 fit 에 연동 — 절대 거리 저작이 화면비마다 무너지던 문제 |
 
 ## Feature-wide 계약
 

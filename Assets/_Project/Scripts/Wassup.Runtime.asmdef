@@ -3,6 +3,8 @@
     "rootNamespace": "Wassup",
     "references": [
         "Unity.Entities",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
         "Unity.Entities.Graphics",
         "Unity.Burst",
         "Unity.Collections",

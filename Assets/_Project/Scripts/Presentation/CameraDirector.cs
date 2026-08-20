@@ -18,6 +18,9 @@ namespace Wassup.Presentation
     public class CameraDirector : MonoBehaviour
     {
         [SerializeField] private Wassup.Data.CameraDirectionConfig config;
+        // unit 9 — DoF 거리를 보드 fit 에 연동할 대상 볼륨(BattleScene 의 글로벌 Post 볼륨).
+        // 미배선이면 DoF 연동만 조용히 꺼진다 — 프레이밍 자체는 그대로 동작한다.
+        [SerializeField] private UnityEngine.Rendering.Volume postVolume;
 
         private Camera _cam;
         private Vector3 _homePos;
@@ -200,9 +203,51 @@ namespace Wassup.Presentation
             _homePos = boardWorld.center
                      - (_homeRot * Vector3.forward) * (dist + pull)
                      - Vector3.up * raise;
+
+            // unit 9 — 화면비가 바뀌면 fit 거리가 달라지므로(tanH = tanV·aspect) 재프레이밍할 수
+            // 있도록 입력을 기억한다. 그리고 그 거리에 DoF 임계값을 맞춘다.
+            _framedBounds = boardWorld;
+            _hasFramedBounds = true;
+            _framedAspect = _cam.aspect;
+            // 전 채널이 비활성이면 LateUpdate 가 정착 포즈를 다시 쓰지 않는다(_settled 아이들 no-op).
+            // 홈이 바뀌었으니 한 번은 반드시 써야 새 거리가 실제로 적용된다.
+            _settled = false;
+            ApplyBoardDepthOfField(dist + pull);
+        }
+
+        // unit 9 — DoF 임계 거리를 보드 fit 거리에 연동한다.
+        //
+        // 프로필의 gaussianStart/End 는 씬에서 눈으로 잡은 **절대 거리**였는데, 그 값은 튜닝한
+        // 화면비에서만 맞다. 16:9 게임뷰(카메라 깊이 27.7)에서 맞춘 28.3~30 이 19.5:9 실기기
+        // (25.3)에서는 화면 밖으로 밀려나, 블러가 걸리는 영역이 화면 상단 25% → 7% 로 줄고
+        // 육안으로는 사라졌다 — post 가 통째로 꺼진 것처럼 보였다(실제로는 Bloom 등은 정상).
+        //
+        // `Volume.profile` 은 sharedProfile 의 **런타임 인스턴스**를 돌려준다 — 프로필 에셋은
+        // 건드리지 않으므로 에디터 Play 에서도 디스크에 남지 않는다.
+        private void ApplyBoardDepthOfField(float camDistance)
+        {
+            if (postVolume == null || config == null) return;
+
+            var profile = postVolume.profile;
+            if (profile == null) return;
+            if (!profile.TryGet(out UnityEngine.Rendering.Universal.DepthOfField dof)) return;
+            // Bokeh 는 focusDistance/aperture 체계라 gaussian 임계값과 무관 — 대상 아님.
+            if (dof.mode.value != UnityEngine.Rendering.Universal.DepthOfFieldMode.Gaussian) return;
+
+            if (!CameraFramingMath.DofRange(_cornerBuf, camDistance,
+                                            config.dofBlurStartT, config.dofBlurEndT,
+                                            out float start, out float end))
+                return;
+
+            dof.gaussianStart.Override(start);
+            dof.gaussianEnd.Override(end);
         }
 
         private Vector3[] _cornerBuf;
+        // unit 9 — 마지막 프레이밍 입력. 화면비가 바뀌면 같은 보드로 다시 fit 한다.
+        private Bounds _framedBounds;
+        private bool _hasFramedBounds;
+        private float _framedAspect;
 
         // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 호출처: DreamcatcherHandView 카드 흡수 임팩트).
         // config 배선 전 호출은 안전 no-op (spec unit 0 계약). kickDuration 0 = 킥 비활성
@@ -316,6 +361,12 @@ namespace Wassup.Presentation
         private void LateUpdate()
         {
             if (config == null) return;
+
+            // unit 9 — 화면비가 바뀌면 fit 거리가 달라진다. 홈 포즈와 그에 연동된 DoF 를 다시 잡는다.
+            // 기기에선 가로 고정이라 사실상 안 울리고, 에디터 게임뷰를 실기기 해상도로 바꿨을 때
+            // 실제와 같은 그림을 보게 하는 장치다(이 결함이 에디터에서 안 보였던 이유).
+            if (_hasFramedBounds && _cam != null && !Mathf.Approximately(_cam.aspect, _framedAspect))
+                FrameBoard(_framedBounds);
 
             // 현재 제품 설정: 스와이프 드래그 포커스만 사용한다. 토글을 런타임에 끄는 경우에도
             // 이미 진행 중이던 다른 채널이 한 프레임도 남지 않도록 즉시 비운다.
