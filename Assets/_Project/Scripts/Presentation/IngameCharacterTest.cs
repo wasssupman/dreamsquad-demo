@@ -51,7 +51,15 @@ namespace Wassup.Presentation
         {
             // 블롭은 자식으로 생기므로 여기서 한 번 잡아 캐시한다 — 이후 다시 훑으면
             // 블롭 자신의 SpriteRenderer 까지 캐스터로 만들어 버린다.
-            _sprites = GetComponentsInChildren<SpriteRenderer>(true);
+            // **블롭 계열은 명시적으로 걸러낸다.** 캐시 한 번으로는 부족했다 — 한 번 씬에 저장된
+            // 블롭(Play 상태가 씬에 구워진 사고)이 있으면 다음 Awake 가 그걸 캐릭터로 오인해
+            // 블롭이 그림자를 드리우고, 그 블롭에 또 블롭을 붙인다.
+            var found = GetComponentsInChildren<SpriteRenderer>(true);
+            var keep = new List<SpriteRenderer>(found.Length);
+            for (int i = 0; i < found.Length; i++)
+                if (found[i] != null && found[i].GetComponentInParent<BlobShadow>(true) == null)
+                    keep.Add(found[i]);
+            _sprites = keep.ToArray();
             if (_sprites.Length == 0)
             {
                 Debug.LogWarning($"[IngameCharacterTest] {name} 아래에 SpriteRenderer 가 없다.", this);
