@@ -63,4 +63,4 @@ START 하나뿐이고, 그건 스텝의 완료 조건이 아니라 로비를 떠
 - [x] Play — 그 판을 또 끝내고 돌아오면 **뜨지 않는다**
 - [x] Play — `RESET TUTORIAL` 후 로비 인트로부터 다시 시작한다
 
-**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0.
+**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0. 커밋 `a1a87a63`.

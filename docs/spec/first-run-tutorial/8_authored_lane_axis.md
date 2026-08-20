@@ -72,4 +72,4 @@ groups.Add(new WaveSpawnGroup(grp.unit, grp.count, math.max(0f, grp.triggerTimeS
 **부채 가장자리는 남을 수 있다** — 6마리 시절의 «전멸» 과 다르다. 남는 것이 문제면 수량이 아니라
 `Pattern_Shotgunner_Blast` 의 각도 폭(±40°)이나 발 수를 본다.
 
-**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0.
+**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0. 커밋 `a1a87a63`.

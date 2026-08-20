@@ -1,5 +1,10 @@
 # 11 — Handoff Summary (units 8~10)
 
+## Commit
+
+- `a1a87a63` feat(first-run-tutorial): 놓고 → 철수시키고 → 다시 놓는다 — 배치 스킬 둘을 잇는 온보딩
+  (retire-button-reach 동반 — 온보딩이 그 버튼에 구멍을 뚫고 라벨을 인용해 갈라 커밋 불가)
+
 units 0~7 의 인계는 [7_handoff_summary.md](7_handoff_summary.md). 이 문서는 그 위에
 얹은 **B3 재설계 · 레인 축 · 로비 배웅** 만 다룬다.
 

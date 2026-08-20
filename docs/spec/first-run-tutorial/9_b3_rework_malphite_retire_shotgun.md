@@ -153,4 +153,4 @@ public RectTransform ActionRect => ...
 - [x] Play — ② 문구가 눈에 보일 만큼 떠 있고, ⑩ 은 접근 대기 없이 바로 뜬다
 - [x] Play — 말파이트를 죽인 판에서 퇴근 블록이 **멈추지 않고** 건너뛰어진다
 
-**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0.
+**확인**: 2026-08-20 사용자 Play 확인 — 전 구간 통과. `dotnet build Wassup.Runtime` 오류 0. 커밋 `a1a87a63`.
