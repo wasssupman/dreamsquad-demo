@@ -1,7 +1,7 @@
 # camera-direction — 연출 카메라 시스템
 
 상태: unit 0~9 완료 2026-07-14 (unit 0~3: d769bac3/c86eff33/fb078a3f/2fe2e000, unit 5 rev3: 71e2e8d7, unit 6~7: 5c4e2d8e; 사용자 Play 확인 완료)
-· **unit 10~14 구현 완료 2026-08-21 (사용자 Play 확인 대기)** — 포즈 저작을 «홈 기준 델타» 에서 «상태별 독립 레시피» 로 교체. 인계: `15_handoff_summary.md`
+· **unit 10~14 완료 2026-08-21** (b696ba41 외 4커밋, 사용자 Play 확인 완료) — 포즈 저작을 «홈 기준 델타» 에서 «상태별 독립 레시피» 로 교체. 인계: `15_handoff_summary.md`
 
 ## 목표
 

@@ -54,7 +54,7 @@ MonoBehaviour:
     dofEnd: 0.88
     dofMaxRadius: 1.5
   - state: 1
-    pitchDeg: 50
+    pitchDeg: 55
     fitToBoard: 1
     fitMargin: 1.01037
     fixedDistance: 20
