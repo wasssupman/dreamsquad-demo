@@ -2800,39 +2800,22 @@ MonoBehaviour:
   panelOffset: {x: 40, y: 40}
   pillSize: {x: 256, y: 96}
   pillCornerRadius: 28
-  pillFill: {r: 0.13, g: 0.46, b: 0.86, a: 1}
-  pillBorder: {r: 0.55, g: 0.88, b: 1, a: 1}
+  pillFill: {r: 1, g: 0.78, b: 0.28, a: 1}
+  pillBorder: {r: 1, g: 0.9, b: 0.66, a: 1}
   pillLockedFill: {r: 0.24, g: 0.28, b: 0.34, a: 0.95}
   pillLockedBorder: {r: 0.42, g: 0.47, b: 0.55, a: 0.9}
   pillLip: 6
-  pillLipColor: {r: 0.05, g: 0.2, b: 0.44, a: 1}
+  pillLipColor: {r: 0.42, g: 0.28, b: 0.06, a: 1}
   pillLipLockedColor: {r: 0.13, g: 0.16, b: 0.2, a: 0.95}
   pillFontSize: 32
-  pillTextColor: {r: 1, g: 1, b: 1, a: 1}
+  pillTextColor: {r: 0.1, g: 0.08, b: 0.04, a: 1}
   pillLockedTextColor: {r: 0.8, g: 0.84, b: 0.9, a: 0.9}
-  calloutWidth: 256
-  calloutGap: 14
-  calloutPadding: 14
-  calloutLineHeight: 34
-  calloutCornerRadius: 18
-  calloutFill: {r: 0.04, g: 0.09, b: 0.22, a: 0.96}
-  calloutBorder: {r: 0.29, g: 0.72, b: 0.96, a: 1}
-  calloutFontSize: 27
-  calloutMinFontSize: 19
-  calloutTextColor: {r: 0.95, g: 0.98, b: 1, a: 1}
-  calloutHoldSeconds: 5
   arrowBob: 6
   arrowBobSeconds: 0.7
   shineSweepSeconds: 1.1
   shineRestSeconds: 1.4
-  armedSweepSeconds: 0.55
-  armedRestSeconds: 0.12
   shineWidth: 44
-  shineColor: {r: 1, g: 1, b: 1, a: 0.22}
-  armedShineColor: {r: 1, g: 1, b: 1, a: 0.42}
-  armedBreathScale: 1.045
-  armedBreathSeconds: 0.42
-  armedArrowScale: 1.25
+  shineColor: {r: 1, g: 0.96, b: 0.82, a: 0.22}
   tapPunch: 0.1
 --- !u!1 &1153775167
 GameObject:

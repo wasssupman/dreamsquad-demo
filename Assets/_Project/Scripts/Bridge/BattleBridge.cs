@@ -1987,19 +1987,6 @@ namespace Wassup.Bridge
             scoreHud.SetTopBar(TimerRemaining, TimerDuration, current);
         }
 
-        // wave-pull-revival unit 1 — 다음 웨이브의 **구성**(무엇이 몇 마리). 당김 판단의 재료다.
-        //
-        // 실제 스폰과 같은 데이터에서 나와야 한다(spec 계약 4): 플랜의 그 웨이브 groups 를
-        // 그대로 준다. 당김으로 순서가 앞당겨져도 **내용은 플랜 순서 그대로**이므로
-        // _nextWaveIndex 하나면 충분하다. 플랜은 판 시작에 확정되고 이후 불변이라 매 프레임 읽어도 할당이 없다.
-        public bool TryGetNextWaveComposition(out IReadOnlyList<WaveSpawnGroup> groups)
-        {
-            groups = null;
-            if (!NextWaveHasNext) return false;
-            groups = _wavePlan.waves[_nextWaveIndex].groups;
-            return groups != null && groups.Count > 0;
-        }
-
 
         // 블록 경계 계산을 **브리지가 소유한다.** 도크가 conceptHoldWaves 로 다시 계산하면
         // 두 곳이 갈린다(생성기의 블록 구획과 표시가 어긋나면 예고가 거짓말이 된다).
