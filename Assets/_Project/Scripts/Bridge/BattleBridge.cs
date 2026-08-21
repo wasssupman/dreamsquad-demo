@@ -6776,6 +6776,7 @@ namespace Wassup.Bridge
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
             MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
+            FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
@@ -7783,6 +7784,21 @@ namespace Wassup.Bridge
             ApplyEffectTileIfAny(cell, entity);
         }
 
+        // camera-direction unit 17 — 배치 스킬 발동 순간의 카메라 셰이크.
+        //
+        // **파이프라인을 묻지 않는 것이 핵심이다.** 배치 스킬은 두 어휘로 구현돼 있다 —
+        // 레거시 `onPlaceEffect` enum(말파이트)과 `abilities` 의 규칙(`UnitSkillAbility`,
+        // 캐논·샷건맨). 둘의 실행 지점은 다르지만 **발동이 확정되는 순간은 이 seam 하나**라,
+        // 여기서 울리면 어느 쪽으로 만든 스킬이든 같은 대접을 받는다.
+        //
+        // 세기·길이는 유닛이 저작하고(제약 6) 진폭은 카메라 config 소유 — 「이 유닛이 얼마나
+        // 크게 울리나」와 「셰이크가 물리적으로 어떤 느낌인가」는 서로 다른 튜닝 축이다.
+        private void FireOnPlaceCameraShake(DefenderUnitData unitData)
+        {
+            if (unitData == null || unitData.onPlaceShakeStrength <= 0f) return;
+            EnsureCameraDirector()?.Shake(unitData.onPlaceShakeStrength, unitData.onPlaceShakeDuration);
+        }
+
         // on-place-skill-rework unit 0 — 규칙 경로(`DcTriggerKind.OnPlace`)의 발화 신호.
         // 브리지는 **사건만 알리고** 실행은 BossPeriodicTriggerSystem 이 한다 — 그래야
         // payload arm 사본이 늘지 않고, 배치 확정 지점이 셋이어도 태그 부착만 지키면 된다.
@@ -7808,6 +7824,7 @@ namespace Wassup.Bridge
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             ApplyOnPlacePush(unitData, cell);
             MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
+            FireOnPlaceCameraShake(unitData);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             RecomputeSynergyFor(cell);

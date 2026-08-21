@@ -115,6 +115,17 @@ namespace Wassup.Data
         // 이때 onPlaceMagnitude 는 **틱당 피해**다(DPS 아님 — CcEffect.tickInterval 계약).
         public float onPlaceTickInterval;
 
+        // camera-direction unit 17 — 배치 스킬이 발동하는 순간의 카메라 셰이크.
+        // **파이프라인과 무관하다**: 레거시 `onPlaceEffect` enum 이든 `abilities` 의
+        // `UnitSkillAbility{OnPlace × payload}` 규칙이든, 배치 스킬이 발동하는 그 한 지점에서
+        // 한 번 울린다(브리지의 두 배치 확정 seam 이 공유). 스킬이 없는 유닛에도 걸 수 있지만
+        // 지금은 스킬 있는 유닛만 저작한다.
+        // strength 0 = 셰이크 없음(기본). 세기는 0~1 이고 실제 진폭은 CameraDirectionConfig
+        // 소유 — 여기서 정하는 것은 «이 유닛이 얼마나 크게 울리나» 뿐이다.
+        [Range(0f, 1f)] public float onPlaceShakeStrength;
+        [Tooltip("셰이크 지속(초). 「얼마나 짧은가」는 그 사건의 성격이라 유닛이 준다. 0 = 셰이크 없음.")]
+        public float onPlaceShakeDuration;
+
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
 
