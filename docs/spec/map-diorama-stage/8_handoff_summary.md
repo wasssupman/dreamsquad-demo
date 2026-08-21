@@ -25,6 +25,10 @@
 - BattleScene 커밋에 타 spec 발 재직렬화 churn 포함(NextWaveDock orphan 키 정규화 — 무해, 기록됨)
 - Ralph 러너 2종(`RalphTestRunner`/`RalphEditorTasks`)은 검증 채널로 잔존 — 삭제 판단은 사용자
 
+## Merge (2026-08-21)
+
+`e6129466` 에서 origin/main(87커밋)을 병합. 충돌 5 + 수선 2(TryGetGoalViewAnchor 재지향 · 카메라 상한 ≤23×12 를 StagePoolBuildabilityTests 로 이식). 검증: 컴파일 0 에러 · EditMode 2396 중 1 실패(malphite 텍스트 폭 — main 상속, 바이트 동일 실증) · PlayMode 168 중 13 실패 **전수 분류: 머지 유발 0** — 기존 US-007 잔존 9 · main 상속 1(DragPlacementReach: ResolveFocusAndTarget 3→2인자인데 main 이 테스트 미수정) · 순서 의존 2(단독 green) · 환경 누수 1(`dev_forceMapIndex` PlayerPrefs 잔존 → 비-pin 테스트가 dev 맵에서 돎, 키 제거 후 green). 사용자 BattleScene 실험(FluidBackdrop off + Hello 배치)과 ProjectSettings 는 stash 보관.
+
 ## Follow-up
 
 - **사용자**: 육안 검증 축 5종(spec 5) · OutgameScene dev 패널 `pool` 수동 배선+저장 · 공성 부재 병합 판단 · push 승인
