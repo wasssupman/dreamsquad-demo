@@ -86,8 +86,8 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
     dofEnabled: 1
-    dofStart: 1
-    dofEnd: 1.6
+    dofStart: 1.2447791
+    dofEnd: 1.2836721
     dofMaxRadius: 1.5
   pulseFovDelta: 0
   pulseDolly: 1.14
@@ -97,7 +97,7 @@ MonoBehaviour:
   shakeFreqX: 13.93
   shakeFreqY: 8.3
   punctuationFadeSec: 0.15
-  fovMin: 31
+  fovMin: 20
   fovMax: 60
   focusDolly: -1.87
   focusFovDelta: 0
