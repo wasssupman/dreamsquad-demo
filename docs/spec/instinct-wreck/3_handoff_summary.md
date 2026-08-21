@@ -2,8 +2,9 @@
 
 ## Commit
 
-- units 0~2 한 커밋. 코드 파일 하나(`StructureWreckView.cs`)가 세 unit 의 내용을 함께 담아
-  파일 단위로 쪼갤 수 없어 묶었다.
+- `3400ca9e` — feat(instinct-wreck): units 0~2 — 부서진 본능이 잔해로 남는다.
+  코드 파일 하나(`StructureWreckView.cs`)가 세 unit 의 내용을 함께 담아 파일 단위로
+  쪼갤 수 없어 한 커밋으로 묶었다.
 
 ## Implemented
 
