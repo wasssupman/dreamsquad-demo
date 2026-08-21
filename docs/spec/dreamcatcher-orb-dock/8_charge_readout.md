@@ -62,3 +62,5 @@ authored 값을 `FormerlySerializedAs` 로 승계한다(`figureJostleStrength` �
 - [ ] **사용자 확인 대기** — BattleScene Play 육안: 전투 중 아무 사건이 없을 때 독이 **완전히 정지**한다
       (링·바운스·피규어 튕김 없음). 각성치가 20 배수를 넘는 순간에만 짧게 터지고 즉시
       평소 상태로 돌아온다.
+
+커밋: `02314605` (2026-08-21)
