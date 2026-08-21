@@ -174,7 +174,7 @@ namespace Wassup.Tests.EditMode
         //   ① 적 마음 정확히 1기 = 공성 모드 파생 조건  ② spawns 저작 0(파생이 채운다)
         //   ③ 마음이 좌우 미러 = HP 레이스가 공평  ④ 배치는 내 진영만 = 전선이 지형에 고정
         //   ⑤ 강(Env)이 지상을 가른다 = 「비행은 강을 무시한다」가 규칙으로 읽힘
-        //   ⑥ 21×12 = 카메라 불변 상한  ⑦ 적 마음 → 골 연결
+        //   ⑥ 세로 12 고정 · 가로 ≤ 23 = 카메라 불변 상한  ⑦ 적 마음 → 골 연결
         [Test]
         public void SiegeMap_KeepsDuelDesignPhilosophy(
             [ValueSource(nameof(SiegeMaps))] string mapName)
@@ -183,8 +183,13 @@ namespace Wassup.Tests.EditMode
                 $"Assets/_Project/Data/Maps/MapDocument_{mapName}.asset");
             Assert.IsNotNull(doc);
 
-            Assert.AreEqual(21, doc.Width, "⑥ 카메라 불변 상한");
-            Assert.AreEqual(12, doc.Height, "⑥ 카메라 불변 상한");
+            // ⑥ 카메라 불변 상한. `fitToBoard` 가 보드 코너에서 거리를 뽑으므로 어떤 크기도
+            // "프레임에는" 들어간다 — 진짜 상한은 **폰에서 읽히는 크기**다. 그래서 절대 거리가
+            // 아니라 격자 상한으로 박는다(거리는 CameraDirectionConfig 저작이 바뀌면 같이 바뀐다).
+            // 실측 비율(19.5:9, Duel 23×10 대 21×12): 전투 fit 거리 +5.8%, 배치 −6.8%
+            // (배치는 세로 구속이라 행을 줄이면 오히려 붙는다). 이 범위가 상한의 근거다.
+            Assert.LessOrEqual(doc.Width, 23, "⑥ 카메라 불변 상한 — 더 넓히면 폰에서 판이 작아진다");
+            Assert.LessOrEqual(doc.Height, 12, "⑥ 카메라 불변 상한 — 세로는 배치·전투 두 상태를 같이 물린다");
 
             // ② 저작 스폰 0 — 적 마음 셀이 스폰이 된다(battle-structures unit 6 파생).
             Assert.IsTrue(doc.Spawns == null || doc.Spawns.Count == 0,
