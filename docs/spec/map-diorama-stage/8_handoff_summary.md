@@ -29,6 +29,11 @@
 
 `e6129466` 에서 origin/main(87커밋)을 병합. 충돌 5 + 수선 2(TryGetGoalViewAnchor 재지향 · 카메라 상한 ≤23×12 를 StagePoolBuildabilityTests 로 이식). 검증: 컴파일 0 에러 · EditMode 2396 중 1 실패(malphite 텍스트 폭 — main 상속, 바이트 동일 실증) · PlayMode 168 중 13 실패 **전수 분류: 머지 유발 0** — 기존 US-007 잔존 9 · main 상속 1(DragPlacementReach: ResolveFocusAndTarget 3→2인자인데 main 이 테스트 미수정) · 순서 의존 2(단독 green) · 환경 누수 1(`dev_forceMapIndex` PlayerPrefs 잔존 → 비-pin 테스트가 dev 맵에서 돎, 키 제거 후 green). 사용자 BattleScene 실험(FluidBackdrop off + Hello 배치)과 ProjectSettings 는 stash 보관.
 
+2차 병합 `4d780e25` (main +18: instinct-wreck·spawn-point-visual·카메라 셰이크 등). 충돌 1
+(BoardSortOrder — 우리 RowStride·대역 4000 + main 잔해 상수 병기). 검증: dotnet 0 에러 ·
+EditMode 2413 중 1 실패(malphite — 동일 main 상속) · 스모크 Passed. 포탈 스폰 프랍·본능
+잔해는 structures 휴면이라 스테이지 경로 비활성(StructureMarker 후속에서 활성화).
+
 ## Follow-up
 
 - **사용자**: 육안 검증 축 5종(spec 5) · OutgameScene dev 패널 `pool` 수동 배선+저장 · 공성 부재 병합 판단 · push 승인
