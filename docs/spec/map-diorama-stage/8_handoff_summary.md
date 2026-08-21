@@ -31,8 +31,11 @@
 
 2차 병합 `4d780e25` (main +18: instinct-wreck·spawn-point-visual·카메라 셰이크 등). 충돌 1
 (BoardSortOrder — 우리 RowStride·대역 4000 + main 잔해 상수 병기). 검증: dotnet 0 에러 ·
-EditMode 2413 중 1 실패(malphite — 동일 main 상속) · 스모크 Passed. 포탈 스폰 프랍·본능
-잔해는 structures 휴면이라 스테이지 경로 비활성(StructureMarker 후속에서 활성화).
+EditMode 2413 중 1 실패(malphite — 동일 main 상속) · 스모크 Passed · 풀 PlayMode 168 중
+16 실패 = 기존 US-007 잔존 9 + main 상속 1(DragPlacementReach) + 순서 의존 6(전부 단독
+green 실증 — suite 구성이 바뀌면 오염 패턴이 이동) + MovementIntegrity 는 오버라이드 제거로
+해소 유지. **머지 유발 0.** 포탈 스폰 프랍·본능 잔해는 structures 휴면이라 스테이지 경로
+비활성(StructureMarker 후속에서 활성화).
 
 ## Follow-up
 
