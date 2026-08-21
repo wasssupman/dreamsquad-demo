@@ -56,10 +56,10 @@ MonoBehaviour:
   - state: 1
     pitchDeg: 50
     fitToBoard: 1
-    fitMargin: 1.0058
+    fitMargin: 1.01037
     fixedDistance: 20
-    screenY: 0.5543
-    fov: 23.6
+    screenY: 0.5023927
+    fov: 25
     flightSec: 0.6
     ease:
       serializedVersion: 2
