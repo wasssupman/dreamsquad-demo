@@ -462,6 +462,9 @@ namespace Wassup.Bridge
         // 뷰는 맵 수명(배치 페이즈부터 보인다)이고 엔티티는 판 수명이라 엔티티 참조로 묶으면
         // 매 판 재배선이 필요하다. 셀은 두 수명 모두에서 불변이다.
         private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureTurretView> _structureTurretsByCell = new();
+        // instinct-wreck unit 0 — 붕괴한 거점의 잔해 프리젠터. 포신 사전과 **같은 자리·같은
+        // 규칙**(셀로 잇는다 — 뷰는 맵 수명, 엔티티는 판 수명이라 셀만이 두 수명에서 불변).
+        private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureWreckView> _structureWrecksByCell = new();
         [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
         [SerializeField] private float goalOverheadHeight = 1.1f;
 
@@ -5932,6 +5935,11 @@ namespace Wassup.Bridge
                 // 거점이 포신을 안 갖는 것 자체는 정상이라(마음) 미발견은 경고 대상이 아니다.
                 var turret = view.GetComponentInChildren<Wassup.Presentation.StructureTurretView>();
                 if (turret != null) _structureTurretsByCell[s.cell] = turret;
+                // instinct-wreck unit 0 — 잔해 프리젠터도 같은 판단으로 등록한다. 「잔해를
+                // 갖는가」는 **컴포넌트 유무**가 정한다(kind 분기도 id 분기도 없다). 미발견은
+                // 경고 대상이 아니다 — 마음은 원래 이 프리젠터가 없고 그게 정상이다.
+                var wreck = view.GetComponentInChildren<Wassup.Presentation.StructureWreckView>();
+                if (wreck != null) _structureWrecksByCell[s.cell] = wreck;
             }
         }
 
@@ -5942,6 +5950,7 @@ namespace Wassup.Bridge
                 if (_structureViews[i] != null) Destroy(_structureViews[i]);
             _structureViews.Clear();
             _structureTurretsByCell.Clear();   // 프리젠터는 뷰와 같은 수명 — stale 참조 방지
+            _structureWrecksByCell.Clear();    // instinct-wreck unit 0 — 형제와 같은 지점
         }
 
         private void DestroyStructureEntities()
@@ -6183,6 +6192,16 @@ namespace Wassup.Bridge
                     Debug.Log($"[BattleBridge] Structure collapsed — cell=({cell.x},{cell.y}) faction={faction}");
                     tileHealthGaugeLayer?.Hide(cell);
                     vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+                    // instinct-wreck unit 0 — 프랍에게도 알린다. 지금까지 붕괴는 게이지·VFX·로그만
+                    // 알고 **프랍은 몰라서** 부서진 포탑이 멀쩡히 서 있었다.
+                    if (_structureWrecksByCell.TryGetValue(cell, out var wreckView) && wreckView != null)
+                    {
+                        // unit 1 — 떼어낸 부품 컨테이너는 **기존 뷰 스윕에 넘긴다**. 새 정리
+                        // 경로(OnDestroy 훅)를 만들면 씬 언로드 시점의 fake-null 레이스를 타고,
+                        // 그 사고는 이 파일에 이미 실측 주석으로 박혀 있다(retireFlight, 2026-08-15).
+                        var debrisRoot = wreckView.Collapse();
+                        if (debrisRoot != null) _structureViews.Add(debrisRoot);
+                    }
                 }
             }
 

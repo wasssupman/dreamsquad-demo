@@ -68,6 +68,18 @@ namespace Wassup.Presentation
         // 프리팹 내부의 상대 순서(0~2)는 이 값에 **더해서** 보존하므로 −3~−1 을 쓴다.
         public const int UnitAttackAoeOrder = -3;
 
+        // instinct-wreck unit 1 — 부서진 거점에서 오르는 연기(버스트 + 잔불).
+        // 벤더(VFXPACK_FIRE_WALLCOEUR)는 order 0~2 로 오는데 그대로 두면 유닛(Compute =
+        // 수백대) 뒤로 가는 게 아니라 **바닥 타일(−20/−10) 위 · 유닛 아래** 라는 애매한 자리에
+        // 걸린다. 잔해는 «이미 끝난 배경 사건» 이라 회오리(UnitAttackAoeOrder)와 **같은 판단**
+        // — "보드 레이어 < 유닛 레이어" 규칙을 따라 음수 대역에 둔다. 그림자(−5)·타일
+        // 게이지(−4) 위 · 유닛(양수) 아래. 회오리 대역(−3~−1)과 겹치지만 둘 다 유닛 아래라
+        // 무해하고, `VFX_Smoke` 는 서브 파티클 없는 단일 ParticleSystem 이라 값 하나면 된다.
+        // ⚠ 실제 적용값은 **프리팹의 `ParticleSystemRenderer.sortingOrder`** 다 — 잔해 VFX 는
+        // 프랍 자식으로 저작되므로 코드가 런타임에 쓰지 않는다. 이 상수는 대역 문서이자
+        // 대조 기준이고, 값을 바꿀 땐 둘을 같이 바꾼다(WeaponTrailOrder 와 같은 규약).
+        public const int StructureWreckOrder = -2;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 
