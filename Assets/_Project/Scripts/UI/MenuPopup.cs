@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
@@ -37,6 +38,24 @@ namespace Wassup.UI
         private bool _open;
         private TimeLease _pauseLease;
 
+        // ---- dev 토글 (메뉴 우하단) ----
+        // 씬 루트에 놓인 실험용 오브젝트 둘을 판을 다시 돌리지 않고 껐다 켠다.
+        // 이름으로 찾는다: SerializeField 배선은 BattleScene 저장을 요구하는데, 이 씬은
+        // 다른 세션의 미커밋 WIP 를 물고 있어 지금 저장하면 그게 통째로 박힌다
+        // (RefreshExitButton 의 bridge 탐색과 같은 이유 · 같은 예외).
+        private const string CharacterTestObjectName = "CharacterTest";
+        private const string PostObjectName = "Post";
+
+        private Button _charTestButton;
+        private Image _charTestImage;
+        private TextMeshProUGUI _charTestLabel;
+        private GameObject _charTestTarget;
+
+        private Button _postButton;
+        private Image _postImage;
+        private TextMeshProUGUI _postLabel;
+        private GameObject _postTarget;
+
         public bool IsOpen => _open;
 
         private void Awake()
@@ -59,6 +78,7 @@ namespace Wassup.UI
             _pauseLease = TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority: 100);
             if (_root != null) _root.SetActive(true);
             RefreshExitButton();
+            RefreshDevToggles();
             if (wavePatternStrip != null)
             {
                 // random-map-pool unit 7 — 표시 직전에 이번 판(선택된 맵)의 실전 웨이브 플랜으로
@@ -141,6 +161,61 @@ namespace Wassup.UI
             SceneTransition.Go(SceneNames.Outgame);
         }
 
+        // ---------------- dev 토글 ----------------
+        // 씬에 있는 실험용 오브젝트 둘을 메뉴에서 껐다 켠다. 게임 규칙은 하나도 건드리지
+        // 않고 GameObject.SetActive 만 뒤집는다 — 그래서 "무엇이 켜져 있나"의 정본은
+        // 여기 캐시가 아니라 언제나 오브젝트 자신이다(라벨은 열 때마다 다시 읽는다).
+        private static readonly Color DevOnColor = new Color(0.22f, 0.4f, 0.3f, 0.9f);
+        private static readonly Color DevOffColor = new Color(0.26f, 0.26f, 0.3f, 0.9f);
+        private static readonly Color DevMissingColor = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+
+        private void RefreshDevToggles()
+        {
+            _charTestTarget = ResolveSceneRoot(_charTestTarget, CharacterTestObjectName);
+            _postTarget = ResolveSceneRoot(_postTarget, PostObjectName);
+            ApplyDevButton(_charTestButton, _charTestImage, _charTestLabel, "캐릭터", _charTestTarget);
+            ApplyDevButton(_postButton, _postImage, _postLabel, "포스트", _postTarget);
+        }
+
+        private static void ApplyDevButton(Button button, Image image, TextMeshProUGUI label,
+                                           string caption, GameObject target)
+        {
+            if (button == null) return;
+            bool missing = target == null;
+            bool on = !missing && target.activeSelf;
+            button.interactable = !missing;
+            if (image != null) image.color = missing ? DevMissingColor : (on ? DevOnColor : DevOffColor);
+            if (label != null)
+            {
+                label.text = missing ? $"{caption} 없음" : $"{caption} {(on ? "ON" : "OFF")}";
+                label.color = missing ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
+            }
+        }
+
+        private void OnToggleCharacterTest() => ToggleDevTarget(ref _charTestTarget, CharacterTestObjectName);
+
+        private void OnTogglePost() => ToggleDevTarget(ref _postTarget, PostObjectName);
+
+        private void ToggleDevTarget(ref GameObject cache, string objectName)
+        {
+            cache = ResolveSceneRoot(cache, objectName);
+            if (cache != null) cache.SetActive(!cache.activeSelf);
+            RefreshDevToggles();
+        }
+
+        // 루트 목록을 훑는다 — GameObject.Find 는 **꺼진 오브젝트를 못 찾아서** 한 번 끄면
+        // 다시 켤 수가 없다. 캐시가 살아 있으면 그대로 쓰고, 씬 재진입 등으로 죽었으면 다시 찾는다.
+        private GameObject ResolveSceneRoot(GameObject cache, string objectName)
+        {
+            if (cache != null) return cache;
+            Scene scene = gameObject.scene;
+            if (!scene.IsValid() || !scene.isLoaded) return null;
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+                if (roots[i] != null && roots[i].name == objectName) return roots[i];
+            return null;
+        }
+
         private void BuildCanvas()
         {
             if (_built) return;
@@ -159,26 +234,42 @@ namespace Wassup.UI
             // No dim backdrop here — the strip's own full-screen overlay (boosted above
             // this canvas' gameplay layers) provides the dim and blocks gameplay input.
             // Buttons live at the bottom, clear of the upper-third strip (no overlap).
-            _resumeButton = MakeButton("ResumeButton", "재개", new Vector2(-150f, 120f),
-                new Color(0.16f, 0.5f, 0.28f, 0.96f), OnResume);
-            _exitButton = MakeButton("ExitButton", "나가기", new Vector2(150f, 120f),
-                new Color(0.6f, 0.2f, 0.2f, 0.96f), OnExit);
+            var bottomCenter = new Vector2(0.5f, 0f);
+            _resumeButton = MakeButton("ResumeButton", "재개", bottomCenter, new Vector2(-150f, 120f),
+                new Vector2(260f, 96f), 40f, new Color(0.16f, 0.5f, 0.28f, 0.96f), OnResume);
+            _exitButton = MakeButton("ExitButton", "나가기", bottomCenter, new Vector2(150f, 120f),
+                new Vector2(260f, 96f), 40f, new Color(0.6f, 0.2f, 0.2f, 0.96f), OnExit);
             _exitImage = _exitButton.GetComponent<Image>();
             _exitLabel = _exitButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            // dev 토글 — 우하단 구석에 작게. 본 버튼(하단 중앙)과 겹치지 않는 자리이고,
+            // 크기·글자도 절반이라 실수로 누를 만한 표면이 아니다.
+            var bottomRight = new Vector2(1f, 0f);
+            var devSize = new Vector2(230f, 52f);
+            _charTestButton = MakeButton("DevCharacterTestButton", "캐릭터", bottomRight,
+                new Vector2(-24f, 84f), devSize, 24f, DevOffColor, OnToggleCharacterTest);
+            _charTestImage = _charTestButton.GetComponent<Image>();
+            _charTestLabel = _charTestButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            _postButton = MakeButton("DevPostButton", "포스트", bottomRight,
+                new Vector2(-24f, 24f), devSize, 24f, DevOffColor, OnTogglePost);
+            _postImage = _postButton.GetComponent<Image>();
+            _postLabel = _postButton.GetComponentInChildren<TextMeshProUGUI>();
 
             UiLayer.Apply(gameObject);
         }
 
-        private Button MakeButton(string name, string label, Vector2 bottomAnchoredPos, Color color, Action onClick)
+        private Button MakeButton(string name, string label, Vector2 anchor, Vector2 anchoredPos,
+                                  Vector2 size, float fontSize, Color color, Action onClick)
         {
             var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(_root.transform, false);
             var rt = (RectTransform)go.transform;
-            rt.anchorMin = new Vector2(0.5f, 0f);
-            rt.anchorMax = new Vector2(0.5f, 0f);
-            rt.pivot = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = bottomAnchoredPos;
-            rt.sizeDelta = new Vector2(260f, 96f);
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = anchor;
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = size;
             go.GetComponent<Image>().color = color;
             var btn = go.GetComponent<Button>();
             btn.onClick.AddListener(() => onClick());
@@ -193,7 +284,7 @@ namespace Wassup.UI
             var tmp = labelGO.AddComponent<TextMeshProUGUI>();
             if (buttonFont != null) tmp.font = buttonFont;
             tmp.text = label;
-            tmp.fontSize = 40;
+            tmp.fontSize = fontSize;
             tmp.color = Color.white;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.raycastTarget = false;
