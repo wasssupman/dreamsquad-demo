@@ -23,7 +23,7 @@ MonoBehaviour:
     fitMargin: 1.15
     fixedDistance: 20
     screenY: 0.554
-    fov: 35.9834
+    fov: 31.2
     flightSec: 0.6
     ease:
       serializedVersion: 2
@@ -59,7 +59,7 @@ MonoBehaviour:
     fitMargin: 1.0058
     fixedDistance: 20
     screenY: 0.5543
-    fov: 35.9834
+    fov: 23.6
     flightSec: 0.6
     ease:
       serializedVersion: 2
@@ -88,7 +88,7 @@ MonoBehaviour:
     dofEnabled: 1
     dofStart: 1
     dofEnd: 1.6
-    dofMaxRadius: 1
+    dofMaxRadius: 1.5
   pulseFovDelta: 0
   pulseDolly: 1.14
   pulseSec: 0.22
