@@ -16,54 +16,79 @@ MonoBehaviour:
   kickPosAmp: 0.08
   kickRotAmp: 0.35
   kickDuration: 0.16
-  phasePoses:
-  - phase: 1
-    localPosOffset: {x: 0, y: 0, z: -1.5}
-    pitchOffset: -8
-    fovOffset: 0
-    flightSec: 0.7
-    ease:
-      serializedVersion: 2
-      m_Curve: []
-      m_PreInfinity: 0
-      m_PostInfinity: 0
-      m_RotationOrder: 0
-  - phase: 2
-    localPosOffset: {x: 0, y: 0, z: -0.8}
-    pitchOffset: -5
-    fovOffset: 0
+  stateFramings:
+  - state: 0
+    pitchDeg: 70
+    fitToBoard: 1
+    fitMargin: 1.15
+    fixedDistance: 20
+    screenY: 0.554
+    fov: 35.9834
     flightSec: 0.6
     ease:
       serializedVersion: 2
-      m_Curve: []
-      m_PreInfinity: 0
-      m_PostInfinity: 0
-      m_RotationOrder: 0
-  - phase: 3
-    localPosOffset: {x: 0, y: 0, z: 0}
-    pitchOffset: 0
-    fovOffset: 0
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    dofEnabled: 0
+    dofStart: 0.6
+    dofEnd: 0.88
+    dofMaxRadius: 1.5
+  - state: 1
+    pitchDeg: 50
+    fitToBoard: 1
+    fitMargin: 1.0058
+    fixedDistance: 20
+    screenY: 0.5543
+    fov: 35.9834
     flightSec: 0.6
     ease:
       serializedVersion: 2
-      m_Curve: []
-      m_PreInfinity: 0
-      m_PostInfinity: 0
-      m_RotationOrder: 0
-  - phase: 4
-    localPosOffset: {x: 0, y: 0, z: 1}
-    pitchOffset: 0
-    fovOffset: -2
-    flightSec: 0.5
-    ease:
-      serializedVersion: 2
-      m_Curve: []
-      m_PreInfinity: 0
-      m_PostInfinity: 0
-      m_RotationOrder: 0
-  boardFitMargin: 1.12
-  boardFramePullback: 4
-  boardFrameRaiseY: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    dofEnabled: 1
+    dofStart: 1
+    dofEnd: 1.6
+    dofMaxRadius: 1
   pulseFovDelta: 0
   pulseDolly: 1.14
   pulseSec: 0.22
@@ -83,6 +108,7 @@ MonoBehaviour:
   focusDamping: 10
   focusFadeInSec: 0.25
   focusFadeOutSec: 0.24
+  placementFocusLead: 0.15
   inspectDolly: 3
   inspectFovDelta: -6
   inspectFollowRate: 12

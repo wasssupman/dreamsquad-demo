@@ -1190,19 +1190,21 @@ namespace Wassup.Bridge
                 Wassup.Core.BoardSpace.Configure(BoardOrigin, tileSize, tilemapMapView.Grid);
 
             // 카메라 포즈는 CameraDirector 가 매 프레임 절대값으로 소유한다 — 여기서 카메라를 직접
-            // 쓰면 다음 LateUpdate 에 홈 포즈로 되돌려져 무효다. 맵 빌드 시점에 카메라를 만지는
-            // 경로를 다시 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
-            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(camera-direction unit 1)로.
+            // 쓰면 다음 LateUpdate 에 덮여 무효다. 맵 빌드 시점에 카메라를 만지는 경로를 다시
+            // 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
+            // 페이즈별 카메라가 필요하면 CameraDirectionConfig 의 상태 레시피(camera-direction unit 10)로.
 
-            // camera-direction unit 8 — 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이
-            // 남거나 가장자리가 잘린다. 그리드가 확정된 지금 홈 거리를 다시 잡는다.
-            // 카메라를 직접 쓰지 않고 소유자(CameraDirector)의 홈만 갱신 — 페이즈/포커스/킥 델타는
-            // 홈 기준이라 그대로 따라온다. view·director 부재(headless)면 조용히 skip.
+            // camera-direction unit 11 — 맵마다 크기가 달라(12×10 ~ 20×12) 카메라가 판에 맞춰
+            // 물러나야 한다. 그리드가 확정된 지금 보드 bounds 를 카메라 소유자에게 **밀어준다**.
+            // 브리지가 이 push 의 정당한 소유자인 이유: 격자 크기가 _generatedMap.gridSize,
+            // 즉 sim 쪽 데이터다(뷰끼리 직접 주고받게 되돌리지 말 것).
+            // Director 는 이 값을 저장만 하고 포즈는 상태 레시피에서 매 프레임 계산한다.
+            // view·director 부재(headless)면 조용히 skip.
             // bounds 는 ground 렌더러 실측이 아니라 플레이 그리드다 —
             // 전자는 주변 데코 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다.
             if (tilemapMapView != null && tilemapMapView.TryGetPlayfieldWorldBounds(
                     new Vector2Int(_generatedMap.gridSize.x, _generatedMap.gridSize.y), out var boardBounds))
-                EnsureCameraDirector()?.FrameBoard(boardBounds);
+                EnsureCameraDirector()?.SetBoardBounds(boardBounds);
 
             BuildFlowField();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와

@@ -3,14 +3,15 @@ using UnityEngine;
 namespace Wassup.Presentation
 {
     // camera-direction unit 0 — 카메라 포즈 합성 순수 수학 (plain in/out, EditMode 테스트 대상).
-    // 델타는 전부 "홈 포즈 기준 카메라 로컬 축" 해석: localPos 는 홈 회전 축으로 변환해 더하고,
-    // pitch/roll 은 홈 기준 right/forward 둘레 회전. 값 자체는 아키텍처를 모른다.
+    // 델타는 전부 "base 포즈 기준 카메라 로컬 축" 해석: localPos 는 base 회전 축으로 변환해 더하고,
+    // pitch/roll 은 base 기준 right/forward 둘레 회전. 값 자체는 아키텍처를 모른다.
+    // (unit 11 부터 base = 현재 카메라 상태의 레시피 해. 그 전에는 씬에서 캡처한 홈 포즈였다.)
     public struct CameraPoseDelta
     {
         public Vector3 localPos; // 카메라 로컬 축 위치 오프셋
-        public float pitchDeg;   // 홈 right 축 회전
-        public float yawDeg;     // 홈 up 축 회전 (unit 5 — 드래그 포커스 lookat)
-        public float rollDeg;    // 홈 forward 축 회전
+        public float pitchDeg;   // base right 축 회전
+        public float yawDeg;     // base up 축 회전 (unit 5 — 드래그 포커스 lookat)
+        public float rollDeg;    // base forward 축 회전
         public float fovDelta;
 
         public static CameraPoseDelta Identity => default;
@@ -27,20 +28,6 @@ namespace Wassup.Presentation
                 yawDeg = a.yawDeg + b.yawDeg,
                 rollDeg = a.rollDeg + b.rollDeg,
                 fovDelta = a.fovDelta + b.fovDelta,
-            };
-        }
-
-        // unit 1 — 비행 보간: 컴포넌트별 unclamped lerp. 진행도(0~1)는 호출부가 클램프하고,
-        // 이징 커브의 오버슈트(>1)는 그대로 통과시킨다(백-이즈 연출 허용).
-        public static CameraPoseDelta Lerp(in CameraPoseDelta a, in CameraPoseDelta b, float t)
-        {
-            return new CameraPoseDelta
-            {
-                localPos = Vector3.LerpUnclamped(a.localPos, b.localPos, t),
-                pitchDeg = Mathf.LerpUnclamped(a.pitchDeg, b.pitchDeg, t),
-                yawDeg = Mathf.LerpUnclamped(a.yawDeg, b.yawDeg, t),
-                rollDeg = Mathf.LerpUnclamped(a.rollDeg, b.rollDeg, t),
-                fovDelta = Mathf.LerpUnclamped(a.fovDelta, b.fovDelta, t),
             };
         }
 
@@ -101,13 +88,63 @@ namespace Wassup.Presentation
             };
         }
 
+        // camera-direction unit 13 — 상태별 흐림의 «푼 결과». 절대 거리 두 개와 세기 하나.
+        // 기준(보드 깊이 정규화)이 무엇이든 여기까지 오면 절대값이라, 성격이 다른 상태끼리도
+        // 그냥 섞을 수 있다.
+        public struct DofSolution
+        {
+            public bool on;
+            public float start, end, radius;
+        }
+
+        // 상태 전환 중 흐림 보간. 한쪽이 꺼진 조합은 **켜진 쪽의 임계값을 쓰고 반경만** 0 으로
+        // 보낸다 — 임계값까지 섞으면 흐림 경계가 화면을 가로질러 훑고 지나간다.
+        public static DofSolution BlendDof(in DofSolution a, in DofSolution b, float t)
+        {
+            if (!a.on && !b.on) return default;
+            if (!a.on) return new DofSolution { on = true, start = b.start, end = b.end, radius = Mathf.Lerp(0f, b.radius, t) };
+            if (!b.on) return new DofSolution { on = true, start = a.start, end = a.end, radius = Mathf.Lerp(a.radius, 0f, t) };
+            return new DofSolution
+            {
+                on = true,
+                start = Mathf.Lerp(a.start, b.start, t),
+                end = Mathf.Lerp(a.end, b.end, t),
+                radius = Mathf.Lerp(a.radius, b.radius, t),
+            };
+        }
+
+        // camera-direction unit 12 — 배치 커서 추종.
+        //
+        // 드래그 포커스와 **같은 입력(스크린 NDC)**을 쓰되 델타 해석이 다르다. FocusDelta 는
+        // "포인터 방향으로 전진 + 부분 lookat" 이고, 이쪽은 "화면을 커서 쪽으로 민다" —
+        // 회전을 건드리지 않아 보드 좌표감이 유지되고 판 전체가 화면에 남는다.
+        //
+        // 입력이 NDC 인 것이 계약이다. 커서를 월드에 투영하면 안 된다 — 지금 그 커서 쪽으로
+        // 기울고 있는 카메라로 투영하면 같은 픽셀 아래 월드 점이 매 프레임 움직여
+        // "카메라 이동 → 대상 이동 → 카메라 이동" 되먹임이 된다(스프링은 진동을 숨길 뿐이다).
+        //
+        // depth = base 포즈에서 보드 중앙까지의 시야 깊이. 그 깊이에서 화면 절반이 담는
+        // 세계 크기가 depth·tan 이므로, lead 1 이면 커서 지점이 정확히 화면 중앙에 온다.
+        public static CameraPoseDelta PanDelta(
+            Vector2 ndc, float fovDeg, float aspect, float weight, float lead, float depth)
+        {
+            if (weight <= 0f || lead == 0f || depth <= 0f) return default;
+            float tanV = Mathf.Tan(fovDeg * 0.5f * Mathf.Deg2Rad);
+            float tanH = tanV * Mathf.Max(0.01f, aspect);
+            float k = lead * weight * depth;
+            return new CameraPoseDelta
+            {
+                localPos = new Vector3(ndc.x * k * tanH, ndc.y * k * tanV, 0f),
+            };
+        }
+
         // unit 5 rev 3 — 드래그 포커스 델타. 입력은 **터치 스크린 NDC**(-1..1, 중앙 0) —
         // 월드/카메라 포즈 비의존이라 "카메라 회전→보드 재계산→타겟 이동" 되먹임 루프가
-        // 원천적으로 없다. 홈 FOV/aspect 로 포인터 ray 의 홈-로컬 방향을 복원해
+        // 원천적으로 없다. base FOV/aspect 로 포인터 ray 의 base-로컬 방향을 복원해
         // dolly(포인터 방향 전진) + 부분 lookat + 스와이프 리드(NDC 속도) + FOV 를 만든다.
         // ndc/ndcVel 은 호출부(Director)가 스프링-댐핑으로 스무딩한 값 — 리드 속도 = 스프링 속도.
         public static CameraPoseDelta FocusDelta(
-            Vector2 ndc, Vector2 ndcVel, float homeFovDeg, float aspect,
+            Vector2 ndc, Vector2 ndcVel, float baseFovDeg, float aspect,
             float weight, float dolly, float fovDelta, float lookWeight,
             float leanPerSpeed, float leanMaxDeg)
         {
@@ -116,11 +153,11 @@ namespace Wassup.Presentation
             // 되먹임은 사라졌지만 각 증폭 상한으로 유지(풀 lookat 은 배치 좌표감 파괴).
             lookWeight = Mathf.Clamp(lookWeight, 0f, 0.5f);
 
-            float tanV = Mathf.Tan(homeFovDeg * 0.5f * Mathf.Deg2Rad);
+            float tanV = Mathf.Tan(baseFovDeg * 0.5f * Mathf.Deg2Rad);
             float tanH = tanV * Mathf.Max(0.01f, aspect);
             Vector3 dirLocal = new Vector3(ndc.x * tanH, ndc.y * tanV, 1f).normalized;
 
-            // 부분 lookat: 홈 forward(+z) 대비 포인터 ray 방향의 yaw/pitch 풀각 → lookWeight 블렌드.
+            // 부분 lookat: base forward(+z) 대비 포인터 ray 방향의 yaw/pitch 풀각 → lookWeight 블렌드.
             // 주의: 이 분해(Ry·Rx)는 Compose 적용 순서(yaw 먼저)의 전치라 두 각이 동시에 클 때
             // O(yaw×pitch) 교차항 오차가 있다 — 부분 블렌드(≤0.5)에선 무시 가능, 풀 lookat 금지.
             float yawFull = Mathf.Atan2(dirLocal.x, dirLocal.z) * Mathf.Rad2Deg;
@@ -139,20 +176,20 @@ namespace Wassup.Presentation
             };
         }
 
-        // 홈 포즈 ⊕ 델타 → 절대 포즈. 델타 항등이면 홈 그대로.
-        // FOV 는 [fovMin, fovMax] 클램프 — 페이즈 델타+펄스가 SO 튜닝만으로 위험 FOV 가
+        // base 포즈 ⊕ 델타 → 절대 포즈. 델타 항등이면 base 그대로.
+        // FOV 는 [fovMin, fovMax] 클램프 — 상태 화각+펄스가 SO 튜닝만으로 위험 FOV 가
         // 되지 않도록 코드 계약으로 차단 (spec README).
         public static void Compose(
-            Vector3 homePos, Quaternion homeRot, float homeFov, in CameraPoseDelta delta,
+            Vector3 basePos, Quaternion baseRot, float baseFov, in CameraPoseDelta delta,
             float fovMin, float fovMax,
             out Vector3 pos, out Quaternion rot, out float fov)
         {
-            pos = homePos + homeRot * delta.localPos;
-            rot = Quaternion.AngleAxis(delta.rollDeg, homeRot * Vector3.forward)
-                * Quaternion.AngleAxis(delta.pitchDeg, homeRot * Vector3.right)
-                * Quaternion.AngleAxis(delta.yawDeg, homeRot * Vector3.up)
-                * homeRot;
-            fov = Mathf.Clamp(homeFov + delta.fovDelta, fovMin, fovMax);
+            pos = basePos + baseRot * delta.localPos;
+            rot = Quaternion.AngleAxis(delta.rollDeg, baseRot * Vector3.forward)
+                * Quaternion.AngleAxis(delta.pitchDeg, baseRot * Vector3.right)
+                * Quaternion.AngleAxis(delta.yawDeg, baseRot * Vector3.up)
+                * baseRot;
+            fov = Mathf.Clamp(baseFov + delta.fovDelta, fovMin, fovMax);
         }
     }
 }
