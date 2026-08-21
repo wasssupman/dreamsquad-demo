@@ -59,9 +59,10 @@ units 9~15 구현·커밋 완료. **핵심 체감은 사용자 Play 확인을 �
    항상 열려 헤드룸 -2 가 걸려 있어, `inspectPitchDeg` 를 켜면 하단 배치 유닛이 손패에 깔린다.
    **극적 틸트와 손패 상시 개방은 양립 불가** — 값 조정으로 안 끝난다. 부각은 각도가 아니라
    `inspectFrameBiasY`(프레이밍)로 한다. `inspectPitchDeg` 는 0 유지.
-2. **`CameraDirector.Kick()` 은 `enableNonDragEffects` 게이트에 막혀 지금 no-op 이다.**
-   사용자 행동 응답 피드백은 `FeedbackKick` 을 쓴다. 그 토글을 켜서 해결하지 말 것 —
-   앰비언트 연출(브리딩·비행·펄스)이 통째로 살아난다.
+2. ~~**`CameraDirector.Kick()` 은 게이트에 막혀 no-op 이다** — `FeedbackKick` 을 쓸 것.~~
+   → **camera-direction unit 16 에서 은퇴.** `enableNonDragEffects` 토글이 사라졌고
+   `FeedbackKick` 은 `Kick(strength, duration)` 으로 흡수됐다. 지금은 `Kick()` 이 그냥 동작한다.
+   지속시간을 주면 그 값이 전부이고, 0 이하를 주면 「이 피드백은 킥 없음」이다.
 3. **표시를 위해 sim 을 리팩터하지 않는다.** 최종 스탯은 저장되지 않고 `AttackSystem` 이
    소비 시점에 곱한다. 표시가 틀리면 숫자만 틀리지만 sim 회귀는 판정·밸런스가 틀린다.
    표시값은 **"조건 없는 타격당 피해"** — 조건부 배율은 넣을 수 없다(사양).

@@ -407,17 +407,21 @@ namespace Wassup.Presentation
         private Vector3[] _dofCornerBufFrom = new Vector3[8];
 
         // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 카드 흡수 임팩트 · 부착 거절).
-        // config 배선 전 호출은 안전 no-op (spec unit 0 계약). duration 을 안 주면 config 기본을
-        // 쓰고, 그것도 0 이면 킥 비활성 (별도 최소치 클램프를 두지 않는다).
+        // config 배선 전 호출은 안전 no-op (spec unit 0 계약).
         //
         // unit 16 — 구 `FeedbackKick(strength, duration)` 을 여기로 합쳤다. 둘의 차이는
         // (a) `enableNonDragEffects` 게이팅과 (b) duration 출처였는데, (a) 가 은퇴하면서 남은
         // 것은 (b) 뿐이다. "얼마나 짧은가" 는 그 피드백의 성격이지 카메라의 성질이 아니라
         // 호출처가 줄 수 있어야 하고, 진폭은 config 소유라 킥의 물리적 느낌은 한 곳에서 튜닝된다.
-        public void Kick(float strength = 1f, float duration = 0f)
+        //
+        // ⚠ duration 을 **명시하면 그 값이 전부다** — 0 이하는 「이 피드백은 킥 없음」이고
+        // config 기본으로 대체되지 않는다. 인자를 아예 안 주는 것(sentinel `-1`)만 config 기본을
+        // 쓴다. 둘을 겸직시키면 `rejectKickDuration` 을 0 으로 두어 거절 킥만 끄려던 저작이
+        // 대신 더 긴 카드흡수용 킥을 부른다(selection-hand-attach unit 14 의 명문 계약).
+        public void Kick(float strength = 1f, float duration = -1f)
         {
             if (config == null) return;
-            float dur = duration > 0f ? duration : config.kickDuration;
+            float dur = duration < 0f ? config.kickDuration : duration;
             if (dur <= 0f) return;
             _kickStrength = Mathf.Clamp01(strength);
             _kickDuration = dur;
@@ -436,16 +440,24 @@ namespace Wassup.Presentation
         }
 
         // unit 16 — 셰이크 한 방. **어느 호출처든 부를 수 있는 독립 채널**이다: 카메라는 무슨
-        // 사건인지 알 필요가 없고 세기와 길이만 받는다. 재발동은 줌 펄스와 같은 max-hold
-        // (진폭은 현재 값과 새 값의 max, 타이머 재시작) — 누적하면 연타에서 진폭이 폭주한다.
+        // 사건인지 알 필요가 없고 세기와 길이만 받는다. 재발동 규칙은
+        // `CameraComposeMath.ShouldReplaceShakeImpulse` 소유 — 줌 펄스의 max-hold 를 복사하면
+        // 안 되는 이유가 거기 적혀 있다.
         //
         // duration 에 기본값을 두지 않는 것이 계약이다 — 호출처가 SerializeField 로 저작하게
         // 강제해 코드에 시간 리터럴이 박히는 것을 막는다(제약 6). 진폭·주파수는 config 소유.
         public void Shake(float strength, float duration)
         {
             if (config == null || duration <= 0f) return;
-            float current = _shakeImpulseRemaining > 0f ? _shakeImpulseStrength : 0f;
-            _shakeImpulseStrength = Mathf.Max(current, Mathf.Clamp01(strength));
+            // 진폭 0 = 이 채널이 꺼진 것이다(unit 16 계약). 타이머도 걸지 않는다 — 걸어두면
+            // 구두점 활성 판정이 이 채널을 세지 않아 타이머가 굶고(아이들 프레임은 감쇠 코드에
+            // 도달하지 않는다), 나중에 진폭을 되살리는 순간 감쇠되지 않은 stale 임펄스가
+            // envelope 1 로 그대로 터진다.
+            if (config.shakeMaxPosAmp == 0f && config.shakeMaxRotAmp == 0f) return;
+            if (!CameraComposeMath.ShouldReplaceShakeImpulse(
+                    _shakeImpulseStrength, _shakeImpulseRemaining, _shakeImpulseDuration, strength))
+                return;
+            _shakeImpulseStrength = Mathf.Clamp01(strength);
             _shakeImpulseDuration = duration;
             _shakeImpulseRemaining = duration;
         }

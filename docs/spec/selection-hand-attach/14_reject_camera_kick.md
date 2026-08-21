@@ -18,7 +18,12 @@
 `FlinchSlot` 이 거절 피드백의 **단일 소유자**다(움찔 + 거절음). 킥도 여기 얹으면 호출처
 2곳(드래그 거절·탭 즉발 거절)이 자동으로 얻고, 끄고 싶을 때 한 곳만 본다.
 
-### 함정 — `Kick()` 은 지금 no-op 이다
+### 함정 — `Kick()` 은 지금 no-op 이다 (⚠ camera-direction unit 16 에서 해소)
+
+> **이 절은 2026-08-21 이전 상태를 기술한다.** `enableNonDragEffects` 토글은 은퇴했고
+> `FeedbackKick` 은 `Kick(strength, duration)` 으로 흡수됐다. 아래 설계 근거(«거절 킥은
+> 앰비언트가 아니라 사용자 행동에 대한 응답», «지속시간은 호출처가 준다»)는 그대로 살아 있고,
+> API 이름만 `Kick` 이다.
 
 기존 `CameraDirector.Kick()` 은 첫 줄이 `if (!config.enableNonDragEffects) return;` 인데
 **라이브 에셋이 `enableNonDragEffects: 0`** 이다. 그대로 부르면 아무 일도 일어나지 않는다.
@@ -37,7 +42,9 @@
 
 `rejectKickStrength 0.45` · `rejectKickDuration 0.1`(둘 다 뷰의 SerializeField).
 카드 움찔(0.26s)보다 **짧게** 잡아 화면이 먼저 튀고 카드가 이어 흔들리는 순서를 만든다.
-거슬리면 `rejectKickDuration` 을 0 으로 두면 킥만 꺼진다(`FeedbackKick` 이 `duration <= 0` 가드).
+거슬리면 `rejectKickDuration` 을 0 으로 두면 킥만 꺼진다(`Kick` 이 **명시된** `duration <= 0` 을
+끔으로 지킨다 — config 기본값으로 대체하지 않는다. unit 16 병합 때 이 계약이 한 번 깨졌다가
+코드 리뷰에서 복구됐다).
 
 ## 완료 기준
 

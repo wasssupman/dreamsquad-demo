@@ -19,6 +19,7 @@ unit 16 이 연 셰이크 채널의 **첫 새 호출처**. 배치 스킬이 발�
 - `Assets/_Project/Scripts/Data/DefenderUnitData.cs` — `onPlaceShakeStrength` / `onPlaceShakeDuration`
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `FireOnPlaceCameraShake` + 두 seam 배선
 - `Assets/_Project/Data/Defenders/Defender_{Malphite,Cannon,Shotgunner}.asset`
+- `Assets/_Project/Data/Camera/CameraDirectionConfig.asset` — 셰이크 진폭 천장 인상(아래 「완료 기준」)
 - `Assets/_Project/Tests/EditModeAssets/OnPlaceShakeAuthoringTests.cs`
 
 ## 구현
@@ -41,9 +42,13 @@ unit 16 이 연 셰이크 채널의 **첫 새 호출처**. 배치 스킬이 발�
 초)만 갖고, 진폭·주파수는 `CameraDirectionConfig` 소유다(unit 16 계약). 두 축은 따로 튜닝된다 —
 전체가 너무 흔들리면 config 를, 특정 유닛만 과하면 그 유닛을 만진다.
 
-**게이트는 세기 하나**(`strength <= 0` 이면 호출 자체를 건너뛴다). 배치 스킬이 없는 유닛은
-저작을 비워 두면 그만이고, 배치할 때마다 화면이 흔들리지 않는다 — 항상 흔들리면 스킬의
-신호가 죽는다.
+**게이트는 세기 하나**(`strength <= 0` 이면 호출 자체를 건너뛴다). 저작을 비운 유닛은 흔들지
+않는다 — 배치할 때마다 흔들리면 스킬의 신호가 죽는다.
+
+⚠ **「배치 스킬이 있는 유닛」이 기준이 아니다.** 레거시 `onPlaceEffect` 를 가진 디펜더만 12기고
+(궁수도 `BindNearby` 를 갖는다), 그중 셰이크를 저작한 건 3기뿐이다. 기준은 **선별 목록** —
+`on-place-skill-rework` 의 재설계 기준대로 「평소 못 하는 일을 하는」 스킬만 화면을 흔든다.
+전부에 달면 «배치 = 항상 흔들림» 이 되어 구분이 사라진다.
 
 **저작값(2026-08-21 시작점, 체감 튜닝 대상)**
 
