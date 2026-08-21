@@ -22,7 +22,8 @@ namespace Wassup.Tests.EditMode
             { "active_tornado", "회오리" },
             { "all_atk", "올딜" },
             { "all_move", "올이속" },
-            { "bouncy_bead", "튕구슬" },
+            // 2026-08-21 — 시트가 정본이고 이 목록이 뒤처져 있었다(디스크 SO 도 함께 갱신).
+            { "bouncy_bead", "바운스샷" },
             // content-5 unit 3 — 왕복 궤적 + 관통탄 넉백.
             { "boomerang", "부메랑" },
             { "sub_butterfly_dream", "나비꿈" },

@@ -766,9 +766,9 @@ namespace Wassup.UI
                 .OnComplete(() => captured.flinching = false);
             SoundManager.Instance?.PlayCardReturn(); // 거절 = 카드가 제자리로(취소와 같은 계열음)
             // unit 14 — 아주 짧은 카메라 킥을 얹는다. 카드만 움찔하면 손가락 밑이라 놓치기 쉬운데,
-            // 화면 전체가 한 번 튀면 "안 먹혔다"가 주변시로도 읽힌다. FeedbackKick 은 앰비언트
-            // 토글에 묶이지 않는다(Kick 은 묶여서 현재 에셋에선 no-op 이다).
-            EnsureCameraDirector()?.FeedbackKick(rejectKickStrength, rejectKickDuration);
+            // 화면 전체가 한 번 튀면 "안 먹혔다"가 주변시로도 읽힌다. 거절은 카드 흡수보다 더
+            // 짧아야 해서 지속시간을 여기서 준다(camera-direction unit 16 로 Kick 에 통합).
+            EnsureCameraDirector()?.Kick(rejectKickStrength, rejectKickDuration);
         }
 
         public void RestoreSlotHome(int index)

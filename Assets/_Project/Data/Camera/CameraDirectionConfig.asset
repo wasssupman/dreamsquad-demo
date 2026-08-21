@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 874aef58f424040b6b29ff81aac64a00, type: 3}
   m_Name: CameraDirectionConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.CameraDirectionConfig
-  enableNonDragEffects: 0
   kickPosAmp: 0.08
   kickRotAmp: 0.35
   kickDuration: 0.16
@@ -54,7 +53,7 @@ MonoBehaviour:
     dofEnd: 0.88
     dofMaxRadius: 1.5
   - state: 1
-    pitchDeg: 50
+    pitchDeg: 55
     fitToBoard: 1
     fitMargin: 1.01037
     fixedDistance: 20
@@ -92,8 +91,8 @@ MonoBehaviour:
   pulseFovDelta: 0
   pulseDolly: 1.14
   pulseSec: 0.22
-  shakeMaxPosAmp: 0.04
-  shakeMaxRotAmp: 0.12
+  shakeMaxPosAmp: 0.25
+  shakeMaxRotAmp: 0.9
   shakeFreqX: 13.93
   shakeFreqY: 8.3
   punctuationFadeSec: 0.15
@@ -140,5 +139,5 @@ MonoBehaviour:
     phase01: 0.67
     posWeight: {x: 0, y: 0.3}
     pitchWeight: 1
-  breathPhases: 010000000200000003000000
+  breathPhases: 
   breathFadeSec: 1.5

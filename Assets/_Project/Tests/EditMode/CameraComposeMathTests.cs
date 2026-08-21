@@ -264,4 +264,82 @@ public class CameraComposeMathTests
         Assert.That(d.rollDeg, Is.EqualTo(0.175f).Within(1e-6f));
         Assert.That(d.fovDelta, Is.EqualTo(0f));
     }
+
+    // camera-direction unit 16 — 셰이크 유효 세기. 임펄스(한 방)와 지속 레벨(킬 스트릭)이
+    // 겹칠 때 **더하지 않고 max** 라는 계약이 이 테스트의 대상이다. 합으로 바꾸면 두 출처가
+    // 동시에 울릴 때 진폭이 상한을 넘어 멀미가 난다.
+    [Test]
+    public void ShakeWeight_ImpulseAndHeat_TakesMaxNotSum()
+    {
+        // 임펄스: 강도 1, 수명 절반 남음 → envelope 0.25 (k²)
+        float impulseOnly = CameraComposeMath.ShakeWeight(1f, 0.5f, 1f, 0f);
+        Assert.That(impulseOnly, Is.EqualTo(0.25f).Within(1e-6f));
+
+        // 지속이 더 크면 지속이 이긴다. 합(0.85)이 아니다.
+        Assert.That(CameraComposeMath.ShakeWeight(1f, 0.5f, 1f, 0.6f),
+            Is.EqualTo(0.6f).Within(1e-6f));
+        // 임펄스가 더 크면 임펄스가 이긴다. 합(1.1)이 아니다.
+        Assert.That(CameraComposeMath.ShakeWeight(1f, 1f, 1f, 0.1f),
+            Is.EqualTo(1f).Within(1e-6f));
+    }
+
+    [Test]
+    public void ShakeWeight_Impulse_DecaysOverLifetime()
+    {
+        float early = CameraComposeMath.ShakeWeight(1f, 0.9f, 1f, 0f);
+        float mid = CameraComposeMath.ShakeWeight(1f, 0.5f, 1f, 0f);
+        float late = CameraComposeMath.ShakeWeight(1f, 0.1f, 1f, 0f);
+        Assert.That(early, Is.GreaterThan(mid));
+        Assert.That(mid, Is.GreaterThan(late));
+        Assert.That(CameraComposeMath.ShakeWeight(1f, 0f, 1f, 0f), Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void ShakeWeight_ZeroDuration_DisablesImpulseButKeepsHeat()
+    {
+        // duration 0 = 그 채널 끔 규약(kickDuration 0 과 같다). 지속 레벨은 그대로 산다.
+        Assert.That(CameraComposeMath.ShakeWeight(1f, 1f, 0f, 0f), Is.EqualTo(0f));
+        Assert.That(CameraComposeMath.ShakeWeight(1f, 1f, 0f, 0.4f), Is.EqualTo(0.4f).Within(1e-6f));
+    }
+
+    [Test]
+    public void ShakeWeight_NoInput_IsZero_AndHeatIsClamped()
+    {
+        Assert.That(CameraComposeMath.ShakeWeight(0f, 0f, 0.3f, 0f), Is.EqualTo(0f));
+        Assert.That(CameraComposeMath.ShakeWeight(0f, 0f, 0.3f, 1.5f), Is.EqualTo(1f).Within(1e-6f));
+        Assert.That(CameraComposeMath.ShakeWeight(0f, 0f, 0.3f, -2f), Is.EqualTo(0f));
+    }
+
+    // camera-direction unit 16 rev2 — 셰이크 한 방의 **재발동 규칙**. 리뷰가 잡은 결함:
+    // 「세기는 max, 길이는 새 값」 이면 어느 호출처도 저작하지 않은 임펄스가 만들어진다.
+    [Test]
+    public void ShakeImpulse_WeakRetriggerDuringStrongOne_KeepsTheStrongOne()
+    {
+        // 말파이트(1.0 / 0.35s) 방금 시작 → 유효 세기 1.0. 곧바로 샷건맨(0.6) 배치.
+        // 갈아끼우면 샷건맨의 «짧고 약한 한 방» 이 말파이트 세기 1.0 으로 울린다.
+        Assert.IsFalse(CameraComposeMath.ShouldReplaceShakeImpulse(1f, 0.35f, 0.35f, 0.6f));
+    }
+
+    [Test]
+    public void ShakeImpulse_RetriggerAfterCurrentFaded_Replaces()
+    {
+        // 다 잦아든 뒤에는 아무리 약한 한 방도 새로 울려야 한다.
+        Assert.IsTrue(CameraComposeMath.ShouldReplaceShakeImpulse(1f, 0f, 0.35f, 0.1f));
+        // 거의 잦아든 강한 임펄스(env=(0.1)²=0.01)보다 약한 새 임펄스가 크면 갈아낀다.
+        Assert.IsTrue(CameraComposeMath.ShouldReplaceShakeImpulse(1f, 0.05f, 0.5f, 0.6f));
+    }
+
+    [Test]
+    public void ShakeImpulse_StrongerRetrigger_Replaces()
+    {
+        Assert.IsTrue(CameraComposeMath.ShouldReplaceShakeImpulse(0.3f, 0.5f, 0.5f, 0.6f));
+    }
+
+    [Test]
+    public void ShakeImpulse_LongWeakRetrigger_CannotInheritTheStrongAmplitude()
+    {
+        // 최악형: 강하고 짧은 것(1.0/0.2s) 직후 약하고 긴 것(0.1/2.0s).
+        // 갈아끼우면 «세기 1.0 을 2초» 가 된다 — 아무도 저작하지 않은 조합.
+        Assert.IsFalse(CameraComposeMath.ShouldReplaceShakeImpulse(1f, 0.2f, 0.2f, 0.1f));
+    }
 }

@@ -74,6 +74,40 @@ namespace Wassup.Presentation
             };
         }
 
+        // camera-direction unit 16 — 셰이크 유효 세기. 입력이 둘이다: **한 방**(임펄스 — 세기와
+        // 길이를 받아 envelope 으로 잦아든다)과 **계속 흔들리는 상태**(지속 레벨 — 오르내림을
+        // 호출처가 소유한다). 성격이 달라 하나로 합치지 않는다.
+        //
+        // 둘이 겹칠 때는 **더하지 않고 max** 다. 합치면 두 출처가 동시에 울릴 때 진폭이 상한을
+        // 넘어 멀미가 난다 — 이 한 줄이 이 함수가 존재하는 이유다(회귀 테스트 대상).
+        // 임펄스 감쇠는 킥과 같은 envelope 을 쓴다(duration<=0 = 그 채널 끔 규약도 함께 계승).
+        public static float ShakeWeight(
+            float impulseStrength, float impulseRemaining, float impulseDuration, float heat01)
+        {
+            float impulse = impulseStrength * KickEnvelope(impulseRemaining, impulseDuration);
+            return Mathf.Max(impulse, Mathf.Clamp01(heat01));
+        }
+
+        // camera-direction unit 16 rev2 — 셰이크 한 방의 **재발동 규칙** (코드 리뷰 반영).
+        //
+        // 「세기는 max, 길이는 새 값」 은 안 된다. 셰이크는 길이를 **호출처가** 주기 때문에
+        // 그 조합이 어느 호출처도 저작하지 않은 임펄스를 만든다 — 말파이트(1.0/0.35s) 직후
+        // 샷건맨(0.6/0.18s)이면 「세기 1.0 을 0.18초 더」가 되어 샷건맨의 짧고 약한 한 방이
+        // 말파이트 세기로 울린다. 최악은 강하고 짧은 것 뒤에 약하고 긴 것이 와서
+        // 「세기 1.0 을 2초」가 되는 경우다.
+        // (줌 펄스에는 이 문제가 없다 — 길이 출처가 config 하나뿐이라 hold 가 늘어나지 않는다.
+        //  **그래서 그 규약을 그대로 복사하면 안 된다.** 초판이 복사해서 이 결함이 났다.)
+        //
+        // 그래서 임펄스를 **통째로** 비교한다: 새 한 방의 시작 세기가 지금 울리고 있는 유효
+        // 세기 이상이면 갈아끼우고, 아니면 진행 중인 것을 건드리지 않는다. 세기도 길이도
+        // 섞이지 않으므로 화면에 나오는 임펄스는 항상 «누군가 저작한 그대로» 다.
+        public static bool ShouldReplaceShakeImpulse(
+            float currentStrength, float currentRemaining, float currentDuration, float newStrength)
+        {
+            float currentEffective = currentStrength * KickEnvelope(currentRemaining, currentDuration);
+            return Mathf.Clamp01(newStrength) >= currentEffective;
+        }
+
         // unit 3 — 브리딩 파동 1개의 델타: 위상(0~1) 기반 sin. 같은 위상 → 같은 값(결정론).
         // 절대 시각이 아니라 호출부가 누적·wrap 한 위상을 받는다(장세션 float 정밀도 — spec).
         public static CameraPoseDelta BreathWaveDelta(

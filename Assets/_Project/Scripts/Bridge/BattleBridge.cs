@@ -459,6 +459,9 @@ namespace Wassup.Bridge
         // 뷰는 맵 수명(배치 페이즈부터 보인다)이고 엔티티는 판 수명이라 엔티티 참조로 묶으면
         // 매 판 재배선이 필요하다. 셀은 두 수명 모두에서 불변이다.
         private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureTurretView> _structureTurretsByCell = new();
+        // instinct-wreck unit 0 — 붕괴한 거점의 잔해 프리젠터. 포신 사전과 **같은 자리·같은
+        // 규칙**(셀로 잇는다 — 뷰는 맵 수명, 엔티티는 판 수명이라 셀만이 두 수명에서 불변).
+        private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureWreckView> _structureWrecksByCell = new();
         [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
         [SerializeField] private float goalOverheadHeight = 1.1f;
 
@@ -5980,6 +5983,11 @@ namespace Wassup.Bridge
                 // 거점이 포신을 안 갖는 것 자체는 정상이라(마음) 미발견은 경고 대상이 아니다.
                 var turret = view.GetComponentInChildren<Wassup.Presentation.StructureTurretView>();
                 if (turret != null) _structureTurretsByCell[s.cell] = turret;
+                // instinct-wreck unit 0 — 잔해 프리젠터도 같은 판단으로 등록한다. 「잔해를
+                // 갖는가」는 **컴포넌트 유무**가 정한다(kind 분기도 id 분기도 없다). 미발견은
+                // 경고 대상이 아니다 — 마음은 원래 이 프리젠터가 없고 그게 정상이다.
+                var wreck = view.GetComponentInChildren<Wassup.Presentation.StructureWreckView>();
+                if (wreck != null) _structureWrecksByCell[s.cell] = wreck;
             }
         }
 
@@ -5990,6 +5998,7 @@ namespace Wassup.Bridge
                 if (_structureViews[i] != null) Destroy(_structureViews[i]);
             _structureViews.Clear();
             _structureTurretsByCell.Clear();   // 프리젠터는 뷰와 같은 수명 — stale 참조 방지
+            _structureWrecksByCell.Clear();    // instinct-wreck unit 0 — 형제와 같은 지점
         }
 
         private void DestroyStructureEntities()
@@ -6232,6 +6241,16 @@ namespace Wassup.Bridge
                     Debug.Log($"[BattleBridge] Structure collapsed — cell=({cell.x},{cell.y}) faction={faction}");
                     tileHealthGaugeLayer?.Hide(cell);
                     vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+                    // instinct-wreck unit 0 — 프랍에게도 알린다. 지금까지 붕괴는 게이지·VFX·로그만
+                    // 알고 **프랍은 몰라서** 부서진 포탑이 멀쩡히 서 있었다.
+                    if (_structureWrecksByCell.TryGetValue(cell, out var wreckView) && wreckView != null)
+                    {
+                        // unit 1 — 떼어낸 부품 컨테이너는 **기존 뷰 스윕에 넘긴다**. 새 정리
+                        // 경로(OnDestroy 훅)를 만들면 씬 언로드 시점의 fake-null 레이스를 타고,
+                        // 그 사고는 이 파일에 이미 실측 주석으로 박혀 있다(retireFlight, 2026-08-15).
+                        var debrisRoot = wreckView.Collapse();
+                        if (debrisRoot != null) _structureViews.Add(debrisRoot);
+                    }
                 }
             }
 
@@ -6826,6 +6845,7 @@ namespace Wassup.Bridge
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
             MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
+            FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
@@ -7833,6 +7853,21 @@ namespace Wassup.Bridge
             ApplyEffectTileIfAny(cell, entity);
         }
 
+        // camera-direction unit 17 — 배치 스킬 발동 순간의 카메라 셰이크.
+        //
+        // **파이프라인을 묻지 않는 것이 핵심이다.** 배치 스킬은 두 어휘로 구현돼 있다 —
+        // 레거시 `onPlaceEffect` enum(말파이트)과 `abilities` 의 규칙(`UnitSkillAbility`,
+        // 캐논·샷건맨). 둘의 실행 지점은 다르지만 **발동이 확정되는 순간은 이 seam 하나**라,
+        // 여기서 울리면 어느 쪽으로 만든 스킬이든 같은 대접을 받는다.
+        //
+        // 세기·길이는 유닛이 저작하고(제약 6) 진폭은 카메라 config 소유 — 「이 유닛이 얼마나
+        // 크게 울리나」와 「셰이크가 물리적으로 어떤 느낌인가」는 서로 다른 튜닝 축이다.
+        private void FireOnPlaceCameraShake(DefenderUnitData unitData)
+        {
+            if (unitData == null || unitData.onPlaceShakeStrength <= 0f) return;
+            EnsureCameraDirector()?.Shake(unitData.onPlaceShakeStrength, unitData.onPlaceShakeDuration);
+        }
+
         // on-place-skill-rework unit 0 — 규칙 경로(`DcTriggerKind.OnPlace`)의 발화 신호.
         // 브리지는 **사건만 알리고** 실행은 BossPeriodicTriggerSystem 이 한다 — 그래야
         // payload arm 사본이 늘지 않고, 배치 확정 지점이 셋이어도 태그 부착만 지키면 된다.
@@ -7858,6 +7893,7 @@ namespace Wassup.Bridge
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             ApplyOnPlacePush(unitData, cell);
             MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
+            FireOnPlaceCameraShake(unitData);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             RecomputeSynergyFor(cell);

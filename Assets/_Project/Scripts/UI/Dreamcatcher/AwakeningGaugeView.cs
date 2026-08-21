@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -13,9 +12,14 @@ namespace Wassup.UI
 {
     // dreamcatcher-orb-dock unit 1 — 트레이 우측 분리 "드림캐쳐 항아리 독".
     // 코너 버스트 버튼(retired)을 대체한다. 세로 항아리에 큰 숫자(1순위 판독) + 세로 채움
-    // + 코스트 눈금 + ready 림 + 발견성 라벨. 채움은 unit 2 피규어가 덮을 placeholder.
+    // + ready 림 + 발견성 라벨. 채움은 unit 2 피규어 더미가 담당.
     // 탭=Toggled(기존 계약), open/close 상태 소유자는 여전히 DreamcatcherHandView.
     // 클래스명·public API·씬 배선(GameObject 1012444853, gaugeView 참조 2곳)은 유지.
+    //
+    // unit 8 — 항아리 탭이 꺼진 뒤(JarTapEnabled=false) 이 독은 입력을 유도하지 않는
+    // «수치 판독면» 이다. 그래서 평소에는 완전히 정지하고(상시 어필 어휘 전량 철거),
+    // 각성치가 한 회분(=가장 싼 카드 코스트) 경계를 넘는 그 순간에만 짧게 터진다.
+    // 회차를 선으로 그리지는 않는다(사용자 결정: 칸 구분 없음) — 사건으로만 말한다.
     public class AwakeningGaugeView : MonoBehaviour
     {
         [SerializeField] private DreamcatcherHandController handController;
@@ -31,12 +35,8 @@ namespace Wassup.UI
         [SerializeField] private Color rimColor = new Color(0.56f, 0.43f, 1f, 0.9f);
         [FormerlySerializedAs("dormantFrameColor")]
         [SerializeField] private Color dormantColor = new Color(0.62f, 0.58f, 0.7f, 0.7f);
-        [SerializeField] private Color tickColor = new Color(0.86f, 0.82f, 0.96f, 0.72f);
         // 오버플로우(낭비) 전용 색 — MAX 골드와 분리해 "지금 버려지는 중"을 명확히(손실회피).
         [SerializeField] private Color overflowColor = new Color(1f, 0.35f, 0.24f, 1f);
-        // unit 7 — "이거 눌러봐!" 어필 튜닝.
-        [SerializeField] private float attentionPeriod = 1.5f; // 통통 바운스 + 펄스 링 주기(초)
-        [SerializeField] private float attentionLean = 5f;     // 튈 때 중앙(엄지) 쪽 넛지 각(deg)
         [SerializeField] private float valuePunchScale = 1.18f;
 
         [Header("Placement")]
@@ -59,8 +59,10 @@ namespace Wassup.UI
         [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
         [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
         [SerializeField] private int maxConcurrentFlights = 4;      // 동시 비행 상한(다발 킬 clutter↓)
-        [SerializeField] private float figureJostleInterval = 1.9f; // 주기적 통통 튕김 간격(초, 완화)
-        [SerializeField] private float figureJostleStrength = 2.1f; // 통통 튕김 임펄스 세기(주변시 노이즈↓)
+        // unit 8 — 주기적 통통 튕김(idle 노이즈)은 은퇴. 같은 임펄스 세기를 «회차 획득»
+        // 사건의 1회 들썩(Hop)에만 쓴다. 씬이 authored 2.1 을 들고 있어 이름만 옮긴다.
+        [FormerlySerializedAs("figureJostleStrength")]
+        [SerializeField] private float figureHopStrength = 2.1f;
         [SerializeField] private Color[] figureTints =
         {
             new Color(0.62f, 0.5f, 0.9f, 1f),
@@ -120,13 +122,10 @@ namespace Wassup.UI
         private Coroutine _punch;
         private Coroutine _gain;
         private Coroutine _pulse;
-        private Coroutine _readyPulse;
         private Coroutine _overflow;
-        // unit 7 — "이거 눌러봐" 어필: ready(≥최소코스트) & 닫힘 동안 지속되는 주의 유도 루프.
-        // 텍스트 라벨이 아니라 비주얼 언어 — 독에서 밖으로 퍼지는 소나 펄스 링(모바일 보편 "탭" 신호).
-        private Coroutine _attention;
-        private RectTransform[] _pulseRings;
-        private Image[] _pulseRingImages;
+        // unit 8 — 회차 획득 한방(림 골드 플래시 + 독 미세 팝 + 피규어 들썩).
+        private Coroutine _chargeBurst;
+        private int _unitCost;   // 한 회분 = 가장 싼 카드 코스트(데이터 파생)
 
         public void Pulse()
         {
@@ -174,7 +173,6 @@ namespace Wassup.UI
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (_visualRoot != null) { _visualRoot.localScale = Vector3.one; _visualRoot.localRotation = Quaternion.identity; }
-            if (_attention != null) { StopCoroutine(_attention); _attention = null; } // unit 7 — 어필 루프 정리
             CancelFlights(); // 진행 중 비행 정리(pending 오염·고아 고스트 방지)
         }
 
@@ -387,24 +385,25 @@ namespace Wassup.UI
             if (_phase == GamePhase.Battle)
             {
                 _panel.SetActive(true);
-                Refresh(handController != null ? handController.Gauge : 0, punch: false);
+                // 전투 진입마다 한 회분 코스트를 다시 뽑는다. Awake 에 굳혀두면 로비의 시트
+                // 임포트로 코스트가 바뀐 세션에서 회차 연출이 영영 안 터진다(_unitCost 0/구값).
+                ResolveReadyThreshold();
+                Refresh(handController != null ? handController.Gauge : 0, animate: false);
             }
             else
             {
                 CancelFlights(); // 전투 이탈 → 진행 비행 무효화(전환 중 고아 고스트 방지)
                 _panel.SetActive(false);
-                UpdateAttention(); // unit 7 — 패널 꺼짐 → 어필 루프 정지·복원
             }
         }
 
-        private void OnGaugeChanged(int value) => Refresh(value, punch: true);
+        private void OnGaugeChanged(int value) => Refresh(value, animate: true);
 
-        private void Refresh(int value, bool punch)
+        private void Refresh(int value, bool animate)
         {
             if (_valueLabel == null) return;
             int max = handController != null ? handController.GaugeMax : 100;
             _valueLabel.text = value.ToString();
-            float previousNormalized = _normalized;
             _normalized = max > 0 ? Mathf.Clamp01((float)value / max) : 0f;
             // unit 6 — 단색 backing 제거(스프라이트 늘린 인상). 피규어 더미가 유일한 채움.
             // unit 3 — 증가분은 흡수 비행(OnAwakeningGainedAt)이 채운다. 여기선 감소(소비/리셋)만
@@ -412,23 +411,22 @@ namespace Wassup.UI
             TrimToTarget(value);
 
             int delta = _lastShown >= 0 ? value - _lastShown : 0;
-            if (punch && value != _lastShown && _panel != null && _panel.activeInHierarchy)
+            bool live = _panel != null && _panel.activeInHierarchy;
+            if (animate && delta > 0 && live)
             {
-                if (_punch != null) StopCoroutine(_punch);
-                _punch = StartCoroutine(PunchValue());
-                if (delta > 0)
-                {
-                    if (_gain != null) StopCoroutine(_gain);
-                    _gain = StartCoroutine(ShowGain(delta));
-                }
+                if (_gain != null) StopCoroutine(_gain);
+                _gain = StartCoroutine(ShowGain(delta));
             }
 
-            // ready 로 갓 넘어간 순간 rim 한 번 강조(unit 4 가 정밀 affordability·오버플로우 확장).
-            if (_normalized >= _readyThreshold && previousNormalized < _readyThreshold
-                && _panel != null && _panel.activeInHierarchy)
+            // unit 8 — 큰 숫자는 킬마다 «조용히» 갱신된다(예전엔 1점만 변해도 punch 가 튀었다).
+            // 연출은 오직 여기 — 각성치가 한 회분 경계를 넘어 «쓸 수 있는 횟수» 가 오른 순간.
+            // 두 회분을 한 번에 넘겨도 한방으로 합친다(연출 중복 금지). _lastShown < 0 인
+            // 최초 표시(전투 진입 시 gaugeStart)는 사건이 아니라 상태라 터뜨리지 않는다.
+            if (animate && live && _lastShown >= 0
+                && AwakeningCharge.CountOf(value, _unitCost) > AwakeningCharge.CountOf(_lastShown, _unitCost))
             {
-                if (_readyPulse != null) StopCoroutine(_readyPulse);
-                _readyPulse = StartCoroutine(ReadyPulseRoutine());
+                if (_chargeBurst != null) StopCoroutine(_chargeBurst);
+                _chargeBurst = StartCoroutine(ChargeBurstRoutine());
             }
 
             _lastShown = value;
@@ -449,85 +447,6 @@ namespace Wassup.UI
             }
             if (_jarFrame != null)
                 _jarFrame.color = dormant ? dormantColor : Color.white;
-            UpdateAttention(); // unit 7 — ready & 닫힘 상태 변화에 어필 루프 동기
-        }
-
-        // unit 7 — "이거 눌러봐!" 어필: 사용 가능(ready) 하고 아직 손패가 닫혀 있는 동안, 독이
-        // 주기적으로 통통 튀고 골드 림이 숨쉬며 "탭!" 칩이 까딱인다. 손패를 열거나(_open) ready
-        // 가 아니거나 패널이 꺼지면 즉시 정지·복원. (설계-리뷰 "상시 pulse 금지" 는 사용자 명시
-        // 요청으로 갱신 — 단 주기적/절제된 강조로 유지.)
-        private void UpdateAttention()
-        {
-            bool want = _ready && !_open && _panel != null && _panel.activeInHierarchy;
-            if (want && _attention == null)
-            {
-                SetPulseRingsActive(true);
-                _attention = StartCoroutine(AttentionRoutine());
-            }
-            else if (!want && _attention != null)
-            {
-                StopCoroutine(_attention);
-                _attention = null;
-                if (_visualRoot != null && _readyPulse == null)
-                {
-                    _visualRoot.localScale = Vector3.one;
-                    _visualRoot.localRotation = Quaternion.identity; // 넛지 복원
-                }
-                SetPulseRingsActive(false);
-            }
-        }
-
-        private void SetPulseRingsActive(bool on)
-        {
-            if (_pulseRings == null) return;
-            for (int i = 0; i < _pulseRings.Length; i++)
-                if (_pulseRings[i] != null) _pulseRings[i].gameObject.SetActive(on);
-        }
-
-        private IEnumerator AttentionRoutine()
-        {
-            float t = 0f;
-            float period = Mathf.Max(0.4f, attentionPeriod);
-            float lastCycle = 0f;
-            while (true)
-            {
-                t += Time.unscaledDeltaTime;
-                float cycle = t % period;
-                // 튀는 순간 짧은 솟음(bump 0→1→0). ReadyPulse 한방(임계 진입)과는 안 겹치게 양보.
-                float bump = cycle < 0.32f ? Mathf.Sin(cycle / 0.32f * Mathf.PI) : 0f;
-                if (_visualRoot != null && _readyPulse == null)
-                {
-                    _visualRoot.localScale = Vector3.one * (1f + bump * 0.14f);
-                    // 넛지: 튈 때 엄지 접근 경로(중앙) 쪽으로 살짝 기울여 "이리로!" 몸짓(스프링백).
-                    _visualRoot.localRotation = Quaternion.Euler(0f, 0f, bump * attentionLean);
-                }
-                // 바운스 리듬에 맞춰 피규어 홉(들썩) 1회/주기 — 갇힌 꿈-피규어가 "꺼내줘" 몸짓.
-                if (cycle < lastCycle) _pile?.Hop();
-                lastCycle = cycle;
-                // 골드 림 브리딩(숨쉬는 발화).
-                if (_rim != null)
-                {
-                    var c = maxColor;
-                    c.a = Mathf.Lerp(0.62f, 1f, 0.5f + 0.5f * Mathf.Sin(t * 3.4f));
-                    _rim.color = c;
-                }
-                // 소나 펄스 링 — 독에서 밖으로 퍼지며 페이드(텍스트 없는 "여기 눌러"). 링마다
-                // 위상 스태거로 물결처럼 연속 방출. 스케일 1→확장, 알파 발화→0.
-                if (_pulseRings != null)
-                {
-                    for (int r = 0; r < _pulseRings.Length; r++)
-                    {
-                        if (_pulseRings[r] == null) continue;
-                        float phase = ((t / period) + (float)r / _pulseRings.Length) % 1f;
-                        float scale = Mathf.Lerp(1f, 1.5f, phase);
-                        _pulseRings[r].localScale = new Vector3(scale, scale, 1f);
-                        var rc = maxColor;
-                        rc.a = Mathf.Lerp(0.5f, 0f, phase); // 퍼질수록 사라짐
-                        _pulseRingImages[r].color = rc;
-                    }
-                }
-                yield return null;
-            }
         }
 
         private void BuildCanvas()
@@ -595,7 +514,8 @@ namespace Wassup.UI
             float interiorH = JarHeight - 2f * InteriorPad;
 
             // unit 6 — 세로 단색 backing 제거(스프라이트를 늘린 듯한 인상). 피규어 더미가 유일한 채움.
-            BuildCostTicks(jarGO.transform, interiorW, interiorH, InteriorPad);
+            // unit 8 — 코스트 눈금(—— 20)도 제거. 회차를 «선» 으로 그리지 않기로 했고(사용자
+            // 결정), "지금 쓸 수 있다" 는 이미 골드 림이 말한다. 항아리 안은 채움만 남는다.
 
             // 게이지 비례 미니 피규어 더미(unit 2a). 인테리어를 채우고 pivot 하단중앙 →
             // JarFigurePhysics 로컬좌표를 anchoredPosition 에 직접 매핑. ticks 위·number 아래.
@@ -616,7 +536,7 @@ namespace Wassup.UI
             };
             _pile.Configure(maxFigures, figureRadius, pileParams, representativeUnit, figureSkeletonMaterial,
                 figureScale, figureAnimation, _figureSprite, figureTints);
-            _pile.SetJostle(figureJostleInterval, figureJostleStrength);
+            _pile.SetHopStrength(figureHopStrength);
 
             // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.
             var valueGO = new GameObject("Value", typeof(RectTransform));
@@ -649,30 +569,6 @@ namespace Wassup.UI
             _rim.type = Image.Type.Sliced;
             _rim.color = Color.clear;
             _rim.raycastTarget = false;
-
-            // unit 7 — 소나 펄스 링(텍스트 없는 "여기 눌러"). 항아리 테두리에서 밖으로 퍼지며
-            // 페이드. 가운데는 비어(hollow) 숫자를 안 가림. 어필 루프가 스케일/알파 구동,
-            // ready & 닫힘 동안만 노출. 2개를 위상 스태거해 물결처럼 연속 방출.
-            _pulseRings = new RectTransform[2];
-            _pulseRingImages = new Image[2];
-            for (int r = 0; r < 2; r++)
-            {
-                var ringGO = new GameObject("PulseRing" + r, typeof(RectTransform), typeof(Image));
-                ringGO.transform.SetParent(jarGO.transform, false);
-                var ringRect = (RectTransform)ringGO.transform;
-                ringRect.anchorMin = ringRect.anchorMax = new Vector2(0.5f, 0f);
-                ringRect.pivot = new Vector2(0.5f, 0.5f);
-                ringRect.anchoredPosition = new Vector2(0f, JarHeight * 0.5f);
-                ringRect.sizeDelta = new Vector2(JarWidth, JarHeight);
-                var ringImg = ringGO.GetComponent<Image>();
-                ringImg.sprite = UiRoundedSprite.Make(18f, 5f, Color.clear, Color.white); // 색은 알파로 구동
-                ringImg.type = Image.Type.Sliced;
-                ringImg.color = Color.clear;
-                ringImg.raycastTarget = false;
-                ringGO.SetActive(false);
-                _pulseRings[r] = ringRect;
-                _pulseRingImages[r] = ringImg;
-            }
 
             // 획득 +N 플로팅.
             var gainGO = new GameObject("GainDelta", typeof(RectTransform));
@@ -713,60 +609,14 @@ namespace Wassup.UI
             UpdateVisualState();
         }
 
-        // 코스트 눈금: config 의 distinct 코스트마다 y=cost/max*interiorH 에 얇은 틱 + 소형 숫자.
-        // 하드코딩 금지 — 데이터 파생. 현재 라이브 값은 3종 모두 20 → 틱 1개.
-        private void BuildCostTicks(Transform jar, float interiorW, float interiorH, float pad)
-        {
-            var cfg = handController != null ? handController.Config : null;
-            if (cfg == null) return;
-            int max = handController.GaugeMax;
-            if (max <= 0) return;
-
-            var distinct = new List<int>();
-            foreach (int c in new[] { cfg.costSquad, cfg.costUnit, cfg.costActive })
-                if (c > 0 && c < max && !distinct.Contains(c)) distinct.Add(c);
-            distinct.Sort();
-
-            foreach (int c in distinct)
-            {
-                float y = pad + (float)c / max * interiorH;
-                var tickGO = new GameObject("Tick" + c, typeof(RectTransform), typeof(Image));
-                tickGO.transform.SetParent(jar, false);
-                var tr = (RectTransform)tickGO.transform;
-                tr.anchorMin = tr.anchorMax = new Vector2(0.5f, 0f);
-                tr.pivot = new Vector2(0.5f, 0.5f);
-                tr.anchoredPosition = new Vector2(0f, y);
-                tr.sizeDelta = new Vector2(interiorW, 3f);
-                var img = tickGO.GetComponent<Image>();
-                img.color = tickColor;
-                img.raycastTarget = false;
-
-                var lblGO = new GameObject("TickLabel" + c, typeof(RectTransform));
-                lblGO.transform.SetParent(jar, false);
-                var lr = (RectTransform)lblGO.transform;
-                lr.anchorMin = lr.anchorMax = new Vector2(0.5f, 0f);
-                lr.pivot = new Vector2(1f, 0.5f);
-                lr.anchoredPosition = new Vector2(interiorW * 0.5f - 4f, y + 8f);
-                lr.sizeDelta = new Vector2(34f, 18f);
-                var lbl = lblGO.AddComponent<TextMeshProUGUI>();
-                if (labelFont != null) lbl.font = labelFont;
-                lbl.text = c.ToString();
-                lbl.fontSize = 13f;
-                lbl.color = tickColor;
-                lbl.alignment = TextAlignmentOptions.Right;
-                lbl.raycastTarget = false;
-            }
-        }
-
+        // 한 회분(=가장 싼 카드 코스트)을 데이터에서 뽑는다. ready 림 임계와 회차 연출
+        // 트리거가 같은 값을 쓴다 — «쓸 수 있게 된 순간» 은 하나여야 하기 때문.
         private void ResolveReadyThreshold()
         {
             var cfg = handController != null ? handController.Config : null;
             int max = handController != null ? handController.GaugeMax : 100;
-            if (cfg == null || max <= 0) { _readyThreshold = 1f; return; }
-            int minCost = int.MaxValue;
-            foreach (int c in new[] { cfg.costSquad, cfg.costUnit, cfg.costActive })
-                if (c > 0 && c < minCost) minCost = c;
-            _readyThreshold = minCost == int.MaxValue ? 1f : Mathf.Clamp01((float)minCost / max);
+            _unitCost = cfg != null ? AwakeningCharge.UnitCost(cfg.costSquad, cfg.costUnit, cfg.costActive) : 0;
+            _readyThreshold = (_unitCost <= 0 || max <= 0) ? 1f : Mathf.Clamp01((float)_unitCost / max);
         }
 
         private IEnumerator PunchValue()
@@ -834,32 +684,45 @@ namespace Wassup.UI
             _gain = null;
         }
 
-        private IEnumerator ReadyPulseRoutine()
+        // unit 8 — 회차 획득 한방. 이 독의 유일한 자발적 움직임이다.
+        // 숫자 punch + 독 미세 팝 + 림 골드 플래시 + 피규어 1회 들썩을 0.3초 안에 끝내고
+        // 평소 상태(완전 정지)로 돌아온다. 피규어 들썩은 예전 idle 어필 루프에서 떼어와
+        // 여기 사건에 붙인 것(Hop) — 상시 노이즈가 아니라 «칸이 하나 잠겼다» 의 촉감.
+        private IEnumerator ChargeBurstRoutine()
         {
-            if (_visualRoot == null) yield break;
-            const float duration = 0.42f;
+            if (_punch != null) StopCoroutine(_punch);
+            _punch = StartCoroutine(PunchValue());
+            _pile?.Hop();
+
+            const float duration = 0.3f;
             float time = 0f;
             while (time < duration)
             {
                 time += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(time / duration);
-                float scale = k < 0.34f
-                    ? Mathf.Lerp(1f, 1.12f, k / 0.34f)
-                    : (k < 0.68f
-                        ? Mathf.Lerp(1.12f, 0.96f, (k - 0.34f) / 0.34f)
-                        : Mathf.Lerp(0.96f, 1f, (k - 0.68f) / 0.32f));
-                _visualRoot.localScale = Vector3.one * scale;
+                // 솟았다 가라앉는 한 번의 팝(오버슛 없이 절제 — 판독면이지 버튼이 아니다).
+                float bump = Mathf.Sin(k * Mathf.PI);
+                if (_visualRoot != null)
+                    _visualRoot.localScale = Vector3.one * (1f + bump * 0.08f);
+                if (_rim != null)
+                {
+                    var c = maxColor;
+                    c.a = Mathf.Max(_rim.color.a, bump);
+                    _rim.color = c;
+                }
                 yield return null;
             }
-            _visualRoot.localScale = Vector3.one;
-            _readyPulse = null;
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            _chargeBurst = null;
+            UpdateVisualState(); // 림을 정적 상태색으로 복원
         }
 
         private IEnumerator OverflowFlashRoutine()
         {
+            // unit 8 — 좌우 흔들림은 제거하고 림 플래시만 남긴다(평소 정지하는 판독면과
+            // 같은 어휘). 낭비가 일어나는 사건 자체는 손실회피 때문에 계속 알린다.
             const float duration = 0.6f;
             float time = 0f;
-            Vector3 baseLocal = _visualRoot != null ? _visualRoot.localPosition : Vector3.zero;
             while (time < duration)
             {
                 time += Time.unscaledDeltaTime;
@@ -872,11 +735,8 @@ namespace Wassup.UI
                     c.a = Mathf.Max(0.4f, flash);
                     _rim.color = c;
                 }
-                if (_visualRoot != null)
-                    _visualRoot.localPosition = baseLocal + new Vector3(Mathf.Sin(time * 62f) * 3.5f * (1f - k), 0f, 0f);
                 yield return null;
             }
-            if (_visualRoot != null) _visualRoot.localPosition = baseLocal;
             _overflow = null;
             UpdateVisualState(); // rim 색/알파 정상 복원
         }

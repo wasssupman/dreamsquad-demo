@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
+  m_Name: struct_spawn_portal
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
+  id: struct_spawn_portal
+  displayName: Spawn Portal (red)
+  footprintX: 1
+  footprintY: 1
+  visualFootprint: {x: 1, y: 1}
+  minDistanceCells: 0
+  visualOffset: {x: 0, y: 0, z: 0}
+  visualScale: 1
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
+  prefab: {fileID: 5267086104337941674, guid: 3b6178451ae0a46e6a7fb150b769f661, type: 3}
+  sprite: {fileID: 0}
+  sourceTexture: {fileID: 0}
+  spriteColor: {r: 1, g: 1, b: 1, a: 1}
+  sortingOrder: 0
+  skeletonDataAsset: {fileID: 0}
+  spineSkinName: 
+  idleAnimation: idle
+  billboardMode: 2
+  tiltAngle: 0

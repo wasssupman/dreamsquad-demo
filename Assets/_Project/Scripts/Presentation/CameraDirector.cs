@@ -52,12 +52,17 @@ namespace Wassup.Presentation
         private bool _settled; // 전 채널 비활성 상태에서 정착 포즈를 이미 써뒀는가 (아이들 프레임 no-op)
 
         // unit 2 — 구두점 채널 (additive 전용, 카메라 탈취 없음).
-        // 줌 펄스: max-hold 재트리거(진폭 max, 누적 없음). 셰이크: ScoreHudView 가 매 프레임
-        // 밀어주는 킬 스트릭 heat 비례(지연 ≤1프레임 허용 계약). 비행 중 가중치 0 페이드.
+        // 줌 펄스: max-hold 재트리거(진폭 max, 누적 없음). 비행 중 가중치 0 페이드.
+        // unit 16 — 셰이크는 입력이 둘이다: 한 방(임펄스, 여기서 감쇠)과 지속 레벨(heat —
+        // ScoreHudView 가 매 프레임 밀어주는 킬 스트릭, 지연 ≤1프레임 허용 계약).
+        // 둘의 합성은 max (ShakeWeight — 더하면 상한을 넘는다).
         private float _pulseRemaining;
         private float _pulseDuration;
         private float _pulseStrength;
         private float _shakeHeat;
+        private float _shakeImpulseRemaining;
+        private float _shakeImpulseDuration;
+        private float _shakeImpulseStrength;
         private float _shakePhaseX;
         private float _shakePhaseY;
         private float _punctWeight = 1f;
@@ -401,49 +406,67 @@ namespace Wassup.Presentation
         private Vector3[] _dofCornerBufTo = new Vector3[8];
         private Vector3[] _dofCornerBufFrom = new Vector3[8];
 
-        // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 호출처: DreamcatcherHandView 카드 흡수 임팩트).
-        // config 배선 전 호출은 안전 no-op (spec unit 0 계약). kickDuration 0 = 킥 비활성
-        // (envelope 의 duration<=0 가드가 단일 소유 — 별도 최소치 클램프를 두지 않는다).
-        public void Kick(float strength = 1f)
-        {
-            if (config == null || !config.enableNonDragEffects) return;
-            _kickStrength = Mathf.Clamp01(strength);
-            _kickDuration = config.kickDuration;
-            _kickRemaining = _kickDuration;
-        }
-
-        // selection-hand-attach unit 14 — **사용자 행동에 대한 응답** 킥(부착 거절 등).
+        // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 카드 흡수 임팩트 · 부착 거절).
+        // config 배선 전 호출은 안전 no-op (spec unit 0 계약).
         //
-        // Kick() 과 달리 `enableNonDragEffects` 에 묶지 않는다. 그 토글은 앰비언트 연출
-        // (브리딩·비행·펄스·shake heat) 억제용이고 **현재 에셋에서 꺼져 있어**, 묶으면 거절
-        // 피드백이 조용히 죽는다. 인스펙트 줌이 같은 이유로 이 토글에 묶이지 않는다
-        // ("명시적 제품 기능이라 묶으면 조용히 죽는다").
+        // unit 16 — 구 `FeedbackKick(strength, duration)` 을 여기로 합쳤다. 둘의 차이는
+        // (a) `enableNonDragEffects` 게이팅과 (b) duration 출처였는데, (a) 가 은퇴하면서 남은
+        // 것은 (b) 뿐이다. "얼마나 짧은가" 는 그 피드백의 성격이지 카메라의 성질이 아니라
+        // 호출처가 줄 수 있어야 하고, 진폭은 config 소유라 킥의 물리적 느낌은 한 곳에서 튜닝된다.
         //
-        // 지속시간은 호출처가 준다 — "얼마나 짧은가"는 그 피드백의 성격이지 카메라의 성질이 아니다.
-        // 진폭(kickPosAmp/kickRotAmp)은 config 소유 그대로라 킥의 물리적 느낌은 한 곳에서 튜닝된다.
-        public void FeedbackKick(float strength, float duration)
+        // ⚠ duration 을 **명시하면 그 값이 전부다** — 0 이하는 「이 피드백은 킥 없음」이고
+        // config 기본으로 대체되지 않는다. 인자를 아예 안 주는 것(sentinel `-1`)만 config 기본을
+        // 쓴다. 둘을 겸직시키면 `rejectKickDuration` 을 0 으로 두어 거절 킥만 끄려던 저작이
+        // 대신 더 긴 카드흡수용 킥을 부른다(selection-hand-attach unit 14 의 명문 계약).
+        public void Kick(float strength = 1f, float duration = -1f)
         {
-            if (config == null || duration <= 0f) return;
+            if (config == null) return;
+            float dur = duration < 0f ? config.kickDuration : duration;
+            if (dur <= 0f) return;
             _kickStrength = Mathf.Clamp01(strength);
-            _kickDuration = duration;
-            _kickRemaining = duration;
+            _kickDuration = dur;
+            _kickRemaining = dur;
         }
 
         // unit 2 — 헤비 임팩트 줌 펄스. 연타 시 envelope 누적 없이 max 유지(과누적 방지):
         // 진폭은 현재 유효값과 새 값의 max, 타이머는 재시작. pulseSec 0 = 펄스 끔.
         public void ZoomPulse(float strength = 1f)
         {
-            if (config == null || !config.enableNonDragEffects) return;
+            if (config == null) return;
             float current = _pulseRemaining > 0f ? _pulseStrength : 0f;
             _pulseStrength = Mathf.Max(current, Mathf.Clamp01(strength));
             _pulseDuration = config.pulseSec;
             _pulseRemaining = _pulseDuration;
         }
 
-        // unit 2 — 킬 스트릭 heat(0~1). 소유는 ScoreHudView(산정·감쇠) — 여기는 미러만.
+        // unit 16 — 셰이크 한 방. **어느 호출처든 부를 수 있는 독립 채널**이다: 카메라는 무슨
+        // 사건인지 알 필요가 없고 세기와 길이만 받는다. 재발동 규칙은
+        // `CameraComposeMath.ShouldReplaceShakeImpulse` 소유 — 줌 펄스의 max-hold 를 복사하면
+        // 안 되는 이유가 거기 적혀 있다.
+        //
+        // duration 에 기본값을 두지 않는 것이 계약이다 — 호출처가 SerializeField 로 저작하게
+        // 강제해 코드에 시간 리터럴이 박히는 것을 막는다(제약 6). 진폭·주파수는 config 소유.
+        public void Shake(float strength, float duration)
+        {
+            if (config == null || duration <= 0f) return;
+            // 진폭 0 = 이 채널이 꺼진 것이다(unit 16 계약). 타이머도 걸지 않는다 — 걸어두면
+            // 구두점 활성 판정이 이 채널을 세지 않아 타이머가 굶고(아이들 프레임은 감쇠 코드에
+            // 도달하지 않는다), 나중에 진폭을 되살리는 순간 감쇠되지 않은 stale 임펄스가
+            // envelope 1 로 그대로 터진다.
+            if (config.shakeMaxPosAmp == 0f && config.shakeMaxRotAmp == 0f) return;
+            if (!CameraComposeMath.ShouldReplaceShakeImpulse(
+                    _shakeImpulseStrength, _shakeImpulseRemaining, _shakeImpulseDuration, strength))
+                return;
+            _shakeImpulseStrength = Mathf.Clamp01(strength);
+            _shakeImpulseDuration = duration;
+            _shakeImpulseRemaining = duration;
+        }
+
+        // unit 2 — 킬 스트릭 heat(0~1) = "계속 흔들리는 상태". 소유는 ScoreHudView(산정·감쇠) —
+        // 여기는 미러만. 한 방(Shake)과 겹치면 max 로 합성된다(ShakeWeight).
         public void SetShakeHeat(float heat01)
         {
-            if (config == null || !config.enableNonDragEffects) return;
+            if (config == null) return;
             _shakeHeat = Mathf.Clamp01(heat01);
         }
 
@@ -522,19 +545,14 @@ namespace Wassup.Presentation
             if (!UpdateStatePose()) return;
             bool flying = _transitionDuration > 0f; // 완료 프레임에 UpdateStatePose 가 0 으로 내린다
 
-            // enableNonDragEffects 는 앰비언트 연출(킥/펄스/셰이크/브리딩) 억제 토글이다.
-            // **상태 전환은 이 토글 소관이 아니다** — 드래그 포커스·인스펙트·헤드룸과 같은
-            // 취급이다(배치↔전투 전환은 명시적 제품 연출이라 묶으면 조용히 죽는다).
-            if (!config.enableNonDragEffects)
-            {
-                _kickRemaining = 0f;
-                _pulseRemaining = 0f;
-                _shakeHeat = 0f;
-                _breathWeight = 0f;
-            }
-
             // 채널 활성 판정.
-            bool punctInput = config.enableNonDragEffects && (_pulseRemaining > 0f || _shakeHeat > 0.0001f);
+            // unit 16 — 채널을 한꺼번에 잠그던 `enableNonDragEffects` 는 은퇴했다. 그 이름은
+            // «무엇을 끄는가» 가 아니라 «무엇이 살아남았는가»(2026-07-14 드래그 포커스만 남긴
+            // 판단) 기준이라, 이후 채널 다섯이 전부 예외로 빠져나가며 축이 썩었다. 이제 스위치는
+            // 채널마다 자기 데이터가 갖는다 — 셰이크는 진폭, 킥은 duration, 펄스는 pulseSec.
+            bool shakeConfigured = config.shakeMaxPosAmp != 0f || config.shakeMaxRotAmp != 0f;
+            bool punctInput = _pulseRemaining > 0f
+                || (shakeConfigured && (_shakeImpulseRemaining > 0f || _shakeHeat > 0.0001f));
             // 비행 중 구두점 가중치 0 페이드 (비행이 최우선). 페이드 진행 자체도 활성으로 취급.
             float punctTarget = flying ? 0f : 1f;
             bool punctFading = !Mathf.Approximately(_punctWeight, punctTarget);
@@ -542,7 +560,7 @@ namespace Wassup.Presentation
             // 브리딩: 켜진 페이즈 + 비행 아님 + 유효 파동 존재 → 목표 1. 가중치가 0 에 닿을
             // 때까지는 활성(크로스페이드). 유효 파동 검사로 퇴화 config(전 파동 주기 0 등)가
             // 모션 0 인 채 settle 최적화를 영구 무효화하는 것 방지(리뷰 반영).
-            bool breathOn = config.enableNonDragEffects && IsBreathPhase(_currentPhase)
+            bool breathOn = IsBreathPhase(_currentPhase)
                 && (config.breathPosAmp != 0f || config.breathRotAmp != 0f) // 음수 진폭 = 위상 반전(유효)
                 && HasUsableBreathWave();
             float breathTarget = (breathOn && !flying) ? 1f : 0f;
@@ -553,17 +571,14 @@ namespace Wassup.Presentation
             bool focusFed = Time.frameCount - _focusFedFrame <= 2 && focusConfigured;
             float focusTarget = (focusFed && !flying) ? 1f : 0f;
             bool focusActive = focusTarget > 0f || _focusWeight > 0f;
-            // 인스펙트 포커스 — 드래그 포커스와 같은 staleness 규약. enableNonDragEffects 로
-            // 게이팅하지 않는다: 그 토글은 앰비언트 연출(킥/펄스/브리딩/비행) 억제용이고 현재
-            // 에셋에서 꺼져 있다. 인스펙트 줌은 명시적 제품 기능이라 묶으면 조용히 죽는다.
+            // 인스펙트 포커스 — 드래그 포커스와 같은 staleness 규약.
             bool inspectConfigured = config.inspectDolly != 0f || config.inspectFovDelta != 0f
                 || config.inspectLookWeight > 0f;
             bool inspectFed = _inspectHasNdc && Time.frameCount - _inspectFedFrame <= 2 && inspectConfigured;
             float inspectTarget = (inspectFed && !flying) ? 1f : 0f;
             bool inspectActive = inspectTarget > 0f || _inspectWeight > 0f;
-            // 손패 헤드룸 — 인스펙트와 같은 staleness 규약이고 같은 이유로
-            // enableNonDragEffects 에 묶지 않는다. **상태 전환 중에도 유지한다** — 손패가
-            // 열려 있으면 헤드룸은 계속 필요하다(포커스/인스펙트와 달리 전환에 양보하지 않는다).
+            // 손패 헤드룸 — 인스펙트와 같은 staleness 규약. **상태 전환 중에도 유지한다** —
+            // 손패가 열려 있으면 헤드룸은 계속 필요하다(포커스/인스펙트와 달리 전환에 양보하지 않는다).
             bool headroomConfigured = config.handHeadroomPitchDeg != 0f || config.handHeadroomDolly != 0f;
             bool headroomFed = Time.frameCount - _headroomFedFrame <= 2 && headroomConfigured;
             float headroomTarget = headroomFed ? 1f : 0f;
@@ -776,6 +791,13 @@ namespace Wassup.Presentation
                 pulseEnv = CameraComposeMath.KickEnvelope(_pulseRemaining, _pulseDuration);
             }
 
+            // unit 16 — 셰이크 임펄스 타이머도 가중치와 무관하게 실시간 감쇠(펄스와 같은 이유:
+            // 비행 중 얼렸다가 비행 후 뒤늦게 재생되는 "지연 셰이크" 방지). 억제는 가중치가 담당.
+            if (_shakeImpulseRemaining > 0f)
+                _shakeImpulseRemaining = Mathf.Max(0f, _shakeImpulseRemaining - Time.unscaledDeltaTime);
+            float shakeWeight = CameraComposeMath.ShakeWeight(
+                _shakeImpulseStrength, _shakeImpulseRemaining, _shakeImpulseDuration, _shakeHeat);
+
             if (_punctWeight > 0f)
             {
                 if (pulseEnv > 0f)
@@ -790,13 +812,13 @@ namespace Wassup.Presentation
                         fovDelta = config.pulseFovDelta * amp,
                     });
                 }
-                if (_shakeHeat > 0.0001f)
+                if (shakeWeight > 0.0001f)
                 {
                     float dt = Time.unscaledDeltaTime;
                     _shakePhaseX = Mathf.Repeat(_shakePhaseX + config.shakeFreqX * dt, 1f);
                     _shakePhaseY = Mathf.Repeat(_shakePhaseY + config.shakeFreqY * dt, 1f);
                     delta = CameraComposeMath.Add(delta, CameraComposeMath.ShakeDelta(
-                        _shakePhaseX, _shakePhaseY, _shakeHeat * _punctWeight,
+                        _shakePhaseX, _shakePhaseY, shakeWeight * _punctWeight,
                         config.shakeMaxPosAmp, config.shakeMaxRotAmp));
                 }
             }
@@ -884,6 +906,8 @@ namespace Wassup.Presentation
             _kickRemaining = 0f;
             _pulseRemaining = 0f;
             _shakeHeat = 0f;
+            _shakeImpulseRemaining = 0f;
+            _shakeImpulseStrength = 0f;
             _breathWeight = 0f;
             _focusWeight = 0f;
             _focusReleasing = false;

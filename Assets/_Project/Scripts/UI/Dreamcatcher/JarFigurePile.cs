@@ -10,7 +10,10 @@ namespace Wassup.UI
     // JarFigurePhysics(unit 0) 순수 시뮬을 고정 스텝으로 Tick 하고 위치를 RectTransform 에 매핑.
     // 피규어 = 대표 유닛 스켈레톤을 특정 애니(기본 Idle) 마지막 프레임에 동결한 SkeletonGraphic.
     // 데이터/머티리얼 미배선 시 절차적 원 스프라이트로 폴백(무회귀). 개수는 뷰가 명시적으로 구동
-    // (흡수 비행 도착 시 SpawnAtTop, 소비/리셋 때 RemoveTop). 주기적 통통 튕김(JostleAll).
+    // (흡수 비행 도착 시 SpawnAtTop, 소비/리셋 때 RemoveTop).
+    // unit 8 — 주기적 통통 튕김(JostleAll 타이머)은 은퇴했다. 독이 평소 정지하는 판독면이
+    // 되면서 상시 움직임이 노이즈가 됐기 때문. 임펄스 자체는 Hop 으로 남아 «회차 획득»
+    // 사건에서만 1회 터진다.
     // RectTransform 은 항아리 인테리어를 채우고 pivot 하단중앙이라 시뮬 로컬좌표를 직접 매핑.
     public class JarFigurePile : MonoBehaviour
     {
@@ -27,20 +30,15 @@ namespace Wassup.UI
         private JarSimParams _params;
         private int _active;
         private float _accum;
-        // 주기적 통통 튕김 — 정착해 잠들지 않게 주기적으로 위로 임펄스(사용자 요청).
-        private float _jostleInterval = 1.4f;
-        private float _jostleStrength = 3.2f;
-        private float _jostleTimer;
-        private float _jostlePhase;
+        // Hop 임펄스 세기(뷰가 authored 값으로 구동). 위상은 홉마다 굴려 같은 모양이
+        // 반복되지 않게 한다.
+        private float _hopStrength = 2.1f;
+        private float _hopPhase;
 
         public int ActiveCount => _active;
         public int Capacity => _max;
 
-        public void SetJostle(float interval, float strength)
-        {
-            _jostleInterval = Mathf.Max(0.05f, interval);
-            _jostleStrength = strength;
-        }
+        public void SetHopStrength(float strength) => _hopStrength = Mathf.Max(0f, strength);
 
         // Spine 미니어처 풀 생성. visualData+material 있으면 SkeletonGraphic, 없으면 원 폴백.
         public void Configure(int max, float radius, JarSimParams p,
@@ -147,36 +145,18 @@ namespace Wassup.UI
             while (_active > 0) RemoveTop();
         }
 
-        // 주기적으로 통 안 피규어에 위로 임펄스를 가해 계속 통통 튕기게 한다(정착·수면 방지).
-        // 인덱스 기반 결정론 변주(seeded RNG 대신). Verlet 임펄스 = prevPos 를 뒤로 밀기.
-        private void JostleAll()
-        {
-            _jostlePhase += 1.7f;
-            for (int i = 0; i < _active; i++)
-            {
-                var f = _figs[i];
-                float dx = Mathf.Sin(i * 2.4f + _jostlePhase) * _jostleStrength;
-                float dy = (0.5f + 0.5f * Mathf.Abs(Mathf.Cos(i * 1.7f + _jostlePhase))) * _jostleStrength;
-                f.prevPos.x -= dx;
-                f.prevPos.y -= dy; // 위로(양수 y = 상방)
-                _figs[i] = f;
-                // unit 7 — 튕길 때 살짝 흔들림(회전에도 생기 부여).
-                _rotVel[i] += Mathf.Sin(i * 3.1f + _jostlePhase) * _jostleStrength * 6f;
-            }
-        }
-
-        // unit 7 rev — 어필 바운스 리듬에 맞춘 1회 홉(들썩): 전 피규어에 위 임펄스 + 회전 킥.
-        // 갇힌 꿈-피규어가 "꺼내줘" 하듯 잠깐 튄다. 주기적(어필 주기)이라 상시 노이즈 아님.
+        // 1회 홉(들썩): 전 피규어에 위 임펄스 + 회전 킥. unit 8 부터는 회차가 오르는
+        // 순간에만 호출된다 — 갇힌 꿈-피규어가 «하나 채워졌다» 며 잠깐 들썩이는 촉감.
         public void Hop()
         {
-            if (_figs == null || _active <= 0) return;
-            _jostlePhase += 2.3f;
+            if (_figs == null || _active <= 0 || _hopStrength <= 0f) return;
+            _hopPhase += 2.3f;
             for (int i = 0; i < _active; i++)
             {
                 var f = _figs[i];
-                f.prevPos.y -= _jostleStrength * 2.4f; // 위로(prevPos 낮추면 상방 속도)
+                f.prevPos.y -= _hopStrength * 2.4f; // 위로(prevPos 낮추면 상방 속도)
                 _figs[i] = f;
-                _rotVel[i] += Mathf.Sin(i * 2.1f + _jostlePhase) * _jostleStrength * 10f;
+                _rotVel[i] += Mathf.Sin(i * 2.1f + _hopPhase) * _hopStrength * 10f;
             }
         }
 
@@ -201,15 +181,6 @@ namespace Wassup.UI
         private void Update()
         {
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-            if (_active > 0 && _jostleStrength > 0f)
-            {
-                _jostleTimer -= dt;
-                if (_jostleTimer <= 0f)
-                {
-                    JostleAll();
-                    _jostleTimer = _jostleInterval;
-                }
-            }
             _accum += dt;
             int guard = 0;
             while (_accum >= FixedDt && guard++ < 6)
