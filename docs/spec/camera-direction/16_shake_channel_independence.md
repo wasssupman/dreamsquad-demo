@@ -1,0 +1,78 @@
+# unit 16 — 셰이크를 독립 채널로 열고 `enableNonDragEffects` 를 은퇴시킨다
+
+## 목적
+
+셰이크가 킬 스트릭 전용 모양으로 갇혀 있고, 그 위에 축이 썩은 토글이 하나 더 얹혀 있다.
+둘 다 걷어내 **어디서든 「지금 한 번 흔들어」를 부를 수 있는 채널**로 만든다.
+
+**입력 모양이 문제였다.** 셰이크의 유일한 입력은 지속 레벨 `SetShakeHeat(0~1)` 하나고,
+오르내림은 호출처(`ScoreHudView`)가 소유한다. 그래서 새 호출처는 자기 감쇠 타이머를 따로
+굴려야 하고, 둘 이상이 부르면 **마지막에 쓴 쪽이 앞의 호출을 지운다**(레벨이 하나뿐).
+
+**토글의 축은 이미 썩었다.** `enableNonDragEffects` 는 2026-07-14 unit 6 의 일회성 출시 판단
+(«드래그 포커스만 남긴다»)을 이름으로 굳힌 것이라, *무엇을 끄는가* 가 아니라 *무엇이
+살아남았는가* 기준이다. 그 뒤 «드래그가 아닌» 채널 다섯(인스펙트 줌 · 손패 헤드룸 · 이동모드
+오버뷰 · 상태 전환 · 거절 킥)이 전부 **일부러 이 토글 밖에** 놓였고, 그때마다 코드에 같은
+변명이 적혔다 — «묶으면 조용히 죽는다». 같은 예외를 다섯 번 쓰면 축이 틀린 것이다.
+
+이름을 바꾸는 것으로는 안 된다(썩은 축을 다시 칠하는 것). **채널별 스위치가 이미 전부
+존재하므로**(`kickDuration 0` = 킥 끔, `pulseSec 0` = 펄스 끔, 셰이크 진폭 0, `breathPhases` 비움)
+토글은 그 위에 덧댄 중복 스위치다. 순삭제한다.
+
+## 변경 대상
+
+- `Assets/_Project/Scripts/Presentation/CameraComposeMath.cs` — `ShakeWeight` 순수 함수
+- `Assets/_Project/Scripts/Presentation/CameraDirector.cs` — 셰이크 임펄스 입력, 게이트 제거, 킥 API 통합
+- `Assets/_Project/Scripts/Data/CameraDirectionConfig.cs` — `enableNonDragEffects` 제거
+- `Assets/_Project/Data/Camera/CameraDirectionConfig.asset` — 토글 제거 + 브리딩 off
+- `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherHandView.cs` — `FeedbackKick` 호출부
+- `Assets/_Project/Tests/EditMode/CameraComposeMathTests.cs`
+
+## 구현
+
+**셰이크 입력 2종.** 성격이 달라 하나로 합치지 않는다.
+
+| API | 쓰임 | 소유 |
+|---|---|---|
+| `Shake(strength, duration)` | 한 번 흔들고 잦아듦 | Director (envelope) |
+| `SetShakeHeat(heat01)` | 계속 흔들리는 상태 | 호출처 (킬 스트릭) |
+
+- 재발동은 **max-hold** — 진폭은 현재 유효값과 새 값의 max, 타이머는 재시작(줌 펄스와 같은
+  규약). 누적하면 연타에서 진폭이 폭주한다.
+- 합성은 `max(임펄스, 지속)`. **더하지 않는다** — 두 출처가 겹칠 때 상한을 넘으면 멀미가 난다.
+  이 «더하지 않는다» 가 회귀 가치가 있어 순수 함수 `CameraComposeMath.ShakeWeight` 로 뺀다.
+- 진폭·주파수는 config 소유 그대로(제약 6). `duration` 만 호출처가 준다 — «얼마나 짧은가» 는
+  그 피드백의 성격이지 카메라의 성질이 아니다(거절 킥이 이미 내린 판단). 호출처는
+  `[SerializeField]` 로 저작하므로 새 SO 는 만들지 않는다(제약 8).
+- 전환 비행 중 페이드(`_punctWeight`)는 **유지**한다. 그것은 끄는 스위치가 아니라 우선순위
+  규칙(상태 전환 > 드래그 포커스 > 구두점)이다.
+
+**킥 API 통합.** `Kick()` 과 `FeedbackKick()` 의 차이는 (a) 토글 게이팅 (b) duration 출처
+둘이었다. (a) 가 사라지면 남는 것은 (b) 뿐이므로 `Kick(strength, duration = 0)` 하나로 합친다
+(`duration <= 0` = config 기본 사용). 이름이 카테고리를 주장하는 `FeedbackKick` 은 은퇴한다.
+
+**에셋에서 살아나는 것 / 남는 것** (사용자 결정 2026-08-21):
+
+| 채널 | 이후 | 스위치 |
+|---|---|---|
+| 킬 스트릭 셰이크 | **켜짐** | 진폭 0.04 / 0.12 |
+| 카드 흡수 킥 | **켜짐** | `kickDuration 0.16` |
+| 광역 착탄 줌 펄스 | **켜짐** | `pulseSec 0.22` · `pulseDolly 1.14` |
+| 앰비언트 브리딩 | **꺼짐** | `breathPhases` 를 **비운다** |
+
+브리딩만 끄는 이유: 상시 채널이라 성격이 다르고, 에셋 값(위치 0.07 / pitch -0.6°)이 코드
+기본값의 2~10배인 채로 2026-07-14 부터 잠들어 있어 **아무도 그 세기를 본 적이 없다**. 게다가
+카메라 그림이 그 사이 통째로 재설계됐다(unit 10~14). 끄는 방법으로 진폭 0 대신 `breathPhases`
+비우기를 쓰는 것은 **저작된 파동·진폭을 보존**하기 위해서다 — 되살릴 사람이 값부터 다시
+찾을 필요가 없다.
+
+**새 호출처는 이번 범위 밖이다.** 통로만 열고 기존 호출처(킬 스트릭)로 검증한다.
+
+## 완료 기준
+
+- `ShakeWeight` EditMode: 임펄스만 / 지속만 / 둘 다일 때 **max 이고 합이 아니다**, 임펄스
+  envelope 이 시간에 따라 감쇠, 가중치 0 이면 항등.
+- `enableNonDragEffects` 심볼이 코드·에셋에서 **0건**이다.
+- 컴파일 + EditMode 초록, 콘솔 에러 0.
+- Play: 연속 처치 시 화면이 흔들린다 · 카드 흡수 시 한 번 쿵 · 광역 착탄 시 훅 당겨졌다
+  돌아온다 · **가만히 두면 카메라가 완전히 정지한다**(브리딩 off 확인).

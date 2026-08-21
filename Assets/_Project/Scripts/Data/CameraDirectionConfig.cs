@@ -55,10 +55,9 @@ namespace Wassup.Data
     [CreateAssetMenu(menuName = "Wassup/Camera Direction Config", fileName = "CameraDirectionConfig")]
     public class CameraDirectionConfig : ScriptableObject
     {
-        [Header("연출 채널 전역 제어")]
-        [Tooltip("끄면 드래그 포커스를 제외한 페이즈 비행·구두점·브리딩·임팩트 킥을 모두 비활성화한다.")]
-        public bool enableNonDragEffects;
-
+        // camera-direction unit 16 — 구 `enableNonDragEffects` 전역 토글은 은퇴했다.
+        // 채널을 끄는 것은 각 채널의 데이터다: 킥은 `kickDuration 0`, 줌 펄스는 `pulseSec 0`,
+        // 셰이크는 진폭 0, 브리딩은 `breathPhases` 를 비운다(진폭·파동 저작은 보존된다).
         [Header("임팩트 킥 (구 CameraImpactKick 이식 — card-fly-to-target-absorb)")]
         [Tooltip("킥 위치 진폭(월드 유닛, 카메라 로컬 축).")]
         public float kickPosAmp = 0.08f;
@@ -125,7 +124,7 @@ namespace Wassup.Data
 
         [Header("인스펙트 포커스 (unit-dreamcatcher-inspect unit 4) — 유닛 탭 시 들여다보기 줌")]
         // 드래그 포커스(dolly 1 / fov -1)보다 강하다: 그건 스와이프 중 미묘한 리드고,
-        // 이건 의도적으로 멈춰서 들여다보는 연출이다. enableNonDragEffects 에 묶이지 않는다.
+        // 이건 의도적으로 멈춰서 들여다보는 연출이다.
         // dolly 와 FOV 를 **함께** 쓴다(selection-hand-attach unit 13). dolly 만이면 "가까이
         // 갔다"이고, FOV 를 좁히면 원근이 압축돼 배경이 납작해지며 "주목했다"가 된다.
         //
@@ -168,7 +167,6 @@ namespace Wassup.Data
         // 낮추면 보드가 화면 아래로 통째로 내려가(크기는 거의 불변) 상단이 비는데,
         // 그 대가로 근경이 내려간다 — 그런데 손패가 열린 동안은 화면 하단을 카드가
         // 이미 덮고 있어 실질 손해가 없다. 그래서 **상시가 아니라 손패 연동**이다.
-        // enableNonDragEffects 에 묶지 않는다(인스펙트와 같은 이유 — 명시적 제품 기능).
         [Tooltip("손패 열림 중 pitch 델타(도). 음수 = 카메라를 눕혀 보드를 화면 아래로. 현 씬 포즈에서 1도당 약 25px.")]
         // 홈 60° 기준 −2 = 손패 열림 58°(사용자 확정 2026-07-21). 카메라 이동이
         // 눈에 띄는 것보다 약간의 보드 가림을 감수하는 쪽을 택했다.

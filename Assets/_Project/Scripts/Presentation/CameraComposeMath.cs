@@ -74,6 +74,20 @@ namespace Wassup.Presentation
             };
         }
 
+        // camera-direction unit 16 — 셰이크 유효 세기. 입력이 둘이다: **한 방**(임펄스 — 세기와
+        // 길이를 받아 envelope 으로 잦아든다)과 **계속 흔들리는 상태**(지속 레벨 — 오르내림을
+        // 호출처가 소유한다). 성격이 달라 하나로 합치지 않는다.
+        //
+        // 둘이 겹칠 때는 **더하지 않고 max** 다. 합치면 두 출처가 동시에 울릴 때 진폭이 상한을
+        // 넘어 멀미가 난다 — 이 한 줄이 이 함수가 존재하는 이유다(회귀 테스트 대상).
+        // 임펄스 감쇠는 킥과 같은 envelope 을 쓴다(duration<=0 = 그 채널 끔 규약도 함께 계승).
+        public static float ShakeWeight(
+            float impulseStrength, float impulseRemaining, float impulseDuration, float heat01)
+        {
+            float impulse = impulseStrength * KickEnvelope(impulseRemaining, impulseDuration);
+            return Mathf.Max(impulse, Mathf.Clamp01(heat01));
+        }
+
         // unit 3 — 브리딩 파동 1개의 델타: 위상(0~1) 기반 sin. 같은 위상 → 같은 값(결정론).
         // 절대 시각이 아니라 호출부가 누적·wrap 한 위상을 받는다(장세션 float 정밀도 — spec).
         public static CameraPoseDelta BreathWaveDelta(
