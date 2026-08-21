@@ -111,4 +111,8 @@ speed 0.02~0.08 · gravity -0.09~-0.06 · rate 2.2 · maxParticles 12`.
 - [x] 정렬 대역 결정 = `StructureWreckOrder = -2`(유닛 아래). 근거는 상수 주석에.
       실제 적용값은 프리팹 `ParticleSystemRenderer.sortingOrder`
 - [x] 잔해 컨테이너가 `_structureViews` 에 등록돼 기존 스윕이 가져간다(새 정리 경로 0)
-- [ ] **라이브 Play 체감(사용자)** — 유닛이 오가는 실제 판에서 −2 대역이 맞는지
+- [x] **라이브 Play 체감(사용자)** — 유닛이 오가는 실제 판에서 `StructureWreckOrder = -2` 확인
+
+---
+
+**확인 2026-08-21** — 사용자 라이브 Play 확인. 구현 커밋 `3400ca9e`.
