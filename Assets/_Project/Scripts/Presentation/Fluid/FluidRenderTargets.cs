@@ -128,6 +128,8 @@ namespace Wassup.Presentation
         private static void Destroy(ref RenderTexture rt)
         {
             if (rt == null) return;
+            if (RenderTexture.active == rt)
+                RenderTexture.active = null;
             rt.Release();
             if (Application.isPlaying) Object.Destroy(rt);
             else Object.DestroyImmediate(rt);

@@ -18,7 +18,7 @@ MonoBehaviour:
   axis: 3
   category: 1
   effects: []
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 3540288f218cb5715456027481c7704a, type: 3}
   mechanics:
   - trigger:
       kind: 8
@@ -50,7 +50,7 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uC774 \uC720\uB2DB\uC774 \uD1F4\uADFC\uD558\uBA74 \u2192 0.8\uCD08
+  description: "\uC774 \uC720\uB2DB\uC774 \uCCA0\uC218\uD558\uBA74 \u2192 0.8\uCD08
     \uD6C4 \uBC18\uACBD 1\uCE78 \uD53C\uD574 120"
   leakAllowanceCost: 0
   attachType: 0

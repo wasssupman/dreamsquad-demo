@@ -2,22 +2,52 @@ using UnityEngine;
 
 namespace Wassup.Data
 {
-    // camera-direction unit 1 — 페이즈별 카메라 포즈 델타 (홈 포즈 기준).
-    // 등록된 페이즈로의 전환만 카메라를 움직인다. 미등록 페이즈 = hold (spec README 계약).
-    [System.Serializable]
-    public class CameraPhasePose
+    // camera-direction unit 10 — 카메라 상태. 페이즈 enum(7종)과 별개다: 상태는 훨씬 적고,
+    // "어느 페이즈에 어떤 그림을 보여줄까"는 연출 정책이지 게임 규칙이 아니다.
+    // 유닛 상세는 상태가 아니다 — 선택 줌은 2026-08-19 에 끈 기능이고(DcInspectController)
+    // 되살리지 않기로 2026-08-21 재확인했다. 인스펙트 채널은 상태 포즈 위에 얹힌 채로 남는다.
+    public enum CameraState
     {
-        public Wassup.Core.GamePhase phase;
-        [Tooltip("홈 회전 기준 카메라 로컬 위치 오프셋(월드 유닛). -z = 보드에서 멀어짐.")]
-        public Vector3 localPosOffset;
-        [Tooltip("pitch 오프셋(도). + = 더 내려다봄.")]
-        public float pitchOffset;
-        [Tooltip("FOV 오프셋(도). - = 줌인.")]
-        public float fovOffset;
-        [Tooltip("이 포즈로의 비행 시간(초). 0 이하 = 즉시 스냅.")]
+        Placement,
+        Battle,
+    }
+
+    // camera-direction unit 10 — 한 상태가 소유하는 완결된 프레이밍 레시피.
+    //
+    // 델타가 아니다. 상태끼리 공유하는 기준점이 없어서, 전투를 아무리 만져도 배치는 미동도
+    // 하지 않는다. 이전 구조(홈 포즈 + 페이즈 델타)는 기준을 건드리면 전 페이즈가 딸려 왔다.
+    [System.Serializable]
+    public class CameraStateFraming
+    {
+        public CameraState state;
+        [Tooltip("대상 위 몇 도에서 내려다보는가.")]
+        public float pitchDeg = 47f;
+        [Tooltip("켜면 판 전체가 들어오는 거리를 맵마다 계산한다. 끄면 fixedDistance 를 쓴다.")]
+        public bool fitToBoard = true;
+        [Tooltip("fit 여백 배율. 1 = 보드 코너가 화면 가장자리에 딱 닿음.")]
+        public float fitMargin = 1f;
+        [Tooltip("fit 을 안 쓸 때 대상까지의 거리.")]
+        public float fixedDistance = 20f;
+        [Tooltip("대상이 놓일 화면 세로 위치. 0.5 = 정중앙, 클수록 위(하단 HUD 피하기).")]
+        public float screenY = 0.5f;
+        [Tooltip("이 상태의 화각.")]
+        public float fov = 36f;
+        [Tooltip("이 상태로 들어올 때의 전환 시간(초). 0 이하 = 즉시 스냅.")]
         public float flightSec = 0.6f;
-        [Tooltip("비행 이징 커브(0~1→0~1). 비어 있으면 smoothstep 폴백.")]
+        [Tooltip("전환 이징 커브(0~1→0~1). 비어 있으면 smoothstep 폴백.")]
         public AnimationCurve ease = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+
+        // camera-direction unit 13 — 이 상태의 흐림. 임계값은 보드 깊이 범위로 정규화한다
+        // (0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤). 월드 절대 거리로 두면 화면비마다
+        // 그림이 무너진다(unit 9 의 결함).
+        [Tooltip("이 상태에서 흐림을 쓰는가. 끄면 전환이 끝난 뒤 DoF 모드를 Off 로 내린다.")]
+        public bool dofEnabled = true;
+        [Tooltip("흐림이 시작되는 위치. 보드 깊이 기준(0 = 앞단, 1 = 뒷단, 1 초과 = 보드 뒤).")]
+        public float dofStart = 0.6f;
+        [Tooltip("흐림이 최대가 되는 위치(같은 보드 깊이 기준). dofStart 보다 커야 한다.")]
+        public float dofEnd = 0.88f;
+        [Tooltip("흐림 세기. URP 저작 범위는 0.5~1.5 이고 실제 반경은 해상도에 비례한다 — 실기 확인 필수.")]
+        public float dofMaxRadius = 1.5f;
     }
 
     // camera-direction unit 0 — 연출 카메라 튜닝값 (하드코딩 금지 계약).
@@ -37,18 +67,9 @@ namespace Wassup.Data
         [Tooltip("킥 총 시간(초). 0 = 킥 끔.")]
         public float kickDuration = 0.16f;
 
-        [Header("페이즈 전환 비행 (unit 1)")]
-        [Tooltip("페이즈별 포즈 델타. 미등록 페이즈 진입은 현재 델타 유지(hold).")]
-        public CameraPhasePose[] phasePoses = System.Array.Empty<CameraPhasePose>();
-
-        // camera-direction unit 8 — 맵 크기에 맞춘 홈 거리 계산의 여유 배율.
-        // 1 = 보드 코너가 화면 가장자리에 딱 닿음. 크게 할수록 여백이 늘고 보드가 작아진다.
-        [Tooltip("보드 fit 여유 배율. 1 = 보드 코너가 화면 가장자리에 딱 닿음. HUD 가 위아래를 가리므로 여유를 둔다.")]
-        public float boardFitMargin = 1.12f;
-        [Tooltip("fit 거리에 더하는 추가 후퇴(월드 유닛). + = 뒤로 더 당김(줌아웃). 하단 HUD 가릴 때.")]
-        public float boardFramePullback = 4f;
-        [Tooltip("보드를 화면에서 위로 올리는 양(월드 유닛). + = 보드 상승(하단 HUD 클리어). 내부적으로 카메라 하강.")]
-        public float boardFrameRaiseY = 2f;
+        [Header("카메라 상태 (unit 10~11)")]
+        [Tooltip("상태별 프레이밍 레시피. 등록되지 않은 상태로는 전환하지 않는다(현재 포즈 유지).")]
+        public CameraStateFraming[] stateFramings = System.Array.Empty<CameraStateFraming>();
 
         [Header("배틀 구두점 (unit 2) — additive 전용, 카메라 탈취 없음")]
         [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인. [은퇴 — 줌은 pulseDolly 가 담당] 0 권장.")]
@@ -97,6 +118,10 @@ namespace Wassup.Data
         public float focusFadeInSec = 0.25f;
         [Tooltip("포커스 해제 페이드(초).")]
         public float focusFadeOutSec = 0.35f;
+        // camera-direction unit 12 — 배치 상태는 같은 채널을 «화면 밀기» 로 해석한다.
+        // 스프링·감쇠·페이드는 위 값을 그대로 쓴다(새 채널을 만들지 않는 이유).
+        [Tooltip("배치 상태에서 커서 쪽으로 화면을 미는 양(0~1). 1 = 커서 지점이 화면 중앙까지 온다.")]
+        public float placementFocusLead = 0.35f;
 
         [Header("인스펙트 포커스 (unit-dreamcatcher-inspect unit 4) — 유닛 탭 시 들여다보기 줌")]
         // 드래그 포커스(dolly 1 / fov -1)보다 강하다: 그건 스와이프 중 미묘한 리드고,

@@ -12,6 +12,19 @@ readonly DEFAULT_UNITY_EDITOR="/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.a
 readonly PROJECT_SETTINGS_RELATIVE="ProjectSettings/ProjectSettings.asset"
 readonly MOBILE_RP_ASSET_RELATIVE="Assets/Settings/Mobile_RPAsset.asset"
 readonly BUILD_LOCK_RELATIVE="Library/DreamSquadMobileBuild.lock"
+readonly -a SPINE_MATERIAL_SERIALIZATION_RELATIVES=(
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_Casual Character_2.mat"
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_Casual Character_3.mat"
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_Casual Character_4.mat"
+)
+readonly -a SPINE_ATLAS_SERIALIZATION_RELATIVES=(
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Chicken_Atlas.asset"
+  "Assets/Layer Lab/2D Art Maker/_CommonSource/Spine/fire_Atlas.asset"
+)
+readonly -a SPINE_GENERATED_SERIALIZATION_RELATIVES=(
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_Casual Character.mat"
+  "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_Casual Character.mat.meta"
+)
 
 TARGET=""
 BUILD_VERSION=""
@@ -60,6 +73,10 @@ UNITY_LAUNCH_ACTIVE=0
 DEFERRED_SIGNAL_EXIT=0
 BUILD_LOCK_DIR=""
 BUILD_LOCK_HELD=0
+SPINE_MATERIAL_BASELINES=()
+SPINE_MATERIAL_VARIANTS=()
+SPINE_ATLAS_BASELINES=()
+SPINE_ATLAS_VARIANTS=()
 
 usage() {
   cat <<'EOF'
@@ -495,6 +512,83 @@ generate_mobile_rp_serialization_variant() {
   ' "$source_file" > "$destination_file"
 }
 
+generate_spine_material_serialization_variant() {
+  local source_file="$1"
+  local destination_file="$2"
+
+  awk '
+    $0 == "  m_LockedProperties:" {
+      replacements++
+      print "  m_LockedProperties: "
+      next
+    }
+    { print }
+    END {
+      if (replacements != 1) {
+        exit 1
+      }
+    }
+  ' "$source_file" > "$destination_file"
+}
+
+generate_spine_atlas_serialization_variant() {
+  local source_file="$1"
+  local destination_file="$2"
+
+  awk '
+    $0 == "  m_EditorClassIdentifier: " {
+      insertions++
+      print
+      print "  serializedMaterialOverrides: []"
+      next
+    }
+    { print }
+    END {
+      if (insertions != 1) {
+        exit 1
+      }
+    }
+  ' "$source_file" > "$destination_file"
+}
+
+capture_spine_serialization_baselines() {
+  local relative_path
+  local source_file
+  local index=0
+  local baseline_file
+  local variant_file
+
+  for relative_path in "${SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+    source_file="$PROJECT_ROOT/$relative_path"
+    [ -f "$source_file" ] && [ ! -L "$source_file" ] || return 1
+    baseline_file="$SERIALIZATION_BASELINE_DIR/SpineMaterial.$index.baseline"
+    variant_file="$SERIALIZATION_BASELINE_DIR/SpineMaterial.$index.variant"
+    /bin/cp -p "$source_file" "$baseline_file" || return 1
+    generate_spine_material_serialization_variant "$baseline_file" "$variant_file" || return 1
+    SPINE_MATERIAL_BASELINES[index]="$baseline_file"
+    SPINE_MATERIAL_VARIANTS[index]="$variant_file"
+    index=$((index + 1))
+  done
+
+  index=0
+  for relative_path in "${SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+    source_file="$PROJECT_ROOT/$relative_path"
+    [ -f "$source_file" ] && [ ! -L "$source_file" ] || return 1
+    baseline_file="$SERIALIZATION_BASELINE_DIR/SpineAtlas.$index.baseline"
+    variant_file="$SERIALIZATION_BASELINE_DIR/SpineAtlas.$index.variant"
+    /bin/cp -p "$source_file" "$baseline_file" || return 1
+    generate_spine_atlas_serialization_variant "$baseline_file" "$variant_file" || return 1
+    SPINE_ATLAS_BASELINES[index]="$baseline_file"
+    SPINE_ATLAS_VARIANTS[index]="$variant_file"
+    index=$((index + 1))
+  done
+
+  for relative_path in "${SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}"; do
+    source_file="$PROJECT_ROOT/$relative_path"
+    [ ! -e "$source_file" ] && [ ! -L "$source_file" ] || return 1
+  done
+}
+
 capture_serialization_baseline() {
   local project_settings="$PROJECT_ROOT/$PROJECT_SETTINGS_RELATIVE"
   local mobile_rp_asset="$PROJECT_ROOT/$MOBILE_RP_ASSET_RELATIVE"
@@ -541,6 +635,8 @@ capture_serialization_baseline() {
     "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"; then
     rm -f -- "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"
   fi
+  capture_spine_serialization_baselines ||
+    fail "Tracked Spine serialization baselines are unavailable."
 
   SERIALIZATION_BASELINE_CAPTURED=1
 }
@@ -566,7 +662,11 @@ verify_tracked_build_input_hashes() {
   local expected_blob
   local actual_blob
 
-  for relative_path in "$PROJECT_SETTINGS_RELATIVE" "$MOBILE_RP_ASSET_RELATIVE"; do
+  for relative_path in \
+    "$PROJECT_SETTINGS_RELATIVE" \
+    "$MOBILE_RP_ASSET_RELATIVE" \
+    "${SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}" \
+    "${SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
     expected_blob="$(
       git -C "$PROJECT_ROOT" rev-parse "$BUILD_HEAD_FULL:$relative_path"
     )" || return 1
@@ -633,8 +733,15 @@ reconcile_known_unity_serialization() {
   local status
   local current_status
   local line
+  local relative_path
+  local source_file
+  local index
   local project_dirty=0
   local mobile_rp_dirty=0
+  local spine_material_dirty=0
+  local spine_atlas_dirty=0
+  local spine_generated_dirty=0
+  local spine_dirty=0
   local project_settings="$PROJECT_ROOT/$PROJECT_SETTINGS_RELATIVE"
   local mobile_rp_asset="$PROJECT_ROOT/$MOBILE_RP_ASSET_RELATIVE"
   local project_candidate=""
@@ -652,7 +759,7 @@ reconcile_known_unity_serialization() {
   fi
 
   if [ -n "$status" ]; then
-    while IFS= read -r line; do
+    while IFS= read -r -d '' line; do
       case "$line" in
         " M $PROJECT_SETTINGS_RELATIVE")
           project_dirty=1
@@ -661,10 +768,44 @@ reconcile_known_unity_serialization() {
           mobile_rp_dirty=1
           ;;
         *)
+          relative_path="<unmatched>"
+          for relative_path in "${SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+            if [ "$line" = " M $relative_path" ]; then
+              spine_material_dirty=$((spine_material_dirty + 1))
+              relative_path=""
+              break
+            fi
+          done
+          [ -z "$relative_path" ] && continue
+          for relative_path in "${SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+            if [ "$line" = " M $relative_path" ]; then
+              spine_atlas_dirty=$((spine_atlas_dirty + 1))
+              relative_path=""
+              break
+            fi
+          done
+          [ -z "$relative_path" ] && continue
+          for relative_path in "${SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}"; do
+            if [ "$line" = "?? $relative_path" ]; then
+              spine_generated_dirty=$((spine_generated_dirty + 1))
+              relative_path=""
+              break
+            fi
+          done
+          [ -z "$relative_path" ] && continue
           return 1
           ;;
       esac
-    done <<< "$status"
+    done < <(git -C "$PROJECT_ROOT" status --porcelain=v1 -z --untracked-files=all)
+  fi
+
+  if [ "$spine_material_dirty" -ne 0 ] ||
+    [ "$spine_atlas_dirty" -ne 0 ] ||
+    [ "$spine_generated_dirty" -ne 0 ]; then
+    [ "$spine_material_dirty" -eq "${#SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}" ] || return 1
+    [ "$spine_atlas_dirty" -eq "${#SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}" ] || return 1
+    [ "$spine_generated_dirty" -eq "${#SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}" ] || return 1
+    spine_dirty=1
   fi
 
   if [ "$project_dirty" -eq 1 ]; then
@@ -683,6 +824,20 @@ reconcile_known_unity_serialization() {
         "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"
     )" || return 1
   fi
+  if [ "$spine_dirty" -eq 1 ]; then
+    for index in "${!SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+      source_file="$PROJECT_ROOT/${SPINE_MATERIAL_SERIALIZATION_RELATIVES[index]}"
+      cmp -s "$source_file" "${SPINE_MATERIAL_VARIANTS[index]}" || return 1
+    done
+    for index in "${!SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+      source_file="$PROJECT_ROOT/${SPINE_ATLAS_SERIALIZATION_RELATIVES[index]}"
+      cmp -s "$source_file" "${SPINE_ATLAS_VARIANTS[index]}" || return 1
+    done
+    for relative_path in "${SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}"; do
+      source_file="$PROJECT_ROOT/$relative_path"
+      [ -f "$source_file" ] && [ ! -L "$source_file" ] || return 1
+    done
+  fi
 
   if [ "$project_dirty" -eq 1 ]; then
     cmp -s "$project_settings" "$project_candidate" || return 1
@@ -704,6 +859,22 @@ reconcile_known_unity_serialization() {
       "Mobile_RPAsset.restore" \
       0 || return 1
   fi
+  if [ "$spine_dirty" -eq 1 ]; then
+    for index in "${!SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+      prepare_atomic_restore_file \
+        "${SPINE_MATERIAL_BASELINES[index]}" \
+        "$PROJECT_ROOT/${SPINE_MATERIAL_SERIALIZATION_RELATIVES[index]}" \
+        "SpineMaterial.$index.restore" \
+        0 || return 1
+    done
+    for index in "${!SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+      prepare_atomic_restore_file \
+        "${SPINE_ATLAS_BASELINES[index]}" \
+        "$PROJECT_ROOT/${SPINE_ATLAS_SERIALIZATION_RELATIVES[index]}" \
+        "SpineAtlas.$index.restore" \
+        0 || return 1
+    done
+  fi
 
   [ "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$BUILD_HEAD_FULL" ] ||
     return 1
@@ -717,6 +888,22 @@ reconcile_known_unity_serialization() {
   fi
   if [ "$mobile_rp_dirty" -eq 1 ]; then
     cmp -s "$mobile_rp_asset" "$mobile_rp_candidate" || return 1
+  fi
+  if [ "$spine_dirty" -eq 1 ]; then
+    for index in "${!SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+      cmp -s \
+        "$PROJECT_ROOT/${SPINE_MATERIAL_SERIALIZATION_RELATIVES[index]}" \
+        "${SPINE_MATERIAL_VARIANTS[index]}" || return 1
+    done
+    for index in "${!SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+      cmp -s \
+        "$PROJECT_ROOT/${SPINE_ATLAS_SERIALIZATION_RELATIVES[index]}" \
+        "${SPINE_ATLAS_VARIANTS[index]}" || return 1
+    done
+    for relative_path in "${SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}"; do
+      source_file="$PROJECT_ROOT/$relative_path"
+      [ -f "$source_file" ] && [ ! -L "$source_file" ] || return 1
+    done
   fi
   if [ "$project_dirty" -eq 1 ]; then
     commit_atomic_restore_file \
@@ -733,6 +920,30 @@ reconcile_known_unity_serialization() {
       "Mobile_RPAsset.restore" \
       0 \
       "$mobile_rp_candidate" || return 1
+  fi
+  if [ "$spine_dirty" -eq 1 ]; then
+    for index in "${!SPINE_MATERIAL_SERIALIZATION_RELATIVES[@]}"; do
+      commit_atomic_restore_file \
+        "${SPINE_MATERIAL_BASELINES[index]}" \
+        "$PROJECT_ROOT/${SPINE_MATERIAL_SERIALIZATION_RELATIVES[index]}" \
+        "SpineMaterial.$index.restore" \
+        0 \
+        "${SPINE_MATERIAL_VARIANTS[index]}" || return 1
+    done
+    for index in "${!SPINE_ATLAS_SERIALIZATION_RELATIVES[@]}"; do
+      commit_atomic_restore_file \
+        "${SPINE_ATLAS_BASELINES[index]}" \
+        "$PROJECT_ROOT/${SPINE_ATLAS_SERIALIZATION_RELATIVES[index]}" \
+        "SpineAtlas.$index.restore" \
+        0 \
+        "${SPINE_ATLAS_VARIANTS[index]}" || return 1
+    done
+    for relative_path in "${SPINE_GENERATED_SERIALIZATION_RELATIVES[@]}"; do
+      source_file="$PROJECT_ROOT/$relative_path"
+      [ -f "$source_file" ] && [ ! -L "$source_file" ] || return 1
+      rm -f -- "$source_file" || return 1
+      [ ! -e "$source_file" ] && [ ! -L "$source_file" ] || return 1
+    done
   fi
   verify_tracked_build_input_hashes || return 1
   is_worktree_clean

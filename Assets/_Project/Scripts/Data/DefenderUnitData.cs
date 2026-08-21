@@ -42,6 +42,16 @@ namespace Wassup.Data
             => traversalLayers == PlacementLayer.None ? PlacementLayer.Path : traversalLayers;
 
         public string displayName;
+        // defender-unit-visibility unit 0 — 0 = 목록에서 숨김, 그 외 = 노출.
+        //
+        // **카탈로그에서 빼는 것과 다르다.** 카탈로그에서 빼면 그 id 를 저장한 프로필이
+        // 유닛을 못 찾아(`ById` → null) 편성이 조용히 0/7 이 되고 START 가 막힌다. 이 필드는
+        // 목록 노출만 끄고 id 해석은 살려둔다 — 이미 편성된 숨김 유닛도 헤더 슬롯에 정상
+        // 표시되고 [편성 해제]로 뺄 수 있다.
+        //
+        // 기존 에셋은 YAML 에 키가 없어 초기값 1(노출)을 유지한다(백필 없음).
+        // 소유/잠금(가챠)과는 다른 축이다 — 이건 "저작이 내놓았나", 그건 "플레이어가 가졌나".
+        public int visible = 1;
         // squad-character-page unit 6 — 유닛 설명(시트-동기 plain 필드, 체력 등과 동형).
         // 비어 있으면 UnitKitSummary.Describe 가 자동 요약문으로 폴백. 시드값 = 자동 요약문.
         [TextArea] public string desc;

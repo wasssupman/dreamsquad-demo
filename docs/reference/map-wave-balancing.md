@@ -94,6 +94,12 @@ floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이
 올릴 때는 **마지막 스폰이 `timerDurationSec` 안에 남는지** 확인할 것(`WaveKillBudgetPinTests` 가 가드).
 작성 플랜(`WavePlanAsset`)에는 적용되지 않는다 — 그룹 상대 시각으로 직접 표현한다.
 
+**작성 플랜의 레인 고정**(`AuthoredSpawnGroup.laneIndex`, first-run-tutorial unit 8):
+**-1 = 무지정(기본, 기존 동작)** — 펼침 순번 % 레인 수로 라운드로빈해 스폰이 갈린다.
+≥0 을 박으면 그 그룹이 **한 스폰 지점으로 몰린다**(Duel 은 `laneCount 2`, `0` = 적 마음의
+`y-1`). 「배치 스킬 한 번이 한 덩어리를 덮는 장면」처럼 **몰림이 의도일 때만** 쓴다 —
+그냥 박으면 반대쪽 레인이 통째로 빈다. 규칙 상세는 `.claude/skills/enemy-wave-integration`.
+
 **완전 수제 웨이브**: `useGeneratedWaves=false` + `spawns` 리스트에 (시각, 유닛, 수) 직접 authoring → 생성기 안 씀.
 
 ---

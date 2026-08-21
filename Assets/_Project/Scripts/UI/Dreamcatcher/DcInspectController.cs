@@ -120,22 +120,6 @@ namespace Wassup.UI
         {
             if (bridge == null || mainCamera == null) return;
 
-            // first-session-tutorial unit 15 — 첫 판 각성 봉인. MustClose 와 자리는 같지만 이유가
-            // 다르다: MustClose 는 "보드 입력의 주인이 바뀜"(일시적), 이쪽은 "이 판엔 기능 자체가
-            // 없음"(판 전체). 선택이 손패를 열기 때문에(Select → OpenForSelection) 선택을 막지
-            // 않으면 숨겨둔 손패가 그대로 딜인되고, 게이지 20 · 카드 비용 20 이라 첫 판에 카드를
-            // 실제로 쓸 수 있다.
-            //
-            // MustClose 처럼 매 프레임 Close() 를 부르지 않는다. 그 규약은 배치 드래그가 수
-            // 프레임짜리라 성립하는데, 봉인은 첫 판 내내 참이라 panel.Hide() 와 stale lease
-            // Release 가 수천 프레임 헛돈다. 선택이 없으면 정리할 것도 없다.
-            if (SealedThisMatch())
-            {
-                _pendingTap = false;
-                if (_selected != Entity.Null) Close();
-                return;
-            }
-
             // 배치 드래그/arm 또는 이동모드가 입력을 쥐면 선택 자체를 닫는다(계약 8).
             // 손패 오픈·조준은 여기가 아니라 TapGated — 선택과 공존해야 한다(selection-hand-attach 계약 2).
             if (MustClose()) { _pendingTap = false; Close(); return; }
@@ -226,7 +210,8 @@ namespace Wassup.UI
                 return;
             }
             _anchorMissFrames = 0;
-            if (cameraDirector != null && !AimingNow()) cameraDirector.SetInspectFocus(anchor.position);
+            if (InspectZoomEnabled && cameraDirector != null && !AimingNow())
+                cameraDirector.SetInspectFocus(anchor.position);
 
             // unit 11 — 실효 스탯은 매 프레임 갱신한다. 대상이 1 엔티티라 비용이 무시할 만하고
             // (이 메서드가 이미 매 프레임 앵커를 조회한다), HP 가 뚝뚝 끊기지 않는다.
@@ -267,6 +252,29 @@ namespace Wassup.UI
         // const 가 아니라 static readonly 인 이유: const 면 분기가 상수 폴딩돼 도달 불가 경고가 뜬다.
         private static readonly bool RelocationEnabled = false;
 
+        // 2026-08-19 사용자 결정으로 **보드에 놓인 유닛을 직접 탭해 선택하는 경로를 껐다가**,
+        // 2026-08-20 사용자 요청으로 **다시 켠다** — 판 위 유닛을 찍으면 상세가 떠야 한다.
+        //
+        // 켜진 지금 선택 진입구는 둘이다. 보드 유닛 탭(HandleTap · OnBoardTapped → TryPick →
+        // Select)과 하단 트레이 소진 셀 탭(DefenderDragSlot.GoToDeployedUnit → SelectDeployed).
+        // 후자는 이 게이트를 지나지 않는 **별도 입구**라 스위치 값과 무관하게 늘 산다 —
+        // 입구가 갈라져 있다는 것이 한쪽만 끌 수 있었던 이유고, 되켜도 그대로다.
+        //
+        // 꺼져 있는 동안 보드 탭은 «해제 제스처» 전용이었다. 켜도 해제는 사라지지 않는다:
+        // 빈 보드 탭(TryPick 실패)과 선택 유닛 재탭(entity == _selected)이 종전대로 걷는다.
+        private static readonly bool BoardTapSelectEnabled = true;
+
+        // 2026-08-19 사용자 결정 — **선택 줌(인스펙트 포커스)을 끈다.** 카메라는 홈 포즈를
+        // 유지한다. 피드를 끊는 쪽으로 끈다(CameraDirectionConfig 의 inspectDolly/FovDelta/
+        // LookWeight 를 0 으로 만드는 대신) — 그래야 프레이밍 바이어스까지 한 번에 멎고,
+        // 같은 채널을 쓰는 DirectionAimController(방향 지정 조준 셀 포커스)는 영향이 없다.
+        // 피드가 끊기면 CameraDirector 가 2프레임 staleness 로 자동 해제한다.
+        //
+        // ⚠ 이 파일의 스위치는 전부 [SerializeField] 금지 · const 아닌 static readonly
+        // (const 면 분기가 상수 폴딩돼 «도달 불가» 경고가 뜨고 게이트 안 헬퍼가 미사용으로
+        // 잡힌다). 인스펙터로 노출하면 켠 값이 씬 저장에 조용히 박힌다 — 진실원은 이 줄들이다.
+        private static readonly bool InspectZoomEnabled = false;
+
         // defender-relocation unit 10 rev — 트레이 소진 슬롯이 이동모드를 열 때 쓰는 경로.
         // 슬롯(DefenderDragSlot)은 런타임 생성이라 인스펙터 배선이 없고, 이미 이 컨트롤러
         // 참조를 Bind 로 받고 있다. **여기 하나만 노출하면 씬 배선이 늘지 않는다.**
@@ -279,11 +287,6 @@ namespace Wassup.UI
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
         // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
         // 전제이기 때문이다. 여기 남은 둘은 "보드 입력의 주인이 아예 바뀌는" 경우다.
-        // first-session-tutorial unit 15 — 첫 판 각성 봉인 여부. 사실의 소유자는
-        // AwakeningGaugeView 이고 손패 뷰가 릴레이한다(신규 씬 배선 없이 기존 참조로).
-        // 미배선/튜토리얼 부재면 false — fail-open 이라 선택이 정상 동작한다.
-        private bool SealedThisMatch() => handView != null && handView.AwakeningSealedThisMatch;
-
         private bool MustClose()
         {
             // 컨트롤러가 아직 AddComponent 되기 전이면 null — 드래그 중일 수 없으므로 통과.
@@ -325,17 +328,17 @@ namespace Wassup.UI
         // 무관하게 손패까지 걷는다(계약 7 — 항아리 단독 오픈의 바깥 탭 dismiss 보존).
         private void OnBoardTapped(Vector2 screenPos)
         {
-            // unit 15 — 첫 판엔 손패가 안 열려 캐처 자체가 없지만, 폴백 경로로도 선택이
-            // 되살아나지 않게 방어적으로 막는다.
-            if (SealedThisMatch()) return;
             // 이동모드/배치 드래그가 입력 주인일 때는 캐처 클릭으로 선택이 오염되지 않게(critic M6).
             if (MustClose()) return;
-            if (TryPick(screenPos, out var entity) && entity != _selected)
+            // BoardTapSelectEnabled — 켜져 있으면 보드 탭이 유닛을 고른다(전환 포함).
+            // 꺼져 있으면 이 분기를 건너뛰어 모든 보드 탭이 해제가 되고, 선택 전환은
+            // 트레이 셀 재탭만 남는다(SelectDeployed 는 전환도 겸한다).
+            if (BoardTapSelectEnabled && TryPick(screenPos, out var entity) && entity != _selected)
             {
                 Select(entity); // 전환(무선택 상태의 첫 선택도 이 경로) — 손패는 유지된다
                 return;
             }
-            CloseByIntent(); // 빈 보드 또는 선택 유닛 재탭
+            CloseByIntent(); // 빈 보드 · 선택 유닛 재탭 · (선택 꺼짐) 모든 보드 탭 = 해제
         }
 
         // 닫기 의도 탭 전용 — 선택이 없어도 손패를 걷는다. Close() 는 "선택이 있었을 때만"
@@ -350,6 +353,8 @@ namespace Wassup.UI
 
         private void HandleTap(Vector2 screenPos)
         {
+            // BoardTapSelectEnabled 가 꺼지면 보드 raw 탭은 «해제» 만 한다(선택은 트레이 셀 전용).
+            if (!BoardTapSelectEnabled) { Close(); return; }
             if (!TryPick(screenPos, out var entity)) { Close(); return; } // 빈 보드 → 닫기
             if (entity == _selected) { Close(); return; }                 // 재탭 → 토글
             Select(entity);
@@ -378,11 +383,9 @@ namespace Wassup.UI
         public void SelectDeployed(Entity entity)
         {
             if (entity == Entity.Null) return;
-            // 보드 탭이 Update 에서 통과해야 하는 두 관문을 **여기서도** 지난다. 트레이 탭은
-            // Update 의 입력 경로를 타지 않으므로 게이트를 물려받지 못한다 — 특히 봉인은
-            // 다음 프레임 Close() 로 되돌릴 수 없다(선택이 손패를 열고, 딜인은 이미 일어난다).
-            // 상한 1 이 기본이라 첫 판에서도 셀이 곧바로 소진되므로 이 경로는 실제로 밟힌다.
-            if (SealedThisMatch()) return;   // 첫 판 각성 봉인 (first-session-tutorial unit 15)
+            // 보드 탭이 Update 에서 통과해야 하는 관문을 **여기서도** 지난다. 트레이 탭은
+            // Update 의 입력 경로를 타지 않으므로 게이트를 물려받지 못한다.
+            // (tutorial-content-teardown unit 0 — 첫 판 각성 봉인 관문은 함께 걷혔다.)
             if (MustClose()) return;         // 배치 드래그/arm/이동모드가 입력을 쥔 상태
             Select(entity);
         }
@@ -468,7 +471,7 @@ namespace Wassup.UI
         // ── 퇴근 (defender-clock-out unit 2) ──────────────────────────────────
 
         // 액션 슬롯 문안. 뷰는 기능을 모르므로 라벨의 주인은 여기다.
-        private const string RetireLabel = "퇴근";
+        private const string RetireLabel = "철수";
 
         // 액션 슬롯 1칸의 **현재 주인**을 고른다. 이동을 되살리려면 RelocationEnabled 하나만
         // true 로 바꾸면 되고, 라벨·가드·콜백이 이 세 곳에서 함께 갈린다.

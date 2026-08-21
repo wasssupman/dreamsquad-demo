@@ -38,7 +38,7 @@
 | **0** | **당김 복귀 + 겹침 상한** — 도크 버튼 복원 · 정리 이후 당김 횟수 상한 · 덱 knob. **한 커밋** | [0](0_pull_revival_and_cap.md) | **큼** | M |
 | **1** | **다음 웨이브 구성 예고** — 도크에 «다음: 무엇 ×N» 상시 표시 | [1](1_next_wave_preview.md) | 큼 | M |
 | **2** | **묶음 가운데 변주** — 컨셉 SO 에 변주 슬롯, 3웨이브 중 2번째만 사용 | [2](2_block_mid_variant.md) | 콘텐츠 | S |
-| **3** | **목표 페이스 (가짜 기준선)** — 웨이브 플랜 par 로 «몇 점 부족» 표시. 서버 없이 감각만 | [3](3_pace_baseline_mock.md) | HUD | M |
+| **3** | ~~**목표 페이스 (가짜 기준선)**~~ — **은퇴 2026-08-20**(사용자 지시). 화면에서 걷어냈고 `PaceBaseline`·`paceParFraction` 도 함께 제거 | [3](3_pace_baseline_mock.md) | HUD | M |
 | **4** | **튜토리얼 당김 안내 복원** — 제거된 힌트 스텝 재도입 | [4](4_tutorial_pull_hint.md) | 온보딩 | S |
 | **5** | **당김 기록 확인** — `wave_forced` 가 제출 스냅샷에 실리는지 검사 | [5](5_pull_log_snapshot.md) | 로깅 | S |
 | **6** | **handoff** | [6](6_handoff_summary.md) | — | S |

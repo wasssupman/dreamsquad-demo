@@ -143,7 +143,7 @@ namespace Wassup.UI
         private readonly StringBuilder _listBuilder = new StringBuilder(128);
 
         // wave-pull-revival unit 4 — 튜토리얼 포커스 링이 감쌀 대상.
-        // 선례: ScoreHudView.StressBadgeRect · AwakeningGaugeView.HitRect.
+        // 선례: AwakeningGaugeView.HitRect.
         // **알약만** 준다 — 말풍선은 탭해야 생기고, 링이 가리켜야 할 것은 «누를 대상»이다.
         public RectTransform PullButtonRect =>
             _pillRoot != null ? (RectTransform)_pillRoot.transform : null;

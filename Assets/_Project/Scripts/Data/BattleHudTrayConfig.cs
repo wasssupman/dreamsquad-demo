@@ -112,18 +112,37 @@ namespace Wassup.Data
         [Tooltip("쿨타임 오버레이 테두리 림 글로우 색(느린 호흡 펄스). alpha 0 이면 림 없음. 기포는 코스트 물통으로 이관")]
         public Color cooldownRimColor = new Color(0.55f, 0.85f, 1f, 0.5f);
 
-        // defender-board-limit 1 — "출전 중"(판 위 상한 소진) 표현. 텍스트 배지 없이
-        // 탈색 + 테두리 순환으로만 말한다(사용자 결정 2026-08-12). 쿨타임 림(제자리 호흡)과는
-        // 움직임 문법으로 구분되고, 우선순위 규칙상 둘이 동시에 뜨지 않는다.
-        [Header("Board Limit Exhausted (defender-board-limit 1)")]
-        [Tooltip("소진 셀 포트레이트 곱색. UGUI Image 곱 틴트라 진짜 그레이스케일이 아니라 '채도가 죽은 것처럼' 보이는 것")]
-        public Color exhaustedPortraitTint = new Color(0.42f, 0.44f, 0.50f, 1f);
+        // defender-board-limit 1 — "출전 중"(판 위 상한 소진) 표현.
+        //
+        // unit 4 rev — **탈색을 걷었다.** 트레이에서 「어두움 = 못 쓰는 칸」이 이미 규칙인데
+        // (unaffordableDim · cooldownCellDim) 출전 중만 어두우면서 **눌리는** 예외라, 그 칸이
+        // 판 위 유닛으로 가는 입구라는 게 화면에서 초대되지 않았다. 이제 출전 중 셀은 밝게
+        // 살아 있고, 느리게 숨쉬고, 누르면 먼저 튄다. 쿨타임 림(시안·제자리 호흡)과는
+        // 밝기·색·움직임 셋 다로 갈린다.
+        //
+        // **셀 안에 새 기호를 넣지 않는다**(사용자 결정 2026-08-21). 리티클 글리프를 만들었다가
+        // 뺐다 — "무슨 의미인지 모르겠다". 상태는 이미 뜻이 붙은 기존 어휘(테두리)를 키워 말한다.
+        [Header("Board Limit Exhausted (defender-board-limit 1 · unit 4 rev)")]
+        [Tooltip("소진 셀 포트레이트 곱색. unit 4 rev — 살짝만 가라앉히고 채도는 유지한다(어두움은 '못 쓰는 칸'의 언어라 여기 쓰지 않는다)")]
+        public Color exhaustedPortraitTint = new Color(0.85f, 0.86f, 0.90f, 1f);
+        [Tooltip("출전 중 셀 호흡 진폭(0.02 = 2% 확대). 0 이면 호흡 없음. 죽은 UI 는 안 움직인다 = 움직이면 만질 수 있는 것으로 읽힌다")]
+        public float exhaustedBreathAmplitude = 0.02f;
+        [Tooltip("출전 중 셀 호흡 한 주기(초)")]
+        public float exhaustedBreathPeriod = 2.2f;
+        [Tooltip("소진 셀을 눌렀을 때 셀이 튀는 폭(0.09 = 9%). 응답이 전부 화면 반대편에 있어 칸 자신이 먼저 대답하게 하는 것")]
+        public float exhaustedTapPunch = 0.09f;
         // 색·두께·속도·밴드 수 같은 **룩 knob 은 머티리얼 에셋(SlotRimFlow.mat)이 소유**한다.
         // 여기에도 복제하면 진실원이 둘이 된다 — 이 셰이더는 소비처가 하나뿐이라(쿨타임 액체가
         // 코스트 물통과 색·방향을 달리해야 했던 것과 다르다) 역할 구분용 오버라이드가 필요 없다.
-        // 코드가 미는 유니폼은 셀 종횡비(_Aspect) 하나뿐 — 그건 룩이 아니라 기하다.
-        [Tooltip("테두리 순환 머티리얼(Wassup/UI/SlotRimFlow). 미할당이면 테두리 생략(탈색만)")]
+        // 코드가 미는 유니폼은 _Aspect 와 _Bleed 둘 — 둘 다 룩이 아니라 기하다.
+        [Tooltip("테두리 순환 머티리얼(Wassup/UI/SlotRimFlow). 미할당이면 테두리가 없고 탈색만 남는데, unit 4 로 탈색이 0.85 까지 밝아져 그것만으로는 소진이 거의 안 보인다 — 사실상 필수")]
         public Material rimFlowMaterial;
+        // 예외 하나 — 아래는 룩이 아니라 **기하**라 여기 있다. 테두리 quad 의 크기는 UGUI
+        // RectTransform 이 정하는 것이라 머티리얼이 가질 수 없다(셰이더는 자기 quad 가 얼마나
+        // 큰지 모른다). 코드가 이 값에서 _Bleed 를 유도해 셰이더에 밀어, 링은 셀 경계에 남고
+        // 늘어난 여백만 글로우가 쓴다.
+        [Tooltip("테두리 quad 를 셀보다 키우는 여백(px) = 글로우가 셀 밖으로 번질 자리. 상한은 slotSpacing 의 **절반**(두 칸이 틈을 나눠 쓴다) — 넘기면 소진 셀 2개 사이가 호박빛으로 이어져 한 덩어리로 읽힌다")]
+        public float rimBleedPx = 4f;
 
         [Header("Slot Name Band (cost-well unit 0)")]
         public float nameBandHeight = 36f;

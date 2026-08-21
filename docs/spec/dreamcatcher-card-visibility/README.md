@@ -30,4 +30,4 @@
 
 - ~~선물(림의 선물) 풀에도 visible 적용~~ → **unit 4 로 승격** (2026-07-27). 림 풀뿐 아니라 rim fallback 풀 + 루시드 스킬 풀(래핑 Active 카드가 숨김이면 스킬 자체를 롤에서 제외)까지 포함.
 - **스쿼드 프리셋(`SquadPreset.cards`) 정리** · 프리셋에 숨김 카드가 남을 수 있다. 덱과 같은 prune 이 필요한지는 프리셋 사용 흐름을 보고 판단.
-- **유닛(`DefenderUnitData`)에도 같은 스위치** · 요청 시 같은 패턴으로 확장.
+- ~~유닛(`DefenderUnitData`)에도 같은 스위치~~ → **`docs/spec/defender-unit-visibility/` 로 승격** (2026-08-20). 계약은 그대로 물려받되 로그인 prune 은 두지 않는다(유닛은 7/7 이 깨지면 즉시 START 가 막힌다).

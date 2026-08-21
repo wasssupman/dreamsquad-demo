@@ -16,6 +16,9 @@ namespace Wassup.UI
         // 슬롯은 런타임 생성이라 인스펙터 배선이 불가능해 DefenderSelector 가 Bind 로 넘긴다.
         private BattleBridge _bridge;
         private DcInspectController _inspect;
+        // defender-board-limit 4 — 소진 셀을 눌렀을 때 **칸 자신이 먼저 대답**하게 하는 창구.
+        // 슬롯은 런타임 생성이라 인스펙터 배선이 불가능해 여기도 Bind 로 받는다(위 선례와 같다).
+        private DefenderSelector _selector;
         // defender-tap-to-place unit 1 — arm 하이라이트 오버레이(lazy).
         private GameObject _armOverlay;
         // action-tray unit 4 — 비용 부족으로 차단된 드래그 제스처. 이후 OnDrag/OnEndDrag
@@ -23,13 +26,23 @@ namespace Wassup.UI
         private bool _suppressedDrag;
 
         public void Bind(DefenderUnitData unitData, DefenderDragPlacementController controller,
-            CostDisplay costDisplay = null, BattleBridge bridge = null, DcInspectController inspect = null)
+            CostDisplay costDisplay = null, BattleBridge bridge = null, DcInspectController inspect = null,
+            DefenderSelector selector = null)
         {
             _unitData = unitData;
             _controller = controller;
             _costDisplay = costDisplay;
             _bridge = bridge;
             _inspect = inspect;
+            _selector = selector;
+        }
+
+        // defender-board-limit 4 — 소진 제스처의 즉시 응답. **분기 지점에서 부른다**(선택/이동모드
+        // 헬퍼 안이 아니라): TryBeginRelocationFromSlot 은 실패 시 GoToDeployedUnit 으로 폴백하므로
+        // 헬퍼 안에 넣으면 한 제스처가 두 번 튄다.
+        private void PulseSelfForExhausted()
+        {
+            if (_selector != null) _selector.PulseExhaustedSlot(_unitData);
         }
 
         // defender-board-limit 1 — 이 유닛이 이미 상한만큼 판에 나가 있나. 최종 권한은 여전히
@@ -78,6 +91,7 @@ namespace Wassup.UI
             if (IsExhausted())
             {
                 _suppressedDrag = true; // 배치 세션은 시작하지 않는다(이 유닛은 이미 판에 있다)
+                PulseSelfForExhausted();
                 TryBeginRelocationFromSlot(eventData.position); // 드래그 = 집어들기(탭은 데려가기)
                 return;
             }
@@ -129,6 +143,7 @@ namespace Wassup.UI
                 // (드래그 경로와 같은 결과 — 계약 5).
                 if (IsExhausted())
                 {
+                    PulseSelfForExhausted();
                     GoToDeployedUnit();
                     return;
                 }

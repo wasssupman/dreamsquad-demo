@@ -110,6 +110,39 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(moved, 0.1f, "스턴이 풀렸는데 적이 안 움직인다(얼어붙음)");
         }
 
+        // 지진은 「멈춘다」만이 아니라 「아프다」이기도 하다 (2026-08-19).
+        // 피해와 정지는 **같은 반경**이어야 한다 — 집합이 갈리면 화면에서 규칙을 읽을 수 없다.
+        [UnityTest]
+        public IEnumerator Stun_AlsoDealsDamage_InRangeOnly()
+        {
+            yield return LoadBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+
+            var malphite = MakeMalphite("test_stun_damage");
+            // 리터럴을 못 박지 않는다 — 밸런스 값은 SO 가 권위다. 여기서 재는 것은
+            // 「저작된 세기가 반경 안에만 들어간다」이지 그 값이 40이라는 사실이 아니다.
+            float dmg = malphite.onPlaceMagnitude;
+            Assert.Greater(dmg, 0f, "배치 피해가 저작돼 있어야 이 단언이 의미를 갖는다");
+            Prepare(bridge, gm, malphite);
+            var cell = FindCellWithWalkNeighbours(bridge, em, malphite, 1, 2, out var near, out var far);
+
+            var inRange = SpawnWalker(em, bridge, near);
+            var outFar = SpawnWalker(em, bridge, far);
+
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "배치");
+            yield return Frames(10);
+
+            float nearHp = em.GetComponentData<Health>(inRange).value;
+            float farHp = em.GetComponentData<Health>(outFar).value;
+            em.DestroyEntity(inRange); em.DestroyEntity(outFar);
+            Object.Destroy(malphite);
+
+            Assert.AreEqual(Hp - dmg, nearHp, 0.01f, $"반경 안 적이 배치 피해({dmg})를 안 맞았다");
+            Assert.AreEqual(Hp, farHp, 0.01f, "반경 밖 적이 맞았다 — 피해 반경이 스턴 반경보다 넓다");
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
 
         private static bool HasStun(EntityManager em, Entity e)

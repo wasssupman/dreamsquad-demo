@@ -21,6 +21,9 @@ namespace Wassup.Data.StatImport
         // squad-character-page unit 7 — unit description. Plain string field like
         // displayName: reflection-mapped both ways (no projection, no skip-list).
         public string desc;
+        // defender-unit-visibility unit 0 — 목록 노출 스위치(0 = 숨김). live 필드라
+        // 투영/스킵 목록에 넣지 않는다 — cost·maxOnBoard 와 동형으로 이름만 맞추면 된다.
+        public int? visible;
         public DefenderClass? role;
         public DefenderRarity? rarity;
         public float? health;

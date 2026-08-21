@@ -66,8 +66,11 @@ namespace Wassup.UI
         [SerializeField] private float attachArtHeight = 78f;
         [Tooltip("부착 카드 설명의 최대 줄 수. 넘치면 말줄임 — 패널이 아래 트레이를 침범하지 않게 성장을 묶는다.")]
         [SerializeField] private int descMaxLines = 2;
-        [SerializeField] private float actionButtonHeight = 60f;
-        [SerializeField] private float fontActionButton = 26f;
+        // retire-button-reach unit 1 — 60 은 6.5" 폰 가로에서 실물 4.5mm 로, Apple 44pt
+        // (약 7mm)·Material 48dp(약 7.6mm) 어느 기준에도 못 미쳤다. 120 = 약 9.0mm.
+        // 폭(inner 394 = 약 29.6mm)은 이미 충분해 건드리지 않는다 — 부족한 것은 세로뿐이다.
+        [SerializeField] private float actionButtonHeight = 120f;
+        [SerializeField] private float fontActionButton = 32f;
 
         [Header("Colors")]
         [SerializeField] private Color fill = new Color(0.07f, 0.06f, 0.13f, 1f);        // 툴팁과 동일 네이비
@@ -78,6 +81,19 @@ namespace Wassup.UI
         [SerializeField] private Color deltaUpColor = new Color(1f, 0.82f, 0.35f, 1f);   // 상승 = 골드
         [SerializeField] private Color deltaDownColor = new Color(1f, 0.48f, 0.42f, 1f); // 하락 = 코랄
         [SerializeField] private Color hpFillColor = new Color(0.35f, 0.86f, 0.55f, 1f);
+
+        // retire-button-reach unit 1 — 액션 버튼은 패널에서 **유일한 채움 요소**다.
+        // 예전엔 채움 없는 테두리에 색이 unitBorder(= 부착 카드 테두리와 **같은 색**)라
+        // 유일한 조작 요소가 정보와 같은 옷을 입고 있었다. 코랄 계열로 떼어낸다 —
+        // 「전력이 줄어드는 조작」이라는 뜻은 deltaDownColor 로 이미 팔레트 안에 있다.
+        // 경고 적색까지 가지 않는다: 퇴근은 사고가 아니라 전술이다(캐주얼 디펜스 톤).
+        [SerializeField] private Color actionFill = new Color(0.82f, 0.33f, 0.30f, 1f);
+        [SerializeField] private Color actionBorder = new Color(1f, 0.62f, 0.55f, 1f);
+        [SerializeField] private Color actionText = new Color(1f, 0.96f, 0.94f, 1f);
+        // 글자를 읽기 전에 식별되게 라벨 왼쪽에 둔다. 미할당이면 라벨만 — 뷰는 이 버튼이
+        // 무슨 기능인지 모른다(defender-clock-out unit 2 계약).
+        [SerializeField] private Sprite actionIcon;
+        [SerializeField] private float actionIconSize = 46f;
 
         // 델타가 이 값 미만이면 칩을 숨긴다. 표시 단위가 다른 스탯을 한 값으로 재는 것이라
         // 넉넉하게 잡는다(rate 는 0.1 단위, 체력은 정수 단위).
@@ -137,6 +153,7 @@ namespace Wassup.UI
         private RectTransform _actionButton;
         private UnityEngine.UI.Button _actionButtonComp;
         private TextMeshProUGUI _actionLabel;
+        private Image _actionIconImg;
         private System.Action _onAction;
 
         private bool _visible;
@@ -157,6 +174,28 @@ namespace Wassup.UI
         // 모르고, 라벨 문안은 컨트롤러가 만든다("퇴근" / 부활 시 "이동  {cost}").
         private (bool enabled, string label)? _actionState;
 
+        // first-run-tutorial unit 9 — 온보딩이 「퇴근」 버튼에 구멍을 뚫기 위한 읽기 전용
+        // 접근자(`AwakeningGaugeView.HitRect` 선례). 뷰는 여전히 기능을 모른다 — 「액션
+        // 슬롯의 rect」 를 줄 뿐이고, 그것이 퇴근인지 이동인지는 컨트롤러가 정한다.
+        //
+        // 미빌드/미표시면 null 이다. `Show(onAction: null)` 이면 버튼 자체가 꺼지므로
+        // activeInHierarchy 까지 본다 — 온보딩의 딤은 **비활성 대상을 구멍에서 버리고
+        // 다시 담지 않으므로**(OutgameTutorialOverlay.SetHoles) 꺼진 rect 를 넘기면
+        // 구멍 0개 = 전면 차단이 된다.
+        // ⚠ `activeInHierarchy` 만으로는 부족하다. Hide() 는 `_visible=false` 만 세우고
+        // 루트는 알파가 0.02 밑으로 떨어질 때까지 **켜져 있으며**, 그동안 Update 가
+        // `blocksRaycasts=false` 로 입력을 끊는다 — 즉 «보이지만 누를 수 없는» rect 를
+        // 몇 프레임 계속 내주게 된다. 그 rect 에 구멍을 뚫으면 온보딩은 «열어줬다» 고
+        // 믿고 기다리는데 플레이어는 영영 못 누른다(그 구간은 정지라 판도 안 끝난다).
+        // `interactable` 도 같은 이유로 본다 — 잠긴 버튼에 구멍을 뚫을 이유가 없고,
+        // 이 접근자가 null 을 내주는 것이 곧 호출측의 «지금은 안 된다» 신호다.
+        public RectTransform ActionRect =>
+            _built && _visible && _actionButton != null
+            && _actionButton.gameObject.activeInHierarchy
+            && _actionButtonComp != null && _actionButtonComp.interactable
+                ? _actionButton
+                : null;
+
         public void SetActionState(bool enabled, string label)
         {
             if (!_built || _actionButton == null || !_actionButton.gameObject.activeSelf) return;
@@ -167,9 +206,15 @@ namespace Wassup.UI
             if (_actionLabel != null)
             {
                 _actionLabel.text = label ?? "";
-                var c = unitBorder;
+                var c = actionText;
                 c.a = enabled ? 1f : 0.4f;
                 _actionLabel.color = c;
+            }
+            if (_actionIconImg != null)
+            {
+                var c = actionText;
+                c.a = enabled ? 1f : 0.4f;
+                _actionIconImg.color = c;
             }
             var img = _actionButtonComp.targetGraphic as Image;
             if (img != null)
@@ -335,6 +380,22 @@ namespace Wassup.UI
             _statsSection.sizeDelta = new Vector2(panelWidth, sy);
             y += sy + sectionGap;
 
+            // 액션 버튼 — 부착 목록 **위**. retire-button-reach unit 0.
+            //
+            // 예전에는 패널 맨 아래였다("정보(위)와 조작(아래) 분리로 읽기 순서가 선다").
+            // 그러면 버튼이 부착 카드 수에 따라 화면 y423~836 을 **412px 표류**한다 — 패널
+            // 상단만 고정이고 버튼 앞에 가변 목록이 있었기 때문이다. 목록을 버튼 뒤로 보내면
+            // 앞의 것이 전부 상수(dockTop·헤더·스탯)라 버튼 위치가 저절로 고정된다.
+            //
+            // 3분 실시간 판에서는 읽기 순서보다 **버튼을 찾는 시간**이 비싸다는 사용자 결정
+            // (2026-08-19). 부착 설명은 급할 때 읽는 것이 아니고 퇴근은 급할 때 누르는 것이다.
+            if (_actionButton.gameObject.activeSelf)
+            {
+                _actionButton.anchoredPosition = new Vector2(pad, -y);
+                _actionButton.sizeDelta = new Vector2(inner, actionButtonHeight);
+                y += actionButtonHeight + sectionGap;
+            }
+
             // 부착 섹션 — 0장이면 접는다
             bool hasAttach = attachCount > 0;
             _attachSection.gameObject.SetActive(hasAttach);
@@ -398,14 +459,6 @@ namespace Wassup.UI
                 if (attachCount > 0) ay -= rowGap;
                 _attachSection.sizeDelta = new Vector2(panelWidth, ay);
                 y += ay + sectionGap;
-            }
-
-            // 액션 버튼 — 패널 맨 아래 전폭. 정보(위)와 조작(아래)이 분리돼 읽기 순서가 선다.
-            if (_actionButton.gameObject.activeSelf)
-            {
-                _actionButton.anchoredPosition = new Vector2(pad, -y);
-                _actionButton.sizeDelta = new Vector2(inner, actionButtonHeight);
-                y += actionButtonHeight + sectionGap;
             }
 
             y += pad - sectionGap;
@@ -556,7 +609,7 @@ namespace Wassup.UI
         // 함께 움직인다(페이드 아웃 중에 눌리지 않게).
         private void BuildActionButton()
         {
-            var go = new GameObject("MoveButton", typeof(RectTransform), typeof(Image),
+            var go = new GameObject("ActionButton", typeof(RectTransform), typeof(Image),
                 typeof(UnityEngine.UI.Button));
             go.transform.SetParent(_root.transform, false);
             _actionButton = (RectTransform)go.transform;
@@ -565,7 +618,9 @@ namespace Wassup.UI
             _actionButton.pivot = new Vector2(0f, 1f);
 
             var img = go.GetComponent<Image>();
-            img.sprite = UiRoundedSprite.Make(12f, 2f, fill, unitBorder); // 패널과 같은 색 언어
+            // unit 1 — 채움 버튼. 패널의 다른 요소는 전부 테두리/텍스트라 이 하나만 채워지면
+            // 훑을 때 먼저 걸린다. 예전 값은 (fill, unitBorder) = 패널·부착과 같은 색 언어였다.
+            img.sprite = UiRoundedSprite.Make(14f, 2f, actionFill, actionBorder);
             img.type = Image.Type.Sliced;
             img.raycastTarget = true; // 계약상 유일한 예외
 
@@ -578,15 +633,38 @@ namespace Wassup.UI
             _actionButtonComp.colors = colors;
             _actionButtonComp.onClick.AddListener(() => { if (_onAction != null) _onAction(); });
 
+            // unit 1 — 아이콘은 라벨 왼쪽 고정. 스프라이트가 없으면 만들지 않고 라벨이 전폭을
+            // 쓴다(뷰는 무슨 기능인지 모르므로 폴백 그림을 지어내지 않는다).
+            float textInset = 0f;
+            if (actionIcon != null)
+            {
+                var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                iconGO.transform.SetParent(go.transform, false);
+                var irt = (RectTransform)iconGO.transform;
+                irt.anchorMin = new Vector2(0f, 0.5f);
+                irt.anchorMax = new Vector2(0f, 0.5f);
+                irt.pivot = new Vector2(0f, 0.5f);
+                irt.anchoredPosition = new Vector2(20f, 0f);
+                irt.sizeDelta = new Vector2(actionIconSize, actionIconSize);
+                _actionIconImg = iconGO.GetComponent<Image>();
+                _actionIconImg.sprite = actionIcon;
+                _actionIconImg.color = actionText;
+                _actionIconImg.preserveAspect = true;
+                _actionIconImg.raycastTarget = false;
+                textInset = 20f + actionIconSize;
+            }
+
             var label = BuildLabel(go.transform, "Label", fontActionButton, TextAlignmentOptions.Center);
             label.fontStyle = FontStyles.Bold;
-            label.color = unitBorder;
+            label.color = actionText;
             label.text = "이동";
             _actionLabel = label; // unit 10 — SetActionState 가 문안을 실어 다시 쓴다
             var lrt = label.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.pivot = new Vector2(0.5f, 0.5f);
-            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            // 아이콘이 있으면 그만큼 좌우를 같이 들여써 라벨이 남은 폭의 가운데에 선다.
+            lrt.offsetMin = new Vector2(textInset, 0f);
+            lrt.offsetMax = new Vector2(-textInset, 0f);
 
             go.SetActive(false);
         }

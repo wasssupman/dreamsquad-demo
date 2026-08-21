@@ -1,6 +1,6 @@
 # dreamcatcher-deck-page — 드림캐쳐 덱을 캐릭터 페이지 레이아웃으로
 
-> 상태: **완료 2026-07-18 · rev 2026-07-19 units 6~7 완료** (units 0~7 구현·커밋. handoff `5_handoff_summary.md` rev 섹션 참조. unit 6 = 덱-먼저 정렬 + 슬롯 선택 표시 — b86545ea, unit 7 = 저장 버튼 우하단 플로팅 — 41c8a6ff)
+> 상태: **rev 2026-08-20 unit 8 구현(컴파일 통과·Play 확인 대기)** · 완료 2026-07-18 · rev 2026-07-19 units 6~7 완료 (units 0~7 구현·커밋. handoff `5_handoff_summary.md` rev 섹션 참조. unit 6 = 덱-먼저 정렬 + 슬롯 선택 표시 — b86545ea, unit 7 = 저장 버튼 우하단 플로팅 — 41c8a6ff)
 > 선행: `squad-character-page`(레이아웃/패턴 원본, 완료) · `dreamcatcher-deck-builder`(DeckSave/DeckRules/카탈로그) · `dreamcatcher-card-art`(카드 art)
 > 성격: 아웃게임 UI/UX 재설계 (MonoBehaviour 프레젠테이션). ECS 무관 — 플레이 오브젝트 아님, 파이프라인 커버리지 N/A.
 
@@ -38,6 +38,7 @@ OutgameScene 드림캐쳐 패널에서, **선택 카드의 art + 설명이 좌�
 | 5 | 인계 | `5_handoff_summary.md` | handoff |
 | 6 | UX | `6_pool_sort_and_slot_selected.md` | 카드 그리드 덱-먼저 정렬(라이브) + 덱 슬롯 선택 outline (스쿼드 unit 10과 쌍) |
 | 7 | UX | `7_save_button_relocate.md` | 저장 버튼을 스트립 내부 → 그리드 우하단 플로팅 확정 버튼(확대)으로 이동. 게이트/상태 라벨 계약 불변 |
+| 8 | UI | `8_card_grid_five_columns.md` | 카드 그리드 5열 **고정**(화면비 파생 폐기) + 카드·라벨 확대. `squad-character-page` unit 18 의 쌍 |
 
 순서: 0 → 1 → 2 → 3 → 4 → 5. 핵심 로직(3) 종료 시 code-review, 나머지는 feature 종료 시.
 

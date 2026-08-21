@@ -372,7 +372,7 @@ namespace Wassup.Bridge
         private int _goalStabilityMax;
         // battle-structures unit 10 — **적 마음 축**. 위 방어 마음 축의 거울이고 활성 조건도
         // 같은 모양이다: `_enemyCoreMax > 0` 이면 이 축이 산다(타이머 축의 `_timerDuration > 0`,
-        // 유출 축의 `StressLimit > 0` 과 같은 형태 — 계약 15).
+        // 유출 축의 `defeatGoalReachedCount > 0` 과 같은 형태 — 계약 15).
         //
         // 모드 판정을 두지 않는 이유가 여기 있다: 침략 맵은 적 마음이 저작되지 않아 max 가
         // 0 이므로 이 축이 저절로 죽고, 타이머 만료 비교의 «적 잔여» 도 0 이 되어
@@ -455,6 +455,10 @@ namespace Wassup.Bridge
         // unit 4 — 저작 거점의 뷰 인스턴스(SO.viewPrefab). Pickup 프레젠터 선례: 브리지가
         // 만들고 teardown 이 지운다. 골 타워 프랍은 기존 경로(MapThemeData.goalStructureProp) 유지.
         private readonly List<GameObject> _structureViews = new();
+        // instinct-turret-readout unit 1 — 본능 프랍의 포신 조준 프리젠터. **셀로 잇는다**:
+        // 뷰는 맵 수명(배치 페이즈부터 보인다)이고 엔티티는 판 수명이라 엔티티 참조로 묶으면
+        // 매 판 재배선이 필요하다. 셀은 두 수명 모두에서 불변이다.
+        private readonly Dictionary<Vector2Int, Wassup.Presentation.StructureTurretView> _structureTurretsByCell = new();
         [Tooltip("골 오버헤드 게이지가 뜨는 구조물 높이(월드 유닛) — 유닛 체력바와 같은 창에 투영")]
         [SerializeField] private float goalOverheadHeight = 1.1f;
 
@@ -1249,19 +1253,21 @@ namespace Wassup.Bridge
                 Wassup.Core.BoardSpace.Configure(BoardOrigin, tileSize, tilemapMapView.Grid);
 
             // 카메라 포즈는 CameraDirector 가 매 프레임 절대값으로 소유한다 — 여기서 카메라를 직접
-            // 쓰면 다음 LateUpdate 에 홈 포즈로 되돌려져 무효다. 맵 빌드 시점에 카메라를 만지는
-            // 경로를 다시 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
-            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(camera-direction unit 1)로.
+            // 쓰면 다음 LateUpdate 에 덮여 무효다. 맵 빌드 시점에 카메라를 만지는 경로를 다시
+            // 만들지 말 것(옛 ApplyTilemapCameraPreset 이 그래서 은퇴·제거됐다).
+            // 페이즈별 카메라가 필요하면 CameraDirectionConfig 의 상태 레시피(camera-direction unit 10)로.
 
-            // camera-direction unit 8 — 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이
-            // 남거나 가장자리가 잘린다. 그리드가 확정된 지금 홈 거리를 다시 잡는다.
-            // 카메라를 직접 쓰지 않고 소유자(CameraDirector)의 홈만 갱신 — 페이즈/포커스/킥 델타는
-            // 홈 기준이라 그대로 따라온다. view·director 부재(headless)면 조용히 skip.
+            // camera-direction unit 11 — 맵마다 크기가 달라(12×10 ~ 20×12) 카메라가 판에 맞춰
+            // 물러나야 한다. 그리드가 확정된 지금 보드 bounds 를 카메라 소유자에게 **밀어준다**.
+            // 브리지가 이 push 의 정당한 소유자인 이유: 격자 크기가 _generatedMap.gridSize,
+            // 즉 sim 쪽 데이터다(뷰끼리 직접 주고받게 되돌리지 말 것).
+            // Director 는 이 값을 저장만 하고 포즈는 상태 레시피에서 매 프레임 계산한다.
+            // view·director 부재(headless)면 조용히 skip.
             // bounds 는 ground 렌더러 실측이 아니라 플레이 그리드다 —
             // 전자는 주변 데코 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다.
             if (tilemapMapView != null && tilemapMapView.TryGetPlayfieldWorldBounds(
                     new Vector2Int(_generatedMap.gridSize.x, _generatedMap.gridSize.y), out var boardBounds))
-                EnsureCameraDirector()?.FrameBoard(boardBounds);
+                EnsureCameraDirector()?.SetBoardBounds(boardBounds);
 
             BuildFlowField();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
@@ -1369,7 +1375,6 @@ namespace Wassup.Bridge
             _killCount = 0;
             ResetGoalStability();      // three-minute-survival unit 0 — 계약 9
             DestroyStructureEntities();  // goal-tower-siege unit 0 — 이전 판의 타워/거점 정리
-            RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -1417,6 +1422,13 @@ namespace Wassup.Bridge
             // ⚠ 「배치 페이즈에 배치한 스킬은 낭비된다」는 기존 사양 그대로다(README 후속 후보
             // 「배치 페이즈 발동 정책」). 이 줄이 고치는 것은 **낭비가 뒤늦게 터지는 것**뿐이다.
             DestroyEntitiesByType<ProjectileRequestCarrier>();
+
+            // on-place-shuttle-shotgun unit 2 — **배치 페이즈에 쌓인 실드 부여 연출도 버린다.**
+            // 위 캐리어와 같은 창(窓)의 다른 얼굴이다: 실드셔틀을 배치 페이즈에 놓으면 sim 이
+            // 실드를 즉시 붙이지만(그건 정상 — 상태라 드레인이 필요 없다) 부여 VFX 이벤트는
+            // `_running` 아래 드레인이라 큐에 남아, 여기서 **전투 시작 순간 일제히 터진다**.
+            // 실드는 이미 붙어 있으므로 연출만 뒤늦게 오는 것이고, 그건 사건이 아니라 잔상이다.
+            if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Clear();
 
             _pending.Clear();
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
@@ -2000,37 +2012,21 @@ namespace Wassup.Bridge
         public string NextWaveConceptLabel =>
             NextWaveHasNext ? _wavePlan.waves[_nextWaveIndex].conceptLabel : "";
 
-        // wave-pull-revival unit 3 — 「진출 예상선」. HUD 표시 **전용**이다.
-        //
-        // ⚠ 이 값을 BattleLogger·서버 제출 점수·결과 화면에 넣지 말 것.
-        // 지금 par 는 서버가 아니라 저작 비율에서 나오는 **가짜**이고(PaceBaseline 주석),
-        // 기록에 새는 순간 가짜 경쟁 수치가 진짜인 척 저장된다.
-        public bool TryGetPaceBaseline(out int expected)
-        {
-            expected = 0;
-            if (!_running || ActiveDeck == null) return false;
-            return PaceBaseline.TryExpectedScore(
-                _wavePlan, (float)_battleClock, ActiveDeck.paceParFraction, out expected);
-        }
-
         // 매 프레임 HUD 로 밀어준다. HUD 가 브리지를 참조하지 않게 하는 기존 방향
-        // (scoreHud.SetLeakStatus / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
-        private void RefreshPaceHud()
+        // (scoreHud.SetTopBar / OnEnemyKilled)을 그대로 따른다 — 씬 wiring 이 늘지 않는다.
+        private void RefreshTimerHud()
         {
             if (scoreHud == null) return;
-            if (TryGetPaceBaseline(out int expected))
-                scoreHud.SetPaceBaseline(expected, _killCount);
-            else
-                scoreHud.HidePaceBaseline();
 
             // battle-hud-legibility — 남은시간·웨이브 진행이 좌하단 도크에서 **좌상단 배지**로
             // 옮겨왔다(중앙은 전부 보드라 큰 표기는 코너에만 놓인다).
             // 도크가 직접 읽던 것을 여기서 밀어준다(HUD 는 브리지를 모른다).
-            int total = WaveCountTotal;
+            //
             // **진행 중인** 웨이브 번호다. NextWaveNumber(= _nextWaveIndex + 1)는 «다음에 나올»
             // 번호라 그대로 쓰면 3번 웨이브와 싸우는 동안 「웨이브 4」가 뜬다.
-            int current = Mathf.Clamp(NextWaveNumber - 1, 1, Mathf.Max(1, total));
-            scoreHud.SetTopBar(TimerRemaining, TimerDuration, current, total);
+            // 총 개수는 클램프 상한으로만 쓰고 화면에 내보내지 않는다(HUD 는 현재 번호만 받는다).
+            int current = Mathf.Clamp(NextWaveNumber - 1, 1, Mathf.Max(1, WaveCountTotal));
+            scoreHud.SetTopBar(TimerRemaining, TimerDuration, current);
         }
 
         // wave-pull-revival unit 1 — 다음 웨이브의 **구성**(무엇이 몇 마리). 당김 판단의 재료다.
@@ -2903,7 +2899,7 @@ namespace Wassup.Bridge
             // 같은 프레임에 즉시 _aliveAttackersQuery 에 들어온다.
             DrainEnemyKilledEvents();
             QueueDueWaves(t);
-            RefreshPaceHud();
+            RefreshTimerHud();
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
                 if (t >= _pending[i].entry.triggerTimeSec)
@@ -4093,6 +4089,32 @@ namespace Wassup.Bridge
                         attackPeriodSeconds: period);
                 }
 
+                // instinct-turret-readout unit 1 — 본능의 포신 조준. 이 분기는 반드시 아래
+                // `defData == null → continue` **앞**에 있어야 한다(회오리 VFX 와 같은 이유):
+                // 그 아래는 전부 방어유닛 전용이라 거점은 거기까지 못 간다.
+                //
+                // 본능은 스파인 풀에도 `_enemyTypeByEntity` 에도 없어 위 소비자 전부를 그냥
+                // 통과했다 — 사건은 오는데 받는 사람이 없던 자리다. 신규 큐 0.
+                if (_structureTurretsByCell.Count > 0 && HasLiveEntityManager()
+                    && _em.Exists(evt.attacker)
+                    && _em.HasComponent<Wassup.Battle.Units.StructureTag>(evt.attacker))
+                {
+                    var atkCell = _em.GetComponentData<Wassup.Battle.Units.StructureTag>(evt.attacker).cell;
+                    // 셀 중복 저작(같은 칸 거점 2개)은 여기서 막지 않는다 — 규칙 주인은
+                    // StructureAuthoringRules.ValidateStructures(footprint 겹침 = 에러)다.
+                    if (_structureTurretsByCell.TryGetValue(new Vector2Int(atkCell.x, atkCell.y), out var turret)
+                        && turret != null
+                        // 공격자 위치는 기존 헬퍼가 푼다 — 거점은 스파인 풀에 없어
+                        // LocalTransform → 뷰 공간 폴백으로 떨어진다(셀 중심 재계산 불필요).
+                        && ResolveBeamViewPos(evt.attacker, useAnchor: false, out var turretView))
+                    {
+                        // 방향은 **뷰 공간**에서 구한다 — 보드는 grid 가 월드 90°X 로 누운
+                        // 평면이라 sim 벡터를 그대로 쓰면 엉뚱한 축으로 돈다(방어유닛의
+                        // attackVfxFacesTarget 이 같은 이유로 그렇게 한다).
+                        turret.AimAt((Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - turretView);
+                    }
+                }
+
                 var defData = FindDefenderData(evt.attacker);
                 if (defData == null) continue;
 
@@ -4390,6 +4412,16 @@ namespace Wassup.Bridge
 
         // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
         // 읽기 전용 위임(뷰가 EntityManager/뷰 풀을 모르게 유지).
+        // first-run-tutorial — 목표 지점의 **실제 구조물 중심**(셀 중심이 아니다). 뷰 포워딩이라
+        // ECS 를 타지 않지만, 컨트롤러가 TilemapMapView 를 직접 들지 않게 여기로 통일한다
+        // (TryGetUnitViewAnchor 와 같은 창구).
+        public bool TryGetGoalViewAnchor(out Vector3 worldPosition)
+        {
+            // map-diorama-stage 병합 수선 — 골 앵커 소스는 뷰가 아니라 스테이지 마커 등록부다
+            // (구 tilemapMapView.TryGetGoalVisualAnchor 는 문서 파이프라인과 함께 은퇴).
+            return TryGetGoalVisualAnchor(out worldPosition);
+        }
+
         public bool TryGetUnitViewAnchor(Entity entity, out Transform anchor)
         {
             anchor = ResolveUnitViewTransform(entity);
@@ -5019,6 +5051,12 @@ namespace Wassup.Bridge
             {
                 // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
                 // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
+                //
+                // ⚠ **이 arm 은 스턴이 있어야 성립한다.** 아래 `onPlaceMagnitude` 피해는 그
+                // 위에 얹힌 부수 효과이므로, `onPlaceDuration 0` + `onPlaceMagnitude > 0`
+                // (피해만 주는 배치)으로 저작하면 여기서 **조용히 끝난다** — 침묵이 의도다.
+                // 피해만 주는 배치는 `MeleeBurst` 가 이미 하는 일이라, 가드를 쪼개 문을 열면
+                // 같은 일을 하는 저작 경로가 둘이 된다(제약 8).
                 if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
 
                 foreach (var e in CollectEnemiesInTileRange(
@@ -5053,6 +5091,20 @@ namespace Wassup.Bridge
                             : unitData.onPlaceDuration;
                         hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
                     }
+                    // 지진은 「멈춘다」만이 아니라 「아프다」이기도 하다 (사용자 결정 2026-08-19).
+                    // `onPlaceMagnitude` 는 **배치 스킬의 세기**라는 공용 축이고 다른 arm 이 이미
+                    // 자기 뜻으로 소비한다(MeleeBurst=피해 · DotNearby=틱당 피해 · GainCost=코스트
+                    // · ApplyStackNearby=스택 수) — 이 arm 만 그 필드를 안 읽고 있었다. 새 필드도
+                    // 새 enum 값도 아니고, 0 이면 종전대로 CC 만 건다.
+                    //
+                    // ⚠ 이 arm 은 규칙 경로(트리거 × 페이로드)로 이관될 예정이다
+                    // (`docs/spec/onplace-area-cc/` — 보류 중). 그때 이 값은 `SelfTileAoe`
+                    // payload 의 magnitude 로 그대로 따라간다. 여기서 값을 늘릴 때 **반경은
+                    // `onPlaceRange` 하나**라는 사실을 유지할 것 — 멈춘 적과 아픈 적의 집합이
+                    // 갈리면 화면에서 규칙을 읽을 수 없다.
+                    if (unitData.onPlaceMagnitude > 0f && _em.HasBuffer<IncomingDamage>(e))
+                        _em.GetBuffer<IncomingDamage>(e).Add(
+                            new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
             }
@@ -5236,29 +5288,37 @@ namespace Wassup.Bridge
         // **조준이 최근접보다 세다.** 조준은 방향만 정하고, 사건 성립(후보 존재)은 호출처가
         // 이미 판정했다. 그래서 조준 방향에 아무도 없어도 발사는 일어나고 명중이 0일 수 있다 —
         // 어디를 쏠지는 플레이어 몫이라는 뜻이다. 후보가 비어 있지 않은 것은 호출처 계약이다.
+        //
+        // on-place-shuttle-shotgun unit 1 — 판정 자체는 **순수 함수 `OnPlaceFireAim` 가 소유**한다.
+        // 규칙 경로(배치 스킬의 방향 발사)가 두 번째 소비자가 되면서 뽑았다 — 두 벌로 두면 한쪽만
+        // 고쳐지는 날이 온다. 여기 남는 것은 «엔티티에서 값을 꺼내는 일» 과 **레거시 폴백** 뿐이다.
         private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
         {
-            if (placedEntity != Entity.Null && _em.Exists(placedEntity)
-                && _em.HasComponent<DeployedFacing>(placedEntity))
+            bool hasAim = placedEntity != Entity.Null && _em.Exists(placedEntity)
+                          && _em.HasComponent<DeployedFacing>(placedEntity);
+            float2 aim = float2.zero;
+            if (hasAim)
             {
                 var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
-                var aim = new float2(facing.x, facing.y);
-                if (math.lengthsq(aim) > 0.001f) return math.normalize(aim);
+                aim = new float2(facing.x, facing.y);
             }
 
-            // 후보가 전부 중심에 겹친 극단에서도 비영 방향을 돌려준다(퇴화 방지).
-            float2 forward = new float2(0f, 1f);
-            float bestDistSq = float.MaxValue;
+            var candidates = new Unity.Collections.NativeArray<float2>(
+                _forwardBurstScratch.Count, Unity.Collections.Allocator.Temp);
             for (int i = 0; i < _forwardBurstScratch.Count; i++)
             {
                 var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
-                var to = new float2(pos.x - center.x, pos.z - center.z);
-                float d2 = math.lengthsq(to);
-                if (d2 < 0.001f || d2 >= bestDistSq) continue;
-                bestDistSq = d2;
-                forward = math.normalize(to);
+                candidates[i] = new float2(pos.x, pos.z);
             }
-            return forward;
+            bool ok = Wassup.Battle.Combat.Projectile.Emission.OnPlaceFireAim.TryResolve(
+                new float2(center.x, center.z), hasAim, aim, candidates, out float2 dir, out _);
+            candidates.Dispose();
+
+            // ⚠ **레거시 폴백 유지가 무회귀의 조건이다.** 순수 함수는 "쏠 방향이 없다"에 false 를
+            // 주지만, 이 경로는 후보가 전부 중심에 겹친 극단에서도 **발사했다**(호출처가 후보
+            // 존재를 이미 판정했으므로 여기서 취소하면 규칙이 바뀐다). 규칙 경로는 반대로
+            // 취소한다 — 그 갈림은 호출처의 계약이지 판정 함수의 계약이 아니다.
+            return ok ? dir : new float2(0f, 1f);
         }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
@@ -5440,6 +5500,23 @@ namespace Wassup.Bridge
             int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
             if (raw.x < 0 || raw.x >= size.x || raw.y < 0 || raw.y >= size.y) return false;
             cell = new Vector2Int(raw.x, raw.y);
+            return true;
+        }
+
+        // placement-armed-board-drag unit 4 — 화면 → 보드 **소수** 셀좌표. clamp 도 bounds 판정도 하지
+        // 않고 좌표만 넘긴다: 격자 밖 관용을 얼마나 줄지는 `PlacementCellSnap.Resolve` 가 단독으로
+        // 소유하는 정책이고(트레이 D&D 가 이미 그걸 쓴다), 여기서 한 번 더 판정하면 규칙이 두 곳으로
+        // 갈라져 한쪽만 튜닝되는 드리프트가 생긴다. 반환 frac 은 `DebugWorldToCellFractional` 과
+        // 같은 공간(셀 중심=정수) — 즉 `GridMath.WorldToCell` 과 드리프트 없음.
+        public bool TryScreenToBoardFrac(Camera cam, Vector2 screenPos, out Vector2 frac)
+        {
+            frac = default;
+            if (cam == null) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+            frac = DebugWorldToCellFractional(world);
             return true;
         }
 
@@ -5669,22 +5746,9 @@ namespace Wassup.Bridge
         private int EffectiveLeakLimit()
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
-        // battle-score-formula unit 7 — 스트레스 누적/한계의 HUD 표기 짝. 한계는 덱 원본값
-        // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
-        // (구 스트레스 **점수**의 입력이기도 했으나 그 축은 unit 3 에서 폐기됐다.)
-        private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
-        private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
-
-        // three-minute-survival unit 0 — 분모와 위기색은 한계가 패배를 만들 때만 참이었다.
-        // 이제 패배는 안정도가 소유하므로 스트레스는 **개수만** 표시한다(엔드리스가 쓰던
-        // 표시 모드를 전 모드로 승격). 안정도 게이지는 unit 1 이 별도로 그린다.
-        private void RefreshLeakHud()
-            // three-minute-kill-race unit 2 — **분모를 떼고 누적 수량만 표기한다.**
-            // 한계가 아무것도 판정하지 않는데 `3 / 10` 이 떠 있으면 거짓말이다. 한계 «값»
-            // 자체는 계속 넘긴다 — 튜토리얼이 «스냅샷이 왔는가» 를 _leakLimit 으로 판정한다.
-            // 그 튜토리얼의 「N이 되면 패배합니다」 문구는 ShowsStressLimit 가드에 걸려
-            // 자동으로 빠진다(패배가 없어졌으니 그 문장은 거짓말이다).
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), showLimit: false);
+        // 유출 누적(_goalReachedCount)은 HUD 에 그리지 않는다 — 아무것도 판정하지 않는
+        // 수치를 점수 옆에 세워두면 «관리해야 할 자원»으로 잘못 읽힌다. 카운터 자체는
+        // 살아 있고 완주 로그와 MatchTally 집계로만 나간다.
 
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
@@ -5909,6 +5973,13 @@ namespace Wassup.Bridge
                 view.transform.localScale *= s.data.viewScale;
                 view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _structureViews.Add(view);
+                // instinct-turret-readout unit 1 — 포신을 가진 프랍이면 셀로 등록해 둔다.
+                // 「포신을 갖는가」는 **컴포넌트 유무**가 결정한다(kind 분기도 id 분기도 없다).
+                // 자식까지 훑는다 — 지금 두 변형은 루트에 달고 있지만, 리그가 깊어진 프랍이
+                // 프리젠터를 자식에 달면 루트 전용 탐색은 **경고도 없이** 조준을 끈다(리뷰 low).
+                // 거점이 포신을 안 갖는 것 자체는 정상이라(마음) 미발견은 경고 대상이 아니다.
+                var turret = view.GetComponentInChildren<Wassup.Presentation.StructureTurretView>();
+                if (turret != null) _structureTurretsByCell[s.cell] = turret;
             }
         }
 
@@ -5918,6 +5989,7 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureViews.Count; i++)
                 if (_structureViews[i] != null) Destroy(_structureViews[i]);
             _structureViews.Clear();
+            _structureTurretsByCell.Clear();   // 프리젠터는 뷰와 같은 수명 — stale 참조 방지
         }
 
         private void DestroyStructureEntities()
@@ -5959,7 +6031,6 @@ namespace Wassup.Bridge
             if (cost <= 0) return false;
             if (RemainingLeakAllowance() - cost < 1) return false;
             _leakAllowancePenalty += cost;
-            RefreshLeakHud();
             return true;
         }
 
@@ -5980,7 +6051,6 @@ namespace Wassup.Bridge
                 if (breached)
                 {
                     _goalReachedCount++;
-                    RefreshLeakHud();
                 }
 
                 // goal-tower-siege(rev 2) — 공성 전환. 적은 **살아 있다**: 뷰·현상금 표식·
@@ -6242,7 +6312,6 @@ namespace Wassup.Bridge
             NotifyEnemyGoneIfMarked(entity);
             _enemyTypeByEntity.Remove(entity);
             _em.DestroyEntity(entity);
-            RefreshLeakHud();
         }
 
         // three-minute-kill-race unit 0 — `CheckStressDefeat()` 는 제거했다. 유출은 이제
@@ -6554,22 +6623,122 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
         }
 
-        public void RefreshPlacementHighlightIfShown() { if (_placeableHlShown) RepaintPlacementHighlight(); }
+        // first-run-tutorial unit 1 — 배치 **불가** 칸(가능 칸의 여집합 전체). 온보딩 맵 설명 전용.
+        //
+        // 여집합을 따로 계산하지 않고 **같은 스캔의 else 가지**를 쓴다 — 두 벌의 판정식을 두면
+        // 어느 날 갈려서 같은 칸이 양쪽에 칠해진다. 그래서 리페인트도 아래 한 함수가 소유한다.
+        //
+        // ⚠ 자기 플래그가 따로 있어야 한다. RepaintPlacementHighlight 는 _placeableHlShown 으로
+        // early-return 하므로, 그것만 보면 가능 하이라이트를 안 켠 상태에서 불가가 안 칠해진다.
+        // 기준 유닛은 _placeableHlUnit 하나로 충분하다 — 두 하이라이트는 한 스캔의 두 갈래라
+        // 정의상 같은 층 마스크를 쓴다. 필드를 둘로 두면 «서로 다른 유닛으로 켜진» 상태가
+        // 표현 가능해지고, 그건 unit 1 이 피하려던 «판정식이 갈린다» 와 같은 종류의 여지다.
+        private bool _blockedHlShown;
+        private readonly List<Vector2Int> _blockedHlScratch = new List<Vector2Int>();
+
+        // first-run-tutorial unit 5 — «적이 내 목표에서 몇 칸 안까지 들어왔는가».
+        //
+        // 온보딩이 "적들의 머리위에 배치해보세요" 를 적이 아직 멀리 있을 때 띄우면 문장과
+        // 화면이 어긋나고, 그렇게 놓은 배치 스킬은 아무도 못 때려서 이어지는 «전황을
+        // 유리하게» 가 통째로 희석된다. 그 순간을 기다리는 판정이다. 적 위치는 ECS 에
+        // 있으므로 **이 게이트웨이 안에** 둔다(제약 1).
+        //
+        // 기준을 **내 목표까지의 거리**로 잡는 이유: «내 영역으로 얼마나 들어왔나» 를 직접
+        // 말하는 유일한 척도이고, 목표는 모든 맵에 있어서 «이 맵엔 기준이 없다» 가 생기지
+        // 않는다(강/Env 타일을 기준으로 삼던 시절엔 강 없는 맵을 위한 폴백이 따로 필요했다).
+        //
+        // 체비셰프 거리다 — 격자 이동이 8방향이라 «몇 칸 남았나» 의 체감과 일치한다.
+        // 목표가 여럿이면 가장 가까운 것 기준(멀티골 맵은 각 골이 자기 복도를 갖는다).
+        public bool AnyEnemyWithinTilesOfGoal(int tiles)
+        {
+            if (!_aliveAttackersQueryCreated || _em == null || !_generatedMap.IsCreated) return false;
+            int r = Mathf.Max(0, tiles);
+            var size = _generatedMap.gridSize;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    var cell = GridMath.WorldToCell(pos, tileSize, size, origin: _boardOrigin);
+                    if (NearestGoalDistance(cell) <= r) return true;
+                }
+            }
+            finally { entities.Dispose(); }
+            return false;
+        }
+
+        private int NearestGoalDistance(int2 cell)
+        {
+            int best = int.MaxValue;
+            if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
+            {
+                for (int g = 0; g < _generatedMap.goals.Length; g++)
+                    best = math.min(best, ChebyshevDistance(cell, _generatedMap.goals[g]));
+            }
+            else
+            {
+                best = ChebyshevDistance(cell, _generatedMap.goal);   // goals 미생성 폴백(GeneratedMap 계약)
+            }
+            return best;
+        }
+
+        private static int ChebyshevDistance(int2 a, int2 b)
+            => math.max(math.abs(a.x - b.x), math.abs(a.y - b.y));
+
+        public void ShowBlockedHighlight(DefenderUnitData unit)
+        {
+            _blockedHlShown = true;
+            _placeableHlUnit = unit;
+            RepaintPlacementHighlight();
+        }
+
+        public void HideBlockedHighlight()
+        {
+            _blockedHlShown = false;
+            if (tilemapMapView != null) tilemapMapView.ClearBlockedHighlight();
+        }
+
+        // 술어를 RepaintPlacementHighlight 와 맞춘다 — 둘이 갈리면 불가 하이라이트만 켜진
+        // 상태에서 배치/재배치 확정 후 리페인트가 조용히 건너뛰어진다.
+        public void RefreshPlacementHighlightIfShown()
+        {
+            if (_placeableHlShown || _blockedHlShown) RepaintPlacementHighlight();
+        }
 
         private void RepaintPlacementHighlight()
         {
-            if (!_placeableHlShown || tilemapMapView == null || !_generatedMap.IsCreated) return;
-            _placeableHlScratch.Clear();
+            if (tilemapMapView == null || !_generatedMap.IsCreated) return;
+            if (!_placeableHlShown && !_blockedHlShown) return;
+
+            // first-run-tutorial unit 1 — 두 하이라이트는 **한 스캔의 두 갈래**다.
+            // 기준 유닛은 켜져 있는 쪽이 준다(둘 다 켜져 있으면 같은 유닛이어야 정합).
             var layers = _placeableHlUnit != null ? _placeableHlUnit.EffectivePlacementLayers : PlacementLayer.Ground;
+            _placeableHlScratch.Clear();
+            _blockedHlScratch.Clear();
             int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
             for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
+            {
+                var cell = new Vector2Int(x, y);
                 if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y), layers) == PlacementRejectReason.None)
-                    _placeableHlScratch.Add(new Vector2Int(x, y));
+                    _placeableHlScratch.Add(cell);
+                else
+                    _blockedHlScratch.Add(cell);
+            }
             // unit 9 — 스캔이 뺀 소스 칸을 되돌려 넣는다(제자리 재정비도 유효 목적지다).
+            // ⚠ 되넣은 칸은 위 else 가지에서 이미 blocked 로 갔다 — 동시 표시일 때 양쪽에 들지
+            // 않도록 여기서 빼준다. 맵 설명은 extraCell 이 없어 실무상 안 걸리지만 규칙은 한 곳에 둔다.
             if (_placeableHlExtraCell.HasValue && !_placeableHlScratch.Contains(_placeableHlExtraCell.Value))
+            {
                 _placeableHlScratch.Add(_placeableHlExtraCell.Value);
-            tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+                _blockedHlScratch.Remove(_placeableHlExtraCell.Value);
+            }
+
+            if (_placeableHlShown) tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+            if (_blockedHlShown) tilemapMapView.SetBlockedHighlight(_blockedHlScratch);
         }
 
         // Explicit-type placement (Phase 4). Used by DefenderSelector after the
@@ -7233,6 +7402,14 @@ namespace Wassup.Bridge
                 if (unitData.onPlaceEffect != OnPlaceEffectType.None)
                     Debug.LogWarning(
                         $"[BattleBridge] {unitData.displayName}: onPlaceEffect({unitData.onPlaceEffect}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 둘 다 발동한다. 하나로 정리하라.");
+                // on-place-shuttle-shotgun unit 2 — **밀쳐냄은 enum 과 독립 필드군이다.**
+                // 위 경고는 `onPlaceEffect` 만 보는데, `onPlacePush*` 는 그것이 None 이어도
+                // 배치 순간 반경 안 적을 민다(샷건맨이 그랬다). 규칙 경로와 겹치면 한 배치에서
+                // 반대 방향 두 힘이 걸려 **어느 쪽도 안 읽힌다**(배스티온 선례). 시트 임포트나
+                // 다른 세션이 값을 되살려도 조용하지 않게 여기서 같이 잡는다.
+                if (unitData.onPlacePushDistance > 0f)
+                    Debug.LogWarning(
+                        $"[BattleBridge] {unitData.displayName}: onPlacePushDistance({unitData.onPlacePushDistance}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 밀쳐냄과 규칙이 겹친다. 밀쳐냄을 0 으로 끄거나 규칙을 지워라.");
 
                 BakeUnitMechanics(entity, skillAbility.mechanics, hostIsEnemy: false,
                     maxHpRef: unitData.health, ownerLabel: unitData.displayName, enemyOwner: null);
@@ -8557,6 +8734,19 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: pattern buffer missing — skipped.");
                         continue;
                     }
+                    // on-place-shuttle-shotgun unit 2 — 방향 패턴의 사거리는 **payload 저작값**이다
+                    // (`slot.tileRange × tileSize` → `maxDistance`). 0 이면 arm 이 방향을 채워도
+                    // 사거리 0 인 탄이 나가 즉시 착탄 판정에 걸리고, 스윕 길이가 0 이라 넉백 조건도
+                    // 거짓이 된다 — **완전 무동작**. 여기서 끊는다(TryBuildPatternSlot 은 payload 를
+                    // 모르므로 이 검증만 호출처 몫이다).
+                    if (Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(
+                            ResolveProjectileAxes(pattern.barrel.flightMode).movement)
+                            == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction
+                        && m.payload.tileRange <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: 방향 패턴인데 payload tileRange 가 0 이다 — 사거리 0 인 탄이라 발사해도 아무 일도 안 일어난다 — skipped. 사거리를 지정하라.");
+                        continue;
+                    }
                     if (!TryBuildPatternSlot(pattern, entity, hostIsEnemy,
                                              $"{ownerLabel} mechanic {i}", out var builtSlot))
                         continue;
@@ -8612,7 +8802,13 @@ namespace Wassup.Bridge
                     // no-op** 이 된다. 미사용 라이브 경로를 만들지 않는 것이 dreamcatcher-trigger-gates
                     // 계약("v1 배선 조합 외는 bake loud 거절")의 선례다. 새 조합은 그걸 쓰는 능력이
                     // 생길 때 배선·테스트와 함께 연다.
-                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
+                    //
+                    // on-place-shuttle-shotgun unit 0 — **`OnPlace × tileRange>0` 이 그렇게 열린
+                    // 세 번째 조합이다**(실드셔틀 배치 보호막). arm 은 트리거가 아니라 payload 로
+                    // 분기하므로 코드 추가 없이 반경 확산을 그대로 탄다.
+                    // ⚠ 이 거절을 «화이트리스트» 로 조이지 말 것 — 위 두 조합만 남기면 배치
+                    // 보호막이 **조용히** 죽는다. 현재 형태(블랙리스트 2조합)를 유지한다.
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: GrantShield 미배선 조합 — HealthThreshold 는 tileRange 0(자기), PeriodicTimer/OnPlace 는 tileRange>0(주변 아군)만 배선돼 있다 (현재 trigger={m.trigger.kind}, tileRange={m.payload.tileRange}) — skipped.");
                     continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaTaunt)
@@ -8801,6 +8997,17 @@ namespace Wassup.Bridge
             // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
             //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
             //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
+            // on-place-shuttle-shotgun unit 2 — **방향 바인딩 패턴의 조용한 no-op 3종.**
+            // 이 함수는 규칙 경로(유닛 능력 · 드림캐쳐 카드) 전용이다 — 평타 다연발은
+            // `BakeDefenderDirectionalPattern` 이 따로 굽고 `AttackSystem` 이 발사한다.
+            // 그래서 여기 경고는 평타 저작을 건드리지 않는다.
+            if (fanBinding == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction)
+            {
+                if (pattern.damage <= 0f)
+                    Debug.LogWarning($"[BattleBridge] {label}: 방향 패턴인데 damage 가 0 이하다 — 규칙 경로는 패턴 SO 의 damage 를 그대로 쓴다(평타처럼 output 이 덮지 않는다). 넉백만 노린 저작이 아니라면 값을 넣어라.");
+                if (pattern.randomizeShotsPerTrigger)
+                    Debug.LogWarning($"[BattleBridge] {label}: randomizeShotsPerTrigger 는 **규칙 경로에서 아무 일도 하지 않는다**(랜덤화는 AttackSystem 평타 경로에만 있다). 발마다 다르게 퍼뜨리려면 shots 의 directionT 를 저작으로 벌려라 — 안 그러면 전탄이 같은 방향으로 겹친다.");
+            }
             if (!pattern.TryToSpec(barrelIndex, out var patternSpec))
             {
                 int shotCount = pattern.shots?.Length ?? 0;

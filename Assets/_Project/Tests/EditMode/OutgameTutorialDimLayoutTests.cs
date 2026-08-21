@@ -53,6 +53,12 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // ⚠ **구멍 없음 = 전면 dim 이지 「전부 열림」이 아니다.**
+        //
+        // 이 테스트는 처음부터 있었는데도 first-run-tutorial 의 배치 스텝이 보드를 열려고
+        // `SetHoles(null)` 을 불렀다 — 도구를 겨눈 단언은 **호출부의 오용을 막지 못한다**.
+        // 보드는 UGUI 가 아니라 감쌀 RectTransform 이 없으므로, 보드를 열어야 하면 구멍이
+        // 아니라 딤을 **내려야** 한다.
         [Test]
         public void NoHoles_CoversTheWholeArea()
         {

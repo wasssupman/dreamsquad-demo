@@ -161,6 +161,36 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Object.DestroyImmediate(so);
         }
 
+        // defender-unit-visibility unit 0 — 노출 스위치의 시트 왕복. 새 컬럼을 더할 때
+        // exporter/applier 를 손대지 않아도 되는 근거가 «이름 1:1» 하나뿐이라, 그 계약을
+        // 여기서 못 박는다. export(SO→DTO) · import(DTO→SO) · blank=keep 세 방향.
+        [Test]
+        public void VisibleField_RoundTripsThroughTheSheetMapper()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.id = "archer";
+            Assert.AreEqual(1, so.visible, "신규 SO 는 노출이 기본값이어야 한다(기존 에셋 백필 생략의 근거)");
+
+            // export: SO -> DTO
+            var exported = new DefenderStatDto();
+            UnitStatFieldMapper.ReadFieldsToDto(so, exported);
+            Assert.AreEqual(1, exported.visible, "export 는 visible 을 컬럼으로 내보내야 한다");
+
+            // import: DTO -> SO
+            UnitStatFieldMapper.ApplyNonNullFields(new DefenderStatDto { id = "archer", visible = 0 }, so);
+            Assert.AreEqual(0, so.visible, "시트가 0 을 보내면 숨겨져야 한다");
+
+            // blank = keep: visible 을 뺀 행은 기존 값을 유지한다
+            UnitStatFieldMapper.ApplyNonNullFields(new DefenderStatDto { id = "archer", health = 77f }, so);
+            Assert.AreEqual(0, so.visible, "빈 셀은 기존 값을 유지해야 한다(blank=keep)");
+
+            // 되돌리기
+            UnitStatFieldMapper.ApplyNonNullFields(new DefenderStatDto { id = "archer", visible = 1 }, so);
+            Assert.AreEqual(1, so.visible, "1 로 되돌릴 수 있어야 한다");
+
+            Object.DestroyImmediate(so);
+        }
+
         [Test]
         public void ApplyNonNullFields_EnumField_OverwritesWhenProvided()
         {

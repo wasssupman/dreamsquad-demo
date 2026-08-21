@@ -1,5 +1,10 @@
 # Spec — Defender Deploy Cutscene
 
+> ⚠ **2026-08-19 사용자 결정 — 배치 컷신 OFF.** `DragSwaySettings.enableDeployCutscene: 0`.
+> 자산·배선·코드는 전부 그대로 남아 있고 그 스위치 하나만 내렸다(1 로 되돌리면 부활).
+> 같은 날 `defender-drop-dismount` unit 7 이 탭 배치의 컷신 재생 창을 구조적으로 없앴는데
+> (세션이 한 프레임), 이 결정은 그와 별개로 **D&D 를 포함한 전 경로**를 끈 것이다.
+>
 > 상태: **units 8·9 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**
 > — unit 8 `e29300eb`, unit 9 `e3632167`.
 > 확장 이력: Guardian 프레임 (2026-07-15, `5cbee1b4`) · 뎁스 패럴랙스 통합 (2026-07-15, `de2275ee`)

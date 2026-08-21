@@ -137,3 +137,35 @@ Play 중 스크립트를 고치면 도메인 리로드가 일어나는데, 리�
   ```
 - **빌드에는 없는 문제다.** 도메인 리로드는 에디터 전용이라 실기기/빌드에서는 재현되지 않는다. 고치려 들지 말고 **검증 절차로만 우회**한다.
 - 곁가지: `ClearCells` 는 `Destroy`(지연) 를 쓴다. 같은 `execute_code` 안에서 파괴 직후 `childCount` 를 읽으면 아직 옛 자식이 잡힌다(17+64=81 같은 수치). **프레임을 넘겨 다시 읽어야** 진짜 상태다 — 위의 고아 문제와 증상이 비슷하니 혼동하지 말 것.
+
+## 실행 중인 에디터에서 **에셋 강제 언로드·전역 저장 금지**
+
+이 워크트리는 에디터 하나를 **여러 세션·실행 중인 게임과 공유**한다. 그 상태에서 두 API 가 사고를 냈다.
+
+- **`Resources.UnloadAsset(so)`** — 그 에셋을 참조하던 **다른 쪽의 참조까지 죽인다.** 유닛 3종을
+  언로드했더니 `DefenderCatalog.units[]` 26칸 중 3칸이 빈 칸이 됐고, id 로 카탈로그를 뒤지는
+  스쿼드 화면이 그 셋만 못 찾아 **빈 슬롯**으로 보였다(에러 로그 0 — 조용히 깨진다).
+  - ⚠ **Play 를 껐다 켜도 안 돌아온다.** ScriptableObject 인스턴스는 play mode 전환을 넘어
+    메모리에 살아남는다. 복구는 **도메인 리로드**: `EditorApplication.isPlaying = false` →
+    `EditorUtility.RequestScriptReload()`. 파일 touch·`ImportAsset(ForceUpdate)`·`AssetDatabase.Refresh`
+    전부 실패했다(실측).
+- **`AssetDatabase.SaveAssets()`** — 지금 dirty 한 **모든** 객체를 디스크로 민다. 문안 한 줄
+  고치려고 불렀다가, 로비 임포터가 메모리에 넣어 둔 **남의 밸런스 값**(유닛 공격력)이 같이 디스크로
+  나갔다. 저장은 `AssetDatabase.SaveAssetIfDirty(obj)` 로 **대상만**.
+
+**메모리가 디스크와 어긋나 보일 때**(git 은 깨끗한데 `LoadAssetAtPath` 가 옛 값을 준다): 강제로
+밀어내지 말고 도메인 리로드를 건다. 특히 게임이 Play 중이면 임포터가 메모리를 계속 덮으므로,
+디스크 값이 필요한 작업(예: 시트 push 페이로드)은 **파일에서 직접 읽어 쓰는 편이 안전하다**.
+
+## 시트 push 의 두 함정
+
+- **페이로드는 Unity 메모리에서 만들어진다.** `SheetPushPayload.BuildCombinedJson` 이 exporter 를
+  돌려 SO 를 읽는데, 로비 진입 임포트가 메모리를 시트 값으로 되돌려 놓으면 **방금 고친 값이 아니라
+  옛 시트 값이 그대로 시트로 되돌아간다**(= 아무 일도 안 일어난 push). 디스크 값을 보내려면
+  페이로드 JSON 의 해당 셀을 직접 갈아끼운다.
+- **curl 로는 안 된다.** Apps Script `/exec` 은 POST 를 googleusercontent 로 리다이렉트하는데
+  거기서 **405** 가 떨어진다(`-L --post301/302/303` 도 동일). 에디터의 기존 경로
+  (`SheetPushClient.Push`, UnityWebRequest)로 보내면 통한다.
+- **보내기 전에 읽기 전용으로 대조하라.** push 는 9탭 전량 업서트라 SO↔시트 드리프트가 있으면
+  **남이 시트에서 조정한 값이 되돌아간다.** 탭별 키가 다르다(`Defenders/Enemies`=`id`,
+  `DcCardEffects/DcMechanics`=`cardId`+`slot`) — 키를 잘못 잡으면 멀쩡한 탭이 200칸 바뀌는 것처럼 보인다.

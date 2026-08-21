@@ -76,6 +76,19 @@ namespace Wassup.UI
         public event System.Action Toggled;
         public RectTransform HitRect => _panel != null ? (RectTransform)_panel.transform : null;
 
+        // 2026-08-19 사용자 결정 — **항아리 탭 진입구를 끈다.** 드림캐쳐 손패는 이제 유닛
+        // 선택으로만 열린다(DcInspectController.Select → DreamcatcherHandView.OpenForSelection).
+        // 항아리는 각성치 판독 표면(큰 숫자·채움·피규어·ready 림)으로 그대로 남는다.
+        //
+        // 끄면 히트도 함께 놓는다(raycastTarget=false) — 그러지 않으면 손패가 열린 동안
+        // 항아리 위가 dismiss 캐처에 닿지 않는 죽은 구역이 된다. 놓아주면 그 탭이 캐처로
+        // 내려가 «바깥 탭 = 닫기» 가 항아리 위에서도 성립한다.
+        //
+        // ⚠ [SerializeField] 로 노출하지 않는다 — 인스펙터에서 켜고 씬을 저장하면 그 값이
+        // 조용히 리포에 박힌다(DcInspectController.RelocationEnabled 와 같은 사유).
+        // 진실원은 이 줄 하나다. true 로 되돌리면 Toggled 배선째 종전 동작이 부활한다.
+        private static readonly bool JarTapEnabled = false;
+
         // dreamcatcher-orb-dock unit 1 — DreamcatcherHandView.Start 가 트레이 RectTransform 을
         // 넘겨준다(씬 배선 없이 기존 참조로). LateUpdate 가 트레이 우측 엣지에 독을 정렬.
         public void BindTray(RectTransform trayRect) => _trayRect = trayRect;
@@ -100,7 +113,6 @@ namespace Wassup.UI
         private bool _built;
         private bool _open;
         private GamePhase _phase;
-        private bool _suppressed;
         private int _lastShown = -1;
         private float _normalized;
         private float _readyThreshold = 1f;
@@ -367,26 +379,12 @@ namespace Wassup.UI
             ApplyPanelVisibility();
         }
 
-        // first-session-tutorial unit 15 — "이 판은 각성이 봉인됐다"를 읽기 전용으로 공개한다.
-        // 소비자가 둘이 됐다: 이 뷰(항아리 표시를 끈다)와 DcInspectController(선택을 막는다 —
-        // 선택이 손패를 열기 때문). 소유는 여전히 여기이고 쓰기 창구는 SetSuppressed 하나다.
-        public bool IsSuppressed => _suppressed;
-
-        // first-session-tutorial — 첫 판은 배치만으로 승부를 보게 각성 UI 를 감춘다.
-        // 표시 소유자는 여전히 이 뷰. FirstSessionTutorialController 가 SetSuppressed 로 갱신.
-        public void SetSuppressed(bool suppressed)
-        {
-            if (_suppressed == suppressed) return;
-            _suppressed = suppressed;
-            ApplyPanelVisibility();
-        }
-
         private void ApplyPanelVisibility()
         {
             if (_panel == null) return;
             // 캐시한 _phase 를 읽는다(GameManager.Instance.CurrentPhase 직독 금지 —
             // 같은 PhaseChanged 이벤트 안에서 구독자 순서에 따라 값이 갈린다).
-            if (!_suppressed && _phase == GamePhase.Battle)
+            if (_phase == GamePhase.Battle)
             {
                 _panel.SetActive(true);
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);
@@ -558,14 +556,19 @@ namespace Wassup.UI
 
             var hitGraphic = _panel.GetComponent<Image>();
             hitGraphic.color = new Color(1f, 1f, 1f, 0.001f);
+            hitGraphic.raycastTarget = JarTapEnabled;
             var button = _panel.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = hitGraphic;
-            button.onClick.AddListener(() =>
+            button.interactable = JarTapEnabled;
+            if (JarTapEnabled)
             {
-                SoundManager.Instance?.PlayUiTick();
-                Toggled?.Invoke();
-            });
+                button.onClick.AddListener(() =>
+                {
+                    SoundManager.Instance?.PlayUiTick();
+                    Toggled?.Invoke();
+                });
+            }
 
             var visualGO = new GameObject("JarVisual", typeof(RectTransform));
             visualGO.transform.SetParent(_panel.transform, false);

@@ -115,6 +115,20 @@ namespace Wassup.Data
                 switch (m.payload.kind)
                 {
                     case DcPayloadKind.EmitProjectilePattern:
+                        // ⚠ **같은 payload 가 두 그림이다.** 낙하 융단폭격(캐논)과 방향 발사
+                        // (샷건맨)가 같은 «발사 명세» 를 쓰므로, 문안은 탄의 **궤적**으로 갈라야
+                        // 한다. 안 가르면 샷건맨 충격파가 "미사일 낙하" 로 소개된다(실측 오문안).
+                        // 판정은 데이터 계층 enum 하나로 끝난다 — Battle 타입은 참조하지 않는다.
+                        if (m.payload.pattern != null && m.payload.pattern.barrel != null
+                            && m.payload.pattern.barrel.flightMode == ProjectileFlightMode.Directional)
+                        {
+                            // 방향의 주어는 유닛마다 다르다 — 조준 UX 가 있으면 «지정 방향», 없으면
+                            // «가까운 적». 문안이 없는 조작을 약속하지 않게 여기서 갈라 준다(리뷰 L1).
+                            string aimWord = u.RequiresFacing ? "지정 방향으로" : "가까운 적 쪽으로";
+                            return m.payload.pattern.barrel.knockbackDistance > 0f
+                                ? $"배치 시 {aimWord} 충격파 · 밀어냄"
+                                : $"배치 시 {aimWord} 일제 사격";
+                        }
                         // 반경은 패턴이 소유한다(`scopeTileRange`). 패턴 미배선이면 bake 가 loud
                         // 로 거절하므로 여기선 숫자 없이 낸다.
                         return m.payload.pattern != null && m.payload.pattern.scopeTileRange > 0
@@ -124,6 +138,13 @@ namespace Wassup.Data
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 광역 도발"
                             : "배치 시 광역 도발";
+                    // on-place-shuttle-shotgun unit 0 — 배치 즉시 주변 아군 보호막.
+                    // 「자신 제외」를 문안에 넣지 않는 것은 다른 절들과 같은 규율이다:
+                    // 이 요약은 **무슨 일이 일어나는가**만 말하고 예외는 스펙이 갖는다.
+                    case DcPayloadKind.GrantShield:
+                        return m.payload.tileRange > 0
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 아군에게 보호막"
+                            : "배치 시 주변 아군에게 보호막";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.

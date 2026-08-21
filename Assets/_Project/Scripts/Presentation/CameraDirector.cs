@@ -4,9 +4,14 @@ namespace Wassup.Presentation
 {
     // camera-direction unit 0 — 카메라 base 포즈의 유일한 런타임 쓰기 주체.
     //
-    // 매 LateUpdate 에 절대 합성: 최종 포즈 = 홈 포즈 ⊕ 페이즈 비행 ⊕ 구두점 ⊕ 앰비언트 ⊕ 킥.
-    // 홈 포즈 = 씬 authored 포즈를 Awake 에서 캡처 — 씬에서 카메라를 직접 튜닝하는 기존
-    // 워크플로우가 그대로 유지된다. 이번 유닛은 킥 채널만 실동작(나머지는 후속 유닛).
+    // 매 LateUpdate 에 절대 합성: 최종 포즈 = **현재 상태 포즈** ⊕ 드래그 포커스 ⊕ 인스펙트
+    // ⊕ 헤드룸 ⊕ 오버뷰 ⊕ 구두점 ⊕ 앰비언트 ⊕ 킥.
+    //
+    // unit 11 — base 는 더 이상 «씬에서 캡처한 홈 포즈» 가 아니다. 카메라 상태(배치/전투)마다
+    // 완결된 레시피(대상·각도·거리·화면 세로 위치·화각)가 있고, 포즈는 그 레시피와 실제 판에서
+    // **매 프레임 절대값으로 계산**된다. 상태끼리 공유하는 기준점이 없으므로 한 상태를 튜닝해도
+    // 다른 상태가 딸려 오지 않는다(구 «홈 + 페이즈 델타» 구조의 결함).
+    // 씬의 Main Camera 포즈는 런타임에 읽지 않는다 — 에디터 미리보기 전용이다.
     //
     // 실행 순서 계약: LateUpdate 에서 카메라를 읽는 소비자(빌보드/데미지넘버/드래그 프리뷰,
     // 전부 order 0)보다 항상 먼저 최종 포즈를 확정해야 한다 → 음수 order. 단 GameManager(-100)
@@ -17,12 +22,29 @@ namespace Wassup.Presentation
     [RequireComponent(typeof(Camera))]
     public class CameraDirector : MonoBehaviour
     {
+        [Header("이 카메라의 씬 포즈(Transform·FOV)는 런타임에 쓰이지 않는다 — 에디터 미리보기 전용.\n포즈는 config 의 상태 레시피에서 매 프레임 계산된다.")]
         [SerializeField] private Wassup.Data.CameraDirectionConfig config;
+        // unit 9 — DoF 거리를 보드 fit 에 연동할 대상 볼륨(BattleScene 의 글로벌 Post 볼륨).
+        // 미배선이면 DoF 연동만 조용히 꺼진다 — 프레이밍 자체는 그대로 동작한다.
+        [SerializeField] private UnityEngine.Rendering.Volume postVolume;
 
         private Camera _cam;
-        private Vector3 _homePos;
-        private Quaternion _homeRot;
-        private float _homeFov;
+
+        // unit 11 — 이번 프레임의 base 포즈(상태 레시피 해). 모든 채널 델타의 기준이다.
+        private Vector3 _statePos;
+        private Quaternion _stateRot = Quaternion.identity;
+        private float _stateFov = 60f;
+        private bool _hasStatePose;
+        // 직전에 확정한 base 포즈. 이번 해와 다르면 아이들 최적화를 풀어야 한다 —
+        // 그래야 «화면비 변경 · 판 교체 · Play 중 인스펙터 튜닝» 이 즉시 화면에 반영된다.
+        private Vector3 _lastSolvedPos;
+        private Quaternion _lastSolvedRot = Quaternion.identity;
+        private float _lastSolvedFov;
+
+        // unit 11 — 보드 bounds 는 맵 빌드 때 BattleBridge 가 밀어준다. Director 가 맵이나
+        // 브리지에서 당겨오지 않는다(경계 우회의 입구). 없으면 카메라를 건드리지 않는다.
+        private Bounds _boardBounds;
+        private bool _hasBoardBounds;
 
         private float _kickRemaining;
         private float _kickDuration;
@@ -56,7 +78,8 @@ namespace Wassup.Presentation
 
         // unit-dreamcatcher-inspect unit 4 — 인스펙트 포커스 채널. 선택 유닛 쪽으로 당겨온다.
         // 드래그 포커스와 같은 형태(NDC → FocusDelta, staleness 자동 해제)지만 입력이 다르다:
-        // 손가락이 아니라 **고정 월드 좌표**라, NDC 를 홈 포즈 기준으로 산출한다(SetInspectFocus).
+        // 손가락이 아니라 **고정 월드 좌표**라, NDC 를 그 프레임의 상태 포즈 기준으로 산출한다
+        // (SetInspectFocus). 상태 포즈는 채널 델타가 얹히기 전 값이라 되먹임이 없다.
         // 스프링 없음 — 타겟이 안 움직여 스텝 변화가 없다. 부드러움은 가중치 페이드가 담당.
         private Vector2 _inspectNdc;       // 합성에 쓰는 추종된 현재값
         private Vector2 _inspectNdcTarget; // 피드가 지정한 목표(선택 유닛)
@@ -68,7 +91,7 @@ namespace Wassup.Presentation
         private float _inspectReleaseElapsed;
         private bool _inspectReleasing;
         // hand-drag-tooltip unit 6 — 손패 헤드룸. 피드 주도 채널(포커스/인스펙트와 같은
-        // staleness 규약)이라 손패 뷰가 죽거나 비활성돼도 자동으로 홈 pitch 로 복귀한다.
+        // staleness 규약)이라 손패 뷰가 죽거나 비활성돼도 자동으로 상태 pitch 로 복귀한다.
         private int _headroomFedFrame = -10;
         private float _headroomWeight;
         private float _headroomVel;
@@ -83,24 +106,21 @@ namespace Wassup.Presentation
         private float _breathWeight;
         private Wassup.Core.GamePhase _currentPhase = Wassup.Core.GamePhase.None;
 
-        // unit 1 — 페이즈 비행 채널. _flightDelta 가 현재(정착 또는 보간 중) 페이즈 델타.
-        // 미등록 페이즈 = hold(현재 델타 유지), 최초 적용만 스냅 (spec 계약).
-        private CameraPoseDelta _flightDelta;
-        private CameraPoseDelta _flightFrom;
-        private CameraPoseDelta _flightTo;
-        private float _flightElapsed;
-        private float _flightDuration; // 0 = 비행 없음
-        private AnimationCurve _flightEase;
-        private bool _phaseAppliedOnce;
+        // unit 11 — 상태 전환. 포즈를 얼려서 섞지 않는다: 매 프레임 양쪽 상태의 레시피를 각각
+        // 풀고 그 «결과» 를 섞는다. 그래야 전환 도중에 판 크기나 화면비가 바뀌어도 따라온다.
+        private Wassup.Data.CameraState _state;
+        private Wassup.Data.CameraState _fromState;
+        private bool _stateInit;
+        private float _transitionElapsed;
+        private float _transitionDuration; // 0 = 전환 없음
+        private AnimationCurve _transitionEase;
 
         private void Awake()
         {
             _cam = GetComponent<Camera>();
-            _homePos = transform.position;
-            _homeRot = transform.rotation;
-            _homeFov = _cam.fieldOfView;
+            // unit 11 — 씬 포즈를 캡처하지 않는다. base 는 상태 레시피에서 계산된다.
             if (config == null)
-                Debug.LogWarning("[CameraDirector] config 미배선 — 모든 연출 채널 비활성(홈 포즈 고정).", this);
+                Debug.LogWarning("[CameraDirector] config 미배선 — 카메라를 건드리지 않는다.", this);
             else if (config.breathWaves != null && config.breathWaves.Length > 0)
             {
                 // 파동별 위상 누적기 — SO 의 시작 위상으로 시드.
@@ -120,10 +140,6 @@ namespace Wassup.Presentation
             if (_gm == null) return; // BattleScene 외 씬 — 비행 채널 비활성
             _gm.PhaseChanged += OnPhaseChanged;
             OnPhaseChanged(_gm.CurrentPhase);
-            // "활성화 시점 최초 적용만 스냅" — 시작 페이즈가 미등록(hold)이어도 스냅 기회는
-            // 여기서 소진된다. 이후 등록 페이즈 첫 진입(예: squad 플로우 None→Gimmick→Placement)이
-            // 한참 뒤여도 스냅 팝 없이 비행한다.
-            _phaseAppliedOnce = true;
         }
 
         private void OnDestroy()
@@ -131,78 +147,259 @@ namespace Wassup.Presentation
             if (_gm != null) _gm.PhaseChanged -= OnPhaseChanged;
         }
 
+        // unit 11 — 페이즈는 «기록» 만 한다. 어느 카메라 상태인지는 LateUpdate 가 매 프레임
+        // 해석한다 — 이벤트 시점에 결정하면 «직전에 뭐였는지» 에 결과가 의존해 재현이 어렵다.
         private void OnPhaseChanged(Wassup.Core.GamePhase phase)
         {
-            if (config == null) return;
-            _currentPhase = phase; // 브리딩 on/off 판정용 — 포즈 등록 여부와 무관하게 기록
-            if (!config.enableNonDragEffects) return;
-            var pose = FindPhasePose(phase);
-            if (pose == null) return; // 미등록 페이즈 = hold
-
-            var target = new CameraPoseDelta
-            {
-                localPos = pose.localPosOffset,
-                pitchDeg = pose.pitchOffset,
-                fovDelta = pose.fovOffset,
-            };
-
-            // 최초 적용(씬 시작 시점의 현재 페이즈) 또는 flightSec 0 이하 = 즉시 스냅.
-            if (!_phaseAppliedOnce || pose.flightSec <= 0f)
-            {
-                _phaseAppliedOnce = true;
-                _flightDelta = target;
-                _flightDuration = 0f;
-                _settled = false;
-                return;
-            }
-
-            // 비행 중 재전환 포함 — 현재 보간값에서 새 목표로 재시작(스냅 금지).
-            _flightFrom = _flightDelta;
-            _flightTo = target;
-            _flightElapsed = 0f;
-            _flightDuration = pose.flightSec;
-            _flightEase = pose.ease;
+            _currentPhase = phase;
         }
 
-        private Wassup.Data.CameraPhasePose FindPhasePose(Wassup.Core.GamePhase phase)
+        // unit 11 — 페이즈 7종을 카메라 상태 2종으로 접는다.
+        // 기믹 리빌은 배치 직전 준비 구간이라 배치와 같은 그림으로 본다.
+        // 집계·결과·드래프트·None 은 전투로 흡수된다 — 집계는 판을 계속 보여주는 구간이고
+        // 결과는 전면 UI 라 별도 상태가 필요 없다. 구 «미등록 페이즈 = hold» 는 은퇴했다.
+        private static Wassup.Data.CameraState ResolveState(Wassup.Core.GamePhase phase)
+            => (phase == Wassup.Core.GamePhase.Placement || phase == Wassup.Core.GamePhase.Gimmick)
+                ? Wassup.Data.CameraState.Placement
+                : Wassup.Data.CameraState.Battle;
+
+        // unit 11 — 이번 프레임의 base 포즈를 확정한다. 이 함수가 카메라 «어디를 어떻게 보나» 의
+        // 유일한 결정자다. false = 결정할 수 없음 → 호출부가 카메라를 건드리지 않는다.
+        //
+        // 전환 중에는 **양쪽 상태의 레시피를 각각 풀고 그 결과를 섞는다**. 포즈를 얼려 두면
+        // 전환 도중에 판이 바뀌거나 화면비가 바뀌어도 따라오지 못한다.
+        private bool UpdateStatePose()
         {
-            var poses = config.phasePoses;
-            if (poses == null) return null;
-            for (int i = 0; i < poses.Length; i++)
-                if (poses[i] != null && poses[i].phase == phase) return poses[i];
+            // 판이 아직 안 왔다(맵 빌드 전 프레임 · GameManager 없는 씬 · 테스트 리그).
+            // 예전엔 씬에서 캡처한 홈이 이 구간의 폴백이었다 — 이제 그냥 손대지 않는다.
+            if (!_hasBoardBounds) return false;
+
+            var resolved = ResolveState(_currentPhase);
+            if (!_stateInit)
+            {
+                // 판 시작 시 첫 상태는 스냅(구 _phaseAppliedOnce 계약 계승).
+                _stateInit = true;
+                _state = resolved;
+                _fromState = resolved;
+                _transitionDuration = 0f;
+                _transitionElapsed = 0f;
+                _settled = false;
+            }
+            else if (resolved != _state)
+            {
+                var arrive = FindFraming(resolved);
+                bool wasMidFlight = _transitionDuration > 0f;
+                float linear01 = wasMidFlight
+                    ? Mathf.Clamp01(_transitionElapsed / _transitionDuration)
+                    : 1f;
+                _fromState = _state;
+                _state = resolved;
+                _transitionDuration = (arrive != null && arrive.flightSec > 0f) ? arrive.flightSec : 0f;
+                _transitionEase = arrive != null ? arrive.ease : null;
+                // 전환 중 재전환 — 스냅 금지. 되돌아가는 것이므로 진행도를 거울로 뒤집어 잇는다.
+                // 대칭 이징에서는 정확히 연속이고, 비대칭 커브에서는 미세한 꺾임이 남는다.
+                _transitionElapsed = wasMidFlight ? _transitionDuration * (1f - linear01) : 0f;
+                _settled = false;
+            }
+
+            bool transitioning = _transitionDuration > 0f;
+            if (transitioning)
+            {
+                _transitionElapsed += Time.unscaledDeltaTime;
+                if (_transitionElapsed >= _transitionDuration)
+                {
+                    _transitionDuration = 0f;
+                    _transitionElapsed = 0f;
+                    transitioning = false;
+                }
+            }
+
+            // 원값을 그대로 넘긴다. 여기서 클램프하면 FrustumTangents 의 «aspect<0.01 → 16:9»
+            // 폴백이 절대 안 걸리고, 게임뷰 0 폭 같은 상황에서 fit 거리가 100 배로 튄다.
+            float aspect = _cam.aspect;
+
+            var toFraming = FindFraming(_state);
+            if (!CameraFramingMath.SolveStatePose(_boardBounds.center, toFraming, _boardBounds, aspect,
+                    out var toPos, out var toRot, out float toFov, _poseCornerBuf))
+            {
+                WarnMissingFramingOnce(_state);
+                return false; // 레시피가 없는 상태로는 전환하지 않는다 — 현재 포즈 유지
+            }
+
+            if (transitioning)
+            {
+                var fromFraming = FindFraming(_fromState);
+                if (CameraFramingMath.SolveStatePose(_boardBounds.center, fromFraming, _boardBounds, aspect,
+                        out var fromPos, out var fromRot, out float fromFov, _poseCornerBuf))
+                {
+                    float t01 = Mathf.Clamp01(_transitionElapsed / Mathf.Max(1e-4f, _transitionDuration));
+                    float eased = (_transitionEase != null && _transitionEase.length >= 2)
+                        ? _transitionEase.Evaluate(t01)
+                        : Mathf.SmoothStep(0f, 1f, t01);
+                    CommitStatePose(Vector3.LerpUnclamped(fromPos, toPos, eased),
+                                    Quaternion.SlerpUnclamped(fromRot, toRot, eased),
+                                    Mathf.LerpUnclamped(fromFov, toFov, eased));
+                    // unit 13 — 흐림도 **같은 진행도**로 섞는다. 다른 시계를 쓰면 카메라는
+                    // 도착했는데 흐림이 아직 따라오는 어긋남이 생긴다.
+                    ApplyDof(CameraComposeMath.BlendDof(
+                        SolveDofFor(fromFraming, fromPos, fromRot, ref _dofCornerBufFrom),
+                        SolveDofFor(toFraming, toPos, toRot, ref _dofCornerBufTo),
+                        Mathf.Clamp01(eased)));
+                    return true;
+                }
+                // 출발 상태 레시피가 없다 — 섞을 것이 없으니 전환을 접고 도착 포즈로 간다.
+                _transitionDuration = 0f;
+                _transitionElapsed = 0f;
+            }
+
+            CommitStatePose(toPos, toRot, toFov);
+            ApplyDof(SolveDofFor(toFraming, toPos, toRot, ref _dofCornerBufTo));
+            return true;
+        }
+
+        // base 포즈 확정. 직전 해와 다르면 아이들 최적화를 푼다 — 이 한 줄이 화면비 변경 ·
+        // 판 교체 · Play 중 인스펙터 튜닝을 전부 커버한다(각각을 따로 감지할 필요가 없다).
+        private void CommitStatePose(Vector3 pos, Quaternion rot, float fov)
+        {
+            if (!_hasStatePose
+                || (pos - _lastSolvedPos).sqrMagnitude > 1e-10f
+                || Quaternion.Angle(rot, _lastSolvedRot) > 1e-4f
+                || !Mathf.Approximately(fov, _lastSolvedFov))
+                _settled = false;
+
+            _statePos = _lastSolvedPos = pos;
+            _stateRot = _lastSolvedRot = rot;
+            _stateFov = _lastSolvedFov = fov;
+            _hasStatePose = true;
+        }
+
+        // 레시피가 없으면 카메라가 «조용히» 아무것도 안 한다 — 원인 추적이 불가능하다.
+        // 상태마다 한 번만 경고한다(매 프레임 도는 경로라 스팸이 되면 안 된다).
+        private bool _warnedPlacementFraming;
+        private bool _warnedBattleFraming;
+
+        private void WarnMissingFramingOnce(Wassup.Data.CameraState state)
+        {
+            bool warned = state == Wassup.Data.CameraState.Placement
+                ? _warnedPlacementFraming : _warnedBattleFraming;
+            if (warned) return;
+            if (state == Wassup.Data.CameraState.Placement) _warnedPlacementFraming = true;
+            else _warnedBattleFraming = true;
+            Debug.LogWarning($"[CameraDirector] {state} 상태 레시피가 config 에 없다 — 그 상태로는 "
+                + "카메라가 움직이지 않는다(현재 포즈 유지). CameraDirectionConfig.stateFramings 확인.", this);
+        }
+
+        private Wassup.Data.CameraStateFraming FindFraming(Wassup.Data.CameraState state)
+        {
+            var list = config.stateFramings;
+            if (list == null) return null;
+            for (int i = 0; i < list.Length; i++)
+                if (list[i] != null && list[i].state == state) return list[i];
             return null;
         }
 
-        // unit 8 — 보드 크기에 맞춰 홈 위치를 다시 잡는다(회전·FOV 는 씬 값 유지).
-        // 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이 남거나 가장자리가 잘린다.
+        // unit 11 — 보드 bounds 입력. 맵 빌드 직후 BattleBridge 가 한 번 밀어준다.
         //
-        // 홈만 갈아끼우는 이유: 페이즈 포즈·드래그 포커스·킥·브리딩이 전부 홈 기준 델타라
-        // (CameraComposeMath.Compose) 나머지 연출이 그대로 따라온다. 카메라 transform 을
-        // 직접 쓰면 다음 LateUpdate 에 되돌려져 무효다 — 옛 맵빌드 카메라 프리셋 경로가 그래서 제거됐다.
-        //
-        // 호출 시점은 맵 빌드(보드 bounds 확정) 직후. 그때는 연출 가중치가 없으므로 진행 중
-        // 채널을 건드리지 않는다.
-        public void FrameBoard(Bounds boardWorld)
+        // 구 FrameBoard 는 fit 계산 + 홈 쓰기 + DoF 구동 + aspect 기억 네 가지를 겸했다.
+        // 이제 포즈는 매 프레임 상태 레시피에서 계산되므로 여기는 **입력 저장 하나**만 한다.
+        // Director 가 맵이나 브리지에서 bounds 를 당겨오지 않는 것이 계약이다 — 그 유혹이
+        // 경계 우회의 입구다. 입력은 브리지가 미는 한 방향뿐이다.
+        public void SetBoardBounds(Bounds boardWorld)
         {
-            if (_cam == null) return; // Awake 전 호출 — 홈 미캡처
-            float margin = config != null ? config.boardFitMargin : 1f;
-            CameraFramingMath.FrustumTangents(_homeFov, _cam.aspect, out float tanH, out float tanV);
-            _cornerBuf = CameraFramingMath.LocalCorners(boardWorld, _homeRot, _cornerBuf);
-            float dist = CameraFramingMath.FitDistance(_cornerBuf, tanH, tanV, margin);
-            // 하단 HUD(트레이)에 보드가 가리지 않도록 추가 오프셋(margin 과 독립 노브):
-            //  - framePullback: forward 반대로 더 후퇴(줌아웃) → 보드 전체가 작아져 양 끝이
-            //    화면 중앙으로 모인다(하단·상단 여백 동시 확보).
-            //  - frameRaiseY: **보드를 화면에서 위로** 올린다(양수). 카메라를 pitch 로 내려다보므로
-            //    화면 상승 = 카메라 하강(월드 -Y)이다 — 부호는 보이는 결과 기준으로 잡았다
-            //    (카메라 Y 를 직접 올리면 시선이 밀려 보드가 오히려 내려간다). 하단이 HUD 에 물릴 때.
-            float pull = config != null ? config.boardFramePullback : 0f;
-            float raise = config != null ? config.boardFrameRaiseY : 0f;
-            _homePos = boardWorld.center
-                     - (_homeRot * Vector3.forward) * (dist + pull)
-                     - Vector3.up * raise;
+            _boardBounds = boardWorld;
+            _hasBoardBounds = true;
+            // 전 채널이 비활성이면 LateUpdate 가 포즈를 다시 쓰지 않는다(_settled 아이들 no-op).
+            // 판이 바뀌었으니 한 번은 반드시 다시 풀어야 한다.
+            _settled = false;
         }
 
-        private Vector3[] _cornerBuf;
+        // unit 13 — 상태별 피사계 심도.
+        //
+        // 흐림은 "지금 무엇을 보라는 신호" 다. 배치는 판 전체에서 놓을 칸을 고르는 구간이라
+        // 흐리면 안 되고(뒷줄이 흐려지면 배치를 방해한다), 전투는 보드 뒤 원경을 빼서 판을
+        // 도드라지게 한다.
+        //
+        // 임계값은 **보드 깊이 범위로 정규화**해 저작한다(0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤).
+        // 월드 절대 거리로 두면 화면비마다 그림이 무너진다 — unit 9 가 겪은 결함.
+        private bool _dofProbed;
+        private bool _dofDrivable;   // 저작 모드가 Gaussian 인가 (Bokeh 는 체계가 달라 대상 아님)
+        private bool _dofModeOn;     // 지금 Gaussian 으로 켜 둔 상태인가
+        private CameraComposeMath.DofSolution _dofWritten;
+
+        private CameraComposeMath.DofSolution SolveDofFor(Wassup.Data.CameraStateFraming f, Vector3 pos, Quaternion rot,
+                                        ref Vector3[] buf)
+        {
+            var r = default(CameraComposeMath.DofSolution);
+            if (f == null || !f.dofEnabled) return r;
+            buf = CameraFramingMath.LocalCorners(_boardBounds, rot, buf);
+            // 카메라~보드중앙 «시야 깊이»(정면 축 거리). DofRange 가 코너의 view-z 를 이 값에
+            // 더해 보드 깊이 범위를 만든다.
+            float camDepth = Vector3.Dot(_boardBounds.center - pos, rot * Vector3.forward);
+            if (!CameraFramingMath.DofRange(buf, camDepth, f.dofStart, f.dofEnd,
+                                            out float st, out float en)) return r;
+            r.on = true;
+            r.start = st;
+            r.end = en;
+            // URP 저작 범위(ClampedFloatParameter 0.5~1.5)를 **입구에서** 지킨다.
+            // 출구(ApplyDof)에서 걸면 페이드 중인 블렌드 결과가 잘려 팝이 된다.
+            r.radius = Mathf.Clamp(f.dofMaxRadius, 0.5f, 1.5f);
+            return r;
+        }
+
+        // `Volume.profile` 은 sharedProfile 의 **런타임 인스턴스**를 돌려준다 — 프로필 에셋은
+        // 건드리지 않으므로 에디터 Play 에서도 디스크에 남지 않는다.
+        //
+        // 끄는 법이 `mode` Off 인 이유: `DepthOfField.IsActive()` 가 반경을 보지 않고 `mode` 만
+        // 본다. 반경 0 으로 두면 **풀스크린 Gaussian 패스가 계속 돈다** — 안드로이드에서 그냥
+        // 버리는 비용이다. 다만 전환 중에 끄면 팝이 나므로 **끄는 것은 전환이 끝난 뒤**다.
+        private void ApplyDof(in CameraComposeMath.DofSolution sol)
+        {
+            if (postVolume == null) return;
+            var profile = postVolume.profile;
+            if (profile == null) return;
+            if (!profile.TryGet(out UnityEngine.Rendering.Universal.DepthOfField dof)) return;
+
+            if (!_dofProbed)
+            {
+                _dofProbed = true;
+                // Bokeh 만 배제한다(focusDistance/aperture 체계라 gaussian 임계값과 무관).
+                // "== Gaussian" 으로 두면 씬 프로파일을 Off 로 저작하는 순간 DoF 가 로그 한 줄
+                // 없이 영영 죽는다 — 모드를 이제 Director 가 소유하므로 Off 저작은 자연스럽다.
+                _dofDrivable = dof.mode.value != UnityEngine.Rendering.Universal.DepthOfFieldMode.Bokeh;
+                _dofModeOn = _dofDrivable;
+            }
+            if (!_dofDrivable) return;
+
+            // BlendDof 가 «한쪽만 켜짐» 도 on=true 로 전파하므로 켜고 끄는 타이밍은 sol.on 만으로
+            // 이미 맞다(전환 시작 프레임에 켜지고, 전환이 끝난 뒤에야 꺼진다).
+            bool wantOn = sol.on;
+            if (wantOn != _dofModeOn)
+            {
+                _dofModeOn = wantOn;
+                dof.mode.Override(wantOn
+                    ? UnityEngine.Rendering.Universal.DepthOfFieldMode.Gaussian
+                    : UnityEngine.Rendering.Universal.DepthOfFieldMode.Off);
+            }
+            if (!wantOn) return;
+
+            if (Mathf.Approximately(sol.start, _dofWritten.start)
+                && Mathf.Approximately(sol.end, _dofWritten.end)
+                && Mathf.Approximately(sol.radius, _dofWritten.radius)) return;
+
+            _dofWritten = sol;
+            dof.gaussianStart.Override(sol.start);
+            dof.gaussianEnd.Override(sol.end);
+            // 여기서는 상한만 지킨다. **하한 0.5 를 걸면 안 된다** — 이 값은 페이드 중인
+            // 블렌드 결과라, 0.5 에서 잘리면 켜지는 첫 프레임에 곧장 절반 세기가 들어오고
+            // 꺼지는 후반부는 0.5 에 고정됐다가 툭 꺼진다(= 팝). 저작값 범위(0.5~1.5)는
+            // SolveDofFor 가 지킨다.
+            dof.gaussianMaxRadius.Override(Mathf.Clamp(sol.radius, 0f, 1.5f));
+        }
+
+        // 코너 버퍼 — 미리 잡아두면 LocalCorners 가 제자리에서 채워 매 프레임 할당이 없다.
+        private readonly Vector3[] _poseCornerBuf = new Vector3[8];
+        private Vector3[] _dofCornerBufTo = new Vector3[8];
+        private Vector3[] _dofCornerBufFrom = new Vector3[8];
 
         // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 호출처: DreamcatcherHandView 카드 흡수 임팩트).
         // config 배선 전 호출은 안전 no-op (spec unit 0 계약). kickDuration 0 = 킥 비활성
@@ -265,16 +462,19 @@ namespace Wassup.Presentation
         // unit-dreamcatcher-inspect unit 4 — 인스펙트 포커스 피드: 선택 유닛의 **월드 좌표**.
         // 선택 중 매 프레임 호출 — 피드가 끊기면(2프레임 초과) 자동 해제된다(붙박이 줌 방지).
         //
-        // SetDragFocus 와 달리 월드 좌표를 받는 게 계약이다. 되먹임은 여기서 NDC 를 **홈 포즈
-        // 기준**으로 뽑아 차단한다 — 현재 포즈로 뽑으면 카메라가 다가갈수록 NDC 가 0 으로 줄어
-        // 오프셋이 사라지고 다시 벌어지는 진동이 된다. 홈 포즈는 고정이라 그 루프가 없다.
+        // SetDragFocus 와 달리 월드 좌표를 받는 게 계약이다. 되먹임은 여기서 NDC 를 **그 프레임의
+        // 상태 포즈 기준**으로 뽑아 차단한다 — 라이브 카메라 포즈로 뽑으면 카메라가 다가갈수록
+        // NDC 가 0 으로 줄어 오프셋이 사라지고 다시 벌어지는 진동이 된다. 상태 포즈는 채널 델타가
+        // 얹히기 전 값이라(이 채널의 기여를 포함하지 않아) 그 루프가 성립하지 않는다.
         // (FocusDelta 의 dirLocal = (ndc.x·tanH, ndc.y·tanV, 1) 복원식의 정확한 역변환.)
         public void SetInspectFocus(Vector3 worldPos)
         {
-            if (config == null || _cam == null) return;
-            var local = Quaternion.Inverse(_homeRot) * (worldPos - _homePos);
-            if (local.z <= 0.001f) return; // 홈 카메라 뒤/평면 — 이번 프레임 피드 스킵(= 자연 해제)
-            float tanV = Mathf.Tan(_homeFov * 0.5f * Mathf.Deg2Rad);
+            if (config == null || _cam == null || !_hasStatePose) return;
+            // unit 11 — 기준이 «홈 포즈» 에서 «그 프레임의 상태 포즈» 로 바뀌었다. 상태 포즈는
+            // 채널 델타가 얹히기 **전** 값이라 여전히 되먹임이 없다(현재 카메라 포즈가 아니다).
+            var local = Quaternion.Inverse(_stateRot) * (worldPos - _statePos);
+            if (local.z <= 0.001f) return; // 카메라 뒤/평면 — 이번 프레임 피드 스킵(= 자연 해제)
+            float tanV = Mathf.Tan(_stateFov * 0.5f * Mathf.Deg2Rad);
             float tanH = tanV * Mathf.Max(0.01f, _cam.aspect);
             // selection-hand-attach unit 13 — **목표만** 갱신한다. 예전엔 여기서 _inspectNdc 를
             // 직접 대입해, 선택이 A→B 로 바뀌면 그 프레임에 프레이밍이 통째로 점프했다.
@@ -292,7 +492,7 @@ namespace Wassup.Presentation
         }
 
         // hand-drag-tooltip unit 6 — 손패 헤드룸 피드: 손패가 열려 있는 동안 매 프레임 호출.
-        // 피드가 끊기면(2프레임 초과) 자동 해제되어 홈 pitch 로 복귀한다 — 손패 닫힘/페이즈
+        // 피드가 끊기면(2프레임 초과) 자동 해제되어 상태 pitch 로 복귀한다 — 손패 닫힘/페이즈
         // 이탈/씬 파괴 어느 경로든 별도 teardown 호출 없이 복귀가 보장된다(이 파일의
         // 포커스/인스펙트 채널과 같은 계약).
         //
@@ -306,7 +506,7 @@ namespace Wassup.Presentation
 
         // defender-relocation unit 6 — 이동모드(목적지 선택) 중 매 프레임 호출. 어떤 경로로 진입했건
         // 동일한 줌아웃 고정 오버뷰를 준다. 좌표를 받지 않는 게 계약(SetHandHeadroom 과 동일 — 되먹임
-        // 루프 없음). 피드가 끊기면(2프레임 초과) 자동으로 홈 포즈로 복귀한다.
+        // 루프 없음). 피드가 끊기면(2프레임 초과) 자동으로 상태 포즈로 복귀한다.
         public void SetMoveOverview()
         {
             if (config == null) return;
@@ -315,22 +515,25 @@ namespace Wassup.Presentation
 
         private void LateUpdate()
         {
-            if (config == null) return;
+            if (config == null || _cam == null) return;
 
-            // 현재 제품 설정: 스와이프 드래그 포커스만 사용한다. 토글을 런타임에 끄는 경우에도
-            // 이미 진행 중이던 다른 채널이 한 프레임도 남지 않도록 즉시 비운다.
+            // unit 11 — base 포즈를 먼저 확정한다. 실패하면(레시피 없음 / 판 미도달) 카메라를
+            // **건드리지 않는다** — 직전 포즈가 그대로 남는다.
+            if (!UpdateStatePose()) return;
+            bool flying = _transitionDuration > 0f; // 완료 프레임에 UpdateStatePose 가 0 으로 내린다
+
+            // enableNonDragEffects 는 앰비언트 연출(킥/펄스/셰이크/브리딩) 억제 토글이다.
+            // **상태 전환은 이 토글 소관이 아니다** — 드래그 포커스·인스펙트·헤드룸과 같은
+            // 취급이다(배치↔전투 전환은 명시적 제품 연출이라 묶으면 조용히 죽는다).
             if (!config.enableNonDragEffects)
             {
                 _kickRemaining = 0f;
                 _pulseRemaining = 0f;
                 _shakeHeat = 0f;
                 _breathWeight = 0f;
-                _flightDelta = default;
-                _flightDuration = 0f;
             }
 
             // 채널 활성 판정.
-            bool flying = config.enableNonDragEffects && _flightDuration > 0f && _flightElapsed < _flightDuration;
             bool punctInput = config.enableNonDragEffects && (_pulseRemaining > 0f || _shakeHeat > 0.0001f);
             // 비행 중 구두점 가중치 0 페이드 (비행이 최우선). 페이드 진행 자체도 활성으로 취급.
             float punctTarget = flying ? 0f : 1f;
@@ -346,7 +549,7 @@ namespace Wassup.Presentation
             bool breathActive = breathTarget > 0f || _breathWeight > 0f;
             // 드래그 포커스: 최근 2프레임 내 피드 + 비행 아님 → 목표 1. 페이드 잔여도 활성.
             bool focusConfigured = config.focusDolly != 0f || config.focusLookWeight > 0f
-                || config.focusFovDelta != 0f;
+                || config.focusFovDelta != 0f || config.placementFocusLead != 0f;
             bool focusFed = Time.frameCount - _focusFedFrame <= 2 && focusConfigured;
             float focusTarget = (focusFed && !flying) ? 1f : 0f;
             bool focusActive = focusTarget > 0f || _focusWeight > 0f;
@@ -359,8 +562,8 @@ namespace Wassup.Presentation
             float inspectTarget = (inspectFed && !flying) ? 1f : 0f;
             bool inspectActive = inspectTarget > 0f || _inspectWeight > 0f;
             // 손패 헤드룸 — 인스펙트와 같은 staleness 규약이고 같은 이유로
-            // enableNonDragEffects 에 묶지 않는다. 비행 중에도 유지한다(페이즈 비행은
-            // 현재 꺼져 있고, 켜지더라도 손패가 열려 있으면 헤드룸은 계속 필요하다).
+            // enableNonDragEffects 에 묶지 않는다. **상태 전환 중에도 유지한다** — 손패가
+            // 열려 있으면 헤드룸은 계속 필요하다(포커스/인스펙트와 달리 전환에 양보하지 않는다).
             bool headroomConfigured = config.handHeadroomPitchDeg != 0f || config.handHeadroomDolly != 0f;
             bool headroomFed = Time.frameCount - _headroomFedFrame <= 2 && headroomConfigured;
             float headroomTarget = headroomFed ? 1f : 0f;
@@ -376,11 +579,11 @@ namespace Wassup.Presentation
             bool overviewSettled = Mathf.Abs(_overviewWeight) < 0.0005f && Mathf.Abs(_overviewVel) < 0.0005f;
             bool overviewActive = overviewTarget > 0f || !overviewSettled;
             // inspectActive 를 빠뜨리면 아래 idle 최적화(_settled)가 줌을 한 프레임 만에 덮어쓴다.
-            // headroomActive 도 같다 — 빠뜨리면 손패를 열어도 pitch 가 즉시 홈으로 덮인다.
+            // headroomActive 도 같다 — 빠뜨리면 손패를 열어도 pitch 가 즉시 상태 포즈로 덮인다.
             bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive
                 || focusActive || inspectActive || headroomActive || overviewActive;
 
-            // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
+            // 아이들: 정착 포즈(현재 상태 포즈)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
             // 아낀다. Director 가 유일한 쓰기 주체라 써둔 포즈가 그대로 유지된다.
             if (!anyActive)
@@ -389,28 +592,17 @@ namespace Wassup.Presentation
                 // 다음 펄스가 램프인과 겹쳐 약해지는 문제 방지(리뷰 반영). 입력 없으니 비가시.
                 _punctWeight = punctTarget;
                 if (_settled) return;
-                ComposeAndWrite(_flightDelta);
+                ComposeAndWrite(CameraPoseDelta.Identity);
                 _settled = true;
                 return;
             }
             _settled = false;
 
-            // 비행 채널 — 이징 커브(비어 있으면 smoothstep 폴백)로 from→to 보간.
-            if (flying)
-            {
-                _flightElapsed += Time.unscaledDeltaTime;
-                float t01 = Mathf.Clamp01(_flightElapsed / _flightDuration);
-                float eased = (_flightEase != null && _flightEase.length >= 2)
-                    ? _flightEase.Evaluate(t01)
-                    : Mathf.SmoothStep(0f, 1f, t01);
-                _flightDelta = CameraComposeMath.Lerp(_flightFrom, _flightTo, eased);
-                if (t01 >= 1f) { _flightDelta = _flightTo; _flightDuration = 0f; }
-            }
-
-            var delta = _flightDelta;
+            // 전환은 base 포즈(UpdateStatePose)가 이미 섞어 놨다 — 여기부터는 그 위에 얹는 델타뿐.
+            var delta = CameraPoseDelta.Identity;
 
             // 드래그 포커스 채널 — 유닛 방향 dolly + 부분 lookat + 스와이프 리드.
-            // base 위치 = 홈⊕비행 localPos (회전은 홈 기준 — FocusDelta 주석 참조).
+            // base 위치 = 현재 상태 포즈 (회전도 상태 기준 — FocusDelta 주석 참조).
             if (focusTarget > 0f)
             {
                 _focusReleasing = false;
@@ -420,7 +612,7 @@ namespace Wassup.Presentation
             else if (_focusWeight > 0f)
             {
                 // 복귀는 선형 MoveTowards 대신 초반이 빠른 cubic ease-out. 드래그 해제 직후
-                // 즉시 반응하되, 홈 포즈에는 부드럽게 착지한다.
+                // 즉시 반응하되, 상태 포즈에는 부드럽게 착지한다.
                 if (!_focusReleasing)
                 {
                     _focusReleasing = true;
@@ -444,10 +636,25 @@ namespace Wassup.Presentation
                     config.focusSpring, config.focusDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
 
-                delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
-                    _focusNdc, _focusNdcVel, _homeFov, _cam.aspect, _focusWeight,
-                    config.focusDolly, config.focusFovDelta, config.focusLookWeight,
-                    config.focusLeanPerSpeed, config.focusLeanMaxDeg));
+                // unit 12 — 배치 상태는 같은 채널을 «화면 밀기» 로 해석한다. 새 채널을 만들지
+                // 않는 이유: 스프링·staleness·페이드가 이미 여기 있고 튜닝도 끝나 있다.
+                // 전투는 기존 해석(전진 dolly + 부분 lookat + 스와이프 리드) 그대로 — 전투 중에도
+                // 손패에서 카드를 끌어 배치하고, 그때 상태 대상은 보드 중앙 고정이다.
+                if (_state == Wassup.Data.CameraState.Placement)
+                {
+                    float boardDepth = Vector3.Dot(_boardBounds.center - _statePos,
+                                                   _stateRot * Vector3.forward);
+                    delta = CameraComposeMath.Add(delta, CameraComposeMath.PanDelta(
+                        _focusNdc, _stateFov, _cam.aspect, _focusWeight,
+                        config.placementFocusLead, boardDepth));
+                }
+                else
+                {
+                    delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
+                        _focusNdc, _focusNdcVel, _stateFov, _cam.aspect, _focusWeight,
+                        config.focusDolly, config.focusFovDelta, config.focusLookWeight,
+                        config.focusLeanPerSpeed, config.focusLeanMaxDeg));
+                }
             }
             else
             {
@@ -495,7 +702,7 @@ namespace Wassup.Presentation
                 else _inspectNdc = _inspectNdcTarget; // 0 이하 = 구 동작(즉시 스냅)
 
                 delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
-                    _inspectNdc, Vector2.zero, _homeFov, _cam.aspect, _inspectWeight,
+                    _inspectNdc, Vector2.zero, _stateFov, _cam.aspect, _inspectWeight,
                     config.inspectDolly, config.inspectFovDelta, config.inspectLookWeight,
                     0f, 0f));
 
@@ -522,7 +729,7 @@ namespace Wassup.Presentation
                 Wassup.UI.KeyringSim.SpringStep(ref _headroomWeight, ref _headroomVel,
                     headroomTarget, config.handHeadroomSpring, config.handHeadroomDamping, 0f,
                     Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
-                // localPos 는 홈 회전 기준(+Z = 카메라 전방)이라 음수 z = 후퇴 = 줌아웃.
+                // localPos 는 상태 회전 기준(+Z = 카메라 전방)이라 음수 z = 후퇴 = 줌아웃.
                 delta = CameraComposeMath.Add(delta, new CameraPoseDelta
                 {
                     pitchDeg = config.handHeadroomPitchDeg * _headroomWeight,
@@ -650,20 +857,24 @@ namespace Wassup.Presentation
 
         private void ComposeAndWrite(in CameraPoseDelta delta)
         {
-            CameraComposeMath.Compose(_homePos, _homeRot, _homeFov, delta,
+            CameraComposeMath.Compose(_statePos, _stateRot, _stateFov, delta,
                 config.fovMin, config.fovMax,
                 out var pos, out var rot, out var fov);
             transform.SetPositionAndRotation(pos, rot);
             _cam.fieldOfView = fov;
         }
 
+        // 비활성 동안 다른 무언가가 카메라를 옮겼을 수 있다. 재활성 프레임에 한 번은 반드시 쓴다.
+        private void OnEnable()
+        {
+            _settled = false;
+        }
+
         private void OnDisable()
         {
-            // 홈 포즈 복귀 보장 (도메인 리로드/비활성 시 잔여 오프셋 방지).
-            if (_cam == null) return; // Awake 전 비활성화 — 캡처된 홈 없음
-            transform.SetPositionAndRotation(_homePos, _homeRot);
-            _cam.fieldOfView = _homeFov;
-            // 헤드룸도 함께 턴다 — 재활성 시 스프링이 옛 속도로 튀는 것 방지.
+            // unit 11 — **아무것도 복원하지 않는다.** 복원할 «홈» 이 없고, 재활성 프레임에
+            // OnEnable 이 _settled 를 풀어 상태 포즈를 다시 쓴다. 예전엔 씬 캡처 포즈로 되돌렸다.
+            // 헤드룸은 함께 턴다 — 재활성 시 스프링이 옛 속도로 튀는 것 방지.
             _headroomWeight = 0f;
             _headroomVel = 0f;
             _headroomFedFrame = -10;

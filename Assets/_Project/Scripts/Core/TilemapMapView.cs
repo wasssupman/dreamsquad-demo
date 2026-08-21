@@ -72,6 +72,11 @@ namespace Wassup.Core
         private Tilemap _placeableTilemap;
         private bool _placeableActive;
         private float _placeableShowTime; // unscaledTime 캡처(페이드인 기준)
+        // first-run-tutorial unit 1 — 배치 **불가** 칸 하이라이트(맵 설명 전용). placeable 과
+        // 정의상 서로 겹치지 않는 집합이라 같은 sorting 층을 쓰되 z 만 살짝 갈라 z-fight 를 피한다.
+        private Tilemap _blockedTilemap;
+        private bool _blockedActive;
+        private float _blockedShowTime;
         // defender-directional-volley unit 9 — 방향 지정 화살표(재사용 풀, 최대 4).
         private readonly List<SpriteRenderer> _aimArrows = new();
         private static Sprite _arrowSprite;
@@ -167,6 +172,8 @@ namespace Wassup.Core
             _rangeInvalid = false; // unit 3 — 맵 리빌드 경계 방어(정상 경로는 호출부 리셋이 덮는다)
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles(); // placement-eligible-tile-highlight unit 1
             _placeableActive = false;
+            if (_blockedTilemap != null) _blockedTilemap.ClearAllTiles(); // first-run-tutorial unit 1
+            _blockedActive = false;
             ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
             ClearTelegraphCells(); // ultimate-leap unit 4 — 예고가 맵 너머로 살아남지 않게
             _effectTileCells.Clear(); // unit 26 — 타일맵을 비웠으니 기억도 비운다(맵 리빌드 경계)
@@ -188,6 +195,14 @@ namespace Wassup.Core
                     ? Mathf.Clamp01((Time.unscaledTime - _placeableShowTime) / _tileSet.placeableFadeInDuration) : 1f;
                 var pc = _tileSet.placeableColor; pc.a *= pt;
                 _placeableTilemap.color = pc;
+            }
+            // first-run-tutorial unit 1 — 불가 하이라이트도 같은 페이드 규약(placeableFadeInDuration 공유).
+            if (_blockedActive && _blockedTilemap != null)
+            {
+                float bt = _tileSet.placeableFadeInDuration > 0f
+                    ? Mathf.Clamp01((Time.unscaledTime - _blockedShowTime) / _tileSet.placeableFadeInDuration) : 1f;
+                var bc = _tileSet.blockedColor; bc.a *= bt;
+                _blockedTilemap.color = bc;
             }
         }
 
@@ -264,6 +279,9 @@ namespace Wassup.Core
             // 플레이어가 유닛을 빼려고 드래그를 시작하는 **바로 그 순간**(이 스킬이 성립하는 순간)
             // range/placeable 만 위로 올라가고 예고가 그 아래로 묻힌다.
             SetRendererSorting(_telegraphTilemap, above ? 9999 : -13);
+            // first-run-tutorial unit 1 — 같은 이유로 이 목록에 있어야 한다. 지금은 맵 설명 전용이라
+            // 드래그와 겹칠 일이 없지만, 빠뜨린 타일맵은 언젠가 -13 에 굳는다(위 ultimate-leap 사례).
+            SetRendererSorting(_blockedTilemap, above ? 9998 : -13);
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -987,6 +1005,54 @@ namespace Wassup.Core
         {
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles();
             _placeableActive = false;
+        }
+
+        // first-run-tutorial unit 1 — 배치 **불가** 칸 하이라이트. EnsurePlaceableTilemap 과 같은 관용구.
+        private void EnsureBlockedTilemap()
+        {
+            if (_blockedTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("PlacementBlockedTiles");
+            go.transform.SetParent(grid.transform, false);
+            // placeable(-0.04)과 겹치지 않게 한 겹 더 띄운다 — 두 하이라이트를 동시에 켜는 구간이 있다.
+            go.transform.localPosition = new Vector3(0f, 0f, -0.045f);
+            _blockedTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _blockedTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = _highlightAbove ? 9998 : -13;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null) // placeable 과 같은 검증된 반투명 tint 경로.
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+        }
+
+        // 배치 불가 셀 집합을 칠한다. blockedTile 미할당이면 조용히 no-op(placeable 과 같은 규약).
+        public void SetBlockedHighlight(IReadOnlyList<Vector2Int> blocked)
+        {
+            if (grid == null || _tileSet == null || _tileSet.blockedTile == null || blocked == null) return;
+            EnsureBlockedTilemap();
+            if (!_blockedActive)
+            {
+                _blockedActive = true;
+                _blockedShowTime = Time.unscaledTime;
+                var c0 = _tileSet.blockedColor; c0.a = 0f;
+                _blockedTilemap.color = c0; // 첫 프레임 흰 불투명 번쩍 방지
+            }
+            _blockedTilemap.ClearAllTiles();
+            for (int i = 0; i < blocked.Count; i++)
+            {
+                var cell = blocked[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _blockedTilemap.SetTile(ToCell(cell), _tileSet.blockedTile);
+            }
+        }
+
+        public void ClearBlockedHighlight()
+        {
+            if (_blockedTilemap != null) _blockedTilemap.ClearAllTiles();
+            _blockedActive = false;
         }
 
         // grid 권위 cell→world. BoardSpace.ToView 와 동일 셀중심(+0.5) 수식. 바닥 z-fight 회피용 미세 +Y lift.

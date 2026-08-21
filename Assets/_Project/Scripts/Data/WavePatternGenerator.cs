@@ -333,7 +333,8 @@ namespace Wassup.Data
                     {
                         var grp = aw.groups[g];
                         if (grp == null || grp.unit == null || grp.count <= 0) continue;
-                        groups.Add(new WaveSpawnGroup(grp.unit, grp.count, math.max(0f, grp.triggerTimeSec)));
+                        groups.Add(new WaveSpawnGroup(
+                            grp.unit, grp.count, math.max(0f, grp.triggerTimeSec), grp.laneIndex));
                     }
                 float interval = aw != null ? math.max(0f, aw.intervalSec) : 0f;
                 waves.Add(new GeneratedWave(i, cumulativeStart, groups, interval, WaveExpandMode.PerGroupTimeline));

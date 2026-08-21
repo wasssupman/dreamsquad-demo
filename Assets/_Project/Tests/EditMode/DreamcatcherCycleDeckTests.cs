@@ -132,6 +132,72 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(hand[1].entryId, deck.Hand(HandSize)[0].entryId);
         }
 
+        // ── dreamcatcher-retire-recall unit 1 — 「인수인계」 앞 회수 ────────────────
+        // ⚠ 이 세 테스트는 **부착 순서 ≠ entryId 순서** 를 일부러 만든다. 둘이 우연히 같으면
+        // 이 unit 이 새로 만든 축(호출자가 준 순서)을 아무것도 증명하지 못한다.
+
+        [Test]
+        public void RecoverToFront_InsertsAtFront_InGivenOrder()
+        {
+            var cards = MakeCards(12);
+            var deck = new DreamcatcherCycleDeck(cards, seed: 7);
+            var hand = deck.Hand(HandSize);
+            int a = hand[0].entryId, b = hand[1].entryId, c = hand[2].entryId;
+            foreach (var id in new[] { a, b, c }) Assert.IsTrue(deck.UseUnit(id, HandSize));
+
+            // entryId 오름차순이 아닌 순서로 준다 — 정렬이 아니라 **준 순서** 를 지켜야 한다.
+            var order = new List<int> { c, a, b };
+            Assert.AreEqual(3, deck.RecoverToFront(order));
+
+            var front = deck.Hand(HandSize);
+            Assert.AreEqual(c, front[0].entryId);
+            Assert.AreEqual(a, front[1].entryId);
+            Assert.AreEqual(b, front[2].entryId);
+            Assert.AreEqual(12, deck.QueueCount);
+            Assert.AreEqual(0, deck.AttachedCount);
+        }
+
+        [Test]
+        public void RecoverToFront_SkipsUnattachedIds()
+        {
+            var cards = MakeCards(12);
+            var deck = new DreamcatcherCycleDeck(cards, seed: 7);
+            var hand = deck.Hand(HandSize);
+            int a = hand[0].entryId, b = hand[1].entryId;
+            int neverAttached = hand[4].entryId;
+            Assert.IsTrue(deck.UseUnit(a, HandSize));
+            Assert.IsTrue(deck.UseUnit(b, HandSize));
+
+            // 미부착 id 와 미지의 id 가 섞여도 건너뛰고, 남은 것이 앞으로 당겨진다.
+            Assert.AreEqual(2, deck.RecoverToFront(new List<int> { neverAttached, b, 999, a }));
+
+            var front = deck.Hand(HandSize);
+            Assert.AreEqual(b, front[0].entryId);
+            Assert.AreEqual(a, front[1].entryId);
+            Assert.AreEqual(12, deck.TotalCount);
+        }
+
+        [Test]
+        public void RecoverToFront_MixedWithRecover_PreservesTotal()
+        {
+            var cards = MakeCards(12);
+            var deck = new DreamcatcherCycleDeck(cards, seed: 7);
+            var hand = deck.Hand(HandSize);
+            int front1 = hand[0].entryId, front2 = hand[1].entryId, back = hand[2].entryId;
+            foreach (var id in new[] { front1, front2, back }) Assert.IsTrue(deck.UseUnit(id, HandSize));
+
+            // 「인수인계」 자신은 맨 뒤(Recover), 나머지는 앞(RecoverToFront) — 컨트롤러의 분기 모양.
+            Assert.IsTrue(deck.Recover(back));
+            Assert.AreEqual(2, deck.RecoverToFront(new List<int> { front1, front2 }));
+
+            Assert.AreEqual(12, deck.TotalCount);
+            Assert.AreEqual(12, deck.QueueCount);
+            var all = deck.Hand(12);
+            Assert.AreEqual(front1, all[0].entryId);
+            Assert.AreEqual(front2, all[1].entryId);
+            Assert.AreEqual(back, all[11].entryId);
+        }
+
         [Test]
         public void OutsideHand_OrUnknown_IsRejected()
         {

@@ -191,6 +191,33 @@ namespace Wassup.Data
         // 없다(SplitOnDeath 가 전용 큐·레지스트리를 전부 걷어낸 것과 같은 이유).
         // append-only.
         SpawnHazard = 24,
+        // dreamcatcher-retire-recall unit 0 — 인수인계. 이 유닛이 퇴근할 때, 같이 붙어 있던
+        // **다른** 드림캐쳐를 부착한 순서 그대로 카드 큐 맨 앞으로 되돌린다(자기 자신은 맨 뒤).
+        //
+        // ★ **실행자가 sim 도 브리지도 아니다** — `DreamcatcherHandController`(Core, Mono)다.
+        // 그래서 `DcTriggerSlot` 을 굽지 않는다. `PlacementAura`(브리지 Mono 상태에 등록)보다
+        // 한 칸 더 밖이며, 이 성질을 가진 payload 를 아래 `DcPayloadKinds.IsHandOp` 이 모은다.
+        //
+        // 필드 재사용: magnitude = 앞으로 보낼 **최대 장수**(0 = 무제한). 그 외 칸은 안 읽는다.
+        //
+        // 이름에 "손패"를 넣지 않은 이유: 손패 = 큐 앞 N 이라는 사실은 DreamcatcherCycleDeck
+        // 만 아는 것이고, 이 payload 가 말하는 것은 **부착분을 앞으로**다. append-only.
+        RecallAttachedToFront = 25,
+    }
+
+    // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.
+    // 실행자가 시뮬레이션도 브리지도 아니고 `DreamcatcherHandController` 인 payload 들.
+    // 공통 성질: DcTriggerSlot 을 굽지 않는다 · host 능력에 의존하지 않는다 ·
+    // **Mono 가 host 귀속으로 볼 수 있는 사건**(DefenderRetired / DefenderDied / EnemyGone)
+    // 에만 배선할 수 있다.
+    //
+    // 이 술어를 bake(BattleBridge) · 적용성(DcApplicability) · 컨트롤러가 공유하므로,
+    // 두 번째 손패 카드가 드는 비용은 **enum 값 1 + 컨트롤러 case 1** 이다(브리지 0 · 적용성 0).
+    // 카드마다 `HasXxx()` 불리언을 늘리는 방식(HasBountyMark 선례)을 여기서 쓰지 않는 이유다.
+    public static class DcPayloadKinds
+    {
+        public static bool IsHandOp(DcPayloadKind kind)
+            => kind == DcPayloadKind.RecallAttachedToFront;
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의

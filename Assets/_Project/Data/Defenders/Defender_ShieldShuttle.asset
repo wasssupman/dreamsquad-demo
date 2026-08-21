@@ -18,8 +18,9 @@ MonoBehaviour:
   traversalLayers: 0
   displayName: "\uC2E4\uB4DC\uC154\uD2C0"
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
-    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uB3C4\uBC1C \xB7 \uCCB4\uB825
-    \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30 \uC2E4\uB4DC"
+    \uC2A4\uD0AC: \uC8FC\uBCC0 \uC544\uAD70 \uC804\uC6D0\uC5D0\uAC8C \uBCF4\uD638\uB9C9\n\uD2B9\uC218
+    \uD6A8\uACFC: \uB3C4\uBC1C \xB7 \uCCB4\uB825 \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30
+    \uC2E4\uB4DC"
   health: 750
   attackRange: 1
   attackCooldown: 1.9
@@ -37,7 +38,7 @@ MonoBehaviour:
   projectile: {fileID: 0}
   outputs:
   - kind: 0
-    magnitude: 58
+    magnitude: 40
     duration: 0
     stat: 0
     op: 0
@@ -59,6 +60,7 @@ MonoBehaviour:
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
+  - {fileID: 11400000, guid: 527f7e823e20464fb745d8c418a0e4e1, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 6418d1fd7f1c44234af1bd185238dfe6, type: 3}
   aggroCapacity: 2

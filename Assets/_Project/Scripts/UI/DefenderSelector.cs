@@ -78,6 +78,11 @@ namespace Wassup.UI
             // (그때는 탈색만 남는다). 소진 여부는 여기에 저장하지 않고 매번 브리지에서 센다 —
             // SlotVisual 은 struct 라 필드에 쓰면 value-copy 로 소실된다(쿨타임 critic M1 선례).
             public GameObject rimFlow;
+            // defender-board-limit 4 — 출전 중 호흡이 실리는 rect = **포트레이트**. 셀 루트
+            // 스케일에는 이미 주인이 둘 있다 — 퇴근 도착 pulse(PrimeTween)와 쿨타임 종료
+            // flourish(**코루틴**, 매 프레임 localScale 을 직접 쓴다). 거기에 매 프레임 호흡까지
+            // 쓰면 셋이 서로를 지운다. 이름 밴드·코스트 칩은 제자리에 남아 계속 읽힌다.
+            public RectTransform breathRect;
         }
 
         private readonly List<SlotVisual> _slotVisuals = new();
@@ -89,6 +94,9 @@ namespace Wassup.UI
         // .mat 파일 자체가 더럽혀지기 때문이다.
         private Material _rimFlowMat;
         private static readonly int RimAspectId = Shader.PropertyToID("_Aspect");
+        // defender-board-limit 4 — 테두리가 셀 **밖으로도** 번지게 하는 여백(rim quad 확장분)을
+        // half-height 단위로 셰이더에 알린다. _Aspect 와 같은 부류(룩이 아니라 기하)라 코드가 민다.
+        private static readonly int RimBleedId = Shader.PropertyToID("_Bleed");
         // defender-placement-cooldown 2 — 표시 중 오버레이 유무(만료 프레임에 AnyActive 가 이미
         // false 여도 hide/pop 을 마치도록 순회를 한 프레임 더 돌리는 가드).
         private bool _anyCooldownShown;
@@ -238,6 +246,9 @@ namespace Wassup.UI
                 var v = _slotVisuals[i];
                 bool ex = IsExhausted(v.data);
                 if (v.rimFlow != null && v.rimFlow.activeSelf != ex) v.rimFlow.SetActive(ex);
+                // 소진이 풀리면 호흡이 멈추므로 **마지막 프레임 스케일이 굳는다** — 여기서 되돌린다.
+                if (!ex && v.breathRect != null && v.breathRect.localScale != Vector3.one)
+                    v.breathRect.localScale = Vector3.one;
                 // 우선순위(소진 > 쿨타임): 소진이면 쿨타임 오버레이를 즉시 내린다.
                 if (ex && v.cooldownRoot != null && v.cooldownRoot.activeSelf)
                     v.cooldownRoot.SetActive(false);
@@ -461,7 +472,7 @@ namespace Wassup.UI
                     ? Color.clear
                     : (data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray);
                 var dragSlot = go.AddComponent<DefenderDragSlot>();
-                dragSlot.Bind(data, dragPlacementController, costDisplay, bridge, dcInspect);
+                dragSlot.Bind(data, dragPlacementController, costDisplay, bridge, dcInspect, this);
 
                 // defender-portraits 3 — 포트레이트 채움(4px 패딩). raycastTarget=false 라
                 // 드래그 입력은 슬롯 루트(bg Image)가 받는다.
@@ -548,7 +559,16 @@ namespace Wassup.UI
                     rimFlowGO.transform.SetParent(go.transform, false);
                     var rimRt = (RectTransform)rimFlowGO.transform;
                     rimRt.anchorMin = Vector2.zero; rimRt.anchorMax = Vector2.one;
-                    rimRt.offsetMin = Vector2.zero; rimRt.offsetMax = Vector2.zero;
+                    // defender-board-limit 4 — 셀보다 bleed px 만큼 **크게** 잡는다. 링 자체는
+                    // 셰이더가 여전히 셀 경계에 그리고(_Bleed 로 안쪽 상자를 줄인다), 늘어난
+                    // 여백은 글로우가 바깥으로 번질 자리다.
+                    //
+                    // ⚠ 상한은 slotSpacing 의 **절반**이다 — 틈 8px 를 두 칸이 나눠 쓴다. 넘기면
+                    // 겹치는 지점에서 글로우가 아직 0 이 아니라(outerFade 는 자기 quad 끝에서야
+                    // 0 이 된다) 소진 셀 2개 사이가 호박빛으로 이어져 한 덩어리로 읽힌다.
+                    float bleed = trayConfig != null ? trayConfig.rimBleedPx : 6f;
+                    rimRt.offsetMin = new Vector2(-bleed, -bleed);
+                    rimRt.offsetMax = new Vector2(bleed, bleed);
                     var rimImg = rimFlowGO.GetComponent<Image>();
                     rimImg.material = _rimFlowMat;
                     rimImg.raycastTarget = false; // 입력은 슬롯 루트가 받는다
@@ -571,6 +591,7 @@ namespace Wassup.UI
                     cooldownMat = cdMat,
                     cooldownRim = cdRim,
                     rimFlow = rimFlowGO,
+                    breathRect = prt,
                 });
             }
 
@@ -578,6 +599,55 @@ namespace Wassup.UI
             // defender-board-limit 1 — 초기 페인트. 배틀 도중 트레이가 재빌드돼도(페이즈 전환 등)
             // 이미 판에 나가 있는 유닛의 셀이 살아 있는 것처럼 보이지 않는다.
             RefreshExhaustedStates();
+        }
+
+        // first-run-tutorial unit 5 — **지목**. 위의 TryGetAffordableTutorialSlot 은 «지금 살 수
+        // 있는 아무 슬롯»을 주는 **추천**이라 여기에 못 쓴다: 온보딩은 캐논 하나를 가리켜야 하고,
+        // 못 누르는 슬롯을 가리키면 안내가 막힌다.
+        //
+        // rect 만 준다. 「지금 지불 가능한가」는 호출자가 따로 묻는다 — 정지 중에는 코스트도
+        // 쿨타임도 회복되지 않아 «기다리면 가능해진다»가 없으므로, 그 판정은 정지 **전에**
+        // 한 번 하고 불가면 구간 자체를 건너뛴다.
+        // first-run-tutorial unit 6 — 온보딩이 가리키던 유닛이 죽었을 때 살아 있는 대체 대상을
+        // 찾기 위한 순회 창구. 리스트를 통째로 노출하면 struct value-copy 로 새 배열이 뜨므로
+        // 인덱스 접근만 연다(SlotVisual 은 struct 라 밖으로 내보내지 않는다).
+        public int SlotCount => _slotVisuals.Count;
+
+        public DefenderUnitData SlotUnitAt(int index)
+            => (index >= 0 && index < _slotVisuals.Count) ? _slotVisuals[index].data : null;
+
+        public bool TryGetSlotRect(DefenderUnitData unit, out RectTransform target)
+        {
+            target = null;
+            if (unit == null) return false;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data != unit || slot.rect == null) continue;
+                target = slot.rect;
+                return true;
+            }
+            return false;
+        }
+
+        // first-run-tutorial unit 5 — 정지 전 지불 판정. 소진(보드 상한)·비용 초과·쿨타임 중
+        // 하나라도 걸리면 그 슬롯은 지금 누를 수 없다.
+        public bool IsSlotUsableNow(DefenderUnitData unit)
+        {
+            if (unit == null) return false;
+            var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            int available = runtime != null ? runtime.CurrentInt : int.MinValue;
+            var cooldown = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data != unit) continue;
+                if (slot.cost > available) return false;
+                if (IsExhausted(slot.data)) return false;
+                if (cooldown != null && cooldown.RemainingFor(slot.data) > 0f) return false;
+                return true;
+            }
+            return false;
         }
 
         // first-session-tutorial unit 2 — soft recommendation only. Input stays
@@ -708,6 +778,9 @@ namespace Wassup.UI
             // 리페인트한다. fillAmount 가 연속 변하므로 diff-gate 에 삼켜지면 안 된다.
             UpdateCooldownOverlays();
             PushRimGeometry(); // defender-board-limit 1 — 셀 종횡비(페이즈 전환으로 바뀐다)
+            // defender-board-limit 4 — 출전 중 호흡. 코스트 diff-gate **위**에 있어야 한다:
+            // 스케일이 연속으로 변하므로 gate 아래로 내려가면 코스트가 바뀔 때만 한 칸씩 튄다.
+            UpdateExhaustedBreath();
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             int current = costRuntime != null ? costRuntime.CurrentInt : int.MaxValue;
             if (current == _lastCostSeen) return;
@@ -747,7 +820,85 @@ namespace Wassup.UI
             if (rt == null) return;
             float w = rt.rect.width, h = rt.rect.height;
             if (w <= 1f || h <= 1f) return;
-            _rimFlowMat.SetFloat(RimAspectId, w / h);
+            // rim quad 는 셀보다 사방 bleed px 크다 — 종횡비도 링 위치도 **quad 기준**으로 내야 한다.
+            // 값은 config 에서 다시 읽지 않고 **실제 quad 에서 유도**한다: rect 는 슬롯을 지을 때
+            // 한 번 잡히므로, 런타임에 rimBleedPx 를 만지면 config 와 rect 가 갈라지고 링이 셀
+            // 경계에서 밀린다(끄집어낸 값이 아니라 화면에 있는 값이 진실원).
+            var rimRt = _slotVisuals[0].rimFlow != null
+                ? (RectTransform)_slotVisuals[0].rimFlow.transform : null;
+            if (rimRt == null) return;
+            float qw = rimRt.rect.width, qh = rimRt.rect.height;
+            if (qw <= 1f || qh <= 1f) return;
+            _rimFlowMat.SetFloat(RimAspectId, qw / qh);
+            // half-height 단위(셰이더 좌표계)로 환산한 여백 = 링이 quad 가장자리에서 들어올 거리.
+            _rimFlowMat.SetFloat(RimBleedId, (qh - h) * 0.5f / (qh * 0.5f));
+        }
+
+        // defender-board-limit 4 — 출전 중 셀의 느린 호흡. **죽은 UI 는 안 움직인다** — 움직이는
+        // 것이 "만질 수 있는 칸"으로 읽히는 이유다.
+        //
+        // 대상 판정은 테두리 위젯의 activeSelf 로 읽는다: 소진 여부를 매 프레임 다시 세지 않고,
+        // SlotVisual 이 struct 라 필드 write-back 이 소실되는 함정도 피한다(쿨타임 오버레이가
+        // cooldownRoot.activeSelf 를 상태 저장소로 쓰는 것과 같은 수법).
+        //
+        // 시간축은 unscaledTime — 선택하면 슬로모가 걸리는데(DcInspectController.AcquireSlomo)
+        // 그때 트레이의 시각 플레어까지 느려지면 안 된다(쿨타임 림 호흡과 같은 판단).
+        private void UpdateExhaustedBreath()
+        {
+            float amp = trayConfig != null ? trayConfig.exhaustedBreathAmplitude : 0.02f;
+            // amp 가 0 이어도 **조기 return 하지 않는다**: 호흡이 도는 중에 0 으로 내리면 마지막
+            // 프레임 스케일(최대 1.02×)이 그대로 굳는다. 소진 해제 시 리셋은 !ex 일 때만 도는
+            // 경로라(RefreshExhaustedStates) 그 유닛이 판에 남아 있는 한 원복 지점이 없다.
+            // 대신 목표 스케일을 1 로 두고 같은 루프를 돌아 정규화한다.
+            float scale = 1f;
+            if (amp > 0f)
+            {
+                float period = Mathf.Max(0.05f,
+                    trayConfig != null ? trayConfig.exhaustedBreathPeriod : 2.2f);
+                // 0..1 코사인 램프 — 끝점에서 속도가 0 이라 "숨"으로 읽힌다(선형 삼각파는 튄다).
+                float phase = 0.5f - 0.5f * Mathf.Cos(Time.unscaledTime * (Mathf.PI * 2f / period));
+                scale = 1f + amp * phase;
+            }
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var v = _slotVisuals[i];
+                if (v.breathRect == null) continue;
+                if (!IsExhaustedShown(v)) continue;
+                v.breathRect.localScale = new Vector3(scale, scale, 1f);
+            }
+        }
+
+        // 소진 표현이 켜져 있나 = 테두리 위젯의 activeSelf(리페인트 3곳이 이미 갱신해 둔 값이라
+        // 매 프레임 다시 세지 않아도 된다). 다만 **위젯이 아예 없으면**(config 에 머티리얼 미할당)
+        // activeSelf 를 읽을 데가 없어 호흡까지 같이 죽는다 — 그때만 직접 센다. 테두리가 없는
+        // 저작에서 호흡이 소진의 유일한 신호가 되는데, 그게 없어지면 화면에 아무것도 안 남는다.
+        private bool IsExhaustedShown(SlotVisual v)
+            => v.rimFlow != null ? v.rimFlow.activeSelf : IsExhausted(v.data);
+
+        // defender-board-limit 4 — 소진 셀의 탭·드래그에 **칸 자신이 먼저 대답한다**.
+        // 계약 5 는 "카메라가 그 유닛으로 가는 것이 응답"이라고 적었지만 선택 줌은 그 뒤에
+        // 꺼졌다(DcInspectController.InspectZoomEnabled = false, 2026-08-19). 지금 응답은 전부
+        // 화면 반대편(좌측 부착 패널·보드 리티클·손패)에서만 일어나, 손가락을 받은 칸은
+        // 침묵했다. 호출처는 DefenderDragSlot 의 소진 분기 2곳(탭·드래그) — 그 뒤에 선택이
+        // 오든 이동모드가 오든 응답은 먼저 나간다.
+        public void PulseExhaustedSlot(DefenderUnitData data)
+        {
+            if (data == null) return;
+            float punch = trayConfig != null ? trayConfig.exhaustedTapPunch : 0.09f;
+            if (punch <= 0f) return;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var v = _slotVisuals[i];
+                if (v.data != data) continue;
+                if (v.rect != null)
+                {
+                    PrimeTween.Tween.StopAll(v.rect);
+                    v.rect.localScale = Vector3.one;
+                    PrimeTween.Tween.PunchScale(v.rect, new Vector3(punch, punch, 0f), 0.26f, frequency: 2)
+                        .OnComplete(v.rect, r => { if (r != null) r.localScale = Vector3.one; });
+                }
+                return;
+            }
         }
 
         // defender-placement-cooldown 2 — 매 프레임 쿨타임 오버레이 리페인트. 런타임이 Battle

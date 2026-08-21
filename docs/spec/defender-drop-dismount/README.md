@@ -1,6 +1,7 @@
 # defender-drop-dismount
 
-> 상태: **완료 2026-07-28** — unit 0~5 구현 + Play 육안 확인(사용자). 커밋 `ad886013`~`35bb5642`. 인계는 `6_handoff_summary.md`
+> 상태: **완료 2026-07-28** (unit 0~5 구현 + Play 육안 확인, 커밋 `ad886013`~`35bb5642`, 인계 `6_handoff_summary.md`)
+> · **unit 7 완료 2026-08-19** — 배치 3종 착지 통일(계약 1 뒤집음). 사용자 Play 확인, 커밋 `7608ef0a`.
 > 선행 의존: 배치 셀 판정 손가락 기준 수정(`DefenderDragPlacementController._fingerBoardWorld`, 2026-07-28 작업, 커밋 대기 중)이 먼저 커밋되어야 한다. 이 spec 은 그 수정으로 생긴 "매달린 유닛 ↔ 판정 타일" 간격을 연출로 메운다.
 
 ## 목표
@@ -27,10 +28,12 @@
 | 3 | 연출 재배열 | `3_landing_presentation.md` | 스폰 연출(링·PlayDeploy·팝)을 착지 프레임으로, 활성화 시계는 commit 기준 유지 |
 | 4 | 잔류 페이드 | `4_ring_cord_remnant.md` | 고리+줄 detach 잔류 → 분리 스냅 → 페이드 |
 | 5 | 검증 | `5_playmode_verification.md` | 핸드오프 이격·활성화 타이밍·경로 게이트 PlayMode 테스트 |
+| 7 | 정책(추가) | `7_unify_placement_paths.md` | 배치 3종(트레이 D&D · 탭투플레이스 · 탭투프레스) 착지 통일 — 계약 1 뒤집기 |
 
 ## feature-wide 계약
 
-1. **적용 범위 = 실드래그 릴리스만** (`EndDrag`→`CommitPlacementAt`, `!_simulatedDrag` 게이트). 탭 배치·armed 보드드래그(`RunSimulatedDrag`)·재배치는 무변경.
+1. ~~**적용 범위 = 실드래그 릴리스만** (`EndDrag`→`CommitPlacementAt`, `!_simulatedDrag` 게이트). 탭 배치·armed 보드드래그(`RunSimulatedDrag`)·재배치는 무변경.~~
+   → **rev (unit 7, 2026-08-19): 적용 범위 = 배치 3종 전부.** 트레이 D&D(`EndDrag`) · 탭투플레이스 · 탭투프레스가 모두 `CommitPlacementAt` 에서 dismount 를 탄다. 재배치는 여전히 제외(자기 비행 소유). 연출의 정의는 **«집은 곳 → 착지»** 이고 방식마다 다른 것은 집은 곳뿐이다 — D&D 는 키링에 매달린 위치, 탭 2종은 **트레이 유닛 셀**. 그래서 탭 경로의 고스트 던지기(1.5s)는 폐기되고 커밋이 탭 프레임으로 앞당겨졌다.
 2. **커밋 타이밍 불변**: 점유·코스트·`PlacementCommitted`·튜토리얼/기믹 이벤트 전부 오늘과 같은 릴리스 프레임. dismount 는 순수 뷰.
 3. **드롭 지속시간 ≤ `deploymentDuration` 런타임 클램프** (현재 전 유닛 0.45s). dismount 창 ⊆ pending 창 → 공중 유닛은 구조적으로 공격·피격·재배치 진입(`busy` 가드) 불가. 노브 우연에 기대지 않는 코드 계약.
 4. **활성화 시계는 commit 기준 유지** (`commit + deploymentDuration + placementSkillDelay`). 밸런스 무변경. 착지 프레임 ≈ 활성화 프레임.
@@ -60,6 +63,6 @@
 
 ## 후속 후보 (현 스코프 밖)
 
-- 착지 임팩트(스쿼시·먼지 퍼프)를 탭 배치·재배치 착지와 공유 모듈로 통일
+- ~~착지 임팩트(스쿼시·먼지 퍼프)를 탭 배치·재배치 착지와 공유 모듈로 통일~~ → 탭 배치는 unit 7 이 흡수(공유 모듈이 아니라 **같은 경로**로). 재배치 착지와의 통일은 남아 있다
 - 착지 사운드 / 반동 시 줄 텐션 사운드
 - 착지 스쿼시(y 0.9, 2~3프레임) — unit 3 완료 후 육안 판단

@@ -96,36 +96,43 @@ public class CameraComposeMathTests
         Assert.That(sum.fovDelta, Is.EqualTo(33f));
     }
 
+    // camera-direction unit 13 — 상태 전환 중 흐림 보간. 한쪽이 꺼진 조합이 핵심이다:
+    // 임계값은 켜진 쪽 것을 그대로 쓰고 세기만 0 으로 가야 흐림 경계가 화면을 훑지 않는다.
     [Test]
-    public void Lerp_Boundaries_ReturnEndpoints()
+    public void BlendDof_BothOff_StaysOff()
     {
-        var a = new CameraPoseDelta { localPos = Vector3.up, pitchDeg = 2f, rollDeg = 3f, fovDelta = 4f };
-        var b = new CameraPoseDelta { localPos = Vector3.right * 5f, pitchDeg = -8f, rollDeg = 0f, fovDelta = -2f };
-        var at0 = CameraComposeMath.Lerp(a, b, 0f);
-        var at1 = CameraComposeMath.Lerp(a, b, 1f);
-        Assert.That(at0.localPos, Is.EqualTo(a.localPos));
-        Assert.That(at0.pitchDeg, Is.EqualTo(a.pitchDeg));
-        Assert.That(at1.localPos, Is.EqualTo(b.localPos));
-        Assert.That(at1.fovDelta, Is.EqualTo(b.fovDelta));
+        var off = default(CameraComposeMath.DofSolution);
+        Assert.IsFalse(CameraComposeMath.BlendDof(off, off, 0.5f).on);
     }
 
     [Test]
-    public void Lerp_Midpoint_IsComponentwiseAverage()
+    public void BlendDof_FadingIn_KeepsTargetThresholds_AndRampsRadiusFromZero()
     {
-        var a = new CameraPoseDelta { pitchDeg = -8f, yawDeg = 2f, fovDelta = 0f };
-        var b = new CameraPoseDelta { pitchDeg = 0f, yawDeg = 6f, fovDelta = -4f };
-        var mid = CameraComposeMath.Lerp(a, b, 0.5f);
-        Assert.That(mid.pitchDeg, Is.EqualTo(-4f).Within(1e-5f));
-        Assert.That(mid.yawDeg, Is.EqualTo(4f).Within(1e-5f));
-        Assert.That(mid.fovDelta, Is.EqualTo(-2f).Within(1e-5f));
+        var off = default(CameraComposeMath.DofSolution);
+        var on = new CameraComposeMath.DofSolution { on = true, start = 24f, end = 28f, radius = 1f };
+
+        var atStart = CameraComposeMath.BlendDof(off, on, 0f);
+        var mid = CameraComposeMath.BlendDof(off, on, 0.5f);
+
+        Assert.IsTrue(atStart.on, "전환 시작 프레임부터 켜져 있어야 팝이 없다");
+        Assert.That(atStart.radius, Is.EqualTo(0f).Within(1e-5f), "세기는 0 에서 출발한다");
+        Assert.That(atStart.start, Is.EqualTo(24f), "임계값은 처음부터 도착 상태 값이다");
+        Assert.That(mid.radius, Is.EqualTo(0.5f).Within(1e-5f));
+        Assert.That(mid.end, Is.EqualTo(28f), "임계값을 섞으면 흐림 경계가 화면을 훑는다");
     }
 
     [Test]
-    public void Lerp_OvershootT_PassesThroughUnclamped()
+    public void BlendDof_FadingOut_KeepsSourceThresholds_AndRampsRadiusToZero()
     {
-        var a = new CameraPoseDelta { pitchDeg = 0f };
-        var b = new CameraPoseDelta { pitchDeg = 10f };
-        Assert.That(CameraComposeMath.Lerp(a, b, 1.2f).pitchDeg, Is.EqualTo(12f).Within(1e-5f));
+        var on = new CameraComposeMath.DofSolution { on = true, start = 24f, end = 28f, radius = 1f };
+        var off = default(CameraComposeMath.DofSolution);
+
+        var mid = CameraComposeMath.BlendDof(on, off, 0.5f);
+        var atEnd = CameraComposeMath.BlendDof(on, off, 1f);
+
+        Assert.That(mid.start, Is.EqualTo(24f));
+        Assert.That(mid.radius, Is.EqualTo(0.5f).Within(1e-5f));
+        Assert.That(atEnd.radius, Is.EqualTo(0f).Within(1e-5f), "끝에서 0 이라야 mode Off 로 넘어갈 때 안 튄다");
     }
 
     [Test]

@@ -46,12 +46,9 @@ namespace Wassup.Core.Api
                 return false;
             }
 
-            if (!(root.Value<bool?>("success") ?? false))
+            if (!ReadSuccess(root))
             {
-                var detail = root["errorDetail"] as JObject;
-                error = detail == null
-                    ? "success=false (no errorDetail)"
-                    : $"{detail.Value<string>("errorCode")} — {detail.Value<string>("errorMessage")} / {detail.Value<string>("detailMessage")}";
+                error = DescribeFailure(root);
                 return false;
             }
 
@@ -64,6 +61,40 @@ namespace Wassup.Core.Api
                 return false;
             }
             return true;
+        }
+
+        // 아래 세 헬퍼는 "서버가 보낸 모양"을 신뢰하지 않는다. 2026-08-18 실기기에서
+        // 판 종료 → complete 응답을 읽다가 InvalidCastException 이 났다: 실패 응답의
+        // errorDetail 안 문자열 칸에 객체가 들어 있었고, Value<string> 이 스칼라가 아닌
+        // 토큰에 던진다. 그 예외는 UnityWebRequest 완료 콜백 안에서 삼켜져 onDone 이
+        // 영영 안 불리고, TournamentMatchReporter 의 in-flight 카운터가 박혀 이후 로비
+        // reconcile 이 통째로 skip 됐다. 실패를 **설명하다가** 실패 처리를 죽인 셈이다.
+        // 그래서 이 seam 의 계약은 "어떤 바디가 와도 던지지 않는다" 이다.
+
+        // 스칼라가 아니면 원문(JSON)을 그대로 돌려준다 — 내용을 버리면 진단이 불가능해진다.
+        static string Scalar(JToken parent, string name)
+        {
+            var token = parent?[name];
+            if (token == null || token.Type == JTokenType.Null) return null;
+            return token is JValue value ? value.Value?.ToString() : token.ToString(Formatting.None);
+        }
+
+        // 없거나 스칼라가 아니면 성공으로 치지 않는다. 문자열 "true" 는 이전 구현
+        // (Value<bool?>)이 받아주던 모양이라 계속 받는다.
+        static bool ReadSuccess(JObject root)
+        {
+            if (!(root["success"] is JValue value)) return false;
+            if (value.Value is bool flag) return flag;
+            return bool.TryParse(value.Value?.ToString(), out bool parsed) && parsed;
+        }
+
+        static string DescribeFailure(JObject root)
+        {
+            var detail = root["errorDetail"];
+            if (detail == null || detail.Type == JTokenType.Null) return "success=false (no errorDetail)";
+            if (!(detail is JObject))
+                return $"success=false — errorDetail={detail.ToString(Formatting.None)}";
+            return $"{Scalar(detail, "errorCode")} — {Scalar(detail, "errorMessage")} / {Scalar(detail, "detailMessage")}";
         }
 
         public static T Parse<T>(string body, out string error) where T : class

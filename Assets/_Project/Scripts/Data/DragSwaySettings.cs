@@ -70,41 +70,30 @@ namespace Wassup.Data
         [FormerlySerializedAs("stickyBlobEnabled")]
         public bool stickyLiquidEnabled = true;
 
-        [Header("⑦ 탭 배치 시뮬 — 탭→타일 던지기(시간·거리·곡선·정착)")]
-        [Tooltip("비행 기준 시간(초) — 화면 세로 1개 이동 시 이 값. 실제=tray→타일 화면거리 비례(min~max 배 clamp).")]
-        [Range(0.2f, 5f)]
-        public float tapTravelDuration = 3f;
-        [Tooltip("비행시간 하한 배수 — 가까운 타일(짧은 비행).")]
-        [Range(0.05f, 1f)]
-        public float tapTravelScaleMin = 0.25f;
-        [Tooltip("비행시간 상한 배수 — 먼 타일(긴 비행).")]
-        [Range(1f, 3f)]
-        public float tapTravelScaleMax = 1.5f;
+        // ⑦ 은 원래 "탭 배치 시뮬 — 트레이에서 타일까지 고스트를 던지는 비행" 이었다.
+        // **그 비행은 defender-drop-dismount unit 7 (2026-08-19) 에서 폐기됐다** — 탭 배치도 이제
+        // D&D 와 같은 구조로 커밋이 먼저고 실유닛이 하마 궤적(⑩ 그룹)으로 난다. 그래서 시간·정착
+        // 노브(tapTravelDuration / tapTravelScale* / tapSettle* / tapFollowSmoothTime)는 소비처가
+        // 사라져 삭제했다. 복원이 필요하면 그 커밋의 RunSimulatedDrag 와 함께 되살릴 것.
+        //
+        // 남은 둘의 **현재 소유자**:
+        //  · armHighlightColor — 트레이 슬롯 탭 arm 하이라이트(그대로).
+        //  · tapArc* / tapThrow* — 이제 **재배치 비행**(DefenderDragPlacementController.ComputeThrowArc
+        //    → DefenderRelocationController)이 유일 소비자다. 이름의 "tap" 은 유래일 뿐이라 사실과
+        //    어긋나지만, 개명하면 저작값이 든 .asset 키가 갈리므로 유래를 여기 적어 두고 이름은 둔다.
+        [Header("⑦ 던지기 곡선(재배치 비행) + 트레이 arm 하이라이트")]
         [Tooltip("arm 하이라이트 색 — 탭 선택된 트레이 슬롯. 확정 팝 valid 색과 톤 맞춤.")]
         public Color armHighlightColor = new Color(0.35f, 1f, 0.9f, 0.28f);
         [Tooltip("곡선 아치 높이(직선거리 배수) — 카메라-up 으로 제어점 띄움, 유닛이 솟았다 내려옴. 0=직선.")]
         [Range(0f, 1f)]
         public float tapArcHeightFactor = 0.32f;
-        [Tooltip("곡선 좌우 폭(직선거리 배수) — 매 탭 부호·크기가 달라 경로가 매번 다름. 0=좌우 없음.")]
+        [Tooltip("곡선 좌우 폭(직선거리 배수) — 매 비행 부호·크기가 달라 경로가 매번 다름. 0=좌우 없음.")]
         [Range(0f, 1f)]
         public float tapArcLateralFactor = 0.22f;
         [Tooltip("던지기 시작 제어점 — x=목표까지 전진 비율, y=아치 높이 배수. 앞·위로 튀어나가는 출발 접선.")]
         public Vector2 tapThrowLaunchControl = new Vector2(0.18f, 1f);
         [Tooltip("던지기 도착 제어점 — x=목표까지 전진 비율, y=아치 높이 배수. 낮게 내려오는 착지 접선.")]
         public Vector2 tapThrowLandingControl = new Vector2(0.72f, 0.22f);
-        [Tooltip("탭 비행 후 실제 프리뷰가 최종 발 위치에 정착했다고 보는 거리 오차(월드).")]
-        [Range(0f, 1f)]
-        public float tapSettleDistance = 0.06f;
-        [Tooltip("탭 비행 후 정착했다고 보는 프리뷰 속도 상한(월드/s).")]
-        [Range(0f, 5f)]
-        public float tapSettleSpeed = 0.4f;
-        [Tooltip("탭 비행·정착 중 곡선 목표를 비진동으로 추종하는 SmoothDamp 시간(초). 낮을수록 빠르게 붙음.")]
-        [Range(0.01f, 0.3f)]
-        [FormerlySerializedAs("tapSettleSmoothTime")]
-        public float tapFollowSmoothTime = 0.06f;
-        [Tooltip("정착 대기 최대시간(초, unscaled). 초과하면 최종 위치로 정렬 후 즉시 배치.")]
-        [Range(0.05f, 1f)]
-        public float tapSettleMaxDuration = 0.28f;
 
         [Header("⑧ 방향 페이즈 — 방향 지정 중 전투 슬로우모")]
         // 방향 지정 컨트롤러는 런타임 AddComponent 라 자체 인스펙터가 없다. 튜닝값이

@@ -150,6 +150,11 @@ CLAUDE.local.md
 # ChatGPT-generated scratch images
 /Assets/**/ChatGPT Image*
 
+# Unity Test Framework 잔해 — PlayMode 실행이 중단되면 Assets 루트에
+# InitTestScene<guid>.unity ("Code-based tests runner") 가 남는다.
+/Assets/InitTestScene*.unity
+/Assets/InitTestScene*.unity.meta
+
 # PaletteSanity sanity-check scene
 /Assets/_Project/Scenes/PaletteSanity.unity
 /Assets/_Project/Scenes/PaletteSanity.unity.meta

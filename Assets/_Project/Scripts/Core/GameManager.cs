@@ -7,16 +7,16 @@ using Wassup.Logging;
 
 namespace Wassup.Core
 {
-    // ⚠ **이 enum 은 int 로 직렬화된다.** CameraDirectionConfig 의 CameraPhasePose.phase 와
-    // breathPhases 가 값을 에셋에 정수로 박아 둔다
-    // (Assets/_Project/Data/Camera/CameraDirectionConfig.asset — phase: 1/2/3/4).
+    // ⚠ **이 enum 은 int 로 직렬화된다.** CameraDirectionConfig 의 breathPhases 가 값을
+    // 에셋에 정수로 박아 둔다 (Assets/_Project/Data/Camera/CameraDirectionConfig.asset).
     // 값을 빼거나 중간에 끼우면 저장된 정수의 의미가 통째로 밀리므로, **같은 커밋에서
     // 그 에셋도 마이그레이션**해야 한다.
+    // (camera-direction unit 11 — 페이즈별 포즈 엔트리는 은퇴했다. 카메라는 페이즈를 상태
+    //  2종(배치/전투)으로 접어 매 프레임 해석하므로 이 enum 을 포즈 테이블에 저장하지 않는다.)
     //
     // score-tally-sequence unit 1 — Tally 는 Battle 과 Result 사이의 결과 연출 구간이고
     // Gimmick 은 Placement 앞이지만, 둘 다 **값은 맨 뒤**에 붙인다(위 직렬화 때문).
     // 그래서 값 순서 != 시간 순서다. 전 코드가 == 비교라 순서 의존은 없다.
-    // 미등록 페이즈는 CameraDirector 가 hold 로 처리하므로 포즈 엔트리도 필요 없다.
     //
     // gift-phase-removal unit 1 — Gift 제거(값 2). 뒤 값이 한 칸씩 당겨졌고 위 에셋의
     // phase 4개 + breathPhases 3개를 같은 커밋에서 옮겼다. "직렬화 없음" 이라던 옛 주석은
@@ -41,6 +41,16 @@ namespace Wassup.Core
         // squad-loadout Unit 3 — squad carry-in source (drives the squad branch
         // in Start; null/empty → existing draft path).
         [SerializeField] private PlayerProfileSO profileSO;
+        // first-run-tutorial — 온보딩이 도는 판의 저작 웨이브(쉬운 웨이브 + 60초 제한).
+        // 플랜 한 장이 웨이브와 제한시간을 **둘 다** 정한다(_usingAuthoredPlan 이면 브리지가
+        // deck.timerDurationSec 대신 plan.timerDurationSec 을 쓴다) — 그래서 덱도 맵도
+        // 복사하지 않는다. 다만 플랜이 쓰는 적은 **덱 풀 안**이어야 한다: NavGrid 통행 층이
+        // ActiveDeck.ResolveAttackUnitPool 기준으로 구워져, 풀 밖 적은 길찾기가 깨진다.
+        [SerializeField] private WavePlanAsset firstRunTutorialWavePlan;
+        [Tooltip("온보딩 수치·문구 config. 여기서는 첫 손패 저작(firstHandCards)만 읽는다.")]
+        [SerializeField] private FirstRunTutorialConfig firstRunTutorialConfig;
+        [Tooltip("온보딩 첫 손패를 넣을 대상. 판정 소비처를 늘리지 않으려고 GameManager 가 대신 밀어준다.")]
+        [SerializeField] private DreamcatcherHandController dreamcatcherHand;
         [SerializeField] private DefenderCatalog catalog;
         // dreamstone-loadout Unit 3 — resolves SquadPreset.stoneIds to assets for carry-in.
         [SerializeField] private DreamstoneCatalog stoneCatalog;
@@ -61,6 +71,9 @@ namespace Wassup.Core
         public CostRuntime CostRuntime => costRuntime;
         public PlacementCooldownRuntime CooldownRuntime => cooldownRuntime;
         public CostConfig CostConfig => costConfig;
+        // match-intro-phase-toggles unit 0 — 인트로 페이즈 토글의 소유자. 판정은 페이즈를 소유한
+        // 뷰(PlacementPhaseView)가 하고 여기서 대행하지 않는다 — CostConfig 와 같은 형태.
+        public BattleConfig BattleConfig => battleConfig;
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
@@ -107,6 +120,12 @@ namespace Wassup.Core
         // 카운터와 안내가 같은 것을 세야 한다. 그래서 호출처가 둘이다 —
         // `SetPhase(Result)` 와 `MenuPopup.OnExit`.
         //
+        // tutorial-offline-match unit 0 — 첫 튜토리얼 판은 이제 참가 신청을 안 해서 히스토리에
+        // 남지 않는데, 여기서는 **그대로 센다**. 아래 Test Mode 가 이미 "안 남는데 세는" 선례이고,
+        // 챕터 D 안내가 뜨는 시점(2판)엔 실전 판이 최소 1건 남아 있어 안내가 깨지지 않는다.
+        // 빼려면 "이 판은 서버 판인가" 를 새로 들어야 하는데(게스트도 세므로 attemptId 부재로는
+        // 못 가른다) 얻는 것에 비해 비싸다 — tutorial-offline-match 계약 6.
+        //
         // Test Mode 도 포함한다 — 이쪽은 "판을 해봤나" 라는 경험 신호이지 토너먼트 집계가
         // 아니다. (엔드리스 배제와의 비대칭을 설명하던 문장은 endless-mode-removal unit 0 에서
         // 그 모드가 사라져 지웠다.) 덧붙여 Test Mode 는 **가릴 수도 없다**: TestModeContext 는
@@ -119,7 +138,7 @@ namespace Wassup.Core
         private bool _matchRecorded;
 
         // 교체 가능한 저장 seam. 이 프로젝트의 프로필 쓰기 주체는 전부 이걸 갖는다
-        // (FirstSessionTutorialController · OutgameTutorialController · SquadCharacterPageController).
+        // (SquadCharacterPageController 등. 튜토리얼 컨트롤러 둘은 tutorial-content-teardown 으로 은퇴).
         // 없으면 증가 로직에 테스트를 붙일 때 개발자의 실제 profile.json 을 재작성하게 된다.
         [System.NonSerialized] internal System.Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
 
@@ -357,6 +376,30 @@ namespace Wassup.Core
                     draftController.BeginDraft();
                 }
                 return;
+            }
+            // first-run-tutorial — 온보딩 판은 저작 웨이브로 돈다. 정상 스쿼드 반입은 그대로고
+            // 웨이브만 갈아끼운다(테스트 모드와 달리 디펜더 프리셋을 쓰지 않는다).
+            // 이 판은 토너먼트에 올라가지 않는다 — OutgameMenuController.OnStartGame 이 참가
+            // 신청 자체를 생략한다. 둘이 같은 술어(ShouldRun)를 읽어야 «쉬운 판이 제출되는»
+            // 어긋남이 안 생긴다.
+            //
+            // ⚠ 온보딩 판정(ShouldRun)의 소비처를 늘리지 않으려고 첫 손패 저작도 **여기서**
+            // 함께 넣는다. 손패 컨트롤러가 스스로 판정하게 두면 술어 소비처가 넷이 되고,
+            // 그중 하나만 어긋나도 «쉬운 판인데 손패는 랜덤» 같은 반쪽 상태가 생긴다.
+            if (profileSO != null && profileSO.IsLoadedThisSession
+                && FirstRunTutorialConfig.ShouldRun(profileSO.profile))
+            {
+                if (firstRunTutorialWavePlan != null)
+                {
+                    battleBridge.SetAuthoredWavePlan(firstRunTutorialWavePlan);
+                    Debug.Log($"[GameManager] 온보딩 판 — 저작 웨이브 '{firstRunTutorialWavePlan.displayName}' 적용.");
+                }
+                var firstHand = firstRunTutorialConfig != null ? firstRunTutorialConfig.firstHandCards : null;
+                if (dreamcatcherHand != null && firstHand != null && firstHand.Length > 0)
+                {
+                    dreamcatcherHand.SetTutorialFirstHand(firstHand);
+                    Debug.Log($"[GameManager] 온보딩 판 — 첫 손패 {firstHand.Length}장 저작 적용.");
+                }
             }
             battleBridge.SetDefenderPool(units.ToArray());
             LogSquadCarryIn(squad, units);

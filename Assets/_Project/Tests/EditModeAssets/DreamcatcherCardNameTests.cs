@@ -52,6 +52,8 @@ namespace Wassup.Tests.EditMode
             { "guardian_as", "가디언속" },
             { "guardian_fortress", "가디언벽" },
             { "guardian_hp", "가디언체" },
+            // retire-recall unit 2 — 퇴근 시 부착분을 손패 맨 앞으로.
+            { "handover", "인수인계" },
             { "heavy_strike", "강타" },
             { "sub_incubus_pact", "희생계약" },
             { "last_flame", "불꽃폭주" },
