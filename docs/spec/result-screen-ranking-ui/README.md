@@ -1,6 +1,7 @@
 # result-screen-ranking-ui — 결과 화면을 랭킹 UI 로 재설계
 
 > 상태: **완료 2026-07-20** (units 0~1) · **unit 2 추가 2026-07-29** (pending 레이스/칸수 픽스)
+> · **unit 3 추가 2026-08-21** (남의 0점 → 「악몽 처치중!」)
 
 ## 상위 목표
 
@@ -43,6 +44,7 @@
 | 0 | `0_ranking_layout.md` | 2컬럼 재배치 + 타이포 스케일 + 점수 히어로 + 순위 콜아웃 |
 | 1 | `1_pending_fallback.md` | 봇 폴백 → "참가자 찾는 중" 대기 상태로 전환 (가짜 점수 제거) |
 | 2 | `2_pending_race_bracket_fix.md` | Tally 연출 중 도착한 랭킹 드랍 픽스 + pending 칸수 10→5 통일 |
+| 3 | `3_in_progress_row_label.md` | 배정만 되고 점수 미확정인 타 참가자 행을 `악몽 처치중!` 으로 표기 |
 
 ## 다음 spec 으로 넘어가는 것
 

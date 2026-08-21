@@ -382,6 +382,9 @@ namespace Wassup.UI
             vr.offsetMax = new Vector2(-26f, 0f);
         }
 
+        // unit 3 — 배정됐지만 아직 점수가 안 실린 참가자의 점수 자리 문구. 적 = 악몽.
+        private const string InProgressText = "악몽 처치중!";
+
         private void CreateRow(LeaderboardList.Row row)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
@@ -436,9 +439,23 @@ namespace Wassup.UI
             // Score (right). Bold and a step above the name — a leaderboard is read
             // down the score column.
             // three-minute-survival unit 6 — 서버가 준 점수를 그대로 그린다(인코딩 폐기).
-            string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
-            var score = CreateLabel(go.transform, "Score", scoreText, 38, TextAlignmentOptions.MidlineRight, textColor);
-            if (!row.IsWaiting) score.fontStyle = FontStyles.Bold;
+            //
+            // unit 3 — **남의 0점은 성적이 아니라 «아직 성적이 없음» 이다.** 서버는 슬롯 배정
+            // (`play`)과 채점(`complete`)이 다른 호출이라, 배정만 된 참가자는 0 으로 내려온다
+            // (tournament-flow-guards 락 모델). 그 자리에 `0` 을 쓰면 «한 마리도 못 잡았다» 는
+            // 없는 성적을 지어낸다. 0점 몰수(나가기·강제종료)와 구분할 신호가 응답에 없으므로
+            // 가장 흔한 «판 중» 으로 읽히게 한다.
+            //
+            // **내 행은 제외한다** — 내 점수는 방금 내가 낸 값이라 0 이면 진짜 0 이고, 히어로
+            // 숫자(`0기`)와 리스트가 두 말을 하면 안 된다. 골드·볼드는 실점수의 어휘라 쓰지
+            // 않는다: 회색 non-bold 가 "이건 점수가 아니다" 를 남긴다.
+            bool inProgress = !row.IsWaiting && !row.IsPlayer && row.Score <= 0;
+            string scoreText = row.IsWaiting ? "-"
+                : inProgress ? InProgressText
+                : row.Score.ToString("N0");
+            var score = CreateLabel(go.transform, "Score", scoreText, inProgress ? 26 : 38,
+                TextAlignmentOptions.MidlineRight, inProgress ? WaitingText : textColor);
+            if (!row.IsWaiting && !inProgress) score.fontStyle = FontStyles.Bold;
             var scoreRt = (RectTransform)score.transform;
             scoreRt.anchorMin = new Vector2(1f, 0f);
             scoreRt.anchorMax = new Vector2(1f, 1f);
