@@ -57,6 +57,86 @@ namespace Wassup.EditorTools
             finally { Object.DestroyImmediate(root); }
         }
 
+        // 구 MapDocument_Duel(21×12, git ba70aaab~1)의 지형 충실 카피 — 열린 마당 스타일이라
+        // 거의 완전 등가: Deco 테두리→차단, Env 강→차단(공중 통과·배치 불가 동일), placeMask 04
+        // 전선→BlockZone, 마음 파생 스폰(18,4)/(18,6), 골(2,5). 비가용(계약 11): 본능 공격·공성 모드
+        // — 본능은 3×3 차단+시각 프랍, 마음은 배치 금지 1칸+장식(원본도 마음은 통행 비차단).
+        // 공중 경유점 (10,5)는 강 위라 형식 검증에 걸려 북쪽 다리 (10,2)로 근사 (후속 후보:
+        // 차단 셀 위 공중 waypoint 허용).
+        [MenuItem("Window/Wassup/Map Stage/Generate Duel Classic Stage")]
+        public static void GenerateDuelClassic()
+        {
+            var root = new GameObject("MapStage_DuelClassic");
+            try
+            {
+                var stage = root.AddComponent<MapStage>();
+                stage.playAreaCells = new Vector2Int(21, 12);
+                stage.gridOriginLocal = new Vector3(0f, 0.02f, 0f);
+                stage.previewTileSize = 1f;
+                stage.suppressEffectTiles = false;
+
+                for (int gy = 0; gy < 12; gy += 4)
+                for (int gx = 0; gx < 21; gx += 4)
+                    PlaceGround(root.transform, new Vector2Int(gx, Mathf.Min(gy, 8)));
+
+                // 테두리 (원본 Deco 4 rect)
+                BlockerRect(root, "wall_n", new RectInt(0, 0, 21, 1), "neutral/barrier_4x1x1.prefab", 4);
+                BlockerRect(root, "wall_w", new RectInt(0, 1, 1, 11), "neutral/barrier_1x1x1.prefab", 2);
+                BlockerRect(root, "wall_e", new RectInt(20, 1, 1, 11), "neutral/barrier_1x1x1.prefab", 2);
+                BlockerRect(root, "wall_s", new RectInt(1, 11, 19, 1), "neutral/barrier_4x1x1.prefab", 4);
+                // 강 (원본 Env 3 rect — 다리 2개: y2~3, y8~9)
+                BlockerRect(root, "river_a", new RectInt(10, 1, 1, 1), "blue/barrier_1x1x1_blue.prefab", 1);
+                BlockerRect(root, "river_b", new RectInt(10, 4, 1, 4), "blue/barrier_1x1x1_blue.prefab", 1);
+                BlockerRect(root, "river_c", new RectInt(10, 10, 1, 1), "blue/barrier_1x1x1_blue.prefab", 1);
+                // 본능 4기 — 시각+3×3 차단 (footprint 가 원본 CloseCellLayers/동적 벽을 근사)
+                foreach (var (cell, name) in new[] {
+                    (new Vector2Int(4, 3), "instinct_ally_a"), (new Vector2Int(4, 8), "instinct_ally_b"),
+                    (new Vector2Int(16, 3), "instinct_enemy_a"), (new Vector2Int(16, 8), "instinct_enemy_b") })
+                    Marker<PropFootprint>(root, name, "neutral/structure_A.prefab", cell,
+                        f => { f.size = new Vector2Int(3, 3); f.anchorOffset = new Vector2Int(-1, -1); });
+                // 적 마음 — 원본은 통행 비차단·배치만 금지 → BlockZone 1칸 + 장식
+                Marker<PlacementBlockZone>(root, "enemy_heart", "neutral/structure_C.prefab",
+                    new Vector2Int(18, 5), z => z.size = Vector2Int.one);
+                // 전선 — 적 진영 5×10 배치 금지 (원본 placeMask 04 구역)
+                Marker<PlacementBlockZone>(root, "frontline", "neutral/sign.prefab",
+                    new Vector2Int(15, 1), z => z.size = new Vector2Int(5, 10));
+
+                Marker<SpawnMarker>(root, "spawn0", "green/flag_A_green.prefab", new Vector2Int(18, 4), m => m.laneIndex = 0);
+                Marker<SpawnMarker>(root, "spawn1", "green/flag_A_green.prefab", new Vector2Int(18, 6), m => m.laneIndex = 1);
+                Marker<GoalMarker>(root, "goal", "neutral/signage_finish.prefab", new Vector2Int(2, 5), _ => { });
+                Marker<RouteMarker>(root, "route_0_0", "neutral/sign.prefab", new Vector2Int(10, 2),
+                    r => { r.routeIndex = 0; r.order = 0; });
+
+                var prefab = PrefabUtility.SaveAsPrefabAsset(root,
+                    "Assets/_Project/Prefabs/Maps/MapStage_DuelClassic.prefab");
+                var pool = AssetDatabase.LoadAssetAtPath<MapStagePool>("Assets/_Project/Data/Maps/MapStagePool.asset");
+                if (pool != null && pool.EditorRegisterDevStage(prefab.GetComponent<MapStage>()))
+                {
+                    EditorUtility.SetDirty(pool);
+                    AssetDatabase.SaveAssets();
+                }
+                Debug.Log("[MapStageDummyGenerator] DuelClassic 생성 완료");
+            }
+            finally { Object.DestroyImmediate(root); }
+        }
+
+        // rect 차단: 호스트 1개(footprint = rect 전체) + 시각 프랍을 step 간격으로 자식 배치.
+        static void BlockerRect(GameObject root, string name, RectInt rect, string visualRel, int visualStep)
+        {
+            var host = new GameObject(name);
+            host.transform.SetParent(root.transform, false);
+            host.transform.localPosition = new Vector3(rect.xMin + 0.5f, 0f, rect.yMin + 0.5f);
+            var fp = host.AddComponent<PropFootprint>();
+            fp.size = new Vector2Int(rect.width, rect.height);
+            for (int y = 0; y < rect.height; y += Mathf.Max(1, rect.width == 1 ? visualStep : 1))
+            for (int x = 0; x < rect.width; x += Mathf.Max(1, rect.width == 1 ? 1 : visualStep))
+            {
+                var visual = (GameObject)PrefabUtility.InstantiatePrefab(Load(visualRel));
+                visual.transform.SetParent(host.transform, false);
+                visual.transform.localPosition = new Vector3(x, 0f, y);
+            }
+        }
+
         static GameObject Load(string rel)
         {
             var go = AssetDatabase.LoadAssetAtPath<GameObject>($"{KayKit}/{rel}");

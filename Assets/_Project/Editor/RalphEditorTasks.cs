@@ -65,6 +65,11 @@ namespace Wassup.EditorTools
                 if (req == null || string.IsNullOrEmpty(req.token)) return;
                 string done = File.Exists(TokenPath) ? File.ReadAllText(TokenPath).Trim() : "";
                 if (done == req.token) return;
+                // 요청 처리 전 리프레시 — RalphTestRunner 와 같은 이유(u3 실사고): 이 에디터는
+                // Auto Refresh 미동작이라 새 태스크 케이스가 임포트 전이면 구 어셈블리가
+                // unknown task 로 토큰을 소모한다. 컴파일이 시작되면 리로드 후 새 코드로 재진입.
+                AssetDatabase.Refresh();
+                if (EditorApplication.isCompiling) return;
 
                 Directory.CreateDirectory(Dir);
                 File.WriteAllText(TokenPath, req.token);
@@ -87,6 +92,9 @@ namespace Wassup.EditorTools
                 case "unit5_pilot":
                     MapStageDummyGenerator.GeneratePilot();
                     return "OK|pilot generated";
+                case "duel_classic":
+                    MapStageDummyGenerator.GenerateDuelClassic();
+                    return "OK|duel classic generated";
                 default: return $"ERROR|unknown task '{task}'";
             }
         }
