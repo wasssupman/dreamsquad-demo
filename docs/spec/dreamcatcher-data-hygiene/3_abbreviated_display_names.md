@@ -25,7 +25,7 @@
 | `active_tornado` | Tornado | 회오리 |
 | `all_atk` | 올 핵딜 | 올딜 |
 | `all_move` | 올 발업 | 올이속 |
-| `bouncy_bead` | 통통 구슬 | 튕구슬 |
+| `bouncy_bead` | 통통 구슬 | 바운스샷 |
 | `sub_butterfly_dream` | 호접몽 | 나비꿈 |
 | `calamity_heart` | 재앙의 심장 | 시한폭탄 |
 | `cornered_burst` | 궁지의 몸부림 | 궁지폭발 |

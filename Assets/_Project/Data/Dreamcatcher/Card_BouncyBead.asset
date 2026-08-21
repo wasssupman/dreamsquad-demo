@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_BouncyBead
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: bouncy_bead
-  displayName: "\uD295\uAD6C\uC2AC"
+  displayName: "\uBC14\uC6B4\uC2A4\uC0F7"
   visible: 1
   axis: 3
   category: 1

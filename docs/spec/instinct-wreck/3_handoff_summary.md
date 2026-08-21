@@ -62,6 +62,8 @@
 - ⚠ **이 spec 과 무관한 stale 을 하나 발견했다**(별도 작업 필요). 드림캐쳐 카드
   `Card_BouncyBead` 의 이름이 **디스크·HEAD 는 `튕구슬`, 시트·Unity 메모리는 `바운스샷`** 이고
   **시트가 정본이다**(사용자 확인 2026-08-21). 즉 디스크 SO 와 `DreamcatcherCardNameTests`
-  양쪽이 옛 이름에 묶여 있어 Assets lane 이 빨갛다(`CardAssets_UseStructuredSummaryWhenDataExists`
-  의 boomerang 실패도 같은 계열로 보인다). 임포터를 돌려 디스크를 시트에 맞추고 테스트 기대값을
-  갱신하는 것이 답이며, **이 spec 의 커밋에는 포함하지 않았다.**
+  양쪽이 옛 이름에 묶여 있어 Assets lane 이 빨갰다. **이 spec 의 커밋에는 넣지 않고 별도로
+  처리했다** — 52장 중 어긋난 것이 그 1장뿐이라 임포터 전체 실행 없이 해당 에셋만 기록했다.
+  같이 빨갰던 `CardAssets_UseStructuredSummaryWhenDataExists`(boomerang)는 그 뒤 재현되지
+  않는다(손대지 않았다 — 같은 상태 의존 문제였던 듯). Assets lane 에 남은 실패는
+  `UnitKitCatalogTests`(말파이트 설명 30자) 하나다.
