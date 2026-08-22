@@ -71,9 +71,9 @@ namespace Wassup.Tests.EditMode
             {
                 var cands = new NativeArray<FrontmostTargeting.Candidate>(2, Allocator.Temp);
                 cands[0] = new FrontmostTargeting.Candidate
-                    { flowDist = 3 * scale, sqDist = 1f, entityIndex = 1, entityVersion = 1 };
+                    { flowDist = 3 * scale, sqDist = 1f, simId = 1 };
                 cands[1] = new FrontmostTargeting.Candidate
-                    { flowDist = 1 * scale, sqDist = 9f, entityIndex = 2, entityVersion = 1 };
+                    { flowDist = 1 * scale, sqDist = 9f, simId = 2 };
 
                 Assert.AreEqual(1, FrontmostTargeting.SelectFrontmost(cands, 2),
                     $"scale {scale}: dist 가 작은 쪽이 앞선다");
@@ -86,9 +86,9 @@ namespace Wassup.Tests.EditMode
         {
             var cands = new NativeArray<FrontmostTargeting.Candidate>(2, Allocator.Temp);
             cands[0] = new FrontmostTargeting.Candidate
-                { flowDist = FrontmostTargeting.UnreachableDist, sqDist = 0f, entityIndex = 1, entityVersion = 1 };
+                { flowDist = FrontmostTargeting.UnreachableDist, sqDist = 0f, simId = 1 };
             cands[1] = new FrontmostTargeting.Candidate
-                { flowDist = 50, sqDist = 9f, entityIndex = 2, entityVersion = 1 };
+                { flowDist = 50, sqDist = 9f, simId = 2 };
 
             Assert.AreEqual(1, FrontmostTargeting.SelectFrontmost(cands, 2),
                 "도달 불가 후보는 제외된다");

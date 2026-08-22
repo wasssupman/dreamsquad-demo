@@ -14,7 +14,7 @@ namespace Wassup.Battle.Combat
     // Rank order (fully deterministic):
     //   1. hpRatio ascending  — lower current-health fraction = "more hurt" = ranks first
     //   2. sqDist  ascending   — attacker->candidate squared distance (nearer breaks ties)
-    //   3. entityIndex ascending, then entityVersion ascending — total tie-break
+    //   3. simId ascending — total tie-break (spawn order, match-stable)
     [BurstCompile]
     public static class LowestHealthTargeting
     {
@@ -22,8 +22,7 @@ namespace Wassup.Battle.Combat
         {
             public float hpRatio;     // Health.ComputeRatio(value, max) in [0,1]
             public float sqDist;      // squared distance attacker->candidate
-            public int entityIndex;   // Entity.Index
-            public int entityVersion; // Entity.Version
+            public int simId;         // SimEntityId.value (unassigned = SimEntityId.Unassigned)
         }
 
         // True when `a` ranks strictly before `b` under the fixed order above.
@@ -31,8 +30,7 @@ namespace Wassup.Battle.Combat
         {
             if (a.hpRatio != b.hpRatio) return a.hpRatio < b.hpRatio;
             if (a.sqDist != b.sqDist) return a.sqDist < b.sqDist;
-            if (a.entityIndex != b.entityIndex) return a.entityIndex < b.entityIndex;
-            return a.entityVersion < b.entityVersion;
+            return a.simId < b.simId;
         }
 
         // Index into `cands` [0, count) of the most-hurt candidate, or -1 if count == 0.

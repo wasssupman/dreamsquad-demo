@@ -130,6 +130,9 @@ namespace Wassup.Tests.EditMode
                                                   bool addFacing = true)
         {
             var e = _em.CreateEntity();
+            // battle-sim-extraction M0 unit 1 — 랜덤 탄막의 seed 축이 이 ID 다. 라이브 스폰이
+            // 붙이는 것을 픽스처도 붙여야 «host 마다 다른 시퀀스» 라는 성질이 테스트에서도 산다.
+            _em.AddComponentData(e, Wassup.Tests.EditMode.StructureFixtures.NextSimEntityId());
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
@@ -198,6 +201,7 @@ namespace Wassup.Tests.EditMode
         private Entity CreateEnemy(float3 pos)
         {
             var e = _em.CreateEntity();
+            _em.AddComponentData(e, Wassup.Tests.EditMode.StructureFixtures.NextSimEntityId());
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
             _em.AddComponentData(e, new Health { value = 500f, max = 500f });
@@ -476,8 +480,13 @@ namespace Wassup.Tests.EditMode
             Tick(0.011f);
 
             var requests = CollectRequests();
-            Assert.AreEqual(1, requests.Length,
-                "START가 성사된 샷건은 target 소실 후에도 랜덤 sequence 첫 탄을 발사");
+            // battle-sim-extraction M0 unit 1 — 여기 «정확히 1발» 은 계약이 아니라 **난수 draw**
+            // 였다(2번 탄의 interval 이 이 틱 11ms 를 넘느냐 마느냐). seed 축이 바뀌자 그 동전이
+            // 뒤집혀 드러났다. 계약은 «START 가 성사됐으면 target 이 사라져도 쏜다» 이고,
+            // 상한은 구조가 정한다: interval 최소 6ms 라 11ms 안에 추가로 들어올 수 있는 탄은
+            // 최대 1발(2발이면 12ms 필요)이다.
+            Assert.That(requests.Length, Is.InRange(1, 2),
+                "START가 성사된 샷건은 target 소실 후에도 랜덤 sequence 를 발사한다");
             for (int i = 0; i < requests.Length; i++)
             {
                 Assert.AreEqual(Entity.Null, requests[i].target);
@@ -489,7 +498,7 @@ namespace Wassup.Tests.EditMode
                     "RESOLVE 시 타겟이 없어도 START 방향이 spread 기준축이어야 한다");
             }
             Assert.AreEqual(1, _em.GetBuffer<EmitterInstance>(defender).Length,
-                "나머지 9발도 동일 trigger instance에서 계속 진행");
+                "남은 탄도 동일 trigger instance에서 계속 진행");
         }
 
         [Test]

@@ -56,9 +56,22 @@ namespace Wassup.Battle.Combat
             // and keep their faction-only legacy behavior.
             var targetPathLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
             var targetTraversalLayers = new NativeArray<byte>(targetEntities.Length, Allocator.Temp);
+            // battle-sim-extraction M0 unit 1 — 동률 해소 축. `Entity.Index/Version` 은
+            // 할당기의 산물이라 신 sim 에서 재현이 불가능하다. 스냅샷과 나란한 배열로
+            // 한 번만 풀어두고(랭킹 유틸은 lookup 을 모른다) 후보 조립이 그대로 읽는다.
+            // 후보 아키타입(FactionTag+Health+LocalTransform)은 전부 Bridge 스폰이라
+            // ID 가 붙어 있다 — Unassigned 는 그 불변식이 깨졌을 때 **맨 뒤로** 미는
+            // 폴백이지 정상 경로가 아니다.
+            var targetSimIds = new NativeArray<int>(targetEntities.Length, Allocator.Temp);
+            var simIdLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.SimEntityId>(isReadOnly: true);
             for (int i = 0; i < targetEntities.Length; i++)
+            {
                 if (targetPathLookup.HasComponent(targetEntities[i]))
                     targetTraversalLayers[i] = targetPathLookup[targetEntities[i]].traversalLayers;
+                targetSimIds[i] = simIdLookup.HasComponent(targetEntities[i])
+                    ? simIdLookup[targetEntities[i]].value
+                    : Wassup.Battle.Units.SimEntityId.Unassigned;
+            }
             // 니들 폴백 선정용 scratch — 예전엔 발동마다 할당/해제했다. 후보 수는
             // 스냅샷 길이로 고정이라 프레임당 1회면 충분하다.
             var needleScratch = new NativeArray<NearestTargeting.Candidate>(
@@ -220,7 +233,7 @@ namespace Wassup.Battle.Combat
 
                         int2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, origin: ffOrigin);
                         int pick = PickFallbackTarget(needleScratch,
-                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
+                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers, targetSimIds,
                             castEvt.caster, castEvt.casterPos, casterCell,
                             tileSize, gridSize, ffOrigin, slot.tileRange,
                             castEvt.targetTraversalLayers,
@@ -245,6 +258,12 @@ namespace Wassup.Battle.Combat
                               .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
+                // battle-sim-extraction M0 unit 1 — 이 공격자의 stable ID. 아래 발사 패턴
+                // 난수 씨앗의 축이다(할당기 번호를 쓰던 자리).
+                int attackerSimId = simIdLookup.HasComponent(attackerEntity)
+                    ? simIdLookup[attackerEntity].value
+                    : Wassup.Battle.Units.SimEntityId.Unassigned;
+
                 // Tick cooldown first.
                 if (attack.ValueRO.cooldownRemaining > 0f)
                 {
@@ -281,7 +300,7 @@ namespace Wassup.Battle.Combat
                         float3 bPos = transform.ValueRO.Position;
                         int2 bCasterCell = GridMath.WorldToCell(bPos, tileSize, gridSize, origin: ffOrigin);
                         int bombPick = PickFallbackTarget(needleScratch,
-                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
+                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers, targetSimIds,
                             attackerEntity, bPos, bCasterCell,
                             tileSize, gridSize, ffOrigin,
                             GridMath.RangeToTiles(attack.ValueRO.range),
@@ -353,7 +372,7 @@ namespace Wassup.Battle.Combat
                                     // 니들은 적 **유닛**만 찌른다 — 폭탄의 본 공격 마스크와
                                     // 별개다(그쪽은 거점도 노린다, unit 9).
                                     int pick = PickFallbackTarget(needleScratch,
-                                        targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
+                                        targetEntities, targetTransforms, targetFactions, targetTraversalLayers, targetSimIds,
                                         attackerEntity, bPos, bCasterCell,
                                         tileSize, gridSize, ffOrigin, slot.tileRange,
                                         attack.ValueRO.targetTraversalLayers,
@@ -588,8 +607,7 @@ namespace Wassup.Battle.Combat
                         {
                             hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
                             sqDist = d2,
-                            entityIndex = targetEntities[i].Index,
-                            entityVersion = targetEntities[i].Version,
+                            simId = targetSimIds[i],
                         };
                         if (!healHasBest || LowestHealthTargeting.RanksBefore(hc, healBest))
                         {
@@ -632,8 +650,7 @@ namespace Wassup.Battle.Combat
                             {
                                 flowDist = fdist,
                                 sqDist = d2,
-                                entityIndex = targetEntities[i].Index,
-                                entityVersion = targetEntities[i].Version,
+                                simId = targetSimIds[i],
                             };
                             if (!fmHasBest || FrontmostTargeting.RanksBefore(fc, fmBest))
                             {
@@ -1291,9 +1308,13 @@ namespace Wassup.Battle.Combat
                                         // unit 5 — 랜덤 패턴도 instance가 완성된 runtime
                                         // shot 목록을 소유한다. 같은 host의 연속 trigger와
                                         // 여러 host가 같은 시퀀스를 반복하지 않되 결정론은 유지.
+                                        // battle-sim-extraction M0 unit 1 — 씨앗 축이
+                                        // `attackerEntity.Index` 였다. 할당기 번호가 난수열을
+                                        // 정하면 신 sim 이 같은 탄막을 못 낸다. `SimEntityId` 는
+                                        // 스폰 순서라 재현된다(같은 판·같은 스폰 순서 = 같은 열).
                                         PatternShotRandomizer.Apply(
                                             ref spec,
-                                            math.hash(new int2(attackerEntity.Index, slot.fireCountBase)));
+                                            math.hash(new int2(attackerSimId, slot.fireCountBase)));
 
                                         // barrel 기반 template이 가진 effect/targetFaction은
                                         // 보존하고, 이번 공격에만 결정되는 값은 RESOLVE에서
@@ -1499,8 +1520,7 @@ namespace Wassup.Battle.Combat
                                                 {
                                                     hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
                                                     sqDist = d2,
-                                                    entityIndex = targetEntities[i].Index,
-                                                    entityVersion = targetEntities[i].Version,
+                                                    simId = targetSimIds[i],
                                                 };
                                                 if (!passHasBest || LowestHealthTargeting.RanksBefore(hc, passBest))
                                                 {
@@ -2007,6 +2027,7 @@ namespace Wassup.Battle.Combat
             castCountedHosts.Dispose();
             targetFactions.Dispose();
             targetTraversalLayers.Dispose();
+            targetSimIds.Dispose();
         }
 
         // dreamcatcher-new-abilities unit 2 — shatter_hymn 게이트: 대상에 활성 CcEffect
@@ -2130,7 +2151,7 @@ namespace Wassup.Battle.Combat
         private static int PickFallbackTarget(
             NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
-            NativeArray<byte> targetTraversalLayers,
+            NativeArray<byte> targetTraversalLayers, NativeArray<int> targetSimIds,
             Entity self, float3 selfPos, int2 selfCell,
             float tileSize, int2 gridSize, float3 gridOrigin, int tileRange,
             byte attackTargetLayers, int factionMask)
@@ -2151,8 +2172,7 @@ namespace Wassup.Battle.Combat
                     eligible = eligible,
                     tileDist = math.max(math.abs(c.x - selfCell.x), math.abs(c.y - selfCell.y)),
                     sqDist = math.distancesq(selfPos, p),
-                    entityIndex = e.Index,
-                    entityVersion = e.Version,
+                    simId = targetSimIds[i],
                 };
             }
             return NearestTargeting.SelectNearest(scratch, tileRange);

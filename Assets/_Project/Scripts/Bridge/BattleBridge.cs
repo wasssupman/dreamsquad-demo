@@ -448,6 +448,15 @@ namespace Wassup.Bridge
         // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
         private int _spawnSpreadCounter;
 
+        // battle-sim-extraction M0 unit 1 — 매치 내 stable ID 발급기(`SimEntityId`).
+        // 스폰 순서대로 0,1,2… 를 나눠 주고 **재사용하지 않는다**. 리셋은 매치 경계
+        // 한 곳(`EnsureQueriesAndQueues`)이며, 거기서 리셋하는 이유는 그 지점이
+        // 맵 빌드(거점 스폰)보다 **앞**이라 «리셋 전에 이미 발급된 엔티티»가 생길 수
+        // 없기 때문이다. 카운터가 Bridge 에 있는 것은 지금 발급자가 전부 managed 스폰
+        // 경로이기 때문 — ECS 내부 스폰이 ID 를 필요로 하는 날(M1 이벤트·스냅샷 키)
+        // 싱글턴으로 승격한다.
+        private int _nextSimEntityId;
+
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
@@ -702,6 +711,14 @@ namespace Wassup.Bridge
 
         private bool HasLiveEntityManager()
             => _world != null && _world.IsCreated && _em != default;
+
+        // battle-sim-extraction M0 unit 1 — 스폰 지점에서 stable ID 를 붙이는 유일한 통로.
+        // 여기 말고 어디서도 `SimEntityId` 를 쓰거나 고치지 않는다(사후 부여 = 순서 왜곡).
+        // 대상은 «타겟 후보가 될 수 있는 것»(FactionTag+Health+LocalTransform) 전부 + 투사체.
+        private void AttachSimEntityId(Entity entity)
+        {
+            _em.AddComponentData(entity, new Wassup.Battle.Units.SimEntityId { value = _nextSimEntityId++ });
+        }
 
         private void DestroyBattleEntities()
         {
@@ -1548,6 +1565,7 @@ namespace Wassup.Bridge
             var dcFiredSingleton = _em.CreateEntity();
             _em.AddComponentData(dcFiredSingleton, new Wassup.Battle.Combat.DcTriggerFiredEventsSingleton { queue = _dcTriggerFiredQueue });
             _dcProcLastImpact.Clear(); // 매치 경계 — 엔티티는 매치마다 새로우니 스로틀 기록 리셋
+            _nextSimEntityId = 0;      // battle-sim-extraction M0 unit 1 — stable ID 는 매치마다 0 부터
 
             // knockup-fighter-defender unit 3 — 넉업 띄우기 연출 채널. 넉업을 건 쪽(AttackSystem
             // RESOLVE / on-place StunNearby)이 대상을 enqueue, 브리지가 드레인해 view 를 띄운다.
@@ -4665,6 +4683,7 @@ namespace Wassup.Bridge
                     : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
+            AttachSimEntityId(entity);
 
             var projData = _projectileDataByIndex[req.dataIndex];
             var state = new ProjectileState
@@ -5473,8 +5492,10 @@ namespace Wassup.Bridge
 
         // subconscious-curse-expansion unit 3 (살찌운 제물) — 드롭 지점 최근접 적 픽.
         // 반경 = radiusTiles × tileSize(유클리드 xz, 셀 양자화 없이 평면 히트 그대로).
-        // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 entity index
-        // 오름차순(결정론, HealthThreshold 폴백 선례). 반경 내 없음 = false(무차감).
+        // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 `SimEntityId`
+        // 오름차순(= 먼저 스폰된 쪽; battle-sim-extraction M0 unit 1 에서 `Entity.Index`
+        // 에서 갈아탔다 — 할당기 번호는 신 sim 에서 재현이 불가능하다).
+        // 반경 내 없음 = false(무차감).
         public bool TryPickNearestEnemy(Camera cam, Vector2 screenPos, float radiusTiles, out Entity enemy)
         {
             enemy = Entity.Null;
@@ -5494,15 +5515,20 @@ namespace Wassup.Bridge
             try
             {
                 float bestSq = maxSq;
+                int bestSimId = Wassup.Battle.Units.SimEntityId.Unassigned;
                 for (int i = 0; i < entities.Length; i++)
                 {
                     Vector3 d = (Vector3)transforms[i].Position - world;
                     d.y = 0f;
                     float sq = d.sqrMagnitude;
+                    int simId = _em.HasComponent<Wassup.Battle.Units.SimEntityId>(entities[i])
+                        ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(entities[i]).value
+                        : Wassup.Battle.Units.SimEntityId.Unassigned;
                     if (sq < bestSq ||
-                        (sq == bestSq && enemy != Entity.Null && entities[i].Index < enemy.Index))
+                        (sq == bestSq && enemy != Entity.Null && simId < bestSimId))
                     {
                         bestSq = sq;
+                        bestSimId = simId;
                         enemy = entities[i];
                     }
                 }
@@ -5784,6 +5810,7 @@ namespace Wassup.Bridge
                         cell = cell,
                         faction = Faction.DefenderCore,
                     });
+                    AttachSimEntityId(tower);
                     _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
                     _em.AddBuffer<IncomingDamage>(tower);
                     _em.AddComponentData(tower, new FactionTag { value = Faction.DefenderCore });
@@ -5814,6 +5841,7 @@ namespace Wassup.Bridge
                     cell = cell,
                     faction = faction,
                 });
+                AttachSimEntityId(entity);
                 _em.AddComponentData(entity, new Health { value = s.data.health, max = s.data.health });
                 _em.AddBuffer<IncomingDamage>(entity);
                 _em.AddComponentData(entity, new FactionTag { value = faction });
@@ -7144,6 +7172,7 @@ namespace Wassup.Bridge
             bool spawnPlacementVfx)
         {
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity);
             // Phase 4: defenders can now take damage from enemy attackers, so
             // they need an IncomingDamage buffer just like attack units have.
             _em.AddBuffer<IncomingDamage>(entity);
@@ -7407,6 +7436,7 @@ namespace Wassup.Bridge
             if (unitData == null || _em == default) return Entity.Null;
 
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity);
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
@@ -7899,6 +7929,10 @@ namespace Wassup.Bridge
                 RecordBlockingHazard(so, cell, "spawn_rejected", "EffectSpawner rejected spawn");
                 return entity;
             }
+            // battle-sim-extraction M0 unit 1 — 길막 해저드는 FactionTag+Health 를 들어
+            // **타겟 후보**다(폭탄 배럴이 그 실례 — 적들이 때려 부순다). 스폰 자체는
+            // EffectSpawner 가 하므로 발급은 그것을 부른 이 자리에서 한다.
+            AttachSimEntityId(entity);
 
 #if UNITY_EDITOR
             _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
@@ -9135,6 +9169,7 @@ namespace Wassup.Bridge
             }
 
             var entity = _em.CreateEntity();
+            AttachSimEntityId(entity);
 #if UNITY_EDITOR
             _em.SetName(entity, $"Enemy_{unitType.displayName}");
 #endif

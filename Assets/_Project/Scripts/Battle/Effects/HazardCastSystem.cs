@@ -50,6 +50,16 @@ namespace Wassup.Battle.Effects
             var targetTransforms = targetsQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var targetFactions = targetsQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
             var targetPathStates = targetsQuery.ToComponentDataArray<PathFollowState>(Allocator.Temp);
+            // battle-sim-extraction M0 unit 1 — 최근접 선택의 동률 축. 이 시스템은 동률
+            // tie-break 가 **아예 없어서** 같은 거리 두 적 중 «스냅샷에 먼저 든 쪽»이
+            // 뽑혔고, 그 순서는 청크 배치(= 스폰/파괴 이력)가 정했다. 형제 타겟팅들과
+            // 같은 축(낮은 SimEntityId = 먼저 스폰된 쪽)으로 맞춘다.
+            var simIdLookup = SystemAPI.GetComponentLookup<SimEntityId>(isReadOnly: true);
+            var targetSimIds = new NativeArray<int>(targetEntities.Length, Allocator.Temp);
+            for (int i = 0; i < targetEntities.Length; i++)
+                targetSimIds[i] = simIdLookup.HasComponent(targetEntities[i])
+                    ? simIdLookup[targetEntities[i]].value
+                    : SimEntityId.Unassigned;
 
             foreach (var (cast, transform, casterEntity) in
                      SystemAPI.Query<RefRW<HazardCastState>, RefRO<LocalTransform>>()
@@ -69,6 +79,7 @@ namespace Wassup.Battle.Effects
                 int tileRange = GridMath.RangeToTiles(cast.ValueRO.range);
                 int mask = cast.ValueRO.targetMask;
                 float bestSq = float.MaxValue;
+                int bestSimId = SimEntityId.Unassigned;
                 Entity bestTarget = Entity.Null;
                 int2 bestTargetCell = default;
 
@@ -86,9 +97,10 @@ namespace Wassup.Battle.Effects
                     if (tileDist > tileRange) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
-                    if (distSq < bestSq)
+                    if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))
                     {
                         bestSq = distSq;
+                        bestSimId = targetSimIds[i];
                         bestTarget = targetEntities[i];
                         bestTargetCell = targetCell;
                     }
@@ -138,6 +150,7 @@ namespace Wassup.Battle.Effects
             targetTransforms.Dispose();
             targetFactions.Dispose();
             targetPathStates.Dispose();
+            targetSimIds.Dispose();
         }
     }
 }
