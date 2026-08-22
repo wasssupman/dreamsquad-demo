@@ -1435,7 +1435,18 @@ namespace Wassup.Bridge
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
             // battle-sim-extraction M0 unit 3 — 조건 물질화. 여기가 유일한 수집 지점이다:
             // 맵·웨이브플랜·거점이 확정됐고 아직 sim 이 한 틱도 돌지 않은 유일한 순간.
-            _matchConfig = CollectMatchConfig();
+            //
+            // ⚠ **진단이 판을 막을 수 없어야 한다.** 이 수집은 임의의 SO 그래프를 리플렉션으로
+            // 훑는다 — 예상 못한 필드 타입 하나, throw 하는 getter 하나면 예외가 난다. 그런데
+            // 이 자리는 `_running = true` **앞**이라, 막지 않으면 그 예외가 곧 **판이 시작되지
+            // 않는 것**이 된다. 스냅샷은 골든 판독용 부가 정보이고 게임 규칙이 아니므로,
+            // 실패하면 해시를 비우고 그대로 판을 시작한다(빈 해시는 골든 쪽에서 드러난다).
+            try { _matchConfig = CollectMatchConfig(); }
+            catch (System.Exception e)
+            {
+                _matchConfig = default;
+                Debug.LogWarning($"[BattleBridge] MatchConfig 수집 실패 — 판은 그대로 시작한다: {e.Message}");
+            }
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);

@@ -137,7 +137,11 @@ namespace Wassup.Core
                 case string s: Put(key, s); return;
             }
             if (declared.IsEnum) { Put(key, Convert.ToInt32(v)); return; }
-            if (declared.IsPrimitive) { Put(key, Convert.ToInt32(v)); return; }
+            // ⚠ 나머지 primitive 는 **int 로 좁히지 않는다.** `Convert.ToInt32` 는 uint/long 의
+            // 큰 값에서 OverflowException 을 던지는데, 이 수집은 `StartBattle` 안에서 돌아
+            // 그 예외가 곧 「판이 시작되지 않는 것」이 된다. 문자열로 그대로 적으면 값도
+            // 안 잃고 던질 일도 없다.
+            if (declared.IsPrimitive) { Put(key, Convert.ToString(v, CultureInfo.InvariantCulture)); return; }
 
             if (v is IList list)
             {
