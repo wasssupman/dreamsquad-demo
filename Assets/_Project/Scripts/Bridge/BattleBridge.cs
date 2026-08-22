@@ -2932,6 +2932,24 @@ namespace Wassup.Bridge
             CheckTimer();
         }
 
+        // battle-sim-extraction M0 unit 4 — 골든이 **exact** 로 보는 최종 정수.
+        // 점수는 「1킬 = 1점」이라 kills 와 같은 값이다(three-minute-kill-race unit 1) —
+        // 두 필드로 두는 이유는 그 등식이 룰 변경으로 깨지는 날 골든이 먼저 알려야 하기 때문.
+        public void ReadFinalTally(out int kills, out int score, out int leaks)
+        {
+            kills = _killCount;
+            score = _killCount;
+            leaks = _goalReachedCount;
+        }
+
+        // battle-sim-extraction M0 unit 4 — 관측 탭이 쓰는 축 변환. 기록은 `Entity` 를
+        // 절대 싣지 않는다(프로세스 밖에서 의미가 없다) — `SimEntityId` 하나가 축이다.
+        private int SimIdOf(Entity e)
+            => e != Entity.Null && _em != default && _em.Exists(e)
+               && _em.HasComponent<Wassup.Battle.Units.SimEntityId>(e)
+                ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(e).value
+                : -1;
+
         // battle-sim-extraction M0 unit 3 — 이번 판의 조건 스냅샷(+ 해시).
         // 골든 헤더와 하네스 보고서가 이 해시를 싣는다. 다르면 코드 회귀가 아니라
         // **조건 드리프트**(대개 시트 임포트가 SO 를 덮은 것)라는 뜻이다.
@@ -3804,6 +3822,8 @@ namespace Wassup.Bridge
             if (!_defenderDeathQueue.IsCreated) return;
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DefenderDeath,
+                    i: evt.cell.x * 1000 + evt.cell.y, f: evt.hasOnDeathAoe ? evt.aoeDamage : 0f);
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
                 // defender-clock-out unit 1 — 판 정리는 퇴근과 공유한다(ReleaseDefenderTile).
                 // 바인딩을 제거 **전에** 받아 오는 계약도 그 안에 있다 — DefenderDied 가 엔티티를
@@ -4014,6 +4034,7 @@ namespace Wassup.Bridge
             _dcFiredScratch.Clear();
             while (_dcTriggerFiredQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DcTriggerFired, SimIdOf(evt.host));
                 if (!_dcFiredScratch.Add(evt.host)) continue;
                 if (unitOverheadUiLayer != null) unitOverheadUiLayer.PulseCards(evt.host);
                 bool impactReady = !_dcProcLastImpact.TryGetValue(evt.host, out float last)
@@ -4073,6 +4094,7 @@ namespace Wassup.Bridge
             if (!_knockupVisualQueue.IsCreated) return;
             while (_knockupVisualQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.Knockup, SimIdOf(evt.target), f: evt.durationSec);
                 if (evt.durationSec <= 0f || evt.height <= 0f) continue;
                 if (spineUnitPool != null && spineUnitPool.TryGet(evt.target, out var view) && view != null)
                     view.PlayKnockupHop(evt.durationSec, evt.height);
@@ -4085,6 +4107,8 @@ namespace Wassup.Bridge
             var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.ShieldBreak, SimIdOf(evt.host),
+                    i: evt.tileRange, f: evt.magnitude);
                 // use-flow unit 3 — OnShieldBreak/피격트리거 payload 실행 = 부착 카드가 일한
                 // 순간. 이 채널은 이미 host 를 실어오므로 신규 채널 없이 펄스가 공짜다.
                 if (evt.payload != Wassup.Data.DcPayloadKind.None && unitOverheadUiLayer != null)
@@ -4215,6 +4239,8 @@ namespace Wassup.Bridge
             if (!_unitAttackVisualQueue.IsCreated) return;
             while (_unitAttackVisualQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.UnitAttack,
+                    SimIdOf(evt.attacker), SimIdOf(evt.target), f: evt.attackAnimPeriod);
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
 
                 // elite-enemy-tier unit 4 — 이 플래그가 켜진 이벤트는 «공격 사건» 이 아니라
@@ -4397,6 +4423,8 @@ namespace Wassup.Bridge
             var logger = GameManager.Instance?.Logger;
             while (_attackOutputLogQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.AttackOutputLog,
+                    SimIdOf(evt.attacker), i: (int)evt.kind, f: evt.magnitude);
                 if (logger == null) continue;
                 var defData = FindDefenderData(evt.attacker);
                 var sourceUnit = defData != null ? defData.displayName : "<unknown>";
@@ -4455,6 +4483,8 @@ namespace Wassup.Bridge
             if (!_projectileHitEventQueue.IsCreated) return;
             while (_projectileHitEventQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.ProjectileHit,
+                    SimIdOf(evt.source), i: evt.dataIndex, f: evt.radiusWorld);
                 if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
                 var data = _projectileDataByIndex[evt.dataIndex];
                 // Visual routing: authored hitPrefab wins (GA impact); a prefab-less
@@ -4488,6 +4518,10 @@ namespace Wassup.Bridge
             if (vfxSpawner == null) { _healAppliedEventQueue.Clear(); return; }
             while (_healAppliedEventQueue.TryDequeue(out var evt))
             {
+                // 위치만 실린 채널 — 실을 축이 없어 셀 좌표(×100 반올림)를 a/b 에 넣는다.
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.HealApplied,
+                    Mathf.RoundToInt(evt.position.x * 100f), Mathf.RoundToInt(evt.position.z * 100f),
+                    f: evt.amount);
                 if (evt.amount <= 0f) continue;
                 vfxSpawner.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
             }
@@ -4500,7 +4534,11 @@ namespace Wassup.Bridge
             if (!_shieldGrantedEventQueue.IsCreated) return;
             if (vfxSpawner == null) { _shieldGrantedEventQueue.Clear(); return; }
             while (_shieldGrantedEventQueue.TryDequeue(out var evt))
+            {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.ShieldGranted,
+                    Mathf.RoundToInt(evt.position.x * 100f), Mathf.RoundToInt(evt.position.z * 100f));
                 vfxSpawner.SpawnShieldGranted(new Vector3(evt.position.x, evt.position.y, evt.position.z));
+            }
         }
 
         // Enemy-only floating damage numbers. DamageApplicationSystem enqueues one
@@ -4513,6 +4551,7 @@ namespace Wassup.Bridge
             if (!hasNumbers && !hasBars) { _damageNumberEventQueue.Clear(); return; }
             while (_damageNumberEventQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DamageNumber, SimIdOf(evt.entity), f: evt.amount);
                 if (evt.amount <= 0f) continue;
                 var simPos = new Vector3(evt.position.x, evt.position.y, evt.position.z);
                 if (hasNumbers)
@@ -4645,6 +4684,8 @@ namespace Wassup.Bridge
             if (!_enemyKilledEventQueue.IsCreated) return;
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.EnemyKilled,
+                    SimIdOf(evt.entity), SimIdOf(evt.killer), i: evt.awakeningReward);
                 scoreHud?.OnEnemyKilled();
                 // battle-score-formula unit 2 — 최종 점수용 누적.
                 // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
@@ -4733,6 +4774,8 @@ namespace Wassup.Bridge
             for (int i = 0; i < requestEntities.Length; i++)
             {
                 var req = requestData[i];
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.ProjectileSpawn,
+                    SimIdOf(requestEntities[i]), i: req.dataIndex, f: req.damage);
                 // Spine attack trigger moved to DrainUnitAttackVisualEvents
                 // so both projectile and melee defenders share the same hook.
                 // battle-audio: fire SFX only for DEFENDER-shot projectiles (enemy ranged
@@ -4791,6 +4834,7 @@ namespace Wassup.Bridge
 
             while (_meteorBarrageRequestQueue.TryDequeue(out var req))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.MeteorBarrage, i: req.meteorCount);
                 if (walk.Count == 0) continue;
                 int shots = math.min(req.meteorCount, walk.Count);
                 chosen.Clear();
@@ -6230,6 +6274,8 @@ namespace Wassup.Bridge
             if (!_goalEventQueue.IsCreated) return;
             while (_goalEventQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.GoalReached,
+                    SimIdOf(evt.entity), i: evt.canSiege ? 1 : 0);
                 // battle-structures unit 4(ⓐ) — 판정은 셀 단위: **이 적이 도달한 골**(최근접
                 // 골 셀)이 부서졌는가. 골 2개 맵에서 한쪽만 부서지면 그쪽 도달만 유출이고
                 // 다른 쪽 도달은 여전히 공성이다.
@@ -7904,6 +7950,8 @@ namespace Wassup.Bridge
             {
                 var carrier = carriers[i];
                 var req = _em.GetComponentData<Wassup.Battle.Combat.PatrolSpawnRequest>(carrier);
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.PatrolSpawn,
+                    SimIdOf(req.owner), i: req.patrolDataIndex);
                 _em.DestroyEntity(carrier);
 
                 if (!_em.Exists(req.owner)) continue;
@@ -8336,6 +8384,8 @@ namespace Wassup.Bridge
             if (!_hazardRuntimeEventQueue.IsCreated) return;
             while (_hazardRuntimeEventQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.HazardRuntime, SimIdOf(evt.target),
+                    i: (int)evt.eventType * 100 + (int)evt.kind, f: evt.amount);
                 string eventType = evt.eventType == HazardRuntimeEventType.ZoneApply ? "zone_apply" : "dot_damage";
                 GameManager.Instance?.Logger?.RecordHazard(new Logging.HazardLog
                 {
@@ -8356,6 +8406,8 @@ namespace Wassup.Bridge
             if (!_hazardSpawnRequestQueue.IsCreated) return;
             while (_hazardSpawnRequestQueue.TryDequeue(out var req))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.CastHazardSpawn,
+                    SimIdOf(req.caster), SimIdOf(req.target), i: req.dataIndex);
                 // bomb-barrel-on-place unit 2 — 시전자 생존 검사는 **존 해저드에만** 건다.
                 // 존은 시전자에서 통행 층을 도출하므로 시전자가 사라지면 계약이 비지만,
                 // 길막 설치물은 모양·체력·수명이 전부 SO 라 시전자를 안 쓴다. 그리고
@@ -8427,6 +8479,8 @@ namespace Wassup.Bridge
             if (!_hazardDestroyedQueue.IsCreated) return;
             while (_hazardDestroyedQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.HazardDestroyed,
+                    SimIdOf(evt.hazardEntity), i: evt.hazardSoIndex);
                 BlockingHazardSO so = null;
                 if (evt.hazardSoIndex >= 0 && evt.hazardSoIndex < _blockingHazardSoRegistry.Count)
                     so = _blockingHazardSoRegistry[evt.hazardSoIndex];
@@ -8456,6 +8510,8 @@ namespace Wassup.Bridge
             if (!_goalCollapsedQueue.IsCreated) return;
             while (_goalCollapsedQueue.TryDequeue(out var evt))
             {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.GoalCollapsed,
+                    SimIdOf(evt.entity), i: evt.goalIndex);
                 Debug.Log($"[BattleBridge] Goal collapsed — cell=({evt.cell.x},{evt.cell.y}) index={evt.goalIndex} → 유출 지점 전환");
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
                 tileHealthGaugeLayer?.Hide(cell);
