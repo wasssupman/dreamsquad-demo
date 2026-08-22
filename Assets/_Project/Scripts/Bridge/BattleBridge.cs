@@ -707,6 +707,7 @@ namespace Wassup.Bridge
             TeardownGeneratedMap();
             // draft-stage-map-prebuild Unit 0 — allow EnsureQueriesAndQueues to reinitialise on next entry.
             _ecsInfrastructureReady = false;
+            _battleSimGroupCache = null; // M0 unit 2 — 월드가 갈리면 그룹 핸들도 무효
         }
 
         private bool HasLiveEntityManager()
@@ -2837,6 +2838,18 @@ namespace Wassup.Bridge
 
         private void Update()
         {
+            // battle-sim-extraction M0 unit 2 — 하네스 구동 중에는 스텝이 몬다(상호 배타).
+            // 여기서 막지 않으면 렌더 프레임과 스텝이 **둘 다** 시계를 밀어 `_battleClock`
+            // 이 두 번 전진한다 — 「거의 결정론」이 되고 그건 결정론이 아니다.
+            if (Wassup.Core.TimeControl.SimHarnessClock.Active) return;
+            TickBattleFrame();
+        }
+
+        // 한 프레임(또는 한 스텝)의 배틀 진행. 라이브는 `Update` 가, 하네스는
+        // `StepOneTick` 이 부른다. 시간 원천은 **양쪽 다 `TimeManager` 도메인 델타**라
+        // 이 본문은 자기가 어느 쪽에 실려 도는지 모른다(그래서 두 경로가 갈리지 않는다).
+        private void TickBattleFrame()
+        {
             // time-manager Unit 3 — 매 프레임 Battle 스케일을 ECS 로 흘린다(placement 슬로우모 포함).
             PushBattleTimeScaleToEcs();
 
@@ -2914,6 +2927,60 @@ namespace Wassup.Bridge
             // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
             // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
+        }
+
+        // battle-sim-extraction M0 unit 2 — 고정 스텝 1회. 하네스(에디터 메뉴·검증 러너)가
+        // `SimHarnessClock.Begin(dt)` 뒤에 이 메서드를 N 번 부른다.
+        //
+        // **순서가 이 메서드의 전부다.** 라이브 플레이어 루프는
+        // `MonoBehaviour.Update` → `SimulationSystemGroup`(= BattleSimGroup) → `LateUpdate`
+        // 순으로 돈다(그 사실은 아래 `LateUpdate` 주석이 이미 근거로 쓰고 있다: 「ECS 시뮬은
+        // MonoBehaviour.Update 뒤에 돈다」). 그래서 스텝도 **Bridge 먼저, ECS 나중**이다.
+        // 뒤집으면 ECS 가 만든 캐리어를 같은 스텝에서 드레인하게 되어 한 틱 빠른 세상이
+        // 되고, 그 위에서 뜬 골든은 라이브가 한 번도 낸 적 없는 궤적을 정본이라 우긴다.
+        //
+        // 뷰(`LateUpdate`)는 부르지 않는다 — 프레젠테이션이고 풀·코루틴을 스텝 안으로
+        // 끌고 들어온다. 하네스가 재는 것은 sim 이다.
+        public void StepOneTick()
+        {
+            if (!Wassup.Core.TimeControl.SimHarnessClock.Active)
+            {
+                Debug.LogWarning("[BattleBridge] StepOneTick 은 SimHarnessClock.Begin 이후에만 유효하다.");
+                return;
+            }
+
+            float dt = Wassup.Core.TimeControl.SimHarnessClock.StepDt;
+
+            // ① 자기 Update 로 돌던 배틀 런타임들. 스펙 스케치는 `SkillRuntime` 만 꼽았지만
+            // **코스트와 배치 쿨타임도 같은 부류**다 — 셋 다 `TimeManager` 배틀 델타로
+            // self-tick 하고, 셋 다 «입력이 통과하느냐» 를 게이트한다. 하나라도 스텝 밖에
+            // 남으면 같은 틱의 같은 입력이 두 판에서 다른 판정을 받는다(코스트 부족 →
+            // 배치 거부). 실제로 이 셋을 넣기 전에는 하네스 배치 입력이 매번 거부됐다.
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                if (gm.CostRuntime != null) gm.CostRuntime.Tick(dt);
+                if (gm.CooldownRuntime != null) gm.CooldownRuntime.Tick(dt);
+            }
+            if (skillRuntime != null) skillRuntime.Tick(dt);
+
+            // ② Bridge 프레임(시계·웨이브·스폰·drain) → ③ ECS 1스텝. 이 순서가 라이브다.
+            TickBattleFrame();
+
+            Wassup.Battle.BattleSimGroup group = ResolveBattleSimGroup();
+            if (group == null) return;
+            Wassup.Core.TimeControl.SimHarnessClock.RequestStep();
+            group.Update(); // rate manager 가 요청을 소비해 정확히 1회 전진한다.
+        }
+
+        private Wassup.Battle.BattleSimGroup _battleSimGroupCache;
+
+        private Wassup.Battle.BattleSimGroup ResolveBattleSimGroup()
+        {
+            if (_battleSimGroupCache != null) return _battleSimGroupCache;
+            if (_world == null || !_world.IsCreated) return null;
+            _battleSimGroupCache = _world.GetExistingSystemManaged<Wassup.Battle.BattleSimGroup>();
+            return _battleSimGroupCache;
         }
 
         private void LateUpdate()

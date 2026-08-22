@@ -67,8 +67,18 @@ namespace Wassup.Core
 
         private void Update()
         {
+            // battle-sim-extraction M0 unit 2 — 하네스 구동 중에는 `BattleBridge.StepOneTick`
+            // 이 `Tick(StepDt)` 을 부른다. 여기서 막지 않으면 한 스텝에 두 번 깎인다.
+            if (Wassup.Core.TimeControl.SimHarnessClock.Active) return;
+            Tick(Time.deltaTime);
+        }
+
+        // 쿨다운 전진. 라이브는 `Update` 가 프레임 델타로, 하네스는 스텝이 고정 dt 로 부른다.
+        // 라이브 dt 원천은 **바꾸지 않았다** — `Time.deltaTime` → 배틀 도메인 델타 전환은
+        // 「슬로우모에서 쿨다운도 느려진다」는 별개의 게임 결정이라 이 unit 밖이다.
+        public void Tick(float dt)
+        {
             if (_cooldownRemaining.Count == 0) return;
-            var dt = Time.deltaTime;
 
             _expireBuffer.Clear();
             foreach (var kv in _cooldownRemaining)
