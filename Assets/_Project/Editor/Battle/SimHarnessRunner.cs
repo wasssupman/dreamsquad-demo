@@ -173,6 +173,10 @@ namespace Wassup.EditorTools.Battle
         // 카운트가 아니라 **상태 지문**이다: 살아 있는 모든 sim 엔티티의 (SimEntityId, 위치,
         // 체력)을 ID 순으로 접은 FNV-1a. 수만 맞고 위치가 갈리는 사고를 통과시키지 않기 위해서다
         // — 그게 정확히 골든이 잡아야 할 종류의 사고다.
+        // ⚠ 여기서 `World.DefaultGameObjectInjectionWorld` 를 직접 읽는다. CLAUDE.md 제약 1
+        // (BattleBridge 가 유일한 Mono↔ECS 창구)의 예외인 근거는 **이 파일이 Editor 전용**이고
+        // (`Assets/_Project/Editor/`), MonoBehaviour 가 아니며, 쿼리 읽기만 한다는 것이다.
+        // 런타임으로 옮기는 순간 그 근거가 사라져 제약 위반이 된다 — 옮기려면 Bridge 를 통해라.
         public static Digest Capture(BattleBridge bridge)
         {
             var d = new Digest { clock = bridge.LogElapsedTime };
