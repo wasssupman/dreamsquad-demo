@@ -1433,6 +1433,9 @@ namespace Wassup.Bridge
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
+            // battle-sim-extraction M0 unit 3 — 조건 물질화. 여기가 유일한 수집 지점이다:
+            // 맵·웨이브플랜·거점이 확정됐고 아직 sim 이 한 틱도 돌지 않은 유일한 순간.
+            _matchConfig = CollectMatchConfig();
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
@@ -2927,6 +2930,141 @@ namespace Wassup.Bridge
             // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
             // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
+        }
+
+        // battle-sim-extraction M0 unit 3 — 이번 판의 조건 스냅샷(+ 해시).
+        // 골든 헤더와 하네스 보고서가 이 해시를 싣는다. 다르면 코드 회귀가 아니라
+        // **조건 드리프트**(대개 시트 임포트가 SO 를 덮은 것)라는 뜻이다.
+        private Wassup.Core.MatchConfigSnapshot _matchConfig;
+
+        public string MatchConfigHash => _matchConfig.hash;
+        public string MatchConfigText => _matchConfig.text;
+
+        // 수집 범위의 기준은 「게임 결과에 영향을 주는가」 하나다. 뷰 전용 knob(블롭 그림자·
+        // lift·프랍 예산·틸트 등 60여 개)은 담지 않는다 — 담으면 연출 튜닝이 «조건이 바뀌었다»로
+        // 읽혀 판독 장치가 거짓말을 한다. 분류표는 spec 3번 문서에 있다.
+        private Wassup.Core.MatchConfigSnapshot CollectMatchConfig()
+        {
+            var w = new Wassup.Core.MatchConfigWriter();
+
+            w.Section("header");
+            w.Put("schema", 1);
+            w.Put("matchSeed", _matchSeed);
+
+            w.Section("map");
+            w.Put("seed", _generatedMap.IsCreated ? _generatedMap.seed : 0);
+            w.Put("generatorVersion", _generatedMap.IsCreated ? _generatedMap.generatorVersion : 0);
+            if (_generatedMap.IsCreated)
+            {
+                w.Put("gridX", _generatedMap.gridSize.x);
+                w.Put("gridY", _generatedMap.gridSize.y);
+                // 타일·배치층은 결과를 바꾸는 셀 데이터다 — 원소를 다 접는 대신 배열 자체를
+                // 해시에 태운다(길이 + 바이트 합산이 아니라 원소 순서를 그대로 문자열로).
+                var tiles = new System.Text.StringBuilder(_generatedMap.tiles.Length);
+                for (int i = 0; i < _generatedMap.tiles.Length; i++) tiles.Append((int)_generatedMap.tiles[i]);
+                w.Put("tiles", tiles.ToString());
+                if (_generatedMap.placeMask.IsCreated)
+                {
+                    var pm = new System.Text.StringBuilder(_generatedMap.placeMask.Length * 2);
+                    for (int i = 0; i < _generatedMap.placeMask.Length; i++) pm.Append(_generatedMap.placeMask[i]).Append(',');
+                    w.Put("placeMask", pm.ToString());
+                }
+                for (int i = 0; i < _generatedMap.spawns.Length; i++)
+                    w.Put($"spawn[{i}]", $"{_generatedMap.spawns[i].x},{_generatedMap.spawns[i].y}");
+                if (_generatedMap.goals.IsCreated)
+                    for (int i = 0; i < _generatedMap.goals.Length; i++)
+                        w.Put($"goal[{i}]", $"{_generatedMap.goals[i].x},{_generatedMap.goals[i].y}");
+                else w.Put("goal[0]", $"{_generatedMap.goal.x},{_generatedMap.goal.y}");
+                if (_generatedMap.waypointCells.IsCreated)
+                {
+                    var wp = new System.Text.StringBuilder();
+                    for (int i = 0; i < _generatedMap.waypointCells.Length; i++)
+                        wp.Append(_generatedMap.waypointCells[i].x).Append(':').Append(_generatedMap.waypointCells[i].y).Append(',');
+                    w.Put("waypoints", wp.ToString());
+                }
+                if (_generatedMap.structures.IsCreated)
+                    w.Put("structureCount", _generatedMap.structures.Length);
+            }
+
+            w.Section("deck");
+            w.PutAsset("deck", ActiveDeck);
+
+            w.Section("waves");
+            w.Put("usingGenerated", _usingGeneratedWaves);
+            w.Put("usingAuthored", _usingAuthoredPlan);
+            w.Put("timerDuration", _timerDuration);
+            if (_wavePlan.waves != null)
+            {
+                w.Put("seed", _wavePlan.seed);
+                w.Put("generatorVersion", _wavePlan.generatorVersion);
+                w.Put("waveInterval", _wavePlan.waveIntervalSec);
+                w.Put("intraWaveSpacing", _wavePlan.intraWaveSpacingSec);
+                w.Put("spawnLeadIn", _wavePlan.spawnLeadInSec);
+                w.Put("waveCount", _wavePlan.waves.Count);
+                // **생성 결과**를 담는다(생성기 입력이 아니라). 웨이브 생성은 셋업 난수를
+                // 쓰므로(UnityEngine.Random) 결과를 물질화해야 sim 상류가 격리된다 —
+                // 이게 이 unit 이 「생성기 seed 만 담으면 안 된다」고 말하는 이유다.
+                for (int i = 0; i < _wavePlan.waves.Count; i++)
+                {
+                    var wave = _wavePlan.waves[i];
+                    w.Put($"w{i}.t", wave.triggerTimeSec);
+                    w.Put($"w{i}.mode", (int)wave.expandMode);
+                    w.Put($"w{i}.interval", wave.spawnIntervalSec);
+                    w.Put($"w{i}.concept", wave.conceptLabel);
+                    int gn = wave.groups != null ? wave.groups.Count : 0;
+                    w.Put($"w{i}.g", gn);
+                    for (int j = 0; j < gn; j++)
+                    {
+                        var g = wave.groups[j];
+                        w.Put($"w{i}.g{j}",
+                            $"{(g.unit != null ? g.unit.name : "~")}x{g.count}@{g.triggerOffsetSec.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}" +
+                            $"/lane{g.laneIndex}/path{g.pathIndex}");
+                    }
+                }
+            }
+
+            // 적 로스터는 **이번 판의 웨이브 플랜에 실제로 등장하는 것만** 접는다. 덱 전체를
+            // 담으면 이 판이 쓰지도 않는 적의 스탯 변경이 해시를 흔들어, 판독 장치의 신호가
+            // 그만큼 무뎌진다.
+            w.Section("enemies");
+            var seenEnemies = new System.Collections.Generic.List<Wassup.Data.AttackUnitData>();
+            if (_wavePlan.waves != null)
+                foreach (var wave in _wavePlan.waves)
+                    if (wave.groups != null)
+                        foreach (var g in wave.groups)
+                            if (g.unit != null && !seenEnemies.Contains(g.unit)) seenEnemies.Add(g.unit);
+            seenEnemies.Sort((a, b) => string.CompareOrdinal(a.name, b.name)); // 등장 순서에 기대지 않는다
+            w.Put("n", seenEnemies.Count);
+            for (int i = 0; i < seenEnemies.Count; i++) w.PutAsset($"e{i}", seenEnemies[i]);
+
+            w.Section("defenders");
+            int dn = defenderPool != null ? defenderPool.Length : 0;
+            w.Put("n", dn);
+            for (int i = 0; i < dn; i++) w.PutAsset($"d{i}", defenderPool[i]);
+
+            w.Section("gimmick");
+            w.PutAsset("assigned", _assignedGimmick);
+
+            w.Section("stackModifiers");
+            int sn = stackModifierAuthoring != null ? stackModifierAuthoring.Length : 0;
+            w.Put("n", sn);
+            for (int i = 0; i < sn; i++) w.PutAsset($"s{i}", stackModifierAuthoring[i]);
+
+            // 씬 상주 gameplay knob. 이 목록이 이 unit 의 실질이다 — 스탯 SO 만 스냅샷하면
+            // 「같은 SO 인데 결과가 다르다」가 남는다(스폰 spread·인접 시너지가 그 예).
+            w.Section("sceneKnobs");
+            w.Put("tileSize", tileSize);
+            w.Put("spawnHeight", spawnHeight);
+            w.Put("agentRadiusTiles", agentRadiusTiles);
+            w.Put("spawnSpreadEnabled", spawnSpreadEnabled);
+            w.Put("spawnSpreadFraction", spawnSpreadFraction);
+            w.Put("spawnSpreadTopScale", spawnSpreadTopScale);
+            w.Put("spawnSubLaneCount", spawnSubLaneCount);
+            w.Put("enableAdjacencySynergy", enableAdjacencySynergy);
+            w.Put("dcProcImpactMinIntervalSec", dcProcImpactMinIntervalSec);
+            w.Put("fixedMapSeed", fixedMapSeed);
+
+            return w.Build();
         }
 
         // battle-sim-extraction M0 unit 2 — 고정 스텝 1회. 하네스(에디터 메뉴·검증 러너)가

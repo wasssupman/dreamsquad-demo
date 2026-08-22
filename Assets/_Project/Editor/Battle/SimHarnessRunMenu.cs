@@ -54,7 +54,7 @@ namespace Wassup.EditorTools.Battle
             int firstDiff = -1;
             for (int i = 0; i < TickCount; i++)
             {
-                if (runA[i].Equals(runB[i])) continue;
+                if (runA.digests[i].Equals(runB.digests[i])) continue;
                 firstDiff = i;
                 break;
             }
@@ -62,12 +62,18 @@ namespace Wassup.EditorTools.Battle
             System.IO.File.WriteAllText(ReportPath, BuildReport(runA, runB, firstDiff));
             AssetDatabase.Refresh();
             Debug.Log(firstDiff < 0
-                ? $"[SimHarness] 2회 {TickCount}틱 완전 일치. 보고서: {ReportPath}"
-                : $"[SimHarness] 틱 {firstDiff} 에서 갈렸다. 보고서: {ReportPath}");
+                ? $"[SimHarness] 2회 {TickCount}틱 완전 일치 (configHash {runA.configHash}). 보고서: {ReportPath}"
+                : $"[SimHarness] 틱 {firstDiff} 에서 갈렸다 (configHash A={runA.configHash} B={runB.configHash}). 보고서: {ReportPath}");
+        }
+
+        private struct RunResult
+        {
+            public string configHash;   // unit 3 — 조건 지문. 두 판이 다르면 코드가 아니라 값이 바뀐 것
+            public Digest[] digests;
         }
 
         // 한 판을 처음부터 세워 N 틱 굴린다. seed 를 고정하므로 두 판의 맵·웨이브가 같다.
-        private static Digest[] RunOnce(BattleBridge bridge)
+        private static RunResult RunOnce(BattleBridge bridge)
         {
             bridge.StopBattle();
             bridge.SetMatchSeed(MatchSeed);
@@ -99,7 +105,7 @@ namespace Wassup.EditorTools.Battle
             {
                 SimHarnessClock.End();
             }
-            return digests;
+            return new RunResult { configHash = bridge.MatchConfigHash, digests = digests };
         }
 
         // 입력 스케줄. 벽시계가 아니라 **틱 번호**로 반입한다 — 그래야 두 판의 입력이
@@ -182,8 +188,11 @@ namespace Wassup.EditorTools.Battle
             }
         }
 
-        private static string BuildReport(Digest[] a, Digest[] b, int firstDiff)
+        private static string BuildReport(RunResult ra, RunResult rb, int firstDiff)
         {
+            var a = ra.digests;
+            var b = rb.digests;
+            bool configSame = ra.configHash == rb.configHash;
             var sb = new StringBuilder();
             sb.AppendLine("# harness-determinism — 고정 스텝 2회 실행 대조");
             sb.AppendLine();
@@ -193,6 +202,10 @@ namespace Wassup.EditorTools.Battle
             sb.AppendLine();
             sb.AppendLine($"- seed: `{MatchSeed}` · 스텝: `{StepDt:F6}s` × **{TickCount}** 틱 · 입력: 틱 [{string.Join(", ", PlacementTicks)}] 에 방어유닛 1기씩");
             sb.AppendLine($"- 판정: **{(firstDiff < 0 ? "완전 일치" : $"틱 {firstDiff} 에서 분기")}**");
+            sb.AppendLine($"- `configHash`: run A `{ra.configHash}` · run B `{rb.configHash}` — "
+                          + (configSame
+                              ? "동일(조건 드리프트 없음)"
+                              : "**갈렸다 — 코드 회귀가 아니라 조건 드리프트다.** 시트 임포트가 SO 를 덮었는지 먼저 본다"));
             sb.AppendLine();
             sb.AppendLine("다이제스트 = `_battleClock` / 살아있는 sim 엔티티 수 / 상태 지문(FNV-1a over ID·위치·체력, ID 정렬).");
             sb.AppendLine();
