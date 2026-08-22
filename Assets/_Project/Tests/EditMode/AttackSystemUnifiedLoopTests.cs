@@ -586,38 +586,73 @@ namespace Wassup.Tests.EditMode
                 "5회째에도 근접 직접타는 그대로(니들은 별도 산출물)");
         }
 
-        // ─── attack-decoupling unit 3 — 폭탄맨 사건 지점. 폭탄맨은 타겟팅/RESOLVE
-        // 경로를 타지 않고 early-continue 하므로 dc 트리거가 영영 안 돌았다. 이제
+        // ─── attack-decoupling unit 3 — 폭탄맨 사건 지점. 폭탄맨은 RESOLVE 경로를
+        // 타지 않고 early-continue 하므로 dc 트리거가 영영 안 돌았다. 이제
         // **폭탄이 실제로 손을 떠난** 프레임이 1카운트이고, 니들 대상은 host 가
-        // 아니라 페이로드가 스스로 고른다(unit 2 폴백). ───
+        // 아니라 페이로드가 스스로 고른다(unit 2 폴백).
+        //
+        // bomb-thrower-defender unit 9 — 조준(DeployedFacing)이 은퇴하고 폭탄은
+        // **사거리 안 최근접 적의 칸**에 떨어진다. 못 던지는 사유도 「그리드 밖」에서
+        // 「사거리 안에 적이 없음」으로 바뀌었다. ───
 
-        private Entity CreateBombThrower(float3 position, int2 facing, int landingTiles = 2)
+        private Entity CreateBombThrower(float3 position, float range = 5f)
         {
-            // 폭탄맨도 AttackState 를 갖지만(쿨다운 소유) 타겟팅 루프는 타지 않는다.
+            // 폭탄맨도 AttackState 를 갖지만(쿨다운·사거리 소유) RESOLVE 루프는 타지 않는다.
             var e = CreateAttacker(
                 Faction.DefenderUnit, position,
-                damage: 0f, range: 5f, cooldownDuration: 0.01f,
+                damage: 0f, range: range, cooldownDuration: 0.01f,
                 targetMask: (int)Faction.EnemyUnit,
                 defenderTag: true);
-            _em.AddComponentData(e, new DeployedFacing { value = facing });
             _em.AddComponentData(e, new ProjectileRef { dataIndex = 0, speed = 10f, visualScale = 1f });
             _em.AddComponentData(e, new BombLauncherState
             {
-                landingTiles = landingTiles,
                 travelSec = 0.2f,
                 fuseSec = 0.2f,
                 aoeTileRange = 1,
                 aoeTargetCap = 3,
                 dmgBombDamage = 5f,
-                rng = new Unity.Mathematics.Random(12345u),
             });
             return e;
         }
 
         [Test]
+        public void BombThrower_LandsOnNearestEnemyCell()
+        {
+            // 그리드 폴백(tileSize 1 · origin 0)이라 셀 중심 = 정수 좌표.
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f));
+            CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+            CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
+
+            Tick();
+
+            Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(bomber),
+                "사거리 안에 적이 있으면 쿨다운마다 던진다");
+            var req = _em.GetComponentData<ProjectileSpawnRequest>(bomber);
+            Assert.AreEqual(MovementKind.GrenadeToCell, req.movement);
+            Assert.AreEqual(PayloadKind.TileAoe, req.payload);
+            Assert.AreEqual(1f, req.impact.x, 1e-4f, "최근접 적(1칸)의 칸에 떨어진다 — 3칸 적이 아니다");
+            Assert.AreEqual(0f, req.impact.z, 1e-4f);
+        }
+
+        [Test]
+        public void BombThrower_HoldsFireWhenNoEnemyInRange()
+        {
+            // 사거리 1타일. 적은 3칸 밖 → 던질 대상이 없다.
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), range: 1f);
+            CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
+
+            Tick();
+
+            Assert.IsFalse(_em.HasComponent<ProjectileSpawnRequest>(bomber),
+                "사거리 밖 적에게는 던지지 않는다(blind bombardment 은퇴)");
+            Assert.AreEqual(0f, _em.GetComponentData<AttackState>(bomber).cooldownRemaining, 1e-4f,
+                "쿨다운은 만료 상태로 대기해야 적이 들어온 프레임에 즉시 던진다");
+        }
+
+        [Test]
         public void BombThrower_PokeNeedle_FiresOnFifthBombWithSelfChosenTarget()
         {
-            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), new int2(1, 0));
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f));
 
             var slots = _em.AddBuffer<DcTriggerSlot>(bomber);
             slots.Add(new DcTriggerSlot
@@ -749,9 +784,9 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void BombThrower_PokeNeedle_DoesNotCountWhenBombCannotLaunch()
         {
-            // 그리드 밖을 향해 배치 → BombLanding.ResolveCell 이 landValid=false.
-            // 쿨다운은 돌지만 폭탄이 손을 떠나지 않으므로 카운트도 없다(계약 2).
-            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), new int2(-1, 0), landingTiles: 5);
+            // unit 9 — 사거리(1타일) 안에 적이 없어 폭탄이 손을 떠나지 못한다. 니들의 폴백
+            // 반경(4타일)은 그 적에 닿지만, **공격 사건이 없었으므로** 카운트도 없다(계약 2).
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), range: 1f);
 
             var slots = _em.AddBuffer<DcTriggerSlot>(bomber);
             slots.Add(new DcTriggerSlot
@@ -767,7 +802,7 @@ namespace Wassup.Tests.EditMode
                 visualScale = 1f,
                 tileRange = 4,
             });
-            CreateTarget(Faction.EnemyUnit, new float3(1f, 0f, 0f), attackerTag: true);
+            CreateTarget(Faction.EnemyUnit, new float3(3f, 0f, 0f), attackerTag: true);
 
             using var carrierQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<ProjectileRequestCarrier>(),

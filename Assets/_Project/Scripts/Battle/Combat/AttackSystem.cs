@@ -223,7 +223,8 @@ namespace Wassup.Battle.Combat
                             targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
                             castEvt.caster, castEvt.casterPos, casterCell,
                             tileSize, gridSize, ffOrigin, slot.tileRange,
-                            castEvt.targetTraversalLayers);
+                            castEvt.targetTraversalLayers,
+                            (int)Faction.EnemyUnit);
                         // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
                         if (pick >= 0)
                             SpawnNeedleCarrier(ref ecb, slot, castEvt.caster, castEvt.casterPos,
@@ -262,32 +263,38 @@ namespace Wassup.Battle.Combat
                      && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]))
                     || leapFlightLookup.HasComponent(attackerEntity);
 
-                // bomb-thrower-defender unit 4 — 폭탄맨은 타겟 없이 쿨다운마다 방향×N 칸에
-                // 폭탄을 굴려 발사(blind bombardment, 계약 2). 타겟팅/일반 공격 경로를 타지
+                // bomb-thrower-defender unit 4 — 폭탄맨은 일반 타겟팅/RESOLVE 경로를 타지
                 // 않으므로 여기서 처리하고 continue. CC(action-lock)는 일반 공격과 동일하게
                 // 발사 START 를 막는다(폭탄 = 이 유닛의 공격, shield/hazard 급 예외 아님).
+                //
+                // unit 9 — 조준(DeployedFacing)과 blind bombardment 는 은퇴했다. 이제
+                // **사거리 안 최근접 적이 서 있는 칸**에 던진다. 후보 선정은 니들 폴백과
+                // 같은 헬퍼(NearestTargeting)라 「가까운 적」의 뜻이 한 곳에만 있다.
+                // 착지 칸은 발사 시점 스냅샷이다 — 적이 걸어 나가면 빗나간다(유도 아님).
                 if (bombLauncherLookup.HasComponent(attackerEntity))
                 {
                     if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f
-                        && facingLookup.HasComponent(attackerEntity)
                         && projectileRefLookup.HasComponent(attackerEntity))
                     {
                         var bomb = bombLauncherLookup[attackerEntity];
                         var bProjRef = projectileRefLookup[attackerEntity];
                         float3 bPos = transform.ValueRO.Position;
                         int2 bCasterCell = GridMath.WorldToCell(bPos, tileSize, gridSize, origin: ffOrigin);
-                        BombLanding.ResolveCell(bCasterCell, facingLookup[attackerEntity].value,
-                            bomb.landingTiles, gridSize, out int2 landCell, out bool landValid);
-                        if (landValid)
+                        int bombPick = PickFallbackTarget(needleScratch,
+                            targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
+                            attackerEntity, bPos, bCasterCell,
+                            tileSize, gridSize, ffOrigin,
+                            GridMath.RangeToTiles(attack.ValueRO.range),
+                            attack.ValueRO.targetTraversalLayers,
+                            attack.ValueRO.targetMask);
+                        if (bombPick >= 0)
                         {
+                            int2 landCell = GridMath.WorldToCell(
+                                targetTransforms[bombPick].Position, tileSize, gridSize, origin: ffOrigin);
                             float3 landWorld = GridMath.CellToWorldCenter(landCell, tileSize, 0f, origin: ffOrigin);
-                            // 3종 랜덤(균등 1/3): 0 데미지 / 1 수면 / 2 스턴. 캐스터별 rng advance.
-                            int bombType = bomb.rng.NextInt(0, 3);
-                            bombLauncherLookup[attackerEntity] = bomb; // rng 상태 저장
-                            float bDamage = 0f; byte bCcKind = 0; float bCcDur = 0f;
-                            if (bombType == 0) bDamage = bomb.dmgBombDamage;
-                            else if (bombType == 1) { bCcKind = (byte)Wassup.Battle.Effects.CcKind.Sleep; bCcDur = bomb.sleepSec; }
-                            else { bCcKind = (byte)Wassup.Battle.Effects.CcKind.Stun; bCcDur = bomb.stunSec; }
+                            // unit 10 — 평타는 **데미지 폭탄 한 종**이다(사용자 결정 2026-08-21).
+                            // 구 3종 무작위(피해/수면/기절 균등 1/3)와 그 캐스터별 rng 는 은퇴 —
+                            // 무엇이 떨어질지 모르는 유닛은 플레이어가 계획을 세울 수 없었다.
                             ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
                             {
                                 movement = MovementKind.GrenadeToCell,
@@ -299,10 +306,7 @@ namespace Wassup.Battle.Combat
                                 flightTime = bomb.travelSec,   // travel n (request-carried 고정)
                                 fuseSec = bomb.fuseSec,         // fuse m
                                 arcHeight = bomb.arcHeight,
-                                damage = bDamage,
-                                ccKind = bCcKind,
-                                ccDuration = bCcDur,
-                                bombType = (byte)bombType,
+                                damage = bomb.dmgBombDamage,
                                 dataIndex = bProjRef.dataIndex,
                                 visualScale = bProjRef.visualScale,
                                 owner = attackerEntity,
@@ -346,12 +350,14 @@ namespace Wassup.Battle.Combat
                                     }
 
                                     // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
-                                    // 진영 Enemy 고정 + PastGoal 제외는 헬퍼가 보장한다.
+                                    // 니들은 적 **유닛**만 찌른다 — 폭탄의 본 공격 마스크와
+                                    // 별개다(그쪽은 거점도 노린다, unit 9).
                                     int pick = PickFallbackTarget(needleScratch,
                                         targetEntities, targetTransforms, targetFactions, targetTraversalLayers,
                                         attackerEntity, bPos, bCasterCell,
                                         tileSize, gridSize, ffOrigin, slot.tileRange,
-                                        attack.ValueRO.targetTraversalLayers);
+                                        attack.ValueRO.targetTraversalLayers,
+                                        (int)Faction.EnemyUnit);
                                     // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
                                     if (pick >= 0)
                                         SpawnNeedleCarrier(ref ecb, slot, attackerEntity, bPos,
@@ -361,9 +367,11 @@ namespace Wassup.Battle.Combat
                                             attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                                 }
                             }
+                            // unit 9 — 던진 프레임에만 리셋한다. 사거리에 적이 없으면 쿨다운을
+                            // 만료 상태로 **대기**시켜(소환사의 닫힌 게이트와 같은 규율) 적이
+                            // 들어온 프레임에 즉시 투척한다. 여기서 리셋하면 최대 한 쿨 늦는다.
+                            attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                         }
-                        // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
-                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                     }
                     continue;
                 }
@@ -2111,9 +2119,13 @@ namespace Wassup.Battle.Combat
                 });
         }
 
-        // host 가 대상을 확정해 주지 않는 아키타입(폭탄맨·캐스터)의 폴백 선정.
-        // 후보 조립이 두 곳에 복붙돼 있었고, 정작 실수하기 쉬운 부분(진영 마스크·
-        // 자기 제외·그리드 변환)이 테스트 밖에 남아 있었다.
+        // 「반경 안 최근접 하나」 선정. 원래는 host 가 대상을 확정해 주지 않는
+        // 아키타입(폭탄맨·캐스터)의 **니들 폴백** 전용이었고, 후보 조립이 두 곳에
+        // 복붙돼 있었으며 실수하기 쉬운 부분(진영 마스크·자기 제외·그리드 변환)이
+        // 테스트 밖에 남아 있었다.
+        // bomb-thrower-defender unit 9 — 폭탄맨의 **본 공격 타겟팅**도 여기로 들어왔다.
+        // `factionMask` 를 호출부가 넘기는 것이 그 귀결이다: 폴백은 적 유닛만 노리지만
+        // 본 공격은 유닛의 저작 마스크(AttackState.targetMask, 적 거점 포함)를 따른다.
         // goal-tower-siege unit 1 — PastGoal 제외는 폐기됐다(골에 붙은 적도 유효 대상).
         private static int PickFallbackTarget(
             NativeArray<NearestTargeting.Candidate> scratch,
@@ -2121,7 +2133,7 @@ namespace Wassup.Battle.Combat
             NativeArray<byte> targetTraversalLayers,
             Entity self, float3 selfPos, int2 selfCell,
             float tileSize, int2 gridSize, float3 gridOrigin, int tileRange,
-            byte attackTargetLayers)
+            byte attackTargetLayers, int factionMask)
         {
             for (int i = 0; i < ents.Length; i++)
             {
@@ -2129,7 +2141,7 @@ namespace Wassup.Battle.Combat
                 // goal-tower-siege unit 1 — PastGoal 배제 제거. 골에 붙은 적은 살아서 타워를
                 // 때리는 중이라 니들을 낭비하는 대상이 아니라 **최우선으로 지워야 할 대상**이다.
                 bool eligible = e != self
-                    && ((int)fac[i].value & (int)Faction.EnemyUnit) != 0
+                    && ((int)fac[i].value & factionMask) != 0
                     && Wassup.Data.PlacementLayers.CanTarget(
                         attackTargetLayers, targetTraversalLayers[i]);
                 float3 p = xf[i].Position;

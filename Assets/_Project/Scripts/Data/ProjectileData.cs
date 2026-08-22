@@ -55,8 +55,12 @@ namespace Wassup.Data
         // (SkyFallOnEntity, SingleSplash) 로 매핑. 위 `SkyFall` 과 그림은 같고
         // **조준이 다르다**(칸 ↔ 적) — 「반경 안 적 전원에게 1발씩」처럼 발수가 적 수를
         // 따라야 하는 폭격이 이 축을 쓴다. 칸 폭격(메테오·보스 barrage)은 `SkyFall` 이다.
+        // bomb-barrel-on-place unit 3 — 곡사로 날아가 **착탄 칸에 길막 설치물을 세운다**.
+        // (BallisticArcToPoint, SpawnBlocker) 로 매핑. 위 BallisticToCell 과 궤적은 같고
+        // **착탄에서 하는 일이 다르다**(피해 ↔ 물건 설치).
         // ⚠ 새 멤버는 **끝에 붙인다** — 중간에 끼우면 기존 에셋의 직렬화 값이 밀린다.
         SkyFallOnTarget,
+        BallisticBlocker,
     }
 
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
@@ -153,6 +157,13 @@ namespace Wassup.Data
         [Header("Bezier homing (flightMode = BezierHoming)")]
         [Tooltip("좌우 스윙 폭(월드 유닛). 0 = 직선에 가깝게. 여러 발이면 발마다 좌우 교대로 더 크게 벌어진다.")]
         public float bezierLateral = 1.2f;
+
+        // bomb-barrel-on-place unit 3 — flightMode 가 BallisticBlocker 일 때 착탄 칸에 세울
+        // 길막 설치물. 브리지가 스폰 셋업에서 레지스트리 index 로 풀어 요청에 싣는다
+        // (sim 은 SO 를 모르고 index 만 나른다).
+        [Header("Blocker (BallisticBlocker 전용)")]
+        [Tooltip("착탄 칸에 세울 길막 설치물. flightMode = BallisticBlocker 이면 필수.")]
+        public Wassup.Battle.Effects.BlockingHazardSO spawnBlocker;
         [Tooltip("제어점을 진행 방향으로 밀어내는 비율(전체 거리 대비). 클수록 곡선이 늦게 휜다.")]
         [Range(0f, 0.5f)] public float bezierForwardBias = 0.35f;
 

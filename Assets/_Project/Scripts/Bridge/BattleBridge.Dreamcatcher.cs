@@ -1190,8 +1190,10 @@ namespace Wassup.Bridge
             };
             if (!HasLiveEntityManager() || !_em.Exists(defender)) return profile;
 
-            // 판정 순서 고정: 폭탄맨도 facing 을 쓰므로 BombThrow 를 먼저 걸러야 한다.
-            // HazardCast 는 attackRange 0 이라 RESOLVE 에 못 가는 부류.
+            // 판정 순서 고정: 능력 상태 컴포넌트를 먼저 걸러 낸다. HazardCast 는
+            // attackRange 0 이라 RESOLVE 에 못 가는 부류.
+            // (bomb-thrower-defender unit 9 로 폭탄맨은 facing 을 쓰지 않게 됐지만,
+            //  BombThrow 를 먼저 보는 이 순서는 유지한다 — 어느 쪽이든 결과가 같다.)
             //
             // FacingVolley 는 `PatternSlot` **단독**으로 판별한다 — DeployedFacing 은
             // 조준 '완료 여부'라는 일시 상태라, 그걸 요구하면 같은 유닛이 조준 전후로

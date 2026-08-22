@@ -9,6 +9,16 @@ namespace Wassup.Battle.Effects
 
         public Entity Entity { get; private set; }
 
+        // bomb-barrel-on-place unit 6 — 수명 경과 틴트.
+        // ⚠ 머티리얼을 직접 건드리지 않는다. 벤더 메시는 프랍 수백 개가 **머티리얼 하나를
+        // 공유**하므로 `renderer.material` 을 만지면 맵 전체가 물든다(그리고 인스턴스 머티리얼
+        // 누수). MaterialPropertyBlock 은 렌더러 단위 오버라이드라 둘 다 피한다.
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private MaterialPropertyBlock _tintBlock;
+        private Renderer[] _tintTargets;
+        private float _lastTint = -1f;
+
         public void SetSpawnVfxPrefab(GameObject prefab)
         {
             spawnVfxPrefab = prefab;
@@ -17,17 +27,71 @@ namespace Wassup.Battle.Effects
         public void Bind(Entity entity)
         {
             Entity = entity;
+            // 파티클(스폰 VFX)은 제외한다 — 틴트는 «물건» 의 색이지 연출의 색이 아니다.
+            // 그래서 여기서 한 번만 모은다(스폰 VFX 가 자식으로 붙기 **전**).
+            _tintTargets = GetComponentsInChildren<MeshRenderer>(true);
             SpawnVfx();
+        }
+
+        // t01: 0 = 갓 놓임 · 1 = 수명 끝. peak 가 흰색이면 아무것도 하지 않는다(무회귀).
+        public void SetFuseTint(Color peak, float t01)
+        {
+            if (_tintTargets == null || _tintTargets.Length == 0) return;
+            if (peak == Color.white) return;
+            float t = Mathf.Clamp01(t01);
+            // 눈에 띄는 변화만 다시 쓴다 — 매 프레임 SetPropertyBlock 은 불필요한 비용이다.
+            if (_lastTint >= 0f && Mathf.Abs(t - _lastTint) < 0.01f) return;
+            _lastTint = t;
+
+            var c = Color.Lerp(Color.white, peak, t);
+            _tintBlock ??= new MaterialPropertyBlock();
+            for (int i = 0; i < _tintTargets.Length; i++)
+            {
+                var r = _tintTargets[i];
+                if (r == null) continue;
+                r.GetPropertyBlock(_tintBlock);
+                _tintBlock.SetColor(BaseColorId, c); // URP Lit
+                _tintBlock.SetColor(ColorId, c);     // 구 파이프라인 이름도 같이 — 둘 다 있는 머티리얼이다
+                r.SetPropertyBlock(_tintBlock);
+            }
         }
 
         public void OnDestroyed(GameObject vfxPrefab)
         {
             if (vfxPrefab != null)
-                Instantiate(vfxPrefab, transform.position, Quaternion.identity);
+            {
+                // ⚠ 파괴 VFX 는 **부모 없이** 뜬다(설치물이 곧 사라지므로 자식으로 달 수 없다).
+                // 그래서 스스로 치우지 않으면 판에 영구히 쌓인다 — 실측으로 폭발 VFX 루트가
+                // 42개까지 누적됐고, 화면에서는 「터졌는데 안 사라진다」로 읽혔다.
+                // 벤더 VFX 는 stopAction 이 None 이라 자기소멸을 기대할 수 없다.
+                var fx = Instantiate(vfxPrefab, transform.position, Quaternion.identity);
+                Destroy(fx, EstimateVfxLifetime(fx));
+            }
             else
+            {
                 SpawnProceduralDestroyVfx(transform.position);
+            }
 
             Destroy(gameObject);
+        }
+
+        // 프리팹이 다 재생되는 데 걸리는 시간의 상한. 파티클마다 duration + 최대 수명 +
+        // 최대 지연을 더해 가장 긴 것을 고른다. 파티클이 없으면 짧은 기본값.
+        private static float EstimateVfxLifetime(GameObject instance)
+        {
+            const float fallback = 2f;
+            const float cap = 12f;
+            if (instance == null) return fallback;
+            var systems = instance.GetComponentsInChildren<ParticleSystem>(true);
+            float longest = 0f;
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var main = systems[i].main;
+                float total = main.duration + main.startLifetime.constantMax + main.startDelay.constantMax;
+                if (total > longest) longest = total;
+            }
+            if (longest <= 0f) return fallback;
+            return Mathf.Min(longest + 0.5f, cap);
         }
 
         private void SpawnVfx()

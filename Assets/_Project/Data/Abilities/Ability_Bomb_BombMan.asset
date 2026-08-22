@@ -13,12 +13,9 @@ MonoBehaviour:
   m_Name: Ability_Bomb_BombMan
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BombThrowAbility
   id: bomb_bomb_man
-  landingTiles: 3
   travelSec: 1
   fuseSec: 1
   aoeTileRange: 1
   aoeTargetCap: 3
   arcHeight: 0.7
   damage: 60
-  sleepSec: 2.5
-  stunSec: 1.5

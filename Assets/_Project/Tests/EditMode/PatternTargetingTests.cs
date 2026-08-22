@@ -20,6 +20,61 @@ namespace Wassup.Tests.EditMode
             return PatternTargeting.Select(na, rule, fireCount, Grid);
         }
 
+        // bomb-barrel-on-place unit 3 — Nearest 전용 진입점(시전자 칸이 필요하다).
+        private static int SelectNear(int2[] cells, int2 casterCell)
+        {
+            using var na = new NativeArray<int2>(cells, Allocator.Temp);
+            return PatternTargeting.Select(na, PatternSelectionRule.Nearest, fireCount: 0, Grid, casterCell);
+        }
+
+        [Test]
+        public void Nearest_PicksTheClosestCandidate()
+        {
+            var cells = new[] { new int2(8, 8), new int2(3, 3), new int2(1, 5) };
+            Assert.AreEqual(1, SelectNear(cells, new int2(2, 2)), "체비셰프로 가장 가까운 칸");
+        }
+
+        [Test]
+        public void Nearest_IsIndependentOfSnapshotOrder()
+        {
+            var a = new[] { new int2(8, 8), new int2(3, 3), new int2(1, 5) };
+            var b = new[] { new int2(1, 5), new int2(8, 8), new int2(3, 3) };
+            Assert.AreEqual(a[SelectNear(a, new int2(2, 2))], b[SelectNear(b, new int2(2, 2))],
+                "청크 순서가 흔들려도 같은 칸이 뽑혀야 리플레이가 성립한다");
+        }
+
+        [Test]
+        public void Nearest_TieBreaksByRowMajorKey_LikeTheOtherRules()
+        {
+            // (1,2)·(3,2) 둘 다 시전자(2,2)에서 체비셰프 1. row-major 키가 작은 (1,2)가 이긴다.
+            var cells = new[] { new int2(3, 2), new int2(1, 2) };
+            Assert.AreEqual(1, SelectNear(cells, new int2(2, 2)));
+        }
+
+        [Test]
+        public void Nearest_EmptyPool_ReturnsMinusOne()
+        {
+            Assert.AreEqual(-1, SelectNear(new int2[0], new int2(2, 2)));
+        }
+
+        // ⚠ 회귀 핀 — casterCell 파라미터가 붙었다고 기존 두 규칙의 결과가 바뀌면 안 된다.
+        // 그 둘은 이 인자를 읽지 않으므로 어떤 값을 넣어도 같은 결과여야 한다.
+        [Test]
+        public void ExistingRules_IgnoreCasterCell()
+        {
+            var cells = new[] { new int2(1, 1), new int2(5, 5), new int2(2, 9) };
+            using var na = new NativeArray<int2>(cells, Allocator.Temp);
+            for (int fire = 0; fire < 6; fire++)
+            {
+                foreach (var rule in new[] { PatternSelectionRule.RoundRobin, PatternSelectionRule.DeterministicShuffle })
+                {
+                    int baseline = PatternTargeting.Select(na, rule, fire, Grid);
+                    Assert.AreEqual(baseline, PatternTargeting.Select(na, rule, fire, Grid, new int2(0, 0)));
+                    Assert.AreEqual(baseline, PatternTargeting.Select(na, rule, fire, Grid, new int2(15, 15)));
+                }
+            }
+        }
+
         [Test]
         public void EmptyPool_ReturnsMinusOne()
         {

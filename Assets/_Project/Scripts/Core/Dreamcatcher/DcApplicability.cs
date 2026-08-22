@@ -57,9 +57,15 @@ namespace Wassup.Core
     public static class DcApplicability
     {
         // 이 host 가 **자기 공격의 대상**을 확정해 주는가. Standard/FacingVolley 는
-        // RESOLVE 의 bestTarget 을 주고, BombThrow(blind bombardment)·HazardCast
-        // (attackRange 0)는 주지 못한다 — 후자에서 대상이 필요한 payload 는 스스로
-        // 골라야 하고(unit 2 폴백), 폴백 반경이 없으면 발동할 수 없다.
+        // RESOLVE 의 bestTarget 을 주고, BombThrow·HazardCast(attackRange 0)는 주지
+        // 못한다 — 후자에서 대상이 필요한 payload 는 스스로 골라야 하고(unit 2 폴백),
+        // 폴백 반경이 없으면 발동할 수 없다.
+        //
+        // ⚠ bomb-thrower-defender unit 9 이후 폭탄맨은 **자기 타겟을 고른다**(최근접 적의
+        // 칸에 던진다). 그래도 여기는 false 로 남는다 — 이 술어가 묻는 것은 「host 가 대상을
+        // 아는가」가 아니라 「host 가 그 대상을 **dc arm 에 건네주는가**」이고, 폭탄 발사
+        // 경로의 arm 은 여전히 대상을 받지 않고 스스로 고르기 때문이다. true 로 바꾸려면
+        // arm 배선을 먼저 고쳐야 하며, 안 그러면 「부착 가능 ⇒ 발동」 계약이 깨진다.
         public static bool HostProvidesTarget(DcHostArchetype archetype)
             => archetype == DcHostArchetype.Standard || archetype == DcHostArchetype.FacingVolley;
 

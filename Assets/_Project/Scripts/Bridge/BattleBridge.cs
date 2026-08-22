@@ -515,6 +515,9 @@ namespace Wassup.Bridge
         {
             public SpawnEntry entry;
             public int laneIndex;
+            // duel-route-tours unit 1 — 이 스폰을 만든 컨셉 슬롯의 경로 지정. -1 = 무지정.
+            // 레거시 덱 스폰(생성 웨이브 미사용 경로)은 컨셉이 없어 -1 로 남는다.
+            public int pathIndex;
         }
 
         private void Awake()
@@ -1399,6 +1402,7 @@ namespace Wassup.Bridge
                         entry = ActiveDeck.spawns[i],
                         laneIndex = WavePatternGenerator.EffectiveSpawnIndex(
                             ActiveDeck.spawns[i].spawnIndex, i, laneCount),
+                        pathIndex = -1,   // 레거시 덱 스폰은 컨셉이 없다
                     });
             }
             _startTime = Time.time;
@@ -2309,6 +2313,7 @@ namespace Wassup.Bridge
                 {
                     entry = entries[i].entry,
                     laneIndex = entries[i].laneIndex,
+                    pathIndex = entries[i].pathIndex,
                 });
 
             // waypoint-routing unit 7 — 실제 pending 과 **같은 상세 펼침 결과**에서
@@ -2887,6 +2892,7 @@ namespace Wassup.Bridge
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
             SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러(연출·로그 전용)
+            SyncBlockingHazardFuseTint(); // bomb-barrel-on-place unit 6 — 남은 수명 → 뷰 틴트
             // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
             // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
@@ -4704,11 +4710,12 @@ namespace Wassup.Bridge
                 priorityDamageMul = req.priorityDamageMul,
                 // dreamcatcher-heavy-strike unit 0 — 강공 전-victim 배율 verbatim 복사(기본 0=inert).
                 heavyDamageMul = req.heavyDamageMul,
-                // bomb-thrower-defender unit 2 — TileAoe cap/CC + 뷰 변종, verbatim(기본 0=레거시).
+                // bomb-thrower-defender unit 2 — TileAoe cap/CC verbatim(기본 0=레거시).
                 aoeTargetCap = req.aoeTargetCap,
                 ccKind = req.ccKind,
                 ccDuration = req.ccDuration,
-                bombType = req.bombType,
+                // bomb-barrel-on-place unit 2 — SpawnBlocker 가 세울 설치물 index, verbatim.
+                blockerDataIndex = req.blockerDataIndex,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {
@@ -5669,6 +5676,9 @@ namespace Wassup.Bridge
                 // Directional 과 같은 페이로드 짝이다 — 둘 다 «비행 중 스치는 것을 때리고
                 // 비행이 끝나면 소멸» 이라 착탄 지점 개념이 없다.
                 ProjectileFlightMode.Boomerang => (MovementKind.BoomerangReturn, PayloadKind.PathHit),
+                // bomb-barrel-on-place unit 3 — 곡사 × **설치물 세우기**. 궤적은 위
+                // BallisticToCell 과 같고 착탄에서 하는 일만 다르다(피해 ↔ 물건).
+                ProjectileFlightMode.BallisticBlocker => (MovementKind.BallisticArcToPoint, PayloadKind.SpawnBlocker),
                 _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
             };
 
@@ -6887,18 +6897,16 @@ namespace Wassup.Bridge
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
-            // defender-ability-assets unit 2 — 폭탄병은 레인도 거짓말(착지 셀만 때린다) →
-            // 조준 페이즈(SetAimGuide)와 같은 착지 후보 4셀. 나머지 facing 유닛은 레인 유지.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
+            // bomb-thrower-defender unit 9 — 폭탄병 전용 분기(착지 후보 4셀)는 삭제됐다.
+            // 이제 최근접 적을 노리므로 네모 사거리가 참말이다 — 다른 유닛과 같은 줄로 떨어진다.
             // summon-patrol-defender unit 9 — 소환사 전용 분기를 **삭제**했다.
             // unit 5 는 "소환사에게 공격범위는 거짓말"이라며 leash 반경을 walk 셀에 스냅해
             // 따로 그렸는데, 그러면 프리뷰가 그리는 박스와 순찰병이 지키는 박스와 소환
             // 게이트가 보는 박스가 셋으로 갈린다(실제로 갈려 있었다). 이제 소환사의
             // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
-            var bombPreview = unit.GetAbility<BombThrowAbility>();
-            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
-            else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
+            if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
@@ -6912,16 +6920,6 @@ namespace Wassup.Bridge
         public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
         {
             if (tilemapMapView == null || unit == null) return;
-            var bombAim = unit.GetAbility<BombThrowAbility>();
-            if (bombAim != null)
-            {
-                // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
-                // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
-                PaintLandingCells(center, bombAim.landingTiles, selected, 1f, aimStyle: true);
-                SetRangeOwner(RangeDisplayOwner.PlacementAim);
-                tilemapMapView.ClearAimArrows();
-                return;
-            }
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             // unit 4 — 조준 표시는 세기 배율을 쓰지 않는다(전부 불투명). 미선택/선택은 알파가
             // 아니라 **몇 개를 그리느냐**로 갈린다: 미선택=4레인 전부, 선택=그 레인 하나만.
@@ -6981,20 +6979,6 @@ namespace Wassup.Bridge
                     _laneDirScratch.Add(dir);
                 }
             }
-        }
-
-        // bomb-thrower-defender unit 8 — 폭탄 착지 후보 셀. 미선택이면 4 cardinal 착지 셀
-        // (center±N) 전부 dim, 선택되면 그 방향 착지 셀 1개만. PaintLanes 의 착지-셀 판.
-        private void PaintLandingCells(Vector2Int center, int landingTiles, Vector2Int? facing, float alphaMul, bool aimStyle)
-        {
-            if (landingTiles <= 0) return;
-            _laneCellScratch.Clear();
-            if (facing.HasValue)
-                _laneCellScratch.Add(center + facing.Value * landingTiles);
-            else
-                for (int i = 0; i < AimCardinals.Length; i++)
-                    _laneCellScratch.Add(center + AimCardinals[i] * landingTiles);
-            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul, aimStyle);
         }
 
         // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
@@ -7266,26 +7250,20 @@ namespace Wassup.Bridge
                     filter = shieldAbility.filter,
                 });
             }
-            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크. RNG 는 캐스터별 독립
-            // stream(배치 셀 해시로 decorrelate → order-independent 결정론, 계약 6).
+            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크.
             // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재 + 유효 수치.
+            // unit 10 — 캐스터별 RNG 는 3종 무작위와 함께 은퇴했다(폭탄은 피해 한 종).
             var bombAbility = unitData.GetAbility<BombThrowAbility>();
-            if (bombAbility != null && bombAbility.landingTiles > 0 && bombAbility.travelSec > 0f)
+            if (bombAbility != null && bombAbility.travelSec > 0f)
             {
-                uint cellHash = (uint)(cell.x * 73856093) ^ (uint)(cell.y * 19349663);
-                uint bombSeed = math.max(1u, (uint)Wassup.Core.MatchSeed.DeriveBombSeed(_matchSeed) ^ cellHash);
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.BombLauncherState
                 {
-                    landingTiles = bombAbility.landingTiles,
                     travelSec = bombAbility.travelSec,
                     fuseSec = bombAbility.fuseSec,
                     aoeTileRange = bombAbility.aoeTileRange,
                     aoeTargetCap = bombAbility.aoeTargetCap,
                     arcHeight = bombAbility.arcHeight,
                     dmgBombDamage = bombAbility.damage,
-                    sleepSec = bombAbility.sleepSec,
-                    stunSec = bombAbility.stunSec,
-                    rng = new Unity.Mathematics.Random(bombSeed),
                 });
             }
             // summon-patrol-defender unit 3 — 소환 능력 bake. 쿨다운은 AttackState 재사용이라
@@ -7910,7 +7888,12 @@ namespace Wassup.Bridge
                 return Unity.Entities.Entity.Null;
 
             int dataIndex = RegisterBlockingHazardSO(so);
-            var entity = Wassup.Battle.Effects.EffectSpawner.SpawnBlockingHazard(_em, so, cell, dataIndex);
+            // bomb-barrel-on-place unit 0 — 폭발 탄 SO→index 는 레지스트리를 가진 여기서 푼다.
+            // sim 은 index 만 나른다(해저드 캐스트·투사체와 같은 관례).
+            int explodeIndex = so.explodeProjectile != null
+                ? GetOrCreateProjectileDataIndex(so.explodeProjectile)
+                : -1;
+            var entity = Wassup.Battle.Effects.EffectSpawner.SpawnBlockingHazard(_em, so, cell, dataIndex, explodeIndex);
             if (entity == Unity.Entities.Entity.Null)
             {
                 RecordBlockingHazard(so, cell, "spawn_rejected", "EffectSpawner rejected spawn");
@@ -7935,6 +7918,11 @@ namespace Wassup.Bridge
             var presenter = visual.GetComponent<BlockingHazardPresenter>();
             if (presenter == null)
                 presenter = visual.AddComponent<BlockingHazardPresenter>();
+            // ⚠ SO 의 `spawnVfxPrefab` 은 여기서 넘기지 않으면 **죽은 저작**이다.
+            // 프리젠터는 자기 직렬화 필드만 보고, 비어 있으면 코드로 만든 «떨어지는 돌»
+            // 폴백을 돌린다 — 그래서 폭탄 배럴이 서는데 돌덩이가 쏟아졌다.
+            // (기존 방벽도 SO 에 스폰 VFX 를 저작해 두고 같은 이유로 폴백을 쓰고 있었다.)
+            presenter.SetSpawnVfxPrefab(so.spawnVfxPrefab);
             presenter.Bind(entity);
             _blockingHazardVisualMap[entity] = visual;
             return entity;
@@ -8129,7 +8117,12 @@ namespace Wassup.Bridge
             if (!_hazardSpawnRequestQueue.IsCreated) return;
             while (_hazardSpawnRequestQueue.TryDequeue(out var req))
             {
-                if (!_em.Exists(req.caster)) continue;
+                // bomb-barrel-on-place unit 2 — 시전자 생존 검사는 **존 해저드에만** 건다.
+                // 존은 시전자에서 통행 층을 도출하므로 시전자가 사라지면 계약이 비지만,
+                // 길막 설치물은 모양·체력·수명이 전부 SO 라 시전자를 안 쓴다. 그리고
+                // 배럴은 비행 중 폭탄맨이 죽어도 서야 한다(spec 계약 7 — 투사체 자립).
+                // 착탄 스폰은 owner 가 아예 Null 일 수도 있다(설치물 폭발 경로).
+                if (req.kind != HazardCastKind.Blocking && !_em.Exists(req.caster)) continue;
 
                 if (req.kind == HazardCastKind.Zone)
                 {
@@ -8155,6 +8148,38 @@ namespace Wassup.Bridge
                     if (so == null) continue;
                     SpawnBlockingHazardWithVisual(so, req.centerCell);
                 }
+            }
+        }
+
+        // bomb-barrel-on-place unit 6 — 「언제 터지나」를 물건의 색으로 말한다.
+        // sim 은 남은 수명만 갖고 있고 색은 순수 프레젠테이션이라, 여기서 sim→뷰로 흘린다
+        // (`SyncGoalStability` 와 같은 자리·같은 성격 — 게임 상태를 갱신하지 않는다).
+        //
+        // 수명이 무한(0 이하 저작)이면 「다해 간다」가 정의되지 않으므로 건너뛴다.
+        private void SyncBlockingHazardFuseTint()
+        {
+            if (_blockingHazardVisualMap.Count == 0 || _em == null) return;
+            foreach (var pair in _blockingHazardVisualMap)
+            {
+                var visual = pair.Value;
+                if (visual == null) continue;
+                var entity = pair.Key;
+                if (!_em.Exists(entity)) continue;
+                if (!_em.HasComponent<Wassup.Battle.Effects.BlockingHazard>(entity)) continue;
+                if (!_em.HasComponent<Wassup.Battle.Effects.Obstacle>(entity)) continue;
+
+                int idx = _em.GetComponentData<Wassup.Battle.Effects.BlockingHazard>(entity).hazardSoIndex;
+                if (idx < 0 || idx >= _blockingHazardSoRegistry.Count) continue;
+                var so = _blockingHazardSoRegistry[idx];
+                if (so == null || so.lifetime <= 0f) continue;
+                if (so.fuseTintColor == Color.white) continue;
+
+                // 곡선은 순수 함수가 소유한다(제약 10) — 여기는 값을 읽어 넘기는 자리다.
+                float remaining = _em.GetComponentData<Wassup.Battle.Effects.Obstacle>(entity).remainingLife;
+                float t = Wassup.Battle.Effects.BlockerFuse.Progress(remaining, so.lifetime, so.fuseTintExponent);
+
+                var presenter = visual.GetComponent<BlockingHazardPresenter>();
+                if (presenter != null) presenter.SetFuseTint(so.fuseTintColor, t);
             }
         }
 
@@ -9025,6 +9050,11 @@ namespace Wassup.Bridge
                 splashRadius = barrel.splashRadius,
                 splashDamageMul = barrel.splashDamageMul,
                 dataIndex = barrelDataIndex,
+                // bomb-barrel-on-place unit 3 — SpawnBlocker 탄이 세울 설치물. SO→index 해석은
+                // 레지스트리를 가진 여기서만 한다(sim 은 index 만 나른다).
+                blockerDataIndex = barrel.spawnBlocker != null
+                    ? RegisterBlockingHazardSO(barrel.spawnBlocker)
+                    : -1,
                 owner = owner,
                 // 진영은 host 에서 도출한다(계약 7) — 패턴 SO 에 faction 필드 없음.
                 targetFaction = hostIsEnemy
@@ -9082,7 +9112,8 @@ namespace Wassup.Bridge
             // waypoint-routing unit 9 — 레인 기본 경로는 **래퍼가 결정한다.** 위 가드가 클램프한
             // spawnIndex 를 쓰므로 본문은 가드를 다시 갖지 않는다(★ 규약 유지). 본문은 plain int
             // 하나만 받고, 분열 경로는 레인이 없으므로 기본값 -1 = 현행(적 SO 지정만 본다).
-            CreateEnemyEntity(entry.unitType, spawnWorldPos, _generatedMap.RouteForSpawn(spawnIndex));
+            CreateEnemyEntity(entry.unitType, spawnWorldPos,
+                _generatedMap.RouteForSpawn(spawnIndex), pending.pathIndex);
         }
 
         // 적 엔티티 조립의 단일 지점. 호출처 2곳 — 레인 스폰(위)과 분열(DrainEnemyKilledEvents).
@@ -9091,8 +9122,11 @@ namespace Wassup.Bridge
         // 필요해서, 복제하면 다음에 적 스폰에 뭔가 추가될 때 한쪽만 갱신된다.
         // waypoint-routing unit 9 — laneDefaultPathIndex 는 «이 레인에서 나온 적의 기본 경로».
         // 래퍼가 결정해 넘기고, 분열 호출처는 레인이 없으므로 기본값 -1(현행 = 적 SO 지정만).
+        // duel-route-tours unit 1 — conceptPathIndex 는 «이번 편성이 지정한 경로»(컨셉 슬롯).
+        // 분열 자식은 웨이브 편성 밖이라 역시 -1 이다 — 부모의 경로를 물려주지 않는다.
+        // 물려주면 분열 자식이 부모의 남은 경유점이 아니라 **처음부터** 그 투어를 다시 돈다.
         private Entity CreateEnemyEntity(Wassup.Data.AttackUnitData unitType, Vector3 spawnWorldPos,
-            int laneDefaultPathIndex = -1)
+            int laneDefaultPathIndex = -1, int conceptPathIndex = -1)
         {
             if (unitType.visualMaterial == null)
             {
@@ -9241,8 +9275,9 @@ namespace Wassup.Bridge
             // unit 9 — 경로 선택 축이 둘이 됐다(계약 10): 적 SO 지정 = 종의 정체성,
             // 레인 기본 = 맵의 성질. 겹치면 좁은 쪽(개체)이 이긴다. 우선순위는 순수 함수가
             // 소유해 EditMode 로 고정한다 — 여기서 삼항으로 풀면 계약이 코드에만 남는다.
+            // duel-route-tours unit 1 — 그 사이에 웨이브 컨셉(이번 편성의 성격)이 들어왔다.
             int waypointPathIndex = WaypointRouting.ResolvePathIndex(
-                unitType.waypointPathIndex, laneDefaultPathIndex);
+                unitType.waypointPathIndex, conceptPathIndex, laneDefaultPathIndex);
             if (waypointPathIndex >= 0)
             {
                 bool validPath = waypointPathIndex < _generatedMap.WaypointPathCount;

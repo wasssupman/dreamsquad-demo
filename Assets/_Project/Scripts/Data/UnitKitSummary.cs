@@ -129,6 +129,13 @@ namespace Wassup.Data
                                 ? $"배치 시 {aimWord} 충격파 · 밀어냄"
                                 : $"배치 시 {aimWord} 일제 사격";
                         }
+                        // bomb-barrel-on-place unit 5 — **같은 payload 의 세 번째 그림**이다.
+                        // 위 둘(방향 발사·미사일 낙하)과 달리 이 탄은 착탄해서 피해를 주지 않고
+                        // **물건을 세운다** — 궤적이 아니라 착탄에서 하는 일로 갈라야 한다.
+                        // 안 가르면 배럴 투척이 「주변 2타일 적 전원에게 미사일 낙하」로 소개된다.
+                        if (m.payload.pattern != null && m.payload.pattern.barrel != null
+                            && m.payload.pattern.barrel.flightMode == ProjectileFlightMode.BallisticBlocker)
+                            return "배치 시 가까운 적에게 폭탄 배럴";
                         // 반경은 패턴이 소유한다(`scopeTileRange`). 패턴 미배선이면 bake 가 loud
                         // 로 거절하므로 여기선 숫자 없이 낸다.
                         return m.payload.pattern != null && m.payload.pattern.scopeTileRange > 0

@@ -10,27 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 57583d0eae98a4723adcd8b7082d6d7d, type: 3}
-  m_Name: Projectile_Bomb
+  m_Name: Projectile_Barrel
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
-  id: bomb
-  speed: 0
+  id: barrel
+  speed: 6
   hitThreshold: 0.3
-  visualScale: 0.5
+  visualScale: 1.15
   visualHeightOffset: 0.25
-  projectilePrefab: {fileID: 166067092680371605, guid: 0009974c05b615e4ea4368403ebdc0bf, type: 3}
-  hitPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
+  projectilePrefab: {fileID: 919132149155446097, guid: c7d9d5faeed54524080fbc6171cda46c, type: 3}
+  hitPrefab: {fileID: 0}
   facing: 3
-  spinSpeed: 540
+  spinSpeed: 420
   preserveVfxColors: 0
-  tintColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
   emissionMultiplier: 1
   scaleJitter: 0
   hueJitter: 0
   rotationJitter: 0
-  textureVariants:
-  - {fileID: 2800000, guid: 40d49f0becacc814ab0163d9e3898ab4, type: 3}
-  selectMode: 2
-  hitVfxLifetime: 2.5
+  textureVariants: []
+  selectMode: 0
+  hitVfxLifetime: 0
   hitVfxScale: 1
   castPrefab: {fileID: 0}
   castVfxLifetime: 0
@@ -39,16 +38,16 @@ MonoBehaviour:
   onHitDuration: 0
   splashRadius: 0
   splashDamageMul: 0.5
-  flightMode: 0
-  arcHeight: 0
-  impactTileRange: 1
-  minFlightTime: 0.3
+  flightMode: 7
+  arcHeight: 3
+  impactTileRange: 0
+  minFlightTime: 0.35
   pierceCount: 1
   rehitCooldownSec: 0
   knockbackDistance: 0
   knockbackDuration: 0
   bezierLateral: 1.2
-  spawnBlocker: {fileID: 0}
+  spawnBlocker: {fileID: 11400000, guid: 507be8c8bd39342a6ade6bfdc9206fe9, type: 2}
   bezierForwardBias: 0.35
   dropHeight: 6
   fallPortion: 1

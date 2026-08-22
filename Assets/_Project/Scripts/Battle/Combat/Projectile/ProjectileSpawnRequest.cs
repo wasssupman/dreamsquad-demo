@@ -78,7 +78,10 @@ namespace Wassup.Battle.Combat.Projectile
         public int aoeTargetCap;
         public byte ccKind;
         public float ccDuration;
-        public byte bombType;
+
+        // bomb-barrel-on-place unit 2 — PayloadKind.SpawnBlocker 가 세울 길막 설치물의
+        // 레지스트리 index(브리지가 SO→index 로 풀어 싣는다). -1 = 미배선.
+        public int blockerDataIndex;
 
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Copied verbatim onto ProjectileState by the drain. Defaults 0 = no-op.
