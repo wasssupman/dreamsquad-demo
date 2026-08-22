@@ -67,6 +67,10 @@
 5. **`SimEntityId` 발급은 `AttachSimEntityId` 한 곳뿐.** 사후 부여·재사용 금지. 부착 대상은
    「타겟 후보가 될 수 있는 것」(`FactionTag`+`Health`+`LocalTransform`) 전부 + 투사체.
    → **갱신 트리거**: `FactionTag` 를 붙이는 스폰 경로를 새로 만들면 여기도 붙여라.
+   ⚠ 길막 해저드만 예외적으로 **생성 후 부착**이다(`EffectSpawner.SpawnBlockingHazard` 가
+   엔티티를 만들고 Bridge 가 돌려받아 붙인다). 그 사이엔 아무 시스템도 안 도는 같은
+   managed 호출 구간이라 지금은 안전하지만, **둘 사이에 ECB playback 이나 시스템 갱신을
+   끼워 넣으면** ID 없는 타겟 후보가 한순간 존재하게 된다.
 6. **`ThreatTable.Leader` 는 런타임 소비자가 0 이다**(누적만 돈다). 동률을 표 순서로 가르게
    해 뒀다. 되살릴 계획이 없으면 은퇴 후보.
 
