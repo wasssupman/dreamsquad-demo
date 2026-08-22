@@ -11,7 +11,7 @@
 | 1 | `57bf6518` | 동률·난수의 축을 `SimEntityId` 로 갈아끼운다 |
 | 2 | `f682c5da` | 고정 스텝 하네스(`StepOneTick`) |
 | 3 | `93b04b70` | 판 조건 물질화 + `configHash` |
-| 4 | (이 커밋) | `LegacyTraceV0` 골든 하네스 + 코퍼스 7종 |
+| 4 | `eb4fe9c2` | `LegacyTraceV0` 골든 하네스 + 코퍼스 7종 |
 
 **푸시 안 됨** — 원격 반영은 사용자 승인제(CLAUDE.md).
 
