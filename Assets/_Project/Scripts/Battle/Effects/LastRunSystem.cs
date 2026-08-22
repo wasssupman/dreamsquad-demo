@@ -12,6 +12,11 @@ namespace Wassup.Battle.Effects
 {
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   IncomingDamage 인박스에 append 하므로 소비자보다 앞이어야 한다 — 같은 계약의
+    //   `HeatAccrualSystem` 이 이미 같은 핀을 갖는다.
+    [UpdateBefore(typeof(Wassup.Battle.Units.DamageApplicationSystem))]
     public partial struct LastRunSystem : ISystem
     {
         [BurstCompile]

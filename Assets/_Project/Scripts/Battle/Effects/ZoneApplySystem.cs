@@ -12,6 +12,10 @@ namespace Wassup.Battle.Effects
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(HazardLifetimeSystem))]
     [UpdateBefore(typeof(CcApplySystem))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   모디파이어 이벤트 생산자 중 소비자보다 **앞**에 있는 셋 중 하나(같은 프레임 반영).
+    [UpdateBefore(typeof(Wassup.Battle.Effects.ModifierApplySystem))]
     public partial struct ZoneApplySystem : ISystem
     {
         [BurstCompile]

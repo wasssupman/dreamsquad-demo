@@ -11,6 +11,11 @@ namespace Wassup.Battle.Effects
 {
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   스택 이벤트 **생산자**이고 소비자(`ModifierApplySystem`)보다 뒤라, 여기서 쌓은
+    //   피로도는 **다음 프레임**에 반영된다. 그 1프레임이 현행 동작이므로 그대로 박제한다.
+    [UpdateAfter(typeof(Wassup.Battle.Effects.ModifierApplySystem))]
     public partial struct FatigueAccrualSystem : ISystem
     {
         [BurstCompile]
