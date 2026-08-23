@@ -35,6 +35,10 @@ rev 2 에서 per-entity `Health` 정본으로 바뀌었다)도 정리한다.
 **3. 힐 넣는 자리는 `EnqueueGoalTowerDamage` 의 형제.** `DrainEnemyKilledEvents` 안에서
 `EnqueueGoalTowerHeal(killedType.awakeningReward × 배율)`. 그 루프는 이미 `killedType`(SO 원본)을
 들고 있어 새 조회가 없다.
+⚠ **단 대상 선택은 형제와 다르다.** `EnqueueGoalTowerDamage` 는 「위치 최근접 1기」인데, 힐은
+**살아있는 마음 전체**에 넣는다(unit 0 계약). 피해는 「어느 마음이 맞았나」가 사건의 일부지만
+회복은 그렇지 않고, 최근접으로 두면 2골 사고 시 만피 마음이 흡수해 clamp 로 소멸시킨다.
+마음 1개에서는 두 규칙이 동치라 **테스트로 구분되지 않으므로** 계약으로 고정한다.
 
 **4. ⚠ SO 원값을 쓴다.** `evt.awakeningReward` 는 「살찌운 제물」 카드의 배율이 **이미 곱해진**
 baked 값이다. 그걸 쓰면 카드 하나가 각성 충전과 스트레스 회복 **두 축**을 겸한다.

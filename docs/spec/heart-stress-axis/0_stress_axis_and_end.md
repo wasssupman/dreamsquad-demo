@@ -5,20 +5,21 @@
 **마음 체력을 스트레스로 읽고, 그 값이 100 이 되면 판을 끝낸다.** 이 spec 의 토대이고,
 「뒤집는 계약」 1·2 가 여기서 실행된다. 화면은 아직 안 바뀐다(unit 1·3) — 이 unit 은 **규칙**만 세운다.
 
-곁들여 **마음이 1개임을 저작 단계에서 보장**한다. 명제 10 은 지금 데이터에서 참이지만
-(`MapDocument` 15종 전부 `goals` 길이 1) 기계는 1~4 를 허용하므로, 가드가 없으면 누군가 2개를
-찍는 순간 「첫 붕괴가 끝인가 마지막 붕괴가 끝인가」가 조용히 미정의가 된다.
+곁들여 **「첫 마음 파괴가 종료다」를 코드에 고정**한다. 명제 10(마음 1개)은 지금 데이터에서
+참이지만 **코드 불변식이 아니다** — 그리고 마음이 1개인 동안은 「첫 붕괴」와 「마지막 붕괴」가
+**관측 불가능하게 동일**해서, 어느 쪽으로 구현하든 테스트도 Play 도 통과한다. 「마지막」으로
+구현되면 첫 붕괴가 유출 배수구를 열어 **명제 1 이 조용히 깨진다.**
 
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Core/StressMath.cs` **(신설)** — 순수 static
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncGoalStability` 붕괴 분기 · `EndMatch` 3번째 경로
-- `Assets/_Project/Scripts/Data/MapGrid/MapDocument.cs` (또는 `StructureAuthoringRules`) — 마음 1개 저작 가드
 - `Assets/_Project/Tests/EditMode/StressMathTests.cs` **(신설)**
 - **테스트 개정 3건** (계약이 뒤집혔으므로 단언도 뒤집는다):
   - `Tests/PlayMode/GoalStabilityTest.cs` — 「마음이 무너져도 Result 가 아니다」 5초 감시 → **반대로**
   - `Tests/EditMode/StructureSpawnAndBreachTests.cs` `OneTowerDestroyed_...` — `_resultShown == false` 단언
   - 같은 파일 `MirrorScalar_ZeroOnBreachFrame_ThenTracksSurvivingCore` — 붕괴 다음 프레임에 생존 골 추적
+  - **같은 파일에 단언 신설** — 그 픽스처는 이미 타워 2기((9,2)·(9,5))를 세운다(`:39`)
 
 ## 구현
 
@@ -40,10 +41,22 @@
 early-return 한다 — 같은 프레임에 두 번 불릴 여지가 없다. `stress_full` 은 `CanSubmit` 게이트를
 타지 않는다(시스템 종료이지 유저 제출이 아니다).
 
-**5. 저작 가드.** 방어 진영 마음이 **정확히 1개**가 아니면 저작 에러. `battle-structures` 의
-`StructureAuthoringRules.ValidateStructures` 가 이미 「적 마음 2+ = 에러」를 세운 선례라 같은 자리에
-같은 문법으로 붙인다. 런타임 폴백은 두지 않는다 — **표현 불가능한 상태로 만드는 쪽**이 이 프로젝트의
-관용구다(battle-structures 「모드 판정」).
+**5. ⚠ 저작 하드 에러는 두지 않는다 — 스코프 밖이다.** `goals > 1` 을 `OnValidate` 에서 막고
+싶어지지만, `map-rework` 계약 3 이 **"멀티골 기계(goals[] 슬롯·소비처)는 건드리지 않는다"** 이므로
+이 spec 이 그걸 뒤집으면 제약 9(스코프 엄수) 위반이다. 대신 셋으로 나눈다:
+
+- **계약 문장** (README) — 「종료 = 첫 마음 파괴, `goals` 개수 무관」
+- **런타임 경고 1줄** — `SpawnStructureEntities` 의 타워 루프 뒤, 개수가 1 을 넘으면
+  `Debug.LogWarning`. 기계를 안 건드리면서 저작 사고를 표면화한다
+  (`DrainGoalEvents` 의 「폴백 + 경고 1회」 관례와 같은 결)
+- **2타워 단언** — `StructureSpawnAndBreachTests` 픽스처가 **이미 타워 2기를 세운다**(`:39`).
+  어차피 이 파일을 개정하므로, 개정본에 「2기 중 1기 파괴 → **같은 프레임 종료** +
+  `_breachedCells` 가 비어 있음」을 넣으면 「첫 붕괴」가 코드에 고정되고 회귀 불가가 된다
+
+`goals > 1` 저작 가드 자체는 후속 후보로 `map-rework` 에 위임한다.
+
+**6. 회복 대상 규칙 한 줄.** unit 2 가 쓸 계약 — 힐은 **살아있는 마음 전체**에 넣는다.
+마음 1개에선 동치지만 「최근접 하나」로 두면 2골 사고 시 만피 마음이 흡수해 clamp 로 소멸시킨다.
 
 ## 완료 기준
 
@@ -51,6 +64,8 @@ early-return 한다 — 같은 프레임에 두 번 불릴 여지가 없다. `st
 - [ ] `StressMathTests` — 만피=0 · HP0=100 · 반=50 · `max<=0` 폴백 · 음수 클램프
 - [ ] EditMode 전체 완주, **신규 실패 0건** (사전 실패 목록과 대조)
 - [ ] 「붕괴 프레임에 `_goalReachedCount` 가 오르지 않는다」 EditMode 단언 신설
-- [ ] 마음 2개 저작 시 검증 에러 1건 (`StructureAuthoringRules` 테스트)
+- [ ] **2타워 단언 신설** — 1기 파괴 → 같은 프레임 종료 + `_breachedCells` 비어 있음
+      (「첫 붕괴 = 종료」를 코드에 고정. 이게 없으면 「마지막 붕괴」 구현이 조용히 통과한다)
+- [ ] 마음이 2개 스폰되면 런타임 경고 1회 (하드 에러 아님 — 스코프 밖)
 - [ ] Play: 마음을 무방비로 내주면 **그 자리에서 결과 화면**이 뜬다(3분을 안 기다린다)
 - [ ] Play: 결과 화면 총점 = 그때까지 처치 수
