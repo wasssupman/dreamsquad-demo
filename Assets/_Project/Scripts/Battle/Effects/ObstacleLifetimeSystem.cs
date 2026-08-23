@@ -64,6 +64,26 @@ namespace Wassup.Battle.Effects
                     blockedCells.Add(cellsBuffer[i].cell);
             }
 
+            // unit 9 — 판 위의 설치물은 **스스로 닳는다**. 시한(unit 1, 은퇴)이 두 번째 죽음
+            // 경로를 만들었던 것과 달리, 노후화는 그냥 피해다 — 그래서 죽음도 폭발도 여전히
+            // 「부서짐」 하나로 나가고(계약 4), 남은 시간은 체력 바가 이미 말한다(unit 8).
+            //
+            // `IncomingDamage` 는 TRD 2.5.2 의 정본 횡단 채널이고 Effects 가 여기에 쓰는 것은
+            // 기존 관용구다(`DotApplySystem` 선례). `source` 를 **비워 둔다** — 환경 피해는
+            // 귀속이 없다는 뜻이고, 채우면 킬 귀속이 엉뚱한 대상에게 간다.
+            //
+            // ⚠ 이 시스템은 `DamageApplicationSystem` 보다 **앞**에서 돈다(실행 순서 6 vs 36).
+            // 그래서 여기서 적은 피해가 같은 프레임에 정산되고, 노후화로 죽은 프레임에
+            // `BarrelExplosionSystem`(41)이 `DeadTag` 를 본다. 뒤로 옮기면 한 프레임 밀린다.
+            foreach (var (hazard, damage) in
+                     SystemAPI.Query<RefRO<BlockingHazard>, DynamicBuffer<IncomingDamage>>()
+                              .WithNone<DeadTag>())
+            {
+                float decay = hazard.ValueRO.decayPerSec;
+                if (decay <= 0f) continue;
+                damage.Add(new IncomingDamage { amount = decay * dt });
+            }
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }

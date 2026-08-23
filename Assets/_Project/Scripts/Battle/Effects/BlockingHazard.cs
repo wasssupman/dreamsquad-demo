@@ -15,5 +15,10 @@ namespace Wassup.Battle.Effects
         public int explodeTileRange;
         public int explodeTargetCap;
         public int explodeDataIndex;
+
+        // unit 9 — 초당 스스로 닳는 체력. 0 = 안 닳음.
+        // 시한(unit 1, 은퇴)과 다른 점: **문이 하나로 유지된다.** 노후화는 별도의 죽음 경로가
+        // 아니라 그냥 피해라서, 죽음도 폭발도 「부서짐」 하나로 나간다(계약 4).
+        public float decayPerSec;
     }
 }

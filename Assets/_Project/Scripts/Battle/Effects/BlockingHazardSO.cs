@@ -20,11 +20,17 @@ namespace Wassup.Battle.Effects
         [Min(1f)]
         public float maxHp = 100f;
 
-        // unit 7 — 「설치물 수명」 필드는 은퇴했다. 길막 설치물은 **부서져야만** 사라진다.
-        // 시한이 있으면 폭발이 「적이 부순 사건」이 아니라 시계 사건이 되고, 그 시계를
-        // 화면에 알리는 장치(퓨즈 틴트)가 필요해지는데 그 장치도 같이 은퇴했다.
-        // 되살릴 거라면 `ObstacleLifetimeSystem` 의 길막 루프부터 복원해야 한다 —
-        // 필드만 되살리면 저작해도 아무 일이 안 일어난다(조용한 실패).
+        // unit 9 — 판 위에 서 있는 동안 **스스로 닳는** 체력(초당). 0 = 안 닳음.
+        //
+        // unit 7 이 걷어낸 「설치물 수명」의 자리를 대신하되 성격이 다르다. 시한은 **두 번째
+        // 죽음 경로**를 만들어 폭발을 시계 사건으로 바꿨고, 그래서 남은 시간을 알리는 별도
+        // 장치(퓨즈 틴트)가 필요했다. 노후화는 그냥 **피해**라서 죽음도 폭발도 「부서짐」
+        // 하나로 나가고, 남은 시간은 이미 있는 체력 바가 그대로 말한다(unit 8).
+        //
+        // 저작 감각: `maxHp / healthDecayPerSec` = 아무도 안 때렸을 때의 수명(초).
+        [Tooltip("초당 스스로 닳는 체력. 0 = 안 닳음. maxHp 를 이 값으로 나누면 무방비 수명(초).")]
+        [Min(0f)]
+        public float healthDecayPerSec;
 
         [Header("Destruction VFX")]
         [Tooltip("Optional. If set, BattleBridge spawns this on destruction.")]

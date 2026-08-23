@@ -155,6 +155,67 @@ namespace Wassup.Tests.EditMode
                 typeof(UnitLifecycleSystem), "설치물이 치워지기 전에 봐야 한다");
         }
 
+        // ── unit 9 — 스스로 닳는 체력 ───────────────────────────────────
+
+        private void TickDecay(float dt)
+        {
+            _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + dt, dt));
+            _world.GetOrCreateSystem<ObstacleLifetimeSystem>().Update(_world.Unmanaged);
+        }
+
+        [Test]
+        public void Barrel_DecaysItsOwnHealth_ThroughTheDamageChannel()
+        {
+            _so.healthDecayPerSec = 10f;
+            var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 120f);
+
+            TickDecay(0.5f);
+
+            var buf = _em.GetBuffer<IncomingDamage>(barrel);
+            Assert.AreEqual(1, buf.Length, "노후화는 별도 죽음 경로가 아니라 **피해**로 흐른다");
+            Assert.AreEqual(5f, buf[0].amount, 1e-4f, "10/s × 0.5s");
+            Assert.AreEqual(Entity.Null, buf[0].source,
+                "환경 피해는 귀속이 없다 — source 를 채우면 킬 귀속이 엉뚱한 대상에게 간다");
+        }
+
+        [Test]
+        public void HazardWithoutDecay_TakesNoSelfDamage()
+        {
+            _so.healthDecayPerSec = 0f;
+            var rock = SpawnBarrel(new int2(4, 4), explodeDamage: 0f);
+
+            for (int i = 0; i < 10; i++) TickDecay(1f);
+
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(rock).Length,
+                "0 = 안 닳음. 기존 길막 설치물이 여기 해당하므로 무회귀가 걸려 있다");
+        }
+
+        [Test]
+        public void DecayingBarrel_DiesAndExplodes_ThroughTheSameDoorAsBeingSmashed()
+        {
+            _so.healthDecayPerSec = 100f; // maxHp 100 → 무방비 1초
+            var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 120f);
+            using var carriers = CarrierQuery();
+
+            // 노후화 → 정산. 죽을 때까지 민다.
+            int ticks = 0;
+            while (!_em.HasComponent<DeadTag>(barrel) && ticks++ < 20)
+            {
+                TickDecay(0.5f);
+                _world.GetOrCreateSystem<DamageApplicationSystem>().Update(_world.Unmanaged);
+            }
+
+            Assert.IsTrue(_em.HasComponent<DeadTag>(barrel), "노후화도 「부서짐」으로 나간다");
+            Assert.AreEqual(2, ticks, "maxHp 100 / 100초당 = 무방비 1초 = 0.5초 틱 두 번");
+
+            // 그리고 죽은 프레임의 폭발은 맞아 죽었을 때와 **같은 한 발**이다.
+            // ⚠ 여기서 더 틱하면 카운트가 는다 — 격리 월드엔 죽은 엔티티를 치우는
+            // `UnitLifecycleSystem` 이 없어서다. 라이브에선 같은 프레임에 치워진다.
+            TickExplosion();
+            Assert.AreEqual(1, carriers.CalculateEntityCount(),
+                "문이 하나이므로 노후화로 죽어도 그대로 터진다 — 폭발에 두 번째 경로를 만들지 말 것");
+        }
+
         // ── unit 7 — 시간으로는 죽지 않는다 ─────────────────────────────
 
         // 배럴이 «부서져야만 터진다» 는 계약의 회귀 방어다. 시한이 되살아나면 폭발이
@@ -162,6 +223,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Barrel_NeverExpires_NoMatterHowMuchTimePasses()
         {
+            _so.healthDecayPerSec = 0f; // 노후화(unit 9)와 시한(은퇴)은 다른 축이다
             var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 120f);
 
             for (int i = 0; i < 60; i++)

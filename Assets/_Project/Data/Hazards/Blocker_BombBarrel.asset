@@ -20,5 +20,6 @@ MonoBehaviour:
   explodeDamage: 120
   explodeTileRange: 1
   explodeTargetCap: 0
+  healthDecayPerSec: 10
   explodeProjectile: {fileID: 11400000, guid: a7c278502563644c0a650aee0766c3d6, type: 2}
   overheadHeight: 1

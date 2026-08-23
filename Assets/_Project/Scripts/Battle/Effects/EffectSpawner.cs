@@ -179,6 +179,7 @@ namespace Wassup.Battle.Effects
                 explodeDamage = so.explodeDamage,
                 explodeTileRange = so.explodeTileRange,
                 explodeTargetCap = so.explodeTargetCap,
+                decayPerSec = so.healthDecayPerSec,
                 explodeDataIndex = explodeDataIndex,
             });
             var buffer = em.AddBuffer<OccupiedCellsBuffer>(entity);
