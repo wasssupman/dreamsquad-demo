@@ -25,7 +25,8 @@ namespace Wassup.Tests.EditMode
         }
 
         // heart-stress-axis unit 4 — `StressText` 의 **뜻이 바뀌었다**: 구 「유출 누적 / 한계」
-        // (`3 / 10`) → 「마음 스트레스 / 100」. 인게임(보드 잠식·화면 림)과 같은 축을 쓴다.
+        // (`3 / 10`) → 「마음 스트레스 / 100」. 인게임(마음 위 숫자·프랍 틴트·심박·포스트
+        // 비네트)과 같은 축을 쓴다.
         [Test]
         public void StressText_ReadsHeartHealthAsRisingStress()
         {

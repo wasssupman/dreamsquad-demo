@@ -410,6 +410,11 @@ namespace Wassup.Bridge
         private bool _coreShielded;
         // unit 8 — 스트레스 단계(0 평온 ~ 3 임계). 히스테리시스라 상태를 들고 있어야 한다.
         private int _heartStage;
+        // unit 0 rev 4 — 돌격형이 마음을 치고 산화한 수 = 이 판의 「놓쳤다」.
+        // ⚠ 옛 유출 카운터(`_goalReachedCount`)를 재사용하지 **않는다** — 그쪽은 몽마의 계약
+        // 부착 게이트(`RemainingLeakAllowance`)를 먹이는 **라이브** 값이라, 여기서 올리면
+        // 그 카드가 판 중반부터 조용히 봉인된다.
+        private int _rusherArrivalCount;
         private readonly List<Entity> _liveCoresScratch = new();
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
@@ -2979,7 +2984,7 @@ namespace Wassup.Bridge
         {
             kills = _killCount;
             score = _killCount;
-            leaks = _goalReachedCount;
+            leaks = _rusherArrivalCount;
         }
 
         // battle-sim-extraction M0 unit 4 — 관측 탭이 쓰는 축 변환. 기록은 `Entity` 를
@@ -3688,8 +3693,10 @@ namespace Wassup.Bridge
         }
 
         // three-minute-kill-race unit 2 — `SyncGoalStabilityBars()` 는 제거했다.
-        // 마음의 남은 수치를 **바·숫자로 그리지 않는다**(게이지 형태 금지). 그 정보는
-        // 프랍의 균열 단계로만 보인다 — TilemapMapView.SetGoalCrack.
+        // ⚠ 그 시절 계약(「바·숫자로 그리지 않는다」)은 heart-stress-axis 가 뒤집었다.
+        // 지금 마음의 상태를 그리는 것은 넷이다: 프랍 붉은 틴트(`SetGoalStressTint`) ·
+        // 심박 · 화면 포스트 비네트 · **머리 위 숫자 `87 / 100`**(unit 8, ScoreHudView).
+        // `SetGoalCrack`(균열 단계)은 호출처 0 인 휴면이다 — 여기서 찾지 말 것.
 
         // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
         //
@@ -6035,12 +6042,14 @@ namespace Wassup.Bridge
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
         {
-            // heart-stress-axis unit 1 rev — 잠식 얼룩은 grid 자식이라 맵 재빌드와 수명이
-            // 다르다. 판 경계에서 명시적으로 지운다(_breachedCells·_goalCrackStage 와 같은 규칙).
+            // heart-stress-axis — 연출 상태는 판 경계에서 명시적으로 지운다
+            // (`_breachedCells`·`_goalCrackStage` 와 같은 규칙). rev 2 의 「보드 잠식」은
+            // 은퇴했고 지금 남는 것은 심박 위상·단계·방패 플래그·돌격 피격 수다.
             _lastHeartStress = 0f;
             _heartBeatPhase = 0f;
             _heartStage = 0;
             _coreShielded = false;
+            _rusherArrivalCount = 0;
             scoreHud?.SetHeartStress(0f, 1f, 0f);
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
@@ -6400,11 +6409,18 @@ namespace Wassup.Bridge
                 //
                 // 값 대역은 `AttackUnitData.stabilityDamage` 가 소유한다(하드코딩 금지).
                 // 등록부 제거는 킬 경로(DrainEnemyKilledEvents)와 대칭 — 빼지 않으면 누적된다.
-                // rev 3 — **놓친 수를 여기서 센다.** 공성형은 마음 앞에서 살아 있어 아직 잡을 수
-                // 있지만(= 안 놓쳤다), 돌격형은 도달하는 순간 사라져 회복 통로가 닫힌다. 이 판에서
-                // 「놓쳤다」로 셀 수 있는 유일한 사건이고, `MatchTally.Leaks` 가 그 값을 나른다
-                // (그 필드는 이 줄이 없으면 영원히 0 인 거짓말이 된다).
-                _goalReachedCount++;
+                // rev 4 — **놓친 수는 자기 카운터를 갖는다.** rev 3 은 여기서 `_goalReachedCount`
+                // 를 올렸는데, 그 카운터는 **휴면이 아니라 라이브 게이트를 먹인다**:
+                //   `RemainingLeakAllowance()` = 덱 `defeatGoalReachedCount`(10) − `_goalReachedCount`
+                //   → 「몽마의 계약」(`leakAllowanceCost` 1)이 «잔여 − cost < 1» 이면 **부착 거절**
+                // 즉 **돌격형 9기가 통과하면 그 카드가 판 내내 영영 안 붙었다**(코드 리뷰 발견).
+                // Runner·Swift 는 13개 덱 전부에 `maxPerWave: 0`(무제한)이라 3분 판에서 9기는 흔하다.
+                // README 계약이 「유출 축은 판정만 끊고 **휴면**」이라 선언했는데 코드가 그걸 어겼다.
+                //
+                // 공성형은 마음 앞에서 살아 있어 아직 잡을 수 있지만(= 안 놓쳤다), 돌격형은
+                // 도달하는 순간 사라져 회복 통로가 닫힌다 — 이 판에서 「놓쳤다」로 셀 수 있는
+                // 유일한 사건이고 `MatchTally.Leaks` 가 이 값을 나른다.
+                _rusherArrivalCount++;
 
                 int rushDamage = 0;
                 if (_enemyTypeByEntity.TryGetValue(evt.entity, out var leakedType) && leakedType != null)
@@ -6778,7 +6794,7 @@ namespace Wassup.Bridge
             // **만료 = 완주다.** 예전엔 여기서 두 마음의 남은 체력을 견줘 승/패를 갈랐는데
             // (battle-structures 계약 15 «버틴다»), 패배가 사라지면서 견줄 것이 없어졌다.
             EndMatch("complete");
-            Debug.Log($"[BattleBridge] COMPLETE — 3분 완주. (처치 {_killCount}기 · 유출 {_goalReachedCount})");
+            Debug.Log($"[BattleBridge] COMPLETE — 3분 완주. (처치 {_killCount}기 · 돌격 피격 {_rusherArrivalCount})");
         }
 
         // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
@@ -6856,7 +6872,7 @@ namespace Wassup.Bridge
         // three-minute-kill-race unit 0 이후로는 승패 자체가 없어 분기가 하나도 없다.
         private MatchTally BuildTally(string outcome)
             => new MatchTally(outcome, _killCount,
-                _goalStability, _goalStabilityMax, ReachedWaveNumber, _goalReachedCount);
+                _goalStability, _goalStabilityMax, ReachedWaveNumber, _rusherArrivalCount);
 
         // 도달 웨이브 = 마지막으로 큐잉된 웨이브 번호. _nextWaveIndex 는 "다음에 나올" 인덱스라
         // 그대로 쓰면 아직 안 나온 웨이브를 도달로 센다.
@@ -8717,21 +8733,22 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
-                // heart-stress-axis unit 1 — **마음이 바를 되찾는다.** three-minute-kill-race
-                // unit 2 가 여기서 `DefenderCore` 를 스킵했었다(「마음을 게이지로 그리지 않는다」).
-                // 이 spec 이 그 계약을 뒤집었고, 되돌린 바는 체력바가 아니라 **차오르는 스트레스**다.
+                // heart-stress-axis unit 1 — **마음은 이 루프에서 바를 받지 않는다.**
+                // three-minute-kill-race unit 2 가 여기서 `DefenderCore` 를 스킵했었고, 이 spec 도
+                // (이유는 달라도) 스킵을 유지한다 — 마음의 상태는 **프랍 틴트 + 심박 + 포스트
+                // 비네트 + 머리 위 숫자**가 말하고, 머리 위 «바» 는 rev 1 에서 반려됐다.
                 bool isHeart = faction == Faction.DefenderCore;
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
                 // heart-stress-axis unit 1 rev — **마음은 바를 안 단다. 보드를 먹는다.**
                 //
-                // rev 1 은 머리 위 차오르는 바였는데, 본능·적 마음·유닛과 같은 문법이라
-                // 「색만 다른 4번째 바」로 읽혔다(사용자 지적). 판을 끝내는 유일한 축인데
-                // 화면 점유가 잡몹 체력바와 같은 급인 것이 문제였다. 임팩트는 면적에서 온다.
+                // 연출 캐리어가 네 번 갈렸다: 머리 위 바(rev 1 — 문법 중복) → 보드 3×3 잠식
+                // (rev 2 — 「주변 타일 하이라이트는 쓸모없다」) → **마음 프랍 붉은 틴트 + 심박**
+                // (확정) → 화면은 URP 포스트 비네트(unit 8 rev 2). 앞의 둘은 되살리지 말 것.
                 //
-                // `OverheadBarSkin.Stress` 와 `fadeAtEmpty` 는 **남긴다** — 되돌리기 비용이
-                // 0 이고(아래 두 줄), 차오르는 바가 필요한 다음 소비자가 그대로 쓴다.
+                // ⚠ `OverheadBarSkin.Stress`·`fadeAtEmpty`·`SetGoalCrack` 은 **호출처 0 인 휴면**이다
+                // (README 후속 후보 「휴면 코드 정리」). 살아있는 기능으로 읽지 말 것.
                 if (isHeart)
                 {
                     float stress = Wassup.Core.StressMath.FromHealth(h.value, h.max);
@@ -9752,9 +9769,11 @@ namespace Wassup.Bridge
                     BakeProjectileRef(entity, unitType.projectile);   // 리뷰 A-M3 — 단일 베이크
             }
 
-            // aggro-targeting Unit 1 — taunt-attack profile for enemies with no
-            // normal outputs (Runner/Swift) so they can hit the guardian while
-            // aggroed. AggroAssignmentSystem activates it on aggro, strips on release.
+            // aggro-targeting Unit 1 — taunt-attack profile for enemies with no normal outputs.
+            // ⚠ heart-stress-axis unit 7 이후 **Runner·Swift 는 더 이상 여기 해당하지 않는다** —
+            // 둘은 진짜 공격(`outputs` 피해 10)을 갖고 `aggroAttackDamage: 0` 이라 이 프로필이
+            // 아예 안 붙는다. 도발은 마스크의 `DefenderUnit` 비트로 **일반 적과 같은 경로**
+            // (AttackSystem 의 aggro sticky)를 탄다. 지금 이 분기를 타는 라이브 적은 없다.
             if (unitType.aggroAttackDamage > 0f)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.AggroAttackProfile
                 {
@@ -9765,10 +9784,13 @@ namespace Wassup.Bridge
 
             // battle-structures unit 0 — goal-stability 의 walk-only 골 공격 grant 를 제거했다.
             // 게이트가 _hasStabilityGoals(= SpawnGoalEntities 산물)라 전 맵 M=0 에서 한 번도
-            // 발화하지 않았다. 라이브 타워로 재게이팅하면 Runner·Swift 가 AttackState 를 얻어
-            // canSiege=true 가 되고 골에서 파괴되지 않아 «필드에 적 0기» 판정을 막는다 —
-            // 그건 행동 변화이자 회귀다. «거점 전담 적» 저작은 unit 1 의
-            // EnemyTargetFilter.factionMask 가 제자리다(계약 2).
+            // 발화하지 않았다. 그때의 우려는 «Runner·Swift 가 AttackState 를 얻으면 canSiege=true
+            // 가 되어 골에서 안 죽고 «필드에 적 0기» 판정을 막는다» 였다.
+            //
+            // ⚠ heart-stress-axis unit 7 이 **그 우려를 해소한 뒤 실제로 공격을 줬다** — 이 문단을
+            // 「금지」로 읽고 unit 7 을 되돌리지 말 것. 해소 방법은 `UnitLifecycleSystem` 의
+            // `canSiege` 정밀화다: 「AttackState 보유」 → 「**마스크에 DefenderCore 포함**」.
+            // 돌격형 마스크(21)에는 마음이 없어 공격이 있어도 canSiege=false = 도달 시 산화한다.
 
             // enemy-behavior-components Unit 2 — behavior + filter from SO (enemyClass
             // hardcode removed). EnemyBehavior drives targeting/aim; FocusTarget is

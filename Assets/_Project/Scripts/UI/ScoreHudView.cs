@@ -187,16 +187,14 @@ namespace Wassup.UI
         [SerializeField] private Color stressVignetteColor = new Color(0f, 0f, 0f, 1f);
         // 숫자는 비네트와 **다른 색축**이다 — 검정 숫자는 안 읽힌다. 위험은 여기가 말한다.
         [SerializeField] private Color stressLabelHotColor = new Color(1f, 0.26f, 0.22f, 1f);
-        [Tooltip("스트레스 100%일 때 림의 최대 알파(지속). 강화 rev — 판을 가리지 않는 선에서 확실히 보이게.")]
-        [SerializeField, Range(0f, 1f)] private float stressRimMaxAlpha = 0.62f;
         // 단계별 림 세기(0~1). **연속 곡선이 아니라 계단**이라 전이가 사건으로 보인다.
         // 0(평온)은 0 이어야 한다 — 평온한데 화면이 붉으면 판이 항상 위급해 보여
         // 진짜 위급한 구간이 안 읽힌다. 1(불안)부터는 **확실히 보이는 값**으로 시작한다.
-        private static readonly float[] StageIntensity = { 0f, 0.34f, 0.66f, 1f };
+        // ⚠ unit 8 이 「rev 1 이 안 보인 원인」으로 지목한 바로 그 곡선이다 — 저작 가능해야 한다.
+        [Tooltip("단계별 림 세기(0 평온 ~ 3 임계). 0 단계는 0 이어야 평온한 판이 안 붉다.")]
+        [SerializeField] private float[] stageIntensity = { 0f, 0.34f, 0.66f, 1f };
         [Tooltip("심박이 림 알파를 얼마나 깊게 흔드는가. 0 = 안 뛴다.")]
         [SerializeField, Range(0f, 0.9f)] private float stressBeatDepth = 0.45f;
-        [Tooltip("스트레스가 오른 프레임의 추가 알파(보조).")]
-        [SerializeField, Range(0f, 1f)] private float stressSpikeAlpha = 0.4f;
         [Tooltip("스파이크가 사라지는 데 걸리는 초.")]
         [SerializeField, Min(0.05f)] private float stressSpikeDecaySec = 0.35f;
         [Tooltip("스파이크가 최대가 되는 상승분(스트레스 0~100 기준). 이 값 이상이면 포화.")]
@@ -216,6 +214,10 @@ namespace Wassup.UI
         [SerializeField, Range(0f, 1f)] private float stressVignetteMin = 0.2f;
         [Tooltip("비네트 부드러움. 낮을수록 경계가 또렷해 «조여든다» 가 강해진다.")]
         [SerializeField, Range(0.05f, 1f)] private float stressVignetteSmoothness = 0.35f;
+        [Tooltip("심박 한 번이 비네트를 추가로 조이는 양.")]
+        [SerializeField, Range(0f, 0.4f)] private float stressVignetteBeatKick = 0.10f;
+        [Tooltip("피격 순간 비네트를 추가로 조이는 양.")]
+        [SerializeField, Range(0f, 0.5f)] private float stressVignetteHitKick = 0.16f;
 
         [Header("Heart stress readout (마음 위 숫자)")]
         [Tooltip("이 단계부터 숫자를 띄운다. 0 단계(평온)에 떠 있으면 노이즈다 — "
@@ -276,7 +278,6 @@ namespace Wassup.UI
         // `FlashVignette` 는 원샷 페이드 모델이고 소비자가 이미 둘(점수 마일스톤 · 타이머
         // 마지막 10초)인데 `_milestoneFlash` 하나를 Mathf.Max 로 다툰다. 스트레스는
         // **지속 상태**라 성격이 다르고, 셋째가 끼면 서로를 먹는다.
-        private float _stressLevel;      // 0~1 수위 — **상시**. 이 채널이 주인공이다.
         private float _stressBeat = 1f;  // 심박 밝기 배율(보드 프랍과 같은 박자)
         private float _stressSpike;      // 0~1 피격 순간 — 보조. 지수 감쇠
         private int _stressStage;        // 공통 클록(HeartStressPulse.StageOf)
@@ -493,7 +494,6 @@ namespace Wassup.UI
         public void SetHeartStress(float stress01, float beatScale, float riseAmount,
             int stage = 0, Vector2 screenAnchor = default, bool anchorValid = false)
         {
-            _stressLevel = Mathf.Clamp01(stress01);
             _stressBeat = beatScale;
             _stressStage = stage;
             UpdateStressLabel(stress01, stage, screenAnchor, anchorValid);
@@ -739,11 +739,10 @@ namespace Wassup.UI
                 // 게다가 그건 이 unit 의 주장(「단계가 모든 채널의 공통 클록」)을 스스로 어긴다 —
                 // 연속으로 흐르면 단계 전이가 **사건으로 안 보인다**.
                 // 단계별 세기: 0 평온(안 보임) / 1 불안 / 2 위기 / 3 임계.
-                float intensity = StageIntensity[Mathf.Clamp(_stressStage, 0, StageIntensity.Length - 1)];
+                float intensity = (stageIntensity == null || stageIntensity.Length == 0) ? 0f
+                    : stageIntensity[Mathf.Clamp(_stressStage, 0, stageIntensity.Length - 1)];
                 // 심박 깊이도 세기를 따라간다 — 낮은 스트레스에서 화면이 벌써 쿵쿵대면 거짓말이다.
                 float beat = Mathf.Lerp(1f, _stressBeat, stressBeatDepth * intensity);
-                float level = stressRimMaxAlpha * intensity * beat;
-                float spike = stressSpikeAlpha * _stressSpike * _stressSpike;   // ease-out
                 // unit 8 rev 2 — **포스트 비네트가 조여든다.** 세기가 곧 «안쪽으로 파고든 양» 이다.
                 // 심박·피격도 세기에 실어 «뛸 때마다 한 번 더 조인다» 를 만든다 —
                 // 밝기는 순응되지만 **조임(기하)은 순응되지 않는다**.
@@ -751,8 +750,8 @@ namespace Wassup.UI
                     : Mathf.Lerp(stressVignetteMin, stressVignetteMax, intensity);
                 if (vig > 0f)
                 {
-                    vig += (1f - beat) * 0.10f;                   // 박동 수축
-                    vig += _stressSpike * _stressSpike * 0.16f;   // 피격 킥
+                    vig += (1f - beat) * stressVignetteBeatKick;
+                    vig += _stressSpike * _stressSpike * stressVignetteHitKick;
                 }
                 _cameraDirector?.SetStressVignette(vig, stressVignetteColor, stressVignetteSmoothness);
             }
@@ -806,7 +805,7 @@ namespace Wassup.UI
             }
             _milestoneFlash = 0f;
             if (_vignetteImage != null) { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
-            _stressLevel = 0f; _stressSpike = 0f; _stressBeat = 1f; _stressStage = 0;
+            _stressSpike = 0f; _stressBeat = 1f; _stressStage = 0;
             if (_stressLabel != null) _stressLabel.gameObject.SetActive(false);
             _cameraDirector?.SetStressVignette(0f, stressVignetteColor, stressVignetteSmoothness);
         }
@@ -1071,8 +1070,10 @@ namespace Wassup.UI
                     canvasRect, screenAnchor + Vector2.up * stressLabelLift, null, out var local))
                 _stressLabelRect.anchoredPosition = local;
 
-            int shown = Mathf.Clamp(Mathf.RoundToInt(stress01 * 100f), 0, 100);
-            _stressLabel.text = $"{shown} <size=55%>/ 100</size>";
+            int shown = Mathf.Clamp(
+                Mathf.RoundToInt(stress01 * Wassup.Core.StressMath.Max), 0, (int)Wassup.Core.StressMath.Max);
+            // 「100」 정본은 `StressMath.Max` 하나다 — 리터럴을 쓰면 만점이 두 곳에 살게 된다.
+            _stressLabel.text = $"{shown} <size=55%>/ {(int)Wassup.Core.StressMath.Max}</size>";
             // 단계가 곧 색이다 — 숫자와 림·심박이 **같은 클록**을 쓴다.
             _stressLabel.color = Color.Lerp(Color.white, stressLabelHotColor,
                 stage / (float)Mathf.Max(1, HeartStressPulse.StageCount - 1));

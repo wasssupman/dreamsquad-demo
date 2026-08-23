@@ -764,6 +764,7 @@ namespace Wassup.Core
         {
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
             _goalPropsByCell.Clear();   // 프랍 루트와 같은 수명 — 재빌드 시 stale 참조 방지
+            _propRenderers.Clear();     // 틴트 렌더러 캐시도 같은 수명(파괴된 프랍 키 잔존 금지)
             ResetStructureVisualAnchors(in map);
             if (grid == null || theme == null || !map.IsCreated) return;
             if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
@@ -836,18 +837,40 @@ namespace Wassup.Core
         }
 
         // 스프라이트는 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
-        private static void ApplyPropTint(GameObject prop, Color tint)
+        //
+        // ⚠ heart-stress-axis unit 1 rev 2 — **심박 때문에 매 프레임 불린다.** 예전 호출자
+        // (`PushGoalCrack`)는 단계가 바뀔 때만 밀었고 그 주석이 정확히 이 비용을 경고했다:
+        // 「매 프레임 틴트를 다시 쓰면 렌더러 순회가 공짜가 아니다」. 그래서 렌더러 배열과
+        // MaterialPropertyBlock 을 **프랍당 1회 캐시**한다 — 안 그러면 프레임당 힙 할당 3건이다
+        // (GetComponentsInChildren 배열 2 + MPB 1). 안드로이드 주 타겟에서 그냥 버리는 GC 다.
+        private readonly Dictionary<GameObject, (SpriteRenderer[] sprites, Renderer[] meshes)> _propRenderers = new();
+        private static MaterialPropertyBlock _tintMpb;
+
+        private void ApplyPropTint(GameObject prop, Color tint)
         {
-            foreach (var sr in prop.GetComponentsInChildren<SpriteRenderer>())
-                sr.color = tint;
-            var mpb = new MaterialPropertyBlock();
-            foreach (var r in prop.GetComponentsInChildren<Renderer>())
+            if (!_propRenderers.TryGetValue(prop, out var cached))
             {
-                if (r is SpriteRenderer) continue;
-                r.GetPropertyBlock(mpb);
-                mpb.SetColor("_BaseColor", tint);
-                mpb.SetColor("_Color", tint);
-                r.SetPropertyBlock(mpb);
+                var all = prop.GetComponentsInChildren<Renderer>();
+                var sprites = new List<SpriteRenderer>();
+                var meshes = new List<Renderer>();
+                foreach (var r in all)
+                {
+                    if (r is SpriteRenderer sr) sprites.Add(sr);
+                    else meshes.Add(r);
+                }
+                cached = (sprites.ToArray(), meshes.ToArray());
+                _propRenderers[prop] = cached;
+            }
+            for (int i = 0; i < cached.sprites.Length; i++) cached.sprites[i].color = tint;
+            if (cached.meshes.Length == 0) return;
+            _tintMpb ??= new MaterialPropertyBlock();
+            for (int i = 0; i < cached.meshes.Length; i++)
+            {
+                var r = cached.meshes[i];
+                r.GetPropertyBlock(_tintMpb);
+                _tintMpb.SetColor("_BaseColor", tint);
+                _tintMpb.SetColor("_Color", tint);
+                r.SetPropertyBlock(_tintMpb);
             }
         }
 

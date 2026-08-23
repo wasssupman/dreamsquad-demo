@@ -20,7 +20,7 @@ MonoBehaviour:
   maxPerWave: 0
   attackMethod: 1
   targetMode: 0
-  engageMovement: 0
+  engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 21

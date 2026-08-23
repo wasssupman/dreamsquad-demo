@@ -200,9 +200,10 @@ namespace Wassup.Data
         // 이 필드는 여전히 밸런스 값이며 `tier` 와 서로 검증하지 않는다.
         // heart-stress-axis unit 0 rev 2 — **돌격형(`attackMethod: None`)의 마음 직격.**
         //
-        // 이 값을 소비하는 것은 «공격 수단이 없어 마음에 도달하면 소멸하는 적» 하나뿐이다
-        // (라이브에서는 Runner·Swift 2종). 공성하는 적은 이 값을 **쓰지 않는다** — 그쪽은
-        // `outputs[].magnitude`(공격력)로 마음을 반복해서 때린다. 즉 이 필드는 「유출 피해」가
+        // 이 값을 소비하는 조건은 **`canSiege == false`** 다 — 「마스크에 `DefenderCore` 가 없다」,
+        // 즉 «마음을 조준할 수 없어 도달하면 소멸하는 적». 라이브에서는 Runner·Swift 2종이고
+        // 둘은 **일반 공격을 갖는다**(unit 7 — `attackMethod: Melee`). 「공격이 없는 적」이 아니라
+        // 「마음만 못 때리는 적」이다. 마음을 조준할 수 있는 적은 이 값을 **쓰지 않는다**. 즉 이 필드는 「유출 피해」가
         // 아니라 **돌격형의 한 방**이고, 그래서 값 대역이 공격력과 같은 축이어야 한다.
         //
         // 마음 HP 는 덱의 `goalStabilityMax`(라이브 1000)다. 옛 값 대역(일반 1 / 엘리트 2 /
@@ -210,8 +211,8 @@ namespace Wassup.Data
         // 현재 저작: 돌격형 50(= 마음의 5%, 20마리 통과 = 판 종료). 공성형의 값은 **inert** 다.
         // Appended last (직렬화 back-compat).
         [Header("Goal Stability")]
-        [Tooltip("돌격형(attackMethod=None)이 마음에 도달했을 때 한 번에 꽂는 피해. " +
-                 "공성하는 적은 이 값을 쓰지 않는다(공격력으로 때린다).")]
+        [Tooltip("돌격형(targetFactions 에 마음이 없는 적)이 마음에 도달했을 때 한 번에 꽂는 피해. " +
+                 "마음을 조준할 수 있는 적은 이 값을 쓰지 않는다(공격력으로 때린다).")]
         [Min(0)] public int stabilityDamage = 1;
 
         public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;

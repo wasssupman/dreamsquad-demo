@@ -40,7 +40,11 @@ namespace Wassup.Core
         public readonly int StabilityMax;
         /// <summary>도달 웨이브 = 마지막으로 큐잉된 웨이브 번호.</summary>
         public readonly int WaveReached;
-        /// <summary>골을 뚫린 횟수(스트레스). 점수와 무관하며 로그·배지용 집계다.</summary>
+        /// <summary>**돌격형이 마음을 치고 산화한 수** = 이 판의 「놓쳤다」.
+        /// heart-stress-axis 에서 뜻이 바뀌었다 — 구 의미(「부서진 마음으로 적이 흘러듦」)는
+        /// 첫 붕괴에 판이 끝나므로 구조적으로 발생 불가다. 공성형은 마음 앞에서 아직 잡을 수
+        /// 있으므로 놓친 것이 아니다. ⚠ 화면 라벨을 「유출」로 쓰면 거짓말이다.
+        /// 점수와 무관하며 로그·결과 화면 집계다.</summary>
         public readonly int Leaks;
 
         public MatchTally(string outcome, int kills,

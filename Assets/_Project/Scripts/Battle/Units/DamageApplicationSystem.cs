@@ -123,12 +123,16 @@ namespace Wassup.Battle.Units
                 // 자동으로 덮인다. 그리고 그 주석대로 **쿼리에서 빼면 안 된다** — 그러면 방패가
                 // 서 있는 동안 피해가 버퍼에 적립됐다가 해제 프레임에 통째로 터진다.
                 //
-                // heal 까지 건너뛰어도 안전하다: 방패는 판 시작에만 서고 **내려가기만** 한다
-                // (본능은 죽기만 하고 되살아나지 않는다). 즉 방패 중 마음은 늘 만피라
-                // 처치 회복은 어차피 clamp 로 버려진다.
+                // ⚠ **힐 버퍼도 같이 비운다.** rev 1 은 「어차피 clamp 로 버려진다」며 damage 만
+                // 비웠는데, clamp 는 **값**을 버리지 **버퍼**를 안 비운다 — 방패가 선 동안 킬마다
+                // 엔트리가 쌓여(3분 100킬 = 100+) DynamicBuffer 가 힙으로 넘어가고, 방패가 풀리는
+                // 프레임에 **전부 한꺼번에 적용**된다. 하필 그 프레임이 「쌓여 있던 적이 일제히
+                // 치는」 순간이라 그 피해가 통째로 상쇄된다(코드 리뷰 발견).
+                // 바로 위 UltimateLeapState 드랍이 경고한 «적립됐다 터지는» 실패 모드 그대로다.
                 if (_coreShieldedLookup.HasComponent(entity))
                 {
                     damageBuffer.Clear();
+                    if (_healBufferLookup.HasBuffer(entity)) _healBufferLookup[entity].Clear();
                     continue;
                 }
 
@@ -242,8 +246,9 @@ namespace Wassup.Battle.Units
                 //
                 // heart-stress-axis unit 2 — **마음은 제외한다.** 악몽 처치마다 힐 펄스가 들어오는데
                 // (분당 수십 킬) 그때마다 마음 위에서 원샷 이펙트가 터지면 노이즈다. 회복 피드백은
-                // 머리 위 스트레스 바가 내려가는 것(unit 1)과 화면 림이 약해지는 것(unit 3)이
-                // 담당한다 — 둘 다 «지속» 어휘라 킬 페이스에 묻히지 않는다.
+                // 마음 프랍 틴트가 옅어지는 것 · 심박이 느려지는 것 · 포스트 비네트가 물러나는 것 ·
+                // 머리 위 숫자가 내려가는 것이 담당한다 — 전부 «지속» 어휘라 킬 페이스에
+                // 묻히지 않는다. (rev 1 의 「머리 위 바」는 은퇴했다.)
                 if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity)
                     && !_goalTowerLookup.HasComponent(entity))
                 {
