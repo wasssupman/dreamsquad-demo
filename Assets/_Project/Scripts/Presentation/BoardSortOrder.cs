@@ -80,6 +80,13 @@ namespace Wassup.Presentation
         // 대조 기준이고, 값을 바꿀 땐 둘을 같이 바꾼다(WeaponTrailOrder 와 같은 규약).
         public const int StructureWreckOrder = -2;
 
+        // heart-stress-axis unit 1 rev — 마음 스트레스 잠식. **바닥에 밴 얼룩**이므로
+        // "보드 레이어 < 유닛 레이어" 규칙의 **최하단**이다: 바닥 타일맵(ground −20) 위 ·
+        // 범위 타일(−12)·조준 화살표(−11)·overlay(−10)·그림자(−5)·유닛(양수) **아래**.
+        // 배치 하이라이트가 이 위를 덮는 것은 의도다 — 배치 중엔 배치가 주인공이고,
+        // 잠식은 «판이 어디까지 물들었나» 라는 배경 상태다.
+        public const int HeartStressStainOrder = -14;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 

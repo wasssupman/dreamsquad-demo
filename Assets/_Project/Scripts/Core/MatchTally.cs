@@ -18,9 +18,14 @@ namespace Wassup.Core
     /// </summary>
     public readonly struct MatchTally
     {
-        /// <summary>배틀 로그에 남는 결과 라벨. three-minute-kill-race unit 0 이후 값은
-        /// `complete`(3분 완주) 하나이고, unit 3 이 `submitted`(유저 제출)를 더한다.
-        /// **승패를 담는 자리는 없다** — 그 개념이 사라졌고, 자리를 남기면 조용히 되살아난다.</summary>
+        /// <summary>배틀 로그에 남는 결과 라벨. 값은 셋이다 —
+        /// `complete`(3분 완주) · `submitted`(유저 제출) · `stress_full`(스트레스 100).
+        /// **승패를 담는 자리는 없다** — 그 개념이 사라졌고, 자리를 남기면 조용히 되살아난다.
+        ///
+        /// ⚠ heart-stress-axis — **라벨이 셋이라고 게임 종료가 셋인 것은 아니다.**
+        /// 게임 규칙상의 통로는 2개(3분 만료 · 스트레스 100)이고 `submitted` 는 절차 밖
+        /// 탈출구다(사용자 결정 2026-08-23). UI·문구에서 제출을 「게임을 끝내는 방법」으로
+        /// 승격시키지 않는다.</summary>
         public readonly string Outcome;
 
         /// <summary>**잡은 마리 수 = 점수.** three-minute-kill-race unit 1 —

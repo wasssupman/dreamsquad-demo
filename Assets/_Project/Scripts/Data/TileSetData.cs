@@ -26,6 +26,25 @@ namespace Wassup.Data
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
         public Material placementLiquidMaterial;
 
+        // heart-stress-axis unit 1 rev — 마음 스트레스가 보드에 번지는 «잠식» 얼룩.
+        // 자리가 여기인 이유: 이 SO 가 이미 보드 시각 파라미터의 집이다(rangeColor·
+        // rangePulseSpeed·placementLiquidMaterial). 씬 컴포넌트에 SerializeField 로 두면
+        // 값 하나 바꾸는 데 씬 저장이 필요해지고, 그건 남의 미저장 WIP 까지 베이크한다.
+        // ⚠ 색은 **배치 하이라이트와 확실히 갈라야** 한다(배치=시안/그린, 잠식=붉은 계열).
+        // 안 그러면 마음 주변 붉은 얼룩이 「배치 가능/불가 칸」으로 오독된다.
+        [Header("Heart stress stain (마음 잠식)")]
+        public Color heartStressColor = new Color(0.86f, 0.09f, 0.14f, 1f);
+        [Tooltip("가장 진할 때의 알파. 보드가 안 보이면 안 되므로 반투명 유지.")]
+        [Range(0f, 1f)] public float heartStressMaxAlpha = 0.5f;
+        [Tooltip("셀 대비 얼룩 지름(1 = 정확히 한 칸). 1 을 넘겨 이웃과 겹쳐야 «번짐» 으로 읽힌다.")]
+        [Min(0.5f)] public float heartStressCellScale = 1.45f;
+        [Tooltip("저스트레스 맥동 각속도(rad/s)")]
+        [Min(0f)] public float heartStressPulseSlow = 1.1f;
+        [Tooltip("고스트레스 맥동 각속도(rad/s). unit 3 화면 림과 같은 축으로 묶는다.")]
+        [Min(0f)] public float heartStressPulseFast = 7.5f;
+        [Tooltip("맥동 깊이. 0 = 안 뛴다, 0.3 = 밝기가 70%까지 떨어졌다 돌아온다.")]
+        [Range(0f, 0.8f)] public float heartStressPulseDepth = 0.3f;
+
         [Header("Attack range highlight (placement-attack-range-preview)")]
         // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
         public TileBase rangeTile;

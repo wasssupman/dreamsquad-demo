@@ -24,19 +24,23 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual("0:00", ResultScreen.ClockText(-3f));
         }
 
+        // heart-stress-axis unit 4 — `StressText` 의 **뜻이 바뀌었다**: 구 「유출 누적 / 한계」
+        // (`3 / 10`) → 「마음 스트레스 / 100」. 인게임(보드 잠식·화면 림)과 같은 축을 쓴다.
         [Test]
-        public void StressText_ShowsLimitWhenPositive()
+        public void StressText_ReadsHeartHealthAsRisingStress()
         {
-            Assert.AreEqual("3 / 10", ResultScreen.StressText(3, 10));
-            Assert.AreEqual("0 / 10", ResultScreen.StressText(0, 10));
+            Assert.AreEqual("0 / 100", ResultScreen.StressText(1000, 1000), "만피 = 스트레스 0");
+            Assert.AreEqual("100 / 100", ResultScreen.StressText(0, 1000), "체력 0 = 스트레스 100");
+            Assert.AreEqual("50 / 100", ResultScreen.StressText(500, 1000));
         }
 
         [Test]
-        public void StressText_HidesLimitWhenNotPositive()
+        public void StressText_NoHeart_IsZeroNotFull()
         {
-            // 엔드리스(누수로 죽지 않음) · 덱 미배선 — 분모가 무의미하므로 누적만 보여준다.
-            Assert.AreEqual("3", ResultScreen.StressText(3, 0));
-            Assert.AreEqual("3", ResultScreen.StressText(3, -1));
+            // ⚠ 마음이 없는 판(미저작·미스폰)을 «스트레스 만점» 으로 읽으면 결과 화면이
+            // 「판을 끝낸 축이 만점이었다」고 거짓말한다. StressMath 의 폴백과 같은 판단.
+            Assert.AreEqual("0 / 100", ResultScreen.StressText(0, 0));
+            Assert.AreEqual("0 / 100", ResultScreen.StressText(0, -1));
         }
     }
 }

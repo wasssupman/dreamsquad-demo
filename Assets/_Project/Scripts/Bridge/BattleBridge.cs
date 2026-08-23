@@ -391,6 +391,8 @@ namespace Wassup.Bridge
         private bool _towerMissLogged;
         // heart-stress-axis unit 2 — 처치 회복의 등록부 miss 경고 1회.
         private bool _killHealTypeMissLogged;
+        // heart-stress-axis unit 3 — 직전 프레임 스트레스(0~100). 넷 상승분 산출용.
+        private float _lastHeartStress;
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
@@ -6008,6 +6010,11 @@ namespace Wassup.Bridge
         // three-minute-survival unit 0 — 안정도 만피 복귀. _battleClock 리셋과 짝이다.
         private void ResetGoalStability()
         {
+            // heart-stress-axis unit 1 rev — 잠식 얼룩은 grid 자식이라 맵 재빌드와 수명이
+            // 다르다. 판 경계에서 명시적으로 지운다(_breachedCells·_goalCrackStage 와 같은 규칙).
+            tilemapMapView?.ClearHeartStress();
+            _lastHeartStress = 0f;
+            scoreHud?.SetHeartStress(0f, 1f, 0f);
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
             // unit 10 — 적 마음 축도 매치 경계에서 소멸한다. 실제 max 는 스폰이 확정한다
@@ -8656,10 +8663,29 @@ namespace Wassup.Bridge
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
-                // 마음만 축이 반전된다: 체력 비율 대신 스트레스(0~1)를 넘긴다. 그래야 바가
-                // **차오르고**, 값이 내려가는 유일한 경우(악몽 처치 회복)에 트레일이 남는다
-                // — 그 방향이 곧 Stress 스킨의 `damageTrail`(= 회복 트레일)이 그려지는 조건이다.
-                if (isHeart) ratio = Wassup.Core.StressMath.FromHealth(h.value, h.max) / Wassup.Core.StressMath.Max;
+                // heart-stress-axis unit 1 rev — **마음은 바를 안 단다. 보드를 먹는다.**
+                //
+                // rev 1 은 머리 위 차오르는 바였는데, 본능·적 마음·유닛과 같은 문법이라
+                // 「색만 다른 4번째 바」로 읽혔다(사용자 지적). 판을 끝내는 유일한 축인데
+                // 화면 점유가 잡몹 체력바와 같은 급인 것이 문제였다. 임팩트는 면적에서 온다.
+                //
+                // `OverheadBarSkin.Stress` 와 `fadeAtEmpty` 는 **남긴다** — 되돌리기 비용이
+                // 0 이고(아래 두 줄), 차오르는 바가 필요한 다음 소비자가 그대로 쓴다.
+                if (isHeart)
+                {
+                    float stress = Wassup.Core.StressMath.FromHealth(h.value, h.max);
+                    float stress01 = stress / Wassup.Core.StressMath.Max;
+                    float pulse = tilemapMapView != null
+                        ? tilemapMapView.SetHeartStress(cell, stress01) : 1f;
+                    // heart-stress-axis unit 3 — 화면 연출의 입력은 **넷 상승분**이다.
+                    // 마음 피해를 실어 나르는 이벤트가 없어(데미지 폰트는 AttackUnitTag 적 전용)
+                    // 폴링이 유일한 소스이고, 같은 프레임에 킬 회복이 상쇄하면 안 튀는 것이 옳다.
+                    // 프레임당 1회 — Basic 5기 공성이면 초당 10타라 피격마다 튀면 화면이 발작한다.
+                    float rise = Mathf.Max(0f, stress - _lastHeartStress);
+                    _lastHeartStress = stress;
+                    scoreHud?.SetHeartStress(stress01, pulse, rise);
+                    continue;
+                }
                 var world = GridToWorldCenter(cell);
                 var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(world.x, 0f, world.z));
                 if (unifiedOverhead && unitOverheadUiLayer != null && cam != null)
@@ -8671,19 +8697,15 @@ namespace Wassup.Bridge
                     Vector3 b = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
                     float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
                     // 리뷰 M-6 — 등록부에 이제 적 거점도 들어온다. defender 색 플래그는 진영에서.
-                    // heart-stress-axis unit 1 — 마음은 진영으로 스킨을 고를 수 없다(방어 진영인데
-                    // 체력바가 아니다) → 스킨을 명시적으로 넘긴다.
+                    // (마음은 위에서 continue — 바를 안 단다.)
                     unitOverheadUiLayer.SetUnit(entity,
                         ((int)faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
                         ratio, anchor, tileScreenWidth, 0f,
-                        GatherOverheadStacks(entity),
-                        isHeart ? Wassup.Data.OverheadBarSkin.Stress : null);
+                        GatherOverheadStacks(entity));
                 }
                 else if (!unifiedOverhead && tileHealthGaugeLayer != null)
                 {
-                    // Legacy 폴백은 «채워진 만큼 남았다» 문법의 타일 게이지다. 마음은 축이
-                    // 반전돼 있으므로 여기서만 되돌려 넘긴다(폴백이 거짓을 그리지 않게).
-                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, isHeart ? 1f - ratio : ratio);
+                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, ratio);
                 }
             }
         }
