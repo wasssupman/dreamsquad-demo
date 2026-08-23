@@ -94,7 +94,8 @@
 | 5 | 밸런스 + 검증 | [`5_balance_and_golden.md`](5_balance_and_golden.md) | 회복 배율·마음 HP 튜닝 + **골든 코퍼스 재녹화** |
 | 6 | ECS(Units/Movement/Combat) + 브리지 | [`6_instinct_shield.md`](6_instinct_shield.md) | **본능이 마음의 방패** — 모든 방어 본능이 파괴된 뒤에야 마음이 깎인다 |
 | 7 | 데이터 + ECS(Units) | [`7_rusher_attack.md`](7_rusher_attack.md) | **돌격형이 일반 공격을 갖는다** — 가는 길에 싸우되 마음엔 여전히 산화. `canSiege` 정밀화 |
-| 8 | 인계 | `8_handoff_summary.md` | 종료 시 작성 |
+| 8 | 프레젠테이션 | [`8_stress_legibility.md`](8_stress_legibility.md) | **판독성** — 단계(히스테리시스)·마음 위 숫자·조여드는 림. 「커브가 아니라 캐리어를 바꾼다」 |
+| 9 | 인계 | `9_handoff_summary.md` | 종료 시 작성 |
 
 **의존**: `0 → 1`(바가 그릴 산식이 먼저) · `0 → 4`(종료 라벨이 생겨야 화면이 읽는다) ·
 `2 → 5`(회복이 있어야 배율을 잰다) · `0,2 → 5`(골든은 마지막). `3` 은 `0` 뒤라면 언제든.

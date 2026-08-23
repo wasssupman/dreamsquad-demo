@@ -19,9 +19,46 @@ namespace Wassup.Presentation
     /// </summary>
     public static class HeartStressPulse
     {
-        /// <summary>스트레스(0~1) → 분당 심박. 쉬는 심박에서 시작해 한계까지 올라간다.</summary>
-        public static float Bpm(float stress01, float restBpm, float maxBpm)
-            => Mathf.Lerp(restBpm, maxBpm, Mathf.Clamp01(stress01));
+        // ── 단계 (heart-stress-axis unit 8) ────────────────────────────────────
+        //
+        // **연속값을 그대로 연출에 흘리면 아무것도 안 읽힌다.** 두 판독성 리뷰가 독립적으로
+        // 같은 진단을 냈다: 지속되는 색·알파는 몇 초 안에 **순응**돼 의식에서 사라지고,
+        // 인간은 「수준」이 아니라 「변화」를 읽는다. 그래서 단계로 꺾어 **전이를 사건으로**
+        // 만든다 — 「아까보다 한 단 나빠졌다」는 셈은 학습이 필요 없다.
+        //
+        // 이 단계가 **모든 채널의 공통 클록**이다(심박 BPM · 림 두께 · 숫자 노출 · 균열).
+        // 채널마다 자기 임계를 두면 「뭐가 먼저 바뀌었지」가 되고 사건이 흐려진다.
+        public const int StageCount = 4;   // 0 평온 · 1 불안 · 2 위기 · 3 임계
+
+        // 진입/이탈 임계가 **비대칭**이다(히스테리시스). 이 게임은 처치로 스트레스가
+        // **내려가는** 저울이라 경계에서 왕복이 잦은데, 대칭이면 단계가 깜빡여 «늑대소년» 이 된다.
+        private static readonly float[] Enter = { 0f, 0.25f, 0.55f, 0.82f };
+        private static readonly float[] Exit  = { 0f, 0.18f, 0.46f, 0.74f };
+
+        /// <summary>현재 단계 + 스트레스 → 다음 단계. 히스테리시스라 **직전 단계가 인자**다.</summary>
+        public static int StageOf(float stress01, int currentStage)
+        {
+            stress01 = Mathf.Clamp01(stress01);
+            int stage = Mathf.Clamp(currentStage, 0, StageCount - 1);
+            // 올라갈 때는 진입 임계, 내려갈 때는 이탈 임계를 본다.
+            while (stage < StageCount - 1 && stress01 >= Enter[stage + 1]) stage++;
+            while (stage > 0 && stress01 < Exit[stage]) stage--;
+            return stage;
+        }
+
+        /// <summary>스트레스(0~1) → 분당 심박.
+        ///
+        /// ⚠ **연속 램프가 아니라 단계 계단이다.** 서서히 빨라지면 「지금 빠른가」를 판단할
+        /// 비교 대상이 없어 순응된다. 단계 경계에서 BPM 이 점프해야 「방금 빨라졌다」가
+        /// 사건으로 잡히고, 그 사건이 곧 임계 통과의 통지다.</summary>
+        public static float Bpm(int stage, float restBpm, float maxBpm)
+        {
+            stage = Mathf.Clamp(stage, 0, StageCount - 1);
+            // 균등 분할이 아니라 **후반 가중** — 위기·임계의 간격이 벌어져야 그 두 단계가
+            // 서로 구분된다(52 / 84 / 122 / 168 꼴).
+            float t = stage / (float)(StageCount - 1);
+            return Mathf.Lerp(restBpm, maxBpm, t * t * 0.45f + t * 0.55f);
+        }
 
         /// <summary>시각 + 심박 → 박동 위상(0~1). 되감기지 않게 누적 위상을 호출자가 넘긴다.</summary>
         public static float AdvancePhase(float phase, float deltaSec, float bpm)

@@ -19,19 +19,72 @@ namespace Wassup.Tests.EditMode
         private const float Tol = 1e-4f;
 
         [Test]
-        public void Bpm_RisesWithStress()
+        public void Bpm_IsAStaircase_NotARamp()
         {
-            Assert.AreEqual(52f, HeartStressPulse.Bpm(0f, 52f, 168f), Tol);
-            Assert.AreEqual(168f, HeartStressPulse.Bpm(1f, 52f, 168f), Tol);
-            Assert.Less(HeartStressPulse.Bpm(0.3f, 52f, 168f),
-                        HeartStressPulse.Bpm(0.7f, 52f, 168f));
+            // ⚠ 단계 인자다. 서서히 빨라지면 「지금 빠른가」를 잴 비교 대상이 없어 순응된다 —
+            // 경계에서 점프해야 「방금 빨라졌다」가 사건이 된다.
+            Assert.AreEqual(52f, HeartStressPulse.Bpm(0, 52f, 168f), Tol);
+            Assert.AreEqual(168f, HeartStressPulse.Bpm(3, 52f, 168f), Tol);
+            float prev = -1f;
+            for (int st = 0; st < HeartStressPulse.StageCount; st++)
+            {
+                float v = HeartStressPulse.Bpm(st, 52f, 168f);
+                Assert.Greater(v, prev, $"단계 {st} 에서 심박이 안 올랐다");
+                prev = v;
+            }
         }
 
         [Test]
-        public void Bpm_ClampsOutOfRangeStress()
+        public void Bpm_ClampsOutOfRangeStage()
         {
-            Assert.AreEqual(52f, HeartStressPulse.Bpm(-1f, 52f, 168f), Tol);
-            Assert.AreEqual(168f, HeartStressPulse.Bpm(9f, 52f, 168f), Tol);
+            Assert.AreEqual(52f, HeartStressPulse.Bpm(-5, 52f, 168f), Tol);
+            Assert.AreEqual(168f, HeartStressPulse.Bpm(99, 52f, 168f), Tol);
+        }
+
+        // ── 단계 + 히스테리시스 ────────────────────────────────────────────────
+
+        [Test]
+        public void StageOf_ClimbsAndFalls()
+        {
+            Assert.AreEqual(0, HeartStressPulse.StageOf(0f, 0));
+            Assert.AreEqual(3, HeartStressPulse.StageOf(1f, 0), "한 번에 여러 단계를 건너뛸 수 있다");
+            Assert.AreEqual(0, HeartStressPulse.StageOf(0f, 3), "회복하면 내려온다");
+        }
+
+        // ★ 이 게임은 처치로 스트레스가 **내려가는** 저울이라 경계 왕복이 잦다.
+        // 히스테리시스가 없으면 단계가 깜빡이고, 깜빡이는 위기 경보는 늑대소년이 된다.
+        [Test]
+        public void StageOf_HasHysteresis_SoBoundariesDoNotFlicker()
+        {
+            // 진입 임계(0.25)를 막 넘어 1단계가 됐다.
+            int stage = HeartStressPulse.StageOf(0.26f, 0);
+            Assert.AreEqual(1, stage);
+
+            // 조금 회복해 진입 임계 **아래**로 내려와도 아직 1단계다(이탈 임계는 더 낮다).
+            Assert.AreEqual(1, HeartStressPulse.StageOf(0.22f, stage),
+                "진입선 바로 아래에서 즉시 떨어지면 경계에서 깜빡인다");
+
+            // 이탈 임계(0.18) 아래로 충분히 내려와야 떨어진다.
+            Assert.AreEqual(0, HeartStressPulse.StageOf(0.17f, stage));
+        }
+
+        [Test]
+        public void StageOf_IsMonotonicAtFixedPriorStage()
+        {
+            int prev = -1;
+            for (int i = 0; i <= 100; i++)
+            {
+                int st = HeartStressPulse.StageOf(i / 100f, 0);
+                Assert.GreaterOrEqual(st, prev, $"{i}% 에서 단계가 줄었다");
+                prev = st;
+            }
+        }
+
+        [Test]
+        public void StageOf_ClampsPriorStage()
+        {
+            Assert.AreEqual(0, HeartStressPulse.StageOf(0f, -7));
+            Assert.AreEqual(3, HeartStressPulse.StageOf(1f, 99));
         }
 
         [Test]

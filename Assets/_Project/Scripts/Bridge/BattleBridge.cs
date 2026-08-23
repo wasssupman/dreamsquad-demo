@@ -408,6 +408,8 @@ namespace Wassup.Bridge
         private float _heartBeatPhase;
         // unit 6 — 마음 방패(살아있는 방어 본능 ≥ 1). 태그와 짝이며 writer 는 SyncGoalStability.
         private bool _coreShielded;
+        // unit 8 — 스트레스 단계(0 평온 ~ 3 임계). 히스테리시스라 상태를 들고 있어야 한다.
+        private int _heartStage;
         private readonly List<Entity> _liveCoresScratch = new();
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
@@ -6037,6 +6039,7 @@ namespace Wassup.Bridge
             // 다르다. 판 경계에서 명시적으로 지운다(_breachedCells·_goalCrackStage 와 같은 규칙).
             _lastHeartStress = 0f;
             _heartBeatPhase = 0f;
+            _heartStage = 0;
             _coreShielded = false;
             scoreHud?.SetHeartStress(0f, 1f, 0f);
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
@@ -8739,7 +8742,10 @@ namespace Wassup.Bridge
                     // 각자 돌리면 파라미터가 갈리는 순간 위상이 어긋나 두 개로 읽힌다.
                     // 위상을 시각에서 파생하지 않고 **누적**하는 이유: 심박이 스트레스에 따라
                     // 빨라지는데 `time × bpm` 으로 접으면 bpm 이 바뀔 때 위상이 튄다(박이 끊긴다).
-                    float bpm = Wassup.Presentation.HeartStressPulse.Bpm(stress01, heartRestBpm, heartMaxBpm);
+                    // heart-stress-axis unit 8 — **단계가 모든 채널의 공통 클록이다.**
+                    // 히스테리시스라 직전 단계를 넘긴다(경계에서 깜빡이면 늑대소년이 된다).
+                    _heartStage = Wassup.Presentation.HeartStressPulse.StageOf(stress01, _heartStage);
+                    float bpm = Wassup.Presentation.HeartStressPulse.Bpm(_heartStage, heartRestBpm, heartMaxBpm);
                     _heartBeatPhase = Wassup.Presentation.HeartStressPulse.AdvancePhase(
                         _heartBeatPhase, Time.unscaledDeltaTime, bpm);
                     float beat = Wassup.Presentation.HeartStressPulse.Beat(_heartBeatPhase);
@@ -8752,7 +8758,21 @@ namespace Wassup.Bridge
                     // 같은 프레임에 킬 회복이 상쇄하면 안 튀는 것이 옳다(실제로 안 올랐으므로).
                     float rise = Mathf.Max(0f, stress - _lastHeartStress);
                     _lastHeartStress = stress;
-                    scoreHud?.SetHeartStress(stress01, beatScale, rise);
+
+                    // 숫자는 **마음 위**에 뜬다 — 보드 위 상시 숫자는 마음만의 기호라
+                    // 반려된 «머리 위 바»(본능·적 마음·유닛과 같은 문법)의 사유를 안 밟는다.
+                    bool anchorOk = false;
+                    Vector2 labelAnchor = default;
+                    if (cam != null)
+                    {
+                        var w = GridToWorldCenter(cell);
+                        var bv = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(w.x, 0f, w.z));
+                        Vector3 top = cam.WorldToScreenPoint(bv + Vector3.up * goalOverheadHeight);
+                        Vector3 bs = cam.WorldToScreenPoint(bv);
+                        anchorOk = top.z > 0f;
+                        labelAnchor = new Vector2(bs.x, top.y);
+                    }
+                    scoreHud?.SetHeartStress(stress01, beatScale, rise, _heartStage, labelAnchor, anchorOk);
                     continue;
                 }
                 var world = GridToWorldCenter(cell);

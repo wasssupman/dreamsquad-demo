@@ -195,6 +195,23 @@ namespace Wassup.UI
         [SerializeField, Min(0.05f)] private float stressSpikeDecaySec = 0.35f;
         [Tooltip("스파이크가 최대가 되는 상승분(스트레스 0~100 기준). 이 값 이상이면 포화.")]
         [SerializeField, Min(0.5f)] private float stressSpikeFullRise = 8f;
+        // unit 8 — **림을 «알파» 가 아니라 «조여드는 기하» 로 만든다.**
+        // 판독성 리뷰의 핵심 지적: 지속 알파는 순응돼 사라지고, 무엇보다 「남은 양」을 못 준다.
+        // 기하는 다르다 — 남은 공간이 곧 남은 여유라 **값을 읽는 게 아니라 공간을 느낀다**.
+        // 그리고 처치로 스트레스가 내려갈 때 **물러나는 것이 보인다**(이 게임의 셀링 포인트인
+        // 「위기면 더 죽여라」를 가르치는 유일한 그림).
+        [Tooltip("스트레스 0 일 때 림이 화면 밖으로 밀려나는 양(px). 클수록 안 보인다.")]
+        [SerializeField, Min(0f)] private float stressRimOverscanCalm = 420f;
+        [Tooltip("스트레스 100 일 때의 오버스캔. 0 = 띠가 화면 가장자리에 딱 붙는다(가장 두껍다).")]
+        [SerializeField] private float stressRimOverscanFull = -40f;
+
+        [Header("Heart stress readout (마음 위 숫자)")]
+        [Tooltip("이 단계부터 숫자를 띄운다. 0 단계(평온)에 떠 있으면 노이즈다 — "
+                 + "«나타났다» 는 것 자체가 신호가 되도록 늦게 연다.")]
+        [SerializeField, Range(0, 3)] private int stressLabelFromStage = 1;
+        [SerializeField] private float stressLabelFontSize = 64f;
+        [Tooltip("마음 스크린 앵커에서 위로 띄우는 양(px).")]
+        [SerializeField] private float stressLabelLift = 46f;
 
         [SerializeField] private float timerWarnSeconds = 30f;
         [SerializeField] private float timerFinalSeconds = 10f;
@@ -251,6 +268,10 @@ namespace Wassup.UI
         private float _stressLevel;      // 0~1 수위 — **상시**. 이 채널이 주인공이다.
         private float _stressBeat = 1f;  // 심박 밝기 배율(보드 프랍과 같은 박자)
         private float _stressSpike;      // 0~1 피격 순간 — 보조. 지수 감쇠
+        private int _stressStage;        // 공통 클록(HeartStressPulse.StageOf)
+        // unit 8 — 마음 위 숫자. 「어떤 빨강에서 터지나」에 유일하게 모호하지 않게 답하는 채널.
+        private TextMeshProUGUI _stressLabel;
+        private RectTransform _stressLabelRect;
         private float _milestoneFlash;
         // 비네트를 두 곳이 쓴다(점수 마일스톤 · 10초 카운트다운) — 색이 달라서 틴트를 든다.
         private Color _vignetteTint;
@@ -458,10 +479,13 @@ namespace Wassup.UI
         /// ⚠ 「피해량」이 아니라 「넷 상승분」인 이유: 마음 피해를 실어 나르는 이벤트가 없어
         /// 브리지가 폴링한다. 같은 프레임에 악몽을 잡아 회복이 상쇄하면 **안 튀는 것이 옳다**
         /// — 실제로 스트레스가 안 올랐기 때문이다.</summary>
-        public void SetHeartStress(float stress01, float beatScale, float riseAmount)
+        public void SetHeartStress(float stress01, float beatScale, float riseAmount,
+            int stage = 0, Vector2 screenAnchor = default, bool anchorValid = false)
         {
             _stressLevel = Mathf.Clamp01(stress01);
             _stressBeat = beatScale;
+            _stressStage = stage;
+            UpdateStressLabel(stress01, stage, screenAnchor, anchorValid);
             if (riseAmount > 0f)
                 _stressSpike = Mathf.Max(_stressSpike,
                     Mathf.Clamp01(riseAmount / Mathf.Max(0.5f, stressSpikeFullRise)));
@@ -707,6 +731,16 @@ namespace Wassup.UI
                 var rc = stressRimColor;
                 rc.a = Mathf.Clamp01(level + spike);
                 _stressRimImage.color = rc;
+
+                // unit 8 — **조여든다.** 오버스캔을 줄여 붉은 띠가 화면 밖에서 안쪽으로 전진한다.
+                // 심박도 여기에 실어 «뛸 때마다 한 번 더 조인다» 를 만든다 — 밝기 펄스는
+                // 순응되지만 **변위는 순응되지 않는다**.
+                float over = Mathf.Lerp(stressRimOverscanCalm, stressRimOverscanFull, intensity);
+                over -= (1f - beat) * 24f;                 // 박동 수축
+                over -= _stressSpike * _stressSpike * 28f; // 피격 킥
+                var srt2 = _stressRimImage.rectTransform;
+                srt2.offsetMin = new Vector2(-over, -over);
+                srt2.offsetMax = new Vector2(over, over);
             }
 
             if (_vignetteImage != null && _milestoneFlash > 0f)
@@ -758,7 +792,8 @@ namespace Wassup.UI
             }
             _milestoneFlash = 0f;
             if (_vignetteImage != null) { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
-            _stressLevel = 0f; _stressSpike = 0f; _stressBeat = 1f;
+            _stressLevel = 0f; _stressSpike = 0f; _stressBeat = 1f; _stressStage = 0;
+            if (_stressLabel != null) _stressLabel.gameObject.SetActive(false);
             if (_stressRimImage != null) { var sc = stressRimColor; sc.a = 0f; _stressRimImage.color = sc; }
         }
 
@@ -991,6 +1026,50 @@ namespace Wassup.UI
             { var sc = stressRimColor; sc.a = 0f; _stressRimImage.color = sc; }
 
             UiLayer.Apply(gameObject);
+        }
+
+        // heart-stress-axis unit 8 — **마음 위 숫자.**
+        //
+        // 판독성 리뷰 둘이 「숫자를 띄우지 말라」고 했지만, 그 근거를 뜯어보면
+        // «숫자를 **주** 채널로 삼지 말라» 에 가깝다. 색·알파는 기준점이 없어 ③(어디서
+        // 터지나)에 **원리적으로** 답할 수 없고, 숫자는 그 하나에 모호하지 않게 답한다.
+        // 역할을 나눈다: 주변시는 조여드는 림이, **확인은 이 숫자**가 맡는다.
+        //
+        // 두 조건이 붙는다(그 리뷰의 반려 근거를 무력화하는 조건):
+        //   ① **크게.** 작으면 초점 판독을 요구해 3분 판의 시선 예산을 넘는다.
+        //   ② **늦게 연다.** 평온 구간에 «12 / 100» 이 떠 있으면 그냥 노이즈다.
+        //      «나타났다» 는 것 자체가 첫 신호가 된다.
+        //
+        // 분모(`/ 100`)를 붙이는 근거: **지금은 100 이 진짜 끝이다.**
+        // three-minute-kill-race 가 옛 스트레스 배지에서 분모를 뗀 이유는 「한계가 아무것도
+        // 안 하는데 분모가 있으면 거짓말」이었는데, 이 spec 에서 그 전제가 뒤집혔다.
+        // 분모가 참이 되면서 그 표기 자체가 ②(끝까지 가면 뭐가 되나)를 절반 가르친다.
+        private void UpdateStressLabel(float stress01, int stage, Vector2 screenAnchor, bool anchorValid)
+        {
+            bool show = anchorValid && stage >= stressLabelFromStage;
+            if (_stressLabel == null)
+            {
+                if (!show) return;
+                _stressLabel = MakeText("HeartStressReadout", transform, stressLabelFontSize,
+                    new Vector2(0.5f, 0.5f));
+                _stressLabelRect = _stressLabel.rectTransform;
+                _stressLabelRect.anchorMin = _stressLabelRect.anchorMax = Vector2.zero;
+                _stressLabelRect.sizeDelta = new Vector2(320f, 90f);
+            }
+            if (!show) { if (_stressLabel.gameObject.activeSelf) _stressLabel.gameObject.SetActive(false); return; }
+
+            var canvasRect = transform as RectTransform;
+            if (canvasRect != null &&
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRect, screenAnchor + Vector2.up * stressLabelLift, null, out var local))
+                _stressLabelRect.anchoredPosition = local;
+
+            int shown = Mathf.Clamp(Mathf.RoundToInt(stress01 * 100f), 0, 100);
+            _stressLabel.text = $"{shown} <size=55%>/ 100</size>";
+            // 단계가 곧 색이다 — 숫자와 림·심박이 **같은 클록**을 쓴다.
+            _stressLabel.color = Color.Lerp(Color.white, stressRimColor,
+                stage / (float)Mathf.Max(1, HeartStressPulse.StageCount - 1));
+            if (!_stressLabel.gameObject.activeSelf) _stressLabel.gameObject.SetActive(true);
         }
 
         private TextMeshProUGUI MakeText(string name, Transform parent, float size, Vector2 pivot)
