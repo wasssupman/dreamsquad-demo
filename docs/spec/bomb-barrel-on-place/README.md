@@ -1,8 +1,12 @@
 # bomb-barrel-on-place — 폭탄맨 배치 스킬: 폭탄 배럴
 
-> 상태: **units 0~9 구현 완료** (0~6 커밋 `71f25b3e` · 7~8 커밋 `9761b650` · 9 = 2026-08-23)
+> 상태: **units 0~10 구현 완료** (0~6 `71f25b3e` · 7~8 `9761b650` · 9 `a6cb4af8` ·
+> 10 = 투트랙 리뷰 반영 2026-08-23)
 > 남은 것: 시트 `desc` 반영(사용자 승인 필요) · 전용 아트 · 「깔린 적이 갇히는가」 육안 판정
-> · unit 7 로 바뀐 조건에 맞춘 **M0 골든 코퍼스 재생성**
+> · ~~M0 골든 코퍼스 재생성~~ — **이 spec 은 `configHash` 를 안 건드린다.** `MatchConfigWriter`
+> 가 `UnityEngine.Object` 참조를 **이름까지만** 적고 재귀하지 않으므로 `BlockingHazardSO` 의
+> 필드 변경은 해시에 안 들어간다. 2026-08-23 코퍼스 전건 빨감은 **다른 세션의 미커밋 웨이브
+> 생성 변경** 탓이며 그 작업이 커밋된 뒤 재생성할 일이다.
 > 선행/모체: `docs/spec/bomb-thrower-defender/`(폭탄맨 평타 · unit 9 로 조준 은퇴, unit 10 으로 무작위 은퇴),
 > `docs/spec/on-place-skill-rework/`(트리거×페이로드 배치 스킬 · `OnPlace` 트리거),
 > `docs/spec/on-place-shuttle-shotgun/`(배치 스킬이 발사하는 축),
@@ -14,8 +18,9 @@
 칸에 서서 길을 막고 체력을 가지며, 적들이 그걸 때린다. **부서지는 순간 터져서** 배럴을
 두들기던 적들이 다친다. **부서지는 것이 유일한 폭발 계기다** — 시한은 없다(unit 7).
 판 위에 서 있는 동안 배럴은 **스스로도 닳으므로**(unit 9) 아무도 안 때려도 결국 터진다.
-남은 체력은 머리 위 바가 말하고, 그 바 하나가 「얼마나 맞았나」와 「얼마나 남았나」를
-동시에 말한다(unit 8).
+남은 체력은 머리 위 바가 말한다(unit 8). ⚠ 그 바는 「얼마나 맞았나」와 「얼마나 남았나」를
+**따로 말하지 않는다 — 둘의 합만** 말한다. unit 8 은 「적들이 얼마나 팼나」를 목적으로 세웠고
+unit 9 가 그 신호에 시간 성분을 섞었다. 둘을 갈라 읽어야 할 일이 생기면 그때 축을 나눠라.
 
 ```
 배치 ──(곡사 비행)──▶ 배럴 착지(2타일 안 최근접 적의 칸) ──▶ 길막 + 적이 때림
@@ -50,6 +55,7 @@
 | 7 | 계기 축소 | `7_retire_fuse_and_lifetime.md` | 시한·퓨즈 틴트 은퇴 — **부서져야만 터진다** |
 | 8 | 판독 | `8_barrel_health_bar.md` | 머리 위 체력 바 — 「언제 터지나」를 남은 체력이 말한다 |
 | 9 | 시간 축 | `9_health_decay.md` | 판 위의 설치물은 **스스로 닳는다** — 시간을 체력으로 표현 |
+| 10 | 리뷰 반영 | `10_review_response.md` | 폭발 반경 2 · 노후화 12초 · 바위 노후화 · 결정 기록 |
 
 > 순서 근거: 0·1 은 **설치물 쪽**이라 폭탄맨 없이 단독으로 굴려 볼 수 있다(기존 상시 길막
 > 캐스터로 즉시 확인 가능). 2·3 은 **투척 쪽** 사슬이고 3 은 단독으로 아무 동작도 안 한다.
@@ -104,7 +110,7 @@
 
 | 정거장 | 이번 spec |
 |---|---|
-| 데이터 SO | **+`Projectile_Barrel`·`Projectile_BarrelBlast`·`Blocker_BombBarrel`·`Pattern_BombMan_Barrel`·`Ability_UnitSkill_BombMan`**. `BlockingHazardSO` 에 폭발·폭발탄·체력바 높이 필드 추가 |
+| 데이터 SO | **+`Projectile_Barrel`·`Projectile_BarrelBlast`·`Blocker_BombBarrel`·`Pattern_BombMan_Barrel`·`Ability_UnitSkill_BombMan`**. `BlockingHazardSO` 에 폭발·폭발탄·체력바 높이·**노후화 속도** 필드 추가. `Hazard_Rock_1x1` 노후화 저작(unit 10) |
 | 스폰 진입점 | 무변경 — 배치 스킬은 기존 OnPlace arm → emitter, 배럴은 기존 `DrainHazardSpawnRequests` |
 | ECS 컴포넌트 | `BlockingHazard` +폭발·노후화 필드 · `ProjectileSpawnRequest`/`ProjectileState` +설치물 index. 신규 컴포넌트 0 |
 | 시뮬 시스템 | **신규 1**(`BarrelExplosionSystem`, Combat). arm 확장 2(`ProjectileHitSystem` case · `ObstacleLifetimeSystem` 노후화 루프). emitter 는 **로직 무변경**(호출 인자 1개만 추가) |
@@ -125,5 +131,13 @@
   이 spec 이 아니라 `bomb-thrower-defender` unit 10 에서 정리한다.
 - ~~길 밖에 떨어진 배럴의 청소~~ — **unit 9 의 노후화가 해소**했다. 아무도 안 때려도 20초에
   스스로 닳아 터진다.
-- **다른 설치물의 노후화 저작** [S] · 축은 열려 있다(`healthDecayPerSec`). 바위 길막을
-  닳게 할지는 콘텐츠 결정 — 지금은 0(안 닳음)이다.
+- ~~다른 설치물의 노후화 저작~~ — **unit 10 에서 바위 길막(15초)까지 켰다.**
+- **사거리 3~4 적은 여전히 폭발 밖이다** [M] · 반경 2(unit 10)가 사거리 2 를 덮었지만
+  스나이퍼·루트캐스터(3)·킨들러(4)는 배럴을 부수고도 안 맞는다. 원거리 적의 설계상 우위로
+  일단 남긴다 — 바꾸려면 반경이 아니라 **어그로/사거리 축**을 건드리는 편이 맞다.
+- **2타일 안에 적이 없으면 배치 스킬이 조용히 무발동** [S] · `PatternTargeting.Select` 가
+  후보 0 에 -1 을 반환하고 호출자가 발사를 소모한 뒤 skip 한다. 즉 **배치 페이즈에 폭탄맨을
+  놓으면 배럴이 아예 안 나오고 피드백도 없다.** 폴백(발밑에 세우기 등)은 제품 결정.
+- **노후화·폭발·체력바의 자격 조건 비대칭** [S] · 노후화는 `BlockingHazard` 만, 폭발과 바는
+  `Obstacle` 도 요구한다. `Obstacle` 없는 설치물에 노후화를 저작하면 **바 없이 조용히 닳다가
+  폭발 없이 죽는다.** 위 두 후보를 진행하기 전에 이 조건부터 맞춰라.

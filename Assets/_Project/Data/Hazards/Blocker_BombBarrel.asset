@@ -18,8 +18,8 @@ MonoBehaviour:
   maxHp: 200
   destructionVfxPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
   explodeDamage: 120
-  explodeTileRange: 1
+  explodeTileRange: 2
   explodeTargetCap: 0
-  healthDecayPerSec: 10
+  healthDecayPerSec: 16.67
   explodeProjectile: {fileID: 11400000, guid: a7c278502563644c0a650aee0766c3d6, type: 2}
   overheadHeight: 1

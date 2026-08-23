@@ -220,20 +220,29 @@ namespace Wassup.Tests.EditMode
 
         // 배럴이 «부서져야만 터진다» 는 계약의 회귀 방어다. 시한이 되살아나면 폭발이
         // 적의 사건이 아니라 시계 사건으로 되돌아간다.
+        // ⚠ 이 테스트의 앞선 판은 `healthDecayPerSec = 0` 을 깔고 돌았다. 통과했지만
+        // **실게임이 쓰지 않는 설정만** 방어하는 테스트였다 — 배럴은 노후화를 저작한다.
+        // 노후화를 켠 채로 물어야 계약("시한은 은퇴했다")이 라이브 구성에서 지켜진다.
+        // 값 자체는 계약이 아니므로 단언하지 않는다(밸런스 수치 리터럴 금지).
         [Test]
-        public void Barrel_NeverExpires_NoMatterHowMuchTimePasses()
+        public void ObstacleLifetimeSystem_NeverKillsAHazardItself_EvenWithDecayAuthored()
         {
-            _so.healthDecayPerSec = 0f; // 노후화(unit 9)와 시한(은퇴)은 다른 축이다
+            _so.healthDecayPerSec = 16.67f; // 0 만 아니면 된다 — 노후화가 켜진 상태를 만든다
             var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 120f);
 
+            // 구 시한(12초)의 다섯 배를 민다. 정산 시스템은 **일부러 안 돌린다** —
+            // 이 시스템 혼자서는 죽이지 못한다는 것이 이 테스트의 주장이다.
             for (int i = 0; i < 60; i++)
             {
                 _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 1f, 1f));
                 _world.GetOrCreateSystem<ObstacleLifetimeSystem>().Update(_world.Unmanaged);
             }
 
-            Assert.IsFalse(_em.HasComponent<DeadTag>(barrel), "60 초가 지나도 시간으로는 죽지 않는다");
+            Assert.IsFalse(_em.HasComponent<DeadTag>(barrel),
+                "시한은 은퇴했다. 노후화조차 **피해로** 나가므로 이 시스템은 두 번째 죽음 문이 아니다");
             Assert.IsTrue(_blockedCells.Contains(new int2(4, 4)), "살아 있는 동안은 계속 길을 막는다");
+            Assert.Greater(_em.GetBuffer<IncomingDamage>(barrel).Length, 0,
+                "대신 피해가 쌓여 있어야 한다 — 아무 일도 안 일어난 것과 구분된다");
         }
     }
 }
