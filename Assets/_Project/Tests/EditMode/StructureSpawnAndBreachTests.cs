@@ -47,6 +47,9 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
+            for (int i = 0; i < _queuesToDispose.Count; i++)
+                if (_queuesToDispose[i].IsCreated) _queuesToDispose[i].Dispose();
+            _queuesToDispose.Clear();
             if (_go != null) Object.DestroyImmediate(_go);
             if (_deck != null) Object.DestroyImmediate(_deck);
             foreach (var o in _cleanup) if (o != null) Object.DestroyImmediate(o);
@@ -190,6 +193,120 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(9, em.GetBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e).Length,
                 "3×3 본체를 **점유**한다 — 사거리는 가장 가까운 칸까지, 흐름장 소스도 이 9칸이다");
             AssertStructureHasNoEffectBuffers(em, e);
+        }
+
+        // ── heart-stress-axis unit 6 — 본능이 마음의 방패 ──────────────────────────
+
+        [Test]
+        public void DefenderInstinctAlive_ShieldsCore_ThenReleasesOnLastFall()
+        {
+            var guard = MakeStructureData(StructureKind.Instinct, hp: 100f);
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Defender, data = guard }));
+
+            Spawn();
+            var em = _world.EntityManager;
+            var core = TowerAt(new int2(9, 2));
+            var instinct = TowerAt(new int2(5, 4));
+            Assert.AreNotEqual(Entity.Null, instinct, "방어 본능이 스폰된다");
+            Assert.AreEqual(Faction.DefenderInstinct, em.GetComponentData<FactionTag>(instinct).value);
+
+            // 본능이 살아 있는 동안 — 마음은 **타겟 후보가 아니다**(피해 차단이 아니라 시선 전환).
+            CallPrivateMethod(_bridge, "SyncGoalStability");
+            Assert.IsTrue(em.HasComponent<CoreShielded>(core),
+                "방어 본능이 살아 있으면 마음에 방패가 선다");
+
+            // 마지막 본능이 무너지면 그 순간 열린다.
+            em.DestroyEntity(instinct);
+            CallPrivateMethod(_bridge, "SyncGoalStability");
+            Assert.IsFalse(em.HasComponent<CoreShielded>(core),
+                "본능이 모두 무너지면 마음이 후보로 돌아온다 — 이때부터 스트레스가 오른다");
+        }
+
+        [Test]
+        public void NoDefenderInstinct_CoreIsNeverShielded()
+        {
+            // ⚠ 무형 롤아웃의 실측. 라이브 9맵 중 6맵은 방어 본능이 0 이라 이 경로를 탄다 —
+            // 그 맵들의 동작은 unit 6 이전과 **완전히 같아야** 한다.
+            Spawn();
+            var em = _world.EntityManager;
+            CallPrivateMethod(_bridge, "SyncGoalStability");
+            Assert.IsFalse(em.HasComponent<CoreShielded>(TowerAt(new int2(9, 2))),
+                "방어 본능이 없는 맵에서 방패가 서면 마음이 영원히 안 깎인다");
+        }
+
+        // ECS 리뷰 2026-08-24 가 지적한 공백 — 방패에는 **입구가 둘**이다.
+        // 공성형은 «후보 제외»(조준)로 막히지만 돌격형은 조준이 아니라 «도달» 로 오므로
+        // `DrainGoalEvents` 에서 따로 막힌다. 그 두 번째 입구가 안 잡혀 있었다.
+        [Test]
+        public void ShieldUp_RusherArrival_DealsNoDamageToCore()
+        {
+            var guard = MakeStructureData(StructureKind.Instinct, hp: 100f);
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Defender, data = guard }));
+            Spawn();
+            var em = _world.EntityManager;
+            CallPrivateMethod(_bridge, "SyncGoalStability");   // 방패 ON
+
+            var core = TowerAt(new int2(9, 2));
+            int before = em.GetBuffer<IncomingDamage>(core).Length;
+            EnqueueRusherArrival(em, new float3(9f, 0f, 2f), rushDamage: 50);
+            CallPrivateMethod(_bridge, "DrainGoalEvents");
+
+            Assert.AreEqual(before, em.GetBuffer<IncomingDamage>(core).Length,
+                "방패가 서 있으면 돌격형 직격도 들어가면 안 된다 — 규칙의 두 번째 입구");
+        }
+
+        [Test]
+        public void ShieldDown_RusherArrival_HitsCore()
+        {
+            Spawn();   // 방어 본능 저작 없음 = 방패가 서지 않는다
+            var em = _world.EntityManager;
+            CallPrivateMethod(_bridge, "SyncGoalStability");
+
+            var core = TowerAt(new int2(9, 2));
+            EnqueueRusherArrival(em, new float3(9f, 0f, 2f), rushDamage: 50);
+            CallPrivateMethod(_bridge, "DrainGoalEvents");
+
+            var buf = em.GetBuffer<IncomingDamage>(core);
+            Assert.AreEqual(1, buf.Length, "방패가 없으면 돌격형이 마음을 직격한다");
+            Assert.AreEqual(50f, buf[0].amount, 1e-4f, "값은 SO 의 stabilityDamage 에서 온다");
+        }
+
+        // 돌격형 도달 1건을 브리지 큐에 밀어넣는다. `canSiege: false` = 공격 수단이 없는 적
+        // (attackMethod None) — 이 경로만 stabilityDamage 를 마음에 꽂는다.
+        private void EnqueueRusherArrival(EntityManager em, float3 position, int rushDamage)
+        {
+            var rusher = em.CreateEntity();
+            var so = ScriptableObject.CreateInstance<AttackUnitData>();
+            so.stabilityDamage = rushDamage;
+            _cleanup.Add(so);
+
+            var registry = (System.Collections.Generic.Dictionary<Entity, AttackUnitData>)
+                GetField(_bridge, "_enemyTypeByEntity");
+            registry[rusher] = so;
+
+            var q = new NativeQueue<GoalReachedEvent>(Allocator.Persistent);
+            q.Enqueue(new GoalReachedEvent { entity = rusher, canSiege = false, position = position });
+            SetField(_bridge, "_goalEventQueue", q);
+            _queuesToDispose.Add(q);
+        }
+
+        private readonly System.Collections.Generic.List<NativeQueue<GoalReachedEvent>> _queuesToDispose = new();
+
+        [Test]
+        public void EnemyInstinct_DoesNotShieldDefenderCore()
+        {
+            // 적 본능은 방패가 아니다 — 진영을 안 가리면 Coil(적 본능 1기)에서 마음이 잠긴다.
+            var hostile = MakeStructureData(StructureKind.Instinct, hp: 100f);
+            SetField(_bridge, "_resolvedMapDoc", MakeDocWithStructures(
+                new StructureEntry { cell = new Vector2Int(5, 4), side = StructureSide.Enemy, data = hostile }));
+
+            Spawn();
+            var em = _world.EntityManager;
+            CallPrivateMethod(_bridge, "SyncGoalStability");
+            Assert.IsFalse(em.HasComponent<CoreShielded>(TowerAt(new int2(9, 2))),
+                "적 본능이 내 마음을 지켜주면 안 된다");
         }
 
         [Test]

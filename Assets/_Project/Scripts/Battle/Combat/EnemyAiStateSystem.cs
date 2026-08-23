@@ -36,6 +36,15 @@ namespace Wassup.Battle.Combat
             var candQuery = SystemAPI.QueryBuilder()
                 .WithAll<FactionTag, Health, LocalTransform>()
                 .WithNone<PendingDeployment, DeadTag>()
+                // heart-stress-axis unit 6 — AttackSystem 후보 쿼리의 미러. 한쪽에만 넣으면
+                // AI 상태(Engaging/Marching)와 실제 사격 대상이 갈린다.
+                //
+                // ⚠ 이 미러는 **완전하지 않다**(ECS 리뷰 2026-08-24 발견, 선재 결함):
+                // AttackSystem 은 `.WithNone<UltimateLeapState>()` 도 거는데 여기엔 없다.
+                // 그래서 이탈(판 밖) 중인 보스를 이쪽은 유효 타겟으로 보고 Engaging 을 주는데
+                // AttackSystem 은 건너뛰어 **멈춰 서서 안 쏘는** 적이 생긴다.
+                // 이 spec 범위 밖이라 고치지 않고 기록만 한다 — README 후속 후보 참조.
+                .WithNone<CoreShielded>()
                 .Build();
             var candEntities = candQuery.ToEntityArray(Allocator.Temp);
             var candTransforms = candQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);

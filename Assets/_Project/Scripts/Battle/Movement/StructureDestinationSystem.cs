@@ -46,9 +46,20 @@ namespace Wassup.Battle.Movement
             var candidateFactions = new NativeList<int>(8, Allocator.Temp);
             var candidateEntities = new NativeList<Entity>(8, Allocator.Temp);
             var candidateIsGoal = new NativeList<bool>(8, Allocator.Temp);
+            // heart-stress-axis unit 6 — **방패가 서 있으면 마음은 «갈 곳» 도 아니다.**
+            // 조준(AttackSystem)만 막으면 적은 여전히 마음으로 행군해 그 앞에 눌러앉는다 —
+            // 때리진 못하고 대기하다 방패가 깨지는 순간 일제히 친다. 그건 본능이 «벽» 이
+            // 아니라 «타이머» 라는 뜻이다. 여기서 빼야 「본능을 부숴야 마음에 닿는다」가
+            // 조준이 아니라 **경로**로 성립한다.
+            //
+            // 마음이 빠지면 이 아래 로직이 그대로 답을 낸다: 가장 가까운 **본능**이 뽑히고
+            // (`candidateIsGoal[pick]` 이 false 라) `StructureDestination` 이 붙는다.
+            // 본능이 없거나 마스크가 본능을 안 보면 `pick < 0` → 컴포넌트 제거 → 골 폴백
+            // = 현행 동작. 방패가 안 서는 6맵이 1비트도 안 바뀌는 이유다.
             foreach (var (tag, entity) in
                      SystemAPI.Query<RefRO<StructureTag>>()
                               .WithNone<DeadTag>()
+                              .WithNone<CoreShielded>()
                               .WithEntityAccess())
             {
                 var world = GridMath.CellToWorldCenter(

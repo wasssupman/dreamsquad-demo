@@ -46,6 +46,10 @@ namespace Wassup.Battle.Combat
                 .WithNone<PendingDeployment>()
                 .WithNone<DeadTag>()
                 .WithNone<UltimateLeapState>()
+                // heart-stress-axis unit 6 — 본능이 살아 있는 동안 마음은 **후보가 아니다**.
+                // 피해만 막으면 적이 마음 앞에 붙어 아무 일도 안 일어나는 그림이 된다(버그로 읽힌다).
+                // ⚠ EnemyAiStateSystem 의 미러 쿼리에도 **같이** 넣어야 한다.
+                .WithNone<CoreShielded>()
                 .Build();
             var targetEntities = targetCandidatesQuery.ToEntityArray(Allocator.Temp);
             var targetTransforms = targetCandidatesQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);

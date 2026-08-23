@@ -406,6 +406,9 @@ namespace Wassup.Bridge
         private float _lastHeartStress;
         // unit 1 rev 2 — 심박 누적 위상(0~1). 시각에서 파생하지 않는다(위 배선 주석 참조).
         private float _heartBeatPhase;
+        // unit 6 — 마음 방패(살아있는 방어 본능 ≥ 1). 태그와 짝이며 writer 는 SyncGoalStability.
+        private bool _coreShielded;
+        private readonly List<Entity> _liveCoresScratch = new();
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
@@ -2171,8 +2174,15 @@ namespace Wassup.Bridge
             float3 fromWorld, in Wassup.Battle.Effects.FlowFieldSingleton field, out int2 destCell)
         {
             destCell = default;
-            using var q = _em.CreateEntityQuery(
-                ComponentType.ReadOnly<Wassup.Battle.Units.StructureTag>());
+            // heart-stress-axis unit 6 — 예고선도 방패 걸린 마음을 제외한다. 안 그러면
+            // **예고선은 마음으로 가는 길을 그리는데 적은 본능으로 간다** — 예고가 거짓이 된다.
+            // 이 선택은 StructureDestinationSystem 의 사본이고(같은 StructureChoice 를 쓴다),
+            // 그래서 배제 규칙도 같이 따라가야 한다.
+            using var q = _em.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.StructureTag>() },
+                None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.CoreShielded>() },
+            });
             var entities = q.ToEntityArray(Allocator.Temp);
             var cells = new NativeList<int2>(8, Allocator.Temp);
             var world = new NativeList<float2>(8, Allocator.Temp);
@@ -6027,6 +6037,7 @@ namespace Wassup.Bridge
             // 다르다. 판 경계에서 명시적으로 지운다(_breachedCells·_goalCrackStage 와 같은 규칙).
             _lastHeartStress = 0f;
             _heartBeatPhase = 0f;
+            _coreShielded = false;
             scoreHud?.SetHeartStress(0f, 1f, 0f);
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
@@ -6404,9 +6415,12 @@ namespace Wassup.Bridge
                     _leakTypeMissLogged = true;
                     Debug.LogWarning("[BattleBridge] 도달한 돌격형의 데이터가 등록부에 없다 — 마음 직격 0 으로 넘긴다.", this);
                 }
+                // heart-stress-axis unit 6 — 방패가 서 있으면 돌격형도 마음을 못 친다.
+                // 공성형은 «후보 제외» 로 조준 자체가 안 가지만, 돌격형은 조준이 아니라
+                // «도달» 로 오므로 여기서 따로 막는다(같은 규칙의 두 입구).
                 // `breached` 가 참인 프레임은 존재하지 않는다(첫 붕괴에 판이 끝난다) — 가드는
                 // 계약이 뒤집힐 때를 위한 안전망으로 남긴다.
-                if (!breached) EnqueueGoalTowerDamage(rushDamage, evt.position);
+                if (!breached && !_coreShielded) EnqueueGoalTowerDamage(rushDamage, evt.position);
             }
         }
 
@@ -6523,6 +6537,11 @@ namespace Wassup.Bridge
             float enemyCoreRemaining = 0f;   // unit 10 — 적 마음 축의 잔여(같은 순회에 얹는다)
             bool newCoreBreach = false;
             List<Vector2Int> newBreaches = null;   // 붕괴는 드문 사건 — lazy 할당
+            // heart-stress-axis unit 6 — **본능이 마음의 방패다.** 이 순회가 이미 진영과 Health 를
+            // 들고 있어 새 쿼리가 필요 없다(적 마음 잔여를 같은 순회에 얹은 선례).
+            int liveDefenderInstincts = 0;
+            // 필드 재사용 — 매 프레임 도는 순회라 lazy new 는 GC 압력이 된다(_breachedCells 규칙).
+            _liveCoresScratch.Clear();
             for (int i = _structureRegistry.Count - 1; i >= 0; i--)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
@@ -6533,7 +6552,9 @@ namespace Wassup.Bridge
                     // unit 10 — 적 마음은 자기 축의 잔여로 모은다. 방어 미러와 **섞지 않는다**
                     // (미러는 «가장 위험한 골» 캐시고 이쪽은 «적 본진이 얼마나 남았나» 다).
                     if (faction == Faction.EnemyCore) enemyCoreRemaining += health.value;
+                    if (faction == Faction.DefenderInstinct) liveDefenderInstincts++;
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
+                    _liveCoresScratch.Add(entity);
                     if (health.value < lowest) lowest = health.value;
                     if (health.max > maxHp) maxHp = health.max;
                     // heart-stress-axis unit 1 rev 2 — **균열 push 를 끊었다.** 마음 프랍의
@@ -6597,6 +6618,31 @@ namespace Wassup.Bridge
             else
             {
                 _goalStability = 0;   // 마음이 하나도 안 남았다
+            }
+
+            // heart-stress-axis unit 6 — 방패 태그 토글. **writer 는 여기 하나다.**
+            // 태그가 하는 일은 «피해 차단» 이 아니라 «타겟 후보에서 제외» 다(CoreShielded 주석).
+            // 구조 변경이라 매 프레임이 아니라 **상태가 바뀔 때만** 쓴다 — 판당 최대 두 번
+            // (판 시작에 부착, 마지막 본능이 무너질 때 해제).
+            // ⚠ **프레임 순서에 의존한다.** 이 구조 변경이 안전한 이유는
+            // `MonoBehaviour.Update`(여기) → `BattleSimGroup`(AttackSystem 등) 순서라
+            // 시스템들이 스냅샷을 만들 때 아키타입 변경이 **이미 커밋돼 있기** 때문이다.
+            // `LateUpdate` 로 옮기거나 sim 이 도는 중에 두 번째 호출처를 만들면
+            // `ObjectDisposedException: EntityTypeHandle invalidated by a structural change`
+            // 가 돌아온다 — AttackSystem 이 그 사고의 실측 주석을 갖고 있다(FactionTag lookup).
+            bool shieldUp = liveDefenderInstincts > 0;
+            if (shieldUp != _coreShielded && _liveCoresScratch.Count > 0)
+            {
+                for (int i = 0; i < _liveCoresScratch.Count; i++)
+                {
+                    if (!_em.Exists(_liveCoresScratch[i])) continue;
+                    if (shieldUp) _em.AddComponent<Wassup.Battle.Units.CoreShielded>(_liveCoresScratch[i]);
+                    else _em.RemoveComponent<Wassup.Battle.Units.CoreShielded>(_liveCoresScratch[i]);
+                }
+                Debug.Log(shieldUp
+                    ? $"[BattleBridge] 마음 방패 ON — 살아있는 방어 본능 {liveDefenderInstincts}기"
+                    : "[BattleBridge] 마음 방패 OFF — 본능이 모두 무너졌다. 이제 마음이 깎인다.");
+                _coreShielded = shieldUp;
             }
 
             // unit 10 — 적 마음 잔여 갱신. **판정은 아무데서도 하지 않는다**(kill-race unit 0):
