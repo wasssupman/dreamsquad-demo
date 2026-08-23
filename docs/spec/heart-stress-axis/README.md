@@ -114,8 +114,12 @@
   는 소비처를 잃고 **휴면**한다(삭제하지 않는다 — 다른 휴면 코드와 같은 규칙).
 - **승/패는 없다.** `stress_full` 은 결과 **라벨**이지 패배가 아니다. `MatchTally` 에 승패 필드를
   만들지 않는다. 서버 제출값은 무변경(`SubmissionScore => Kills`).
-- **누수는 발생하지 않는다.** 붕괴 프레임에 판이 끝나므로 `_breachedCells` 가 영원히 비고,
-  `_goalReachedCount` 증가 경로 2곳이 도달 불가가 된다. **이건 부작용이 아니라 명제 1 의 실체다.**
+- **누수는 발생하지 않는다.** 붕괴 프레임에 판이 끝나고 `EndMatch` 가 `_running=false` 를 세워
+  다음 `TickBattleFrame` 이 통째로 멈춘다. 그래서 `_goalReachedCount` 증가 경로 2곳
+  (`DrainGoalEvents` 의 breached 분기 · `LeakSiegingEnemy`)에 **도달할 프레임이 없다.**
+  ⚠ 정확히는 `_breachedCells` 가 «영원히 비는» 것이 아니라 **마지막 프레임에 1개가 되고
+  아무도 그것을 소비하지 않는** 것이다(그 프레임의 `DrainGoalEvents` 는 `SyncGoalStability`
+  **앞**에서 이미 돌았으므로 빈 집합을 봤다). **이건 부작용이 아니라 명제 1 의 실체다.**
 - **도달 불가가 된 코드를 이 spec 에서 지우지 않는다.** `OpenGoalCellAfterBreach` ·
   `LeakSiegingEnemy` · `MatchTally.Leaks` · `defeatGoalReachedCount` · 몽마의 계약 선불
   (`TryPayLeakAllowance`)은 **판정만 끊고 휴면**시킨다. 되돌릴 때의 비용과 diff 크기 때문이다 → 후속 후보.

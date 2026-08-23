@@ -95,7 +95,11 @@ namespace Wassup.Presentation
             _trailImage.color = _skin.damageTrail;
             _highlightImage.color = _skin.highlight;
             // 실드 보유 중엔 만피 감쇠를 끈다 — 실드가 있는 유닛은 바가 정보를 담는다.
-            _barCanvasGroup.alpha = (ratio >= 0.999f && !hasShield) ? _skin.fullHealthAlpha : 1f;
+            // heart-stress-axis unit 1 — 감쇠 지점은 **스킨이 정한다**. 원래 뜻은 「정보가 없을 때
+            // 흐리게」이고 체력바에서는 그 지점이 만피다. 차오르는 바(스트레스)는 **빈 쪽**이
+            // 정보 없음이고 만점은 판이 끝나기 직전이라, 거기서 흐려지면 정확히 거꾸로다.
+            bool atRest = _skin.fadeAtEmpty ? ratio <= 0.001f : ratio >= 0.999f;
+            _barCanvasGroup.alpha = (atRest && !hasShield) ? _skin.fullHealthAlpha : 1f;
             if (ratio < _ratio) _trailRatio = Mathf.Max(_trailRatio, _ratio);
             else if (ratio > _trailRatio) _trailRatio = ratio;
             _ratio = ratio;

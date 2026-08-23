@@ -90,22 +90,33 @@ namespace Wassup.Tests.PlayMode
             // «항상 0» 단정은 멀티골 맵에서 계약과 어긋난다. 남는 불변식 = 음수 금지.
             Assert.GreaterOrEqual(bridge.GoalStabilityCurrent, 0, "안정도는 0 에서 바닥친다(음수 금지)");
 
-            // three-minute-kill-race unit 0 — **안정도 0 은 이제 아무것도 끝내지 않는다.**
-            // 예전엔 여기서 Result 도달을 기다렸다(안정도 0 = 패배, 또는 스트레스 상한 패배).
-            // 그 두 판정이 은퇴하면서 고정할 성질이 정반대가 됐다: **마음을 다 내줘도 판은
-            // 계속된다.** 판을 끝내는 것은 3분 만료와 유저 제출뿐이다(feature 계약).
+            // heart-stress-axis unit 0 — **단언이 뒤집혔다.**
+            //
+            // three-minute-kill-race 시절 이 자리는 정반대를 고정했다: 「마음을 다 내줘도 판은
+            // 계속된다 — 5초를 감시해 Result 로 가지 않는지 본다」. 그 spec 의 계약(마음은 판정
+            // 권한이 0)을 heart-stress-axis 가 **의도적으로 뒤집었으므로** 테스트도 뒤집는다.
+            // 이제 마음이 무너지는 프레임이 곧 판의 끝이다(스트레스 100 = 마음 HP 0).
             //
             // 이 하네스는 브리지를 직접 몰아 `CurrentPhase` 가 Battle 로 가지 않으므로(위 주의),
-            // 예전에 이 테스트가 본 유일한 페이즈 전이가 `EndMatch → Result` 였다. 그래서
-            // 「Result 가 아니다」가 곧 「마감이 안 불렸다」의 정확한 관측이다.
+            // 이 테스트가 보는 유일한 페이즈 전이가 `EndMatch → Result` 다. 그래서
+            // 「Result 에 닿는다」가 곧 「마감이 불렸다」의 정확한 관측이다.
+            //
+            // 사실 위 루프가 Result 로 이미 빠져나왔을 가능성이 높다(EndMatch 는 안정도가 0 이
+            // 되는 **그 프레임에** 동기로 불린다). 여유 창을 두는 것은 관측 순서가 한 프레임
+            // 어긋나는 경우를 흡수하기 위해서다.
             float watchStart = Time.unscaledTime;
-            while (Time.unscaledTime - watchStart < 5f)
+            while (gm.CurrentPhase != GamePhase.Result)
             {
-                Assert.AreNotEqual(GamePhase.Result, gm.CurrentPhase,
-                    "마음이 무너졌다고 판이 끝났다 — 패배 축이 되살아났다"
-                    + "(계약: 종료는 3분 만료와 유저 제출뿐)");
+                Assert.Less(Time.unscaledTime - watchStart, 5f,
+                    "마음이 무너졌는데 판이 안 끝났다 — 스트레스 100 종료 경로가 끊겼다"
+                    + "(계약: 게임 종료 = 3분 만료 · 스트레스 100)");
                 yield return null;
             }
+
+            // 「누수가 없다」(명제 1) — 배수구가 열릴 프레임이 없으므로 유출은 0 이어야 한다.
+            bridge.ReadFinalTally(out _, out _, out int leaks);
+            Assert.AreEqual(0, leaks,
+                "마음이 무너진 판인데 유출이 잡혔다 — 붕괴 후 유출 전환이 실행됐다는 뜻이다");
         }
     }
 }

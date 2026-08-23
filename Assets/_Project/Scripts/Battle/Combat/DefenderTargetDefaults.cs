@@ -12,8 +12,13 @@ namespace Wassup.Battle.Combat
         // 이 값이 리터럴로 박혀 있던 것이다(unit 8 이전).
         public const int LegacyDefenderMask = (int)Wassup.Battle.Units.Faction.EnemyUnit;
 
-        // 아군 타게팅(힐러·버퍼)은 DefenderUnit **단독**이다. AnyDefender 로 넓히면
-        // IncomingHeal 버퍼가 없는 거점이 후보에 들어 ECB playback 에서 던진다.
+        // 아군 타게팅(힐러·버퍼)은 DefenderUnit **단독**이다.
+        //
+        // ⚠ heart-stress-axis unit 2 (2026-08-23) — 넓히면 «던진다» 는 근거가 **약해졌다**.
+        // 마음(GoalTowerTag)이 이제 IncomingHeal 버퍼를 갖기 때문이다(악몽 처치 회복).
+        // 즉 AnyDefender 로 넓히는 실수는 예전처럼 크래시로 잡히지 않고 **힐러가 마음을 조용히
+        // 회복시키는** 밸런스 결함으로 나타난다. 본능·적 마음은 여전히 버퍼가 없어 던진다.
+        // 그물은 `GoalTargetingPriorityTests.Healer_DoesNotTargetStructure_...` 로 옮겼다.
         public const int AllyMask = (int)Wassup.Battle.Units.Faction.DefenderUnit;
 
         // targetAllies 가 저작 마스크를 이긴다 — 힐러는 어떤 마스크가 저작돼 있어도 아군만

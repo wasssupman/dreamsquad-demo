@@ -19,6 +19,9 @@ namespace Wassup.Battle.Units
         private ComponentLookup<ModifierStats> _buffStatsLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<AttackUnitTag> _attackTagLookup;
+        // heart-stress-axis unit 2 — 마음의 회복은 **원샷 VFX 를 쓰지 않는다**(아래 힐 펄스
+        // 게이트). 위 `_attackTagLookup` 이 데미지 폰트를 «적 전용» 으로 거르는 것과 같은 형태다.
+        private ComponentLookup<GoalTowerTag> _goalTowerLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
         // content-1 ① (가시 갑옷) — count defender damage-taken (DamagedCounter is Units-owned).
         private ComponentLookup<DefenderUnitTag> _defenderTagLookup;
@@ -46,6 +49,7 @@ namespace Wassup.Battle.Units
             _buffStatsLookup  = state.GetComponentLookup<ModifierStats>(isReadOnly: true);
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
+            _goalTowerLookup  = state.GetComponentLookup<GoalTowerTag>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
@@ -65,6 +69,7 @@ namespace Wassup.Battle.Units
             _buffStatsLookup.Update(ref state);
             _transformLookup.Update(ref state);
             _attackTagLookup.Update(ref state);
+            _goalTowerLookup.Update(ref state);
             _healBufferLookup.Update(ref state);
             _defenderTagLookup.Update(ref state);
             _damagedCounterLookup.Update(ref state);
@@ -209,7 +214,13 @@ namespace Wassup.Battle.Units
 
                 // Only enqueue VFX for IncomingHeal pulses (hasPulse + positive amount).
                 // RegenPerSec is excluded to avoid spamming VFX every frame.
-                if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity))
+                //
+                // heart-stress-axis unit 2 — **마음은 제외한다.** 악몽 처치마다 힐 펄스가 들어오는데
+                // (분당 수십 킬) 그때마다 마음 위에서 원샷 이펙트가 터지면 노이즈다. 회복 피드백은
+                // 머리 위 스트레스 바가 내려가는 것(unit 1)과 화면 림이 약해지는 것(unit 3)이
+                // 담당한다 — 둘 다 «지속» 어휘라 킬 페이스에 묻히지 않는다.
+                if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity)
+                    && !_goalTowerLookup.HasComponent(entity))
                 {
                     healAppliedSingleton.ValueRW.queue.Enqueue(new HealAppliedEvent
                     {

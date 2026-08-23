@@ -105,6 +105,18 @@ namespace Wassup.Data
         // "3분 생존" 전제가 성립하지 않았다(검증에서 첫 접촉 몇 초 뒤 패배). 1000 은 사용자 결정.
         [Min(1)] public int goalStabilityMax = 1000;
 
+        // heart-stress-axis unit 2 — **악몽 처치 시 마음 회복량의 배율.**
+        //   회복 = AttackUnitData.awakeningReward × 이 값
+        // 새 per-enemy 필드를 만들지 않는다(명제 7) — `awakeningReward`(잡몹 2 / 엘리트·중간 3 /
+        // 보스 5 / 슬라임 분열체 0)가 이미 「이 적을 잡으면 얼마를 주나」의 서열을 저작하고 있고,
+        // 그 서열이 그대로 회복 서열로 읽힌다. 튜닝 손잡이는 이 배율 하나다.
+        //
+        // 기본 10 의 근거: 잡몹 1킬(reward 2) = 20 회복 = `Enemy_Basic` 1타(공격력 20) 상쇄.
+        // 「한 마리 잡으면 한 대 값」이 읽기 쉬운 기준점이다 — unit 5 에서 체감으로 움직인다.
+        // 0 이면 회복이 꺼진다(스트레스가 한 방향으로만 오르는 판).
+        [Tooltip("악몽 처치 시 마음 회복 = 적의 awakeningReward × 이 값. 0 = 회복 없음.")]
+        [Min(0)] public float killHealPerAwakening = 10f;
+
         // wave-concept-blocks unit 0 — 웨이브 컨셉 블록. Appended last (직렬화 back-compat).
         //
         // 컨셉은 웨이브가 아니라 **블록**의 속성이다: 블록 경계에서 하나 뽑고 conceptHoldWaves

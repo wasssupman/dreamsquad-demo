@@ -385,9 +385,10 @@ namespace Wassup.Bridge
         private int _enemyCoreCurrent;
         private int _enemyCoreMax;
         // 유출 적의 등록부 조회 실패 경고를 판당 1회로 제한(로그 폭주 방지).
-        private bool _leakTypeMissLogged;
         // goal-tower-siege unit 1 — 타워 부재 경고도 판당 1회.
         private bool _towerMissLogged;
+        // heart-stress-axis unit 2 — 처치 회복의 등록부 miss 경고 1회.
+        private bool _killHealTypeMissLogged;
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
@@ -4717,6 +4718,18 @@ namespace Wassup.Bridge
                     _enemyTypeByEntity.Remove(evt.entity);
                 }
 
+                // heart-stress-axis unit 2 — **잡을수록 마음이 숨을 돌린다.**
+                // ⚠ `evt.awakeningReward` 가 아니라 **SO 원값**을 쓴다. 이벤트에 실린 값은
+                // 「살찌운 제물」 카드의 배율이 이미 곱해진 baked 값이라, 그걸 쓰면 카드 하나가
+                // 각성 충전과 스트레스 회복 **두 축**을 겸하게 된다(카드의 성격이 조용히 바뀐다).
+                // 등록부 miss 는 회복 0 + 경고 1회 — 조용히 폴백값을 주면 회복이 공짜가 된다.
+                if (killedType != null) EnqueueGoalHeal(killedType.awakeningReward);
+                else if (!_killHealTypeMissLogged)
+                {
+                    _killHealTypeMissLogged = true;
+                    Debug.LogWarning("[BattleBridge] 처치된 적의 데이터가 등록부에 없다 — 마음 회복 0 으로 넘긴다.", this);
+                }
+
                 // elite-enemy-tier unit 5 — 분열(슬라임). **여기서 SO 를 직독한다** — 위 등록부가
                 // 죽은 적의 AttackUnitData 를 이미 들고 있어(파괴된 Entity 값도 키 비교는 유효)
                 // 슬롯·이벤트 필드·sim 스탬프가 하나도 필요 없다. 유출(골 도달)은
@@ -6001,8 +6014,8 @@ namespace Wassup.Bridge
             _enemyCoreCurrent = 0;
             _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
             _goalCrackStage.Clear();  // unit 2 — 균열 단계도 같은 규칙(프랍 루트 재빌드가 색을 원복한다)
-            _leakTypeMissLogged = false;
             _towerMissLogged = false;
+            _killHealTypeMissLogged = false;
         }
 
         // goal-tower-siege(rev 2) — 골 셀마다 **건물형 유닛**을 세운다.
@@ -6073,6 +6086,11 @@ namespace Wassup.Bridge
                     AttachSimEntityId(tower);
                     _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
                     _em.AddBuffer<IncomingDamage>(tower);
+                    // heart-stress-axis unit 2 — 악몽 처치가 마음을 회복시킨다. 힐은 이미
+                    // DamageApplicationSystem 의 **같은 줄**이 처리한다(min(max, value − dmg + heal))
+                    // — 붙일 것은 이 버퍼 하나뿐이고 새 시스템도 새 채널도 없다.
+                    // ⚠ GoalTowerTag 의 계약을 뒤집는 지점이다(그 파일 주석 참조).
+                    _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(tower);
                     _em.AddComponentData(tower, new FactionTag { value = Faction.DefenderCore });
                     _em.AddComponentData(tower, LocalTransform.FromPosition(
                         GridToWorldCenter(new Vector2Int(cell.x, cell.y))));
@@ -6080,6 +6098,12 @@ namespace Wassup.Bridge
                 }
                 _goalTowerCount = count;
                 Debug.Log($"[BattleBridge] Goal towers spawned: {count} @ stability {_goalStabilityMax}");
+                // heart-stress-axis unit 0 — 마음 1개 전제(명제 10)의 표면화. **하드 에러는 두지
+                // 않는다** — `goals[]` 기계를 막는 것은 map-rework 계약 3("멀티골 기계는 건드리지
+                // 않는다") 소관이라 이 spec 이 하면 스코프 위반이다. 여기서는 저작 사고를 보이게만 한다.
+                if (count > 1)
+                    Debug.LogWarning($"[BattleBridge] 마음이 {count}개 스폰됐다 — heart-stress-axis 는 "
+                        + "1개 전제다. 종료는 «첫» 마음 파괴에서 일어난다(계약).", this);
             }
 
             // ── 저작 거점(본능 + 적 마음) — unit 3 의 _resolvedMapDoc 에서 SO 스탯을 읽는다 ──
@@ -6324,25 +6348,22 @@ namespace Wassup.Bridge
                 spineUnitPool?.Despawn(evt.entity);
                 // 살찌운 제물 — 표식 악몽 유출: 무보상 회수.
                 NotifyEnemyGoneIfMarked(evt.entity);
-                int stabilityDamage = 1;
-                if (_enemyTypeByEntity.TryGetValue(evt.entity, out var leakedType) && leakedType != null)
-                {
-                    stabilityDamage = Mathf.Max(0, leakedType.stabilityDamage);
-                    // 킬 경로(DrainEnemyKilledEvents)와 대칭 — 등록부에서 빼야 누적되지 않는다.
-                    _enemyTypeByEntity.Remove(evt.entity);
-                }
-                else if (!_leakTypeMissLogged)
-                {
-                    // 조용히 0 으로 넘기면 유출이 무해해진다 — 폴백 1 + 경고 1회.
-                    _leakTypeMissLogged = true;
-                    Debug.LogWarning("[BattleBridge] 유출한 적의 데이터가 등록부에 없다 — 안정도 피해 1 로 폴백.", this);
-                }
-                // 안정도를 직접 깎지 않는다 — 타워 버퍼로 넣어 공성 피해와 **같은 통로**를
-                // 지나게 한다(풀의 writer 는 GoalTowerDamageSystem 하나다).
-                // unit 4(ⓐ) — 부서진 셀 도달이면 넣지 않는다(스트레스가 이미 셌다). 전역 bool
-                // 시절엔 붕괴 후 타워가 없어 자연 no-op 였지만, per-cell 에선 **다른 살아있는
-                // 골**이 존재하므로 가드가 없으면 최근접 검색이 남의 골을 깎는다.
-                if (!breached) EnqueueGoalTowerDamage(stabilityDamage, evt.position);
+                // heart-stress-axis unit 0 — **돌격형은 마음에 피해를 주지 않는다**(명제 9).
+                //
+                // 여기로 오는 것은 공격 수단이 없는 적(`attackMethod: None` = Runner·Swift)뿐이다.
+                // 예전엔 소멸하면서 `stabilityDamage`(일반 1)를 넣었는데, 그 값은 마음 HP 가
+                // 1~5 이던 시절의 대역이라 HP 1000 에서는 **0.1%** — 있으나 마나였다.
+                // 「마음은 적의 **공격력만큼** 피해를 입는다」를 문자 그대로 만들기 위해 이
+                // 경로의 피해를 끊는다: 공격력이 없는 적은 피해가 0 이다. 그들의 페널티는
+                // 기회비용(못 잡으면 점수도 각성치도 못 번다) 하나로 남는다.
+                //
+                // `EnqueueGoalTowerDamage` 와 `AttackUnitData.stabilityDamage` 는 소비처를 잃고
+                // **휴면**한다(지우지 않는다). 되돌리려면 값을 1000급으로 재저작하고 아래를 되살린다:
+                //     if (!breached) EnqueueGoalTowerDamage(Mathf.Max(0, leakedType.stabilityDamage), evt.position);
+                //
+                // 등록부 제거는 **유지**한다 — 킬 경로(DrainEnemyKilledEvents)와 대칭이라
+                // 빼지 않으면 죽은 엔티티의 데이터가 누적된다.
+                _enemyTypeByEntity.Remove(evt.entity);
             }
         }
 
@@ -6368,9 +6389,34 @@ namespace Wassup.Bridge
             return best;
         }
 
+        // heart-stress-axis unit 2 — 악몽 처치 → 마음 회복. `EnqueueGoalTowerDamage` 의 형제이나
+        // **대상 선택이 다르다**: 피해는 「위치 최근접 1기」인데 회복은 **살아있는 마음 전체**에
+        // 넣는다(feature 계약). 피해는 «어느 마음이 맞았나» 가 사건의 일부지만 회복은 그렇지
+        // 않고, 최근접으로 두면 마음이 둘인 저작 사고에서 만피 쪽이 흡수해 clamp 로 소멸시킨다.
+        // (마음 1개 전제에서는 두 규칙이 동치라 **테스트로 구분되지 않는다** — 그래서 계약이다.)
+        private void EnqueueGoalHeal(int awakeningReward)
+        {
+            if (!HasLiveEntityManager() || awakeningReward <= 0) return;
+            float mul = ActiveDeck != null ? ActiveDeck.killHealPerAwakening : 0f;
+            float amount = awakeningReward * mul;
+            if (amount <= 0f) return;   // 배율 0 = 회복이 꺼진 판
+            using var towerQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.GoalTowerTag>(),
+                ComponentType.ReadWrite<Wassup.Battle.Units.IncomingHeal>());
+            if (towerQuery.IsEmpty) return;   // 마음이 없는 판(미저작·붕괴 후) — 정상, 경고 없음
+            using var towers = towerQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < towers.Length; i++)
+                _em.GetBuffer<Wassup.Battle.Units.IncomingHeal>(towers[i])
+                   .Add(new Wassup.Battle.Units.IncomingHeal { amount = amount });
+        }
+
         // goal-tower-siege(rev 2) — 돌격형(공격 수단 없는 적)의 자폭 피해. 표준 경로와 같은
         // 통로(IncomingDamage)로 넣어 DamageApplicationSystem 이 처리하게 한다.
         // 적이 도달한 골이 어느 쪽인지는 이벤트에 실린 위치로 가른다(골 2개 맵).
+        //
+        // heart-stress-axis unit 0 — **휴면**(호출처 0). 「마음은 적의 공격력만큼 피해를 입는다」
+        // 를 문자 그대로 만들기 위해 자폭 피해 축을 끊었다(명제 9). 되살리려면 적 SO 의
+        // `stabilityDamage` 를 1000급으로 재저작하고 DrainGoalEvents 의 호출을 복구한다.
         private void EnqueueGoalTowerDamage(int amount, float3 atPosition)
         {
             if (!HasLiveEntityManager() || amount <= 0) return;
@@ -6519,14 +6565,33 @@ namespace Wassup.Bridge
 
             if (!newCoreBreach) return;
 
-            // 리뷰 A-M1 — 미러가 0 이 된 뒤에 연다(위 주석 참조).
-            if (newBreaches != null)
-                for (int i = 0; i < newBreaches.Count; i++)
-                    OpenGoalCellAfterBreach(newBreaches[i]);
+            // heart-stress-axis unit 0 — **첫 마음 파괴가 곧 판의 끝이다**(feature 계약).
+            // 스트레스 100 == 마음 HP 0 == 이 프레임. `goals` 개수와 **무관하게** «첫» 붕괴에서
+            // 끝난다 — 마음이 1개인 동안은 「첫」과 「마지막」이 관측 불가능하게 같으므로
+            // 이 선택을 코드와 테스트로 고정해 둔다(StructureSpawnAndBreachTests 2타워 단언).
+            //
+            // ⚠ **아래 `OpenBreachedCellsForLeak` 을 부르지 않는 것이 「누수가 없다」의 실체다.**
+            // EndMatch 가 `_running=false` 를 세워 다음 TickBattleFrame 이 통째로 멈추므로,
+            // `_goalReachedCount` 증가 경로 2곳(DrainGoalEvents 의 breached 분기 · LeakSiegingEnemy)에
+            // **도달할 프레임이 없다.** (`_breachedCells` 는 이 프레임에 1개가 되지만 아무도 그걸
+            // 소비하지 않는다 — 같은 프레임의 DrainGoalEvents 는 이 함수 **앞**에서 이미 돌았다.)
+            // 「마지막 마음이 무너져야 끝」으로 바꾸면 첫 붕괴가 배수구를 열어 누수가 되살아난다.
+            //
+            // 되돌리려면: 아래 EndMatch 를 지우고 `OpenBreachedCellsForLeak(newBreaches);` 를 되살린다.
+            Debug.Log($"[BattleBridge] STRESS FULL — 마음이 무너졌다. (처치 {_killCount}기 · 경과 {(float)_battleClock:F1}s)");
+            EndMatch("stress_full");
+        }
 
-            // three-minute-kill-race unit 0 — **골 붕괴는 아무것도 판정하지 않는다.** 그 셀이
-            // 유출 지점으로 열리는 것(위)이 전부다. 예전엔 여기서 즉시 패배(상한 0) 또는
-            // 스트레스 상한 패배로 이어졌는데, 이제 마음은 판정 권한이 0 이다(계약).
+        // heart-stress-axis unit 0 — **휴면**(호출처 0). 마음이 무너지는 프레임에 판이 끝나므로
+        // 이 코드에 도달할 길이 없다. 지우지 않는 이유는 되돌리기 비용 때문이다 — A/B 판단이
+        // 끝나 「누수 없음」이 확정되면 그때 후속 후보(휴면 코드 정리)로 걷어낸다.
+        //
+        // 원 역할(리뷰 A-M1): 미러가 0 이 된 **뒤에** 붕괴 셀을 유출 지점으로 연다.
+        private void OpenBreachedCellsForLeak(List<Vector2Int> breaches)
+        {
+            if (breaches == null) return;
+            for (int i = 0; i < breaches.Count; i++)
+                OpenGoalCellAfterBreach(breaches[i]);
             Debug.Log($"[BattleBridge] 골 붕괴 — {_breachedCells.Count}개 셀 유출 전환. 판은 계속된다.");
         }
 
@@ -8562,13 +8627,17 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
-                // three-minute-kill-race unit 2 — **내 마음은 바를 달지 않는다**(게이지 형태
-                // 금지). 이 루프는 등록부 전체를 그리므로 마음도 여기서 한 번 더 바를 받고
-                // 있었다(전용 안정도 바와 별개). 본능·적 마음은 대상이 아니라 그대로 둔다.
-                if (faction == Faction.DefenderCore) continue;
+                // heart-stress-axis unit 1 — **마음이 바를 되찾는다.** three-minute-kill-race
+                // unit 2 가 여기서 `DefenderCore` 를 스킵했었다(「마음을 게이지로 그리지 않는다」).
+                // 이 spec 이 그 계약을 뒤집었고, 되돌린 바는 체력바가 아니라 **차오르는 스트레스**다.
+                bool isHeart = faction == Faction.DefenderCore;
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
+                // 마음만 축이 반전된다: 체력 비율 대신 스트레스(0~1)를 넘긴다. 그래야 바가
+                // **차오르고**, 값이 내려가는 유일한 경우(악몽 처치 회복)에 트레일이 남는다
+                // — 그 방향이 곧 Stress 스킨의 `damageTrail`(= 회복 트레일)이 그려지는 조건이다.
+                if (isHeart) ratio = Wassup.Core.StressMath.FromHealth(h.value, h.max) / Wassup.Core.StressMath.Max;
                 var world = GridToWorldCenter(cell);
                 var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(world.x, 0f, world.z));
                 if (unifiedOverhead && unitOverheadUiLayer != null && cam != null)
@@ -8580,14 +8649,19 @@ namespace Wassup.Bridge
                     Vector3 b = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
                     float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
                     // 리뷰 M-6 — 등록부에 이제 적 거점도 들어온다. defender 색 플래그는 진영에서.
+                    // heart-stress-axis unit 1 — 마음은 진영으로 스킨을 고를 수 없다(방어 진영인데
+                    // 체력바가 아니다) → 스킨을 명시적으로 넘긴다.
                     unitOverheadUiLayer.SetUnit(entity,
                         ((int)faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
                         ratio, anchor, tileScreenWidth, 0f,
-                        GatherOverheadStacks(entity));
+                        GatherOverheadStacks(entity),
+                        isHeart ? Wassup.Data.OverheadBarSkin.Stress : null);
                 }
                 else if (!unifiedOverhead && tileHealthGaugeLayer != null)
                 {
-                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, ratio);
+                    // Legacy 폴백은 «채워진 만큼 남았다» 문법의 타일 게이지다. 마음은 축이
+                    // 반전돼 있으므로 여기서만 되돌려 넘긴다(폴백이 거짓을 그리지 않게).
+                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, isHeart ? 1f - ratio : ratio);
                 }
             }
         }
