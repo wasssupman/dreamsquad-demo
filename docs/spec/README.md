@@ -130,6 +130,10 @@ code + git history        구현 상세
 게이지 없이 균열로만 보인다. 상세: `docs/spec/three-minute-kill-race/5_handoff_summary.md`.
 
 > ⚠ **`EndMatch` 를 부르는 코드를 새로 만들면 패배 조건의 부활이다.** 이 spec 의 단일 최상위 계약.
+> — **2026-08-23 갱신**: `heart-stress-axis` 가 이 계약을 **의도적으로 뒤집는다**(사용자 결정).
+>   마음이 판을 끝내는 축으로 돌아오면서 `EndMatch` 경로가 3개(`complete`·`submitted`·`stress_full`)가 된다.
+>   계약의 정신(「시스템이 마음대로 판을 끝내지 않는다」)은 **경로 수를 3 으로 고정**하는 형태로 승계된다 —
+>   → `docs/spec/heart-stress-axis/README.md`. 이 줄을 근거로 그 spec 을 위반으로 읽지 말 것.
 
 - **엔드리스 모드의 정체** [M] · 본 모드가 «시간 고정 + 패배 없음» 이 되면서 차이가 «시간 무제한» 하나로 줄었다. 게다가 엔드리스는 만료가 없어 **유저 제출이 유일한 종료**다. 존치 여부부터 결정해야 한다. (three-minute-kill-race)
 - **몽마의 계약 코스트 재지정** [M] · 스트레스 한계가 패배와 무관해진 데 이어 **한계 표기 자체가 사라져** «허용치 선불»(`_leakAllowancePenalty`)이 완전히 공짜다. unit 2 의 스트레스 표기가 «일단은» 인 이유. (three-minute-kill-race)
