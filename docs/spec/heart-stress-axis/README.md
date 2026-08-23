@@ -196,6 +196,18 @@
   「**마지막** 마음 붕괴 = 즉시 패배」라고 쓰고 있는데 이 spec 의 확정안은 「**첫** 붕괴」다.
   마음 1개인 오늘은 같은 말이지만 두 정본이 서로 다른 답을 주기 전에 문구를 맞춘다.
   `goals > 1` 을 저작 단계에서 막을지도 **그 spec 의 결정**이다 — 기계를 건드리는 일이라 여기서 하지 않는다.
+- **⚠ 시트가 돌격형 저작을 절반 되돌릴 수 있다** [S] — unit 7 이 바꾼 `attackMethod` ·
+  `outputs[].magnitude` · `aggroAttackDamage` 셋이 **시트 소유 필드**다(임포터 DTO 에 있다).
+  시트 행에 그 컬럼이 채워져 있으면 로그인 임포트가 되돌리고, `targetFactions: 21` 과
+  `stabilityDamage: 50` 은 DTO 에 없어 **남아** 스펙 밖 상태가 된다. 실제 시트 값 **미확인** —
+  읽기 전용 curl 로 확인할 것(임포터는 dry-run 이 없어 돌리면 즉시 에셋에 쓴다).
+  상세는 [`7_rusher_attack.md`](7_rusher_attack.md).
+- **리뷰 잔여** [S] — 소비처 0 배관 정리(`skinOverride`·`OverheadBarSkin.Stress`·
+  `fadeAtEmpty`·`stress` BarSkin + 에셋 20필드·`SetGoalCrack`) · 무가치 단언 정리
+  (`CanSiege_RequiresCoreInTargetMask_NotJustAnAttack` 는 시스템을 안 돌린다 — 진짜 그물은
+  `UnitLifecycleSystemTests` 쪽이다) · 마음이 2개면 심박이 2배로 뛴다(연출만, 경고는 있음) ·
+  `ResultScreen.StressText` 가 인자 개수·타입 동일하고 **의미만 반전**이라 옛 관습으로 부르면
+  컴파일 통과 + 값 반전(이름 변경 검토).
 - **웨이포인트 적이 방패를 우회한다** [S] — `MovementSystem` 우선순위가 «웨이포인트 > 거점
   목적지»라 `waypointPathIndex >= 0` 인 적은 경로 차단이 안 걸린다(조준은 막힌다). 라이브
   영향은 `Enemy_Skimmer` 하나. 「하늘길로 오는 적은 방패를 우회한다」로 정체성화할지, 우선순위를

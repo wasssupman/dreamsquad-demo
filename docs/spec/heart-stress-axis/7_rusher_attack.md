@@ -60,6 +60,30 @@ aggroAttackDamage: 5 → 0 — 진짜 공격이 생겨 도발 프로필이 죽�
 | 본능이 다 무너짐 | 마음으로 달려가 **50 꽂고 산화** |
 | 도발당함 | 일반 적과 **같은 경로**로 가디언에게 붙는다 |
 
+## ⚠ 미해결 위험 — 시트가 이 저작을 절반 되돌릴 수 있다
+
+코드 리뷰 2026-08-24 발견. unit 7 이 바꾼 5개 중 **3개가 시트 소유 필드**다
+(`Data/StatImport/UnitStatImportDto.cs` 의 `EnemyStatDto` 가 리플렉션으로 SO 에 쓴다):
+
+| 변경값 | 시트 소유 | 근거 |
+|---|---|---|
+| `attackMethod: None→Melee` | **예** | `UnitStatImportDto.cs:65` |
+| `outputs[0].magnitude: 10` | **예** (`atk` 투영) | `:76` + `UnitStatFieldMapper` |
+| `aggroAttackDamage: 5→0` | **예** | `:83` — 주석이 «LIVE scalar … NOT in the skip-list» 로 못박음 |
+| `targetFactions: 0→21` | 아니오 | DTO 에 없음 |
+| `stabilityDamage: 1→50` | 아니오 | DTO 에 없음 |
+
+**되돌아가는 조합이 특히 나쁘다**: `attackMethod` 가 `None` 으로 복귀하면 `AttackState` 가
+안 붙는데 `targetFactions: 21` 과 `stabilityDamage: 50` 은 **남는다** — 스펙 어디에도 없는
+상태가 된다(공격은 없는데 마스크만 좁은 적).
+
+**미확인**: 실제 시트 행에 그 컬럼이 채워져 있는지. 비어 있으면 null-skip 되어 무해하다.
+확인은 **읽기 전용 curl** 로만 한다 — 임포터는 dry-run 이 없어 돌리면 즉시 에셋에 쓴다.
+
+해소 방법 둘:
+1. **시트에 반영** — 세 값을 시트 행에 써넣는다. 정본이 시트인 필드는 그게 정답이다.
+2. **시트 컬럼이 비어 있음을 확인** — 그러면 SO 저작이 그대로 산다(현행 유지).
+
 ## 완료 기준
 
 - [x] 컴파일 0 에러
