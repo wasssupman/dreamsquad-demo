@@ -14,7 +14,9 @@
 ## 구현
 
 **1. `Outcome` 은 라벨이지 판정이 아니다.** `complete` / `submitted` 옆에 `stress_full` 이
-붙는다. `MatchTally` 에 승패 필드를 **만들지 않는다** — three-minute-kill-race 가 *"자리를 남기면
+붙는다. ⚠ **라벨이 셋이라고 게임 종료가 셋인 것은 아니다** — 게임 규칙상의 통로는 2개
+(만료 · 스트레스 100)이고 `submitted` 는 **절차 밖 탈출구**다(계약). UI·문구에서 제출을
+「게임을 끝내는 방법」으로 승격시키지 않는다. `MatchTally` 에 승패 필드를 **만들지 않는다** — three-minute-kill-race 가 *"자리를 남기면
 조용히 되살아난다"* 며 `Won` 을 은퇴시킨 이유가 그대로 유효하다. 주석의 「값은 둘」 서술을 셋으로 고친다.
 
 **2. ⚠ 결과 화면의 「남은 마음」 줄.** 지금 `StatRow.State("남은 마음", StabilityText(Stability, StabilityMax))`

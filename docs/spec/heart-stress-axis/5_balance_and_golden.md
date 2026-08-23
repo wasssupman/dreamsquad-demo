@@ -9,7 +9,7 @@
 
 - `Assets/_Project/Scripts/Data/Decks/*.asset` — `goalStabilityMax` · 회복 배율
 - `Assets/_Project/Tests/Golden/*.trace.txt` + `docs/spec/battle-sim-extraction/golden-corpus.md` (자동 생성물)
-- `docs/reference/ingame-flow.md` — 종료 조건 3경로
+- `docs/reference/ingame-flow.md` — 종료 조건 2통로(만료 · 스트레스 100)
 - `docs/reference/map-wave-balancing.md` — 마음 HP·회복 배율을 「자주 바꾸는 값」에 추가
 
 ## 구현
@@ -23,6 +23,7 @@
 | Basic 1기 단독 | **25초**에 스트레스 100 |
 | Basic 5기 | **5초** |
 | `Skimmer` / `WaypointAir` | 쿨다운 0.2s = DPS 100 / 50 |
+| 돌격형(`Runner`·`Swift`) | 마음 피해 **0** (명제 9) — 밸런스 계산에서 제외 |
 | 잡몹 킬 1회 | `awakeningReward` 2 × 배율 |
 
 **마음 HP 1000 은 이미 무르다.** 첫 후보는 **1500**(첫 요청의 「본능(1000)의 1.5배」).
@@ -43,7 +44,7 @@
 **M1(A/B 대조)은 미착수 상태로 홀드 중임을 확인했다**(사용자, 2026-08-23) — 그래서 여기서
 재녹화해도 진행 중인 대조를 깨지 않는다. 재녹화본이 **M1 의 새 기준선**이 된다.
 
-**4. 정본 문서 갱신.** `ingame-flow.md` 의 종료 조건을 3경로로. `map-wave-balancing.md` 에
+**4. 정본 문서 갱신.** `ingame-flow.md` 의 종료 조건을 **2통로**로(메뉴 제출은 절차 밖 탈출구로 별기). `map-wave-balancing.md` 에
 마음 HP·회복 배율 위치를 추가(밸런스 손잡이가 늘었다).
 
 ## 완료 기준
@@ -52,5 +53,5 @@
 - [ ] 라이브 6맵 각 1판 이상 Play, 「뚫린 판 / 뚫린 시점」 기록이 이 문서에 남는다
 - [ ] 마음 HP·회복 배율 확정값이 덱 에셋에 반영되고 그 근거가 여기 적힌다
 - [ ] 골든 코퍼스 7종 재녹화 + `golden-corpus.md` 갱신, `Verify` 전건 통과
-- [ ] `ingame-flow.md` 종료 조건 3경로 반영
+- [ ] `ingame-flow.md` 종료 조건 2통로 반영 (제출은 절차 밖으로 별기)
 - [ ] 사용자 체감 확인: 검증 질문에 답이 나왔는가

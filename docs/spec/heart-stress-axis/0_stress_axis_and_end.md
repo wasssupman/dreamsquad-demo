@@ -1,8 +1,9 @@
-# 0 — 스트레스 축과 3번째 종료 경로
+# 0 — 스트레스 축과 게임 종료 조건
 
 ## 목적
 
-**마음 체력을 스트레스로 읽고, 그 값이 100 이 되면 판을 끝낸다.** 이 spec 의 토대이고,
+**마음 체력을 스트레스로 읽고, 그 값이 100 이 되면 판을 끝낸다.** 그리고 **마음을 깎는 것은
+적의 공격력 하나로 통일한다** — 돌격형의 자폭 피해 축을 끊는다. 이 spec 의 토대이고,
 「뒤집는 계약」 1·2 가 여기서 실행된다. 화면은 아직 안 바뀐다(unit 1·3) — 이 unit 은 **규칙**만 세운다.
 
 곁들여 **「첫 마음 파괴가 종료다」를 코드에 고정**한다. 명제 10(마음 1개)은 지금 데이터에서
@@ -13,7 +14,7 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Core/StressMath.cs` **(신설)** — 순수 static
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncGoalStability` 붕괴 분기 · `EndMatch` 3번째 경로
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncGoalStability` 붕괴 분기 · `EndMatch` 3번째 호출부 · `DrainGoalEvents` 자폭 피해 끊기 · 타워 복수 경고
 - `Assets/_Project/Tests/EditMode/StressMathTests.cs` **(신설)**
 - **테스트 개정 3건** (계약이 뒤집혔으므로 단언도 뒤집는다):
   - `Tests/PlayMode/GoalStabilityTest.cs` — 「마음이 무너져도 Result 가 아니다」 5초 감시 → **반대로**
@@ -58,6 +59,15 @@ early-return 한다 — 같은 프레임에 두 번 불릴 여지가 없다. `st
 **6. 회복 대상 규칙 한 줄.** unit 2 가 쓸 계약 — 힐은 **살아있는 마음 전체**에 넣는다.
 마음 1개에선 동치지만 「최근접 하나」로 두면 2골 사고 시 만피 마음이 흡수해 clamp 로 소멸시킨다.
 
+**7. 자폭 피해 축을 끊는다 (명제 9).** `DrainGoalEvents` 의
+`if (!breached) EnqueueGoalTowerDamage(stabilityDamage, evt.position);` 한 줄이 유일한 소비처다
+(`EnqueueGoalTowerDamage` 호출부 1곳 · `stabilityDamage` 소비처 1곳 — 확인함). 이 호출을 끊으면
+`Runner`·`Swift` 는 **마음 근처까지 이동한 뒤 아무 피해도 주지 않고 소멸**한다(도달 후 소멸 경로
+자체는 피해와 독립이라 그대로 산다).
+⇒ 이로써 **「마음은 적의 공격력만큼 피해를 입는다」가 문자 그대로 참**이 된다 — 공격력이 없는 적
+(`attackMethod: None`)은 피해가 0 이다. `stabilityDamage` 필드와 `EnqueueGoalTowerDamage` 는
+**지우지 않고 휴면**시킨다(다른 휴면 코드와 같은 규칙 — 되돌릴 때 1줄이다).
+
 ## 완료 기준
 
 - [ ] 컴파일 0 에러 · 콘솔 에러 0
@@ -69,3 +79,5 @@ early-return 한다 — 같은 프레임에 두 번 불릴 여지가 없다. `st
 - [ ] 마음이 2개 스폰되면 런타임 경고 1회 (하드 에러 아님 — 스코프 밖)
 - [ ] Play: 마음을 무방비로 내주면 **그 자리에서 결과 화면**이 뜬다(3분을 안 기다린다)
 - [ ] Play: 결과 화면 총점 = 그때까지 처치 수
+- [ ] Play: `Runner`·`Swift` 가 마음에 닿아도 **스트레스가 1도 오르지 않는다**(도달 후 소멸만)
+- [ ] EditMode: 자폭 경로가 `IncomingDamage` 를 넣지 않는다
