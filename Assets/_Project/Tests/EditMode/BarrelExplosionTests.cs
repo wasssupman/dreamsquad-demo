@@ -11,13 +11,13 @@ using Wassup.Battle.Units;
 
 namespace Wassup.Tests.EditMode
 {
-    // bomb-barrel-on-place unit 0·1 — 「설치물이 부서지면 터진다」 축.
+    // bomb-barrel-on-place unit 0·7 — 「설치물이 부서지면 터진다」 축.
     //
     // 이 파일이 지키는 것 두 가지:
     //  ① 죽은 설치물이 **전용 캐리어**에 폭발 요청을 남긴다. 죽는 엔티티 자신에 걸면
     //     같은 프레임에 파괴되어 브리지 드레인이 영영 못 본다.
-    //  ② 수명 만료가 **파괴와 같은 문**(DeadTag)으로 나가고, 만료 프레임에 이미 차단 칸에서
-    //     빠진다. 「DeadTag 를 달면 WithNone 이 걸러 준다」는 ECB 재생 시점 때문에 거짓이다.
+    //  ② 배럴은 **시간으로 죽지 않는다**(unit 7). 폭발은 적이 부순 사건이지 시계 사건이
+    //     아니다 — 시한이 되살아나면 그 성격이 통째로 바뀐다.
     public class BarrelExplosionTests
     {
         private World _world;
@@ -146,45 +146,32 @@ namespace Wassup.Tests.EditMode
 
             CollectionAssert.Contains(System.Array.ConvertAll(after, a => a.SystemType),
                 typeof(DamageApplicationSystem), "체력 사망 경로가 DeadTag 를 붙인 뒤에 봐야 한다");
+            // unit 7 로 수명 만료 경로는 은퇴했지만 이 핀은 **남긴다** — M0 unit 0 이 얼린
+            // BattleSimGroup 총순서를 유지하는 유일한 장치이고, 떼면 정렬기가 자리를
+            // 옮겨 골든 트레이스가 이유 없이 갈린다.
             CollectionAssert.Contains(System.Array.ConvertAll(after, a => a.SystemType),
-                typeof(ObstacleLifetimeSystem), "수명 만료 경로가 DeadTag 를 붙인 뒤에 봐야 한다");
+                typeof(ObstacleLifetimeSystem), "M0 가 얼린 실행 순서를 유지한다");
             CollectionAssert.Contains(System.Array.ConvertAll(before, a => a.SystemType),
                 typeof(UnitLifecycleSystem), "설치물이 치워지기 전에 봐야 한다");
         }
 
-        // ── unit 1 수명 ────────────────────────────────────────────────────
+        // ── unit 7 — 시간으로는 죽지 않는다 ─────────────────────────────
 
-        // ⚠ 격리 월드는 시간이 안 흐른다 — dt 를 직접 밀어 주지 않으면 수명이 영원히 안 준다.
-        private void TickLifetime(float dt = 0.016f)
-        {
-            _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + dt, dt));
-            _world.GetOrCreateSystem<ObstacleLifetimeSystem>().Update(_world.Unmanaged);
-        }
-
+        // 배럴이 «부서져야만 터진다» 는 계약의 회귀 방어다. 시한이 되살아나면 폭발이
+        // 적의 사건이 아니라 시계 사건으로 되돌아간다.
         [Test]
-        public void LegacyBarrelWithoutLifetime_NeverExpires()
+        public void Barrel_NeverExpires_NoMatterHowMuchTimePasses()
         {
-            _so.lifetime = 0f; // 기존 에셋 전부가 여기 해당한다
-            var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 0f);
-
-            for (int i = 0; i < 5; i++) TickLifetime();
-
-            Assert.IsFalse(_em.HasComponent<DeadTag>(barrel), "수명 0 = 무한. 사라지면 무회귀가 깨진다");
-            Assert.IsTrue(_blockedCells.Contains(new int2(4, 4)), "살아 있는 동안은 길을 막는다");
-        }
-
-        [Test]
-        public void ExpiredBarrel_GetsDeadTag_AndLeavesBlockedCellsSameFrame()
-        {
-            _so.lifetime = 0.001f;
             var barrel = SpawnBarrel(new int2(4, 4), explodeDamage: 120f);
 
-            TickLifetime(); // dt 가 수명을 넘긴다
+            for (int i = 0; i < 60; i++)
+            {
+                _world.SetTime(new Unity.Core.TimeData(_world.Time.ElapsedTime + 1f, 1f));
+                _world.GetOrCreateSystem<ObstacleLifetimeSystem>().Update(_world.Unmanaged);
+            }
 
-            Assert.IsTrue(_em.HasComponent<DeadTag>(barrel),
-                "만료는 파괴와 **같은 문**으로 나가야 폭발이 두 경우를 함께 덮는다");
-            Assert.IsFalse(_blockedCells.Contains(new int2(4, 4)),
-                "만료 프레임에 이미 빠져야 한다 — ECB 는 루프 뒤에 재생되므로 WithNone 이 안 걸러 준다");
+            Assert.IsFalse(_em.HasComponent<DeadTag>(barrel), "60 초가 지나도 시간으로는 죽지 않는다");
+            Assert.IsTrue(_blockedCells.Contains(new int2(4, 4)), "살아 있는 동안은 계속 길을 막는다");
         }
     }
 }

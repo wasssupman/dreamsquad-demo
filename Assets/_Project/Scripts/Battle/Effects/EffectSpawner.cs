@@ -166,8 +166,8 @@ namespace Wassup.Battle.Effects
             {
                 cell = centerCell,
                 worldPosition = worldPos,
-                // bomb-barrel-on-place unit 1 — 0 이하 = 무한(기존 전 에셋의 기본값).
-                remainingLife = so.lifetime > 0f ? so.lifetime : float.PositiveInfinity,
+                // unit 7 — 길막 설치물에 시한은 없다. 부서져야만 사라진다.
+                remainingLife = float.PositiveInfinity,
             });
             if (so.explodeDamage > 0f && explodeDataIndex < 0)
                 Debug.LogWarning($"[BlockingHazard] '{so.name}' has explodeDamage {so.explodeDamage} " +

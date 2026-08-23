@@ -2937,7 +2937,6 @@ namespace Wassup.Bridge
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
             SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러(연출·로그 전용)
-            SyncBlockingHazardFuseTint(); // bomb-barrel-on-place unit 6 — 남은 수명 → 뷰 틴트
             // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
             // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
@@ -3651,6 +3650,7 @@ namespace Wassup.Bridge
             }
             // goal-stability unit 5 — 골 게이지도 유닛과 같은 오버헤드 창(Begin/EndFrame) 안에서 Set.
             SyncGoalOverheadGauges(unifiedOverhead);
+            SyncBlockingHazardOverheadGauges(unifiedOverhead); // bomb-barrel-on-place unit 8 — 설치물 체력 바
             SyncPatrolViews(unifiedOverhead, canSort, gridSize);
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
             // three-minute-survival unit 1 — 골 안정도 바. EndFrame 뒤에 둔다(유닛 풀의
@@ -8453,35 +8453,52 @@ namespace Wassup.Bridge
             }
         }
 
-        // bomb-barrel-on-place unit 6 — 「언제 터지나」를 물건의 색으로 말한다.
-        // sim 은 남은 수명만 갖고 있고 색은 순수 프레젠테이션이라, 여기서 sim→뷰로 흘린다
-        // (`SyncGoalStability` 와 같은 자리·같은 성격 — 게임 상태를 갱신하지 않는다).
+        // bomb-barrel-on-place unit 8 — 길막 설치물의 머리 위 체력 바.
         //
-        // 수명이 무한(0 이하 저작)이면 「다해 간다」가 정의되지 않으므로 건너뛴다.
-        private void SyncBlockingHazardFuseTint()
+        // 이 바가 unit 6 의 퓨즈 틴트를 **대체**한다. 배럴이 시간으로 안 터지게 된 뒤로
+        // 「언제 터지나」의 답은 시계가 아니라 **남은 체력**이고, 그건 색으로 뭉뚱그릴 값이
+        // 아니라 적이 얼마나 때렸는지를 그대로 읽어야 하는 값이다.
+        //
+        // 유닛·거점과 **같은 오버헤드 창**(Begin/EndFrame) 안에서 Set 한다 — 밖에서 부르면
+        // EndFrame 의 `_seen` 소거에 걸려 매 프레임 사라진다(골 안정도 바의 선례).
+        //
+        // 순회 대상은 시각화된 설치물(`_blockingHazardVisualMap`)이다. 뷰가 없는 설치물에
+        // 바를 띄울 자리가 없으므로 등록부가 곧 대상 목록이다.
+        private void SyncBlockingHazardOverheadGauges(bool unifiedOverhead)
         {
-            if (_blockingHazardVisualMap.Count == 0 || _em == null) return;
+            if (!unifiedOverhead || unitOverheadUiLayer == null) return;
+            if (_blockingHazardVisualMap.Count == 0 || !HasLiveEntityManager()) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
             foreach (var pair in _blockingHazardVisualMap)
             {
-                var visual = pair.Value;
-                if (visual == null) continue;
+                if (pair.Value == null) continue;
                 var entity = pair.Key;
                 if (!_em.Exists(entity)) continue;
                 if (!_em.HasComponent<Wassup.Battle.Effects.BlockingHazard>(entity)) continue;
                 if (!_em.HasComponent<Wassup.Battle.Effects.Obstacle>(entity)) continue;
+                if (!_em.HasComponent<Health>(entity)) continue;
 
                 int idx = _em.GetComponentData<Wassup.Battle.Effects.BlockingHazard>(entity).hazardSoIndex;
                 if (idx < 0 || idx >= _blockingHazardSoRegistry.Count) continue;
                 var so = _blockingHazardSoRegistry[idx];
-                if (so == null || so.lifetime <= 0f) continue;
-                if (so.fuseTintColor == Color.white) continue;
+                if (so == null || so.overheadHeight <= 0f) continue; // 0 = 바 없음(기존 설치물 선택권)
 
-                // 곡선은 순수 함수가 소유한다(제약 10) — 여기는 값을 읽어 넘기는 자리다.
-                float remaining = _em.GetComponentData<Wassup.Battle.Effects.Obstacle>(entity).remainingLife;
-                float t = Wassup.Battle.Effects.BlockerFuse.Progress(remaining, so.lifetime, so.fuseTintExponent);
+                var h = _em.GetComponentData<Health>(entity);
+                var world = _em.GetComponentData<Wassup.Battle.Effects.Obstacle>(entity).worldPosition;
+                var baseView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(world.x, 0f, world.z));
+                Vector3 baseScreen = cam.WorldToScreenPoint(baseView);
+                Vector3 topScreen = cam.WorldToScreenPoint(baseView + Vector3.up * so.overheadHeight);
+                Vector3 a = cam.WorldToScreenPoint(baseView - Vector3.right * (tileSize * 0.5f));
+                Vector3 bScreen = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
+                float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(bScreen.x, bScreen.y));
 
-                var presenter = visual.GetComponent<BlockingHazardPresenter>();
-                if (presenter != null) presenter.SetFuseTint(so.fuseTintColor, t);
+                // 배럴은 **플레이어가 놓은 물건**이라 방어유닛 스킨을 쓴다. 카드 행은
+                // 저절로 비는데(`_cardsByHost` 에 없다) 설치물엔 드림캐쳐를 못 붙이기 때문이다.
+                unitOverheadUiLayer.SetUnit(entity, true,
+                    Health.ComputeRatio(h.value, h.max),
+                    new Vector2(baseScreen.x, topScreen.y), tileScreenWidth);
             }
         }
 

@@ -12,8 +12,8 @@ namespace Wassup.Battle.Combat
 {
     // bomb-barrel-on-place unit 0 — 「판 위 설치물이 부서지면 터진다」.
     //
-    // 이 시스템이 여는 것은 폭탄 배럴 하나가 아니라 **축**이다: 길막 설치물이 죽는 순간
-    // (적이 부쉈든 수명이 다했든) 그 칸을 중심으로 광역 피해를 낸다. 어느 설치물이 터지는지는
+    // 이 시스템이 여는 것은 폭탄 배럴 하나가 아니라 **축**이다: 길막 설치물이 **적에게
+    // 부서지는** 순간 그 칸을 중심으로 광역 피해를 낸다. 어느 설치물이 터지는지는
     // 전적으로 저작값(`BlockingHazardSO.explodeDamage`)이 정한다 — 0 이면 안 터지므로 기존
     // 길막 설치물은 무회귀다.
     //
@@ -26,12 +26,13 @@ namespace Wassup.Battle.Combat
     // Combat 자기 것(`ProjectileSpawnRequest`)뿐이다. 타 맥락 컴포넌트 읽기는 허용.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
-    // ⚠ 세 어트리뷰트가 **전부** 필요하다. `DeadTag` 생산자가 둘(피해·수명)이고 파괴자가
-    // 하나인데, 그중 하나라도 순서가 안 잡히면 정렬기 tie-break 에 따라 그 프레임엔
-    // `DeadTag` 가 아직 없고 다음 프레임엔 엔티티가 이미 없다 = **폭발이 통째로 소실**된다.
-    // 「가끔 안 터진다」는 Play 로 못 잡는 종류의 결함이라 EditMode 가 순서를 핀한다.
-    [UpdateAfter(typeof(DamageApplicationSystem))]      // 체력 0 → DeadTag
-    [UpdateAfter(typeof(ObstacleLifetimeSystem))]       // 수명 만료 → DeadTag (unit 1)
+    // ⚠ 순서를 안 잡으면 정렬기 tie-break 에 따라 그 프레임엔 `DeadTag` 가 아직 없고 다음
+    // 프레임엔 엔티티가 이미 없다 = **폭발이 통째로 소실**된다. 「가끔 안 터진다」는 Play 로
+    // 못 잡는 종류의 결함이라 EditMode 가 순서를 핀한다.
+    [UpdateAfter(typeof(DamageApplicationSystem))]      // 체력 0 → DeadTag (유일한 폭발 계기)
+    // unit 7 로 수명 만료 경로는 은퇴했지만 이 핀은 남긴다 — M0 unit 0 이 얼린
+    // BattleSimGroup 총순서를 유지하는 장치이고, 떼면 골든 트레이스가 이유 없이 갈린다.
+    [UpdateAfter(typeof(ObstacleLifetimeSystem))]
     [UpdateBefore(typeof(UnitLifecycleSystem))]         // 죽은 설치물을 치우는 쪽
     public partial struct BarrelExplosionSystem : ISystem
     {

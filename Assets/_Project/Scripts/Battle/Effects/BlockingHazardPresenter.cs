@@ -9,16 +9,6 @@ namespace Wassup.Battle.Effects
 
         public Entity Entity { get; private set; }
 
-        // bomb-barrel-on-place unit 6 — 수명 경과 틴트.
-        // ⚠ 머티리얼을 직접 건드리지 않는다. 벤더 메시는 프랍 수백 개가 **머티리얼 하나를
-        // 공유**하므로 `renderer.material` 을 만지면 맵 전체가 물든다(그리고 인스턴스 머티리얼
-        // 누수). MaterialPropertyBlock 은 렌더러 단위 오버라이드라 둘 다 피한다.
-        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
-        private static readonly int ColorId = Shader.PropertyToID("_Color");
-        private MaterialPropertyBlock _tintBlock;
-        private Renderer[] _tintTargets;
-        private float _lastTint = -1f;
-
         public void SetSpawnVfxPrefab(GameObject prefab)
         {
             spawnVfxPrefab = prefab;
@@ -27,33 +17,7 @@ namespace Wassup.Battle.Effects
         public void Bind(Entity entity)
         {
             Entity = entity;
-            // 파티클(스폰 VFX)은 제외한다 — 틴트는 «물건» 의 색이지 연출의 색이 아니다.
-            // 그래서 여기서 한 번만 모은다(스폰 VFX 가 자식으로 붙기 **전**).
-            _tintTargets = GetComponentsInChildren<MeshRenderer>(true);
             SpawnVfx();
-        }
-
-        // t01: 0 = 갓 놓임 · 1 = 수명 끝. peak 가 흰색이면 아무것도 하지 않는다(무회귀).
-        public void SetFuseTint(Color peak, float t01)
-        {
-            if (_tintTargets == null || _tintTargets.Length == 0) return;
-            if (peak == Color.white) return;
-            float t = Mathf.Clamp01(t01);
-            // 눈에 띄는 변화만 다시 쓴다 — 매 프레임 SetPropertyBlock 은 불필요한 비용이다.
-            if (_lastTint >= 0f && Mathf.Abs(t - _lastTint) < 0.01f) return;
-            _lastTint = t;
-
-            var c = Color.Lerp(Color.white, peak, t);
-            _tintBlock ??= new MaterialPropertyBlock();
-            for (int i = 0; i < _tintTargets.Length; i++)
-            {
-                var r = _tintTargets[i];
-                if (r == null) continue;
-                r.GetPropertyBlock(_tintBlock);
-                _tintBlock.SetColor(BaseColorId, c); // URP Lit
-                _tintBlock.SetColor(ColorId, c);     // 구 파이프라인 이름도 같이 — 둘 다 있는 머티리얼이다
-                r.SetPropertyBlock(_tintBlock);
-            }
         }
 
         public void OnDestroyed(GameObject vfxPrefab)

@@ -20,21 +20,18 @@ namespace Wassup.Battle.Effects
         [Min(1f)]
         public float maxHp = 100f;
 
-        // bomb-barrel-on-place unit 1 — 아무도 안 때려도 사라지는 시한. 0 이하 = 무한
-        // (기존 길막 설치물 전부가 여기 해당하므로 무회귀).
-        //
-        // 만료는 **파괴와 같은 문**으로 나간다(`DeadTag`) — 그래야 unit 0 의 폭발이
-        // 「적이 부쉈다」와 「시간이 다했다」 둘 다를 규칙 하나로 덮는다.
-        [Tooltip("설치물 수명(초). 0 이하 = 무한. 만료는 파괴와 같은 경로로 나간다(폭발 포함).")]
-        [Min(0f)]
-        public float lifetime;
+        // unit 7 — 「설치물 수명」 필드는 은퇴했다. 길막 설치물은 **부서져야만** 사라진다.
+        // 시한이 있으면 폭발이 「적이 부순 사건」이 아니라 시계 사건이 되고, 그 시계를
+        // 화면에 알리는 장치(퓨즈 틴트)가 필요해지는데 그 장치도 같이 은퇴했다.
+        // 되살릴 거라면 `ObstacleLifetimeSystem` 의 길막 루프부터 복원해야 한다 —
+        // 필드만 되살리면 저작해도 아무 일이 안 일어난다(조용한 실패).
 
         [Header("Destruction VFX")]
         [Tooltip("Optional. If set, BattleBridge spawns this on destruction.")]
         public GameObject destructionVfxPrefab;
 
-        // bomb-barrel-on-place unit 0 — 「부서지면 터진다」. 죽는 순간(체력 0 또는 수명 만료)
-        // 자기 칸을 중심으로 광역 피해를 낸다. 폭발 자체는 신규 로직이 아니라 기존 칸 광역
+        // bomb-barrel-on-place unit 0 — 「부서지면 터진다」. 적이 부숴 체력이 0 이 되는 순간
+        // 자기 칸을 중심으로 광역 피해를 낸다(unit 7 이후 이것이 **유일한** 폭발 계기다). 폭발 자체는 신규 로직이 아니라 기존 칸 광역
         // 착탄(TileAoe)이라 여기 값은 그 요청의 파라미터다.
         //
         // damage 0 = 폭발 없음. 기존 길막 설치물 에셋은 전부 0 으로 역직렬화되므로 무회귀.
@@ -57,18 +54,18 @@ namespace Wassup.Battle.Effects
         [Tooltip("폭발 해결용 즉발 탄. explodeDamage > 0 이면 필수.")]
         public Wassup.Data.ProjectileData explodeProjectile;
 
-        // bomb-barrel-on-place unit 6 — 수명이 다해 갈수록 물드는 색. 「언제 터지나」를
-        // 숫자나 게이지가 아니라 **물건 자체의 색**으로 말한다(이 프로젝트의 게이지 금지 규율).
+        // unit 8 — 머리 위 체력 바가 뜨는 높이(월드 단위). 「언제 터지나」를 이제 시계가
+        // 아니라 **남은 체력**이 말하므로, 그 값이 화면에 보여야 한다.
         //
-        // ⚠ 틴트는 **인스턴스별 오버라이드**여야 한다. 벤더 메시는 프랍 500여 개가 공유하는
-        // 머티리얼 하나를 쓰므로, 머티리얼을 직접 물들이면 맵의 모든 프랍이 같이 빨개진다.
-        // 적용은 `BlockingHazardPresenter` 가 MaterialPropertyBlock 으로 한다.
-        [Header("Fuse Tint (수명 경과 색)")]
-        [Tooltip("수명이 다해 갈수록 이 색으로 물든다. 흰색(기본) = 물들지 않음.")]
-        public Color fuseTintColor = Color.white;
-
-        [Tooltip("물드는 곡선. 1 = 선형, 값이 클수록 막판에 몰아서 빨개진다.")]
-        [Min(0.1f)]
-        public float fuseTintExponent = 2.5f;
+        // 설치물마다 덩치가 다르다(1칸 배럴 ↔ 3x3 방벽). 그래서 높이는 브리지의 공용
+        // 상수가 아니라 **설치물 자신의 저작값**이다 — 골 거점이 `goalOverheadHeight` 를
+        // 따로 갖는 것과 같은 이유.
+        //
+        // 기본 0 = **바 없음**. 기존 길막 설치물(바위 2종)은 이 키가 없어 0 으로 떨어지므로
+        // 무회귀다 — `explodeDamage` 와 같은 형태의 옵트인이다.
+        [Header("Health Bar")]
+        [Tooltip("머리 위 체력 바 높이(월드 단위). 0 이하 = 바 없음.")]
+        [Min(0f)]
+        public float overheadHeight;
     }
 }

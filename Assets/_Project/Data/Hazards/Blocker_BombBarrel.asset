@@ -16,11 +16,9 @@ MonoBehaviour:
   spawnVfxPrefab: {fileID: 8053883155973515113, guid: cf6e23343ef194cdd972a28ca709b0dc, type: 3}
   shape: 0
   maxHp: 200
-  lifetime: 12
   destructionVfxPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
   explodeDamage: 120
   explodeTileRange: 1
   explodeTargetCap: 0
   explodeProjectile: {fileID: 11400000, guid: a7c278502563644c0a650aee0766c3d6, type: 2}
-  fuseTintColor: {r: 1, g: 0.18, b: 0.12, a: 1}
-  fuseTintExponent: 2.5
+  overheadHeight: 1

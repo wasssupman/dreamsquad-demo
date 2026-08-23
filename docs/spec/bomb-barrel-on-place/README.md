@@ -1,7 +1,8 @@
 # bomb-barrel-on-place — 폭탄맨 배치 스킬: 폭탄 배럴
 
-> 상태: **units 0~5 구현 완료 2026-08-22** · ECS critic 리뷰 반영 · EditMode + Play 검증 완료 · 미커밋
+> 상태: **units 0~8 구현 완료** (0~6 커밋 `71f25b3e` · 7~8 진행 중 2026-08-23)
 > 남은 것: 시트 `desc` 반영(사용자 승인 필요) · 전용 아트 · 「깔린 적이 갇히는가」 육안 판정
+> · unit 7 로 바뀐 조건에 맞춘 **M0 골든 코퍼스 재생성**
 > 선행/모체: `docs/spec/bomb-thrower-defender/`(폭탄맨 평타 · unit 9 로 조준 은퇴, unit 10 으로 무작위 은퇴),
 > `docs/spec/on-place-skill-rework/`(트리거×페이로드 배치 스킬 · `OnPlace` 트리거),
 > `docs/spec/on-place-shuttle-shotgun/`(배치 스킬이 발사하는 축),
@@ -11,11 +12,12 @@
 
 폭탄맨을 놓으면 **2타일 안 가장 가까운 적에게 폭탄 배럴을 곡사로 던진다.** 배럴은 떨어진
 칸에 서서 길을 막고 체력을 가지며, 적들이 그걸 때린다. **부서지는 순간 터져서** 배럴을
-두들기던 적들이 다친다. 아무도 안 때려도 수명이 다하면 스스로 터진다.
+두들기던 적들이 다친다. **부서지는 것이 유일한 폭발 계기다** — 시한은 없다(unit 7).
+남은 체력은 머리 위 바가 말한다(unit 8).
 
 ```
 배치 ──(곡사 비행)──▶ 배럴 착지(2타일 안 최근접 적의 칸) ──▶ 길막 + 적이 때림
-                                                          └─(체력 0 또는 수명 만료)─▶ 폭발
+                                                          └────(체력 0)────▶ 폭발
 ```
 
 플레이어의 조작은 지금과 같은 **드래그 한 번**이다. 판단거리는 「폭탄맨을 어느 칸에
@@ -40,7 +42,9 @@
 | 3 | 발사 축 | `3_lob_and_nearest_selection.md` | 곡사 배럴 궤적(`ProjectileFlightMode` +1) + 발사 명세 **최근접 선택 규칙** |
 | 4 | 에셋 | `4_assets_and_ability.md` | 배럴 SO · 탄 SO · 패턴 SO · 능력 SO + 폭탄맨 배선 |
 | 5 | 문안·검증 | `5_text_and_validation.md` | 설명 문안 + 시트 `desc` + Play 육안 검증 |
-| 6 | 연출 | `6_fuse_tint.md` | 수명이 다해 갈수록 빨갛게 — 남은 수명(ECS) → 뷰 틴트 |
+| 6 | 연출 | `6_fuse_tint.md` | ~~수명이 다해 갈수록 빨갛게~~ — **unit 7 로 은퇴** |
+| 7 | 계기 축소 | `7_retire_fuse_and_lifetime.md` | 시한·퓨즈 틴트 은퇴 — **부서져야만 터진다** |
+| 8 | 판독 | `8_barrel_health_bar.md` | 머리 위 체력 바 — 「언제 터지나」를 남은 체력이 말한다 |
 
 > 순서 근거: 0·1 은 **설치물 쪽**이라 폭탄맨 없이 단독으로 굴려 볼 수 있다(기존 상시 길막
 > 캐스터로 즉시 확인 가능). 2·3 은 **투척 쪽** 사슬이고 3 은 단독으로 아무 동작도 안 한다.
@@ -56,8 +60,10 @@
 3. **폭발은 sim 이 소유한다.** 브리지 드레인(파괴 알림)에서 터뜨리면 폭발 타이밍이 sim
    프레임이 아니라 MonoBehaviour Update 에 묶여 비동기 토너먼트 재현성이 흔들린다.
    Combat 이 「죽은 설치물」을 **읽어** 폭발을 stage 한다(타 맥락 컴포넌트 읽기는 허용).
-4. **부서짐과 수명 만료는 같은 문으로 나간다.** 만료 시 엔티티를 바로 파괴하지 말고
-   `DeadTag` 를 붙인다 — 그래야 폭발 규칙이 한 곳에만 있고 두 경우를 자동으로 덮는다.
+4. **폭발의 계기는 하나뿐이다 — 부서짐.** ~~수명 만료도 같은 문(`DeadTag`)으로 나간다~~ 는
+   unit 7 에서 폐기됐다. 배럴에 시한을 다시 넣지 말 것: 시한이 붙는 순간 폭발이 「적이 부순
+   사건」에서 「시계 사건」으로 바뀌고, 그것을 화면에 알리는 예고 장치가 다시 필요해진다.
+   길이 막힌 적은 벽을 때리므로 배럴은 스스로 소비된다 — 청소용 타이머는 필요 없다.
 5. **폭발 수치는 컴포넌트가 싣는다.** sim 이 SO 를 못 읽으므로 bake 가 `BlockingHazard` 에
    피해·반경을 실어 둔다. **0 = 폭발 없음** → 기존 길막 캐스터 무회귀.
 6. **배럴이 길을 막는 것이 이 스킬의 동력이다.** 막히면 적이 벽을 때리는 것이 이 시스템의
@@ -69,11 +75,13 @@
 8. **폭발 요청은 전용 캐리어 엔티티에 싣는다.** 배럴은 죽는 프레임에 파괴되므로 그 엔티티에
    요청을 걸면 브리지 드레인이 못 본다(드레인은 ECS 시스템 뒤에 도는 MonoBehaviour Update).
    기존 `ProjectileRequestCarrier` 관용구를 쓰면 드레인이 캐리어를 통째로 파괴해 잔여물도 없다.
-9. **시스템 순서는 어트리뷰트로 못박는다.** `DeadTag` 생산자가 둘(피해·수명), 파괴자가 하나다.
-   셋 다와의 순서를 명시하지 않으면 정렬기 tie-break 에 따라 **폭발이 통째로 소실**된다.
-   순서는 EditMode 로 핀한다 — Play 로는 간헐 재현이라 못 잡는다.
-10. **하드코딩 금지** — 배럴 체력·수명·폭발 피해·폭발 반경·던지는 사거리(2타일)·비행 시간·
-   배럴 모양은 전부 SO.
+9. **시스템 순서는 어트리뷰트로 못박는다.** `DeadTag` 생산자(피해)와 파괴자 사이에 서야 한다.
+   순서를 명시하지 않으면 정렬기 tie-break 에 따라 **폭발이 통째로 소실**된다 — 그 프레임엔
+   `DeadTag` 가 아직 없고 다음 프레임엔 엔티티가 이미 없다. 순서는 EditMode 로 핀한다
+   (Play 로는 간헐 재현이라 못 잡는다). unit 7 이후에도 **수명 시스템 핀은 남긴다** —
+   의미는 잃었지만 M0 가 얼린 총순서를 유지하는 장치다.
+10. **하드코딩 금지** — 배럴 체력·폭발 피해·폭발 반경·던지는 사거리(2타일)·비행 시간·
+   배럴 모양·체력 바 높이는 전부 SO.
 11. **폭발의 진영은 명시한다 — 파생에 기대지 않는다.** 형제 경로 중에는
    `FactionTag == EnemyUnit ? Defender : Enemy` 로 진영을 파생하는 곳이 있고, 설치물은
    `FactionTag.BlockingHazard` 라 그 삼항식의 **else 로 떨어져 우연히 정답**이 된다.
@@ -90,13 +98,13 @@
 
 | 정거장 | 이번 spec |
 |---|---|
-| 데이터 SO | **+`Projectile_Barrel`·`Projectile_BarrelBlast`·`Blocker_BombBarrel`·`Pattern_BombMan_Barrel`·`Ability_UnitSkill_BombMan`**. `BlockingHazardSO` 에 폭발·수명·폭발탄 필드 추가 |
+| 데이터 SO | **+`Projectile_Barrel`·`Projectile_BarrelBlast`·`Blocker_BombBarrel`·`Pattern_BombMan_Barrel`·`Ability_UnitSkill_BombMan`**. `BlockingHazardSO` 에 폭발·폭발탄·체력바 높이 필드 추가 |
 | 스폰 진입점 | 무변경 — 배치 스킬은 기존 OnPlace arm → emitter, 배럴은 기존 `DrainHazardSpawnRequests` |
 | ECS 컴포넌트 | `BlockingHazard` +폭발 필드 · `ProjectileSpawnRequest`/`ProjectileState` +설치물 index. 신규 컴포넌트 0 |
-| 시뮬 시스템 | **신규 1**(`BarrelExplosionSystem`, Combat). arm 확장 2(`ProjectileHitSystem` case · `ObstacleLifetimeSystem` 수명). emitter 는 **로직 무변경**(호출 인자 1개만 추가) |
+| 시뮬 시스템 | **신규 1**(`BarrelExplosionSystem`, Combat). arm 확장 1(`ProjectileHitSystem` case). emitter 는 **로직 무변경**(호출 인자 1개만 추가) |
 | 이벤트 큐 | **신규 0** — 스폰 요청·파괴 알림 재사용 |
 | View/Pool | 기존 `BlockingHazardPresenter`(설치·파괴 VFX) + `ProjectileViewPool`(곡사 배럴 뷰) |
-| 체력 표시 | 설치물 체력 바 — 기존 길막 설치물과 같은 표기를 따른다(신규 없음) |
+| 체력 표시 | **unit 8** — 유닛·거점과 같은 `UnitOverheadUiLayer` 를 그대로 부른다(신규 뷰 0). 옵트인(`overheadHeight` 0 = 없음)이라 기존 설치물 무회귀 |
 | 씬 wiring | N/A — 신규 SerializeField 없음 |
 
 ## 후속 후보 (스코프 밖)
@@ -109,3 +117,6 @@
   여는 작업이라 별도 spec.
 - **폭탄맨 평타 잔재 정리** [S] · 무작위 3종 은퇴로 소비처를 잃은 `rng`·`sleepSec`·`stunSec`.
   이 spec 이 아니라 `bomb-thrower-defender` unit 10 에서 정리한다.
+- **길 밖에 떨어진 배럴의 청소** [S] · unit 7 로 시한이 사라져 아무도 안 때리는 배럴은 판
+  끝까지 남는다. 체감이 나쁘면 **개수 상한**(배치당 1개 등)으로 푼다 — 시한으로 되돌리면
+  폭발의 성격이 같이 되돌아간다(계약 4).
