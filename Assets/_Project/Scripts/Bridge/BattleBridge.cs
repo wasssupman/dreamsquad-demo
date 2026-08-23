@@ -8744,7 +8744,16 @@ namespace Wassup.Bridge
                     // 빨라지는데 `time × bpm` 으로 접으면 bpm 이 바뀔 때 위상이 튄다(박이 끊긴다).
                     // heart-stress-axis unit 8 — **단계가 모든 채널의 공통 클록이다.**
                     // 히스테리시스라 직전 단계를 넘긴다(경계에서 깜빡이면 늑대소년이 된다).
+                    int prevStage = _heartStage;
                     _heartStage = Wassup.Presentation.HeartStressPulse.StageOf(stress01, _heartStage);
+                    if (_heartStage != prevStage)
+                    {
+                        // 단계 전이는 판당 몇 번뿐이라 로그가 싸다. 그리고 「연출이 적용됐나」를
+                        // 콘솔로 확정할 수 있는 유일한 지점이다 — 화면에 안 보이는 것이
+                        // «값이 안 움직여서» 인지 «연출이 약해서» 인지 이 줄이 가른다.
+                        Debug.Log($"[BattleBridge] 마음 스트레스 단계 {prevStage} → {_heartStage} "
+                                + $"(스트레스 {stress:F0}/100)");
+                    }
                     float bpm = Wassup.Presentation.HeartStressPulse.Bpm(_heartStage, heartRestBpm, heartMaxBpm);
                     _heartBeatPhase = Wassup.Presentation.HeartStressPulse.AdvancePhase(
                         _heartBeatPhase, Time.unscaledDeltaTime, bpm);
