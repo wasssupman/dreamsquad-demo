@@ -193,6 +193,12 @@
   목적지»라 `waypointPathIndex >= 0` 인 적은 경로 차단이 안 걸린다(조준은 막힌다). 라이브
   영향은 `Enemy_Skimmer` 하나. 「하늘길로 오는 적은 방패를 우회한다」로 정체성화할지, 우선순위를
   뒤집을지 결정 필요.
+- **방패가 DoT·CC 를 막는 것은 «보장» 이 아니라 «아키타입의 우연» 이다** [S] — ECS 리뷰
+  2026-08-24 지적. 골 엔티티에 `DotEffect`·`CcEffect` 버퍼가 **없어서** 각 시스템의 `HasBuffer`
+  체크에 걸러지는 것뿐이다. 누군가 그 버퍼를 아키타입에 추가하면 **방패를 조용히 뚫는다** —
+  `DamageApplicationSystem` 백스톱은 `IncomingDamage` 를 잡지만 DoT 는 자기 경로다.
+  `goal-stability` 가 남긴 계약(「골은 CC·모디파이어의 대상이 아니다 — 향후 추가하려면 이
+  계약부터 재검토」)과 **같은 자리**이므로 그때 함께 판단한다.
 - **`EnemyAiStateSystem` 미러의 `UltimateLeapState` 누락** [S] — ECS 리뷰 2026-08-24 발견,
   **선재 결함**. `AttackSystem` 은 이탈(판 밖) 보스를 후보에서 빼는데 AI 미러엔 그 줄이 없어
   «멈춰 서서 안 쏘는» 적이 생긴다. 이 spec 범위 밖이라 기록만 했다.
