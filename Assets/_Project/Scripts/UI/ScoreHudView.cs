@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Presentation;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -172,15 +173,24 @@ namespace Wassup.UI
         [SerializeField] private Color timerWarnColor = new Color(1f, 0.72f, 0.24f, 1f);
         [Tooltip("10초 이하")]
         [SerializeField] private Color timerFinalColor = new Color(1f, 0.33f, 0.28f, 1f);
-        [Header("Heart stress rim (heart-stress-axis unit 3)")]
+        [Header("Heart stress rim (heart-stress-axis unit 3 rev)")]
+        // **상시 연출이다.** rev 1 은 피격 순간에만 튀는 원샷 위주였는데, 사용자 지시로
+        // 「일시적인게 아니라 스트레스 정도에 따라」 로 뒤집었다 — 화면은 판 내내 «지금
+        // 얼마나 위험한가» 를 말하고, 피격 스파이크는 그 위에 얹히는 보조다.
+        //
         // ⚠ 타이머 마지막 10초 연출(붉은 대형 숫자 + 매초 붉은 비네트)과 **종반에 정확히
         // 겹친다** — 스트레스는 판 후반에 가장 높기 쉽다. 그래서 형태로 가른다:
-        // 타이머는 **중앙 비네트 원샷**, 스트레스는 **가장자리 림 지속**. 색도 살짝 어긋나게.
+        // 타이머는 **중앙 비네트 원샷**, 스트레스는 **가장자리 림 지속 + 심박**.
         [SerializeField] private Color stressRimColor = new Color(0.86f, 0.09f, 0.14f, 1f);
-        [Tooltip("수위 100%일 때 림의 최대 알파(지속). 판을 가리면 안 되므로 낮게.")]
-        [SerializeField, Range(0f, 1f)] private float stressRimMaxAlpha = 0.3f;
-        [Tooltip("스트레스가 오른 프레임의 추가 알파(순간).")]
-        [SerializeField, Range(0f, 1f)] private float stressSpikeAlpha = 0.45f;
+        [Tooltip("스트레스 100%일 때 림의 최대 알파(지속). 강화 rev — 판을 가리지 않는 선에서 확실히 보이게.")]
+        [SerializeField, Range(0f, 1f)] private float stressRimMaxAlpha = 0.62f;
+        [Tooltip("세기 곡선 지수. 1=선형. 2 면 낮은 스트레스에서 거의 안 보이다가 후반에 확 올라온다 — "
+                 + "낮을 때부터 붉으면 판이 항상 위급해 보여 진짜 위급한 구간이 안 읽힌다.")]
+        [SerializeField, Range(0.5f, 4f)] private float stressIntensityPower = 2f;
+        [Tooltip("심박이 림 알파를 얼마나 깊게 흔드는가. 0 = 안 뛴다.")]
+        [SerializeField, Range(0f, 0.9f)] private float stressBeatDepth = 0.45f;
+        [Tooltip("스트레스가 오른 프레임의 추가 알파(보조).")]
+        [SerializeField, Range(0f, 1f)] private float stressSpikeAlpha = 0.4f;
         [Tooltip("스파이크가 사라지는 데 걸리는 초.")]
         [SerializeField, Min(0.05f)] private float stressSpikeDecaySec = 0.35f;
         [Tooltip("스파이크가 최대가 되는 상승분(스트레스 0~100 기준). 이 값 이상이면 포화.")]
@@ -238,9 +248,9 @@ namespace Wassup.UI
         // 마지막 10초)인데 `_milestoneFlash` 하나를 Mathf.Max 로 다툰다. 스트레스는
         // **지속 상태**라 성격이 다르고, 셋째가 끼면 서로를 먹는다.
         private Image _stressRimImage;
-        private float _stressLevel;   // 0~1 수위 — (b) 맥박
-        private float _stressSpike;   // 0~1 순간 — (a) 개별 튐, 지수 감쇠
-        private float _stressPulse = 1f;
+        private float _stressLevel;      // 0~1 수위 — **상시**. 이 채널이 주인공이다.
+        private float _stressBeat = 1f;  // 심박 밝기 배율(보드 프랍과 같은 박자)
+        private float _stressSpike;      // 0~1 피격 순간 — 보조. 지수 감쇠
         private float _milestoneFlash;
         // 비네트를 두 곳이 쓴다(점수 마일스톤 · 10초 카운트다운) — 색이 달라서 틴트를 든다.
         private Color _vignetteTint;
@@ -441,17 +451,17 @@ namespace Wassup.UI
         }
 
         /// <summary>heart-stress-axis unit 3 — 마음 스트레스 화면 연출.
-        /// <paramref name="stress01"/> 수위(0~1) · <paramref name="pulse"/> 보드 잠식과 **같은
-        /// 맥박 값**(위상 동기 — 계산 주체가 하나여야 화면과 보드가 같이 뛴다) ·
+        /// <paramref name="stress01"/> 수위(0~1) · <paramref name="beatScale"/> 마음 프랍과 **같은
+        /// 심박 배율**(위상 동기 — 계산 주체가 하나여야 화면과 마음이 같이 뛴다) ·
         /// <paramref name="riseAmount"/> 이번 프레임의 **넷 상승분**(0~100 스케일).
         ///
         /// ⚠ 「피해량」이 아니라 「넷 상승분」인 이유: 마음 피해를 실어 나르는 이벤트가 없어
         /// 브리지가 폴링한다. 같은 프레임에 악몽을 잡아 회복이 상쇄하면 **안 튀는 것이 옳다**
         /// — 실제로 스트레스가 안 올랐기 때문이다.</summary>
-        public void SetHeartStress(float stress01, float pulse, float riseAmount)
+        public void SetHeartStress(float stress01, float beatScale, float riseAmount)
         {
             _stressLevel = Mathf.Clamp01(stress01);
-            _stressPulse = pulse;
+            _stressBeat = beatScale;
             if (riseAmount > 0f)
                 _stressSpike = Mathf.Max(_stressSpike,
                     Mathf.Clamp01(riseAmount / Mathf.Max(0.5f, stressSpikeFullRise)));
@@ -682,13 +692,17 @@ namespace Wassup.UI
                 _shineImage.color = sc;
             }
 
-            // heart-stress-axis unit 3 — 림 = 수위(지속) + 스파이크(순간). 둘을 더한다:
-            // 수위만이면 「지금 맞았다」가 안 읽히고, 스파이크만이면 「얼마나 위험한가」가 안 읽힌다.
+            // heart-stress-axis unit 3 rev — 림 = **수위(상시·주인공)** + 심박 + 스파이크(보조).
+            // 수위만이면 「지금 맞았다」가 안 읽히고, 스파이크만이면 「얼마나 위험한가」가
+            // 안 읽힌다. 그리고 심박이 둘을 하나의 «살아있는 것» 으로 묶는다.
             if (_stressRimImage != null)
             {
                 _stressSpike = Mathf.Max(0f,
                     _stressSpike - dt / Mathf.Max(0.05f, stressSpikeDecaySec));
-                float level = stressRimMaxAlpha * _stressLevel * _stressPulse;
+                float intensity = HeartStressPulse.Intensity(_stressLevel, stressIntensityPower);
+                // 심박 깊이도 세기를 따라간다 — 낮은 스트레스에서 화면이 벌써 쿵쿵대면 거짓말이다.
+                float beat = Mathf.Lerp(1f, _stressBeat, stressBeatDepth * intensity);
+                float level = stressRimMaxAlpha * intensity * beat;
                 float spike = stressSpikeAlpha * _stressSpike * _stressSpike;   // ease-out
                 var rc = stressRimColor;
                 rc.a = Mathf.Clamp01(level + spike);
@@ -744,7 +758,7 @@ namespace Wassup.UI
             }
             _milestoneFlash = 0f;
             if (_vignetteImage != null) { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
-            _stressLevel = 0f; _stressSpike = 0f; _stressPulse = 1f;
+            _stressLevel = 0f; _stressSpike = 0f; _stressBeat = 1f;
             if (_stressRimImage != null) { var sc = stressRimColor; sc.a = 0f; _stressRimImage.color = sc; }
         }
 

@@ -860,103 +860,25 @@ namespace Wassup.Core
             prop.transform.localScale *= 0.6f;
         }
 
-        // ── heart-stress-axis unit 1 rev — 마음 스트레스 «잠식» ────────────────────
+        // ── heart-stress-axis unit 1 rev 2 — 마음이 붉게 물든다 ────────────────────
         //
-        // 마음의 스트레스를 머리 위 가로 바로 그리면 본능·적 마음·유닛과 **같은 문법**이라
-        // 「색만 다른 4번째 바」로 읽힌다. 판을 끝내는 유일한 축인데 화면 점유가 잡몹
-        // 체력바와 같은 급인 것이다. 그래서 바를 빼고 **보드를 먹게** 한다 —
-        // 임팩트는 면적에서 온다(바 15px vs 보드 9칸).
+        // rev 1(머리 위 차오르는 바)·rev 2(주변 3×3 잠식) 둘 다 반려됐다. 바는 다른 바들과
+        // 문법이 같아 임팩트가 없었고, 주변 타일 하이라이트는 «쓸모없다»(사용자, 2026-08-23).
+        // 남은 결론: **마음 자체가 말한다.** 프랍이 스트레스만큼 붉어지고 심박에 맞춰 뛴다.
         //
-        // 렌더 = grid 자식 스프라이트 9장(3×3). 모양은 절차적 소프트 원(StainSprite),
-        // 링별 채움은 순수 함수(HeartStressStainMath)가 정한다. 파라미터는 TileSetData 소유.
-        // 정렬은 «보드 레이어 < 유닛 레이어» 규칙의 최하단(HeartStressStainOrder = −14).
-        private readonly SpriteRenderer[] _stressStains = new SpriteRenderer[9];
-        private static Sprite _stainSprite;
-
-        /// <summary>잠식을 갱신하고 **이번 프레임의 맥박 배율**을 돌려준다.
-        /// 화면 림(unit 3)이 같은 값을 쓰게 해서 «화면과 보드가 같이 뛴다» 를 만든다 —
-        /// 각자 계산하면 파라미터가 갈리는 순간 위상이 어긋난다.</summary>
-        public float SetHeartStress(Vector2Int cell, float stress01)
+        // ⚠ 프랍 틴트의 writer 가 둘이면 안 된다. 구 `SetGoalCrack`(그을림 4단계)은 호출을
+        // 끊었다 — 같은 렌더러 색을 두 곳이 쓰면 마지막에 쓴 쪽이 이긴다.
+        // 붕괴(`MarkGoalCollapsed`)는 판이 끝나는 순간이라 겹치지 않는다.
+        public void SetGoalStressTint(Vector2Int cell, float stress01, float beatScale)
         {
-            if (grid == null || _tileSet == null) return 1f;
-            stress01 = Mathf.Clamp01(stress01);
-            if (stress01 <= 0f) { ClearHeartStress(); return 1f; }
-
-            float cs = grid.cellSize.x;
-            float pulse = HeartStressStainMath.Pulse(stress01, Time.unscaledTime,
-                _tileSet.heartStressPulseSlow, _tileSet.heartStressPulseFast, _tileSet.heartStressPulseDepth);
-
-            int i = 0;
-            for (int dy = -1; dy <= 1; dy++)
-            for (int dx = -1; dx <= 1; dx++, i++)
-            {
-                int ring = HeartStressStainMath.RingOf(dx, dy);
-                float fill = HeartStressStainMath.RingFill(stress01, ring);
-                var sr = EnsureStain(i);
-                if (sr == null) return pulse;
-                if (fill <= 0f) { if (sr.gameObject.activeSelf) sr.gameObject.SetActive(false); continue; }
-
-                var local = grid.CellToLocalInterpolated(
-                    new Vector3(cell.x + dx + 0.5f, cell.y + dy + 0.5f, 0f));
-                // 바닥 타일과 코플레이너면 z-fight 로 자글거린다 — 프랍·액체와 같은 해법.
-                local.z = -PropGroundLift;
-                sr.transform.localPosition = local;
-                float size = _tileSet.heartStressCellScale * cs;
-                sr.transform.localScale = new Vector3(size, size, 1f);
-
-                var c = _tileSet.heartStressColor;
-                c.a = _tileSet.heartStressMaxAlpha * fill * pulse;
-                sr.color = c;
-                if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
-            }
-            return pulse;
-        }
-
-        public void ClearHeartStress()
-        {
-            for (int i = 0; i < _stressStains.Length; i++)
-                if (_stressStains[i] != null && _stressStains[i].gameObject.activeSelf)
-                    _stressStains[i].gameObject.SetActive(false);
-        }
-
-        private SpriteRenderer EnsureStain(int index)
-        {
-            if (_stressStains[index] != null) return _stressStains[index];
-            var go = new GameObject($"HeartStressStain_{index}");
-            go.transform.SetParent(grid.transform, false);
-            go.transform.localRotation = Quaternion.identity;
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = StainSprite();
-            sr.sortingOrder = BoardSortOrder.HeartStressStainOrder;
-            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
-            if (overlayR != null) sr.sortingLayerID = overlayR.sortingLayerID;
-            go.SetActive(false);
-            _stressStains[index] = sr;
-            return sr;
-        }
-
-        // 소프트 원. 경계가 또렷하면 «배치 가능 칸» 으로 읽히므로(배치 하이라이트가 둥근사각
-        // 테두리다) 가장자리를 완전히 흐린다 — 얼룩이지 칸 표시가 아니다.
-        private static Sprite StainSprite()
-        {
-            if (_stainSprite != null) return _stainSprite;
-            const int N = 64;
-            var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            var px = new Color[N * N];
-            for (int y = 0; y < N; y++)
-            for (int x = 0; x < N; x++)
-            {
-                float u = (x + 0.5f) / N * 2f - 1f;
-                float v = (y + 0.5f) / N * 2f - 1f;
-                float r = Mathf.Sqrt(u * u + v * v);
-                // smoothstep 역 — 중심 평평, 가장자리로 갈수록 급히 사라진다.
-                float a = 1f - Mathf.SmoothStep(0.15f, 1f, r);
-                px[y * N + x] = new Color(1f, 1f, 1f, a * a);   // 제곱 = 더 부드러운 꼬리
-            }
-            tex.SetPixels(px);
-            tex.Apply();
-            _stainSprite = Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), N);
-            return _stainSprite;
+            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null || _tileSet == null) return;
+            float k = Mathf.Clamp01(stress01);
+            // 온전(흰색) → 스트레스 색. 심박은 밝기 배율이라 «붉게 물든 것이 뛴다» 로 읽힌다.
+            var tint = Color.Lerp(Color.white, _tileSet.heartStressPropTint, k);
+            float b = Mathf.Lerp(1f, beatScale, k);   // 스트레스가 낮으면 거의 안 뛴다
+            tint.r *= b; tint.g *= b; tint.b *= b;
+            tint.a = 1f;
+            ApplyPropTint(prop, tint);
         }
 
         private GameObject PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)

@@ -391,8 +391,21 @@ namespace Wassup.Bridge
         private bool _towerMissLogged;
         // heart-stress-axis unit 2 — 처치 회복의 등록부 miss 경고 1회.
         private bool _killHealTypeMissLogged;
+        // heart-stress-axis unit 1 rev 2 — **심박 저작.** 마음 프랍(보드)과 화면 림이 같은
+        // 배율을 써야 «마음과 화면이 같이 뛴다» 가 성립하므로, 계산 주체인 브리지가 값을 갖는다.
+        // (TileSetData 는 보드 전용이고 ScoreHudView 는 화면 전용이라 어느 쪽도 단일 소스가 못 된다.)
+        [Header("Heart stress — 심박 (heart-stress-axis)")]
+        [Tooltip("스트레스 0 일 때 분당 심박. 평온.")]
+        [SerializeField, Min(20f)] private float heartRestBpm = 52f;
+        [Tooltip("스트레스 100 일 때 분당 심박. 이 값이 «위급» 의 체감을 정한다.")]
+        [SerializeField, Min(20f)] private float heartMaxBpm = 168f;
+        [Tooltip("심박이 밝기를 얼마나 깊게 흔드는가. 0 = 안 뛴다.")]
+        [SerializeField, Range(0f, 0.9f)] private float heartBeatDepth = 0.5f;
+
         // heart-stress-axis unit 3 — 직전 프레임 스트레스(0~100). 넷 상승분 산출용.
         private float _lastHeartStress;
+        // unit 1 rev 2 — 심박 누적 위상(0~1). 시각에서 파생하지 않는다(위 배선 주석 참조).
+        private float _heartBeatPhase;
         // goal-tower-siege(rev 2) — 이번 판에 세운 타워 수. 살아있는 수가 이보다 적으면
         // 하나가 부서진 것 = 패배. 표준 사망 경로가 엔티티를 지우므로 이 비교가 곧 판정이다.
         private int _goalTowerCount;
@@ -6012,8 +6025,8 @@ namespace Wassup.Bridge
         {
             // heart-stress-axis unit 1 rev — 잠식 얼룩은 grid 자식이라 맵 재빌드와 수명이
             // 다르다. 판 경계에서 명시적으로 지운다(_breachedCells·_goalCrackStage 와 같은 규칙).
-            tilemapMapView?.ClearHeartStress();
             _lastHeartStress = 0f;
+            _heartBeatPhase = 0f;
             scoreHud?.SetHeartStress(0f, 1f, 0f);
             _goalStabilityMax = ActiveDeck != null ? Mathf.Max(1, ActiveDeck.goalStabilityMax) : 0;
             _goalStability = _goalStabilityMax;
@@ -6523,11 +6536,10 @@ namespace Wassup.Bridge
                     if (faction != Faction.DefenderCore) continue;   // 본능·적 마음은 미러에 안 섞는다
                     if (health.value < lowest) lowest = health.value;
                     if (health.max > maxHp) maxHp = health.max;
-                    // three-minute-kill-race unit 2 — 마음의 남은 체력은 **균열로만** 보인다.
-                    // 이 순회가 이미 셀과 Health 를 들고 있어 새 기계가 필요 없다(적 마음
-                    // 잔여를 같은 순회에 얹은 선례). push 는 단계가 바뀔 때만 — 매 프레임
-                    // 틴트를 다시 쓰면 렌더러 순회가 공짜가 아니고, 단계가 사건으로도 안 읽힌다.
-                    PushGoalCrack(cell, health);
+                    // heart-stress-axis unit 1 rev 2 — **균열 push 를 끊었다.** 마음 프랍의
+                    // 틴트 writer 는 이제 `SetGoalStressTint`(스트레스 붉음 + 심박) 하나다.
+                    // 같은 렌더러 색을 두 곳이 쓰면 마지막에 쓴 쪽이 이겨 심박이 매 프레임
+                    // 그을림으로 덮인다. `PushGoalCrack`/`SetGoalCrack` 은 휴면(삭제 안 함).
                     continue;
                 }
 
@@ -8675,15 +8687,26 @@ namespace Wassup.Bridge
                 {
                     float stress = Wassup.Core.StressMath.FromHealth(h.value, h.max);
                     float stress01 = stress / Wassup.Core.StressMath.Max;
-                    float pulse = tilemapMapView != null
-                        ? tilemapMapView.SetHeartStress(cell, stress01) : 1f;
-                    // heart-stress-axis unit 3 — 화면 연출의 입력은 **넷 상승분**이다.
-                    // 마음 피해를 실어 나르는 이벤트가 없어(데미지 폰트는 AttackUnitTag 적 전용)
-                    // 폴링이 유일한 소스이고, 같은 프레임에 킬 회복이 상쇄하면 안 튀는 것이 옳다.
-                    // 프레임당 1회 — Basic 5기 공성이면 초당 10타라 피격마다 튀면 화면이 발작한다.
+
+                    // heart-stress-axis unit 1 rev 2 — **심박의 계산 주체는 여기 하나다.**
+                    // 마음 프랍과 화면 림이 같은 배율을 받아야 «마음과 화면이 같이 뛴다».
+                    // 각자 돌리면 파라미터가 갈리는 순간 위상이 어긋나 두 개로 읽힌다.
+                    // 위상을 시각에서 파생하지 않고 **누적**하는 이유: 심박이 스트레스에 따라
+                    // 빨라지는데 `time × bpm` 으로 접으면 bpm 이 바뀔 때 위상이 튄다(박이 끊긴다).
+                    float bpm = Wassup.Presentation.HeartStressPulse.Bpm(stress01, heartRestBpm, heartMaxBpm);
+                    _heartBeatPhase = Wassup.Presentation.HeartStressPulse.AdvancePhase(
+                        _heartBeatPhase, Time.unscaledDeltaTime, bpm);
+                    float beat = Wassup.Presentation.HeartStressPulse.Beat(_heartBeatPhase);
+                    float beatScale = Wassup.Presentation.HeartStressPulse.BeatScale(beat, heartBeatDepth);
+
+                    tilemapMapView?.SetGoalStressTint(cell, stress01, beatScale);
+
+                    // 화면 연출의 스파이크 입력은 **넷 상승분**이다. 마음 피해를 실어 나르는
+                    // 이벤트가 없어(데미지 폰트는 AttackUnitTag 적 전용) 폴링이 유일한 소스이고,
+                    // 같은 프레임에 킬 회복이 상쇄하면 안 튀는 것이 옳다(실제로 안 올랐으므로).
                     float rise = Mathf.Max(0f, stress - _lastHeartStress);
                     _lastHeartStress = stress;
-                    scoreHud?.SetHeartStress(stress01, pulse, rise);
+                    scoreHud?.SetHeartStress(stress01, beatScale, rise);
                     continue;
                 }
                 var world = GridToWorldCenter(cell);

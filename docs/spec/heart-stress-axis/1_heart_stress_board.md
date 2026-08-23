@@ -1,56 +1,59 @@
-# 1 — 마음 스트레스를 보드에 그린다 (rev — 바 → 잠식)
+# 1 — 마음이 붉게 물들고 심장이 뛴다 (rev 2)
 
 ## 목적
 
-**스트레스가 보드를 먹는다.** 마음 주변이 스트레스만큼 붉게 번지고, 수위가 높을수록 강하고
-빠르게 맥동한다.
+**스트레스를 «마음 자체»가 말한다.** 프랍이 스트레스만큼 붉어지고, 화면과 **같은 박자**로 뛴다.
 
-> **rev 사유(2026-08-23, 사용자 지적).** 처음엔 머리 위 «차오르는 바»로 만들었는데, 본능·적
-> 마음·유닛과 **같은 문법**이라 「색만 다른 4번째 바」로 읽혔다. 판을 끝내는 유일한 축인데
-> 화면 점유가 잡몹 체력바와 같은 급인 것이 문제였다. **임팩트는 면적에서 온다** —
-> 바는 화면의 15px 지만 잠식은 보드의 9칸이다.
+### 두 번 반려된 기록 (되풀이 방지)
+
+| rev | 무엇 | 왜 반려됐나 |
+|---|---|---|
+| 1 | 머리 위 **차오르는 바** | 본능·적 마음·유닛과 **같은 문법** — 「색만 다른 4번째 바」. 판을 끝내는 유일한 축인데 화면 점유가 잡몹 체력바와 같은 급 |
+| 2 | 마음 주변 **3×3 잠식** | 「마음 주변 타일 하이라이트는 쓸모없다」(사용자, 2026-08-23) |
+| **3** | **마음 프랍 붉은 틴트 + 심박** | 확정 |
+
+교훈: 임팩트를 **주변**에서 찾으면 안 됐다. 판을 끝내는 축이면 **그 축 자체**가 말해야 한다.
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Presentation/HeartStressStainMath.cs` **(신설)** — 링 채움·맥박 순수 함수
-- `Assets/_Project/Scripts/Core/TilemapMapView.cs` — `SetHeartStress` / `ClearHeartStress` / `StainSprite`
-- `Assets/_Project/Scripts/Presentation/BoardSortOrder.cs` — `HeartStressStainOrder`
-- `Assets/_Project/Scripts/Data/TileSetData.cs` — 잠식 저작 파라미터 6종
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncGoalOverheadGauges` 마음 분기 · `ResetGoalStability` 정리
-- `Assets/_Project/Tests/EditMode/HeartStressStainMathTests.cs` **(신설)**
+- `Assets/_Project/Scripts/Presentation/HeartStressPulse.cs` **(신설)** — 심박 순수 함수
+- `Assets/_Project/Scripts/Core/TilemapMapView.cs` — `SetGoalStressTint`
+- `Assets/_Project/Scripts/Data/TileSetData.cs` — `heartStressPropTint`
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — 심박 위상 누적 · 저작(BPM/depth) · 균열 push 끊기
+- `Assets/_Project/Tests/EditMode/HeartStressPulseTests.cs` **(신설)**
 
 ## 구현
 
-**1. 3×3 로 번진다.** 링 0 = 마음 셀 · 1 = 직교 4칸 · 2 = 대각 4칸. 링별 구간을 **겹치게**
-잡아(0~30% / 25~65% / 55~100%) 「한 칸씩 툭툭 켜지는」 계단이 아니라 번지는 그림이 되게 한다.
-규칙은 순수 함수(`HeartStressStainMath`)가 갖고 EditMode 가 **단조성**과 **안→밖 순서**를 고정한다.
+**1. 스트레스 = 심박수.** 52 → 168 BPM. 학습이 필요 없는 유일한 어휘다 — 빨라지면 위험하다는 걸
+모두가 이미 안다. 그리고 **마음이니까 심장**이라 은유가 아니라 그냥 맞는 말이다.
 
-**2. ⚠ 배치 하이라이트와 확실히 가른다.** 보드 액체 어휘(`PlacementLiquidTile`)가 이미 배치
-포커스 셀에 쓰인다. 같아 보이면 붉은 얼룩이 「배치 가능/불가 칸」으로 오독된다. 그래서
-- **모양**: 배치는 둥근사각 **테두리**, 잠식은 **경계 없는 소프트 원**(절차적 텍스처, 가장자리 완전 감쇠)
-- **색**: 배치는 시안/그린, 잠식은 붉은 계열
-- **정렬**: `HeartStressStainOrder = −14` — 「보드 레이어 < 유닛 레이어」 규칙의 **최하단**.
-  배치 하이라이트가 이 위를 덮는 것은 의도다(배치 중엔 배치가 주인공).
+**2. 파형은 사인이 아니라 lub-dub 이다.** 사인파는 **«숨쉬기»로 읽힌다** — 위아래가 대칭이고
+쉼이 없기 때문이다. 심장은 「툭-툭 … 쉼」이고 **그 비대칭이 곧 «심장»이라는 신호**다.
+EditMode 가 「후반부가 완전히 조용하다」를 단언해 이 성질을 고정한다.
 
-**3. 저작 파라미터는 `TileSetData`.** 이미 보드 시각 파라미터의 집이다(`rangeColor`·
-`rangePulseSpeed`·`placementLiquidMaterial`). 씬 컴포넌트에 `[SerializeField]` 로 두면 값 하나
-바꾸는 데 씬 저장이 필요하고, 그건 **남의 미저장 WIP 까지 베이크**한다.
+**3. ⚠ 위상은 시각에서 파생하지 않고 누적한다.** `time × bpm` 으로 접으면 **bpm 이 바뀌는
+순간 위상이 튄다**(박이 끊긴다). 스트레스는 판 내내 오르내리므로 bpm 도 계속 바뀐다.
+`AdvancePhase(직전 위상, dt, bpm)` 로 이어 붙인다.
 
-**4. 맥박의 계산 주체는 하나다.** `SetHeartStress` 가 이번 프레임의 맥박 배율을 **반환**하고
-브리지가 그 값을 화면 림(unit 3)에 넘긴다. 각자 계산하면 파라미터가 갈리는 순간 위상이
-어긋나 「화면과 보드가 따로 뛴다」.
+**4. 세기는 후반 가중이다**(지수 2). 낮은 스트레스에서 이미 붉으면 판이 **항상** 위급해 보이고,
+그러면 진짜 위급한 구간이 안 읽힌다.
 
-**5. 남긴 것.** `OverheadBarSkin.Stress` 와 `BarSkin.fadeAtEmpty` 는 **지우지 않는다** —
-되돌리기가 두 줄이고, 차오르는 바가 필요한 다음 소비자가 그대로 쓴다.
-프랍 균열 틴트(`SetGoalCrack`)도 유지 — 잠식은 «주변», 균열은 «본체» 라 겹치지 않는다.
+**5. ⚠ 프랍 틴트의 writer 는 하나여야 한다.** 구 `PushGoalCrack`(그을림 4단계) 호출을 끊었다 —
+같은 렌더러 색을 두 곳이 쓰면 마지막에 쓴 쪽이 이겨 **심박이 매 프레임 그을림에 덮인다**.
+`SetGoalCrack` 자체는 휴면(삭제 안 함). 붕괴(`MarkGoalCollapsed`)는 판이 끝나는 순간이라 안 겹친다.
+
+**6. 심박 계산 주체는 브리지 하나다.** 프랍과 화면이 **같은 배율**을 받아야 「마음과 화면이 같이
+뛴다」가 성립한다. `TileSetData` 는 보드 전용, `ScoreHudView` 는 화면 전용이라 어느 쪽도 단일
+소스가 못 된다 — 그래서 저작(BPM·depth)이 브리지에 있다.
+
+**7. 남긴 것.** `OverheadBarSkin.Stress` · `BarSkin.fadeAtEmpty` · `SetGoalCrack` 전부 휴면.
 
 ## 완료 기준
 
-- [x] 컴파일 0 에러 · 콘솔 에러 0
-- [x] `HeartStressStainMathTests` — 단조성 · 안→밖 순서 · 맥박이 밝기 배율(0.7~1.0) 범위 유지
-- [x] 대상 EditMode 46/46 통과
-- [ ] Play: 마음이 맞을수록 주변이 **붉게 번진다**(9칸까지)
-- [ ] Play: 악몽을 잡으면 **물러난다**
-- [ ] Play: 스트레스가 높을수록 **빠르고 강하게** 맥동한다
-- [ ] Play: 배치 하이라이트와 **혼동되지 않는다**
-- [ ] Play: 마음 머리 위에 바가 **없다**. 본능·적 마음의 바는 그대로다
+- [x] 컴파일 0 에러
+- [x] `HeartStressPulseTests` — 단조 심박 · lub-dub 비대칭(쉼 존재) · 위상 누적이 bpm 변화에 안 튐 · 후반 가중
+- [x] 대상 EditMode **47/47 통과**
+- [ ] Play: 마음이 맞을수록 **붉어지고** 잡으면 **돌아온다**
+- [ ] Play: 스트레스가 높을수록 **빠르게 뛴다**. 마음과 화면이 **같은 박자**다
+- [ ] Play: 낮은 스트레스에서 화면이 **거의 안 붉다**(후반 가중이 듣는가)
+- [ ] Play: 임시 화살표 프랍에서도 붉음이 충분히 읽히는가 — 안 읽히면 정식 마음 아트가 답이다
