@@ -32,6 +32,25 @@ namespace Wassup.Data
 
         [Tooltip("지상/공중. 기본 Ground — 비행은 명시적으로 Air 를 고른 슬롯만 받는다.")]
         public SlotAltitude altitude = SlotAltitude.Ground;
+
+        // duel-route-tours unit 1 — 이 슬롯이 탈 맵 경로(MapDocument.waypointPaths 인덱스).
+        //
+        // 슬롯이 이미 가진 축과 같은 성격이다: laneGroup = 어디로 들어오나 · classFilter = 무엇이
+        // 오나 · altitude = 어느 고도로 · **pathIndex = 어느 길로**. 특례가 아니라 축 하나다.
+        //
+        // -1 = 무지정(기존 거동 — 적 SO 지정이 없으면 레인 기본, 그것도 없으면 골 직행).
+        // 우선순위는 `WaypointRouting.ResolvePathIndex` 가 단독으로 소유한다: 적 SO > 컨셉 >
+        // 레인 기본. 「좁은 쪽이 이긴다」의 연장이라 Skimmer 는 어느 컨셉에 실려도 자기 공중
+        // 경로를 탄다 — 비행 경로는 종의 정체성이고 컨셉이 덮으면 강을 못 건넌다.
+        //
+        // ⚠ **이 값은 슬롯의 성질이라 그 슬롯이 흩어진 모든 lane 이 같은 경로를 탄다.**
+        // laneGroup 이 -1(전 lane 분산)인 슬롯에 경로를 주면 양쪽 입구에서 나온 적이 같은 길로
+        // 합류한다. 레인마다 다른 길을 주려면 laneGroup 을 고정한 슬롯을 레인 수만큼 둔다.
+        //
+        // rng 를 소비하지 않는다(저작값을 읽기만 한다) — 소비하면 PickConcept/AssignLanes 이후의
+        // 난수열이 밀려 웨이브 편성이 통째로 재추첨된다.
+        [Tooltip("맵 waypointPaths 인덱스. -1 = 무지정. 적 SO 지정이 있으면 그쪽이 이긴다.")]
+        public int pathIndex = -1;
     }
 
     // wave-concept-blocks unit 0 — 웨이브 «블록»(기본 3웨이브)의 편성 규칙.

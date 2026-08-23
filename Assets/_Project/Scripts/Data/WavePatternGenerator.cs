@@ -634,8 +634,10 @@ namespace Wassup.Data
                     expanded.swarmIndex,
                     expanded.laneIndex,
                     entry.triggerTimeSec,
+                    // duel-route-tours unit 1 — 컨셉 축이 가운데로 들어온다. 예고와 스폰이
+                    // **이 한 함수**를 공유하므로 축이 늘어도 둘이 갈릴 수 없다.
                     Wassup.Battle.Movement.WaypointRouting.ResolvePathIndex(
-                        entry.unitType.waypointPathIndex, laneDefault),
+                        entry.unitType.waypointPathIndex, expanded.pathIndex, laneDefault),
                     (byte)entry.unitType.EffectiveTraversalLayers);
                 if (existing < 0)
                 {
@@ -672,7 +674,7 @@ namespace Wassup.Data
                     {
                         float t = baseTriggerTimeSec + grp.triggerOffsetSec + k * wave.spawnIntervalSec;
                         AddEntryAt(entries, grp.unit, g, t, laneCount, baseDeckIndex,
-                            grp.laneIndex, ref localIndex);
+                            grp.laneIndex, grp.pathIndex, ref localIndex);
                     }
                 }
                 return entries;
@@ -686,7 +688,8 @@ namespace Wassup.Data
                     if (round >= groups[g].count) continue;
                     if (groups[g].unit == null) continue; // 빈 그룹은 스폰하지 않음(작성 데이터 방어)
                     AddEntry(entries, groups[g].unit, g, baseTriggerTimeSec, laneCount,
-                        intraWaveSpacingSec, baseDeckIndex, groups[g].laneIndex, ref localIndex);
+                        intraWaveSpacingSec, baseDeckIndex, groups[g].laneIndex,
+                        groups[g].pathIndex, ref localIndex);
                 }
             return entries;
         }
@@ -716,6 +719,7 @@ namespace Wassup.Data
             float intraWaveSpacingSec,
             int baseDeckIndex,
             int groupLaneIndex,
+            int groupPathIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
@@ -728,7 +732,8 @@ namespace Wassup.Data
                     spawnIndex = authoredSpawnIndex,
                 },
                 swarmIndex,
-                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
+                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes),
+                groupPathIndex));
             localIndex++;
         }
 
@@ -757,6 +762,7 @@ namespace Wassup.Data
             int laneCount,
             int baseDeckIndex,
             int groupLaneIndex,
+            int groupPathIndex,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
@@ -769,7 +775,8 @@ namespace Wassup.Data
                     spawnIndex = authoredSpawnIndex,
                 },
                 swarmIndex,
-                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes)));
+                ResolveEffectiveLane(groupLaneIndex, authoredSpawnIndex, baseDeckIndex + localIndex, lanes),
+                groupPathIndex));
             localIndex++;
         }
 
@@ -995,7 +1002,9 @@ namespace Wassup.Data
             {
                 int picked = chosen[s];
                 if (picked < 0 || counts[s] <= 0) continue;
-                groups.Add(new WaveSpawnGroup(pool[picked], counts[s], 0f, lanes[s]));
+                // duel-route-tours unit 1 — 저작값을 그대로 싣는다(rng 미소비).
+                groups.Add(new WaveSpawnGroup(
+                    pool[picked], counts[s], 0f, lanes[s], slots[s].pathIndex));
             }
             return groups;
         }
