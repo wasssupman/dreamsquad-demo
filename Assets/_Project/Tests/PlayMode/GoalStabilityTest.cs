@@ -113,10 +113,10 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
 
-            // 「누수가 없다」(명제 1) — 배수구가 열릴 프레임이 없으므로 유출은 0 이어야 한다.
-            bridge.ReadFinalTally(out _, out _, out int leaks);
-            Assert.AreEqual(0, leaks,
-                "마음이 무너진 판인데 유출이 잡혔다 — 붕괴 후 유출 전환이 실행됐다는 뜻이다");
+            // rev 3 — 「유출 0」 단언은 뺐다. `_goalReachedCount` 가 이제 **돌격형 도달**을 세므로
+            // 라이브 판에서 0 이 아닐 수 있다(그게 정상이다). 「붕괴 후 유출 전환이 실행되지
+            // 않는다」는 정밀 단언은 EditMode 쪽이 갖는다 —
+            // StructureSpawnAndBreachTests.FirstCoreDestroyed_EndsMatchImmediately_AndNeverOpensLeakDrain.
         }
     }
 }

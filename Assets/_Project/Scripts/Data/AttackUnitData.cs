@@ -198,10 +198,20 @@ namespace Wassup.Data
         // 만들지 않고 값 구간으로 일반/엘리트/보스를 구분한다(제약 8).~~
         // → elite-enemy-tier unit 0 이 `tier` 필드를 만들었다(위 killScore 주석과 같은 근거).
         // 이 필드는 여전히 밸런스 값이며 `tier` 와 서로 검증하지 않는다.
-        // 기본 1 = 미저작 자산도 유출이 무해해지지 않는다.
+        // heart-stress-axis unit 0 rev 2 — **돌격형(`attackMethod: None`)의 마음 직격.**
+        //
+        // 이 값을 소비하는 것은 «공격 수단이 없어 마음에 도달하면 소멸하는 적» 하나뿐이다
+        // (라이브에서는 Runner·Swift 2종). 공성하는 적은 이 값을 **쓰지 않는다** — 그쪽은
+        // `outputs[].magnitude`(공격력)로 마음을 반복해서 때린다. 즉 이 필드는 「유출 피해」가
+        // 아니라 **돌격형의 한 방**이고, 그래서 값 대역이 공격력과 같은 축이어야 한다.
+        //
+        // 마음 HP 는 덱의 `goalStabilityMax`(라이브 1000)다. 옛 값 대역(일반 1 / 엘리트 2 /
+        // 보스 5)은 마음 HP 가 1~5 이던 시절의 유물이라 1000 에서는 0.1% = 무해였다.
+        // 현재 저작: 돌격형 50(= 마음의 5%, 20마리 통과 = 판 종료). 공성형의 값은 **inert** 다.
         // Appended last (직렬화 back-compat).
         [Header("Goal Stability")]
-        [Tooltip("골을 뚫었을 때 골 안정도에서 깎는 양. 일반 1 / 엘리트 2 / 보스 5 기준.")]
+        [Tooltip("돌격형(attackMethod=None)이 마음에 도달했을 때 한 번에 꽂는 피해. " +
+                 "공성하는 적은 이 값을 쓰지 않는다(공격력으로 때린다).")]
         [Min(0)] public int stabilityDamage = 1;
 
         public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;

@@ -386,6 +386,8 @@ namespace Wassup.Bridge
         private int _enemyCoreMax;
         // 유출 적의 등록부 조회 실패 경고를 판당 1회로 제한(로그 폭주 방지).
         // goal-tower-siege unit 1 — 타워 부재 경고도 판당 1회.
+        // heart-stress-axis unit 0 rev 2 — 돌격형 직격의 등록부 miss 경고 1회.
+        private bool _leakTypeMissLogged;
         private bool _towerMissLogged;
         // heart-stress-axis unit 2 — 처치 회복의 등록부 miss 경고 1회.
         private bool _killHealTypeMissLogged;
@@ -6014,6 +6016,7 @@ namespace Wassup.Bridge
             _enemyCoreCurrent = 0;
             _breachedCells.Clear();   // stress-after-breach — 붕괴 상태는 매치 경계에서 소멸(이월 금지)
             _goalCrackStage.Clear();  // unit 2 — 균열 단계도 같은 규칙(프랍 루트 재빌드가 색을 원복한다)
+            _leakTypeMissLogged = false;
             _towerMissLogged = false;
             _killHealTypeMissLogged = false;
         }
@@ -6316,10 +6319,11 @@ namespace Wassup.Bridge
                 // 다른 쪽 도달은 여전히 공성이다.
                 bool breached = _breachedCells.Contains(NearestGoalCell(evt.position));
 
-                // stress-after-breach(2026-08-08) — 유출은 **부서진 골로 들어온 것만** 센다.
-                // 붕괴 전 도달은 공성이라 그 적이 아직 필드에 살아 있고(= 아직 잡을 수 있다)
-                // 유출이 아니다. three-minute-kill-race unit 0 — 이 카운터는 이제 아무것도
-                // 판정하지 않는다. 「못 잡은 적이 몇 마리인가」를 세는 집계일 뿐이다.
+                // heart-stress-axis unit 0 rev 3 — **이 분기는 도달 불가다.** 첫 마음 파괴에
+                // 판이 끝나므로 `_breachedCells` 를 소비할 프레임이 없다(계약). 남겨두는 것은
+                // 계약이 뒤집힐 때의 안전망이자 되돌리기 비용 때문이다.
+                // 세는 일 자체는 아래 돌격형 분기로 옮겼다 — 이 판에서 「놓쳤다」는 사건은
+                // «부서진 마음으로 흘러듦» 이 아니라 «돌격형이 마음을 치고 산화함» 이다.
                 if (breached)
                 {
                     _goalReachedCount++;
@@ -6348,22 +6352,41 @@ namespace Wassup.Bridge
                 spineUnitPool?.Despawn(evt.entity);
                 // 살찌운 제물 — 표식 악몽 유출: 무보상 회수.
                 NotifyEnemyGoneIfMarked(evt.entity);
-                // heart-stress-axis unit 0 — **돌격형은 마음에 피해를 주지 않는다**(명제 9).
+                // heart-stress-axis unit 0 rev 2 — **돌격형은 몸통박치기로 마음을 직격한다.**
                 //
                 // 여기로 오는 것은 공격 수단이 없는 적(`attackMethod: None` = Runner·Swift)뿐이다.
-                // 예전엔 소멸하면서 `stabilityDamage`(일반 1)를 넣었는데, 그 값은 마음 HP 가
-                // 1~5 이던 시절의 대역이라 HP 1000 에서는 **0.1%** — 있으나 마나였다.
-                // 「마음은 적의 **공격력만큼** 피해를 입는다」를 문자 그대로 만들기 위해 이
-                // 경로의 피해를 끊는다: 공격력이 없는 적은 피해가 0 이다. 그들의 페널티는
-                // 기회비용(못 잡으면 점수도 각성치도 못 번다) 하나로 남는다.
+                // 그들의 정체성은 **속도**(moveSpeed 2.5 = Basic 1.3 의 약 2배)이고, 도달하면
+                // 소멸하면서 `stabilityDamage` 를 마음에 한 번에 꽂는다 — 공성형이 서서히
+                // 갉는 것과 대비되는 «한 방» 어휘다.
                 //
-                // `EnqueueGoalTowerDamage` 와 `AttackUnitData.stabilityDamage` 는 소비처를 잃고
-                // **휴면**한다(지우지 않는다). 되돌리려면 값을 1000급으로 재저작하고 아래를 되살린다:
-                //     if (!breached) EnqueueGoalTowerDamage(Mathf.Max(0, leakedType.stabilityDamage), evt.position);
+                // rev 1 은 이 피해를 아예 끊었었다(「공격력 없는 적은 피해 0」). 뒤집은 이유:
+                // 처치가 곧 회복인 구조(unit 2)에서 **안 잡히고 통과한 적은 점수·각성치·회복
+                // 셋을 동시에 못 벌게 한다.** 거기에 피해까지 0 이면 돌격형은 판단할 거리가
+                // 없는 교통량이 된다. 「빠르게 이동하되 마음에 직접 타격」이 확정 컨셉이다.
                 //
-                // 등록부 제거는 **유지**한다 — 킬 경로(DrainEnemyKilledEvents)와 대칭이라
-                // 빼지 않으면 죽은 엔티티의 데이터가 누적된다.
-                _enemyTypeByEntity.Remove(evt.entity);
+                // 값 대역은 `AttackUnitData.stabilityDamage` 가 소유한다(하드코딩 금지).
+                // 등록부 제거는 킬 경로(DrainEnemyKilledEvents)와 대칭 — 빼지 않으면 누적된다.
+                // rev 3 — **놓친 수를 여기서 센다.** 공성형은 마음 앞에서 살아 있어 아직 잡을 수
+                // 있지만(= 안 놓쳤다), 돌격형은 도달하는 순간 사라져 회복 통로가 닫힌다. 이 판에서
+                // 「놓쳤다」로 셀 수 있는 유일한 사건이고, `MatchTally.Leaks` 가 그 값을 나른다
+                // (그 필드는 이 줄이 없으면 영원히 0 인 거짓말이 된다).
+                _goalReachedCount++;
+
+                int rushDamage = 0;
+                if (_enemyTypeByEntity.TryGetValue(evt.entity, out var leakedType) && leakedType != null)
+                {
+                    rushDamage = Mathf.Max(0, leakedType.stabilityDamage);
+                    _enemyTypeByEntity.Remove(evt.entity);
+                }
+                else if (!_leakTypeMissLogged)
+                {
+                    // 조용히 0 으로 넘기면 돌격형이 무해해진다 — 경고 1회.
+                    _leakTypeMissLogged = true;
+                    Debug.LogWarning("[BattleBridge] 도달한 돌격형의 데이터가 등록부에 없다 — 마음 직격 0 으로 넘긴다.", this);
+                }
+                // `breached` 가 참인 프레임은 존재하지 않는다(첫 붕괴에 판이 끝난다) — 가드는
+                // 계약이 뒤집힐 때를 위한 안전망으로 남긴다.
+                if (!breached) EnqueueGoalTowerDamage(rushDamage, evt.position);
             }
         }
 
@@ -6414,9 +6437,8 @@ namespace Wassup.Bridge
         // 통로(IncomingDamage)로 넣어 DamageApplicationSystem 이 처리하게 한다.
         // 적이 도달한 골이 어느 쪽인지는 이벤트에 실린 위치로 가른다(골 2개 맵).
         //
-        // heart-stress-axis unit 0 — **휴면**(호출처 0). 「마음은 적의 공격력만큼 피해를 입는다」
-        // 를 문자 그대로 만들기 위해 자폭 피해 축을 끊었다(명제 9). 되살리려면 적 SO 의
-        // `stabilityDamage` 를 1000급으로 재저작하고 DrainGoalEvents 의 호출을 복구한다.
+        // heart-stress-axis unit 0 rev 2 — 살아 있다. 호출처는 `DrainGoalEvents` 하나이고
+        // 돌격형(Runner·Swift)의 **마음 직격**을 나른다. 값은 SO 의 `stabilityDamage`.
         private void EnqueueGoalTowerDamage(int amount, float3 atPosition)
         {
             if (!HasLiveEntityManager() || amount <= 0) return;

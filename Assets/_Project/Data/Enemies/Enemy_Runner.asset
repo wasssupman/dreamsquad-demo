@@ -77,7 +77,7 @@ MonoBehaviour:
   nightmareMechanics: []
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
-  stabilityDamage: 1
+  stabilityDamage: 50
   waypointPathIndex: -1
   flightLift: 0
   idleVariants: []
