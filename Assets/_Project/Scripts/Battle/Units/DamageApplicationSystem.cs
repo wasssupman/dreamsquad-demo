@@ -22,6 +22,8 @@ namespace Wassup.Battle.Units
         // heart-stress-axis unit 2 — 마음의 회복은 **원샷 VFX 를 쓰지 않는다**(아래 힐 펄스
         // 게이트). 위 `_attackTagLookup` 이 데미지 폰트를 «적 전용» 으로 거르는 것과 같은 형태다.
         private ComponentLookup<GoalTowerTag> _goalTowerLookup;
+        // heart-stress-axis unit 6 — 방패 백스톱. 조준·경로 배제로 못 막는 **부수 피해**용.
+        private ComponentLookup<CoreShielded> _coreShieldedLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
         // content-1 ① (가시 갑옷) — count defender damage-taken (DamagedCounter is Units-owned).
         private ComponentLookup<DefenderUnitTag> _defenderTagLookup;
@@ -50,6 +52,7 @@ namespace Wassup.Battle.Units
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
             _goalTowerLookup  = state.GetComponentLookup<GoalTowerTag>(isReadOnly: true);
+            _coreShieldedLookup = state.GetComponentLookup<CoreShielded>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
@@ -87,6 +90,7 @@ namespace Wassup.Battle.Units
             _shieldSlotLookup.Update(ref state);
             _incomingShieldLookup.Update(ref state);
             _ultimateLeapLookup.Update(ref state);
+            _coreShieldedLookup.Update(ref state);
             _attackStateLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -102,6 +106,27 @@ namespace Wassup.Battle.Units
                 // 투사체 히트도 같은 버퍼로 들어오므로 이 한 지점 드랍이 전부를 커버한다.
                 // 따름정리: 공중 사망이 없다 = 착지가 보장된다(UltimateLeapSystem 의 전제).
                 if (_ultimateLeapLookup.HasComponent(entity))
+                {
+                    damageBuffer.Clear();
+                    continue;
+                }
+
+                // heart-stress-axis unit 6 — **방패 백스톱.** 조준(AttackSystem)·경로
+                // (StructureDestinationSystem) 배제는 «마음을 겨눈» 피해만 막는다. 겨누지
+                // **않고** 닿는 경로가 따로 있다: 골 근처 방어유닛에 떨어진 광역이 그것이다
+                // (`ProjectileHitSystem` TileAoe 의 피해자 마스크가 `Factions.AnyDefender` =
+                // DefenderCore 포함, 라이브 생산자 2곳 — 보스 임계 barrage · 궁극기 슬램).
+                // 그 한 발이 방패 선 마음을 0 으로 만들면 판이 끝난다.
+                //
+                // 생산자마다 필터를 다는 대신 여기 한 곳에서 떨어뜨린다 — 위 UltimateLeapState
+                // 와 **같은 이유·같은 형태**다: 새 피해 경로(DoT·미래 페이로드)가 생겨도
+                // 자동으로 덮인다. 그리고 그 주석대로 **쿼리에서 빼면 안 된다** — 그러면 방패가
+                // 서 있는 동안 피해가 버퍼에 적립됐다가 해제 프레임에 통째로 터진다.
+                //
+                // heal 까지 건너뛰어도 안전하다: 방패는 판 시작에만 서고 **내려가기만** 한다
+                // (본능은 죽기만 하고 되살아나지 않는다). 즉 방패 중 마음은 늘 만피라
+                // 처치 회복은 어차피 clamp 로 버려진다.
+                if (_coreShieldedLookup.HasComponent(entity))
                 {
                     damageBuffer.Clear();
                     continue;

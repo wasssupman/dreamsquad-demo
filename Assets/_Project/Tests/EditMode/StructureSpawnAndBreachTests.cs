@@ -294,6 +294,32 @@ namespace Wassup.Tests.EditMode
 
         private readonly System.Collections.Generic.List<NativeQueue<GoalReachedEvent>> _queuesToDispose = new();
 
+        // heart-stress-axis unit 7 — 돌격형이 «본능만 패는 놈» 이 되면서 `canSiege` 정의가
+        // 정밀해졌다. 「AttackState 가 있나」 → 「**마음을** 공성할 수 있나」.
+        // 이 단언이 없으면 다음 사람이 옛 정의로 되돌리고, 돌격형이 마음 앞에 눌러앉아
+        // 영원히 아무것도 안 하면서 「필드에 적 0기」 판정을 막는다.
+        [Test]
+        public void CanSiege_RequiresCoreInTargetMask_NotJustAnAttack()
+        {
+            const int DefenderCore = (int)Faction.DefenderCore;
+
+            // 돌격형(신규 저작 21): 일반 공격을 갖되 **마음만** 마스크에서 빠져 있다.
+            //   DefenderUnit  → 방어유닛을 팬다 + **도발이 걸린다**(일반 적과 같은 경로)
+            //   DefenderCore  → 없다 → 공성 자격 없음 → 도달하면 산화(현행 유지)
+            int rusherMask = (int)Faction.DefenderUnit
+                           | (int)Faction.BlockingHazard
+                           | (int)Faction.DefenderInstinct;
+            Assert.AreEqual(21, rusherMask, "저작값과 같아야 한다(Enemy_Runner·Swift)");
+            Assert.AreEqual(0, rusherMask & DefenderCore,
+                "돌격형은 마음을 못 때린다 — 그래서 도달하면 산화한다");
+            Assert.AreNotEqual(0, rusherMask & (int)Faction.DefenderUnit,
+                "⚠ 도발이 걸리려면 이 비트가 있어야 한다 — 빼면 유인으로 못 막는 적이 된다");
+
+            // 일반 적(29)·거점 전담(28) 은 둘 다 마음을 문다 → 공성 자격 있음(무회귀)
+            Assert.AreNotEqual(0, 29 & DefenderCore, "일반 적은 마음을 공성한다");
+            Assert.AreNotEqual(0, 28 & DefenderCore, "거점 전담 적도 마음을 공성한다");
+        }
+
         [Test]
         public void EnemyInstinct_DoesNotShieldDefenderCore()
         {

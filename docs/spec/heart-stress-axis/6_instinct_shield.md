@@ -46,6 +46,19 @@ unit 3)이 이미 «내가 팰 수 있는 거점 중 가장 가까운 것»을 �
 `ObjectDisposedException: EntityTypeHandle invalidated by a structural change` 가 돌아온다
 (AttackSystem 이 그 사고의 실측 주석을 갖고 있다). 쓰기는 **상태가 바뀔 때만** — 판당 최대 2회.
 
+**7. ⚠ 조준·경로로 못 막는 여섯째 입구 — 부수 피해.** critic 리뷰가 찾았다:
+`ProjectileHitSystem` 의 TileAoe 피해자 마스크가 `Factions.AnyDefender`(= `DefenderCore` 포함)라
+**골 근처 방어유닛에 떨어진 광역**이 방패 선 마음을 깎았다(라이브 생산자 2곳 — 보스 임계
+폭격 · 궁극기 슬램). 마음을 «겨눈» 게 아니라 옆에 떨어진 것이라 후보 배제로는 안 막힌다.
+
+생산자마다 필터를 다는 대신 `DamageApplicationSystem` 에 **피해 버퍼 드랍 백스톱**을 뒀다 —
+새 피해 경로(DoT·미래 페이로드)가 생겨도 자동으로 덮인다. 바로 위 `UltimateLeapState` 드랍과
+**같은 이유·같은 형태**이고, 그 주석이 **왜 쿼리 배제가 아니어야 하는지**까지 설명한다:
+「`WithNone` 으로 빼면 피해가 버퍼에 적립됐다가 통째로 터진다 — 무적이 아니라 지연 폭탄이 된다.」
+
+heal 까지 건너뛰어도 안전하다: 방패는 판 시작에만 서고 **내려가기만** 한다(본능은 죽기만 하고
+되살아나지 않는다). 즉 방패 중 마음은 늘 만피라 처치 회복은 어차피 clamp 로 버려진다.
+
 ## 무형 롤아웃
 
 **라이브 9맵 중 방어 본능 저작은 Isle·Ford·Duel 셋뿐**(각 2기, `Structure_GuardInstinct`).

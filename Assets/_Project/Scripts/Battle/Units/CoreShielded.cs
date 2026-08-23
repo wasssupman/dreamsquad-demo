@@ -21,6 +21,7 @@ namespace Wassup.Battle.Units
     /// | `Combat/EnemyAiStateSystem` 후보 쿼리 | AI 상태(미러) | 멈춰 서서 안 쏜다 |
     /// | `Movement/StructureDestinationSystem` 후보 수집 | **경로** | 마음 앞에 눌러앉아 대기 |
     /// | `Bridge/BattleBridge` 스폰 예고선 거점 선택 | 예고 | 예고선이 거짓말한다 |
+    /// | `Units/DamageApplicationSystem` 버퍼 드랍 | **부수 피해** | 골 근처 광역이 마음을 깎는다 |
     ///
     /// 앞의 둘은 조준을, 셋째는 **갈 곳**을 막는다. 조준만 막으면 본능은 «벽» 이 아니라
     /// «타이머» 가 된다 — 적이 마음 앞에 모여 대기하다 방패가 깨지는 순간 일제히 친다.

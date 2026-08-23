@@ -18,12 +18,12 @@ MonoBehaviour:
   enemyClass: 2
   minWaveNumber: 1
   maxPerWave: 0
-  attackMethod: 0
+  attackMethod: 1
   targetMode: 0
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
-  targetFactions: 0
+  targetFactions: 21
   health: 65
   moveSpeed: 2.5
   attackRange: 1
@@ -31,10 +31,17 @@ MonoBehaviour:
   attackTargetCount: 1
   projectile: {fileID: 0}
   hitDelaySec: 0.3
-  aggroAttackDamage: 5
+  aggroAttackDamage: 0
   aggroAttackCooldown: 1
   aggroAttackRange: 1
-  outputs: []
+  outputs:
+  - kind: 0
+    magnitude: 10
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
   attackVfxPrefab: {fileID: 0}
   attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}

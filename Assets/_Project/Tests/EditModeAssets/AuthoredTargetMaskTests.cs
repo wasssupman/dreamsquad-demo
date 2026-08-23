@@ -50,13 +50,39 @@ namespace Wassup.Tests.EditMode
                 int mask = EnemyTargetDefaults.Resolve((int)so.targetFactions);
                 if (mask == EnemyTargetDefaults.DefaultEnemyMask) continue;
 
-                // 마음사냥꾼 — 유닛을 노리지 않는 것이 정체성이고, 그래서 도발도 안 걸린다.
-                Assert.AreEqual("heartseeker", so.id,
-                    $"'{so.id}' 가 기본값을 좁혔다. 특수 타게팅이 의도라면 이 목록에 근거와 함께 추가하라");
-                Assert.AreEqual(0, mask & Factions.AnyUnit, "마음사냥꾼은 유닛을 노리지 않는다(도발 면역의 근거)");
-                Assert.AreEqual(Factions.AnyStructure & Factions.AnyDefender,
-                    mask & Factions.AnyDefender,
-                    "마음사냥꾼은 방어측 **거점 전부**(마음·본능)를 노린다 — 절반만 노리면 «거점 전담» 이 거짓말이다");
+                switch (so.id)
+                {
+                    // 마음사냥꾼 — 유닛을 노리지 않는 것이 정체성이고, 그래서 도발도 안 걸린다.
+                    case "heartseeker":
+                        Assert.AreEqual(0, mask & Factions.AnyUnit,
+                            "마음사냥꾼은 유닛을 노리지 않는다(도발 면역의 근거)");
+                        Assert.AreEqual(Factions.AnyStructure & Factions.AnyDefender,
+                            mask & Factions.AnyDefender,
+                            "마음사냥꾼은 방어측 **거점 전부**(마음·본능)를 노린다 — 절반만 노리면 «거점 전담» 이 거짓말이다");
+                        break;
+
+                    // heart-stress-axis unit 7 — 돌격형(빠르게 달려와 몸으로 들이받는 적).
+                    // **마음만** 빼고 나머지는 기본값 그대로다. 왜 특수한가:
+                    //   · 마음은 «때리는» 게 아니라 «들이받는» 것이다 — 도달 시 stabilityDamage
+                    //     50 을 꽂고 산화한다. 마스크에 마음이 있으면 `canSiege` 가 켜져
+                    //     산화 대신 눌러앉고, 그러면 「필드에 적 0기」 판정이 영구히 막힌다.
+                    //   · DefenderUnit 은 **반드시 남긴다** — 이게 빠지면 도발이 안 걸려
+                    //     유인으로 못 막는 적이 된다(13개 덱 전부에 있는 상비 편성이다).
+                    case "runner":
+                    case "swift":
+                        Assert.AreEqual(0, mask & (int)Faction.DefenderCore,
+                            "돌격형은 마음을 조준하지 않는다 — 조준하면 산화 대신 공성이 된다");
+                        Assert.AreNotEqual(0, mask & (int)Faction.DefenderUnit,
+                            "⚠ 도발이 걸려야 한다. 이 비트가 빠지면 유인으로 못 막는 적이 된다");
+                        Assert.AreEqual(EnemyTargetDefaults.DefaultEnemyMask & ~(int)Faction.DefenderCore,
+                            mask, "돌격형은 «마음만 뺀 기본값» 이다 — 그 외를 좁히면 근거를 여기 적어라");
+                        break;
+
+                    default:
+                        Assert.Fail(
+                            $"'{so.id}' 가 기본값을 좁혔다. 특수 타게팅이 의도라면 이 목록에 근거와 함께 추가하라");
+                        break;
+                }
             }
         }
 
