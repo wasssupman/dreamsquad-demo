@@ -2,8 +2,12 @@
 
 ## Commit
 
-로컬 브랜치 **`heart-stress-axis`** 의 heart-stress 커밋 **18건** (`cc174aca` … `2e6165be`).
-**`main` 에는 없다** — revert 커밋 `473b8c9a` 가 전량 제거했다(사용자 지시: 이 기능은 깃에 올리지 않는다).
+브랜치 **`heart-stress-axis`** 의 heart-stress 커밋 **18건** (`cc174aca` … `2e6165be`).
+`main` 에는 아직 없다 — revert 커밋 `473b8c9a` 가 한 번 전량 제거했다.
+
+**정리되면 이 브랜치를 전부 main 에 머지한다**(사용자 결정 2026-08-24). 즉 「영구히 올리지
+않는다」가 아니라 **「지금은 아니다」**다. 그때까지 브랜치에 upstream 을 두지 않는 것이
+실수 유출을 막는 장치다(맨 `git push` 가 실패한다).
 
 되돌리기: `git revert --no-commit $(git log --format=%H --grep '^feat(heart-stress-axis)')`
 
@@ -61,18 +65,23 @@
 
 ## Follow-up
 
-- **육안 확인 미완** — unit 9(바·색·펀치)와 unit 10(붕괴 박자)은 프로그램 실측만 했다.
+- ~~육안 확인 미완~~ **완료** — 사용자 Play 확인 통과(2026-08-24, units 9·10).
 - **소리 0줄.** 이 spec 밖으로 미뤘다 — 오디오 에셋 생성이 필요하다(ElevenLabs 파이프라인).
-- ⚠ **시트가 `Swift.engageMovement` 를 0(Halt)으로 되돌렸다.** 그러면 Swift 가 첫 방어유닛
-  앞에서 멈춰 마음까지 못 간다. **시트에서 1(Advance)로** 고쳐야 한다 — 에셋만 고치면
-  다음 로비 임포트에 또 되돌아간다.
+- ~~시트가 `Swift.engageMovement` 를 Halt 로 되돌렸다~~ **해소** — 사용자가 시트를
+  `Advance` 로 고쳤고(읽기 전용 GET 으로 확인), 재임포트가 `b1cd77dc` 로 커밋됐다.
+  참고: 시트는 enum 을 **이름 문자열**로 준다(`"Advance"`·`"Melee"`).
+- **`Swift.moveSpeed` 가 Runner 와 같은 2.2 다.** 착수 전에는 갈라져 있었다 — 「빠른 쪽」
+  구분을 되살릴지는 밸런스 결정이라 손대지 않았다.
 - ⚠ **밸런스 기준선이 stale 하다.** unit 5 실측은 배치 판이 3분 완주(최고 59)였는데,
   이후 시트 임포트·보너스 당기기·duel 경로 revert 가 들어와 같은 조건이 **139.5초에
   터졌다**. 「현재 밸런스 유지」 결정은 옛 숫자를 보고 내린 것이다.
-- ⚠ **이 브랜치에 heart-stress 아닌 커밋 5건이 섞여 있다**(duel-route-tours revert ·
-  sheet-import · bonus-wave-pull 3건). 앞의 둘은 main 으로 옮겼다(`798a7070`·`d3257286`).
-  **`4ecf4429`(bonus-wave-pull)에는 unit 9 의 `BattleBridge.cs` 절반이 들어 있다** —
-  경로 미명시 스테이징 사고다. main 으로 옮길 때 heart-stress 줄을 빼야 한다.
+- **이 브랜치에 heart-stress 아닌 커밋 6건이 섞여 있다**(duel-route-tours revert ·
+  sheet-import ×2 · bonus-wave-pull 3건). 앞의 둘은 main 으로 옮겼다(`798a7070`·`d3257286`).
+  브랜치 전체를 머지하기로 했으므로 **머지하면 나머지도 자연히 따라간다** — 지금 급히
+  분리할 이유는 없다.
+  ⚠ 단 **머지 전에 `4ecf4429`(bonus-wave-pull)만 따로 main 으로 옮기려 하면 위험하다** —
+  그 커밋에 unit 9 의 `BattleBridge.cs` 절반이 들어 있다(경로 미명시 스테이징 사고).
+  그때는 heart-stress 줄을 빼야 한다. 순서가 「브랜치 전체 머지」면 신경 쓸 것 없다.
 - **GitLab 미러 미확인** — 사내망이 아니라 접속이 안 됐다. main 의 revert 가 미러에 안 갔다.
 - 남은 후속 후보(휴면 `PushGoalCrack` 정리 · 몽마의 계약 코스트 · `map-rework` 문구 정합)는
   README 「후속 후보」 참조.
