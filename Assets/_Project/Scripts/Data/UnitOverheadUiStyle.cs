@@ -10,11 +10,6 @@ namespace Wassup.Data
     {
         Defender,
         Enemy,
-        // heart-stress-axis unit 1 — 마음의 **차오르는** 스트레스 바. Defender 스킨을 못 쓰는
-        // 이유는 색이 아니라 **방향**이다: 이 바는 값이 오를수록 차고(= 나쁨), 만점에서
-        // 감쇠하지 않는다(아래 fadeAtEmpty). 값 추가는 안전하다 — 이 enum 은 코드 전용이고
-        // 에셋·씬에 직렬화된 곳이 없다(전수 확인 2026-08-23).
-        Stress,
     }
 
     // unit-overhead-ui — 1920x1080 reference pixel 기반 공통 레이아웃과 진영별 skin.
@@ -45,11 +40,6 @@ namespace Wassup.Data
             public Color shield;
             [Range(0f, 1f)] public float fullHealthAlpha;
             public bool clippedEnds;
-            // heart-stress-axis unit 1 — `fullHealthAlpha` 를 **어느 끝에서** 적용하나.
-            // 원래 뜻은 「정보가 없을 때 흐리게」이고, 체력바는 만피가 그 지점이다.
-            // 차오르는 바(스트레스)는 **빈 쪽**이 정보 없음이고 만점은 판이 끝나기 직전이라
-            // 거기서 흐려지면 정확히 거꾸로다. false = 기존 동작(만피에서 감쇠).
-            public bool fadeAtEmpty;
         }
 
         [Header("Reference pixels")]
@@ -107,27 +97,6 @@ namespace Wassup.Data
             damageTrail = new Color(1f, 0.68f, 0.15f, 0.9f), fullHealthAlpha = 0.92f, clippedEnds = true
         };
 
-        // heart-stress-axis unit 1 — 마음 스트레스. **차오르는** 바라 색 서열이 체력바와 반대다:
-        // fillLow(스트레스 0 = 평온) → fillHigh(스트레스 100 = 위험). 폭/높이는 거점 스케일이라
-        // Defender 보다 크게 잡아 광장 너머에서도 읽히게 한다.
-        // damageTrail 은 여기서 **회복 트레일**이다 — 차오르는 바에서 트레일이 남는 방향은
-        // 「값이 내려갈 때」뿐이고, 스트레스가 내려가는 것은 악몽을 잡았다는 뜻이다.
-        // ⚠ struct 라 **asset 에 값이 반드시 있어야 한다**(미기재 = 전 필드 0 = 투명·폭 0).
-        [Header("Stress — 마음(차오름)")]
-        [SerializeField] private BarSkin stress = new BarSkin
-        {
-            tileWidthFraction = 0.96f, minWidth = 120f, maxWidth = 176f, height = 16f,
-            inset = 2.5f, border = 2.5f, radius = 4f, shadowOffset = 2f,
-            frame = new Color(0.05f, 0.02f, 0.03f, 1f),
-            track = new Color(0.14f, 0.09f, 0.10f, 0.95f),
-            shadow = new Color(0.01f, 0.004f, 0.006f, 0.75f),
-            fillLow = new Color(0.85f, 0.62f, 0.25f, 1f), fillHigh = new Color(0.95f, 0.16f, 0.18f, 1f),
-            highlight = new Color(1f, 0.88f, 0.7f, 0.75f), highlightHeight = 1.5f,
-            damageTrail = new Color(0.55f, 0.95f, 1f, 0.9f),
-            shield = new Color(0f, 0f, 0f, 0f),
-            fullHealthAlpha = 0.9f, clippedEnds = false, fadeAtEmpty = true
-        };
-
         // three-minute-kill-race unit 2 — 골 안정도 BarSkin 과 수치 라벨 스타일은 제거했다.
         // 마음은 게이지로 그리지 않는다(균열 연출이 그 자리를 갖는다).
 
@@ -161,7 +130,6 @@ namespace Wassup.Data
         public BarSkin Skin(OverheadBarSkin kind) => kind switch
         {
             OverheadBarSkin.Enemy => enemy,
-            OverheadBarSkin.Stress => stress,
             _ => defender,
         };
 

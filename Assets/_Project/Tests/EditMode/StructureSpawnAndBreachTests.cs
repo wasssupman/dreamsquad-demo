@@ -117,11 +117,8 @@ namespace Wassup.Tests.EditMode
 
         // ── 붕괴 ⓐ — 셀 단위 ────────────────────────────────────────────────────
 
-        // heart-stress-axis unit 0 — 이 픽스처가 마음을 **2기** 세운다는 것이 여기서 값어치를
-        // 한다. 라이브 맵은 전부 1개라(명제 10) 「첫 붕괴가 끝인가 마지막 붕괴가 끝인가」가
-        // 실기에서는 **관측 불가능하게 같다**. 2기 픽스처만이 그 둘을 가른다.
         [Test]
-        public void FirstCoreDestroyed_EndsMatchImmediately_AndNeverOpensLeakDrain()
+        public void OneTowerDestroyed_BreachesOnlyThatCell_OtherStands()
         {
             Spawn();
             var em = _world.EntityManager;
@@ -133,42 +130,33 @@ namespace Wassup.Tests.EditMode
             em.DestroyEntity(towerA);   // 표준 사망 경로의 결과(엔티티 부재)를 재현
             CallPrivateMethod(_bridge, "SyncGoalStability");
 
-            // 붕괴 관측은 여전히 **셀 단위**다(battle-structures 계약 7) — 그 기계는 그대로 산다.
             var breached = BreachedCells();
-            Assert.AreEqual(1, breached.Count, "부서진 마음의 셀 하나만 breached");
+            Assert.AreEqual(1, breached.Count, "부서진 골의 셀 하나만 breached");
             Assert.IsTrue(breached.Contains(new Vector2Int(9, 2)));
-            Assert.IsTrue(em.Exists(towerB),
-                "다른 마음은 파괴되지 않는다 — 종료는 «판정» 이지 «전부 파괴» 가 아니다");
-
-            // ★ 이 spec 의 핵심 계약. 「마지막 마음이 무너져야 끝」으로 구현되면 여기서 빨개진다.
-            Assert.IsTrue((bool)GetField(_bridge, "_resultShown"),
-                "첫 마음이 무너지면 그 프레임에 판이 끝난다 — goals 개수와 무관 (heart-stress-axis 계약)");
-
-            // ★ 「누수가 없다」의 실체 — 배수구(OpenGoalCellAfterBreach)가 열릴 프레임이 없다.
-            // 이 값이 오르면 유출 전환이 실행됐다는 뜻이고, 그건 명제 1 이 깨진 것이다.
-            Assert.AreEqual(0, (int)GetField(_bridge, "_goalReachedCount"),
-                "붕괴 프레임에 유출 카운터가 오르면 안 된다 — 오르면 누수가 되살아난 것이다");
+            Assert.IsTrue(em.Exists(towerB), "다른 골은 그대로 선다 — 계약 7. 구현이 전역 bool 이던 시절엔 전부 파괴됐다");
+            Assert.IsFalse((bool)GetField(_bridge, "_resultShown"),
+                "StressLimit>0 이므로 붕괴는 패배가 아니라 유출 전환이다");
         }
 
         [Test]
-        public void MirrorScalar_ZeroOnBreachFrame_AndFreezesBecauseMatchEnded()
+        public void MirrorScalar_ZeroOnBreachFrame_ThenTracksSurvivingCore()
         {
             Spawn();
             var em = _world.EntityManager;
             var towerA = TowerAt(new int2(9, 2));
             em.DestroyEntity(towerA);
 
-            // 붕괴 프레임 — «가장 위험한 마음» 은 방금 0 이 되어 죽은 그 마음이다. 생존 마음
-            // 체력으로 덮으면 결과 화면이 «부서졌는데 1000» 을 싣는다.
+            // 붕괴 프레임 — «가장 위험한 골» 은 방금 0 이 되어 죽은 그 골이다. 생존 골 체력으로
+            // 덮으면 HUD 에 «부서졌는데 1000» 이 뜨고, StressLimit 0 즉시 패배는 이 값으로
+            // 얼어붙는다(PlayMode GoalStabilityTest 가 이 계약을 라이브로 잰다).
             CallPrivateMethod(_bridge, "SyncGoalStability");
             Assert.AreEqual(0, _bridge.GoalStabilityCurrent, "붕괴 프레임의 미러는 0");
 
-            // heart-stress-axis unit 0 — 예전엔 다음 프레임에 «생존 마음 중 최저» 로 되돌아갔다.
-            // 이제 **그 프레임이 오지 않는다**: EndMatch 가 _resultShown/_running 을 세우고
-            // SyncGoalStability 는 _resultShown 이면 즉시 return 한다. 미러는 0 에서 얼어붙는다.
+            // 다음 프레임 — 살아남은 마음 중 최저 체력(= 만피 타워 B). 구 전역 붕괴는 여기서도
+            // 0 이었다(전 타워 파괴).
             CallPrivateMethod(_bridge, "SyncGoalStability");
-            Assert.AreEqual(0, _bridge.GoalStabilityCurrent,
-                "판이 끝났으므로 미러는 0 에서 얼어붙는다");
+            Assert.AreEqual(_deck.goalStabilityMax, _bridge.GoalStabilityCurrent,
+                "한 골이 부서져도 미러는 살아있는 골을 보여준다");
         }
 
         // ── 스폰 — 저작 거점(SO HP) ─────────────────────────────────────────────

@@ -35,8 +35,6 @@ namespace Wassup.Tests.EditMode
             });
             em.AddComponentData(e, new Health { value = hp, max = hp });
             em.AddBuffer<IncomingDamage>(e);
-            // heart-stress-axis unit 2 — 브리지 스폰과 대칭(GoalTowerArchetypeTests 가 강제한다).
-            em.AddBuffer<IncomingHeal>(e);
             em.AddComponentData(e, new FactionTag { value = Faction.DefenderCore });
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
             return e;

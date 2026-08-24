@@ -181,17 +181,8 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(1, em.GetBuffer<IncomingHeal>(ally).Length,
                 "힐은 체력비 최저 **유닛**에게 간다");
-            // heart-stress-axis unit 2 — **단언이 프록시에서 실물로 바뀐다.**
-            // 예전엔 「거점은 IncomingHeal 버퍼가 없다」를 쟀다. 그건 계약 자체가 아니라
-            // «후보에 들면 ECB playback 이 던진다» 는 **크래시-as-가드**를 문서화한 것이었다.
-            // 이제 마음은 그 버퍼를 갖는다(악몽 처치 회복). 그래서 버퍼 유무가 아니라
-            // **실제 계약**을 잰다: 힐러의 마스크는 DefenderUnit 단독이라 마음은 후보가 아니다.
-            //
-            // ⚠ 잃은 것을 기록해 둔다 — `AllyMask` 를 `AnyDefender` 로 넓히는 실수가 예전엔
-            // **크래시로** 즉시 잡혔는데, 이제는 「힐러가 마음을 조용히 회복시킨다」로 나타난다.
-            // 이 단언이 그 그물을 대신한다.
-            Assert.AreEqual(0, em.GetBuffer<IncomingHeal>(tower).Length,
-                "힐러는 마음을 대상으로 고르지 않는다 — AllyMask 는 DefenderUnit 단독이다(계약 8)");
+            Assert.IsFalse(em.HasBuffer<IncomingHeal>(tower),
+                "거점은 IncomingHeal 버퍼를 갖지 않는다(계약 8) — 후보에 들면 안 되는 이유");
         }
 
         // 잠금도 거점에 균일하게 걸린다 — M3 의 «거점은 잠금 대상이 아니다» 예외는 제거됐다.

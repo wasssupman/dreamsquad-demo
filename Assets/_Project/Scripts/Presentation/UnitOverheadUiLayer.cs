@@ -50,13 +50,9 @@ namespace Wassup.Presentation
             _seen.Clear();
         }
 
-        // heart-stress-axis unit 1 — `skinOverride` 는 «진영으로 못 고르는 스킨» 을 위한 통로다.
-        // 마음은 방어 진영이지만 체력바가 아니라 **차오르는 스트레스 바**를 단다. 기존 호출부
-        // 5곳은 인자를 안 넘겨 그대로 동작한다(bool defender → Defender/Enemy).
         public void SetUnit(Entity entity, bool defender, float healthRatio, Vector2 screenAnchor, float tileScreenWidth,
             float shieldRatio = 0f, // shield-guardian-defender unit 2 — 실드합/maxHP (0 = 무실드)
-            IReadOnlyList<OverheadStackEntry> stacks = null, // 확장(unit 8) — 스택 이상효과(피로도/열기)
-            OverheadBarSkin? skinOverride = null)
+            IReadOnlyList<OverheadStackEntry> stacks = null) // 확장(unit 8) — 스택 이상효과(피로도/열기)
         {
             if (!EnsureCanvas() || entity == Entity.Null
                 || float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
@@ -73,7 +69,7 @@ namespace Wassup.Presentation
             float tileRef = tileScreenWidth / scale;
             _cardsByHost.TryGetValue(entity, out var cards);
             view.Show(local, tileRef,
-                skinOverride ?? (defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy),
+                defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy,
                 healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons);
         }
 
