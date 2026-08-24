@@ -442,6 +442,21 @@ namespace Wassup.Bridge
         [SerializeField, Min(0.1f)] private float heartBarPunchDecayPerSec = 3.2f;
         private float _heartBarPunch;
 
+        // heart-stress-axis unit 10 — **마음이 터지는 한 박자.** 붕괴 프레임에 결과 화면이
+        // 덮어써서 «터졌다» 를 한 번도 못 보던 것을 고친다. 지연은 화면에만 걸고 집계·서버
+        // 제출은 즉시다(「제출이 표시보다 앞」 계약).
+        [Header("Heart burst — 파괴 박자 (heart-stress-axis unit 10)")]
+        [Tooltip("마음이 무너진 뒤 결과 화면까지 버는 시간(초). 0 = 즉시(연출 없음).")]
+        [SerializeField, Min(0f)] private float coreBurstHoldSec = 1.25f;
+        [Tooltip("그 박자 동안의 전투 시간 배율. 1 = 안 늦춘다.")]
+        [SerializeField, Range(0.05f, 1f)] private float coreBurstTimeScale = 0.3f;
+        private Coroutine _coreBurstRoutine;
+        // ⚠ 리스를 **필드로** 들고 있는 이유: 박자 중에 사용자가 로비로 나가면 코루틴이
+        // 죽으면서 `Dispose` 가 실행되지 않아 **다음 판이 느린 채로 시작한다.** 판 경계
+        // (`ResetGoalStability`)에서 반납할 수 있어야 한다.
+        private TimeLease _coreBurstLease;
+        private bool _coreBurstLeased;
+
         // heart-stress-axis unit 3 — 직전 프레임 스트레스(0~100). 넷 상승분 산출용.
         private float _lastHeartStress;
         // unit 1 rev 2 — 심박 누적 위상(0~1). 시각에서 파생하지 않는다(위 배선 주석 참조).
@@ -6144,6 +6159,7 @@ namespace Wassup.Bridge
             _lastHeartStress = 0f;
             _heartBeatPhase = 0f;
             _heartBarPunch = 0f;   // unit 9 rev 2 — 안 지우면 새 판 첫 프레임에 바가 부푼 채 뜬다
+            ReleaseCoreBurstHold(stopRoutine: true);   // unit 10 — 슬로우 리스가 판을 넘어가지 않게
             _heartStage = 0;
             _coreShielded = false;
             _rusherArrivalCount = 0;
@@ -6782,6 +6798,11 @@ namespace Wassup.Bridge
             //
             // 되돌리려면: 아래 EndMatch 를 지우고 `OpenBreachedCellsForLeak(newBreaches);` 를 되살린다.
             Debug.Log($"[BattleBridge] STRESS FULL — 마음이 무너졌다. (처치 {_killCount}기 · 경과 {(float)_battleClock:F1}s)");
+            // unit 10 — **연출을 규칙에서 떼어낸다.** 붕괴 VFX·프랍 그을림은 원래
+            // `OpenGoalCellAfterBreach`(유출 배수구) 안에만 있어서, 위에서 배수구를 안 부르기로
+            // 하자 **연출까지 같이 죽었다**(본능은 나가는데 마음만 안 나가던 이유). 배수구는
+            // 계속 안 부르고 — 그게 「누수가 없다」의 실체다 — 연출만 여기서 직접 쏜다.
+            PlayCoreBurst(newBreaches);
             EndMatch("stress_full");
         }
 
@@ -6969,8 +6990,64 @@ namespace Wassup.Bridge
             GameManager.Instance?.SetPhase(GamePhase.Tally);
             ReportMatchResult(tally);
 
+            // unit 10 — **화면만 늦춘다.** 위 집계·로그·서버 제출은 이미 끝났다
+            // (「제출이 표시보다 앞」 계약 — 화면을 기다리다 앱이 죽어도 기록은 갔다).
+            // 지연은 `GamePhase.Tally` 가 잡는다: 새 페이즈를 만들지 않는 이유는 Tally 가
+            // 원래 「전투종료 → Tally → 결과화면」의 중간 박자 자리이고 HUD 게이팅이 이미
+            // 그 페이즈를 알기 때문이다(ScoreHudView 가 점수 패널을 유지한다).
+            //
+            // 터지는 판에만 박자를 준다 — 3분 만료·제출은 터지는 것이 없다. 이건 「종료 사유
+            // 표기」가 아니라 **사건이 있을 때만 그 사건의 연출이 나가는 것**이다.
+            bool burst = outcome == "stress_full" && coreBurstHoldSec > 0f;
+            if (!burst) { ShowResult(tally); return; }
+            if (_coreBurstRoutine != null) StopCoroutine(_coreBurstRoutine);
+            _coreBurstRoutine = StartCoroutine(HoldThenShowResult(tally));
+        }
+
+        private void ShowResult(MatchTally tally)
+        {
             GameManager.Instance?.SetPhase(GamePhase.Result);
             resultScreen?.Show(tally);
+        }
+
+        // unit 10 — 붕괴 박자. **대기는 unscaled** 다(`WaitForSecondsRealtime`) — 스케일된
+        // 시간으로 기다리면 아래 슬로우가 대기 자체를 늘려 박자가 배로 길어진다.
+        private System.Collections.IEnumerator HoldThenShowResult(MatchTally tally)
+        {
+            // `Time.timeScale` 금지 — 시간제어는 도메인 리스로만 한다(기존 선례:
+            // MenuPopup 일시정지 · 드래그 슬로우모 전부 priority 로 겹친다).
+            if (TimeManager.Instance != null && coreBurstTimeScale < 1f)
+            {
+                _coreBurstLease = TimeManager.Instance.Request(
+                    TimeDomain.Battle, coreBurstTimeScale, priority: 100);
+                _coreBurstLeased = true;
+            }
+            yield return new WaitForSecondsRealtime(coreBurstHoldSec);
+            ReleaseCoreBurstHold(stopRoutine: false);
+            ShowResult(tally);
+        }
+
+        // unit 10 — 박자 정리. 코루틴 정상 종료와 판 경계 양쪽에서 부른다(멱등).
+        private void ReleaseCoreBurstHold(bool stopRoutine)
+        {
+            if (stopRoutine && _coreBurstRoutine != null) StopCoroutine(_coreBurstRoutine);
+            _coreBurstRoutine = null;
+            if (!_coreBurstLeased) return;
+            _coreBurstLeased = false;
+            _coreBurstLease.Dispose();
+        }
+
+        // unit 10 — 붕괴한 마음 셀의 연출. 규칙(유출 전환)은 하나도 하지 않는다.
+        private void PlayCoreBurst(List<Vector2Int> cells)
+        {
+            if (cells == null) return;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                tileHealthGaugeLayer?.Hide(cell);
+                vfxSpawner?.SpawnGoalCollapse(GridToWorldCenterVector(cell));
+                tilemapMapView?.MarkGoalCollapsed(cell);
+            }
         }
 
         // unit 7 — 흩어진 재료를 판 성적 하나로 옮기는 **유일한** 지점. 재료가 늘거나 줄면
