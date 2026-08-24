@@ -2,7 +2,11 @@
 
 ## Commit
 
-- `<pending>` — feat(bonus-wave-pull): 보너스 당기기 (units 0~9)
+- `4ecf4429` — feat(bonus-wave-pull): 보너스 당기기 — 조건부 두 번째 버튼과 보드 중앙 포탈 (units 0~9)
+
+⚠ **브랜치는 `heart-stress-axis` 다**(`main` 아님, 사용자 결정 2026-08-24). 이 feature 의
+스트레스 게이트(unit 9)가 `Wassup.Core.StressMath` 에 서 있는데 그 파일이 **`main` 에 없다** —
+그 브랜치 전용이다. 즉 보너스 당기기는 heart-stress-axis 의 머지에 묶여서 함께 간다.
 
 ## Implemented
 

@@ -1,7 +1,8 @@
 # Bonus Wave Pull — 보너스 당기기
 
-> 상태: **units 0~9 구현·검증 완료 2026-08-24** (EditMode 2447 · 실패 0 / PlayMode 10/10 / 투트랙 리뷰 반영)
-> 잔여: 사용자 Play 육안 확인 · 골든 코퍼스 재생성(별도 커밋) · `10_handoff_summary.md`
+> 상태: **완료 2026-08-24** — units 0~9 · 커밋 `4ecf4429` · 브랜치 **`heart-stress-axis`**
+> (EditMode 2455 · 실패 0 / PlayMode 10/10 / 사용자 Play 확인 / 투트랙 리뷰 반영)
+> 잔여: 골든 코퍼스 재생성(무관 dirty 격리 후 별도 커밋). handoff: `10_handoff_summary.md`
 >
 > 선행 읽기: `docs/spec/boss-defender-field/README.md`(사냥 필드 — 이 spec 이 그 후속 후보를
 > 실행한다) · `docs/spec/wave-pull-revival/`(일반 당김의 규칙/기제 2층, 도크 자리 예산) ·
