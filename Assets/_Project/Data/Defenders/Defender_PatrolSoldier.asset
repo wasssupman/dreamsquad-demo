@@ -17,6 +17,7 @@ MonoBehaviour:
   placementLayers: 1
   traversalLayers: 3
   displayName: "\uC18C\uD658\uC0AC\uCAC4"
+  visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uADFC\uC811 \uB2E8\uC77C \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uAC70\uC810 \uC8FC\uBCC0\uB9CC
     \uC21C\uCC30"
@@ -49,6 +50,8 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 3
   onPlaceTickInterval: 0
+  onPlaceShakeStrength: 0
+  onPlaceShakeDuration: 0
   cost: 0
   placementCooldown: 0
   deathCooldown: 10

@@ -26,7 +26,7 @@ MonoBehaviour:
   targetFactions: 29
   health: 1100
   moveSpeed: 1.3
-  attackRange: 2
+  attackRange: 1
   attackCooldown: 1.5
   attackTargetCount: 1
   projectile: {fileID: 0}

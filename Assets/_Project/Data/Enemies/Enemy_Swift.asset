@@ -19,13 +19,13 @@ MonoBehaviour:
   minWaveNumber: 1
   maxPerWave: 0
   attackMethod: 0
-  targetMode: 0
+  targetMode: 1
   engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 0
   health: 65
-  moveSpeed: 2.5
+  moveSpeed: 2.2
   attackRange: 1
   attackCooldown: 1
   attackTargetCount: 1

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: tremor_plate
   displayName: "\uC9C4\uB3D9\uAC11\uC8FC"
-  visible: 1
+  visible: 0
   axis: 3
   category: 1
   effects: []

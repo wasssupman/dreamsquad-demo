@@ -36,7 +36,7 @@ MonoBehaviour:
   aggroAttackRange: 1
   outputs:
   - kind: 0
-    magnitude: 25
+    magnitude: 20
     duration: 0
     stat: 0
     op: 0

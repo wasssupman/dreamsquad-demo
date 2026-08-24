@@ -17,6 +17,7 @@ MonoBehaviour:
   placementLayers: 1
   traversalLayers: 0
   displayName: "\uC544\uC774\uC2A4\uCE90\uC2A4\uD130"
+  visible: 0
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uAE38\uBAA9\uC5D0 \uB0C9\uAE30\uC7A5\uD310 \uC8FC\uAE30
     \uC124\uCE58\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
     \uB0C9\uAE30\uC7A5\uD310\uC774 \uC774\uB3D9 \uC18D\uB3C4 \uAC10\uC18C"
@@ -42,6 +43,8 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
+  onPlaceShakeStrength: 0
+  onPlaceShakeDuration: 0
   cost: 3
   placementCooldown: 4
   deathCooldown: 10

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: execution_strike
   displayName: "\uB538\uD53C\uC804\uBB38"
-  visible: 1
+  visible: 0
   axis: 3
   category: 1
   effects: []

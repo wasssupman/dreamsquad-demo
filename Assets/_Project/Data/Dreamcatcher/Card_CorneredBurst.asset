@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: cornered_burst
   displayName: "\uAD81\uC9C0\uD3ED\uBC1C"
-  visible: 1
+  visible: 0
   axis: 3
   category: 1
   effects: []
