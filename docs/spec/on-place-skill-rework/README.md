@@ -161,9 +161,11 @@ Boss 고 게이트는 슬롯 유무다. 없는 것은 **`OnPlace` 트리거**와
 - **단일 선택 경로의 안정 키** [S] · `projectile-emission-pattern` 후속 후보 그대로 **살아 있다.**
   fan-out 은 모든 후보를 1회씩 때려 순서 무관이지만, RoundRobin/Shuffle 단일 선택으로 방어유닛
   패턴을 열면 같은 셀 적의 tie-break 가 스냅샷 순서에 걸린다.
-- **ISkill 통합 레이어** [L] · `docs/plans/2026-07-15-effect-trigger-unification-design.md` 의
-  파킹된 설계(트리거 엔진 중립화 + `EffectDomain` 태그). 이 spec 이 만드는 `OnPlace` 트리거와
-  공용 payload 헬퍼가 그 이관 단위가 된다. **착수 시점은 사용자 결정.**
+- **ISkill 통합 레이어** → `docs/spec/skill-layer-foundation/` · `docs/spec/skill-layer-migration/`
+  (2026-08-25 spec 승격). 이 spec 이 만든 `OnPlace` 트리거와 공용 payload 헬퍼가 그 이관 단위가 됐고,
+  계약 2 의 **만료 조건(레거시 전량 이관)** 은 `skill-layer-migration/2_legacy_onplace.md` 가 이행한다.
+  그 문서가 여기 예약된 세부를 인용한다 — 신규 kind 는 `AreaCc{DcCcKind}` 하나 · `MeleeBurst`≈
+  `SelfTileAoe` 재사용 · `onPlacePush*` 3필드는 소비자 0(무비용 철거) · **이관 전 그물 필수**(9종 중 3종만 보호).
 - **전방 관통 4종 재설계** [M] · `defender-on-place-skills` 의 미해결 항목. 같은 축이지만
   4종이 서로 구분되지 않는 문제(머신거너·마크스맨이 동일)가 얽혀 별건.
 - **배치 페이즈 발동 정책** [M] · 전투 시작 전 배치는 적이 없어 셋 다 통째로 낭비된다
