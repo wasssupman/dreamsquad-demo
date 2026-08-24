@@ -22,6 +22,8 @@ namespace Wassup.Battle.Units
         // heart-stress-axis unit 2 — 마음의 회복은 **원샷 VFX 를 쓰지 않는다**(아래 힐 펄스
         // 게이트). 위 `_attackTagLookup` 이 데미지 폰트를 «적 전용» 으로 거르는 것과 같은 형태다.
         private ComponentLookup<GoalTowerTag> _goalTowerLookup;
+        // heart-stress-axis unit 6 — 방패 백스톱. 조준·경로 배제로 못 막는 **부수 피해**용.
+        private ComponentLookup<CoreShielded> _coreShieldedLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
         // content-1 ① (가시 갑옷) — count defender damage-taken (DamagedCounter is Units-owned).
         private ComponentLookup<DefenderUnitTag> _defenderTagLookup;
@@ -50,6 +52,7 @@ namespace Wassup.Battle.Units
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
             _goalTowerLookup  = state.GetComponentLookup<GoalTowerTag>(isReadOnly: true);
+            _coreShieldedLookup = state.GetComponentLookup<CoreShielded>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
@@ -87,6 +90,7 @@ namespace Wassup.Battle.Units
             _shieldSlotLookup.Update(ref state);
             _incomingShieldLookup.Update(ref state);
             _ultimateLeapLookup.Update(ref state);
+            _coreShieldedLookup.Update(ref state);
             _attackStateLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -104,6 +108,31 @@ namespace Wassup.Battle.Units
                 if (_ultimateLeapLookup.HasComponent(entity))
                 {
                     damageBuffer.Clear();
+                    continue;
+                }
+
+                // heart-stress-axis unit 6 — **방패 백스톱.** 조준(AttackSystem)·경로
+                // (StructureDestinationSystem) 배제는 «마음을 겨눈» 피해만 막는다. 겨누지
+                // **않고** 닿는 경로가 따로 있다: 골 근처 방어유닛에 떨어진 광역이 그것이다
+                // (`ProjectileHitSystem` TileAoe 의 피해자 마스크가 `Factions.AnyDefender` =
+                // DefenderCore 포함, 라이브 생산자 2곳 — 보스 임계 barrage · 궁극기 슬램).
+                // 그 한 발이 방패 선 마음을 0 으로 만들면 판이 끝난다.
+                //
+                // 생산자마다 필터를 다는 대신 여기 한 곳에서 떨어뜨린다 — 위 UltimateLeapState
+                // 와 **같은 이유·같은 형태**다: 새 피해 경로(DoT·미래 페이로드)가 생겨도
+                // 자동으로 덮인다. 그리고 그 주석대로 **쿼리에서 빼면 안 된다** — 그러면 방패가
+                // 서 있는 동안 피해가 버퍼에 적립됐다가 해제 프레임에 통째로 터진다.
+                //
+                // ⚠ **힐 버퍼도 같이 비운다.** rev 1 은 「어차피 clamp 로 버려진다」며 damage 만
+                // 비웠는데, clamp 는 **값**을 버리지 **버퍼**를 안 비운다 — 방패가 선 동안 킬마다
+                // 엔트리가 쌓여(3분 100킬 = 100+) DynamicBuffer 가 힙으로 넘어가고, 방패가 풀리는
+                // 프레임에 **전부 한꺼번에 적용**된다. 하필 그 프레임이 「쌓여 있던 적이 일제히
+                // 치는」 순간이라 그 피해가 통째로 상쇄된다(코드 리뷰 발견).
+                // 바로 위 UltimateLeapState 드랍이 경고한 «적립됐다 터지는» 실패 모드 그대로다.
+                if (_coreShieldedLookup.HasComponent(entity))
+                {
+                    damageBuffer.Clear();
+                    if (_healBufferLookup.HasBuffer(entity)) _healBufferLookup[entity].Clear();
                     continue;
                 }
 
@@ -217,8 +246,9 @@ namespace Wassup.Battle.Units
                 //
                 // heart-stress-axis unit 2 — **마음은 제외한다.** 악몽 처치마다 힐 펄스가 들어오는데
                 // (분당 수십 킬) 그때마다 마음 위에서 원샷 이펙트가 터지면 노이즈다. 회복 피드백은
-                // 머리 위 스트레스 바가 내려가는 것(unit 1)과 화면 림이 약해지는 것(unit 3)이
-                // 담당한다 — 둘 다 «지속» 어휘라 킬 페이스에 묻히지 않는다.
+                // 마음 프랍 틴트가 옅어지는 것 · 심박이 느려지는 것 · 포스트 비네트가 물러나는 것 ·
+                // 머리 위 숫자가 내려가는 것이 담당한다 — 전부 «지속» 어휘라 킬 페이스에
+                // 묻히지 않는다. (rev 1 의 「머리 위 바」는 은퇴했다.)
                 if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity)
                     && !_goalTowerLookup.HasComponent(entity))
                 {

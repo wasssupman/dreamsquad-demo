@@ -134,9 +134,14 @@ namespace Wassup.UI
             // 정확히 같은 수였고, 그러면 화면이 «다른 두 지표» 를 약속해놓고 안 지킨다.
             // 남는 둘은 총점이 **아닌** 것들이다 — 얼마나 버텼고 어디까지 갔나.
             // 「안정도」는 게이지가 있던 시절의 계기판 어휘라 게임 언어로 바꿨다(unit 2).
+            // heart-stress-axis unit 4 — 인게임이 스트레스(차오름) 어휘로 바뀌었으므로
+            // 결과 화면도 같은 어휘를 쓴다. 「남은 마음 650 / 1000」은 이제 두 가지로 거짓말이다:
+            // ① 인게임은 이 축을 **스트레스**로 부른다(마음 위 숫자 `87 / 100` · 프랍 틴트 ·
+            // 심박 · 포스트 비네트) ② 스트레스 100 으로 끝난 판에서 「남은 마음 0 / 1000」이
+            // 뜬다 — 판을 끝낸 축을 «남은 것» 으로 부르는 셈이다.
             SetStatRows(new[]
             {
-                StatRow.State("남은 마음", StabilityText(tally.Stability, tally.StabilityMax)),
+                StatRow.State("스트레스", StressText(tally.Stability, tally.StabilityMax)),
                 StatRow.State("도달 웨이브", $"{tally.WaveReached:N0}"),
             });
 
@@ -293,15 +298,20 @@ namespace Wassup.UI
             return $"{t / 60}:{t % 60:D2}";
         }
 
-        // 스트레스 누적 표기. limit <= 0 = 한계 미표기.
-        // three-minute-survival unit 3 — 결과 화면은 더 이상 이걸 쓰지 않지만(스트레스는 패배도
-        // 점수도 만들지 않는다) 순수 표기 함수라 테스트가 참조한다.
-        public static string StressText(int accrued, int limit)
-            => limit > 0 ? $"{accrued} / {limit}" : accrued.ToString();
+        // heart-stress-axis unit 4 — 마음 잔여 체력 → **스트레스(0~100)**. 인게임과 같은 축이다.
+        // `StressMath` 를 그대로 쓴다 — 화면이 두 곳에서 다른 산식을 쓰면 언젠가 갈린다.
+        // 마음이 없는 판(max <= 0)은 «스트레스 0» 이다(StressMath 의 폴백과 같은 판단).
+        //
+        // ⚠ 이 이름은 **뜻을 물려받았다.** 구 `StressText(accrued, limit)` 는 「유출 누적 / 한계」
+        // (`3 / 10`)를 그렸는데, 그 축은 스트레스 배지 은퇴와 함께 죽었고 heart-stress-axis 에서
+        // 유출 자체가 «돌격형 도달» 로 재정의됐다. 죽은 개념을 올바른 이름으로 붙잡아두면
+        // 다음 사람이 그걸 살아있는 것으로 읽는다 — 그래서 이름을 넘겼다.
+        public static string StressText(int stability, int max)
+            => $"{Mathf.RoundToInt(Wassup.Core.StressMath.FromHealth(stability, max))} / 100";
 
-        // three-minute-survival unit 3 — 남은 안정도 표기: `12 / 20 (60%)`. max <= 0 = 값만.
-        // 백분율을 같이 내는 이유는 동점 판정 기준(permille)이 비율이라, 화면에서 그 근거가
-        // 읽혀야 하기 때문이다.
+        // three-minute-survival unit 3 — 구 «남은 안정도» 표기: `12 / 20 (60%)`.
+        // heart-stress-axis unit 4 에서 호출처가 사라졌다. 지우지 않는 이유는 다른 휴면
+        // 코드와 같다 — A/B 판단이 끝나면 그때 함께 걷어낸다.
         public static string StabilityText(int stability, int max)
         {
             int v = Mathf.Max(0, stability);

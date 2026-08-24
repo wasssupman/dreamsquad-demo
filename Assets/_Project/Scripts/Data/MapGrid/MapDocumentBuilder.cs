@@ -174,6 +174,13 @@ namespace Wassup.Data.MapGrid
                 }
             }
 
+            // bonus-wave-pull unit 1 — 보너스 포탈 칸 투영. 미저작이면 길이 0.
+            var docBonusSpawns = doc.BonusSpawns;
+            int bonusCount = docBonusSpawns?.Count ?? 0;
+            var bonusSpawns = new NativeArray<int2>(bonusCount, allocator);
+            for (int i = 0; i < bonusCount; i++)
+                bonusSpawns[i] = new int2(docBonusSpawns[i].x, docBonusSpawns[i].y);
+
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -186,6 +193,7 @@ namespace Wassup.Data.MapGrid
                 waypointRanges = waypointRanges,
                 spawnRoutes = spawnRoutes,
                 structures = structures,
+                bonusSpawns = bonusSpawns,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
             };
@@ -198,9 +206,12 @@ namespace Wassup.Data.MapGrid
         // 암묵적으로 지우지 않는다는 unit 0 불변식 유지), 비-null = 통째 교체(빈 배열 = 삭제).
         // 페인터는 항상 자기 상태를 넘긴다 — 페인터가 연 문서에서는 페인터가 정본이다.
         // waypoint-routing unit 8 — spawnRoutes 도 같은 규약: null = 기존 값 보존, 빈 배열 = 삭제.
+        // bonus-wave-pull unit 1 — bonusSpawns 도 같은 규약: null = 기존 값 보존,
+        // 빈 배열 = 삭제. GeneratedMap 에도 실려 있지만 여기서 map 을 읽지 않는 이유는
+        // 위 세 축과 같다 — 「전달 안 하면 지워짐」 을 암묵 규칙으로 만들지 않기 위해서다.
         public static void WriteToDocument(MapDocument doc, in GeneratedMap map,
             StructureEntry[] structures = null, WaypointPath[] waypointPaths = null,
-            int[] spawnRoutes = null)
+            int[] spawnRoutes = null, Vector2Int[] bonusSpawns = null)
         {
             int n = map.gridSize.x * map.gridSize.y;
             var tiles = new MapTileType[n];
@@ -242,6 +253,7 @@ namespace Wassup.Data.MapGrid
             if (structures != null) doc.SetStructures(structures);
             if (waypointPaths != null) doc.SetWaypointPaths(waypointPaths);
             if (spawnRoutes != null) doc.SetSpawnRoutes(spawnRoutes);
+            if (bonusSpawns != null) doc.SetBonusSpawns(bonusSpawns);
         }
     }
 }

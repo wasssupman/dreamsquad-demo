@@ -57,6 +57,10 @@ namespace Wassup.Tests.EditMode
         }
 
         // 공격 수단이 있는 적 — 골에 도달해도 살아남아 타워를 때린다.
+        // heart-stress-axis unit 7 — 마스크에 **DefenderCore 가 있어야** 공성 자격이다.
+        // 예전 픽스처는 `DefenderUnit` 단독이었는데, 그건 「공격이 있다」를 표현한 것이지
+        // 「마음을 공성할 수 있다」가 아니었다. `canSiege` 판정이 정밀해지면서 그 차이가
+        // 실제로 갈렸다 — 돌격형(마스크 21, 마음 없음)이 도달 시 산화하는 근거가 이것이다.
         private Entity CreateSiegeUnitAtGoal()
         {
             var e = CreateUnitAtGoal();
@@ -64,7 +68,22 @@ namespace Wassup.Tests.EditMode
             {
                 range = 1f,
                 cooldownDuration = 1f,
-                targetMask = (int)Faction.DefenderUnit,
+                targetMask = (int)Faction.DefenderUnit | (int)Faction.DefenderCore,
+                attackTargetCount = 1,
+            });
+            return e;
+        }
+
+        // 공격은 있으나 **마음은 못 때리는** 적(돌격형과 같은 형태). 도달하면 산화해야 한다 —
+        // 안 그러면 마음 앞에 눌러앉아 「필드에 적 0기」 웨이브 판정을 영구히 막는다.
+        private Entity CreateRusherAtGoal()
+        {
+            var e = CreateUnitAtGoal();
+            _em.AddComponentData(e, new Wassup.Battle.Combat.AttackState
+            {
+                range = 1f,
+                cooldownDuration = 1f,
+                targetMask = (int)Faction.DefenderUnit | (int)Faction.DefenderInstinct,
                 attackTargetCount = 1,
             });
             return e;
@@ -142,6 +161,27 @@ namespace Wassup.Tests.EditMode
             // PastGoalTag 는 영구히 남으므로, 마커가 없으면 매 틱 재발화한다.
             for (int i = 0; i < 3; i++) Tick();
             Assert.AreEqual(0, singleton.queue.Count, "마커 이후로는 재발화하지 않는다");
+        }
+
+        // heart-stress-axis unit 7 — `canSiege` 는 「공격이 있나」가 아니라
+        // 「**마음을** 공성할 수 있나」다. 이 단언이 없으면 옛 정의로 되돌아가고,
+        // 돌격형이 마음 앞에 눌러앉아 웨이브가 안 넘어간다.
+        [Test]
+        public void RusherThatCannotHitTheCore_IsDestroyedAtGoal()
+        {
+            CreateSingletonEntity();
+            var unit = CreateRusherAtGoal();
+
+            Tick();
+
+            using var q = _em.CreateEntityQuery(ComponentType.ReadWrite<GoalReachedEventsSingleton>());
+            var singleton = q.GetSingleton<GoalReachedEventsSingleton>();
+            Assert.AreEqual(1, singleton.queue.Count, "도달은 여전히 1회 발화한다");
+            var evt = singleton.queue.Dequeue();
+            Assert.IsFalse(evt.canSiege,
+                "마스크에 마음이 없으면 공성 자격이 없다 — 공격을 갖고 있어도");
+            Assert.IsFalse(_em.Exists(unit),
+                "산화한다. 남기면 「필드에 적 0기」 판정을 영구히 막는다");
         }
 
         [Test]

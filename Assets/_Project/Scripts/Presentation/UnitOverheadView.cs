@@ -47,7 +47,8 @@ namespace Wassup.Presentation
         public void Show(Vector2 anchorLocal, float tileWidthReference, OverheadBarSkin skinKind, float ratio,
             IReadOnlyList<DreamcatcherCard> cards, UnitOverheadUiStyle style,
             UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f,
-            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null)
+            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null,
+            float barScale = 1f)
         {
             if (style == null || sprites == null) return;
             if (!_built || _skinKind != skinKind || _sprites != sprites) Rebuild(skinKind, style, sprites);
@@ -103,6 +104,12 @@ namespace Wassup.Presentation
             if (ratio < _ratio) _trailRatio = Mathf.Max(_trailRatio, _ratio);
             else if (ratio > _trailRatio) _trailRatio = ratio;
             _ratio = ratio;
+
+            // heart-stress-axis unit 9 rev 2 — 크기 펀치. **바와 그림자를 같은 배율로** 민다
+            // (바만 키우면 그림자에서 떨어져 나온 것처럼 보인다). 카드·스택은 제외 —
+            // `_root` 를 키우면 부착 카드까지 같이 튀어 「무슨 사건인지」가 흐려진다.
+            _bar.localScale = new Vector3(barScale, barScale, 1f);
+            _shadow.localScale = _bar.localScale;
 
             float cardRowHeight = ShowCards(defender ? cards : null, tileWidthReference, width);
             ShowStacks(stacks, stackIcons, tileWidthReference, width, cardRowHeight);

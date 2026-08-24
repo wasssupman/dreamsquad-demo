@@ -41,20 +41,29 @@ namespace Wassup.Battle.Effects
             var walkMask = goalField.walkMask;
             if (!walkMask.IsCreated) return;
 
-            // unit 5 — 필드 소비자는 보스뿐. 보스 부재 시 재빌드 skip(보스 스폰 프레임엔
+            // unit 5 — 필드 소비자는 헌터뿐. 헌터 부재 시 재빌드 skip(헌터 스폰 프레임엔
             // 이 시스템이 Movement 앞에서 다시 돌아 신선한 필드 보장).
+            // bonus-wave-pull unit 0 — 게이트가 BossTag 에서 DefenderHunterTag 로 바뀌었다.
+            // 보스는 여전히 그 태그를 받으므로(tier == Boss) 이 시스템 관점에선 무회귀다.
             // R = 동시 헌터 사거리(타일)의 **min fold** — 소스는 "모든 헌터가 발사 가능한 셀"
-            // 이어야 사거리 짧은 보스가 dist-0 셀에서 발사 불가로 서버리는 스톨이 구조적으로
-            // 불가능하다. 사거리 긴 보스는 FSM 이 소스 도달 전에 Engaging 으로 먼저 멈춘다.
-            // (현 콘텐츠는 보스 1종 → min==max. 이질 사거리 동시 헌터의 "긴 보스만 공격 가능한
-            // 심층 배치"까지 사냥하려면 R-별 필드 분리가 필요 — README 후속 후보.)
-            var bossQuery = SystemAPI.QueryBuilder().WithAll<Wassup.Battle.Combat.BossTag>().Build();
-            if (bossQuery.IsEmpty) return;
+            // 이어야 사거리 짧은 헌터가 dist-0 셀에서 발사 불가로 서버리는 스톨이 구조적으로
+            // 불가능하다. 사거리 긴 헌터는 FSM 이 소스 도달 전에 Engaging 으로 먼저 멈춘다.
+            // ⚠ **이질 사거리 헌터가 동시에 살아 있으면 R 이 짧은 쪽으로 내려간다.** 보너스
+            // 당기기의 근접 잡몹 10기와 원거리 보스가 겹치는 구간이 그 조건이다.
+            // 다만 **실질 영향은 거의 없다** — R 은 «도착점»만 바꾸지 도달성을 바꾸지 않고
+            // (BFS 는 소스가 하나라도 있으면 걸을 수 있는 구역 전체를 채운다), 사거리 긴
+            // 헌터는 위 문단대로 소스에 닿기 전에 FSM 이 먼저 멈춘다.
+            // 보스가 사냥을 포기하는 것은 **소스가 통째로 0** 일 때뿐이고, 그건 모든 방어유닛이
+            // 인접 8칸에 걸을 수 있는 칸을 하나도 안 가진 «벽에 파묻힌» 배치라는 뜻이다
+            // (Duel 은 230칸 중 224칸이 Walk 라 구조적으로 불가능하다).
+            // 벽이 많은 맵에서 실제로 관측되면 그때 R-별 필드 분리 — 두 spec README 후속 후보.
+            var hunterQuery = SystemAPI.QueryBuilder().WithAll<Wassup.Battle.Combat.DefenderHunterTag>().Build();
+            if (hunterQuery.IsEmpty) return;
             int rangeTiles = int.MaxValue;
             foreach (var atk in SystemAPI.Query<RefRO<Wassup.Battle.Combat.AttackState>>()
-                                         .WithAll<Wassup.Battle.Combat.BossTag>())
+                                         .WithAll<Wassup.Battle.Combat.DefenderHunterTag>())
                 rangeTiles = math.min(rangeTiles, GridMath.RangeToTiles(atk.ValueRO.range));
-            if (rangeTiles == int.MaxValue) rangeTiles = 1; // AttackState 없는 보스뿐 — 인접 폴백
+            if (rangeTiles == int.MaxValue) rangeTiles = 1; // AttackState 없는 헌터뿐 — 인접 폴백
             rangeTiles = math.max(1, rangeTiles);
 
             // 방어유닛 스냅샷 — FSM 후보 풀(EnemyAiStateSystem)과 동일 조건 + faction 필터.

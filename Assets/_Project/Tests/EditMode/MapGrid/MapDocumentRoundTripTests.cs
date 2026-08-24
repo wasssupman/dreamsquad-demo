@@ -61,6 +61,46 @@ namespace Wassup.Tests.EditMode.MapGrid
             ScriptableObject.DestroyImmediate(roundTripped);
         }
 
+        // bonus-wave-pull unit 1 — 보너스 포탈 칸 왕복. 이 축은 SetFrom 이 아니라 전용
+        // setter 를 거치므로(「전달 안 하면 지워짐」을 암묵 규칙으로 만들지 않기 위해)
+        // WriteToDocument 에도 명시 인자로 넘겨야 반영된다.
+        [Test]
+        public void RoundTrip_BonusSpawns_Identity()
+        {
+            var source = BuildSampleDocument();
+            var authored = new[] { new Vector2Int(2, 2), new Vector2Int(4, 2) };
+            source.SetBonusSpawns(authored);
+
+            using var map = MapDocumentBuilder.ToGeneratedMap(source, Allocator.TempJob);
+            Assert.IsTrue(map.bonusSpawns.IsCreated);
+            Assert.AreEqual(2, map.bonusSpawns.Length);
+            Assert.AreEqual(new int2(2, 2), map.bonusSpawns[0]);
+            Assert.AreEqual(new int2(4, 2), map.bonusSpawns[1]);
+
+            var roundTripped = ScriptableObject.CreateInstance<MapDocument>();
+            MapDocumentBuilder.WriteToDocument(
+                roundTripped, in map, bonusSpawns: authored);
+            Assert.AreEqual(2, roundTripped.BonusSpawns.Count);
+            for (int i = 0; i < authored.Length; i++)
+                Assert.AreEqual(authored[i], roundTripped.BonusSpawns[i], $"bonusSpawns[{i}]");
+
+            ScriptableObject.DestroyImmediate(source);
+            ScriptableObject.DestroyImmediate(roundTripped);
+        }
+
+        // 미저작(기존 16장)이 길이 0 으로 투영되고 Dispose 가 안전해야 한다 — goals 를
+        // IsCreated 불변식에서 뺀 것과 같은 보호(안 채우는 생산자가 뒤집히지 않게).
+        [Test]
+        public void BonusSpawns_미저작이면_길이_0()
+        {
+            var doc = BuildSampleDocument();
+            using var map = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+            Assert.IsTrue(map.bonusSpawns.IsCreated);
+            Assert.AreEqual(0, map.bonusSpawns.Length);
+            Assert.IsTrue(map.IsCreated, "bonusSpawns 는 IsCreated 불변식에 들지 않는다");
+            ScriptableObject.DestroyImmediate(doc);
+        }
+
         [Test]
         public void Dispose_IsIdempotent()
         {

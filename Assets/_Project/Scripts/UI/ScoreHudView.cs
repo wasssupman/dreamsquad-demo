@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Presentation;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -172,6 +173,67 @@ namespace Wassup.UI
         [SerializeField] private Color timerWarnColor = new Color(1f, 0.72f, 0.24f, 1f);
         [Tooltip("10초 이하")]
         [SerializeField] private Color timerFinalColor = new Color(1f, 0.33f, 0.28f, 1f);
+        [Header("Heart stress rim (heart-stress-axis unit 3 rev)")]
+        // **상시 연출이다.** rev 1 은 피격 순간에만 튀는 원샷 위주였는데, 사용자 지시로
+        // 「일시적인게 아니라 스트레스 정도에 따라」 로 뒤집었다 — 화면은 판 내내 «지금
+        // 얼마나 위험한가» 를 말하고, 피격 스파이크는 그 위에 얹히는 보조다.
+        //
+        // ⚠ 타이머 마지막 10초 연출(붉은 대형 숫자 + 매초 붉은 비네트)과 **종반에 정확히
+        // 겹친다** — 스트레스는 판 후반에 가장 높기 쉽다. 그래서 형태로 가른다:
+        // 타이머는 **중앙 비네트 원샷**, 스트레스는 **가장자리 림 지속 + 심박**.
+        // 비네트는 **검정**이다(사용자 판정 2026-08-24). 붉은 비네트는 ⑴ 타이머 마지막 10초
+        // 붉은 플래시와 색이 겹치고 ⑵ 캐주얼한 보드 색조를 물들여 판이 안 읽히게 만든다.
+        // 검정은 «시야가 좁아진다» 로 읽혀 조임과 어휘가 맞고, 보드 색을 안 건드린다.
+        [SerializeField] private Color stressVignetteColor = new Color(0f, 0f, 0f, 1f);
+        // 숫자는 비네트와 **다른 색축**이다 — 검정 숫자는 안 읽힌다. 위험은 여기가 말한다.
+        [SerializeField] private Color stressLabelHotColor = new Color(1f, 0.26f, 0.22f, 1f);
+        // 단계별 림 세기(0~1). **연속 곡선이 아니라 계단**이라 전이가 사건으로 보인다.
+        // 0(평온)은 0 이어야 한다 — 평온한데 화면이 붉으면 판이 항상 위급해 보여
+        // 진짜 위급한 구간이 안 읽힌다. 1(불안)부터는 **확실히 보이는 값**으로 시작한다.
+        // ⚠ unit 8 이 「rev 1 이 안 보인 원인」으로 지목한 바로 그 곡선이다 — 저작 가능해야 한다.
+        [Tooltip("단계별 림 세기(0 평온 ~ 3 임계). 0 단계는 0 이어야 평온한 판이 안 붉다.")]
+        [SerializeField] private float[] stageIntensity = { 0f, 0.34f, 0.66f, 1f };
+        [Tooltip("심박이 림 알파를 얼마나 깊게 흔드는가. 0 = 안 뛴다.")]
+        [SerializeField, Range(0f, 0.9f)] private float stressBeatDepth = 0.45f;
+        [Tooltip("스파이크가 사라지는 데 걸리는 초.")]
+        [SerializeField, Min(0.05f)] private float stressSpikeDecaySec = 0.35f;
+        [Tooltip("스파이크가 최대가 되는 상승분(스트레스 0~100 기준). 이 값 이상이면 포화.")]
+        [SerializeField, Min(0.5f)] private float stressSpikeFullRise = 8f;
+        // unit 8 — **림을 «알파» 가 아니라 «조여드는 기하» 로 만든다.**
+        // 판독성 리뷰의 핵심 지적: 지속 알파는 순응돼 사라지고, 무엇보다 「남은 양」을 못 준다.
+        // 기하는 다르다 — 남은 공간이 곧 남은 여유라 **값을 읽는 게 아니라 공간을 느낀다**.
+        // 그리고 처치로 스트레스가 내려갈 때 **물러나는 것이 보인다**(이 게임의 셀링 포인트인
+        // 「위기면 더 죽여라」를 가르치는 유일한 그림).
+        // ⚠ **비네트 스프라이트를 안 쓴다.** 그 스프라이트는 밝은 띠가 가장자리가 아니라
+        // 안쪽 반경에 있어서, 사각형 크기를 아무리 조절해도 띠가 «화면 테두리 한참 안쪽» 에
+        // 뜬다(rev 1 의 실제 증상). 4변 프레임은 **테두리에 붙는 것이 구조적으로 보장**되고,
+        // 조여드는 양이 곧 두께라 의도와 그림이 1:1 이다. 중앙이 비어 오버드로도 없다.
+        [Tooltip("임계(3단계)일 때 포스트 비네트 세기. 클수록 화면 안쪽까지 조여든다.")]
+        [SerializeField, Range(0f, 1f)] private float stressVignetteMax = 0.55f;
+        [Tooltip("1단계에서 이미 보이는 최소 세기.")]
+        [SerializeField, Range(0f, 1f)] private float stressVignetteMin = 0.2f;
+        [Tooltip("비네트 부드러움. 낮을수록 경계가 또렷해 «조여든다» 가 강해진다.")]
+        [SerializeField, Range(0.05f, 1f)] private float stressVignetteSmoothness = 0.35f;
+        [Tooltip("심박 한 번이 비네트를 추가로 조이는 양.")]
+        [SerializeField, Range(0f, 0.4f)] private float stressVignetteBeatKick = 0.10f;
+        [Tooltip("피격 순간 비네트를 추가로 조이는 양.")]
+        [SerializeField, Range(0f, 0.5f)] private float stressVignetteHitKick = 0.16f;
+
+        [Header("Heart stress readout (마음 위 숫자)")]
+        [Tooltip("이 단계부터 숫자를 띄운다. 0 단계(평온)에 떠 있으면 노이즈다 — "
+                 + "«나타났다» 는 것 자체가 신호가 되도록 늦게 연다.")]
+        // heart-stress-axis unit 9 — **마음 위 숫자는 꺼져 있다.**
+        // 사용자 지시로 그 자리를 «머리 위 체력바»(BattleBridge.SyncGoalOverheadGauges 공용
+        // 경로)가 대신한다. 지우지 않고 토글로 둔 이유는 지시가 「비활성화」였기 때문이다 —
+        // 인스펙터에서 켜면 바로 다시 뜬다(라벨 생성은 Build 에서 그대로 한다).
+        // ⚠ 켜면 바와 숫자가 **같은 값을 두 번** 말한다(방향만 반대: 바는 남은 체력,
+        //   숫자는 차오른 스트레스). 둘을 같이 켜는 건 판독을 돕지 않는다.
+        [SerializeField] private bool showHeartStressReadout = false;
+        [SerializeField, Range(0, 3)] private int stressLabelFromStage = 1;
+        [SerializeField] private float stressLabelFontSize = 34f;
+        [Tooltip("마음 스크린 앵커에서 위로 띄우는 양(px).")]
+        [SerializeField] private float stressLabelLift = 46f;
+
         [SerializeField] private float timerWarnSeconds = 30f;
         [SerializeField] private float timerFinalSeconds = 10f;
         [Tooltip("초가 바뀔 때 pop 강도(평시 / 30초 / 10초)")]
@@ -218,6 +280,17 @@ namespace Wassup.UI
         private float _shineT = 2f;
         private float _shineBaseY;
         private Image _vignetteImage;
+
+        // heart-stress-axis unit 3 — 마음 스트레스 화면 연출. **비네트에 얹지 않는다.**
+        // `FlashVignette` 는 원샷 페이드 모델이고 소비자가 이미 둘(점수 마일스톤 · 타이머
+        // 마지막 10초)인데 `_milestoneFlash` 하나를 Mathf.Max 로 다툰다. 스트레스는
+        // **지속 상태**라 성격이 다르고, 셋째가 끼면 서로를 먹는다.
+        private float _stressBeat = 1f;  // 심박 밝기 배율(보드 프랍과 같은 박자)
+        private float _stressSpike;      // 0~1 피격 순간 — 보조. 지수 감쇠
+        private int _stressStage;        // 공통 클록(HeartStressPulse.StageOf)
+        // unit 8 — 마음 위 숫자. 「어떤 빨강에서 터지나」에 유일하게 모호하지 않게 답하는 채널.
+        private TextMeshProUGUI _stressLabel;
+        private RectTransform _stressLabelRect;
         private float _milestoneFlash;
         // 비네트를 두 곳이 쓴다(점수 마일스톤 · 10초 카운트다운) — 색이 달라서 틴트를 든다.
         private Color _vignetteTint;
@@ -415,6 +488,25 @@ namespace Wassup.UI
                 if (stage == 2) FlashVignette(timerFinalColor, 0.6f);
             }
             _lastTimerSec = shownSec;
+        }
+
+        /// <summary>heart-stress-axis unit 3 — 마음 스트레스 화면 연출.
+        /// <paramref name="stress01"/> 수위(0~1) · <paramref name="beatScale"/> 마음 프랍과 **같은
+        /// 심박 배율**(위상 동기 — 계산 주체가 하나여야 화면과 마음이 같이 뛴다) ·
+        /// <paramref name="riseAmount"/> 이번 프레임의 **넷 상승분**(0~100 스케일).
+        ///
+        /// ⚠ 「피해량」이 아니라 「넷 상승분」인 이유: 마음 피해를 실어 나르는 이벤트가 없어
+        /// 브리지가 폴링한다. 같은 프레임에 악몽을 잡아 회복이 상쇄하면 **안 튀는 것이 옳다**
+        /// — 실제로 스트레스가 안 올랐기 때문이다.</summary>
+        public void SetHeartStress(float stress01, float beatScale, float riseAmount,
+            int stage = 0, Vector2 screenAnchor = default, bool anchorValid = false)
+        {
+            _stressBeat = beatScale;
+            _stressStage = stage;
+            UpdateStressLabel(stress01, stage, screenAnchor, anchorValid);
+            if (riseAmount > 0f)
+                _stressSpike = Mathf.Max(_stressSpike,
+                    Mathf.Clamp01(riseAmount / Mathf.Max(0.5f, stressSpikeFullRise)));
         }
 
         // 가장자리 플래시 — 점수 마일스톤과 같은 비네트를 재사용한다. 시선이 트레이에 있어도
@@ -642,6 +734,35 @@ namespace Wassup.UI
                 _shineImage.color = sc;
             }
 
+            // heart-stress-axis unit 3 rev — 림 = **수위(상시·주인공)** + 심박 + 스파이크(보조).
+            // 수위만이면 「지금 맞았다」가 안 읽히고, 스파이크만이면 「얼마나 위험한가」가
+            // 안 읽힌다. 그리고 심박이 둘을 하나의 «살아있는 것» 으로 묶는다.
+            {
+                _stressSpike = Mathf.Max(0f,
+                    _stressSpike - dt / Mathf.Max(0.05f, stressSpikeDecaySec));
+                // ⚠ **세기는 단계가 정한다. 연속 곡선이 아니다.**
+                // rev 1 은 `Intensity(stress, 2)` 를 썼는데 그러면 25%에서 세기가 0.06 이라
+                // 림이 화면 밖(오버스캔 391px)에 머물러 **75%를 넘어야 보이기 시작했다.**
+                // 게다가 그건 이 unit 의 주장(「단계가 모든 채널의 공통 클록」)을 스스로 어긴다 —
+                // 연속으로 흐르면 단계 전이가 **사건으로 안 보인다**.
+                // 단계별 세기: 0 평온(안 보임) / 1 불안 / 2 위기 / 3 임계.
+                float intensity = (stageIntensity == null || stageIntensity.Length == 0) ? 0f
+                    : stageIntensity[Mathf.Clamp(_stressStage, 0, stageIntensity.Length - 1)];
+                // 심박 깊이도 세기를 따라간다 — 낮은 스트레스에서 화면이 벌써 쿵쿵대면 거짓말이다.
+                float beat = Mathf.Lerp(1f, _stressBeat, stressBeatDepth * intensity);
+                // unit 8 rev 2 — **포스트 비네트가 조여든다.** 세기가 곧 «안쪽으로 파고든 양» 이다.
+                // 심박·피격도 세기에 실어 «뛸 때마다 한 번 더 조인다» 를 만든다 —
+                // 밝기는 순응되지만 **조임(기하)은 순응되지 않는다**.
+                float vig = intensity <= 0f ? 0f
+                    : Mathf.Lerp(stressVignetteMin, stressVignetteMax, intensity);
+                if (vig > 0f)
+                {
+                    vig += (1f - beat) * stressVignetteBeatKick;
+                    vig += _stressSpike * _stressSpike * stressVignetteHitKick;
+                }
+                _cameraDirector?.SetStressVignette(vig, stressVignetteColor, stressVignetteSmoothness);
+            }
+
             if (_vignetteImage != null && _milestoneFlash > 0f)
             {
                 _milestoneFlash = Mathf.Max(0f, _milestoneFlash - dt / Mathf.Max(0.0001f, milestoneDuration));
@@ -691,6 +812,9 @@ namespace Wassup.UI
             }
             _milestoneFlash = 0f;
             if (_vignetteImage != null) { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
+            _stressSpike = 0f; _stressBeat = 1f; _stressStage = 0;
+            if (_stressLabel != null) _stressLabel.gameObject.SetActive(false);
+            _cameraDirector?.SetStressVignette(0f, stressVignetteColor, stressVignetteSmoothness);
         }
 
         private void EnsureSubscribed()
@@ -909,7 +1033,58 @@ namespace Wassup.UI
             vrt.SetAsFirstSibling();
             { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
 
+            // 마음 위 숫자. **중앙 앵커**여야 한다 — `ScreenPointToLocalPointInRectangle` 이
+            // 돌려주는 것은 캔버스 rect 의 **중앙 기준** 로컬 좌표다(UnitOverheadView 가
+            // `_root.anchorMin = anchorMax = (0.5, 0.5)` 를 쓰는 것과 같은 규약).
+            // ⚠ 좌하단 앵커(0,0)로 두면 화면 절반만큼 밀려 **통째로 화면 밖**에 놓인다 —
+            // rev 1 에서 실제로 그래서 숫자가 한 번도 안 보였다.
+            // 그리고 여기서 만들어야 아래 UiLayer.Apply 가 이 라벨까지 덮는다.
+            _stressLabel = MakeText("HeartStressReadout", transform, stressLabelFontSize,
+                new Vector2(0.5f, 0.5f));
+            _stressLabelRect = _stressLabel.rectTransform;
+            _stressLabelRect.anchorMin = _stressLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            _stressLabelRect.sizeDelta = new Vector2(200f, 54f);
+            _stressLabel.gameObject.SetActive(false);
+
             UiLayer.Apply(gameObject);
+        }
+
+        // heart-stress-axis unit 8 — **마음 위 숫자.**
+        //
+        // 판독성 리뷰 둘이 「숫자를 띄우지 말라」고 했지만, 그 근거를 뜯어보면
+        // «숫자를 **주** 채널로 삼지 말라» 에 가깝다. 색·알파는 기준점이 없어 ③(어디서
+        // 터지나)에 **원리적으로** 답할 수 없고, 숫자는 그 하나에 모호하지 않게 답한다.
+        // 역할을 나눈다: 주변시는 조여드는 림이, **확인은 이 숫자**가 맡는다.
+        //
+        // 두 조건이 붙는다(그 리뷰의 반려 근거를 무력화하는 조건):
+        //   ① **크게.** 작으면 초점 판독을 요구해 3분 판의 시선 예산을 넘는다.
+        //   ② **늦게 연다.** 평온 구간에 «12 / 100» 이 떠 있으면 그냥 노이즈다.
+        //      «나타났다» 는 것 자체가 첫 신호가 된다.
+        //
+        // 분모(`/ 100`)를 붙이는 근거: **지금은 100 이 진짜 끝이다.**
+        // three-minute-kill-race 가 옛 스트레스 배지에서 분모를 뗀 이유는 「한계가 아무것도
+        // 안 하는데 분모가 있으면 거짓말」이었는데, 이 spec 에서 그 전제가 뒤집혔다.
+        // 분모가 참이 되면서 그 표기 자체가 ②(끝까지 가면 뭐가 되나)를 절반 가르친다.
+        private void UpdateStressLabel(float stress01, int stage, Vector2 screenAnchor, bool anchorValid)
+        {
+            if (_stressLabel == null) return;   // Build 에서 만든다(아래 BuildStressLabel)
+            bool show = showHeartStressReadout && anchorValid && stage >= stressLabelFromStage;
+            if (!show) { if (_stressLabel.gameObject.activeSelf) _stressLabel.gameObject.SetActive(false); return; }
+
+            var canvasRect = transform as RectTransform;
+            if (canvasRect != null &&
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRect, screenAnchor + Vector2.up * stressLabelLift, null, out var local))
+                _stressLabelRect.anchoredPosition = local;
+
+            int shown = Mathf.Clamp(
+                Mathf.RoundToInt(stress01 * Wassup.Core.StressMath.Max), 0, (int)Wassup.Core.StressMath.Max);
+            // 「100」 정본은 `StressMath.Max` 하나다 — 리터럴을 쓰면 만점이 두 곳에 살게 된다.
+            _stressLabel.text = $"{shown} <size=55%>/ {(int)Wassup.Core.StressMath.Max}</size>";
+            // 단계가 곧 색이다 — 숫자와 림·심박이 **같은 클록**을 쓴다.
+            _stressLabel.color = Color.Lerp(Color.white, stressLabelHotColor,
+                stage / (float)Mathf.Max(1, HeartStressPulse.StageCount - 1));
+            if (!_stressLabel.gameObject.activeSelf) _stressLabel.gameObject.SetActive(true);
         }
 
         private TextMeshProUGUI MakeText(string name, Transform parent, float size, Vector2 pivot)

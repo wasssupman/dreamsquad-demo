@@ -18,9 +18,14 @@ namespace Wassup.Core
     /// </summary>
     public readonly struct MatchTally
     {
-        /// <summary>배틀 로그에 남는 결과 라벨. three-minute-kill-race unit 0 이후 값은
-        /// `complete`(3분 완주) 하나이고, unit 3 이 `submitted`(유저 제출)를 더한다.
-        /// **승패를 담는 자리는 없다** — 그 개념이 사라졌고, 자리를 남기면 조용히 되살아난다.</summary>
+        /// <summary>배틀 로그에 남는 결과 라벨. 값은 셋이다 —
+        /// `complete`(3분 완주) · `submitted`(유저 제출) · `stress_full`(스트레스 100).
+        /// **승패를 담는 자리는 없다** — 그 개념이 사라졌고, 자리를 남기면 조용히 되살아난다.
+        ///
+        /// ⚠ heart-stress-axis — **라벨이 셋이라고 게임 종료가 셋인 것은 아니다.**
+        /// 게임 규칙상의 통로는 2개(3분 만료 · 스트레스 100)이고 `submitted` 는 절차 밖
+        /// 탈출구다(사용자 결정 2026-08-23). UI·문구에서 제출을 「게임을 끝내는 방법」으로
+        /// 승격시키지 않는다.</summary>
         public readonly string Outcome;
 
         /// <summary>**잡은 마리 수 = 점수.** three-minute-kill-race unit 1 —
@@ -35,7 +40,11 @@ namespace Wassup.Core
         public readonly int StabilityMax;
         /// <summary>도달 웨이브 = 마지막으로 큐잉된 웨이브 번호.</summary>
         public readonly int WaveReached;
-        /// <summary>골을 뚫린 횟수(스트레스). 점수와 무관하며 로그·배지용 집계다.</summary>
+        /// <summary>**돌격형이 마음을 치고 산화한 수** = 이 판의 「놓쳤다」.
+        /// heart-stress-axis 에서 뜻이 바뀌었다 — 구 의미(「부서진 마음으로 적이 흘러듦」)는
+        /// 첫 붕괴에 판이 끝나므로 구조적으로 발생 불가다. 공성형은 마음 앞에서 아직 잡을 수
+        /// 있으므로 놓친 것이 아니다. ⚠ 화면 라벨을 「유출」로 쓰면 거짓말이다.
+        /// 점수와 무관하며 로그·결과 화면 집계다.</summary>
         public readonly int Leaks;
 
         public MatchTally(string outcome, int kills,

@@ -38,12 +38,24 @@ namespace Wassup.Tests.EditMode
             _bridge = _go.AddComponent<BattleBridge>();
             SetField(_bridge, "_world", _world);
             SetField(_bridge, "_em", _world.EntityManager);
+
+            // bonus-wave-pull — `CreateEnemyEntity` 는 뷰 풀 스폰까지 간다(`EnsureMonoViewPools`).
+            // 그 경로가 `BoardSpace` 의 **정적** Grid 를 읽는데, 앞선 테스트가 남기고 간 것이
+            // 이미 파괴돼 있어 MissingReferenceException 이 난다. 살아 있는 Grid 를 물려
+            // 이 픽스처 안에서만 유효하게 만든다(정적이라 원복 API 가 없다 — 다음 소비자는
+            // 지금과 똑같이 자기 Grid 를 물린다).
+            _gridGo = new GameObject("BakeTestGrid");
+            Wassup.Core.BoardSpace.Configure(
+                Unity.Mathematics.float3.zero, 1f, _gridGo.AddComponent<Grid>());
         }
+
+        private GameObject _gridGo;
 
         [TearDown]
         public void TearDown()
         {
             if (_go != null) Object.DestroyImmediate(_go);
+            if (_gridGo != null) Object.DestroyImmediate(_gridGo);
             _world?.Dispose();
         }
 
@@ -84,6 +96,81 @@ namespace Wassup.Tests.EditMode
                 },
             };
             return u;
+        }
+
+        // ── bonus-wave-pull unit 0 — DefenderHunterTag 부착 «지점» 가드 ─────────
+        //
+        // ★이 세 테스트가 지키는 것은 태그의 **존재**가 아니라 **어디서 붙느냐**다.
+        // `BakeNightmareMechanics` 는 `nightmareMechanics` 가 비면 조기 반환한다. 그래서 태그를
+        // 그 안(BossTag 옆)에 두면 — 가장 자연스러운 자리다 — **메커닉 없는 사냥꾼에게 태그가
+        // 안 붙는다.** 보스는 메커닉을 갖고 있어 무회귀이고 위 테스트들도 전부 초록인 채,
+        // 「보너스 적이 방어유닛을 무시한다」만 조용히 남는다.
+        // `DefenderHunterGateTests` 는 **시스템 게이트**만 본다(태그를 손으로 붙인다) —
+        // bake 경로는 그쪽 범위 밖이라 여기가 유일한 EditMode 그물이다.
+        private Entity InvokeCreateEnemy(AttackUnitData unitType)
+        {
+            var mi = typeof(BattleBridge).GetMethod("CreateEnemyEntity",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(mi, "CreateEnemyEntity 를 찾지 못했다(이름 변경?)");
+            return (Entity)mi.Invoke(_bridge, new object[] { unitType, Vector3.zero, -1, -1 });
+        }
+
+        // 메커닉이 **없는** 유닛 — 위 MakeUnit 과 갈리는 지점이 이 테스트의 전부다.
+        private static AttackUnitData MakeBareUnit(EnemyTier tier, bool hunts)
+        {
+            var u = ScriptableObject.CreateInstance<AttackUnitData>();
+            u.displayName = $"BareUnit_{tier}_{hunts}";
+            u.health = 100f;
+            u.tier = tier;
+            u.huntsDefenders = hunts;
+            u.nightmareMechanics = null;              // ★조기 반환 경로
+            // 뷰 풀이 `_MainTex` 를 세팅하므로 그 프로퍼티가 있는 셰이더여야 한다
+            // (`Unlit/Color` 는 없어서 에러 로그가 나고 테스트가 그걸 미처리로 잡는다).
+            u.visualMaterial = new Material(Shader.Find("Unlit/Texture"));
+            return u;
+        }
+
+        [Test]
+        public void 메커닉_없는_사냥꾼도_DefenderHunterTag_를_받는다()
+        {
+            var unitType = MakeBareUnit(EnemyTier.Normal, hunts: true);
+            var e = InvokeCreateEnemy(unitType);
+
+            Assert.AreNotEqual(Entity.Null, e, "적 생성에 실패했다");
+            Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
+                "메커닉이 없는 사냥꾼에게 태그가 안 붙었다 — 부착 지점이 " +
+                "BakeNightmareMechanics 안으로 들어갔다(그 메서드는 메커닉이 비면 조기 반환한다)");
+            Assert.IsFalse(_world.EntityManager.HasComponent<BossTag>(e),
+                "Normal 인데 BossTag 가 붙었다");
+
+            Object.DestroyImmediate(unitType.visualMaterial);
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void 메커닉_없는_보스도_사냥_태그를_받는다()
+        {
+            var unitType = MakeBareUnit(EnemyTier.Boss, hunts: false);
+            var e = InvokeCreateEnemy(unitType);
+
+            Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
+                "보스가 사냥 태그를 못 받았다 — 부착 조건이 (tier == Boss || huntsDefenders) 여야 한다");
+
+            Object.DestroyImmediate(unitType.visualMaterial);
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void 사냥꾼도_보스도_아니면_태그가_없다()
+        {
+            var unitType = MakeBareUnit(EnemyTier.Normal, hunts: false);
+            var e = InvokeCreateEnemy(unitType);
+
+            Assert.IsFalse(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
+                "일반 적에 사냥 태그가 붙었다 — 적 전원이 방어유닛을 쫓는다");
+
+            Object.DestroyImmediate(unitType.visualMaterial);
+            Object.DestroyImmediate(unitType);
         }
 
         [Test]

@@ -351,6 +351,53 @@ namespace Wassup.Presentation
             return r;
         }
 
+        // ── heart-stress-axis unit 8 rev 2 — 마음 스트레스 비네트 ──────────────────
+        //
+        // **UI 오버레이가 아니라 포스트 비네트를 쓴다.** UI 로 하려면 풀스크린 비네트
+        // 스프라이트의 밝은 띠 반경이 스프라이트에 박혀 있어 「화면 테두리 한참 안쪽에서
+        // 연출이 나온다」가 됐고(rev 1 실측), 4변 프레임으로 우회해도 «화면이 물든다» 가
+        // 아니라 «UI 액자가 생긴다» 로 읽힌다. 포스트 비네트는 **테두리 정렬이 구조적으로
+        // 보장**되고, 이 프로젝트는 이미 포스트 스택이 돌고 있어(DoF) 추가 패스도 없다.
+        //
+        // 타이머 마지막 10초 연출과 **기제 자체가 갈린다**: 그쪽은 UI 오버레이 원샷 플래시,
+        // 이쪽은 포스트 비네트 지속. 같은 붉은 계열이어도 서로를 안 먹는다.
+        //
+        // ⚠⚠ **`active` 를 켜야 한다.** 씬 프로파일의 Vignette 오버라이드는 `active: 0` 으로
+        // 저작돼 있었고, 그 상태에서는 파라미터를 아무리 `Override()` 해도 **컴포넌트 자체가
+        // 통째로 건너뛰어져** 화면에 아무 일도 안 일어난다(실측 2026-08-24 — 「연출이 하나도
+        // 안 나온다」의 진짜 원인이 이것이었다). `intensity` 만 쓰고 끝내면 영원히 안 보인다.
+        //
+        // 에셋을 고치지 않고 **코드가 켠다**: `Volume.profile` 은 sharedProfile 의 런타임
+        // 인스턴스라 디스크에 안 남고(아래 ApplyDof 주석), 프로파일 에셋이 git 에서 dirty 해지지
+        // 않는다. 저작 의도(평시 꺼짐)도 그대로 보존된다.
+        //
+        // 끄는 것은 `active=false` 다 — `IsActive()` 가 `intensity > 0` 도 보지만, 컴포넌트를
+        // 통째로 빼는 쪽이 확실하고 평온 구간 비용이 정확히 0 이 된다.
+        private float _vignetteWritten = -1f;
+
+        /// <summary>마음 스트레스 비네트. intensity 0 = 완전히 끔(비용 0).</summary>
+        public void SetStressVignette(float intensity, Color color, float smoothness)
+        {
+            if (postVolume == null) return;
+            var profile = postVolume.profile;
+            if (profile == null) return;
+            if (!profile.TryGet(out UnityEngine.Rendering.Universal.Vignette v)) return;
+
+            intensity = Mathf.Clamp01(intensity);
+            bool on = intensity > 0.001f;
+            if (v.active != on) v.active = on;
+            if (!on)
+            {
+                if (_vignetteWritten > 0f) { v.intensity.Override(0f); _vignetteWritten = 0f; }
+                return;
+            }
+
+            _vignetteWritten = intensity;
+            v.intensity.Override(intensity);
+            v.color.Override(color);
+            v.smoothness.Override(Mathf.Clamp(smoothness, 0.01f, 1f));
+        }
+
         // `Volume.profile` 은 sharedProfile 의 **런타임 인스턴스**를 돌려준다 — 프로필 에셋은
         // 건드리지 않으므로 에디터 Play 에서도 디스크에 남지 않는다.
         //

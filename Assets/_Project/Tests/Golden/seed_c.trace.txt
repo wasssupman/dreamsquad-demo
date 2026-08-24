@@ -1,6 +1,6 @@
 LTV0
 scenario=seed_c
-configHash=8e960d2a8dd9560c
+configHash=d5f48a9d276d474b
 matchSeed=31337
 stepDt=0.0166666675
 tickCount=1800
@@ -229,4 +229,4 @@ events=221
 finalKills=5
 finalScore=5
 finalLeaks=0
-finalStateHash=C829510B5C982D8B
+finalStateHash=F02252D1683BE97B

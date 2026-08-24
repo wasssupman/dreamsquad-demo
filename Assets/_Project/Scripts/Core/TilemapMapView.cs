@@ -764,6 +764,7 @@ namespace Wassup.Core
         {
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
             _goalPropsByCell.Clear();   // 프랍 루트와 같은 수명 — 재빌드 시 stale 참조 방지
+            _propRenderers.Clear();     // 틴트 렌더러 캐시도 같은 수명(파괴된 프랍 키 잔존 금지)
             ResetStructureVisualAnchors(in map);
             if (grid == null || theme == null || !map.IsCreated) return;
             if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
@@ -836,18 +837,40 @@ namespace Wassup.Core
         }
 
         // 스프라이트는 SpriteRenderer.color(공용 머티리얼 무오염), 메쉬는 MPB.
-        private static void ApplyPropTint(GameObject prop, Color tint)
+        //
+        // ⚠ heart-stress-axis unit 1 rev 2 — **심박 때문에 매 프레임 불린다.** 예전 호출자
+        // (`PushGoalCrack`)는 단계가 바뀔 때만 밀었고 그 주석이 정확히 이 비용을 경고했다:
+        // 「매 프레임 틴트를 다시 쓰면 렌더러 순회가 공짜가 아니다」. 그래서 렌더러 배열과
+        // MaterialPropertyBlock 을 **프랍당 1회 캐시**한다 — 안 그러면 프레임당 힙 할당 3건이다
+        // (GetComponentsInChildren 배열 2 + MPB 1). 안드로이드 주 타겟에서 그냥 버리는 GC 다.
+        private readonly Dictionary<GameObject, (SpriteRenderer[] sprites, Renderer[] meshes)> _propRenderers = new();
+        private static MaterialPropertyBlock _tintMpb;
+
+        private void ApplyPropTint(GameObject prop, Color tint)
         {
-            foreach (var sr in prop.GetComponentsInChildren<SpriteRenderer>())
-                sr.color = tint;
-            var mpb = new MaterialPropertyBlock();
-            foreach (var r in prop.GetComponentsInChildren<Renderer>())
+            if (!_propRenderers.TryGetValue(prop, out var cached))
             {
-                if (r is SpriteRenderer) continue;
-                r.GetPropertyBlock(mpb);
-                mpb.SetColor("_BaseColor", tint);
-                mpb.SetColor("_Color", tint);
-                r.SetPropertyBlock(mpb);
+                var all = prop.GetComponentsInChildren<Renderer>();
+                var sprites = new List<SpriteRenderer>();
+                var meshes = new List<Renderer>();
+                foreach (var r in all)
+                {
+                    if (r is SpriteRenderer sr) sprites.Add(sr);
+                    else meshes.Add(r);
+                }
+                cached = (sprites.ToArray(), meshes.ToArray());
+                _propRenderers[prop] = cached;
+            }
+            for (int i = 0; i < cached.sprites.Length; i++) cached.sprites[i].color = tint;
+            if (cached.meshes.Length == 0) return;
+            _tintMpb ??= new MaterialPropertyBlock();
+            for (int i = 0; i < cached.meshes.Length; i++)
+            {
+                var r = cached.meshes[i];
+                r.GetPropertyBlock(_tintMpb);
+                _tintMpb.SetColor("_BaseColor", tint);
+                _tintMpb.SetColor("_Color", tint);
+                r.SetPropertyBlock(_tintMpb);
             }
         }
 
@@ -858,6 +881,27 @@ namespace Wassup.Core
             // 주저앉음 — 실루엣 자체가 «무너졌다» 를 말하게 한다. 앵커가 바닥이 아니어도
             // 60% 스케일이면 붕괴 읽힘이 충분하고 이웃 골(2칸 거리)과 즉시 구분된다.
             prop.transform.localScale *= 0.6f;
+        }
+
+        // ── heart-stress-axis unit 1 rev 2 — 마음이 붉게 물든다 ────────────────────
+        //
+        // rev 1(머리 위 차오르는 바)·rev 2(주변 3×3 잠식) 둘 다 반려됐다. 바는 다른 바들과
+        // 문법이 같아 임팩트가 없었고, 주변 타일 하이라이트는 «쓸모없다»(사용자, 2026-08-23).
+        // 남은 결론: **마음 자체가 말한다.** 프랍이 스트레스만큼 붉어지고 심박에 맞춰 뛴다.
+        //
+        // ⚠ 프랍 틴트의 writer 가 둘이면 안 된다. 구 `SetGoalCrack`(그을림 4단계)은 호출을
+        // 끊었다 — 같은 렌더러 색을 두 곳이 쓰면 마지막에 쓴 쪽이 이긴다.
+        // 붕괴(`MarkGoalCollapsed`)는 판이 끝나는 순간이라 겹치지 않는다.
+        public void SetGoalStressTint(Vector2Int cell, float stress01, float beatScale)
+        {
+            if (!_goalPropsByCell.TryGetValue(cell, out var prop) || prop == null || _tileSet == null) return;
+            float k = Mathf.Clamp01(stress01);
+            // 온전(흰색) → 스트레스 색. 심박은 밝기 배율이라 «붉게 물든 것이 뛴다» 로 읽힌다.
+            var tint = Color.Lerp(Color.white, _tileSet.heartStressPropTint, k);
+            float b = Mathf.Lerp(1f, beatScale, k);   // 스트레스가 낮으면 거의 안 뛴다
+            tint.r *= b; tint.g *= b; tint.b *= b;
+            tint.a = 1f;
+            ApplyPropTint(prop, tint);
         }
 
         private GameObject PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)

@@ -13,7 +13,7 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure, Waypoint }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal, PlaceMask, Structure, Waypoint, BonusSpawn }
 
         private const float Cell = 26f;
 
@@ -25,6 +25,9 @@ namespace Wassup.EditorTools
         private bool _maskStrokePrimed; // 스트로크 시작값이 이번 드래그에서 잡혔나 — 격자 밖 MouseDown 후 진입 드래그가 직전 스트로크 잔존값으로 칠하는 엣지 방지
         private readonly List<Vector2Int> _spawns = new();
         private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
+        // bonus-wave-pull unit 2 — 보너스 당기기 포탈 칸(0 또는 2). 레인 스폰과 다른 축이라
+        // _spawnRoutes 같은 병렬 배열이 없다 — 순서에 의미가 없고 셀 좌표가 전부다.
+        private readonly List<Vector2Int> _bonusSpawns = new();
         // battle-structures unit 3 — 거점 저작(본능 + 적 마음).
         //
         // **방어 마음은 여기 넣지 않는다.** 현행 9장이 전부 goals[] 로 방어 골을 저작하고
@@ -132,6 +135,9 @@ namespace Wassup.EditorTools
             _structures.Clear();
             if (doc.Structures != null)
                 foreach (var s in doc.Structures) _structures.Add(s);
+            _bonusSpawns.Clear();
+            if (doc.BonusSpawns != null)
+                foreach (var c in doc.BonusSpawns) _bonusSpawns.Add(c);
             // waypoint-routing unit 5 — 저작된 경로를 편집 사본으로. 인덱스 = 적 SO 의
             // waypointPathIndex 가 가리키는 값이므로 순서를 보존해서 싣는다.
             _waypointPaths.Clear();
@@ -240,6 +246,13 @@ namespace Wassup.EditorTools
                 laneSpawns = derived;
                 routesToValidate = _spawnRoutes.ToArray();
             }
+            // bonus-wave-pull unit 2 — OnValidate 와 **같은 순수 함수**를 부른다.
+            // 페인터가 자체 규칙을 갖는 순간 「툴 통과 → 런타임 폴백」 드리프트가 시작된다.
+            var bonusErrors = new List<string>();
+            BonusSpawnAuthoringRules.Validate(
+                _bonusSpawns, _w, _h, _tiles, _goals, bonusErrors);
+            foreach (var e4 in bonusErrors) errors.Add(e4);
+
             var wpErrors = new List<string>();
             WaypointAuthoringRules.ValidatePaths(
                 ToWaypointPathArray(), _w, _h, _tiles, _goals, laneSpawns, wpErrors, warnings);
@@ -300,7 +313,7 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점", "경로" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal", "Mask", "거점", "경로", "보너스" }, EditorStyles.toolbarButton);
                 // placement-mask unit 4 — Mask 브러시가 칠할 층. 유닛 SO 의 placementLayers 와 같은 축이다.
                 using (new EditorGUI.DisabledScope(_tool != Tool.PlaceMask))
                     _maskBrushLayer = GUILayout.Toolbar(_maskBrushLayer == PlacementLayer.Path ? 1 : 0,
@@ -481,6 +494,13 @@ namespace Wassup.EditorTools
                         EditorGUI.DrawRect(new Rect(r.x, r.y, r.width, 3f), new Color(0.2f, 0.5f, 0.95f));
                         GUI.Label(r, "S", CenterLabel);
                     }
+                    // bonus-wave-pull unit 2 — 보너스 포탈 칸. 레인 스폰(파랑 S)과 **색으로**
+                    // 갈라야 저작 중에 헷갈리지 않는다(런타임에선 같은 포탈 프랍이라 더 그렇다).
+                    else if (_bonusSpawns.Contains(cell))
+                    {
+                        EditorGUI.DrawRect(new Rect(r.x, r.y, r.width, 3f), new Color(0.75f, 0.3f, 0.95f));
+                        GUI.Label(r, "X", CenterLabel);
+                    }
 
                     // placement-mask unit 2/4 — 마스크 오버레이. **테두리 = 손댄 칸(파생과 상이)** 이고
                     // **색 = 그 칸이 여는 층**이다(지면=시안 / 경로=마젠타 / 둘 다=흰 / 닫힘=적).
@@ -618,18 +638,23 @@ namespace Wassup.EditorTools
                     _placeMask[idx] = DerivedMask(idx);
                     RemoveSpawn(cell);
                     RemoveGoal(cell);
+                    _bonusSpawns.Remove(cell);   // 벽이 된 칸에 포탈이 남지 않게(양성 조건 ⓐ)
                     break;
                 case Tool.Deco:
                     _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
                     _placeMask[idx] = DerivedMask(idx);
                     RemoveSpawn(cell);
                     RemoveGoal(cell);
+                    _bonusSpawns.Remove(cell);
                     break;
                 case Tool.Spawn:
                     if (!isDown) return; // 토글은 클릭만
                     if (_spawns.Contains(cell)) RemoveSpawn(cell);
                     else if (_spawns.Count < 4)
                     {
+                        // 한 칸이 레인 스폰이자 보너스 포탈이면 오버레이가 서로를 가려
+                        // 저작자가 겹친 걸 모른 채 저장한다. 두 축은 상호 배타로 둔다.
+                        _bonusSpawns.Remove(cell);
                         _tiles[idx] = MapTileType.Walk; // 스폰은 Walk 셀
                         _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _spawns.Add(cell);
@@ -644,6 +669,25 @@ namespace Wassup.EditorTools
                         _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
                         _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
                         _goals.Add(cell);
+                    }
+                    break;
+                case Tool.BonusSpawn:
+                    if (!isDown) return; // 토글은 클릭만 (스폰·골과 같은 이유)
+                    if (_bonusSpawns.Contains(cell)) _bonusSpawns.Remove(cell);
+                    else if (_bonusSpawns.Count < BonusSpawnAuthoringRules.RequiredPortalCount)
+                    {
+                        _tiles[idx] = MapTileType.Walk;       // 포탈은 통행 가능한 칸에만(양성 조건 ⓐ)
+                        _placeMask[idx] = DerivedMask(idx);   // 타일 변경 → 파생 추종
+                        RemoveSpawn(cell);                    // 레인 스폰과 상호 배타
+                        _bonusSpawns.Add(cell);
+                    }
+                    else
+                    {
+                        // 상한 2 는 스폰·골의 상한 4 와 달리 **상시 닿는다** — 무음 no-op 이면
+                        // 「툴이 고장났나」로 읽힌다.
+                        Debug.LogWarning(
+                            $"[MapPainter] 보너스 포탈은 {BonusSpawnAuthoringRules.RequiredPortalCount}칸까지다 — " +
+                            "기존 칸을 다시 클릭해 지운 뒤 찍어라.");
                     }
                     break;
                 case Tool.Structure:
@@ -838,9 +882,13 @@ namespace Wassup.EditorTools
                 // 길이라 항상 빈 배열이 되고, WriteToDocument 는 빈 배열을 «삭제»로 해석해
                 // 손저작 레인 경로를 무음으로 지운다. 공성 routes 는 페인터가 정본이 아니므로
                 // null(보존)을 넘긴다 — 저작은 에셋 직접 편집(spec 계약).
+                // bonus-wave-pull unit 2 — 페인터가 연 문서에서는 페인터가 정본이라 항상
+                // 자기 상태를 넘긴다(빈 배열 = 삭제). 공성 routes 의 예외와 달리 이 축은
+                // 파생 소스가 없어 조건 분기가 필요 없다.
                 MapDocumentBuilder.WriteToDocument(
                     target, in gm, _structures.ToArray(), ToWaypointPathArray(),
-                    CountEnemyCores() > 0 ? null : ToSpawnRoutesArray());
+                    CountEnemyCores() > 0 ? null : ToSpawnRoutesArray(),
+                    _bonusSpawns.ToArray());
                 goals.Dispose();
                 spawns.Dispose();
             }
@@ -858,7 +906,7 @@ namespace Wassup.EditorTools
             AssetDatabase.SaveAssets();
             _target = target; // 연속 편집
             // maskDiff>0 = 수동 배치판(런타임 시드 커빙 skip) — 저작자 최종 인지용 (placement-mask unit 2).
-            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count}, 마스크 상이 셀={maskDiffCount})");
+            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count}, 특수={_bonusSpawns.Count}, 마스크 상이 셀={maskDiffCount})");
         }
 
         // map-painter-tool unit 5 — Bake 된 신규 문서를 풀의 dev 슬롯에 자동 등록.

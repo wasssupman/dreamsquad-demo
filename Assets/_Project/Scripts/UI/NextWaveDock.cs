@@ -12,6 +12,11 @@ namespace Wassup.UI
     // 좌하단 「다음 웨이브」 알약 버튼.
     //
     // ─────────────────────────────────────────────────────────────────────────
+    // rev 9 — 보너스 당기기 알약이 **위에** 얹힌다 (bonus-wave-pull unit 7, 2026-08-24).
+    //   가로 예산이 0 이라(아래 rev 8 설명) 세로로 쌓는 것이 유일한 자리다. 폭·x 는 일반
+    //   알약과 똑같이 두고 **색만** 갈라, 「같은 계열의 다른 버튼」으로 읽히게 한다.
+    //   상태원은 `BattleBridge.BonusPullAvailable` 하나다 — 도크는 임계를 계산하지 않는다.
+    //
     // rev 8 — 원뎁스 + HUD 색 통일 (사용자 결정 2026-08-21)
     //
     // rev 7 은 **투뎁스**였다: 1탭 = 다음 적 예고 말풍선, 2탭 = 실제 당김.
@@ -84,6 +89,26 @@ namespace Wassup.UI
         [SerializeField] private Color shineColor = new Color(1f, 0.96f, 0.82f, 0.22f);
         [SerializeField] private float tapPunch = 0.10f;
 
+        // ── 보너스 당기기 알약 (bonus-wave-pull unit 7) ───────────────────────────
+        // **일반 알약 위에** 세로로 쌓는다. 가로는 예산이 없다 — 배치 트레이가 x 320~1600 을
+        // 항상 먹어 도크는 x ≤ 300 이고 일반 알약이 40+256=296 으로 이미 꽉 찼다.
+        // 폭·x 를 일반 알약과 **똑같이** 두는 것이 「같은 계열의 버튼」이라는 신호다.
+        //
+        // 색만 금색과 갈린다 — 금색 = 일반 당김이라는 학습을 깨지 않기 위해서다.
+        // ⚠ 이 필드들은 **신규**라 씬 YAML 에 없다 → C# 기본값이 그대로 적용된다.
+        // (「도크 색은 씬에 박혀 있다」 함정은 기존 필드를 재사용할 때만 해당한다.)
+        [Header("Bonus pill (보너스 당기기)")]
+        [Tooltip("일반 알약과의 세로 간격.")]
+        [SerializeField] private float bonusPillGap = 14f;
+        [SerializeField] private Color bonusPillFill = new Color(0.62f, 0.32f, 0.86f, 1f);
+        [SerializeField] private Color bonusPillBorder = new Color(0.86f, 0.70f, 1f, 1f);
+        [SerializeField] private Color bonusPillLipColor = new Color(0.22f, 0.08f, 0.34f, 1f);
+        [SerializeField] private Color bonusPillTextColor = new Color(1f, 0.97f, 1f, 1f);
+        [Tooltip("등장/퇴장 시간(초).")]
+        [SerializeField] private float bonusFadeSeconds = 0.22f;
+        [Tooltip("등장 시 아래에서 올라오는 거리.")]
+        [SerializeField] private float bonusRiseDistance = 18f;
+
         private GameObject _panel;
         private GameObject _pillRoot;          // 립(그림자판) — 포커스 링이 가리키는 대상
         private RectTransform _pillFaceRect;
@@ -107,6 +132,18 @@ namespace Wassup.UI
         // 매 프레임 문자열 조립을 막는 직전값 캐시.
         private int _lastStateKey = int.MinValue;
 
+        // 보너스 알약 — 상태원은 `BattleBridge.BonusPullAvailable` 하나다. 도크가 임계를
+        // 다시 계산하면 두 곳이 갈린다(브리지가 카운터의 유일 소유자).
+        private GameObject _bonusRoot;
+        private RectTransform _bonusRect;
+        private CanvasGroup _bonusGroup;
+        private Button _bonusButton;
+        private TextMeshProUGUI _bonusLabel;
+        private Tween _bonusTween;      // 위치
+        private Tween _bonusFadeTween;  // 알파 — 별도로 잡아둔다(아래 SetBonusShown 주석)
+        private bool _bonusShown;
+        private float _bonusRestY;
+
         // wave-pull-revival unit 4 — 튜토리얼 포커스 링이 감쌀 대상.
         // 선례: AwakeningGaugeView.HitRect.
         public RectTransform PullButtonRect =>
@@ -127,6 +164,12 @@ namespace Wassup.UI
             // «OnComplete 무시» 에러를 남긴다.
             StopIdleAnimation();
             if (_tapTween.isAlive) _tapTween.Stop();
+            // bonus-wave-pull unit 7 — 같은 이유로 보너스 알약 트윈도 끊는다. 상태 플래그도
+            // 되돌려야 다시 켜졌을 때 SetBonusShown 이 전이를 인식한다(전이 기반이라서).
+            if (_bonusTween.isAlive) _bonusTween.Stop();
+            if (_bonusFadeTween.isAlive) _bonusFadeTween.Stop();
+            _bonusShown = false;
+            if (_bonusRoot != null) _bonusRoot.SetActive(false);
             if (_pillRoot != null) _pillRoot.transform.localScale = Vector3.one;
         }
 
@@ -161,6 +204,9 @@ namespace Wassup.UI
             bool available = bridge.NextWaveAvailable;
             if (_pillRoot != null && _pillRoot.activeSelf != available)
                 _pillRoot.SetActive(available);
+            // 보너스 알약은 일반 알약의 가용성과 **독립**이다 — 브리지가 자기 술어를 갖는다.
+            SetBonusShown(bridge.BonusPullAvailable);
+
             if (!available) { StopIdleAnimation(); return; }
 
             RefreshState();
@@ -300,11 +346,15 @@ namespace Wassup.UI
             prt.anchorMax = Vector2.zero;
             prt.pivot = Vector2.zero;
             prt.anchoredPosition = panelOffset;
-            prt.sizeDelta = new Vector2(pillSize.x, pillSize.y + pillLip);
+            // 두 알약을 담는 높이. 폭은 그대로 — 세로만 늘어난다(계약 11).
+            prt.sizeDelta = new Vector2(
+                pillSize.x, (pillSize.y + pillLip) * 2f + bonusPillGap);
 
             BuildPill();
+            BuildBonusPill();
 
             _pillRoot.SetActive(false);
+            _bonusRoot.SetActive(false);
             UiLayer.Apply(gameObject);
         }
 
@@ -402,6 +452,106 @@ namespace Wassup.UI
             _arrowRect.anchoredPosition = new Vector2(-14f, 0f);
             _arrowRect.sizeDelta = new Vector2(34f, 40f);
             _arrowLabel.text = "▲";
+        }
+
+        // ── 보너스 당기기 ─────────────────────────────────────────────────────────
+        //
+        // **플레이어 경로는 여기 하나뿐이다.** `BattleBridge.ForceBonusWave`(기제)를 직접
+        // 부르지 않는다 — 부르면 트리거와 「동시 1벌」이 함께 우회된다.
+        private void OnBonusClicked()
+        {
+            if (bridge == null) return;
+            if (!bridge.TryBonusPull()) return;
+            Punch();
+            // 눌린 순간 진행 중이 되어 술어가 거짓으로 떨어진다 — 다음 Update 가 퇴장시킨다.
+        }
+
+        private void BuildBonusPill()
+        {
+            var faceSprite = UiRoundedSprite.Make(
+                pillCornerRadius, 3f, bonusPillFill, bonusPillBorder);
+            var lipSprite = UiRoundedSprite.Make(
+                pillCornerRadius, 0f, bonusPillLipColor, bonusPillLipColor);
+
+            _bonusRoot = new GameObject("BonusPill",
+                typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            _bonusRoot.transform.SetParent(_panel.transform, false);
+            _bonusRect = (RectTransform)_bonusRoot.transform;
+            _bonusRect.anchorMin = Vector2.zero;
+            _bonusRect.anchorMax = Vector2.zero;
+            _bonusRect.pivot = Vector2.zero;
+            _bonusRestY = pillSize.y + pillLip + bonusPillGap;
+            _bonusRect.anchoredPosition = new Vector2(0f, _bonusRestY);
+            _bonusRect.sizeDelta = new Vector2(pillSize.x, pillSize.y + pillLip);
+
+            var lip = _bonusRoot.GetComponent<Image>();
+            lip.sprite = lipSprite;
+            lip.type = Image.Type.Sliced;
+            lip.color = Color.white;
+            lip.raycastTarget = false;
+
+            _bonusGroup = _bonusRoot.GetComponent<CanvasGroup>();
+            _bonusGroup.alpha = 0f;
+
+            var face = new GameObject("Face", typeof(RectTransform), typeof(Image));
+            face.transform.SetParent(_bonusRoot.transform, false);
+            var faceRect = (RectTransform)face.transform;
+            faceRect.anchorMin = Vector2.zero;
+            faceRect.anchorMax = Vector2.zero;
+            faceRect.pivot = Vector2.zero;
+            faceRect.anchoredPosition = new Vector2(0f, pillLip);
+            faceRect.sizeDelta = pillSize;
+            var faceImage = face.GetComponent<Image>();
+            faceImage.sprite = faceSprite;
+            faceImage.type = Image.Type.Sliced;
+            faceImage.color = Color.white;
+            faceImage.raycastTarget = true;
+
+            _bonusButton = face.AddComponent<Button>();
+            _bonusButton.targetGraphic = faceImage;
+            _bonusButton.transition = Selectable.Transition.None;
+            _bonusButton.onClick.AddListener(OnBonusClicked);
+
+            _bonusLabel = AddLabel(face.transform, "Label", pillFontSize, bonusPillTextColor,
+                TextAlignmentOptions.Center, pillFontSize * 0.7f);
+            var lr = _bonusLabel.rectTransform;
+            lr.anchorMin = Vector2.zero;
+            lr.anchorMax = Vector2.one;
+            lr.offsetMin = new Vector2(16f, 0f);
+            lr.offsetMax = new Vector2(-16f, 0f);
+            _bonusLabel.text = "보너스 웨이브";
+        }
+
+        // 등장/퇴장. 상태원은 브리지 술어 하나이고 이 메서드는 그 전이만 연출한다.
+        private void SetBonusShown(bool show)
+        {
+            if (_bonusRoot == null || _bonusShown == show) return;
+            _bonusShown = show;
+
+            // ★**두 트윈을 다 끊는다.** 알파 핸들을 버리면 ⑴ OnDisable 이 위치만 멈춰 알파가
+            // 씬 언로드까지 살아남고(PrimeTween «OnComplete 무시» 에러), ⑵ 0.22초 안에
+            // show→hide 가 겹칠 때 같은 CanvasGroup 에 알파 트윈 둘이 경쟁해 «숨겼는데 alpha 1»
+            // 이 된다. 위치만 Stop 되고 알파가 안 되는 비대칭이 그 창을 만든다.
+            if (_bonusTween.isAlive) _bonusTween.Stop();
+            if (_bonusFadeTween.isAlive) _bonusFadeTween.Stop();
+            if (show) _bonusRoot.SetActive(true);
+
+            // 퇴장 중에도 눌리면 「없어지는 버튼이 먹혔다」가 되므로 즉시 막는다.
+            _bonusGroup.blocksRaycasts = show;
+            _bonusGroup.interactable = show;
+
+            _bonusRect.anchoredPosition = new Vector2(
+                0f, show ? _bonusRestY - bonusRiseDistance : _bonusRestY);
+            _bonusTween = Tween.UIAnchoredPositionY(
+                _bonusRect, show ? _bonusRestY : _bonusRestY - bonusRiseDistance,
+                bonusFadeSeconds, show ? Ease.OutBack : Ease.InQuad, useUnscaledTime: true);
+            _bonusFadeTween = Tween.Alpha(_bonusGroup, show ? 1f : 0f, bonusFadeSeconds,
+                show ? Ease.OutQuad : Ease.InQuad, useUnscaledTime: true)
+                .OnComplete(this, dock =>
+                {
+                    if (!dock._bonusShown && dock._bonusRoot != null)
+                        dock._bonusRoot.SetActive(false);
+                });
         }
 
         private static void AddTrigger(
