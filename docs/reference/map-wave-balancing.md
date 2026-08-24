@@ -14,6 +14,8 @@
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
 | **웨이브의 «성격»** (편성 컨셉) | `Assets/_Project/Data/WaveConcepts/Concept_*.asset` | 아래 §웨이브 컨셉 블록 |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
+| **마음이 얼마나 버티나** (판 길이) | 맵별 `Deck_{맵}.asset` | `goalStabilityMax` — 아래 §마음 · 스트레스 |
+| **처치로 얼마나 되돌리나** (교환비) | 같은 파일 | `killHealPerAwakening` — 아래 §마음 · 스트레스 |
 | **특정 몬스터를 초반 웨이브에서 제외** | `Enemy_*.asset` (AttackUnitData) | `minWaveNumber` (기본 1=제한없음, Runner=2) |
 | **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
 | **개발 중 특정 맵으로 진입** | 로비 맵 스테퍼(◀ ▶ OFF, dev/에디터 전용) | `DevMapOverride`(PlayerPrefs), OFF=시드 배정 복귀 |
@@ -25,6 +27,10 @@
 ## 맵 ↔ 덱 페어링
 
 풀의 각 엔트리 = `(MapDocument, AttackDeck)`. **맵마다 자기 전용 덱**을 가진다(2026-07-23~):
+
+> ⚠ **라이브 `entries` 는 현재 `MapDocument_Duel` 한 장뿐이다**(`duel-live-focus`, 커밋 `fc755760`).
+> 아래 표의 나머지는 `devEntries` 로 옮겨져 **로비 맵 스테퍼로만** 들어간다. 토너먼트 판은
+> 시드와 무관하게 Duel 로 간다 — 밸런스를 재려면 여기가 첫 번째 맵이다.
 
 | 맵 asset | 덱 | waveSeed |
 |---|---|---|
@@ -101,6 +107,41 @@ floor(180/20)+1 = 10, 즉시 밀면 14~16). 곡선은 그 구간에서 성장이
 그냥 박으면 반대쪽 레인이 통째로 빈다. 규칙 상세는 `.claude/skills/enemy-wave-integration`.
 
 **완전 수제 웨이브**: `useGeneratedWaves=false` + `spawns` 리스트에 (시각, 유닛, 수) 직접 authoring → 생성기 안 씀.
+
+---
+
+## 마음 · 스트레스 knob (heart-stress-axis)
+
+판이 끝나는 통로가 둘이라(3분 만료 · 스트레스 100) **마음은 이제 판 길이를 정하는 손잡이**다.
+
+| 원하는 것 | 필드 | 어디 | 현재 |
+|---|---|---|---|
+| 마음이 더 오래 버티게 | `goalStabilityMax` | `Deck_*.asset` | **1500** |
+| 처치 보상을 크게 | `killHealPerAwakening` | 같은 파일 | **10** |
+| 적별 회복 서열 | `awakeningReward` | `Enemy_*.asset` · **시트 소유** | 잡몹 2 / 엘리트 3 / 보스 5 |
+| 돌격형 한 방 | `stabilityDamage` | `Enemy_Runner`·`Enemy_Swift` | 50 (= 3.3%) |
+| 방패 두께 | `health` | `Structure_GuardInstinct` | 1000 ×2 (Duel·Isle·Ford) |
+
+**두 손잡이는 하는 일이 다르다 — 같은 패스에서 함께 돌리지 말 것.**
+
+- `goalStabilityMax` 는 **시계**다. 키우면 판 전체가 같은 비율로 느려진다. 「한 대 맞기 :
+  한 마리 잡기」의 교환비는 하나도 안 바뀐다 — 분모가 양쪽에서 약분되기 때문이다.
+- `killHealPerAwakening` 은 **저울**이다. 여기만이 공격과 방어의 환율을 움직인다.
+
+빠른 산수(마음 1500 기준):
+
+| 상황 | 스트레스 |
+|---|---|
+| `Enemy_Basic` 1타(20) | 1.33 |
+| 잡몹 1킬(reward 2 × 10 = 20) | −1.33 (**정확히 상쇄**) |
+| `Enemy_Basic` 1기가 마음에 붙어 있음 | 초당 2.67 → **37.5초**에 100 |
+| 같은 상황 3기 | **12.5초** |
+| `Enemy_Skimmer` 1기(DPS 100) | 초당 6.67 → **15초** |
+| 돌격형 1기 통과 | 3.33 (30기 = 판 종료) |
+
+**방패를 빼먹지 말 것.** Duel·Isle·Ford 는 방어 본능 2기(각 1000)가 살아 있는 동안 마음이
+아예 표적이 되지 않는다(`CoreShielded`). 그 세 맵의 실효 체력은 1500 이 아니라 **3500** 이고,
+위 표의 초 단위는 **본능이 다 무너진 뒤부터** 흐른다. 나머지 맵은 첫 웨이브부터 맨몸이다.
 
 ---
 

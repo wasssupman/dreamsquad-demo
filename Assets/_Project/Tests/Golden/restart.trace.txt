@@ -1,6 +1,6 @@
 LTV0
 scenario=restart
-configHash=54f7dbff812a1594
+configHash=145abf6d231719cc
 matchSeed=4242
 stepDt=0.0166666675
 tickCount=2400
@@ -1058,4 +1058,4 @@ events=1050
 finalKills=2
 finalScore=2
 finalLeaks=0
-finalStateHash=F63417D34D5AC6F5
+finalStateHash=32C7C3747881BF45

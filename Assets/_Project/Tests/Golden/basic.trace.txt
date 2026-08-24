@@ -1,6 +1,6 @@
 LTV0
 scenario=basic
-configHash=24ed312970824526
+configHash=d11b9336330b9caa
 matchSeed=20260822
 stepDt=0.0166666675
 tickCount=900
@@ -81,4 +81,4 @@ events=73
 finalKills=2
 finalScore=2
 finalLeaks=0
-finalStateHash=F06A2F93E1F62960
+finalStateHash=E924F055CE0F5A30

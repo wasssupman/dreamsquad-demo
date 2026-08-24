@@ -1,11 +1,17 @@
 # heart-stress-axis — 마음 스트레스 (판을 끝내는 축의 귀환)
 
-> 상태: **units 0~4·6~8 구현·검증·커밋 완료 2026-08-24** (Play 확인 통과 · 투트랙 리뷰 반영)
-> 잔여: **unit 5**(밸런스 + 골든 코퍼스 재녹화) · 연출 후속(파열 엔딩 · 히트 리액션 · 소리)
+> 상태: **units 0~8 구현·커밋 완료 2026-08-24** (Play 확인 통과 · 투트랙 리뷰 반영)
+> 잔여: **체감 판정 1건**(아래) · 연출 후속(파열 엔딩 · 히트 리액션 · 소리)
+>
+> ⚠ **unit 5 실측이 물음표 하나를 남겼다**: 라이브 맵(Duel)에서 스트레스는 **172초에야
+> 처음 오른다** — 방어 본능 2기(각 1000)가 그때까지 마음을 표적에서 가리기 때문이다(unit 6).
+> 판의 95%가 이 축에 대해 조용하다는 뜻이고, 「3분을 긴장으로 채우는가」는 아직 **아니오**다.
+> 저울을 쥔 값은 마음 HP 가 아니라 **본능 체력**이다. 규칙 자체가 사용자 지시라 임의로
+> 내리지 않았다 — 손잡이와 예상 효과는 [`5_balance_and_golden.md`](5_balance_and_golden.md).
 > 선행: [`three-minute-kill-race`](../three-minute-kill-race/README.md)(완료 — **이 spec 이 그 계약 4개를 의도적으로 뒤집는다**),
 > [`goal-stability`](../goal-stability/README.md)(마음 = 전투 대상), [`goal-tower-siege`](../goal-tower-siege/README.md)(공성 모델),
 > [`battle-structures`](../battle-structures/README.md)(진영×종류 축)
-> 정본 갱신 대상: `docs/reference/ingame-flow.md`(종료 조건 2통로)
+> 정본 갱신 완료: `docs/reference/ingame-flow.md`(종료 2통로) · `score-formula.md`(마음이 판정에 관여) · `map-wave-balancing.md`(마음·스트레스 knob)
 
 ## 목표
 
@@ -53,22 +59,32 @@
 > **「100」은 표시 정규화이지 HP 최대치가 아니다.** `Health.max` 를 진짜 100 으로 두면
 > `Enemy_Basic` 공격력 20 이 5대에 판을 끝낸다. 정본 HP 는 지금 스케일(`goalStabilityMax`)을 유지한다.
 
-## 실측 기준선 (2026-08-23 · 착수 전)
+## 실측 기준선
 
-밸런스 판단의 출발점. **이 수치는 코드/에셋에서 잰 것이고 unit 5 에서 재측정한다.**
+밸런스 판단의 출발점. **코드/에셋에서 잰 값이다.**
 
 | 항목 | 값 | 출처 |
 |---|---|---|
-| 마음 HP | **1000** (라이브 덱 10종 전부) | `AttackDeck.goalStabilityMax` |
+| 마음 HP | **1500** (unit 5 에서 1000 → 1500) | `AttackDeck.goalStabilityMax` |
+| 방패(본능) | **1000 ×2** — Duel·Isle·Ford 만 | `Structure_GuardInstinct` |
 | `Enemy_Basic` | 공격력 20 · 쿨다운 **0.5s** = DPS 40 | `Enemy_Basic.asset` |
-| ⇒ Basic 1기 단독 | **25초**에 스트레스 100 | 1000 ÷ 40 |
-| ⇒ Basic 5기 | **5초** | |
+| ⇒ Basic 1기 단독 | **37.5초**에 스트레스 100 | 1500 ÷ 40 |
+| ⇒ Basic 3기 | **12.5초** | |
 | 고빈도 공성수 | `Skimmer` cd 0.2(DPS 100) · `WaypointAir` cd 0.2(DPS 50) | 각 asset |
-| 돌격형(`Runner`·`Swift`) | moveSpeed 2.5(Basic 1.3의 ~2배) · 직격 **50** 후 소멸 | `stabilityDamage` (unit 5 튜닝) |
+| 돌격형(`Runner`·`Swift`) | moveSpeed 2.5(Basic 1.3의 ~2배) · 직격 **50**(=3.3%) 후 소멸 | `stabilityDamage` |
+| 잡몹 킬 1회 | `awakeningReward` 2 × 배율 10 = **20** = Basic 1타 상쇄 | `AttackDeck.killHealPerAwakening` |
 | `awakeningReward` | 잡몹 2 / 엘리트·중간 3 / 보스 5 / **슬라임 분열체 0** | 적 SO 23종 |
 
-**마음 HP 1000 은 지금도 이미 무르다** — 배치가 늦으면 1분 안에 판이 끝날 수 있다. unit 5 의 첫
-후보는 첫 요청의 **「본능(1000)의 1.5배 = 1500」** 이다.
+**1500 의 근거는 첫 요청의 「본능의 1.5배」다** — 라이브 본능이 실측 1000 이라 1.5배가 곧 1500.
+
+⚠ **HP 는 시계이고 저울이 아니다.** `goalStabilityMax` 를 키우면 판 전체가 같은 비율로
+느려질 뿐 「한 대 맞기 : 한 마리 잡기」의 교환비는 안 바뀐다(양쪽이 같은 분모를 쓴다).
+그 저울을 쥔 것은 `killHealPerAwakening` 하나다. 상세는 [`5_balance_and_golden.md`](5_balance_and_golden.md).
+
+⚠ **라이브 맵은 `MapDocument_Duel` 한 장이다**(`duel-live-focus` `fc755760`). 나머지는
+`devEntries` — 로비 맵 스테퍼로만 들어간다. 그리고 Duel 은 방어 본능을 가진 맵이라
+**방패(unit 6)가 살아 있는 판**이다: 마음의 실효 체력이 3500 이고 위 초 단위는 본능이
+다 무너진 뒤부터 흐른다.
 
 ## 뒤집는 계약 — 넷 다 명시적으로 되돌린다
 

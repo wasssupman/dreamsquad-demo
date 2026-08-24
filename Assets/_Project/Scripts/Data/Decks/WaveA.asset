@@ -243,5 +243,5 @@ MonoBehaviour:
     spawnIndex: 1
   defeatGoalReachedCount: 10
   timerDurationSec: 180
-  goalStabilityMax: 1000
+  goalStabilityMax: 1500
   killHealPerAwakening: 10
