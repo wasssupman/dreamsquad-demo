@@ -22,18 +22,6 @@ MonoBehaviour:
   waypointPaths:
   - cells:
     - {x: 11, y: 4}
-  - cells:
-    - {x: 22, y: 5}
-    - {x: 13, y: 5}
-    - {x: 13, y: 9}
-    - {x: 11, y: 8}
-    - {x: 9, y: 5}
-  - cells:
-    - {x: 16, y: 4}
-    - {x: 13, y: 4}
-    - {x: 13, y: 0}
-    - {x: 11, y: 1}
-    - {x: 9, y: 4}
   spawnRoutes: 
   structures:
   - cell: {x: 20, y: 4}
@@ -51,5 +39,8 @@ MonoBehaviour:
   - cell: {x: 18, y: 7}
     side: 1
     data: {fileID: 11400000, guid: 76f22a24bda441faa865363222e884eb, type: 2}
+  bonusSpawns:
+  - {x: 11, y: 2}
+  - {x: 11, y: 7}
   authoringSeed: -1
   generatorVersion: 0
