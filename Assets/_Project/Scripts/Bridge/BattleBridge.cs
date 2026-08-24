@@ -9901,7 +9901,8 @@ namespace Wassup.Bridge
                 _generatedMap.RouteForSpawn(spawnIndex), pending.pathIndex);
         }
 
-        // 적 엔티티 조립의 단일 지점. 호출처 2곳 — 레인 스폰(위)과 분열(DrainEnemyKilledEvents).
+        // 적 엔티티 조립의 단일 지점. 호출처 **3곳** — 레인 스폰(위) · 분열(DrainEnemyKilledEvents) ·
+        // 보너스 웨이브(BattleBridge.BonusWave.cs SpawnBonusUnit, bonus-wave-pull unit 4).
         // CreatePatrolEntity 처럼 병렬 복제하지 않은 이유: 분열 자식은 적의 **표준 세트 전부**
         // (Health·FactionTag·버퍼 6종·PathFollowState·AttackState·behavior·뷰 등록)가
         // 필요해서, 복제하면 다음에 적 스폰에 뭔가 추가될 때 한쪽만 갱신된다.
