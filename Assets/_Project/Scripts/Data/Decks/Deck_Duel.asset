@@ -256,6 +256,7 @@ MonoBehaviour:
   defeatGoalReachedCount: 10
   timerDurationSec: 180
   goalStabilityMax: 1000
+  killHealPerAwakening: 10
   waveConceptPool:
   - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410001, type: 2}
   - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410002, type: 2}

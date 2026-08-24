@@ -59,3 +59,4 @@ MonoBehaviour:
   defeatGoalReachedCount: 20
   timerDurationSec: 180
   goalStabilityMax: 999999
+  killHealPerAwakening: 10
