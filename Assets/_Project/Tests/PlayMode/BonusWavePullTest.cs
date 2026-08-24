@@ -281,5 +281,55 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(BonusActive(), "이전 판의 진행 플래그가 이월됐다");
             Assert.AreEqual(0, BonusEnemies().Count, "이전 판의 보너스 적이 남았다");
         }
+
+        // ── unit 11 — 온보딩 판 억제 ──────────────────────────────────────────────
+        // 온보딩 판은 조건이 다 맞아도 열리지 않는다. 실기에서 열려 있던 이유는 저작 스폰
+        // 27기 + 슬라임 분열 사슬(1기 = 처치 7회) = 33 > 임계 30 이라서다.
+
+        [UnityTest]
+        public IEnumerator 억제된_판은_조건이_다_맞아도_안_뜬다()
+        {
+            _bridge.SetBonusPullSuppressed(true);
+            GiveCredit(9999);
+            SetStress(0.05f);                 // 스트레스 5 — 창이 열려 있다
+            for (int f = 0; f < 4; f++) yield return null;
+
+            Assert.IsFalse(_bridge.BonusPullAvailable,
+                "억제된 판인데 버튼이 떴다 — 온보딩에 조건부 두 번째 버튼이 얹힌다");
+            Assert.IsFalse(_bridge.TryBonusPull(), "규칙 층이 거부해야 한다");
+            Assert.IsFalse(_bridge.BonusPullBlockedByStress,
+                "억제된 판에서 «스트레스 때문에 막혔다» 는 거짓 진단이다");
+        }
+
+        // 억제는 판 시작 전에 주입되는 설정이라 ResetBonusWaveState 가 지우면 안 된다.
+        // 지워지면 GameManager 가 켠 억제가 BeginPlacement/StartBattle 에서 풀린다.
+        [UnityTest]
+        public IEnumerator 억제는_판_리셋에도_유지된다()
+        {
+            _bridge.SetBonusPullSuppressed(true);
+            _bridge.StopBattle();
+            _bridge.StartBattle();
+            GiveCredit(9999);
+            SetStress(0.05f);
+            for (int f = 0; f < 4; f++) yield return null;
+
+            Assert.IsFalse(_bridge.BonusPullAvailable,
+                "판 리셋이 억제를 지웠다 — 온보딩 판이 시작하는 순간 기능이 되살아난다");
+        }
+
+        // 무회귀 — 억제를 끄면 원래대로 열린다(setter 가 단방향이 아니다).
+        [UnityTest]
+        public IEnumerator 억제를_끄면_다시_뜬다()
+        {
+            _bridge.SetBonusPullSuppressed(true);
+            GiveCredit(9999);
+            SetStress(0.05f);
+            for (int f = 0; f < 4; f++) yield return null;
+            Assert.IsFalse(_bridge.BonusPullAvailable, "전제: 막혀 있어야 한다");
+
+            _bridge.SetBonusPullSuppressed(false);
+            for (int f = 0; f < 4; f++) yield return null;
+            Assert.IsTrue(_bridge.BonusPullAvailable, "억제를 껐는데 안 뜬다");
+        }
     }
 }

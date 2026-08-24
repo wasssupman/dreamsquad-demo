@@ -386,8 +386,14 @@ namespace Wassup.Core
             // ⚠ 온보딩 판정(ShouldRun)의 소비처를 늘리지 않으려고 첫 손패 저작도 **여기서**
             // 함께 넣는다. 손패 컨트롤러가 스스로 판정하게 두면 술어 소비처가 넷이 되고,
             // 그중 하나만 어긋나도 «쉬운 판인데 손패는 랜덤» 같은 반쪽 상태가 생긴다.
-            if (profileSO != null && profileSO.IsLoadedThisSession
-                && FirstRunTutorialConfig.ShouldRun(profileSO.profile))
+            //
+            // bonus-wave-pull unit 11 — 술어를 지역 변수로 올려 억제 setter 를 **무조건**
+            // 부른다. if 안에 두면 온보딩 이후 판이 true 를 물려받는다. ShouldRun 호출은
+            // 여전히 1회라 위 주석의 «소비처를 늘리지 않는다» 판단이 유지된다.
+            bool isFirstRunTutorial = profileSO != null && profileSO.IsLoadedThisSession
+                && FirstRunTutorialConfig.ShouldRun(profileSO.profile);
+            battleBridge.SetBonusPullSuppressed(isFirstRunTutorial);
+            if (isFirstRunTutorial)
             {
                 if (firstRunTutorialWavePlan != null)
                 {

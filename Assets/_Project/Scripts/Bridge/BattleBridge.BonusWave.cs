@@ -23,6 +23,16 @@ namespace Wassup.Bridge
         // 포탈 뷰는 풀이 아니라 보너스 웨이브 수명이다(거점 뷰 SpawnStructureViews 선례).
         private readonly List<GameObject> _bonusPortalViews = new();
 
+        // unit 11 — 온보딩 판 억제. 판 시작 **전에** 밖에서 주입되는 설정이라
+        // ResetBonusWaveState() 에서 지우지 않는다(그 리셋은 BeginPlacement·StartBattle
+        // 양쪽에서 불려서, 여기 넣으면 GameManager 가 켠 억제가 판 시작에 지워진다).
+        private bool _bonusPullSuppressed;
+
+        // 온보딩 판은 배치·철수·부착을 가르치는 자리다. 조건부 두 번째 버튼이 얹히면
+        // 배우는 축이 하나 늘어난다. 호출은 GameManager 가 매 판 무조건 한다(그래야
+        // 온보딩 이후 판이 true 를 물려받지 않는다).
+        public void SetBonusPullSuppressed(bool suppressed) => _bonusPullSuppressed = suppressed;
+
         // ── 상태 리셋 ────────────────────────────────────────────────────────────
         // _pending.Clear() 가 있는 **두 곳**(BeginPlacement·StartBattle) 양쪽에서 불린다.
         // 한쪽만 걸면 재시작 시 옛 보너스 웨이브가 잔존한다.
@@ -63,6 +73,7 @@ namespace Wassup.Bridge
         // 계약 13 — 진행 중에는 뜨지 않는다(크레딧은 계속 쌓인다).
         public bool BonusPullAvailable =>
             _running
+            && !_bonusPullSuppressed
             && BonusWaveAuthored
             && !_bonusWaveActive
             && _bonusOfferLatched;
@@ -81,8 +92,10 @@ namespace Wassup.Bridge
         }
 
         // 크레딧은 찼는데 스트레스 때문에 막혀 있나 — 「왜 안 뜨지」에 답할 수 있는 유일한 신호.
+        // unit 11 — 억제된 판에서는 이 신호도 꺼진다. 켜두면 「스트레스 때문에 막혔다」는
+        // 거짓 진단이 된다 — 그 판은 스트레스와 무관하게 기능 자체가 없다.
         public bool BonusPullBlockedByStress =>
-            _running && BonusWaveAuthored && !_bonusWaveActive && !_bonusOfferLatched
+            _running && !_bonusPullSuppressed && BonusWaveAuthored && !_bonusWaveActive && !_bonusOfferLatched
             && BonusPullTrigger.HasCredit(
                 _normalKillCount, _bonusConsumedKillMark, bonusWaveData.killThreshold);
 
