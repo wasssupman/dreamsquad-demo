@@ -19,19 +19,19 @@ MonoBehaviour:
   minWaveNumber: 2
   maxPerWave: 0
   attackMethod: 1
-  targetMode: 0
+  targetMode: 1
   engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 21
   health: 40
-  moveSpeed: 2.5
+  moveSpeed: 2.2
   attackRange: 1
   attackCooldown: 1
   attackTargetCount: 1
   projectile: {fileID: 0}
   hitDelaySec: 0.3
-  aggroAttackDamage: 0
+  aggroAttackDamage: 5
   aggroAttackCooldown: 1
   aggroAttackRange: 1
   outputs:
@@ -89,3 +89,4 @@ MonoBehaviour:
   flightLift: 0
   idleVariants: []
   tier: 0
+  huntsDefenders: 0

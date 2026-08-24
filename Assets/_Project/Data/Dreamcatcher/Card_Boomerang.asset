@@ -50,8 +50,9 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uACF5\uACA9\uB9C8\uB2E4 \u2192 \uBD80\uBA54\uB791\uC774 \uB0A0\uC544\uAC14\uB2E4
-    \uB3CC\uC544\uC624\uBA70 \uC2A4\uCE58\uB294 \uC801\uC5D0\uAC8C \uD53C\uD574 25"
+  description: "5\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uBD80\uBA54\uB791\uC774
+    \uB0A0\uC544\uAC14\uB2E4 \uB3CC\uC544\uC624\uBA70 \uC2A4\uCE58\uB294 \uC801\uC5D0\uAC8C
+    \uD53C\uD574 25"
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 

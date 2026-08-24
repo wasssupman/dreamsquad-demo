@@ -26,7 +26,7 @@ MonoBehaviour:
   targetFactions: 0
   health: 1000
   moveSpeed: 1.5
-  attackRange: 2
+  attackRange: 1
   attackCooldown: 1.2
   attackTargetCount: 1
   projectile: {fileID: 0}
@@ -156,3 +156,4 @@ MonoBehaviour:
   flightLift: 0
   idleVariants: []
   tier: 2
+  huntsDefenders: 0

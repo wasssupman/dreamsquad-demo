@@ -17,6 +17,7 @@ MonoBehaviour:
   placementLayers: 1
   traversalLayers: 0
   displayName: "\uD790\uB7EC"
+  visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC5EC\uB7EC \uC544\uAD70 \uB3D9\uC2DC \uD68C\uBCF5\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 350
@@ -48,6 +49,8 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
+  onPlaceShakeStrength: 0
+  onPlaceShakeDuration: 0
   cost: 3
   placementCooldown: 4
   deathCooldown: 10

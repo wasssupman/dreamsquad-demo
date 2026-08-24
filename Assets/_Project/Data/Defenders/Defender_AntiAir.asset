@@ -17,12 +17,13 @@ MonoBehaviour:
   placementLayers: 1
   traversalLayers: 2
   displayName: "\uB109\uBC31\uBA38\uC2E0"
+  visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB0AE\uC740 \uD53C\uD574\uC758 \uD22C\uC0AC\uCCB4\uB97C
     \uB9E4\uC6B0 \uBE60\uB974\uAC8C \uC5F0\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
     \uD6A8\uACFC: \uB109\uBC31 \uD22C\uC0AC\uCCB4 \uBC1C\uC0AC"
-  health: 300
-  attackRange: 3
-  attackCooldown: 0.2
+  health: 400
+  attackRange: 4
+  attackCooldown: 0.5
   hitDelaySec: 0
   deployDelaySec: 0
   attackTargetCount: 1
@@ -37,7 +38,7 @@ MonoBehaviour:
   projectile: {fileID: 11400000, guid: 7a28b52abfc76442fab4980e2e6a41a9, type: 2}
   outputs:
   - kind: 0
-    magnitude: 6
+    magnitude: 20
     duration: 0
     stat: 0
     op: 0
@@ -49,6 +50,8 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
+  onPlaceShakeStrength: 0
+  onPlaceShakeDuration: 0
   cost: 3
   placementCooldown: 4
   deathCooldown: 10

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: lullaby_dart
   displayName: "\uC790\uC7A5\uAC00"
-  visible: 1
+  visible: 0
   axis: 3
   category: 1
   effects: []
