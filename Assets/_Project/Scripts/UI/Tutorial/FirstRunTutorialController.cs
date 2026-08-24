@@ -58,6 +58,10 @@ namespace Wassup.UI.Tutorial
         private const string CardFallbackText = "하단 드림캐쳐 중 맘에 드는것을 터치 해보세요";
         private const string AttachDoneText = "드림캐쳐를 유닛에게 부착하여 더 강해질 가능성을 열어보세요!";
 
+        // B5 — 남은 시간 자유 플레이. 안내와 포커스만 남기고 입력·전투는 막지 않는다.
+        private const string SurvivalText =
+            "유닛 배치, 드림캐쳐등 기능을 활용하여 튜토리얼 1분을 버텨보세요!";
+
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private FirstRunTutorialConfig config;
         [Tooltip("B3a·B3b 가 가리킬 첫 유닛(말파이트). 배치 스킬 문구가 이 유닛의 효과를 " +
@@ -76,6 +80,8 @@ namespace Wassup.UI.Tutorial
         [Header("게임 계층")]
         [SerializeField] private GameManager gameManager;
         [SerializeField] private BattleBridge bridge;
+        [Tooltip("B5가 포커스할 좌상단 시간 배지의 소유자.")]
+        [SerializeField] private ScoreHudView scoreHud;
         [SerializeField] private PlacementPhaseView placementPhaseView;
         [SerializeField] private DefenderSelector defenderSelector;
         [SerializeField] private DreamcatcherHandView handView;
@@ -111,6 +117,7 @@ namespace Wassup.UI.Tutorial
         // 구간이 «제대로» 끝났는가. 하나라도 스킵/타임아웃이면 완료로 기록하지 않는다(계약 11).
         private bool _b3Completed;
         private bool _b4Completed;
+        private bool _b5Completed;
 
 
         private void Start()
@@ -245,6 +252,7 @@ namespace Wassup.UI.Tutorial
 
             yield return RunB3();
             yield return RunAttach();
+            yield return RunSurvivalHint();
 
             Close();
         }
@@ -645,6 +653,31 @@ namespace Wassup.UI.Tutorial
             _b4Completed = true;
         }
 
+        // B5 — 부착 튜토리얼 뒤의 자유 플레이 전환. 여기서는 **정지와 차단막을 둘 다
+        // 내린 뒤** 시간 UI만 가리킨다. Guidance의 문구·링·포인터는 raycastTarget=false라
+        // 플레이어는 안내를 읽는 동안에도 유닛 배치와 드림캐쳐 사용을 계속할 수 있다.
+        private IEnumerator RunSurvivalHint()
+        {
+            if (!_b4Completed) yield break;
+
+            Unfreeze();
+            HideDim();
+
+            RectTransform timerRect = scoreHud != null ? scoreHud.TimerFocusRect : null;
+            if (timerRect == null || !timerRect.gameObject.activeInHierarchy)
+            {
+                Debug.LogWarning("[FirstRunTutorial] 시간 UI를 찾지 못했다 — 생존 안내를 건너뛴다.", this);
+                yield break;
+            }
+
+            guidance.ShowMessage(SurvivalText, false);
+            guidance.FocusUi(timerRect);
+            yield return WaitUnscaled(config.survivalHintSeconds);
+            guidance.ClearFocus();
+            guidance.Hide();
+            _b5Completed = true;
+        }
+
         // ── 닫기 ────────────────────────────────────────────────────────────
         private void Close()
         {
@@ -657,7 +690,8 @@ namespace Wassup.UI.Tutorial
             // ⚠ 선행조건 부재로 건너뛰었거나 대기 중에 판이 먼저 끝난 경우는 완료로 기록하지
             // 않는다(계약 11). 1회성이라 기록해버리면 핵심을 한 번도 못 본 계정이 다시 볼
             // 기회를 영영 잃는다.
-            if (_b3Completed && _b4Completed && profileSO != null && profileSO.profile != null)
+            if (_b3Completed && _b4Completed && _b5Completed
+                && profileSO != null && profileSO.profile != null)
             {
                 profileSO.profile.firstRunTutorialDone = true;
                 ProfileStore.Save(profileSO.profile);
@@ -665,7 +699,7 @@ namespace Wassup.UI.Tutorial
             }
             else
             {
-                Debug.Log($"[FirstRunTutorial] 미완료로 끝났다(b3={_b3Completed} b4={_b4Completed}) — 다음 판에 다시 뜬다.", this);
+                Debug.Log($"[FirstRunTutorial] 미완료로 끝났다(b3={_b3Completed} b4={_b4Completed} b5={_b5Completed}) — 다음 판에 다시 뜬다.", this);
             }
             _running = false;
         }

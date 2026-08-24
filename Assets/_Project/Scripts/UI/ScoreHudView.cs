@@ -266,6 +266,11 @@ namespace Wassup.UI
         private bool _built;
         private bool _subscribed;
 
+        // first-run-tutorial unit 13 — B5 생존 안내가 이미 화면에 있는 시간 배지를
+        // 가리키는 seam. 튜토리얼이 타이머를 다시 만들거나 내부 자식을 찾지 않는다.
+        public RectTransform TimerFocusRect =>
+            _timerRoot != null ? (RectTransform)_timerRoot.transform : null;
+
         private int _targetScore;
         private float _shownScore;
         private int _pendingKills;

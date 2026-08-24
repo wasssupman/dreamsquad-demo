@@ -26,6 +26,7 @@ MonoBehaviour:
   resumeBeforeAttachSeconds: 0.5
   attachSettleSeconds: 2
   cardDealInGraceSeconds: 2
+  survivalHintSeconds: 3
   firstHandCards:
   - {fileID: 11400000, guid: 6b2d9f41a8e34c07b5d1e63f0a97284c, type: 2}
   - {fileID: 11400000, guid: a60e2cbefa8954855bf7c0129892a24b, type: 2}
