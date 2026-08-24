@@ -114,7 +114,14 @@ aggroAttackDamage: 5 → 0 — 진짜 공격이 생겨 도발 프로필이 죽�
       (잔여 1건 `UnitKitCatalogTests.malphite` 는 **사전 실패** — 커밋 `4bfba2c2`(2026-08-20)가
       설명에 「피해 40」을 덧붙여 2번째 줄이 30자가 됐다. Assets lane 이라 그때 안 걸렸고
       `desc` 는 시트 소유라 에셋만 고치면 로그인 임포트가 되돌린다 — 별건)
-- [ ] Play: 돌격형이 가는 길에 방어유닛을 팬다
-- [ ] Play: 가디언으로 **유인이 된다**
-- [ ] Play: 마음에 닿으면 여전히 산화한다(눌러앉지 않는다)
-- [ ] Play: 웨이브가 정상 케이던스로 넘어간다(「필드에 적 0기」가 성립한다)
+- [x] Play: 돌격형이 가는 길에 방어유닛을 팬다
+- [x] Play: 가디언으로 **유인이 된다**
+- [x] Play: 마음에 닿으면 여전히 산화한다(눌러앉지 않는다)
+- [x] Play: 웨이브가 정상 케이던스로 넘어간다(「필드에 적 0기」가 성립한다)
+
+**확인 2026-08-24** — 커밋 `9d022efb` + `d91ff021`(CRITICAL 2 수정) + 시트 `b1cd77dc`.
+⚠ **이 unit 의 저작값 절반은 시트가 소유한다**(`attackMethod`·`targetMode`·`engageMovement`).
+실제로 시트 임포트가 `Swift.engageMovement` 를 Halt 로 되돌려 「첫 방어유닛 앞에서 멈춤」이
+재발했고, **시트에서 `Advance` 로** 고쳐야 해소된다(에셋만 고치면 다음 임포트에 또 되돌아간다).
+현행 시트값(읽기전용 GET 확인): 둘 다 `attackMethod=Melee` · `targetMode=Nearest` ·
+`engageMovement=Advance`. 시트는 enum 을 **이름 문자열**로 준다.

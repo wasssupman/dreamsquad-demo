@@ -76,10 +76,15 @@ baked 값이다. 그걸 쓰면 카드 하나가 각성 충전과 스트레스 �
 
 ## 완료 기준
 
-- [ ] 컴파일 0 에러 · 콘솔 에러 0
-- [ ] `GoalTowerArchetypeTests` + `StructureFixtures` 동기화 (소비처 3파일 포함) — 초록
-- [ ] EditMode 전체 완주, 신규 실패 0건
-- [ ] EditMode: 킬 1회 → 마음 `Health` 가 `awakeningReward × 배율` 만큼 오른다
-- [ ] EditMode: 만피에서 킬 → `Health.max` 를 넘지 않는다(clamp 확인)
-- [ ] EditMode: 「살찌운 제물」 표식 적을 잡아도 **회복량은 원값 기준**이다
-- [ ] Play: 잡을수록 바가 내려간다. 마음에서 힐 이펙트가 연발하지 않는다
+- [x] 컴파일 0 에러 · 콘솔 에러 0
+- [x] `GoalTowerArchetypeTests` + `StructureFixtures` 동기화 (소비처 3파일 포함) — 초록
+- [x] EditMode 전체 완주, 신규 실패 0건
+- [x] EditMode: 킬 1회 → 마음 `Health` 가 `awakeningReward × 배율` 만큼 오른다
+- [x] EditMode: 만피에서 킬 → `Health.max` 를 넘지 않는다(clamp 확인)
+- [x] EditMode: 「살찌운 제물」 표식 적을 잡아도 **회복량은 원값 기준**이다
+- [x] Play: 잡을수록 바가 내려간다. 마음에서 힐 이펙트가 연발하지 않는다
+
+**확인 2026-08-24** — 커밋 `c961a41c`. 사용자 Play 확인 통과.
+라이브 환율(2026-08-24): 잡몹 1킬 = `awakeningReward 2 × 배율 10` = **20 회복** =
+마음 1500 기준 스트레스 **−1.33** = `Enemy_Basic` 1타(20) 상쇄. 시간 재생 경로는 없다
+(마음 아키타입에 `ModifierStats` 부착 금지 → `RegenPerSec` 이 닿지 않는다).
