@@ -29,6 +29,9 @@ namespace Wassup.Bridge
     public partial class BattleBridge : MonoBehaviour
     {
         [SerializeField] private AttackDeck deck;
+        // bonus-wave-pull unit 4 — 보너스 당기기의 모든 수치(적·마리수·타임라인·트리거 임계).
+        // 미할당 = 이 판에 보너스 당기기가 없다(버튼이 안 뜬다) — 에러가 아니다.
+        [SerializeField] private Wassup.Data.BonusWaveData bonusWaveData;
         [Header("Map Grid")]
         // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
         // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
@@ -208,7 +211,26 @@ namespace Wassup.Bridge
         private World _world;
         private EntityManager _em;
         private EntityQuery _aliveAttackersQuery;
+        // bonus-wave-pull unit 4 — 전멸 판정 전용(보너스 적 제외). 위 쿼리와 수명을 공유한다
+        // (_aliveAttackersQueryCreated 하나가 둘 다를 게이팅).
+        private EntityQuery _aliveNormalAttackersQuery;
         private bool _aliveAttackersQueryCreated;
+
+        // ★**둘은 항상 함께 만든다.** 플래그 하나가 둘을 게이팅하므로 한쪽만 되살리면
+        // 나머지가 stale 인 채로 «생성됨» 으로 읽힌다. 실제로 stale 복구 경로(SyncMonoUnitViews 의
+        // NullReferenceException catch)가 예전엔 한 개만 다시 만들었고, 그러면 그 뒤의
+        // NoQueuedAttackersRemain() 이 try 없이 죽은 쿼리를 쳐서 **그 판의 웨이브 진행이 멎는다**.
+        private void CreateAliveAttackerQueries()
+        {
+            _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+            // 위 쿼리의 11개 소비처(광역기 사전집계·배치 스킬 대상 수집 등)는 보너스 적을 계속
+            // 봐야 하므로 필터는 **별도 쿼리**로만 존재한다.
+            _aliveNormalAttackersQuery = _em.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<AttackUnitTag>() },
+                None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.BonusWaveTag>() },
+            });
+        }
         // aggro-targeting Unit 13 — 어그로된 적 아이콘 reconcile 용 쿼리(Aggroed).
         private EntityQuery _aggroedQuery;
         private bool _aggroedQueryCreated;
@@ -230,6 +252,13 @@ namespace Wassup.Bridge
         private EntityQuery _pickupViewQuery;
         private bool _pickupViewQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
+        // bonus-wave-pull unit 4 — 보너스 웨이브 전용 큐. **_pending 과 섞지 않는다**(계약 1) —
+        // 그쪽은 웨이브 플랜·레인·컨셉을 나르고 이쪽은 포탈 셀과 링 배치만 나른다.
+        private readonly List<PendingBonusSpawn> _bonusPending = new();
+        private bool _bonusWaveActive;          // 계약 13 — 동시 1벌
+        private float _bonusPortalCloseAtSec;   // 마지막 스폰 + linger. 이 시각에 포탈이 닫힌다
+        private int _normalKillCount;             // 계약 12 — 트리거 전용(보너스 적 제외)
+        private int _bonusConsumedKillMark;     // 마지막 보너스 당김 시점의 _normalKillCount
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
@@ -402,6 +431,17 @@ namespace Wassup.Bridge
         [Tooltip("심박이 밝기를 얼마나 깊게 흔드는가. 0 = 안 뛴다.")]
         [SerializeField, Range(0f, 0.9f)] private float heartBeatDepth = 0.5f;
 
+        // heart-stress-axis unit 9 rev 2 — **머리 위 바의 «방금 올랐다» 펀치.**
+        // 차오르는 바만으로는 변화가 안 읽힌다(1% 오르면 폭이 1% 늘 뿐이다). 오른 그 순간에
+        // 크기로 사건을 만든다. 심박과 역할이 다르다 — 심박은 상태, 펀치는 사건.
+        [Tooltip("스트레스가 오를 때 바가 얼마나 커지는가. 0 = 안 튄다.")]
+        [SerializeField, Range(0f, 1f)] private float heartBarPunchDepth = 0.35f;
+        [Tooltip("«최대 펀치» 로 치는 1프레임 상승분(0~100 축). 작을수록 잔타에도 크게 튄다.")]
+        [SerializeField, Min(0.1f)] private float heartBarPunchFullRise = 4f;
+        [Tooltip("펀치가 초당 얼마나 가라앉는가. 클수록 짧고 날카롭다.")]
+        [SerializeField, Min(0.1f)] private float heartBarPunchDecayPerSec = 3.2f;
+        private float _heartBarPunch;
+
         // heart-stress-axis unit 3 — 직전 프레임 스트레스(0~100). 넷 상승분 산출용.
         private float _lastHeartStress;
         // unit 1 rev 2 — 심박 누적 위상(0~1). 시각에서 파생하지 않는다(위 배선 주석 참조).
@@ -548,6 +588,17 @@ namespace Wassup.Bridge
         private Wassup.Data.GimmickData _assignedGimmick;
         public void SetAssignedGimmick(Wassup.Data.GimmickData g) => _assignedGimmick = g;
 
+        // bonus-wave-pull unit 4 — 보너스 스폰 1건. 포탈 셀을 좌표로 들고 다니는 이유는
+        // 스폰 시점에 맵을 다시 조회하지 않기 위해서다(당김과 스폰 사이에 맵은 안 바뀌지만,
+        // 인덱스로 들고 있으면 저작이 바뀐 문서를 다시 로드했을 때 조용히 다른 칸이 된다).
+        private struct PendingBonusSpawn
+        {
+            public float spawnAtSec;   // 배틀 도메인 시계 기준 절대 시각
+            public int2 cell;
+            public int ringIndex;
+            public int ringCount;
+        }
+
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
@@ -688,6 +739,9 @@ namespace Wassup.Bridge
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 잔여 장판 점등 정리(생명주기 대칭)
+            ClearBonusPortalViews(); // bonus-wave-pull unit 6 — 잔여 포탈 뷰 정리(생명주기 대칭).
+                                     // ResetBonusWaveState 에도 있지만 그건 **다음 판 진입** 시점이라,
+                                     // 여기가 없으면 판을 끝내고 로비로 나가는 경로에서 포탈이 남는다.
             // defender-clock-out unit 3 — 진행 중 퇴근 연출 정리. 떼어낸(Detach) 뷰는 풀의
             // _byEntity 에 없어 바로 위 spineUnitPool.DisposeAll() 이 **안 치운다**. 그리고 이
             // 컴포넌트가 붙은 GO 는 씬 루트라 아무도 비활성화하지 않아 OnDisable 도 안 불린다
@@ -885,6 +939,7 @@ namespace Wassup.Bridge
             if (_aliveAttackersQueryCreated)
             {
                 _aliveAttackersQuery.Dispose();
+                _aliveNormalAttackersQuery.Dispose();
                 _aliveAttackersQueryCreated = false;
             }
             if (_aggroedQueryCreated)
@@ -1356,6 +1411,7 @@ namespace Wassup.Bridge
             }
             _em = _world.EntityManager;
             _pending.Clear();
+            ResetBonusWaveState();   // bonus-wave-pull unit 4 — _pending 리셋과 co-locate
             _occupiedTiles.Clear();
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
@@ -1438,6 +1494,7 @@ namespace Wassup.Bridge
             if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Clear();
 
             _pending.Clear();
+            ResetBonusWaveState();   // bonus-wave-pull unit 4 — 두 리셋 지점 양쪽에 있어야 한다
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
@@ -1495,7 +1552,7 @@ namespace Wassup.Bridge
 
             if (!_aliveAttackersQueryCreated)
             {
-                _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+                CreateAliveAttackerQueries();
                 _aliveAttackersQueryCreated = true;
             }
             if (!_aggroedQueryCreated)
@@ -2939,6 +2996,10 @@ namespace Wassup.Bridge
                 }
             }
 
+            // bonus-wave-pull unit 4 — 보너스 스폰 펌프. 여기(TickBattleFrame) 안이어야
+            // sim 하네스(StepOneTick)와 라이브가 같은 경로를 탄다. 시각은 배틀 도메인 시계 t.
+            TickBonusWave(t);
+
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainShieldBreakEvents();
@@ -2972,6 +3033,10 @@ namespace Wassup.Bridge
             DrainGoalCollapsedEvents();
             DrainGoalEvents();
             SyncGoalStability(); // goal-tower-siege — 타워 Health → 미러(연출·로그 전용)
+            // bonus-wave-pull unit 9 — 등장 래치. ★**SyncGoalStability 바로 뒤**여야 한다 —
+            // 스트레스 게이트가 이 프레임의 마음 체력을 보고 판정한다. 앞에 두면 한 프레임 묵은
+            // 값으로 열리고 닫히는데, 문턱 근처에서는 그 한 프레임이 곧 떨림이다.
+            TickBonusPullOffer();
             // three-minute-kill-race unit 0 — 판을 끝내는 것은 시계 하나다.
             // (적 마음 붕괴·웨이브 전멸 판정은 은퇴했다.)
             CheckTimer();
@@ -3047,10 +3112,24 @@ namespace Wassup.Bridge
                 }
                 if (_generatedMap.structures.IsCreated)
                     w.Put("structureCount", _generatedMap.structures.Length);
+                // bonus-wave-pull unit 4(계약 2) — 포탈 칸은 결과를 바꾼다(보너스 적이 어디서
+                // 나오는지가 곧 사냥 경로다). 안 담으면 포탈을 옮겨도 configHash 가 안 움직여
+                // 드리프트 판독기가 「조건 무변화」라고 거짓말한다.
+                if (_generatedMap.bonusSpawns.IsCreated)
+                    for (int i = 0; i < _generatedMap.bonusSpawns.Length; i++)
+                        w.Put($"bonusSpawn[{i}]",
+                            $"{_generatedMap.bonusSpawns[i].x},{_generatedMap.bonusSpawns[i].y}");
             }
 
             w.Section("deck");
             w.PutAsset("deck", ActiveDeck);
+            // 같은 이유로 보너스 웨이브 저작도 담는다 — 마리수·임계·간격 전부 결과를 바꾼다.
+            w.PutAsset("bonusWave", bonusWaveData);
+            // ★적 SO 는 **따로** 담아야 한다. PutAsset 의 Describe 는 참조 필드를 «이름까지만»
+            // 접으므로 위 한 줄엔 `enemyUnit = "Enemy_DreamShard"` 문자열만 들어간다. 그리고
+            // 이 적은 계약 4 때문에 웨이브 플랜에 절대 안 실려 아래 [enemies] 섹션에도 없다 —
+            // 즉 담지 않으면 시트가 이 적의 체력을 10배로 올려도 configHash 가 안 움직인다.
+            w.PutAsset("bonusEnemy", bonusWaveData != null ? bonusWaveData.enemyUnit : null);
 
             w.Section("waves");
             w.Put("usingGenerated", _usingGeneratedWaves);
@@ -3567,7 +3646,9 @@ namespace Wassup.Bridge
                     }
                     catch (NullReferenceException)
                     {
-                        _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+                        // ★**두 쿼리를 함께** 되살린다 — 한쪽만 만들면 전멸 판정 쿼리가 stale 인 채
+                        // 남아 NoQueuedAttackersRemain() 에서 그 판의 웨이브 진행이 멎는다.
+                        CreateAliveAttackerQueries();
                         entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                     }
                     try
@@ -3694,8 +3775,12 @@ namespace Wassup.Bridge
 
         // three-minute-kill-race unit 2 — `SyncGoalStabilityBars()` 는 제거했다.
         // ⚠ 그 시절 계약(「바·숫자로 그리지 않는다」)은 heart-stress-axis 가 뒤집었다.
-        // 지금 마음의 상태를 그리는 것은 넷이다: 프랍 붉은 틴트(`SetGoalStressTint`) ·
-        // 심박 · 화면 포스트 비네트 · **머리 위 숫자 `87 / 100`**(unit 8, ScoreHudView).
+        // 지금 마음의 상태를 그리는 것은 넷이다 — 셋은 **연출**, 하나는 **정보**다:
+        //   연출 — 프랍 붉은 틴트(`SetGoalStressTint`) · 심박 · 화면 포스트 비네트
+        //   정보 — **머리 위 스트레스 바**(unit 9 rev 2). 차오르는 0~100 이고 fill 이
+        //          **파랑 → 빨강**으로 램프하며(스킨 저작), 오를 때마다 크기로 튄다.
+        //          전용 함수가 아니라 `SyncGoalOverheadGauges` 공용 경로를 그대로 탄다.
+        // 머리 위 숫자 `87 / 100`(unit 8)는 unit 9 에서 **껐다**(ScoreHudView 토글, 기본 false).
         // `SetGoalCrack`(균열 단계)은 호출처 0 인 휴면이다 — 여기서 찾지 말 것.
 
         // summon-patrol-defender unit 5 — 거점 순찰 아군 뷰 동기화.
@@ -4753,6 +4838,17 @@ namespace Wassup.Bridge
                     killedVisual = killedType;
                     _enemyTypeByEntity.Remove(evt.entity);
                 }
+
+                // bonus-wave-pull unit 5(계약 12) — **트리거 카운터는 일반 적만 센다.**
+                // 점수(_killCount)는 바로 위에서 이미 전부 셌다 — 1킬 1점 불변이고 여기만 갈린다.
+                // 안 가르면 보너스 킬이 다시 임계를 채워 실효 임계가 (N − enemyCount) 로 내려가고,
+                // N ≤ enemyCount 면 보너스 웨이브가 자기 자신을 무한 재발화한다.
+                // ★판별에 BonusWaveTag 를 쓸 수 없다 — 이 드레인 시점엔 엔티티가 이미
+                // 파괴돼 있다. 등록부가 준 SO 로 가르며, 그 동치는 계약 4(보너스 적은 덱 풀에
+                // 절대 안 들어간다)가 보장한다. 풀에 넣는 날 이 줄이 함께 깨진다.
+                bool wasBonusKill = bonusWaveData != null && killedType != null
+                                      && killedType == bonusWaveData.enemyUnit;
+                if (!wasBonusKill) _normalKillCount++;
 
                 // heart-stress-axis unit 2 — **잡을수록 마음이 숨을 돌린다.**
                 // ⚠ `evt.awakeningReward` 가 아니라 **SO 원값**을 쓴다. 이벤트에 실린 값은
@@ -6047,6 +6143,7 @@ namespace Wassup.Bridge
             // 은퇴했고 지금 남는 것은 심박 위상·단계·방패 플래그·돌격 피격 수다.
             _lastHeartStress = 0f;
             _heartBeatPhase = 0f;
+            _heartBarPunch = 0f;   // unit 9 rev 2 — 안 지우면 새 판 첫 프레임에 바가 부푼 채 뜬다
             _heartStage = 0;
             _coreShielded = false;
             _rusherArrivalCount = 0;
@@ -6803,10 +6900,21 @@ namespace Wassup.Bridge
         //
         // three-minute-survival unit 2 — 이제 **웨이브 진행 트리거**이기도 하다(QueueDueWaves).
         // 클리어 강조 UI 는 은퇴했지만 이 판정은 그 자리에 남아 케이던스를 구동한다.
+        //
+        // bonus-wave-pull unit 4(계약 10) — **보너스 적과 보너스 큐는 여기 안 든다.** 보너스 당기기는
+        // 서브 컨텐츠라 본류 페이스를 건드리면 안 되는데, 아무것도 안 하면 보너스 적이
+        // AttackUnitTag 를 갖는다는 사실만으로 ⓐ 웨이브 진행이 전멸 구동 → 20초 상한 구동으로
+        // 강등되고 ⓑ _pullsSinceClear 가 회복되지 않아 일반 당김 알약이 잠긴 채 남는다.
+        // 보너스 적은 골에 도달해도 공성으로 살아남으므로(계약 7ⓒ) 그 상태가 그 판 내내 굳는다.
+        //
+        // ⚠ **_aliveAttackersQuery 자체에 필터를 걸지 말 것.** 그 쿼리는 11곳이 공유하고 거기엔
+        // 슬로우·토네이도·메테오 사전집계, CollectEnemiesInTileRange(배치 스킬 대상), 전방
+        // 투사체, 밀쳐냄, 골 근접 경보가 들어 있다 — 필터를 걸면 보너스 적이 광역기와 배치
+        // 스킬에서 통째로 사라진다. 그래서 전멸 판정 **전용 쿼리**를 따로 세운다.
         private bool NoQueuedAttackersRemain()
         {
             if (_pending.Count > 0 || !_aliveAttackersQueryCreated) return false;
-            return _aliveAttackersQuery.CalculateEntityCount() == 0;
+            return _aliveNormalAttackersQuery.CalculateEntityCount() == 0;
         }
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
@@ -8733,22 +8841,37 @@ namespace Wassup.Bridge
             for (int i = 0; i < _structureRegistry.Count; i++)
             {
                 var (entity, cell, faction) = _structureRegistry[i];
-                // heart-stress-axis unit 1 — **마음은 이 루프에서 바를 받지 않는다.**
-                // three-minute-kill-race unit 2 가 여기서 `DefenderCore` 를 스킵했었고, 이 spec 도
-                // (이유는 달라도) 스킵을 유지한다 — 마음의 상태는 **프랍 틴트 + 심박 + 포스트
-                // 비네트 + 머리 위 숫자**가 말하고, 머리 위 «바» 는 rev 1 에서 반려됐다.
+                // heart-stress-axis unit 9 — **마음도 이 루프에서 바를 받는다.**
+                // 아래 마음 분기는 스트레스 연출(틴트·심박·비네트)만 하고 **`continue` 하지
+                // 않는다** — 그대로 공용 바 경로로 떨어져 본능·유닛과 같은 코드로 그려진다.
+                // unit 1 rev 1 이 머리 위 바를 반려했던 이유(「다른 바와 문법이 같아 임팩트 0」)는
+                // 그 바가 **연출까지 겸직**하려 했기 때문이다. 연출을 다른 세 채널이 다 가져간
+                // 지금 바가 지는 짐은 정보뿐이고, 그래서 «같은 문법» 이 장점이 된다.
                 bool isHeart = faction == Faction.DefenderCore;
                 if (!_em.Exists(entity) || !_em.HasComponent<Health>(entity)) continue; // 붕괴 정리는 EndFrame/드레인
                 var h = _em.GetComponentData<Health>(entity);
                 float ratio = Health.ComputeRatio(h.value, h.max);
-                // heart-stress-axis unit 1 rev — **마음은 바를 안 단다. 보드를 먹는다.**
-                //
+                // heart-stress-axis unit 9 rev 2 — **마음 바만 다른 값·다른 스킨·다른 크기를 쓴다.**
+                // rev 1 은 순수 체력비(줄어드는 바)였고 rev 2 에서 사용자가 **차오르는 스트레스
+                // 0~100** 으로 되돌렸다. 되돌린 값은 아래 마음 분기가 채우고, **호출은 여전히
+                // 공용 경로 한 곳**이다 — 마음 전용 `SetUnit` 을 새로 만들면 그때부터
+                // 「마음 바는 왜 따로 도나」가 시작된다(rev 1 이 산 교훈이라 유지한다).
+                float barValue = ratio;                              // 비-마음: 남은 체력
+                Wassup.Data.OverheadBarSkin? barSkin = null;         // 비-마음: 진영 기본 스킨
+                float barScale = 1f;                                 // 비-마음: 안 튄다
+                bool showBar = true;                                 // 비-마음: 항상 건다
                 // 연출 캐리어가 네 번 갈렸다: 머리 위 바(rev 1 — 문법 중복) → 보드 3×3 잠식
                 // (rev 2 — 「주변 타일 하이라이트는 쓸모없다」) → **마음 프랍 붉은 틴트 + 심박**
-                // (확정) → 화면은 URP 포스트 비네트(unit 8 rev 2). 앞의 둘은 되살리지 말 것.
+                // (확정) → 화면은 URP 포스트 비네트(unit 8 rev 2). **보드 잠식은 되살리지 말 것.**
+                // (머리 위 바는 unit 9 가 «정보 전용» 으로 되살렸다 — 위 주석 참조.)
                 //
-                // ⚠ `OverheadBarSkin.Stress`·`fadeAtEmpty`·`SetGoalCrack` 은 **호출처 0 인 휴면**이다
-                // (README 후속 후보 「휴면 코드 정리」). 살아있는 기능으로 읽지 말 것.
+                // ⚠ `OverheadBarSkin.Stress`·`fadeAtEmpty`·`SetGoalCrack` 은 **호출처 0 인 휴면**이다.
+                // unit 9 가 «순수 체력» 을 못박아 Stress 스킨은 **영구 휴면**이 됐다(마음 바는
+                // Defender 스킨을 쓴다). README 후속 후보 「휴면 코드 정리」 소관.
+                //
+                // ⚠ 머리 위 숫자(`87 / 100`)는 unit 9 에서 **꺼졌다** — `ScoreHudView`
+                // `showHeartStressReadout`(기본 false). `SetHeartStress` 는 계속 호출된다
+                // (비네트·심박이 그 통로를 쓴다) — 숫자만 안 그린다.
                 if (isHeart)
                 {
                     float stress = Wassup.Core.StressMath.FromHealth(h.value, h.max);
@@ -8799,6 +8922,34 @@ namespace Wassup.Bridge
                         labelAnchor = new Vector2(bs.x, top.y);
                     }
                     scoreHud?.SetHeartStress(stress01, beatScale, rise, _heartStage, labelAnchor, anchorOk);
+
+                    // 바가 그리는 것 = **차오르는 스트레스**(0 → 1). `OverheadBarSkin.Stress` 는
+                    // 색이 아니라 **방향** 때문에 필요하다 — 이 바는 만점에서 감쇠하면 안 되고
+                    // (`fadeAtEmpty`) 빈 쪽이 「정보 없음」이다. 스킨의 fillLow→fillHigh 램프가
+                    // 그대로 **파랑 → 빨강** 틴트가 된다(에셋 저작, 코드에 색 없음 — 제약 6).
+                    barValue = stress01;
+                    barSkin = Wassup.Data.OverheadBarSkin.Stress;
+                    // **스트레스 0 이면 바를 아예 안 건다**(사용자 지시). 흐리게 두는 것과
+                    // 다르다 — 알파만 낮추면 «빈 바» 가 계속 자리를 차지해, 아직 아무 일도
+                    // 안 일어난 판에서 마음이 «이미 뭔가 재고 있는» 것처럼 보인다.
+                    // 이 프레임에 `SetUnit` 을 안 부르면 `EndFrame` 이 뷰를 회수하고(_seen 미포함),
+                    // 다시 오를 때 `resetHealth` 로 새 값에서 시작한다(옛 값에서 안 늘어난다).
+                    showBar = stress01 > 0f;
+                    // 펀치는 «상승분» 이 입력이다 — 같은 프레임에 킬 회복이 상쇄하면 안 튀는 것이
+                    // 옳다(실제로 안 올랐으므로). `rise` 는 위에서 이미 그렇게 구했다.
+                    _heartBarPunch = Wassup.Presentation.HeartStressPulse.AdvancePunch(
+                        _heartBarPunch, rise, heartBarPunchFullRise,
+                        Time.unscaledDeltaTime, heartBarPunchDecayPerSec);
+                    barScale = Wassup.Presentation.HeartStressPulse.PunchScale(_heartBarPunch, heartBarPunchDepth);
+
+                    // ⚠ **여기서 `continue` 하지 않는다.** 아래 공용 경로로 떨어져 바를 받는다.
+                    // 되돌리면 바가 조용히 사라진다.
+                }
+                if (!showBar)
+                {
+                    // 레거시 경로는 «안 그림» 이 자동이 아니다 — 명시적으로 지운다.
+                    // (통합 경로는 `SetUnit` 을 안 부른 것만으로 `EndFrame` 이 회수한다.)
+                    if (!unifiedOverhead) tileHealthGaugeLayer?.Hide(cell);
                     continue;
                 }
                 var world = GridToWorldCenter(cell);
@@ -8812,15 +8963,16 @@ namespace Wassup.Bridge
                     Vector3 b = cam.WorldToScreenPoint(baseView + Vector3.right * (tileSize * 0.5f));
                     float tileScreenWidth = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
                     // 리뷰 M-6 — 등록부에 이제 적 거점도 들어온다. defender 색 플래그는 진영에서.
-                    // (마음은 위에서 continue — 바를 안 단다.)
+                    // 마음(`DefenderCore`)도 `Factions.AnyDefender` 에 포함이라 Defender 스킨을
+                    // 받는다 — 마음만의 분기를 만들지 않는 것이 unit 9 의 요점이다.
                     unitOverheadUiLayer.SetUnit(entity,
                         ((int)faction & Wassup.Battle.Units.Factions.AnyDefender) != 0,
-                        ratio, anchor, tileScreenWidth, 0f,
-                        GatherOverheadStacks(entity));
+                        barValue, anchor, tileScreenWidth, 0f,
+                        GatherOverheadStacks(entity), barSkin, barScale);
                 }
                 else if (!unifiedOverhead && tileHealthGaugeLayer != null)
                 {
-                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, ratio);
+                    tileHealthGaugeLayer.Set(cell, baseView, tileSize, barValue);
                 }
             }
         }
@@ -9724,6 +9876,13 @@ namespace Wassup.Bridge
             // (거점은 이 경로를 안 타므로 battle-structures 계약 8 은 그대로 지켜진다.)
             _em.AddBuffer<Wassup.Battle.Units.ShieldSlot>(entity);
             _em.AddBuffer<Wassup.Battle.Units.IncomingShield>(entity);
+
+            // bonus-wave-pull unit 0 — 사냥 성질 bake. ★**여기서 붙인다** —
+            // BakeNightmareMechanics 안(BossTag 옆)에 두면 그 메서드가 nightmareMechanics 가
+            // 비었을 때 조기 반환하므로 **메커닉 없는 사냥꾼에게 태그가 안 붙는다**. 보스는
+            // 무회귀이고 테스트도 전부 초록인 채 사냥만 조용히 죽는다.
+            if (unitType.tier == Wassup.Data.EnemyTier.Boss || unitType.huntsDefenders)
+                _em.AddComponent<Wassup.Battle.Combat.DefenderHunterTag>(entity);
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).

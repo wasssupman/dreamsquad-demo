@@ -50,6 +50,20 @@ namespace Wassup.Tests.EditMode
             StringAssert.Contains("\"waveIndex\":3", json, "당김 대상 웨이브가 빠졌다");
         }
 
+        // bonus-wave-pull unit 5 — 보너스 당김도 같은 자리에 남아야 한다.
+        // 안 남기면 랭킹에 올라간 점수의 일부가 어디서 왔는지 사후에 설명할 수 없다
+        // (「덱·맵이 같은데 왜 점수가 다르지」에 답할 근거가 사라진다).
+        [Test]
+        public void 보너스_당김도_로컬_로그에_남는다()
+        {
+            _logger.RecordWaveEvent("bonus_pull", 5, 71.25f, forced: true);
+
+            string json = _logger.SnapshotJson();
+            StringAssert.Contains("bonus_pull", json,
+                "보너스 당김이 제출 스냅샷에서 빠졌다 — 점수의 출처를 사후에 판독할 수 없다");
+            StringAssert.Contains("71.25", json, "보너스 당김 **시각**이 빠졌다");
+        }
+
         [Test]
         public void 종료_사유가_시간만료와_붕괴를_구분한다()
         {

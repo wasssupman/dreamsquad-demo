@@ -30,7 +30,10 @@ namespace Wassup.Battle.Movement
             // boss-defender-field unit 2 — 방어유닛-지향 필드(Effects 소유, RO). 부재 시
             // (테스트/티어다운) hunting 이 항상 false 로 떨어져 전원 기존 goal 경로.
             bool hasHuntField = SystemAPI.TryGetSingleton<DefenderFieldSingleton>(out var huntField);
-            var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
+            // bonus-wave-pull unit 0 — 사냥 게이트가 BossTag 에서 DefenderHunterTag 로.
+            // 보스는 tier == Boss 로 같은 태그를 계속 받아 무회귀다. BossTag 는 이 파일에서
+            // 더는 읽지 않는다 — 남은 보스 특권(넉업/CC/어그로 면역)은 다른 시스템 소유.
+            var hunterLookup = SystemAPI.GetComponentLookup<DefenderHunterTag>(isReadOnly: true);
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
             // leap-flight-state unit 0 — Combat 소유 태그를 RO 로 읽는다(AttackState·EnemyAiState 선례).
             var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
@@ -213,7 +216,7 @@ namespace Wassup.Battle.Movement
                 // 방어유닛 존재 → goal flow 대신 defender field 를 따른다. 방어유닛 0 이면
                 // DefenderFieldSystem 이 전 셀 MaxValue 로 리셋 → 자동으로 기존 마칭(계약 5).
                 bool hunting = hasHuntField && huntField.IsCreated
-                    && bossLookup.HasComponent(entity)
+                    && hunterLookup.HasComponent(entity)
                     && huntField.dist[idx] != int.MaxValue;
 
                 // 사냥 중엔 goal 셀을 지나쳐도 누수 안 함(leak-proof) — 방어유닛 전멸 후에만 도달 처리.

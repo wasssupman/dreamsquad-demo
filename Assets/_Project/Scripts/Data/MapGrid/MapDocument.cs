@@ -35,6 +35,13 @@ namespace Wassup.Data.MapGrid
         // 진영은 (편 × data.kind)에서 파생한다 — StructurePlacements.DeriveFaction.
         // 비면 거점 없는 맵(현행 9장 전부) = 행동 변화 0.
         [SerializeField] private StructureEntry[] structures;
+        // bonus-wave-pull unit 1 — 보너스 당기기의 포탈이 열릴 칸. **레인 스폰과 다른 축이다.**
+        // `spawns` 에 얹으면 `QueueWave` 가 `laneCount = spawns.Length` 를 라운드로빈 분모로
+        // 쓰므로 **모든 일반 웨이브의 레인 분포가 바뀐다**. `structures` 도 안 된다 —
+        // 거점 개수가 맵 모드(공성/일반) 판정에 들어간다. 그래서 자기 배열을 갖는다.
+        // null/빈 = 보너스 당기기가 없는 맵(버튼이 영영 안 뜬다). 검증은
+        // BonusSpawnAuthoringRules 가 단일 소유하고 페인터와 OnValidate 가 같이 부른다.
+        [SerializeField] private Vector2Int[] bonusSpawns;
 
         // -1 = 수동 입력, 그 외 값 = 절차적 결과 캐시.
         [SerializeField] private int authoringSeed = -1;
@@ -52,6 +59,7 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<WaypointPath> WaypointPaths => waypointPaths;
         public IReadOnlyList<int> SpawnRoutes => spawnRoutes;   // null/빈 가능 = 전 레인 최단거리
         public IReadOnlyList<StructureEntry> Structures => structures;   // null/빈 가능 = 거점 없는 맵
+        public IReadOnlyList<Vector2Int> BonusSpawns => bonusSpawns;   // null/빈 가능 = 보너스 당기기 없는 맵
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
 
@@ -81,6 +89,16 @@ namespace Wassup.Data.MapGrid
         internal void SetStructures(StructureEntry[] structuresArr)
         {
             structures = structuresArr;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+        // bonus-wave-pull unit 1 — SetStructures 와 같은 이유로 SetFrom 과 분리한다.
+        // SetFrom 에 끼우면 «전달 안 하면 지워짐 / 유지됨» 이 암묵 규칙이 된다.
+        internal void SetBonusSpawns(Vector2Int[] cells)
+        {
+            bonusSpawns = cells;
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(this);
 #endif
@@ -146,6 +164,14 @@ namespace Wassup.Data.MapGrid
                 goalCount, spawns?.Length ?? 0, authoringErrors);
             StructureAuthoringRules.ValidateStructures(structures, width, height, authoringErrors, tiles);
             foreach (var e in authoringErrors)
+                Debug.LogError($"[MapDocument] {e}", this);
+
+            // bonus-wave-pull unit 1 — 포탈 칸 검증. 페인터와 **같은 순수 함수**를 부른다
+            // (규칙을 복제하면 «툴 통과 → 런타임 폴백» 이 생긴다 — waypoint-routing unit 5 선례).
+            var bonusErrors = new List<string>();
+            BonusSpawnAuthoringRules.Validate(
+                bonusSpawns, width, height, tiles, goals, bonusErrors);
+            foreach (var e in bonusErrors)
                 Debug.LogError($"[MapDocument] {e}", this);
 
             var waypointErrors = new List<string>();

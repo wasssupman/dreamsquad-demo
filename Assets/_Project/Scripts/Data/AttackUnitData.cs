@@ -254,7 +254,7 @@ namespace Wassup.Data
                  "엘리트는 특수 메커니즘을 갖되 보스 특권(CC·어그로 면역)은 받지 않는다.")]
         public EnemyTier tier = EnemyTier.Normal;
 
-        // special-wave-pull unit 0 — 「배치된 방어유닛을 찾아다니며 사냥하다가 전멸시키면
+        // bonus-wave-pull unit 0 — 「배치된 방어유닛을 찾아다니며 사냥하다가 전멸시키면
         // 거점으로 향한다」. 그 이동은 boss-defender-field 가 이미 만들어 뒀고 `BossTag` 로
         // 잠겨 있었다 — 이 플래그가 그 게이트를 티어와 무관하게 연다.
         //

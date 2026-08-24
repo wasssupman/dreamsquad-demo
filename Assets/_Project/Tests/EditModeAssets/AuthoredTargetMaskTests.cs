@@ -41,6 +41,10 @@ namespace Wassup.Tests.EditMode
         // 저작 = «이 적은 특수하다» 는 선언이다. 특수하지 않은 적은 기본값을 그대로 쓴다.
         // 목록을 늘리려면 그 적이 왜 특수한지 여기 적어야 한다 — 그게 이 테스트의 역할이다.
         [Test]
+        // bonus-wave-pull unit 3 — `Enemy_DreamShard` 는 이 목록에 **없다**. 마스크를 저작하지
+        // 않고 0(폴백)으로 두었기 때문이고, 그건 의도다 — 기본 마스크가 `DefenderCore` 를 포함해야
+        // 골에 도달한 보너스 적이 산화하지 않고 **공성**한다(그 spec 의 계약 7ⓒ,
+        // 「방어유닛이 다 죽으면 거점을 패러 간다」의 실체). 좁히는 순간 이 테스트가 이유를 요구한다.
         public void OnlySpecialEnemies_NarrowTheirTargets()
         {
             foreach (var guid in AssetDatabase.FindAssets("t:AttackUnitData"))

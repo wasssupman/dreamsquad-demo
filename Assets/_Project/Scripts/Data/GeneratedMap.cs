@@ -24,6 +24,11 @@ namespace Wassup.Data
         // battle-structures unit 3 — 거점 저작의 런타임 투영(셀 + 교차 비트). 스탯은 SO 에
         // 남고 브리지가 문서에서 읽는다(unit 4). 미생성/빈 = 거점 없는 맵.
         public NativeArray<StructurePlacement> structures;
+        // bonus-wave-pull unit 1 — 보너스 당기기 포탈 칸의 런타임 투영. 미생성/빈 = 그 맵엔
+        // 보너스 당기기가 없다. **spawns 와 섞지 않는다** — spawns.Length 는 레인 수이고
+        // ExpandWave 의 라운드로빈 분모다(MapDocument.bonusSpawns 주석 참조).
+        // goals 와 같은 이유로 IsCreated 불변식에는 넣지 않는다.
+        public NativeArray<int2>        bonusSpawns;
         public int                      seed;
         public int                      generatorVersion;
 
@@ -78,6 +83,7 @@ namespace Wassup.Data
             if (spawnRoutes.IsCreated)      spawnRoutes.Dispose();
             if (structures.IsCreated)       structures.Dispose();
             if (placeMask.IsCreated)        placeMask.Dispose();
+            if (bonusSpawns.IsCreated)    bonusSpawns.Dispose();
         }
     }
 }

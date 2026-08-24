@@ -4654,6 +4654,8 @@ MonoBehaviour:
   ultimateLeapHeight: 14
   ultimateLeapLandingSquash: 0.14
   ultimateLeapLandingSquashSeconds: 0.06
+  bonusWaveData: {fileID: 11400000, guid: 2a8af2c0d1f44a8694c9d67690cd4ba2, type: 2}
+  bonusPortalPrefab: {fileID: 5267086104337941674, guid: 3b6178451ae0a46e6a7fb150b769f661, type: 3}
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
   mapPool: {fileID: 11400000, guid: 947db597914b146e8b8551fc3b0820db, type: 2}
   fixedMapSeed: 0
