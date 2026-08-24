@@ -90,7 +90,7 @@
 | "이 프로젝트/환경 고유의 함정은?" | `docs/reference/lessons/` — 실제로 겪은 지뢰 모음 (Unity MCP 운용·git/씬 위생·Spine/타일맵/프랍·시뮬 설계). **Unity 조작·에셋 작업·커밋 전에 해당 주제 파일 一讀** |
 | "테스트를 어떻게/언제 돌리나? 새 테스트는 어디에?" | `docs/reference/test-procedure.md` — 3개 어셈블리(코어 26초 / 에셋 5초 / PlayMode 8분)와 상황별 실행표 · lane 판별 한 줄 · **밸런스 수치를 리터럴로 못박지 않는 규율**. 시트·에셋 편집 후엔 Assets lane 추가 실행 필수 |
 | "새 플레이 오브젝트의 생성→렌더 정거장은?" | `docs/reference/object-pipeline-map.md` — 아키타입별 파이프라인 체크표. **플레이 오브젝트 spec README 작성 시 대조 필수** |
-| "점수는 어디서 나오고 얼마인가?" | `docs/reference/score-formula.md` — 출처 3개(시간·스트레스·킬)의 계산·배점·값 바꾸는 곳 요약. 설계 이력은 `docs/spec/battle-score-formula/` |
+| "점수는 어디서 나오고 얼마인가?" | `docs/reference/score-formula.md` — **1킬 = 1점 고정**(시간·스트레스 배점 축은 은퇴). 판이 끝나는 통로 2개 + 마음이 판정에 관여하되 점수엔 관여하지 않는 계약 · 값 바꾸는 곳 요약. 설계 이력은 `docs/spec/battle-score-formula/` · `docs/spec/heart-stress-axis/` |
 | "맵/웨이브 난이도를 조정하려면?" | `docs/reference/map-wave-balancing.md` — 맵 로테이션·웨이브 knob·몬스터 스탯 조정 위치 + **결정론 규칙(waveSeed 비0=같은 맵 같은 웨이브)**. 자주 바꾸는 값 모음 |
 | "적이 어떻게 길을 찾고 움직이나?" | `docs/reference/enemy-movement-algorithm.md` — 프레임 의사결정 순서도(시스템 순서 · MovementSystem 분기 · 평활화 · 충돌 · 분리) + 쓴 알고리즘 계보와 **쓰지 않은 것의 이유** + 값 바꾸는 곳. 설계 이력은 `docs/spec/continuous-agent-movement/` |
 | "무기 궤적을 켜거나 바꾸려면?" | `docs/reference/weapon-trail-authoring.md` — 유닛에 붙이기·룩 추가·모양 튜닝·본 없는 호스트 레시피 + 증상→원인 표. **코드 0 이 원칙**. 설계 이력은 `docs/spec/spine-weapon-trail/` |

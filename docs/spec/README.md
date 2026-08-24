@@ -128,8 +128,8 @@ code + git history        구현 상세
 30기(회수) AND 스트레스 30 이하(창)** 이고, 회수는 창이 닫혀 있어도 쌓인다.
 상세: `docs/spec/bonus-wave-pull/10_handoff_summary.md`.
 
-> ⚠ 브랜치가 **`heart-stress-axis`** 다(`main` 아님) — 스트레스 게이트가 `StressMath` 에 서 있고
-> 그 파일이 main 에 없다. 이 feature 는 그 브랜치의 머지에 묶여서 함께 간다.
+> ~~브랜치가 `heart-stress-axis` 다(`main` 아님)~~ **해소 2026-08-24** — `heart-stress-axis`
+> 가 main 에 머지됐다(`8f24cf26`). `StressMath` 가 main 에 있으므로 이 feature 도 main 에 있다.
 
 - **골든 코퍼스 재생성** [S] · 판 조건 지문(`configHash`)에 항목 3개가 추가돼 기준선이 어긋난다.
   회귀가 아니다. ⚠ 워킹트리에 무관 dirty 가 있으면 그게 기준선에 구워지므로 격리 후 별도 커밋.
