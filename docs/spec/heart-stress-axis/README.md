@@ -3,11 +3,17 @@
 > 상태: **units 0~8 구현·커밋 완료 2026-08-24** (Play 확인 통과 · 투트랙 리뷰 반영)
 > 잔여: **체감 판정 1건**(아래) · 연출 후속(파열 엔딩 · 히트 리액션 · 소리)
 >
-> ⚠ **unit 5 실측이 물음표 하나를 남겼다**: 라이브 맵(Duel)에서 스트레스는 **172초에야
-> 처음 오른다** — 방어 본능 2기(각 1000)가 그때까지 마음을 표적에서 가리기 때문이다(unit 6).
-> 판의 95%가 이 축에 대해 조용하다는 뜻이고, 「3분을 긴장으로 채우는가」는 아직 **아니오**다.
-> 저울을 쥔 값은 마음 HP 가 아니라 **본능 체력**이다. 규칙 자체가 사용자 지시라 임의로
-> 내리지 않았다 — 손잡이와 예상 효과는 [`5_balance_and_golden.md`](5_balance_and_golden.md).
+> **밸런스는 현재 값으로 확정됐다**(사용자, 2026-08-24). unit 5 실측이 남긴 물음표 —
+> 라이브 맵(Duel)에서 스트레스가 **172초에야 처음 오른다**(방어 본능 2기가 그때까지 마음을
+> 표적에서 가린다, unit 6) — 를 알고도 **유지**하기로 했다. 다시 손댈 때 돌릴 값은 마음 HP 가
+> 아니라 **본능 체력**이다(같은 분모를 쓰는 마음 HP 는 교환비를 못 바꾼다).
+> 손잡이와 예상 효과는 [`5_balance_and_golden.md`](5_balance_and_golden.md).
+>
+> ⚠ **이 spec 은 `main` 에 올리지 않는다.** 로컬 브랜치 `heart-stress-axis` 전용이고
+> upstream 을 두지 않았다(맨 `git push` 가 실패하는 것이 안전장치다). main 에는 revert
+> 커밋 `473b8c9a` 가 올라가 전량 제거돼 있다. **같은 워크트리를 쓰는 다른 세션의 커밋이
+> 이 브랜치로 떨어지므로**, 그 커밋을 main 으로 옮길 때 heart-stress 줄이 섞여 가지 않는지
+> 매번 확인해야 한다(실제로 세 번 일어났다 — `cd93665c`·`92365780`·`4ecf4429`).
 > 선행: [`three-minute-kill-race`](../three-minute-kill-race/README.md)(완료 — **이 spec 이 그 계약 4개를 의도적으로 뒤집는다**),
 > [`goal-stability`](../goal-stability/README.md)(마음 = 전투 대상), [`goal-tower-siege`](../goal-tower-siege/README.md)(공성 모델),
 > [`battle-structures`](../battle-structures/README.md)(진영×종류 축)
@@ -112,7 +118,8 @@
 | 6 | ECS(Units/Movement/Combat) + 브리지 | [`6_instinct_shield.md`](6_instinct_shield.md) | **본능이 마음의 방패** — 모든 방어 본능이 파괴된 뒤에야 마음이 깎인다 |
 | 7 | 데이터 + ECS(Units) | [`7_rusher_attack.md`](7_rusher_attack.md) | **돌격형이 일반 공격을 갖는다** — 가는 길에 싸우되 마음엔 여전히 산화. `canSiege` 정밀화 |
 | 8 | 프레젠테이션 | [`8_stress_legibility.md`](8_stress_legibility.md) | **판독성** — 단계(히스테리시스)·마음 위 숫자·조여드는 림. 「커브가 아니라 캐리어를 바꾼다」 |
-| 9 | 인계 | `9_handoff_summary.md` | 종료 시 작성 |
+| 9 | 프레젠테이션 | [`9_heart_stress_bar.md`](9_heart_stress_bar.md) | **머리 위 차오르는 스트레스 바** — 파랑→빨강 램프 · 상승 펀치 · 0 이면 미노출. 숫자는 끔 |
+| 10 | 인계 | `10_handoff_summary.md` | 종료 시 작성 |
 
 **의존**: `0 → 1`(바가 그릴 산식이 먼저) · `0 → 4`(종료 라벨이 생겨야 화면이 읽는다) ·
 `2 → 5`(회복이 있어야 배율을 잰다) · `0,2 → 5`(골든은 마지막). `3` 은 `0` 뒤라면 언제든.
@@ -212,8 +219,9 @@
   「**마지막** 마음 붕괴 = 즉시 패배」라고 쓰고 있는데 이 spec 의 확정안은 「**첫** 붕괴」다.
   마음 1개인 오늘은 같은 말이지만 두 정본이 서로 다른 답을 주기 전에 문구를 맞춘다.
   `goals > 1` 을 저작 단계에서 막을지도 **그 spec 의 결정**이다 — 기계를 건드리는 일이라 여기서 하지 않는다.
-- **리뷰 잔여** [S] — 소비처 0 배관 정리(`skinOverride`·`OverheadBarSkin.Stress`·
-  `fadeAtEmpty`·`stress` BarSkin + 에셋 20필드·`SetGoalCrack`) · 무가치 단언 정리
+- **리뷰 잔여** [S] — ~~소비처 0 배관 정리(`skinOverride`·`OverheadBarSkin.Stress`·
+  `fadeAtEmpty`·`stress` BarSkin + 에셋 20필드)~~ **unit 9 rev 2 가 전부 되살렸다.**
+  남은 휴면은 `PushGoalCrack`/`SetGoalCrack` 하나뿐(호출처 0 재확인 2026-08-24) · 무가치 단언 정리
   (`CanSiege_RequiresCoreInTargetMask_NotJustAnAttack` 는 시스템을 안 돌린다 — 진짜 그물은
   `UnitLifecycleSystemTests` 쪽이다) · 마음이 2개면 심박이 2배로 뛴다(연출만, 경고는 있음) ·
   `ResultScreen.StressText` 가 인자 개수·타입 동일하고 **의미만 반전**이라 옛 관습으로 부르면
