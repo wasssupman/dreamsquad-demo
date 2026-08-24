@@ -97,6 +97,40 @@ namespace Wassup.Presentation
         public static float BeatScale(float beat, float depth)
             => 1f - Mathf.Clamp01(depth) * (1f - Mathf.Clamp01(beat));
 
+        // ── 상승 펀치 (heart-stress-axis unit 9 rev 2) ─────────────────────────
+        //
+        // **바가 «방금 올랐다» 를 말하는 축이다.** 차오르는 바만으로는 변화가 안 읽힌다 —
+        // 값이 1% 오르면 폭이 1% 늘 뿐이라 눈이 못 잡는다. 인간은 «수준» 이 아니라 «변화» 를
+        // 읽으므로(unit 8 의 단계와 같은 진단), 오른 그 순간에 **크기**로 사건을 만든다.
+        //
+        // 심박(`AdvancePhase`+`Beat`)과 역할이 다르다: 심박은 **상태**를 계속 말하고(지금
+        // 얼마나 위험한가), 펀치는 **사건**을 한 번 말한다(방금 맞았다). 그래서 둘을 한
+        // 함수로 합치지 않는다.
+
+        /// <summary>
+        /// 펀치 세기(0~1)를 한 프레임 전진시킨다. **직전 값 + 이번 상승분**이 인자다.
+        ///
+        /// 감쇠는 <see cref="AdvancePhase"/> 와 같은 이유로 «직전 값 기준» 이다 — 시각에서
+        /// 파생하면 연속 피격 때 위상이 튄다. 새 상승은 <c>Max</c> 로 얹으므로 **더 큰 타격이
+        /// 항상 이긴다**(작은 상승이 큰 펀치를 덮어써 약해지지 않는다).
+        /// </summary>
+        /// <param name="punch">직전 프레임 펀치(0~1).</param>
+        /// <param name="riseStress">이번 프레임 스트레스 상승분(0~100 축). 0 이면 감쇠만.</param>
+        /// <param name="fullRise">«최대 펀치» 로 치는 상승분. 이 값 이상은 전부 1.</param>
+        public static float AdvancePunch(float punch, float riseStress, float fullRise,
+                                         float deltaSec, float decayPerSec)
+        {
+            float decayed = Mathf.MoveTowards(Mathf.Clamp01(punch), 0f,
+                                              Mathf.Max(0f, decayPerSec) * Mathf.Max(0f, deltaSec));
+            float fired = Mathf.Clamp01(riseStress / Mathf.Max(1e-4f, fullRise));
+            return Mathf.Max(decayed, fired);
+        }
+
+        /// <summary>펀치를 «크기 배율» 로 접는다. 0 = 등신대(1.0), 1 = 1+depth.
+        /// <see cref="BeatScale"/> 와 달리 **위로만** 부푼다 — 줄어드는 바는 「사라진다」로 읽힌다.</summary>
+        public static float PunchScale(float punch, float depth)
+            => 1f + Mathf.Clamp01(punch) * Mathf.Max(0f, depth);
+
         /// <summary>스트레스 → 화면/프랍 연출의 **기저 세기**(0~1).
         /// 선형이 아니라 후반 가중이다 — 낮은 스트레스에서 화면이 벌써 붉으면 판이 항상
         /// 위급해 보이고, 그러면 진짜 위급한 구간이 안 읽힌다.</summary>

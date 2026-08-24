@@ -162,6 +162,57 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1f, HeartStressPulse.BeatScale(0f, 0f), Tol, "depth 0 = 안 뛴다");
         }
 
+        // ── 상승 펀치 (unit 9 rev 2) ──────────────────────────────────────────
+        //
+        // 바가 «방금 올랐다» 를 말하는 축. 심박(상태)과 달리 **사건**이라 계약이 다르다.
+
+        [Test]
+        public void AdvancePunch_FiresOnRise_AndDecaysWhenQuiet()
+        {
+            // 상승분이 fullRise 면 만점 펀치.
+            float p = HeartStressPulse.AdvancePunch(0f, 4f, 4f, 1f / 60f, 3.2f);
+            Assert.AreEqual(1f, p, Tol, "fullRise 상승은 최대 펀치여야 한다");
+
+            // 조용한 프레임이 이어지면 가라앉는다.
+            float q = HeartStressPulse.AdvancePunch(p, 0f, 4f, 1f / 60f, 3.2f);
+            Assert.Less(q, p, "상승이 없으면 감쇠해야 한다");
+            Assert.GreaterOrEqual(q, 0f);
+        }
+
+        [Test]
+        public void AdvancePunch_BiggerHitAlwaysWins()
+        {
+            // ★ 잔타가 큰 펀치를 **덮어쓰면 안 된다** — 큰 타격 직후 1 짜리 상승이 들어왔다고
+            // 연출이 약해지면 「방금 크게 맞았다」가 지워진다.
+            float big = HeartStressPulse.AdvancePunch(0f, 4f, 4f, 0f, 3.2f);
+            float afterSmall = HeartStressPulse.AdvancePunch(big, 0.4f, 4f, 0f, 3.2f);
+            Assert.AreEqual(big, afterSmall, Tol, "작은 상승이 큰 펀치를 깎았다");
+        }
+
+        [Test]
+        public void AdvancePunch_ClampsAndStaysInUnitRange()
+        {
+            // 상승분이 fullRise 를 넘어도 1 을 안 넘는다.
+            Assert.AreEqual(1f, HeartStressPulse.AdvancePunch(0f, 999f, 4f, 0f, 3.2f), Tol);
+            // 감쇠는 0 아래로 안 내려간다.
+            Assert.AreEqual(0f, HeartStressPulse.AdvancePunch(0.1f, 0f, 4f, 10f, 3.2f), Tol);
+            // fullRise 0 이어도 나눗셈이 터지지 않는다(저작 실수 방어).
+            float v = HeartStressPulse.AdvancePunch(0f, 1f, 0f, 1f / 60f, 3.2f);
+            Assert.GreaterOrEqual(v, 0f);
+            Assert.LessOrEqual(v, 1f);
+        }
+
+        [Test]
+        public void PunchScale_OnlySwellsUpward()
+        {
+            // ★ 아래로 줄어들면 «사라진다» 로 읽힌다 — 펀치는 위로만 부푼다.
+            Assert.AreEqual(1f, HeartStressPulse.PunchScale(0f, 0.35f), Tol, "펀치 0 = 등신대");
+            Assert.AreEqual(1.35f, HeartStressPulse.PunchScale(1f, 0.35f), Tol);
+            Assert.AreEqual(1f, HeartStressPulse.PunchScale(1f, 0f), Tol, "depth 0 = 안 튄다");
+            for (int i = 0; i <= 20; i++)
+                Assert.GreaterOrEqual(HeartStressPulse.PunchScale(i / 20f, 0.35f), 1f);
+        }
+
         [Test]
         public void Intensity_IsBackLoaded()
         {

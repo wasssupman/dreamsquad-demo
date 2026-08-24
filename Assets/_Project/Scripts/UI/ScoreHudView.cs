@@ -222,6 +222,13 @@ namespace Wassup.UI
         [Header("Heart stress readout (마음 위 숫자)")]
         [Tooltip("이 단계부터 숫자를 띄운다. 0 단계(평온)에 떠 있으면 노이즈다 — "
                  + "«나타났다» 는 것 자체가 신호가 되도록 늦게 연다.")]
+        // heart-stress-axis unit 9 — **마음 위 숫자는 꺼져 있다.**
+        // 사용자 지시로 그 자리를 «머리 위 체력바»(BattleBridge.SyncGoalOverheadGauges 공용
+        // 경로)가 대신한다. 지우지 않고 토글로 둔 이유는 지시가 「비활성화」였기 때문이다 —
+        // 인스펙터에서 켜면 바로 다시 뜬다(라벨 생성은 Build 에서 그대로 한다).
+        // ⚠ 켜면 바와 숫자가 **같은 값을 두 번** 말한다(방향만 반대: 바는 남은 체력,
+        //   숫자는 차오른 스트레스). 둘을 같이 켜는 건 판독을 돕지 않는다.
+        [SerializeField] private bool showHeartStressReadout = false;
         [SerializeField, Range(0, 3)] private int stressLabelFromStage = 1;
         [SerializeField] private float stressLabelFontSize = 34f;
         [Tooltip("마음 스크린 앵커에서 위로 띄우는 양(px).")]
@@ -1061,7 +1068,7 @@ namespace Wassup.UI
         private void UpdateStressLabel(float stress01, int stage, Vector2 screenAnchor, bool anchorValid)
         {
             if (_stressLabel == null) return;   // Build 에서 만든다(아래 BuildStressLabel)
-            bool show = anchorValid && stage >= stressLabelFromStage;
+            bool show = showHeartStressReadout && anchorValid && stage >= stressLabelFromStage;
             if (!show) { if (_stressLabel.gameObject.activeSelf) _stressLabel.gameObject.SetActive(false); return; }
 
             var canvasRect = transform as RectTransform;

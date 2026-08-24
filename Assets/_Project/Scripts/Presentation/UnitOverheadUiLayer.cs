@@ -56,7 +56,10 @@ namespace Wassup.Presentation
         public void SetUnit(Entity entity, bool defender, float healthRatio, Vector2 screenAnchor, float tileScreenWidth,
             float shieldRatio = 0f, // shield-guardian-defender unit 2 — 실드합/maxHP (0 = 무실드)
             IReadOnlyList<OverheadStackEntry> stacks = null, // 확장(unit 8) — 스택 이상효과(피로도/열기)
-            OverheadBarSkin? skinOverride = null)
+            OverheadBarSkin? skinOverride = null,
+            // heart-stress-axis unit 9 rev 2 — 바 크기 배율(1 = 등신대). 마음의 «방금 올랐다»
+            // 펀치가 유일한 소비자다. **뷰는 이유를 모른다** — 배율만 받아 적용한다.
+            float barScale = 1f)
         {
             if (!EnsureCanvas() || entity == Entity.Null
                 || float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
@@ -74,12 +77,14 @@ namespace Wassup.Presentation
             _cardsByHost.TryGetValue(entity, out var cards);
             view.Show(local, tileRef,
                 skinOverride ?? (defender ? OverheadBarSkin.Defender : OverheadBarSkin.Enemy),
-                healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons);
+                healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons, barScale);
         }
 
         // three-minute-kill-race unit 2 — `SetStability`/`HideStability` 와 전용 풀은 제거했다.
-        // 마음의 남은 수치를 바·숫자로 그리지 않는다(게이지 형태 금지) — 그 정보는
-        // 프랍의 균열 단계가 갖는다(TilemapMapView.SetGoalCrack).
+        // **다시 만들지 말 것.** heart-stress-axis unit 9 가 마음 바를 되살렸지만 전용 API 로
+        // 되살리지 않았다 — 마음은 위 `SetUnit` 을 본능·유닛과 **똑같이** 부른다
+        // (`DefenderCore` 가 `Factions.AnyDefender` 라 Defender 스킨이 자동으로 붙는다).
+        // 마음 전용 경로가 생기는 순간 「마음 바는 왜 따로 도나」가 시작된다.
 
         public void EndFrame()
         {
