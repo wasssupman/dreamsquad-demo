@@ -49,11 +49,14 @@ namespace Wassup.Battle.Effects
             // 이어야 사거리 짧은 헌터가 dist-0 셀에서 발사 불가로 서버리는 스톨이 구조적으로
             // 불가능하다. 사거리 긴 헌터는 FSM 이 소스 도달 전에 Engaging 으로 먼저 멈춘다.
             // ⚠ **이질 사거리 헌터가 동시에 살아 있으면 R 이 짧은 쪽으로 내려간다.** 보너스
-            // 당기기의 근접 잡몹 10기와 원거리 보스가 겹치는 구간이 정확히 그 조건이고,
-            // 그동안 보스는 「긴 사거리로만 닿던 심층 배치」의 소스를 잃어 hunt-dist 가
-            // MaxValue 가 되고 **사냥을 멈추고 골로 향한다**(스톨이 아니라 전략 퇴행).
-            // 잡몹이 정리되면 R 이 복원돼 보스가 사냥을 재개한다. 해소는 R-별 필드 분리뿐 —
-            // bonus-wave-pull / boss-defender-field README 후속 후보.
+            // 당기기의 근접 잡몹 10기와 원거리 보스가 겹치는 구간이 그 조건이다.
+            // 다만 **실질 영향은 거의 없다** — R 은 «도착점»만 바꾸지 도달성을 바꾸지 않고
+            // (BFS 는 소스가 하나라도 있으면 걸을 수 있는 구역 전체를 채운다), 사거리 긴
+            // 헌터는 위 문단대로 소스에 닿기 전에 FSM 이 먼저 멈춘다.
+            // 보스가 사냥을 포기하는 것은 **소스가 통째로 0** 일 때뿐이고, 그건 모든 방어유닛이
+            // 인접 8칸에 걸을 수 있는 칸을 하나도 안 가진 «벽에 파묻힌» 배치라는 뜻이다
+            // (Duel 은 230칸 중 224칸이 Walk 라 구조적으로 불가능하다).
+            // 벽이 많은 맵에서 실제로 관측되면 그때 R-별 필드 분리 — 두 spec README 후속 후보.
             var hunterQuery = SystemAPI.QueryBuilder().WithAll<Wassup.Battle.Combat.DefenderHunterTag>().Build();
             if (hunterQuery.IsEmpty) return;
             int rangeTiles = int.MaxValue;
