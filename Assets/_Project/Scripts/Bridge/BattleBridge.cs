@@ -7190,6 +7190,28 @@ namespace Wassup.Bridge
             return false;
         }
 
+        // first-run-tutorial low-health cue — UI/tutorial code stays outside ECS.
+        // Queue ordinary damage through the Units-owned channel; PendingDeployment
+        // keeps it buffered until the defender becomes active.
+        public bool TryQueueDeployedDefenderMaxHealthDamage(
+            DefenderUnitData unit, float damageRatio)
+        {
+            if (!HasLiveEntityManager() || !TryGetDeployedEntity(unit, out var entity)) return false;
+            if (!_em.Exists(entity)) return false;
+            if (!_em.HasComponent<Health>(entity) || !_em.HasBuffer<IncomingDamage>(entity)) return false;
+
+            var health = _em.GetComponentData<Health>(entity);
+            float amount = Health.ComputeMaxHealthDamage(health.max, damageRatio);
+            if (amount <= 0f) return false;
+
+            _em.GetBuffer<IncomingDamage>(entity).Add(new IncomingDamage
+            {
+                amount = amount,
+                source = Entity.Null,
+            });
+            return true;
+        }
+
         // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
         // 공간 술어로 밝힐 셀을 수집 → TilemapMapView. 비용/풀은 안 본다(계약: 하이라이트=공간, hover=전체 판정).
         private bool _placeableHlShown;

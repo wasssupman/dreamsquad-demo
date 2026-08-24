@@ -20,6 +20,7 @@ MonoBehaviour:
   approachGoalTiles: 5
   skillHintSeconds: 2.5
   onPlaceWatchSeconds: 2
+  primaryPostPlacementDamageRatio: 0.9
   retireWatchSeconds: 1.7
   retirePanelGraceSeconds: 2
   jarHintSeconds: 2

@@ -26,7 +26,7 @@ guidance.ShowMessage(IntroText, showSkip: false)
 guidance.FocusUi(startButtonRect)
 ```
 
-`IntroText = "누가 더 많은 악몽을 제거 하는지 시작해 보시죠"` (원문 그대로).
+`IntroText = "누가 더 많은 악몽을 제거 하는지\n시작해 보시죠"`.
 
 **호출 지점이 계약의 일부다.** 두 곳에서 부른다 — **`Start`**(프로필 로드 이후)와
 `ApplyAuthGate`(로그인 직후). 로그인 전에는 띄우지 않는다. 판정은 unit 0 의

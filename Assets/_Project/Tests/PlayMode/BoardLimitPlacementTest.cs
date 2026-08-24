@@ -109,9 +109,49 @@ namespace Wassup.Tests.PlayMode
             }
         }
 
-        // 카탈로그 에셋의 런타임 사본 + 상한 저작. 사본이라 디스크에 안 남는다.
+        [UnityTest]
+        public IEnumerator TutorialLowHealthCue_QueuesDamageThroughBridge()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            var unit = MakeUnit("malphite", 1);
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(BeginFirstValid(bridge, unit, out var cell, out var entity),
+                "말파이트 대기 배치");
+            Assert.IsTrue(bridge.TryQueueDeployedDefenderMaxHealthDamage(unit, 0.9f),
+                "튜토리얼은 ECS에 직접 접근하지 않고 Bridge를 통해 피해를 요청한다");
+
+            bridge.StartBattle();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            for (int i = 0; i < 2; i++) yield return null;
+            var pendingHealth = em.GetComponentData<Health>(entity);
+            Assert.That(Health.ComputeRatio(pendingHealth.value, pendingHealth.max),
+                Is.EqualTo(1f).Within(1e-5f),
+                "PendingDeployment 동안에는 요청이 버퍼에 대기해야 한다");
+
+            bridge.ActivateDeployedDefender(cell, entity);
+            for (int i = 0; i < 3; i++) yield return null;
+
+            var health = em.GetComponentData<Health>(entity);
+            Assert.LessOrEqual(Health.ComputeRatio(health.value, health.max), 0.11f,
+                "철수 안내 전에 낮은 체력바가 보여야 한다");
+            Assert.Greater(health.value, 0f, "시각 안내용 피해가 유닛을 즉시 죽이면 안 된다");
+        }
+
         private static DefenderUnitData MakeUnit(string id, int maxOnBoard)
         {
+            // 카탈로그 에셋의 런타임 사본 + 상한 저작. 사본이라 디스크에 안 남는다.
             var all = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
             Assert.Greater(all.Length, 0, "DefenderCatalog present");
             var src = all[0].ById(id);
@@ -131,6 +171,21 @@ namespace Wassup.Tests.PlayMode
                         return bridge.PlaceDefenderAs(x, y, u);
                     }
             cell = default;
+            return false;
+        }
+
+        private static bool BeginFirstValid(BattleBridge bridge, DefenderUnitData u,
+            out Vector2Int cell, out Entity entity)
+        {
+            for (int x = -24; x < 48; x++)
+                for (int y = -24; y < 48; y++)
+                    if (bridge.CanPlaceDefenderAt(x, y, u, out _))
+                    {
+                        cell = new Vector2Int(x, y);
+                        return bridge.TryBeginDefenderDeployment(x, y, u, out entity);
+                    }
+            cell = default;
+            entity = Entity.Null;
             return false;
         }
 

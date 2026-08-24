@@ -42,6 +42,9 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("배치 후 정지를 풀어 배치 스킬이 적을 때리는 것을 보여주는 시간(초).")]
         public float onPlaceWatchSeconds = 2f;
+        [Range(0.01f, 0.9f)]
+        [Tooltip("첫 유닛 배치 직후 최대 체력 기준으로 가할 피해 비율. 낮은 체력바로 철수 이유를 보여준다.")]
+        public float primaryPostPlacementDamageRatio = 0.9f;
 
         [Header("퇴근 (B3b)")]
         [Min(0f)]

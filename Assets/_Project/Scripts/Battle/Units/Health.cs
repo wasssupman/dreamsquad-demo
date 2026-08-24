@@ -24,5 +24,11 @@ namespace Wassup.Battle.Units
         // and BattleBridge tint poll. Pure + Burst-safe.
         public static float ComputeRatio(float value, float max)
             => max > 0f ? math.clamp(value / max, 0f, 1f) : 0f;
+
+        // first-run-tutorial low-health cue — converts a max-HP damage ratio into
+        // an IncomingDamage amount. Kept pure so tutorial orchestration does not
+        // duplicate health math or reach into ECS-owned Health state directly.
+        public static float ComputeMaxHealthDamage(float max, float damageRatio)
+            => math.max(0f, max) * math.clamp(damageRatio, 0f, 1f);
     }
 }

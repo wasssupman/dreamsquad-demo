@@ -14,7 +14,7 @@ namespace Wassup.UI
     // 구멍 밖 탭은 무시된다(overlay.Tapped 를 구독하지 않는 이유 — 탭으로 넘어가는 스텝이 아니다).
     public sealed class LobbyTutorialStep : MonoBehaviour
     {
-        private const string IntroText = "누가 더 많은 악몽을 제거 하는지 시작해 보시죠";
+        private const string IntroText = "누가 더 많은 악몽을 제거 하는지\n시작해 보시죠";
 
         // unit 10 — 온보딩 판을 마치고 돌아온 로비의 배웅. 구조는 인트로와 **완전히 같다**
         // (딤 + START 구멍 + 문구 하나) — 갈리는 것은 문구와 기록 필드뿐이라 스텝을 새로

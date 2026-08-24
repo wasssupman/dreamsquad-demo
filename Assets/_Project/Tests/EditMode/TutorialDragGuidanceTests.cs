@@ -100,7 +100,7 @@ namespace Wassup.Tests.EditMode
         private const BindingFlags PrivateInstance = BindingFlags.Instance | BindingFlags.NonPublic;
 
         [Test]
-        public void B5_FocusesTimerAfterRemovingInputBlock()
+        public void B5_FocusesTimerAndCompletesAfterRemovingInputBlock()
         {
             var controllerGo = new GameObject("TutorialControllerTest");
             var guidanceGo = new GameObject("TutorialGuidanceTest");
@@ -140,12 +140,13 @@ namespace Wassup.Tests.EditMode
                     "B5는 안내를 띄우기 전에 입력 차단막을 내려야 한다.");
                 Assert.AreSame(hud.TimerFocusRect, Get<RectTransform>(guidance, "_uiTarget"),
                     "B5 포커스 대상은 실제 시간 배지여야 한다.");
+                Assert.IsTrue(Get<bool>(controller, "_b5Completed"),
+                    "B5는 비차단 안내를 정상 노출한 순간 완료돼야 경기 종료가 표시 대기와 경합하지 않는다.");
 
                 var wait = routine.Current as IEnumerator;
                 Assert.IsNotNull(wait);
                 while (wait.MoveNext()) { }
                 Assert.IsFalse(routine.MoveNext());
-                Assert.IsTrue(Get<bool>(controller, "_b5Completed"));
                 Assert.IsNull(Get<RectTransform>(guidance, "_uiTarget"),
                     "안내가 끝나면 시간 UI 포커스를 정리해야 한다.");
             }

@@ -26,41 +26,41 @@ namespace Wassup.UI.Tutorial
         // 공통
         private const string PlaceableText = "배치가능영역";
         private const string BlockedText = "배치 불가 영역";
-        private const string GoalText = "게임목표: 최대한 많은 악몽 처치";
+        private const string GoalText = "게임목표: 제한시간 동안\n최대한 많은 악몽 처치!";
         private const string GoalIntroText = "스폰된 악몽은 목표지점을 향합니다.";
-        private const string DefendIntroText = "유닛의 배치와 드림캐쳐의 조합으로 악몽을 막아보세요";
+        private const string DefendIntroText = "유닛의 배치와 드림캐쳐의 조합으로\n악몽을 막아보세요";
         private const string GoalMarkerLabel = "목표지점";
         private const string EnemyApproachText = "악몽이 배치 영역 안으로 들어오면!";
 
         // B3a — 말파이트(주변 2타일 3초 광역 스턴)
         private const string PickText = "유닛을 터치 해보세요";
-        private const string PrimarySkillText = "말파이트는 주변 악몽을 3초간 기절시킵니다!";
-        private const string PrimaryPlaceText = "악몽 무리 위에 말파이트를 배치 해보세요!";
-        private const string PrimaryDoneText = "배치 스킬은 놓는 즉시 한 번 터집니다";
+        private const string PrimarySkillText = "말파이트는 주변 악몽을\n3초간 기절시킵니다!";
+        private const string PrimaryPlaceText = "악몽 무리 위에 말파이트를\n배치 해보세요!";
+        private const string PrimaryDoneText = "말파이트 체력이 낮아졌습니다.\n철수시켜 보세요";
 
         // B3b — 퇴근. ⚠ 문구의 «철수» 는 **버튼 라벨과 같은 말이어야 한다**
         // (`DcInspectController.RetireLabel`). 기능 이름은 퇴근(defender-clock-out)이지만
         // 화면에 뜨는 글자가 정본이다 — 안내가 «퇴근», 버튼이 «철수» 면 무엇을 누르라는지가
         // 어긋난다. 라벨을 바꾸면 이 줄도 같이 바꾼다.
-        private const string RetireHintText = "지친 유닛은 철수시켜 자리를 비울 수 있습니다";
+        private const string RetireHintText = "체력이 적거나 재배치가 필요한 경우,\n철수시켜 전략적으로 활용할 수 있습니다.";
 
         // B3c — 샷건맨(가까운 적 쪽 부채꼴 산탄 + 밀어냄)
-        private const string SecondaryPickFormat = "이번엔 {0} 유닛을 터치 해보세요";
+        private const string SecondaryPickFormat = "이번엔 {0} 유닛을\n터치 해보세요";
         private const string SecondarySkillText = "샷건맨은 가까운 악몽들을 밀어냅니다!";
         private const string SecondaryPlaceText = "빈 자리에 샷건맨을 배치 해보세요!";
-        private const string OnPlaceText = "강력한 배치스킬들을 활용하여 전황을 유리하게 이끌어 보세요";
+        private const string OnPlaceText = "강력한 배치스킬들을 활용하여\n전황을 유리하게 이끌어 보세요";
 
         // B4 — 드림캐쳐 부착
         private const string JarHintText = "충분한 양의 에너지를 모았네요!";
-        private const string ReselectFormat = "다시 {0} 유닛을 선택 해보세요";
+        private const string ReselectFormat = "다시 {0} 유닛을\n선택 해보세요";
         private const string SelectHostFormat = "{0} 유닛을 선택 해보세요";
-        private const string CardText = "하단 드림캐쳐 4개중 맘에 드는것을 터치 해보세요";
-        private const string CardFallbackText = "하단 드림캐쳐 중 맘에 드는것을 터치 해보세요";
-        private const string AttachDoneText = "드림캐쳐를 유닛에게 부착하여 더 강해질 가능성을 열어보세요!";
+        private const string CardText = "하단 드림캐쳐 4개중\n맘에 드는것을 터치 해보세요";
+        private const string CardFallbackText = "하단 드림캐쳐 중\n맘에 드는것을 터치 해보세요";
+        private const string AttachDoneText = "드림캐쳐를 유닛에게 부착하여\n더 강해질 가능성을 열어보세요!";
 
         // B5 — 남은 시간 자유 플레이. 안내와 포커스만 남기고 입력·전투는 막지 않는다.
         private const string SurvivalText =
-            "유닛 배치, 드림캐쳐등 기능을 활용하여 튜토리얼 1분을 버텨보세요!";
+            "유닛 배치, 드림캐쳐등 기능을\n활용하여 튜토리얼 1분을 버텨보세요!";
 
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private FirstRunTutorialConfig config;
@@ -167,8 +167,8 @@ namespace Wassup.UI.Tutorial
                 // (계약 11) 대기 중인 코루틴은 **스스로 깨어나지 않는다** — 끊어주지 않으면
                 // 딤과 0배속이 결과 화면 위에 그대로 남는다.
                 //
-                // Close 가 완료 기록까지 판정한다: 직전에 B4 를 끝냈으면 기록되고, 대기 중에
-                // 끝났으면 기록되지 않아 다음 판에 처음부터 다시 뜬다.
+                // Close 가 완료 기록까지 판정한다. B5 안내까지 정상적으로 열렸으면 표시 대기
+                // 중에 판이 끝나도 기록되고, 그 전에 끝났으면 다음 판에 처음부터 다시 뜬다.
                 StopAllCoroutines();
                 Close();
             }
@@ -268,6 +268,7 @@ namespace Wassup.UI.Tutorial
 
             yield return RunPickAndPlace(
                 primaryUnit, waitForApproach: true,
+                postPlacementDamageRatio: config.primaryPostPlacementDamageRatio,
                 PickText, PrimarySkillText, PrimaryPlaceText, PrimaryDoneText,
                 ok => a = ok);
             if (!a) yield break;
@@ -279,6 +280,7 @@ namespace Wassup.UI.Tutorial
             // `AnyEnemyWithinTilesOfGoal` 이 이미 참이라 문구가 0프레임 노출된다.
             yield return RunPickAndPlace(
                 secondaryUnit, waitForApproach: false,
+                postPlacementDamageRatio: null,
                 SecondaryUnitName(SecondaryPickFormat), SecondarySkillText, SecondaryPlaceText, OnPlaceText,
                 ok => c = ok);
             if (!c) yield break;
@@ -292,7 +294,7 @@ namespace Wassup.UI.Tutorial
         // 선택 → (접근 대기) → 무기 소개 → 배치 → 배치 스킬 관람 → 마무리 문구.
         // 유닛과 문구를 인자로 받아 **두 번 돈다**(말파이트 · 샷건맨).
         private IEnumerator RunPickAndPlace(
-            DefenderUnitData unit, bool waitForApproach,
+            DefenderUnitData unit, bool waitForApproach, float? postPlacementDamageRatio,
             string pickText, string skillHintText, string placeText, string doneText,
             System.Action<bool> report)
         {
@@ -420,6 +422,23 @@ namespace Wassup.UI.Tutorial
                 drag.PlacementCommitted -= OnPlaced;
             }
             _awaitingUnit = null;
+
+            // 첫 유닛의 체력바를 낮춰 다음 철수 안내의 이유를 화면에 만든다. null 은 이 효과를
+            // 쓰지 않는 두 번째 배치, 값이 있으면 반드시 성공해야 하는 첫 배치다. 실패하고도
+            // 아래 저체력 문구를 띄우면 화면과 안내가 갈리므로 해당 블록을 미완료로 남긴다.
+            // 배치 시점의 DefenderPlaced 이벤트는 Health 부착보다 빨라 여기서, 기존 damage
+            // buffer를 통해 요청한다.
+            if (postPlacementDamageRatio.HasValue
+                && (postPlacementDamageRatio.Value <= 0f
+                    || bridge == null
+                    || !bridge.TryQueueDeployedDefenderMaxHealthDamage(
+                        unit, postPlacementDamageRatio.Value)))
+            {
+                Debug.LogWarning(
+                    $"[FirstRunTutorial] '{unit.displayName}'의 배치 후 체력 감소를 요청하지 못했다.", this);
+                report(false);
+                yield break;
+            }
 
             // 3.3 배치 스킬 관람 — **정지를 푼다**(차단막은 유지). 멈춘 채 문구만 띄우면
             // "전황을 유리하게"가 말뿐이 된다. 발동 자체는 기존 경로가 한다.
@@ -672,10 +691,14 @@ namespace Wassup.UI.Tutorial
 
             guidance.ShowMessage(SurvivalText, false);
             guidance.FocusUi(timerRect);
+
+            // B5는 행동을 요구하지 않는 전환 안내다. TIME 배지와 문구를 정상적으로 연 순간
+            // 계약을 다 이행했으므로 여기서 완료를 확정한다. 표시 대기 중 Result/Tally가 오면
+            // Close가 정리하되, 이미 본 안내 때문에 전체 온보딩을 다시 시키지는 않는다.
+            _b5Completed = true;
             yield return WaitUnscaled(config.survivalHintSeconds);
             guidance.ClearFocus();
             guidance.Hide();
-            _b5Completed = true;
         }
 
         // ── 닫기 ────────────────────────────────────────────────────────────

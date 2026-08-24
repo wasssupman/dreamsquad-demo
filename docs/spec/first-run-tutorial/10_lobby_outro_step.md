@@ -31,7 +31,7 @@ public bool firstRunLobbyOutroDone;    // 복귀 로비 안내까지 봤다 (신
 
 | 조건 | 문구 |
 |---|---|
-| `!firstRunTutorialDone` | `"누가 더 많은 악몽을 제거 하는지 시작해 보시죠"` (기존) |
+| `!firstRunTutorialDone` | `"누가 더 많은 악몽을 제거 하는지\n시작해 보시죠"` (기존) |
 | `firstRunTutorialDone && !firstRunLobbyOutroDone` | `"이제 진짜 승부를 시작해 보시죠"` |
 | 둘 다 참 | 뜨지 않는다 |
 
