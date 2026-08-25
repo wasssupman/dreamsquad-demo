@@ -173,7 +173,33 @@ namespace Wassup.Battle.Combat
 
                     if (fired)
                     {
-                        if (slot.payload == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura)
+                        if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        {
+                            if (hasSkillQ && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                                {
+                                    Caster = entity,
+                                    SkillId = slot.skillId,
+                                    SlotIndex = si,
+                                    FiredPosition = SystemAPI.GetComponent<LocalTransform>(entity).Position,
+                                    Target = Entity.Null,
+                                    Magnitude = slot.magnitude,
+                                    Duration = slot.duration,
+                                    TileRange = slot.tileRange,
+                                    Period = slot.period,
+                                    DataIndex = slot.projectileDataIndex,
+                                    Selector = (int)slot.ccKind,
+                                    Speed = slot.speed,
+                                    HitThreshold = slot.hitThreshold,
+                                    SlamDamage = slot.slamDamage,
+                                    SlamTileRange = slot.slamTileRange,
+                                    StackId = slot.statBuffStackId,
+                                    VisualScale = slot.visualScale,
+                                });
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura)
                         {
                             // nightmare-whip-aura unit 1 — pulse: same-faction
                             // units within Chebyshev tileRange of the host get a
@@ -249,32 +275,6 @@ namespace Wassup.Battle.Combat
                         // arm 을 돌지 않고 값 스냅샷을 실어 보내고, seam 의 디스패처가
                         // concrete 를 부른다. skillId 0 이면 아래 legacy arm 이 그대로 돈다 —
                         // 그 한 줄이 이전 중 매 커밋에서 게임이 도는 이유다.
-                        else if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
-                        {
-                            if (hasSkillQ && SystemAPI.HasComponent<LocalTransform>(entity))
-                            {
-                                skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
-                                {
-                                    Caster = entity,
-                                    SkillId = slot.skillId,
-                                    SlotIndex = si,
-                                    FiredPosition = SystemAPI.GetComponent<LocalTransform>(entity).Position,
-                                    Target = Entity.Null,
-                                    Magnitude = slot.magnitude,
-                                    Duration = slot.duration,
-                                    TileRange = slot.tileRange,
-                                    Period = slot.period,
-                                    DataIndex = slot.projectileDataIndex,
-                                    Selector = (int)slot.ccKind,
-                                    Speed = slot.speed,
-                                    HitThreshold = slot.hitThreshold,
-                                    SlamDamage = slot.slamDamage,
-                                    SlamTileRange = slot.slamTileRange,
-                                    StackId = slot.statBuffStackId,
-                                    VisualScale = slot.visualScale,
-                                });
-                            }
-                        }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.AreaSleep)
                         {
                             // boss-mamemo unit 1 — 자장가. host 의 **반대 진영** 유닛 중 가까운

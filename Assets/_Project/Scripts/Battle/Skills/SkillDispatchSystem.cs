@@ -42,6 +42,17 @@ namespace Wassup.Battle.Skills
             _context = context;
         }
 
+        // ⚠ **이전 여부를 묻는 계측.**
+        //
+        // 이 카운터가 없으면 「그물이 초록」이 「이전이 됐다」를 뜻하지 않는다.
+        // 실제로 한 번 당했다: 라우팅 분기를 payload 분기들 **뒤**에 두는 바람에
+        // 이전한 스킬 셋이 여전히 legacy arm 을 탔는데, legacy 가 그대로 잘 돌아서
+        // PlayMode 그물 전체가 초록이었다. 조용한 실패의 교과서적 사례다.
+        //
+        // 테스트는 이 값으로 「concrete 가 진짜 불렸나」를 단언한다.
+        public static int ExecutedCount { get; private set; }
+        public static void ResetExecutedCount() => ExecutedCount = 0;
+
         public static void Uninstall()
         {
             _registry = null;
@@ -146,6 +157,7 @@ namespace Wassup.Battle.Skills
                     evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale);
 
                 skill.Execute(caster, in target, in p, _context);
+                ExecutedCount++;
             }
 
             ecb.Playback(EntityManager);

@@ -144,7 +144,35 @@ namespace Wassup.Battle.Combat
                     slot.nextBoundaryIndex = k;
                     if (fired)
                     {
-                        if (slot.payload == Wassup.Data.DcPayloadKind.SelfStatBuff)
+                        if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        {
+                            // skill-layer-migration — 이전된 스킬은 여기서 갈린다.
+                            // 값 스냅샷을 실어 보내고 seam 의 디스패처가 concrete 를 부른다.
+                            if (hasSkillQ)
+                            {
+                                skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                                {
+                                    Caster = entity,
+                                    SkillId = slot.skillId,
+                                    SlotIndex = si,
+                                    FiredPosition = transform.ValueRO.Position,
+                                    Target = Entity.Null,
+                                    Magnitude = slot.magnitude,
+                                    Duration = slot.duration,
+                                    TileRange = slot.tileRange,
+                                    Period = slot.period,
+                                    DataIndex = slot.projectileDataIndex,
+                                    Selector = (int)slot.ccKind,
+                                    Speed = slot.speed,
+                                    HitThreshold = slot.hitThreshold,
+                                    SlamDamage = slot.slamDamage,
+                                    SlamTileRange = slot.slamTileRange,
+                                    StackId = slot.statBuffStackId,
+                                    VisualScale = slot.visualScale,
+                                });
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfStatBuff)
                         {
                             // last_stand — self 에 StatModifier(배율=magnitude, TTL=duration).
                             // duration<=0 = 영구(float.PositiveInfinity, 기존 무한 컨벤션).
@@ -274,34 +302,6 @@ namespace Wassup.Battle.Combat
                                 // 링 6칸 안에 walkable·연결 셀 없음. Burst 라 문자열 리터럴만 쓴다.
                                 UnityEngine.Debug.LogWarning(
                                     "[UltimateLeap] 착지점 해석 실패로 발동 skip — 상대 진영 앵커가 없거나 밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
-                            }
-                        }
-                        else if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
-                        {
-                            // skill-layer-migration — 이전된 스킬은 여기서 갈린다.
-                            // 값 스냅샷을 실어 보내고 seam 의 디스패처가 concrete 를 부른다.
-                            if (hasSkillQ)
-                            {
-                                skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
-                                {
-                                    Caster = entity,
-                                    SkillId = slot.skillId,
-                                    SlotIndex = si,
-                                    FiredPosition = transform.ValueRO.Position,
-                                    Target = Entity.Null,
-                                    Magnitude = slot.magnitude,
-                                    Duration = slot.duration,
-                                    TileRange = slot.tileRange,
-                                    Period = slot.period,
-                                    DataIndex = slot.projectileDataIndex,
-                                    Selector = (int)slot.ccKind,
-                                    Speed = slot.speed,
-                                    HitThreshold = slot.hitThreshold,
-                                    SlamDamage = slot.slamDamage,
-                                    SlamTileRange = slot.slamTileRange,
-                                    StackId = slot.statBuffStackId,
-                                    VisualScale = slot.visualScale,
-                                });
                             }
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
