@@ -40,6 +40,9 @@ namespace Wassup.Tests.EditMode
         [SetUp]
         public void SetUp()
         {
+            // ⚠ **SetUp 에서도 푼다.** TearDown 만으로는 앞 «클래스» 의 잔여 카운트가
+            // 남아 아래 `ExecutedCountOf >= 1` 이 vacuous 하게 통과한다(리뷰 L5).
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             _nextSimId = 0;
             _world = new World("ProjectileEmitterIntegrationTests");
             _em = _world.EntityManager;

@@ -9447,6 +9447,29 @@ namespace Wassup.Bridge
             }
         }
 
+        // 카드 경로가 스킬 레이어로 여는 payload. **arm 이 은퇴한 것만** 들어온다.
+        //
+        // ⚠ 유닛 능력 bake 는 위 `SkillIdForPayload` 를 그대로 부르는데 카드 bake 는
+        // 이걸 부른다. 두 bake 가 다른 이유가 여기 이름으로 서 있어야 한다 —
+        // 카드를 전면 개방하면 이미 이전된 payload 를 저작한 **라이브 카드 8장**
+        // (`SelfTileAoe` 7 · `AreaSleep` 1)이 자기 그물 없이 한꺼번에 새 경로로 넘어간다.
+        //
+        // ⚠ **unit 8(철거)의 전제다.** arm 을 하나 더 걷어낼 때 그 payload 를 여기
+        // 추가하지 않으면 그 payload 를 저작한 카드가 조용히 죽는다 — 컴파일러도
+        // 테스트도 그 연결을 안 잡는다. arm 을 지우는 손이 이 목록도 늘려야 한다.
+        private static int SkillIdForCardPayload(Wassup.Data.DcPayloadKind kind)
+        {
+            switch (kind)
+            {
+                // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해
+                // Burst arm 이 부를 수 없게 됐다).
+                case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
+                    return SkillIdForPayload(kind);
+                default:
+                    return Wassup.Skills.SkillRegistry.LegacyArmId;
+            }
+        }
+
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
         {
             var mechanics = unitType.nightmareMechanics;

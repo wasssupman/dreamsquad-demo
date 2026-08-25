@@ -15,8 +15,11 @@ namespace Wassup.Skills.Concrete
         public const int Id = 8;
         public int SkillId => Id;
 
+        // ⚠ **버퍼는 로컬이다**(토대 계약 5 — concrete 는 필드를 갖지 않는다).
+        // 도발은 「최근접 하나」가 아니라 **집합**이라 잘림이 곧 결과 차이다 —
+        // legacy arm 은 무상한이었다. 라이브 저작(반경 2 = 25셀)에선 도달 불가지만
+        // 반경이 커지면 이 상한이 조용히 대상을 줄인다(README 잔여 리스크 등재).
         private const int MaxTargets = 64;
-        private readonly SkillEntityId[] _buf = new SkillEntityId[MaxTargets];
 
         public void Execute(CasterRef caster, in SkillTarget target, in SkillParams p, ISkillContext ctx)
         {
@@ -30,12 +33,13 @@ namespace Wassup.Skills.Concrete
             if (!ctx.Has(caster.Unit, UnitPredicate.HasPosition)) return;
 
             var center = ctx.Position(caster.Unit);
+            var buf = new SkillEntityId[MaxTargets];
             int n = ctx.Opponents(
                 caster, center, a.Radius,
                 CandidateFilter.ExcludeDead
                 | CandidateFilter.ExcludeInUltimateLeap
                 | CandidateFilter.MatchTraversalLayers,
-                RangeMetric.Chebyshev, _buf);
+                RangeMetric.Chebyshev, buf);
 
             for (int i = 0; i < n; i++)
             {
@@ -43,7 +47,7 @@ namespace Wassup.Skills.Concrete
                 {
                     Kind = SimIntentKind.Taunt,
                     Source = caster.Unit,   // 가디언 — 어그로가 붙는 대상
-                    Target = _buf[i],
+                    Target = buf[i],
                     Duration = a.Duration,
                 });
             }

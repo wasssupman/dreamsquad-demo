@@ -35,6 +35,8 @@ namespace Wassup.Tests.EditMode
             public bool HasFacing;
             // 가디언 표식 — 도발 캐스터 자격.
             public bool HasAggroCapacity;
+            // `RequireDamageable` 축. 기본 true — 대부분의 후보는 때릴 수 있다.
+            public bool CanReceiveDamage = true;
             public float2 Facing;
             // 실드 축 — 기본 true 다. 실제 유닛은 대부분 버퍼를 갖고, false 가 기본이면
             // 테스트가 조용히 vacuous 해진다(모든 대상이 건너뛰어진다).
@@ -104,7 +106,14 @@ namespace Wassup.Tests.EditMode
                 case UnitPredicate.InUltimateLeap: return u.InUltimateLeap;
                 case UnitPredicate.HasPosition: return u.HasPosition;
                 case UnitPredicate.HasAggroCapacity: return u.HasAggroCapacity;
-                default: return false;
+                // ⚠ **미구현은 어댑터와 같은 모양으로 던진다**(리뷰 M2).
+                // `false` 로 조용히 답하면 페이크가 어댑터보다 **관대**해져서,
+                // 어댑터가 `NotSupportedException` 을 던지는 술어를 쓰는 concrete 가
+                // EditMode 에선 초록인데 라이브에선 그 발동만 통째로 버려진다
+                // (디스패처가 예외를 삼키고 로그만 남긴다). 페이크가 관대한 것이
+                // 이 레이어에서 가장 비싼 실패 유형이다.
+                default: throw new System.NotSupportedException(
+                    $"TestSkillContext: Has({pred}) 미구현 — 어댑터도 함께 채워라");
             }
         }
 
@@ -133,6 +142,8 @@ namespace Wassup.Tests.EditMode
                 if ((filter & CandidateFilter.ExcludeSelf) != 0 && id == caster.Unit.Value) continue;
                 if ((filter & CandidateFilter.ExcludeDead) != 0 && u.Dead) continue;
                 if ((filter & CandidateFilter.ExcludePendingDeployment) != 0 && u.Pending) continue;
+                // 어댑터가 거르는 축은 페이크도 거른다(리뷰 M2 — 양방향 대칭).
+                if ((filter & CandidateFilter.RequireDamageable) != 0 && !u.CanReceiveDamage) continue;
                 if ((filter & CandidateFilter.ExcludeInUltimateLeap) != 0 && u.InUltimateLeap) continue;
                 // ⚠ 어댑터가 거르는 것을 이 페이크도 거른다. 한쪽만 걸면 도메인 테스트가
                 // 초록인데 라이브에서 «못 때리는 층» 이 총구를 가져간다.

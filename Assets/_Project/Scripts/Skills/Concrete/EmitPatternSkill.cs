@@ -25,12 +25,16 @@ namespace Wassup.Skills.Concrete
         public const int Id = 7;
         public int SkillId => Id;
 
-        // 후보 버퍼는 인스턴스가 재사용한다(스킬은 월드당 하나). 상한을 넘는 후보는
-        // 버린다 — 어차피 이 규칙은 **최근접 하나**만 고르고, 상한 밖까지 봐야 답이
-        // 바뀌는 상황은 「64기가 전부 사거리 안」이라 그 판에선 무엇을 골라도 코앞이다.
+        // ⚠ **버퍼는 로컬이다.** concrete 는 필드를 갖지 않는다(토대 계약 5) —
+        // 레지스트리가 static 이라 인스턴스가 월드 사이에도 공유되고, 필드를 들면
+        // 그 공유가 곧 상태 공유가 된다. 형제 다섯도 전부 로컬로 잡는다.
+        //
+        // 상한을 넘는 후보는 버린다 — 이 규칙은 **최근접 하나**만 고르므로, 잘림이
+        // 답을 바꾸려면 「상한 밖에 더 가까운 후보」가 있어야 하는데 풀 순서가
+        // 거리순이 아니라 그럴 수 있다. 오늘 라이브 저작(사거리 2~4)에선 반경 안
+        // 후보가 64를 넘지 못해 도달 불가다 — 장거리 조준 저작이 생기면 이 상한을
+        // 계약으로 다시 정해야 한다(README 잔여 리스크 등재).
         private const int MaxCandidates = 64;
-        private readonly SkillEntityId[] _cand = new SkillEntityId[MaxCandidates];
-        private readonly float2[] _candXZ = new float2[MaxCandidates];
 
         public void Execute(CasterRef caster, in SkillTarget target, in SkillParams p, ISkillContext ctx)
         {
@@ -65,8 +69,10 @@ namespace Wassup.Skills.Concrete
 
             // 조준이 없을 때만 후보를 본다 — 조준이 방향을 이미 정했으면 풀을 만들 이유가 없다.
             int n = 0;
+            var candXZ = new float2[MaxCandidates];
             if (!hasAim)
             {
+                var cand = new SkillEntityId[MaxCandidates];
                 // 진영은 caster 에서 파생된다 — 「적」을 이름으로 부르지 않는 이유다.
                 // 진영 미상이면 포트가 0을 돌려주고, 아래 `TryResolve` 가 false 를 내
                 // 자연히 불발된다.
@@ -79,16 +85,16 @@ namespace Wassup.Skills.Concrete
                     CandidateFilter.ExcludeDead
                     | CandidateFilter.ExcludeInUltimateLeap
                     | CandidateFilter.MatchTraversalLayers,
-                    RangeMetric.Euclidean, _cand);
+                    RangeMetric.Euclidean, cand);
 
                 for (int i = 0; i < found && n < MaxCandidates; i++)
                 {
-                    var q = ctx.Position(_cand[i]);
-                    _candXZ[n++] = new float2(q.x, q.z);
+                    var q = ctx.Position(cand[i]);
+                    candXZ[n++] = new float2(q.x, q.z);
                 }
             }
 
-            if (!SkillAim.TryResolve(hostXZ, hasAim, aim, _candXZ, n, out float2 dir, out _))
+            if (!SkillAim.TryResolve(hostXZ, hasAim, aim, candXZ, n, out float2 dir, out _))
                 return;   // 조준도 합법 후보도 없다 — 사건을 없던 것으로 한다
 
             ctx.Emit(new SimIntent

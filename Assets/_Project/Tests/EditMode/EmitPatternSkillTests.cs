@@ -148,6 +148,29 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void SameInstance_FiredTwice_DoesNotLeakThePreviousCandidates()
+        {
+            // ⚠ 레지스트리가 static 이라 **한 인스턴스가 판 내내 재사용된다.**
+            // 두 번째 발사에서 후보가 줄었는데 첫 발사의 잔재가 남아 총구를 가져가면,
+            // 「없어진 적을 계속 겨눈다」가 된다(리뷰 M3 가 지목한 재현 조건).
+            var skill = new EmitPatternSkill();
+
+            var ctx = Ctx(PatternAimNeed.NeedsAim, out var caster);
+            ctx.Add(2, new float3(1f, 0f, 0f), Faction.EnemyUnit);   // 코앞 +X
+            skill.Execute(caster, default, P(PatternIdx, 6), ctx);
+            Assert.AreEqual(1f, ctx.SimIntents[0].DirectionXZ.x, 1e-4f, "1차: +X");
+
+            // 2차 — 그 적이 사라지고 먼 +Z 하나만 남았다.
+            var ctx2 = Ctx(PatternAimNeed.NeedsAim, out var caster2);
+            ctx2.Add(3, new float3(0f, 0f, 4f), Faction.EnemyUnit);
+            skill.Execute(caster2, default, P(PatternIdx, 6), ctx2);
+
+            Assert.AreEqual(1, ctx2.SimIntents.Count);
+            Assert.AreEqual(1f, ctx2.SimIntents[0].DirectionXZ.y, 1e-4f,
+                "2차가 +Z 를 겨눠야 한다 — +X 면 1차의 후보가 샌 것이다");
+        }
+
+        [Test]
         public void DegenerateFacing_FallsBackToNearest()
         {
             // 조준 컴포넌트는 있는데 값이 0 인 경우 — 최근접으로 흐른다.

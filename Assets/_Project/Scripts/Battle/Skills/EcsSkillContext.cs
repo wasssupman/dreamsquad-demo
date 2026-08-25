@@ -39,6 +39,9 @@ namespace Wassup.Battle.Skills
 
         // 후보 풀 — 호스트가 프레임당 한 번 지어 공유한다(fire 당 재구축 금지, unit 0 계약).
         private NativeArray<Entity> _enemyPool, _defPool;
+        // `SimEntityId` → Entity. 풀과 함께 프레임당 1회 지어진다(BindPools).
+        private readonly System.Collections.Generic.Dictionary<int, Entity> _byId
+            = new System.Collections.Generic.Dictionary<int, Entity>(256);
         private NativeArray<LocalTransform> _enemyPoolXf, _defPoolXf;
 
         // 구조 변경용 ECB. **어댑터가 재생하지 않는다** — 호스트 시스템이 자기
@@ -92,6 +95,20 @@ namespace Wassup.Battle.Skills
         {
             _enemyPool = enemyPool; _enemyPoolXf = enemyPoolXf;
             _defPool = defPool; _defPoolXf = defPoolXf;
+
+            // 핸들 역변환 사전. 풀과 **같은 수명**이라 여기서 같이 짓는다 —
+            // 따로 지으면 풀만 갱신되고 사전이 묵는 프레임이 생긴다.
+            // 미발급(`Unassigned`)은 넣지 않는다: 여럿이 같은 키를 갖고, 넣으면
+            // 「아무나 한 명」이 나온다(그 유령이 조준을 훔치는 증상이었다).
+            _byId.Clear();
+            for (int i = 0; i < enemyPool.Length; i++) Index(enemyPool[i]);
+            for (int i = 0; i < defPool.Length; i++) Index(defPool[i]);
+        }
+
+        private void Index(Entity e)
+        {
+            int id = SimIdOf(e);
+            if (id != SimEntityId.Unassigned) _byId[id] = e;
         }
 
         public void BindCcSink(NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> q, bool has)
@@ -150,14 +167,21 @@ namespace Wassup.Battle.Skills
         // 도메인 핸들은 `SimEntityId.value` 를 그대로 싣는다. 역변환은 풀 스캔인데,
         // 풀이 프레임당 한 번 지어지고 스킬 발동이 초당 수 회라 비용이 무시할 만하다
         // (unit 0 성능 실측: 최악 정렬 프레임 ~50발, 발당 <0.1ms).
+        // ⚠ **프레임당 1회 사전을 짓고 O(1) 로 되찾는다.**
+        //
+        // 예전엔 호출마다 두 풀을 선형으로 훑었다. 리뷰 M5 가 그 비용이 어디서
+        // 터지는지 짚었다 — 조준하는 스킬은 **후보마다** 위치를 물으므로
+        // `64후보 × 풀 170` ≈ 1만 회 컴포넌트 조회가 발사 한 번에 들어간다.
+        // (오늘 라이브가 안 뜨거운 것은 저작 덕이다: 조준이 필요한 저작은 전부
+        //  배치 1회성이고, 주기 저작은 타겟 바인딩이라 후보를 안 모은다. 즉
+        //  **저작이 바뀌면 바로 뜨거워지는** 자리다.)
+        //
+        // 사전을 여기 두는 이유: 이 비용은 `Position` 하나가 아니라 **모든 질의**가
+        // 낸다. 호출처를 고치면 다음 concrete 가 같은 함정을 다시 판다.
         private Entity Resolve(SkillEntityId id)
         {
             if (!id.IsValid) return Entity.Null;
-            for (int i = 0; i < _enemyPool.Length; i++)
-                if (SimIdOf(_enemyPool[i]) == id.Value) return _enemyPool[i];
-            for (int i = 0; i < _defPool.Length; i++)
-                if (SimIdOf(_defPool[i]) == id.Value) return _defPool[i];
-            return Entity.Null;
+            return _byId != null && _byId.TryGetValue(id.Value, out var e) ? e : Entity.Null;
         }
 
         private int SimIdOf(Entity e)

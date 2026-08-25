@@ -95,6 +95,57 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(float.IsNaN(dir.x) || float.IsNaN(dir.y));
         }
 
+        // ── `count` 축 (skill-layer-migration unit 1 에서 신설) ──────────────
+        // 배열 길이가 아니라 `count` 가 유효 범위다. 호출처가 **재사용 버퍼**를 쓰기
+        // 때문에 둘이 다르고, 배열 길이를 믿으면 **지난 발사의 후보가 총구를 가져간다**.
+        // 이동은 무회귀였지만 이 파라미터는 새로 생긴 것이라 따로 지킨다(리뷰 M3).
+
+        [Test]
+        public void Only_The_First_Count_Entries_Are_Candidates()
+        {
+            // 버퍼에 옛 후보(코앞 +X)가 남아 있지만 이번 후보는 앞 1칸뿐이다.
+            var buf = new[] { new float2(0f, 5f), new float2(1f, 0f), new float2(2f, 0f) };
+            bool ok = SkillAim.TryResolve(float2.zero, hasAim: false, aim: float2.zero,
+                                          buf, count: 1, out var dir, out int picked);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(0, picked, "count 밖의 «더 가까운» 잔재를 골랐다 — 배열 길이를 믿었다");
+            Assert.AreEqual(1f, dir.y, 1e-4f);
+        }
+
+        [Test]
+        public void Count_Zero_Behaves_As_No_Candidate()
+        {
+            var buf = new[] { new float2(1f, 0f) };
+            bool ok = SkillAim.TryResolve(float2.zero, hasAim: false, aim: float2.zero,
+                                          buf, count: 0, out _, out int picked);
+
+            Assert.IsFalse(ok);
+            Assert.AreEqual(-1, picked);
+        }
+
+        [Test]
+        public void Count_Beyond_Length_Is_Clamped_Not_Crashed()
+        {
+            // 호출처 실수를 예외로 바꾸지 않는다 — 배열 끝까지만 본다.
+            var buf = new[] { new float2(0f, 2f) };
+            bool ok = SkillAim.TryResolve(float2.zero, hasAim: false, aim: float2.zero,
+                                          buf, count: 99, out _, out int picked);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(0, picked);
+        }
+
+        [Test]
+        public void Null_Buffer_Is_No_Candidate()
+        {
+            bool ok = SkillAim.TryResolve(float2.zero, hasAim: false, aim: float2.zero,
+                                          null, count: 3, out _, out int picked);
+
+            Assert.IsFalse(ok);
+            Assert.AreEqual(-1, picked);
+        }
+
         [Test]
         public void No_Aim_No_Candidate_Returns_False()
         {

@@ -26,12 +26,31 @@ namespace Wassup.Battle.Skills
     // 격자 파라미터를 FlowField 에서 읽는 공용 부분. 셋이 같은 값을 쓴다.
     public abstract partial class SkillDispatchSeamBase : SkillDispatchSystemBase
     {
+        // ⚠ **OnUpdate 당 1회만 읽는다**(리뷰 L6). 셋이 각자 `Grid()` 를 부르면
+        // 같은 싱글턴을 세 번 조회하고, 세 값이 **서로 다른 프레임의 격자**일 여지도
+        // 생긴다(사이에 맵이 갈리면). 한 번 읽어 셋이 나눠 쓴다.
+        private FlowFieldSingleton _grid;
+        private bool _gridRead;
+
         protected override float TileSize => Grid().tileSize;
         protected override int2 GridSize => Grid().gridSize;
         protected override float3 Origin => Grid().origin;
 
+        protected override void OnUpdate()
+        {
+            _gridRead = false;   // 프레임 경계 — 다음 접근이 새로 읽는다
+            base.OnUpdate();
+        }
+
         private FlowFieldSingleton Grid()
-            => SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var ff) ? ff : default;
+        {
+            if (!_gridRead)
+            {
+                _grid = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var ff) ? ff : default;
+                _gridRead = true;
+            }
+            return _grid;
+        }
     }
 
     // ① 주기 감지 뒤 — 채찍질·자장가·가호·발사 명세.

@@ -18,7 +18,7 @@ namespace Wassup.Tests.PlayMode
     // skill-layer-foundation unit 1 — EmitProjectilePattern arm 특성화
     // (샷건맨 배치 스킬 = OnPlace × 방향 부채꼴 5연발).
     //
-    // 이 arm 의 계약(BossPeriodicTriggerSystem + OnPlaceFireAim):
+    // 이 스킬의 계약(EmitPatternSkill + SkillAim — arm 은 273b9bc4 에서 은퇴):
     //  · 배치 순간 payload.tileRange 안 **최근접 적**을 향해 조준을 확정하고
     //    (샷건맨은 DeployedFacing 이 없어 «조준 없음 → 최근접» 폴백을 탄다),
     //  · 패턴이 저작한 부채꼴(min~maxAngleDeg, shots)로 pellets 를 쏜다.
@@ -106,7 +106,7 @@ namespace Wassup.Tests.PlayMode
 
         // 후보 0 → 발사 0. arm 은 «조준도 합법 후보도 없으면 발사하지 않는다»(방향 (0,0)
         // 탄 금지)를 계약으로 갖는다. SkyStrike 의 동종 테스트는 Entity 조준 축이고,
-        // 이쪽은 Direction 조준(OnPlaceFireAim) 축이라 코드 경로가 다르다.
+        // 이쪽은 Direction 조준(SkillAim) 축이라 코드 경로가 다르다.
         [UnityTest]
         public IEnumerator NoCandidateInAimRange_FiresNothing()
         {

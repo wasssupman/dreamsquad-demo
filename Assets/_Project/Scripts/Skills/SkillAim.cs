@@ -6,7 +6,7 @@ namespace Wassup.Skills
     //
     // ⚠ **새로 쓴 것이 아니라 옮긴 것이다.** 원본은
     // `Battle/Combat/Projectile/Emission/OnPlaceFireAim.cs` 였고, 규칙·상수·비교
-    // 부등호까지 그대로다(`OnPlaceFireAimTests` 가 그 무회귀를 잡고 있다).
+    // 부등호까지 그대로다(`SkillAimTests` 가 그 무회귀를 잡고 있다 — 파일도 같이 개명됐다).
     // 옮긴 이유는 하나뿐이다: **concrete 가 이 규칙을 호출해야 하는데 `Wassup.Skills`
     // 는 Battle 을 참조하지 않는다**(계약 1). 도메인이 쓰는 규칙은 도메인에 산다.
     //
