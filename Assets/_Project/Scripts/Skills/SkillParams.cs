@@ -164,6 +164,24 @@ namespace Wassup.Skills
         public float Magnitude => _p.Magnitude;
     }
 
+    // skill-layer-migration unit 3b — 자기 스탯 버프(누적형).
+    public readonly struct SelfBuffParams
+    {
+        private readonly SkillParams _p;
+        public SelfBuffParams(in SkillParams p) => _p = p;
+
+        public SkillStatKind Stat => (SkillStatKind)_p.StatSelector;
+        // ⚠ **저작은 배율이다**(1.08 = +8%). 오라의 퍼센트 축과 다르다 — 그쪽은 사람이
+        // 읽는 문안까지 퍼센트인데 이쪽은 누적 곱이라 배율이 그대로 뜻이 된다.
+        public float Multiplier => _p.Magnitude;
+        // <=0 = 영구. 저작이 「안 끝난다」를 표현하는 방법이다.
+        public float Duration => _p.Duration;
+        // 누적 상한 배율. 0 = 중첩 없음(덮어쓰기).
+        public float MagnitudeCap => _p.TileRange;
+        // 병합 키의 일부 — 같은 스택 id 끼리만 누적된다.
+        public int StackId => _p.StackId;
+    }
+
     public readonly struct AuraParams
     {
         private readonly SkillParams _p;

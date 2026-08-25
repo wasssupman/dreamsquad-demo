@@ -567,13 +567,28 @@ namespace Wassup.Battle.Skills
                     if (!_hasStatQueue) return;
                     var target = Resolve(intent.Target);
                     if (target == Entity.Null) return;
+                    // ⚠ **저작 배율은 여기서 버킷으로 번역한다**(unit 3b). 규칙이
+                    // 「배율 ≥ 1 은 가산 버킷에 `배율−1`」이라 자명하지 않고, 상한 계산이
+                    // 그 선택에 매여 있다 — 두 벌이 되면 조용히 한 스택만큼 어긋난다.
+                    var op = (Wassup.Battle.Effects.CombineOp)intent.Op;
+                    float mag = intent.Amount;
+                    float cap = 0f;
+                    if (intent.Op == SkillCombineOp.FromAuthoredMultiplier)
+                    {
+                        Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(intent.Amount, out op, out mag);
+                        // 상한도 같은 자리에서 — 저작 배율과 최대 중첩으로 계산한다.
+                        cap = Wassup.Battle.Effects.ModifierAuthoring.StackCap(
+                            intent.Amount, (int)intent.HitThreshold);
+                    }
                     _statQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
                     {
                         target = target,
                         stat = (Wassup.Battle.Effects.StatKind)intent.Selector,
-                        op = (Wassup.Battle.Effects.CombineOp)intent.Op,
-                        magnitude = intent.Amount,
-                        duration = intent.Duration,
+                        op = op,
+                        magnitude = mag,
+                        magnitudeCap = cap,
+                        // 저작이 「안 끝난다」를 표현하는 방법은 `<=0` 이다.
+                        duration = intent.Duration > 0f ? intent.Duration : float.PositiveInfinity,
                         // ⚠ 병합 키 `(source, stat, op, stackId)` — 이 넷이 회수 가능성의
                         // 조건이다. 구성이 바뀌면 host 가 죽어도 버프가 안 풀린다.
                         source = Resolve(intent.Source),

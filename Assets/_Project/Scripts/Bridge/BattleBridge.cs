@@ -9072,6 +9072,8 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaCcSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaDotSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetCcSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.TargetStackSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9147,6 +9149,10 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.AreaDotSkill.Id;
                 case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
                     return Wassup.Skills.Concrete.TargetCcSkill.Id;
+                case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
+                    return Wassup.Skills.Concrete.TargetStackSkill.Id;
+                case Wassup.Data.DcPayloadKind.SelfStatBuff:
+                    return Wassup.Skills.Concrete.SelfStatBuffSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9173,6 +9179,13 @@ namespace Wassup.Bridge
                 // 이므로 seam 개통과 함께 카드 경로도 연다 — **arm 은 unit 3g 까지 남는다**
                 // (다른 트리거로 저작될 여지가 있는 한 지우면 조용히 죽는 행이 생긴다).
                 case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
+                // unit 3b — 같은 공격 seam 을 타는 형제 둘.
+                // ⚠ `SelfStatBuff` 는 **경계·처치 트리거로도 저작된다**(HealthThreshold 2행 ·
+                // OnKill 2행). 경계 seam 은 열려 있지만 처치 seam 은 아직 없다 —
+                // 그래서 카드 화이트리스트에 넣되 **arm 은 3d 까지 남긴다**(그쪽 트리거로
+                // 저작된 카드가 조용히 죽지 않게).
+                case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
+                case Wassup.Data.DcPayloadKind.SelfStatBuff:
                     return SkillIdForPayload(kind);
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
