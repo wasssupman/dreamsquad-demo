@@ -132,14 +132,29 @@
 | `AwakeningReward` 덮어쓰기 | 큐로 미루면 「표식 직후 같은 프레임 처치」에 배율 누락 창 |
 | 진행형 상태 부착 7종 | 계약 5 의 「개시 쓰기」. 부분 적용 금지 preflight 와 큐 지연이 충돌 |
 
-### 미결 — 착수 전 확인
+### 미결 4건 — **전부 종결 2026-08-25**
 
-1. whip 이 **시체·배치중 대상에도 buff enqueue** — 하류 `ModifierApplySystem` 이 거르나?
-2. blink/leap **착지 앵커 풀이 `DeadTag` 미제외** — 사망 프레임에 실해인가?
-3. `EnemyCcEventsSingleton` 이 **defender 대상 CC 를 받나** — 큐 우회 2곳(배치 Sleep·DreamCocoon)의
-   intent 화 가부가 여기 달렸다.
-4. `EmitPattern` 의 `fireCountBase` 전진이 **발사 성사와 원자적**이다(no-fire 면 비전진).
-   intent 화하려면 성사 판정이 방출 전에 끝나야 한다 — 어댑터 전진 vs 감지측 잔존 예외.
+1. **whip 이 시체·배치중에도 buff enqueue → 무해(vacuous).** `ModifierApplySystem.ApplyStat` 의
+   가드는 `Exists`+`!StructureTag` 뿐이라 `DeadTag`/`PendingDeployment` 를 안 거른다. 그러나
+   순서가 막는다 — `BossPeriodicTriggerSystem`(#4)·`ModifierApplySystem`(#9)이 둘 다
+   `DamageApplicationSystem`(#36)보다 앞이라 **#4 시점에 `DeadTag` 엔티티가 존재할 수 없다**
+   (지난 프레임 것은 `UnitLifecycleSystem`(#44)이 이미 파괴). 배치중 아군이 오라를 미리 받는
+   것은 무해. ⚠ **실행 지점이 옮겨지면 vacuous 가 아니게 되므로** 필터 flag 명세에는 남긴다.
+2. **착지 앵커 풀의 `DeadTag` 미제외 → 무해, 단 순서 의존.** `UnitLifecycleSystem`(**#44**)이
+   `HealthThresholdSystem`(**#45**)보다 **한 칸 앞**이라 HT 가 defQuery 를 돌 때 이번 프레임
+   사망자는 이미 파괴돼 있다. ⚠ 이 무해함은 **#44 < #45 에 기대고 있다** — unit 4 가 디스패처를
+   (#45→#46)에 핀할 때 이 관계를 함께 박제한다.
+3. **`EnemyCcEventsSingleton` 은 진영 중립이다 → `ApplyCc` intent 로 단일화한다.**
+   `CcApplySystem` 의 게이트가 `Exists` → `!StructureTag` → `HasBuffer<CcEffect>` →
+   `!(BossTag ∧ BossImmune)` 뿐이고 **진영 조건이 없다.** 이름이 오도할 뿐 방어유닛도 받는다.
+   주석이 계약을 명시한다 — *"모든 CC 생산자가 이 큐로 수렴하므로 **부여 시점 1곳**에서 막으면
+   끝난다."* → 큐 우회 2곳(배치 Sleep·DreamCocoon, `EffectSpawner.ApplyCc`)은 병합 결과는 같지만
+   **보스 면역·`StructureTag` 배제 게이트를 우회한다.** 계약 3 위반이자 잠재 결함이므로 단일화가
+   맞다. (`EnemyCcEvent` 개명은 unit 3 포트 명세에서 함께 판단.)
+4. **`fireCountBase` 전진 → intent 화 가능.** 전진이 `if (fire)` 안에서 append 와 붙어 있고
+   no-fire 비전진이 계약이다(다음 발동이 같은 위상에서 시작). 해법: **concrete 가 조준 질의를
+   직접 하고 `fire == true` 일 때만 intent 를 방출**한다. 어댑터는 「전진 + append」를 원자적으로
+   하고, no-fire 는 intent 자체가 안 나가므로 비전진이 자동 보존된다. **감지측 예외 불요.**
 
 ## 완료 기준
 
@@ -152,4 +167,4 @@
       **대상 셀 A/B**(Portal 2타일)를 표현한다
 - [x] 코드 변경 0줄
 
-**완료 2026-08-25** — 5트랙 병렬 전수 조사. 미결 4건은 unit 3 착수 전에 닫는다.
+**완료 2026-08-25** — 5트랙 병렬 전수 조사 + 미결 4건 종결. **unit 3(포트) 착수 조건 충족.**
