@@ -50,3 +50,9 @@ MonoBehaviour:
   - stage: {fileID: 3455515033444687319, guid: cbe92e5268ec53b4bb0686ea76edac9e, type: 3}
     deck: {fileID: 0}
     plan: {fileID: 0}
+  - stage: {fileID: 5425316568415948487, guid: 0de976760bcf24c448283ef812db61e8, type: 3}
+    deck: {fileID: 0}
+    plan: {fileID: 0}
+  - stage: {fileID: 4339011424695557501, guid: fa0a9db932681a44c864b2a5033347c8, type: 3}
+    deck: {fileID: 0}
+    plan: {fileID: 0}
