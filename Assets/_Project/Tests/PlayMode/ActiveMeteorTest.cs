@@ -196,11 +196,13 @@ namespace Wassup.Tests.PlayMode
         private static void FindWalkCells(BattleBridge bridge, EntityManager em,
             out Vector2Int near, out Vector2Int far)
         {
-            var catalogs = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
-            Assert.Greater(catalogs.Length, 0, "DefenderCatalog");
-            var probe = catalogs[0].ById("ranger");
-            Assert.IsNotNull(probe, "probe 유닛(ranger)");
-
+        // Walk 칸을 고른다 — **배치 가능 여부를 묻지 않는다.**
+        // 액티브 스킬은 타일에 시전할 뿐 유닛을 놓지 않는다. 원래 이 탐색기는
+        // `CanPlaceDefenderAt` 를 앵커로 썼는데(배치 테스트에서 빌려온 관용구),
+        // 이 테스트들은 전투를 시작한 뒤에 돌기 때문에 **배치 페이즈가 닫혀
+        // 어디서도 참이 아니다** — 그래서 픽스처가 통째로 죽었다(주행 2026-08-25).
+        // 필요한 것은 walk 칸뿐이므로 walkMask 를 직접 본다.
+        // 가장자리를 피하는 의도는 margin 으로 살린다(스폰·골 옆 회피).
             using var q = em.CreateEntityQuery(ComponentType.ReadOnly<FlowFieldSingleton>());
             Assert.AreEqual(1, q.CalculateEntityCount(), "flow field 싱글턴");
             var ff = q.GetSingleton<FlowFieldSingleton>();
@@ -210,21 +212,22 @@ namespace Wassup.Tests.PlayMode
                 => x >= 0 && y >= 0 && x < ff.gridSize.x && y < ff.gridSize.y
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
 
-            for (int x = 0; x < ff.gridSize.x; x++)
-                for (int y = 0; y < ff.gridSize.y; y++)
+            // 앵커 walk 칸을 하나 잡고, 거기서 체비셰프로 «안»(≤1)과 «밖»(>4)을 각각 찾는다.
+            const int Margin = 2;
+            for (int x = Margin; x < ff.gridSize.x - Margin; x++)
+                for (int y = Margin; y < ff.gridSize.y - Margin; y++)
                 {
-                    if (!bridge.CanPlaceDefenderAt(x, y, probe, out _)) continue;
-                    Vector2Int? n = null, f = null;
-                    for (int dx = -6; dx <= 6; dx++)
-                        for (int dy = -6; dy <= 6; dy++)
+                    if (!IsWalk(x, y)) continue;
+                    Vector2Int? n = new Vector2Int(x, y);   // 앵커 자신이 «안»
+                    Vector2Int? f = null;
+                    for (int dx = -8; dx <= 8 && f == null; dx++)
+                        for (int dy = -8; dy <= 8 && f == null; dy++)
                         {
-                            if (dx == 0 && dy == 0) continue;
-                            if (!IsWalk(x + dx, y + dy)) continue;
                             int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
-                            if (n == null && cheb <= 1) n = new Vector2Int(x + dx, y + dy);
-                            else if (f == null && cheb > 4) f = new Vector2Int(x + dx, y + dy);
+                            if (cheb <= 4) continue;
+                            if (IsWalk(x + dx, y + dy)) f = new Vector2Int(x + dx, y + dy);
                         }
-                    if (n != null && f != null)
+                    if (f != null)
                     {
                         near = n.Value; far = f.Value;
                         return;

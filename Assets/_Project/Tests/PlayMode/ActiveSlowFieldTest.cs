@@ -186,15 +186,15 @@ namespace Wassup.Tests.PlayMode
             return e;
         }
 
-        // 배치 가능 칸의 이웃 Walk 칸(맵 중앙부)을 고른다 — 가장자리 스폰/골 옆을 피해가는
-        // 검증된 방법(OnPlaceStunNearbyTest). 유닛은 배치하지 않고 판정만 빌린다.
+        // Walk 칸을 고른다 — **배치 가능 여부를 묻지 않는다.**
+        // 액티브 스킬은 타일에 시전할 뿐 유닛을 놓지 않는다. 원래 이 탐색기는
+        // `CanPlaceDefenderAt` 를 앵커로 썼는데(배치 테스트에서 빌려온 관용구),
+        // 이 테스트들은 전투를 시작한 뒤에 돌기 때문에 **배치 페이즈가 닫혀
+        // 어디서도 참이 아니다** — 그래서 픽스처가 통째로 죽었다(주행 2026-08-25).
+        // 필요한 것은 walk 칸 하나뿐이므로 walkMask 를 직접 본다.
+        // 가장자리를 피하는 의도는 margin 으로 살린다(스폰·골 옆 회피).
         private static Vector2Int FindWalkCell(BattleBridge bridge, EntityManager em)
         {
-            var catalogs = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
-            Assert.Greater(catalogs.Length, 0, "DefenderCatalog");
-            var probe = catalogs[0].ById("ranger");
-            Assert.IsNotNull(probe, "probe 유닛(ranger)");
-
             using var q = em.CreateEntityQuery(ComponentType.ReadOnly<FlowFieldSingleton>());
             Assert.AreEqual(1, q.CalculateEntityCount(), "flow field 싱글턴");
             var ff = q.GetSingleton<FlowFieldSingleton>();
@@ -204,17 +204,11 @@ namespace Wassup.Tests.PlayMode
                 => x >= 0 && y >= 0 && x < ff.gridSize.x && y < ff.gridSize.y
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
 
-            for (int x = 0; x < ff.gridSize.x; x++)
-                for (int y = 0; y < ff.gridSize.y; y++)
-                {
-                    if (!bridge.CanPlaceDefenderAt(x, y, probe, out _)) continue;
-                    for (int dx = -1; dx <= 1; dx++)
-                        for (int dy = -1; dy <= 1; dy++)
-                        {
-                            if (dx == 0 && dy == 0) continue;
-                            if (IsWalk(x + dx, y + dy)) return new Vector2Int(x + dx, y + dy);
-                        }
-                }
+            const int Margin = 2;
+            for (int x = Margin; x < ff.gridSize.x - Margin; x++)
+                for (int y = Margin; y < ff.gridSize.y - Margin; y++)
+                    if (IsWalk(x, y)) return new Vector2Int(x, y);
+
             Assert.Fail("Walk 칸을 찾지 못했다");
             return default;
         }
