@@ -28,16 +28,20 @@ namespace Wassup.Skills
         public readonly float SlamDamage;
         public readonly int SlamTileRange;
         public readonly int StackId;     // ⚠ ApplyStatModifier 병합 키의 일부 — 아래
+        // 연출 크기 배율. `Speed` 로 대신 쓰지 않는다 — 그 겸직이 이 레이어가
+        // 없애려는 것 자체다(0 = 저작 없음 → 어댑터가 1 로 읽는다).
+        public readonly float VisualScale;
 
         public SkillParams(
             float magnitude, float duration, int tileRange, int period, int dataIndex,
             int selector, float speed, float hitThreshold,
-            float slamDamage, int slamTileRange, int stackId)
+            float slamDamage, int slamTileRange, int stackId, float visualScale = 0f)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
             Speed = speed; HitThreshold = hitThreshold;
             SlamDamage = slamDamage; SlamTileRange = slamTileRange; StackId = stackId;
+            VisualScale = visualScale;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
@@ -73,6 +77,7 @@ namespace Wassup.Skills
         public float Damage => _p.Magnitude;
         public int Radius => _p.TileRange;
         public int VfxDataIndex => _p.DataIndex;      // −1 = 무연출
+        public float VisualScale => _p.VisualScale;   // 0 = 저작 없음
     }
 
     public readonly struct AuraParams

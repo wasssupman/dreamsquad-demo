@@ -42,6 +42,7 @@ namespace Wassup.Battle.Skills
         public float SlamDamage;
         public int SlamTileRange;
         public int StackId;
+        public float VisualScale;
     }
 
     // 채널 수명주기는 `BattleBridge` 소유다 — 생성 Persistent / 싱글턴 파괴 / Dispose

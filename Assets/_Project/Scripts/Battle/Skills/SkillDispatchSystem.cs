@@ -102,6 +102,12 @@ namespace Wassup.Battle.Skills
             bool hasShieldVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>(out var svS);
             _context.BindShieldVisualSink(hasShieldVfx ? svS.queue : default, hasShieldVfx);
 
+            // 구조 변경은 여기서 스테이징하고 **이 OnUpdate 끝에** 재생한다.
+            // 브리지 드레인 전에 materialize 돼야 캐리어가 그 프레임에 스폰된다
+            // (AttackSystem dcCarrier·HealthThreshold 진동갑주 선례).
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            _context.BindEcb(ecb, true);
+
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
                 if (evt.SkillId == SkillRegistry.LegacyArmId) continue;   // legacy arm 이 처리한다
@@ -130,10 +136,14 @@ namespace Wassup.Battle.Skills
                 var p = new SkillParams(
                     evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
                     evt.Selector, evt.Speed, evt.HitThreshold,
-                    evt.SlamDamage, evt.SlamTileRange, evt.StackId);
+                    evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale);
 
                 skill.Execute(caster, in target, in p, _context);
             }
+
+            ecb.Playback(EntityManager);
+            ecb.Dispose();
+            _context.BindEcb(default, false);
 
             enemyPool.Dispose(); enemyPoolXf.Dispose();
             defPool.Dispose(); defPoolXf.Dispose();

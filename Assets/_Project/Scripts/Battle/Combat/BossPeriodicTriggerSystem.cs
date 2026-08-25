@@ -271,6 +271,7 @@ namespace Wassup.Battle.Combat
                                     SlamDamage = slot.slamDamage,
                                     SlamTileRange = slot.slamTileRange,
                                     StackId = slot.statBuffStackId,
+                                    VisualScale = slot.visualScale,
                                 });
                             }
                         }

@@ -67,6 +67,7 @@ namespace Wassup.Skills
         public int DataIndex;          // 탄·해저드·패턴 index. **−1 = 없음**(0 은 유효)
         public int StackId;            // ⚠ ApplyStatModifier 의 병합 키 일부(아래)
         public int Selector;           // stat/cc/stack kind — 어댑터가 도메인 enum 으로 번역
+        public float HitThreshold;     // 탄 피격 반경 · 연출 배율 등 kind 별 보조 스칼라
 
         // 모디파이어 축. `Selector` 하나에 packing 하지 않는다 — 그 겸직이 이 레이어를
         // 만드는 이유였다.

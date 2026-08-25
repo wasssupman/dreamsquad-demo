@@ -39,6 +39,11 @@ namespace Wassup.Battle.Skills
         private NativeArray<Entity> _enemyPool, _defPool;
         private NativeArray<LocalTransform> _enemyPoolXf, _defPoolXf;
 
+        // 구조 변경용 ECB. **어댑터가 재생하지 않는다** — 호스트 시스템이 자기
+        // OnUpdate 끝에 Playback 한다(계약 3: 구조 변경은 소유 맥락이 수행).
+        private EntityCommandBuffer _ecb;
+        private bool _hasEcb;
+
         // 의도 싱크.
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _ccQueue;
         private bool _hasCcQueue;
@@ -94,6 +99,11 @@ namespace Wassup.Battle.Skills
         public void BindShieldVisualSink(NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> q, bool has)
         {
             _shieldVfxQueue = q; _hasShieldVfxQueue = has;
+        }
+
+        public void BindEcb(EntityCommandBuffer ecb, bool has)
+        {
+            _ecb = ecb; _hasEcb = has;
         }
 
         // ── 핸들 변환 — 이 클래스가 유일한 번역자다 ──────────────────
@@ -323,6 +333,36 @@ namespace Wassup.Battle.Skills
                         source = Resolve(intent.Source),
                         amount = intent.Amount,
                     });
+                    return;
+                }
+                case SimIntentKind.SpawnProjectile:
+                {
+                    if (!_hasEcb) return;
+                    var owner = Resolve(intent.Source);
+                    // 캐리어 = 요청을 나르는 엔티티. 브리지 드레인이 스폰 후 파괴한다.
+                    // 구조 변경이라 ECB 로 스테이징하고, 재생은 호스트 몫이다.
+                    var carrier = _ecb.CreateEntity();
+                    _ecb.AddComponent(carrier, new Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest
+                    {
+                        movement = Wassup.Battle.Combat.Projectile.MovementKind.SkyFall,
+                        payload = Wassup.Battle.Combat.Projectile.PayloadKind.TileAoe,
+                        impact = intent.Position,
+                        damage = intent.Amount,
+                        impactTileRange = intent.TileRange,
+                        flightTime = intent.Duration,
+                        dataIndex = intent.DataIndex,
+                        // 저작이 0 이면 1 — 원본 arm 의 규약이다.
+                        visualScale = intent.HitThreshold > 0f ? intent.HitThreshold : 1f,
+                        owner = owner,
+                        // ⚠ 피해 풀 진영. 기본값이 Enemy 라 그냥 두면 **보스의 폭발이
+                        // 자기 진영을 때린다**. caster 의 상대 진영에서 도출한다.
+                        targetFaction =
+                            FactionQuery.OpponentsOf(owner, in _faction, in _enemyTag, in _defTag)
+                                == Faction.DefenderUnit
+                                ? Wassup.Battle.Combat.Projectile.ProjectileTargetFaction.Defender
+                                : Wassup.Battle.Combat.Projectile.ProjectileTargetFaction.Enemy,
+                    });
+                    _ecb.AddComponent<Wassup.Battle.Combat.Projectile.ProjectileRequestCarrier>(carrier);
                     return;
                 }
                 case SimIntentKind.PlayVisual

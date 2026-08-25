@@ -9408,6 +9408,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaSleepSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AllySpeedAuraSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GrantShieldSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.SelfAreaBlastSkill());
             }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
@@ -9427,6 +9428,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.AllySpeedAuraSkill.Id;
                 case Wassup.Data.DcPayloadKind.GrantShield:
                     return Wassup.Skills.Concrete.GrantShieldSkill.Id;
+                case Wassup.Data.DcPayloadKind.SelfTileAoe:
+                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
