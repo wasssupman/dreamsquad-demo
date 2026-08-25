@@ -127,6 +127,10 @@ namespace Wassup.Battle.Skills
             _context.BindStatSink(hasStat ? statS.queue : default, hasStat);
             bool hasStack = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackS);
             _context.BindStackSink(hasStack ? stackS.queue : default, hasStack);
+            bool hasDot = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.DotApplyEventsSingleton>(out var dotS);
+            _context.BindDotSink(hasDot ? dotS.queue : default, hasDot);
+            bool hasKnock = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.KnockupVisualEventsSingleton>(out var knockS);
+            _context.BindKnockupSink(hasKnock ? knockS.queue : default, hasKnock);
             bool hasAcquire = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.AggroAcquireEventsSingleton>(out var acqS);
             _context.BindTauntSink(hasAcquire ? acqS.queue : default, hasAcquire);
             bool hasHit = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>(out var hitS);

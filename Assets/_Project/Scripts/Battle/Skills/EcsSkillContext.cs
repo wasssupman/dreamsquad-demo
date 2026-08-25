@@ -56,6 +56,10 @@ namespace Wassup.Battle.Skills
         private bool _hasStatQueue;
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackQueue;
         private bool _hasStackQueue;
+        private NativeQueue<Wassup.Battle.Effects.DotApplyEvent> _dotQueue;
+        private bool _hasDotQueue;
+        private NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> _knockupQueue;
+        private bool _hasKnockupQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _hitQueue;
         private bool _hasHitQueue;
         private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldVfxQueue;
@@ -138,6 +142,21 @@ namespace Wassup.Battle.Skills
         {
             _stackQueue = q; _hasStackQueue = has;
         }
+
+        public void BindDotSink(NativeQueue<Wassup.Battle.Effects.DotApplyEvent> q, bool has)
+        {
+            _dotQueue = q; _hasDotQueue = has;
+        }
+
+        public void BindKnockupSink(NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> q, bool has)
+        {
+            _knockupQueue = q; _hasKnockupQueue = has;
+        }
+
+        // 빔은 큐가 없다 — 브리지의 프레젠터가 직접 여는 뷰 세션이라, 코스트·쿨다운과
+        // 같은 델리게이트 형태로 넘긴다(어댑터가 뷰를 직접 만지지 않게).
+        private System.Action<Entity, Entity, int, float> _beamSink;
+        public void BindBeamSink(System.Action<Entity, Entity, int, float> sink) => _beamSink = sink;
 
         // 연출 채널. 시뮬 상태를 안 바꾸지만 「언제 트는가」는 스킬의 판단이라
         // 의도 어휘에 있다(`PlayVisual`).
@@ -264,6 +283,12 @@ namespace Wassup.Battle.Skills
                 case UnitStat.AttackRange: return a.range;
                 case UnitStat.AttackTargetCount: return a.attackTargetCount;
                 case UnitStat.TargetTraversalLayers: return a.targetTraversalLayers;
+                case UnitStat.KnockupVisualHeight:
+                    return _em.HasComponent<Wassup.Battle.Combat.DefenderCcData>(e)
+                        ? _em.GetComponentData<Wassup.Battle.Combat.DefenderCcData>(e).knockupVisualHeight : 0f;
+                case UnitStat.KnockupHopSeconds:
+                    return _em.HasComponent<Wassup.Battle.Combat.DefenderCcData>(e)
+                        ? _em.GetComponentData<Wassup.Battle.Combat.DefenderCcData>(e).knockupOnHitSec : 0f;
                 case UnitStat.AttackCooldownRemaining: return a.cooldownRemaining;
                 default: throw NotWired($"Stat({stat})");
             }
@@ -494,6 +519,49 @@ namespace Wassup.Battle.Skills
                     });
                     return;
                 }
+                case SimIntentKind.DealDamage:
+                {
+                    var victim = Resolve(intent.Target);
+                    if (victim == Entity.Null || !_em.HasBuffer<IncomingDamage>(victim)) return;
+                    // 인박스에 넣는다 — 정산은 소유 맥락(Units)이 자기 프레임 창에서 한다.
+                    var inbox = _em.GetBuffer<IncomingDamage>(victim);
+                    inbox.Add(new IncomingDamage { amount = intent.Amount });
+                    return;
+                }
+                case SimIntentKind.ApplyDot:
+                {
+                    if (!_hasDotQueue) return;
+                    var victim = Resolve(intent.Target);
+                    if (victim == Entity.Null) return;
+                    _dotQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
+                    {
+                        target = victim,
+                        effect = new Wassup.Battle.Effects.DotEffect
+                        {
+                            // 원소 없음 = 오라 없음. 배치 도트에 원소를 주고 싶어지면
+                            // 그때 저작 축을 신설한다(제약 8).
+                            origin = Wassup.Battle.Effects.DotOrigin.OnPlace,
+                            // ⚠ **틱당 피해지 DPS 가 아니다.**
+                            scalar = intent.Amount,
+                            tickInterval = intent.HitThreshold,
+                            // 첫 틱 즉발(add-path 규약).
+                            tickTimer = intent.HitThreshold,
+                            remainingTime = intent.Duration,
+                        },
+                    });
+                    return;
+                }
+                case SimIntentKind.DelaySelfAttack:
+                {
+                    var who = Resolve(intent.Target);
+                    if (who == Entity.Null || !_attack.HasComponent(who)) return;
+                    // ⚠ **`max` 다.** 이미 걸린 대기를 줄이지 않는다 — 줄이면 채널링이
+                    // 오히려 공격을 앞당기는 자리가 된다(레거시 규칙 그대로).
+                    var atk = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(who);
+                    atk.cooldownRemaining = math.max(atk.cooldownRemaining, intent.Duration);
+                    _em.SetComponentData(who, atk);
+                    return;
+                }
                 case SimIntentKind.ApplyStatModifier:
                 {
                     if (!_hasStatQueue) return;
@@ -546,6 +614,33 @@ namespace Wassup.Battle.Skills
                         projectileDataIndex = intent.DataIndex,
                     });
                     _ecb.AddComponent<Wassup.Battle.Combat.LeapFlight>(e);
+                    return;
+                }
+                case SimIntentKind.PlayVisual
+                    when (SkillVisualKind)intent.Selector == SkillVisualKind.KnockupHop:
+                {
+                    if (!_hasKnockupQueue) return;
+                    var e = Resolve(intent.Target);
+                    if (e == Entity.Null) return;
+                    // ⚠ 심에서 넉업의 실체는 **짧은 스턴**이라 뷰가 `CcEffect.kind` 로는
+                    // 일반 스턴과 구분할 수 없다 — 그래서 띄운 쪽이 대상을 직접 신호한다.
+                    _knockupQueue.Enqueue(new Wassup.Battle.Combat.KnockupVisualEvent
+                    {
+                        target = e,
+                        durationSec = intent.Duration,
+                        height = intent.Amount,
+                    });
+                    return;
+                }
+                case SimIntentKind.PlayVisual
+                    when (SkillVisualKind)intent.Selector == SkillVisualKind.Beam:
+                {
+                    if (_beamSink == null) return;
+                    var src = Resolve(intent.Source);
+                    var dst = Resolve(intent.Target);
+                    if (dst == Entity.Null) return;
+                    // 키가 «맞는 쪽» 이라 공격 세션(키 = 공격자)과 충돌하지 않는다.
+                    _beamSink(src, dst, intent.DataIndex, intent.Duration);
                     return;
                 }
                 case SimIntentKind.PlayVisual

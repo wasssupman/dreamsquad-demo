@@ -26,12 +26,21 @@ namespace Wassup.Tests.EditMode
             var unit = catalog.ById("malphite");
             Assert.IsNotNull(unit, "malphite");
 
-            Assert.AreEqual(OnPlaceEffectType.StunNearby, unit.onPlaceEffect);
+            // skill-layer-migration unit 2e — 스턴 길이의 출처가 flat 필드에서 규칙 저작으로
+            // 옮겼다. **계약은 그대로**이고 읽는 곳만 바뀐다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            var spec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(spec, "말파이트에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AreaCc, spec.Value.kind);
+            Assert.AreEqual(DcCcKind.Stun, spec.Value.ccKind);
+            float stunSec = spec.Value.duration;
+
             Assert.Greater(unit.knockupVisualHeight, 0f, "띄우는 유닛이어야 이 계약이 의미가 있다");
             Assert.Greater(unit.knockupOnHitSec, 0f,
-                "knockupOnHitSec 이 0 이면 브리지가 체공을 스턴 길이로 떨어뜨려 3초를 떠 있는다");
-            Assert.Less(unit.knockupOnHitSec, unit.onPlaceDuration,
-                $"체공({unit.knockupOnHitSec}s)이 스턴({unit.onPlaceDuration}s)보다 짧아야 한다 — " +
+                "knockupOnHitSec 이 0 이면 체공이 스턴 길이로 떨어져 3초를 떠 있는다");
+            Assert.Less(unit.knockupOnHitSec, stunSec,
+                $"체공({unit.knockupOnHitSec}s)이 스턴({stunSec}s)보다 짧아야 한다 — " +
                 "튀어올랐다 착지한 뒤 남은 시간은 땅에서 굳어 있는 그림이다");
         }
     }

@@ -69,6 +69,10 @@ namespace Wassup.Skills
         TargetTraversalLayers,
         AggroCapacity,
         AttackCooldownRemaining,
+        // unit 2e — 이 유닛이 적을 «얼마나 높이 · 얼마나 오래» 띄우나. 평타든 배치든 같은
+        // 값이라 스킬 저작이 아니라 **유닛의 성질**이다(그래서 params 가 아니라 질의다).
+        KnockupVisualHeight,
+        KnockupHopSeconds,
     }
 
     public interface ISkillContext

@@ -235,6 +235,10 @@ namespace Wassup.Core
                 // unit 2d — 광역 스택 도포. 대상은 반경이 정하고 진영은 payload 가 고정하며
                 // 데미지 출력은 스택 파생이 갖는다 → 세 축 어느 것도 게이트가 아니다.
                 case DcPayloadKind.AreaApplyStack:
+                // unit 2e — 광역 CC · 광역 지속 피해. 대상은 반경이 정하고 진영은 payload 가
+                // 고정하며, 피해는 payload 가 자기 값을 갖는다 → 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.AreaCc:
+                case DcPayloadKind.AreaDot:
                     return DcRejectReason.None;
 
                 default:

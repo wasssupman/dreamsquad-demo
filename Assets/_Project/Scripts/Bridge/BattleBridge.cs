@@ -6185,6 +6185,22 @@ namespace Wassup.Bridge
         private static bool KnockbackOn(ProjectileData p)
             => p != null && p.knockbackDistance > 0f && p.knockbackDuration > 0f;
 
+        // skill-layer-migration unit 2e — 스킬이 트는 **뷰 프리팹** 표. 투사체 SO 표와
+        // 같은 규약(bake 가 index 를 굽고 런타임은 index 로만 부른다) — 어댑터가
+        // `GameObject` 를 들면 도메인 쪽 어셈블리 경계가 흐려진다.
+        private readonly System.Collections.Generic.List<GameObject> _skillVfxPrefabs = new();
+        private readonly System.Collections.Generic.Dictionary<GameObject, int> _skillVfxIndex = new();
+
+        private int GetOrCreateSkillVfxIndex(GameObject prefab)
+        {
+            if (prefab == null) return -1;
+            if (_skillVfxIndex.TryGetValue(prefab, out var idx)) return idx;
+            idx = _skillVfxPrefabs.Count;
+            _skillVfxPrefabs.Add(prefab);
+            _skillVfxIndex[prefab] = idx;
+            return idx;
+        }
+
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
             if (_projectileDataIndex.TryGetValue(projectile, out var idx)) return idx;
@@ -9418,6 +9434,8 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GainCostSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.ReduceSkillCooldownSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaStackSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AreaCcSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AreaDotSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9425,6 +9443,16 @@ namespace Wassup.Bridge
                 foreach (var so in stackModifierAuthoring)
                     if (so != null) caps[(int)so.kind] = so.maxStack;
             _skillContext.BindStackCaps(caps);
+
+            // 빔 싱크 — 대상별 빔 세션은 뷰라 프레젠터가 연다. 어댑터는 프리팹을 모르고
+            // **index 만** 넘긴다(투사체 dataIndex 와 같은 규약).
+            _skillContext.BindBeamSink((src, dst, idx, ttl) =>
+            {
+                if (idx < 0 || idx >= _skillVfxPrefabs.Count) return;
+                var prefab = _skillVfxPrefabs[idx];
+                if (prefab == null) return;
+                EnsureBeamPresenter().Open(dst, prefab, source: src, target: dst, ttlSec: ttl);
+            });
 
             // 판 밖 런타임 싱크 — 이 델리게이트가 스킬 레이어와 Mono 자원 사이의 유일한 통로다.
             _skillContext.BindMetaSink(intent =>
@@ -9477,6 +9505,10 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.ReduceSkillCooldownSkill.Id;
                 case Wassup.Data.DcPayloadKind.AreaApplyStack:
                     return Wassup.Skills.Concrete.AreaStackSkill.Id;
+                case Wassup.Data.DcPayloadKind.AreaCc:
+                    return Wassup.Skills.Concrete.AreaCcSkill.Id;
+                case Wassup.Data.DcPayloadKind.AreaDot:
+                    return Wassup.Skills.Concrete.AreaDotSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9636,8 +9668,13 @@ namespace Wassup.Bridge
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
                     patternIndex = -1,
-                    // unit 2d — 스택 축도 슬롯으로. 안 옮기면 기본값 None 이라
-                    // 「출혈 도포」 저작이 조용히 아무 스택도 안 건다.
+                    // ⚠ **저작 선택자 셋을 여기서 옮긴다**(cc · 스탯 · 스택). 유닛 bake 가
+                    // 여태 셋 다 안 옮기고 있었고, 셋 다 **기본값이 진짜처럼 보이는** 함정이다:
+                    //   · `CcKind` 0 = 감속 → 「기절」 저작이 조용히 감속이 된다
+                    //   · `StatKind` 0 = 공격력 → 「이동속도 감쇠」가 조용히 공격력 오라가 된다
+                    //   · `StackKind` 0 = None → 「출혈 도포」가 조용히 아무것도 안 건다
+                    // 셋 다 「안 붙는다」가 아니라 「다른 게 붙는다」라 로그도 안 난다.
+                    ccKind = MapDcCc(m.payload.ccKind),
                     stackKind = MapDcStack(m.payload.stackKind),
                     // skill-layer-migration unit 2b — 스탯 축을 슬롯에 옮긴다.
                     // ⚠ 안 옮기면 **기본값 0(공격력)** 이 되어, 「이동속도 감쇠」로 저작한
@@ -9753,6 +9790,13 @@ namespace Wassup.Bridge
                     // 폭발이 ProjectileSpawnRequest 하나로 표현되고 드레인이 dataIndex<0 이면
                     // 요청을 통째로 버리기 때문에 데미지까지 안 나간다.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaDot)
+                {
+                    // 빔 프리팹은 **선택**이다 — 없으면 연출만 없고 도트는 그대로 나간다.
+                    slot.projectileDataIndex = GetOrCreateSkillVfxIndex(m.payload.auraPrefab);
+                    // 틱 간격. 0 이면 `magnitude` 가 DPS 로 해석된다(저작의 뜻이다).
+                    slot.speed = math.max(0f, m.payload.tickIntervalSec);
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.AllyStatAura ||
                           m.payload.kind == Wassup.Data.DcPayloadKind.OpponentStatAura) &&

@@ -65,5 +65,11 @@ namespace Wassup.Skills
         ShieldGranted = 1,  // → ShieldGrantedEvents (대상 위치, 대상 수만큼)
         LeapArc = 2,        // → BossLeapVisualEvents (출발→도착 아치 + 슬램 타이밍)
         UltimateAscend = 3, // → UltimateLeapVisualEvents (이탈 상승)
+        // unit 2e — 넉업 띄우기. **심에서 넉업의 실체는 짧은 스턴**이라 뷰가 `CcEffect` 로는
+        // 일반 스턴과 구분할 수 없다 — 그래서 띄운 쪽이 대상을 직접 신호한다.
+        KnockupHop = 4,
+        // unit 2e — 대상별 빔 세션. 키가 «맞는 쪽» 이라 공격 세션(키 = 공격자)과 안 겹치고,
+        // 대상을 엔티티로 넘기므로 지속 동안 적이 걸어가도 빔이 따라간다.
+        Beam = 5,
     }
 }

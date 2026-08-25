@@ -226,6 +226,14 @@ namespace Wassup.Data
         // 그쪽의 `tileRange` 겸직(반경 칸을 상한으로 씀)을 물려받을 수 없다.
         // 상한은 스택 종류가 갖는다(저작 필드가 아니다).
         AreaApplyStack = 30,
+
+        // unit 2e — 반경 안 상대 전원에 CC(+ 부수 피해). 레거시 `StunNearby`.
+        // ⚠ **CC 가 있어야 성립한다** — 「지속 0 + 피해만」은 자기 자리 광역이 이미
+        // 하는 일이라 조용히 소모된다(가드를 쪼개 문을 열면 저작 경로가 둘이 된다).
+        AreaCc = 31,
+        // unit 2e — 반경 안 상대 전원에 지속 피해 + **자기 공격 대기**. 레거시 `DotNearby`.
+        // 지속을 갖는 채널이라 그동안 유닛이 여기 묶이는 것이 사양이다.
+        AreaDot = 32,
     }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.
@@ -353,6 +361,10 @@ namespace Wassup.Data
         // **데미지 경로**라 이름으로 grep 되어야 한다. append-only → 기존 카드는 0 = 슬램 없음.
         public float slamDamage;    // 착지 시 자기중심 피해. <=0 = 슬램 없음(이동만)
         public int slamTileRange;   // 슬램 반경(타일, Chebyshev)
+        // skill-layer-migration unit 2e — 지속 피해의 **틱 간격**(초). `AreaDot` 전용.
+        // ⚠ **0 은 미저작이 아니라 뜻이 있다** — 간격이 0 이면 `magnitude` 가 틱당 피해가
+        // 아니라 DPS 로 해석된다(dot-tick-cadence 계약). append-only 라 기존 저작은 그대로.
+        public float tickIntervalSec;
         // dreamcatcher-content-3 unit 6 — ApplyStackToTarget 전용. **문안 전용 참조**다:
         // 런타임 임계 조회는 여전히 BattleBridge 의 kind→rules 레지스트리(씬의
         // stackModifierAuthoring)가 권위이고, 이 필드는 카드 문안이 "몇 중첩에 무엇이

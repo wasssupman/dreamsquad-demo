@@ -127,6 +127,31 @@ namespace Wassup.Skills
         public SkillStackKind Stack => (SkillStackKind)_p.StackSelector;
     }
 
+    // skill-layer-migration unit 2e — 광역 CC(+ 부수 피해).
+    public readonly struct AreaCcParams
+    {
+        private readonly SkillParams _p;
+        public AreaCcParams(in SkillParams p) => _p = p;
+
+        public int Radius => _p.TileRange;
+        public float Duration => _p.Duration;     // 잡는 시간
+        public float Damage => _p.Magnitude;      // 0 = CC 만
+        public SkillCcKind Cc => (SkillCcKind)_p.Selector;
+    }
+
+    // unit 2e — 광역 지속 피해.
+    public readonly struct AreaDotParams
+    {
+        private readonly SkillParams _p;
+        public AreaDotParams(in SkillParams p) => _p = p;
+
+        public int Radius => _p.TileRange;
+        public float Duration => _p.Duration;
+        // ⚠ **틱당 피해지 DPS 가 아니다.** 총 피해 = 이 값 × (지속 / 틱 간격).
+        public float PerTickDamage => _p.Magnitude;
+        public float TickInterval => _p.Speed;
+    }
+
     public readonly struct AuraParams
     {
         private readonly SkillParams _p;

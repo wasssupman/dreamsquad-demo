@@ -177,6 +177,19 @@ namespace Wassup.Data
                     case DcPayloadKind.AreaApplyStack:
                         return $"배치 시 주변 {m.payload.tileRange}타일 적에게 "
                                + $"{StackWord(m.payload.stackKind)} {(int)m.payload.magnitude}중첩";
+                    // unit 2e — 광역 CC. 부수 피해는 **있을 때만** 말한다(0 이 흔한 저작이라
+                    // 「피해 0」이라고 적으면 화면이 거짓말을 한다).
+                    case DcPayloadKind.AreaCc:
+                        return m.payload.magnitude > 0f
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 적 {CcWord(m.payload.ccKind)}"
+                              + $" ({m.payload.duration:0.#}초) · 피해 {m.payload.magnitude:0.#}"
+                            : $"배치 시 주변 {m.payload.tileRange}타일 적 {CcWord(m.payload.ccKind)}"
+                              + $" ({m.payload.duration:0.#}초)";
+                    // unit 2e — 광역 지속 피해. **틱당 피해지 총량이 아니다** — 총량을 적으려면
+                    // 여기서 곱해야 하고, 그 순간 문안이 자기 숫자를 갖게 된다(이 파일의 규율 위반).
+                    case DcPayloadKind.AreaDot:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적을 {m.payload.duration:0.#}초간 지짐"
+                               + " (그동안 공격 불가)";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
@@ -199,6 +212,18 @@ namespace Wassup.Data
                 case CardBuffKind.MoveSpeed: return "이동 속도";
                 case CardBuffKind.DamageVsCc: return "상태이상 적 피해";
                 default: return "능력치";
+            }
+        }
+
+        // CC 종류의 화면 어휘.
+        private static string CcWord(DcCcKind kind)
+        {
+            switch (kind)
+            {
+                case DcCcKind.Stun: return "기절";
+                case DcCcKind.Sleep: return "수면";
+                case DcCcKind.Impulse: return "밀쳐냄";
+                default: return "행동 불가";
             }
         }
 
