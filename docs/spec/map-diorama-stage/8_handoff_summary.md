@@ -37,7 +37,7 @@ green 실증 — suite 구성이 바뀌면 오염 패턴이 이동) + MovementIn
 해소 유지. **머지 유발 0.** 포탈 스폰 프랍·본능 잔해는 structures 휴면이라 스테이지 경로
 비활성(StructureMarker 후속에서 활성화).
 
-3차 병합 `277121d8` (main +61: bonus-wave-pull·heart-stress-axis·battle-sim-extraction M0·duel-route-tours(자체 철회) 등). 충돌 7 — 은퇴 파이프라인 위의 main 수정 6건 삭제 유지 + TilemapMapView 의 heart-stress 골 틴트를 `GoalMarker.SetStressTint` 로 이식(렌더러 캐시 승계) · 브리지 `SetGoalStressTint`/`MarkGoalCollapsed` 2곳 마커 재지향. **남는 기능 격차 = `GeneratedMap.bonusSpawns` 스테이지 저작 부재 → unit 9 제안**(스테이지 맵에서 보너스 버튼 미등장, 크래시 없음). dotnet 4어셈블리 0 에러(Ralph csproj 를 글롭 기반으로 전환 — 이후 병합에서 파일 주입 불필요).
+3차 병합 `277121d8` (main +61: bonus-wave-pull·heart-stress-axis·battle-sim-extraction M0·duel-route-tours(자체 철회) 등). 충돌 7 — 은퇴 파이프라인 위의 main 수정 6건 삭제 유지 + TilemapMapView 의 heart-stress 골 틴트를 `GoalMarker.SetStressTint` 로 이식(렌더러 캐시 승계) · 브리지 `SetGoalStressTint`/`MarkGoalCollapsed` 2곳 마커 재지향. **남는 기능 격차 = `GeneratedMap.bonusSpawns` 스테이지 저작 부재 → unit 9 제안**(스테이지 맵에서 보너스 버튼 미등장, 크래시 없음). dotnet 4어셈블리 0 에러(Ralph csproj 를 글롭 기반으로 전환 — 이후 병합에서 파일 주입 불필요). Unity 검증: 컴파일 0 에러 · EditMode 2506 통과 / 3 실패 — malphite(main 상속) · `LegacyTraceV0Tests.StoredCorpus`(**CRLF 환경**: 골든 코퍼스가 index LF·작업본 CRLF 로 체크아웃되고 파서가 `lines[0]=="LTV0"` 엄격 비교 — main 몫: trim 또는 `.gitattributes eol=lf`) · `DreamcatcherCardAssetTextTests`(boomerang — 테스트·에셋 main 과 바이트 동일 = 상속) · 스모크 Passed. 머지 유발 0.
 
 ## Follow-up
 
