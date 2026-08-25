@@ -53,6 +53,14 @@ namespace Wassup.Battle.Skills
         private bool _hasHitQueue;
         private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldVfxQueue;
         private bool _hasShieldVfxQueue;
+        private NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent> _blinkQueue;
+        private bool _hasBlinkQueue;
+        private NativeQueue<Wassup.Battle.Combat.BossLeapVisualEvent> _leapVfxQueue;
+        private bool _hasLeapVfxQueue;
+
+        // 격자 라우팅 — 착지 질의가 쓴다. 도메인은 이 구조를 모르고 질의로만 만난다.
+        private Wassup.Battle.Effects.FlowFieldSingleton _ff;
+        private bool _hasFf;
 
         public void Bind(
             EntityManager em,
@@ -104,6 +112,21 @@ namespace Wassup.Battle.Skills
         public void BindEcb(EntityCommandBuffer ecb, bool has)
         {
             _ecb = ecb; _hasEcb = has;
+        }
+
+        public void BindBlinkSink(NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent> q, bool has)
+        {
+            _blinkQueue = q; _hasBlinkQueue = has;
+        }
+
+        public void BindLeapVisualSink(NativeQueue<Wassup.Battle.Combat.BossLeapVisualEvent> q, bool has)
+        {
+            _leapVfxQueue = q; _hasLeapVfxQueue = has;
+        }
+
+        public void BindFlowField(in Wassup.Battle.Effects.FlowFieldSingleton ff, bool has)
+        {
+            _ff = ff; _hasFf = has;
         }
 
         // ── 핸들 변환 — 이 클래스가 유일한 번역자다 ──────────────────
@@ -274,11 +297,33 @@ namespace Wassup.Battle.Skills
         }
 
         // ── 질의: 격자 위의 판단 ────────────────────────────────────
+        // 순수 코어(`DefenderDensity`)가 셀 배열을 인자로 받는다 — 그래서 이 질의가
+        // 포트를 넘을 수 있다. 어댑터는 풀에서 셀을 뽑아 넘겨주기만 한다.
         public bool TryDensestOpponentCluster(CasterRef caster, int densityRadius, out int2 cell, out int count)
-            => throw NotWired(nameof(TryDensestOpponentCluster));
+        {
+            cell = default; count = 0;
+            if (!_hasFf) return false;
+            var wanted = FactionRelation.OpponentUnitsOf(caster.Faction);
+            if (wanted == Faction.None) return false;
+
+            var poolXf = wanted == Faction.EnemyUnit ? _enemyPoolXf : _defPoolXf;
+            var cells = new NativeArray<int2>(poolXf.Length, Allocator.Temp);
+            for (int i = 0; i < poolXf.Length; i++) cells[i] = CellOfPosition(poolXf[i].Position);
+            bool ok = Wassup.Battle.Combat.DefenderDensity.TryFindDensestCell(
+                cells, densityRadius, _ff.gridSize, out cell, out count);
+            cells.Dispose();
+            return ok;
+        }
 
         public bool TryLandingCellNear(int2 desired, int maxRing, out int2 cell)
-            => throw NotWired(nameof(TryLandingCellNear));
+        {
+            cell = default;
+            if (!_hasFf) return false;
+            return Wassup.Battle.Combat.BlinkMath.TryFindLandingCell(
+                desired,
+                _ff.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot),
+                _ff.gridSize, math.max(0, maxRing), out cell);
+        }
 
         // ── 의도 ────────────────────────────────────────────────────
         public void Emit(in SimIntent intent)
@@ -332,6 +377,37 @@ namespace Wassup.Battle.Skills
                     {
                         source = Resolve(intent.Source),
                         amount = intent.Amount,
+                    });
+                    return;
+                }
+                case SimIntentKind.Blink:
+                {
+                    if (!_hasBlinkQueue) return;
+                    var e = Resolve(intent.Target);
+                    if (e == Entity.Null) return;
+                    // sim 은 **이번 프레임에** 텔레포트한다. 아치는 뷰의 일이다.
+                    _blinkQueue.Enqueue(new Wassup.Battle.Movement.BlinkRequestEvent
+                    {
+                        entity = e,
+                        destWorld = intent.Position,
+                    });
+                    return;
+                }
+                case SimIntentKind.PlayVisual
+                    when (SkillVisualKind)intent.Selector == SkillVisualKind.LeapArc:
+                {
+                    if (!_hasLeapVfxQueue) return;
+                    var e = Resolve(intent.Source);
+                    if (e == Entity.Null) return;
+                    _leapVfxQueue.Enqueue(new Wassup.Battle.Combat.BossLeapVisualEvent
+                    {
+                        entity = e,
+                        fromWorld = intent.Position,
+                        toWorld = CellCenter(intent.Cell),
+                        dataIndex = intent.DataIndex,
+                        // 슬램은 **뷰 도착 시점**에 터진다 — 그 타이밍을 이 채널이 소유한다.
+                        slamDamage = intent.Amount,
+                        slamTileRange = intent.TileRange,
                     });
                     return;
                 }

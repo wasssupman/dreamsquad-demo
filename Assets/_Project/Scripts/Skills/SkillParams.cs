@@ -98,8 +98,12 @@ namespace Wassup.Skills
         private readonly SkillParams _p;
         public LeapParams(in SkillParams p) => _p = p;
 
-        public int DensitySearchRadius => _p.TileRange;   // 밀집 탐색 반경
-        public int MaxLandingRing => (int)_p.Magnitude;   // 착지 링 상한
+        // ⚠ **뒤집기 쉬운 자리다.** 저작이 `magnitude` 를 밀집 탐색 반경으로,
+        // `tileRange` 를 착지 링 상한으로 쓴다 — 이름과 직관이 어긋난다.
+        // 이 뷰가 존재하는 이유가 정확히 그것이다: 읽는 쪽이 이름으로 읽으면
+        // 뒤집을 수 없다. (이전 중 실제로 한 번 뒤집었다가 원본 호출을 보고 잡았다.)
+        public int DensitySearchRadius => (int)_p.Magnitude;
+        public int MaxLandingRing => _p.TileRange;
         public float SlamDamage => _p.SlamDamage;
         public int SlamTileRange => _p.SlamTileRange;
         public float TelegraphSeconds => _p.Duration;     // 궁극기만 쓴다

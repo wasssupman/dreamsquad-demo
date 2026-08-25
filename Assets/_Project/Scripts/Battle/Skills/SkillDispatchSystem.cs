@@ -105,6 +105,13 @@ namespace Wassup.Battle.Skills
             // 구조 변경은 여기서 스테이징하고 **이 OnUpdate 끝에** 재생한다.
             // 브리지 드레인 전에 materialize 돼야 캐리어가 그 프레임에 스폰된다
             // (AttackSystem dcCarrier·HealthThreshold 진동갑주 선례).
+            bool hasBlink = SystemAPI.TryGetSingleton<Wassup.Battle.Movement.BlinkRequestEventsSingleton>(out var blS);
+            _context.BindBlinkSink(hasBlink ? blS.queue : default, hasBlink);
+            bool hasLeapVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.BossLeapVisualEventsSingleton>(out var lvS);
+            _context.BindLeapVisualSink(hasLeapVfx ? lvS.queue : default, hasLeapVfx);
+            bool hasFf = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ffS);
+            _context.BindFlowField(in ffS, hasFf);
+
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             _context.BindEcb(ecb, true);
 
