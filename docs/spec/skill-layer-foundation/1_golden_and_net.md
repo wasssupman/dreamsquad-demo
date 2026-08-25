@@ -13,7 +13,9 @@
 - `battle-sim-extraction/4_legacy_trace_golden.md:114~122` 가 «드림캐쳐 다용 판» 부재를 명시
   (카드 사용이 UI 경유라 하네스에서 재현 불가 — M1 로 미뤄져 있었다)
 - 코퍼스가 **stale** — `configHash` 에 항목 3개가 추가돼 기준선이 어긋나 있다
-- 배치 스킬 PlayMode 커버리지가 **9종 중 3종**(`DotNearby`·`ApplyStackNearby`·`ForwardProjectile`)
+- 배치 스킬 PlayMode 커버리지가 **9종 중 4종**(`ApplyStackNearby`·`DotNearby`·`ForwardProjectile`·
+  `StunNearby`) + `MeleeBurst` 는 `OnPlaceRuleTriggerTest` 의 대조군
+  ⚠ **「3종」은 미검증 수치였다**(실측 2026-08-25 — `OnPlaceStunNearbyTest` 가 빠져 있었다)
 
 ## 변경 대상
 
@@ -32,14 +34,22 @@
    - **(a)** 하네스 입력 스케줄에 카드 부착·유닛 메커닉 발화 경로를 추가한다.
      선례: placement 가 `PlaceDefenderAs` 로 UI 를 우회했다.
    - **(b)** 골든을 포기하고 **arm 전수 특성화**로 간다.
-3. **특성화 테스트를 arm 전수로 깐다.** `skill-fire-dispatch` 의 「무보호 4종」은 옛 12행
-   스코프 기준이라 지금은 부족하다. 확장 스코프의 무보호:
-   - 레거시 배치 9종 중 **6종**
-   - 캐스트 8에셋 · 소환 · 액티브 6종
-   - 카드 heavy-arm 행(`AttackN` 11 · `OnKill` 4 · `OnDamagedN` 2 · `OnShieldBreak` 2 ·
-     `OnDeath` 2 · `OnRetire` 2)
-   - 보스 무보호 4종(궁극기 · 도약×2 · 채찍질 · 경계 자폭)
+3. **특성화 테스트를 arm 전수로 깐다.** 기존 자산을 먼저 세고 **차집합만** 새로 쓴다
+   (실측 2026-08-25 — 기존 커버리지가 보고보다 넓다):
+
+   | 가족 | 이미 있는 것 | 남는 무보호 |
+   |---|---|---|
+   | 레거시 배치 9 | `ApplyStackNearby`·`DotNearby`·`ForwardProjectile`·`StunNearby` (+`MeleeBurst` 대조군) | `BoostNearbyDefenders`·`BindNearby`·`GainCost`·`ReduceSkillCooldown` **4종** |
+   | 방어유닛 규칙 5 | `OnPlaceSkyStrikeTest`·`OnPlaceTauntNearbyTest` **2/5** | `AreaShield`·`OnPlaceBlast`·`BombMan` 3종 |
+   | 보스 11행 | `BossLullabyTest`(자장가)·`BossShieldTest`(가호)·`DragonBreathE2ETest` | 궁극기·도약×2·채찍질·경계 자폭 **무보호 4종** |
+   | 액티브 6 | `ActiveTileCastTest` = **Portal 만** | 나머지 5종 |
+   | 캐스트 8 | `HazardCasterTests`(EditMode)·`EnemyShieldTest`·`KindlerFireStackE2ETest` | 볼리 2·폭탄 1 |
+   | 소환 1 | `PatrolDefenderPlayTest` | — |
+   | 카드 26행 | `DcApplicabilityTests`·`DcTriggerTests`·`DcTriggerArmedTests`(전부 술어 레벨) | **동작 골든 대부분 무보호** |
+   | 분열(범위 밖) | `SlimeSplitE2ETest` | — |
+
    선례: `ProjectileEmitterIntegrationTests` 의 EditMode bare world.
+   ⚠ **비라이브 카드 행 11개/9장**(`visible: 0`)은 그물 우선순위를 낮춘다 — census 실측.
 4. **`LullabyLive` 류는 boolean 골든으로만 쓴다.** sim 이 실프레임 델타라 수치 재현이
    원리적으로 불가하다(`skill-fire-dispatch` 계약 10 계승).
 5. **Burst-off 재검증 게이트를 세운다.** 이전이 arm 산술을 Burst → managed 로 옮기므로
