@@ -95,13 +95,25 @@ namespace Wassup.Battle.Combat
             bool hasUltLeapQ = SystemAPI.TryGetSingletonRW<UltimateLeapVisualEventsSingleton>(out var ultLeapRW);
             NativeQueue<UltimateLeapVisualEvent> ultLeapQueue = hasUltLeapQ ? ultLeapRW.ValueRW.queue : default;
 
-            // Defender 셀 풀 = SelfBlink 착지 앵커 소스. 디펜더-only 판(last_stand 만 있고 blink
-            // 슬롯 없음)에서 매 프레임 쿼리+배열 할당을 피하려 첫 SelfBlink 발동 때 지연 생성
-            // (ecs-review MEDIUM). BossPeriodic whip 풀 선례.
+            // 착지 앵커 풀 = 도약 계열(SelfBlink·UltimateLeap)이 «어디로 뛸까»를 고르는 소스.
+            //
+            // skill-layer-foundation unit 2b — **진영별로 둘**이다. 예전엔 defender 풀 하나였고
+            // 그래서 방어유닛이 이 스킬을 장착하면 **자기 편 밀집 셀로 뛰었다**. 스킬이 host 를
+            // 가리지 않으려면 앵커가 caster 의 상대 진영이어야 한다.
+            // 오늘 라이브 경로는 전부 적(보스) 시전이라 결과가 같다 — 동작 무변경 리팩터다.
+            //
+            // 지연 생성은 유지한다: 디펜더-only 판(last_stand 만 있고 도약 슬롯 없음)에서 매
+            // 프레임 쿼리+배열 할당을 피한다(ecs-review MEDIUM). BossPeriodic 풀 선례.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
-            NativeArray<int2> defCells = default;
-            bool defBuilt = false; // defCells.IsCreated 로 대체 금지 — 방어유닛 전멸 시 길이 0
+            var enemyQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
+            NativeArray<int2> defCells = default, enemyCells = default;
+            bool defBuilt = false, enemyBuilt = false;
+                                   // *Built 를 IsCreated 로 대체 금지 — 그 진영이 전멸하면 길이 0
                                    // 배열의 IsCreated 에 프레임당 재할당 여부가 걸린다.
+
+            // caster 의 진영을 읽는 lookup. `FactionQuery` 가 이 질문의 단일 답이다.
+            var enemyTagLookup = SystemAPI.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
+            var defTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
 
             // 진동갑주 (content-3 unit 4) — SelfTileAoe 캐리어 스테이징용 ECB.
             // Playback 은 이 시스템 끝(브리지 드레인 전 materialize — AttackSystem dcCarrier 선례).
@@ -186,14 +198,13 @@ namespace Wassup.Battle.Combat
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfBlink)
                         {
-                            // 착지 앵커 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
-                            if (hasBlinkQ && !defBuilt)
-                            {
-                                defCells = BuildDefenderCells(defQuery, in ff);
-                                defBuilt = true;
-                            }
+                            // 착지 앵커 = **caster 의 상대 진영** 밀집 셀. 첫 발동 때 1회 생성.
+                            var blinkAnchors = ResolveAnchorPool(
+                                entity, in ff, defQuery, enemyQuery,
+                                in factionLookup, in enemyTagLookup, in defTagLookup,
+                                ref defCells, ref defBuilt, ref enemyCells, ref enemyBuilt);
                             if (hasBlinkQ && TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
-                                     defCells, in ff, out float3 destWorld, out _))
+                                     blinkAnchors, in ff, out float3 destWorld, out _))
                             {
                                 blinkRW.ValueRW.queue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
                                 // sim 은 이번 프레임에 destWorld 로 텔레포트한다. 뷰는 브리지가
@@ -219,13 +230,12 @@ namespace Wassup.Battle.Combat
                             // 상태 부착**뿐이고, 카운트다운·착지는 UltimateLeapSystem 이 굴린다.
                             // 착지 셀을 지금 고정하는 것이 계약이다(README 4): 예고는 약속이라
                             // 착지 직전 재계산하면 빨간 타일을 보고 유닛을 빼는 회피가 거짓이 된다.
-                            if (!defBuilt)
-                            {
-                                defCells = BuildDefenderCells(defQuery, in ff);
-                                defBuilt = true;
-                            }
+                            var ultAnchors = ResolveAnchorPool(
+                                entity, in ff, defQuery, enemyQuery,
+                                in factionLookup, in enemyTagLookup, in defTagLookup,
+                                ref defCells, ref defBuilt, ref enemyCells, ref enemyBuilt);
                             if (TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
-                                    defCells, in ff, out float3 ultDest, out int2 ultCell))
+                                    ultAnchors, in ff, out float3 ultDest, out int2 ultCell))
                             {
                                 // 잠금(LeapFlight)과 무적(UltimateLeapState)은 **함께 붙는다** —
                                 // 레이어는 갈리지만 수명은 하나다(README 6).
@@ -280,12 +290,14 @@ namespace Wassup.Battle.Combat
                                 dataIndex = slot.projectileDataIndex,
                                 visualScale = slot.visualScale > 0f ? slot.visualScale : 1f,
                                 owner = entity,
-                                // boss-jjangssen unit 2 — 피해 풀 진영을 host 에서 도출. 적 host(보스)면
-                                // 방어유닛을, 그 외(디펜더 진동갑주)는 기존대로 적을 때린다. FactionTag
-                                // 부재 시 Enemy 유지 → 기존 디펜더 경로 byte-identical.
+                                // 피해 풀 진영을 host 에서 도출한다. 기본값이 Enemy 라 그냥 두면
+                                // **보스의 폭발이 자기 진영을 때린다**(boss-jjangssen unit 2).
+                                // unit 2b — 리터럴 비교를 `FactionRelation` 로 옮겼다. 진영이 늘거나
+                                // 매핑이 바뀌면 그 순수 함수 하나만 고치면 된다(EditMode 가 고정).
+                                // 진영 미상은 Enemy 유지 → 기존 디펜더 경로 byte-identical.
                                 targetFaction =
-                                    factionLookup.HasComponent(entity)
-                                    && factionLookup[entity].value == Faction.EnemyUnit
+                                    FactionQuery.OpponentsOf(entity, in factionLookup,
+                                        in enemyTagLookup, in defTagLookup) == Faction.DefenderUnit
                                         ? Projectile.ProjectileTargetFaction.Defender
                                         : Projectile.ProjectileTargetFaction.Enemy,
                             });
@@ -301,6 +313,7 @@ namespace Wassup.Battle.Combat
             }
 
             if (defBuilt) defCells.Dispose();
+            if (enemyBuilt) enemyCells.Dispose();
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
@@ -318,10 +331,34 @@ namespace Wassup.Battle.Combat
         // 링 탐색이 인접 walkable·연결 셀로 스냅한다(고립 포켓 착지 방지는 기존 계약).
         // boss-jjangssen unit 4 — 밀집도 판정은 셀 단위. 위치→셀 변환을 한 번만 하고 순수 함수엔
         // 셀만 넘긴다. transforms 는 변환 재료일 뿐이라 수명을 늘리지 않는다.
-        // 반환 배열의 Dispose 는 **호출측 책임**(OnUpdate 끝의 `if (defBuilt) defCells.Dispose()`).
+        // 반환 배열의 Dispose 는 **호출측 책임**(OnUpdate 끝의 `if (*Built) *Cells.Dispose()`).
         // SelfBlink·UltimateLeap 두 arm 이 같은 지연 생성을 쓰므로 한 곳에 둔다 — 세 번째 arm 이
         // 복사본을 또 만들면 `defBuilt` 를 빠뜨려 프레임당 재할당이 조용히 시작된다.
-        private static NativeArray<int2> BuildDefenderCells(EntityQuery defQuery, in FlowFieldSingleton ff)
+        // skill-layer-foundation unit 2b — caster 의 **상대 진영** 셀 풀을 고른다.
+        //
+        // 두 도약 arm 이 같은 선택을 하므로 한 곳에 둔다. 세 번째 arm 이 사본을 만들면
+        // `*Built` 플래그를 빠뜨려 프레임당 재할당이 조용히 시작된다(원래 주석의 경고 계승).
+        // 진영 미상이면 defender 풀로 폴백한다 — 기존 동작이고, 앵커가 없는 것보다 낫다.
+        private static NativeArray<int2> ResolveAnchorPool(
+            Entity caster, in FlowFieldSingleton ff,
+            EntityQuery defQuery, EntityQuery enemyQuery,
+            in ComponentLookup<FactionTag> factions,
+            in ComponentLookup<AttackUnitTag> enemyTags,
+            in ComponentLookup<DefenderUnitTag> defTags,
+            ref NativeArray<int2> defCells, ref bool defBuilt,
+            ref NativeArray<int2> enemyCells, ref bool enemyBuilt)
+        {
+            var opponents = FactionQuery.OpponentsOf(caster, in factions, in enemyTags, in defTags);
+            if (opponents == Faction.EnemyUnit)
+            {
+                if (!enemyBuilt) { enemyCells = BuildCells(enemyQuery, in ff); enemyBuilt = true; }
+                return enemyCells;
+            }
+            if (!defBuilt) { defCells = BuildCells(defQuery, in ff); defBuilt = true; }
+            return defCells;
+        }
+
+        private static NativeArray<int2> BuildCells(EntityQuery defQuery, in FlowFieldSingleton ff)
         {
             var xf = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var cells = new NativeArray<int2>(xf.Length, Allocator.Temp);
