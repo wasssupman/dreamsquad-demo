@@ -26,11 +26,11 @@
 | 0 | 적 mechanics | **11행** (보스 10 + 드래곤 `AreaBreath` 1). 분열 2행 제외 — 아래 | [0](0_enemy_mechanics.md) |
 | 1 | 방어유닛 규칙(`UnitSkillAbility`) | **5행/5에셋** — SkyStrike · Taunt · AreaShield · OnPlaceBlast · BombMan | [1](1_defender_rules.md) |
 | 2 | 레거시 `OnPlaceEffectType` | **arm 9종/12에셋** | [2](2_legacy_onplace.md) |
-| 3 | 드림캐쳐 카드 — 슬롯 arm | 32행 중 슬롯 경유분 | [3](3_cards_slot_arm.md) |
+| 3 | 드림캐쳐 카드 — 슬롯 arm | **26행/25장** | [3](3_cards_slot_arm.md) |
 | 4 | 드림캐쳐 카드 — 즉발 · hand-op | 즉발 5행 + `RecallAttachedToFront` | [4](4_cards_immediate_handop.md) |
 | 5 | 캐스트 계열 | **8에셋** — 하자드4 · 실드1 · 볼리2 · 폭탄1 | [5](5_casts.md) |
 | 6 | 소환 (`SummonPatrolAbility`) | 1에셋 + 전용 시스템 3 | [6](6_summon.md) |
-| 7 | **액티브 (`SkillData`)** | **6에셋, 라이브 3** | [7](7_actives.md) |
+| 7 | **액티브 (`SkillData`)** | **6에셋 — 전부 라이브** | [7](7_actives.md) |
 | 8 | 철거 | legacy enum · arm · flat 필드 · 화이트리스트 | [8](8_teardown.md) |
 | 9 | 인계 | | 9_handoff_summary.md |
 
@@ -54,8 +54,10 @@
    아무 적 에셋에 payload 한 줄이면 코드 0줄이다. (「슬롯을 안 쓴다」는 현황 서술일 뿐
    구조적 불가가 아니다 — 디스패치가 managed 라 `SpawnUnitIntent` 로 표현은 가능하다.
    옮길 이유가 없어서 안 옮기는 것이다.)
-8. **기믹 3계열은 범위 밖** — 과로 · 퇴근 · 온천. 「스킬」 정의에서 정의 수준으로 제외했다
-   (토대 README 결정 기록). 이관 가능 판정분이 있어도 여기서 하지 않는다.
+8. **기믹 SO 4개는 범위 밖** — `Burnout`(불금) · `RedBull`(먹고 달리자) · `ClockOut`(사직서) ·
+   `Onsen`(온천). 「스킬」 정의에서 정의 수준으로 제외했다(토대 README 결정 기록).
+   ⚠ critic 은 앞 둘을 「과로」 하나로 묶었으나 **`BattleConfig` 활성화 단위로는 독립 2개**다(census 실측).
+   이관 가능 판정분이 있어도 여기서 하지 않는다.
 9. **공격 출력 수식자는 범위 밖** — 토대 README 결정 기록의 5종.
 10. **spec 종료 시 골든 재기준 1회.** 그것이 `battle-sim-extraction` M1 의 새 A/B 기준선이 된다.
 

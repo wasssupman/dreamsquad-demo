@@ -55,13 +55,101 @@
    캐스트 8 · 소환 1 · 액티브 6)을 `skill-layer-migration` 의 어느 문서가 맡는지 전부 배정한다.
    배정 없는 행이 남으면 그것이 끝점 미달이다.
 
+## 산출물 — 확정본 (2026-08-25, 5트랙 전수 조사)
+
+조사 영역 5분할: 감시 2개(`BossPeriodicTriggerSystem`·`HealthThresholdSystem`) / RESOLVE
+(`AttackSystem`·`DamageApplicationSystem`·`UnitLifecycleSystem`) / 브리지 드림캐쳐 /
+어휘 2·3(레거시 배치·액티브) / 행 census.
+
+### 질의 — 14동사
+
+| # | 동사 | 시그니처 | 비고 |
+|---|---|---|---|
+| 1 | `Position(h)` | `float3` | 전 arm |
+| 2 | `CellOf` / `CellCenter` | `int2` / `float3` | 격자 스칼라 3개만 필요(tileSize·gridSize·origin) |
+| 3 | `Facing(caster)` | `bool TryFacing(out dir)` | 부재 = 무조준 |
+| 4 | `Opponents(caster, r, filters)` | `→ handles` | 필터 축 필수(아래) |
+| 5 | `Allies(caster, r, filters)` | 〃 | self 포함 여부가 사양 |
+| 6 | `DensestOpponentCluster(cells, r)` | `bool (out cell, out n)` | `DefenderDensity` 순수 |
+| 7 | `LandingCellNear(desired, maxRing)` | `bool (out cell)` | `BlinkMath` 순수 — dist 배열 인자 |
+| 8 | `Stat(h, kind)` | `float` | range·attackTargetCount·targetTraversalLayers·aggroCapacity |
+| 9 | `Health(h)` | `(value, max)` | `maxHpRef` 는 **부착/스폰 시점 스냅샷** |
+| 10 | `ShieldValueFrom(target, source)` | `float` | dedup |
+| 11 | `Has(h, pred)` | `bool` | 술어 ~10종이 여기로 접힘 |
+| 12 | `TraversalLayers(h)` | `byte` | 순수 `CanTarget(a,b)` 동반. **0 = 무필터 통과** |
+| 13 | `FactionOf(h)` | `Faction` | ⚠ 오늘 **구현 2벌**(태그 `Has` vs `FactionTag` lookup) — 통일 필요 |
+| 14 | `HostCapability(caster)` | `DcHostProfile` | 부착 판정 전용. 이미 「브리지 조회 → 순수 판정」 분리됨 |
+
+**감쌀 수 없는 읽기: 4영역 전부 0건 → 계약 1 성립.** 경로장 실소비는 blink/leap 2 arm 뿐이고
+그것도 배열을 인자로 받는 순수 함수(#6·#7)로 봉합된다.
+
+### `Opponents`/`Allies` 필터 축 (실측 6벌 → flag enum)
+
+`ExcludeSelf` · `ExcludeDead` · `ExcludePendingDeployment` · `ExcludeInUltimateLeap` ·
+`RequireDamageable` · `LayerMask(casterLayers)` · `Metric(Chebyshev|Euclid)` · `RangeRecheckWorld`
+
+⚠ **무필터 조합이 3개 실재한다** — `BuildEnemyPool`(공유 풀) · `CollectEnemiesInTileRange`(Dead 미제외) ·
+`CollectShieldBreakTargets`(`{AttackUnitTag}` 만). 못박지 않으면 「같은 이름, 다른 후보」가 숨는다.
+`Metric` 축은 `ForwardProjectile` 만 Euclid 다.
+
+### 의도 — `SimIntent` 14 + `MetaIntent` 2 (⚠ 2계열 이원화)
+
+`SimIntent` 는 큐로 다음 프레임, `MetaIntent` 는 **즉시 반영**이고 M1 이후에도 Mono 에 남는다. 섞지 않는다.
+
+**SimIntent**: `DealDamage` · `Heal` · `ApplyStatModifier` · `ApplyStack` · `ApplyCc` · `ApplyDot` ·
+`ClearCc` · `GrantShield` · `Taunt` · `CreditThreat` · `Blink` · `SpawnProjectile` · `EmitPattern` ·
+`SpawnZoneCarrier`
+**MetaIntent**: `GainCost`(`CostRuntime`) · `ReduceSkillCooldown`(`SkillRuntime`)
+
+뷰 신호(intent 로 세지 않음)는 별도. ⚠ **예외 1건** — `BossLeapVisualEvent` 에 `slamDamage`/
+`slamTileRange` 가 실려 **브리지 코루틴이 피해를 실행**한다. 게임 규칙이 연출 타이밍에 얹혀 있어
+이전 시 판정이 필요하다.
+
+### 계약으로 승격 (5트랙 산출)
+
+1. **`ApplyStatModifier` 의 병합 키 `(source, stat, op, stackId)` 는 revoke 가능성의 조건이다.**
+   회수가 「제거」가 아니라 **같은 stackId 로 항등 재발행 = 중립화**라, 포트가 키 구성을 바꾸면
+   **회수가 조용히 깨진다**(host 가 죽어도 버프가 안 풀린다).
+2. **`SkillFiredEvent` 페이로드** = `skillId · caster(무효 가능) · firedPos · targetHandle? ·
+   targetPos? · dirXZ? · params 값 · targetTraversalLayers`.
+   「드레인 시점 재질의로 대체 가능」은 **4영역 통틀어 0건.**
+3. **`CasterRef { UnitHandle unit(무효 가능); Faction faction; }`** — 플레이어 시전은 `unit` 무효 +
+   `faction` 명시. 액티브 6 arm 중 **caster 위치를 읽는 것이 0개**라 성립한다.
+4. **대상 축** = `int2 cellA; int2 cellB; bool hasB`. Portal 만 `hasB`.
+   「입구==출구 거절」은 arm 이 아니라 **창구 규칙** → 디스패처/검증층 소유.
+5. **skillId 별 typed params + 디스패처 번역층.** 반례 못 찾음 — `tileRange` **13의미** ·
+   `magnitude` **12의미** · `duration` **7의미**이고 **겸직의 겸직**도 있다(`ProjectileToTarget` 의
+   `tileRange` 가 탄 궤적에 따라 반경↔비행거리로 전환). bake 변환 6종 확인.
+   ⚠ 단 **`FromMultiplier` 는 bake 가 아니라 발화 시점**이다.
+
+### 예외 확정 (구조적 근거 있음)
+
+| 항목 | 근거 |
+|---|---|
+| 공격 출력 수식자 | pre-scan 합성 불변식 — 코드 확인. **판별 기준: 「이번 공격의 출력 조립에 곱·합으로 참여」=안 / 「별도 대상·캐리어·채널로 나감」=밖** |
+| hand-op(`RecallAttachedToFront`) | 대상이 판이 아니라 **카드 큐**. `ISkillContext` 어휘가 하나도 안 쓰인다. 소비자 1·실행자 1 → 제약 8. `DcPayloadKinds.IsHandOp` 가 이미 코드로 예외 명문화 |
+| 부착 시점 요청-응답 8종 | `Execute`(발동)와 **층이 다르다**. 코스트 「환불」의 실체는 **apply-first + 성공 후 Spend** → void `Execute` 와 충돌 없음 |
+| `AwakeningReward` 덮어쓰기 | 큐로 미루면 「표식 직후 같은 프레임 처치」에 배율 누락 창 |
+| 진행형 상태 부착 7종 | 계약 5 의 「개시 쓰기」. 부분 적용 금지 preflight 와 큐 지연이 충돌 |
+
+### 미결 — 착수 전 확인
+
+1. whip 이 **시체·배치중 대상에도 buff enqueue** — 하류 `ModifierApplySystem` 이 거르나?
+2. blink/leap **착지 앵커 풀이 `DeadTag` 미제외** — 사망 프레임에 실해인가?
+3. `EnemyCcEventsSingleton` 이 **defender 대상 CC 를 받나** — 큐 우회 2곳(배치 Sleep·DreamCocoon)의
+   intent 화 가부가 여기 달렸다.
+4. `EmitPattern` 의 `fireCountBase` 전진이 **발사 성사와 원자적**이다(no-fire 면 비전진).
+   intent 화하려면 성사 판정이 방출 전에 끝나야 한다 — 어댑터 전진 vs 감지측 잔존 예외.
+
 ## 완료 기준
 
-- [ ] 질의·의도 표가 **3어휘 전수**에서 도출됐고, 각 동사에 소비 arm 이 1개 이상 붙어 있다
-- [ ] 감쌀 수 없는 읽기가 **0건**임이 표로 확인됐다(있으면 계약 1 을 재론한다)
-- [ ] 직접 쓰기 구멍 · 요청-응답 arm · Mono 의도가 각각 «intent 화» 또는 «예외» 로 판정됐다
-- [ ] `Opponents` 필터 축이 enum flag 로 명세되고 arm 별 현행 조합이 박제됐다
-- [ ] ~75행 전부에 담당 unit 이 배정됐다 (미배정 0)
-- [ ] `ISkill`·`ISkillContext`·`SkillFiredEvent` 시그니처가 고정됐다 — **caster 없음**과
+- [x] 질의·의도 표가 **3어휘 전수**에서 도출됐고, 각 동사에 소비 arm 이 1개 이상 붙어 있다
+- [x] 감쌀 수 없는 읽기가 **0건**임이 표로 확인됐다 → 계약 1 성립
+- [x] 직접 쓰기 구멍 · 요청-응답 arm · Mono 의도가 각각 «intent 화» 또는 «예외» 로 판정됐다
+- [x] `Opponents` 필터 축이 flag 로 명세되고 arm 별 현행 조합이 박제됐다 (무필터 3벌 포함)
+- [x] **77행 전부에 담당 unit 이 배정됐다 — 미배정 0** (census, `skill-layer-migration` 참조)
+- [x] `ISkill`·`ISkillContext`·`SkillFiredEvent` 시그니처가 고정됐다 — **caster 없음**(`CasterRef`)과
       **대상 셀 A/B**(Portal 2타일)를 표현한다
-- [ ] 코드 변경 0줄
+- [x] 코드 변경 0줄
+
+**완료 2026-08-25** — 5트랙 병렬 전수 조사. 미결 4건은 unit 3 착수 전에 닫는다.

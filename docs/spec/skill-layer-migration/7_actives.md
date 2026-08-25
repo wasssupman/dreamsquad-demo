@@ -3,8 +3,12 @@
 ## 목적
 
 **세 번째 어휘를 죽인다.** `SkillData`/`SkillEffectType` — 플레이어가 손패에서 써서 타일을
-지정하는 스킬 6종(SlowField · PowerSurge · RapidFire · Tornado · Meteor · Portal),
-그중 **라이브 3**(`Active_Meteor` · `Active_Tornado` · `Active_Portal`).
+지정하는 스킬 6종(SlowField · PowerSurge · RapidFire · Tornado · Meteor · Portal).
+
+⚠ **6종 전부 라이브다**(census 실측 2026-08-25). `Active_*` 6장이 전부 `visible: 1` 이고,
+`DreamcatcherCardCatalog` 에 Active 카드가 없어 `FilterHiddenSkills` 를 전부 통과하며,
+BattleScene 배선이 `defaultPool` = 6종 전체 + `defaultCount: 2` 다 — **풀 6종에서 판마다 2종 시드 추첨.**
+초기 초안의 「라이브 3」은 미검증 수치였다.
 
 이 가족이 「호출자 = 소유자」 모델의 **가장 강한 시험대**다 — 시전 주체 엔티티가 없다.
 
@@ -42,5 +46,5 @@
 - [ ] caster 없는 시전이 동작한다 (`SkillEntityId.None`)
 - [ ] Portal 이 타일 2개를 받고 입구==출구 거절이 유지된다
 - [ ] 쿨다운·코스트가 호출자에 남아 있다
-- [ ] 라이브 3종(Meteor·Tornado·Portal)을 Play 로 육안 확인
+- [ ] **롤 풀 6종 전부** Play 로 육안 확인 (판당 2종 추첨이므로 여러 판 또는 시드 고정 필요)
 - [ ] 그물 초록

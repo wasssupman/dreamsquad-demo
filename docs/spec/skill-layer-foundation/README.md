@@ -116,14 +116,23 @@ arm 에 보스 게이트가 없다. 통과해도 아무것도 증명하지 않�
   였다. **사용자 결정 override 2026-08-24.**
 - **M1 착수 순서 재조정** — M1 은 2026-08-22 사용자 착수 승인을 받은 상태였다.
   **사용자 결정 override 2026-08-24.**
-- **기믹은 「스킬」 정의에서 제외** — 과로(`FatigueAccrualSystem`·`LastRunSystem`·
-  `PickupSpawnSystem`·`PickupConsumeSystem`) · 퇴근(`ResignationDropSystem`·
-  `ResignationThresholdSystem`) · 온천(`HeatAccrualSystem`) 3계열. 이들은 **매치 규칙**이고
-  활성화가 시즌 SO 게이팅이다. 「아직 안 옮김」이 아니라 정의상 다른 축이다.
-- **공격 출력 수식자는 스킬이 아니다** — `HeavyStrike`·`NextAttackDoubleFire`·게이트 합성 ·
-  `DcAttackModSlot` · `FrontmostAttackLock.damageMulSnapshot`. pre-scan 합성 불변식이 공격
-  계산 내부 거주를 강제한다(`AttackSystem.cs:1114~1148` 확인). 큐 드레인 후의 `Execute` 는
-  이미 만들어진 출력에 개입할 수 없다.
+- **기믹은 「스킬」 정의에서 제외** — `Data/Gimmick/` **SO 4개**: `Burnout`(불금 ·
+  `FatigueAccrualSystem`) · `RedBull`(먹고 달리자 · `PickupSpawn/ConsumeSystem`+`LastRunSystem`) ·
+  `ClockOut`(사직서 · `ResignationDrop/ThresholdSystem`) · `Onsen`(온천 · `HeatAccrualSystem`).
+  이들은 **매치 규칙**이고 활성화가 시즌 SO 게이팅이다. 「아직 안 옮김」이 아니라 정의상 다른 축이다.
+  (census 실측 2026-08-25 — 앞 둘을 「과로」 하나로 묶은 초기 집계는 틀렸다. `BattleConfig`
+  활성화 단위로 독립 2개다.)
+- **공격 출력 수식자는 스킬이 아니다** — `HeavyStrike` · 게이트 합성 · `DcAttackModSlot` 전 kind
+  (FrontmostTarget·ProjectileBounce·DamageVsSleeping) · `FrontmostAttackLock.damageMulSnapshot` ·
+  `NextAttackDoubleFire` 의 **소비**. pre-scan 합성 불변식이 공격 계산 내부 거주를 강제한다
+  (`AttackSystem.cs:1114~1148` 확인 — `WouldFire`∧`GatePass` 예측과 실제 counter Tick 이 같은 프레임·
+  같은 bestTarget·같은 pre-damage HP 를 읽어야 일치). 큐 드레인 후의 `Execute` 는 이미 만들어진
+  출력에 개입할 수 없다.
+  **판별 기준**(unit 0 도출): 「이번 공격의 출력 숫자/타이밍 **조립에 곱·합으로 참여**」 = 밖 /
+  「발동 후 **별도 대상·캐리어·채널로 나감**」 = 안.
+  ⚠ **경계 정정 2026-08-25**: `OnDamagedN × NextAttackDoubleFire` 는 발동(감지·Tick)이 다른
+  `OnDamagedN` payload 와 **동형**이다. 통째로 밖에 두면 `OnDamagedN` 계열이 payload 별로 두
+  레이어에 갈라진다. → **「charge 부여」까지가 스킬(안), charge 의 소비는 `AttackSystem` 내부(밖).**
 
 ## 후속 후보
 
