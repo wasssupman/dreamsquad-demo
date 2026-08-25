@@ -105,6 +105,13 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new Health { value = 1f, max = 1f });
             em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
+            // 스킬 레이어는 두 풀 안의 엔티티만 다룬다(unit 3a 함정) — 실적 아키타입 모사.
+            em.AddComponent<Wassup.Battle.Units.AttackUnitTag>(enemy);
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, enemy);
+
+            // ⚠ **죽음 seam 의 첫 증인.** 이 단언이 없으면 라우팅이 끊기고 legacy arm 이
+            // 대신 처리해도 아래 결과 단언이 초록이다.
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
 
             float t = 0f;
             while (t < 5f && em.Exists(enemy) && em.GetComponentData<Health>(enemy).value > 0f)
@@ -115,6 +122,11 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 4; i++) yield return null; // ModifierApply/Aggregate 정착
             float postAs = em.GetComponentData<ModifierStats>(defender).attackSpeedMul;
 
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Death), 1,
+                "죽음 seam 이 concrete 를 안 거쳤다 — legacy arm 이 대신 처리했다면 아래 단언은 "
+                + "라우팅이 끊겨도 초록이 된다");
             Assert.Greater(postAs, preAs * 1.03f,
                 $"devouring: 처치 후 attackSpeedMul 상승 예상 ({preAs:0.000}->{postAs:0.000})");
         }

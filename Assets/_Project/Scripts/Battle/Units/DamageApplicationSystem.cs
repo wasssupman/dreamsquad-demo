@@ -81,6 +81,9 @@ namespace Wassup.Battle.Units
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
             bool hasCcClearQueue = SystemAPI.TryGetSingletonRW<CcClearRequestsSingleton>(out var ccClearSingleton);
+            // skill-layer-migration unit 3c — 죽음 seam 의 생산자.
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredSingleton);
             // dreamcatcher-kill-and-threshold unit 2 — OnKill(devouring) self-buff 채널.
             bool hasStatModQueue = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statModSingleton);
             // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
@@ -441,8 +444,49 @@ namespace Wassup.Battle.Units
                         for (int s = 0; s < kSlots.Length; s++)
                         {
                             var ks = kSlots[s];
-                            if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill ||
-                                ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
+                            if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
+                            // ⚠ **라우팅이 payload 판정보다 앞이다.** 뒤에 두면 이전한
+                            // 스킬이 legacy arm 을 타는데 legacy 가 잘 돌아 그물이 초록이 된다.
+                            //
+                            // skill-layer-migration unit 3c — 죽음 계열의 값 스냅샷:
+                            // **드레인 시점엔 피해자가 이미 없다**(`UnitLifecycleSystem` 이
+                            // 파괴한다). killer 사양(통행 층)도 지금 읽어야 한다 — 0 으로
+                            // 새면 무제한 통과가 되어 지상 전용 유닛이 비행 적에게 효과를 건다.
+                            if (ks.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                            {
+                                if (hasSkillQ)
+                                    skillFiredSingleton.ValueRW.queue.Enqueue(
+                                        new Wassup.Battle.Skills.SkillFiredEvent
+                                    {
+                                        Caster = killerSource,
+                                        SkillId = ks.skillId,
+                                        SlotIndex = s,
+                                        FiredPosition = _transformLookup.HasComponent(killerSource)
+                                            ? _transformLookup[killerSource].Position : float3.zero,
+                                        Target = Entity.Null,
+                                        Magnitude = ks.magnitude,
+                                        Duration = ks.duration,
+                                        TileRange = ks.tileRange,
+                                        Period = ks.period,
+                                        DataIndex = ks.projectileDataIndex,
+                                        Selector = (int)ks.ccKind,
+                                        StatSelector = (int)ks.buffStat,
+                                        StackSelector = (int)ks.stackKind,
+                                        ProjectileMovement = (int)ks.projectileMovement,
+                                        ProjectilePayload = (int)ks.projectilePayload,
+                                        PatternIndex = ks.patternIndex,
+                                        Speed = ks.speed,
+                                        HitThreshold = ks.hitThreshold,
+                                        SlamDamage = ks.slamDamage,
+                                        SlamTileRange = ks.slamTileRange,
+                                        StackId = ks.statBuffStackId,
+                                        VisualScale = ks.visualScale,
+                                        TargetTraversalLayers = _attackStateLookup.HasComponent(killerSource)
+                                            ? _attackStateLookup[killerSource].targetTraversalLayers : (byte)0,
+                                    });
+                                continue;
+                            }
+                            if (ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
                             // 슬롯 고정 stackId 로 재부여. 최대 중첩(ks.tileRange)이 0 이면 지속만
                             // 갱신되는 비스택 refresh 이고, >0 이면 매 킬마다 상한까지 누적된다
                             // (dreamcatcher-berserker unit 1 — 짱빠른/짱쎈버서커가 이 자리에 선다).

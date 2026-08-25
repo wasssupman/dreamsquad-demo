@@ -11,11 +11,14 @@ namespace Wassup.Battle.Skills
         Periodic = 0,   // 주기·배치 — BossPeriodicTriggerSystem 뒤
         Attack = 1,     // 공격 해결 — AttackSystem 뒤
         Threshold = 2,  // 체력 경계 — HealthThresholdSystem 뒤
-        Count = 3,
+        // skill-layer-migration unit 3c — 죽음 계열(처치·피격 N회·실드 파열).
+        // 감지가 `DamageApplicationSystem` **안**에서 나므로 공격 seam(그 앞)이 못 받는다.
+        Death = 3,
+        Count = 4,
     }
 
-    // skill-layer-foundation unit 4 — 드레인 지점 셋. **로직은 base 에만 있다.**
-    // 이 파일의 세 타입은 어트리뷰트와 격자 파라미터뿐이다.
+    // skill-layer-foundation unit 4 — 드레인 지점. **로직은 base 에만 있다.**
+    // 이 파일의 타입들은 어트리뷰트와 격자 파라미터뿐이다.
     //
     // 각 파생이 「그 감지자 뒤 + 그 하류 앞」 구간에 정확히 꽂힌다. 이 순서가 곧 계약이라
     // 어트리뷰트를 옮기면 arm 이 1프레임 밀리고 자장가·도발·오라·blink 가 달라진다.
@@ -110,5 +113,24 @@ namespace Wassup.Battle.Skills
     public partial class SkillDispatchThresholdSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Threshold;
+    }
+
+    // ④ 피해 정산 뒤 — 죽음 계열(`OnKill`·`OnDamagedN`·`OnShieldBreak`).
+    //
+    // ⚠ **네 번째다.** 토대 unit 0 이 「3 seam」이라 적은 것은 그때 조사한 payload 들의
+    // 감지 지점이 셋이었다는 뜻이고, 카드가 죽음 계열을 들고 오면서 네 번째 감지 지점이
+    // 생겼다. 감지자가 다른 프레임 창을 가지면 seam 도 따라 는다 — 「3」이 상한이 아니다.
+    //
+    // ⚠ **`AttackN` seam(#35)이 이걸 못 받는다.** 그쪽은 `DamageApplicationSystem` **앞**
+    // 이고 죽음 사건은 그 **안**에서 난다 — 같은 큐를 쓰더라도 한 프레임 밀린다.
+    //
+    // ⚠ **`UnitLifecycleSystem` 앞이어야 한다.** 그게 사망 엔티티를 파괴하므로, 뒤로 가면
+    // 죽은 대상을 참조하는 효과가 대상째 사라진다.
+    [UpdateInGroup(typeof(BattleSimGroup))]
+    [UpdateAfter(typeof(Wassup.Battle.Units.DamageApplicationSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Units.UnitLifecycleSystem))]
+    public partial class SkillDispatchDeathSystem : SkillDispatchSeamBase
+    {
+        protected override SkillSeam Seam => SkillSeam.Death;
     }
 }
