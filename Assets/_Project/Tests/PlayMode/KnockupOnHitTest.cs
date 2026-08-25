@@ -39,6 +39,10 @@ namespace Wassup.Tests.PlayMode
             var catalog = FindDefenderCatalog();
             var malphite = Object.Instantiate(catalog.ById("guardian"));
             malphite.id = "test_knockup";
+            // ⚠ **순수 공격자로 만든다.** 예전엔 `onPlaceEffect = None` 한 줄이 그 일을
+            // 했는데(unit 2g 에서 그 필드가 철거됐다), 지금 가디언은 규칙 저작으로 배치
+            // 스킬을 갖는다 — 그 공격력 오라가 섞이면 이 타격의 피해가 달라진다.
+            malphite.abilities = new System.Collections.Generic.List<DefenderAbilityData>();
             malphite.attackTargetCount = 3;      // ← 전 대상 계약을 드러내는 유일한 조건
             malphite.knockupOnHitSec = 0.8f;
             malphite.sleepOnHitSec = 0f;
@@ -54,9 +58,9 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
 
             var defPos = em.GetComponentData<LocalTransform>(defender).Position;
-            var a = SpawnDummyEnemy(em, defPos + new float3(0.05f, 0f, 0f));
-            var b = SpawnDummyEnemy(em, defPos + new float3(0.10f, 0f, 0f));
-            var c = SpawnDummyEnemy(em, defPos + new float3(0.15f, 0f, 0f));
+            var a = SpawnDummyEnemy(em, bridge, defPos + new float3(0.05f, 0f, 0f));
+            var b = SpawnDummyEnemy(em, bridge, defPos + new float3(0.10f, 0f, 0f));
+            var c = SpawnDummyEnemy(em, bridge, defPos + new float3(0.15f, 0f, 0f));
 
             // 세 대상이 **동시에** 스턴 상태인 프레임을 찾는다. 순차 관측(각각 한 번씩)으로는
             // "주 타겟만 걸고 타겟이 돌아가며 바뀌는" 오답과 구분되지 않는다.
@@ -85,11 +89,13 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             var catalog = FindDefenderCatalog();
-            var malphite = Object.Instantiate(catalog.ById("guardian"));
+            // skill-layer-migration unit 2g — 예전엔 가디언 사본에 레거시 필드를 꽂아
+            // 「배치 스턴」을 만들었다. 그 필드군이 철거돼 **실제 말파이트**를 쓴다.
+            var malphite = Object.Instantiate(catalog.ById("malphite"));
             malphite.id = "test_onplace_stun";
-            malphite.onPlaceEffect = OnPlaceEffectType.StunNearby;
-            malphite.onPlaceRange = 1f;
-            malphite.onPlaceDuration = 0.8f;
+            malphite.cost = 0;
+            malphite.maxOnBoard = 100;
+            malphite.attackRange = 0f;
             malphite.knockupOnHitSec = 0f;   // 배치 스킬만 격리 — 공격 넉업이 섞이면 판정 불가
 
             bridge.SetDefenderPool(new[] { malphite });
@@ -101,8 +107,8 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell found");
 
             // 배치 **전에** 세운다 — on-place 는 배치 순간의 쿼리 스냅샷을 본다.
-            var near = SpawnDummyEnemy(em, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y))));
-            var far = SpawnDummyEnemy(em, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y))));
+            var near = SpawnDummyEnemy(em, bridge, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y))));
+            var far = SpawnDummyEnemy(em, bridge, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y))));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "place malphite");
 
@@ -143,7 +149,7 @@ namespace Wassup.Tests.PlayMode
             return false;
         }
 
-        private static Entity SpawnDummyEnemy(EntityManager em, float3 pos)
+        private static Entity SpawnDummyEnemy(EntityManager em, BattleBridge bridge, float3 pos)
         {
             const float Hp = 1_000_000f; // 죽지 않게 — 공격이 계속 이어지도록
             var enemy = em.CreateEntity();
@@ -153,6 +159,8 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<IncomingDamage>(enemy);
             em.AddBuffer<CcEffect>(enemy);
             em.AddComponent<AttackUnitTag>(enemy);
+            // 스킬 레이어의 핸들 축 — 배치 스킬의 후보가 되려면 필요하다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, enemy);
             return enemy;
         }
 

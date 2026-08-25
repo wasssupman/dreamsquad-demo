@@ -56,7 +56,7 @@ namespace Wassup.Tests.PlayMode
 
             var defender = FindDefender(bridge, em);
             var defPos = em.GetComponentData<LocalTransform>(defender).Position;
-            var enemy = SpawnDummyEnemy(em, defPos + new float3(1.6f, 0f, 0f));
+            var enemy = SpawnDummyEnemy(em, bridge, defPos + new float3(1.6f, 0f, 0f));
 
             // 세션이 열리고 배치될 때까지.
             Transform body = null;
@@ -109,7 +109,9 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var gm = Object.FindObjectOfType<GameManager>();
             var busters = FindCatalog().ById("busters");
-            Assert.AreEqual(OnPlaceEffectType.DotNearby, busters.onPlaceEffect, "배치 스킬 = DotNearby");
+            var dotSpec = busters.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(dotSpec, "버스터즈에 배치 스킬이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AreaDot, dotSpec.Value.kind, "배치 스킬 = 광역 지속 피해");
 
             bridge.SetDefenderPool(new[] { busters });
             bridge.BeginPlacement();
@@ -130,7 +132,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < spots.Length; i++)
             {
                 var w = bridge.GridToWorldCenterVector(spots[i]);
-                enemies[i] = SpawnDummyEnemy(em, new float3(w.x, w.y, w.z));
+                enemies[i] = SpawnDummyEnemy(em, bridge, new float3(w.x, w.y, w.z));
             }
 
             bridge.StartBattle();
@@ -190,13 +192,16 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < spots.Length; i++)
             {
                 var w = bridge.GridToWorldCenterVector(spots[i]);
-                SpawnDummyEnemy(em, new float3(w.x, w.y, w.z));
+                SpawnDummyEnemy(em, bridge, new float3(w.x, w.y, w.z));
             }
 
             bridge.StartBattle();
             Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, busters, out var entity),
                 "drag 배치 시작");
             bridge.ActivateDeployedDefender(cell, entity); // 배치 확정 = on-place 발동 시점
+            // skill-layer-migration unit 2e/2g — 규칙 경로는 배치 **다음 틱**에 실행된다.
+            // 레거시는 배치 호출 안에서 동기 실행이라 프레임이 필요 없었다.
+            for (int f = 0; f < 4; f++) yield return null;
 
             var presenter = GameObject.Find("BeamPresenter (auto)");
             Assert.IsNotNull(presenter, "활성화 직후 빔 프레젠터가 있어야 한다");
@@ -230,10 +235,14 @@ namespace Wassup.Tests.PlayMode
             var defender = FindDefender(bridge, em);
             Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
 
-            // 배치 직후 쿨다운이 조사 지속만큼 밀려 있어야 한다 = 그동안 기본 공격 없음.
+            // 규칙 경로는 배치 다음 틱에 실행된다(unit 2e). 그 뒤 쿨다운이 조사 지속만큼
+            // 밀려 있어야 한다 = 그동안 기본 공격 없음.
+            // ⚠ **여유는 프레임 몇 개분(0.2s)이다** — 흘린 프레임만큼 쿨다운이 자연 감소하고,
+            // 저작 지속(2초)과는 자릿수가 달라 「밀리긴 했는데 지속만큼이 아니다」는 여전히 잡힌다.
+            for (int f = 0; f < 4; f++) yield return null;
             var atk = em.GetComponentData<Wassup.Battle.Combat.AttackState>(defender);
-            Assert.GreaterOrEqual(atk.cooldownRemaining, busters.onPlaceDuration - 0.05f,
-                $"조사 중에는 기본 공격을 하지 않아야 한다(쿨다운 {atk.cooldownRemaining} < 지속 {busters.onPlaceDuration})");
+            Assert.GreaterOrEqual(atk.cooldownRemaining, busters.GetAbility<UnitSkillAbility>().mechanics[0].payload.duration - 0.2f,
+                $"조사 중에는 기본 공격을 하지 않아야 한다(쿨다운 {atk.cooldownRemaining} < 지속 {busters.GetAbility<UnitSkillAbility>().mechanics[0].payload.duration})");
             yield return null;
         }
 
@@ -244,7 +253,7 @@ namespace Wassup.Tests.PlayMode
             return all.Length > 0 ? all[0] : null;
         }
 
-        private static Entity SpawnDummyEnemy(EntityManager em, float3 pos)
+        private static Entity SpawnDummyEnemy(EntityManager em, BattleBridge bridge, float3 pos)
         {
             const float Hp = 1_000_000f;
             var e = em.CreateEntity();
@@ -257,6 +266,12 @@ namespace Wassup.Tests.PlayMode
             // 실패로 전가돼 원인 추적이 어려워진다(실제로 그렇게 한 번 헤맸다).
             em.AddBuffer<Wassup.Battle.Effects.CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
+            // 스킬 레이어의 핸들 축 + 통행 층 — 없으면 배치 조사의 후보가 못 된다.
+            em.AddComponentData(e, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             return e;
         }
 

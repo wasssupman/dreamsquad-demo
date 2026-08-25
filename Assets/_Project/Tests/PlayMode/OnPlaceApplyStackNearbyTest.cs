@@ -46,8 +46,6 @@ namespace Wassup.Tests.PlayMode
             slasher.attackRange = 0f;   // 평타가 섞이면 배치 도포분을 분리 측정할 수 없다
             slasher.cost = 0;
             slasher.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.None, slasher.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
             var stackSpec = slasher.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
             Assert.IsNotNull(stackSpec, "난도질꾼에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
             Assert.AreEqual(DcPayloadKind.AreaApplyStack, stackSpec.Value.kind, "페이로드 = 광역 스택");

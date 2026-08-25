@@ -30,6 +30,20 @@ namespace Wassup.Skills.Concrete
                 | CandidateFilter.ExcludeInUltimateLeap
                 | CandidateFilter.MatchTraversalLayers,
                 RangeMetric.Chebyshev, buf);
+
+            // ⚠ **대상이 0이어도 묶인다.** 처음엔 「아무 일도 안 했는데 공격만 못 하는
+            // 순수 손해」라고 보고 `n == 0` 에서 빠져나가게 했는데, 기존 그물이 그걸
+            // 반박했다 — 레거시는 대상 수와 무관하게 쿨다운을 밀었다.
+            //
+            // 그쪽이 맞다: 조사는 **명중에 대한 보상이 아니라 동작에 대한 약속**이다.
+            // 유닛은 2초간 눈에 보이게 훑고 있고, 그동안 평타를 쏘면 그림이 거짓말이 된다.
+            // 빈 반경에 배치하는 건 플레이어의 선택이고, 적은 그 2초 안에 도착한다.
+            ctx.Emit(new SimIntent
+            {
+                Kind = SimIntentKind.DelaySelfAttack,
+                Target = caster.Unit,
+                Duration = a.Duration,
+            });
             if (n == 0) return;
 
             for (int i = 0; i < n; i++)
@@ -59,15 +73,6 @@ namespace Wassup.Skills.Concrete
                     });
                 }
             }
-
-            // ⚠ **한 명이라도 지진 뒤에만 묶인다**(위 `n == 0` early return). 아무도 없는데
-            // 묶이면 「아무 일도 안 했는데 공격만 못 하는」 순수 손해가 된다.
-            ctx.Emit(new SimIntent
-            {
-                Kind = SimIntentKind.DelaySelfAttack,
-                Target = caster.Unit,
-                Duration = a.Duration,
-            });
         }
     }
 }

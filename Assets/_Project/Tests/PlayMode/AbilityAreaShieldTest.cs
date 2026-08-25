@@ -153,7 +153,6 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            unit.onPlaceEffect = OnPlaceEffectType.None;   // 말파이트 지진 봉인
             unit.abilities.Clear();
             return unit;
         }

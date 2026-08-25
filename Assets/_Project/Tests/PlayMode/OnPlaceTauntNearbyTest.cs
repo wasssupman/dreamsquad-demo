@@ -211,10 +211,10 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "배스티온의 레거시 배치 효과는 해제돼 있어야 한다(규칙 경로로 이관)");
-            Assert.AreEqual(0f, unit.onPlacePushDistance,
-                "밀쳐냄은 꺼져 있어야 한다 — 끌어오기와 정반대 힘이라 같이 걸면 어느 쪽도 안 읽힌다");
+            // skill-layer-migration unit 2g — 「밀쳐냄이 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군이 철거돼(저작 소비자 0) 켤 방법이 없다. 「끌어오기와 정반대 힘을
+            // 같이 걸면 어느 쪽도 안 읽힌다」는 판단은 그대로 유효하고, 밀쳐냄이 규칙
+            // 어휘로 돌아오는 날 그 자리에서 다시 세워야 한다.
             Assert.IsNotNull(unit.GetAbility<UnitSkillAbility>(), "UnitSkillAbility 배선");
             return unit;
         }

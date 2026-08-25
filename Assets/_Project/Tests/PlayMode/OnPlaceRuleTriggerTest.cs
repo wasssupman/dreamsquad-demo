@@ -199,26 +199,12 @@ namespace Wassup.Tests.PlayMode
                 "BakeDefenderDirectionalPattern 보다 먼저 불리면 머신거너가 배치 스킬을 쏜다.");
         }
 
-        // 레거시 enum 과 규칙을 동시에 선언하면 배치 순간에 둘 다 터진다 — 조용히 통과 금지.
-        [UnityTest]
-        public IEnumerator LegacyEffectAndRule_TogetherWarnsAtBake()
-        {
-            yield return LoadBattle();
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            var gm = Object.FindObjectOfType<GameManager>();
-
-            var unit = MakeArmlessRuleUnit("test_onplace_rule_conflict");
-            unit.onPlaceEffect = OnPlaceEffectType.MeleeBurst; // 레거시도 켠다
-            unit.onPlaceRange = 1f;
-            unit.onPlaceMagnitude = 1f;
-            Prepare(bridge, gm, unit);
-            var cell = FindPlaceableCells(bridge, unit, 1, minGap: 1)[0];
-
-            LogAssert.Expect(LogType.Warning, new Regex("onPlaceEffect.*UnitSkillAbility"));
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "배치");
-            yield return Frames(3);
-            Object.Destroy(unit);
-        }
+        // skill-layer-migration unit 2g — **「레거시 enum 과 규칙이 동시에 돈다」 테스트가
+        // 은퇴했다.** 그 상태를 만들 방법이 없어졌다 — 레거시 필드군 자체가 철거돼
+        // 「동시에 선언」이 표현 불가능하다. 경고도 함께 은퇴했다.
+        //
+        // 이 자리에 남는 계약은 위 테스트들이다: 규칙 하나가 배치 순간에 한 번 발화하고,
+        // 재배치하면 재무장한다.
 
         // ── helpers ──────────────────────────────────────────────────────────
 
@@ -242,7 +228,6 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            unit.onPlaceEffect = OnPlaceEffectType.None;
             unit.abilities = new System.Collections.Generic.List<DefenderAbilityData>();
             return unit;
         }

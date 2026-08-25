@@ -47,7 +47,6 @@ namespace Wassup.Data
             // 규칙(UnitSkillAbility). 규칙을 먼저 보고, 없을 때만 enum 으로 떨어진다 —
             // 둘 다 선언된 유닛은 bake 가 경고하므로 여기선 한 줄만 낸다.
             string onPlace = OnPlaceRuleClause(u);
-            if (string.IsNullOrEmpty(onPlace)) onPlace = OnPlaceClause(u.onPlaceEffect);
             if (!string.IsNullOrEmpty(onPlace))
                 traits.Add(onPlace);
             if (u.GetAbility<HazardCastAbility>() != null)
@@ -72,27 +71,6 @@ namespace Wassup.Data
             return false;
         }
 
-        private static string OnPlaceClause(OnPlaceEffectType effect)
-        {
-            switch (effect)
-            {
-                case OnPlaceEffectType.SlowPulse: return "배치 시 주변 둔화";
-                case OnPlaceEffectType.BoostNearbyDefenders: return "배치 시 주변 아군 강화";
-                case OnPlaceEffectType.BindNearby: return "배치 시 주변 속박";
-                case OnPlaceEffectType.MeleeBurst: return "배치 즉시 광역 폭발";
-                case OnPlaceEffectType.ForwardProjectile: return "배치 시 전방 발사";
-                case OnPlaceEffectType.GainCost: return "배치 시 코스트 획득";
-                case OnPlaceEffectType.ReduceSkillCooldown: return "배치 시 스킬 쿨다운 감소";
-                case OnPlaceEffectType.ApplyStackNearby: return "배치 시 주변 상태 중첩";
-                // 「기절」이 아니라 **「스턴」** (사용자 결정 2026-08-16) — 게임 문안이 쓰는 어휘로
-                // 통일한다. 말파이트 desc 가 이 축이다.
-                case OnPlaceEffectType.StunNearby: return "배치 시 주변 스턴";
-                case OnPlaceEffectType.DotNearby: return "배치 시 주변 지속 피해";
-                // default 가 빈 문자열이라 신규 enum 멤버는 **조용히 설명이 빈다**.
-                // OnPlaceEffectType 을 늘리면 여기도 같이 늘릴 것.
-                default: return "";
-            }
-        }
 
         // on-place-skill-rework unit 6 — 규칙(트리거 × 페이로드)으로 선언된 배치 스킬의 문안.
         //

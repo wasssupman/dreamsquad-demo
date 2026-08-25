@@ -197,7 +197,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
 
             // onPlaceRange(6)보다 훨씬 멀다.
-            int far = (int)unit.onPlaceRange + 6;
+            int far = unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.tileRange + 6;
             var beyond = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + far)));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
@@ -233,12 +233,8 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;
             unit.cost = 0;
             unit.maxOnBoard = 100; // 판 위 동시 상한(기본 1)에 조준 4방향 검사가 막힌다
-            // skill-layer-migration unit 2f — **밸런스 변경을 동반한 이전**이다.
-            // 레거시는 탄을 안 쐈다: 폭 1.2타일 통로를 훑어 즉발 피해를 줬다. 지금은
-            // 진짜 관통탄이 날아간다(사용자 결정 2026-08-26 — 「(a) 총알로 바꾼다」).
-            // 그래서 이 그물의 **거리·방향 단언은 그대로**이고, 「즉발」만 창으로 바뀐다.
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
             var shotSpec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
             Assert.IsNotNull(shotSpec, "배치 스킬(UnitSkillAbility)이 배선돼야 한다");
             Assert.AreEqual(DcPayloadKind.EmitProjectilePattern, shotSpec.Value.kind,

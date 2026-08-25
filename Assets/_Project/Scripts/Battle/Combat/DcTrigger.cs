@@ -123,7 +123,7 @@ namespace Wassup.Battle.Combat
         // 막는 유일한 문이다. 방어유닛 전용 트리거를 그 목록에 섞으면 두 질문이 한 술어에 겹쳐
         // 다음 사람이 어느 쪽 근거로 완화해도 되는지 알 수 없게 된다.
         //
-        // v1 은 `OnPlace` 하나다. 레거시 `OnPlaceEffectType` 8종을 규칙으로 이관할 때도 늘 것은
+        // v1 은 `OnPlace` 하나다. 레거시 `OnPlaceEffectType` 8종을 규칙으로 이관하면서도(skill-layer-migration unit 2) 늘지 않은 것은
         // payload 어휘이지 트리거가 아니다. 방어유닛 사건인 `OnRetire` 는 **카드 전용**이라
         // 여기 없다 — 유닛이 자기 규칙으로 퇴근 스킬을 선언하는 소비자가 생기면 그때 연다.
         public static bool DefenderTriggerArmed(Wassup.Data.DcTriggerKind kind)

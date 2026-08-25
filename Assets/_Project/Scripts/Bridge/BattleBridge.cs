@@ -5406,27 +5406,7 @@ namespace Wassup.Bridge
         // "쿼리 → 순회 → LocalTransform 확인 → InTileRange" 를 복제하고 있었다(bleed/knockup
         // unit 1 이 두 개를 더하면서 다섯이 됨) — 호출처가 다섯이라 추출이 맞다.
         // 재사용 스크래치라 배치마다 할당이 없다(`_dcFiredScratch` 선례).
-        private readonly System.Collections.Generic.List<Entity> _onPlaceInRangeScratch = new();
 
-        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(
-            Vector2Int cell, float range, byte attackTargetLayers)
-        {
-            _onPlaceInRangeScratch.Clear();
-            if (range <= 0f || !_aliveAttackersQueryCreated) return _onPlaceInRangeScratch;
-            int tileRange = GridMath.RangeToTiles(range);
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e)) continue;
-                if (!CanDefenderTargetMover(attackTargetLayers, e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                if (!InTileRange(pos, cell, tileRange)) continue;
-                _onPlaceInRangeScratch.Add(e);
-            }
-            entities.Dispose();
-            return _onPlaceInRangeScratch;
-        }
 
         private bool CanDefenderTargetMover(byte attackTargetLayers, Entity target)
         {
@@ -5440,280 +5420,19 @@ namespace Wassup.Bridge
         // the count of entities affected so the logger can record magnitude.
         // Writes to Effects components go through EffectSpawner so the Effects-
         // context write gateway (Phase 2 decision) stays the sole path.
-        private int ApplyOnPlaceEffect(DefenderUnitData unitData, Vector2Int placedCell, Entity placedEntity)
-        {
-            if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
-
-            int affected = 0;
-            byte attackTargetLayers = (byte)unitData.EffectiveAttackTargetLayers;
-
-            // SlowPulse 와 BindNearby 는 예전부터 **같은 효과**다(둘 다 이동속도 배율 감쇠).
-            // 문구만 다르고 동작이 같으므로 한 분기로 합쳐 둔다 — 갈라 두면 한쪽만 고쳐진다.
-            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse
-                || unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
-            {
-                foreach (var e in CollectEnemiesInTileRange(
-                             placedCell, unitData.onPlaceRange, attackTargetLayers))
-                {
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
-                    affected++;
-                }
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.ApplyStackNearby)
-            {
-                // bleed-fighter-defender unit 1 — 반경 내 적 전원에 스택 도포(등장 난도질).
-                // 스택 종류/수/지속은 SO, 상한은 그 StackKind 를 소유한 StackModifierSO 가
-                // 권위다(유닛마다 다른 상한을 적는 것이 아니라 스택의 성질) — 미등록이면
-                // AttackSystem outputs 경로와 같은 기본값 5.
-                if (unitData.onPlaceMagnitude <= 0f || !_stackModifierQueue.IsCreated) return 0;
-
-                byte maxStack = Wassup.Data.StackModifierSO.DefaultMaxStack;
-                if (stackModifierAuthoring != null)
-                {
-                    foreach (var so in stackModifierAuthoring)
-                        if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
-                }
-
-                foreach (var e in CollectEnemiesInTileRange(
-                             placedCell, unitData.onPlaceRange, attackTargetLayers))
-                {
-                    _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
-                    {
-                        target         = e,
-                        kind           = unitData.onPlaceStackKind,
-                        countDelta     = (byte)math.max(1f, unitData.onPlaceMagnitude),
-                        maxStack       = maxStack,
-                        perAppDuration = unitData.onPlaceDuration,
-                        source         = placedEntity,
-                    });
-                    affected++;
-                }
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.StunNearby)
-            {
-                // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
-                // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
-                //
-                // ⚠ **이 arm 은 스턴이 있어야 성립한다.** 아래 `onPlaceMagnitude` 피해는 그
-                // 위에 얹힌 부수 효과이므로, `onPlaceDuration 0` + `onPlaceMagnitude > 0`
-                // (피해만 주는 배치)으로 저작하면 여기서 **조용히 끝난다** — 침묵이 의도다.
-                // 피해만 주는 배치는 `MeleeBurst` 가 이미 하는 일이라, 가드를 쪼개 문을 열면
-                // 같은 일을 하는 저작 경로가 둘이 된다(제약 8).
-                if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
-
-                foreach (var e in CollectEnemiesInTileRange(
-                             placedCell, unitData.onPlaceRange, attackTargetLayers))
-                {
-                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
-                    {
-                        target = e,
-                        effect = new Wassup.Battle.Effects.CcEffect
-                        {
-                            kind          = Wassup.Battle.Effects.CcKind.Stun,
-                            remainingTime = unitData.onPlaceDuration,
-                        },
-                    });
-                    // unit 3 — 공격 넉업과 같은 연출 경로. 여기는 이미 브리지(뷰 접근 가능)라
-                    // 큐를 거치지 않고 직접 재생한다.
-                    //
-                    // on-place-skill-rework unit 5 — **띄움 길이는 스턴 길이와 다르다.**
-                    // 심의 사실은 처음부터 「스턴」이고 「공중」은 뷰가 붙이는 해석이라
-                    // (knockup-fighter-defender unit 3), 스턴을 3초로 늘리면서 체공까지 3초가
-                    // 되면 지진 충격이 아니라 무중력이 된다. `knockupOnHitSec` 은 **이 유닛이
-                    // 적을 띄우는 길이**라는 하나의 성질이라(평타든 배치든 같은 높이·같은 체공)
-                    // 새 필드를 만들지 않고 그 값을 쓴다.
-                    //
-                    // `min` 인 이유: 스턴보다 오래 떠 있으면 **땅에 닿기 전에 적이 다시 움직이는**
-                    // 역전이 난다. 0 이면(띄우지 않는 유닛) 종전대로 스턴 길이를 따른다.
-                    if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
-                        && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
-                    {
-                        float hopSec = unitData.knockupOnHitSec > 0f
-                            ? math.min(unitData.knockupOnHitSec, unitData.onPlaceDuration)
-                            : unitData.onPlaceDuration;
-                        hopView.PlayKnockupHop(hopSec, unitData.knockupVisualHeight);
-                    }
-                    // 지진은 「멈춘다」만이 아니라 「아프다」이기도 하다 (사용자 결정 2026-08-19).
-                    // `onPlaceMagnitude` 는 **배치 스킬의 세기**라는 공용 축이고 다른 arm 이 이미
-                    // 자기 뜻으로 소비한다(MeleeBurst=피해 · DotNearby=틱당 피해 · GainCost=코스트
-                    // · ApplyStackNearby=스택 수) — 이 arm 만 그 필드를 안 읽고 있었다. 새 필드도
-                    // 새 enum 값도 아니고, 0 이면 종전대로 CC 만 건다.
-                    //
-                    // ⚠ 이 arm 은 규칙 경로(트리거 × 페이로드)로 이관될 예정이다
-                    // (`docs/spec/onplace-area-cc/` — 보류 중). 그때 이 값은 `SelfTileAoe`
-                    // payload 의 magnitude 로 그대로 따라간다. 여기서 값을 늘릴 때 **반경은
-                    // `onPlaceRange` 하나**라는 사실을 유지할 것 — 멈춘 적과 아픈 적의 집합이
-                    // 갈리면 화면에서 규칙을 읽을 수 없다.
-                    if (unitData.onPlaceMagnitude > 0f && _em.HasBuffer<IncomingDamage>(e))
-                        _em.GetBuffer<IncomingDamage>(e).Add(
-                            new IncomingDamage { amount = unitData.onPlaceMagnitude });
-                    affected++;
-                }
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.DotNearby)
-            {
-                // beam-ranger-defender unit 2 — 개점 일제 조사. 심은 기존 이산 tick DoT 그대로
-                // (dot-tick-cadence 계약) — 신규 시스템 0. 연출은 대상마다 빔 세션 1개.
-                // ⚠ tickInterval>0 일 때 scalar 는 **틱당 피해**다(DPS 아님).
-                if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
-                    || !_dotApplyQueue.IsCreated) return 0;
-
-                foreach (var e in CollectEnemiesInTileRange(
-                             placedCell, unitData.onPlaceRange, attackTargetLayers))
-                {
-                    _dotApplyQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
-                    {
-                        target = e,
-                        effect = new Wassup.Battle.Effects.DotEffect
-                        {
-                            // element 는 None 유지(원소 없음 = 오라 없음). 배치 도트에 원소를
-                            // 주고 싶어지면 그때 저작 필드를 신설한다(제약 8).
-                            origin        = Wassup.Battle.Effects.DotOrigin.OnPlace,
-                            scalar        = unitData.onPlaceMagnitude,
-                            tickInterval  = unitData.onPlaceTickInterval,
-                            tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(add-path 규약)
-                            remainingTime = unitData.onPlaceDuration,
-                        },
-                    });
-                    // 대상별 빔 — 키가 적 엔티티라 공격 세션(키 = 공격자)과 충돌하지 않는다.
-                    // 대상을 엔티티로 넘기므로 2초 동안 적이 걸어가도 빔이 따라간다.
-                    if (unitData.beamVfxPrefab != null)
-                    {
-                        EnsureBeamPresenter().Open(
-                            e, unitData.beamVfxPrefab,
-                            source: placedEntity, target: e, ttlSec: unitData.onPlaceDuration);
-                    }
-                    affected++;
-                }
-
-                // 조사(照射) 중에는 기본 공격을 하지 않는다. DotNearby 는 다른 on-place 효과와
-                // 달리 **지속을 갖는 채널**이라 그동안 유닛이 이 스킬에 묶여 있는 것이 사양이다
-                // (순간 효과인 MeleeBurst/StunNearby 등은 해당 없음 — 그래서 이 분기 안에 둔다).
-                // 첫 공격 쿨다운을 지속만큼 밀어 둔다. max 를 쓰는 이유는 이미 걸린 쿨다운을
-                // 줄이지 않기 위함.
-                if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(placedEntity))
-                {
-                    var atk = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(placedEntity);
-                    atk.cooldownRemaining = math.max(atk.cooldownRemaining, unitData.onPlaceDuration);
-                    _em.SetComponentData(placedEntity, atk);
-                }
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
-            {
-                if (unitData.onPlaceMagnitude <= 0f) return 0;
-                foreach (var e in CollectEnemiesInTileRange(
-                             placedCell, unitData.onPlaceRange, attackTargetLayers))
-                {
-                    if (!_em.HasBuffer<IncomingDamage>(e)) continue;
-                    _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
-                    affected++;
-                }
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
-            {
-                affected = ApplyForwardOnPlaceProjectile(unitData, GridToWorldCenter(placedCell), placedEntity);
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.GainCost)
-            {
-                var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
-                affected = costRuntime != null
-                    ? costRuntime.AddCost(Mathf.RoundToInt(unitData.onPlaceMagnitude))
-                    : 0;
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.ReduceSkillCooldown)
-            {
-                affected = skillRuntime != null ? skillRuntime.ReduceAllCooldowns(unitData.onPlaceMagnitude) : 0;
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.BoostNearbyDefenders)
-            {
-                if (unitData.onPlaceRange <= 0f) return 0;
-                // Reuse the tuple-based tile map — no ECS query needed since placement
-                // grid already gives us every defender. Self-inclusion is allowed
-                // (PHASE4.md §4 autonomy, chosen for simplicity + stronger feedback).
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                foreach (var kv in _defenderByTile)
-                {
-                    var d = kv.Value;
-                    if (!_em.Exists(d.entity)) continue;
-                    if (d.entity != placedEntity && _em.HasComponent<PendingDeployment>(d.entity)) continue;
-                    var tileCell = kv.Key;
-                    var tileInt = new int2(tileCell.x, tileCell.y);
-                    var originInt = new int2(placedCell.x, placedCell.y);
-                    if (GridMath.ChebyshevDistance(tileInt, originInt) > tileRange) continue;
-                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
-                    affected++;
-                }
-            }
-
-            return affected;
-        }
 
         // defender-on-place-skills unit 4 — 통로 반폭(타일). 0.45 였을 때 **레인 오프셋만큼 옆으로
         // 선 적**(±0.5)이 바로 옆에서도 탈락했다 — 실측 lat=1.0 으로 두 마리가 빠졌다.
-        private const float ForwardBurstHalfWidthTiles = 0.6f;
 
         // unit 4 rev — 후보를 **한 번만** 모은다. 방향 결정과 명중 판정이 같은 집합을 봐야 한다:
         // 갈라 두면 한쪽만 고쳐진다(초판이 정확히 그랬다 — 방향 선정이 이탈 중인 보스를 후보로
         // 잡아 총구를 줬고, 그 보스는 피해를 받을 수 없어 일격이 통째로 낭비됐다).
-        private readonly System.Collections.Generic.List<Entity> _forwardBurstScratch = new();
 
         // 「이번 프레임 합법 후보」 — `AttackSystem` 의 targetCandidatesQuery 와 **같은 집합**이다.
         // `DeadTag`(파괴 대기)와 `UltimateLeapState`(판 밖 — 들어온 피해를 버린다)를 뺀다.
         // 빼지 않으면 때릴 수 없는 대상에 총구를 주고, `IncomingDamage` 에 넣기만 하면 올라가는
         // affected 로그가 거짓 양성이 된다. `UltimateLeapState` 주석의 소비처 목록도 함께 갱신할 것.
-        private bool IsLegalOnPlaceTarget(Entity e)
-            => _em.HasComponent<LocalTransform>(e)
-               && _em.HasBuffer<IncomingDamage>(e)
-               && !_em.HasComponent<DeadTag>(e)
-               && !_em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e);
 
-        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, float3 center, Entity placedEntity)
-        {
-            if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
-            if (!_aliveAttackersQueryCreated) return 0;
-
-            float length = unitData.onPlaceRange * tileSize;
-            byte targetLayers = (byte)unitData.EffectiveAttackTargetLayers;
-
-            _forwardBurstScratch.Clear();
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!IsLegalOnPlaceTarget(e)) continue;
-                if (!CanDefenderTargetMover(targetLayers, e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                var to = new float2(pos.x - center.x, pos.z - center.z);
-                if (math.lengthsq(to) > length * length) continue;
-                _forwardBurstScratch.Add(e);
-            }
-            entities.Dispose();
-
-            // 사거리 안에 합법 후보가 없으면 사건이 성립하지 않는다.
-            // ⚠ 이 가드는 **방향 퇴화도 막는다**: 후보가 없으면 최근접 방향이 (0,0) 이 되고,
-            // 그러면 along=0 · lateral=|to| 라 방향과 무관하게 반경 0.6칸을 때린다. 이 가드를
-            // 완화하려는 사람은 forward 가 비영이라는 보장을 따로 만들어야 한다.
-            if (_forwardBurstScratch.Count == 0) return 0;
-
-            float2 forward = ResolveForwardBurstDirection(placedEntity, center);
-            float width = tileSize * ForwardBurstHalfWidthTiles;
-            float widthSq = width * width;
-            int affected = 0;
-
-            for (int i = 0; i < _forwardBurstScratch.Count; i++)
-            {
-                var e = _forwardBurstScratch[i];
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
-                float along = math.dot(toTarget, forward);
-                if (along < 0f || along > length) continue;
-                float2 lateral = toTarget - forward * along;
-                if (math.lengthsq(lateral) > widthSq) continue;
-                _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
-                affected++;
-            }
-            return affected;
-        }
 
         // defender-on-place-skills unit 4 — 전방 관통 일격의 총구 방향.
         //
@@ -5735,33 +5454,6 @@ namespace Wassup.Bridge
         // (skill-layer-migration unit 1 에서 도메인 어셈블리로 이사했다 — 규칙은 무변경).
         // 규칙 경로(배치 스킬의 방향 발사)가 두 번째 소비자가 되면서 뽑았다 — 두 벌로 두면 한쪽만
         // 고쳐지는 날이 온다. 여기 남는 것은 «엔티티에서 값을 꺼내는 일» 과 **레거시 폴백** 뿐이다.
-        private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
-        {
-            bool hasAim = placedEntity != Entity.Null && _em.Exists(placedEntity)
-                          && _em.HasComponent<DeployedFacing>(placedEntity);
-            float2 aim = float2.zero;
-            if (hasAim)
-            {
-                var facing = _em.GetComponentData<DeployedFacing>(placedEntity).value;
-                aim = new float2(facing.x, facing.y);
-            }
-
-            var candidates = new float2[_forwardBurstScratch.Count];
-            for (int i = 0; i < _forwardBurstScratch.Count; i++)
-            {
-                var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
-                candidates[i] = new float2(pos.x, pos.z);
-            }
-            bool ok = Wassup.Skills.SkillAim.TryResolve(
-                new float2(center.x, center.z), hasAim, aim,
-                candidates, candidates.Length, out float2 dir, out _);
-
-            // ⚠ **레거시 폴백 유지가 무회귀의 조건이다.** 순수 함수는 "쏠 방향이 없다"에 false 를
-            // 주지만, 이 경로는 후보가 전부 중심에 겹친 극단에서도 **발사했다**(호출처가 후보
-            // 존재를 이미 판정했으므로 여기서 취소하면 규칙이 바뀐다). 규칙 경로는 반대로
-            // 취소한다 — 그 갈림은 호출처의 계약이지 판정 함수의 계약이 아니다.
-            return ok ? dir : new float2(0f, 1f);
-        }
 
         // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
         // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
@@ -7486,7 +7178,6 @@ namespace Wassup.Bridge
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
-            ApplyOnPlacePush(unitData, cell);
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
@@ -7526,12 +7217,11 @@ namespace Wassup.Bridge
             if (_onPlaceTriggeredEntities.Contains(entity)) return false;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
-            int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
             MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
             FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
-            LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
+            LogSynergy(binding.data, cell);
             return true;
         }
 
@@ -7942,9 +7632,6 @@ namespace Wassup.Bridge
             {
                 knockbackDistance   = unitData.knockbackDistance,
                 knockbackDuration   = unitData.knockbackDuration,
-                onPlacePushDistance = unitData.onPlacePushDistance,
-                onPlacePushDuration = unitData.onPlacePushDuration,
-                onPlacePushRadius   = unitData.onPlacePushRadius,
                 sleepOnHitSec       = unitData.sleepOnHitSec,
                 knockupOnHitSec     = unitData.knockupOnHitSec,
                 knockupVisualHeight = unitData.knockupVisualHeight,
@@ -8069,19 +7756,10 @@ namespace Wassup.Bridge
             var skillAbility = unitData.GetAbility<UnitSkillAbility>();
             if (skillAbility != null && skillAbility.mechanics != null && skillAbility.mechanics.Length > 0)
             {
-                // 과도기 충돌: 레거시 enum 경로와 규칙 경로가 한 유닛에서 둘 다 돌면 배치 순간에
-                // 두 사건이 겹친다. 조용히 통과시키지 않는다(기존 bake 거절 선례와 같은 자리).
-                if (unitData.onPlaceEffect != OnPlaceEffectType.None)
-                    Debug.LogWarning(
-                        $"[BattleBridge] {unitData.displayName}: onPlaceEffect({unitData.onPlaceEffect}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 둘 다 발동한다. 하나로 정리하라.");
-                // on-place-shuttle-shotgun unit 2 — **밀쳐냄은 enum 과 독립 필드군이다.**
-                // 위 경고는 `onPlaceEffect` 만 보는데, `onPlacePush*` 는 그것이 None 이어도
-                // 배치 순간 반경 안 적을 민다(샷건맨이 그랬다). 규칙 경로와 겹치면 한 배치에서
-                // 반대 방향 두 힘이 걸려 **어느 쪽도 안 읽힌다**(배스티온 선례). 시트 임포트나
-                // 다른 세션이 값을 되살려도 조용하지 않게 여기서 같이 잡는다.
-                if (unitData.onPlacePushDistance > 0f)
-                    Debug.LogWarning(
-                        $"[BattleBridge] {unitData.displayName}: onPlacePushDistance({unitData.onPlacePushDistance}) 와 UnitSkillAbility 가 동시에 선언됐다 — 배치 순간에 밀쳐냄과 규칙이 겹친다. 밀쳐냄을 0 으로 끄거나 규칙을 지워라.");
+                // skill-layer-migration unit 2g — **과도기 충돌 경고 둘이 함께 은퇴했다.**
+                // 「레거시 enum 과 규칙이 동시에 돈다」와 「밀쳐냄과 규칙이 겹친다」는
+                // 둘 다 «두 경로가 공존하던 동안»의 안전장치였고, 이제 그 두 경로가
+                // 사라져 겹칠 대상이 없다(enum·밀쳐냄 필드군 모두 철거).
 
                 BakeUnitMechanics(entity, skillAbility.mechanics, hostIsEnemy: false,
                     maxHpRef: unitData.health, ownerLabel: unitData.displayName, enemyOwner: null);
@@ -8545,14 +8223,12 @@ namespace Wassup.Bridge
             // onPlace is a standalone snapshot effect and must fire before the
             // new defender's SynergyBuff is computed. Individual on-place effect
             // rules decide whether the placed defender is included.
-            int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
-            ApplyOnPlacePush(unitData, cell);
             MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
             FireOnPlaceCameraShake(unitData);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
             RecomputeSynergyFor(cell);
-            LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
+            LogSynergy(unitData, cell);
         }
 
         public Unity.Entities.Entity DebugSpawnObstacleAt(Unity.Mathematics.int2 cell, float lifetime = 5f)
@@ -9302,55 +8978,14 @@ namespace Wassup.Bridge
         [UnityEngine.ContextMenu("Debug Spawn Obstacle At (3,1)")]
         private void DebugSpawnObstacleContext() => DebugSpawnObstacleAt(new Unity.Mathematics.int2(3, 1), 5f);
 
-        private void ApplyOnPlacePush(DefenderUnitData unitData, Vector2Int cell)
-        {
-            if (unitData.onPlacePushDistance <= 0f || unitData.onPlacePushDuration <= 0f
-                || unitData.onPlacePushRadius <= 0f) return;
-            if (!_aliveAttackersQueryCreated) return;
 
-            float3 defCenter = GridToWorldCenter(cell);
-            int tileRange = GridMath.RangeToTiles(unitData.onPlacePushRadius);
-            float speed = unitData.onPlacePushDistance / unitData.onPlacePushDuration;
-
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e)) continue;
-                if (!CanDefenderTargetMover((byte)unitData.EffectiveAttackTargetLayers, e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                if (!InTileRange(pos, cell, tileRange)) continue;
-                float3 toEnemy = pos - defCenter;
-                toEnemy.y = 0f;
-                float3 dir = math.normalizesafe(toEnemy);
-                EffectSpawner.ApplyCc(_em, e, new CcEffect
-                {
-                    kind = CcKind.Impulse,
-                    vector = dir * speed,
-                    remainingTime = unitData.onPlacePushDuration,
-                });
-            }
-            entities.Dispose();
-        }
-
-        private void LogOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, int onPlaceAffected)
+        // skill-layer-migration unit 2g — **배치 효과 로그가 은퇴했다.** 레거시 enum 이
+        // 사라지면서 「무슨 효과가 몇 명에게」를 브리지가 알 수 없게 됐다 — 그건 이제
+        // 스킬 레이어의 사실이고, 필요하면 그쪽 계측(`ExecutedCountOf`)이 답한다.
+        // 남은 것은 시너지 통계뿐이라 이름도 그에 맞췄다.
+        private void LogSynergy(DefenderUnitData unitData, Vector2Int cell)
         {
             var logger = GameManager.Instance?.Logger;
-            if (unitData.onPlaceEffect != OnPlaceEffectType.None)
-            {
-                Debug.Log($"[BattleBridge] On-place {unitData.displayName}: {unitData.onPlaceEffect} affected={onPlaceAffected} at {cell}.");
-                if (logger != null)
-                {
-                    logger.RecordOnPlace(new Logging.OnPlaceUsageLog
-                    {
-                        unit_type = unitData.displayName,
-                        effect = unitData.onPlaceEffect.ToString(),
-                        tile = cell,
-                        time = Time.time - _startTime,
-                        affected_count = onPlaceAffected,
-                    });
-                }
-            }
             if (logger != null)
                 logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
         }

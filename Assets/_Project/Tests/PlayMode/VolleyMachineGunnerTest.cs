@@ -157,12 +157,16 @@ namespace Wassup.Tests.PlayMode
         {
             var catalog = Resources.FindObjectsOfTypeAll<DefenderCatalog>()[0];
             var unit = Object.Instantiate(catalog.ById("machine_gunner"));
+            // ⚠ **연발만 잰다.** 예전엔 `onPlaceEffect = None` 한 줄이 배치 효과를 껐는데
+            // (unit 2g 에서 그 필드가 철거됐다), 지금 머신거너는 규칙 저작으로 배치 사격을
+            // 갖는다(unit 2f) — 그 피해가 섞이면 「연발 저작대로 맞았나」를 못 잰다.
+            // 배치 스킬만 떼고 연발 능력은 남긴다.
+            unit.abilities = unit.abilities.FindAll(a => !(a is UnitSkillAbility));
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
             // 레거시 배치 효과(ForwardProjectile)가 배치 순간 자기 탄을 쏴 버스트 합산을
             // 오염시킨다 — 이 파일이 재는 것은 **평타 다연발**뿐이므로 사본에서 끈다.
-            unit.onPlaceEffect = OnPlaceEffectType.None;
             var volley = unit.GetAbility<DirectionalVolleyAbility>();
             Assert.IsNotNull(volley, "머신거너에 DirectionalVolleyAbility 가 배선돼야 한다");
             Assert.IsTrue(volley.requiresFacing, "머신거너는 facing 유닛이다(requiresFacing=1 저작)");

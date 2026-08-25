@@ -71,7 +71,7 @@ namespace Wassup.Tests.PlayMode
             // 배치 스킬(개점 일제 조사)이 끝날 때까지 기다린 뒤에 잰다. 조사 중에는 기본 공격을
             // 하지 않는 것이 사양이고(BeamPresentationTest 가 그 계약을 지킨다), 조사의 tick DoT
             // 자체도 이 적에게 들어오므로 그 구간을 섞으면 "기본 공격이 도는가"를 못 잰다.
-            float settle = busters.onPlaceDuration + 0.6f; // 조사 지속 + DoT 꼬리
+            float settle = busters.GetAbility<UnitSkillAbility>().mechanics[0].payload.duration + 0.6f; // 조사 지속 + DoT 꼬리
             float t = 0f;
             while (t < settle) { t += Time.deltaTime; yield return null; }
 

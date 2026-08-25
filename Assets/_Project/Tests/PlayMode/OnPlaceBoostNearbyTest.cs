@@ -121,10 +121,8 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            // skill-layer-migration unit 2b — 레거시 flat 필드에서 규칙 저작으로 이사했다.
-            // 단언은 그대로고 **값의 출처만** 바뀐다.
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
             var skill = unit.GetAbility<UnitSkillAbility>();
             Assert.IsNotNull(skill, "가디언에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
             Assert.AreEqual(DcPayloadKind.AllyStatAura, skill.mechanics[0].payload.kind,
@@ -142,7 +140,6 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            unit.onPlaceEffect = OnPlaceEffectType.None;
             unit.abilities = new System.Collections.Generic.List<DefenderAbilityData>();
             return unit;
         }

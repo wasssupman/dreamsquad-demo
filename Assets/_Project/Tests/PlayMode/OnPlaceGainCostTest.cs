@@ -114,10 +114,8 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;   // 배치 비용이 측정에 끼지 않게 — 델타 = 순수 GainCost 산출
             unit.maxOnBoard = 100;
-            // skill-layer-migration unit 2c — 레거시 flat 필드에서 규칙 저작으로 이사했다.
-            // 단언은 그대로고 **값의 출처만** 바뀐다.
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
             Assert.AreEqual(DcPayloadKind.GainCost,
                 unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.kind,
                 "스카우트의 배치 효과가 GainCost 여야 이 특성화가 성립한다");

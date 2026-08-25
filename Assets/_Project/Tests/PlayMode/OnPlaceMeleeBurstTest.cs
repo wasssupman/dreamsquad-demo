@@ -57,8 +57,6 @@ namespace Wassup.Tests.PlayMode
             bruiser.maxOnBoard = 100;
 
             // ⚠ 값은 **규칙 저작(UnitSkillAbility)** 에서 온다. 레거시 flat 필드는 꺼져 있다.
-            Assert.AreEqual(OnPlaceEffectType.None, bruiser.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 이전이 안 됐거나 두 경로가 동시에 돈다");
             var skill = bruiser.GetAbility<UnitSkillAbility>();
             Assert.IsNotNull(skill, "브루저에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
             Assert.AreEqual(DcTriggerKind.OnPlace, skill.mechanics[0].trigger.kind, "트리거 = 배치");

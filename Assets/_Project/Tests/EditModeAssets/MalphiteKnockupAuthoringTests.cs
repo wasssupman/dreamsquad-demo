@@ -26,10 +26,8 @@ namespace Wassup.Tests.EditMode
             var unit = catalog.ById("malphite");
             Assert.IsNotNull(unit, "malphite");
 
-            // skill-layer-migration unit 2e — 스턴 길이의 출처가 flat 필드에서 규칙 저작으로
-            // 옮겼다. **계약은 그대로**이고 읽는 곳만 바뀐다.
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
             var spec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
             Assert.IsNotNull(spec, "말파이트에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
             Assert.AreEqual(DcPayloadKind.AreaCc, spec.Value.kind);

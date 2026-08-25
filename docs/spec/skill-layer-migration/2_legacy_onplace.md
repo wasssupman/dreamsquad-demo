@@ -95,7 +95,7 @@
 | **2d** | `ApplyStackNearby` | payload 1 | **완료** (2026-08-26) |
 | **2e** | `StunNearby` · `DotNearby` | payload 2 + 「자기 공격 대기」 | **완료** (2026-08-26) |
 | **2f** | `ForwardProjectile` | 없음(패턴 재저작) | **완료** (2026-08-26) · **밸런스 변경** |
-| **2g** | 철거(enum · flat 필드 · 체인 · 문안 · **`SlowPulse` 삭제**) | — | 위 전부 뒤 |
+| **2g** | 철거(enum · flat 필드 · 체인 · 문안 · `SlowPulse`) | — | **완료** (2026-08-26) |
 
 ⚠ **`SlowPulse` 삭제는 2g 로 옮겼다.** enum **중간 값**을 지우면 뒤 값이 전부 한 칸씩
 밀리고, 저작은 YAML 에 **정수**로 박혀 있다 — 라이브 12개 에셋이 조용히 다른 효과가 된다
@@ -256,12 +256,48 @@
 `_running` 아래), 대기 프레임도 10 → 60 으로 늘렸다(탄 비행 시간). 2a 에서 만난 것과
 같은 함정이다 — **즉발을 탄으로 바꾸면 그물의 시간 전제가 항상 깨진다.**
 
+## 2g 에서 나온 것 (2026-08-26) — **두 번째 어휘가 죽었다**
+
+지운 것: `ApplyOnPlaceEffect` 체인 207줄 · `OnPlaceEffectType` enum 11종 ·
+`DefenderUnitData` flat 필드 6개 · `onPlacePush*` 3필드 + 실행부 30줄 ·
+`CollectEnemiesInTileRange`/`ResolveForwardBurstDirection`/`IsLegalOnPlaceTarget`/
+`ApplyForwardOnPlaceProjectile` · 문안 21줄 · 과도기 충돌 경고 2개 · 배치 효과 로그.
+
+**은퇴한 그물 셋** — 전부 「그 상태를 만들 방법이 없어졌다」가 이유다:
+`LegacyEffectAndRule_TogetherWarnsAtBake`(동시 선언이 표현 불가) ·
+`EveryOnPlaceEffectKind_HasAClause`(순회할 어휘가 없다) · 밀쳐냄 꺼짐 단언.
+규칙 경로의 같은 안전망들은 그대로 살아 있다.
+
+## ⚠ 그물이 두 번 나를 반박했다
+
+**① 「연발만 잰다」가 깨졌다.** 머신거너가 2f 에서 배치 사격을 얻으면서 그 피해가
+연발 측정에 섞였다(50 → 120). 예전엔 `onPlaceEffect = None` 한 줄이 배치 효과를
+껐는데 그 필드가 사라져, **규칙 어휘로 같은 뜻을 다시 써야 했다**(배치 스킬만 떼고
+연발 능력은 남긴다). 가디언을 복제해 쓰는 넉업 그물도 같은 처지였다.
+
+**② 「대상이 0이면 안 묶인다」는 내 판단이 틀렸다.** 조사 스킬에서 「아무 일도 안
+했는데 공격만 못 하는 순수 손해」라고 보고 early return 을 넣었는데, 기존 그물이
+레거시는 대상 수와 무관하게 묶었다고 알려줬다. **그쪽이 맞다** — 조사는 명중에 대한
+보상이 아니라 **동작에 대한 약속**이다. 유닛이 2초간 눈에 보이게 훑는데 그동안
+평타를 쏘면 그림이 거짓말이 된다. 되돌렸다.
+
+## ⚠ 이전이 그물의 시간 전제를 계속 바꿨다
+
+레거시는 전부 **배치 호출 안에서 동기 실행**이었다. 규칙 경로는 다음 틱이라,
+배치 직후에 읽던 그물이 전부 프레임을 흘려야 했다(코스트·쿨다운·빔·충격파).
+그리고 즉발을 탄으로 바꾼 둘(2a·2f)은 **투사체 드레인이 `_running` 아래**라
+`StartBattle()` 까지 필요해졌다. 이건 이전의 부수 효과가 아니라 **계약 변경**이라
+각 unit 문서에 적었다.
+
 ## 완료 기준
 
-- [ ] `MeleeBurst` 직접 그물 1개 신설 (나머지 8종은 이미 있다 — 위 표)
-- [ ] `SlowPulse` 는 **삭제**한다(라이브 저작 0 · concrete 신설 금지)
-- [ ] `OnPlaceEffectType` enum 과 `BattleBridge.cs:5393~5590` 체인이 **삭제**됐다
-- [ ] `DefenderUnitData` flat 필드 7개 + `onPlacePush*` 3필드 + `ApplyOnPlacePush` 삭제
-- [ ] `UnitKitSummary` 문안이 저작 SO 를 읽는다
-- [ ] 에셋 12개 재저작 커밋에 **무관한 유닛 스탯 변경이 섞이지 않았다**
-- [ ] Assets lane + PlayMode 배치 스킬 테스트 초록 + Play 육안(9종)
+- [x] `MeleeBurst` 직접 그물 1개 신설 (나머지 8종은 이미 있었다)
+- [x] `SlowPulse` 는 **삭제**했다(라이브 저작 0 — concrete 를 만들지 않았다)
+- [x] `OnPlaceEffectType` enum 과 체인이 **삭제**됐다 (체인 207줄)
+- [x] `DefenderUnitData` flat 필드 6개 + `onPlacePush*` 3필드 + `ApplyOnPlacePush` 삭제
+      (셰이크 2필드는 남는다 — 파이프라인 무관이라 규칙 경로도 쓴다)
+- [x] `UnitKitSummary` 문안이 저작 SO 를 읽는다 (레거시 절 21줄 삭제)
+- [x] 에셋 12개 재저작 — 슬라이스별 커밋에 무관한 스탯 변경 없음
+- [x] EditMode 2725/2727 (선행 2건은 시트 문안 오타 — 이 spec 무관)
+- [x] PlayMode 배치 스킬 전 그물 **42/42**
+- [ ] Play 육안 확인 (콘텐츠 변경 3건 — 아래)
