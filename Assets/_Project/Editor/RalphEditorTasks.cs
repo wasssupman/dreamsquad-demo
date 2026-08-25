@@ -70,6 +70,8 @@ namespace Wassup.EditorTools
                 // unknown task 로 토큰을 소모한다. 컴파일이 시작되면 리로드 후 새 코드로 재진입.
                 AssetDatabase.Refresh();
                 if (EditorApplication.isCompiling) return;
+                // Play 중엔 씬 열기/프리팹 저장이 금지된다 — 토큰을 소모하지 않고 다음 폴링으로 미룬다.
+                if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 
                 Directory.CreateDirectory(Dir);
                 File.WriteAllText(TokenPath, req.token);
