@@ -139,7 +139,7 @@ namespace Wassup.Tests.PlayMode
 
         // 비행 적은 근접 가디언에게 끌려오지 않는다 — 통행 층 게이트.
         [UnityTest]
-        public IEnumerator FlyingEnemy_IsNotTaunted()
+        public IEnumerator FlyingEnemy_IsTaunted_BecauseBastionAttacksAir()
         {
             yield return LoadBattle();
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -162,8 +162,20 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(bastion);
 
             Assert.IsTrue(groundTaunted, "지상 적이 안 걸렸다 — 대조군이 죽으면 아래 단언이 공짜로 통과한다");
-            Assert.IsFalse(flyingTaunted,
-                "비행 적이 근접 가디언에게 끌려왔다 — 통행 층 게이트가 죽었다");
+            // ⚠ **이 단언은 2026-08-25 에 뒤집혔다.**
+            //
+            // 원래는 「비행 적은 안 걸린다」였다. 그 전제가 `47d24c15`(아틸러리·폭탄맨을 뺀
+            // 전 방어유닛이 공중도 공격)로 죽었다 — 배스티온의 `attackTargetLayers` 가
+            // 2(Path) → 6(Path|Air) 이 됐고, 도발은 그 마스크로 통행 층을 건다.
+            //
+            // 사용자 판정(2026-08-25): **「공중을 공격하면 도발도 공중에 걸리는 게 당연하다」.**
+            // 게이트는 살아 있고 마스크가 넓어진 것이라, 이 테스트가 지키는 것은
+            // 「도발 대상이 **공격 대상과 같은 축**을 쓴다」로 바뀐다.
+            //
+            // 되돌리려면 배스티온 마스크가 아니라 그 콘텐츠 결정부터 뒤집어야 한다.
+            Assert.IsTrue(flyingTaunted,
+                "비행 적이 도발에 안 걸렸다 — 배스티온이 공중을 공격하는데 도발만 지상이면 " +
+                "「도발은 어그로의 시한 획득」이라는 계약이 깨진다");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────

@@ -378,8 +378,9 @@ namespace Wassup.Battle.Skills
                 {
                     var target = Resolve(intent.Target);
                     if (target == Entity.Null || !_em.HasBuffer<IncomingShield>(target)) return;
-                    // ⚠ **인박스 append 다.** 드레인은 다음 프레임이고 그게 의도다
-                    // (DamageApplicationSystem 이 앞에 있다) — 여기서 앞당기면 동작이 바뀐다.
+                    // ⚠ **인박스 append 다.** 드레인 시점은 **seam 마다 다르고 그게 legacy 와
+                    // 같다**: 주기 seam(#4대)은 같은 프레임 #36 에 흡수되고, 경계 seam(#45)은
+                    // DamageApplication 이 앞이라 **다음 프레임**이다. 어느 쪽도 앞당기지 않는다.
                     _em.GetBuffer<IncomingShield>(target).Add(new IncomingShield
                     {
                         source = Resolve(intent.Source),

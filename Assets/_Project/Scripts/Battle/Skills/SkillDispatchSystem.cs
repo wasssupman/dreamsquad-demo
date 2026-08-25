@@ -128,6 +128,8 @@ namespace Wassup.Battle.Skills
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             _context.BindEcb(ecb, true);
 
+            try
+            {
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
                 if (evt.SkillId == SkillRegistry.LegacyArmId) continue;   // legacy arm 이 처리한다
@@ -158,16 +160,41 @@ namespace Wassup.Battle.Skills
                     evt.Selector, evt.Speed, evt.HitThreshold,
                     evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale);
 
-                skill.Execute(caster, in target, in p, _context);
-                ExecutedCount++;
+                // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
+                // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.
+                // 안 잡으면 같은 드레인에서 앞서 스테이징된 **타 발동의 원자 부착이 소실**되고
+                // (궁극기라면 임계는 소모됐는데 발동은 없다), 잔여 이벤트가 다음 프레임의
+                // 다른 seam 창으로 이월돼 arm 타이밍이 밀린다.
+                // 레지스트리 `TryGet` 이 「한 슬롯의 배선 실수가 프레임을 못 죽인다」로 판단한 것과
+                // 같은 자리다 — 다만 **삼키지 않는다.** 무엇이 왜 죽었는지 남긴다.
+                try
+                {
+                    skill.Execute(caster, in target, in p, _context);
+                    ExecutedCount++;
+                }
+                catch (System.Exception e)
+                {
+                    UnityEngine.Debug.LogError(
+                        $"[SkillDispatch] skillId {evt.SkillId} 실행이 던졌다 — 이 발동만 버린다. {e}");
+                }
             }
+            }
+            finally
+            {
+                // ⚠ **재생과 해제는 어떤 경로로 나가든 일어난다.** 예외로 건너뛰면
+                // 스테이징된 구조 변경이 통째로 사라진다.
+                ecb.Playback(EntityManager);
+                ecb.Dispose();
 
-            ecb.Playback(EntityManager);
-            ecb.Dispose();
-            _context.BindEcb(default, false);
+                // 바인딩을 전부 끊는다(리뷰 L-1). ECB 만 끊고 풀·격자·큐 핸들을 남기면,
+                // 디스패처 밖에서 이 어댑터를 재사용하는 날 **Dispose 된 핸들**을 쓴다.
+                _context.BindEcb(default, false);
+                _context.BindPools(default, default, default, default);
+                _context.BindFlowField(default, false);
 
-            enemyPool.Dispose(); enemyPoolXf.Dispose();
-            defPool.Dispose(); defPoolXf.Dispose();
+                enemyPool.Dispose(); enemyPoolXf.Dispose();
+                defPool.Dispose(); defPoolXf.Dispose();
+            }
         }
 
         // 격자 파라미터 — 파생이 채운다(호스트마다 같은 값이지만 base 가 싱글턴을 두 번

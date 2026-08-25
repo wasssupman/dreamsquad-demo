@@ -18,8 +18,10 @@ namespace Wassup.Skills.Concrete
         public const int Id = 1;
         public int SkillId => Id;
 
-        // 후보 버퍼. 무상태 계약을 지키려면 필드로 들 수 없어 호출마다 받는다 —
-        // 디스패처가 프레임당 하나를 재사용한다(할당은 스킬의 일이 아니다).
+        // 후보 버퍼 상한. 무상태 계약(필드 금지)이라 호출마다 스택에 잡는다.
+        // 발동이 초당 수 회라 GC 압력은 무시할 만하다(리뷰에서 확인).
+        // ⚠ 상한을 넘으면 **가까운 순이 아니라 풀 순서 선착**으로 잘린다 — legacy `AuraPulse`
+        // 는 무상한이었다. 반경 안 후보가 64를 넘는 판이 실제로 생기면 그때 계약을 정한다.
         private const int MaxCandidates = 64;
 
         public void Execute(CasterRef caster, in SkillTarget target, in SkillParams p, ISkillContext ctx)
