@@ -1,0 +1,131 @@
+using System.Collections.Generic;
+using Unity.Mathematics;
+using Wassup.Battle.Units;
+using Wassup.Skills;
+
+namespace Wassup.Tests.EditMode
+{
+    // skill-layer-foundation unit 3/5 — 포트의 **페이크**.
+    //
+    // 이게 서면 스킬 하나의 동작을 **ECS 월드 없이** 단위 테스트할 수 있다. 오늘
+    // 자장가의 skip-rank 선별은 `BossPeriodicTriggerSystem` 733줄 한복판에 있어
+    // 테스트가 아예 불가능했다 — bare world 를 세우고 보스를 스폰하고 임계까지 체력을
+    // 깎아야 한 줄을 검증할 수 있었다.
+    //
+    // 페이크가 sim 재구현이 되지 않는 이유: 무거운 판단(밀집·착지·선별)이 전부
+    // **순수 코어**(`SkillMath`)라 페이크는 딕셔너리 저장소만 들면 된다.
+    public sealed class TestSkillContext : ISkillContext
+    {
+        public sealed class Unit
+        {
+            public float3 Position;
+            public Faction Faction;
+            public float Health = 100f, MaxHealth = 100f;
+            public float AttackRange, AttackTargetCount;
+            public byte TraversalLayers;
+            public bool Dead, Pending;
+        }
+
+        public float TileSize = 1f;
+        public readonly Dictionary<int, Unit> Units = new Dictionary<int, Unit>();
+        public readonly List<SimIntent> SimIntents = new List<SimIntent>();
+        public readonly List<MetaIntent> MetaIntents = new List<MetaIntent>();
+
+        public SkillEntityId Add(int id, float3 pos, Faction faction, System.Action<Unit> tweak = null)
+        {
+            var u = new Unit { Position = pos, Faction = faction };
+            tweak?.Invoke(u);
+            Units[id] = u;
+            return new SkillEntityId(id);
+        }
+
+        private Unit Get(SkillEntityId id) => Units.TryGetValue(id.Value, out var u) ? u : null;
+
+        public float3 Position(SkillEntityId id) => Get(id)?.Position ?? float3.zero;
+        public int2 CellOf(SkillEntityId id) => CellOfPosition(Position(id));
+        public int2 CellOfPosition(float3 w) => new int2((int)math.floor(w.x / TileSize), (int)math.floor(w.z / TileSize));
+        public float3 CellCenter(int2 c) => new float3((c.x + 0.5f) * TileSize, 0f, (c.y + 0.5f) * TileSize);
+        public bool TryFacing(SkillEntityId id, out float2 dirXZ) { dirXZ = default; return false; }
+
+        public Faction FactionOf(SkillEntityId id) => Get(id)?.Faction ?? Faction.None;
+        public float Health(SkillEntityId id) => Get(id)?.Health ?? 0f;
+        public float MaxHealth(SkillEntityId id) => Get(id)?.MaxHealth ?? 0f;
+        public byte TraversalLayers(SkillEntityId id) => Get(id)?.TraversalLayers ?? (byte)0;
+        public float ShieldValueFrom(SkillEntityId t, SkillEntityId s) => 0f;
+
+        public float Stat(SkillEntityId id, UnitStat stat)
+        {
+            var u = Get(id);
+            if (u == null) return 0f;
+            switch (stat)
+            {
+                case UnitStat.AttackRange: return u.AttackRange;
+                case UnitStat.AttackTargetCount: return u.AttackTargetCount;
+                case UnitStat.TargetTraversalLayers: return u.TraversalLayers;
+                default: return 0f;
+            }
+        }
+
+        public bool Has(SkillEntityId id, UnitPredicate pred)
+        {
+            var u = Get(id);
+            if (u == null) return false;
+            switch (pred)
+            {
+                case UnitPredicate.Alive: return !u.Dead;
+                case UnitPredicate.PendingDeployment: return u.Pending;
+                default: return false;
+            }
+        }
+
+        public int Opponents(CasterRef caster, float3 center, int tileRange,
+                             CandidateFilter filter, RangeMetric metric, SkillEntityId[] into)
+            => Collect(FactionRelation.OpponentUnitsOf(caster.Faction), caster, center, tileRange, filter, metric, into);
+
+        public int Allies(CasterRef caster, float3 center, int tileRange,
+                          CandidateFilter filter, RangeMetric metric, SkillEntityId[] into)
+            => Collect(FactionRelation.AllyUnitsOf(caster.Faction), caster, center, tileRange, filter, metric, into);
+
+        private int Collect(Faction wanted, CasterRef caster, float3 center, int tileRange,
+                            CandidateFilter filter, RangeMetric metric, SkillEntityId[] into)
+        {
+            if (wanted == Faction.None) return 0;
+            var centerCell = CellOfPosition(center);
+            int n = 0;
+            // 결정론 — 딕셔너리 순서에 기대지 않도록 id 오름차순으로 훑는다.
+            var ids = new List<int>(Units.Keys);
+            ids.Sort();
+            foreach (int id in ids)
+            {
+                if (n >= into.Length) break;
+                var u = Units[id];
+                if ((u.Faction & wanted) == 0) continue;
+                if ((filter & CandidateFilter.ExcludeSelf) != 0 && id == caster.Unit.Value) continue;
+                if ((filter & CandidateFilter.ExcludeDead) != 0 && u.Dead) continue;
+                if ((filter & CandidateFilter.ExcludePendingDeployment) != 0 && u.Pending) continue;
+
+                bool inRange;
+                if (metric == RangeMetric.Chebyshev)
+                {
+                    var c = CellOfPosition(u.Position);
+                    inRange = SkillMath.ChebyshevDistance(c.x, c.y, centerCell.x, centerCell.y) <= tileRange;
+                }
+                else
+                {
+                    float dx = u.Position.x - center.x, dz = u.Position.z - center.z;
+                    float r = tileRange * TileSize;
+                    inRange = dx * dx + dz * dz <= r * r;
+                }
+                if (inRange) into[n++] = new SkillEntityId(id);
+            }
+            return n;
+        }
+
+        public bool TryDensestOpponentCluster(CasterRef c, int r, out int2 cell, out int count)
+        { cell = default; count = 0; return false; }
+        public bool TryLandingCellNear(int2 d, int maxRing, out int2 cell) { cell = default; return false; }
+
+        public void Emit(in SimIntent intent) => SimIntents.Add(intent);
+        public void Emit(in MetaIntent intent) => MetaIntents.Add(intent);
+    }
+}
