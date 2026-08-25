@@ -228,6 +228,10 @@ namespace Wassup.Core
                 // 스탯 축의 유효성(EffectiveHealth 미배선)은 bake 가 loud 로 판정한다.
                 case DcPayloadKind.AllyStatAura:
                 case DcPayloadKind.OpponentStatAura:
+                // unit 2c — 판 밖 런타임(코스트·쿨다운). host 의 공격 모델은 물론 **판 자체와도**
+                // 무관하다: 대상도 진영도 데미지도 없다. 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.GainCost:
+                case DcPayloadKind.ReduceSkillCooldown:
                     return DcRejectReason.None;
 
                 default:

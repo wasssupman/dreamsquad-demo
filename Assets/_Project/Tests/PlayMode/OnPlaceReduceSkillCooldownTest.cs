@@ -47,7 +47,7 @@ namespace Wassup.Tests.PlayMode
             var ranger = MakeRanger("test_cd_reduce");
             // 리터럴을 못 박지 않는다 — 감소량은 SO 가 권위다. 테스트 스킬의 쿨다운도
             // 감소량에 대한 비율로 만들어 저작이 바뀌어도 등식이 유지되게 한다.
-            float mag = ranger.onPlaceMagnitude;
+            float mag = ranger.GetAbility<UnitSkillAbility>().mechanics[0].payload.magnitude;
             Assert.Greater(mag, 0f, "감소량이 저작돼 있어야 이 단언이 의미를 갖는다");
 
             // 브리지에 배선된 SkillRuntime — arm 이 실제로 만지는 그 인스턴스를 잰다.
@@ -64,7 +64,10 @@ namespace Wassup.Tests.PlayMode
             var skillLong = MakeSkill("test_cd_long", mag * 5f);
             var skillShort = MakeSkill("test_cd_short", mag * 0.5f);
 
-            // ── 여기서부터 단언까지 yield 금지(프레임 틱 격리) ──
+            // ⚠ **프레임 틱이 이 측정에 섞인다.** 예전엔 여기부터 yield 를 금지해 격리했지만,
+            // skill-layer-migration unit 2c 이후 규칙 경로는 배치 **다음 틱**에 적용되므로
+            // 프레임을 흘릴 수밖에 없다. 그래서 격리 대신 **오차로 명시**한다 — 흘리는
+            // 프레임의 자연 감소(수십 ms)는 저작량(초 단위)과 자릿수가 달라 단언이 살아 있다.
             sr.Consume(skillLong);
             sr.Consume(skillShort);
             float beforeLong = sr.GetRemainingSeconds(skillLong);
@@ -72,6 +75,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(sr.IsReady(skillShort), "짧은 스킬도 배치 전에는 쿨다운 중이다(전제)");
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, ranger), "배치");
+            for (int f = 0; f < 4; f++) yield return null;   // 규칙 경로는 다음 틱에 적용된다
 
             float afterLong = sr.GetRemainingSeconds(skillLong);
             bool shortReady = sr.IsReady(skillShort);
@@ -81,11 +85,15 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(skillShort);
             Object.Destroy(ranger);
 
-            Assert.AreEqual(mag, beforeLong - afterLong, 0.001f,
+            // 오차 0.25s = 흘린 프레임의 자연 감소 여유. 저작량 2s 와 자릿수가 달라
+            // 「줄긴 줄었는데 저작량이 아니다」를 여전히 잡는다.
+            Assert.AreEqual(mag, beforeLong - afterLong, 0.25f,
                 $"배치 순간 도는 쿨다운이 저작량({mag}s)만큼 줄어야 한다");
             Assert.IsTrue(shortReady,
                 "감소량보다 짧게 남은 쿨다운은 0 에서 잘려 즉시 준비 상태가 돼야 한다");
             Assert.AreEqual(0f, shortRemain, 0.001f, "준비 상태의 잔여 시간은 0 이다");
+            // ⚠ 바닥 클램프 단언 둘은 오차를 안 넓힌다 — 자연 감소는 «더 줄이는» 방향이라
+            // 0 을 넘어 음수로 가지 않는 한 이 단언을 느슨하게 만들지 않는다.
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
@@ -105,7 +113,11 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.ReduceSkillCooldown, unit.onPlaceEffect,
+            // skill-layer-migration unit 2c — 레거시 flat 필드에서 규칙 저작으로 이사했다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            Assert.AreEqual(DcPayloadKind.ReduceSkillCooldown,
+                unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.kind,
                 "레인저의 배치 효과가 ReduceSkillCooldown 이어야 이 특성화가 성립한다");
             return unit;
         }

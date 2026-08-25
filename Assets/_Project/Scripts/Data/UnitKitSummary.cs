@@ -167,6 +167,11 @@ namespace Wassup.Data
                         return $"배치 시 주변 {m.payload.tileRange}타일 적 "
                                + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
                                + $" ({m.payload.duration:0.#}초)";
+                    // unit 2c — 판 밖 런타임. 반경도 지속도 없어 숫자는 하나뿐이다.
+                    case DcPayloadKind.GainCost:
+                        return $"배치 시 코스트 +{m.payload.magnitude:0.#}";
+                    case DcPayloadKind.ReduceSkillCooldown:
+                        return $"배치 시 스킬 쿨다운 −{m.payload.magnitude:0.#}초";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.

@@ -9415,7 +9415,22 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaTauntSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AllyStatAuraSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.OpponentStatAuraSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.GainCostSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.ReduceSkillCooldownSkill());
             }
+            // 판 밖 런타임 싱크 — 이 델리게이트가 스킬 레이어와 Mono 자원 사이의 유일한 통로다.
+            _skillContext.BindMetaSink(intent =>
+            {
+                switch (intent.Kind)
+                {
+                    case Wassup.Skills.MetaIntentKind.GainCost:
+                        GameManager.Instance?.CostRuntime?.AddCost(Mathf.RoundToInt(intent.Amount));
+                        break;
+                    case Wassup.Skills.MetaIntentKind.ReduceSkillCooldown:
+                        skillRuntime?.ReduceAllCooldowns(intent.Amount);
+                        break;
+                }
+            });
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
 
@@ -9448,6 +9463,10 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.AllyStatAuraSkill.Id;
                 case Wassup.Data.DcPayloadKind.OpponentStatAura:
                     return Wassup.Skills.Concrete.OpponentStatAuraSkill.Id;
+                case Wassup.Data.DcPayloadKind.GainCost:
+                    return Wassup.Skills.Concrete.GainCostSkill.Id;
+                case Wassup.Data.DcPayloadKind.ReduceSkillCooldown:
+                    return Wassup.Skills.Concrete.ReduceSkillCooldownSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }

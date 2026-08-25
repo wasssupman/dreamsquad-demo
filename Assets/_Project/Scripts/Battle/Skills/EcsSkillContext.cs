@@ -720,7 +720,18 @@ namespace Wassup.Battle.Skills
             }
         }
 
-        public void Emit(in MetaIntent intent) => throw NotWired($"Emit(MetaIntent.{intent.Kind})");
+        // ⚠ **판 밖 런타임은 큐를 안 탄다.** 코스트·쿨다운은 sim 상태가 아니라 Mono 쪽
+        // 자원이고 계약이 「즉시 반영」이다(큐에 실으면 코스트 획득이 한 프레임 늦는다).
+        // 그래서 **브리지가 넣어 준 델리게이트**로 곧장 간다 — 어댑터가 `GameManager` 를
+        // 직접 부르면 제약 1(브리지 유일 창구)이 조용히 무너진다.
+        private System.Action<MetaIntent> _metaSink;
+        public void BindMetaSink(System.Action<MetaIntent> sink) => _metaSink = sink;
+
+        public void Emit(in MetaIntent intent)
+        {
+            if (_metaSink == null) throw NotWired($"Emit(MetaIntent.{intent.Kind})");
+            _metaSink(intent);
+        }
 
         // 조용한 no-op 이 아니라 loud 거절. 배선 누락이 「스킬이 안 나가는데 아무도
         // 모르는」 상태로 가지 않게 한다(레지스트리의 fail-closed 와 같은 판단).

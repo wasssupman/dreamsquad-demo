@@ -214,6 +214,12 @@ namespace Wassup.Data
         // (기존 `AllyMoveSpeedAura`(9)는 이름이 이미 스탯을 말하므로 그대로 둔다.)
         AllyStatAura = 26,
         OpponentStatAura = 27,
+
+        // skill-layer-migration unit 2c — **판 밖 런타임**을 바꾸는 둘. sim 상태를 하나도
+        // 안 건드린다(코스트 잔량 · 액티브 쿨다운은 Mono 쪽 자원이다). 그래서 이 둘은
+        // 큐를 안 타고 즉시 반영된다 — 큐에 실으면 코스트 획득이 한 프레임 늦는다.
+        GainCost = 28,
+        ReduceSkillCooldown = 29,
     }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.

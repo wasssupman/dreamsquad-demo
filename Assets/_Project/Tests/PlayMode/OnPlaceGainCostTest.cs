@@ -45,7 +45,7 @@ namespace Wassup.Tests.PlayMode
             var scout = MakeScout("test_gaincost_add");
             // 리터럴을 못 박지 않는다 — 저작량은 SO 가 권위다. arm 은 RoundToInt 로 소비하므로
             // 기대값도 같은 변환을 태운다(소수 저작이 생겨도 등식이 유지된다).
-            int gain = Mathf.RoundToInt(scout.onPlaceMagnitude);
+            int gain = Mathf.RoundToInt(scout.GetAbility<UnitSkillAbility>().mechanics[0].payload.magnitude);
             Assert.GreaterOrEqual(gain, 1, "코스트 저작이 있어야 이 단언이 의미를 갖는다");
 
             bridge.SetDefenderPool(new[] { scout });
@@ -56,9 +56,16 @@ namespace Wassup.Tests.PlayMode
             cost.TrySpend(cost.CurrentInt);
             Assert.LessOrEqual(cost.Current + gain, cost.Max, "상한 여유(클램프 미개입) 전제");
 
+            // ⚠ **자연 회복을 멈춘다.** 아래에서 프레임을 흘리므로 안 멈추면 회복분이
+            // 측정에 섞인다(레거시는 배치 호출 «안»에서 동기 적용이라 프레임이 필요 없었다).
+            cost.StopRegen();
+
             var cell = FindPlaceableCell(bridge, scout);
             float before = cost.Current;
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, scout), "배치");
+            // skill-layer-migration unit 2c — 규칙 경로는 배치 **다음 틱**에 적용된다.
+            // 계약은 「배치하면 코스트가 들어온다」이지 「반환 전에 들어온다」가 아니다.
+            for (int f = 0; f < 4; f++) yield return null;
             float after = cost.Current;
             Object.Destroy(scout);
 
@@ -85,6 +92,7 @@ namespace Wassup.Tests.PlayMode
 
             var cell = FindPlaceableCell(bridge, scout);
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, scout), "배치");
+            for (int f = 0; f < 4; f++) yield return null;   // 규칙 경로는 다음 틱에 적용된다
             float after = cost.Current;
             Object.Destroy(scout);
 
@@ -106,7 +114,12 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;   // 배치 비용이 측정에 끼지 않게 — 델타 = 순수 GainCost 산출
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.GainCost, unit.onPlaceEffect,
+            // skill-layer-migration unit 2c — 레거시 flat 필드에서 규칙 저작으로 이사했다.
+            // 단언은 그대로고 **값의 출처만** 바뀐다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            Assert.AreEqual(DcPayloadKind.GainCost,
+                unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.kind,
                 "스카우트의 배치 효과가 GainCost 여야 이 특성화가 성립한다");
             return unit;
         }
