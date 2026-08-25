@@ -1,0 +1,147 @@
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Transforms;
+using Wassup.Battle.Units;
+using Wassup.Skills;
+
+namespace Wassup.Battle.Skills
+{
+    // skill-layer-foundation unit 4 — 감지된 발동을 concrete 로 넘긴다.
+    //
+    // ⚠ **드레인 지점이 셋이다.** 하나로는 산술적으로 불가능하다 — 감지자들이 각자
+    // same-frame 하류 계약을 갖는데 그 구간이 서로 겹치지 않는다:
+    //
+    //   · BossPeriodic(#4)  → ProjectileEmitter·ModifierApply·AggroState 가 같은 틱
+    //   · AttackN(#35)      → 피해 정산(#36) · 발사(#40)
+    //   · HealthThreshold(#45) → 궁극기 카운트다운(#46) · blink(#47)
+    //
+    // `#8 < #45` 이므로 한 지점이 「모든 감지 뒤 + 모든 하류 앞」일 수 없다. 어디에 두든
+    // 일부 arm 이 1프레임 밀리고, 자장가·도발·오라·blink 가 전부 이산적으로 달라진다.
+    //
+    // ⚠ `BattleBridge.Update` 는 **원리적으로 탈락**이다. 라이브 루프가
+    // `Mono Update → SimulationSystemGroup` 이라 그룹이 낸 이벤트는 **다음 틱** 브리지
+    // 페이즈에 드레인된다. 하네스 스텝 순서(Bridge→ECS)가 이를 박제한다.
+    //
+    // ⚠ 「단일 클래스 · 인스턴스 3개」는 ECS 에서 문자 그대로는 불가능하다 — 한 시스템
+    // 타입은 월드당 인스턴스 하나다. **공용 구현 하나 + 얇은 파생 3개**가 그 실체이고,
+    // 로직은 이 base 에만 있다. 파생은 어트리뷰트만 갖는다.
+    //
+    // managed `SystemBase` 인 이유: 레지스트리가 managed 라 Burst ISystem 이 될 수 없다.
+    // MonoBehaviour 가 아니므로 제약 1(브리지 유일 창구)과 충돌하지 않고, 제약 3 의
+    // 「managed 참조가 진짜 필요할 때」 요건을 충족하는 첫 사례다.
+    public abstract partial class SkillDispatchSystemBase : SystemBase
+    {
+        // 레지스트리와 어댑터는 **브리지가 주입**한다. 시스템이 스스로 만들면 배틀마다
+        // 새로 생기고, 저작 계층(SO)에 닿을 방법도 없다.
+        private static SkillRegistry _registry;
+        private static EcsSkillContext _context;
+
+        public static void Install(SkillRegistry registry, EcsSkillContext context)
+        {
+            _registry = registry;
+            _context = context;
+        }
+
+        public static void Uninstall()
+        {
+            _registry = null;
+            _context = null;
+        }
+
+        protected override void OnCreate()
+        {
+            RequireForUpdate<SkillFiredEventsSingleton>();
+        }
+
+        protected override void OnUpdate()
+        {
+            if (_registry == null || _context == null) return;
+
+            var queue = SystemAPI.GetSingleton<SkillFiredEventsSingleton>().queue;
+            if (queue.Count == 0) return;
+
+            // ⚠ **시작 시점 스냅샷 1회.** 드레인 중에 의도가 새 감지를 성사시키면
+            // (피해 intent → 같은 프레임 OnDamagedN) 재유입이 생긴다. 지금은 감지가
+            // 분산돼 프레임 구조가 자연 차단기인데, 통합 드레인이 그걸 잃는다.
+            int budget = queue.Count;
+
+            var em = EntityManager;
+            _context.Bind(
+                em,
+                SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<FactionTag>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<AttackUnitTag>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<Health>(isReadOnly: true),
+                TileSize, GridSize, Origin);
+
+            while (budget-- > 0 && queue.TryDequeue(out var evt))
+            {
+                if (evt.SkillId == SkillRegistry.LegacyArmId) continue;   // legacy arm 이 처리한다
+
+                if (!_registry.TryGet(evt.SkillId, out var skill))
+                {
+                    // fail-closed. 배선 누락을 침묵으로 넘기면 「스킬이 안 나가는데
+                    // 아무도 모르는」 상태가 된다.
+                    UnityEngine.Debug.LogWarning(
+                        $"[SkillDispatch] skillId {evt.SkillId} 가 레지스트리에 없다 — 발동을 버린다.");
+                    continue;
+                }
+
+                // ⚠ 감지와 드레인 사이에 캐스터가 죽거나 슬롯이 무효가 될 수 있다.
+                // 이 부류는 이미 한 번 잡은 전력이 있다 — "죽음 큐가 끼면 시체가 한 번 더
+                // 스킬을 쓴다"(BossPeriodicTriggerSystem). 무효면 drop + loud.
+                if (evt.Caster != Entity.Null && !em.Exists(evt.Caster))
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[SkillDispatch] skillId {evt.SkillId} 의 캐스터가 드레인 전에 사라졌다 — 발동을 버린다.");
+                    continue;
+                }
+
+                var caster = BuildCaster(em, evt.Caster);
+                var target = BuildTarget(em, evt);
+                var p = new SkillParams(
+                    evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
+                    evt.Selector, evt.Speed, evt.HitThreshold,
+                    evt.SlamDamage, evt.SlamTileRange, evt.StackId);
+
+                skill.Execute(caster, in target, in p, _context);
+            }
+        }
+
+        // 격자 파라미터 — 파생이 채운다(호스트마다 같은 값이지만 base 가 싱글턴을 두 번
+        // 읽지 않게 한다). 지금은 FlowField 에서 온다.
+        protected abstract float TileSize { get; }
+        protected abstract Unity.Mathematics.int2 GridSize { get; }
+        protected abstract Unity.Mathematics.float3 Origin { get; }
+
+        private static CasterRef BuildCaster(EntityManager em, Entity caster)
+        {
+            if (caster == Entity.Null || !em.Exists(caster))
+                return CasterRef.Player(Faction.DefenderUnit);   // 액티브 = 플레이어 시전
+
+            var faction = em.HasComponent<FactionTag>(caster)
+                ? em.GetComponentData<FactionTag>(caster).value
+                : em.HasComponent<AttackUnitTag>(caster) ? Faction.EnemyUnit
+                : em.HasComponent<DefenderUnitTag>(caster) ? Faction.DefenderUnit
+                : Faction.None;
+
+            int id = em.HasComponent<SimEntityId>(caster)
+                ? em.GetComponentData<SimEntityId>(caster).value
+                : SimEntityId.Unassigned;
+
+            return CasterRef.OfUnit(new SkillEntityId(id), faction);
+        }
+
+        private static SkillTarget BuildTarget(EntityManager em, in SkillFiredEvent evt)
+        {
+            if (evt.Target == Entity.Null || !em.Exists(evt.Target))
+                return SkillTarget.None;
+            int id = em.HasComponent<SimEntityId>(evt.Target)
+                ? em.GetComponentData<SimEntityId>(evt.Target).value
+                : SimEntityId.Unassigned;
+            return SkillTarget.OfUnit(new SkillEntityId(id), default);
+        }
+    }
+}
