@@ -24,7 +24,7 @@ namespace Wassup.Battle.Combat
     //       - SelfStatBuff (last_stand): self 에 StatModifier enqueue(Effects 채널).
     //         duration<=0 = 영구(float.PositiveInfinity). 디펜더는 flowfield 만
     //         있으면 되므로 blink 채널 부재와 무관하게 발동.
-    //       - SelfBlink (boss): **방어유닛 밀집도 최대 셀 → 링 스냅 → skip**
+    //       - SelfBlink: **상대 진영 밀집도 최대 셀 → 링 스냅 → skip**
     //         (boss-jjangssen unit 4 에서 구 "위협 리더 근처" 정책을 교체했다 — 그 정책은
     //         라이브 authoring 사용처가 0이었다). position write 는 Movement 소유라
     //         BlinkRequestEventsSingleton 로 나가고, 뷰 비행 신호는 BossLeapVisualEvents 로 나간다.
@@ -221,7 +221,7 @@ namespace Wassup.Battle.Combat
                                         slamTileRange = slot.slamTileRange,
                                     });
                             }
-                            // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
+                            // 목적지 실패(상대 진영 전멸/링 상한 초과) = skip — k 는
                             // 이미 전진(발동 소모 유지, 재발동 없음).
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.UltimateLeap)
@@ -269,7 +269,7 @@ namespace Wassup.Battle.Combat
                                 // 재현도 안 된다). 원인은 둘뿐이다: 방어유닛 0(밀집 셀 없음) 또는
                                 // 링 6칸 안에 walkable·연결 셀 없음. Burst 라 문자열 리터럴만 쓴다.
                                 UnityEngine.Debug.LogWarning(
-                                    "[UltimateLeap] 착지점 해석 실패로 발동 skip — 방어유닛이 없거나 밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
+                                    "[UltimateLeap] 착지점 해석 실패로 발동 skip — 상대 진영 앵커가 없거나 밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
                             }
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)

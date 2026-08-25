@@ -23,10 +23,12 @@ namespace Wassup.Battle.Units
             in ComponentLookup<AttackUnitTag> enemies,
             in ComponentLookup<DefenderUnitTag> defenders)
         {
-            if (factions.HasComponent(e)) return factions[e].value;
-            if (enemies.HasComponent(e)) return Faction.EnemyUnit;
-            if (defenders.HasComponent(e)) return Faction.DefenderUnit;
-            return Faction.None;
+            bool hasTag = factions.HasComponent(e);
+            return FactionRelation.Resolve(
+                hasTag,
+                hasTag ? factions[e].value : Faction.None,
+                enemies.HasComponent(e),
+                defenders.HasComponent(e));
         }
 
         // 이 시전자가 때릴 유닛 진영. arm 이 후보 풀을 고를 때 부른다.

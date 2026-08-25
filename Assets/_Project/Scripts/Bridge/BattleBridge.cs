@@ -4344,11 +4344,15 @@ namespace Wassup.Bridge
         private Wassup.Battle.Units.Faction FactionOfEntity(Entity e)
         {
             if (!_em.Exists(e)) return Wassup.Battle.Units.Faction.None;
-            if (_em.HasComponent<Wassup.Battle.Units.FactionTag>(e))
-                return _em.GetComponentData<Wassup.Battle.Units.FactionTag>(e).value;
-            if (_em.HasComponent<AttackUnitTag>(e)) return Wassup.Battle.Units.Faction.EnemyUnit;
-            if (_em.HasComponent<DefenderUnitTag>(e)) return Wassup.Battle.Units.Faction.DefenderUnit;
-            return Wassup.Battle.Units.Faction.None;
+            bool hasTag = _em.HasComponent<Wassup.Battle.Units.FactionTag>(e);
+            // 결정은 `FactionRelation.Resolve` 가 소유한다 — 여기서 4단 체인을 복제하면
+            // ECS 쪽(`FactionQuery`)과 조용히 갈린다(투트랙 리뷰 M3).
+            return Wassup.Battle.Units.FactionRelation.Resolve(
+                hasTag,
+                hasTag ? _em.GetComponentData<Wassup.Battle.Units.FactionTag>(e).value
+                       : Wassup.Battle.Units.Faction.None,
+                _em.HasComponent<AttackUnitTag>(e),
+                _em.HasComponent<DefenderUnitTag>(e));
         }
 
         private void CollectShieldBreakTargets(Entity caster, float3 center, int tileRange, int cap,

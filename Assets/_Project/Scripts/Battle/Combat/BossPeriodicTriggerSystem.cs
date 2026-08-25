@@ -502,10 +502,18 @@ namespace Wassup.Battle.Combat
                                             // 탄의 targetFaction(=Defender)과 갈린다. 보스는 이미 이 arm 을
                                             // 타고 있고(지금은 barrel 이 Direction 이 아닐 뿐이다).
                                             // unit 2b — 조준 후보는 «상대 진영» 이다.
-                                            var aimFaction = Wassup.Battle.Units.FactionQuery.Of(
-                                                entity, in factionLookup, in enemyTagLookup, in defTagLookup);
-                                            bool aimEnemyPool = Wassup.Battle.Units.FactionRelation
-                                                .OpponentUnitsOf(aimFaction) == Wassup.Battle.Units.Faction.EnemyUnit;
+                                            var aimWanted = Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(
+                                                Wassup.Battle.Units.FactionQuery.Of(
+                                                    entity, in factionLookup, in enemyTagLookup, in defTagLookup));
+                                            // ⚠ **진영 미상이면 후보를 하나도 모으지 않는다.**
+                                            // 이항 bool 하나로 접으면 None 이 한쪽으로 접혀 «미상 host 가
+                                            // 늘 한쪽을 조준하는» 조용한 오폭이 된다(투트랙 리뷰 M1/M2 —
+                                            // 내가 상대화하면서 폴백 방향을 뒤집었다). 형제 arm 셋도
+                                            // `useEnemyPool || useDefPool` 로 같은 가드를 쓴다.
+                                            // 후보 0 이면 아래 `TryResolve` 가 false 를 내 자연히 불발된다.
+                                            if (aimWanted != Wassup.Battle.Units.Faction.None)
+                                            {
+                                            bool aimEnemyPool = aimWanted == Wassup.Battle.Units.Faction.EnemyUnit;
                                             if (!aimEnemyPool && !defEntitiesBuilt)
                                             {
                                                 defEntities = defQuery.ToEntityArray(Allocator.Temp);
@@ -553,6 +561,7 @@ namespace Wassup.Battle.Combat
                                                 if (math.distancesq(candXZ, hostXZ) > maxDistSq) continue;
                                                 aimCandidates[candidateCount++] = candXZ;
                                             }
+                                            }   // 진영 미상 가드
                                         }
 
                                         fire = Projectile.Emission.OnPlaceFireAim.TryResolve(

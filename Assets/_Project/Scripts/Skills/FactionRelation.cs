@@ -35,6 +35,21 @@ namespace Wassup.Battle.Units
             return Faction.None;
         }
 
+        // 진영 폴백 정책. **이 4단 체인이 정본이다.**
+        //
+        // 투트랙 리뷰 M3 — 오늘 이 결정이 두 곳에 복제돼 있다(`FactionQuery`=ECS lookup,
+        // `BattleBridge.FactionOfEntity`=managed `_em`). 브리지엔 `ComponentLookup` 이
+        // 없어 **호출 방식**의 복제는 구조적으로 강제되지만, **결정 자체**는 그럴 이유가
+        // 없다. 순수하게 빼서 양쪽이 이 함수를 부른다 — 한쪽만 고치면 조용히 갈리는
+        // 자리였다(제약 10 의 (a) 비자명 분기 + (b) 호출처 2+).
+        public static Faction Resolve(bool hasFactionTag, Faction tagValue, bool enemyTagged, bool defenderTagged)
+        {
+            if (hasFactionTag) return tagValue;
+            if (enemyTagged) return Faction.EnemyUnit;
+            if (defenderTagged) return Faction.DefenderUnit;
+            return Faction.None;
+        }
+
         // 둘이 서로 적인가. 「내가 때릴 수 있는 상대인가」의 순수 판정.
         public static bool AreOpponents(Faction a, Faction b)
             => a != Faction.None && b != Faction.None && (OpponentUnitsOf(a) & b) != 0;

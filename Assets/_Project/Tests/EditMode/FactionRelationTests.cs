@@ -51,6 +51,54 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(FactionRelation.AreOpponents(Faction.NeutralUnit, Faction.DefenderUnit));
         }
 
+        // 투트랙 리뷰 M4 — 음성 케이스만 4개였고 **양성**이 없었다. 대칭성을 지킨다면서
+        // 「서로 적이다」가 참인 것을 한 번도 안 물었다.
+        [Test]
+        public void AreOpponents_IsTrue_AcrossSides_AndFalse_WithinASide()
+        {
+            Assert.IsTrue(FactionRelation.AreOpponents(Faction.DefenderUnit, Faction.EnemyUnit));
+            Assert.IsTrue(FactionRelation.AreOpponents(Faction.EnemyUnit, Faction.DefenderUnit));
+            Assert.IsFalse(FactionRelation.AreOpponents(Faction.DefenderUnit, Faction.DefenderUnit));
+            Assert.IsFalse(FactionRelation.AreOpponents(Faction.EnemyUnit, Faction.EnemyUnit));
+        }
+
+        [Test]
+        public void AreAllies_IsFalse_AcrossSides()
+        {
+            Assert.IsFalse(FactionRelation.AreAllies(Faction.DefenderUnit, Faction.EnemyUnit));
+            Assert.IsFalse(FactionRelation.AreAllies(Faction.EnemyUnit, Faction.DefenderUnit));
+        }
+
+        // ⚠ **대상 축은 유닛 태그다.** 거점이 대상으로 오면 거짓이어야 한다 — 거점엔
+        // CC·실드 버퍼가 없어서 후보에 넣으면 유령이 cap 자리를 차지하고 실제 대상이 준다.
+        // 시전자로서의 거점(위 `Structures_ResolveThroughTheirSide`)과 방향이 다르다.
+        [Test]
+        public void Structures_AreNotTargets()
+        {
+            Assert.IsFalse(FactionRelation.AreOpponents(Faction.EnemyUnit, Faction.DefenderCore));
+            Assert.IsFalse(FactionRelation.AreOpponents(Faction.EnemyUnit, Faction.DefenderInstinct));
+            Assert.IsFalse(FactionRelation.AreOpponents(Faction.DefenderUnit, Faction.EnemyCore));
+        }
+
+        // 투트랙 리뷰 M3 — 진영 폴백 4단 체인이 ECS 쪽과 브리지 쪽 두 곳에서 쓰인다.
+        // 결정 자체는 이 순수 함수 하나가 소유하므로, 그 우선순위를 여기서 고정한다.
+        // 한쪽만 고쳐 조용히 갈리는 것을 막는 핀이다.
+        [Test]
+        public void Resolve_PrefersFactionTag_ThenTags_ThenNone()
+        {
+            // FactionTag 이 있으면 태그를 무시하고 그 값이 이긴다.
+            Assert.AreEqual(Faction.DefenderUnit,
+                FactionRelation.Resolve(true, Faction.DefenderUnit, enemyTagged: true, defenderTagged: false));
+            // 없으면 적 태그 → 방어 태그 순.
+            Assert.AreEqual(Faction.EnemyUnit,
+                FactionRelation.Resolve(false, Faction.None, enemyTagged: true, defenderTagged: true));
+            Assert.AreEqual(Faction.DefenderUnit,
+                FactionRelation.Resolve(false, Faction.None, enemyTagged: false, defenderTagged: true));
+            // 아무것도 없으면 None — 조용한 오폭 금지.
+            Assert.AreEqual(Faction.None,
+                FactionRelation.Resolve(false, Faction.None, enemyTagged: false, defenderTagged: false));
+        }
+
         [Test]
         public void BlockingHazard_IsNotAUnitSide()
         {
