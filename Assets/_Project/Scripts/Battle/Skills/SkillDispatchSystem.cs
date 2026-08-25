@@ -125,6 +125,8 @@ namespace Wassup.Battle.Skills
             _context.BindCcSink(hasCc ? ccS.queue : default, hasCc);
             bool hasStat = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statS);
             _context.BindStatSink(hasStat ? statS.queue : default, hasStat);
+            bool hasStack = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackS);
+            _context.BindStackSink(hasStack ? stackS.queue : default, hasStack);
             bool hasAcquire = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.AggroAcquireEventsSingleton>(out var acqS);
             _context.BindTauntSink(hasAcquire ? acqS.queue : default, hasAcquire);
             bool hasHit = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>(out var hitS);
@@ -178,7 +180,7 @@ namespace Wassup.Battle.Skills
                     evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
                     evt.Selector, evt.Speed, evt.HitThreshold,
                     evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale,
-                    evt.PatternIndex, evt.StatSelector);
+                    evt.PatternIndex, evt.StatSelector, evt.StackSelector);
 
                 // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
                 // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.

@@ -28,6 +28,19 @@ namespace Wassup.Skills
 
     // 출처 태그. 하류(오라 표시·dispel·밸런스·로깅)가 이걸로 거른다.
     // 전량이 아니라 **스킬이 실제로 쓰는 것**만 미러한다 — 나머지는 도메인 밖에서 나온다.
+    // 스택 종류. **값이 `Battle.Effects.StackKind` 와 정렬돼 있어야 한다**(어댑터가 캐스트한다).
+    // 도메인이 이 어휘를 갖는 이유: 「무슨 스택을 거는가」는 스킬의 판단이다.
+    // 상한(몇 겹까지)은 여기 없다 — 그건 스택의 성질이라 데이터가 소유한다.
+    public enum SkillStackKind : byte
+    {
+        None = 0,
+        Fire = 1,
+        Ice = 2,
+        Bleed = 3,
+        Poison = 4,
+        Fatigue = 5,
+    }
+
     public enum SkillModifierOrigin : byte
     {
         Unspecified = 0,

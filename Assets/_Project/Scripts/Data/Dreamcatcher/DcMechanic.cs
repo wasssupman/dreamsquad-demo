@@ -220,6 +220,12 @@ namespace Wassup.Data
         // 큐를 안 타고 즉시 반영된다 — 큐에 실으면 코스트 획득이 한 프레임 늦는다.
         GainCost = 28,
         ReduceSkillCooldown = 29,
+
+        // unit 2d — 반경 안 상대 전원에게 스택 도포(레거시 `ApplyStackNearby`).
+        // ⚠ 단일 대상 `ApplyStackToTarget`(11)과 달리 **반경과 상한이 둘 다 필요**해서
+        // 그쪽의 `tileRange` 겸직(반경 칸을 상한으로 씀)을 물려받을 수 없다.
+        // 상한은 스택 종류가 갖는다(저작 필드가 아니다).
+        AreaApplyStack = 30,
     }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.

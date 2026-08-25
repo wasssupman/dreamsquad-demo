@@ -232,6 +232,9 @@ namespace Wassup.Core
                 // 무관하다: 대상도 진영도 데미지도 없다. 세 축 어느 것도 게이트가 아니다.
                 case DcPayloadKind.GainCost:
                 case DcPayloadKind.ReduceSkillCooldown:
+                // unit 2d — 광역 스택 도포. 대상은 반경이 정하고 진영은 payload 가 고정하며
+                // 데미지 출력은 스택 파생이 갖는다 → 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.AreaApplyStack:
                     return DcRejectReason.None;
 
                 default:

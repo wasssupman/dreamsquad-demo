@@ -29,6 +29,8 @@ namespace Wassup.Skills
         public readonly int PatternIndex;
         // 저작 스탯 축(`SkillStatKind`). `Selector`(cc/stack)와 다른 축이다.
         public readonly int StatSelector;
+        // 저작 스택 축(`SkillStackKind`).
+        public readonly int StackSelector;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -43,14 +45,14 @@ namespace Wassup.Skills
             float magnitude, float duration, int tileRange, int period, int dataIndex,
             int selector, float speed, float hitThreshold,
             float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
-            int patternIndex = NoDataIndex, int statSelector = 0)
+            int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
             Speed = speed; HitThreshold = hitThreshold;
             SlamDamage = slamDamage; SlamTileRange = slamTileRange; StackId = stackId;
             VisualScale = visualScale; PatternIndex = patternIndex;
-            StatSelector = statSelector;
+            StatSelector = statSelector; StackSelector = stackSelector;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
@@ -110,6 +112,19 @@ namespace Wassup.Skills
 
         public int Radius => _p.TileRange;      // 체비셰프 반경
         public float Duration => _p.Duration;   // 도발 지속 초
+    }
+
+    // skill-layer-migration unit 2d — 광역 스택 도포.
+    public readonly struct AreaStackParams
+    {
+        private readonly SkillParams _p;
+        public AreaStackParams(in SkillParams p) => _p = p;
+
+        public int Count => (int)_p.Magnitude;          // 몇 겹
+        public int Radius => _p.TileRange;              // 체비셰프 반경
+        public float PerStackDuration => _p.Duration;   // 겹당 지속(초)
+        // ⚠ **상한은 여기 없다.** 그건 스택 종류의 성질이라 어댑터가 푼다.
+        public SkillStackKind Stack => (SkillStackKind)_p.StackSelector;
     }
 
     public readonly struct AuraParams

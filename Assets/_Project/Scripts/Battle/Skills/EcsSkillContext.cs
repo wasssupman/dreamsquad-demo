@@ -54,6 +54,8 @@ namespace Wassup.Battle.Skills
         private bool _hasCcQueue;
         private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statQueue;
         private bool _hasStatQueue;
+        private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackQueue;
+        private bool _hasStackQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _hitQueue;
         private bool _hasHitQueue;
         private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldVfxQueue;
@@ -130,6 +132,11 @@ namespace Wassup.Battle.Skills
         public void BindStatSink(NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> q, bool has)
         {
             _statQueue = q; _hasStatQueue = has;
+        }
+
+        public void BindStackSink(NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> q, bool has)
+        {
+            _stackQueue = q; _hasStackQueue = has;
         }
 
         // 연출 채널. 시뮬 상태를 안 바꾸지만 「언제 트는가」는 스킬의 판단이라
@@ -565,6 +572,26 @@ namespace Wassup.Battle.Skills
                             "밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
                     return;
                 }
+                case SimIntentKind.ApplyStack:
+                {
+                    if (!_hasStackQueue) return;
+                    var victim = Resolve(intent.Target);
+                    if (victim == Entity.Null) return;
+                    _stackQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                    {
+                        target = victim,
+                        kind = (Wassup.Battle.Effects.StackKind)intent.Selector,
+                        // 저작은 「몇 겹」이고 최소 1 이다(0 겹은 발동을 소모만 한다 —
+                        // 그 판정은 concrete 가 이미 했다).
+                        countDelta = (byte)math.max(1, intent.Count),
+                        // ⚠ **상한은 저작이 아니라 스택 종류가 갖는다.** 유닛마다 다른
+                        // 상한을 적는 게 아니라 「출혈은 몇 겹까지 쌓이나」가 스택의 성질이다.
+                        maxStack = StackCap(intent.Selector),
+                        perAppDuration = intent.Duration,
+                        source = Resolve(intent.Source),
+                    });
+                    return;
+                }
                 case SimIntentKind.Taunt:
                 {
                     if (!_hasAcquireQueue) return;
@@ -724,6 +751,16 @@ namespace Wassup.Battle.Skills
         // 자원이고 계약이 「즉시 반영」이다(큐에 실으면 코스트 획득이 한 프레임 늦는다).
         // 그래서 **브리지가 넣어 준 델리게이트**로 곧장 간다 — 어댑터가 `GameManager` 를
         // 직접 부르면 제약 1(브리지 유일 창구)이 조용히 무너진다.
+        // 스택 종류별 상한. **유닛이 아니라 스택의 성질**이라 저작 SO 가 권위이고,
+        // 브리지가 그 목록을 풀어서 넣어 준다(도메인은 상한을 아예 모른다).
+        // index = `Battle.Effects.StackKind`. 미등록은 producer 선례 기본값.
+        private byte[] _stackCaps;
+        public void BindStackCaps(byte[] byKind) => _stackCaps = byKind;
+
+        private byte StackCap(int kind)
+            => _stackCaps != null && kind >= 0 && kind < _stackCaps.Length && _stackCaps[kind] > 0
+                ? _stackCaps[kind] : Wassup.Data.StackModifierSO.DefaultMaxStack;
+
         private System.Action<MetaIntent> _metaSink;
         public void BindMetaSink(System.Action<MetaIntent> sink) => _metaSink = sink;
 

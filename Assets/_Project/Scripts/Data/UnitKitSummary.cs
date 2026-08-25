@@ -172,6 +172,11 @@ namespace Wassup.Data
                         return $"배치 시 코스트 +{m.payload.magnitude:0.#}";
                     case DcPayloadKind.ReduceSkillCooldown:
                         return $"배치 시 스킬 쿨다운 −{m.payload.magnitude:0.#}초";
+                    // unit 2d — 광역 스택. 상한은 문안에 안 넣는다(스택의 성질이지 이 유닛의
+                    // 저작이 아니라, 여기 적으면 스택 SO 를 고칠 때 문안이 stale 해진다).
+                    case DcPayloadKind.AreaApplyStack:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적에게 "
+                               + $"{StackWord(m.payload.stackKind)} {(int)m.payload.magnitude}중첩";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
@@ -194,6 +199,19 @@ namespace Wassup.Data
                 case CardBuffKind.MoveSpeed: return "이동 속도";
                 case CardBuffKind.DamageVsCc: return "상태이상 적 피해";
                 default: return "능력치";
+            }
+        }
+
+        // 스택 종류의 화면 어휘.
+        private static string StackWord(DcStackKind kind)
+        {
+            switch (kind)
+            {
+                case DcStackKind.Fire: return "화상";
+                case DcStackKind.Ice: return "빙결";
+                case DcStackKind.Bleed: return "출혈";
+                case DcStackKind.Poison: return "중독";
+                default: return "스택";
             }
         }
 

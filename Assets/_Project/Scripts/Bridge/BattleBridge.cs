@@ -9417,7 +9417,15 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.OpponentStatAuraSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GainCostSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.ReduceSkillCooldownSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AreaStackSkill());
             }
+            // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
+            var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
+            if (stackModifierAuthoring != null)
+                foreach (var so in stackModifierAuthoring)
+                    if (so != null) caps[(int)so.kind] = so.maxStack;
+            _skillContext.BindStackCaps(caps);
+
             // 판 밖 런타임 싱크 — 이 델리게이트가 스킬 레이어와 Mono 자원 사이의 유일한 통로다.
             _skillContext.BindMetaSink(intent =>
             {
@@ -9467,6 +9475,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.GainCostSkill.Id;
                 case Wassup.Data.DcPayloadKind.ReduceSkillCooldown:
                     return Wassup.Skills.Concrete.ReduceSkillCooldownSkill.Id;
+                case Wassup.Data.DcPayloadKind.AreaApplyStack:
+                    return Wassup.Skills.Concrete.AreaStackSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9626,6 +9636,9 @@ namespace Wassup.Bridge
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
                     patternIndex = -1,
+                    // unit 2d — 스택 축도 슬롯으로. 안 옮기면 기본값 None 이라
+                    // 「출혈 도포」 저작이 조용히 아무 스택도 안 건다.
+                    stackKind = MapDcStack(m.payload.stackKind),
                     // skill-layer-migration unit 2b — 스탯 축을 슬롯에 옮긴다.
                     // ⚠ 안 옮기면 **기본값 0(공격력)** 이 되어, 「이동속도 감쇠」로 저작한
                     // 유닛이 조용히 공격력 오라가 된다. 번역은 `MapDcBuff` 단일 지점을 쓴다
