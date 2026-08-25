@@ -28,6 +28,7 @@
 | [5_pilot_map_playmode.md](5_pilot_map_playmode.md) | 검증 | 파일럿 스테이지 1개 + 육안 검증 축 5종 (PlayMode 스모크는 unit 2 로 이동 — critic M-12) |
 | [6_portal_prop.md](6_portal_prop.md) | 선택 | 포탈 프랍 → `PortalLink` 엔티티 배선 (v1 필수 아님) |
 | [7_legacy_retirement.md](7_legacy_retirement.md) | 은퇴 | `MapDocument` 계열·`MapPainterWindow`·구 Assets lane 테스트 3파일 처분 (critic M-3·M-4) |
+| [9_bonus_spawn_marker.md](9_bonus_spawn_marker.md) | 병합 격차 (제안) | main `bonus-wave-pull` 의 포탈 칸 저작 축(`GeneratedMap.bonusSpawns`)을 스테이지 마커로 이식 — 미구현 시 스테이지 맵에 보너스 웨이브 버튼이 뜨지 않는다 |
 
 ## Feature-wide 계약
 
