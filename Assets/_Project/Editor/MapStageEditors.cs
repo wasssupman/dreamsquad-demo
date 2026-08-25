@@ -52,6 +52,28 @@ namespace Wassup.EditorTools
             c.transform.position = stage.transform.TransformPoint(new Vector3(center.x, local.y, center.z));
         }
 
+        // 격자 원점 정규화 — 직계 자식을 delta 만큼 옮기고 gridOriginLocal.xz 를 0 으로. 자식(아트·마커)이
+        // 함께 움직이므로 셀↔아트 관계는 불변이고 격자만 [0,w]×[0,h] 로 앉는다.
+        internal static void NormalizeGridOrigin(MapStage stage)
+        {
+            var o = stage.gridOriginLocal;
+            if (Mathf.Approximately(o.x, 0f) && Mathf.Approximately(o.z, 0f)) return;
+            Undo.RecordObject(stage, "Normalize grid origin");
+            ShiftChildren(stage, new Vector3(-o.x, 0f, -o.z));
+            stage.gridOriginLocal = new Vector3(0f, o.y, 0f);
+            EditorUtility.SetDirty(stage);
+        }
+
+        internal static void ShiftChildren(MapStage stage, Vector3 delta)
+        {
+            if (delta == Vector3.zero) return;
+            foreach (Transform child in stage.transform)
+            {
+                Undo.RecordObject(child, "Shift to grid");
+                child.localPosition += delta;
+            }
+        }
+
         internal static void SnapButton(Component c)
         {
             if (GUILayout.Button("셀 중심에 스냅") && c.GetComponentInParent<MapStage>() is { } stage)
@@ -73,10 +95,13 @@ namespace Wassup.EditorTools
                     float t = stage.previewTileSize;
                     Undo.RecordObject(stage, "Suggest PlayArea");
                     // Y 는 저작값 유지 — 논리 평면 높이는 바운즈로 추정하지 않는다(바닥 두께/프랍 높이가 섞인다).
-                    stage.gridOriginLocal = new Vector3(min.x, stage.gridOriginLocal.y, min.z);
+                    // 관례(2026-08-25): 격자 원점 xz 는 항상 0 — 격자를 아트에 맞추지 않고 **아트를 격자에 맞춘다**.
+                    // 그래야 루트=원점(브리지 계약)과 합쳐져 카메라가 (playAreaCells, 화면비)만의 함수가 된다.
                     stage.playAreaCells = Vector2Int.Max(Vector2Int.one, new Vector2Int(
                         Mathf.CeilToInt((max.x - min.x) / t),
                         Mathf.CeilToInt((max.z - min.z) / t)));
+                    MapStageEditorUtil.ShiftChildren(stage, new Vector3(-min.x, 0f, -min.z));
+                    stage.gridOriginLocal = new Vector3(0f, stage.gridOriginLocal.y, 0f);
                     EditorUtility.SetDirty(stage);
                 }
                 else Debug.LogWarning("[MapStage] 자식 렌더러가 없어 playArea 를 제안할 수 없다.");

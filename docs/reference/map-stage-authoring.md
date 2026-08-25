@@ -25,6 +25,7 @@
 - footprint 점유 = 앵커 셀 + `anchorOffset` 부터 `size` 만큼. playArea 밖으로 걸친 부분은 무시(안쪽 셀만 차단).
 - 열린 셀 = Walk + placeMask 7(Ground|Path|Air). 차단 셀 = Deco + 0. BlockZone 은 placeMask 만 0.
 - 높이는 논리에 없다(D4) — 격자는 로컬 XZ 평면 하나.
+- **좌표 관례 (2026-08-25)**: 프리팹 루트 = 원점·무회전·스케일 1(브리지가 런타임에 강제) **+ `gridOriginLocal.xz = 0`** — 격자는 항상 [0,w]×[0,h] 에 앉고 **아트를 격자에 맞춘다**(격자를 아트에 맞추지 않는다). "playArea 제안" 버튼은 크기만 제안하고 아트·마커를 함께 옮겨 이 관례를 유지한다. 결과: 전투 카메라 포즈가 `(playAreaCells, 화면비)` 만의 함수가 된다 — 격자 밖 남는 영역은 아트로 채운다.
 
 ## 형식 제약 (위반 = 배틀 진입 하드 실패, 오류 전수 목록 출력)
 
@@ -39,7 +40,7 @@
 ## 절차 예시 — 12×8 마당 만들기
 
 1. 빈 GameObject `MapStage_Courtyard` 생성 → `MapStage` 부착, `playAreaCells` = (12, 8).
-2. Ground 비주얼(KayKit 판 등)을 자식으로 배치 → 인스펙터 **"자식 렌더러 바운즈에서 playArea 제안"** 으로 격자를 바닥에 맞춤. `gridOriginLocal.y` = 바닥 윗면(유닛 발바닥) 높이.
+2. Ground 비주얼(KayKit 판 등)을 자식으로 배치 → 인스펙터 **"자식 렌더러 바운즈에서 playArea 제안"** — 크기를 제안하고 아트를 격자 [0,w]×[0,h] 에 맞춰 옮긴다(원점 xz 는 0 유지). `gridOriginLocal.y` 만 바닥 윗면(유닛 발바닥) 높이로 저작.
 3. 차단 프랍: 비주얼 배치 → `PropFootprint` 부착 → **"렌더러 바운즈에서 footprint 제안"** → **"셀 중심에 스냅"**. 기즈모 빨간 셀 = 차단 확인.
 4. 전선(선택): 빈 오브젝트 + `PlacementBlockZone`, `size` 로 적 진영 금지 구역. 주황 셀 확인.
 5. `SpawnMarker` 2개(laneIndex 0/1) + `GoalMarker` 1개 — 초록/골 셀이 열린 셀 위인지 확인.

@@ -35,6 +35,8 @@ namespace Wassup.EditorTools
             Undo.RecordObject(stage.transform, "Normalize stage root");
             stage.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             stage.transform.localScale = Vector3.one;
+            // 격자 원점 xz = 0 (관례) — 아트·마커를 함께 옮겨 셀↔아트 관계는 그대로. 이제 보드 = [0,w]×[0,h].
+            MapStageEditorUtil.NormalizeGridOrigin(stage);
 
             // 2) 보드 바운즈 = 격자 월드 rect (AlignGridTo 뒤 TryGetPlayfieldWorldBounds 와 같은 값).
             Vector3 min = stage.gridOriginLocal;
@@ -68,7 +70,7 @@ namespace Wassup.EditorTools
             return result;
         }
 
-        // 프리팹 에셋 루트도 관례대로 원점으로 — 자식은 상대 좌표라 내부 배치는 불변.
+        // 프리팹 에셋을 관례대로 — 루트 원점 + 격자 원점 xz 0 (아트·마커를 함께 옮겨 내부 배치 불변).
         public static string NormalizePrefabRoot(string prefabPath)
         {
             var root = PrefabUtility.LoadPrefabContents(prefabPath);
@@ -77,8 +79,11 @@ namespace Wassup.EditorTools
                 var before = root.transform.localPosition;
                 root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 root.transform.localScale = Vector3.one;
+                var stage = root.GetComponent<MapStage>();
+                var originBefore = stage != null ? stage.gridOriginLocal : Vector3.zero;
+                if (stage != null) MapStageEditorUtil.NormalizeGridOrigin(stage);
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
-                return $"OK|root {before:F2} → 0";
+                return $"OK|root {before:F2} → 0, gridOrigin {originBefore:F3} → {(stage != null ? stage.gridOriginLocal : Vector3.zero):F3}";
             }
             finally { PrefabUtility.UnloadPrefabContents(root); }
         }
