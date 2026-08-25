@@ -4676,7 +4676,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5874294b56d2c4b11a9ba2ea9401f466, type: 2}
   - {fileID: 11400000, guid: 070bca996c4ad4ee9bbd571d1b5de06f, type: 2}
   draftController: {fileID: 20521825}
-  skillRuntime: {fileID: 0}
+  skillRuntime: {fileID: 229215106}
   _placementPhaseView: {fileID: 1628485822}
   _gimmickPhaseView: {fileID: 283596198}
   spineUnitPool: {fileID: 810041860}
