@@ -13,6 +13,7 @@
 - 골 균열/붕괴/앵커 = 마커 뷰 훅(브리지 등록부), 튜토리얼 브리지 앵커 교체
 - e2e 스테이지 이관: `MapSlot` 포트, KayKit 스테이지 9종(픽스처·파일럿 포함), 덱/플랜 짝 승계, 이격 배치 정규화
 - 구 파이프라인 68파일 은퇴 (후계 매핑 기록)
+- unit 9 (`07ebea0c`): `BonusSpawnMarker` → `GeneratedMap.bonusSpawns` 투영, 규칙은 main `BonusSpawnAuthoringRules` 재사용. Duel(6,1)/(6,6)·DuelClassic(10,3)/(10,8) 저작 — main 의 보너스 웨이브가 스테이지에서 살아난다
 
 ## Verified
 

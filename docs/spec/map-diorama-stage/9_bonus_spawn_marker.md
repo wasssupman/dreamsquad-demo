@@ -1,4 +1,4 @@
-# 9 — BonusSpawnMarker: 보너스 포탈 칸의 스테이지 저작 (제안 2026-08-25)
+# 9 — BonusSpawnMarker: 보너스 포탈 칸의 스테이지 저작
 
 ## 목적
 
@@ -26,7 +26,9 @@ main 의 `bonus-wave-pull` 이 맵 저작 축을 하나 추가했다 — `Genera
 
 ## 완료 기준
 
-- [ ] compile + EditMode 두 lane (위 규칙 케이스 6종 포함) 무회귀
-- [ ] `StagePoolBuildabilityTests` 통과 (Assemble 경유로 라이브·dev 전 스테이지 자동 커버)
+- [x] compile + EditMode 두 lane (위 규칙 케이스 6종 포함) 무회귀 — 2512 통과, 실패 3 은 main 상속/CRLF 환경(handoff)
+- [x] `StagePoolBuildabilityTests` 통과 — 저작된 Duel·DuelClassic 포탈이 통행·도달 규칙 통과
 - [ ] Duel 스테이지 Play: 조건 충족 시 보너스 버튼 등장 → 포탈 2개 열림 → 보너스 적 10기 스폰 (main 의 8_duel_authoring_and_play 와 같은 축)
-- [ ] 저작 가이드 갱신
+- [x] 저작 가이드 갱신
+
+구현 커밋 `07ebea0c` (2026-08-25). Play 축(버튼→포탈→적 10기)은 사용자 확인 대기 — 조건: 마음 스트레스 ≤30 창에서 트리거 임계 충족(bonus-wave-pull 계약 15).
