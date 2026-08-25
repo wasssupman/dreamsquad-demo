@@ -1,5 +1,13 @@
 using System;
 
+// ⚠ 위치가 `Scripts/Skills/` 인데 네임스페이스가 `Wassup.Battle.Units` 인 것은 의도다.
+// skill-layer-foundation unit 2a 가 이 파일을 **어셈블리만** 옮겼다 — 도메인 계층
+// (`Wassup.Skills`)이 진영을 표현해야 하는데 이 파일이 Runtime 에 있으면 순환 참조가
+// 된다(Skills → Runtime → Skills). 네임스페이스를 그대로 둔 이유는 참조가 23파일이고
+// 리네임이 이 spec 의 검증 질문과 무관하기 때문이다 — 이 파일 자신이 같은 판단으로
+// 타입 이름을 유지했던 것과 같은 이유다.
+//
+// 이 파일은 순수 C# 이다(`using System;` 뿐). 그래서 엔진 참조 없는 어셈블리에서 산다.
 namespace Wassup.Battle.Units
 {
     // battle-structures unit 0 — Faction 은 «진영 × 종류» 교차 비트다.
