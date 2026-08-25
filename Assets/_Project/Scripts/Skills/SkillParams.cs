@@ -99,6 +99,16 @@ namespace Wassup.Skills
         public int Range => _p.TileRange;
     }
 
+    // skill-layer-migration unit 1 — 범위 도발.
+    public readonly struct TauntParams
+    {
+        private readonly SkillParams _p;
+        public TauntParams(in SkillParams p) => _p = p;
+
+        public int Radius => _p.TileRange;      // 체비셰프 반경
+        public float Duration => _p.Duration;   // 도발 지속 초
+    }
+
     public readonly struct AuraParams
     {
         private readonly SkillParams _p;

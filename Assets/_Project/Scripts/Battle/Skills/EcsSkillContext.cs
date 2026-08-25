@@ -61,6 +61,8 @@ namespace Wassup.Battle.Skills
         private bool _hasLeapVfxQueue;
         private NativeQueue<Wassup.Battle.Combat.UltimateLeapVisualEvent> _ultVfxQueue;
         private bool _hasUltVfxQueue;
+        private NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent> _acquireQueue;
+        private bool _hasAcquireQueue;
 
         // 격자 라우팅 — 착지 질의가 쓴다. 도메인은 이 구조를 모르고 질의로만 만난다.
         private Wassup.Battle.Effects.FlowFieldSingleton _ff;
@@ -132,6 +134,11 @@ namespace Wassup.Battle.Skills
         public void BindUltimateVisualSink(NativeQueue<Wassup.Battle.Combat.UltimateLeapVisualEvent> q, bool has)
         {
             _ultVfxQueue = q; _hasUltVfxQueue = has;
+        }
+
+        public void BindTauntSink(NativeQueue<Wassup.Battle.Effects.AggroAcquireEvent> q, bool has)
+        {
+            _acquireQueue = q; _hasAcquireQueue = has;
         }
 
         public void BindFlowField(in Wassup.Battle.Effects.FlowFieldSingleton ff, bool has)
@@ -235,6 +242,9 @@ namespace Wassup.Battle.Skills
                 // ⚠ `Position()` 은 부재를 0 으로 접는다. 조준하는 스킬은 이걸 먼저 묻고
                 // 없으면 발사를 취소한다 — 안 그러면 (0,0) 방향 탄이 조용히 나간다.
                 case UnitPredicate.HasPosition: return _transform.HasComponent(e);
+                // 가디언 표식. 어그로가 「누구에게」 붙는지가 이 용량에 매여 있다.
+                case UnitPredicate.HasAggroCapacity:
+                    return _em.HasComponent<Wassup.Battle.Effects.AggroCapacity>(e);
                 default: throw NotWired($"Has({pred})");
             }
         }
@@ -299,6 +309,13 @@ namespace Wassup.Battle.Skills
                         ? _pathFollow[e].traversalLayers : (byte)0;
                     if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, candLayers)) continue;
                 }
+
+                // ⚠ **역변환 불가 후보는 내보내지 않는다.** 핸들이 `SimEntityId` 라
+                // 미발급 엔티티는 도로 찾을 수 없고, 그러면 concrete 가 받는 것은
+                // 「없음」이 아니라 **월드 원점에 선 유령**이다(`Position` 이 부재를 0 으로
+                // 접는다). 실제로 그 유령이 부채꼴의 조준을 훔쳐 등 뒤를 쏘게 만들었다.
+                // 후보에서 빼면 「후보 0 = 무발사」로 흘러 조용한 오폭이 사라진다.
+                if (SimIdOf(e) == SimEntityId.Unassigned) continue;
 
                 var p = poolXf[i].Position;
                 bool inRange;
@@ -482,6 +499,21 @@ namespace Wassup.Battle.Skills
                         UnityEngine.Debug.LogWarning(
                             "[Skill] 착지점 해석 실패로 발동 skip — 상대 진영 앵커가 없거나 " +
                             "밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
+                    return;
+                }
+                case SimIntentKind.Taunt:
+                {
+                    if (!_hasAcquireQueue) return;
+                    var guardian = Resolve(intent.Source);
+                    var victim = Resolve(intent.Target);
+                    if (guardian == Entity.Null || victim == Entity.Null) return;
+                    _acquireQueue.Enqueue(new Wassup.Battle.Effects.AggroAcquireEvent
+                    {
+                        guardian = guardian,
+                        enemy = victim,
+                        kind = Wassup.Battle.Effects.AggroAcquireKind.Taunt,
+                        durationSec = intent.Duration,
+                    });
                     return;
                 }
                 case SimIntentKind.EmitPattern:

@@ -9412,6 +9412,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BlinkToClusterSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.UltimateLeapSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.EmitPatternSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AreaTauntSkill());
             }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
@@ -9439,6 +9440,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.UltimateLeapSkill.Id;
                 case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
                     return Wassup.Skills.Concrete.EmitPatternSkill.Id;
+                case Wassup.Data.DcPayloadKind.AreaTaunt:
+                    return Wassup.Skills.Concrete.AreaTauntSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }

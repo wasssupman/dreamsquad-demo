@@ -33,6 +33,8 @@ namespace Wassup.Tests.EditMode
             public bool HasPosition = true;
             // 조준. 없으면 최근접 폴백으로 흐른다.
             public bool HasFacing;
+            // 가디언 표식 — 도발 캐스터 자격.
+            public bool HasAggroCapacity;
             public float2 Facing;
             // 실드 축 — 기본 true 다. 실제 유닛은 대부분 버퍼를 갖고, false 가 기본이면
             // 테스트가 조용히 vacuous 해진다(모든 대상이 건너뛰어진다).
@@ -101,6 +103,7 @@ namespace Wassup.Tests.EditMode
                 case UnitPredicate.HasShieldBuffer: return u.HasShield;
                 case UnitPredicate.InUltimateLeap: return u.InUltimateLeap;
                 case UnitPredicate.HasPosition: return u.HasPosition;
+                case UnitPredicate.HasAggroCapacity: return u.HasAggroCapacity;
                 default: return false;
             }
         }

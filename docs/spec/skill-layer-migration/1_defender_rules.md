@@ -45,13 +45,13 @@
 
 | 에셋 | payload | 상태 |
 |---|---|---|
-| `Ability_Taunt_Bastion` | `AreaTaunt` | 미이전 |
+| `Ability_Taunt_Bastion` | `AreaTaunt` | **이전됨** (2026-08-26) |
 | `Ability_SkyStrike_Cannon` | `EmitProjectilePattern` | **이전됨** (2026-08-25) |
 | `Ability_OnPlaceBlast_Shotgunner` | 〃 | 〃 |
 | `Ability_UnitSkill_BombMan` | 〃 | 〃 |
 
 → `EmitProjectilePattern` 하나를 옮기니 **이 3행 + unit 0 이월 2행 = 5행**이 한 번에 갔다.
-그것이 unit 0 이 이 payload 를 여기로 넘긴 이유다. 남은 것은 `AreaTaunt` 1행.
+그것이 unit 0 이 이 payload 를 여기로 넘긴 이유다. `AreaTaunt` 까지 끝나 **unit 1 은 5/5**.
 
 ## `EmitProjectilePattern` 이전에서 나온 것 (2026-08-25)
 
@@ -85,6 +85,40 @@ arm 을 철거하면 그 9장이 조용히 죽는다.
 계약이라, seam 셋에 `[UpdateBefore(ProjectileEmitterSystem)]` 를 옮겨 걸었다. 안 걸면
 정렬이 빌드마다 달라져 1프레임 지연이 오락가락한다.
 
+## `AreaTaunt` 이전에서 나온 것 (2026-08-26)
+
+`AreaTauntSkill`(Id 8). arm 은 **남긴다** — 발사 명세와 달리 Burst/managed 충돌이 없고,
+카드가 이 payload 를 저작하지도 않는다(라이브 카드 kind 목록에 23 이 없다). 철거는 unit 8.
+
+**자가 다르다.** 도발은 체비셰프이고 발사 명세는 유클리드다. 같은 unit 안에서 갈리는 이유는
+게임 규칙이다 — 도발은 「몇 칸 안」이라 대각선이 같은 거리로 세고, 발사는 **탄이 실제로
+날아가는 거리**라 대각선이 더 멀다. 그물이 이 차이를 각자 한 줄로 못박는다.
+
+**게이트를 복제하지 않는다.** 보스 면역·공격 수단 부재·도달 불가는 어그로 시스템 소유라
+concrete 가 판정하지 않는다. concrete 가 소유하는 것은 「누구를 부르나」(반경·상대 진영·
+이번 프레임 합법 후보)까지고, 통행 층만 여기 있다 — 그건 「불려온 뒤」가 아니라
+「부를 수 있나」라서 후보 조건이 맞다.
+
+## ⚠ 손으로 만든 테스트 더미는 `SimEntityId` 가 없다 (2026-08-26)
+
+PlayMode e2e 헬퍼 다수가 `em.CreateEntity()` 로 적 더미를 짓고 이 컴포넌트를 안 붙인다.
+예전 arm 은 `Entity` 를 직접 들고 다녀서 상관없었지만, **스킬 레이어는 그 값으로 핸들을
+역변환**하므로 미발급 더미는 조준·도발의 대상이 될 수 없다.
+
+이게 조용하지 않게 두 곳을 고쳤다:
+
+- 어댑터 `Collect` 가 **역변환 불가 후보를 후보에서 뺀다.** 안 빼면 concrete 가 받는 것은
+  「없음」이 아니라 **월드 원점에 선 유령**이다(`Position` 이 부재를 0 으로 접는다).
+  실제로 그 유령이 샷건맨 부채꼴의 조준을 훔쳐 **등 뒤를 쏘게** 만들었다.
+- `BuildCaster` 가 미발급 시전자에 loud warn 을 낸다.
+
+테스트 쪽은 `BattleBridgeTestAccess.AttachSimEntityId` 로 **라이브와 같은 발급기**를 쓴다 —
+값을 임의로 정하면 번호가 겹쳐 역변환이 엉뚱한 엔티티를 돌려준다.
+
+**Boss\* 그물이 여태 초록이던 이유**: 그쪽은 실제 스폰 경로(`SpawnUnit`)를 타서 ID 가
+발급된다. 손으로 만든 더미를 쓰는 그물만 이 함정을 밟는다 — 다음 unit 들이 payload 를
+옮길 때 같은 증상을 만나면 여기를 먼저 볼 것.
+
 ## 완료 기준
 
 - [x] 5행 중 4행이 concrete 로 존재한다 (`GrantShield` 1 + `EmitProjectilePattern` 3)
@@ -93,8 +127,15 @@ arm 을 철거하면 그 9장이 조용히 죽는다.
       (`EmitPatternSkillTests` + `ProjectileEmitterIntegrationTests.EnemyHost_TargetsDefenders…`)
 - [x] `ISkill` 레지스트리에 적 스킬과 방어유닛 스킬이 함께 있다 (7종)
 - [x] EditMode 2700/2702 초록 (남은 2건은 이 작업과 무관한 선행 실패 — 아래)
-- [ ] `AreaTaunt` 1행
-- [ ] Play 스모크
+- [x] `AreaTaunt` 1행 (`AreaTauntSkillTests` 8 + `OnPlaceTauntNearbyTest` 4 초록)
+- [x] PlayMode: 도발 4 · 부채꼴 2 · 폭탄맨 · 스카이스트라이크 · 라우팅 2 초록
+- [ ] Play 스모크(육안)
+
+⚠ **테스트 격리 선행 문제**: `SkillLayerRoutingTest` 는 **단독으로는 초록**인데 다른
+PlayMode 클래스와 묶어 돌리면 `Tween's OnComplete callback was ignored` 로 빨개진다.
+앞선 테스트가 씬 파괴 후에 완료되는 tween 을 흘리고, 이 클래스만 `LogAssert` 를 안 눌러서
+**그 오류를 대신 받는다**. 이 spec 의 결함이 아니다 — 다만 이 클래스가 남의 누수를 잡는
+카나리아 역할을 하고 있다.
 
 ⚠ **선행 실패 2건**(내 변경을 stash 한 상태에서도 동일하게 빨감):
 `DreamcatcherCardAssetTextTests.CardAssets_UseStructuredSummaryWhenDataExists`(boomerang) ·

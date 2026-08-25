@@ -124,6 +124,8 @@ namespace Wassup.Battle.Skills
             _context.BindCcSink(hasCc ? ccS.queue : default, hasCc);
             bool hasStat = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statS);
             _context.BindStatSink(hasStat ? statS.queue : default, hasStat);
+            bool hasAcquire = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.AggroAcquireEventsSingleton>(out var acqS);
+            _context.BindTauntSink(hasAcquire ? acqS.queue : default, hasAcquire);
             bool hasHit = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>(out var hitS);
             _context.BindVisualSink(hasHit ? hitS.queue : default, hasHit);
             bool hasShieldVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>(out var svS);

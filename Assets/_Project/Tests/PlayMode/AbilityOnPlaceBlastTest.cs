@@ -216,6 +216,8 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<IncomingDamage>(e);
             em.AddBuffer<CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
+            // ⚠ 스킬 레이어의 핸들 축 — 없으면 이 더미는 조준 후보가 못 된다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             return e;
         }
 

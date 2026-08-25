@@ -32,6 +32,22 @@ namespace Wassup.Tests.PlayMode
     {
         private const BindingFlags Instance = BindingFlags.NonPublic | BindingFlags.Instance;
 
+        // skill-layer-migration unit 1 — 테스트가 손으로 만든 엔티티에 **매치 ID** 를 붙인다.
+        //
+        // ⚠ **없으면 스킬 레이어에서 그 엔티티는 존재하지 않는다.** 어댑터의 핸들 역변환이
+        // `SimEntityId` 로 풀을 스캔하기 때문에, 미발급 후보는 조준·도발·피해의 대상이
+        // 될 수 없다. 예전엔 arm 이 `Entity` 를 직접 들고 다녀서 이게 상관없었다 —
+        // 그래서 오래된 e2e 헬퍼들이 이 컴포넌트를 안 붙인다.
+        //
+        // 값을 임의로 정하지 않는 이유: 라이브 스폰과 **같은 발급기**를 써야 번호가 겹치지
+        // 않는다. 겹치면 역변환이 «엉뚱한 엔티티»를 돌려주고 그 오폭은 조용하다.
+        public static void AttachSimEntityId(BattleBridge bridge, Entity entity)
+        {
+            var m = typeof(BattleBridge).GetMethod("AttachSimEntityId", Instance);
+            Assert.IsNotNull(m, "BattleBridge.AttachSimEntityId 를 찾지 못했다(이름 변경?)");
+            m.Invoke(bridge, new object[] { entity });
+        }
+
         // BattleScene 로드 + 브리지 Awake/Start 와 ECS 월드 준비까지 프레임을 흘린다.
         public static IEnumerator LoadBattleScene()
         {

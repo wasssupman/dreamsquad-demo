@@ -260,6 +260,9 @@ namespace Wassup.Tests.PlayMode
             // 게이트가 죽어도 테스트가 초록이 된다 — unit 4 후속 후보의 «더미가 통행 층을
             // 안 가진다» 공백).
             em.AddComponentData(e, new PathFollowState { speed = 2f, traversalLayers = layers });
+            // ⚠ 스킬 레이어의 핸들 축 — 없으면 도발 후보가 못 된다(어댑터가 `SimEntityId`
+            // 로 역변환한다). 예전 arm 은 `Entity` 를 직접 들었기에 필요 없었다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             // ⚠ **EnemyAiState 가 없으면 도발이 이동으로 이어지지 않는다.** MovementSystem 은
             // 이 컴포넌트가 없으면 Marching 으로 떨어뜨려 그냥 골로 걸어간다 — 어그로 상태는
             // 붙었는데 적이 멀어지는 그림이 나온다(실측 2.46 → 5.39). 실제 적은 스폰 시 받는다.
