@@ -35,9 +35,53 @@
    **선행 작업이 「그물 6개 신설」에서 「`MeleeBurst` 의 직접 그물 1개」로 줄었다.**
    그리고 **`SlowPulse` 는 이전 대상이 아니라 삭제 대상**이다 — 그물도 없고 라이브
    저작자도 0이라 옮길 것 자체가 없다(옮기면 아무도 안 쓰는 concrete 가 생긴다, 제약 8).
-2. **신규로 필요한 payload kind 는 `AreaCc{DcCcKind}` 하나 정도**다.
-   `MeleeBurst`(4)는 기존 `SelfTileAoe` 재사용, `StunNearby`(9)는 `ApplyCcToTarget`/`AreaSleep` 계열.
-   기존 어휘를 먼저 쓴다(append 는 표현 불가일 때만).
+2. ~~**신규로 필요한 payload kind 는 `AreaCc{DcCcKind}` 하나 정도**다.~~
+   **stale — 2026-08-26 체인 전수 대조로 정정.** 하나가 아니라 셋이고, 하나는 성격이 다르다.
+
+   | 값 | 유닛 | 오늘 하는 일 | 목표 | 신규 어휘 |
+   |---|---|---|---|---|
+   | 1 `SlowPulse` | — | (3과 **같은 분기**) | **삭제** | — |
+   | 4 `MeleeBurst` | bruiser | 적에 즉발 피해 | `SelfTileAoe` | 없음 ✅ |
+   | 5 `ForwardProjectile` | 4기 | **통로 스윕 피해** | `EmitProjectilePattern` | 없음, 단 ⚠아래 |
+   | 6 `GainCost` | scout | 코스트 획득 | MetaIntent(이미 있음) | payload 1 |
+   | 7 `ReduceSkillCooldown` | ranger | 쿨다운 감소 | MetaIntent(이미 있음) | payload 1 |
+   | 2 `BoostNearbyDefenders` | guardian | **아군**에 DamageMul(TTL) | 스탯 오라 | ↓ |
+   | 3 `BindNearby` | archer | **적**에 MoveSpeedMul(TTL) | 스탯 오라 | ↓ |
+   | 8 `ApplyStackNearby` | slasher | 적에 스택 도포 | 광역 스택 | payload 1 |
+   | 9 `StunNearby` | malphite | 적에 Stun + 피해 + **넉업 연출** | 광역 CC | payload 1 |
+   | 10 `DotNearby` | busters | 적에 DoT + **빔 연출** + 쿨다운 밀기 | 광역 DoT | payload 1 |
+
+   **오라 둘은 기존 concrete 를 일반화하면 공짜다.** `AllySpeedAuraSkill`(Id 2)이 이미
+   `ApplyStatModifier` 를 `Selector = MoveSpeedMul` 로 방출한다 — **selector 축이 이미 있고
+   concrete 가 그것과 「아군」을 하드코딩했을 뿐**이다. 스탯 축과 대상 진영을 params 로
+   올리면 한 concrete 가 셋을 덮는다(보스 채찍 + 가디언 + 궁수).
+
+## ⚠ 결정이 필요한 둘 (2026-08-26)
+
+**① `ForwardProjectile` 은 기계적 이전이 아니다.** 오늘 이 arm 은 탄을 안 쏜다 —
+`ApplyForwardOnPlaceProjectile` 이 폭 1.2타일 통로를 훑어 **즉발 피해**를 준다.
+`EmitProjectilePattern` 으로 옮기면 **진짜 투사체가 날아가는 다른 메커니즘**이 되고,
+라이브 4기(머신거너·마크스맨·피어서·스나이퍼)의 체감이 바뀐다. 샷건맨이 이미 그 형태다.
+
+- (a) 패턴으로 재저작 — 스펙의 「에셋 12개 재저작」이 뜻하는 바로 그것. **밸런스 변경**이다.
+- (b) 통로 스윕을 그대로 보존하는 payload 를 신설 — 어휘가 하나 늘지만 무회귀.
+
+**② 뷰 부작용 둘을 어디에 두나.** `StunNearby` 의 넉업 홉과 `DotNearby` 의 빔은
+브리지가 **직접** 재생한다(큐 안 거침). 규칙 경로로 옮기면 `PlayVisual` 의도를 거쳐야 하고,
+`DotNearby` 는 추가로 **host 공격 쿨다운을 밀어** 조사 중 평타를 막는다 — 그건 연출이 아니라
+규칙이라 의도 어휘에 없다(`SimIntentKind` 에 「자기 공격 잠금」이 없다).
+
+## 작업 분할 (한 unit 이 너무 크다)
+
+| 슬라이스 | 내용 | 신규 어휘 | 상태 |
+|---|---|---|---|
+| **2a** | `SlowPulse` 삭제 · `MeleeBurst` → `SelfTileAoe` | 없음 | 착수 가능 |
+| **2b** | 오라 일반화 → `BoostNearbyDefenders` · `BindNearby` | payload 1 | 설계 확정됨 |
+| **2c** | `GainCost` · `ReduceSkillCooldown` (ECS 무관) | payload 2 | 착수 가능 |
+| **2d** | `ApplyStackNearby` | payload 1 | |
+| **2e** | `StunNearby` · `DotNearby` | payload 2 + ⚠② | **결정 대기** |
+| **2f** | `ForwardProjectile` | ⚠① | **결정 대기** |
+| **2g** | 철거(enum · flat 필드 · 체인 · 문안) | — | 위 전부 뒤 |
 3. **Mono 도메인 arm 2개를 판정대로 처리한다** — `GainCost`(`:5564`, `CostRuntime`) ·
    `ReduceSkillCooldown`(`:5571`, `skillRuntime`)은 **ECS 를 전혀 안 만진다.**
    토대 unit 0 이 「Mono 계열 intent」 또는 「예외」로 판정한 것을 따른다.
