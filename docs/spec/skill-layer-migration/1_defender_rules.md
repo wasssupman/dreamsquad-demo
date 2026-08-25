@@ -24,6 +24,31 @@
 4. 이 가족이 끝나면 **보스 스킬과 방어유닛 스킬이 같은 `ISkill` 목록에 섞인다** —
    README 부수 질문이 여기서 처음 참이 된다.
 
+## 진행 상태 (2026-08-25)
+
+**5행 중 1행이 이미 이전됐다** — 의도한 게 아니라 구조 덕이다.
+
+`Ability_AreaShield_ShieldShuttle` 은 `OnPlace × GrantShield` 인데, **`OnPlace` 슬롯도
+`BossPeriodicTriggerSystem` 이 소비한다**(payload arm 을 주기와 공유하는 것이 그 시스템에
+얹은 이유다 — 브리지에 실행부를 두면 `EmitProjectilePattern` 의 세 번째 사본이 된다).
+그래서 unit 0 이 `GrantShield` 를 이전할 때 이 행도 같이 넘어갔고, `AbilityAreaShieldTest` 가
+초록인 것이 그 증거다.
+
+**함의**: 이 spec 의 이전 단위는 **payload** 이지 트리거나 가족이 아니다. 한 payload 를
+옮기면 그것을 쓰는 모든 행이 같이 간다 — census 의 「행」은 검수 단위이고 작업 단위가 아니다.
+
+남은 4행:
+
+| 에셋 | payload | 상태 |
+|---|---|---|
+| `Ability_Taunt_Bastion` | `AreaTaunt` | 미이전 |
+| `Ability_SkyStrike_Cannon` | `EmitProjectilePattern` | 미이전 (unit 0 이월분과 **같은 payload**) |
+| `Ability_OnPlaceBlast_Shotgunner` | 〃 | 〃 |
+| `Ability_UnitSkill_BombMan` | 〃 | 〃 |
+
+→ `EmitProjectilePattern` 하나를 옮기면 **이 3행 + unit 0 이월 2행 = 5행**이 한 번에 간다.
+그것이 unit 0 이 이 payload 를 여기로 넘긴 이유다.
+
 ## 완료 기준
 
 - [ ] 5행이 concrete + 저작 SO 로 존재한다

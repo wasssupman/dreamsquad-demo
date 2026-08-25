@@ -9700,7 +9700,13 @@ namespace Wassup.Bridge
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.GrantShield &&
                          ((m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold && m.payload.tileRange > 0) ||
-                          (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer && m.payload.tileRange <= 0)))
+                          (m.trigger.kind == Wassup.Data.DcTriggerKind.PeriodicTimer && m.payload.tileRange <= 0) ||
+                          // skill-layer-migration(투트랙 리뷰 M2) — **경고문이 이미 이 조합을
+                          // 거절한다고 말하는데 조건이 빠져 있었다.** legacy arm 은 tileRange<=0
+                          // 에서 조용한 no-op 이었지만, concrete 는 그것을 「자기 실드」로 읽는다
+                          // (경계 자기 실드와 같은 규약). 그래서 이전이 미검증 조합 하나의 의미를
+                          // 열어버린다 — 저작 단계에서 loud 하게 막는 것이 맞다.
+                          (m.trigger.kind == Wassup.Data.DcTriggerKind.OnPlace && m.payload.tileRange <= 0)))
                 {
                     // boss-mamemo unit 3 — **미배선 조합 거절.** 실드는 두 능력을 겸하지만 배선은
                     // 트리거별로 갈라져 있다: 경계 arm = 자기(tileRange 0) · 주기 arm = 반경 확산
