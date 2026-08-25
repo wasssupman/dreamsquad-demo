@@ -13,6 +13,16 @@ namespace Wassup.Battle.Combat
         // Effect-instance id — one slot per attached mechanic instance, so two
         // copies of the same card get independent counters. Separate namespace
         // from stat-modifier stackId: never compare the two.
+        // skill-layer-foundation unit 4/5 — **이중 경로 라우팅 축.**
+        //
+        // 0 = legacy arm 이 처리한다. 0 이 아니면 감지자가 arm 을 돌리지 않고
+        // `SkillFiredEvent` 에 실어 보내고 디스패처가 concrete 를 부른다.
+        //
+        // ⚠ 이 축이 **unmanaged 여야 하는 이유**: 감지자는 Burst ISystem 이라 managed
+        // 레지스트리를 읽을 수 없다. 「이 슬롯은 새 경로인가」를 숫자 하나로 가를 수
+        // 있어야 이전 중 매 커밋에서 게임이 돈다.
+        public int skillId;
+
         public int instanceId;
         public DcTriggerKind trigger;
         public ushort period;   // AttackN: fire on every N-th attack resolve

@@ -490,6 +490,13 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
         private NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent> _dcTriggerFiredQueue;
+
+        // skill-layer-foundation unit 4/5 — 감지(Burst) → 디스패처(managed) 채널과
+        // 그 뒤의 레지스트리·어댑터. 브리지가 소유하는 이유는 저작 계층(SO)에 닿을 수
+        // 있는 유일한 자리이고, 채널 수명주기가 이미 여기 모여 있기 때문이다.
+        private NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> _skillFiredQueue;
+        private readonly Wassup.Skills.SkillRegistry _skillRegistry = new Wassup.Skills.SkillRegistry();
+        private readonly Wassup.Battle.Skills.EcsSkillContext _skillContext = new Wassup.Battle.Skills.EcsSkillContext();
         // knockup-fighter unit 3 — Combat→Bridge 넉업 띄우기 연출(대상 view 수직 호핑).
         private NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> _knockupVisualQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
@@ -884,6 +891,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroAcquireEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Skills.SkillFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.BossLeapVisualEventsSingleton>();
             // ultimate-leap — 누락 시 BattleTimeScale H1 과 **같은 실패**: orphan 싱글턴이 남고
@@ -915,6 +923,8 @@ namespace Wassup.Bridge
             if (_aggroAcquireEventQueue.IsCreated) _aggroAcquireEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
+            if (_skillFiredQueue.IsCreated) _skillFiredQueue.Dispose();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Uninstall();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
             DisposeBossLeapChannel(); // 오버라이드 clear 포함 — 진행 중 비행이 자진 종료한다
             DisposeUltimateLeapChannel(); // 동일 — 공중 집합 + 오버라이드 clear
@@ -1679,6 +1689,15 @@ namespace Wassup.Bridge
             _dcTriggerFiredQueue = new NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent>(Allocator.Persistent);
             var dcFiredSingleton = _em.CreateEntity();
             _em.AddComponentData(dcFiredSingleton, new Wassup.Battle.Combat.DcTriggerFiredEventsSingleton { queue = _dcTriggerFiredQueue });
+            // skill-layer-foundation unit 4/5 — 스킬 발동 채널. 감지자가 skillId != 0 인
+            // 슬롯을 여기 싣고, seam 3곳의 디스패처가 concrete 를 부른다.
+            if (_skillFiredQueue.IsCreated) _skillFiredQueue.Dispose();
+            _skillFiredQueue = new NativeQueue<Wassup.Battle.Skills.SkillFiredEvent>(Allocator.Persistent);
+            var skillFiredSingleton = _em.CreateEntity();
+            _em.AddComponentData(skillFiredSingleton,
+                new Wassup.Battle.Skills.SkillFiredEventsSingleton { queue = _skillFiredQueue });
+            InstallSkillLayer();
+
             _dcProcLastImpact.Clear(); // 매치 경계 — 엔티티는 매치마다 새로우니 스로틀 기록 리셋
             _nextSimEntityId = 0;      // battle-sim-extraction M0 unit 1 — stable ID 는 매치마다 0 부터
 
@@ -9377,6 +9396,34 @@ namespace Wassup.Bridge
         // 「mechanics 가 비어있지 않다 = 보스」였고, 그래서 특수 메커닉을 준 엘리트가 자동으로
         // BossTag 를 얻어 CC·어그로 면역까지 딸려왔다(면역 술어들이 전부 BossTag 를 탄다).
         // 이제 보스 부속물은 `tier == Boss` 만 받고, 슬롯은 티어 무관으로 붙는다.
+        // skill-layer-foundation unit 5 — 레지스트리에 concrete 를 등록하고 디스패처에
+        // 넘긴다. 매치 경계마다 부른다 — 레지스트리 자체는 무상태라 재등록만 막으면 된다.
+        //
+        // ⚠ **여기 없는 concrete 는 발동하지 않는다.** `SkillIdForPayload` 가 skillId 를
+        // 굽는데 레지스트리에 없으면 디스패처가 loud 하게 버린다. 둘은 항상 같이 는다.
+        private void InstallSkillLayer()
+        {
+            if (_skillRegistry.Count == 0)
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AreaSleepSkill());
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
+        }
+
+        // skill-layer-foundation unit 5 — payload → concrete 라우팅.
+        //
+        // **이전된 것만 여기 있다.** 없는 payload 는 0 을 받아 legacy arm 이 처리한다.
+        // migration 이 한 가족을 옮길 때마다 여기 한 줄이 는다 — 그 한 줄이 「이 스킬은
+        // 이제 concrete 가 돈다」의 유일한 선언이다.
+        private static int SkillIdForPayload(Wassup.Data.DcPayloadKind kind)
+        {
+            switch (kind)
+            {
+                case Wassup.Data.DcPayloadKind.AreaSleep:
+                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
+                default:
+                    return Wassup.Skills.SkillRegistry.LegacyArmId;
+            }
+        }
+
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
         {
             var mechanics = unitType.nightmareMechanics;
@@ -9486,6 +9533,10 @@ namespace Wassup.Bridge
 
                 var slot = new DcTriggerSlot
                 {
+                    // skill-layer-foundation unit 5 — 이전된 payload 만 새 경로로 라우팅한다.
+                    // 나머지는 0(legacy arm)이라 감지자가 예전처럼 arm 을 돈다. 이 한 줄이
+                    // 이전 중 매 커밋에서 게임이 도는 이유다.
+                    skillId = SkillIdForPayload(m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),

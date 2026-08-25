@@ -95,6 +95,10 @@ namespace Wassup.Battle.Combat
             // 그쪽 대상 풀이 AttackUnitTag 하드코딩이라 손대면 실드파열 카드가 깨진다.
             // payload kind 만 공유하고 실행 경로는 별개다.
             bool hasCcQ = SystemAPI.TryGetSingletonRW<EnemyCcEventsSingleton>(out var ccRW);
+
+            // skill-layer-foundation unit 5 — 이전된 스킬은 arm 을 안 돌고 여기 실린다.
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredRW);
             // boss-mamemo unit 3 — 악몽의 가호 seam. 가디언 전용 생산자(ShieldCastSystem)를
             // 재사용하지 않고 그 아래층(Units 소유 IncomingShield 버퍼)에 append 한다.
             var incomingShieldLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingShield>(isReadOnly: false);
@@ -239,6 +243,35 @@ namespace Wassup.Battle.Combat
                                         });
                                     }
                                 }
+                            }
+                        }
+                        // skill-layer-foundation unit 5 — **이전된 스킬은 여기서 갈린다.**
+                        // arm 을 돌지 않고 값 스냅샷을 실어 보내고, seam 의 디스패처가
+                        // concrete 를 부른다. skillId 0 이면 아래 legacy arm 이 그대로 돈다 —
+                        // 그 한 줄이 이전 중 매 커밋에서 게임이 도는 이유다.
+                        else if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        {
+                            if (hasSkillQ && SystemAPI.HasComponent<LocalTransform>(entity))
+                            {
+                                skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                                {
+                                    Caster = entity,
+                                    SkillId = slot.skillId,
+                                    SlotIndex = si,
+                                    FiredPosition = SystemAPI.GetComponent<LocalTransform>(entity).Position,
+                                    Target = Entity.Null,
+                                    Magnitude = slot.magnitude,
+                                    Duration = slot.duration,
+                                    TileRange = slot.tileRange,
+                                    Period = slot.period,
+                                    DataIndex = slot.projectileDataIndex,
+                                    Selector = (int)slot.ccKind,
+                                    Speed = slot.speed,
+                                    HitThreshold = slot.hitThreshold,
+                                    SlamDamage = slot.slamDamage,
+                                    SlamTileRange = slot.slamTileRange,
+                                    StackId = slot.statBuffStackId,
+                                });
                             }
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.AreaSleep)

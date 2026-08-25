@@ -48,9 +48,17 @@ namespace Wassup.Battle.Skills
             _context = null;
         }
 
+        private EntityQuery _enemyQuery, _defQuery;
+
         protected override void OnCreate()
         {
             RequireForUpdate<SkillFiredEventsSingleton>();
+            // 후보 풀 소스. 어댑터는 풀을 **받아서** 쓴다 — 쿼리를 만들 수 있는 건
+            // 시스템뿐이고, 그걸 어댑터에 넣으면 포트가 ECS 를 알게 된다.
+            _enemyQuery = GetEntityQuery(
+                ComponentType.ReadOnly<AttackUnitTag>(), ComponentType.ReadOnly<LocalTransform>());
+            _defQuery = GetEntityQuery(
+                ComponentType.ReadOnly<DefenderUnitTag>(), ComponentType.ReadOnly<LocalTransform>());
         }
 
         protected override void OnUpdate()
@@ -75,6 +83,18 @@ namespace Wassup.Battle.Skills
                 SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true),
                 SystemAPI.GetComponentLookup<Health>(isReadOnly: true),
                 TileSize, GridSize, Origin);
+
+            // ⚠ 풀을 **프레임당 한 번** 짓는다. fire 당 재구축하면 발동이 몰리는 프레임에
+            // 쿼리가 N번 돈다(unit 0 어댑터 계약). 드레인이 끝나면 해제한다.
+            var enemyPool = _enemyQuery.ToEntityArray(Allocator.Temp);
+            var enemyPoolXf = _enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var defPool = _defQuery.ToEntityArray(Allocator.Temp);
+            var defPoolXf = _defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            _context.BindPools(enemyPool, enemyPoolXf, defPool, defPoolXf);
+
+            // 의도 싱크 — 지금 배선된 것은 CC 하나다. 나머지는 어댑터가 loud 하게 거절한다.
+            bool hasCc = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.EnemyCcEventsSingleton>(out var ccS);
+            _context.BindCcSink(hasCc ? ccS.queue : default, hasCc);
 
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
@@ -108,6 +128,9 @@ namespace Wassup.Battle.Skills
 
                 skill.Execute(caster, in target, in p, _context);
             }
+
+            enemyPool.Dispose(); enemyPoolXf.Dispose();
+            defPool.Dispose(); defPoolXf.Dispose();
         }
 
         // 격자 파라미터 — 파생이 채운다(호스트마다 같은 값이지만 base 가 싱글턴을 두 번
