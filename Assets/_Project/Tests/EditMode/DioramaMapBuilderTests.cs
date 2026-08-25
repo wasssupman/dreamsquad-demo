@@ -269,5 +269,89 @@ namespace Wassup.Tests.EditMode
             try { Assert.IsFalse(MapConnectivity.AllSpawnsReachGoal(map)); }
             finally { map.Dispose(); }
         }
+
+        // ---- unit 9: 보너스 포탈 (규칙 소유자 BonusSpawnAuthoringRules 를 스테이지 경로에서 재사용) ----
+
+        static bool HasBonusError(StageScan scan)
+            => DioramaMapBuilder.Validate(scan).Exists(e => e.Contains("bonusSpawn"));
+
+        [Test]
+        public void BonusSpawns_None_IsValid_AndAssemblesEmptyArray()
+        {
+            var scan = MinimalScan();
+            Assert.IsFalse(HasBonusError(scan));
+            var map = DioramaMapBuilder.Assemble(scan, Allocator.Persistent);
+            try
+            {
+                // MapDocumentBuilder 와 동형 — 0개도 생성해 두고 소비 측은 Length>0 으로 미저작을 읽는다.
+                Assert.IsTrue(map.bonusSpawns.IsCreated);
+                Assert.AreEqual(0, map.bonusSpawns.Length);
+            }
+            finally { map.Dispose(); }
+        }
+
+        [Test]
+        public void BonusSpawns_OneOrThree_Rejected()
+        {
+            var one = MinimalScan();
+            one.bonusSpawns.Add(new Vector2Int(3, 1));
+            Assert.IsTrue(HasBonusError(one), "1개");
+
+            var three = MinimalScan();
+            three.bonusSpawns.Add(new Vector2Int(3, 1));
+            three.bonusSpawns.Add(new Vector2Int(4, 1));
+            three.bonusSpawns.Add(new Vector2Int(5, 1));
+            Assert.IsTrue(HasBonusError(three), "3개");
+        }
+
+        [Test]
+        public void BonusSpawns_DuplicateCell_Rejected()
+        {
+            var scan = MinimalScan();
+            scan.bonusSpawns.Add(new Vector2Int(3, 1));
+            scan.bonusSpawns.Add(new Vector2Int(3, 1));
+            Assert.IsTrue(HasBonusError(scan));
+        }
+
+        [Test]
+        public void BonusSpawns_OnBlockedCell_Rejected()
+        {
+            var scan = MinimalScan();
+            scan.blockedRects.Add(new RectInt(3, 1, 1, 1));
+            scan.bonusSpawns.Add(new Vector2Int(3, 1));   // 차단 위
+            scan.bonusSpawns.Add(new Vector2Int(5, 1));
+            Assert.IsTrue(HasBonusError(scan));
+        }
+
+        [Test]
+        public void BonusSpawns_IsolatedCell_Rejected()
+        {
+            var scan = MinimalScan();
+            // (3,3) 의 8이웃 전부 차단 — 4/8 연결 어느 판정에서도 골에 못 닿는 격리 칸.
+            scan.blockedRects.Add(new RectInt(2, 2, 3, 1));
+            scan.blockedRects.Add(new RectInt(2, 4, 3, 1));
+            scan.blockedRects.Add(new RectInt(2, 3, 1, 1));
+            scan.blockedRects.Add(new RectInt(4, 3, 1, 1));
+            scan.bonusSpawns.Add(new Vector2Int(3, 3));
+            scan.bonusSpawns.Add(new Vector2Int(6, 1));
+            Assert.IsTrue(HasBonusError(scan));
+        }
+
+        [Test]
+        public void BonusSpawns_Two_AssembledInRowMajorOrder()
+        {
+            var scan = MinimalScan();
+            scan.bonusSpawns.Add(new Vector2Int(2, 4));   // 저작 순서 역순으로 넣어도
+            scan.bonusSpawns.Add(new Vector2Int(5, 1));
+            Assert.IsFalse(HasBonusError(scan));
+            var map = DioramaMapBuilder.Assemble(scan, Allocator.Persistent);
+            try
+            {
+                Assert.AreEqual(2, map.bonusSpawns.Length);
+                Assert.AreEqual(new int2(5, 1), map.bonusSpawns[0]);   // (y, x) 사전순 — 골과 같은 규약
+                Assert.AreEqual(new int2(2, 4), map.bonusSpawns[1]);
+            }
+            finally { map.Dispose(); }
+        }
     }
 }

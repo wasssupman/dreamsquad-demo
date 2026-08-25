@@ -15,6 +15,7 @@
 | `PropFootprint` | 통행+배치 차단 | `size`(사각형만, 최소 1×1) · `anchorOffset`. **명시 선언이 정본(D6)** — 시각≠논리 저작 가능(가지가 3칸 드리워도 밑동 1칸만 차단) |
 | `PlacementBlockZone` | 배치만 금지(통행 불변) | `size` — 앵커 셀부터 +x/+z. 옛 placeMask 브러시 후계, «전선» 저작 수단 |
 | `RouteMarker` (선택) | 웨이포인트 경로 | `routeIndex`/`order` — 같은 route 를 order 오름차순으로 연결. `AttackUnitData.waypointPathIndex`/스폰 `routeIndex` 가 이 번호를 가리킴 |
+| `BonusSpawnMarker` (선택) | 보너스 웨이브 포탈 칸 | 필드 없음 — 맵에 **0개 또는 정확히 2개**. 통행 가능하고 골에 닿는 서로 다른 칸. 없으면 그 맵엔 보너스 당기기 버튼이 뜨지 않는다(bonus-wave-pull 계약 8). 포탈 비주얼은 저작하지 않는다(런타임이 웨이브 수명으로 띄움) |
 
 모든 마커는 **스테이지 프리팹 계층 안**에 있어야 스캔된다 (인스펙터가 밖이면 경고).
 
@@ -33,6 +34,7 @@
 4. 스폰·골·루트 셀은 **playArea 안 + 차단 위 금지** (강 위 공중 경유점도 현재는 거부 — 후속 후보)
 5. `routeIndex` 0..P−1 연속(빈 번호 금지), (route, order) 유일, 스폰의 routeIndex 는 존재하는 루트만
 6. **연결성: 모든 스폰 → 골 도달 가능** (`MapConnectivity`) — 차단 프랍으로 길을 막으면 실패
+7. 보너스 포탈(`BonusSpawnMarker`)은 0개 또는 2개, 서로 다른 칸, 통행 가능, 골 도달 가능 — 규칙은 `BonusSpawnAuthoringRules`(bonus-wave-pull) 단일 소유
 
 ## 절차 예시 — 12×8 마당 만들기
 
@@ -41,13 +43,13 @@
 3. 차단 프랍: 비주얼 배치 → `PropFootprint` 부착 → **"렌더러 바운즈에서 footprint 제안"** → **"셀 중심에 스냅"**. 기즈모 빨간 셀 = 차단 확인.
 4. 전선(선택): 빈 오브젝트 + `PlacementBlockZone`, `size` 로 적 진영 금지 구역. 주황 셀 확인.
 5. `SpawnMarker` 2개(laneIndex 0/1) + `GoalMarker` 1개 — 초록/골 셀이 열린 셀 위인지 확인.
-6. (선택) `RouteMarker` 로 경유점 — R0.0, R0.1 … 순번 라벨 확인.
+6. (선택) `RouteMarker` 로 경유점 — R0.0, R0.1 … 순번 라벨 확인. (선택) `BonusSpawnMarker` 2개로 보너스 포탈 — 핑크 `B` 셀 확인.
 7. 프리팹으로 저장 → 루트 인스펙터 **"Dev 엔트리로 등록 (MapStagePool)"**. dev 슬롯은 시드 선택에 안 잡히고 스테퍼(D 라벨)로만 진입.
 8. 적 패턴을 맵에 고정하려면 풀 인스펙터에서 dev 엔트리에 deck/plan 짝 지정(비우면 레거시 덱 폴백).
 
 ## 검증 3단
 
-1. **기즈모** — 씬 뷰에서 셀 색(빨강=차단, 주황=배치금지, 초록=스폰, 보라=루트)이 의도와 맞는지.
+1. **기즈모** — 씬 뷰에서 셀 색(빨강=차단, 주황=배치금지, 초록=스폰, 보라=루트, 핑크=보너스 포탈)이 의도와 맞는지.
 2. **Assets lane** (5초) — `StagePoolBuildabilityTests` 가 풀의 전 스테이지를 스캔→조립→연결성까지 검사. 등록 직후 이것부터.
 3. **스테퍼 Play** — 로비 dev 스테퍼로 진입해 이동·배치·전투 육안 확인.
 

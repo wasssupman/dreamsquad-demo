@@ -95,6 +95,10 @@ namespace Wassup.EditorTools
                 case "duel_classic":
                     MapStageDummyGenerator.GenerateDuelClassic();
                     return "OK|duel classic generated";
+                case "unit9_portals":
+                    MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_Duel.prefab", new Vector2Int(6, 1), new Vector2Int(6, 6));
+                    MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_DuelClassic.prefab", new Vector2Int(10, 3), new Vector2Int(10, 8));
+                    return "OK|bonus portals authored (Duel, DuelClassic)";
                 default: return $"ERROR|unknown task '{task}'";
             }
         }

@@ -120,6 +120,31 @@ namespace Wassup.EditorTools
             finally { Object.DestroyImmediate(root); }
         }
 
+        // unit 9 — 기존 스테이지 프리팹에 보너스 포탈 마커 2개를 저작한다(비주얼 없음 — 포탈 뷰는
+        // BattleBridge.BonusWave 가 웨이브 수명으로 띄운다). 이미 있으면 갈아끼운다(멱등).
+        public static void AuthorBonusPortals(string prefabPath, Vector2Int a, Vector2Int b)
+        {
+            var root = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                foreach (var old in root.GetComponentsInChildren<BonusSpawnMarker>(true))
+                    Object.DestroyImmediate(old.gameObject);
+                Portal(root, "bonus_portal_0", a);
+                Portal(root, "bonus_portal_1", b);
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            }
+            finally { PrefabUtility.UnloadPrefabContents(root); }
+            Debug.Log($"[MapStageDummyGenerator] 보너스 포탈 저작: {prefabPath} {a} {b}");
+        }
+
+        static void Portal(GameObject root, string name, Vector2Int cell)
+        {
+            var host = new GameObject(name);
+            host.transform.SetParent(root.transform, false);
+            host.transform.localPosition = new Vector3(cell.x + 0.5f, 0f, cell.y + 0.5f);
+            host.AddComponent<BonusSpawnMarker>();
+        }
+
         // rect 차단: 호스트 1개(footprint = rect 전체) + 시각 프랍을 step 간격으로 자식 배치.
         static void BlockerRect(GameObject root, string name, RectInt rect, string visualRel, int visualStep)
         {

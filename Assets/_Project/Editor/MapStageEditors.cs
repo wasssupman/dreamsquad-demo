@@ -169,6 +169,17 @@ namespace Wassup.EditorTools
         }
     }
 
+    [CustomEditor(typeof(BonusSpawnMarker))]
+    internal class BonusSpawnMarkerEditor : UnityEditor.Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            DrawDefaultInspector();
+            EditorGUILayout.HelpBox("보너스 포탈 칸 — 맵에 0개 또는 정확히 2개. 통행 가능하고 골에 닿는 칸이어야 한다.", MessageType.Info);
+            MapStageEditorUtil.SnapButton((Component)target);
+        }
+    }
+
     [CustomEditor(typeof(PlacementBlockZone))]
     internal class PlacementBlockZoneEditor : UnityEditor.Editor
     {

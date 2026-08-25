@@ -37,6 +37,7 @@ namespace Wassup.Data
         public readonly List<StageSpawnPoint> spawns = new List<StageSpawnPoint>();
         public readonly List<Vector2Int> goals = new List<Vector2Int>();
         public readonly List<StageRoutePoint> routePoints = new List<StageRoutePoint>();
+        public readonly List<Vector2Int> bonusSpawns = new List<Vector2Int>();   // unit 9 — 0개 또는 2개
     }
 
     public static class DioramaMapBuilder
@@ -99,6 +100,17 @@ namespace Wassup.Data
             foreach (var s in scan.spawns)
                 if (s.routeIndex >= routeCount && s.routeIndex >= 0)
                     errors.Add($"스폰(lane {s.laneIndex})의 routeIndex {s.routeIndex} 가 존재하지 않는 루트다.");
+
+            // unit 9 — 보너스 포탈 칸. 규칙 소유자는 bonus-wave-pull 의 BonusSpawnAuthoringRules 하나다
+            // (복제 금지 — 「툴은 통과했는데 런타임이 폴백」 방지). 합성 tiles(열림=Walk/차단=Deco)를
+            // 넘기면 ⓐ 통행 가능 · ⓑ 골 도달 규칙이 그대로 성립한다.
+            if (scan.bonusSpawns.Count > 0 && area.x >= 1 && area.y >= 1)
+            {
+                var tilesForRules = new MapTileType[area.x * area.y];
+                for (int i = 0; i < tilesForRules.Length; i++)
+                    tilesForRules[i] = blocked[i] ? MapTileType.Deco : MapTileType.Walk;
+                BonusSpawnAuthoringRules.Validate(scan.bonusSpawns, area.x, area.y, tilesForRules, scan.goals, errors);
+            }
 
             return errors;
         }
@@ -184,6 +196,14 @@ namespace Wassup.Data
                     spawnRoutes[i] = sortedSpawns[i].routeIndex;
             }
 
+            // unit 9 — 보너스 포탈 = 셀 사전순(y, x), 골과 같은 규약(저작 순서 비의존). 0개도 생성해
+            // 둔다(MapDocumentBuilder 와 동형) — 소비 측(BattleBridge.BonusWave)은 Length>0 으로 미저작을 읽는다.
+            var sortedBonus = new List<Vector2Int>(scan.bonusSpawns);
+            sortedBonus.Sort((a, b) => a.y != b.y ? a.y.CompareTo(b.y) : a.x.CompareTo(b.x));
+            var bonusSpawns = new NativeArray<int2>(sortedBonus.Count, allocator);
+            for (int i = 0; i < sortedBonus.Count; i++)
+                bonusSpawns[i] = new int2(sortedBonus[i].x, sortedBonus[i].y);
+
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -195,6 +215,7 @@ namespace Wassup.Data
                 waypointCells = waypointCells,
                 waypointRanges = waypointRanges,
                 spawnRoutes = spawnRoutes,
+                bonusSpawns = bonusSpawns,
                 // 거점은 이 브랜치에서 비가용(README 계약 11) — MapDocumentBuilder 처럼 빈 생성으로 통일.
                 structures = new NativeArray<StructurePlacement>(0, allocator),
                 seed = -1,              // 수동 저작 관례 (MapDocument authoringSeed=-1 승계)

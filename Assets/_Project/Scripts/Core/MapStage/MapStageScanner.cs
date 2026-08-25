@@ -45,6 +45,9 @@ namespace Wassup.Core
                     cell = CellOf(stage, r.transform, runtimeTileSize),
                 });
 
+            foreach (var b in stage.GetComponentsInChildren<BonusSpawnMarker>(false))
+                scan.bonusSpawns.Add(CellOf(stage, b.transform, runtimeTileSize));
+
             return scan;
         }
 

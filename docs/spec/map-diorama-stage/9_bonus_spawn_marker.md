@@ -22,7 +22,7 @@ main 의 `bonus-wave-pull` 이 맵 저작 축을 하나 추가했다 — `Genera
 1. `BonusSpawnMarker` 는 `RouteMarker` 와 같은 꼴(위치→셀 양자화, 필드 없음).
 2. 스캐너는 계층 순서로 수집한다 — 개수 계약(2)은 빌더가 검사하므로 스캐너는 세지 않는다.
 3. `Validate` 는 스폰·골 검사 **뒤**에 `BonusSpawnAuthoringRules.Validate(cells, w, h, tiles, goals, errors)` 를 부른다. 합성 tiles(열림=Walk/차단=Deco)를 넘기면 ⓐ 통행 가능·ⓑ 골 도달 규칙이 그대로 성립한다.
-4. `GeneratedMap.bonusSpawns` 는 `IsCreated` 불변식 밖(main 주석)이므로 0개면 생성하지 않는다 — 소비 측 가드(`IsCreated && Length > 0`)가 그대로 미저작으로 읽는다.
+4. `GeneratedMap.bonusSpawns` 는 0개여도 생성해 둔다(`MapDocumentBuilder` 와 동형) — 소비 측 가드(`IsCreated && Length > 0`)가 미저작으로 읽는다. 셀 순서는 골과 같은 (y, x) 사전순(저작 순서 비의존).
 
 ## 완료 기준
 
