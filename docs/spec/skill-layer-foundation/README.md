@@ -49,7 +49,7 @@ arm 에 보스 게이트가 없다. 통과해도 아무것도 증명하지 않�
 | 파일 | 작업 구분 | 목적 |
 |---|---|---|
 | [0](0_protocol_surface_derivation.md) | 표면 도출 | 3어휘 arm 전수 → 질의·의도 동사 확정. **코드 0줄** |
-| [1](1_golden_and_net.md) | 그물 | 코퍼스 재생성 + arm 전수 특성화. 골든이 증인이 아님을 상환 |
+| [1](1_characterization_net.md) | 그물 | arm 특성화 테스트 — 이전의 유일한 증인 |
 | [2a](2a_sim_entity_id_gap.md) | 핸들 | 도메인 핸들 타입 + 캐리어 ID 별도 대역 |
 | [2b](2b_faction_relativization.md) | 진영 | 리터럴 56곳 → `Opponents/Allies(caster)` |
 | [3](3_port_adapter_registry.md) | 포트 | `ISkillContext` + `EcsSkillContext` + `TestSkillContext` + 레지스트리 |
@@ -82,9 +82,9 @@ arm 에 보스 게이트가 없다. 통과해도 아무것도 증명하지 않�
    `SkillEffectType`) arm 전수에서 동사를 뽑는다. 상상으로 정의하지 않는다.
 10. **스킬 = 저작 SO 1개 + 순수 로직 1개.** 저작은 UnityEngine 을 알고 Battle 을 모른다.
     로직은 UnityEngine 을 모른다. 문안·타입 필드는 저작 소유(도메인 이관 시 계약 1 위반).
-11. **골든은 증인이 아니다.** 코퍼스에 스킬 발화 기록이 **0회**고 Cc·Aggro·Blink·StatModifier 는
-    채널 자체가 없다. 완료 기준에서 「동작 무변경, 골든이 증인」 문구를 쓰지 않는다 — unit 1 이
-    그물을 먼저 깐다.
+11. **증인은 arm 특성화 테스트다.** 골든 코퍼스(`LegacyTraceV0`)에 기대지 않는다 — 그 축은
+    `battle-sim-extraction` 소관이고 **아직 착수도 확정도 되지 않았다**(사용자 판정 2026-08-25).
+    이 spec 은 그 진행 여부와 무관하게 선다. unit 1 이 그물을 먼저 깐다.
 12. **이중 경로 라우팅 축은 unmanaged 다.** Burst 감지 시스템은 managed 레지스트리를 읽을 수
     없다 → 슬롯에 **베이크된 `skillId`**(0 = legacy arm)로 가른다. 이전 중 매 커밋에서 게임이
     도는 것이 이 축에 달렸다.
@@ -99,12 +99,10 @@ arm 에 보스 게이트가 없다. 통과해도 아무것도 증명하지 않�
 
 - **`battle-sim-extraction` M1 착수 전**에 끝낸다. M1 설계 정본이 「드림캐쳐 파셜 64KB — 이것
   없이는 sim lib 이 반쪽」이라 적었고, M1 이 먼저면 10k줄 브리지의 legacy switch 를 **있는
-  그대로** 이식해 parity 를 통과시킨 뒤 lib 안에서 다시 재구조화하게 된다(같은 코드 2회 +
-  골든 사이클 2회).
+  그대로** 이식해 parity 를 통과시킨 뒤 lib 안에서 다시 재구조화하게 된다(같은 코드를 두 번 만진다).
 - 버려지는 것은 **`EcsSkillContext` 어댑터뿐**이고 그것이 포트 패턴의 비용이다.
   감지/실행 분리 seam 은 M1 의 「내부 phase queue」와 동형이라 살아남는다.
-- **spec 종료 시 골든 재기준 1회** = M1 의 새 A/B 기준선. 이 절차 없이는 계약 12(M0 앞)를
-  폐기한 근거가 성립하지 않는다.
+- ⚠ **M1 의 기준선 정비는 이 spec 의 일이 아니다.** 그쪽이 착수될 때 그쪽이 정한다.
 
 ## 결정 기록 (재론 전 필독)
 

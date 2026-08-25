@@ -27,8 +27,8 @@
    라우팅 축 자체를 은퇴시킬지, 미등록 검출용으로 남길지 판정한다.
 5. **문서 갱신** — `CLAUDE.md` 채널 목록, `docs/spec/README.md` Follow-up Backlog 의
    skill-fire-dispatch 그룹을 이 두 spec 링크로 대체.
-6. **골든 재기준 1회.** 이것이 `battle-sim-extraction` M1 의 새 A/B 기준선이다(계약 10).
-   ⚠ 워킹트리 dirty 격리 후 **단독 커밋**.
+6. **`skillId == 0` 라우팅 축의 거취를 판정한다** — 이전이 끝났으니 은퇴시킬지
+   미등록 검출용으로 남길지.
 
 ## 완료 기준
 
@@ -38,5 +38,4 @@
 - [ ] `DcPayloadKind` arm · `OnPlaceEffectType` · `SkillEffectType` 실행 코드가 전부 삭제됐다
 - [ ] **검증 질문 참**: 새 스킬 하나 = concrete 1 + 저작 SO 1 (switch 4곳 → 1곳)
 - [ ] **끝점 참**: 보스 · 배치 · 특수 스킬이 한 `ISkill` 레지스트리에 있다
-- [ ] 골든 재기준이 단독 커밋으로 들어갔다
 - [ ] EditMode 전 lane + PlayMode 초록, Play 육안 종합
