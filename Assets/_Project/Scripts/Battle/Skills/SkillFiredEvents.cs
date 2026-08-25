@@ -52,6 +52,10 @@ namespace Wassup.Battle.Skills
         // 저작 스택 축(`StackKind`). `Selector`(cc) · `StatSelector` 와 **또 다른 축**이다 —
         // 한 슬롯이 셋을 다 쓰는 스킬이 나오는 순간 겸직은 조용히 갈린다.
         public int StackSelector;
+        // 저작 탄 궤적 축. **도메인은 이 값을 해석하지 않는다** — `DataIndex` 와 같은
+        // 성격의 불투명 토큰이고, 뜻은 어댑터와 저작 계층만 안다.
+        public int ProjectileMovement;
+        public int ProjectilePayload;
     }
 
     // 채널 수명주기는 `BattleBridge` 소유다 — 생성 Persistent / 싱글턴 파괴 / Dispose

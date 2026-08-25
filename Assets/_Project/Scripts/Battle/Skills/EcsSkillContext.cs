@@ -792,6 +792,49 @@ namespace Wassup.Battle.Skills
                     });
                     return;
                 }
+                case SimIntentKind.SpawnProjectile
+                    when intent.Target.IsValid:
+                {
+                    // ⚠ **대상이 있으면 「자리」가 아니라 「그 유닛」을 쫓는다.** 아래 자리
+                    // 폭발과 같은 의도를 쓰는 이유는 둘 다 「탄 하나를 낸다」이기 때문이고,
+                    // 갈리는 축은 대상 유무 하나다(의도 어휘의 원래 주석이 그렇게 적었다).
+                    if (!_hasEcb) return;
+                    var shooter = Resolve(intent.Source);
+                    var victim = Resolve(intent.Target);
+                    if (victim == Entity.Null) return;
+
+                    var mv = (Wassup.Battle.Combat.Projectile.MovementKind)intent.ProjectileMovement;
+                    // 방향 바인딩 궤적(왕복 = 부메랑)은 **타겟 엔티티를 안 잡는다** — 발사
+                    // 시점의 대상 방향을 축으로 굳히고 거리로 산다. 재조준도 성립하지 않아
+                    // 0 으로 명시한다(같은 필드가 두 뜻을 갖지 않게).
+                    bool directional =
+                        Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(mv)
+                        == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction;
+
+                    var carrier = _ecb.CreateEntity();
+                    _ecb.AddComponent(carrier, new Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest
+                    {
+                        movement = mv,
+                        payload = (Wassup.Battle.Combat.Projectile.PayloadKind)intent.ProjectilePayload,
+                        target = directional ? Entity.Null : victim,
+                        origin = intent.Position,
+                        // flat — 공격자 damageMul 을 안 태운다(계약 7).
+                        damage = intent.Amount,
+                        speed = intent.Speed,
+                        hitThreshold = intent.HitThreshold,
+                        visualScale = intent.VisualScale > 0f ? intent.VisualScale : 1f,
+                        dataIndex = intent.DataIndex,
+                        owner = shooter,
+                        targetTraversalLayers = intent.TargetTraversalLayers,
+                        // 같은 셀이면 축이 없다 — 0 을 그대로 보내 드레인이 loud 거절하게 둔다
+                        // (조용히 임의 방향을 지어내면 저작 실수가 안 보인다).
+                        direction = directional ? intent.DirectionXZ : float2.zero,
+                        maxDistance = directional ? intent.TileRange * _tileSize : 0f,
+                        retargetTileRange = directional ? 0 : intent.TileRange,
+                    });
+                    _ecb.AddComponent<Wassup.Battle.Combat.Projectile.ProjectileRequestCarrier>(carrier);
+                    return;
+                }
                 case SimIntentKind.SpawnProjectile:
                 {
                     if (!_hasEcb) return;
@@ -809,7 +852,7 @@ namespace Wassup.Battle.Skills
                         flightTime = intent.Duration,
                         dataIndex = intent.DataIndex,
                         // 저작이 0 이면 1 — 원본 arm 의 규약이다.
-                        visualScale = intent.HitThreshold > 0f ? intent.HitThreshold : 1f,
+                        visualScale = intent.VisualScale > 0f ? intent.VisualScale : 1f,
                         owner = owner,
                         // ⚠ **시전자의 공격 층을 실어 보낸다**(skill-layer-migration unit 2a).
                         // 안 실으면 0 = 무제한이 되어 **근접 유닛의 폭발이 하늘의 적을 때린다.**

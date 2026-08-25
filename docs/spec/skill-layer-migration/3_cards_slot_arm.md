@@ -49,7 +49,7 @@
 |---|---|---|
 | **3a** | **공격 seam 개통** + 첫 소비자 `ApplyCcToTarget`(3행) | **완료** (2026-08-26) |
 | **3b** | `ApplyStackToTarget`(2) · `SelfStatBuff`(4) | **완료** (2026-08-26) |
-| **3b'** | `ProjectileToTarget`(2) — 어댑터에 **유도 투사체 의도**가 필요하다(오늘 `SpawnProjectile` 은 하늘낙하×광역 고정) | 3a ✅ |
+| **3b′** | `ProjectileToTarget`(2) — 비수·부메랑 | **완료** (2026-08-26) |
 | **3c** | **죽음 seam 개통** — `OnKill`/`OnDeath`/`OnDamagedN`. ⚠ 드레인 시점에 host 가 **이미 없다**(unit 0 실측) | — |
 | **3d** | 죽음 계열 payload (8행) | 3c |
 | **3e** | `OnShieldBreak`/`OnRetire` seam + payload (4행) | — |
@@ -104,6 +104,21 @@ pre-scan 전용 payload 를 명시 목록으로 빼야 한다.
 `SelfStatBuff` 는 `AttackN`·`HealthThreshold`(seam 있음)와 `OnKill`(seam 없음)로
 저작된다. 라우팅 분기가 있는 감지자에서는 seam 으로 가고, 없는 감지자에서는 legacy
 arm 이 그대로 돈다 — **이중 발화도 조용한 죽음도 없다.** 이게 이전 중 상태의 안전 조건이다.
+
+## 3b′ 에서 나온 것 (2026-08-26)
+
+**「탄 종류마다 concrete 하나」로 번지지 않게 막았다.** 유도인지 왕복인지 낙하인지는
+저작이 정하고 concrete 는 그 축을 **해석하지 않는 불투명 토큰**으로 지나보낸다
+(`DataIndex` 와 같은 성격). 이 스킬의 판단은 **「쏘나 · 누구에게 · 어디서」** 까지다.
+
+**대상 유무가 의도를 가른다.** `SpawnProjectile` 의도 하나가 「자리를 때린다」와
+「그 유닛을 쫓는다」를 겸하는데, 그건 원래 어휘 주석이 이미 그렇게 적어 둔 축이다
+(`Target` 무효 = 자리). 그래서 새 의도를 만들지 않고 그 축으로 갈랐다.
+
+**연출 배율이 피격 반경을 겸직하고 있었다.** `SelfAreaBlastSkill` 이 `HitThreshold` 에
+연출 배율을 실었는데, 유도탄은 **둘 다** 필요해서 그 겸직이 성립하지 않았다.
+`VisualScale` 을 열고 자기 폭발도 그리로 옮겼다 — 남아 있었으면 「스침 반경을 키우면
+그림도 커지는」 조용한 결합이 됐다.
 
 ## 구현
 

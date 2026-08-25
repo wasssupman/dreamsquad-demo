@@ -31,6 +31,13 @@ namespace Wassup.Skills
         public readonly int StatSelector;
         // 저작 스택 축(`SkillStackKind`).
         public readonly int StackSelector;
+        // 저작 탄 궤적 축. **도메인은 해석하지 않는다**(`DataIndex` 와 같은 불투명 토큰) —
+        // 「어떤 탄을 쏘나」는 저작의 사실이고, 스킬의 판단은 「쏘나 · 누구에게」까지다.
+        public readonly int ProjectileMovement;
+        public readonly int ProjectilePayload;
+        // killer 사양(발화 시점 스냅샷). 0 으로 새면 **무제한 통과**가 된다 —
+        // 죽음 계열은 드레인 시점에 host 가 이미 없어 재질의가 불가능하다.
+        public readonly byte TargetTraversalLayers;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -45,7 +52,9 @@ namespace Wassup.Skills
             float magnitude, float duration, int tileRange, int period, int dataIndex,
             int selector, float speed, float hitThreshold,
             float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
-            int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0)
+            int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0,
+            int projectileMovement = 0, int projectilePayload = 0,
+            byte targetTraversalLayers = 0)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -53,6 +62,8 @@ namespace Wassup.Skills
             SlamDamage = slamDamage; SlamTileRange = slamTileRange; StackId = stackId;
             VisualScale = visualScale; PatternIndex = patternIndex;
             StatSelector = statSelector; StackSelector = stackSelector;
+            ProjectileMovement = projectileMovement; ProjectilePayload = projectilePayload;
+            TargetTraversalLayers = targetTraversalLayers;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.

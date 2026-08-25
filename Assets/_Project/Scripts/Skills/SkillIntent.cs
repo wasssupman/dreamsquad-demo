@@ -87,6 +87,18 @@ namespace Wassup.Skills
         // 발사 명세 슬롯 index. `DataIndex` 와 **겸직시키지 않는다** — 그쪽은 전역
         // 에셋 표를 가리키고 이쪽은 host 자기 버퍼(`PatternSlot`)의 자리다. −1 = 없음.
         public int PatternIndex;
+        // 저작 탄 궤적 축(불투명). `SpawnProjectile` 전용 — 0 = 어댑터 기본(자리 폭발).
+        public int ProjectileMovement;
+        public int ProjectilePayload;
+        // 탄 속도. `Duration`(비행 시간)과 **다른 축**이다 — 하나는 «얼마나 빨리»,
+        // 다른 하나는 «몇 초 뒤에 닿나» 이고 궤적마다 쓰는 쪽이 다르다.
+        public float Speed;
+        // 연출 크기 배율. 0 = 저작 없음 → 어댑터가 1 로 읽는다.
+        // ⚠ `HitThreshold`(맞는 반경)와 겸직시키지 않는다 — 한때 그랬고, 그 겸직이
+        // 「스침 반경을 키우면 그림도 커지는」 조용한 결합을 만들었다.
+        public float VisualScale;
+        // killer 사양. 0 으로 새면 **무제한 통과**가 된다.
+        public byte TargetTraversalLayers;
         public int StackId;            // ⚠ ApplyStatModifier 의 병합 키 일부(아래)
         public int Selector;           // stat/cc/stack kind — 어댑터가 도메인 enum 으로 번역
         public float HitThreshold;     // 탄 피격 반경 · 연출 배율 등 kind 별 보조 스칼라

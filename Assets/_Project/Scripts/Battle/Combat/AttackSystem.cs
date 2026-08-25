@@ -1868,6 +1868,8 @@ namespace Wassup.Battle.Combat
                                         Selector = (int)slot.ccKind,
                                         StatSelector = (int)slot.buffStat,
                                         StackSelector = (int)slot.stackKind,
+                                    ProjectileMovement = (int)slot.projectileMovement,
+                                    ProjectilePayload = (int)slot.projectilePayload,
                                         PatternIndex = slot.patternIndex,
                                         Speed = slot.speed,
                                         HitThreshold = slot.hitThreshold,

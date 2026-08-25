@@ -28,7 +28,7 @@ namespace Wassup.Skills.Concrete
                 TileRange = a.Radius,
                 DataIndex = a.VfxDataIndex,
                 Duration = 0f,                 // flightTime 0 = 즉발
-                HitThreshold = a.VisualScale,  // 연출 배율(0 = 저작 없음 → 어댑터가 1)
+                VisualScale = a.VisualScale,   // 0 = 저작 없음 → 어댑터가 1 로 읽는다
             });
         }
     }

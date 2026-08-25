@@ -9074,6 +9074,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetCcSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetStackSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9153,6 +9154,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.TargetStackSkill.Id;
                 case Wassup.Data.DcPayloadKind.SelfStatBuff:
                     return Wassup.Skills.Concrete.SelfStatBuffSkill.Id;
+                case Wassup.Data.DcPayloadKind.ProjectileToTarget:
+                    return Wassup.Skills.Concrete.TargetProjectileSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9186,6 +9189,7 @@ namespace Wassup.Bridge
                 // 저작된 카드가 조용히 죽지 않게).
                 case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
                 case Wassup.Data.DcPayloadKind.SelfStatBuff:
+                case Wassup.Data.DcPayloadKind.ProjectileToTarget:
                     return SkillIdForPayload(kind);
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;

@@ -197,6 +197,8 @@ namespace Wassup.Battle.Combat
                                     PatternIndex = slot.patternIndex,
                                     StatSelector = (int)slot.buffStat,
                                     StackSelector = (int)slot.stackKind,
+                                    ProjectileMovement = (int)slot.projectileMovement,
+                                    ProjectilePayload = (int)slot.projectilePayload,
                                 });
                             }
                         }
