@@ -42,6 +42,10 @@ namespace Wassup.Battle.Skills
         // 의도 싱크.
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _ccQueue;
         private bool _hasCcQueue;
+        private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statQueue;
+        private bool _hasStatQueue;
+        private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _hitQueue;
+        private bool _hasHitQueue;
 
         public void Bind(
             EntityManager em,
@@ -71,6 +75,18 @@ namespace Wassup.Battle.Skills
         public void BindCcSink(NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> q, bool has)
         {
             _ccQueue = q; _hasCcQueue = has;
+        }
+
+        public void BindStatSink(NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> q, bool has)
+        {
+            _statQueue = q; _hasStatQueue = has;
+        }
+
+        // 연출 채널. 시뮬 상태를 안 바꾸지만 「언제 트는가」는 스킬의 판단이라
+        // 의도 어휘에 있다(`PlayVisual`).
+        public void BindVisualSink(NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> q, bool has)
+        {
+            _hitQueue = q; _hasHitQueue = has;
         }
 
         // ── 핸들 변환 — 이 클래스가 유일한 번역자다 ──────────────────
@@ -259,6 +275,39 @@ namespace Wassup.Battle.Skills
                             remainingTime = intent.Duration,
                             scalar = intent.Amount,
                         },
+                    });
+                    return;
+                }
+                case SimIntentKind.ApplyStatModifier:
+                {
+                    if (!_hasStatQueue) return;
+                    var target = Resolve(intent.Target);
+                    if (target == Entity.Null) return;
+                    _statQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                    {
+                        target = target,
+                        stat = (Wassup.Battle.Effects.StatKind)intent.Selector,
+                        op = (Wassup.Battle.Effects.CombineOp)intent.Op,
+                        magnitude = intent.Amount,
+                        duration = intent.Duration,
+                        // ⚠ 병합 키 `(source, stat, op, stackId)` — 이 넷이 회수 가능성의
+                        // 조건이다. 구성이 바뀌면 host 가 죽어도 버프가 안 풀린다.
+                        source = Resolve(intent.Source),
+                        stackId = (ushort)intent.StackId,
+                        origin = (Wassup.Battle.Effects.ModifierOrigin)intent.Origin,
+                    });
+                    return;
+                }
+                case SimIntentKind.PlayVisual:
+                {
+                    if (!_hasHitQueue || intent.DataIndex < 0) return;
+                    _hitQueue.Enqueue(new Wassup.Battle.Combat.Projectile.ProjectileHitEvent
+                    {
+                        position = intent.Position,
+                        dataIndex = intent.DataIndex,
+                        // ⚠ 원본 arm 이 쓰던 값과 같아야 한다 — 뷰가 이걸로 연출을 고른다.
+                        payload = Wassup.Battle.Combat.Projectile.PayloadKind.SingleSplash,
+                        source = Resolve(intent.Source),
                     });
                     return;
                 }

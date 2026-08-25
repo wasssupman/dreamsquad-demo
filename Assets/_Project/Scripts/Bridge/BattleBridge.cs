@@ -9404,7 +9404,10 @@ namespace Wassup.Bridge
         private void InstallSkillLayer()
         {
             if (_skillRegistry.Count == 0)
+            {
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaSleepSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AllySpeedAuraSkill());
+            }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
 
@@ -9419,6 +9422,8 @@ namespace Wassup.Bridge
             {
                 case Wassup.Data.DcPayloadKind.AreaSleep:
                     return Wassup.Skills.Concrete.AreaSleepSkill.Id;
+                case Wassup.Data.DcPayloadKind.AllyMoveSpeedAura:
+                    return Wassup.Skills.Concrete.AllySpeedAuraSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }

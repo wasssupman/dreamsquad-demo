@@ -95,6 +95,10 @@ namespace Wassup.Battle.Skills
             // 의도 싱크 — 지금 배선된 것은 CC 하나다. 나머지는 어댑터가 loud 하게 거절한다.
             bool hasCc = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.EnemyCcEventsSingleton>(out var ccS);
             _context.BindCcSink(hasCc ? ccS.queue : default, hasCc);
+            bool hasStat = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statS);
+            _context.BindStatSink(hasStat ? statS.queue : default, hasStat);
+            bool hasHit = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>(out var hitS);
+            _context.BindVisualSink(hasHit ? hitS.queue : default, hasHit);
 
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
