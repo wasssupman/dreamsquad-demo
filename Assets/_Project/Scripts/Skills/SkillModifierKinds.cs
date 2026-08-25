@@ -31,6 +31,9 @@ namespace Wassup.Skills
     public enum SkillModifierOrigin : byte
     {
         Unspecified = 0,
+        // 유닛 배치 스킬. 레거시 `OnPlaceEffectType` 계열이 쓰던 출처이고,
+        // 값은 `Battle.Effects.ModifierOrigin` 과 **정렬돼 있어야 한다**(어댑터가 캐스트한다).
+        OnPlace = 1,
         Dreamcatcher = 4,
         Boss = 8,
         HealthThreshold = 9,

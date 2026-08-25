@@ -27,6 +27,8 @@ namespace Wassup.Skills
         // 자리를 가리킨다. 한 칸에 접으면 「0번 탄」과 「0번 패턴」이 같은 값이 되고,
         // 그 혼동은 조용하다. 역시 **−1 = 없음**.
         public readonly int PatternIndex;
+        // 저작 스탯 축(`SkillStatKind`). `Selector`(cc/stack)와 다른 축이다.
+        public readonly int StatSelector;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -41,13 +43,14 @@ namespace Wassup.Skills
             float magnitude, float duration, int tileRange, int period, int dataIndex,
             int selector, float speed, float hitThreshold,
             float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
-            int patternIndex = NoDataIndex)
+            int patternIndex = NoDataIndex, int statSelector = 0)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
             Speed = speed; HitThreshold = hitThreshold;
             SlamDamage = slamDamage; SlamTileRange = slamTileRange; StackId = stackId;
             VisualScale = visualScale; PatternIndex = patternIndex;
+            StatSelector = statSelector;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
@@ -122,7 +125,9 @@ namespace Wassup.Skills
         public float PercentDelta => _p.Magnitude;
         public int Radius => _p.TileRange;
         public float Ttl => _p.Duration;
-        public int StatSelector => _p.Selector;
+        // ⚠ `Selector`(cc/stack)가 아니라 **전용 축**을 읽는다. 예전엔 겸직이었고,
+        // 스탯 오라가 cc 를 안 쓴다는 우연에만 기대고 있었다.
+        public SkillStatKind Stat => (SkillStatKind)_p.StatSelector;
     }
 
     public readonly struct LeapParams

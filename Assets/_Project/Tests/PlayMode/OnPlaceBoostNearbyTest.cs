@@ -51,7 +51,10 @@ namespace Wassup.Tests.PlayMode
             var booster = MakeBooster("test_boost_src");
             // 리터럴을 못 박지 않는다 — 배율은 SO 가 권위다. 여기서 재는 것은
             // 「저작된 배율이 반경 안에만 실효로 들어간다」이지 그 값이 1.3 이라는 사실이 아니다.
-            float mag = booster.onPlaceMagnitude;
+            // ⚠ 저작이 **배율에서 퍼센트로** 바뀌었다(1.3 → 30). 그 환산은 concrete 소유이고
+            // 여기서는 기대 배율만 복원한다 — 리터럴로 못박지 않는다.
+            var boostSpec = booster.GetAbility<UnitSkillAbility>().mechanics[0].payload;
+            float mag = 1f + boostSpec.magnitude / 100f;
             Assert.Greater(mag, 1f, "버프(>1 배율)가 저작돼 있어야 이 단언이 의미를 갖는다");
 
             // 반경 아군은 헬퍼 2기 — on-place 를 꺼서(None) 헬퍼 자신의 배치 효과가
@@ -67,7 +70,7 @@ namespace Wassup.Tests.PlayMode
             // 경계를 정확히 가른다: arm 은 GridMath.RangeToTiles + Chebyshev ≤ tileRange 로
             // 판정하므로, 안쪽 아군은 정확히 경계 위(== R)에, 바깥 아군은 첫 이탈 칸(== R+1)에
             // 세운다 — 반경 해석이 이전 중에 미끄러지면 가장 먼저 여기가 갈라진다.
-            int tileRange = GridMath.RangeToTiles(booster.onPlaceRange);
+            int tileRange = boostSpec.tileRange;
             Assert.Greater(tileRange, 0, "반경이 저작돼 있어야 경계 단언이 선다");
             var origin = FindTripleCells(bridge, booster, tileRange, out var inCell, out var outCell);
 
@@ -118,8 +121,16 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.BoostNearbyDefenders, unit.onPlaceEffect,
-                "가디언의 배치 효과가 BoostNearbyDefenders 여야 이 특성화가 성립한다");
+            // skill-layer-migration unit 2b — 레거시 flat 필드에서 규칙 저작으로 이사했다.
+            // 단언은 그대로고 **값의 출처만** 바뀐다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            var skill = unit.GetAbility<UnitSkillAbility>();
+            Assert.IsNotNull(skill, "가디언에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AllyStatAura, skill.mechanics[0].payload.kind,
+                "페이로드 = 아군 스탯 오라");
+            Assert.AreEqual(CardBuffKind.AttackDamage, skill.mechanics[0].payload.buffStat,
+                "가디언 오라는 공격력이다");
             return unit;
         }
 
@@ -132,6 +143,7 @@ namespace Wassup.Tests.PlayMode
             unit.cost = 0;
             unit.maxOnBoard = 100;
             unit.onPlaceEffect = OnPlaceEffectType.None;
+            unit.abilities = new System.Collections.Generic.List<DefenderAbilityData>();
             return unit;
         }
 

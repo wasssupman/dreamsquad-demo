@@ -104,7 +104,7 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             var archer = MakeArcher("test_bind_wearoff");
-            float duration = archer.onPlaceDuration;
+            float duration = archer.GetAbility<UnitSkillAbility>().mechanics[0].payload.duration;
             Assert.Greater(duration, 1f, "1초급 감속이어야 측정 창이 선다(저작이 바뀌면 창부터 다시 잡는다)");
             Prepare(bridge, gm, archer);
             var cell = FindCellWithWalkNeighbours(bridge, em, archer, 2, 3, out var near, out _);
@@ -151,11 +151,19 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;   // 평타가 섞이면 배치 스킬분을 분리 측정할 수 없다
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.BindNearby, unit.onPlaceEffect,
-                "아처의 배치 효과가 BindNearby 여야 이 특성화가 성립한다");
-            // 감속 배율이 저작돼 있어야 위 단언들이 의미를 갖는다(1 이상이면 감속이 아니다).
-            Assert.Greater(unit.onPlaceMagnitude, 0f);
-            Assert.Less(unit.onPlaceMagnitude, 1f);
+            // skill-layer-migration unit 2b — 레거시 flat 필드에서 규칙 저작으로 이사했다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            var skill = unit.GetAbility<UnitSkillAbility>();
+            Assert.IsNotNull(skill, "아처에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            var spec = skill.mechanics[0].payload;
+            Assert.AreEqual(DcPayloadKind.OpponentStatAura, spec.kind, "페이로드 = 상대 스탯 오라");
+            Assert.AreEqual(CardBuffKind.MoveSpeed, spec.buffStat,
+                "아처 오라는 이동속도다");
+            // ⚠ 저작이 **배율에서 퍼센트로** 바뀌었다(0.1 → −90). 감속이려면 음수여야 한다 —
+            // 양수면 «가속»이 되어 아래 단언들이 의미를 잃는다.
+            Assert.Less(spec.magnitude, 0f, "감속 저작이 아니다");
+            Assert.Greater(spec.magnitude, -100f, "−100% 이하는 정지(배율 0 이하)라 이 그물의 축이 아니다");
             return unit;
         }
 
@@ -227,6 +235,9 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
             em.AddComponentData(e, new PathFollowState { speed = 2f, traversalLayers = TraversalSlots.DefaultMask });
+            // ⚠ 스킬 레이어의 핸들 축 — 없으면 이 더미는 **후보에서 빠진다**
+            // (어댑터가 `SimEntityId` 로 역변환한다). 예전 arm 은 `Entity` 를 직접 들었다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
             em.AddComponentData(e, new ModifierStats
             {

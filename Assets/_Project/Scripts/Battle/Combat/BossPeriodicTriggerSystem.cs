@@ -195,6 +195,7 @@ namespace Wassup.Battle.Combat
                                     StackId = slot.statBuffStackId,
                                     VisualScale = slot.visualScale,
                                     PatternIndex = slot.patternIndex,
+                                    StatSelector = (int)slot.buffStat,
                                 });
                             }
                         }

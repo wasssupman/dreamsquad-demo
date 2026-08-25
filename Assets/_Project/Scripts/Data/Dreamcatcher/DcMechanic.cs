@@ -206,6 +206,14 @@ namespace Wassup.Data
         // 이름에 "손패"를 넣지 않은 이유: 손패 = 큐 앞 N 이라는 사실은 DreamcatcherCycleDeck
         // 만 아는 것이고, 이 payload 가 말하는 것은 **부착분을 앞으로**다. append-only.
         RecallAttachedToFront = 25,
+
+        // skill-layer-migration unit 2b — 반경 안 대상에게 스탯 모디파이어를 TTL 로 얹는다.
+        // 레거시 `BoostNearbyDefenders`(아군 공격력) · `BindNearby`(적 이동속도 감쇠)가
+        // 여기로 수렴한다. **스탯은 `buffStat` 저작이 정하고 진영은 payload 가 정한다** —
+        // 진영을 저작 필드로 두면 「아군을 감속시키는」 저작이 표현 가능해진다.
+        // (기존 `AllyMoveSpeedAura`(9)는 이름이 이미 스탯을 말하므로 그대로 둔다.)
+        AllyStatAura = 26,
+        OpponentStatAura = 27,
     }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.

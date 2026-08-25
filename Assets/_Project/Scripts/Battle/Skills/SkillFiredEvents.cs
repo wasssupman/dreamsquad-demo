@@ -46,6 +46,9 @@ namespace Wassup.Battle.Skills
         // 발사 명세 슬롯 index. `DataIndex`(전역 에셋 표)와 **다른 축**이다 —
         // 이쪽은 host 자기 `PatternSlot` 버퍼의 자리다. −1 = 없음.
         public int PatternIndex;
+        // 저작 스탯 축(`StatKind`). `Selector`(cc/stack)와 **다른 축**이라 겸직시키지 않는다 —
+        // 한 슬롯이 둘 다 필요한 스킬이 나오는 순간 조용히 갈린다.
+        public int StatSelector;
     }
 
     // 채널 수명주기는 `BattleBridge` 소유다 — 생성 Persistent / 싱글턴 파괴 / Dispose

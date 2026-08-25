@@ -152,6 +152,21 @@ namespace Wassup.Data
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 아군에게 보호막"
                             : "배치 시 주변 아군에게 보호막";
+                    // skill-layer-migration unit 2a — 브루저 배치 충격파(레거시 `MeleeBurst`).
+                    case DcPayloadKind.SelfTileAoe:
+                        return m.payload.tileRange > 0
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 적에게 충격파"
+                            : "배치 시 주변 적에게 충격파";
+                    // unit 2b — 스탯 오라 둘. **진영은 payload 가, 스탯은 저작이 정한다** —
+                    // 문안도 같은 두 축으로 만든다. 숫자는 저작값을 그대로 읽는다.
+                    case DcPayloadKind.AllyStatAura:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 아군 "
+                               + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
+                               + $" ({m.payload.duration:0.#}초)";
+                    case DcPayloadKind.OpponentStatAura:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적 "
+                               + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
+                               + $" ({m.payload.duration:0.#}초)";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
@@ -161,5 +176,25 @@ namespace Wassup.Data
             }
             return "";
         }
+
+        // 스탯 축의 화면 어휘. **정의 계층이 `Battle.StatKind` 를 모르게 유지**하므로
+        // 저작 enum(`CardBuffKind`)에서 바로 만든다.
+        private static string StatWord(CardBuffKind kind)
+        {
+            switch (kind)
+            {
+                case CardBuffKind.AttackDamage: return "공격력";
+                case CardBuffKind.AttackSpeed: return "공격 속도";
+                case CardBuffKind.EffectiveHealth: return "체력";
+                case CardBuffKind.MoveSpeed: return "이동 속도";
+                case CardBuffKind.DamageVsCc: return "상태이상 적 피해";
+                default: return "능력치";
+            }
+        }
+
+        // 저작은 퍼센트다(30 = +30%, −90 = −90%). 부호를 화면 어휘로 만든다 —
+        // **여기서 숫자를 만들지 않는다**(저작값과 갈리는 것을 막는 이 파일의 규율).
+        private static string SignedPercent(float percent)
+            => percent >= 0f ? $"+{percent:0.#}%" : $"{percent:0.#}%";
     }
 }

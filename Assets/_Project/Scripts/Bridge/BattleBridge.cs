@@ -9413,6 +9413,8 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.UltimateLeapSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.EmitPatternSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaTauntSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AllyStatAuraSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.OpponentStatAuraSkill());
             }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
@@ -9442,6 +9444,10 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.EmitPatternSkill.Id;
                 case Wassup.Data.DcPayloadKind.AreaTaunt:
                     return Wassup.Skills.Concrete.AreaTauntSkill.Id;
+                case Wassup.Data.DcPayloadKind.AllyStatAura:
+                    return Wassup.Skills.Concrete.AllyStatAuraSkill.Id;
+                case Wassup.Data.DcPayloadKind.OpponentStatAura:
+                    return Wassup.Skills.Concrete.OpponentStatAuraSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9601,6 +9607,12 @@ namespace Wassup.Bridge
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
                     patternIndex = -1,
+                    // skill-layer-migration unit 2b — 스탯 축을 슬롯에 옮긴다.
+                    // ⚠ 안 옮기면 **기본값 0(공격력)** 이 되어, 「이동속도 감쇠」로 저작한
+                    // 유닛이 조용히 공격력 오라가 된다. 번역은 `MapDcBuff` 단일 지점을 쓴다
+                    // (정의 계층이 `Battle.StatKind` 를 모르게 유지하는 유일한 자리).
+                    buffStat = MapDcBuff(m.payload.buffStat, 0f, out var mappedStat, out _)
+                        ? mappedStat : Wassup.Battle.Effects.StatKind.DamageMul,
                     // content-5 리뷰 M1 — 카드 bake 는 걸었는데 여기만 빠져 있었다.
                     // struct 기본값 0 은 **유효한 장판 index** 라, OnKill 이 이 경로에
                     // 열리는 날 조용히 «0번 장판» 이 깔린다(DcTriggerSlot 필드 주석의 계약).
@@ -9709,6 +9721,17 @@ namespace Wassup.Bridge
                     // 폭발이 ProjectileSpawnRequest 하나로 표현되고 드레인이 dataIndex<0 이면
                     // 요청을 통째로 버리기 때문에 데미지까지 안 나간다.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                }
+                else if ((m.payload.kind == Wassup.Data.DcPayloadKind.AllyStatAura ||
+                          m.payload.kind == Wassup.Data.DcPayloadKind.OpponentStatAura) &&
+                         m.payload.buffStat == Wassup.Data.CardBuffKind.EffectiveHealth)
+                {
+                    // ⚠ `EffectiveHealth` 는 번역 산식이 **역수**(1/(1+p/100))다. 스탯 오라
+                    // concrete 는 퍼센트→배율을 (1+p/100) 하나로만 하므로 이 축만 값이 갈린다.
+                    // 조용히 틀린 배율을 주느니 거절한다 — 필요해지면 concrete 에 그 산식을
+                    // 명시적으로 열어야 한다(그때 이 거절을 지운다).
+                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: 스탯 오라에 EffectiveHealth 는 아직 배선되지 않았다(번역 산식이 역수) — skipped.");
+                    continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {

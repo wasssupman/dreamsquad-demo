@@ -221,6 +221,13 @@ namespace Wassup.Core
                 // hasDamageOutput 어느 축도 게이트가 아니다. SO null·트리거 축은 bake 가
                 // 최종 판정한다(위 주석의 분업).
                 case DcPayloadKind.SpawnHazard:
+                // skill-layer-migration unit 2b — 스탯 오라 둘. host 의 **공격 모델**과
+                // 무관하다: 대상은 반경과 진영이 정하고(host 가 줄 필요 없음), 데미지 출력이
+                // 없으며, 진영은 payload kind 가 고정한다(저작이 아니다) → targetsEnemies /
+                // HostProvidesTarget / hasDamageOutput 어느 축도 게이트가 아니다.
+                // 스탯 축의 유효성(EffectiveHealth 미배선)은 bake 가 loud 로 판정한다.
+                case DcPayloadKind.AllyStatAura:
+                case DcPayloadKind.OpponentStatAura:
                     return DcRejectReason.None;
 
                 default:
