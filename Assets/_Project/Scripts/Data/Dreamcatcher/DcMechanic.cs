@@ -198,7 +198,10 @@ namespace Wassup.Data
         // 그래서 `DcTriggerSlot` 을 굽지 않는다. `PlacementAura`(브리지 Mono 상태에 등록)보다
         // 한 칸 더 밖이며, 이 성질을 가진 payload 를 아래 `DcPayloadKinds.IsHandOp` 이 모은다.
         //
-        // 필드 재사용: magnitude = 앞으로 보낼 **최대 장수**(0 = 무제한). 그 외 칸은 안 읽는다.
+        // 필드 재사용: 없다. **어느 칸도 안 읽는다.**
+        // (구 주석은 magnitude = 앞으로 보낼 최대 장수라 적었으나 **소비자가 0** 이다 —
+        //  컨트롤러도 덱도 magnitude 를 읽지 않고, 카드 문안은 「저작 손잡이 없음」을 단언한다.
+        //  상한을 실제로 원하면 그때 배선하고 이 줄을 되살린다.)
         //
         // 이름에 "손패"를 넣지 않은 이유: 손패 = 큐 앞 N 이라는 사실은 DreamcatcherCycleDeck
         // 만 아는 것이고, 이 payload 가 말하는 것은 **부착분을 앞으로**다. append-only.

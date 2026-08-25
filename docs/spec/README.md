@@ -226,25 +226,40 @@ code + git history        구현 상세
 - **악몽의 늪(자리에 남는 장판)** [L] · 배치 공간 박탈 축. 장판 효과가 `PathFollowState`+적 진영 게이트라 **타일 고정인 방어유닛에게 구조적으로 안 닿는다**. **다음 보스에서 딥하게 논의**(사용자 결정 2026-08-11). (boss-mamemo)
 - **네 번째 보스: 소환형** [L] · 잡몹을 직접 뱉는 물량 축. 소환 페이로드 + 브리지 스폰 seam 필요. (boss-mamemo)
 
-#### 스킬 1급 객체화 (skill-fire-dispatch — rev 4 작성 완료, **홀드 2026-08-12 · 미착수**)
+#### 스킬 단일 레이어 (skill-layer-foundation + skill-layer-migration — **작성 완료 2026-08-25 · 미착수**)
 
-스킬 = **저작 SO 1개 + 순수 로직 1개**로 쪼개고 유닛이 스킬 SO 를 소유한다. 발동 조건을
-보는 시스템 2개는 판정·디스패치만 남는다. **재개 = 다음 보스 제작 때**(사용자 결정) —
-신규 보스가 스킬 3~4개를 저작하므로 그때 이득이 실사용에서 회수된다.
-스펙·홀드 인계: `docs/spec/skill-fire-dispatch/README.md`.
+→ `docs/spec/skill-layer-foundation/` · `docs/spec/skill-layer-migration/`
 
-- **재개 전 표 갱신** [S] · unit 0 표는 2026-08-12 검산본(보스 3종 10행 + 카드 2행)이다.
-  재개 시 보스·카드가 늘었으면 전수를 먼저 다시 뜬다. rev 3 이 죽은 이유가 미검산 추정이었다. (skill-fire-dispatch)
-- **순서 재판정** [S] · 계약 12 는 `battle-sim-extraction` M0 **앞**을 전제한다. M0 가 이미
-  착수됐으면 M1 이후로 미룬다(골든 기준선 충돌). (skill-fire-dispatch)
-- **⚠ 골든 없는 이전 금지** [M] · 이전 대상 12행 중 동작 골든은 5행뿐이다. 궁극기·도약×2·
-  채찍질·경계 자폭은 arm 거동 무보호 — unit 1(특성화 골든)이 항상 선행이다. (skill-fire-dispatch)
-- **진영 상대화 + 방어유닛 스킬 경로** [M] · 방어유닛이 유닛 스킬을 장착하는 authoring 이
-  열릴 때. 그때 `UltimateLeapSystem` 의 `Defender` 리터럴을 상태 필드로. 지금 하면 아무도
-  안 지나가는 코드가 된다. (skill-fire-dispatch)
-- **스킬 보유 ≠ 보스 분리** [M] · `BakeNightmareMechanics` 가 mechanics 존재만으로 `BossTag`
-  +보스 경보를 붙인다(CC·도발 면역·유닛 사냥 파생). 잡몹에게 능동 스킬을 주려면 축 분리가
-  선행 — **콘텐츠 결정**(현 blueprint 정의: "능동 스킬을 가진 적 = 보스"). (skill-fire-dispatch)
+끝점 = **이 게임의 모든 스킬(보스 · 배치 · 특수)이 하나의 레이어 위에 있다.** 스킬 하나 =
+concrete 하나이고 `Execute` 를 호출하는 주체가 그 스킬의 소유자다. **도메인(`ISkill`/concrete)은
+ECS 를 참조하지 않고** 포트를 통해서만 모듈과 주고받는다(사용자 하드 제약 2026-08-24).
+`skill-fire-dispatch`(rev 4, 홀드)는 **흡수**됐다 — 그 spec 은 읽기 전용 이력이고 계약 6·12 는 폐기.
+설계 근거: `docs/plans/2026-08-24-skill-layer-unification-critic.md`(critic 5트랙 수렴본,
+전원 REQUEST CHANGES · CRITICAL 7건).
+
+착수 전 알아야 할 것 (critic 산출):
+
+- **드레인 지점은 3개다** [계약] · 감지자들의 same-frame 하류 계약 구간이 겹치지 않아
+  (#8 < #45) 단일 지점은 산술적으로 불가. `BattleBridge.Update` 는 `Mono Update →
+  SimulationSystemGroup` 순서라 원리적으로 탈락 → `BattleSimGroup` 내 managed `SystemBase` 3인스턴스.
+- **골든은 증인이 아니다** [S] · 코퍼스에 스킬 발화 기록 **0회**, Cc·Aggro·Blink·StatModifier 는
+  채널 자체가 없다. 게다가 코퍼스가 stale. 그물을 먼저 깐다(`foundation/1_golden_and_net.md`).
+- **census 는 ~75행** [-] · 액티브(`SkillData` 6에셋) · 소환(`SummonPatrolAbility`) ·
+  드래곤 `AreaBreath` · 방어유닛 규칙 5행이 초기 초안에서 누락됐었다. 어휘가 **3개**다.
+- **`SimEntityId` 싱글턴 승격은 M1 로 반환** [S] · 공유 카운터가 ID 열을 밀어 골든 전건 발산.
+- **spec 종료 시 골든 재기준 1회** [S] · 그것이 `battle-sim-extraction` M1 의 새 A/B 기준선.
+
+이 spec 이 흡수하지 않은 것 (여전히 후속):
+
+- **무거운 arm 이관** [M] · 발동 지점이 전 유닛 순회 Burst 코드 내부라 별도 seam 설계 필요.
+- **카드 authoring 의 SO 이전** [M] · 어댑터 은퇴. 시트 연동 재설계와 함께.
+- **악몽의 늪(자리에 남는 장판)** [L] · skill-fire-dispatch 홀드 인계 #4 가 함께 대기시킨 축.
+  **다음 보스 제작 때 콘텐츠 결정으로 꺼낸다**(사용자 결정 2026-08-11, boss-mamemo 그룹과 동일 항목).
+- **스킬 보유 ≠ 보스 분리** [M] · 기술 선행은 **이미 해소됐다**(`BattleBridge.cs:9355` 가
+  `tier == EnemyTier.Boss` 로 가른다 — 이 백로그 항목이 stale 했다). 남은 것은 콘텐츠 결정뿐:
+  잡몹에게 능동 스킬을 **라이브로** 허용할지(현 blueprint 정의: "능동 스킬을 가진 적 = 보스").
+- **(시전자, 스킬) → 고유 연출 매핑** · **스킬 툴팁 노출** · **호스트당 슬롯 스케줄러**
+  (발동 중재 콘텐츠가 실재할 때).
 
 #### 거점 사냥꾼 (structure-hunter-enemy — units 0~1 완료 2026-08-11, **사용자 Play 확인 대기**)
 

@@ -35,7 +35,9 @@ namespace Wassup.Data
 
         public float cooldownSec = 10f;
 
-        // Phase 6: cost subtracted from CostRuntime on cast.
+        // 표시·로그 전용. **실지불은 이 필드가 아니다** — 액티브 시전은 각성 게이지에서
+        // `DreamcatcherGaugeConfig.CostFor(card.type)` 만큼 차감한다
+        // (`DreamcatcherHandController`). 소비자는 로그 `cost_spent`·카드 문안·드래프트 표시뿐.
         public int cost = 2;
 
         // Phase 7 (Meteor): seconds a telegraph/warning visual is displayed before
