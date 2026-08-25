@@ -58,7 +58,25 @@ namespace Wassup.Battle.Skills
     // ⚠ **발사 명세는 같은 프레임에 나가야 한다.** `ProjectileEmitterSystem` 이
     // 스테이징된 `EmitterInstance` 를 보기 전에 seam 이 돌아야 한다 — 순서를 안 박으면
     // 정렬이 빌드마다 달라져 1프레임 지연이 오락가락한다(은퇴한 arm 이 같은 계약을
-    // 갖고 있었다). 세 seam 전부에 거는 이유: 어느 트리거가 패턴을 쏘든 같아야 한다.
+    // 갖고 있었다).
+    //
+    // ⚠ **경계 seam 에는 걸지 않는다**(ECS 리뷰 H-1). 처음엔 셋 다 걸었는데, 그건
+    // 「어느 트리거가 쏘든 같아야 한다」는 대칭 논리였고 **비용을 안 본 것**이었다:
+    // 경계 seam 은 `HealthThresholdSystem` 뒤이고 그건 `DamageApplicationSystem` 뒤라,
+    // 거기에 이 제약을 걸면 `DamageApplication → HealthThreshold → seam → emitter`
+    // 라는 **전이 간선이 새로 생겨 emitter 를 프레임 뒤쪽으로 민다.** 원래 emitter 는
+    // 그 둘과 상대 순서가 자유였다(관측값은 HealthThreshold 앞).
+    //
+    // 밀리면 `UnitLifecycleSystem`(사망 엔티티 파괴, 역시 `DamageApplication` 뒤)과
+    // 가까워지고, emitter 가 그 뒤로 가면 그 프레임에 죽은 host 의 잔여 버스트가
+    // **엔티티째 사라진다**(`WithNone<DeadTag>` 이 막는 게 아니라 대상이 없어진다).
+    // 그 상대 순서는 어디에도 선언돼 있지 않아서, 이 제약이 tie-break 를 흔든다.
+    //
+    // 그리고 이 제약은 **오늘 쓰이지도 않는다** — 임계 트리거로 발사 명세를 저작한
+    // 것이 0건이다. 임계 × 패턴 저작이 처음 생기는 unit 이 이 줄을 도로 넣되,
+    // 그때는 emitter 의 새 자리를 **emitter 자신에게** 선언해 리뷰 대상으로 만들고
+    // (`[UpdateAfter(HealthThresholdSystem)]` + `[UpdateBefore(UnitLifecycleSystem)]`)
+    // order-capture 를 다시 떠야 한다.
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Combat.BossPeriodicTriggerSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Effects.ModifierApplySystem))]
@@ -88,7 +106,7 @@ namespace Wassup.Battle.Skills
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Combat.HealthThresholdSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Combat.UltimateLeapSystem))]
-    [UpdateBefore(typeof(Wassup.Battle.Combat.Projectile.Emission.ProjectileEmitterSystem))]
+    // ⚠ emitter 제약 **없음** — 위 H-1 참조. 임계 × 발사 명세 저작이 생기는 날 넣는다.
     public partial class SkillDispatchThresholdSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Threshold;

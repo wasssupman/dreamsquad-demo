@@ -56,8 +56,17 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 5; i++) inRange[i] = SpawnWalker(em, bridge, walk[i]);
             var outFar = SpawnWalker(em, bridge, new Vector2Int(cell.x + 6, cell.y + 6));
 
+            // ⚠ **라우팅 증인.** 이 단언이 없으면 도발이 concrete 를 거치는지 legacy arm 이
+            // 대신 처리하는지 그물이 구분하지 못한다 — legacy 가 그대로 잘 도니까 아래
+            // 결과 단언은 라우팅이 끊겨도 초록이다. `7f902e55` 가 잡은 실패 유형 그 자체다.
+            // (arm 은 unit 8 철거까지 살아 있으므로 이 구멍은 지금 실재한다.)
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
             yield return Frames(20);
+
+            int seamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                Wassup.Battle.Skills.SkillSeam.Periodic);
 
             int aggroed = 0;
             for (int i = 0; i < 5; i++) if (em.HasComponent<Aggroed>(inRange[i])) aggroed++;
@@ -66,6 +75,9 @@ namespace Wassup.Tests.PlayMode
             em.DestroyEntity(outFar);
             Object.Destroy(bastion);
 
+            Assert.GreaterOrEqual(seamRuns, 1,
+                "도발이 스킬 레이어를 안 거쳤다 — legacy arm 이 대신 처리했다면 아래 단언은 "
+                + "라우팅이 끊겨도 초록이 된다(이전이 안 된 상태를 못 가른다)");
             Assert.AreEqual(5, aggroed,
                 "반경 2 안 5기가 전부 도발돼야 한다 — 2기만 걸렸다면 capacity 우회가 죽은 것이다");
             Assert.IsFalse(farAggroed, "반경 밖 적이 도발됐다");

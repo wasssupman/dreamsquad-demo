@@ -113,6 +113,7 @@ namespace Wassup.Battle.Skills
 
             // ⚠ 풀을 **프레임당 한 번** 짓는다. fire 당 재구축하면 발동이 몰리는 프레임에
             // 쿼리가 N번 돈다(unit 0 어댑터 계약). 드레인이 끝나면 해제한다.
+            _context.ResetDrainWarnings();
             var enemyPool = _enemyQuery.ToEntityArray(Allocator.Temp);
             var enemyPoolXf = _enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var defPool = _defQuery.ToEntityArray(Allocator.Temp);
@@ -206,8 +207,17 @@ namespace Wassup.Battle.Skills
                 ecb.Playback(EntityManager);
                 ecb.Dispose();
 
-                // 바인딩을 전부 끊는다(리뷰 L-1). ECB 만 끊고 풀·격자·큐 핸들을 남기면,
-                // 디스패처 밖에서 이 어댑터를 재사용하는 날 **Dispose 된 핸들**을 쓴다.
+                // **수명이 이 드레인인 것만** 끊는다 — 이 프레임에 Dispose 되는 핸들들이다.
+                // ECB 만 끊고 풀·격자를 남기면 디스패처 밖에서 어댑터를 재사용하는 날
+                // **Dispose 된 핸들**을 쓴다.
+                //
+                // ⚠ **「전부」가 아니다**(ECS 리뷰 M-5 — 예전 주석이 그렇게 주장했다).
+                // `EntityManager` 와 `ComponentLookup` 7종은 남는다. 그것들은 다음 seam 이
+                // 쓰기 전에 `Bind` 로 다시 채워지므로 여기서 끊을 이유가 없고, 끊으면
+                // 오히려 seam 사이에 어댑터가 반쯤 죽은 상태가 된다. 다만 **그 약속을
+                // 믿고 디스패처 밖에서 어댑터를 쓰면 `Update()` 안 된 stale lookup 을 쓴다** —
+                // 이 어댑터는 seam 의 드레인 안에서만 유효하다.
+                // 큐 싱크(Cc/Stat/Hit/…)도 남지만 브리지가 소유하는 Persistent 라 무해하다.
                 _context.BindEcb(default, false);
                 _context.BindPools(default, default, default, default);
                 _context.BindFlowField(default, false);

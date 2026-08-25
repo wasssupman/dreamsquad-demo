@@ -311,6 +311,7 @@ namespace Wassup.Battle.Skills
             var casterEntity = Resolve(caster.Unit);
 
             int n = 0;
+            int dropped = 0;
             for (int i = 0; i < pool.Length && n < into.Length; i++)
             {
                 var e = pool[i];
@@ -339,7 +340,13 @@ namespace Wassup.Battle.Skills
                 // 「없음」이 아니라 **월드 원점에 선 유령**이다(`Position` 이 부재를 0 으로
                 // 접는다). 실제로 그 유령이 부채꼴의 조준을 훔쳐 등 뒤를 쏘게 만들었다.
                 // 후보에서 빼면 「후보 0 = 무발사」로 흘러 조용한 오폭이 사라진다.
-                if (SimIdOf(e) == SimEntityId.Unassigned) continue;
+                //
+                // ⚠ **다만 조용히 빼지는 않는다**(ECS 리뷰 H-2). 이 이전이 만든 **새 실패
+                // 모드**라서다 — 예전 arm 은 `Entity` 를 직접 들어 ID 를 안 봤다. 스폰
+                // 경로가 발급을 하나 빠뜨리면 그 유닛은 도발도 안 당하고 조준 후보도 못
+                // 되는데, 증상은 「그 적만 안 끌려온다」이고 원인 신호가 0이다.
+                // 캐스터 쪽(`BuildCaster`)은 이미 경고를 내므로 후보 쪽도 대칭으로 낸다.
+                if (SimIdOf(e) == SimEntityId.Unassigned) { dropped++; continue; }
 
                 var p = poolXf[i].Position;
                 bool inRange;
@@ -358,8 +365,22 @@ namespace Wassup.Battle.Skills
 
                 into[n++] = Handle(e);
             }
+
+            // 드레인당 한 번만 짖는다 — 후보마다 짖으면 로그가 프레임을 잡아먹는다.
+            if (dropped > 0 && !_warnedUnassignedThisDrain)
+            {
+                _warnedUnassignedThisDrain = true;
+                UnityEngine.Debug.LogWarning(
+                    $"[SkillDispatch] 후보 {dropped}기가 SimEntityId 미발급이라 제외됐다 — "
+                    + "스킬 레이어에서 그 유닛들은 존재하지 않는다(조준·도발 대상 불가). "
+                    + "스폰 지점의 ID 발급을 확인하라.");
+            }
             return n;
         }
+
+        // 드레인 경계에서 호스트가 내린다. 프레임마다 한 번은 짖되 매 후보마다는 안 짖는다.
+        private bool _warnedUnassignedThisDrain;
+        public void ResetDrainWarnings() => _warnedUnassignedThisDrain = false;
 
         // ── 질의: 격자 위의 판단 ────────────────────────────────────
         // 순수 코어(`DefenderDensity`)가 셀 배열을 인자로 받는다 — 그래서 이 질의가
