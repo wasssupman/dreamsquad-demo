@@ -16,10 +16,25 @@
 
 ## 구현
 
-1. **그물이 절대 선행이다.** PlayMode 커버리지가 **9종 중 3종**뿐이다
-   (`DotNearby`·`ApplyStackNearby`·`ForwardProjectile`). 나머지 6종은 무보호다.
-   `on-place-skill-rework` 후속 후보가 *"이관 전에 테스트를 먼저 깔지 않으면 회귀를 못 잡는다"*
-   고 명시해 뒀다.
+1. ~~**그물이 절대 선행이다.** PlayMode 커버리지가 **9종 중 3종**뿐이다.~~
+   **stale — 2026-08-26 실측으로 정정.** 그 사이에 그물이 붙었다:
+
+   | 값 | 종류 | PlayMode 그물 | 라이브 저작 |
+   |---|---|---|---|
+   | 1 | `SlowPulse` | **없음** | **0개** |
+   | 2 | `BoostNearbyDefenders` | `OnPlaceBoostNearbyTest` | 1 |
+   | 3 | `BindNearby` | `OnPlaceBindNearbyTest` | 1 |
+   | 4 | `MeleeBurst` | `OnPlaceRuleTriggerTest`(간접) | 1 |
+   | 5 | `ForwardProjectile` | `OnPlaceForwardProjectileTest` | **4** |
+   | 6 | `GainCost` | `OnPlaceGainCostTest` | 1 |
+   | 7 | `ReduceSkillCooldown` | `OnPlaceReduceSkillCooldownTest` | 1 |
+   | 8 | `ApplyStackNearby` | `OnPlaceApplyStackNearbyTest` | 1 |
+   | 9 | `StunNearby` | `OnPlaceStunNearbyTest` | 1 |
+   | 10 | `DotNearby` | `OnPlaceDotNearbyTest` | 1 |
+
+   **선행 작업이 「그물 6개 신설」에서 「`MeleeBurst` 의 직접 그물 1개」로 줄었다.**
+   그리고 **`SlowPulse` 는 이전 대상이 아니라 삭제 대상**이다 — 그물도 없고 라이브
+   저작자도 0이라 옮길 것 자체가 없다(옮기면 아무도 안 쓰는 concrete 가 생긴다, 제약 8).
 2. **신규로 필요한 payload kind 는 `AreaCc{DcCcKind}` 하나 정도**다.
    `MeleeBurst`(4)는 기존 `SelfTileAoe` 재사용, `StunNearby`(9)는 `ApplyCcToTarget`/`AreaSleep` 계열.
    기존 어휘를 먼저 쓴다(append 는 표현 불가일 때만).
@@ -36,7 +51,8 @@
 
 ## 완료 기준
 
-- [ ] 9종 전부에 특성화 테스트가 선행됐고 초록이다 (3종 → 9종)
+- [ ] `MeleeBurst` 직접 그물 1개 신설 (나머지 8종은 이미 있다 — 위 표)
+- [ ] `SlowPulse` 는 **삭제**한다(라이브 저작 0 · concrete 신설 금지)
 - [ ] `OnPlaceEffectType` enum 과 `BattleBridge.cs:5393~5590` 체인이 **삭제**됐다
 - [ ] `DefenderUnitData` flat 필드 7개 + `onPlacePush*` 3필드 + `ApplyOnPlacePush` 삭제
 - [ ] `UnitKitSummary` 문안이 저작 SO 를 읽는다
