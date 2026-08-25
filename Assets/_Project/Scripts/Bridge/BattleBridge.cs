@@ -4301,7 +4301,7 @@ namespace Wassup.Bridge
                         }, Entity.Null);
                         if (log != null)
                         {
-                            CollectShieldBreakTargets(evt.position, evt.tileRange, 0, targets);
+                            CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, 0, targets);
                             foreach (var t in targets)
                                 log.targets.Add(new Logging.ShieldBreakTargetLog
                                 { tile = t.cell, effect = "Damage", magnitude = evt.magnitude });
@@ -4313,7 +4313,7 @@ namespace Wassup.Bridge
                     int cap = (int)evt.magnitude;
                     if (cap >= 1 && evt.tileRange >= 1 && evt.duration > 0f)
                     {
-                        CollectShieldBreakTargets(evt.position, evt.tileRange, cap, targets);
+                        CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, cap, targets);
                         foreach (var t in targets)
                         {
                             Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, t.entity,
@@ -4337,15 +4337,44 @@ namespace Wassup.Bridge
         // (ProjectileHitSystem) 패턴 미러: WorldToCell + TileAoe.IsInTileRange 범위 필터 →
         // AoeTargetCap.SelectNearest(거리² cap, 결정론). cap<=0 = 범위 전체(투사체 폭발과 동일).
         // 호출측: 수면=결과에 ApplyCc(Sleep) + 로그, 데미지=투사체가 별도 해결(여기선 로그용 스냅샷).
-        private void CollectShieldBreakTargets(float3 center, int tileRange, int cap,
+        // skill-layer-foundation unit 2b — 브리지(managed) 쪽 진영 조회.
+        // ECS 쪽 `FactionQuery` 와 같은 답을 내야 한다: `FactionTag` 이 정본, 부재 시 유닛 태그,
+        // 둘 다 없으면 None. 여기만 시그니처가 다른 이유는 브리지엔 `ComponentLookup` 이
+        // 없고 `_em` 직접 조회를 쓰기 때문이다.
+        private Wassup.Battle.Units.Faction FactionOfEntity(Entity e)
+        {
+            if (!_em.Exists(e)) return Wassup.Battle.Units.Faction.None;
+            if (_em.HasComponent<Wassup.Battle.Units.FactionTag>(e))
+                return _em.GetComponentData<Wassup.Battle.Units.FactionTag>(e).value;
+            if (_em.HasComponent<AttackUnitTag>(e)) return Wassup.Battle.Units.Faction.EnemyUnit;
+            if (_em.HasComponent<DefenderUnitTag>(e)) return Wassup.Battle.Units.Faction.DefenderUnit;
+            return Wassup.Battle.Units.Faction.None;
+        }
+
+        private void CollectShieldBreakTargets(Entity caster, float3 center, int tileRange, int cap,
             System.Collections.Generic.List<(Entity entity, Vector2Int cell)> results)
         {
             results.Clear();
             int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
             var centerCell = GridMath.WorldToCell(center, tileSize, grid, origin: _boardOrigin);
-            using var enemyQuery = _em.CreateEntityQuery(
-                ComponentType.ReadOnly<AttackUnitTag>(),
-                ComponentType.ReadOnly<LocalTransform>());
+
+            // unit 2b — 대상 풀은 **caster 의 상대 진영**이다.
+            //
+            // 여기가 `DcTrigger.cs` 가 이름을 대며 경고한 그 드레인이다 — 대상 풀이
+            // `AttackUnitTag` 하드코딩이라, `OnShieldBreak` 를 적에게 열면 **보스의 파열
+            // 폭발이 자기 진영을 때린다**. 그래서 화이트리스트가 그 문을 잠가 두고 있었다.
+            // 이 줄이 상대적이 되면 그 잠금의 이유가 사라진다(철거는 migration unit 8).
+            //
+            // ⚠ 파열은 host 가 **같은 프레임에 파괴될 수 있다**(관통 킬 프레임에도 발동한다).
+            // 그때는 진영을 못 읽으므로 기존 동작(적 풀)을 유지한다 — byte-identical.
+            var opponents = Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(FactionOfEntity(caster));
+            using var enemyQuery = opponents == Wassup.Battle.Units.Faction.DefenderUnit
+                ? _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<DefenderUnitTag>(),
+                    ComponentType.ReadOnly<LocalTransform>())
+                : _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<AttackUnitTag>(),
+                    ComponentType.ReadOnly<LocalTransform>());
             var enemies = enemyQuery.ToEntityArray(Allocator.Temp);
             var xforms = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var inRange = new NativeList<int>(Allocator.Temp);

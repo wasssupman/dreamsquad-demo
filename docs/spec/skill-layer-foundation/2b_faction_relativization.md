@@ -41,11 +41,31 @@
 5. **핀 테스트를 갱신한다** — `Tests/EditMode/DcTriggerTests.cs` · `DcTriggerArmedTests.cs` 가
    현행 술어를 고정하고 있다.
 
+## 실측 정정 — 「56곳」 중 상대화 대상은 소수다 (2026-08-25)
+
+리터럴 56개를 실제로 분류하니 **대부분이 리터럴로 남아야 한다.** 세 부류다:
+
+| 부류 | 예 | 처리 |
+|---|---|---|
+| **진영을 부여하는 곳(bake)** | `_em.AddComponent<DefenderUnitTag>` (`BattleBridge:7834`·`8092`·`9952`) | **그대로** — 여기가 진영의 출처다 |
+| **절대 게임 규칙** | 데미지 폰트=적 전용(`DamageApplicationSystem:218`) · 처치 점수=적 전용(`:359`) · 부착 자격=방어유닛 전용(`BattleBridge.Dreamcatcher:129`·`275`·`1065`) · BountyMark 대상=적(`:1106`) | **그대로** — 방어유닛이 죽어도 점수를 주면 안 된다 |
+| **매치 수준 쿼리** | `_aliveAttackersQuery`(`:225`) · teardown(`:823`·`824`) | **그대로** |
+| **진짜 상대화 대상** | 도약 앵커 풀 · 주기 arm 4곳 · 실드 파열 대상 풀 | **이 unit 이 처리** |
+
+**교훈**: 「리터럴 개수」는 작업량의 지표가 아니다. 진영을 **읽어서 대상을 고르는 곳**만 대상이고,
+진영을 **부여하거나 규칙으로 못박는 곳**은 리터럴이 맞다. 다음 파일을 열 때 이 기준으로 먼저 가른다.
+
+⚠ **화이트리스트 철거 후 대상이 되는 것 하나** — `DamageApplicationSystem:279`(가시 갑옷
+`OnDamagedN`)는 오늘 카드 경로라 방어유닛 전용이 **구조적으로** 참이다. `OnDamagedN` 을 적에게
+열면(migration unit 8) 그때 상대화 대상이 된다. 지금 고치면 아무도 안 지나가는 코드가 된다(제약 8).
+
 ## 완료 기준
 
-- [ ] 리터럴 56곳이 `Opponents/Allies(caster)` 로 대체됐고 남은 리터럴이 0이다 (grep 확인)
-- [ ] **파일 단위 커밋**으로 분리됐다 (한 커밋에 56곳 금지)
-- [ ] `CollectShieldBreakTargets` 가 포함됐다
+- [x] **상대화 대상**(진영을 읽어 대상을 고르는 곳)이 전부 `FactionRelation` 파생으로 바뀌었다.
+      리터럴 총수가 아니라 이 부류가 기준이다 — 위 정정 참조
+- [x] **파일 단위 커밋**으로 분리됐다 (`4947bbdf` · `057a21ef` · 실드 파열)
+- [x] `CollectShieldBreakTargets` 가 포함됐다 — `DcTrigger.cs:100~106` 이 이름을 대며 경고한
+      그 드레인이다. ⚠ host 가 같은 프레임에 파괴될 수 있어(관통 킬) 진영 미상 시 기존 동작 유지
 - [ ] unit 1 이 깐 그물 전건 초록 — 오늘 라이브 경로의 결과가 바뀌지 않았다
 - [ ] 화이트리스트 2술어(`EnemyTriggerArmed`·`DefenderTriggerArmed`)는 **그대로**다
 - [ ] EditMode 코어 lane + Assets lane 초록
