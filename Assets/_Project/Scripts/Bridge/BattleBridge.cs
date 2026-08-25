@@ -5731,7 +5731,8 @@ namespace Wassup.Bridge
         // 이미 판정했다. 그래서 조준 방향에 아무도 없어도 발사는 일어나고 명중이 0일 수 있다 —
         // 어디를 쏠지는 플레이어 몫이라는 뜻이다. 후보가 비어 있지 않은 것은 호출처 계약이다.
         //
-        // on-place-shuttle-shotgun unit 1 — 판정 자체는 **순수 함수 `OnPlaceFireAim` 가 소유**한다.
+        // on-place-shuttle-shotgun unit 1 — 판정 자체는 **순수 함수 `SkillAim` 가 소유**한다
+        // (skill-layer-migration unit 1 에서 도메인 어셈블리로 이사했다 — 규칙은 무변경).
         // 규칙 경로(배치 스킬의 방향 발사)가 두 번째 소비자가 되면서 뽑았다 — 두 벌로 두면 한쪽만
         // 고쳐지는 날이 온다. 여기 남는 것은 «엔티티에서 값을 꺼내는 일» 과 **레거시 폴백** 뿐이다.
         private float2 ResolveForwardBurstDirection(Entity placedEntity, float3 center)
@@ -5745,16 +5746,15 @@ namespace Wassup.Bridge
                 aim = new float2(facing.x, facing.y);
             }
 
-            var candidates = new Unity.Collections.NativeArray<float2>(
-                _forwardBurstScratch.Count, Unity.Collections.Allocator.Temp);
+            var candidates = new float2[_forwardBurstScratch.Count];
             for (int i = 0; i < _forwardBurstScratch.Count; i++)
             {
                 var pos = _em.GetComponentData<LocalTransform>(_forwardBurstScratch[i]).Position;
                 candidates[i] = new float2(pos.x, pos.z);
             }
-            bool ok = Wassup.Battle.Combat.Projectile.Emission.OnPlaceFireAim.TryResolve(
-                new float2(center.x, center.z), hasAim, aim, candidates, out float2 dir, out _);
-            candidates.Dispose();
+            bool ok = Wassup.Skills.SkillAim.TryResolve(
+                new float2(center.x, center.z), hasAim, aim,
+                candidates, candidates.Length, out float2 dir, out _);
 
             // ⚠ **레거시 폴백 유지가 무회귀의 조건이다.** 순수 함수는 "쏠 방향이 없다"에 false 를
             // 주지만, 이 경로는 후보가 전부 중심에 겹친 극단에서도 **발사했다**(호출처가 후보
@@ -9411,6 +9411,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfAreaBlastSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BlinkToClusterSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.UltimateLeapSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.EmitPatternSkill());
             }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
@@ -9436,6 +9437,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.BlinkToClusterSkill.Id;
                 case Wassup.Data.DcPayloadKind.UltimateLeap:
                     return Wassup.Skills.Concrete.UltimateLeapSkill.Id;
+                case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
+                    return Wassup.Skills.Concrete.EmitPatternSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }

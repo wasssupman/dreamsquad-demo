@@ -539,6 +539,19 @@ namespace Wassup.Bridge
 
                 var slot = new DcTriggerSlot
                 {
+                    // skill-layer-migration unit 1 — 카드 경로의 스킬 레이어 라우팅.
+                    //
+                    // ⚠ **payload 별로 연다.** 여기서 `SkillIdForPayload` 를 그대로 부르면
+                    // 이미 이전된 payload 를 저작한 **라이브 카드 9장**(SelfTileAoe 7 ·
+                    // AreaSleep 1 · 이 payload 1)이 한 커밋에서 전부 새 경로로 넘어간다.
+                    // 카드 경로 전면 개방은 자기 그물과 함께 오는 별도 unit 이다.
+                    //
+                    // 이 payload 만 먼저 여는 이유는 arm 이 이미 은퇴했기 때문이다 —
+                    // 조준 규칙이 도메인으로 이사해 Burst arm 이 부를 수 없게 됐고,
+                    // 규칙을 두 벌로 두는 것보다 여기를 여는 쪽이 옳다.
+                    skillId = m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern
+                        ? SkillIdForPayload(m.payload.kind)
+                        : Wassup.Skills.SkillRegistry.LegacyArmId,
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),

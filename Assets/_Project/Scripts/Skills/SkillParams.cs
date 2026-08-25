@@ -22,6 +22,11 @@ namespace Wassup.Skills
         public readonly int TileRange;
         public readonly int Period;
         public readonly int DataIndex;   // ⚠ **−1 = 없음.** 0 은 유효한 index 다
+        // 발사 명세 슬롯 index. **`DataIndex` 와 겸직시키지 않는다** — 그쪽은 전역
+        // 에셋 표(탄·해저드 프리팹)를 가리키고 이쪽은 **host 자기 버퍼**(PatternSlot)의
+        // 자리를 가리킨다. 한 칸에 접으면 「0번 탄」과 「0번 패턴」이 같은 값이 되고,
+        // 그 혼동은 조용하다. 역시 **−1 = 없음**.
+        public readonly int PatternIndex;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -35,13 +40,14 @@ namespace Wassup.Skills
         public SkillParams(
             float magnitude, float duration, int tileRange, int period, int dataIndex,
             int selector, float speed, float hitThreshold,
-            float slamDamage, int slamTileRange, int stackId, float visualScale = 0f)
+            float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
+            int patternIndex = NoDataIndex)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
             Speed = speed; HitThreshold = hitThreshold;
             SlamDamage = slamDamage; SlamTileRange = slamTileRange; StackId = stackId;
-            VisualScale = visualScale;
+            VisualScale = visualScale; PatternIndex = patternIndex;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
@@ -78,6 +84,19 @@ namespace Wassup.Skills
         public int Radius => _p.TileRange;
         public int VfxDataIndex => _p.DataIndex;      // −1 = 무연출
         public float VisualScale => _p.VisualScale;   // 0 = 저작 없음
+    }
+
+    // skill-layer-migration unit 1 — 발사 명세 트리거.
+    public readonly struct EmitPatternParams
+    {
+        private readonly SkillParams _p;
+        public EmitPatternParams(in SkillParams p) => _p = p;
+
+        public int PatternIndex => _p.PatternIndex;   // host PatternSlot 버퍼의 자리
+        // 조준 후보를 보는 반경 **이자** 탄의 최대 비행 거리다. 두 자가 같은 저작값에서
+        // 나오는 것이 계약이다 — 갈리면 「조준은 성립하는데 탄은 도중에 소멸」해
+        // 발사 연출만 나가고 아무도 안 맞는다(on-place-shuttle-shotgun 리뷰 M1).
+        public int Range => _p.TileRange;
     }
 
     public readonly struct AuraParams

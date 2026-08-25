@@ -29,6 +29,8 @@ namespace Wassup.Battle.Skills
         private ComponentLookup<DefenderUnitTag> _defTag;
         private ComponentLookup<Wassup.Battle.Combat.AttackState> _attack;
         private ComponentLookup<Health> _health;
+        // 통행 층 게이트가 쓴다 — 후보의 «어느 층으로 다니나» 는 Movement 소유 값이다.
+        private ComponentLookup<Wassup.Battle.Movement.PathFollowState> _pathFollow;
 
         // 격자 파라미터. 도메인은 셀↔월드 변환을 이름으로만 부르고 이 셋을 모른다.
         private float _tileSize;
@@ -72,12 +74,13 @@ namespace Wassup.Battle.Skills
             in ComponentLookup<DefenderUnitTag> defTag,
             in ComponentLookup<Wassup.Battle.Combat.AttackState> attack,
             in ComponentLookup<Health> health,
+            in ComponentLookup<Wassup.Battle.Movement.PathFollowState> pathFollow,
             float tileSize, int2 gridSize, float3 origin)
         {
             _em = em;
             _transform = transform; _faction = faction;
             _enemyTag = enemyTag; _defTag = defTag;
-            _attack = attack; _health = health;
+            _attack = attack; _health = health; _pathFollow = pathFollow;
             _tileSize = tileSize; _gridSize = gridSize; _origin = origin;
         }
 
@@ -229,6 +232,9 @@ namespace Wassup.Battle.Skills
                 // 실드는 두 버퍼가 다 있어야 성립한다 — 슬롯(잔량)과 인박스(부여).
                 case UnitPredicate.HasShieldBuffer:
                     return _em.HasBuffer<ShieldSlot>(e) && _em.HasBuffer<IncomingShield>(e);
+                // ⚠ `Position()` 은 부재를 0 으로 접는다. 조준하는 스킬은 이걸 먼저 묻고
+                // 없으면 발사를 취소한다 — 안 그러면 (0,0) 방향 탄이 조용히 나간다.
+                case UnitPredicate.HasPosition: return _transform.HasComponent(e);
                 default: throw NotWired($"Has({pred})");
             }
         }
@@ -282,6 +288,17 @@ namespace Wassup.Battle.Skills
                     && _em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e)) continue;
                 if ((filter & CandidateFilter.RequireDamageable) != 0
                     && !_em.HasBuffer<IncomingDamage>(e)) continue;
+                // ⚠ **통행 층 게이트.** 빼면 «내가 못 때리는 층» 의 후보가 총구를
+                // 가져가고, 그 탄은 게이트에 막혀 아무도 못 맞힌다 — 발사 연출만
+                // 나가는 조용한 no-op 이다(근접 가디언이 하늘의 적을 겨누는 형태).
+                if ((filter & CandidateFilter.MatchTraversalLayers) != 0)
+                {
+                    byte hostLayers = _attack.HasComponent(casterEntity)
+                        ? _attack[casterEntity].targetTraversalLayers : (byte)0;
+                    byte candLayers = _pathFollow.HasComponent(e)
+                        ? _pathFollow[e].traversalLayers : (byte)0;
+                    if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, candLayers)) continue;
+                }
 
                 var p = poolXf[i].Position;
                 bool inRange;
@@ -331,6 +348,41 @@ namespace Wassup.Battle.Skills
                 _ff.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot),
                 _ff.gridSize, math.max(0, maxRing), out cell);
         }
+
+        // ── 질의: 발사 명세 ─────────────────────────────────────────
+        // 「방향이 비어 있으면 아직 조준되지 않은 것」이라는 판정은 **여기 지식**이다 —
+        // 템플릿의 이동 바인딩과 direction 을 봐야 안다. 도메인은 결론만 받는다.
+        //
+        // ⚠ 이 함수와 아래 `EmitPattern` 드레인은 **같은 술어**(`NeedsAim`)를 쓴다.
+        // 둘이 갈리면 도메인이 조준해 보낸 값을 어댑터가 버리거나(무방향 탄),
+        // 조준이 실린 템플릿을 host 현재 위치로 덮는다(무타겟 방향 패턴이 깨진다).
+        public PatternAimNeed AimNeedOfPattern(SkillEntityId host, int patternIndex)
+        {
+            if (!TryPattern(Resolve(host), patternIndex, out var pat)) return PatternAimNeed.Missing;
+            return NeedsAim(pat.template) ? PatternAimNeed.NeedsAim : PatternAimNeed.Preaimed;
+        }
+
+        private bool TryPattern(Entity e, int patternIndex,
+                                out Wassup.Battle.Combat.Projectile.Emission.PatternSlot pat)
+        {
+            pat = default;
+            if (e == Entity.Null || patternIndex < 0) return false;
+            if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(e)) return false;
+            if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(e)) return false;
+            var pats = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(e);
+            if (patternIndex >= pats.Length) return false;
+            pat = pats[patternIndex];
+            return true;
+        }
+
+        // 아직 조준되지 않은 방향 바인딩 템플릿인가. **저작은 origin·direction·maxDistance 를
+        // 하나도 채우지 않는다** — 그래서 «방향이 비어 있다» 가 그 표식으로 성립한다.
+        // 방향 스냅샷을 미리 실어 보내는 소비자(무타겟 방향 패턴)는 여기서 false 가 되어
+        // 템플릿을 지킨다.
+        private static bool NeedsAim(in Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest t)
+            => math.lengthsq(t.direction) < SkillAim.AimEpsilonSq
+               && Wassup.Battle.Combat.Projectile.Emission.MovementBinding.Of(t.movement)
+                  == Wassup.Battle.Combat.Projectile.Emission.BindingClass.Direction;
 
         // ── 의도 ────────────────────────────────────────────────────
         public void Emit(in SimIntent intent)
@@ -430,6 +482,50 @@ namespace Wassup.Battle.Skills
                         UnityEngine.Debug.LogWarning(
                             "[Skill] 착지점 해석 실패로 발동 skip — 상대 진영 앵커가 없거나 " +
                             "밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
+                    return;
+                }
+                case SimIntentKind.EmitPattern:
+                {
+                    // ⚠ **성사와 카운터 전진은 여기서 원자다.** 전진(`fireCountBase`)과
+                    // 인스턴스 추가가 같은 `if` 안에 있고 그 사이에 실패할 수 있는 것이
+                    // 하나도 없다. 도메인은 「쏜다」만 말하고, 「쏘지 않는다」는 의도를
+                    // 아예 안 보내는 것으로 말한다 — 그래서 「전진했는데 안 쏨」도
+                    // 「쐈는데 전진 안 함」도 표현이 불가능하다.
+                    var host = Resolve(intent.Source);
+                    if (!TryPattern(host, intent.PatternIndex, out var pat)) return;
+
+                    // spec/template 을 **값으로 복사**한다 — 발사 도중 무엇이 바뀌어도
+                    // 이미 시작된 버스트는 불변이다.
+                    var template = pat.template;
+                    if (NeedsAim(template))
+                    {
+                        // 도메인이 정한 조준. `damage` 는 채우지 않는다 — emitter 가
+                        // 명령값(패턴 SO)으로 항상 덮는다.
+                        template.origin = intent.Position;
+                        template.direction = intent.DirectionXZ;
+                        // 사거리는 tile → world 변환이 **여기서** 일어난다. 도메인은
+                        // 타일 수만 알고 tileSize 를 모른다.
+                        template.maxDistance = intent.TileRange * _tileSize;
+                    }
+
+                    var inst = new Wassup.Battle.Combat.Projectile.Emission.EmitterInstance
+                    {
+                        spec = pat.spec,
+                        template = template,
+                        lockedTarget = Entity.Null,
+                    };
+                    Wassup.Battle.Combat.Projectile.Emission.EmitterTick.Begin(
+                        ref inst.runtime, inst.spec, pat.fireCountBase);
+
+                    // 영속시켜야 하는 것은 카운터 하나뿐이고, 그것만 durable 소유자
+                    // (PatternSlot)에 남아 다음 발화가 이어받는다 — 안 그러면 선택
+                    // 규칙이 고정된다.
+                    pat.fireCountBase += pat.spec.shots.Length;
+                    var slots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(host);
+                    slots[intent.PatternIndex] = pat;
+                    var instances =
+                        _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(host);
+                    instances.Add(inst);
                     return;
                 }
                 case SimIntentKind.Blink:

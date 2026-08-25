@@ -23,7 +23,17 @@ namespace Wassup.Tests.EditMode
             public float Health = 100f, MaxHealth = 100f;
             public float AttackRange, AttackTargetCount;
             public byte TraversalLayers;
-            public bool Dead, Pending;
+            // 공격 층 마스크(=이 유닛이 때릴 수 있는 층). `TraversalLayers`(다니는 층)와
+            // **다른 축**이다 — 겸직시키면 「지상 유닛은 지상만 때린다」가 우연히 성립해
+            // 게이트 결함이 안 보인다.
+            public byte AttackTraversalLayers = 0xFF;
+            public bool Dead, Pending, InUltimateLeap;
+            // 부재를 표현할 수 있어야 한다 — `Position()` 은 없는 자리를 0 으로 접기 때문에,
+            // 「위치를 모르면 조준도 못 한다」 규칙을 이 축 없이는 시험할 수 없다.
+            public bool HasPosition = true;
+            // 조준. 없으면 최근접 폴백으로 흐른다.
+            public bool HasFacing;
+            public float2 Facing;
             // 실드 축 — 기본 true 다. 실제 유닛은 대부분 버퍼를 갖고, false 가 기본이면
             // 테스트가 조용히 vacuous 해진다(모든 대상이 건너뛰어진다).
             public bool HasShield = true;
@@ -50,7 +60,12 @@ namespace Wassup.Tests.EditMode
         public int2 CellOf(SkillEntityId id) => CellOfPosition(Position(id));
         public int2 CellOfPosition(float3 w) => new int2((int)math.floor(w.x / TileSize), (int)math.floor(w.z / TileSize));
         public float3 CellCenter(int2 c) => new float3((c.x + 0.5f) * TileSize, 0f, (c.y + 0.5f) * TileSize);
-        public bool TryFacing(SkillEntityId id, out float2 dirXZ) { dirXZ = default; return false; }
+        public bool TryFacing(SkillEntityId id, out float2 dirXZ)
+        {
+            var u = Get(id);
+            dirXZ = u != null && u.HasFacing ? u.Facing : default;
+            return u != null && u.HasFacing;
+        }
 
         public Faction FactionOf(SkillEntityId id) => Get(id)?.Faction ?? Faction.None;
         public float Health(SkillEntityId id) => Get(id)?.Health ?? 0f;
@@ -84,6 +99,8 @@ namespace Wassup.Tests.EditMode
                 case UnitPredicate.Alive: return !u.Dead;
                 case UnitPredicate.PendingDeployment: return u.Pending;
                 case UnitPredicate.HasShieldBuffer: return u.HasShield;
+                case UnitPredicate.InUltimateLeap: return u.InUltimateLeap;
+                case UnitPredicate.HasPosition: return u.HasPosition;
                 default: return false;
             }
         }
@@ -113,6 +130,15 @@ namespace Wassup.Tests.EditMode
                 if ((filter & CandidateFilter.ExcludeSelf) != 0 && id == caster.Unit.Value) continue;
                 if ((filter & CandidateFilter.ExcludeDead) != 0 && u.Dead) continue;
                 if ((filter & CandidateFilter.ExcludePendingDeployment) != 0 && u.Pending) continue;
+                if ((filter & CandidateFilter.ExcludeInUltimateLeap) != 0 && u.InUltimateLeap) continue;
+                // ⚠ 어댑터가 거르는 것을 이 페이크도 거른다. 한쪽만 걸면 도메인 테스트가
+                // 초록인데 라이브에서 «못 때리는 층» 이 총구를 가져간다.
+                if ((filter & CandidateFilter.MatchTraversalLayers) != 0)
+                {
+                    var host = Get(caster.Unit);
+                    byte hostLayers = host?.AttackTraversalLayers ?? (byte)0;
+                    if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, u.TraversalLayers)) continue;
+                }
 
                 bool inRange;
                 if (metric == RangeMetric.Chebyshev)
@@ -134,6 +160,12 @@ namespace Wassup.Tests.EditMode
         public bool TryDensestOpponentCluster(CasterRef c, int r, out int2 cell, out int count)
         { cell = default; count = 0; return false; }
         public bool TryLandingCellNear(int2 d, int maxRing, out int2 cell) { cell = default; return false; }
+
+        // 발사 명세. 테스트가 답을 직접 정한다 — 도메인은 결론만 쓰기 때문에
+        // 페이크가 템플릿을 흉내낼 이유가 없다.
+        public readonly Dictionary<int, PatternAimNeed> PatternAim = new Dictionary<int, PatternAimNeed>();
+        public PatternAimNeed AimNeedOfPattern(SkillEntityId host, int patternIndex)
+            => PatternAim.TryGetValue(patternIndex, out var v) ? v : PatternAimNeed.Missing;
 
         public void Emit(in SimIntent intent) => SimIntents.Add(intent);
         public void Emit(in MetaIntent intent) => MetaIntents.Add(intent);

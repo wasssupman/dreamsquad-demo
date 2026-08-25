@@ -108,6 +108,7 @@ namespace Wassup.Battle.Skills
                 SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true),
                 SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true),
                 SystemAPI.GetComponentLookup<Health>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PathFollowState>(isReadOnly: true),
                 TileSize, GridSize, Origin);
 
             // ⚠ 풀을 **프레임당 한 번** 짓는다. fire 당 재구축하면 발동이 몰리는 프레임에
@@ -173,7 +174,8 @@ namespace Wassup.Battle.Skills
                 var p = new SkillParams(
                     evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
                     evt.Selector, evt.Speed, evt.HitThreshold,
-                    evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale);
+                    evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale,
+                    evt.PatternIndex);
 
                 // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
                 // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.
@@ -233,9 +235,20 @@ namespace Wassup.Battle.Skills
                 em.HasComponent<AttackUnitTag>(caster),
                 em.HasComponent<DefenderUnitTag>(caster));
 
-            int id = em.HasComponent<SimEntityId>(caster)
-                ? em.GetComponentData<SimEntityId>(caster).value
-                : SimEntityId.Unassigned;
+            // ⚠ **미발급 ID 는 스킬을 통째로 무력화한다.** 어댑터의 핸들 역변환이
+            // `SimEntityId` 로 풀을 스캔하기 때문에, 이게 없는 캐스터는 자기 자신도
+            // 못 찾는다 — 모든 질의가 빈손이고 모든 스킬이 **조용한 no-op** 이 된다.
+            // 이 침묵을 실제로 한 번 겪었다(발사 명세 그물이 「감지도 되고 concrete 도
+            // 불렸는데 캐리어 0」). 그러니 소리를 낸다.
+            bool hasId = em.HasComponent<SimEntityId>(caster);
+            int id = hasId ? em.GetComponentData<SimEntityId>(caster).value
+                           : SimEntityId.Unassigned;
+            if (!hasId || id == SimEntityId.Unassigned)
+            {
+                UnityEngine.Debug.LogWarning(
+                    "[SkillDispatch] 캐스터에 SimEntityId 가 없다 — 이 시전자는 스킬 레이어에서 " +
+                    "자기 자신도 못 찾는다(모든 질의가 빈손). 스폰 지점의 ID 발급을 확인하라.");
+            }
 
             return CasterRef.OfUnit(new SkillEntityId(id), faction);
         }

@@ -78,6 +78,15 @@
   카드·실드파열=legacy arm 이 **동시에 라이브**다. unit 8 철거 전까지 이 payload 들의 동작을
   고치려면 **반드시 양쪽에** 해야 한다. 파리티 테스트는 `SkillMath` 층만 고정하고 arm 로직
   층은 특성화 그물에 의존한다.
+- ⚠ **unit 8 전제 — 카드 bake 는 `skillId` 를 거의 굽지 않는다.** 지금 카드 경로가 여는 것은
+  `EmitProjectilePattern` 하나뿐이고(그 arm 이 이미 은퇴해서 열 수밖에 없었다), 나머지는
+  전부 `LegacyArmId` 로 굽힌다. **그 상태로 arm 을 철거하면 라이브 카드 8장이 조용히 죽는다**
+  (`SelfTileAoe` 7 · `AreaSleep` 1 — 2026-08-25 에셋 실측). 철거 전에 카드 bake 를 전면
+  개방하는 unit 이 반드시 앞서야 한다.
+- ⚠ **`SimEntityId` 없는 시전자 = 스킬 레이어 전면 침묵.** 어댑터의 핸들 역변환이 그 값으로
+  풀을 스캔하므로, 없으면 시전자가 자기 자신도 못 찾고 모든 질의가 빈손이 된다. 감지도 되고
+  concrete 도 불리기 때문에 `ExecutedCount` 로도 안 보인다. `BuildCaster` 가 loud warn 을
+  내지만, **스폰 지점의 ID 발급 범위가 스킬 보유 아키타입을 전부 덮는지**는 별도 확인이 필요하다.
 - **`order-capture.md` 에 디스패처 3계가 미등재**다(`battle-sim-extraction`). 다음 재캡처 때
   포함해야 「생산자 위치」 박제가 실제와 맞는다.
 - **후보 상한 64 는 「가까운 64」가 아니라 「풀 순서 선착 64」**다(legacy `AuraPulse` 는 무상한).

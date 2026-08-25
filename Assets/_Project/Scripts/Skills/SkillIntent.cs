@@ -74,7 +74,10 @@ namespace Wassup.Skills
         public int TileRange;
         public int Count;              // 스택 수·발사 수·대상 상한
 
-        public int DataIndex;          // 탄·해저드·패턴 index. **−1 = 없음**(0 은 유효)
+        public int DataIndex;          // 탄·해저드 에셋 index. **−1 = 없음**(0 은 유효)
+        // 발사 명세 슬롯 index. `DataIndex` 와 **겸직시키지 않는다** — 그쪽은 전역
+        // 에셋 표를 가리키고 이쪽은 host 자기 버퍼(`PatternSlot`)의 자리다. −1 = 없음.
+        public int PatternIndex;
         public int StackId;            // ⚠ ApplyStatModifier 의 병합 키 일부(아래)
         public int Selector;           // stat/cc/stack kind — 어댑터가 도메인 enum 으로 번역
         public float HitThreshold;     // 탄 피격 반경 · 연출 배율 등 kind 별 보조 스칼라

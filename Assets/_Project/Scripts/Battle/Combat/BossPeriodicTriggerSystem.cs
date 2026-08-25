@@ -84,8 +84,6 @@ namespace Wassup.Battle.Combat
             NativeQueue<ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
             // projectile-emission-pattern unit 3 — 패턴 push seam. arm 이 하는 일은
             // 인스턴스 하나를 host 버퍼에 넣는 것뿐이고, 발사 전개는 emitter 소유다.
-            var patternLookup = SystemAPI.GetBufferLookup<Projectile.Emission.PatternSlot>(isReadOnly: false);
-            var instanceLookup = SystemAPI.GetBufferLookup<Projectile.Emission.EmitterInstance>(isReadOnly: false);
 
             // boss-mamemo unit 1 — 자장가(AreaSleep) seam. 수면은 대상 진영이 반대일 뿐
             // 부여 경로는 기존 CC 파이프라인 그대로다 — CcApplySystem 에 대상 진영 게이트가
@@ -196,6 +194,7 @@ namespace Wassup.Battle.Combat
                                     SlamTileRange = slot.slamTileRange,
                                     StackId = slot.statBuffStackId,
                                     VisualScale = slot.visualScale,
+                                    PatternIndex = slot.patternIndex,
                                 });
                             }
                         }
@@ -465,177 +464,15 @@ namespace Wassup.Battle.Combat
                                 }
                             }
                         }
-                        else if (slot.payload == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
-                        {
-                            // 발사 명세를 트리거한다. spec/template 을 **값으로 복사**하므로
-                            // 발사 도중 무엇이 바뀌어도 이미 시작된 버스트는 불변이다(계약 8).
-                            // 영속시켜야 하는 것은 발사 카운터 하나뿐이고, 그것만 durable
-                            // 소유자(PatternSlot)에 남아 다음 발화가 이어받는다 —
-                            // 안 그러면 선택 규칙이 고정된다(spec-review C2).
-                            if (slot.patternIndex >= 0
-                                && patternLookup.HasBuffer(entity) && instanceLookup.HasBuffer(entity))
-                            {
-                                var pats = patternLookup[entity];
-                                if (slot.patternIndex < pats.Length)
-                                {
-                                    var pat = pats[slot.patternIndex];
-                                    var template = pat.template;
-
-                                    // on-place-shuttle-shotgun unit 1 — **방향 바인딩 탄은 여기서
-                                    // 조준을 확정해야 한다.** 원점·방향·최대거리는 «발사 시점의 값»
-                                    // 이라 bake 가 템플릿에 채울 수 없고(평타는 AttackSystem 의
-                                    // RESOLVE 가 같은 일을 한다), 안 채우면 방향 (0,0) 인 탄이 나간다.
-                                    // 캐논은 적 조준(SkyFallOnEntity)이라 이 축을 밟지 않았다.
-                                    //
-                                    // ⚠ **이미 조준된 템플릿은 건드리지 않는다.** 이 arm 은 방향
-                                    // 스냅샷을 미리 실어 보내는 소비자와 공유된다(무타겟 방향 패턴 —
-                                    // `ProjectileEmitterIntegrationTests.DirectionPattern_FiresWithoutTargets…`
-                                    // 가 "host 현재 위치로 snapshot 원점을 덮으면 안 된다" 로 고정).
-                                    // 그쪽은 후보가 0이어도 발사한다. 그래서 «방향이 비어 있다» 를
-                                    // 아직 조준되지 않은 템플릿의 표식으로 쓴다 — 유닛 능력 bake 는
-                                    // origin·direction·maxDistance 를 하나도 채우지 않는다.
-                                    bool fire = true;
-                                    bool needsAim = math.lengthsq(template.direction)
-                                                    < Projectile.Emission.OnPlaceFireAim.AimEpsilonSq
-                                        && Projectile.Emission.MovementBinding.Of(template.movement)
-                                            == Projectile.Emission.BindingClass.Direction;
-                                    // ⚠ 위치를 모르면 **조준도 못 하므로 쏘지 않는다.** 이 조건을
-                                    // 위 `if` 에 AND 로 매달면 위치 없는 host 가 조준 단계를 통째로
-                                    // 건너뛰고 방향 (0,0) 탄을 내보낸다 — 이 unit 이 없애려던 바로
-                                    // 그 증상이다(리뷰 L2). 오늘 모든 방어유닛이 LocalTransform 을
-                                    // 갖지만, 가드는 우연이 아니라 규칙으로 닫는다.
-                                    if (needsAim && !SystemAPI.HasComponent<LocalTransform>(entity))
-                                        fire = false;
-                                    else if (needsAim)
-                                    {
-                                        float3 hostPos3 = SystemAPI.GetComponent<LocalTransform>(entity).Position;
-                                        float2 hostXZ = new float2(hostPos3.x, hostPos3.z);
-
-                                        // 조준은 Units 소유(`DeployedFacing`, 배치 확정 1회 기록 후
-                                        // 불변) — Combat 은 **읽기만** 한다. **퇴화(값 0)는 조준이
-                                        // 아니다** — 여기서 함께 판정해야 순수 함수의 «조준 없음 →
-                                        // 최근접» 폴백이 실제로 도달 가능해진다(리뷰 M3: 컴포넌트
-                                        // 유무만 보면 후보 배열이 비어 폴백이 취소로 흐른다).
-                                        float2 aim = float2.zero;
-                                        if (SystemAPI.HasComponent<Wassup.Battle.Units.DeployedFacing>(entity))
-                                        {
-                                            var f = SystemAPI.GetComponent<Wassup.Battle.Units.DeployedFacing>(entity).value;
-                                            aim = new float2(f.x, f.y);
-                                        }
-                                        bool hasAim = math.lengthsq(aim) > Projectile.Emission.OnPlaceFireAim.AimEpsilonSq;
-
-                                        // 조준이 없을 때만 후보를 본다 — 조준이 방향을 이미 정했으면
-                                        // 풀을 만들 이유가 없다(지연 빌드 플래그는 arm 들이 공유).
-                                        var aimCandidates = new NativeArray<float2>(0, Allocator.Temp);
-                                        int candidateCount = 0;
-                                        if (!hasAim)
-                                        {
-                                            // ⚠ **후보 풀은 진영을 본다**(리뷰 H1). 형제 arm 셋이 전부
-                                            // host 진영으로 풀을 가르는데 여기만 «적 풀» 로 고정하면,
-                                            // 보스가 방향 탄을 쓰는 날 **자기편 중 최근접**을 조준하고
-                                            // 탄의 targetFaction(=Defender)과 갈린다. 보스는 이미 이 arm 을
-                                            // 타고 있고(지금은 barrel 이 Direction 이 아닐 뿐이다).
-                                            // unit 2b — 조준 후보는 «상대 진영» 이다.
-                                            var aimWanted = Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(
-                                                Wassup.Battle.Units.FactionQuery.Of(
-                                                    entity, in factionLookup, in enemyTagLookup, in defTagLookup));
-                                            // ⚠ **진영 미상이면 후보를 하나도 모으지 않는다.**
-                                            // 이항 bool 하나로 접으면 None 이 한쪽으로 접혀 «미상 host 가
-                                            // 늘 한쪽을 조준하는» 조용한 오폭이 된다(투트랙 리뷰 M1/M2 —
-                                            // 내가 상대화하면서 폴백 방향을 뒤집었다). 형제 arm 셋도
-                                            // `useEnemyPool || useDefPool` 로 같은 가드를 쓴다.
-                                            // 후보 0 이면 아래 `TryResolve` 가 false 를 내 자연히 불발된다.
-                                            if (aimWanted != Wassup.Battle.Units.Faction.None)
-                                            {
-                                            bool aimEnemyPool = aimWanted == Wassup.Battle.Units.Faction.EnemyUnit;
-                                            if (!aimEnemyPool && !defEntitiesBuilt)
-                                            {
-                                                defEntities = defQuery.ToEntityArray(Allocator.Temp);
-                                                defEntitiesBuilt = true;
-                                            }
-                                            if (aimEnemyPool && !enemyPoolBuilt)
-                                            {
-                                                BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
-                                                enemyPoolBuilt = true;
-                                            }
-                                            var poolEntities = aimEnemyPool ? enemyEntities : defEntities;
-                                            var poolCells = aimEnemyPool ? enemyCells : defCells;
-                                            var poolTransforms = aimEnemyPool ? enemyTransformsPool : defTransforms;
-
-                                            // ⚠ 공유 풀에는 **필터가 하나도 없다**. 안 거르면 시체나
-                                            // «내가 못 때리는 층» 의 후보가 총구를 가져가고, 그 탄은
-                                            // 통행 층 게이트에 막혀 아무도 못 맞힌다. 도발 arm 과 같은 게이트다.
-                                            int2 hostCell = GridMath.WorldToCell(hostPos3, ff.tileSize, ff.gridSize, origin: ff.origin);
-                                            AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
-                                            byte hostLayers = SystemAPI.HasComponent<AttackState>(entity)
-                                                ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
-                                                : (byte)0;
-                                            // ⚠ **탄이 닿는 거리로 한 번 더 거른다**(리뷰 M1). 위 선별기는
-                                            // 셀 체비셰프이고 탄 사거리는 월드 유클리드라, 대각선 끝 칸의
-                                            // 적은 «후보» 이면서 사거리 밖이다(3칸 → 실거리 4.24 > 3.0).
-                                            // 그 적이 유일 후보면 조준은 성립하고 탄은 도중에 소멸해
-                                            // **발사 연출만 나가고 아무도 안 맞는다** — 이 unit 이
-                                            // 없애려던 조용한 no-op 그 자체다. 두 자를 같은 자로 맞춘다.
-                                            float maxDist = slot.tileRange * ff.tileSize;
-                                            float maxDistSq = maxDist * maxDist;
-                                            aimCandidates.Dispose();
-                                            aimCandidates = new NativeArray<float2>(pulseTargets.Length, Allocator.Temp);
-                                            for (int ti = 0; ti < pulseTargets.Length; ti++)
-                                            {
-                                                var cand = poolEntities[pulseTargets[ti]];
-                                                if (SystemAPI.HasComponent<Wassup.Battle.Units.DeadTag>(cand)) continue;
-                                                if (SystemAPI.HasComponent<UltimateLeapState>(cand)) continue;
-                                                byte candLayers = pathFollowLookup.HasComponent(cand)
-                                                    ? pathFollowLookup[cand].traversalLayers
-                                                    : (byte)0;
-                                                if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, candLayers))
-                                                    continue;
-                                                var p = poolTransforms[pulseTargets[ti]].Position;
-                                                float2 candXZ = new float2(p.x, p.z);
-                                                if (math.distancesq(candXZ, hostXZ) > maxDistSq) continue;
-                                                aimCandidates[candidateCount++] = candXZ;
-                                            }
-                                            }   // 진영 미상 가드
-                                        }
-
-                                        fire = Projectile.Emission.OnPlaceFireAim.TryResolve(
-                                            hostXZ, hasAim, aim,
-                                            aimCandidates.GetSubArray(0, candidateCount),
-                                            out float2 dir, out _);
-                                        if (fire)
-                                        {
-                                            template.origin = hostPos3;
-                                            template.direction = dir;
-                                            // 사거리는 payload 저작값 — 평타(`tileRange * tileSize`)와
-                                            // 같은 월드 단위다. `damage` 는 채우지 않는다: emitter 가
-                                            // 명령값(`order.damage` = 패턴 SO)으로 항상 덮는다.
-                                            template.maxDistance = slot.tileRange * ff.tileSize;
-                                        }
-                                        aimCandidates.Dispose();
-                                    }
-
-                                    // 조준도 합법 후보도 없으면 **발사하지 않는다** — 방향 (0,0) 인
-                                    // 탄을 내보내는 대신 사건을 없던 것으로 한다. 발사 카운터도
-                                    // 전진시키지 않아 다음 발동이 같은 위상에서 시작한다.
-                                    // ⚠ `break`/`continue` 로 빠져나가지 말 것: 이 루프 끝의
-                                    // `slots[si] = slot` write-back(트리거 상태 영속)을 건너뛰고
-                                    // 뒤 슬롯도 통째로 잃는다.
-                                    if (fire)
-                                    {
-                                        var inst = new Projectile.Emission.EmitterInstance
-                                        {
-                                            spec = pat.spec,
-                                            template = template,
-                                            lockedTarget = Entity.Null,
-                                        };
-                                        Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
-                                        pat.fireCountBase += pat.spec.shots.Length;
-                                        pats[slot.patternIndex] = pat;
-                                        instanceLookup[entity].Add(inst);
-                                    }
-                                }
-                            }
-                        }
+                        // skill-layer-migration unit 1 — `EmitProjectilePattern` arm 은
+                        // **여기서 은퇴했다.** 규칙은 `Wassup.Skills.Concrete.EmitPatternSkill`
+                        // 이 소유하고, 조준은 도메인이 확정한다.
+                        //
+                        // ⚠ 이 payload 만 arm 을 먼저 지우는 이유: 조준 규칙(`SkillAim`)이
+                        // 도메인 어셈블리로 이사했고 이 시스템은 `[BurstCompile]` 이라 그
+                        // managed 규칙을 부를 수 없다. 규칙을 두 벌로 두는 것보다 arm 을
+                        // 먼저 지우는 쪽이 옳다 — 두 벌이 되면 한쪽만 고쳐지는 날이 온다.
+                        // 그래서 **카드 bake 도 이 payload 만 함께 라우팅한다**(BattleBridge).
                         else if (slot.payload == Wassup.Data.DcPayloadKind.AreaTaunt)
                         {
                             // on-place-skill-rework unit 4 — 범위 도발. host 반경 안 적 전원을

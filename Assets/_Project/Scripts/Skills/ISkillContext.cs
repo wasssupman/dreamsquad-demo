@@ -40,6 +40,25 @@ namespace Wassup.Skills
         HasAggroCapacity,   // 가디언 표식 — 도발 캐스터 자격
         IsPathFollowing,
         CanReceiveDamage,
+        // 자리를 아는가. `Position()` 은 부재를 0 으로 접기 때문에 **조준하는 스킬은
+        // 이걸 먼저 물어야 한다** — 위치를 모르면 조준도 못 하므로 발사 자체를 취소한다.
+        // 조용히 (0,0) 방향 탄이 나가는 것이 이 축의 원래 증상이었다.
+        HasPosition,
+    }
+
+    // 발사 명세(패턴)가 조준을 필요로 하는가. skill-layer-migration unit 1.
+    //
+    // 「방향이 비어 있으면 아직 조준되지 않은 것」이라는 판정은 **어댑터 쪽 지식**이다
+    // (템플릿의 이동 바인딩과 direction 을 봐야 안다). 도메인은 결론만 받는다.
+    public enum PatternAimNeed : byte
+    {
+        // 그런 패턴이 없다 — 슬롯 index 가 음수이거나 버퍼가 없거나 범위 밖.
+        // **발사도 카운터 전진도 없다.**
+        Missing = 0,
+        // 저작/호출처가 이미 조준을 실어 보냈다. 템플릿을 건드리지 않고 그대로 쏜다.
+        Preaimed,
+        // 방향 바인딩인데 방향이 비어 있다 — **이 스킬이 방향을 정해야 한다.**
+        NeedsAim,
     }
 
     // `Stat(id, kind)` 의 축.
@@ -84,6 +103,10 @@ namespace Wassup.Skills
         // 어댑터는 배열을 넘겨주기만 한다 — 그래서 이 둘이 포트를 넘을 수 있다.
         bool TryDensestOpponentCluster(CasterRef caster, int densityRadius, out int2 cell, out int count);
         bool TryLandingCellNear(int2 desired, int maxRing, out int2 cell);
+
+        // ── 질의: 발사 명세 ─────────────────────────────────────────
+        // 도메인은 탄 템플릿도 이동 바인딩도 모른다. 아는 것은 「내가 조준해야 하나」뿐.
+        PatternAimNeed AimNeedOfPattern(SkillEntityId host, int patternIndex);
 
         // ── 의도 ────────────────────────────────────────────────────
         void Emit(in SimIntent intent);

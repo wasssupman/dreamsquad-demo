@@ -36,10 +36,15 @@ namespace Wassup.Battle.Skills
 
     // ① 주기 감지 뒤 — 채찍질·자장가·가호·발사 명세.
     //    하류: ProjectileEmitter(패턴 같은 프레임) · ModifierApply · AggroState.
+    // ⚠ **발사 명세는 같은 프레임에 나가야 한다.** `ProjectileEmitterSystem` 이
+    // 스테이징된 `EmitterInstance` 를 보기 전에 seam 이 돌아야 한다 — 순서를 안 박으면
+    // 정렬이 빌드마다 달라져 1프레임 지연이 오락가락한다(은퇴한 arm 이 같은 계약을
+    // 갖고 있었다). 세 seam 전부에 거는 이유: 어느 트리거가 패턴을 쏘든 같아야 한다.
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Combat.BossPeriodicTriggerSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Effects.ModifierApplySystem))]
     [UpdateBefore(typeof(Wassup.Battle.Effects.AggroStateSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.Projectile.Emission.ProjectileEmitterSystem))]
     public partial class SkillDispatchPeriodicSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Periodic;
@@ -50,6 +55,7 @@ namespace Wassup.Battle.Skills
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Combat.AttackSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Units.DamageApplicationSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.Projectile.Emission.ProjectileEmitterSystem))]
     public partial class SkillDispatchAttackSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Attack;
@@ -63,6 +69,7 @@ namespace Wassup.Battle.Skills
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Combat.HealthThresholdSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Combat.UltimateLeapSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.Projectile.Emission.ProjectileEmitterSystem))]
     public partial class SkillDispatchThresholdSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Threshold;

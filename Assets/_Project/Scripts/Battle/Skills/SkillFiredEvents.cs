@@ -43,6 +43,9 @@ namespace Wassup.Battle.Skills
         public int SlamTileRange;
         public int StackId;
         public float VisualScale;
+        // 발사 명세 슬롯 index. `DataIndex`(전역 에셋 표)와 **다른 축**이다 —
+        // 이쪽은 host 자기 `PatternSlot` 버퍼의 자리다. −1 = 없음.
+        public int PatternIndex;
     }
 
     // 채널 수명주기는 `BattleBridge` 소유다 — 생성 Persistent / 싱글턴 파괴 / Dispose
