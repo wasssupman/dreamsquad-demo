@@ -51,7 +51,22 @@ namespace Wassup.Battle.Skills
         //
         // 테스트는 이 값으로 「concrete 가 진짜 불렸나」를 단언한다.
         public static int ExecutedCount { get; private set; }
-        public static void ResetExecutedCount() => ExecutedCount = 0;
+
+        // ⚠ **seam 별로 따로 센다**(투트랙 리뷰 잔여 리스크). 합계만 있으면 「하나라도
+        // 불렸다」밖에 못 말하고, 라우팅이 **한 seam 에서만** 끊긴 상태가 그대로 초록이 된다 —
+        // `7f902e55` 가 잡은 실패 유형의 나머지 절반이 정확히 그것이다.
+        // 주기 seam 만 실주행하는 그물로는 경계 seam 의 이전 여부를 알 수 없다.
+        private static readonly int[] _perSeam = new int[(int)SkillSeam.Count];
+        public static int ExecutedCountOf(SkillSeam seam) => _perSeam[(int)seam];
+
+        public static void ResetExecutedCount()
+        {
+            ExecutedCount = 0;
+            for (int i = 0; i < _perSeam.Length; i++) _perSeam[i] = 0;
+        }
+
+        // 파생이 자기 자리를 선언한다.
+        protected abstract SkillSeam Seam { get; }
 
         public static void Uninstall()
         {
@@ -171,6 +186,7 @@ namespace Wassup.Battle.Skills
                 {
                     skill.Execute(caster, in target, in p, _context);
                     ExecutedCount++;
+                    _perSeam[(int)Seam]++;
                 }
                 catch (System.Exception e)
                 {
