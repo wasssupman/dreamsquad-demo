@@ -43,10 +43,10 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
 
             // 적은 **북쪽**에만 있다. 남쪽 고정 코드는 여기서 반드시 0을 낸다.
-            var north = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
+            var north = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
-            yield return Frames(10);
+            yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(north).value;
             em.DestroyEntity(north);
@@ -85,18 +85,18 @@ namespace Wassup.Tests.PlayMode
                 var cell = cells[i];
                 var facing = facings[i];
                 // 조준 방향 3칸 앞 = 맞아야 하는 적.
-                var aimed = SpawnDummy(em, bridge.GridToWorldCenterVector(
+                var aimed = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(
                     new Vector2Int(cell.x + facing.x * 3, cell.y + facing.y * 3)));
                 // 조준과 **직교** 1칸 = 더 가깝지만 맞으면 안 되는 적. 이 대조군이 없으면
                 // 「조준을 무시하고 최근접 적만 쓰는」 구현도 4방향 전부 통과한다.
-                var offAxis = SpawnDummy(em, bridge.GridToWorldCenterVector(
+                var offAxis = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(
                     new Vector2Int(cell.x + facing.y, cell.y + facing.x)));
 
                 Entity entity;
                 Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, unit, out entity),
                     $"begin deployment {cell}");
                 bridge.ActivateDeployedDefender(cell, entity, facing);
-                yield return Frames(10);
+                yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
                 float aimedDealt = Hp - em.GetComponentData<Health>(aimed).value;
                 float offAxisDealt = Hp - em.GetComponentData<Health>(offAxis).value;
@@ -131,12 +131,12 @@ namespace Wassup.Tests.PlayMode
             // 전방(북) 3칸 · 옆으로 0.55칸.
             var basePos = bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 3));
             var offset = new Vector3(bridge.TileSize * 0.55f, 0f, 0f);
-            var skewed = SpawnDummy(em, basePos + offset);
+            var skewed = SpawnDummy(em, bridge, basePos + offset);
 
             Entity entity;
             Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, unit, out entity), "begin deployment");
             bridge.ActivateDeployedDefender(cell, entity, new Vector2Int(0, 1)); // 북쪽 조준
-            yield return Frames(10);
+            yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(skewed).value;
             em.DestroyEntity(skewed);
@@ -164,13 +164,13 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
 
             // 판 밖(도약 예고) 적이 **더 가깝다**. remaining 을 길게 줘 테스트 동안 착지하지 않게.
-            var outOfPlay = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
+            var outOfPlay = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
             em.AddComponentData(outOfPlay, new Wassup.Battle.Combat.UltimateLeapState { remaining = 60f });
             // 진짜 적은 더 멀고 다른 방향.
-            var real = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 4, cell.y)));
+            var real = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 4, cell.y)));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
-            yield return Frames(10);
+            yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float realDealt = Hp - em.GetComponentData<Health>(real).value;
             em.DestroyEntity(outOfPlay);
@@ -198,10 +198,10 @@ namespace Wassup.Tests.PlayMode
 
             // onPlaceRange(6)보다 훨씬 멀다.
             int far = (int)unit.onPlaceRange + 6;
-            var beyond = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + far)));
+            var beyond = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + far)));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
-            yield return Frames(10);
+            yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(beyond).value;
             em.DestroyEntity(beyond);
@@ -233,20 +233,44 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;
             unit.cost = 0;
             unit.maxOnBoard = 100; // 판 위 동시 상한(기본 1)에 조준 4방향 검사가 막힌다
-            Assert.AreEqual(OnPlaceEffectType.ForwardProjectile, unit.onPlaceEffect,
-                catalogId + " 의 배치 스킬이 ForwardProjectile 이어야 한다");
+            // skill-layer-migration unit 2f — **밸런스 변경을 동반한 이전**이다.
+            // 레거시는 탄을 안 쐈다: 폭 1.2타일 통로를 훑어 즉발 피해를 줬다. 지금은
+            // 진짜 관통탄이 날아간다(사용자 결정 2026-08-26 — 「(a) 총알로 바꾼다」).
+            // 그래서 이 그물의 **거리·방향 단언은 그대로**이고, 「즉발」만 창으로 바뀐다.
+            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 두 경로가 동시에 돈다");
+            var shotSpec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(shotSpec, "배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.EmitProjectilePattern, shotSpec.Value.kind,
+                "페이로드 = 발사 명세");
+            Assert.IsNotNull(shotSpec.Value.pattern, "패턴 미배선");
+            Assert.IsNotNull(shotSpec.Value.pattern.barrel, "배럴 미배선");
+            Assert.AreEqual(ProjectileFlightMode.Directional, shotSpec.Value.pattern.barrel.flightMode,
+                "앞으로 쏘는 축이 아니면 조준이 안 걸려 레거시의 「전방」이 사라진다");
             return unit;
         }
 
+        // ⚠ **`StartBattle()` 가 이 그물의 조건이 됐다**(unit 2f). 레거시는 통로를 훑어
+        // `IncomingDamage` 를 직접 넣어 전투 상태가 필요 없었지만, 지금은 진짜 탄이 나가고
+        // **투사체 요청 드레인은 `_running` 아래**라 배치 페이즈에 머물면 캐리어가 영원히
+        // 안 풀린다. 이전이 그물의 전제를 바꾼 자리다.
         private static void Prepare(BattleBridge bridge, GameManager gm, DefenderUnitData unit)
         {
             bridge.SetDefenderPool(new[] { unit });
             bridge.BeginPlacement();
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(100000);
+            bridge.StartBattle();
+            BattleBridgeTestAccess.SetField(bridge, "_usingGeneratedWaves", false);
+            ((System.Collections.IList)BattleBridgeTestAccess.Field(bridge, "_pending")).Clear();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            using var attackers = em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>());
+            if (!attackers.IsEmpty)
+                em.RemoveComponent<Wassup.Battle.Combat.AttackState>(attackers);
         }
 
-        private static Entity SpawnDummy(EntityManager em, Vector3 worldPos)
+        private static Entity SpawnDummy(EntityManager em, BattleBridge bridge, Vector3 worldPos)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(worldPos.x, worldPos.y, worldPos.z)));
@@ -255,6 +279,12 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<IncomingDamage>(e);
             em.AddBuffer<CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
+            // 통행 층과 매치 ID — 없으면 층 게이트를 조기 통과하거나 후보에서 빠진다.
+            em.AddComponentData(e, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             return e;
         }
 
