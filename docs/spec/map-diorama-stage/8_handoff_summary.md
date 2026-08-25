@@ -40,6 +40,21 @@ green 실증 — suite 구성이 바뀌면 오염 패턴이 이동) + MovementIn
 
 3차 병합 `277121d8` (main +61: bonus-wave-pull·heart-stress-axis·battle-sim-extraction M0·duel-route-tours(자체 철회) 등). 충돌 7 — 은퇴 파이프라인 위의 main 수정 6건 삭제 유지 + TilemapMapView 의 heart-stress 골 틴트를 `GoalMarker.SetStressTint` 로 이식(렌더러 캐시 승계) · 브리지 `SetGoalStressTint`/`MarkGoalCollapsed` 2곳 마커 재지향. **남는 기능 격차 = `GeneratedMap.bonusSpawns` 스테이지 저작 부재 → unit 9 제안**(스테이지 맵에서 보너스 버튼 미등장, 크래시 없음). dotnet 4어셈블리 0 에러(Ralph csproj 를 글롭 기반으로 전환 — 이후 병합에서 파일 주입 불필요). Unity 검증: 컴파일 0 에러 · EditMode 2506 통과 / 3 실패 — malphite(main 상속) · `LegacyTraceV0Tests.StoredCorpus`(**CRLF 환경**: 골든 코퍼스가 index LF·작업본 CRLF 로 체크아웃되고 파서가 `lines[0]=="LTV0"` 엄격 비교 — main 몫: trim 또는 `.gitattributes eol=lf`) · `DreamcatcherCardAssetTextTests`(boomerang — 테스트·에셋 main 과 바이트 동일 = 상속) · 스모크 Passed. 머지 유발 0.
 
+## US-007 결론 (2026-08-25)
+
+unit 9 트리 풀 PlayMode 178 중 162 통과 / 16 실패. 실패 전수 원인 규명 — **머지·unit 9 유발 0**:
+- **+1.2% 오염의 정체 = 장착 드림스톤 반입.** GameManager 테스트 모드 경로(직접 BattleScene 진입, `GameManager.cs` ~L475)가
+  `StartSquadMatch` 를 미러해 `profileSO.profile.CommittedSquad()` 의 스톤을 `SetDreamstones` 로 반입한다(dreamstone-loadout
+  unit 3 — 제품상 의도). 이 머신의 커밋 스쿼드 = 1.2% 스톤 4개(Stone_016/032/048/064) → 스톤 0 을 가정한 테스트에
+  ×1.012 가 붙는다(PlacementAura 1.012 · DreamcatcherEffect 0.87→0.859 · AttachRequirement 1.10→1.112). profile.json 을
+  비켜도 재현 — `profileSO` 가 에디터 메모리에 프로필을 들고 있어서다. 예전의 «순서 의존»은 프로필/로그인 상태가 런 중
+  언제 채워지느냐의 차이였다. **수선 위치 = 테스트 하네스(main 몫)**: PlayMode 셋업에서 `SetDreamstones(빈)` 또는
+  프로필 픽스처 주입.
+- Auth E2E = dev 서버 닉네임 중복(서버 상태) · DeckInfoPreset = 그 하류 NRE · DragPlacementReach = main 시그니처 미갱신 상속 ·
+  나머지(DragCancelZone·DropDismount·FlyingEnemy·SceneTransition·SlimeSplit·Tween·ExecutionStrike 0.43)는 병합 전 18건에
+  있던 기존 항목 — ExecutionStrike 는 프로필 반입(스쿼드 디펜더/스톤) 의심.
+- `dev_forceMapIndex` PlayerPrefs 가 다시 생겨 있었다(값 0 = 라이브 Duel 이라 이번엔 무해). 스테퍼 사용 후 OFF 습관 필요.
+
 ## Follow-up
 
 - **사용자**: 육안 검증 축 5종(spec 5) · OutgameScene dev 패널 `pool` 수동 배선+저장 · 공성 부재 병합 판단 · push 승인
