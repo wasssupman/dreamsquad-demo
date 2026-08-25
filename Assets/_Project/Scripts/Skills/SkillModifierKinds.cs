@@ -48,5 +48,6 @@ namespace Wassup.Skills
         HitPulse = 0,       // → ProjectileHitEvents (host 위치 1회)
         ShieldGranted = 1,  // → ShieldGrantedEvents (대상 위치, 대상 수만큼)
         LeapArc = 2,        // → BossLeapVisualEvents (출발→도착 아치 + 슬램 타이밍)
+        UltimateAscend = 3, // → UltimateLeapVisualEvents (이탈 상승)
     }
 }

@@ -120,6 +120,8 @@ namespace Wassup.Battle.Skills
             _context.BindBlinkSink(hasBlink ? blS.queue : default, hasBlink);
             bool hasLeapVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.BossLeapVisualEventsSingleton>(out var lvS);
             _context.BindLeapVisualSink(hasLeapVfx ? lvS.queue : default, hasLeapVfx);
+            bool hasUltVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.UltimateLeapVisualEventsSingleton>(out var uvS);
+            _context.BindUltimateVisualSink(hasUltVfx ? uvS.queue : default, hasUltVfx);
             bool hasFf = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ffS);
             _context.BindFlowField(in ffS, hasFf);
 

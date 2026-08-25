@@ -57,6 +57,8 @@ namespace Wassup.Battle.Skills
         private bool _hasBlinkQueue;
         private NativeQueue<Wassup.Battle.Combat.BossLeapVisualEvent> _leapVfxQueue;
         private bool _hasLeapVfxQueue;
+        private NativeQueue<Wassup.Battle.Combat.UltimateLeapVisualEvent> _ultVfxQueue;
+        private bool _hasUltVfxQueue;
 
         // 격자 라우팅 — 착지 질의가 쓴다. 도메인은 이 구조를 모르고 질의로만 만난다.
         private Wassup.Battle.Effects.FlowFieldSingleton _ff;
@@ -122,6 +124,11 @@ namespace Wassup.Battle.Skills
         public void BindLeapVisualSink(NativeQueue<Wassup.Battle.Combat.BossLeapVisualEvent> q, bool has)
         {
             _leapVfxQueue = q; _hasLeapVfxQueue = has;
+        }
+
+        public void BindUltimateVisualSink(NativeQueue<Wassup.Battle.Combat.UltimateLeapVisualEvent> q, bool has)
+        {
+            _ultVfxQueue = q; _hasUltVfxQueue = has;
         }
 
         public void BindFlowField(in Wassup.Battle.Effects.FlowFieldSingleton ff, bool has)
@@ -378,6 +385,50 @@ namespace Wassup.Battle.Skills
                         source = Resolve(intent.Source),
                         amount = intent.Amount,
                     });
+                    return;
+                }
+                case SimIntentKind.BeginUltimateLeap:
+                {
+                    if (!_hasEcb) return;
+                    var e = Resolve(intent.Target);
+                    if (e == Entity.Null) return;
+                    // ⚠ **함께 붙는다.** 잠금(LeapFlight)과 무적(UltimateLeapState)은
+                    // 레이어가 갈리지만 수명이 하나다 — 어느 하나만 붙는 프레임이 있으면
+                    // 잠금 없이 무적이거나 그 반대가 된다. 같은 ECB 라 원자적이다.
+                    _ecb.AddComponent(e, new Wassup.Battle.Combat.UltimateLeapState
+                    {
+                        remaining = math.max(0.01f, intent.Duration),
+                        landingCell = intent.Cell,
+                        landingWorld = intent.Position,
+                        slamDamage = intent.Amount,
+                        slamTileRange = math.max(0, intent.TileRange),
+                        projectileDataIndex = intent.DataIndex,
+                    });
+                    _ecb.AddComponent<Wassup.Battle.Combat.LeapFlight>(e);
+                    return;
+                }
+                case SimIntentKind.PlayVisual
+                    when (SkillVisualKind)intent.Selector == SkillVisualKind.UltimateAscend:
+                {
+                    if (!_hasUltVfxQueue) return;
+                    var e = Resolve(intent.Source);
+                    if (e == Entity.Null) return;
+                    _ultVfxQueue.Enqueue(new Wassup.Battle.Combat.UltimateLeapVisualEvent
+                    {
+                        entity = e,
+                        kind = Wassup.Battle.Combat.UltimateLeapVisualKind.Ascend,
+                        world = intent.Position,
+                        dataIndex = -1,
+                    });
+                    return;
+                }
+                case SimIntentKind.Report:
+                {
+                    // 문장은 여기서 만든다 — 도메인은 코드만 보낸다.
+                    if (intent.Report == SkillReport.NoLandingSpot)
+                        UnityEngine.Debug.LogWarning(
+                            "[Skill] 착지점 해석 실패로 발동 skip — 상대 진영 앵커가 없거나 " +
+                            "밀집 셀 주변 링 안에 갈 수 있는 칸이 없다. 임계는 소모됐고 재시도는 없다.");
                     return;
                 }
                 case SimIntentKind.Blink:

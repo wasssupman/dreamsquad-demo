@@ -9410,6 +9410,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GrantShieldSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfAreaBlastSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BlinkToClusterSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.UltimateLeapSkill());
             }
             Wassup.Battle.Skills.SkillDispatchSystemBase.Install(_skillRegistry, _skillContext);
         }
@@ -9433,6 +9434,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
                 case Wassup.Data.DcPayloadKind.SelfBlink:
                     return Wassup.Skills.Concrete.BlinkToClusterSkill.Id;
+                case Wassup.Data.DcPayloadKind.UltimateLeap:
+                    return Wassup.Skills.Concrete.UltimateLeapSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }

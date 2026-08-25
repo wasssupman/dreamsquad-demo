@@ -33,6 +33,16 @@ namespace Wassup.Skills
         EmitPattern,         // → PatternSlot 전진 + EmitterInstance (⚠ 성사와 원자)
         SpawnZoneCarrier,    // → EffectSpawner (장판·링크·오라 캐리어)
 
+        // 진행형 상태 **개시**. 스킬은 「시작한다 + 수치」까지고 굴리는 것은 시스템이다
+        // (계약 5). 이 의도가 필요한 이유: 개시가 **두 컴포넌트의 원자 동시 부착**이라
+        // 어느 하나만 붙는 프레임이 있으면 안 된다(잠금 없이 무적이거나 그 반대).
+        BeginUltimateLeap,
+
+        // 진단. 스킬이 **실패를 보고**한다 — 조용한 no-op 이 「왜 안 나왔지」를
+        // 영영 못 풀게 만드는 자리가 있다(생존당 1회 스킬은 재현도 안 된다).
+        // 문자열은 도메인에 두지 않는다 — 코드만 보내고 문장은 어댑터가 만든다.
+        Report,
+
         // 연출 신호. **시뮬 상태를 안 바꾼다** — 그런데 어휘에 있어야 하는 이유는
         // 「언제 트는가」가 스킬의 판단이기 때문이다(효과 0이면 안 튼다, dataIndex<0 이면
         // 무연출 저작). 무엇을 어떻게 그리는지는 어댑터와 뷰가 소유한다.
@@ -78,6 +88,16 @@ namespace Wassup.Skills
         // 가능성의 조건이다** — 회수가 「제거」가 아니라 같은 키로 항등을 재발행하는
         // 중립화라서, 키 구성이 바뀌면 host 가 죽어도 버프가 안 풀린다(투트랙 리뷰 지적).
         public SkillEntityId Source;
+
+        // `Report` 전용 — 무엇이 왜 실패했나.
+        public SkillReport Report;
+    }
+
+    // 스킬이 보고할 수 있는 실패. 늘리기 전에 「이게 조용하면 진단이 불가능한가」를 물어라.
+    public enum SkillReport : byte
+    {
+        None = 0,
+        NoLandingSpot,   // 밀집 셀이 없거나 링 안에 갈 수 있는 칸이 없다
     }
 
     public struct MetaIntent
