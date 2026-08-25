@@ -108,6 +108,13 @@ namespace Wassup.Battle.Combat
             bool hasAcquireQ = SystemAPI.TryGetSingletonRW<AggroAcquireEventsSingleton>(out var acquireRW);
             NativeQueue<AggroAcquireEvent> acquireQueue = hasAcquireQ ? acquireRW.ValueRW.queue : default;
             // 가디언 표식(존재 자체가 가디언) + 통행 층 게이트용 RO lookup.
+            // skill-layer-foundation unit 2b — caster 의 진영을 읽는 lookup 3종.
+            // `FactionQuery` 가 「이 엔티티가 어느 진영인가」의 단일 답이다(오늘 이 질문에
+            // 답이 둘이었다 — 태그 존재 vs FactionTag).
+            var factionLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.FactionTag>(isReadOnly: true);
+            var enemyTagLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.AttackUnitTag>(isReadOnly: true);
+            var defTagLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DefenderUnitTag>(isReadOnly: true);
+
             var capacityLookup = SystemAPI.GetComponentLookup<AggroCapacity>(isReadOnly: true);
             var pathFollowLookup = SystemAPI.GetComponentLookup<PathFollowState>(isReadOnly: true);
 
@@ -174,23 +181,29 @@ namespace Wassup.Battle.Combat
                             if (slot.magnitude != 0f && slot.duration > 0f && hasStatEvents &&
                                 SystemAPI.HasComponent<LocalTransform>(entity))
                             {
-                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
-                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
-                                if (hostIsEnemy && !enemyPoolBuilt)
+                                // unit 2b — 풀을 «같은 편» 로 고른다. 예전엔 `hostIsEnemy ? A : B` 였는데
+                                // 그건 **누구**를 고르는지만 말하고 **왜**는 안 말한다. 스킬이 host 를
+                                // 가리지 않으려면 이 자리가 caster 상대적이어야 한다.
+                                var hostFaction = Wassup.Battle.Units.FactionQuery.Of(
+                                    entity, in factionLookup, in enemyTagLookup, in defTagLookup);
+                                var wanted = Wassup.Battle.Units.FactionRelation.AllyUnitsOf(hostFaction);
+                                bool useEnemyPool = wanted == Wassup.Battle.Units.Faction.EnemyUnit;
+                                bool useDefPool = wanted == Wassup.Battle.Units.Faction.DefenderUnit;
+                                if (useEnemyPool && !enemyPoolBuilt)
                                 {
                                     BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
                                     enemyPoolBuilt = true;
                                 }
-                                if (hostIsDefender && !defEntitiesBuilt)
+                                if (useDefPool && !defEntitiesBuilt)
                                 {
                                     // cells = defCells (동일 쿼리 스냅샷) — entities 만 보충.
                                     defEntities = defQuery.ToEntityArray(Allocator.Temp);
                                     defEntitiesBuilt = true;
                                 }
-                                if (hostIsEnemy || hostIsDefender) // 진영 불명 host = no-op
+                                if (useEnemyPool || useDefPool) // 진영 불명 host = no-op
                                 {
-                                    var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
-                                    var poolCells = hostIsEnemy ? enemyCells : defCells;
+                                    var poolEntities = useEnemyPool ? enemyEntities : defEntities;
+                                    var poolCells = useEnemyPool ? enemyCells : defCells;
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
@@ -237,27 +250,33 @@ namespace Wassup.Battle.Combat
                             if (cap >= 1 && slot.duration > 0f && hasCcQ
                                 && SystemAPI.HasComponent<LocalTransform>(entity))
                             {
-                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
-                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
+                                // unit 2b — 풀을 «상대 진영» 로 고른다. 예전엔 `hostIsEnemy ? A : B` 였는데
+                                // 그건 **누구**를 고르는지만 말하고 **왜**는 안 말한다. 스킬이 host 를
+                                // 가리지 않으려면 이 자리가 caster 상대적이어야 한다.
+                                var hostFaction = Wassup.Battle.Units.FactionQuery.Of(
+                                    entity, in factionLookup, in enemyTagLookup, in defTagLookup);
+                                var wanted = Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(hostFaction);
+                                bool useEnemyPool = wanted == Wassup.Battle.Units.Faction.EnemyUnit;
+                                bool useDefPool = wanted == Wassup.Battle.Units.Faction.DefenderUnit;
                                 // 대상 = 반대 진영. 진영 축은 **유닛 태그**다 — FactionTag 을 쓰면
                                 // battle-structures 이후 진영 비트가 거점(마음·본능)을 포함하는데
                                 // 거점엔 CcEffect 버퍼가 없다(CcApplySystem 이 skip 하지만, 애초에
                                 // 후보에 넣으면 cap 자리를 유령이 차지해 실제 대상이 줄어든다).
-                                if (hostIsEnemy && !defEntitiesBuilt)
+                                if (useDefPool && !defEntitiesBuilt)
                                 {
                                     defEntities = defQuery.ToEntityArray(Allocator.Temp);
                                     defEntitiesBuilt = true;
                                 }
-                                if (hostIsDefender && !enemyPoolBuilt)
+                                if (useEnemyPool && !enemyPoolBuilt)
                                 {
                                     BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
                                     enemyPoolBuilt = true;
                                 }
-                                if (hostIsEnemy || hostIsDefender)
+                                if (useEnemyPool || useDefPool)
                                 {
-                                    var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
-                                    var poolCells = hostIsEnemy ? defCells : enemyCells;
-                                    var poolTransforms = hostIsEnemy ? defTransforms : enemyTransformsPool;
+                                    var poolEntities = useEnemyPool ? enemyEntities : defEntities;
+                                    var poolCells = useEnemyPool ? enemyCells : defCells;
+                                    var poolTransforms = useEnemyPool ? enemyTransformsPool : defTransforms;
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
 
@@ -353,23 +372,29 @@ namespace Wassup.Battle.Combat
                             if (slot.magnitude > 0f && slot.tileRange > 0
                                 && SystemAPI.HasComponent<LocalTransform>(entity))
                             {
-                                bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
-                                bool hostIsDefender = !hostIsEnemy && SystemAPI.HasComponent<DefenderUnitTag>(entity);
-                                if (hostIsEnemy && !enemyPoolBuilt)
+                                // unit 2b — 풀을 «같은 편» 로 고른다. 예전엔 `hostIsEnemy ? A : B` 였는데
+                                // 그건 **누구**를 고르는지만 말하고 **왜**는 안 말한다. 스킬이 host 를
+                                // 가리지 않으려면 이 자리가 caster 상대적이어야 한다.
+                                var hostFaction = Wassup.Battle.Units.FactionQuery.Of(
+                                    entity, in factionLookup, in enemyTagLookup, in defTagLookup);
+                                var wanted = Wassup.Battle.Units.FactionRelation.AllyUnitsOf(hostFaction);
+                                bool useEnemyPool = wanted == Wassup.Battle.Units.Faction.EnemyUnit;
+                                bool useDefPool = wanted == Wassup.Battle.Units.Faction.DefenderUnit;
+                                if (useEnemyPool && !enemyPoolBuilt)
                                 {
                                     BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
                                     enemyPoolBuilt = true;
                                 }
-                                if (hostIsDefender && !defEntitiesBuilt)
+                                if (useDefPool && !defEntitiesBuilt)
                                 {
                                     defEntities = defQuery.ToEntityArray(Allocator.Temp);
                                     defEntitiesBuilt = true;
                                 }
-                                if (hostIsEnemy || hostIsDefender)
+                                if (useEnemyPool || useDefPool)
                                 {
-                                    var poolEntities = hostIsEnemy ? enemyEntities : defEntities;
-                                    var poolCells = hostIsEnemy ? enemyCells : defCells;
-                                    var poolTransforms = hostIsEnemy ? enemyTransformsPool : defTransforms;
+                                    var poolEntities = useEnemyPool ? enemyEntities : defEntities;
+                                    var poolCells = useEnemyPool ? enemyCells : defCells;
+                                    var poolTransforms = useEnemyPool ? enemyTransformsPool : defTransforms;
                                     float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
                                     int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref pulseTargets);
@@ -476,20 +501,24 @@ namespace Wassup.Battle.Combat
                                             // 보스가 방향 탄을 쓰는 날 **자기편 중 최근접**을 조준하고
                                             // 탄의 targetFaction(=Defender)과 갈린다. 보스는 이미 이 arm 을
                                             // 타고 있고(지금은 barrel 이 Direction 이 아닐 뿐이다).
-                                            bool hostIsEnemy = SystemAPI.HasComponent<AttackUnitTag>(entity);
-                                            if (hostIsEnemy && !defEntitiesBuilt)
+                                            // unit 2b — 조준 후보는 «상대 진영» 이다.
+                                            var aimFaction = Wassup.Battle.Units.FactionQuery.Of(
+                                                entity, in factionLookup, in enemyTagLookup, in defTagLookup);
+                                            bool aimEnemyPool = Wassup.Battle.Units.FactionRelation
+                                                .OpponentUnitsOf(aimFaction) == Wassup.Battle.Units.Faction.EnemyUnit;
+                                            if (!aimEnemyPool && !defEntitiesBuilt)
                                             {
                                                 defEntities = defQuery.ToEntityArray(Allocator.Temp);
                                                 defEntitiesBuilt = true;
                                             }
-                                            if (!hostIsEnemy && !enemyPoolBuilt)
+                                            if (aimEnemyPool && !enemyPoolBuilt)
                                             {
                                                 BuildEnemyPool(ref state, ff, ref enemyEntities, ref enemyTransformsPool, ref enemyCells);
                                                 enemyPoolBuilt = true;
                                             }
-                                            var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
-                                            var poolCells = hostIsEnemy ? defCells : enemyCells;
-                                            var poolTransforms = hostIsEnemy ? defTransforms : enemyTransformsPool;
+                                            var poolEntities = aimEnemyPool ? enemyEntities : defEntities;
+                                            var poolCells = aimEnemyPool ? enemyCells : defCells;
+                                            var poolTransforms = aimEnemyPool ? enemyTransformsPool : defTransforms;
 
                                             // ⚠ 공유 풀에는 **필터가 하나도 없다**. 안 거르면 시체나
                                             // «내가 못 때리는 층» 의 후보가 총구를 가져가고, 그 탄은
