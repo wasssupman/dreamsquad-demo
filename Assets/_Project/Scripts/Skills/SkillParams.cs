@@ -86,7 +86,10 @@ namespace Wassup.Skills
         public AuraParams(in SkillParams p) => _p = p;
 
         // ⚠ 저작은 **퍼센트**다(20 = +20%). 배율로 쓰려면 1 + m/100.
-        // 이 변환을 concrete 안에서 하지 않는다 — 어댑터가 모디파이어를 만들 때 한다.
+        // 변환은 **concrete 가 한 번** 한다(legacy arm 과 같은 자리). 어댑터는 받은 값을
+        // 그대로 싣는다 — 양쪽에서 하면 두 번 곱해진다.
+        // (리뷰 M3: 이 주석이 원래 정반대로 적혀 있었다. 그대로 믿고 어댑터를 「고치면」
+        //  이속 버프가 조용히 제곱된다.)
         public float PercentDelta => _p.Magnitude;
         public int Radius => _p.TileRange;
         public float Ttl => _p.Duration;

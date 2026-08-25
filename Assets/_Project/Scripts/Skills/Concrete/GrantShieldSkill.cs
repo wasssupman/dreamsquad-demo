@@ -38,6 +38,16 @@ namespace Wassup.Skills.Concrete
                     Source = caster.Unit,   // 같은 출처 = max 갱신(누적 아님)
                     Amount = amount,
                 });
+                // 리뷰 H1: 이전하면서 **이 연출을 빠뜨렸다.** 반경 분기는 「같은 사건은
+                // 같은 그림」을 지키려고 대상별 VFX 까지 복원해 놓고 self 분기만 비었다 —
+                // 실드는 생기는데 반짝임이 사라지는 라이브 회귀였다.
+                ctx.Emit(new SimIntent
+                {
+                    Kind = SimIntentKind.PlayVisual,
+                    Selector = (int)SkillVisualKind.ShieldGranted,
+                    Target = caster.Unit,
+                    Position = ctx.Position(caster.Unit),
+                });
                 return;
             }
 

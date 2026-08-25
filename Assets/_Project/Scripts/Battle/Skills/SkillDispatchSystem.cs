@@ -103,7 +103,7 @@ namespace Wassup.Battle.Skills
             var defPoolXf = _defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             _context.BindPools(enemyPool, enemyPoolXf, defPool, defPoolXf);
 
-            // 의도 싱크 — 지금 배선된 것은 CC 하나다. 나머지는 어댑터가 loud 하게 거절한다.
+            // 의도 싱크. 배선 안 된 의도는 어댑터가 loud 하게 거절한다.
             bool hasCc = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.EnemyCcEventsSingleton>(out var ccS);
             _context.BindCcSink(hasCc ? ccS.queue : default, hasCc);
             bool hasStat = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statS);
@@ -181,11 +181,14 @@ namespace Wassup.Battle.Skills
             if (caster == Entity.Null || !em.Exists(caster))
                 return CasterRef.Player(Faction.DefenderUnit);   // 액티브 = 플레이어 시전
 
-            var faction = em.HasComponent<FactionTag>(caster)
-                ? em.GetComponentData<FactionTag>(caster).value
-                : em.HasComponent<AttackUnitTag>(caster) ? Faction.EnemyUnit
-                : em.HasComponent<DefenderUnitTag>(caster) ? Faction.DefenderUnit
-                : Faction.None;
+            // 결정은 `FactionRelation.Resolve` 가 소유한다 — 여기서 4단 체인을 복제하면
+            // 세 번째 사본이 된다(리뷰 L1). 그 파일이 「복제하면 조용히 갈린다」고 적어뒀다.
+            bool hasTag = em.HasComponent<FactionTag>(caster);
+            var faction = FactionRelation.Resolve(
+                hasTag,
+                hasTag ? em.GetComponentData<FactionTag>(caster).value : Faction.None,
+                em.HasComponent<AttackUnitTag>(caster),
+                em.HasComponent<DefenderUnitTag>(caster));
 
             int id = em.HasComponent<SimEntityId>(caster)
                 ? em.GetComponentData<SimEntityId>(caster).value

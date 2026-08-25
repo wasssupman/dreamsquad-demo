@@ -60,8 +60,7 @@ namespace Wassup.Skills.Concrete
             // 그리고 **사거리 안일 때만** 건너뛰면 «재우자마자 자기가 깨우는» 자리만
             // 정확히 빠진다. 링 전체를 빼면 붙은 보스의 후보가 통째로 마른다.
             int skipCount = (int)math.max(0f, ctx.Stat(caster.Unit, UnitStat.AttackTargetCount));
-            int attackTiles = SkillMath.RangeToTiles(
-                ctx.Stat(caster.Unit, UnitStat.AttackRange), TileSizeOf(ctx));
+            int attackTiles = SkillMath.RangeToTiles(ctx.Stat(caster.Unit, UnitStat.AttackRange));
 
             // 뺄 만큼 더 뽑아야 실제 재우는 수가 cap 을 유지한다.
             var picked = new int[MaxCandidates];
@@ -90,15 +89,22 @@ namespace Wassup.Skills.Concrete
                 });
                 slept++;
             }
+
+            // legacy 와 같다 — **실제로 잰 펄스만** 연출한다(효과 없는 연출 금지).
+            // 리뷰 M1: 이전하면서 빠뜨렸다. 오늘 마메모는 무연출 저작이라 회귀가 없었지만,
+            // 저작하는 순간 조용히 무시됐을 자리다.
+            if (slept > 0 && p.HasData)
+            {
+                ctx.Emit(new SimIntent
+                {
+                    Kind = SimIntentKind.PlayVisual,
+                    Selector = (int)SkillVisualKind.HitPulse,
+                    Position = hostPos,
+                    DataIndex = p.DataIndex,
+                    Source = caster.Unit,
+                });
+            }
         }
 
-        // 타일 크기는 격자 파라미터라 포트가 안다. 셀 중심 두 개의 x 차이가 곧 한 칸이다 —
-        // 이걸 위해 동사를 하나 더 여는 것보다 이 파생이 싸다(제약 8).
-        private static float TileSizeOf(ISkillContext ctx)
-        {
-            var a = ctx.CellCenter(new int2(0, 0));
-            var b = ctx.CellCenter(new int2(1, 0));
-            return math.abs(b.x - a.x);
-        }
     }
 }

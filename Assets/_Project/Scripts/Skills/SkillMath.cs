@@ -9,7 +9,8 @@ namespace Wassup.Skills
     // ⚠ 그래서 지금은 **알고리즘이 둘**이다. migration 이 legacy arm 을 다 걷어내면
     // Runtime 쪽 소비자가 0 이 되고 이쪽만 남는다. 그때까지는 **둘이 같은 답을 내야
     // 한다** — 어긋나면 이전한 스킬과 안 한 스킬이 다른 대상을 고른다.
-    // `SkillMathParityTests` 가 그것을 고정한다.
+    // `SkillMathParityTests` 가 그것을 고정한다 — **실재하는 테스트다**(리뷰가
+    // 「주석은 있는데 테스트가 없다」를 잡아서 만들었다).
     public static class SkillMath
     {
         // 체비셰프(킹 무브) 거리. 이 게임의 「N칸 안」은 전부 이 자다 —
@@ -21,12 +22,16 @@ namespace Wassup.Skills
             return dx > dy ? dx : dy;
         }
 
-        // 월드 사거리 → 타일 수. `GridMath.RangeToTiles` 와 같은 규칙이어야 한다.
-        public static int RangeToTiles(float range, float tileSize)
-        {
-            if (tileSize <= 0f) return 0;
-            return (int)(range / tileSize);
-        }
+        // 사거리 → 타일 수. **`GridMath.RangeToTiles` 와 규칙이 같아야 한다.**
+        //
+        // ⚠ half-away-from-zero 반올림이다(`math.round` 의 banker's rounding 회피).
+        // 처음에 `(int)(range / tileSize)` 로 **버림**을 썼다가 리뷰가 잡았다 —
+        // 오늘은 저작 사거리가 전부 정수라 답이 같지만, 소수 하나가 시트로 들어오는
+        // 순간 이전한 스킬과 안 한 스킬이 다른 대상을 고른다.
+        //
+        // ⚠ tileSize 를 안 받는다 — 원본도 안 받는다(사거리가 이미 타일 단위 축이다).
+        // 나누는 순간 두 구현이 갈린다.
+        public static int RangeToTiles(float range) => (int)(range + 0.5f);
 
         // 거리² 오름차순으로 가까운 것부터 `cap` 개를 고른다.
         //

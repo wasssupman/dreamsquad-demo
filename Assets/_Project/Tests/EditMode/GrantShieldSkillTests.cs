@@ -24,10 +24,17 @@ namespace Wassup.Tests.EditMode
 
             new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 0), ctx);
 
-            Assert.AreEqual(1, ctx.SimIntents.Count);
-            Assert.AreEqual(100, ctx.SimIntents[0].Target.Value, "자기에게만");
-            Assert.AreEqual(100, ctx.SimIntents[0].Source.Value, "같은 출처 = max 갱신");
-            Assert.AreEqual(60f, ctx.SimIntents[0].Amount);
+            var grants = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield);
+            Assert.AreEqual(1, grants.Count);
+            Assert.AreEqual(100, grants[0].Target.Value, "자기에게만");
+            Assert.AreEqual(100, grants[0].Source.Value, "같은 출처 = max 갱신");
+            Assert.AreEqual(60f, grants[0].Amount);
+
+            // 리뷰 H1 — self 분기도 연출을 낸다. 반경 분기만 내고 여기가 비어 있어서
+            // 「실드는 생기는데 반짝임이 사라지는」 라이브 회귀였다.
+            var vfx = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.PlayVisual);
+            Assert.AreEqual(1, vfx.Count, "자기 실드도 반짝여야 한다");
+            Assert.AreEqual((int)SkillVisualKind.ShieldGranted, vfx[0].Selector);
         }
 
         // 악몽의 가호 — 반경 내 같은 편, host 제외.
@@ -67,6 +74,26 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual((int)SkillVisualKind.ShieldGranted, vfx[0].Selector);
             foreach (var v in vfx)
                 Assert.AreNotEqual(5.5f, v.Position.x, "host 위치가 아니라 대상 위치여야 한다");
+        }
+
+        // 리뷰 L6 — 만충이면 병합이 max 로 no-op 이라 헛 VFX 만 남는다(가디언 선례).
+        [Test]
+        public void AlreadyFullFromSameSource_IsSkipped()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.EnemyUnit);
+            ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.EnemyUnit,
+                u => u.ShieldFromSource[100] = 60f);   // 이미 이 출처로 만충
+            ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.EnemyUnit);
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
+
+            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(60f, 3), ctx);
+
+            var grants = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield);
+            Assert.AreEqual(1, grants.Count, "만충인 대상은 건너뛴다");
+            Assert.AreEqual(2, grants[0].Target.Value);
+            Assert.AreEqual(1, ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.PlayVisual).Count,
+                "건너뛴 대상에는 헛 VFX 도 없다");
         }
 
         [Test]
