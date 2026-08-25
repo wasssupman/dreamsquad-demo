@@ -20,10 +20,10 @@
 
    | 가족 | 이미 있는 것 | 남는 무보호 |
    |---|---|---|
-   | 레거시 배치 9 | `ApplyStackNearby`·`DotNearby`·`ForwardProjectile`·`StunNearby` (+`MeleeBurst` 대조군) | `BoostNearbyDefenders`·`BindNearby`·`GainCost`·`ReduceSkillCooldown` **4종** |
+   | 레거시 배치 9 | `ApplyStackNearby`·`DotNearby`·`ForwardProjectile`·`StunNearby` (+`MeleeBurst` 대조군) | ~~4종~~ **완료** `0dffb23e` |
    | 방어유닛 규칙 5 | `OnPlaceSkyStrikeTest`·`OnPlaceTauntNearbyTest` **2/5** | `AreaShield`·`OnPlaceBlast`·`BombMan` 3종 |
    | 보스 11행 | `BossLullabyTest`·`BossShieldTest`·`DragonBreathE2ETest` | 궁극기·도약×2·채찍질·경계 자폭 **4종** |
-   | 액티브 6 | `ActiveTileCastTest` = **Portal 만** | 나머지 5종 |
+   | 액티브 6 | `ActiveTileCastTest`(Portal) + **`ActiveAllyZoneTest`(PowerSurge·RapidFire, 9테스트)** | SlowField·Tornado·Meteor **3종** |
    | 캐스트 8 | `HazardCasterTests`(EditMode)·`EnemyShieldTest`·`KindlerFireStackE2ETest` | 볼리 2·폭탄 1 |
    | 소환 1 | `PatrolDefenderPlayTest` | — |
    | 카드 26행 | `DcApplicabilityTests`·`DcTriggerTests`·`DcTriggerArmedTests` (전부 **술어 레벨**) | 동작 특성화 대부분 |
@@ -36,6 +36,11 @@
    무거운 질의(밀집·착지·범위선별·콘·조준)가 전부 순수 코어 재사용이라 **ECS 월드 없이** 돈다.
    지금 PlayMode 로만 가능한 단언 중 어느 것이 EditMode 로 내려올 수 있는지 표시해두면 unit 3
    이후 테스트 비용이 크게 준다. (이 unit 에서 옮기지는 않는다 — 순서상 포트가 뒤다.)
+
+⚠ **이 표의 「이미 있는 것」은 두 번 틀렸다**(2026-08-25). 「배치 3종」이 실제로는 4종이었고
+   (`OnPlaceStunNearbyTest` 누락), 「액티브 Portal 만」이 실제로는 3종이었다(`ActiveAllyZoneTest`
+   누락 — PowerSurge·RapidFire 를 9테스트로 이미 덮고 있었다). **차집합을 쓰기 전에 반드시
+   `Tests/` 를 직접 훑어라** — 전해 들은 커버리지 수치가 이 spec 에서 네 번 틀렸다.
 
 4. **비라이브 행은 우선순위를 낮춘다.** `visible: 0` 카드 **11행/9장**은 라이브 경로에 없다
    (census 실측). 라이브 21행을 먼저 덮는다.
