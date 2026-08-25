@@ -99,6 +99,16 @@ namespace Wassup.EditorTools
                     MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_Duel.prefab", new Vector2Int(6, 1), new Vector2Int(6, 6));
                     MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_DuelClassic.prefab", new Vector2Int(10, 3), new Vector2Int(10, 8));
                     return "OK|bonus portals authored (Duel, DuelClassic)";
+                case "street_markers":
+                    MapStageDummyGenerator.AuthorSpawnsAndGoal("Assets/_Project/Art/Theme/street/MapStage_Street.prefab",
+                        new Vector2Int(28, 3), new Vector2Int(28, 7), new Vector2Int(1, 5));
+                    return "OK|street spawns/goal authored + dev registered";
+                case "maptest_battle_camera":
+                {
+                    string norm = MapStageCameraFraming.NormalizePrefabRoot("Assets/_Project/Art/Theme/street/MapStage_Street.prefab");
+                    string framed = MapStageCameraFraming.FrameScene("Assets/MapTest.unity", 16f / 9f);
+                    return framed + " | prefab root: " + norm;
+                }
                 default: return $"ERROR|unknown task '{task}'";
             }
         }
