@@ -46,6 +46,8 @@ namespace Wassup.Battle.Skills
         private bool _hasStatQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _hitQueue;
         private bool _hasHitQueue;
+        private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldVfxQueue;
+        private bool _hasShieldVfxQueue;
 
         public void Bind(
             EntityManager em,
@@ -87,6 +89,11 @@ namespace Wassup.Battle.Skills
         public void BindVisualSink(NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> q, bool has)
         {
             _hitQueue = q; _hasHitQueue = has;
+        }
+
+        public void BindShieldVisualSink(NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> q, bool has)
+        {
+            _shieldVfxQueue = q; _hasShieldVfxQueue = has;
         }
 
         // ── 핸들 변환 — 이 클래스가 유일한 번역자다 ──────────────────
@@ -179,6 +186,9 @@ namespace Wassup.Battle.Skills
                 case UnitPredicate.Alive: return !_em.HasComponent<DeadTag>(e);
                 case UnitPredicate.PendingDeployment: return _em.HasComponent<PendingDeployment>(e);
                 case UnitPredicate.CanReceiveDamage: return _em.HasBuffer<IncomingDamage>(e);
+                // 실드는 두 버퍼가 다 있어야 성립한다 — 슬롯(잔량)과 인박스(부여).
+                case UnitPredicate.HasShieldBuffer:
+                    return _em.HasBuffer<ShieldSlot>(e) && _em.HasBuffer<IncomingShield>(e);
                 default: throw NotWired($"Has({pred})");
             }
         }
@@ -187,7 +197,11 @@ namespace Wassup.Battle.Skills
             => (byte)Stat(id, UnitStat.TargetTraversalLayers);
 
         public float ShieldValueFrom(SkillEntityId target, SkillEntityId source)
-            => throw NotWired(nameof(ShieldValueFrom));
+        {
+            var t = Resolve(target);
+            if (t == Entity.Null || !_em.HasBuffer<ShieldSlot>(t)) return 0f;
+            return ShieldMath.ValueFromSource(_em.GetBuffer<ShieldSlot>(t), Resolve(source));
+        }
 
         // ── 질의: 후보 ──────────────────────────────────────────────
         public int Opponents(CasterRef caster, float3 center, int tileRange,
@@ -295,6 +309,29 @@ namespace Wassup.Battle.Skills
                         source = Resolve(intent.Source),
                         stackId = (ushort)intent.StackId,
                         origin = (Wassup.Battle.Effects.ModifierOrigin)intent.Origin,
+                    });
+                    return;
+                }
+                case SimIntentKind.GrantShield:
+                {
+                    var target = Resolve(intent.Target);
+                    if (target == Entity.Null || !_em.HasBuffer<IncomingShield>(target)) return;
+                    // ⚠ **인박스 append 다.** 드레인은 다음 프레임이고 그게 의도다
+                    // (DamageApplicationSystem 이 앞에 있다) — 여기서 앞당기면 동작이 바뀐다.
+                    _em.GetBuffer<IncomingShield>(target).Add(new IncomingShield
+                    {
+                        source = Resolve(intent.Source),
+                        amount = intent.Amount,
+                    });
+                    return;
+                }
+                case SimIntentKind.PlayVisual
+                    when (SkillVisualKind)intent.Selector == SkillVisualKind.ShieldGranted:
+                {
+                    if (!_hasShieldVfxQueue) return;
+                    _shieldVfxQueue.Enqueue(new Wassup.Battle.Effects.ShieldGrantedEvent
+                    {
+                        position = intent.Position,
                     });
                     return;
                 }

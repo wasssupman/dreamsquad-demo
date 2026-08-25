@@ -24,6 +24,11 @@ namespace Wassup.Tests.EditMode
             public float AttackRange, AttackTargetCount;
             public byte TraversalLayers;
             public bool Dead, Pending;
+            // 실드 축 — 기본 true 다. 실제 유닛은 대부분 버퍼를 갖고, false 가 기본이면
+            // 테스트가 조용히 vacuous 해진다(모든 대상이 건너뛰어진다).
+            public bool HasShield = true;
+            public readonly System.Collections.Generic.Dictionary<int, float> ShieldFromSource
+                = new System.Collections.Generic.Dictionary<int, float>();
         }
 
         public float TileSize = 1f;
@@ -51,7 +56,11 @@ namespace Wassup.Tests.EditMode
         public float Health(SkillEntityId id) => Get(id)?.Health ?? 0f;
         public float MaxHealth(SkillEntityId id) => Get(id)?.MaxHealth ?? 0f;
         public byte TraversalLayers(SkillEntityId id) => Get(id)?.TraversalLayers ?? (byte)0;
-        public float ShieldValueFrom(SkillEntityId t, SkillEntityId s) => 0f;
+        public float ShieldValueFrom(SkillEntityId t, SkillEntityId s)
+        {
+            var u = Get(t);
+            return u != null && u.ShieldFromSource.TryGetValue(s.Value, out var v) ? v : 0f;
+        }
 
         public float Stat(SkillEntityId id, UnitStat stat)
         {
@@ -74,6 +83,7 @@ namespace Wassup.Tests.EditMode
             {
                 case UnitPredicate.Alive: return !u.Dead;
                 case UnitPredicate.PendingDeployment: return u.Pending;
+                case UnitPredicate.HasShieldBuffer: return u.HasShield;
                 default: return false;
             }
         }

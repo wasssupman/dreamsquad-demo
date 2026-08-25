@@ -99,6 +99,8 @@ namespace Wassup.Battle.Skills
             _context.BindStatSink(hasStat ? statS.queue : default, hasStat);
             bool hasHit = SystemAPI.TryGetSingleton<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>(out var hitS);
             _context.BindVisualSink(hasHit ? hitS.queue : default, hasHit);
+            bool hasShieldVfx = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>(out var svS);
+            _context.BindShieldVisualSink(hasShieldVfx ? svS.queue : default, hasShieldVfx);
 
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {

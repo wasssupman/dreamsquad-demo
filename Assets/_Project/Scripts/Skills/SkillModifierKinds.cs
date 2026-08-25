@@ -36,3 +36,16 @@ namespace Wassup.Skills
         HealthThreshold = 9,
     }
 }
+
+namespace Wassup.Skills
+{
+    // skill-layer-migration — 연출 신호의 종류.
+    //
+    // 스킬은 「무엇을 그릴지」가 아니라 「어떤 사건이 났는지」를 말한다. 그림은 뷰가
+    // 고르고, 채널 선택은 어댑터가 한다 — 실드 부여와 타격 펄스는 채널이 다르다.
+    public enum SkillVisualKind : byte
+    {
+        HitPulse = 0,       // → ProjectileHitEvents (host 위치 1회)
+        ShieldGranted = 1,  // → ShieldGrantedEvents (대상 위치, 대상 수만큼)
+    }
+}
