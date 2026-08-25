@@ -108,7 +108,18 @@ namespace Wassup.Battle.Skills
         private void Index(Entity e)
         {
             int id = SimIdOf(e);
-            if (id != SimEntityId.Unassigned) _byId[id] = e;
+            if (id == SimEntityId.Unassigned) return;
+            // ⚠ **충돌은 조용하면 안 된다**(ECS 리뷰 N-1). id 는 단일 카운터에서 나오니
+            // 겹칠 일이 없어야 하지만, 겹치면 역변환이 «엉뚱한 엔티티»를 돌려주고
+            // 그 오폭은 어디에도 안 뜬다. 예전 선형 스캔은 적 풀을 먼저 훑어
+            // first-wins 였고 지금은 last-writer-wins 라 승자까지 뒤집힌다 —
+            // 「어느 쪽이 이기나」를 정하는 대신 **겹쳤다는 사실 자체**를 신고한다.
+            if (!_byId.TryAdd(id, e))
+            {
+                UnityEngine.Debug.LogError(
+                    $"[SkillDispatch] SimEntityId {id} 가 둘 이상에 붙어 있다 — 핸들 역변환이 "
+                    + "엉뚱한 엔티티를 돌려준다. 발급기(BattleBridge.AttachSimEntityId)를 확인하라.");
+            }
         }
 
         public void BindCcSink(NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> q, bool has)
@@ -269,6 +280,14 @@ namespace Wassup.Battle.Skills
                 // 가디언 표식. 어그로가 「누구에게」 붙는지가 이 용량에 매여 있다.
                 case UnitPredicate.HasAggroCapacity:
                     return _em.HasComponent<Wassup.Battle.Effects.AggroCapacity>(e);
+                // ⚠ 아래 둘은 오늘 소비자가 없지만 **페이크가 답하므로 여기도 답한다**
+                // (ECS 리뷰 M-4). 한쪽만 답하면 그 술어를 쓰는 첫 concrete 가
+                // EditMode 초록 / 라이브 예외가 된다 — 디스패처가 예외를 삼키고
+                // 그 발동만 버리므로 증상이 「그 스킬만 안 나감」이다.
+                case UnitPredicate.InUltimateLeap:
+                    return _em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e);
+                case UnitPredicate.IsPathFollowing:
+                    return _pathFollow.HasComponent(e);
                 default: throw NotWired($"Has({pred})");
             }
         }

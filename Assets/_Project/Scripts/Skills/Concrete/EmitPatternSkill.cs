@@ -68,10 +68,13 @@ namespace Wassup.Skills.Concrete
                           && math.lengthsq(aim) > SkillAim.AimEpsilonSq;
 
             // 조준이 없을 때만 후보를 본다 — 조준이 방향을 이미 정했으면 풀을 만들 이유가 없다.
+            // ⚠ 조준이 있으면 후보를 안 보므로 **버퍼도 안 잡는다**(ECS 리뷰 N-2).
+            // 주기 × 조준 저작이 생기면 이 할당이 매 주기 돈다.
             int n = 0;
-            var candXZ = new float2[MaxCandidates];
+            float2[] candXZ = null;
             if (!hasAim)
             {
+                candXZ = new float2[MaxCandidates];
                 var cand = new SkillEntityId[MaxCandidates];
                 // 진영은 caster 에서 파생된다 — 「적」을 이름으로 부르지 않는 이유다.
                 // 진영 미상이면 포트가 0을 돌려주고, 아래 `TryResolve` 가 false 를 내

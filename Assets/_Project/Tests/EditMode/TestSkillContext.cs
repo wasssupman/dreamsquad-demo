@@ -37,6 +37,7 @@ namespace Wassup.Tests.EditMode
             public bool HasAggroCapacity;
             // `RequireDamageable` 축. 기본 true — 대부분의 후보는 때릴 수 있다.
             public bool CanReceiveDamage = true;
+            public bool IsPathFollowing = true;
             public float2 Facing;
             // 실드 축 — 기본 true 다. 실제 유닛은 대부분 버퍼를 갖고, false 가 기본이면
             // 테스트가 조용히 vacuous 해진다(모든 대상이 건너뛰어진다).
@@ -106,6 +107,8 @@ namespace Wassup.Tests.EditMode
                 case UnitPredicate.InUltimateLeap: return u.InUltimateLeap;
                 case UnitPredicate.HasPosition: return u.HasPosition;
                 case UnitPredicate.HasAggroCapacity: return u.HasAggroCapacity;
+                case UnitPredicate.CanReceiveDamage: return u.CanReceiveDamage;
+                case UnitPredicate.IsPathFollowing: return u.IsPathFollowing;
                 // ⚠ **미구현은 어댑터와 같은 모양으로 던진다**(리뷰 M2).
                 // `false` 로 조용히 답하면 페이크가 어댑터보다 **관대**해져서,
                 // 어댑터가 `NotSupportedException` 을 던지는 술어를 쓰는 concrete 가
