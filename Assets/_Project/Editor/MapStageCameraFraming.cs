@@ -49,16 +49,20 @@ namespace Wassup.EditorTools
                     out var pos, out var rot, out var fov))
                 return "ERROR|SolveStatePose 실패";
 
+            // 런타임 미러: CameraDirector.ComposeAndWrite 는 최종 fov 를 [fovMin, fovMax] 로 클램프한다.
+            // 거리는 레시피 fov 로 풀고 렌더는 클램프값 — 레시피 25 < fovMin 31 이면 화면엔 31 이 걸린다
+            // (main 93c1cc4c «저작 화각이 실제로 걸리게» 가 71688c0a 로 되돌려진 상태). 씬도 같은 값을 쓴다.
+            float fovApplied = Mathf.Clamp(fov, config.fovMin, config.fovMax);
             Undo.RecordObject(cam.transform, "Frame battle camera");
             Undo.RecordObject(cam, "Frame battle camera");
             cam.transform.SetPositionAndRotation(pos, rot);
-            cam.fieldOfView = fov;
+            cam.fieldOfView = fovApplied;
             cam.nearClipPlane = 0.1f;   // BattleScene Main Camera 와 동일
             cam.farClipPlane = 100f;
 
             EditorSceneManager.MarkSceneDirty(stage.gameObject.scene);
             return $"OK|stage={stage.name} area={stage.playAreaCells} origin={stage.gridOriginLocal} " +
-                   $"aspect={aspect:F3} pitch={framing.pitchDeg} fov={fov} pos={pos:F3} dof={(framing.dofEnabled ? "recipe on (씬 Volume 없으면 미적용)" : "off")}";
+                   $"aspect={aspect:F3} pitch={framing.pitchDeg} fov={fovApplied}(recipe {fov}) pos={pos:F3} dof={(framing.dofEnabled ? "recipe on (씬 Volume 없으면 미적용)" : "off")}";
         }
 
         // 러너용: 씬 열기 → 적용 → 저장.
