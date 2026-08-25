@@ -18,11 +18,11 @@ unit 3 의 홀드로 카운트다운을 붙잡아 둔 상태에서 돈다. 전�
 1. `bridge.ShowPlacementHighlight(cannon)` + `"배치가능영역"` — `briefingHoldSeconds`
 2. `bridge.ShowBlockedHighlight(cannon)` + `"배치 불가 영역"` — `briefingHoldSeconds`
 3. 1↔2 를 `briefingCycles` 회 왕복한 뒤 둘 다 끄고
-   `"게임목표: 최대한 많은 악몽 처치"` — `goalMessageSeconds`
+   `"게임목표: 제한시간 동안\n최대한 많은 악몽 처치!"` — `goalMessageSeconds`
 
 그리고 `ReleaseIntroHold()`.
 
-문구는 사용자 원문 그대로다(띄어쓰기 포함). 다듬는 것은 후속 후보.
+목표 문구는 제한시간 조건과 처치 목표를 두 줄로 나눠 읽히게 한다.
 
 **하이라이트 기준 유닛은 캐논이다.** 배치 가능 칸은 유닛의 통행 층에 따라 달라지므로
 (`EffectivePlacementLayers`) 기준 없이는 "배치 가능 영역"이 정의되지 않는다. 바로 다음

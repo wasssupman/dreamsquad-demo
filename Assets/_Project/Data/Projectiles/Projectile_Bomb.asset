@@ -18,7 +18,7 @@ MonoBehaviour:
   visualScale: 0.5
   visualHeightOffset: 0.25
   projectilePrefab: {fileID: 166067092680371605, guid: 0009974c05b615e4ea4368403ebdc0bf, type: 3}
-  hitPrefab: {fileID: 1190586612074608, guid: 6eae0c3b49163d44c9f7970fbe47a4d9, type: 3}
+  hitPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
   facing: 3
   spinSpeed: 540
   preserveVfxColors: 0
@@ -30,8 +30,8 @@ MonoBehaviour:
   textureVariants:
   - {fileID: 2800000, guid: 40d49f0becacc814ab0163d9e3898ab4, type: 3}
   selectMode: 2
-  hitVfxLifetime: 0
-  hitVfxScale: 2.5
+  hitVfxLifetime: 2.5
+  hitVfxScale: 1
   castPrefab: {fileID: 0}
   castVfxLifetime: 0
   onHitEffect: 0
@@ -44,5 +44,11 @@ MonoBehaviour:
   impactTileRange: 1
   minFlightTime: 0.3
   pierceCount: 1
+  rehitCooldownSec: 0
+  knockbackDistance: 0
+  knockbackDuration: 0
+  bezierLateral: 1.2
+  spawnBlocker: {fileID: 0}
+  bezierForwardBias: 0.35
   dropHeight: 6
   fallPortion: 1

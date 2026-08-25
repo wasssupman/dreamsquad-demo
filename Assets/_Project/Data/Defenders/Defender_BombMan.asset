@@ -17,9 +17,10 @@ MonoBehaviour:
   placementLayers: 1
   traversalLayers: 0
   displayName: "\uD3ED\uD0C4\uB9E8"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC9C0\uC815 \uBC29\uD5A5\uC73C\uB85C \uBC94\uC704
-    \uD3ED\uD0C4 \uD22C\uCC99\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
-    \uD6A8\uACFC: \uD53C\uD574\xB7\uC218\uBA74\xB7\uAE30\uC808 \uD3ED\uD0C4 \uBB34\uC791\uC704"
+  visible: 1
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBC94\uC704 \uD3ED\uD0C4 \uD22C\uCC99\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uAC00\uAE4C\uC6B4 \uC801 \uBC29\uD5A5\uC73C\uB85C \uC2DC\uD55C
+    \uD3ED\uD0C4 \uC124\uCE58\n\uD2B9\uC218 \uC2A4\uD0AC: \uC5C6\uC74C"
   health: 500
   attackRange: 5
   attackCooldown: 2.8
@@ -42,6 +43,8 @@ MonoBehaviour:
   onPlaceDuration: 0
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
+  onPlaceShakeStrength: 0
+  onPlaceShakeDuration: 0
   cost: 4
   placementCooldown: 4
   deathCooldown: 10
@@ -52,6 +55,7 @@ MonoBehaviour:
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 5d6e7f8a9b0c41d2e3f4a5b6c7d8e9f0, type: 2}
+  - {fileID: 11400000, guid: 41ce6c8e0ffd349dc92eef02492393b6, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 90031e552493a49b49e2cf3a71db5fd6, type: 3}
   aggroCapacity: 0

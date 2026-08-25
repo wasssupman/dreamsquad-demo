@@ -18,14 +18,14 @@ MonoBehaviour:
   enemyClass: 2
   minWaveNumber: 2
   maxPerWave: 0
-  attackMethod: 0
-  targetMode: 0
+  attackMethod: 1
+  targetMode: 1
   engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
-  targetFactions: 0
+  targetFactions: 21
   health: 40
-  moveSpeed: 2.5
+  moveSpeed: 2.2
   attackRange: 1
   attackCooldown: 1
   attackTargetCount: 1
@@ -34,7 +34,14 @@ MonoBehaviour:
   aggroAttackDamage: 5
   aggroAttackCooldown: 1
   aggroAttackRange: 1
-  outputs: []
+  outputs:
+  - kind: 0
+    magnitude: 10
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
   attackVfxPrefab: {fileID: 0}
   attackVfxScalePerTile: 1
   visualMesh: {fileID: 0}
@@ -77,8 +84,9 @@ MonoBehaviour:
   nightmareMechanics: []
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31
-  stabilityDamage: 1
+  stabilityDamage: 50
   waypointPathIndex: -1
   flightLift: 0
   idleVariants: []
   tier: 0
+  huntsDefenders: 0

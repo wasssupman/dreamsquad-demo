@@ -9,14 +9,13 @@ namespace Wassup.Tests.EditMode
     public class NearestTargetingTests
     {
         private static NearestTargeting.Candidate C(float sqDist, int tileDist,
-            int index, int version = 1, bool eligible = true) =>
+            int simId, bool eligible = true) =>
             new NearestTargeting.Candidate
             {
                 eligible = eligible,
                 tileDist = tileDist,
                 sqDist = sqDist,
-                entityIndex = index,
-                entityVersion = version,
+                simId = simId,
             };
 
         private static int Select(int tileRange, params NearestTargeting.Candidate[] items)
@@ -56,14 +55,17 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(-1, Select(4, C(1f, 1, 10, eligible: false)), "전부 부적격");
         }
 
+        // battle-sim-extraction M0 unit 1 — 동률 축이 `Entity.Index/Version` 에서
+        // `SimEntityId`(스폰 순번)로 바뀌었다. 규칙은 그대로 «낮은 쪽이 이긴다».
         [Test]
-        public void TieBreakIsDeterministic_ByEntityIndexThenVersion()
+        public void TieBreakIsDeterministic_BySimEntityId()
         {
-            // 같은 거리 → 배열 순서와 무관하게 낮은 index 가 이긴다.
+            // 같은 거리 → 배열 순서와 무관하게 먼저 스폰된 쪽(낮은 simId)이 이긴다.
             Assert.AreEqual(1, Select(4, C(4f, 2, 77), C(4f, 2, 12)));
             Assert.AreEqual(0, Select(4, C(4f, 2, 12), C(4f, 2, 77)));
-            // index 도 같으면 version.
-            Assert.AreEqual(1, Select(4, C(4f, 2, 12, version: 9), C(4f, 2, 12, version: 3)));
+            // 미발급(Unassigned)은 맨 뒤 — 발급된 후보가 있으면 그쪽이 이긴다.
+            Assert.AreEqual(1, Select(4,
+                C(4f, 2, Wassup.Battle.Units.SimEntityId.Unassigned), C(4f, 2, 12)));
         }
 
         [Test]

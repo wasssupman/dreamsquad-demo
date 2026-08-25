@@ -75,6 +75,9 @@ namespace Wassup.Core
         // 쿨타임 전무 시 ScaleOf 루프·빈 dict 순회조차 돌지 않는다("0 = inert").
         private void Update()
         {
+            // battle-sim-extraction M0 unit 2 — 하네스에서는 스텝이 부른다(CostRuntime 와 동일 이유:
+            // 이 쿨타임도 배치 입력을 게이트하는 시뮬 상태다).
+            if (SimHarnessClock.Active) return;
             if (_map.Count == 0) return;
             Tick(TimeManager.Instance.DeltaTime(TimeDomain.Battle));
         }

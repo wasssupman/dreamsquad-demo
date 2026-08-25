@@ -47,7 +47,8 @@ namespace Wassup.Presentation
         public void Show(Vector2 anchorLocal, float tileWidthReference, OverheadBarSkin skinKind, float ratio,
             IReadOnlyList<DreamcatcherCard> cards, UnitOverheadUiStyle style,
             UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f,
-            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null)
+            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null,
+            float barScale = 1f)
         {
             if (style == null || sprites == null) return;
             if (!_built || _skinKind != skinKind || _sprites != sprites) Rebuild(skinKind, style, sprites);
@@ -95,10 +96,20 @@ namespace Wassup.Presentation
             _trailImage.color = _skin.damageTrail;
             _highlightImage.color = _skin.highlight;
             // 실드 보유 중엔 만피 감쇠를 끈다 — 실드가 있는 유닛은 바가 정보를 담는다.
-            _barCanvasGroup.alpha = (ratio >= 0.999f && !hasShield) ? _skin.fullHealthAlpha : 1f;
+            // heart-stress-axis unit 1 — 감쇠 지점은 **스킨이 정한다**. 원래 뜻은 「정보가 없을 때
+            // 흐리게」이고 체력바에서는 그 지점이 만피다. 차오르는 바(스트레스)는 **빈 쪽**이
+            // 정보 없음이고 만점은 판이 끝나기 직전이라, 거기서 흐려지면 정확히 거꾸로다.
+            bool atRest = _skin.fadeAtEmpty ? ratio <= 0.001f : ratio >= 0.999f;
+            _barCanvasGroup.alpha = (atRest && !hasShield) ? _skin.fullHealthAlpha : 1f;
             if (ratio < _ratio) _trailRatio = Mathf.Max(_trailRatio, _ratio);
             else if (ratio > _trailRatio) _trailRatio = ratio;
             _ratio = ratio;
+
+            // heart-stress-axis unit 9 rev 2 — 크기 펀치. **바와 그림자를 같은 배율로** 민다
+            // (바만 키우면 그림자에서 떨어져 나온 것처럼 보인다). 카드·스택은 제외 —
+            // `_root` 를 키우면 부착 카드까지 같이 튀어 「무슨 사건인지」가 흐려진다.
+            _bar.localScale = new Vector3(barScale, barScale, 1f);
+            _shadow.localScale = _bar.localScale;
 
             float cardRowHeight = ShowCards(defender ? cards : null, tileWidthReference, width);
             ShowStacks(stacks, stackIcons, tileWidthReference, width, cardRowHeight);

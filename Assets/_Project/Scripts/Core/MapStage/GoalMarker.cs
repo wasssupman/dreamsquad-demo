@@ -31,6 +31,49 @@ namespace Wassup.Core
                 Mathf.Lerp(1f, 0.32f, k), 1f));
         }
 
+        // heart-stress-axis unit 1 rev 2 승계 — 마음이 스트레스만큼 붉어지고 심박(밝기 배율)에 맞춰 뛴다.
+        // 틴트 writer 는 이것 하나다 — SetCrackStage 는 브리지가 push 를 끊어 휴면(같은 렌더러 색을
+        // 두 곳이 쓰면 마지막이 이겨 심박이 그을림으로 덮인다). 붕괴 뒤에는 쓰지 않는다.
+        // 매 프레임 불리므로 렌더러 배열·MPB 를 캐시한다(구 뷰의 _propRenderers 캐시 승계 —
+        // 안 그러면 프레임당 힙 할당 3건, 안드로이드 주 타겟에서 버리는 GC).
+        [Tooltip("스트레스 100%일 때 마음의 색. 흰색(온전)에서 여기로 보간된다.")]
+        public Color stressTint = new Color(0.95f, 0.13f, 0.11f, 1f);
+
+        private SpriteRenderer[] _stressSprites;
+        private Renderer[] _stressMeshes;
+        private static MaterialPropertyBlock _stressMpb;
+
+        public void SetStressTint(float stress01, float beatScale)
+        {
+            if (_collapsed) return;
+            float k = Mathf.Clamp01(stress01);
+            var tint = Color.Lerp(Color.white, stressTint, k);
+            float b = Mathf.Lerp(1f, beatScale, k);   // 스트레스가 낮으면 거의 안 뛴다
+            tint.r *= b; tint.g *= b; tint.b *= b;
+            tint.a = 1f;
+
+            if (_stressSprites == null)
+            {
+                var root = VisualRootOrSelf;
+                _stressSprites = root.GetComponentsInChildren<SpriteRenderer>();
+                var meshes = new System.Collections.Generic.List<Renderer>();
+                foreach (var r in root.GetComponentsInChildren<Renderer>())
+                    if (r is not SpriteRenderer) meshes.Add(r);
+                _stressMeshes = meshes.ToArray();
+            }
+            for (int i = 0; i < _stressSprites.Length; i++) _stressSprites[i].color = tint;
+            if (_stressMeshes.Length == 0) return;
+            _stressMpb ??= new MaterialPropertyBlock();
+            for (int i = 0; i < _stressMeshes.Length; i++)
+            {
+                var r = _stressMeshes[i];
+                r.GetPropertyBlock(_stressMpb);
+                _stressMpb.SetColor("_BaseColor", tint);
+                _stressMpb.SetColor("_Color", tint);
+                r.SetPropertyBlock(_stressMpb);
+            }
+        }
+
         // 붕괴 — 어두운 틴트 + 60% 주저앉음(실루엣이 «무너졌다»를 말한다). 중복 호출 무해.
         public void MarkCollapsed()
         {

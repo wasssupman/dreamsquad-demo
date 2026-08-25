@@ -54,6 +54,7 @@ MonoBehaviour:
     shield: {r: 0.92, g: 0.96, b: 1, a: 0.98}
     fullHealthAlpha: 0.94
     clippedEnds: 0
+    fadeAtEmpty: 0
   enemy:
     tileWidthFraction: 0.74
     minWidth: 82
@@ -74,3 +75,25 @@ MonoBehaviour:
     shield: {r: 0.92, g: 0.96, b: 1, a: 0.98}
     fullHealthAlpha: 0.92
     clippedEnds: 1
+    fadeAtEmpty: 0
+  stress:
+    tileWidthFraction: 0.96
+    minWidth: 120
+    maxWidth: 176
+    height: 16
+    inset: 2.5
+    border: 2.5
+    radius: 4
+    shadowOffset: 2
+    frame: {r: 0.05, g: 0.02, b: 0.03, a: 1}
+    track: {r: 0.14, g: 0.09, b: 0.1, a: 0.95}
+    shadow: {r: 0.01, g: 0.004, b: 0.006, a: 0.75}
+    fillLow: {r: 0.25, g: 0.62, b: 0.95, a: 1}
+    fillHigh: {r: 0.95, g: 0.16, b: 0.18, a: 1}
+    highlight: {r: 1, g: 0.88, b: 0.7, a: 0.75}
+    highlightHeight: 1.5
+    damageTrail: {r: 0.55, g: 0.95, b: 1, a: 0.9}
+    shield: {r: 0, g: 0, b: 0, a: 0}
+    fullHealthAlpha: 0.9
+    clippedEnds: 0
+    fadeAtEmpty: 1

@@ -68,9 +68,17 @@ namespace Wassup.Core.TimeControl
         }
 
         // 해당 도메인의 스케일된 프레임 델타. 시간 의존 코드는 Time.deltaTime 대신 이걸 쓴다.
+        //
+        // battle-sim-extraction M0 unit 2 — 하네스 구동 중에는 원천이 벽시계가 아니라
+        // **스텝**이다. 이 한 줄이 도메인 델타를 소비하는 모든 곳(`_battleClock`, 히트 VFX
+        // TTL, 빔 세션 등)을 한꺼번에 고정 스텝으로 옮긴다 — 소비처를 하나씩 고치면
+        // 하나 빠뜨렸을 때 «대부분 결정론» 이 되고 그건 결정론이 아니다.
         public float DeltaTime(TimeDomain domain)
         {
-            return UnityEngine.Time.unscaledDeltaTime * ScaleOf(domain);
+            float raw = SimHarnessClock.Active
+                ? SimHarnessClock.StepDt
+                : UnityEngine.Time.unscaledDeltaTime;
+            return raw * ScaleOf(domain);
         }
 
         // lease 해제. id 는 재사용되지 않으므로 이미 제거됐거나 복사본이면 조용히 no-op(멱등).

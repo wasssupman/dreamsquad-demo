@@ -86,7 +86,15 @@ namespace Wassup.Core
         // Scale regen by the Battle domain: paused (menu popup) → dt 0 → no regen;
         // slow-mo (D&D drag) → proportionally slower. Global Time.timeScale stays 1,
         // so under normal play this equals the prior Time.deltaTime behavior.
-        private void Update() => Tick(TimeManager.Instance.DeltaTime(TimeDomain.Battle));
+        // battle-sim-extraction M0 unit 2 — 하네스 구동 중에는 `BattleBridge.StepOneTick` 이
+        // 스텝당 1회 `Tick` 을 부른다. 코스트는 **배치를 게이트하는 시뮬 상태**라(부족하면
+        // 입력 자체가 거부된다) 스텝 밖에서 렌더 프레임을 따라 자라면 같은 틱의 같은 입력이
+        // 두 판에서 다른 판정을 받는다.
+        private void Update()
+        {
+            if (SimHarnessClock.Active) return;
+            Tick(TimeManager.Instance.DeltaTime(TimeDomain.Battle));
+        }
 
         // dreamstone-loadout Unit 6 — regen step extracted from Update() so EditMode
         // tests can drive it directly (MonoBehaviour.Update never runs in EditMode).

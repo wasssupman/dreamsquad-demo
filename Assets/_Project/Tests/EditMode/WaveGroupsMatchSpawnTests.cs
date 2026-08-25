@@ -5,15 +5,17 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // wave-pull-revival unit 1 — 예고와 실스폰이 갈리지 않는다(spec 계약 4).
+    // 웨이브가 **선언한 편성**(`GeneratedWave.groups`)과 **실제로 펼쳐 내보내는 것**
+    // (`WavePatternGenerator.ExpandWave`)이 유닛별 수량까지 같다.
     //
-    // 도크가 읽는 `BattleBridge.TryGetNextWaveComposition` 은 플랜의 `GeneratedWave.groups` 를
-    // 그대로 돌려준다. 그래서 실제로 지켜야 할 불변식은 **groups 가 그 웨이브를 펼친 결과와
-    // 같은가**이고, 그건 브리지 없이(= MonoBehaviour·씬 없이) 여기서 고정할 수 있다.
+    // 출신은 wave-pull-revival unit 1(다음 웨이브 예고)의 계약 4 회귀 방지였다. unit 7 이
+    // 예고 UI 를 은퇴시켜 「도크가 거짓말한다」는 증상은 사라졌지만, **불변식 자체는 생성기의
+    // 것이라 그대로 산다** — groups 는 밸런스 저작·로그·컨셉 검증이 읽는 «이 웨이브가 무엇인가»의
+    // 정본이고, 펼침이 그와 어긋나면 (예: 확장 중 수량이 조용히 깎이면) 컴파일도 다른 테스트도
+    // 초록인 채로 저작과 실제가 갈린다. 그래서 예고와 무관하게 여기 남는다.
     //
-    // 이 단언이 없으면 「예고는 러너 8기라는데 실제로는 6기가 나오는」 침묵이 가능하다 —
-    // 그 상태에서 당김 판단은 전부 거짓말이 되지만 컴파일도 다른 테스트도 초록이다.
-    public class NextWavePreviewTests
+    // 브리지 없이(= MonoBehaviour·씬 없이) 생성기만으로 고정할 수 있어 EditMode 다.
+    public class WaveGroupsMatchSpawnTests
     {
         private readonly List<Object> _created = new();
 
@@ -67,7 +69,7 @@ namespace Wassup.Tests.EditMode
         private AttackDeck Deck(WaveConceptData[] concepts)
         {
             var deck = New<AttackDeck>();
-            deck.deckId = "preview-test";
+            deck.deckId = "wave-groups-test";
             deck.useGeneratedWaves = true;
             deck.waveSeed = 20260813;
             deck.minWaveCount = 12;
@@ -98,7 +100,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void 예고_구성이_실제_펼침과_유닛별_수량까지_일치한다()
+        public void 선언한_편성이_실제_펼침과_유닛별_수량까지_일치한다()
         {
             const int laneCount = 3;
             var deck = Deck(new[]
@@ -114,7 +116,7 @@ namespace Wassup.Tests.EditMode
             {
                 var wave = plan.waves[i];
 
-                // 예고가 말하는 것 = groups 를 유닛별로 접은 것.
+                // 웨이브가 선언한 것 = groups 를 유닛별로 접은 것.
                 var promised = new Dictionary<string, int>();
                 for (int g = 0; g < wave.groups.Count; g++)
                 {
@@ -137,13 +139,13 @@ namespace Wassup.Tests.EditMode
                 }
 
                 CollectionAssert.AreEquivalent(promised, actual,
-                    $"웨이브 {i + 1}: 예고 구성과 실제 스폰이 다르다 — " +
-                    "도크가 보여주는 «무엇이 몇 마리»가 거짓말이 된다");
+                    $"웨이브 {i + 1}: 선언한 편성과 실제 스폰이 다르다 — " +
+                    "groups 를 읽는 저작·로그·검증이 전부 거짓말이 된다");
             }
         }
 
         [Test]
-        public void 마지막_웨이브까지_모두_구성을_갖는다()
+        public void 마지막_웨이브까지_모두_편성을_갖는다()
         {
             var deck = Deck(new[] { Concept("swarm", (0, EnemyClass.Runner)) });
             var plan = WavePatternGenerator.Generate(deck, deck.waveSeed, 2);
@@ -152,7 +154,7 @@ namespace Wassup.Tests.EditMode
             {
                 Assert.IsNotNull(plan.waves[i].groups, $"웨이브 {i + 1} 의 groups 가 null 이다");
                 Assert.Greater(plan.waves[i].groups.Count, 0,
-                    $"웨이브 {i + 1} 이 빈 편성이다 — 예고 줄이 통째로 사라진다");
+                    $"웨이브 {i + 1} 이 빈 편성이다 — 아무도 스폰되지 않는 웨이브다");
             }
         }
     }

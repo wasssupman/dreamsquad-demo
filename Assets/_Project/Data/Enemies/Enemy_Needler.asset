@@ -24,7 +24,7 @@ MonoBehaviour:
   targetPriorityClass: 0
   targetClassMask: -1
   targetFactions: 0
-  health: 45
+  health: 60
   moveSpeed: 1.3
   attackRange: 2
   attackCooldown: 0.35
@@ -89,3 +89,4 @@ MonoBehaviour:
   flightLift: 0
   idleVariants: []
   tier: 0
+  huntsDefenders: 0

@@ -9,6 +9,13 @@ namespace Wassup.Battle.Effects
 {
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(StatModifierTickSystem))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   ⚠ **이 핀이 모디파이어 클러스터 전체의 1프레임 지연을 고정한다.** 생산자 11개 중
+    //   8개가 이 시스템보다 **뒤**에 있어(공격·피해·착탄·임계 등) 그들의 모디파이어는 다음
+    //   프레임에 반영된다. 이 시스템이 뒤로 밀리면 그 8개가 조용히 같은 프레임 반영으로
+    //   바뀐다 — MovementSystem 앞에 묶어 이동 이후 블록 전체와의 관계를 고정한다.
+    [UpdateBefore(typeof(Wassup.Battle.Movement.MovementSystem))]
     public partial struct ModifierApplySystem : ISystem
     {
         public void OnCreate(ref SystemState state)

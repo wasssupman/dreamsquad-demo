@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: Deck_Duel
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackDeck
   deckId: Deck_Duel
-  battleMode: 0
   useGeneratedWaves: 1
   waveSeed: 20261972
   waveGeneratorVersion: 7
@@ -43,7 +42,6 @@ MonoBehaviour:
   unitGrowthPerWave: 1.12
   waveSpawnLeadInSec: 2
   maxPullsPerClear: 3
-  paceParFraction: 0.92
   bossUnit: {fileID: 11400000, guid: 17460475ac136f04ca0ef3f106dd38b8, type: 2}
   bossPool:
   - {fileID: 11400000, guid: 17460475ac136f04ca0ef3f106dd38b8, type: 2}
@@ -257,7 +255,8 @@ MonoBehaviour:
     spawnIndex: 1
   defeatGoalReachedCount: 10
   timerDurationSec: 180
-  goalStabilityMax: 1000
+  goalStabilityMax: 1500
+  killHealPerAwakening: 10
   waveConceptPool:
   - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410001, type: 2}
   - {fileID: 11400000, guid: 5ad0c17be9e64c1ea0b3f21d7c410002, type: 2}

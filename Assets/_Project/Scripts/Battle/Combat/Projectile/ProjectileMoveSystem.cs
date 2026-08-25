@@ -18,6 +18,11 @@ namespace Wassup.Battle.Combat.Projectile
     // serves the same purpose within a Burst-compiled ISystem.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   호밍은 이동이 끝난 **최신** 위치를 읽어야 한다. `ProjectileHitSystem` 은 이미
+    //   `[UpdateAfter(this)]` 라 이 핀으로 이동→비행→착탄 순서가 전부 명시된다.
+    [UpdateAfter(typeof(Wassup.Battle.Movement.MovementSystem))]
     public partial struct ProjectileMoveSystem : ISystem
     {
         [BurstCompile]

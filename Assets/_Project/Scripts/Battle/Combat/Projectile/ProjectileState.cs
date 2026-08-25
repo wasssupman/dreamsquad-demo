@@ -143,13 +143,16 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
         // aoeTargetCap: nearest-B cap (0 = 무제한 = 레거시 메테오/스킬/보스 경로).
-        // ccKind/ccDuration: 수면/스턴탄 CC (0=None, Combat→Effects EnemyCcEvents).
-        // bombType: 뷰 변종 인덱스(0 데미지/1 수면/2 스턴) — sim 무해 캐리어,
-        // Presentation 이 색으로 해석(계약 8). 전부 기본 0 = 레거시 TileAoe.
+        // ccKind/ccDuration: 칸 광역이 거는 CC (0=None, Combat→Effects EnemyCcEvents).
+        // 전부 기본 0 = 레거시 TileAoe.
+        // ⚠ unit 10 — 폭탄 3종 무작위가 폐기되며 `bombType`(뷰 변종 인덱스)은 삭제됐다.
+        // 읽는 뷰가 끝내 생기지 않았고 이제 생산자도 없다.
         public int aoeTargetCap;
         public byte ccKind;
         public float ccDuration;
-        public byte bombType;
+
+        // bomb-barrel-on-place unit 2 — 착탄 시 세울 길막 설치물 index(요청에서 verbatim).
+        public int blockerDataIndex;
 
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Post-resolution survival for SingleSplash: while bounceRemaining > 0

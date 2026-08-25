@@ -99,24 +99,46 @@ namespace Wassup.Tests.EditMode
     }
 
     // waypoint-routing unit 9 — 레인 경로 해석 우선순위.
+    // duel-route-tours unit 1 — 컨셉 축이 가운데로 들어와 3축이 됐다.
+    // 좁은 순서: 적 SO(종의 정체성) > 컨셉(이번 편성) > 레인 기본(맵의 성질).
     public class WaypointRoutingTests
     {
         [Test]
         public void AuthoredPathIndex_Wins()
         {
-            Assert.AreEqual(3, WaypointRouting.ResolvePathIndex(authoredPathIndex: 3, laneDefaultPathIndex: 5));
+            Assert.AreEqual(3, WaypointRouting.ResolvePathIndex(
+                authoredPathIndex: 3, conceptPathIndex: 4, laneDefaultPathIndex: 5));
+        }
+
+        [Test]
+        public void NoAuthoredIndex_ConceptWinsOverLaneDefault()
+        {
+            Assert.AreEqual(4, WaypointRouting.ResolvePathIndex(
+                authoredPathIndex: -1, conceptPathIndex: 4, laneDefaultPathIndex: 5));
         }
 
         [Test]
         public void NoAuthoredIndex_FallsBackToLaneDefault()
         {
-            Assert.AreEqual(5, WaypointRouting.ResolvePathIndex(authoredPathIndex: -1, laneDefaultPathIndex: 5));
+            Assert.AreEqual(5, WaypointRouting.ResolvePathIndex(
+                authoredPathIndex: -1, conceptPathIndex: -1, laneDefaultPathIndex: 5));
         }
 
         [Test]
         public void NeitherAxisSet_ReturnsMinusOne_GoesStraightToGoal()
         {
-            Assert.AreEqual(-1, WaypointRouting.ResolvePathIndex(authoredPathIndex: -1, laneDefaultPathIndex: -1));
+            Assert.AreEqual(-1, WaypointRouting.ResolvePathIndex(
+                authoredPathIndex: -1, conceptPathIndex: -1, laneDefaultPathIndex: -1));
+        }
+
+        // 비행 적이 컨셉에 실려도 자기 경로를 잃지 않는다 — 컨셉이 덮으면 강을 못 건넌다.
+        // 「좁은 쪽이 이긴다」가 여기서 안전 규칙으로 작동한다는 것을 고정한다.
+        [Test]
+        public void ConceptCannotOverrideSpeciesRoute()
+        {
+            Assert.AreEqual(0, WaypointRouting.ResolvePathIndex(
+                authoredPathIndex: 0, conceptPathIndex: 2, laneDefaultPathIndex: -1),
+                "Skimmer 의 공중 경로(0)는 어떤 컨셉에 실려도 유지되어야 한다");
         }
     }
 }

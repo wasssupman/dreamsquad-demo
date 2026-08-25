@@ -57,6 +57,42 @@ namespace Wassup.Tests.EditMode
             finally { fac.Dispose(); cands.Dispose(); }
         }
 
+        // heart-stress-axis unit 6 — 방패가 서면 마음이 **후보 수집 단계에서** 빠진다
+        // (`StructureDestinationSystem` 의 `.WithNone<CoreShielded>()`). 그러면 위
+        // 「코앞의 마음이 먼 본능을 이긴다」 규칙이 그대로 뒤집힌 답을 낸다 —
+        // 선택 함수는 한 줄도 안 바뀌고 후보 집합만 바뀐다. 이게 이 설계의 값어치다.
+        //
+        // ⚠ 이 테스트가 고정하는 것은 **결과**이지 배제 자체가 아니다. 쿼리에서 정말
+        // 빠지는지는 월드가 필요해 여기서 못 잰다 — README 후속 후보의 PlayMode 통합 단언 몫.
+        [Test]
+        public void NearestIndex_WithShieldedHeartRemoved_PicksTheInstinct()
+        {
+            var cands = new NativeArray<float2>(1, Allocator.Temp);
+            cands[0] = new float2(9f, 0f);    // 먼 본능 — 마음은 방패 때문에 후보에 없다
+            var fac = Factions(Faction.DefenderInstinct);
+            try
+            {
+                Assert.AreEqual(0, StructureChoice.NearestIndex(float2.zero, cands, fac, All),
+                    "마음이 빠지면 아무리 멀어도 본능이 목적지가 된다 — 「부숴야 닿는다」의 실체");
+            }
+            finally { fac.Dispose(); cands.Dispose(); }
+        }
+
+        // 방패가 걷힌 뒤 — 마음이 후보로 돌아오면 다시 거리순이다(위 규칙 복귀).
+        [Test]
+        public void NearestIndex_AfterShieldDrops_HeartCompetesAgain()
+        {
+            var cands = new NativeArray<float2>(2, Allocator.Temp);
+            cands[0] = new float2(1f, 0f);    // 마음
+            cands[1] = new float2(9f, 0f);    // 본능(이미 파괴됐다면 후보에 없겠지만 규칙 확인용)
+            var fac = Factions(Faction.DefenderCore, Faction.DefenderInstinct);
+            try
+            {
+                Assert.AreEqual(0, StructureChoice.NearestIndex(float2.zero, cands, fac, All));
+            }
+            finally { fac.Dispose(); cands.Dispose(); }
+        }
+
         // 못 부수는 거점은 후보에서 빠진다 — 그 앞에서 굳지 않게. 마음사냥꾼(마스크 28)처럼
         // 좁게 저작된 적도 같은 함수 하나로 처리된다.
         [Test]

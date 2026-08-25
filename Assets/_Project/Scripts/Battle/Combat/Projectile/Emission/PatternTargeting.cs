@@ -15,8 +15,12 @@ namespace Wassup.Battle.Combat.Projectile.Emission
     {
         // (cells 의) 선택된 후보 index. 후보 0 이면 -1(호출자가 발사를 소모하고 skip).
         // 중복 셀(타일 고정 유닛에겐 불가능, 방어적)은 낮은 스냅샷 index 로 tie-break.
+        //
+        // bomb-barrel-on-place unit 3 — `casterCell` 은 Nearest 전용이다. 나머지 규칙은 이 값을
+        // **읽지 않으므로** 결과가 한 톨도 안 바뀐다(무회귀 단언이 이걸 고정한다). 오버로드를
+        // 만들지 않는 이유: 진입점이 둘이면 어느 쪽이 최근접을 지원하는지가 흐려진다.
         public static int Select(in NativeArray<int2> candidateCells, PatternSelectionRule rule,
-                                 int fireCount, int2 gridSize)
+                                 int fireCount, int2 gridSize, int2 casterCell = default)
         {
             int n = candidateCells.Length;
             if (n <= 0) return -1;
@@ -26,6 +30,29 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             {
                 case PatternSelectionRule.None:
                     return -1;
+
+                // 최근접은 rank 를 거치지 않고 **직접** 고른다. 거리는 셀 체비셰프(스코프
+                // 필터 `PatternScope.Filter` 와 같은 자), 동률은 row-major 셀 키 → 스냅샷
+                // index 순으로 아래 두 규칙과 같은 tie-break 를 쓴다.
+                case PatternSelectionRule.Nearest:
+                {
+                    int best = -1;
+                    int bestDist = int.MaxValue;
+                    long bestKey = long.MaxValue;
+                    for (int i = 0; i < n; i++)
+                    {
+                        int2 d = candidateCells[i] - casterCell;
+                        int dist = math.max(math.abs(d.x), math.abs(d.y));
+                        long key = (long)candidateCells[i].y * gridSize.x + candidateCells[i].x;
+                        if (best < 0 || dist < bestDist || (dist == bestDist && key < bestKey))
+                        {
+                            best = i;
+                            bestDist = dist;
+                            bestKey = key;
+                        }
+                    }
+                    return best;
+                }
 
                 case PatternSelectionRule.DeterministicShuffle:
                     // 해시 → rank. 순회처럼 예측 가능하지 않으면서 같은 fireCount 는

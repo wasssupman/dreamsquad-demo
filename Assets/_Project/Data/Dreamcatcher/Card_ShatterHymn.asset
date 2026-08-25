@@ -25,8 +25,8 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uD56D\uC0C1 \u2192 CC \uC0C1\uD0DC \uC801\uC5D0\uAC8C \uBAA8\uB4E0
-    \uC544\uAD70 \uD53C\uD574 +50%"
+  description: "\uD56D\uC0C1 \u2192 CC \uC0C1\uD0DC \uC801\uC5D0\uAC8C \uD53C\uD574\uB7C9
+    +50%"
   leakAllowanceCost: 0
   attachType: 0
   attachValue: 

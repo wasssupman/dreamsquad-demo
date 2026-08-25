@@ -34,5 +34,15 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void NegativeMax_ReturnsZero()
             => Assert.That(Health.ComputeRatio(10f, -5f), Is.EqualTo(0f).Within(1e-5f));
+
+        [Test]
+        public void MaxHealthDamage_UsesConfiguredRatio()
+            => Assert.That(Health.ComputeMaxHealthDamage(600f, 0.9f), Is.EqualTo(540f).Within(1e-5f));
+
+        [TestCase(600f, -0.1f, 0f)]
+        [TestCase(600f, 1.1f, 600f)]
+        [TestCase(-10f, 0.9f, 0f)]
+        public void MaxHealthDamage_ClampsInvalidInputs(float max, float ratio, float expected)
+            => Assert.That(Health.ComputeMaxHealthDamage(max, ratio), Is.EqualTo(expected).Within(1e-5f));
     }
 }

@@ -142,7 +142,10 @@ namespace Wassup.Battle.Effects
             return e;
         }
 
-        public static Entity SpawnBlockingHazard(EntityManager em, BlockingHazardSO so, int2 originCell, int hazardSoIndex)
+        // bomb-barrel-on-place unit 0 — explodeDataIndex 는 **브리지가 풀어 넘긴다**
+        // (SO→투사체 index 해석은 레지스트리를 가진 브리지 몫). -1 = 미배선.
+        public static Entity SpawnBlockingHazard(EntityManager em, BlockingHazardSO so, int2 originCell,
+            int hazardSoIndex, int explodeDataIndex = -1)
         {
             if (so == null) return Entity.Null;
 
@@ -163,12 +166,21 @@ namespace Wassup.Battle.Effects
             {
                 cell = centerCell,
                 worldPosition = worldPos,
+                // unit 7 — 길막 설치물에 시한은 없다. 부서져야만 사라진다.
                 remainingLife = float.PositiveInfinity,
             });
+            if (so.explodeDamage > 0f && explodeDataIndex < 0)
+                Debug.LogWarning($"[BlockingHazard] '{so.name}' has explodeDamage {so.explodeDamage} " +
+                                 "but no explodeProjectile wired — the blast would borrow projectile 0's visual.");
             em.AddComponentData(entity, new BlockingHazard
             {
                 hazardSoIndex = hazardSoIndex,
                 maxHp = so.maxHp,
+                explodeDamage = so.explodeDamage,
+                explodeTileRange = so.explodeTileRange,
+                explodeTargetCap = so.explodeTargetCap,
+                decayPerSec = so.healthDecayPerSec,
+                explodeDataIndex = explodeDataIndex,
             });
             var buffer = em.AddBuffer<OccupiedCellsBuffer>(entity);
             for (int i = 0; i < cells.Count; i++)

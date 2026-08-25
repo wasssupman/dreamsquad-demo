@@ -65,6 +65,17 @@ namespace Wassup.UI
             // onSignedIn can fire more than once per app session (e.g. returning
             // auto-login, then SKIP taking the already-signed-in path).
             if (_done) return;
+            // battle-sim-extraction M0 unit 3 — 하네스 구동 중에는 임포트하지 않는다.
+            // 이 임포트는 **시트 값으로 SO 를 덮는다**. 골든을 뜨는 중에 그게 들어오면
+            // 「코드가 바뀌었다」로 보이는 값 드리프트가 된다(이 레포의 오래된 함정이고,
+            // 간헐 테스트 실패로 이미 여러 번 위장한 적이 있다). `_done` 을 세우지 않는 이유:
+            // 하네스가 끝난 뒤의 정상 진입에서는 다시 임포트돼야 한다 — 여기서 소비해 버리면
+            // 하네스가 라이브 세션의 값 갱신을 조용히 삼킨다.
+            if (Wassup.Core.TimeControl.SimHarnessClock.Active)
+            {
+                Debug.Log("[LoginAutoImport] 하네스 구동 중 — 시트 임포트를 건너뛴다(골든 오염 방지).");
+                return;
+            }
             if (refresher == null)
             {
                 Debug.LogWarning("[LoginAutoImport] refresherSource is not an IRuntimeRefresher — auto import skipped.", this);

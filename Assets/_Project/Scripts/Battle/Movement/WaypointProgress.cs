@@ -45,11 +45,27 @@ namespace Wassup.Battle.Movement
     // waypoint-routing unit 9 — 레인 경로 해석. 적 SO 지정(개체)이 레인 기본(맵)보다
     // 좁은 축이라 이긴다: Skimmer 의 Air 경로는 어느 레인에서 나오든 종의 정체성이고,
     // 레인 기본은 「지정 없는 적이 이 맵에서 어디로 오나」다.
+    //
+    // duel-route-tours unit 1 — 그 사이에 **웨이브 컨셉**이 들어와 3축이 됐다.
+    // 좁은 순서대로: 종의 정체성 > 이번 편성의 성격 > 맵의 성질.
+    //
+    //     적 SO      (AttackUnitData.waypointPathIndex) — 전 맵 공통, 그 적이 나올 때마다
+    //     컨셉       (WaveConceptSlot.pathIndex)        — 그 편성이 실린 웨이브에만
+    //     레인 기본  (MapDocument.spawnRoutes[lane])    — 그 맵의 모든 웨이브
+    //
+    // 컨셉이 적 SO 를 못 이기는 이유: 비행 적의 경로는 강을 건너는 수단이라, 컨셉이 덮으면
+    // 그 적이 지형에 갇힌다. 「좁은 쪽이 이긴다」가 여기서 안전 규칙으로도 작동한다.
+    //
+    // 우선순위를 호출부에서 삼항으로 풀지 않는 계약은 그대로다 — 풀면 계약이 코드에만 남고
+    // EditMode 로 고정할 지점이 사라진다. 소비자는 스폰(BattleBridge)과 예고
+    // (BuildSpawnGuideForecasts) 둘이며 **같은 이 함수**를 부른다.
     public static class WaypointRouting
     {
-        public static int ResolvePathIndex(int authoredPathIndex, int laneDefaultPathIndex)
+        public static int ResolvePathIndex(
+            int authoredPathIndex, int conceptPathIndex, int laneDefaultPathIndex)
         {
             if (authoredPathIndex >= 0) return authoredPathIndex;
+            if (conceptPathIndex >= 0) return conceptPathIndex;
             if (laneDefaultPathIndex >= 0) return laneDefaultPathIndex;
             return -1;
         }

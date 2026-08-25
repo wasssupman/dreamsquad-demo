@@ -72,6 +72,10 @@ namespace Wassup.Battle.Combat.Projectile
             // 명시(threat 큐 대칭). 테스트/초기 프레임엔 없을 수 있어 옵셔널 게이트.
             bool hasCcQ = SystemAPI.TryGetSingletonRW<EnemyCcEventsSingleton>(out var ccEventsRW);
             NativeQueue<EnemyCcEvent> ccQueue = hasCcQ ? ccEventsRW.ValueRW.queue : default;
+            // bomb-barrel-on-place unit 2 — Combat→Bridge 설치물 스폰 요청. 해저드 캐스트가
+            // 쓰는 **바로 그 채널**이라 신규 채널 0. 맥락 간 통신을 큐로 하는 공인 경로다.
+            bool hasHazardSpawnQ = SystemAPI.TryGetSingletonRW<HazardSpawnRequestsSingleton>(out var hazardSpawnRW);
+            NativeQueue<HazardSpawnRequest> hazardSpawnQueue = hasHazardSpawnQ ? hazardSpawnRW.ValueRW.queue : default;
 
             // Combat→Presentation: hit-VFX channel. May not exist before
             // BattleBridge.EnsureQueriesAndQueues runs (very first frames in
@@ -775,6 +779,40 @@ namespace Wassup.Battle.Combat.Projectile
                                 radiusWorld = tileRange * tileSize,
                                 source = entity,
                             });
+                        break;
+                    }
+
+                    // bomb-barrel-on-place unit 2 — 착탄 지점 칸에 길막 설치물을 세운다.
+                    // **피해 0**: 배럴은 폭탄이 아니라 물건이고, 터지는 것은 부서질 때다(unit 0).
+                    // 실제 스폰은 브리지 드레인이 하고 여기선 기존 요청 채널에 넣기만 한다
+                    // (신규 채널 0). 캐스트 해저드가 쓰는 그 채널 그대로다.
+                    case PayloadKind.SpawnBlocker:
+                    {
+                        if (projectile.ValueRO.blockerDataIndex < 0)
+                        {
+                            // 조용한 무발동 금지 — 저작이 빠지면 「던졌는데 아무것도 안 선다」가
+                            // 되고, 탄은 아래에서 그대로 소모되어 단서가 남지 않는다.
+                            UnityEngine.Debug.LogWarning(
+                                "[ProjectileHitSystem] SpawnBlocker payload with no blockerDataIndex — nothing will be built.");
+                            break;
+                        }
+                        if (!hasHazardSpawnQ) break;
+                        int2 blockerCell = GridMath.WorldToCell(
+                            projectile.ValueRO.impact, tileSize, gridSize, origin: ffOrigin);
+                        hazardSpawnQueue.Enqueue(new HazardSpawnRequest
+                        {
+                            kind = HazardCastKind.Blocking,
+                            dataIndex = projectile.ValueRO.blockerDataIndex,
+                            centerCell = blockerCell,
+                            width = 1,
+                            height = 1,
+                            // 설치물 자체는 시전자를 안 쓴다(모양·체력·수명이 전부 SO 다).
+                            // 드레인의 시전자 생존 검사는 길막 종류에서 걷어냈다 — 비행 중
+                            // 폭탄맨이 죽어도 배럴은 서야 한다(spec 계약 7).
+                            caster = projectile.ValueRO.owner,
+                            target = Entity.Null,
+                            targetTraversalLayers = projectile.ValueRO.targetTraversalLayers,
+                        });
                         break;
                     }
 

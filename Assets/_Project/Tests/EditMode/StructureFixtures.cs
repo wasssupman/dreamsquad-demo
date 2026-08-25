@@ -14,10 +14,19 @@ namespace Wassup.Tests.EditMode
     // drift 를 구조로 잡는다 — 빌더가 낡으면 그 테스트가 깨진다.
     public static class StructureFixtures
     {
+        // battle-sim-extraction M0 unit 1 — 테스트 월드에도 «먼저 만든 쪽이 작은 ID» 라는
+        // 라이브 불변식을 준다. 값 자체엔 의미가 없고 **상대 순서**만 의미가 있으므로
+        // 프로세스 전역 단조 증가로 충분하다(테스트 간 리셋 불요 — 유일성이 그대로 유지된다).
+        // 라이브 발급기는 `BattleBridge.AttachSimEntityId` 하나뿐이고 여기가 그 테스트 짝이다.
+        private static int _nextSimId;
+
+        public static SimEntityId NextSimEntityId() => new SimEntityId { value = _nextSimId++ };
+
         // 방어 마음(= 라이브 골 타워). SpawnStructureEntities 의 goals[] 분기와 같은 구성.
         public static Entity MakeGoalTower(EntityManager em, float3 pos, float hp = 1000f)
         {
             var e = em.CreateEntity();
+            em.AddComponentData(e, NextSimEntityId());
             em.AddComponent<GoalTowerTag>(e);
             em.AddComponentData(e, new StructureTag
             {
@@ -26,6 +35,8 @@ namespace Wassup.Tests.EditMode
             });
             em.AddComponentData(e, new Health { value = hp, max = hp });
             em.AddBuffer<IncomingDamage>(e);
+            // heart-stress-axis unit 2 — 브리지 스폰과 대칭(GoalTowerArchetypeTests 가 강제한다).
+            em.AddBuffer<IncomingHeal>(e);
             em.AddComponentData(e, new FactionTag { value = Faction.DefenderCore });
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
             return e;
@@ -36,6 +47,7 @@ namespace Wassup.Tests.EditMode
         {
             var cell = new int2((int)pos.x, (int)pos.z);
             var e = em.CreateEntity();
+            em.AddComponentData(e, NextSimEntityId());
             em.AddComponentData(e, new StructureTag { cell = cell, faction = faction });
             em.AddComponentData(e, new Health { value = hp, max = hp });
             em.AddBuffer<IncomingDamage>(e);

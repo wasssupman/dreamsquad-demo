@@ -56,6 +56,28 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual(1, fake.RefreshCalls, "the import is once per app session");
         }
 
+        // battle-sim-extraction M0 unit 3 — 하네스 구동 중 시트 임포트 차단.
+        // 이 임포트는 시트 값으로 SO 를 덮으므로, 골든을 뜨는 중에 들어오면 값 드리프트가
+        // 「코드 회귀」로 위장한다(이 레포에서 간헐 테스트 실패로 여러 번 나타난 함정).
+        [Test]
+        public void HarnessActive_SkipsImport_AndKeepsTheOneShotUnspent()
+        {
+            var fake = new FakeRefresher();
+            Wassup.Core.TimeControl.SimHarnessClock.Begin(1f / 60f);
+            try
+            {
+                LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("하네스 구동 중"));
+                _auto.TriggerOnce(fake);
+                Assert.AreEqual(0, fake.RefreshCalls, "하네스 중에는 임포트하지 않는다");
+            }
+            finally { Wassup.Core.TimeControl.SimHarnessClock.End(); }
+
+            // 차단이 one-shot 을 **소비하면 안 된다** — 하네스가 끝난 뒤 정상 진입에서
+            // 값 갱신이 조용히 사라진다.
+            _auto.TriggerOnce(fake);
+            Assert.AreEqual(1, fake.RefreshCalls, "하네스가 끝나면 정상적으로 임포트된다");
+        }
+
         [Test]
         public void NullRefresher_DoesNotThrowAndLeavesGuardOpen()
         {

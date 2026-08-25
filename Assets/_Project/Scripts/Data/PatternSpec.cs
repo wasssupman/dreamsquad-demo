@@ -11,6 +11,11 @@ namespace Wassup.Data
         DeterministicShuffle = 1,
         // projectile-shot-sequence unit 1 — 타겟 선택을 하지 않는 방향 발사.
         None = 2,
+        // bomb-barrel-on-place unit 3 — 시전자에게 **가장 가까운** 후보. 폭탄맨 평타와 상시
+        // 길막 캐스터가 이미 쓰는 규칙을 발사 명세 어휘로 옮겨 적은 것이다(새 판정 아님).
+        // 동률 tie-break 는 위 두 규칙과 **같은** row-major 셀 키 rank 라 결정론이 유지된다.
+        // ⚠ 끝에 append — 중간에 끼우면 기존 패턴 에셋의 직렬화 값이 밀린다.
+        Nearest = 3,
     }
 
     // projectile-shot-sequence unit 0 — 한 발의 architecture-neutral 명세.

@@ -95,15 +95,42 @@ namespace Wassup.Data
         public int defeatGoalReachedCount = 5;
         public float timerDurationSec = 180f;
 
-        // three-minute-survival unit 0 — 골 안정도 최대치. 유출한 적의 stabilityDamage 합이
-        // 이 값에 닿으면 패배다. defeatGoalReachedCount(스트레스 한계)는 더 이상 패배를
-        // 만들지 않지만 몽마의 계약이 그 값을 지불 대상으로 쓰므로 **은퇴시키지 않는다**.
+        // three-minute-survival unit 0 — 마음(골)의 체력 정본이자 스트레스 0~100 의 **분모**
+        // (`StressMath.FromHealth`). 0 이 되면 스트레스가 100 이 되고 판이 끝난다.
+        //
+        // heart-stress-axis unit 5 — 「패배」는 은퇴했다. 마음이 부서지면 지는 게 아니라
+        // **그때까지의 처치 수를 제출하고 끝난다**(종료 2통로: 3분 만료 · 스트레스 100).
+        // defeatGoalReachedCount 는 몽마의 계약이 지불 대상으로 쓰므로 은퇴시키지 않는다.
         // Appended last (직렬화 back-compat).
         [Header("Goal Stability")]
-        [Tooltip("골 안정도 최대치. 유출한 적의 stabilityDamage 합이 이 값에 닿으면 패배.")]
-        // 2026-08-08 — 20 → 1000. 공성(goal-tower-siege)이 붙으면서 20 은 적 2~3대에 녹아
-        // "3분 생존" 전제가 성립하지 않았다(검증에서 첫 접촉 몇 초 뒤 패배). 1000 은 사용자 결정.
-        [Min(1)] public int goalStabilityMax = 1000;
+        [Tooltip("마음 체력 = 스트레스의 분모. 0 이 되면 스트레스 100 = 판 종료(제출).")]
+        // 값 이력: 20 → 1000 (2026-08-08 — 공성이 붙으면서 20 은 적 2~3대에 녹아 「3분 생존」
+        //   전제가 무너졌다) → **1500** (2026-08-24, heart-stress-axis unit 5). 1500 의 근거는
+        //   사용자 최초 지시 「본능의 1.5배」다 — 라이브 본능(`Structure_GuardInstinct` ·
+        //   `Structure_WatchInstinct`)이 1000 이라 1.5배가 곧 1500 이다.
+        //
+        // ⚠ 이 값은 **시계**이지 저울이 아니다. 키우면 판 전체가 같은 비율로 느려질 뿐,
+        //   「한 대 맞기 : 한 마리 잡기」의 교환비는 하나도 안 바뀐다 — 그 저울은 아래
+        //   `killHealPerAwakening` 이 혼자 쥔다. 두 손잡이를 같은 패스에서 함께 돌리지 말 것.
+        [Min(1)] public int goalStabilityMax = 1500;
+
+        // heart-stress-axis unit 2 — **악몽 처치 시 마음 회복량의 배율.**
+        //   회복 = AttackUnitData.awakeningReward × 이 값
+        // 새 per-enemy 필드를 만들지 않는다(명제 7) — `awakeningReward`(잡몹 2 / 엘리트·중간 3 /
+        // 보스 5 / 슬라임 분열체 0)가 이미 「이 적을 잡으면 얼마를 주나」의 서열을 저작하고 있고,
+        // 그 서열이 그대로 회복 서열로 읽힌다. 튜닝 손잡이는 이 배율 하나다.
+        //
+        // 기본 10 의 근거: 잡몹 1킬(reward 2) = 20 회복 = `Enemy_Basic` 1타(공격력 20) 상쇄.
+        // 「한 마리 잡으면 한 대 값」이 읽기 쉬운 기준점이다.
+        //
+        // unit 5(2026-08-24) 에서 **10 을 유지**하기로 했다. 마음 HP 를 1000→1500 으로 올렸지만
+        // 이 교환비는 HP 와 무관하다 — 한 대(20)도 한 킬(20)도 똑같이 1500 분의 20 이라
+        // 분모가 양쪽에서 약분된다. HP 는 시계만 늦췄고(Basic 1기 단독 25초 → 37.5초) 저울은
+        // 그대로다. 밸런스 1패스에서 **손잡이는 하나만 돌린다**는 규율이기도 하다 — 둘을 같이
+        // 움직이면 어느 쪽이 체감을 만들었는지 다음 패스에서 못 가른다.
+        // 0 이면 회복이 꺼진다(스트레스가 한 방향으로만 오르는 판).
+        [Tooltip("악몽 처치 시 마음 회복 = 적의 awakeningReward × 이 값. 0 = 회복 없음.")]
+        [Min(0)] public float killHealPerAwakening = 10f;
 
         // wave-concept-blocks unit 0 — 웨이브 컨셉 블록. Appended last (직렬화 back-compat).
         //

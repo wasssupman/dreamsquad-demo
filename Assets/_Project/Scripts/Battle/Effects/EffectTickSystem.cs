@@ -12,6 +12,13 @@ namespace Wassup.Battle.Effects
     // pre-tick value; the removal only takes effect next frame via ECB playback.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   ⚠ 이 파일의 기존 주석은 「AttackSystem **뒤**에 돈다」고 적혀 있으나 실측은 **앞**이다
+    //   (캡처 27 < AttackSystem 35). 주석이 아니라 실측을 박제한다 — 어느 쪽이 옳은지는
+    //   M1 이 판단한다. 지금 고치면 골든의 기준선이 무너진다.
+    [UpdateAfter(typeof(Wassup.Battle.Movement.MovementSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.AttackSystem))]
     public partial struct EffectTickSystem : ISystem
     {
         // OnCreate is not Burst-compiled because RequireAnyForUpdate takes a

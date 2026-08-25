@@ -6,7 +6,7 @@ using Wassup.Battle.Combat;
 namespace Wassup.Tests.EditMode
 {
     // nightmare-catcher unit 1 — pure threat math invariants: find-or-append
-    // accumulation, max-damage leader, entity-index tie determinism, dead
+    // accumulation, max-damage leader, first-credited tie determinism, dead
     // attackers excluded via the caller-resolved alive mask, empty → Null.
     public class ThreatTableTests
     {
@@ -37,13 +37,18 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(E(2), leader);
         }
 
+        // battle-sim-extraction M0 unit 1 — 동률 축이 `Entity.Index` 에서 **표의 자기
+        // 순서**로 바뀌었다. 표는 find-or-append 로만 자라므로 앞자리 = 이 보스를 먼저
+        // 때린 쪽이고, 그 사실은 할당기가 아니라 시뮬이 소유한다.
         [Test]
-        public void Leader_Tie_PrefersLowerEntityIndex_RegardlessOfOrder()
+        public void Leader_Tie_PrefersFirstCredited()
         {
             var a = new ThreatEntry { attacker = E(7), cumulativeDamage = 40f };
             var b = new ThreatEntry { attacker = E(3), cumulativeDamage = 40f };
-            Assert.AreEqual(E(3), Leader(new[] { a, b }, new[] { true, true }));
-            Assert.AreEqual(E(3), Leader(new[] { b, a }, new[] { true, true }));
+            Assert.AreEqual(E(7), Leader(new[] { a, b }, new[] { true, true }),
+                "동률이면 표에 먼저 등재된 쪽");
+            Assert.AreEqual(E(3), Leader(new[] { b, a }, new[] { true, true }),
+                "순서가 뒤집히면 승자도 뒤집힌다 — 엔티티 번호가 아니라 등재 순서가 축");
         }
 
         [Test]

@@ -21,8 +21,38 @@
 2. 덤프 순서를 기준으로 위 미선언 지점에 `[UpdateBefore/UpdateAfter]` 명시 — **현행 유효 순서를 그대로 고정**하는 것이 목적이며 순서를 "고치지" 않는다. 재배치 판단은 M1 설계의 몫.
 3. 핀 후 재덤프 → 순서 무변 확인.
 
+## unit 0 에서 박은 핀 (2026-08-22)
+
+캡처 시점 시스템 수는 **48**(스펙 작성 08-03 의 44 에서 증가), 무순서 **8 → 3**.
+전부 **현행 위치를 그대로 고정**하는 핀이며 순서를 고친 것은 하나도 없다.
+
+| 시스템 | 박은 핀 | 근거 |
+|---|---|---|
+| `LastRunSystem` | `UpdateBefore(DamageApplicationSystem)` | IncomingDamage 인박스 append — 같은 계약의 `HeatAccrualSystem` 과 동형 |
+| `EffectTickSystem` | `UpdateAfter(MovementSystem)` + `UpdateBefore(AttackSystem)` | 실측 위치 고정 (아래 ⚠) |
+| `ProjectileMoveSystem` | `UpdateAfter(MovementSystem)` | 호밍이 이동 후 최신 위치를 읽어야 한다 |
+| `FatigueAccrualSystem` | `UpdateAfter(ModifierApplySystem)` | 스택 생산자이며 소비자보다 뒤 = 다음 프레임 반영(현행) |
+| `ResignationThresholdSystem` | `UpdateBefore(StackModifierTickSystem)` | 사직서 스택을 읽어 임계 소모 |
+| `ZoneApplySystem` | `UpdateBefore(ModifierApplySystem)` | 소비자보다 앞선 생산자 셋 중 하나(같은 프레임 반영) |
+| `BossPeriodicTriggerSystem` | `UpdateBefore(ModifierApplySystem)` | 〃 |
+| `ModifierApplySystem` | `UpdateBefore(MovementSystem)` | 아래 ⚠⚠ |
+
+**핀하지 않은 무순서 3개 (의도)**
+- `MovementSystem` — 15개 시스템이 이것을 기준으로 핀하고 있어 무어트리뷰트여도 결정된다(스펙 지시).
+- `PickupSpawnSystem` — `PickupConsumeSystem` 이 `UpdateAfter(this)` 라 **의미 있는 상대 순서는 이미 고정**. 절대 위치는 관측에 영향 없음.
+- `HitFlashSystem` — 순수 프레젠테이션(자기 `LocalTransform.Scale` 만 씀). 위치가 sim 의미를 바꾸지 않는다.
+
+### 캡처가 드러낸 사실 2건 (고치지 않고 기록만)
+
+⚠ **`EffectTickSystem` 의 주석이 실제와 반대다.** 파일 주석은 「`MovementSystem` + `AttackSystem` **뒤**에 돌아 이번 프레임 소비자가 tick 전 값을 본다」고 적혀 있으나, 실측은 `AttackSystem` **앞**이다(27 < 35). 주석이 아니라 실측을 박제했다 — 어느 쪽이 옳은지는 M1 의 판단이고, 지금 고치면 골든의 기준선이 무너진다.
+
+⚠⚠ **모디파이어는 대부분 1프레임 지연된다.** 소비자 `ModifierApplySystem` 은 9번이고, 생산자 11개 중 **8개가 그 뒤**에 있다(`AttackSystem`·`DamageApplicationSystem`·`ProjectileHitSystem`·`HealthThresholdSystem`·`StackModifierTickSystem`·`DreamCocoonSystem`·`PickupConsumeSystem`·`FatigueAccrualSystem`). 즉 그들의 모디파이어는 **다음 프레임**에 반영된다. 같은 프레임에 반영되는 생산자는 셋뿐이다(`AllyBuffFieldSystem`·`ZoneApplySystem`·`BossPeriodicTriggerSystem`). 소비자를 `MovementSystem` 앞에 묶어 이 비대칭을 통째로 고정했다 — 소비자가 뒤로 밀리면 그 8개가 **조용히** 같은 프레임 반영으로 바뀐다.
+
 ## 완료 기준
 
-- compile 통과, 핀 전/후 덤프 순서 동일 (행동 변화 0).
-- `order-capture.md`에 44개 시스템 총순서 + 어느 지점이 신규 핀인지 기록됨.
-- Play smoke: 전투 1판 정상 진행, 콘솔 에러 0.
+- [x] compile 통과, 핀 전/후 덤프 순서 동일 (행동 변화 0) — 48개 전부 동일 위치 실측.
+- [x] `order-capture.md`에 총순서 기록 + 신규 핀은 위 표에 기록(생성물은 손대지 않는다).
+- [x] Play smoke: 전투 1판 정상 진행(적 15→4, 그룹 가동), 콘솔 에러 0.
+
+확인 2026-08-22 · 덤프 유틸 `Assets/_Project/Editor/Battle/SimOrderDumpMenu.cs`
+(`Wassup/Battle/Sim Order/Dump BattleSimGroup Order`, Play 중 실행).

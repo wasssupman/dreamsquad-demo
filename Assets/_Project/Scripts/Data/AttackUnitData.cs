@@ -198,10 +198,27 @@ namespace Wassup.Data
         // 만들지 않고 값 구간으로 일반/엘리트/보스를 구분한다(제약 8).~~
         // → elite-enemy-tier unit 0 이 `tier` 필드를 만들었다(위 killScore 주석과 같은 근거).
         // 이 필드는 여전히 밸런스 값이며 `tier` 와 서로 검증하지 않는다.
-        // 기본 1 = 미저작 자산도 유출이 무해해지지 않는다.
+        // heart-stress-axis unit 0 rev 2 — **돌격형(`attackMethod: None`)의 마음 직격.**
+        //
+        // 이 값을 소비하는 조건은 **`canSiege == false`** 다 — 「마스크에 `DefenderCore` 가 없다」,
+        // 즉 «마음을 조준할 수 없어 도달하면 소멸하는 적». 라이브에서는 Runner·Swift 2종이고
+        // 둘은 **일반 공격을 갖는다**(unit 7 — `attackMethod: Melee`). 「공격이 없는 적」이 아니라
+        // 「마음만 못 때리는 적」이다. 마음을 조준할 수 있는 적은 이 값을 **쓰지 않는다**. 즉 이 필드는 「유출 피해」가
+        // 아니라 **돌격형의 한 방**이고, 그래서 값 대역이 공격력과 같은 축이어야 한다.
+        //
+        // 마음 HP 는 덱의 `goalStabilityMax`(라이브 **1500** — unit 5)다. 옛 값 대역(일반 1 /
+        // 엘리트 2 / 보스 5)은 마음 HP 가 1~5 이던 시절의 유물이라 1000 에서는 0.1% = 무해였다.
+        // 현재 저작: 돌격형 50. 마음 1500 기준 **한 마리당 3.3%**, 30마리 통과 = 판 종료.
+        //
+        // ⚠ unit 5 에서 HP 를 1000→1500 으로 올릴 때 이 값을 **같이 올리지 않았다**(75 후보 기각).
+        // 밸런스 1패스는 손잡이를 하나만 돌린다 — 여기를 함께 스케일하면 HP 변경이 이 채널에
+        // 한해 무효가 되고, 다른 모든 피해원이 1.5배 물러진 판에서 돌격형만 옛 무게로 남아
+        // **상대적으로 1.5배 강해진다**. 통과가 시시하게 느껴지면 그때 이 값만 따로 올린다.
+        // 공성형의 값은 **inert** 다.
         // Appended last (직렬화 back-compat).
         [Header("Goal Stability")]
-        [Tooltip("골을 뚫었을 때 골 안정도에서 깎는 양. 일반 1 / 엘리트 2 / 보스 5 기준.")]
+        [Tooltip("돌격형(targetFactions 에 마음이 없는 적)이 마음에 도달했을 때 한 번에 꽂는 피해. " +
+                 "마음을 조준할 수 있는 적은 이 값을 쓰지 않는다(공격력으로 때린다).")]
         [Min(0)] public int stabilityDamage = 1;
 
         public GameObject SpineWeaponTrailPrefab => weaponTrailPrefab;
@@ -236,5 +253,16 @@ namespace Wassup.Data
         [Tooltip("일반/엘리트/보스. BossTag·위협테이블·등장경보는 Boss 에서만 나온다. " +
                  "엘리트는 특수 메커니즘을 갖되 보스 특권(CC·어그로 면역)은 받지 않는다.")]
         public EnemyTier tier = EnemyTier.Normal;
+
+        // bonus-wave-pull unit 0 — 「배치된 방어유닛을 찾아다니며 사냥하다가 전멸시키면
+        // 거점으로 향한다」. 그 이동은 boss-defender-field 가 이미 만들어 뒀고 `BossTag` 로
+        // 잠겨 있었다 — 이 플래그가 그 게이트를 티어와 무관하게 연다.
+        //
+        // ⚠ `tier = Boss` 로 대신하지 말 것. 그쪽은 CC 면역·어그로 면역·등장 경보까지
+        // 딸려와 「저체력 잡몹 무리」가 성립하지 않는다. 두 축은 독립이다 —
+        // 보스는 `tier` 로 사냥을 얻고(부착 조건이 `Boss || huntsDefenders`), 잡몹은 이 값으로.
+        // false 가 기본이자 정상이다(기존 적 17종 전부). Appended last (직렬화 back-compat).
+        [Tooltip("배치된 방어유닛을 찾아다니며 사냥한다. 방어유닛이 0기면 거점으로 향한다.")]
+        public bool huntsDefenders = false;
     }
 }

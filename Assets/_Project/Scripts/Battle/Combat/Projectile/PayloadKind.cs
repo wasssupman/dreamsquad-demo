@@ -19,5 +19,11 @@ namespace Wassup.Battle.Combat.Projectile
         // out. No point-arrival resolution (defender-directional-volley unit 1;
         // hit arm lands in unit 2).
         PathHit = 2,
+
+        // bomb-barrel-on-place unit 2 — 착탄 지점 칸에 **길막 설치물을 세운다**. 피해는 0 이다
+        // (배럴은 폭탄이 아니라 물건이고, 터지는 것은 부서질 때다 — unit 0).
+        // 스폰은 기존 해저드 스폰 요청 채널을 타므로 신규 채널 0.
+        // ⚠ 끝에 append — 중간에 끼우면 직렬화된 기존 값이 밀린다.
+        SpawnBlocker = 3,
     }
 }

@@ -26,6 +26,14 @@ namespace Wassup.Data
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
         public Material placementLiquidMaterial;
 
+        // heart-stress-axis unit 1 rev 2 — **마음이 붉게 물든다.** rev 1(머리 위 바)·
+        // rev 2(주변 3×3 잠식)는 반려됐다 — 주변 타일 하이라이트는 쓸모가 없었고, 남은 답은
+        // 마음 자체가 말하는 것이다. 자리가 여기인 이유는 그대로다: 이 SO 가 보드 시각
+        // 파라미터의 집이고, 씬 SerializeField 는 값 하나 바꾸는 데 씬 저장을 요구한다.
+        [Header("Heart stress (마음 스트레스)")]
+        [Tooltip("스트레스 100%일 때 마음 프랍의 색. 흰색(온전)에서 여기로 보간된다.")]
+        public Color heartStressPropTint = new Color(0.95f, 0.13f, 0.11f, 1f);
+
         [Header("Attack range highlight (placement-attack-range-preview)")]
         // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
         public TileBase rangeTile;

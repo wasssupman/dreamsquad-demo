@@ -9,6 +9,10 @@ namespace Wassup.Battle.Effects
 {
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
+    // battle-sim-extraction M0 unit 0 — 순서 박제. **현행 유효 순서를 고정할 뿐 고치지 않는다**
+    //   (재배치 판단은 M1 설계의 몫). 근거: docs/spec/battle-sim-extraction/order-capture.md
+    //   사직서 스택을 읽어 임계 소모한다 — 스택을 틱하는 시스템보다 앞이 현행이다.
+    [UpdateBefore(typeof(Wassup.Battle.Effects.StackModifierTickSystem))]
     public partial struct ResignationThresholdSystem : ISystem
     {
         private EntityQuery _resignationQuery;

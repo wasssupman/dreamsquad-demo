@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41574a5e919f3409b8adb23fba27b205, type: 3}
+  m_Name: Blocker_BombBarrel
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardSO
+  visualPrefab: {fileID: 6753501269801307967, guid: f8b0d3cb121aa4ed2bc72ff5323d39a9, type: 3}
+  spawnVfxPrefab: {fileID: 8053883155973515113, guid: cf6e23343ef194cdd972a28ca709b0dc, type: 3}
+  shape: 0
+  maxHp: 200
+  destructionVfxPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
+  explodeDamage: 120
+  explodeTileRange: 2
+  explodeTargetCap: 0
+  healthDecayPerSec: 16.67
+  explodeProjectile: {fileID: 11400000, guid: a7c278502563644c0a650aee0766c3d6, type: 2}
+  overheadHeight: 1

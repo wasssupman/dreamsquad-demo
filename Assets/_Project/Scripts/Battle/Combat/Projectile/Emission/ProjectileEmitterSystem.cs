@@ -273,9 +273,12 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             // `IndexOf(poolEntities, …)` 로 원본 index 를 만들어 쓰기 때문에
                             // 두 index 공간이 섞이면 엉뚱한 칸을 때리거나 범위를 벗어난다.
                             // (gridSize 는 원본 그대로 넘긴다 — rank 가 row-major 키를 만든다.)
+                            // bomb-barrel-on-place unit 3 — Nearest 는 시전자 칸을 알아야 한다.
+                            // 나머지 규칙은 이 인자를 읽지 않으므로 결과 무변경(회귀 핀 있음).
                             int sel = PatternTargeting.Select(scoped ? scopedCells : poolCells,
                                                               inst.spec.selection,
-                                                              inst.runtime.fireCount, ff.gridSize);
+                                                              inst.runtime.fireCount, ff.gridSize,
+                                                              GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin));
                             int idx = sel < 0 ? -1 : (scoped ? scopedIdx[sel] : sel);
                             // 명령 완성은 로직 계층이 한다(카운터 전진 포함).
                             order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime, idx);

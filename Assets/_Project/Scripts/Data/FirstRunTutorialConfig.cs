@@ -42,6 +42,9 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("배치 후 정지를 풀어 배치 스킬이 적을 때리는 것을 보여주는 시간(초).")]
         public float onPlaceWatchSeconds = 2f;
+        [Range(0.01f, 0.9f)]
+        [Tooltip("첫 유닛 배치 직후 최대 체력 기준으로 가할 피해 비율. 낮은 체력바로 철수 이유를 보여준다.")]
+        public float primaryPostPlacementDamageRatio = 0.9f;
 
         [Header("퇴근 (B3b)")]
         [Min(0f)]
@@ -73,6 +76,12 @@ namespace Wassup.Data
         [Tooltip("유닛 선택 후 손패가 딜인돼 카드가 활성화될 때까지의 **상한** 대기(초). " +
                  "지나도 낼 수 있는 카드가 0이면 부착 구간을 건너뛴다 — 조건 대기로 두면 앱이 잠긴다.")]
         public float cardDealInGraceSeconds = 2f;
+
+        [Header("생존 안내 (B5)")]
+        [Min(0f)]
+        [Tooltip("드림캐쳐 부착 뒤 시간 UI를 가리키며 자유 플레이 목표를 보여주는 시간(초). " +
+                 "이 구간은 전투를 멈추거나 입력을 차단하지 않는다.")]
+        public float survivalHintSeconds = 3f;
 
         [Header("첫 손패 저작")]
         [Tooltip("온보딩 판의 첫 손패에 이 순서로 올린다. **저장 덱에 실제로 든 카드만** 옮겨진다 — " +

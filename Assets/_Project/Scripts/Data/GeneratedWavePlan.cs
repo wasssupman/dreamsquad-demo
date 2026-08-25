@@ -52,14 +52,20 @@ namespace Wassup.Data
         // EffectiveSpawnIndex 가 3레인 이상 맵에서 authored 값을 무시하고 deckIndex 라운드로빈으로
         // 돌리기 때문이다 — 우회하지 않으면 저작한 lane 이 조용히 지워진다.
         public readonly int laneIndex;
+        // duel-route-tours unit 1 — 컨셉 슬롯이 지정한 맵 경로. -1 = 무지정.
+        // laneIndex 와 같은 여정을 탄다(그룹 → 펼침 → 브리지 → 엔티티). 보스·호위·레거시 덱
+        // 스폰은 기본값 -1 이라 이 축이 생겨도 거동이 같다.
+        public readonly int pathIndex;
 
         public WaveSpawnGroup(
-            AttackUnitData unit, int count, float triggerOffsetSec = 0f, int laneIndex = -1)
+            AttackUnitData unit, int count, float triggerOffsetSec = 0f, int laneIndex = -1,
+            int pathIndex = -1)
         {
             this.unit = unit;
             this.count = count;
             this.triggerOffsetSec = triggerOffsetSec;
             this.laneIndex = laneIndex;
+            this.pathIndex = pathIndex;
         }
     }
 
@@ -71,12 +77,17 @@ namespace Wassup.Data
         public readonly SpawnEntry entry;
         public readonly int swarmIndex;
         public readonly int laneIndex;
+        // duel-route-tours unit 1 — 이 스폰을 만든 그룹의 경로 지정. -1 = 무지정.
+        // 스폰(BattleBridge)과 예고(BuildSpawnGuideForecasts)가 **같은 값**을 읽어야 하므로
+        // 여기까지 실어 나른다 — 예고 쪽에서 그룹을 역추적하면 규칙이 두 벌이 된다.
+        public readonly int pathIndex;
 
-        public ExpandedWaveSpawn(SpawnEntry entry, int swarmIndex, int laneIndex)
+        public ExpandedWaveSpawn(SpawnEntry entry, int swarmIndex, int laneIndex, int pathIndex = -1)
         {
             this.entry = entry;
             this.swarmIndex = swarmIndex;
             this.laneIndex = laneIndex;
+            this.pathIndex = pathIndex;
         }
     }
 

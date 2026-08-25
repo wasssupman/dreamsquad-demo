@@ -23,11 +23,39 @@ namespace Wassup.Battle.Effects
         public void OnDestroyed(GameObject vfxPrefab)
         {
             if (vfxPrefab != null)
-                Instantiate(vfxPrefab, transform.position, Quaternion.identity);
+            {
+                // ⚠ 파괴 VFX 는 **부모 없이** 뜬다(설치물이 곧 사라지므로 자식으로 달 수 없다).
+                // 그래서 스스로 치우지 않으면 판에 영구히 쌓인다 — 실측으로 폭발 VFX 루트가
+                // 42개까지 누적됐고, 화면에서는 「터졌는데 안 사라진다」로 읽혔다.
+                // 벤더 VFX 는 stopAction 이 None 이라 자기소멸을 기대할 수 없다.
+                var fx = Instantiate(vfxPrefab, transform.position, Quaternion.identity);
+                Destroy(fx, EstimateVfxLifetime(fx));
+            }
             else
+            {
                 SpawnProceduralDestroyVfx(transform.position);
+            }
 
             Destroy(gameObject);
+        }
+
+        // 프리팹이 다 재생되는 데 걸리는 시간의 상한. 파티클마다 duration + 최대 수명 +
+        // 최대 지연을 더해 가장 긴 것을 고른다. 파티클이 없으면 짧은 기본값.
+        private static float EstimateVfxLifetime(GameObject instance)
+        {
+            const float fallback = 2f;
+            const float cap = 12f;
+            if (instance == null) return fallback;
+            var systems = instance.GetComponentsInChildren<ParticleSystem>(true);
+            float longest = 0f;
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var main = systems[i].main;
+                float total = main.duration + main.startLifetime.constantMax + main.startDelay.constantMax;
+                if (total > longest) longest = total;
+            }
+            if (longest <= 0f) return fallback;
+            return Mathf.Min(longest + 0.5f, cap);
         }
 
         private void SpawnVfx()

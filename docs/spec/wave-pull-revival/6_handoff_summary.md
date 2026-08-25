@@ -2,25 +2,28 @@
 
 ## Commit
 
-**미커밋.** units 0~5 구현·테스트 완료, **Play 육안 확인 대기**. 확인 후 작업 단위별로 커밋한다.
+- `4b5cfeac` — units 0~5 (당김 복귀 + 겹침 상한·예고·묶음 변주·목표 페이스)
+- `477d1409` — **unit 7** 원뎁스 당김 + HUD 색 통일 (예고 은퇴). Play 육안 확인 2026-08-23
+- unit 3(목표 페이스)은 2026-08-20 은퇴 — 화면·`PaceBaseline`·`paceParFraction` 모두 제거됨
+
+**spec 종료.** 아래 «Implemented» 는 units 0~5 시점 기록이라 unit 7 이 뒤집은 항목이 있다 — 표시된 곳을 보고, 최신 계약은 README 와 [7](7_one_depth_pull.md) 이 정본이다.
 
 ## Implemented
 
 - **당김 복귀** — 도크 아래 행이 다시 버튼이다. `three-minute-survival` unit 2 가 껐던 플레이어 경로만 되돌렸고, `ForceNextWave` 기제는 그때도 살아 있었다.
 - **기제/규칙 2층** — `ForceNextWave()`(상한 없음, 스모크의 판 진행 동력) / `TryPullNextWave()`(상한 검사 후 위임, **플레이어 경로는 이것뿐**). 덕분에 스모크 3종을 한 줄도 안 고쳤다.
 - **겹침 상한** — `_pullsSinceClear`. 당길 때 +1, **전멸 진행에서만** 0. 타임아웃 진행은 리셋 아님. 덱 저작 `maxPullsPerClear`(라이브 3).
-- **다음 웨이브 구성 예고** — 도크 B행에 `벌떼 — 러너 ×8 · 스위프트 ×6`. 출처는 플랜의 `GeneratedWave.groups`(실스폰과 동일). 컨셉 라벨을 블록 전환 순간 → **상시** 표시로 전환.
+- ~~**다음 웨이브 구성 예고**~~ — **unit 7 에서 전량 은퇴**(말풍선·브리지 창구 모두). 좌하단 폭 예산(≤300)에서 «상시로 읽히는 예고»와 «원뎁스 조작»이 양립하지 않아 조작을 골랐다. 되살리려면 도크가 아니라 **자리를 옮기는 것**이 선행이다 — [7](7_one_depth_pull.md) 참조.
 - **묶음 가운데 변주** — 컨셉 SO `variantSlots`. 블록 2번째 웨이브에 **삽입**(교체 아님). 입구는 블록 배정을 물려받아 **rng 소비가 늘지 않는다**. 4종 저작(벌떼→저격수 / 중장→벌떼 / 원거리→덩치 / 평소→덩치), 「공습」은 의도적으로 없음.
-- **목표 페이스(가짜 기준선)** — `PaceBaseline.TryExpectedScore`. par = 기본 진행으로 그때까지 나왔을 적의 `killScore` 합 × `paceParFraction`(0.92). 저작 곡선을 쓰지 않아 덱·맵이 바뀌어도 따라온다. **화면 문구는 「진출 예상선」이 아니다** — 그건 실제 10인 컷을 약속하는 말이고 지금 값은 가짜다.
+- ~~**목표 페이스(가짜 기준선)**~~ — **은퇴 2026-08-20.** 이하는 당시 기록: `PaceBaseline.TryExpectedScore`. par = 기본 진행으로 그때까지 나왔을 적의 `killScore` 합 × `paceParFraction`(0.92). 저작 곡선을 쓰지 않아 덱·맵이 바뀌어도 따라온다. **화면 문구는 「진출 예상선」이 아니다** — 그건 실제 10인 컷을 약속하는 말이고 지금 값은 가짜다.
 - **튜토리얼 당김 안내 복원** — 배치·스트레스 뒤 스텝. 문구는 「점수를 위해 당겨라」가 아니라 무엇·대가·언제.
 - **당김 기록** — `ForceNextWave` → `RecordWaveEvent("wave_forced")` → 직렬화가 **이미 이어져 있었다**. 코드 추가 없이 테스트로 고정. ⚠ 단 **로컬 로그까지**다(아래 Notes 8).
 
 ## Key Files
 
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — 카운터·리셋 3지점·`TryPullNextWave`·읽기 창구 6개·`RefreshPaceHud`
-- `Assets/_Project/Scripts/Core/PaceBaseline.cs` — par 순수 함수. **서버가 생기면 여기 안만 바꾼다**
 - `Assets/_Project/Scripts/Data/WavePatternGenerator.cs` — `ResolveBlockConcept` 가 변주 배열까지 내놓음, `InheritLanes`
-- `Assets/_Project/Scripts/UI/NextWaveDock.cs` — 3행 버튼 플레이트
+- `Assets/_Project/Scripts/UI/NextWaveDock.cs` — **원뎁스 알약 버튼**(unit 7). 색 정본은 `ScoreHudView` 이고 **값은 `BattleScene.unity` 에 직렬화돼 있다** — C# 기본값만 바꾸면 화면이 안 바뀐다
 - `Assets/_Project/Data/WaveConcepts/Concept_*.asset` — **변주 밸런스를 만지는 곳은 여기뿐**
 - `Assets/_Project/Scripts/Data/Decks/Deck_*.asset` — `maxPullsPerClear`·`paceParFraction`·`waveGeneratorVersion 4`
 

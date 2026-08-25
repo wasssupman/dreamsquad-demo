@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: gale_shove
   displayName: "\uBC00\uCE58\uAE30"
-  visible: 1
+  visible: 0
   axis: 3
   category: 1
   effects: []

@@ -1,5 +1,6 @@
 using Unity.Core;
 using Unity.Entities;
+using Wassup.Core.TimeControl;
 
 namespace Wassup.Battle
 {
@@ -46,7 +47,19 @@ namespace Wassup.Battle
             if (scale <= 0f)
                 return false; // 정지: push 안 함 → pop 도 불필요, 그룹 멤버 전부 skip.
 
-            double scaledDelta = group.World.Time.DeltaTime * scale;
+            // battle-sim-extraction M0 unit 2 — 하네스 구동. 「얼마나」와 「언제」를 둘 다
+            // 스텝이 준다: dt 는 `StepDt`, 전진 여부는 스텝 요청의 소비 결과다.
+            // 플레이어 루프도 매 프레임 이 그룹을 돌리려 오는데 요청이 없으면 여기서
+            // false 로 죽는다 — **그래야 스텝이 렌더 프레임과 분리**되고, 에디터 비포커스로
+            // 프레임이 멎어도 하네스가 완주한다. dt 만 상수로 꽂았다면 정반대가 된다
+            // (프레임당 1회 갱신이 유지돼 게임 속도가 프레임레이트에 비례).
+            double rawDelta = SimHarnessClock.Active
+                ? SimHarnessClock.StepDt
+                : group.World.Time.DeltaTime;
+            if (SimHarnessClock.Active && !SimHarnessClock.ConsumeStep())
+                return false;
+
+            double scaledDelta = rawDelta * scale;
             _elapsedTime += scaledDelta; // 스케일된 델타만 누적 → 정지 후 재개 시 elapsed 점프 없음.
             group.World.PushTime(new TimeData(
                 elapsedTime: _elapsedTime,
