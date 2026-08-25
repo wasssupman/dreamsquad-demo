@@ -674,6 +674,13 @@ namespace Wassup.Battle.Skills
                         // 저작이 0 이면 1 — 원본 arm 의 규약이다.
                         visualScale = intent.HitThreshold > 0f ? intent.HitThreshold : 1f,
                         owner = owner,
+                        // ⚠ **시전자의 공격 층을 실어 보낸다**(skill-layer-migration unit 2a).
+                        // 안 실으면 0 = 무제한이 되어 **근접 유닛의 폭발이 하늘의 적을 때린다.**
+                        // 레거시 `MeleeBurst` arm 은 후보를 모으는 단계에서 이 마스크로 걸렀고,
+                        // 광역 탄 경로는 후보를 안 모으므로 탄이 대신 들고 가야 한다.
+                        // 보스 자폭이 여태 이 구멍을 안 밟은 건 보스가 전 층을 때려서다.
+                        targetTraversalLayers = _attack.HasComponent(owner)
+                            ? _attack[owner].targetTraversalLayers : (byte)0,
                         // ⚠ 피해 풀 진영. 기본값이 Enemy 라 그냥 두면 **보스의 폭발이
                         // 자기 진영을 때린다**. caster 의 상대 진영에서 도출한다.
                         targetFaction =

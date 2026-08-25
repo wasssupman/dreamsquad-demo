@@ -15,10 +15,11 @@ using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.PlayMode
 {
-    // skill-layer-migration unit 2 선행 그물 — `OnPlaceEffectType.MeleeBurst`(브루저).
+    // skill-layer-migration unit 2a — 브루저의 배치 폭발.
     //
-    // 레거시 어휘 10종 중 **직접 그물이 없던 유일한 종류**다(`SlowPulse` 는 라이브
-    // 저작자가 0이라 이전이 아니라 삭제 대상). 이전 전에 오늘의 동작을 못박는다.
+    // 원래 `OnPlaceEffectType.MeleeBurst`(레거시 어휘) 특성화 그물로 먼저 깔았고,
+    // 이전 뒤 **행동 단언은 그대로 두고 값의 출처만** 규칙 경로로 옮겼다. 그게 이
+    // 그물이 이전을 판정할 수 있는 이유다 — 단언이 바뀌면 무엇이 보존됐는지 알 수 없다.
     //
     // 고정하는 것 넷:
     //  ① 반경 안 적이 **정확히 `onPlaceMagnitude` 만큼, 한 번에** 맞는다.
@@ -55,9 +56,18 @@ namespace Wassup.Tests.PlayMode
             bruiser.cost = 0;
             bruiser.maxOnBoard = 100;
 
-            Assert.AreEqual(OnPlaceEffectType.MeleeBurst, bruiser.onPlaceEffect, "배치 스킬 = MeleeBurst");
-            float mag = bruiser.onPlaceMagnitude;
-            int tiles = GridMath.RangeToTiles(bruiser.onPlaceRange);
+            // ⚠ 값은 **규칙 저작(UnitSkillAbility)** 에서 온다. 레거시 flat 필드는 꺼져 있다.
+            Assert.AreEqual(OnPlaceEffectType.None, bruiser.onPlaceEffect,
+                "레거시 배치 필드가 아직 켜져 있다 — 이전이 안 됐거나 두 경로가 동시에 돈다");
+            var skill = bruiser.GetAbility<UnitSkillAbility>();
+            Assert.IsNotNull(skill, "브루저에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcTriggerKind.OnPlace, skill.mechanics[0].trigger.kind, "트리거 = 배치");
+            Assert.AreEqual(DcPayloadKind.SelfTileAoe, skill.mechanics[0].payload.kind,
+                "페이로드 = 자기 자리 즉발 광역");
+            Assert.IsNotNull(skill.mechanics[0].payload.projectile,
+                "SelfTileAoe 는 ProjectileData 가 없으면 폭발 요청이 통째로 드롭된다");
+            float mag = skill.mechanics[0].payload.magnitude;
+            int tiles = skill.mechanics[0].payload.tileRange;
             byte atk = (byte)bruiser.attackTargetLayers;
             Assert.Greater(mag, 0f, "폭발 피해가 저작돼 있어야 한다");
             Assert.GreaterOrEqual(tiles, 1, "반경이 저작돼 있어야 한다");
@@ -67,10 +77,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(PlacementLayers.CanTarget(atk, (byte)PlacementLayer.Path),
                 "전제: Path 이동체는 때릴 수 있어야 한다");
 
-            bridge.SetDefenderPool(new[] { bruiser });
-            bridge.BeginPlacement();
-            gm.CostRuntime.ResetToStart();
-            gm.CostRuntime.AddCost(100000);
+            Prepare(bridge, gm, bruiser);
 
             var cell = FindPlaceableCell(bridge, bruiser);
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "배치 가능 셀");
@@ -83,12 +90,24 @@ namespace Wassup.Tests.PlayMode
             var unreachable = SpawnDummy(em, bridge, new Vector2Int(cell.x, cell.y + 1),
                                          (byte)PlacementLayer.Ground);
 
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bruiser), "배치");
 
-            // ① 즉발 — 배치 다음 프레임이면 이미 다 들어가 있어야 한다.
+            // ① 즉발성. ⚠ 레거시는 `IncomingDamage` 직접 주입이라 **다음 프레임**에 다
+            // 들어갔다. 규칙 경로는 폭발이 요청 캐리어 한 번을 거치므로 한 프레임 더 든다 —
+            // 그래서 창을 4프레임으로 넓혔다. **넓힌 것은 창이지 계약이 아니다**: 아래
+            // 총량 단언이 「저작값 정확히 한 번」을 그대로 지킨다.
+            // ⚠ **창을 4프레임으로 둔다.** 레거시는 `IncomingDamage` 직접 주입이라
+            // 다음 프레임에 다 들어갔다. 규칙 경로는 폭발이 요청 캐리어를 한 번 거치므로
+            // 한 프레임 더 든다. 넓힌 것은 창이지 계약이 아니다 — 아래 총량 단언이
+            // 「저작값 정확히 한 번」을 그대로 지킨다.
+            yield return null;
+            yield return null;
             yield return null;
             yield return null;
             float immediate = Hp - em.GetComponentData<Health>(near).value;
+            int seamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                Wassup.Battle.Skills.SkillSeam.Periodic);
 
             // 뒤늦게 더 들어오는 분이 없는지도 본다(도트화·중복 착탄 회귀).
             float t = 0f;
@@ -100,8 +119,10 @@ namespace Wassup.Tests.PlayMode
             foreach (var e in new[] { near, far, unreachable }) em.DestroyEntity(e);
             Object.Destroy(bruiser);
 
+            Assert.GreaterOrEqual(seamRuns, 1,
+                "배치 스킬이 concrete 를 안 거쳤다 — 감지/라우팅 구간이 끊겼다");
             Assert.AreEqual(mag, immediate, 0.01f,
-                $"배치 직후에 저작 피해 전량({mag})이 들어가야 한다 — 실측 {immediate}. "
+                $"배치 직후 창 안에 저작 피해 전량({mag})이 들어가야 한다 — 실측 {immediate}. "
                 + "적으면 즉발이 아니라 지연/분할로 바뀐 것이다");
             Assert.AreEqual(mag, nearDealt, 0.01f,
                 $"총 피해가 저작값({mag})과 달라졌다 — 실측 {nearDealt}. 크면 중복 착탄이다");
@@ -127,12 +148,13 @@ namespace Wassup.Tests.PlayMode
             bruiser.attackRange = 0f;
             bruiser.cost = 0;
             bruiser.maxOnBoard = 100;
-            bruiser.onPlaceMagnitude = 0f;   // 퇴화 저작 — 발동을 조용히 소모한다
+            // 퇴화 저작 — 발동을 조용히 소모한다. 카탈로그 원본을 건드리지 않도록
+            // 규칙 에셋도 복제해서 0 으로 만든다.
+            var zeroSkill = Object.Instantiate(bruiser.GetAbility<UnitSkillAbility>());
+            zeroSkill.mechanics[0].payload.magnitude = 0f;
+            bruiser.abilities = new System.Collections.Generic.List<DefenderAbilityData> { zeroSkill };
 
-            bridge.SetDefenderPool(new[] { bruiser });
-            bridge.BeginPlacement();
-            gm.CostRuntime.ResetToStart();
-            gm.CostRuntime.AddCost(100000);
+            Prepare(bridge, gm, bruiser);
 
             var cell = FindPlaceableCell(bridge, bruiser);
             var near = SpawnDummy(em, bridge, new Vector2Int(cell.x + 1, cell.y),
@@ -150,6 +172,28 @@ namespace Wassup.Tests.PlayMode
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
+
+        // ⚠ **`StartBattle()` 가 이 그물의 조건이다.** 투사체 요청 드레인이 `_running`
+        // 아래라, 배치 페이즈에 머물면 폭발 캐리어가 만들어지고 **영원히 안 풀린다**
+        // (프레임 계측으로 확인: carrier 1 · projectile 0 이 8프레임 유지).
+        // 레거시 `MeleeBurst` 는 `IncomingDamage` 를 직접 넣어 이 경로가 필요 없었다 —
+        // 이전이 그물의 전제를 바꾼 자리다.
+        private static void Prepare(BattleBridge bridge, GameManager gm, DefenderUnitData unit)
+        {
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            bridge.StartBattle();
+            BattleBridgeTestAccess.SetField(bridge, "_usingGeneratedWaves", false);
+            ((System.Collections.IList)BattleBridgeTestAccess.Field(bridge, "_pending")).Clear();
+            // 다른 공격자가 섞이면 배치 폭발분을 분리 측정할 수 없다.
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            using var attackers = em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Combat.AttackState>());
+            if (!attackers.IsEmpty)
+                em.RemoveComponent<Wassup.Battle.Combat.AttackState>(attackers);
+        }
 
         private static Entity SpawnDummy(EntityManager em, BattleBridge bridge,
                                          Vector2Int cell, byte layers)
