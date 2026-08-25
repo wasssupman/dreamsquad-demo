@@ -33,14 +33,24 @@ namespace Wassup.Skills
         public readonly int2 CellA;
         public readonly int2 CellB;
         public readonly bool HasCellB;
+        // skill-layer-migration unit 3a — **겨눈 방향**. 대상과 같은 축이라 여기 산다.
+        //
+        // ⚠ **발사 시점의 값이고 재계산하면 안 된다.** 유도탄이 다른 데 맞아도 밀리는
+        // 방향은 «쏜 방향» 이고(계약 6), 드레인 시점엔 둘 다 이미 움직였다.
+        // 0 = 방향 없음(공격자와 대상이 같은 칸) — 그 판정은 concrete 가 한다.
+        public readonly float2 DirectionXZ;
 
-        public SkillTarget(SkillEntityId unit, int2 cellA, int2 cellB, bool hasCellB)
+        public SkillTarget(SkillEntityId unit, int2 cellA, int2 cellB, bool hasCellB,
+                           float2 directionXZ = default)
         {
             Unit = unit; CellA = cellA; CellB = cellB; HasCellB = hasCellB;
+            DirectionXZ = directionXZ;
         }
 
         public static SkillTarget OfUnit(SkillEntityId unit, int2 cell)
             => new SkillTarget(unit, cell, default, false);
+        public static SkillTarget OfUnit(SkillEntityId unit, int2 cell, float2 directionXZ)
+            => new SkillTarget(unit, cell, default, false, directionXZ);
         public static SkillTarget OfCell(int2 cell)
             => new SkillTarget(SkillEntityId.None, cell, default, false);
         public static SkillTarget OfCellPair(int2 a, int2 b)

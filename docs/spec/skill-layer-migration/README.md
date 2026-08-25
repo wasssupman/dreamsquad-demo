@@ -72,8 +72,9 @@
   (`ExecutedCountOf(SkillSeam)`)와 경계 seam 전용 그물을 넣었다. 짱쎈놈은 경계 슬롯만
   넷 들어(자폭·도약×2·궁극기) 주기 슬롯이 없으므로, 그 단언이 경계 seam 만 본다는 것이
   **구조적으로 보장**된다.
-  ⚠ **공격 seam(`SkillSeam.Attack`)은 아직 증인이 없다** — 거기로 가는 payload 가 아직
-  없어서다. `AttackN` 계열을 이전하는 unit 이 그 그물을 같이 깐다.
+  ~~⚠ 공격 seam 은 아직 증인이 없다~~ → **해소** (unit 3a). `AttackSystem` RESOLVE 가
+  생산자가 됐고 `DreamcatcherOnHitTest.FrostArrow…` 가 `ExecutedCountOf(Attack)` 을 단언한다.
+  **세 seam 이 전부 증인을 갖는다.**
 - **이중 경로가 상존한다.** `SelfTileAoe`·`AreaSleep`·`GrantShield` 는 보스=concrete /
   카드·실드파열=legacy arm 이 **동시에 라이브**다. unit 8 철거 전까지 이 payload 들의 동작을
   고치려면 **반드시 양쪽에** 해야 한다. 파리티 테스트는 `SkillMath` 층만 고정하고 arm 로직
@@ -83,6 +84,11 @@
   전부 `LegacyArmId` 로 굽힌다. **그 상태로 arm 을 철거하면 라이브 카드 8장이 조용히 죽는다**
   (`SelfTileAoe` 7 · `AreaSleep` 1 — 2026-08-25 에셋 실측). 철거 전에 카드 bake 를 전면
   개방하는 unit 이 반드시 앞서야 한다.
+- ⚠ **풀 밖 엔티티도 스킬 레이어에서 안 보인다.** 어댑터는 두 풀(`AttackUnitTag` /
+  `DefenderUnitTag`)에서만 핸들을 되돌린다 — 태그가 없으면 핸들은 만들어지는데
+  역변환이 실패해 그 대상에 건 효과가 조용히 사라진다(unit 3a 에서 실제로 밟았다).
+  `SimEntityId` 미발급과 같은 계열이고, 후보 경로엔 경고가 있지만 **`BuildTarget` 이
+  만든 대상 핸들엔 없다.**
 - ⚠ **`SimEntityId` 없는 시전자 = 스킬 레이어 전면 침묵.** 어댑터의 핸들 역변환이 그 값으로
   풀을 스캔하므로, 없으면 시전자가 자기 자신도 못 찾고 모든 질의가 빈손이 된다. 감지도 되고
   concrete 도 불리기 때문에 `ExecutedCount` 로도 안 보인다. `BuildCaster` 가 loud warn 을

@@ -278,7 +278,7 @@ namespace Wassup.Battle.Skills
             int id = em.HasComponent<SimEntityId>(evt.Target)
                 ? em.GetComponentData<SimEntityId>(evt.Target).value
                 : SimEntityId.Unassigned;
-            return SkillTarget.OfUnit(new SkillEntityId(id), default);
+            return SkillTarget.OfUnit(new SkillEntityId(id), default, evt.DirectionXZ);
         }
     }
 }

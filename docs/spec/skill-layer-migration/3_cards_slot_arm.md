@@ -47,8 +47,8 @@
 
 | 슬라이스 | 내용 | 선행 |
 |---|---|---|
-| **3a** | **공격 seam 개통** — `AttackSystem` RESOLVE 가 `SkillFiredEvent` 를 넣는다. 값 스냅샷 계약이 여기서 처음 실제로 쓰인다(9단 타겟팅 결과는 재현 불가) | — |
-| **3b** | `AttackN` payload 들 (11행) — `HeavyStrike` · `ApplyCcToTarget` · `ApplyStackToTarget` · `ProjectileToTarget` · `SelfStatBuff` | 3a |
+| **3a** | **공격 seam 개통** + 첫 소비자 `ApplyCcToTarget`(3행) | **완료** (2026-08-26) |
+| **3b** | 남은 `AttackN` payload (8행) — `HeavyStrike` · `ApplyStackToTarget` · `ProjectileToTarget` · `SelfStatBuff` | 3a ✅ |
 | **3c** | **죽음 seam 개통** — `OnKill`/`OnDeath`/`OnDamagedN`. ⚠ 드레인 시점에 host 가 **이미 없다**(unit 0 실측) | — |
 | **3d** | 죽음 계열 payload (8행) | 3c |
 | **3e** | `OnShieldBreak`/`OnRetire` seam + payload (4행) | — |
@@ -56,6 +56,27 @@
 | **3g** | 카드 bake 전면 개방 + 카드 arm 철거 | 위 전부 |
 
 ⚠ **3g 는 unit 8 의 전제이기도 하다** — 카드 경로가 열리기 전에는 arm 을 못 지운다.
+
+## 3a 에서 나온 것 (2026-08-26)
+
+**seam 은 소비자 없이 열지 않는다.** 열기만 하면 `ExecutedCountOf(Attack)` 이 여전히 0이라
+그물이 그 축을 못 본다 — 그래서 첫 payload(`ApplyCcToTarget`, 3행)를 같이 태웠다.
+어댑터 주석의 규율(「그 동사를 처음 요구하는 unit 에서 채운다 — 그때 그것을 쓰는
+concrete 와 그물이 같이 온다」)이 seam 에도 그대로 적용된다.
+
+**값 스냅샷 계약이 여기서 처음 실제로 쓰인다.** `bestTarget` 은 9단계 오버라이드의
+합성물이라(최근접 → 힐러 재랭킹 → priority → 적 락 → 어그로 → frontmost → 지속 락 →
+커밋 유지 → facing) 드레인 시점에 재질의하면 **다른 답이 나온다**. 그래서 대상·위치·방향·
+killer 통행 층을 발화 시점 값으로 싣는다.
+
+**방향은 `SkillTarget` 에 넣었다** — 대상과 같은 축이기 때문이다. 유도탄이 다른 데
+맞아도 밀리는 방향은 «쏜 방향» 이고(계약 6), 드레인 시점엔 둘 다 이미 움직였다.
+
+⚠ **어댑터는 두 풀(적/방어유닛) 안의 엔티티만 다룬다.** 서리화살 그물의 더미가
+`AttackUnitTag` 가 없어 풀 밖이었고, 그래서 CC 가 조용히 사라졌다 — `SimEntityId` 와
+같은 계열의 함정이다(핸들은 만들어지는데 되돌릴 수 없다). 실적 아키타입을 모사하게 고쳤다.
+
+**세 seam 이 전부 증인을 갖게 됐다** — 주기(마메모·도발) · 경계(짱쎈놈) · 공격(서리화살).
 
 ## 구현
 

@@ -39,7 +39,12 @@ namespace Wassup.Tests.PlayMode
             });
             Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "frost attached");
 
-            var enemy = SpawnDummyEnemy(em, defender, withCcBuffer: true);
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: true);
+
+            // ⚠ **공격 seam 의 첫 증인.** 이 단언이 없으면 라우팅이 끊기고 legacy arm 이
+            // 대신 처리해도 아래 결과 단언이 초록이다 — `7f902e55` 가 잡은 실패 유형이고,
+            // 공격 seam 은 여태 **생산자가 0** 이라 그 축을 아무도 못 재고 있었다.
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
 
             // 여러 공격 사이클 동안 대상이 Stun CcEffect 를 얻는 프레임이 있는지.
             bool sawStun = false;
@@ -55,7 +60,12 @@ namespace Wassup.Tests.PlayMode
                 }
                 yield return null;
             }
+            int attackSeamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                Wassup.Battle.Skills.SkillSeam.Attack);
             if (em.Exists(enemy)) em.DestroyEntity(enemy);
+            Assert.GreaterOrEqual(attackSeamRuns, 1,
+                "공격 seam 이 concrete 를 안 거쳤다 — legacy arm 이 대신 처리했다면 아래 단언은 "
+                + "라우팅이 끊겨도 초록이 된다(이전이 안 된 상태를 못 가른다)");
             Assert.IsTrue(sawStun, "frost_arrow: N번째 공격에 대상이 Stun(CcEffect) 걸려야 함");
         }
 
@@ -77,7 +87,7 @@ namespace Wassup.Tests.PlayMode
             });
             Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "ember attached");
 
-            var enemy = SpawnDummyEnemy(em, defender, withCcBuffer: false);
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: false);
 
             bool sawBleed = false;
             float t = 0f;
@@ -119,7 +129,7 @@ namespace Wassup.Tests.PlayMode
             return (bridge, defender);
         }
 
-        private static Entity SpawnDummyEnemy(EntityManager em, Entity defender, bool withCcBuffer)
+        private static Entity SpawnDummyEnemy(EntityManager em, BattleBridge bridge, Entity defender, bool withCcBuffer)
         {
             var defPos = em.GetComponentData<LocalTransform>(defender).Position;
             const float Hp = 1_000_000f; // 죽지 않게 — 공격이 계속 이어지도록
@@ -129,6 +139,10 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
             if (withCcBuffer) em.AddBuffer<CcEffect>(enemy); // CcApplySystem 소비처(실적 아키타입 모사)
+            // ⚠ **스킬 레이어는 두 풀(적/방어유닛) 안의 엔티티만 다룬다.** 태그가 없으면
+            // 어댑터가 핸들을 못 되돌려 CC 가 조용히 사라진다 — 실적 아키타입을 모사한다.
+            em.AddComponent<Wassup.Battle.Units.AttackUnitTag>(enemy);
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, enemy);
             return enemy;
         }
 

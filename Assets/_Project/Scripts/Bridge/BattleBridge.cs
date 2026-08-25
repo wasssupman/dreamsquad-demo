@@ -9071,6 +9071,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaStackSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaCcSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaDotSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.TargetCcSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9144,6 +9145,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.AreaCcSkill.Id;
                 case Wassup.Data.DcPayloadKind.AreaDot:
                     return Wassup.Skills.Concrete.AreaDotSkill.Id;
+                case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
+                    return Wassup.Skills.Concrete.TargetCcSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9166,6 +9169,10 @@ namespace Wassup.Bridge
                 // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해
                 // Burst arm 이 부를 수 없게 됐다).
                 case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
+                // unit 3a — 공격 seam 이 열렸다. 이 payload 의 유일한 트리거가 `AttackN`
+                // 이므로 seam 개통과 함께 카드 경로도 연다 — **arm 은 unit 3g 까지 남는다**
+                // (다른 트리거로 저작될 여지가 있는 한 지우면 조용히 죽는 행이 생긴다).
+                case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
                     return SkillIdForPayload(kind);
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;

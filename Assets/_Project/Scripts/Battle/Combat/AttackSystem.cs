@@ -160,6 +160,10 @@ namespace Wassup.Battle.Combat
             // defender 일 때만 — defender 피격/일반 적 경로 무영향(회귀 격리).
             // 직접 큐 핸들 사용은 statModSingleton 선례(메인스레드 foreach).
             bool hasThreatQ = SystemAPI.TryGetSingletonRW<ThreatHitEventsSingleton>(out var threatHitSingleton);
+            // skill-layer-migration unit 3a — **공격 seam 개통.** 여태 이 seam 은 자리만
+            // 잡혀 있고 생산자가 0이었다(`ExecutedCountOf(Attack)` 이 항상 0).
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredSingleton);
             NativeQueue<ThreatHitEvent> threatQueue = hasThreatQ ? threatHitSingleton.ValueRW.queue : default;
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
 
@@ -1827,6 +1831,54 @@ namespace Wassup.Battle.Combat
                             // 연출을 낸다(2026-08-12 코드리뷰 H3 — 「적 host 는 무해하다」가 거짓).
                             if (dcFiredWriter.HasValue && defenderTagLookup.HasComponent(attackerEntity))
                                 dcFiredWriter.Value.Enqueue(new DcTriggerFiredEvent { host = attackerEntity });
+
+                            // ⚠ **라우팅은 payload 분기들보다 앞이다.** 뒤에 두면 이전한
+                            // 스킬이 여전히 legacy arm 을 타는데 legacy 가 잘 돌아서 그물이
+                            // 전부 초록이 된다(`7f902e55` 가 잡은 실패 유형).
+                            //
+                            // skill-layer-migration unit 3a — **여기가 값 스냅샷 계약이 처음
+                            // 실제로 쓰이는 자리다.** `bestTarget` 은 9단계 오버라이드의
+                            // 합성물이라(최근접 → 힐러 재랭킹 → priority → 적 락 → 어그로 →
+                            // frontmost → 지속 락 → 커밋 유지 → facing) **드레인 시점에
+                            // 재질의하면 다른 답이 나온다.** 그래서 지금 손에 든 값을 싣는다.
+                            if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                            {
+                                if (hasSkillQ)
+                                {
+                                    skillFiredSingleton.ValueRW.queue.Enqueue(
+                                        new Wassup.Battle.Skills.SkillFiredEvent
+                                    {
+                                        Caster = attackerEntity,
+                                        SkillId = slot.skillId,
+                                        SlotIndex = si,
+                                        FiredPosition = transform.ValueRO.Position,
+                                        Target = bestTarget,
+                                        TargetPosition = bestTargetPos,
+                                        // 넉백·브레스가 쓰는 **계산된** 방향. 대상이 host 와
+                                        // 겹치면 0 이고, 그 판정은 concrete 가 한다.
+                                        DirectionXZ = math.normalizesafe(
+                                            (bestTargetPos - transform.ValueRO.Position).xz),
+                                        // ⚠ killer 사양이다. 0 으로 새면 무제한 통과가 된다.
+                                        TargetTraversalLayers = attack.ValueRO.targetTraversalLayers,
+                                        Magnitude = slot.magnitude,
+                                        Duration = slot.duration,
+                                        TileRange = slot.tileRange,
+                                        Period = slot.period,
+                                        DataIndex = slot.projectileDataIndex,
+                                        Selector = (int)slot.ccKind,
+                                        StatSelector = (int)slot.buffStat,
+                                        StackSelector = (int)slot.stackKind,
+                                        PatternIndex = slot.patternIndex,
+                                        Speed = slot.speed,
+                                        HitThreshold = slot.hitThreshold,
+                                        SlamDamage = slot.slamDamage,
+                                        SlamTileRange = slot.slamTileRange,
+                                        StackId = slot.statBuffStackId,
+                                        VisualScale = slot.visualScale,
+                                    });
+                                }
+                                continue;
+                            }
 
                             // dreamcatcher-new-abilities unit 1 — payload 디스패치. AttackN
                             // 슬롯이 발동하면 kind 별로 carrier(투사체)/CC/스택 중 하나를 실행.

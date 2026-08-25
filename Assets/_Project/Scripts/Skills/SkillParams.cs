@@ -152,6 +152,18 @@ namespace Wassup.Skills
         public float TickInterval => _p.Speed;
     }
 
+    // skill-layer-migration unit 3a — 대상 하나에게 거는 CC.
+    public readonly struct TargetCcParams
+    {
+        private readonly SkillParams _p;
+        public TargetCcParams(in SkillParams p) => _p = p;
+
+        public SkillCcKind Cc => (SkillCcKind)_p.Selector;
+        public float Duration => _p.Duration;
+        // 밀쳐냄일 때만 뜻이 있다 — 넉백 «속도».
+        public float Magnitude => _p.Magnitude;
+    }
+
     public readonly struct AuraParams
     {
         private readonly SkillParams _p;
