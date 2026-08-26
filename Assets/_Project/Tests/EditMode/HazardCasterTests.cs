@@ -24,14 +24,31 @@ namespace Wassup.Tests.EditMode
         private NativeQueue<UnitAttackVisualEvent> _visualQueue;
         private NativeArray<float2> _flow;
         private NativeArray<int> _dist;
+        private NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> _skillQueue;
+        private int _nextSimId;
 
         [SetUp]
         public void SetUp()
         {
+            _nextSimId = 0;
             _world = new World("HazardCasterTests");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<HazardCastSystem>());
+            // ⚠ **디스패처를 끼운다**(skill-layer-migration unit 5a). 이 시스템은 이제
+            // 「언제·어디에」만 정하고 깔기는 concrete 가 한다 — 빼면 이 그물이
+            // 「고르기는 하는데 아무도 안 깐다」를 못 본다.
+            _simGroup.AddSystemToUpdateList(
+                _world.CreateSystemManaged<Wassup.Battle.Skills.SkillDispatchCastSystem>());
+            _simGroup.SortSystems();
+            _skillQueue = new NativeQueue<Wassup.Battle.Skills.SkillFiredEvent>(Allocator.Persistent);
+            _em.AddComponentData(_em.CreateEntity(),
+                new Wassup.Battle.Skills.SkillFiredEventsSingleton { queue = _skillQueue });
+            var registry = new Wassup.Skills.SkillRegistry();
+            registry.Register(new Wassup.Skills.Concrete.CastHazardSkill());
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Install(
+                registry, new Wassup.Battle.Skills.EcsSkillContext());
 
             _flow = new NativeArray<float2>(100, Allocator.Persistent);
             _dist = new NativeArray<int>(100, Allocator.Persistent);
@@ -58,6 +75,9 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Uninstall();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+            if (_skillQueue.IsCreated) _skillQueue.Dispose();
             if (_queue.IsCreated) _queue.Dispose();
             if (_visualQueue.IsCreated) _visualQueue.Dispose();
             if (_flow.IsCreated) _flow.Dispose();
@@ -94,6 +114,9 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new HazardCastState
             {
+                // 라우팅 키 — bake 가 심는 값이다. 0(legacy)으로 두면 이 그물이
+                // 스킬 레이어를 한 번도 안 지나간다.
+                skillId = Wassup.Skills.Concrete.CastHazardSkill.Id,
                 range = range,
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
@@ -104,6 +127,9 @@ namespace Wassup.Tests.EditMode
                 footprintWidth = 5,
                 footprintHeight = 5,
             });
+            // ⚠ 라이브 스포너는 이걸 발급한다. 없으면 스킬 레이어에서 이 유닛은
+            // 존재하지 않아서 의도가 조용히 사라진다.
+            _em.AddComponentData(entity, new SimEntityId { value = _nextSimId++ });
             return entity;
         }
 
@@ -111,12 +137,17 @@ namespace Wassup.Tests.EditMode
         {
             var entity = _em.CreateEntity();
             _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
+            // ⚠ 라이브 악몽은 이 태그를 갖는다. 없으면 어댑터의 적 후보 풀 밖이라
+            // 스킬 레이어가 이 대상을 못 가리킨다(이 시스템의 대상 쿼리는 태그를
+            // 안 보므로 선정 자체는 예전과 같다 — 달라지는 것은 «가리킬 수 있나»뿐이다).
+            _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new PathFollowState
             {
                 speed = 1f,
                 traversalLayers = (byte)traversalLayer,
             });
+            _em.AddComponentData(entity, new SimEntityId { value = _nextSimId++ });
             return entity;
         }
 

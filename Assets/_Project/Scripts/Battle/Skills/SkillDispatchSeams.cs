@@ -26,7 +26,11 @@ namespace Wassup.Battle.Skills
         // 저 다섯은 시뮬이 프레임 안에서 감지하는 사건이고, 이건 **사용자 입력이 부르는
         // 브리지 호출**이다. 그래서 프레임을 기다리지 않고 브리지가 그 자리에서 돌린다.
         Immediate = 6,
-        Count = 7,
+        // skill-layer-migration unit 5a — **캐스트 성사.** 캐스터는 `attackRange` 0 이라
+        // RESOLVE 에 못 가고, 캐스트가 곧 그 host 의 공격 사건이다. 그 사건을
+        // `AttackSystem` 이 **같은 프레임**에 소비하는 것이 계약이라 여기가 따로 난다.
+        Cast = 7,
+        Count = 8,
     }
 
     // skill-layer-foundation unit 4 — 드레인 지점. **로직은 base 에만 있다.**
@@ -201,5 +205,24 @@ namespace Wassup.Battle.Skills
     public partial class SkillDispatchImmediateSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Immediate;
+    }
+
+    // ⑦ 해저드 캐스트 뒤 — **같은 프레임 소비가 계약이다.**
+    //
+    // ⚠ **주기 seam 으로 못 받는다.** `BossPeriodicTriggerSystem` 은 `AttackSystem` 과
+    // 순서 계약이 없어서, 거기로 옮기면 캐스트 사건이 정렬기 tie-break 에 따라 한 프레임
+    // 밀린다 — `HazardCastSystem` 이 `[UpdateBefore(AttackSystem)]` 을 명시한 이유가
+    // 정확히 그것이었다(attack-decoupling unit 4).
+    //
+    // 주기 seam 에 그 제약을 **거는 것도 안 된다.** 그러면 모든 주기 스킬(오라·자장가·
+    // 궤도 화염구)의 순서가 같이 움직이고, emitter 를 뒤로 미는 전이 간선이 생긴다
+    // (ECS 리뷰 H-1 이 같은 이유로 경계 seam 의 emitter 제약을 뺐다).
+    // seam 하나가 그 전부보다 싸다.
+    [UpdateInGroup(typeof(BattleSimGroup))]
+    [UpdateAfter(typeof(Wassup.Battle.Effects.HazardCastSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.AttackSystem))]
+    public partial class SkillDispatchCastSystem : SkillDispatchSeamBase
+    {
+        protected override SkillSeam Seam => SkillSeam.Cast;
     }
 }

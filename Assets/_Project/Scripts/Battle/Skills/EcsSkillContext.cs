@@ -827,11 +827,22 @@ namespace Wassup.Battle.Skills
                     // 「어디에 · 누구를 대상으로」뿐이고, 그래서 index 하나만 지나간다.
                     _hazardQueue.Enqueue(new Wassup.Battle.Effects.HazardSpawnRequest
                     {
-                        kind = Wassup.Battle.Effects.HazardCastKind.Zone,
+                        // ⚠ **종류를 스킬이 정한다**(unit 5a). 0(=`None`)은 「저작이 종류를
+                        // 안 말했다」라 존으로 읽는다 — 죽음 자리 장판이 그 경우다.
+                        kind = (Wassup.Battle.Effects.HazardCastKind)intent.Selector
+                                   == Wassup.Battle.Effects.HazardCastKind.Blocking
+                               ? Wassup.Battle.Effects.HazardCastKind.Blocking
+                               : Wassup.Battle.Effects.HazardCastKind.Zone,
                         dataIndex = intent.DataIndex,
                         centerCell = intent.Cell,
+                        // ⚠ 「한 칸에」의 정직한 인코딩은 0 이 아니라 1 이다. 드레인은 이
+                        // 필드를 안 읽지만(모양은 해저드 저작 소유), 0 을 흘리면 다음 사람이
+                        // 「폭 없음」을 계약으로 읽는다. 죽음 자리 장판도 한 칸이다.
+                        width = 1,
+                        height = 1,
                         caster = Resolve(intent.Source),
-                        target = Entity.Null,
+                        // 드레인은 이 필드를 안 읽는다(계측·추적용). 실어 온 것만 그대로 넘긴다.
+                        target = Resolve(intent.Target),
                         // ⚠ **발화 시점 사양이다.** 여기서 시전자를 다시 읽으면 동귀어진일 때
                         // 이미 파괴돼 0(= 무제한 통과)으로 샌다.
                         targetTraversalLayers = intent.TargetTraversalLayers,

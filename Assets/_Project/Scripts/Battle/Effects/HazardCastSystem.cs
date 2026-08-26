@@ -38,6 +38,9 @@ namespace Wassup.Battle.Effects
             // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 큐가 아직
             // 없으면(구 세이브/테스트 월드) 조용히 건너뛴다.
             bool hasCastQueue = SystemAPI.TryGetSingletonRW<Wassup.Battle.Combat.CastEventsSingleton>(out var castSingleton);
+            // skill-layer-migration unit 5a — 캐스트 seam 의 생산자.
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredRW);
             var dcSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Combat.DcTriggerSlot>(isReadOnly: true);
 
             var targetsQuery = SystemAPI.QueryBuilder()
@@ -119,6 +122,31 @@ namespace Wassup.Battle.Effects
                     });
                 }
 
+                // ⚠ **라우팅이 실행보다 앞이다**(skill-layer-migration unit 5a).
+                // 이 시스템에 남는 일은 **언제·어디에**를 정하는 것뿐이다 — 그 판단이
+                // 캐스터의 공격 사양(사거리·대상 마스크·통행 층·동률 축)과 얽혀 있어서
+                // 스킬로 옮기면 그 사양을 복제하게 된다. 깔린 다음의 일은 전부 해저드
+                // 저작이 소유하므로, 스킬이 할 일은 「저 칸에 이 에셋을」 하나다.
+                bool routed = cast.ValueRO.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+                if (routed && hasSkillQ)
+                {
+                    skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                    {
+                        Seam = Wassup.Battle.Skills.SkillSeam.Cast,
+                        Caster = casterEntity,
+                        SkillId = cast.ValueRO.skillId,
+                        FiredPosition = casterPos,
+                        Target = bestTarget,
+                        // 대상 **칸의 중심**이다 — 대상 좌표가 아니다. 장판은 칸에 깔린다.
+                        TargetPosition = GridMath.CellToWorldCenter(
+                            bestTargetCell, flowField.tileSize, casterPos.y, origin: flowField.origin),
+                        HazardDataIndex = cast.ValueRO.dataIndex,
+                        Selector = (int)cast.ValueRO.kind,
+                        TargetTraversalLayers = cast.ValueRO.targetTraversalLayers,
+                    });
+                }
+                else
+                {
                 spawnSingleton.ValueRW.queue.Enqueue(new HazardSpawnRequest
                 {
                     kind = cast.ValueRO.kind,
@@ -130,6 +158,7 @@ namespace Wassup.Battle.Effects
                     target = bestTarget,
                     targetTraversalLayers = cast.ValueRO.targetTraversalLayers,
                 });
+                }
 
                 // attack-decoupling unit 4 — 캐스트 성사 = 이 host 의 공격 사건.
                 // 카운터(Combat 소유)를 여기서 쓰지 않고 큐로 넘긴다(spec 계약 7).

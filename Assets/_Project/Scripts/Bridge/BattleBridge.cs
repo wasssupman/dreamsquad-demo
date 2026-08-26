@@ -7647,6 +7647,9 @@ namespace Wassup.Bridge
 
                 _em.AddComponentData(entity, new HazardCastState
                 {
+                    // unit 5a — 라우팅 키. 이 능력은 슬롯이 아니라 자기 상태를 가지므로
+                    // 키도 거기 산다(`DamagedCounter` 와 같은 자리).
+                    skillId = Wassup.Skills.Concrete.CastHazardSkill.Id,
                     range = hazardAbility.castRange,
                     cooldownDuration = hazardAbility.cooldown,
                     cooldownRemaining = 0f,
@@ -9090,6 +9093,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfBuffLethalSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DreamCocoonSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BountyMarkSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.CastHazardSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
