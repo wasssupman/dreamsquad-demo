@@ -169,8 +169,8 @@ namespace Wassup.Battle.Units
                             SlamDamage = rs.slamDamage,
                             SlamTileRange = rs.slamTileRange,
                             StackId = rs.statBuffStackId,
-                            // ⚠ 레거시 작별 선물 은 저작 배율을 **안 읽었다**(1 고정).
-                            VisualScale = 0f,   // 0 = 어댑터가 1 로 읽는다
+                            // ⚠ **저작을 읽는다**(2026-08-26 사용자 결정) — 시체폭발과 같은 탄이다.
+                            VisualScale = rs.visualScale,
                             // ⚠ 방어유닛의 작별 선물이다 — 레거시는 층을 안 실었다(무제한).
                             TargetTraversalLayers = 0,
                         });

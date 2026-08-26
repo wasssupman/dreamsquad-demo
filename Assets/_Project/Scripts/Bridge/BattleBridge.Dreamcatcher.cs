@@ -557,6 +557,8 @@ namespace Wassup.Bridge
                         dEntry.magnitude = m.payload.magnitude;
                         dEntry.tileRange = math.max(0, m.payload.tileRange);
                         dEntry.aoeDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                        // 형제들(`DcTriggerSlot.visualScale`)과 같은 자리·같은 출처.
+                        dEntry.aoeVisualScale = m.payload.projectile.visualScale;
                     }
                     else if (m.payload.kind != Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
                     {

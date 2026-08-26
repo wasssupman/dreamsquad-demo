@@ -322,6 +322,7 @@ namespace Wassup.Battle.Units
                                 TileRange = slot.tileRange,
                                 Period = slot.period,
                                 DataIndex = slot.aoeDataIndex,
+                                VisualScale = slot.aoeVisualScale,
                                 // ⚠ 레거시 피격 폭발은 층을 안 실었다(= 무제한). 여기서 자기
                                 // 공격 층을 실으면 지상 유닛의 반격 폭발이 비행 적을 놓친다.
                                 TargetTraversalLayers = 0,
@@ -399,6 +400,8 @@ namespace Wassup.Battle.Units
                                 TileRange = sbSlot.tileRange,
                                 DataIndex = sbSlot.projectileDataIndex,
                                 Selector = (int)sbSlot.ccKind,
+                                // 같은 탄이라 같은 저작을 본다(2026-08-26 사용자 결정).
+                                VisualScale = sbSlot.visualScale,
                                 // ⚠ 레거시 파열 폭발은 층을 안 실었다(= 무제한).
                                 TargetTraversalLayers = 0,
                             });
@@ -491,9 +494,12 @@ namespace Wassup.Battle.Units
                                 SlamDamage = rs.slamDamage,
                                 SlamTileRange = rs.slamTileRange,
                                 StackId = rs.statBuffStackId,
-                                // ⚠ 레거시 시체폭발 은 저작 배율을 **안 읽었다**(1 고정).
-                                // 여기서 실으면 라이브 카드의 폭발 그림이 커진다.
-                                VisualScale = 0f,   // 0 = 어댑터가 1 로 읽는다
+                                // ⚠ **저작을 읽는다**(2026-08-26 사용자 결정). 레거시는 1 로
+                                // 하드코딩해서 탄 에셋의 `visualScale` 이 무시됐다 — 그래서
+                                // **같은 탄**(`Projectile_Meteor`)이 퇴근 운석에서는 1.3,
+                                // 나머지 죽음 계열에서는 1.0 으로 갈려 있었다.
+                                // 다섯이 하나의 저작을 본다.
+                                VisualScale = rs.visualScale,
                                 TargetTraversalLayers = _attackStateLookup.HasComponent(killerSource)
                                     ? _attackStateLookup[killerSource].targetTraversalLayers : (byte)0,
                             });
