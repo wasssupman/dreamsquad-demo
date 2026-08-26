@@ -49,3 +49,50 @@
 - [ ] **검증 질문 참**: 새 스킬 하나 = concrete 1 + 저작 SO 1 (switch 4곳 → 1곳)
 - [ ] **끝점 참**: 보스 · 배치 · 특수 스킬이 한 `ISkill` 레지스트리에 있다
 - [ ] EditMode 전 lane + PlayMode 초록, Play 육안 종합
+
+---
+
+## 재고 (2026-08-26, 개방 커밋 직후)
+
+**이 문서의 전제 하나가 stale 이었다.** 「이전이 끝났으므로 legacy 를 죽인다」로 썼는데,
+실제로 세어 보니 arm 이 셋 남아 있다. 스펙 재고는 스냅샷이라 unit 시작 전에 다시 센다는
+규율이 여기서도 맞았다(units 2·5 에 이어 세 번째).
+
+`DcPayloadKind` 33종 중 라우팅 25종. 나머지 8종의 실체:
+
+| payload | 실체 | 철거 대상인가 |
+|---|---|---|
+| `None` | 센티넬 | — |
+| `AreaBarrage` | **arm 이미 철거됨** — 브리지가 거절 사유만 남긴다(패턴으로 이관) | 아니오 |
+| `SelfWarmupBuff` | **죽은 값** — 실행 코드 0. warmup 개념이 Sleep 으로 승격되며 은퇴 | 값만 남음 |
+| `SplitOnDeath` | 슬롯을 안 쓴다 — 브리지 킬 드레인이 SO 를 직독 | 아니오 |
+| `RecallAttachedToFront` | 손패 UI 동작(`DreamcatcherHandController`) — 심이 아니다 | 아니오 |
+| `AreaBreath` | **살아 있는 arm** (`AttackSystem`, 콘 브레스) | **예** |
+| `HeavyStrike` | **살아 있는 arm** (`AttackSystem` pre-scan 배율) | **예** |
+| `PlacementAura` | **살아 있는 arm** (브리지) — 회수 토큰이 필요해 미해결 | **예(막힘)** |
+
+다른 두 어휘는 이미 끝나 있었다:
+
+- `OnPlaceEffectType` — **타입째 사라졌다**(unit 2g). 남은 참조 2건은 주석뿐.
+- `SkillEffectType` — 브리지 5분기가 전부 concrete 로 **라우팅만** 한다. 사용자 결정
+  (2026-08-26)대로 저작 enum 으로 남는 형태이고 arm 이 아니다. 철거 대상 아님.
+
+### 개방의 안전 확인 (1/3 커밋에 딸린 실측)
+
+`OnShieldBreak`·`OnKill`·`OnDamagedN` 을 적에게 열면서 **투사체 히트 풀**을 확인했다.
+`ProjectileHitSystem` 의 splash·bounce 후보 풀(`aoeEntities`)은 아직 `AttackUnitTag`
+전용이라 적 host 가 쓰면 자기편을 때린다(`SelfOrbitProjectile` 이 그 이유로 브리지에서
+거절되고 있다). 새로 열린 셋에서 도달 가능한 concrete 는 전부 **TileAoe**(양 진영
+`victimQuery` + `FactionTag` 필터) · CC · 자기 대상이라 그 풀에 **닿지 않는다.**
+
+⚠ 다만 그 하드코딩 자체는 살아 있다. `EmitProjectilePattern` + splash 저작은 적에게
+이미 열려 있었고(주기·N번째 공격) 그쪽은 이 검증 밖이다 — 별도 후속.
+
+### 남은 순서
+
+1. `AreaBreath` 이전 — 가장 독립적이다(`ApplyConeBreath` 가 이미 분리돼 있다).
+2. `HeavyStrike` 이전 — arm 이 아니라 **공격 출력 배율**이라 seam 이 다를 수 있다.
+3. `PlacementAura` — **회수 토큰이 없으면 못 옮긴다.** 이 spec 이 반복해 확인한
+   「반환값처럼 보이는 것은 대개 반환값이 아니다」의 **유일한 반례**다(세는 것은 읽기로,
+   캐리어는 재조정으로, 예고는 전방 흐름으로 풀렸지만 이것만 트랜잭션의 반환값이다).
+   여기서 막히면 어휘 삭제가 아니라 **어휘 축소**로 종료 조건을 다시 쓴다.
