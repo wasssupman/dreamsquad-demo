@@ -73,7 +73,10 @@ namespace Wassup.Tests.PlayMode
         // (Duel 은 본능 포탑 4기가 서 있어서 «반격할 게 없다» 같은 전제가 통째로 거짓이 된다).
         //
         // 기본값은 이 테스트들이 실제로 쓰여진 판이다. 판 자체가 논점인 테스트만 다른 이름을 준다.
-        public const string DefaultMap = "Serpent";
+        // map-diorama-stage unit 12 — Serpent 은퇴. 후계는 **Street**(거점 없는 열린 판): 기본판 테스트의
+        // 전제(«반격할 거점이 없다», 유닛 간 사거리 계측)를 보존한다. Duel 은 본능 4기가 서 있어
+        // Whirlpot_TakesNoDamage_WhenNothingCanHitBack 류의 전제가 거짓이 된다.
+        public const string DefaultMap = "Street";
 
         public static int PinMap(string documentName = DefaultMap)
         {

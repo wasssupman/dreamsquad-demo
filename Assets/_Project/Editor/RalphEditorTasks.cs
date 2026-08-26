@@ -91,18 +91,20 @@ namespace Wassup.EditorTools
         {
             switch (task)
             {
-                case "unit5_pilot":
-                    MapStageDummyGenerator.GeneratePilot();
-                    return "OK|pilot generated";
-                case "duel_classic":
-                    MapStageDummyGenerator.GenerateDuelClassic();
-                    return "OK|duel classic generated";
-                case "unit9_portals":
-                    MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_Duel.prefab", new Vector2Int(6, 1), new Vector2Int(6, 6));
-                    MapStageDummyGenerator.AuthorBonusPortals("Assets/_Project/Prefabs/Maps/MapStage_DuelClassic.prefab", new Vector2Int(10, 3), new Vector2Int(10, 8));
-                    return "OK|bonus portals authored (Duel, DuelClassic)";
+                case "duel_stage":
+                    return MapStageDuelGenerator.Generate();
+                case "preview_duel":
+                    return MapStageCameraFraming.RenderPrefabPreview(MapStageDuelGenerator.PrefabPath, ".omc/ralph/preview_duel.png");
+                case "preview_street":
+                    return MapStageCameraFraming.RenderPrefabPreview("Assets/_Project/Art/Theme/street/MapStage_Street.prefab", ".omc/ralph/preview_street.png");
+                case "live_portals":
+                    // bonus-wave-pull 게이트(BonusWaveAuthored)는 bonusSpawns 2개를 요구 — Duel 관례(중앙 열, 위/아래 가장자리) 이관.
+                    MapStageAuthoringTools.AuthorBonusPortals("Assets/_Project/Art/Theme/street/MapStage_Street.prefab", new Vector2Int(15, 1), new Vector2Int(15, 9));
+                    MapStageAuthoringTools.AuthorBonusPortals("Assets/_Project/Art/Theme/subway/MapStage_Subway.prefab", new Vector2Int(15, 1), new Vector2Int(15, 9));
+                    MapStageAuthoringTools.AuthorBonusPortals("Assets/_Project/Art/Theme/street_day/MapStage_StreetDay.prefab", new Vector2Int(15, 1), new Vector2Int(15, 7));
+                    return "OK|bonus portals authored (Street, Subway, StreetDay)";
                 case "street_markers":
-                    MapStageDummyGenerator.AuthorSpawnsAndGoal("Assets/_Project/Art/Theme/street/MapStage_Street.prefab",
+                    MapStageAuthoringTools.AuthorSpawnsAndGoal("Assets/_Project/Art/Theme/street/MapStage_Street.prefab",
                         new Vector2Int(28, 3), new Vector2Int(28, 7), new Vector2Int(1, 5));
                     return "OK|street spawns/goal authored + dev registered";
                 case "maptest_battle_camera":

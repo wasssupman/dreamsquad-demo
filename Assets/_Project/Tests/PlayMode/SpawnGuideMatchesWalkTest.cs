@@ -152,6 +152,7 @@ namespace Wassup.Tests.PlayMode
         //
         // Coil 은 spawnRoutes = [1, -1] — 레인 0 지상이 경로 1(웨이포인트 (8,9))을 기본으로 탄다.
         [UnityTest]
+        [Ignore("map-diorama-stage unit 12 — Coil 스테이지 은퇴. routed-lane(spawnRoutes) 저작 스테이지가 풀에 없다 — 재활성화 시 dev 스테이지 저작")]
         public IEnumerator Coil_RoutedLaneGuide_AdvertisesTheLaneDefaultRoute()
         {
             LogAssert.ignoreFailingMessages = true;

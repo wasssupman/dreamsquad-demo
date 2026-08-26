@@ -1,6 +1,6 @@
 # map-diorama-stage — 맵 저작을 디오라마 스테이지로 전환 (접근 A)
 
-상태: **units 0~5·7 구현·검증 완료 2026-08-19 · unit 9(보너스 포탈 저작) 구현 2026-08-25, Play 확인 대기** (브랜치 feature/map-diorama-stage · unit 6 포탈 = v1 제외) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
+상태: **units 0~5·7 구현·검증 완료 2026-08-19 · unit 9 구현 2026-08-25 · units 10~12(본능 마커·Duel 재저작·레거시 은퇴) 구현 2026-08-26, Play 확인 대기** (브랜치 feature/map-diorama-stage · unit 6 포탈 = v1 제외) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
 
 설계 근거·결정 이력·전투 접점 감사: [`docs/plans/2026-08-18-map-diorama-stage-design.md`](../../plans/2026-08-18-map-diorama-stage-design.md)
 
@@ -29,6 +29,9 @@
 | [6_portal_prop.md](6_portal_prop.md) | 선택 | 포탈 프랍 → `PortalLink` 엔티티 배선 (v1 필수 아님) |
 | [7_legacy_retirement.md](7_legacy_retirement.md) | 은퇴 | `MapDocument` 계열·`MapPainterWindow`·구 Assets lane 테스트 3파일 처분 (critic M-3·M-4) |
 | [9_bonus_spawn_marker.md](9_bonus_spawn_marker.md) | 병합 격차 | main `bonus-wave-pull` 의 포탈 칸 저작 축(`GeneratedMap.bonusSpawns`)을 스테이지 마커로 이식 — 미구현 시 스테이지 맵에 보너스 웨이브 버튼이 뜨지 않는다 |
+| [10_structure_marker.md](10_structure_marker.md) | 병합 격차 | 본능 거점의 스테이지 저작 — 브리지 스폰 경로는 살아 있고 입력만 null 이었다. 마음(Core)은 계약 11 유지로 거부 |
+| [11_duel_stage_street_style.md](11_duel_stage_street_style.md) | 재저작 | main 현행 Duel(23×10 열린 마당)을 Street 제작방식(바닥 Plane+스프라이트 프랍+마커)으로 `Art/Theme/duel/` 에 생성기로 조립, live 0번 |
+| [12_legacy_stage_retirement.md](12_legacy_stage_retirement.md) | 은퇴 | `Prefabs/Maps` KayKit 조립 스테이지 11종 삭제(Fixture 포함) · 이름 pin PlayMode 테스트 재지정/Ignore |
 
 ## Feature-wide 계약
 
@@ -42,7 +45,7 @@
 8. **순수 코어 분리** (CLAUDE.md 제약 10): 양자화·마스크 조립·마커 수집은 plain 값 입출력 static 함수 — EditMode 테스트 대상. Mono 스캔 레이어는 얇게.
 9. **안전망 재정의 — 연결성 실패 = 하드 실패** (critic M-1 로 개정): `MapConnectivity.AllSpawnsReachGoal` 실패 시 `MapGenerationFailedException` 동형으로 즉시 실패한다. 디오라마에서 연결성 실패는 저작 오류이고, 조용한 `BuildFallbackLinear` 교체는 절차 생성기의 유물이다 — unit 3 이후 폴백 맵은 렌더러가 없어 검은 판이 된다.
 10. **밸런스 품질은 완료 기준 밖.** 열린 마당의 웨이브/덱 재밸런스는 별도 트랙 — 이 spec 은 파일럿 맵의 기능 검증까지만. (정정 2026-08-18: `WavePatternGenerator` 는 tiles 를 읽지 않는다 — 컨셉 게이트는 laneCount 축(계약 5)이 전부. `MapConceptRules` 는 페인터 저작 경고 전용이라 페인터와 함께 은퇴한다.)
-11. **이 브랜치에서 공성·본능·적 마음·강(Env)은 비가용.** `structures` 는 빈 배열(전 소비처 `IsCreated` 가드 확인됨), `_resolvedMapDoc` 은 영구 null — 거점 엔티티가 스폰되지 않는다. `StructureMarker`/`Env` 저작은 후속. `MapStagePool` 은 `WarnOnSiegeCoreHpMismatch` 를 승계하지 않는다.
+11. **공성·적 마음·강(Env)은 비가용, 본능은 가용(unit 10).** `structures` 는 `StructureMarker`(kind=Instinct 만)에서 채운다 — Core 마커는 빌더가 «계약 11» 문구로 거부한다(적 마음 = 공성 모드·시드 스폰 파생·유출 판정을 끌고 온다). `_resolvedMapDoc` 은 영구 null(문서 은퇴) — 브리지의 거점 입력은 `_stageStructures`(스캔 결과, (y,x) 사전순, 맵 수명). `MapStagePool` 은 `WarnOnSiegeCoreHpMismatch` 를 승계하지 않는다.
 
 ## 파이프라인 커버리지
 
@@ -70,5 +73,7 @@
 - **물 영역 (배치층 Water)** [S~M] — «물엔 특정 유닛만 배치» 룰은 기존 비트 교집합 기계가 그대로 받는다 (2026-08-18 분석): `WaterZone` 마커 + 빌더 규칙 1개(셀 tiles=Deco·placeMask=Water — placeMask 직접 조립 계약 3 덕에 «통행상 벽 + 배치 가능» 표현 가능) + `PlacementLayer.Water` 비트 append. 물 **적**(수영)까지 오면 tiles 합성 3값(Walk/Deco/Water) 개정 필요 — 기계 견적은 traversal-layers §6 (3줄 + 슬롯 0).
 - **공격/투사체 지형 LOS** — 3D 프랍 관통 사격, v1 수용. 눈에 거슬리면 착수.
 - **웨이브 열린 마당 재밸런스** — `MapConceptRules` tiles 직독 게이트 재검토 + `enemy-wave-integration` 스킬 갱신 + 기존 덱/플랜 재저작.
-- **기존 라이브 맵 9종 재저작 계획** — 파일럿 검증 통과 후 별도 결정 (사용자 D5: 전면 교체 방향).
+- **적 마음(Core) 스테이지 저작** — 공성 모드 재활성화. `StructureMarker` 의 Core 거부 해제 + 시드 스폰 파생(`SiegeSpawnOffsets`) + 유출/붕괴 판정 대조 + `StructureLivePlayTest` 재활성화(Test/SiegeTest 스테이지 저작).
+- **Duel 재저작에서 main 과 갈린 두 지점** (unit 11) — ⓐ 차단 셀 위 공중 waypoint(옛 (11,4)) 허용, ⓑ 층별 `PlacementBlockZone`(적 진영 «Air 만 허용» — 지금은 전 층 0).
+- **레거시 덱 정리** — `Deck_Serpent/Coil/Zig/Ford/Isle/Tutorial/WaypointLab/SiegeTest/Spiral/Twin/Hook/WaveA` 는 맵 은퇴(unit 12) 후에도 남아 있다(EditMode 덱 테스트가 이름으로 순회). 정리는 별도 결정.
 - **`TileSetData` SO 분리** — 오버레이 절반만 남기는 정리(unit 3 은 필드 사용 중단까지만).

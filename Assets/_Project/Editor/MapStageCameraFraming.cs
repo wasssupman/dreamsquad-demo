@@ -1,7 +1,9 @@
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Presentation;
@@ -62,7 +64,7 @@ namespace Wassup.EditorTools
 
             EditorSceneManager.MarkSceneDirty(stage.gameObject.scene);
             return $"OK|stage={stage.name} area={stage.playAreaCells} origin={stage.gridOriginLocal} " +
-                   $"aspect={aspect:F3} pitch={framing.pitchDeg} fov={fovApplied}(recipe {fov}) pos={pos:F3} dof={(framing.dofEnabled ? "recipe on (씬 Volume 없으면 미적용)" : "off")}";
+                   $"aspect={aspect:F3} pitch={framing.pitchDeg} fov={fovApplied}(recipe {fov}) pos={pos:F3}";
         }
 
         // 러너용: 씬 열기 → 적용 → 저장.
@@ -72,6 +74,124 @@ namespace Wassup.EditorTools
             string result = FrameActiveScene(aspectOverride);
             if (result.StartsWith("OK")) EditorSceneManager.SaveScene(scene);
             return result;
+        }
+
+        // unit 11 — 프리팹을 프리뷰 씬에 세워 Battle 카메라 포즈로 PNG 렌더(원격 육안 검증 — 에이전트가 이미지로 읽는다).
+        // 논리 셀 오버레이(스캔→검증 결과 그대로): 차단=빨강 · 배치금지=주황 · 스폰=초록 · 골=노랑 · 포탈=핑크 ·
+        // 본능=파랑/빨강 3×3. 조명은 프리뷰용 1개 — 색감이 아니라 «아트와 격자가 맞는가»를 보는 도구다.
+        public static string RenderPrefabPreview(string prefabPath, string pngPath, float aspect = 16f / 9f, int width = 1600, bool overlay = true)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null) return "ERROR|프리팹 없음 " + prefabPath;
+            var config = AssetDatabase.LoadAssetAtPath<CameraDirectionConfig>(ConfigPath);
+            var framing = config?.stateFramings?.FirstOrDefault(f => f.state == CameraState.Battle);
+            if (framing == null) return "ERROR|CameraDirectionConfig 의 Battle 레시피 없음";
+
+            var scene = EditorSceneManager.NewPreviewScene();
+            RenderTexture rt = null;
+            Texture2D tex = null;
+            try
+            {
+                var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+                inst.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                inst.transform.localScale = Vector3.one;
+                var stage = inst.GetComponent<MapStage>();
+                if (stage == null) return "ERROR|루트에 MapStage 없음";
+
+                var lightGo = new GameObject("PreviewLight");
+                SceneManager.MoveGameObjectToScene(lightGo, scene);
+                var light = lightGo.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.intensity = 1.2f;
+                lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+                var camGo = new GameObject("PreviewCamera");
+                SceneManager.MoveGameObjectToScene(camGo, scene);
+                var cam = camGo.AddComponent<Camera>();
+                cam.scene = scene;
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0.16f, 0.17f, 0.2f);
+                cam.nearClipPlane = 0.1f;
+                cam.farClipPlane = 100f;
+
+                Vector3 min = stage.gridOriginLocal;
+                Vector3 size = new Vector3(stage.playAreaCells.x, 0f, stage.playAreaCells.y);
+                var bounds = new Bounds(min + size * 0.5f, size);
+                if (!CameraFramingMath.SolveStatePose(bounds.center, framing, bounds, aspect, out var pos, out var rot, out var fov))
+                    return "ERROR|SolveStatePose 실패";
+                cam.transform.SetPositionAndRotation(pos, rot);
+                cam.fieldOfView = Mathf.Clamp(fov, config.fovMin, config.fovMax);
+
+                string overlayInfo = overlay ? DrawCellOverlay(stage, scene) : string.Empty;
+
+                int height = Mathf.RoundToInt(width / aspect);
+                rt = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
+                cam.targetTexture = rt;
+                cam.aspect = aspect;
+                cam.Render();
+                tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+                var prev = RenderTexture.active;
+                RenderTexture.active = rt;
+                tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                tex.Apply();
+                RenderTexture.active = prev;
+                cam.targetTexture = null;
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(pngPath)));
+                File.WriteAllBytes(pngPath, tex.EncodeToPNG());
+                return $"OK|{pngPath} {width}x{height} pos={pos:F2} fov={cam.fieldOfView:F1} {overlayInfo}";
+            }
+            finally
+            {
+                if (tex != null) Object.DestroyImmediate(tex);
+                if (rt != null) { rt.Release(); Object.DestroyImmediate(rt); }
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
+        }
+
+        static string DrawCellOverlay(MapStage stage, Scene scene)
+        {
+            var scan = MapStageScanner.Scan(stage, 1f);
+            var errors = DioramaMapBuilder.Validate(scan);
+            if (errors.Count > 0) return "형식오류:" + string.Join(" ; ", errors);
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) return "overlay 생략(URP Unlit 셰이더 없음)";
+            var parent = new GameObject("CellOverlay");
+            SceneManager.MoveGameObjectToScene(parent, scene);
+            float y = stage.gridOriginLocal.y + 0.03f;
+            int count = 0;
+            void Cell(Vector2Int c, Color col, float inset)
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                Object.DestroyImmediate(q.GetComponent<Collider>());
+                q.transform.SetParent(parent.transform, false);
+                q.transform.localPosition = new Vector3(c.x + 0.5f, y, c.y + 0.5f);
+                q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                q.transform.localScale = new Vector3(1f - inset * 2f, 1f - inset * 2f, 1f);
+                var m = new Material(shader);
+                m.SetColor("_BaseColor", col);
+                q.GetComponent<MeshRenderer>().sharedMaterial = m;
+                count++;
+            }
+            foreach (var r in scan.blockedRects)
+                for (int x = r.xMin; x < r.xMax; x++) for (int yy = r.yMin; yy < r.yMax; yy++) Cell(new Vector2Int(x, yy), new Color(1f, 0.2f, 0.2f), 0.1f);
+            foreach (var r in scan.placementBlockRects)
+                for (int x = r.xMin; x < r.xMax; x++) for (int yy = r.yMin; yy < r.yMax; yy++) Cell(new Vector2Int(x, yy), new Color(1f, 0.6f, 0.1f), 0.42f);
+            foreach (var s in scan.spawns) Cell(s.cell, new Color(0.2f, 1f, 0.3f), 0.1f);
+            foreach (var g in scan.goals) Cell(g, new Color(1f, 0.95f, 0.2f), 0.1f);
+            foreach (var b in scan.bonusSpawns) Cell(b, new Color(1f, 0.3f, 0.8f), 0.1f);
+            foreach (var st in scan.structures)
+            {
+                int half = StructurePlacements.InstinctFootprint / 2;
+                var col = st.side == StructureSide.Defender ? new Color(0.3f, 0.55f, 1f) : new Color(1f, 0.35f, 0.3f);
+                for (int dy = -half; dy <= half; dy++)
+                    for (int dx = -half; dx <= half; dx++)
+                        Cell(st.cell + new Vector2Int(dx, dy), col, dx == 0 && dy == 0 ? 0.1f : 0.3f);
+            }
+            // 격자 네 모서리 — 판 경계가 아트와 맞는지.
+            var w = stage.playAreaCells.x; var h = stage.playAreaCells.y;
+            foreach (var c in new[] { new Vector2Int(0, 0), new Vector2Int(w - 1, 0), new Vector2Int(0, h - 1), new Vector2Int(w - 1, h - 1) })
+                Cell(c, Color.white, 0.3f);
+            return $"overlay cells={count} blocked={scan.blockedRects.Count} zones={scan.placementBlockRects.Count} spawns={scan.spawns.Count} goals={scan.goals.Count} portals={scan.bonusSpawns.Count} structures={scan.structures.Count}";
         }
 
         // 프리팹 에셋을 관례대로 — 루트 원점 + 격자 원점 xz 0 (아트·마커를 함께 옮겨 내부 배치 불변).

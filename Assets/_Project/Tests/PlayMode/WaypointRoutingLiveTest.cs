@@ -18,18 +18,19 @@ using Wassup.Data;
 
 namespace Wassup.Tests.PlayMode
 {
-    // waypoint-routing unit 3 — 실제 BattleScene + MovementLab + 검증 덱을 태우는 증상 계측.
+    // waypoint-routing unit 3 — 실제 BattleScene + 검증 덱을 태우는 증상 계측.
     // 순수 Step이 아니라 스폰 부착 → 필드 슬롯 → Movement 소비 → 골 도달의 전 구간을 센다.
+    // map-diorama-stage unit 12 — MovementLab(웨이포인트 저작 스테이지) 은퇴. 클래스 기본판은 DefaultMap(Street),
+    // 판이 논점인 테스트는 각자 pin 하고 저작 스테이지가 필요한 것은 사유 명시 Ignore.
     public class WaypointRoutingLiveTest
     {
-        private const string WaypointLabMap = "MovementLab";
         private int _savedIndex;
 
         [SetUp]
         public void SetUp()
         {
             _savedIndex = DevMapOverride.Index;
-            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(WaypointLabMap);
+            DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(BattleBridgeTestAccess.DefaultMap);
         }
 
         [TearDown]
@@ -48,6 +49,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
+        [Ignore("map-diorama-stage unit 12 — MovementLab 스테이지 은퇴. 웨이포인트 순서 검증은 RouteMarker 저작 dev 스테이지가 생기면 그 이름으로 재활성화")]
         public IEnumerator ValidationWave_ShowsGuides_ThenPassesWaypointsInAuthoredOrder()
         {
             // 테스트가 Outgame의 fluid RT를 렌더 타깃으로 둔 프레임에서 씬을 즉시 교체하면
@@ -290,6 +292,7 @@ namespace Wassup.Tests.PlayMode
         // Coil·Zig. 둘 다 레인 하나만 경로 1 로 우회시킨 저작이다
         // (unit 10 rev 3 — 새 경로 50%/62% · 유턴 0).
         [UnityTest]
+        [Ignore("map-diorama-stage unit 12 — Coil·Zig 스테이지 은퇴. routed-lane 저작 스테이지가 풀에 없다 — 재활성화 시 dev 스테이지 저작")]
         public IEnumerator RoutedMap_GroundEnemies_SpawnWithLaneDefaultRoute(
             [Values("Coil", "Zig")] string mapName)
         {
@@ -349,7 +352,7 @@ namespace Wassup.Tests.PlayMode
         // 현행 세대인가** 다. 공성 3종.
         [UnityTest]
         public IEnumerator SiegeDevSlot_RunsCurrentGenerationWaves(
-            [Values("Duel", "Ford", "Isle")] string mapName)
+            [Values("Duel")] string mapName)   // unit 12 — Ford·Isle 은퇴; Duel 은 라이브 0번(unit 11)
         {
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot(mapName);
             RenderTexture.active = null;
@@ -390,6 +393,7 @@ namespace Wassup.Tests.PlayMode
         // 라벨이 빈다. 반대로 폴백이 일어나면 Deck_Tutorial(Serpent 복제)의 컨셉 풀이 돌아
         // 라벨이 채워진다 — 즉 라벨이 비어 있음 = 저작 플랜이 쓰이고 있음.
         [UnityTest]
+        [Ignore("map-diorama-stage unit 12 — Tutorial 스테이지 은퇴. 저작 플랜(WavePlanAsset) 짝 스테이지가 풀에 없다 — 재활성화 시 dev 스테이지 + plan 짝 저작")]
         public IEnumerator TutorialDevSlot_UsesAuthoredPlan_NotGeneratedWaves()
         {
             DevMapOverride.Index = BattleBridgeTestAccess.MapSlot("Tutorial");

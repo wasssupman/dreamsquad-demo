@@ -25,13 +25,15 @@ namespace Wassup.Tests.EditMode
             for (int i = 0; i < pool.DevCount; i++) stages.Add(pool.GetDev(i).stage);
             Assert.IsTrue(stages.TrueForAll(s => s != null), "풀에 빈 스테이지 슬롯이 있다.");
 
-            // 카메라 불변 상한 (구 MapDocumentPoolDevEntriesTests ⑥ 승계 — main duel-map 23×10 개정판).
-            // fitToBoard 는 어떤 크기든 프레임에 넣지만 진짜 상한은 폰에서 읽히는 판 크기다.
+            // 카메라 불변 상한 (구 MapDocumentPoolDevEntriesTests ⑥ 승계). fitToBoard 는 어떤 크기든
+            // 프레임에 넣지만 진짜 상한은 폰에서 읽히는 판 크기다. 가로 30 = 2026-08-26 사용자가
+            // 16:9 게임뷰에서 확정한 Street/Subway/StreetDay(30폭) 라이브 승격 기준 — 이보다 넓히려면
+            // 전투 카메라(pitch 55·fov 클램프 31)에서 판이 더 작아지는 걸 감수하는 결정이 먼저다.
             // 시드 로테이션에 잡히는 라이브 엔트리만 구속한다(dev 슬롯은 실험장).
             for (int i = 0; i < pool.Count; i++)
             {
                 var cells = pool.Get(i).stage.playAreaCells;
-                Assert.LessOrEqual(cells.x, 23, $"{pool.Get(i).stage.name}: 가로 상한 — 더 넓히면 폰에서 판이 작아진다");
+                Assert.LessOrEqual(cells.x, 30, $"{pool.Get(i).stage.name}: 가로 상한 — 더 넓히면 폰에서 판이 작아진다");
                 Assert.LessOrEqual(cells.y, 12, $"{pool.Get(i).stage.name}: 세로 상한 — 배치·전투 두 카메라 상태를 같이 물린다");
             }
 

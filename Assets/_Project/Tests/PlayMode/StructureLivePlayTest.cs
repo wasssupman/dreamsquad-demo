@@ -24,7 +24,7 @@ namespace Wassup.Tests.PlayMode
     // map-diorama-stage US-004b — 거점(본능/적 마음)은 스테이지 브랜치에서 비가용(README 계약 11:
     // structures 빈 배열·_resolvedMapDoc 영구 null). StructureMarker 저작이 후속으로 들어올 때
     // 스테이지 픽스처와 함께 재활성화한다 — 삭제가 아니라 사유 명시 Ignore (판정 기록).
-    [NUnit.Framework.Ignore("map-diorama-stage 계약 11 — 거점 비가용. StructureMarker 후속에서 재활성화")]
+    [NUnit.Framework.Ignore("map-diorama-stage unit 10 으로 본능(StructureMarker)은 가용 — 그러나 이 테스트가 pin 하는 Test/SiegeTest/Coil 스테이지가 없고 적 마음(Core)은 계약 11 비가용. 재활성화 = 본능 1기 dev 스테이지 저작 + 공성 축 후속")]
     public class StructureLivePlayTest
     {
         private const float TimeoutSec = 90f;
