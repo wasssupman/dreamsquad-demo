@@ -41,6 +41,13 @@ namespace Wassup.Battle.Skills
         public Entity Target;          // bestTarget. 재도출하면 타겟팅 규칙을 복제하게 된다
         public float3 TargetPosition;
         public float2 DirectionXZ;     // 넉백·브레스가 쓰는 **계산된** 방향
+
+        // skill-layer-migration unit 7a — **대상이 엔티티가 아니라 칸일 때.**
+        // 플레이어 액티브는 손패에서 칸을 찍어 쓴다 — 겨눌 엔티티가 없다.
+        // 포탈만 둘을 쓴다(입구/출구). `HasCellB` 가 「두 번째 칸이 의미 있나」다.
+        public int2 TargetCellA;
+        public int2 TargetCellB;
+        public bool HasCellB;
         public byte TargetTraversalLayers; // killer 사양 — 0 으로 새면 무제한 통과가 된다
 
         // params 값 스냅샷 ────────────────────────────────────────

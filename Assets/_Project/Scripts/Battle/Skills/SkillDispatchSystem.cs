@@ -300,12 +300,16 @@ namespace Wassup.Battle.Skills
 
         private static SkillTarget BuildTarget(EntityManager em, in SkillFiredEvent evt)
         {
+            // ⚠ **엔티티가 없어도 대상이 있을 수 있다**(unit 7a). 액티브는 칸을 찍어
+            // 쓴다 — 여기서 `None` 으로 접으면 그 스킬이 조준을 잃는다.
             if (evt.Target == Entity.Null || !em.Exists(evt.Target))
-                return SkillTarget.None;
+                return new SkillTarget(SkillEntityId.None,
+                    evt.TargetCellA, evt.TargetCellB, evt.HasCellB, evt.DirectionXZ);
             int id = em.HasComponent<SimEntityId>(evt.Target)
                 ? em.GetComponentData<SimEntityId>(evt.Target).value
                 : SimEntityId.Unassigned;
-            return SkillTarget.OfUnit(new SkillEntityId(id), default, evt.DirectionXZ);
+            return new SkillTarget(new SkillEntityId(id),
+                evt.TargetCellA, evt.TargetCellB, evt.HasCellB, evt.DirectionXZ);
         }
     }
 }

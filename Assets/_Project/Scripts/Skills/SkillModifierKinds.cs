@@ -56,6 +56,10 @@ namespace Wassup.Skills
         // 유닛 배치 스킬. 레거시 `OnPlaceEffectType` 계열이 쓰던 출처이고,
         // 값은 `Battle.Effects.ModifierOrigin` 과 **정렬돼 있어야 한다**(어댑터가 캐스트한다).
         OnPlace = 1,
+        // skill-layer-migration unit 7a — **플레이어 액티브 스킬 카드.** 시전 주체 엔티티가
+        // 없는 유일한 출처다(손패에서 칸을 지정해 쓴다). 상태FX·오라 집계가 이 값으로
+        // 「누가 걸었나」를 읽으므로 다른 출처로 접으면 안 된다.
+        Skill = 2,
         Dreamcatcher = 4,
         Boss = 8,
         HealthThreshold = 9,

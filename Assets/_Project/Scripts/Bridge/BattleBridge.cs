@@ -2531,7 +2531,13 @@ namespace Wassup.Bridge
             switch (skill.effect)
             {
                 case SkillEffectType.SlowField:
-                    affectedCount = ApplySlowField(tile, skill);
+                    // unit 7a — 실행은 concrete 가 한다. 여기가 남기는 것은 **셈**뿐이다:
+                    // `affectedCount` 는 로그 전용이고(호출처는 `out _` 로 버린다) 「몇 기가
+                    // 걸렸나」는 실행 전에도 셀 수 있는 **읽기**다. 그래서 fire-and-forget
+                    // 포트를 깨지 않고 로그를 지킨다.
+                    affectedCount = CountEnemiesInTileRange(tile, GridMath.RangeToTiles(skill.range));
+                    CastActiveSkillAtTile(Wassup.Skills.Concrete.TileStatBurstSkill.Id, skill, tile,
+                        statSelector: (int)Wassup.Battle.Effects.StatKind.MoveSpeedMul);
                     break;
                 case SkillEffectType.Tornado:
                     affectedCount = ApplyTornado(tile, skill);
@@ -2833,6 +2839,45 @@ namespace Wassup.Bridge
         {
             return cell.x >= 0 && cell.x < _generatedMap.gridSize.x
                 && cell.y >= 0 && cell.y < _generatedMap.gridSize.y;
+        }
+
+        // unit 7a — 액티브 발화. 시전 주체가 없으므로 `Caster` 는 비운다 —
+        // 진영은 디스패처가 `CasterRef.Player` 로 접어 준다(플레이어 = 방어유닛 편).
+        // ⚠ **부착 seam 을 쓴다.** 액티브도 동기 트랜잭션이다(쿨다운 게이트 → 실행 →
+        // `Consume` + 로그). 프레임을 기다리면 소모 뒤에 실행이 도착한다.
+        private void CastActiveSkillAtTile(int skillId, SkillData skill, Vector2Int tile,
+            int statSelector = 0, Vector2Int tileB = default)
+        {
+            if (!_skillFiredQueue.IsCreated) return;
+            _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+            {
+                Seam = Wassup.Battle.Skills.SkillSeam.Immediate,
+                Caster = Entity.Null,
+                SkillId = skillId,
+                TargetCellA = new int2(tile.x, tile.y),
+                TargetCellB = new int2(tileB.x, tileB.y),
+                Magnitude = skill.magnitude,
+                Duration = skill.durationSec,
+                TileRange = GridMath.RangeToTiles(skill.range),
+                StatSelector = statSelector,
+            });
+            RunImmediateSkills();
+        }
+
+        // 로그 preview — 「이 칸 반경 안 적 수」. 판정에 쓰지 않는다.
+        private int CountEnemiesInTileRange(Vector2Int tile, int tileRange)
+        {
+            if (!_aliveAttackersQueryCreated) return 0;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            int n = 0;
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                if (InTileRange(_em.GetComponentData<LocalTransform>(e).Position, tile, tileRange)) n++;
+            }
+            entities.Dispose();
+            return n;
         }
 
         private int ApplySlowField(Vector2Int tile, SkillData skill)
@@ -9114,6 +9159,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DreamCocoonSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BountyMarkSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.CastHazardSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.TileStatBurstSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];

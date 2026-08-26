@@ -186,6 +186,9 @@ namespace Wassup.Tests.PlayMode
             });
             em.AddComponent<ModifierStatsDirty>(e);
             em.SetComponentEnabled<ModifierStatsDirty>(e, false);
+            // ⚠ 스킬 레이어의 핸들 축 — 라이브 스포너는 발급한다. 없으면 어댑터가
+            // 이 적을 못 가리켜 액티브가 조용히 아무도 안 건드린다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             return e;
         }
 
