@@ -180,9 +180,47 @@ namespace Wassup.Tests.EditMode
             return n;
         }
 
+        // ⚠ **실제로 센다.** 예전엔 `false` 를 돌려주는 스텁이었고, 그 탓에 도약 계열
+        // concrete 가 첫 줄에서 빠져나가 **토대 spec 의 검증 질문에 증인이 없었다**
+        // (「방어유닛이 이 스킬을 쓰면 상대 진영 밀집 셀로 간다」). 페이크가 막고 있으면
+        // 그 문장은 구조적으로만 참이고 아무도 확인하지 않는다.
+        //
+        // 진영은 **호출자 상대**로 고른다 — 그게 이 질문의 전부다. 동률은 셀 좌표
+        // 오름차순으로 끊는다(결정론).
         public bool TryDensestOpponentCluster(CasterRef c, int r, out int2 cell, out int count)
-        { cell = default; count = 0; return false; }
-        public bool TryLandingCellNear(int2 d, int maxRing, out int2 cell) { cell = default; return false; }
+        {
+            cell = default; count = 0;
+            var wanted = FactionRelation.OpponentUnitsOf(c.Faction);
+            if (wanted == Faction.None) return false;
+
+            var tally = new Dictionary<int2, int>();
+            foreach (var kv in Units)
+            {
+                var u = kv.Value;
+                if (u.Dead || (u.Faction & wanted) == 0) continue;
+                var uc = CellOfPosition(u.Position);
+                tally.TryGetValue(uc, out var n);
+                tally[uc] = n + 1;
+            }
+            if (tally.Count == 0) return false;
+
+            bool found = false;
+            foreach (var kv in tally)
+            {
+                // 반경은 «그 셀 주변 r 칸» 의 합으로 세는 게 라이브 규칙이지만, 이 페이크는
+                // 셀 단위 밀집만 본다 — 검증 질문이 묻는 것은 «어느 진영인가» 이지
+                // 밀집 산식이 아니다(산식은 어댑터가 소유한다).
+                bool better = !found || kv.Value > count
+                    || (kv.Value == count && (kv.Key.y < cell.y
+                        || (kv.Key.y == cell.y && kv.Key.x < cell.x)));
+                if (!better) continue;
+                cell = kv.Key; count = kv.Value; found = true;
+            }
+            return found;
+        }
+
+        // 원하는 칸이 곧 착지 칸이다 — 이 페이크엔 막힌 칸이 없다.
+        public bool TryLandingCellNear(int2 d, int maxRing, out int2 cell) { cell = d; return true; }
 
         // 발사 명세. 테스트가 답을 직접 정한다 — 도메인은 결론만 쓰기 때문에
         // 페이크가 템플릿을 흉내낼 이유가 없다.

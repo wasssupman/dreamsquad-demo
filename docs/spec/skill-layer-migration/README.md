@@ -1,6 +1,9 @@
 # skill-layer-migration — 모든 스킬을 레이어 위로
 
-> 상태: **진행 중 — unit 3(드림캐쳐 카드) 완료 2026-08-26.** 선행 = `docs/spec/skill-layer-foundation/` 전체.
+> 상태: **완료 2026-08-26 — units 0~8 전부 커밋.** 선행 = `docs/spec/skill-layer-foundation/` 전체.
+>
+> 마감 결과는 `8_teardown.md` 하단(재고 · 결정 2건 · PlayMode 판정)에 있다.
+> 어휘 밖으로 남은 것과 그 이유의 정본은 `Assets/_Project/Scripts/Data/Dreamcatcher/SkillPayloadPolicy.cs`.
 >
 > unit 3 은 3a~3g 일곱 조각으로 나뉘어 전부 커밋됐다. 옮기지 않고 남긴 **6행**은
 > 성격이 하나다 — 막는 것은 효과가 아니라 **디스패치가 비동기라는 것**이다
@@ -105,21 +108,30 @@
 ## seam 은 몇 개인가 (2026-08-26 갱신)
 
 토대가 「3」이라 적은 것은 **그때 조사한 payload 들의 감지 지점이 셋**이었다는 뜻이고
-상한이 아니다. 카드가 죽음 계열을 들고 오면서 넷이 됐다:
+상한이 아니다. 이전이 끝난 지금 **일곱**이다.
 
 | seam | 감지자 | 증인 |
 |---|---|---|
 | 주기 | `BossPeriodicTriggerSystem` (주기·배치) | 마메모 자장가 · 배스티온 도발 |
-| 공격 | `AttackSystem` RESOLVE | 서리화살 |
+| 공격 | `AttackSystem` RESOLVE | 서리화살 · 화염 브레스 |
 | 경계 | `HealthThresholdSystem` | 짱쎈놈 |
 | 죽음 | `DamageApplicationSystem` | 포식 · 시체폭발 · 잿불 |
+| 자기 죽음 | `UnitLifecycleSystem` (파괴 **뒤**) | 작별 선물 · 퇴근 운석 |
+| 캐스트 | `HazardCastSystem` → `CastEventsSingleton` | 해저드 캐스터 |
+| 즉시 | 브리지(액티브·부착) — 동기 트랜잭션 | 메테오 · 소용돌이 · 아군 장판 |
 
 **판정 규칙: 감지자가 다른 프레임 창을 가지면 seam 도 따로 난다.** 같은 큐를 쓰더라도
 감지 위치가 드레인 위치보다 뒤면 한 프레임 밀리고, 그 밀림이 하류 계약을 깬다.
 
-⚠ **아직 seam 이 없는 감지 지점 셋**(unit 3 잔여):
-`UnitLifecycleSystem`(`OnDeath`) · 브리지 실드파열 드레인(`OnShieldBreak`) ·
-브리지 퇴근 경로(`OnRetire`). 라우팅만 열고 seam 을 안 열면 **그 카드가 조용히 죽는다.**
+⚠ ~~아직 seam 이 없는 감지 지점 셋~~ → **셋 다 해소됐다.** `OnDeath` 는 자기 죽음
+seam(파괴 뒤라 시전자가 없다 → 값 스냅샷이 `CasterFaction` 까지 실어야 했던 이유),
+`OnShieldBreak` 는 죽음 seam(파괴 **앞**이라 host 가 살아 있다), `OnRetire` 는
+자기 죽음 seam 이 받는다.
+
+⚠ **이벤트가 자기 seam 을 말한다**(`SkillFiredEvent.Seam`). 큐가 하나뿐이라
+남의 seam 것을 만나면 꼬리로 되돌리고, `budget = queue.Count` 스냅샷이 종료를 보장한다.
+`SkillSeam.None = 0` 은 「생산자가 안 채웠다」라 loud 하게 버린다 — 0 에 진짜 seam 을
+두면 안 채운 이벤트가 그리로 조용히 흘러간다.
 
 ## 어댑터가 직접 쓸 수 있는 버퍼 (2026-08-26 — ECS 리뷰 요구)
 
