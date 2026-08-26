@@ -131,12 +131,12 @@ namespace Wassup.Battle.Skills
         protected override SkillSeam Seam => SkillSeam.Threshold;
     }
 
-    // ④ 피해 정산 뒤 — **지금은 `OnKill` 만**(ECS 리뷰 M-6).
+    // ④ 피해 정산 뒤 — `OnKill` · `OnDamagedN` · `OnShieldBreak`.
     //
-    // ⚠ 이름이 「죽음 계열」이지만 `OnDamagedN`·`OnShieldBreak` 블록은 아직 `skillId` 를
-    // **보지도 않는다** — 그 감지자들은 라우팅 분기가 없어 전부 legacy arm 으로 간다.
-    // 이중 발화도 조용한 죽음도 없지만(그 payload 들이 카드 화이트리스트 밖이다),
-    // **주석이 없는 배선을 있다고 말하지 않게** 여기 적어 둔다. 3d‴/3e 가 채운다.
+    // ⚠ 이 주석은 한때 「`OnDamagedN`·`OnShieldBreak` 는 아직 `skillId` 를 보지도
+    // 않는다」고 적혀 있었다(3d‴/3e 전). 지금은 셋 다 라우팅한다 — 그리고 unit 8 에서
+    // **적에게도 열렸다.** 옛 문면을 남기면 「배선이 없다」로 읽혀 다음 사람이
+    // 없는 구멍을 메우려 든다.
     //
     // ⚠ **emitter 제약이 없다**(주기 seam 에는 있다 — 위 H-1 노트). 오늘 `OnKill` 로
     // 발사 명세를 저작한 것이 0건이라 무해하지만, 그 저작이 처음 생기는 unit 은

@@ -89,54 +89,17 @@ namespace Wassup.Battle.Combat.Projectile
             if (hasHitChannel)
                 hitQueue = SystemAPI.GetSingleton<ProjectileHitEventsSingleton>().queue;
 
-            // Snapshot all living attack units up-front so a Splash hit can iterate
-            // them without a nested SystemAPI.Query inside the projectile loop.
-            // AttackUnitTag filter keeps non-enemy entities out of the AOE pool.
-            // ultimate-leap unit 2 — 이탈(판 밖) 중인 적은 splash/TileAoe 피해자도, bounce 재조준
-            // 후보도 아니다. 직격 호밍은 target 을 이미 들고 있어 여기로 안 걸러지지만, 그 피해는
-            // DamageApplicationSystem 의 버퍼 드랍이 잡는다(2중 방어가 아니라 역할 분담).
-            var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>()
-                .WithNone<UltimateLeapState>().Build();
-            var aoeEntities = aoeQuery.ToEntityArray(Allocator.Temp);
-            var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
-            // Positions snapshot for the pure BounceRetarget.FindNext (architecture-
-            // neutral: it takes float3, not LocalTransform/Entity) — bounce unit 2.
-            var aoePositions = new NativeArray<float3>(aoeTransforms.Length, Allocator.Temp);
-            var aoeTraversalLayers = new NativeArray<byte>(aoeTransforms.Length, Allocator.Temp);
-            for (int i = 0; i < aoeTransforms.Length; i++)
-            {
-                aoePositions[i] = aoeTransforms[i].Position;
-                if (pathFollowLookup.HasComponent(aoeEntities[i]))
-                    aoeTraversalLayers[i] = pathFollowLookup[aoeEntities[i]].traversalLayers;
-            }
-
-            // nightmare-catcher unit 4 — defender pool for the faction-
-            // parameterized TileAoe (boss AreaBarrage hits defenders, HIGH-1).
-            // Snapshot built alongside the enemy pool, same lifetime; splash and
-            // bounce intentionally keep the enemy pool only.
+            // unit 8 리뷰 H-1 — **적 전용 풀(`aoeQuery`)이 은퇴했다.** splash·bounce·PathHit
+            // 스윕이 전부 아래 `victimQuery`(양 진영 + 거점)를 쓰고 주인의 상대 진영으로
+            // 거른다. 옛 풀이 `AttackUnitTag` 하드코딩이라 「적이 쏘면 자기편을 때린다」가
+            // 구조적으로 가능했고, 그걸 막던 것이 브리지의 payload 별 거절 가드였다.
             //
-            // goal-tower-siege unit 2 — 골 타워를 이 풀에 넣는다. 타워는 DefenderUnitTag 가
-            // 없어서(유닛이 아니다) 여기 빠져 있었고, 그 결과 **보스의 AreaBarrage 가 골에
-            // 떨어져도 안정도가 한 톨도 안 줄었다.** 근접 공격은 타겟에 직접 append 라
-            // 멀쩡했기 때문에 증상이 "보스만 타워를 못 부순다" 는 형태로 조용했다.
+            // ⚠ **이탈(판 밖) 중인 대상은 제외한다** — splash/TileAoe 피해자도, bounce 재조준
+            // 후보도 아니다(ultimate-leap unit 2). 직격 호밍은 target 을 이미 들고 있어 여기로
+            // 안 걸러지지만, 그 피해는 `DamageApplicationSystem` 의 버퍼 드랍이 잡는다.
             //
-            // battle-structures unit 9 — **그 수정이 방어 측에만 됐다.** 적 풀은 위
-            // AttackUnitTag 그대로였고, 그래서 같은 증상이 진영만 바꿔 살아 있었다:
-            // 메테오가 적 마음 위에 정확히 떨어져도 0 데미지. 이제 TileAoe 의 피해자 풀은
-            // 진영 양쪽 + 거점을 담은 **한 벌**이고 `FactionTag` 로 가른다.
-            //
-            // 왜 값 필터인가: ECS 쿼리는 `FactionTag` **값**으로 필터할 수 없고(shared
-            // component 가 아니다) `StructureTag` 는 양 진영 공용이라 태그 조합만으로
-            // «적 거점» 을 뽑을 수 없다. 값 필터를 쓸 거라면 스냅샷을 두 벌 뜰 이유가 없다.
-            // 두 벌을 이어 붙이는 대안은 금지 — 중복 제거가 없어 광역 1발이 골을 2번 때린다
-            // (goal-stability 의 별도 «골 풀» 합류가 그렇게 실패했다).
-            //
-            // 편입 범위: `GoalTowerTag` 특례가 은퇴하고(방어 마음은 StructureTag +
-            // DefenderCore 비트로 걸린다) 미래의 방어 본능도 코드 변경 0 으로 걸린다.
-            // `BlockingHazard`(방벽)는 세 태그 중 아무것도 없어 **전에도 두 풀 어디에도
-            // 없었다** — 지금도 광역 피해자가 아니다(동작 보존).
-            // `WithNone<UltimateLeapState>` 가 방어 측에도 걸리게 되지만 그 컴포넌트의 의미가
-            // «판 밖 = 피격 불가» 이므로 어느 진영이 달아도 맞지 않는 것이 맞다.
+            // ⚠ 왜 값 필터인가: ECS 쿼리는 `FactionTag` **값**으로 필터할 수 없어(shared
+            // component 가 아니다) 한 벌을 뽑아 놓고 소비 지점에서 마스크로 가른다.
             var victimQuery = SystemAPI.QueryBuilder()
                 .WithAny<AttackUnitTag, DefenderUnitTag, StructureTag>()
                 .WithAll<LocalTransform, FactionTag>()
@@ -145,10 +108,7 @@ namespace Wassup.Battle.Combat.Projectile
             var victimTransforms = victimQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var victimFactions = victimQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
             var victimTraversalLayers = new NativeArray<byte>(victimEntities.Length, Allocator.Temp);
-            // skill-layer-migration unit 8 — splash·bounce 가 이 **양 진영** 스냅샷을 쓴다.
-            // 예전엔 `AttackUnitTag` 전용 풀이라 적이 쏘면 자기편을 때렸다(그래서
-            // `SelfOrbitProjectile` 이 브리지에서 거절되고 있었다). 순수 함수가 인덱스를
-            // 돌려주므로 위치·진영도 같은 정렬로 미리 편다.
+            // 순수 함수(`BounceRetarget`)가 인덱스를 돌려주므로 위치·진영도 같은 정렬로 편다.
             var victimPositions = new NativeArray<float3>(victimEntities.Length, Allocator.Temp);
             var victimFactionMasks = new NativeArray<int>(victimEntities.Length, Allocator.Temp);
             for (int i = 0; i < victimEntities.Length; i++)
@@ -362,7 +322,6 @@ namespace Wassup.Battle.Combat.Projectile
                                 float splashDamage = projectile.ValueRO.damage * projectile.ValueRO.splashDamageMul * heavyMul;
                                 // skill-layer-migration unit 8 — **양 진영 풀 + 주인의 상대**.
                                 // 예전엔 적 전용 풀이라 적이 쏜 splash 가 자기편을 태웠다.
-                                // 마스크 0(주인 미상 = 플레이어 스킬탄)이면 옛 동작 그대로.
                                 int splashWanted = OpponentMaskOfOwner(
                                     projectile.ValueRO.owner, ref factionTagLookup,
                                     ref attackTagLookup, ref defenderTagLookup);
@@ -370,8 +329,8 @@ namespace Wassup.Battle.Combat.Projectile
                                 {
                                     var candidate = victimEntities[i];
                                     if (candidate == target) continue;
-                                    if (splashWanted != 0
-                                        && (victimFactionMasks[i] & splashWanted) == 0) continue;
+                                    // 마스크는 이제 절대 0 이 아니다(미상은 플레이어로 접힌다).
+                                    if ((victimFactionMasks[i] & splashWanted) == 0) continue;
                                     if (!PlacementLayers.CanTarget(
                                             projectile.ValueRO.targetTraversalLayers,
                                             victimTraversalLayers[i])) continue;
@@ -533,16 +492,23 @@ namespace Wassup.Battle.Combat.Projectile
                         // 와 제자리 덮어쓰기뿐이라 **원소가 이동하지 않는다** — 그래서 여기서
                         // 잡아 둔 인덱스가 프레임 끝까지 유효하다.
                         var sweptRec = new NativeList<int>(Allocator.Temp);
-                        for (int i = 0; i < aoeEntities.Length; i++)
+                        // unit 8 리뷰 H-1 — splash·bounce 와 **같은 이유로** 양 진영 풀 +
+                        // 주인의 상대. 여기가 적 전용으로 남아 있어서 「PathHit 하드코딩이
+                        // 사라졌다」는 내 은퇴 근거가 거짓이었다(궤도 화염구가 이 경로다).
+                        int pathWanted = OpponentMaskOfOwner(
+                            projectile.ValueRO.owner, ref factionTagLookup,
+                            ref attackTagLookup, ref defenderTagLookup);
+                        for (int i = 0; i < victimEntities.Length; i++)
                         {
+                            if ((victimFactionMasks[i] & pathWanted) == 0) continue;
                             if (!PlacementLayers.CanTarget(
                                     projectile.ValueRO.targetTraversalLayers,
-                                    aoeTraversalLayers[i])) continue;
-                            float2 victimPos = aoePositions[i].xz;
+                                    victimTraversalLayers[i])) continue;
+                            float2 victimPos = victimPositions[i].xz;
                             if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius)) continue;
                             int recIdx = -1;
                             if (hasRecords && !PathHitRecord.CanHit(
-                                    pathHitRecordLookup[entity], aoeEntities[i],
+                                    pathHitRecordLookup[entity], victimEntities[i],
                                     now, rehitCooldown, out recIdx)) continue;
                             sweptIdx.Add(i);
                             // content-5 — front-most 정렬 기준을 **그 프레임의 실제 이동 방향**으로
@@ -562,8 +528,8 @@ namespace Wassup.Battle.Combat.Projectile
                             for (int k = 1; k < sweptIdx.Length; k++)
                                 if (sweptDist[k] < sweptDist[nearest]) nearest = k;
 
-                            var victim = aoeEntities[sweptIdx[nearest]];
-                            float3 victimPos = aoePositions[sweptIdx[nearest]];
+                            var victim = victimEntities[sweptIdx[nearest]];
+                            float3 victimPos = victimPositions[sweptIdx[nearest]];
                             if (damageBufferLookup.HasBuffer(victim))
                             {
                                 float vdmg = (victim == prioTarget ? dmg * prioMul : dmg) * heavyMul;
@@ -668,15 +634,20 @@ namespace Wassup.Battle.Combat.Projectile
                         //    다시 튕길 수 있다 — SingleSplash 바운스의 A→B→A 선례와 같다.
                         if (!survives && next.bounceRemaining > 0 && lastVictimIdx >= 0)
                         {
+                            // unit 8 리뷰 H-1 — 같은 이유로 양 진영 풀 + 주인의 상대.
+                            int dirWanted = OpponentMaskOfOwner(
+                                projectile.ValueRO.owner, ref factionTagLookup,
+                                ref attackTagLookup, ref defenderTagLookup);
                             int nextIdx = BounceRetarget.FindNext(
-                                lastVictimPos, lastVictimIdx, aoePositions, aoeTraversalLayers,
+                                lastVictimPos, lastVictimIdx, victimPositions, victimTraversalLayers,
                                 next.targetTraversalLayers,
+                                victimFactionMasks, dirWanted,
                                 next.bounceTileRange, tileSize, gridSize, ffOrigin);
                             if (nextIdx >= 0)
                             {
                                 next.movement = MovementKind.HomingToEntity; // 방향 → 호밍
                                 next.payload = PayloadKind.SingleSplash;     // 스윕 → 단일 착탄
-                                next.target = aoeEntities[nextIdx];
+                                next.target = victimEntities[nextIdx];
                                 next.impactReached = false;
                                 next.bounceRemaining -= 1;
                                 next.damage *= next.bounceDamageMul;
@@ -859,10 +830,6 @@ namespace Wassup.Battle.Combat.Projectile
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-            aoeEntities.Dispose();
-            aoeTransforms.Dispose();
-            aoePositions.Dispose();
-            aoeTraversalLayers.Dispose();
             victimPositions.Dispose();
             victimFactionMasks.Dispose();
             victimEntities.Dispose();
@@ -883,10 +850,17 @@ namespace Wassup.Battle.Combat.Projectile
             ref ComponentLookup<AttackUnitTag> attackTags,
             ref ComponentLookup<DefenderUnitTag> defenderTags)
         {
-            if (owner == Entity.Null) return 0;
+            // ⚠ **미상은 0(필터 없음)이 아니다**(unit 8 리뷰 M-4). 후보 풀이 양 진영 +
+            // 거점으로 넓어졌기 때문에, 여기서 0 을 돌려주면 「옛 동작」이 아니라
+            // **아군과 골 타워까지 때리는** 동작이 된다. 주인이 없다 = 플레이어 액티브
+            // 스킬탄이므로 디스패처가 시전자 없는 발동을 접는 것과 **같은 값**으로 접는다
+            // (`BuildCaster` → `CasterRef.Player(DefenderUnit)`). 두 자리가 갈리면
+            // 같은 탄이 누가 쐈느냐에 따라 다른 편을 때린다.
+            if (owner == Entity.Null || !factionTags.HasComponent(owner)
+                && !attackTags.HasComponent(owner) && !defenderTags.HasComponent(owner))
+                return (int)Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(
+                    Wassup.Battle.Units.Faction.DefenderUnit);
             bool hasTag = factionTags.HasComponent(owner);
-            if (!hasTag && !attackTags.HasComponent(owner) && !defenderTags.HasComponent(owner))
-                return 0;
             var faction = Wassup.Battle.Units.FactionRelation.Resolve(
                 hasTag,
                 hasTag ? factionTags[owner].value : Wassup.Battle.Units.Faction.None,

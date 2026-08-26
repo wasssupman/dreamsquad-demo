@@ -9171,9 +9171,10 @@ namespace Wassup.Bridge
 
         // skill-layer-foundation unit 5 — payload → concrete 라우팅.
         //
-        // **이전된 것만 여기 있다.** 없는 payload 는 0 을 받아 legacy arm 이 처리한다.
-        // migration 이 한 가족을 옮길 때마다 여기 한 줄이 는다 — 그 한 줄이 「이 스킬은
-        // 이제 concrete 가 돈다」의 유일한 선언이다.
+        // **스킬은 전부 여기 있다.** 없는 payload 는 0 을 받는데, 그 뜻이 이전 도중
+        // 뒤집혔다 — 예전엔 「arm 이 처리한다」였고 지금은 **「아무도 처리 안 한다」**다.
+        // 그래서 bake 게이트가 「스킬인데 여기 없음」을 거절한다(`SkillPayloadPolicy`).
+        // 여기 한 줄을 빠뜨리면 그 조합은 슬롯조차 안 생기고 loud 경고가 난다.
         // skill-layer-migration unit 3d — **라우팅 키는 (트리거 × payload) 다.**
         // 저작의 키가 원래 그것이고(`DcMechanic`), payload 하나가 트리거에 따라 다른
         // 스킬이 되는 조합이 실재한다: `SelfTileAoe` 는 **내가 맞은 자리**에서 터지지만
@@ -9327,8 +9328,8 @@ namespace Wassup.Bridge
         // ⚠ **두 벌로 두는 것 자체가 이제 위험이다** — 특수 케이스(자리의 주인이 다른 폭발
         // 셋 등)를 한쪽에만 추가하면 같은 저작이 host 종류에 따라 다른 스킬로 간다.
         //
-        // 여전히 concrete 가 없는 payload 는 `SkillIdForPayload` 의 default 가 legacy 로
-        // 돌려보낸다(부착 시점 5행·손패 회수·분열·강공 등) — 개방이 그 arm 들을 건드리지 않는다.
+        // 여전히 concrete 가 없는 payload 는 `SkillIdForPayload` 의 default 가 0 을 준다.
+        // 그건 이제 **「스킬이 아니다」**이고, 스킬인데 0 인 조합은 bake 게이트가 거절한다.
         private static int SkillIdForCardPayload(Wassup.Data.DcTriggerKind trigger,
                                                  Wassup.Data.DcPayloadKind kind)
             => SkillIdForMechanic(trigger, kind);
@@ -9450,8 +9451,16 @@ namespace Wassup.Bridge
                 // 「아무도 처리 안 한다」다. 슬롯은 구워지고 트리거는 발화하고 그 다음에
                 // 아무 일도 안 일어나며 **로그조차 없다**(미처리 payload 경고가 arm 과
                 // 함께 사라졌다). 실제로 `OnPlace × 충전` 이 그렇게 죽어 있었다.
+                // 부착 전용 payload 를 트리거에 매단 저작은 그 자체가 오류다 — 봐주지 않는다.
+                if (Wassup.Data.SkillPayloadPolicy.OnlyValidWithNoTrigger(m.payload.kind)
+                    && m.trigger.kind != Wassup.Data.DcTriggerKind.None)
+                {
+                    Debug.LogWarning(
+                        $"[BattleBridge] {ownerLabel} mechanic {i}: '{m.payload.kind}' 는 부착 즉시 전용인데 "
+                        + $"'{m.trigger.kind}' 에 매달렸다 — 라우팅이 없어 슬롯만 생기고 조용히 죽는다. skipped.");
+                    continue;
+                }
                 if (Wassup.Data.SkillPayloadPolicy.IsSkill(m.payload.kind)
-                    && !Wassup.Data.SkillPayloadPolicy.IsAttachOnly(m.payload.kind)
                     && SkillIdForMechanic(m.trigger.kind, m.payload.kind)
                        == Wassup.Skills.SkillRegistry.NotRouted)
                 {
@@ -9466,8 +9475,8 @@ namespace Wassup.Bridge
                 var slot = new DcTriggerSlot
                 {
                     // skill-layer-foundation unit 5 — 이전된 payload 만 새 경로로 라우팅한다.
-                    // 나머지는 0(legacy arm)이라 감지자가 예전처럼 arm 을 돈다. 이 한 줄이
-                    // 이전 중 매 커밋에서 게임이 도는 이유다.
+                    // 0 은 「스킬이 아니다」이고, 스킬인데 0 인 조합은 **위 게이트가 이미
+                    // 거절했다** — 여기 도달하는 0 은 발동 규칙·공격의 성질뿐이다.
                     skillId = SkillIdForMechanic(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
@@ -9522,11 +9531,26 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
                     continue;
                 }
-                // skill-layer-migration unit 8 — **이 거절은 은퇴했다**(사용자 결정: 전용 배제).
-                // 근거였던 「PathHit 후보 풀이 AttackUnitTag 하드코딩이라 보스의 화염구가
-                // 자기편을 때린다」가 사라졌다 — splash·bounce 풀이 양 진영 스냅샷이 되고
-                // 주인의 상대 진영으로 걸러진다(`ProjectileHitSystem`). 그 주석이 걱정하던
-                // 「지금 fail-closed 인 이유가 우연히 speed 가 0 이라는 것」도 같이 해소된다.
+                // skill-layer-migration unit 8 리뷰 H-1 — **거절 사유가 바뀌었다.**
+                //
+                // 옛 사유는 「PathHit 후보 풀이 AttackUnitTag 하드코딩이라 적이 쏘면
+                // 자기편을 때린다」였고 그건 해소됐다(풀이 양 진영 + 주인의 상대).
+                // 그런데 **다른 이유로 여전히 못 쓴다**: 이 공통 슬롯 조립에는
+                // `speed`/`hitThreshold`/`projectileDataIndex` 분기가 없어 `speed == 0` 이
+                // 되고, `OrbitProjectileSkill` 이 첫 줄에서 그냥 돌아간다.
+                //
+                // ⚠ 한 번 걷었다가 되살린 가드다. 걷었을 때 생긴 것은 「자기편 타격」이
+                // 아니라 **침묵**이었다 — 슬롯이 구워지고 발화하고 아무 일도 안 난다.
+                // unit 8 이 없애려던 바로 그 형태라, 배선이 생길 때까지 loud 로 둔다.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
+                {
+                    Debug.LogWarning(
+                        $"[BattleBridge] {ownerLabel} mechanic {i}: SelfOrbitProjectile 은 유닛 규칙 bake 가 "
+                        + "speed/탄 SO 를 안 채워 발동해도 아무 일이 안 일어난다 — skipped. "
+                        + "쓰려면 이 조립에 speed·hitThreshold·projectileDataIndex 를 먼저 배선하라.");
+                    continue;
+                }
+
                 // elite-enemy-tier unit 4 — 화염 브레스 정의역 검증. 판정이 `normalize` 없는 제곱
                 // 비교라 부호 가드가 필요하고(없으면 등 뒤에 대칭 콘) 그 가드가 90° 에서 정의역을
                 // 자른다. 게다가 cos²θ = cos²(180−θ) 라 **저작 120° 는 조용히 60° 콘으로 동작**한다.

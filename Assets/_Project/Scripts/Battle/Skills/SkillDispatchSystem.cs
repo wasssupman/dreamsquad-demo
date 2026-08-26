@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -60,10 +61,19 @@ namespace Wassup.Battle.Skills
         private static readonly int[] _perSeam = new int[(int)SkillSeam.Count];
         public static int ExecutedCountOf(SkillSeam seam) => _perSeam[(int)seam];
 
+        // ⚠ **seam 계수기만으론 귀속이 없다**(unit 8 리뷰 H-3). 라이브 판에는 남의 주기
+        // 스킬이 늘 돌기 때문에, 「이 배치가 발화했나」를 seam 합계로 재면 **배치한 유닛의
+        // 라우팅이 통째로 죽어 있어도 초록**이 난다. 그래서 스킬 단위로도 센다 —
+        // 옛 그물(payload 별 loud 경고)이 갖고 있던 해상도를 그대로 돌려놓는 것이다.
+        private static readonly Dictionary<int, int> _perSkill = new Dictionary<int, int>();
+        public static int ExecutedCountOfSkill(int skillId)
+            => _perSkill.TryGetValue(skillId, out var n) ? n : 0;
+
         public static void ResetExecutedCount()
         {
             ExecutedCount = 0;
             for (int i = 0; i < _perSeam.Length; i++) _perSeam[i] = 0;
+            _perSkill.Clear();
         }
 
         // 파생이 자기 자리를 선언한다.
@@ -187,7 +197,9 @@ namespace Wassup.Battle.Skills
             {
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
-                if (evt.SkillId == SkillRegistry.NotRouted) continue;   // legacy arm 이 처리한다
+                // 스킬이 아닌 것(발동 규칙·공격의 성질)은 여기 오지 않아야 하지만,
+                // 오면 조용히 지나간다 — bake 게이트가 앞에서 거절하므로 여기는 방어선이다.
+                if (evt.SkillId == SkillRegistry.NotRouted) continue;
 
                 // ⚠ **남의 seam 것은 돌려보낸다**(unit 3e). `budget` 이 시작 시점 개수라
                 // 루프는 반드시 끝나고, 돌려보낸 것은 자기 seam 이 이 프레임 뒤쪽에서
@@ -251,6 +263,8 @@ namespace Wassup.Battle.Skills
                     skill.Execute(caster, in target, in p, _context);
                     ExecutedCount++;
                     _perSeam[(int)Seam]++;
+                    _perSkill.TryGetValue(evt.SkillId, out var prev);
+                    _perSkill[evt.SkillId] = prev + 1;
                 }
                 catch (System.Exception e)
                 {

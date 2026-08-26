@@ -35,7 +35,10 @@ namespace Wassup.Tests.EditMode
             {
                 // 감지자가 없으면 bake 가 거절한다 — 침묵이 아니라 loud 거절이라 안전하다.
                 if (!DcTrigger.HasDetector(t, hostIsEnemy: false)) continue;
-                if (!SkillPayloadPolicy.IsSkill(pk) || SkillPayloadPolicy.IsAttachOnly(pk)) continue;
+                if (!SkillPayloadPolicy.IsSkill(pk)) continue;
+                // 부착 전용은 **비-None 트리거에서 거절**되므로 라우팅이 없어도 침묵이 아니다.
+                // (면제로 두면 `OnKill × DreamCocoon` 류가 그물에도 안 걸린다 — 리뷰 H-2.)
+                if (SkillPayloadPolicy.OnlyValidWithNoTrigger(pk)) continue;
 
                 int id = BattleBridge.RoutingProbe(t, pk);
                 if (id == Wassup.Skills.SkillRegistry.NotRouted)

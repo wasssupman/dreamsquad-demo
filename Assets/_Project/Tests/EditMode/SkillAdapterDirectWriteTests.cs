@@ -14,8 +14,19 @@ namespace Wassup.Tests.EditMode
     // 컴파일도 되고 테스트도 초록이고 대개 라이브에서도 멀쩡해 보인다 — 틀렸을 때만,
     // 그것도 조용히 어긋난다(재생 한 박자 차이는 대개 눈에 안 띈다).
     //
-    // 이 테스트가 **보증하지 않는 것**: 개수만 센다. 하나를 빼고 하나를 더하면 통과한다.
-    // 목록의 정합성은 아래 이름 단언이 받치고, 나머지는 리뷰의 몫이다.
+    // ⚠ **폐쇄 목록은 4건인데 이 정규식은 3건만 센다.** 네 번째(`EmitPattern` 의
+    // `slots[i] = pat`)는 `_em.GetBuffer(...)` 를 **지역 변수에 받아** 다음 줄에서
+    // 인덱서로 대입하는 형태라, 텍스트 스캔으로는 원리적으로 못 잡는다(리뷰 M-1).
+    // 그래서 개수 단언은 «`_em.` 직접 호출» 만 세고, **목록의 정합성은 아래 case 이름
+    // 단언이 받친다** — 네 이름이 다 살아 있는지 본다.
+    //
+    // 이 테스트가 **보증하지 않는 것** 둘:
+    //  ① 개수만 센다 — 하나를 빼고 하나를 더하면 통과한다(이름 단언이 그 절반을 받친다).
+    //  ② **헬퍼를 거치는 쓰기는 안 보인다.** `EffectSpawner.Spawn*` 셋은 안에서
+    //     `CreateEntity` 를 부르므로 **구조 변경**인데 `_em.` 패턴에 안 걸린다.
+    //     그건 결함이 아니라 축이 다른 것이다 — 이 그물이 지키는 계약은 「직접 쓰기」이지
+    //     「구조 변경」이 아니다. 구조 변경 쪽 목록은 토대 README 계약 3 의 문단에 있다.
+    //     ⚠ 한때 문서가 「직접 쓰기 셋 중 구조 변경은 하나뿐」이라 적었고 그건 거짓이었다.
     public class SkillAdapterDirectWriteTests
     {
         // ECB 가 못 하는 이유는 README 표에 있다. 요약: 앞의 둘은 읽고-고쳐-쓰기,
@@ -25,6 +36,7 @@ namespace Wassup.Tests.EditMode
             "case SimIntentKind.DelaySelfAttack",
             "case SimIntentKind.ScaleKillReward",
             "case SimIntentKind.BeginDreamCocoon",
+            "case SimIntentKind.EmitPattern",
         };
 
         private static string AdapterSource()
@@ -43,12 +55,15 @@ namespace Wassup.Tests.EditMode
             // 구조 변경 + 값 덮어쓰기 전부. `_em.GetBuffer(...).Add` 는 **의도적으로 뺀다** —
             // 그건 인박스 append 라 계약 3 의 첫 갈래이지 예외가 아니다.
             var direct = new Regex(
-                @"_em\.(SetComponentData|AddComponentData|AddComponent\b|AddComponent<|RemoveComponent|SetComponentEnabled)");
+                // 구조 변경 + 값 덮어쓰기 + **버퍼 원소 인덱서 대입**(리뷰 M-1 — 네 번째
+                // 직접 쓰기가 이 형태라 옛 정규식이 못 봤다).
+                @"_em\.(SetComponentData|AddComponentData|AddComponent\b|AddComponent<|RemoveComponent|SetComponentEnabled|SetBuffer|AddBuffer|DestroyEntity|CreateEntity)"
+                + @"|_em\.GetBuffer<[^>]+>\([^)]*\)\s*\[");
             var hits = new List<string>();
             foreach (Match m in direct.Matches(src)) hits.Add(m.Value);
 
             Assert.AreEqual(3, hits.Count,
-                "어댑터의 컴포넌트 직접 쓰기는 3건이어야 한다(토대 계약 3 의 폐쇄 목록). " +
+                "`_em.` 직접 호출 형태의 쓰기는 3건이어야 한다(토대 계약 3 의 폐쇄 목록). " +
                 $"지금 {hits.Count}건: [{string.Join(", ", hits)}]. " +
                 "정당하게 늘렸다면 docs/spec/skill-layer-foundation/README.md 계약 3 의 표와 " +
                 "이 테스트를 같은 커밋에서 갱신하라. 아니면 ECB 로 보내라.");

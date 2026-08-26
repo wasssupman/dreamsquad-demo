@@ -46,9 +46,14 @@ namespace Wassup.Data
             }
         }
 
-        // 부착 즉시(trigger=None) 전용 payload. 다른 트리거에서 라우팅이 없는 것이
-        // **정상**이다 — 저작이 그리로 가지 않는다.
-        public static bool IsAttachOnly(DcPayloadKind kind)
+        // 부착 즉시(`trigger == None`) **에서만** 유효한 payload.
+        //
+        // ⚠ **이건 면제가 아니라 거절 사유다**(unit 8 리뷰 H-2). 한때 bake 게이트가 이
+        // 술어를 「라우팅 없어도 봐준다」로 썼는데, `HasDetector(None, *)` 가 거짓이라
+        // 유닛 bake 에서 `trigger == None` 은 애초에 앞 게이트가 거절한다. 그래서 그
+        // 면제가 실제로 통과시킨 것은 **`OnKill × DreamCocoon` 같은 비-None 조합**뿐이었고,
+        // 그건 라우팅이 없어 슬롯만 구워지고 조용히 죽는다 — 정확히 이 게이트가 막으려던 것.
+        public static bool OnlyValidWithNoTrigger(DcPayloadKind kind)
             => kind == DcPayloadKind.SelfBuffLethal
             || kind == DcPayloadKind.DreamCocoon
             || kind == DcPayloadKind.BountyMark;

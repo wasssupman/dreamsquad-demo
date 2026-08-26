@@ -756,7 +756,11 @@ namespace Wassup.Battle.Skills
                         dataIndex = intent.DataIndex,
                         visualScale = intent.VisualScale > 0f ? intent.VisualScale : 1f,
                         owner = orbOwner,             // 위협 귀속
-                        // ⚠ targetFaction 을 싣지 않는다 — PathHit 의 후보 풀이
+                        // ⚠ 진영 축을 안 싣는다 — **필요가 없어서**다(unit 8 리뷰 H-1).
+                        // 한때 「PathHit 후보 풀이 AttackUnitTag 하드코딩이라 이 페이로드엔
+                        // 진영 축이 없다」고 적혀 있었는데, 지금 그 풀은 양 진영이고
+                        // `ProjectileHitSystem` 이 **주인**으로부터 상대 진영을 도출한다.
+                        // 즉 진영은 owner 가 이미 나른다.
                         // `AttackUnitTag` 하드코딩이라 이 페이로드엔 진영 축이 없다.
                         targetTraversalLayers = intent.TargetTraversalLayers,
                     });
@@ -979,6 +983,10 @@ namespace Wassup.Battle.Skills
                     // (PatternSlot)에 남아 다음 발화가 이어받는다 — 안 그러면 선택
                     // 규칙이 고정된다.
                     pat.fireCountBase += pat.spec.shots.Length;
+                    // ⚠ **직접 쓰기 4건 중 하나**(토대 계약 3 폐쇄 목록, 리뷰 M-1 이 찾아냈다).
+                    // 인박스 append 가 아니라 **durable 버퍼 원소 덮어쓰기**이고, 바로 위에서
+                    // `fireCountBase` 를 읽고 더한 값을 쓴다 — `DelaySelfAttack` 과 같은
+                    // 읽고-고쳐-쓰기라 ECB 로 못 옮긴다.
                     var slots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(host);
                     slots[intent.PatternIndex] = pat;
                     var instances =

@@ -17,7 +17,7 @@ namespace Wassup.Skills
     public interface ISkill
     {
         // 레지스트리 키. 슬롯에 **unmanaged 로 베이크**되는 값이라(계약 12) 감지측
-        // Burst 코드가 managed 레지스트리를 안 읽고도 라우팅할 수 있다. 0 = legacy arm.
+        // Burst 코드가 managed 레지스트리를 안 읽고도 라우팅할 수 있다. 0 = 스킬 아님.
         int SkillId { get; }
 
         void Execute(CasterRef caster, in SkillTarget target, in SkillParams p, ISkillContext ctx);

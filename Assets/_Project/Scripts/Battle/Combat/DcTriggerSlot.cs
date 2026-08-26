@@ -15,8 +15,13 @@ namespace Wassup.Battle.Combat
         // from stat-modifier stackId: never compare the two.
         // skill-layer-foundation unit 4/5 — **이중 경로 라우팅 축.**
         //
-        // 0 = legacy arm 이 처리한다. 0 이 아니면 감지자가 arm 을 돌리지 않고
+        // 0(`SkillRegistry.NotRouted`) = **스킬이 아니다.** 0 이 아니면 감지자가
         // `SkillFiredEvent` 에 실어 보내고 디스패처가 concrete 를 부른다.
+        //
+        // ⚠ **이 값의 뜻이 이전 도중 뒤집혔다.** 예전엔 「아직 arm 이 처리한다」라
+        // 0 이 안전했는데, arm 이 철거된 지금은 「아무도 처리 안 한다」다 — 슬롯은
+        // 구워지고 트리거는 발화하고 그 다음에 아무 일도 안 일어난다.
+        // 지금은 bake 게이트(`SkillPayloadPolicy`)가 그 조합을 앞에서 거절한다.
         //
         // ⚠ 이 축이 **unmanaged 여야 하는 이유**: 감지자는 Burst ISystem 이라 managed
         // 레지스트리를 읽을 수 없다. 「이 슬롯은 새 경로인가」를 숫자 하나로 가를 수

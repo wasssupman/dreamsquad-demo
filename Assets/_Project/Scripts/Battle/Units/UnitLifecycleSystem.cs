@@ -255,10 +255,9 @@ namespace Wassup.Battle.Units
                         Caster = entity,          // 드레인 때는 이미 파괴된 핸들이다
                         // ⚠ **핸들이 죽으므로 진영도 값으로 실어야 한다**(unit 8 선행).
                         // 안 실으면 디스패처가 「플레이어 시전」으로 접는다.
-                        // ⚠ 위 쿼리가 `DefenderUnitTag` 라 오늘은 리터럴이 참이다.
-                        // **적에게 `OnDeath` 를 여는 순간(unit 8) 이 줄이 거짓이 된다** —
-                        // 그때는 엔티티별로 진영을 도출해 실어야 하고, 안 그러면
-                        // 적의 작별 선물이 자기 진영을 때린다.
+                        // ⚠ **호출자가 준다.** 방어유닛 전용 루프는 쿼리가 진영을 보증해
+                        // 리터럴을 넘기고, 일반 사망 루프는 엔티티별로 도출해 넘긴다 —
+                        // 거기서 리터럴을 쓰면 적의 작별 선물이 자기 진영을 때린다.
                         CasterFaction = faction,
                         SkillId = rs.skillId,
                         SlotIndex = s,
@@ -284,7 +283,8 @@ namespace Wassup.Battle.Units
                         StackId = rs.statBuffStackId,
                         // ⚠ **저작을 읽는다**(2026-08-26 사용자 결정) — 시체폭발과 같은 탄이다.
                         VisualScale = rs.visualScale,
-                        // ⚠ 방어유닛의 작별 선물이다 — 레거시는 층을 안 실었다(무제한).
+                        // ⚠ 층을 안 싣는다(=무제한) — 레거시가 그랬다. **이 헬퍼는 이제
+                        // 적도 태우므로** 「방어유닛의」라는 한정은 참이 아니다.
                         TargetTraversalLayers = 0,
                     });
                 }

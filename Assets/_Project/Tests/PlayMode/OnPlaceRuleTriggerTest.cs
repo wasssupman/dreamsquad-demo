@@ -38,10 +38,13 @@ namespace Wassup.Tests.PlayMode
         // 쟀는데, 이전이 끝나면서 **arm 없는 payload 라는 것이 없어졌다** — 경고가 안 나
         // 이 핀이 빨개졌다. 불변식은 그대로고 재는 자가 바뀐 것이다.
         //
-        // 지금은 스킬 레이어의 실행 계수기(`ExecutedCountOf`)를 쟀다. 오히려 이쪽이 원래
-        // 재고 싶던 것에 가깝다 — 경고는 「디스패치까지 갔다」의 **부작용**이었고, 계수기는
-        // 그 사실 자체다. 배치 규칙은 `JustDeployed` → `BossPeriodicTriggerSystem` 을 거쳐
-        // **주기 seam**에서 실행된다.
+        // 지금은 스킬 레이어의 실행 계수기를 잰다. 오히려 이쪽이 원래 재고 싶던 것에
+        // 가깝다 — 경고는 「디스패치까지 갔다」의 **부작용**이었고 계수기는 그 사실 자체다.
+        // 배치 규칙은 `JustDeployed` → `BossPeriodicTriggerSystem` 을 거쳐 주기 seam 에서 돈다.
+        //
+        // ⚠ **seam 합계가 아니라 «이 스킬» 을 센다**(리뷰 H-3). 라이브 판에는 남의 주기
+        // 스킬이 늘 돌기 때문에 seam 합계로 재면 **배치한 유닛의 라우팅이 죽어 있어도
+        // 초록**이 난다 — 옛 그물이 payload 별 경고였던 덕에 갖고 있던 해상도를 잃는 것이다.
         //
         // 왜 실제 payload 효과로 재지 않는가: 그러면 남의 arm 이 그 host 진영에서 옳은지까지
         // 이 테스트가 책임지게 되고, 실패했을 때 원인이 «내 트리거» 인지 «그 arm» 인지 갈리지
@@ -64,9 +67,9 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, caster), "배치");
             yield return Frames(8);
             Assert.GreaterOrEqual(
-                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
-                    Wassup.Battle.Skills.SkillSeam.Periodic), 1,
-                "배치 규칙이 주기 seam 까지 도달하지 못했다");
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOfSkill(
+                    Wassup.Skills.Concrete.GrantSelfChargeSkill.Id), 1,
+                "이 유닛의 배치 규칙(충전 부여)이 실행되지 않았다");
             Object.Destroy(caster);
         }
 
@@ -92,9 +95,9 @@ namespace Wassup.Tests.PlayMode
             bridge.ActivateDeployedDefender(cell, placed);
             yield return Frames(8);
             Assert.GreaterOrEqual(
-                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
-                    Wassup.Battle.Skills.SkillSeam.Periodic), 1,
-                "D&D 배치 규칙이 주기 seam 까지 도달하지 못했다");
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOfSkill(
+                    Wassup.Skills.Concrete.GrantSelfChargeSkill.Id), 1,
+                "D&D 배치 규칙(충전 부여)이 실행되지 않았다");
             Object.Destroy(caster);
         }
 

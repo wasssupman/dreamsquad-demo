@@ -33,7 +33,7 @@ namespace Wassup.Battle.Skills
         //
         // `Faction.None`(=기본값) 은 「안 실었다」는 뜻이고 종전대로 접는다.
         public Faction CasterFaction;
-        public int SkillId;            // 0 = legacy arm. 감지측 Burst 가 아는 유일한 키
+        public int SkillId;            // 0 = 스킬 아님. 감지측 Burst 가 아는 유일한 키
         public int SlotIndex;          // 로그·중복 판별용. **params 의 출처가 아니다**
 
         // ⚠ **어느 드레인 지점이 이걸 실행하나**(skill-layer-migration unit 3e).

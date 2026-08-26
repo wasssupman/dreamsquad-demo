@@ -80,14 +80,48 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.None, hostIsEnemy: false));
         }
 
-        // 전역성 — 모든 kind 에 대해 예외 없이 답이 나온다(빠뜨린 분기가 없다).
+        // 전수 대조 — **새 트리거 kind 를 추가하면 여기서 분류를 강제당한다.**
+        //
+        // ⚠ 한때 이 자리가 `Assert.DoesNotThrow` 였다(리뷰 H-4). `HasDetector` 는
+        // `default:` 가 있는 순수 switch 라 **정의상 안 던진다** — 어떤 변경으로도
+        // 빨개질 수 없는 빈 그물이었다. 이 그물이 대체한 옛 핀
+        // (`EnemyTriggerArmed_IsTotalOverAllKinds`)은 기대값 대조라 새 enum 값에
+        // 빨개졌는데, 그 성질이 이사 중에 사라졌다.
+        //
+        // fail-closed(`default: return false`) 라 새 kind 가 조용히 «열리진» 않지만,
+        // 배선해 놓고 이 표를 잊으면 bake 가 그 조합을 통째로 skip 하고 아무도 안 짖는다.
         [Test]
-        public void HasDetector_IsTotalOverAllKinds()
+        public void HasDetector_MatchesTheAuthoredTable_ForEveryKind()
         {
-            foreach (var k in AllKinds())
+            // (kind, 적에게 열림, 방어유닛에게 열림)
+            var table = new Dictionary<DcTriggerKind, (bool enemy, bool defender)>
             {
-                Assert.DoesNotThrow(() => DcTrigger.HasDetector(k, true), $"{k}");
-                Assert.DoesNotThrow(() => DcTrigger.HasDetector(k, false), $"{k}");
+                { DcTriggerKind.None,           (false, false) },
+                { DcTriggerKind.PeriodicTimer,  (true,  true)  },
+                { DcTriggerKind.HealthThreshold,(true,  true)  },
+                { DcTriggerKind.AttackN,        (true,  true)  },
+                { DcTriggerKind.OnDamagedN,     (true,  true)  },
+                { DcTriggerKind.OnKill,         (true,  true)  },
+                { DcTriggerKind.OnShieldBreak,  (true,  true)  },
+                { DcTriggerKind.OnDeath,        (true,  true)  },
+                { DcTriggerKind.OnPlace,        (false, true)  },
+                { DcTriggerKind.OnRetire,       (false, true)  },
+            };
+
+            var unclassified = new List<string>();
+            foreach (var k in AllKinds())
+                if (!table.ContainsKey(k)) unclassified.Add(k.ToString());
+            Assert.IsEmpty(unclassified,
+                "새 트리거 kind 가 이 표에 없다 — 적/방어유닛 각각에 감지자가 있는지 명시하라. " +
+                "표만 늘리고 `HasDetector` 를 안 고치면 bake 가 그 조합을 조용히 skip 한다. " +
+                "미분류: " + string.Join(", ", unclassified));
+
+            foreach (var kv in table)
+            {
+                Assert.AreEqual(kv.Value.enemy, DcTrigger.HasDetector(kv.Key, hostIsEnemy: true),
+                    $"{kv.Key} · 적");
+                Assert.AreEqual(kv.Value.defender, DcTrigger.HasDetector(kv.Key, hostIsEnemy: false),
+                    $"{kv.Key} · 방어유닛");
             }
         }
     }
