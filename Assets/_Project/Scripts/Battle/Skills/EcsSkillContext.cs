@@ -594,6 +594,9 @@ namespace Wassup.Battle.Skills
                     if (who == Entity.Null || !_attack.HasComponent(who)) return;
                     // ⚠ **`max` 다.** 이미 걸린 대기를 줄이지 않는다 — 줄이면 채널링이
                     // 오히려 공격을 앞당기는 자리가 된다(레거시 규칙 그대로).
+                    // ⚠ **직접 쓰기 3건 중 하나**(토대 계약 3 폐쇄 목록). ECB 는 값을 지금
+                    // 기록하고 나중에 재생해서 **읽고-고쳐-쓰기를 못 한다** — 그 사이의
+                    // 다른 쓰기를 덮는다. 늘리려면 README 표와 `SkillAdapterDirectWriteTests`.
                     var atk = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(who);
                     atk.cooldownRemaining = math.max(atk.cooldownRemaining, intent.Duration);
                     _em.SetComponentData(who, atk);
@@ -747,6 +750,7 @@ namespace Wassup.Battle.Skills
                     // 보상 컴포넌트가 없는 적은 애초에 줄 것이 없다 — 만들지 않는다.
                     if (!_em.HasComponent<Wassup.Battle.Units.AwakeningReward>(marked)) return;
                     var reward = _em.GetComponentData<Wassup.Battle.Units.AwakeningReward>(marked);
+                    // ⚠ **직접 쓰기 3건 중 하나**(토대 계약 3 폐쇄 목록).
                     // ⚠ **즉시 쓰기다**(ECB 아님). 표식은 그 적이 죽을 때 소비되는데
                     // 처치 이벤트가 enqueue 시점에 이 값을 복사하므로, 재생을 기다리면
                     // 같은 프레임에 죽는 적이 배율 없는 값을 싣는다.
@@ -776,6 +780,8 @@ namespace Wassup.Battle.Skills
                     // ⚠ **완주 타이머가 잠보다 Epsilon 만큼 짧다.** 그 차이가 「완주 프레임」과
                     // 「잠이 자연만료되는 프레임」이 겹치지 않게 하는 안전핀이고, 값의 주인은
                     // 그 상태를 굴리는 시스템이라 여기서 뺀다(도메인은 이 상수를 모른다).
+                    // ⚠ **직접 쓰기 3건 중 하나이자 유일한 «구조 변경»**(토대 계약 3 폐쇄 목록).
+                    // 위 `ApplyCc` 는 버퍼 append 라 예외가 아니다 — 예외는 이 한 줄이다.
                     _em.AddComponentData(sleeper, new Wassup.Battle.Effects.DreamCocoon
                     {
                         remaining = intent.Duration - Wassup.Battle.Effects.DreamCocoon.Epsilon,
