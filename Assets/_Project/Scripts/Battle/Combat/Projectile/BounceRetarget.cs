@@ -34,6 +34,23 @@ namespace Wassup.Battle.Combat.Projectile
             NativeArray<byte> targetTraversalLayers,
             byte attackTargetLayers,
             int tileRange, float tileSize, int2 gridSize, float3 origin)
+            => FindNext(hitPos, excludeIndex, positions, targetTraversalLayers, attackTargetLayers,
+                        default, 0, tileRange, tileSize, gridSize, origin);
+
+        // skill-layer-migration unit 8 — **진영 적격 배열을 더한다.** 층 오버로드와 같은
+        // 모양이고 같은 이유다: 후보 풀이 이제 «적만» 이 아니라 **양 진영**이라, 누구를
+        // 튕겨 갈 수 있는지를 호출자가 말해야 한다.
+        //
+        // ⚠ 마스크 0 = 「진영을 안 본다」 = 옛 동작. 기존 producer/test 는 위 오버로드로
+        // 그대로 산다(층 오버로드가 세운 규약을 그대로 따른다).
+        public static int FindNext(
+            float3 hitPos, int excludeIndex,
+            NativeArray<float3> positions,
+            NativeArray<byte> targetTraversalLayers,
+            byte attackTargetLayers,
+            NativeArray<int> candidateFactions,
+            int wantedFactionMask,
+            int tileRange, float tileSize, int2 gridSize, float3 origin)
         {
             if (tileRange <= 0) return -1;
             int2 centerCell = GridMath.WorldToCell(hitPos, tileSize, gridSize, origin);
@@ -45,6 +62,9 @@ namespace Wassup.Battle.Combat.Projectile
                 if (targetTraversalLayers.IsCreated
                     && !Wassup.Data.PlacementLayers.CanTarget(
                         attackTargetLayers, targetTraversalLayers[i])) continue;
+                // 진영 게이트. 마스크 0 이면 옛 동작(적 전용 풀 전제)을 그대로 둔다.
+                if (wantedFactionMask != 0 && candidateFactions.IsCreated
+                    && (candidateFactions[i] & wantedFactionMask) == 0) continue;
                 float3 pos = positions[i];
                 int2 cell = GridMath.WorldToCell(pos, tileSize, gridSize, origin);
                 if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;

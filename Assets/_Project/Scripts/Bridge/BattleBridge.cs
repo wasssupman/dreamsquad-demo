@@ -9484,19 +9484,11 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
                     continue;
                 }
-                if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
-                {
-                    // dreamcatcher-content-4 리뷰 M4 — 궤도 화염구는 **방어유닛 전용**이다.
-                    // HasDetector 가 PeriodicTimer 를 양 진영에 열어 두므로 적 SO 저작이 여기까지
-                    // 오는데, 이 공통 슬롯 조립에는 speed/hitThreshold/projectileDataIndex 가 없어
-                    // 슬롯이 만들어져도 arm 의 가드에 걸려 **조용히 발동이 소모**된다.
-                    // 더 중요한 건 그 가드가 지금 fail-closed 인 이유가 «우연히 speed 가 0» 이라는
-                    // 것이다 — 누가 다른 payload 때문에 공통 조립에 speed 를 올리는 순간,
-                    // PathHit 후보 풀이 AttackUnitTag 하드코딩이라 **보스의 화염구가 자기편
-                    // 잡몹을 때린다.** 우연에 기대지 않고 여기서 끊는다.
-                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: SelfOrbitProjectile 은 방어유닛 전용이다(PathHit 후보 풀이 AttackUnitTag 하드코딩 — 적이 쏘면 자기편을 때린다) — skipped.");
-                    continue;
-                }
+                // skill-layer-migration unit 8 — **이 거절은 은퇴했다**(사용자 결정: 전용 배제).
+                // 근거였던 「PathHit 후보 풀이 AttackUnitTag 하드코딩이라 보스의 화염구가
+                // 자기편을 때린다」가 사라졌다 — splash·bounce 풀이 양 진영 스냅샷이 되고
+                // 주인의 상대 진영으로 걸러진다(`ProjectileHitSystem`). 그 주석이 걱정하던
+                // 「지금 fail-closed 인 이유가 우연히 speed 가 0 이라는 것」도 같이 해소된다.
                 // elite-enemy-tier unit 4 — 화염 브레스 정의역 검증. 판정이 `normalize` 없는 제곱
                 // 비교라 부호 가드가 필요하고(없으면 등 뒤에 대칭 콘) 그 가드가 90° 에서 정의역을
                 // 자른다. 게다가 cos²θ = cos²(180−θ) 라 **저작 120° 는 조용히 60° 콘으로 동작**한다.

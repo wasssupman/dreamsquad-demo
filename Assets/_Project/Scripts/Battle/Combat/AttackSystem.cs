@@ -1121,9 +1121,15 @@ namespace Wassup.Battle.Combat
                     // below Ticks, so this prediction == that loop's dcFired (counter write
                     // ownership stays the loop). Carried on the projectile via heavyDamageMul;
                     // consumed at hit-site + melee arm in unit 2 (inert until then).
+                    // skill-layer-migration unit 8 — **«방어유닛 전용» 게이트를 걷었다**
+                    // (사용자 결정 2026-08-26: 전용 개념은 최대한 배제, 적도 마찬가지).
+                    // 배율이 흐르는 두 길(근접 dmg · 투사체 heavyDamageMul)이 둘 다 진영을
+                    // 안 보므로, 이 게이트가 유일하게 적을 막던 것이었다.
+                    // `HasDetector(AttackN, 적)` 은 이미 참이라 슬롯은 구워지고 있었고 —
+                    // 즉 지금까지 적이 강공을 저작하면 **슬롯만 생기고 조용히 아무 일도
+                    // 안 났다.** fail-closed 가 아니라 침묵이었다.
                     float heavyMul = 1f;
                     if (bestTarget != Entity.Null
-                        && defenderTagLookup.HasComponent(attackerEntity)
                         && dcSlotLookup.HasBuffer(attackerEntity))
                     {
                         var heavySlots = dcSlotLookup[attackerEntity];

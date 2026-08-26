@@ -320,11 +320,18 @@ namespace Wassup.Tests.EditMode
             Object.DestroyImmediate(unitType);
         }
 
-        // 적에게 소비자가 없는 OnDeath 조합은 침묵하지 않는다(방어유닛 쪽 SelfTileAoe 소비자는
-        // WithAll<DeadTag, DefenderUnitTag> 라 적을 보지 않는다).
+        // skill-layer-migration unit 8 — **이 그물이 뒤집혔다.**
+        // 예전 이름은 `OnDeath_WithNonSplitPayload_IsLoudlyWarned` 였고, 적의 작별 선물이
+        // 「소비자가 없어 거절」되는 것을 고정했다. 이제 열렸으므로 **구워져야** 한다.
+        //
+        // ⚠ 여는 데 필요했던 것이 술어 한 줄이 아니었다는 게 이 그물의 요점이다.
+        // 자기 죽음 감지자는 방어유닛 전용 루프였고, 적은 「죽었고 칸을 안 쓰는 것」을
+        // 치우는 **일반 루프**에서 파괴된다. 거기 라우팅을 붙이고 진영을 엔티티별로
+        // 도출해서야 열린다 — 리터럴을 쓰면 적의 사후 폭발이 자기 진영을 때린다.
         [Test]
-        public void OnDeath_WithNonSplitPayload_IsLoudlyWarned()
+        public void OnDeath_WithNonSplitPayload_IsNowBakedForEnemies()
         {
+            var aoeView = ScriptableObject.CreateInstance<Wassup.Data.ProjectileData>();
             var unitType = ScriptableObject.CreateInstance<AttackUnitData>();
             unitType.displayName = "TestOnDeathAoe";
             unitType.tier = EnemyTier.Elite;
@@ -333,17 +340,25 @@ namespace Wassup.Tests.EditMode
                 new DcMechanic
                 {
                     trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
-                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 50f, tileRange = 2 },
+                    // ⚠ SelfTileAoe 는 폭발 «뷰» 탄이 필수다(없으면 폭발 자체가 드롭된다).
+                    // 진영과 무관한 저작 요건이라 여기서 채워야 이 그물이 진영만 본다.
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SelfTileAoe, magnitude = 50f, tileRange = 2,
+                        projectile = aoeView,
+                    },
                 },
             };
-            // skill-layer-migration unit 8 — 문구가 바뀌었다. 불변식은 그대로다:
-            // **적의 `OnDeath` 는 여전히 loud 하게 거절된다.** 다만 이유가 바뀌었다 —
-            // 예전엔 「자기진영 타격이 위험해서」였고 지금은 「자기 죽음 감지자가
-            // 방어유닛 전용이라 아무도 안 잡아서」다. 여는 조건은 술어 완화가 아니라
-            // `UnitLifecycleSystem` 쿼리 확장이다(DcTrigger.HasDetector 표).
-            LogAssert.Expect(LogType.Warning, new Regex("감지자가 없다"));
-            InvokeBake(_world.EntityManager.CreateEntity(), unitType);
-            Object.DestroyImmediate(unitType);
+            var e = _world.EntityManager.CreateEntity();
+            InvokeBake(e, unitType);
+            Assert.IsTrue(_world.EntityManager.HasBuffer<DcTriggerSlot>(e),
+                "적의 작별 선물이 슬롯으로 구워져야 한다 — 열린 문이 안 열렸다");
+            var slots = _world.EntityManager.GetBuffer<DcTriggerSlot>(e);
+            Assert.AreEqual(1, slots.Length);
+            Assert.AreEqual(DcTriggerKind.OnDeath, slots[0].trigger);
+            Assert.AreNotEqual(Wassup.Skills.SkillRegistry.LegacyArmId, slots[0].skillId,
+                "스킬 레이어로 라우팅돼야 한다(0 이면 arm 을 찾다가 조용히 죽는다)");
+            Object.DestroyImmediate(unitType); Object.DestroyImmediate(aoeView);
         }
     }
 }

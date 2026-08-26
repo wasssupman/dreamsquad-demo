@@ -29,6 +29,7 @@ namespace Wassup.Tests.EditMode
             {
                 DcTriggerKind.PeriodicTimer, DcTriggerKind.HealthThreshold, DcTriggerKind.AttackN,
                 DcTriggerKind.OnDamagedN, DcTriggerKind.OnKill, DcTriggerKind.OnShieldBreak,
+                DcTriggerKind.OnDeath,
             };
             foreach (var k in both)
             {
@@ -59,16 +60,15 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnPlace, hostIsEnemy: false));
         }
 
-        // ⚠ **유일하게 남은 진짜 공백.** 자기 죽음 감지자(`UnitLifecycleSystem`)의 쿼리가
-        // `WithAll<DeadTag, DefenderUnitTag>` 라 적의 작별 선물은 아직 아무도 안 잡는다.
-        // 여는 것은 새 기능이라 별도 결정이고, 여는 사람은 그 생산자의 `CasterFaction`
-        // 리터럴도 같이 고쳐야 한다 — 안 그러면 적이 자기 진영을 때린다.
+        // 적의 작별 선물 — unit 8 에서 열렸다(전용 개념 배제).
+        // ⚠ **여는 데 필요했던 것은 술어 한 줄이 아니었다.** 자기 죽음 감지자가
+        // 방어유닛 전용 루프였고, 적은 「죽었고 칸을 안 쓰는 것」을 치우는 **일반 루프**
+        // 에서 파괴된다. 그 루프에 라우팅을 붙이고 **진영을 엔티티별로 도출**해서야
+        // 열린다 — 리터럴을 쓰면 적의 사후 폭발이 자기 진영을 때린다.
         [Test]
-        public void OnDeath_StaysClosedForEnemies_UntilTheDetectorWidens()
+        public void OnDeath_IsOpenToBothSides()
         {
-            Assert.IsFalse(DcTrigger.HasDetector(DcTriggerKind.OnDeath, hostIsEnemy: true),
-                "적 OnDeath 를 열려면 UnitLifecycleSystem 의 쿼리를 먼저 넓혀야 한다. " +
-                "술어만 열면 슬롯이 생기고 아무도 안 잡는다.");
+            Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnDeath, hostIsEnemy: true));
             Assert.IsTrue(DcTrigger.HasDetector(DcTriggerKind.OnDeath, hostIsEnemy: false));
         }
 

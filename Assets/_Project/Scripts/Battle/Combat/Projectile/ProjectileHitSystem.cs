@@ -67,6 +67,10 @@ namespace Wassup.Battle.Combat.Projectile
             NativeQueue<ThreatHitEvent> threatQueue = hasThreatQ ? threatEventsRW.ValueRW.queue : default;
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
+            // unit 8 — splash·bounce 의 진영 판정용. 「누가 쐈나」를 알아야 「누구를
+            // 때려도 되나」가 나온다.
+            var attackTagLookup = SystemAPI.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
+            var factionTagLookup = SystemAPI.GetComponentLookup<FactionTag>(isReadOnly: true);
             // bomb-thrower-defender unit 2 — Combat→Effects CC 채널(수면/스턴탄).
             // 수면파이터/존 CC 와 공유하는 기존 EnemyCcEvents 큐. RW 접근 = 큐 변이 의도
             // 명시(threat 큐 대칭). 테스트/초기 프레임엔 없을 수 있어 옵셔널 게이트.
@@ -141,9 +145,19 @@ namespace Wassup.Battle.Combat.Projectile
             var victimTransforms = victimQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var victimFactions = victimQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
             var victimTraversalLayers = new NativeArray<byte>(victimEntities.Length, Allocator.Temp);
+            // skill-layer-migration unit 8 — splash·bounce 가 이 **양 진영** 스냅샷을 쓴다.
+            // 예전엔 `AttackUnitTag` 전용 풀이라 적이 쏘면 자기편을 때렸다(그래서
+            // `SelfOrbitProjectile` 이 브리지에서 거절되고 있었다). 순수 함수가 인덱스를
+            // 돌려주므로 위치·진영도 같은 정렬로 미리 편다.
+            var victimPositions = new NativeArray<float3>(victimEntities.Length, Allocator.Temp);
+            var victimFactionMasks = new NativeArray<int>(victimEntities.Length, Allocator.Temp);
             for (int i = 0; i < victimEntities.Length; i++)
+            {
                 if (pathFollowLookup.HasComponent(victimEntities[i]))
                     victimTraversalLayers[i] = pathFollowLookup[victimEntities[i]].traversalLayers;
+                victimPositions[i] = victimTransforms[i].Position;
+                victimFactionMasks[i] = (int)victimFactions[i].value;
+            }
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
@@ -346,15 +360,23 @@ namespace Wassup.Battle.Combat.Projectile
                                 float splashRadiusSq = projectile.ValueRO.splashRadius * projectile.ValueRO.splashRadius;
                                 // 응축된 일격 — splash secondaries도 강공 배율(한 방 통째, 전 victim).
                                 float splashDamage = projectile.ValueRO.damage * projectile.ValueRO.splashDamageMul * heavyMul;
-                                for (int i = 0; i < aoeEntities.Length; i++)
+                                // skill-layer-migration unit 8 — **양 진영 풀 + 주인의 상대**.
+                                // 예전엔 적 전용 풀이라 적이 쏜 splash 가 자기편을 태웠다.
+                                // 마스크 0(주인 미상 = 플레이어 스킬탄)이면 옛 동작 그대로.
+                                int splashWanted = OpponentMaskOfOwner(
+                                    projectile.ValueRO.owner, ref factionTagLookup,
+                                    ref attackTagLookup, ref defenderTagLookup);
+                                for (int i = 0; i < victimEntities.Length; i++)
                                 {
-                                    var candidate = aoeEntities[i];
+                                    var candidate = victimEntities[i];
                                     if (candidate == target) continue;
+                                    if (splashWanted != 0
+                                        && (victimFactionMasks[i] & splashWanted) == 0) continue;
                                     if (!PlacementLayers.CanTarget(
                                             projectile.ValueRO.targetTraversalLayers,
-                                            aoeTraversalLayers[i])) continue;
-                                    float dx = aoeTransforms[i].Position.x - aoeCenter.x;
-                                    float dz = aoeTransforms[i].Position.z - aoeCenter.z;
+                                            victimTraversalLayers[i])) continue;
+                                    float dx = victimTransforms[i].Position.x - aoeCenter.x;
+                                    float dz = victimTransforms[i].Position.z - aoeCenter.z;
                                     if (dx * dx + dz * dz > splashRadiusSq) continue;
                                     if (damageBufferLookup.HasBuffer(candidate))
                                     {
@@ -390,19 +412,25 @@ namespace Wassup.Battle.Combat.Projectile
                                 // Exclude the just-hit target (its index in the snapshot);
                                 // damage is deferred (IncomingDamage) so it is still alive here.
                                 int excludeIdx = -1;
-                                for (int i = 0; i < aoeEntities.Length; i++)
-                                    if (aoeEntities[i] == target) { excludeIdx = i; break; }
+                                for (int i = 0; i < victimEntities.Length; i++)
+                                    if (victimEntities[i] == target) { excludeIdx = i; break; }
 
+                                // unit 8 — splash 와 같은 이유로 양 진영 풀 + 주인의 상대.
+                                // 튕김이 자기편으로 넘어가면 「내 탄이 나를 사냥하는」 그림이 된다.
+                                int bounceWanted = OpponentMaskOfOwner(
+                                    projectile.ValueRO.owner, ref factionTagLookup,
+                                    ref attackTagLookup, ref defenderTagLookup);
                                 int nextIdx = BounceRetarget.FindNext(
-                                    targetPos, excludeIdx, aoePositions, aoeTraversalLayers,
+                                    targetPos, excludeIdx, victimPositions, victimTraversalLayers,
                                     projectile.ValueRO.targetTraversalLayers,
+                                    victimFactionMasks, bounceWanted,
                                     projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
 
                                 if (nextIdx >= 0)
                                 {
                                     float mul = projectile.ValueRO.bounceDamageMul;
                                     var next = projectile.ValueRO;
-                                    next.target = aoeEntities[nextIdx];
+                                    next.target = victimEntities[nextIdx];
                                     next.impactReached = false;
                                     next.bounceRemaining = projectile.ValueRO.bounceRemaining - 1;
                                     next.damage = projectile.ValueRO.damage * mul;
@@ -835,10 +863,36 @@ namespace Wassup.Battle.Combat.Projectile
             aoeTransforms.Dispose();
             aoePositions.Dispose();
             aoeTraversalLayers.Dispose();
+            victimPositions.Dispose();
+            victimFactionMasks.Dispose();
             victimEntities.Dispose();
             victimTransforms.Dispose();
             victimFactions.Dispose();
             victimTraversalLayers.Dispose();
         }
-    }
+    
+        // skill-layer-migration unit 8 — 투사체 주인의 **상대 진영 마스크**.
+        //
+        // ⚠ **0 은 「진영을 안 본다」다.** 주인이 없거나(플레이어 액티브 스킬탄) 이미
+        // 파괴됐으면 진영을 물을 수 없고, 그때는 옛 동작(풀 전체)을 유지한다 —
+        // 여기서 fail-closed 로 뒤집으면 플레이어 스킬탄의 splash 가 통째로 사라진다.
+        // 판정 자체는 `FactionRelation` 이 소유한다(복제하면 조용히 갈린다).
+        private static int OpponentMaskOfOwner(
+            Entity owner,
+            ref ComponentLookup<FactionTag> factionTags,
+            ref ComponentLookup<AttackUnitTag> attackTags,
+            ref ComponentLookup<DefenderUnitTag> defenderTags)
+        {
+            if (owner == Entity.Null) return 0;
+            bool hasTag = factionTags.HasComponent(owner);
+            if (!hasTag && !attackTags.HasComponent(owner) && !defenderTags.HasComponent(owner))
+                return 0;
+            var faction = Wassup.Battle.Units.FactionRelation.Resolve(
+                hasTag,
+                hasTag ? factionTags[owner].value : Wassup.Battle.Units.Faction.None,
+                attackTags.HasComponent(owner),
+                defenderTags.HasComponent(owner));
+            return (int)Wassup.Battle.Units.FactionRelation.OpponentUnitsOf(faction);
+        }
+}
 }

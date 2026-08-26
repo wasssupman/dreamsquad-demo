@@ -114,15 +114,13 @@ namespace Wassup.Battle.Combat
         //   OnDamagedN      DamageApplicationSystem     진영 무관 (단일 피해 루프)
         //   OnKill          DamageApplicationSystem     진영 무관
         //   OnShieldBreak   DamageApplicationSystem     진영 무관
-        //   OnDeath         UnitLifecycleSystem         **방어유닛 전용** (쿼리가 그렇다)
+        //   OnDeath         UnitLifecycleSystem         진영 무관 (전용 루프 + 일반 루프 둘 다 라우팅)
         //   OnPlace         브리지 배치 경로            방어유닛 전용 — 적은 «배치»되지 않는다
         //   OnRetire        브리지 퇴근 경로            방어유닛 전용 — 게다가 카드 전용이다
         //
-        // ⚠ **`OnDeath` 만이 진짜 공백이다.** 나머지 둘은 본질상 닫혀 있다(적에게
-        // 「배치되는 순간」이란 사건이 없다). 적 작별 선물을 열려면 `UnitLifecycleSystem`
-        // 의 `WithAll<DeadTag, DefenderUnitTag>` 를 넓혀야 하고 — 그건 새 기능이라
-        // 별도 결정이다. 넓히는 사람은 그 생산자의 `CasterFaction` 리터럴도 같이 고쳐야
-        // 한다(지금은 쿼리가 방어유닛 전용이라 리터럴이 참이다).
+        // ⚠ 남은 둘(`OnPlace`·`OnRetire`)은 **본질상** 닫혀 있다 — 적에게 「배치되는
+        // 순간」이란 사건이 없다. 감지자가 없는 게 아니라 사건이 없는 것이라, 이건
+        // 열고 말고의 문제가 아니다.
         //
         // ⚠ **fail-closed 를 유지한다.** 「감지자 없음」을 통과시키면 슬롯만 생기고
         // 아무도 안 잡는 침묵 no-op 이 된다 — 그것이 애초에 이 술어들이 존재한 이유의
@@ -139,6 +137,10 @@ namespace Wassup.Battle.Combat
                 case Wassup.Data.DcTriggerKind.OnShieldBreak:
                     return true;
                 case Wassup.Data.DcTriggerKind.OnDeath:
+                    // unit 8 — **적에게 열렸다**(사용자 결정 2026-08-26: 전용 개념 배제).
+                    // `UnitLifecycleSystem` 의 일반 사망 루프가 라우팅을 갖게 되면서
+                    // 감지자가 양 진영을 본다. 진영은 그 루프가 엔티티별로 도출해 싣는다.
+                    return true;
                 case Wassup.Data.DcTriggerKind.OnPlace:
                 case Wassup.Data.DcTriggerKind.OnRetire:
                     return !hostIsEnemy;
