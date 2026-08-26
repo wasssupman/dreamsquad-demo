@@ -103,7 +103,7 @@ namespace Wassup.Battle.Combat
                     slot.nextBoundaryIndex = k;
                     if (fired)
                     {
-                        if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        if (slot.skillId != Wassup.Skills.SkillRegistry.NotRouted)
                         {
                             // skill-layer-migration — 이전된 스킬은 여기서 갈린다.
                             // 값 스냅샷을 실어 보내고 seam 의 디스패처가 concrete 를 부른다.

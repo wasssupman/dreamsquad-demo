@@ -356,7 +356,7 @@ namespace Wassup.Tests.EditMode
             var slots = _world.EntityManager.GetBuffer<DcTriggerSlot>(e);
             Assert.AreEqual(1, slots.Length);
             Assert.AreEqual(DcTriggerKind.OnDeath, slots[0].trigger);
-            Assert.AreNotEqual(Wassup.Skills.SkillRegistry.LegacyArmId, slots[0].skillId,
+            Assert.AreNotEqual(Wassup.Skills.SkillRegistry.NotRouted, slots[0].skillId,
                 "스킬 레이어로 라우팅돼야 한다(0 이면 arm 을 찾다가 조용히 죽는다)");
             Object.DestroyImmediate(unitType); Object.DestroyImmediate(aoeView);
         }

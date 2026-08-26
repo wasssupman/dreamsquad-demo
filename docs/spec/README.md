@@ -245,7 +245,7 @@ code + git history        구현 상세
 - **악몽의 늪(자리에 남는 장판)** [L] · 배치 공간 박탈 축. 장판 효과가 `PathFollowState`+적 진영 게이트라 **타일 고정인 방어유닛에게 구조적으로 안 닿는다**. **다음 보스에서 딥하게 논의**(사용자 결정 2026-08-11). (boss-mamemo)
 - **네 번째 보스: 소환형** [L] · 잡몹을 직접 뱉는 물량 축. 소환 페이로드 + 브리지 스폰 seam 필요. (boss-mamemo)
 
-#### 스킬 단일 레이어 (skill-layer-foundation + skill-layer-migration — **작성 완료 2026-08-25 · 미착수**)
+#### 스킬 단일 레이어 (skill-layer-foundation + skill-layer-migration — **구현 완료 2026-08-26**)
 
 → `docs/spec/skill-layer-foundation/` · `docs/spec/skill-layer-migration/`
 
@@ -253,6 +253,24 @@ code + git history        구현 상세
 concrete 하나이고 `Execute` 를 호출하는 주체가 그 스킬의 소유자다. **도메인(`ISkill`/concrete)은
 ECS 를 참조하지 않고** 포트를 통해서만 모듈과 주고받는다(사용자 하드 제약 2026-08-24).
 `skill-fire-dispatch`(rev 4, 홀드)는 **흡수**됐다 — 그 spec 은 읽기 전용 이력이고 계약 6·12 는 폐기.
+
+**결과 (units 0~8).** 스킬 34종이 `Wassup.Skills` concrete 로 왔고, 감지자는 발화만 알린다.
+어휘 셋 중 `OnPlaceEffectType` 은 타입째 사라졌고, `SkillEffectType` 은 저작 enum 으로 남아
+라우팅만 한다(사용자 결정). `DcPayloadKind` arm 은 **둘만 남았고 그 둘은 스킬이 아니다**:
+
+- `PlacementAura` — **발동 규칙**(시제가 다르다: 지금 실행이 아니라 미래에 적용될 규칙 등록)
+- `HeavyStrike` — **그 공격의 성질**(자기참조: 자기를 부른 사건 자체를 바꾼다)
+
+두 이유가 다르다는 것이 요점이다 — 뭉뚱그리면 다음 후보를 잘못 분류한다. 판별기는
+「반환값처럼 보이는 것」의 우회 가능 여부였다: 스킬이면 우회됐고(세는 건 읽기 · 캐리어는
+재조정 · 예고는 전방 흐름), 안 되면 스킬이 아니었다.
+
+**곁들여 걷은 것**: 진영 화이트리스트 2술어(→ 「감지자가 있나」 하나로), 「방어유닛 전용」
+하드코딩 셋(강공 pre-scan · 자기 죽음 루프 · 투사체 splash/bounce 풀).
+
+**후속 후보**: 출처 사망 시 모디파이어 회수(생기면 `PlacementAura` 의 영수증이 불필요해진다) ·
+`SplitOnDeath` 형태 점검(시제상 스킬인데 배선만 다른 길이다) · `EmitProjectilePattern` 의
+splash 저작 검증.
 설계 근거: `docs/plans/2026-08-24-skill-layer-unification-critic.md`(critic 5트랙 수렴본,
 전원 REQUEST CHANGES · CRITICAL 7건).
 

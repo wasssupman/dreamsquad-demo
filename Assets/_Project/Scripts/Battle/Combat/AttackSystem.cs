@@ -1847,7 +1847,7 @@ namespace Wassup.Battle.Combat
                             // 합성물이라(최근접 → 힐러 재랭킹 → priority → 적 락 → 어그로 →
                             // frontmost → 지속 락 → 커밋 유지 → facing) **드레인 시점에
                             // 재질의하면 다른 답이 나온다.** 그래서 지금 손에 든 값을 싣는다.
-                            if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                            if (slot.skillId != Wassup.Skills.SkillRegistry.NotRouted)
                             {
                                 if (hasSkillQ)
                                 {

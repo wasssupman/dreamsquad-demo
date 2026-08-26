@@ -4118,7 +4118,7 @@ namespace Wassup.Bridge
                     // **자기 seam 을 말해야** 한다 — 안 그러면 프레임 첫 seam 이 집어가고,
                     // 그 seam 의 「시전자 생존」 가드에 걸려 조용히 버려진다(퇴근한 유닛은
                     // 바로 위에서 이미 파괴됐다). 자기 죽음 seam 이 그 가드가 꺼진 유일한 곳이다.
-                    if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId
+                    if (slot.skillId != Wassup.Skills.SkillRegistry.NotRouted
                         && _skillFiredQueue.IsCreated)
                     {
                         _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
@@ -4314,7 +4314,7 @@ namespace Wassup.Bridge
                 // ⚠ **이전된 슬롯은 실행하지 않는다**(skill-layer-migration unit 3d‴).
                 // 위 펄스와 아래 로그는 이전 여부와 무관하게 돈다 — 이 채널이 나르는 것은
                 // 「카드가 일했다」는 사실이고, 스킬 레이어로 간 것은 **실행뿐**이다.
-                bool routedToSkillLayer = evt.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+                bool routedToSkillLayer = evt.skillId != Wassup.Skills.SkillRegistry.NotRouted;
 
                 if (evt.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {
@@ -9301,7 +9301,7 @@ namespace Wassup.Bridge
                 case Wassup.Data.DcPayloadKind.SelfOrbitProjectile:
                     return Wassup.Skills.Concrete.OrbitProjectileSkill.Id;
                 default:
-                    return Wassup.Skills.SkillRegistry.LegacyArmId;
+                    return Wassup.Skills.SkillRegistry.NotRouted;
             }
         }
 

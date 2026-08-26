@@ -12,7 +12,22 @@ namespace Wassup.Skills
     // 넘기면 「스킬이 안 나가는데 아무도 모르는」 상태가 된다.
     public sealed class SkillRegistry
     {
-        public const int LegacyArmId = 0;   // 0 = 아직 이전 안 된 arm 이 처리한다
+        // skill-layer-migration unit 8 — **이름이 바뀌었다**(구 `LegacyArmId`).
+        //
+        // 옛 이름은 「아직 이전 안 됐다」는 뜻이었고, 그 뜻이 참인 동안엔 이 값이 0 으로
+        // 남은 슬롯이 곧 남은 숙제였다. 이전이 끝난 지금 이 값이 뜻하는 것은 **「스킬이
+        // 아니다」** 다 — 숙제가 아니라 분류다. 오늘 여기 오는 것은 둘:
+        //
+        //   · `PlacementAura`  — **발동 규칙**이다. 지금 실행하는 게 아니라 앞으로 일어날
+        //     배치에 적용될 규칙을 등록한다. 등록·조회·해지 세 시점이 있어 영수증이
+        //     필요하고, 그것이 포트의 결함이 아니라 범주가 다르다는 신호다.
+        //   · `HeavyStrike`    — **그 공격의 성질**이다. 「N번째 공격이 세진다」는 별도
+        //     실행이 아니라 자기를 부른 사건 자체를 바꾼다. 그래서 감지가 공격 해결
+        //     **앞**에서 값을 정해야 하는데, 스킬 seam 은 정의상 그 뒤다.
+        //
+        // ⚠ 둘의 이유가 **다르다**(시제 ↔ 자기참조). 「스킬이 아닌 것」을 한 이유로
+        // 뭉뚱그리면 다음 후보를 잘못 분류한다.
+        public const int NotRouted = 0;
 
         private readonly Dictionary<int, ISkill> _byId = new Dictionary<int, ISkill>();
 
@@ -20,9 +35,9 @@ namespace Wassup.Skills
         {
             if (skill == null)
                 throw new System.ArgumentNullException(nameof(skill));
-            if (skill.SkillId == LegacyArmId)
+            if (skill.SkillId == NotRouted)
                 throw new System.ArgumentException(
-                    $"skillId {LegacyArmId} 은 legacy arm 예약값이다 — concrete 가 쓸 수 없다.");
+                    $"skillId {NotRouted} 은 «스킬 아님» 예약값이다 — concrete 가 쓸 수 없다.");
             if (_byId.ContainsKey(skill.SkillId))
                 throw new System.ArgumentException(
                     $"skillId {skill.SkillId} 중복 등록: {_byId[skill.SkillId].GetType().Name} vs {skill.GetType().Name}");

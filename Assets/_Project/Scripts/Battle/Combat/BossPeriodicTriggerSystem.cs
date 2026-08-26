@@ -111,7 +111,7 @@ namespace Wassup.Battle.Combat
 
                     if (fired)
                     {
-                        if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        if (slot.skillId != Wassup.Skills.SkillRegistry.NotRouted)
                         {
                             if (hasSkillQ && SystemAPI.HasComponent<LocalTransform>(entity))
                             {

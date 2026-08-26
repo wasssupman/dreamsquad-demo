@@ -127,7 +127,7 @@ namespace Wassup.Battle.Effects
                 // 캐스터의 공격 사양(사거리·대상 마스크·통행 층·동률 축)과 얽혀 있어서
                 // 스킬로 옮기면 그 사양을 복제하게 된다. 깔린 다음의 일은 전부 해저드
                 // 저작이 소유하므로, 스킬이 할 일은 「저 칸에 이 에셋을」 하나다.
-                bool routed = cast.ValueRO.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+                bool routed = cast.ValueRO.skillId != Wassup.Skills.SkillRegistry.NotRouted;
                 if (routed && hasSkillQ)
                 {
                     skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent

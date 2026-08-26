@@ -344,7 +344,7 @@ namespace Wassup.Bridge
                     // 하고(그 주석: 「bake 가 % → 배율로 이미 바꿔 실은 값」), 도메인은 저작
                     // 인코딩을 모르는 것이 계약이다.
                     int lethalSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
-                    if (lethalSkillId != Wassup.Skills.SkillRegistry.LegacyArmId
+                    if (lethalSkillId != Wassup.Skills.SkillRegistry.NotRouted
                         && _skillFiredQueue.IsCreated)
                     {
                         _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
@@ -421,7 +421,7 @@ namespace Wassup.Bridge
                     // 것과 스택 슬롯 발급은 **여기가** 한다 — 둘 다 저작 인코딩과 브리지
                     // 소유 카운터라 도메인이 알 이유가 없다.
                     int cocoonSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
-                    if (cocoonSkillId != Wassup.Skills.SkillRegistry.LegacyArmId
+                    if (cocoonSkillId != Wassup.Skills.SkillRegistry.NotRouted
                         && _skillFiredQueue.IsCreated)
                     {
                         _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
@@ -1179,7 +1179,7 @@ namespace Wassup.Bridge
             // 처치 이벤트가 enqueue 시점에 보상값을 복사하므로 늦으면 안 된다.
             int bountySkillId = SkillIdForCardPayload(
                 card.mechanics[mi].trigger.kind, Wassup.Data.DcPayloadKind.BountyMark);
-            if (bountySkillId != Wassup.Skills.SkillRegistry.LegacyArmId
+            if (bountySkillId != Wassup.Skills.SkillRegistry.NotRouted
                 && _skillFiredQueue.IsCreated)
             {
                 _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent

@@ -303,7 +303,7 @@ namespace Wassup.Battle.Units
                         // 이 seam 은 **죽음 seam**(바로 뒤)이 받는다 — 감지가 이 시스템
                         // 안이라 그 seam 의 프레임 창과 정확히 같고, 시전자는 살아 있다
                         // (`newHp > 0f` 가 위에서 이미 보장한다).
-                        bool routed = slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+                        bool routed = slot.skillId != Wassup.Skills.SkillRegistry.NotRouted;
                         if (routed && hasSkillQ)
                         {
                             var selfPos = _transformLookup.HasComponent(entity)
@@ -383,7 +383,7 @@ namespace Wassup.Battle.Units
                         // 시전자는 살아 있다 — 파열은 death 분기와 **독립**이라 관통 킬
                         // 프레임에도 여기 오지만, 죽음 seam 은 `UnitLifecycleSystem` 앞이라
                         // 드레인 시점엔 아직 파괴 전이다.
-                        if (hasSkillQ && sbSlot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        if (hasSkillQ && sbSlot.skillId != Wassup.Skills.SkillRegistry.NotRouted)
                         {
                             skillFiredSingleton.ValueRW.queue.Enqueue(
                                 new Wassup.Battle.Skills.SkillFiredEvent
@@ -458,7 +458,7 @@ namespace Wassup.Battle.Units
                         {
                             var rs = routeSlots[s];
                             if (rs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
-                            if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                            if (rs.skillId == Wassup.Skills.SkillRegistry.NotRouted) continue;
                             // ⚠ **id 상한이 곧 중복 억제의 상한이다**(ECS 리뷰 M-1). 32칸을 쓰던 시절
                             // 레지스트리가 이미 32를 넘겨서, id ≥ 32 인 스킬은 중복 억제가 **꺼져**
                             // 있었다 — 「같은 카드 두 장 = 폭발 두 번」이 조용히 부활하는 자리다.
@@ -559,7 +559,7 @@ namespace Wassup.Battle.Units
                             if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill ||
                                 ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
                             // 이전된 슬롯은 위 라우팅 루프가 이미 보냈다 — 여기서 또 처리하면 이중 발화.
-                            if (ks.skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                            if (ks.skillId != Wassup.Skills.SkillRegistry.NotRouted) continue;
                             // 슬롯 고정 stackId 로 재부여. 최대 중첩(ks.tileRange)이 0 이면 지속만
                             // 갱신되는 비스택 refresh 이고, >0 이면 매 킬마다 상한까지 누적된다
                             // (dreamcatcher-berserker unit 1 — 짱빠른/짱쎈버서커가 이 자리에 선다).

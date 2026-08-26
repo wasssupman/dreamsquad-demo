@@ -187,7 +187,7 @@ namespace Wassup.Battle.Skills
             {
             while (budget-- > 0 && queue.TryDequeue(out var evt))
             {
-                if (evt.SkillId == SkillRegistry.LegacyArmId) continue;   // legacy arm 이 처리한다
+                if (evt.SkillId == SkillRegistry.NotRouted) continue;   // legacy arm 이 처리한다
 
                 // ⚠ **남의 seam 것은 돌려보낸다**(unit 3e). `budget` 이 시작 시점 개수라
                 // 루프는 반드시 끝나고, 돌려보낸 것은 자기 seam 이 이 프레임 뒤쪽에서

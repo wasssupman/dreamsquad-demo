@@ -15,7 +15,7 @@ namespace Wassup.Battle.Units
 
         // skill-layer-migration unit 3d‴ — 라우팅 키. `DcTriggerSlot` 과 **다른 버퍼**라
         // 그쪽 키를 못 빌린다(카운터 쓰기가 Units 소유라 여기 산다 — 위 주석).
-        // 0(=LegacyArmId) 이면 아래 payload arm 이 처리하고, 아니면 스킬 레이어가 실행한다.
+        // 0(=NotRouted) 이면 아래 payload arm 이 처리하고, 아니면 스킬 레이어가 실행한다.
         public int skillId;
         public ushort period;   // OnDamagedN: fire on every N-th damaged frame
         public ushort counter;  // owned write: DamageApplicationSystem only

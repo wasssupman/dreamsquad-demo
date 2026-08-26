@@ -232,7 +232,7 @@ namespace Wassup.Battle.Units
                 {
                     var rs = routeSlots[s];
                     if (rs.trigger != DcTriggerKind.OnDeath) continue;
-                    if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                    if (rs.skillId == Wassup.Skills.SkillRegistry.NotRouted) continue;
                     // 같은 스킬은 죽음당 한 번만(레거시도 첫 매칭만 스탬프했다).
                     // ⚠ **id 상한이 곧 중복 억제의 상한이다**(ECS 리뷰 M-1). 32칸을 쓰던 시절
                     // 레지스트리가 이미 32를 넘겨서, id ≥ 32 인 스킬은 중복 억제가 **꺼져**

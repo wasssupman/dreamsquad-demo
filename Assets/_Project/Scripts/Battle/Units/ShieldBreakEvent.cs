@@ -26,7 +26,7 @@ namespace Wassup.Battle.Units
         // skill-layer-migration unit 3d‴ — **이 채널은 「카드가 일했다」는 사실을 나른다.**
         // 그 사실의 소비자가 셋이고(카드 펄스 · 전투 로그 · 트레이스) 실행은 넷째일 뿐이라,
         // 실행만 스킬 레이어로 옮기고 나머지 셋은 그대로 둔다.
-        // 0(=LegacyArmId) 이면 브리지가 실행하고, 아니면 실행은 이미 스킬 레이어가 했다.
+        // 0(=NotRouted) 이면 브리지가 실행하고, 아니면 실행은 이미 스킬 레이어가 했다.
         public int skillId;
     }
 
