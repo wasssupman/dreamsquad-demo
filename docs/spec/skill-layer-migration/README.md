@@ -1,6 +1,10 @@
 # skill-layer-migration — 모든 스킬을 레이어 위로
 
-> 상태: **작성 완료 2026-08-25 · 미착수. 선행 = `docs/spec/skill-layer-foundation/` 전체.**
+> 상태: **진행 중 — unit 3(드림캐쳐 카드) 완료 2026-08-26.** 선행 = `docs/spec/skill-layer-foundation/` 전체.
+>
+> unit 3 은 3a~3g 일곱 조각으로 나뉘어 전부 커밋됐다. 옮기지 않고 남긴 **6행**은
+> 성격이 하나다 — 막는 것은 효과가 아니라 **디스패치가 비동기라는 것**이다
+> (손패 회수 1 + 부착 시점 5). 상세와 「옮기는 조건」은 [3](3_cards_slot_arm.md) 하단.
 > 설계 근거: [`docs/plans/2026-08-24-skill-layer-unification-critic.md`](../../plans/2026-08-24-skill-layer-unification-critic.md)
 
 ## 상위 목표
@@ -26,7 +30,7 @@
 | 0 | 적 mechanics | **11행** (보스 10 + 드래곤 `AreaBreath` 1). 분열 2행 제외 — 아래 | [0](0_enemy_mechanics.md) |
 | 1 | 방어유닛 규칙(`UnitSkillAbility`) | **5행/5에셋** — SkyStrike · Taunt · AreaShield · OnPlaceBlast · BombMan | [1](1_defender_rules.md) |
 | 2 | 레거시 `OnPlaceEffectType` | **arm 9종/12에셋** | [2](2_legacy_onplace.md) |
-| 3 | 드림캐쳐 카드 — 슬롯 arm | **26행/25장** | [3](3_cards_slot_arm.md) |
+| 3 | 드림캐쳐 카드 — 슬롯 arm | **26행/25장** → **완료**(3a~3g) | [3](3_cards_slot_arm.md) |
 | 4 | 드림캐쳐 카드 — 즉발 · hand-op | 즉발 5행 + `RecallAttachedToFront` | [4](4_cards_immediate_handop.md) |
 | 5 | 캐스트 계열 | **8에셋** — 하자드4 · 실드1 · 볼리2 · 폭탄1 | [5](5_casts.md) |
 | 6 | 소환 (`SummonPatrolAbility`) | 1에셋 + 전용 시스템 3 | [6](6_summon.md) |
