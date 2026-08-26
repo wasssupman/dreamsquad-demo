@@ -544,6 +544,9 @@ namespace Wassup.Bridge
         // 구 _goalGaugeList(goal-stability unit 5)의 부활·일반화 — 리뷰 M-e 의 «writer 0» 처분.
         // 게이지 폴링 + 붕괴 감지(ⓐ: 사라진 엔티티의 셀 특정)가 소비한다. 쿼리 없이 맵당 소수 순회.
         private readonly List<(Entity entity, Vector2Int cell, Faction faction)> _structureRegistry = new();
+        // map-diorama-stage unit 10 — 스테이지 거점 저작(StructureMarker → StructureEntry, 관리 참조). 맵 수명.
+        // 구 _resolvedMapDoc.Structures 의 자리 — SpawnStructureEntities/Views 가 SO 스탯·프랍을 여기서 읽는다.
+        private readonly List<Wassup.Data.StructureEntry> _stageStructures = new();
         // unit 4 — 저작 거점의 뷰 인스턴스(SO.viewPrefab). Pickup 프레젠터 선례: 브리지가
         // 만들고 teardown 이 지운다. 골 타워 프랍은 기존 경로(MapThemeData.goalStructureProp) 유지.
         private readonly List<GameObject> _structureViews = new();
@@ -1162,6 +1165,7 @@ namespace Wassup.Bridge
             ClearStructureViews();
             _goalMarkersByCell.Clear();   // unit 4 — 마커 등록부는 스테이지와 같은 수명
             _spawnMarkersByLane.Clear();
+            _stageStructures.Clear();     // unit 10 — 거점 저작도 스테이지와 같은 수명
             // map-diorama-stage unit 2 — 스테이지 인스턴스(맵 비주얼)도 맵과 같은 수명.
             // EditMode(라이브 경로 테스트)에서는 Destroy 가 불법이라 즉시 파괴로 분기.
             if (_stageInstance != null)
@@ -1268,6 +1272,10 @@ namespace Wassup.Bridge
             {
                 var scan = Wassup.Core.MapStageScanner.Scan(_stageInstance, tileSize);
                 _generatedMap = DioramaMapBuilder.Assemble(scan, Unity.Collections.Allocator.Persistent);
+                // unit 10 — 거점 관리 목록은 빌더와 같은 (y, x) 사전순(Assemble 이 이미 형식 검증을 통과시켰다).
+                _stageStructures.Clear();
+                _stageStructures.AddRange(scan.structures);
+                _stageStructures.Sort(DioramaMapBuilder.CompareStructureRowMajor);
             }
             catch (MapGenerationFailedException ex)
             {
@@ -6312,9 +6320,10 @@ namespace Wassup.Bridge
             }
 
             // ── 저작 거점(본능 + 적 마음) — unit 3 의 _resolvedMapDoc 에서 SO 스탯을 읽는다 ──
-            // map-diorama-stage unit 7 — 문서 은퇴. 거점 저작은 계약 11 로 비가용(후속 StructureMarker).
-            System.Collections.Generic.IReadOnlyList<Wassup.Data.StructureEntry> docStructures = null;
-            if (docStructures == null) return;
+            // map-diorama-stage unit 10 — 입력 = 스테이지 StructureMarker(본능만, 계약 11). 문서 시절과 같은
+            // StructureEntry 형태라 아래 로직은 그대로다.
+            var docStructures = _stageStructures;
+            if (docStructures.Count == 0) return;
             int spawned = 0;
             for (int i = 0; i < docStructures.Count; i++)
             {
@@ -6425,9 +6434,10 @@ namespace Wassup.Bridge
         private void SpawnStructureViews()
         {
             ClearStructureViews();   // 멱등 — 재빌드마다 정확히 1벌
-            // map-diorama-stage unit 7 — 문서 은퇴. 거점 저작은 계약 11 로 비가용(후속 StructureMarker).
-            System.Collections.Generic.IReadOnlyList<Wassup.Data.StructureEntry> docStructures = null;
-            if (docStructures == null) return;
+            // map-diorama-stage unit 10 — 입력 = 스테이지 StructureMarker(본능만, 계약 11). 문서 시절과 같은
+            // StructureEntry 형태라 아래 로직은 그대로다.
+            var docStructures = _stageStructures;
+            if (docStructures.Count == 0) return;
             for (int i = 0; i < docStructures.Count; i++)
             {
                 var s = docStructures[i];

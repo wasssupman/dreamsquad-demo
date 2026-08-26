@@ -205,6 +205,17 @@ namespace Wassup.EditorTools
         }
     }
 
+    [CustomEditor(typeof(StructureMarker))]
+    internal class StructureMarkerEditor : UnityEditor.Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            DrawDefaultInspector();
+            EditorGUILayout.HelpBox("거점(본능) 셀 — data 는 kind=Instinct 만(마음은 계약 11 비가용). 3×3 footprint 가 playArea 안이어야 하고, 프랍·체력·공격은 SO 가 소유해 브리지가 빌드 시 세운다(비주얼 자식 불필요).", MessageType.Info);
+            MapStageEditorUtil.SnapButton((Component)target);
+        }
+    }
+
     [CustomEditor(typeof(PlacementBlockZone))]
     internal class PlacementBlockZoneEditor : UnityEditor.Editor
     {

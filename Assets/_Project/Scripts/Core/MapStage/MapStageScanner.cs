@@ -48,6 +48,15 @@ namespace Wassup.Core
             foreach (var b in stage.GetComponentsInChildren<BonusSpawnMarker>(false))
                 scan.bonusSpawns.Add(CellOf(stage, b.transform, runtimeTileSize));
 
+            // unit 10 — 거점(본능). 관리 참조(StructureData)를 그대로 싣는다 — 형식 검증은 빌더 몫.
+            foreach (var st in stage.GetComponentsInChildren<StructureMarker>(false))
+                scan.structures.Add(new StructureEntry
+                {
+                    cell = CellOf(stage, st.transform, runtimeTileSize),
+                    side = st.side,
+                    data = st.data,
+                });
+
             return scan;
         }
 

@@ -38,6 +38,7 @@ namespace Wassup.Data
         public readonly List<Vector2Int> goals = new List<Vector2Int>();
         public readonly List<StageRoutePoint> routePoints = new List<StageRoutePoint>();
         public readonly List<Vector2Int> bonusSpawns = new List<Vector2Int>();   // unit 9 — 0개 또는 2개
+        public readonly List<StructureEntry> structures = new List<StructureEntry>();   // unit 10 — 본능만(계약 11)
     }
 
     public static class DioramaMapBuilder
@@ -112,8 +113,33 @@ namespace Wassup.Data
                 BonusSpawnAuthoringRules.Validate(scan.bonusSpawns, area.x, area.y, tilesForRules, scan.goals, errors);
             }
 
+            // unit 10 — 거점 마커. 본능만 허용(계약 11 — 마음은 공성 모드·시드 스폰 파생·유출 판정을 끌고 온다).
+            // footprint 는 점유(배치 배제)라 차단 셀과 겹쳐도 통행 논리는 안 깨지지만, 중심 셀이 차단 위면
+            // «벽 속의 포탑»이라 저작 실수로 본다. footprint 가 playArea 밖으로 나가면 브리지의 배치 폐쇄·
+            // OccupiedCells 가 격자 밖 셀을 만든다 — 거부.
+            var structureCells = new HashSet<Vector2Int>();
+            foreach (var st in scan.structures)
+            {
+                if (st.data == null) { errors.Add($"StructureMarker {st.cell}: data(StructureData) 가 비었다."); continue; }
+                if (st.data.kind != StructureKind.Instinct)
+                {
+                    errors.Add($"StructureMarker {st.cell}: 마음(Core) 저작은 계약 11 로 비가용 — 방어 마음은 GoalMarker, 적 마음(공성)은 후속 후보.");
+                    continue;
+                }
+                if (!structureCells.Add(st.cell)) { errors.Add($"StructureMarker 셀 {st.cell} 중복."); continue; }
+                CheckCell(errors, area, blocked, st.cell, "본능");
+                int half = StructurePlacements.InstinctFootprint / 2;
+                if (st.cell.x - half < 0 || st.cell.y - half < 0 || st.cell.x + half >= area.x || st.cell.y + half >= area.y)
+                    errors.Add($"본능 {st.cell} 의 footprint {StructurePlacements.InstinctFootprint}×{StructurePlacements.InstinctFootprint} 가 playArea {area} 밖으로 나간다.");
+            }
+
             return errors;
         }
+
+        // unit 10 — 거점 정렬 규약 (y, x) 사전순. 빌더(GeneratedMap.structures)와 브리지(_stageStructures,
+        // 관리 참조 목록)가 같은 순서를 봐야 엔티티 생성 순서가 저작 계층 순서에 의존하지 않는다(계약 5).
+        public static int CompareStructureRowMajor(StructureEntry a, StructureEntry b)
+            => a.cell.y != b.cell.y ? a.cell.y.CompareTo(b.cell.y) : a.cell.x.CompareTo(b.cell.x);
 
         public static GeneratedMap Assemble(StageScan scan, Allocator allocator)
         {
@@ -204,6 +230,17 @@ namespace Wassup.Data
             for (int i = 0; i < sortedBonus.Count; i++)
                 bonusSpawns[i] = new int2(sortedBonus[i].x, sortedBonus[i].y);
 
+            // unit 10 — 거점 (cell + 파생 진영). Validate 가 data null/Core 를 이미 걸렀다.
+            var sortedStructures = new List<StructureEntry>(scan.structures);
+            sortedStructures.Sort(CompareStructureRowMajor);
+            var structures = new NativeArray<StructurePlacement>(sortedStructures.Count, allocator);
+            for (int i = 0; i < sortedStructures.Count; i++)
+                structures[i] = new StructurePlacement
+                {
+                    cell = new int2(sortedStructures[i].cell.x, sortedStructures[i].cell.y),
+                    faction = StructurePlacements.DeriveFaction(sortedStructures[i].side, sortedStructures[i].data.kind),
+                };
+
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -216,8 +253,7 @@ namespace Wassup.Data
                 waypointRanges = waypointRanges,
                 spawnRoutes = spawnRoutes,
                 bonusSpawns = bonusSpawns,
-                // 거점은 이 브랜치에서 비가용(README 계약 11) — MapDocumentBuilder 처럼 빈 생성으로 통일.
-                structures = new NativeArray<StructurePlacement>(0, allocator),
+                structures = structures,   // unit 10 — 본능만(계약 11). 0개도 생성(소비처는 IsCreated 가드)
                 seed = -1,              // 수동 저작 관례 (MapDocument authoringSeed=-1 승계)
                 generatorVersion = 0,
             };

@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using Wassup.Battle.Units;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
 
@@ -352,6 +353,111 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(new int2(2, 4), map.bonusSpawns[1]);
             }
             finally { map.Dispose(); }
+        }
+    
+
+        // ---- unit 10: 거점(본능) 마커 ----
+
+        static StructureData MakeStructure(StructureKind kind)
+        {
+            var so = ScriptableObject.CreateInstance<StructureData>();
+            so.kind = kind;
+            return so;
+        }
+
+        static bool HasStructureError(StageScan scan)
+            => DioramaMapBuilder.Validate(scan).Exists(e => e.Contains("StructureMarker") || e.Contains("본능"));
+
+        [Test]
+        public void Structures_Instincts_AssembledRowMajor_WithDerivedFaction()
+        {
+            var data = MakeStructure(StructureKind.Instinct);
+            try
+            {
+                var scan = MinimalScan(12, 8);
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(8, 5), side = StructureSide.Enemy, data = data });
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(3, 2), side = StructureSide.Defender, data = data });
+                Assert.IsFalse(HasStructureError(scan));
+                var map = DioramaMapBuilder.Assemble(scan, Allocator.Persistent);
+                try
+                {
+                    Assert.AreEqual(2, map.structures.Length);
+                    Assert.AreEqual(new int2(3, 2), map.structures[0].cell, "(y, x) 사전순 — 저작 순서 비의존");
+                    Assert.AreEqual(Faction.DefenderInstinct, map.structures[0].faction);
+                    Assert.AreEqual(new int2(8, 5), map.structures[1].cell);
+                    Assert.AreEqual(Faction.EnemyInstinct, map.structures[1].faction);
+                    // footprint 는 점유일 뿐 — 통행·배치판은 스테이지 빌더에서 건드리지 않는다(브리지가 빌드 후 폐쇄).
+                    Assert.AreEqual(MapTileType.Walk, map.TileAt(new int2(8, 5)));
+                }
+                finally { map.Dispose(); }
+            }
+            finally { Object.DestroyImmediate(data); }
+        }
+
+        [Test]
+        public void Structures_Core_Rejected_WithContract11Message()
+        {
+            var core = MakeStructure(StructureKind.Core);
+            try
+            {
+                var scan = MinimalScan(12, 8);
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(9, 4), side = StructureSide.Enemy, data = core });
+                var errors = DioramaMapBuilder.Validate(scan);
+                Assert.IsTrue(errors.Exists(e => e.Contains("계약 11")), string.Join(" | ", errors));
+            }
+            finally { Object.DestroyImmediate(core); }
+        }
+
+        [Test]
+        public void Structures_NullData_Rejected()
+        {
+            var scan = MinimalScan(12, 8);
+            scan.structures.Add(new StructureEntry { cell = new Vector2Int(5, 3), side = StructureSide.Defender, data = null });
+            Assert.IsTrue(HasStructureError(scan));
+        }
+
+        [Test]
+        public void Structures_FootprintOutsideArea_Rejected()
+        {
+            var data = MakeStructure(StructureKind.Instinct);
+            try
+            {
+                var edge = MinimalScan(12, 8);
+                edge.structures.Add(new StructureEntry { cell = new Vector2Int(0, 3), side = StructureSide.Defender, data = data });
+                Assert.IsTrue(HasStructureError(edge), "x−1 이 격자 밖");
+                var inside = MinimalScan(12, 8);
+                inside.structures.Add(new StructureEntry { cell = new Vector2Int(1, 3), side = StructureSide.Defender, data = data });
+                Assert.IsFalse(HasStructureError(inside), "3×3 이 딱 들어가는 최소 좌표는 허용");
+            }
+            finally { Object.DestroyImmediate(data); }
+        }
+
+        [Test]
+        public void Structures_DuplicateCell_Rejected()
+        {
+            var data = MakeStructure(StructureKind.Instinct);
+            try
+            {
+                var scan = MinimalScan(12, 8);
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(6, 3), side = StructureSide.Defender, data = data });
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(6, 3), side = StructureSide.Enemy, data = data });
+                Assert.IsTrue(HasStructureError(scan));
+            }
+            finally { Object.DestroyImmediate(data); }
+        }
+
+        [Test]
+        public void Structures_CenterOnBlockedCell_Rejected()
+        {
+            var data = MakeStructure(StructureKind.Instinct);
+            try
+            {
+                var scan = MinimalScan(12, 8);
+                scan.blockedRects.Add(new RectInt(6, 3, 1, 1));
+                scan.structures.Add(new StructureEntry { cell = new Vector2Int(6, 3), side = StructureSide.Enemy, data = data });
+                Assert.IsTrue(HasStructureError(scan));
+            }
+            finally { Object.DestroyImmediate(data); }
         }
     }
 }
