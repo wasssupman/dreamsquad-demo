@@ -179,25 +179,10 @@ namespace Wassup.Battle.Units
 
                 if (hasDefenderSink)
                 {
+                    // skill-layer-migration unit 3g — **OnDeath 폭발 스탬프는 은퇴했다.**
+                    // 작별 선물이 concrete 로 갔고 자기 죽음 seam 이 실행한다. 이 이벤트에
+                    // 남은 것은 「어느 칸이 비었나」뿐이다(타일 반납·시너지 재계산·연출).
                     var evt = new DefenderDeathEvent { cell = tile.ValueRO.cell };
-                    if (dcSlotLookup.HasBuffer(entity))
-                    {
-                        var slots = dcSlotLookup[entity];
-                        for (int s = 0; s < slots.Length; s++)
-                        {
-                            // 이전된 슬롯은 위 라우팅이 보냈다 — 이중 발화 방지.
-                            if (slots[s].skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
-                            if (slots[s].trigger == DcTriggerKind.OnDeath &&
-                                slots[s].payload == DcPayloadKind.SelfTileAoe)
-                            {
-                                evt.hasOnDeathAoe = true;
-                                evt.aoeDamage = slots[s].magnitude;
-                                evt.aoeTileRange = slots[s].tileRange;
-                                evt.aoeDataIndex = slots[s].projectileDataIndex;
-                                break; // first OnDeath slot only (v1)
-                            }
-                        }
-                    }
                     var singleton = _defenderDeathSingletonQuery.GetSingletonRW<DefenderDeathEventsSingleton>();
                     singleton.ValueRW.queue.Enqueue(evt);
                 }

@@ -283,7 +283,6 @@ namespace Wassup.Battle.Units
                     && _damagedCounterLookup.HasBuffer(entity))
                 {
                     var counters = _damagedCounterLookup[entity];
-                    bool grantDoubleFire = false;
                     for (int c = 0; c < counters.Length; c++)
                     {
                         var slot = counters[c];
@@ -331,11 +330,10 @@ namespace Wassup.Battle.Units
 
                         // trigger-gates unit 0 — payload 디스패치 (위드닝). 발동했는데
                         // arm 이 없으면 loud fail (AttackSystem unhandled 컨벤션).
-                        if (slot.payload == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
-                        {
-                            if (!routed) grantDoubleFire = true;
-                        }
-                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                        // skill-layer-migration unit 3g — 더블파이어 arm 은 은퇴했다.
+                        // `NextAttackDoubleFire` 는 `OnDamagedN` 으로만 저작되고 그 조합은
+                        // 예외 없이 라우팅되므로, 여기 legacy 슬롯이 도달할 방법이 없다.
+                        if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                         {
                             // ⚠ **이전돼도 이 이벤트는 계속 나간다.** 이 채널의 소비자는 넷이고
                             // (카드 펄스 · 전투 로그 · 트레이스 · 실행) 스킬 레이어로 간 것은
@@ -359,7 +357,6 @@ namespace Wassup.Battle.Units
                         else if (!routed)
                             UnityEngine.Debug.LogWarning("[DamageApplication] DamagedCounter fired with unhandled payload kind.");
                     }
-                    if (grantDoubleFire) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });
                 }
 
                 // dreamcatcher-shield-break unit 0 — 실드가 피격으로 파열된 프레임: host 의
@@ -510,53 +507,11 @@ namespace Wassup.Battle.Units
                         && _attackTagLookup.HasComponent(entity)
                         && _transformLookup.HasComponent(entity))
                     {
-                        // 시체폭발 (content-3 unit 3) — killer 의 OnKill×SelfTileAoe 첫 매칭
-                        // 슬롯을 이벤트에 스탬프(첫 슬롯만 — OnDeath v1 선례). 슬롯 읽기는
-                        // devouring 루프와 같은 RO 읽기(contract 3).
-                        bool hasKillBurst = false;
-                        float burstDamage = 0f;
-                        int burstTileRange = 0;
-                        int burstDataIndex = -1;
-                        // content-5 unit 4 (잿불) — 같은 루프에서 장판 슬롯도 본다. 두 payload 는
-                        // 배타가 아니다(한 유닛이 시체폭발과 잿불을 같이 가질 수 있다).
-                        bool hasKillHazard = false;
-                        int hazardDataIndex = -1;
-                        byte hazardTargetLayers = 0;
-                        if (killerSource != Entity.Null && _dcTriggerSlotLookup.HasBuffer(killerSource))
-                        {
-                            var bSlots = _dcTriggerSlotLookup[killerSource];
-                            for (int s = 0; s < bSlots.Length; s++)
-                            {
-                                var bs = bSlots[s];
-                                if (bs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
-                                // 이전된 슬롯은 위 라우팅 루프가 보냈다 — 이중 발화 방지.
-                                if (bs.skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
-                                if (bs.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                                {
-                                    if (hasKillBurst) continue;   // 첫 매칭만(OnDeath v1 선례)
-                                    hasKillBurst = true;
-                                    burstDamage = bs.magnitude;
-                                    burstTileRange = bs.tileRange;
-                                    burstDataIndex = bs.projectileDataIndex;
-                                }
-                                else if (bs.payload == Wassup.Data.DcPayloadKind.SpawnHazard
-                                         && bs.hazardDataIndex >= 0)
-                                {
-                                    if (hasKillHazard) continue;
-                                    // ⚠ 통행 층은 **killer 가 살아 있는 지금** 읽는다. 드레인 시점엔
-                                    // 파괴됐을 수 있고, 그때 0 으로 새면 무제한 통과가 되어 지상
-                                    // 전용 유닛의 불씨가 비행 적을 태운다(계약: content-4 3-1 대칭).
-                                    //
-                                    // 사양을 모르면 **아예 안 깐다**(fail-closed). 초판은 0 을 폴백으로
-                                    // 썼는데 그건 바로 위 문장이 막으려던 구멍을 그대로 여는 값이다
-                                    // (`PlacementLayers.CanTarget(0, x)` 는 무조건 참) — 리뷰 M3.
-                                    if (!_attackStateLookup.HasComponent(killerSource)) continue;
-                                    hasKillHazard = true;
-                                    hazardDataIndex = bs.hazardDataIndex;
-                                    hazardTargetLayers = _attackStateLookup[killerSource].targetTraversalLayers;
-                                }
-                            }
-                        }
+                        // skill-layer-migration unit 3g — **처치 스탬프 블록은 은퇴했다.**
+                        // 시체폭발(`SelfTileAoe`)과 잿불(`OnKill × SpawnHazard`)이 둘 다
+                        // concrete 로 갔고, 위 라우팅 루프가 그 슬롯들을 전부 가져간다 —
+                        // 여기 도달하는 legacy 슬롯은 없다.
+                        // 이벤트의 burst/hazard 필드도 같이 죽었다(아래 구성에서 안 채운다).
                         enemyKilledSingleton.ValueRW.queue.Enqueue(new EnemyKilledEvent
                         {
                             position = _transformLookup[entity].Position,
@@ -569,16 +524,9 @@ namespace Wassup.Battle.Units
                             // three-minute-kill-race unit 1 — 점수 기여분을 싣지 않는다
                             // (1킬 = 1점). 유출 경로는 이 분기에 오지 않으므로 유출된 적이
                             // 점수를 안 주는 성질은 그대로다.
-                            hasKillBurst = hasKillBurst,
-                            burstDamage = burstDamage,
-                            burstTileRange = burstTileRange,
-                            burstDataIndex = burstDataIndex,
                             killer = killerSource,
                             // content-5 unit 4 (잿불) — 시체폭발과 나란한 스탬프. 둘은 배타가
                             // 아니라 한 킬이 폭발과 불씨를 동시에 낼 수 있다.
-                            hasKillHazard = hasKillHazard,
-                            hazardDataIndex = hazardDataIndex,
-                            hazardTargetLayers = hazardTargetLayers,
                         });
                     }
 

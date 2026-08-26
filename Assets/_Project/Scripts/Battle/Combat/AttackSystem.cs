@@ -1881,24 +1881,45 @@ namespace Wassup.Battle.Combat
                                         VisualScale = slot.visualScale,
                                     });
                                 }
+
+                                // ⚠ **전투 로그는 이 attack 의 것이다**(투트랙 리뷰 M-4).
+                                // 레거시 비수 arm 은 `SpawnNeedleCarrier` 안에서 이 이벤트를
+                                // 넣었고, arm 을 걷으면서 같이 사라졌다 — 판 리포트에서
+                                // 비수·부메랑 줄이 조용히 빠진다.
+                                //
+                                // 스킬이 아니라 **감지자**가 넣는 이유: 이 채널이 기록하는 것은
+                                // 「이 공격이 무엇을 내보냈나」이고, 「지금이 공격이다」를 아는
+                                // 것은 RESOLVE 뿐이다. 도메인은 자기가 무슨 사건에 실려 왔는지
+                                // 모른다(그게 계약이다).
+                                //
+                                // payload 를 보는 이유: 레거시에서 이 로그를 넣은 arm 이
+                                // **비수 하나뿐**이었다. CC·스택 arm 은 안 넣었고, 여기서
+                                // 넓히면 없던 줄이 리포트에 생긴다.
+                                if (attackOutputLogWriter.HasValue
+                                    && slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                                {
+                                    attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                    {
+                                        attacker  = attackerEntity,
+                                        kind      = Wassup.Data.AttackOutputKind.Damage,
+                                        magnitude = slot.magnitude,
+                                        duration  = 0f,
+                                        sourcePos = transform.ValueRO.Position,
+                                        targetPos = bestTargetPos,
+                                    });
+                                }
                                 continue;
                             }
 
                             // dreamcatcher-new-abilities unit 1 — payload 디스패치. AttackN
                             // 슬롯이 발동하면 kind 별로 carrier(투사체)/CC/스택 중 하나를 실행.
                             //
-                            // ⚠ 적 host 는 **ProjectileToTarget 을 타면 안 된다.** 그 arm 은 대상
-                            // 진영이 방어유닛 전제로 잡혀 있어 적이 쓰면 자기 진영을 쏜다. bake
-                            // 화이트리스트가 1차 방어선이지만 저작으로 뚫릴 수 있어 여기서도 막는다
-                            // (리뷰 잔여위험 2). 적이 쓰는 AttackN 페이로드는 unit 4 의 브레스뿐이다.
-                            if (!defenderTagLookup.HasComponent(attackerEntity)
-                                && slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
-                            {
-                                // 카운트는 이미 소비됐다(계약 5) — 조용히 넘기지 않는다.
-                                UnityEngine.Debug.LogWarning(
-                                    "[AttackSystem] 적 host 의 AttackN × ProjectileToTarget — 자기 진영을 쏘게 되므로 건너뛴다. 저작을 고칠 것.");
-                                continue;
-                            }
+                            // skill-layer-migration unit 3g — 「적 host 는 비수를 타면 안 된다」
+                            // 가드는 **사라졌다.** 그것은 arm 이 대상 진영을 방어유닛으로
+                            // 하드코딩해서 생긴 제약이었고, concrete 는 caster 의 상대 진영에서
+                            // 도출한다(foundation unit 2b). 막을 것이 없어졌다 — 적이 비수를
+                            // 저작하면 그냥 **방어유닛을 쏜다**. 위 라우팅이 이 줄보다 앞이라
+                            // 어차피 도달 불가능한 코드이기도 했다.
                             // elite-enemy-tier unit 4 — 화염 브레스. 투사체 캐리어를 만들지 않는다:
                             // 즉발이고, 이 프레임의 후보 배열이 이미 손에 있다. 순회 본문은 아래
                             // private static 으로 빼서 1974줄 시스템을 키우지 않고 단위 테스트가
@@ -1933,112 +1954,7 @@ namespace Wassup.Battle.Combat
                                 }
                                 continue;
                             }
-                            if (slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
-                            {
-                                // Dedicated request-carrier entity: the shooter's own
-                                // attack may stage a ProjectileSpawnRequest this same
-                                // frame and the request is a single IComponentData.
-                                // ECB deferred creation is required — a direct
-                                // EntityManager.CreateEntity inside this query foreach
-                                // would throw. The carrier materializes at ecb.Playback
-                                // below, before BattleBridge's drain, and the drain
-                                // destroys it after spawning the projectile.
-                                // owner = 부착된 디펜더(캐리어 아님) — 위협 귀속.
-                                SpawnNeedleCarrier(ref ecb, slot, attackerEntity, atkPos,
-                                    bestTarget, bestTargetPos,
-                                    attack.ValueRO.targetTraversalLayers, tileSize,
-                                    attackOutputLogWriter.HasValue,
-                                    attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
-                            }
-                            else if (slot.payload == Wassup.Data.DcPayloadKind.ApplyCcToTarget)
-                            {
-                                // frost_arrow — 맞은 적에게 CcEffect(번역된 ccKind). Stun 은
-                                // remainingTime 만, Impulse 는 넉백 벡터(발사 시점 방향)도.
-                                // 판정 대상 = 발사 시점 의도 대상 bestTarget(homing 명중 대상
-                                // 불일치는 허용 — spec 계약 6).
-                                if (ccWriter.HasValue)
-                                {
-                                    var cc = new Wassup.Battle.Effects.CcEffect
-                                    {
-                                        kind = slot.ccKind,
-                                        remainingTime = slot.duration,
-                                    };
-                                    bool emit = true;
-                                    if (slot.ccKind == Wassup.Battle.Effects.CcKind.Impulse)
-                                    {
-                                        // review B LOW1 — 공격자·대상 동일 셀이면 방향 0 →
-                                        // phantom impulse(방향 없는 CC) 방출 방지(기존 넉백 가드 대칭).
-                                        float3 kd = bestTargetPos - atkPos;
-                                        kd.y = 0f;
-                                        if (math.lengthsq(kd) > 1e-6f) cc.vector = math.normalize(kd) * slot.magnitude;
-                                        else emit = false;
-                                    }
-                                    if (emit)
-                                        ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
-                                        {
-                                            target = bestTarget,
-                                            effect = cc,
-                                        });
-                                }
-                            }
-                            else if (slot.payload == Wassup.Data.DcPayloadKind.ApplyStackToTarget)
-                            {
-                                // ember_bite — 맞은 적에게 원소 스택(번역된 stackKind).
-                                // 스택→DoT/기타는 StackModifierTickSystem 이 ThresholdRule 로 처리.
-                                if (hasStackQ)
-                                    stackModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
-                                    {
-                                        target         = bestTarget,
-                                        kind           = slot.stackKind,
-                                        // review B MED2 — 상한 clamp(무경계 (byte) 캐스트는 256→0 wrap
-                                        // = silent no-op). review B MED1 — maxStack 은 카드 authorable
-                                        // (slot.tileRange), 미설정(0) 시에만 기존 producer 선례 5.
-                                        countDelta     = (byte)math.clamp(slot.magnitude, 1f, 255f),
-                                        maxStack       = slot.tileRange > 0 ? (byte)math.min(slot.tileRange, 255) : Wassup.Data.StackModifierSO.DefaultMaxStack,
-                                        perAppDuration = slot.duration,
-                                        source         = attackerEntity,
-                                    });
-                            }
-                            else if (slot.payload == Wassup.Data.DcPayloadKind.SelfStatBuff)
-                            {
-                                // dreamcatcher-berserker unit 1 — 광란. N번째 공격마다 **자기에게**
-                                // 스탯 버프. 조립은 경계 arm(HealthThresholdSystem)·처치 arm
-                                // (DamageApplicationSystem)과 같은 모양이다 — 같은 FromMultiplier,
-                                // 같은 statBuffStackId, 같은 「지속 <=0 = 영구」 해석.
-                                //
-                                // 이 조합은 여태 **붙지만 안 터졌다**: 부착 판정(DcApplicability)이
-                                // self 계열로 통과시키고 bake 도 슬롯을 굽는데 여기 arm 이 없어서
-                                // 아래 unhandled 경고로 떨어지고 카운트만 태웠다.
-                                //
-                                // ⚠ origin 을 경계 arm 에서 복사하지 말 것 — 그쪽 값
-                                // (HealthThreshold)은 「빈사에서 켜졌다」는 뜻이라 상태FX 가 다르게
-                                // 읽는다. 공격으로 쌓이는 이 버프는 드림캐쳐 출처다.
-                                //
-                                // 위 ProjectileToTarget 과 달리 적 host 를 막지 않는다 — 대상이
-                                // 자기 자신뿐이라 아군 오사 경로가 존재하지 않는다.
-                                if (hasStatQ)
-                                {
-                                    float buffTtl = slot.duration > 0f ? slot.duration : float.PositiveInfinity;
-                                    Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(
-                                        slot.magnitude, out var selfBuffOp, out var selfBuffMag);
-                                    statModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-                                    {
-                                        target    = attackerEntity,
-                                        stat      = slot.buffStat,
-                                        op        = selfBuffOp,
-                                        magnitude = selfBuffMag,
-                                        duration  = buffTtl,
-                                        source    = attackerEntity,
-                                        stackId   = slot.statBuffStackId,
-                                        // 최대 중첩이 있으면 공격마다 상한까지 누적, 0 이면 덮어쓰기.
-                                        magnitudeCap = Wassup.Battle.Effects.ModifierAuthoring
-                                            .StackCap(slot.magnitude, slot.tileRange),
-                                        origin    = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher,
-                                    });
-                                }
-                                // 채널이 없으면 조용히 건너뛴다(카운트는 이미 소비됨 — 경계 arm 과 동일).
-                            }
-                            else if (slot.payload == Wassup.Data.DcPayloadKind.HeavyStrike)
+                            if (slot.payload == Wassup.Data.DcPayloadKind.HeavyStrike)
                             {
                                 // dreamcatcher-heavy-strike unit 1 — 강공은 pre-scan(RESOLVE 상단)
                                 // 에서 이미 heavyMul 로 산출·공격 출력에 실렸다(투사체 캐리어 /

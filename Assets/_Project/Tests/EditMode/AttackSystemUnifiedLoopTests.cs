@@ -28,12 +28,29 @@ namespace Wassup.Tests.EditMode
         [SetUp]
         public void SetUp()
         {
+            _nextSimId = 0;
             _world = new World("AttackSystemUnifiedLoopTests");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<StatModifierTickSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<ModifierStatsAggregateSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            // ⚠ **디스패처를 끼운다**(skill-layer-migration unit 3g). `AttackSystem` 은 이제
+            // 공격 슬롯의 **발화만 알리고** 실행은 concrete 가 한다. 빼면 이 그물이
+            // 「감지는 되는데 아무도 안 쏜다」를 못 본다.
+            _simGroup.AddSystemToUpdateList(
+                _world.CreateSystemManaged<Wassup.Battle.Skills.SkillDispatchAttackSystem>());
+            // ⚠ **정렬한다.** 안 하면 삽입 순서가 아니라 임의 순서가 되어 디스패처가
+            // `AttackSystem` 보다 먼저 도는 틱이 생기고, 그 틱의 발화가 한 프레임 밀린다.
+            _simGroup.SortSystems();
+
+            _skillQueue = new NativeQueue<Wassup.Battle.Skills.SkillFiredEvent>(Allocator.Persistent);
+            _em.AddComponentData(_em.CreateEntity(),
+                new Wassup.Battle.Skills.SkillFiredEventsSingleton { queue = _skillQueue });
+            var skillRegistry = new Wassup.Skills.SkillRegistry();
+            skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Install(
+                skillRegistry, new Wassup.Battle.Skills.EcsSkillContext());
 
             // Singleton: unified attack visual events (Spine animation trigger for any attacker)
             _attackEventQueue = new NativeQueue<UnitAttackVisualEvent>(Allocator.Persistent);
@@ -52,9 +69,15 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(castSingleton, new CastEventsSingleton { queue = _castQueue });
         }
 
+        private NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> _skillQueue;
+        private int _nextSimId;
+
         [TearDown]
         public void TearDown()
         {
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Uninstall();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+            if (_skillQueue.IsCreated) _skillQueue.Dispose();
             if (_attackEventQueue.IsCreated) _attackEventQueue.Dispose();
             if (_ccQueue.IsCreated) _ccQueue.Dispose();
             if (_castQueue.IsCreated) _castQueue.Dispose();
@@ -84,6 +107,10 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new FactionTag { value = faction });
             _em.AddComponentData(e, new Health { value = 10f, max = 10f });
             _em.AddBuffer<IncomingDamage>(e);
+            // ⚠ **핸들이 없으면 스킬 레이어에서 이 유닛은 존재하지 않는다**(unit 3g).
+            // 어댑터는 `SimEntityId` 로 후보를 식별하므로, 없으면 concrete 가 대상을
+            // 못 가리켜 의도가 조용히 버려진다.
+            _em.AddComponentData(e, new SimEntityId { value = _nextSimId++ });
             _em.AddComponentData(e, new AttackState
             {
                 range = range,
@@ -123,6 +150,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new FactionTag { value = faction });
             _em.AddComponentData(e, new Health { value = 10f, max = 10f });
             _em.AddBuffer<IncomingDamage>(e);
+            _em.AddComponentData(e, new SimEntityId { value = _nextSimId++ });
             if (defenderTag) _em.AddComponent<DefenderUnitTag>(e);
             if (attackerTag) _em.AddComponent<AttackUnitTag>(e);
             if (pendingDeployment) _em.AddComponent<PendingDeployment>(e);
@@ -548,6 +576,8 @@ namespace Wassup.Tests.EditMode
                 trigger = DcTriggerKind.AttackN,
                 period = 5,
                 counter = 0,
+                // 라우팅 키 — bake 가 심는 값이다(그 arm 은 은퇴했다).
+                skillId = Wassup.Skills.Concrete.TargetProjectileSkill.Id,
                 payload = DcPayloadKind.ProjectileToTarget,
                 magnitude = 20f,
                 projectileDataIndex = 0,

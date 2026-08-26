@@ -3989,8 +3989,13 @@ namespace Wassup.Bridge
             if (!_defenderDeathQueue.IsCreated) return;
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
+                // ⚠ f 축이 **0 으로 고정됐다**(skill-layer-migration unit 3g). 예전엔 작별
+                // 선물의 피해량을 실었는데 그 payload 가 concrete 로 갔다. 그 실행은 투사체
+                // 채널에 그대로 남으므로 트레이스가 보는 사건이 사라지지는 않는다.
+                // 골든 코퍼스 덱에 작별 선물 카드가 있으면 이 축이 달라진다 — 그 경우
+                // 코퍼스를 다시 뜨는 것이 맞고, 「사망 사건」이라는 이 채널의 뜻은 그대로다.
                 Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DefenderDeath,
-                    i: evt.cell.x * 1000 + evt.cell.y, f: evt.hasOnDeathAoe ? evt.aoeDamage : 0f);
+                    i: evt.cell.x * 1000 + evt.cell.y, f: 0f);
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
                 // defender-clock-out unit 1 — 판 정리는 퇴근과 공유한다(ReleaseDefenderTile).
                 // 바인딩을 제거 **전에** 받아 오는 계약도 그 안에 있다 — DefenderDied 가 엔티티를
@@ -4006,24 +4011,8 @@ namespace Wassup.Bridge
                 }
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
 
-                // content-1 ② (작별 선물) — OnDeath×SelfTileAoe explosion at the dead
-                // cell. Payload was baked into the event before the entity died, so
-                // this touches no destroyed entity. Immediate (flightTime 0) TileAoe.
-                if (evt.hasOnDeathAoe && evt.aoeDataIndex >= 0)
-                {
-                    var impactWorld = GridToWorldCenter(cell, spawnHeight);
-                    SpawnProjectile(new ProjectileSpawnRequest
-                    {
-                        movement = MovementKind.SkyFall,
-                        payload = PayloadKind.TileAoe,
-                        impact = impactWorld,
-                        damage = evt.aoeDamage,
-                        impactTileRange = evt.aoeTileRange,
-                        flightTime = 0f,
-                        dataIndex = evt.aoeDataIndex,
-                        visualScale = 1f,
-                    }, Entity.Null);
-                }
+                // skill-layer-migration unit 3g — **작별 선물 실행기가 여기서 사라졌다.**
+                // concrete 로 갔고 자기 죽음 seam 이 실행한다.
 
                 // dreamcatcher-awakening-hand unit 1 — relay after cleanup so the
                 // tile/synergy state is consistent when subscribers run. Entity is
@@ -4988,42 +4977,9 @@ namespace Wassup.Bridge
                 logger?.RecordKill(string.Empty, new Vector2Int(cell.x, cell.y), time);
                 logger?.AddScoreEvent("enemy_killed", 1, time);
 
-                // 시체폭발 (content-3 unit 3) — 킬 셀 중심 즉발 TileAoe. OnDeath 폭발
-                // (DrainDefenderDeathEvents)과 동형. owner=killer 로 폭발발 킬의 OnKill
-                // 연쇄 재발동이 사양.
-                if (evt.hasKillBurst && evt.burstDataIndex >= 0)
-                {
-                    var impactWorld = GridToWorldCenter(new Vector2Int(cell.x, cell.y), spawnHeight);
-                    SpawnProjectile(new ProjectileSpawnRequest
-                    {
-                        movement = MovementKind.SkyFall,
-                        payload = PayloadKind.TileAoe,
-                        impact = impactWorld,
-                        damage = evt.burstDamage,
-                        impactTileRange = evt.burstTileRange,
-                        flightTime = 0f,
-                        dataIndex = evt.burstDataIndex,
-                        visualScale = 1f,
-                        owner = evt.killer,
-                    }, Entity.Null);
-                }
-
-                // 잿불 (content-5 unit 4) — 처치한 **그 자리**에 장판. 위 시체폭발과 같은
-                // 자리·같은 형태이고, 실제 스폰만 투사체 대신 해저드 파이프라인을 탄다
-                // (모양·반경·지속·효과·틱·뷰가 전부 그 SO 소유 — 계약 9).
-                //
-                // 통행 층은 킬 시점에 구워져 왔다. 여기서 killer 를 다시 읽지 않는 이유는
-                // 동귀어진이면 이미 파괴돼 0(=무제한 통과)으로 새기 때문이다.
-                if (evt.hasKillHazard)
-                {
-                    if (evt.hazardDataIndex >= 0 && evt.hazardDataIndex < _zoneHazardRegistry.Count)
-                        SpawnHazardWithVisual(
-                            _zoneHazardRegistry[evt.hazardDataIndex], cell, evt.hazardTargetLayers);
-                    else
-                        // 「불씨가 안 깔린다」는 육안으로 추적이 어려운 증상이라 조용히 넘기지
-                        // 않는다(형제 드레인 DrainHazardSpawnRequests 와 같은 관례) — 리뷰 M5.
-                        Debug.LogWarning($"[BattleBridge] kill hazard index out of range: {evt.hazardDataIndex} / {_zoneHazardRegistry.Count} — 불씨를 깔지 못했다.");
-                }
+                // skill-layer-migration unit 3g — **시체폭발·잿불 실행기가 여기서 사라졌다.**
+                // 둘 다 concrete 로 갔고 죽음 seam 이 실행한다. 이 드레인에 남은 일은
+                // 킬 기록과 각성/표식 회수뿐이다.
             }
         }
 
