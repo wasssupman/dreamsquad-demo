@@ -24,6 +24,18 @@ namespace Wassup.Skills.Concrete
         // 보스 채찍과 배치 오라가 같은 키를 공유해 서로를 덮는다.
         protected virtual SkillModifierOrigin ModifierOrigin => SkillModifierOrigin.OnPlace;
 
+        // ⚠ **결합 버킷도 파생 축이다**(skill-layer-migration unit 4d 에서 발견).
+        // 처음엔 셋 다 `Multiplicative` 로 묶었는데 그건 보스 채찍의 레거시였고,
+        // **배치 오라 둘의 레거시는 가산이었다**(`EnqueueStatModifier` → `FromMultiplier`).
+        // 버킷이 다르면 다른 버프와 쌓이는 방식이 달라진다 — 가디언 오라(+30%) 위에
+        // 카드 +70% 를 얹으면 가산은 2.0, 곱셈은 2.21 이다.
+        // `CrackedGrail_RevokeNeutralizesBothAdditiveEffects` 가 그 차이를 잡았다.
+        //
+        // 배치 오라가 `FromAuthoredMultiplier` 인 것이 우연한 일치가 아니다 — 레거시가
+        // **같은 번역 함수**를 썼으므로 이 값을 쓰는 한 감소 배율(궁수의 0.6)까지
+        // 자동으로 같은 버킷에 간다.
+        protected virtual SkillCombineOp CombineOp => SkillCombineOp.FromAuthoredMultiplier;
+
         // 자기 자신도 받나. 보스 채찍은 **뺀다**(기존 계약), 가디언은 **넣는다**
         // (레거시 arm 의 명시 결정 — "자율성 · 더 강한 피드백"). 상대 오라는 애초에
         // 자기가 후보 풀에 없어 이 축이 의미 없다.
@@ -67,7 +79,7 @@ namespace Wassup.Skills.Concrete
                     Target = buf[i],
                     Source = caster.Unit,
                     Selector = (int)stat,
-                    Op = SkillCombineOp.Multiplicative,
+                    Op = CombineOp,
                     Origin = ModifierOrigin,
                     Amount = mul,
                     Duration = a.Ttl,
@@ -100,6 +112,8 @@ namespace Wassup.Skills.Concrete
         protected override bool TargetsAllies => true;
         protected override SkillStatKind? FixedStat => SkillStatKind.MoveSpeedMul;
         protected override SkillModifierOrigin ModifierOrigin => SkillModifierOrigin.Boss;
+        // 채찍의 레거시 arm 은 `op = CombineOp.Multiplicative` 를 **명시**했다.
+        protected override SkillCombineOp CombineOp => SkillCombineOp.Multiplicative;
     }
 
     // 가디언 — 아군에게 저작한 스탯(오늘은 공격력).

@@ -5581,8 +5581,9 @@ namespace Wassup.Bridge
         // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
         // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
         // the new channel stores the speed multiplier directly (ModifierStatsAggregateSystem applies it to attackSpeedMul).
-        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0, origin);
+        // skill-layer-migration unit 4d — `EnqueueAttackSpeedMul` 은 은퇴했다. 유일한
+        // 호출처가 마지막 불꽃 bake 였고 그게 concrete 로 갔다(공속 버프는 이제 스킬이
+        // `ApplyStatModifier` 로 낸다). 형제 `EnqueueMoveSpeedMul` 은 살아 있다.
 
         public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
             => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0, origin);
