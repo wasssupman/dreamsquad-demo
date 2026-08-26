@@ -89,6 +89,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1, em.GetBuffer<DamagedCounter>(host)[0].counter,
                 "게이트 안 피격은 카운트된다");
             float before = em.GetComponentData<Health>(dummy).value;
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             em.GetBuffer<IncomingDamage>(host).Add(new IncomingDamage { amount = 2f });
             float t = 0f;
             while (t < 3f && em.GetComponentData<Health>(dummy).value > before - 1f)
@@ -97,6 +98,13 @@ namespace Wassup.Tests.PlayMode
                 "period 2 도달 — 발동 후 카운터 리셋");
             Assert.AreEqual(before - 20f, em.GetComponentData<Health>(dummy).value, 0.5f,
                 "궁지폭발 flat 20 이 인접 더미에 착탄 (유일 데미지 소스)");
+
+            // ⚠ 위 피해 단언은 legacy arm 이 일해도 똑같이 초록이다 — 「누가 일했나」는
+            // seam 계측만 답한다(skill-layer-migration unit 3d‴).
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Death), 1,
+                "궁지폭발이 스킬 레이어를 안 거쳤다 — legacy arm 이 대신 일하고 있다");
         }
 
         [UnityTest]

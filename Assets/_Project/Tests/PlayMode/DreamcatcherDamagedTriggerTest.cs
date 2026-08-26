@@ -48,6 +48,7 @@ namespace Wassup.Tests.PlayMode
 
             int handle = bridge.ApplyDreamcatcherCardToUnit(defender, MakeThornCard(period: 2));
             Assert.GreaterOrEqual(handle, 0, "OnDamagedN×NextAttackDoubleFire attached (bake ok)");
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             yield return null;
 
             // 1번째 피격 프레임 — 아직 발동 없음 (period 2).
@@ -63,6 +64,15 @@ namespace Wassup.Tests.PlayMode
             { t += Time.deltaTime; yield return null; }
             Assert.IsTrue(em.HasComponent<Wassup.Battle.Combat.NextAttackDoubleFire>(defender),
                 "2번째 피격 프레임에 NextAttackDoubleFire charge 부착");
+
+            // ⚠ **이 단언만으로는 이전 여부를 못 묻는다**(skill-layer-migration unit 3d‴).
+            // 컴포넌트는 legacy arm 이 붙여도 똑같이 붙어서, 라우팅이 조용히 죽어도 위가
+            // 초록이다 — 그게 이 spec 이 반복해서 당한 실패 유형이다. 그래서 「concrete 가
+            // 진짜 불렸나」를 seam 계측으로 따로 묻는다.
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Death), 1,
+                "피격 카운터가 스킬 레이어를 안 거쳤다 — legacy arm 이 대신 일하고 있다");
         }
 
         private static DreamcatcherCard MakeThornCard(int period)

@@ -297,13 +297,50 @@ namespace Wassup.Battle.Units
                         counters[c] = slot;
                         if (!fired) continue;
 
+                        // ⚠ **라우팅이 payload 분기들보다 앞이다**(skill-layer-migration
+                        // unit 3d‴). 뒤에 두면 이전한 카드가 여전히 arm 을 타는데 arm 이
+                        // 잘 돌아 그물이 전부 초록이 된다.
+                        //
+                        // 이 seam 은 **죽음 seam**(바로 뒤)이 받는다 — 감지가 이 시스템
+                        // 안이라 그 seam 의 프레임 창과 정확히 같고, 시전자는 살아 있다
+                        // (`newHp > 0f` 가 위에서 이미 보장한다).
+                        bool routed = slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+                        if (routed && hasSkillQ)
+                        {
+                            var selfPos = _transformLookup.HasComponent(entity)
+                                ? _transformLookup[entity].Position : float3.zero;
+                            skillFiredSingleton.ValueRW.queue.Enqueue(
+                                new Wassup.Battle.Skills.SkillFiredEvent
+                            {
+                                Caster = entity,
+                                SkillId = slot.skillId,
+                                SlotIndex = c,
+                                FiredPosition = selfPos,
+                                Target = Entity.Null,
+                                TargetPosition = selfPos,
+                                Magnitude = slot.magnitude,
+                                TileRange = slot.tileRange,
+                                Period = slot.period,
+                                DataIndex = slot.aoeDataIndex,
+                                // ⚠ 레거시 피격 폭발은 층을 안 실었다(= 무제한). 여기서 자기
+                                // 공격 층을 실으면 지상 유닛의 반격 폭발이 비행 적을 놓친다.
+                                TargetTraversalLayers = 0,
+                            });
+                        }
+
                         // trigger-gates unit 0 — payload 디스패치 (위드닝). 발동했는데
                         // arm 이 없으면 loud fail (AttackSystem unhandled 컨벤션).
                         if (slot.payload == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
-                            grantDoubleFire = true;
+                        {
+                            if (!routed) grantDoubleFire = true;
+                        }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                         {
-                            // 피격 폭발 — OnShieldBreak 와 같은 큐/드레인 실행기 재사용.
+                            // ⚠ **이전돼도 이 이벤트는 계속 나간다.** 이 채널의 소비자는 넷이고
+                            // (카드 펄스 · 전투 로그 · 트레이스 · 실행) 스킬 레이어로 간 것은
+                            // **실행 하나뿐**이다. 안 보내면 「카드가 일했다」가 화면에서도
+                            // 리포트에서도 사라진다 — 실행만 옮기고 사실은 남긴다.
+                            // 브리지가 `skillId` 로 실행 여부를 가른다.
                             if (hasShieldBreakQueue && _transformLookup.HasComponent(entity))
                                 shieldBreakSingleton.ValueRW.queue.Enqueue(new ShieldBreakEvent
                                 {
@@ -315,9 +352,10 @@ namespace Wassup.Battle.Units
                                     duration = 0f,
                                     aoeDataIndex = slot.aoeDataIndex,
                                     fromDamagedTrigger = true,
+                                    skillId = slot.skillId,
                                 });
                         }
-                        else
+                        else if (!routed)
                             UnityEngine.Debug.LogWarning("[DamageApplication] DamagedCounter fired with unhandled payload kind.");
                     }
                     if (grantDoubleFire) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });

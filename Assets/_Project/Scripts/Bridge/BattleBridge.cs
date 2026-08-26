@@ -4294,6 +4294,11 @@ namespace Wassup.Bridge
                     }
                     : null;
 
+                // ⚠ **이전된 슬롯은 실행하지 않는다**(skill-layer-migration unit 3d‴).
+                // 위 펄스와 아래 로그는 이전 여부와 무관하게 돈다 — 이 채널이 나르는 것은
+                // 「카드가 일했다」는 사실이고, 스킬 레이어로 간 것은 **실행뿐**이다.
+                bool routedToSkillLayer = evt.skillId != Wassup.Skills.SkillRegistry.LegacyArmId;
+
                 if (evt.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {
                     // 실드 파열 폭발 — OnDeath 폭발/메테오와 동형. bake 가 AoE view 없으면 슬롯 자체를
@@ -4301,6 +4306,9 @@ namespace Wassup.Bridge
                     // 해결 — 로그의 대상은 cast 시점 범위 내 적 스냅샷(raw magnitude, cap 0 = 투사체 동일).
                     if (evt.aoeDataIndex >= 0)
                     {
+                        // 실행만 건너뛴다 — 아래 로그 스냅샷은 이전 여부와 무관하다.
+                        if (!routedToSkillLayer)
+                        {
                         SpawnProjectile(new ProjectileSpawnRequest
                         {
                             movement = MovementKind.SkyFall,
@@ -4318,6 +4326,7 @@ namespace Wassup.Bridge
                             // verbatim 복사일 뿐 역참조 없음(corpse killer 선례).
                             owner = evt.host,
                         }, Entity.Null);
+                        }
                         if (log != null)
                         {
                             CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, 0, targets);
@@ -9086,6 +9095,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteBlastSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteHazardSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.GrantSelfChargeSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9148,6 +9158,15 @@ namespace Wassup.Bridge
             if (trigger == Wassup.Data.DcTriggerKind.OnDeath
                 && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            // unit 3d‴ — 피격 N회. **자기 자리 폭발**은 살아 있는 시전자 발밑이라
+            // `SelfAreaBlastSkill` 이 맞다(작별 선물과 반대 축이다).
+            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
+            }
             // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
@@ -9231,6 +9250,15 @@ namespace Wassup.Bridge
             if (trigger == Wassup.Data.DcTriggerKind.OnDeath
                 && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            // unit 3d‴ — 피격 N회. **자기 자리 폭발**은 살아 있는 시전자 발밑이라
+            // `SelfAreaBlastSkill` 이 맞다(작별 선물과 반대 축이다).
+            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
+            }
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
                 return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;

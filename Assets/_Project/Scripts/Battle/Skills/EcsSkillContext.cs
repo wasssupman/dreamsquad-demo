@@ -692,6 +692,19 @@ namespace Wassup.Battle.Skills
                     });
                     return;
                 }
+                case SimIntentKind.GrantCharge:
+                {
+                    if (!_hasEcb) return;
+                    var who = Resolve(intent.Target);
+                    if (who == Entity.Null || !_em.Exists(who)) return;
+                    // ⚠ **누적하지 않는다.** 레거시가 `AddComponent` 로 덮어썼고(v1 = 항상 1발),
+                    // 여기서 더하기로 바꾸면 연타로 맞는 순간 충전이 쌓여 사양이 달라진다.
+                    _ecb.AddComponent(who, new Wassup.Battle.Combat.NextAttackDoubleFire
+                    {
+                        charges = (int)intent.Amount,
+                    });
+                    return;
+                }
                 case SimIntentKind.Report:
                 {
                     // 문장은 여기서 만든다 — 도메인은 코드만 보낸다.

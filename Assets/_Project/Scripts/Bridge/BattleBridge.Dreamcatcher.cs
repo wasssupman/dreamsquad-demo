@@ -498,6 +498,9 @@ namespace Wassup.Bridge
                     }
                     var dEntry = new Wassup.Battle.Units.DamagedCounter
                     {
+                        // unit 3d‴ — 이 버퍼의 라우팅 키. 슬롯 경로와 **같은 규칙 함수**를
+                        // 쓴다(버퍼가 다르다는 것이 규칙이 다르다는 뜻은 아니다).
+                        skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
                         instanceId = _dcInstanceCounter++,
                         period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
                         counter = 0,
