@@ -7690,7 +7690,7 @@ namespace Wassup.Bridge
                     // 계약 5 — 실드 범위는 유닛 `attackRange` 재사용이라 에셋에 range 가 없다.
                     tileRange = GridMath.RangeToTiles(unitData.attackRange),
                     // 저작 filter 는 도메인 enum 과 값이 같다(Self·Nearest·MostHurt).
-                    ccKind = (Wassup.Battle.Effects.CcKind)(byte)shieldAbility.filter,
+                    shieldFilter = (byte)shieldAbility.filter,
                     // ⚠ **셔틀은 자기를 포함한다**(계약 6). 카드 경로(악몽의 가호)는 제외인데,
                     // 그 이유가 「같은 host 의 두 실드 능력이 한 슬롯을 공유한다」라서 —
                     // 셔틀엔 겹칠 상대가 없다. 그 사실은 저작자가 아니라 bake 만 안다.

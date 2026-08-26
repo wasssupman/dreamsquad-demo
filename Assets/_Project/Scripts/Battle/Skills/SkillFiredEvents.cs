@@ -57,6 +57,10 @@ namespace Wassup.Battle.Skills
         public int Period;
         public int DataIndex;
         public int Selector;
+        // 두 번째 선택자 — `Selector` 가 이미 다른 축을 쓸 때 온다(실드 필터가 첫 사용자).
+        // ⚠ 슬롯에서도 **전용 필드**(`shieldFilter`)로 온다 — `ccKind` 에 얹었다가
+        // `MinHealth(2)` 가 `DoT(2)` 로 저장되던 것을 뗐다(ECS 리뷰 M-3).
+        public int Selector2;
         public float Speed;
         public float HitThreshold;
         public float SlamDamage;

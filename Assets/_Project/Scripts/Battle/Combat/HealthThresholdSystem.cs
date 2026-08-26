@@ -43,7 +43,6 @@ namespace Wassup.Battle.Combat
         {
             // unit 1 — ThreatEntry 게이팅 제거: 보스 없이 디펜더만 있어도 last_stand
             // 이 돌아야 한다. threat-drain 은 아래 TryGet/HasBuffer 로 독립 가드됨.
-            state.RequireForUpdate<FlowFieldSingleton>();
         }
 
         [BurstCompile]

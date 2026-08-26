@@ -1,5 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Units;
 using Wassup.Skills;
@@ -204,14 +205,21 @@ namespace Wassup.Battle.Skills
 
                 var caster = BuildCaster(em, evt.Caster);
                 var target = BuildTarget(em, evt);
+                // ⚠ **사건 자리가 비면 시전자 자리로 접는다**(ECS 리뷰 M-7).
+                // 주기·경계·부착 seam 의 생산자는 `TargetPosition` 을 안 채운다 — 오늘
+                // `EventPosition` 소비자 셋이 전부 채우는 seam 에만 실려 무해하지만,
+                // 그 트리거로 「사건 자리」를 쓰는 concrete 가 처음 생기면 **월드 원점에서
+                // 터진다.** 이 spec 이 이미 한 번 잡은 증상이라 0 을 흘려보내지 않는다.
+                var eventPos = math.all(evt.TargetPosition == float3.zero)
+                    ? evt.FiredPosition : evt.TargetPosition;
                 var p = new SkillParams(
                     evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
                     evt.Selector, evt.Speed, evt.HitThreshold,
                     evt.SlamDamage, evt.SlamTileRange, evt.StackId, evt.VisualScale,
                     evt.PatternIndex, evt.StatSelector, evt.StackSelector,
                     evt.ProjectileMovement, evt.ProjectilePayload, evt.TargetTraversalLayers,
-                    evt.TargetPosition, evt.HazardDataIndex,
-                    evt.Count, evt.IncludesSelf);
+                    eventPos, evt.HazardDataIndex,
+                    evt.Count, evt.IncludesSelf, evt.Selector2);
 
                 // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
                 // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.

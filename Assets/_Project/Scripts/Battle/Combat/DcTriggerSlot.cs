@@ -93,6 +93,11 @@ namespace Wassup.Battle.Combat
         // ⚠ **자기 포함을 filter 로 접으면 안 된다.** 같은 filter 라도 카드 경로(악몽의
         // 가호)는 자기를 빼고 능력 경로(실드 셔틀)는 넣는다 — 그 차이의 이유가
         // 「이 host 에 자기 실드를 주는 능력이 또 있나」이고, 그건 bake 만 아는 사실이다.
+        // ⚠ **`ccKind` 에 얹지 않는다**(ECS 리뷰 M-3). 같은 커밋에서 아래 두 축은 전용
+        // 필드를 신설했으면서 필터만 남의 축에 얹었었다 — `MinHealth(2)` 가 `CcKind.DoT(2)`
+        // 로 저장돼, `ccKind` 를 읽는 다른 소비자(로그·트레이스·bake 검증)가 실드 슬롯을
+        // 「DoT」로 오독한다. 이 파일이 세 번 반복하는 「겸직 금지」의 자리다.
+        public byte shieldFilter;
         public bool shieldIncludesSelf;
         // 0 = 상한 없음(반경 안 전부). 셔틀만 채운다.
         public int shieldTargetCount;

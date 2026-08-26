@@ -64,12 +64,17 @@ namespace Wassup.Skills.Concrete
 
             // ⚠ **우선순위와 인원 상한은 여기서 갈린다.** 상한이 없으면(카드 경로)
             // 반경 안 전부이고, 있으면(셔틀) 저작한 순서로 C 명만 고른다.
-            int limit = p.Count > 0 ? p.Count : n;
             var order = new int[MaxTargets];
             int picked;
-            if (limit >= n && (SkillShieldFilter)p.Selector != SkillShieldFilter.MostHurt)
+            // ⚠ **필터는 상한이 있을 때만 존재하는 개념이다**(ECS 리뷰 M-2 재수정).
+            // 카드 경로(악몽의 가호)는 「반경 안 전부」라 필터를 **저작하지 않는다** —
+            // 그런데 저작 안 한 0 은 enum 상 `Self` 라, 필터를 무조건 읽으면 카드가
+            // 「자기만」으로 접히고 host 제외 계약과 만나 **아무에게도 안 준다.**
+            //
+            // 처음엔 「전부 주면 정렬이 무의미하다」로 우회했는데 그건 필터가 **순서만**
+            // 정할 때만 참이다(`Self` 는 인원을 자른다). 상한 유무로 가르는 것이 옳다.
+            if (p.Count <= 0)
             {
-                // 전부 주는 경우엔 정렬이 결과를 안 바꾼다 — 후보 순서 그대로.
                 picked = n;
                 for (int i = 0; i < n; i++) order[i] = i;
             }
@@ -86,7 +91,7 @@ namespace Wassup.Skills.Concrete
                     if (buf[i].Value == caster.Unit.Value) selfIndex = i;
                 }
                 picked = SkillShieldSelect.Select(
-                    (SkillShieldFilter)p.Selector, limit, selfIndex,
+                    (SkillShieldFilter)p.Selector2, p.Count, selfIndex,
                     distSq, hpRatio, n, order);
             }
 

@@ -752,7 +752,8 @@ namespace Wassup.Battle.Skills
                 }
                 case SimIntentKind.BeginDreamCocoon:
                 {
-                    if (!_hasEcb) return;
+                    // ⚠ ECB 를 안 쓰므로 `_hasEcb` 를 묻지 않는다(ECS 리뷰 LOW) —
+                    // 물으면 ECB 미주입 호스트에서 잠이 조용히 안 걸린다.
                     var sleeper = Resolve(intent.Target);
                     if (sleeper == Entity.Null || !_em.Exists(sleeper)) return;
                     // ⚠ **잠과 감시를 같이 붙인다 — 이것이 「개시」의 뜻이다.**

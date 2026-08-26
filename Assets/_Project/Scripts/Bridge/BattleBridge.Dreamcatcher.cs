@@ -358,8 +358,17 @@ namespace Wassup.Bridge
                             Duration = m.payload.duration,
                         });
                         immediateFired = true;
+                        attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
                     }
-                    attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    else
+                    {
+                        // ⚠ **fail-closed**(ECS 리뷰 H-1). 라우팅이 안 잡히면 실행이
+                        // 아무 데서도 안 일어난다 — 그런데 `attached++` 가 밖에 있으면
+                        // 카드는 «부착 성공»으로 판정돼 **비용만 나간다.**
+                        // 이 spec 이 세운 규율(미등록 스킬 loud reject · Seam.None loud drop)의
+                        // 정확한 반대편이라, 여기서도 짖고 안 센다.
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfBuffLethal 이 스킬 레이어로 라우팅되지 않았다(skillId={lethalSkillId}, queue={_skillFiredQueue.IsCreated}) — 부착하지 않는다.");
+                    }
                     continue;
                 }
 
@@ -428,8 +437,13 @@ namespace Wassup.Bridge
                             StackId = _dcStackCounter++,
                         });
                         immediateFired = true;
+                        attached++;
                     }
-                    attached++;
+                    else
+                    {
+                        // fail-closed — 위 SelfBuffLethal 과 같은 이유.
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon 이 스킬 레이어로 라우팅되지 않았다(skillId={cocoonSkillId}, queue={_skillFiredQueue.IsCreated}) — 부착하지 않는다.");
+                    }
                     continue;
                 }
 
@@ -1182,6 +1196,14 @@ namespace Wassup.Bridge
                     StackId = _dcStackCounter++,
                 });
                 RunImmediateSkills();
+            }
+            else
+            {
+                // ⚠ **fail-closed**(ECS 리뷰 H-1). 여기가 특히 나쁘다 — 등록부에 넣어
+                // 버리면 같은 적에 **재시도조차 막힌다**(이중 표식 preflight 에 걸린다).
+                // 무차감 거절이 옳다.
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): 스킬 레이어로 라우팅되지 않았다(skillId={bountySkillId}, queue={_skillFiredQueue.IsCreated}) — 표식하지 않는다.");
+                return -1;
             }
             _bountyMarked.Add(enemy);
             return 0;

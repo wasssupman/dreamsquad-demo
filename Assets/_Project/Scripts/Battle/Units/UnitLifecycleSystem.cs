@@ -126,18 +126,26 @@ namespace Wassup.Battle.Units
                 if (hasSkillQ && dcSlotLookup.HasBuffer(entity))
                 {
                     var routeSlots = dcSlotLookup[entity];
-                    int firedMask = 0;
+                    ulong firedMask = 0;
                     for (int s = 0; s < routeSlots.Length; s++)
                     {
                         var rs = routeSlots[s];
                         if (rs.trigger != DcTriggerKind.OnDeath) continue;
                         if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
                         // 같은 스킬은 죽음당 한 번만(레거시도 첫 매칭만 스탬프했다).
-                        if (rs.skillId >= 0 && rs.skillId < 32)
+                        // ⚠ **id 상한이 곧 중복 억제의 상한이다**(ECS 리뷰 M-1). 32칸을 쓰던 시절
+                        // 레지스트리가 이미 32를 넘겨서, id ≥ 32 인 스킬은 중복 억제가 **꺼져**
+                        // 있었다 — 「같은 카드 두 장 = 폭발 두 번」이 조용히 부활하는 자리다.
+                        if (rs.skillId >= 0 && rs.skillId < 64)
                         {
-                            int bit = 1 << rs.skillId;
+                            ulong bit = 1UL << rs.skillId;
                             if ((firedMask & bit) != 0) continue;
                             firedMask |= bit;
+                        }
+                        else
+                        {
+                            UnityEngine.Debug.LogWarning(
+                                "[SkillRouting] skillId 가 64를 넘어 중복 억제가 꺼졌다 — 마스크 폭을 늘려야 한다.");
                         }
                         var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
                             ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
