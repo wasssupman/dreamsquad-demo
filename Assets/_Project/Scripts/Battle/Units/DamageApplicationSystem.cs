@@ -394,6 +394,7 @@ namespace Wassup.Battle.Units
                                 StackSelector = (int)rs.stackKind,
                                 ProjectileMovement = (int)rs.projectileMovement,
                                 ProjectilePayload = (int)rs.projectilePayload,
+                                HazardDataIndex = rs.hazardDataIndex,
                                 PatternIndex = rs.patternIndex,
                                 Speed = rs.speed,
                                 HitThreshold = rs.hitThreshold,

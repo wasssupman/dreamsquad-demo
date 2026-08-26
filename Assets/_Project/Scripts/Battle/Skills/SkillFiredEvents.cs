@@ -56,6 +56,8 @@ namespace Wassup.Battle.Skills
         // 성격의 불투명 토큰이고, 뜻은 어댑터와 저작 계층만 안다.
         public int ProjectileMovement;
         public int ProjectilePayload;
+        // 해저드 저작 index(`DataIndex` 와 다른 표). −1 = 없음.
+        public int HazardDataIndex;
     }
 
     // 채널 수명주기는 `BattleBridge` 소유다 — 생성 Persistent / 싱글턴 파괴 / Dispose

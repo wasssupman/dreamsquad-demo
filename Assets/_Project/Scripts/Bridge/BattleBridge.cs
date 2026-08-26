@@ -9076,6 +9076,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteBlastSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteHazardSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9123,9 +9124,13 @@ namespace Wassup.Bridge
         private static int SkillIdForMechanic(Wassup.Data.DcTriggerKind trigger,
                                               Wassup.Data.DcPayloadKind kind)
         {
-            if (trigger == Wassup.Data.DcTriggerKind.OnKill
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            if (trigger == Wassup.Data.DcTriggerKind.OnKill)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
+                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
+            }
             return SkillIdForPayload(kind);
         }
 
@@ -9190,9 +9195,13 @@ namespace Wassup.Bridge
                                                  Wassup.Data.DcPayloadKind kind)
         {
             // unit 3d — 죽은 자리 폭발. 처치 seam 이 열렸으므로 카드도 함께 연다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnKill
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            if (trigger == Wassup.Data.DcTriggerKind.OnKill)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
+                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
+            }
             switch (kind)
             {
                 // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해

@@ -174,6 +174,7 @@ namespace Wassup.Battle.Combat
                                     StackSelector = (int)slot.stackKind,
                                     ProjectileMovement = (int)slot.projectileMovement,
                                     ProjectilePayload = (int)slot.projectilePayload,
+                                    HazardDataIndex = slot.hazardDataIndex,
                                 });
                             }
                         }

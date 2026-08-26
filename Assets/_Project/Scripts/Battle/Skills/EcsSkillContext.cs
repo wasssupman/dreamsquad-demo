@@ -60,6 +60,8 @@ namespace Wassup.Battle.Skills
         private bool _hasDotQueue;
         private NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> _knockupQueue;
         private bool _hasKnockupQueue;
+        private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardQueue;
+        private bool _hasHazardQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _hitQueue;
         private bool _hasHitQueue;
         private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldVfxQueue;
@@ -151,6 +153,11 @@ namespace Wassup.Battle.Skills
         public void BindKnockupSink(NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> q, bool has)
         {
             _knockupQueue = q; _hasKnockupQueue = has;
+        }
+
+        public void BindHazardSink(NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> q, bool has)
+        {
+            _hazardQueue = q; _hasHazardQueue = has;
         }
 
         // 빔은 큐가 없다 — 브리지의 프레젠터가 직접 여는 뷰 세션이라, 코스트·쿨다운과
@@ -699,6 +706,24 @@ namespace Wassup.Battle.Skills
                         maxStack = StackCap(intent.Selector),
                         perAppDuration = intent.Duration,
                         source = Resolve(intent.Source),
+                    });
+                    return;
+                }
+                case SimIntentKind.SpawnZoneCarrier:
+                {
+                    if (!_hasHazardQueue) return;
+                    // 모양·반경·지속·효과·틱·뷰는 전부 해저드 저작 소유다 — 여기서 정하는 것은
+                    // 「어디에 · 누구를 대상으로」뿐이고, 그래서 index 하나만 지나간다.
+                    _hazardQueue.Enqueue(new Wassup.Battle.Effects.HazardSpawnRequest
+                    {
+                        kind = Wassup.Battle.Effects.HazardCastKind.Zone,
+                        dataIndex = intent.DataIndex,
+                        centerCell = intent.Cell,
+                        caster = Resolve(intent.Source),
+                        target = Entity.Null,
+                        // ⚠ **발화 시점 사양이다.** 여기서 시전자를 다시 읽으면 동귀어진일 때
+                        // 이미 파괴돼 0(= 무제한 통과)으로 샌다.
+                        targetTraversalLayers = intent.TargetTraversalLayers,
                     });
                     return;
                 }

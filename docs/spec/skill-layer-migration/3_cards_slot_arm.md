@@ -52,7 +52,9 @@
 | **3b′** | `ProjectileToTarget`(2) — 비수·부메랑 | **완료** (2026-08-26) |
 | **3c** | **죽음 seam 개통** + 첫 소비자 `OnKill × SelfStatBuff`(포식) | **완료** (2026-08-26) |
 | **3d** | `OnKill × SelfTileAoe`(시체폭발) | **완료** (2026-08-26) |
-| **3d′** | `OnKill × SpawnHazard`(잿불) · `OnDeath`(2) · `OnDamagedN`(2) | 3c ✅ |
+| **3d′** | `OnKill × SpawnHazard`(잿불) | **완료** (2026-08-26) |
+| **3d″** | `OnDeath`(2) — 감지자가 `UnitLifecycleSystem` 이라 seam 이 또 필요하다 | |
+| **3d‴** | `OnDamagedN`(2) — ⚠ **`DcTriggerSlot` 을 안 쓴다**(별도 `DamagedCounter` 버퍼) | |
 | **3e** | `OnShieldBreak`/`OnRetire` seam + payload (4행) | — |
 | **3f** | 부착 자격만 있는 5행 + 남은 payload | |
 | **3g** | 카드 bake 전면 개방 + 카드 arm 철거 | 위 전부 |
@@ -158,6 +160,28 @@ arm 이 그대로 돈다 — **이중 발화도 조용한 죽음도 없다.** �
 ⚠ 그 그물이 처음엔 빨갰는데 원인은 이전이 아니라 **`StartBattle()` 부재**였다 —
 투사체 드레인이 `_running` 아래다(2a·2f 와 같은 함정). 형제 테스트(포식)는 스탯
 모디파이어라 이 경로가 필요 없어 안 밟았다.
+
+## 3d′ 에서 나온 것 (2026-08-26)
+
+**잿불도 행동 그물이 없었다.** 시체폭발과 같다 — 「붙는다」만 검증됐고 깔리는지를
+아무도 안 쟀다. `Hazard` 컴포넌트 개수 증가로 재는 그물을 함께 깔았다.
+
+**해저드 index 는 `DataIndex` 와 다른 표다.** 겸직시키면 「0번 탄」과 「0번 장판」이
+같은 값이 된다 — 전용 축(`HazardDataIndex`)으로 열었다.
+
+**통행 층은 발화 시점 값이어야 한다.** 드레인 때 시전자를 다시 읽으면 동귀어진에서
+이미 파괴돼 0(= 무제한 통과)으로 샌다 — 지상 전용 유닛의 불씨가 비행 적을 태운다.
+concrete 가 **0 이면 아예 안 깐다**(fail-closed) — 0 은 폴백이 아니라 구멍이다.
+
+## ⚠ 남은 죽음 계열 둘은 모양이 다르다
+
+**`OnDeath`** 는 감지자가 `UnitLifecycleSystem` 인데 죽음 seam 이 그 **앞**이라,
+거기서 낸 이벤트는 다음 프레임에 드레인된다. seam 을 하나 더 열거나 감지 위치를
+옮겨야 한다.
+
+**`OnDamagedN`** 은 **`DcTriggerSlot` 을 아예 안 쓴다** — 별도 `DamagedCounter` 버퍼에
+bake 된다(피해를 받는 곳이 Units 라 카운트를 거기 쓴다는 설계). `skillId` 라우팅이
+성립하지 않아 이전 모양이 다르다.
 
 ## 구현
 

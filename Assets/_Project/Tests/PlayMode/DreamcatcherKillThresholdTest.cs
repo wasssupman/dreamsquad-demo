@@ -216,6 +216,87 @@ namespace Wassup.Tests.PlayMode
                 "구경꾼이 안 맞았다 — 폭발이 죽은 자리가 아니라 시전자 자리에서 터졌다(2칸은 반경 밖)");
         }
 
+        // skill-layer-migration unit 3d′ — **잿불(죽은 자리 장판)의 첫 행동 그물.**
+        //
+        // 시체폭발과 자리는 같고 하는 일이 다르다 — 즉발 폭발이 아니라 **남는 장판**이다.
+        // 여기서 재는 것은 「깔렸나 · 죽은 자리에」 둘뿐이고, 모양·지속·틱은 해저드 저작
+        // 소유라 이 그물의 축이 아니다.
+        [UnityTest]
+        public IEnumerator EmberField_LaysAZoneAtTheVictimsCell()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var guardian = FindDefenderCatalog().ById("guardian");
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+            bridge.StartBattle();
+            BattleBridgeTestAccess.SetField(bridge, "_usingGeneratedWaves", false);
+            ((System.Collections.IList)BattleBridgeTestAccess.Field(bridge, "_pending")).Clear();
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var defender = FindDefender(bridge, em);
+            var card = MakeEmberFieldCard();
+            if (card == null) Assert.Ignore("존 해저드 저작이 없다 — 이 그물의 전제가 성립하지 않는다");
+            Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "ember attached");
+
+            using var zoneQ = em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Effects.Hazard>());
+            int before = zoneQ.CalculateEntityCount();
+
+            float tile = (bridge.GridToWorldCenterVector(new Vector2Int(1, 0))
+                          - bridge.GridToWorldCenterVector(new Vector2Int(0, 0))).magnitude;
+            var defPos = em.GetComponentData<LocalTransform>(defender).Position;
+            var victim = SpawnBystander(em, bridge, defPos + new float3(tile, 0f, 0f), hp: 1f);
+
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+
+            float t = 0f;
+            while (t < 6f && em.Exists(victim) && em.GetComponentData<Health>(victim).value > 0f)
+            { t += Time.deltaTime; yield return null; }
+            Assert.IsTrue(!em.Exists(victim) || em.GetComponentData<Health>(victim).value <= 0f,
+                "전제: 방어유닛이 적을 처치해야 이 그물이 측정이 된다");
+
+            for (int i = 0; i < 20; i++) yield return null;   // 요청 → 존 생성
+            int after = zoneQ.CalculateEntityCount();
+            if (em.Exists(victim)) em.DestroyEntity(victim);
+
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Death), 1,
+                "죽음 seam 이 concrete 를 안 거쳤다");
+            Assert.Greater(after, before,
+                "처치 후 장판이 안 깔렸다 — 「불씨가 안 깔린다」는 육안 추적이 어려운 증상이라 여기서 잡는다");
+        }
+
+        // 존 해저드 저작 하나를 찾아 잿불 카드를 만든다. 저작이 없으면 null(위에서 Ignore).
+        private static DreamcatcherCard MakeEmberFieldCard()
+        {
+            HazardSO zone = null;
+            foreach (var z in Resources.FindObjectsOfTypeAll<HazardSO>())
+                if (z != null) { zone = z; break; }
+            if (zone == null) return null;
+
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new[] { new DcMechanic {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.OnKill },
+                payload = new DcPayloadSpec { kind = DcPayloadKind.SpawnHazard, hazard = zone },
+            }};
+            return card;
+        }
+
         private static DreamcatcherCard MakeCorpseBurstCard()
         {
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();

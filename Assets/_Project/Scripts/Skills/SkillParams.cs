@@ -42,6 +42,10 @@ namespace Wassup.Skills
         // 죽음 계열은 피해자가 쓰러진 곳이 그 자리이고, 드레인 시점엔 그 엔티티가
         // 이미 없어 **재질의가 불가능**하다. 그래서 발화 시점 좌표를 싣는다.
         public readonly Unity.Mathematics.float3 EventPosition;
+        // 해저드 저작 index. **`DataIndex`(탄·연출)와 다른 표**를 가리킨다 —
+        // 겸직시키면 「0번 탄」과 「0번 장판」이 같은 값이 된다. −1 = 없음.
+        public readonly int HazardDataIndex;
+        public bool HasHazard => HazardDataIndex >= 0;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -58,7 +62,8 @@ namespace Wassup.Skills
             float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
             int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0,
             int projectileMovement = 0, int projectilePayload = 0,
-            byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default)
+            byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default,
+            int hazardDataIndex = NoDataIndex)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -68,6 +73,7 @@ namespace Wassup.Skills
             StatSelector = statSelector; StackSelector = stackSelector;
             ProjectileMovement = projectileMovement; ProjectilePayload = projectilePayload;
             TargetTraversalLayers = targetTraversalLayers; EventPosition = eventPosition;
+            HazardDataIndex = hazardDataIndex;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
