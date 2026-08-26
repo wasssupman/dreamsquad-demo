@@ -29,6 +29,9 @@ namespace Wassup.Skills.Concrete
                 DataIndex = a.VfxDataIndex,
                 Duration = 0f,                 // flightTime 0 = 즉발
                 VisualScale = a.VisualScale,   // 0 = 저작 없음 → 어댑터가 1 로 읽는다
+                // ⚠ **시전자의 공격 층을 실는다.** 안 실으면 0 = 무제한이라 근접 유닛의
+                // 폭발이 하늘의 적을 때린다(unit 2a 의 그물이 잡은 축).
+                TargetTraversalLayers = p.TargetTraversalLayers,
             });
         }
     }

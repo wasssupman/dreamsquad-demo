@@ -31,7 +31,9 @@ namespace Wassup.Skills.Concrete
                 TileRange = a.Radius,
                 DataIndex = a.VfxDataIndex,
                 Duration = 0f,                 // flightTime 0 = 즉발
-                VisualScale = a.VisualScale,
+                // ⚠ **레거시는 배율을 1 로 하드코딩했다**(투트랙 리뷰 HIGH-3c). 저작값을
+                // 쓰면 라이브 카드의 폭발 그림이 30% 커진다 — 기록 없는 변경은 안 한다.
+                VisualScale = 0f,   // 0 = 어댑터가 1 로 읽는다
                 // ⚠ **레거시는 층을 안 실었다**(= 무제한). 여기서 킬러의 공격 층을 실으면
                 // 지상 전용 킬러의 시체폭발이 비행 적을 더는 못 때린다 — 그건 사양 변경이다.
                 // 형제(잿불)는 반대로 층을 **실어야** 했다(그쪽 레거시가 그랬다).

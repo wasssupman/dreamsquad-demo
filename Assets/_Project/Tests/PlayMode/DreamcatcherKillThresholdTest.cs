@@ -256,6 +256,14 @@ namespace Wassup.Tests.PlayMode
                           - bridge.GridToWorldCenterVector(new Vector2Int(0, 0))).magnitude;
             var defPos = em.GetComponentData<LocalTransform>(defender).Position;
             var victim = SpawnBystander(em, bridge, defPos + new float3(tile, 0f, 0f), hp: 1f);
+            // ⚠ 죽으면 사라진다 — **지금** 자리를 적어 둔다. 이 그물의 요점이 그 자리다.
+            var victimCell = bridge.DebugWorldToCell(
+                new Vector3(defPos.x + tile, defPos.y, defPos.z));
+            var casterCell = bridge.DebugWorldToCell(new Vector3(defPos.x, defPos.y, defPos.z));
+            Assert.IsTrue(!casterCell.Equals(victimCell),
+                "전제: 두 자리가 달라야 「누구 자리인가」를 물을 수 있다");
+            var beforeZones = new System.Collections.Generic.HashSet<Entity>(
+                zoneQ.ToEntityArray(Unity.Collections.Allocator.Temp).ToArray());
 
             Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
 
@@ -275,6 +283,31 @@ namespace Wassup.Tests.PlayMode
                 "죽음 seam 이 concrete 를 안 거쳤다");
             Assert.Greater(after, before,
                 "처치 후 장판이 안 깔렸다 — 「불씨가 안 깔린다」는 육안 추적이 어려운 증상이라 여기서 잡는다");
+
+            // ⚠ **개수만으로는 이 concrete 를 증명 못 한다**(투트랙 리뷰 M-3). 시전자
+            // 발밑에 깔려도 개수는 똑같이 는다. 잿불의 요점은 「죽은 자리」라, 새로 생긴
+            // 존이 **피해자 칸**을 덮는지를 묻는다.
+            // ⚠ **덮는지**가 아니라 **중심이 어디인지**를 묻는다. 장판이 3×3 이면 시전자
+            // 발밑에 깔려도 한 칸 옆 피해자 칸을 덮어서, 「덮었나」 단언은 공허해진다.
+            // 대칭 장판의 칸 평균 = 중심이라, 그게 곧 「누구 자리인가」다.
+            bool sawNewZone = false;
+            var centroid = new float2(0f, 0f);
+            foreach (var z in zoneQ.ToEntityArray(Unity.Collections.Allocator.Temp))
+            {
+                if (beforeZones.Contains(z)) continue;
+                if (!em.HasBuffer<Wassup.Battle.Effects.HazardCellsBuffer>(z)) continue;
+                var cells = em.GetBuffer<Wassup.Battle.Effects.HazardCellsBuffer>(z);
+                if (cells.Length == 0) continue;
+                var sum = new float2(0f, 0f);
+                foreach (var c in cells) sum += new float2(c.cell.x, c.cell.y);
+                centroid = sum / cells.Length;
+                sawNewZone = true;
+            }
+            Assert.IsTrue(sawNewZone, "새 장판의 칸 버퍼를 못 읽었다");
+            Assert.AreEqual(victimCell.x, Mathf.RoundToInt(centroid.x), 
+                $"장판 중심 x 가 피해자 칸이 아니다(중심 {centroid}, 피해자 {victimCell}, 시전자 {casterCell})");
+            Assert.AreEqual(victimCell.y, Mathf.RoundToInt(centroid.y),
+                $"장판 중심 y 가 피해자 칸이 아니다(중심 {centroid}, 피해자 {victimCell}, 시전자 {casterCell})");
         }
 
         // 존 해저드 저작 하나를 찾아 잿불 카드를 만든다. 저작이 없으면 null(위에서 Ignore).

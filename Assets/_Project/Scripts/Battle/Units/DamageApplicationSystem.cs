@@ -368,16 +368,32 @@ namespace Wassup.Battle.Units
                     // **적이 죽었을 때만** 터졌다. 빼면 방어유닛이 죽어도 킬러의 폭발이
                     // 그 자리에서 터진다 — 그건 「고침」이 아니라 사양 변경이라, 하려면
                     // 별도 결정으로 한다.
+                    // ⚠ **죽은 자리를 못 읽으면 아예 라우팅하지 않는다**(투트랙 리뷰 M-2).
+                    // OnKill 스킬은 전부 시체 자리를 쓴다. transform 이 없을 때 0 으로
+                    // 폴백하면 폭발과 장판이 **월드 원점에서** 터진다 — 조용한 오발이다.
+                    // 레거시 시체폭발 블록도 `_transformLookup.HasComponent(entity)` 안에 있었다.
                     if (hasSkillQ && killerSource != Entity.Null
                         && _attackTagLookup.HasComponent(entity)
+                        && _transformLookup.HasComponent(entity)
                         && _dcTriggerSlotLookup.HasBuffer(killerSource))
                     {
                         var routeSlots = _dcTriggerSlotLookup[killerSource];
+                        // ⚠ **같은 스킬은 킬당 한 번만**(투트랙 리뷰 M-2). 레거시는 페이로드
+                        // arm 별로 「첫 매칭 슬롯」만 스탬프했고, `skillId` 가 정확히 그
+                        // (trigger × payload) 키다. 캡이 없으면 같은 카드를 두 장 붙인
+                        // 유닛의 킬 한 번이 폭발을 두 번 터뜨린다.
+                        int firedMask = 0;
                         for (int s = 0; s < routeSlots.Length; s++)
                         {
                             var rs = routeSlots[s];
                             if (rs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
                             if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                            if (rs.skillId >= 0 && rs.skillId < 32)
+                            {
+                                int bit = 1 << rs.skillId;
+                                if ((firedMask & bit) != 0) continue;
+                                firedMask |= bit;
+                            }
                             skillFiredSingleton.ValueRW.queue.Enqueue(
                                 new Wassup.Battle.Skills.SkillFiredEvent
                             {
@@ -388,8 +404,7 @@ namespace Wassup.Battle.Units
                                     ? _transformLookup[killerSource].Position : float3.zero,
                                 // 죽은 자리 — 시체폭발·장판이 여기를 쓴다.
                                 Target = Entity.Null,
-                                TargetPosition = _transformLookup.HasComponent(entity)
-                                    ? _transformLookup[entity].Position : float3.zero,
+                                TargetPosition = _transformLookup[entity].Position,   // 위 가드가 보장
                                 Magnitude = rs.magnitude,
                                 Duration = rs.duration,
                                 TileRange = rs.tileRange,

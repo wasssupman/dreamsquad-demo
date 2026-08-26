@@ -175,6 +175,10 @@ namespace Wassup.Battle.Combat
                                     ProjectileMovement = (int)slot.projectileMovement,
                                     ProjectilePayload = (int)slot.projectilePayload,
                                     HazardDataIndex = slot.hazardDataIndex,
+                                    // killer 사양 스냅샷 — 어댑터가 재질의하지 않는다.
+                                    TargetTraversalLayers = SystemAPI.HasComponent<AttackState>(entity)
+                                        ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
+                                        : (byte)0,
                                 });
                             }
                         }

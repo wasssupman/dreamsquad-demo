@@ -906,13 +906,14 @@ namespace Wassup.Battle.Skills
                         // 레거시 `MeleeBurst` arm 은 후보를 모으는 단계에서 이 마스크로 걸렀고,
                         // 광역 탄 경로는 후보를 안 모으므로 탄이 대신 들고 가야 한다.
                         // 보스 자폭이 여태 이 구멍을 안 밟은 건 보스가 전 층을 때려서다.
-                        // ⚠ **실려 온 스냅샷이 우선이다**(ECS 리뷰 M-3). 재질의는 시전자가
-                        // 아직 살아 있는 seam 에서만 옳다 — 죽음 계열은 드레인 때 이미
-                        // 파괴됐을 수 있고, 그때 0(= 무제한 통과)으로 샌다.
-                        // 0 = 안 실림 → 종전대로 재질의(자리 폭발의 기존 호출처들).
-                        targetTraversalLayers = intent.TargetTraversalLayers != 0
-                            ? intent.TargetTraversalLayers
-                            : (_attack.HasComponent(owner) ? _attack[owner].targetTraversalLayers : (byte)0),
+                        // ⚠ **재질의하지 않는다**(투트랙 리뷰 M-3 / HIGH-3). 예전엔 owner 를
+                        // 다시 읽었는데 그러면 (a) 죽음 계열에서 시전자가 이미 파괴돼 0 으로
+                        // 새고 (b) **concrete 가 「무제한」을 표현할 수 없다** — 0 을 보내도
+                        // 재질의가 덮어써서 시체폭발이 조용히 좁아졌다.
+                        //
+                        // 이제 **0 = 무제한**이고 그게 `PlacementLayers.CanTarget` 의 뜻 그대로다.
+                        // 「누구를 때리나」는 스킬의 판단이므로 concrete 가 정한다.
+                        targetTraversalLayers = intent.TargetTraversalLayers,
                         // ⚠ 피해 풀 진영. 기본값이 Enemy 라 그냥 두면 **보스의 폭발이
                         // 자기 진영을 때린다**. caster 의 상대 진영에서 도출한다.
                         targetFaction =
