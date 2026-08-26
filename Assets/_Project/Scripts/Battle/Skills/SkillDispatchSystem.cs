@@ -221,7 +221,7 @@ namespace Wassup.Battle.Skills
                     continue;
                 }
 
-                var caster = BuildCaster(em, evt.Caster);
+                var caster = BuildCaster(em, evt.Caster, evt.CasterFaction);
                 var target = BuildTarget(em, evt);
                 // ⚠ **사건 자리가 비면 시전자 자리로 접는다**(ECS 리뷰 M-7).
                 // 주기·경계·부착 seam 의 생산자는 `TargetPosition` 을 안 채운다 — 오늘
@@ -298,10 +298,17 @@ namespace Wassup.Battle.Skills
         protected abstract Unity.Mathematics.int2 GridSize { get; }
         protected abstract Unity.Mathematics.float3 Origin { get; }
 
-        private static CasterRef BuildCaster(EntityManager em, Entity caster)
+        private static CasterRef BuildCaster(EntityManager em, Entity caster, Faction snapshot)
         {
             if (caster == Entity.Null || !em.Exists(caster))
-                return CasterRef.Player(Faction.DefenderUnit);   // 액티브 = 플레이어 시전
+            {
+                // ⚠ **시전자가 없을 때 진영을 «추측»하지 않는다**(migration unit 8 선행).
+                // 예전엔 무조건 방어유닛 편으로 접었다 — 액티브 카드(시전 주체 없음)에는
+                // 맞지만 **자기 죽음 seam 에는 정반대**다. 그 seam 은 정의상 파괴 뒤에
+                // 돌아서 적의 작별 선물도 여기로 오고, 그러면 적이 «적» 을 겨눈다.
+                // 생산자가 실어 보낸 값이 있으면 그것이 이긴다.
+                return CasterRef.Player(snapshot != Faction.None ? snapshot : Faction.DefenderUnit);
+            }
 
             // 결정은 `FactionRelation.Resolve` 가 소유한다 — 여기서 4단 체인을 복제하면
             // 세 번째 사본이 된다(리뷰 L1). 그 파일이 「복제하면 조용히 갈린다」고 적어뒀다.

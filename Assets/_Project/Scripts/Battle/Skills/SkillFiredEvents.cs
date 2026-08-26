@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Skills
 {
@@ -20,6 +21,18 @@ namespace Wassup.Battle.Skills
     public struct SkillFiredEvent
     {
         public Entity Caster;          // 무효 가능 — 플레이어 시전(액티브)
+
+        // ⚠ **시전자 진영의 값 스냅샷**(계약 8 의 빠진 조각, migration unit 8 선행).
+        //
+        // 드레인 시점에 시전자가 **없을 수 있다** — Lifecycle seam 은 정의상 파괴 뒤에
+        // 돌고(자기 죽음), 그때 엔티티에서 진영을 못 읽는다. 예전엔 그 자리를
+        // 「플레이어 시전(방어유닛 편)」으로 접었는데, 액티브 카드에는 맞지만
+        // **적의 자기 죽음 스킬에는 정반대**다 — 적의 작별 선물이 «적» 을 겨눈다.
+        // 오늘은 화이트리스트가 `OnDeath` 를 적에게 안 열어 무해하고, 그 문을 여는 것이
+        // 바로 unit 8 이다. 그래서 문을 열기 전에 이 축을 먼저 싣는다.
+        //
+        // `Faction.None`(=기본값) 은 「안 실었다」는 뜻이고 종전대로 접는다.
+        public Faction CasterFaction;
         public int SkillId;            // 0 = legacy arm. 감지측 Burst 가 아는 유일한 키
         public int SlotIndex;          // 로그·중복 판별용. **params 의 출처가 아니다**
 

@@ -155,6 +155,13 @@ namespace Wassup.Battle.Units
                         {
                             Seam = Wassup.Battle.Skills.SkillSeam.Lifecycle,   // 이 드레인 지점이 실행한다
                             Caster = entity,          // 드레인 때는 이미 파괴된 핸들이다
+                            // ⚠ **핸들이 죽으므로 진영도 값으로 실어야 한다**(unit 8 선행).
+                            // 안 실으면 디스패처가 「플레이어 시전」으로 접는다.
+                            // ⚠ 위 쿼리가 `DefenderUnitTag` 라 오늘은 리터럴이 참이다.
+                            // **적에게 `OnDeath` 를 여는 순간(unit 8) 이 줄이 거짓이 된다** —
+                            // 그때는 엔티티별로 진영을 도출해 실어야 하고, 안 그러면
+                            // 적의 작별 선물이 자기 진영을 때린다.
+                            CasterFaction = Wassup.Battle.Units.Faction.DefenderUnit,
                             SkillId = rs.skillId,
                             SlotIndex = s,
                             FiredPosition = deathPos,

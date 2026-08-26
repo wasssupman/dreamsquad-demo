@@ -60,7 +60,11 @@ namespace Wassup.Skills.Concrete
             // ⚠ **후보 그물은 레거시 셔틀 쿼리와 같아야 한다**(재리뷰 M-6).
             // 그쪽은 `WithAll<Health>` + `WithNone<PendingDeployment>` 를 쿼리에 박아
             // 공짜로 걸렀다 — 쿼리가 사라지면서 두 게이트가 조용히 같이 사라졌다.
-            //  · PendingDeployment: 아직 손에 들려 있는 유닛은 판 위에 없다.
+            //  · PendingDeployment: 아직 손에 들려 있는 유닛은 판 위에 없다. **단 「방금
+            //    놓인 그 유닛」은 예외여야 한다** — 배치 스킬의 주인공이 자기 후보에서
+            //    빠지면 안 된다. 그 예외를 여기서 표현하는 대신 **브리지의 순서**가 지킨다
+            //    (`ActivateDeployedDefender`: JustDeployed 부착 → 즉시 pending 제거 →
+            //     그 다음 프레임에 스킬 실행). 그 순서가 깨지면 여기로 돌아올 것.
             //  · Health: 없으면 실효 HP 비율이 0 으로 접혀 **「가장 다친 순」의 맨 앞**을
             //    차지한다 — 멀쩡한 아군을 제치고 체력이란 개념이 없는 것이 실드를 가져간다.
             var filter = CandidateFilter.ExcludeDead

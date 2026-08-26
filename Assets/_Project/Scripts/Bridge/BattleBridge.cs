@@ -4125,6 +4125,9 @@ namespace Wassup.Bridge
                         {
                             Seam = Wassup.Battle.Skills.SkillSeam.Lifecycle,
                             Caster = Entity.Null,   // 퇴근한 유닛은 이미 없다(레거시 owner 도 비었다)
+                            // ⚠ 핸들이 비었으므로 진영은 값으로 실어야 한다(unit 8 선행).
+                            // 퇴근은 방어유닛 전용 사건이라 리터럴이 참이다.
+                            CasterFaction = Wassup.Battle.Units.Faction.DefenderUnit,
                             SkillId = slot.skillId,
                             SlotIndex = i,
                             FiredPosition = new float3(impactWorld.x, impactWorld.y, impactWorld.z),
@@ -7206,6 +7209,13 @@ namespace Wassup.Bridge
             if (!_onPlaceTriggeredEntities.Contains(entity))
                 TriggerDeploymentOnPlaceSkill(cell, entity);
 
+            // ⚠ **이 두 줄 사이에 시스템 갱신이 끼면 안 된다**(skill-layer-migration, 재리뷰 M-6).
+            // 위가 `JustDeployed` 를 달고 배치 스킬은 **다음 시스템 갱신**에 실행되는데,
+            // 실드 부여 같은 배치 스킬은 후보에서 «배치 중인 유닛»을 뺀다. 아래 제거가
+            // 늦어지면 **방금 놓인 그 유닛이 자기 배치 스킬의 후보에서 빠진다** —
+            // 레거시가 `d.entity != placedEntity && HasComponent<PendingDeployment>` 라는
+            // 한 줄 예외를 들고 있던 이유가 이것이고, 지금은 그 예외 대신 **순서**가 지킨다.
+            // 둘 다 브리지 동기 구간이라 오늘은 성립한다. 떼어 놓지 말 것.
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
             RecomputeSynergyFor(cell);
