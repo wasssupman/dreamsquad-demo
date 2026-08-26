@@ -224,7 +224,7 @@ one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, 
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 저작(프리팹) | `Assets/_Project/Art/Theme/{theme}/MapStage_*.prefab`(unit 12 — `Prefabs/Maps` 은퇴) — 루트 `Core/MapStage/MapStage.cs` + 프랍에 `PropFootprint`/`SpawnMarker`/`GoalMarker`/`RouteMarker`/`PlacementBlockZone` | 역할 컴포넌트 없는 프랍 = 순수 장식. 기즈모가 차지 셀 실시간 표시. 절차 조립 예시 = `Editor/MapStageDummyGenerator.cs` |
+| 저작(프리팹) | `Assets/_Project/Art/Theme/{theme}/MapStage_*.prefab`(unit 12 — `Prefabs/Maps` 은퇴) — 루트 `Core/MapStage/MapStage.cs` + 프랍에 `PropFootprint`/`SpawnMarker`/`GoalMarker`/`RouteMarker`/`PlacementBlockZone` | 역할 컴포넌트 없는 프랍 = 순수 장식. 기즈모가 차지 셀 실시간 표시. 절차 조립 예시 = `Editor/MapStageDuelGenerator.cs` |
 | 풀 | `Data/MapStage/MapStagePool.cs` → `Data/Maps/MapStagePool.asset` (프리팹+덱+플랜 짝) | 인덱스 선정 의미는 구 문서 풀과 동일(dev 슬롯 시드 불가시). `MapStage` 인스펙터 "Dev 엔트리 등록" 버튼 |
 | 논리 파생 | `Core/MapStage/MapStageScanner.cs`(스캔) → `Data/MapStage/DioramaMapBuilder.cs`(Validate+Assemble, 순수) → `GeneratedMap` | tiles 합성: 열림=Walk/차단=Deco. placeMask 직접 조립(기본 `Ground\|Path\|Air`, BlockZone 차감). 연결성 실패 = 하드 실패(폴백 리니어 은퇴) |
 | ECS | N/A — 프랍은 배틀 런타임 무관, footprint 는 빌드 시 GeneratedMap 으로만 반영 | 스테이지 인스턴스 수명 = `TeardownGeneratedMap` |

@@ -74,4 +74,5 @@
 - **이름 충돌 금지**: PlayMode 테스트가 스테이지를 이름으로 pin 한다 — `Duel`(라이브 0번·구조물 검증)·`Street`(기본판 `DefaultMap`) 재사용 금지. 은퇴 이름(`Fixture`·`Pilot`·`Serpent`·`Coil`·`Zig`·`Tutorial`·`MovementLab`·`Ford`·`Isle`·`DuelClassic`)도 Ignore 된 테스트가 기억하므로 피한다.
 - 본편 승격(시드 로테이션 편입)은 dev 슬롯이 아니라 풀 `entries` 에 deck/plan 과 함께 추가 — 웨이브 밸런스 확인 필수(`docs/reference/map-wave-balancing.md`).
 - 공성·적 마음은 기능 비가용(계약 11) — 자리는 `PlacementBlockZone`+장식으로만 표현(예: `MapStage_Duel` 의 `enemy_heart`). 본능은 `StructureMarker` 로 가용(unit 10).
+- ⚠ 생성기(`Generate Duel Stage` 메뉴)는 **프리팹을 통째로 덮어쓴다** — 프리팹이 정본이므로 손으로 고친 뒤에는 다시 누르지 말 것(메뉴는 확인 대화상자를 띄운다). 레이아웃을 바꾸려면 생성기 코드를 고치고 재생성하거나, 프리팹만 편집하고 생성기를 버린다 — 둘을 섞지 않는다.
 - 절차 조립 예시 코드는 `Assets/_Project/Editor/MapStageDuelGenerator.cs`(Street 제작방식의 Duel — 바닥 Plane·스프라이트 프랍·마커·볼륨). 사용자 프리팹에 마커만 심는 도구는 `MapStageAuthoringTools.cs`(`AuthorSpawnsAndGoal`·`AuthorBonusPortals`). 원격 육안 검증은 `MapStageCameraFraming.RenderPrefabPreview`(Battle 카메라 포즈 PNG + 논리 셀 오버레이).

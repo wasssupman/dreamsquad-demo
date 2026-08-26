@@ -27,11 +27,23 @@ namespace Wassup.Tests.PlayMode
         private const string SlimePath = "Assets/_Project/Data/Enemies/Enemy_Slime.asset";
         private const int GoalX = 2;
 
-        // Duel 차단 셀 = 중앙 분리대 x=11 (MapStageDuelGenerator 레이아웃과 동기) — 통로 y1~2 · y7~8.
-        private static readonly int2[] BlockedCells =
-            { new int2(11, 0), new int2(11, 3), new int2(11, 4), new int2(11, 5), new int2(11, 6), new int2(11, 9) };
+        // 차단 셀은 빌드된 GeneratedMap(tiles == Deco)에서 읽는다 — 생성기 레이아웃을 테스트에 복제하면 이중 정본이
+        // 되어 레이아웃이 바뀌어도 빨개지지 않고 엉뚱한 칸을 검사한다. Duel 의 분리대 정체성((11,4) 포함, ≥6칸)만 pin.
+        private int2[] _blockedCells = System.Array.Empty<int2>();
 
         private int _savedMap;
+
+        private void ReadBlockedCells(BattleBridge bridge)
+        {
+            var map = (GeneratedMap)BattleBridgeTestAccess.Field(bridge, "_generatedMap");
+            var cells = new System.Collections.Generic.List<int2>();
+            for (int y = 0; y < map.gridSize.y; y++)
+                for (int x = 0; x < map.gridSize.x; x++)
+                    if (map.TileAt(new int2(x, y)) == MapTileType.Deco) cells.Add(new int2(x, y));
+            _blockedCells = cells.ToArray();
+            Assert.GreaterOrEqual(_blockedCells.Length, 6, "Duel 분리대(6칸 이상)가 차단 셀로 조립돼야 한다");
+            Assert.IsTrue(cells.Contains(new int2(11, 4)), "Duel 분리대는 x=11 열이다 — 레이아웃이 바뀌었으면 이 pin 을 갱신할 것");
+        }
 
         // 스테이지 풀에서 이름으로 슬롯을 찾는다 — BattleBridgeTestAccess.MapSlot 의 스테이지판.
         private static int StageSlot(string stageName)
@@ -68,6 +80,7 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindFirstObjectByType<BattleBridge>();
             Assert.IsNotNull(bridge, "BattleScene 에 BattleBridge 가 없다");
             Assert.IsTrue(bridge.HasGeneratedMap, "스테이지 맵 빌드 실패 — 콘솔의 hard-fail 로그 확인");
+            ReadBlockedCells(bridge);
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var slime = BattleBridgeTestAccess.LoadEnemy(SlimePath);
@@ -151,10 +164,10 @@ namespace Wassup.Tests.PlayMode
             return new int2((int)math.floor(p.x), (int)math.floor(p.z));
         }
 
-        private static void AssertNotOnBlockedCell(int2 cell, int frame)
+        private void AssertNotOnBlockedCell(int2 cell, int frame)
         {
-            for (int i = 0; i < BlockedCells.Length; i++)
-                Assert.IsFalse(cell.Equals(BlockedCells[i]),
+            for (int i = 0; i < _blockedCells.Length; i++)
+                Assert.IsFalse(cell.Equals(_blockedCells[i]),
                     $"적이 차단 footprint 셀 {cell} 을 밟았다 (frame {frame})");
         }
     }

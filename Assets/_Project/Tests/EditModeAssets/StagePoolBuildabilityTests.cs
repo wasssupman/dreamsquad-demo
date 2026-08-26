@@ -25,6 +25,13 @@ namespace Wassup.Tests.EditMode
             for (int i = 0; i < pool.DevCount; i++) stages.Add(pool.GetDev(i).stage);
             Assert.IsTrue(stages.TrueForAll(s => s != null), "풀에 빈 스테이지 슬롯이 있다.");
 
+            // 2026-08-26 사건의 회귀 가드 — 라이브 엔트리 deck 이 null 이면 BattleBridge 가 인스펙터 폴백 덱으로 **조용히**
+            // 떨어져(ActiveDeck), 그 판의 웨이브가 어느 세대인지 로그 한 줄로만 보인다. 시드 로테이션에 잡히는 라이브는
+            // 덱을 명시해야 한다(dev 슬롯은 실험장이라 null 허용 — 등록 버튼이 entries[0].deck 을 물려준다).
+            for (int i = 0; i < pool.Count; i++)
+                Assert.IsNotNull(pool.Get(i).deck,
+                    $"{pool.Get(i).stage.name}: 라이브 엔트리 deck 이 비었다 — 레거시 폴백 덱으로 조용히 떨어진다. 풀에서 덱을 짝지을 것.");
+
             // 카메라 불변 상한 (구 MapDocumentPoolDevEntriesTests ⑥ 승계). fitToBoard 는 어떤 크기든
             // 프레임에 넣지만 진짜 상한은 폰에서 읽히는 판 크기다. 가로 30 = 2026-08-26 사용자가
             // 16:9 게임뷰에서 확정한 Street/Subway/StreetDay(30폭) 라이브 승격 기준 — 이보다 넓히려면

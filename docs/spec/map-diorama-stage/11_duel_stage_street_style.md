@@ -35,7 +35,8 @@ main 현행 Duel 의 논리(디코드 결과):
 
 ## 완료 기준
 
-- [ ] `StagePoolBuildabilityTests` green (23×10 ≤ 30×12 캡 · 포탈 규칙 · 연결성)
-- [ ] 프리뷰 PNG 에서 바닥·분리대·마커 위치가 격자와 맞음(분리대가 x=11 열에, 통로 두 개)
-- [ ] PlayMode `DioramaStagePlayTests`(Duel 로 재지정): 적이 분리대 셀을 밟지 않고 골(−x) 방향 전진 · 본능 4기 스폰
-- [ ] `BonusWavePullTest`("Duel" pin) green — 포탈 2 → 보너스 적
+- [x] `StagePoolBuildabilityTests` green (23×10 ≤ 30×12 캡 · 포탈 규칙 · 연결성) — 2026-08-26 `df1a117a`
+- [x] 프리뷰 PNG 에서 바닥·분리대·마커 위치가 격자와 맞음(분리대가 x=11 열에, 통로 두 개) — 2026-08-26 (`preview_duel` 러너 태스크)
+- [x] PlayMode `DioramaStagePlayTests`(Duel 로 재지정): 적이 분리대 셀을 밟지 않고 골(−x) 방향 전진 · 본능 4기 스폰 — 2026-08-26 `df1a117a`
+- [x] `BonusWavePullTest`("Duel" pin) green — 포탈 2 → 보너스 적 — 2026-08-26 `df1a117a`
+- [ ] **사용자 확인 대기**: ⓐ 적 마음 자리의 `Structure_EnemyHeart.viewPrefab` 장식(때릴 수 없는 목표물처럼 보인다 — 유지/제거) ⓑ 라이브 4맵이 `Deck_Duel` 하나를 공유하는 것(웨이브 차이 = laneCount 축만) ⓒ dev→live 승격 = 시드 로테이션 편입(가이드의 «웨이브 밸런스 확인 필수» 게이트)

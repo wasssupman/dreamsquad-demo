@@ -75,5 +75,6 @@
 - **웨이브 열린 마당 재밸런스** — `MapConceptRules` tiles 직독 게이트 재검토 + `enemy-wave-integration` 스킬 갱신 + 기존 덱/플랜 재저작.
 - **적 마음(Core) 스테이지 저작** — 공성 모드 재활성화. `StructureMarker` 의 Core 거부 해제 + 시드 스폰 파생(`SiegeSpawnOffsets`) + 유출/붕괴 판정 대조 + `StructureLivePlayTest` 재활성화(Test/SiegeTest 스테이지 저작).
 - **Duel 재저작에서 main 과 갈린 두 지점** (unit 11) — ⓐ 차단 셀 위 공중 waypoint(옛 (11,4)) 허용, ⓑ 층별 `PlacementBlockZone`(적 진영 «Air 만 허용» — 지금은 전 층 0).
+- **Ignore 4건 재활성화용 dev 스테이지 저작** — unit 12 가 은퇴시킨 routed-lane(`spawnRoutes`)·`RouteMarker` 순서·저작 플랜(`WavePlanAsset`) 라이브 커버리지가 0 이다(`SpawnGuideMatchesWalkTest.Coil_*`·`WaypointRoutingLiveTest` 3건). 이 spec 이 출하한 `RouteMarker` 의 유일한 라이브 테스트였다 — 경유점 2개 + 레인 기본 경로 + plan 짝을 가진 dev 스테이지 하나로 셋을 되살린다.
 - **레거시 덱 정리** — `Deck_Serpent/Coil/Zig/Ford/Isle/Tutorial/WaypointLab/SiegeTest/Spiral/Twin/Hook/WaveA` 는 맵 은퇴(unit 12) 후에도 남아 있다(EditMode 덱 테스트가 이름으로 순회). 정리는 별도 결정.
 - **`TileSetData` SO 분리** — 오버레이 절반만 남기는 정리(unit 3 은 필드 사용 중단까지만).

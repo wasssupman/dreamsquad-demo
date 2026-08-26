@@ -58,7 +58,11 @@ namespace Wassup.Data
         public bool EditorUpsertLiveEntry(MapStage stage, AttackDeck deck, WavePlanAsset plan, int insertIndex)
         {
             if (stage == null) return false;
-            bool changed = entries.RemoveAll(e => e.stage == null) > 0;
+            int dropped = entries.RemoveAll(e => e.stage == null);
+            if (dropped > 0)
+                Debug.LogWarning($"[MapStagePool] 끊어진 라이브 슬롯 {dropped}개를 제거했다 — 인덱스가 앉으므로 시드→맵 대응이 바뀐다. " +
+                                 "프리팹 삭제/이동 직후라면 의도한 것인지 확인할 것.", this);
+            bool changed = dropped > 0;
             var entry = new Entry { stage = stage, deck = deck, plan = plan };
             for (int i = 0; i < entries.Count; i++)
                 if (entries[i].stage.name == stage.name)

@@ -191,8 +191,9 @@ namespace Wassup.Tests.PlayMode
         // 있어야 실제로 이동하고, 그래야 «멈췄다» 가 의미를 갖는다.
         // 더미 워커가 측정 창 안에 골에 닿으면 소멸해 «entity does not exist» 로 뒤집힌다(Street 기본판에서
         // 실제로 났다 — (0,0)부터 스캔하면 첫 배치칸이 골 (1,5) 옆). 그래서 **골에서 먼 배치칸부터** 고르고,
-        // near/far 워커 칸도 골까지 MinWalkerDistToGoal 이상 남은 칸만 받는다(판형 비의존 — unit 12).
-        private const int MinWalkerDistToGoal = 8;
+        // near/far 워커 칸도 골까지 MinWalkerCellsToGoal **셀** 이상 남은 칸만 받는다(판형 비의존 — unit 12).
+        // ⚠ 흐름장 dist 는 ×10 비용 단위 — 셀 비교는 CellsToGoal 로(critic 2026-08-26: 원값 8 = 0.8칸 착오).
+        private const float MinWalkerCellsToGoal = 8f;
 
         private static Vector2Int FindCellWithWalkNeighbours(
             BattleBridge bridge, EntityManager em, DefenderUnitData u,
@@ -206,8 +207,8 @@ namespace Wassup.Tests.PlayMode
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
             bool FarEnough(int x, int y)
             {
-                int d = BattleBridgeTestAccess.DistToGoal(ff, new int2(x, y));
-                return d != int.MaxValue && d >= MinWalkerDistToGoal;
+                float cells = BattleBridgeTestAccess.CellsToGoal(ff, new int2(x, y));
+                return !float.IsPositiveInfinity(cells) && cells >= MinWalkerCellsToGoal;   // 도달불가(+∞)는 워커 칸이 아니다
             }
 
             // 배치 가능 칸을 골 거리 내림차순으로(동률은 (x, y) 오름차순 — 결정론).
@@ -240,7 +241,7 @@ namespace Wassup.Tests.PlayMode
                     return c;
                 }
             }
-            Assert.Fail($"반경 안팎에 골까지 {MinWalkerDistToGoal}칸 이상 남은 Walk 칸을 가진 배치 칸이 없다");
+            Assert.Fail($"반경 안팎에 골까지 {MinWalkerCellsToGoal}칸 이상 남은 Walk 칸을 가진 배치 칸이 없다");
             near = default; far = default;
             return default;
         }

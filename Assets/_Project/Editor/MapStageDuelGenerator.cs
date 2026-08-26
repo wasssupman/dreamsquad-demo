@@ -37,7 +37,17 @@ namespace Wassup.EditorTools
         static readonly Color BackdropTint = new Color(0.5377f, 0.5377f, 0.5377f, 1f);
 
         [MenuItem("Window/Wassup/Map Stage/Generate Duel Stage")]
-        public static void GenerateMenu() => Debug.Log(Generate());
+        public static void GenerateMenu()
+        {
+            // 프리팹이 정본이다(가이드) — 생성기는 통째로 덮어쓰므로 손 편집이 있었다면 여기서 잃는다. 메뉴는 확인을 받고,
+            // 러너 경로(Generate)는 재현용이라 묻지 않는다.
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) != null
+                && !EditorUtility.DisplayDialog("Duel 스테이지 재생성",
+                    $"{PrefabPath} 를 생성기 레이아웃으로 통째로 덮어씁니다. 프리팹에 손으로 넣은 편집은 사라집니다.",
+                    "덮어쓰기", "취소"))
+                return;
+            Debug.Log(Generate());
+        }
 
         public static string Generate()
         {

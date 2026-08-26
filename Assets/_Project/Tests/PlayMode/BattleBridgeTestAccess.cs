@@ -161,33 +161,39 @@ namespace Wassup.Tests.PlayMode
             return q.TryGetSingleton(out ff) && ff.IsCreated;
         }
 
-        // 골까지 남은 비용(슬롯 0). 격자 밖·도달불가 = int.MaxValue.
+        // 골까지 남은 **비용**(슬롯 0). ⚠ 단위는 셀이 아니라 FlowFieldBuilder 의 ×10 정수 비용(직교 10·대각 14)이다
+        // — 셀 수가 필요하면 CellsToGoal 을 쓸 것(critic 2026-08-26: 이 값을 «칸»으로 읽어 가드가 0.8칸이 된 착오).
+        // 격자 밖·도달불가 = int.MaxValue.
         public static int DistToGoal(in Wassup.Battle.Effects.FlowFieldSingleton ff, int2 cell)
         {
             if (cell.x < 0 || cell.y < 0 || cell.x >= ff.gridSize.x || cell.y >= ff.gridSize.y) return int.MaxValue;
             return ff.DistSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot)[cell.y * ff.gridSize.x + cell.x];
         }
 
-        // start 에서 골까지 «dist 가 줄어드는 8-이웃»을 따라 내려간 셀 열(start 포함, 골 포함). 결정론적
-        // (이웃 순회 순서 고정). 적이 실제로 밟는 셀과 완전히 같진 않지만(연속 이동·평활화) 같은 골짜기를 탄다.
+        // 골까지 남은 거리를 **직교 셀 수**로. 격자 밖·도달불가 = +∞.
+        public static float CellsToGoal(in Wassup.Battle.Effects.FlowFieldSingleton ff, int2 cell)
+        {
+            int d = DistToGoal(ff, cell);
+            return d == int.MaxValue ? float.PositiveInfinity : d / (float)Wassup.Battle.Effects.FlowFieldBuilder.CostOrtho;
+        }
+
+        // start 에서 골까지 **심이 소비하는 방향장(FlowSlot)** 을 그대로 따라간 셀 열(start 포함, 골 포함).
+        // dist 하강을 다시 구현하지 않는다 — 빌더가 «dist 만 비교하면 대각이 과하게 선택된다»고 경고하는 그 편향을
+        // 테스트가 재현하면 안 된다(MovementSystem 도 FlowSlot 을 읽는다). 단위 방향을 반올림하면 8-이웃 스텝이 된다.
         public static List<int2> FlowPathFrom(in Wassup.Battle.Effects.FlowFieldSingleton ff, int2 start, int maxSteps = 1024)
         {
             var path = new List<int2> { start };
+            var flow = ff.FlowSlot(Wassup.Battle.Effects.FlowFieldSingleton.PrimarySlot);
+            var visited = new HashSet<int2> { start };
             int2 cur = start;
-            int curDist = DistToGoal(ff, cur);
-            for (int step = 0; step < maxSteps && curDist > 0 && curDist != int.MaxValue; step++)
+            for (int step = 0; step < maxSteps; step++)
             {
-                int2 best = cur; int bestDist = curDist;
-                for (int dy = -1; dy <= 1; dy++)
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        if (dx == 0 && dy == 0) continue;
-                        var n = cur + new int2(dx, dy);
-                        int d = DistToGoal(ff, n);
-                        if (d < bestDist) { bestDist = d; best = n; }
-                    }
-                if (bestDist >= curDist) break;   // 국소 최소 — 흐름장 결함, 여기까지의 경로만 돌려준다
-                cur = best; curDist = bestDist;
+                if (cur.x < 0 || cur.y < 0 || cur.x >= ff.gridSize.x || cur.y >= ff.gridSize.y) break;
+                float2 d = flow[cur.y * ff.gridSize.x + cur.x];
+                if (math.lengthsq(d) < 1e-6f) break;   // 목적지(또는 도달불가 셀) — 방향 zero
+                var next = cur + new int2((int)math.round(d.x), (int)math.round(d.y));
+                if (next.Equals(cur) || !visited.Add(next)) break;   // 정지/순환 — 흐름장 결함, 여기까지만
+                cur = next;
                 path.Add(cur);
             }
             return path;
