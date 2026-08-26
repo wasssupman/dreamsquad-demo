@@ -68,6 +68,15 @@ namespace Wassup.Battle.Skills
         // 파생이 자기 자리를 선언한다.
         protected abstract SkillSeam Seam { get; }
 
+        // ⚠ **이 seam 이 도는 시점에 시전자가 살아 있는가.** 기본은 「그렇다」이고,
+        // 아래 드레인 가드가 죽은 시전자의 발동을 버린다(보스 주기에서 「시체가 한 번 더
+        // 스킬을 쓴다」를 잡은 가드다).
+        //
+        // 자기 죽음 seam 만 `false` 다 — 거기선 시전자가 **없는 것이 정상**이라
+        // 같은 가드가 「작별 선물이 영영 안 터진다」로 뒤집힌다. 프레임 창은 seam 의
+        // 성질이므로 이벤트가 아니라 seam 이 선언한다.
+        protected virtual bool RequiresLiveCaster => true;
+
         public static void Uninstall()
         {
             _registry = null;
@@ -173,7 +182,7 @@ namespace Wassup.Battle.Skills
                 // ⚠ 감지와 드레인 사이에 캐스터가 죽거나 슬롯이 무효가 될 수 있다.
                 // 이 부류는 이미 한 번 잡은 전력이 있다 — "죽음 큐가 끼면 시체가 한 번 더
                 // 스킬을 쓴다"(BossPeriodicTriggerSystem). 무효면 drop + loud.
-                if (evt.Caster != Entity.Null && !em.Exists(evt.Caster))
+                if (RequiresLiveCaster && evt.Caster != Entity.Null && !em.Exists(evt.Caster))
                 {
                     UnityEngine.Debug.LogWarning(
                         $"[SkillDispatch] skillId {evt.SkillId} 의 캐스터가 드레인 전에 사라졌다 — 발동을 버린다.");

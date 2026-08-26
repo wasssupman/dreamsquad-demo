@@ -14,7 +14,11 @@ namespace Wassup.Battle.Skills
         // skill-layer-migration unit 3c — 처치(그리고 앞으로 피격 N회·실드 파열).
         // 감지가 `DamageApplicationSystem` **안**에서 나므로 공격 seam(그 앞)이 못 받는다.
         Death = 3,
-        Count = 4,
+        // skill-layer-migration unit 3d″ — **내가 죽었을 때**(작별 선물).
+        // 위 `Death` 와 다르다: 저건 「내가 죽였다」, 이건 「내가 죽는다」다.
+        // 감지가 `UnitLifecycleSystem`(파괴 지점) 안이라 그 앞의 seam 은 못 받는다.
+        Lifecycle = 4,
+        Count = 5,
     }
 
     // skill-layer-foundation unit 4 — 드레인 지점. **로직은 base 에만 있다.**
@@ -142,5 +146,35 @@ namespace Wassup.Battle.Skills
     public partial class SkillDispatchDeathSystem : SkillDispatchSeamBase
     {
         protected override SkillSeam Seam => SkillSeam.Death;
+    }
+
+    // ⑤ 파괴 뒤 — **자기 죽음**(작별 선물).
+    //
+    // ⚠ **왜 ④ 로 못 받나.** ④ 는 「내가 죽였다」를 `DamageApplicationSystem` 안에서
+    // 잡는데, 자기 죽음의 정본 감지 지점은 `UnitLifecycleSystem` 이다. 거기가
+    // **모든** 사망 경로(피해·치명 타이머·순찰 수명)가 합류하는 유일한 지점이라,
+    // ④ 로 앞당기면 피해로 죽은 경우만 작별 선물이 나오고 나머지는 조용히 빠진다.
+    //
+    // ⚠ **드레인 시점엔 시전자가 이미 없다.** `UnitLifecycleSystem` 은 자기 ECB 를
+    // 자기 OnUpdate 끝에서 재생하므로, 이 seam 이 도는 순간 그 엔티티는 파괴돼 있다.
+    // 그래서 이 seam 을 타는 스킬은 **값만으로 완결돼야 한다** — 자리·피해·반경·층을
+    // 감지자가 실어 보내고, concrete 는 시전자를 다시 묻지 않는다.
+    // (그게 `SkillFiredEvent` 값 스냅샷 계약이 존재하는 이유다.)
+    // ⚠ **`HealthThresholdSystem` 앞이어야 한다 — 큐가 seam 공유이기 때문이다.**
+    // 다섯 seam 은 `SkillFiredEventsSingleton` 하나를 나눠 드레인하고, 각 seam 은
+    // 자기 순서에 **큐에 있는 것 전부**를 가져간다. 경계 시스템(#45)이 파괴(#44)보다
+    // 뒤라, 이 제약이 없으면 **경계 seam 이 내 이벤트를 먼저 집어간다** — 폭발은
+    // 그래도 터지지만 계측이 엉뚱한 seam 에 찍히고(그물이 seam 을 못 짚는다),
+    // 순서가 빌드마다 갈릴 여지도 남는다.
+    [UpdateInGroup(typeof(BattleSimGroup))]
+    [UpdateAfter(typeof(Wassup.Battle.Units.UnitLifecycleSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Combat.HealthThresholdSystem))]
+    public partial class SkillDispatchLifecycleSystem : SkillDispatchSeamBase
+    {
+        protected override SkillSeam Seam => SkillSeam.Lifecycle;
+
+        // ⚠ 여기서만 false — 이 seam 의 전제가 「시전자가 이미 없다」이기 때문이다.
+        // 기본 가드를 그대로 두면 작별 선물이 **매번** 드레인에서 버려진다(실제로 그랬다).
+        protected override bool RequiresLiveCaster => false;
     }
 }

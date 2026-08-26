@@ -11,6 +11,13 @@ namespace Wassup.Skills.Concrete
     //
     // ⚠ **owner 는 시전자다.** 폭발 킬이 죽인 쪽에 귀속돼야 연쇄(OnKill)가 이어진다 —
     // 여기서 owner 를 비우면 시체폭발 연쇄가 조용히 한 단계에서 멈춘다.
+    //
+    // ⚠ **호출처가 둘이고 자리의 주인이 다르다**(unit 3d″). `OnKill` 은 「내가 죽인 자리」,
+    // `OnDeath`(작별 선물)는 「내가 죽은 자리」다. 이 스킬은 그 차이를 모른다 — 실려 온
+    // 자리에서 터질 뿐이고, **누구의 자리인가는 감지자가 정한다.** 그래서 concrete 를
+    // 나누지 않았다(같은 규칙, 다른 입력).
+    // 부수 효과로 작별 선물은 owner 가 비게 된다 — 죽은 시전자는 드레인 때 이미 없어
+    // `CasterRef.Player` 로 접히고, 그것이 레거시(`owner = Entity.Null`)와 같은 값이다.
     public sealed class DeathSiteBlastSkill : ISkill
     {
         public const int Id = 20;

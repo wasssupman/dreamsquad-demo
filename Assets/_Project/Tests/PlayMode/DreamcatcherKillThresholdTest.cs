@@ -357,6 +357,110 @@ namespace Wassup.Tests.PlayMode
             return Resources.FindObjectsOfTypeAll<ProjectileData>()[0];
         }
 
+        // skill-layer-migration unit 3d″ — **작별 선물.** 방어유닛이 쓰러진 자리에서 터진다.
+        //
+        // ⚠ 이 그물이 없으면 라우팅이 조용히 죽는다 — 슬롯은 붙고, 브리지 로그도 뜨고,
+        // 아무 데서도 안 터진다. 여기 seam(파괴 뒤)은 드레인 시점에 **시전자가 이미 없어서**
+        // 값 스냅샷이 하나라도 새면 폭발이 월드 원점으로 간다. 그래서 「피해가 들어갔나」가
+        // 아니라 **「내가 쓰러진 자리 옆의 적이 맞았나」**를 묻는다.
+        [UnityTest]
+        public IEnumerator FarewellGift_ExplodesWhereIFell_AfterIAmDestroyed()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var guardian = FindDefenderCatalog().ById("guardian");
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+            bridge.StartBattle();
+            BattleBridgeTestAccess.SetField(bridge, "_usingGeneratedWaves", false);
+            ((System.Collections.IList)BattleBridgeTestAccess.Field(bridge, "_pending")).Clear();
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var defender = FindDefender(bridge, em);
+            Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
+            var giftCard = MakeFarewellGiftCard();
+            if (giftCard == null)
+                Assert.Ignore("AOE 뷰 저작이 없다 — 이 그물의 전제가 성립하지 않는다");
+            Assert.GreaterOrEqual(
+                bridge.ApplyDreamcatcherCardToUnit(defender, giftCard), 0, "작별 선물 부착");
+
+            var defPos = em.GetComponentData<LocalTransform>(defender).Position;
+            float tile = (bridge.GridToWorldCenterVector(new Vector2Int(1, 0))
+                          - bridge.GridToWorldCenterVector(new Vector2Int(0, 0))).magnitude;
+            // 한 칸 옆(반경 2 안) 과 아주 멀리. 먼 쪽이 안 맞아야 「어디서」가 증명된다.
+            var near = SpawnBystander(em, bridge, defPos + new float3(tile, 0f, 0f), hp: 9999f);
+            var far = SpawnBystander(em, bridge, defPos + new float3(tile * 30f, 0f, 0f), hp: 9999f);
+            yield return null;
+            float nearBefore = em.GetComponentData<Health>(near).value;
+            float farBefore = em.GetComponentData<Health>(far).value;
+
+            // 경계 ①: bake 가 이 슬롯을 스킬 레이어로 보냈나(라우팅 키).
+            int routedId = int.MinValue;
+            foreach (var sl in em.GetBuffer<Wassup.Battle.Combat.DcTriggerSlot>(defender))
+                if (sl.trigger == DcTriggerKind.OnDeath) routedId = sl.skillId;
+            Assert.AreEqual(Wassup.Skills.Concrete.DeathSiteBlastSkill.Id, routedId,
+                "bake 가 OnDeath×SelfTileAoe 를 스킬 레이어로 안 보냈다");
+
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+
+            // 방어유닛을 쓰러뜨린다. 파괴는 UnitLifecycleSystem 이 하고, seam 은 그 뒤다.
+            em.SetComponentData(defender, new Health { value = 0f, max = 100f });
+            for (int i = 0; i < 30; i++) yield return null;
+            Assert.IsFalse(em.Exists(defender), "전제: 방어유닛이 파괴돼야 이 seam 의 조건이 성립한다");
+
+            float nearAfter = em.Exists(near) ? em.GetComponentData<Health>(near).value : 0f;
+            float farAfter = em.Exists(far) ? em.GetComponentData<Health>(far).value : farBefore;
+            if (em.Exists(near)) em.DestroyEntity(near);
+            if (em.Exists(far)) em.DestroyEntity(far);
+
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Lifecycle), 1,
+                "자기 죽음 seam 이 concrete 를 안 거쳤다 — 라우팅이 조용히 죽었다");
+            Assert.Less(nearAfter, nearBefore,
+                "쓰러진 자리 옆의 적이 안 맞았다 — 작별 선물이 안 터졌거나 엉뚱한 자리에서 터졌다");
+            Assert.AreEqual(farBefore, farAfter, 0.01f,
+                "30칸 밖의 적이 맞았다 — 폭발이 월드 원점 같은 엉뚱한 자리로 갔다는 뜻이다");
+        }
+
+        // ⚠ `SelfTileAoe` bake 는 **AOE 뷰(ProjectileData)를 요구한다** — 없으면 조용히
+        // 건너뛰고 부착이 -1 이 된다. 저작이 없는 환경에서는 이 그물의 전제가 없다.
+        private static DreamcatcherCard MakeFarewellGiftCard()
+        {
+            var vfx = FindAoeProjectileData();
+            if (vfx == null) return null;
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new[] { new DcMechanic {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.OnDeath },
+                payload = new DcPayloadSpec
+                {
+                    kind = DcPayloadKind.SelfTileAoe, magnitude = 400f, tileRange = 2,
+                    projectile = vfx,
+                },
+            }};
+            return card;
+        }
+
+        private static ProjectileData FindAoeProjectileData()
+        {
+            foreach (var pd in Resources.FindObjectsOfTypeAll<ProjectileData>())
+                if (pd != null && pd.name.Length > 0) return pd;
+            return null;
+        }
+
         private static Entity SpawnBystander(EntityManager em, BattleBridge bridge, float3 pos, float hp)
         {
             var e = em.CreateEntity();

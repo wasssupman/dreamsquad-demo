@@ -53,7 +53,7 @@
 | **3c** | **죽음 seam 개통** + 첫 소비자 `OnKill × SelfStatBuff`(포식) | **완료** (2026-08-26) |
 | **3d** | `OnKill × SelfTileAoe`(시체폭발) | **완료** (2026-08-26) |
 | **3d′** | `OnKill × SpawnHazard`(잿불) | **완료** (2026-08-26) |
-| **3d″** | `OnDeath`(2) — 감지자가 `UnitLifecycleSystem` 이라 seam 이 또 필요하다 | |
+| **3d″** | `OnDeath`(1행) — 작별 선물. **다섯 번째 seam** | **완료** (2026-08-26) |
 | **3d‴** | `OnDamagedN`(2) — ⚠ **`DcTriggerSlot` 을 안 쓴다**(별도 `DamagedCounter` 버퍼) | |
 | **3e** | `OnShieldBreak`/`OnRetire` seam + payload (4행) | — |
 | **3f** | 부착 자격만 있는 5행 + 남은 payload | |
@@ -256,3 +256,37 @@ bake 된다(피해를 받는 곳이 Units 라 카운트를 거기 쓴다는 설�
 - [ ] 문안이 저작 SO 필드에서 나오고 formatter 우선순위가 유지된다
 - [ ] `BattleBridge.Dreamcatcher.cs` 의 payload arm 이 사라졌다
 - [ ] 그물 초록 + Play 로 대표 카드 5장 육안
+
+
+## 3d″ 에서 나온 것 (2026-08-26)
+
+**`OnDeath` 는 2행이 아니라 1행이었다.** 분열(`SplitOnDeath`)은 **의도적 무슬롯**이라
+(브리지 킬 드레인이 SO 를 직독한다) 라우팅 키가 아예 없다. 재고표의 「2」는 저작 행 수고
+이전 대상 수가 아니다.
+
+**seam 은 정말로 다섯 번째가 필요했다.** 자기 죽음의 유일한 합류점이 `UnitLifecycleSystem`
+이기 때문이다 — 피해·치명 타이머·순찰 수명이 전부 거기서 `DeadTag` 로 만나 파괴된다.
+죽음 seam(#4, `DamageApplicationSystem` 안)으로 앞당기면 **피해로 죽은 경우만** 작별 선물이
+나오고 나머지는 조용히 빠진다.
+
+**concrete 는 새로 안 만들었다.** `OnKill × SelfTileAoe`(시체폭발)와 **같은 규칙**이다 —
+「실려 온 자리에서 터진다」. 다른 것은 **누구의 자리인가**인데 그건 스킬이 아니라 감지자가
+정한다(죽인 자리 ↔ 죽은 자리). 그래서 `DeathSiteBlastSkill` 을 두 감지자가 공유한다.
+⚠ `SkillIdForPayload(SelfTileAoe)` 로 보내면 안 된다 — 그건 **살아 있는** 시전자 발밑을
+묻는 `SelfAreaBlastSkill` 이고, 이 seam 의 드레인 시점엔 시전자가 없다.
+
+**끊긴 곳은 라우팅도 concrete 도 아니었다 — 디스패처의 안전 가드였다.**
+`SkillDispatchSystemBase` 에 「드레인 전에 캐스터가 사라졌으면 버린다」가 있다(보스 주기에서
+「시체가 한 번 더 스킬을 쓴다」를 잡은 가드). 자기 죽음 seam 은 **시전자가 없는 것이 정상**
+이라 같은 가드가 「작별 선물이 영영 안 터진다」로 뒤집힌다. 프레임 창은 seam 의 성질이므로
+`RequiresLiveCaster` 를 **seam 이 선언**하게 했다(기본 true, 이 seam 만 false).
+
+**진단 방법이 결론을 냈다.** 라우팅 키(bake) → 감지자 진입 → 슬롯 루프 → enqueue → 드레인
+순으로 경계마다 값을 찍었고, 마지막 두 경계 사이에서 끊긴 것이 한 번에 보였다. 그 전에
+**레거시 대조**(카드 게이트만 잠시 끄고 420 피해를 확인)로 「그물이 옳다」를 먼저 고정한 것이
+탐색 범위를 절반으로 줄였다.
+
+**큐가 seam 공유라 순서 제약이 계측의 일부다.** 다섯 seam 이 `SkillFiredEventsSingleton`
+하나를 나눠 드레인하고 각자 자기 순서에 큐에 있는 것을 **전부** 가져간다. 경계 시스템(#45)이
+파괴(#44)보다 뒤라, `[UpdateBefore(HealthThresholdSystem)]` 이 없으면 경계 seam 이 이
+이벤트를 집어간다 — 폭발은 터지지만 계측이 엉뚱한 seam 에 찍혀 그물이 seam 을 못 짚는다.

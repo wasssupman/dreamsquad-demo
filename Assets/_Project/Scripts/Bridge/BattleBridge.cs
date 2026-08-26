@@ -9140,6 +9140,14 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
                     return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
             }
+            // unit 3d″ — **작별 선물.** `OnKill × SelfTileAoe`(시체폭발)와 같은 concrete 를
+            // 쓴다. 「실려 온 자리에서 터진다」가 같은 규칙이고, **누구의 자리인가**는
+            // 스킬이 아니라 감지자가 정하기 때문이다(죽인 자리 ↔ 죽은 자리).
+            // ⚠ `SkillIdForPayload(SelfTileAoe)` 로 가면 **안 된다** — 그건 살아 있는
+            // 시전자 발밑을 묻는 `SelfAreaBlastSkill` 이고, 드레인 시점엔 시전자가 없다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnDeath
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
             // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
@@ -9215,6 +9223,14 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
                     return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
             }
+            // unit 3d″ — **작별 선물.** `OnKill × SelfTileAoe`(시체폭발)와 같은 concrete 를
+            // 쓴다. 「실려 온 자리에서 터진다」가 같은 규칙이고, **누구의 자리인가**는
+            // 스킬이 아니라 감지자가 정하기 때문이다(죽인 자리 ↔ 죽은 자리).
+            // ⚠ `SkillIdForPayload(SelfTileAoe)` 로 가면 **안 된다** — 그건 살아 있는
+            // 시전자 발밑을 묻는 `SelfAreaBlastSkill` 이고, 드레인 시점엔 시전자가 없다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnDeath
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
                 return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;

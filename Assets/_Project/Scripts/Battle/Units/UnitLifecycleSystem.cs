@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
@@ -106,11 +107,74 @@ namespace Wassup.Battle.Units
             // cross-context read of a Combat buffer is allowed) and bake it into the
             // event BEFORE ecb destroys the entity.
             var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
+            // skill-layer-migration unit 3d″ — 자기 죽음 seam 의 생산자.
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredSingleton);
             foreach (var (tile, entity) in
                      SystemAPI.Query<RefRO<DefenderTile>>()
                               .WithAll<DeadTag, DefenderUnitTag>()
                               .WithEntityAccess())
             {
+                // ⚠ **라우팅이 레거시 스탬프보다 앞이다.** 뒤에 두면 이전한 카드가
+                // 여전히 arm 을 타는데 arm 이 잘 돌아 그물이 전부 초록이 된다.
+                //
+                // ⚠ **여기가 자기 죽음의 유일한 합류점이다.** 피해·치명 타이머·순찰 수명이
+                // 전부 `DeadTag` 로 모여 여기서 파괴된다. 앞당겨 잡으면 경로 하나만 보게 된다.
+                //
+                // ⚠ 아래 seam(`SkillDispatchLifecycleSystem`)은 이 시스템 **뒤**라 드레인
+                // 시점엔 이 엔티티가 없다. 그래서 자리·층을 **지금** 싣는다.
+                if (hasSkillQ && dcSlotLookup.HasBuffer(entity))
+                {
+                    var routeSlots = dcSlotLookup[entity];
+                    int firedMask = 0;
+                    for (int s = 0; s < routeSlots.Length; s++)
+                    {
+                        var rs = routeSlots[s];
+                        if (rs.trigger != DcTriggerKind.OnDeath) continue;
+                        if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                        // 같은 스킬은 죽음당 한 번만(레거시도 첫 매칭만 스탬프했다).
+                        if (rs.skillId >= 0 && rs.skillId < 32)
+                        {
+                            int bit = 1 << rs.skillId;
+                            if ((firedMask & bit) != 0) continue;
+                            firedMask |= bit;
+                        }
+                        var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
+                            ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
+                            : float3.zero;
+                        skillFiredSingleton.ValueRW.queue.Enqueue(
+                            new Wassup.Battle.Skills.SkillFiredEvent
+                        {
+                            Caster = entity,          // 드레인 때는 이미 파괴된 핸들이다
+                            SkillId = rs.skillId,
+                            SlotIndex = s,
+                            FiredPosition = deathPos,
+                            Target = Entity.Null,
+                            TargetPosition = deathPos,   // 내가 쓰러진 자리
+                            Magnitude = rs.magnitude,
+                            Duration = rs.duration,
+                            TileRange = rs.tileRange,
+                            Period = rs.period,
+                            DataIndex = rs.projectileDataIndex,
+                            Selector = (int)rs.ccKind,
+                            StatSelector = (int)rs.buffStat,
+                            StackSelector = (int)rs.stackKind,
+                            ProjectileMovement = (int)rs.projectileMovement,
+                            ProjectilePayload = (int)rs.projectilePayload,
+                            HazardDataIndex = rs.hazardDataIndex,
+                            PatternIndex = rs.patternIndex,
+                            Speed = rs.speed,
+                            HitThreshold = rs.hitThreshold,
+                            SlamDamage = rs.slamDamage,
+                            SlamTileRange = rs.slamTileRange,
+                            StackId = rs.statBuffStackId,
+                            VisualScale = rs.visualScale,
+                            // ⚠ 방어유닛의 작별 선물이다 — 레거시는 층을 안 실었다(무제한).
+                            TargetTraversalLayers = 0,
+                        });
+                    }
+                }
+
                 if (hasDefenderSink)
                 {
                     var evt = new DefenderDeathEvent { cell = tile.ValueRO.cell };
@@ -119,6 +183,8 @@ namespace Wassup.Battle.Units
                         var slots = dcSlotLookup[entity];
                         for (int s = 0; s < slots.Length; s++)
                         {
+                            // 이전된 슬롯은 위 라우팅이 보냈다 — 이중 발화 방지.
+                            if (slots[s].skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
                             if (slots[s].trigger == DcTriggerKind.OnDeath &&
                                 slots[s].payload == DcPayloadKind.SelfTileAoe)
                             {
