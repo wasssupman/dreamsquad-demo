@@ -32,7 +32,7 @@
 | 2 | 레거시 `OnPlaceEffectType` | **arm 9종/12에셋** | [2](2_legacy_onplace.md) |
 | 3 | 드림캐쳐 카드 — 슬롯 arm | **26행/25장** → **완료**(3a~3g) | [3](3_cards_slot_arm.md) |
 | 4 | 드림캐쳐 카드 — 즉발 · hand-op | 즉발 5행 + `RecallAttachedToFront` | [4](4_cards_immediate_handop.md) |
-| 5 | 캐스트 계열 | **8에셋** — 하자드4 · 실드1 · 볼리2 · 폭탄1 | [5](5_casts.md) |
+| 5 | 캐스트 계열 | 8에셋 중 **이전 대상 5**(하자드4 · 실드1) → **완료**. 볼리2 · 폭탄1 은 기본공격 | [5](5_casts.md) |
 | 6 | 소환 (`SummonPatrolAbility`) | 1에셋 + 전용 시스템 3 | [6](6_summon.md) |
 | 7 | **액티브 (`SkillData`)** | **6에셋 — 전부 라이브** | [7](7_actives.md) |
 | 8 | 철거 | legacy enum · arm · flat 필드 · 화이트리스트 | [8](8_teardown.md) |
