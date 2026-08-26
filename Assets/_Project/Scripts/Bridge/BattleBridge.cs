@@ -9086,6 +9086,9 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteHazardSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GrantSelfChargeSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.OrbitProjectileSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.SelfBuffLethalSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.DreamCocoonSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.BountyMarkSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9130,6 +9133,19 @@ namespace Wassup.Bridge
         // 스킬이 되는 조합이 실재한다: `SelfTileAoe` 는 **내가 맞은 자리**에서 터지지만
         // (`HealthThreshold`), 처치 트리거에서는 **내가 죽인 자리**에서 터진다.
         // 그 둘은 같은 「광역 폭발」이라도 게임에서 완전히 다른 그림이다.
+        // skill-layer-migration unit 4a — **부착 seam 을 그 자리에서 돌린다.**
+        //
+        // 부착은 동기 트랜잭션이다(preflight → 쓰기 → 핸들/−1). 큐에 넣고 프레임을
+        // 기다리면 그 결정 뒤에 쓰기가 도착하므로, 여기서 드레인까지 끝낸다.
+        // 시스템이 그룹에도 있는 이유는 안전망이다 — 브리지 밖에서 누가 이 seam 으로
+        // 넣었을 때 다음 틱에 소진된다.
+        private void RunImmediateSkills()
+        {
+            if (_world == null || !_world.IsCreated) return;
+            _world.GetExistingSystemManaged<Wassup.Battle.Skills.SkillDispatchImmediateSystem>()
+                ?.Update();
+        }
+
         private static int SkillIdForMechanic(Wassup.Data.DcTriggerKind trigger,
                                               Wassup.Data.DcPayloadKind kind)
         {
@@ -9174,6 +9190,17 @@ namespace Wassup.Bridge
             if (trigger == Wassup.Data.DcTriggerKind.OnRetire
                 && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            // unit 4a — **부착되는 순간** 발동하는 것들(트리거 없음). 이 조합은 감지자가
+            // 아니라 **부착 지점**이 발화시킨다.
+            if (trigger == Wassup.Data.DcTriggerKind.None)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfBuffLethal)
+                    return Wassup.Skills.Concrete.SelfBuffLethalSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.DreamCocoon)
+                    return Wassup.Skills.Concrete.DreamCocoonSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.BountyMark)
+                    return Wassup.Skills.Concrete.BountyMarkSkill.Id;
+            }
             // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)

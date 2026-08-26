@@ -22,7 +22,11 @@ namespace Wassup.Battle.Skills
         // 위 `Death` 와 다르다: 저건 「내가 죽였다」, 이건 「내가 죽는다」다.
         // 감지가 `UnitLifecycleSystem`(파괴 지점) 안이라 그 앞의 seam 은 못 받는다.
         Lifecycle = 5,
-        Count = 6,
+        // skill-layer-migration unit 4a — **부착되는 순간**. 위 다섯과 성격이 다르다:
+        // 저 다섯은 시뮬이 프레임 안에서 감지하는 사건이고, 이건 **사용자 입력이 부르는
+        // 브리지 호출**이다. 그래서 프레임을 기다리지 않고 브리지가 그 자리에서 돌린다.
+        Immediate = 6,
+        Count = 7,
     }
 
     // skill-layer-foundation unit 4 — 드레인 지점. **로직은 base 에만 있다.**
@@ -178,5 +182,24 @@ namespace Wassup.Battle.Skills
         // ⚠ 여기서만 false — 이 seam 의 전제가 「시전자가 이미 없다」이기 때문이다.
         // 기본 가드를 그대로 두면 작별 선물이 **매번** 드레인에서 버려진다(실제로 그랬다).
         protected override bool RequiresLiveCaster => false;
+    }
+
+    // ⑥ 부착 즉시 — **브리지가 그 자리에서 돌린다.**
+    //
+    // ⚠ **왜 다섯으로 안 되나.** 위 다섯은 전부 시뮬 프레임 안의 사건이라 「다음 틱에
+    // 드레인」이 성립한다. 부착은 아니다 — `ApplyDreamcatcherCardToUnit` 이 **동기 트랜잭션**
+    // 이라, preflight 로 가부를 정하고 쓰기를 하고 핸들(또는 −1, 무차감 거절)을 **그 호출에서**
+    // 돌려준다. 큐에 넣고 프레임을 기다리면 그 결정 뒤에 쓰기가 도착한다.
+    //
+    // 그래서 이 seam 은 **자기 순서를 갖지 않는다.** 그룹에 있는 것은 안전망일 뿐이고
+    // (브리지 밖에서 누가 이 seam 으로 넣었을 때), 실제 실행은 브리지가
+    // `Update()` 를 직접 불러 자기 콜스택 안에서 끝낸다.
+    //
+    // ⚠ 이 seam 을 시뮬 사건에 쓰지 말 것. 프레임 중간에 임의로 도는 드레인이라
+    // 시스템 간 순서 계약(emitter 같은 프레임 · 파괴 전 등)을 하나도 보장하지 않는다.
+    [UpdateInGroup(typeof(BattleSimGroup))]
+    public partial class SkillDispatchImmediateSystem : SkillDispatchSeamBase
+    {
+        protected override SkillSeam Seam => SkillSeam.Immediate;
     }
 }

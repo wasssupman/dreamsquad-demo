@@ -43,8 +43,16 @@ namespace Wassup.Tests.PlayMode
             var enemy = CreateEnemy(FarPos(), reward: 5);
             var card = MakeBountyCard();
 
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             Assert.AreEqual(0, _bridge.ApplyBountyMark(enemy, card), "표식 성공(무회수 핸들 0)");
+            // ⚠ **`yield` 없이** 참이어야 한다 — 표식은 그 적이 죽을 때 소비되고 처치
+            // 이벤트가 enqueue 시점에 이 값을 복사하므로, 늦으면 같은 프레임에 죽는 적이
+            // 배율 없는 값을 싣는다(skill-layer-migration unit 4c).
             Assert.AreEqual(15, _em.GetComponentData<AwakeningReward>(enemy).value, "보상 ×3 베이크(5→15)");
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Immediate), 1,
+                "부착 seam 이 concrete 를 안 거쳤다 — 위 단언은 legacy 가 써도 참이다");
 
             // 이중 표식 — 이중 배율 방지 사전검증.
             LogAssert.Expect(LogType.Warning,
@@ -165,6 +173,9 @@ namespace Wassup.Tests.PlayMode
             });
             _em.AddComponent<ModifierStatsDirty>(e);
             _em.SetComponentEnabled<ModifierStatsDirty>(e, false);
+            // ⚠ 라이브 스포너는 이걸 발급한다. 없으면 스킬 레이어에서 이 적은 **존재하지
+            // 않아서** 표식이 조용히 사라진다(skill-layer-migration unit 4c).
+            BattleBridgeTestAccess.AttachSimEntityId(_bridge, e);
             return e;
         }
 

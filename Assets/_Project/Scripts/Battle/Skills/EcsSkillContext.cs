@@ -721,6 +721,62 @@ namespace Wassup.Battle.Skills
                     _ecb.AddComponent<Wassup.Battle.Combat.Projectile.ProjectileRequestCarrier>(orbCarrier);
                     return;
                 }
+                case SimIntentKind.ScaleKillReward:
+                {
+                    var marked = Resolve(intent.Target);
+                    if (marked == Entity.Null || !_em.Exists(marked)) return;
+                    // 보상 컴포넌트가 없는 적은 애초에 줄 것이 없다 — 만들지 않는다.
+                    if (!_em.HasComponent<Wassup.Battle.Units.AwakeningReward>(marked)) return;
+                    var reward = _em.GetComponentData<Wassup.Battle.Units.AwakeningReward>(marked);
+                    // ⚠ **즉시 쓰기다**(ECB 아님). 표식은 그 적이 죽을 때 소비되는데
+                    // 처치 이벤트가 enqueue 시점에 이 값을 복사하므로, 재생을 기다리면
+                    // 같은 프레임에 죽는 적이 배율 없는 값을 싣는다.
+                    reward.value = (int)UnityEngine.Mathf.Max(
+                        1, UnityEngine.Mathf.RoundToInt(reward.value * intent.Amount));
+                    _em.SetComponentData(marked, reward);
+                    return;
+                }
+                case SimIntentKind.BeginDreamCocoon:
+                {
+                    if (!_hasEcb) return;
+                    var sleeper = Resolve(intent.Target);
+                    if (sleeper == Entity.Null || !_em.Exists(sleeper)) return;
+                    // ⚠ **잠과 감시를 같이 붙인다 — 이것이 「개시」의 뜻이다.**
+                    // 잠을 CC 큐로 보내면 한 프레임 늦게 도착해서, 그 사이에 맞으면 깨울
+                    // 잠이 없어 파탄이 안 나고 감시만 남는다(공짜 버프). 그래서 여기서
+                    // 즉시 쓰기로 나란히 놓는다 — 병합 규칙은 `CcEffectMerge` 가 소유한다.
+                    Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, sleeper,
+                        new Wassup.Battle.Effects.CcEffect
+                        {
+                            kind = Wassup.Battle.Effects.CcKind.Sleep,
+                            remainingTime = intent.Duration,
+                        });
+                    // ⚠ **완주 타이머가 잠보다 Epsilon 만큼 짧다.** 그 차이가 「완주 프레임」과
+                    // 「잠이 자연만료되는 프레임」이 겹치지 않게 하는 안전핀이고, 값의 주인은
+                    // 그 상태를 굴리는 시스템이라 여기서 뺀다(도메인은 이 상수를 모른다).
+                    _em.AddComponentData(sleeper, new Wassup.Battle.Effects.DreamCocoon
+                    {
+                        remaining = intent.Duration - Wassup.Battle.Effects.DreamCocoon.Epsilon,
+                        stat = (Wassup.Battle.Effects.StatKind)intent.Selector,
+                        mult = intent.Amount,
+                        stackId = (ushort)intent.StackId,
+                    });
+                    return;
+                }
+                case SimIntentKind.StartLethalTimer:
+                {
+                    if (!_hasEcb) return;
+                    var doomed = Resolve(intent.Target);
+                    if (doomed == Entity.Null || !_em.Exists(doomed)) return;
+                    // ⚠ **덮어쓴다.** 레거시가 `AddComponentData` 였고, 이중 부착은 bake 의
+                    // preflight(`DcApplicability` 의 DuplicateState)가 앞에서 막는다 —
+                    // 여기서 더하기로 바꾸면 그 거절이 무의미해지고 타이머가 늘어난다.
+                    _ecb.AddComponent(doomed, new Wassup.Battle.Units.LethalTimer
+                    {
+                        remaining = intent.Duration,
+                    });
+                    return;
+                }
                 case SimIntentKind.GrantCharge:
                 {
                     if (!_hasEcb) return;

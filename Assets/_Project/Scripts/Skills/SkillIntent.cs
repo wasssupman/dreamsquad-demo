@@ -72,6 +72,26 @@ namespace Wassup.Skills
         // 기존 `SpawnProjectile` 에 얹지 않은 이유는 그 자리형 분기가 «떨어져서 한 번 터진다»
         // 로 굳어 있어서다 — 겸직시키면 어느 필드가 어느 모양에 쓰이는지 다시 흐려진다.
         SpawnOrbitProjectile,
+
+        // skill-layer-migration unit 4a — **시한부로 만든다**(마지막 불꽃·재앙의 심장).
+        // 「지금 무엇을 한다」가 아니라 「이 시간 뒤에 죽는다」다. 스탯 버프와 짝을 이루지만
+        // **버프의 만료와 죽음은 다른 사건**이라 한 의도로 합치지 않는다 — 버프는 모디파이어
+        // 시계가, 죽음은 `LethalTimer` 가 각각 소유하고, 저작이 둘을 같은 초로 적을 뿐이다.
+        StartLethalTimer,
+
+        // skill-layer-migration unit 4b — **완주하면 보상, 맞으면 파탄**(호접몽).
+        // `BeginUltimateLeap` 과 같은 부류다 — 「진행형 상태 개시」이고, 개시가
+        // **두 가지의 동시 부착**(잠 + 완주 감시)이라 어느 하나만 붙는 프레임이 없어야 한다.
+        // 굴리는 것과 완주 판정은 시스템이 소유한다(계약 5).
+        BeginDreamCocoon,
+
+        // skill-layer-migration unit 4c — **이 대상을 잡으면 더 받는다**(살찌운 제물).
+        // 다른 의도들이 「값을 준다」인 것과 달리 이것은 **가진 값을 배로 만든다** —
+        // 읽고 곱해서 되쓴다. 그래서 `Amount` 는 양이 아니라 **배율**이다.
+        //
+        // ⚠ 대상이 **적**이다. 이 레이어에서 유일하게 「적을 이롭게 하지 않으면서
+        // 적에게 거는 표식」이고, 그 값은 그 적이 죽을 때 소비된다.
+        ScaleKillReward,
     }
 
     public enum MetaIntentKind : byte
