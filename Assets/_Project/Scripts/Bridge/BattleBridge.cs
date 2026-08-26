@@ -9216,8 +9216,10 @@ namespace Wassup.Bridge
             {
                 if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                     return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
-                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
+                // ⚠ `NextAttackDoubleFire` 는 여기가 아니라 **트리거 무관 스위치**에 있다.
+                // 여기 두면 `OnPlace × 충전` 이 라우팅을 못 찾아 0(=스킬 아님)이 되는데,
+                // 그 payload 의 arm 은 이미 철거돼서 **아무 일도 안 하고 아무 말도 안 한다.**
+                // 그 침묵을 PlayMode 가 잡았다(unit 8).
             }
             // unit 3e — 실드 파열. 피격 N회와 **같은 실행기**를 쓰므로 모양이 같다.
             // ⚠ `AreaSleep` 은 concrete 가 「재우자마자 내가 깨울 자리」를 뺀다 — 레거시
@@ -9276,6 +9278,16 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.AreaTauntSkill.Id;
                 case Wassup.Data.DcPayloadKind.AreaBreath:
                     return Wassup.Skills.Concrete.ConeBreathSkill.Id;
+                // 충전 부여는 **트리거를 모른다** — 「다음 공격이 세진다」는 무엇이 그것을
+                // 불렀든 같은 일이다. 트리거별 블록에 두면 그 트리거 밖 조합이 조용히 죽는다.
+                case Wassup.Data.DcPayloadKind.NextAttackDoubleFire:
+                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
+                // 장판도 **실려 온 자리**에 깔린다 — 「누구의 자리인가」는 감지자가 정한다
+                // (`DeathSiteBlastSkill` 과 같은 논리). `SelfTileAoe` 가 concrete 둘로 갈린
+                // 것은 「죽은 자리 ↔ 내 발밑」이 **다른 규칙**이어서인데, 장판은 그 갈림이
+                // 없다. OnKill 블록에만 두면 나머지 조합이 조용히 죽는다.
+                case Wassup.Data.DcPayloadKind.SpawnHazard:
+                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
                 case Wassup.Data.DcPayloadKind.AllyStatAura:
                     return Wassup.Skills.Concrete.AllyStatAuraSkill.Id;
                 case Wassup.Data.DcPayloadKind.OpponentStatAura:
@@ -9319,6 +9331,14 @@ namespace Wassup.Bridge
         // 돌려보낸다(부착 시점 5행·손패 회수·분열·강공 등) — 개방이 그 arm 들을 건드리지 않는다.
         private static int SkillIdForCardPayload(Wassup.Data.DcTriggerKind trigger,
                                                  Wassup.Data.DcPayloadKind kind)
+            => SkillIdForMechanic(trigger, kind);
+
+        // skill-layer-migration unit 8 — **그물용 창.** 라우팅이 0 을 돌려주는 조합은
+        // 이제 「arm 이 처리한다」가 아니라 **「아무도 처리 안 한다」**를 뜻한다(arm 이
+        // 철거됐으므로). 그 침묵을 EditMode 가 전수로 잡을 수 있게 연다 —
+        // PlayMode 가 `OnPlace × 충전` 하나를 잡아낸 뒤에 판 창이다.
+        public static int RoutingProbe(Wassup.Data.DcTriggerKind trigger,
+                                       Wassup.Data.DcPayloadKind kind)
             => SkillIdForMechanic(trigger, kind);
 
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
@@ -9422,6 +9442,24 @@ namespace Wassup.Bridge
                         $"[BattleBridge] {ownerLabel} mechanic {i}: trigger '{m.trigger.kind}' 를 "
                         + $"{(hostIsEnemy ? "적" : "방어유닛")} 에 붙였는데 그 조합을 잡는 감지자가 없다 — 건너뛴다. "
                         + "슬롯만 만들면 아무도 안 잡는 침묵 no-op 이 된다(DcTrigger.HasDetector 표 참조).");
+                    continue;
+                }
+
+                // skill-layer-migration unit 8 — **침묵 금지 게이트.**
+                // arm 이 철거된 뒤로 `skillId == 0` 은 「아직 arm 이 처리한다」가 아니라
+                // 「아무도 처리 안 한다」다. 슬롯은 구워지고 트리거는 발화하고 그 다음에
+                // 아무 일도 안 일어나며 **로그조차 없다**(미처리 payload 경고가 arm 과
+                // 함께 사라졌다). 실제로 `OnPlace × 충전` 이 그렇게 죽어 있었다.
+                if (Wassup.Data.SkillPayloadPolicy.IsSkill(m.payload.kind)
+                    && !Wassup.Data.SkillPayloadPolicy.IsAttachOnly(m.payload.kind)
+                    && SkillIdForMechanic(m.trigger.kind, m.payload.kind)
+                       == Wassup.Skills.SkillRegistry.NotRouted)
+                {
+                    Debug.LogWarning(
+                        $"[BattleBridge] {ownerLabel} mechanic {i}: '{m.trigger.kind} × {m.payload.kind}' "
+                        + "조합에 라우팅이 없다 — 슬롯을 만들면 발화하고도 아무 일이 안 일어난다(로그도 없다). "
+                        + "트리거 무관 concrete 면 SkillIdForPayload 로 옮기고, 정말 스킬이 아니면 "
+                        + "SkillPayloadPolicy 에 이유와 함께 올려라 — skipped.");
                     continue;
                 }
 
