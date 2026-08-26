@@ -145,6 +145,121 @@ namespace Wassup.Tests.PlayMode
             return card;
         }
 
+        // skill-layer-migration unit 3d — **시체폭발의 첫 행동 그물.**
+        //
+        // 이 payload 는 여태 「붙는다」만 검증됐고 **어디서 터지나**를 아무도 안 쟀다.
+        // 그게 이 스킬의 전부인데도 그랬다 — 자기 자리 폭발과 코드가 거의 같아 보이지만
+        // 게임에서는 「내가 맞은 자리」와 「내가 죽인 자리」로 완전히 다른 그림이다.
+        //
+        // 가르는 기하: 방어유닛에서 1칸에 처치 대상 A, 2칸에 구경꾼 B, 반경 1.
+        //   · 폭발이 **A 자리**면 B 는 1칸이라 맞는다   ← 사양
+        //   · 폭발이 **방어유닛 자리**면 B 는 2칸이라 안 맞는다
+        // 그래서 B 의 피해 유무 하나로 자리가 갈린다.
+        [UnityTest]
+        public IEnumerator CorpseBurst_ExplodesAtTheVictimsSpot_NotTheCasters()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var guardian = FindDefenderCatalog().ById("guardian");
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+            // ⚠ **투사체 요청 드레인은 `_running` 아래다.** 배치 페이즈에 머물면 폭발
+            // 캐리어가 만들어지고 영원히 안 풀린다(unit 2a 에서 프레임 계측으로 확인).
+            // 형제 테스트(포식)는 스탯 모디파이어라 이 경로가 필요 없었다.
+            bridge.StartBattle();
+            BattleBridgeTestAccess.SetField(bridge, "_usingGeneratedWaves", false);
+            ((System.Collections.IList)BattleBridgeTestAccess.Field(bridge, "_pending")).Clear();
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var defender = FindDefender(bridge, em);
+            Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
+            Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, MakeCorpseBurstCard()), 0,
+                "corpse burst attached");
+
+            float tile = (bridge.GridToWorldCenterVector(new Vector2Int(1, 0))
+                          - bridge.GridToWorldCenterVector(new Vector2Int(0, 0))).magnitude;
+            var defPos = em.GetComponentData<LocalTransform>(defender).Position;
+
+            // A: 곧 죽을 적(HP 1) — 방어유닛에서 1칸.
+            var victim = SpawnBystander(em, bridge, defPos + new float3(tile, 0f, 0f), hp: 1f);
+            // B: 구경꾼 — A 에서 1칸, 방어유닛에서 2칸.
+            const float ByHp = 100000f;
+            var bystander = SpawnBystander(em, bridge, defPos + new float3(tile * 2f, 0f, 0f), ByHp);
+
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+
+            float t = 0f;
+            while (t < 6f && em.Exists(victim) && em.GetComponentData<Health>(victim).value > 0f)
+            { t += Time.deltaTime; yield return null; }
+            Assert.IsTrue(!em.Exists(victim) || em.GetComponentData<Health>(victim).value <= 0f,
+                "전제: 방어유닛이 A 를 처치해야 이 그물이 측정이 된다");
+
+            for (int i = 0; i < 30; i++) yield return null;   // 캐리어 → 탄 → 피해
+            float dealt = ByHp - em.GetComponentData<Health>(bystander).value;
+            if (em.Exists(victim)) em.DestroyEntity(victim);
+            em.DestroyEntity(bystander);
+
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Death), 1,
+                "죽음 seam 이 concrete 를 안 거쳤다");
+            Assert.Greater(dealt, 0f,
+                "구경꾼이 안 맞았다 — 폭발이 죽은 자리가 아니라 시전자 자리에서 터졌다(2칸은 반경 밖)");
+        }
+
+        private static DreamcatcherCard MakeCorpseBurstCard()
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.axis = CardTargetAxis.All;
+            card.type = CardType.Unit;
+            card.effects = new CardEffect[0];
+            card.attackMods = new DcAttackModSpec[0];
+            card.mechanics = new[] { new DcMechanic {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.OnKill },
+                // 반경 1 이 이 그물의 기하 전제다 — 키우면 시전자 자리에서도 B 가 맞아
+                // 단언이 자리를 못 가른다.
+                payload = new DcPayloadSpec {
+                    kind = DcPayloadKind.SelfTileAoe, magnitude = 50f, tileRange = 1,
+                    projectile = FindAnyAoeProjectile(),
+                },
+            }};
+            return card;
+        }
+
+        // `SelfTileAoe` 는 ProjectileData 가 없으면 폭발 요청이 통째로 드롭된다(피해까지).
+        private static ProjectileData FindAnyAoeProjectile()
+        {
+            foreach (var p in Resources.FindObjectsOfTypeAll<ProjectileData>())
+                if (p != null && p.id == "jjangssen_quake") return p;
+            return Resources.FindObjectsOfTypeAll<ProjectileData>()[0];
+        }
+
+        private static Entity SpawnBystander(EntityManager em, BattleBridge bridge, float3 pos, float hp)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, LocalTransform.FromPosition(pos));
+            em.AddComponentData(e, new Health { value = hp, max = hp });
+            em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
+            em.AddBuffer<IncomingDamage>(e);
+            em.AddBuffer<CcEffect>(e);
+            em.AddComponent<AttackUnitTag>(e);
+            em.AddComponentData(e, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)PlacementLayer.Path,
+            });
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
+            return e;
+        }
+
         private static DreamcatcherCard MakeDevouringCard()
         {
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();

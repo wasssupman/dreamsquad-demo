@@ -9075,6 +9075,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetStackSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteBlastSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9114,6 +9115,20 @@ namespace Wassup.Bridge
         // **이전된 것만 여기 있다.** 없는 payload 는 0 을 받아 legacy arm 이 처리한다.
         // migration 이 한 가족을 옮길 때마다 여기 한 줄이 는다 — 그 한 줄이 「이 스킬은
         // 이제 concrete 가 돈다」의 유일한 선언이다.
+        // skill-layer-migration unit 3d — **라우팅 키는 (트리거 × payload) 다.**
+        // 저작의 키가 원래 그것이고(`DcMechanic`), payload 하나가 트리거에 따라 다른
+        // 스킬이 되는 조합이 실재한다: `SelfTileAoe` 는 **내가 맞은 자리**에서 터지지만
+        // (`HealthThreshold`), 처치 트리거에서는 **내가 죽인 자리**에서 터진다.
+        // 그 둘은 같은 「광역 폭발」이라도 게임에서 완전히 다른 그림이다.
+        private static int SkillIdForMechanic(Wassup.Data.DcTriggerKind trigger,
+                                              Wassup.Data.DcPayloadKind kind)
+        {
+            if (trigger == Wassup.Data.DcTriggerKind.OnKill
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
+            return SkillIdForPayload(kind);
+        }
+
         private static int SkillIdForPayload(Wassup.Data.DcPayloadKind kind)
         {
             switch (kind)
@@ -9171,8 +9186,13 @@ namespace Wassup.Bridge
         // ⚠ **unit 8(철거)의 전제다.** arm 을 하나 더 걷어낼 때 그 payload 를 여기
         // 추가하지 않으면 그 payload 를 저작한 카드가 조용히 죽는다 — 컴파일러도
         // 테스트도 그 연결을 안 잡는다. arm 을 지우는 손이 이 목록도 늘려야 한다.
-        private static int SkillIdForCardPayload(Wassup.Data.DcPayloadKind kind)
+        private static int SkillIdForCardPayload(Wassup.Data.DcTriggerKind trigger,
+                                                 Wassup.Data.DcPayloadKind kind)
         {
+            // unit 3d — 죽은 자리 폭발. 처치 seam 이 열렸으므로 카드도 함께 연다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnKill
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
             switch (kind)
             {
                 // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해
@@ -9308,7 +9328,7 @@ namespace Wassup.Bridge
                     // skill-layer-foundation unit 5 — 이전된 payload 만 새 경로로 라우팅한다.
                     // 나머지는 0(legacy arm)이라 감지자가 예전처럼 arm 을 돈다. 이 한 줄이
                     // 이전 중 매 커밋에서 게임이 도는 이유다.
-                    skillId = SkillIdForPayload(m.payload.kind),
+                    skillId = SkillIdForMechanic(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),

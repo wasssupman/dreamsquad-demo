@@ -540,7 +540,7 @@ namespace Wassup.Bridge
                 var slot = new DcTriggerSlot
                 {
                     // 카드 경로의 스킬 레이어 라우팅 — 규칙은 `SkillIdForCardPayload` 소유.
-                    skillId = SkillIdForCardPayload(m.payload.kind),
+                    skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),

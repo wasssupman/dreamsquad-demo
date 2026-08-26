@@ -355,6 +355,58 @@ namespace Wassup.Battle.Units
                 {
                     ecb.AddComponent<DeadTag>(entity);
 
+                    // ⚠ **라우팅은 전용 루프 하나로 한다**(skill-layer-migration unit 3d).
+                    // 아래 레거시 블록 둘은 가드가 서로 **부분집합이 아니다**(하나는
+                    // `hasEnemyKilledQueue`+적 태그+transform, 다른 하나는 `hasStatModQueue`).
+                    // 어느 한쪽에 라우팅을 얹으면 그 조건이 안 맞는 킬에서 슬롯이 조용히
+                    // 죽고, 양쪽에 얹으면 **이중 발화**한다. 그래서 둘보다 앞에 한 번만 돈다.
+                    //
+                    // ⚠ **드레인 시점엔 피해자가 이미 없다** — `UnitLifecycleSystem` 이
+                    // 파괴한다. 그래서 killer 사양(통행 층)과 자리를 지금 싣는다.
+                    if (hasSkillQ && killerSource != Entity.Null
+                        && _dcTriggerSlotLookup.HasBuffer(killerSource))
+                    {
+                        var routeSlots = _dcTriggerSlotLookup[killerSource];
+                        for (int s = 0; s < routeSlots.Length; s++)
+                        {
+                            var rs = routeSlots[s];
+                            if (rs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
+                            if (rs.skillId == Wassup.Skills.SkillRegistry.LegacyArmId) continue;
+                            skillFiredSingleton.ValueRW.queue.Enqueue(
+                                new Wassup.Battle.Skills.SkillFiredEvent
+                            {
+                                Caster = killerSource,
+                                SkillId = rs.skillId,
+                                SlotIndex = s,
+                                FiredPosition = _transformLookup.HasComponent(killerSource)
+                                    ? _transformLookup[killerSource].Position : float3.zero,
+                                // 죽은 자리 — 시체폭발·장판이 여기를 쓴다.
+                                Target = Entity.Null,
+                                TargetPosition = _transformLookup.HasComponent(entity)
+                                    ? _transformLookup[entity].Position : float3.zero,
+                                Magnitude = rs.magnitude,
+                                Duration = rs.duration,
+                                TileRange = rs.tileRange,
+                                Period = rs.period,
+                                DataIndex = rs.projectileDataIndex,
+                                Selector = (int)rs.ccKind,
+                                StatSelector = (int)rs.buffStat,
+                                StackSelector = (int)rs.stackKind,
+                                ProjectileMovement = (int)rs.projectileMovement,
+                                ProjectilePayload = (int)rs.projectilePayload,
+                                PatternIndex = rs.patternIndex,
+                                Speed = rs.speed,
+                                HitThreshold = rs.hitThreshold,
+                                SlamDamage = rs.slamDamage,
+                                SlamTileRange = rs.slamTileRange,
+                                StackId = rs.statBuffStackId,
+                                VisualScale = rs.visualScale,
+                                TargetTraversalLayers = _attackStateLookup.HasComponent(killerSource)
+                                    ? _attackStateLookup[killerSource].targetTraversalLayers : (byte)0,
+                            });
+                        }
+                    }
+
                     // Enemy killed by damage → bump live score. Only AttackUnitTag
                     // (enemies); goal-reach removal goes through UnitLifecycleSystem
                     // and never reaches this HP<=0 branch.
@@ -381,6 +433,8 @@ namespace Wassup.Battle.Units
                             {
                                 var bs = bSlots[s];
                                 if (bs.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
+                                // 이전된 슬롯은 위 라우팅 루프가 보냈다 — 이중 발화 방지.
+                                if (bs.skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
                                 if (bs.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                                 {
                                     if (hasKillBurst) continue;   // 첫 매칭만(OnDeath v1 선례)
@@ -444,49 +498,10 @@ namespace Wassup.Battle.Units
                         for (int s = 0; s < kSlots.Length; s++)
                         {
                             var ks = kSlots[s];
-                            if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill) continue;
-                            // ⚠ **라우팅이 payload 판정보다 앞이다.** 뒤에 두면 이전한
-                            // 스킬이 legacy arm 을 타는데 legacy 가 잘 돌아 그물이 초록이 된다.
-                            //
-                            // skill-layer-migration unit 3c — 죽음 계열의 값 스냅샷:
-                            // **드레인 시점엔 피해자가 이미 없다**(`UnitLifecycleSystem` 이
-                            // 파괴한다). killer 사양(통행 층)도 지금 읽어야 한다 — 0 으로
-                            // 새면 무제한 통과가 되어 지상 전용 유닛이 비행 적에게 효과를 건다.
-                            if (ks.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
-                            {
-                                if (hasSkillQ)
-                                    skillFiredSingleton.ValueRW.queue.Enqueue(
-                                        new Wassup.Battle.Skills.SkillFiredEvent
-                                    {
-                                        Caster = killerSource,
-                                        SkillId = ks.skillId,
-                                        SlotIndex = s,
-                                        FiredPosition = _transformLookup.HasComponent(killerSource)
-                                            ? _transformLookup[killerSource].Position : float3.zero,
-                                        Target = Entity.Null,
-                                        Magnitude = ks.magnitude,
-                                        Duration = ks.duration,
-                                        TileRange = ks.tileRange,
-                                        Period = ks.period,
-                                        DataIndex = ks.projectileDataIndex,
-                                        Selector = (int)ks.ccKind,
-                                        StatSelector = (int)ks.buffStat,
-                                        StackSelector = (int)ks.stackKind,
-                                        ProjectileMovement = (int)ks.projectileMovement,
-                                        ProjectilePayload = (int)ks.projectilePayload,
-                                        PatternIndex = ks.patternIndex,
-                                        Speed = ks.speed,
-                                        HitThreshold = ks.hitThreshold,
-                                        SlamDamage = ks.slamDamage,
-                                        SlamTileRange = ks.slamTileRange,
-                                        StackId = ks.statBuffStackId,
-                                        VisualScale = ks.visualScale,
-                                        TargetTraversalLayers = _attackStateLookup.HasComponent(killerSource)
-                                            ? _attackStateLookup[killerSource].targetTraversalLayers : (byte)0,
-                                    });
-                                continue;
-                            }
-                            if (ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
+                            if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill ||
+                                ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
+                            // 이전된 슬롯은 위 라우팅 루프가 이미 보냈다 — 여기서 또 처리하면 이중 발화.
+                            if (ks.skillId != Wassup.Skills.SkillRegistry.LegacyArmId) continue;
                             // 슬롯 고정 stackId 로 재부여. 최대 중첩(ks.tileRange)이 0 이면 지속만
                             // 갱신되는 비스택 refresh 이고, >0 이면 매 킬마다 상한까지 누적된다
                             // (dreamcatcher-berserker unit 1 — 짱빠른/짱쎈버서커가 이 자리에 선다).

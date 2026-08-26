@@ -38,6 +38,10 @@ namespace Wassup.Skills
         // killer 사양(발화 시점 스냅샷). 0 으로 새면 **무제한 통과**가 된다 —
         // 죽음 계열은 드레인 시점에 host 가 이미 없어 재질의가 불가능하다.
         public readonly byte TargetTraversalLayers;
+        // **사건이 일어난 자리.** 시전자 자리(`ctx.Position(caster)`)와 다르다 —
+        // 죽음 계열은 피해자가 쓰러진 곳이 그 자리이고, 드레인 시점엔 그 엔티티가
+        // 이미 없어 **재질의가 불가능**하다. 그래서 발화 시점 좌표를 싣는다.
+        public readonly Unity.Mathematics.float3 EventPosition;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
         public readonly float Speed;
         public readonly float HitThreshold;
@@ -54,7 +58,7 @@ namespace Wassup.Skills
             float slamDamage, int slamTileRange, int stackId, float visualScale = 0f,
             int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0,
             int projectileMovement = 0, int projectilePayload = 0,
-            byte targetTraversalLayers = 0)
+            byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -63,7 +67,7 @@ namespace Wassup.Skills
             VisualScale = visualScale; PatternIndex = patternIndex;
             StatSelector = statSelector; StackSelector = stackSelector;
             ProjectileMovement = projectileMovement; ProjectilePayload = projectilePayload;
-            TargetTraversalLayers = targetTraversalLayers;
+            TargetTraversalLayers = targetTraversalLayers; EventPosition = eventPosition;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
