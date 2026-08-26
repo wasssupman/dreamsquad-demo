@@ -59,7 +59,7 @@ BattleScene 배선이 `defaultPool` = 6종 전체 + `defaultCount: 2` 다 — **
 | **7a** | 대상 셀 축 개통 + `SlowField` | 완료 |
 | **7b** | `PowerSurge` · `RapidFire`(아군 버프 장판) | 완료 |
 | **7c** | `Tornado` · `Portal` | 완료 |
-| **7d** | `Meteor` + switch·enum 철거 | |
+| **7d** | `Meteor` + arm 6종 철거 | 완료 — 단 **enum 은 남는다**(아래) |
 
 ## 7a 에서 나온 것
 
@@ -129,3 +129,48 @@ TTL 모디파이어를 한 번 거는 것이고, 늦게 들어온 적은 안 걸
 
 ⚠ **`ActiveSlowFieldTest` 의 이동 거리 단언은 세 클래스를 한 잡에 묶으면 흔들린다**
 (프레임 예산 의존). 단독으로는 초록이다.
+
+
+## 7d 에서 나온 것
+
+**액티브 6종의 arm 구현이 전부 사라졌다** — `ApplySlowField` · `ApplyTornado` ·
+`ApplyPortal` · `ApplyMeteor` · `SpawnAllyBuffZone`(둘을 덮음) · `PaintAllyBuffZone`.
+
+### 「핸들 반환」 네 번째 — 앞으로 흐르게 하면 된다
+
+메테오는 스폰된 **투사체 엔티티**를 돌려받아 착탄 예고를 걸었다(해제가 그 엔티티의 착탄
+이벤트로 판별된다). 실행이 스킬 레이어로 가면 그 반환이 사라진다.
+
+그런데 **드레인이 이미 그 엔티티를 손에 들고 있었다.** 요청이 「예고를 걸어라」만 나르면
+(`ProjectileSpawnRequest.telegraphTileRange`) 드레인이 그 자리에서 걸 수 있다 — 반환값이
+아니라 **앞으로 흐르는 값**이다. 해제는 종전대로 엔티티 판별이라 정확도도 그대로다.
+
+네 번의 해법을 모으면 이렇다:
+| 필요해 보인 반환값 | 해법 |
+|---|---|
+| `affectedCount`(로그) | **셈은 읽기다** — 실행 전에도 셀 수 있다 |
+| 캐리어 엔티티(점등) | **재조정** — 매 프레임 살아 있는 것과 맞춘다 |
+| 투사체 엔티티(예고) | **전방 전달** — 만드는 쪽이 이미 들고 있다 |
+| 회수 토큰(`PlacementAura`) | ❌ **트랜잭션의 반환값** — 위 셋 중 어느 것도 아니다 |
+
+⚠ **저작 오류라도 시전은 성공이다.** 탄 저작이 없으면 떨어질 것이 없을 뿐 쿨다운은
+소모되고 로그도 남는다 — 그물이 그 동작을 박아 뒀고(`Meteor_MissingProjectile_
+DropsResolution_ButCastStillSucceeds`) 처음엔 그것을 거절로 바꿔 빨개졌다.
+
+### ⚠ `SkillEffectType` 은 **삭제되지 않았다** — 완료 기준 하나가 미달이다
+
+이 문서는 「세 번째 어휘 소멸」을 기준으로 적었는데, 실측하니 이 enum 은 **두 가지 일**을
+하고 있었다:
+
+1. **실행 분기** — `CastSkillAtTile` 의 switch. **이건 죽었다**(arm 구현이 전부 사라졌고
+   남은 switch 는 `SkillIdForPayload` 와 같은 **라우팅 표**다).
+2. **저작 분류** — UI 가 이 값으로 카드 카테고리 색(`CardCategoryStyle`)과 문안
+   (`DreamcatcherCardText`)을 정하고, 포탈의 **두 번 탭** 조준도 이 값으로 갈린다.
+
+②는 `SkillData`(저작)의 정체성이라 sim 의 `skillId` 로 대체할 수 없다.
+**삭제하려면 저작 마이그레이션이 필요하다** — `SkillData` 에 `category`(UI)와
+`targetShape`(탭 수) 같은 축을 직접 저작으로 두고 6에셋을 다시 저작하는 일이며,
+그건 이전이 아니라 **저작 표면 재설계**다.
+
+**남은 판단**: 세 번째 어휘를 정말 지울 것인가(저작 6에셋 재저작) — 아니면 「실행 분기가
+죽었다」로 충분한가. 후자면 이 문서의 완료 기준을 그렇게 고쳐야 한다.

@@ -1046,6 +1046,8 @@ namespace Wassup.Battle.Skills
                     {
                         movement = Wassup.Battle.Combat.Projectile.MovementKind.SkyFall,
                         payload = Wassup.Battle.Combat.Projectile.PayloadKind.TileAoe,
+                        // 예고를 걸 반경. 0 = 안 건다(죽음 자리 폭발·파열은 즉발이라 예고가 없다).
+                        telegraphTileRange = intent.Telegraph ? intent.TileRange : 0,
                         impact = intent.Position,
                         damage = intent.Amount,
                         impactTileRange = intent.TileRange,

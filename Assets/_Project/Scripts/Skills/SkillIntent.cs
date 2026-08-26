@@ -163,6 +163,9 @@ namespace Wassup.Skills
         // ⚠ `HitThreshold`(맞는 반경)와 겸직시키지 않는다 — 한때 그랬고, 그 겸직이
         // 「스침 반경을 키우면 그림도 커지는」 조용한 결합을 만들었다.
         public float VisualScale;
+        // unit 7d — **착탄 예고를 건다.** 「언제 떨어지는지 보여 준다」는 스킬의 판단이고
+        // (예고 없는 즉발 폭발도 있다), 어떻게 그리는지는 뷰가 소유한다.
+        public bool Telegraph;
         // killer 사양. 0 으로 새면 **무제한 통과**가 된다.
         public byte TargetTraversalLayers;
         public int StackId;            // ⚠ ApplyStatModifier 의 병합 키 일부(아래)

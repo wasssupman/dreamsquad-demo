@@ -14,6 +14,11 @@ namespace Wassup.Battle.Combat.Projectile
     public struct ProjectileSpawnRequest : IComponentData
     {
         // ── Axis discriminators ──────────────────────────────────────────────
+        // skill-layer-migration unit 7d — **착탄 예고를 거나.** 0 = 안 건다.
+        // ⚠ 반환값이 아니라 **앞으로 흐르는 값**이다. 예전엔 시전 지점이 스폰된 엔티티를
+        // 돌려받아 예고를 걸었는데, 실행이 스킬 레이어로 가면서 그 반환이 사라졌다.
+        // 드레인은 이미 그 엔티티를 손에 들고 있으므로 요청이 「걸어라」만 말하면 된다.
+        public int telegraphTileRange;
         public MovementKind movement;
         public PayloadKind payload;
 

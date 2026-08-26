@@ -2556,8 +2556,23 @@ namespace Wassup.Bridge
                     break;
                 }
                 case SkillEffectType.Meteor:
-                    affectedCount = ApplyMeteor(tile, skill);
+                {
+                    // ⚠ **저작 오류라도 시전은 성공이다**(레거시 동작 — 그물이 박아 뒀다).
+                    // 떨어질 것이 없을 뿐 쿨다운은 소모되고 로그도 남는다. 조용히 넘기지
+                    // 않는 것은 여기서 짖기 때문이고, 스킬은 발화조차 안 한다.
+                    if (skill.projectile == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Skill '{skill.id}' has no ProjectileData assigned; meteor cast dropped.");
+                        break;
+                    }
+                    int meteorTiles = GridMath.RangeToTiles(skill.range);
+                    affectedCount = CountEnemiesInTileRange(tile, meteorTiles);
+                    CastActiveSkillAtTile(Wassup.Skills.Concrete.TileMeteorSkill.Id, skill, tile,
+                        dataIndex: GetOrCreateProjectileDataIndex(skill.projectile),
+                        visualScale: skill.projectile.visualScale,
+                        duration: skill.warningSec > 0f ? skill.warningSec : 0f);
                     break;
+                }
                 // active-ally-zone unit 1 — 아군 버프는 **시간제 장판**이다(즉시 버프 폐기).
                 // 빈 칸에도 놓을 수 있어 적 장판과 규칙이 같아졌다 — 0기 거절은 폐기.
                 case SkillEffectType.PowerSurge:
@@ -2887,7 +2902,8 @@ namespace Wassup.Bridge
         // ⚠ **부착 seam 을 쓴다.** 액티브도 동기 트랜잭션이다(쿨다운 게이트 → 실행 →
         // `Consume` + 로그). 프레임을 기다리면 소모 뒤에 실행이 도착한다.
         private void CastActiveSkillAtTile(int skillId, SkillData skill, Vector2Int tile,
-            int statSelector = 0, Vector2Int tileB = default, bool hasCellB = false)
+            int statSelector = 0, Vector2Int tileB = default, bool hasCellB = false,
+            int dataIndex = -1, float visualScale = 0f, float? duration = null)
         {
             if (!_skillFiredQueue.IsCreated) return;
             _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
@@ -2899,9 +2915,12 @@ namespace Wassup.Bridge
                 TargetCellB = new int2(tileB.x, tileB.y),
                 HasCellB = hasCellB,
                 Magnitude = skill.magnitude,
-                Duration = skill.durationSec,
+                // 메테오만 지속이 **낙하 예고**다 — 저작 필드가 다르다.
+                Duration = duration ?? skill.durationSec,
                 TileRange = GridMath.RangeToTiles(skill.range),
                 StatSelector = statSelector,
+                DataIndex = dataIndex,
+                VisualScale = visualScale,
             });
             RunImmediateSkills();
         }
@@ -2941,53 +2960,9 @@ namespace Wassup.Bridge
         // only seam that can emit it without a context-boundary violation. No ECS
         // carrier entity — SpawnProjectile is called directly (legacy meteor-carrier
         // path removed in unit 8).
-        private int ApplyMeteor(Vector2Int tile, SkillData skill)
-        {
-            float3 centerWorld = GridToWorldCenter(tile);
-            int tileRange = GridMath.RangeToTiles(skill.range);
-            float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
-            if (skill.projectile == null)
-            {
-                // Config error, visibly dropped — GetOrCreateProjectileDataIndex
-                // would NRE on null and a silent fallback would hide the miswiring.
-                Debug.LogWarning($"[BattleBridge] Skill '{skill.id}' has no ProjectileData assigned; meteor cast dropped.");
-                return 0;
-            }
-            var req = new ProjectileSpawnRequest
-            {
-                movement = MovementKind.SkyFall,
-                payload = PayloadKind.TileAoe,
-                origin = centerWorld,
-                impact = centerWorld,
-                damage = skill.magnitude,
-                visualScale = skill.projectile.visualScale,
-                dataIndex = GetOrCreateProjectileDataIndex(skill.projectile),
-                impactTileRange = tileRange,
-                flightTime = warn,
-                // unit 9 — SkyFall 은 arcHeight 슬롯을 낙하 시작 높이로 재사용
-                // (신규 state/request 필드 0). 뷰가 (1-t)·dropHeight 를 view-Y 에 더한다.
-                arcHeight = skill.projectile.dropHeight,
-            };
-            // range-preview unit 3 / unit 9 — 착탄 예고는 격자 고정 표시. 해제는
-            // "이 투사체의 착탄 이벤트"를 source 엔티티로 정확 판별(hit VFX 유무 무관).
-            _skillTelegraphProjectile = SpawnProjectile(req, Entity.Null);
-            PinSkillTelegraph(tile, tileRange);
-            // Actual damage resolves async (ProjectileHitSystem TileAoe arm at
-            // flightTime); at cast time we conservatively pre-count current
-            // overlaps so the log is informative without waiting for the burst.
-            if (!_aliveAttackersQueryCreated) return 0;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            int preview = 0;
-            for (int i = 0; i < entities.Length; i++)
-            {
-                if (!_em.HasComponent<LocalTransform>(entities[i])) continue;
-                var p = _em.GetComponentData<LocalTransform>(entities[i]).Position;
-                if (!InTileRange(p, tile, tileRange)) continue;
-                preview++;
-            }
-            entities.Dispose();
-            return preview;
-        }
+        // skill-layer-migration unit 7d — `ApplyMeteor` 는 은퇴했다. 예고는 이제
+        // **앞으로 흐르는 값**이다(`ProjectileSpawnRequest.telegraphTileRange`) —
+        // 스폰된 엔티티를 돌려받을 필요가 없어졌다.
 
 
         private void Update()
@@ -5019,6 +4994,16 @@ namespace Wassup.Bridge
                 var spawnedProjectile = SpawnProjectile(req, requestEntities[i]);
                 if (spawnedProjectile != Entity.Null && shooterIsDefender)
                     Wassup.Core.SoundManager.Instance?.PlayProjectileFire();
+                // unit 7d — 착탄 예고. 해제는 종전대로 **이 엔티티의 착탄 이벤트**로
+                // 판별하므로(hit VFX 유무 무관), 그 엔티티를 만든 자리에서 잡는다.
+                if (spawnedProjectile != Entity.Null && req.telegraphTileRange > 0)
+                {
+                    var tCell = GridMath.WorldToCell(req.impact, tileSize,
+                        _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize,
+                        origin: _boardOrigin);
+                    _skillTelegraphProjectile = spawnedProjectile;
+                    PinSkillTelegraph(new Vector2Int(tCell.x, tCell.y), req.telegraphTileRange);
+                }
                 // dreamcatcher-unit-trigger Unit 1 — dedicated carrier entities are
                 // destroyed outright: no vestigial empty entity, and no redundant
                 // RemoveComponent structural change on an entity about to die.
@@ -9132,6 +9117,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AllyBuffFieldSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.PullFieldSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.PortalSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.TileMeteorSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
