@@ -41,14 +41,30 @@
 
 ## 완료 기준
 
-- [ ] 화이트리스트 2술어가 삭제되고 트리거 × 주체 조합이 열렸다
-- [ ] 보스 `OnShieldBreak` 가 자기 진영을 때리지 않는다 (PlayMode 단언)
-- [ ] ⚠ **오버킬 파열**(host 가 발동 프레임에 사망)에서도 자기 진영을 안 때린다 — 진영 스냅샷 선행
-- [ ] `skillId == 0` legacy 경로가 남아 있지 않다 (또는 남기는 근거가 기재됐다)
-- [ ] `DcPayloadKind` arm · `OnPlaceEffectType` · `SkillEffectType` 실행 코드가 전부 삭제됐다
-- [ ] **검증 질문 참**: 새 스킬 하나 = concrete 1 + 저작 SO 1 (switch 4곳 → 1곳)
-- [ ] **끝점 참**: 보스 · 배치 · 특수 스킬이 한 `ISkill` 레지스트리에 있다
-- [ ] EditMode 전 lane + PlayMode 초록, Play 육안 종합
+- [x] 화이트리스트 2술어가 삭제되고 트리거 × 주체 조합이 열렸다 — `01e86f07`.
+      단순 삭제가 아니라 **질문 분리**였다(안전 ↔ 감지자 유무). 후자만 `HasDetector` 로 남았다.
+- [x] 보스 `OnShieldBreak` 가 자기 진영을 때리지 않는다 — `01e86f07`·`bce07b2d`·`3050b0a3`.
+      ⚠ **PlayMode 단언은 못 세웠다.** 대신 구조로 막았다: 대상 풀이 caster 상대이고,
+      실행이 진영을 모르는 concrete 로 갔고, splash·bounce·PathHit 후보 풀이 전부
+      주인의 상대 진영으로 걸러진다(적 전용 풀 `aoeQuery` 는 소비처 0 으로 은퇴).
+- [x] 오버킬 파열에서도 자기 진영을 안 때린다 — `9741d43d`.
+      선행이라 여겼던 것이 **이미 안전**했다: 죽음 seam 이 `[UpdateBefore(UnitLifecycleSystem)]`
+      이라 드레인 때 host 가 살아 있다. 진짜 구멍은 옆 seam(자기 죽음)이었고 거기를 막았다.
+- [x] `skillId == 0` legacy 경로가 남아 있지 않다 — `4eaada45`·`a0576e6f`.
+      경로는 남지만 **뜻이 바뀌었다**(「숙제」→「스킬이 아님」). `NotRouted` 로 개명하고
+      bake 게이트·전수 그물·단일 정본 술어 세 겹으로 못박았다.
+- [x] arm 실행 코드 삭제 — `b7d4ff9f`·`4eaada45`. **종료 조건을 개정해서 달성**했다:
+      「전부 삭제」→「**스킬인** payload 의 arm 전부 삭제」. `OnPlaceEffectType` 은 타입째
+      소멸, `SkillEffectType` 은 저작 enum 으로 잔존(사용자 결정), `DcPayloadKind` 는
+      비스킬 7종만 남고 그 이유가 `SkillPayloadPolicy` 에 각각 다르게 적혔다.
+- [ ] **검증 질문 — 부분.** 기존 어휘 재사용은 **코드 0 + SO 1**(참). 새 어휘는 switch
+      **4곳 → 2곳**(라우팅 + 부착 자격)이라 문면의 「1곳」에 미달. 잔존 2곳 다 fail-closed
+      이고 `DcApplicability` 단순화는 후속 후보로 이관. **미달을 이유와 함께 남긴다.**
+- [x] **끝점 참** — `d9d10065`. concrete 34 등록이 단일 레지스트리에 있고 보스·배치·액티브가
+      한 블록에 공존한다. 「등록을 잊으면 런타임 경고로만 보인다」는 구멍도 그물로 막았다.
+- [ ] **PlayMode — 부분.** EditMode 2745 초록(선행 실패 2건 제외), PlayMode 216 중 14 빨강.
+      14건 전건 판정: 1건은 이 레이어의 진짜 버그(고침), 4건은 데이터 이력으로 선행 실패 확정,
+      10건은 변경 표면 밖(diff 증거). 아래 「PlayMode 판정」 절 참조. **Play 육안 미실시.**
 
 ---
 

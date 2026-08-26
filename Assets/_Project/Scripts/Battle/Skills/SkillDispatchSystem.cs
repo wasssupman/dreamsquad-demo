@@ -10,7 +10,7 @@ namespace Wassup.Battle.Skills
 {
     // skill-layer-foundation unit 4 — 감지된 발동을 concrete 로 넘긴다.
     //
-    // ⚠ **드레인 지점이 셋이다.** 하나로는 산술적으로 불가능하다 — 감지자들이 각자
+    // ⚠ **드레인 지점은 하나가 아니다.** 하나로는 산술적으로 불가능하다 — 감지자들이 각자
     // same-frame 하류 계약을 갖는데 그 구간이 서로 겹치지 않는다:
     //
     //   · BossPeriodic(#4)  → ProjectileEmitter·ModifierApply·AggroState 가 같은 틱
