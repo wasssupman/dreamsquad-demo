@@ -11,7 +11,7 @@ namespace Wassup.Battle.Skills
         Periodic = 0,   // 주기·배치 — BossPeriodicTriggerSystem 뒤
         Attack = 1,     // 공격 해결 — AttackSystem 뒤
         Threshold = 2,  // 체력 경계 — HealthThresholdSystem 뒤
-        // skill-layer-migration unit 3c — 죽음 계열(처치·피격 N회·실드 파열).
+        // skill-layer-migration unit 3c — 처치(그리고 앞으로 피격 N회·실드 파열).
         // 감지가 `DamageApplicationSystem` **안**에서 나므로 공격 seam(그 앞)이 못 받는다.
         Death = 3,
         Count = 4,
@@ -115,7 +115,17 @@ namespace Wassup.Battle.Skills
         protected override SkillSeam Seam => SkillSeam.Threshold;
     }
 
-    // ④ 피해 정산 뒤 — 죽음 계열(`OnKill`·`OnDamagedN`·`OnShieldBreak`).
+    // ④ 피해 정산 뒤 — **지금은 `OnKill` 만**(ECS 리뷰 M-6).
+    //
+    // ⚠ 이름이 「죽음 계열」이지만 `OnDamagedN`·`OnShieldBreak` 블록은 아직 `skillId` 를
+    // **보지도 않는다** — 그 감지자들은 라우팅 분기가 없어 전부 legacy arm 으로 간다.
+    // 이중 발화도 조용한 죽음도 없지만(그 payload 들이 카드 화이트리스트 밖이다),
+    // **주석이 없는 배선을 있다고 말하지 않게** 여기 적어 둔다. 3d‴/3e 가 채운다.
+    //
+    // ⚠ **emitter 제약이 없다**(주기 seam 에는 있다 — 위 H-1 노트). 오늘 `OnKill` 로
+    // 발사 명세를 저작한 것이 0건이라 무해하지만, 그 저작이 처음 생기는 unit 은
+    // (a) 여태 조용한 no-op 이던 조합이 **실제로 발사되고** (b) emitter 와의 상대 순서가
+    // 안 박혀 **0/1 프레임 지연이 빌드마다 갈린다**는 것을 함께 처리해야 한다.
     //
     // ⚠ **네 번째다.** 토대 unit 0 이 「3 seam」이라 적은 것은 그때 조사한 payload 들의
     // 감지 지점이 셋이었다는 뜻이고, 카드가 죽음 계열을 들고 오면서 네 번째 감지 지점이

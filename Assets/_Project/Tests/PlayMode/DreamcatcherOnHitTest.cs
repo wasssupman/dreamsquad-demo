@@ -69,6 +69,62 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(sawStun, "frost_arrow: N번째 공격에 대상이 Stun(CcEffect) 걸려야 함");
         }
 
+        // skill-layer-migration unit 3a 후속 — **밀쳐냄이 실제로 밀리는가.**
+        //
+        // ⚠ 이 축의 증인이 0이었고, 그 사이 라이브 카드 하나가 죽어 있었다:
+        // 어댑터가 넉백 «벡터» 를 안 채워서 적이 **행동만 잠기고 한 칸도 안 밀렸다**.
+        // 조용한 실패였다 — CC 는 붙고 지속도 맞아 「걸렸나」 단언은 전부 통과했다.
+        //
+        // 그래서 이 그물은 **걸렸나가 아니라 움직였나**를 잰다. `MovementSystem` 이
+        // `vector` 로만 밀기 때문에 그 값이 비면 여기서만 갈린다.
+        [UnityTest]
+        public IEnumerator GaleShove_EveryThirdAttack_ActuallyPushesTheTarget()
+        {
+            yield return Setup();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var (bridge, defender) = PlaceGuardian(em);
+
+            var card = MakeUnitCard(new DcMechanic
+            {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                payload = new DcPayloadSpec
+                {
+                    kind = DcPayloadKind.ApplyCcToTarget,
+                    ccKind = DcCcKind.Impulse,
+                    magnitude = 6f,      // 넉백 «속도»
+                    duration = 0.35f,
+                },
+            });
+            Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "gale attached");
+
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: true);
+            // 밀림을 재려면 움직일 수 있어야 한다 — 실적 적처럼 경로 추종을 준다.
+            em.AddComponentData(enemy, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            float3 start = em.GetComponentData<LocalTransform>(enemy).Position;
+
+            float maxShift = 0f;
+            float t = 0f;
+            while (t < 8f && maxShift < 0.25f)
+            {
+                t += Time.deltaTime;
+                if (em.Exists(enemy))
+                {
+                    float3 d = em.GetComponentData<LocalTransform>(enemy).Position - start;
+                    d.y = 0f;
+                    maxShift = math.max(maxShift, math.length(d));
+                }
+                yield return null;
+            }
+            if (em.Exists(enemy)) em.DestroyEntity(enemy);
+
+            Assert.Greater(maxShift, 0.25f,
+                $"밀쳐냄이 대상을 안 움직였다(최대 이동 {maxShift:0.000}) — CC 는 붙었는데 "
+                + "넉백 벡터가 비었을 때 정확히 이 모양이 된다");
+        }
+
         [UnityTest]
         public IEnumerator EmberBite_EveryThirdAttack_AppliesBleedStack_WithDotRule()
         {

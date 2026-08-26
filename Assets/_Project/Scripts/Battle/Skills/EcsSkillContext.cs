@@ -522,6 +522,15 @@ namespace Wassup.Battle.Skills
                             kind = (Wassup.Battle.Effects.CcKind)intent.Selector,
                             remainingTime = intent.Duration,
                             scalar = intent.Amount,
+                            // ⚠ **밀쳐냄은 `vector` 로만 산다.** `MovementSystem` 은 `scalar` 를
+                            // 안 읽는다(프로젝트 전체 소비자 0) — 여기서 벡터를 안 채우면
+                            // 「행동만 잠기고 한 칸도 안 밀리는」 밀쳐냄이 된다. 조용하다:
+                            // CC 는 붙고 지속도 맞고 그물의 「걸렸나」 단언도 통과한다.
+                            // 실제로 그렇게 라이브 카드 하나를 죽였다(ECS 리뷰 C-1).
+                            vector = (Wassup.Battle.Effects.CcKind)intent.Selector
+                                     == Wassup.Battle.Effects.CcKind.Impulse
+                                ? new float3(intent.DirectionXZ.x, 0f, intent.DirectionXZ.y) * intent.Amount
+                                : float3.zero,
                         },
                     });
                     return;
@@ -577,7 +586,9 @@ namespace Wassup.Battle.Skills
                     // ⚠ **저작 배율은 여기서 버킷으로 번역한다**(unit 3b). 규칙이
                     // 「배율 ≥ 1 은 가산 버킷에 `배율−1`」이라 자명하지 않고, 상한 계산이
                     // 그 선택에 매여 있다 — 두 벌이 되면 조용히 한 스택만큼 어긋난다.
-                    var op = (Wassup.Battle.Effects.CombineOp)intent.Op;
+                    // ⚠ 캐스트를 분기 **안**에서 한다 — `FromAuthoredMultiplier` 는
+                    // `CombineOp` 의 정의역 밖 값이라 밖에서 캐스트하면 잠깐 무효값이 선다.
+                    var op = default(Wassup.Battle.Effects.CombineOp);
                     float mag = intent.Amount;
                     float cap = 0f;
                     if (intent.Op == SkillCombineOp.FromAuthoredMultiplier)
@@ -587,6 +598,7 @@ namespace Wassup.Battle.Skills
                         cap = Wassup.Battle.Effects.ModifierAuthoring.StackCap(
                             intent.Amount, (int)intent.HitThreshold);
                     }
+                    else op = (Wassup.Battle.Effects.CombineOp)intent.Op;
                     _statQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
                     {
                         target = target,
@@ -700,7 +712,8 @@ namespace Wassup.Battle.Skills
                         kind = (Wassup.Battle.Effects.StackKind)intent.Selector,
                         // 저작은 「몇 겹」이고 최소 1 이다(0 겹은 발동을 소모만 한다 —
                         // 그 판정은 concrete 가 이미 했다).
-                        countDelta = (byte)math.max(1, intent.Count),
+                        // 레거시와 같은 clamp — 무경계 캐스트는 256→0 wrap 으로 조용한 no-op 이 된다.
+                        countDelta = (byte)math.clamp(intent.Count, 1, 255),
                         // ⚠ **상한은 저작이 아니라 스택 종류가 갖는다.** 유닛마다 다른
                         // 상한을 적는 게 아니라 「출혈은 몇 겹까지 쌓이나」가 스택의 성질이다.
                         maxStack = StackCap(intent.Selector),
@@ -851,6 +864,15 @@ namespace Wassup.Battle.Skills
                         dataIndex = intent.DataIndex,
                         owner = shooter,
                         targetTraversalLayers = intent.TargetTraversalLayers,
+                        // ⚠ **피해 풀 진영을 시전자에서 도출한다**(자리 폭발과 같은 규칙).
+                        // 기본값이 Enemy 라 안 채우면 **적이 쏜 탄이 적을 때린다** — 레거시는
+                        // 그 조합을 감지자에서 loud 거절해 막았는데, 라우팅이 그 가드보다
+                        // 앞이라 이제 도달하지 않는다(ECS 리뷰 H-2).
+                        targetFaction =
+                            FactionQuery.OpponentsOf(shooter, in _faction, in _enemyTag, in _defTag)
+                                == Faction.DefenderUnit
+                                ? Wassup.Battle.Combat.Projectile.ProjectileTargetFaction.Defender
+                                : Wassup.Battle.Combat.Projectile.ProjectileTargetFaction.Enemy,
                         // 같은 셀이면 축이 없다 — 0 을 그대로 보내 드레인이 loud 거절하게 둔다
                         // (조용히 임의 방향을 지어내면 저작 실수가 안 보인다).
                         direction = directional ? intent.DirectionXZ : float2.zero,
@@ -884,8 +906,13 @@ namespace Wassup.Battle.Skills
                         // 레거시 `MeleeBurst` arm 은 후보를 모으는 단계에서 이 마스크로 걸렀고,
                         // 광역 탄 경로는 후보를 안 모으므로 탄이 대신 들고 가야 한다.
                         // 보스 자폭이 여태 이 구멍을 안 밟은 건 보스가 전 층을 때려서다.
-                        targetTraversalLayers = _attack.HasComponent(owner)
-                            ? _attack[owner].targetTraversalLayers : (byte)0,
+                        // ⚠ **실려 온 스냅샷이 우선이다**(ECS 리뷰 M-3). 재질의는 시전자가
+                        // 아직 살아 있는 seam 에서만 옳다 — 죽음 계열은 드레인 때 이미
+                        // 파괴됐을 수 있고, 그때 0(= 무제한 통과)으로 샌다.
+                        // 0 = 안 실림 → 종전대로 재질의(자리 폭발의 기존 호출처들).
+                        targetTraversalLayers = intent.TargetTraversalLayers != 0
+                            ? intent.TargetTraversalLayers
+                            : (_attack.HasComponent(owner) ? _attack[owner].targetTraversalLayers : (byte)0),
                         // ⚠ 피해 풀 진영. 기본값이 Enemy 라 그냥 두면 **보스의 폭발이
                         // 자기 진영을 때린다**. caster 의 상대 진영에서 도출한다.
                         targetFaction =

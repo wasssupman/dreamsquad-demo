@@ -363,7 +363,13 @@ namespace Wassup.Battle.Units
                     //
                     // ⚠ **드레인 시점엔 피해자가 이미 없다** — `UnitLifecycleSystem` 이
                     // 파괴한다. 그래서 killer 사양(통행 층)과 자리를 지금 싣는다.
+                    // ⚠ **피해자 진영 술어를 레거시와 맞춘다**(ECS 리뷰 M-2). 레거시
+                    // 시체폭발 블록은 `_attackTagLookup.HasComponent(victim)` 안에 있어
+                    // **적이 죽었을 때만** 터졌다. 빼면 방어유닛이 죽어도 킬러의 폭발이
+                    // 그 자리에서 터진다 — 그건 「고침」이 아니라 사양 변경이라, 하려면
+                    // 별도 결정으로 한다.
                     if (hasSkillQ && killerSource != Entity.Null
+                        && _attackTagLookup.HasComponent(entity)
                         && _dcTriggerSlotLookup.HasBuffer(killerSource))
                     {
                         var routeSlots = _dcTriggerSlotLookup[killerSource];

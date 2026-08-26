@@ -32,7 +32,11 @@ namespace Wassup.Skills.Concrete
                 DataIndex = a.VfxDataIndex,
                 Duration = 0f,                 // flightTime 0 = 즉발
                 VisualScale = a.VisualScale,
-                TargetTraversalLayers = p.TargetTraversalLayers,
+                // ⚠ **레거시는 층을 안 실었다**(= 무제한). 여기서 킬러의 공격 층을 실으면
+                // 지상 전용 킬러의 시체폭발이 비행 적을 더는 못 때린다 — 그건 사양 변경이다.
+                // 형제(잿불)는 반대로 층을 **실어야** 했다(그쪽 레거시가 그랬다).
+                // 무회귀 쪽을 택한다: 층 게이트가 필요하면 별도 결정으로 연다.
+                TargetTraversalLayers = 0,
             });
         }
     }

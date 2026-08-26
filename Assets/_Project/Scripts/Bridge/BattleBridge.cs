@@ -8546,7 +8546,15 @@ namespace Wassup.Bridge
                 // 길막 설치물은 모양·체력·수명이 전부 SO 라 시전자를 안 쓴다. 그리고
                 // 배럴은 비행 중 폭탄맨이 죽어도 서야 한다(spec 계약 7 — 투사체 자립).
                 // 착탄 스폰은 owner 가 아예 Null 일 수도 있다(설치물 폭발 경로).
-                if (req.kind != HazardCastKind.Blocking && !_em.Exists(req.caster)) continue;
+                //
+                // ⚠ **층을 이미 실어 온 요청에는 이 검사가 성립하지 않는다**(ECS 리뷰 H-1).
+                // 위 근거가 「존은 시전자에서 층을 도출한다」인데, 스킬 레이어의 요청은
+                // **발화 시점 스냅샷**으로 층을 갖고 온다 — 그러면 시전자는 계약에 필요가
+                // 없다. 그대로 두면 **동귀어진(킬러가 같은 프레임에 죽는 킬)에서만**
+                // 불씨가 조용히 안 깔린다. 레거시 경로엔 이 게이트가 없었다.
+                bool needsCaster = req.kind != HazardCastKind.Blocking
+                                   && req.targetTraversalLayers == 0;
+                if (needsCaster && !_em.Exists(req.caster)) continue;
 
                 if (req.kind == HazardCastKind.Zone)
                 {
@@ -9074,6 +9082,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetCcSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetStackSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.ThresholdSelfBuffSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TargetProjectileSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteBlastSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteHazardSkill());
@@ -9131,6 +9140,10 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
                     return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
             }
+            // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
+            if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
+                && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
+                return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;
             return SkillIdForPayload(kind);
         }
 
@@ -9202,6 +9215,9 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
                     return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
             }
+            if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
+                && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
+                return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;
             switch (kind)
             {
                 // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해
