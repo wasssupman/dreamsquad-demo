@@ -46,7 +46,8 @@ namespace Wassup.Tests.EditMode
                 = new System.Collections.Generic.Dictionary<int, float>();
         }
 
-        public float TileSize = 1f;
+        // 인터페이스 멤버다(unit 3f) — 필드로 두면 구현으로 안 쳐준다.
+        public float TileSize { get; set; } = 1f;
         public readonly Dictionary<int, Unit> Units = new Dictionary<int, Unit>();
         public readonly List<SimIntent> SimIntents = new List<SimIntent>();
         public readonly List<MetaIntent> MetaIntents = new List<MetaIntent>();

@@ -82,6 +82,12 @@ namespace Wassup.Skills
         int2 CellOf(SkillEntityId id);
         int2 CellOfPosition(float3 world);
         float3 CellCenter(int2 cell);
+
+        // skill-layer-migration unit 3f — **타일 한 칸의 월드 크기.**
+        // 저작은 「반경 N칸」으로 하는데 궤도 계산은 월드 반경을 요구한다. 그 환산을
+        // 어댑터에 넘기면 「각속도 = 선속도 ÷ 반경」이라는 **규칙**까지 어댑터로 새어 나간다 —
+        // 그건 저작의 뜻(반경을 키워도 도는 체감이 유지된다)이라 스킬이 소유해야 한다.
+        float TileSize { get; }
         // 부재 = 무조준. 배치 방향을 선언하지 않은 유닛이 대부분이다.
         bool TryFacing(SkillEntityId id, out float2 dirXZ);
 

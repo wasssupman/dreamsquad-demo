@@ -66,6 +66,12 @@ namespace Wassup.Skills
         // **그것을 어떻게 쓰는지는 소비자(RESOLVE)가 소유한다.** 그래서 이름이 DoubleFire 가
         // 아니라 GrantCharge 다 — 다른 소비 규칙이 붙어도 이 어휘는 그대로다.
         GrantCharge,
+
+        // skill-layer-migration unit 3f — **한 점을 도는 탄.** 날아가는 탄과 다르다:
+        // 목적지가 없고 중심과 반경과 각속도가 있으며, 수명이 다할 때까지 스치는 것을 때린다.
+        // 기존 `SpawnProjectile` 에 얹지 않은 이유는 그 자리형 분기가 «떨어져서 한 번 터진다»
+        // 로 굳어 있어서다 — 겸직시키면 어느 필드가 어느 모양에 쓰이는지 다시 흐려진다.
+        SpawnOrbitProjectile,
     }
 
     public enum MetaIntentKind : byte
@@ -88,9 +94,18 @@ namespace Wassup.Skills
         public float3 Position;
         public float2 DirectionXZ;
 
+        // 궤도 위 시작 각도(라디안). 여러 개를 균등 배치하는 것이 스킬의 판단이라
+        // 어댑터가 개수에서 유도하지 않는다 — 스킬이 하나씩 위상을 정해 보낸다.
+        public float Phase;
+
         public float Amount;           // 피해·회복·실드량·배율 — kind 가 뜻을 정한다
         public float Duration;
         public int TileRange;
+
+        // 월드 반경. `TileRange`(칸)와 **겸직시키지 않는다** — 궤도는 칸이 아니라 월드
+        // 거리로 돌고, 각속도 계산이 이미 이 값을 썼다. 어댑터가 칸에서 다시 유도하면
+        // 같은 수의 출처가 둘이 된다.
+        public float Radius;
         public int Count;              // 스택 수·발사 수·대상 상한
 
         public int DataIndex;          // 탄·해저드 에셋 index. **−1 = 없음**(0 은 유효)

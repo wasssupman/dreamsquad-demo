@@ -9129,6 +9129,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteBlastSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.DeathSiteHazardSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GrantSelfChargeSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.OrbitProjectileSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];
@@ -9266,6 +9267,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.SelfStatBuffSkill.Id;
                 case Wassup.Data.DcPayloadKind.ProjectileToTarget:
                     return Wassup.Skills.Concrete.TargetProjectileSkill.Id;
+                case Wassup.Data.DcPayloadKind.SelfOrbitProjectile:
+                    return Wassup.Skills.Concrete.OrbitProjectileSkill.Id;
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;
             }
@@ -9346,6 +9349,11 @@ namespace Wassup.Bridge
                 case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
                 case Wassup.Data.DcPayloadKind.SelfStatBuff:
                 case Wassup.Data.DcPayloadKind.ProjectileToTarget:
+                // unit 3f — 불꽃 팽이. 유일한 트리거가 `PeriodicTimer` 이고 그 seam 은 열려 있다.
+                case Wassup.Data.DcPayloadKind.SelfOrbitProjectile:
+                // unit 3f — 진동갑주(경계 자폭). 경계 seam 도 열려 있다. 유닛 bake 는 이미
+                // 이 payload 를 보내고 있었고 카드 경로만 닫혀 있었다.
+                case Wassup.Data.DcPayloadKind.SelfTileAoe:
                     return SkillIdForPayload(kind);
                 default:
                     return Wassup.Skills.SkillRegistry.LegacyArmId;

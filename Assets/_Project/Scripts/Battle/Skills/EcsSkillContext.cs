@@ -248,6 +248,8 @@ namespace Wassup.Battle.Skills
         public int2 CellOfPosition(float3 world)
             => GridMath.WorldToCell(world, _tileSize, _gridSize, origin: _origin);
 
+        public float TileSize => _tileSize;
+
         public float3 CellCenter(int2 cell)
             => GridMath.CellToWorldCenter(cell, _tileSize, origin: _origin);
 
@@ -690,6 +692,33 @@ namespace Wassup.Battle.Skills
                         world = intent.Position,
                         dataIndex = -1,
                     });
+                    return;
+                }
+                case SimIntentKind.SpawnOrbitProjectile:
+                {
+                    if (!_hasEcb) return;
+                    var orbOwner = Resolve(intent.Source);
+                    var orbCarrier = _ecb.CreateEntity();
+                    _ecb.AddComponent(orbCarrier, new Wassup.Battle.Combat.Projectile.ProjectileSpawnRequest
+                    {
+                        orbitPhase = intent.Phase,
+                        movement = Wassup.Battle.Combat.Projectile.MovementKind.OrbitAroundPoint,
+                        payload  = Wassup.Battle.Combat.Projectile.PayloadKind.PathHit,
+                        origin   = intent.Position,   // 궤도 중심(발사 시점 고정)
+                        impact   = intent.Position,
+                        damage   = intent.Amount,
+                        maxDistance = intent.Radius,  // 궤도 반경(스킬이 이미 월드로 환산했다)
+                        speed    = intent.Speed,      // **각속도** — 나누기는 스킬이 했다
+                        flightTime = intent.Duration, // 지속 초 → 수명
+                        hitThreshold = intent.HitThreshold,
+                        dataIndex = intent.DataIndex,
+                        visualScale = intent.VisualScale > 0f ? intent.VisualScale : 1f,
+                        owner = orbOwner,             // 위협 귀속
+                        // ⚠ targetFaction 을 싣지 않는다 — PathHit 의 후보 풀이
+                        // `AttackUnitTag` 하드코딩이라 이 페이로드엔 진영 축이 없다.
+                        targetTraversalLayers = intent.TargetTraversalLayers,
+                    });
+                    _ecb.AddComponent<Wassup.Battle.Combat.Projectile.ProjectileRequestCarrier>(orbCarrier);
                     return;
                 }
                 case SimIntentKind.GrantCharge:

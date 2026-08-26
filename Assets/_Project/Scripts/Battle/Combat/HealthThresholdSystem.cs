@@ -176,10 +176,12 @@ namespace Wassup.Battle.Combat
                                     ProjectileMovement = (int)slot.projectileMovement,
                                     ProjectilePayload = (int)slot.projectilePayload,
                                     HazardDataIndex = slot.hazardDataIndex,
-                                    // killer 사양 스냅샷 — 어댑터가 재질의하지 않는다.
-                                    TargetTraversalLayers = SystemAPI.HasComponent<AttackState>(entity)
-                                        ? SystemAPI.GetComponent<AttackState>(entity).targetTraversalLayers
-                                        : (byte)0,
+                                    // ⚠ **경계 arm 들은 층을 안 실었다**(= 무제한). 경계 자폭이
+                                    // 그렇고, 여기서 host 의 공격 층을 실으면 지상만 때리는
+                                    // 유닛의 자폭이 비행 적을 더는 못 때린다 — 사양 변경이다.
+                                    // (불꽃 팽이가 층을 **싣는** 것과 갈린다. 그쪽 레거시가
+                                    //  실었기 때문이고, 그 판단은 감지자별로 다르다.)
+                                    TargetTraversalLayers = 0,
                                 });
                             }
                         }
