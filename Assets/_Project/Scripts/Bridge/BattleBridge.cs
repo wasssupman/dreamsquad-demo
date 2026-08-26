@@ -2612,7 +2612,13 @@ namespace Wassup.Bridge
         {
             affectedCount = 0;
             if (!_running || skill == null) return false;
-            if (skill.effect != SkillEffectType.Portal) return false;
+            // unit 7e — **이름표가 아니라 명세를 본다**(사용자 결정 2026-08-26).
+            // 「두 칸을 받는다」는 그 스킬의 조준 사양이고, 새 두 칸 스킬이 생겨도
+            // 이 줄은 그대로다.
+            if (!skill.NeedsTwoTiles) return false;
+            // 두 칸 조준의 규칙 — **같은 칸이면 거절**. 이것도 이름표가 아니라 조준 사양에
+            // 딸린 규칙이라, 두 칸을 받는 스킬이 늘어도 여기가 그대로 답한다.
+            //
             // active-dreamcatcher-tile-aim rev — 입구 == 출구 거절. MovementSystem 의 포탈 스냅은
             // flow step **앞**에 돌아서(MovementSystem 1번 블록) 같은 타일로 잇는 링크는 반경 안
             // 적을 매 프레임 타일 중심으로 되돌린다 = 지속시간만큼의 정지 필드. 카드 한 장 값의

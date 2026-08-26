@@ -17,6 +17,7 @@ MonoBehaviour:
   description: "\uB450 \uD0C0\uC77C \uC5F0\uACB0: \uC785\uAD6C\uB85C \uB4E4\uC5B4\uAC04
     \uC801\uC774 \uCD9C\uAD6C\uB85C \uC21C\uAC04\uC774\uB3D9 8\uCD08"
   effect: 5
+  needsTwoTiles: 1
   range: 0
   magnitude: 0
   durationSec: 8
