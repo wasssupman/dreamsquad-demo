@@ -1848,6 +1848,7 @@ namespace Wassup.Battle.Combat
                                     skillFiredSingleton.ValueRW.queue.Enqueue(
                                         new Wassup.Battle.Skills.SkillFiredEvent
                                     {
+                                        Seam = Wassup.Battle.Skills.SkillSeam.Attack,   // 이 드레인 지점이 실행한다
                                         Caster = attackerEntity,
                                         SkillId = slot.skillId,
                                         SlotIndex = si,

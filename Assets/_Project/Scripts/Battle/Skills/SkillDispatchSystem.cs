@@ -170,6 +170,19 @@ namespace Wassup.Battle.Skills
             {
                 if (evt.SkillId == SkillRegistry.LegacyArmId) continue;   // legacy arm 이 처리한다
 
+                // ⚠ **남의 seam 것은 돌려보낸다**(unit 3e). `budget` 이 시작 시점 개수라
+                // 루프는 반드시 끝나고, 돌려보낸 것은 자기 seam 이 이 프레임 뒤쪽에서
+                // (이미 지났으면 다음 프레임에) 가져간다.
+                if (evt.Seam == SkillSeam.None)
+                {
+                    // 생산자가 seam 을 안 채웠다. 돌려보내면 영원히 돈다 — 버리고 짖는다.
+                    UnityEngine.Debug.LogWarning(
+                        $"[SkillDispatch] skillId {evt.SkillId} 이 seam 을 선언하지 않았다 — "
+                        + "발동을 버린다. 생산자가 SkillFiredEvent.Seam 을 채워야 한다.");
+                    continue;
+                }
+                if (evt.Seam != Seam) { queue.Enqueue(evt); continue; }
+
                 if (!_registry.TryGet(evt.SkillId, out var skill))
                 {
                     // fail-closed. 배선 누락을 침묵으로 넘기면 「스킬이 안 나가는데

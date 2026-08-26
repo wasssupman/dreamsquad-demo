@@ -145,6 +145,7 @@ namespace Wassup.Battle.Units
                         skillFiredSingleton.ValueRW.queue.Enqueue(
                             new Wassup.Battle.Skills.SkillFiredEvent
                         {
+                            Seam = Wassup.Battle.Skills.SkillSeam.Lifecycle,   // 이 드레인 지점이 실행한다
                             Caster = entity,          // 드레인 때는 이미 파괴된 핸들이다
                             SkillId = rs.skillId,
                             SlotIndex = s,
@@ -168,7 +169,8 @@ namespace Wassup.Battle.Units
                             SlamDamage = rs.slamDamage,
                             SlamTileRange = rs.slamTileRange,
                             StackId = rs.statBuffStackId,
-                            VisualScale = rs.visualScale,
+                            // ⚠ 레거시 작별 선물 은 저작 배율을 **안 읽었다**(1 고정).
+                            VisualScale = 0f,   // 0 = 어댑터가 1 로 읽는다
                             // ⚠ 방어유닛의 작별 선물이다 — 레거시는 층을 안 실었다(무제한).
                             TargetTraversalLayers = 0,
                         });

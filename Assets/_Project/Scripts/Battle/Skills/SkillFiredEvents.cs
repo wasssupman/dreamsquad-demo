@@ -23,6 +23,19 @@ namespace Wassup.Battle.Skills
         public int SkillId;            // 0 = legacy arm. 감지측 Burst 가 아는 유일한 키
         public int SlotIndex;          // 로그·중복 판별용. **params 의 출처가 아니다**
 
+        // ⚠ **어느 드레인 지점이 이걸 실행하나**(skill-layer-migration unit 3e).
+        //
+        // 다섯 seam 이 이 큐 하나를 나눠 쓴다. 예전엔 「자기 순서에 큐에 있는 것 전부」를
+        // 가져갔고, 그래서 **소유가 시스템 업데이트 순서에서 창발**했다 — 감지자가 시뮬
+        // 안에 있는 동안은 우연히 맞았지만 두 가지가 무너진다:
+        //   ① 경계 시스템이 파괴보다 뒤라 자기 죽음 이벤트를 경계 seam 이 집어갔다
+        //      (폭발은 터지는데 계측이 엉뚱한 seam 에 찍혀 그물이 seam 을 못 짚는다)
+        //   ② **시뮬 밖 생산자는 seam 을 고를 방법이 아예 없다** — 퇴근은 브리지 발이라
+        //      프레임 첫 seam 이 집어가고, 그 seam 의 「시전자 생존」 가드에 걸려 버려진다.
+        //
+        // 그래서 **생산자가 자기 seam 을 말한다.** 남의 것을 집으면 큐 뒤로 돌려보낸다.
+        public SkillSeam Seam;
+
         // 발화 시점 스냅샷 ─────────────────────────────────────────
         public float3 FiredPosition;   // host 위치. 드레인 시점엔 이동·사망했을 수 있다
         public Entity Target;          // bestTarget. 재도출하면 타겟팅 규칙을 복제하게 된다

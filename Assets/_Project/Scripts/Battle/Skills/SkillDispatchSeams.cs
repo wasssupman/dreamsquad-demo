@@ -8,17 +8,21 @@ namespace Wassup.Battle.Skills
     // 라우팅이 한 곳에서만 끊긴 상태를 잡는다.
     public enum SkillSeam : byte
     {
-        Periodic = 0,   // 주기·배치 — BossPeriodicTriggerSystem 뒤
-        Attack = 1,     // 공격 해결 — AttackSystem 뒤
-        Threshold = 2,  // 체력 경계 — HealthThresholdSystem 뒤
+        // ⚠ **0 은 「아무도 아니다」여야 한다**(unit 3e). 이 값이 이벤트 필드의 기본값이라,
+        // 실제 seam 하나를 0 에 두면 생산자가 seam 을 안 채웠을 때 **조용히 그 seam 으로**
+        // 흘러간다 — 이 spec 이 반복해서 당한 fail-open 모양 그대로다. 드레인이 loud 하게 버린다.
+        None = 0,
+        Periodic = 1,   // 주기·배치 — BossPeriodicTriggerSystem 뒤
+        Attack = 2,     // 공격 해결 — AttackSystem 뒤
+        Threshold = 3,  // 체력 경계 — HealthThresholdSystem 뒤
         // skill-layer-migration unit 3c — 처치(그리고 앞으로 피격 N회·실드 파열).
         // 감지가 `DamageApplicationSystem` **안**에서 나므로 공격 seam(그 앞)이 못 받는다.
-        Death = 3,
+        Death = 4,
         // skill-layer-migration unit 3d″ — **내가 죽었을 때**(작별 선물).
         // 위 `Death` 와 다르다: 저건 「내가 죽였다」, 이건 「내가 죽는다」다.
         // 감지가 `UnitLifecycleSystem`(파괴 지점) 안이라 그 앞의 seam 은 못 받는다.
-        Lifecycle = 4,
-        Count = 5,
+        Lifecycle = 5,
+        Count = 6,
     }
 
     // skill-layer-foundation unit 4 — 드레인 지점. **로직은 base 에만 있다.**
@@ -160,12 +164,10 @@ namespace Wassup.Battle.Skills
     // 그래서 이 seam 을 타는 스킬은 **값만으로 완결돼야 한다** — 자리·피해·반경·층을
     // 감지자가 실어 보내고, concrete 는 시전자를 다시 묻지 않는다.
     // (그게 `SkillFiredEvent` 값 스냅샷 계약이 존재하는 이유다.)
-    // ⚠ **`HealthThresholdSystem` 앞이어야 한다 — 큐가 seam 공유이기 때문이다.**
-    // 다섯 seam 은 `SkillFiredEventsSingleton` 하나를 나눠 드레인하고, 각 seam 은
-    // 자기 순서에 **큐에 있는 것 전부**를 가져간다. 경계 시스템(#45)이 파괴(#44)보다
-    // 뒤라, 이 제약이 없으면 **경계 seam 이 내 이벤트를 먼저 집어간다** — 폭발은
-    // 그래도 터지지만 계측이 엉뚱한 seam 에 찍히고(그물이 seam 을 못 짚는다),
-    // 순서가 빌드마다 갈릴 여지도 남는다.
+    // ⚠ 아래 순서 제약은 이제 **지연**만 정한다(unit 3e). 예전엔 소유까지 정했다 —
+    // 큐가 공유고 각 seam 이 「자기 순서에 있는 것 전부」를 가져가서, 경계 시스템(#45)이
+    // 파괴(#44)보다 뒤인 탓에 경계 seam 이 자기 죽음 이벤트를 집어갔다. 지금은 이벤트가
+    // 자기 seam 을 말하므로 소유는 안전하고, 이 제약은 「같은 프레임에 터진다」를 지킨다.
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(Wassup.Battle.Units.UnitLifecycleSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Combat.HealthThresholdSystem))]

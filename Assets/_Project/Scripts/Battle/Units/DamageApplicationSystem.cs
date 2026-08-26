@@ -312,6 +312,7 @@ namespace Wassup.Battle.Units
                             skillFiredSingleton.ValueRW.queue.Enqueue(
                                 new Wassup.Battle.Skills.SkillFiredEvent
                             {
+                                Seam = Wassup.Battle.Skills.SkillSeam.Death,   // 이 드레인 지점이 실행한다
                                 Caster = entity,
                                 SkillId = slot.skillId,
                                 SlotIndex = c,
@@ -375,6 +376,37 @@ namespace Wassup.Battle.Units
                     {
                         var sbSlot = sbSlots[s];
                         if (sbSlot.trigger != Wassup.Data.DcTriggerKind.OnShieldBreak) continue;
+
+                        // ⚠ **라우팅이 먼저다**(skill-layer-migration unit 3e). 실드 파열은
+                        // 피격 N회와 **같은 실행기**를 쓰므로 3d‴ 의 모양 그대로다 —
+                        // 실행만 스킬 레이어로 가고 채널은 「카드가 일했다」를 계속 나른다
+                        // (카드 펄스 · 전투 로그 · 트레이스). 브리지가 skillId 로 가른다.
+                        //
+                        // 시전자는 살아 있다 — 파열은 death 분기와 **독립**이라 관통 킬
+                        // 프레임에도 여기 오지만, 죽음 seam 은 `UnitLifecycleSystem` 앞이라
+                        // 드레인 시점엔 아직 파괴 전이다.
+                        if (hasSkillQ && sbSlot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId)
+                        {
+                            skillFiredSingleton.ValueRW.queue.Enqueue(
+                                new Wassup.Battle.Skills.SkillFiredEvent
+                            {
+                                Seam = Wassup.Battle.Skills.SkillSeam.Death,
+                                Caster = entity,
+                                SkillId = sbSlot.skillId,
+                                SlotIndex = s,
+                                FiredPosition = sbPos,
+                                Target = Entity.Null,
+                                TargetPosition = sbPos,
+                                Magnitude = sbSlot.magnitude,
+                                Duration = sbSlot.duration,
+                                TileRange = sbSlot.tileRange,
+                                DataIndex = sbSlot.projectileDataIndex,
+                                Selector = (int)sbSlot.ccKind,
+                                // ⚠ 레거시 파열 폭발은 층을 안 실었다(= 무제한).
+                                TargetTraversalLayers = 0,
+                            });
+                        }
+
                         shieldBreakSingleton.ValueRW.queue.Enqueue(new ShieldBreakEvent
                         {
                             host = entity,
@@ -385,6 +417,7 @@ namespace Wassup.Battle.Units
                             duration = sbSlot.duration,
                             aoeDataIndex = sbSlot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe
                                 ? sbSlot.projectileDataIndex : -1,
+                            skillId = sbSlot.skillId,
                         });
                     }
                 }
@@ -435,6 +468,7 @@ namespace Wassup.Battle.Units
                             skillFiredSingleton.ValueRW.queue.Enqueue(
                                 new Wassup.Battle.Skills.SkillFiredEvent
                             {
+                                Seam = Wassup.Battle.Skills.SkillSeam.Death,   // 이 드레인 지점이 실행한다
                                 Caster = killerSource,
                                 SkillId = rs.skillId,
                                 SlotIndex = s,
@@ -460,7 +494,9 @@ namespace Wassup.Battle.Units
                                 SlamDamage = rs.slamDamage,
                                 SlamTileRange = rs.slamTileRange,
                                 StackId = rs.statBuffStackId,
-                                VisualScale = rs.visualScale,
+                                // ⚠ 레거시 시체폭발 은 저작 배율을 **안 읽었다**(1 고정).
+                                // 여기서 실으면 라이브 카드의 폭발 그림이 커진다.
+                                VisualScale = 0f,   // 0 = 어댑터가 1 로 읽는다
                                 TargetTraversalLayers = _attackStateLookup.HasComponent(killerSource)
                                     ? _attackStateLookup[killerSource].targetTraversalLayers : (byte)0,
                             });

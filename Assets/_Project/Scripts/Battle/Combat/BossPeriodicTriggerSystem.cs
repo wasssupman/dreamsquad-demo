@@ -177,6 +177,7 @@ namespace Wassup.Battle.Combat
                             {
                                 skillFiredRW.ValueRW.queue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
                                 {
+                                    Seam = Wassup.Battle.Skills.SkillSeam.Periodic,   // 이 드레인 지점이 실행한다
                                     Caster = entity,
                                     SkillId = slot.skillId,
                                     SlotIndex = si,

@@ -4128,6 +4128,36 @@ namespace Wassup.Bridge
                     // 이 루프는 host 의 **전체** 슬롯 버퍼를 훑는다 — 다른 트리거(공격 N회·
                     // 실드 파열 …)의 슬롯이 같은 버퍼에 섞여 있으므로 두 축을 다 본다.
                     if (slot.trigger != Wassup.Data.DcTriggerKind.OnRetire) continue;
+
+                    // ⚠ **시뮬 밖 생산자다**(skill-layer-migration unit 3e). 퇴근은 사용자
+                    // 입력이 부르는 브리지 경로라 감지자가 시스템이 아니다. 그래서 이벤트가
+                    // **자기 seam 을 말해야** 한다 — 안 그러면 프레임 첫 seam 이 집어가고,
+                    // 그 seam 의 「시전자 생존」 가드에 걸려 조용히 버려진다(퇴근한 유닛은
+                    // 바로 위에서 이미 파괴됐다). 자기 죽음 seam 이 그 가드가 꺼진 유일한 곳이다.
+                    if (slot.skillId != Wassup.Skills.SkillRegistry.LegacyArmId
+                        && _skillFiredQueue.IsCreated)
+                    {
+                        _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                        {
+                            Seam = Wassup.Battle.Skills.SkillSeam.Lifecycle,
+                            Caster = Entity.Null,   // 퇴근한 유닛은 이미 없다(레거시 owner 도 비었다)
+                            SkillId = slot.skillId,
+                            SlotIndex = i,
+                            FiredPosition = new float3(impactWorld.x, impactWorld.y, impactWorld.z),
+                            Target = Entity.Null,
+                            // 비워진 칸 중심 — 슬롯 불변. 이 자리를 지금 안 실으면 못 읽는다.
+                            TargetPosition = new float3(impactWorld.x, impactWorld.y, impactWorld.z),
+                            Magnitude = slot.magnitude,
+                            Duration = slot.duration,     // 낙하 예고 초(계약 8)
+                            TileRange = slot.tileRange,
+                            DataIndex = slot.projectileDataIndex,
+                            VisualScale = slot.visualScale,   // 퇴근 운석만 저작 배율을 읽는다
+                            // 레거시는 층을 안 실었다(= 무제한).
+                            TargetTraversalLayers = 0,
+                        });
+                        continue;   // 실행은 스킬 레이어가 한다
+                    }
+
                     if (slot.payload != Wassup.Data.DcPayloadKind.SelfTileAoe) continue;
                     // bake 가 탄 SO·양수 magnitude 를 이미 강제한다(그래서 여기 걸리는 슬롯은
                     // 없어야 한다). 그럼에도 확인하는 이유는 값이 빈 슬롯을 그대로 쏘면
@@ -4339,11 +4369,14 @@ namespace Wassup.Bridge
                 else if (evt.payload == Wassup.Data.DcPayloadKind.AreaSleep)
                 {
                     int cap = (int)evt.magnitude;
+                    // ⚠ 이전된 슬롯은 재우지 않는다 — 스킬 레이어가 이미 재웠다.
+                    // 로그는 그대로 남긴다(대상 스냅샷은 이전 여부와 무관한 사실이다).
                     if (cap >= 1 && evt.tileRange >= 1 && evt.duration > 0f)
                     {
                         CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, cap, targets);
                         foreach (var t in targets)
                         {
+                            if (!routedToSkillLayer)
                             Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, t.entity,
                                 new Wassup.Battle.Effects.CcEffect
                                 {
@@ -9167,6 +9200,23 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
                     return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
             }
+            // unit 3e — 실드 파열. 피격 N회와 **같은 실행기**를 쓰므로 모양이 같다.
+            // ⚠ `AreaSleep` 은 concrete 가 「재우자마자 내가 깨울 자리」를 뺀다 — 레거시
+            // 파열엔 없던 규칙이다. 재우는 **수**는 그대로고(뺄 만큼 더 뽑는다) 달라지는
+            // 것은 «누가» 자느냐다. 자장가의 계약이 그쪽이 옳다고 보므로 concrete 를
+            // 둘로 가르지 않고 이 차이를 여기 적어 둔다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnShieldBreak)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.AreaSleep)
+                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
+            }
+            // unit 3e — 퇴근 운석. 죽은 자리 폭발과 **같은 규칙**이다(실려 온 자리에서
+            // 터진다). 다른 것은 값뿐 — 자리의 주인이 「비워진 칸」이고 예고 시간이 있다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnRetire
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
             // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
@@ -9259,6 +9309,23 @@ namespace Wassup.Bridge
                 if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
                     return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
             }
+            // unit 3e — 실드 파열. 피격 N회와 **같은 실행기**를 쓰므로 모양이 같다.
+            // ⚠ `AreaSleep` 은 concrete 가 「재우자마자 내가 깨울 자리」를 뺀다 — 레거시
+            // 파열엔 없던 규칙이다. 재우는 **수**는 그대로고(뺄 만큼 더 뽑는다) 달라지는
+            // 것은 «누가» 자느냐다. 자장가의 계약이 그쪽이 옳다고 보므로 concrete 를
+            // 둘로 가르지 않고 이 차이를 여기 적어 둔다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnShieldBreak)
+            {
+                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
+                if (kind == Wassup.Data.DcPayloadKind.AreaSleep)
+                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
+            }
+            // unit 3e — 퇴근 운석. 죽은 자리 폭발과 **같은 규칙**이다(실려 온 자리에서
+            // 터진다). 다른 것은 값뿐 — 자리의 주인이 「비워진 칸」이고 예고 시간이 있다.
+            if (trigger == Wassup.Data.DcTriggerKind.OnRetire
+                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
             if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
                 && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
                 return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;
