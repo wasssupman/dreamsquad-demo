@@ -834,6 +834,36 @@ namespace Wassup.Battle.Skills
                     });
                     return;
                 }
+                case SimIntentKind.SpawnFieldCarrier:
+                {
+                    // ⚠ **즉시 스폰이다**(ECB 아님). 장판 뷰 등록부가 매 프레임 살아 있는
+                    // 캐리어와 자기 목록을 맞추는데, 재생을 기다리면 시전한 프레임의
+                    // 점등이 한 박자 늦는다.
+                    switch ((SkillFieldKind)intent.Selector)
+                    {
+                        case SkillFieldKind.AllyBuff:
+                            Wassup.Battle.Effects.EffectSpawner.SpawnAllyBuffField(
+                                _em, intent.Cell, intent.TileRange,
+                                (Wassup.Battle.Effects.StatKind)intent.Selector2,
+                                intent.Amount, intent.Duration);
+                            return;
+                        case SkillFieldKind.Pull:
+                            // 중심은 **월드 좌표**다 — `MovementSystem` 이 매 프레임 반경 안
+                            // 적을 당길 때 셀이 아니라 거리를 본다.
+                            Wassup.Battle.Effects.EffectSpawner.SpawnTornadoField(
+                                _em, CellCenter(intent.Cell), intent.TileRange,
+                                intent.Amount, intent.Duration);
+                            return;
+                        case SkillFieldKind.Portal:
+                            // 입구 반지름은 **반 칸**이다 — 격자 값이라 어댑터가 안다.
+                            Wassup.Battle.Effects.EffectSpawner.SpawnPortal(
+                                _em, CellCenter(intent.Cell), CellCenter(intent.Cell2),
+                                _tileSize * 0.5f, intent.Duration);
+                            return;
+                        default:
+                            throw NotWired($"SpawnFieldCarrier({(SkillFieldKind)intent.Selector})");
+                    }
+                }
                 case SimIntentKind.SpawnZoneCarrier:
                 {
                     if (!_hasHazardQueue) return;

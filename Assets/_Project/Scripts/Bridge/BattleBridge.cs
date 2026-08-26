@@ -2540,18 +2540,35 @@ namespace Wassup.Bridge
                         statSelector: (int)Wassup.Battle.Effects.StatKind.MoveSpeedMul);
                     break;
                 case SkillEffectType.Tornado:
-                    affectedCount = ApplyTornado(tile, skill);
+                {
+                    int tornadoTiles = GridMath.RangeToTiles(skill.range);
+                    affectedCount = CountEnemiesInTileRange(tile, tornadoTiles);
+                    CastActiveSkillAtTile(Wassup.Skills.Concrete.PullFieldSkill.Id, skill, tile);
+                    // 연출은 호출자 몫이다(계약 6 — 판 밖 요소). 소용돌이 링은 시전
+                    // 지점이 이미 아는 값(중심·반경·지속)으로 그린다.
+                    if (vfxSpawner != null)
+                    {
+                        var tornadoWorld = GridToWorldCenter(tile);
+                        vfxSpawner.SpawnTornado(
+                            new Vector3(tornadoWorld.x, 0f, tornadoWorld.z),
+                            tornadoTiles * tileSize, skill.durationSec);
+                    }
                     break;
+                }
                 case SkillEffectType.Meteor:
                     affectedCount = ApplyMeteor(tile, skill);
                     break;
                 // active-ally-zone unit 1 — 아군 버프는 **시간제 장판**이다(즉시 버프 폐기).
                 // 빈 칸에도 놓을 수 있어 적 장판과 규칙이 같아졌다 — 0기 거절은 폐기.
                 case SkillEffectType.PowerSurge:
-                    affectedCount = SpawnAllyBuffZone(tile, skill, Wassup.Battle.Effects.StatKind.DamageMul);
+                    affectedCount = CountAlliesInTileRange(tile, GridMath.RangeToTiles(skill.range));
+                    CastActiveSkillAtTile(Wassup.Skills.Concrete.AllyBuffFieldSkill.Id, skill, tile,
+                        statSelector: (int)Wassup.Battle.Effects.StatKind.DamageMul);
                     break;
                 case SkillEffectType.RapidFire:
-                    affectedCount = SpawnAllyBuffZone(tile, skill, Wassup.Battle.Effects.StatKind.AttackSpeedMul);
+                    affectedCount = CountAlliesInTileRange(tile, GridMath.RangeToTiles(skill.range));
+                    CastActiveSkillAtTile(Wassup.Skills.Concrete.AllyBuffFieldSkill.Id, skill, tile,
+                        statSelector: (int)Wassup.Battle.Effects.StatKind.AttackSpeedMul);
                     break;
                 default:
                     Debug.LogWarning($"[BattleBridge] Tile skill '{skill.id}' has unsupported effect {skill.effect}.");
@@ -2592,7 +2609,21 @@ namespace Wassup.Bridge
             }
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
-            affectedCount = ApplyPortal(entryTile, exitTile, skill);
+            // unit 7c — 실행은 concrete 가 한다. 입구==출구 거절은 **여기 남는다** —
+            // 그건 두 번 탭하는 입력의 규칙이고 UI 도 같은 판정으로 조준을 거절한다.
+            affectedCount = 1;   // 로그 전용. 포탈은 대상 수가 아니라 링크 1개다.
+            CastActiveSkillAtTile(Wassup.Skills.Concrete.PortalSkill.Id, skill, entryTile,
+                tileB: exitTile, hasCellB: true);
+            // 연출은 호출자 몫(계약 6) — 두 소용돌이와 잇는 빔.
+            if (vfxSpawner != null)
+            {
+                var pEntry = GridToWorldCenter(entryTile);
+                var pExit = GridToWorldCenter(exitTile);
+                vfxSpawner.SpawnPortal(
+                    new Vector3(pEntry.x, 0f, pEntry.z),
+                    new Vector3(pExit.x, 0f, pExit.z),
+                    skill.durationSec);
+            }
             skillRuntime?.Consume(skill);
             GameManager.Instance?.Logger?.RecordSkillUsage(new Logging.SkillUsageLog
             {
@@ -2614,15 +2645,9 @@ namespace Wassup.Bridge
         // 강화되나)은 Effects 의 AllyBuffFieldSystem 소관이고, bridge 는 스폰 호출과 **로그용
         // 스냅샷 카운트**만 한다(TRD: MonoBehaviour 에 전투 로직 금지).
         // 반환값은 로그의 affected_count 전용 — 성공/실패 판정에 쓰지 않는다(0기도 성공).
-        private int SpawnAllyBuffZone(Vector2Int tile, SkillData skill, Wassup.Battle.Effects.StatKind stat)
-        {
-            int tileRange = GridMath.RangeToTiles(skill.range);
-            var carrier = Wassup.Battle.Effects.EffectSpawner.SpawnAllyBuffField(
-                _em, new int2(tile.x, tile.y), tileRange, stat, skill.magnitude, skill.durationSec);
-            PaintAllyBuffZone(carrier, tile, tileRange); // unit 2 — 원인이 화면에 남는다
-            CollectAlliesInRange(tile, tileRange, _allyLogScratch);
-            return _allyLogScratch.Count;
-        }
+        // skill-layer-migration unit 7b — `SpawnAllyBuffZone` 과 `PaintAllyBuffZone` 은
+        // 은퇴했다. 스폰은 concrete 가 하고 점등은 `DrainAllyBuffZoneVisuals` 의 양방향
+        // 재조정이 한다 — **시전 시점의 캐리어 핸들이 더는 필요 없다.**
 
         // active-ally-zone unit 2 — 장판 점등 등록부(캐리어 엔티티 → 칠한 셀). 만료는 ECS 가
         // 엔티티를 파괴해서 알리므로, 뷰 회수는 프레임 재조정으로 한다(bridge 책임 = 시각 드레인).
@@ -2631,15 +2656,6 @@ namespace Wassup.Bridge
         private readonly Dictionary<Entity, (Vector2Int center, int tileRange)> _allyZonePaint = new();
         private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
         private readonly List<Entity> _zoneGoneScratch = new List<Entity>();
-
-        private void PaintAllyBuffZone(Entity carrier, Vector2Int center, int tileRange)
-        {
-            if (tilemapMapView == null || carrier == Entity.Null) return;
-            if (_allyZonePaint.ContainsKey(carrier)) return; // 같은 캐리어 이중 등록 = refcount 누수
-            BuildZoneCells(center, tileRange, _zoneCellScratch);
-            tilemapMapView.AddZoneCells(_zoneCellScratch);
-            _allyZonePaint[carrier] = (center, tileRange);
-        }
 
         // 보드 안 셀만 담는다 — 점등하는 것과 등록부가 서술하는 것이 같아야 refcount 를 읽을 수 있다.
         private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
@@ -2669,6 +2685,31 @@ namespace Wassup.Bridge
         // 발자국을 지우지 않는다(TilemapMapView.RemoveZoneCells).
         private void DrainAllyBuffZoneVisuals()
         {
+            // skill-layer-migration unit 7b — **점등도 여기서 맞춘다.**
+            // 예전엔 시전 지점이 캐리어 엔티티를 **반환받아** 등록했는데, 실행이 스킬
+            // 레이어로 가면서 그 반환값이 사라졌다. 그런데 이 함수는 이미 「살아 있는
+            // 캐리어와 내 목록을 맞춘다」를 하고 있었다 — 반납만 하던 것을 **양방향**으로
+            // 만들면 반환값이 필요 없다(셈을 preview 로 푼 것과 같은 해법).
+            //
+            // ⚠ 캐리어가 `centerCell`·`tileRange` 를 들고 있어서 가능하다. 시전 시점의
+            // 지식이 아니라 **캐리어 자신의 상태**로 칠한다.
+            if (_allyZonePaint.Count == 0 && !HasLiveEntityManager()) return;
+            if (HasLiveEntityManager() && tilemapMapView != null)
+            {
+                using var newQ = _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.AllyBuffField>());
+                var live = newQ.ToEntityArray(Allocator.Temp);
+                var liveData = newQ.ToComponentDataArray<Wassup.Battle.Effects.AllyBuffField>(Allocator.Temp);
+                for (int i = 0; i < live.Length; i++)
+                {
+                    if (_allyZonePaint.ContainsKey(live[i])) continue;
+                    var c = new Vector2Int(liveData[i].centerCell.x, liveData[i].centerCell.y);
+                    BuildZoneCells(c, liveData[i].tileRange, _zoneCellScratch);
+                    tilemapMapView.AddZoneCells(_zoneCellScratch);
+                    _allyZonePaint[live[i]] = (c, liveData[i].tileRange);
+                }
+                live.Dispose(); liveData.Dispose();
+            }
             if (_allyZonePaint.Count == 0) return;
             _zoneGoneScratch.Clear();
             foreach (var kv in _allyZonePaint)
@@ -2846,7 +2887,7 @@ namespace Wassup.Bridge
         // ⚠ **부착 seam 을 쓴다.** 액티브도 동기 트랜잭션이다(쿨다운 게이트 → 실행 →
         // `Consume` + 로그). 프레임을 기다리면 소모 뒤에 실행이 도착한다.
         private void CastActiveSkillAtTile(int skillId, SkillData skill, Vector2Int tile,
-            int statSelector = 0, Vector2Int tileB = default)
+            int statSelector = 0, Vector2Int tileB = default, bool hasCellB = false)
         {
             if (!_skillFiredQueue.IsCreated) return;
             _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
@@ -2856,12 +2897,20 @@ namespace Wassup.Bridge
                 SkillId = skillId,
                 TargetCellA = new int2(tile.x, tile.y),
                 TargetCellB = new int2(tileB.x, tileB.y),
+                HasCellB = hasCellB,
                 Magnitude = skill.magnitude,
                 Duration = skill.durationSec,
                 TileRange = GridMath.RangeToTiles(skill.range),
                 StatSelector = statSelector,
             });
             RunImmediateSkills();
+        }
+
+        // 로그 preview — 「이 칸 반경 안 아군 수」. 판정에 쓰지 않는다(빈 칸 시전도 성공).
+        private int CountAlliesInTileRange(Vector2Int tile, int tileRange)
+        {
+            CollectAlliesInRange(tile, tileRange, _allyLogScratch);
+            return _allyLogScratch.Count;
         }
 
         // 로그 preview — 「이 칸 반경 안 적 수」. 판정에 쓰지 않는다.
@@ -2880,68 +2929,10 @@ namespace Wassup.Bridge
             return n;
         }
 
-        private int ApplySlowField(Vector2Int tile, SkillData skill)
-        {
-            // Collect all currently-alive attack unit entities; filter by Chebyshev tile
-            // distance to the target tile; apply slow CC effect through EffectSpawner so
-            // the Effects context remains the sole writer.
-            if (!_aliveAttackersQueryCreated) return 0;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+        // skill-layer-migration unit 7a~7c — `ApplySlowField` · `ApplyTornado` ·
+        // `ApplyPortal` 은 은퇴했다. 실행은 concrete 가 하고, 이 파일에 남은 것은
+        // 로그 preview(셈)와 연출뿐이다.
 
-            int tileRange = GridMath.RangeToTiles(skill.range);
-            int affected = 0;
-
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                if (!InTileRange(pos, tile, tileRange)) continue;
-                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
-                affected++;
-            }
-
-            entities.Dispose();
-            return affected;
-        }
-
-        // Phase 7 — Tornado. Pulls in-range attackers toward the target tile for
-        // `durationSec`. `skill.magnitude` is the pull speed (world units/sec).
-        private int ApplyTornado(Vector2Int tile, SkillData skill)
-        {
-            float3 targetWorld = GridToWorldCenter(tile);
-            int tileRange = GridMath.RangeToTiles(skill.range);
-            float rangeWorld = tileRange * tileSize; // VFX only
-
-            // Phase 8 §17 — continuous field (replaces Phase 7 per-attacker
-            // snapshot). MovementSystem queries live TornadoField entities each
-            // frame, so enemies that enter the radius mid-duration are also
-            // pulled. Re-cast creates an independent field; multiple fields can
-            // coexist and the attacker is pulled by the first one that contains
-            // it.
-            EffectSpawner.SpawnTornadoField(_em, targetWorld, tileRange, skill.magnitude, skill.durationSec);
-
-            // Phase 8 §12: swirling particle ring over the Tornado center.
-            if (vfxSpawner != null)
-                vfxSpawner.SpawnTornado(new Vector3(targetWorld.x, 0f, targetWorld.z), rangeWorld, skill.durationSec);
-
-            // Affected count is reported async as attackers enter / get pulled;
-            // at cast time we conservatively pre-count overlaps so the log has
-            // a baseline without waiting for the field to expire.
-            if (!_aliveAttackersQueryCreated) return 0;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            int preview = 0;
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e)) continue;
-                var p = _em.GetComponentData<LocalTransform>(e).Position;
-                if (!InTileRange(p, tile, tileRange)) continue;
-                preview++;
-            }
-            entities.Dispose();
-            return preview;
-        }
 
         // projectile-trajectory-payload unit 7 — Meteor rides the unified projectile
         // lifecycle (SkyFall × TileAoe, flightTime = warningSec). The request is
@@ -2998,28 +2989,6 @@ namespace Wassup.Bridge
             return preview;
         }
 
-        // Phase 7 — Portal. Spawns a PortalLink carrier with two endpoints. On
-        // teleport, MovementSystem advances the attacker's waypoint index to the
-        // first waypoint whose cell matches (or follows) the exit tile so they
-        // keep heading toward the goal from the exit.
-        private int ApplyPortal(Vector2Int entryTile, Vector2Int exitTile, SkillData skill)
-        {
-            float3 entryWorld = GridToWorldCenter(entryTile);
-            float3 exitWorld = GridToWorldCenter(exitTile);
-            float entryRadius = tileSize * 0.5f; // half-tile catch radius
-            EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec);
-
-            // Phase 8 §12: two swirls + connecting beam for the portal's lifetime.
-            if (vfxSpawner != null)
-            {
-                vfxSpawner.SpawnPortal(
-                    new Vector3(entryWorld.x, 0f, entryWorld.z),
-                    new Vector3(exitWorld.x, 0f, exitWorld.z),
-                    skill.durationSec);
-            }
-
-            return 1;
-        }
 
         private void Update()
         {
@@ -9160,6 +9129,9 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.BountyMarkSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.CastHazardSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.TileStatBurstSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.AllyBuffFieldSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.PullFieldSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.PortalSkill());
             }
             // 스택 상한 표 — 저작 SO 가 권위다. 도메인은 상한을 모르고 어댑터가 푼다.
             var caps = new byte[System.Enum.GetValues(typeof(Wassup.Battle.Effects.StackKind)).Length];

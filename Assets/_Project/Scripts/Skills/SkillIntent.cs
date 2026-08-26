@@ -92,6 +92,25 @@ namespace Wassup.Skills
         // ⚠ 대상이 **적**이다. 이 레이어에서 유일하게 「적을 이롭게 하지 않으면서
         // 적에게 거는 표식」이고, 그 값은 그 적이 죽을 때 소비된다.
         ScaleKillReward,
+
+        // skill-layer-migration unit 7b — **지정한 자리에 «장»을 놓는다.**
+        // 해저드(`SpawnZoneCarrier`)와 갈라 둔 이유: 그쪽은 모양·효과·틱·뷰가 전부
+        // **해저드 저작 소유**라 index 하나만 지나가는데, 이쪽은 그 값들을 스킬이 들고 온다.
+        //
+        // ⚠ 종류는 `Selector`(`SkillFieldKind`)가 정하고 **읽는 필드가 종류마다 다르다**:
+        //   · AllyBuff — `Cell` · `TileRange` · `Selector2`(스탯) · `Amount`(배율) · `Duration`
+        //   · Pull     — `Cell` · `TileRange` · `Amount`(당김 속도) · `Duration`
+        //   · Portal   — `Cell`(입구) · `Cell2`(출구) · `Duration`
+        // 한 의도로 묶은 것은 셋이 **같은 문장**이기 때문이다 — 「저기에 얼마 동안 장을 둔다」.
+        SpawnFieldCarrier,
+    }
+
+    // unit 7b — 어떤 장인가. 읽는 필드가 갈리므로 이름으로 서 있어야 한다.
+    public enum SkillFieldKind : byte
+    {
+        AllyBuff = 0,
+        Pull = 1,
+        Portal = 2,
     }
 
     public enum MetaIntentKind : byte
@@ -111,6 +130,8 @@ namespace Wassup.Skills
 
         public SkillEntityId Target;   // 대상. 무효면 «자리»(Cell/Position)가 대상이다
         public int2 Cell;
+        // unit 7b — 두 번째 자리. 포탈만 쓴다(입구/출구).
+        public int2 Cell2;
         public float3 Position;
         public float2 DirectionXZ;
 
@@ -146,6 +167,9 @@ namespace Wassup.Skills
         public byte TargetTraversalLayers;
         public int StackId;            // ⚠ ApplyStatModifier 의 병합 키 일부(아래)
         public int Selector;           // stat/cc/stack kind — 어댑터가 도메인 enum 으로 번역
+        // unit 7b — 두 번째 선택자. `Selector` 가 «종류» 를 쓸 때 «무엇을» 이 여기 온다
+        // (장의 종류 × 그 장이 거는 스탯). 겸직이 아니라 축이 둘인 것이다.
+        public int Selector2;
         public float HitThreshold;     // 탄 피격 반경 · 연출 배율 등 kind 별 보조 스칼라
 
         // 모디파이어 축. `Selector` 하나에 packing 하지 않는다 — 그 겸직이 이 레이어를
