@@ -9109,6 +9109,7 @@ namespace Wassup.Bridge
                 _skillRegistry.Register(new Wassup.Skills.Concrete.UltimateLeapSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.EmitPatternSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AreaTauntSkill());
+                _skillRegistry.Register(new Wassup.Skills.Concrete.ConeBreathSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.AllyStatAuraSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.OpponentStatAuraSkill());
                 _skillRegistry.Register(new Wassup.Skills.Concrete.GainCostSkill());
@@ -9273,6 +9274,8 @@ namespace Wassup.Bridge
                     return Wassup.Skills.Concrete.EmitPatternSkill.Id;
                 case Wassup.Data.DcPayloadKind.AreaTaunt:
                     return Wassup.Skills.Concrete.AreaTauntSkill.Id;
+                case Wassup.Data.DcPayloadKind.AreaBreath:
+                    return Wassup.Skills.Concrete.ConeBreathSkill.Id;
                 case Wassup.Data.DcPayloadKind.AllyStatAura:
                     return Wassup.Skills.Concrete.AllyStatAuraSkill.Id;
                 case Wassup.Data.DcPayloadKind.OpponentStatAura:

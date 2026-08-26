@@ -1875,6 +1875,7 @@ namespace Wassup.Battle.Combat
                                         PatternIndex = slot.patternIndex,
                                         Speed = slot.speed,
                                         HitThreshold = slot.hitThreshold,
+                                        ConeCosSq = slot.coneCosSq,
                                         SlamDamage = slot.slamDamage,
                                         SlamTileRange = slot.slamTileRange,
                                         StackId = slot.statBuffStackId,
@@ -1926,14 +1927,18 @@ namespace Wassup.Battle.Combat
                             // 가능하게 했다(SpawnNeedleCarrier 선례).
                             if (slot.payload == Wassup.Data.DcPayloadKind.AreaBreath)
                             {
+                                // skill-layer-migration unit 8 — **피해는 위 라우팅이 이미
+                                // 보냈다**(`ConeBreathSkill`). 여기 남은 것은 연출뿐이다.
+                                //
+                                // ⚠ 연출이 왜 안 따라갔나: 이 채널이 나르는 것은 「이 공격이
+                                // 무엇처럼 보이나」이고, **지금이 공격이라는 사실**을 아는 것은
+                                // RESOLVE 뿐이다(비수 로그와 같은 판단, 투트랙 리뷰 M-4).
+                                // 게다가 이 이벤트는 드레인에게 «애니 재생을 건너뛰라»고도
+                                // 말한다 — 그건 공격 연출의 규칙이지 스킬의 규칙이 아니다.
                                 float rangeWorld = slot.tileRange * tileSize;
                                 float3 selfPos = transform.ValueRO.Position;
                                 float2 breathDir = math.normalizesafe(
                                     (bestTargetPos - selfPos).xz, new float2(1f, 0f));
-                                ApplyConeBreath(ref ecb, attackerEntity, selfPos.xz, breathDir,
-                                    slot.coneCosSq, rangeWorld, slot.magnitude,
-                                    mask, attack.ValueRO.targetTraversalLayers,
-                                    targetEntities, targetTransforms, targetFactions, targetTraversalLayers);
 
                                 // 연출 — Burst ISystem 은 VfxSpawner 를 못 부른다. 기존 채널에
                                 // VFX 캐리어로 태운다(신규 큐 0). 드레인은 이 플래그를 보면 애니
@@ -2027,32 +2032,6 @@ namespace Wassup.Battle.Combat
         //
         // `AoeTargetCap` 을 쓰지 않는다 — 부채꼴에 든 전원이 맞는 것이 이 능력의 요점이다.
         // 위협(`ThreatHitEvent`) 귀속도 하지 않는다 — 위협 테이블은 보스 전용 부속물이다.
-        private static void ApplyConeBreath(
-            ref EntityCommandBuffer ecb,
-            Entity self, float2 selfXZ, float2 dir, float cosSq, float rangeWorld, float damage,
-            int targetMask, byte selfTargetLayers,
-            NativeArray<Entity> targetEntities,
-            NativeArray<LocalTransform> targetTransforms,
-            NativeArray<FactionTag> targetFactions,
-            NativeArray<byte> targetTraversalLayers)
-        {
-            if (damage <= 0f) return;
-            for (int i = 0; i < targetEntities.Length; i++)
-            {
-                if (((int)targetFactions[i].value & targetMask) == 0) continue;          // ①
-                if (!Wassup.Data.PlacementLayers.CanTarget(
-                        selfTargetLayers, targetTraversalLayers[i])) continue;           // ②
-                if (targetEntities[i] == self) continue;                                 // ③
-                if (!TileAoe.IsInCone(selfXZ, targetTransforms[i].Position.xz,
-                        dir, cosSq, rangeWorld)) continue;
-                ecb.AppendToBuffer(targetEntities[i], new IncomingDamage
-                {
-                    amount = damage,
-                    source = self,
-                });
-            }
-        }
-
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,

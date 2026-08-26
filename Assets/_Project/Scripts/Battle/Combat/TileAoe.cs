@@ -39,21 +39,12 @@ namespace Wassup.Battle.Combat
         // 게다가 cos²θ = cos²(180−θ) 라 저작 120° 는 조용히 60° 콘으로 동작하고 180° 는
         // «전방위» 가 아니라 «정면 한 줄» 이 된다. 그래서 **bake 가 반각 >= 90 을 거절**한다 —
         // 이 함수는 클램프하지 않고 정의역을 문서로만 방어한다(순수 술어의 책임 밖).
+        // ⚠ **판정 본체는 도메인이 소유한다**(unit 8). 화염 브레스가 스킬 레이어로
+        // 가면서 판정도 따라갔고, 여기는 위임만 남는다 — 기존 테스트·문서 참조가
+        // 그대로 살고 복사본이 생기지 않는다.
         public static bool IsInCone(float2 from, float2 to, float2 dir, float cosSq, float rangeWorld)
-        {
-            float2 d = to - from;
-            float d2 = math.lengthsq(d);
-            // 같은 자리 = 포함. 델타가 0 에 가까우면 방향이 무의미해져 아래 부호 가드가 대상을
-            // 조용히 제외한다. 비행 적은 sim 좌표가 평면이라 바로 아래 유닛과 XZ 가 겹칠 수 있다.
-            if (d2 <= SameSpotEpsSq) return true;
-            if (d2 > rangeWorld * rangeWorld) return false;
-            float dp = math.dot(d, dir);
-            // normalize 를 쓰지 않는다 — 제곱 비교로 rsqrt 왕복을 없앤다.
-            return dp > 0f && dp * dp >= cosSq * d2;
-        }
+            => Wassup.Skills.SkillCone.IsInCone(from, to, dir, cosSq, rangeWorld);
 
-        // «같은 자리» 임계(월드 거리² ). 0.01 월드 유닛 = 타일 1개 기준 1% — 셀 판정을 흔들지
-        // 않으면서 방향 계산이 의미를 잃는 구간만 잡는다.
-        public const float SameSpotEpsSq = 1e-4f;
+        public const float SameSpotEpsSq = Wassup.Skills.SkillCone.SameSpotEpsSq;
     }
 }

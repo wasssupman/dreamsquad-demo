@@ -53,6 +53,9 @@ namespace Wassup.Skills
         public readonly bool IncludesSelf;
         public readonly float Speed;
         public readonly float HitThreshold;
+        // 부채꼴 반각의 cos². `HitThreshold`(투사체 도달 반경)와 **별개 축**이다 —
+        // 겸직시키면 콘을 쏘는 투사체가 생기는 순간 한 필드가 두 뜻으로 갈린다.
+        public readonly float ConeCosSq;
         public readonly float SlamDamage;
         public readonly int SlamTileRange;
         public readonly int StackId;     // ⚠ ApplyStatModifier 병합 키의 일부 — 아래
@@ -68,7 +71,8 @@ namespace Wassup.Skills
             int projectileMovement = 0, int projectilePayload = 0,
             byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default,
             int hazardDataIndex = NoDataIndex,
-            int count = 0, bool includesSelf = false, int selector2 = 0)
+            int count = 0, bool includesSelf = false, int selector2 = 0,
+            float coneCosSq = 0f)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -80,6 +84,7 @@ namespace Wassup.Skills
             TargetTraversalLayers = targetTraversalLayers; EventPosition = eventPosition;
             HazardDataIndex = hazardDataIndex;
             Count = count; IncludesSelf = includesSelf; Selector2 = selector2;
+            ConeCosSq = coneCosSq;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.

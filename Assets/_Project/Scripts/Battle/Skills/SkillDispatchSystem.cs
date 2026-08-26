@@ -237,7 +237,7 @@ namespace Wassup.Battle.Skills
                     evt.PatternIndex, evt.StatSelector, evt.StackSelector,
                     evt.ProjectileMovement, evt.ProjectilePayload, evt.TargetTraversalLayers,
                     eventPos, evt.HazardDataIndex,
-                    evt.Count, evt.IncludesSelf, evt.Selector2);
+                    evt.Count, evt.IncludesSelf, evt.Selector2, evt.ConeCosSq);
 
                 // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
                 // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.

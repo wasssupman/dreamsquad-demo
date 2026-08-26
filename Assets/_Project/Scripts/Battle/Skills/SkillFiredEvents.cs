@@ -76,6 +76,12 @@ namespace Wassup.Battle.Skills
         public int Selector2;
         public float Speed;
         public float HitThreshold;
+
+        // 부채꼴 반각의 cos². ⚠ **`HitThreshold` 에 겸직시키지 않는다** — 그쪽은 투사체
+        // 도달 반경이고 이쪽은 각도 판정이다. 지금은 한 payload 가 둘 중 하나만 쓰지만,
+        // 콘을 쏘는 투사체가 생기는 순간 한 필드가 두 뜻으로 갈린다(DoT 슬롯이 그렇게
+        // 과피해를 냈다). 저작은 도(degree)이고 변환은 bake 1회다.
+        public float ConeCosSq;
         public float SlamDamage;
         public int SlamTileRange;
         // unit 5b — 대상 수 상한(0 = 상한 없음)과 자기 포함 여부.
