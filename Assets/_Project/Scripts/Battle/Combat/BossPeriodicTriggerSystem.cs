@@ -129,6 +129,9 @@ namespace Wassup.Battle.Combat
                                     Period = slot.period,
                                     DataIndex = slot.projectileDataIndex,
                                     Selector = (int)slot.ccKind,
+                                    // unit 5b — 실드 캐스트의 두 축(다른 payload 는 0 이라 무해).
+                                    Count = slot.shieldTargetCount,
+                                    IncludesSelf = slot.shieldIncludesSelf,
                                     Speed = slot.speed,
                                     HitThreshold = slot.hitThreshold,
                                     SlamDamage = slot.slamDamage,

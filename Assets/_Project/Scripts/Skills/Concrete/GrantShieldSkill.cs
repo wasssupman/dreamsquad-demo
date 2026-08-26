@@ -53,13 +53,46 @@ namespace Wassup.Skills.Concrete
 
             var hostPos = ctx.Position(caster.Unit);
             var buf = new SkillEntityId[MaxTargets];
-            int n = ctx.Allies(caster, hostPos, radius,
-                CandidateFilter.ExcludeSelf | CandidateFilter.ExcludeDead,
-                RangeMetric.Chebyshev, buf);
+            // ⚠ **자기 포함이 축이다**(unit 5b). 같은 「반경 내 아군」이라도 카드 경로는
+            // 자기를 빼고(위 병합 키 경고) 실드 셔틀은 넣는다(그쪽엔 겹칠 상대가 없다).
+            // 저작이 아니라 **bake 가 정한다** — 그 host 에 자기 실드를 주는 능력이
+            // 또 있는지는 저작자가 아니라 bake 만 알 수 있는 사실이기 때문이다.
+            var filter = CandidateFilter.ExcludeDead;
+            if (!p.IncludesSelf) filter |= CandidateFilter.ExcludeSelf;
+            int n = ctx.Allies(caster, hostPos, radius, filter, RangeMetric.Chebyshev, buf);
+            if (n == 0) return;
 
-            for (int i = 0; i < n; i++)
+            // ⚠ **우선순위와 인원 상한은 여기서 갈린다.** 상한이 없으면(카드 경로)
+            // 반경 안 전부이고, 있으면(셔틀) 저작한 순서로 C 명만 고른다.
+            int limit = p.Count > 0 ? p.Count : n;
+            var order = new int[MaxTargets];
+            int picked;
+            if (limit >= n && (SkillShieldFilter)p.Selector != SkillShieldFilter.MostHurt)
             {
-                var id = buf[i];
+                // 전부 주는 경우엔 정렬이 결과를 안 바꾼다 — 후보 순서 그대로.
+                picked = n;
+                for (int i = 0; i < n; i++) order[i] = i;
+            }
+            else
+            {
+                var distSq = new float[n];
+                var hpRatio = new float[n];
+                int selfIndex = -1;
+                for (int i = 0; i < n; i++)
+                {
+                    var d = ctx.Position(buf[i]) - hostPos;
+                    distSq[i] = d.x * d.x + d.z * d.z;
+                    hpRatio[i] = ctx.Stat(buf[i], UnitStat.EffectiveHpRatio);
+                    if (buf[i].Value == caster.Unit.Value) selfIndex = i;
+                }
+                picked = SkillShieldSelect.Select(
+                    (SkillShieldFilter)p.Selector, limit, selfIndex,
+                    distSq, hpRatio, n, order);
+            }
+
+            for (int k = 0; k < picked; k++)
+            {
+                var id = buf[order[k]];
                 if (!ctx.Has(id, UnitPredicate.HasShieldBuffer)) continue;
                 if (ctx.ShieldValueFrom(id, caster.Unit) >= amount) continue;   // 만충 — 헛 VFX 금지
 

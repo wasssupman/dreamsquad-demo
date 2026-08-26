@@ -285,6 +285,20 @@ namespace Wassup.Battle.Skills
         public float Stat(SkillEntityId id, UnitStat stat)
         {
             var e = Resolve(id);
+            // ⚠ **공격 스탯이 아닌 질의가 먼저다**(unit 5b). 아래 게이트는 `AttackState`
+            // 없는 유닛을 0 으로 접는데, 「얼마나 다쳤나」는 공격과 무관한 값이라
+            // 그 게이트에 걸리면 안 때리는 아군이 전부 0 으로 동률이 된다.
+            if (stat == UnitStat.EffectiveHpRatio)
+            {
+                if (!_health.HasComponent(e)) return 0f;
+                var h = _health[e];
+                float maxHp = h.max > 0f ? h.max : 1f;
+                float shieldSum = _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(e)
+                    ? Wassup.Battle.Units.ShieldMath.Sum(_em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(e))
+                    : 0f;
+                // 실드 합산 규칙은 `ShieldMath` 가 소유한다 — 도메인은 비율만 본다.
+                return (h.value + shieldSum) / maxHp;
+            }
             if (!_attack.HasComponent(e)) return 0f;
             var a = _attack[e];
             switch (stat)

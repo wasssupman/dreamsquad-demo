@@ -193,9 +193,16 @@ namespace Wassup.Tests.PlayMode
             em.SetComponentData(patrol, hp);
             float damagedHp = hp.value;
             ForceAttackReady(em, healer);
-            var shieldCast = em.GetComponentData<ShieldCastState>(shield);
-            shieldCast.cooldownRemaining = 0f;
-            em.SetComponentData(shield, shieldCast);
+            // skill-layer-migration unit 5b — 실드 캐스트가 전용 상태에서 **규칙 슬롯**으로
+            // 이사했다. 「지금 쏴라」는 이제 쿨다운 0 이 아니라 주기를 채우는 것이다.
+            var shieldSlots = em.GetBuffer<Wassup.Battle.Combat.DcTriggerSlot>(shield);
+            for (int i = 0; i < shieldSlots.Length; i++)
+            {
+                var sl = shieldSlots[i];
+                if (sl.payload != Wassup.Data.DcPayloadKind.GrantShield) continue;
+                sl.elapsed = sl.periodSeconds;   // 다음 틱에 발화
+                shieldSlots[i] = sl;
+            }
 
             bool healed = false;
             bool shielded = false;

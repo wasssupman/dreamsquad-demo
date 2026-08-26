@@ -54,6 +54,11 @@ namespace Wassup.Battle.Skills
         public float HitThreshold;
         public float SlamDamage;
         public int SlamTileRange;
+        // unit 5b — 대상 수 상한(0 = 상한 없음)과 자기 포함 여부.
+        // ⚠ **자기 포함이 별도 축인 이유**: 같은 filter 라도 카드 경로(악몽의 가호)는
+        // 제외, 능력 경로(실드 셔틀)는 포함이다. filter 로 접으면 그 차이가 사라진다.
+        public int Count;
+        public bool IncludesSelf;
         public int StackId;
         public float VisualScale;
         // 발사 명세 슬롯 index. `DataIndex`(전역 에셋 표)와 **다른 축**이다 —

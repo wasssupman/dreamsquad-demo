@@ -7663,17 +7663,37 @@ namespace Wassup.Bridge
             }
             // shield-guardian-defender unit 1 — 실드 캐스트 베이크. 범위 = attackRange
             // 재사용(계약 5). 첫 캐스트는 배치 A초 후(cooldownRemaining = A).
+            // skill-layer-migration unit 5b — **저작은 그대로, bake 가 규칙 슬롯으로 굽는다.**
+            // 전용 상태(`ShieldCastState`)와 전용 시스템이 여기서 은퇴한다 — 주기 트리거는
+            // 이미 있고(`DcTriggerSlot.periodSeconds`), 실드 부여도 이미 있다(`GrantShield`).
+            // ⚠ 첫 캐스트 시점이 같다: 레거시는 `cooldownRemaining = A`(A초 후 첫 발),
+            // 주기 슬롯은 `elapsed 0` 에서 A초를 채워야 발화 — 같은 타이밍이다.
             var shieldAbility = unitData.GetAbility<ShieldCastAbility>();
             if (shieldAbility != null && shieldAbility.cooldown > 0f && shieldAbility.amount > 0f)
             {
-                _em.AddComponentData(entity, new Wassup.Battle.Effects.ShieldCastState
+                var shieldSlots = _em.HasBuffer<DcTriggerSlot>(entity)
+                    ? _em.GetBuffer<DcTriggerSlot>(entity)
+                    : _em.AddBuffer<DcTriggerSlot>(entity);
+                shieldSlots.Add(new DcTriggerSlot
                 {
-                    range = unitData.attackRange,
-                    cooldownDuration = shieldAbility.cooldown,
-                    cooldownRemaining = shieldAbility.cooldown,
-                    amount = shieldAbility.amount,
-                    targetCount = shieldAbility.targetCount,
-                    filter = shieldAbility.filter,
+                    skillId = SkillIdForPayload(Wassup.Data.DcPayloadKind.GrantShield),
+                    instanceId = _dcInstanceCounter++,
+                    trigger = Wassup.Data.DcTriggerKind.PeriodicTimer,
+                    periodSeconds = shieldAbility.cooldown,
+                    payload = Wassup.Data.DcPayloadKind.GrantShield,
+                    magnitude = shieldAbility.amount,
+                    // 계약 5 — 실드 범위는 유닛 `attackRange` 재사용이라 에셋에 range 가 없다.
+                    tileRange = GridMath.RangeToTiles(unitData.attackRange),
+                    // 저작 filter 는 도메인 enum 과 값이 같다(Self·Nearest·MostHurt).
+                    ccKind = (Wassup.Battle.Effects.CcKind)(byte)shieldAbility.filter,
+                    // ⚠ **셔틀은 자기를 포함한다**(계약 6). 카드 경로(악몽의 가호)는 제외인데,
+                    // 그 이유가 「같은 host 의 두 실드 능력이 한 슬롯을 공유한다」라서 —
+                    // 셔틀엔 겹칠 상대가 없다. 그 사실은 저작자가 아니라 bake 만 안다.
+                    shieldIncludesSelf = true,
+                    shieldTargetCount = math.max(1, shieldAbility.targetCount),
+                    projectileDataIndex = -1,
+                    patternIndex = -1,
+                    hazardDataIndex = -1,
                 });
             }
             // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크.

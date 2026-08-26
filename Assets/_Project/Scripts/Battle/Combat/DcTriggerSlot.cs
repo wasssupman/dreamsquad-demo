@@ -88,6 +88,14 @@ namespace Wassup.Battle.Combat
         // 계층 DcCcKind/DcStackKind 를 Battle enum 으로 번역 저장(hot path 무번역).
         // ApplyCcToTarget=ccKind, ApplyStackToTarget=stackKind. 소비는 unit 1.
         public Wassup.Battle.Effects.CcKind ccKind;
+
+        // skill-layer-migration unit 5b — 실드 캐스트의 두 축.
+        // ⚠ **자기 포함을 filter 로 접으면 안 된다.** 같은 filter 라도 카드 경로(악몽의
+        // 가호)는 자기를 빼고 능력 경로(실드 셔틀)는 넣는다 — 그 차이의 이유가
+        // 「이 host 에 자기 실드를 주는 능력이 또 있나」이고, 그건 bake 만 아는 사실이다.
+        public bool shieldIncludesSelf;
+        // 0 = 상한 없음(반경 안 전부). 셔틀만 채운다.
+        public int shieldTargetCount;
         public Wassup.Battle.Effects.StackKind stackKind;
 
         // dreamcatcher-kill-and-threshold unit 0 — SelfStatBuff 대상 스탯. bake 시

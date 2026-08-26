@@ -73,6 +73,10 @@ namespace Wassup.Skills
         // 값이라 스킬 저작이 아니라 **유닛의 성질**이다(그래서 params 가 아니라 질의다).
         KnockupVisualHeight,
         KnockupHopSeconds,
+        // unit 5b — **얼마나 다쳤나**(HP+실드합 ÷ 최대HP). 원시 세 값(체력·최대체력·실드합)
+        // 대신 파생값 하나를 여는 이유: 스킬이 묻는 것이 그 질문이고, 실드 합산 규칙은
+        // 어댑터(`ShieldMath`)가 소유하기 때문이다.
+        EffectiveHpRatio,
     }
 
     public interface ISkillContext

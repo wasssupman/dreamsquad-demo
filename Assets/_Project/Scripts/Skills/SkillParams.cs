@@ -47,6 +47,9 @@ namespace Wassup.Skills
         public readonly int HazardDataIndex;
         public bool HasHazard => HazardDataIndex >= 0;
         public readonly int Selector;    // stat/cc/stack kind 등 저작 enum
+        // unit 5b — 대상 수 상한(0 = 없음) · 자기 포함 여부.
+        public readonly int Count;
+        public readonly bool IncludesSelf;
         public readonly float Speed;
         public readonly float HitThreshold;
         public readonly float SlamDamage;
@@ -63,7 +66,8 @@ namespace Wassup.Skills
             int patternIndex = NoDataIndex, int statSelector = 0, int stackSelector = 0,
             int projectileMovement = 0, int projectilePayload = 0,
             byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default,
-            int hazardDataIndex = NoDataIndex)
+            int hazardDataIndex = NoDataIndex,
+            int count = 0, bool includesSelf = false)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -74,6 +78,7 @@ namespace Wassup.Skills
             ProjectileMovement = projectileMovement; ProjectilePayload = projectilePayload;
             TargetTraversalLayers = targetTraversalLayers; EventPosition = eventPosition;
             HazardDataIndex = hazardDataIndex;
+            Count = count; IncludesSelf = includesSelf;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.
