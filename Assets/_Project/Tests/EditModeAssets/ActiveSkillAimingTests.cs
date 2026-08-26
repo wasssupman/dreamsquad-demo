@@ -13,8 +13,15 @@ namespace Wassup.Tests.EditModeAssets
     // 컴파일러도 런타임도 그 연결을 안 잡으므로 여기서 잡는다.
     public class ActiveSkillAimingTests
     {
+        // ⚠ **`Resources.FindObjectsOfTypeAll` 을 쓰지 않는다.** 그건 «이미 메모리에
+        // 로드된» 에셋만 본다 — 도메인이 새로 뜬 직후(에디터 재연결·스크립트 재컴파일)
+        // 처럼 아직 아무것도 안 불러온 상태에서는 **빈 배열**이 나와 전제 단언이 깨진다.
+        // 실제로 그렇게 빨개졌고, 이 레인의 다른 테스트는 전부 `AssetDatabase` 를 쓴다
+        // (`MalphiteKnockupAuthoringTests` 는 그 함정을 주석에 적어 두기까지 했다).
         private static SkillData[] All()
-            => Resources.FindObjectsOfTypeAll<SkillData>()
+            => UnityEditor.AssetDatabase.FindAssets("t:SkillData")
+                        .Select(g => UnityEditor.AssetDatabase.LoadAssetAtPath<SkillData>(
+                            UnityEditor.AssetDatabase.GUIDToAssetPath(g)))
                         .Where(s => s != null && !string.IsNullOrEmpty(s.id))
                         .ToArray();
 

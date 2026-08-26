@@ -145,7 +145,7 @@ namespace Wassup.Data
         // 필요하고(없으면 등 뒤에 대칭 콘), 그 가드가 90° 에서 정의역을 자른다. 게다가
         // cos²θ = cos²(180−θ) 라 저작 120° 는 **조용히 60° 콘으로 동작**한다 → bake 가 >= 90 을
         // loud 거절한다. 저작 초기값 50° — 45° 는 셀 대각선 경계에 정확히 걸려 부동소수 비교가
-        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `TileAoe.IsInCone`.
+        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `Wassup.Skills.SkillCone.IsInCone`.
         // append-only.
         AreaBreath = 21,
         // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 셀 중심을 도는 투사체 1개를
