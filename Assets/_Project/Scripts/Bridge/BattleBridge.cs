@@ -9274,91 +9274,21 @@ namespace Wassup.Bridge
             }
         }
 
-        // 카드 경로가 스킬 레이어로 여는 payload. **arm 이 은퇴한 것만** 들어온다.
+        // skill-layer-migration unit 3g — **카드와 유닛이 같은 규칙을 쓴다.**
         //
-        // ⚠ 유닛 능력 bake 는 위 `SkillIdForPayload` 를 그대로 부르는데 카드 bake 는
-        // 이걸 부른다. 두 bake 가 다른 이유가 여기 이름으로 서 있어야 한다 —
-        // 카드를 전면 개방하면 이미 이전된 payload 를 저작한 **라이브 카드 8장**
-        // (`SelfTileAoe` 7 · `AreaSleep` 1)이 자기 그물 없이 한꺼번에 새 경로로 넘어간다.
+        // 이 함수는 원래 카드 전용 화이트리스트였다. 이전 중에는 그게 안전장치였다 —
+        // arm 이 검증되기 전에 카드가 새 경로를 타면 「슬롯은 붙는데 아무도 안 읽는」
+        // 조용한 죽음이 되고, 컴파일러도 테스트도 그 연결을 안 잡는다.
         //
-        // ⚠ **unit 8(철거)의 전제다.** arm 을 하나 더 걷어낼 때 그 payload 를 여기
-        // 추가하지 않으면 그 payload 를 저작한 카드가 조용히 죽는다 — 컴파일러도
-        // 테스트도 그 연결을 안 잡는다. arm 을 지우는 손이 이 목록도 늘려야 한다.
+        // 이제 도달 가능한 행이 전부 이전됐고 각자 그물을 갖췄으므로 화이트리스트를 은퇴한다.
+        // ⚠ **두 벌로 두는 것 자체가 이제 위험이다** — 특수 케이스(자리의 주인이 다른 폭발
+        // 셋 등)를 한쪽에만 추가하면 같은 저작이 host 종류에 따라 다른 스킬로 간다.
+        //
+        // 여전히 concrete 가 없는 payload 는 `SkillIdForPayload` 의 default 가 legacy 로
+        // 돌려보낸다(부착 시점 5행·손패 회수·분열·강공 등) — 개방이 그 arm 들을 건드리지 않는다.
         private static int SkillIdForCardPayload(Wassup.Data.DcTriggerKind trigger,
                                                  Wassup.Data.DcPayloadKind kind)
-        {
-            // unit 3d — 죽은 자리 폭발. 처치 seam 이 열렸으므로 카드도 함께 연다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnKill)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
-                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
-            }
-            // unit 3d″ — **작별 선물.** `OnKill × SelfTileAoe`(시체폭발)와 같은 concrete 를
-            // 쓴다. 「실려 온 자리에서 터진다」가 같은 규칙이고, **누구의 자리인가**는
-            // 스킬이 아니라 감지자가 정하기 때문이다(죽인 자리 ↔ 죽은 자리).
-            // ⚠ `SkillIdForPayload(SelfTileAoe)` 로 가면 **안 된다** — 그건 살아 있는
-            // 시전자 발밑을 묻는 `SelfAreaBlastSkill` 이고, 드레인 시점엔 시전자가 없다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnDeath
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-            // unit 3d‴ — 피격 N회. **자기 자리 폭발**은 살아 있는 시전자 발밑이라
-            // `SelfAreaBlastSkill` 이 맞다(작별 선물과 반대 축이다).
-            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
-                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
-            }
-            // unit 3e — 실드 파열. 피격 N회와 **같은 실행기**를 쓰므로 모양이 같다.
-            // ⚠ `AreaSleep` 은 concrete 가 「재우자마자 내가 깨울 자리」를 뺀다 — 레거시
-            // 파열엔 없던 규칙이다. 재우는 **수**는 그대로고(뺄 만큼 더 뽑는다) 달라지는
-            // 것은 «누가» 자느냐다. 자장가의 계약이 그쪽이 옳다고 보므로 concrete 를
-            // 둘로 가르지 않고 이 차이를 여기 적어 둔다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnShieldBreak)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.AreaSleep)
-                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
-            }
-            // unit 3e — 퇴근 운석. 죽은 자리 폭발과 **같은 규칙**이다(실려 온 자리에서
-            // 터진다). 다른 것은 값뿐 — 자리의 주인이 「비워진 칸」이고 예고 시간이 있다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnRetire
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-            if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
-                && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
-                return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;
-            switch (kind)
-            {
-                // arm 은 `273b9bc4` 에서 은퇴했다(조준 규칙이 도메인으로 이사해
-                // Burst arm 이 부를 수 없게 됐다).
-                case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
-                // unit 3a — 공격 seam 이 열렸다. 이 payload 의 유일한 트리거가 `AttackN`
-                // 이므로 seam 개통과 함께 카드 경로도 연다 — **arm 은 unit 3g 까지 남는다**
-                // (다른 트리거로 저작될 여지가 있는 한 지우면 조용히 죽는 행이 생긴다).
-                case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
-                // unit 3b — 같은 공격 seam 을 타는 형제 둘.
-                // ⚠ `SelfStatBuff` 는 **경계·처치 트리거로도 저작된다**(HealthThreshold 2행 ·
-                // OnKill 2행). 경계 seam 은 열려 있지만 처치 seam 은 아직 없다 —
-                // 그래서 카드 화이트리스트에 넣되 **arm 은 3d 까지 남긴다**(그쪽 트리거로
-                // 저작된 카드가 조용히 죽지 않게).
-                case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
-                case Wassup.Data.DcPayloadKind.SelfStatBuff:
-                case Wassup.Data.DcPayloadKind.ProjectileToTarget:
-                // unit 3f — 불꽃 팽이. 유일한 트리거가 `PeriodicTimer` 이고 그 seam 은 열려 있다.
-                case Wassup.Data.DcPayloadKind.SelfOrbitProjectile:
-                // unit 3f — 진동갑주(경계 자폭). 경계 seam 도 열려 있다. 유닛 bake 는 이미
-                // 이 payload 를 보내고 있었고 카드 경로만 닫혀 있었다.
-                case Wassup.Data.DcPayloadKind.SelfTileAoe:
-                    return SkillIdForPayload(kind);
-                default:
-                    return Wassup.Skills.SkillRegistry.LegacyArmId;
-            }
-        }
+            => SkillIdForMechanic(trigger, kind);
 
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
         {
