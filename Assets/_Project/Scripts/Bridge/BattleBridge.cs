@@ -9409,19 +9409,16 @@ namespace Wassup.Bridge
                         Debug.LogError($"[BattleBridge] {ownerLabel} mechanic {i}: {splitError}");
                     continue;
                 }
-                // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
-                // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
-                // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
-                // boss-mamemo 리뷰 M3 — 판정은 순수 술어 1곳이 소유한다(EditMode 가 고정).
-                // on-place-skill-rework unit 0 — 화이트리스트는 **진영별로 갈린다.** 적 목록은
-                // 자기진영 타격 사고를 막는 문이라(DcTrigger.EnemyTriggerArmed 주석) 방어유닛
-                // 전용 트리거를 섞지 않는다.
-                bool triggerArmed = hostIsEnemy
-                    ? Wassup.Battle.Combat.DcTrigger.EnemyTriggerArmed(m.trigger.kind)
-                    : Wassup.Battle.Combat.DcTrigger.DefenderTriggerArmed(m.trigger.kind);
-                if (!triggerArmed)
+                // skill-layer-migration unit 8 — **묻는 질문이 바뀌었다.**
+                // 예전엔 「이 트리거를 이 진영에 붙여도 «안전»한가」였다(자기진영 타격 방지).
+                // 실행이 스킬 레이어로 가면서 그 위험이 사라졌고, 이제 남은 질문은
+                // 「이 조합을 «잡는 감지자가 있나»」 하나다. 판정은 순수 술어 1곳이 소유한다.
+                if (!Wassup.Battle.Combat.DcTrigger.HasDetector(m.trigger.kind, hostIsEnemy))
                 {
-                    Debug.LogWarning($"[BattleBridge] {ownerLabel} mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
+                    Debug.LogWarning(
+                        $"[BattleBridge] {ownerLabel} mechanic {i}: trigger '{m.trigger.kind}' 를 "
+                        + $"{(hostIsEnemy ? "적" : "방어유닛")} 에 붙였는데 그 조합을 잡는 감지자가 없다 — 건너뛴다. "
+                        + "슬롯만 만들면 아무도 안 잡는 침묵 no-op 이 된다(DcTrigger.HasDetector 표 참조).");
                     continue;
                 }
 
@@ -9487,7 +9484,7 @@ namespace Wassup.Bridge
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfOrbitProjectile)
                 {
                     // dreamcatcher-content-4 리뷰 M4 — 궤도 화염구는 **방어유닛 전용**이다.
-                    // EnemyTriggerArmed 가 PeriodicTimer 를 열어 두므로 적 SO 저작이 여기까지
+                    // HasDetector 가 PeriodicTimer 를 양 진영에 열어 두므로 적 SO 저작이 여기까지
                     // 오는데, 이 공통 슬롯 조립에는 speed/hitThreshold/projectileDataIndex 가 없어
                     // 슬롯이 만들어져도 arm 의 가드에 걸려 **조용히 발동이 소모**된다.
                     // 더 중요한 건 그 가드가 지금 fail-closed 인 이유가 «우연히 speed 가 0» 이라는

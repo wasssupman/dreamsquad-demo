@@ -30,7 +30,7 @@ namespace Wassup.Data
     // 사망 채널에 플래그로 얹었다면 지금 있는 모든 OnDeath 카드가 "진짜 죽은 건가?"를 되물어야
     // 했다(그 설계는 clock-out rev 1 에서 폐기됐다).
     //
-    // 적에게는 열리지 않는다 — `DcTrigger.EnemyTriggerArmed` 무변경이 곧 fail-closed 다(적은
+    // 적에게는 열리지 않는다 — `DcTrigger.HasDetector` 가 OnDeath 를 방어유닛에만 여는 것이 곧 fail-closed 다(적은
     // 퇴근하지 않는다). append-only.
     // on-place-skill-rework unit 0 — OnPlace(9): 「이 유닛이 판에 놓여 활성화된 순간」.
     // 발화 1회, 카운터 없음. 방어유닛 자기 규칙(UnitSkillAbility) 전용이며 **카드 경로는
@@ -132,7 +132,7 @@ namespace Wassup.Data
         // 브리지의 킬 드레인(DrainEnemyKilledEvents)이 `_enemyTypeByEntity` 로 죽은 적의
         // AttackUnitData 를 **이미 손에 들고 있다**(유출 경로가 leakedType.stabilityDamage 를
         // 읽는 것과 같은 방식). 그래서 인덱스 레지스트리·슬롯 필드·EnemyKilledEvent 필드·
-        // DamageApplicationSystem 스탬프·EnemyTriggerArmed(OnDeath) 개방이 전부 불필요하다.
+        // DamageApplicationSystem 스탬프·OnDeath 의 적 개방이 전부 불필요하다.
         // 초판 설계는 그 다섯을 다 만들려 했고 리뷰(H2)가 걷어냈다.
         // append-only.
         SplitOnDeath = 20,

@@ -336,7 +336,12 @@ namespace Wassup.Tests.EditMode
                     payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 50f, tileRange = 2 },
                 },
             };
-            LogAssert.Expect(LogType.Warning, new Regex("defender-gated|미개방"));
+            // skill-layer-migration unit 8 — 문구가 바뀌었다. 불변식은 그대로다:
+            // **적의 `OnDeath` 는 여전히 loud 하게 거절된다.** 다만 이유가 바뀌었다 —
+            // 예전엔 「자기진영 타격이 위험해서」였고 지금은 「자기 죽음 감지자가
+            // 방어유닛 전용이라 아무도 안 잡아서」다. 여는 조건은 술어 완화가 아니라
+            // `UnitLifecycleSystem` 쿼리 확장이다(DcTrigger.HasDetector 표).
+            LogAssert.Expect(LogType.Warning, new Regex("감지자가 없다"));
             InvokeBake(_world.EntityManager.CreateEntity(), unitType);
             Object.DestroyImmediate(unitType);
         }

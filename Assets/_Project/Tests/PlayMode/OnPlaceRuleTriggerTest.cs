@@ -135,7 +135,7 @@ namespace Wassup.Tests.PlayMode
             var e = FindDefenderAt(bridge, cell);
             Assert.AreNotEqual(Entity.Null, e, "엔티티");
 
-            // 경계 ①: 규칙이 실제로 슬롯으로 구워졌는가(DefenderTriggerArmed 통과 + bake 호출).
+            // 경계 ①: 규칙이 실제로 슬롯으로 구워졌는가(DcTrigger.HasDetector 통과 + bake 호출).
             Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(e), "DcTriggerSlot 버퍼");
             var slots = em.GetBuffer<DcTriggerSlot>(e);
             int onPlaceSlots = 0;
