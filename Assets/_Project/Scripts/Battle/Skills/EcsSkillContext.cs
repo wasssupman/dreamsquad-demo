@@ -386,7 +386,12 @@ namespace Wassup.Battle.Skills
 
             int n = 0;
             int dropped = 0;
-            for (int i = 0; i < pool.Length && n < into.Length; i++)
+            // ⚠ **넘친 후보를 센다**(재리뷰 M-4). 예전엔 `n < into.Length` 를 루프 조건에
+            // 걸어 64번째에서 조용히 멈췄다 — 레거시 장판은 쿼리 순회라 상한이 없었으니
+            // **밀집 웨이브에서만 조용히 줄어드는** 형태였다(효과는 나가고 개수만 준다).
+            // 이제 끝까지 훑어 넘친 수를 세고 짖는다. 풀 크기는 유닛 수라 비용은 무시할 만하다.
+            int overflow = 0;
+            for (int i = 0; i < pool.Length; i++)
             {
                 var e = pool[i];
                 if ((filter & CandidateFilter.ExcludeSelf) != 0 && e == casterEntity) continue;
@@ -442,7 +447,17 @@ namespace Wassup.Battle.Skills
                 }
                 if (!inRange) continue;
 
+                if (n >= into.Length) { overflow++; continue; }
                 into[n++] = Handle(e);
+            }
+
+            if (overflow > 0 && !_warnedOverflowThisDrain)
+            {
+                _warnedOverflowThisDrain = true;
+                UnityEngine.Debug.LogWarning(
+                    $"[SkillDispatch] 사거리 안 후보 {overflow}기가 상한({into.Length})에 걸려 잘렸다 — "
+                    + "효과는 정상 개수만큼 나가고 **대상 수만 조용히 준다**. "
+                    + "밀집 웨이브에서 광역기가 «덜 맞는» 형태로 보인다. concrete 의 MaxTargets 를 확인하라.");
             }
 
             // 드레인당 한 번만 짖는다 — 후보마다 짖으면 로그가 프레임을 잡아먹는다.
@@ -459,7 +474,12 @@ namespace Wassup.Battle.Skills
 
         // 드레인 경계에서 호스트가 내린다. 프레임마다 한 번은 짖되 매 후보마다는 안 짖는다.
         private bool _warnedUnassignedThisDrain;
-        public void ResetDrainWarnings() => _warnedUnassignedThisDrain = false;
+        private bool _warnedOverflowThisDrain;
+        public void ResetDrainWarnings()
+        {
+            _warnedUnassignedThisDrain = false;
+            _warnedOverflowThisDrain = false;
+        }
 
         // ── 질의: 격자 위의 판단 ────────────────────────────────────
         // 순수 코어(`DefenderDensity`)가 셀 배열을 인자로 받는다 — 그래서 이 질의가

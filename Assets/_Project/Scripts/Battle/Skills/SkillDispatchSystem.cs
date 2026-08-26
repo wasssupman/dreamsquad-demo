@@ -104,6 +104,24 @@ namespace Wassup.Battle.Skills
             var queue = SystemAPI.GetSingleton<SkillFiredEventsSingleton>().queue;
             if (queue.Count == 0) return;
 
+            // ⚠ **재진입 금지**(재리뷰 M-5). 어댑터는 seam 전체가 **공유하는 한 인스턴스**라
+            // 드레인 안에서 또 드레인이 열리면 안쪽이 풀·ECB 바인딩을 덮어쓰고, 안쪽
+            // `finally` 가 그것을 **해제한 채로** 바깥에 제어를 돌려준다.
+            // 그래서 피해는 무한루프가 아니라 **바깥 드레인이 후보 풀을 잃는 것**이다 —
+            // 그 뒤의 스킬은 대상 0으로 조용히 no-op 이 된다(예외도 로그도 없다).
+            // 오늘 재진입 경로는 브리지의 `RunImmediateSkills()` 뿐이고 실행 중엔 브리지로
+            // 돌아가지 않아 닿지 않는다. 그 전제가 깨지는 순간을 침묵으로 두지 않는다.
+            if (_draining)
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[SkillDispatch] {Seam} seam 드레인이 재진입했다 — 무시한다. "
+                    + "어댑터 바인딩이 하나뿐이라 중첩 드레인은 바깥 드레인의 후보 풀을 앗아간다.");
+                return;
+            }
+            _draining = true;
+            try
+            {
+
             // ⚠ **시작 시점 스냅샷 1회.** 드레인 중에 의도가 새 감지를 성사시키면
             // (피해 intent → 같은 프레임 OnDamagedN) 재유입이 생긴다. 지금은 감지가
             // 분산돼 프레임 구조가 자연 차단기인데, 통합 드레인이 그걸 잃는다.
@@ -266,7 +284,13 @@ namespace Wassup.Battle.Skills
                 enemyPool.Dispose(); enemyPoolXf.Dispose();
                 defPool.Dispose(); defPoolXf.Dispose();
             }
+            }
+            finally { _draining = false; }
         }
+
+        // seam 시스템들이 어댑터 한 인스턴스를 나눠 쓰므로 이 플래그도 static 이다.
+        // 한 seam 의 드레인 중에 다른 seam 이 열리는 것도 같은 사고다.
+        private static bool _draining;
 
         // 격자 파라미터 — 파생이 채운다(호스트마다 같은 값이지만 base 가 싱글턴을 두 번
         // 읽지 않게 한다). 지금은 FlowField 에서 온다.
