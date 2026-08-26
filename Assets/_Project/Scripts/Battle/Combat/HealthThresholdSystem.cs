@@ -41,6 +41,11 @@ namespace Wassup.Battle.Combat
     {
         public void OnCreate(ref SystemState state)
         {
+            // ⚠ **이건 「FlowField 를 읽나」가 아니라 「전투 중인가」 게이트다**(재리뷰 LOW 철회).
+            // 이 레포의 하우스 패턴이고 10개 시스템이 같은 목적으로 쓴다 — 그중 둘
+            // (`BossPeriodicTriggerSystem`·`FlowFieldRebuildSystem`)은 읽기가 0인데도 유지한다.
+            // 빼면 이 시스템이 로비·결과화면 포함 **매 프레임 무조건** 돈다.
+            state.RequireForUpdate<FlowFieldSingleton>();
             // unit 1 — ThreatEntry 게이팅 제거: 보스 없이 디펜더만 있어도 last_stand
             // 이 돌아야 한다. threat-drain 은 아래 TryGet/HasBuffer 로 독립 가드됨.
         }

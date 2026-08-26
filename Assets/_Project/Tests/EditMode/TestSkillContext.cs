@@ -22,6 +22,8 @@ namespace Wassup.Tests.EditMode
             public Faction Faction;
             public float Health = 100f, MaxHealth = 100f;
             public float AttackRange, AttackTargetCount;
+            // unit 5b — 「얼마나 다쳤나」(HP+실드합 ÷ 최대HP). 1 = 멀쩡함.
+            public float EffectiveHpRatio = 1f;
             public byte TraversalLayers;
             // 공격 층 마스크(=이 유닛이 때릴 수 있는 층). `TraversalLayers`(다니는 층)와
             // **다른 축**이다 — 겸직시키면 「지상 유닛은 지상만 때린다」가 우연히 성립해
@@ -92,6 +94,7 @@ namespace Wassup.Tests.EditMode
                 case UnitStat.AttackRange: return u.AttackRange;
                 case UnitStat.AttackTargetCount: return u.AttackTargetCount;
                 case UnitStat.TargetTraversalLayers: return u.TraversalLayers;
+                case UnitStat.EffectiveHpRatio: return u.EffectiveHpRatio;
                 default: return 0f;
             }
         }

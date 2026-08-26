@@ -97,6 +97,13 @@ namespace Wassup.Battle.Combat
         // 필드를 신설했으면서 필터만 남의 축에 얹었었다 — `MinHealth(2)` 가 `CcKind.DoT(2)`
         // 로 저장돼, `ccKind` 를 읽는 다른 소비자(로그·트레이스·bake 검증)가 실드 슬롯을
         // 「DoT」로 오독한다. 이 파일이 세 번 반복하는 「겸직 금지」의 자리다.
+        // ⚠ **이 셋은 주기 생산자만 싣는다**(재리뷰 MEDIUM-A). `BossPeriodicTriggerSystem`
+        // 하나만 `Selector2`/`Count`/`IncludesSelf` 를 채운다 — 경계·공격·죽음·부착 생산자는
+        // 안 채운다. 오늘은 반경 있는 실드가 주기로만 저작돼 무해하지만, 다른 트리거로
+        // 저작하는 순간 세 축이 0 으로 접히고 **그 값이 카드 경로와 우연히 같아서**
+        // 그럴듯하게 나간다 — 저작한 필터와 인원 상한만 조용히 증발한다.
+        // (`EventPosition` 은 0 을 「안 채움」으로 판별해 디스패처가 접을 수 있지만
+        //  이 셋은 0 이 **유효값**이라 그 수법이 안 통한다.)
         public byte shieldFilter;
         public bool shieldIncludesSelf;
         // 0 = 상한 없음(반경 안 전부). 셔틀만 채운다.
