@@ -163,5 +163,44 @@ namespace Wassup.Tests.EditMode
             got.Sort();
             CollectionAssert.AreEqual(new[] { 1, 100 }, got, "자기 포함 — 가장 다친 자기와 그 다음");
         }
+
+        // (c) 재리뷰 M-6 — 체력 개념이 없는 후보가 「가장 다친 순」의 맨 앞을 가로채면 안 된다.
+        // ⚠ 이 실패는 조용하다: 실드는 정상 개수만큼 나가고 VFX 도 뜨는데, **받는 놈이
+        // 바뀐다.** 레거시는 쿼리의 `WithAll<Health>` 가 공짜로 걸러줬고 그 쿼리가
+        // 사라지면서 게이트도 같이 사라졌다.
+        [Test]
+        public void Shuttle_SkipsCandidatesWithoutHealth()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.DefenderUnit);
+            ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.DefenderUnit,
+                    u => { u.HasHealth = false; u.EffectiveHpRatio = 0f; });   // 체력 없음 = 비율 0
+            ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.DefenderUnit, u => u.EffectiveHpRatio = 0.4f);
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
+
+            new GrantShieldSkill().Execute(caster, SkillTarget.None,
+                Shuttle(40f, 3, count: 1, SkillShieldFilter.MostHurt, includesSelf: false), ctx);
+
+            var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
+                                    .ConvertAll(i => i.Target.Value);
+            CollectionAssert.AreEqual(new[] { 2 }, got, "체력 없는 후보가 아니라 실제로 다친 아군");
+        }
+
+        // (d) 아직 손에 들려 있는 유닛은 판 위에 없다 — 카드 경로도 마찬가지다.
+        [Test]
+        public void PendingDeployment_IsNotAShieldCandidate()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.DefenderUnit);
+            ctx.Add(1, new float3(6.5f, 0, 5.5f), Faction.DefenderUnit, u => u.Pending = true);
+            ctx.Add(2, new float3(4.5f, 0, 5.5f), Faction.DefenderUnit);
+            var caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.DefenderUnit);
+
+            new GrantShieldSkill().Execute(caster, SkillTarget.None, P(40f, 3), ctx);
+
+            var got = ctx.SimIntents.FindAll(i => i.Kind == SimIntentKind.GrantShield)
+                                    .ConvertAll(i => i.Target.Value);
+            CollectionAssert.AreEqual(new[] { 2 }, got, "배치 중인 유닛은 후보가 아니다");
+        }
 }
 }

@@ -25,6 +25,10 @@ namespace Wassup.Skills
         ExcludeInUltimateLeap = 1 << 3,
         RequireDamageable = 1 << 4,   // IncomingDamage 버퍼 보유 — 없으면 총구만 낭비된다
         MatchTraversalLayers = 1 << 5, // caster 의 공격 층 ∩ 후보의 통행 층
+        // 체력을 가진 후보만. `RequireDamageable`(피해 버퍼)과 다른 축이다 —
+        // 이쪽은 **「얼마나 다쳤나」를 물을 수 있나**를 묻는다. 없으면 그 비율이
+        // 0 으로 접혀 「가장 다친 순」 정렬의 **맨 앞**을 차지한다(재리뷰 M-6).
+        RequireHealth = 1 << 6,
     }
 
     // 거리 자. 대부분 체비셰프인데 전방 발사만 유클리드다 — 실측이라 축으로 남긴다.

@@ -57,7 +57,15 @@ namespace Wassup.Skills.Concrete
             // 자기를 빼고(위 병합 키 경고) 실드 셔틀은 넣는다(그쪽엔 겹칠 상대가 없다).
             // 저작이 아니라 **bake 가 정한다** — 그 host 에 자기 실드를 주는 능력이
             // 또 있는지는 저작자가 아니라 bake 만 알 수 있는 사실이기 때문이다.
-            var filter = CandidateFilter.ExcludeDead;
+            // ⚠ **후보 그물은 레거시 셔틀 쿼리와 같아야 한다**(재리뷰 M-6).
+            // 그쪽은 `WithAll<Health>` + `WithNone<PendingDeployment>` 를 쿼리에 박아
+            // 공짜로 걸렀다 — 쿼리가 사라지면서 두 게이트가 조용히 같이 사라졌다.
+            //  · PendingDeployment: 아직 손에 들려 있는 유닛은 판 위에 없다.
+            //  · Health: 없으면 실효 HP 비율이 0 으로 접혀 **「가장 다친 순」의 맨 앞**을
+            //    차지한다 — 멀쩡한 아군을 제치고 체력이란 개념이 없는 것이 실드를 가져간다.
+            var filter = CandidateFilter.ExcludeDead
+                       | CandidateFilter.ExcludePendingDeployment
+                       | CandidateFilter.RequireHealth;
             if (!p.IncludesSelf) filter |= CandidateFilter.ExcludeSelf;
             int n = ctx.Allies(caster, hostPos, radius, filter, RangeMetric.Chebyshev, buf);
             if (n == 0) return;

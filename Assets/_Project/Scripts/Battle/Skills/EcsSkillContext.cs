@@ -397,6 +397,11 @@ namespace Wassup.Battle.Skills
                     && _em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(e)) continue;
                 if ((filter & CandidateFilter.RequireDamageable) != 0
                     && !_em.HasBuffer<IncomingDamage>(e)) continue;
+                // ⚠ 풀 쿼리는 `DefenderUnitTag + LocalTransform` 뿐이라 **Health 를 보증하지
+                // 않는다**. 레거시 실드 셔틀은 쿼리에 `WithAll<Health>` 가 박혀 있어 공짜로
+                // 걸렀는데, 그 쿼리가 사라지면서 게이트도 같이 사라졌다.
+                if ((filter & CandidateFilter.RequireHealth) != 0
+                    && !_health.HasComponent(e)) continue;
                 // ⚠ **통행 층 게이트.** 빼면 «내가 못 때리는 층» 의 후보가 총구를
                 // 가져가고, 그 탄은 게이트에 막혀 아무도 못 맞힌다 — 발사 연출만
                 // 나가는 조용한 no-op 이다(근접 가디언이 하늘의 적을 겨누는 형태).

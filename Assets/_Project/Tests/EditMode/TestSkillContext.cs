@@ -24,6 +24,7 @@ namespace Wassup.Tests.EditMode
             public float AttackRange, AttackTargetCount;
             // unit 5b — 「얼마나 다쳤나」(HP+실드합 ÷ 최대HP). 1 = 멀쩡함.
             public float EffectiveHpRatio = 1f;
+            public bool HasHealth = true;
             public byte TraversalLayers;
             // 공격 층 마스크(=이 유닛이 때릴 수 있는 층). `TraversalLayers`(다니는 층)와
             // **다른 축**이다 — 겸직시키면 「지상 유닛은 지상만 때린다」가 우연히 성립해
@@ -151,6 +152,7 @@ namespace Wassup.Tests.EditMode
                 if ((filter & CandidateFilter.ExcludePendingDeployment) != 0 && u.Pending) continue;
                 // 어댑터가 거르는 축은 페이크도 거른다(리뷰 M2 — 양방향 대칭).
                 if ((filter & CandidateFilter.RequireDamageable) != 0 && !u.CanReceiveDamage) continue;
+                if ((filter & CandidateFilter.RequireHealth) != 0 && !u.HasHealth) continue;
                 if ((filter & CandidateFilter.ExcludeInUltimateLeap) != 0 && u.InUltimateLeap) continue;
                 // ⚠ 어댑터가 거르는 것을 이 페이크도 거른다. 한쪽만 걸면 도메인 테스트가
                 // 초록인데 라이브에서 «못 때리는 층» 이 총구를 가져간다.
