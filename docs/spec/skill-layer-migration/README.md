@@ -74,7 +74,7 @@
   **구조적으로 보장**된다.
   ~~⚠ 공격 seam 은 아직 증인이 없다~~ → **해소** (unit 3a). `AttackSystem` RESOLVE 가
   생산자가 됐고 `DreamcatcherOnHitTest.FrostArrow…` 가 `ExecutedCountOf(Attack)` 을 단언한다.
-  **세 seam 이 전부 증인을 갖는다.**
+  **네 seam 이 전부 증인을 갖는다** — 주기 · 공격 · 경계 · 죽음(unit 3c 에서 넷째가 생겼다).
 - **이중 경로가 상존한다.** `SelfTileAoe`·`AreaSleep`·`GrantShield` 는 보스=concrete /
   카드·실드파열=legacy arm 이 **동시에 라이브**다. unit 8 철거 전까지 이 payload 들의 동작을
   고치려면 **반드시 양쪽에** 해야 한다. 파리티 테스트는 `SkillMath` 층만 고정하고 arm 로직
@@ -97,6 +97,25 @@
   포함해야 「생산자 위치」 박제가 실제와 맞는다.
 - **후보 상한 64 는 「가까운 64」가 아니라 「풀 순서 선착 64」**다(legacy `AuraPulse` 는 무상한).
   반경 안 후보가 64를 넘는 판이 실제로 생기면 그때 잘림 규칙을 계약으로 정한다.
+
+## seam 은 몇 개인가 (2026-08-26 갱신)
+
+토대가 「3」이라 적은 것은 **그때 조사한 payload 들의 감지 지점이 셋**이었다는 뜻이고
+상한이 아니다. 카드가 죽음 계열을 들고 오면서 넷이 됐다:
+
+| seam | 감지자 | 증인 |
+|---|---|---|
+| 주기 | `BossPeriodicTriggerSystem` (주기·배치) | 마메모 자장가 · 배스티온 도발 |
+| 공격 | `AttackSystem` RESOLVE | 서리화살 |
+| 경계 | `HealthThresholdSystem` | 짱쎈놈 |
+| 죽음 | `DamageApplicationSystem` | 포식 · 시체폭발 · 잿불 |
+
+**판정 규칙: 감지자가 다른 프레임 창을 가지면 seam 도 따로 난다.** 같은 큐를 쓰더라도
+감지 위치가 드레인 위치보다 뒤면 한 프레임 밀리고, 그 밀림이 하류 계약을 깬다.
+
+⚠ **아직 seam 이 없는 감지 지점 셋**(unit 3 잔여):
+`UnitLifecycleSystem`(`OnDeath`) · 브리지 실드파열 드레인(`OnShieldBreak`) ·
+브리지 퇴근 경로(`OnRetire`). 라우팅만 열고 seam 을 안 열면 **그 카드가 조용히 죽는다.**
 
 ## 어댑터가 직접 쓸 수 있는 버퍼 (2026-08-26 — ECS 리뷰 요구)
 
