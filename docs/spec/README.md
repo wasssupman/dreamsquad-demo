@@ -245,6 +245,22 @@ code + git history        구현 상세
 - **악몽의 늪(자리에 남는 장판)** [L] · 배치 공간 박탈 축. 장판 효과가 `PathFollowState`+적 진영 게이트라 **타일 고정인 방어유닛에게 구조적으로 안 닿는다**. **다음 보스에서 딥하게 논의**(사용자 결정 2026-08-11). (boss-mamemo)
 - **네 번째 보스: 소환형** [L] · 잡몹을 직접 뱉는 물량 축. 소환 페이로드 + 브리지 스폰 seam 필요. (boss-mamemo)
 
+#### BattleBridge 해체 (battlebridge-dissolution — **초안 2026-08-26 · 승인 대기**)
+
+→ `docs/spec/battlebridge-dissolution/`
+
+목표 = **BattleBridge 제거 또는 「완전한 채널」로 축소** (사용자 결정 2026-08-26).
+발단은 스킬 레이어 종료 후의 실측이다 — 그 작업이 브리지에 준 것은 **한계비용**이었고
+(스킬 하나 추가 = arm 하나 → `case` 한 줄 + `Register` 한 줄, 큰 arm 셋 소멸),
+**총량은 안 줄었다**(12,852줄 · 메서드 348 · public 110 · 외부 참조 67파일).
+
+채널의 정의를 spec 이 먼저 박는다: **번역과 전달뿐. 판정·소유·저장은 채널이 아니다.**
+그 자로 재면 지금 브리지는 셋을 겸직한다 — 채널(`Drain…` 22) · 뷰 설정 보관소
+(`BlobShadowSprite`·`CharacterVisualScale` 류) · 게임 규칙 호스트
+(`CollectShieldBreakTargets`·`ApplyEffectTileIfAny`·bake 검증 19곳).
+
+⚠ **ECS 경계는 그대로다.** 채널이 여럿이 되는 것이지 제약 1 이 열리는 게 아니다.
+
 #### 스킬 단일 레이어 (skill-layer-foundation + skill-layer-migration — **구현 완료 2026-08-26**)
 
 → `docs/spec/skill-layer-foundation/` · `docs/spec/skill-layer-migration/`
