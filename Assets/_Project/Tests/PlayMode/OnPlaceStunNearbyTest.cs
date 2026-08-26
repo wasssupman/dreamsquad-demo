@@ -189,40 +189,58 @@ namespace Wassup.Tests.PlayMode
 
         // 반경 안(Walk) 한 칸과 반경 밖(Walk) 한 칸을 함께 고른다 — 적은 걸을 수 있는 칸에
         // 있어야 실제로 이동하고, 그래야 «멈췄다» 가 의미를 갖는다.
+        // 더미 워커가 측정 창 안에 골에 닿으면 소멸해 «entity does not exist» 로 뒤집힌다(Street 기본판에서
+        // 실제로 났다 — (0,0)부터 스캔하면 첫 배치칸이 골 (1,5) 옆). 그래서 **골에서 먼 배치칸부터** 고르고,
+        // near/far 워커 칸도 골까지 MinWalkerDistToGoal 이상 남은 칸만 받는다(판형 비의존 — unit 12).
+        private const int MinWalkerDistToGoal = 8;
+
         private static Vector2Int FindCellWithWalkNeighbours(
             BattleBridge bridge, EntityManager em, DefenderUnitData u,
             int nearMaxRange, int farMinRange, out Vector2Int near, out Vector2Int far)
         {
-            using var q = em.CreateEntityQuery(ComponentType.ReadOnly<FlowFieldSingleton>());
-            Assert.AreEqual(1, q.CalculateEntityCount(), "flow field 싱글턴");
-            var ff = q.GetSingleton<FlowFieldSingleton>();
+            Assert.IsTrue(BattleBridgeTestAccess.TryGetFlowField(em, out var ff), "flow field 싱글턴");
             Assert.IsTrue(ff.walkMask.IsCreated, "walkMask");
 
             bool IsWalk(int x, int y)
                 => x >= 0 && y >= 0 && x < ff.gridSize.x && y < ff.gridSize.y
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
+            bool FarEnough(int x, int y)
+            {
+                int d = BattleBridgeTestAccess.DistToGoal(ff, new int2(x, y));
+                return d != int.MaxValue && d >= MinWalkerDistToGoal;
+            }
 
+            // 배치 가능 칸을 골 거리 내림차순으로(동률은 (x, y) 오름차순 — 결정론).
+            var candidates = new System.Collections.Generic.List<(int dist, Vector2Int cell)>();
             for (int x = 0; x < ff.gridSize.x; x++)
                 for (int y = 0; y < ff.gridSize.y; y++)
                 {
                     if (!bridge.CanPlaceDefenderAt(x, y, u, out _)) continue;
-                    Vector2Int? n = null, f = null;
-                    for (int dx = -6; dx <= 6; dx++)
-                        for (int dy = -6; dy <= 6; dy++)
-                        {
-                            if (dx == 0 && dy == 0) continue;
-                            if (!IsWalk(x + dx, y + dy)) continue;
-                            int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
-                            if (n == null && cheb <= nearMaxRange) n = new Vector2Int(x + dx, y + dy);
-                            else if (f == null && cheb > farMinRange) f = new Vector2Int(x + dx, y + dy);
-                        }
-                    if (n != null && f != null)
-                    {
-                        near = n.Value; far = f.Value;
-                        return new Vector2Int(x, y);
-                    }
+                    int d = BattleBridgeTestAccess.DistToGoal(ff, new int2(x, y));
+                    candidates.Add((d == int.MaxValue ? -1 : d, new Vector2Int(x, y)));
                 }
-            Assert.Fail("반경 안팎 Walk 칸을 가진 배치 칸이 없다");
+            candidates.Sort((a, b) => a.dist != b.dist ? b.dist.CompareTo(a.dist)
+                : a.cell.x != b.cell.x ? a.cell.x.CompareTo(b.cell.x) : a.cell.y.CompareTo(b.cell.y));
+
+            foreach (var (_, c) in candidates)
+            {
+                Vector2Int? n = null, f = null;
+                for (int dx = -6; dx <= 6; dx++)
+                    for (int dy = -6; dy <= 6; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        if (!IsWalk(c.x + dx, c.y + dy) || !FarEnough(c.x + dx, c.y + dy)) continue;
+                        int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+                        if (n == null && cheb <= nearMaxRange) n = new Vector2Int(c.x + dx, c.y + dy);
+                        else if (f == null && cheb > farMinRange) f = new Vector2Int(c.x + dx, c.y + dy);
+                    }
+                if (n != null && f != null)
+                {
+                    near = n.Value; far = f.Value;
+                    return c;
+                }
+            }
+            Assert.Fail($"반경 안팎에 골까지 {MinWalkerDistToGoal}칸 이상 남은 Walk 칸을 가진 배치 칸이 없다");
             near = default; far = default;
             return default;
         }

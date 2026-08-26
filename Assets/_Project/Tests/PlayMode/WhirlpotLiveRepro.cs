@@ -36,6 +36,8 @@ namespace Wassup.Tests.PlayMode
         private EntityQuery _attackerQuery;
         private bool _queriesCreated;
         private float _tileSize = 1f;
+        // unit 12 — 방어유닛을 적 경로 옆에 세웠을 때, 그 경로에서 5칸 상류 칸(«걸어와서 마주치는» 재현용).
+        private int2? _approachCell;
 
         // duel-live-focus — 이 계측은 자기 판을 선언한다(라이브 풀이 바뀌어도 같은 판에서 잰다).
         private int _savedMap;
@@ -118,8 +120,11 @@ namespace Wassup.Tests.PlayMode
             var whirlpot = BattleBridgeTestAccess.SpawnEnemy(_bridge, _em, so);
             Assert.AreNotEqual(Entity.Null, whirlpot, "Whirlpot 스폰 실패");
 
-            // 방어유닛에서 5타일 떨어뜨린다 — 마지막 접근 구간만 재현한다.
-            TeleportTo(whirlpot, DefenderPos() + new float3(5f * TileSize(), 0f, 0f));
+            // 방어유닛에서 5타일 떨어뜨린다 — 마지막 접근 구간만 재현한다. 판형 비의존: 적 경로의 5칸 상류
+            // (PlaceBesideEnemyPath 가 골라둔 칸). 폴백(경로 옆 배치 실패)일 때만 옛 +x 오프셋.
+            TeleportTo(whirlpot, _approachCell.HasValue
+                ? (float3)_bridge.GridToWorldCenterVector(new Vector2Int(_approachCell.Value.x, _approachCell.Value.y))
+                : DefenderPos() + new float3(5f * TileSize(), 0f, 0f));
 
             float hp0 = Hp(_defender);
             var trace = new System.Text.StringBuilder();
@@ -319,7 +324,9 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.ResetToStart(); gm.CostRuntime.AddCost(1000);
             yield return null;
 
-            Assert.IsTrue(PlaceFirstValid(_bridge, u), $"'{defenderId}' 배치 실패");
+            // unit 12 — 기본판이 바뀌어도 «적이 방어유닛 옆을 지나간다»가 성립하게 적 경로(스폰0 → 골 흐름장) 옆에
+            // 세운다. 경로 옆 배치칸이 없는 판에서만 첫 배치칸 폴백(그때 WalksIn 은 +x 5타일 옛 가정을 쓴다).
+            Assert.IsTrue(PlaceBesideEnemyPath(u) || PlaceFirstValid(_bridge, u), $"'{defenderId}' 배치 실패");
             _defender = FirstDefender();
             Assert.AreNotEqual(Entity.Null, _defender, "방어유닛 엔티티를 찾지 못했다");
 
@@ -426,6 +433,34 @@ namespace Wassup.Tests.PlayMode
                 _em.SetComponentData(ents[i], h);
             }
             ents.Dispose();
+        }
+
+        // 스폰0 → 골 흐름장 경로를 따라가며, 스폰에서 ≥ ApproachCells 떨어진 경로 셀의 8-이웃(경로 셀 자신 제외)
+        // 중 첫 배치 가능 칸에 세운다. 성공 시 _approachCell = 그 경로 셀에서 ApproachCells 상류.
+        private const int ApproachCells = 5;
+
+        private bool PlaceBesideEnemyPath(DefenderUnitData u)
+        {
+            _approachCell = null;
+            if (!BattleBridgeTestAccess.TryGetFlowField(_em, out var ff)) return false;
+            var map = (GeneratedMap)BattleBridgeTestAccess.Field(_bridge, "_generatedMap");
+            if (!map.IsCreated || map.spawns.Length == 0) return false;
+            var path = BattleBridgeTestAccess.FlowPathFrom(ff, map.spawns[0]);
+            for (int k = ApproachCells + 1; k < path.Count - 1; k++)
+            {
+                var p = path[k];
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        int qx = p.x + dx, qy = p.y + dy;
+                        if (!_bridge.CanPlaceDefenderAt(qx, qy, u, out _)) continue;
+                        if (!_bridge.PlaceDefenderAs(qx, qy, u)) continue;
+                        _approachCell = path[k - ApproachCells];
+                        return true;
+                    }
+            }
+            return false;
         }
 
         private static bool PlaceFirstValid(BattleBridge bridge, DefenderUnitData u)

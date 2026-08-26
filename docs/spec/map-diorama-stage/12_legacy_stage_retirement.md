@@ -30,5 +30,5 @@
 
 - [ ] `Prefabs/Maps` 부재 · EditMode 두 lane green(신규 실패 0)
 - [x] PlayMode: `DioramaStagePlayTests`·`BonusWavePullTest`·`WaypointRoutingLiveTest.SiegeDevSlot(Duel)` green (2026-08-26)
-- [ ] 기본판 4파일 — 11/14 통과. `Stun_FreezesEnemiesInRange`·`Whirlpot_WalksIn_ThenEngages` 는 Serpent 판형 가정(원점 스캔·+5타일 텔레포트)이 Street 에서 깨짐 → 하네스 수선 또는 테스트 전용 dev 마당(handoff 참조), 사용자 결정 대기
+- [x] 기본판 4파일 — 13/14 통과(2026-08-26). `Stun_FreezesEnemiesInRange`·`Whirlpot_WalksIn_ThenEngages` 의 Serpent 판형 가정(원점 스캔·+5타일 텔레포트)을 흐름장 기반(골 거리 내림차순 배치칸·적 경로 옆 배치+상류 5칸)으로 고쳐 판형 비의존. 남은 1 = `FlyingEnemy_IsNotTaunted`(기존 실패 목록, 본 spec 무관)
 - [ ] 문서 3곳에서 `Prefabs/Maps` 경로·은퇴 맵 이름이 «현재 존재» 로 읽히는 문장 0
