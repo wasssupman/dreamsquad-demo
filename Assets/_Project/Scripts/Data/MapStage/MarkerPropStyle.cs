@@ -14,5 +14,8 @@ namespace Wassup.Data
 
         [Tooltip("골 마커 프랍(수직 노란 포탈). GoalMarker 의 균열/붕괴/스트레스 틴트 훅이 이 서브트리를 본다.")]
         public GameObject goalProp;
+
+        [Tooltip("프랍 루트의 로컬 회전(오일러). 포탈 링의 «정면»을 카메라 쪽으로 돌리는 용도 — 수직 포탈은 Y(yaw)만 쓴다(X/Z = 0). 스폰·골 공용.")]
+        public Vector3 propEulerAngles;
     }
 }

@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MarkerPropStyle
   spawnProp: {fileID: 5267086104337941674, guid: 3b6178451ae0a46e6a7fb150b769f661, type: 3}
   goalProp: {fileID: 5837632249395170727, guid: f4a18eaa9ad41ee4383f73976cea29b7, type: 3}
+  propEulerAngles: {x: 0, y: -90, z: 0}
