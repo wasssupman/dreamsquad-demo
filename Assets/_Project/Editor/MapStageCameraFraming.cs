@@ -83,7 +83,9 @@ namespace Wassup.EditorTools
         // unit 11 — 프리팹을 프리뷰 씬에 세워 Battle 카메라 포즈로 PNG 렌더(원격 육안 검증 — 에이전트가 이미지로 읽는다).
         // 논리 셀 오버레이(스캔→검증 결과 그대로): 차단=빨강 · 배치금지=주황 · 스폰=초록 · 골=노랑 · 포탈=핑크 ·
         // 본능=파랑/빨강 3×3. 조명은 프리뷰용 1개 — 색감이 아니라 «아트와 격자가 맞는가»를 보는 도구다.
-        public static string RenderPrefabPreview(string prefabPath, string pngPath, float aspect = 16f / 9f, int width = 1600, bool overlay = true)
+        // decorate — 인스턴스화 직후·렌더 직전 훅(프리팹은 건드리지 않는다). 프랍 후보를 마커에 얹어 보는 «what-if» 용.
+        public static string RenderPrefabPreview(string prefabPath, string pngPath, float aspect = 16f / 9f, int width = 1600, bool overlay = true,
+            System.Action<GameObject> decorate = null)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             if (prefab == null) return "ERROR|프리팹 없음 " + prefabPath;
@@ -125,6 +127,11 @@ namespace Wassup.EditorTools
                     return "ERROR|SolveStatePose 실패";
                 cam.transform.SetPositionAndRotation(pos, rot);
                 cam.fieldOfView = Mathf.Clamp(fov, config.fovMin, config.fovMax);
+
+                decorate?.Invoke(inst);
+                // 파티클은 프리뷰 씬에서 시간이 흐르지 않는다 — 1.5초를 미리 시뮬레이트해 «켜진 상태»를 찍는다.
+                foreach (var ps in inst.GetComponentsInChildren<ParticleSystem>(true))
+                    ps.Simulate(1.5f, withChildren: false, restart: true, fixedTimeStep: false);
 
                 string overlayInfo = overlay ? DrawCellOverlay(stage, scene) : string.Empty;
 
