@@ -181,36 +181,52 @@ namespace Wassup.Tests.PlayMode
             BattleBridge bridge, EntityManager em, DefenderUnitData u,
             int nearMaxRange, int farMinRange, out Vector2Int near, out Vector2Int far)
         {
-            using var q = em.CreateEntityQuery(ComponentType.ReadOnly<FlowFieldSingleton>());
-            Assert.AreEqual(1, q.CalculateEntityCount(), "flow field 싱글턴");
-            var ff = q.GetSingleton<FlowFieldSingleton>();
+            // 판형 비의존(map-diorama-stage unit 12·5차 병합) — OnPlaceStunNearbyTest 와 같은 이유: (0,0)부터 스캔하면
+            // Street 기본판에선 골 옆 배치칸이 뽑혀 더미 워커가 측정 중 골에 닿아 소멸한다. 골 거리 내림차순으로 고르고
+            // 워커 칸은 골까지 8셀 이상 남은 칸만(흐름장 dist 는 ×10 비용 단위 — CellsToGoal 로 비교).
+            Assert.IsTrue(BattleBridgeTestAccess.TryGetFlowField(em, out var ff), "flow field 싱글턴");
             Assert.IsTrue(ff.walkMask.IsCreated, "walkMask");
+            const float MinWalkerCellsToGoal = 8f;
 
             bool IsWalk(int x, int y)
                 => x >= 0 && y >= 0 && x < ff.gridSize.x && y < ff.gridSize.y
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
+            bool FarEnough(int x, int y)
+            {
+                float cells = BattleBridgeTestAccess.CellsToGoal(ff, new int2(x, y));
+                return !float.IsPositiveInfinity(cells) && cells >= MinWalkerCellsToGoal;
+            }
 
+            var candidates = new System.Collections.Generic.List<(int dist, Vector2Int cell)>();
             for (int x = 0; x < ff.gridSize.x; x++)
                 for (int y = 0; y < ff.gridSize.y; y++)
                 {
                     if (!bridge.CanPlaceDefenderAt(x, y, u, out _)) continue;
-                    Vector2Int? n = null, f = null;
-                    for (int dx = -6; dx <= 6; dx++)
-                        for (int dy = -6; dy <= 6; dy++)
-                        {
-                            if (dx == 0 && dy == 0) continue;
-                            if (!IsWalk(x + dx, y + dy)) continue;
-                            int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
-                            if (n == null && cheb <= nearMaxRange) n = new Vector2Int(x + dx, y + dy);
-                            else if (f == null && cheb > farMinRange) f = new Vector2Int(x + dx, y + dy);
-                        }
-                    if (n != null && f != null)
-                    {
-                        near = n.Value; far = f.Value;
-                        return new Vector2Int(x, y);
-                    }
+                    int d = BattleBridgeTestAccess.DistToGoal(ff, new int2(x, y));
+                    candidates.Add((d == int.MaxValue ? -1 : d, new Vector2Int(x, y)));
                 }
-            Assert.Fail("반경 안팎 Walk 칸을 가진 배치 칸이 없다");
+            candidates.Sort((a, b) => a.dist != b.dist ? b.dist.CompareTo(a.dist)
+                : a.cell.x != b.cell.x ? a.cell.x.CompareTo(b.cell.x) : a.cell.y.CompareTo(b.cell.y));
+
+            foreach (var (_, c) in candidates)
+            {
+                Vector2Int? n = null, f = null;
+                for (int dx = -6; dx <= 6; dx++)
+                    for (int dy = -6; dy <= 6; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        if (!IsWalk(c.x + dx, c.y + dy) || !FarEnough(c.x + dx, c.y + dy)) continue;
+                        int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+                        if (n == null && cheb <= nearMaxRange) n = new Vector2Int(c.x + dx, c.y + dy);
+                        else if (f == null && cheb > farMinRange) f = new Vector2Int(c.x + dx, c.y + dy);
+                    }
+                if (n != null && f != null)
+                {
+                    near = n.Value; far = f.Value;
+                    return c;
+                }
+            }
+            Assert.Fail($"반경 안팎에 골까지 {MinWalkerCellsToGoal}칸 이상 남은 Walk 칸을 가진 배치 칸이 없다");
             near = default; far = default;
             return default;
         }

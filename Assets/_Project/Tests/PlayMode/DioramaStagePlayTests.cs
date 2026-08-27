@@ -157,6 +157,43 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1, cores, "마음은 골 타워(DefenderCore) 1 만 — 적 마음은 계약 11 비가용");
         }
 
+        // 5차 병합(skill-layer-complete) 회귀 그물 — 본능 거점의 **공격**이 살아 있는가. 스폰(unit 10 위 테스트)만
+        // 보면 스킬 레이어가 진영 판정·공격 라우팅을 바꿔도 초록이다. 방어유닛을 하나도 놓지 않고 적 하나를 흘려보내면
+        // 골 (2,4) 앞의 방어 본능 Guard (4,2)/(4,7) 만이 그 적을 때릴 수 있다 — 골까지 가는 동안 체력이 깎이면 본능이 쏜 것.
+        [UnityTest]
+        public IEnumerator Duel_AllyInstinct_DamagesEnemyWalkingToGoal_WithoutAnyDefender()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            _savedMap = DevMapOverride.Index;
+            DevMapOverride.Index = StageSlot(DuelStageName);
+
+            yield return BattleBridgeTestAccess.LoadBattleScene();
+            var bridge = Object.FindFirstObjectByType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleScene 에 BattleBridge 가 없다");
+            Assert.IsTrue(bridge.HasGeneratedMap, "스테이지 맵 빌드 실패");
+
+            bridge.BeginPlacement();
+            yield return null;
+            bridge.StartBattle();   // 본능 엔티티(AttackState 베이크)는 전투 시작에 선다
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var slime = BattleBridgeTestAccess.LoadEnemy(SlimePath);
+            var enemy = BattleBridgeTestAccess.SpawnEnemy(bridge, em, slime);
+            Assert.AreNotEqual(Entity.Null, enemy, "적 스폰 실패");
+            float maxHp = em.GetComponentData<Health>(enemy).max;
+
+            // 스폰 (20,y) → 골 (2,4) 로 걷는 동안 Guard 사거리 안을 지난다. 45초 안에 피해를 받거나 죽어야 한다.
+            bool damaged = false; float deadline = Time.time + 45f;
+            while (Time.time < deadline && !damaged)
+            {
+                yield return null;
+                if (!em.Exists(enemy)) { damaged = true; break; }   // 본능 사격으로 사망(골 도달 소멸과 구분 못 하나, 아래 위치 가드)
+                damaged = em.GetComponentData<Health>(enemy).value < maxHp - 0.5f;
+            }
+            Assert.IsTrue(damaged, "방어유닛 0 인 판에서 적이 골까지 무사히 갔다 — 방어 본능(Guard)이 쏘지 않는다(스킬 레이어 진영/라우팅 회귀 의심)");
+        }
+
         private static int2 CellOf(EntityManager em, Entity e)
         {
             // sim origin = float3.zero(계약) · tileSize = 1(BattleScene) — 셀 = floor(xz).

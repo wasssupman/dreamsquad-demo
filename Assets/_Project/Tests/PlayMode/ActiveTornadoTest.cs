@@ -210,12 +210,22 @@ namespace Wassup.Tests.PlayMode
                 => x >= 0 && y >= 0 && x < ff.gridSize.x && y < ff.gridSize.y
                    && ff.walkMask[y * ff.gridSize.x + x] != 0;
 
+            // 판형 비의존(map-diorama-stage 5차 병합) — 원점+margin 부터 훑으면 Street 기본판에선 골 (1,5) 옆 칸이
+            // 뽑혀 더미 워커가 «자유 보행 대조» 중 골에 닿아 소멸했다(«계측 대상이 사라졌다»). 골에서 **가장 먼**
+            // Walk 칸을 고른다 — 토네이도는 타일 시전이라 배치 가능 여부와 무관, 가장자리 회피는 margin 유지.
             const int Margin = 2;
+            Vector2Int best = default; float bestCells = -1f;
             for (int x = Margin; x < ff.gridSize.x - Margin; x++)
                 for (int y = Margin; y < ff.gridSize.y - Margin; y++)
-                    if (IsWalk(x, y)) return new Vector2Int(x, y);
+                {
+                    if (!IsWalk(x, y)) continue;
+                    float cells = BattleBridgeTestAccess.CellsToGoal(ff, new int2(x, y));
+                    if (float.IsPositiveInfinity(cells)) continue;   // 도달불가 칸은 흐름이 없다 — 보행 대조가 무의미
+                    if (cells > bestCells) { bestCells = cells; best = new Vector2Int(x, y); }
+                }
+            if (bestCells >= 0f) return best;
 
-            Assert.Fail("Walk 칸을 찾지 못했다");
+            Assert.Fail("골에 닿는 Walk 칸을 찾지 못했다");
             return default;
         }
 
