@@ -86,6 +86,36 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void RectChebyshevDistance_OverlapTouchGap()
+        {
+            var a = FootprintMath.Cells(new Vector2Int(0, 0), new Vector2Int(2, 2)); // (0,0)~(1,1)
+            Assert.AreEqual(0, FootprintMath.RectChebyshevDistance(a,
+                FootprintMath.Cells(new Vector2Int(1, 1), new Vector2Int(2, 2))), "겹침 = 0");
+            Assert.AreEqual(1, FootprintMath.RectChebyshevDistance(a,
+                FootprintMath.Cells(new Vector2Int(2, 0), new Vector2Int(2, 2))), "옆면 접촉 = 1");
+            Assert.AreEqual(1, FootprintMath.RectChebyshevDistance(a,
+                FootprintMath.Cells(new Vector2Int(2, 2), new Vector2Int(3, 3))), "대각 접촉 = 1");
+            Assert.AreEqual(2, FootprintMath.RectChebyshevDistance(a,
+                FootprintMath.Cells(new Vector2Int(3, 0), new Vector2Int(1, 1))), "한 칸 이격 = 2");
+        }
+
+        [Test]
+        public void RectChebyshevDistance_OneByOnePairs_MatchEightNeighborhood()
+        {
+            var center = FootprintMath.Cells(new Vector2Int(5, 5), Vector2Int.one);
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    var other = FootprintMath.Cells(new Vector2Int(5 + dx, 5 + dy), Vector2Int.one);
+                    int expected = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+                    Assert.AreEqual(expected, FootprintMath.RectChebyshevDistance(center, other),
+                        $"1×1 쌍 ({dx},{dy}) — 셀 체비셰프와 동치(거리 1 = 8이웃)");
+                }
+            }
+        }
+
+        [Test]
         public void DefenderUnitData_Footprint_DefaultsToOne_ClampsAtRead()
         {
             var so = ScriptableObject.CreateInstance<DefenderUnitData>();

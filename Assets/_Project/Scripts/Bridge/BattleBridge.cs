@@ -5637,6 +5637,9 @@ namespace Wassup.Bridge
         // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
         // Writes to SynergyBuff go through EffectSpawner so the Effects-context
         // write gateway stays a single code path (Phase 2 decision #9).
+        // defender-footprint unit 3 — 시너지 스캔 스크래치(할당 재사용).
+        private readonly List<(Entity entity, DefenderUnitData data, RectInt rect)> _synergyScratch = new();
+
         private void RecomputeSynergyFor(Vector2Int cell)
         {
             if (!enableAdjacencySynergy)
@@ -5645,33 +5648,34 @@ namespace Wassup.Bridge
                 return;
             }
 
-            var cells = new Vector2Int[]
+            // defender-footprint unit 3 — 인접 = 두 footprint rect 의 **체비셰프 거리 1(둘레 접촉)**.
+            // 대표 셀 8이웃으로 재면 3×3 유닛의 8이웃이 전부 자기 몸 안이라 시너지가 죽는다.
+            // 1×1 끼리 거리 1 = 기존 8이웃과 동치(무회귀).
+            //
+            // 국소 재계산(변경 셀 3×3) → **전수 재계산**: footprint 제거 직후엔 반납된 rect 를
+            // 여기서 알 수 없어 국소화가 성립하지 않는다. 판 위 유닛은 수십 기라 O(n²) rect
+            // 비교는 무시 가능, EnqueueSynergyMul refresh 는 멱등이라 과잉 enqueue 무해.
+            // cell 파라미터는 호출 계약(변경 지점 통보)으로 유지하되 계산엔 쓰지 않는다.
+            _ = cell;
+            _synergyScratch.Clear();
+            foreach (var kv in _defenderByTile)
             {
-                cell,
-                cell + new Vector2Int(1, 0),
-                cell + new Vector2Int(-1, 0),
-                cell + new Vector2Int(0, 1),
-                cell + new Vector2Int(0, -1),
-                cell + new Vector2Int(1, 1),
-                cell + new Vector2Int(-1, 1),
-                cell + new Vector2Int(1, -1),
-                cell + new Vector2Int(-1, -1),
-            };
+                if (!_em.Exists(kv.Value.entity) || _em.HasComponent<PendingDeployment>(kv.Value.entity)) continue;
+                var size = kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one;
+                var rect = FootprintMath.Cells(FootprintMath.AnchorFromPrimary(kv.Key, size), size);
+                _synergyScratch.Add((kv.Value.entity, kv.Value.data, rect));
+            }
 
-            for (int i = 0; i < cells.Length; i++)
+            for (int i = 0; i < _synergyScratch.Count; i++)
             {
-                var c = cells[i];
-                if (!_defenderByTile.TryGetValue(c, out var here)) continue;
-                if (!_em.Exists(here.entity) || _em.HasComponent<PendingDeployment>(here.entity)) continue;
+                var here = _synergyScratch[i];
                 int neighbors = 0;
-                for (int dx = -1; dx <= 1; dx++)
-                for (int dz = -1; dz <= 1; dz++)
+                for (int j = 0; j < _synergyScratch.Count; j++)
                 {
-                    if (dx == 0 && dz == 0) continue;
-                    if (_defenderByTile.TryGetValue(c + new Vector2Int(dx, dz), out var n)
-                        && n.data == here.data
-                        && _em.Exists(n.entity)
-                        && !_em.HasComponent<PendingDeployment>(n.entity))
+                    if (i == j) continue;
+                    var other = _synergyScratch[j];
+                    if (other.data != here.data) continue;
+                    if (FootprintMath.RectChebyshevDistance(here.rect, other.rect) == 1)
                         neighbors++;
                 }
 

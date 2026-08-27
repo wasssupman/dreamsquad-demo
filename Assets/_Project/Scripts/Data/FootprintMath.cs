@@ -35,6 +35,15 @@ namespace Wassup.Data
             return new Vector2Int(fingerCell.x - (s.x - 1) / 2, fingerCell.y);
         }
 
+        // defender-footprint unit 3 — 두 셀 rect 의 체비셰프 거리. 0 = 겹침, 1 = 둘레 접촉(인접).
+        // 1×1 끼리 거리 1 = 8이웃과 동치 — 시너지 인접의 footprint 일반화가 이 함수 하나다.
+        public static int RectChebyshevDistance(RectInt a, RectInt b)
+        {
+            int dx = Mathf.Max(0, Mathf.Max(b.xMin - (a.xMax - 1), a.xMin - (b.xMax - 1)));
+            int dy = Mathf.Max(0, Mathf.Max(b.yMin - (a.yMax - 1), a.yMin - (b.yMax - 1)));
+            return Mathf.Max(dx, dy);
+        }
+
         // defender-footprint unit 2 — 대표 셀 중심 ↔ footprint 기하 중심의 칸 단위 오프셋.
         // 홀수 변 0, 짝수 변 +0.5. sim 위치는 대표 셀 중심 불변(README 계약 2)이고, **뷰만**
         // 이 오프셋으로 기하 중심에 선다 — 소비처는 뷰 피드(sync·RestViewPos·비행 앵커)뿐이다.
