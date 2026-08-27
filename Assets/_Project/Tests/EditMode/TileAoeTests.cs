@@ -70,28 +70,28 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Cone_Includes_StraightAhead()
         {
-            Assert.IsTrue(TileAoe.IsInCone(Origin, new float2(2f, 0f), Right, CosSq(50f), 3f));
+            Assert.IsTrue(Wassup.Skills.SkillCone.IsInCone(Origin, new float2(2f, 0f), Right, CosSq(50f), 3f));
         }
 
         // 부호 가드 회귀 방지 — 이게 빠지면 제곱이 부호를 잃어 **등 뒤에 대칭 콘**이 생긴다.
         [Test]
         public void Cone_Excludes_DirectlyBehind()
         {
-            Assert.IsFalse(TileAoe.IsInCone(Origin, new float2(-2f, 0f), Right, CosSq(50f), 3f),
+            Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(Origin, new float2(-2f, 0f), Right, CosSq(50f), 3f),
                 "등 뒤가 포함됐다 — dp > 0 부호 가드가 사라졌다");
         }
 
         [Test]
         public void Cone_Excludes_Perpendicular()
         {
-            Assert.IsFalse(TileAoe.IsInCone(Origin, new float2(0f, 2f), Right, CosSq(50f), 3f));
+            Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(Origin, new float2(0f, 2f), Right, CosSq(50f), 3f));
         }
 
         [Test]
         public void Cone_Excludes_BeyondRange_EvenWhenAngleFits()
         {
-            Assert.IsTrue(TileAoe.IsInCone(Origin, new float2(3f, 0f), Right, CosSq(50f), 3f));
-            Assert.IsFalse(TileAoe.IsInCone(Origin, new float2(3.5f, 0f), Right, CosSq(50f), 3f),
+            Assert.IsTrue(Wassup.Skills.SkillCone.IsInCone(Origin, new float2(3f, 0f), Right, CosSq(50f), 3f));
+            Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(Origin, new float2(3.5f, 0f), Right, CosSq(50f), 3f),
                 "사거리 밖인데 각도만으로 포함됐다");
         }
 
@@ -103,8 +103,8 @@ namespace Wassup.Tests.EditMode
         public void Cone_Diagonal_FlipsAcrossTheAuthoringBoundary()
         {
             var diag = new float2(2f, 2f);
-            Assert.IsFalse(TileAoe.IsInCone(Origin, diag, Right, CosSq(40f), 5f), "반각 40° → 대각 제외");
-            Assert.IsTrue(TileAoe.IsInCone(Origin, diag, Right, CosSq(50f), 5f), "반각 50° → 대각 포함");
+            Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(Origin, diag, Right, CosSq(40f), 5f), "반각 40° → 대각 제외");
+            Assert.IsTrue(Wassup.Skills.SkillCone.IsInCone(Origin, diag, Right, CosSq(50f), 5f), "반각 50° → 대각 포함");
         }
 
         // 비행 적은 sim 좌표가 평면이라 바로 아래 유닛과 XZ 가 겹칠 수 있다. 그때 방향이
@@ -112,7 +112,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Cone_Includes_SameSpot()
         {
-            Assert.IsTrue(TileAoe.IsInCone(Origin, Origin, Right, CosSq(50f), 3f),
+            Assert.IsTrue(Wassup.Skills.SkillCone.IsInCone(Origin, Origin, Right, CosSq(50f), 3f),
                 "같은 자리가 제외됐다 — 드래곤 바로 아래 유닛이 브레스를 안 맞는다");
         }
 
@@ -123,8 +123,8 @@ namespace Wassup.Tests.EditMode
         {
             var a = Origin;
             var b = new float2(2f, 0f);
-            Assert.IsTrue(TileAoe.IsInCone(a, b, Right, CosSq(50f), 3f));
-            Assert.IsFalse(TileAoe.IsInCone(b, a, Right, CosSq(50f), 3f),
+            Assert.IsTrue(Wassup.Skills.SkillCone.IsInCone(a, b, Right, CosSq(50f), 3f));
+            Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(b, a, Right, CosSq(50f), 3f),
                 "인자 순서를 뒤집었는데 같은 결과다 — 방향 술어가 아니다");
         }
     }

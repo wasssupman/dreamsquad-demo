@@ -30,6 +30,8 @@ namespace Wassup.Tests.EditMode
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
+        private NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> _skillQueue;
+        private int _nextSimId;
         private NativeArray<float2> _flow;
         private NativeArray<int> _dist;
 
@@ -38,14 +40,34 @@ namespace Wassup.Tests.EditMode
         [SetUp]
         public void SetUp()
         {
+            // ⚠ **SetUp 에서도 푼다.** TearDown 만으로는 앞 «클래스» 의 잔여 카운트가
+            // 남아 아래 `ExecutedCountOf >= 1` 이 vacuous 하게 통과한다(리뷰 L5).
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+            _nextSimId = 0;
             _world = new World("ProjectileEmitterIntegrationTests");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
-            // arm → emitter 이음매까지 덮는다. arm 을 빼고 테스트가 직접 push 하면
-            // 시드 규약이 두 곳에 손으로 적혀 서로 어긋나도 초록으로 남는다.
+            // 감지 → **스킬 레이어** → emitter 이음매까지 덮는다. 실행부를 빼고 테스트가
+            // 직접 push 하면 시드 규약이 두 곳에 손으로 적혀 서로 어긋나도 초록으로 남는다.
+            //
+            // ⚠ skill-layer-migration unit 1 — 예전엔 `BossPeriodicTriggerSystem` 이
+            // 발사까지 했다. 지금은 그 시스템이 **발화만 감지**하고 실행은 concrete 가
+            // 한다. 그래서 하네스에 디스패처를 끼운다 — 여기를 빼면 이 그물은
+            // 「감지는 되는데 아무도 안 쏜다」를 못 본다.
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<BossPeriodicTriggerSystem>());
+            _simGroup.AddSystemToUpdateList(
+                _world.CreateSystemManaged<Wassup.Battle.Skills.SkillDispatchPeriodicSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<ProjectileEmitterSystem>());
             _simGroup.SortSystems();
+
+            // 레지스트리·어댑터는 라이브에선 브리지가 주입한다. 여기선 테스트가 한다.
+            _skillQueue = new NativeQueue<Wassup.Battle.Skills.SkillFiredEvent>(Allocator.Persistent);
+            _em.AddComponentData(_em.CreateEntity(),
+                new Wassup.Battle.Skills.SkillFiredEventsSingleton { queue = _skillQueue });
+            var registry = new Wassup.Skills.SkillRegistry();
+            registry.Register(new Wassup.Skills.Concrete.EmitPatternSkill());
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Install(
+                registry, new Wassup.Battle.Skills.EcsSkillContext());
 
             _flow = new NativeArray<float2>(Grid * Grid, Allocator.Persistent);
             _dist = new NativeArray<int>(Grid * Grid, Allocator.Persistent);
@@ -62,9 +84,14 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
+            // ⚠ 정적 주입은 **테스트마다 푼다.** 안 풀면 다음 테스트의 월드가 죽은
+            // 어댑터를 물려받아, 그 실패가 이 테스트 탓처럼 보인다.
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Uninstall();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             if (_flow.IsCreated) _flow.Dispose();
             if (_dist.IsCreated) _dist.Dispose();
             _world?.Dispose();
+            if (_skillQueue.IsCreated) _skillQueue.Dispose();
         }
 
         private void Tick(float dt = 0.016f)
@@ -78,6 +105,7 @@ namespace Wassup.Tests.EditMode
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponent<DefenderUnitTag>(e);
+            _em.AddComponentData(e, new SimEntityId { value = _nextSimId++ });
             return e;
         }
 
@@ -87,6 +115,10 @@ namespace Wassup.Tests.EditMode
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponent<AttackUnitTag>(e);
+            // ⚠ **스킬 레이어의 핸들 축.** 어댑터가 이 값으로 엔티티를 되찾으므로,
+            // 없으면 concrete 는 불리지만 자기 자신도 못 찾아 조용히 아무것도 안 한다.
+            // 라이브는 스폰 지점에서 발급한다 — 이 하네스가 그 아키타입을 흉내낸다.
+            _em.AddComponentData(e, new SimEntityId { value = _nextSimId++ });
             _em.AddBuffer<PatternSlot>(e);
             _em.AddBuffer<EmitterInstance>(e);
             _em.AddBuffer<DcTriggerSlot>(e); // arm 이 읽는 트리거 슬롯
@@ -167,6 +199,9 @@ namespace Wassup.Tests.EditMode
             var slots = _em.GetBuffer<DcTriggerSlot>(host);
             slots.Add(new DcTriggerSlot
             {
+                // ⚠ **라우팅 키.** 0(legacy)으로 두면 감지자가 이 payload 의 arm 을 찾는데
+                // 그 arm 은 은퇴했다 — 슬롯은 발화하는데 아무도 안 쏜다.
+                skillId = Wassup.Skills.Concrete.EmitPatternSkill.Id,
                 trigger = DcTriggerKind.PeriodicTimer,
                 payload = DcPayloadKind.EmitProjectilePattern,
                 periodSeconds = periodSeconds,
@@ -216,6 +251,12 @@ namespace Wassup.Tests.EditMode
             InstallPattern(host, Spec(shotCount: 3, interval: 0f), periodSeconds: 1f);
             TickTrigger(1f);
 
+            // ⚠ **두 경계를 따로 본다.** 「캐리어 0」만으로는 감지가 안 됐는지,
+            // concrete 가 안 불렸는지, 불렸는데 못 쐈는지 구분이 안 된다.
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Periodic), 1,
+                "주기 seam 이 concrete 를 실제로 불렀나");
             Assert.AreEqual(3, CarrierCount(), "step 수만큼 캐리어가 나와야 한다(발-루프 회귀 핀)");
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length, "완주한 인스턴스는 제거된다");
         }

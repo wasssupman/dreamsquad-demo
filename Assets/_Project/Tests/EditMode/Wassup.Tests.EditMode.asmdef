@@ -3,6 +3,7 @@
     "rootNamespace": "Wassup.Tests.EditMode",
     "references": [
         "Wassup.Runtime",
+        "Wassup.Skills",
         "Wassup.Editor.UnitStatImport",
         "Wassup.Editor.MobileBuild",
         "Wassup.SheetSync",

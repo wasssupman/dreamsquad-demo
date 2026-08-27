@@ -43,7 +43,13 @@ namespace Wassup.Tests.PlayMode
             var busters = Object.Instantiate(catalog.ById("busters"));
             busters.id = "test_onplace_dot";
             busters.attackRange = 0f;
-            Assert.AreEqual(OnPlaceEffectType.DotNearby, busters.onPlaceEffect, "배치 스킬이 DotNearby 여야 함");
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
+            var dotSpec = busters.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(dotSpec, "버스터즈에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AreaDot, dotSpec.Value.kind, "페이로드 = 광역 지속 피해");
+            Assert.Greater(dotSpec.Value.tickIntervalSec, 0f,
+                "틱 간격이 0 이면 magnitude 가 DPS 로 해석돼 이 그물의 축이 달라진다");
 
             bridge.SetDefenderPool(new[] { busters });
             bridge.BeginPlacement();
@@ -54,8 +60,8 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell");
 
             const float Hp = 100000f;
-            var near = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)), Hp);
-            var far = SpawnDummy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)), Hp);
+            var near = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)), Hp);
+            var far = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)), Hp);
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
 
@@ -79,7 +85,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
-        private static Entity SpawnDummy(EntityManager em, Vector3 worldPos, float hp)
+        private static Entity SpawnDummy(EntityManager em, BattleBridge bridge, Vector3 worldPos, float hp)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(worldPos.x, worldPos.y, worldPos.z)));
@@ -89,6 +95,11 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<CcEffect>(e);
             em.AddBuffer<DotEffect>(e); // dot-effect-extraction unit 0 — 배치 도트의 소비처
             em.AddComponent<AttackUnitTag>(e);
+            em.AddComponentData(e, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             return e;
         }
 

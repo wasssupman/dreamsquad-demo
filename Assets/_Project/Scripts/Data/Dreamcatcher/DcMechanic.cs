@@ -30,7 +30,7 @@ namespace Wassup.Data
     // 사망 채널에 플래그로 얹었다면 지금 있는 모든 OnDeath 카드가 "진짜 죽은 건가?"를 되물어야
     // 했다(그 설계는 clock-out rev 1 에서 폐기됐다).
     //
-    // 적에게는 열리지 않는다 — `DcTrigger.EnemyTriggerArmed` 무변경이 곧 fail-closed 다(적은
+    // 적에게는 열리지 않는다 — `DcTrigger.HasDetector` 가 **OnRetire** 를 방어유닛에만 여는 것이 곧 fail-closed 다(적은
     // 퇴근하지 않는다). append-only.
     // on-place-skill-rework unit 0 — OnPlace(9): 「이 유닛이 판에 놓여 활성화된 순간」.
     // 발화 1회, 카운터 없음. 방어유닛 자기 규칙(UnitSkillAbility) 전용이며 **카드 경로는
@@ -132,7 +132,7 @@ namespace Wassup.Data
         // 브리지의 킬 드레인(DrainEnemyKilledEvents)이 `_enemyTypeByEntity` 로 죽은 적의
         // AttackUnitData 를 **이미 손에 들고 있다**(유출 경로가 leakedType.stabilityDamage 를
         // 읽는 것과 같은 방식). 그래서 인덱스 레지스트리·슬롯 필드·EnemyKilledEvent 필드·
-        // DamageApplicationSystem 스탬프·EnemyTriggerArmed(OnDeath) 개방이 전부 불필요하다.
+        // DamageApplicationSystem 스탬프·OnDeath 의 적 개방이 전부 불필요하다.
         // 초판 설계는 그 다섯을 다 만들려 했고 리뷰(H2)가 걷어냈다.
         // append-only.
         SplitOnDeath = 20,
@@ -145,7 +145,7 @@ namespace Wassup.Data
         // 필요하고(없으면 등 뒤에 대칭 콘), 그 가드가 90° 에서 정의역을 자른다. 게다가
         // cos²θ = cos²(180−θ) 라 저작 120° 는 **조용히 60° 콘으로 동작**한다 → bake 가 >= 90 을
         // loud 거절한다. 저작 초기값 50° — 45° 는 셀 대각선 경계에 정확히 걸려 부동소수 비교가
-        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `TileAoe.IsInCone`.
+        // 동전 던지기가 된다(결정론 요건). 판정 자체는 `Wassup.Skills.SkillCone.IsInCone`.
         // append-only.
         AreaBreath = 21,
         // dreamcatcher-content-4 unit 0 — 궤도 화염구. host 셀 중심을 도는 투사체 1개를
@@ -206,6 +206,34 @@ namespace Wassup.Data
         // 이름에 "손패"를 넣지 않은 이유: 손패 = 큐 앞 N 이라는 사실은 DreamcatcherCycleDeck
         // 만 아는 것이고, 이 payload 가 말하는 것은 **부착분을 앞으로**다. append-only.
         RecallAttachedToFront = 25,
+
+        // skill-layer-migration unit 2b — 반경 안 대상에게 스탯 모디파이어를 TTL 로 얹는다.
+        // 레거시 `BoostNearbyDefenders`(아군 공격력) · `BindNearby`(적 이동속도 감쇠)가
+        // 여기로 수렴한다. **스탯은 `buffStat` 저작이 정하고 진영은 payload 가 정한다** —
+        // 진영을 저작 필드로 두면 「아군을 감속시키는」 저작이 표현 가능해진다.
+        // (기존 `AllyMoveSpeedAura`(9)는 이름이 이미 스탯을 말하므로 그대로 둔다.)
+        AllyStatAura = 26,
+        OpponentStatAura = 27,
+
+        // skill-layer-migration unit 2c — **판 밖 런타임**을 바꾸는 둘. sim 상태를 하나도
+        // 안 건드린다(코스트 잔량 · 액티브 쿨다운은 Mono 쪽 자원이다). 그래서 이 둘은
+        // 큐를 안 타고 즉시 반영된다 — 큐에 실으면 코스트 획득이 한 프레임 늦는다.
+        GainCost = 28,
+        ReduceSkillCooldown = 29,
+
+        // unit 2d — 반경 안 상대 전원에게 스택 도포(레거시 `ApplyStackNearby`).
+        // ⚠ 단일 대상 `ApplyStackToTarget`(11)과 달리 **반경과 상한이 둘 다 필요**해서
+        // 그쪽의 `tileRange` 겸직(반경 칸을 상한으로 씀)을 물려받을 수 없다.
+        // 상한은 스택 종류가 갖는다(저작 필드가 아니다).
+        AreaApplyStack = 30,
+
+        // unit 2e — 반경 안 상대 전원에 CC(+ 부수 피해). 레거시 `StunNearby`.
+        // ⚠ **CC 가 있어야 성립한다** — 「지속 0 + 피해만」은 자기 자리 광역이 이미
+        // 하는 일이라 조용히 소모된다(가드를 쪼개 문을 열면 저작 경로가 둘이 된다).
+        AreaCc = 31,
+        // unit 2e — 반경 안 상대 전원에 지속 피해 + **자기 공격 대기**. 레거시 `DotNearby`.
+        // 지속을 갖는 채널이라 그동안 유닛이 여기 묶이는 것이 사양이다.
+        AreaDot = 32,
     }
 
     // dreamcatcher-retire-recall unit 0 — 손패 조작(hand op) 카테고리.
@@ -333,6 +361,10 @@ namespace Wassup.Data
         // **데미지 경로**라 이름으로 grep 되어야 한다. append-only → 기존 카드는 0 = 슬램 없음.
         public float slamDamage;    // 착지 시 자기중심 피해. <=0 = 슬램 없음(이동만)
         public int slamTileRange;   // 슬램 반경(타일, Chebyshev)
+        // skill-layer-migration unit 2e — 지속 피해의 **틱 간격**(초). `AreaDot` 전용.
+        // ⚠ **0 은 미저작이 아니라 뜻이 있다** — 간격이 0 이면 `magnitude` 가 틱당 피해가
+        // 아니라 DPS 로 해석된다(dot-tick-cadence 계약). append-only 라 기존 저작은 그대로.
+        public float tickIntervalSec;
         // dreamcatcher-content-3 unit 6 — ApplyStackToTarget 전용. **문안 전용 참조**다:
         // 런타임 임계 조회는 여전히 BattleBridge 의 kind→rules 레지스트리(씬의
         // stackModifierAuthoring)가 권위이고, 이 필드는 카드 문안이 "몇 중첩에 무엇이

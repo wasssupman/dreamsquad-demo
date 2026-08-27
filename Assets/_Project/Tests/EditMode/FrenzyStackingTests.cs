@@ -200,6 +200,22 @@ namespace Wassup.Tests.EditMode
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+            // ⚠ **디스패처를 끼운다**(skill-layer-migration unit 3g). 예전엔 `AttackSystem`
+            // 이 자기 버프까지 넣었고 이 그물은 그 arm 을 보고 있었다. 지금은 감지자가
+            // **발화만 알리고** 실행은 concrete 가 한다 — 하네스에서 디스패처를 빼면
+            // 「감지는 되는데 아무도 안 버프한다」를 못 본다(emitter 그물의 선례).
+            simGroup.AddSystemToUpdateList(
+                world.CreateSystemManaged<Wassup.Battle.Skills.SkillDispatchAttackSystem>());
+            // 디스패처가 `AttackSystem` 뒤에 오도록 정렬한다(안 하면 한 프레임 밀린다).
+            simGroup.SortSystems();
+
+            var skillQueue = new NativeQueue<Wassup.Battle.Skills.SkillFiredEvent>(Allocator.Persistent);
+            em.AddComponentData(em.CreateEntity(),
+                new Wassup.Battle.Skills.SkillFiredEventsSingleton { queue = skillQueue });
+            var registry = new Wassup.Skills.SkillRegistry();
+            registry.Register(new Wassup.Skills.Concrete.SelfStatBuffSkill());
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Install(
+                registry, new Wassup.Battle.Skills.EcsSkillContext());
 
             var statQueue = new NativeQueue<StatModifierApplyEvent>(Allocator.Persistent);
             em.AddComponentData(em.CreateEntity(),
@@ -211,6 +227,10 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(defender, new Health { value = 10f, max = 10f });
             em.AddBuffer<IncomingDamage>(defender);
             em.AddComponent<DefenderUnitTag>(defender);
+            // ⚠ **핸들이 없으면 스킬 레이어에서 이 유닛은 존재하지 않는다.** 어댑터는
+            // `SimEntityId` 로 후보를 식별하므로, 없으면 concrete 가 자기 자신을 못 가리켜
+            // 의도가 조용히 버려진다(부채꼴이 월드 원점을 겨눴던 것과 같은 함정).
+            em.AddComponentData(defender, new Wassup.Battle.Units.SimEntityId { value = 1 });
             em.AddComponentData(defender, new AttackState
             {
                 range = 10f,
@@ -231,6 +251,9 @@ namespace Wassup.Tests.EditMode
                 instanceId        = 1,
                 trigger           = DcTriggerKind.AttackN,
                 period            = 1,
+                // 라우팅 키 — bake 가 심는 값이다. 0(legacy)으로 두면 arm 을 찾다가
+                // 「미배선 payload」 경고만 남는다(그 arm 은 은퇴했다).
+                skillId           = Wassup.Skills.Concrete.SelfStatBuffSkill.Id,
                 payload           = DcPayloadKind.SelfStatBuff,
                 magnitude         = 1.08f,       // bake 가 % → 배율로 이미 바꿔 실은 값
                 duration          = 4f,
@@ -247,14 +270,21 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(enemy, new Health { value = 100f, max = 100f });
             em.AddBuffer<IncomingDamage>(enemy);
             em.AddComponent<AttackUnitTag>(enemy);
+            em.AddComponentData(enemy, new Wassup.Battle.Units.SimEntityId { value = 2 });
 
             world.SetTime(new TimeData(0.016d, 0.016f));
             simGroup.Update();
 
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Attack), 1,
+                "공격 seam 이 concrete 를 안 거쳤다 — 라우팅이 조용히 죽었다");
             Assert.IsTrue(statQueue.TryDequeue(out var ev),
-                "공격이 성사됐는데 자기 버프 이벤트가 안 나갔다 — arm 이 없으면 여태 " +
-                "«unhandled payload kind» 경고만 남기고 카운트만 태웠다");
+                "concrete 는 돌았는데 자기 버프 이벤트가 안 나갔다");
+            Wassup.Battle.Skills.SkillDispatchSystemBase.Uninstall();
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             statQueue.Dispose();
+            skillQueue.Dispose();
             return ev;
         }
 

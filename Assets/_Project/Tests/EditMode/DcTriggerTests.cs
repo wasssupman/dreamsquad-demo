@@ -254,56 +254,16 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // ── boss-mamemo 리뷰 M3 — 적/보스 트리거 화이트리스트 ────────────────────────
-
-        // 이 테스트가 지키는 것은 **안전이 우연이 아니라는 것**이다.
-        // boss-mamemo unit 2 가 적 전원에게 ShieldSlot 을 달면서 DamageApplicationSystem 의
-        // 실드 파열 감지(Sum>0→0)가 적에서도 참이 되기 시작했다. 지금 OnShieldBreak 가 적에
-        // 안 붙는 유일한 이유가 이 화이트리스트이고, 누가 이걸 완화하면 브리지의 파열 드레인
-        // (CollectShieldBreakTargets — 대상 풀이 AttackUnitTag 하드코딩)이 돌아
-        // **보스의 파열 폭발이 자기 진영을 때린다.**
-        // 여는 것 자체가 금지는 아니다 — 열려면 실행기의 진영 파라미터화가 **선행**이고,
-        // 이 테스트를 빨갛게 만들어 그 사실을 읽게 하는 것이 목적이다.
-        // elite-enemy-tier unit 3 — **`AttackN` 이 열렸다.** 위 주석이 요구한 «실행기의 진영
-        // 파라미터화 선행» 을 만족시켰다:
-        //   ① `AttackSystem` RESOLVE arm 의 `[Defender only]` 게이트 제거(술어 = 슬롯 버퍼 존재).
-        //      같은 파일의 다른 `defenderTagLookup` 7곳은 무변경.
-        //   ② `ProjectileToTarget` 은 적 host 에서 런타임 거절 — 그 arm 의 대상 진영이 방어유닛
-        //      전제라 적이 쓰면 자기 진영을 쏜다.
-        //   ③ `DcTriggerFiredEvent` enqueue 는 방어유닛 게이트 유지 — 그 드레인이 뷰를 찾아
-        //      흰 플래시 + «카드 흡수» VFX 를 내고 적도 같은 풀에 있다.
-        // 나머지는 여전히 닫혀 있어야 한다.
-        [Test]
-        public void EnemyTriggerArmed_PeriodicHealthThresholdAndAttackN()
-        {
-            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.PeriodicTimer));
-            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.HealthThreshold));
-            Assert.IsTrue(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.AttackN),
-                "드래곤의 3타 브레스가 이 트리거를 쓴다(unit 3)");
-
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnShieldBreak),
-                "적 실드 파열은 아직 아무것도 하지 않아야 한다 — 열려면 실행기 진영 파라미터화가 선행이다");
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDeath),
-                "분열은 슬롯을 쓰지 않는다 — 브리지 킬 드레인이 SO 를 직독한다(unit 5 ②)");
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnDamagedN));
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.OnKill));
-            Assert.IsFalse(DcTrigger.EnemyTriggerArmed(Wassup.Data.DcTriggerKind.None));
-        }
-
-        // 총체성 — 새 트리거 kind 를 추가하면 여기서 분류를 강제당한다(조용한 개방 방지).
-        [Test]
-        public void EnemyTriggerArmed_IsTotalOverAllKinds()
-        {
-            foreach (Wassup.Data.DcTriggerKind kind in
-                     System.Enum.GetValues(typeof(Wassup.Data.DcTriggerKind)))
-            {
-                bool armed = DcTrigger.EnemyTriggerArmed(kind);
-                bool expected = kind == Wassup.Data.DcTriggerKind.PeriodicTimer
-                             || kind == Wassup.Data.DcTriggerKind.HealthThreshold
-                             || kind == Wassup.Data.DcTriggerKind.AttackN;
-                Assert.AreEqual(expected, armed,
-                    $"신규 트리거 '{kind}' 가 분류되지 않았다 — 적 bake 를 열 것인지 명시하라");
-            }
-        }
+        // ── 화이트리스트 핀은 은퇴했다 (skill-layer-migration unit 8) ──────────────
+        //
+        // 여기 있던 두 단언(`EnemyTriggerArmed` 전수 · 총체성)은 진영별 화이트리스트를
+        // 고정했다. 그 술어들이 죽었으므로 그물도 옮겼다 — `DcTriggerArmedTests` 가
+        // 새 질문(「감지자가 있나」)을 고정한다.
+        //
+        // 옛 주석이 경고하던 「보스의 파열 폭발이 자기 진영을 때린다」는 **해소됐다**:
+        // 대상 풀이 caster 상대가 됐고(`CollectShieldBreakTargets`), 실행은 진영을 모르는
+        // concrete 로 갔으며, 죽은 시전자의 진영은 값으로 실려 온다. 함께 적혀 있던
+        // `ProjectileToTarget` 의 적 host 런타임 거절도 stale 이다 — 그 payload 는
+        // `TargetProjectileSkill` 로 이전돼 부르는 쪽 상대를 겨눈다.
     }
 }

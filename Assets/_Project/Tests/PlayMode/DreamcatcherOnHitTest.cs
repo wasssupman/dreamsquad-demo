@@ -39,7 +39,12 @@ namespace Wassup.Tests.PlayMode
             });
             Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "frost attached");
 
-            var enemy = SpawnDummyEnemy(em, defender, withCcBuffer: true);
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: true);
+
+            // ⚠ **공격 seam 의 첫 증인.** 이 단언이 없으면 라우팅이 끊기고 legacy arm 이
+            // 대신 처리해도 아래 결과 단언이 초록이다 — `7f902e55` 가 잡은 실패 유형이고,
+            // 공격 seam 은 여태 **생산자가 0** 이라 그 축을 아무도 못 재고 있었다.
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
 
             // 여러 공격 사이클 동안 대상이 Stun CcEffect 를 얻는 프레임이 있는지.
             bool sawStun = false;
@@ -55,8 +60,69 @@ namespace Wassup.Tests.PlayMode
                 }
                 yield return null;
             }
+            int attackSeamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                Wassup.Battle.Skills.SkillSeam.Attack);
             if (em.Exists(enemy)) em.DestroyEntity(enemy);
+            Assert.GreaterOrEqual(attackSeamRuns, 1,
+                "공격 seam 이 concrete 를 안 거쳤다 — legacy arm 이 대신 처리했다면 아래 단언은 "
+                + "라우팅이 끊겨도 초록이 된다(이전이 안 된 상태를 못 가른다)");
             Assert.IsTrue(sawStun, "frost_arrow: N번째 공격에 대상이 Stun(CcEffect) 걸려야 함");
+        }
+
+        // skill-layer-migration unit 3a 후속 — **밀쳐냄이 실제로 밀리는가.**
+        //
+        // ⚠ 이 축의 증인이 0이었고, 그 사이 라이브 카드 하나가 죽어 있었다:
+        // 어댑터가 넉백 «벡터» 를 안 채워서 적이 **행동만 잠기고 한 칸도 안 밀렸다**.
+        // 조용한 실패였다 — CC 는 붙고 지속도 맞아 「걸렸나」 단언은 전부 통과했다.
+        //
+        // 그래서 이 그물은 **걸렸나가 아니라 움직였나**를 잰다. `MovementSystem` 이
+        // `vector` 로만 밀기 때문에 그 값이 비면 여기서만 갈린다.
+        [UnityTest]
+        public IEnumerator GaleShove_EveryThirdAttack_ActuallyPushesTheTarget()
+        {
+            yield return Setup();
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var (bridge, defender) = PlaceGuardian(em);
+
+            var card = MakeUnitCard(new DcMechanic
+            {
+                trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                payload = new DcPayloadSpec
+                {
+                    kind = DcPayloadKind.ApplyCcToTarget,
+                    ccKind = DcCcKind.Impulse,
+                    magnitude = 6f,      // 넉백 «속도»
+                    duration = 0.35f,
+                },
+            });
+            Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "gale attached");
+
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: true);
+            // 밀림을 재려면 움직일 수 있어야 한다 — 실적 적처럼 경로 추종을 준다.
+            em.AddComponentData(enemy, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            float3 start = em.GetComponentData<LocalTransform>(enemy).Position;
+
+            float maxShift = 0f;
+            float t = 0f;
+            while (t < 8f && maxShift < 0.25f)
+            {
+                t += Time.deltaTime;
+                if (em.Exists(enemy))
+                {
+                    float3 d = em.GetComponentData<LocalTransform>(enemy).Position - start;
+                    d.y = 0f;
+                    maxShift = math.max(maxShift, math.length(d));
+                }
+                yield return null;
+            }
+            if (em.Exists(enemy)) em.DestroyEntity(enemy);
+
+            Assert.Greater(maxShift, 0.25f,
+                $"밀쳐냄이 대상을 안 움직였다(최대 이동 {maxShift:0.000}) — CC 는 붙었는데 "
+                + "넉백 벡터가 비었을 때 정확히 이 모양이 된다");
         }
 
         [UnityTest]
@@ -77,7 +143,7 @@ namespace Wassup.Tests.PlayMode
             });
             Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(defender, card), 0, "ember attached");
 
-            var enemy = SpawnDummyEnemy(em, defender, withCcBuffer: false);
+            var enemy = SpawnDummyEnemy(em, bridge, defender, withCcBuffer: false);
 
             bool sawBleed = false;
             float t = 0f;
@@ -119,7 +185,7 @@ namespace Wassup.Tests.PlayMode
             return (bridge, defender);
         }
 
-        private static Entity SpawnDummyEnemy(EntityManager em, Entity defender, bool withCcBuffer)
+        private static Entity SpawnDummyEnemy(EntityManager em, BattleBridge bridge, Entity defender, bool withCcBuffer)
         {
             var defPos = em.GetComponentData<LocalTransform>(defender).Position;
             const float Hp = 1_000_000f; // 죽지 않게 — 공격이 계속 이어지도록
@@ -129,6 +195,10 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new FactionTag { value = Faction.EnemyUnit });
             em.AddBuffer<IncomingDamage>(enemy);
             if (withCcBuffer) em.AddBuffer<CcEffect>(enemy); // CcApplySystem 소비처(실적 아키타입 모사)
+            // ⚠ **스킬 레이어는 두 풀(적/방어유닛) 안의 엔티티만 다룬다.** 태그가 없으면
+            // 어댑터가 핸들을 못 되돌려 CC 가 조용히 사라진다 — 실적 아키타입을 모사한다.
+            em.AddComponent<Wassup.Battle.Units.AttackUnitTag>(enemy);
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, enemy);
             return enemy;
         }
 

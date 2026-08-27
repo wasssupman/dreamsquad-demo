@@ -39,10 +39,19 @@ namespace Wassup.Tests.PlayMode
 
             float dmgMulBefore = _em.GetComponentData<ModifierStats>(_defender).damageMul;
             var card = MakeCocoonCard(durationSec: 0.4f, percent: 35f);
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             int handle = _bridge.ApplyDreamcatcherCardToUnit(_defender, card);
             Assert.AreEqual(0, handle, "attach 성공(엔티티 부착형 = 무회수 핸들 0)");
+            // ⚠ 아래 둘은 **`yield` 없이** 참이어야 한다 — 부착 seam 이 브리지 콜스택
+            // 안에서 끝난다는 것이 그 계약이다(skill-layer-migration unit 4b).
+            // 그리고 **둘이 같이** 참이어야 한다: 잠만 붙으면 손해만 보는 카드고,
+            // 감시만 붙으면 공짜 버프다.
             Assert.IsTrue(_em.HasComponent<DreamCocoon>(_defender), "코쿤 부여");
             Assert.IsTrue(HasCc(_em, _defender, CcKind.Sleep), "Sleep 부여");
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Immediate), 1,
+                "부착 seam 이 concrete 를 안 거쳤다 — 위 둘은 legacy arm 이 붙여도 참이다");
 
             yield return WaitSeconds(1.2f); // 잠 0.4s 완주 + modifier 적용 여유
 

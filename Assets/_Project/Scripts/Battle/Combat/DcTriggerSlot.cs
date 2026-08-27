@@ -13,6 +13,21 @@ namespace Wassup.Battle.Combat
         // Effect-instance id — one slot per attached mechanic instance, so two
         // copies of the same card get independent counters. Separate namespace
         // from stat-modifier stackId: never compare the two.
+        // skill-layer-foundation unit 4/5 — **이중 경로 라우팅 축.**
+        //
+        // 0(`SkillRegistry.NotRouted`) = **스킬이 아니다.** 0 이 아니면 감지자가
+        // `SkillFiredEvent` 에 실어 보내고 디스패처가 concrete 를 부른다.
+        //
+        // ⚠ **이 값의 뜻이 이전 도중 뒤집혔다.** 예전엔 「아직 arm 이 처리한다」라
+        // 0 이 안전했는데, arm 이 철거된 지금은 「아무도 처리 안 한다」다 — 슬롯은
+        // 구워지고 트리거는 발화하고 그 다음에 아무 일도 안 일어난다.
+        // 지금은 bake 게이트(`SkillPayloadPolicy`)가 그 조합을 앞에서 거절한다.
+        //
+        // ⚠ 이 축이 **unmanaged 여야 하는 이유**: 감지자는 Burst ISystem 이라 managed
+        // 레지스트리를 읽을 수 없다. 「이 슬롯은 새 경로인가」를 숫자 하나로 가를 수
+        // 있어야 이전 중 매 커밋에서 게임이 돈다.
+        public int skillId;
+
         public int instanceId;
         public DcTriggerKind trigger;
         public ushort period;   // AttackN: fire on every N-th attack resolve
@@ -78,6 +93,26 @@ namespace Wassup.Battle.Combat
         // 계층 DcCcKind/DcStackKind 를 Battle enum 으로 번역 저장(hot path 무번역).
         // ApplyCcToTarget=ccKind, ApplyStackToTarget=stackKind. 소비는 unit 1.
         public Wassup.Battle.Effects.CcKind ccKind;
+
+        // skill-layer-migration unit 5b — 실드 캐스트의 두 축.
+        // ⚠ **자기 포함을 filter 로 접으면 안 된다.** 같은 filter 라도 카드 경로(악몽의
+        // 가호)는 자기를 빼고 능력 경로(실드 셔틀)는 넣는다 — 그 차이의 이유가
+        // 「이 host 에 자기 실드를 주는 능력이 또 있나」이고, 그건 bake 만 아는 사실이다.
+        // ⚠ **`ccKind` 에 얹지 않는다**(ECS 리뷰 M-3). 같은 커밋에서 아래 두 축은 전용
+        // 필드를 신설했으면서 필터만 남의 축에 얹었었다 — `MinHealth(2)` 가 `CcKind.DoT(2)`
+        // 로 저장돼, `ccKind` 를 읽는 다른 소비자(로그·트레이스·bake 검증)가 실드 슬롯을
+        // 「DoT」로 오독한다. 이 파일이 세 번 반복하는 「겸직 금지」의 자리다.
+        // ⚠ **이 셋은 주기 생산자만 싣는다**(재리뷰 MEDIUM-A). `BossPeriodicTriggerSystem`
+        // 하나만 `Selector2`/`Count`/`IncludesSelf` 를 채운다 — 경계·공격·죽음·부착 생산자는
+        // 안 채운다. 오늘은 반경 있는 실드가 주기로만 저작돼 무해하지만, 다른 트리거로
+        // 저작하는 순간 세 축이 0 으로 접히고 **그 값이 카드 경로와 우연히 같아서**
+        // 그럴듯하게 나간다 — 저작한 필터와 인원 상한만 조용히 증발한다.
+        // (`EventPosition` 은 0 을 「안 채움」으로 판별해 디스패처가 접을 수 있지만
+        //  이 셋은 0 이 **유효값**이라 그 수법이 안 통한다.)
+        public byte shieldFilter;
+        public bool shieldIncludesSelf;
+        // 0 = 상한 없음(반경 안 전부). 셔틀만 채운다.
+        public int shieldTargetCount;
         public Wassup.Battle.Effects.StackKind stackKind;
 
         // dreamcatcher-kill-and-threshold unit 0 — SelfStatBuff 대상 스탯. bake 시
@@ -117,7 +152,7 @@ namespace Wassup.Battle.Combat
 
         // elite-enemy-tier unit 4 — AreaBreath(화염 브레스) 부채꼴.
         // ★**저작은 도(degree), 런타임은 코사인²** 이다. 변환은 bake 에서 1회 — sim 이 삼각함수를
-        // 부르지 않고, 저작값 하나가 두 표현으로 갈리지 않는다. 판정은 `TileAoe.IsInCone`.
+        // 부르지 않고, 저작값 하나가 두 표현으로 갈리지 않는다. 판정은 `Wassup.Skills.SkillCone.IsInCone`.
         // `coneHalfAngleDeg` 는 **뷰가 쓴다**(부채꼴 VFX 폭) — sim 은 cosSq 만 본다.
         public float coneCosSq;
         public float coneHalfAngleDeg;

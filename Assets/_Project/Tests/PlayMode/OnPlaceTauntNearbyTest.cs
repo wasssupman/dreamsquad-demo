@@ -56,8 +56,17 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 5; i++) inRange[i] = SpawnWalker(em, bridge, walk[i]);
             var outFar = SpawnWalker(em, bridge, new Vector2Int(cell.x + 6, cell.y + 6));
 
+            // ⚠ **라우팅 증인.** 이 단언이 없으면 도발이 concrete 를 거치는지 legacy arm 이
+            // 대신 처리하는지 그물이 구분하지 못한다 — legacy 가 그대로 잘 도니까 아래
+            // 결과 단언은 라우팅이 끊겨도 초록이다. `7f902e55` 가 잡은 실패 유형 그 자체다.
+            // (arm 은 unit 8 철거까지 살아 있으므로 이 구멍은 지금 실재한다.)
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
+
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
             yield return Frames(20);
+
+            int seamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                Wassup.Battle.Skills.SkillSeam.Periodic);
 
             int aggroed = 0;
             for (int i = 0; i < 5; i++) if (em.HasComponent<Aggroed>(inRange[i])) aggroed++;
@@ -66,6 +75,9 @@ namespace Wassup.Tests.PlayMode
             em.DestroyEntity(outFar);
             Object.Destroy(bastion);
 
+            Assert.GreaterOrEqual(seamRuns, 1,
+                "도발이 스킬 레이어를 안 거쳤다 — legacy arm 이 대신 처리했다면 아래 단언은 "
+                + "라우팅이 끊겨도 초록이 된다(이전이 안 된 상태를 못 가른다)");
             Assert.AreEqual(5, aggroed,
                 "반경 2 안 5기가 전부 도발돼야 한다 — 2기만 걸렸다면 capacity 우회가 죽은 것이다");
             Assert.IsFalse(farAggroed, "반경 밖 적이 도발됐다");
@@ -139,7 +151,7 @@ namespace Wassup.Tests.PlayMode
 
         // 비행 적은 근접 가디언에게 끌려오지 않는다 — 통행 층 게이트.
         [UnityTest]
-        public IEnumerator FlyingEnemy_IsNotTaunted()
+        public IEnumerator FlyingEnemy_IsTaunted_BecauseBastionAttacksAir()
         {
             yield return LoadBattle();
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -162,8 +174,20 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(bastion);
 
             Assert.IsTrue(groundTaunted, "지상 적이 안 걸렸다 — 대조군이 죽으면 아래 단언이 공짜로 통과한다");
-            Assert.IsFalse(flyingTaunted,
-                "비행 적이 근접 가디언에게 끌려왔다 — 통행 층 게이트가 죽었다");
+            // ⚠ **이 단언은 2026-08-25 에 뒤집혔다.**
+            //
+            // 원래는 「비행 적은 안 걸린다」였다. 그 전제가 `47d24c15`(아틸러리·폭탄맨을 뺀
+            // 전 방어유닛이 공중도 공격)로 죽었다 — 배스티온의 `attackTargetLayers` 가
+            // 2(Path) → 6(Path|Air) 이 됐고, 도발은 그 마스크로 통행 층을 건다.
+            //
+            // 사용자 판정(2026-08-25): **「공중을 공격하면 도발도 공중에 걸리는 게 당연하다」.**
+            // 게이트는 살아 있고 마스크가 넓어진 것이라, 이 테스트가 지키는 것은
+            // 「도발 대상이 **공격 대상과 같은 축**을 쓴다」로 바뀐다.
+            //
+            // 되돌리려면 배스티온 마스크가 아니라 그 콘텐츠 결정부터 뒤집어야 한다.
+            Assert.IsTrue(flyingTaunted,
+                "비행 적이 도발에 안 걸렸다 — 배스티온이 공중을 공격하는데 도발만 지상이면 " +
+                "「도발은 어그로의 시한 획득」이라는 계약이 깨진다");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
@@ -187,10 +211,10 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "배스티온의 레거시 배치 효과는 해제돼 있어야 한다(규칙 경로로 이관)");
-            Assert.AreEqual(0f, unit.onPlacePushDistance,
-                "밀쳐냄은 꺼져 있어야 한다 — 끌어오기와 정반대 힘이라 같이 걸면 어느 쪽도 안 읽힌다");
+            // skill-layer-migration unit 2g — 「밀쳐냄이 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군이 철거돼(저작 소비자 0) 켤 방법이 없다. 「끌어오기와 정반대 힘을
+            // 같이 걸면 어느 쪽도 안 읽힌다」는 판단은 그대로 유효하고, 밀쳐냄이 규칙
+            // 어휘로 돌아오는 날 그 자리에서 다시 세워야 한다.
             Assert.IsNotNull(unit.GetAbility<UnitSkillAbility>(), "UnitSkillAbility 배선");
             return unit;
         }
@@ -248,6 +272,9 @@ namespace Wassup.Tests.PlayMode
             // 게이트가 죽어도 테스트가 초록이 된다 — unit 4 후속 후보의 «더미가 통행 층을
             // 안 가진다» 공백).
             em.AddComponentData(e, new PathFollowState { speed = 2f, traversalLayers = layers });
+            // ⚠ 스킬 레이어의 핸들 축 — 없으면 도발 후보가 못 된다(어댑터가 `SimEntityId`
+            // 로 역변환한다). 예전 arm 은 `Entity` 를 직접 들었기에 필요 없었다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             // ⚠ **EnemyAiState 가 없으면 도발이 이동으로 이어지지 않는다.** MovementSystem 은
             // 이 컴포넌트가 없으면 Marching 으로 떨어뜨려 그냥 골로 걸어간다 — 어그로 상태는
             // 붙었는데 적이 멀어지는 그림이 나온다(실측 2.46 → 5.39). 실제 적은 스폰 시 받는다.

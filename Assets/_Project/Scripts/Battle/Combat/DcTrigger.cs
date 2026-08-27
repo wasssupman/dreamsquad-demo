@@ -94,39 +94,59 @@ namespace Wassup.Battle.Combat
             return false;
         }
 
-        // boss-mamemo 리뷰 M3 — **적/보스 bake 가 여는 트리거 화이트리스트의 단일 SoT.**
-        // 나머지 트리거의 arm 은 defender 게이트가 미개방이라, 적에 베이크하면 슬롯만 생기고
-        // 아무도 안 잡는 침묵 no-op 이 된다(BakeNightmareMechanics 가 이 함수를 보고 거절).
+        // skill-layer-migration unit 8 — **화이트리스트 2술어가 여기서 죽고 하나가 남는다.**
         //
-        // 이걸 함수로 뺀 이유는 **안전이 우연이 아니게** 하기 위해서다: `boss-mamemo` unit 2 가
-        // 적 전원에게 `ShieldSlot` 을 달면서 `DamageApplicationSystem` 의 실드 파열 감지가
-        // 적에서도 참이 되기 시작했다. 지금 `OnShieldBreak` 가 적에 안 붙는 유일한 이유가 이
-        // 화이트리스트인데, 누가 이 줄을 완화하면 브리지의 파열 드레인
-        // (`CollectShieldBreakTargets` — 대상 풀이 `AttackUnitTag` 하드코딩)이 돌아
-        // **보스의 파열 폭발이 자기 진영을 때린다.** EditMode 가 이 술어를 고정한다.
-        // elite-enemy-tier unit 3 — `AttackN` 추가. RESOLVE arm 의 `[Defender only]` 진영
-        // 게이트를 빼서(AttackSystem) 적도 «N번째 공격» 사건을 쓴다 — 드래곤의 3타 브레스.
+        // 죽은 것은 «안전» 질문이다. 두 술어의 존재 이유는 자기진영 타격이었다 —
+        // 파열 폭발의 대상 풀이 `AttackUnitTag` 하드코딩이라 보스가 `OnShieldBreak` 를
+        // 쓰면 자기 편을 때렸고, 그 문을 잠근 것이 `EnemyTriggerArmed` 였다.
+        // 이제 실행이 스킬 레이어에 있고 concrete 는 **진영을 모른다** — 호출자가 곧
+        // 소유자라 같은 코드가 부르는 쪽 상대를 겨눈다. 죽은 시전자의 진영도 값으로
+        // 실려 온다(`SkillFiredEvent.CasterFaction`). 그래서 하드코딩이 사라졌고,
+        // 그것을 막던 문도 사라진다.
         //
-        // ⚠ **`AttackN` 하나만 더한다.** 위 주석이 경고하는 위험은 `OnShieldBreak` 다. `OnDeath`
-        // 도 열지 않는다 — 분열은 슬롯을 쓰지 않고 브리지 킬 드레인이 SO 를 직독한다(unit 5 ②).
-        // 화이트리스트는 kind 단위라 `AttackN` 추가가 그 문들을 열지 않는다.
-        public static bool EnemyTriggerArmed(Wassup.Data.DcTriggerKind kind)
-            => kind == Wassup.Data.DcTriggerKind.PeriodicTimer
-            || kind == Wassup.Data.DcTriggerKind.HealthThreshold
-            || kind == Wassup.Data.DcTriggerKind.AttackN;
-
-        // on-place-skill-rework unit 0 — **방어유닛 자기 규칙 bake 가 여는 트리거 화이트리스트.**
-        // 위 적 화이트리스트와 같은 목적(조용한 no-op 금지)이되 **별개 술어**다.
+        // 남은 것은 **«감지자가 있나»** 라는 전혀 다른 질문이다. 옛 술어는 이 둘을 한
+        // 몸에 겹쳐 놨고, 그래서 «어느 근거로 완화해도 되는지» 를 아무도 몰랐다.
+        // 지금 표는 코드가 실제로 무엇을 보는지 그대로다:
         //
-        // 왜 위 함수에 OnPlace 를 더하지 않는가: `EnemyTriggerArmed` 는 "적에 baked 될 때
-        // 안전한가" 라는 질문이고, 그 안전이 위 주석이 경고하는 자기진영 타격(OnShieldBreak 등)을
-        // 막는 유일한 문이다. 방어유닛 전용 트리거를 그 목록에 섞으면 두 질문이 한 술어에 겹쳐
-        // 다음 사람이 어느 쪽 근거로 완화해도 되는지 알 수 없게 된다.
+        //   PeriodicTimer   BossPeriodicTriggerSystem   진영 무관 (DeadTag 만 제외)
+        //   HealthThreshold HealthThresholdSystem       진영 무관
+        //   AttackN         AttackSystem                진영 무관
+        //   OnDamagedN      DamageApplicationSystem     진영 무관 (단일 피해 루프)
+        //   OnKill          DamageApplicationSystem     진영 무관
+        //   OnShieldBreak   DamageApplicationSystem     진영 무관
+        //   OnDeath         UnitLifecycleSystem         진영 무관 (전용 루프 + 일반 루프 둘 다 라우팅)
+        //   OnPlace         브리지 배치 경로            방어유닛 전용 — 적은 «배치»되지 않는다
+        //   OnRetire        브리지 퇴근 경로            방어유닛 전용 — 게다가 카드 전용이다
         //
-        // v1 은 `OnPlace` 하나다. 레거시 `OnPlaceEffectType` 8종을 규칙으로 이관할 때도 늘 것은
-        // payload 어휘이지 트리거가 아니다. 방어유닛 사건인 `OnRetire` 는 **카드 전용**이라
-        // 여기 없다 — 유닛이 자기 규칙으로 퇴근 스킬을 선언하는 소비자가 생기면 그때 연다.
-        public static bool DefenderTriggerArmed(Wassup.Data.DcTriggerKind kind)
-            => kind == Wassup.Data.DcTriggerKind.OnPlace;
+        // ⚠ 남은 둘(`OnPlace`·`OnRetire`)은 **본질상** 닫혀 있다 — 적에게 「배치되는
+        // 순간」이란 사건이 없다. 감지자가 없는 게 아니라 사건이 없는 것이라, 이건
+        // 열고 말고의 문제가 아니다.
+        //
+        // ⚠ **fail-closed 를 유지한다.** 「감지자 없음」을 통과시키면 슬롯만 생기고
+        // 아무도 안 잡는 침묵 no-op 이 된다 — 그것이 애초에 이 술어들이 존재한 이유의
+        // 절반이고, 그 절반은 아직 유효하다.
+        public static bool HasDetector(Wassup.Data.DcTriggerKind kind, bool hostIsEnemy)
+        {
+            switch (kind)
+            {
+                case Wassup.Data.DcTriggerKind.PeriodicTimer:
+                case Wassup.Data.DcTriggerKind.HealthThreshold:
+                case Wassup.Data.DcTriggerKind.AttackN:
+                case Wassup.Data.DcTriggerKind.OnDamagedN:
+                case Wassup.Data.DcTriggerKind.OnKill:
+                case Wassup.Data.DcTriggerKind.OnShieldBreak:
+                    return true;
+                case Wassup.Data.DcTriggerKind.OnDeath:
+                    // unit 8 — **적에게 열렸다**(사용자 결정 2026-08-26: 전용 개념 배제).
+                    // `UnitLifecycleSystem` 의 일반 사망 루프가 라우팅을 갖게 되면서
+                    // 감지자가 양 진영을 본다. 진영은 그 루프가 엔티티별로 도출해 싣는다.
+                    return true;
+                case Wassup.Data.DcTriggerKind.OnPlace:
+                case Wassup.Data.DcTriggerKind.OnRetire:
+                    return !hostIsEnemy;
+                default:
+                    return false;   // None 과 미래의 새 kind — 배선 전엔 닫아 둔다
+            }
+        }
     }
 }

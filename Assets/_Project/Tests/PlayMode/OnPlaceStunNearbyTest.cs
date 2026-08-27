@@ -87,7 +87,7 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             var malphite = MakeMalphite("test_stun_wearoff");
-            float stun = malphite.onPlaceDuration;
+            float stun = malphite.GetAbility<UnitSkillAbility>().mechanics[0].payload.duration;
             Assert.Greater(stun, 1f, "3초급 정지가 이 unit 의 사양이다");
             Prepare(bridge, gm, malphite);
             var cell = FindCellWithWalkNeighbours(bridge, em, malphite, 1, 2, out var near, out _);
@@ -123,7 +123,7 @@ namespace Wassup.Tests.PlayMode
             var malphite = MakeMalphite("test_stun_damage");
             // 리터럴을 못 박지 않는다 — 밸런스 값은 SO 가 권위다. 여기서 재는 것은
             // 「저작된 세기가 반경 안에만 들어간다」이지 그 값이 40이라는 사실이 아니다.
-            float dmg = malphite.onPlaceMagnitude;
+            float dmg = malphite.GetAbility<UnitSkillAbility>().mechanics[0].payload.magnitude;
             Assert.Greater(dmg, 0f, "배치 피해가 저작돼 있어야 이 단언이 의미를 갖는다");
             Prepare(bridge, gm, malphite);
             var cell = FindCellWithWalkNeighbours(bridge, em, malphite, 1, 2, out var near, out var far);
@@ -174,7 +174,12 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;   // 평타가 섞이면 배치 스킬분을 분리 측정할 수 없다
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.StunNearby, unit.onPlaceEffect);
+            // unit 2g — 「레거시 배치 필드가 꺼져 있다」 단언은 은퇴했다.
+            // 그 필드군 자체가 철거돼 켤 방법이 없다.
+            var spec = unit.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(spec, "말파이트에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AreaCc, spec.Value.kind, "페이로드 = 광역 CC");
+            Assert.AreEqual(DcCcKind.Stun, spec.Value.ccKind, "말파이트는 기절이다");
             return unit;
         }
 
@@ -259,6 +264,8 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
             em.AddComponentData(e, new PathFollowState { speed = 2f, traversalLayers = TraversalSlots.DefaultMask });
+            // 스킬 레이어의 핸들 축 — 없으면 이 더미는 후보에서 빠진다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
             em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
             return e;
         }

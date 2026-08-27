@@ -9,9 +9,6 @@ namespace Wassup.Battle.Combat
     {
         public float knockbackDistance;
         public float knockbackDuration;
-        public float onPlacePushDistance;
-        public float onPlacePushDuration;
-        public float onPlacePushRadius;
         // sleep-fighter-defender — RESOLVE 주 타겟에게 Sleep N초. 0 = disabled.
         public float sleepOnHitSec;
         // knockup-fighter-defender — 히트한 **전 대상**에게 Stun N초(공중 띄우기의 심 실체).

@@ -490,7 +490,7 @@ namespace Wassup.UI
                 case AimMode.Defender:
                     return "아군 유닛 위에서 놓으면 부착  ·  손패로 놓으면 취소";
                 case AimMode.TileAim:
-                    return card != null && card.skill != null && card.skill.IsPortal
+                    return card != null && card.skill != null && card.skill.NeedsTwoTiles
                         ? "놓아서 입구 지정 → 출구 타일 탭  ·  손패로 놓으면 취소"
                         : "원하는 타일에서 놓으면 시전  ·  손패로 놓으면 취소";
                 case AimMode.EnemyMark:
@@ -671,7 +671,7 @@ namespace Wassup.UI
         private bool IsPortalCard()
         {
             var skill = Slot.card != null ? Slot.card.skill : null;
-            return skill != null && skill.IsPortal;
+            return skill != null && skill.NeedsTwoTiles;
         }
 
         // dreamcatcher-attach-lockon — 화살표/리티클 공유 유효성. 부착 가능(Unit/Squad=

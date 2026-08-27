@@ -57,7 +57,18 @@ namespace Wassup.Data
         // (`TargetsAllies` 는 active-ally-zone unit 1 에서 삭제 — 아군 버프가 장판이 되면서 조준이
         //  아군 유무를 물을 이유가 사라졌고, 아군/적 구분은 스폰 경로에서 구조적으로 갈린다.)
 
-        // 두 타일(입구/출구)을 요구하는 유일한 스킬. 조준 문안·라우팅·커밋 3곳이 같은 판별을 쓴다.
-        public bool IsPortal => effect == SkillEffectType.Portal;
+        // skill-layer-migration unit 7e — **조준이 몇 칸을 받나.** 저작이 선언한다.
+        //
+        // ⚠ 예전엔 `effect == Portal` 로 «이름표를 보고» 알았다(2026-08-26 사용자 결정으로
+        // 바꿨다): 「포탈같이 특수한 액티브는 각 액티브 스킬 **명세와 execute** 에서
+        // 처리하는 구조」. 이름표는 그 카드가 **무엇인가**(색·문안)를 말하고, 조준이
+        // 몇 칸인가는 그 스킬의 **명세**다 — 둘을 한 값으로 읽으면 새 두 칸 스킬을
+        // 저작할 때 이름표를 보는 곳 전부를 다시 찾아야 한다.
+        //
+        // 판정 지점 셋(조준 문안 · 커밋 라우팅 · 입구≠출구 규칙)이 이 하나를 공유한다.
+        [Tooltip("두 칸(입구/출구)을 찍어야 하는가. 포탈이 유일하다.")]
+        public bool needsTwoTiles;
+
+        public bool NeedsTwoTiles => needsTwoTiles;
     }
 }

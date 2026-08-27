@@ -1,6 +1,7 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
@@ -106,30 +107,38 @@ namespace Wassup.Battle.Units
             // cross-context read of a Combat buffer is allowed) and bake it into the
             // event BEFORE ecb destroys the entity.
             var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
+            // skill-layer-migration unit 3d″ — 자기 죽음 seam 의 생산자.
+            bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
+                out var skillFiredSingleton);
             foreach (var (tile, entity) in
                      SystemAPI.Query<RefRO<DefenderTile>>()
                               .WithAll<DeadTag, DefenderUnitTag>()
                               .WithEntityAccess())
             {
+                // ⚠ **라우팅이 레거시 스탬프보다 앞이다.** 뒤에 두면 이전한 카드가
+                // 여전히 arm 을 타는데 arm 이 잘 돌아 그물이 전부 초록이 된다.
+                //
+                // ⚠ **여기가 자기 죽음의 유일한 합류점이다.** 피해·치명 타이머·순찰 수명이
+                // 전부 `DeadTag` 로 모여 여기서 파괴된다. 앞당겨 잡으면 경로 하나만 보게 된다.
+                //
+                // ⚠ 아래 seam(`SkillDispatchLifecycleSystem`)은 이 시스템 **뒤**라 드레인
+                // 시점엔 이 엔티티가 없다. 그래서 자리·층을 **지금** 싣는다.
+                if (hasSkillQ && dcSlotLookup.HasBuffer(entity))
+                {
+                    var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
+                        ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
+                        : float3.zero;
+                    RouteDeathSkills(dcSlotLookup[entity], entity,
+                        Wassup.Battle.Units.Faction.DefenderUnit, deathPos,
+                        ref skillFiredSingleton.ValueRW.queue);
+                }
+
                 if (hasDefenderSink)
                 {
+                    // skill-layer-migration unit 3g — **OnDeath 폭발 스탬프는 은퇴했다.**
+                    // 작별 선물이 concrete 로 갔고 자기 죽음 seam 이 실행한다. 이 이벤트에
+                    // 남은 것은 「어느 칸이 비었나」뿐이다(타일 반납·시너지 재계산·연출).
                     var evt = new DefenderDeathEvent { cell = tile.ValueRO.cell };
-                    if (dcSlotLookup.HasBuffer(entity))
-                    {
-                        var slots = dcSlotLookup[entity];
-                        for (int s = 0; s < slots.Length; s++)
-                        {
-                            if (slots[s].trigger == DcTriggerKind.OnDeath &&
-                                slots[s].payload == DcPayloadKind.SelfTileAoe)
-                            {
-                                evt.hasOnDeathAoe = true;
-                                evt.aoeDamage = slots[s].magnitude;
-                                evt.aoeTileRange = slots[s].tileRange;
-                                evt.aoeDataIndex = slots[s].projectileDataIndex;
-                                break; // first OnDeath slot only (v1)
-                            }
-                        }
-                    }
                     var singleton = _defenderDeathSingletonQuery.GetSingletonRW<DefenderDeathEventsSingleton>();
                     singleton.ValueRW.queue.Enqueue(evt);
                 }
@@ -175,11 +184,110 @@ namespace Wassup.Battle.Units
                               .WithNone<BlockingHazard>()
                               .WithEntityAccess())
             {
+                // skill-layer-migration unit 8 — **적의 작별 선물이 여기서 열린다**
+                // (사용자 결정 2026-08-26: 전용 개념 배제).
+                //
+                // ⚠ **진영을 도출해서 싣는다.** 방어유닛 루프는 쿼리가 진영을 보증해서
+                // 리터럴이면 됐지만, 이 루프는 「죽었고 칸을 안 쓰는 모든 것」이라 적·
+                // 골 타워·소환물이 섞여 있다. 여기서 리터럴을 쓰면 적의 사후 폭발이
+                // **자기 진영을 때린다** — `CasterFaction` 축이 존재하는 이유가 이것이다.
+                if (hasSkillQ && dcSlotLookup.HasBuffer(entity))
+                {
+                    bool hasFaction = SystemAPI.HasComponent<FactionTag>(entity);
+                    var faction = Wassup.Battle.Units.FactionRelation.Resolve(
+                        hasFaction,
+                        hasFaction ? SystemAPI.GetComponent<FactionTag>(entity).value : Faction.None,
+                        SystemAPI.HasComponent<AttackUnitTag>(entity),
+                        SystemAPI.HasComponent<DefenderUnitTag>(entity));
+                    var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
+                        ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
+                        : float3.zero;
+                    RouteDeathSkills(dcSlotLookup[entity], entity, faction, deathPos,
+                        ref skillFiredSingleton.ValueRW.queue);
+                }
                 ecb.DestroyEntity(entity);
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
-    }
+    
+        // skill-layer-migration unit 8 — **자기 죽음 라우팅. 두 루프가 공유한다.**
+        //
+        // 방어유닛과 적은 파괴되는 루프가 다르다(방어유닛은 칸을 반납해야 해서 `DefenderTile`
+        // 을 들고 도는 전용 루프, 적은 아래 일반 루프). 그 둘이 각자 라우팅을 복제하면
+        // 「한쪽만 고친 채로 다른 쪽이 조용히 낡는」 자리가 된다 — 이 spec 이 이미 두 번
+        // 겪은 형태다. 그래서 사본이 아니라 인자로 가른다.
+        //
+        // ⚠ **진영은 인자다.** 여기서 도출하지 않는다 — 드레인 시점엔 이 엔티티가 이미
+        // 파괴돼 있어 값으로 실어 보내야 하고(계약 8), 어느 루프에서 왔는지를 아는 것은
+        // 호출자뿐이다.
+        private static void RouteDeathSkills(
+            in DynamicBuffer<DcTriggerSlot> routeSlots, Entity entity,
+            Wassup.Battle.Units.Faction faction, float3 deathPos,
+            ref NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> queue)
+        {
+                ulong firedMask = 0;
+                for (int s = 0; s < routeSlots.Length; s++)
+                {
+                    var rs = routeSlots[s];
+                    if (rs.trigger != DcTriggerKind.OnDeath) continue;
+                    if (rs.skillId == Wassup.Skills.SkillRegistry.NotRouted) continue;
+                    // 같은 스킬은 죽음당 한 번만(레거시도 첫 매칭만 스탬프했다).
+                    // ⚠ **id 상한이 곧 중복 억제의 상한이다**(ECS 리뷰 M-1). 32칸을 쓰던 시절
+                    // 레지스트리가 이미 32를 넘겨서, id ≥ 32 인 스킬은 중복 억제가 **꺼져**
+                    // 있었다 — 「같은 카드 두 장 = 폭발 두 번」이 조용히 부활하는 자리다.
+                    if (rs.skillId >= 0 && rs.skillId < 64)
+                    {
+                        ulong bit = 1UL << rs.skillId;
+                        if ((firedMask & bit) != 0) continue;
+                        firedMask |= bit;
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.LogWarning(
+                            "[SkillRouting] skillId 가 64를 넘어 중복 억제가 꺼졌다 — 마스크 폭을 늘려야 한다.");
+                    }
+                    queue.Enqueue(
+                        new Wassup.Battle.Skills.SkillFiredEvent
+                    {
+                        Seam = Wassup.Battle.Skills.SkillSeam.Lifecycle,   // 이 드레인 지점이 실행한다
+                        Caster = entity,          // 드레인 때는 이미 파괴된 핸들이다
+                        // ⚠ **핸들이 죽으므로 진영도 값으로 실어야 한다**(unit 8 선행).
+                        // 안 실으면 디스패처가 「플레이어 시전」으로 접는다.
+                        // ⚠ **호출자가 준다.** 방어유닛 전용 루프는 쿼리가 진영을 보증해
+                        // 리터럴을 넘기고, 일반 사망 루프는 엔티티별로 도출해 넘긴다 —
+                        // 거기서 리터럴을 쓰면 적의 작별 선물이 자기 진영을 때린다.
+                        CasterFaction = faction,
+                        SkillId = rs.skillId,
+                        SlotIndex = s,
+                        FiredPosition = deathPos,
+                        Target = Entity.Null,
+                        TargetPosition = deathPos,   // 내가 쓰러진 자리
+                        Magnitude = rs.magnitude,
+                        Duration = rs.duration,
+                        TileRange = rs.tileRange,
+                        Period = rs.period,
+                        DataIndex = rs.projectileDataIndex,
+                        Selector = (int)rs.ccKind,
+                        StatSelector = (int)rs.buffStat,
+                        StackSelector = (int)rs.stackKind,
+                        ProjectileMovement = (int)rs.projectileMovement,
+                        ProjectilePayload = (int)rs.projectilePayload,
+                        HazardDataIndex = rs.hazardDataIndex,
+                        PatternIndex = rs.patternIndex,
+                        Speed = rs.speed,
+                        HitThreshold = rs.hitThreshold,
+                        SlamDamage = rs.slamDamage,
+                        SlamTileRange = rs.slamTileRange,
+                        StackId = rs.statBuffStackId,
+                        // ⚠ **저작을 읽는다**(2026-08-26 사용자 결정) — 시체폭발과 같은 탄이다.
+                        VisualScale = rs.visualScale,
+                        // ⚠ 층을 안 싣는다(=무제한) — 레거시가 그랬다. **이 헬퍼는 이제
+                        // 적도 태우므로** 「방어유닛의」라는 한정은 참이 아니다.
+                        TargetTraversalLayers = 0,
+                    });
+                }
+        }
+}
 }

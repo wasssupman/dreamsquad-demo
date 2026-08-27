@@ -255,7 +255,6 @@ namespace Wassup.Bridge
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
 
-            if (binding.data != null) ApplyOnPlacePush(binding.data, cell);
             ActivateDeployedDefender(cell, entity);
             ApplyRefitHeal(entity, healRatio);
         }

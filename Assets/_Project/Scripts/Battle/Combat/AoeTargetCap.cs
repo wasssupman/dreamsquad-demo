@@ -5,7 +5,7 @@ namespace Wassup.Battle.Combat
 {
     // bomb-thrower-defender unit 2 — 폭발 AoE 대상 상한 순수 선별 (sim-critical, EditMode).
     // 이미 착지 셀 범위(Chebyshev) 필터를 통과한 후보들 중 impact 중심 거리² 오름차순으로
-    // 최대 cap 개를 고른다. ShieldTargeting.Select 의 All 분기 동형(선택 정렬).
+    // 최대 cap 개를 고른다. `SkillShieldSelect.Select` 의 거리 분기 동형(선택 정렬). 구 `ShieldTargeting`.
     // cap<=0 = 무제한(전 인덱스 순서대로) — 기존 메테오/스킬/보스 TileAoe 경로 무회귀.
     // 동률은 인덱스 오름차순 = 결정론(비동기 토너먼트 양측 동일 시뮬).
     public static class AoeTargetCap

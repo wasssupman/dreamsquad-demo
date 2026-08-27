@@ -221,6 +221,24 @@ namespace Wassup.Core
                 // hasDamageOutput 어느 축도 게이트가 아니다. SO null·트리거 축은 bake 가
                 // 최종 판정한다(위 주석의 분업).
                 case DcPayloadKind.SpawnHazard:
+                // skill-layer-migration unit 2b — 스탯 오라 둘. host 의 **공격 모델**과
+                // 무관하다: 대상은 반경과 진영이 정하고(host 가 줄 필요 없음), 데미지 출력이
+                // 없으며, 진영은 payload kind 가 고정한다(저작이 아니다) → targetsEnemies /
+                // HostProvidesTarget / hasDamageOutput 어느 축도 게이트가 아니다.
+                // 스탯 축의 유효성(EffectiveHealth 미배선)은 bake 가 loud 로 판정한다.
+                case DcPayloadKind.AllyStatAura:
+                case DcPayloadKind.OpponentStatAura:
+                // unit 2c — 판 밖 런타임(코스트·쿨다운). host 의 공격 모델은 물론 **판 자체와도**
+                // 무관하다: 대상도 진영도 데미지도 없다. 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.GainCost:
+                case DcPayloadKind.ReduceSkillCooldown:
+                // unit 2d — 광역 스택 도포. 대상은 반경이 정하고 진영은 payload 가 고정하며
+                // 데미지 출력은 스택 파생이 갖는다 → 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.AreaApplyStack:
+                // unit 2e — 광역 CC · 광역 지속 피해. 대상은 반경이 정하고 진영은 payload 가
+                // 고정하며, 피해는 payload 가 자기 값을 갖는다 → 세 축 어느 것도 게이트가 아니다.
+                case DcPayloadKind.AreaCc:
+                case DcPayloadKind.AreaDot:
                     return DcRejectReason.None;
 
                 default:

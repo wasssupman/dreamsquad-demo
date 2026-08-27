@@ -3,6 +3,7 @@
     "rootNamespace": "Wassup.Tests.PlayMode",
     "references": [
         "Wassup.Runtime",
+        "Wassup.Skills",
         "PrimeTween.Runtime",
         "Unity.Mathematics",
         "Unity.Entities",

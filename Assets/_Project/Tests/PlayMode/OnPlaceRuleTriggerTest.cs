@@ -31,8 +31,20 @@ namespace Wassup.Tests.PlayMode
 
         // ── 발화 관측 방법 ────────────────────────────────────────────────────
         // unit 0 이 소유하는 계약은 **「배치 사건이 슬롯을 발화시켜 payload 디스패치까지
-        // 도달한다」** 까지다. 그래서 관측도 거기서 끊는다 — arm 이 없는 payload 를 주고
-        // 시스템이 내는 loud 경고("slot fired with unhandled payload kind")를 잰다.
+        // 도달한다」** 까지다. 그래서 관측도 거기서 끊는다.
+        //
+        // ⚠ **관측 수단이 한 번 바뀌었다**(skill-layer-migration unit 8). 예전엔 «arm 이 없는
+        // payload» 를 주고 시스템이 내는 loud 경고("slot fired with unhandled payload kind")를
+        // 쟀는데, 이전이 끝나면서 **arm 없는 payload 라는 것이 없어졌다** — 경고가 안 나
+        // 이 핀이 빨개졌다. 불변식은 그대로고 재는 자가 바뀐 것이다.
+        //
+        // 지금은 스킬 레이어의 실행 계수기를 잰다. 오히려 이쪽이 원래 재고 싶던 것에
+        // 가깝다 — 경고는 「디스패치까지 갔다」의 **부작용**이었고 계수기는 그 사실 자체다.
+        // 배치 규칙은 `JustDeployed` → `BossPeriodicTriggerSystem` 을 거쳐 주기 seam 에서 돈다.
+        //
+        // ⚠ **seam 합계가 아니라 «이 스킬» 을 센다**(리뷰 H-3). 라이브 판에는 남의 주기
+        // 스킬이 늘 돌기 때문에 seam 합계로 재면 **배치한 유닛의 라우팅이 죽어 있어도
+        // 초록**이 난다 — 옛 그물이 payload 별 경고였던 덕에 갖고 있던 해상도를 잃는 것이다.
         //
         // 왜 실제 payload 효과로 재지 않는가: 그러면 남의 arm 이 그 host 진영에서 옳은지까지
         // 이 테스트가 책임지게 되고, 실패했을 때 원인이 «내 트리거» 인지 «그 arm» 인지 갈리지
@@ -47,13 +59,17 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var gm = Object.FindObjectOfType<GameManager>();
 
-            var caster = MakeArmlessRuleUnit("test_onplace_rule_tap");
+            var caster = MakeRuleUnit("test_onplace_rule_tap");
             Prepare(bridge, gm, caster);
             var cell = FindPlaceableCells(bridge, caster, 1, minGap: 1)[0];
 
-            LogAssert.Expect(LogType.Warning, new Regex("slot fired with unhandled payload"));
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, caster), "배치");
             yield return Frames(8);
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOfSkill(
+                    Wassup.Skills.Concrete.GrantSelfChargeSkill.Id), 1,
+                "이 유닛의 배치 규칙(충전 부여)이 실행되지 않았다");
             Object.Destroy(caster);
         }
 
@@ -66,16 +82,22 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var gm = Object.FindObjectOfType<GameManager>();
 
-            var caster = MakeArmlessRuleUnit("test_onplace_rule_dnd");
+            var caster = MakeRuleUnit("test_onplace_rule_dnd");
             Prepare(bridge, gm, caster);
             var cell = FindPlaceableCells(bridge, caster, 1, minGap: 1)[0];
 
-            LogAssert.Expect(LogType.Warning, new Regex("slot fired with unhandled payload"));
             Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, caster, out var placed),
                 "pending 배치 시작");
             yield return Frames(2);
+            // ⚠ **활성화 직전에 리셋한다.** pending 구간에도 다른 유닛의 주기 스킬이 돌아서,
+            // 배치 전에 리셋하면 그 계수가 섞여 이 핀이 새는 통과를 낸다.
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             bridge.ActivateDeployedDefender(cell, placed);
             yield return Frames(8);
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOfSkill(
+                    Wassup.Skills.Concrete.GrantSelfChargeSkill.Id), 1,
+                "D&D 배치 규칙(충전 부여)이 실행되지 않았다");
             Object.Destroy(caster);
         }
 
@@ -127,7 +149,7 @@ namespace Wassup.Tests.PlayMode
             var bridge = Object.FindObjectOfType<BattleBridge>();
             var gm = Object.FindObjectOfType<GameManager>();
 
-            var caster = MakeArmlessRuleUnit("test_onplace_rule_tag_life");
+            var caster = MakeRuleUnit("test_onplace_rule_tag_life");
             Prepare(bridge, gm, caster);
             var cell = FindPlaceableCells(bridge, caster, 1, minGap: 1)[0];
 
@@ -135,7 +157,7 @@ namespace Wassup.Tests.PlayMode
             var e = FindDefenderAt(bridge, cell);
             Assert.AreNotEqual(Entity.Null, e, "엔티티");
 
-            // 경계 ①: 규칙이 실제로 슬롯으로 구워졌는가(DefenderTriggerArmed 통과 + bake 호출).
+            // 경계 ①: 규칙이 실제로 슬롯으로 구워졌는가(DcTrigger.HasDetector 통과 + bake 호출).
             Assert.IsTrue(em.HasBuffer<DcTriggerSlot>(e), "DcTriggerSlot 버퍼");
             var slots = em.GetBuffer<DcTriggerSlot>(e);
             int onPlaceSlots = 0;
@@ -199,26 +221,12 @@ namespace Wassup.Tests.PlayMode
                 "BakeDefenderDirectionalPattern 보다 먼저 불리면 머신거너가 배치 스킬을 쏜다.");
         }
 
-        // 레거시 enum 과 규칙을 동시에 선언하면 배치 순간에 둘 다 터진다 — 조용히 통과 금지.
-        [UnityTest]
-        public IEnumerator LegacyEffectAndRule_TogetherWarnsAtBake()
-        {
-            yield return LoadBattle();
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            var gm = Object.FindObjectOfType<GameManager>();
-
-            var unit = MakeArmlessRuleUnit("test_onplace_rule_conflict");
-            unit.onPlaceEffect = OnPlaceEffectType.MeleeBurst; // 레거시도 켠다
-            unit.onPlaceRange = 1f;
-            unit.onPlaceMagnitude = 1f;
-            Prepare(bridge, gm, unit);
-            var cell = FindPlaceableCells(bridge, unit, 1, minGap: 1)[0];
-
-            LogAssert.Expect(LogType.Warning, new Regex("onPlaceEffect.*UnitSkillAbility"));
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "배치");
-            yield return Frames(3);
-            Object.Destroy(unit);
-        }
+        // skill-layer-migration unit 2g — **「레거시 enum 과 규칙이 동시에 돈다」 테스트가
+        // 은퇴했다.** 그 상태를 만들 방법이 없어졌다 — 레거시 필드군 자체가 철거돼
+        // 「동시에 선언」이 표현 불가능하다. 경고도 함께 은퇴했다.
+        //
+        // 이 자리에 남는 계약은 위 테스트들이다: 규칙 하나가 배치 순간에 한 번 발화하고,
+        // 재배치하면 재무장한다.
 
         // ── helpers ──────────────────────────────────────────────────────────
 
@@ -242,7 +250,6 @@ namespace Wassup.Tests.PlayMode
             unit.id = testId;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            unit.onPlaceEffect = OnPlaceEffectType.None;
             unit.abilities = new System.Collections.Generic.List<DefenderAbilityData>();
             return unit;
         }
@@ -250,11 +257,13 @@ namespace Wassup.Tests.PlayMode
         // OnPlace × (arm 없는 payload) — 발화 자체만 관측하는 도구. `NextAttackDoubleFire` 는
         // bake 를 통과하지만 BossPeriodicTriggerSystem 에 arm 이 없어 loud 경고로 떨어진다.
         // 그 경고가 곧 "슬롯이 발화해 payload 디스패치에 도달했다"는 신호다.
-        private static DefenderUnitData MakeArmlessRuleUnit(string testId)
+        // 구 `MakeArmlessRuleUnit`. 「arm 이 없는」이 이제 거짓이라 이름을 고쳤다 —
+        // `NextAttackDoubleFire` 는 `GrantSelfChargeSkill` 로 이전됐다.
+        private static DefenderUnitData MakeRuleUnit(string testId)
         {
             var unit = MakePlainUnit(testId);
             var ability = ScriptableObject.CreateInstance<UnitSkillAbility>();
-            ability.id = "test_rule_armless";
+            ability.id = "test_rule_onplace";
             ability.mechanics = new[] { MakeMechanic(DcPayloadKind.NextAttackDoubleFire) };
             unit.abilities = new System.Collections.Generic.List<DefenderAbilityData> { ability };
             return unit;

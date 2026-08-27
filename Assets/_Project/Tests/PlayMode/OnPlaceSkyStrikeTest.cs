@@ -426,8 +426,6 @@ namespace Wassup.Tests.PlayMode
             unit.attackRange = 0f;
             unit.cost = 0;
             unit.maxOnBoard = 100;
-            Assert.AreEqual(OnPlaceEffectType.None, unit.onPlaceEffect,
-                "캐논의 레거시 배치 효과는 해제돼 있어야 한다(규칙 경로로 이관)");
             Assert.IsNotNull(unit.GetAbility<UnitSkillAbility>(), "캐논에 UnitSkillAbility 가 배선돼야 한다");
             return unit;
         }

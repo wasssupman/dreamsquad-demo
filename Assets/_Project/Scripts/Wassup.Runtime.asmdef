@@ -2,6 +2,7 @@
     "name": "Wassup.Runtime",
     "rootNamespace": "Wassup",
     "references": [
+        "Wassup.Skills",
         "Unity.Entities",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",

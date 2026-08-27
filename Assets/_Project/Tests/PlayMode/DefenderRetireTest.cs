@@ -552,6 +552,7 @@ namespace Wassup.Tests.PlayMode
             var dummy = MakeEnemyDummy(em,
                 em.GetComponentData<LocalTransform>(host).Position + new float3(TileSize(bridge), 0f, 0f));
 
+            Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
             Assert.IsTrue(bridge.RetireDefender(cell), "retire");
             yield return RunSeconds(MeteorWarnSec + 1.5f);
 
@@ -560,6 +561,15 @@ namespace Wassup.Tests.PlayMode
                 "퇴근한 칸에 운석이 떨어져 인접 더미를 카드가 가진 flat 피해만큼 깎는다");
             Assert.Less(drop, MeteorDamage * 2f,
                 "운석은 한 발이다 — 두 발 몫이 빠졌으면 슬롯이 중복 발동한 것이다");
+
+            // ⚠ 위 피해 단언은 legacy arm 이 쏴도 똑같이 초록이다(skill-layer-migration
+            // unit 3e). 퇴근은 **시뮬 밖 생산자**라 이벤트가 자기 seam 을 말해야 하고,
+            // 그게 틀리면 프레임 첫 seam 이 집어가 「시전자 생존」 가드에 조용히 걸린다 —
+            // 그 상태를 잡을 수 있는 단언은 이것뿐이다.
+            Assert.GreaterOrEqual(
+                Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
+                    Wassup.Battle.Skills.SkillSeam.Lifecycle), 1,
+                "퇴근 운석이 스킬 레이어를 안 거쳤다 — 라우팅이 조용히 죽었다");
         }
 
         [UnityTest]

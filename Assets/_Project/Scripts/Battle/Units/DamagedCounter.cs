@@ -12,6 +12,11 @@ namespace Wassup.Battle.Units
     public struct DamagedCounter : IBufferElementData
     {
         public int instanceId;
+
+        // skill-layer-migration unit 3d‴ — 라우팅 키. `DcTriggerSlot` 과 **다른 버퍼**라
+        // 그쪽 키를 못 빌린다(카운터 쓰기가 Units 소유라 여기 산다 — 위 주석).
+        // 0(=NotRouted) 이면 **스킬이 아니다**(발동 규칙·공격의 성질). arm 은 철거됐고, 아니면 스킬 레이어가 실행한다.
+        public int skillId;
         public ushort period;   // OnDamagedN: fire on every N-th damaged frame
         public ushort counter;  // owned write: DamageApplicationSystem only
 
@@ -23,6 +28,11 @@ namespace Wassup.Battle.Units
         public float magnitude;  // SelfTileAoe: flat AoE 데미지
         public int tileRange;    // SelfTileAoe: Chebyshev 반경
         public int aoeDataIndex; // SelfTileAoe: AoE view ProjectileData index (-1 = none)
+        // 2026-08-26 사용자 결정 — 폭발 그림 배율을 저작이 정한다. 레거시는 1 로
+        // 하드코딩해서 탄 에셋의 값이 무시됐고, **같은 탄**이 경로마다 다른 크기로
+        // 나왔다. 형제들은 `DcTriggerSlot.visualScale` 을 쓰는데 이 버퍼는 따로라
+        // 필드도 여기 산다. 0 = 저작 없음 → 어댑터가 1 로 읽는다.
+        public float aoeVisualScale;
 
         // dreamcatcher-trigger-gates unit 1 — 게이트 (OnDamagedN×Self 배선 전용이라
         // subject 필드는 생략 — Self 고정). 판정 hp = 이 피격 프레임의 적용 후(newHp):

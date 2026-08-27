@@ -308,6 +308,10 @@ namespace Wassup.Bridge
             }
 
             int attached = 0;
+            // unit 4a — 부착 seam 에 실린 것이 있으면 **이 호출 안에서** 드레인한다.
+            // 루프 뒤에 한 번만 도는 이유: mechanic 이 여럿이면 한 번에 소진하는 것이
+            // 자연스럽고, 중간에 돌리면 같은 카드의 뒷 mechanic 이 앞 것의 결과를 본다.
+            bool immediateFired = false;
             int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
             for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
@@ -334,10 +338,37 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfBuffLethal non-positive magnitude/duration — skipped.");
                         continue;
                     }
-                    // 공속 +magnitude% for `duration` 초 (기존 StatModifier) + 만료 시 자폭.
-                    EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration, Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
-                    _em.AddComponentData(defender, new Wassup.Battle.Units.LethalTimer { remaining = m.payload.duration });
-                    attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    // unit 4a — 실행은 concrete 가 한다. 여기가 하는 일은 **발화 신호**와
+                    // 값 스냅샷뿐이다(다른 seam 의 감지자와 같은 모양).
+                    // ⚠ `% → 배율` 은 여기서 바꾼다 — 슬롯 bake 가 같은 자리에서 같은 변환을
+                    // 하고(그 주석: 「bake 가 % → 배율로 이미 바꿔 실은 값」), 도메인은 저작
+                    // 인코딩을 모르는 것이 계약이다.
+                    int lethalSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
+                    if (lethalSkillId != Wassup.Skills.SkillRegistry.NotRouted
+                        && _skillFiredQueue.IsCreated)
+                    {
+                        _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                        {
+                            Seam = Wassup.Battle.Skills.SkillSeam.Immediate,
+                            Caster = defender,
+                            SkillId = lethalSkillId,
+                            SlotIndex = i,
+                            Target = Entity.Null,
+                            Magnitude = 1f + m.payload.magnitude / 100f,
+                            Duration = m.payload.duration,
+                        });
+                        immediateFired = true;
+                        attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    }
+                    else
+                    {
+                        // ⚠ **fail-closed**(ECS 리뷰 H-1). 라우팅이 안 잡히면 실행이
+                        // 아무 데서도 안 일어난다 — 그런데 `attached++` 가 밖에 있으면
+                        // 카드는 «부착 성공»으로 판정돼 **비용만 나간다.**
+                        // 이 spec 이 세운 규율(미등록 스킬 loud reject · Seam.None loud drop)의
+                        // 정확한 반대편이라, 여기서도 짖고 안 센다.
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfBuffLethal 이 스킬 레이어로 라우팅되지 않았다(skillId={lethalSkillId}, queue={_skillFiredQueue.IsCreated}) — 부착하지 않는다.");
+                    }
                     continue;
                 }
 
@@ -386,19 +417,33 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon target has no CcEffect buffer — skipped.");
                         continue;
                     }
-                    Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, defender, new Wassup.Battle.Effects.CcEffect
+                    // unit 4b — 실행은 concrete 가 한다. 저작(kind + %)을 스탯·배율로 푸는
+                    // 것과 스택 슬롯 발급은 **여기가** 한다 — 둘 다 저작 인코딩과 브리지
+                    // 소유 카운터라 도메인이 알 이유가 없다.
+                    int cocoonSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
+                    if (cocoonSkillId != Wassup.Skills.SkillRegistry.NotRouted
+                        && _skillFiredQueue.IsCreated)
                     {
-                        kind = Wassup.Battle.Effects.CcKind.Sleep,
-                        remainingTime = m.payload.duration,
-                    });
-                    _em.AddComponentData(defender, new Wassup.Battle.Effects.DreamCocoon
+                        _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                        {
+                            Seam = Wassup.Battle.Skills.SkillSeam.Immediate,
+                            Caster = defender,
+                            SkillId = cocoonSkillId,
+                            SlotIndex = i,
+                            Target = Entity.Null,
+                            Duration = m.payload.duration,
+                            StatSelector = (int)cocoonStat,
+                            Magnitude = cocoonMult,
+                            StackId = _dcStackCounter++,
+                        });
+                        immediateFired = true;
+                        attached++;
+                    }
+                    else
                     {
-                        remaining = m.payload.duration - Wassup.Battle.Effects.DreamCocoon.Epsilon,
-                        stat = cocoonStat,
-                        mult = cocoonMult,
-                        stackId = _dcStackCounter++,
-                    });
-                    attached++;
+                        // fail-closed — 위 SelfBuffLethal 과 같은 이유.
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon 이 스킬 레이어로 라우팅되지 않았다(skillId={cocoonSkillId}, queue={_skillFiredQueue.IsCreated}) — 부착하지 않는다.");
+                    }
                     continue;
                 }
 
@@ -498,6 +543,9 @@ namespace Wassup.Bridge
                     }
                     var dEntry = new Wassup.Battle.Units.DamagedCounter
                     {
+                        // unit 3d‴ — 이 버퍼의 라우팅 키. 슬롯 경로와 **같은 규칙 함수**를
+                        // 쓴다(버퍼가 다르다는 것이 규칙이 다르다는 뜻은 아니다).
+                        skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
                         instanceId = _dcInstanceCounter++,
                         period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
                         counter = 0,
@@ -523,6 +571,8 @@ namespace Wassup.Bridge
                         dEntry.magnitude = m.payload.magnitude;
                         dEntry.tileRange = math.max(0, m.payload.tileRange);
                         dEntry.aoeDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                        // 형제들(`DcTriggerSlot.visualScale`)과 같은 자리·같은 출처.
+                        dEntry.aoeVisualScale = m.payload.projectile.visualScale;
                     }
                     else if (m.payload.kind != Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
                     {
@@ -539,6 +589,8 @@ namespace Wassup.Bridge
 
                 var slot = new DcTriggerSlot
                 {
+                    // 카드 경로의 스킬 레이어 라우팅 — 규칙은 `SkillIdForCardPayload` 소유.
+                    skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
@@ -1044,6 +1096,12 @@ namespace Wassup.Bridge
                 attached++;
             }
             if (attached == 0) return -1;
+            // unit 4a — **여기서 끝낸다.** 부착이 동기 트랜잭션이라, 반환 전에 실행이
+            // 끝나 있어야 호출자가 보는 상태와 반환값이 같은 시점을 가리킨다.
+            // ⚠ `attached == 0` 거절 **뒤**다 — 거절된 카드는 아무것도 안 쓴다는 계약이
+            // 이 순서에 있다(부분 적용 금지). 거절 경로에 실린 이벤트는 없다(위 분기가
+            // `attached++` 와 같은 자리에서만 싣는다).
+            if (immediateFired) RunImmediateSkills();
             return auraHandle;
         }
 
@@ -1115,18 +1173,38 @@ namespace Wassup.Bridge
                 return -1;
             }
 
-            // 보상 배율 — 표식 시점 베이크 덮어쓰기(bridge 부착 시점 쓰기 선례: LethalTimer).
-            // EnemyKilledEvent 가 enqueue 시점에 이 값을 복사하므로 처치 경로 무수정.
-            if (_em.HasComponent<Wassup.Battle.Units.AwakeningReward>(enemy))
+            // unit 4c — 실행은 concrete 가 한다. 저작(% → 배율)과 스택 슬롯 발급은
+            // 여기가 한다(저작 인코딩과 브리지 소유 카운터).
+            // ⚠ **부착 seam 이라 이 호출 안에서 끝난다.** 표식은 그 적이 죽을 때 소비되고,
+            // 처치 이벤트가 enqueue 시점에 보상값을 복사하므로 늦으면 안 된다.
+            int bountySkillId = SkillIdForCardPayload(
+                card.mechanics[mi].trigger.kind, Wassup.Data.DcPayloadKind.BountyMark);
+            if (bountySkillId != Wassup.Skills.SkillRegistry.NotRouted
+                && _skillFiredQueue.IsCreated)
             {
-                var reward = _em.GetComponentData<Wassup.Battle.Units.AwakeningReward>(enemy);
-                reward.value = Mathf.Max(1, Mathf.RoundToInt(reward.value * payload.magnitude));
-                _em.SetComponentData(enemy, reward);
+                _skillFiredQueue.Enqueue(new Wassup.Battle.Skills.SkillFiredEvent
+                {
+                    Seam = Wassup.Battle.Skills.SkillSeam.Immediate,
+                    Caster = Entity.Null,          // 플레이어가 건다 — host 가 없다
+                    SkillId = bountySkillId,
+                    SlotIndex = mi,
+                    Target = enemy,
+                    Magnitude = payload.magnitude,                    // 각성 배율
+                    HitThreshold = payload.tileRange > 0
+                        ? 1f - payload.tileRange / 100f : 0f,          // 받는 피해 배율
+                    Duration = DcDuration,
+                    StackId = _dcStackCounter++,
+                });
+                RunImmediateSkills();
             }
-            if (payload.tileRange > 0)
-                EnqueueStatModifier(enemy, Wassup.Battle.Effects.StatKind.DmgTakenMul,
-                    1f - payload.tileRange / 100f, DcDuration, _dcStackCounter++,
-                    Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
+            else
+            {
+                // ⚠ **fail-closed**(ECS 리뷰 H-1). 여기가 특히 나쁘다 — 등록부에 넣어
+                // 버리면 같은 적에 **재시도조차 막힌다**(이중 표식 preflight 에 걸린다).
+                // 무차감 거절이 옳다.
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): 스킬 레이어로 라우팅되지 않았다(skillId={bountySkillId}, queue={_skillFiredQueue.IsCreated}) — 표식하지 않는다.");
+                return -1;
+            }
             _bountyMarked.Add(enemy);
             return 0;
         }

@@ -103,22 +103,13 @@ namespace Wassup.Data
         [Header("Attack Outputs")]
         public AttackOutput[] outputs;
 
-        // Phase 4: fires once at placement moment. None means no on-place effect.
-        public OnPlaceEffectType onPlaceEffect;
-        public float onPlaceRange;
-        public float onPlaceMagnitude;
-        public float onPlaceDuration;
-        // bleed-fighter-defender unit 1 — ApplyStackNearby 전용. 스택 종류를 분기에
-        // 하드코딩하지 않기 위한 슬롯(제약 6). 다른 onPlaceEffect 에서는 무시된다.
-        public Wassup.Battle.Effects.StackKind onPlaceStackKind;
-        // beam-ranger-defender unit 2 — DotNearby 전용. 이산 tick 간격(초).
-        // 이때 onPlaceMagnitude 는 **틱당 피해**다(DPS 아님 — CcEffect.tickInterval 계약).
-        public float onPlaceTickInterval;
+        // skill-layer-migration unit 2g — **배치 효과 flat 필드군이 은퇴했다.**
+        // `onPlaceEffect` enum 11종과 그 파라미터 5개(range/magnitude/duration/stackKind/
+        // tickInterval)가 여기 있었다. 이제 배치 스킬은 `abilities` 의
+        // `UnitSkillAbility{OnPlace × payload}` 하나로만 저작한다 — 어휘가 하나다.
 
         // camera-direction unit 17 — 배치 스킬이 발동하는 순간의 카메라 셰이크.
-        // **파이프라인과 무관하다**: 레거시 `onPlaceEffect` enum 이든 `abilities` 의
-        // `UnitSkillAbility{OnPlace × payload}` 규칙이든, 배치 스킬이 발동하는 그 한 지점에서
-        // 한 번 울린다(브리지의 두 배치 확정 seam 이 공유). 스킬이 없는 유닛에도 걸 수 있지만
+        // 배치 확정 seam 두 곳이 공유한다. 스킬이 없는 유닛에도 걸 수 있지만
         // 지금은 스킬 있는 유닛만 저작한다.
         // strength 0 = 셰이크 없음(기본). 세기는 0~1 이고 실제 진폭은 CameraDirectionConfig
         // 소유 — 여기서 정하는 것은 «이 유닛이 얼마나 크게 울리나» 뿐이다.
@@ -316,10 +307,8 @@ namespace Wassup.Data
         // ⚠ sim-Y 가 아니다 — 평면 tilemap 보드라 BoardSpace 가 sim-Y 를 버린다(화면에 안 보임).
         public float knockupVisualHeight = 1.2f;
 
-        [Header("On-place Push")]
-        public float onPlacePushDistance; // world units. 0 = disabled
-        public float onPlacePushDuration; // seconds
-        public float onPlacePushRadius;   // world units, radial from defender center
+        // unit 2g — 배치 밀쳐냄 3필드도 함께 은퇴했다. **저작 소비자가 0** 이었다
+        // (에셋 27개 전건 0). 마지막 소비자였던 샷건맨은 규칙 경로로 갈아탔다.
 
         [Header("Cast Anchor")]
         public string castAnchorBone = "";
@@ -398,19 +387,4 @@ namespace Wassup.Data
         public List<string> idleVariants = new List<string>();
     }
 
-    public enum OnPlaceEffectType
-    {
-        None,
-        SlowPulse,
-        BoostNearbyDefenders,
-        BindNearby,
-        MeleeBurst,
-        ForwardProjectile,
-        GainCost,
-        ReduceSkillCooldown,
-        // 아래는 항상 **맨 뒤에** 추가한다 — 기존 유닛 에셋이 이 enum 을 int 로 직렬화해 두었다.
-        ApplyStackNearby,   // bleed-fighter-defender unit 1 — 반경 내 적에게 onPlaceStackKind 스택 도포
-        StunNearby,         // knockup-fighter-defender unit 1 — 반경 내 적 전원 Stun(착지 충격 = 넉업)
-        DotNearby,          // beam-ranger-defender unit 2 — 반경 내 적 전원에 이산 tick DoT(개점 일제 조사)
-    }
 }

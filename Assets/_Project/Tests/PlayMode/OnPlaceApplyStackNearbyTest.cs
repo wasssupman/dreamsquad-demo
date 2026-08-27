@@ -38,14 +38,20 @@ namespace Wassup.Tests.PlayMode
             var gm = Object.FindObjectOfType<GameManager>();
 
             var catalog = FindDefenderCatalog();
-            var slasher = Object.Instantiate(catalog.ById("guardian"));
+            // skill-layer-migration unit 2d — **실제 난도질꾼의 규칙 저작을 쓴다.**
+            // 예전엔 가디언 사본에 레거시 flat 필드를 꽂아 썼는데, 그러면 이전 뒤에도
+            // 이 그물이 **은퇴 예정인 arm 만** 계속 재고 실제 경로를 안 본다.
+            var slasher = Object.Instantiate(catalog.ById("slasher"));
             slasher.id = "test_onplace_stacker";
-            slasher.onPlaceEffect = OnPlaceEffectType.ApplyStackNearby;
-            slasher.onPlaceStackKind = StackKind.Bleed;
-            slasher.onPlaceRange = 2f;
+            slasher.attackRange = 0f;   // 평타가 섞이면 배치 도포분을 분리 측정할 수 없다
+            slasher.cost = 0;
+            slasher.maxOnBoard = 100;
+            var stackSpec = slasher.GetAbility<UnitSkillAbility>()?.mechanics[0].payload;
+            Assert.IsNotNull(stackSpec, "난도질꾼에 배치 스킬(UnitSkillAbility)이 배선돼야 한다");
+            Assert.AreEqual(DcPayloadKind.AreaApplyStack, stackSpec.Value.kind, "페이로드 = 광역 스택");
+            Assert.AreEqual(DcStackKind.Bleed, stackSpec.Value.stackKind, "난도질꾼은 출혈이다");
             // Bleed 는 누적형(atStack 5 Consume) — 배치 도포는 임계치를 한 번에 준다.
-            slasher.onPlaceMagnitude = 5f;
-            slasher.onPlaceDuration = 2f;
+            Assert.GreaterOrEqual(stackSpec.Value.magnitude, 5f, "임계치를 한 번에 주는 저작이어야 한다");
 
             bridge.SetDefenderPool(new[] { slasher });
             bridge.BeginPlacement();
@@ -56,8 +62,8 @@ namespace Wassup.Tests.PlayMode
             Vector2Int cell = FindPlaceableCell(bridge, slasher);
             Assert.AreNotEqual(new Vector2Int(int.MinValue, int.MinValue), cell, "placeable cell found");
 
-            var near = SpawnDummyEnemy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)));
-            var far = SpawnDummyEnemy(em, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)));
+            var near = SpawnDummyEnemy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)));
+            var far = SpawnDummyEnemy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, slasher), "place slasher");
 
@@ -106,7 +112,7 @@ namespace Wassup.Tests.PlayMode
             return false;
         }
 
-        private static Entity SpawnDummyEnemy(EntityManager em, Vector3 worldPos)
+        private static Entity SpawnDummyEnemy(EntityManager em, BattleBridge bridge, Vector3 worldPos)
         {
             const float Hp = 1_000_000f;
             var enemy = em.CreateEntity();
@@ -117,6 +123,14 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<CcEffect>(enemy);
             em.AddBuffer<DotEffect>(enemy);        // 임계 파생 DoT 의 소비처(dot-effect-extraction unit 0)
             em.AddComponent<AttackUnitTag>(enemy); // ← _aliveAttackersQuery 가 보는 유일한 조건
+            // ⚠ 통행 층을 명시한다 — 없으면 0 = 무제한으로 층 게이트를 조기 통과해
+            // 게이트가 죽어도 초록이 된다.
+            em.AddComponentData(enemy, new Wassup.Battle.Movement.PathFollowState
+            {
+                speed = 0f, traversalLayers = (byte)Wassup.Data.PlacementLayer.Path,
+            });
+            // 스킬 레이어의 핸들 축 — 없으면 이 더미는 후보에서 빠진다.
+            BattleBridgeTestAccess.AttachSimEntityId(bridge, enemy);
             return enemy;
         }
 

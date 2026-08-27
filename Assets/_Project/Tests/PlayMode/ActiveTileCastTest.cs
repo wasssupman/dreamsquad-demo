@@ -73,6 +73,10 @@ namespace Wassup.Tests.PlayMode
             s.range = range;
             s.cooldownSec = 0f;
             s.cost = 0;
+            // ⚠ 조준 사양은 **저작 필드**다(unit 7e) — 라이브 에셋이 그렇게 저작돼 있고
+            // (`ActiveSkillAimingTests` 가 그것을 못박는다) 런타임으로 만드는 카드도
+            // 같아야 한다. 안 켜면 포탈이 조용히 한 칸 스킬이 된다.
+            s.needsTwoTiles = effect == SkillEffectType.Portal;
             return s;
         }
 

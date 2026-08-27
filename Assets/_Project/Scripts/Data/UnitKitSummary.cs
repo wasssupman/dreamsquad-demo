@@ -47,7 +47,6 @@ namespace Wassup.Data
             // 규칙(UnitSkillAbility). 규칙을 먼저 보고, 없을 때만 enum 으로 떨어진다 —
             // 둘 다 선언된 유닛은 bake 가 경고하므로 여기선 한 줄만 낸다.
             string onPlace = OnPlaceRuleClause(u);
-            if (string.IsNullOrEmpty(onPlace)) onPlace = OnPlaceClause(u.onPlaceEffect);
             if (!string.IsNullOrEmpty(onPlace))
                 traits.Add(onPlace);
             if (u.GetAbility<HazardCastAbility>() != null)
@@ -72,27 +71,6 @@ namespace Wassup.Data
             return false;
         }
 
-        private static string OnPlaceClause(OnPlaceEffectType effect)
-        {
-            switch (effect)
-            {
-                case OnPlaceEffectType.SlowPulse: return "배치 시 주변 둔화";
-                case OnPlaceEffectType.BoostNearbyDefenders: return "배치 시 주변 아군 강화";
-                case OnPlaceEffectType.BindNearby: return "배치 시 주변 속박";
-                case OnPlaceEffectType.MeleeBurst: return "배치 즉시 광역 폭발";
-                case OnPlaceEffectType.ForwardProjectile: return "배치 시 전방 발사";
-                case OnPlaceEffectType.GainCost: return "배치 시 코스트 획득";
-                case OnPlaceEffectType.ReduceSkillCooldown: return "배치 시 스킬 쿨다운 감소";
-                case OnPlaceEffectType.ApplyStackNearby: return "배치 시 주변 상태 중첩";
-                // 「기절」이 아니라 **「스턴」** (사용자 결정 2026-08-16) — 게임 문안이 쓰는 어휘로
-                // 통일한다. 말파이트 desc 가 이 축이다.
-                case OnPlaceEffectType.StunNearby: return "배치 시 주변 스턴";
-                case OnPlaceEffectType.DotNearby: return "배치 시 주변 지속 피해";
-                // default 가 빈 문자열이라 신규 enum 멤버는 **조용히 설명이 빈다**.
-                // OnPlaceEffectType 을 늘리면 여기도 같이 늘릴 것.
-                default: return "";
-            }
-        }
 
         // on-place-skill-rework unit 6 — 규칙(트리거 × 페이로드)으로 선언된 배치 스킬의 문안.
         //
@@ -152,6 +130,44 @@ namespace Wassup.Data
                         return m.payload.tileRange > 0
                             ? $"배치 시 주변 {m.payload.tileRange}타일 아군에게 보호막"
                             : "배치 시 주변 아군에게 보호막";
+                    // skill-layer-migration unit 2a — 브루저 배치 충격파(레거시 `MeleeBurst`).
+                    case DcPayloadKind.SelfTileAoe:
+                        return m.payload.tileRange > 0
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 적에게 충격파"
+                            : "배치 시 주변 적에게 충격파";
+                    // unit 2b — 스탯 오라 둘. **진영은 payload 가, 스탯은 저작이 정한다** —
+                    // 문안도 같은 두 축으로 만든다. 숫자는 저작값을 그대로 읽는다.
+                    case DcPayloadKind.AllyStatAura:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 아군 "
+                               + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
+                               + $" ({m.payload.duration:0.#}초)";
+                    case DcPayloadKind.OpponentStatAura:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적 "
+                               + $"{StatWord(m.payload.buffStat)} {SignedPercent(m.payload.magnitude)}"
+                               + $" ({m.payload.duration:0.#}초)";
+                    // unit 2c — 판 밖 런타임. 반경도 지속도 없어 숫자는 하나뿐이다.
+                    case DcPayloadKind.GainCost:
+                        return $"배치 시 코스트 +{m.payload.magnitude:0.#}";
+                    case DcPayloadKind.ReduceSkillCooldown:
+                        return $"배치 시 스킬 쿨다운 −{m.payload.magnitude:0.#}초";
+                    // unit 2d — 광역 스택. 상한은 문안에 안 넣는다(스택의 성질이지 이 유닛의
+                    // 저작이 아니라, 여기 적으면 스택 SO 를 고칠 때 문안이 stale 해진다).
+                    case DcPayloadKind.AreaApplyStack:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적에게 "
+                               + $"{StackWord(m.payload.stackKind)} {(int)m.payload.magnitude}중첩";
+                    // unit 2e — 광역 CC. 부수 피해는 **있을 때만** 말한다(0 이 흔한 저작이라
+                    // 「피해 0」이라고 적으면 화면이 거짓말을 한다).
+                    case DcPayloadKind.AreaCc:
+                        return m.payload.magnitude > 0f
+                            ? $"배치 시 주변 {m.payload.tileRange}타일 적 {CcWord(m.payload.ccKind)}"
+                              + $" ({m.payload.duration:0.#}초) · 피해 {m.payload.magnitude:0.#}"
+                            : $"배치 시 주변 {m.payload.tileRange}타일 적 {CcWord(m.payload.ccKind)}"
+                              + $" ({m.payload.duration:0.#}초)";
+                    // unit 2e — 광역 지속 피해. **틱당 피해지 총량이 아니다** — 총량을 적으려면
+                    // 여기서 곱해야 하고, 그 순간 문안이 자기 숫자를 갖게 된다(이 파일의 규율 위반).
+                    case DcPayloadKind.AreaDot:
+                        return $"배치 시 주변 {m.payload.tileRange}타일 적을 {m.payload.duration:0.#}초간 지짐"
+                               + " (그동안 공격 불가)";
                     // ⚠ 배선하지 않은 payload 는 조용히 문안이 빈다(위 enum 경로와 같은 함정).
                     // **`return` 이 아니라 `continue` 다** — 여기서 반환하면 규칙이 둘일 때
                     // 첫 번째가 미배선이라는 이유로 두 번째 문안까지 사라진다.
@@ -161,5 +177,50 @@ namespace Wassup.Data
             }
             return "";
         }
+
+        // 스탯 축의 화면 어휘. **정의 계층이 `Battle.StatKind` 를 모르게 유지**하므로
+        // 저작 enum(`CardBuffKind`)에서 바로 만든다.
+        private static string StatWord(CardBuffKind kind)
+        {
+            switch (kind)
+            {
+                case CardBuffKind.AttackDamage: return "공격력";
+                case CardBuffKind.AttackSpeed: return "공격 속도";
+                case CardBuffKind.EffectiveHealth: return "체력";
+                case CardBuffKind.MoveSpeed: return "이동 속도";
+                case CardBuffKind.DamageVsCc: return "상태이상 적 피해";
+                default: return "능력치";
+            }
+        }
+
+        // CC 종류의 화면 어휘.
+        private static string CcWord(DcCcKind kind)
+        {
+            switch (kind)
+            {
+                case DcCcKind.Stun: return "기절";
+                case DcCcKind.Sleep: return "수면";
+                case DcCcKind.Impulse: return "밀쳐냄";
+                default: return "행동 불가";
+            }
+        }
+
+        // 스택 종류의 화면 어휘.
+        private static string StackWord(DcStackKind kind)
+        {
+            switch (kind)
+            {
+                case DcStackKind.Fire: return "화상";
+                case DcStackKind.Ice: return "빙결";
+                case DcStackKind.Bleed: return "출혈";
+                case DcStackKind.Poison: return "중독";
+                default: return "스택";
+            }
+        }
+
+        // 저작은 퍼센트다(30 = +30%, −90 = −90%). 부호를 화면 어휘로 만든다 —
+        // **여기서 숫자를 만들지 않는다**(저작값과 갈리는 것을 막는 이 파일의 규율).
+        private static string SignedPercent(float percent)
+            => percent >= 0f ? $"+{percent:0.#}%" : $"{percent:0.#}%";
     }
 }

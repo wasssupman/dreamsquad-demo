@@ -14,7 +14,7 @@ namespace Wassup.Battle.Units
     // 수명: 붙인 다음 sim 틱에 소비 시스템이 ECB 로 제거한다(반드시 ECB — 소비 루프가
     // DcTriggerSlot 버퍼를 순회 중이라 즉시 RemoveComponent 는 이터레이션을 죽인다).
     //
-    // ⚠ 이 태그는 **레거시 `OnPlaceEffectType` 경로의 1회 보장 권위가 아니다.** 그쪽은
+    // ⚠ 이 태그는 규칙 경로의 1회 보장 권위다. 예전엔 레거시 `OnPlaceEffectType` 경로가 따로 있었고(skill-layer-migration unit 2g 에서 철거) 그쪽은
     // `BattleBridge._onPlaceTriggeredEntities`(managed HashSet)가 소유하고 재배치 재무장까지
     // 책임진다. 둘을 하나로 합치려다 재무장을 깨지 말 것.
     public struct JustDeployed : IComponentData { }
