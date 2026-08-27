@@ -26,26 +26,25 @@
 
 ## 맵 ↔ 덱 페어링
 
-풀의 각 엔트리 = `(MapDocument, AttackDeck)`. **맵마다 자기 전용 덱**을 가진다(2026-07-23~):
+풀의 각 엔트리 = `(MapStage 프리팹, AttackDeck, WavePlanAsset)`. **맵마다 자기 전용 덱**을 가진다(2026-07-23~).
 
-> ⚠ **라이브 `entries` 는 현재 `MapDocument_Duel` 한 장뿐이다**(`duel-live-focus`, 커밋 `fc755760`).
-> 아래 표의 나머지는 `devEntries` 로 옮겨져 **로비 맵 스테퍼로만** 들어간다. 토너먼트 판은
-> 시드와 무관하게 Duel 로 간다 — 밸런스를 재려면 여기가 첫 번째 맵이다.
+> 스테이지 풀 `Assets/_Project/Data/Maps/MapStagePool.asset`(map-diorama-stage unit 11·12, 2026-08-26): 라이브 4장이 시드 로테이션에
+> 들어간다. 시드 부재(직접 Play·게스트) = 0번 Duel. dev 슬롯은 현재 비어 있다(로비 스테퍼 전용).
 
-| 맵 asset | 덱 | waveSeed |
-|---|---|---|
-| MapDocument_Serpent | Deck_Serpent | 20260821 | Boss_Nightmare |
-| MapDocument_Coil | Deck_Coil | 20260822 | Boss_Nightmare |
-| MapDocument_Twin | Deck_Twin | 20260823 | Boss_Jjangssen |
-| MapDocument_Spiral | Deck_Spiral | 20260824 | Boss_Jjangssen |
-| MapDocument_Zig | Deck_Zig | 20260825 | Boss_Mamemo |
-| MapDocument_Hook | Deck_Hook | 20260826 | Boss_Mamemo |
+| 스테이지 프리팹 | 덱 | waveSeed | 보스 |
+|---|---|---|---|
+| `Art/Theme/duel/MapStage_Duel` | Deck_Duel | 20261972 | Boss_Jjangssen |
+| `Art/Theme/street/MapStage_Street` | Deck_Serpent | 20260841 | Boss_Nightmare |
+| `Art/Theme/subway/MapStage_Subway` | Deck_Zig | 20260845 | Boss_Mamemo |
+| `Art/Theme/street_day/MapStage_StreetDay` | Deck_Coil | 20260842 | Boss_Nightmare |
+
+(덱 이름은 은퇴한 `MapDocument_*` 맵 이름을 아직 달고 있다 — 개명은 «레거시 덱 정리» 후속. 풀 밖 맵 덱 Twin/Spiral/Hook 과 공성 덱 Ford/Isle 은 EditMode 덱 테스트가 이름으로 순회하므로 남겨 둔다.)
 
 (4번째 열 = 그 맵의 보스. 판당 보스가 1기라 덱마다 **1종을 저작**한다 — 시드 뽑기로는 어차피 맵마다 고정되고 «어느 맵이 어느 보스를 받나»만 시드에 맡겨진다. `wave-concept-blocks` unit 3.)
 
 - 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless`(waveSeed 20260827, 보스 로테이션 3종 유지)는 풀 밖 — `BattleBridge.endlessEncounter` 슬롯이 들고 있다.
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
-- 맵 추가 = 풀 `entries` 에 (새 MapDocument, 새 Deck) 한 쌍 추가. **코드 변경 불필요**(GUID 참조).
+- 맵 추가 = 풀 `entries` 에 (새 MapStage 프리팹, 덱) 한 쌍 추가 — 라이브 엔트리는 덱 필수(`StagePoolBuildabilityTests` 가 막는다). **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.
 
 ---

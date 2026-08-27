@@ -17,12 +17,12 @@ MonoBehaviour:
     deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
     plan: {fileID: 0}
   - stage: {fileID: 5425316568415948487, guid: 0de976760bcf24c448283ef812db61e8, type: 3}
-    deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
+    deck: {fileID: 11400000, guid: b88963a67b9df44358211dfaf7589dea, type: 2}
     plan: {fileID: 0}
   - stage: {fileID: 4339011424695557501, guid: fa0a9db932681a44c864b2a5033347c8, type: 3}
-    deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
+    deck: {fileID: 11400000, guid: f3cfcac1981c646db827ee066d0535b7, type: 2}
     plan: {fileID: 0}
   - stage: {fileID: 4325687768652245672, guid: c8ce3705aa63a5545bad646e13962672, type: 3}
-    deck: {fileID: 11400000, guid: 1abe2cece6714a389e662ab64976a8b2, type: 2}
+    deck: {fileID: 11400000, guid: c37c13b8eb9114ee68f5edc622391c4d, type: 2}
     plan: {fileID: 0}
   devEntries: []

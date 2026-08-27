@@ -29,7 +29,6 @@ namespace Wassup.EditorTools
 
         const string GuardInstinct = "Assets/_Project/Data/Structures/Structure_GuardInstinct.asset";
         const string WatchInstinct = "Assets/_Project/Data/Structures/Structure_WatchInstinct.asset";
-        const string EnemyHeart = "Assets/_Project/Data/Structures/Structure_EnemyHeart.asset";
 
         const int W = 23, H = 10;
         const float OriginY = 0.19f;          // Street 와 같은 발바닥 높이(바닥 Plane 은 y 0)
@@ -55,7 +54,6 @@ namespace Wassup.EditorTools
             var spriteMat = Load<Material>(SpriteMat);
             var guard = Load<StructureData>(GuardInstinct);
             var watch = Load<StructureData>(WatchInstinct);
-            var heart = Load<StructureData>(EnemyHeart);
             var profile = EnsureProfile();
 
             EnsureFolder("Assets/_Project/Art/Theme/duel");
@@ -93,15 +91,8 @@ namespace Wassup.EditorTools
                 // ── 적 진영 배치 금지 x=17..22 (main placeMask 04 구역) ──
                 Host(root, "enemy_zone", new Vector2Int(17, 0)).AddComponent<PlacementBlockZone>().size = new Vector2Int(6, 10);
 
-                // ── 적 마음 자리 (20,4) — 계약 11: 사이 아님, 장식 + 배치 금지 1칸 ──
-                var heartHost = Host(root, "enemy_heart", new Vector2Int(20, 4));
-                heartHost.AddComponent<PlacementBlockZone>().size = Vector2Int.one;
-                if (heart != null && heart.viewPrefab != null)
-                {
-                    var view = (GameObject)PrefabUtility.InstantiatePrefab(heart.viewPrefab);
-                    view.transform.SetParent(heartHost.transform, false);
-                    view.transform.localScale *= heart.viewScale;
-                }
+                // 적 마음 자리 (20,4) — 계약 11(공성 비가용). 사용자 결정 2026-08-26: 장식도 두지 않는다(때릴 수 없는
+                // 목표물처럼 보인다). 배치 금지는 적 진영 BlockZone(x 17..22)이 이미 덮고, 스폰 (20,3)/(20,5)가 그 자리의 흔적.
 
                 // ── 마커 ──
                 Host(root, "spawn0", new Vector2Int(20, 3)).AddComponent<SpawnMarker>().laneIndex = 0;

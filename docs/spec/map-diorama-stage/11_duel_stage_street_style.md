@@ -28,7 +28,7 @@ main 현행 Duel 의 논리(디코드 결과):
 3. 배경/장식: 후방 backdrop(`image 2614`, Street 와 같은 스케일·30° 틸트·회색 틴트) + 후방 가장자리 z 11~14 에 Street 프랍 스프라이트(`2623/2624/2625`) 4~5개 — **placeholder**. Duel 전용 아트가 오면 스프라이트만 교체.
 4. 중앙 분리대: `PropFootprint` 호스트 3개 — (11,0) 1×1 · (11,3) 1×4 · (11,9) 1×1. 셀마다 `image 2622` 스프라이트 자식(스케일 1.3, 30° 틸트, `SpriteShadowCaster.mat`).
 5. 적 진영: `PlacementBlockZone` (17,0) size (6,10). (스테이지 BlockZone 은 전 층 0 — main 의 «Air 만 허용»과 다르다. 층별 BlockZone 은 후속 후보.)
-6. 적 마음 자리 (20,4): `PlacementBlockZone` 1×1 + `Structure_EnemyHeart.viewPrefab` 장식 자식(`viewScale`). 사이 아님 — 계약 11 유지.
+6. 적 마음 자리 (20,4): **비움**(사용자 결정 2026-08-26 — 때릴 수 없는 목표물처럼 보이는 장식은 두지 않는다). 계약 11 유지, 배치 금지는 적 진영 BlockZone 이 덮는다.
 7. 마커: `SpawnMarker` (20,3)/(20,5) · `GoalMarker` (2,4) · `BonusSpawnMarker` (11,2)/(11,7) · `StructureMarker` ×4 (unit 10).
 8. `Post` 자식 Volume — Street 프로파일 재사용(placeholder). `PushStagePostVolume` 이 스테이지 수명으로 넘긴다.
 9. 프리뷰: `stage_preview` 태스크가 임시 씬에 프리팹을 놓고 `MapStageCameraFraming.FrameActiveScene(16/9)` 로 Battle 카메라를 맞춘 뒤 1920×1080 PNG 를 `.omc/ralph/` 에 쓴다 — 에이전트가 이미지로 확인.
@@ -39,4 +39,4 @@ main 현행 Duel 의 논리(디코드 결과):
 - [x] 프리뷰 PNG 에서 바닥·분리대·마커 위치가 격자와 맞음(분리대가 x=11 열에, 통로 두 개) — 2026-08-26 (`preview_duel` 러너 태스크)
 - [x] PlayMode `DioramaStagePlayTests`(Duel 로 재지정): 적이 분리대 셀을 밟지 않고 골(−x) 방향 전진 · 본능 4기 스폰 — 2026-08-26 `df1a117a`
 - [x] `BonusWavePullTest`("Duel" pin) green — 포탈 2 → 보너스 적 — 2026-08-26 `df1a117a`
-- [ ] **사용자 확인 대기**: ⓐ 적 마음 자리의 `Structure_EnemyHeart.viewPrefab` 장식(때릴 수 없는 목표물처럼 보인다 — 유지/제거) ⓑ 라이브 4맵이 `Deck_Duel` 하나를 공유하는 것(웨이브 차이 = laneCount 축만) ⓒ dev→live 승격 = 시드 로테이션 편입(가이드의 «웨이브 밸런스 확인 필수» 게이트)
+- [x] 사용자 결정 2026-08-26: ⓐ 적 마음 장식 **제거** ⓑ **맵마다 다른 덱** — Duel=`Deck_Duel`(Jjangssen) · Street=`Deck_Serpent`(Nightmare) · Subway=`Deck_Zig`(Mamemo) · StreetDay=`Deck_Coil`(Nightmare); main 현행 세대(gen 7·컨셉 5) 맵 덱을 재배정, 옛 맵 이름 개명은 «레거시 덱 정리» 후속 ⓒ 세 맵 **live 유지**
