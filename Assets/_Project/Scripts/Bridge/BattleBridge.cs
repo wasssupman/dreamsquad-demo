@@ -1183,6 +1183,9 @@ namespace Wassup.Bridge
                 if (Application.isPlaying) Destroy(_stageInstance.gameObject);
                 else DestroyImmediate(_stageInstance.gameObject);
                 _stageInstance = null;
+                // camera-direction unit 18 — 볼륨은 스테이지와 같은 수명이다. 놓아주지 않으면
+                // 카메라 소유자가 파괴된 프로파일에 계속 쓴다.
+                PushStagePostVolume();
             }
             if (_generatedMap.IsCreated) _generatedMap.Dispose();
             _generatedMap = default;
@@ -1408,6 +1411,11 @@ namespace Wassup.Bridge
             if (tilemapMapView != null && tilemapMapView.TryGetPlayfieldWorldBounds(
                     new Vector2Int(_generatedMap.gridSize.x, _generatedMap.gridSize.y), out var boardBounds))
                 EnsureCameraDirector()?.SetBoardBounds(boardBounds);
+
+            // camera-direction unit 18 — 포스트 볼륨도 스테이지 소유다(map-diorama-stage 가 씬의
+            // 전역 Post 를 프리팹 안으로 옮겼다). 보드 bounds 와 같은 이유로 브리지가 밀어준다:
+            // 볼륨은 스테이지 인스턴스에 붙어 있어 씬에서 미리 배선할 수 없다.
+            PushStagePostVolume();
 
             BuildFlowField();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
@@ -4741,6 +4749,29 @@ namespace Wassup.Bridge
         // 미배선이면 1회 경고 + 이후 no-op (miss 캐시). 씬 참조 추가 없이 런타임 조회.
         private Wassup.Presentation.CameraDirector _cameraDirector;
         private bool _cameraDirectorMissWarned;
+
+        // camera-direction unit 18 — 스테이지의 전역 포스트 볼륨을 카메라 소유자에게 밀어준다.
+        // 마커(`GoalMarker`/`SpawnMarker`) 스캔과 같은 방식이라 스테이지 프리팹에 새 필드를
+        // 요구하지 않는다. 스테이지가 없으면 null 을 밀어 죽은 참조를 끊는다.
+        private bool _stagePostVolumeMissWarned;
+
+        private void PushStagePostVolume()
+        {
+            var director = EnsureCameraDirector();
+            if (director == null) return;
+            var volume = _stageInstance != null
+                ? _stageInstance.GetComponentInChildren<UnityEngine.Rendering.Volume>(true)
+                : null;
+            // 조용히 죽는 것이 이 결함의 본질이었다(씬 Post 를 스테이지로 옮기며 참조가 끊겼고
+            // 비네트가 로그 한 줄 없이 사라졌다). 스테이지가 볼륨을 안 들고 있으면 경고한다.
+            if (volume == null && _stageInstance != null && !_stagePostVolumeMissWarned)
+            {
+                _stagePostVolumeMissWarned = true;
+                Debug.LogWarning($"[BattleBridge] 스테이지 '{_stageInstance.name}' 에 Volume 이 없다 — "
+                    + "스트레스 비네트가 그려지지 않는다. 스테이지 프리팹의 Post 오브젝트를 확인할 것.", this);
+            }
+            director.SetPostVolume(volume);
+        }
 
         private Wassup.Presentation.CameraDirector EnsureCameraDirector()
         {

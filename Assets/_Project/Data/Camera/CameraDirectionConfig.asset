@@ -17,47 +17,11 @@ MonoBehaviour:
   kickDuration: 0.16
   stateFramings:
   - state: 0
-    pitchDeg: 70
+    pitchDeg: 35
     fitToBoard: 1
     fitMargin: 1.15
     fixedDistance: 20
-    screenY: 0.554
-    fov: 31.2
-    flightSec: 0.6
-    ease:
-      serializedVersion: 2
-      m_Curve:
-      - serializedVersion: 3
-        time: 0
-        value: 0
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      - serializedVersion: 3
-        time: 1
-        value: 1
-        inSlope: 0
-        outSlope: 0
-        tangentMode: 0
-        weightedMode: 0
-        inWeight: 0
-        outWeight: 0
-      m_PreInfinity: 2
-      m_PostInfinity: 2
-      m_RotationOrder: 4
-    dofEnabled: 0
-    dofStart: 0.6
-    dofEnd: 0.88
-    dofMaxRadius: 1.5
-  - state: 1
-    pitchDeg: 55
-    fitToBoard: 1
-    fitMargin: 1.01037
-    fixedDistance: 20
-    screenY: 0.5023927
+    screenY: 0.32
     fov: 25
     flightSec: 0.6
     ease:
@@ -84,10 +48,38 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    dofEnabled: 1
-    dofStart: 1
-    dofEnd: 1.6
-    dofMaxRadius: 1.5
+  - state: 1
+    pitchDeg: 30.15
+    fitToBoard: 1
+    fitMargin: 0.8625139
+    fixedDistance: 20
+    screenY: 0.43
+    fov: 23.8
+    flightSec: 0.6
+    ease:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   pulseFovDelta: 0
   pulseDolly: 1.14
   pulseSec: 0.22
@@ -96,7 +88,7 @@ MonoBehaviour:
   shakeFreqX: 13.93
   shakeFreqY: 8.3
   punctuationFadeSec: 0.15
-  fovMin: 31
+  fovMin: 24
   fovMax: 60
   focusDolly: -1.87
   focusFovDelta: 0

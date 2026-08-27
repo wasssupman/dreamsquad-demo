@@ -37,17 +37,6 @@ namespace Wassup.Data
         [Tooltip("전환 이징 커브(0~1→0~1). 비어 있으면 smoothstep 폴백.")]
         public AnimationCurve ease = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-        // camera-direction unit 13 — 이 상태의 흐림. 임계값은 보드 깊이 범위로 정규화한다
-        // (0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤). 월드 절대 거리로 두면 화면비마다
-        // 그림이 무너진다(unit 9 의 결함).
-        [Tooltip("이 상태에서 흐림을 쓰는가. 끄면 전환이 끝난 뒤 DoF 모드를 Off 로 내린다.")]
-        public bool dofEnabled = true;
-        [Tooltip("흐림이 시작되는 위치. 보드 깊이 기준(0 = 앞단, 1 = 뒷단, 1 초과 = 보드 뒤).")]
-        public float dofStart = 0.6f;
-        [Tooltip("흐림이 최대가 되는 위치(같은 보드 깊이 기준). dofStart 보다 커야 한다.")]
-        public float dofEnd = 0.88f;
-        [Tooltip("흐림 세기. URP 저작 범위는 0.5~1.5 이고 실제 반경은 해상도에 비례한다 — 실기 확인 필수.")]
-        public float dofMaxRadius = 1.5f;
     }
 
     // camera-direction unit 0 — 연출 카메라 튜닝값 (하드코딩 금지 계약).

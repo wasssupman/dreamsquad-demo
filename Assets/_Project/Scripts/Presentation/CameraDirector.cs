@@ -24,9 +24,10 @@ namespace Wassup.Presentation
     {
         [Header("이 카메라의 씬 포즈(Transform·FOV)는 런타임에 쓰이지 않는다 — 에디터 미리보기 전용.\n포즈는 config 의 상태 레시피에서 매 프레임 계산된다.")]
         [SerializeField] private Wassup.Data.CameraDirectionConfig config;
-        // unit 9 — DoF 거리를 보드 fit 에 연동할 대상 볼륨(BattleScene 의 글로벌 Post 볼륨).
-        // 미배선이면 DoF 연동만 조용히 꺼진다 — 프레이밍 자체는 그대로 동작한다.
-        [SerializeField] private UnityEngine.Rendering.Volume postVolume;
+        // unit 18 — 포스트 볼륨은 **스테이지가 소유한다**(map-diorama-stage 가 씬의 전역 Post 를
+        // 스테이지 프리팹 안으로 옮겼다). 런타임 인스턴스라 씬에서 배선할 수 없어서 SerializeField
+        // 가 아니라 브리지가 밀어준다 — `SetBoardBounds` 와 같은 단방향 계약이다.
+        private UnityEngine.Rendering.Volume postVolume;
 
         private Camera _cam;
 
@@ -244,12 +245,6 @@ namespace Wassup.Presentation
                     CommitStatePose(Vector3.LerpUnclamped(fromPos, toPos, eased),
                                     Quaternion.SlerpUnclamped(fromRot, toRot, eased),
                                     Mathf.LerpUnclamped(fromFov, toFov, eased));
-                    // unit 13 — 흐림도 **같은 진행도**로 섞는다. 다른 시계를 쓰면 카메라는
-                    // 도착했는데 흐림이 아직 따라오는 어긋남이 생긴다.
-                    ApplyDof(CameraComposeMath.BlendDof(
-                        SolveDofFor(fromFraming, fromPos, fromRot, ref _dofCornerBufFrom),
-                        SolveDofFor(toFraming, toPos, toRot, ref _dofCornerBufTo),
-                        Mathf.Clamp01(eased)));
                     return true;
                 }
                 // 출발 상태 레시피가 없다 — 섞을 것이 없으니 전환을 접고 도착 포즈로 간다.
@@ -258,7 +253,6 @@ namespace Wassup.Presentation
             }
 
             CommitStatePose(toPos, toRot, toFov);
-            ApplyDof(SolveDofFor(toFraming, toPos, toRot, ref _dofCornerBufTo));
             return true;
         }
 
@@ -318,37 +312,17 @@ namespace Wassup.Presentation
             _settled = false;
         }
 
-        // unit 13 — 상태별 피사계 심도.
+        // unit 18 — 스테이지의 포스트 볼륨 입력. `SetBoardBounds` 와 같은 단방향 push 다
+        // (Director 가 맵·브리지에서 당겨오지 않는다). 스테이지가 파괴될 때 브리지가 null 을 민다.
         //
-        // 흐림은 "지금 무엇을 보라는 신호" 다. 배치는 판 전체에서 놓을 칸을 고르는 구간이라
-        // 흐리면 안 되고(뒷줄이 흐려지면 배치를 방해한다), 전투는 보드 뒤 원경을 빼서 판을
-        // 도드라지게 한다.
-        //
-        // 임계값은 **보드 깊이 범위로 정규화**해 저작한다(0 = 보드 앞단, 1 = 뒷단, 1 초과 = 보드 뒤).
-        // 월드 절대 거리로 두면 화면비마다 그림이 무너진다 — unit 9 가 겪은 결함.
-        private bool _dofProbed;
-        private bool _dofDrivable;   // 저작 모드가 Gaussian 인가 (Bokeh 는 체계가 달라 대상 아님)
-        private bool _dofModeOn;     // 지금 Gaussian 으로 켜 둔 상태인가
-        private CameraComposeMath.DofSolution _dofWritten;
-
-        private CameraComposeMath.DofSolution SolveDofFor(Wassup.Data.CameraStateFraming f, Vector3 pos, Quaternion rot,
-                                        ref Vector3[] buf)
+        // ⚠ 캐시를 리셋하는 것이 계약이다. `Volume.profile` 은 sharedProfile 의 **런타임 인스턴스**라
+        // 스테이지가 바뀌면 다른 객체가 온다 — 안 비우면 새 프로파일의 첫 write 가 "직전과 같은 값"
+        // 으로 판정돼 건너뛰어지고, 맵 교체 후 비네트가 그 판 내내 죽는다.
+        public void SetPostVolume(UnityEngine.Rendering.Volume volume)
         {
-            var r = default(CameraComposeMath.DofSolution);
-            if (f == null || !f.dofEnabled) return r;
-            buf = CameraFramingMath.LocalCorners(_boardBounds, rot, buf);
-            // 카메라~보드중앙 «시야 깊이»(정면 축 거리). DofRange 가 코너의 view-z 를 이 값에
-            // 더해 보드 깊이 범위를 만든다.
-            float camDepth = Vector3.Dot(_boardBounds.center - pos, rot * Vector3.forward);
-            if (!CameraFramingMath.DofRange(buf, camDepth, f.dofStart, f.dofEnd,
-                                            out float st, out float en)) return r;
-            r.on = true;
-            r.start = st;
-            r.end = en;
-            // URP 저작 범위(ClampedFloatParameter 0.5~1.5)를 **입구에서** 지킨다.
-            // 출구(ApplyDof)에서 걸면 페이드 중인 블렌드 결과가 잘려 팝이 된다.
-            r.radius = Mathf.Clamp(f.dofMaxRadius, 0.5f, 1.5f);
-            return r;
+            if (ReferenceEquals(postVolume, volume)) return;
+            postVolume = volume;
+            _vignetteWritten = -1f;
         }
 
         // ── heart-stress-axis unit 8 rev 2 — 마음 스트레스 비네트 ──────────────────
@@ -357,7 +331,8 @@ namespace Wassup.Presentation
         // 스프라이트의 밝은 띠 반경이 스프라이트에 박혀 있어 「화면 테두리 한참 안쪽에서
         // 연출이 나온다」가 됐고(rev 1 실측), 4변 프레임으로 우회해도 «화면이 물든다» 가
         // 아니라 «UI 액자가 생긴다» 로 읽힌다. 포스트 비네트는 **테두리 정렬이 구조적으로
-        // 보장**되고, 이 프로젝트는 이미 포스트 스택이 돌고 있어(DoF) 추가 패스도 없다.
+        // 보장**되고, 스테이지 프로파일이 이미 포스트 스택을 돌리고 있어(Bloom·Tonemapping·
+        // ColorAdjustments) 추가 패스도 없다.
         //
         // 타이머 마지막 10초 연출과 **기제 자체가 갈린다**: 그쪽은 UI 오버레이 원샷 플래시,
         // 이쪽은 포스트 비네트 지속. 같은 붉은 계열이어도 서로를 안 먹는다.
@@ -367,9 +342,9 @@ namespace Wassup.Presentation
         // 통째로 건너뛰어져** 화면에 아무 일도 안 일어난다(실측 2026-08-24 — 「연출이 하나도
         // 안 나온다」의 진짜 원인이 이것이었다). `intensity` 만 쓰고 끝내면 영원히 안 보인다.
         //
-        // 에셋을 고치지 않고 **코드가 켠다**: `Volume.profile` 은 sharedProfile 의 런타임
-        // 인스턴스라 디스크에 안 남고(아래 ApplyDof 주석), 프로파일 에셋이 git 에서 dirty 해지지
-        // 않는다. 저작 의도(평시 꺼짐)도 그대로 보존된다.
+        // 에셋을 고치지 않고 **코드가 켠다**: `Volume.profile` 은 sharedProfile 의 **런타임
+        // 인스턴스**를 돌려주므로 프로파일 에셋은 건드려지지 않고(에디터 Play 에서도 디스크에
+        // 남지 않는다), git 에서 dirty 해지지도 않는다. 저작 의도(평시 꺼짐)도 그대로 보존된다.
         //
         // 끄는 것은 `active=false` 다 — `IsActive()` 가 `intensity > 0` 도 보지만, 컴포넌트를
         // 통째로 빼는 쪽이 확실하고 평온 구간 비용이 정확히 0 이 된다.
@@ -398,60 +373,9 @@ namespace Wassup.Presentation
             v.smoothness.Override(Mathf.Clamp(smoothness, 0.01f, 1f));
         }
 
-        // `Volume.profile` 은 sharedProfile 의 **런타임 인스턴스**를 돌려준다 — 프로필 에셋은
-        // 건드리지 않으므로 에디터 Play 에서도 디스크에 남지 않는다.
-        //
-        // 끄는 법이 `mode` Off 인 이유: `DepthOfField.IsActive()` 가 반경을 보지 않고 `mode` 만
-        // 본다. 반경 0 으로 두면 **풀스크린 Gaussian 패스가 계속 돈다** — 안드로이드에서 그냥
-        // 버리는 비용이다. 다만 전환 중에 끄면 팝이 나므로 **끄는 것은 전환이 끝난 뒤**다.
-        private void ApplyDof(in CameraComposeMath.DofSolution sol)
-        {
-            if (postVolume == null) return;
-            var profile = postVolume.profile;
-            if (profile == null) return;
-            if (!profile.TryGet(out UnityEngine.Rendering.Universal.DepthOfField dof)) return;
-
-            if (!_dofProbed)
-            {
-                _dofProbed = true;
-                // Bokeh 만 배제한다(focusDistance/aperture 체계라 gaussian 임계값과 무관).
-                // "== Gaussian" 으로 두면 씬 프로파일을 Off 로 저작하는 순간 DoF 가 로그 한 줄
-                // 없이 영영 죽는다 — 모드를 이제 Director 가 소유하므로 Off 저작은 자연스럽다.
-                _dofDrivable = dof.mode.value != UnityEngine.Rendering.Universal.DepthOfFieldMode.Bokeh;
-                _dofModeOn = _dofDrivable;
-            }
-            if (!_dofDrivable) return;
-
-            // BlendDof 가 «한쪽만 켜짐» 도 on=true 로 전파하므로 켜고 끄는 타이밍은 sol.on 만으로
-            // 이미 맞다(전환 시작 프레임에 켜지고, 전환이 끝난 뒤에야 꺼진다).
-            bool wantOn = sol.on;
-            if (wantOn != _dofModeOn)
-            {
-                _dofModeOn = wantOn;
-                dof.mode.Override(wantOn
-                    ? UnityEngine.Rendering.Universal.DepthOfFieldMode.Gaussian
-                    : UnityEngine.Rendering.Universal.DepthOfFieldMode.Off);
-            }
-            if (!wantOn) return;
-
-            if (Mathf.Approximately(sol.start, _dofWritten.start)
-                && Mathf.Approximately(sol.end, _dofWritten.end)
-                && Mathf.Approximately(sol.radius, _dofWritten.radius)) return;
-
-            _dofWritten = sol;
-            dof.gaussianStart.Override(sol.start);
-            dof.gaussianEnd.Override(sol.end);
-            // 여기서는 상한만 지킨다. **하한 0.5 를 걸면 안 된다** — 이 값은 페이드 중인
-            // 블렌드 결과라, 0.5 에서 잘리면 켜지는 첫 프레임에 곧장 절반 세기가 들어오고
-            // 꺼지는 후반부는 0.5 에 고정됐다가 툭 꺼진다(= 팝). 저작값 범위(0.5~1.5)는
-            // SolveDofFor 가 지킨다.
-            dof.gaussianMaxRadius.Override(Mathf.Clamp(sol.radius, 0f, 1.5f));
-        }
 
         // 코너 버퍼 — 미리 잡아두면 LocalCorners 가 제자리에서 채워 매 프레임 할당이 없다.
         private readonly Vector3[] _poseCornerBuf = new Vector3[8];
-        private Vector3[] _dofCornerBufTo = new Vector3[8];
-        private Vector3[] _dofCornerBufFrom = new Vector3[8];
 
         // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 카드 흡수 임팩트 · 부착 거절).
         // config 배선 전 호출은 안전 no-op (spec unit 0 계약).

@@ -122,31 +122,6 @@ namespace Wassup.Presentation
             };
         }
 
-        // camera-direction unit 13 — 상태별 흐림의 «푼 결과». 절대 거리 두 개와 세기 하나.
-        // 기준(보드 깊이 정규화)이 무엇이든 여기까지 오면 절대값이라, 성격이 다른 상태끼리도
-        // 그냥 섞을 수 있다.
-        public struct DofSolution
-        {
-            public bool on;
-            public float start, end, radius;
-        }
-
-        // 상태 전환 중 흐림 보간. 한쪽이 꺼진 조합은 **켜진 쪽의 임계값을 쓰고 반경만** 0 으로
-        // 보낸다 — 임계값까지 섞으면 흐림 경계가 화면을 가로질러 훑고 지나간다.
-        public static DofSolution BlendDof(in DofSolution a, in DofSolution b, float t)
-        {
-            if (!a.on && !b.on) return default;
-            if (!a.on) return new DofSolution { on = true, start = b.start, end = b.end, radius = Mathf.Lerp(0f, b.radius, t) };
-            if (!b.on) return new DofSolution { on = true, start = a.start, end = a.end, radius = Mathf.Lerp(a.radius, 0f, t) };
-            return new DofSolution
-            {
-                on = true,
-                start = Mathf.Lerp(a.start, b.start, t),
-                end = Mathf.Lerp(a.end, b.end, t),
-                radius = Mathf.Lerp(a.radius, b.radius, t),
-            };
-        }
-
         // camera-direction unit 12 — 배치 커서 추종.
         //
         // 드래그 포커스와 **같은 입력(스크린 NDC)**을 쓰되 델타 해석이 다르다. FocusDelta 는
