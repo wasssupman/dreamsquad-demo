@@ -26,5 +26,24 @@ namespace Wassup.Data
 
         public static Vector2Int AnchorFromPrimary(Vector2Int primary, Vector2Int size)
             => primary - PrimaryOffset(size);
+
+        // defender-footprint unit 2 — 드래그 손끝 규약: 손가락 셀 = footprint **하단(min y) 행의
+        // 가로 중앙**. 유닛은 손가락 위로 자란다(요구 문서 5절 — 하단 중앙 기준). 1×1 은 항등.
+        public static Vector2Int AnchorFromBottomCenter(Vector2Int fingerCell, Vector2Int size)
+        {
+            var s = Vector2Int.Max(size, Vector2Int.one);
+            return new Vector2Int(fingerCell.x - (s.x - 1) / 2, fingerCell.y);
+        }
+
+        // defender-footprint unit 2 — 대표 셀 중심 ↔ footprint 기하 중심의 칸 단위 오프셋.
+        // 홀수 변 0, 짝수 변 +0.5. sim 위치는 대표 셀 중심 불변(README 계약 2)이고, **뷰만**
+        // 이 오프셋으로 기하 중심에 선다 — 소비처는 뷰 피드(sync·RestViewPos·비행 앵커)뿐이다.
+        public static Vector2 CenterOffsetFromPrimary(Vector2Int size)
+        {
+            var s = Vector2Int.Max(size, Vector2Int.one);
+            return new Vector2(
+                (s.x - 1) * 0.5f - (s.x - 1) / 2,
+                (s.y - 1) * 0.5f - (s.y - 1) / 2);
+        }
     }
 }

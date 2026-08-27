@@ -62,6 +62,29 @@ namespace Wassup.Tests.EditMode
                 FootprintMath.PrimaryCell(new Vector2Int(4, 9), Vector2Int.one));
         }
 
+        [TestCase(1, 1, 5, 7)]  // 항등
+        [TestCase(2, 2, 5, 7)]  // (W-1)/2=0 — 손가락이 좌하단 열
+        [TestCase(3, 3, 4, 7)]  // 손가락 = 하단 중앙
+        [TestCase(3, 2, 4, 7)]
+        [TestCase(1, 3, 5, 7)]
+        public void AnchorFromBottomCenter_FingerIsBottomCenter(int w, int h, int ax, int ay)
+        {
+            Assert.AreEqual(new Vector2Int(ax, ay),
+                FootprintMath.AnchorFromBottomCenter(new Vector2Int(5, 7), new Vector2Int(w, h)));
+        }
+
+        [TestCase(1, 1, 0f, 0f)]
+        [TestCase(3, 3, 0f, 0f)]  // 홀수 변 = 대표 셀이 곧 기하 중심
+        [TestCase(2, 2, 0.5f, 0.5f)]
+        [TestCase(2, 3, 0.5f, 0f)]
+        [TestCase(1, 2, 0f, 0.5f)]
+        public void CenterOffsetFromPrimary_EvenSidesGetHalfCell(int w, int h, float ox, float oy)
+        {
+            var off = FootprintMath.CenterOffsetFromPrimary(new Vector2Int(w, h));
+            Assert.AreEqual(ox, off.x, 1e-5f);
+            Assert.AreEqual(oy, off.y, 1e-5f);
+        }
+
         [Test]
         public void DefenderUnitData_Footprint_DefaultsToOne_ClampsAtRead()
         {

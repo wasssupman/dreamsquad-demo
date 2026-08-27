@@ -186,5 +186,23 @@ namespace Wassup.Data
                  "0=즉시(오버슛마다 고스트 알파와 라벨이 껌뻑인다). ↑=늦게 뜸(가장 빠른 취소가 안 보인다).")]
         [Range(0f, 1f)]
         public float cancelHintDwellSeconds = 0.18f;
+
+        [Header("⑬ Footprint 고스트·자석 (defender-footprint)")]
+        [Tooltip("정상 Ghost — footprint 전 칸이 배치 가능할 때(하늘 계열).")]
+        public Color ghostValidColor = new Color(0.32f, 0.78f, 1f, 0.55f);
+        [Tooltip("Ghost 충돌 — footprint 안에서 문제가 된 칸(빨간 계열). 비공간 사유(코스트 등)면 전 칸이 이 색.")]
+        public Color ghostInvalidColor = new Color(1f, 0.25f, 0.2f, 0.6f);
+        [Tooltip("기배치 유닛 점유 — Ghost 주변 컨텍스트(노란 계열).")]
+        public Color ghostOccupiedColor = new Color(1f, 0.85f, 0.25f, 0.5f);
+        [Tooltip("지형 배치 불가 — Ghost 주변 컨텍스트(무채색 계열).")]
+        public Color ghostTerrainColor = new Color(0.55f, 0.55f, 0.55f, 0.45f);
+        [Tooltip("Ghost 주변 배치불가 컨텍스트 표시 반경(셀). 0 = Ghost 만. 배치가능 전체 하이라이트를\n" +
+                 "은퇴시킨 자리(2026-08-28 사용자 결정)를 «불가 위주 + 손가락 주변» 표시가 대신한다.")]
+        [Range(0, 6)]
+        public int ghostContextRadiusCells = 2;
+        [Tooltip("후보 앵커가 공간 사유로 무효일 때 최근접 유효 앵커로 흡착하는 자석 반경(셀). 0 = 자석 없음.\n" +
+                 "반경 밖이면 배치 불가를 유지한다(원거리 강제 보정 금지 — 요구 문서 6절).")]
+        [Range(0f, 4f)]
+        public float placementMagnetRadiusCells = 1.5f;
     }
 }

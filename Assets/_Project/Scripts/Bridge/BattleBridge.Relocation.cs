@@ -101,6 +101,9 @@ namespace Wassup.Bridge
             var layers = (has && binding.data != null)
                 ? binding.data.EffectivePlacementLayers : PlacementLayer.Ground;
             var size = (has && binding.data != null) ? binding.data.Footprint : Vector2Int.one;
+            // 제자리 재정비 정규화 — 기존 호출자(선택 패널 등)는 «유닛 셀 = 대표 셀»을 to 로 넘긴다.
+            // to 는 앵커 의미라, 짝수 변에서 대표 셀 ≠ 앵커면 제자리가 이동으로 오독된다.
+            if (to == from) to = FootprintMath.AnchorFromPrimary(from, size);
             reason = RelocationFootprintCheck(_generatedMap, _occupiedTiles,
                 FootprintMath.AnchorFromPrimary(from, size), to, size, has, busy, layers);
             if (reason != PlacementRejectReason.None) return false;
@@ -157,6 +160,9 @@ namespace Wassup.Bridge
 
             // defender-footprint unit 1 — footprint 단위 스왑. 바인딩 키·DefenderTile 은 새 대표 셀.
             var size = binding.data != null ? binding.data.Footprint : Vector2Int.one;
+            // unit 2 — 제자리 재정비 정규화(CanRelocateDefender 와 같은 규칙 — 두 곳이 갈리면
+            // 판정은 제자리인데 스왑이 이동해 점유가 어긋난다).
+            if (to == from) to = FootprintMath.AnchorFromPrimary(from, size);
             var toPrimary = FootprintMath.PrimaryCell(to, size);
             ReleaseDefenderFootprint(from);
             OccupyDefenderFootprint(to, size);
@@ -255,12 +261,18 @@ namespace Wassup.Bridge
         // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.
         // sim 이 아니라 view 로 주는 이유: 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려, sim 공간
         // 아치는 화면에서 평면으로 보인다. view 공간에서 camUp 아치를 태워야 화면 세로로 던져진다.
-        public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end)
+        public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end,
+            DefenderUnitData unit = null)
         {
             start = end = default;
             if (!_generatedMap.IsCreated) return false;
-            start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight));
-            end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight));
+            // defender-footprint unit 2 — 비행 양끝도 뷰 피드와 같은 기하 중심(짝수 변 +0.5칸).
+            // from = 옛 대표 셀, to = 스왑 후 대표 셀(앵커가 와도 해석). 오프셋은 뷰 전용 — sim 불변.
+            if (TryResolveDefenderKey(to, out var toKey)) to = toKey;
+            var fpOff = FootprintViewOffset(unit);
+            var off3 = new float3(fpOff.x, 0f, fpOff.y);
+            start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight) + off3);
+            end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight) + off3);
             return true;
         }
 

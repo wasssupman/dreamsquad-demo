@@ -3817,6 +3817,11 @@ namespace Wassup.Bridge
                     continue;
 
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
+                // defender-footprint unit 2 — 짝수 변 footprint 는 **뷰만** 기하 중심(+0.5칸)에 선다.
+                // sim 위치(대표 셀 중심)는 불변 — README 계약 2. 홀수/1×1 은 오프셋 0.
+                var fpOff = FootprintViewOffset(kv.Value.data);
+                p.x += fpOff.x;
+                p.z += fpOff.y;
                 // defender-relocation unit 6 — 비행 중엔 컨트롤러가 준 오버라이드가 뷰 위치를 대신한다.
                 // 오버라이드는 **VIEW 좌표**(ToView 우회) — 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려
                 // 아치가 평면이 되던 문제 교정(비행 곡선은 view 공간에서 계산). 비행은 PendingDeployment(비전투)라
@@ -5039,13 +5044,39 @@ namespace Wassup.Bridge
         public bool TryGetDefenderRestViewPos(Vector2Int cell, out Vector3 world)
         {
             world = default;
-            if (_em == null || !_defenderByTile.TryGetValue(cell, out var b)) return false;
+            if (_em == null) return false;
+            // defender-footprint unit 2 — 호출자가 앵커를 들고 와도 대표 셀로 해석. 피드 공식 미러
+            // 계약에 footprint 뷰 오프셋도 포함된다(피드가 더하면 여기도 더한다 — 팝 0).
+            if (TryResolveDefenderKey(cell, out var key)) cell = key;
+            if (!_defenderByTile.TryGetValue(cell, out var b)) return false;
             if (b.entity == Entity.Null || !_em.Exists(b.entity) || !_em.HasComponent<LocalTransform>(b.entity))
                 return false;
             var p = _em.GetComponentData<LocalTransform>(b.entity).Position;
+            var fpOff = FootprintViewOffset(b.data);
             world = (Vector3)Wassup.Core.BoardSpace.ToView(
-                new Unity.Mathematics.float3(p.x, p.y + spineDefenderYOffset, p.z));
+                new Unity.Mathematics.float3(p.x + fpOff.x, p.y + spineDefenderYOffset, p.z + fpOff.y));
             return true;
+        }
+
+        // defender-footprint unit 2 — 짝수 변 footprint 의 뷰 오프셋(월드 단위). 홀수/1×1 = zero.
+        // 소비처는 뷰 피드 계열만(sync·RestViewPos·비행 앵커·타일 게이지) — sim 소비 금지.
+        private Vector2 FootprintViewOffset(DefenderUnitData data)
+        {
+            if (data == null) return Vector2.zero;
+            var o = FootprintMath.CenterOffsetFromPrimary(data.Footprint);
+            if (o == Vector2.zero) return Vector2.zero;
+            return new Vector2(o.x * tileSize, o.y * tileSize);
+        }
+
+        // defender-footprint unit 2 — 앵커 + 유닛 → footprint **기하 중심**의 view 좌표.
+        // 배치 비행(탭 시뮬)의 종점 등 스폰 전 시점에 쓴다(스폰 후엔 TryGetDefenderRestViewPos).
+        public Vector3 GridAnchorToViewCenter(Vector2Int anchor, DefenderUnitData unit)
+        {
+            var size = unit != null ? unit.Footprint : Vector2Int.one;
+            var primary = FootprintMath.PrimaryCell(anchor, size);
+            var fpOff = FootprintViewOffset(unit);
+            var w = GridToWorldCenterVector(primary);
+            return Wassup.Core.BoardSpace.ToView(new Vector3(w.x + fpOff.x, w.y, w.z + fpOff.y));
         }
 
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.
@@ -7055,12 +7086,50 @@ namespace Wassup.Bridge
         // 판정과 같은 술어를 그대로 노출한다(재판정 금지). 반환 = 공간 종합 사유 —
         // 비용/풀/상한은 CanPlaceDefenderAt 이 별도로 본다(기존 계약 그대로).
         public PlacementRejectReason GetPlacementCellReasons(
-            Vector2Int anchor, DefenderUnitData unit, List<FootprintCellReason> results)
+            Vector2Int anchor, Vector2Int size, DefenderUnitData unit, List<FootprintCellReason> results)
         {
             var layers = unit != null ? unit.EffectivePlacementLayers : PlacementLayer.Ground;
-            var size = unit != null ? unit.Footprint : Vector2Int.one;
             return SpatialFootprintCheck(_generatedMap, _occupiedTiles, anchor, size, layers, results);
         }
+
+        // defender-footprint unit 2 — 자석 스냅: desiredAnchor 가 공간 사유로 무효일 때 반경 내
+        // 최근접 유효 앵커. 탐색 순서 고정(row-major) + 동률 first-win 으로 **결정론**
+        // (구조적 결정론 원칙 — seeded RNG 아닌 index 결정론). 반경 밖이면 false = 배치 불가 유지.
+        public bool TryFindNearestPlaceableAnchor(
+            DefenderUnitData unit, Vector2Int desiredAnchor, float maxRadiusCells, out Vector2Int anchor)
+        {
+            anchor = desiredAnchor;
+            if (unit == null || maxRadiusCells <= 0f) return false;
+            var layers = unit.EffectivePlacementLayers;
+            var size = unit.Footprint;
+            int r = Mathf.CeilToInt(maxRadiusCells);
+            float maxSq = maxRadiusCells * maxRadiusCells;
+            float bestSq = float.MaxValue;
+            bool found = false;
+            for (int dy = -r; dy <= r; dy++)
+            {
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    float dsq = dx * dx + dy * dy;
+                    if (dsq > maxSq || dsq >= bestSq) continue;
+                    var cand = desiredAnchor + new Vector2Int(dx, dy);
+                    if (SpatialFootprintCheck(_generatedMap, _occupiedTiles, cand, size, layers)
+                        != PlacementRejectReason.None) continue;
+                    bestSq = dsq;
+                    anchor = cand;
+                    found = true;
+                }
+            }
+            return found;
+        }
+
+        // defender-footprint unit 2 — footprint 고스트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
+        public void SetPlacementGhostCells(IReadOnlyList<Vector2Int> cells, IReadOnlyList<Color> colors)
+            => tilemapMapView?.SetGhostCells(cells, colors);
+
+        public void ClearPlacementGhostCells()
+            => tilemapMapView?.ClearGhostCells();
 
         public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
         {

@@ -133,6 +133,93 @@ namespace Wassup.UI
         private Vector2 _boardDownScreen;
         // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
         private Vector2Int? _boardScoutCell;
+        private Vector2Int? _boardScoutAnchor; // defender-footprint unit 2 — 스카우트 앵커(범위 재페인트 판정)
+
+        // ── defender-footprint unit 2 — footprint 고스트(4색) + 주변 배치불가 컨텍스트 ──
+        // 한 번의 GetPlacementCellReasons(anchor−r, size+2r) 스캔에서: footprint 칸 = 하늘/빨강,
+        // 컨텍스트 칸 = 점유 노랑 / 지형 무채색, None·맵밖 = 무표시(배치 불가 위주 — 결정 3).
+        // 비공간 사유(코스트·상한)로 전체 무효면 footprint 전 칸 빨강 — «성공으로 보였는데 실패» 금지.
+        private readonly System.Collections.Generic.List<FootprintCellReason> _ghostAreaReasons = new();
+        private readonly System.Collections.Generic.List<Vector2Int> _ghostPaintCells = new();
+        private readonly System.Collections.Generic.List<Color> _ghostPaintColors = new();
+        private readonly System.Collections.Generic.List<Vector2Int> _ghostLastCells = new();
+        private readonly System.Collections.Generic.List<Color> _ghostLastColors = new();
+        private bool _ghostShown;
+
+        // 자석은 위치를 바꾸면 풀리는 사유에만 발동한다(비용·상한은 어디로 가도 같다).
+        private static bool IsSpatialReason(PlacementRejectReason reason)
+            => reason == PlacementRejectReason.Occupied
+               || reason == PlacementRejectReason.NotBuildable
+               || reason == PlacementRejectReason.OutOfBounds;
+
+        private void UpdateGhost(Vector2Int anchor, bool valid, DefenderUnitData unit)
+        {
+            if (bridge == null || unit == null) return;
+            var size = unit.Footprint;
+            int r = Mathf.Max(0, Cfg.ghostContextRadiusCells);
+            bridge.GetPlacementCellReasons(anchor - new Vector2Int(r, r),
+                size + new Vector2Int(r * 2, r * 2), unit, _ghostAreaReasons);
+            var footRect = FootprintMath.Cells(anchor, size);
+
+            bool anyCellFail = false;
+            for (int i = 0; i < _ghostAreaReasons.Count; i++)
+            {
+                var e = _ghostAreaReasons[i];
+                if (footRect.Contains(e.cell) && e.reason != PlacementRejectReason.None) { anyCellFail = true; break; }
+            }
+            bool nonSpatialInvalid = !valid && !anyCellFail;
+
+            _ghostPaintCells.Clear();
+            _ghostPaintColors.Clear();
+            for (int i = 0; i < _ghostAreaReasons.Count; i++)
+            {
+                var e = _ghostAreaReasons[i];
+                if (footRect.Contains(e.cell))
+                {
+                    _ghostPaintCells.Add(e.cell);
+                    _ghostPaintColors.Add(e.reason != PlacementRejectReason.None || nonSpatialInvalid
+                        ? Cfg.ghostInvalidColor : Cfg.ghostValidColor);
+                }
+                else if (e.reason == PlacementRejectReason.Occupied)
+                {
+                    _ghostPaintCells.Add(e.cell);
+                    _ghostPaintColors.Add(Cfg.ghostOccupiedColor);
+                }
+                else if (e.reason == PlacementRejectReason.NotBuildable)
+                {
+                    _ghostPaintCells.Add(e.cell);
+                    _ghostPaintColors.Add(Cfg.ghostTerrainColor);
+                }
+            }
+
+            // 페인트는 변경시에만(SetTile 스팸 방지) — 매 프레임 재계산은 값싸고, 페인트는 diff.
+            if (_ghostShown && ListsEqual(_ghostPaintCells, _ghostLastCells, _ghostPaintColors, _ghostLastColors))
+                return;
+            bridge.SetPlacementGhostCells(_ghostPaintCells, _ghostPaintColors);
+            _ghostShown = true;
+            _ghostLastCells.Clear(); _ghostLastCells.AddRange(_ghostPaintCells);
+            _ghostLastColors.Clear(); _ghostLastColors.AddRange(_ghostPaintColors);
+        }
+
+        private static bool ListsEqual(
+            System.Collections.Generic.List<Vector2Int> a, System.Collections.Generic.List<Vector2Int> b,
+            System.Collections.Generic.List<Color> ca, System.Collections.Generic.List<Color> cb)
+        {
+            if (a.Count != b.Count || ca.Count != cb.Count) return false;
+            for (int i = 0; i < a.Count; i++) if (a[i] != b[i]) return false;
+            for (int i = 0; i < ca.Count; i++) if (ca[i] != cb[i]) return false;
+            return true;
+        }
+
+        private void ClearGhost()
+        {
+            if (!_ghostShown) return;
+            _ghostShown = false;
+            _ghostLastCells.Clear();
+            _ghostLastColors.Clear();
+            bridge?.ClearPlacementGhostCells();
+        }
+
         // placement-armed-board-drag unit 2 — 유효셀 탭: 배치 비행과 병렬로 착지 셀에 범위를 유지(비행 clear 를
         // 덮어씀). 배치(착지)되면 소거. 자기 flight 의 Disarm/ResetBoardGesture 에 취소되면 안 돼 별도 소유.
         private Coroutine _tapPlaceRangeRoutine;
@@ -159,6 +246,10 @@ namespace Wassup.UI
             public float visualScale;
             public float unitHeight;        // 실루엣 월드 높이(발→머리). 머리 오프셋용.
             public Vector2Int? hoverTile;
+            // defender-footprint unit 2 — 확정될 footprint 앵커(하단 중앙 산식 + 자석 결과).
+            // hoverTile(손가락 셀)이 히스테리시스의 진실원이고 이 값은 그 순수 파생이다.
+            // 커밋은 이 값을 쓴다 — 고스트가 보여준 곳과 확정 위치가 같아야 한다(표시=확정).
+            public Vector2Int? anchorTile;
             public bool isValidTile;
             // action-tray unit 4 — 마지막 hover 판정의 거부 사유(유효 칸이면 None).
             public PlacementRejectReason rejectReason;
@@ -281,13 +372,20 @@ namespace Wassup.UI
         private bool _placeableHlDesired;
         private DefenderUnitData _placeableHlUnit;   // placement-mask unit 4 — 마지막으로 게시한 하이라이트 유닛(층 축)
 
+        // defender-footprint unit 2 — 배치가능 **전체** 하이라이트 은퇴(2026-08-28 사용자 결정 —
+        // 요구 문서 4절 «평상시 전체 하이라이트 없음»을 문자대로). 표시 축은 고스트 4색(불가 위주)이
+        // 대신한다. 스위치로만 껐으므로 되켜면 그대로 복원된다(selection-entry-narrowing 관용).
+        // 재배치 이동모드(DefenderRelocationController)도 이 스위치를 공유한다.
+        internal const bool PlaceableAreaHighlightEnabled = false;
+
         private void UpdatePlacementHighlightState()
         {
             if (bridge == null) return;
             // drag-cancel-affordance unit 0 — 취소 예고 중이면 배치 하이라이트도 끈다. "보드에서
             // 아무 일도 일어나지 않는다" 를 한 덩어리로 보여야 한다(계약 4). CancelArmed 가 두 사유
             // (트레이 존 / 칸 없음)를 함께 덮으므로 사유별로 화면이 갈리지 않는다(계약 6).
-            bool desired = (_session.active && !CancelArmed) || _armedUnit != null;
+            bool desired = PlaceableAreaHighlightEnabled
+                           && ((_session.active && !CancelArmed) || _armedUnit != null);
             // placement-mask unit 4 — 하이라이트는 드는 유닛의 배치 층 기준(드래그 세션 우선, 없으면 탭 arm).
             var unit = desired ? (_session.active ? _session.unit : _armedUnit) : null;
             // 래치에 **유닛과 실제 표시 상태**를 포함한다. bool 하나만 래치하면 desired 가 true 로 유지된 채
@@ -548,11 +646,23 @@ namespace Wassup.UI
             {
                 cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
             }
+            // defender-footprint unit 2 — 손가락 셀 → 앵커(하단 중앙) → 공간 무효 시 자석.
+            // 히스테리시스·throttle 은 위 손가락 셀 축이 소유하고 앵커는 그 순수 파생이라
+            // 안정성이 승계된다. 릴리즈 forceCommit 도 같은 산식을 다시 지나 표시=확정.
+            var fpSize = _session.unit != null ? _session.unit.Footprint : Vector2Int.one;
+            var anchor = FootprintMath.AnchorFromBottomCenter(cell, fpSize);
             // action-tray unit 4 — reason 을 버리지 않고 세션에 보관, 라벨로 구분 표기.
             var reason = PlacementRejectReason.None;
-            bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out reason);
+            bool valid = bridge != null && bridge.CanPlaceDefenderAt(anchor.x, anchor.y, _session.unit, out reason);
+            if (!valid && bridge != null && IsSpatialReason(reason)
+                && bridge.TryFindNearestPlaceableAnchor(_session.unit, anchor,
+                    Cfg.placementMagnetRadiusCells, out var snapped))
+            {
+                anchor = snapped;
+                valid = bridge.CanPlaceDefenderAt(anchor.x, anchor.y, _session.unit, out reason);
+            }
             _session.rejectReason = valid ? PlacementRejectReason.None : reason;
-            SetHover(cell, valid);
+            SetHover(cell, anchor, valid);
             // placement-thumb-occlusion unit 3 — 사거리 적색화. **SetHover 뒤**여야 한다: SetHover 가 셀
             // 변경 시 SetPlacementRange 를 부르고 그 페인트는 유효성을 모른다. 뷰가 전이만 스탬프하므로
             // 매 프레임 호출이 스팸이 아니다.
@@ -707,7 +817,8 @@ namespace Wassup.UI
 
             if (_session.hoverTile.HasValue && _session.isValidTile)
             {
-                CommitPlacementAt(_session.hoverTile.Value);
+                // defender-footprint unit 2 — 커밋 = 고스트가 보여준 앵커(표시=확정). 1×1 은 손가락 셀과 동일.
+                CommitPlacementAt(_session.anchorTile ?? _session.hoverTile.Value);
                 return;
             }
             if (_session.hoverTile.HasValue)
@@ -836,18 +947,33 @@ namespace Wassup.UI
             // ("하이라이트는 어느 순간에도 거짓말하지 않는다").
             if (!TryResolveArmedCell(screen, out var cell)) { ClearBoardScout(); return; }
 
-            bool valid = bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _);
+            // defender-footprint unit 2 — 트레이 D&D 와 같은 앵커 산식(하단 중앙 + 공간 무효 시 자석).
+            // 릴리즈(ResolveArmedRelease)와 순수 함수로 일치해야 표시=확정이 성립한다.
+            var fpSize = _armedUnit.Footprint;
+            var anchor = FootprintMath.AnchorFromBottomCenter(cell, fpSize);
+            bool valid = bridge.CanPlaceDefenderAt(anchor.x, anchor.y, _armedUnit, out var scoutReason);
+            if (!valid && IsSpatialReason(scoutReason)
+                && bridge.TryFindNearestPlaceableAnchor(_armedUnit, anchor,
+                    Cfg.placementMagnetRadiusCells, out var scoutSnapped))
+            {
+                anchor = scoutSnapped;
+                valid = bridge.CanPlaceDefenderAt(anchor.x, anchor.y, _armedUnit, out _);
+            }
+            var fpPrimary = FootprintMath.PrimaryCell(anchor, fpSize);
             bridge.SetPlacementRangeValidity(valid); // unit 3 — 스카우트도 같은 적색 채널(매 프레임, 전이만 반응)
-            bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell;
+            bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell
+                           || !_boardScoutAnchor.HasValue || _boardScoutAnchor.Value != anchor;
             if (changed && _boardScoutCell.HasValue)
                 bridge.ClearPlacementHover(_boardScoutCell.Value); // 이전 셀 hover 정리(액체 비활성 경로)
             _boardScoutCell = cell;
+            _boardScoutAnchor = anchor;
 
             if (changed)
             {
-                bridge.SetPlacementRange(cell, _armedUnit);       // 범위 격자 — 셀 변경 시만 재페인트
+                bridge.SetPlacementRange(fpPrimary, _armedUnit);  // 범위 격자 — 셀/앵커 변경 시만, 중심 = 대표 셀
                 bridge.PulsePlacementHover(cell, valid);          // 확정 팝
             }
+            UpdateGhost(anchor, valid, _armedUnit);
             if (Cfg.stickyLiquidEnabled)
                 bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
             else
@@ -864,6 +990,8 @@ namespace Wassup.UI
                 bridge.ClearPlacementStretch();
             }
             _boardScoutCell = null;
+            _boardScoutAnchor = null;
+            ClearGhost(); // defender-footprint unit 2
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
@@ -892,8 +1020,20 @@ namespace Wassup.UI
                 Disarm();
                 return false;
             }
-            if (!bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out _))
+            // defender-footprint unit 2 — 릴리즈도 스카우트와 **같은 순수 산식**(하단 중앙 + 자석).
+            // 스카우트가 비춘 앵커와 릴리즈 확정 앵커가 갈리면 하이라이트가 거짓말한다.
+            var relSize = unit != null ? unit.Footprint : Vector2Int.one;
+            cell = FootprintMath.AnchorFromBottomCenter(cell, relSize);
+            if (!bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out var relReason))
             {
+                if (IsSpatialReason(relReason)
+                    && bridge.TryFindNearestPlaceableAnchor(unit, cell,
+                        Cfg.placementMagnetRadiusCells, out var relSnapped)
+                    && bridge.CanPlaceDefenderAt(relSnapped.x, relSnapped.y, unit, out _))
+                {
+                    cell = relSnapped;
+                    return true;
+                }
                 bridge.FlashPlacementReject(cell); // 왜 안 놓였는지는 칸이 말한다
                 Disarm();                          // 그리고 원래 플레이 상태로 — 내부에서 ResetBoardGesture
                 return false;
@@ -937,9 +1077,11 @@ namespace Wassup.UI
             // 즉시 꺼진다. 범위는 **하마 비행이 사는 동안** 유지하고 착지에 걷는다 — 탭에는 스카우트
             // 구간이 없어(D&D 의 드래그 · 탭투프레스의 프레스-드래그와 다른 점) 이 flourish 가 유일한
             // 범위 피드백이기 때문이다. 하마가 안 떴으면(폴백) 둘 다 거짓이라 즉시 소거된다.
+            // defender-footprint unit 2 — cell = 앵커(하마 등록부 키). 범위 중심은 대표 셀.
+            var peekRangeCell = FootprintMath.PrimaryCell(cell, unit != null ? unit.Footprint : Vector2Int.one);
             while (_session.active || _activeDismounts.ContainsValue(cell))
             {
-                bridge.SetPlacementRange(cell, unit);
+                bridge.SetPlacementRange(peekRangeCell, unit);
                 yield return null;
             }
             _tapPlaceRangeRoutine = null;
@@ -992,7 +1134,8 @@ namespace Wassup.UI
 
             var camT = mainCamera.transform;
             var cfg = Cfg;
-            Vector3 endFeet = bridge.GridCellToViewCenter(targetCell);
+            // defender-footprint unit 2 — 비행 종점 = footprint 기하 중심(짝수 변 +0.5칸, 1×1 동일).
+            Vector3 endFeet = bridge.GridAnchorToViewCenter(targetCell, unit);
             Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
             if (Vector3.Dot(boardN, camT.position - endFeet) < 0f) boardN = -boardN; // 카메라 쪽
             Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet); // 트레이 슬롯 → 보드 평면 발점
@@ -1057,6 +1200,10 @@ namespace Wassup.UI
                 // 고스트를 날리지 않고 **여기서부터** 트레이 셀 → 타일을 난다(SimulateDragTo 주석 참조).
                 bool facing = session.unit != null && session.unit.RequiresFacing && _aimController != null;
                 bool dismount = StartDropDismount(session.unit, cell, entity, presentAtLanding: !facing);
+                // defender-footprint unit 2 — cell = 앵커. 방향 조준(레인 중심)·활성화·연출은
+                // 유닛이 실제로 서는 **대표 셀** 기준이다(1×1 은 앵커와 동일).
+                var fpPrimary = FootprintMath.PrimaryCell(cell,
+                    session.unit != null ? session.unit.Footprint : Vector2Int.one);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
@@ -1064,14 +1211,14 @@ namespace Wassup.UI
                 // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
                 if (facing)
                 {
-                    _aimController.Begin(session.unit, cell, entity);
+                    _aimController.Begin(session.unit, fpPrimary, entity);
                     CleanupSession();
                     PlacementCommitted?.Invoke(session.unit);
                     return;
                 }
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
-                StartCoroutine(RunDeployment(session.unit, cell, entity, skipPresentation: dismount));
+                StartCoroutine(RunDeployment(session.unit, fpPrimary, entity, skipPresentation: dismount));
                 return;
             }
             bridge?.FlashPlacementReject(cell);
@@ -1540,13 +1687,18 @@ namespace Wassup.UI
             return go;
         }
 
-        private void SetHover(Vector2Int cell, bool valid)
+        private void SetHover(Vector2Int cell, Vector2Int anchor, bool valid)
         {
             bool changed = !_session.hoverTile.HasValue || _session.hoverTile.Value != cell;
+            // defender-footprint unit 2 — 자석이 셀 불변인 채 앵커만 옮길 수 있어 앵커 변경도 함께 본다.
+            bool anchorChanged = !_session.anchorTile.HasValue || _session.anchorTile.Value != anchor;
+            var fpSize = _session.unit != null ? _session.unit.Footprint : Vector2Int.one;
+            var primary = FootprintMath.PrimaryCell(anchor, fpSize);
             if (_session.hoverTile.HasValue && _session.hoverTile.Value != cell)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
 
             _session.hoverTile = cell;
+            _session.anchorTile = anchor;
             _session.isValidTile = valid;
             if (_session.preview != null && !_session.preview.activeSelf)
                 _session.preview.SetActive(true);
@@ -1554,11 +1706,13 @@ namespace Wassup.UI
             // 끄면 기존 타일 하이라이트로 폴백.
             if (!Cfg.stickyLiquidEnabled)
                 bridge?.SetPlacementHover(cell, valid);
-            if (changed)
+            if (changed || anchorChanged)
             {
-                bridge?.SetPlacementRange(cell, _session.unit);
+                // defender-footprint unit 2 — 사거리 링은 유닛이 실제로 설 대표 셀 중심(1×1 은 손가락 셀 동일).
+                bridge?.SetPlacementRange(primary, _session.unit);
                 bridge?.PulsePlacementHover(cell, valid); // unit 4 — 확정(셀 변경) 팝. 디바운스로 게이팅돼 스팸 아님.
             }
+            UpdateGhost(anchor, valid, _session.unit);
         }
 
         private void ClearHover()
@@ -1568,7 +1722,9 @@ namespace Wassup.UI
             bridge?.ClearPlacementRange();
             bridge?.SetPlacementRangeValidity(true); // unit 3 — 세션 경계 리셋(뷰의 페인트 API 에 리셋을 얹지 않는다)
             bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
+            ClearGhost(); // defender-footprint unit 2 — 고스트 수명도 hover 와 동일
             _session.hoverTile = null;
+            _session.anchorTile = null;
             _session.isValidTile = false;
             _debounce = default; // unit 3 — 포커스 해제 시 settle 대기 상태도 리셋(재진입 첫 셀 즉시 확정)
             _session.rejectReason = PlacementRejectReason.None; // unit 4
