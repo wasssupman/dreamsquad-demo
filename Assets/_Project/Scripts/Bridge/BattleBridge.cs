@@ -259,6 +259,12 @@ namespace Wassup.Bridge
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
+        // defender-footprint unit 1 — footprint 점유 셀 → 그 유닛의 **대표 셀**(= _defenderByTile 키).
+        // _defenderByTile 은 유닛당 1엔트리(대표 셀 키)를 유지해 «엔트리 수 = 기수» 소비자
+        // (DeployedCountOf·뷰 동기·순회)를 지킨다. 셀→유닛 해석은 이 맵을 거친다(1×1 은 항등).
+        // 등록/해제는 OccupyDefenderFootprint / ReleaseDefenderFootprint 두 함수만 지난다.
+        private readonly Dictionary<Vector2Int, Vector2Int> _defenderCellOwner = new();
+        private readonly List<Vector2Int> _footprintReleaseScratch = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         // defender-relocation unit 8 — 효과 타일은 on-place 와 **다른** 가드를 쓴다.
         // 재배치가 on-place 를 재무장하기 때문(README 계약 4). 왜 함께 풀면 안 되는지는
@@ -1499,6 +1505,7 @@ namespace Wassup.Bridge
             _pending.Clear();
             ResetBonusWaveState();   // bonus-wave-pull unit 4 — _pending 리셋과 co-locate
             _occupiedTiles.Clear();
+            _defenderCellOwner.Clear(); // defender-footprint unit 1 — 점유 집합과 co-locate(불변식)
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
             _defenderViewOverride.Clear(); // defender-relocation review L1 — 뷰 오버라이드도 _defenderByTile 리셋과 co-locate(불변식)
@@ -4090,16 +4097,62 @@ namespace Wassup.Bridge
         //
         // ⚠ 바인딩을 제거 **전에** out 으로 넘긴다(엔티티가 카드 회수 키다). 순서를 뒤집으면
         // 두 호출처가 동시에 깨진다.
+        // defender-footprint unit 1 — 점유 등록. 배치 2경로·재배치 스왑만 부른다.
+        // owner 맵과 _occupiedTiles 는 항상 함께 움직인다(갈라지면 유령 점유·해석 불능).
+        private void OccupyDefenderFootprint(Vector2Int anchor, Vector2Int size)
+        {
+            var rect = FootprintMath.Cells(anchor, size);
+            var primary = FootprintMath.PrimaryCell(anchor, size);
+            for (int y = rect.yMin; y < rect.yMax; y++)
+            {
+                for (int x = rect.xMin; x < rect.xMax; x++)
+                {
+                    var c = new Vector2Int(x, y);
+                    _occupiedTiles.Add(c);
+                    _defenderCellOwner[c] = primary;
+                }
+            }
+        }
+
+        // defender-footprint unit 1 — 점유 해제. SO 를 다시 읽지 않고 owner 맵을 스캔하는 이유:
+        // 배치 후 시트 임포트가 footprint 값을 바꿔도 **등록 시점의 칸들**이 정확히 반납되게 —
+        // SO 재계산으로 반납하면 유령 점유가 남는다. 보드는 수십 칸이라 스캔 비용 무시.
+        private void ReleaseDefenderFootprint(Vector2Int primary)
+        {
+            _footprintReleaseScratch.Clear();
+            foreach (var kv in _defenderCellOwner)
+                if (kv.Value == primary) _footprintReleaseScratch.Add(kv.Key);
+            for (int i = 0; i < _footprintReleaseScratch.Count; i++)
+            {
+                _occupiedTiles.Remove(_footprintReleaseScratch[i]);
+                _defenderCellOwner.Remove(_footprintReleaseScratch[i]);
+            }
+        }
+
+        // defender-footprint unit 1 — footprint 안 어느 칸이 와도 그 유닛의 대표 셀(바인딩 키)로
+        // 해석한다. 1×1 은 항등. 셀-키 공개 API(조회·활성화·퇴근·재배치)가 footprint 에
+        // 투명해지는 지점이다. owner 맵 미등록 셀은 바인딩 직검으로 폴백.
+        private bool TryResolveDefenderKey(Vector2Int cell, out Vector2Int key)
+        {
+            if (_defenderCellOwner.TryGetValue(cell, out key)) return true;
+            key = cell;
+            return _defenderByTile.ContainsKey(cell);
+        }
+
         private bool ReleaseDefenderTile(Vector2Int cell, out (Entity entity, DefenderUnitData data) binding)
         {
-            bool hasBinding = _defenderByTile.TryGetValue(cell, out binding);
+            // defender-footprint unit 1 — 사망 이벤트의 cell = DefenderTile.cell = 대표 셀이지만,
+            // 퇴근 등 다른 호출처가 footprint 임의 칸을 넘겨도 같은 유닛으로 접히게 해석한다.
+            if (!TryResolveDefenderKey(cell, out var key)) key = cell;
+            bool hasBinding = _defenderByTile.TryGetValue(key, out binding);
             // beam unit 1 — 쏘던 유닛이 내려가면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 끊는다.
             if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.entity);
-            _defenderByTile.Remove(cell);
-            _occupiedTiles.Remove(cell);
+            _defenderByTile.Remove(key);
+            ReleaseDefenderFootprint(key);
+            _occupiedTiles.Remove(key); // owner 맵을 안 지난 레거시 점유 방어(정상 경로에선 이미 비었다)
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
-            tileHealthGaugeLayer?.Hide(cell);   // unit 3 — 퇴장 시 게이지 제거
-            RecomputeSynergyFor(cell);
+            tileHealthGaugeLayer?.Hide(key);   // unit 3 — 퇴장 시 게이지 제거
+            RecomputeSynergyFor(key);
             return hasBinding;
         }
 
@@ -4118,7 +4171,10 @@ namespace Wassup.Bridge
         // Exists(owner) 라 **파괴 자체가 신호**다(다음 sim 틱에 회수, 그 1틱은 무해).
         public bool RetireDefender(Vector2Int cell)
         {
-            if (_em == null || !_defenderByTile.TryGetValue(cell, out var pre)) return false;
+            if (_em == null) return false;
+            // defender-footprint unit 1 — footprint 임의 칸 → 대표 셀 해석.
+            if (TryResolveDefenderKey(cell, out var retireKey)) cell = retireKey;
+            if (!_defenderByTile.TryGetValue(cell, out var pre)) return false;
             if (pre.entity == Entity.Null || !_em.Exists(pre.entity)) return false;
             // 비행 중(배치/재배치 착지 전)에는 내리지 않는다 — 뷰 오버라이드와 활성화 꼬리가 뜬다.
             if (_em.HasComponent<PendingDeployment>(pre.entity)) return false;
@@ -5802,7 +5858,8 @@ namespace Wassup.Bridge
         // over the tile→binding registry; Entity is a key for the attach APIs.
         public bool TryGetDefenderAt(Vector2Int cell, out Entity defender)
         {
-            if (_defenderByTile.TryGetValue(cell, out var binding))
+            // defender-footprint unit 1 — footprint 임의 칸(발밑 탭)도 그 유닛으로 해석.
+            if (TryResolveDefenderKey(cell, out var key) && _defenderByTile.TryGetValue(key, out var binding))
             {
                 defender = binding.entity;
                 return true;
@@ -6956,6 +7013,55 @@ namespace Wassup.Bridge
             return PlacementRejectReason.None;
         }
 
+        // defender-footprint unit 1 — footprint 전체의 공간 판정. 셀 규칙은 위 SpatialPlacementCheck
+        // 를 셀마다 재사용한다(단일 술어 계약 — 규칙 이중화 금지). perCell 이 오면 타일별 사유를
+        // 채운다 — UI(고스트)는 이 목록을 재판정 없이 그대로 그린다.
+        // 종합 사유 우선순위 = Occupied > NotBuildable > OutOfBounds. 셋이 섞이면 플레이어가
+        // 조치할 수 있는 사유가 먼저 보인다(거부 라벨 문자화가 Occupied 만 구분하는 것과 정합).
+        // ignoreOccupied: 재배치의 자기 footprint — 그 rect 안 셀은 Occupied 로 치지 않는다.
+        public static PlacementRejectReason SpatialFootprintCheck(
+            GeneratedMap map, HashSet<Vector2Int> occupied, Vector2Int anchor, Vector2Int size,
+            PlacementLayer layers, List<FootprintCellReason> perCell = null, RectInt? ignoreOccupied = null)
+        {
+            perCell?.Clear();
+            if (!map.IsCreated) return PlacementRejectReason.MissingMap;
+            var rect = FootprintMath.Cells(anchor, size);
+            bool anyOccupied = false, anyNotBuildable = false, anyOutOfBounds = false;
+            for (int y = rect.yMin; y < rect.yMax; y++)
+            {
+                for (int x = rect.xMin; x < rect.xMax; x++)
+                {
+                    var cell = new Vector2Int(x, y);
+                    var reason = SpatialPlacementCheck(map, occupied, new int2(x, y), layers);
+                    if (reason == PlacementRejectReason.Occupied
+                        && ignoreOccupied.HasValue && ignoreOccupied.Value.Contains(cell))
+                        reason = PlacementRejectReason.None;
+                    perCell?.Add(new FootprintCellReason(cell, reason));
+                    switch (reason)
+                    {
+                        case PlacementRejectReason.Occupied: anyOccupied = true; break;
+                        case PlacementRejectReason.NotBuildable: anyNotBuildable = true; break;
+                        case PlacementRejectReason.OutOfBounds: anyOutOfBounds = true; break;
+                    }
+                }
+            }
+            if (anyOccupied) return PlacementRejectReason.Occupied;
+            if (anyNotBuildable) return PlacementRejectReason.NotBuildable;
+            if (anyOutOfBounds) return PlacementRejectReason.OutOfBounds;
+            return PlacementRejectReason.None;
+        }
+
+        // defender-footprint unit 1 — UI(고스트)가 그릴 타일별 판정 결과의 공개 seam.
+        // 판정과 같은 술어를 그대로 노출한다(재판정 금지). 반환 = 공간 종합 사유 —
+        // 비용/풀/상한은 CanPlaceDefenderAt 이 별도로 본다(기존 계약 그대로).
+        public PlacementRejectReason GetPlacementCellReasons(
+            Vector2Int anchor, DefenderUnitData unit, List<FootprintCellReason> results)
+        {
+            var layers = unit != null ? unit.EffectivePlacementLayers : PlacementLayer.Ground;
+            var size = unit != null ? unit.Footprint : Vector2Int.one;
+            return SpatialFootprintCheck(_generatedMap, _occupiedTiles, anchor, size, layers, results);
+        }
+
         public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
         {
             if (!_running && !_placementAllowed)
@@ -6966,7 +7072,10 @@ namespace Wassup.Bridge
             // unit 4 — 층 교집합에 쓸 유닛 레이어. null 은 아래 InvalidUnit 이 잡으므로 여기선 Ground 폴백
             // (사유 우선순위 보존 — 공간 판정이 유닛 검사보다 앞선다는 기존 계약).
             var layers = unitData != null ? unitData.EffectivePlacementLayers : PlacementLayer.Ground;
-            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY), layers);
+            // defender-footprint unit 1 — (tileX,tileY) = footprint **앵커**(min 코너). 1×1 은
+            // 앵커=대표 셀이라 기존과 동일. footprint 전체를 검사한다(단일 술어 재사용).
+            var size = unitData != null ? unitData.Footprint : Vector2Int.one;
+            var spatial = SpatialFootprintCheck(_generatedMap, _occupiedTiles, new Vector2Int(tileX, tileY), size, layers);
             if (spatial != PlacementRejectReason.None)
             {
                 reason = spatial;
@@ -7239,6 +7348,8 @@ namespace Wassup.Bridge
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
         {
+            // defender-footprint unit 1 — (tileX,tileY) = footprint 앵커. 바인딩·DefenderTile·
+            // sim 위치·on-place/시너지/로그는 전부 대표 셀 기준(1×1 은 앵커=대표 셀).
             var cell = new Vector2Int(tileX, tileY);
             if (!CanPlaceDefenderAt(tileX, tileY, unitData, out var reason))
             {
@@ -7246,12 +7357,13 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            _occupiedTiles.Add(cell);
+            var primary = FootprintMath.PrimaryCell(cell, unitData.Footprint);
+            OccupyDefenderFootprint(cell, unitData.Footprint);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
-            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
+            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
 
-            var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
-            TriggerOnPlaceAndSynergy(unitData, cell, entity);
+            var entity = CreateDefenderEntity(primary, unitData, pendingDeployment: false, spawnPlacementVfx: true);
+            TriggerOnPlaceAndSynergy(unitData, primary, entity);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -7274,10 +7386,12 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            _occupiedTiles.Add(cell);
+            // defender-footprint unit 1 — cell = 앵커, 등록·바인딩은 대표 셀 기준 (PlaceDefenderAs 와 동형).
+            var primary = FootprintMath.PrimaryCell(cell, unitData.Footprint);
+            OccupyDefenderFootprint(cell, unitData.Footprint);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
-            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
-            entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
+            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
+            entity = CreateDefenderEntity(primary, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
@@ -7297,6 +7411,8 @@ namespace Wassup.Bridge
         public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
         {
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            // defender-footprint unit 1 — 호출자(배치 컨트롤러)는 앵커를 들고 있을 수 있다 — 대표 셀로 해석.
+            if (TryResolveDefenderKey(cell, out var key)) cell = key;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
 
             if (!_onPlaceTriggeredEntities.Contains(entity))
@@ -7322,6 +7438,8 @@ namespace Wassup.Bridge
             // here; that would double-fire the radius push impulse.
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
             if (_onPlaceTriggeredEntities.Contains(entity)) return false;
+            // defender-footprint unit 1 — 대표 셀 해석(효과 타일·on-place 는 대표 셀에서 발동).
+            if (TryResolveDefenderKey(cell, out var resolvedKey)) cell = resolvedKey;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
             MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
@@ -7670,6 +7788,8 @@ namespace Wassup.Bridge
             Destroy(material);
         }
 
+        // defender-footprint unit 1 — cell = **대표 셀**. footprint 점유 등록(OccupyDefenderFootprint)은
+        // 호출자(배치 2경로) 몫이고, 이 함수는 바인딩·DefenderTile·sim 위치를 전부 그 한 칸에 건다.
         private Entity CreateDefenderEntity(
             Vector2Int cell,
             DefenderUnitData unitData,
