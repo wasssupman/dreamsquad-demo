@@ -689,9 +689,13 @@ namespace Wassup.UI
         {
             Entity found = Entity.Null;
             Vector2Int? cell = null;
+            var focusCfg = _view.FocusConfig;
             // rev 4-3 — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅). 보드 평면 셀
             // 조회는 발밑을 정확히 가리킬 때만 맞아서 2차(폴백 quad 뷰 포함).
-            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell))
+            // defender-footprint unit 4 — 패딩(넓은 부착 영역)·자석(요구 문서 8절) 노브 전달.
+            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell,
+                    focusCfg != null ? focusCfg.unitPickPaddingPx : 0f,
+                    focusCfg != null ? focusCfg.unitPickMagnetPx : 0f))
             {
                 cell = pickedCell;
                 found = picked;
@@ -702,17 +706,19 @@ namespace Wassup.UI
                 found = entity;
             }
 
-            // dreamcatcher-attach-lockon 계약 #4 — 정체 히스테리시스: 현재 락온이 아직
-            // 손가락 밑이면, 새 후보가 마진 이상 더 가깝지 않는 한 유지(밀집 플리커 차단).
+            // dreamcatcher-attach-lockon 계약 #4 — 정체 히스테리시스: 새 후보가 마진 이상
+            // 우세할 때만 전환(밀집 플리커 차단).
+            // defender-footprint unit 4 — 기존 게이트(curRect.Contains)는 손가락이 현재 렉트를
+            // 벗어나는 순간 전환 지연이 0 이 되는 구멍이었다. 점→렉트 거리 비교로 일원화 —
+            // 자석 반경 안(렉트 밖)에서도 히스테리시스가 산다.
             if (found != _hoverEntity && _hoverEntity != Entity.Null && found != Entity.Null)
             {
-                float hyst = _view.FocusConfig != null ? _view.FocusConfig.lockSwitchHysteresisPx : 0f;
+                float hyst = focusCfg != null ? focusCfg.lockSwitchHysteresisPx : 0f;
                 if (hyst > 0f
                     && _view.Bridge.TryGetUnitScreenRect(_hoverEntity, _view.MainCamera, out var curRect)
-                    && curRect.Contains(screenPos)
                     && _view.Bridge.TryGetUnitScreenRect(found, _view.MainCamera, out var newRect)
-                    && Vector2.Distance(curRect.center, screenPos)
-                       - Vector2.Distance(newRect.center, screenPos) < hyst)
+                    && Wassup.Bridge.BattleBridge.ScreenDistanceToRect(curRect, screenPos)
+                       - Wassup.Bridge.BattleBridge.ScreenDistanceToRect(newRect, screenPos) < hyst)
                 {
                     found = _hoverEntity;   // keep current lock
                     cell = _hoverCell;

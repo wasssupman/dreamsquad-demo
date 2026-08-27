@@ -365,7 +365,13 @@ namespace Wassup.UI
         // 틸트 빌보드라 몸체가 발밑 셀보다 화면상 위로 솟으므로 평면 레이캐스트만으로는 놓친다.
         private bool TryPick(Vector2 screenPos, out Entity entity)
         {
-            if (bridge.TryPickDefenderAtScreen(mainCamera, screenPos, out entity, out _)) return true;
+            // defender-footprint unit 4 — 부착과 **같은 SO**(handView 의 FocusConfig)에서 패딩·자석
+            // 노브를 읽는다. 두 UX 의 픽 감각이 한 값으로 튜닝돼야 «탭은 되는데 부착은 안 되는»
+            // 지대가 안 생긴다. 미배선이면 0(기존 판정 그대로).
+            var cfg = handView != null ? handView.FocusConfig : null;
+            if (bridge.TryPickDefenderAtScreen(mainCamera, screenPos, out entity, out _,
+                    cfg != null ? cfg.unitPickPaddingPx : 0f,
+                    cfg != null ? cfg.unitPickMagnetPx : 0f)) return true;
             if (bridge.TryScreenToCell(mainCamera, screenPos, out var cell) &&
                 bridge.TryGetDefenderAt(cell, out entity)) return true;
             entity = Entity.Null;

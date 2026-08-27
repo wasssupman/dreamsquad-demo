@@ -5921,25 +5921,65 @@ namespace Wassup.Bridge
         // view's projected sprite rect instead (overlaps → nearest rect center).
         // Callers should fall back to TryGetDefenderAt(cell) for feet-point taps
         // and fallback quad views.
-        public bool TryPickDefenderAtScreen(Camera cam, Vector2 screenPos, out Entity defender, out Vector2Int cell)
+        // defender-footprint unit 4 — 픽 재설계. ① 포함 후보 중 **앞면(렌더 순서) 우선** —
+        // 예전 «중심 최근접»은 겹침 영역에서 손가락이 앞 유닛 몸 위인데 뒤 유닛 중심이 더
+        // 가까우면 뒤가 뽑히는 구조적 오선택이 있었다. 판정이 렌더 순서를 **읽기만** 하는
+        // 것이라 렌더-입력 분리 계약(README 계약 8)은 유지된다(가려진 뒤 유닛은 노출 부위·
+        // 발밑 셀 폴백·자석으로 여전히 도달). 동률은 중심 최근접.
+        // ② paddingPx: 스프라이트보다 넓은 픽 영역(1폭 유닛 가로 확대 — 요구 문서 10절).
+        // ③ magnetPx: 포함 후보가 없을 때 확장 렉트까지의 거리 ≤ 이 값인 최근접 흡착.
+        // 기본 파라미터(0,0)의 포함 집합은 기존과 동일하다.
+        public bool TryPickDefenderAtScreen(Camera cam, Vector2 screenPos, out Entity defender, out Vector2Int cell,
+            float paddingPx = 0f, float magnetPx = 0f)
         {
             defender = Entity.Null;
             cell = default;
             if (cam == null || spineUnitPool == null) return false;
-            float best = float.MaxValue;
+            int bestOrder = int.MinValue;
+            float bestCenter = float.MaxValue;
+            float bestMagnet = float.MaxValue;
+            var gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : new int2(1, 1);
             foreach (var kv in _defenderByTile)
             {
                 if (!spineUnitPool.TryGet(kv.Value.entity, out var view) || view == null) continue;
-                if (!view.TryGetScreenRect(cam, out var rect) || !rect.Contains(screenPos)) continue;
-                float d = (rect.center - screenPos).sqrMagnitude;
-                if (d < best)
+                if (!view.TryGetScreenRect(cam, out var rect)) continue;
+                if (paddingPx > 0f)
                 {
-                    best = d;
-                    defender = kv.Value.entity;
-                    cell = kv.Key;
+                    rect.xMin -= paddingPx; rect.xMax += paddingPx;
+                    rect.yMin -= paddingPx; rect.yMax += paddingPx;
+                }
+                if (rect.Contains(screenPos))
+                {
+                    int order = Wassup.Presentation.BoardSortOrder.Compute(gridSize, kv.Key.x, kv.Key.y);
+                    float dc = (rect.center - screenPos).sqrMagnitude;
+                    if (order > bestOrder || (order == bestOrder && dc < bestCenter))
+                    {
+                        bestOrder = order;
+                        bestCenter = dc;
+                        defender = kv.Value.entity;
+                        cell = kv.Key;
+                    }
+                }
+                else if (bestOrder == int.MinValue && magnetPx > 0f)
+                {
+                    float d = ScreenDistanceToRect(rect, screenPos);
+                    if (d <= magnetPx && d < bestMagnet)
+                    {
+                        bestMagnet = d;
+                        defender = kv.Value.entity;
+                        cell = kv.Key;
+                    }
                 }
             }
             return defender != Entity.Null;
+        }
+
+        // defender-footprint unit 4 — 스크린 점→렉트 거리(내부 0). 픽 자석·락온 히스테리시스가 공유.
+        public static float ScreenDistanceToRect(Rect r, Vector2 p)
+        {
+            float dx = Mathf.Max(Mathf.Max(r.xMin - p.x, 0f), p.x - r.xMax);
+            float dy = Mathf.Max(Mathf.Max(r.yMin - p.y, 0f), p.y - r.yMax);
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
         // dreamcatcher-attach-lockon unit 5 — base-ring 열거(순수 공간 read). 배치

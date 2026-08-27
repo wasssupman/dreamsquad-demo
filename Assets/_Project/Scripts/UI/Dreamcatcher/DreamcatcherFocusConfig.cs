@@ -39,6 +39,10 @@ namespace Wassup.UI
         [Header("정체 히스테리시스")]
         public float lockSwitchHysteresisPx = 40f; // 새 후보가 이만큼 더 가까워야 전환
 
+        [Header("유닛 픽 영역 — defender-footprint unit 4 (선택·부착 공유)")]
+        public float unitPickPaddingPx = 24f;  // 스프라이트 렉트 확장(px). 1폭 유닛 가로 오조작 완충
+        public float unitPickMagnetPx = 60f;   // 렉트 밖 자석 반경(px). 0 = 자석 없음
+
         [Header("D · 오프셋 아이덴티티 콜아웃")]
         // unit-dreamcatcher-inspect unit 6 rev(사용자 피드백 2026-07-29) — 콜아웃 위치 규칙은
         // 조준/선택 공통 하나: 리티클 프레임 상단 + 이 간격. 손끝 회피는 별도 오프셋이 아니라
