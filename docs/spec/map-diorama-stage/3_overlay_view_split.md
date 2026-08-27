@@ -25,10 +25,12 @@
 
 ## 완료 기준
 
-- [ ] compile + EditMode 두 lane 무회귀 + 오버레이 채널 전부 에디터 Play 동작: 배치 하이라이트/사거리 프리뷰/호버 스냅/아군 장판 페인트/착지 텔레그래프/효과 타일 마커
-- [ ] 바닥 타일이 더 이상 페인트되지 않고 스테이지 프리팹 바닥만 보인다
-- [ ] `PaintPositions_MatchBoardSpace_*` 스테이지 기준 재작성 그린 (C-1 회귀망)
-- [ ] `BoardSortOrder` EditMode 테스트 그린 — **폭 48 격자** near/far 정렬 + **`Compute` 최대치 < `ProjectileOffset`(1000)** 단언 (critic M-9: 폭 30 은 경계를 비껴가는 값)
-- [ ] `Tilemap.GetTile` 로 게임 상태를 읽는 코드 0건 (grep — 단 reflection 문자열 접근은 grep 이 못 잡으므로 위 3개소 수동 확인)
+- [x] compile + EditMode 두 lane 무회귀 + 오버레이 채널 전부 에디터 Play 동작: 배치 하이라이트/사거리 프리뷰/호버 스냅/아군 장판 페인트/착지 텔레그래프/효과 타일 마커
+- [x] 바닥 타일이 더 이상 페인트되지 않고 스테이지 프리팹 바닥만 보인다
+- [x] `PaintPositions_MatchBoardSpace_*` 스테이지 기준 재작성 그린 (C-1 회귀망)
+- [x] `BoardSortOrder` EditMode 테스트 그린 — **폭 48 격자** near/far 정렬 + **`Compute` 최대치 < `ProjectileOffset`(1000)** 단언 (critic M-9: 폭 30 은 경계를 비껴가는 값)
+- [x] `Tilemap.GetTile` 로 게임 상태를 읽는 코드 0건 (grep — 단 reflection 문자열 접근은 grep 이 못 잡으므로 위 3개소 수동 확인)
 
 확인 2026-08-18 — EditMode 두 lane 2536 그린(신선 어셈블리 확인: 은퇴 테스트 잔존 0) + PlayMode 스모크 Passed. 페인트 0 셀을 은퇴 pin 테스트로 역전, AlignGridTo C-1 자동 가드 신설(sim 정수=셀 중심 규약은 GridMath 헬퍼로 취득). BoardSortOrderTests 는 기존 3개 위에 병합(덮어쓰기 사고 복구). 잔존: 비활성 PropsTilemap GO(컴포넌트만 적출) — unit 7 정리 후보.
+
+체크박스 마감 2026-08-27 — 확인 2026-08-18 (하단 기록).

@@ -32,8 +32,10 @@
 
 ## 완료 기준
 
-- [ ] EditMode 테스트 그린: 양자화 경계(셀 경계선 위 프랍·음수 로컬 좌표) · footprint 부분 걸침(안쪽 셀 차단) · blocked OR 순서 비의존 · placeMask 조립 · **BlockZone 차감 셀에서 `PlaceableAt(Ground)`·`PlaceableAt(Path)` 모두 false** (critic C-2) · laneIndex 정렬/중복 검출 · 루트 flatten 왕복 · 스폰/골 차단 셀 검출
-- [ ] 조립 결과가 `MapConnectivity` 를 통과하는 픽스처 1개 + 통과 못 하는 픽스처 1개 (음성 대조군)
-- [ ] `GeneratedMap` 필드 중 미기입이 없는지 전수 대조 (필드 추가 회귀 방지 — 테스트에 명시)
+- [x] EditMode 테스트 그린: 양자화 경계(셀 경계선 위 프랍·음수 로컬 좌표) · footprint 부분 걸침(안쪽 셀 차단) · blocked OR 순서 비의존 · placeMask 조립 · **BlockZone 차감 셀에서 `PlaceableAt(Ground)`·`PlaceableAt(Path)` 모두 false** (critic C-2) · laneIndex 정렬/중복 검출 · 루트 flatten 왕복 · 스폰/골 차단 셀 검출
+- [x] 조립 결과가 `MapConnectivity` 를 통과하는 픽스처 1개 + 통과 못 하는 픽스처 1개 (음성 대조군)
+- [x] `GeneratedMap` 필드 중 미기입이 없는지 전수 대조 (필드 추가 회귀 방지 — 테스트에 명시)
 
 확인 2026-08-18 — EditMode 두 lane 전체 그린(2544 pass · 실패 0 · 기지 스킵 3), `DioramaMapBuilderTests` 전부 포함. 스캐너는 구현 시 Core 로 분리(변경 대상 절 참조), `SpawnMarker.routeIndex` 추가. 스폰 하한은 리뷰 반영으로 «< 2 = 형식 오류»(멀티레인 계약·MapConnectivity 승계).
+
+체크박스 마감 2026-08-27 — 확인 2026-08-18 (하단 기록).

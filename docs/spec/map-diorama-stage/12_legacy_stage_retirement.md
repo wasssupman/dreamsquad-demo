@@ -28,7 +28,9 @@
 
 ## 완료 기준
 
-- [ ] `Prefabs/Maps` 부재 · EditMode 두 lane green(신규 실패 0)
+- [x] `Prefabs/Maps` 부재 · EditMode 두 lane green(신규 실패 0)
 - [x] PlayMode: `DioramaStagePlayTests`·`BonusWavePullTest`·`WaypointRoutingLiveTest.SiegeDevSlot(Duel)` green (2026-08-26)
 - [x] 기본판 4파일 — 13/14 통과(2026-08-26). `Stun_FreezesEnemiesInRange`·`Whirlpot_WalksIn_ThenEngages` 의 Serpent 판형 가정(원점 스캔·+5타일 텔레포트)을 흐름장 기반(골 거리 내림차순 배치칸·적 경로 옆 배치+상류 5칸)으로 고쳐 판형 비의존. 남은 1 = `FlyingEnemy_IsNotTaunted`(기존 실패 목록, 본 spec 무관)
-- [ ] 문서 3곳에서 `Prefabs/Maps` 경로·은퇴 맵 이름이 «현재 존재» 로 읽히는 문장 0
+- [x] 문서 3곳에서 `Prefabs/Maps` 경로·은퇴 맵 이름이 «현재 존재» 로 읽히는 문장 0
+
+체크박스 마감 2026-08-27 — 확인 2026-08-26/27 — Prefabs/Maps 부재 · EditMode 두 lane green · 잔존 문장은 과거형 주석 1건뿐.

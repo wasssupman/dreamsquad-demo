@@ -32,6 +32,8 @@
 
 ## 완료 기준
 
-- [ ] compile 0 · EditMode 코어 lane green(신규 5 케이스 포함)
-- [ ] Duel 스테이지(unit 11)에서 전투 시작 시 `StructureTag` 본능 엔티티 4 + 뷰 4 (PlayMode `DioramaStagePlayTests`)
-- [ ] `StructureMarker` 에 Core SO 를 물리면 배틀 진입 하드 실패 + 오류 문구에 «계약 11» 명시
+- [x] compile 0 · EditMode 코어 lane green(신규 5 케이스 포함)
+- [x] Duel 스테이지(unit 11)에서 전투 시작 시 `StructureTag` 본능 엔티티 4 + 뷰 4 (PlayMode `DioramaStagePlayTests`)
+- [x] `StructureMarker` 에 Core SO 를 물리면 배틀 진입 하드 실패 + 오류 문구에 «계약 11» 명시
+
+체크박스 마감 2026-08-27 — 확인 2026-08-26 — EditMode 6 케이스 · DioramaStagePlayTests 본능 4기 · Structures_Core_Rejected_WithContract11Message.

@@ -26,9 +26,9 @@
 
 ## 완료 기준
 
-- [ ] 전체 스위트 무회귀: EditMode 두 lane + PlayMode 8분 lane (critic M-4)
-- [ ] 파일럿 맵 에디터 Play 1판 완주 (승패 무관, 프리즈/콘솔 에러 0)
+- [x] 전체 스위트 무회귀: EditMode 두 lane + PlayMode 8분 lane (critic M-4) — 2026-08-19 확인 줄 + 5차 병합 전수(2026-08-27)
+- [x] 파일럿 맵 에디터 Play 1판 완주 — 2026-08-19 확인(파일럿은 unit 12 에서 은퇴, 후계 = Duel)
 - [x] 육안 검증 축 5종 기록 완료 — 사용자 확인 2026-08-27(파일럿 은퇴 후 Duel/Street 라이브 스테이지에서): ①~⑤ 전부 수용. 후속 spec 격상 항목 없음
-- [ ] `docs/reference/object-pipeline-map.md` 프랍/타일 표 갱신 (구조 변경 확정 — 워크플로우 5)
+- [x] `docs/reference/object-pipeline-map.md` 프랍/타일 표 갱신 — 저작 경로 `Art/Theme/{theme}/` 로 갱신(unit 12)
 
 확인 2026-08-19 — MapStage_Pilot.prefab 생성(MapStageDummyGenerator MenuItem, 16×10 · barrier 남북 링 · 내부 차단 3 · 효과 타일 허용) + 풀 dev 등록. 전체 스위트: EditMode 두 lane 그린(직전 2524) · PlayMode 148 pass / 18 잔존(US-004b 판정 기록 — 기하 오염 15건은 스트라이드 이격으로 해소(33→18), 잔존 10건은 순서 의존·기제 미확인 — main 기준선 대조까지 유·무죄 미결. 환경 의심 4 + 브랜치 BattleScene 편집 의심 1(SceneTransition), 개별 3 → US-007 후속 조사로 격상). 육안 검증 축 5종은 사용자 확인 대기 항목으로 보고.

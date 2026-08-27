@@ -1,6 +1,6 @@
 # map-diorama-stage — 맵 저작을 디오라마 스테이지로 전환 (접근 A)
 
-상태: **units 0~5·7 구현·검증 완료 2026-08-19 · unit 9 구현 2026-08-25 · units 10~12(본능 마커·Duel 재저작·레거시 은퇴) 구현 2026-08-26, Play 확인 대기** (브랜치 feature/map-diorama-stage · unit 6 = 포탈 프랍 마커 비주얼로 재해석) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
+상태: **완료 2026-08-27** — units 0~5·7·9~12 구현·검증 완료, unit 6 은 «포탈 프랍 = 스폰/골 마커 비주얼» 로 재해석해 구현. main 에 fast-forward 편입. Play 육안 잔여 2건(골 포탈 스트레스/붕괴 연출 · 보너스 버튼 흐름)은 handoff Follow-up. 맵별 타일 크기는 후속 spec [`map-stage-tile-scale`](../map-stage-tile-scale/README.md).
 
 설계 근거·결정 이력·전투 접점 감사: [`docs/plans/2026-08-18-map-diorama-stage-design.md`](../../plans/2026-08-18-map-diorama-stage-design.md)
 
@@ -77,4 +77,7 @@
 - **Duel 재저작에서 main 과 갈린 두 지점** (unit 11) — ⓐ 차단 셀 위 공중 waypoint(옛 (11,4)) 허용, ⓑ 층별 `PlacementBlockZone`(적 진영 «Air 만 허용» — 지금은 전 층 0).
 - **Ignore 4건 재활성화용 dev 스테이지 저작** — unit 12 가 은퇴시킨 routed-lane(`spawnRoutes`)·`RouteMarker` 순서·저작 플랜(`WavePlanAsset`) 라이브 커버리지가 0 이다(`SpawnGuideMatchesWalkTest.Coil_*`·`WaypointRoutingLiveTest` 3건). 이 spec 이 출하한 `RouteMarker` 의 유일한 라이브 테스트였다 — 경유점 2개 + 레인 기본 경로 + plan 짝을 가진 dev 스테이지 하나로 셋을 되살린다.
 - **레거시 덱 정리·개명** — `Deck_Serpent/Zig/Coil` 은 Street/Subway/StreetDay 의 라이브 덱으로 재배정됐지만 이름이 은퇴한 맵을 가리킨다(`Deck_Street` 등으로 개명 시 `WaveConceptAuthoringTests`·`LiveDeckBossAuthoringTests` 의 이름 목록과 `map-wave-balancing.md` 동반 갱신). `Ford/Isle/Tutorial/WaypointLab/SiegeTest/Spiral/Twin/Hook/WaveA` 는 풀 밖 잔존(EditMode 덱 테스트가 이름으로 순회). 정리는 별도 결정.
+- **텔레포트 포탈(원안 unit 6)** — `PortalMarker` 쌍 → `PortalLink`. 포탈 프랍이 마커 비주얼로 쓰이게 된 뒤라 «게임플레이 포탈»은 별도 프랍/마커가 필요.
+- **보너스 포탈 전용 변형** — 지금은 스폰 마커와 같은 `SpawnPortal_Red`. 핑크 색조(기즈모 색)·사용자가 본 «누운 느낌» 차이 원인 확인.
+- **맵별 타일 크기** → [`docs/spec/map-stage-tile-scale/`](../map-stage-tile-scale/README.md) (초안). 사용자 15×6 축소 저작 3맵의 재저작·포탈 visualRoot 배선도 여기서.
 - **`TileSetData` SO 분리** — 오버레이 절반만 남기는 정리(unit 3 은 필드 사용 중단까지만).

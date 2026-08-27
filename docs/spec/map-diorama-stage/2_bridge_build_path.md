@@ -29,10 +29,12 @@
 
 ## 완료 기준
 
-- [ ] compile + EditMode **두 lane** (`Wassup.Tests.EditMode` + `Wassup.Tests.EditMode.Assets`) 무회귀 — 맵/에셋 spec 은 Assets lane 필수 (critic M-4). 구 문서 경로 테스트의 처분은 unit 7 소관이므로 이 unit 에서는 컴파일 유지가 기준
-- [ ] **PlayMode 스모크 신설** (critic M-12 — unit 5 에서 이동): `Assets/_Project/Tests/PlayMode/DioramaStagePlayTests.cs`, 픽스처 스테이지 기준 — ① 적 스폰 후 **셀이 N프레임 안에 바뀐다** → 골 도달 이벤트 ② 열린 셀 배치 성공 + 차단 셀 거부 + BlockZone 거부 ③ 차단 footprint 통과 0
-- [ ] 픽스처 스테이지로 에디터 Play: 위 스모크와 동일 시나리오 육안 + **프랍-격자 정렬 확인**(gridOriginLocal≠0 인 픽스처로 — C-1 회귀 축)
-- [ ] DevMapOverride 스테퍼로 entry 전환 + "Dev 엔트리 등록" 버튼 동작
-- [ ] 풀 선정 결정론 EditMode 테스트 (같은 시드 = 같은 entry)
+- [x] compile + EditMode **두 lane** (`Wassup.Tests.EditMode` + `Wassup.Tests.EditMode.Assets`) 무회귀 — 맵/에셋 spec 은 Assets lane 필수 (critic M-4). 구 문서 경로 테스트의 처분은 unit 7 소관이므로 이 unit 에서는 컴파일 유지가 기준
+- [x] **PlayMode 스모크 신설** (critic M-12 — unit 5 에서 이동): `Assets/_Project/Tests/PlayMode/DioramaStagePlayTests.cs`, 픽스처 스테이지 기준 — ① 적 스폰 후 **셀이 N프레임 안에 바뀐다** → 골 도달 이벤트 ② 열린 셀 배치 성공 + 차단 셀 거부 + BlockZone 거부 ③ 차단 footprint 통과 0
+- [x] 픽스처 스테이지로 에디터 Play: 위 스모크와 동일 시나리오 육안 + **프랍-격자 정렬 확인**(gridOriginLocal≠0 인 픽스처로 — C-1 회귀 축)
+- [x] DevMapOverride 스테퍼로 entry 전환 + "Dev 엔트리 등록" 버튼 동작
+- [x] 풀 선정 결정론 EditMode 테스트 (같은 시드 = 같은 entry)
 
 확인 기록 추기(아키텍트 D5) — 배치 판정(열린·차단·BlockZone)은 순수 계산이라 EditMode(`DioramaMapBuilderTests.Assemble_BlockZone_ClosesPlacement_KeepsTraversal` 등)로 커버하는 것으로 치환했다. PlayMode 스모크는 이동(셀 변화·전진 ≥4셀)·차단 침범 0 만 단언한다.
+
+체크박스 마감 2026-08-27 — 확인 2026-08-18/19 (하단 기록 · PlayMode 스모크 = DioramaStagePlayTests).
