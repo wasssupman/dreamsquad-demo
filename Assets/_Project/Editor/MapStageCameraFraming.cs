@@ -130,7 +130,7 @@ namespace Wassup.EditorTools
 
                 decorate?.Invoke(inst);
                 // unit 6 — 런타임(MarkerPropInstaller)과 같은 규칙으로 공용 스폰/골 포탈을 얹어 «실제로 보일 그림»을 찍는다.
-                MapStageAuthoringTools.ApplySharedMarkerProps(inst);
+                int props = MapStageAuthoringTools.ApplySharedMarkerProps(inst);
                 // 파티클은 프리뷰 씬에서 시간이 흐르지 않는다 — 1.5초를 미리 시뮬레이트해 «켜진 상태»를 찍는다.
                 foreach (var ps in inst.GetComponentsInChildren<ParticleSystem>(true))
                     ps.Simulate(1.5f, withChildren: false, restart: true, fixedTimeStep: false);
@@ -151,7 +151,7 @@ namespace Wassup.EditorTools
                 cam.targetTexture = null;
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(pngPath)));
                 File.WriteAllBytes(pngPath, tex.EncodeToPNG());
-                return $"OK|{pngPath} {width}x{height} pos={pos:F2} fov={cam.fieldOfView:F1} {overlayInfo}";
+                return $"OK|{pngPath} {width}x{height} pos={pos:F2} fov={cam.fieldOfView:F1} props={(props < 0 ? "ERROR:no-style" : props.ToString())} {overlayInfo}";
             }
             finally
             {

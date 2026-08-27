@@ -30,31 +30,60 @@ namespace Wassup.Tests.EditMode
             Assert.AreNotEqual(style.spawnProp, style.goalProp, "스폰(빨강)과 골(노랑)은 다른 프리팹");
         }
 
+        // 씬 파일 정본 검사 — 설치자 컴포넌트가 있고(켜져 있고), 그 오브젝트가 활성이며, style 이 스타일 에셋을 가리킨다.
+        // 11400000 은 에셋 .meta 의 mainObjectFileID 로 고정, guid 는 경로에서 파생 — 이동해도 살아 있다.
         [Test]
         public void BattleScene_WiresInstallerToStyleAsset()
         {
             string guid = AssetDatabase.AssetPathToGUID(StylePath);
             Assert.IsFalse(string.IsNullOrEmpty(guid));
             string scene = File.ReadAllText(ScenePath);
-            Assert.IsTrue(scene.Contains("Wassup.Presentation.MarkerPropInstaller"), "BattleScene 에 MarkerPropInstaller 가 없다");
-            Assert.IsTrue(scene.Contains($"style: {{fileID: 11400000, guid: {guid}, type: 2}}"), "MarkerPropInstaller.style 이 MarkerPropStyle.asset 을 가리키지 않는다");
+
+            string mb = YamlBlockContaining(scene, "Wassup.Presentation.MarkerPropInstaller");
+            Assert.IsNotNull(mb, "BattleScene 에 MarkerPropInstaller 가 없다");
+            Assert.IsTrue(mb.Contains("m_Enabled: 1"), "MarkerPropInstaller 가 꺼져 있다");
+            Assert.IsTrue(mb.Contains($"style: {{fileID: 11400000, guid: {guid}, type: 2}}"), "MarkerPropInstaller.style 이 MarkerPropStyle.asset 을 가리키지 않는다");
+
+            string go = YamlBlockContaining(scene, "m_Name: _MarkerProps");
+            Assert.IsNotNull(go, "BattleScene 에 _MarkerProps 오브젝트가 없다");
+            Assert.IsTrue(go.Contains("m_IsActive: 1"), "_MarkerProps 가 비활성 — 설치자 OnEnable 이 돌지 않는다");
         }
 
-        // 라이브 풀의 스테이지는 프랍을 내장하지 않는다(공유 구조) — 내장하면 맵마다 다른 그림이 되고 스타일 교체가 반쪽만 먹는다.
+        // 라이브 풀의 스테이지는 **공용 프랍을 내장하지 않는다** — 내장하면 스타일 교체가 그 맵엔 반쪽만 먹는다.
+        // 맵 전용 저작(다른 프리팹을 visualRoot 로 채움)은 계약상 허용 — 설치자가 건너뛴다.
         [Test]
-        public void LivePoolStages_DoNotEmbedMarkerProps()
+        public void LivePoolStages_DoNotEmbedSharedProps()
         {
+            var style = AssetDatabase.LoadAssetAtPath<MarkerPropStyle>(StylePath);
             var pool = AssetDatabase.LoadAssetAtPath<MapStagePool>("Assets/_Project/Data/Maps/MapStagePool.asset");
-            Assert.IsNotNull(pool);
+            Assert.IsNotNull(style); Assert.IsNotNull(pool);
             for (int i = 0; i < pool.Count; i++)
             {
                 var stage = pool.Get(i).stage;
                 if (stage == null) continue;
                 foreach (var s in stage.GetComponentsInChildren<SpawnMarker>(true))
-                    Assert.IsNull(s.visualRoot, $"{stage.name} spawn lane {s.laneIndex} 가 프랍을 내장 — 공용 MarkerPropStyle 로 통일");
+                    AssertNotSharedProp(stage.name, $"spawn lane {s.laneIndex}", s.visualRoot, style.spawnProp);
                 foreach (var g in stage.GetComponentsInChildren<GoalMarker>(true))
-                    Assert.IsNull(g.visualRoot, $"{stage.name} goal 이 프랍을 내장 — 공용 MarkerPropStyle 로 통일");
+                    AssertNotSharedProp(stage.name, "goal", g.visualRoot, style.goalProp);
             }
+        }
+
+        static void AssertNotSharedProp(string stageName, string marker, Transform visualRoot, GameObject sharedProp)
+        {
+            if (visualRoot == null || sharedProp == null) return;
+            var source = PrefabUtility.GetCorrespondingObjectFromOriginalSource(visualRoot.gameObject);
+            bool embedded = source == sharedProp || visualRoot.name.StartsWith(sharedProp.name);
+            Assert.IsFalse(embedded, $"{stageName} {marker} 가 공용 프랍 {sharedProp.name} 을 내장 — 프리팹에서 빼고 MarkerPropStyle 에 맡길 것(맵 전용 프랍은 허용)");
+        }
+
+        // "--- !u!" 로 시작하는 YAML 오브젝트 블록 중 needle 을 포함하는 첫 블록.
+        static string YamlBlockContaining(string yaml, string needle)
+        {
+            int at = yaml.IndexOf(needle, System.StringComparison.Ordinal);
+            if (at < 0) return null;
+            int start = yaml.LastIndexOf("--- !u!", at, System.StringComparison.Ordinal);
+            int end = yaml.IndexOf("--- !u!", at, System.StringComparison.Ordinal);
+            return yaml.Substring(start, (end < 0 ? yaml.Length : end) - start);
         }
     }
 }

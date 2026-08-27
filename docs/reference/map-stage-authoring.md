@@ -26,7 +26,7 @@
 
 - 포탈의 색/모양을 바꾸려면 → `SpawnPortal_Red` / `GoalPortal_Yellow` 프리팹 또는 스타일 에셋의 슬롯을 바꾼다. 네 맵이 함께 바뀐다.
 - 특정 맵만 다른 연출 → 그 프리팹에서 마커 밑에 프랍을 두고 `visualRoot` 를 채운다. 설치자는 채워진 마커를 건너뛴다.
-- 라이브 풀 스테이지에 프랍을 내장하면 Assets lane(`MarkerPropStyleAssetTests.LivePoolStages_DoNotEmbedMarkerProps`)이 빨개진다 — 공유 구조를 반쪽으로 만들지 않기 위한 그물.
+- 라이브 풀 스테이지에 **공용 포탈 프리팹을 그대로 내장**하면 Assets lane(`MarkerPropStyleAssetTests.LivePoolStages_DoNotEmbedSharedProps`)이 빨개진다 — 스타일 교체가 그 맵엔 반쪽만 먹기 때문. 맵 전용 프랍(다른 프리팹)으로 `visualRoot` 를 채우는 것은 허용.
 - 프리뷰(`RenderPrefabPreview`)도 같은 규칙으로 프랍을 얹어 «실제로 보일 그림»을 찍는다.
 
 ## 양자화 규칙

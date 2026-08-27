@@ -42,6 +42,7 @@ namespace Wassup.Core
         private SpriteRenderer[] _stressSprites;
         private Renderer[] _stressMeshes;
         private Color[] _stressMeshBase;   // unit 6 — 메쉬/파티클 머티리얼의 저작 _Color(HDR 밝기 포함). 틴트는 이것에 곱한다.
+        private Transform _stressCacheRoot;   // 캐시를 지은 루트 — visualRoot 가 뒤늦게 채워지면(공용 프랍 설치자) 캐시를 다시 짓는다.
         private static MaterialPropertyBlock _stressMpb;
 
         public void SetStressTint(float stress01, float beatScale)
@@ -53,9 +54,10 @@ namespace Wassup.Core
             tint.r *= b; tint.g *= b; tint.b *= b;
             tint.a = 1f;
 
-            if (_stressSprites == null)
+            var root = VisualRootOrSelf;
+            if (_stressSprites == null || _stressCacheRoot != root)
             {
-                var root = VisualRootOrSelf;
+                _stressCacheRoot = root;
                 _stressSprites = root.GetComponentsInChildren<SpriteRenderer>();
                 var meshes = new System.Collections.Generic.List<Renderer>();
                 foreach (var r in root.GetComponentsInChildren<Renderer>())

@@ -45,6 +45,41 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // unit 6 rev 2 — visualRoot 가 첫 틴트 뒤에 채워져도(공용 프랍 설치자의 스윕 경로) 새 루트의 렌더러가 틴트를 받아야 한다.
+        // 캐시를 한 번만 지으면 «렌더러 0개» 캐시가 굳어 포탈이 영영 붉어지지 않는다(리뷰 MAJ-2).
+        [Test]
+        public void StressTint_RebuildsRendererCache_WhenVisualRootAssignedLater()
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            Assume.That(shader, Is.Not.Null, "URP Unlit 셰이더가 없는 환경");
+            var host = new GameObject("goal");
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            var mat = new Material(shader);
+            try
+            {
+                var marker = host.AddComponent<GoalMarker>();
+                marker.stressTint = new Color(0.5f, 0.25f, 0f, 1f);
+                marker.SetStressTint(1f, 1f);   // visualRoot 없음 — 호스트(렌더러 0)로 캐시가 지어진다
+
+                visual.transform.SetParent(host.transform, false);
+                mat.SetColor("_BaseColor", Base);
+                mat.SetColor("_Color", Base);
+                var r = visual.GetComponent<Renderer>();
+                r.sharedMaterial = mat;
+                marker.visualRoot = visual.transform;
+
+                marker.SetStressTint(1f, 1f);
+                var mpb = new MaterialPropertyBlock();
+                r.GetPropertyBlock(mpb);
+                AssertColor(mpb.GetColor("_Color"), new Color(1.2f, 0.6f, 0f, 1f), "뒤늦게 채워진 visualRoot 의 렌더러가 틴트를 받는다");
+            }
+            finally
+            {
+                Object.DestroyImmediate(mat);
+                Object.DestroyImmediate(host);
+            }
+        }
+
         static void AssertColor(Color actual, Color expected, string why)
         {
             Assert.That(actual.r, Is.EqualTo(expected.r).Within(1e-3f), why + " (r)");

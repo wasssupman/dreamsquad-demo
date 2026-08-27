@@ -216,12 +216,14 @@ namespace Wassup.Tests.PlayMode
             {
                 Assert.IsNotNull(s.visualRoot, $"{stageName} 스폰 lane {s.laneIndex}: 공용 프랍이 붙지 않았다(_MarkerProps 배선?)");
                 Assert.AreEqual(s.transform, s.visualRoot.parent, "프랍은 마커의 자식(스테이지 수명)");
+                Assert.AreEqual(1, s.transform.childCount, "프랍 중복 설치(구독 + 스윕 이중 경로)");
                 Assert.Greater(s.visualRoot.GetComponentsInChildren<ParticleSystem>().Length, 0, "스폰 프랍 = 포탈 파티클");
             }
             foreach (var g in goals)
             {
                 Assert.IsNotNull(g.visualRoot, $"{stageName} 골: 공용 프랍이 붙지 않았다");
                 Assert.AreEqual(g.transform, g.visualRoot.parent, "프랍은 마커의 자식(스테이지 수명)");
+                Assert.AreEqual(1, g.transform.childCount, "프랍 중복 설치(구독 + 스윕 이중 경로)");
                 Assert.Greater(g.visualRoot.GetComponentsInChildren<ParticleSystem>().Length, 0, "골 프랍 = 포탈 파티클");
             }
         }

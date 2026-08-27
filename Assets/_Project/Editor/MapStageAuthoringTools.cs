@@ -48,7 +48,7 @@ namespace Wassup.EditorTools
             if (stage != null && pool != null && pool.EditorRegisterDevStage(stage))
             {
                 EditorUtility.SetDirty(pool);
-                AssetDatabase.SaveAssets();
+                AssetDatabase.SaveAssetIfDirty(pool);   // SaveAssets 는 무관한 dirty 에셋까지 디스크에 쓴다(클린 워크트리 빌드 게이트 오탐)
             }
             Debug.Log($"[MapStageAuthoringTools] 스폰/골 저작: {prefabPath} S0{spawn0} S1{spawn1} G{goal}");
         }
@@ -58,7 +58,8 @@ namespace Wassup.EditorTools
         public const string GoalPortalPrefab = "Assets/_Project/Prefabs/Structures/GoalPortal_Yellow.prefab";
         public const string MarkerPropStylePath = "Assets/_Project/Data/Maps/MarkerPropStyle.asset";
 
-        // 공용 프랍 스타일 에셋(설치자·프리뷰의 단일 정본). 멱등 — 있으면 두 슬롯만 다시 채운다.
+        // 공용 프랍 스타일 에셋(설치자·프리뷰의 단일 정본)을 **보장**한다 — 없으면 만들고, **빈 슬롯만** 기본 포탈로 채운다.
+        // 아티스트가 슬롯을 다른 프리팹으로 바꿔 둔 것은 되돌리지 않는다(가이드가 «스타일 에셋의 슬롯을 바꾼다»를 안내한다).
         public static string EnsureMarkerPropStyle()
         {
             var spawn = AssetDatabase.LoadAssetAtPath<GameObject>(SpawnPortalPrefab);
@@ -70,19 +71,25 @@ namespace Wassup.EditorTools
                 style = ScriptableObject.CreateInstance<MarkerPropStyle>();
                 AssetDatabase.CreateAsset(style, MarkerPropStylePath);
             }
-            style.spawnProp = spawn;
-            style.goalProp = goal;
-            EditorUtility.SetDirty(style);
-            AssetDatabase.SaveAssets();
-            return $"OK|{MarkerPropStylePath} spawn={spawn.name} goal={goal.name} guid={AssetDatabase.AssetPathToGUID(MarkerPropStylePath)}";
+            var filled = new System.Collections.Generic.List<string>();
+            if (style.spawnProp == null) { style.spawnProp = spawn; filled.Add("spawnProp"); }
+            if (style.goalProp == null) { style.goalProp = goal; filled.Add("goalProp"); }
+            if (filled.Count > 0)
+            {
+                EditorUtility.SetDirty(style);
+                AssetDatabase.SaveAssetIfDirty(style);
+            }
+            return $"OK|{MarkerPropStylePath} spawn={style.spawnProp.name} goal={style.goalProp.name} " +
+                   $"{(filled.Count > 0 ? "filled=" + string.Join(",", filled) : "unchanged")} guid={AssetDatabase.AssetPathToGUID(MarkerPropStylePath)}";
         }
 
         // 프리뷰(EditMode 라 설치자의 OnEnable 이 돌지 않음) — 런타임과 **같은** MarkerPropInstaller.Apply 로 공용 프랍을 얹는다.
+        // 반환: 얹은 수. -1 = 스타일 에셋/MapStage 부재(«프랍 없는 프리뷰»를 정상으로 읽지 않게 호출자가 상태에 싣는다).
         public static int ApplySharedMarkerProps(GameObject stageInstance)
         {
             var style = AssetDatabase.LoadAssetAtPath<MarkerPropStyle>(MarkerPropStylePath);
             var stage = stageInstance.GetComponent<MapStage>();
-            if (style == null || stage == null) return 0;
+            if (style == null || stage == null) return -1;
             return Wassup.Presentation.MarkerPropInstaller.Apply(stage, style);
         }
 
