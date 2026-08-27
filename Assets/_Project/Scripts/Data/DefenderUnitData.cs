@@ -41,6 +41,15 @@ namespace Wassup.Data
         public PlacementLayer EffectiveTraversalLayers
             => traversalLayers == PlacementLayer.None ? PlacementLayer.Path : traversalLayers;
 
+        // defender-footprint unit 0 — 점유 크기(가로×세로, 셀). 기본 1×1 = 기존 전 유닛 무변.
+        // 배치 중 회전하지 않는다. 앵커·대표 셀·셀 열거 산식은 FootprintMath 가 단일 소유.
+        // 읽기는 Footprint 프로퍼티만 — 시트가 0/음수를 밀어 넣어도 읽는 자리에서 조인다
+        // (retireCooldownRatio 의 Clamp01 과 같은 방어선).
+        public int footprintWidth = 1;
+        public int footprintHeight = 1;
+        public Vector2Int Footprint
+            => Vector2Int.Max(new Vector2Int(footprintWidth, footprintHeight), Vector2Int.one);
+
         public string displayName;
         // defender-unit-visibility unit 0 — 0 = 목록에서 숨김, 그 외 = 노출.
         //
