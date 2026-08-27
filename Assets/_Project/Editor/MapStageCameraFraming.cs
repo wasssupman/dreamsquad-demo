@@ -129,6 +129,8 @@ namespace Wassup.EditorTools
                 cam.fieldOfView = Mathf.Clamp(fov, config.fovMin, config.fovMax);
 
                 decorate?.Invoke(inst);
+                // unit 6 — 런타임(MarkerPropInstaller)과 같은 규칙으로 공용 스폰/골 포탈을 얹어 «실제로 보일 그림»을 찍는다.
+                MapStageAuthoringTools.ApplySharedMarkerProps(inst);
                 // 파티클은 프리뷰 씬에서 시간이 흐르지 않는다 — 1.5초를 미리 시뮬레이트해 «켜진 상태»를 찍는다.
                 foreach (var ps in inst.GetComponentsInChildren<ParticleSystem>(true))
                     ps.Simulate(1.5f, withChildren: false, restart: true, fixedTimeStep: false);

@@ -194,6 +194,38 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(damaged, "방어유닛 0 인 판에서 적이 골까지 무사히 갔다 — 방어 본능(Guard)이 쏘지 않는다(스킬 레이어 진영/라우팅 회귀 의심)");
         }
 
+        // unit 6 — 스폰/골 마커 프랍은 프리팹이 아니라 MarkerPropInstaller(BattleScene) 가 MarkerPropStyle 로 얹는다(맵에 상관없이 공유).
+        // 생성기 스테이지(Duel)와 사용자 저작 스테이지(Street) 둘 다에서 visualRoot 가 채워지고 포탈 파티클이 있어야 한다.
+        [UnityTest]
+        public IEnumerator Markers_ReceiveSharedPortalProps_OnAnyStage([Values("MapStage_Duel", "MapStage_Street")] string stageName)
+        {
+            LogAssert.ignoreFailingMessages = true;
+            _savedMap = DevMapOverride.Index;
+            DevMapOverride.Index = StageSlot(stageName);
+
+            yield return BattleBridgeTestAccess.LoadBattleScene();
+            var bridge = UnityEngine.Object.FindFirstObjectByType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleScene 에 BattleBridge 가 없다");
+            Assert.IsTrue(bridge.HasGeneratedMap, "스테이지 맵 빌드 실패");
+
+            var spawns = UnityEngine.Object.FindObjectsByType<SpawnMarker>(FindObjectsSortMode.None);
+            var goals = UnityEngine.Object.FindObjectsByType<GoalMarker>(FindObjectsSortMode.None);
+            Assert.GreaterOrEqual(spawns.Length, 2, "스폰 마커 2+");
+            Assert.GreaterOrEqual(goals.Length, 1, "골 마커 1+");
+            foreach (var s in spawns)
+            {
+                Assert.IsNotNull(s.visualRoot, $"{stageName} 스폰 lane {s.laneIndex}: 공용 프랍이 붙지 않았다(_MarkerProps 배선?)");
+                Assert.AreEqual(s.transform, s.visualRoot.parent, "프랍은 마커의 자식(스테이지 수명)");
+                Assert.Greater(s.visualRoot.GetComponentsInChildren<ParticleSystem>().Length, 0, "스폰 프랍 = 포탈 파티클");
+            }
+            foreach (var g in goals)
+            {
+                Assert.IsNotNull(g.visualRoot, $"{stageName} 골: 공용 프랍이 붙지 않았다");
+                Assert.AreEqual(g.transform, g.visualRoot.parent, "프랍은 마커의 자식(스테이지 수명)");
+                Assert.Greater(g.visualRoot.GetComponentsInChildren<ParticleSystem>().Length, 0, "골 프랍 = 포탈 파티클");
+            }
+        }
+
         private static int2 CellOf(EntityManager em, Entity e)
         {
             // sim origin = float3.zero(계약) · tileSize = 1(BattleScene) — 셀 = floor(xz).

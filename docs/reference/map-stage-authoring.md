@@ -10,8 +10,8 @@
 | 스크립트 | 역할 | 핵심 필드 |
 |---|---|---|
 | `MapStage` (루트, 필수) | 스테이지 선언 | `playAreaCells`(논리 격자 크기) · `gridOriginLocal`(셀 (0,0) 최소 모서리의 로컬 위치, Y=유닛 발바닥 평면) · `previewTileSize`(기즈모 전용 — 런타임 정본 `BattleBridge.tileSize`(1)와 같아야) · `suppressEffectTiles`(본편 false) |
-| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커). 권장 프랍: `Prefabs/Structures/SpawnPortal_Red`(수직 빨간 포탈) — `MapStageAuthoringTools.AttachMarkerVisual` |
-| `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴/스트레스 틴트 대상(틴트는 머티리얼 저작 색에 **곱**). 권장 프랍: `Prefabs/Structures/GoalPortal_Yellow`(수직 노란 포탈) |
+| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커). **프랍은 저작하지 않는다** — 런타임에 공용 `MarkerPropStyle.spawnProp`(수직 빨간 포탈)이 붙는다. 맵 전용 연출만 `visualRoot` 를 직접 채운다(그쪽이 이김) |
+| `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴/스트레스 틴트 대상(틴트는 머티리얼 저작 색에 **곱**). **프랍은 저작하지 않는다** — 공용 `MarkerPropStyle.goalProp`(수직 노란 포탈) |
 | `PropFootprint` | 통행+배치 차단 | `size`(사각형만, 최소 1×1) · `anchorOffset`. **명시 선언이 정본(D6)** — 시각≠논리 저작 가능(가지가 3칸 드리워도 밑동 1칸만 차단) |
 | `PlacementBlockZone` | 배치만 금지(통행 불변) | `size` — 앵커 셀부터 +x/+z. 옛 placeMask 브러시 후계, «전선» 저작 수단 |
 | `RouteMarker` (선택) | 웨이포인트 경로 | `routeIndex`/`order` — 같은 route 를 order 오름차순으로 연결. `AttackUnitData.waypointPathIndex`/스폰 `routeIndex` 가 이 번호를 가리킴 |
@@ -19,6 +19,15 @@
 | `StructureMarker` (선택) | 거점 — **본능만** | `side`(Defender/Enemy) · `data`(`StructureData`, kind=Instinct). 3×3 footprint 는 **점유**(배치 배제·OccupiedCells)일 뿐 통행은 막지 않는다 — `PropFootprint` 를 겹치지 말 것. 프랍·체력·공격은 SO 소유, 브리지가 빌드 시 세운다(비주얼 자식 불필요). 마음(Core)은 계약 11 로 빌더가 거부 |
 
 모든 마커는 **스테이지 프리팹 계층 안**에 있어야 스캔된다 (인스펙터가 밖이면 경고).
+
+## 스폰/골 프랍 — 맵에 상관없이 공유
+
+스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. BattleScene 의 `_MarkerProps`(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
+
+- 포탈의 색/모양을 바꾸려면 → `SpawnPortal_Red` / `GoalPortal_Yellow` 프리팹 또는 스타일 에셋의 슬롯을 바꾼다. 네 맵이 함께 바뀐다.
+- 특정 맵만 다른 연출 → 그 프리팹에서 마커 밑에 프랍을 두고 `visualRoot` 를 채운다. 설치자는 채워진 마커를 건너뛴다.
+- 라이브 풀 스테이지에 프랍을 내장하면 Assets lane(`MarkerPropStyleAssetTests.LivePoolStages_DoNotEmbedMarkerProps`)이 빨개진다 — 공유 구조를 반쪽으로 만들지 않기 위한 그물.
+- 프리뷰(`RenderPrefabPreview`)도 같은 규칙으로 프랍을 얹어 «실제로 보일 그림»을 찍는다.
 
 ## 양자화 규칙
 
@@ -61,6 +70,7 @@
 
 | 증상 | 원인 |
 |---|---|
+| 스폰/골 포탈이 **모든 맵**에서 안 보인다 | BattleScene `_MarkerProps.style` 미배선 또는 `MarkerPropStyle.asset` 슬롯 비어 있음 — 콘솔 `[MarkerPropInstaller] style 미배선` 경고. 러너 `marker_prop_style` 로 슬롯 재채움 |
 | 배틀 진입 즉시 실패 + 형식 오류 로그 | 위 제약 1~5 위반 — 로그가 전수 목록을 준다 |
 | "스테이지 연결성 실패" 로그 | 차단 프랍이 스폰→골 길을 완전히 막음 |
 | 기즈모 격자와 실제 판정이 어긋남 | `previewTileSize` ≠ 1, 또는 `gridOriginLocal` 이 바닥과 안 맞음 |

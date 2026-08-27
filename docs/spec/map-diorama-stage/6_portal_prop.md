@@ -9,10 +9,10 @@
 ## 변경 대상
 
 - 신규 `Assets/_Project/Prefabs/Structures/GoalPortal_Yellow.prefab` — `SpawnPortal_Red` 를 언팩해 파티클 `startColor` 의 색조만 50°(노랑)로 돌린 변형. 머티리얼(`Portal_Circle/Point/Smoke`)은 공유. 생성기: `MapStageAuthoringTools.CreateGoalPortalYellow`(메뉴 `Window/Wassup/Map Stage/Create Goal Portal (Yellow)`, 멱등)
-- `MapStageAuthoringTools.AttachMarkerVisual(marker, prefabPath)` — 마커 호스트 밑에 프랍을 얹고 `visualRoot` 등록(루트 identity = 수직)
-- `MapStageDuelGenerator` — 스폰 2 에 빨강, 골에 노랑 배선 → Duel 재생성
+- **rev 2 (2026-08-27, 공유 구조)** — 프랍은 프리팹에 심지 않는다. 신규 `Scripts/Data/MapStage/MarkerPropStyle.cs`(SO, `spawnProp`/`goalProp`) + 정본 `Data/Maps/MarkerPropStyle.asset` · 신규 `Scripts/Presentation/MarkerPropInstaller.cs`(BattleScene `_MarkerProps`) · `MapStage.Enabled` 수명 신호(`OnEnable`, 로직 없는 알림 1개)
+- `MapStageDuelGenerator` — 마커만 심는다(rev 1 의 `AttachMarkerVisual` 내장은 제거 → Duel 재생성). `MapStageAuthoringTools.EnsureMarkerPropStyle`/`ApplySharedMarkerProps`(프리뷰 미러)
 - `GoalMarker.SetStressTint` — 메쉬/파티클 머티리얼의 저작 `_Color`(HDR 밝기 2.37)를 **곱**한다(덮으면 스트레스 0 에서 포탈이 어두워짐). 회귀 테스트 `GoalMarkerTintTests`
-- `RenderPrefabPreview(decorate:)` + 러너 `preview_duel_portals`(what-if) / `preview_duel_clean`
+- `RenderPrefabPreview` — `decorate` 뒤 `ApplySharedMarkerProps` 로 «실제로 보일 그림». 러너 `marker_prop_style` · `shared_props_all`(스타일 보장 → Duel 재생성 → 4맵 클린 프리뷰)
 
 ## 구현
 
@@ -20,7 +20,9 @@
 2. 앵커(`VisualAnchor`) = 렌더러 바운즈 중심 — 파티클 바운즈라 프레임마다 미세 요동. 튜토리얼 포커스·스폰 예보에 허용 범위.
 3. 스폰 포탈은 브리지가 색을 건드리지 않는다 — 프리팹 그대로.
 4. `SpawnPortal_Red` 는 **보너스 포탈**(`BattleBridge.BonusWave.bonusPortalPrefab`)과 같은 프리팹 — 스폰 지점과 보너스 포탈이 같은 그림. 사용자 관찰: 보너스는 «살짝 누운» 느낌, 마커 포탈은 «수직» — 코드상 둘 다 identity 인스턴스화라 차이 원인은 미확인(후속: 보너스 포탈 전용 변형·핑크 색조).
-5. Street/Subway/StreetDay 의 visualRoot 배선은 **map-stage-tile-scale**(재저작) 에서 함께 — 지금 워크트리의 세 프리팹은 15×6 축소 중(미커밋).
+5. **공유 구조(rev 2)** — 스폰/골 포탈은 맵에 상관없이 하나의 `MarkerPropStyle` 에서 온다. 흐름: 브리지가 스테이지를 `Instantiate` → `MapStage.OnEnable` 이 `MapStage.Enabled` 를 올림(동기) → `MarkerPropInstaller.Apply` 가 `visualRoot == null` 인 `SpawnMarker`/`GoalMarker` 밑에 프랍을 identity 로 얹고 `visualRoot` 등록 → 브리지 `BuildStageMarkerRegistry` 는 이미 채워진 `visualRoot` 를 본다. 프랍은 마커의 자식이라 teardown 이 함께 지운다. 프리팹이 `visualRoot` 를 직접 채웠으면(맵 전용 연출) 그쪽이 이긴다.
+   - **왜 브리지가 아닌가**: Mono↔Mono 연출이다. `BattleBridge` 는 ECS 유일 창구이고, 마커 프랍은 ECS 를 모른다 — 브리지에 두면 창구가 아닌 일이 창구에 쌓인다. 왜 `TilemapMapView` 도 아닌가: unit 4 가 그 뷰에서 구조물 프랍 코드를 뺐다(마커 뷰 소유). 왜 마커 자신이 아닌가: 마커는 선언(`런타임 로직 0`)이고 스타일 참조를 맵마다 들면 «맵에 상관없이 공유»가 깨진다. 그래서 **씬 1개 컴포넌트 + 스테이지 수명 신호**.
+   - EditMode(테스트·프리뷰)에선 `OnEnable` 이 돌지 않는다 — 프리뷰는 `ApplySharedMarkerProps` 가 같은 `Apply` 를 부른다. 라이브 풀 스테이지는 프랍을 내장하지 않는다(`MarkerPropStyleAssetTests.LivePoolStages_DoNotEmbedMarkerProps`).
 
 ## 완료 기준
 
@@ -29,6 +31,10 @@
 - [x] EditMode `GoalMarkerTintTests` green(+DioramaMapBuilder·StagePoolDevEntries 31/31) — 2026-08-27
 - [x] PlayMode `DioramaStagePlayTests` 3/3 — 2026-08-27
 - [ ] Play 육안: 골 포탈이 스트레스에 붉어지고 붕괴 시 줄어들며 꺼진다
+- **rev 2 (공유 구조)**
+- [x] EditMode `MarkerPropInstallerTests` 3 · Assets `MarkerPropStyleAssetTests` 3 green — 2026-08-27 (러너 `shared-props-em-01`: 38/38, Diorama·StagePool·GoalMarkerTint 포함)
+- [x] PlayMode `Markers_ReceiveSharedPortalProps_OnAnyStage` Duel·Street green (+ 기존 Diorama 3) — 2026-08-27 (러너 `shared-props-pm-01`: 5/5)
+- [x] 프리뷰 4맵(`shared_props_all`): Duel·Street·Subway·StreetDay 모두 스폰 빨간 수직 · 골 노란 수직 포탈 — 2026-08-27 확인(StreetDay 의 spawn (29,0) 은 Battle 프레이밍 16:9 에서 우하단 프레임 밖 — 마커 위치/카메라 문제, 프랍과 무관)
 
 ## 후속 후보
 

@@ -82,3 +82,10 @@ unit 9 트리 풀 PlayMode 178 중 162 통과 / 16 실패. 실패 전수 원인 
 - **Verified(마감 시점)**: 5차 병합 후 EditMode 2608/3(기존 셋) · PlayMode 216 중 진짜 회귀 0(기존 14 + 판형 2 고침 + 플레이크 5) · unit 6 EditMode 31/31 · Diorama 3/3 · 최종 EditMode 두 lane(아래 갱신).
 - **Notes**: 계약 1(previewTileSize == 런타임 1)은 아직 유효 — 사용자 15×6 축소 저작은 워크트리에만 있고 **커밋하지 않았다**(하드 실패 상태). `GoalMarker` 스트레스 틴트는 저작 색에 **곱**한다(포탈 HDR 밝기 보존). 다른 세션의 camera-direction unit 18 은 `21e9eed4`(WIP)·`369c6a0b`(확인 기록)으로 이 브랜치에 실려 main 에 함께 갔다.
 - **Follow-up**: ⓐ Play 육안 2건 — 골 포탈이 스트레스에 붉어지고 붕괴 시 줄어들며 꺼지는가 · 보너스 버튼→포탈 2→적 10 ⓑ `map-stage-tile-scale` 승인·착수(세 맵 재저작 + 포탈 visualRoot 배선 + 시각 스케일 결정) ⓒ README 후속 후보(텔레포트 포탈 원안·보너스 포탈 변형·Ignore 4건 dev 스테이지·덱 개명).
+
+## unit 6 rev 2 — 공유 프랍 구조 (2026-08-27)
+
+- **Implemented**: 스폰/골 포탈 프랍을 프리팹 내장에서 **맵에 상관없이 공유**로 — `MarkerPropStyle`(SO, `Data/Maps/MarkerPropStyle.asset`) + `Presentation/MarkerPropInstaller`(BattleScene `_MarkerProps`) + `MapStage.Enabled` 수명 신호. Duel 생성기는 마커만 심고 재생성. 브리지·`TilemapMapView` 무접촉(브리지에 얹으려던 첫 시도는 사용자 지적으로 철회 — ECS 창구에 Mono 연출을 두지 않는다).
+- **Key Files**: `Scripts/Presentation/MarkerPropInstaller.cs` · `Scripts/Data/MapStage/MarkerPropStyle.cs` · `Scripts/Core/MapStage/MapStage.cs`(Enabled) · `Editor/MapStageAuthoringTools.cs`(EnsureMarkerPropStyle/ApplySharedMarkerProps) · `Tests/EditMode/MarkerPropInstallerTests.cs` · `Tests/EditModeAssets/MarkerPropStyleAssetTests.cs` · `Tests/PlayMode/DioramaStagePlayTests.Markers_ReceiveSharedPortalProps_OnAnyStage`
+- **Verified**: dotnet 5 csproj 컴파일 · EditMode 38/38(신규 6 + Diorama·StagePool·GoalMarkerTint) · PlayMode `DioramaStagePlayTests` 5/5 · 4맵 프리뷰(`shared_props_all`) 육안 — 스폰 빨간 수직·골 노란 수직 포탈 전 맵 일치.
+- **Notes**: 규칙은 `MarkerPropInstaller.Apply` 하나(런타임·프리뷰 공용) — `visualRoot == null` 인 마커에만, 호스트 밑 identity, 멱등. 프리팹이 `visualRoot` 를 채우면 그쪽이 이긴다. 라이브 풀 스테이지의 프랍 내장은 Assets lane 이 막는다.

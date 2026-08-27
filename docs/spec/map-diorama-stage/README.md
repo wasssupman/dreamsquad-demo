@@ -26,7 +26,7 @@
 | [3_overlay_view_split.md](3_overlay_view_split.md) | 뷰 은퇴/존치 | 바닥 페인팅 은퇴 · 오버레이 7채널 존치 · `BoardSortOrder` 간격 수정 |
 | [4_goal_spawn_marker_views.md](4_goal_spawn_marker_views.md) | 뷰 재귀속 | 골/스폰 앵커·균열·붕괴 연출을 마커 뷰로 이관 |
 | [5_pilot_map_playmode.md](5_pilot_map_playmode.md) | 검증 | 파일럿 스테이지 1개 + 육안 검증 축 5종 (PlayMode 스모크는 unit 2 로 이동 — critic M-12) |
-| [6_portal_prop.md](6_portal_prop.md) | 마커 비주얼 | **재해석 2026-08-27** — 포탈 프랍 = 스폰(빨강)/골(노랑 수직) 마커 비주얼. `GoalPortal_Yellow` 변형 + `visualRoot` 배선 + 스트레스 틴트 곱셈. 텔레포트 원안은 후속 후보 |
+| [6_portal_prop.md](6_portal_prop.md) | 마커 비주얼 | **재해석 2026-08-27** — 포탈 프랍 = 스폰(빨강)/골(노랑 수직) 마커 비주얼. `GoalPortal_Yellow` 변형 + 스트레스 틴트 곱셈. **rev 2**: 프랍은 프리팹에 심지 않고 **맵에 상관없이 공유** — `MarkerPropStyle`(SO) + `MarkerPropInstaller`(BattleScene, `MapStage.Enabled` 구독). 텔레포트 원안은 후속 후보 |
 | [7_legacy_retirement.md](7_legacy_retirement.md) | 은퇴 | `MapDocument` 계열·`MapPainterWindow`·구 Assets lane 테스트 3파일 처분 (critic M-3·M-4) |
 | [9_bonus_spawn_marker.md](9_bonus_spawn_marker.md) | 병합 격차 | main `bonus-wave-pull` 의 포탈 칸 저작 축(`GeneratedMap.bonusSpawns`)을 스테이지 마커로 이식 — 미구현 시 스테이지 맵에 보너스 웨이브 버튼이 뜨지 않는다 |
 | [10_structure_marker.md](10_structure_marker.md) | 병합 격차 | 본능 거점의 스테이지 저작 — 브리지 스폰 경로는 살아 있고 입력만 null 이었다. 마음(Core)은 계약 11 유지로 거부 |
@@ -79,5 +79,5 @@
 - **레거시 덱 정리·개명** — `Deck_Serpent/Zig/Coil` 은 Street/Subway/StreetDay 의 라이브 덱으로 재배정됐지만 이름이 은퇴한 맵을 가리킨다(`Deck_Street` 등으로 개명 시 `WaveConceptAuthoringTests`·`LiveDeckBossAuthoringTests` 의 이름 목록과 `map-wave-balancing.md` 동반 갱신). `Ford/Isle/Tutorial/WaypointLab/SiegeTest/Spiral/Twin/Hook/WaveA` 는 풀 밖 잔존(EditMode 덱 테스트가 이름으로 순회). 정리는 별도 결정.
 - **텔레포트 포탈(원안 unit 6)** — `PortalMarker` 쌍 → `PortalLink`. 포탈 프랍이 마커 비주얼로 쓰이게 된 뒤라 «게임플레이 포탈»은 별도 프랍/마커가 필요.
 - **보너스 포탈 전용 변형** — 지금은 스폰 마커와 같은 `SpawnPortal_Red`. 핑크 색조(기즈모 색)·사용자가 본 «누운 느낌» 차이 원인 확인.
-- **맵별 타일 크기** → [`docs/spec/map-stage-tile-scale/`](../map-stage-tile-scale/README.md) (초안). 사용자 15×6 축소 저작 3맵의 재저작·포탈 visualRoot 배선도 여기서.
+- **맵별 타일 크기** → [`docs/spec/map-stage-tile-scale/`](../map-stage-tile-scale/README.md) (초안). 사용자 15×6 축소 저작 3맵의 재저작은 여기서(포탈은 공유 구조라 맵별 배선 불필요).
 - **`TileSetData` SO 분리** — 오버레이 절반만 남기는 정리(unit 3 은 필드 사용 중단까지만).

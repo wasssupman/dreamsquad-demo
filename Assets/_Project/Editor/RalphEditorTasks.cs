@@ -87,34 +87,28 @@ namespace Wassup.EditorTools
             }
         }
 
-        // 포탈 프랍을 마커 밑에 얹는다. tint 가 있으면 파티클 startColor(min/max·그라데이션 키)를 그 색으로 — 머티리얼 _Color 는
-        // GoalMarker.SetStressTint 가 매 프레임 MPB 로 덮으므로 색을 거기 두면 지워진다(스폰은 브리지가 색을 안 건드린다).
-        static void Attach(Transform host, GameObject portalPrefab, Color? tint)
-        {
-            var go = (GameObject)PrefabUtility.InstantiatePrefab(portalPrefab);
-            go.transform.SetParent(host, false);
-            go.transform.localPosition = Vector3.zero;
-            if (tint is not Color c) return;
-            foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                var main = ps.main;
-                var sc = main.startColor;
-                switch (sc.mode)
-                {
-                    case ParticleSystemGradientMode.Color: sc.color = c * sc.color.grayscale; break;
-                    case ParticleSystemGradientMode.TwoColors: sc.colorMin = Color.white; sc.colorMax = c; break;
-                    default: sc.mode = ParticleSystemGradientMode.TwoColors; sc.colorMin = Color.white; sc.colorMax = c; break;
-                }
-                main.startColor = sc;
-            }
-        }
-
         static string Run(string task)
         {
             switch (task)
             {
                 case "goal_portal_yellow":
                     return MapStageAuthoringTools.CreateGoalPortalYellow();
+                case "marker_prop_style":
+                    return MapStageAuthoringTools.EnsureMarkerPropStyle();
+                case "shared_props_all":
+                {
+                    // unit 6 공유 구조 — 스타일 보장 → Duel 재생성(포탈 내장 해제) → 4맵 클린 프리뷰(공용 포탈이 붙은 그림).
+                    var sb = new StringBuilder();
+                    sb.AppendLine(MapStageAuthoringTools.EnsureMarkerPropStyle());
+                    sb.AppendLine(MapStageDuelGenerator.Generate());
+                    foreach (var (name, path) in new[] {
+                        ("duel", MapStageDuelGenerator.PrefabPath),
+                        ("street", "Assets/_Project/Art/Theme/street/MapStage_Street.prefab"),
+                        ("subway", "Assets/_Project/Art/Theme/subway/MapStage_Subway.prefab"),
+                        ("streetday", "Assets/_Project/Art/Theme/street_day/MapStage_StreetDay.prefab") })
+                        sb.AppendLine(MapStageCameraFraming.RenderPrefabPreview(path, $".omc/ralph/preview_{name}_props.png", overlay: false));
+                    return sb.ToString().TrimEnd();
+                }
                 case "duel_stage":
                     return MapStageDuelGenerator.Generate();
                 case "preview_duel_clean":
@@ -125,21 +119,6 @@ namespace Wassup.EditorTools
                     return MapStageCameraFraming.RenderPrefabPreview("Assets/_Project/Art/Theme/subway/MapStage_Subway.prefab", ".omc/ralph/preview_subway.png");
                 case "preview_streetday":
                     return MapStageCameraFraming.RenderPrefabPreview("Assets/_Project/Art/Theme/street_day/MapStage_StreetDay.prefab", ".omc/ralph/preview_streetday.png");
-                case "preview_duel_portals":
-                {
-                    // unit 6 재해석(사용자 2026-08-27) — 스폰 = 빨간 포탈(SpawnPortal_Red 그대로), 골 = 노란 포탈(같은 프리팹,
-                    // 파티클 startColor 만 노랑으로) 을 마커 visualRoot 로 얹어 본다. 프리팹은 저장하지 않는다(what-if).
-                    var portal = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Prefabs/Structures/SpawnPortal_Red.prefab");
-                    if (portal == null) return "ERROR|SpawnPortal_Red 없음";
-                    return MapStageCameraFraming.RenderPrefabPreview(MapStageDuelGenerator.PrefabPath, ".omc/ralph/preview_duel_portals.png",
-                        overlay: false, decorate: inst =>
-                        {
-                            foreach (var s in inst.GetComponentsInChildren<Wassup.Core.SpawnMarker>())
-                                Attach(s.transform, portal, null);
-                            foreach (var g in inst.GetComponentsInChildren<Wassup.Core.GoalMarker>())
-                                Attach(g.transform, portal, new Color(1f, 0.85f, 0.15f, 1f));
-                        });
-                }
                 case "preview_street":
                     return MapStageCameraFraming.RenderPrefabPreview("Assets/_Project/Art/Theme/street/MapStage_Street.prefab", ".omc/ralph/preview_street.png");
                 case "live_portals":
