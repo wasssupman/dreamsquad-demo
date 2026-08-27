@@ -52,8 +52,12 @@ namespace Wassup.EditorTools
                 return "ERROR|SolveStatePose 실패";
 
             // 런타임 미러: CameraDirector.ComposeAndWrite 는 최종 fov 를 [fovMin, fovMax] 로 클램프한다.
-            // 거리는 레시피 fov 로 풀고 렌더는 클램프값 — 레시피 25 < fovMin 31 이면 화면엔 31 이 걸린다
+            // 거리는 레시피 fov 로 풀고 렌더는 클램프값 — 레시피가 fovMin 아래면 화면엔 fovMin 이 걸린다
             // (main 93c1cc4c «저작 화각이 실제로 걸리게» 가 71688c0a 로 되돌려진 상태). 씬도 같은 값을 쓴다.
+            // fovMin 은 2026-08-26 에 31 → 24 로 내려갔다(플레이 중 손으로 잡은 전투 포즈를 레시피로
+            // 역산해 넣으면서). 그래도 **레시피 값을 여기서 읽고 판단하지 말 것** — 저작은 계속
+            // 움직인다(2026-08-27 현재 Battle 23.8 < fovMin 24 라 화면엔 24 가 걸린다: 0.2° 차이).
+            // 저작 화각을 실제로 걸고 싶으면 fovMin 을 그 아래로 내리는 것이 유일한 레버다.
             float fovApplied = Mathf.Clamp(fov, config.fovMin, config.fovMax);
             Undo.RecordObject(cam.transform, "Frame battle camera");
             Undo.RecordObject(cam, "Frame battle camera");
