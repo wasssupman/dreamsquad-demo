@@ -54,7 +54,7 @@ namespace Wassup.Tests.PlayMode
 
             // dummy guardian on a non-walk cell near the enemy centroid (wide range → aggros many).
             int2 gcell = FindGuardianCell(em, field);
-            Assert.GreaterOrEqual(gcell.x, 0, "found a non-walk guardian cell near enemies");
+            Assert.GreaterOrEqual(gcell.x, 0, "found a guardian cell near enemies");
             var gpos = new float3(field.origin.x + gcell.x * field.tileSize, 0f, field.origin.z + gcell.y * field.tileSize);
             var guardian = em.CreateEntity();
             em.AddComponentData(guardian, LocalTransform.FromPosition(gpos));
@@ -152,6 +152,18 @@ namespace Wassup.Tests.PlayMode
                             var nf = field.flow[ny * field.gridSize.x + nx];
                             if (nf.x != 0f || nf.y != 0f) return new int2(X, Y);
                         }
+                    }
+            // 열린 마당 스테이지(map-diorama-stage)는 스폰 근처에 차단 셀이 없을 수 있다(Duel 23×10 의 분리대는
+            // 스폰에서 9칸). 가디언은 2026-08-18 결정으로 전 마당 배치가 허용되므로 Walk 셀에 세워도 이 테스트의
+            // 단언(적이 Walk 를 벗어나지 않음·어그로·피해)은 성립한다 — 골 셀만 피해 가장 가까운 Walk 셀로 폴백.
+            for (int r = 1; r <= 6; r++)
+                for (int dy = -r; dy <= r; dy++)
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        int X = cx + dx, Y = cy + dy;
+                        if (X < 0 || X >= field.gridSize.x || Y < 0 || Y >= field.gridSize.y) continue;
+                        var f = field.flow[Y * field.gridSize.x + X];
+                        if ((f.x != 0f || f.y != 0f) && !field.IsGoalCell(new int2(X, Y))) return new int2(X, Y);
                     }
             return new int2(-1, -1);
         }

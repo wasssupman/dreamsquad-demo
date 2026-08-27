@@ -58,6 +58,13 @@ namespace Wassup.Tests.PlayMode
             }
         }
 
+        private static float MinDistanceToGuides(float2 p, List<List<Vector3>> guides)
+        {
+            float best = float.MaxValue;
+            foreach (var g in guides) best = math.min(best, DistanceToPolyline(p, g));
+            return best;
+        }
+
         private static float DistanceToPolyline(float2 p, List<Vector3> path)
         {
             float best = float.MaxValue;
@@ -93,11 +100,20 @@ namespace Wassup.Tests.PlayMode
                     ComponentType.ReadOnly<Wassup.Battle.Effects.FlowFieldSingleton>())
                 .GetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>();
 
-            // ── 화면에 광고되는 그 선 ──
-            var guide = new List<Vector3>();
-            Assert.IsTrue(bridge.TryGetSpawnPathSim(0, 0, Wassup.Battle.Effects.TraversalSlots.DefaultMask, guide),
-                "예고선을 못 만든다");
-            Assert.GreaterOrEqual(guide.Count, 2, "예고선이 2점 미만이다");
+            // ── 화면에 광고되는 그 선(들) ── 레인마다 예고선이 하나씩 그려지고 적은 자기 레인의 선을 따른다.
+            // 대조는 «어느 예고선에든 가깝다»로 한다 — 통로가 둘인 판(map-diorama-stage unit 11 의 Duel 23×10,
+            // 분리대 x=11)에서 레인 1 이 다른 통로를 타는 것은 이탈이 아니다(레인 0 단일 선 대조가 36% 이탈로 빨개졌다).
+            var map = BattleBridgeDraftMapAccess.GeneratedMapOf(bridge);
+            var guides = new List<List<Vector3>>();
+            for (int lane = 0; lane < map.spawns.Length; lane++)
+            {
+                var g = new List<Vector3>();
+                Assert.IsTrue(bridge.TryGetSpawnPathSim(lane, 0, Wassup.Battle.Effects.TraversalSlots.DefaultMask, g),
+                    $"레인 {lane} 예고선을 못 만든다");
+                Assert.GreaterOrEqual(g.Count, 2, $"레인 {lane} 예고선이 2점 미만이다");
+                guides.Add(g);
+            }
+            var guide = guides[0];   // rev 3 로그(거점 경유)는 레인 0 기준
 
             // 선이 거점을 실제로 경유하는지 — 이게 rev 3 의 핵심. 마음으로 직행하면 실패한다.
             var instinctWorld = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
@@ -121,8 +137,8 @@ namespace Wassup.Tests.PlayMode
                     for (int k = 0; k < tags.Length; k++)
                     {
                         if (tags[k].value != Faction.EnemyUnit) continue;
-                        float d = DistanceToPolyline(
-                            new float2(xf[k].Position.x, xf[k].Position.z), guide) / field.tileSize;
+                        float d = MinDistanceToGuides(
+                            new float2(xf[k].Position.x, xf[k].Position.z), guides) / field.tileSize;
                         sampled++;
                         // 최대 이탈은 **항상** 갱신한다. 위반일 때만 재면 통과 시 0 이 찍혀
                         // 「완벽히 선 위를 걷는다」로 오독된다(실제로는 「위반 없음」일 뿐).
