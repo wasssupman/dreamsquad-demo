@@ -53,6 +53,68 @@ namespace Wassup.EditorTools
             Debug.Log($"[MapStageAuthoringTools] 스폰/골 저작: {prefabPath} S0{spawn0} S1{spawn1} G{goal}");
         }
 
+        // ── unit 6 — 포탈 프랍 = 스폰/골 마커 비주얼 ─────────────────────────────────────────────
+        public const string SpawnPortalPrefab = "Assets/_Project/Prefabs/Structures/SpawnPortal_Red.prefab";
+        public const string GoalPortalPrefab = "Assets/_Project/Prefabs/Structures/GoalPortal_Yellow.prefab";
+
+        // SpawnPortal_Red 의 색상 변형 — 파티클 startColor(min 흰색 / max 빨강 계열) 의 색조만 노랑으로 돌린다(채도·명도 유지).
+        // 머티리얼(Portal_Circle/Point/Smoke)은 공유 — 색은 startColor 에만 있어야 GoalMarker 의 스트레스 틴트(머티리얼 _Color 에 곱)와 겹치지 않는다.
+        // 방향은 스폰 포탈과 동일(루트 identity — 수직으로 선 포탈, 사용자 결정 2026-08-27). 멱등: 있으면 덮어쓴다.
+        [MenuItem("Window/Wassup/Map Stage/Create Goal Portal (Yellow)")]
+        public static void CreateGoalPortalYellowMenu() => Debug.Log(CreateGoalPortalYellow());
+
+        public static string CreateGoalPortalYellow()
+        {
+            var src = AssetDatabase.LoadAssetAtPath<GameObject>(SpawnPortalPrefab);
+            if (src == null) return "ERROR|SpawnPortal_Red 없음";
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(src);
+            try
+            {
+                PrefabUtility.UnpackPrefabInstance(inst, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                inst.name = "GoalPortal_Yellow";
+                const float yellowHue = 50f / 360f;
+                foreach (var ps in inst.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main;
+                    var sc = main.startColor;
+                    sc.mode = ParticleSystemGradientMode.TwoColors;
+                    sc.colorMin = ShiftHue(sc.colorMin, yellowHue);
+                    sc.colorMax = ShiftHue(sc.colorMax, yellowHue);
+                    main.startColor = sc;
+                }
+                PrefabUtility.SaveAsPrefabAsset(inst, GoalPortalPrefab);
+                return $"OK|{GoalPortalPrefab} ← SpawnPortal_Red 색조 {50}° (startColor 만)";
+            }
+            finally { Object.DestroyImmediate(inst); }
+        }
+
+        // 무채색(흰색)은 그대로, 유채색은 색조만 교체 — «흰 → 빨강» 그라데이션이 «흰 → 노랑» 이 된다.
+        static Color ShiftHue(Color c, float hue)
+        {
+            Color.RGBToHSV(c, out _, out float s, out float v);
+            if (s < 0.05f) return c;
+            var o = Color.HSVToRGB(hue, s, v);
+            o.a = c.a;
+            return o;
+        }
+
+        // 마커 호스트 밑에 프랍 프리팹을 얹고 visualRoot 로 등록한다(브리지의 앵커·균열·붕괴·스트레스 훅이 이 서브트리를 본다).
+        public static GameObject AttachMarkerVisual(Component marker, string prefabPath)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null) { Debug.LogWarning($"[MapStageAuthoringTools] 프랍 프리팹 없음: {prefabPath}"); return null; }
+            var visual = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            visual.transform.SetParent(marker.transform, false);
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.identity;   // 수직 포탈 — 스폰과 골 모두
+            switch (marker)
+            {
+                case SpawnMarker s: s.visualRoot = visual.transform; break;
+                case GoalMarker g: g.visualRoot = visual.transform; break;
+            }
+            return visual;
+        }
+
         // 호스트 = 셀 중심, gridOriginLocal 을 더한다 — 원점이 0 이 아닌 사용자 저작 스테이지(Subway z 1.41,
         // StreetDay z −0.76)에서도 의도한 셀에 떨어진다. 원점을 빼먹으면 스캐너 양자화에서 한 칸 밀린다.
         static GameObject Host(GameObject root, string name, Vector2Int cell)

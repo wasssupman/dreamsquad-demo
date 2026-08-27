@@ -113,8 +113,12 @@ namespace Wassup.EditorTools
         {
             switch (task)
             {
+                case "goal_portal_yellow":
+                    return MapStageAuthoringTools.CreateGoalPortalYellow();
                 case "duel_stage":
                     return MapStageDuelGenerator.Generate();
+                case "preview_duel_clean":
+                    return MapStageCameraFraming.RenderPrefabPreview(MapStageDuelGenerator.PrefabPath, ".omc/ralph/preview_duel_clean.png", overlay: false);
                 case "preview_duel":
                     return MapStageCameraFraming.RenderPrefabPreview(MapStageDuelGenerator.PrefabPath, ".omc/ralph/preview_duel.png");
                 case "preview_subway":

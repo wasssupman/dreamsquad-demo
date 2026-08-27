@@ -41,6 +41,7 @@ namespace Wassup.Core
 
         private SpriteRenderer[] _stressSprites;
         private Renderer[] _stressMeshes;
+        private Color[] _stressMeshBase;   // unit 6 — 메쉬/파티클 머티리얼의 저작 _Color(HDR 밝기 포함). 틴트는 이것에 곱한다.
         private static MaterialPropertyBlock _stressMpb;
 
         public void SetStressTint(float stress01, float beatScale)
@@ -60,6 +61,16 @@ namespace Wassup.Core
                 foreach (var r in root.GetComponentsInChildren<Renderer>())
                     if (r is not SpriteRenderer) meshes.Add(r);
                 _stressMeshes = meshes.ToArray();
+                // unit 6 — 포탈 프랍(파티클)의 머티리얼은 _Color 가 HDR 밝기 부스터(Portal_Circle 2.37)다. 절대값으로
+                // 덮으면 스트레스 0 에서도 포탈이 어두워진다 → 저작 색을 한 번 읽어 두고 틴트를 **곱**한다.
+                _stressMeshBase = new Color[_stressMeshes.Length];
+                for (int i = 0; i < _stressMeshes.Length; i++)
+                {
+                    var m = _stressMeshes[i].sharedMaterial;
+                    _stressMeshBase[i] = m == null ? Color.white
+                        : m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor")
+                        : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
+                }
             }
             for (int i = 0; i < _stressSprites.Length; i++) _stressSprites[i].color = tint;
             if (_stressMeshes.Length == 0) return;
@@ -67,9 +78,11 @@ namespace Wassup.Core
             for (int i = 0; i < _stressMeshes.Length; i++)
             {
                 var r = _stressMeshes[i];
+                var c = tint * _stressMeshBase[i];
+                c.a = _stressMeshBase[i].a;
                 r.GetPropertyBlock(_stressMpb);
-                _stressMpb.SetColor("_BaseColor", tint);
-                _stressMpb.SetColor("_Color", tint);
+                _stressMpb.SetColor("_BaseColor", c);
+                _stressMpb.SetColor("_Color", c);
                 r.SetPropertyBlock(_stressMpb);
             }
         }

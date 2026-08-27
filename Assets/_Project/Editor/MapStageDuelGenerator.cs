@@ -95,9 +95,13 @@ namespace Wassup.EditorTools
                 // 목표물처럼 보인다). 배치 금지는 적 진영 BlockZone(x 17..22)이 이미 덮고, 스폰 (20,3)/(20,5)가 그 자리의 흔적.
 
                 // ── 마커 ──
-                Host(root, "spawn0", new Vector2Int(20, 3)).AddComponent<SpawnMarker>().laneIndex = 0;
-                Host(root, "spawn1", new Vector2Int(20, 5)).AddComponent<SpawnMarker>().laneIndex = 1;
-                Host(root, "goal", new Vector2Int(2, 4)).AddComponent<GoalMarker>();
+                // unit 6 — 스폰 = 빨간 포탈, 골 = 노란 포탈(수직). 프랍은 visualRoot 로 등록돼 브리지 훅(앵커·붕괴·스트레스)이 본다.
+                var s0 = Host(root, "spawn0", new Vector2Int(20, 3)).AddComponent<SpawnMarker>(); s0.laneIndex = 0;
+                var s1 = Host(root, "spawn1", new Vector2Int(20, 5)).AddComponent<SpawnMarker>(); s1.laneIndex = 1;
+                var goal = Host(root, "goal", new Vector2Int(2, 4)).AddComponent<GoalMarker>();
+                MapStageAuthoringTools.AttachMarkerVisual(s0, MapStageAuthoringTools.SpawnPortalPrefab);
+                MapStageAuthoringTools.AttachMarkerVisual(s1, MapStageAuthoringTools.SpawnPortalPrefab);
+                MapStageAuthoringTools.AttachMarkerVisual(goal, MapStageAuthoringTools.GoalPortalPrefab);
                 Host(root, "bonus_portal_0", new Vector2Int(11, 2)).AddComponent<BonusSpawnMarker>();
                 Host(root, "bonus_portal_1", new Vector2Int(11, 7)).AddComponent<BonusSpawnMarker>();
                 Instinct(root, "instinct_ally_a", new Vector2Int(4, 2), StructureSide.Defender, guard);

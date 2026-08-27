@@ -1,6 +1,6 @@
 # map-diorama-stage — 맵 저작을 디오라마 스테이지로 전환 (접근 A)
 
-상태: **units 0~5·7 구현·검증 완료 2026-08-19 · unit 9 구현 2026-08-25 · units 10~12(본능 마커·Duel 재저작·레거시 은퇴) 구현 2026-08-26, Play 확인 대기** (브랜치 feature/map-diorama-stage · unit 6 포탈 = v1 제외) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
+상태: **units 0~5·7 구현·검증 완료 2026-08-19 · unit 9 구현 2026-08-25 · units 10~12(본능 마커·Duel 재저작·레거시 은퇴) 구현 2026-08-26, Play 확인 대기** (브랜치 feature/map-diorama-stage · unit 6 = 포탈 프랍 마커 비주얼로 재해석) · 잔여: 육안 검증 축 5종(사용자)·OutgameScene dev 패널 수동 배선 1건·US-007 후속 조사(병합 게이트)
 
 설계 근거·결정 이력·전투 접점 감사: [`docs/plans/2026-08-18-map-diorama-stage-design.md`](../../plans/2026-08-18-map-diorama-stage-design.md)
 
@@ -26,7 +26,7 @@
 | [3_overlay_view_split.md](3_overlay_view_split.md) | 뷰 은퇴/존치 | 바닥 페인팅 은퇴 · 오버레이 7채널 존치 · `BoardSortOrder` 간격 수정 |
 | [4_goal_spawn_marker_views.md](4_goal_spawn_marker_views.md) | 뷰 재귀속 | 골/스폰 앵커·균열·붕괴 연출을 마커 뷰로 이관 |
 | [5_pilot_map_playmode.md](5_pilot_map_playmode.md) | 검증 | 파일럿 스테이지 1개 + 육안 검증 축 5종 (PlayMode 스모크는 unit 2 로 이동 — critic M-12) |
-| [6_portal_prop.md](6_portal_prop.md) | 선택 | 포탈 프랍 → `PortalLink` 엔티티 배선 (v1 필수 아님) |
+| [6_portal_prop.md](6_portal_prop.md) | 마커 비주얼 | **재해석 2026-08-27** — 포탈 프랍 = 스폰(빨강)/골(노랑 수직) 마커 비주얼. `GoalPortal_Yellow` 변형 + `visualRoot` 배선 + 스트레스 틴트 곱셈. 텔레포트 원안은 후속 후보 |
 | [7_legacy_retirement.md](7_legacy_retirement.md) | 은퇴 | `MapDocument` 계열·`MapPainterWindow`·구 Assets lane 테스트 3파일 처분 (critic M-3·M-4) |
 | [9_bonus_spawn_marker.md](9_bonus_spawn_marker.md) | 병합 격차 | main `bonus-wave-pull` 의 포탈 칸 저작 축(`GeneratedMap.bonusSpawns`)을 스테이지 마커로 이식 — 미구현 시 스테이지 맵에 보너스 웨이브 버튼이 뜨지 않는다 |
 | [10_structure_marker.md](10_structure_marker.md) | 병합 격차 | 본능 거점의 스테이지 저작 — 브리지 스폰 경로는 살아 있고 입력만 null 이었다. 마음(Core)은 계약 11 유지로 거부 |

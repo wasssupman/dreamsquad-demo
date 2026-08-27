@@ -10,8 +10,8 @@
 | 스크립트 | 역할 | 핵심 필드 |
 |---|---|---|
 | `MapStage` (루트, 필수) | 스테이지 선언 | `playAreaCells`(논리 격자 크기) · `gridOriginLocal`(셀 (0,0) 최소 모서리의 로컬 위치, Y=유닛 발바닥 평면) · `previewTileSize`(기즈모 전용 — 런타임 정본 `BattleBridge.tileSize`(1)와 같아야) · `suppressEffectTiles`(본편 false) |
-| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커) |
-| `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴 연출 대상 |
+| `SpawnMarker` (≥2) | 적 스폰 | `laneIndex`(0부터 연속·중복 금지 — 웨이브 결정론 키) · `routeIndex`(-1=골 직행 기본) · `visualRoot`(튜토리얼 포커스 앵커). 권장 프랍: `Prefabs/Structures/SpawnPortal_Red`(수직 빨간 포탈) — `MapStageAuthoringTools.AttachMarkerVisual` |
+| `GoalMarker` (≥1) | 골(방어 마음) | 셀만 준다 — 골 HP 는 `AttackDeck.goalStabilityMax` 단독 소유. `visualRoot` = 균열/붕괴/스트레스 틴트 대상(틴트는 머티리얼 저작 색에 **곱**). 권장 프랍: `Prefabs/Structures/GoalPortal_Yellow`(수직 노란 포탈) |
 | `PropFootprint` | 통행+배치 차단 | `size`(사각형만, 최소 1×1) · `anchorOffset`. **명시 선언이 정본(D6)** — 시각≠논리 저작 가능(가지가 3칸 드리워도 밑동 1칸만 차단) |
 | `PlacementBlockZone` | 배치만 금지(통행 불변) | `size` — 앵커 셀부터 +x/+z. 옛 placeMask 브러시 후계, «전선» 저작 수단 |
 | `RouteMarker` (선택) | 웨이포인트 경로 | `routeIndex`/`order` — 같은 route 를 order 오름차순으로 연결. `AttackUnitData.waypointPathIndex`/스폰 `routeIndex` 가 이 번호를 가리킴 |
