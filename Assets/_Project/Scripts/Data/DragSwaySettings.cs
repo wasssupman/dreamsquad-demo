@@ -204,5 +204,17 @@ namespace Wassup.Data
                  "반경 밖이면 배치 불가를 유지한다(원거리 강제 보정 금지 — 요구 문서 6절).")]
         [Range(0f, 4f)]
         public float placementMagnetRadiusCells = 1.5f;
+
+        [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5)")]
+        [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다).")]
+        public bool deployUndoEnabled = true;
+        [Tooltip("버튼이 유닛 머리 위로 뜨는 화면 오프셋(px).")]
+        public float deployUndoOffsetPx = 96f;
+        [Tooltip("버튼 크기(px).")]
+        public Vector2 deployUndoSize = new Vector2(168f, 56f);
+        [Tooltip("버튼 배경색.")]
+        public Color deployUndoBgColor = new Color(0.12f, 0.12f, 0.16f, 0.85f);
+        [Tooltip("버튼 글자색.")]
+        public Color deployUndoTextColor = new Color(1f, 0.86f, 0.5f, 1f);
     }
 }

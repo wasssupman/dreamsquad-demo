@@ -153,6 +153,18 @@ namespace Wassup.UI
             Vector2 ghostSize = slot.rect.rect.size;
             Sprite face = slot.art != null ? slot.art.sprite : null;
             var host = target;
+            // defender-footprint unit 5 — 탭 즉발도 D&D 와 같은 부착 유예(지연 커밋 + 비행 중
+            // 고스트 탭 취소). 커밋 경로 자체는 동일(CommitAttach)이라 계약 4 승계도 그대로다.
+            Vector2 tapPulse = default;
+            bool tapHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out tapPulse);
+            if (_view.FlyCardToUnitDeferred(_index, startUiWorld, ghostSize, face, host,
+                    () => _view.Controller.CommitAttach(entryId, host)))
+            {
+                if (tapHasPulse) _view.Focus?.Confirm(tapPulse);
+                EndInteraction();
+                _view.NotifyInteractionEnded();
+                return;
+            }
             CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                 () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
         }
@@ -308,6 +320,19 @@ namespace Wassup.UI
                     Vector2 ghostSize = slot.rect.rect.size;
                     Sprite face = slot.art != null ? slot.art.sprite : null;
                     var host2 = host;
+                    // defender-footprint unit 5 — 부착 유예: 커밋을 흡수 도착 프레임으로 지연,
+                    // 비행 중 고스트 카드 탭 = 취소(무차감 — 커밋 자체가 아직 없다). 확정 비트는
+                    // 릴리즈 즉시(조준 확정감은 유예와 별개 신호). 프리젠터 미가용 폴백 = 기존 즉시 커밋.
+                    Vector2 deferPulse = default;
+                    bool deferHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out deferPulse);
+                    if (_view.FlyCardToUnitDeferred(_index, startUiWorld, ghostSize, face, host2,
+                            () => _view.Controller.CommitAttach(entryId, host2)))
+                    {
+                        if (deferHasPulse) _view.Focus?.Confirm(deferPulse);
+                        EndInteraction();
+                        _view.NotifyInteractionEnded();
+                        return;
+                    }
                     CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                         () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
                     return;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Wassup.UI
@@ -70,6 +71,36 @@ namespace Wassup.UI
             StartCoroutine(FlyRoutine(ghost, startScreen, worldCam, worldProvider, onImpact));
         }
 
+        // defender-footprint unit 5 — 지연 커밋 비행. onArrive = 도착(slam) 프레임의 커밋 실행,
+        // 비행 중 고스트 탭 = onCancel(카드 복귀). «유예 중 효과 미시작»을 되감기가 아니라
+        // 커밋 부재로 보장한다(defender-footprint README 계약 9). 동시 여러 발 지원 —
+        // 상태가 전부 코루틴 지역이라 발마다 독립이다.
+        // ⚠ 커밋이 도착 프레임에 실패해도(호스트 사망 등) 고스트 splat 연출은 완주한다 —
+        // 실패 표현은 호출부(카드 복귀 + 복귀음)가 담당한다(드문 경로의 시각 불일치 수용).
+        public bool FlyDeferred(Vector3 startUiWorld, Vector2 ghostSize, Sprite face, Camera worldCam,
+            Func<Vector3?> worldProvider, Action<Vector3> onArrive, Action onCancel,
+            float cancelTapPadPx = 24f)
+        {
+            if (worldProvider == null || worldCam == null || _parentRect == null) return false;
+            Vector2 startScreen = RectTransformUtility.WorldToScreenPoint(_uiCam, startUiWorld);
+            var ghost = CreateGhost(face, ghostSize);
+            var img = ghost.GetComponent<Image>();
+            img.raycastTarget = true; // 취소 탭 대상(루트 캔버스 GraphicRaycaster 재사용)
+            img.raycastPadding = new Vector4(-cancelTapPadPx, -cancelTapPadPx, -cancelTapPadPx, -cancelTapPadPx);
+            bool cancelled = false;
+            ghost.gameObject.AddComponent<GhostCancelTap>().tapped = () => cancelled = true;
+            StartCoroutine(FlyRoutine(ghost, startScreen, worldCam, worldProvider, onArrive,
+                () => cancelled, onCancel));
+            return true;
+        }
+
+        // 취소 탭 수신기 — 고스트 전용 최소 컴포넌트(EventTrigger 대신: 할당 1, 의존 0).
+        private sealed class GhostCancelTap : MonoBehaviour, IPointerClickHandler
+        {
+            public Action tapped;
+            public void OnPointerClick(PointerEventData eventData) => tapped?.Invoke();
+        }
+
         private RectTransform CreateGhost(Sprite face, Vector2 size)
         {
             var go = new GameObject("CardAbsorbGhost", typeof(RectTransform), typeof(Image));
@@ -87,7 +118,8 @@ namespace Wassup.UI
         }
 
         private IEnumerator FlyRoutine(RectTransform ghost, Vector2 startScreen, Camera worldCam,
-            Func<Vector3?> worldProvider, Action<Vector3> onImpact)
+            Func<Vector3?> worldProvider, Action<Vector3> onImpact,
+            Func<bool> cancelRequested = null, Action onCancel = null)
         {
             SetGhostScreen(ghost, startScreen);
             Vector3 lastWorld = worldCam.transform.position; // fallback
@@ -105,6 +137,13 @@ namespace Wassup.UI
             float e = 0f;
             while (e < total)
             {
+                // defender-footprint unit 5 — 지연 커밋 취소(고스트 탭). 도착 프레임 전까지만 유효.
+                if (cancelRequested != null && cancelRequested())
+                {
+                    if (ghost != null) Destroy(ghost.gameObject);
+                    onCancel?.Invoke();
+                    yield break;
+                }
                 e += Time.unscaledDeltaTime;
 
                 // 타겟 추적(유닛 행진) — end 를 매프레임 재투영.

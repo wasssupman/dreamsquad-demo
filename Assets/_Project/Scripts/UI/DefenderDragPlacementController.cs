@@ -411,6 +411,7 @@ namespace Wassup.UI
         private void Update()
         {
             UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
+            UpdateUndoWindow(); // defender-footprint unit 5 — 배치 되돌리기 창(세션 독립 — 커밋 후에도 산다)
 
             // placement-armed-board-drag unit 0 — arm 된 상태 + 드래그 아님일 때 보드 프레스-드래그-릴리즈 제스처.
             if (_armedUnit != null && !_session.active) UpdateBoardGesture();
@@ -732,6 +733,97 @@ namespace Wassup.UI
         {
             if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
                 _rejectLabel.gameObject.SetActive(false);
+        }
+
+        // ── defender-footprint unit 5 — 배치 되돌리기(활성화 전 취소 유예) ──────────
+        // 창 = 최신 배치 1건(비-facing). 연속 배치는 이전 창을 대체한다 — 실수 복구가 목적이라
+        // 직전 1건이면 충분하고, 버튼 여러 개는 밀집 화면에서 오탭 표면만 넓힌다.
+        // 버튼은 유닛 뷰 앵커 추종 스크린 오버레이. 활성화·소멸을 매 프레임 관측해 자기 소거 —
+        // «유예 종료 = 전투 행동 시작 즉시»가 IsDefenderPendingDeployment 하나로 판정된다.
+        private Unity.Entities.Entity _undoEntity = Unity.Entities.Entity.Null;
+        private Coroutine _undoDeployRoutine;
+        private GameObject _undoCanvasGO;
+        private UnityEngine.UI.Button _undoButton;
+        private RectTransform _undoButtonRect;
+
+        private void BeginUndoWindow(Unity.Entities.Entity entity, Coroutine deployRoutine)
+        {
+            if (!Cfg.deployUndoEnabled || bridge == null) return;
+            _undoEntity = entity;
+            _undoDeployRoutine = deployRoutine;
+            EnsureUndoButton();
+            if (_undoButton != null) _undoButton.gameObject.SetActive(true);
+        }
+
+        private void EndUndoWindow()
+        {
+            _undoEntity = Unity.Entities.Entity.Null;
+            _undoDeployRoutine = null;
+            if (_undoButton != null) _undoButton.gameObject.SetActive(false);
+        }
+
+        private void UpdateUndoWindow()
+        {
+            if (_undoEntity == Unity.Entities.Entity.Null) return;
+            if (bridge == null || !bridge.IsDefenderPendingDeployment(_undoEntity)
+                || !bridge.TryGetUnitViewAnchor(_undoEntity, out var undoAnchor) || undoAnchor == null)
+            {
+                EndUndoWindow(); // 활성화(유예 종료)·사망·teardown 어느 쪽이든 창을 걷는다
+                return;
+            }
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera == null || _undoButtonRect == null) return;
+            Vector2 screen = mainCamera.WorldToScreenPoint(undoAnchor.position);
+            _undoButtonRect.position = screen + Vector2.up * Cfg.deployUndoOffsetPx;
+        }
+
+        private void OnUndoPressed()
+        {
+            var entity = _undoEntity;
+            var routine = _undoDeployRoutine;
+            EndUndoWindow();
+            if (bridge == null || entity == Unity.Entities.Entity.Null) return;
+            if (!bridge.TryCancelPendingDeployment(entity)) return; // 활성화 직후의 늦은 탭 — no-op
+            if (routine != null) StopCoroutine(routine);            // 활성화 시계 중단
+            _activeDismounts.Remove(entity);                        // 하마 비행 자진 종료(키 부재 규약)
+            bridge.ClearDefenderViewOverride(entity);
+            // 전용 클립 없음 + 의미("되돌렸다")가 같아 카드 복귀음 재사용(drag-cancel 관용).
+            SoundManager.Instance?.PlayCardReturn();
+        }
+
+        private void EnsureUndoButton()
+        {
+            if (_undoButton != null) return;
+            _undoCanvasGO = new GameObject("DeployUndoCanvas", typeof(Canvas),
+                typeof(UnityEngine.UI.GraphicRaycaster));
+            _undoCanvasGO.transform.SetParent(transform, false);
+            var undoCanvas = _undoCanvasGO.GetComponent<Canvas>();
+            undoCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            undoCanvas.sortingOrder = 20002; // 거부 라벨 캔버스(20001) 위
+            var go = new GameObject("DeployUndoButton", typeof(RectTransform),
+                typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            go.transform.SetParent(_undoCanvasGO.transform, false);
+            _undoButtonRect = (RectTransform)go.transform;
+            _undoButtonRect.sizeDelta = Cfg.deployUndoSize;
+            var undoImg = go.GetComponent<UnityEngine.UI.Image>();
+            undoImg.color = Cfg.deployUndoBgColor;
+            _undoButton = go.GetComponent<UnityEngine.UI.Button>();
+            _undoButton.onClick.AddListener(OnUndoPressed);
+            var textGO = new GameObject("Label", typeof(RectTransform));
+            textGO.transform.SetParent(go.transform, false);
+            var trt = (RectTransform)textGO.transform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero;
+            trt.offsetMax = Vector2.zero;
+            var undoLabel = textGO.AddComponent<TextMeshProUGUI>();
+            if (_uiFont != null) undoLabel.font = _uiFont;
+            undoLabel.fontSize = 26f;
+            undoLabel.alignment = TextAlignmentOptions.Center;
+            undoLabel.raycastTarget = false;
+            undoLabel.color = Cfg.deployUndoTextColor;
+            undoLabel.text = "되돌리기";
+            go.SetActive(false);
         }
 
         private void EnsureRejectLabel()
@@ -1218,7 +1310,10 @@ namespace Wassup.UI
                 }
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
-                StartCoroutine(RunDeployment(session.unit, fpPrimary, entity, skipPresentation: dismount));
+                var deployRoutine = StartCoroutine(RunDeployment(session.unit, fpPrimary, entity, skipPresentation: dismount));
+                // defender-footprint unit 5 — 활성화 전까지 되돌리기 창. facing 유닛은 조준
+                // 페이즈가 화면을 쥐고 있어 제외(취소는 기존 backlog 항목대로 후속).
+                BeginUndoWindow(entity, deployRoutine);
                 return;
             }
             bridge?.FlashPlacementReject(cell);
@@ -1753,6 +1848,7 @@ namespace Wassup.UI
 
         private void OnDisable()
         {
+            EndUndoWindow(); // defender-footprint unit 5 — 유예 창은 비활성화에서 조용히 닫는다(취소 아님)
             if (_cutscenePlayer != null)
                 _cutscenePlayer.ForceStopAndReset(); // 비활성화는 고아 root Canvas 잔류 금지
             FinishDismountsInstant(); // defender-drop-dismount unit 2 — 진행 중 하마 비행 즉시 완결

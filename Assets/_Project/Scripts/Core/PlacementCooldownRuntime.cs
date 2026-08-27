@@ -54,6 +54,14 @@ namespace Wassup.Core
         // 전부 소거(배치 페이즈 진입 / 매치 teardown 경계).
         public void ResetAll() => _map.Clear();
 
+        // defender-footprint unit 5 — 배치 취소 유예의 되감기. 실수 복구가 목적이라
+        // 재시도가 쿨타임에 막히면 안 된다. 유닛 키 하나만 지운다(retire/사망 쿨과 같은 map 이지만
+        // 방금 취소된 그 유닛의 항목은 방금 건 배치 쿨이다).
+        public void ClearCooldown(Wassup.Data.DefenderUnitData unit)
+        {
+            if (unit != null) _map.Remove(unit);
+        }
+
         // 각 entry remaining 감소, <=0 은 제거. Update 에서 추출 — EditMode 가 직접 구동
         // (MonoBehaviour.Update 는 EditMode 미실행). Entry 가 struct 라 재대입으로 갱신한다.
         public void Tick(float dt)

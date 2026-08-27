@@ -4174,6 +4174,43 @@ namespace Wassup.Bridge
         //
         // 순찰병은 별도 배선이 없다 — PatrolLifecycleSystem 의 소환사 생존 판정 첫 줄이
         // Exists(owner) 라 **파괴 자체가 신호**다(다음 sim 틱에 회수, 그 1틱은 무해).
+        // defender-footprint unit 5 — 배치 취소 유예: PendingDeployment(착지 연출~활성화 전)
+        // 동안 배치를 되돌린다. 이 구간은 전투 미참여·on-place 미발화가 구조로 보장되므로
+        // (README 계약 9 «유예 중 효과 미시작») 코스트 전액 환불·쿨다운 되감기가 정당하다.
+        // 활성화 이후엔 false = 유예 종료. 파괴·뷰 반납은 퇴근(RetireDefender)의
+        // «브리지가 배치한 것을 브리지가 수거» 형태를 미러한다(즉시 Despawn — 사망 애니 없음).
+        public bool TryCancelPendingDeployment(Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
+            if (!_em.HasComponent<PendingDeployment>(entity)) return false;
+            if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(entity)) return false;
+            if (!TryGetDefenderCell(entity, out var cell)) return false;
+
+            // 되돌릴 수 없는 sim 변경 먼저(퇴근 리뷰 2026-08-15 와 같은 순서 원칙).
+            ReleaseDefenderTile(cell, out var binding);
+            _em.DestroyEntity(entity);
+
+            spineUnitPool?.Despawn(entity);
+            defenderFallbackViewPool?.Despawn(entity);
+            ClearDefenderViewOverride(entity);
+            _onPlaceTriggeredEntities.Remove(entity);
+            _effectTileAppliedEntities.Remove(entity);
+
+            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (binding.data != null && costRuntime != null) costRuntime.RefundSpend(binding.data.cost);
+            var cooldownRt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (binding.data != null && cooldownRt != null) cooldownRt.ClearCooldown(binding.data);
+
+            DefenderDeploymentCancelled?.Invoke(entity, binding.data);
+            Debug.Log($"[BattleBridge] Pending deployment cancelled @ {cell} — refunded.");
+            return true;
+        }
+
+        // defender-footprint unit 5 — 유예 창 관측 read seam(되돌리기 버튼 표시 게이트).
+        public bool IsDefenderPendingDeployment(Entity entity)
+            => _em != null && entity != Entity.Null && _em.Exists(entity)
+               && _em.HasComponent<PendingDeployment>(entity);
+
         public bool RetireDefender(Vector2Int cell)
         {
             if (_em == null) return false;

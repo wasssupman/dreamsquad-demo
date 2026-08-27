@@ -247,6 +247,55 @@ namespace Wassup.UI
                 worldPos => FireAbsorbImpact(h, worldPos));
         }
 
+        // defender-footprint unit 5 — 지연 커밋 비행(Defender 부착 전용). 슬롯 카드는 비행 동안
+        // 예약(숨김 — 고스트와 이중 표시 방지), 도착 프레임에 commit 실행. 성공 = 기존 흡수
+        // 임팩트 / 실패·취소 = 카드 복귀. 프리젠터 미가용이면 false — 호출부가 즉시 커밋 폴백.
+        public bool FlyCardToUnitDeferred(int slotIndex, Vector3 startUiWorld, Vector2 ghostSize,
+            Sprite face, Entity host, System.Func<bool> commit)
+        {
+            EnsureFlightPresenter();
+            if (_flightPresenter == null) return false;
+            var b = bridge;
+            var h = host;
+            var reserved = ReserveSlotVisual(slotIndex);
+            System.Action restore = () =>
+            {
+                ReleaseSlotVisual(reserved);
+                RestoreSlotHome(slotIndex);
+                SoundManager.Instance?.PlayCardReturn();
+            };
+            bool started = _flightPresenter.FlyDeferred(startUiWorld, ghostSize, face, MainCamera,
+                () => (b != null && b.TryGetUnitViewAnchor(h, out var tr) && tr != null)
+                    ? tr.position : (Vector3?)null,
+                onArrive: worldPos =>
+                {
+                    if (commit != null && commit())
+                    {
+                        // 커밋의 HandChanged(Used) 리빌드가 손패 표시의 정본 — 예약 숨김이
+                        // 재사용 슬롯에 잔류하지 않게 여기서 되살린다.
+                        ReleaseSlotVisual(reserved);
+                        FireAbsorbImpact(h, worldPos);
+                    }
+                    else restore();
+                },
+                onCancel: restore);
+            if (!started) ReleaseSlotVisual(reserved);
+            return started;
+        }
+
+        private CardSlot ReserveSlotVisual(int index)
+        {
+            if (index < 0 || index >= _slots.Count) return null;
+            var s = _slots[index];
+            if (s != null && s.root != null) s.root.SetActive(false);
+            return s;
+        }
+
+        private static void ReleaseSlotVisual(CardSlot s)
+        {
+            if (s != null && s.root != null) s.root.SetActive(true);
+        }
+
         // card-fly-to-target-absorb unit 2 — 타일/포탈 타겟(Active 스킬 셀 캐스트). 고정 셀
         // view 중심으로 비행(추적 불필요) → 타일 월드에서 같은 찰싹(유닛 없음 → 펀치/플래시 생략).
         public void FlyCardToCell(Vector3 startUiWorld, Vector2 ghostSize, Sprite face, Vector2Int cell)
