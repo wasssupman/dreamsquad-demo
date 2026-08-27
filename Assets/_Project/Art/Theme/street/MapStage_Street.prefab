@@ -79,7 +79,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 86
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 703f1e36b8d138d468df416ae9ac062a, type: 3}
   m_Color: {r: 0.5377358, g: 0.5377358, b: 0.5377358, a: 1}
@@ -219,7 +219,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 86
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: ba80ef2c80087f049bacb28317aa6ee3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -311,7 +311,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: ba80ef2c80087f049bacb28317aa6ee3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -382,16 +382,17 @@ Transform:
   - {fileID: 3147237945410186700}
   - {fileID: 7288699155066817459}
   - {fileID: 8600503563205920372}
+  - {fileID: 1795583526556897677}
   - {fileID: 758545080271113877}
   - {fileID: 7874378641097548134}
-  - {fileID: 858127030337949552}
-  - {fileID: 1455838294688486240}
-  - {fileID: 4675095014082023387}
   - {fileID: 3148619695250255681}
   - {fileID: 4557285470441723387}
   - {fileID: 8542363295211347208}
-  - {fileID: 2048844768350324546}
-  - {fileID: 7351655740672329359}
+  - {fileID: 4784861630677740880}
+  - {fileID: 1443901244886044997}
+  - {fileID: 1099711833815436589}
+  - {fileID: 7739777638066244033}
+  - {fileID: 7681177754249050830}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5425316568415948487
@@ -407,7 +408,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.MapStage
   playAreaCells: {x: 30, y: 11}
-  gridOriginLocal: {x: 0, y: 0.19, z: 0}
+  gridOriginLocal: {x: 0, y: 0.19, z: -0.09}
   previewTileSize: 1
   suppressEffectTiles: 0
 --- !u!1 &2062935978152665967
@@ -491,7 +492,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 207
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: c834fbdcb5d68c2458075551a149472e, type: 3}
   m_Color: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 1}
@@ -610,7 +611,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 84bb9836f45c50d4fa83913ab1bdbca7, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -715,7 +716,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 161
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: b631103eaa8a67a45aa4cdb2b8e6e3aa, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -727,6 +728,52 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &3578125945168316063
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1099711833815436589}
+  - component: {fileID: 7562014635471529601}
+  m_Layer: 0
+  m_Name: goal
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1099711833815436589
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3578125945168316063}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.5, y: 0.19, z: 5.41}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513537373662423865}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7562014635471529601
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3578125945168316063}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1924173c6216958448be8cde6b5d4962, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.GoalMarker
+  visualRoot: {fileID: 0}
+  stressTint: {r: 0.95, g: 0.13, b: 0.11, a: 1}
 --- !u!1 &3657674377612896011
 GameObject:
   m_ObjectHideFlags: 0
@@ -808,7 +855,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 207
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: c79aabeafebec2c4a8ea22d55d3ba1c0, type: 3}
   m_Color: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 1}
@@ -847,7 +894,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
   authoredInPrefab: 0
---- !u!1 &3941625523899104263
+--- !u!1 &4515126325079179236
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -855,8 +902,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2048844768350324546}
-  - component: {fileID: 347343027655288957}
+  - component: {fileID: 7739777638066244033}
+  - component: {fileID: 5528537035250347400}
   m_Layer: 0
   m_Name: bonus_portal_0
   m_TagString: Untagged
@@ -864,28 +911,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2048844768350324546
+--- !u!4 &7739777638066244033
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3941625523899104263}
+  m_GameObject: {fileID: 4515126325079179236}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15.5, y: 0.19, z: 1.5}
+  m_LocalPosition: {x: 15.5, y: 0.19, z: 1.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 7513537373662423865}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &347343027655288957
+--- !u!114 &5528537035250347400
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3941625523899104263}
+  m_GameObject: {fileID: 4515126325079179236}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5676d857045a0a428a4a1c2c1bf0772, type: 3}
@@ -972,7 +1019,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 207
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: d1f7cb0a4d37b514ea5074603b4e6a6d, type: 3}
   m_Color: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 1}
@@ -1011,6 +1058,50 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
   authoredInPrefab: 0
+--- !u!1 &4885772557990470840
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7681177754249050830}
+  - component: {fileID: 2866448888505349687}
+  m_Layer: 0
+  m_Name: bonus_portal_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7681177754249050830
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4885772557990470840}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 15.5, y: 0.19, z: 9.41}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513537373662423865}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2866448888505349687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4885772557990470840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5676d857045a0a428a4a1c2c1bf0772, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.BonusSpawnMarker
 --- !u!1 &4910212745783521880
 GameObject:
   m_ObjectHideFlags: 0
@@ -1204,7 +1295,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 84bb9836f45c50d4fa83913ab1bdbca7, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1230,6 +1321,53 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PropFootprint
   size: {x: 3, y: 3}
   anchorOffset: {x: -1, y: -1}
+--- !u!1 &5142217825239154056
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1443901244886044997}
+  - component: {fileID: 1859625720328727281}
+  m_Layer: 0
+  m_Name: spawn1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1443901244886044997
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5142217825239154056}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 28.5, y: 0.19, z: 7.41}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513537373662423865}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1859625720328727281
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5142217825239154056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 925edd18e2418c54d8a85f227db837ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SpawnMarker
+  laneIndex: 1
+  routeIndex: -1
+  visualRoot: {fileID: 0}
 --- !u!1 &5366028667618857484
 GameObject:
   m_ObjectHideFlags: 0
@@ -1309,7 +1447,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 161
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 94380205e10562f4b93b995a4ebdac53, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1400,7 +1538,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 86
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 703f1e36b8d138d468df416ae9ac062a, type: 3}
   m_Color: {r: 0.5377358, g: 0.5377358, b: 0.5377358, a: 1}
@@ -1412,7 +1550,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!1 &5400201505269353292
+--- !u!1 &5523474421737259691
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1420,8 +1558,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 858127030337949552}
-  - component: {fileID: 1094458445119320297}
+  - component: {fileID: 4784861630677740880}
+  - component: {fileID: 3870216076775266115}
   m_Layer: 0
   m_Name: spawn0
   m_TagString: Untagged
@@ -1429,28 +1567,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &858127030337949552
+--- !u!4 &4784861630677740880
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5400201505269353292}
+  m_GameObject: {fileID: 5523474421737259691}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 28.5, y: 0, z: 3.5859993}
+  m_LocalPosition: {x: 28.5, y: 0.19, z: 3.41}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 7513537373662423865}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1094458445119320297
+--- !u!114 &3870216076775266115
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5400201505269353292}
+  m_GameObject: {fileID: 5523474421737259691}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 925edd18e2418c54d8a85f227db837ba, type: 3}
@@ -1459,6 +1597,126 @@ MonoBehaviour:
   laneIndex: 0
   routeIndex: -1
   visualRoot: {fileID: 0}
+--- !u!1 &5796782063063583474
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1795583526556897677}
+  - component: {fileID: 8841497216119803425}
+  - component: {fileID: 8127571441013318468}
+  - component: {fileID: 1445671611441419790}
+  m_Layer: 0
+  m_Name: Blocker (12)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1795583526556897677
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5796782063063583474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.2588191, y: -0, z: -0, w: 0.9659258}
+  m_LocalPosition: {x: 18.3, y: 1.26, z: 5.8}
+  m_LocalScale: {x: 0.25, y: 0.25, z: 0.25}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7513537373662423865}
+  m_LocalEulerAnglesHint: {x: 30, y: 0, z: 0}
+--- !u!212 &8841497216119803425
+SpriteRenderer:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5796782063063583474}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9aeae61f75e125343a1f46713aea3a84, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 234
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 82bcd7a293ceb6a4e8c41019276216e6, type: 3}
+  m_Color: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 2.56, y: 2.56}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+--- !u!114 &8127571441013318468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5796782063063583474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16287c6215e62a74fbfacf8f4820f60c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PropFootprint
+  size: {x: 1, y: 2}
+  anchorOffset: {x: 0, y: -1}
+--- !u!114 &1445671611441419790
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5796782063063583474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 253b87c3cdad44f0c8d1476710d6b18b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
+  authoredInPrefab: 0
 --- !u!1 &6095028210453605253
 GameObject:
   m_ObjectHideFlags: 0
@@ -1651,7 +1909,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 161
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: ba80ef2c80087f049bacb28317aa6ee3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1742,7 +2000,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 161
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: f3f3d99ab3f0be643bd90d5c45f84b31, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -1835,7 +2093,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 207
+  m_SortingOrder: 234
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 96ef0cb4e4ece5f4f9a4d89096c65194, type: 3}
   m_Color: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 1}
@@ -1874,50 +2132,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.BlobShadow
   authoredInPrefab: 0
---- !u!1 &6427971601854478382
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7351655740672329359}
-  - component: {fileID: 8720328371681036213}
-  m_Layer: 0
-  m_Name: bonus_portal_1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7351655740672329359
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6427971601854478382}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 15.5, y: 0.19, z: 9.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7513537373662423865}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8720328371681036213
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6427971601854478382}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5676d857045a0a428a4a1c2c1bf0772, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.BonusSpawnMarker
 --- !u!1 &6934137640202806413
 GameObject:
   m_ObjectHideFlags: 0
@@ -1997,7 +2211,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 86
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: ba80ef2c80087f049bacb28317aa6ee3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -2122,53 +2336,6 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &8361703466290672446
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1455838294688486240}
-  - component: {fileID: 1482258734888090200}
-  m_Layer: 0
-  m_Name: spawn1
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1455838294688486240
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8361703466290672446}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 28.5, y: 0, z: 7.5859995}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7513537373662423865}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1482258734888090200
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8361703466290672446}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 925edd18e2418c54d8a85f227db837ba, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SpawnMarker
-  laneIndex: 1
-  routeIndex: -1
-  visualRoot: {fileID: 0}
 --- !u!1 &8429931800613397063
 GameObject:
   m_ObjectHideFlags: 0
@@ -2282,49 +2449,3 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &8922118208616676724
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4675095014082023387}
-  - component: {fileID: 3742873939028445331}
-  m_Layer: 0
-  m_Name: goal
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &4675095014082023387
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8922118208616676724}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.5, y: 0, z: 5.5859995}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7513537373662423865}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3742873939028445331
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8922118208616676724}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1924173c6216958448be8cde6b5d4962, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.GoalMarker
-  visualRoot: {fileID: 0}
-  stressTint: {r: 0.95, g: 0.13, b: 0.11, a: 1}
