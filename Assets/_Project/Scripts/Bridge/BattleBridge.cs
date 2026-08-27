@@ -265,6 +265,10 @@ namespace Wassup.Bridge
         // 등록/해제는 OccupyDefenderFootprint / ReleaseDefenderFootprint 두 함수만 지난다.
         private readonly Dictionary<Vector2Int, Vector2Int> _defenderCellOwner = new();
         private readonly List<Vector2Int> _footprintReleaseScratch = new();
+        // defender-footprint unit 5 리뷰 H-1 — «취소 유예 대상» 자격 셋. PendingDeployment 는
+        // 재배치 비행에도 붙어 그 존재만으론 «방금 놓은 유닛»을 식별하지 못한다 — 신규 배치가
+        // 등록하고 활성화·퇴장(ReleaseDefenderTile)·리셋이 지운다. 취소 API 의 진짜 술어다.
+        private readonly HashSet<Entity> _cancellableDeployments = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         // defender-relocation unit 8 — 효과 타일은 on-place 와 **다른** 가드를 쓴다.
         // 재배치가 on-place 를 재무장하기 때문(README 계약 4). 왜 함께 풀면 안 되는지는
@@ -1506,6 +1510,7 @@ namespace Wassup.Bridge
             ResetBonusWaveState();   // bonus-wave-pull unit 4 — _pending 리셋과 co-locate
             _occupiedTiles.Clear();
             _defenderCellOwner.Clear(); // defender-footprint unit 1 — 점유 집합과 co-locate(불변식)
+            _cancellableDeployments.Clear(); // unit 5 리뷰 H-1 — 매치 경계에서 자격 셋도 함께
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
             _defenderViewOverride.Clear(); // defender-relocation review L1 — 뷰 오버라이드도 _defenderByTile 리셋과 co-locate(불변식)
@@ -4152,6 +4157,7 @@ namespace Wassup.Bridge
             bool hasBinding = _defenderByTile.TryGetValue(key, out binding);
             // beam unit 1 — 쏘던 유닛이 내려가면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 끊는다.
             if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.entity);
+            if (hasBinding) _cancellableDeployments.Remove(binding.entity); // unit 5 리뷰 H-1 — 퇴장 = 자격 소멸
             _defenderByTile.Remove(key);
             ReleaseDefenderFootprint(key);
             _occupiedTiles.Remove(key); // owner 맵을 안 지난 레거시 점유 방어(정상 경로에선 이미 비었다)
@@ -4182,12 +4188,20 @@ namespace Wassup.Bridge
         public bool TryCancelPendingDeployment(Entity entity)
         {
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
+            // 리뷰 H-1 — PendingDeployment 는 재배치 비행에도 붙는다. 자격 셋이 진짜 술어 —
+            // 없으면 이 API 가 이동 중인 활성 유닛을 파괴하고 코스트를 이중 환불한다.
+            if (!_cancellableDeployments.Contains(entity)) return false;
             if (!_em.HasComponent<PendingDeployment>(entity)) return false;
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(entity)) return false;
             if (!TryGetDefenderCell(entity, out var cell)) return false;
 
             // 되돌릴 수 없는 sim 변경 먼저(퇴근 리뷰 2026-08-15 와 같은 순서 원칙).
-            ReleaseDefenderTile(cell, out var binding);
+            if (!ReleaseDefenderTile(cell, out var binding))
+            {
+                // 바인딩 부재 = 반쯤 무너진 상태 — 환불 근거가 없으므로 여기서 물러난다(조용한 손실 방지).
+                Debug.LogWarning($"[BattleBridge] Cancel pending: no binding @ {cell} — aborted.");
+                return false;
+            }
             _em.DestroyEntity(entity);
 
             spineUnitPool?.Despawn(entity);
@@ -4199,7 +4213,9 @@ namespace Wassup.Bridge
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             if (binding.data != null && costRuntime != null) costRuntime.RefundSpend(binding.data.cost);
             var cooldownRt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
-            if (binding.data != null && cooldownRt != null) cooldownRt.ClearCooldown(binding.data);
+            // 리뷰 H-1 — 사망·퇴근 쿨이 같은 키를 덮었을 수 있어 배치 쿨 길이 이하일 때만 지운다.
+            if (binding.data != null && cooldownRt != null)
+                cooldownRt.ClearCooldownUpTo(binding.data, binding.data.placementCooldown);
 
             DefenderDeploymentCancelled?.Invoke(entity, binding.data);
             Debug.Log($"[BattleBridge] Pending deployment cancelled @ {cell} — refunded.");
@@ -5677,6 +5693,30 @@ namespace Wassup.Bridge
         // defender-footprint unit 3 — 시너지 스캔 스크래치(할당 재사용).
         private readonly List<(Entity entity, DefenderUnitData data, RectInt rect)> _synergyScratch = new();
 
+        // defender-footprint 리뷰 M-6 — «등록 스냅샷» 방어선을 검사 쪽에도. SO footprint 가
+        // 배치 후(시트 임포트) 바뀌어도 시너지·재배치 자기-겹침은 **실제 점유 칸** 기준이어야
+        // ReleaseDefenderFootprint 와 같은 rect 를 본다. 미등록(이론상 없음)이면 SO 폴백.
+        private RectInt RegisteredFootprintRect(Vector2Int primary, Vector2Int fallbackSize)
+        {
+            bool any = false;
+            int minX = 0, minY = 0, maxX = 0, maxY = 0;
+            foreach (var kv in _defenderCellOwner)
+            {
+                if (kv.Value != primary) continue;
+                if (!any) { minX = maxX = kv.Key.x; minY = maxY = kv.Key.y; any = true; }
+                else
+                {
+                    if (kv.Key.x < minX) minX = kv.Key.x;
+                    if (kv.Key.x > maxX) maxX = kv.Key.x;
+                    if (kv.Key.y < minY) minY = kv.Key.y;
+                    if (kv.Key.y > maxY) maxY = kv.Key.y;
+                }
+            }
+            if (!any)
+                return FootprintMath.Cells(FootprintMath.AnchorFromPrimary(primary, fallbackSize), fallbackSize);
+            return new RectInt(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
+
         private void RecomputeSynergyFor(Vector2Int cell)
         {
             if (!enableAdjacencySynergy)
@@ -5684,6 +5724,7 @@ namespace Wassup.Bridge
                 NeutralizeActiveSynergy();
                 return;
             }
+            if (!HasLiveEntityManager()) return; // 리뷰 L-6 — teardown 경계 방어(관용구 공유)
 
             // defender-footprint unit 3 — 인접 = 두 footprint rect 의 **체비셰프 거리 1(둘레 접촉)**.
             // 대표 셀 8이웃으로 재면 3×3 유닛의 8이웃이 전부 자기 몸 안이라 시너지가 죽는다.
@@ -5699,7 +5740,7 @@ namespace Wassup.Bridge
             {
                 if (!_em.Exists(kv.Value.entity) || _em.HasComponent<PendingDeployment>(kv.Value.entity)) continue;
                 var size = kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one;
-                var rect = FootprintMath.Cells(FootprintMath.AnchorFromPrimary(kv.Key, size), size);
+                var rect = RegisteredFootprintRect(kv.Key, size); // 리뷰 M-6 — 등록 스냅샷 기준
                 _synergyScratch.Add((kv.Value.entity, kv.Value.data, rect));
             }
 
@@ -5975,6 +6016,7 @@ namespace Wassup.Bridge
             int bestOrder = int.MinValue;
             float bestCenter = float.MaxValue;
             float bestMagnet = float.MaxValue;
+            int bestMagnetOrder = int.MinValue;
             var gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : new int2(1, 1);
             foreach (var kv in _defenderByTile)
             {
@@ -5985,9 +6027,15 @@ namespace Wassup.Bridge
                     rect.xMin -= paddingPx; rect.xMax += paddingPx;
                     rect.yMin -= paddingPx; rect.yMax += paddingPx;
                 }
+                // 리뷰 M-2/L-3 — 렌더 정렬은 뷰 월드(짝수 변 +0.5칸 오프셋 포함)의 RoundToInt 로
+                // 돈다(SpineUnitView.UpdateSortingOrder → ComputeFromWorld). 픽도 같은 오프셋을
+                // 같은 반올림으로 미러해야 짝수 footprint 에서 «앞면 우선»이 실제 앞면과 일치한다.
+                var pickOff = FootprintMath.CenterOffsetFromPrimary(
+                    kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one);
+                int order = Wassup.Presentation.BoardSortOrder.Compute(gridSize,
+                    Mathf.RoundToInt(kv.Key.x + pickOff.x), Mathf.RoundToInt(kv.Key.y + pickOff.y));
                 if (rect.Contains(screenPos))
                 {
-                    int order = Wassup.Presentation.BoardSortOrder.Compute(gridSize, kv.Key.x, kv.Key.y);
                     float dc = (rect.center - screenPos).sqrMagnitude;
                     if (order > bestOrder || (order == bestOrder && dc < bestCenter))
                     {
@@ -5999,10 +6047,16 @@ namespace Wassup.Bridge
                 }
                 else if (bestOrder == int.MinValue && magnetPx > 0f)
                 {
+                    // 리뷰 M-5 — 자석 동률도 앞면 우선(포함 분기와 같은 규칙). 부동소수 동률은
+                    // 1px 미만 오차 밴드로 판정해 열거 순서 의존을 제거한다.
                     float d = ScreenDistanceToRect(rect, screenPos);
-                    if (d <= magnetPx && d < bestMagnet)
+                    if (d > magnetPx) continue;
+                    bool closer = d < bestMagnet - 0.5f;
+                    bool tieFront = Mathf.Abs(d - bestMagnet) <= 0.5f && order > bestMagnetOrder;
+                    if (closer || tieFront)
                     {
                         bestMagnet = d;
+                        bestMagnetOrder = order;
                         defender = kv.Value.entity;
                         cell = kv.Key;
                     }
@@ -7542,6 +7596,7 @@ namespace Wassup.Bridge
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(primary, unitData, pendingDeployment: true, spawnPlacementVfx: false);
+            _cancellableDeployments.Add(entity); // unit 5 리뷰 H-1 — 신규 배치만 취소 유예 대상
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
@@ -7577,6 +7632,7 @@ namespace Wassup.Bridge
             // 둘 다 브리지 동기 구간이라 오늘은 성립한다. 떼어 놓지 말 것.
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
+            _cancellableDeployments.Remove(entity); // unit 5 리뷰 H-1 — 활성화 = 유예 종료
             RecomputeSynergyFor(cell);
             Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
         }

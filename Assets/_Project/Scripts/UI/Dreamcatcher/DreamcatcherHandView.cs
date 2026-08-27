@@ -250,18 +250,21 @@ namespace Wassup.UI
         // defender-footprint unit 5 — 지연 커밋 비행(Defender 부착 전용). 슬롯 카드는 비행 동안
         // 예약(숨김 — 고스트와 이중 표시 방지), 도착 프레임에 commit 실행. 성공 = 기존 흡수
         // 임팩트 / 실패·취소 = 카드 복귀. 프리젠터 미가용이면 false — 호출부가 즉시 커밋 폴백.
-        public bool FlyCardToUnitDeferred(int slotIndex, Vector3 startUiWorld, Vector2 ghostSize,
+        public bool FlyCardToUnitDeferred(int slotIndex, int entryId, Vector3 startUiWorld, Vector2 ghostSize,
             Sprite face, Entity host, System.Func<bool> commit)
         {
             EnsureFlightPresenter();
             if (_flightPresenter == null) return false;
             var b = bridge;
             var h = host;
+            // 리뷰 M-2 — 숨김 해제는 «숨겼던 그 root»(참조), 홈 복귀는 «지금 entryId 를 든 슬롯»
+            // (인덱스 재조회). 비행 중 손패 리빌드가 인덱스를 재바인딩해도 어긋나지 않는다.
             var reserved = ReserveSlotVisual(slotIndex);
             System.Action restore = () =>
             {
                 ReleaseSlotVisual(reserved);
-                RestoreSlotHome(slotIndex);
+                int idx = IndexOfEntry(entryId);
+                if (idx >= 0) RestoreSlotHome(idx);
                 SoundManager.Instance?.PlayCardReturn();
             };
             bool started = _flightPresenter.FlyDeferred(startUiWorld, ghostSize, face, MainCamera,
@@ -269,7 +272,14 @@ namespace Wassup.UI
                     ? tr.position : (Vector3?)null,
                 onArrive: worldPos =>
                 {
-                    if (commit != null && commit())
+                    // 리뷰 M-1 — 지연 커밋은 자기 맥락보다 오래 살 수 있다(프리젠터가 루트 캔버스
+                    // 소속). 매치가 끝났으면 커밋하지 않는다 — 즉시 커밋 시절엔 구조적으로 불가능
+                    // 했던 소비를 여기서 막는다.
+                    var gm = GameManager.Instance;
+                    // 손패가 사는 두 페이즈(OnPhaseChanged 의 유지 조건과 동일)에서만 커밋.
+                    bool inMatch = gm != null
+                        && (gm.CurrentPhase == GamePhase.Placement || gm.CurrentPhase == GamePhase.Battle);
+                    if (inMatch && commit != null && commit())
                     {
                         // 커밋의 HandChanged(Used) 리빌드가 손패 표시의 정본 — 예약 숨김이
                         // 재사용 슬롯에 잔류하지 않게 여기서 되살린다.
@@ -294,6 +304,13 @@ namespace Wassup.UI
         private static void ReleaseSlotVisual(CardSlot s)
         {
             if (s != null && s.root != null) s.root.SetActive(true);
+        }
+
+        private int IndexOfEntry(int entryId)
+        {
+            for (int i = 0; i < _slots.Count; i++)
+                if (_slots[i] != null && _slots[i].entryId == entryId) return i;
+            return -1;
         }
 
         // card-fly-to-target-absorb unit 2 — 타일/포탈 타겟(Active 스킬 셀 캐스트). 고정 셀

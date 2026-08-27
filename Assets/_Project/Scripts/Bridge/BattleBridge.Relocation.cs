@@ -36,17 +36,22 @@ namespace Wassup.Bridge
 
         // defender-footprint unit 1 — footprint 재배치 판정. to-rect 검사에서 **자기 from-rect 안
         // 셀의 Occupied 는 무시**한다 — 2×2 를 한 칸 옮기기가 자기 점유에 막히면 안 된다(위
-        // RelocationCheck 의 from==to 선행 검사와 같은 이유의 일반화). 같은 앵커 = 제자리 재정비.
+        // RelocationCheck 의 from==to 선행 검사와 같은 이유의 일반화). 같은 앵커·같은 크기 = 제자리 재정비.
+        // 리뷰 M-6 — fromRect 는 **등록 스냅샷**(RegisteredFootprintRect)을 받는다: SO footprint 가
+        // 배치 후 바뀌어도 자기-겹침 무시는 실제 점유 칸 기준. 크기가 갈린 제자리 드롭은 새 크기로
+        // 재검사돼 자연스럽게 re-fit 판정이 된다.
         public static PlacementRejectReason RelocationFootprintCheck(
-            GeneratedMap map, HashSet<Vector2Int> occupied, Vector2Int fromAnchor, Vector2Int toAnchor,
+            GeneratedMap map, HashSet<Vector2Int> occupied, RectInt fromRect, Vector2Int toAnchor,
             Vector2Int size, bool fromHasDefender, bool fromBusy, PlacementLayer layers,
             List<FootprintCellReason> perCell = null)
         {
             if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
             if (fromBusy) return PlacementRejectReason.SourceBusy;
-            if (fromAnchor == toAnchor) return PlacementRejectReason.None;
+            var s = Vector2Int.Max(size, Vector2Int.one);
+            if (new Vector2Int(fromRect.xMin, fromRect.yMin) == toAnchor
+                && (Vector2Int)fromRect.size == s) return PlacementRejectReason.None;
             return SpatialFootprintCheck(map, occupied, toAnchor, size, layers, perCell,
-                ignoreOccupied: FootprintMath.Cells(fromAnchor, size));
+                ignoreOccupied: fromRect);
         }
 
         // unit 1 — 보드 유닛 조회 read seam (재배치 컨트롤러의 홀드 판정용). busy = 배치/이동
@@ -101,11 +106,13 @@ namespace Wassup.Bridge
             var layers = (has && binding.data != null)
                 ? binding.data.EffectivePlacementLayers : PlacementLayer.Ground;
             var size = (has && binding.data != null) ? binding.data.Footprint : Vector2Int.one;
+            // 리뷰 M-6 — from-rect 는 등록 스냅샷 기준(SO 재독 아님).
+            var fromRect = RegisteredFootprintRect(from, size);
             // 제자리 재정비 정규화 — 기존 호출자(선택 패널 등)는 «유닛 셀 = 대표 셀»을 to 로 넘긴다.
             // to 는 앵커 의미라, 짝수 변에서 대표 셀 ≠ 앵커면 제자리가 이동으로 오독된다.
-            if (to == from) to = FootprintMath.AnchorFromPrimary(from, size);
+            if (to == from) to = new Vector2Int(fromRect.xMin, fromRect.yMin);
             reason = RelocationFootprintCheck(_generatedMap, _occupiedTiles,
-                FootprintMath.AnchorFromPrimary(from, size), to, size, has, busy, layers);
+                fromRect, to, size, has, busy, layers);
             if (reason != PlacementRejectReason.None) return false;
 
             // unit 8 — 코스트는 **공간 판정 뒤**에 본다. 구조 사유가 자원 사유를 이긴다
@@ -161,8 +168,12 @@ namespace Wassup.Bridge
             // defender-footprint unit 1 — footprint 단위 스왑. 바인딩 키·DefenderTile 은 새 대표 셀.
             var size = binding.data != null ? binding.data.Footprint : Vector2Int.one;
             // unit 2 — 제자리 재정비 정규화(CanRelocateDefender 와 같은 규칙 — 두 곳이 갈리면
-            // 판정은 제자리인데 스왑이 이동해 점유가 어긋난다).
-            if (to == from) to = FootprintMath.AnchorFromPrimary(from, size);
+            // 판정은 제자리인데 스왑이 이동해 점유가 어긋난다). 리뷰 M-6 — 등록 스냅샷 앵커 기준.
+            if (to == from)
+            {
+                var fromRect = RegisteredFootprintRect(from, size);
+                to = new Vector2Int(fromRect.xMin, fromRect.yMin);
+            }
             var toPrimary = FootprintMath.PrimaryCell(to, size);
             ReleaseDefenderFootprint(from);
             OccupyDefenderFootprint(to, size);

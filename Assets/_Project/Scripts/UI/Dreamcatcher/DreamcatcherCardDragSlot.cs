@@ -157,7 +157,7 @@ namespace Wassup.UI
             // 고스트 탭 취소). 커밋 경로 자체는 동일(CommitAttach)이라 계약 4 승계도 그대로다.
             Vector2 tapPulse = default;
             bool tapHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out tapPulse);
-            if (_view.FlyCardToUnitDeferred(_index, startUiWorld, ghostSize, face, host,
+            if (_view.FlyCardToUnitDeferred(_index, entryId, startUiWorld, ghostSize, face, host,
                     () => _view.Controller.CommitAttach(entryId, host)))
             {
                 if (tapHasPulse) _view.Focus?.Confirm(tapPulse);
@@ -325,7 +325,7 @@ namespace Wassup.UI
                     // 릴리즈 즉시(조준 확정감은 유예와 별개 신호). 프리젠터 미가용 폴백 = 기존 즉시 커밋.
                     Vector2 deferPulse = default;
                     bool deferHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out deferPulse);
-                    if (_view.FlyCardToUnitDeferred(_index, startUiWorld, ghostSize, face, host2,
+                    if (_view.FlyCardToUnitDeferred(_index, entryId, startUiWorld, ghostSize, face, host2,
                             () => _view.Controller.CommitAttach(entryId, host2)))
                     {
                         if (deferHasPulse) _view.Focus?.Confirm(deferPulse);

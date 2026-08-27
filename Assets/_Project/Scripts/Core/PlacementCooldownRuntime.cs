@@ -54,12 +54,16 @@ namespace Wassup.Core
         // 전부 소거(배치 페이즈 진입 / 매치 teardown 경계).
         public void ResetAll() => _map.Clear();
 
-        // defender-footprint unit 5 — 배치 취소 유예의 되감기. 실수 복구가 목적이라
-        // 재시도가 쿨타임에 막히면 안 된다. 유닛 키 하나만 지운다(retire/사망 쿨과 같은 map 이지만
-        // 방금 취소된 그 유닛의 항목은 방금 건 배치 쿨이다).
-        public void ClearCooldown(Wassup.Data.DefenderUnitData unit)
+        // defender-footprint unit 5 — 배치 취소 유예의 되감기. 실수 복구가 목적이라 재시도가
+        // 쿨타임에 막히면 안 된다. ⚠ 같은 map 을 사망·퇴근 쿨이 공유하므로 무조건 지우면 안 된다 —
+        // maxOnBoard ≥ 2 에서 «X#2 배치 → X#1 사망(같은 키 덮어씀) → 취소»가 사망 쿨을 지운다
+        // (리뷰 H-1). 현재 항목의 total(건 순간의 길이)이 배치 쿨 이하일 때만 지운다 — total 은
+        // «어느 쿨인가»의 근사 식별자다. 값이 우연히 같아 오식별해도 비용은 쿨 하나가 일찍 풀리는 것뿐.
+        public void ClearCooldownUpTo(Wassup.Data.DefenderUnitData unit, float totalSecondsAtMost)
         {
-            if (unit != null) _map.Remove(unit);
+            if (unit == null) return;
+            if (_map.TryGetValue(unit, out var e) && e.total <= totalSecondsAtMost + 0.001f)
+                _map.Remove(unit);
         }
 
         // 각 entry remaining 감소, <=0 은 제거. Update 에서 추출 — EditMode 가 직접 구동

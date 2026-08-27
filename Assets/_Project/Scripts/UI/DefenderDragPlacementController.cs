@@ -376,7 +376,7 @@ namespace Wassup.UI
         // 요구 문서 4절 «평상시 전체 하이라이트 없음»을 문자대로). 표시 축은 고스트 4색(불가 위주)이
         // 대신한다. 스위치로만 껐으므로 되켜면 그대로 복원된다(selection-entry-narrowing 관용).
         // 재배치 이동모드(DefenderRelocationController)도 이 스위치를 공유한다.
-        internal const bool PlaceableAreaHighlightEnabled = false;
+        internal static readonly bool PlaceableAreaHighlightEnabled = false; // 리뷰 L-2 — const 면 CS0162(도달 불능 경고)
 
         private void UpdatePlacementHighlightState()
         {
@@ -785,8 +785,9 @@ namespace Wassup.UI
             if (bridge == null || entity == Unity.Entities.Entity.Null) return;
             if (!bridge.TryCancelPendingDeployment(entity)) return; // 활성화 직후의 늦은 탭 — no-op
             if (routine != null) StopCoroutine(routine);            // 활성화 시계 중단
-            _activeDismounts.Remove(entity);                        // 하마 비행 자진 종료(키 부재 규약)
-            bridge.ClearDefenderViewOverride(entity);
+            // 리뷰 L-5 — 하마 정리는 코루틴의 «바인딩 붕괴» 분기에 맡긴다(취소가 바인딩을 이미
+            // 지웠으므로 다음 틱에 AbandonDismount 가 잔류물·오버라이드까지 걷는다). 여기서 키를
+            // 먼저 지우면 그 분기 대신 plain yield break 로 빠져 키링 잔류물이 공중에 얼어붙는다.
             // 전용 클립 없음 + 의미("되돌렸다")가 같아 카드 복귀음 재사용(drag-cancel 관용).
             SoundManager.Instance?.PlayCardReturn();
         }
@@ -1169,9 +1170,10 @@ namespace Wassup.UI
             // 즉시 꺼진다. 범위는 **하마 비행이 사는 동안** 유지하고 착지에 걷는다 — 탭에는 스카우트
             // 구간이 없어(D&D 의 드래그 · 탭투프레스의 프레스-드래그와 다른 점) 이 flourish 가 유일한
             // 범위 피드백이기 때문이다. 하마가 안 떴으면(폴백) 둘 다 거짓이라 즉시 소거된다.
-            // defender-footprint unit 2 — cell = 앵커(하마 등록부 키). 범위 중심은 대표 셀.
+            // defender-footprint unit 2 — cell = 앵커. 범위 중심·하마 등록부(리뷰 H-2 로 대표 셀
+            // 등록으로 바뀜) 둘 다 대표 셀 기준으로 대조한다.
             var peekRangeCell = FootprintMath.PrimaryCell(cell, unit != null ? unit.Footprint : Vector2Int.one);
-            while (_session.active || _activeDismounts.ContainsValue(cell))
+            while (_session.active || _activeDismounts.ContainsValue(peekRangeCell))
             {
                 bridge.SetPlacementRange(peekRangeCell, unit);
                 yield return null;
@@ -1291,11 +1293,13 @@ namespace Wassup.UI
                 // **도착 이후**(반동→솟음→스틱 착지→스쿼시→고리·줄 잔류)라 겹치지 않았다. 지금은 탭 경로도
                 // 고스트를 날리지 않고 **여기서부터** 트레이 셀 → 타일을 난다(SimulateDragTo 주석 참조).
                 bool facing = session.unit != null && session.unit.RequiresFacing && _aimController != null;
-                bool dismount = StartDropDismount(session.unit, cell, entity, presentAtLanding: !facing);
                 // defender-footprint unit 2 — cell = 앵커. 방향 조준(레인 중심)·활성화·연출은
                 // 유닛이 실제로 서는 **대표 셀** 기준이다(1×1 은 앵커와 동일).
+                // 리뷰 H-2 — 하마 착지 연출(PlayDeploymentPresentation)도 대표 셀로: 앵커로 넘기면
+                // 배치 링·VFX 가 좌하단 모서리에서 터져 폴백 경로(RunDeployment)와 자리가 갈린다.
                 var fpPrimary = FootprintMath.PrimaryCell(cell,
                     session.unit != null ? session.unit.Footprint : Vector2Int.one);
+                bool dismount = StartDropDismount(session.unit, fpPrimary, entity, presentAtLanding: !facing);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.

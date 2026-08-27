@@ -86,6 +86,9 @@ namespace Wassup.Core
                 bridge.DefenderDied += OnDefenderDied;
                 bridge.DefenderRetired += OnDefenderRetired; // 퇴근 — 회수만(각성 없음)
                 bridge.EnemyGone += OnEnemyGone; // 살찌운 제물 — 표식 소멸(처치/유출) 회수
+                // defender-footprint unit 5 리뷰 C-1 — 배치 취소도 host 퇴장이다. 안 걸면
+                // 유예 중 부착된 카드가 영구 소실되고 Squad handle 은 revoke 없이 잔류한다.
+                bridge.DefenderDeploymentCancelled += OnDeploymentCancelled;
             }
         }
 
@@ -99,6 +102,7 @@ namespace Wassup.Core
                 bridge.DefenderDied -= OnDefenderDied;
                 bridge.DefenderRetired -= OnDefenderRetired;
                 bridge.EnemyGone -= OnEnemyGone;
+                bridge.DefenderDeploymentCancelled -= OnDeploymentCancelled;
             }
         }
 
@@ -231,6 +235,12 @@ namespace Wassup.Core
         // 주면 배치→퇴근 반복이 게이지 파밍이 된다.
         private void OnDefenderRetired(Entity entity, DefenderUnitData _, Vector3 __)
             => RecoverCardsHostedBy(entity, retired: true);
+
+        // defender-footprint unit 5 리뷰 C-1 — 유예 취소는 카드까지 원복해야 «무차감 원복»이다.
+        // retired:false — 인수인계 앞당김은 퇴근(플레이어 의사 탭) 전용 연산이라 취소에 안 붙는다.
+        // 각성 지급 없음(그건 사망 보상). Squad handle>0 revoke 는 RecoverCardsHostedBy 가 한다.
+        private void OnDeploymentCancelled(Entity entity, DefenderUnitData _)
+            => RecoverCardsHostedBy(entity, retired: false);
 
         // host 에 얹혀 있던 항목을 큐로 돌려보낸다 — 기본은 맨 뒤(퇴장 순서 = 회수 순서).
         // dreamcatcher-retire-recall unit 1 — 예외 하나: **퇴근**이고 그 host 에 「인수인계」가

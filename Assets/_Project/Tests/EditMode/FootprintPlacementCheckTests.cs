@@ -128,15 +128,16 @@ namespace Wassup.Tests.EditMode
                 // 2×2 가 (3,0) 앵커에 서 있고((3,0)~(4,1) 점유) 한 칸 아래 (3,1) 로 이동 —
                 // (3,1)·(4,1) 은 자기 점유라 Occupied 로 치지 않아야 한다. x=2 열을 피해 우측 블록 사용.
                 var occupied = new HashSet<Vector2Int> { new(3, 0), new(4, 0), new(3, 1), new(4, 1) };
+                var fromRect = FootprintMath.Cells(new Vector2Int(3, 0), new Vector2Int(2, 2));
                 Assert.AreEqual(PlacementRejectReason.None,
                     BattleBridge.RelocationFootprintCheck(
-                        map, occupied, new Vector2Int(3, 0), new Vector2Int(3, 1), new Vector2Int(2, 2),
+                        map, occupied, fromRect, new Vector2Int(3, 1), new Vector2Int(2, 2),
                         fromHasDefender: true, fromBusy: false, PlacementLayer.Ground));
                 // 남의 점유는 여전히 막는다: (3,2) 에 타 유닛.
                 occupied.Add(new Vector2Int(3, 2));
                 Assert.AreEqual(PlacementRejectReason.Occupied,
                     BattleBridge.RelocationFootprintCheck(
-                        map, occupied, new Vector2Int(3, 0), new Vector2Int(3, 1), new Vector2Int(2, 2),
+                        map, occupied, fromRect, new Vector2Int(3, 1), new Vector2Int(2, 2),
                         fromHasDefender: true, fromBusy: false, PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
@@ -151,7 +152,8 @@ namespace Wassup.Tests.EditMode
                 var occupied = new HashSet<Vector2Int> { new(3, 0), new(4, 0), new(3, 1), new(4, 1) };
                 Assert.AreEqual(PlacementRejectReason.None,
                     BattleBridge.RelocationFootprintCheck(
-                        map, occupied, new Vector2Int(3, 0), new Vector2Int(3, 0), new Vector2Int(2, 2),
+                        map, occupied, FootprintMath.Cells(new Vector2Int(3, 0), new Vector2Int(2, 2)),
+                        new Vector2Int(3, 0), new Vector2Int(2, 2),
                         fromHasDefender: true, fromBusy: false, PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
@@ -163,13 +165,14 @@ namespace Wassup.Tests.EditMode
             var map = MakeMap();
             try
             {
+                var fromRect = FootprintMath.Cells(new Vector2Int(0, 0), Vector2Int.one);
                 Assert.AreEqual(PlacementRejectReason.NoDefenderAtSource,
                     BattleBridge.RelocationFootprintCheck(
-                        map, new HashSet<Vector2Int>(), new Vector2Int(0, 0), new Vector2Int(3, 0), Vector2Int.one,
+                        map, new HashSet<Vector2Int>(), fromRect, new Vector2Int(3, 0), Vector2Int.one,
                         fromHasDefender: false, fromBusy: false, PlacementLayer.Ground));
                 Assert.AreEqual(PlacementRejectReason.SourceBusy,
                     BattleBridge.RelocationFootprintCheck(
-                        map, new HashSet<Vector2Int>(), new Vector2Int(0, 0), new Vector2Int(3, 0), Vector2Int.one,
+                        map, new HashSet<Vector2Int>(), fromRect, new Vector2Int(3, 0), Vector2Int.one,
                         fromHasDefender: true, fromBusy: true, PlacementLayer.Ground));
             }
             finally { map.Dispose(); }
