@@ -136,9 +136,10 @@ namespace Wassup.UI
         private Vector2Int? _boardScoutAnchor; // defender-footprint unit 2 — 스카우트 앵커(범위 재페인트 판정)
         // defender-footprint unit 7 — 드래그 승격 후 footprint 뷰 중심에 서는 반투명 실루엣.
         // press~승격 전·탭은 unit 1 계약 그대로 유닛 없이 range+고스트만(탭-탭 경로 무변).
+        // 유닛 참조는 안 들고 있다 — _armedUnit 이 바뀌는 모든 경로(ToggleArm/Disarm)가 대입 전에
+        // ResetBoardGesture 로 실루엣을 파괴하므로, 살아 있는 실루엣은 항상 현재 _armedUnit 의 것이다.
         private GameObject _armedSilhouette;
-        private DefenderUnitData _armedSilhouetteUnit; // 빌드된 유닛(arm 교체 감지)
-        private bool _armedSilhouettePlaced;           // false = 다음 갱신 프레임 위치 스냅(등장/재진입)
+        private bool _armedSilhouettePlaced; // false = 다음 갱신 프레임 위치 스냅(등장/재진입)
 
         // ── defender-footprint unit 2 rev(사용자 피드백 2026-08-28) — 배치불가 **보드 전역** 표시 ──
         // 유닛을 드는 순간(D&D 세션 또는 트레이 탭 arm)부터 배치 불가 칸이 전역으로 보인다:
@@ -1191,11 +1192,8 @@ namespace Wassup.UI
                 HideArmedSilhouette();
                 return;
             }
-            if (_armedSilhouette == null || _armedSilhouetteUnit != _armedUnit)
-            {
-                DestroyArmedSilhouette();
-                if (!TryBuildArmedSilhouette(_armedUnit)) return; // Spine 없는 유닛 = 실루엣 생략(위치는 고스트가 전담)
-            }
+            if (_armedSilhouette == null
+                && !TryBuildArmedSilhouette(_armedUnit)) return; // Spine 없는 유닛 = 실루엣 생략(위치는 고스트가 전담)
             var target = bridge.GridAnchorToViewCenter(anchor, _armedUnit);
             if (!_armedSilhouette.activeSelf)
             {
@@ -1249,11 +1247,11 @@ namespace Wassup.UI
             {
                 skelRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
                 var lb = skelRenderer.localBounds;
-                spineChild.transform.localPosition = new Vector3(-lb.center.x * scale, -lb.min.y * scale, 0f);
+                if (lb.size.y > 0.01f) // 키링 빌더와 같은 퇴화 가드 — bounds 0 이면 원점(Spine 발) 그대로
+                    spineChild.transform.localPosition = new Vector3(-lb.center.x * scale, -lb.min.y * scale, 0f);
             }
 
             _armedSilhouette = root;
-            _armedSilhouetteUnit = unitData;
             _armedSilhouettePlaced = false;
             return true;
         }
@@ -1269,7 +1267,6 @@ namespace Wassup.UI
         {
             if (_armedSilhouette != null) Destroy(_armedSilhouette);
             _armedSilhouette = null;
-            _armedSilhouetteUnit = null;
             _armedSilhouettePlaced = false;
         }
 
