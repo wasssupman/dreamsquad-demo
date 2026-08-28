@@ -16,6 +16,8 @@ MonoBehaviour:
   role: 1
   placementLayers: 1
   traversalLayers: 0
+  footprintWidth: 3
+  footprintHeight: 2
   displayName: "\uBC84\uC2A4\uD130\uC988"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uB300\uC0C1 \uC9C0\uC18D \uBE54
@@ -44,12 +46,6 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 0
-  onPlaceRange: 2
-  onPlaceMagnitude: 7
-  onPlaceDuration: 2
-  onPlaceStackKind: 0
-  onPlaceTickInterval: 0.2
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 4
@@ -98,9 +94,6 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45

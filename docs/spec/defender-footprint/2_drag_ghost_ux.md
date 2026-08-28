@@ -17,8 +17,8 @@
 ## 구현
 
 - **손끝 규약**: 손가락 셀 = footprint 하단(min y) 행의 가로 중앙 → `anchor = (finger.x − (W−1)/2, finger.y)`. 1×1 은 항등. 기존 히스테리시스·throttle·릴리즈 forceCommit 재해석은 손가락 셀 축에서 그대로 돌고, 앵커는 그 결과의 순수 파생이라 안정성이 승계된다.
-- **자석**: 후보 앵커가 **공간 사유**(Occupied/NotBuildable/OutOfBounds)로 무효일 때만 반경(`placementMagnetRadiusCells`) 안 최근접 유효 앵커로 흡착. 탐색 순서·동률 처리 결정론(row-major). 없으면 배치 불가 유지(원거리 강제 보정 금지 — README 계약 5·6).
-- **4색 고스트**: 한 번의 `GetPlacementCellReasons`(anchor−r, size+2r) 스캔에서 footprint 칸 = 하늘/빨강(칸 사유 또는 비공간 사유 전체 빨강 — «성공으로 보였는데 실패» 금지), 컨텍스트 칸 = Occupied 노랑 / NotBuildable 무채색, None·맵밖 = 무표시. 페인트는 변경시에만(리스트 diff).
+- **자석 (rev 2026-08-28 — 기본 비활성)**: 구현은 유지하되 `placementMagnetRadiusCells` 기본 0 — 무효 앵커는 보정 없이 배치 불가 유지(사용자 결정). 켜면: 공간 사유(Occupied/NotBuildable/OutOfBounds) 무효일 때만 반경 내 최근접 유효 앵커 흡착, 탐색 결정론(row-major).
+- **4색 고스트 (rev 2026-08-28 사용자 피드백 — 보드 전역)**: `GetPlacementCellReasons`(전 그리드) 스캔에서 배치 불가 칸을 **보드 전역** 표시 — Occupied 노랑 / NotBuildable **빨간 계열**(원판 무채색·손끝 반경 한정 폐기), None = 무표시. footprint 칸은 하늘/진빨강(칸 사유 또는 비공간 사유 전체 빨강 — «성공으로 보였는데 실패» 금지) 오버레이. arm 만 된 상태(보드 프레스 전)에도 전역 표시가 켜진다. 수명 = `UpdatePlacementHighlightState` 파생 토글. 페인트는 변경시에만(리스트 diff).
 - **전체 하이라이트 은퇴**: `PlaceableAreaHighlightEnabled = false` 스위치(selection-entry-narrowing 관용). 코드·리페인트 경로는 유지(스위치로 복원 가능).
 - **뷰 중심**: sim 위치는 대표 셀 중심 불변(계약 2). 짝수 변만 뷰 피드(sync·RestViewPos·비행 앵커·타일 게이지)에 +0.5칸 오프셋 — 투사체·데미지 넘버 반 칸 치우침은 수용(계약 2 명시).
 - **재배치 정합**: 제자리 재정비 호출(to=대표 셀)을 fromAnchor 로 정규화, 목적 셀도 하단 중앙 산식. 재배치 스카우트의 고스트 표시는 후속 후보.

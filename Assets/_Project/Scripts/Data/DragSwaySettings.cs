@@ -194,16 +194,13 @@ namespace Wassup.Data
         public Color ghostInvalidColor = new Color(1f, 0.25f, 0.2f, 0.6f);
         [Tooltip("기배치 유닛 점유 — Ghost 주변 컨텍스트(노란 계열).")]
         public Color ghostOccupiedColor = new Color(1f, 0.85f, 0.25f, 0.5f);
-        [Tooltip("지형 배치 불가 — Ghost 주변 컨텍스트(무채색 계열).")]
-        public Color ghostTerrainColor = new Color(0.55f, 0.55f, 0.55f, 0.45f);
-        [Tooltip("Ghost 주변 배치불가 컨텍스트 표시 반경(셀). 0 = Ghost 만. 배치가능 전체 하이라이트를\n" +
-                 "은퇴시킨 자리(2026-08-28 사용자 결정)를 «불가 위주 + 손가락 주변» 표시가 대신한다.")]
-        [Range(0, 6)]
-        public int ghostContextRadiusCells = 2;
-        [Tooltip("후보 앵커가 공간 사유로 무효일 때 최근접 유효 앵커로 흡착하는 자석 반경(셀). 0 = 자석 없음.\n" +
-                 "반경 밖이면 배치 불가를 유지한다(원거리 강제 보정 금지 — 요구 문서 6절).")]
+        [Tooltip("지형 배치 불가 — 보드 전역 표시(빨간 계열, 사용자 결정 2026-08-28). 유닛을 들면 켜진다.")]
+        public Color ghostTerrainColor = new Color(1f, 0.3f, 0.24f, 0.3f);
+        [Tooltip("후보 앵커가 공간 사유로 무효일 때 최근접 유효 앵커로 흡착하는 자석 반경(셀).\n" +
+                 "**기본 0 = 비활성**(사용자 결정 2026-08-28 — 위치 보정 없이 배치 불가 유지·빨간 고스트만).\n" +
+                 "구현은 남아 있어 값을 올리면 다시 켜진다. 반경 밖은 배치 불가 유지(원거리 강제 보정 금지).")]
         [Range(0f, 4f)]
-        public float placementMagnetRadiusCells = 1.5f;
+        public float placementMagnetRadiusCells = 0f;
 
         [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5)")]
         [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다).")]

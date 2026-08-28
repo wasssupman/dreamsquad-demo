@@ -135,16 +135,22 @@ namespace Wassup.UI
         private Vector2Int? _boardScoutCell;
         private Vector2Int? _boardScoutAnchor; // defender-footprint unit 2 — 스카우트 앵커(범위 재페인트 판정)
 
-        // ── defender-footprint unit 2 — footprint 고스트(4색) + 주변 배치불가 컨텍스트 ──
-        // 한 번의 GetPlacementCellReasons(anchor−r, size+2r) 스캔에서: footprint 칸 = 하늘/빨강,
-        // 컨텍스트 칸 = 점유 노랑 / 지형 무채색, None·맵밖 = 무표시(배치 불가 위주 — 결정 3).
-        // 비공간 사유(코스트·상한)로 전체 무효면 footprint 전 칸 빨강 — «성공으로 보였는데 실패» 금지.
+        // ── defender-footprint unit 2 rev(사용자 피드백 2026-08-28) — 배치불가 **보드 전역** 표시 ──
+        // 유닛을 드는 순간(D&D 세션 또는 트레이 탭 arm)부터 배치 불가 칸이 전역으로 보인다:
+        // 지형 배치 불가 = 빨간 계열 / 기배치 유닛 점유 = 노랑(요구 문서 4절의 점유·지형 구분 유지).
+        // 손가락 밑 footprint 칸은 그 위에 하늘(가능)/진빨강(충돌)으로 얹힌다. 원판(손끝 반경
+        // 컨텍스트만 표시)은 «배치 가능 영역이 안 읽힌다»는 피드백으로 전역화 — 스캔은 전 칸
+        // per-cell 술어라 판정과 어긋나지 않는다(계약 3). 페인트는 diff 라 매 프레임 무해.
+        // 수명은 UpdatePlacementHighlightState 가 소유한다(하이라이트 파생 토글과 같은 관용) —
+        // hover/스카우트는 앵커 상태만 세운다.
         private readonly System.Collections.Generic.List<FootprintCellReason> _ghostAreaReasons = new();
         private readonly System.Collections.Generic.List<Vector2Int> _ghostPaintCells = new();
         private readonly System.Collections.Generic.List<Color> _ghostPaintColors = new();
         private readonly System.Collections.Generic.List<Vector2Int> _ghostLastCells = new();
         private readonly System.Collections.Generic.List<Color> _ghostLastColors = new();
         private bool _ghostShown;
+        private Vector2Int? _ghostAnchor;   // 손가락 footprint 앵커(없으면 board-only)
+        private bool _ghostAnchorValid;
 
         // 자석은 위치를 바꾸면 풀리는 사유에만 발동한다(비용·상한은 어디로 가도 같다).
         private static bool IsSpatialReason(PlacementRejectReason reason)
@@ -152,29 +158,34 @@ namespace Wassup.UI
                || reason == PlacementRejectReason.NotBuildable
                || reason == PlacementRejectReason.OutOfBounds;
 
-        private void UpdateGhost(Vector2Int anchor, bool valid, DefenderUnitData unit)
+        private void PaintGhost(DefenderUnitData unit)
         {
             if (bridge == null || unit == null) return;
+            var gridSize = bridge.DebugGridSize;
+            if (gridSize.x <= 0 || gridSize.y <= 0) return;
+            bridge.GetPlacementCellReasons(Vector2Int.zero, gridSize, unit, _ghostAreaReasons);
             var size = unit.Footprint;
-            int r = Mathf.Max(0, Cfg.ghostContextRadiusCells);
-            bridge.GetPlacementCellReasons(anchor - new Vector2Int(r, r),
-                size + new Vector2Int(r * 2, r * 2), unit, _ghostAreaReasons);
-            var footRect = FootprintMath.Cells(anchor, size);
+            bool hasAnchor = _ghostAnchor.HasValue;
+            var footRect = hasAnchor ? FootprintMath.Cells(_ghostAnchor.Value, size) : default;
 
             bool anyCellFail = false;
-            for (int i = 0; i < _ghostAreaReasons.Count; i++)
+            if (hasAnchor)
             {
-                var e = _ghostAreaReasons[i];
-                if (footRect.Contains(e.cell) && e.reason != PlacementRejectReason.None) { anyCellFail = true; break; }
+                for (int i = 0; i < _ghostAreaReasons.Count; i++)
+                {
+                    var e = _ghostAreaReasons[i];
+                    if (footRect.Contains(e.cell) && e.reason != PlacementRejectReason.None) { anyCellFail = true; break; }
+                }
             }
-            bool nonSpatialInvalid = !valid && !anyCellFail;
+            // 비공간 사유(코스트·상한)로 전체 무효면 footprint 전 칸 빨강 — «성공으로 보였는데 실패» 금지.
+            bool nonSpatialInvalid = hasAnchor && !_ghostAnchorValid && !anyCellFail;
 
             _ghostPaintCells.Clear();
             _ghostPaintColors.Clear();
             for (int i = 0; i < _ghostAreaReasons.Count; i++)
             {
                 var e = _ghostAreaReasons[i];
-                if (footRect.Contains(e.cell))
+                if (hasAnchor && footRect.Contains(e.cell))
                 {
                     _ghostPaintCells.Add(e.cell);
                     _ghostPaintColors.Add(e.reason != PlacementRejectReason.None || nonSpatialInvalid
@@ -213,6 +224,7 @@ namespace Wassup.UI
 
         private void ClearGhost()
         {
+            _ghostAnchor = null;
             if (!_ghostShown) return;
             _ghostShown = false;
             _ghostLastCells.Clear();
@@ -400,6 +412,16 @@ namespace Wassup.UI
             // 매 프레임 도로 꺼버린다(desired=false, shown=true → early-return 이 뚫려 Hide 로 감).
             // 실제로 그 증상이었다 — 이동모드에 들어가도 배치 가능 타일이 안 보였다.
             // 끄는 것은 **내가 켰던 것만** 끈다(내 래치가 true 였을 때의 전이).
+            // defender-footprint unit 2 rev — 배치불가 전역 고스트 토글. **은퇴 스위치와 무관한
+            // 별도 조건**이다(desired 는 PlaceableAreaHighlightEnabled 로 항상 꺼져 있다) —
+            // 배치가능 슬랩은 은퇴했고, 그 자리를 «배치 불가 전역(빨강/노랑) + footprint 고스트»가
+            // 대신한다(사용자 피드백 2026-08-28). arm 만 된 상태(보드 프레스 전)에도 보인다.
+            // 손가락 footprint 는 hover/스카우트가 _ghostAnchor 로 얹는다.
+            bool ghostDesired = (_session.active && !CancelArmed) || _armedUnit != null;
+            var ghostUnit = _session.active ? _session.unit : _armedUnit;
+            if (ghostDesired && ghostUnit != null) PaintGhost(ghostUnit);
+            else ClearGhost();
+
             bool needsRepost = desired && !bridge.IsPlacementHighlightShown;
             if (!needsRepost && desired == _placeableHlDesired && ReferenceEquals(unit, _placeableHlUnit)) return;
             _placeableHlDesired = desired;
@@ -1066,7 +1088,9 @@ namespace Wassup.UI
                 bridge.SetPlacementRange(fpPrimary, _armedUnit);  // 범위 격자 — 셀/앵커 변경 시만, 중심 = 대표 셀
                 bridge.PulsePlacementHover(cell, valid);          // 확정 팝
             }
-            UpdateGhost(anchor, valid, _armedUnit);
+            _ghostAnchor = anchor;   // unit 2 rev — 전역 고스트 위 footprint 얹기(수명은 파생 토글 소유)
+            _ghostAnchorValid = valid;
+            PaintGhost(_armedUnit);
             if (Cfg.stickyLiquidEnabled)
                 bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
             else
@@ -1084,7 +1108,7 @@ namespace Wassup.UI
             }
             _boardScoutCell = null;
             _boardScoutAnchor = null;
-            ClearGhost(); // defender-footprint unit 2
+            _ghostAnchor = null; // unit 2 rev — 앵커만 걷는다(전역 고스트는 armed 동안 유지)
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
@@ -1811,7 +1835,9 @@ namespace Wassup.UI
                 bridge?.SetPlacementRange(primary, _session.unit);
                 bridge?.PulsePlacementHover(cell, valid); // unit 4 — 확정(셀 변경) 팝. 디바운스로 게이팅돼 스팸 아님.
             }
-            UpdateGhost(anchor, valid, _session.unit);
+            _ghostAnchor = anchor;   // unit 2 rev — 전역 고스트 위 footprint 얹기
+            _ghostAnchorValid = valid;
+            PaintGhost(_session.unit);
         }
 
         private void ClearHover()
@@ -1821,7 +1847,7 @@ namespace Wassup.UI
             bridge?.ClearPlacementRange();
             bridge?.SetPlacementRangeValidity(true); // unit 3 — 세션 경계 리셋(뷰의 페인트 API 에 리셋을 얹지 않는다)
             bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
-            ClearGhost(); // defender-footprint unit 2 — 고스트 수명도 hover 와 동일
+            _ghostAnchor = null; // unit 2 rev — 앵커만 걷는다(세션 지속 중엔 전역 고스트 유지)
             _session.hoverTile = null;
             _session.anchorTile = null;
             _session.isValidTile = false;
@@ -1838,6 +1864,7 @@ namespace Wassup.UI
             bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복
             bridge?.HidePlacementHighlight(); // placement-eligible-tile-highlight unit 2 — 종료 시 확실히 소거(OnDisable/OnDestroy 포함)
             _placeableHlDesired = false;
+            ClearGhost(); // unit 2 rev — OnDisable 경유 시 Update 가 더 안 돌므로 여기서 즉시 소거
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
