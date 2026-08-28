@@ -365,13 +365,14 @@ namespace Wassup.UI
         // 틸트 빌보드라 몸체가 발밑 셀보다 화면상 위로 솟으므로 평면 레이캐스트만으로는 놓친다.
         private bool TryPick(Vector2 screenPos, out Entity entity)
         {
-            // defender-footprint unit 4 — 부착과 **같은 SO**(handView 의 FocusConfig)에서 패딩·자석
-            // 노브를 읽는다. 두 UX 의 픽 감각이 한 값으로 튜닝돼야 «탭은 되는데 부착은 안 되는»
-            // 지대가 안 생긴다. 미배선이면 0(기존 판정 그대로).
+            // defender-footprint unit 4 — 부착과 **같은 SO**(handView 의 FocusConfig)에서 패딩을
+            // 읽는다(오탭 비용이 낮은 완충). rev 3(2026-08-28 재검토) — **자석은 탭에 걸지 않는다**:
+            // 자석의 근거(락온→콜아웃 확인→조정→릴리즈의 자기 교정 루프)는 드래그의 성질이고,
+            // 탭은 즉시 커밋이라 확인 루프가 없다. 걸면 «빈 보드 탭 = 닫기/해제» 제스처가 유닛
+            // 60px 반경마다 재선택으로 오발돼 밀집 판에서 닫을 곳이 사라진다.
             var cfg = handView != null ? handView.FocusConfig : null;
             if (bridge.TryPickDefenderAtScreen(mainCamera, screenPos, out entity, out _,
-                    cfg != null ? cfg.unitPickPaddingPx : 0f,
-                    cfg != null ? cfg.unitPickMagnetPx : 0f)) return true;
+                    cfg != null ? cfg.unitPickPaddingPx : 0f)) return true;
             if (bridge.TryScreenToCell(mainCamera, screenPos, out var cell) &&
                 bridge.TryGetDefenderAt(cell, out entity)) return true;
             entity = Entity.Null;
