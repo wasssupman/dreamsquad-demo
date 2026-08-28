@@ -213,5 +213,15 @@ namespace Wassup.Data
         public Color deployUndoBgColor = new Color(0.12f, 0.12f, 0.16f, 0.85f);
         [Tooltip("버튼 글자색.")]
         public Color deployUndoTextColor = new Color(1f, 0.86f, 0.5f, 1f);
+
+        [Header("⑮ armed 보드 드래그 실루엣 (defender-footprint unit 7)")]
+        [Tooltip("false = 실루엣 자체를 끈다(드래그 스카우트는 range+고스트만 — unit 7 이전 동작).")]
+        public bool armedSilhouetteEnabled = true;
+        [Tooltip("실루엣 알파. 유효성 전달은 Ghost 4색 전담이라 실루엣은 이 값 고정.")]
+        [Range(0f, 1f)]
+        public float armedSilhouetteAlpha = 0.55f;
+        [Tooltip("footprint 뷰 중심 추종 속도(지수 lerp 계수). 0 = 셀 스냅 즉시 점프.")]
+        [Range(0f, 40f)]
+        public float armedSilhouetteFollowSpeed = 14f;
     }
 }

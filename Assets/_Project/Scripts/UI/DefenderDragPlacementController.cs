@@ -134,6 +134,11 @@ namespace Wassup.UI
         // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
         private Vector2Int? _boardScoutCell;
         private Vector2Int? _boardScoutAnchor; // defender-footprint unit 2 — 스카우트 앵커(범위 재페인트 판정)
+        // defender-footprint unit 7 — 드래그 승격 후 footprint 뷰 중심에 서는 반투명 실루엣.
+        // press~승격 전·탭은 unit 1 계약 그대로 유닛 없이 range+고스트만(탭-탭 경로 무변).
+        private GameObject _armedSilhouette;
+        private DefenderUnitData _armedSilhouetteUnit; // 빌드된 유닛(arm 교체 감지)
+        private bool _armedSilhouettePlaced;           // false = 다음 갱신 프레임 위치 스냅(등장/재진입)
 
         // ── defender-footprint unit 2 rev(사용자 피드백 2026-08-28) — 배치불가 **보드 전역** 표시 ──
         // 유닛을 드는 순간(D&D 세션 또는 트레이 탭 arm)부터 배치 불가 칸이 전역으로 보인다:
@@ -1102,6 +1107,7 @@ namespace Wassup.UI
                 bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
             else
                 bridge.SetPlacementHover(cell, valid);
+            UpdateArmedSilhouette(anchor); // unit 7 — 드래그 승격 후에만 등장(내부 게이트)
         }
 
         private void ClearBoardScout()
@@ -1116,6 +1122,7 @@ namespace Wassup.UI
             _boardScoutCell = null;
             _boardScoutAnchor = null;
             _ghostAnchor = null; // unit 2 rev — 앵커만 걷는다(전역 고스트는 armed 동안 유지)
+            HideArmedSilhouette(); // unit 7 — 맵 밖 이탈 = 숨김(재진입 시 위치 스냅으로 재등장)
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
@@ -1171,6 +1178,99 @@ namespace Wassup.UI
             _boardGestureActive = false;
             _boardDragging = false;
             ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
+            DestroyArmedSilhouette(); // unit 7 — 제스처가 끝나면 실루엣도 끝(커밋·해제·Disarm 공용)
+        }
+
+        // defender-footprint unit 7 — armed 보드 드래그 실루엣. 드래그 승격(_boardDragging) 후에만
+        // 등장한다. 유효성 전달은 Ghost 4색 전담이라 실루엣은 알파 고정·무효 무반응(feature 계약 4).
+        // 추종은 unscaled 시간 — 드래그 슬로우모 중에도 손가락 반응은 실시간이어야 한다.
+        private void UpdateArmedSilhouette(Vector2Int anchor)
+        {
+            if (!_boardDragging || !Cfg.armedSilhouetteEnabled || _armedUnit == null || bridge == null)
+            {
+                HideArmedSilhouette();
+                return;
+            }
+            if (_armedSilhouette == null || _armedSilhouetteUnit != _armedUnit)
+            {
+                DestroyArmedSilhouette();
+                if (!TryBuildArmedSilhouette(_armedUnit)) return; // Spine 없는 유닛 = 실루엣 생략(위치는 고스트가 전담)
+            }
+            var target = bridge.GridAnchorToViewCenter(anchor, _armedUnit);
+            if (!_armedSilhouette.activeSelf)
+            {
+                _armedSilhouette.SetActive(true);
+                _armedSilhouettePlaced = false;
+            }
+            float k = Cfg.armedSilhouetteFollowSpeed;
+            if (!_armedSilhouettePlaced || k <= 0f)
+            {
+                _armedSilhouette.transform.position = target; // 등장/재진입 프레임 = 스냅(화면 밖에서 미끄러져 오지 않게)
+                _armedSilhouettePlaced = true;
+            }
+            else
+            {
+                float t = 1f - Mathf.Exp(-k * Time.unscaledDeltaTime);
+                _armedSilhouette.transform.position = Vector3.Lerp(_armedSilhouette.transform.position, target, t);
+            }
+        }
+
+        // unit 7 — Spine 실루엣만(키링 하드웨어 없음). 보드에 «서 있는» 표현이라 발을 root 원점에
+        // 정렬한다(키링의 머리-정렬과 반대). 빌보드는 스폰 뷰(SpineUnitView)와 동일 규약.
+        private bool TryBuildArmedSilhouette(DefenderUnitData unitData)
+        {
+            if (unitData == null || unitData.skeletonDataAsset == null) return false;
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+
+            var root = new GameObject($"ArmedSilhouette_{unitData.displayName}");
+            var billboard = root.AddComponent<Billboard>();
+            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            var spineChild = new GameObject($"{root.name}_Spine");
+            spineChild.transform.SetParent(root.transform, false);
+            spineChild.transform.localScale = Vector3.one * scale;
+
+            var components = SkeletonAnimation.AddToGameObject(spineChild, null);
+            var skeleton = components.skeletonAnimation;
+            components.skeletonRenderer.SkeletonDataAsset = unitData.skeletonDataAsset;
+            components.skeletonRenderer.InitialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
+            skeleton.Initialize(true);
+            if (skeleton.Skeleton != null)
+                SpineCombinedSkinCache.Apply(skeleton.Skeleton, unitData);
+
+            // 서 있는 그림 — 키링의 드래그 버둥 애니가 아니라 idle 우선.
+            string animation = ResolveAnimation(skeleton, unitData.idleAnimation, unitData.attackAnimation);
+            if (!string.IsNullOrEmpty(animation))
+                skeleton.AnimationState.SetAnimation(0, animation, true);
+
+            SetPreviewAlpha(skeleton, Mathf.Clamp01(Cfg.armedSilhouetteAlpha));
+            var skelRenderer = skeleton.GetComponent<MeshRenderer>();
+            if (skelRenderer != null)
+            {
+                skelRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
+                var lb = skelRenderer.localBounds;
+                spineChild.transform.localPosition = new Vector3(-lb.center.x * scale, -lb.min.y * scale, 0f);
+            }
+
+            _armedSilhouette = root;
+            _armedSilhouetteUnit = unitData;
+            _armedSilhouettePlaced = false;
+            return true;
+        }
+
+        private void HideArmedSilhouette()
+        {
+            if (_armedSilhouette != null && _armedSilhouette.activeSelf)
+                _armedSilhouette.SetActive(false);
+            _armedSilhouettePlaced = false;
+        }
+
+        private void DestroyArmedSilhouette()
+        {
+            if (_armedSilhouette != null) Destroy(_armedSilhouette);
+            _armedSilhouette = null;
+            _armedSilhouetteUnit = null;
+            _armedSilhouettePlaced = false;
         }
 
         // placement-armed-board-drag unit 2 — 탭(무이동 릴리즈) = 기존 클릭 배치와 동일 액션 + 범위 노출.
@@ -1898,6 +1998,7 @@ namespace Wassup.UI
             if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             FinishDismountsInstant(); // defender-drop-dismount unit 2
             CleanupSession();
+            DestroyArmedSilhouette(); // unit 7
             if (_previewMaterial != null) Destroy(_previewMaterial);
             if (_cordMaterial != null) Destroy(_cordMaterial);
         }
