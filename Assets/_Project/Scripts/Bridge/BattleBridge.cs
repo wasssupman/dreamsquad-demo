@@ -6006,9 +6006,13 @@ namespace Wassup.Bridge
         // 발밑 셀 폴백·자석으로 여전히 도달). 동률은 중심 최근접.
         // ② paddingPx: 스프라이트보다 넓은 픽 영역(1폭 유닛 가로 확대 — 요구 문서 10절).
         // ③ magnetPx: 포함 후보가 없을 때 확장 렉트까지의 거리 ≤ 이 값인 최근접 흡착.
-        // 기본 파라미터(0,0)의 포함 집합은 기존과 동일하다.
+        // ④ magnetFilter(rev 2026-08-28): 자석은 «가까운 **유효** 유닛»만 잡는다(요구 문서 8절) —
+        //    호출부의 유효 집합(부착 스냅샷 등)을 받아 무효 유닛으로의 흡착을 막는다. **포함
+        //    판정에는 적용하지 않는다** — 손가락이 직접 올라간 무효 유닛은 잡아서 invalid 폼으로
+        //    «왜 안 되는지»를 보여주는 것이 lock-on 계약이다(dreamcatcher-attach-lockon C).
+        // 기본 파라미터(0,0,null)의 포함 집합은 기존과 동일하다.
         public bool TryPickDefenderAtScreen(Camera cam, Vector2 screenPos, out Entity defender, out Vector2Int cell,
-            float paddingPx = 0f, float magnetPx = 0f)
+            float paddingPx = 0f, float magnetPx = 0f, HashSet<Entity> magnetFilter = null)
         {
             defender = Entity.Null;
             cell = default;
@@ -6047,6 +6051,8 @@ namespace Wassup.Bridge
                 }
                 else if (bestOrder == int.MinValue && magnetPx > 0f)
                 {
+                    // rev — 자석은 유효 유닛만(필터가 오면). 포함 분기는 위에서 이미 지나갔다.
+                    if (magnetFilter != null && !magnetFilter.Contains(kv.Value.entity)) continue;
                     // 리뷰 M-5 — 자석 동률도 앞면 우선(포함 분기와 같은 규칙). 부동소수 동률은
                     // 1px 미만 오차 밴드로 판정해 열거 순서 의존을 제거한다.
                     float d = ScreenDistanceToRect(rect, screenPos);
@@ -7262,6 +7268,10 @@ namespace Wassup.Bridge
         // defender-footprint unit 2 — footprint 고스트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
         public void SetPlacementGhostCells(IReadOnlyList<Vector2Int> cells, IReadOnlyList<Color> colors)
             => tilemapMapView?.SetGhostCells(cells, colors);
+
+        // unit 2 rev 2 — 사거리 표시 칸 여부(전역 고스트가 그 칸을 비켜 가는 판정).
+        public bool IsPlacementRangeCell(Vector2Int cell)
+            => tilemapMapView != null && tilemapMapView.IsPlacementRangeCell(cell);
 
         public void ClearPlacementGhostCells()
             => tilemapMapView?.ClearGhostCells();

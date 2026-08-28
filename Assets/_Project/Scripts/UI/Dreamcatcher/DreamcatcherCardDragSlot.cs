@@ -718,9 +718,12 @@ namespace Wassup.UI
             // rev 4-3 — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅). 보드 평면 셀
             // 조회는 발밑을 정확히 가리킬 때만 맞아서 2차(폴백 quad 뷰 포함).
             // defender-footprint unit 4 — 패딩(넓은 부착 영역)·자석(요구 문서 8절) 노브 전달.
+            // rev 2026-08-28 — 자석은 부착 **유효** 유닛만(_attachable 스냅샷). 직접 터치는
+            // 무효 유닛도 잡는다(invalid 폼으로 사유를 보여주는 기존 lock-on 계약).
             if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell,
                     focusCfg != null ? focusCfg.unitPickPaddingPx : 0f,
-                    focusCfg != null ? focusCfg.unitPickMagnetPx : 0f))
+                    focusCfg != null ? focusCfg.unitPickMagnetPx : 0f,
+                    _attachable))
             {
                 cell = pickedCell;
                 found = picked;
@@ -749,6 +752,14 @@ namespace Wassup.UI
                     cell = _hoverCell;
                 }
             }
+
+            // rev 2026-08-28 — 락온 획득/전환 순간 대상 유닛이 **몸으로** 반응한다(스케일 펀치).
+            // 링·틴트·테더는 오버레이 신호고, 유닛 자체의 반응이 «지금 이 유닛이 활성 목적지»를
+            // 가장 직관적으로 말한다(Apple drop destination 가이드 취지). 유효 대상만 —
+            // 무효(3/3 등)는 invalid 폼이 담당. 히스테리시스가 전환 빈도를 이미 누르므로 스팸 없음.
+            if (found != _hoverEntity && found != Entity.Null && _attachable.Contains(found)
+                && _view.Bridge.TryGetUnitView(found, out var lockView) && lockView != null)
+                lockView.PlayPunch();
 
             // 계약 #6 — 전체 빨강 틴트 제거. 정체 신호는 리티클(위치)+콜아웃(정체).
             _hoverCell = cell;

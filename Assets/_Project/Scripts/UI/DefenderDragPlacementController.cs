@@ -191,6 +191,13 @@ namespace Wassup.UI
                     _ghostPaintColors.Add(e.reason != PlacementRejectReason.None || nonSpatialInvalid
                         ? Cfg.ghostInvalidColor : Cfg.ghostValidColor);
                 }
+                else if (bridge.IsPlacementRangeCell(e.cell))
+                {
+                    // rev 2(사용자 피드백 2026-08-28) — 공격 사거리 링이 표시 중인 칸은 전역
+                    // 불가 표시가 양보한다. 링 위에 빨강/노랑이 얹히면 링이 붉게 물들어 사거리
+                    // 읽기가 흐려진다. footprint 칸(위 분기)은 예외 — 유효성은 핵심 신호다.
+                    // 사거리 셀 변경은 항상 앵커/포커스 변경과 동행하므로 diff 재페인트가 따라온다.
+                }
                 else if (e.reason == PlacementRejectReason.Occupied)
                 {
                     _ghostPaintCells.Add(e.cell);

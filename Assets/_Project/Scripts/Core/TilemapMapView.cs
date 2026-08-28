@@ -1065,6 +1065,11 @@ namespace Wassup.Core
             _ghostCells.Clear();
         }
 
+        // defender-footprint unit 2 rev 2 — 전역 배치불가 고스트가 **사거리 표시 칸을 비켜 가기**
+        // 위한 read seam. 사거리 링 위에 빨강/노랑이 얹히면 링이 붉게 물들어 사거리 읽기가
+        // 흐려진다(사용자 피드백 2026-08-28) — 겹친 칸은 고스트 쪽이 양보한다.
+        public bool IsPlacementRangeCell(Vector2Int cell) => _rangeCells.Contains(cell);
+
         // first-run-tutorial unit 1 — 배치 **불가** 칸 하이라이트. EnsurePlaceableTilemap 과 같은 관용구.
         private void EnsureBlockedTilemap()
         {
