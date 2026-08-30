@@ -134,12 +134,14 @@ namespace Wassup.UI
         // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
         private Vector2Int? _boardScoutCell;
         private Vector2Int? _boardScoutAnchor; // defender-footprint unit 2 — 스카우트 앵커(범위 재페인트 판정)
-        // defender-footprint unit 7 — 드래그 승격 후 footprint 뷰 중심에 서는 반투명 실루엣.
-        // press~승격 전·탭은 unit 1 계약 그대로 유닛 없이 range+고스트만(탭-탭 경로 무변).
-        // 유닛 참조는 안 들고 있다 — _armedUnit 이 바뀌는 모든 경로(ToggleArm/Disarm)가 대입 전에
-        // ResetBoardGesture 로 실루엣을 파괴하므로, 살아 있는 실루엣은 항상 현재 _armedUnit 의 것이다.
-        private GameObject _armedSilhouette;
-        private bool _armedSilhouettePlaced; // false = 다음 갱신 프레임 위치 스냅(등장/재진입)
+        // defender-footprint unit 7 — 드래그 중 footprint 뷰 중심에 서는 반투명 실루엣.
+        // unit 8 — **두 주인이 공유한다**: armed 보드 드래그(승격 후)와 트레이 D&D 세션.
+        // 그래서 유닛 신원을 들고 있어야 한다 — 주인이 하나였을 땐 «_armedUnit 이 바뀌는 모든
+        // 경로가 먼저 파괴한다»가 성립해 불필요했지만, 지금은 멀티터치(보드 드래그 중 다른 트레이
+        // 슬롯 탭 = Disarm 없는 _armedUnit 교체)로 요청 유닛이 갈릴 수 있다. 신원이 다르면 다시 짓는다.
+        private GameObject _dragSilhouette;
+        private DefenderUnitData _dragSilhouetteUnit;
+        private bool _dragSilhouettePlaced; // false = 다음 갱신 프레임 위치 스냅(등장/재진입)
 
         // ── defender-footprint unit 2 rev(사용자 피드백 2026-08-28) — 배치불가 **보드 전역** 표시 ──
         // 유닛을 드는 순간(D&D 세션 또는 트레이 탭 arm)부터 배치 불가 칸이 전역으로 보인다:
@@ -260,7 +262,11 @@ namespace Wassup.UI
         {
             public bool active;
             public DefenderUnitData unit;
-            public GameObject preview;      // root(scale 1). 자식이 고리/줄/실루엣.
+            // unit 8 — 시뮬(탭·armed 릴리즈의 트레이→셀 비행) 여부. 라이브 D&D 와 갈리는 축이
+            // BeginDrag 파라미터로만 있어서 세션 수명 동안 되물을 수 없었다. 프리뷰 형태(키링/
+            // 실루엣)·하마 탑승 여부가 이 값에 달리므로 세션이 직접 들고 있는다.
+            public bool simulated;
+            public GameObject preview;      // root(scale 1). 자식이 고리/줄/실루엣. unit 8 실루엣 모드 = null.
             public LineRenderer cordLine;
             public Transform ring;
             public Transform endNode;       // 빌보드. 유닛 머리 위치.
@@ -361,7 +367,7 @@ namespace Wassup.UI
             _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
 
-            _session = BuildSession(unitData);
+            _session = BuildSession(unitData, simulated);
             // defender-deploy-cutscene unit 3/8 — 프레임이 있으면 좌하단 컷신 1회 재생(자동 종료).
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
             //
@@ -469,7 +475,11 @@ namespace Wassup.UI
             // 오프보드/프리뷰 없음 프레임에도 예고는 켜지고 꺼져야 한다(dwell 누적도 여기서 돈다).
             UpdateCancelVisual();
 
-            if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
+            // unit 8 — 가드에서 프리뷰/키링 노드를 뺐다. 이 블록의 앞머리(셀 판정·취소·카메라
+            // 포커스)는 **손가락이 있으면 성립**하는 일이고, 키링 트랜스폼을 쓰는 것은 꼬리뿐이다.
+            // 둘이 한 가드 아래 묶여 있어서 프리뷰 없는 세션(실루엣 모드)이 칸을 하나도 못 정했다.
+            // 따름정리 — 폴백 capsule 프리뷰(endNode 없음)도 여태 같은 이유로 배치가 불가능했다.
+            if (!_session.active || mainCamera == null) return;
             if (!_onBoard || !_posInit) return;
             var s = Cfg;
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
@@ -504,24 +514,28 @@ namespace Wassup.UI
             EnsureCameraDirector()?.SetDragFocus(_lastRawScreenPos);
 
             // 배치: 고리(공중) · 유닛 머리(발+높이) · 줄(고리→머리).
-            if (_session.ring != null) _session.ring.position = _ringWorld;
-            Vector3 headPos = _unitPosWorld + camT.up * _session.unitHeight;
-            _session.endNode.position = headPos;
-
-            // 유닛 기울임: 줄(고리→머리) 방향으로 기움(뒤로 처질수록 기욺). clamp maxAngle.
-            if (_session.swingPivot != null)
+            // unit 8 — 키링 하드웨어가 있는 세션만(실루엣 모드는 preview 자체가 없다).
+            if (_session.endNode != null)
             {
-                Vector3 toRing = (_ringWorld - headPos).normalized; // 머리→고리 = 유닛 up 방향
-                float lean = KeyringSim.LeanAngle(
-                    Vector3.Dot(toRing, camT.right), Vector3.Dot(toRing, camT.up), s.maxAngle);
-                _session.swingPivot.localRotation = Quaternion.Euler(0f, 0f, lean);
-            }
+                if (_session.ring != null) _session.ring.position = _ringWorld;
+                Vector3 headPos = _unitPosWorld + camT.up * _session.unitHeight;
+                _session.endNode.position = headPos;
 
-            if (_session.cordLine != null)
-            {
-                if (_session.cordLine.positionCount != 2) _session.cordLine.positionCount = 2;
-                _session.cordLine.SetPosition(0, _ringWorld);
-                _session.cordLine.SetPosition(1, headPos);
+                // 유닛 기울임: 줄(고리→머리) 방향으로 기움(뒤로 처질수록 기욺). clamp maxAngle.
+                if (_session.swingPivot != null)
+                {
+                    Vector3 toRing = (_ringWorld - headPos).normalized; // 머리→고리 = 유닛 up 방향
+                    float lean = KeyringSim.LeanAngle(
+                        Vector3.Dot(toRing, camT.right), Vector3.Dot(toRing, camT.up), s.maxAngle);
+                    _session.swingPivot.localRotation = Quaternion.Euler(0f, 0f, lean);
+                }
+
+                if (_session.cordLine != null)
+                {
+                    if (_session.cordLine.positionCount != 2) _session.cordLine.positionCount = 2;
+                    _session.cordLine.SetPosition(0, _ringWorld);
+                    _session.cordLine.SetPosition(1, headPos);
+                }
             }
 
         }
@@ -787,7 +801,8 @@ namespace Wassup.UI
             _undoEntity = entity;
             _undoDeployRoutine = deployRoutine;
             EnsureUndoButton();
-            if (_undoButton != null) _undoButton.gameObject.SetActive(true);
+            // unit 5 rev — 노출은 UpdateUndoWindow 단독 소유(자리를 잡은 뒤 켠다). 여기서 켜면
+            // 직전 배치가 남긴 화면 위치에 한 프레임 번쩍인다.
         }
 
         private void EndUndoWindow()
@@ -808,8 +823,19 @@ namespace Wassup.UI
             }
             if (mainCamera == null) mainCamera = Camera.main;
             if (mainCamera == null || _undoButtonRect == null) return;
+            // unit 5 rev (2026-08-30 사용자 지적) — **비행 중엔 감춘다.** 유예 창은 커밋 시점부터
+            // 열려 있고(그 사이 취소도 유효하다) 그건 유지하되, 날아가는 유닛을 버튼이 따라다니면
+            // «아직 도착도 안 했는데 되돌리기»가 먼저 읽힌다. 창이 아니라 **노출**만 착지 뒤로 민다.
+            if (_activeDismounts.ContainsKey(_undoEntity))
+            {
+                if (_undoButton != null && _undoButton.gameObject.activeSelf)
+                    _undoButton.gameObject.SetActive(false);
+                return;
+            }
             Vector2 screen = mainCamera.WorldToScreenPoint(undoAnchor.position);
             _undoButtonRect.position = screen + Vector2.up * Cfg.deployUndoOffsetPx;
+            if (_undoButton != null && !_undoButton.gameObject.activeSelf)
+                _undoButton.gameObject.SetActive(true);
         }
 
         private void OnUndoPressed()
@@ -1108,7 +1134,9 @@ namespace Wassup.UI
                 bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
             else
                 bridge.SetPlacementHover(cell, valid);
-            UpdateArmedSilhouette(anchor); // unit 7 — 드래그 승격 후에만 등장(내부 게이트)
+            // unit 7 — armed 는 **드래그 승격 후에만** 실루엣을 세운다(탭 경로 무변 계약).
+            if (_boardDragging && Cfg.armedSilhouetteEnabled) UpdateDragSilhouette(anchor, _armedUnit);
+            else HideDragSilhouette();
         }
 
         private void ClearBoardScout()
@@ -1123,7 +1151,7 @@ namespace Wassup.UI
             _boardScoutCell = null;
             _boardScoutAnchor = null;
             _ghostAnchor = null; // unit 2 rev — 앵커만 걷는다(전역 고스트는 armed 동안 유지)
-            HideArmedSilhouette(); // unit 7 — 맵 밖 이탈 = 숨김(재진입 시 위치 스냅으로 재등장)
+            HideDragSilhouette(); // unit 7 — 맵 밖 이탈 = 숨김(재진입 시 위치 스냅으로 재등장)
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
@@ -1179,48 +1207,47 @@ namespace Wassup.UI
             _boardGestureActive = false;
             _boardDragging = false;
             ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
-            DestroyArmedSilhouette(); // unit 7 — 제스처가 끝나면 실루엣도 끝(커밋·해제·Disarm 공용)
+            DestroyDragSilhouette(); // unit 7 — 제스처가 끝나면 실루엣도 끝(커밋·해제·Disarm 공용)
         }
 
-        // defender-footprint unit 7 — armed 보드 드래그 실루엣. 드래그 승격(_boardDragging) 후에만
-        // 등장한다. 유효성 전달은 Ghost 4색 전담이라 실루엣은 알파 고정·무효 무반응(feature 계약 4).
-        // 추종은 unscaled 시간 — 드래그 슬로우모 중에도 손가락 반응은 실시간이어야 한다.
-        private void UpdateArmedSilhouette(Vector2Int anchor)
+        // defender-footprint unit 7 — 드래그 실루엣 갱신. 유효성 전달은 Ghost 4색 전담이라
+        // 실루엣은 알파 고정·무효 무반응(feature 계약 4). 추종은 unscaled 시간 — 드래그
+        // 슬로우모 중에도 손가락 반응은 실시간이어야 한다.
+        // unit 8 — 등장 조건(armed 승격 / 라이브 세션)은 **호출측**이 판단한다. 여기는 «이 유닛을
+        // 이 앵커에 세워라»만 수행 — 두 주인의 조건이 서로 다른데 한 함수가 둘을 다 알면 안 된다.
+        private void UpdateDragSilhouette(Vector2Int anchor, DefenderUnitData unit)
         {
-            if (!_boardDragging || !Cfg.armedSilhouetteEnabled || _armedUnit == null || bridge == null)
+            if (unit == null || bridge == null) { HideDragSilhouette(); return; }
+            if (_dragSilhouette != null && _dragSilhouetteUnit != unit) DestroyDragSilhouette();
+            if (_dragSilhouette == null
+                && !TryBuildDragSilhouette(unit)) return; // Spine 없는 유닛 = 실루엣 생략(위치는 고스트가 전담)
+            var target = bridge.GridAnchorToViewCenter(anchor, unit);
+            if (!_dragSilhouette.activeSelf)
             {
-                HideArmedSilhouette();
-                return;
+                _dragSilhouette.SetActive(true);
+                _dragSilhouettePlaced = false;
             }
-            if (_armedSilhouette == null
-                && !TryBuildArmedSilhouette(_armedUnit)) return; // Spine 없는 유닛 = 실루엣 생략(위치는 고스트가 전담)
-            var target = bridge.GridAnchorToViewCenter(anchor, _armedUnit);
-            if (!_armedSilhouette.activeSelf)
+            float k = Cfg.silhouetteFollowSpeed;
+            if (!_dragSilhouettePlaced || k <= 0f)
             {
-                _armedSilhouette.SetActive(true);
-                _armedSilhouettePlaced = false;
-            }
-            float k = Cfg.armedSilhouetteFollowSpeed;
-            if (!_armedSilhouettePlaced || k <= 0f)
-            {
-                _armedSilhouette.transform.position = target; // 등장/재진입 프레임 = 스냅(화면 밖에서 미끄러져 오지 않게)
-                _armedSilhouettePlaced = true;
+                _dragSilhouette.transform.position = target; // 등장/재진입 프레임 = 스냅(화면 밖에서 미끄러져 오지 않게)
+                _dragSilhouettePlaced = true;
             }
             else
             {
                 float t = 1f - Mathf.Exp(-k * Time.unscaledDeltaTime);
-                _armedSilhouette.transform.position = Vector3.Lerp(_armedSilhouette.transform.position, target, t);
+                _dragSilhouette.transform.position = Vector3.Lerp(_dragSilhouette.transform.position, target, t);
             }
         }
 
         // unit 7 — Spine 실루엣만(키링 하드웨어 없음). 보드에 «서 있는» 표현이라 발을 root 원점에
         // 정렬한다(키링의 머리-정렬과 반대). 빌보드는 스폰 뷰(SpineUnitView)와 동일 규약.
-        private bool TryBuildArmedSilhouette(DefenderUnitData unitData)
+        private bool TryBuildDragSilhouette(DefenderUnitData unitData)
         {
             if (unitData == null || unitData.skeletonDataAsset == null) return false;
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
 
-            var root = new GameObject($"ArmedSilhouette_{unitData.displayName}");
+            var root = new GameObject($"DragSilhouette_{unitData.displayName}");
             var billboard = root.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
@@ -1241,7 +1268,7 @@ namespace Wassup.UI
             if (!string.IsNullOrEmpty(animation))
                 skeleton.AnimationState.SetAnimation(0, animation, true);
 
-            SetPreviewAlpha(skeleton, Mathf.Clamp01(Cfg.armedSilhouetteAlpha));
+            SetPreviewAlpha(skeleton, Mathf.Clamp01(Cfg.silhouetteAlpha));
             var skelRenderer = skeleton.GetComponent<MeshRenderer>();
             if (skelRenderer != null)
             {
@@ -1251,23 +1278,25 @@ namespace Wassup.UI
                     spineChild.transform.localPosition = new Vector3(-lb.center.x * scale, -lb.min.y * scale, 0f);
             }
 
-            _armedSilhouette = root;
-            _armedSilhouettePlaced = false;
+            _dragSilhouette = root;
+            _dragSilhouetteUnit = unitData;
+            _dragSilhouettePlaced = false;
             return true;
         }
 
-        private void HideArmedSilhouette()
+        private void HideDragSilhouette()
         {
-            if (_armedSilhouette != null && _armedSilhouette.activeSelf)
-                _armedSilhouette.SetActive(false);
-            _armedSilhouettePlaced = false;
+            if (_dragSilhouette != null && _dragSilhouette.activeSelf)
+                _dragSilhouette.SetActive(false);
+            _dragSilhouettePlaced = false;
         }
 
-        private void DestroyArmedSilhouette()
+        private void DestroyDragSilhouette()
         {
-            if (_armedSilhouette != null) Destroy(_armedSilhouette);
-            _armedSilhouette = null;
-            _armedSilhouettePlaced = false;
+            if (_dragSilhouette != null) Destroy(_dragSilhouette);
+            _dragSilhouette = null;
+            _dragSilhouetteUnit = null;
+            _dragSilhouettePlaced = false;
         }
 
         // placement-armed-board-drag unit 2 — 탭(무이동 릴리즈) = 기존 클릭 배치와 동일 액션 + 범위 노출.
@@ -1479,6 +1508,10 @@ namespace Wassup.UI
             bool presentAtLanding)
         {
             if (bridge == null || !_onBoard || !_posInit) return false;
+            // unit 8 — 실루엣 모드 라이브 세션은 하마 낙하를 태우지 않는다. 유닛이 이미 착지 타일
+            // 위에 서 있어 «손끝에서 타일로» 아치의 이동 거리가 0 이고(제자리 튀기로 보인다),
+            // 분리할 고리·줄도 없다. 실루엣→실유닛 교대는 배치 연출(RunDeployment)이 받는다.
+            if (UsesBoardSilhouette) return false;
             if (mainCamera == null) mainCamera = Camera.main;
             if (mainCamera == null) return false;
             if (!bridge.TryGetDefenderRestViewPos(cell, out var end)) return false;
@@ -1691,9 +1724,14 @@ namespace Wassup.UI
             bridge?.ActivateDeployedDefender(cell, entity);
         }
 
-        private DragSession BuildSession(DefenderUnitData unitData)
+        private DragSession BuildSession(DefenderUnitData unitData, bool simulated)
         {
-            var session = new DragSession { active = true, unit = unitData };
+            var session = new DragSession { active = true, unit = unitData, simulated = simulated };
+            // unit 8 — 라이브 D&D 의 유닛 그림은 손끝 키링이 아니라 **보드 위 실루엣**이 맡는다
+            // (탭-드래그와 같은 문법). 프리뷰를 아예 만들지 않으므로 추종 스프링·취소 알파·
+            // 하마 잔류물이 각자의 null 가드로 조용히 비활성된다 — 경로 분기를 새로 만들지 않는다.
+            // 시뮬 비행(탭 배치)은 키링 그대로 — 거긴 «트레이에서 날아온다»가 연출의 전부다.
+            if (!simulated && Cfg.dndSilhouetteEnabled) return session;
             if (TryBuildKeyringPreview(unitData, ref session))
                 return session;
             session.preview = CreateFallbackPreview(unitData);
@@ -1942,7 +1980,13 @@ namespace Wassup.UI
             _ghostAnchor = anchor;   // unit 2 rev — 전역 고스트 위 footprint 얹기
             _ghostAnchorValid = valid;
             PaintGhost(_session.unit);
+            // unit 8 — 실루엣 수명 = hover 수명. 취소 예고·칸 없음은 상위에서 ClearHover 로 가므로
+            // 여기에 그 사유들을 다시 적지 않는다(«보드에서 아무 일도 없다» 신호가 한 덩어리로 유지).
+            if (UsesBoardSilhouette) UpdateDragSilhouette(anchor, _session.unit);
         }
+
+        // unit 8 — 라이브 D&D 세션이 손끝 키링 대신 보드 실루엣을 쓰는가(시뮬 비행은 키링 유지).
+        private bool UsesBoardSilhouette => _session.active && !_session.simulated && Cfg.dndSilhouetteEnabled;
 
         private void ClearHover()
         {
@@ -1952,6 +1996,7 @@ namespace Wassup.UI
             bridge?.SetPlacementRangeValidity(true); // unit 3 — 세션 경계 리셋(뷰의 페인트 API 에 리셋을 얹지 않는다)
             bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
             _ghostAnchor = null; // unit 2 rev — 앵커만 걷는다(세션 지속 중엔 전역 고스트 유지)
+            if (UsesBoardSilhouette) HideDragSilhouette(); // unit 8 — 칸 없음·취소 예고 = 유닛도 보드에서 내린다
             _session.hoverTile = null;
             _session.anchorTile = null;
             _session.isValidTile = false;
@@ -1970,6 +2015,7 @@ namespace Wassup.UI
             _placeableHlDesired = false;
             ClearGhost(); // unit 2 rev — OnDisable 경유 시 Update 가 더 안 돌므로 여기서 즉시 소거
             ClearHover();
+            DestroyDragSilhouette(); // unit 8 — 세션 종료(커밋·취소·비활성) = 실루엣 종료
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
             _session = default;
@@ -1995,7 +2041,7 @@ namespace Wassup.UI
             if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             FinishDismountsInstant(); // defender-drop-dismount unit 2
             CleanupSession();
-            DestroyArmedSilhouette(); // unit 7
+            DestroyDragSilhouette(); // unit 7
             if (_previewMaterial != null) Destroy(_previewMaterial);
             if (_cordMaterial != null) Destroy(_cordMaterial);
         }

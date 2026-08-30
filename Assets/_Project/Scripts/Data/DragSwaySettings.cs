@@ -214,14 +214,17 @@ namespace Wassup.Data
         [Tooltip("버튼 글자색.")]
         public Color deployUndoTextColor = new Color(1f, 0.86f, 0.5f, 1f);
 
-        [Header("⑮ armed 보드 드래그 실루엣 (defender-footprint unit 7)")]
-        [Tooltip("false = 실루엣 자체를 끈다(드래그 스카우트는 range+고스트만 — unit 7 이전 동작).")]
+        [Header("⑮ 드래그 실루엣 — 보드 위 유닛 그림 (defender-footprint unit 7·8)")]
+        [Tooltip("탭 arm 후 보드 드래그: false = 실루엣 없음(range+고스트만 — unit 7 이전 동작).")]
         public bool armedSilhouetteEnabled = true;
-        [Tooltip("실루엣 알파. 유효성 전달은 Ghost 4색 전담이라 실루엣은 이 값 고정.")]
+        [Tooltip("트레이 D&D: true = 손끝 키링 프리뷰 대신 보드 실루엣(unit 8, 두 제스처 문법 통일).\n" +
+                 "false = 키링 복원(고리+줄+매달린 유닛 + 착지 하마). 시뮬 비행(탭 배치)은 이 값과 무관하게 키링.")]
+        public bool dndSilhouetteEnabled = true;
+        [Tooltip("실루엣 알파. 유효성 전달은 Ghost 4색 전담이라 실루엣은 이 값 고정(무효에도 안 변한다).")]
         [Range(0f, 1f)]
-        public float armedSilhouetteAlpha = 0.55f;
+        public float silhouetteAlpha = 0.55f;
         [Tooltip("footprint 뷰 중심 추종 속도(지수 lerp 계수). 0 = 셀 스냅 즉시 점프.")]
         [Range(0f, 40f)]
-        public float armedSilhouetteFollowSpeed = 14f;
+        public float silhouetteFollowSpeed = 14f;
     }
 }
