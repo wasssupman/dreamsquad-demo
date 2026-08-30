@@ -16,7 +16,7 @@ MonoBehaviour:
   role: 2
   placementLayers: 1
   traversalLayers: 0
-  footprintWidth: 2
+  footprintWidth: 1
   footprintHeight: 1
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
   visible: 1

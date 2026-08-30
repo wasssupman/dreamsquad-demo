@@ -16,8 +16,8 @@ MonoBehaviour:
   role: 3
   placementLayers: 1
   traversalLayers: 0
-  footprintWidth: 3
-  footprintHeight: 3
+  footprintWidth: 1
+  footprintHeight: 1
   displayName: "\uB9D0\uD30C\uC774\uD2B8"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
