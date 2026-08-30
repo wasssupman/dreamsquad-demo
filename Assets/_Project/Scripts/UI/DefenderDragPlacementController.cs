@@ -266,6 +266,10 @@ namespace Wassup.UI
             // BeginDrag 파라미터로만 있어서 세션 수명 동안 되물을 수 없었다. 프리뷰 형태(키링/
             // 실루엣)·하마 탑승 여부가 이 값에 달리므로 세션이 직접 들고 있는다.
             public bool simulated;
+            // unit 9 — 드래그가 시작된 화면 좌표 = **트레이 슬롯**. 릴리즈에서 탭-드래그와
+            // 같은 비행(트레이→셀)을 태우려면 출발점이 필요한데, armed 경로의 _armedFromScreen
+            // 에 대응하는 값을 세션은 여태 버리고 있었다.
+            public Vector2 fromScreen;
             public GameObject preview;      // root(scale 1). 자식이 고리/줄/실루엣. unit 8 실루엣 모드 = null.
             public LineRenderer cordLine;
             public Transform ring;
@@ -367,7 +371,7 @@ namespace Wassup.UI
             _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
 
-            _session = BuildSession(unitData, simulated);
+            _session = BuildSession(unitData, simulated, screenPosition);
             // defender-deploy-cutscene unit 3/8 — 프레임이 있으면 좌하단 컷신 1회 재생(자동 종료).
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
             //
@@ -1508,10 +1512,9 @@ namespace Wassup.UI
             bool presentAtLanding)
         {
             if (bridge == null || !_onBoard || !_posInit) return false;
-            // unit 8 — 실루엣 모드 라이브 세션은 하마 낙하를 태우지 않는다. 유닛이 이미 착지 타일
-            // 위에 서 있어 «손끝에서 타일로» 아치의 이동 거리가 0 이고(제자리 튀기로 보인다),
-            // 분리할 고리·줄도 없다. 실루엣→실유닛 교대는 배치 연출(RunDeployment)이 받는다.
-            if (UsesBoardSilhouette) return false;
+            // unit 9 — unit 8 은 여기서 실루엣 모드의 하마를 **꺼버렸다**(«유닛이 이미 타일 위에
+            // 서 있어 이동 거리가 0»). 그건 착지 연출을 통째로 없애 배치가 «툭 생기는» 것이 됐다.
+            // 되살리되 출발점을 바꾼다 — 아래 start 분기 참조.
             if (mainCamera == null) mainCamera = Camera.main;
             if (mainCamera == null) return false;
             if (!bridge.TryGetDefenderRestViewPos(cell, out var end)) return false;
@@ -1527,6 +1530,18 @@ namespace Wassup.UI
             // F-2 — 릴리스 잔여 스윙 속도를 반동 Hermite 접선으로 흡수(플릭일수록 반동 큼).
             // DismountPoint 의 접선 규약 = 반동 구간 정규화 시간 기준 → 월드속도 × 반동초.
             Vector3 startVel = _unitVelWorld * (recoilFrac * duration);
+            // unit 9 (2026-08-30 사용자) — 실루엣 모드는 **손끝에 유닛이 없다.** 키링 시절의
+            // «고스트가 있던 자리에서 뜬다»는 손에 들고 있었기에 성립한 출발점이고, 지금 유닛이
+            // 있는 곳은 트레이다. 그래서 탭 배치(SimulateDragTo)와 **같은 출발점**을 쓴다 —
+            // 산식도 그쪽과 같은 두 줄(ScreenToBoardFeet + 보드 법선 previewHeight).
+            // 스윙이 없으므로 잔여 속도는 0(반동은 순수 dip).
+            if (UsesBoardSilhouette)
+            {
+                Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
+                if (Vector3.Dot(boardN, mainCamera.transform.position - end) < 0f) boardN = -boardN;
+                start = ScreenToBoardFeet(_session.fromScreen, end) + boardN * previewHeight;
+                startVel = Vector3.zero;
+            }
 
             bridge.SetDefenderViewOverride(entity, start);
             _activeDismounts[entity] = cell;
@@ -1724,9 +1739,9 @@ namespace Wassup.UI
             bridge?.ActivateDeployedDefender(cell, entity);
         }
 
-        private DragSession BuildSession(DefenderUnitData unitData, bool simulated)
+        private DragSession BuildSession(DefenderUnitData unitData, bool simulated, Vector2 fromScreen)
         {
-            var session = new DragSession { active = true, unit = unitData, simulated = simulated };
+            var session = new DragSession { active = true, unit = unitData, simulated = simulated, fromScreen = fromScreen };
             // unit 8 — 라이브 D&D 의 유닛 그림은 손끝 키링이 아니라 **보드 위 실루엣**이 맡는다
             // (탭-드래그와 같은 문법). 프리뷰를 아예 만들지 않으므로 추종 스프링·취소 알파·
             // 하마 잔류물이 각자의 null 가드로 조용히 비활성된다 — 경로 분기를 새로 만들지 않는다.

@@ -55,7 +55,9 @@ namespace Wassup.Tests.PlayMode
             // ── 1) 실드래그 릴리스: 핸드오프 연속성 + 점유/코스트 커밋 프레임 확정 ──
             var cellA = FindValidCellWithScreen(bridge, cam, unit, out var screenA);
             var driveA = DriveAiming(ctrl, screenA);
-            ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
+            // unit 9 — 하마 출발점 단정에 쓰므로 이름을 붙인다(세 호출이 같은 좌표를 반복했다).
+            var traySlotScreen = new Vector2(Screen.width * 0.5f, Screen.height * 0.08f);
+            ctrl.BeginDrag(unit, traySlotScreen);
             // 스프링 추종(_unitPosWorld)이 자리 잡도록 몇 프레임 목표를 유지
             for (int i = 0; i < 12; i++) { ctrl.UpdateDrag(driveA); yield return null; }
             Assert.IsTrue(ctrl.IsDragging, "drag session active");
@@ -72,11 +74,20 @@ namespace Wassup.Tests.PlayMode
 
             var firstOverride = GetOverride(bridge, entityA);
             Assert.IsTrue(firstOverride.HasValue, "commit frame: view override registered (dismount began)");
-            Assert.Less(Vector3.Distance(firstOverride.Value, ghostFeet), 0.05f,
-                $"핸드오프 팝: 고스트 발점 {ghostFeet} vs 첫 오버라이드 {firstOverride.Value}");
+            // defender-footprint unit 8·9 (2026-08-30) — **출발점 계약이 뒤집혔다.** 예전엔 손끝
+            // 키링이 유닛을 들고 있어서 하마가 «고스트 발점»에서 떴다(구 단정: firstOverride ≈ ghostFeet).
+            // unit 8 이 키링을 걷어내면서 유닛의 «있는 곳»이 손이 아니라 트레이가 됐고, unit 9 는
+            // 실드래그 릴리스를 탭과 **같은 입구**(SimulateDragTo)로 보낸다 — 그래서 하마는
+            // 트레이 슬롯에서 뜬다. 세 배치 경로가 출발점까지 하나가 됐다는 것이 지금의 계약이다.
+            // 화면 좌표로 재는 이유: 보드 평면 역투영을 테스트에서 재구현하면 축이 바뀔 때 옛
+            // 산식으로 조용히 초록이 된다(DriveAiming 주석과 같은 규율).
+            Vector2 overrideScreen = cam.WorldToScreenPoint(firstOverride.Value);
+            Assert.Less(Vector2.Distance(overrideScreen, traySlotScreen), Screen.height * 0.15f,
+                $"하마 출발 = 트레이 슬롯 {traySlotScreen} vs 첫 오버라이드 {overrideScreen} " +
+                $"(고스트 발점 {ghostFeet} 이 아니다 — unit 9 계약)");
 
             // ── 2) 세션 독립: 비행 중 새 드래그 시작 → 이전 비행 계속 진행 ──
-            ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
+            ctrl.BeginDrag(unit, traySlotScreen);
             Vector3 sampleA = GetOverride(bridge, entityA) ?? default;
             bool progressed = false;
             for (int i = 0; i < 8; i++)
@@ -125,7 +136,7 @@ namespace Wassup.Tests.PlayMode
             // 세 경로가 다시 갈리면(= `_simulatedDrag` 게이트가 되살아나면) 여기가 빨개진다.
             var cellB = FindValidCellWithScreen(bridge, cam, unit, out _, exclude: cellA);
             int overrideSightings = 0;
-            ctrl.SimulateDragTo(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f), cellB);
+            ctrl.SimulateDragTo(unit, traySlotScreen, cellB);
             float tapDeadline = Time.realtimeSinceStartup + 8f;
             Entity entityB = Entity.Null;
             while (Time.realtimeSinceStartup < tapDeadline)

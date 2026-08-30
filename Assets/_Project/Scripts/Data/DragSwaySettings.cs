@@ -202,9 +202,15 @@ namespace Wassup.Data
         [Range(0f, 4f)]
         public float placementMagnetRadiusCells = 0f;
 
-        [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5)")]
-        [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다).")]
-        public bool deployUndoEnabled = true;
+        [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5·rev 2)")]
+        // rev 2 (2026-08-30) — **기본 off.** 유예 창은 `deploymentDuration`(전 유닛 0.45초)이고
+        // 배치 비행은 `min(dropTotalSeconds, deploymentDuration)` = 같은 0.45초라, 착지 뒤 남는
+        // 시간이 **0** 이다. 버튼이 뜰 수 있는 구간은 «날아가는 중»뿐이었고 그건 도착 전에
+        // 되돌리기를 먼저 읽히게 한다. 창을 늘리려면 deploymentDuration 을 올려야 하는데
+        // 그건 유닛이 더 오래 무력한 밸런스 변경이라 UX 수정으로 할 일이 아니다.
+        // 실수 복구는 ① 릴리즈 전 실루엣+고스트(표시=확정) ② 배치 후 «철수»(무료·즉시)가 맡는다.
+        [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다). 기본 off — 위 주석 참조.")]
+        public bool deployUndoEnabled = false;
         [Tooltip("버튼이 유닛 머리 위로 뜨는 화면 오프셋(px).")]
         public float deployUndoOffsetPx = 96f;
         [Tooltip("버튼 크기(px).")]
