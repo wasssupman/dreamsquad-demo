@@ -15,7 +15,7 @@ namespace Wassup.Presentation
         [SerializeField] private bool authoredInPrefab;
 
         private Transform _target;
-        private float _groundY;
+        private float _lift;
         private float _size;
         private bool _live;
         // placement-enemy-see-through unit 0 — dim 페이드용 원색 캐시.
@@ -43,7 +43,7 @@ namespace Wassup.Presentation
         // 유닛 자식으로 생성 — 유닛 파괴 시 함께 사라진다.
         // live=false(레거시 프랍 폴백): 스폰 시 transform 한 번 굽고 끝. live=true(유닛): LateUpdate 가 매 프레임 따라간다.
         public static BlobShadow Attach(Transform target, Sprite sprite, float size,
-            Color color, float groundY, int sortingOrder, bool live = false)
+            Color color, float lift, int sortingOrder, bool live = false)
         {
             var go = new GameObject("BlobShadow");
             go.transform.SetParent(target, false);
@@ -54,7 +54,7 @@ namespace Wassup.Presentation
             var bs = go.AddComponent<BlobShadow>();
             bs._target = target;
             bs._size = size;
-            bs._groundY = groundY;
+            bs._lift = lift;
             bs._live = live;
             bs._sr = sr;
             bs._baseColor = color;
@@ -116,13 +116,33 @@ namespace Wassup.Presentation
             if (_live) ApplyTransform();
         }
 
-        // 발밑(피벗 XZ) + 바닥 높이에 평평하게(Euler 90,0,0 → 쿼드가 XZ 에 눕는다). 유닛/프랍 틸트와 무관.
+        // 발밑(피벗 XZ) + **보드 평면** 위에 평평하게(Euler 90,0,0 → 쿼드가 XZ 에 눕는다). 유닛/프랍 틸트와 무관.
+        //
+        // tilted-billboard unit 7 — 높이는 절대 월드 Y 상수가 아니라 **스테이지가 선언한 평면**에서 온다.
+        // MapStage 마다 발바닥 평면이 다르다(gridOriginLocal.y: Hello 0 / Duel·Street·Subway 0.19 /
+        // StreetDay 0.87). 구 상수 0.216 은 0.19 스테이지에 손으로 맞춘 값이라 StreetDay 에서 0.65
+        // 만큼 바닥 아래로 파묻혔다. 평면의 소유자는 grid 이고 BoardSpace 가 그것을 노출한다.
         // 부모 스케일 보정으로 월드 지름을 _size(타일)로 고정. 원형(바닥평면+퍼스펙티브가 화면상 타원).
         private void ApplyTransform()
         {
             if (_target == null) return;
             Vector3 p = _hasGroundAnchor ? _groundAnchor : _target.position;
-            transform.position = new Vector3(p.x, _groundY, p.z);
+            // XZ 는 unit 7 범위 밖 — 종전대로 앵커 그대로다. **Y 만** 평면에서 가져온다.
+            // ⚠ `plane.normal` 로 띄우면 안 된다: grid 가 `Euler(90,0,0)` 이라 forward=(0,−1,0),
+            //    즉 법선이 **아래**를 향해 블롭이 바닥 밑으로 내려간다(TilemapMapView.cs:218 ·
+            //    같은 이유로 그리드 자식들은 local −Z 를 «카메라 쪽»으로 쓴다). 리프트는 월드 +Y.
+            // ⚠ 이 표현식은 **평면이 수평(법선 ±Y)임을 전제**한다 — `ClosestPointOnPlane(p).y` 가
+            //    «(p.x, p.z) 에서의 평면 높이» 인 것은 그때뿐이다. `BoardSpace.RaycastPlane` 은 grid
+            //    회전을 따라간다고 광고하므로(XY 정면뷰도 커버) 그 계약보다 좁게 쓰는 셈이다.
+            //    현재 grid 는 `TilemapMapView.cs:218` 이 `Euler(90,0,0)` 으로 무조건 세운다.
+            //    보드를 다시 세우는 날 여기가 조용히 «대상 자신의 높이» 로 퇴화한다.
+            // 맵 미빌드 하네스(IngameCharacterTest 등)에는 평면이 없다 → 대상 자신의 높이를 쓴다.
+            // ⚠ 이 폴백은 «오브젝트별» 높이다(옛 절대 상수는 «공유 지면선» 이었다). 한 캐릭터의
+            //    여러 파츠에 블롭을 붙이는 하네스에서는 블롭이 파츠 높이로 흩어진다.
+            float groundY = Wassup.Core.BoardSpace.IsConfigured
+                ? Wassup.Core.BoardSpace.RaycastPlane().ClosestPointOnPlane(p).y
+                : p.y;
+            transform.position = new Vector3(p.x, groundY + _lift, p.z);
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             // 부모 스케일 보정이 여기 있는 덕에, 유닛이 lift 로 커져도 그림자 월드 지름은 안 딸려
             // 올라간다(비행 반응은 아래 _flightScale 만으로 온다) — flight-lift-feel unit 1.

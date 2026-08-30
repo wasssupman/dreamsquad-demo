@@ -59,6 +59,10 @@ namespace Wassup.Core
             return ToView(_simOrigin + simDir) - ToView(_simOrigin);
         }
 
+        // tilted-billboard unit 7 — Configure 전(헤드리스·맵 미빌드 씬)인지. RaycastPlane 은
+        // _grid 를 역참조하므로 Play 밖 하네스에서 부르기 전에 이걸로 묻는다.
+        public static bool IsConfigured => _grid != null;
+
         // 포인터 입력 평면 = Grid 평면. 법선을 grid.transform.forward(로컬 +Z)에서 유도해 grid 회전을
         // 자동 추종 — XY 정면뷰든 XZ 바닥이든 동일 코드(틸트 빌보드 전환 후 XZ).
         public static Plane RaycastPlane()

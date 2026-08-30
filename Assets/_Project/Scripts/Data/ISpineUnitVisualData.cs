@@ -28,6 +28,11 @@ namespace Wassup.Data
         string SpineAttackAnimation { get; }
         string SpineDeathAnimation { get; }
         float SpineVisualScale { get; }
+        // tilted-billboard unit 9 — 점유 폭(가로 셀). 블롭 그림자 지름의 기준이다.
+        // **공용 인터페이스에 두는 이유**: 점유 폭은 디펜더 전용 개념이 아니다. 보스가 2×2 를 쓰게 되는
+        // 날 IDefenderSpineExtras 에 넣어뒀다면 길이 막힌다 — 무기 궤적에서 이미 겪은 함정이다
+        // (위 SpineIdleVariants 주석 참조). 적의 1 은 «범위 밖 더미»가 아니라 참값이다(sim 이 1칸 점유).
+        int FootprintWidthCells { get; }
         // enemy-spawn-positioning 0 — 유닛 타입별 비주얼 피봇 미세조정(view-space). 기본 0.
         Vector3 SpineVisualOffset { get; }
         // unit-parts-appearance 0 — 파츠 스킨 경로 목록("{category}/{category}_c_{n}").

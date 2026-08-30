@@ -155,7 +155,11 @@ namespace Wassup.Bridge
         [Tooltip("블롭 월드 지름의 1타일 기준 배율(원형). 프랍별 추가 배율은 PropData.visualScale.")]
         [SerializeField] private float blobShadowSize = 1f;
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
-        [SerializeField] private float blobShadowGroundY = 0.216f; // blob 을 발 평면에서 ~5px(@1080) 띄워 접지점 가독.
+        // tilted-billboard unit 7 — **평면 상대** 리프트다(구 blobShadowGroundY = 절대 월드 Y).
+        // 절대 Y 는 스테이지마다 다른 발바닥 평면(MapStage.gridOriginLocal.y: 0 / 0.19 / 0.87)을
+        // 몰라서 StreetDay 에서 0.65 만큼 바닥 아래로 파묻혔다. 평면은 BoardSpace 가 소유한다.
+        [Tooltip("블롭을 보드 평면에서 띄우는 양(월드). 발 평면에서 ~5px(@1080) = 접지점 가독 + z-fight 회피.")]
+        [SerializeField] private float blobShadowLift = 0.026f;
         // flight-lift-feel unit 1 — 뜬 높이(lift)의 시각 반응. **화면 전역 단일 소유**다:
         // 스케일은 연출별 취향이 아니라 원근 보상이라, 같은 높이의 두 유닛이 다른 크기로 보이면
         // 카메라가 깨져 보인다. 연출별 노브(DragSwaySettings ⑩ / BattleBridge.BossLeap)에 복제 금지.
@@ -320,7 +324,7 @@ namespace Wassup.Bridge
         public static Sprite BlobShadowSprite { get; private set; }
         public static float BlobShadowSize { get; private set; } = 1f;
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
-        public static float BlobShadowGroundY { get; private set; } = 0.02f;
+        public static float BlobShadowLift { get; private set; } = 0.026f;
         // flight-lift-feel unit 1 — 코드 기본값이 곧 초기값이라 미배선 씬에서도 동작한다.
         public static float LiftScalePerHeight { get; private set; } = 0.14f;
         public static float LiftScaleMax { get; private set; } = 1.35f;
@@ -1364,7 +1368,7 @@ namespace Wassup.Bridge
             BlobShadowSprite = blobShadowSprite;
             BlobShadowSize = blobShadowSize;
             BlobShadowColor = blobShadowColor;
-            BlobShadowGroundY = blobShadowGroundY;
+            BlobShadowLift = blobShadowLift;
             MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
             UseRealShadows = useRealShadows && !Application.isMobilePlatform;
@@ -8199,6 +8203,7 @@ namespace Wassup.Bridge
                     mesh,
                     material,
                     CharacterVisualScale,
+                    unitData.Footprint.x, // unit 9 — Spine 경로와 같은 블롭 지름
                     out _);
             }
 
@@ -8413,7 +8418,8 @@ namespace Wassup.Bridge
                     : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
                 var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
                 defenderFallbackViewPool.TrySpawn(
-                    unitData.displayName, entity, fallbackWorld, mesh, material, CharacterVisualScale, out _);
+                    unitData.displayName, entity, fallbackWorld, mesh, material, CharacterVisualScale,
+                    unitData.Footprint.x, out _); // unit 9 — Spine 경로와 같은 블롭 지름
             }
 
             return entity;
@@ -10638,6 +10644,7 @@ namespace Wassup.Bridge
                     mesh,
                     CreateAttackUnitRuntimeMaterial(unitType.visualMaterial),
                     CharacterVisualScale,
+                    1, // unit 9 — 적/보스는 sim 이 1칸 점유(AttackUnitData.FootprintWidthCells 와 같은 참값)
                     out _);
             }
 

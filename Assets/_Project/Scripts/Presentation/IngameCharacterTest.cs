@@ -139,7 +139,7 @@ namespace Wassup.Presentation
                     BattleBridge.BlobShadowSprite,
                     BattleBridge.BlobShadowSize,
                     BattleBridge.BlobShadowColor,
-                    BattleBridge.BlobShadowGroundY,
+                    BattleBridge.BlobShadowLift,
                     BoardSortOrder.ShadowOrder,
                     live: true));
             }
