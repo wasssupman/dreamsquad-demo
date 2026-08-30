@@ -13,6 +13,10 @@
 - `969540be` 버스터즈 3×2 → 2×3 정정
 - `12b59010` rev 2 — 사거리 링 양보·부착 자석 유효 필터·락온 스케일 펀치
 - `060a8524` rev 3 — 탭 선택에서 자석 제거 (비판적 재검토: 탭은 즉시 커밋이라 자기 교정 루프 없음)
+- `a1795f0e`+`d039611a` unit 7 — armed 보드 드래그 실루엣 (+리뷰 반영)
+- `68cefb16` unit 8 — D&D 키링 은퇴, 보드 실루엣으로 통일
+- `66d4d6f6` unit 9 — 드롭 비행 복구(출발점=트레이) + 되돌리기 버튼 은퇴
+- `eb2386ad` footprint 저작 철회 — 전 유닛 1×1 (사용자 결정)
 
 ## Implemented
 
@@ -23,7 +27,13 @@
 - 뷰만 footprint 기하 중심(짝수 변 +0.5칸): sync·RestViewPos·비행 앵커. sim 위치·`DefenderTile.cell` = 대표 셀 불변(**sim 무변** — `Scripts/Battle/` 변경 0).
 - 시너지 인접 = 두 footprint rect 거리 1(1×1 = 기존 8이웃 동치), 전수 재계산·등록 스냅샷 rect.
 - 픽킹: 포함 후보 앞면(렌더 순서) 우선 + 패딩·자석(`DreamcatcherFocusConfig` 노브, 선택·부착 공유) + 락온 히스테리시스 거리 일원화.
-- 취소 유예: 배치 = `PendingDeployment` 중 «되돌리기» 버튼 → `TryCancelPendingDeployment`(점유·코스트·쿨다운·카드 회수·엔티티 수거, `_cancellableDeployments` 자격 셋). 부착 = 커밋을 흡수 도착 프레임으로 이연(`FlyDeferred`), 비행 중 고스트 탭 = 취소.
+- **드래그 중 유닛 그림 = 보드 실루엣**(units 7~9): 손끝 키링 대신 footprint 뷰 중심에 서는 반투명
+  Spine 이 두 제스처(탭-드래그·트레이 D&D) 공통으로 따라온다. 릴리즈하면 **트레이에서** 하마가
+  날아와 착지한다(키링을 걷은 뒤 유닛이 있는 곳은 손이 아니라 트레이라서). 스위치 2개로 왕복 가능
+  (`armedSilhouetteEnabled` / `dndSilhouetteEnabled`).
+- **footprint 실값은 전 유닛 1×1**(2026-08-30 사용자 결정). multi-cell 시스템은 그대로 살아 있고
+  SO 값만 1 이다 — 되켜는 데 코드 변경 0.
+- 취소 유예: 배치 = `PendingDeployment` 중 «되돌리기» 버튼(**현재 기본 off** — unit 9 rev) → `TryCancelPendingDeployment`(점유·코스트·쿨다운·카드 회수·엔티티 수거, `_cancellableDeployments` 자격 셋). 부착 = 커밋을 흡수 도착 프레임으로 이연(`FlyDeferred`), 비행 중 고스트 탭 = 취소.
 
 ## Key Files
 
@@ -38,7 +48,13 @@
 
 - 컴파일 에러 0 · EditMode 코어 lane **2494 전건 실패 0**(스킵 3 = 선행 Ignore) — 각 unit 커밋마다 + 리뷰 반영 후 재확인.
 - 투트랙 리뷰(code-reviewer + ecs-reviewer, opus): 양측 REQUEST CHANGES → C-1(카드 소실)·H-1×2·H-2·M-1·M-2·M-5·M-6·L-2·L-5·L-6 코드 반영, M-3·M-4 문서 정정, 나머지 M/L 은 README 후속 후보 등재. ecs 축(sim 무변·게이트웨이·structural change 타이밍·dangling)은 전부 클린 판정.
-- **육안 Play 확인 완료 2026-08-28 (사용자)**: multi-cell 4종(캐논 2×2·말파이트 3×3·버스터즈 2×3·배스티온 2×1) 저작 상태에서 units 2·4·5 의 확인 축(고스트 4색·전역 불가 표시·앞면 픽·되돌리기 버튼·부착 비행 탭 취소) 통과.
+- **육안 Play 확인 완료**: 2026-08-28 units 2·4·5(multi-cell 4종 저작 상태에서 고스트 4색·전역 불가
+  표시·앞면 픽·되돌리기 버튼·부착 비행 탭 취소) · 2026-08-30 units 7~9(드래그 실루엣·트레이 발
+  드롭 비행·되돌리기 버튼 미노출). 모두 사용자 확인.
+- **`DropDismountTest`(PlayMode)는 red — 이 spec 원인 아님.** 이분 확인(실루엣을 꺼도 동일 실패).
+  독립 원인 3겹 중 둘은 이번에 고쳤고(고정 화면좌표 vs 카메라 팬 · 뷰 오버라이드 튜플화),
+  남은 하나(셀↔화면 roundtrip 불성립)는 좌표계 쪽으로 보인다 — 상세·다음 시작점은
+  `8_dnd_silhouette.md` 의 «선행 red 조사 기록».
 
 ## Notes (되돌리면 안 되는 의도)
 
@@ -53,6 +69,8 @@
 
 ## Follow-up
 
-- ~~육안 Play 확인~~ **완료 2026-08-28** — 에디터 Play. Android 실기기 체감(픽 패딩·자석 반경·부착 유예 0.4초)은 README 후속 후보 «부착 유예의 실기기 체감 튜닝» 으로 잔존.
+- ~~육안 Play 확인~~ **완료**(2026-08-28 · 08-30). Android 실기기 체감(픽 패딩·자석 반경)은 README 후속 후보로 잔존.
+- **`DropDismountTest` 3번째 원인 규명** — 위 Verified 참조. 이 spec 밖(좌표계/디오라마 스테이지 의심).
+- **제스처 시작점 통합**·**철수의 환급 유예** — `8_dnd_silhouette.md` 후속 후보 참조.
 - README 후속 후보 참조: 거리 기반 판정 전환 · 적 통행 차단 · 사거리 다중 셀 · 보조 타일 경계 · 튜토리얼 하이라이트 · SO 재독 잔여 · 부착 유예 실기기 튜닝.
 - 시트 실컬럼(footprintWidth/Height) 추가는 콘텐츠 저작 시점 작업(부재 시 SO 값 유지가 계약이라 안전).

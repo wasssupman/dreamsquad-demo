@@ -92,9 +92,24 @@ unit 7 의 «footprint 위 실루엣» 방식을 트레이 D&D 에도 적용한�
 
 - [x] 컴파일 에러 0 · EditMode 코어 2494 전건 실패 0(스킵 3 = 선행 Ignore)
 - [x] 시뮬 비행(탭-탭·탭-드래그 커밋)은 키링 하마 경로 무변 · `dndSilhouetteEnabled=false` 면 키링 복원
-- [ ] 육안 Play: D&D 중 키링 없음 + 실루엣이 footprint 에 서서 추종 · 취소 존/칸 없음에서 내려감 ·
-      릴리즈 시 **트레이에서 날아와** 착지(탭 배치와 같은 비행) · 되돌리기 버튼 안 뜸 (**사용자 확인 대기 축**)
-- [ ] **선행 red 확인 필요**: `DropDismountTest`(PlayMode)가 이 spec 이전부터 실패 중이다 —
-      드래그가 판 위 칸을 한 번도 못 잡는다(`noCell`, frac 이 격자 밖 음수에서 시작해 프레임마다
-      더 벗어남 = 카메라가 도는 동안 테스트는 고정 화면좌표를 쓴다). 실루엣을 꺼도 동일 실패라
-      units 7~9 원인이 아니다. 별도 조사 대상(이 spec 의 계약 변경분은 그 테스트에 반영해 뒀다).
+- [x] 육안 Play: D&D 중 키링 없음 + 실루엣이 footprint 에 서서 추종 · 릴리즈 시 트레이에서 날아와 착지 ·
+      되돌리기 버튼 안 뜸 — 확인 2026-08-30 (사용자)
+- [ ] **`DropDismountTest`(PlayMode)는 여전히 red — 이 spec 원인 아님.** 상세는 아래.
+
+## 선행 red 조사 기록 (DropDismountTest, 2026-08-30)
+
+이 spec 이전부터 빨갛다. 실루엣을 꺼도(= unit 8 이전 동작) 동일하게 실패해 units 7~9 가 원인이
+아님을 이분으로 확인했다. **독립 원인이 최소 3겹**이고, 앞의 둘은 이번에 고쳤다:
+
+1. **고정 화면좌표 vs 카메라 팬** (고침) — 테스트가 화면 좌표를 한 번만 구해 12프레임을 끄는데
+   드래그 중 `CameraDirector` 가 포커스로 카메라를 패닝한다. 계측 결과 frac 이
+   (-1.6,-0.7)→(-2.5,-1.1) 로 격자 밖으로 밀려 릴리스가 «칸 없음»(취소)이 됐다 — 배치가 아예
+   안 일어나 그 아래 전부가 빨갰다. → 매 프레임 그 칸에서 좌표를 재유도(`DriveToCell`).
+2. **뷰 오버라이드 튜플화** (고침) — 값이 `float3` → `(pos, lift, ground)`(flight-lift-feel unit 2)
+   로 바뀌었는데 테스트가 옛 타입으로 언박싱해 `InvalidCastException`. → 브리지 접근자 경유.
+3. **셀↔화면 roundtrip 불성립** (미해결) — `FindValidCellWithScreen` 이 어떤 배치 가능 칸에서도
+   «`GridCellToViewCenter` → 화면 → `TryScreenToCell`» 왕복을 만족시키지 못한다("no valid cell").
+   카메라 정착을 기다려도 동일. 두 함수는 서로 역이어야 하므로(`ToView` ↔ `ToSim`+`DebugWorldToCell`)
+   **디오라마 스테이지의 보드 평면(관측 y=0.87)과 뷰 매핑이 어긋났을 가능성**이 유력하다 —
+   그렇다면 테스트가 아니라 좌표계 쪽 결함이고 `map-diorama-stage` 소관이다. 다음 세션의 시작점:
+   배치 가능 칸 전수에 대해 `GridCellToViewCenter` / 화면 / `TryScreenToCell` 3값을 찍어 대조.
