@@ -1,7 +1,8 @@
 # Tilted Billboard (2.5D) — 메인 Tilemap 씬
 
-> 상태: 진행 중 (2026-06-24 착수 · 2026-06-25 **퍼스펙티브+XZ 모델로 방향 전환**
-> · 2026-08-28 **unit 7~ 재개 — 디오라마 스테이지 정합 + 모드 저작면**)
+> **상태: 완료 2026-08-30** — units 0~9 구현·검증 완료 (10 폐기 · 11 보류). 인계 = `12_handoff_summary.md`
+>
+> 이력: 2026-06-24 착수 · 2026-06-25 **퍼스펙티브+XZ 모델로 방향 전환** · 2026-08-28 **unit 7~ 재개(디오라마 스테이지 정합)**
 > 대상 씬: `Assets/_Project/Scenes/BattleScene.unity` (Tilemap 모드, URP). Legacy3D 는 불변.
 
 ## 상위 목표
@@ -81,7 +82,7 @@ feature-wide 인 것만 둔다 — 구현 상세(발끝 샘플 방식·크기 �
 | 2 | `2_character_tilt.md` | 튜닝(캐릭터) | 캐릭터 레이어 틸트 핀 해제 + θ 정합 φ |
 | 3 | `3_blob_shadow.md` | 신규 | `BlobShadow` 컴포넌트 + 스폰 배선 + 정렬 |
 | 4 | `4_prop_layer_unify.md` | 통합/레이어 | Quad·Prop 를 `Billboard` 로 수렴 + 프랍 per-data 틸트각 |
-| 5 | `5_handoff_summary.md` | 인계 | 구현 종료 요약 (구현 후 작성) |
+| 5 | ~~`5_handoff_summary.md`~~ | 인계 | **작성된 적 없음**(units 0~6 구간). units 7~9 인계는 12번 |
 | 6 | `6_prop_distance_tilt.md` | 신규 | 배경 프랍 거리(elevation) 기반 틸트 — 퍼스펙티브 근/원 부조화 보정 (캐릭터 제외) |
 | 7 | `7_blob_ground_plane.md` | 결함 수정 | 블롭 접지 — 보드 평면 소유권 (드리프트 a). **측정된 결함** |
 | 8 | `8_blob_sorting_order.md` | 결함 수정 | 정렬 스윕이 덮어쓴 `ShadowOrder(-5)` 되찾기. **정적 확인됨** |
@@ -89,6 +90,7 @@ feature-wide 인 것만 둔다 — 구현 상세(발끝 샘플 방식·크기 �
 | — | — | **계측 게이트** | ✅ 2026-08-28 실측 — `dXZ(origin, blob) = 0`, 발끝은 평면 위(−0.03). **어긋남 없음** |
 | 10 | `10_blob_camera_projection.md` | **폐기** | 계측이 요구하지 않았다. `bounds` 가 발끝 대용이 못 된다는 것도 실측으로 드러남(문서 하단) |
 | 11 | `11_blob_unit_offset.md` | 보류 | 유닛별 XZ 노브 — 육안에서 남는 어긋남이 보고되면 착수 |
+| 12 | `12_handoff_summary.md` | 인계 | units 7~9 구간 인계 지도 |
 
 드리프트 (b)(모드 하드코딩 → pitch 추종)는 **이 spec 의 units 로 넣지 않는다.**
 이 spec 의 결론이 「캐릭터 φ = 45° 고정」이라 그 결론을 뒤집는 작업을 같은 폴더에 넣으면

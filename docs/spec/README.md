@@ -140,6 +140,25 @@ code + git history        구현 상세
   (사용자 결정 2026-08-25). B 가 요구하고, A unit 7 의 「화면 밖 신호는 통합 스트레스 하나」가
   이 계약에 기댄다.
 
+#### 틸트 빌보드 / 블롭 접지 (tilted-billboard — **완료 2026-08-30**, units 0~9)
+
+블롭 그림자의 자리를 씬 전역 절대 Y 에서 **스테이지가 선언한 보드 평면**으로 옮기고,
+정렬 스윕이 덮어쓰던 그림자 대역을 되찾았다. 상세: `docs/spec/tilted-billboard/12_handoff_summary.md`.
+
+- **빌보드 카메라 추종 → `docs/spec/billboard-camera-follow/`** (M, units 0~2 · README 작성됨, 착수 전) —
+  캐릭터·프랍이 `BillboardMode.Tilted` 45° 로 코드 4곳에 하드코딩돼 **카메라 pitch 를 추종하지 않는다.**
+  이 spec 의 계약 「틸트 각은 데이터에서 온다」가 각도만 이행하고 모드는 안 한 상태라 부채 상환에 가깝다.
+- **`BlobShadowStyle` SO 이관** (S) — `BattleBridge` 의 blob 튜닝 serialized 4개 + static 4개를 SO 로.
+  제약 6 정합. 제약 12 판정으로 unit 7 범위에서 이관됐다.
+- **큰 보스의 1타일 그림자** (S) — 적은 sim 이 1칸 점유라 `FootprintWidthCells => 1` 이 참값인데,
+  `spineVisualScale` 3.2 짜리 보스가 폭3 디펜더 옆에 서면 그림자가 몸집과 어긋난다. 손대려면
+  「점유」와 별개로 **「시각 크기」 축**을 세워야 한다(유닛별 크기 노브 금지는 사용자 결정).
+- **블롭 지름의 `tileSize` 환산 부재** (S) — 셀 단위 footprint 를 월드 지름으로 바로 쓴다.
+  `tileSize = 1` 인 동안 무해하고 전역 노브로 균일 보정되지만, 그 노브가 예술적 배율과 환산을 겸직한다.
+- **프랍 블롭의 진짜 질문** (S) — 라이브 스테이지 3종의 BlobShadow 22개가 전부 `authoredInPrefab: 0` 이라
+  `ApplyTransform` 이 **한 번도 안 돈다**(화면에 나오는 건 프리팹에 구워진 SpriteRenderer). 즉 「authored
+  프랍을 unit 7 계약으로 편입」은 실행되지 않는 분기를 겨냥한 것이다. 손대려면 이 사실부터 다시 볼 것.
+
 #### 보너스 당기기 (bonus-wave-pull — **완료 2026-08-24**, units 0~9)
 
 일반 당김 알약 **위에** 조건부로 뜨는 두 번째 버튼. 누르면 맵에 저작된 보드 중앙 포탈 2개에서
