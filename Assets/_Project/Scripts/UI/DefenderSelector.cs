@@ -151,6 +151,9 @@ namespace Wassup.UI
                 bridge.DefenderDied += OnDefenderDied;
                 bridge.DefenderRetired -= OnDefenderRetired;
                 bridge.DefenderRetired += OnDefenderRetired;
+                // defender-footprint unit 5 — 배치 취소는 자리를 되돌린다 → 소진 리페인트.
+                bridge.DefenderDeploymentCancelled -= OnDeploymentCancelled;
+                bridge.DefenderDeploymentCancelled += OnDeploymentCancelled;
             }
         }
 
@@ -167,11 +170,18 @@ namespace Wassup.UI
                 bridge.DefenderPlaced -= OnDefenderPlacedRefresh;
                 bridge.DefenderDied -= OnDefenderDied;
                 bridge.DefenderRetired -= OnDefenderRetired;
+                bridge.DefenderDeploymentCancelled -= OnDeploymentCancelled; // defender-footprint unit 5
             }
         }
 
         // defender-board-limit 1 — 판에 올라오면 그 타입이 상한에 닿았을 수 있다.
         private void OnDefenderPlacedRefresh(Unity.Entities.Entity _, DefenderUnitData __)
+            => RefreshExhaustedStates();
+
+        // defender-footprint unit 5 — 배치 취소 유예의 원복. 쿨다운·코스트는 브리지가 이미
+        // 되감았고 여기는 표시(소진 상태)만 따라간다. 퇴근 핸들러와 합치지 않는다 — 취소는
+        // 이탈 쿨타임을 걸지 **않는** 것이 정체성이다(실수 복구는 무대가).
+        private void OnDeploymentCancelled(Unity.Entities.Entity _, DefenderUnitData __)
             => RefreshExhaustedStates();
 
         // defender-board-limit 1 — 유닛이 죽으면 그 타입의 자리가 하나 빈다 → 소진 해제 가능.

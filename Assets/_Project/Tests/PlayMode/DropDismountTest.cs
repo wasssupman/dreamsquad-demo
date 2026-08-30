@@ -53,17 +53,26 @@ namespace Wassup.Tests.PlayMode
             var cam = Camera.main;
 
             // ── 1) 실드래그 릴리스: 핸드오프 연속성 + 점유/코스트 커밋 프레임 확정 ──
-            var cellA = FindValidCellWithScreen(bridge, cam, unit, out var screenA);
-            var driveA = DriveAiming(ctrl, screenA);
-            ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
-            // 스프링 추종(_unitPosWorld)이 자리 잡도록 몇 프레임 목표를 유지
-            for (int i = 0; i < 12; i++) { ctrl.UpdateDrag(driveA); yield return null; }
+            // 카메라가 배치 프레이밍으로 자리를 잡은 **뒤에** 좌표를 잡는다(2026-08-30). CameraDirector
+            // 가 이징하는 동안 잡으면 셀 탐색의 화면 roundtrip 자체가 성립하지 않는다("no valid cell").
+            yield return WaitForCameraSettle(cam);
+            var cellA = FindValidCellWithScreen(bridge, cam, unit, out _);
+            // unit 9 — 하마 출발점 단정에 쓰므로 이름을 붙인다(세 호출이 같은 좌표를 반복했다).
+            var traySlotScreen = new Vector2(Screen.width * 0.5f, Screen.height * 0.08f);
+            ctrl.BeginDrag(unit, traySlotScreen);
+            // 스프링 추종(_unitPosWorld)이 자리 잡도록 몇 프레임 목표를 유지.
+            // **매 프레임 화면 좌표를 다시 구한다**(2026-08-30): 드래그 중 CameraDirector 가 드래그
+            // 포커스로 카메라를 패닝하므로, 한 번 구한 화면 좌표는 프레임마다 다른 칸을 가리키게 된다.
+            // 실측(계측 로그)으로 frac 이 (-1.6,-0.7)→(-2.5,-1.1) 로 격자 밖으로 밀려 나가 릴리스가
+            // «칸 없음»(취소)으로 떨어졌다 — 배치가 아예 일어나지 않아 이 아래 전부가 빨갰다.
+            // 테스트의 의도는 "손가락이 그 칸 위에 머문다" 이므로 좌표를 매번 그 칸에서 재유도한다.
+            for (int i = 0; i < 12; i++) { ctrl.UpdateDrag(DriveToCell(ctrl, bridge, cam, cellA)); yield return null; }
             Assert.IsTrue(ctrl.IsDragging, "drag session active");
 
             Vector3 ghostFeet = (Vector3)Field(ctrl, "_unitPosWorld");
             float costBefore = gm.CostRuntime.Current;
             float commitTime = Time.realtimeSinceStartup;
-            ctrl.EndDrag(driveA); // 커밋(동기) — 같은 프레임에 점유·오버라이드 등록
+            ctrl.EndDrag(DriveToCell(ctrl, bridge, cam, cellA)); // 커밋(동기) — 같은 프레임에 점유·오버라이드 등록
 
             Assert.IsTrue(bridge.TryGetDefenderAt(cellA, out var entityA, out _, out bool busyA),
                 "commit frame: cell occupied");
@@ -72,11 +81,20 @@ namespace Wassup.Tests.PlayMode
 
             var firstOverride = GetOverride(bridge, entityA);
             Assert.IsTrue(firstOverride.HasValue, "commit frame: view override registered (dismount began)");
-            Assert.Less(Vector3.Distance(firstOverride.Value, ghostFeet), 0.05f,
-                $"핸드오프 팝: 고스트 발점 {ghostFeet} vs 첫 오버라이드 {firstOverride.Value}");
+            // defender-footprint unit 8·9 (2026-08-30) — **출발점 계약이 뒤집혔다.** 예전엔 손끝
+            // 키링이 유닛을 들고 있어서 하마가 «고스트 발점»에서 떴다(구 단정: firstOverride ≈ ghostFeet).
+            // unit 8 이 키링을 걷어내면서 유닛의 «있는 곳»이 손이 아니라 트레이가 됐고, unit 9 는
+            // 실드래그 릴리스를 탭과 **같은 입구**(SimulateDragTo)로 보낸다 — 그래서 하마는
+            // 트레이 슬롯에서 뜬다. 세 배치 경로가 출발점까지 하나가 됐다는 것이 지금의 계약이다.
+            // 화면 좌표로 재는 이유: 보드 평면 역투영을 테스트에서 재구현하면 축이 바뀔 때 옛
+            // 산식으로 조용히 초록이 된다(DriveAiming 주석과 같은 규율).
+            Vector2 overrideScreen = cam.WorldToScreenPoint(firstOverride.Value);
+            Assert.Less(Vector2.Distance(overrideScreen, traySlotScreen), Screen.height * 0.15f,
+                $"하마 출발 = 트레이 슬롯 {traySlotScreen} vs 첫 오버라이드 {overrideScreen} " +
+                $"(고스트 발점 {ghostFeet} 이 아니다 — unit 9 계약)");
 
             // ── 2) 세션 독립: 비행 중 새 드래그 시작 → 이전 비행 계속 진행 ──
-            ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
+            ctrl.BeginDrag(unit, traySlotScreen);
             Vector3 sampleA = GetOverride(bridge, entityA) ?? default;
             bool progressed = false;
             for (int i = 0; i < 8; i++)
@@ -123,9 +141,10 @@ namespace Wassup.Tests.PlayMode
             // 배치 방식 3종(트레이 D&D · 탭투플레이스 · armed 보드 프레스-드래그)이 같은 하마 착지를
             // 갖는다. 뒤 둘은 `SimulateDragTo` 한 입구로 모이므로 이 한 케이스가 둘을 함께 지킨다.
             // 세 경로가 다시 갈리면(= `_simulatedDrag` 게이트가 되살아나면) 여기가 빨개진다.
+            yield return WaitForCameraSettle(cam);
             var cellB = FindValidCellWithScreen(bridge, cam, unit, out _, exclude: cellA);
             int overrideSightings = 0;
-            ctrl.SimulateDragTo(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f), cellB);
+            ctrl.SimulateDragTo(unit, traySlotScreen, cellB);
             float tapDeadline = Time.realtimeSinceStartup + 8f;
             Entity entityB = Entity.Null;
             while (Time.realtimeSinceStartup < tapDeadline)
@@ -159,6 +178,28 @@ namespace Wassup.Tests.PlayMode
         private static Vector2 DriveAiming(DefenderDragPlacementController ctrl, Vector2 aimTarget)
             => PlacementPointerOffset.Apply(aimTarget, -ctrl.PlacementPointerOffsetPx, 1f);
 
+        // 그 칸을 **지금 카메라 기준으로** 겨누는 구동 좌표. 카메라가 드래그 중 움직이므로
+        // 화면 좌표를 캐시하면 프레임마다 다른 칸을 가리킨다(위 루프 주석 참조).
+        private static Vector2 DriveToCell(DefenderDragPlacementController ctrl, BattleBridge bridge,
+            Camera cam, Vector2Int cell)
+            => DriveAiming(ctrl, (Vector2)cam.WorldToScreenPoint(bridge.GridCellToViewCenter(cell)));
+
+        // 카메라 포즈가 멎을 때까지(연속 5프레임 무변) 대기. 이 테스트는 화면 좌표로 드래그를
+        // 구동하므로 카메라가 움직이는 동안 잡은 좌표는 다른 칸을 가리킨다.
+        private static IEnumerator WaitForCameraSettle(Camera cam, float timeoutSeconds = 3f)
+        {
+            float deadline = Time.realtimeSinceStartup + timeoutSeconds;
+            Vector3 prev = cam.transform.position;
+            int stable = 0;
+            while (Time.realtimeSinceStartup < deadline && stable < 5)
+            {
+                yield return null;
+                Vector3 cur = cam.transform.position;
+                stable = Vector3.Distance(cur, prev) < 1e-4f ? stable + 1 : 0;
+                prev = cur;
+            }
+        }
+
         private static object Field(object o, string name)
             => o.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(o);
 
@@ -169,12 +210,17 @@ namespace Wassup.Tests.PlayMode
 
         private static int OverrideCount(BattleBridge bridge) => OverrideDict(bridge).Count;
 
+        // 값 타입을 여기서 되풀이하지 않고 **브리지의 접근자**를 부른다(2026-08-30). 이 딕셔너리의
+        // 값은 flight-lift-feel unit 2 에서 float3 → (pos, lift, ground) 튜플이 됐는데, 테스트가
+        // 옛 타입으로 언박싱하고 있어 InvalidCastException 으로 죽었다. 접근자를 지나면 모양이
+        // 또 바뀌어도 따라온다 — 딕셔너리를 직접 읽는 것은 개수 세기(OverrideCount)에만 남긴다.
         private static Vector3? GetOverride(BattleBridge bridge, Entity entity)
         {
-            var dict = OverrideDict(bridge);
-            if (!dict.Contains(entity)) return null;
-            var f3 = (Unity.Mathematics.float3)dict[entity];
-            return (Vector3)f3;
+            var m = typeof(BattleBridge).GetMethod("TryGetDefenderViewOverride",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var args = new object[] { entity, null, null, null };
+            if (!(bool)m.Invoke(bridge, args)) return null;
+            return (Vector3)(Unity.Mathematics.float3)args[1];
         }
 
         // 유효 배치 셀 중 화면 좌표가 정확히 그 셀로 되돌아오는(roundtrip) 첫 셀.

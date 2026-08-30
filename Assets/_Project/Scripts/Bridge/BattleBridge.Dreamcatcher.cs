@@ -72,6 +72,10 @@ namespace Wassup.Bridge
         // 지나지 않는 배치 경로(PlaceDefenderAs 직접 호출 등)에서 트레이가 조용히 stale 해진다.
         // 사망은 브리지가, 배치는 UI 가 알리는 비대칭이 원인이었다 — 둘 다 브리지가 알린다.
         public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderPlaced;
+
+        // defender-footprint unit 5 — 배치 취소 유예(활성화 전 되돌리기). 트레이 소진 상태
+        // 리페인트용 — 쿨다운·코스트 되감기는 브리지가 이미 끝낸 뒤 발화한다.
+        public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderDeploymentCancelled;
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 표식 악몽 소멸(처치 또는
         // 유출) 알림. 컨트롤러가 카드 회수(큐 복귀)에 구독한다. 처치/유출의 보상 차이는
         // 이 이벤트가 아니라 표식 시점의 AwakeningReward 베이크가 만든다(처치=배율 보상

@@ -4688,7 +4688,7 @@ MonoBehaviour:
   blobShadowSprite: {fileID: 21300000, guid: 952c54b00e0c643b7a3c22cd1f3b3b7d, type: 3}
   blobShadowSize: 1
   blobShadowColor: {r: 0, g: 0, b: 0, a: 0.5}
-  blobShadowGroundY: 0.216
+  blobShadowLift: 0.026
   liftScalePerHeight: 0.14
   liftScaleMax: 1.35
   liftShadowFullHeight: 3

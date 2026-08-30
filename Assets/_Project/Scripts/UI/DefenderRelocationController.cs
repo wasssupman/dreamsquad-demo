@@ -132,7 +132,9 @@ namespace Wassup.UI
             // unit 6 — 배치 가능 타일 하이라이트. placement-mask unit 4 — 옮기는 유닛의 층 기준.
             // unit 9 — 소스 칸을 명시로 되돌려 넣는다: 점유라 스캔에서 빠지는데, 제자리 재정비가
             // 확정이 된 지금은 "여기 놓으면 재정비" 로 읽혀야 한다(취소 버튼 대신 쓰는 어포던스).
-            bridge.ShowPlacementHighlight(_unit, _sourceCell);
+            // defender-footprint unit 2 — 전체 하이라이트 은퇴 스위치 공유(드래그 컨트롤러와 동일 정책).
+            if (DefenderDragPlacementController.PlaceableAreaHighlightEnabled)
+                bridge.ShowPlacementHighlight(_unit, _sourceCell);
             // 버튼 진입 = carried press 없음(목적지 탭/드래그를 이후 새 press 로 받는다).
             // unit 10 — 칸을 끌어서 들어온 경우엔 그 press 를 **이어받는다**. 원래 누른 지점을
             // 기준점으로 쥐고 시작하므로, 이미 임계를 넘긴 손가락이 다음 프레임 곧바로 드래그로
@@ -207,6 +209,23 @@ namespace Wassup.UI
         // unit 9 — **본인 칸도 커밋이다**(제자리 재정비). 취소는 보드 밖 릴리즈와 타임아웃이 맡는다
         // (README 계약 13). 자기 칸을 취소로 되돌리지 말 것 — 그러면 제자리 재정비를 표현할
         // 제스처가 사라진다.
+        // defender-footprint unit 2 — 탭/릴리즈 셀 → 재배치 목적 앵커. 자기 footprint 안이면
+        // 제자리 재정비(= _sourceCell — 브리지 정규화가 fromAnchor 로 풀어준다), 밖이면 하단 중앙 산식.
+        private Vector2Int MapRelocationTarget(Vector2Int tappedCell)
+        {
+            var fpSize = _unit != null ? _unit.Footprint : Vector2Int.one;
+            var fromAnchor = FootprintMath.AnchorFromPrimary(_sourceCell, fpSize);
+            if (FootprintMath.Cells(fromAnchor, fpSize).Contains(tappedCell)) return _sourceCell;
+            return FootprintMath.AnchorFromBottomCenter(tappedCell, fpSize);
+        }
+
+        private Vector2Int RelocationTargetPrimary(Vector2Int to)
+        {
+            var fpSize = _unit != null ? _unit.Footprint : Vector2Int.one;
+            if (to == _sourceCell) return _sourceCell; // 제자리 재정비 — 대표 셀 그대로
+            return FootprintMath.PrimaryCell(to, fpSize);
+        }
+
         private void ResolveRelease(Vector2 screen)
         {
             // unit 9 — **Strict** 여야 한다. 관대한 TryScreenToCell 은 보드 밖을 가장자리 셀로
@@ -214,13 +233,16 @@ namespace Wassup.UI
             // reject 로 빠져 이동모드에 갇힌다). 자기 칸 탭이 확정으로 넘어간 지금 남은 즉시
             // 취소는 이 경로뿐이라, 여기가 헐거우면 8초 타임아웃 말곤 빠져나갈 길이 없다.
             if (!bridge.TryScreenToCellStrict(mainCamera, screen, out var cell)) { CancelMoveMode(); return; }
-            if (!bridge.CanRelocateDefender(_sourceCell, cell, out _))
+            // defender-footprint unit 2 — 배치와 같은 앵커 산식(하단 중앙). 자기 footprint 안 탭은
+            // 제자리 재정비로 해석한다(소스 셀 = 재정비 어포던스의 footprint 일반화).
+            var to = MapRelocationTarget(cell);
+            if (!bridge.CanRelocateDefender(_sourceCell, to, out _))
             {
-                bridge.FlashPlacementReject(cell); // 기존 reject 피드백 재사용, 이동모드 유지(재시도)
+                bridge.FlashPlacementReject(to); // 기존 reject 피드백 재사용, 이동모드 유지(재시도)
                 ClearScout();
                 return;
             }
-            CommitRelocation(cell);
+            CommitRelocation(to);
         }
 
         // 커밋: relocate API 만 지난다 — 코스트·on-place·컷신·PlacementCommitted 는 지나지 않는다(계약 1·4·8).
@@ -244,7 +266,7 @@ namespace Wassup.UI
         // 뷰만 베지어로 난다. 진행 시계 = Battle 도메인(다른 배치 슬로모에 정직 — 계약 5 결).
         private IEnumerator RunRelocationFlight(int gen, Vector2Int from, Vector2Int to, Entity entity)
         {
-            if (!bridge.TryGetRelocationAnchors(from, to, out var start, out var end))
+            if (!bridge.TryGetRelocationAnchors(from, to, out var start, out var end, _unit))
             {
                 FinishFlightInstant(to, entity); // 앵커 불가(맵 teardown 등) — 즉시형 폴백
                 yield break;
@@ -333,7 +355,9 @@ namespace Wassup.UI
             // unit 9 — 릴리즈 해석(ResolveRelease)과 **같은 Strict** 를 써야 한다. 관대한 판정이면
             // 보드 밖을 가장자리 셀로 보여주다가 릴리즈에서 취소가 나 손과 화면이 어긋난다.
             if (!bridge.TryScreenToCellStrict(mainCamera, screen, out var cell)) { ClearScout(); return; }
-            bool valid = bridge.CanRelocateDefender(_sourceCell, cell, out _);
+            // defender-footprint unit 2 — 릴리즈(ResolveRelease)와 같은 산식. 갈리면 표시가 거짓말한다.
+            var to = MapRelocationTarget(cell);
+            bool valid = bridge.CanRelocateDefender(_sourceCell, to, out _);
             bool changed = !_scoutCell.HasValue || _scoutCell.Value != cell;
             if (changed && _scoutCell.HasValue) bridge.ClearPlacementHover(_scoutCell.Value);
             _scoutCell = cell;
@@ -341,7 +365,8 @@ namespace Wassup.UI
             {
                 bridge.PulsePlacementHover(cell, valid);
                 // unit 6 — press 중 그 타일의 공격범위 프리뷰(드래그 배치 스카우트 미러). 무효 셀은 소거.
-                if (valid) bridge.SetPlacementRange(cell, _unit);
+                // defender-footprint unit 2 — 범위 중심 = 목적지 대표 셀.
+                if (valid) bridge.SetPlacementRange(RelocationTargetPrimary(to), _unit);
                 else bridge.ClearPlacementRange();
             }
             bridge.SetPlacementHover(cell, valid);

@@ -34,10 +34,32 @@ namespace Wassup.Bridge
             return SpatialPlacementCheck(map, occupied, to, layers);
         }
 
+        // defender-footprint unit 1 — footprint 재배치 판정. to-rect 검사에서 **자기 from-rect 안
+        // 셀의 Occupied 는 무시**한다 — 2×2 를 한 칸 옮기기가 자기 점유에 막히면 안 된다(위
+        // RelocationCheck 의 from==to 선행 검사와 같은 이유의 일반화). 같은 앵커·같은 크기 = 제자리 재정비.
+        // 리뷰 M-6 — fromRect 는 **등록 스냅샷**(RegisteredFootprintRect)을 받는다: SO footprint 가
+        // 배치 후 바뀌어도 자기-겹침 무시는 실제 점유 칸 기준. 크기가 갈린 제자리 드롭은 새 크기로
+        // 재검사돼 자연스럽게 re-fit 판정이 된다.
+        public static PlacementRejectReason RelocationFootprintCheck(
+            GeneratedMap map, HashSet<Vector2Int> occupied, RectInt fromRect, Vector2Int toAnchor,
+            Vector2Int size, bool fromHasDefender, bool fromBusy, PlacementLayer layers,
+            List<FootprintCellReason> perCell = null)
+        {
+            if (!fromHasDefender) return PlacementRejectReason.NoDefenderAtSource;
+            if (fromBusy) return PlacementRejectReason.SourceBusy;
+            var s = Vector2Int.Max(size, Vector2Int.one);
+            if (new Vector2Int(fromRect.xMin, fromRect.yMin) == toAnchor
+                && (Vector2Int)fromRect.size == s) return PlacementRejectReason.None;
+            return SpatialFootprintCheck(map, occupied, toAnchor, size, layers, perCell,
+                ignoreOccupied: fromRect);
+        }
+
         // unit 1 — 보드 유닛 조회 read seam (재배치 컨트롤러의 홀드 판정용). busy = 배치/이동
         // 진행 중(PendingDeployment) — 홀드 진입 자체를 막는다.
         public bool TryGetDefenderAt(Vector2Int cell, out Entity entity, out DefenderUnitData data, out bool busy)
         {
+            // defender-footprint unit 1 — footprint 임의 칸 → 대표 셀 해석(1×1 항등).
+            if (TryResolveDefenderKey(cell, out var key)) cell = key;
             if (_defenderByTile.TryGetValue(cell, out var b) && _em != null && _em.Exists(b.entity))
             {
                 entity = b.entity;
@@ -74,14 +96,23 @@ namespace Wassup.Bridge
                 reason = PlacementRejectReason.NotRunningOrPlacementClosed;
                 return false;
             }
+            // defender-footprint unit 1 — from 은 footprint 임의 칸일 수 있다 → 대표 셀 해석.
+            // to 는 목적 footprint 의 **앵커**다(배치 진입과 같은 의미).
+            if (TryResolveDefenderKey(from, out var fromKey)) from = fromKey;
             bool has = _defenderByTile.TryGetValue(from, out var binding)
                        && _em != null && _em.Exists(binding.entity);
             bool busy = has && _em.HasComponent<PendingDeployment>(binding.entity);
             // unit 4 — 옮기는 유닛(소스 바인딩)의 층. 바인딩 부재는 위 has=false 가 사유를 낸다.
             var layers = (has && binding.data != null)
                 ? binding.data.EffectivePlacementLayers : PlacementLayer.Ground;
-            reason = RelocationCheck(_generatedMap, _occupiedTiles,
-                new int2(from.x, from.y), new int2(to.x, to.y), has, busy, layers);
+            var size = (has && binding.data != null) ? binding.data.Footprint : Vector2Int.one;
+            // 리뷰 M-6 — from-rect 는 등록 스냅샷 기준(SO 재독 아님).
+            var fromRect = RegisteredFootprintRect(from, size);
+            // 제자리 재정비 정규화 — 기존 호출자(선택 패널 등)는 «유닛 셀 = 대표 셀»을 to 로 넘긴다.
+            // to 는 앵커 의미라, 짝수 변에서 대표 셀 ≠ 앵커면 제자리가 이동으로 오독된다.
+            if (to == from) to = new Vector2Int(fromRect.xMin, fromRect.yMin);
+            reason = RelocationFootprintCheck(_generatedMap, _occupiedTiles,
+                fromRect, to, size, has, busy, layers);
             if (reason != PlacementRejectReason.None) return false;
 
             // unit 8 — 코스트는 **공간 판정 뒤**에 본다. 구조 사유가 자원 사유를 이긴다
@@ -112,6 +143,8 @@ namespace Wassup.Bridge
         public bool TryBeginDefenderRelocation(Vector2Int from, Vector2Int to, out Entity entity, out PlacementRejectReason reason)
         {
             entity = Entity.Null;
+            // defender-footprint unit 1 — from = 대표 셀 해석, to = 목적 footprint 앵커.
+            if (TryResolveDefenderKey(from, out var fromKey)) from = fromKey;
             if (!CanRelocateDefender(from, to, out reason))
             {
                 Debug.Log($"[BattleBridge] Relocation rejected {from} -> {to}: {reason}");
@@ -132,11 +165,21 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            _occupiedTiles.Remove(from);
-            _occupiedTiles.Add(to);
+            // defender-footprint unit 1 — footprint 단위 스왑. 바인딩 키·DefenderTile 은 새 대표 셀.
+            var size = binding.data != null ? binding.data.Footprint : Vector2Int.one;
+            // unit 2 — 제자리 재정비 정규화(CanRelocateDefender 와 같은 규칙 — 두 곳이 갈리면
+            // 판정은 제자리인데 스왑이 이동해 점유가 어긋난다). 리뷰 M-6 — 등록 스냅샷 앵커 기준.
+            if (to == from)
+            {
+                var fromRect = RegisteredFootprintRect(from, size);
+                to = new Vector2Int(fromRect.xMin, fromRect.yMin);
+            }
+            var toPrimary = FootprintMath.PrimaryCell(to, size);
+            ReleaseDefenderFootprint(from);
+            OccupyDefenderFootprint(to, size);
             _defenderByTile.Remove(from);
-            _defenderByTile[to] = binding;
-            _em.SetComponentData(entity, new DefenderTile { cell = new int2(to.x, to.y) });
+            _defenderByTile[toPrimary] = binding;
+            _em.SetComponentData(entity, new DefenderTile { cell = new int2(toPrimary.x, toPrimary.y) });
             _em.AddComponent<PendingDeployment>(entity);
             // unit 8 — on-place 재무장(계약 4). 이 한 줄이 재발동의 전부다: 착지 후 활성화가 부르는
             // TriggerDeploymentOnPlaceSkill 이 가드를 통과하게 된다. 효과 타일은 자기 가드를
@@ -145,9 +188,9 @@ namespace Wassup.Bridge
             // summon-patrol-defender unit 4 — 소환사가 옮겨가면 순찰병의 담당 구역도 따라간다.
             // unit 9 로 계약이 바뀌었다: 중심 = 새 소환사 셀, 집 = 그 **주변**의 통행 가능 칸.
             // 선정 실패(주변에 설 칸 없음)면 기존 값을 유지한다 — 순찰병을 죽이지 않는다.
-            RelocatePatrolAnchorFor(entity, new int2(to.x, to.y));
+            RelocatePatrolAnchorFor(entity, new int2(toPrimary.x, toPrimary.y));
 #if UNITY_EDITOR
-            _em.SetName(entity, $"Defender_{binding.data.displayName}_{to.x}_{to.y}");
+            _em.SetName(entity, $"Defender_{binding.data.displayName}_{toPrimary.x}_{toPrimary.y}");
 #endif
             tileHealthGaugeLayer?.Hide(from); // 게이지 키 = 셀. 새 셀은 상시 sync 가 다시 그린다.
             RecomputeSynergyFor(from);        // 이탈 반영. to 쪽은 활성화가 수행(계약 6).
@@ -229,12 +272,18 @@ namespace Wassup.Bridge
         // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.
         // sim 이 아니라 view 로 주는 이유: 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려, sim 공간
         // 아치는 화면에서 평면으로 보인다. view 공간에서 camUp 아치를 태워야 화면 세로로 던져진다.
-        public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end)
+        public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end,
+            DefenderUnitData unit = null)
         {
             start = end = default;
             if (!_generatedMap.IsCreated) return false;
-            start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight));
-            end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight));
+            // defender-footprint unit 2 — 비행 양끝도 뷰 피드와 같은 기하 중심(짝수 변 +0.5칸).
+            // from = 옛 대표 셀, to = 스왑 후 대표 셀(앵커가 와도 해석). 오프셋은 뷰 전용 — sim 불변.
+            if (TryResolveDefenderKey(to, out var toKey)) to = toKey;
+            var fpOff = FootprintViewOffset(unit);
+            var off3 = new float3(fpOff.x, 0f, fpOff.y);
+            start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight) + off3);
+            end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight) + off3);
             return true;
         }
 
@@ -283,6 +332,8 @@ namespace Wassup.Bridge
         public void FinishDefenderRelocation(Vector2Int to, Entity entity)
         {
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            // defender-footprint unit 1 — 호출자가 앵커를 넘겨도 바인딩 키(대표 셀)로 해석.
+            if (TryResolveDefenderKey(to, out var key)) to = key;
             if (!_defenderByTile.TryGetValue(to, out var binding) || binding.entity != entity) return;
             var lt = _em.GetComponentData<LocalTransform>(entity);
             lt.Position = GridToWorldCenter(to, spawnHeight);

@@ -41,6 +41,15 @@ namespace Wassup.Data
         public PlacementLayer EffectiveTraversalLayers
             => traversalLayers == PlacementLayer.None ? PlacementLayer.Path : traversalLayers;
 
+        // defender-footprint unit 0 — 점유 크기(가로×세로, 셀). 기본 1×1 = 기존 전 유닛 무변.
+        // 배치 중 회전하지 않는다. 앵커·대표 셀·셀 열거 산식은 FootprintMath 가 단일 소유.
+        // 읽기는 Footprint 프로퍼티만 — 시트가 0/음수를 밀어 넣어도 읽는 자리에서 조인다
+        // (retireCooldownRatio 의 Clamp01 과 같은 방어선).
+        public int footprintWidth = 1;
+        public int footprintHeight = 1;
+        public Vector2Int Footprint
+            => Vector2Int.Max(new Vector2Int(footprintWidth, footprintHeight), Vector2Int.one);
+
         public string displayName;
         // defender-unit-visibility unit 0 — 0 = 목록에서 숨김, 그 외 = 노출.
         //
@@ -329,6 +338,7 @@ namespace Wassup.Data
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
+        public int FootprintWidthCells => Footprint.x; // tilted-billboard unit 9 (defender-footprint unit 0 이 소유한 값)
         // enemy-spawn-positioning 0 — 방어 유닛은 본 spec 범위 밖. 계약 기본값(오프셋 없음).
         public Vector3 SpineVisualOffset => Vector3.zero;
         public IReadOnlyList<string> SpinePartSkins => partSkins;

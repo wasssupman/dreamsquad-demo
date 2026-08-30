@@ -49,6 +49,10 @@ namespace Wassup.Data.StatImport
         public float? retireCooldownRatio;
         // defender-board-limit 0 — 판 위 동시 존재 상한. 기본 1, 무제한은 큰 수(100).
         public int? maxOnBoard;
+        // defender-footprint unit 0 — 점유 크기(가로×세로, 셀). 이름 일치 리플렉션 계약으로
+        // 임포트/익스포트 양방향 자동. 시트 컬럼 부재 → null → SO 값 유지.
+        public int? footprintWidth;
+        public int? footprintHeight;
         public int? aggroCapacity;
         public float? aggroRange;
         // dreamcatcher-sheet-sync unit 4 — awakening gauge granted on this

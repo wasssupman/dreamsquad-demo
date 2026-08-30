@@ -186,5 +186,51 @@ namespace Wassup.Data
                  "0=즉시(오버슛마다 고스트 알파와 라벨이 껌뻑인다). ↑=늦게 뜸(가장 빠른 취소가 안 보인다).")]
         [Range(0f, 1f)]
         public float cancelHintDwellSeconds = 0.18f;
+
+        [Header("⑬ Footprint 고스트·자석 (defender-footprint)")]
+        [Tooltip("정상 Ghost — footprint 전 칸이 배치 가능할 때(하늘 계열).")]
+        public Color ghostValidColor = new Color(0.32f, 0.78f, 1f, 0.55f);
+        [Tooltip("Ghost 충돌 — footprint 안에서 문제가 된 칸(빨간 계열). 비공간 사유(코스트 등)면 전 칸이 이 색.")]
+        public Color ghostInvalidColor = new Color(1f, 0.25f, 0.2f, 0.6f);
+        [Tooltip("기배치 유닛 점유 — Ghost 주변 컨텍스트(노란 계열).")]
+        public Color ghostOccupiedColor = new Color(1f, 0.85f, 0.25f, 0.5f);
+        [Tooltip("지형 배치 불가 — 보드 전역 표시(빨간 계열, 사용자 결정 2026-08-28). 유닛을 들면 켜진다.")]
+        public Color ghostTerrainColor = new Color(1f, 0.3f, 0.24f, 0.3f);
+        [Tooltip("후보 앵커가 공간 사유로 무효일 때 최근접 유효 앵커로 흡착하는 자석 반경(셀).\n" +
+                 "**기본 0 = 비활성**(사용자 결정 2026-08-28 — 위치 보정 없이 배치 불가 유지·빨간 고스트만).\n" +
+                 "구현은 남아 있어 값을 올리면 다시 켜진다. 반경 밖은 배치 불가 유지(원거리 강제 보정 금지).")]
+        [Range(0f, 4f)]
+        public float placementMagnetRadiusCells = 0f;
+
+        [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5·rev 2)")]
+        // rev 2 (2026-08-30) — **기본 off.** 유예 창은 `deploymentDuration`(전 유닛 0.45초)이고
+        // 배치 비행은 `min(dropTotalSeconds, deploymentDuration)` = 같은 0.45초라, 착지 뒤 남는
+        // 시간이 **0** 이다. 버튼이 뜰 수 있는 구간은 «날아가는 중»뿐이었고 그건 도착 전에
+        // 되돌리기를 먼저 읽히게 한다. 창을 늘리려면 deploymentDuration 을 올려야 하는데
+        // 그건 유닛이 더 오래 무력한 밸런스 변경이라 UX 수정으로 할 일이 아니다.
+        // 실수 복구는 ① 릴리즈 전 실루엣+고스트(표시=확정) ② 배치 후 «철수»(무료·즉시)가 맡는다.
+        [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다). 기본 off — 위 주석 참조.")]
+        public bool deployUndoEnabled = false;
+        [Tooltip("버튼이 유닛 머리 위로 뜨는 화면 오프셋(px).")]
+        public float deployUndoOffsetPx = 96f;
+        [Tooltip("버튼 크기(px).")]
+        public Vector2 deployUndoSize = new Vector2(168f, 56f);
+        [Tooltip("버튼 배경색.")]
+        public Color deployUndoBgColor = new Color(0.12f, 0.12f, 0.16f, 0.85f);
+        [Tooltip("버튼 글자색.")]
+        public Color deployUndoTextColor = new Color(1f, 0.86f, 0.5f, 1f);
+
+        [Header("⑮ 드래그 실루엣 — 보드 위 유닛 그림 (defender-footprint unit 7·8)")]
+        [Tooltip("탭 arm 후 보드 드래그: false = 실루엣 없음(range+고스트만 — unit 7 이전 동작).")]
+        public bool armedSilhouetteEnabled = true;
+        [Tooltip("트레이 D&D: true = 손끝 키링 프리뷰 대신 보드 실루엣(unit 8, 두 제스처 문법 통일).\n" +
+                 "false = 키링 복원(고리+줄+매달린 유닛 + 착지 하마). 시뮬 비행(탭 배치)은 이 값과 무관하게 키링.")]
+        public bool dndSilhouetteEnabled = true;
+        [Tooltip("실루엣 알파. 유효성 전달은 Ghost 4색 전담이라 실루엣은 이 값 고정(무효에도 안 변한다).")]
+        [Range(0f, 1f)]
+        public float silhouetteAlpha = 0.55f;
+        [Tooltip("footprint 뷰 중심 추종 속도(지수 lerp 계수). 0 = 셀 스냅 즉시 점프.")]
+        [Range(0f, 40f)]
+        public float silhouetteFollowSpeed = 14f;
     }
 }

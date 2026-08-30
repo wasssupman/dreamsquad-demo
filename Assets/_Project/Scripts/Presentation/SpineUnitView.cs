@@ -162,9 +162,12 @@ namespace Wassup.Presentation
                 for (int i = 0; i < renderers.Length; i++)
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                    // tilted-billboard unit 9 — 지름 = 점유 폭 × 전역 배율. 1×1 은 종전과 동일(무회귀).
+                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
+                        Mathf.Max(1, _visualData != null ? _visualData.FootprintWidthCells : 1)
+                            * BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
+                        BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
         }
 
@@ -301,10 +304,18 @@ namespace Wassup.Presentation
             // 이 스윕에 안 걸리지만 프리셋의 pointA 파티클은 리그의 자식이라 걸린다.
             // 그대로 두면 파티클만 유닛 대역(수백)으로 끌려가 리본(15500)과 갈라지고
             // 앞 유닛에 가린다(실측: 파티클 111 vs 리본 15500). 리그가 자기 대역을 소유한다.
+            // tilted-billboard unit 8 — 블롭도 **자기 대역을 소유한 자식**이라 같은 이유로 제외한다.
+            // 이 스윕은 매 프레임 돌아, 빼지 않으면 Attach 가 세운 ShadowOrder(-5)가 첫 프레임에
+            // 캐릭터 대역으로 덮여 영구히 복원되지 않는다(그림자가 옆 유닛 위로 올라온다).
+            // 가드는 **캐시된 참조 비교**다(rigRoot 와 같은 형태). GetComponentInParent 로 찾으면
+            // 렌더러마다 계층을 거슬러 오르는 비용이 매 프레임 붙고, 그 API 는 비활성 오브젝트를
+            // 건너뛰어 — 이 스윕은 비활성까지 열거하므로 — 블롭이 꺼진 순간 가드가 조용히 뚫린다.
             Transform rigRoot = _weaponTrail != null ? _weaponTrail.transform : null;
+            Transform blobRoot = _blob != null ? _blob.transform : null;
             for (int i = 0; i < renderers.Length; i++)
             {
                 if (rigRoot != null && renderers[i].transform.IsChildOf(rigRoot)) continue;
+                if (blobRoot != null && renderers[i].transform == blobRoot) continue;
                 renderers[i].sortingOrder = order;
             }
         }

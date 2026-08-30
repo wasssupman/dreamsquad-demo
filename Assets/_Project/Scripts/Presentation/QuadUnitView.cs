@@ -45,7 +45,9 @@ namespace Wassup.Presentation
             return rect.width > 0f && rect.height > 0f;
         }
 
-        public void Configure(Entity entity, Mesh mesh, Material material, float visualScale)
+        // tilted-billboard unit 9 — footprintWidth 는 블롭 지름의 기준(점유 폭, 셀).
+        public void Configure(Entity entity, Mesh mesh, Material material, float visualScale,
+            int footprintWidth)
         {
             _entity = entity;
             Mesh quad = mesh != null ? mesh : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
@@ -76,9 +78,10 @@ namespace Wassup.Presentation
             {
                 _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
+                        Mathf.Max(1, footprintWidth) * BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
+                        BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
 
             // 재스폰/머티리얼 리빌드는 cutout 기준으로 되돌린다 → 다음 SetDimmed 가 정확히 재적용.
@@ -208,8 +211,15 @@ namespace Wassup.Presentation
         public void SetSortingOrder(int order)
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
+            // tilted-billboard unit 8 — 블롭은 자기 대역(ShadowOrder)을 소유한다. 이 스윕은 매
+            // 프레임 돌아, 빼지 않으면 Attach 가 세운 -5 가 캐릭터 대역으로 덮여 복원되지 않는다.
+            // 캐시 참조 비교인 이유는 SpineUnitView.UpdateSortingOrder 주석 참조.
+            Transform blobRoot = _blob != null ? _blob.transform : null;
             for (int i = 0; i < renderers.Length; i++)
+            {
+                if (blobRoot != null && renderers[i].transform == blobRoot) continue;
                 renderers[i].sortingOrder = order;
+            }
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)

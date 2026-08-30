@@ -176,6 +176,7 @@ namespace Wassup.Core
             _blockedActive = false;
             ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
             ClearTelegraphCells(); // ultimate-leap unit 4 — 예고가 맵 너머로 살아남지 않게
+            ClearGhostCells(); // defender-footprint unit 2 — 고스트도 맵 경계에서 회수
             _effectTileCells.Clear(); // unit 26 — 타일맵을 비웠으니 기억도 비운다(맵 리빌드 경계)
         }
 
@@ -282,6 +283,9 @@ namespace Wassup.Core
             // first-run-tutorial unit 1 — 같은 이유로 이 목록에 있어야 한다. 지금은 맵 설명 전용이라
             // 드래그와 겹칠 일이 없지만, 빠뜨린 타일맵은 언젠가 -13 에 굳는다(위 ultimate-leap 사례).
             SetRendererSorting(_blockedTilemap, above ? 9998 : -13);
+            // defender-footprint unit 2 — 고스트는 range(10000/-12) **위**: 확정될 영역·사유가
+            // 최우선 정보다. hover overlay(10002)보다는 아래.
+            SetRendererSorting(_ghostTilemap, above ? 10001 : -11);
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -1006,6 +1010,65 @@ namespace Wassup.Core
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles();
             _placeableActive = false;
         }
+
+        // defender-footprint unit 2 — footprint 고스트 + 주변 배치불가 컨텍스트 레이어.
+        // per-cell 색이 필요해 placeable(균일 tint)과 별개다. 채움 타일은 telegraphTile(흰 solid +
+        // TileFlags.None — 아래 SetColor 가 원색으로 실린다), 폴백은 placeableTile(색이 죽지만
+        // 안 보이는 것보단 낫다 — SetTelegraphCells 의 폴백 규약과 동일).
+        private Tilemap _ghostTilemap;
+        private readonly List<Vector2Int> _ghostCells = new List<Vector2Int>();
+
+        private void EnsureGhostTilemap()
+        {
+            if (_ghostTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("FootprintGhostTiles");
+            go.transform.SetParent(grid.transform, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.05f); // ground 와 깊이 평면 분리(z-fight)
+            _ghostTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _ghostTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = _highlightAbove ? 10001 : -11; // SetPlacementHighlightAboveUnits 의 표와 동일
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용(placeable 과 동일)
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+        }
+
+        public void SetGhostCells(IReadOnlyList<Vector2Int> cells, IReadOnlyList<Color> colors)
+        {
+            if (grid == null || _tileSet == null || cells == null || colors == null || colors.Count != cells.Count)
+                return;
+            var tile = _tileSet.telegraphTile != null ? _tileSet.telegraphTile : _tileSet.placeableTile;
+            if (tile == null) return;
+            ClearGhostCells();
+            EnsureGhostTilemap();
+            if (_ghostTilemap == null) return;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                var tc = ToCell(cell);
+                _ghostTilemap.SetTile(tc, tile);
+                _ghostTilemap.SetTileFlags(tc, TileFlags.None);
+                _ghostTilemap.SetColor(tc, colors[i]);
+                _ghostCells.Add(cell);
+            }
+        }
+
+        public void ClearGhostCells()
+        {
+            if (_ghostTilemap == null || _ghostCells.Count == 0) return;
+            _ghostTilemap.ClearAllTiles();
+            _ghostCells.Clear();
+        }
+
+        // defender-footprint unit 2 rev 2 — 전역 배치불가 고스트가 **사거리 표시 칸을 비켜 가기**
+        // 위한 read seam. 사거리 링 위에 빨강/노랑이 얹히면 링이 붉게 물들어 사거리 읽기가
+        // 흐려진다(사용자 피드백 2026-08-28) — 겹친 칸은 고스트 쪽이 양보한다.
+        public bool IsPlacementRangeCell(Vector2Int cell) => _rangeCells.Contains(cell);
 
         // first-run-tutorial unit 1 — 배치 **불가** 칸 하이라이트. EnsurePlaceableTilemap 과 같은 관용구.
         private void EnsureBlockedTilemap()

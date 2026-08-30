@@ -153,6 +153,18 @@ namespace Wassup.UI
             Vector2 ghostSize = slot.rect.rect.size;
             Sprite face = slot.art != null ? slot.art.sprite : null;
             var host = target;
+            // defender-footprint unit 5 — 탭 즉발도 D&D 와 같은 부착 유예(지연 커밋 + 비행 중
+            // 고스트 탭 취소). 커밋 경로 자체는 동일(CommitAttach)이라 계약 4 승계도 그대로다.
+            Vector2 tapPulse = default;
+            bool tapHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out tapPulse);
+            if (_view.FlyCardToUnitDeferred(_index, entryId, startUiWorld, ghostSize, face, host,
+                    () => _view.Controller.CommitAttach(entryId, host)))
+            {
+                if (tapHasPulse) _view.Focus?.Confirm(tapPulse);
+                EndInteraction();
+                _view.NotifyInteractionEnded();
+                return;
+            }
             CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                 () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
         }
@@ -308,6 +320,19 @@ namespace Wassup.UI
                     Vector2 ghostSize = slot.rect.rect.size;
                     Sprite face = slot.art != null ? slot.art.sprite : null;
                     var host2 = host;
+                    // defender-footprint unit 5 — 부착 유예: 커밋을 흡수 도착 프레임으로 지연,
+                    // 비행 중 고스트 카드 탭 = 취소(무차감 — 커밋 자체가 아직 없다). 확정 비트는
+                    // 릴리즈 즉시(조준 확정감은 유예와 별개 신호). 프리젠터 미가용 폴백 = 기존 즉시 커밋.
+                    Vector2 deferPulse = default;
+                    bool deferHasPulse = _view.Focus != null && _view.Focus.TryCaptureConfirmCenter(out deferPulse);
+                    if (_view.FlyCardToUnitDeferred(_index, entryId, startUiWorld, ghostSize, face, host2,
+                            () => _view.Controller.CommitAttach(entryId, host2)))
+                    {
+                        if (deferHasPulse) _view.Focus?.Confirm(deferPulse);
+                        EndInteraction();
+                        _view.NotifyInteractionEnded();
+                        return;
+                    }
                     CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                         () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
                     return;
@@ -689,9 +714,16 @@ namespace Wassup.UI
         {
             Entity found = Entity.Null;
             Vector2Int? cell = null;
+            var focusCfg = _view.FocusConfig;
             // rev 4-3 — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅). 보드 평면 셀
             // 조회는 발밑을 정확히 가리킬 때만 맞아서 2차(폴백 quad 뷰 포함).
-            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell))
+            // defender-footprint unit 4 — 패딩(넓은 부착 영역)·자석(요구 문서 8절) 노브 전달.
+            // rev 2026-08-28 — 자석은 부착 **유효** 유닛만(_attachable 스냅샷). 직접 터치는
+            // 무효 유닛도 잡는다(invalid 폼으로 사유를 보여주는 기존 lock-on 계약).
+            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell,
+                    focusCfg != null ? focusCfg.unitPickPaddingPx : 0f,
+                    focusCfg != null ? focusCfg.unitPickMagnetPx : 0f,
+                    _attachable))
             {
                 cell = pickedCell;
                 found = picked;
@@ -702,22 +734,32 @@ namespace Wassup.UI
                 found = entity;
             }
 
-            // dreamcatcher-attach-lockon 계약 #4 — 정체 히스테리시스: 현재 락온이 아직
-            // 손가락 밑이면, 새 후보가 마진 이상 더 가깝지 않는 한 유지(밀집 플리커 차단).
+            // dreamcatcher-attach-lockon 계약 #4 — 정체 히스테리시스: 새 후보가 마진 이상
+            // 우세할 때만 전환(밀집 플리커 차단).
+            // defender-footprint unit 4 — 기존 게이트(curRect.Contains)는 손가락이 현재 렉트를
+            // 벗어나는 순간 전환 지연이 0 이 되는 구멍이었다. 점→렉트 거리 비교로 일원화 —
+            // 자석 반경 안(렉트 밖)에서도 히스테리시스가 산다.
             if (found != _hoverEntity && _hoverEntity != Entity.Null && found != Entity.Null)
             {
-                float hyst = _view.FocusConfig != null ? _view.FocusConfig.lockSwitchHysteresisPx : 0f;
+                float hyst = focusCfg != null ? focusCfg.lockSwitchHysteresisPx : 0f;
                 if (hyst > 0f
                     && _view.Bridge.TryGetUnitScreenRect(_hoverEntity, _view.MainCamera, out var curRect)
-                    && curRect.Contains(screenPos)
                     && _view.Bridge.TryGetUnitScreenRect(found, _view.MainCamera, out var newRect)
-                    && Vector2.Distance(curRect.center, screenPos)
-                       - Vector2.Distance(newRect.center, screenPos) < hyst)
+                    && Wassup.Bridge.BattleBridge.ScreenDistanceToRect(curRect, screenPos)
+                       - Wassup.Bridge.BattleBridge.ScreenDistanceToRect(newRect, screenPos) < hyst)
                 {
                     found = _hoverEntity;   // keep current lock
                     cell = _hoverCell;
                 }
             }
+
+            // rev 2026-08-28 — 락온 획득/전환 순간 대상 유닛이 **몸으로** 반응한다(스케일 펀치).
+            // 링·틴트·테더는 오버레이 신호고, 유닛 자체의 반응이 «지금 이 유닛이 활성 목적지»를
+            // 가장 직관적으로 말한다(Apple drop destination 가이드 취지). 유효 대상만 —
+            // 무효(3/3 등)는 invalid 폼이 담당. 히스테리시스가 전환 빈도를 이미 누르므로 스팸 없음.
+            if (found != _hoverEntity && found != Entity.Null && _attachable.Contains(found)
+                && _view.Bridge.TryGetUnitView(found, out var lockView) && lockView != null)
+                lockView.PlayPunch();
 
             // 계약 #6 — 전체 빨강 틴트 제거. 정체 신호는 리티클(위치)+콜아웃(정체).
             _hoverCell = cell;
