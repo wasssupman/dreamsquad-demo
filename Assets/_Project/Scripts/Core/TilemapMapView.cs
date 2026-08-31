@@ -112,8 +112,10 @@ namespace Wassup.Core
         // 실제 값은 렌더러별 인스턴스가 덮어쓴다.
         private const float TargetMarkQuadCells = 5f;
 
-        // distance-based-range unit 7 — **사거리 안 상대 마크.** 「어느 칸이 사거리 안인가」 대신
-        // 「누가 맞나」를 직접 말한다. 판정이 대상 단위이므로 표기도 대상 단위가 맞다.
+        // distance-based-range unit 7 — **사거리 안 공격 대상 마크.** 「어느 칸이 사거리 안인가」
+        // 대신 「누가 맞나」를 직접 말한다. 판정이 대상 단위이므로 표기도 대상 단위가 맞다.
+        // ⚠ 「상대 진영」이 아니라 「**공격 대상**」이다 — 마스크는 저작이 정하고, 지원형(힐러)은
+        // 호출부가 아예 안 부른다(빨강이 「이 아군이 표적」으로 읽히기 때문).
         //
         // ⚠ **몸체 틴트가 아니다.** Spine 의 R/G/B 는 곱셈이라 「밝힘」이 불가능하고, 붉히려면
         // G/B 를 깎는 수밖에 없는데 **저체력 틴트가 같은 방향으로 깎는다** → 곱해지면 검붉게
@@ -129,6 +131,9 @@ namespace Wassup.Core
         // 유닛 발밑 원의 반지름(타일). 거점은 자기 점유 반폭을 쓰므로 이 값이 테 두께 역할만 한다.
         private const float TargetMarkUnitRadius = 0.35f;
         private const float TargetMarkStructurePad = 0.2f;
+        // 그림이 쿼드에 잘리지 않게 두는 여유(타일). 위 `quad` 계산의 주석 참조 —
+        // `.mat` 의 `_Thickness*0.5 + _LinerWidth + _Feather` 보다 커야 한다.
+        private const float TargetMarkPad = 0.35f;
         private int _targetMarkCount;   // 마지막으로 요청된 대상 수(유효성 토글이 이걸 다시 켠다)
 
         // 점액 관성 — 표시용 당김 벡터(dir×t)를 스프링으로 지연/출렁. 신호(정책)는 그대로, 시각만 늦는다.
@@ -609,6 +614,8 @@ namespace Wassup.Core
             if (_tileSet.placementRangeRingMaterial == null)
             {
                 // 링과 같은 규약 — 조용히 사라지지 않고 1회 명시 실패한다.
+                // ⚠ 게이트를 링과 **공유**하는 것은 의도다: 근본이 하나(같은 `.mat` 필드)라
+                // 경고 두 번은 소음이다. 대신 먼저 발화한 쪽 문구만 나온다(호출 순서 의존).
                 if (!_rangeRingMatMissing)
                 {
                     Debug.LogWarning("TilemapMapView: placementRangeRingMaterial 미배선 — 사거리 대상 마크 생략.", this);
@@ -643,7 +650,13 @@ namespace Wassup.Core
                 // 헤더가 「URP Decal 금지」를 명시할 만큼 민감한 축이다).
                 // 필요한 크기 = 그림 반경 × 2 + 선·라이너·feather 여유.
                 float drawR = he + (he > 0f ? TargetMarkStructurePad : TargetMarkUnitRadius);
-                float quad = (drawR + 0.35f) * 2f;
+                // ⚠ 여유 `TargetMarkPad` 는 **`.mat` 값에 매여 있다.** 셰이더가 가장 바깥까지
+                // 그리는 것은 라이너이고 그 끝 = `_Thickness*0.5 + _LinerWidth + _Feather` 다.
+                // 현재 `.mat`(0.09 / 0.05 / 0.018) → 0.113 이라 0.237 남지만, 프로퍼티 Range 상한
+                // 조합(0.4 / 0.2 / 0.08)이면 **0.48 로 여유를 넘는다.** 룩 튜닝으로 `_Thickness` 를
+                // 0.3 만 올려도 마크 테가 **사각으로 잘리고**, 증상은 「마크가 각졌다」로 나타나
+                // 원인이 쿼드라는 걸 아무도 못 읽는다. **`.mat` 을 만지면 여기도 본다.**
+                float quad = (drawR + TargetMarkPad) * 2f;
                 sr.transform.localScale = new Vector3(quad * cs, quad * cs, 1f);
                 sr.sharedMaterial.SetFloat(RingQuadCellsId, quad);   // uv→타일 매핑 동기
                 // 거점(he>0)은 점유 사각을 두르고, 유닛(he==0)은 작은 원이 된다.

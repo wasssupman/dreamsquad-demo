@@ -69,7 +69,8 @@ namespace Wassup.Data
                  "링이 없는 경로(스킬 조준 등)는 종전대로 rangeInvalidColor 로 붉어진다 — 거기선 겹칠 선이 없다.")]
         [Range(0f, 1f)] public float rangeInvalidDesaturate = 0.75f;
 
-        [Tooltip("사거리 안 **상대 마크**(발밑)의 색 — distance-based-range unit 7. 「이놈들이 맞는다」.\n" +
+        [Tooltip("사거리 안 **공격 대상 마크**(발밑)의 색 — distance-based-range unit 7. 「이놈들이 맞는다」.\n" +
+                 "⚠ 지원형(힐러)에는 안 켜진다 — 빨강이 「이 아군이 표적」으로 읽힌다.\n" +
                  "⚠ 고스트 충돌과 **같은 빨강 계열**이어도 된다: 둘은 **시간으로 갈린다** — 배치가 무효면 " +
                  "마크를 아예 안 켠다(무효일 땐 「내가 뭘 때릴까」가 무의미하다). 그래서 화면의 빨강은 " +
                  "항상 한 뜻이다.\n" +

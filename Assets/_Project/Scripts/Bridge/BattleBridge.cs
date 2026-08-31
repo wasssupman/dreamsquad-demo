@@ -3786,8 +3786,24 @@ namespace Wassup.Bridge
                     }
                     catch (NullReferenceException)
                     {
-                        // ★**두 쿼리를 함께** 되살린다 — 한쪽만 만들면 전멸 판정 쿼리가 stale 인 채
+                        // ★**세 쿼리를 함께** 되살린다 — 한쪽만 만들면 전멸 판정 쿼리가 stale 인 채
                         // 남아 NoQueuedAttackersRemain() 에서 그 판의 웨이브 진행이 멎는다.
+                        // (distance-based-range unit 7 로 `_rangeTargetQuery` 가 셋째로 합류했다.
+                        //  「둘」로 적혀 있던 것이 M-1 과 **같은 드리프트**였다 — 생성만 늘리고
+                        //  이 주석·반납을 안 고치는 것.)
+                        // ⚠ 기존 셋을 **먼저 반납한다.** 안 그러면 이 예외 경로를 탈 때마다
+                        //  쿼리 셋이 통째로 샌다(예전엔 둘이 샜다).
+                        if (_aliveAttackersQueryCreated)
+                        {
+                            try
+                            {
+                                _aliveAttackersQuery.Dispose();
+                                _aliveNormalAttackersQuery.Dispose();
+                                _rangeTargetQuery.Dispose();
+                            }
+                            catch (Exception) { /* stale 이라 여기 온 것이다 — 반납 실패는 무시 */ }
+                            _aliveAttackersQueryCreated = false;
+                        }
                         CreateAliveAttackerQueries();
                         entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                     }
@@ -7817,7 +7833,15 @@ namespace Wassup.Bridge
             // ⚠ **방향 지정 유닛은 마크도 안 켠다.** 링을 뺀 근거(「방향 유닛에게 원 사거리는
             // 거짓말이다 — 레인만 때린다」)가 마크에는 **더 강하게** 적용된다: 링은 「여기까지」를
             // 말하지만 마크는 「이놈이 맞는다」를 말하므로, 레인 밖 적에 켜지면 더 구체적인 거짓말이다.
-            if (!unit.RequiresFacing) RefreshRangeTargetMarks(center, tileRange, unit);
+            // ⚠ **지원형(`targetAllies`)도 마크를 안 켠다.** H-1 수정으로 마스크가 sim 과 같아지자
+            // 힐러의 마스크가 `AllyMask`(DefenderUnit 단독)가 되어 **아군에게 빨간 마크**가 켜졌다.
+            // 데이터는 맞고 **색이 틀렸다** — 빨강은 「네 배치가 충돌한다」(고스트)와 「이놈이 맞는다」
+            // (마크)를 이미 시간으로 갈라 쓰는데, 「이 아군이 회복된다」는 **세 번째 뜻**이고 하필
+            // 화면에서 「이 아군이 표적이 됐다」로 읽힌다. 게다가 유효한 배치에서 두 빨강이 **동시에**
+            // 뜰 수 있어 시간 분리 장치도 못 가른다.
+            // 방향 유닛과 **같은 판단**이다 — 「이놈들이 맞는다」가 그 유닛에겐 의미가 없다.
+            // 「누가 회복되나」는 별개 표기이고 후속 후보다(색 축을 새로 열어야 한다).
+            if (!unit.RequiresFacing && !unit.targetAllies) RefreshRangeTargetMarks(center, tileRange, unit);
             else if (tilemapMapView != null) tilemapMapView.SetRangeTargetMarks(null, null);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
@@ -7830,8 +7854,16 @@ namespace Wassup.Bridge
         // ⚠ **판정을 복제하지 않는다.** 여기서 거리 산식을 다시 쓰면 표기와 판정이 갈리고,
         // 그게 이 spec 전체가 없애려던 문제다. `AttackReach.InReach` 하나를 지난다.
         //
-        // 대상 = 상대 진영의 **유닛 + 거점**. 거점을 넣는 이유: 본능·마음도 전투에 참여하고
-        // (`no_defense` 골든의 공격 이벤트가 그것들이다) 점유가 커서 「왜 저건 안 켜지지」가 된다.
+        // 대상 = 이 유닛의 **공격 대상**(유닛 + 거점). 「상대 진영」이 아니다 — 마스크는 저작이
+        // 정하고, 지원형은 호출부가 아예 안 부른다(위 N-1). 거점을 넣는 이유: 본능·마음도 전투에
+        // 참여하고(`no_defense` 골든의 공격 이벤트가 그것들이다) 점유가 커서 「왜 저건 안 켜지지」가 된다.
+        //
+        // ⚠ **`CoreShielded` 는 여기 도달 불가라 거르지 않는다.** `AttackSystem` 의 후보 쿼리에는
+        // 그 `WithNone` 이 있어 「빠뜨렸나」가 자연스러운 의심인데, 검산하면 교집합이 공집합이다:
+        // 그 태그의 유일한 writer(`SyncGoalStability`)가 **우리 마음(DefenderCore)에만** 붙이고,
+        // 이 마스크는 `Resolve` 의 세 결과 중 어느 것도 `DefenderCore` 비트를 갖지 않는다
+        // (AllyMask=DefenderUnit · 저작값 전 27종이 적 진영 · Legacy=EnemyUnit).
+        // 적지 않으면 다음 사람이 이 검산을 처음부터 다시 한다.
         private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit)
         {
             _markPos.Clear();
