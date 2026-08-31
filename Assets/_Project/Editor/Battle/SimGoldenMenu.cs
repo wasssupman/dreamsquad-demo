@@ -18,17 +18,48 @@ namespace Wassup.EditorTools.Battle
         private const string GoldenDir = "Assets/_Project/Tests/Golden";
         private const string ReportPath = "docs/spec/battle-sim-extraction/golden-corpus.md";
 
+        // 코퍼스에 시나리오를 **추가**했을 때 쓴다 — 기존 골든은 손대지 않고 파일이 없는 것만 굽는다.
+        // ⚠ 전체 재생성으로 대신하면 안 된다: 그건 기존 7건의 기준선을 «지금 코드» 로 덮어써서
+        // 그 시나리오들이 지키던 회귀 감시를 그 자리에서 무효로 만든다. 새 축을 여는 것과
+        // 기존 축을 리베이스하는 것은 다른 동작이고, 후자는 의도적으로만(unit 6) 한다.
+        [MenuItem("Wassup/Battle/Sim Harness/Bake Missing Goldens Only")]
+        public static void BakeMissing() => RegenerateInternal(missingOnly: true);
+
         [MenuItem("Wassup/Battle/Sim Harness/Regenerate Golden Corpus")]
-        public static void Regenerate()
+        public static void Regenerate() => RegenerateInternal(missingOnly: false);
+
+        private static void RegenerateInternal(bool missingOnly)
         {
             if (!SimHarnessGuards.TryGetBridge(out var bridge)) return;
             System.IO.Directory.CreateDirectory(GoldenDir);
 
             var lines = new List<string>();
             int failed = 0;
+            int skipped = 0;
             foreach (var sc in SimHarnessRunner.Corpus)
             {
+                if (missingOnly && System.IO.File.Exists(Path(sc.name)))
+                {
+                    skipped++;
+                    var kept = LegacyTraceV0.Deserialize(System.IO.File.ReadAllText(Path(sc.name)));
+                    lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | {kept.events.Count} | "
+                              + $"{kept.finalKills}/{kept.finalLeaks} | `{kept.configHash}` (유지) |");
+                    continue;
+                }
                 var run = SimHarnessRunner.Run(bridge, sc, record: true);
+
+                // ── 셋업 게이트 ──
+                // 판을 세우다 실패했으면(예: 시나리오 덱을 못 만들었다) **저장하지 않는다.**
+                // 로그만 남기고 통과시키면 그 시나리오가 증언하려던 축이 사라진 채로 기준선이
+                // 구워진다 — 아래 공허·왕복 게이트와 같은 계열의 사고다.
+                if (run.setupError != null)
+                {
+                    failed++;
+                    Debug.LogError($"[Golden] '{sc.name}' 셋업 실패 — **저장하지 않는다**: {run.setupError}");
+                    lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | — | — | ✗ 셋업 실패 |");
+                    continue;
+                }
+
                 var trace = run.trace;
                 string text = trace.Serialize();
 
@@ -81,9 +112,12 @@ namespace Wassup.EditorTools.Battle
                 Debug.Log($"[Golden] '{sc.name}' 저장 — 이벤트 {trace.events.Count}, 킬 {trace.finalKills}, 유출 {trace.finalLeaks}");
             }
 
+            SimHarnessRunner.RestoreDefaultPool(bridge);
             System.IO.File.WriteAllText(ReportPath, BuildReport(lines, regenerated: true, failed: failed, diffs: null));
             AssetDatabase.Refresh();
-            Debug.Log($"[Golden] 코퍼스 {SimHarnessRunner.Corpus.Length}건 재생성 (왕복 실패 {failed}). 보고서: {ReportPath}");
+            Debug.Log($"[Golden] 코퍼스 {SimHarnessRunner.Corpus.Length}건 중 "
+                      + $"{SimHarnessRunner.Corpus.Length - skipped}건 {(missingOnly ? "신규 베이크" : "재생성")}"
+                      + $"{(skipped > 0 ? $" · {skipped}건 기존 유지" : "")} (실패 {failed}). 보고서: {ReportPath}");
         }
 
         [MenuItem("Wassup/Battle/Sim Harness/Verify Against Golden Corpus")]
@@ -103,13 +137,21 @@ namespace Wassup.EditorTools.Battle
                     continue;
                 }
                 var golden = LegacyTraceV0.Deserialize(System.IO.File.ReadAllText(path));
-                var run = SimHarnessRunner.Run(bridge, sc, record: true).trace;
+                var runResult = SimHarnessRunner.Run(bridge, sc, record: true);
+                if (runResult.setupError != null)
+                {
+                    diffs.Add($"`{sc.name}` — 셋업 실패라 **대조 자체가 성립하지 않는다**: {runResult.setupError}");
+                    lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | — | — | ✗ 셋업 실패 |");
+                    continue;
+                }
+                var run = runResult.trace;
                 string diff = golden.DiffAgainst(run);
                 lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | {run.events.Count} | "
                           + $"{run.finalKills}/{run.finalLeaks} | {(diff == null ? "✓" : "✗")} |");
                 if (diff != null) diffs.Add($"`{sc.name}` — {diff}");
             }
 
+            SimHarnessRunner.RestoreDefaultPool(bridge);
             System.IO.File.WriteAllText(ReportPath, BuildReport(lines, regenerated: false, failed: diffs.Count, diffs: diffs));
             AssetDatabase.Refresh();
             Debug.Log(diffs.Count == 0

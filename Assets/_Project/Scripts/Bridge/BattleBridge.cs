@@ -8573,8 +8573,6 @@ namespace Wassup.Bridge
             {
                 var carrier = carriers[i];
                 var req = _em.GetComponentData<Wassup.Battle.Combat.PatrolSpawnRequest>(carrier);
-                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.PatrolSpawn,
-                    SimIdOf(req.owner), i: req.patrolDataIndex);
                 _em.DestroyEntity(carrier);
 
                 if (!_em.Exists(req.owner)) continue;
@@ -8592,6 +8590,16 @@ namespace Wassup.Bridge
 
                 var patrol = CreatePatrolEntity(so, req.ownerCell, homeCell, req.coverTileRadius, req.owner);
                 if (patrol == Entity.Null) continue;
+
+                // ⚠ **생성 뒤에 기록한다.** 전에는 carrier 를 소비하는 자리(위)에서 찍어서
+                // 스냅 실패·인덱스 불량으로 소환이 **취소된 경우에도** 「순찰병 스폰」이 남았다.
+                // 그리고 `b` 에 순찰병 자신의 SimEntityId 를 싣는다 — 예전엔 소환사 id 만 있어
+                // **트레이스에서 순찰병을 식별할 방법이 아예 없었고**, 그래서 골든이 그 축을
+                // 감시해도 사람이 「감시하고 있나」를 확인할 수 없었다(distance-based-range unit 1).
+                // 순찰병은 이 프로젝트의 **유일한 연속 이동 아군**이라 사거리 술어의 2차 게이트가
+                // 실제로 걸리는 조합의 한쪽이다. 식별 가능해야 그 축이 살아 있는지 읽을 수 있다.
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.PatrolSpawn,
+                    SimIdOf(req.owner), SimIdOf(patrol), i: req.patrolDataIndex);
 
                 if (_em.HasComponent<Wassup.Battle.Combat.SummonerState>(req.owner))
                 {

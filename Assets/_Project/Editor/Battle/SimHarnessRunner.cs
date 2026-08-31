@@ -62,6 +62,10 @@ namespace Wassup.EditorTools.Battle
                            placementTicks = new int[0] },
             // 연속 이동 아군(순찰병)이 판에 서는 유일한 시나리오. 위 defenderIds 주석 참조 —
             // 이게 없으면 `AttackReach` 2차 게이트의 실효 경로가 코퍼스에 0 이다.
+            // ⚠ 덱 구성을 만지지 말 것 — 2종([summoner,archer])·3600틱을 시도했다가 되돌렸다.
+            // 소환사 지분을 5회 중 3회로 올리고 시간을 2배로 줬는데도 순찰병 스폰은 2회 그대로였고
+            // (소환 게이트가 시간이 아니라 상태로 걸린다), 캐논이 빠져 판이 무너졌다
+            // (킬 9→1 · 유출 0→1). 3종 1800틱이 「순찰병이 있는 건강한 판」이다.
             new Scenario { name = "summoner",   seed = 20260822, ticks = 1800,
                            placementTicks = new[] { 150, 330, 510, 690, 900 },
                            defenderIds = new[] { "summoner", "archer", "cannon" } },
@@ -93,11 +97,15 @@ namespace Wassup.EditorTools.Battle
             public string configHash;
             public Digest[] digests;
             public LegacyTraceV0 trace;   // record: false 면 null
+            // 판을 세우는 단계에서 실패했다 — **이 트레이스는 저장하면 안 된다.**
+            // 로그만 남기고 통과시키면 「축이 사라진 채로 통과하는」 골든이 정확히 다시 생긴다
+            // (공허 게이트·왕복 게이트와 같은 계열). null = 정상.
+            public string setupError;
         }
 
         public static RunResult Run(BattleBridge bridge, in Scenario sc, bool record)
         {
-            StartMatch(bridge, sc);
+            string setupError = StartMatch(bridge, sc);
             if (record)
                 LegacyTraceRecorder.Begin(sc.name, bridge.MatchConfigHash, sc.seed, StepDt);
 
@@ -133,7 +141,7 @@ namespace Wassup.EditorTools.Battle
                 SimHarnessClock.End();
             }
 
-            var result = new RunResult { configHash = bridge.MatchConfigHash, digests = digests };
+            var result = new RunResult { configHash = bridge.MatchConfigHash, digests = digests, setupError = setupError };
             if (record)
             {
                 bridge.ReadFinalTally(out int kills, out int score, out int leaks);
@@ -144,14 +152,15 @@ namespace Wassup.EditorTools.Battle
             return result;
         }
 
-        private static void StartMatch(BattleBridge bridge, in Scenario sc)
+        // 실패하면 사유 문자열, 정상이면 null.
+        private static string StartMatch(BattleBridge bridge, in Scenario sc)
         {
             bridge.StopBattle();
             bridge.SetMatchSeed(sc.seed);
             bridge.PrepareDraftMap();
             // ⚠ 덱 교체는 **`BeginPlacement` 앞**이어야 한다 — 그 호출이 판을 짓고 코스트·상한을
             // 덱 기준으로 세운다. 뒤에 바꾸면 배치가 옛 덱 기준으로 거부된다.
-            ApplyScenarioPool(bridge, sc);
+            string setupError = ApplyScenarioPool(bridge, sc);
             bridge.BeginPlacement();
             bridge.StartBattle();
 
@@ -161,6 +170,7 @@ namespace Wassup.EditorTools.Battle
             var cost = Wassup.Core.GameManager.Instance != null
                 ? Wassup.Core.GameManager.Instance.CostRuntime : null;
             if (cost != null) { cost.ResetToStart(); cost.BeginRegen(); }
+            return setupError;
         }
 
         // 씬 기본 덱. **첫 호출 때 한 번만** 잡는다 — 덱을 지정한 시나리오가 돈 뒤에
@@ -172,29 +182,47 @@ namespace Wassup.EditorTools.Battle
         // **다음 시나리오까지 남의 덱으로 돈다** — 코퍼스 전체가 조용히 다른 판이 된다.
         // 못 찾은 id 는 조용히 넘기지 않는다: 빠진 채로 돌면 그 시나리오가 증언하려던 축이
         // 사라지는데 통과는 한다.
-        private static void ApplyScenarioPool(BattleBridge bridge, in Scenario sc)
+        private static string ApplyScenarioPool(BattleBridge bridge, in Scenario sc)
         {
             if (_sceneDefaultPool == null) _sceneDefaultPool = bridge.DefenderPool;
             if (sc.defenderIds == null || sc.defenderIds.Length == 0)
             {
                 bridge.SetDefenderPool(_sceneDefaultPool);
-                return;
+                return null;
             }
             var all = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
             if (all == null || all.Length == 0)
             {
-                Debug.LogError($"[SimHarness] '{sc.name}' — DefenderCatalog 를 못 찾았다. 덱 교체 실패.");
                 bridge.SetDefenderPool(_sceneDefaultPool);
-                return;
+                return "DefenderCatalog 를 못 찾았다(로드된 에셋만 보이는 조회라 세션 초반에 흔하다)";
             }
+            if (all.Length > 1)
+                Debug.LogWarning($"[SimHarness] DefenderCatalog 가 {all.Length}개 로드돼 있다 — "
+                    + "어느 것이 잡힐지 비결정적이다. 덱 해석이 판마다 갈릴 수 있다.");
             var pool = new List<Wassup.Data.DefenderUnitData>(sc.defenderIds.Length);
+            var missing = new List<string>();
             foreach (var id in sc.defenderIds)
             {
                 var u = all[0].ById(id);
-                if (u == null) { Debug.LogError($"[SimHarness] '{sc.name}' — 덱 id '{id}' 없음."); continue; }
+                if (u == null) { missing.Add(id); continue; }
                 pool.Add(u);
             }
-            bridge.SetDefenderPool(pool.Count > 0 ? pool.ToArray() : _sceneDefaultPool);
+            // ⚠ **부분 덱으로 통과시키지 않는다.** 소환사 하나만 빠져도 이 시나리오가
+            // 증언하려던 축(연속 이동 아군)이 통째로 사라지는데, 판은 멀쩡히 돌고 통과한다.
+            if (missing.Count > 0)
+            {
+                bridge.SetDefenderPool(_sceneDefaultPool);
+                return $"덱 id 미해결: {string.Join(", ", missing)}";
+            }
+            bridge.SetDefenderPool(pool.ToArray());
+            return null;
+        }
+
+        // 코퍼스 루프가 끝난 뒤 씬을 원상복구한다. `defenderPool` 은 `SerializeField` 라
+        // 마지막 시나리오의 덱이 남으면 **씬 저장 시 기본 덱이 갈린다.**
+        public static void RestoreDefaultPool(BattleBridge bridge)
+        {
+            if (_sceneDefaultPool != null) bridge.SetDefenderPool(_sceneDefaultPool);
         }
 
         // 입력은 벽시계가 아니라 **틱 번호**로 반입한다 — 그래야 두 판의 입력이 같은 sim 시각에
