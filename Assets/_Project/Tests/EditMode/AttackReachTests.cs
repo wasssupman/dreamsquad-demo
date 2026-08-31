@@ -126,5 +126,50 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(AttackReach.InCellRange(new int2(0, 0), new int2(2, 2), 2), "체비셰프는 모서리를 포함");
             Assert.IsFalse(R(0, 0, 2, 2, 2), "같은 자리를 사거리 술어는 제외 — 두 자가 다르다는 사실 자체를 고정");
         }
+
+        // ── rev 2: 1×1 끼리는 **진짜 원**이다 ──────────────────────────
+        //
+        // rev 1 은 한 칸을 정사각형으로 봐서 경계가 「직선 4개 + 호 4개」였다. 둘레의 13.7% 가
+        // 직선이고 하필 상하좌우 정중앙이라 **「원이 아니라 라운딩된 사각형」으로 읽혔다**
+        // (사용자 지적 2026-08-31). 반지름 비(대각/축 1.046)로는 안 잡히는 문제였다 —
+        // 눈이 보는 것은 반지름이 아니라 **곡률이 끊기는 지점**이다.
+        //
+        // 그래서 이 테스트는 반지름 비가 아니라 **모든 방향에서 도달 반지름이 같은가**를 본다.
+        // 직선 구간이 하나라도 생기면 그 방향의 반지름이 달라져 바로 빨개진다.
+        [Test]
+        public void OneByOne_ReachBoundary_IsACircle_NoFlatSides()
+        {
+            const int range = 4;
+            float expected = range + Wassup.Skills.SkillMath.SelfBodyRadiusTiles;   // 4.5
+            for (int deg = 0; deg < 360; deg += 5)
+            {
+                float rad = deg * math.PI / 180f;
+                float cx = math.cos(rad), cz = math.sin(rad);
+                // 경계 바로 안쪽은 닿고, 바로 바깥쪽은 안 닿아야 한다 — **모든 방향에서**.
+                Assert.IsTrue(R(0, 0, cx * (expected - 0.02f), cz * (expected - 0.02f), range),
+                    $"{deg}° 에서 경계 안쪽이 안 닿는다 — 이 방향의 반지름이 {expected} 보다 작다");
+                Assert.IsFalse(R(0, 0, cx * (expected + 0.02f), cz * (expected + 0.02f), range),
+                    $"{deg}° 에서 경계 바깥이 닿는다 — 이 방향의 반지름이 {expected} 보다 크다 "
+                    + "(직선 구간이 생긴 것이다 = 라운딩된 사각형으로 돌아갔다)");
+            }
+        }
+
+        [Test]
+        public void MultiCellBody_KeepsTheFlatSides_ByDesign()
+        {
+            // ⚠ `half-extent` 는 죽지 않았다 — 다칸 유닛의 몸은 여전히 **사각**이고, 그 사각의
+            // 변이 직선으로 남는 것이 **맞다**(그게 그 유닛의 몸 모양이다). 1×1 에서만 0 이라
+            // 원이 되는 것이지, 술어가 원 전용이 된 게 아니다.
+            // 반폭 1(3칸 폭) 몸: 축 방향 도달 = 1 + range + 0.5.
+            const float half = 1f, range = 2f;
+            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, half, range, 0f),
+                "축 방향: |Δ|=3.4 → v=2.4 ≤ 2.5");
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, half, range, 0f),
+                "축 방향: |Δ|=3.6 → v=2.6 > 2.5");
+            // 대각은 사각 몸 때문에 축보다 **덜** 멀리 간다(원이 아니다 — 의도).
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, half, range, 0f),
+                "정대각: v=(2.4,2.4) → 3.39 > 2.5");
+        }
+
     }
 }

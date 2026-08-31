@@ -1040,7 +1040,11 @@ namespace Wassup.Core
             // unit 5 — 윤곽. **채움과 같은 입력**에서 나온다(모양을 다시 그리지 않는다).
             // 스킬 조준(squareShape)은 자가 정사각형이라 링을 띄우지 않는다 — 거짓말이 되기 때문.
             if (squareShape) HideRangeRing();
-            else ShowRangeRing(center, tileRange, Wassup.Skills.SkillMath.SelfHalfWidthTiles);
+            // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 2): 사각 반폭은 `_HalfExtent`,
+            // 몸의 원 반지름은 `_Range` 에 더한다. 1×1 이면 반폭 0 → **진짜 원**이 그려진다.
+            else ShowRangeRing(center,
+                    tileRange + Wassup.Skills.SkillMath.SelfBodyRadiusTiles,
+                    Wassup.Skills.SkillMath.SelfHalfExtentTiles);
             ApplyRangeTint();
         }
 

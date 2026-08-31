@@ -64,50 +64,61 @@ namespace Wassup.Skills
             return n;
         }
 
-        // ── 사거리 술어 (distance-based-range unit 4a) ──────────────────────
+        // ── 사거리 술어 (distance-based-range unit 4a · rev 2) ──────────────
         //
-        // **자가 바뀐 지점이다.** 전에는 두 단계였다 — 셀 체비셰프(1차) + 연속↔연속일 때만
-        // 월드 체비셰프(2차). 그 구조가 만든 문제 셋:
-        //   ① 「사거리 안」의 뜻이 **누가 묻느냐에 따라 달랐다** — 타일 고정 유닛은 셀만,
-        //      연속 유닛은 셀+월드. 같은 두 유닛의 같은 거리가 경로에 따라 다르게 판정됐다.
-        //   ② 몸이 없었다. 전부 중심점 대 중심점이라 스프라이트가 1.89배인 보스가
-        //      몸통을 관통당해도 무판정이었다.
-        //   ③ 셀 체비셰프는 **칸 경계에서 튄다** — 반 칸 움직였을 뿐인데 판정이 뒤집힌다.
+        // **몸과 몸 사이의 빈틈**이 자다:
         //
-        // 새 자는 **몸과 몸 사이의 빈틈**이다:
+        //     v = max(|Δ| − halfExtent, 0)          ← 성분별. 몸의 **사각 부분**만 뺀다
+        //     안 ⟺ |v| ≤ range + SelfBodyRadius + targetBodyRadius
         //
-        //     v = max(|Δ| − 0.5, 0)        ← 성분별. 공격자 몸(1칸 정사각)의 반폭을 뺀다
-        //     안 ⟺ |v|² ≤ (사거리 + 대상반경)²
+        // ⚠ **rev 2 에서 0.5 가 뺄셈에서 덧셈으로 옮겨왔다**(사용자 지적 2026-08-31).
+        // rev 1 은 공격자의 한 칸을 **정사각형**으로 봐서 `max(|Δ| − 0.5, 0)` 이었다. 그러면
+        // 경계가 「직선 4개 + 호 4개」가 되고 **둘레의 13.7% 가 직선**이다 — 하필 상하좌우
+        // 정중앙이라 눈이 곡률 끊김을 바로 잡아낸다(「원이 아니라 라운딩된 사각형」).
+        // 반지름 비(대각/축 = 1.046)로는 이 문제가 안 보인다 — **틀린 것을 재고 있었다.**
         //
-        // 읽는 법: 공격자를 **한 칸짜리 상자**로 보고 그 상자에서 대상 중심까지의 거리를 잰다.
-        // 대상의 몸(`targetBodyRadius`)은 사거리에 더한다 — 원과 상자의 민코프스키 합이라
-        // 「큰 몸 = 큰 표적」이 공짜로 나온다.
+        // 지금은 한 칸을 **내접원(반지름 0.5)** 으로 본다 → 1×1 끼리는 `|Δ| ≤ R + 0.5` = **진짜 원**.
+        // 바뀌지 않은 것: 축 방향 사거리(R+0.5 그대로) · 사거리 1의 여덟 이웃(1.414 ≤ 1.5).
+        // 바뀐 것: 얕은 대각 칸 일부가 빠진다(R≥3 에서 (3,2)·(4,3) 등).
         //
-        // **대각이 왜 여전히 닿나**: 대각 인접은 |Δ|=(1,1) → v=(0.5,0.5) → |v|=0.707 ≤ 1.
-        // 사거리 1 의 여덟 이웃은 전부 유지된다. 다만 **사거리 2 의 대각**은 |v|=(1.5,1.5) →
-        // 2.12 > 2 로 **빠진다** — 체비셰프가 정사각형이던 것이 둥근 모서리가 된 것이고,
-        // 이 spec 이 의도한 변화다(허용 면적 −9.5%).
+        // ⚠ **`halfExtent` 는 죽지 않았다.** 다칸 유닛의 몸은 여전히 사각이고(반폭 `(w−1)/2`),
+        // 거기에 0.5 원이 더해지는 형태다 — 1×1 이면 halfExtent 가 0 이라 순수 원이 된다.
+        // 셰이더도 같은 식이라 파라미터 값만 달라진다(`_HalfExtent`=0, `_Range`=R+0.5).
         //
-        // **0.5 는 공격자에게만 붙는다.** 대상 쪽에도 반폭을 주면 유닛↔유닛 간격이 N+1.0 이 되어
-        // 오늘(N+0.5)보다 **넓어진다** — 전 유닛이 1×1 이라(`FootprintWidthCells => 1`,
-        // 방어유닛 저작도 1×1 로 철회됨) 대상 반폭이 정의상 0 이기 때문이다. 다칸 유닛이
-        // 실제로 생기면 그때 `(w−1)*0.5` 를 이 뺄셈에 더한다 — **지금 인자로 만들지 않는다**
-        // (항상 0 인 인자는 읽는 사람에게 「변한다」는 거짓 신호다).
+        // **왜 처음부터 원이 아니었나**: rev 1 의 0.5 는 옛 `CellSlackTiles`(격자 정의에서 나온
+        // 슬랙)를 그대로 보존하려던 값이라 «칸 = 사각형» 을 따라갔다. 사거리는 **거리**이므로
+        // 몸을 원으로 보는 편이 뜻에도 맞다.
         //
-        // ⚠ **sqrt 를 쓰지 않는다.** 제곱 비교로 끝난다 — sim 핫 경로이고, 부동소수 반올림이
+        // ⚠ **sqrt 를 쓰지 않는다.** 제곱 비교로 끝난다 — sim 핫 경로이고 부동소수 반올림이
         // 한 번 덜 끼는 편이 결정론에 유리하다.
         //
         // 단위는 **타일**이다. 월드 좌표를 넣지 말 것 — 호출부가 `tileSize` 로 나눠서 준다.
-        public const float SelfHalfWidthTiles = 0.5f;
+        public const float SelfBodyRadiusTiles = 0.5f;
+
+        // 오늘 전 유닛이 1×1 이라 사각 반폭은 0 이다(`FootprintWidthCells => 1`,
+        // 방어유닛 저작도 1×1 로 철회됨). 다칸 유닛이 실제로 생기면 `(w−1)*0.5` 를 넘긴다.
+        public const float SelfHalfExtentTiles = 0f;
+
+        // 다칸 몸을 명시로 받는 형태. 오늘 호출부는 없고(전 유닛 1×1) **테스트가 계약을 고정한다** —
+        // `halfExtent` 가 살아 있다는 것, 그리고 다칸 몸은 원이 아니라는 것.
+        public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
+                                                     float halfExtentTiles,
+                                                     float rangeTiles, float targetBodyRadiusTiles)
+        {
+            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfExtentTiles; if (vx < 0f) vx = 0f;
+            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfExtentTiles; if (vz < 0f) vz = 0f;
+            float reach = rangeTiles + SelfBodyRadiusTiles + targetBodyRadiusTiles;
+            return vx * vx + vz * vz <= reach * reach;
+        }
 
         public static bool InBodyReach(float dxTiles, float dzTiles,
                                        float rangeTiles, float targetBodyRadiusTiles)
         {
             // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
             // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
-            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - SelfHalfWidthTiles; if (vx < 0f) vx = 0f;
-            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - SelfHalfWidthTiles; if (vz < 0f) vz = 0f;
-            float reach = rangeTiles + targetBodyRadiusTiles;
+            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - SelfHalfExtentTiles; if (vx < 0f) vx = 0f;
+            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - SelfHalfExtentTiles; if (vz < 0f) vz = 0f;
+            float reach = rangeTiles + SelfBodyRadiusTiles + targetBodyRadiusTiles;
             return vx * vx + vz * vz <= reach * reach;
         }
 
