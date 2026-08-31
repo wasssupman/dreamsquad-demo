@@ -22,10 +22,29 @@ namespace Wassup.Battle.Combat
             return NoAttack;
         }
 
+        // distance-based-range unit 4b — 「사격 칸에 도착했는데 월드 사거리 밖」일 때 가디언
+        // 쪽으로 미는 cardinal. 소스가 셀 디스크(체비셰프)인데 발사가 월드 원이라 원이
+        // 잘라낸 모서리에서 생기는 구간을 이동 쪽에서 닫는다.
+        //
+        // 대각을 쓰지 않는 이유는 순찰 보정(`PatrolAreaMath.CloseInDir`)과 같다 — 8-이웃
+        // 성분이 대각 코너 슬립에 걸린다. 지배축을 줄이는 것이 곧 거리를 줄이는 것이므로
+        // cardinal 로 충분하고, 지배축이 막히면 호출부가 `secondary` 로 폴백한다.
+        public static void CloseInCardinals(float dx, float dz, out float2 primary, out float2 secondary)
+        {
+            bool xDominant = math.abs(dx) >= math.abs(dz);
+            float2 xStep = new float2(dx >= 0f ? 1f : -1f, 0f);
+            float2 zStep = new float2(0f, dz >= 0f ? 1f : -1f);
+            primary   = xDominant ? xStep : zStep;
+            secondary = xDominant ? zStep : xStep;
+        }
+
         // 가디언 셀 기준 "사거리를 만족하는 walk 셀" 집합을 소스로 chase dist field 를 굽는다.
         // 반환 = 소스 수(0 = 목적지 후보 없음 → 거부). outDist[enemyCell]==int.MaxValue = 도달 불가 → 거부.
-        // 소스 셀 도달 ⟺ tile-Chebyshev ≤ tileRange ⟺ 발사 가능 (CollectDefenderSources 가
-        // EnemyAiStateSystem/AttackSystem 과 같은 Chebyshev 디스크 — 도달=발사 정의상 일치).
+        // ⚠ **「소스 셀 도달 = 발사 가능」은 더 이상 참이 아니다**(distance-based-range unit 4a).
+        // 소스는 셀 Chebyshev 디스크인데 발사는 월드 원이라, 원이 잘라낸 모서리에서는
+        // 「도착했는데 사거리 밖」이 된다. 그 구간은 이동 쪽 접근 보정이 닫는다
+        // (`MovementSystem` 의 `arrivedAtFiringCell` 분기). **여기서 소스를 원으로 좁히지 말 것** —
+        // 사거리 1 이면 칸 전체가 원 안인 소스가 하나도 없어 어그로가 통째로 거부된다.
         public static int BuildChaseField(
             NativeArray<byte> walkMask,
             int2 gridSize,

@@ -170,7 +170,9 @@ namespace Wassup.Battle.Effects
 
         // boss-defender-field unit 0/5 — 방어유닛을 "공격 가능한" walkable 셀을 BFS 소스로
         // 수집한다: Chebyshev 거리 ≤ rangeTiles(보스 공격 사거리) 디스크, 자기 셀 제외.
-        // FSM 사거리 판정(HasFireTarget)과 같은 메트릭이라 소스 도달 = Engaging 전이 보장.
+        // ⚠ **「소스 도달 = Engaging 전이 보장」은 stale 이다**(distance-based-range unit 4a):
+        // FSM 사거리 판정은 월드 원으로 바뀌었고 여기는 셀 Chebyshev 로 남았다(결정 4).
+        // 어긋난 모서리는 이동 쪽 접근 보정이 닫는다 — `MovementSystem.arrivedAtFiringCell`.
         // (unit 5 rev — 초기 4-이웃 규칙은 레인 비인접 배치를 전부 놓쳐 goal 마칭 결함.)
         // 중복 셀 허용(BuildFromSources 가 dist 0 재삽입을 걸러냄). 반환값 = 수집된 소스 수.
         public static int CollectDefenderSources(

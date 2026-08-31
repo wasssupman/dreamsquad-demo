@@ -13,11 +13,19 @@ namespace Wassup.Battle.Movement
     [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct MovementSystem : ISystem
     {
+        // distance-based-range unit 4b — 추격 접근 보정용(RO). **명시 필드로 둔다** —
+        // `SystemAPI.GetComponentLookup` 로컬 형태로 새 lookup 을 추가하면 Burst 에서
+        // NRE 로 죽는다(이 프로젝트에서 3회 재발).
+        ComponentLookup<Aggroed> _aggroedLookup;
+        ComponentLookup<LocalTransform> _guardianTransformLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<PathFollowState>();
             state.RequireForUpdate<FlowFieldSingleton>();
+            _aggroedLookup = state.GetComponentLookup<Aggroed>(isReadOnly: true);
+            _guardianTransformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -25,6 +33,8 @@ namespace Wassup.Battle.Movement
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             float dt = SystemAPI.Time.DeltaTime;
+            _aggroedLookup.Update(ref state);
+            _guardianTransformLookup.Update(ref state);
 
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
             // boss-defender-field unit 2 — 방어유닛-지향 필드(Effects 소유, RO). 부재 시
@@ -156,27 +166,33 @@ namespace Wassup.Battle.Movement
                     }
                     // aggro-tile-chase unit 2 — chase field(dist) 하강. dir zero = 목적지
                     // (사거리 내 walk 셀, dist 0) 도착 또는 고립 — 정지.
-                    // ⚠ **「도착 셀은 정의상 발사 조건 충족」은 조건부다.** 그 «정의상» 은
-                    // 발사 판정이 **셀 기준**일 때만 성립한다. 추격 필드 소스는 셀 디스크
-                    // (`FlowFieldBuilder.CollectDefenderSources`)인데, 발사 쪽
-                    // (`EnemyAiStateSystem` guardianInRange · `AttackSystem` 어그로 sticky)은
-                    // `AttackReach.InReach` 를 지나고 그 2차 게이트는 **양쪽이 연속 이동체일 때**
-                    // 월드 거리로 한 번 더 조인다. 즉 **연속 이동 가디언**(`PathFollowState` +
-                    // `aggroCapacity > 0`)이 생기는 순간 «도착했는데 못 쏘고, 필드 기울기가 0이라
-                    // 못 움직이는» 영구 동결이 성립한다. 오늘은 그런 저작이 0종이라 도달 불가다
-                    // (가디언 3종 전부 타일 고정 · 순찰병 `aggroCapacity: 0`).
-                    // 순찰 이동에는 그 보정이 있다(`PatrolAreaMath.CloseInDir` — 셀 통과 AND
-                    // 월드 실패면 지배축 한 칸). **추격 레인에는 아직 없다** — 자를 바꾸는
-                    // distance-based-range unit 4 소관.
+                    // ⚠ **「도착 셀은 정의상 발사 조건 충족」은 거짓이다.** 그 «정의상» 은 발사
+                    // 판정이 **셀 기준**일 때만 성립했고, unit 4a 가 그걸 월드 원으로 바꿨다.
+                    // 소스는 여전히 셀 디스크(`FlowFieldBuilder.CollectDefenderSources`, 체비셰프)라
+                    // **원이 정사각형의 모서리를 잘라낸 만큼** 「도착했는데 사거리 밖」인 칸이 남는다.
+                    //
+                    // ⚠ 이 주석의 옛 판(“**연속 이동 가디언**이 생기는 순간 성립 · 오늘은 저작 0종이라
+                    // 도달 불가”)은 **틀렸다.** 어긋남을 만드는 것은 가디언의 이동이 아니라 **적 자신의
+                    // 칸 안 위치**다 — 적은 칸에 들어서는 순간 dist 0 을 읽고 멈추므로 늘 그 칸의
+                    // **바깥 모서리**에 선다. 타일 고정 가디언 + 사거리 1 로 실측 2.05칸(도달 1.5칸).
+                    // 아래 `arrivedAtFiringCell` 보정이 그 구간을 닫는다.
+                    // 순찰 이동에는 그 보정이 있고(`PatrolAreaMath.CloseInDir`), **추격 레인에는
+                    // unit 4b 가 아래에 넣었다**(`arrivedAtFiringCell` 분기).
                     bool chaseMoved = false;
+                    bool arrivedAtFiringCell = false;
                     if (chaseLookup.HasBuffer(entity))
                     {
                         var chase = chaseLookup[entity];
                         if (chase.Length == field.gridSize.x * field.gridSize.y)
                         {
+                            var chaseDist = chase.Reinterpret<int>().AsNativeArray();
                             int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                            float2 chaseDir = FlowRecovery.RecoveryDir(
-                                chaseCell, chase.Reinterpret<int>().AsNativeArray(), field.gridSize);
+                            float2 chaseDir = FlowRecovery.RecoveryDir(chaseCell, chaseDist, field.gridSize);
+                            // dir zero 는 두 가지다: **사격 칸 도착**(dist 0)과 **고립**(더 나은 이웃 없음).
+                            // 보정 대상은 앞의 것 하나뿐이다 — 고립은 unit 4a 이전에도 멈췄다.
+                            if (math.lengthsq(chaseDir) <= 1e-6f)
+                                arrivedAtFiringCell =
+                                    chaseDist[GridMath.CellIndex(chaseCell, field.gridSize)] == 0;
                             if (math.lengthsq(chaseDir) > 1e-6f)
                             {
                                 float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
@@ -191,6 +207,59 @@ namespace Wassup.Battle.Movement
                                 // defender-knockback-on-impact unit 0 — 진행 방향 기록.
                                 // chaseDir 은 위 게이트에서 이미 길이 > 1e-6 이 보장된다.
                                 follow.ValueRW.lastMoveDir = math.normalize(chaseDir);
+                            }
+                        }
+                    }
+                    // distance-based-range unit 4b — 「도착했는데 못 쏜다」 보정.
+                    //
+                    // 추격 필드의 소스는 **셀 디스크**(`FlowFieldBuilder.CollectDefenderSources`,
+                    // 체비셰프)인데 발사 판정은 unit 4a 이후 **월드 원**이다. 원은 정사각형의
+                    // 모서리를 잘라내므로 «필드는 도착이라 하고 사거리는 밖이라 하는» 칸이 생긴다.
+                    // 그 칸에서는 dist 0 이라 기울기가 없어 자기 이동도 0 — **영구 동결**이다.
+                    // (사거리 1 기준 실측: 대각 소스 칸 진입 시 실거리 2.05칸 vs 도달 1.5칸.
+                    //  구 체비셰프 판정은 1.45 ≤ 1.5 로 통과했었다 — 이건 unit 4a 의 회귀다.)
+                    //
+                    // ⚠ **여기서 사거리를 다시 판정하지 않는다.** `ai == Chasing` 자체가
+                    // `EnemyAiStateSystem` 이 정본 술어(`AttackReach.InReach`, 대상 몸 포함)로
+                    // 방금 계산한 「어그로됐고 사거리 밖」이고, 그 시스템은 `[UpdateBefore]` 라
+                    // 값이 신선하다. 자를 하나 더 만드는 순간 그게 다음 교착이다 — 이 결함의
+                    // 원인이 정확히 「한 루프 안에 자가 셋」이었다.
+                    if (!chaseMoved && arrivedAtFiringCell && _aggroedLookup.HasComponent(entity))
+                    {
+                        var guardian = _aggroedLookup[entity].guardian;
+                        if (guardian != Entity.Null && _guardianTransformLookup.HasComponent(guardian))
+                        {
+                            float3 gp = _guardianTransformLookup[guardian].Position;
+                            float gdx = gp.x - current.x;
+                            float gdz = gp.z - current.z;
+                            if (gdx * gdx + gdz * gdz > 1e-6f)
+                            {
+                                // 방향 선택은 순수 함수가 소유한다(EditMode 회귀 대상).
+                                AggroChaseMath.CloseInCardinals(gdx, gdz, out var primary, out var secondary);
+                                float closeSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                    ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                                float closeDist = follow.ValueRO.speed * closeSpeedMul * dt;
+
+                                float2 taken = primary;
+                                float3 next = ComposeMove(
+                                    current, new float3(primary.x, 0f, primary.y) * closeDist,
+                                    impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
+                                // 지배축이 막히면 나머지 축. `ComposeMove` 가 변위를 먹으면
+                                // «걷는 애니로 제자리» 가 되므로 **실제 이동량**으로 판정한다.
+                                if (math.lengthsq(next - current) < 1e-8f)
+                                {
+                                    taken = secondary;
+                                    next = ComposeMove(
+                                        current, new float3(secondary.x, 0f, secondary.y) * closeDist,
+                                        impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
+                                }
+                                if (math.lengthsq(next - current) > 1e-8f)
+                                {
+                                    transform.ValueRW.Position = next;
+                                    chaseMoved = true;
+                                    follow.ValueRW.holdingGround = 0;
+                                    follow.ValueRW.lastMoveDir = math.normalize(taken);
+                                }
                             }
                         }
                     }
