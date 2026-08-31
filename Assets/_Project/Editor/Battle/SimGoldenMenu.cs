@@ -49,6 +49,15 @@ namespace Wassup.EditorTools.Battle
                     continue;
                 }
 
+                // ⚠ **침묵한 골든을 잡는 카나리아.** 배치 스케줄이 있는데 킬이 0 이면 그 골든은
+                // 통과해도 아무것도 증언하지 않는다. 실제로 그 상태가 203 커밋 동안 방치됐다 —
+                // 하네스가 (0,0) 부터 첫 가능 칸에 놓아 방어유닛이 골에서 15칸 떨어진 구석에
+                // 몰렸고, 코퍼스 7건의 킬이 전부 0 이었는데 아무도 몰랐다.
+                if (sc.placementTicks != null && sc.placementTicks.Length > 0 && trace.finalKills == 0)
+                    Debug.LogWarning($"[Golden] '{sc.name}' — 배치 {sc.placementTicks.Length}회인데 킬 0. "
+                        + "방어유닛이 교전에 닿지 않았을 수 있다(배치 자리·사거리 확인). "
+                        + "이 골든은 통과해도 전투를 증언하지 않는다.");
+
                 System.IO.File.WriteAllText(Path(sc.name), text);
                 lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | {trace.events.Count} | "
                           + $"{trace.finalKills}/{trace.finalLeaks} | `{trace.configHash}` |");

@@ -2891,6 +2891,25 @@ namespace Wassup.Bridge
             get { int2 g = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize; return new Vector2Int(g.x, g.y); }
         }
 
+        // battle-sim-extraction — 하네스 배치가 「닿는 자리」를 고르려면 골이 어디인지 알아야 한다.
+        // 브리지가 이미 소유한 값을 얇게 노출할 뿐이다(제약 12 판단 순서의 (b)).
+        // `goals` 미생성/빈이면 단일 `goal` 폴백 — `AnyEnemyWithinTilesOfGoal` 과 같은 규약.
+        public Vector2Int[] DebugGoalCells
+        {
+            get
+            {
+                if (!_generatedMap.IsCreated) return System.Array.Empty<Vector2Int>();
+                if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
+                {
+                    var outCells = new Vector2Int[_generatedMap.goals.Length];
+                    for (int i = 0; i < outCells.Length; i++)
+                        outCells[i] = new Vector2Int(_generatedMap.goals[i].x, _generatedMap.goals[i].y);
+                    return outCells;
+                }
+                return new[] { new Vector2Int(_generatedMap.goal.x, _generatedMap.goal.y) };
+            }
+        }
+
         public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
         {
             walkCell = requestedCell;

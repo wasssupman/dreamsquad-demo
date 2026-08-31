@@ -160,14 +160,35 @@ namespace Wassup.EditorTools.Battle
             // 상한)로 나머지가 조용히 공전해 스케줄이 반쯤 비어 버린다.
             var unit = pool[slot % pool.Length];
             // 고정 칸을 박지 않는 이유: 맵이 seed 로 정해져 어느 칸이 가능한지 미리 못 박는다.
-            // 스캔 순서가 고정이면 선택은 그대로 결정론이다.
+            //
+            // ⚠ **그런데 「가능한 칸」만으로는 부족하다.** 예전엔 (0,0)부터 스캔해 **첫** 가능 칸에
+            // 놓았는데, 그건 결정론이긴 해도 「닿는 자리인가」를 묻지 않는다. 맵이 30×9 로 넓어지고
+            // 골이 (15,8) 로 가면서 방어유닛 4기가 전부 좌하단 구석에 몰렸고 — 사거리 1~3 인데
+            // 골까지 15칸 — **900틱 동안 한 대도 못 때렸다.** 골든 7건의 킬이 전부 0 이 된 원인이며,
+            // 「코퍼스에 스킬 발화 기록 0회」의 원인이기도 하다. 통과하지만 아무것도 증언하지 않는
+            // 골든은 있으나 마나다(위 restart 시나리오 주석이 같은 교훈을 이미 적어 두었다).
+            //
+            // 그래서 **골에 가장 가까운 가능 칸**을 고른다. 적은 어느 맵에서든 골로 수렴하므로
+            // 이 기준은 맵 모양에 안 기댄다. 동률은 (y, x) 로 깨 **결정론을 유지**한다.
+            var goals = bridge.DebugGoalCells;
+            int bestX = -1, bestY = -1, bestD = int.MaxValue;
             for (int y = 0; y < ScanExtent; y++)
             for (int x = 0; x < ScanExtent; x++)
             {
                 if (!bridge.CanPlaceDefenderAt(x, y, unit, out _)) continue;
-                bridge.PlaceDefenderAs(x, y, unit);
-                return;
+                int d = int.MaxValue;
+                for (int g = 0; g < goals.Length; g++)
+                {
+                    int dx = x - goals[g].x; if (dx < 0) dx = -dx;
+                    int dy = y - goals[g].y; if (dy < 0) dy = -dy;
+                    int cheb = dx > dy ? dx : dy;
+                    if (cheb < d) d = cheb;
+                }
+                if (goals.Length == 0) d = y * ScanExtent + x;   // 골 미상 = 옛 스캔 순서로 폴백
+                if (d < bestD) { bestD = d; bestX = x; bestY = y; }
             }
+            if (bestX < 0) return;   // 가능 칸 없음 — 코스트·상한 소진 등, 조용히 넘어간다
+            bridge.PlaceDefenderAs(bestX, bestY, unit);
         }
 
         // 카운트가 아니라 **상태 지문**이다: 살아 있는 모든 sim 엔티티의 (SimEntityId, 위치,
