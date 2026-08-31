@@ -215,8 +215,23 @@ one-shot VFX 와 달리 **유닛의 자식으로 붙어 수명을 함께하고, 
 | 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) — **`BattleBridge.QueueWave` 가 큐잉 시점에 1회 호출** | 실스폰 엔트리와 **같은 인자**로 호출(+`EffectiveSpawnIndex`·`DeckIndexStride` 공유)가 정확도 보증. 창은 `waveSpawnLeadInSec`(wave-pattern 11)가 만든다 |
 | 경로 소스 | `BattleBridge.TryGetSpawnPathSim` (goal flow field 추적) | 유닛 이동과 같은 필드 → 표시 루트 = 실제 루트 |
 | View | `Presentation/SpawnAlertPresenter.cs` — lane 당 LineRenderer 3 + SpriteRenderer 1 | 풀 없음(lane 수만큼 생성 후 재사용). 텍스처 절차 생성 |
-| 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다 |
+| 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다.<br>⚠ **대역이 좁아졌다**(distance-based-range unit 5·7, 2026-08-31): `RangeRingOrder = -8` · `RangeTargetMarkOrder = -7` 이 들어와 **−6 하나만 남았다.** 새 바닥 오버레이는 그 자리를 쓰거나 대역 재설계가 필요하다 |
 | 씬 wiring | `SpawnAlertPresenter` GameObject + `bridge` 참조 | |
+
+### 파생 — 사거리 표기(링·채움·대상 마크) · distance-based-range unit 5·7
+
+같은 「폴링 구동 월드 오버레이」 계열이고 트리거만 다르다(배치 세션이 앵커를 먹인다).
+**새 아키타입이 아니다** — 다른 점만 적는다.
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 | `TileSetData` 의 `placementRangeRingMaterial`·`rangeFillAlphaUnderRing`·`rangeRingAlpha`·`rangeInvalidDesaturate`·`rangeTargetMarkColor` | ⚠ 알파류는 **실기기 튜닝 대상**이라 tileSet 에 명시 저작한다(키가 없으면 C# 기본값 상속 → 인스펙터 여는 순간 조용히 박힌다) |
+| 트리거 | `BattleBridge.SetPlacementRange` (배치 세션 폴링) | 마크는 **페인트 뒤**에 갱신한다 — 뷰의 `SetPlacementRange` 가 내부 `ClearPlacementRange` 로 마크를 회수한다 |
+| 모양 | `Shaders/PlacementRangeRing.shader` (SDF) | ⚠ `_HalfExtent`·`_Range` 는 저작이 아니라 **판정 입력의 복사본**이다. 인스펙터에서 만지지 말 것 |
+| View | `TilemapMapView` — 링 1개(상주) + 마크 풀(렌더러당 머티리얼 인스턴스) | `MaterialPropertyBlock` 금지(일반 uniform 이라 무시될 수 있고 그러면 전 마크가 같은 모양) |
+| 정렬 | `RangeRingOrder = -8` · `RangeTargetMarkOrder = -7` | ⚠ **유닛 위로 올리지 않는다.** 세계에 그린 도형이 스프라이트를 관통하면 UI 로 읽힌다 — 끊김은 채움이 흡수한다 |
+| 씬 wiring | **없음**(런타임 생성, grid 자식) | 머티리얼 참조 1개만 tileSet 에 |
+| 좌표 | ⚠ 대상 위치는 **반드시 `BoardSpace.ToView`** 를 지난다 | `LocalTransform.Position` 은 sim 좌표다. 안 지나면 스테이지마다 최대 1.95칸 어긋나고 **StreetDay 에서는 0.56칸이라 「발밑」으로 읽혀 검증이 통과한다** |
 
 ## 맵 스테이지/프랍 (map-diorama-stage, 2026-08-19 전면 교체)
 
