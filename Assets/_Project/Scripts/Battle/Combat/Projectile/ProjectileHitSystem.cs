@@ -514,7 +514,10 @@ namespace Wassup.Battle.Combat.Projectile
                             // `radius`(= `hitThreshold`)는 «이 탄이 얼마나 관대하게 맞히나», 몸 반경은
                             // «이 대상이 얼마나 큰가». 큰 몸이 큰 표적인 것은 물성이고, 탄의 관대함을
                             // 전 대상에 균일하게 올려 흉내 내던 것이 `MachineGunBullet` 의 0.4→0.7 완화다.
-                            if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius + victimBodyRadii[i])) continue;
+                            // ⚠ `radius`(=hitThreshold)는 **월드**, `victimBodyRadii` 는 **타일**이다 —
+                            // 환산 없이 더하면 tileSize ≠ 1 에서 조용히 틀어진다.
+                            if (!SweepHitMath.SegmentHits(prev, curr, victimPos,
+                                    radius + victimBodyRadii[i] * tileSize)) continue;
                             int recIdx = -1;
                             if (hasRecords && !PathHitRecord.CanHit(
                                     pathHitRecordLookup[entity], victimEntities[i],

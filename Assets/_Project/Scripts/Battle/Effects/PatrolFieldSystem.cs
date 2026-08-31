@@ -16,9 +16,16 @@ namespace Wassup.Battle.Effects
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct PatrolFieldSystem : ISystem
     {
+        // ⚠ **`SystemAPI.GetComponentLookup` 지역 변수로 쓰지 말 것** — 이 시스템에서 Burst NRE 가
+        // 난다(실측: `PatrolLayerRoutingTests` 전건 사망). 같은 함정을 `HazardCastSystem`(unit 1)·
+        // `AttackSystem`(unit 4a)에서 이미 두 번 밟았고 `docs/reference/lessons/04-sim-design.md`
+        // 에 올려 뒀는데 **세 번째로 밟았다.** 명시 필드 + `OnCreate` + `Update(ref state)` 가 정본이다.
+        private ComponentLookup<Wassup.Battle.Units.HitRadius> _hitRadiusLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _hitRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             state.RequireForUpdate<PatrolAnchor>();
             state.RequireForUpdate<FlowFieldSingleton>();
         }
@@ -46,12 +53,21 @@ namespace Wassup.Battle.Effects
             var enemyCells = new NativeArray<int2>(enemyTransforms.Length, Allocator.Temp);
             // 사거리 2차 게이트(물리 거리)용 월드 위치. 셀과 나란한 배열이다.
             var enemyWorld = new NativeArray<float3>(enemyTransforms.Length, Allocator.Temp);
+            // distance-based-range — 대상의 몸 반경(타일). 사거리 술어가 이걸 더하므로 **여기도
+            // 넘겨야** 소비처 11 이 같은 답을 받는다(안 넘기면 보스가 사거리 안인데 이동만 밖으로
+            // 읽어 이미 쏠 수 있는데 계속 다가간다).
+            var enemyBody = new NativeArray<float>(enemyTransforms.Length, Allocator.Temp);
+            var enemyEnts = enemyQuery.ToEntityArray(Allocator.Temp);
+            _hitRadiusLookup.Update(ref state);
             for (int i = 0; i < enemyTransforms.Length; i++)
             {
                 enemyCells[i] = GridMath.WorldToCell(
                     enemyTransforms[i].Position, flowField.tileSize, gridSize, origin: flowField.origin);
                 enemyWorld[i] = enemyTransforms[i].Position;
+                enemyBody[i] = _hitRadiusLookup.HasComponent(enemyEnts[i])
+                    ? _hitRadiusLookup[enemyEnts[i]].value : 0f;
             }
+            enemyEnts.Dispose();
 
             // 구역 무시 walk 마스크. 벽 술어는 MovementCellTrim 이 단독 소유한다.
             //
@@ -100,7 +116,7 @@ namespace Wassup.Battle.Effects
                     anchor.ValueRO.cell, anchor.ValueRO.homeCell, anchor.ValueRO.tileRadius,
                     selfCell, attackTiles,
                     enemyCells, scratchFlow, scratchDist,
-                    transform.ValueRO.Position, enemyWorld, flowField.tileSize);
+                    transform.ValueRO.Position, enemyWorld, enemyBody, flowField.tileSize);
 
                 areaMask.Dispose();
             }
@@ -110,6 +126,7 @@ namespace Wassup.Battle.Effects
             fullMask.Dispose();
             enemyCells.Dispose();
             enemyWorld.Dispose();
+            enemyBody.Dispose();
             enemyTransforms.Dispose();
         }
     }

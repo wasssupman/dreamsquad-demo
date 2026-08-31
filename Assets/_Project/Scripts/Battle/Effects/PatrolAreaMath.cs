@@ -116,6 +116,7 @@ namespace Wassup.Battle.Effects
             NativeArray<int> scratchDist,
             float3 selfPos,
             NativeArray<float3> enemyPositions,
+            NativeArray<float> enemyBodyRadii,
             float tileSize)
         {
             int selfIdx = GridMath.CellIndex(selfCell, gridSize);
@@ -139,7 +140,8 @@ namespace Wassup.Battle.Effects
                 // 어디에 섰는지를 본다 — 아직 멀면 **계속 다가간다**. 이 한 줄이 없으면
                 // 격자는 "도착"이라 멈추고 공격은 "멀다"고 거부해 교착이 난다(AttackReach 주석).
                 return CloseInDir(areaMask, gridSize, anchorCell, tileRadius,
-                    selfCell, selfPos, attackTileRange, enemyCells, enemyPositions, tileSize);
+                    selfCell, selfPos, attackTileRange, enemyCells, enemyPositions,
+                    enemyBodyRadii, tileSize);
             }
 
             if (selfCell.Equals(homeCell)) return float2.zero;
@@ -156,7 +158,8 @@ namespace Wassup.Battle.Effects
         private static float2 CloseInDir(
             NativeArray<byte> areaMask, int2 gridSize, int2 anchorCell, int tileRadius,
             int2 selfCell, float3 selfPos, int attackTileRange,
-            NativeArray<int2> enemyCells, NativeArray<float3> enemyPositions, float tileSize)
+            NativeArray<int2> enemyCells, NativeArray<float3> enemyPositions,
+            NativeArray<float> enemyBodyRadii, float tileSize)
         {
             if (!enemyPositions.IsCreated || enemyPositions.Length != enemyCells.Length)
                 return float2.zero;
@@ -174,7 +177,12 @@ namespace Wassup.Battle.Effects
                 // 향해 박스를 걸어나가고, 다음 프레임 DescendToHome 이 되돌려 경계에서 진동한다.
                 if (!IsInArea(enemyCells[i], anchorCell, tileRadius)) continue;
                 if (!AttackReach.InCellRange(selfCell, enemyCells[i], reach)) continue;
-                if (AttackReach.InReach(selfPos, enemyPositions[i], reach, tileSize)) continue;
+                // ⚠ **대상 몸을 넘긴다.** 안 넘기면 소비처 11 중 여기만 다른 답을 받는다 —
+                // 보스가 사거리 안(예: 2.23)인데 이동은 밖(1.50)으로 읽어 **이미 쏠 수 있는데
+                // 계속 다가간다.** 방향이 안전한 쪽이라 교착은 안 나지만, `AttackReach` 헤더가
+                // 「열하나가 전부 같은 답을 받아야 한다」고 못박은 그 계약이 이미 깨져 있었다.
+                if (AttackReach.InReach(selfPos, enemyPositions[i], reach, tileSize,
+                                        enemyBodyRadii.Length > i ? enemyBodyRadii[i] : 0f)) continue;
                 float gap = math.max(math.abs(enemyPositions[i].x - selfPos.x),
                                      math.abs(enemyPositions[i].z - selfPos.z));
                 if (!found || gap < bestGap) { bestGap = gap; bestPos = enemyPositions[i]; found = true; }

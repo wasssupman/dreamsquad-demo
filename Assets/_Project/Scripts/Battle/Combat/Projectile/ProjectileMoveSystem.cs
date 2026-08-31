@@ -152,8 +152,11 @@ namespace Wassup.Battle.Combat.Projectile
                         float dz = targetPos.z - newPos.z;
                         // 유효 반경 = 투사체 피격 반경 + 대상 몸 반경(unit 3). 두 값은 뜻이 다르다 —
                         // 앞은 «이 탄이 얼마나 관대하게 맞히나», 뒤는 «이 대상이 얼마나 큰가».
+                        // ⚠ **단위를 맞춘다.** `hitThreshold` 는 **월드**이고 `HitRadius.value` 는
+                        // **타일**이다(사거리 술어가 Δ 를 tileSize 로 나눠 쓰는 것과 같은 단위).
+                        // 환산 없이 더하면 tileSize ≠ 1 인 순간 **보스 피격 반경만 조용히 틀어진다.**
                         float thr = projectile.ValueRO.hitThreshold
-                                    + (hitRadiusLookup.HasComponent(target) ? hitRadiusLookup[target].value : 0f);
+                                    + (hitRadiusLookup.HasComponent(target) ? hitRadiusLookup[target].value : 0f) * tileSize;
                         if (dx * dx + dz * dz <= thr * thr)
                             projectile.ValueRW.impactReached = true;
                         break;
@@ -192,7 +195,7 @@ namespace Wassup.Battle.Combat.Projectile
                         float bdx = bTargetPos.x - bNewPos.x;
                         float bdz = bTargetPos.z - bNewPos.z;
                         float bthr = projectile.ValueRO.hitThreshold
-                                     + (hitRadiusLookup.HasComponent(bTarget) ? hitRadiusLookup[bTarget].value : 0f);
+                                     + (hitRadiusLookup.HasComponent(bTarget) ? hitRadiusLookup[bTarget].value : 0f) * tileSize;
                         if (bt >= 1f || bdx * bdx + bdz * bdz <= bthr * bthr)
                             projectile.ValueRW.impactReached = true;
                         break;

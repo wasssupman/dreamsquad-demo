@@ -88,4 +88,10 @@ public void OnUpdate(ref SystemState state)
 }
 ```
 
-출처: `distance-based-range` unit 4a · `HazardCastSystem`(unit 1).
+⚠ **세 번 밟았다.** `HazardCastSystem`(unit 1) → `AttackSystem`·`EnemyAiStateSystem`(unit 4a) →
+`PatrolFieldSystem`(2026-09-01). 세 번째는 **이 문서를 쓴 뒤**였다 — 읽어도 그 순간 안 떠오른다.
+그래서 규칙을 이렇게 굳힌다: **Bursted `ISystem` 에 `ComponentLookup` 을 새로 추가할 때는
+`SystemAPI` 지역 변수 형태를 아예 쓰지 않는다.** 되는 경우가 있어도 쓰지 않는다 —
+「되는지 확인하고 안 되면 바꾼다」는 매번 EditMode 전건이 빨개진 뒤에야 알게 된다.
+
+출처: `distance-based-range` unit 4a · `HazardCastSystem`(unit 1) · `PatrolFieldSystem`.

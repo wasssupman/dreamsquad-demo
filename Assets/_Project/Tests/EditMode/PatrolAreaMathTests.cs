@@ -226,29 +226,35 @@ namespace Wassup.Tests.EditMode
 
         // 위치까지 주는 형태. selfPos/enemyPos 를 주지 않으면 셀 중심에 선 것으로 본다 —
         // 기존 테스트의 의미(칸 중앙 정렬)를 그대로 유지한다.
+        // `enemyBody` — 대상의 몸 반경(타일). null = 전부 0(=점). distance-based-range:
+        // 이동 쪽도 사거리 술어와 **같은 인자**를 받아야 「이미 쏠 수 있는데 계속 다가간다」가 안 난다.
         private float2 StepAt(int2 center, int2 home, int radius, int2 self, float3 selfPos,
-            int2[] enemies, float3[] enemyPos, int attackTiles = 1, float tileSize = 1f)
+            int2[] enemies, float3[] enemyPos, int attackTiles = 1, float tileSize = 1f,
+            float[] enemyBody = null)
         {
             for (int i = 0; i < _box.Length; i++) _box[i] = 0;
             PatrolAreaMath.FillAreaMask(_full, Grid, center, radius, _box);
 
             var enemyCells = new NativeArray<int2>(enemies.Length, Allocator.Persistent);
             var enemyWorld = new NativeArray<float3>(enemies.Length, Allocator.Persistent);
+            var enemyBodies = new NativeArray<float>(enemies.Length, Allocator.Persistent);
             try
             {
                 for (int i = 0; i < enemies.Length; i++)
                 {
                     enemyCells[i] = enemies[i];
                     enemyWorld[i] = enemyPos != null ? enemyPos[i] : CellCenter(enemies[i]);
+                    enemyBodies[i] = enemyBody != null && i < enemyBody.Length ? enemyBody[i] : 0f;
                 }
                 return PatrolAreaMath.StepDir(
                     _box, _full, Grid, center, home, radius, self, attackTiles,
-                    enemyCells, _flow, _dist, selfPos, enemyWorld, tileSize);
+                    enemyCells, _flow, _dist, selfPos, enemyWorld, enemyBodies, tileSize);
             }
             finally
             {
                 enemyCells.Dispose();
                 enemyWorld.Dispose();
+                enemyBodies.Dispose();
             }
         }
 
@@ -322,5 +328,28 @@ namespace Wassup.Tests.EditMode
             // 체비셰프 상한이므로 지배축을 줄이는 것이 곧 거리를 줄이는 것이다.
             Assert.AreNotEqual(float2.zero, dir, "대각으로 멀어도 멈추면 안 된다");
         }
+
+        // ── 대상 몸이 이동 판정에도 들어간다 (distance-based-range, 2026-09-01) ──
+        //
+        // `AttackReach` 헤더가 「소비처 열하나 · 전부 같은 답을 받아야 한다」고 못박은 계약인데
+        // **이 소비처만 대상 몸을 안 넘기고 있었다.** 증상: 보스가 사거리 안인데 이동 로직은
+        // 밖으로 읽어 **이미 쏠 수 있는데 계속 다가간다**(방향이 안전해 교착은 안 나지만
+        // 계약은 깨진 상태). 위 `OnFiringCell_ButPhysicallyTooFar_KeepsClosing` 과 **같은 배치**에
+        // 몸만 얹어 대비시킨다 — 몸이 그 1.8칸을 사거리 안으로 만든다.
+        [Test]
+        public void OnFiringCell_TargetBodyClosesTheGap_Stops()
+        {
+            var anchor = new int2(5, 5);
+            // 월드 1.8칸 — 몸이 없으면 상한 1.5 밖이라 계속 다가간다(위 테스트가 그것을 고정).
+            // 나이트메어 몸 0.73 을 주면 상한이 2.23 이 되어 **이미 사거리 안**이다.
+            var dir = StepAt(anchor, anchor, radius: 2,
+                self: new int2(6, 5), selfPos: new float3(5.6f, 0f, 5f),
+                enemies: new[] { new int2(7, 5) }, enemyPos: new[] { new float3(7.4f, 0f, 5f) },
+                enemyBody: new[] { 0.73f });
+
+            Assert.AreEqual(float2.zero, dir,
+                "대상 몸으로 이미 사거리 안인데 계속 다가간다 — 이동이 사거리 술어와 다른 답을 받고 있다");
+        }
+
     }
 }
