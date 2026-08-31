@@ -8,9 +8,17 @@
 ## 변경 대상
 
 - `Assets/_Project/Tests/Golden/*.trace.txt` — 7건 전량
-- `Assets/_Project/Data/` — 웨이브 knob (`docs/reference/map-wave-balancing.md` 참조)
+- `docs/spec/battle-sim-extraction/golden-corpus.md` — **자동 생성물이 같은 커밋에 딸려 나온다**
+  (손으로 고치지 않는다). 재생성 메뉴 = Play 중 `Wassup/Battle/Sim Harness/Regenerate Golden Corpus`
+- **구글 시트** — 보스 HP/방어와 웨이브 knob 은 시트가 정본이다
+- `Assets/_Project/Data/` — **보스 3종 `bodyRadius` 저작 + 보스 HP/방어** + 웨이브 knob
+  (`docs/reference/map-wave-balancing.md` 참조)
 
 ## 구현
+
+**순서: 6a 자 변경 diff 읽기 → 6b 보스·웨이브 튜닝 diff 읽기 → 6c 최종 1회 재생성.**
+재생성 횟수는 1회 그대로이고 **읽는 횟수만 2회**가 된다. 안 가르면 새 기준선이 두 원인으로
+동시에 움직여, M1 이 물려받는 기준선의 계보(자 때문인지 튜닝 때문인지)를 사후에 못 가른다.
 
 **(a) 골든 재생성 — 격리 후 별도 커밋.**
 
@@ -19,6 +27,16 @@
 
 ⚠ **무관 dirty 가 워킹트리에 있으면 남의 WIP 가 기준선에 구워진다.** 격리한 뒤 굽고,
 골든만 담은 커밋으로 분리한다.
+
+**(a′) 보스 몸 저작 + 재조정 — 골든 재생성 *앞*에.**
+
+unit 3 이 축만 세워 두고 값은 0 이다. 여기서 스프라이트 배율(`spineVisualScale` 2.6 / 2.9 / 3.2)에
+비례한 `bodyRadius` 를 넣고 **같은 커밋에서 HP/방어를 갚는다.** 계약 5 대로 이게 이 spec 의
+**최대 밸런스 항목**이다 — 사거리 1 유닛(전체 41%)의 대보스 허용 거리가 1.5 → 2.4(+60%),
+허용 면적 2.56배. 방향은 의도한 물성이므로 되돌리지 않는다.
+
+`Projectile_MachineGunBullet.hitThreshold` 가 임시 완화로 0.4 → 0.7 올라가 있다. 근본이 고쳐졌으니
+**0.4 복귀를 검토**한다.
 
 **(b) 밸런스 재튜닝.**
 
@@ -37,6 +55,12 @@
 
 - [ ] 골든 7건 재생성 + **2회 실행 일치**(`TileAoe` 가 float 비교로 내려온 뒤의 결정론 확인).
 - [ ] 고정 스텝 하네스: 재튜닝 후 판당 킬 수가 전환 **이전 대역**으로 복귀.
-- [ ] 보스 3종 생존 시간이 unit 3 재조정 뒤 대역을 유지(여기서 또 흔들리면 unit 3 로 되돌린다).
+- [ ] 보스 3종 각각 3분 판 생존 시간이 **저작·재조정 전후로 같은 대역**(고정 스텝 하네스 비교).
+- [ ] 머신거너 직선 탄이 보스 몸통을 관통하면 **맞는다**(Play 육안 1회).
 - [ ] Play e2e 1회 — 3분 완주, 콘솔 에러 0, 교착 0.
 - [ ] `docs/reference/map-wave-balancing.md` 갱신(바꾼 knob 과 사유).
+- [ ] ⚠ **시트에 반영했는가.** 보스 HP/방어·웨이브 knob 은 `UnitStatImportDto.health` 등으로
+      시트가 정본이라 `.asset` 만 고치면 **다음 로그인 임포트가 되돌린다.** 그러면 골든이
+      재생성 직후 상태에서 이탈하고 증상은 「configHash 가 갑자기 바뀌었다 = 드리프트」로 나타난다.
+- [ ] `battle-sim-extraction` 쪽 handoff 에 **역방향 링크** — 「이 코퍼스는 distance-based-range
+      unit 6 커밋으로 갱신됐다」. M1 을 시작하는 사람은 저쪽 문서부터 읽는다.

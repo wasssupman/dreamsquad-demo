@@ -21,7 +21,10 @@ if (d2 < bestSq) { bestSq = d2; bestTarget = targetEntities[i]; … }
 ```
 
 형제 두 곳(`NearestTargeting.RanksBefore`, `HazardCastSystem.cs:103`)은 동거리에서 `simId` 가
-작은 쪽을 고르는데 **여기만 없다.** 후보 배열이 `ToEntityArray` = 청크 순서라 「재현은 되지만
+작은 쪽을 고르는데 **여기만 없다.** ⚠ 이건 단순 선재 결함이 아니라 **`SimEntityId` 축 전환이 남긴
+마지막 구멍**이다 — `battle-sim-extraction` M0 unit 1 이 형제(`HazardCastSystem`)의 tie-break 를
+신설하면서 이 한 곳을 지나쳤고, 그 spec 의 **동률 예외 목록에도 없다**(= parity 상 exact 로
+요구되는 지점인데 실제로는 청크 순서 의존이다). 스냅샷 부분 재시뮬에서 갈린다. 후보 배열이 `ToEntityArray` = 청크 순서라 「재현은 되지만
 순서 비의존은 아니다」. unit 4 가 게이트를 바꾸면 후보 구성이 달라져 이 위를 밟는다.
 → 형제와 같은 규칙(`sqDist` → `simId`)으로 통일.
 

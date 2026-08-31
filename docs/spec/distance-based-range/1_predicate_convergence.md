@@ -17,9 +17,20 @@
 | `Combat/EnemyAiStateSystem.cs:93` | 적이 가디언 앞에서 **멈춰도 되나** | 셀 인라인 |
 | `Effects/HazardCastSystem.cs:99` | 캐스터가 시전할 대상이 있나 | 셀 인라인 |
 | `Effects/FlowFieldBuilder.cs:188` | 「사거리 안」 칸 = BFS 소스 | 셀 디스크 |
+| `Movement/MovementSystem.cs:242` | 이 적이 회오리 안인가 | 셀 인라인 |
+| `Bridge/BattleBridge.cs:7509` | `GridMath.ChebyshevDistance` **손복사본** | 사유 없는 중복 — **삭제** |
 
 `FlowFieldBuilder.CollectDefenderSources` 는 `AggroChaseMath`(어그로 추격)와
 `DefenderFieldSystem`(보스 사냥) **둘이 공유**한다 — 한 번 고치면 두 레인이 같이 따라온다.
+
+⚠ **이 함수는 시그니처 확장이 필요하다.** 현재 인자가
+`(walkMask, gridSize, defenderCells, rangeTiles, outSources)` 로 **셀 좌표뿐이고 `tileSize`·`origin`
+이 없다.** unit 4 가 술어를 월드 거리로 바꾸면 셀→월드 변환 재료가 없어 그대로는 못 부른다.
+호출자 둘(`DefenderFieldSystem` · `PatrolAreaMath.BuildAreaChaseField`)은 **둘 다 갖고 있으므로**
+넘기면 된다 — unit 1 에서 미리 확장해 두고 unit 4 는 술어만 바꾼다.
+
+⚠ 이 함수의 주석이 계약을 하나 들고 있다: 「**FSM 사거리 판정(`HasFireTarget`)과 같은 메트릭이라
+소스 도달 = Engaging 전이 보장**」. 수렴이 이 동치를 깨면 적이 도착해 놓고 안 쏜다.
 
 ## 구현
 
@@ -38,4 +49,9 @@
 - [ ] unit 0 안전망 초록 유지.
 - [ ] 순찰병 SO 에 `aggroCapacity` 를 0 초과로 저작해도 **동결이 재현되지 않는다**
       (그 잠복 결함이 이 unit 으로 닫힌다).
-- [ ] EditMode 전체 초록. `Battle/` 아래 `math.max(math.abs(` 인라인 사거리 판정 **0건**.
+- [ ] **명시한 9 지점이 `AttackReach` 호출로 바뀌었다**(diff 대조).
+- [ ] 잔여 인라인은 **허용 목록 대조**로 판정한다 — `AttackReach.cs:49·54`(술어 본체) ·
+      `TileAoe.cs:16`(unit 4 소관) · 비목표 4곳(`WaypointProgress:41` · `BlinkMath:46` ·
+      `PatternTargeting:45` · `PatrolAreaMath:173` gap 값). **「0건」은 영원히 성립하지 않는다** —
+      그리고 `FlowFieldBuilder:188` 은 사각 디스크 이중 루프라 그 grep 이 애초에 못 잡는다.
+- [ ] 신규 인라인 금지는 계약 11 로 리뷰가 진다.

@@ -16,26 +16,32 @@
 
 ## 구현
 
-**(a) 술어 지도를 테스트가 소유한다.** 아래 9곳을 상수 표로 들고, 경계 근처에서 같은 답을
+**(a) 이 테스트는 «상대 동치성»만 단언한다 — 절대값을 박지 않는다.**
+자가 바뀌어도(unit 4) **초록이어야 한다.** 절대값 회귀는 골든이 진다(계약 13).
+아래 표의 좌표는 **픽스처이지 기대값이 아니다.** 그리고 계약 4 이후에는
+「같은 답」이 아니라 **「같은 임계끼리 같은 답」**을 본다(획득 ↔ 획득, 유지 ↔ 유지).
+
+**(b) 술어 지도를 테스트가 소유한다.** 아래 9곳을 상수 표로 들고, 경계 근처에서 같은 답을
 내는지 단언한다. 표가 코드와 갈리면 그것 자체가 실패다.
 
-| # | 위치 | 지금 무엇을 쓰나 |
-|---|---|---|
-| 1 | `AttackSystem.cs:594` 타겟 선정 | `InReach` |
-| 2 | `AttackSystem.cs:741` 적 focus 락 | `InReach` + `KeepsLock` |
-| 3 | `AttackSystem.cs:879` 방어유닛 락 | `InReach` + `KeepsLock` |
-| 4 | `AttackSystem.cs:925` committed 재판정 | `InReach` |
-| 5 | `EnemyAiStateSystem.cs:176,200` | `InReach` + `KeepsLock` |
-| 6 | `PatrolAreaMath.cs:171-172` | `InCellRange` **AND NOT** `InWorldReach` (분해 사용) |
-| 7 | `AttackSystem.cs:781·812·1527·2134` | **셀 체비셰프 인라인** |
-| 8 | `EnemyAiStateSystem.cs:93` guardianInRange | **셀 체비셰프 인라인** |
-| 9 | `HazardCastSystem.cs:99` · `FlowFieldBuilder.cs:188` | **셀 체비셰프 인라인** |
+| # | 위치 | 지금 무엇을 쓰나 | 임계 |
+|---|---|---|---|
+| 1 | `AttackSystem.cs:594` 타겟 선정 | `InReach` | 획득 |
+| 2 | `AttackSystem.cs:741` 적 focus 락 | `InReach` + `KeepsLock` | 유지 |
+| 3 | `AttackSystem.cs:879` 방어유닛 락 | `InReach` + `KeepsLock` | 유지 |
+| 4 | `AttackSystem.cs:925` committed 재판정 | `InReach` | 유지 |
+| 5 | `EnemyAiStateSystem.cs:176`(유지) · `:200`(획득) | `InReach` + `KeepsLock` | 둘 다 |
+| 6 | `PatrolAreaMath.cs:171-172` | `InCellRange` **AND NOT** `InWorldReach` (분해 사용) | 획득 |
+| 7 | `AttackSystem.cs:781·812·1527·2134` | **셀 체비셰프 인라인** | 혼재 |
+| 8 | `EnemyAiStateSystem.cs:93` guardianInRange | **셀 체비셰프 인라인** | 획득 |
+| 9 | `HazardCastSystem.cs:99` · `FlowFieldBuilder.cs:188` · `MovementSystem.cs:242`(토네이도) | **셀 체비셰프 인라인** | 획득 |
+| 10 | **광역 축** — `TileAoe` 소비처 6곳(`AggroTargeting:55` · `DefenderDensity:41` · `BounceRetarget:70` · `ProjectileHitSystem:733` · `EcsSkillContext:440` · `BattleBridge:4617`) + `AllyBuffFieldSystem:64` | 셀 체비셰프 | 획득 |
 
-**(b) 락 경로가 커버리지 밖이라는 게 요점이다.** EditMode 는 술어 자체만 본다. 「락을 문
+**(c) 락 경로가 커버리지 밖이라는 게 요점이다.** EditMode 는 술어 자체만 본다. 「락을 문
 공격자가 게이트 경계로 벌어졌을 때 `AttackSystem.bestTarget` 과 `EnemyAiState` 가 같은 답을
 낸다」를 PlayMode 로 고정하면 교착 클래스 전체가 덮인다.
 
-**(c) 교착 카나리아.** `WhirlpotLiveRepro.cs:139-152` 형태를 재사용한다 — N프레임 안에 한 대도
+**(d) 교착 카나리아.** `WhirlpotLiveRepro.cs:139-152` 형태를 재사용한다 — N프레임 안에 한 대도
 못 때리면 실패하고 **최소 접근거리 + AI 상태 궤적**을 찍는다. 얼어붙은 유닛도 스폰·컴포넌트
 단언은 전부 통과하므로, 실패 메시지에 그 두 값이 없으면 원인을 못 찾는다.
 
