@@ -99,28 +99,29 @@ namespace Wassup.Skills
         // 방어유닛 저작도 1×1 로 철회됨). 다칸 유닛이 실제로 생기면 `(w−1)*0.5` 를 넘긴다.
         public const float SelfHalfExtentTiles = 0f;
 
-        // 다칸 몸을 명시로 받는 형태. 오늘 호출부는 없고(전 유닛 1×1) **테스트가 계약을 고정한다** —
+        // **술어 본문은 여기 하나뿐이다.** 다칸 몸을 명시로 받는 형태이고, 아래 `InBodyReach` 는
+        // 오늘의 저작(전 유닛 1×1 → 반폭 0)을 넣은 **특수화**일 뿐이다.
+        // ⚠ 본문을 복제하지 말 것 — 사거리 술어가 두 벌이 되는 것이 이 spec 이 없애려던 문제다.
+        //
+        // 오늘 이 오버로드의 호출부는 없다(전 유닛 1×1). **테스트가 계약을 진다** —
         // `halfExtent` 가 살아 있다는 것, 그리고 다칸 몸은 원이 아니라는 것.
         public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
                                                      float halfExtentTiles,
                                                      float rangeTiles, float targetBodyRadiusTiles)
         {
+            // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
+            // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
             float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfExtentTiles; if (vx < 0f) vx = 0f;
             float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfExtentTiles; if (vz < 0f) vz = 0f;
             float reach = rangeTiles + SelfBodyRadiusTiles + targetBodyRadiusTiles;
             return vx * vx + vz * vz <= reach * reach;
         }
 
+        // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 0.5 + 대상반경` = **원**.
         public static bool InBodyReach(float dxTiles, float dzTiles,
                                        float rangeTiles, float targetBodyRadiusTiles)
-        {
-            // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
-            // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
-            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - SelfHalfExtentTiles; if (vx < 0f) vx = 0f;
-            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - SelfHalfExtentTiles; if (vz < 0f) vz = 0f;
-            float reach = rangeTiles + SelfBodyRadiusTiles + targetBodyRadiusTiles;
-            return vx * vx + vz * vz <= reach * reach;
-        }
+            => InBodyReachWithHalfExtent(dxTiles, dzTiles, SelfHalfExtentTiles,
+                                         rangeTiles, targetBodyRadiusTiles);
 
     }
 }

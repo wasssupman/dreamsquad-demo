@@ -231,7 +231,18 @@ namespace Wassup.Bridge
                 All = new[] { ComponentType.ReadOnly<AttackUnitTag>() },
                 None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.BonusWaveTag>() },
             });
+            // distance-based-range unit 7 — 사거리 안 상대 마크 수집용.
+            // ⚠ 호출마다 `CreateEntityQuery` 하지 않는다 — 이 파일의 규약(위 두 쿼리)이 그렇고,
+            // 드래그 중 앵커가 바뀔 때마다 불리므로 매번 만들면 그만큼 쌓인다.
+            _rangeTargetQuery = _em.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<FactionTag>(), ComponentType.ReadOnly<LocalTransform>() },
+                None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.DeadTag>(),
+                               ComponentType.ReadOnly<PendingDeployment>() },
+            });
         }
+
+        private EntityQuery _rangeTargetQuery;
         // aggro-targeting Unit 13 — 어그로된 적 아이콘 reconcile 용 쿼리(Aggroed).
         private EntityQuery _aggroedQuery;
         private bool _aggroedQueryCreated;
@@ -7819,12 +7830,7 @@ namespace Wassup.Bridge
             if (tilemapMapView == null || !HasLiveEntityManager()) return;
 
             float3 atkPos = GridToWorldCenter(center);
-            var q = _em.CreateEntityQuery(new EntityQueryDesc
-            {
-                All = new[] { ComponentType.ReadOnly<FactionTag>(), ComponentType.ReadOnly<LocalTransform>() },
-                None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.DeadTag>(),
-                               ComponentType.ReadOnly<PendingDeployment>() },
-            });
+            var q = _rangeTargetQuery;   // CreateAliveAttackerQueries 에서 1회 생성
             var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
             var tf = q.ToComponentDataArray<LocalTransform>(Unity.Collections.Allocator.Temp);
             var fac = q.ToComponentDataArray<FactionTag>(Unity.Collections.Allocator.Temp);
