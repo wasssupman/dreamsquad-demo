@@ -96,8 +96,13 @@ namespace Wassup.Battle.Effects
 
                     float3 targetPos = targetTransforms[i].Position;
                     int2 targetCell = GridMath.WorldToCell(targetPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
-                    int tileDist = math.max(math.abs(targetCell.x - casterCell.x), math.abs(targetCell.y - casterCell.y));
-                    if (tileDist > tileRange) continue;
+                    // distance-based-range unit 1 — 캐스트 사거리도 **같은 술어**를 지난다.
+                    // ⚠ `bothContinuous: false` 는 **오늘의 사실**이다 — 해저드 캐스터는 전부
+                    // 타일 고정 방어유닛이라 2차 게이트가 걸릴 조합이 없다. 연속 이동 캐스터가
+                    // 생기면 이 인자를 `PathFollowState` 조회로 바꿔야 한다(인라인 산식이 아니라
+                    // **눈에 보이는 인자**라 그때 빠뜨리기 어렵다).
+                    if (!Wassup.Battle.Combat.AttackReach.InReach(casterCell, targetCell, tileRange,
+                            casterPos, targetPos, flowField.tileSize, false)) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
                     if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))

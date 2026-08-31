@@ -7516,17 +7516,15 @@ namespace Wassup.Bridge
             if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
             {
                 for (int g = 0; g < _generatedMap.goals.Length; g++)
-                    best = math.min(best, ChebyshevDistance(cell, _generatedMap.goals[g]));
+                    best = math.min(best, GridMath.ChebyshevDistance(cell, _generatedMap.goals[g]));
             }
             else
             {
-                best = ChebyshevDistance(cell, _generatedMap.goal);   // goals 미생성 폴백(GeneratedMap 계약)
+                best = GridMath.ChebyshevDistance(cell, _generatedMap.goal);   // goals 미생성 폴백(GeneratedMap 계약)
             }
             return best;
         }
 
-        private static int ChebyshevDistance(int2 a, int2 b)
-            => math.max(math.abs(a.x - b.x), math.abs(a.y - b.y));
 
         public void ShowBlockedHighlight(DefenderUnitData unit)
         {

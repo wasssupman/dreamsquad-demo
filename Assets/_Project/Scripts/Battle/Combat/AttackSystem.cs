@@ -734,7 +734,8 @@ namespace Wassup.Battle.Combat
                             curPos = aggroTransformLookup.HasComponent(cur)
                                 ? aggroTransformLookup[cur].Position : bestTargetPos;
                             int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                            int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                            // distance-based-range unit 1 — 산식을 손으로 다시 쓰지 않는다.
+                            int cDist = GridMath.ChebyshevDistance(atkCell, cCell);
                             // 락 유지도 **선정과 같은 술어**를 지나야 한다. 셀만 보면 락을 문 뒤로는
                             // 2차 게이트가 영영 적용되지 않고, EnemyAiState 쪽 미러(같은 락 블록에
                             // AttackReach 를 건다)와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
@@ -778,8 +779,11 @@ namespace Wassup.Battle.Combat
                     {
                         float3 gPos = aggroTransformLookup[g].Position;
                         int2 gCell = GridMath.WorldToCell(gPos, tileSize, gridSize, origin: ffOrigin);
-                        int gDist = math.max(math.abs(gCell.x - atkCell.x), math.abs(gCell.y - atkCell.y));
-                        if (gDist <= tileRange)
+                        // distance-based-range unit 1 — 어그로 sticky 도 **같은 술어**를 지난다.
+                        // 오늘은 가디언이 타일 고정이라 2차 게이트가 안 걸려 결과가 같지만,
+                        // 인라인으로 두면 자를 바꾸는 순간 이 한 곳만 옛 답을 낸다.
+                        if (AttackReach.InReach(atkCell, gCell, tileRange, atkPos, gPos, tileSize,
+                                attackerIsContinuous && targetPathLookup.HasComponent(g)))
                         {
                             bestTarget = g;
                             bestTargetPos = gPos;
@@ -809,8 +813,10 @@ namespace Wassup.Battle.Combat
                             float3 ltPos = aggroTransformLookup.HasComponent(lt)
                                 ? aggroTransformLookup[lt].Position : bestTargetPos;
                             int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
-                            int ltDist = math.max(math.abs(ltCell.x - atkCell.x), math.abs(ltCell.y - atkCell.y));
-                            if (ltDist <= tileRange) { bestTarget = lt; bestTargetPos = ltPos; }
+                            // unit 1 수렴 — 락 유지도 선정과 같은 술어를 지난다.
+                            if (AttackReach.InReach(atkCell, ltCell, tileRange, atkPos, ltPos, tileSize,
+                                    attackerIsContinuous && targetPathLookup.HasComponent(lt)))
+                            { bestTarget = lt; bestTargetPos = ltPos; }
                             else bestTarget = Entity.Null; // out of range → lapse
                         }
                         else bestTarget = Entity.Null; // dead/despawn/PastGoal → lapse
@@ -875,7 +881,7 @@ namespace Wassup.Battle.Combat
                             dcurPos = aggroTransformLookup.HasComponent(dcur)
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
                             int2 dCell = GridMath.WorldToCell(dcurPos, tileSize, gridSize, origin: ffOrigin);
-                            int dDist = math.max(math.abs(dCell.x - atkCell.x), math.abs(dCell.y - atkCell.y));
+                            int dDist = GridMath.ChebyshevDistance(atkCell, dCell);   // unit 1 수렴
                             dKeep = AttackReach.InReach(atkCell, dCell, tileRange, atkPos, dcurPos, tileSize,
                                         attackerIsContinuous && targetPathLookup.HasComponent(dcur))
                                     && TargetPersistence.KeepsLock(true, dDist, tileRange);
@@ -1523,9 +1529,12 @@ namespace Wassup.Battle.Combat
                                                     attack.ValueRO.targetTraversalLayers,
                                                     targetTraversalLayers[i])) continue;
                                             if (targetEntities[i] == attackerEntity) continue;
-                                            int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
-                                            int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
-                                            if (tileDistAoE > tileRange) continue;
+                                            var aoePos = targetTransforms[i].Position;
+                                            int2 tgtCellAoE = GridMath.WorldToCell(aoePos, tileSize, gridSize, origin: ffOrigin);
+                                            // unit 1 수렴 — 다중타격의 2번째 이후 대상도 **첫 대상과 같은 술어**를
+                                            // 지난다. 갈려 있으면 「내가 때릴 수 있는 적」의 정의가 발마다 다르다.
+                                            if (!AttackReach.InReach(atkCell, tgtCellAoE, tileRange, atkPos, aoePos, tileSize,
+                                                    attackerIsContinuous && targetPathLookup.HasComponent(targetEntities[i]))) continue;
                                             float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, occupiedCellsLookup, hasFlowField, flowField, out _);
                                             if (rankByHealth)
                                             {
@@ -2131,7 +2140,7 @@ namespace Wassup.Battle.Combat
                 scratch[i] = new NearestTargeting.Candidate
                 {
                     eligible = eligible,
-                    tileDist = math.max(math.abs(c.x - selfCell.x), math.abs(c.y - selfCell.y)),
+                    tileDist = GridMath.ChebyshevDistance(selfCell, c),   // unit 1 수렴
                     sqDist = math.distancesq(selfPos, p),
                     simId = targetSimIds[i],
                 };

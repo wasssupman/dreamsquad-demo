@@ -239,8 +239,10 @@ namespace Wassup.Battle.Movement
                 {
                     var fieldT = tornadoFields[t];
                     int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize, origin: field.origin);
-                    int tileDist = math.max(math.abs(cell.x - centerCell.x), math.abs(cell.y - centerCell.y));
-                    if (tileDist > fieldT.tileRange) continue;
+                    // distance-based-range unit 1 — 회오리는 **사거리가 아니라 장 멤버십**이라
+                    // `AttackReach` 가 아니라 광역 술어(`TileAoe`)로 수렴한다. README 배경이 든
+                    // 「화면은 원인데 판정은 사각형」 3곳 중 하나가 여기다.
+                    if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, fieldT.tileRange)) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);

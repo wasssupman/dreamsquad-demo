@@ -89,9 +89,13 @@ namespace Wassup.Battle.Combat
                         var g = aggroLookup[enemyEntity].guardian;
                         if (g != Entity.Null && transformLookup.HasComponent(g))
                         {
-                            int2 gCell = GridMath.WorldToCell(transformLookup[g].Position, tileSize, gridSize, origin: ffOrigin);
-                            int gDist = math.max(math.abs(gCell.x - atkCell.x), math.abs(gCell.y - atkCell.y));
-                            guardianInRange = gDist <= tileRange;
+                            float3 gPos = transformLookup[g].Position;
+                            int2 gCell = GridMath.WorldToCell(gPos, tileSize, gridSize, origin: ffOrigin);
+                            // distance-based-range unit 1 — 「멈춰도 되나」도 **같은 술어**를 지난다.
+                            // 셀만 보면 자를 바꾸는 순간 이 한 곳만 옛 답을 내고, 그게 정확히
+                            // 「멈추는 근거」와 「쏘는 근거」가 갈리는 교착이다(AttackReach 헤더).
+                            guardianInRange = AttackReach.InReach(atkCell, gCell, tileRange, atkPos, gPos, tileSize,
+                                candPathLookup.HasComponent(enemyEntity) && candPathLookup.HasComponent(g));
                         }
                     }
                 }
@@ -171,7 +175,7 @@ namespace Wassup.Battle.Combat
                 {
                     float3 curPos = transformLookup[cur].Position;
                     int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                    int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                    int cDist = GridMath.ChebyshevDistance(atkCell, cCell);   // unit 1 수렴
                     // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
                     bool curReach = AttackReach.InReach(atkCell, cCell, tileRange, atkPos, curPos, tileSize,
                         pathLookup.HasComponent(attacker) && pathLookup.HasComponent(cur));

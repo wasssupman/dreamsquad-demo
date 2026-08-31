@@ -55,3 +55,30 @@
       `PatternTargeting:45` · `PatrolAreaMath:173` gap 값). **「0건」은 영원히 성립하지 않는다** —
       그리고 `FlowFieldBuilder:188` 은 사각 디스크 이중 루프라 그 grep 이 애초에 못 잡는다.
 - [ ] 신규 인라인 금지는 계약 11 로 리뷰가 진다.
+
+---
+
+### 진행 기록 — 완료 2026-08-31
+
+수렴한 곳(성격이 셋으로 갈렸다 — 하나로 뭉뚱그리면 틀린다):
+
+| 성격 | 지점 | 수렴 대상 |
+|---|---|---|
+| **사거리 판정** | `AttackSystem:781`(어그로 sticky) · `:812`(frontmost 락) · `:1527`(다중타격 2번째 이후) · `EnemyAiStateSystem:93`(멈춰도 되나) · `HazardCastSystem:99`(캐스트) | `AttackReach.InReach` |
+| **거리 값** | `AttackSystem:735·878`(→`KeepsLock`) · `:2134`(→`Candidate.tileDist`) · `EnemyAiStateSystem:174` | `GridMath.ChebyshevDistance` |
+| **장 멤버십** | `MovementSystem:242`(회오리) | `TileAoe.IsInTileRange` — 사거리가 아니다 |
+| **손복사본** | `BattleBridge:7509` | **삭제**(`GridMath` 로 대체) |
+
+**`FlowFieldBuilder.CollectDefenderSources` 는 수렴하지 않았다** — 결정 4 로 셀 기반을 유지하므로
+자가 안 바뀌고, 그 함수는 사각 이중 루프라 **복제된 산식이 애초에 없다**(제거할 미러가 0).
+시그니처 확장도 불필요해졌다. 건드리면 BFS 핫 경로만 흔든다.
+
+`HazardCastSystem` 은 `bothContinuous: false` 를 **명시 인자**로 넘긴다 — 오늘 캐스터가 전부
+타일 고정이라 무회귀이고, 인라인 산식이 아니라 눈에 보이는 인자라 연속 캐스터가 생기면 놓치기 어렵다.
+
+**검증**
+- [x] 골든 7건 **전건 통과**(이벤트·킬 수 재생성 시점과 동일) — 자 무변경이 증명됐다
+- [x] EditMode 2659건 / 실패 2건 — 둘 다 선행 실패(`boomerang`·`bomb_man`), 새 빨강 0
+- [x] `Battle/` 잔여 인라인 **7건이 전부 허용 목록**: 술어 본체 3(`AttackReach`×2·`TileAoe`) +
+      비목표 4(`BlinkMath` 링셸 · `PatternTargeting` 랭킹 · `WaypointProgress` 격자위상 ·
+      `PatrolAreaMath` gap 값). **사거리 판정 인라인 0건.**
