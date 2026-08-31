@@ -194,8 +194,12 @@ namespace Wassup.Data
         public Color ghostInvalidColor = new Color(1f, 0.25f, 0.2f, 0.6f);
         [Tooltip("기배치 유닛 점유 — Ghost 주변 컨텍스트(노란 계열).")]
         public Color ghostOccupiedColor = new Color(1f, 0.85f, 0.25f, 0.5f);
-        [Tooltip("지형 배치 불가 — 보드 전역 표시(빨간 계열, 사용자 결정 2026-08-28). 유닛을 들면 켜진다.")]
-        public Color ghostTerrainColor = new Color(1f, 0.3f, 0.24f, 0.3f);
+        [Tooltip("지형 배치 불가 — 보드 전역 표시. 유닛을 들면 켜진다.\n" +
+                 "**무채색이다**(distance-based-range unit 5, 사용자 결정 2026-08-31). 「이 땅은 원래 못 놓는다」는 " +
+                 "판의 **정적 사실**이고, 「지금 네 배치가 충돌한다」(ghostInvalidColor)는 **네 행동에 대한 응답**이다. " +
+                 "정적 사실은 조용해야 한다 — 전에는 둘 다 빨강이라 알파(.6 vs .3)로만 갈렸고, 소형 화면에서 겸직했다.\n" +
+                 "푸른 쪽으로 살짝 민 어두운 회색 — 순수 회색이면 아스팔트 보드와 섞이고, 갈색 쪽이면 흙으로 읽힌다.")]
+        public Color ghostTerrainColor = new Color(0.12f, 0.12f, 0.15f, 0.38f);
         [Tooltip("후보 앵커가 공간 사유로 무효일 때 최근접 유효 앵커로 흡착하는 자석 반경(셀).\n" +
                  "**기본 0 = 비활성**(사용자 결정 2026-08-28 — 위치 보정 없이 배치 불가 유지·빨간 고스트만).\n" +
                  "구현은 남아 있어 값을 올리면 다시 켜진다. 반경 밖은 배치 불가 유지(원거리 강제 보정 금지).")]
