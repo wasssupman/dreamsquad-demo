@@ -5,13 +5,27 @@ namespace Wassup.Battle.Combat
     // 사거리 판정의 **단일 술어**. 아키텍처 중립이라 순수 함수로 둔다
     // (제약 10 — 타겟팅은 sim-critical 이라 단위 테스트를 유지한다).
     //
-    // ⚠ **소비처가 다섯이고 다섯이 반드시 같은 답을 받아야 한다.**
-    //   1) AttackSystem 타겟 선정 게이트        — «때릴 수 있나»
-    //   2) AttackSystem focus 락 유지            — 락을 문 뒤에도 같은 조건이어야 한다
-    //   3) AttackSystem committedTarget 재판정   — RESOLVE 시 사거리 이탈 판정
-    //   4) EnemyAiStateSystem.HasFireTarget      — «멈춰도 되나»(Engaging → EnemyBehavior.Halt)
-    //   5) PatrolAreaMath.StepDir/CloseInDir     — «더 다가가야 하나»(사격 칸 도착 판정)
-    // 새 소비처가 생기면 이 함수를 쓰고 목록에 적을 것.
+    // ⚠ **소비처가 열하나이고 전부 같은 답을 받아야 한다** (distance-based-range unit 1 로
+    // 인라인 사거리 판정을 전부 여기로 접었다 — 그 전에는 이 목록이 다섯이었고 **stale 했다**).
+    // 역할별로:
+    //   ── 공격(Combat) ──
+    //   1) AttackSystem 타겟 선정            — «때릴 수 있나»            [획득]
+    //   2) AttackSystem 적 focus 락 유지                                 [유지]
+    //   3) AttackSystem 어그로 sticky 오버라이드                          [획득]
+    //   4) AttackSystem frontmost 락 유지                                [유지]
+    //   5) AttackSystem 방어유닛 focus 락 유지                            [유지]
+    //   6) AttackSystem committedTarget 재판정 — RESOLVE 시 이탈 판정      [유지]
+    //   7) AttackSystem 다중타격 2번째 이후 대상 — 첫 대상과 같은 정의여야 한다 [획득]
+    //   ── 정지(Combat) ──
+    //   8) EnemyAiStateSystem guardianInRange — 어그로된 적이 멈춰도 되나  [획득]
+    //   9) EnemyAiStateSystem.HasFireTarget   — «멈춰도 되나»             [획득/유지]
+    //   ── 시전(Effects) ──
+    //  10) HazardCastSystem 캐스트 사거리 — **Effects 맥락의 첫 소비처**   [획득]
+    //   ── 이동(Effects) ──
+    //  11) PatrolAreaMath.StepDir/CloseInDir — «더 다가가야 하나»
+    //      ⚠ 이 하나만 `InReach` 합본이 아니라 `InCellRange`·`InWorldReach` 를 **분해해서** 쓴다
+    //      (셀 통과 AND 월드 실패 = 더 밀어준다). 술어를 바꿀 때 이 비대칭을 반드시 함께 본다.
+    // 새 소비처가 생기면 이 함수를 쓰고 목록에 적을 것. **인라인 재작성은 리뷰 거절 사유다.**
     //
     // 특히 **락 경로(2·3)를 빠뜨리기 쉽다.** 셀만 보면 락을 문 뒤로는 2차 게이트가 영영
     // 적용되지 않고, (4)의 미러와 갈려 «쏘면서 골로 걸어가는» 상태가 된다(코드 리뷰 지적).

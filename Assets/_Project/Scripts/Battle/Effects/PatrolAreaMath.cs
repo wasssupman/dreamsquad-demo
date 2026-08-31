@@ -71,6 +71,11 @@ namespace Wassup.Battle.Effects
 
                 int count = FlowFieldBuilder.CollectDefenderSources(
                     areaMask, gridSize, inArea.AsArray(), math.max(1, attackTileRange), sources);
+                // ⚠ **여기는 `RangeToTiles` 로 통일하지 않는다** (distance-based-range unit 1 에서
+                // 검토 후 보류). 소스 수집과 아래 `reach` 가 **같은 클램프**를 써야 하는데,
+                // 여기만 `RangeToTiles` 로 바꾸면 사거리 0 유닛에서 «BFS 는 사격 칸을 세우는데
+                // 도착 판정은 후보를 못 찾는» 교착이 난다. 둘 다 바꾸는 건 순찰 이동의 성격
+                // 변경이라 이 unit(술어 수렴) 밖이다.
                 if (count == 0)
                 {
                     for (int i = 0; i < scratchDist.Length; i++) scratchDist[i] = int.MaxValue;

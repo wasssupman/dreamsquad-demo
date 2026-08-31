@@ -1550,7 +1550,7 @@ namespace Wassup.Battle.Combat
                                             // 지난다. 갈려 있으면 「내가 때릴 수 있는 적」의 정의가 발마다 다르다.
                                             if (!AttackReach.InReach(atkCell, tgtCellAoE, tileRange, atkPos, aoePos, tileSize,
                                                     attackerIsContinuous && targetPathLookup.HasComponent(targetEntities[i]))) continue;
-                                            float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, occupiedCellsLookup, hasFlowField, flowField, out _);
+                                            float d2 = DistanceSqToTarget(atkPos, targetEntities[i], aoePos, occupiedCellsLookup, hasFlowField, flowField, out _);
                                             if (rankByHealth)
                                             {
                                                 var h = healthLookup[targetEntities[i]];

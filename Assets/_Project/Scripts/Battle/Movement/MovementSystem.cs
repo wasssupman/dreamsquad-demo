@@ -155,8 +155,19 @@ namespace Wassup.Battle.Movement
                         continue;
                     }
                     // aggro-tile-chase unit 2 — chase field(dist) 하강. dir zero = 목적지
-                    // (사거리 내 walk 셀, dist 0) 도착 또는 고립 — 정지. 도착 셀은 정의상
-                    // 발사 조건 충족 → 다음 틱 EnemyAiStateSystem 이 Standoff 전이.
+                    // (사거리 내 walk 셀, dist 0) 도착 또는 고립 — 정지.
+                    // ⚠ **「도착 셀은 정의상 발사 조건 충족」은 조건부다.** 그 «정의상» 은
+                    // 발사 판정이 **셀 기준**일 때만 성립한다. 추격 필드 소스는 셀 디스크
+                    // (`FlowFieldBuilder.CollectDefenderSources`)인데, 발사 쪽
+                    // (`EnemyAiStateSystem` guardianInRange · `AttackSystem` 어그로 sticky)은
+                    // `AttackReach.InReach` 를 지나고 그 2차 게이트는 **양쪽이 연속 이동체일 때**
+                    // 월드 거리로 한 번 더 조인다. 즉 **연속 이동 가디언**(`PathFollowState` +
+                    // `aggroCapacity > 0`)이 생기는 순간 «도착했는데 못 쏘고, 필드 기울기가 0이라
+                    // 못 움직이는» 영구 동결이 성립한다. 오늘은 그런 저작이 0종이라 도달 불가다
+                    // (가디언 3종 전부 타일 고정 · 순찰병 `aggroCapacity: 0`).
+                    // 순찰 이동에는 그 보정이 있다(`PatrolAreaMath.CloseInDir` — 셀 통과 AND
+                    // 월드 실패면 지배축 한 칸). **추격 레인에는 아직 없다** — 자를 바꾸는
+                    // distance-based-range unit 4 소관.
                     bool chaseMoved = false;
                     if (chaseLookup.HasBuffer(entity))
                     {
@@ -242,7 +253,7 @@ namespace Wassup.Battle.Movement
                     // distance-based-range unit 1 — 회오리는 **사거리가 아니라 장 멤버십**이라
                     // `AttackReach` 가 아니라 광역 술어(`TileAoe`)로 수렴한다. README 배경이 든
                     // 「화면은 원인데 판정은 사각형」 3곳 중 하나가 여기다.
-                    if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, fieldT.tileRange)) continue;
+                    if (!TileAoe.IsInTileRange(cell, centerCell, fieldT.tileRange)) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);

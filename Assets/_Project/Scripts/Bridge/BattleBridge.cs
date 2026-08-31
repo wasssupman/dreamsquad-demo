@@ -7525,7 +7525,6 @@ namespace Wassup.Bridge
             return best;
         }
 
-
         public void ShowBlockedHighlight(DefenderUnitData unit)
         {
             _blockedHlShown = true;

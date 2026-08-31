@@ -20,9 +20,21 @@ namespace Wassup.Battle.Effects
     [UpdateBefore(typeof(Wassup.Battle.Combat.AttackSystem))]
     public partial struct HazardCastSystem : ISystem
     {
+        // 캐스터가 연속 이동체인가 — 사거리 술어의 2차 게이트 인자.
+        //
+        // ⚠ **`OnUpdate` 안의 `var x = SystemAPI.GetComponentLookup<PathFollowState>(...)`
+        // 형태로 쓰면 이 시스템에서 Burst NRE 가 난다**(실측 — `HazardCasterTests` 8건 중 6건이
+        // 초기화 안 된 lookup 포인터로 죽었다). 바로 위 `simIdLookup` 은 **같은 형태인데 동작한다**
+        // — 그러니 「저 형태가 여기서도 되겠지」로 되돌리지 말 것. 둘의 유일한 차이는 이 타입이
+        // **이 시스템의 targetsQuery 에도 쓰인다**(`.WithAll<…, PathFollowState>()`)는 점이라
+        // 그 조합을 의심하지만, **원인은 확정하지 않았다.** 확정된 것은 명시 필드 +
+        // `Update(ref state)` 가 초록이라는 사실뿐이고, 그게 생성기에 안 기대는 형태다.
+        private ComponentLookup<PathFollowState> _casterPathLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _casterPathLookup = state.GetComponentLookup<PathFollowState>(isReadOnly: true);
             state.RequireForUpdate<HazardCastState>();
             state.RequireForUpdate<FlowFieldSingleton>();
             state.RequireForUpdate<HazardSpawnRequestsSingleton>();
@@ -58,6 +70,9 @@ namespace Wassup.Battle.Effects
             // 뽑혔고, 그 순서는 청크 배치(= 스폰/파괴 이력)가 정했다. 형제 타겟팅들과
             // 같은 축(낮은 SimEntityId = 먼저 스폰된 쪽)으로 맞춘다.
             var simIdLookup = SystemAPI.GetComponentLookup<SimEntityId>(isReadOnly: true);
+            // 타겟 쪽은 조회하지 않는다: 아래 targetsQuery 가 `PathFollowState` 를 요구하므로
+            // **정의상 전원 연속**이다 → `bothContinuous ≡ casterIsContinuous`.
+            _casterPathLookup.Update(ref state);
             var targetSimIds = new NativeArray<int>(targetEntities.Length, Allocator.Temp);
             for (int i = 0; i < targetEntities.Length; i++)
                 targetSimIds[i] = simIdLookup.HasComponent(targetEntities[i])
@@ -79,6 +94,7 @@ namespace Wassup.Battle.Effects
 
                 float3 casterPos = transform.ValueRO.Position;
                 int2 casterCell = GridMath.WorldToCell(casterPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
+                bool casterIsContinuous = _casterPathLookup.HasComponent(casterEntity);
                 int tileRange = GridMath.RangeToTiles(cast.ValueRO.range);
                 int mask = cast.ValueRO.targetMask;
                 float bestSq = float.MaxValue;
@@ -97,12 +113,11 @@ namespace Wassup.Battle.Effects
                     float3 targetPos = targetTransforms[i].Position;
                     int2 targetCell = GridMath.WorldToCell(targetPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                     // distance-based-range unit 1 — 캐스트 사거리도 **같은 술어**를 지난다.
-                    // ⚠ `bothContinuous: false` 는 **오늘의 사실**이다 — 해저드 캐스터는 전부
-                    // 타일 고정 방어유닛이라 2차 게이트가 걸릴 조합이 없다. 연속 이동 캐스터가
-                    // 생기면 이 인자를 `PathFollowState` 조회로 바꿔야 한다(인라인 산식이 아니라
-                    // **눈에 보이는 인자**라 그때 빠뜨리기 어렵다).
-                    if (!Wassup.Battle.Combat.AttackReach.InReach(casterCell, targetCell, tileRange,
-                            casterPos, targetPos, flowField.tileSize, false)) continue;
+                    // 3번째 인자에 `false` 리터럴을 두지 않는 이유: 그건 「오늘 캐스터가 전부
+                    // 타일 고정 방어유닛」이라는 **콘텐츠 사실**이지 이 코드의 성질이 아니다.
+                    // 리터럴은 grep(「인라인 사거리 판정 0건」)에도 안 걸려 조용히 다른 자가 된다.
+                    if (!AttackReach.InReach(casterCell, targetCell, tileRange,
+                            casterPos, targetPos, flowField.tileSize, casterIsContinuous)) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
                     if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))

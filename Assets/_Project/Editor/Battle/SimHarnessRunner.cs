@@ -33,6 +33,14 @@ namespace Wassup.EditorTools.Battle
             // 판 중간 재시작 — 매치 경계 리셋(시계·SimEntityId·코스트)이 두 판을 갈라놓지
             // 않는지 보는 시나리오. 0 = 없음.
             public int restartAtTick;
+            // 이 시나리오만 쓰는 덱(카탈로그 id). null = 씬 기본 풀.
+            //
+            // ⚠ **왜 필요했나**: 씬 기본 풀에 소환사가 없어 **코퍼스에 순찰병이 구조적으로
+            // 못 들어왔다.** 순찰병은 `PathFollowState` 를 갖는 **연속 이동 아군**이라,
+            // 「적(연속) × 순찰병(연속)」이 `AttackReach` 의 2차 게이트가 실제로 걸리는
+            // 거의 유일한 조합이다 — 그 축이 코퍼스에 0 이면 사거리 술어를 바꿔도 골든이
+            // 아무 말을 못 한다(distance-based-range unit 1 리뷰 C1).
+            public string[] defenderIds;
         }
 
         // 골든 코퍼스. 스펙이 요구한 시나리오 축을 **지금 결정론적으로 만들 수 있는 형태**로만
@@ -52,6 +60,11 @@ namespace Wassup.EditorTools.Battle
             // 배치를 안 하는 판 — 적이 그대로 골까지 간다(유출·공성·골 붕괴 경로).
             new Scenario { name = "no_defense", seed = 20260822, ticks = 1800,
                            placementTicks = new int[0] },
+            // 연속 이동 아군(순찰병)이 판에 서는 유일한 시나리오. 위 defenderIds 주석 참조 —
+            // 이게 없으면 `AttackReach` 2차 게이트의 실효 경로가 코퍼스에 0 이다.
+            new Scenario { name = "summoner",   seed = 20260822, ticks = 1800,
+                           placementTicks = new[] { 150, 330, 510, 690, 900 },
+                           defenderIds = new[] { "summoner", "archer", "cannon" } },
             // 판 중간 재시작. 리셋이 새는 순간 뒤쪽 절반이 통째로 갈린다.
             // ⚠ 각 반쪽이 **최소 20초**여야 한다. 처음엔 10초씩(1200틱/재시작 600)으로 잡았더니
             // 두 반쪽 다 교전 전에 끝나 **이벤트 0개짜리 골든**이 됐다 — 통과하지만 아무것도
@@ -84,7 +97,7 @@ namespace Wassup.EditorTools.Battle
 
         public static RunResult Run(BattleBridge bridge, in Scenario sc, bool record)
         {
-            StartMatch(bridge, sc.seed);
+            StartMatch(bridge, sc);
             if (record)
                 LegacyTraceRecorder.Begin(sc.name, bridge.MatchConfigHash, sc.seed, StepDt);
 
@@ -98,7 +111,7 @@ namespace Wassup.EditorTools.Battle
                     {
                         // ⚠ 하네스 시계를 끄지 않고 재시작한다. StopBattle→StartBattle 은
                         // MonoBehaviour 경로가 아니라 직접 호출이라 프레임을 쓰지 않는다.
-                        StartMatch(bridge, sc.seed);
+                        StartMatch(bridge, sc);
                     }
                     LegacyTraceRecorder.SetTick(t);
                     ApplyScheduledInput(bridge, sc, t);
@@ -131,11 +144,14 @@ namespace Wassup.EditorTools.Battle
             return result;
         }
 
-        private static void StartMatch(BattleBridge bridge, int seed)
+        private static void StartMatch(BattleBridge bridge, in Scenario sc)
         {
             bridge.StopBattle();
-            bridge.SetMatchSeed(seed);
+            bridge.SetMatchSeed(sc.seed);
             bridge.PrepareDraftMap();
+            // ⚠ 덱 교체는 **`BeginPlacement` 앞**이어야 한다 — 그 호출이 판을 짓고 코스트·상한을
+            // 덱 기준으로 세운다. 뒤에 바꾸면 배치가 옛 덱 기준으로 거부된다.
+            ApplyScenarioPool(bridge, sc);
             bridge.BeginPlacement();
             bridge.StartBattle();
 
@@ -145,6 +161,40 @@ namespace Wassup.EditorTools.Battle
             var cost = Wassup.Core.GameManager.Instance != null
                 ? Wassup.Core.GameManager.Instance.CostRuntime : null;
             if (cost != null) { cost.ResetToStart(); cost.BeginRegen(); }
+        }
+
+        // 씬 기본 덱. **첫 호출 때 한 번만** 잡는다 — 덱을 지정한 시나리오가 돈 뒤에
+        // 잡으면 그게 기본값으로 굳는다.
+        private static Wassup.Data.DefenderUnitData[] _sceneDefaultPool;
+
+        // 시나리오가 덱을 지정했으면 갈아끼우고, 아니면 **씬 기본으로 되돌린다.**
+        // ⚠ 되돌리기가 없으면 `SetDefenderPool` 이 브리지의 serialized 필드를 영구히 덮어
+        // **다음 시나리오까지 남의 덱으로 돈다** — 코퍼스 전체가 조용히 다른 판이 된다.
+        // 못 찾은 id 는 조용히 넘기지 않는다: 빠진 채로 돌면 그 시나리오가 증언하려던 축이
+        // 사라지는데 통과는 한다.
+        private static void ApplyScenarioPool(BattleBridge bridge, in Scenario sc)
+        {
+            if (_sceneDefaultPool == null) _sceneDefaultPool = bridge.DefenderPool;
+            if (sc.defenderIds == null || sc.defenderIds.Length == 0)
+            {
+                bridge.SetDefenderPool(_sceneDefaultPool);
+                return;
+            }
+            var all = Resources.FindObjectsOfTypeAll<Wassup.Data.DefenderCatalog>();
+            if (all == null || all.Length == 0)
+            {
+                Debug.LogError($"[SimHarness] '{sc.name}' — DefenderCatalog 를 못 찾았다. 덱 교체 실패.");
+                bridge.SetDefenderPool(_sceneDefaultPool);
+                return;
+            }
+            var pool = new List<Wassup.Data.DefenderUnitData>(sc.defenderIds.Length);
+            foreach (var id in sc.defenderIds)
+            {
+                var u = all[0].ById(id);
+                if (u == null) { Debug.LogError($"[SimHarness] '{sc.name}' — 덱 id '{id}' 없음."); continue; }
+                pool.Add(u);
+            }
+            bridge.SetDefenderPool(pool.Count > 0 ? pool.ToArray() : _sceneDefaultPool);
         }
 
         // 입력은 벽시계가 아니라 **틱 번호**로 반입한다 — 그래야 두 판의 입력이 같은 sim 시각에
