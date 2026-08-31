@@ -32,6 +32,23 @@ namespace Wassup.EditorTools.Battle
                 var trace = run.trace;
                 string text = trace.Serialize();
 
+                // ── 공허 게이트 ──
+                // ⚠ **빈 트레이스를 저장하면 안 된다.** 재생성 직후 같은 Play 세션에서 다시
+                // 돌리면(또는 판이 소진된 세션에서 돌리면) 시나리오가 **이벤트 0 · configHash 공백**
+                // 으로 나오는데, 예전엔 그걸 그대로 써 놓고 「전건 통과」라고 보고했다.
+                // 그 순간 골든은 존재 이유를 잃는다 — 통과하지만 아무것도 증언하지 않는다.
+                // (실측 2026-08-31: 좋은 기준선을 빈 것으로 덮을 뻔했다.)
+                if (trace.events.Count == 0 || string.IsNullOrEmpty(trace.configHash))
+                {
+                    failed++;
+                    Debug.LogError($"[Golden] '{sc.name}' 이 비었다(이벤트 {trace.events.Count}, "
+                        + $"configHash '{trace.configHash}') — **저장하지 않는다.** "
+                        + "판이 소진된 세션에서 돌렸을 가능성이 높다. Play 를 껐다 켜고 "
+                        + "**재생성을 그 세션의 첫 동작으로** 실행하라.");
+                    lines.Add($"| `{sc.name}` | {sc.seed} | {sc.ticks} | — | — | ✗ 빈 트레이스 |");
+                    continue;
+                }
+
                 // ── 직렬화 왕복 게이트 ──
                 string roundTripError = null;
                 try
