@@ -24,8 +24,10 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Tests/PlayMode/RangePredicateMirrorTest.cs` — 신규
-- `Assets/_Project/Tests/EditMode/AttackReachTests.cs` — 경계 케이스 보강
+- `Assets/_Project/Tests/PlayMode/RangePredicateMirrorTest.cs` — 신규(교착 카나리아)
+- `Assets/_Project/Tests/EditMode/RangePredicateInvariantsTests.cs` — 신규(상대 불변식 6종)
+- `Assets/_Project/Tests/EditMode/AttackReachTests.cs` — **손대지 않는다.** 그 파일은 절대값을
+  못박는 자리이고 unit 4a 가 뒤집을 대상이다. 상대 불변식은 위 신규 파일이 진다
 - **프로덕션 코드 변경 0**
 - `Assets/_Project/Tests/Golden/*.trace.txt` — **선행 굽기 1회**(별도 커밋)
 
@@ -66,3 +68,14 @@
       unit 1/2 로 이관하고 여기서는 red 사유를 기록만 한다.
 - [ ] 카나리아가 인위적 교착(순찰병 `aggroCapacity` > 0 저작)을 실제로 잡는지 1회 확인.
 - [ ] PlayMode 라 상시 실행 아님. **전환 중에는 이 파일만 개별 지정**해서 돌린다(전체 8분).
+
+---
+
+### 진행 기록
+
+- **골든 선행 굽기 완료** 2026-08-31 — `fade423a`. 굽기 전에 `89e65d05`(하네스 배치 결함)를
+  먼저 고쳐야 했다: 하네스가 (0,0)부터 첫 가능 칸에 놓아 방어유닛이 골에서 15칸 떨어진 구석에
+  몰렸고, 그래서 **골든 7건의 킬이 전부 0** 이었다. 그 상태로 구웠으면 「아무도 안 죽는다」를
+  M1 기준선으로 박제할 뻔했다. 재생성 후 전건 통과 + 결정론 2회 대조 완전 일치.
+- **테스트 2종 작성** 2026-08-31 — ⚠ **컴파일·실행 미검증**(UnityMCP 브리지 단절).
+  에디터 복구 후 EditMode 전체 + `RangePredicateMirrorTest` 단독 실행이 남았다.
