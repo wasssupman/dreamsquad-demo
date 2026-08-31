@@ -26,6 +26,15 @@ namespace Wassup.Presentation
         public const int DragPreviewOrder = 20000;
         // placement-cell-snap unit 4 — 배치 확정 팝: 상승한 overlay 하이라이트(10002) 위, 드래그 프리뷰(20000) 아래.
         public const int PlacementCommitPopOrder = 12000;
+        // distance-based-range unit 5 — 공격 사거리 **링**(윤곽). 바닥 대역이다.
+        //
+        // ⚠ **유닛 위로 올리지 않는다**(사용자 결정 2026-08-31). 세계에 그린 도형이 스프라이트를
+        // 관통하면 **UI 오버레이로 읽혀 물성이 깨진다.** 밀집 전투에서 선이 유닛에 끊기는 것은
+        // 감수하고, **끊김은 채움(옅은 라임)이 흡수한다** — 정렬로 피하지 않는다.
+        // 값: 범위 타일(−12)·고스트(−11)·overlay(−10) 위 = 채움 위에 선이 얹힌다.
+        // 그림자(−5)·타일 게이지(−4)·유닛(양수) 아래 = 유닛이 선을 가린다(의도).
+        public const int RangeRingOrder = -8;
+
         // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트: 바닥 타일 하이라이트 위, 확정 팝(12000) 아래.
         // 팝은 확정 순간의 이완이라 액체보다 앞에 터져야 한다.
         public const int PlacementLiquidOrder = 11000;

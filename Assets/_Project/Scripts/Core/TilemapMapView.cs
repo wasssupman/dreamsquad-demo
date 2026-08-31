@@ -92,6 +92,21 @@ namespace Wassup.Core
         private SpriteRenderer _liquidTile;
         private Material _liquidTileMat;
         private bool _liquidTileMatMissing; // 미배선 경고 1회 게이트
+        // distance-based-range unit 5 — 사거리 **링**(윤곽). 액체 하이라이트와 같은 관용구:
+        // grid 자식 절차적 쿼드 + 인스턴스 머티리얼(에셋 원본 비오염). 모양은 전부 셰이더 SDF.
+        // grid 자식이라 스테이지 평면에 자동으로 코플레이너다 — 바닥 높이를 손으로 계산하지 않는다.
+        private SpriteRenderer _rangeRing;
+        private Material _rangeRingMat;
+        private bool _rangeRingMatMissing;   // 미배선 경고 1회 게이트
+        private static readonly int RingHalfExtentId = Shader.PropertyToID("_HalfExtent");
+        private static readonly int RingRangeId = Shader.PropertyToID("_Range");
+        private static readonly int RingQuadCellsId = Shader.PropertyToID("_QuadCells");
+        private static readonly int RingColorId = Shader.PropertyToID("_Color");
+        // 쿼드 한 변(셀 배수). 링 지름 = 2×(half + range) 이고 최대 사거리 5 + 여유 → 2×(0.5+5)+1 = 12.
+        // 사거리마다 쿼드를 키우지 않고 **한 크기로 고정**한다 — 셰이더가 uv→타일 매핑에 이 값을 쓰므로
+        // 여기가 단일 소스다(액체의 LiquidQuadCells 와 같은 규약).
+        private const float RingQuadCells = 14f;
+
         // 점액 관성 — 표시용 당김 벡터(dir×t)를 스프링으로 지연/출렁. 신호(정책)는 그대로, 시각만 늦는다.
         private Vector2 _pullSmoothed;
         private Vector2 _pullVel;
@@ -162,6 +177,9 @@ namespace Wassup.Core
             if (_commitPop != null) { SafeDestroy(_commitPop.gameObject); _commitPop = null; } // grid 자식 → 맵 리빌드 시 함께 정리
             if (_liquidTile != null) { SafeDestroy(_liquidTile.gameObject); _liquidTile = null; } // unit 7 — 액체 하이라이트도 동일
             if (_liquidTileMat != null) { SafeDestroy(_liquidTileMat); _liquidTileMat = null; }
+            if (_rangeRing != null) { SafeDestroy(_rangeRing.gameObject); _rangeRing = null; }   // unit 5 — 링도 동일
+            if (_rangeRingMat != null) { SafeDestroy(_rangeRingMat); _rangeRingMat = null; }
+            _rangeRingMatMissing = false;
             _liquidTileMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
@@ -286,6 +304,11 @@ namespace Wassup.Core
             // defender-footprint unit 2 — 고스트는 range(10000/-12) **위**: 확정될 영역·사유가
             // 최우선 정보다. hover overlay(10002)보다는 아래.
             SetRendererSorting(_ghostTilemap, above ? 10001 : -11);
+            // distance-based-range unit 5 — **두 분기가 같은 값이다.** 링은 드래그 중에도
+            // 유닛 위로 올라가지 않는다(사용자 결정 2026-08-31): 세계에 그린 도형이 스프라이트를
+            // 관통하면 UI 오버레이로 읽혀 물성이 깨진다. **끊김은 채움이 흡수한다.**
+            // 그럼에도 이 목록에 있는 이유 = 빠뜨린 렌더러가 옛 값에 굳는 사고 방지(궁극기 예고 선례).
+            if (_rangeRing != null) _rangeRing.sortingOrder = BoardSortOrder.RangeRingOrder;
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -476,6 +499,60 @@ namespace Wassup.Core
             if (overlayR != null) _liquidTile.sortingLayerID = overlayR.sortingLayerID;
             go.SetActive(false);
             return _liquidTile;
+        }
+
+        private SpriteRenderer EnsureRangeRing()
+        {
+            if (_rangeRing != null) return _rangeRing;
+            if (_rangeRingMatMissing) return null;
+            var srcMat = _tileSet != null ? _tileSet.placementRangeRingMaterial : null;
+            if (srcMat == null)
+            {
+                // 에디터 한정 폴백 없이 명시 실패 — Shader.Find 폴백은 기기 빌드에서만 조용히 죽는다.
+                Debug.LogWarning("TilemapMapView: TileSetData.placementRangeRingMaterial 미할당 — 사거리 링 생략. " +
+                                 "PlacementRangeRing.mat 을 tileSet 에 배선할 것.", this);
+                _rangeRingMatMissing = true;
+                return null;
+            }
+            _rangeRingMat = new Material(srcMat);
+            _rangeRingMat.SetFloat(RingQuadCellsId, RingQuadCells); // 쿼드 크기 ↔ 셰이더 매핑 단일 소스 동기
+            var go = new GameObject("PlacementRangeRing");
+            go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너. 회전 없음.
+            go.transform.localRotation = Quaternion.identity;
+            _rangeRing = go.AddComponent<SpriteRenderer>();
+            _rangeRing.sprite = PopSprite();   // 1×1 흰 full-rect — 모양은 전부 셰이더 SDF
+            _rangeRing.sharedMaterial = _rangeRingMat;
+            _rangeRing.sortingOrder = BoardSortOrder.RangeRingOrder;
+            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+            if (overlayR != null) _rangeRing.sortingLayerID = overlayR.sortingLayerID;
+            go.SetActive(false);
+            return _rangeRing;
+        }
+
+        // 사거리 링을 한 칸 중심에 띄운다. **인자가 판정 입력의 복사본이다** — 호출부가
+        // `AttackReach` 에 넣는 값을 그대로 넣어야 「판정의 경계 그 자체」가 참으로 유지된다.
+        // halfExtentTiles = 유닛 몸의 반폭(오늘 전 유닛 0.5), rangeTiles = 사거리.
+        private void ShowRangeRing(Vector2Int center, float rangeTiles, float halfExtentTiles)
+        {
+            var sr = EnsureRangeRing();
+            if (sr == null) return;   // 머티리얼 미배선 — EnsureRangeRing 이 1회 경고
+            float cs = grid.cellSize.x;   // rect 보드·균일 cellSize 전제(ConfigureGrid)
+            // ⚠ **`GetCellCenterLocal` 을 쓰면 안 된다** — 그건 z 에 0.5(셀 중심)를 넣는다.
+            // 부모가 90°X 회전이라 local −Z = world +Y 이므로 그 0.5 가 **보드에서 0.5 유닛 뜨는**
+            // 결과가 되고, 55° 카메라에서 링이 타일과 눈에 띄게 어긋난다(실측 후 수정).
+            // 확정 팝·액체 하이라이트와 **같은 관용구**를 쓴다: CellToLocalInterpolated + 접지 리프트.
+            var local = grid.CellToLocalInterpolated(new Vector3(center.x + 0.5f, center.y + 0.5f, 0f));
+            local.z = -PropGroundLift;   // Ground(ZWrite On) 코플레이너 z-fight 방지
+            sr.transform.localPosition = local;
+            sr.transform.localScale = new Vector3(RingQuadCells * cs, RingQuadCells * cs, 1f);
+            _rangeRingMat.SetVector(RingHalfExtentId, new Vector4(halfExtentTiles, halfExtentTiles, 0f, 0f));
+            _rangeRingMat.SetFloat(RingRangeId, rangeTiles);
+            if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
+        }
+
+        private void HideRangeRing()
+        {
+            if (_rangeRing != null && _rangeRing.gameObject.activeSelf) _rangeRing.gameObject.SetActive(false);
         }
 
         // defender-directional-volley unit 9 — 방향 지정 화살표. 보드에 눕는 탭 어포던스라
@@ -778,6 +855,10 @@ namespace Wassup.Core
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
+            // unit 5 — 윤곽. **채움과 같은 입력**에서 나온다(모양을 다시 그리지 않는다).
+            // 스킬 조준(squareShape)은 자가 정사각형이라 링을 띄우지 않는다 — 거짓말이 되기 때문.
+            if (squareShape) HideRangeRing();
+            else ShowRangeRing(center, tileRange, Wassup.Skills.SkillMath.SelfHalfWidthTiles);
             ApplyRangeTint();
         }
 
@@ -793,6 +874,9 @@ namespace Wassup.Core
             EnsureRangeTilemap();
             _rangeAlphaMul = Mathf.Clamp01(alphaMul);
             _rangeAimStyle = aimStyle;
+            // unit 5 — 임의 셀 집합(방향 레인·스킬 조준)에는 링이 없다. 레인은 폭 0 정수 격자
+            // 술어라 거리로 옮길 수 없고(비목표), 네모/원 어느 쪽으로 그려도 거짓말이 된다.
+            HideRangeRing();
             var tile = RangeTileFor(aimStyle);
             for (int i = 0; i < cells.Count; i++)
             {
@@ -815,6 +899,7 @@ namespace Wassup.Core
 
         public void ClearPlacementRange()
         {
+            HideRangeRing();   // unit 5 — 채움과 수명을 공유한다
             if (_rangeCells.Count == 0) return;
             if (_rangeTilemap != null)
                 foreach (var cell in _rangeCells) _rangeTilemap.SetTile(ToCell(cell), null);

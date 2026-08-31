@@ -174,3 +174,57 @@ C# 기본값을 상속하고 있었다 — 누군가 인스펙터를 열어 재�
 ⚠ **관측 한계 — 이 카메라 프레이밍에서는 A/B 가 미묘하다.** 지형 불가 칸의 대부분이 **보드 밖
 인도·차도**에 있어서, 이미 「판이 아닌 곳」으로 읽히는 자리에 칠이 얹힌다. 판 안에서 차이가
 분명히 드러나는 것은 보드 안에 구멍이 있는 맵이다. 실기기 확인 때 그런 맵을 골라 볼 것.
+
+---
+
+### 진행 기록 — 커밋 2(링) 완료 2026-08-31
+
+**셰이더가 판정식 그 자체다.**
+
+```
+sim:      length(max(|Δ| − half, 0)) ≤ range
+셰이더:   sdRoundedBox(p, _HalfExtent, _Range) ≤ 0
+          sdRoundedBox = length(max(|p| − b, 0)) + min(max(q.x,q.y),0) − r
+```
+
+둘은 **같은 식**이다 — 둥근사각 SDF 의 정의가 그러하기 때문이고, 내부 항
+`min(max(q.x,q.y),0)` 은 상자 **안쪽** 거리를 채울 뿐 경계(=0)에 기여하지 않는다.
+`_HalfExtent`·`_Range` 는 저작 값이 아니라 **판정 입력의 복사본**이고, 호출부가 사거리 술어에
+넣는 값(`SkillMath.SelfHalfWidthTiles`, `tileRange`)을 그대로 넣는다. 다칸 유닛이 들어와도
+저작만 바뀌고 셰이더는 그대로다(사용자 조건 4).
+
+| 항목 | 값 |
+|---|---|
+| 셰이더 | `Assets/_Project/Shaders/PlacementRangeRing.shader` — SDF, 다크 라이너 내장(선 **바깥**에만) |
+| 머티리얼 | `Data/TileSets/PlacementRangeRing.mat` → `TileSetData.placementRangeRingMaterial` (2개 tileSet 배선) |
+| 컴포넌트 | `TilemapMapView` 안, 액체 하이라이트와 **같은 관용구**(grid 자식 절차적 쿼드 + 인스턴스 머티리얼) |
+| 정렬 | `BoardSortOrder.RangeRingOrder = -8` — 범위 타일(−12)·고스트(−11)·overlay(−10) **위**, 그림자(−5)·유닛 **아래** |
+| 쿼드 | `RingQuadCells = 14` 고정(사거리마다 안 키운다 — 셰이더 uv→타일 매핑의 단일 소스) |
+
+**정렬 스위치 등록 — 두 분기가 같은 값이다.** 드래그 중에도 유닛 위로 안 올라간다(조건 3).
+그럼에도 목록에 있는 이유는 빠뜨린 렌더러가 옛 값에 굳는 사고 방지다(궁극기 예고 선례).
+
+**링을 안 띄우는 두 경로**: 스킬 조준·텔레그래프(`squareShape` — 그쪽 자가 정사각형이라 링이
+거짓말이 된다) · 방향 지정 유닛의 레인 십자(`SetPlacementCells` — 레인은 폭 0 격자 술어라
+거리로 옮길 수 없다, 스코프 밖).
+
+#### ⚠ 실측으로 잡은 버그 — `GetCellCenterLocal` 이 링을 0.5 유닛 띄웠다
+
+첫 구현이 `grid.GetCellCenterLocal(cell)` 을 썼는데 그건 **z 에 0.5(셀 중심)를 넣는다.**
+부모가 90°X 회전이라 local −Z = world +Y 이므로, 링이 보드에서 **0.5 유닛 뜬 채** 그려졌고
+55° 카메라에서 타일과 눈에 띄게 어긋났다. 형제(확정 팝·액체)와 같은 관용구
+(`CellToLocalInterpolated` + `local.z = -PropGroundLift`)로 고쳤다.
+수치 검증: `ring.localPosition = (12.50, 4.50, -0.02)` · `localScale = 14` · `_HalfExtent = (0.5,0.5)` ·
+`_Range = 5` · `_QuadCells = 14`.
+
+#### 남은 판단거리 — 채움이 링 밖으로 삐져나온다
+
+켜진 칸은 **중심**이 술어를 통과한 칸이고, 칸은 한 변 1의 사각형이라 **모서리가 링 밖으로
+최대 ~0.66칸 나간다**(사거리 5 기준). 규칙은 일치하는데 그림이 어긋나 보인다.
+
+⚠ **둘 중 링이 더 정확하다.** 적은 점(transform 위치)이므로 「저기 서면 맞나」의 참값은
+링이고, 칸 채움은 그 참값을 칸 단위로 양자화한 근사다. 채움이 α.12 로 내려가면(커밋 3)
+삐져나옴도 옅어지지만 **사라지지는 않는다.** 받아들일지 판단 필요.
+
+스크린샷: `Assets/Screenshots/dbr_u5c2_ring_final.png`(사거리 4, 채움 α.14 로 커밋 3 예고) ·
+`dbr_u5c2_ring_with_fill.png`(접지 버그 있던 첫 판) · `dbr_u5c2_ring_faintfill.png`(보드 아트 없이 형태만).

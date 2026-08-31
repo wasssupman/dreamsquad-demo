@@ -26,6 +26,13 @@ namespace Wassup.Data
                  "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
         public Material placementLiquidMaterial;
 
+        [Header("사거리 링 (distance-based-range unit 5)")]
+        [Tooltip("공격 사거리 윤곽 쿼드 머티리얼(Wassup/PlacementRangeRing). 선 두께·라이너는 이 .mat 인스펙터에서.\n" +
+                 "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.\n" +
+                 "⚠ 셰이더의 _HalfExtent·_Range 는 저작 값이 아니라 **판정 입력의 복사본**이다. 인스펙터에서 만지지 말 것 — " +
+                 "TilemapMapView 가 매 페인트마다 덮어쓴다.")]
+        public Material placementRangeRingMaterial;
+
         // heart-stress-axis unit 1 rev 2 — **마음이 붉게 물든다.** rev 1(머리 위 바)·
         // rev 2(주변 3×3 잠식)는 반려됐다 — 주변 타일 하이라이트는 쓸모가 없었고, 남은 답은
         // 마음 자체가 말하는 것이다. 자리가 여기인 이유는 그대로다: 이 SO 가 보드 시각
