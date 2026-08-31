@@ -2842,7 +2842,7 @@ namespace Wassup.Bridge
                 if (e == Entity.Null || !_em.Exists(e)) continue;
                 if (_em.HasComponent<PendingDeployment>(e)) continue;
                 var cellInt = new int2(kv.Key.x, kv.Key.y);
-                if (GridMath.ChebyshevDistance(cellInt, originInt) > tileRange) continue;
+                if (!Wassup.Battle.Combat.TileAoe.IsInRadius(cellInt, originInt, tileRange)) continue;   // unit 4b — 원
                 results.Add(e);
             }
         }
@@ -2866,7 +2866,7 @@ namespace Wassup.Bridge
             var cell = GridMath.WorldToCell(worldPos, tileSize,
                            new int2(_generatedMap.gridSize.x, _generatedMap.gridSize.y), origin: _boardOrigin);
             var origin = new int2(originTile.x, originTile.y);
-            return GridMath.ChebyshevDistance(cell, origin) <= range;
+            return Wassup.Battle.Combat.TileAoe.IsInRadius(cell, origin, range);   // unit 4b — 원
         }
 
         public Unity.Mathematics.int2 DebugWorldToCell(Vector3 worldPosition)
@@ -4633,7 +4633,7 @@ namespace Wassup.Bridge
             {
                 float3 vpos = xforms[i].Position;
                 var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
-                if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                if (!Wassup.Battle.Combat.TileAoe.IsInRadius(cell, centerCell, tileRange)) continue;   // unit 4b — 원
                 inRange.Add(i);
                 float dx = vpos.x - center.x;
                 float dz = vpos.z - center.z;

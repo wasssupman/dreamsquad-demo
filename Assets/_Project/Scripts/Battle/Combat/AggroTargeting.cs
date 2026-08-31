@@ -52,7 +52,7 @@ namespace Wassup.Battle.Combat
                     if (AlreadyPicked(outIdx, count, i)) continue;
                     var c = cands[i];
                     if (freshOnly && c.aggroed) continue;
-                    if (!TileAoe.IsInTileRange(c.cell, gCell, tileRange)) continue;
+                    if (!TileAoe.IsInRadius(c.cell, gCell, tileRange)) continue;   // unit 4b — 원
                     float dx = c.pos.x - gPos.x;
                     float dz = c.pos.z - gPos.z;
                     float d2 = dx * dx + dz * dz;

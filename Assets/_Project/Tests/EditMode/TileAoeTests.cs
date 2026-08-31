@@ -127,5 +127,55 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(Wassup.Skills.SkillCone.IsInCone(b, a, Right, CosSq(50f), 3f),
                 "인자 순서를 뒤집었는데 같은 결과다 — 방향 술어가 아니다");
         }
+
+        // ── 광역 멤버십의 모양 (distance-based-range unit 4b) ──────────────
+        //
+        // `IsInTileRange`(체비셰프·정사각형)는 **격자 통계 전용**으로 남았고, 광역의 정본은
+        // `IsInRadius` 다 — 사거리 술어와 **같은 본체**(`SkillMath.InBodyReach`).
+        // 아래 셋이 그 계약이다: 반경 1은 여덟 이웃 전부 · 반경 2는 정대각만 빠짐 ·
+        // 두 함수가 실제로 다르다.
+
+        [Test]
+        public void Radius1_KeepsAllEightNeighbours()
+        {
+            // ⚠ **순수 원(`dx²+dy² ≤ r²`)으로 쓰면 여기가 무너진다** — 대각 칸의 중심거리가
+            // 1.41 이라 반경 1 폭발이 **십자 모양**이 된다. 0.5 는 「공격자의 몸」이 아니라
+            // **「칸의 반폭」**이고, 후보는 점이 아니라 한 변 1의 사각형이다.
+            var c = new int2(10, 10);
+            for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+                Assert.IsTrue(TileAoe.IsInRadius(new int2(c.x + dx, c.y + dy), c, 1),
+                    $"반경 1 이 이웃 ({dx},{dy}) 을 잃었다 — 폭발이 십자가 됐다");
+            Assert.IsFalse(TileAoe.IsInRadius(new int2(c.x + 2, c.y), c, 1), "두 칸은 밖");
+        }
+
+        [Test]
+        public void Radius2_LosesOnlyTheTrueCorner()
+        {
+            var c = new int2(10, 10);
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 10), c, 2), "축 2칸 — v=1.5");
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 11), c, 2), "얕은 대각 — v=(1.5,0.5)=1.58");
+            Assert.IsFalse(TileAoe.IsInRadius(new int2(12, 12), c, 2), "정대각 — v=2.12 > 2");
+        }
+
+        [Test]
+        public void SquareAndRoundedDiffer_AtTheCorner()
+        {
+            // 두 함수가 **실제로 다르다**는 사실 자체를 고정한다. 같아지면 둘 중 하나가
+            // 잘못 바뀐 것이고, 그때 `DefenderDensity`(보스 착지)가 조용히 움직인다.
+            var c = new int2(0, 0); var corner = new int2(2, 2);
+            Assert.IsTrue(TileAoe.IsInTileRange(corner, c, 2), "체비셰프는 모서리를 포함");
+            Assert.IsFalse(TileAoe.IsInRadius(corner, c, 2), "둥근 쪽은 제외");
+        }
+
+        [Test]
+        public void TargetBody_WidensTheBlast()
+        {
+            // 큰 몸은 폭발에 더 잘 걸린다 — unit 3 의 축이 광역에도 흐른다.
+            var c = new int2(0, 0); var far = new int2(3, 0);   // v=2.5
+            Assert.IsFalse(TileAoe.IsInRadius(far, c, 2));
+            Assert.IsTrue(TileAoe.IsInRadius(far, c, 2, extraRadiusTiles: 0.9f), "상한 2.9 ≥ 2.5");
+        }
+
     }
 }

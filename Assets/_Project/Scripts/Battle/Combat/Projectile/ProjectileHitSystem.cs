@@ -739,7 +739,7 @@ namespace Wassup.Battle.Combat.Projectile
                                     victimTraversalLayers[i])) continue;
                             float3 vpos = victimTransforms[i].Position;
                             int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
-                            if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                            if (!TileAoe.IsInRadius(cell, centerCell, tileRange, victimBodyRadii[i])) continue;   // unit 4b — 원 + 대상 몸
                             inRangeEnts.Add(victimEntities[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;

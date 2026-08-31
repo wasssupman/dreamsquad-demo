@@ -67,7 +67,7 @@ namespace Wassup.Battle.Combat.Projectile
                     && (candidateFactions[i] & wantedFactionMask) == 0) continue;
                 float3 pos = positions[i];
                 int2 cell = GridMath.WorldToCell(pos, tileSize, gridSize, origin);
-                if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                if (!TileAoe.IsInRadius(cell, centerCell, tileRange)) continue;   // unit 4b — 원
                 float dx = pos.x - hitPos.x;
                 float dz = pos.z - hitPos.z;
                 float d2 = dx * dx + dz * dz;

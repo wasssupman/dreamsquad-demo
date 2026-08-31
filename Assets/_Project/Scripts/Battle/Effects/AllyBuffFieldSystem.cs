@@ -61,7 +61,8 @@ namespace Wassup.Battle.Effects
                 for (int i = 0; i < fields.Length; i++)
                 {
                     var f = fields[i];
-                    if (GridMath.ChebyshevDistance(cell, f.centerCell) > f.tileRange) continue;
+                    // unit 4b — 오라 멤버십도 원이다(광역과 같은 자).
+                    if (!Wassup.Battle.Combat.TileAoe.IsInRadius(cell, f.centerCell, f.tileRange)) continue;
                     if (f.stat == StatKind.DamageMul) bestDamage = math.max(bestDamage, f.magnitude);
                     else if (f.stat == StatKind.AttackSpeedMul) bestSpeed = math.max(bestSpeed, f.magnitude);
                 }
