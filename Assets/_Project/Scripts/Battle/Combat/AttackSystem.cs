@@ -494,6 +494,13 @@ namespace Wassup.Battle.Combat
                 // 사거리 2차 게이트(물리 거리)는 **둘 다 연속 이동**일 때만 — AttackReach 주석.
                 bool attackerIsContinuous = targetPathLookup.HasComponent(attackerEntity);
                 float bestSq = float.MaxValue;
+                // distance-based-range unit 2 — 동거리 tie-break 축. 형제 둘
+                // (`NearestTargeting.RanksBefore`, `HazardCastSystem`)은 갖고 있는데 이 루프의
+                // 세 픽(최근접·우선순위·레인)만 없었다. `battle-sim-extraction` M0 unit 1 이
+                // 형제를 고치며 지나친 자리이고, 그 spec 의 **동률 예외 목록에도 없다**
+                // = parity 상 exact 로 요구되는데 실제로는 `ToEntityArray` 청크 순서 의존이었다.
+                // 전체 리플레이는 안전하나 스냅샷 부분 재시뮬에서 갈린다(M2 ReplaySession).
+                int bestSimId = int.MaxValue;
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
                 int mask = attack.ValueRO.targetMask;
@@ -510,6 +517,7 @@ namespace Wassup.Battle.Combat
                 int filterMask = hasFilter ? enemyFilterLookup[attackerEntity].classMask : -1;
                 int prioClass = hasFilter ? enemyFilterLookup[attackerEntity].priorityClass : -1;
                 float bestSqPrio = float.MaxValue;
+                int bestSimIdPrio = int.MaxValue;   // unit 2 — 같은 축
                 Entity bestTargetPrio = Entity.Null;
                 float3 bestTargetPosPrio = default;
                 // dreamcatcher-content-2 끝을 보는 눈 — single-pass frontmost tracking (contract 1):
@@ -549,6 +557,7 @@ namespace Wassup.Battle.Combat
                 Entity laneWitness = Entity.Null;
                 float3 laneWitnessPos = default;
                 float laneBestSq = float.MaxValue;
+                int laneBestSimId = int.MaxValue;   // unit 2 — 같은 축
 
                 bool fmHasBest = false;
                 bool fmChosenIsPriority = false;
@@ -600,9 +609,11 @@ namespace Wassup.Battle.Combat
                     // (unit 1, EnemyTargetFilter), 술어가 타입을 보고 순위를 뒤집지 않는다.
                     // 방어측 지원 마스크가 DefenderUnit 단독이라 거점은 힐러·버프 후보에
                     // 애초에 들지 않는다(후보 루프 진입부의 targetMask 필터) — 버퍼 부재 예외는 그쪽에서 막힌다.
-                    if (d2 < bestSq)
+                    // unit 2 — 동거리는 **낮은 `simId`**(먼저 스폰된 쪽)가 이긴다. 형제와 같은 규칙.
+                    if (d2 < bestSq || (d2 == bestSq && targetSimIds[i] < bestSimId))
                     {
                         bestSq = d2;
+                        bestSimId = targetSimIds[i];
                         bestTarget = targetEntities[i];
                         bestTargetPos = nearestPos;
                     }
@@ -622,17 +633,21 @@ namespace Wassup.Battle.Combat
                             healBest = hc; healBestEntity = targetEntities[i]; healBestPos = nearestPos; healHasBest = true;
                         }
                     }
-                    if (prioClass >= 0 && cclass == prioClass && d2 < bestSqPrio)
+                    if (prioClass >= 0 && cclass == prioClass
+                        && (d2 < bestSqPrio || (d2 == bestSqPrio && targetSimIds[i] < bestSimIdPrio)))
                     {
                         bestSqPrio = d2;
+                        bestSimIdPrio = targetSimIds[i];
                         bestTargetPrio = targetEntities[i];
                         bestTargetPosPrio = nearestPos;
                     }
                     // 레인 witness — facing 축 1타일 폭 × [1..tileRange]. 위 Chebyshev
                     // 사거리 필터를 이미 통과했으므로 레인은 그 부분집합이다.
-                    if (hasFacing && LaneMath.IsInLane(atkCell, facing, tileRange, tgtCell) && d2 < laneBestSq)
+                    if (hasFacing && LaneMath.IsInLane(atkCell, facing, tileRange, tgtCell)
+                        && (d2 < laneBestSq || (d2 == laneBestSq && targetSimIds[i] < laneBestSimId)))
                     {
                         laneBestSq = d2;
+                        laneBestSimId = targetSimIds[i];
                         laneWitness = targetEntities[i];
                         laneWitnessPos = nearestPos;
                     }
