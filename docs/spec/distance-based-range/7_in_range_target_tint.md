@@ -118,3 +118,82 @@ unit 5 커밋4 가 「빨강은 고스트 충돌 전용」을 세웠는데, 적 
 
 **검증**: 유닛 마크 Play 확인(활성 10개 · `dbr_u7_marks.png` 에 적 발밑 빨간 원) ·
 EditMode 2667건 / 실패 2건(선행 — `boomerang`·`bomb_man` 문안).
+
+---
+
+### 리뷰 반영 — 2026-08-31 (REQUEST CHANGES → 블로커 전건 처리)
+
+#### C-1 (CRITICAL) — 마크가 **sim 좌표를 view 좌표로 취급**했다
+
+브리지가 넘긴 `LocalTransform.Position` 은 **sim 좌표**인데 뷰가 그걸 view 월드로 받아
+`grid.transform.InverseTransformPoint` 에 넣었다. `BoardSpace.ToView`(sim↔view 변환의 **유일한**
+지점)가 하는 둘을 **모두** 잃었다: ⑴ 셀 중심 `+0.5` 보정 ⑵ 스테이지 격자 원점.
+
+| 스테이지 | `gridOriginLocal` | 오차 |
+|---|---|---|
+| StreetDay | −0.75 | 0.56칸 |
+| **Subway** | 1.39 | **1.95칸** |
+| Street / Duel | −0.09 / 0 | 0.65 / 0.71칸 |
+
+⚠ **왜 Play 검증을 통과했나**: 찍은 맵이 StreetDay 였고 오차 0.56칸이 마크 반지름 0.35 와 겹쳐
+「발밑」으로 읽혔다. **같은 맵으로 재검증하면 고치기 전에도 통과한다.**
+
+같은 파일의 **링은 올바른 관용구**(`CellToLocalInterpolated`)를 쓰고 있었다 — 한 feature 안에서
+두 도형이 다른 좌표 규약으로 놓였고, unit 5 가 「`GetCellCenterLocal` 이 링을 0.5 띄웠다」로
+이미 한 번 밟은 함정의 재발이다.
+
+**재검증은 스크린샷이 아니라 수치로 했다** — 마크 world 위치와 `BoardSpace.ToView(적 sim 위치)`
+를 직접 대조: 활성 마크 9개 전부 **오차 0.000칸**.
+
+#### H-1 (HIGH) — 마크가 **못 때리는 대상**에 켜졌다
+
+완료 기준 1 「판정을 복제하지 않는다」는 **술어에 대해서만** 지켜졌다. **후보 필터**는 복제했고
+틀리게 복제했다(하드코딩 `AnyEnemy`). 에셋 전수로 확인된 오작동 3건:
+
+| 유닛 | 저작 | 거짓말 |
+|---|---|---|
+| `Defender_Healer` | `targetAllies` → 마스크 = `DefenderUnit` 단독 | **적 전원에 「맞는다」.** 힐러는 적을 영원히 안 때린다 |
+| `Defender_Artillery`·`BombMan` | `attackTargetLayers: Path` | 공중 적(Dragon·Skimmer·WaypointAir)에 마크 |
+| `Defender_AntiAir` | `targetFactions: EnemyUnit` 단독 | 적 거점에 마크 |
+
+→ sim 이 쓰는 **같은 함수**를 지난다: `DefenderTargetDefaults.Resolve(targetFactions, targetAllies)`
++ `PlacementLayers.CanTarget(EffectiveAttackTargetLayers, traversalLayers)` + `UltimateLeapState` 제외.
+⚠ 지원형(`targetAllies`)은 스폰 bake 와 같이 **층 마스크를 0** 으로 준다(아군은 `PathFollowState` 가
+없는 고정 유닛이라 층 축이 의미가 없다).
+
+#### H-2 (HIGH) — 방향 지정 유닛에 원형 마크
+
+링을 뺀 근거(「방향 유닛에게 원 사거리는 거짓말 — 레인만 때린다」)가 **마크에는 더 강하게**
+적용된다: 링은 「여기까지」를, 마크는 「이놈이 맞는다」를 말하므로 더 구체적인 거짓말이다.
+`RequiresFacing` 이면 마크를 끈다.
+
+#### H-4 (HIGH) — rev 2 가 바꾼 R≥3 에 테스트가 0 이었다
+
+`TileAoeTests` 의 `IsInRadius` 단언이 전부 반경 1·2 인데 **그 둘은 rev 1 과 rev 2 의 답이 같다.**
+게다가 주석은 rev 1 산식(`v=(1.5,0.5)=1.58`)이라 **초록인 채로 거짓 근거**를 말하고 있었다.
+`Radius3_IsWhereRev2ActuallyNarrowed` 추가 — 특히 `(3,2)` 가 **rev 1 에서는 안이었다**는 것을 고정.
+영향 저작은 오늘 하나: `Projectile_NightmareBarrage`(45→37칸, −17.8%), **코퍼스 덱에 없어 골든이 못 본다.**
+
+#### M-1 — 쿼리 캐싱이 절반만 됐다
+생성만 `CreateAliveAttackerQueries` 에 넣고 `DisposeCachedQueries` 를 빠뜨렸다. 파일 주석의
+「★둘은 항상 함께 만든다」가 셋이 된 것이고, 안 고치면 판 재시작마다 쿼리가 샌다.
+`RefreshRangeTargetMarks` 도 `_aliveAttackersQueryCreated` 를 함께 본다(teardown 창).
+
+#### M-2 — 마크 오버드로 ~50배
+쿼드 5×5 고정이라 유닛 마크(그림 반경 0.35칸)가 25칸² 를 블렌딩했다. 마크마다 필요한 크기로
+줄이고 `_QuadCells` 를 동기(유닛 ≈1.4칸, 거점 ≈4칸).
+
+#### M-3/M-4/M-5, L-1~L-6
+셰이더 헤더·기본값 rev 2 정합(`_HalfExtent` 기본 0) · `grid == null` 가드와 미배선 1회 경고 ·
+**`SelfBodyRadiusTiles` 하한 테스트**(√2−1 미만이면 반경 1 폭발이 십자로 붕괴 — 저작 20건이 달림) ·
+죽은 코드 제거 · spec 의 은퇴 이름 정정 · `AutoTileTest` tileSet 키 4개 명시.
+
+#### 리뷰가 확인해준 것 (되돌리지 말 것)
+- 사용자 조건 5(무효 시 채도만) — 「빨강을 시간으로 가른다」가 정확히 구현됐다.
+- 조건 3(바닥 대역) — `RangeTargetMarkOrder = -7` 이 그림자·유닛 아래.
+- 마크 머티리얼 수명 — 경로 5개 전부 깨끗.
+- **`ShowRangeRing`/`SetRangeTargetMarks` 공통화 금지** — 겹치는 건 setter 6줄뿐이고 성격이 다르다
+  (상주 렌더러+셀 앵커 vs 풀+대상별 파라미터). 공통 컴포넌트는 제약 8 의 「나중을 위한 추상 레이어」.
+  **공유했어야 할 것은 타입이 아니라 「보드 위 로컬 위치를 구하는 법」 하나**였고, 그게 갈려서 C-1 이 났다.
+
+**검증**: EditMode 2671건 / 실패 2건(선행) · C-1 수치 재검증(오차 0.000칸 × 9개).

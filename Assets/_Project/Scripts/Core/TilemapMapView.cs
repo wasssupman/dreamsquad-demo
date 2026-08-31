@@ -107,7 +107,9 @@ namespace Wassup.Core
         // 사거리마다 쿼드를 키우지 않고 **한 크기로 고정**한다 — 셰이더가 uv→타일 매핑에 이 값을 쓰므로
         // 여기가 단일 소스다(액체의 LiquidQuadCells 와 같은 규약).
         private const float RingQuadCells = 14f;
-        // 마크 쿼드 — 가장 큰 거점(본능 3×3 = 반폭 1.5) + 테 + 여유.
+        // ⚠ 마크 쿼드는 **마크마다** 정한다(`SetRangeTargetMarks` 안). 고정값을 주면 유닛 마크가
+        // 자기 그림의 50배를 알파 블렌딩한다(리뷰 M-2). 이 상수는 템플릿 머티리얼의 초기값일 뿐이고
+        // 실제 값은 렌더러별 인스턴스가 덮어쓴다.
         private const float TargetMarkQuadCells = 5f;
 
         // distance-based-range unit 7 — **사거리 안 상대 마크.** 「어느 칸이 사거리 안인가」 대신
@@ -209,6 +211,7 @@ namespace Wassup.Core
                 SafeDestroy(_targetMarks[i].gameObject);
             }
             _targetMarks.Clear();
+            _targetMarkCount = 0;   // 풀 길이와 「마지막 요청 수」가 갈린 채 남지 않게
             if (_targetMarkMat != null) { SafeDestroy(_targetMarkMat); _targetMarkMat = null; }
             _liquidTileMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
@@ -596,9 +599,21 @@ namespace Wassup.Core
         public void SetRangeTargetMarks(IReadOnlyList<Vector3> worldPositions,
                                         IReadOnlyList<float> halfExtents)
         {
+            // 형제 public 메서드와 같은 가드 관용구(`grid == null` 먼저).
             int want = worldPositions == null ? 0 : worldPositions.Count;
-            if (want == 0 || _tileSet == null || _tileSet.placementRangeRingMaterial == null)
+            if (grid == null || want == 0 || _tileSet == null)
             {
+                HideTargetMarks();
+                return;
+            }
+            if (_tileSet.placementRangeRingMaterial == null)
+            {
+                // 링과 같은 규약 — 조용히 사라지지 않고 1회 명시 실패한다.
+                if (!_rangeRingMatMissing)
+                {
+                    Debug.LogWarning("TilemapMapView: placementRangeRingMaterial 미배선 — 사거리 대상 마크 생략.", this);
+                    _rangeRingMatMissing = true;
+                }
                 HideTargetMarks();
                 return;
             }
@@ -612,7 +627,6 @@ namespace Wassup.Core
             // 아예 안 켠다(SetPlacementRangeValidity 와 같은 스위치). 그래서 화면의 빨강은
             // 항상 한 뜻이다 — 유효면 「맞는 놈」, 무효면 「못 놓는 자리」.
             var c = _tileSet.rangeTargetMarkColor;
-            _targetMarkMat.SetColor(RingColorId, c);
 
             float cs = grid.cellSize.x;
             for (int i = 0; i < want; i++)
@@ -622,8 +636,16 @@ namespace Wassup.Core
                 var local = grid.transform.InverseTransformPoint(worldPositions[i]);
                 local.z = -PropGroundLift;
                 sr.transform.localPosition = local;
-                sr.transform.localScale = new Vector3(TargetMarkQuadCells * cs, TargetMarkQuadCells * cs, 1f);
                 float he = halfExtents != null && i < halfExtents.Count ? halfExtents[i] : 0f;
+                // ⚠ 쿼드를 **마크마다** 맞춘다. 전 마크에 5칸 고정을 주면 유닛 마크(그림 반지름
+                // 0.35칸)가 25칸² 를 알파 블렌딩해 **오버드로 ~50배**가 된다 — 사거리 5 유닛이면
+                // 마크 수십 개라 폰에서 화면 2~3장분이다(안드로이드 실기가 주 타겟이고 이 셰이더
+                // 헤더가 「URP Decal 금지」를 명시할 만큼 민감한 축이다).
+                // 필요한 크기 = 그림 반경 × 2 + 선·라이너·feather 여유.
+                float drawR = he + (he > 0f ? TargetMarkStructurePad : TargetMarkUnitRadius);
+                float quad = (drawR + 0.35f) * 2f;
+                sr.transform.localScale = new Vector3(quad * cs, quad * cs, 1f);
+                sr.sharedMaterial.SetFloat(RingQuadCellsId, quad);   // uv→타일 매핑 동기
                 // 거점(he>0)은 점유 사각을 두르고, 유닛(he==0)은 작은 원이 된다.
                 //
                 // ⚠ **MaterialPropertyBlock 을 쓰지 않는다.** 이 셰이더의 `_HalfExtent`·`_Range` 는
@@ -633,7 +655,6 @@ namespace Wassup.Core
                 sr.sharedMaterial.SetVector(RingHalfExtentId, new Vector4(he, he, 0f, 0f));
                 sr.sharedMaterial.SetFloat(RingRangeId, he > 0f ? TargetMarkStructurePad : TargetMarkUnitRadius);
                 sr.sharedMaterial.SetColor(RingColorId, c);
-                sr.sharedMaterial.SetFloat(RingFillAlphaId, 0f);   // 마크는 테만 — 발밑을 덮지 않는다
                 sr.gameObject.SetActive(!_rangeInvalid);   // 무효면 안 켠다 — 아래 계약 참조
             }
             for (int i = want; i < _targetMarks.Count; i++)
@@ -669,6 +690,7 @@ namespace Wassup.Core
                 sr.sprite = PopSprite();
                 // 렌더러마다 자기 머티리얼 — 위 주석 참조(모양이 마크마다 다르다).
                 sr.sharedMaterial = new Material(_targetMarkMat);
+                sr.sharedMaterial.SetFloat(RingFillAlphaId, 0f);   // 마크는 테만 — 발밑을 덮지 않는다(1회면 된다)
                 sr.sortingOrder = BoardSortOrder.RangeTargetMarkOrder;
                 var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
                 if (overlayR != null) sr.sortingLayerID = overlayR.sortingLayerID;

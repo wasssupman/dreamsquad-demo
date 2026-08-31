@@ -3,16 +3,22 @@ Shader "Wassup/PlacementRangeRing"
     // distance-based-range unit 5 — 공격 사거리의 **윤곽**.
     //
     // ⚠ **이 셰이더는 근사가 아니라 판정식 그 자체를 그린다.**
-    //     sim:    max(|Δ| − half, 0) 의 길이 ≤ range
+    //     sim:    |max(|Δ| − halfExtent, 0)| ≤ range + 0.5 + 대상반경
     //     여기:   sdRoundedBox(p, _HalfExtent, _Range) ≤ 0
+    // 호출부가 `_Range` 에 **이미 0.5 를 더해서** 넣는다(`SkillMath.SelfBodyRadiusTiles`) —
+    // 그 0.5 는 「한 칸의 몸 반지름」이고 rev 2 에서 뺄셈에서 덧셈으로 옮겨왔다.
     // 둘은 **같은 식**이다 — 둥근사각 SDF 의 정의가 `length(max(|p|−b, 0)) − r` 이기 때문이다.
     // 그래서 `_HalfExtent` 와 `_Range` 는 저작 값이 아니라 **판정 입력의 복사본**이고,
     // 호출부(TilemapMapView)가 사거리 술어에 넣는 값을 그대로 넣는다.
     //
     // ⚠ **`_Range` 하나짜리 원 셰이더로 만들지 말 것**(사용자 결정 2026-08-31). 오늘 전 유닛이
-    // 1×1 이라 `_HalfExtent = (0.5, 0.5)` 로 고정이지만, 다칸 유닛이 들어오면 그 순간
-    // 「판정의 경계 그 자체」라는 계약이 거짓이 되고 셰이더를 다시 쓴다. 파라미터가 판정식과
-    // 1:1 이면 저작만 바뀌고 여기는 그대로다.
+    // 1×1 이라 `_HalfExtent = (0, 0)` 이고 그래서 **진짜 원**이 그려지지만, 다칸 유닛이 들어오면
+    // 반폭 `(w−1)/2` 가 들어가 **사각 변이 살아난다**(그게 그 유닛의 몸이다). 파라미터가
+    // 판정식과 1:1 이면 저작만 바뀌고 여기는 그대로다.
+    //
+    // ⚠ **`_Range` 는 「점 대상」 기준이다.** 술어는 대상의 `bodyRadius` 도 더하는데(unit 3),
+    // 호출부(링)는 그걸 모른다 — 링은 「이 자리에서 어디까지」를 말하고 대상별 몸은
+    // 대상 마크(unit 7)가 말한다. `bodyRadius` 가 저작되면 마크가 링 밖에 뜰 수 있고 그건 의도다.
     //
     // 단위는 **타일**이다(1 = 한 칸). 쿼드는 `_QuadCells` 칸 정사각형이고 uv 0..1 → p ∈ [-Q/2, Q/2].
     //
@@ -28,7 +34,7 @@ Shader "Wassup/PlacementRangeRing"
         _Color       ("Ring Color", Color) = (0.55, 1.0, 0.25, 0.95)
         _LinerColor  ("Dark Liner Color", Color) = (0.05, 0.12, 0.02, 0.75)
         // 판정 입력의 복사본 — 호출부가 사거리 술어에 넣는 값과 **같아야 한다**.
-        _HalfExtent  ("Half Extent (tiles, xy)", Vector) = (0.5, 0.5, 0, 0)
+        _HalfExtent  ("Half Extent (tiles, xy) — 1×1 이면 0", Vector) = (0, 0, 0, 0)
         _Range       ("Range (tiles)", Float) = 3
         _FillAlpha   ("Interior Fill Alpha", Range(0, 1)) = 0.12
         _Thickness   ("Ring Thickness (tiles)", Range(0.01, 0.4)) = 0.09

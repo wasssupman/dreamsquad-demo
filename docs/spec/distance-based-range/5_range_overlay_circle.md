@@ -190,7 +190,7 @@ sim:      length(max(|Δ| − half, 0)) ≤ range
 둘은 **같은 식**이다 — 둥근사각 SDF 의 정의가 그러하기 때문이고, 내부 항
 `min(max(q.x,q.y),0)` 은 상자 **안쪽** 거리를 채울 뿐 경계(=0)에 기여하지 않는다.
 `_HalfExtent`·`_Range` 는 저작 값이 아니라 **판정 입력의 복사본**이고, 호출부가 사거리 술어에
-넣는 값(`SkillMath.SelfHalfWidthTiles`, `tileRange`)을 그대로 넣는다. 다칸 유닛이 들어와도
+넣는 값(`SkillMath.SelfBodyRadiusTiles`, `tileRange`)을 그대로 넣는다. 다칸 유닛이 들어와도
 저작만 바뀌고 셰이더는 그대로다(사용자 조건 4).
 
 | 항목 | 값 |

@@ -153,9 +153,11 @@ namespace Wassup.Tests.EditMode
         public void Radius2_LosesOnlyTheTrueCorner()
         {
             var c = new int2(10, 10);
-            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 10), c, 2), "축 2칸 — v=1.5");
-            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 11), c, 2), "얕은 대각 — v=(1.5,0.5)=1.58");
-            Assert.IsFalse(TileAoe.IsInRadius(new int2(12, 12), c, 2), "정대각 — v=2.12 > 2");
+            // rev 2 산식: |Δ| ≤ r + 0.5. (rev 1 의 `max(|Δ|−0.5,0) ≤ r` 이 아니다 — 주석이
+            // 그쪽에 남아 있었고, 반경 2 는 두 식의 답이 우연히 같아 초록인 채로 거짓말했다.)
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 10), c, 2), "축 2칸 — 2.0 ≤ 2.5");
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 11), c, 2), "얕은 대각 — 2.236 ≤ 2.5");
+            Assert.IsFalse(TileAoe.IsInRadius(new int2(12, 12), c, 2), "정대각 — 2.83 > 2.5");
         }
 
         [Test]
@@ -175,6 +177,44 @@ namespace Wassup.Tests.EditMode
             var c = new int2(0, 0); var far = new int2(3, 0);   // v=2.5
             Assert.IsFalse(TileAoe.IsInRadius(far, c, 2));
             Assert.IsTrue(TileAoe.IsInRadius(far, c, 2, extraRadiusTiles: 0.9f), "상한 2.9 ≥ 2.5");
+        }
+
+
+        // ── rev 2 가 **실제로 바꾼 구간**은 R≥3 이다 ────────────────────────
+        //
+        // ⚠ 위 단언들은 전부 반경 1·2 인데 **그 둘은 rev 1 과 rev 2 의 답이 같다**
+        // (축은 두 식이 동일하고, 반경 2 의 정대각은 양쪽 다 밖). 즉 rev 2 가 좁힌 구간의
+        // 커버리지가 **0 이었다**(리뷰 H-4).
+        //
+        // 두 식의 관계: rev 1 은 대각에서 `(0.5,0.5)` 를 빼므로 실효 여유가 **0.707**,
+        // rev 2 는 스칼라 0.5 → **rev 2 ⊂ rev 1, 축에서만 등호.**
+        //
+        // 영향받는 저작은 오늘 **하나**다 — `Projectile_NightmareBarrage`(`impactTileRange: 3`,
+        // 45칸 → 37칸, −17.8%). 드림캐쳐 액션 카드라 플레이어가 직접 쓰고, **코퍼스 덱에 없어
+        // 골든이 못 본다.** 그래서 여기가 유일한 그물이다.
+        [Test]
+        public void Radius3_IsWhereRev2ActuallyNarrowed()
+        {
+            var c = new int2(10, 10);
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(13, 10), c, 3), "축 3칸 — 3.0 ≤ 3.5");
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(13, 11), c, 3), "(3,1) — 3.162 ≤ 3.5");
+            Assert.IsTrue(TileAoe.IsInRadius(new int2(12, 12), c, 3), "(2,2) — 2.83 ≤ 3.5");
+            // ★ rev 1 이면 안이었다(v=(2.5,1.5)=2.92 ≤ 3). rev 2 에서 빠진 바로 그 칸.
+            Assert.IsFalse(TileAoe.IsInRadius(new int2(13, 12), c, 3),
+                "(3,2) — 3.606 > 3.5. **rev 1 에서는 안이었다** — 이 단언이 rev 2 를 고정한다");
+            Assert.IsFalse(TileAoe.IsInRadius(new int2(13, 13), c, 3), "정대각 — 4.24 > 3.5");
+        }
+
+        // ⚠ **반경 1 의 안전 여유가 rev 2 에서 0.293 → 0.086 으로 줄었다**(리뷰 M-5).
+        // 저작된 AoE 의 절대다수(반경 1, 20건)가 이 여유 위에 서 있고,
+        // `SelfBodyRadiusTiles` 를 0.5 미만으로 만지는 순간(예: 0.4 → 1.414 > 1.4)
+        // **반경 1 폭발이 전부 십자로 붕괴한다.** 그 하한을 여기서 못박는다.
+        [Test]
+        public void SelfBodyRadius_HasAHardFloor_OrRadius1BlastsCollapse()
+        {
+            Assert.GreaterOrEqual(Wassup.Skills.SkillMath.SelfBodyRadiusTiles, 0.4143f,
+                "√2 − 1 = 0.4142 미만이면 반경 1 폭발이 대각 이웃을 잃고 **십자 모양**이 된다 "
+                + "(unit 4b 가 이미 한 번 밟은 함정). 저작된 반경 1 AoE 20건이 여기 달려 있다.");
         }
 
     }

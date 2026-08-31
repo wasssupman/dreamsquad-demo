@@ -15,7 +15,7 @@
 d  = length(max(|Δ| − (0.5 + 대상반폭), 0))
 안 ⟺  lengthsq(v) ≤ (사거리 + 대상반경)²        ← sqrt 금지
 ```
-- 공격자 반폭 `0.5` 는 **코어 `const`**(`SelfHalfWidthTiles`) — 계약 3.
+- 공격자 반폭 `0.5` 는 **코어 `const`**(`SelfBodyRadiusTiles`(rev 2 에서 개명 — 뺄셈이 아니라 사거리에 더한다)) — 계약 3.
 - ~~`float2`/`math` 를 그대로 쓴다~~ → **구현 시 뒤집혔다.** 인자가 `float` 넷뿐이라
   `math.abs` 하나 때문에 `Unity.Mathematics` 를 끌 이유가 없었다(삼항으로 끝난다).
   `AttackReach` 쪽 변환도 늘지 않았다 — 어차피 `float3`→타일 단위 나눗셈을 하고 있었다.

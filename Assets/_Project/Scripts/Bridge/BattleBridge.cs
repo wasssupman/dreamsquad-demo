@@ -996,6 +996,10 @@ namespace Wassup.Bridge
             {
                 _aliveAttackersQuery.Dispose();
                 _aliveNormalAttackersQuery.Dispose();
+                // distance-based-range unit 7 — **셋이 한 플래그를 공유한다.** 위 주석의
+                // 「★둘은 항상 함께 만든다」가 셋으로 늘어난 것이고, 생성만 늘리고 반납을
+                // 빠뜨리면 판을 재시작할 때마다 쿼리가 하나씩 샌다.
+                _rangeTargetQuery.Dispose();
                 _aliveAttackersQueryCreated = false;
             }
             if (_aggroedQueryCreated)
@@ -7809,7 +7813,12 @@ namespace Wassup.Bridge
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
             // (실측: 풀 4개 생성, 활성 0).
-            RefreshRangeTargetMarks(center, tileRange);
+            //
+            // ⚠ **방향 지정 유닛은 마크도 안 켠다.** 링을 뺀 근거(「방향 유닛에게 원 사거리는
+            // 거짓말이다 — 레인만 때린다」)가 마크에는 **더 강하게** 적용된다: 링은 「여기까지」를
+            // 말하지만 마크는 「이놈이 맞는다」를 말하므로, 레인 밖 적에 켜지면 더 구체적인 거짓말이다.
+            if (!unit.RequiresFacing) RefreshRangeTargetMarks(center, tileRange, unit);
+            else if (tilemapMapView != null) tilemapMapView.SetRangeTargetMarks(null, null);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
 
@@ -7823,29 +7832,54 @@ namespace Wassup.Bridge
         //
         // 대상 = 상대 진영의 **유닛 + 거점**. 거점을 넣는 이유: 본능·마음도 전투에 참여하고
         // (`no_defense` 골든의 공격 이벤트가 그것들이다) 점유가 커서 「왜 저건 안 켜지지」가 된다.
-        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange)
+        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit)
         {
             _markPos.Clear();
             _markHalf.Clear();
-            if (tilemapMapView == null || !HasLiveEntityManager()) return;
+            // ⚠ `_aliveAttackersQueryCreated` 도 본다 — 이 쿼리가 그 플래그를 공유하므로,
+            // teardown 직후~다음 EnsureQueriesAndQueues 사이에 불리면 stale 쿼리에
+            // `ToEntityArray` 를 쳐서 던진다.
+            if (tilemapMapView == null || !HasLiveEntityManager() || !_aliveAttackersQueryCreated) return;
 
             float3 atkPos = GridToWorldCenter(center);
             var q = _rangeTargetQuery;   // CreateAliveAttackerQueries 에서 1회 생성
             var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
             var tf = q.ToComponentDataArray<LocalTransform>(Unity.Collections.Allocator.Temp);
             var fac = q.ToComponentDataArray<FactionTag>(Unity.Collections.Allocator.Temp);
+
+            // ⚠ **후보 필터도 sim 과 같은 함수를 지난다.** 술어만 공유하고 후보 집합을 손으로
+            // 다시 쓰면 「못 때리는 대상에 「맞는다」가 켜지는」 거짓말이 난다 — 그게 이 spec 이
+            // 없애려던 것이다. 손으로 `AnyEnemy` 를 쓰던 초판이 실제로 셋을 틀렸다(리뷰 H-1):
+            //   · 힐러(`targetAllies`) — 적 전원에 빨간 마크. 힐러는 적을 영원히 안 때린다.
+            //   · 아틸러리·폭탄맨(Path 전용) — 공중 적에 마크.
+            //   · 대공(`EnemyUnit` 단독) — 적 거점에 마크.
+            int mask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
+                (int)unit.targetFactions, unit.targetAllies);
+            // ⚠ 스폰 bake 와 **같은 식**이어야 한다(`CreateDefenderEntity` 의 targetTraversalLayers):
+            // 지원형(`targetAllies`)은 층 마스크를 **0** 으로 굽는다 — 아군 방어유닛은
+            // `PathFollowState` 가 없는 고정 유닛이라 층 축이 의미가 없기 때문이다.
+            var atkLayers = unit.targetAllies ? (byte)0 : (byte)unit.EffectiveAttackTargetLayers;
             for (int i = 0; i < ents.Length; i++)
             {
-                int f = (int)fac[i].value;
-                // 배치하는 쪽은 방어 진영이므로 상대 = 적 유닛 + 적 거점.
-                bool opponent = (f & ((int)Faction.EnemyUnit | (int)Faction.EnemyCore
-                                      | (int)Faction.EnemyInstinct)) != 0;
-                if (!opponent) continue;
+                if (((int)fac[i].value & mask) == 0) continue;
+                // 통행 층 — sim 과 같은 술어. `PathFollowState` 가 없는 대상(거점)은 sim 의
+                // 스냅샷에서도 0 이라 같은 답이 나온다.
+                byte layers = _em.HasComponent<PathFollowState>(ents[i])
+                    ? _em.GetComponentData<PathFollowState>(ents[i]).traversalLayers : (byte)0;
+                if (!Wassup.Data.PlacementLayers.CanTarget(atkLayers, layers)) continue;
+                // 이탈 중 보스는 sim 후보 스냅샷 밖이다 — 판 밖 마지막 위치에 마크가 남지 않게.
+                if (_em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(ents[i])) continue;
                 float bodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
                     ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
                         atkPos, tf[i].Position, tileRange, tileSize, bodyR)) continue;
-                _markPos.Add(new Vector3(tf[i].Position.x, tf[i].Position.y, tf[i].Position.z));
+                // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
+                // 그냥 넘기면 뷰가 그것을 view 월드로 받아 (a) 셀 중심 +0.5 보정과
+                // (b) 스테이지 격자 원점(`MapStage.gridOriginLocal`)을 **둘 다** 잃는다.
+                // Subway 스테이지에서 마크가 적에게서 **1.95칸** 떨어져 뜬다(리뷰 C-1 실측).
+                // StreetDay 는 오차가 0.56칸이라 마크 반지름 0.35 와 겹쳐 「발밑」으로 읽힌다 —
+                // **재검증을 StreetDay 로 하면 고치기 전에도 통과한다. Subway 에서 볼 것.**
+                _markPos.Add((Vector3)Wassup.Core.BoardSpace.ToView(tf[i].Position));
                 // 거점은 점유 반폭으로 사각을 두른다. 유닛은 0 → 작은 원.
                 float half = 0f;
                 if (_em.HasComponent<Wassup.Battle.Units.StructureTag>(ents[i]))
