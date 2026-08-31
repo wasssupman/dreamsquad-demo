@@ -7911,7 +7911,9 @@ namespace Wassup.Bridge
         private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)
         {
             if (tilemapMapView == null) return;
-            tilemapMapView.SetPlacementRange(center, tileRange, includeCenter: true);
+            // squareShape: true — 스킬 광역의 멤버십이 정사각형으로 남아 있다(결정 4).
+            // 표기가 그 자를 따라가는 것이 맞다 — 여기만 예외다.
+            tilemapMapView.SetPlacementRange(center, tileRange, includeCenter: true, squareShape: true);
             SetRangeOwner(owner);
         }
 

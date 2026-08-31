@@ -66,6 +66,16 @@ namespace Wassup.Battle.Combat
                 tileRange, targetBodyRadiusTiles);
         }
 
+        // 셀 좌표로 묻는 사거리 — 두 몸이 각자 칸 중앙에 설 때의 답이다.
+        //
+        // **표기(배치 프리뷰)가 이걸 쓴다.** 프리뷰가 `dx,dz` 이중 루프로 모양을 다시 그리면
+        // 「밝은 칸인데 안 때린다」가 되고, 그게 가장 나쁜 종류의 버그다 —
+        // 화면이 규칙을 **틀리게** 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
+        public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
+                                       float targetBodyRadiusTiles = 0f)
+            => Wassup.Skills.SkillMath.InBodyReach(
+                   tgtCell.x - atkCell.x, tgtCell.y - atkCell.y, tileRange, targetBodyRadiusTiles);
+
         // 격자 계층의 자. **사거리 판정에 쓰지 말 것** — 그 용도의 정본은 위 `InReach` 하나다.
         // 이 함수가 남은 이유는 순찰 이동뿐이다: 추격 필드 소스 수집이 셀 디스크라
         // (`FlowFieldBuilder.CollectDefenderSources`, 결정 4) 「필드가 세운 사격 칸」을

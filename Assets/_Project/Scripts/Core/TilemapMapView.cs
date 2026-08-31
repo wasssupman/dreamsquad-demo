@@ -747,7 +747,18 @@ namespace Wassup.Core
 
         // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는
         // 중심도 피해 범위라 포함한다 (range-preview unit 3).
-        public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false)
+        // `squareShape` — 칠하는 모양이 **정사각형**인가.
+        //
+        // ⚠ 기본은 false(사거리 술어를 그대로 따르는 둥근 모양)다. distance-based-range unit 5:
+        // **표기는 판정에서 나온다.** 사거리가 몸 기준 거리로 바뀐 뒤(unit 4a) 프리뷰만 정사각형으로
+        // 남으면 사거리 2의 정대각 칸이 밝게 켜지는데 그 칸의 적은 안 맞는다 — 화면이 규칙을
+        // **틀리게 가르치는** 상태다.
+        //
+        // true 로 부르는 곳은 **스킬 조준·텔레그래프** 하나뿐이고, 그건 거짓말이 아니라
+        // **사실**이다 — 스킬 광역의 멤버십은 `TileAoe.IsInTileRange`(정사각형)로 남아 있다
+        // (결정 4 — 저작이 칸 단위 조준이다). 표기가 그 자를 따라가는 것이 맞다.
+        public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false,
+                                      bool squareShape = false)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
@@ -760,6 +771,10 @@ namespace Wassup.Core
                 if (!includeCenter && dx == 0 && dz == 0) continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                // 판정과 **같은 본체**를 지난다 — 여기서 모양을 다시 그리지 않는다.
+                if (!squareShape && !Wassup.Battle.Combat.AttackReach.InCellReach(
+                        new Unity.Mathematics.int2(center.x, center.y),
+                        new Unity.Mathematics.int2(cell.x, cell.y), tileRange)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
