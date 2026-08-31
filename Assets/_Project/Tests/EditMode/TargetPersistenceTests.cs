@@ -14,26 +14,61 @@ namespace Wassup.Tests.EditMode
     // target-persistence units 1·2 — 락 유지 술어 + Focus 적의 범위 이탈 해제(B2).
     public class TargetPersistenceTests
     {
-        // ── unit 1: 순수 술어 ──────────────────────────────────────────────────
+        // ── unit 1: 순수 술어 · unit 4d: 획득/유지 히스테리시스 ────────────────
+
+        private const float Tile = 1f;
+        private static float3 At(float x) => new float3(x, 0f, 0f);
+        private static bool Keeps(float gapTiles, int range)
+            => TargetPersistence.KeepsLock(true, At(0f), At(gapTiles), range, Tile);
 
         [Test]
         public void KeepsLock_AliveAndInRange_Keeps()
         {
-            Assert.IsTrue(TargetPersistence.KeepsLock(true, 2, 3));
-            Assert.IsTrue(TargetPersistence.KeepsLock(true, 3, 3), "경계는 포함");
+            Assert.IsTrue(Keeps(2f, 3));
+            Assert.IsTrue(Keeps(3.5f, 3), "몸 반폭 0.5 를 뺀 경계는 포함");
         }
 
         [Test]
         public void KeepsLock_OutOfRange_Releases()
         {
             // D2 — 사거리 이탈은 **해제 사유**다. 이전 계약("이탈해도 락 유지")이 B2 였다.
-            Assert.IsFalse(TargetPersistence.KeepsLock(true, 4, 3));
+            Assert.IsFalse(Keeps(5f, 3));
         }
 
         [Test]
         public void KeepsLock_Dead_Releases()
         {
-            Assert.IsFalse(TargetPersistence.KeepsLock(false, 0, 3));
+            Assert.IsFalse(TargetPersistence.KeepsLock(false, At(0f), At(0f), 3, Tile));
+        }
+
+        // ── unit 4d — 유지가 획득보다 **정확히 h 만큼** 넓다 ──
+        [Test]
+        public void Maintain_IsWiderThanAcquire_ByExactlyTheHysteresis()
+        {
+            const int range = 3;
+            float h = TargetPersistence.HysteresisTiles;
+            // 획득 경계 바로 밖 = 유지 경계 안쪽. 이 틈이 곧 진동을 삼키는 구간이다.
+            float justOutside = range + 0.5f + h * 0.5f;
+            Assert.IsFalse(AttackReach.InReach(At(0f), At(justOutside), range, Tile),
+                "획득은 이미 놓쳤다");
+            Assert.IsTrue(Keeps(justOutside, range),
+                "유지는 아직 붙든다 — 이 틈이 없으면 경계에서 락이 진동한다");
+            // 그 너머는 유지도 놓는다. 「영원히 붙들고 있는」 상태를 만들지 않는다(D2).
+            Assert.IsFalse(Keeps(range + 0.5f + h * 2f, range),
+                "h 를 넘으면 유지도 해제 — 지나쳐 간 대상을 붙들지 않는다");
+        }
+
+        [Test]
+        public void Hysteresis_CoversMeasuredJitter_ButStaysFarBelowTheOldSlack()
+        {
+            // **측정에서 나온 값이다.** `RangePredicateMirrorTest` 가 「멈춘」 적의 프레임당
+            // 실제 흔들림을 재고 로그로 남긴다. 2026-08-31 실측 **0.047 · 0.051**(2회) —
+            // 한 판마다 조금씩 다르므로 **한 표본에 딱 맞추지 않는다.** 그 폭을 못 덮으면
+            // 진동을 못 막고, 옛 슬랙(0.5)에 가까워지면 D2 가 없앤 상태가 돌아온다.
+            Assert.Greater(TargetPersistence.HysteresisTiles, 0.06f,
+                "관측된 지터(≈0.05)를 여유 있게 덮지 못한다 — 경계에서 락이 진동한다");
+            Assert.Less(TargetPersistence.HysteresisTiles, 0.25f,
+                "옛 슬랙 0.5 의 절반을 넘으면 「지나쳐 갔는데 붙들고 있는」 상태가 돌아온다(D2)");
         }
 
         // ── unit 2: Focus 적이 사거리를 벗어나면 새 대상을 고른다 (B2) ─────────

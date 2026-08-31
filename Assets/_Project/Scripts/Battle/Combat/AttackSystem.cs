@@ -759,14 +759,12 @@ namespace Wassup.Battle.Combat
                         {
                             curPos = aggroTransformLookup.HasComponent(cur)
                                 ? aggroTransformLookup[cur].Position : bestTargetPos;
-                            int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                            // distance-based-range unit 1 — 산식을 손으로 다시 쓰지 않는다.
-                            int cDist = GridMath.ChebyshevDistance(atkCell, cCell);
-                            // 락 유지도 **선정과 같은 술어**를 지나야 한다. 셀만 보면 락을 문 뒤로는
-                            // 2차 게이트가 영영 적용되지 않고, EnemyAiState 쪽 미러(같은 락 블록에
-                            // AttackReach 를 건다)와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
-                            keepLock = AttackReach.InReach(atkPos, curPos, tileRange, tileSize, BodyRadiusOf(cur, _bodyRadiusLookup))
-                                       && TargetPersistence.KeepsLock(true, cDist, tileRange);
+                            // 락 유지도 **선정과 같은 술어**를 지나되 히스테리시스 `h` 만큼 넓다
+                            // (unit 4d). 셀만 보면 락을 문 뒤로는 몸 거리가 영영 적용되지 않고,
+                            // EnemyAiState 쪽 미러와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
+                            keepLock = TargetPersistence.KeepsLock(
+                                true, atkPos, curPos, tileRange, tileSize,
+                                BodyRadiusOf(cur, _bodyRadiusLookup));
                         }
 
                         if (keepLock)
@@ -838,7 +836,8 @@ namespace Wassup.Battle.Combat
                                 ? aggroTransformLookup[lt].Position : bestTargetPos;
                             int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
                             // unit 1 수렴 — 락 유지도 선정과 같은 술어를 지난다.
-                            if (AttackReach.InReach(atkPos, ltPos, tileRange, tileSize, BodyRadiusOf(lt, _bodyRadiusLookup)))
+                            if (TargetPersistence.KeepsLock(   // 유지 — unit 4d
+                                    true, atkPos, ltPos, tileRange, tileSize, BodyRadiusOf(lt, _bodyRadiusLookup)))
                             { bestTarget = lt; bestTargetPos = ltPos; }
                             else bestTarget = Entity.Null; // out of range → lapse
                         }
@@ -903,10 +902,9 @@ namespace Wassup.Battle.Combat
                         {
                             dcurPos = aggroTransformLookup.HasComponent(dcur)
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
-                            int2 dCell = GridMath.WorldToCell(dcurPos, tileSize, gridSize, origin: ffOrigin);
-                            int dDist = GridMath.ChebyshevDistance(atkCell, dCell);   // unit 1 수렴
-                            dKeep = AttackReach.InReach(atkPos, dcurPos, tileRange, tileSize, BodyRadiusOf(dcur, _bodyRadiusLookup))
-                                    && TargetPersistence.KeepsLock(true, dDist, tileRange);
+                            dKeep = TargetPersistence.KeepsLock(     // 유지 — unit 4d
+                                true, atkPos, dcurPos, tileRange, tileSize,
+                                BodyRadiusOf(dcur, _bodyRadiusLookup));
                         }
                         if (dKeep)
                         {
@@ -950,7 +948,8 @@ namespace Wassup.Battle.Combat
                         float3 ctPos = aggroTransformLookup.HasComponent(ct)
                             ? aggroTransformLookup[ct].Position : bestTargetPos;
                         int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
-                        if (AttackReach.InReach(atkPos, ctPos, tileRange, tileSize, BodyRadiusOf(ct, _bodyRadiusLookup)))
+                        if (TargetPersistence.KeepsLock(   // 유지 — unit 4d
+                                true, atkPos, ctPos, tileRange, tileSize, BodyRadiusOf(ct, _bodyRadiusLookup)))
                         { bestTarget = ct; bestTargetPos = ctPos; }
                         else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
                     }

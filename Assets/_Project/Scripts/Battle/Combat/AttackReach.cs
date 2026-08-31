@@ -55,7 +55,9 @@ namespace Wassup.Battle.Combat
         //
         // ⚠ **`tileSize` 로 나눠 타일 단위로 넘긴다.** 술어가 월드 단위를 모르는 이유는
         // 「사거리 3」이 저작에서 타일 수이기 때문이다 — 월드로 환산하는 지점이 하나여야 한다.
-        public static bool InReach(float3 atkPos, float3 tgtPos, int tileRange,
+        // ⚠ `tileRange` 가 **실수**인 이유: 유지 판정이 히스테리시스 폭 `h` 를 더해 부른다
+        // (`TargetPersistence.KeepsLock`). 저작은 정수지만 술어는 그걸 알 필요가 없다.
+        public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange,
                                    float tileSize, float targetBodyRadiusTiles = 0f)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;

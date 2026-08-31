@@ -190,12 +190,13 @@ namespace Wassup.Battle.Combat
                 if (curValid && transformLookup.HasComponent(cur))
                 {
                     float3 curPos = transformLookup[cur].Position;
-                    int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
-                    int cDist = GridMath.ChebyshevDistance(atkCell, cCell);   // unit 1 수렴
                     // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
-                    bool curReach = AttackReach.InReach(atkPos, curPos, tileRange, tileSize, BodyRadiusOf(cur, bodyRadiusLookup));
+                    // 유지 — unit 4d. `AttackSystem` 의 락 유지와 **같은 함수·같은 임계**여야
+                    // 두 벌이 갈려 생기는 «락은 있는데 Marching» 데드락이 안 난다.
+                    bool curReach = TargetPersistence.KeepsLock(
+                        true, atkPos, curPos, tileRange, tileSize, BodyRadiusOf(cur, bodyRadiusLookup));
                     // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
-                    if (curReach && TargetPersistence.KeepsLock(true, cDist, tileRange)) return true;
+                    if (curReach) return true;
                     // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
                     // 그게 "옆에 방어유닛을 두고 골로 걸어가는" B2 의 절반이었다.
                 }

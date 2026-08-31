@@ -84,6 +84,8 @@ namespace Wassup.Tests.PlayMode
             float prevHp, prevMax;
             EnemyHp(em, out prevHp, out prevMax);
             int stuckStreak = 0, worstStreak = 0;
+            float maxStoppedJitter = 0f;
+            var prevStopped = new System.Collections.Generic.Dictionary<Entity, UnityEngine.Vector2>();
             float minApproach = float.MaxValue;
             var trail = new StringBuilder();
 
@@ -104,6 +106,11 @@ namespace Wassup.Tests.PlayMode
                 if (damaged) damageFrames++;
 
                 bool anyStopped = AnyEnemyStopped(em, out var state, out float approach);
+                // distance-based-range unit 4d — **히스테리시스 폭의 근거를 여기서 잰다.**
+                // 「멈춘」 적이 프레임마다 얼마나 흔들리는가 = 사거리 경계에서 판정이 뒤집힐 수
+                // 있는 폭이다(밀어냄·분리가 만드는 지터). 추정하지 않고 측정한다.
+                float jitter = MaxStoppedJitter(em, ref prevStopped);
+                if (jitter > maxStoppedJitter) maxStoppedJitter = jitter;
                 if (approach < minApproach) minApproach = approach;
 
                 if (anyStopped && !damaged)
@@ -132,7 +139,8 @@ namespace Wassup.Tests.PlayMode
                 Debug.LogWarning($"[RangeMirror] 최장 정지-무피해 {worstStreak}프레임 = 예산 "
                     + $"{StuckFrameBudget} 의 절반 초과. 임계 여유가 줄고 있다.");
             Debug.Log($"[RangeMirror] 피해 프레임 {damageFrames} · 최장 정지-무피해 {worstStreak}프레임 "
-                      + $"· 최소 접근거리 {minApproach:0.00}칸");
+                      + $"· 최소 접근거리 {minApproach:0.00}칸 "
+                      + $"· **정지 적 최대 프레임 지터 {maxStoppedJitter:0.000}칸**(unit 4d 히스테리시스 근거)");
         }
 
         // ── 헬퍼 ────────────────────────────────────────────
@@ -194,6 +202,41 @@ namespace Wassup.Tests.PlayMode
             }
             ents.Dispose(); defs.Dispose();
             return any;
+        }
+
+        // 「멈춘」 적이 이번 프레임에 실제로 얼마나 움직였나 — 최대값(타일 단위).
+        //
+        // 이 숫자가 곧 **사거리 경계에서 판정이 뒤집힐 수 있는 폭**이다. 멈춘 적은 정의상
+        // 자기 이동이 0이지만, 밀어냄·분리·외력이 위치를 미세하게 흔든다. 그 폭보다 좁은
+        // 히스테리시스는 진동을 못 막고, 훨씬 넓은 것은 「지나쳐 갔는데 락을 붙들고 있는」
+        // 상태를 만든다(`target-persistence` D2 가 없앤 것).
+        private static float MaxStoppedJitter(
+            EntityManager em, ref System.Collections.Generic.Dictionary<Entity, UnityEngine.Vector2> prev)
+        {
+            var q = em.CreateEntityQuery(typeof(EnemyAiState), typeof(LocalTransform), typeof(AttackUnitTag));
+            var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
+            float worst = 0f;
+            var seen = new System.Collections.Generic.HashSet<Entity>();
+            for (int i = 0; i < ents.Length; i++)
+            {
+                var s = em.GetComponentData<EnemyAiState>(ents[i]).value;
+                if (s != AiState.Engaging && s != AiState.Standoff) continue;
+                var p = em.GetComponentData<LocalTransform>(ents[i]).Position;
+                var here = new UnityEngine.Vector2(p.x, p.z);
+                seen.Add(ents[i]);
+                if (prev.TryGetValue(ents[i], out var was))
+                {
+                    float d = UnityEngine.Vector2.Distance(was, here);
+                    if (d > worst) worst = d;
+                }
+                prev[ents[i]] = here;
+            }
+            // 상태를 벗어났거나 죽은 적은 잊는다 — 안 그러면 재등장 시 큰 도약이 지터로 읽힌다.
+            var stale = new System.Collections.Generic.List<Entity>();
+            foreach (var kv in prev) if (!seen.Contains(kv.Key)) stale.Add(kv.Key);
+            foreach (var e in stale) prev.Remove(e);
+            ents.Dispose();
+            return worst;
         }
 
         // 살아 있는 적의 (현재체력 합, 최대체력 합). 큐 소비 타이밍에 안 기댄다.
