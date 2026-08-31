@@ -28,10 +28,15 @@ namespace Wassup.Tests.PlayMode
     // 절대값 회귀는 골든이 진다(spec 계약 13).
     public class RangePredicateMirrorTest
     {
-        // 멈춘 상태가 이만큼 이어지는데 공격이 한 번도 없으면 교착으로 본다.
-        // 2026-08-12 실측 교착이 182프레임이었다 — 그보다 넉넉히 위.
-        private const int StuckFrameBudget = 300;
-        private const int TotalFrames = 900;
+        // 멈춘 상태가 이만큼 이어지는데 피해가 한 번도 없으면 교착으로 본다.
+        //
+        // ⚠ **182프레임(2026-08-12 실측 교착)을 기준으로 잡으면 안 된다.** 그건 관측 창의 길이지
+        // 교착의 크기가 아니다 — **교착은 영구적**이고, 정상 동작도 그 정도는 쉽게 넘는다:
+        // 공격 쿨다운 4초면 60fps 에서 **240프레임** 동안 「멈췄는데 피해 0」이 정당하다.
+        // 처음에 300 으로 잡았다가 첫 실행에서 **정상 판이 226프레임**을 찍었다 — 여유가 1.3배뿐이라
+        // 느린 유닛 하나면 거짓 빨강이 난다. 영구/일시를 가르는 크기로 올린다.
+        private const int StuckFrameBudget = 600;   // 10초 — 어떤 쿨다운보다 길고 영구보다 짧다
+        private const int TotalFrames = 1200;
 
         [TearDown] public void TearDown() => LogAssert.ignoreFailingMessages = false;
 
@@ -121,6 +126,11 @@ namespace Wassup.Tests.PlayMode
                 $"{TotalFrames}프레임 동안 피해가 한 번도 안 들어갔다(최소 접근거리 {minApproach:0.00}칸). "
                 + "교착이 아니라 **이 판이 아무것도 증언하지 않는다** — 배치가 교전에 닿았는지 확인하라. "
                 + "골든 하네스가 정확히 이 상태로 203 커밋을 보냈다(`89e65d05`).");
+            // ⚠ 최장 연속이 예산의 절반을 넘으면 임계가 다시 빡빡해진 것이다 — 콘텐츠 쿨다운이
+            // 길어졌거나 진짜 교착에 가까워졌거나. 통과시키되 **눈에 띄게 남긴다.**
+            if (worstStreak > StuckFrameBudget / 2)
+                Debug.LogWarning($"[RangeMirror] 최장 정지-무피해 {worstStreak}프레임 = 예산 "
+                    + $"{StuckFrameBudget} 의 절반 초과. 임계 여유가 줄고 있다.");
             Debug.Log($"[RangeMirror] 피해 프레임 {damageFrames} · 최장 정지-무피해 {worstStreak}프레임 "
                       + $"· 최소 접근거리 {minApproach:0.00}칸");
         }
