@@ -1,4 +1,4 @@
-# 0 — 사거리 술어 미러 동치성 안전망
+# 0 — 기준선 굽기 + 사거리 술어 미러 동치성 안전망
 
 ## 목적
 
@@ -8,11 +8,26 @@
 과거 2회(2026-08-12, `summon-patrol-defender` unit 11) 모두 **사람 눈으로만** 발견됐다 —
 정지 187프레임 중 182프레임이 적과 셀 거리 1이었다. 그물 없이 unit 4 에 들어가지 않는다.
 
+## ⚠ 먼저 — 골든 기준선을 한 번 굽는다
+
+**오늘 골든 7건은 이미 red 다.** 마지막 재녹화 `682d163d` 이후 **203 커밋**이 쌓였고, 그 사이
+`DefenderUnitData` 에 `footprintWidth`/`footprintHeight` **필드가 추가**되어 `configHash` 가 바뀌었다
+(`Describe` 가 `GetFields` 로 접고 `[defenders]` 가 `PutAsset` 으로 돈다). `DiffAgainst` 는
+해시 불일치에서 **첫 줄 short-circuit** 하므로 이벤트 비교로 내려가지도 않는다.
+
+→ **이 상태로는 units 0~2 의 「무변화」를 증명할 수 없다.** 현행 코드 기준으로 한 번 굽는다.
+
+- Play 중 `Washup/Battle/Sim Harness/Regenerate Golden Corpus`
+- ⚠ **무관 dirty 를 반드시 격리**한다 — 안 하면 남의 WIP 가 기준선에 구워진다
+- `docs/spec/battle-sim-extraction/golden-corpus.md` 가 같이 나온다. **골든만 담은 커밋**으로 분리
+- 이 굽기는 **자를 안 바꾼 상태**의 기준선이다 — units 1~3 이 이것에 대해 무변화를 증명한다
+
 ## 변경 대상
 
 - `Assets/_Project/Tests/PlayMode/RangePredicateMirrorTest.cs` — 신규
 - `Assets/_Project/Tests/EditMode/AttackReachTests.cs` — 경계 케이스 보강
 - **프로덕션 코드 변경 0**
+- `Assets/_Project/Tests/Golden/*.trace.txt` — **선행 굽기 1회**(별도 커밋)
 
 ## 구현
 

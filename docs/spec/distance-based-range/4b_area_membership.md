@@ -5,9 +5,15 @@
 
 ## 변경 대상
 - `Combat/TileAoe.cs` — 위임 + 시그니처 확장(월드 위치·반폭·반경)
-- **소비처 6곳**: `Combat/AggroTargeting.cs:55` · `Combat/DefenderDensity.cs:41` ·
+- **소비처 4곳**(2곳은 결정 4 로 제외): `Combat/AggroTargeting.cs:55` · `Combat/DefenderDensity.cs:41` ·
   `Combat/Projectile/BounceRetarget.cs:70` · `Combat/Projectile/ProjectileHitSystem.cs:733`(광역 착탄) ·
-  `Battle/Skills/EcsSkillContext.cs:440` · `Bridge/BattleBridge.cs:4617`(실드 파열)
+  `Bridge/BattleBridge.cs:4617`(실드 파열)
+
+⚠ **제외 2곳** — `Battle/Skills/EcsSkillContext.cs:440`(스킬 arm, 결정 4) ·
+`Combat/DefenderDensity.cs:41`(**셀 통계**다 — `NativeArray<int2>` 만 받아 위치가 없고,
+「밀집한 **칸**」이라는 물음 자체가 셀 개념이다. 보스 순간이동 착지 지점이 이 함수이므로
+억지로 바꾸면 착지가 조용히 바뀐다).
+따라서 `TileAoe` 는 **셀 오버로드를 남긴 채** 월드 오버로드를 추가하는 형태가 된다.
 - `Effects/AllyBuffFieldSystem.cs:64` — 아군 버프 장판 멤버십
 - 브리지 2종: `BattleBridge.cs:2845` `CollectAlliesInRange` · `:2869` `InTileRange` (각각 **1줄**)
 - `Tests/EditMode/TileAoeTests.cs` (14 단언)
