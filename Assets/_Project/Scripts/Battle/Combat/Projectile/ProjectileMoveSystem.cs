@@ -41,6 +41,8 @@ namespace Wassup.Battle.Combat.Projectile
             // 않는다 — 즉 "죽었지만 아직 파괴 전"인 창에 도착한 투사체는 시체에 데미지를
             // append 하고 그대로 증발한다. 재조준은 그 창까지 덮어야 의미가 있다.
             var deadLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeadTag>(isReadOnly: true);
+            // distance-based-range unit 3 — 대상의 몸 반경. 없으면 0 = 점(오늘과 동일).
+            var hitRadiusLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
 
             // 재조준(retargetTileRange > 0)용 적 후보. 그런 투사체가 하나도 없으면
             // 스냅샷을 만들지 않는다 — 기존 투사체만 나는 프레임의 비용을 0 으로 둔다.
@@ -148,7 +150,10 @@ namespace Wassup.Battle.Combat.Projectile
                         // after Move, so this is the same value it saw).
                         float dx = targetPos.x - newPos.x;
                         float dz = targetPos.z - newPos.z;
-                        float thr = projectile.ValueRO.hitThreshold;
+                        // 유효 반경 = 투사체 피격 반경 + 대상 몸 반경(unit 3). 두 값은 뜻이 다르다 —
+                        // 앞은 «이 탄이 얼마나 관대하게 맞히나», 뒤는 «이 대상이 얼마나 큰가».
+                        float thr = projectile.ValueRO.hitThreshold
+                                    + (hitRadiusLookup.HasComponent(target) ? hitRadiusLookup[target].value : 0f);
                         if (dx * dx + dz * dz <= thr * thr)
                             projectile.ValueRW.impactReached = true;
                         break;
@@ -186,7 +191,8 @@ namespace Wassup.Battle.Combat.Projectile
                         // 도착: 곡선 완주 또는 근접(움직이는 대상을 t<1 에 잡는 경우).
                         float bdx = bTargetPos.x - bNewPos.x;
                         float bdz = bTargetPos.z - bNewPos.z;
-                        float bthr = projectile.ValueRO.hitThreshold;
+                        float bthr = projectile.ValueRO.hitThreshold
+                                     + (hitRadiusLookup.HasComponent(bTarget) ? hitRadiusLookup[bTarget].value : 0f);
                         if (bt >= 1f || bdx * bdx + bdz * bdz <= bthr * bthr)
                             projectile.ValueRW.impactReached = true;
                         break;

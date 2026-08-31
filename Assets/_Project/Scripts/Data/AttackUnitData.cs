@@ -89,6 +89,12 @@ namespace Wassup.Data
 
         public float attackRange = 1f;
         public float attackCooldown = 1f;
+        // distance-based-range unit 3 — 이 유닛의 **몸 반경**(칸). 0 = 점(오늘과 동일).
+        // 사거리·투사체 충돌이 이 값만큼 유효 반경을 넓힌다 — 큰 몸은 큰 표적이라는 물성.
+        // ⚠ **시트에 컬럼이 없다** → 임포터가 스킵하므로 SO 저작으로 끝난다(고아 컬럼
+        // `aggroRange` 와 대칭). 반대로 같이 조정될 보스 HP 는 **시트가 정본**이라
+        // `.asset` 만 고치면 다음 로그인 임포트가 되돌린다.
+        [Min(0f)] public float bodyRadius = 0f;
         // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
         // forced to 1 (guardian-only) by AttackSystem.

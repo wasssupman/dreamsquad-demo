@@ -10486,6 +10486,11 @@ namespace Wassup.Bridge
             _enemyTypeByEntity[entity] = unitType;
             _em.AddComponentData(entity, new Health { value = unitType.health, max = unitType.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
+            // distance-based-range unit 3 — 몸 반경. 저작이 전부 0 인 동안은 오늘과 동일하다.
+            // **조건부로 붙이지 않는다**(값 0이면 생략, 같은 것) — 소비처가 `HasComponent` 로
+            // 갈리면 「어떤 적은 몸이 있고 어떤 적은 없다」가 되어 판정이 데이터에 따라
+            // 두 갈래가 된다. 전원에게 붙이고 값으로만 구분한다.
+            _em.AddComponentData(entity, new HitRadius { value = unitType.bodyRadius });
             // dreamcatcher-awakening-hand unit 1 — bake the death grant so
             // DamageApplicationSystem can stamp it into EnemyKilledEvent.
             // Unconditional attach (0 allowed) keeps the lookup branch-free.

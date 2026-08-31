@@ -111,12 +111,17 @@ namespace Wassup.Battle.Combat.Projectile
             // 순수 함수(`BounceRetarget`)가 인덱스를 돌려주므로 위치·진영도 같은 정렬로 편다.
             var victimPositions = new NativeArray<float3>(victimEntities.Length, Allocator.Temp);
             var victimFactionMasks = new NativeArray<int>(victimEntities.Length, Allocator.Temp);
+            // distance-based-range unit 3 — 대상의 몸 반경. 없으면 0 = 점(오늘과 동일).
+            var victimBodyRadii = new NativeArray<float>(victimEntities.Length, Allocator.Temp);
+            var hitRadiusLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             for (int i = 0; i < victimEntities.Length; i++)
             {
                 if (pathFollowLookup.HasComponent(victimEntities[i]))
                     victimTraversalLayers[i] = pathFollowLookup[victimEntities[i]].traversalLayers;
                 victimPositions[i] = victimTransforms[i].Position;
                 victimFactionMasks[i] = (int)victimFactions[i].value;
+                victimBodyRadii[i] = hitRadiusLookup.HasComponent(victimEntities[i])
+                    ? hitRadiusLookup[victimEntities[i]].value : 0f;
             }
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
@@ -505,7 +510,11 @@ namespace Wassup.Battle.Combat.Projectile
                                     projectile.ValueRO.targetTraversalLayers,
                                     victimTraversalLayers[i])) continue;
                             float2 victimPos = victimPositions[i].xz;
-                            if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius)) continue;
+                            // ⚠ **유효 반경 = 투사체 피격 반경 + 대상 몸 반경.** 두 값은 뜻이 다르다 —
+                            // `radius`(= `hitThreshold`)는 «이 탄이 얼마나 관대하게 맞히나», 몸 반경은
+                            // «이 대상이 얼마나 큰가». 큰 몸이 큰 표적인 것은 물성이고, 탄의 관대함을
+                            // 전 대상에 균일하게 올려 흉내 내던 것이 `MachineGunBullet` 의 0.4→0.7 완화다.
+                            if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius + victimBodyRadii[i])) continue;
                             int recIdx = -1;
                             if (hasRecords && !PathHitRecord.CanHit(
                                     pathHitRecordLookup[entity], victimEntities[i],
@@ -832,6 +841,7 @@ namespace Wassup.Battle.Combat.Projectile
             ecb.Dispose();
             victimPositions.Dispose();
             victimFactionMasks.Dispose();
+            victimBodyRadii.Dispose();
             victimEntities.Dispose();
             victimTransforms.Dispose();
             victimFactions.Dispose();
