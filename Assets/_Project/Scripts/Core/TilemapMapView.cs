@@ -102,6 +102,7 @@ namespace Wassup.Core
         private static readonly int RingRangeId = Shader.PropertyToID("_Range");
         private static readonly int RingQuadCellsId = Shader.PropertyToID("_QuadCells");
         private static readonly int RingColorId = Shader.PropertyToID("_Color");
+        private static readonly int RingFillAlphaId = Shader.PropertyToID("_FillAlpha");
         // 쿼드 한 변(셀 배수). 링 지름 = 2×(half + range) 이고 최대 사거리 5 + 여유 → 2×(0.5+5)+1 = 12.
         // 사거리마다 쿼드를 키우지 않고 **한 크기로 고정**한다 — 셰이더가 uv→타일 매핑에 이 값을 쓰므로
         // 여기가 단일 소스다(액체의 LiquidQuadCells 와 같은 규약).
@@ -632,6 +633,7 @@ namespace Wassup.Core
                 sr.sharedMaterial.SetVector(RingHalfExtentId, new Vector4(he, he, 0f, 0f));
                 sr.sharedMaterial.SetFloat(RingRangeId, he > 0f ? TargetMarkStructurePad : TargetMarkUnitRadius);
                 sr.sharedMaterial.SetColor(RingColorId, c);
+                sr.sharedMaterial.SetFloat(RingFillAlphaId, 0f);   // 마크는 테만 — 발밑을 덮지 않는다
                 sr.gameObject.SetActive(!_rangeInvalid);   // 무효면 안 켠다 — 아래 계약 참조
             }
             for (int i = want; i < _targetMarks.Count; i++)
@@ -970,10 +972,23 @@ namespace Wassup.Core
             }
             c.a = _tileSet.rangeRingAlpha;
             _rangeRingMat.SetColor(RingColorId, c);
+            _rangeRingMat.SetFloat(RingFillAlphaId, _tileSet.rangeFillAlphaUnderRing);
         }
 
+        // 채움 알파는 **링이 있느냐가 정한다**.
+        //   링 있음 → **0**. 채움을 칸으로 칠하지 않는다 — 칸 실루엣이 계단이라
+        //             「직선 변 + 깎인 모서리」로 읽히고, 그게 원을 사각형처럼 보이게 한다
+        //             (사용자 지적 2026-08-31). 대신 **링 셰이더가 내부를 채운다**
+        //             (`_FillAlpha` = `rangeFillAlphaUnderRing`) — 선과 채움이 정의상 같은 곡선이라
+        //             칸이 링 밖으로 삐져나오는 문제도 구조적으로 사라진다.
+        //   링 없음 → 그대로. 스킬 조준·텔레그래프·방향 레인은 채움이 **유일한 신호**다.
+        //
+        // ⚠ 타일은 계속 칠한다(알파만 0) — `IsPlacementRangeCell` 같은 논리 소비자가
+        // 「어느 칸이 사거리 안인가」를 계속 물을 수 있어야 한다.
+        // ⚠ 여기를 `rangeFillAlphaUnderRing` 으로 되돌리지 말 것 — **채움이 두 겹이 되어**
+        //   같은 알파가 두 번 곱해진다(실측: 화면이 의도보다 확연히 진해졌다).
         private float RangeFillAlpha()
-            => RingActive() ? _tileSet.rangeFillAlphaUnderRing : _tileSet.rangePulseMaxAlpha;
+            => RingActive() ? 0f : _tileSet.rangePulseMaxAlpha;
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성. **이 메서드가 유일한 소유자**다.
         // Set/ClearPlacementRange 는 절대 건드리지 않는다: SetPlacementRange 가 내부에서

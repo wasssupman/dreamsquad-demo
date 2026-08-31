@@ -30,6 +30,7 @@ Shader "Wassup/PlacementRangeRing"
         // 판정 입력의 복사본 — 호출부가 사거리 술어에 넣는 값과 **같아야 한다**.
         _HalfExtent  ("Half Extent (tiles, xy)", Vector) = (0.5, 0.5, 0, 0)
         _Range       ("Range (tiles)", Float) = 3
+        _FillAlpha   ("Interior Fill Alpha", Range(0, 1)) = 0.12
         _Thickness   ("Ring Thickness (tiles)", Range(0.01, 0.4)) = 0.09
         _LinerWidth  ("Liner Width (tiles)", Range(0.0, 0.2)) = 0.05
         _Feather     ("Edge Feather (tiles)", Range(0.002, 0.08)) = 0.018
@@ -56,6 +57,7 @@ Shader "Wassup/PlacementRangeRing"
             half4 _LinerColor;
             float4 _HalfExtent;
             float _Range;
+            float _FillAlpha;
             float _Thickness;
             float _LinerWidth;
             float _Feather;
@@ -92,11 +94,16 @@ Shader "Wassup/PlacementRangeRing"
                 float liner = (1.0 - smoothstep(linerOuter - _Feather, linerOuter + _Feather, abs(d)))
                               * step(0.0, d);
 
-                // 라이너를 먼저 깔고 그 위에 선 — 밝은 바닥에서도 선이 살아남는다.
+                // 내부 채움 — **선과 같은 곡선이 경계다.** 칸으로 칠하면 실루엣이 계단이 되고
+                // 「직선 변 + 깎인 모서리」로 읽힌다(사용자 지적 2026-08-31). 여기서 칠하면
+                // 채움과 선이 **정의상 같은 모양**이라 삐져나옴도 구조적으로 사라진다.
+                float fill = 1.0 - smoothstep(-_Feather, _Feather, d);
+
+                // 라이너를 먼저 깔고 그 위에 채움, 그 위에 선 — 밝은 바닥에서도 선이 살아남는다.
                 half4 c = _LinerColor;
                 c.a *= liner;
-                c.rgb = lerp(c.rgb, _Color.rgb, ring);
-                c.a = max(c.a, _Color.a * ring);
+                c.rgb = lerp(c.rgb, _Color.rgb, max(fill, ring));
+                c.a = max(c.a, max(_Color.a * ring, _FillAlpha * fill));
                 return c;
             }
             ENDHLSL
