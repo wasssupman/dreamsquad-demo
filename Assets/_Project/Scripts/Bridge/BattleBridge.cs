@@ -2909,6 +2909,55 @@ namespace Wassup.Bridge
         // battle-sim-extraction — 하네스 배치가 「닿는 자리」를 고르려면 골이 어디인지 알아야 한다.
         // 브리지가 이미 소유한 값을 얇게 노출할 뿐이다(제약 12 판단 순서의 (b)).
         // `goals` 미생성/빈이면 단일 `goal` 폴백 — `AnyEnemyWithinTilesOfGoal` 과 같은 규약.
+        // distance-based-range — **디버그용 감지범위 수집.** 판정을 눈으로 확인하는 유일한 창구다.
+        //
+        // ⚠ **여기서 산식을 다시 쓰지 않는다.** 반지름은 술어가 쓰는 값 그대로다:
+        //     도달 = (사거리 + SelfBodyRadius) × tileSize   ← 대상이 「점」일 때의 경계
+        //     몸   = bodyRadius × tileSize                  ← 그 대상이 얼마나 큰가
+        // 둘을 각각 그려야 「내 사거리」와 「저 놈의 몸」이 어떻게 더해지는지가 보인다
+        // (보스 몸을 저작한 뒤 실기에서 확인할 축이 정확히 이것이다).
+        //
+        // 위치는 **view 좌표**로 낸다 — 그리는 쪽이 월드에 기즈모를 찍기 때문이고,
+        // `LocalTransform.Position`(sim)을 그냥 주면 스테이지마다 어긋난다(unit 7 C-1 과 같은 함정).
+        public struct DebugReachSphere
+        {
+            public Vector3 viewPos;
+            public float reachWorld;   // 0 이면 공격 못 하는 대상(몸만 그린다)
+            public float bodyWorld;
+            public bool isDefender;
+        }
+
+        public void DebugCollectReachSpheres(List<DebugReachSphere> into)
+        {
+            into.Clear();
+            if (into == null || !HasLiveEntityManager() || !_aliveAttackersQueryCreated) return;
+            var q = _rangeTargetQuery;   // FactionTag + LocalTransform · Dead/Pending 제외
+            var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
+            var tf = q.ToComponentDataArray<LocalTransform>(Unity.Collections.Allocator.Temp);
+            var fac = q.ToComponentDataArray<FactionTag>(Unity.Collections.Allocator.Temp);
+            for (int i = 0; i < ents.Length; i++)
+            {
+                float reach = 0f;
+                if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(ents[i]))
+                {
+                    var st = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(ents[i]);
+                    reach = (GridMath.RangeToTiles(st.range) + Wassup.Skills.SkillMath.SelfBodyRadiusTiles)
+                            * tileSize;
+                }
+                float body = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
+                    ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value * tileSize : 0f;
+                if (reach <= 0f && body <= 0f) continue;
+                into.Add(new DebugReachSphere
+                {
+                    viewPos = (Vector3)Wassup.Core.BoardSpace.ToView(tf[i].Position),
+                    reachWorld = reach,
+                    bodyWorld = body,
+                    isDefender = ((int)fac[i].value & (int)Faction.DefenderUnit) != 0,
+                });
+            }
+            ents.Dispose(); tf.Dispose(); fac.Dispose();
+        }
+
         public Vector2Int[] DebugGoalCells
         {
             get
