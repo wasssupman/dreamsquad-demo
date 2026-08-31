@@ -291,7 +291,12 @@ namespace Wassup.Core
         {
             _highlightAbove = above; // range/placeable 타일맵이 아직 없으면 Ensure 시 이 값을 반영.
             SetRendererSorting(overlayTilemap, above ? 10002 : -10);
-            SetRendererSorting(_rangeTilemap, above ? 10000 : -12);
+            // distance-based-range unit 5 커밋3 — **두 분기가 같은 값이다.** 사거리 채움도 링과 함께
+            // 바닥에 남는다(사용자 조건 3): 세계에 그린 도형이 스프라이트를 관통하면 UI 로 읽힌다.
+            // 이전에는 드래그 중 10000 으로 떠서 적 빌보드를 뚫고 보였다
+            // (placement-enemy-see-through unit 6). **그 가림은 이제 채움이 아니라 링이 감당하고,
+            // 링의 끊김은 채움이 흡수한다** — 정렬로 피하지 않는다.
+            SetRendererSorting(_rangeTilemap, -12);
             SetRendererSorting(_placeableTilemap, above ? 9998 : -13); // placement-eligible-tile-highlight unit 1
             SetRendererSorting(_zoneTilemap, above ? 9997 : -14);     // active-ally-zone unit 2
             // ultimate-leap unit 4 — **이 목록에 반드시 있어야 한다.** 빠지면 예고가 -13 에 굳어,
@@ -547,6 +552,12 @@ namespace Wassup.Core
             sr.transform.localScale = new Vector3(RingQuadCells * cs, RingQuadCells * cs, 1f);
             _rangeRingMat.SetVector(RingHalfExtentId, new Vector4(halfExtentTiles, halfExtentTiles, 0f, 0f));
             _rangeRingMat.SetFloat(RingRangeId, rangeTiles);
+            // 선과 채움은 **같은 라임**이어야 한다(사용자 조건 2) — 시안(고스트)·노랑(점유)·
+            // 무채색(지형)과 색상 자체로 갈려야 채움 두 겹 문제가 재발하지 않는다.
+            // 그래서 링 색을 저작에서 끌어온다. 셰이더 기본값에 맡기면 둘이 조용히 갈린다.
+            var ringColor = _tileSet.rangeColor;
+            ringColor.a = _tileSet.rangeRingAlpha;
+            _rangeRingMat.SetColor(RingColorId, ringColor);
             if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
         }
 
@@ -795,19 +806,28 @@ namespace Wassup.Core
             if (_rangeInvalid)
             {
                 var ic = _tileSet.rangeInvalidColor;
-                ic.a = _tileSet.rangePulseMaxAlpha;
+                ic.a = RangeFillAlpha();
                 float flashDur = _tileSet.rangeInvalidFlashSeconds;
                 if (flashDur > 0f) // boost 0 은 아래 Lerp 가 항등이라 별도 가드 불요(0除만 막는다)
                 {
                     float t = Mathf.Clamp01((Time.unscaledTime - _rangeInvalidSince) / flashDur);
                     float boost = _tileSet.rangeInvalidFlashBoost * (1f - t);
                     ic = Color.Lerp(ic, Color.white, boost);
-                    ic.a = Mathf.Lerp(_tileSet.rangePulseMaxAlpha, 1f, boost);
+                    ic.a = Mathf.Lerp(RangeFillAlpha(), 1f, boost);
                 }
                 return ic;
             }
-            var c = _tileSet.rangeColor; c.a = _tileSet.rangePulseMaxAlpha; return c;
+            var c = _tileSet.rangeColor; c.a = RangeFillAlpha(); return c;
         }
+
+        // 채움 알파는 **링이 있느냐가 정한다**(unit 5 커밋3).
+        //   링 있음 → 옅게. 링이 「어디까지 닿나」를 말하고 채움은 **보험**이다
+        //             (선이 유닛·프랍에 끊겨도 영역이 남는다 — 사용자 조건 1).
+        //   링 없음 → 그대로. 스킬 조준·텔레그래프·방향 레인은 채움이 **유일한 신호**다.
+        private float RangeFillAlpha()
+            => _rangeRing != null && _rangeRing.gameObject.activeSelf
+                ? _tileSet.rangeFillAlphaUnderRing
+                : _tileSet.rangePulseMaxAlpha;
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성. **이 메서드가 유일한 소유자**다.
         // Set/ClearPlacementRange 는 절대 건드리지 않는다: SetPlacementRange 가 내부에서

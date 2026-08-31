@@ -199,13 +199,12 @@ namespace Wassup.UI
                     _ghostPaintColors.Add(e.reason != PlacementRejectReason.None || nonSpatialInvalid
                         ? Cfg.ghostInvalidColor : Cfg.ghostValidColor);
                 }
-                else if (bridge.IsPlacementRangeCell(e.cell))
-                {
-                    // rev 2(사용자 피드백 2026-08-28) — 공격 사거리 링이 표시 중인 칸은 전역
-                    // 불가 표시가 양보한다. 링 위에 빨강/노랑이 얹히면 링이 붉게 물들어 사거리
-                    // 읽기가 흐려진다. footprint 칸(위 분기)은 예외 — 유효성은 핵심 신호다.
-                    // 사거리 셀 변경은 항상 앵커/포커스 변경과 동행하므로 diff 재페인트가 따라온다.
-                }
+                // ⚠ **2026-08-28 예외를 철거했다**(distance-based-range unit 5 커밋3).
+                // 그 예외는 「사거리 칸 위에서는 전역 불가 표시를 양보한다」였다 — 사거리가
+                // **진한 채움**이라 그 위에 빨강/노랑이 얹히면 사거리 읽기가 흐려졌기 때문이다.
+                // 즉 **채움 두 겹이 싸우니까 하나를 껐던 것**이고, 증상 대응이었다.
+                // 지금은 사거리가 **선(링) + 옅은 채움(α.12)** 이라 겹칠 픽셀이 없다.
+                // 되살리지 말 것 — 되살리면 사거리 안의 못 놓는 땅이 다시 보이지 않는다.
                 else if (e.reason == PlacementRejectReason.Occupied)
                 {
                     _ghostPaintCells.Add(e.cell);

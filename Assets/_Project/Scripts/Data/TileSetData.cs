@@ -49,6 +49,19 @@ namespace Wassup.Data
         [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
         [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도
 
+        // distance-based-range unit 5 커밋3 — **링이 있을 때의 채움 알파.**
+        [Tooltip("사거리 **링이 떠 있을 때**의 채움 알파. 링이 「어디까지 닿나」를 말하므로 채움은 " +
+                 "**보험**으로 내려간다 — 밀집 전투에서 선이 유닛·프랍에 끊겨도 영역이 남는다.\n" +
+                 "⚠ 링이 없는 경로(스킬 조준·텔레그래프·방향 레인)는 이 값을 **쓰지 않는다** — " +
+                 "거기선 채움이 유일한 신호라 rangePulseMaxAlpha 를 그대로 쓴다.\n" +
+                 "0.12 는 초기값이다. 실기기에서 조정할 것(사용자 결정 2026-08-31).")]
+        [Range(0f, 1f)] public float rangeFillAlphaUnderRing = 0.12f;
+
+        [Tooltip("사거리 **링(선)** 의 알파. 색상은 rangeColor 를 그대로 쓴다 — 선과 채움이 같은 " +
+                 "라임이어야 시안·노랑·무채색과 색상으로 갈린다.\n" +
+                 "모양(두께·라이너·페더)은 PlacementRangeRing.mat 인스펙터에서.")]
+        [Range(0f, 1f)] public float rangeRingAlpha = 0.95f;
+
         // placement-thumb-occlusion unit 3 — 배치 불가 시 사거리 격자를 적색으로. 사거리는 중심 셀을
         // 제외한 링이라 손가락 바깥에 있고 면적이 커서 주변시로 읽힌다 = 가림에 구조적으로 면역인
         // 유일한 채널. 형태(격자 outline)는 무변경 — solid 승급은 후속(맵 가림이 solid 폐기의 원 이유).

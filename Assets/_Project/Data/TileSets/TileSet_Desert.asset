@@ -28,6 +28,8 @@ MonoBehaviour:
   rangePulseMinAlpha: 0.35
   rangePulseMaxAlpha: 0.85
   rangePulseSpeed: 3
+  rangeFillAlphaUnderRing: 0.12
+  rangeRingAlpha: 0.95
   rangeInvalidColor: {r: 1, g: 0.16, b: 0.13, a: 1}
   rangeInvalidFlashSeconds: 0.18
   rangeInvalidFlashBoost: 0.7
