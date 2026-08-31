@@ -20,12 +20,23 @@ namespace Wassup.Battle.Combat
     [UpdateAfter(typeof(MovementSystem))]
     public partial struct AttackSystem : ISystem
     {
+        // distance-based-range unit 4a — 대상의 몸 반경(타일). 없으면 0 = 점.
+        //
+        // ⚠ **`OnUpdate` 안의 `SystemAPI.GetComponentLookup` 지역 변수로 쓰지 말 것.**
+        // 그렇게 했다가 이 시스템의 EditMode 전반이
+        // `ObjectDisposedException: EntityTypeHandle ... invalidated by a structural change`
+        // 로 무너졌다(실측). 같은 파일의 다른 lookup 들이 그 형태로 멀쩡히 도는 것이 함정이다.
+        // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
+        // 핸들 갱신 순서에 기대지 않는다.
+        private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+
         private EntityQuery _attackEventsQuery;
         private EntityQuery _ccEventsQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             state.RequireForUpdate<AttackState>();
             _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<UnitAttackVisualEventsSingleton>());
             _ccEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
@@ -34,6 +45,7 @@ namespace Wassup.Battle.Combat
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _bodyRadiusLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
 
             // Snapshot attackable targets into native arrays so the unified attacker
@@ -600,8 +612,7 @@ namespace Wassup.Battle.Combat
                     if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // class not allowed
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
-                    if (!AttackReach.InReach(atkCell, tgtCell, tileRange, atkPos, targetPos, tileSize,
-                            attackerIsContinuous && targetPathLookup.HasComponent(targetEntities[i]))) continue;
+                    if (!AttackReach.InReach(atkPos, targetPos, tileRange, tileSize, BodyRadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, occupiedCellsLookup, hasFlowField, flowField, out var nearestPos);
                     // battle-structures unit 0 — 거점에 대한 타입 기반 특별 취급은 없다.
                     // 마스크에 들어온 후보는 종류를 묻지 않고 **거리로만** 경쟁한다.
@@ -754,8 +765,7 @@ namespace Wassup.Battle.Combat
                             // 락 유지도 **선정과 같은 술어**를 지나야 한다. 셀만 보면 락을 문 뒤로는
                             // 2차 게이트가 영영 적용되지 않고, EnemyAiState 쪽 미러(같은 락 블록에
                             // AttackReach 를 건다)와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
-                            keepLock = AttackReach.InReach(atkCell, cCell, tileRange, atkPos, curPos, tileSize,
-                                           attackerIsContinuous && targetPathLookup.HasComponent(cur))
+                            keepLock = AttackReach.InReach(atkPos, curPos, tileRange, tileSize, BodyRadiusOf(cur, _bodyRadiusLookup))
                                        && TargetPersistence.KeepsLock(true, cDist, tileRange);
                         }
 
@@ -797,8 +807,7 @@ namespace Wassup.Battle.Combat
                         // distance-based-range unit 1 — 어그로 sticky 도 **같은 술어**를 지난다.
                         // 오늘은 가디언이 타일 고정이라 2차 게이트가 안 걸려 결과가 같지만,
                         // 인라인으로 두면 자를 바꾸는 순간 이 한 곳만 옛 답을 낸다.
-                        if (AttackReach.InReach(atkCell, gCell, tileRange, atkPos, gPos, tileSize,
-                                attackerIsContinuous && targetPathLookup.HasComponent(g)))
+                        if (AttackReach.InReach(atkPos, gPos, tileRange, tileSize, BodyRadiusOf(g, _bodyRadiusLookup)))
                         {
                             bestTarget = g;
                             bestTargetPos = gPos;
@@ -829,8 +838,7 @@ namespace Wassup.Battle.Combat
                                 ? aggroTransformLookup[lt].Position : bestTargetPos;
                             int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
                             // unit 1 수렴 — 락 유지도 선정과 같은 술어를 지난다.
-                            if (AttackReach.InReach(atkCell, ltCell, tileRange, atkPos, ltPos, tileSize,
-                                    attackerIsContinuous && targetPathLookup.HasComponent(lt)))
+                            if (AttackReach.InReach(atkPos, ltPos, tileRange, tileSize, BodyRadiusOf(lt, _bodyRadiusLookup)))
                             { bestTarget = lt; bestTargetPos = ltPos; }
                             else bestTarget = Entity.Null; // out of range → lapse
                         }
@@ -897,8 +905,7 @@ namespace Wassup.Battle.Combat
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
                             int2 dCell = GridMath.WorldToCell(dcurPos, tileSize, gridSize, origin: ffOrigin);
                             int dDist = GridMath.ChebyshevDistance(atkCell, dCell);   // unit 1 수렴
-                            dKeep = AttackReach.InReach(atkCell, dCell, tileRange, atkPos, dcurPos, tileSize,
-                                        attackerIsContinuous && targetPathLookup.HasComponent(dcur))
+                            dKeep = AttackReach.InReach(atkPos, dcurPos, tileRange, tileSize, BodyRadiusOf(dcur, _bodyRadiusLookup))
                                     && TargetPersistence.KeepsLock(true, dDist, tileRange);
                         }
                         if (dKeep)
@@ -943,8 +950,7 @@ namespace Wassup.Battle.Combat
                         float3 ctPos = aggroTransformLookup.HasComponent(ct)
                             ? aggroTransformLookup[ct].Position : bestTargetPos;
                         int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
-                        if (AttackReach.InReach(atkCell, ctCell, tileRange, atkPos, ctPos, tileSize,
-                                attackerIsContinuous && targetPathLookup.HasComponent(ct)))
+                        if (AttackReach.InReach(atkPos, ctPos, tileRange, tileSize, BodyRadiusOf(ct, _bodyRadiusLookup)))
                         { bestTarget = ct; bestTargetPos = ctPos; }
                         else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
                     }
@@ -1548,8 +1554,7 @@ namespace Wassup.Battle.Combat
                                             int2 tgtCellAoE = GridMath.WorldToCell(aoePos, tileSize, gridSize, origin: ffOrigin);
                                             // unit 1 수렴 — 다중타격의 2번째 이후 대상도 **첫 대상과 같은 술어**를
                                             // 지난다. 갈려 있으면 「내가 때릴 수 있는 적」의 정의가 발마다 다르다.
-                                            if (!AttackReach.InReach(atkCell, tgtCellAoE, tileRange, atkPos, aoePos, tileSize,
-                                                    attackerIsContinuous && targetPathLookup.HasComponent(targetEntities[i]))) continue;
+                                            if (!AttackReach.InReach(atkPos, aoePos, tileRange, tileSize, BodyRadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
                                             float d2 = DistanceSqToTarget(atkPos, targetEntities[i], aoePos, occupiedCellsLookup, hasFlowField, flowField, out _);
                                             if (rankByHealth)
                                             {
@@ -2133,6 +2138,10 @@ namespace Wassup.Battle.Combat
         // `factionMask` 를 호출부가 넘기는 것이 그 귀결이다: 폴백은 적 유닛만 노리지만
         // 본 공격은 유닛의 저작 마스크(AttackState.targetMask, 적 거점 포함)를 따른다.
         // goal-tower-siege unit 1 — PastGoal 제외는 폐기됐다(골에 붙은 적도 유효 대상).
+        // 대상의 몸 반경(타일). 컴포넌트가 없으면 0 = 점(오늘의 저작 전부).
+        static float BodyRadiusOf(Entity e, in ComponentLookup<Wassup.Battle.Units.HitRadius> l)
+            => l.HasComponent(e) ? l[e].value : 0f;
+
         private static int PickFallbackTarget(
             NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,

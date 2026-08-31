@@ -170,6 +170,16 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── 경계 ③ 광역 ── 회오리가 반경 안 전원에 퍼지는가.
+        //
+        // ⚠ **distance-based-range unit 4a 로 모서리가 깎였다.** 회오리의 광역은 `TileAoe` 가
+        // 아니라 **다중타격 대상 선정**(`attackTargetCount: 10`)이라 사거리 술어를 지난다.
+        // 그 술어가 셀 체비셰프(정사각형)에서 몸 기준 거리(둥근 모서리)로 바뀌면서
+        // **정대각 (Range, Range) 가 빠졌다** — |Δ|=(2,2) → v=(1.5,1.5) → 2.12 > 2.
+        //
+        // 되돌리지 않는 이유 둘: (1) 회오리는 화면에서 **소용돌이**라 둥근 편이 그림과 맞다.
+        // (2) 되돌리려면 다중타격 2번째 이후만 옛 자를 쓰게 해야 하는데, 그건 unit 1 이 없앤
+        // 「내가 때릴 수 있는 적의 정의가 발마다 다름」을 되살리는 것이다.
+        // 밸런스 판단은 unit 6 소관 — 여기서는 **계약을 못박기만** 한다.
         [Test]
         public void Boundary3_WhirlSpreadsToEveryoneInRadius()
         {
@@ -177,13 +187,18 @@ namespace Wassup.Tests.EditMode
             var near = MakeDefender(new float3(1f, 0f, 0f));
             // 좌표를 Range 에서 유도한다 — 리터럴로 두면 반경을 바꿨을 때 「경계」와 「밖」이
             // 조용히 둘 다 안쪽이 되어 테스트가 통과한 채 의미를 잃는다.
-            var boundary = MakeDefender(new float3(Range, 0f, Range));       // Chebyshev == Range
-            var outside = MakeDefender(new float3(Range + 2f, 0f, 0f));      // Chebyshev > Range
+            var edge = MakeDefender(new float3(Range, 0f, 0f));          // 축 경계: v=1.5 ≤ 2 → 안
+            var shallow = MakeDefender(new float3(Range, 0f, 1f));       // 얕은 대각: v=(1.5,0.5)=1.58 → 안
+            var corner = MakeDefender(new float3(Range, 0f, Range));     // 정대각: v=2.12 > 2 → **밖**
+            var outside = MakeDefender(new float3(Range + 2f, 0f, 0f));  // 한참 밖
 
             Tick();
 
             Assert.Greater(Hits(near), 0, "최근접이 primary 다.");
-            Assert.Greater(Hits(boundary), 0, $"반경 {Range} 대각도 회오리 안이다(Chebyshev).");
+            Assert.Greater(Hits(edge), 0, $"축 방향 반경 {Range} 는 회오리 안이다.");
+            Assert.Greater(Hits(shallow), 0, "얕은 대각도 안이다 — 모서리만 깎였지 대각 전체가 아니다.");
+            Assert.AreEqual(0, Hits(corner),
+                $"정대각 ({Range},{Range}) 는 **밖**이다 — 사거리가 정사각형에서 둥근 모서리로 바뀌었다(unit 4a).");
             Assert.AreEqual(0, Hits(outside), "반경 밖은 안 맞는다.");
         }
     }

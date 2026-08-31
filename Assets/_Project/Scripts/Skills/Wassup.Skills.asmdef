@@ -2,7 +2,8 @@
     "name": "Wassup.Skills",
     "rootNamespace": "Wassup.Skills",
     "references": [
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "Unity.Burst"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

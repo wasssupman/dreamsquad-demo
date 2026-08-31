@@ -31,9 +31,20 @@ namespace Wassup.Battle.Effects
         // `Update(ref state)` 가 초록이라는 사실뿐이고, 그게 생성기에 안 기대는 형태다.
         private ComponentLookup<PathFollowState> _casterPathLookup;
 
+        // distance-based-range unit 4a — 대상의 몸 반경(타일). 없으면 0 = 점.
+        //
+        // ⚠ **`OnUpdate` 안의 `SystemAPI.GetComponentLookup` 지역 변수로 쓰지 말 것.**
+        // 그렇게 했다가 이 시스템의 EditMode 전반이
+        // `ObjectDisposedException: EntityTypeHandle ... invalidated by a structural change`
+        // 로 무너졌다(실측). 같은 파일의 다른 lookup 들이 그 형태로 멀쩡히 도는 것이 함정이다.
+        // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
+        // 핸들 갱신 순서에 기대지 않는다.
+        private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             _casterPathLookup = state.GetComponentLookup<PathFollowState>(isReadOnly: true);
             state.RequireForUpdate<HazardCastState>();
             state.RequireForUpdate<FlowFieldSingleton>();
@@ -43,6 +54,7 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _bodyRadiusLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var spawnSingleton = SystemAPI.GetSingletonRW<HazardSpawnRequestsSingleton>();
@@ -116,8 +128,9 @@ namespace Wassup.Battle.Effects
                     // 3번째 인자에 `false` 리터럴을 두지 않는 이유: 그건 「오늘 캐스터가 전부
                     // 타일 고정 방어유닛」이라는 **콘텐츠 사실**이지 이 코드의 성질이 아니다.
                     // 리터럴은 grep(「인라인 사거리 판정 0건」)에도 안 걸려 조용히 다른 자가 된다.
-                    if (!AttackReach.InReach(casterCell, targetCell, tileRange,
-                            casterPos, targetPos, flowField.tileSize, casterIsContinuous)) continue;
+                    if (!AttackReach.InReach(casterPos, targetPos, tileRange, flowField.tileSize,
+                            _bodyRadiusLookup.HasComponent(targetEntities[i])
+                                ? _bodyRadiusLookup[targetEntities[i]].value : 0f)) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
                     if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))

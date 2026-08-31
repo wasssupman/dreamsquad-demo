@@ -16,14 +16,16 @@ d  = length(max(|Δ| − (0.5 + 대상반폭), 0))
 안 ⟺  lengthsq(v) ≤ (사거리 + 대상반경)²        ← sqrt 금지
 ```
 - 공격자 반폭 `0.5` 는 **코어 `const`**(`SelfHalfWidthTiles`) — 계약 3.
-- **`float2`/`math` 를 그대로 쓴다.** `Wassup.Skills` 는 `SkillCone`·`ISkillContext` 로 **이미**
-  `Unity.Mathematics` 에 묶여 있어 한계 비용이 0 이다. primitive 로 풀면 `AttackReach` 쪽 변환만 는다.
-  (그 패키지를 netstandard 로 어떻게 옮길지 — vendoring / 재구현 — 는 M1 의 결정이지 이 spec 의 것이 아니다.)
+- ~~`float2`/`math` 를 그대로 쓴다~~ → **구현 시 뒤집혔다.** 인자가 `float` 넷뿐이라
+  `math.abs` 하나 때문에 `Unity.Mathematics` 를 끌 이유가 없었다(삼항으로 끝난다).
+  `AttackReach` 쪽 변환도 늘지 않았다 — 어차피 `float3`→타일 단위 나눗셈을 하고 있었다.
+  ⚠ 대신 **`Unity.Burst` 참조는 추가해야 했다**(`Wassup.Skills.asmdef`). Bursted 시스템이
+  이 본체를 부르는데 그 참조가 없으면 `BC1055` 로 런타임에 무너진다 — 아래 진행 기록 (1).
 - `AttackReach` 는 `int2`/`float3` ↔ primitive 변환과 `tileSize` 곱만 남긴다.
 
 ## 완료 기준
 
-- [ ] **`AttackSystem` 다중타격 2번째 이후 대상 × 순찰병 조합을 실제로 검증한다.**
+- [x] **`AttackSystem` 다중타격 2번째 이후 대상 × 순찰병 조합을 실제로 검증한다.**
       unit 1 이 그 지점(`:1551`)의 판정을 좁혔지만 **이 unit 전까지는 무해**하다 — 자가 안 바뀌어
       결과가 같기 때문이다. **틀렸을 때 라이브가 되는 시점이 정확히 여기다**: 술어를 몸 거리로
       돌리는 순간 「내가 때릴 수 있는 적」의 정의가 그 경로에서만 갈린다.
@@ -31,7 +33,88 @@ d  = length(max(|Δ| − (0.5 + 대상반폭), 0))
       피해를 받은 기록 0건). 그러니 골든에 기대지 말고 **직접 확인**한다 — 순찰병이 적의
       다중타격 사거리 안에 서는 상황을 만들고 2차 대상 선정이 1차와 같은 정의를 쓰는지 본다.
       (unit 1 정정 1 · unit 3 이 대상 반경으로 이 입력을 한 번 더 흔든다.)
-- [ ] `AttackReachTests` 의 대각 단언 4건이 **뒤집힌다 — 정상이다.** 이름·주석을 새 계약으로 갱신
+- [x] `AttackReachTests` 의 대각 단언 4건이 **뒤집힌다 — 정상이다.** 이름·주석을 새 계약으로 갱신
       (특히 `WorldGate_IsChebyshevToo_SoDiagonalIsNotPenalized`).
-- [ ] unit 0 안전망 **초록 유지**(상대 동치성만 보므로 자가 바뀌어도 초록이어야 한다).
-- [ ] 골든 7건 red — 이 시점부터 골든은 오라클이 아니라 관측 도구다(계약 13).
+- [x] unit 0 안전망 **초록 유지**(상대 동치성만 보므로 자가 바뀌어도 초록이어야 한다).
+- [x] 골든 8건 red — 이 시점부터 골든은 오라클이 아니라 관측 도구다(계약 13).
+
+---
+
+### 진행 기록 — 완료 2026-08-31
+
+**자가 바뀌었다.** `bothContinuous` 인자가 사라졌다 — **그 인자의 존재 자체가 이 spec 의 ①번
+문제**(「사거리 안」의 뜻이 누가 묻느냐에 따라 달랐다)였다. 시그니처가 이제
+`InReach(atkPos, tgtPos, tileRange, tileSize, targetBodyRadiusTiles)` 이라 **다르게 물을 방법이
+표현 불가능**하다. 셀 인자도 사라졌다.
+
+본체는 `Wassup.Skills.SkillMath.InBodyReach`(계약 8). `Unity.Mathematics` 도 안 쓴다 —
+`math.abs` 대신 삼항이라 M1 때 의존이 하나 적다.
+
+**`InCellRange` 는 남겼다.** 사거리 판정이 아니라 **격자 계층의 자**로서다 — 추격 필드 소스
+수집이 셀 디스크라(`FlowFieldBuilder.CollectDefenderSources`, 결정 4) 순찰 이동이 그와 같은
+자를 봐야 한다. 주석에 「사거리 판정에 쓰지 말 것」을 명시했다.
+
+**호출부 11곳 전부 교체.** `AttackSystem` 7 · `EnemyAiStateSystem` 3 · `HazardCastSystem` 1 ·
+`PatrolAreaMath` 1(분해 사용). 대상 몸 반경은 `HitRadius` lookup 으로 넘긴다(unit 3 의 축).
+
+---
+
+#### ⚠ 이 unit 에서 실제로 넘어진 곳 셋 — 다음 사람을 위해
+
+**(1) Burst 가 `Wassup.Skills` 를 못 읽는다.** `BC1055: Unable to resolve the definition of
+the method` — 정의된 쪽 asmdef 에 `Unity.Burst` 참조가 필요하다(`noEngineReferences: true` 는
+유지해도 된다). 이게 이 unit 최대의 함정이었다: **컴파일은 통과하고 런타임에 무너진다.**
+EditMode 25건 이상이 `ObjectDisposedException: EntityTypeHandle invalidated` 와 「공격 0건」으로
+동시에 빨개졌고, 직전에 추가한 `ComponentLookup` 이 범인처럼 보였다. 전부 BC1055 하나였다.
+→ `docs/reference/lessons/04-sim-design.md` 로 승격.
+
+**(2) `SystemAPI.GetComponentLookup` 지역 변수 → Burst NRE.** unit 1 의 `HazardCastSystem` 과
+같은 증상. 세 시스템 전부 **명시 필드 + `OnCreate` + `Update(ref state)`** 로 통일했다.
+같은 lessons 문서에 있다.
+
+**(3) 불변식 하나가 진짜로 거짓이 됐다 — 코드가 아니라 문장을 고쳤다.**
+`RangePredicateInvariantsTests.SecondGate_OnlyNarrows_NeverWidens`(「사거리 술어 ⊆ 셀 체비셰프」)가
+빨개졌다. 반례: 사거리 0, 두 유닛이 **0.02칸** 떨어져 있는데 칸 경계를 사이에 두고 선다.
+몸 기준으로는 붙어 있으니 닿고(맞다), 셀로는 1칸이라 안 닿는다 — **「반 칸 움직였을 뿐인데
+판정이 뒤집힌다」가 바로 이 spec 이 고치려던 ③번 문제다.**
+새 문장 = **어긋남의 상한**: 술어가 통과하면 셀 거리는 최대 `range + 1`.
+그 상한이 필요한 이유는 순찰 이동이다 — 술어가 셀 디스크보다 **두 칸 이상** 넓어지면
+「필드가 세우지 않은 칸에서 쏜다」가 되어 이동과 사격이 다시 갈린다(182프레임 교착의 반대 방향).
+
+---
+
+#### 완료 기준 1(다중타격 × 순찰병) — **테스트가 대신 답했다**
+
+직접 상황을 만들 필요가 없었다. `WhirlpotEngageRepro.Boundary3_WhirlSpreadsToEveryoneInRadius`
+가 정확히 그 경로에서 빨개졌다 — 회오리(`Enemy_Whirlpot`, `attackTargetCount: 10`)의 광역은
+`TileAoe` 가 아니라 **다중타격 대상 선정**(`:1551`)이라 사거리 술어를 지나기 때문이다.
+
+증상: 반경 2의 **정대각**이 빠졌다(|Δ|=(2,2) → v=(1.5,1.5) → 2.12 > 2). **의도된 변화다** —
+체비셰프의 정사각형이 둥근 모서리가 된 것이고, 이게 「허용 면적 −9.5%」의 얼굴이다.
+되돌리지 않는 이유 둘: (a) 회오리는 화면에서 소용돌이라 둥근 편이 그림과 맞다. (b) 되돌리려면
+다중타격 2번째 이후만 옛 자를 쓰게 해야 하는데, 그건 unit 1 이 없앤 「내가 때릴 수 있는 적의
+정의가 발마다 다름」을 되살리는 것이다. 테스트를 새 계약으로 갱신하고 **경계 규율은 유지**했다
+(축 경계 안 · 얕은 대각 안 · 정대각 밖 · 한참 밖 밖 — 모서리만 깎였지 대각 전체가 아니다).
+
+#### 관측 — 골든은 이제 오라클이 아니다(계약 13)
+
+| 시나리오 | 이벤트 전→후 | 킬 전→후 |
+|---|---|---|
+| `basic` | 106 → 100 | 4 → 4 |
+| `long_boss` | 6535 → **4328** | 23 → **25** |
+| `seed_b` · `seed_c` | 212 → 341 | 8 → **9** |
+| `no_defense` | 307 → 307(내용은 다름) | 0 → 0 |
+| `summoner` | 227 → 232 | 9 → 9 |
+| `restart` | 891 → 880 | 5 → 5 |
+| `force_wave` | 483 → 482 | 9 → 9 |
+
+⚠ **사거리는 좁아졌는데 킬은 늘었다.** 직관과 반대라 그냥 넘기지 말 것 —
+`long_boss` 는 이벤트가 **1/3 줄고** 킬이 늘었다. 사거리 술어는 공격뿐 아니라 **적이 멈출지**
+(`EnemyAiStateSystem`)도 정하므로, 판정이 좁아지면 적이 덜 멈추고 더 전진한다. 그 흐름 변화가
+피해 이벤트 수와 킬 수를 같은 방향으로 움직이지 않는다. **밸런스 판단은 unit 6 소관**이고,
+이 표는 그때 「무엇이 얼마나 움직였나」의 출발점이다.
+
+교착은 없다 — unit 0 카나리아(PlayMode) **통과**: 피해 프레임 2 · 최장 정지-무피해 213프레임
+(예산 600) · 최소 접근거리 0.20칸.
+
+**검증**: EditMode 2661건 / 실패 2건(선행 — `boomerang`·`bomb_man` 문안) · PlayMode 카나리아 초록.

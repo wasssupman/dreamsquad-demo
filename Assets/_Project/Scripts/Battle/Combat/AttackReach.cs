@@ -5,77 +5,70 @@ namespace Wassup.Battle.Combat
     // 사거리 판정의 **단일 술어**. 아키텍처 중립이라 순수 함수로 둔다
     // (제약 10 — 타겟팅은 sim-critical 이라 단위 테스트를 유지한다).
     //
-    // ⚠ **소비처가 열하나이고 전부 같은 답을 받아야 한다** (distance-based-range unit 1 로
-    // 인라인 사거리 판정을 전부 여기로 접었다 — 그 전에는 이 목록이 다섯이었고 **stale 했다**).
-    // 역할별로:
+    // ── 자 하나, 몸 하나 (distance-based-range unit 4a) ──
+    //
+    // 전에는 두 단계였다 — 셀 체비셰프(1차) + 「양쪽이 연속 이동일 때만」 월드 체비셰프(2차).
+    // 그 구조가 만든 문제가 이 spec 의 출발점이다:
+    //   ① 「사거리 안」의 뜻이 **누가 묻느냐에 따라 달랐다.** 타일 고정 유닛은 셀만, 연속
+    //      유닛은 셀+월드. 같은 두 유닛의 같은 거리가 경로에 따라 다르게 판정됐다.
+    //   ② 몸이 없었다 — 전부 중심점 대 중심점이라 스프라이트가 1.89배인 보스가 몸통을
+    //      관통당해도 무판정이었다.
+    //   ③ 셀 체비셰프는 **칸 경계에서 튄다.** 반 칸 움직였을 뿐인데 판정이 뒤집힌다.
+    //
+    // 지금은 `SkillMath.InBodyReach` 하나다. `bothContinuous` 인자가 사라졌다 —
+    // **그 인자의 존재 자체가 ①이었다.**
+    //
+    // ⚠ **본체가 여기 없다.** `Wassup.Skills`(엔진 무참조 asmdef)에 있고 이 파일은
+    // `int2`/`float3` ↔ 타일 단위 변환만 한다(계약 8). M1 에서 sim 을 엔진 밖으로 들어낼 때
+    // 술어가 **이미 저쪽에 있어야** 그 이전이 「옮기기」가 아니라 「호출부 정리」로 끝난다.
+    //
+    // ── 소비처 열하나 · 전부 같은 답을 받아야 한다 ──
     //   ── 공격(Combat) ──
-    //   1) AttackSystem 타겟 선정            — «때릴 수 있나»            [획득]
-    //   2) AttackSystem 적 focus 락 유지                                 [유지]
-    //   3) AttackSystem 어그로 sticky 오버라이드                          [획득]
-    //   4) AttackSystem frontmost 락 유지                                [유지]
-    //   5) AttackSystem 방어유닛 focus 락 유지                            [유지]
-    //   6) AttackSystem committedTarget 재판정 — RESOLVE 시 이탈 판정      [유지]
-    //   7) AttackSystem 다중타격 2번째 이후 대상 — 첫 대상과 같은 정의여야 한다 [획득]
+    //   1) AttackSystem 타겟 선정            — «때릴 수 있나»                    [획득]
+    //   2) AttackSystem 적 focus 락 유지                                        [유지]
+    //   3) AttackSystem 어그로 sticky 오버라이드                                 [획득]
+    //   4) AttackSystem frontmost 락 유지                                       [유지]
+    //   5) AttackSystem 방어유닛 focus 락 유지                                   [유지]
+    //   6) AttackSystem committedTarget 재판정 — RESOLVE 시 이탈 판정             [유지]
+    //   7) AttackSystem 다중타격 2번째 이후 대상 — 첫 대상과 같은 정의여야 한다      [획득]
     //   ── 정지(Combat) ──
-    //   8) EnemyAiStateSystem guardianInRange — 어그로된 적이 멈춰도 되나  [획득]
-    //   9) EnemyAiStateSystem.HasFireTarget   — «멈춰도 되나»             [획득/유지]
+    //   8) EnemyAiStateSystem guardianInRange — 어그로된 적이 멈춰도 되나          [획득]
+    //   9) EnemyAiStateSystem.HasFireTarget   — «멈춰도 되나»                    [획득/유지]
     //   ── 시전(Effects) ──
-    //  10) HazardCastSystem 캐스트 사거리 — **Effects 맥락의 첫 소비처**   [획득]
+    //  10) HazardCastSystem 캐스트 사거리                                        [획득]
     //   ── 이동(Effects) ──
     //  11) PatrolAreaMath.StepDir/CloseInDir — «더 다가가야 하나»
-    //      ⚠ 이 하나만 `InReach` 합본이 아니라 `InCellRange`·`InWorldReach` 를 **분해해서** 쓴다
-    //      (셀 통과 AND 월드 실패 = 더 밀어준다). 술어를 바꿀 때 이 비대칭을 반드시 함께 본다.
-    // 새 소비처가 생기면 이 함수를 쓰고 목록에 적을 것. **인라인 재작성은 리뷰 거절 사유다.**
+    //      ⚠ 이 하나만 합본이 아니라 `InCellRange`·`InReach` 를 **분해해서** 쓴다
+    //      (셀 통과 AND 몸 거리 실패 = 한 칸 더 밀어 준다).
     //
-    // 특히 **락 경로(2·3)를 빠뜨리기 쉽다.** 셀만 보면 락을 문 뒤로는 2차 게이트가 영영
-    // 적용되지 않고, (4)의 미러와 갈려 «쏘면서 골로 걸어가는» 상태가 된다(코드 리뷰 지적).
+    // ⚠ **인라인 재작성은 리뷰 거절 사유다.** 2026-08-12 에 한 곳만 조였다가 182프레임 교착이
+    // 났다: (11)이 「격자상 사격 칸에 도착했으니 멈춰」라고 하고 (1)이 「물리적으로 머니 못 쏴」
+    // 라고 해서 순찰병이 적 옆에 붙어 선 채 아무것도 안 했다. **이동을 멈추는 근거가 사격 가능
+    // 여부인 이상, 셋이 같은 답을 받아야 한다.**
     //
-    // ⚠ **스냅샷은 한 이동 스텝 어긋난다.** (4)(5)는 `[UpdateBefore(MovementSystem)]`,
-    // (1)(2)(3)은 `[UpdateAfter(MovementSystem)]` 이라 같은 프레임에도 서로 다른 위치를 본다.
-    // 어긋남 상한은 `ClampDisplacement` 가 프레임당 변위를 tileSize 로 묶어 유한하고,
-    // 아래 CellSlackTiles(0.5)가 그 흔들림을 흡수하는 여유다 — 이 상한을 0 으로 조이면
-    // 판정이 프레임마다 뒤집혀 사격이 끊긴다. 순서를 바꾸는 것도 답이 아니다:
-    // (1)이 post-move 를 보는 것은 **타격 정확도상 의도**다.
-    //
-    // **왜 두 단계인가**
-    //
-    // 판정의 1차는 셀 체비셰프다 — 격자 게임이고 «대각 인접도 사거리 1»이 기존 계약이다.
-    // 그런데 GridMath.WorldToCell 이 셀 중심 ±0.5타일에서 칸을 가르므로, 공격자와 타겟이
-    // **둘 다 연속 이동**이면 각자 반 칸씩 밀려 사거리 1이 실측 2칸 가까이 닿는다
-    // (타일 고정 유닛은 한쪽만 밀리므로 최대 1.5칸). 그래서 연속↔연속에만 물리 거리를
-    // **후순위로** 덧건다.
-    //
-    // ⚠ **한 곳에만 넣으면 교착이 난다** (2026-08-12 실측). 처음엔 (1)에만 넣었는데,
-    // (3)이 «격자상 사격 칸에 도착했으니 멈춰»라고 하고 (1)이 «물리적으로 머니 못 쏴»라고
-    // 해서 순찰병이 적 옆에 붙어 선 채 아무것도 안 했다(182프레임). 이동을 멈추는 근거가
-    // 사격 가능 여부인 이상, 공격이 더 엄한 조건을 걸면 **이동도 그 조건까지 좁혀 들어가야**
-    // 한다. 지금은 셋이 이 파일 하나를 본다.
+    // ⚠ 스냅샷 어긋남: 이 술어는 **그 프레임의 위치**를 본다. `MovementSystem` 뒤에 도는
+    // 시스템(`AttackSystem` · `EnemyAiStateSystem` · `HazardCastSystem`)은 이동 후 위치를,
+    // 앞에 도는 것은 이동 전 위치를 본다 — 한 스텝만큼 어긋날 수 있다. 오늘 허용 범위다.
     public static class AttackReach
     {
-        // 셀 절반. 밸런스 knob 이 아니라 **격자 정의에서 나오는 구조 상수**다
-        // (WorldToCell 이 floor(x/tile + 0.5) 로 ±0.5 에서 칸을 가른다). SO 로 빼지 않는다.
-        // 값의 의미: «연속 유닛도 타일 고정 유닛이 이미 갖던 만큼만 오차를 갖는다» —
-        // 그래서 이 상한은 누구의 체감 사거리도 좁히지 않고 두 배 슬랙만 깎는다.
-        public const float CellSlackTiles = 0.5f;
+        // 사거리(타일) 안인가. `targetBodyRadiusTiles` = 대상의 몸 반경(타일, 0 = 점).
+        //
+        // ⚠ **`tileSize` 로 나눠 타일 단위로 넘긴다.** 술어가 월드 단위를 모르는 이유는
+        // 「사거리 3」이 저작에서 타일 수이기 때문이다 — 월드로 환산하는 지점이 하나여야 한다.
+        public static bool InReach(float3 atkPos, float3 tgtPos, int tileRange,
+                                   float tileSize, float targetBodyRadiusTiles = 0f)
+        {
+            float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
+            return Wassup.Skills.SkillMath.InBodyReach(
+                (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
+                tileRange, targetBodyRadiusTiles);
+        }
 
-        // 1차 게이트 — 셀 체비셰프. 격자 계층(BFS·필드)이 쓰는 그 메트릭이다.
+        // 격자 계층의 자. **사거리 판정에 쓰지 말 것** — 그 용도의 정본은 위 `InReach` 하나다.
+        // 이 함수가 남은 이유는 순찰 이동뿐이다: 추격 필드 소스 수집이 셀 디스크라
+        // (`FlowFieldBuilder.CollectDefenderSources`, 결정 4) 「필드가 세운 사격 칸」을
+        // 판정하려면 그와 **같은 자**여야 한다.
         public static bool InCellRange(int2 atkCell, int2 tgtCell, int tileRange)
             => math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y)) <= tileRange;
-
-        // 2차 게이트 — 물리 거리. 월드에서도 **체비셰프**로 잰다(셀 규칙과 같은 metric 이라야
-        // «대각 인접도 사거리 1» 계약이 유지된다. 유클리드로 재면 대각이 1.41 이라 조용히 좁아진다).
-        public static bool InWorldReach(float3 atkPos, float3 tgtPos, int tileRange, float tileSize)
-            => math.max(math.abs(tgtPos.x - atkPos.x), math.abs(tgtPos.z - atkPos.z))
-               <= (tileRange + CellSlackTiles) * tileSize;
-
-        // 합본. bothContinuous = 공격자와 타겟이 **둘 다** 연속 이동인가. 한쪽이라도 타일
-        // 고정이면 2차를 걸지 않는다(슬랙이 애초에 한쪽뿐이라 덧걸 이유가 없고, 출시된
-        // 유닛 전원의 체감 사거리를 건드리지 않기 위함).
-        public static bool InReach(int2 atkCell, int2 tgtCell, int tileRange,
-                                   float3 atkPos, float3 tgtPos, float tileSize, bool bothContinuous)
-        {
-            if (!InCellRange(atkCell, tgtCell, tileRange)) return false;
-            return !bothContinuous || InWorldReach(atkPos, tgtPos, tileRange, tileSize);
-        }
     }
 }

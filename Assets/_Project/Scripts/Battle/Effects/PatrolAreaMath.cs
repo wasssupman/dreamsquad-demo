@@ -174,7 +174,7 @@ namespace Wassup.Battle.Effects
                 // 향해 박스를 걸어나가고, 다음 프레임 DescendToHome 이 되돌려 경계에서 진동한다.
                 if (!IsInArea(enemyCells[i], anchorCell, tileRadius)) continue;
                 if (!AttackReach.InCellRange(selfCell, enemyCells[i], reach)) continue;
-                if (AttackReach.InWorldReach(selfPos, enemyPositions[i], reach, tileSize)) continue;
+                if (AttackReach.InReach(selfPos, enemyPositions[i], reach, tileSize)) continue;
                 float gap = math.max(math.abs(enemyPositions[i].x - selfPos.x),
                                      math.abs(enemyPositions[i].z - selfPos.z));
                 if (!found || gap < bestGap) { bestGap = gap; bestPos = enemyPositions[i]; found = true; }

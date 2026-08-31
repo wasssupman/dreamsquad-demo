@@ -11,6 +11,6 @@
 | `01-unity-mcp-operation.md` | Unity Editor 를 MCP 로 구동할 때의 함정 (포커스·reimport·execute_code·run_tests·Play 검증·스크린샷/Screen 컨텍스트) |
 | `02-dev-workflow-git-scene.md` | 테스트 배치·격리 리그·git 샌드박스·병행 세션 커밋·씬 저장/checkout 위생·시트↔SO 드리프트·**서버 응답 실물 확인(swagger 타입 불신)**·**GitLab 미러(SSH 필수·조각 푸시·보호 브랜치)** |
 | `03-rendering-assets.md` | Spine 4.2 고정·타일맵 렌더·프랍 authoring·투사체 VFX·카메라 페이즈·머리 위 뱃지 좌표계·UGUI/TMP 초기화·**런타임 중첩 캔버스(rect·sorting·알파)**·터치 입력 가드 |
-| `04-sim-design.md` | 전투 시뮬 설계 원칙 (구조적 결정론·시간 제어) |
+| `04-sim-design.md` | 전투 시뮬 설계 원칙 (구조적 결정론·시간 제어·**Bursted ISystem 에서 순수 함수 부르기**) |
 
 각 항목은 **증상 → 원인 → 처방** 구조. 커밋 해시·파일:라인은 당시 근거이며 코드가 진실원이다(이동/변경됐을 수 있으니 확인).

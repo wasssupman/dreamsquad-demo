@@ -39,3 +39,53 @@
 
 **출처**: defender-clock-out 코드리뷰 반영 중 실측(2026-08-15). 상세는
 `docs/spec/defender-clock-out/4_handoff_summary.md`.
+
+## Bursted ISystem 에서 순수 함수를 부를 때 — 함정 둘
+
+전투 심의 순수 계산을 별 asmdef(`Wassup.Skills`)로 빼면 두 번 넘어진다. **증상이 둘 다
+「그 함수와 무관해 보이는 대량 실패」**라서 원인에 도달하는 데 시간이 든다.
+
+### ① 대상 asmdef 이 `Unity.Burst` 를 참조하지 않으면 Burst 가 본체를 못 찾는다
+
+```
+Burst error BC1055: Unable to resolve the definition of the method
+  `Wassup.Skills.SkillMath.InBodyReach(float, float, float, float)`
+```
+
+**호출하는 쪽이 아니라 정의된 쪽 asmdef 에 `Unity.Burst` 참조가 필요하다.** 없으면 Burst 가
+그 어셈블리를 로드하지 않아 메서드를 해석하지 못한다. `noEngineReferences: true` 는
+유지해도 된다 — Burst 는 엔진 어셈블리가 아니라 패키지다.
+
+⚠ **연쇄 증상에 속지 말 것.** BC1055 는 컴파일을 막지 않고, 실패는 **런타임에** 그 시스템이
+무너지는 모습으로 나온다. 실측에서는 EditMode 25건 이상이
+`ObjectDisposedException: EntityTypeHandle ... invalidated by a structural change` 와
+「공격이 0건」으로 동시에 빨개졌다 — 전부 BC1055 하나 때문이었고, 그 직전에 추가한
+`ComponentLookup` 이 범인처럼 보였다. **콘솔에서 Burst 에러를 먼저 확인한다.**
+
+### ② `SystemAPI.GetComponentLookup` 지역 변수가 어떤 시스템에서는 NRE 를 낸다
+
+```
+NullReferenceException ... compiled with Burst, which has limited exception support
+  #3 Wassup.Battle.Effects.HazardCastSystem.OnUpdate
+```
+
+초기화 안 된 lookup 포인터다. **같은 파일의 다른 `SystemAPI.GetComponentLookup` 이 멀쩡히
+도는 것이 함정** — 「저 형태가 되니까 여기도 되겠지」로 되돌리게 된다. 실측에서 차이는
+그 타입이 **같은 시스템의 쿼리 `.WithAll<>` 에도 쓰인다**는 점 하나였지만 **원인은 확정하지
+못했다**(재현은 확실하다).
+
+**해법 = Entities 정본 형태.** `SystemAPI.GetComponentLookup` 은 그 위에 얹힌 소스 생성기
+설탕이므로, 아래가 축약이 아니라 원형이다:
+
+```csharp
+private ComponentLookup<Foo> _fooLookup;                  // 시스템 필드
+public void OnCreate(ref SystemState state)
+    => _fooLookup = state.GetComponentLookup<Foo>(isReadOnly: true);
+public void OnUpdate(ref SystemState state)
+{
+    _fooLookup.Update(ref state);                          // 소비처보다 앞, early-return 앞
+    ...
+}
+```
+
+출처: `distance-based-range` unit 4a · `HazardCastSystem`(unit 1).

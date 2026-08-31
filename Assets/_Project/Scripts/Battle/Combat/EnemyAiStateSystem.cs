@@ -18,15 +18,27 @@ namespace Wassup.Battle.Combat
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct EnemyAiStateSystem : ISystem
     {
+        // distance-based-range unit 4a — 대상의 몸 반경(타일). 없으면 0 = 점.
+        //
+        // ⚠ **`OnUpdate` 안의 `SystemAPI.GetComponentLookup` 지역 변수로 쓰지 말 것.**
+        // 그렇게 했다가 이 시스템의 EditMode 전반이
+        // `ObjectDisposedException: EntityTypeHandle ... invalidated by a structural change`
+        // 로 무너졌다(실측). 같은 파일의 다른 lookup 들이 그 형태로 멀쩡히 도는 것이 함정이다.
+        // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
+        // 핸들 갱신 순서에 기대지 않는다.
+        private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             state.RequireForUpdate<EnemyAiState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _bodyRadiusLookup.Update(ref state);
             bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
             float tileSize = hasFlowField ? flowField.tileSize : 1f;
             int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
@@ -94,8 +106,7 @@ namespace Wassup.Battle.Combat
                             // distance-based-range unit 1 — 「멈춰도 되나」도 **같은 술어**를 지난다.
                             // 셀만 보면 자를 바꾸는 순간 이 한 곳만 옛 답을 내고, 그게 정확히
                             // 「멈추는 근거」와 「쏘는 근거」가 갈리는 교착이다(AttackReach 헤더).
-                            guardianInRange = AttackReach.InReach(atkCell, gCell, tileRange, atkPos, gPos, tileSize,
-                                candPathLookup.HasComponent(enemyEntity) && candPathLookup.HasComponent(g));
+                            guardianInRange = AttackReach.InReach(atkPos, gPos, tileRange, tileSize, BodyRadiusOf(g, _bodyRadiusLookup));
                         }
                     }
                 }
@@ -106,7 +117,7 @@ namespace Wassup.Battle.Combat
                         candEntities, candTransforms, candFactions, candTraversalLayers,
                         tileSize, gridSize, ffOrigin,
                         classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup,
-                        candPathLookup);
+                        candPathLookup, _bodyRadiusLookup);
                 }
 
                 aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget);
@@ -130,6 +141,10 @@ namespace Wassup.Battle.Combat
         // 단일화했다 — 그 축의 드리프트는 이제 구조로 막힌다.
         // FocusUntilDead 락은 대상이 살아 있고 사거리 안일 때만 유지되며, 유지 중에는 그
         // 대상만 fire 가능하다(그때만 Engaging).
+        // 대상의 몸 반경(타일). 컴포넌트가 없으면 0 = 점(오늘의 저작 전부).
+        static float BodyRadiusOf(Entity e, in ComponentLookup<Wassup.Battle.Units.HitRadius> l)
+            => l.HasComponent(e) ? l[e].value : 0f;
+
         static bool HasFireTarget(
             Entity attacker, int2 atkCell, float3 atkPos, int tileRange, int mask,
             byte attackTargetLayers,
@@ -145,7 +160,8 @@ namespace Wassup.Battle.Combat
             in ComponentLookup<FocusTarget> focusLookup,
             in ComponentLookup<EnemyTargetFilter> filterLookup,
             in ComponentLookup<EnemyBehavior> behaviorLookup,
-            in ComponentLookup<PathFollowState> pathLookup)
+            in ComponentLookup<PathFollowState> pathLookup,
+            in ComponentLookup<Wassup.Battle.Units.HitRadius> bodyRadiusLookup)
         {
             // 락 미러: 락 타겟만 fire 가능.
             // target-persistence unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`).
@@ -177,8 +193,7 @@ namespace Wassup.Battle.Combat
                     int2 cCell = GridMath.WorldToCell(curPos, tileSize, gridSize, origin: ffOrigin);
                     int cDist = GridMath.ChebyshevDistance(atkCell, cCell);   // unit 1 수렴
                     // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
-                    bool curReach = AttackReach.InReach(atkCell, cCell, tileRange, atkPos, curPos, tileSize,
-                        pathLookup.HasComponent(attacker) && pathLookup.HasComponent(cur));
+                    bool curReach = AttackReach.InReach(atkPos, curPos, tileRange, tileSize, BodyRadiusOf(cur, bodyRadiusLookup));
                     // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
                     if (curReach && TargetPersistence.KeepsLock(true, cDist, tileRange)) return true;
                     // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
@@ -201,8 +216,7 @@ namespace Wassup.Battle.Combat
                 float3 tgtPos = candTransforms[i].Position;
                 int2 tgtCell = GridMath.WorldToCell(tgtPos, tileSize, gridSize, origin: ffOrigin);
                 // 같은 술어(AttackReach) — AttackSystem·PatrolAreaMath 와 한 몸이어야 한다.
-                if (AttackReach.InReach(atkCell, tgtCell, tileRange, atkPos, tgtPos, tileSize,
-                        pathLookup.HasComponent(attacker) && pathLookup.HasComponent(candEntities[i])))
+                if (AttackReach.InReach(atkPos, tgtPos, tileRange, tileSize, BodyRadiusOf(candEntities[i], bodyRadiusLookup)))
                     return true;
             }
             return false;
