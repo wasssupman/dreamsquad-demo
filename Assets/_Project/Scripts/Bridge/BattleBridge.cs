@@ -7795,7 +7795,59 @@ namespace Wassup.Bridge
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
             if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
+            // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
+            // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
+            // (실측: 풀 4개 생성, 활성 0).
+            RefreshRangeTargetMarks(center, tileRange);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
+        }
+
+        private readonly List<Vector3> _markPos = new List<Vector3>();
+        private readonly List<float> _markHalf = new List<float>();
+
+        // distance-based-range unit 7 — 사거리 안 **상대**를 모아 뷰에 먹인다.
+        //
+        // ⚠ **판정을 복제하지 않는다.** 여기서 거리 산식을 다시 쓰면 표기와 판정이 갈리고,
+        // 그게 이 spec 전체가 없애려던 문제다. `AttackReach.InReach` 하나를 지난다.
+        //
+        // 대상 = 상대 진영의 **유닛 + 거점**. 거점을 넣는 이유: 본능·마음도 전투에 참여하고
+        // (`no_defense` 골든의 공격 이벤트가 그것들이다) 점유가 커서 「왜 저건 안 켜지지」가 된다.
+        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange)
+        {
+            _markPos.Clear();
+            _markHalf.Clear();
+            if (tilemapMapView == null || !HasLiveEntityManager()) return;
+
+            float3 atkPos = GridToWorldCenter(center);
+            var q = _em.CreateEntityQuery(new EntityQueryDesc
+            {
+                All = new[] { ComponentType.ReadOnly<FactionTag>(), ComponentType.ReadOnly<LocalTransform>() },
+                None = new[] { ComponentType.ReadOnly<Wassup.Battle.Units.DeadTag>(),
+                               ComponentType.ReadOnly<PendingDeployment>() },
+            });
+            var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
+            var tf = q.ToComponentDataArray<LocalTransform>(Unity.Collections.Allocator.Temp);
+            var fac = q.ToComponentDataArray<FactionTag>(Unity.Collections.Allocator.Temp);
+            for (int i = 0; i < ents.Length; i++)
+            {
+                int f = (int)fac[i].value;
+                // 배치하는 쪽은 방어 진영이므로 상대 = 적 유닛 + 적 거점.
+                bool opponent = (f & ((int)Faction.EnemyUnit | (int)Faction.EnemyCore
+                                      | (int)Faction.EnemyInstinct)) != 0;
+                if (!opponent) continue;
+                float bodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
+                    ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value : 0f;
+                if (!Wassup.Battle.Combat.AttackReach.InReach(
+                        atkPos, tf[i].Position, tileRange, tileSize, bodyR)) continue;
+                _markPos.Add(new Vector3(tf[i].Position.x, tf[i].Position.y, tf[i].Position.z));
+                // 거점은 점유 반폭으로 사각을 두른다. 유닛은 0 → 작은 원.
+                float half = 0f;
+                if (_em.HasComponent<Wassup.Battle.Units.StructureTag>(ents[i]))
+                    half = Wassup.Data.StructurePlacements.FootprintOf(fac[i].value) * 0.5f;
+                _markHalf.Add(half);
+            }
+            ents.Dispose(); tf.Dispose(); fac.Dispose();
+            tilemapMapView.SetRangeTargetMarks(_markPos, _markHalf);
         }
 
         public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);

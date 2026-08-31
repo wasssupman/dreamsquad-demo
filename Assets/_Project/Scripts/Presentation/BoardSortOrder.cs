@@ -35,6 +35,11 @@ namespace Wassup.Presentation
         // 그림자(−5)·타일 게이지(−4)·유닛(양수) 아래 = 유닛이 선을 가린다(의도).
         public const int RangeRingOrder = -8;
 
+        // distance-based-range unit 7 — 사거리 안 상대 **발밑 마크**. 링과 같은 바닥 대역이고
+        // 링(−8)보다 한 칸 위 = 링 위를 지나갈 때 마크가 먹히지 않는다.
+        // ⚠ 여기도 유닛 위로 올리지 않는다 — 마크는 **발밑**이라 유닛에 가려져도 보인다.
+        public const int RangeTargetMarkOrder = -7;
+
         // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트: 바닥 타일 하이라이트 위, 확정 팝(12000) 아래.
         // 팝은 확정 순간의 이완이라 액체보다 앞에 터져야 한다.
         public const int PlacementLiquidOrder = 11000;

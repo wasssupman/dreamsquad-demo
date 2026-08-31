@@ -106,6 +106,27 @@ namespace Wassup.Core
         // 사거리마다 쿼드를 키우지 않고 **한 크기로 고정**한다 — 셰이더가 uv→타일 매핑에 이 값을 쓰므로
         // 여기가 단일 소스다(액체의 LiquidQuadCells 와 같은 규약).
         private const float RingQuadCells = 14f;
+        // 마크 쿼드 — 가장 큰 거점(본능 3×3 = 반폭 1.5) + 테 + 여유.
+        private const float TargetMarkQuadCells = 5f;
+
+        // distance-based-range unit 7 — **사거리 안 상대 마크.** 「어느 칸이 사거리 안인가」 대신
+        // 「누가 맞나」를 직접 말한다. 판정이 대상 단위이므로 표기도 대상 단위가 맞다.
+        //
+        // ⚠ **몸체 틴트가 아니다.** Spine 의 R/G/B 는 곱셈이라 「밝힘」이 불가능하고, 붉히려면
+        // G/B 를 깎는 수밖에 없는데 **저체력 틴트가 같은 방향으로 깎는다** → 곱해지면 검붉게
+        // 뭉개져 「사거리 안」과 「빈사」가 같은 그림이 된다. 락온 spec 이 적에게서 이미 좌초한
+        // 지점이고(`EnemyMark 비적용`), `placement-eligible-tile-highlight` 에 명시 금칙도 있다.
+        // 그래서 **발밑 마크** — 곱셈 체인 밖이다.
+        //
+        // 링과 **같은 셰이더**를 쓴다: 유닛은 `_HalfExtent`=(0,0)+작은 `_Range` 로 원,
+        // 거점은 점유 반폭을 `_HalfExtent` 로 넣어 **사각을 두른 둥근 테**가 된다.
+        // half-extent 를 파라미터로 만든 값이 여기서 돌아온다(unit 5 조건 4).
+        private readonly List<SpriteRenderer> _targetMarks = new();
+        private Material _targetMarkMat;
+        // 유닛 발밑 원의 반지름(타일). 거점은 자기 점유 반폭을 쓰므로 이 값이 테 두께 역할만 한다.
+        private const float TargetMarkUnitRadius = 0.35f;
+        private const float TargetMarkStructurePad = 0.2f;
+        private int _targetMarkCount;   // 마지막으로 요청된 대상 수(유효성 토글이 이걸 다시 켠다)
 
         // 점액 관성 — 표시용 당김 벡터(dir×t)를 스프링으로 지연/출렁. 신호(정책)는 그대로, 시각만 늦는다.
         private Vector2 _pullSmoothed;
@@ -180,6 +201,14 @@ namespace Wassup.Core
             if (_rangeRing != null) { SafeDestroy(_rangeRing.gameObject); _rangeRing = null; }   // unit 5 — 링도 동일
             if (_rangeRingMat != null) { SafeDestroy(_rangeRingMat); _rangeRingMat = null; }
             _rangeRingMatMissing = false;
+            for (int i = 0; i < _targetMarks.Count; i++)                  // unit 7 — 마크 풀도 동일
+            {
+                if (_targetMarks[i] == null) continue;
+                if (_targetMarks[i].sharedMaterial != null) SafeDestroy(_targetMarks[i].sharedMaterial);
+                SafeDestroy(_targetMarks[i].gameObject);
+            }
+            _targetMarks.Clear();
+            if (_targetMarkMat != null) { SafeDestroy(_targetMarkMat); _targetMarkMat = null; }
             _liquidTileMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
@@ -560,6 +589,93 @@ namespace Wassup.Core
             if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
         }
 
+        // 사거리 안 상대 마크. **판정 결과를 받기만 한다** — 뷰는 거리 계산을 갖지 않는다
+        // (unit 5 와 같은 규율: 표기가 모양을 다시 그리면 화면이 규칙을 틀리게 가르친다).
+        // `halfExtents` 는 대상의 점유 반폭(타일). 유닛 0, 거점은 자기 footprint 의 절반.
+        public void SetRangeTargetMarks(IReadOnlyList<Vector3> worldPositions,
+                                        IReadOnlyList<float> halfExtents)
+        {
+            int want = worldPositions == null ? 0 : worldPositions.Count;
+            if (want == 0 || _tileSet == null || _tileSet.placementRangeRingMaterial == null)
+            {
+                HideTargetMarks();
+                return;
+            }
+            if (_targetMarkMat == null)
+            {
+                _targetMarkMat = new Material(_tileSet.placementRangeRingMaterial);
+                _targetMarkMat.SetFloat(RingQuadCellsId, TargetMarkQuadCells);
+            }
+            // 색은 **빨강**이다. 링(라임)과 다른 뜻이라 다른 색이 맞다 — 「이놈들이 맞는다」.
+            // ⚠ 같은 빨강을 쓰는 고스트 충돌과 **시간으로** 갈린다: 배치가 무효면 호출부가
+            // 아예 안 켠다(SetPlacementRangeValidity 와 같은 스위치). 그래서 화면의 빨강은
+            // 항상 한 뜻이다 — 유효면 「맞는 놈」, 무효면 「못 놓는 자리」.
+            var c = _tileSet.rangeTargetMarkColor;
+            _targetMarkMat.SetColor(RingColorId, c);
+
+            float cs = grid.cellSize.x;
+            for (int i = 0; i < want; i++)
+            {
+                var sr = EnsureTargetMark(i);
+                if (sr == null) break;
+                var local = grid.transform.InverseTransformPoint(worldPositions[i]);
+                local.z = -PropGroundLift;
+                sr.transform.localPosition = local;
+                sr.transform.localScale = new Vector3(TargetMarkQuadCells * cs, TargetMarkQuadCells * cs, 1f);
+                float he = halfExtents != null && i < halfExtents.Count ? halfExtents[i] : 0f;
+                // 거점(he>0)은 점유 사각을 두르고, 유닛(he==0)은 작은 원이 된다.
+                //
+                // ⚠ **MaterialPropertyBlock 을 쓰지 않는다.** 이 셰이더의 `_HalfExtent`·`_Range` 는
+                // `[PerRendererData]` 가 아닌 **일반 uniform** 이라 MPB 로 넘기면 파이프라인에 따라
+                // 무시될 수 있고, 그러면 **전 마크가 같은 모양**이 된다(유닛 원 / 거점 사각이 안 갈린다).
+                // 마크 수는 사거리 안 대상 수라 수십 규모이므로 렌더러당 인스턴스가 싸다.
+                sr.sharedMaterial.SetVector(RingHalfExtentId, new Vector4(he, he, 0f, 0f));
+                sr.sharedMaterial.SetFloat(RingRangeId, he > 0f ? TargetMarkStructurePad : TargetMarkUnitRadius);
+                sr.sharedMaterial.SetColor(RingColorId, c);
+                sr.gameObject.SetActive(!_rangeInvalid);   // 무효면 안 켠다 — 아래 계약 참조
+            }
+            for (int i = want; i < _targetMarks.Count; i++)
+                if (_targetMarks[i] != null) _targetMarks[i].gameObject.SetActive(false);
+            _targetMarkCount = want;
+        }
+
+        // 무효면 마크를 끈다 — **빨강을 시간으로 가르는 계약**(unit 7).
+        // 배치가 무효인 동안 「내가 뭘 때릴까」는 무의미하고(거기 못 놓는다), 그 순간 화면의
+        // 빨강은 footprint 충돌 하나뿐이어야 한다. 유효로 돌아오면 다시 켠다.
+        private void ApplyTargetMarkVisibility()
+        {
+            for (int i = 0; i < _targetMarks.Count; i++)
+                if (_targetMarks[i] != null)
+                    _targetMarks[i].gameObject.SetActive(i < _targetMarkCount && !_rangeInvalid);
+        }
+
+        private void HideTargetMarks()
+        {
+            _targetMarkCount = 0;
+            for (int i = 0; i < _targetMarks.Count; i++)
+                if (_targetMarks[i] != null) _targetMarks[i].gameObject.SetActive(false);
+        }
+
+        private SpriteRenderer EnsureTargetMark(int index)
+        {
+            while (_targetMarks.Count <= index)
+            {
+                var go = new GameObject("RangeTargetMark");
+                go.transform.SetParent(grid.transform, false);
+                go.transform.localRotation = Quaternion.identity;
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = PopSprite();
+                // 렌더러마다 자기 머티리얼 — 위 주석 참조(모양이 마크마다 다르다).
+                sr.sharedMaterial = new Material(_targetMarkMat);
+                sr.sortingOrder = BoardSortOrder.RangeTargetMarkOrder;
+                var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+                if (overlayR != null) sr.sortingLayerID = overlayR.sortingLayerID;
+                go.SetActive(false);
+                _targetMarks.Add(sr);
+            }
+            return _targetMarks[index];
+        }
+
         private void HideRangeRing()
         {
             if (_rangeRing != null && _rangeRing.gameObject.activeSelf) _rangeRing.gameObject.SetActive(false);
@@ -870,6 +986,7 @@ namespace Wassup.Core
             if (invalid == _rangeInvalid) return; // 전이에만 반응 — 매 프레임 호출돼도 스팸 아님
             _rangeInvalid = invalid;
             if (invalid) _rangeInvalidSince = Time.unscaledTime;
+            ApplyTargetMarkVisibility();   // unit 7 — 빨강을 시간으로 가른다(위 계약)
         }
 
         // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는
@@ -949,7 +1066,8 @@ namespace Wassup.Core
 
         public void ClearPlacementRange()
         {
-            HideRangeRing();   // unit 5 — 채움과 수명을 공유한다
+            HideRangeRing();      // unit 5 — 채움과 수명을 공유한다
+            HideTargetMarks();    // unit 7 — 마크도 같은 수명
             if (_rangeCells.Count == 0) return;
             if (_rangeTilemap != null)
                 foreach (var cell in _rangeCells) _rangeTilemap.SetTile(ToCell(cell), null);

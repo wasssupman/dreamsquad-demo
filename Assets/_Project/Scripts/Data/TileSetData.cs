@@ -69,6 +69,14 @@ namespace Wassup.Data
                  "링이 없는 경로(스킬 조준 등)는 종전대로 rangeInvalidColor 로 붉어진다 — 거기선 겹칠 선이 없다.")]
         [Range(0f, 1f)] public float rangeInvalidDesaturate = 0.75f;
 
+        [Tooltip("사거리 안 **상대 마크**(발밑)의 색 — distance-based-range unit 7. 「이놈들이 맞는다」.\n" +
+                 "⚠ 고스트 충돌과 **같은 빨강 계열**이어도 된다: 둘은 **시간으로 갈린다** — 배치가 무효면 " +
+                 "마크를 아예 안 켠다(무효일 땐 「내가 뭘 때릴까」가 무의미하다). 그래서 화면의 빨강은 " +
+                 "항상 한 뜻이다.\n" +
+                 "⚠ **몸체 틴트로 만들지 말 것** — Spine RGB 는 곱셈이라 저체력 틴트와 곱해져 " +
+                 "검붉게 뭉갠다(락온 spec 이 적에게서 좌초한 지점).")]
+        public Color rangeTargetMarkColor = new Color(1f, 0.28f, 0.24f, 0.9f);
+
         // placement-thumb-occlusion unit 3 — 배치 불가 시 사거리 격자를 적색으로. 사거리는 중심 셀을
         // 제외한 링이라 손가락 바깥에 있고 면적이 커서 주변시로 읽힌다 = 가림에 구조적으로 면역인
         // 유일한 채널. 형태(격자 outline)는 무변경 — solid 승급은 후속(맵 가림이 solid 폐기의 원 이유).
