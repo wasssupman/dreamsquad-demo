@@ -30,6 +30,7 @@ MonoBehaviour:
   rangePulseSpeed: 3
   rangeFillAlphaUnderRing: 0.12
   rangeRingAlpha: 0.95
+  rangeInvalidDesaturate: 0.75
   rangeInvalidColor: {r: 1, g: 0.16, b: 0.13, a: 1}
   rangeInvalidFlashSeconds: 0.18
   rangeInvalidFlashBoost: 0.7

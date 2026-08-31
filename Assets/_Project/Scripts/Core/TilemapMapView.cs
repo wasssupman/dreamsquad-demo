@@ -204,6 +204,7 @@ namespace Wassup.Core
             // 사거리 알파 — 펄스 제거(사용자 요청): 정적 레벨(rangePulseMaxAlpha)만 적용.
             // 세기 차이(방향 미정 십자 vs 선택된 레인)는 _rangeAlphaMul 배율로만.
             if (_rangeTilemap != null && _rangeCells.Count > 0) ApplyRangeTint();
+            if (RingActive()) ApplyRingTint();   // unit 5 커밋4 — 링도 같은 주기로 유효성을 반영
             // ultimate-leap unit 4 — 예고 tint 도 같은 이유로 매 프레임(셀이 있을 때만).
             if (_telegraphCells.Count > 0) ApplyTelegraphTint();
             // placement-eligible-tile-highlight unit 1 — 배치 하이라이트 페이드인(정적, 펄스 없음).
@@ -555,9 +556,7 @@ namespace Wassup.Core
             // 선과 채움은 **같은 라임**이어야 한다(사용자 조건 2) — 시안(고스트)·노랑(점유)·
             // 무채색(지형)과 색상 자체로 갈려야 채움 두 겹 문제가 재발하지 않는다.
             // 그래서 링 색을 저작에서 끌어온다. 셰이더 기본값에 맡기면 둘이 조용히 갈린다.
-            var ringColor = _tileSet.rangeColor;
-            ringColor.a = _tileSet.rangeRingAlpha;
-            _rangeRingMat.SetColor(RingColorId, ringColor);
+            ApplyRingTint();
             if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
         }
 
@@ -805,6 +804,18 @@ namespace Wassup.Core
             // (BattleBridge.ClearRange) — 색이 아니라 소유권이 경계다.
             if (_rangeInvalid)
             {
+                // distance-based-range unit 5 커밋4 — **링이 있으면 사거리는 붉어지지 않는다.**
+                // 빨강은 **고스트 충돌 전용**이다(사용자 조건 5): 「왜 안 되는지」는 footprint 가
+                // 말하고 사거리는 「어디까지 닿나」만 말한다. 한 색에 둘을 겹치면 무효인 동안
+                // 사거리를 못 읽는다. 대신 **채도만 떨어뜨려** 「지금은 확정 못 함」을 표시한다.
+                if (RingActive())
+                {
+                    var dc = _tileSet.rangeColor;
+                    float lum = dc.r * 0.299f + dc.g * 0.587f + dc.b * 0.114f;
+                    dc = Color.Lerp(dc, new Color(lum, lum, lum, dc.a), _tileSet.rangeInvalidDesaturate);
+                    dc.a = RangeFillAlpha();
+                    return dc;
+                }
                 var ic = _tileSet.rangeInvalidColor;
                 ic.a = RangeFillAlpha();
                 float flashDur = _tileSet.rangeInvalidFlashSeconds;
@@ -824,10 +835,29 @@ namespace Wassup.Core
         //   링 있음 → 옅게. 링이 「어디까지 닿나」를 말하고 채움은 **보험**이다
         //             (선이 유닛·프랍에 끊겨도 영역이 남는다 — 사용자 조건 1).
         //   링 없음 → 그대로. 스킬 조준·텔레그래프·방향 레인은 채움이 **유일한 신호**다.
+        private bool RingActive() => _rangeRing != null && _rangeRing.gameObject.activeSelf;
+
+        // 링 색. **유효성은 페인트가 아니라 매 프레임 바뀐다**(SetPlacementRangeValidity) —
+        // ShowRangeRing 에서만 칠하면 무효 전환이 다음 셀 이동까지 반영이 안 된다.
+        // 그래서 채움 tint 와 **같은 주기**로 돈다(Update).
+        private void ApplyRingTint()
+        {
+            if (_rangeRingMat == null) return;
+            var c = _tileSet.rangeColor;
+            // unit 5 커밋4 — 무효면 **채도만** 떨어뜨린다. 붉히지 않는다: 빨강은 고스트 충돌
+            // 전용이고(사용자 조건 5), 한 색에 「왜 안 되는지」와 「어디까지 닿는지」를 겹치면
+            // 무효인 동안 사거리를 못 읽는다.
+            if (_rangeInvalid)
+            {
+                float lum = c.r * 0.299f + c.g * 0.587f + c.b * 0.114f;
+                c = Color.Lerp(c, new Color(lum, lum, lum, 1f), _tileSet.rangeInvalidDesaturate);
+            }
+            c.a = _tileSet.rangeRingAlpha;
+            _rangeRingMat.SetColor(RingColorId, c);
+        }
+
         private float RangeFillAlpha()
-            => _rangeRing != null && _rangeRing.gameObject.activeSelf
-                ? _tileSet.rangeFillAlphaUnderRing
-                : _tileSet.rangePulseMaxAlpha;
+            => RingActive() ? _tileSet.rangeFillAlphaUnderRing : _tileSet.rangePulseMaxAlpha;
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성. **이 메서드가 유일한 소유자**다.
         // Set/ClearPlacementRange 는 절대 건드리지 않는다: SetPlacementRange 가 내부에서

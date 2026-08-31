@@ -62,6 +62,13 @@ namespace Wassup.Data
                  "모양(두께·라이너·페더)은 PlacementRangeRing.mat 인스펙터에서.")]
         [Range(0f, 1f)] public float rangeRingAlpha = 0.95f;
 
+        [Tooltip("배치 무효일 때 사거리(링+채움)의 **채도 강하** 정도. 1 = 완전 회색.\n" +
+                 "⚠ **붉히지 않는다**(사용자 결정 2026-08-31). 빨강은 고스트 충돌 전용이다 — " +
+                 "「왜 안 되는지」는 footprint 가 말하고 사거리는 「어디까지 닿나」만 말한다. " +
+                 "한 색에 둘을 겹치면 무효인 동안 사거리를 못 읽는다.\n" +
+                 "링이 없는 경로(스킬 조준 등)는 종전대로 rangeInvalidColor 로 붉어진다 — 거기선 겹칠 선이 없다.")]
+        [Range(0f, 1f)] public float rangeInvalidDesaturate = 0.75f;
+
         // placement-thumb-occlusion unit 3 — 배치 불가 시 사거리 격자를 적색으로. 사거리는 중심 셀을
         // 제외한 링이라 손가락 바깥에 있고 면적이 커서 주변시로 읽힌다 = 가림에 구조적으로 면역인
         // 유일한 채널. 형태(격자 outline)는 무변경 — solid 승급은 후속(맵 가림이 solid 폐기의 원 이유).
