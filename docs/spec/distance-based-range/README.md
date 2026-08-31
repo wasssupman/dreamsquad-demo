@@ -100,7 +100,7 @@
 | 0 | 안전망 | `0_mirror_equivalence_net.md` | 사거리 술어 13지점(경유 6 / 미경유 7)이 같은 답을 내는지 고정하는 PlayMode 단언 + 교착 카나리아. **술어를 안 바꾸고 현행을 못박는다** |
 | 1 | 술어 수렴 | `1_predicate_convergence.md` | `AttackReach` 미경유 **7곳**(전수 확인)을 술어로 수렴 + 이동 쪽 보정 신설. **자 무변경**(체비셰프 유지) — 무회귀가 완료 기준 |
 | 2 | 선재 결함 | `2_preexisting_defects.md` | 최근접 픽 `simId` 폴백 부재 · 다중타격 2번째 이후 대상 불일치 |
-| 3 | 몸 크기 축 | `3_target_hit_radius.md` | `AttackUnitData.hitRadius`(기본 0 = 무회귀) + 보스 저작 + **같은 단위에서 보스 HP/방어 재조정**(계약 5 — 피격 면적 2.56배). 전환 **선행** |
+| 3 | 몸 크기 축 | `3_target_hit_radius.md` | `AttackUnitData.bodyRadius` **필드·배관만**(값 0 = 이벤트 무변화). 보스 저작·HP 재조정은 unit 6. 전환 **선행** |
 | 4a | 자 교체 | `4a_reach_predicate.md` | `AttackReach` 본체 → 몸 기준. 호출부 8곳 + `AttackReachTests` |
 | 4b | 광역 축 | `4b_area_membership.md` | `TileAoe` 시그니처 확장 + 소비처 6곳 + 오라 + 브리지 3종 |
 | 4c | 스킬 포트 | `4c_skill_port.md` | `RangeMetric` rename + 위임 전환 + **parity 소멸**(테스트 3건 → 1건) |
