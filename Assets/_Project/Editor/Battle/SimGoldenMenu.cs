@@ -30,7 +30,23 @@ namespace Wassup.EditorTools.Battle
 
         private static void RegenerateInternal(bool missingOnly)
         {
-            if (!SimHarnessGuards.TryGetBridge(out var bridge)) return;
+            if (!SimHarnessGuards.TryGetBridge(out var bridge))
+            {
+                // ⚠ **조용히 return 하지 않는다.** 그러면 보고서가 **이전 실행의 것**으로 남고,
+                // 읽는 사람은 그것을 방금 실행의 결과로 읽는다 — 실제로 두 번 속았다
+                // (2026-08-31: Play 가 로비 씬에서 시작해 브리지가 없었는데 「전건 통과」를
+                //  그대로 믿었고, 그 사이 자가 바뀐 것이 기준선에 반영되지 않은 채 지나갔다).
+                // 「통과하지만 아무것도 증언하지 않는다」의 같은 계열이다.
+                System.IO.File.WriteAllText(ReportPath,
+                    "# golden-corpus — **실행 실패**\n\n"
+                    + "> BattleBridge 를 못 찾아 코퍼스가 **한 건도 돌지 않았다.**\n"
+                    + "> Play 중인지, 그리고 **BattleScene** 인지 확인하라(로비 씬에서는 브리지가 없다).\n\n"
+                    + "이전 표는 이 실패로 무효화됐다 — 다시 실행할 것.\n");
+                AssetDatabase.Refresh();
+                Debug.LogError("[Golden] BattleBridge 없음 — 한 건도 실행하지 않았다. "
+                    + "보고서를 실패로 덮었다(이전 표를 결과로 오독하지 않게).");
+                return;
+            }
             System.IO.Directory.CreateDirectory(GoldenDir);
 
             var lines = new List<string>();
@@ -123,7 +139,23 @@ namespace Wassup.EditorTools.Battle
         [MenuItem("Wassup/Battle/Sim Harness/Verify Against Golden Corpus")]
         public static void Verify()
         {
-            if (!SimHarnessGuards.TryGetBridge(out var bridge)) return;
+            if (!SimHarnessGuards.TryGetBridge(out var bridge))
+            {
+                // ⚠ **조용히 return 하지 않는다.** 그러면 보고서가 **이전 실행의 것**으로 남고,
+                // 읽는 사람은 그것을 방금 실행의 결과로 읽는다 — 실제로 두 번 속았다
+                // (2026-08-31: Play 가 로비 씬에서 시작해 브리지가 없었는데 「전건 통과」를
+                //  그대로 믿었고, 그 사이 자가 바뀐 것이 기준선에 반영되지 않은 채 지나갔다).
+                // 「통과하지만 아무것도 증언하지 않는다」의 같은 계열이다.
+                System.IO.File.WriteAllText(ReportPath,
+                    "# golden-corpus — **실행 실패**\n\n"
+                    + "> BattleBridge 를 못 찾아 코퍼스가 **한 건도 돌지 않았다.**\n"
+                    + "> Play 중인지, 그리고 **BattleScene** 인지 확인하라(로비 씬에서는 브리지가 없다).\n\n"
+                    + "이전 표는 이 실패로 무효화됐다 — 다시 실행할 것.\n");
+                AssetDatabase.Refresh();
+                Debug.LogError("[Golden] BattleBridge 없음 — 한 건도 실행하지 않았다. "
+                    + "보고서를 실패로 덮었다(이전 표를 결과로 오독하지 않게).");
+                return;
+            }
 
             var lines = new List<string>();
             var diffs = new List<string>();
