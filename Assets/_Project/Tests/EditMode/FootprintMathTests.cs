@@ -22,9 +22,6 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(Vector2Int.one, r.size);
         }
 
-        [TestCase(1, 1, 0, 0)]
-        [TestCase(3, 3, 1, 1)]
-        [TestCase(2, 2, 0, 0)]
         // ── unit 10: 대표 셀이 은퇴하고 **기하 중심**이 그 자리를 받았다 ──────────
         //
         // 짝수 변 footprint 는 **중심 칸이 없다**(2×3 의 중심은 셀 경계 x=.5). 대표 셀은
