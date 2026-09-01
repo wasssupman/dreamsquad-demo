@@ -175,15 +175,14 @@ namespace Wassup.Battle.Effects
         // 원이 정사각형 모서리를 잘라낸 만큼 「도착했는데 사거리 밖」인 칸이 남고, 그 칸은
         // dist 0 이라 기울기가 없어 자기 이동도 0 = **영구 동결**이다.
         //
-        // ⚠⚠ **이 함수의 소비자는 둘이고, 한쪽만 닫혀 있다.**
-        //   · 어그로 추격(`AggroChaseMath.BuildChaseField`) — **닫힘**(unit 4c,
-        //     `MovementSystem.arrivedAtFiringCell`).
-        //   · 보스/사냥꾼(`DefenderFieldSystem`) — **열려 있다.** 보정이 `ai == Chasing` +
-        //     `Aggroed` 보유를 요구하는데 보스는 `AggroStateSystem:168` 로 **어그로 면역**이라
-        //     둘 다 영원히 거짓이다. 사냥 분기(`MovementSystem` 의 `recovDir` zero → `continue`)
-        //     는 종전대로 그 자리에 선다.
-        // 사냥 레인을 닫으려면 Movement 가 「어느 방어유닛 쪽인가」를 알아야 하는데
-        // 사냥에는 `Aggroed` 같은 링크가 없다 — 새 배관이 필요하다. spec 후속 후보.
+        // ⚠⚠ **이 함수의 소비자는 둘이고, 둘 다 이동 쪽 보정을 가져야 한다**(unit 4c):
+        //   · 어그로 추격(`AggroChaseMath.BuildChaseField`) → `MovementSystem` 의
+        //     `arrivedAtFiringCell` 분기. 목표 좌표원 = `Aggroed.guardian`.
+        //   · 보스/사냥꾼(`DefenderFieldSystem`) → `MovementSystem` 의 `hunting` 분기.
+        //     보스는 `AggroStateSystem:168` 로 **어그로 면역**이라 앞의 보정이 구조적으로
+        //     못 닿는다. 목표 좌표원 = 최근접 방어유닛(`huntTargets`, 여기 소스 수집과
+        //     **같은 술어**로 모은다 — 갈리면 「소스는 섰는데 다가갈 대상이 없다」가 난다).
+        // 둘 다 `MovementSystem.TryCloseIn` **하나**를 지난다. 두 벌로 만들지 말 것.
         // (unit 5 rev — 초기 4-이웃 규칙은 레인 비인접 배치를 전부 놓쳐 goal 마칭 결함.)
         // 중복 셀 허용(BuildFromSources 가 dist 0 재삽입을 걸러냄). 반환값 = 수집된 소스 수.
         public static int CollectDefenderSources(

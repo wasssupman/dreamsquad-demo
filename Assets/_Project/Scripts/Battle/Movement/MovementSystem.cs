@@ -68,6 +68,21 @@ namespace Wassup.Battle.Movement
 
             // aggro-tile-chase unit 2 — Chasing 은 per-enemy chase field(Effects 소유) 하강.
             // 직선 greedy+가디언 위치 추적을 폐기 — 목적지 타일까지 경로가 보장된다.
+            // distance-based-range unit 4c — 사냥 레인 접근 보정의 **목표 좌표원**.
+            // 사냥에는 `Aggroed` 같은 링크가 없어 최근접 방어유닛을 쓴다.
+            // ⚠ **소스를 만든 것과 같은 술어여야 한다**(`DefenderFieldSystem` 의 스냅샷 조건:
+            // `Faction.DefenderUnit` + `Health` + `WithNone<PendingDeployment, DeadTag>`).
+            // 다르면 「소스는 섰는데 다가갈 대상이 없다」가 생기고, 그게 네 번째 자다.
+            var huntTargets = new NativeList<float3>(16, Allocator.Temp);
+            if (hasHuntField)
+                foreach (var (huntFaction, huntTf) in
+                         SystemAPI.Query<RefRO<FactionTag>, RefRO<LocalTransform>>()
+                                  .WithAll<Health>().WithNone<PendingDeployment, DeadTag>())
+                {
+                    if (((int)huntFaction.ValueRO.value & (int)Faction.DefenderUnit) == 0) continue;
+                    huntTargets.Add(huntTf.ValueRO.Position);
+                }
+
             var chaseLookup = SystemAPI.GetBufferLookup<AggroChaseCell>(isReadOnly: true);
             // enemy-ai-fsm Unit 2 — EnemyAiState(Combat) RO 소비. 이동/정지를 상태로 결정.
             var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
@@ -226,69 +241,29 @@ namespace Wassup.Battle.Movement
                     // 방금 계산한 「어그로됐고 사거리 밖」이고, 그 시스템은 `[UpdateBefore]` 라
                     // 값이 신선하다. 자를 하나 더 만드는 순간 그게 다음 교착이다 — 이 결함의
                     // 원인이 정확히 「한 루프 안에 자가 셋」이었다.
+                    //
+                    // ⚠ 가디언이 움직여 필드가 stale 해지면 적은 **옛 디스크 가장자리에서
+                    // 정지한다**(양축 이탈 거부). 근본 수정(셀 변화 시 재굽기)은 여기 없다 —
+                    // 오늘 이동 가디언 저작이 0종이라 도달 불가지만, 그 사실에 기대는 주석을
+                    // 다시 쓰지 않기 위해 무엇이 안 고쳐졌는지를 적어 둔다.
                     if (!chaseMoved && arrivedAtFiringCell && _aggroedLookup.HasComponent(entity))
                     {
                         var guardian = _aggroedLookup[entity].guardian;
                         if (guardian != Entity.Null && _guardianTransformLookup.HasComponent(guardian))
                         {
-                            float3 gp = _guardianTransformLookup[guardian].Position;
-                            float gdx = gp.x - current.x;
-                            float gdz = gp.z - current.z;
-                            if (gdx * gdx + gdz * gdz > 1e-6f)
+                            float closeSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                            float2 taken = TryCloseIn(
+                                current, _guardianTransformLookup[guardian].Position,
+                                follow.ValueRO.speed * closeSpeedMul * dt,
+                                in firingDist, field.gridSize, field.tileSize, field.origin,
+                                follow.ValueRO.radius, in nav, impulseDisplacement, out float3 closeNext);
+                            if (math.lengthsq(taken) > 1e-6f)
                             {
-                                // 방향 선택은 순수 함수가 소유한다(EditMode 회귀 대상).
-                                AggroChaseMath.CloseInCardinals(gdx, gdz, out var primary, out var secondary);
-                                float closeSpeedMul = modifierStatsLookup.HasComponent(entity)
-                                    ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                                float closeDist = follow.ValueRO.speed * closeSpeedMul * dt;
-
-                                // ⚠ 막힘 판정은 **자기주도 변위만으로** 한다(impulse 제외).
-                                // 섞으면 벽에 완전히 막힌 축도 「움직였다」로 읽혀 폴백이 죽고,
-                                // **가지 않은 방향**이 `lastMoveDir` 에 박힌다 — 그 필드의 소비처는
-                                // 넉백 방향(`ProjectileHitSystem`)이라 관측이 아닌 의도를 쓰는 셈이 된다.
-                                // 순찰 보정이 `Passable()` 마스크 질의로 판정하는 것과 같은 취지다.
-                                //
-                                // ⚠ **소스 영역(dist 0)을 벗어나는 스텝은 취하지 않는다.** 벗어나면
-                                // 다음 프레임 필드 하강이 되돌려 **왕복**이 된다.
-                                //
-                                // ⚠ 이 검사가 막는 것은 **왕복이지 동결이 아니다.** 가디언이 움직여
-                                // 필드가 stale 해지면 적은 **옛 디스크 가장자리에서 정지한다**(양축이
-                                // 이탈이라 거부 → `chaseMoved` false). 근본 수정은 「가디언 셀 변화 시
-                                // 필드 재굽기 또는 어그로 해제」이고 여기 없다 — 오늘 이동 가디언
-                                // 저작이 0종이라 도달 불가지만, **그 사실에 기대는 주석을 다시 쓰지 않기
-                                // 위해** 무엇이 안 고쳐졌는지를 여기 적어 둔다.
-                                //
-                                // ⚠ 외력은 이 불변식 **밖**이다 — 아래 적용 합성이 impulse 를 포함하므로
-                                // 넉백이 낀 프레임엔 소스 밖으로 나갈 수 있다. 의도된 것이다(넉백은 원래
-                                // 소스 안팎을 가리지 않는다).
-                                float2 taken = float2.zero;
-                                for (int a = 0; a < 2 && math.lengthsq(taken) < 1e-6f; a++)
-                                {
-                                    float2 axis = a == 0 ? primary : secondary;
-                                    if (math.lengthsq(axis) < 1e-6f) continue;
-                                    float3 p = ComposeMove(
-                                        current, new float3(axis.x, 0f, axis.y) * closeDist,
-                                        float3.zero, field.tileSize, follow.ValueRO.radius, in nav);
-                                    if (math.lengthsq(p - current) < 1e-8f) continue;          // 막혔다
-                                    int2 pCell = GridMath.WorldToCell(p, field.tileSize, field.gridSize, origin: field.origin);
-                                    // fail-closed — 필드가 없으면 이탈 검사를 못 하므로 스텝도 안 취한다.
-                                    // (오늘 `arrivedAtFiringCell` 은 `firingDist` 와 같은 블록에서만 서므로
-                                    //  도달 불가한 방어다. 나중에 다른 곳에서 서면 검사가 조용히 빠지는 쪽이 아니라
-                                    //  보정이 안 도는 쪽으로 실패해야 한다.)
-                                    if (!firingDist.IsCreated
-                                        || firingDist[GridMath.CellIndex(pCell, field.gridSize)] != 0) continue;
-                                    taken = axis;
-                                }
-                                if (math.lengthsq(taken) > 1e-6f)
-                                {
-                                    // 축이 정해진 뒤 외력을 포함해 한 번 더 합성한다.
-                                    transform.ValueRW.Position = ComposeMove(
-                                        current, new float3(taken.x, 0f, taken.y) * closeDist,
-                                        impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
-                                    chaseMoved = true;
-                                    follow.ValueRW.holdingGround = 0;
-                                    follow.ValueRW.lastMoveDir = math.normalize(taken);
-                                }
+                                transform.ValueRW.Position = closeNext;
+                                chaseMoved = true;
+                                follow.ValueRW.holdingGround = 0;
+                                follow.ValueRW.lastMoveDir = math.normalize(taken);
                             }
                         }
                     }
@@ -480,6 +455,41 @@ namespace Wassup.Battle.Movement
                         float2 recovDir = FlowRecovery.RecoveryDir(cell, routeDist, field.gridSize);
                         if (math.lengthsq(recovDir) < 1e-6f)
                         {
+                            // distance-based-range unit 4c — **사냥 레인의 같은 동결**.
+                            // 어그로 레인과 결함도 처방도 같다(소스는 셀 정사각, 발사는 월드 원).
+                            // 보스는 `AggroStateSystem` 에서 어그로 면역이라 추격 레인 보정이
+                            // 구조적으로 못 닿는다 — 그래서 여기 따로 있다.
+                            //
+                            // ⚠ 여기서도 사거리를 재판정하지 않는다. `ai == Marching` 이
+                            // `EnemyAiStateSystem` 의 `hasFireTarget == false`(정본 술어,
+                            // 마스크·통행층·대상 몸 포함)와 같은 뜻이고 [UpdateBefore] 라 신선하다.
+                            if (hunting && ai == AiState.Marching
+                                && routeDist[idx] == 0 && huntTargets.Length > 0)
+                            {
+                                // 최근접 방어유닛 — 소스 칸을 만든 것이 그중 하나다.
+                                float bestSq = float.MaxValue; float3 bestPos = default;
+                                for (int t = 0; t < huntTargets.Length; t++)
+                                {
+                                    float hdx = huntTargets[t].x - current.x;
+                                    float hdz = huntTargets[t].z - current.z;
+                                    float sq = hdx * hdx + hdz * hdz;
+                                    if (sq < bestSq) { bestSq = sq; bestPos = huntTargets[t]; }
+                                }
+                                float huntSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                    ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                                float2 huntTaken = TryCloseIn(
+                                    current, bestPos, follow.ValueRO.speed * huntSpeedMul * dt,
+                                    in routeDist, field.gridSize, field.tileSize, field.origin,
+                                    follow.ValueRO.radius, in nav,
+                                    pullDisplacement + impulseDisplacement, out float3 huntNext);
+                                if (math.lengthsq(huntTaken) > 1e-6f)
+                                {
+                                    transform.ValueRW.Position = huntNext;
+                                    follow.ValueRW.holdingGround = 0;
+                                    follow.ValueRW.lastMoveDir = math.normalize(huntTaken);
+                                    continue;
+                                }
+                            }
                             // truly isolated cell — 자기주도 이동은 없지만 외력은 적용 (unit 3).
                             // 사방이 벽이면 clamp/Resolve 가 0으로 접고, 열린 이웃이 있으면
                             // 그쪽으로 밀린다 — 갇힌 유닛을 넉백으로 빼내는 것이 맞는 동작이다.
@@ -557,6 +567,7 @@ namespace Wassup.Battle.Movement
 
             portals.Dispose();
             tornadoFields.Dispose();
+            huntTargets.Dispose();
             navScratch.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
@@ -576,6 +587,45 @@ namespace Wassup.Battle.Movement
         // plain 값만 받고 plain 값을 낸다(제약 10) — 호출처 7곳 + sim-critical 이동이라
         // 추출 기준을 충족한다. clamp 는 터널링 차단(프레임 변위 상한), Resolve 는
         // 벽/장애물 밀어넣기 차단이며 둘 다 기존 동작 그대로다.
+        // distance-based-range unit 4c — 「사격 칸에 도착했는데 사거리 밖」일 때의 접근 보정.
+        // **어그로 레인과 사냥 레인이 이 하나를 공유한다** — 두 벌이면 조용히 갈리고, 그게
+        // 이 결함의 원인(한 루프에 자가 셋)과 같은 클래스다.
+        //
+        // 반환 = 실제로 취한 cardinal(zero = 못 움직임). `next` 는 외력까지 합성한 최종 위치.
+        // 막힘 판정은 **자기주도 변위만으로** 한다(외력을 섞으면 벽에 막힌 축도 「움직였다」로
+        // 읽혀 폴백이 죽고, 가지 않은 방향이 `lastMoveDir` 에 박힌다).
+        // 소스 영역(dist 0) 이탈 스텝은 취하지 않는다 — 벗어나면 다음 프레임 필드 하강이
+        // 되돌려 왕복이 된다. 단 **외력은 이 불변식 밖**이다(넉백은 원래 소스 안팎을 안 가린다).
+        private static float2 TryCloseIn(
+            float3 current, float3 targetPos, float closeDist,
+            in NativeArray<int> firingDist, int2 gridSize, float tileSize, float3 origin,
+            float radius, in NavGrid nav, float3 externalDisp, out float3 next)
+        {
+            next = current;
+            float dx = targetPos.x - current.x;
+            float dz = targetPos.z - current.z;
+            if (dx * dx + dz * dz <= 1e-6f) return float2.zero;
+
+            Wassup.Battle.Combat.AggroChaseMath.CloseInCardinals(dx, dz, out var primary, out var secondary);
+            for (int a = 0; a < 2; a++)
+            {
+                float2 axis = a == 0 ? primary : secondary;
+                float3 probe = ComposeMove(
+                    current, new float3(axis.x, 0f, axis.y) * closeDist,
+                    float3.zero, tileSize, radius, in nav);
+                if (math.lengthsq(probe - current) < 1e-8f) continue;          // 막혔다
+                int2 pCell = GridMath.WorldToCell(probe, tileSize, gridSize, origin);
+                // fail-closed — 필드가 없으면 이탈 검사를 못 하므로 스텝도 안 취한다.
+                if (!firingDist.IsCreated
+                    || firingDist[GridMath.CellIndex(pCell, gridSize)] != 0) continue;  // 소스 이탈
+                next = ComposeMove(
+                    current, new float3(axis.x, 0f, axis.y) * closeDist,
+                    externalDisp, tileSize, radius, in nav);
+                return axis;
+            }
+            return float2.zero;
+        }
+
         private static float3 ComposeMove(
             float3 current, float3 selfDisp, float3 externalDisp,
             float tileSize, float radius, in NavGrid nav)

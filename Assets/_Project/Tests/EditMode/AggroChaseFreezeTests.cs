@@ -199,6 +199,44 @@ namespace Wassup.Tests.EditMode
             finally { dist.Dispose(); }
         }
 
+        // ── 사냥 레인(보스/헌터)도 같은 결함·같은 처방 ──────────────────────
+        //
+        // 기하는 어그로와 **같은 소스 수집**(`CollectDefenderSources`)이라 위 시나리오가
+        // 그대로 증언한다. 다른 것은 게이트뿐이다: 어그로는 `Chasing`, 사냥은 `Marching`.
+        // 보스는 어그로 면역이라 추격 보정이 **구조적으로 못 닿는다** — 그래서 분기가 둘이고
+        // 그 둘이 `MovementSystem.TryCloseIn` 하나를 공유한다.
+        [Test]
+        public void HuntLane_UsesMarchingGate_NotChasing()
+        {
+            // 사냥 적은 어그로되지 않는다 → 「사거리 안 대상 없음」이 Marching 이다.
+            Assert.AreEqual(AiState.Marching,
+                EnemyAiStateSystem.Evaluate(aggroed: false, guardianInRange: false, hasFireTarget: false),
+                "사냥 레인 보정의 게이트가 Marching 이 아니면 보정이 영영 안 돈다");
+            Assert.AreEqual(AiState.Engaging,
+                EnemyAiStateSystem.Evaluate(aggroed: false, guardianInRange: false, hasFireTarget: true),
+                "쏠 수 있으면 Engaging — 보정이 멈추는 근거다");
+            // 어그로 게이트(Chasing)는 aggroed 일 때만 나온다 — 보스는 여기 못 온다.
+            Assert.AreEqual(AiState.Chasing,
+                EnemyAiStateSystem.Evaluate(aggroed: true, guardianInRange: false, hasFireTarget: false));
+        }
+
+        // 사냥 레인의 사거리(= 헌터 최소 사거리)로도 같은 동결 기하가 성립한다.
+        [Test]
+        public void HuntLane_SameSourceDisc_ArrivesOutOfReach()
+        {
+            const int hunterRange = 1;              // 보스 3종 전부 attackRange 1
+            var o = float3.zero;
+            var dist = BuildField(hunterRange, out int sources);
+            try
+            {
+                Assert.Greater(sources, 0);
+                var stopped = WalkFieldOnly(dist, new float3(6f, 0f, 6f), o, 600);
+                Assert.Greater(Gap(stopped, o), hunterRange + 0.5f,
+                    "사냥 레인 소스 디스크가 사거리 안에서 끝나면 이 보정은 불필요하다");
+            }
+            finally { dist.Dispose(); }
+        }
+
         // ── 순수 방향 선택 ──────────────────────────────────────────────────
         [Test]
         public void CloseInCardinals_PicksDominantAxisFirst()
