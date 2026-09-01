@@ -49,6 +49,33 @@
 - ㉰ **제품 결정** → 위 결정 2·3 적용
 - ㉱ **역양자화** → PR2 에서 전건 재판정
 
+### PR1 전수 목록 — `[Obsolete(error:true)]` 스윕 결과 (2026-09-01)
+
+컴파일러가 **12곳**을 냈다. fable 예측대로 스윕이 성립한다(단일 asmdef · `FootprintMath` 에
+리플렉션·문자열 접근 0). 전부 읽고 분류했다 — **오늘은 전 유닛 1×1 이라 어느 쪽으로 바꿔도
+값이 같다**(0 diff).
+
+| 지점 | 무엇을 원하나 | 분류 |
+|---|---|---|
+| `BattleBridge.cs:7679` `PlaceDefenderAs` | 바인딩 키 | ㉮ 앵커 |
+| `BattleBridge.cs:7709` (탭 배치) | 바인딩 키 | ㉮ 앵커 |
+| `BattleBridge.cs:4219` `OccupyDefenderFootprint` | owner 맵 키 | ㉮ 앵커 |
+| `BattleBridge.Relocation.cs:177` | 재배치 후 키 | ㉮ 앵커 |
+| `DefenderRelocationController.cs:226` | 새 바인딩 키 | ㉮ 앵커 |
+| `DefenderRelocationController.cs:217` | 저장값→앵커 역산 | ㉮ **항등이 되어 삭제** |
+| `DragPlacementController.cs:1119` | 호버 등록 키 | ㉮ 앵커 |
+| `DragPlacementController.cs:1975` | 호버 키 | ㉮ 앵커 |
+| `BattleBridge.cs:5233` `GridAnchorToViewCenter` | **기하 중심**(뷰) | ㉲ `앵커+(W−1)/2` |
+| `DragPlacementController.cs:1460` | 착지 연출 자리 — 주석이 「앵커로 넘기면 링·VFX 가 **좌하단 모서리**에서 터진다」 | ㉲ 기하 중심 |
+| `DragPlacementController.cs:1335` `peekRangeCell` | **겸직** — 사거리 링 중심(㉲) + 하마 등록부 키(㉮) | **분리 필요** |
+| `BattleBridge.cs:5820` | 폴백 점유 rect | ㉯ `Cells(anchor,size)` 직접 |
+
+⚠ **`:1335` 가 겸직 사례다** — 한 값이 「링 중심」과 「등록부 키」 둘을 하고 있다. 1×1 이라
+같은 값이어서 지금까지 안 갈렸다. 이게 대표 셀이 두 뜻을 겸직했다는 것의 실물 증거다.
+
+⚠ `CenterOffsetFromPrimary` 소비처 2곳(`FootprintViewOffset`, 픽킹 정렬 미러)은 기준을
+**대표 셀 → 앵커**로 옮기면 오프셋이 「소수부」가 아니라 **`(W−1)/2` 전체**가 된다.
+
 ## PR2 — 몸 (판정 변경)
 
 **구조물 선례로 수렴한다.** 본능(3×3)이 이미 `OccupiedCellsBuffer` 로 「나는 이 칸들을
