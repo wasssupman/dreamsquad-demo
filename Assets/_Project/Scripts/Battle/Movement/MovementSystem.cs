@@ -487,9 +487,15 @@ namespace Wassup.Battle.Movement
                             // `ai` 기본값이 `Marching`(:128)이고 `EnemyAiStateSystem` 은 `hasAttack`
                             // 이 거짓이면 술어를 **한 번도 안 부른다** — 그 `Marching` 은 「사거리 밖」이
                             // 아니라 **「물어보지도 않았다」**다. 그 상태로 보정이 돌면 사거리를 모르는
-                            // 채 달라붙는다. 오늘 둘 다 무조건 bake 라 도달 불가지만 그 사실에
-                            // 기대지 않는다(`DefenderFieldSystem:66` 은 이미 「AttackState 없는 헌터」를
-                            // 상정하고 폴백을 둔다).
+                            // 채 방어유닛에 달라붙는다.
+                            //
+                            // ⚠ **`EnemyAiState` 와 `AttackState` 의 bake 는 성질이 다르다.**
+                            // 앞은 무조건이지만(`BattleBridge:10775`), 뒤는 `if (wantsAttack)`
+                            // **안**이고(`:10724`) `attackMethod` 를 켜고 `outputs` 를 비우면
+                            // **경고 한 줄만 찍고 walk-only 로 구워진다**(`:10710`).
+                            // 즉 `attackStateLookup` 가드는 도달 불가한 방어가 아니라 **실제
+                            // 저작 실수를 막는 가드**다 — 「어차피 항상 있으니」로 지우지 말 것.
+                            // (`DefenderFieldSystem:66` 도 이미 「AttackState 없는 헌터」를 상정한다.)
                             if (hunting && !locked
                                 && aiStateLookup.HasComponent(entity) && ai == AiState.Marching
                                 && attackStateLookup.HasComponent(entity)
