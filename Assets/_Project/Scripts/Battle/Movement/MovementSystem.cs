@@ -180,12 +180,14 @@ namespace Wassup.Battle.Movement
                     // unit 4c 가 아래에 넣었다**(`arrivedAtFiringCell` 분기).
                     bool chaseMoved = false;
                     bool arrivedAtFiringCell = false;
+                    var firingDist = default(NativeArray<int>);   // 보정이 「소스 밖으로 나가지 않기」를 검사할 때 쓴다
                     if (chaseLookup.HasBuffer(entity))
                     {
                         var chase = chaseLookup[entity];
                         if (chase.Length == field.gridSize.x * field.gridSize.y)
                         {
                             var chaseDist = chase.Reinterpret<int>().AsNativeArray();
+                            firingDist = chaseDist;
                             int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
                             float2 chaseDir = FlowRecovery.RecoveryDir(chaseCell, chaseDist, field.gridSize);
                             // dir zero 는 두 가지다: **사격 칸 도착**(dist 0)과 **고립**(더 나은 이웃 없음).
@@ -240,22 +242,36 @@ namespace Wassup.Battle.Movement
                                     ? modifierStatsLookup[entity].moveSpeedMul : 1f;
                                 float closeDist = follow.ValueRO.speed * closeSpeedMul * dt;
 
-                                float2 taken = primary;
-                                float3 next = ComposeMove(
-                                    current, new float3(primary.x, 0f, primary.y) * closeDist,
-                                    impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
-                                // 지배축이 막히면 나머지 축. `ComposeMove` 가 변위를 먹으면
-                                // «걷는 애니로 제자리» 가 되므로 **실제 이동량**으로 판정한다.
-                                if (math.lengthsq(next - current) < 1e-8f)
+                                // ⚠ 막힘 판정은 **자기주도 변위만으로** 한다(impulse 제외).
+                                // 섞으면 벽에 완전히 막힌 축도 「움직였다」로 읽혀 폴백이 죽고,
+                                // **가지 않은 방향**이 `lastMoveDir` 에 박힌다 — 그 필드의 소비처는
+                                // 넉백 방향(`ProjectileHitSystem`)이라 관측이 아닌 의도를 쓰는 셈이 된다.
+                                // 순찰 보정이 `Passable()` 마스크 질의로 판정하는 것과 같은 취지다.
+                                //
+                                // ⚠ **소스 영역(dist 0)을 벗어나는 스텝은 취하지 않는다.** 벗어나면
+                                // 다음 프레임 필드 하강이 되돌려 **왕복**이 된다. 가디언이 움직여
+                                // 필드가 stale 해지는 경우(오늘 저작 0종이지만 «오늘은 안 난다» 를
+                                // 주석으로 다시 쓰지 않는다)에도 이 검사가 구조적으로 막는다.
+                                float2 taken = float2.zero;
+                                for (int a = 0; a < 2 && math.lengthsq(taken) < 1e-6f; a++)
                                 {
-                                    taken = secondary;
-                                    next = ComposeMove(
-                                        current, new float3(secondary.x, 0f, secondary.y) * closeDist,
-                                        impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
+                                    float2 axis = a == 0 ? primary : secondary;
+                                    if (math.lengthsq(axis) < 1e-6f) continue;
+                                    float3 p = ComposeMove(
+                                        current, new float3(axis.x, 0f, axis.y) * closeDist,
+                                        float3.zero, field.tileSize, follow.ValueRO.radius, in nav);
+                                    if (math.lengthsq(p - current) < 1e-8f) continue;          // 막혔다
+                                    int2 pCell = GridMath.WorldToCell(p, field.tileSize, field.gridSize, origin: field.origin);
+                                    if (firingDist.IsCreated
+                                        && firingDist[GridMath.CellIndex(pCell, field.gridSize)] != 0) continue;  // 소스 이탈
+                                    taken = axis;
                                 }
-                                if (math.lengthsq(next - current) > 1e-8f)
+                                if (math.lengthsq(taken) > 1e-6f)
                                 {
-                                    transform.ValueRW.Position = next;
+                                    // 축이 정해진 뒤 외력을 포함해 한 번 더 합성한다.
+                                    transform.ValueRW.Position = ComposeMove(
+                                        current, new float3(taken.x, 0f, taken.y) * closeDist,
+                                        impulseDisplacement, field.tileSize, follow.ValueRO.radius, in nav);
                                     chaseMoved = true;
                                     follow.ValueRW.holdingGround = 0;
                                     follow.ValueRW.lastMoveDir = math.normalize(taken);

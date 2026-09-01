@@ -193,14 +193,11 @@ namespace Wassup.Battle.Effects
             float dz = bestPos.z - selfPos.z;
             // 지배축 우선, 막히면 나머지 축. 둘 다 막히면 정지 — raw cardinal 을 그대로 뱉으면
             // 벽에 밀려 «걷는 애니로 제자리» 가 된다(AgentCollision 이 변위를 먹는다).
-            float2 primary = math.abs(dx) >= math.abs(dz)
-                ? new float2(dx >= 0f ? 1f : -1f, 0f)
-                : new float2(0f, dz >= 0f ? 1f : -1f);
+            // 지배축 선택은 `AggroChaseMath.CloseInCardinals` 가 소유한다 — 추격 보정(unit 4c)과
+            // **같은 함수**여야 한다. 두 벌이면 조용히 갈리고, 그게 `AttackReach` 헤더가
+            // 「인라인 재작성 금지」로 막은 것과 같은 클래스의 드리프트다.
+            Wassup.Battle.Combat.AggroChaseMath.CloseInCardinals(dx, dz, out var primary, out var secondary);
             if (Passable(areaMask, gridSize, selfCell, primary)) return primary;
-
-            float2 secondary = math.abs(dx) >= math.abs(dz)
-                ? new float2(0f, dz >= 0f ? 1f : -1f)
-                : new float2(dx >= 0f ? 1f : -1f, 0f);
             if (math.lengthsq(secondary) > 0f && Passable(areaMask, gridSize, selfCell, secondary))
                 return secondary;
 
