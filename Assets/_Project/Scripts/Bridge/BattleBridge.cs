@@ -2944,7 +2944,8 @@ namespace Wassup.Bridge
                 if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(ents[i]))
                 {
                     var st = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(ents[i]);
-                    reach = GridMath.RangeToTiles(st.range) * tileSize + body;
+                    // 링과 같은 기준 — 표준 1×1 상대까지 포함한다.
+                    reach = (st.range + Wassup.Skills.SkillMath.StandardBodyRadiusTiles) * tileSize + body;
                 }
                 if (reach <= 0f && body <= 0f) continue;
                 into.Add(new DebugReachSphere

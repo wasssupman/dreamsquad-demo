@@ -1064,7 +1064,8 @@ namespace Wassup.Core
             EnsureRangeTilemap();
             _rangeAlphaMul = 1f;
             _rangeAimStyle = false;
-            int scan = Mathf.CeilToInt(tileRange + selfBodyRadiusTiles);
+            int scan = Mathf.CeilToInt(
+                tileRange + selfBodyRadiusTiles + Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
             for (int dx = -scan; dx <= scan; dx++)
             for (int dz = -scan; dz <= scan; dz++)
             {
@@ -1075,7 +1076,9 @@ namespace Wassup.Core
                 if (!squareShape && !Wassup.Battle.Combat.AttackReach.InCellReach(
                         new Unity.Mathematics.int2(center.x, center.y),
                         new Unity.Mathematics.int2(cell.x, cell.y), tileRange,
-                        selfBodyRadiusTiles)) continue;
+                        selfBodyRadiusTiles,
+                        // 표준 1×1 상대 기준 — 점으로 보면 사거리 1 의 대각이 빠진다.
+                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
@@ -1085,7 +1088,7 @@ namespace Wassup.Core
             // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 2): 사각 반폭은 `_HalfExtent`,
             // 몸의 원 반지름은 `_Range` 에 더한다. 1×1 이면 반폭 0 → **진짜 원**이 그려진다.
             else ShowRangeRing(center,
-                    tileRange + selfBodyRadiusTiles,
+                    tileRange + selfBodyRadiusTiles + Wassup.Skills.SkillMath.StandardBodyRadiusTiles,
                     Wassup.Skills.SkillMath.SelfHalfExtentTiles);
             ApplyRangeTint();
         }

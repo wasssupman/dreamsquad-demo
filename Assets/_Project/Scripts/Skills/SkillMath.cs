@@ -108,6 +108,18 @@ namespace Wassup.Skills
         // **십자 모양**이 된다(1.414 > 1.25) — rev 1 에서 순수 원으로 갔다가 되돌린 그 회귀다.
         public const float CellHalfWidthTiles = 0.5f;
 
+        // **1×1 유닛의 몸 반지름.** `AttackUnitData`/`DefenderUnitData`/`StructureData` 의 저작
+        // 기본값과 같은 값이고(드리프트는 `RangeDisplayContractTests` 가 잡는다),
+        // **표기가 「누구를」 기준으로 그리는지의 답**이기도 하다.
+        //
+        // ⚠ 링·프리뷰는 대상을 **점으로 보면 안 된다.** 도달 = 사거리 + 내몸 + 상대몸인데
+        // 상대를 0 으로 두면 화면이 실제보다 0.25칸 좁아지고, 사거리 1 에서는 **대각 4칸이
+        // 통째로 빠진다**(1.414 > 1.25). 「대각 인접도 사거리 1」은 이 게임의 오래된 계약이라
+        // 화면이 그것을 부정하면 규칙을 **틀리게** 가르치는 것이다(unit 5 의 존재 이유).
+        // 그래서 표기는 **표준 1×1 상대**를 가정해 그린다. 보스처럼 몸이 큰 상대는 링보다
+        // 멀리서도 맞는데, 그건 대상 마크(unit 7)가 말한다.
+        public const float StandardBodyRadiusTiles = 0.25f;
+
         // 오늘 전 유닛이 1×1 이라 사각 반폭은 0 이다(`FootprintWidthCells => 1`,
         // 방어유닛 저작도 1×1 로 철회됨). 다칸 유닛이 실제로 생기면 `(w−1)*0.5` 를 넘긴다.
         public const float SelfHalfExtentTiles = 0f;
