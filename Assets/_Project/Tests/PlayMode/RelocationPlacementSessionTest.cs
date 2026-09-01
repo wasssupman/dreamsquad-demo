@@ -355,9 +355,9 @@ namespace Wassup.Tests.PlayMode
 
         private static Vector2Int CellOf(BattleBridge bridge, EntityManager em, Entity entity)
         {
-            if (entity != Entity.Null && em.Exists(entity) && em.HasComponent<DefenderTile>(entity))
+            if (entity != Entity.Null && em.Exists(entity) && em.HasComponent<DefenderFootprint>(entity))
             {
-                var c = em.GetComponentData<DefenderTile>(entity).cell;
+                var c = em.GetComponentData<DefenderFootprint>(entity).anchor;
                 return new Vector2Int(c.x, c.y);
             }
             return new Vector2Int(int.MinValue, int.MinValue);

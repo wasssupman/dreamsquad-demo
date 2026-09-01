@@ -47,11 +47,11 @@ namespace Wassup.Battle.Effects
             // 배치 완료 방어유닛만 — 배치 대기(PendingDeployment)는 아직 판에 서지 않았고
             // (on-place 오라와 같은 규칙), 죽은 유닛은 제외(DefenderFieldSystem 과 같은 필터).
             foreach (var (tile, entity) in
-                     SystemAPI.Query<RefRO<DefenderTile>>()
+                     SystemAPI.Query<RefRO<DefenderFootprint>>()
                               .WithNone<PendingDeployment, DeadTag>()
                               .WithEntityAccess())
             {
-                var cell = tile.ValueRO.cell;
+                var cell = tile.ValueRO.anchor;
 
                 // 겹친 장판은 누적되지 않는다(merge 키가 stat 단위로 같다). 그러면 "어느 값이 이기나"
                 // 를 chunk 순회 순서에 맡기게 되는데, 만료 시 swap-back 으로 순서가 런타임에 바뀌므로

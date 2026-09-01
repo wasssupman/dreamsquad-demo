@@ -255,16 +255,16 @@ namespace Wassup.Battle.Effects
                 }
             }
 
-            using (var defenderQuery = em.CreateEntityQuery(ComponentType.ReadOnly<DefenderTile>()))
+            using (var defenderQuery = em.CreateEntityQuery(ComponentType.ReadOnly<DefenderFootprint>()))
             {
-                var defenderTiles = defenderQuery.ToComponentDataArray<DefenderTile>(Unity.Collections.Allocator.Temp);
+                var defenderTiles = defenderQuery.ToComponentDataArray<DefenderFootprint>(Unity.Collections.Allocator.Temp);
                 try
                 {
                     for (int i = 0; i < cells.Count; i++)
                     {
                         for (int j = 0; j < defenderTiles.Length; j++)
                         {
-                            if (!cells[i].Equals(defenderTiles[j].cell)) continue;
+                            if (!cells[i].Equals(defenderTiles[j].anchor)) continue;
                             reason = $"cell {cells[i]} overlaps defender tile";
                             return false;
                         }

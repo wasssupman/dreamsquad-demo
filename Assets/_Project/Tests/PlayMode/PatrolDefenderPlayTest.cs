@@ -153,14 +153,14 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(em.HasComponent<DefenderClassTag>(patrol));
             Assert.IsTrue(em.HasComponent<FactionTag>(patrol));
             Assert.AreEqual(Faction.DefenderUnit, em.GetComponentData<FactionTag>(patrol).value);
-            Assert.IsFalse(em.HasComponent<DefenderTile>(patrol),
+            Assert.IsFalse(em.HasComponent<DefenderFootprint>(patrol),
                 "no placement/death-event/awakening farming path");
             Assert.IsFalse(em.HasComponent<AttackUnitTag>(patrol), "not an enemy/leak unit");
             Assert.IsTrue(em.HasComponent<SummonedBy>(patrol));
             Assert.AreEqual(summoner, em.GetComponentData<SummonedBy>(patrol).owner);
             Assert.IsFalse(em.HasBuffer<DcTriggerSlot>(patrol), "dreamcatcher cards are not baked onto patrol");
             Assert.IsFalse(HasModifierOrigin(em, patrol, ModifierOrigin.Tile),
-                "effect tiles are DefenderTile placement effects, not moving-patrol effects");
+                "effect tiles are DefenderFootprint placement effects, not moving-patrol effects");
             Assert.IsFalse(HasModifierOrigin(em, patrol, ModifierOrigin.Dreamcatcher),
                 "active dreamcatcher effects are not copied onto patrol");
 

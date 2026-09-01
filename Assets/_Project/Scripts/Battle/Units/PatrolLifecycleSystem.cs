@@ -8,8 +8,8 @@ namespace Wassup.Battle.Units
     //
     // Units 소유: 죽음(DeadTag·HealthDeathSystem)이 이 맥락의 것이다. 파괴 자체는 하지
     // 않고 DeadTag 만 붙인다 — 기존 UnitLifecycleSystem 의 general dead loop
-    // (DeadTag + WithNone<DefenderTile, BlockingHazard>)가 처리한다. 순찰병은
-    // DefenderTile 이 없어서(계약 1) 정확히 그 루프로 떨어진다.
+    // (DeadTag + WithNone<DefenderFootprint, BlockingHazard>)가 처리한다. 순찰병은
+    // DefenderFootprint 이 없어서(계약 1) 정확히 그 루프로 떨어진다.
     //
     // 생존 술어는 AggroStateSystem 의 링크 가디언 사망 3중 판정과 같은 형태다
     // (ECB 파괴분 = Exists · death-프레임 DeadTag · HP<=0). Entity 는 version 을

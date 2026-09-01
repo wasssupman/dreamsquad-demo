@@ -35,7 +35,7 @@ namespace Wassup.Battle.Units
             _defenderDeadQuery = state.GetEntityQuery(
                 ComponentType.ReadOnly<DeadTag>(),
                 ComponentType.ReadOnly<DefenderUnitTag>(),
-                ComponentType.ReadOnly<DefenderTile>());
+                ComponentType.ReadOnly<DefenderFootprint>());
             // RequireAnyForUpdate takes a params array and isn't Burst-friendly in OnCreate;
             // keep this method non-Burst. OnUpdate remains [BurstCompile].
             state.RequireAnyForUpdate(_pastGoalQuery, _deadQuery);
@@ -111,7 +111,7 @@ namespace Wassup.Battle.Units
             bool hasSkillQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Skills.SkillFiredEventsSingleton>(
                 out var skillFiredSingleton);
             foreach (var (tile, entity) in
-                     SystemAPI.Query<RefRO<DefenderTile>>()
+                     SystemAPI.Query<RefRO<DefenderFootprint>>()
                               .WithAll<DeadTag, DefenderUnitTag>()
                               .WithEntityAccess())
             {
@@ -138,7 +138,7 @@ namespace Wassup.Battle.Units
                     // skill-layer-migration unit 3g — **OnDeath 폭발 스탬프는 은퇴했다.**
                     // 작별 선물이 concrete 로 갔고 자기 죽음 seam 이 실행한다. 이 이벤트에
                     // 남은 것은 「어느 칸이 비었나」뿐이다(타일 반납·시너지 재계산·연출).
-                    var evt = new DefenderDeathEvent { cell = tile.ValueRO.cell };
+                    var evt = new DefenderDeathEvent { cell = tile.ValueRO.anchor };
                     var singleton = _defenderDeathSingletonQuery.GetSingletonRW<DefenderDeathEventsSingleton>();
                     singleton.ValueRW.queue.Enqueue(evt);
                 }
@@ -172,15 +172,15 @@ namespace Wassup.Battle.Units
             // 소비 측은 그대로 둔다 — 거점 단위 붕괴를 짓는 unit 4 가 페이로드를 새로 정한다.
 
             // General dead loop: attackers + any defender that somehow lacks
-            // DefenderTile (should not happen in Phase 4, but keeps the system
-            // safe). WithNone<DefenderTile> prevents double-destroy of the
+            // DefenderFootprint (should not happen in Phase 4, but keeps the system
+            // safe). WithNone<DefenderFootprint> prevents double-destroy of the
             // defender-dead loop above, and WithNone<BlockingHazard> prevents
             // double-destroy after hazard event enqueue.
             // battle-structures unit 0 — WithNone<GoalPoint> 는 제거했다: 짝이던 골 사망
             // 루프가 사라져 이중 파괴 위험이 없고, 라이브 골 타워는 원래부터 이 루프가 파괴한다.
             foreach (var (_, entity) in
                      SystemAPI.Query<RefRO<DeadTag>>()
-                              .WithNone<DefenderTile>()
+                              .WithNone<DefenderFootprint>()
                               .WithNone<BlockingHazard>()
                               .WithEntityAccess())
             {
@@ -214,7 +214,7 @@ namespace Wassup.Battle.Units
     
         // skill-layer-migration unit 8 — **자기 죽음 라우팅. 두 루프가 공유한다.**
         //
-        // 방어유닛과 적은 파괴되는 루프가 다르다(방어유닛은 칸을 반납해야 해서 `DefenderTile`
+        // 방어유닛과 적은 파괴되는 루프가 다르다(방어유닛은 칸을 반납해야 해서 `DefenderFootprint`
         // 을 들고 도는 전용 루프, 적은 아래 일반 루프). 그 둘이 각자 라우팅을 복제하면
         // 「한쪽만 고친 채로 다른 쪽이 조용히 낡는」 자리가 된다 — 이 spec 이 이미 두 번
         // 겪은 형태다. 그래서 사본이 아니라 인자로 가른다.

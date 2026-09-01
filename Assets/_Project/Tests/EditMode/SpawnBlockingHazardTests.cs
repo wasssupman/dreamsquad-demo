@@ -106,10 +106,10 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Spawn_Rejects_DefenderTile_Overlap()
+        public void Spawn_Rejects_DefenderFootprint_Overlap()
         {
             var defender = _em.CreateEntity();
-            _em.AddComponentData(defender, new DefenderTile { cell = new int2(4, 5) });
+            _em.AddComponentData(defender, new DefenderFootprint { anchor = new int2(4, 5) });
 
             var e = EffectSpawner.SpawnBlockingHazard(_em, _so, new int2(4, 4), hazardSoIndex: 0);
 

@@ -32,13 +32,13 @@ namespace Wassup.Battle.Effects
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // 사망 태그가 붙은 defender — 파괴 직전 그 배치 타일에 사직서 스폰(Effects 소유 아키타입).
-            // 사망 셀은 DefenderTile(RO, Units 소유 → 읽기 허용). destroy 전이라 참조 유효.
+            // 사망 셀은 DefenderFootprint(RO, Units 소유 → 읽기 허용). destroy 전이라 참조 유효.
             foreach (var tile in
-                     SystemAPI.Query<RefRO<DefenderTile>>()
+                     SystemAPI.Query<RefRO<DefenderFootprint>>()
                               .WithAll<DeadTag, DefenderUnitTag>())
             {
                 var letter = ecb.CreateEntity();
-                ecb.AddComponent(letter, new Resignation { cell = tile.ValueRO.cell });
+                ecb.AddComponent(letter, new Resignation { cell = tile.ValueRO.anchor });
             }
 
             ecb.Playback(state.EntityManager);

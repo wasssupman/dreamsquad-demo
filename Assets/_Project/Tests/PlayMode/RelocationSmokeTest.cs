@@ -16,7 +16,7 @@ using Wassup.Battle.Units;
 namespace Wassup.Tests.PlayMode
 {
     // defender-relocation unit 0 — 재배치 시뮬 토대 스모크 (BattleBridge 직접 구동,
-    // PlacementAuraTest 패턴): Begin(점유·바인딩·DefenderTile 스왑 + PendingDeployment 재부착)
+    // PlacementAuraTest 패턴): Begin(점유·바인딩·DefenderFootprint 스왑 + PendingDeployment 재부착)
     // → busy 중 재이동 거부 → Finish(LocalTransform 이동) → Activate(전투 복귀)
     // → 비워진 원 타일에 재배치 성공.
     public class RelocationSmokeTest
@@ -84,8 +84,8 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(to, SoleCell(bridge), "binding moved to target cell");
             Assert.AreEqual(Entity.Null, EntityAt(bridge, em, from), "source binding removed");
             Assert.IsTrue(em.HasComponent<PendingDeployment>(entity), "PendingDeployment re-attached (비타겟·비무장)");
-            var tile = em.GetComponentData<DefenderTile>(entity);
-            Assert.AreEqual(new int2(to.x, to.y), tile.cell, "DefenderTile updated at confirm frame");
+            var tile = em.GetComponentData<DefenderFootprint>(entity);
+            Assert.AreEqual(new int2(to.x, to.y), tile.anchor, "DefenderFootprint updated at confirm frame");
 
             // busy 중 재이동 거부 (SourceBusy)
             Assert.IsFalse(bridge.CanRelocateDefender(to, from, out var busyReason), "no re-move while pending");

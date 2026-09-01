@@ -214,7 +214,8 @@ namespace Wassup.UI
         private Vector2Int MapRelocationTarget(Vector2Int tappedCell)
         {
             var fpSize = _unit != null ? _unit.Footprint : Vector2Int.one;
-            var fromAnchor = FootprintMath.AnchorFromPrimary(_sourceCell, fpSize);
+            // unit 10 — 저장값이 앵커라 역산이 항등이 됐다.
+            var fromAnchor = _sourceCell;
             if (FootprintMath.Cells(fromAnchor, fpSize).Contains(tappedCell)) return _sourceCell;
             return FootprintMath.AnchorFromBottomCenter(tappedCell, fpSize);
         }
@@ -223,7 +224,7 @@ namespace Wassup.UI
         {
             var fpSize = _unit != null ? _unit.Footprint : Vector2Int.one;
             if (to == _sourceCell) return _sourceCell; // 제자리 재정비 — 대표 셀 그대로
-            return FootprintMath.PrimaryCell(to, fpSize);
+            return to;   // unit 10 — 바인딩 키 = 앵커
         }
 
         private void ResolveRelease(Vector2 screen)
@@ -262,7 +263,7 @@ namespace Wassup.UI
             StartCoroutine(RunRelocationFlight(++_flightGen, from, to, entity));
         }
 
-        // unit 3 — 비행/재전개 코루틴. 시뮬은 확정 프레임에 이미 to 귀속(점유·DefenderTile),
+        // unit 3 — 비행/재전개 코루틴. 시뮬은 확정 프레임에 이미 to 귀속(점유·DefenderFootprint),
         // 뷰만 베지어로 난다. 진행 시계 = Battle 도메인(다른 배치 슬로모에 정직 — 계약 5 결).
         private IEnumerator RunRelocationFlight(int gen, Vector2Int from, Vector2Int to, Entity entity)
         {

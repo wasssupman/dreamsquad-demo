@@ -282,7 +282,7 @@ namespace Wassup.Bridge
         private readonly List<Vector2Int> _footprintReleaseScratch = new();
         // defender-footprint unit 5 리뷰 H-1 — «취소 유예 대상» 자격 셋. PendingDeployment 는
         // 재배치 비행에도 붙어 그 존재만으론 «방금 놓은 유닛»을 식별하지 못한다 — 신규 배치가
-        // 등록하고 활성화·퇴장(ReleaseDefenderTile)·리셋이 지운다. 취소 API 의 진짜 술어다.
+        // 등록하고 활성화·퇴장(ReleaseDefenderFootprint)·리셋이 지운다. 취소 API 의 진짜 술어다.
         private readonly HashSet<Entity> _cancellableDeployments = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         // defender-relocation unit 8 — 효과 타일은 on-place 와 **다른** 가드를 쓴다.
@@ -2845,7 +2845,7 @@ namespace Wassup.Bridge
         // 배치 대기(PendingDeployment) 유닛 제외 — 아직 판에 서지 않았다(on-place 오라와 같은 규칙).
         // 월드 생존 가드는 레포 관용구(HasLiveEntityManager)를 쓴다 — `_em == default` 단독은
         // 어디서도 리셋되지 않아 티어다운 후에도 통과한다.
-        // 남은 용도는 **로그 스냅샷 하나**다(시뮬 멤버십 권위는 ECS 의 DefenderTile).
+        // 남은 용도는 **로그 스냅샷 하나**다(시뮬 멤버십 권위는 ECS 의 DefenderFootprint).
         private void CollectAlliesInRange(Vector2Int center, int tileRange, List<Entity> results)
         {
             results.Clear();
@@ -3998,7 +3998,7 @@ namespace Wassup.Bridge
         //
         // **전용 루프가 필요하다.** 위 두 루프는 각각 `AttackUnitTag` 쿼리(적)와
         // `_defenderByTile` 순회(방어유닛)인데, 순찰병은 둘 다 아니다 — 적 태그를 안 붙이고
-        // (계약 1) 타일 딕셔너리에도 안 들어간다(DefenderTile 미부착). 이 루프가 없으면
+        // (계약 1) 타일 딕셔너리에도 안 들어간다(DefenderFootprint 미부착). 이 루프가 없으면
         // 뷰가 스폰만 되고 **영원히 제자리에 서 있는다**(이 아키타입 고유의 함정).
         //
         // 뷰 회수는 spineUnitPool.DespawnMissing 이 이미 처리한다(엔티티 소멸 기준).
@@ -4174,10 +4174,10 @@ namespace Wassup.Bridge
                 Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DefenderDeath,
                     i: evt.cell.x * 1000 + evt.cell.y, f: 0f);
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
-                // defender-clock-out unit 1 — 판 정리는 퇴근과 공유한다(ReleaseDefenderTile).
+                // defender-clock-out unit 1 — 판 정리는 퇴근과 공유한다(ReleaseDefenderFootprint).
                 // 바인딩을 제거 **전에** 받아 오는 계약도 그 안에 있다 — DefenderDied 가 엔티티를
                 // 카드 회수 키로, SO 를 awakeningReward 로 실어야 하기 때문이다.
-                bool hasBinding = ReleaseDefenderTile(cell, out var binding);
+                bool hasBinding = ReleaseDefenderFootprint(cell, out var binding);
                 // ⚠ 뷰 반납은 공유 함수에 넣지 않는다. 사망은 NotifyDeath(=Kill()=deathAnimation,
                 // 기본값 "die"), 퇴근은 Despawn(즉시). 넣었다면 bool playDeathAnim 플래그 파라미터를
                 // 부르게 된다 — 뷰 반납의 주인은 처음부터 호출처다.
@@ -4216,7 +4216,7 @@ namespace Wassup.Bridge
         private void OccupyDefenderFootprint(Vector2Int anchor, Vector2Int size)
         {
             var rect = FootprintMath.Cells(anchor, size);
-            var primary = FootprintMath.PrimaryCell(anchor, size);
+            var primary = anchor;   // unit 10 — owner 값 = 앵커(정체성 키)
             for (int y = rect.yMin; y < rect.yMax; y++)
             {
                 for (int x = rect.xMin; x < rect.xMax; x++)
@@ -4253,9 +4253,9 @@ namespace Wassup.Bridge
             return _defenderByTile.ContainsKey(cell);
         }
 
-        private bool ReleaseDefenderTile(Vector2Int cell, out (Entity entity, DefenderUnitData data) binding)
+        private bool ReleaseDefenderFootprint(Vector2Int cell, out (Entity entity, DefenderUnitData data) binding)
         {
-            // defender-footprint unit 1 — 사망 이벤트의 cell = DefenderTile.cell = 대표 셀이지만,
+            // defender-footprint unit 1 — 사망 이벤트의 cell = DefenderFootprint.cell = 대표 셀이지만,
             // 퇴근 등 다른 호출처가 footprint 임의 칸을 넘겨도 같은 유닛으로 접히게 해석한다.
             if (!TryResolveDefenderKey(cell, out var key)) key = cell;
             bool hasBinding = _defenderByTile.TryGetValue(key, out binding);
@@ -4300,7 +4300,7 @@ namespace Wassup.Bridge
             if (!TryGetDefenderCell(entity, out var cell)) return false;
 
             // 되돌릴 수 없는 sim 변경 먼저(퇴근 리뷰 2026-08-15 와 같은 순서 원칙).
-            if (!ReleaseDefenderTile(cell, out var binding))
+            if (!ReleaseDefenderFootprint(cell, out var binding))
             {
                 // 바인딩 부재 = 반쯤 무너진 상태 — 환불 근거가 없으므로 여기서 물러난다(조용한 손실 방지).
                 Debug.LogWarning($"[BattleBridge] Cancel pending: no binding @ {cell} — aborted.");
@@ -4343,7 +4343,7 @@ namespace Wassup.Bridge
             // 이미 죽는 중이면 사망 경로에 양보한다(보상은 죽음의 것이다).
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(pre.entity)) return false;
 
-            ReleaseDefenderTile(cell, out var binding);
+            ReleaseDefenderFootprint(cell, out var binding);
 
             // dreamcatcher-content-4 unit 5 (퇴직 위로금) — 퇴근 사건의 payload 를 **파괴 직전에
             // 슬롯에서 직독**한다. 사망 경로는 payload 를 DefenderDeathEvent 에 미리 구워 나르는데,
@@ -5220,7 +5220,7 @@ namespace Wassup.Bridge
         private Vector2 FootprintViewOffset(DefenderUnitData data)
         {
             if (data == null) return Vector2.zero;
-            var o = FootprintMath.CenterOffsetFromPrimary(data.Footprint);
+            var o = FootprintMath.GeometricCenterOffset(data.Footprint);
             if (o == Vector2.zero) return Vector2.zero;
             return new Vector2(o.x * tileSize, o.y * tileSize);
         }
@@ -5230,9 +5230,9 @@ namespace Wassup.Bridge
         public Vector3 GridAnchorToViewCenter(Vector2Int anchor, DefenderUnitData unit)
         {
             var size = unit != null ? unit.Footprint : Vector2Int.one;
-            var primary = FootprintMath.PrimaryCell(anchor, size);
+            // unit 10 — 앵커에서 기하 중심으로 직접 간다(대표 셀 경유 없음).
             var fpOff = FootprintViewOffset(unit);
-            var w = GridToWorldCenterVector(primary);
+            var w = GridToWorldCenterVector(anchor);
             return Wassup.Core.BoardSpace.ToView(new Vector3(w.x + fpOff.x, w.y, w.z + fpOff.y));
         }
 
@@ -5817,7 +5817,8 @@ namespace Wassup.Bridge
                 }
             }
             if (!any)
-                return FootprintMath.Cells(FootprintMath.AnchorFromPrimary(primary, fallbackSize), fallbackSize);
+                // unit 10 — `primary` 는 이제 **앵커**다(대표 셀 은퇴).
+                return FootprintMath.Cells(primary, fallbackSize);
             return new RectInt(minX, minY, maxX - minX + 1, maxY - minY + 1);
         }
 
@@ -6138,7 +6139,7 @@ namespace Wassup.Bridge
                 // 리뷰 M-2/L-3 — 렌더 정렬은 뷰 월드(짝수 변 +0.5칸 오프셋 포함)의 RoundToInt 로
                 // 돈다(SpineUnitView.UpdateSortingOrder → ComputeFromWorld). 픽도 같은 오프셋을
                 // 같은 반올림으로 미러해야 짝수 footprint 에서 «앞면 우선»이 실제 앞면과 일치한다.
-                var pickOff = FootprintMath.CenterOffsetFromPrimary(
+                var pickOff = FootprintMath.GeometricCenterOffset(
                     kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one);
                 int order = Wassup.Presentation.BoardSortOrder.Compute(gridSize,
                     Mathf.RoundToInt(kv.Key.x + pickOff.x), Mathf.RoundToInt(kv.Key.y + pickOff.y));
@@ -7667,7 +7668,7 @@ namespace Wassup.Bridge
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
         {
-            // defender-footprint unit 1 — (tileX,tileY) = footprint 앵커. 바인딩·DefenderTile·
+            // defender-footprint unit 1 — (tileX,tileY) = footprint 앵커. 바인딩·DefenderFootprint·
             // sim 위치·on-place/시너지/로그는 전부 대표 셀 기준(1×1 은 앵커=대표 셀).
             var cell = new Vector2Int(tileX, tileY);
             if (!CanPlaceDefenderAt(tileX, tileY, unitData, out var reason))
@@ -7676,7 +7677,7 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            var primary = FootprintMath.PrimaryCell(cell, unitData.Footprint);
+            var primary = cell;   // unit 10 — 바인딩 키 = 앵커
             OccupyDefenderFootprint(cell, unitData.Footprint);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
@@ -7705,8 +7706,8 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            // defender-footprint unit 1 — cell = 앵커, 등록·바인딩은 대표 셀 기준 (PlaceDefenderAs 와 동형).
-            var primary = FootprintMath.PrimaryCell(cell, unitData.Footprint);
+            // unit 10 — 등록·바인딩 키 = **앵커**. 대표 셀 은퇴.
+            var primary = cell;
             OccupyDefenderFootprint(cell, unitData.Footprint);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
@@ -8211,7 +8212,7 @@ namespace Wassup.Bridge
         }
 
         // defender-footprint unit 1 — cell = **대표 셀**. footprint 점유 등록(OccupyDefenderFootprint)은
-        // 호출자(배치 2경로) 몫이고, 이 함수는 바인딩·DefenderTile·sim 위치를 전부 그 한 칸에 건다.
+        // 호출자(배치 2경로) 몫이고, 이 함수는 바인딩·DefenderFootprint·sim 위치를 전부 그 한 칸에 건다.
         private Entity CreateDefenderEntity(
             Vector2Int cell,
             DefenderUnitData unitData,
@@ -8232,7 +8233,12 @@ namespace Wassup.Bridge
             // 지점이다(모든 배치 경로가 여기를 지난다). 재배치는 이 함수를 지나지 않으므로
             // 발화하지 않는다 — 기수가 안 변하니 알릴 것도 없다.
             DefenderPlaced?.Invoke(entity, unitData);
-            _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
+            // unit 10 — 저장값은 **앵커 + 크기**뿐이다. 「대표 셀」은 은퇴했다.
+            _em.AddComponentData(entity, new DefenderFootprint
+            {
+                anchor = new int2(cell.x, cell.y),
+                size = new int2(unitData.Footprint.x, unitData.Footprint.y),
+            });
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");
 #endif
@@ -8482,7 +8488,7 @@ namespace Wassup.Bridge
         // summon-patrol-defender unit 2 — 거점 순찰 아군(Patrol) 엔티티+뷰 생성.
         //
         // CreateDefenderEntity 를 재사용하지 않는 이유: 그쪽은 _defenderByTile 등록과
-        // DefenderTile 부착을 한다 — 배치 점유·재배치·DefenderDeathEvent·사직서 드랍을
+        // DefenderFootprint 부착을 한다 — 배치 점유·재배치·DefenderDeathEvent·사직서 드랍을
         // 통째로 끌고 들어온다. 순찰병은 그 어느 것도 타면 안 된다(README 계약 1).
         //
         // unit 9 — centerCell 은 박스 중심(소환사 셀)이고 homeCell 은 **이 유닛이 밟을 수

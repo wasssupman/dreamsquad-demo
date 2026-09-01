@@ -1116,7 +1116,7 @@ namespace Wassup.UI
                 anchor = scoutSnapped;
                 valid = bridge.CanPlaceDefenderAt(anchor.x, anchor.y, _armedUnit, out _);
             }
-            var fpPrimary = FootprintMath.PrimaryCell(anchor, fpSize);
+            var fpPrimary = anchor;   // unit 10 — 호버 등록 키 = 앵커
             bridge.SetPlacementRangeValidity(valid); // unit 3 — 스카우트도 같은 적색 채널(매 프레임, 전이만 반응)
             bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell
                            || !_boardScoutAnchor.HasValue || _boardScoutAnchor.Value != anchor;
@@ -1330,9 +1330,11 @@ namespace Wassup.UI
             // 즉시 꺼진다. 범위는 **하마 비행이 사는 동안** 유지하고 착지에 걷는다 — 탭에는 스카우트
             // 구간이 없어(D&D 의 드래그 · 탭투프레스의 프레스-드래그와 다른 점) 이 flourish 가 유일한
             // 범위 피드백이기 때문이다. 하마가 안 떴으면(폴백) 둘 다 거짓이라 즉시 소거된다.
-            // defender-footprint unit 2 — cell = 앵커. 범위 중심·하마 등록부(리뷰 H-2 로 대표 셀
-            // 등록으로 바뀜) 둘 다 대표 셀 기준으로 대조한다.
-            var peekRangeCell = FootprintMath.PrimaryCell(cell, unit != null ? unit.Footprint : Vector2Int.one);
+            // ⚠ **unit 10 — 여기는 겸직 지점이었다.** 한 값이 「사거리 링 중심」과 「하마 등록부
+            // 키」 둘을 하고 있었다. 1×1 이라 같은 값이어서 안 갈렸을 뿐이고, 대표 셀이 두 뜻을
+            // 겸직했다는 것의 실물 증거다. 지금은 **키(앵커)** 로 통일했고, 링 중심을 기하 중심으로
+            // 옮기는 것은 PR2 소관이다(뷰 좌표 축이라 여기서 셀로 표현할 수 없다).
+            var peekRangeCell = cell;
             while (_session.active || _activeDismounts.ContainsValue(peekRangeCell))
             {
                 bridge.SetPlacementRange(peekRangeCell, unit);
@@ -1457,8 +1459,9 @@ namespace Wassup.UI
                 // 유닛이 실제로 서는 **대표 셀** 기준이다(1×1 은 앵커와 동일).
                 // 리뷰 H-2 — 하마 착지 연출(PlayDeploymentPresentation)도 대표 셀로: 앵커로 넘기면
                 // 배치 링·VFX 가 좌하단 모서리에서 터져 폴백 경로(RunDeployment)와 자리가 갈린다.
-                var fpPrimary = FootprintMath.PrimaryCell(cell,
-                    session.unit != null ? session.unit.Footprint : Vector2Int.one);
+                // unit 10 — 착지 연출 자리. 앵커로 넘긴다(1×1 은 기하 중심과 동일).
+                // 다칸에서 링·VFX 를 기하 중심으로 옮기는 것은 PR2(뷰 좌표) 소관.
+                var fpPrimary = cell;
                 bool dismount = StartDropDismount(session.unit, fpPrimary, entity, presentAtLanding: !facing);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
@@ -1972,7 +1975,7 @@ namespace Wassup.UI
             // defender-footprint unit 2 — 자석이 셀 불변인 채 앵커만 옮길 수 있어 앵커 변경도 함께 본다.
             bool anchorChanged = !_session.anchorTile.HasValue || _session.anchorTile.Value != anchor;
             var fpSize = _session.unit != null ? _session.unit.Footprint : Vector2Int.one;
-            var primary = FootprintMath.PrimaryCell(anchor, fpSize);
+            var primary = anchor;   // unit 10 — 호버 키 = 앵커
             if (_session.hoverTile.HasValue && _session.hoverTile.Value != cell)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
 

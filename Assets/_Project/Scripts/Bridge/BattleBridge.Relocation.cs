@@ -10,7 +10,7 @@ using Wassup.Data;
 namespace Wassup.Bridge
 {
     // defender-relocation unit 0 — 배치된 방어유닛을 다른 Place 타일로 옮기는 relocate 절반.
-    // 점유·바인딩·DefenderTile 스왑은 확정 프레임, LocalTransform 은 착지 프레임(Finish) —
+    // 점유·바인딩·DefenderFootprint 스왑은 확정 프레임, LocalTransform 은 착지 프레임(Finish) —
     // 그 사이 뷰는 프리뷰가 비행한다(unit 3). 활성화는 기존 ActivateDeployedDefender 재사용:
     // _onPlaceTriggeredEntities 가드가 on-place/effect-tile 을 exactly-once 로 만들므로
     // 재배치가 어느 쪽도 재발화하지 않는다(spec README 계약 4).
@@ -134,7 +134,7 @@ namespace Wassup.Bridge
             return costRuntime == null || costRuntime.CanAfford(data.cost);
         }
 
-        // 확정 프레임 원자 처리 (spec README 계약 5): 점유·바인딩·DefenderTile 을 from→to 로
+        // 확정 프레임 원자 처리 (spec README 계약 5): 점유·바인딩·DefenderFootprint 을 from→to 로
         // 스왑하고 PendingDeployment 를 재부착(비타겟·비무장·시너지 제외 — 계약 2).
         // 엔티티 스폰·컷신·PlacementCommitted 는 지나지 않는다(계약 8).
         //
@@ -165,7 +165,7 @@ namespace Wassup.Bridge
                 return false;
             }
 
-            // defender-footprint unit 1 — footprint 단위 스왑. 바인딩 키·DefenderTile 은 새 대표 셀.
+            // defender-footprint unit 1 — footprint 단위 스왑. 바인딩 키·DefenderFootprint 은 새 대표 셀.
             var size = binding.data != null ? binding.data.Footprint : Vector2Int.one;
             // unit 2 — 제자리 재정비 정규화(CanRelocateDefender 와 같은 규칙 — 두 곳이 갈리면
             // 판정은 제자리인데 스왑이 이동해 점유가 어긋난다). 리뷰 M-6 — 등록 스냅샷 앵커 기준.
@@ -174,12 +174,16 @@ namespace Wassup.Bridge
                 var fromRect = RegisteredFootprintRect(from, size);
                 to = new Vector2Int(fromRect.xMin, fromRect.yMin);
             }
-            var toPrimary = FootprintMath.PrimaryCell(to, size);
+            // unit 10 — 바인딩 키·이름·순찰 앵커가 전부 **앵커**를 쓴다(대표 셀 은퇴).
+            var toPrimary = to;
             ReleaseDefenderFootprint(from);
             OccupyDefenderFootprint(to, size);
             _defenderByTile.Remove(from);
             _defenderByTile[toPrimary] = binding;
-            _em.SetComponentData(entity, new DefenderTile { cell = new int2(toPrimary.x, toPrimary.y) });
+            _em.SetComponentData(entity, new DefenderFootprint
+            {
+                anchor = new int2(to.x, to.y), size = new int2(size.x, size.y),
+            });
             _em.AddComponent<PendingDeployment>(entity);
             // unit 8 — on-place 재무장(계약 4). 이 한 줄이 재발동의 전부다: 착지 후 활성화가 부르는
             // TriggerDeploymentOnPlaceSkill 이 가드를 통과하게 된다. 효과 타일은 자기 가드를
@@ -308,7 +312,7 @@ namespace Wassup.Bridge
             ApplyRefitHeal(entity, healRatio);
         }
 
-        // unit 8 — 재정비 회복. Units 소유 버퍼에 브리지가 직접 append 하는 것은 DefenderTile 을
+        // unit 8 — 재정비 회복. Units 소유 버퍼에 브리지가 직접 append 하는 것은 DefenderFootprint 을
         // 직접 쓰는 것과 같은 격이다(계약 9). 신규 채널 0 — 회복 숫자와 VFX 는 기존
         // HealAppliedEventsSingleton 경로가 IncomingHeal 배수 시점에 알아서 낸다.
         private void ApplyRefitHeal(Entity entity, float healRatio)

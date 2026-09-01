@@ -10,7 +10,7 @@ namespace Wassup.Battle.Effects
     // AllyBuffFieldSystem 이 매 프레임 안에 있는 방어 유닛에게 짧은 모디파이어를 재발행하므로
     // 이탈·만료·사망이 전부 자연 소멸로 처리된다(revoke 프리미티브 불요).
     //
-    // 중심을 월드가 아니라 **셀**로 든다 — 멤버십 판정 상대가 DefenderTile.cell(int2)이라
+    // 중심을 월드가 아니라 **셀**로 든다 — 멤버십 판정 상대가 DefenderFootprint.cell(int2)이라
     // 월드↔셀 변환을 매 프레임 반복할 이유가 없다.
     public struct AllyBuffField : IComponentData
     {

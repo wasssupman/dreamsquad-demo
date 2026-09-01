@@ -48,12 +48,12 @@ namespace Wassup.Battle.Effects
 
             // Defender: 배치 셀(권위값).
             foreach (var (tile, entity) in
-                     SystemAPI.Query<RefRO<DefenderTile>>()
+                     SystemAPI.Query<RefRO<DefenderFootprint>>()
                               .WithAll<DefenderUnitTag>()
                               .WithNone<PendingDeployment, DeadTag>()
                               .WithEntityAccess())
             {
-                TryConsume(tile.ValueRO.cell, entity, ref byCell, ref ecb, statQ, config, em);
+                TryConsume(tile.ValueRO.anchor, entity, ref byCell, ref ecb, statQ, config, em);
             }
 
             // Enemy: 현재 위치 → 셀.
