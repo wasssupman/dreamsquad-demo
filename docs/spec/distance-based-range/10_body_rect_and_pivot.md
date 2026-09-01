@@ -90,6 +90,26 @@
   오프스크린 렌더로 세로로 긴 둥근 사각형 확인(2026-09-01)
 - ㉱ ~14곳을 rect 질문 또는 지정 셀로 재판정
 
+### 역양자화 처분 (PR2)
+
+`AnchorCellOf` 하나로 수렴시켰다 — 「이 유닛은 어느 칸에 있나」의 **유일한 답**이고,
+`DefenderFootprint` 가 있으면 **저장된 앵커**를, 없으면 `WorldToCell(pos)` 를 준다.
+sim 위치가 기하 중심이라 짝수 변에서는 그 점이 **셀 경계** 위이고, 거기에 `WorldToCell` 을
+걸면 어느 칸이 나올지를 **설계가 아니라 부동소수점이 정한다** — 은퇴시킨 대표 셀과 같은 병이다.
+
+| 지점 | 무엇 | 처분 |
+|---|---|---|
+| `AttackSystem:507` `atkCell` | 레인·폴백 후보·박스의 기준 칸 | **앵커** |
+| `AttackSystem:445` `sCell` | 소환사 순찰 박스 중심 | **앵커** |
+| `AttackSystem:321` `bCasterCell` | 폭탄맨 자기 칸 | **앵커** |
+| `AttackSystem:254` `casterCell` | 해저드 캐스트 — `castEvt.casterPos` 로 오므로 엔티티가 없다 | 후속 |
+| `ProjectileEmitterSystem:88·126` | 융단폭격 풀 · 패턴 스코프 | 후속 |
+| `ProjectileHitSystem:696` · `BounceRetarget:56` | **착탄점**이지 유닛 칸이 아니다 | 해당 없음 |
+| `ProjectileEmitterSystem` 방향 레인 | — | **unit 11 에서 은퇴** |
+
+⚠ 「앵커는 유닛이 서 있는 칸이 아니라 **정체성 키**」라는 것이 이 함수의 계약이다.
+몸 전체가 필요한 질문(겹침·광역)은 셀 하나가 아니라 `FootprintMath.Cells` 로 가야 한다.
+
 ## 완료 기준
 
 - [ ] PR1: 골든 **무변화**(1×1 전제). 3중 조사 목록을 문서에 남긴다

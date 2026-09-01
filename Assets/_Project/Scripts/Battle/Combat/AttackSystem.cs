@@ -30,6 +30,7 @@ namespace Wassup.Battle.Combat
         // 핸들 갱신 순서에 기대지 않는다.
         private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
         private ComponentLookup<Wassup.Battle.Units.BodyExtent> _bodyExtentLookup;
+        private ComponentLookup<Wassup.Battle.Units.DefenderFootprint> _footprintLookup;
 
         private EntityQuery _attackEventsQuery;
         private EntityQuery _ccEventsQuery;
@@ -39,6 +40,7 @@ namespace Wassup.Battle.Combat
         {
             _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             _bodyExtentLookup = state.GetComponentLookup<Wassup.Battle.Units.BodyExtent>(isReadOnly: true);
+            _footprintLookup = state.GetComponentLookup<Wassup.Battle.Units.DefenderFootprint>(isReadOnly: true);
             state.RequireForUpdate<AttackState>();
             _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<UnitAttackVisualEventsSingleton>());
             _ccEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
@@ -49,6 +51,7 @@ namespace Wassup.Battle.Combat
         {
             _bodyRadiusLookup.Update(ref state);
             _bodyExtentLookup.Update(ref state);
+            _footprintLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
 
             // Snapshot attackable targets into native arrays so the unified attacker
@@ -321,7 +324,7 @@ namespace Wassup.Battle.Combat
                         var bomb = bombLauncherLookup[attackerEntity];
                         var bProjRef = projectileRefLookup[attackerEntity];
                         float3 bPos = transform.ValueRO.Position;
-                        int2 bCasterCell = GridMath.WorldToCell(bPos, tileSize, gridSize, origin: ffOrigin);
+                        int2 bCasterCell = AnchorCellOf(attackerEntity, bPos, tileSize, gridSize, ffOrigin, _footprintLookup);
                         int bombPick = PickFallbackTarget(needleScratch,
                             targetEntities, targetTransforms, targetFactions, targetTraversalLayers, targetSimIds,
                             attackerEntity, bPos, bCasterCell,
@@ -445,7 +448,7 @@ namespace Wassup.Battle.Combat
                         // «사거리에 적이 들면 공격(=소환)»하는 평범한 유닛이고, 게이트가 보는
                         // 박스와 순찰병이 지킬 박스와 배치 프리뷰가 칠한 박스가 **같은 하나**다.
                         float3 sPos = transform.ValueRO.Position;
-                        int2 sCell = GridMath.WorldToCell(sPos, tileSize, gridSize, origin: ffOrigin);
+                        int2 sCell = AnchorCellOf(attackerEntity, sPos, tileSize, gridSize, ffOrigin, _footprintLookup);
                         int coverTiles = GridMath.RangeToTiles(attack.ValueRO.range);
                         bool gateOpen = summoner.hasSummonedOnce;
                         if (!gateOpen && !alivePatrol && summoner.patrolDataIndex >= 0)
@@ -507,7 +510,7 @@ namespace Wassup.Battle.Combat
                 // unit 9 — **판정·비행거리는 연속**, 격자 루프(레인·폴백 후보·박스)만 정수다.
                 float rangeTiles = attack.ValueRO.range;
                 int tileRange = GridMath.RangeToTiles(rangeTiles);
-                int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
+                int2 atkCell = AnchorCellOf(attackerEntity, atkPos, tileSize, gridSize, ffOrigin, _footprintLookup);
                 // ⚠ 「사거리 2차 게이트는 **둘 다 연속 이동**일 때만」은 은퇴한 규칙이다 —
                 // unit 4a 가 `bothContinuous` 를 없애 술어가 하나가 됐다. 그 조건을 읽던
                 // `attackerIsContinuous` 지역 변수도 같이 지웠다(할당만 되고 소비처 0이었다).
@@ -2148,6 +2151,24 @@ namespace Wassup.Battle.Combat
         // 본 공격은 유닛의 저작 마스크(AttackState.targetMask, 적 거점 포함)를 따른다.
         // goal-tower-siege unit 1 — PastGoal 제외는 폐기됐다(골에 붙은 적도 유효 대상).
         // 대상의 몸 반경(타일). 컴포넌트가 없으면 0 = 점(오늘의 저작 전부).
+
+        // ⚠ **unit 10 — 「이 유닛은 어느 칸에 있나」의 유일한 답.**
+        //
+        // sim 위치가 footprint **기하 중심**으로 옮겨졌고(PR2), 짝수 변이면 그 점은 **셀 경계**
+        // 위다. 거기에 `WorldToCell` 을 걸면 어느 칸이 나올지를 **설계가 아니라 부동소수점이
+        // 정한다**(결정론은 유지되나 자의적 — 은퇴시킨 「대표 셀」과 같은 병이다).
+        //
+        // 그래서 격자 질의는 **저장된 앵커**로 답한다. 앵커는 「유닛이 서 있는 칸」이 아니라
+        // **정체성 키**이고, 그 사실이 이름에 박혀 있어야 다음 사람이 중심으로 오해하지 않는다.
+        // 진짜로 몸 전체가 필요한 질문(겹침·광역)은 셀 하나가 아니라 `FootprintMath.Cells` 로 가라.
+        //
+        // 1×1(오늘 전 저작)이면 앵커 = 기하 중심 = `WorldToCell(pos)` 라 무회귀다.
+        static int2 AnchorCellOf(Entity e, float3 pos, float tileSize, int2 gridSize, float3 origin,
+                                 in ComponentLookup<Wassup.Battle.Units.DefenderFootprint> fps)
+            => fps.HasComponent(e)
+                ? fps[e].anchor
+                : GridMath.WorldToCell(pos, tileSize, gridSize, origin: origin);
+
         static float BodyRadiusOf(Entity e, in ComponentLookup<Wassup.Battle.Units.HitRadius> l)
             => l.HasComponent(e) ? l[e].value : 0f;
 
