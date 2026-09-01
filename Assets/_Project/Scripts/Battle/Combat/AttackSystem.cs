@@ -501,7 +501,9 @@ namespace Wassup.Battle.Combat
 
                 // Find nearest in-range target allowed by this attacker's mask.
                 float3 atkPos = transform.ValueRO.Position;
-                int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
+                // unit 9 — **판정·비행거리는 연속**, 격자 루프(레인·폴백 후보·박스)만 정수다.
+                float rangeTiles = attack.ValueRO.range;
+                int tileRange = GridMath.RangeToTiles(rangeTiles);
                 int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
                 // ⚠ 「사거리 2차 게이트는 **둘 다 연속 이동**일 때만」은 은퇴한 규칙이다 —
                 // unit 4a 가 `bothContinuous` 를 없애 술어가 하나가 됐다. 그 조건을 읽던
@@ -613,7 +615,7 @@ namespace Wassup.Battle.Combat
                     if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // class not allowed
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
-                    if (!AttackReach.InReach(atkPos, targetPos, tileRange, tileSize,
+                    if (!AttackReach.InReach(atkPos, targetPos, rangeTiles, tileSize,
                                              BodyRadiusOf(attackerEntity, _bodyRadiusLookup),
                                              BodyRadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, occupiedCellsLookup, hasFlowField, flowField, out var nearestPos);
@@ -766,7 +768,7 @@ namespace Wassup.Battle.Combat
                             // (unit 4d). 셀만 보면 락을 문 뒤로는 몸 거리가 영영 적용되지 않고,
                             // EnemyAiState 쪽 미러와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
                             keepLock = TargetPersistence.KeepsLock(
-                                true, atkPos, curPos, tileRange, tileSize,
+                                true, atkPos, curPos, rangeTiles, tileSize,
                                 BodyRadiusOf(attackerEntity, _bodyRadiusLookup),
                                 BodyRadiusOf(cur, _bodyRadiusLookup));
                         }
@@ -809,7 +811,7 @@ namespace Wassup.Battle.Combat
                         // distance-based-range unit 1 — 어그로 sticky 도 **같은 술어**를 지난다.
                         // 오늘은 가디언이 타일 고정이라 2차 게이트가 안 걸려 결과가 같지만,
                         // 인라인으로 두면 자를 바꾸는 순간 이 한 곳만 옛 답을 낸다.
-                        if (AttackReach.InReach(atkPos, gPos, tileRange, tileSize,
+                        if (AttackReach.InReach(atkPos, gPos, rangeTiles, tileSize,
                                                 BodyRadiusOf(attackerEntity, _bodyRadiusLookup), BodyRadiusOf(g, _bodyRadiusLookup)))
                         {
                             bestTarget = g;
@@ -842,7 +844,7 @@ namespace Wassup.Battle.Combat
                             int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
                             // unit 1 수렴 — 락 유지도 선정과 같은 술어를 지난다.
                             if (TargetPersistence.KeepsLock(   // 유지 — unit 4d
-                                    true, atkPos, ltPos, tileRange, tileSize,
+                                    true, atkPos, ltPos, rangeTiles, tileSize,
                                     BodyRadiusOf(attackerEntity, _bodyRadiusLookup), BodyRadiusOf(lt, _bodyRadiusLookup)))
                             { bestTarget = lt; bestTargetPos = ltPos; }
                             else bestTarget = Entity.Null; // out of range → lapse
@@ -909,7 +911,7 @@ namespace Wassup.Battle.Combat
                             dcurPos = aggroTransformLookup.HasComponent(dcur)
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
                             dKeep = TargetPersistence.KeepsLock(     // 유지 — unit 4d
-                                true, atkPos, dcurPos, tileRange, tileSize,
+                                true, atkPos, dcurPos, rangeTiles, tileSize,
                                 BodyRadiusOf(attackerEntity, _bodyRadiusLookup),
                                 BodyRadiusOf(dcur, _bodyRadiusLookup));
                         }
@@ -956,7 +958,7 @@ namespace Wassup.Battle.Combat
                             ? aggroTransformLookup[ct].Position : bestTargetPos;
                         int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
                         if (TargetPersistence.KeepsLock(   // 유지 — unit 4d
-                                true, atkPos, ctPos, tileRange, tileSize,
+                                true, atkPos, ctPos, rangeTiles, tileSize,
                                 BodyRadiusOf(attackerEntity, _bodyRadiusLookup), BodyRadiusOf(ct, _bodyRadiusLookup)))
                         { bestTarget = ct; bestTargetPos = ctPos; }
                         else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
@@ -1095,7 +1097,7 @@ namespace Wassup.Battle.Combat
                     doResolve && bestTarget == Entity.Null && isFacingDirectional;
                 if (resolveFacingDirectionalWithoutWitness)
                 {
-                    bestTargetPos = atkPos + new float3(facing.x, 0f, facing.y) * (tileRange * tileSize);
+                    bestTargetPos = atkPos + new float3(facing.x, 0f, facing.y) * (rangeTiles * tileSize);
                 }
                 else if (resolveCommittedDirectionalWithoutWitness)
                 {
@@ -1320,7 +1322,7 @@ namespace Wassup.Battle.Combat
                                     payload = projRef.payload,
                                     origin = atkPos,
                                     direction = fireDir,
-                                    maxDistance = tileRange * tileSize,
+                                    maxDistance = rangeTiles * tileSize,
                                     damage = projectileDamage,
                                     speed = projRef.speed,
                                     hitThreshold = projRef.hitThreshold,
@@ -1561,7 +1563,7 @@ namespace Wassup.Battle.Combat
                                             int2 tgtCellAoE = GridMath.WorldToCell(aoePos, tileSize, gridSize, origin: ffOrigin);
                                             // unit 1 수렴 — 다중타격의 2번째 이후 대상도 **첫 대상과 같은 술어**를
                                             // 지난다. 갈려 있으면 「내가 때릴 수 있는 적」의 정의가 발마다 다르다.
-                                            if (!AttackReach.InReach(atkPos, aoePos, tileRange, tileSize,
+                                            if (!AttackReach.InReach(atkPos, aoePos, rangeTiles, tileSize,
                                                                      BodyRadiusOf(attackerEntity, _bodyRadiusLookup),
                                                                      BodyRadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
                                             float d2 = DistanceSqToTarget(atkPos, targetEntities[i], aoePos, occupiedCellsLookup, hasFlowField, flowField, out _);

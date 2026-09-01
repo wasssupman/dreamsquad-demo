@@ -25,6 +25,10 @@ namespace Wassup.Tests.EditMode
         private static float3 At(float x, float z) => new float3(x, 0f, z);
         private static bool R(float ax, float az, float bx, float bz, int range, float body = Body)
             => AttackReach.InReach(At(ax, az), At(bx, bz), range, Tile, Body, body);
+        // unit 9 — 비정수 사거리용. `range` 는 무시되고 `rangeF` 가 쓰인다.
+        private static bool R(float ax, float az, float bx, float bz, int range,
+                              float body, float rangeF)
+            => AttackReach.InReach(At(ax, az), At(bx, bz), rangeF, Tile, Body, body);
 
         [Test]
         public void Range1_KeepsAllEightNeighbours_IncludingDiagonal()
@@ -100,6 +104,35 @@ namespace Wassup.Tests.EditMode
             // 몸 0.9 를 주면 상한이 **정확히 0.9 만큼** 올라간다: 1.25 → 2.15.
             Assert.IsTrue(R(0, 0, 2.1f, 0, 1, body: 0.9f), "몸 0.9 → 상한 2.15 안");
             Assert.IsFalse(R(0, 0, 2.3f, 0, 1, body: 0.9f), "2.3 은 그 상한 밖 — 딱 0.9 만 늘었다");
+        }
+
+        // ── unit 9: 사거리는 **연속 반지름**이다 ────────────────────────────
+        // 시트의 `2` 는 「타일 2개 거리」이고 `0.1` 은 「타일 길이의 0.1」이다(사용자 결정
+        // 2026-09-01). 정수일 이유가 없다 — 양자화(`(int)(r+0.5)`)가 판정 경로에서 빠졌다.
+        [Test]
+        public void FractionalRange_IsNotQuantized()
+        {
+            // 2.5 는 3 으로 반올림되지 않는다. 상한 = 2.5 + 0.25 + 0.25 = 3.0.
+            Assert.IsTrue(R(0, 0, 2.95f, 0, 0, body: Body, rangeF: 2.5f), "2.95 ≤ 3.0");
+            Assert.IsFalse(R(0, 0, 3.05f, 0, 0, body: Body, rangeF: 2.5f), "3.05 > 3.0 — 3 으로 반올림됐다면 닿았을 것");
+
+            // 아주 작은 반지름도 살아 있다. 옛 `(int)(0.1+0.5)` 는 **0** 이었다.
+            Assert.IsTrue(R(0, 0, 0.55f, 0, 0, body: Body, rangeF: 0.1f), "0.55 ≤ 0.1+0.5");
+            Assert.IsFalse(R(0, 0, 0.65f, 0, 0, body: Body, rangeF: 0.1f), "0.65 > 0.6");
+        }
+
+        // 격자 파생값은 **덮는 쪽**이다 — 모자라면 쏠 수 있는 칸이 BFS 소스에서 빠져
+        // 적이 더 멀리서 멈춘다(unit 4c 가 고친 동결의 사촌).
+        [Test]
+        public void GridDerivedTiles_CeilsToCover()
+        {
+            Assert.AreEqual(3, Wassup.Battle.Movement.GridMath.RangeToTiles(2.4f), "2.4 → 3 (덮는다)");
+            Assert.AreEqual(3, Wassup.Battle.Movement.GridMath.RangeToTiles(3f), "정수는 그대로");
+            Assert.AreEqual(1, Wassup.Battle.Movement.GridMath.RangeToTiles(0.1f), "0.1 → 1, 0 이 아니다");
+            // 두 벌이 갈리면 이전한 스킬과 안 한 스킬이 다른 칸을 고른다.
+            for (float r = 0f; r <= 5f; r += 0.1f)
+                Assert.AreEqual(Wassup.Battle.Movement.GridMath.RangeToTiles(r),
+                                Wassup.Skills.SkillMath.RangeToTiles(r), $"r={r:F1} 에서 두 구현이 갈렸다");
         }
 
         [Test]

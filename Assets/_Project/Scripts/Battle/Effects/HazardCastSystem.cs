@@ -107,7 +107,9 @@ namespace Wassup.Battle.Effects
                 float3 casterPos = transform.ValueRO.Position;
                 int2 casterCell = GridMath.WorldToCell(casterPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                 bool casterIsContinuous = _casterPathLookup.HasComponent(casterEntity);
-                int tileRange = GridMath.RangeToTiles(cast.ValueRO.range);
+                // unit 9 — 캐스트 사거리도 연속이다. 이 값의 유일한 소비처가 술어라
+                // 격자로 접을 이유가 없다.
+                float tileRange = cast.ValueRO.range;
                 int mask = cast.ValueRO.targetMask;
                 float bestSq = float.MaxValue;
                 int bestSimId = SimEntityId.Unassigned;

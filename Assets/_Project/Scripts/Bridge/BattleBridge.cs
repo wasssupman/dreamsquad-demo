@@ -6474,6 +6474,10 @@ namespace Wassup.Bridge
                 _em.AddComponentData(entity, new Health { value = s.data.health, max = s.data.health });
                 _em.AddBuffer<IncomingDamage>(entity);
                 _em.AddComponentData(entity, new FactionTag { value = faction });
+                // distance-based-range unit 9 — 거점도 몸을 갖는다. `AttackState` 를 받는
+                // bake 지점 넷(방어유닛·순찰·적·거점) 중 여기만 빠지면 거점의 도달 거리가
+                // 조용히 0.5 줄고, 대상일 때도 몸이 0 이 된다.
+                _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = s.data.bodyRadius });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));
 
                 // unit 10 — 적 마음 축의 활성 조건을 여기서 확정한다(저작에서 오므로 덱만
@@ -7861,7 +7865,9 @@ namespace Wassup.Bridge
         public void SetPlacementRange(Vector2Int center, DefenderUnitData unit)
         {
             if (tilemapMapView == null || unit == null) return;
-            int tileRange = GridMath.RangeToTiles(unit.attackRange);
+            // unit 9 — 원형 프리뷰는 **연속 반지름**을 그대로 쓴다. 레인(정수 칸)만 접는다.
+            float rangeTiles = unit.attackRange;
+            int tileRange = GridMath.RangeToTiles(rangeTiles);
             // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
@@ -7874,8 +7880,8 @@ namespace Wassup.Bridge
             // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
             if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
-            else tilemapMapView.SetPlacementRange(center, tileRange,
-                     selfBodyRadiusTiles: unit != null ? unit.bodyRadius : 0f);
+            else tilemapMapView.SetPlacementRange(center, rangeTiles,
+                     selfBodyRadiusTiles: unit.bodyRadius);
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
             // (실측: 풀 4개 생성, 활성 0).

@@ -1053,7 +1053,10 @@ namespace Wassup.Core
         // (결정 4 — 저작이 칸 단위 조준이다). 표기가 그 자를 따라가는 것이 맞다.
         // `selfBodyRadiusTiles` — unit 9. 도달 = `사거리 + 내몸 + 상대몸`이고 링은 앞의 둘을
         // 그린다(대상 몸은 대상마다 달라 마크가 말한다). 상수 시절엔 이 값이 0.5 고정이었다.
-        public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false,
+        // `tileRange` 는 **연속 반지름**이다(unit 9) — 저작 `attackRange` 를 그대로 받는다.
+        // 칠할 칸을 훑는 루프만 정수 경계가 필요하고, 그건 `ceil` 로 **덮는다**(모자라면
+        // 실제로 닿는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다).
+        public void SetPlacementRange(Vector2Int center, float tileRange, bool includeCenter = false,
                                       bool squareShape = false, float selfBodyRadiusTiles = 0f)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
@@ -1061,8 +1064,9 @@ namespace Wassup.Core
             EnsureRangeTilemap();
             _rangeAlphaMul = 1f;
             _rangeAimStyle = false;
-            for (int dx = -tileRange; dx <= tileRange; dx++)
-            for (int dz = -tileRange; dz <= tileRange; dz++)
+            int scan = Mathf.CeilToInt(tileRange + selfBodyRadiusTiles);
+            for (int dx = -scan; dx <= scan; dx++)
+            for (int dz = -scan; dz <= scan; dz++)
             {
                 if (!includeCenter && dx == 0 && dz == 0) continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);

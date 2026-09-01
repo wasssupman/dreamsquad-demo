@@ -83,7 +83,8 @@ namespace Wassup.Battle.Combat
                 float3 atkPos = transform.ValueRO.Position;
                 int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
                 bool hasAttack = attackLookup.HasComponent(enemyEntity);
-                int tileRange = hasAttack ? GridMath.RangeToTiles(attackLookup[enemyEntity].range) : 0;
+                // unit 9 — 판정은 연속 반지름을 그대로 받는다(양자화 없음).
+                float tileRange = hasAttack ? attackLookup[enemyEntity].range : 0f;
                 int mask = hasAttack ? attackLookup[enemyEntity].targetMask : 0;
                 byte targetTraversalLayers = hasAttack
                     ? attackLookup[enemyEntity].targetTraversalLayers
@@ -147,7 +148,7 @@ namespace Wassup.Battle.Combat
             => l.HasComponent(e) ? l[e].value : 0f;
 
         static bool HasFireTarget(
-            Entity attacker, int2 atkCell, float3 atkPos, int tileRange, int mask,
+            Entity attacker, int2 atkCell, float3 atkPos, float tileRange, int mask,
             byte attackTargetLayers,
             in NativeArray<Entity> candEntities,
             in NativeArray<LocalTransform> candTransforms,

@@ -59,6 +59,9 @@ namespace Wassup.Tests.EditMode
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
+            // unit 9 — 프로덕션 스폰은 `HitRadius` 를 **무조건** 붙인다(기본 0.25).
+            // 없으면 자기 몸이 0 이 되어 도달이 0.25 줄고, 픽스처만 프로덕션과 갈린다.
+            _em.AddComponentData(e, new Wassup.Battle.Units.HitRadius { value = 0.25f });
             _em.AddComponentData(e, new Health { value = 320f, max = 320f });
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponent<AttackUnitTag>(e);
@@ -99,6 +102,7 @@ namespace Wassup.Tests.EditMode
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
+            _em.AddComponentData(e, new Wassup.Battle.Units.HitRadius { value = 0.25f });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddComponent<DefenderUnitTag>(e);
             _em.AddBuffer<IncomingDamage>(e);

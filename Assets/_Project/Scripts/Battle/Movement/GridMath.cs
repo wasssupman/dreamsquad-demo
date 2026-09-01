@@ -42,9 +42,19 @@ namespace Wassup.Battle.Movement
         public static int ChebyshevDistance(int2 a, int2 b)
             => math.cmax(math.abs(a - b));
 
-        // half-away-from-zero rounding — avoids banker's rounding from math.round.
+        // ⚠ **격자 계층 전용이다**(distance-based-range unit 9). 사거리 판정은 이 함수를
+        // 지나지 않는다 — `attackRange` 는 **타일 길이 단위의 연속 반지름**이고(사용자 결정
+        // 2026-09-01) 술어는 실수를 그대로 받는다. 여기서 반올림하면 `0.1 → 0`, `2.5 → 3` 이다.
+        //
+        // 남은 소비처는 **정수 칸이 실제로 필요한 곳**뿐이다: BFS 소스 디스크 수집(어그로 추격·
+        // 보스 사냥·순찰), 소환사 순찰 박스, 레인 길이, 스킬 광역(칸 단위 저작).
+        //
+        // ⚠ **`ceil` 이다(반올림 아님).** 소스 디스크는 사격 가능 칸을 **덮어야** 한다 —
+        // `round` 면 사거리 2.4 가 2 로 줄어 쏠 수 있는 칸이 소스에서 빠지고 적이 더 멀리서
+        // 멈춘다. 넘치게 덮은 부분은 unit 4c 의 접근 보정이 흡수한다(그래서 4c 가 먼저다).
+        // 저작이 전부 정수인 오늘은 `round` 와 답이 같다 — 바꾸기 공짜인 시점이다.
         public static int RangeToTiles(float r)
-            => (int)(r + 0.5f);
+            => (int)math.ceil(r);
 
         // continuous-agent-movement unit 4 후속 — flow 단위벡터 → 인접 셀 스텝.
         //

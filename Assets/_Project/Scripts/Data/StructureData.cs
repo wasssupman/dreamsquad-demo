@@ -37,7 +37,12 @@ namespace Wassup.Data
         [Header("Attack (Instinct only)")]
         [Tooltip("이 본능이 노리는 대상(진영 × 종류). 기본 = 방어 유닛만(포탑).")]
         public Faction targetFactions = Faction.DefenderUnit;
+        // ⚠ **연속 반지름**(distance-based-range unit 9) — 타일 길이 단위.
         [Min(0f)] public float attackRange = 3f;
+        // unit 9 — 자기 중심 기준 커버 범위(타일). 상수 0.5 가 은퇴하면서 거점도 자기 몸을
+        // 들고 와야 한다 — 안 그러면 도달 거리가 조용히 0.5 줄어든다.
+        // 기본 0.25 = 1×1 유닛과 같다. 거점의 3×3 **점유**는 별개 축(반폭)이고 미구현이다.
+        [Min(0f)] public float bodyRadius = 0.25f;
         [Min(0.01f)] public float attackCooldown = 1.5f;
         [Min(0f)] public float attackDamage = 10f;
         [Tooltip("본능의 투사체. 없으면 unit 5 가 발사를 건너뛴다.")]

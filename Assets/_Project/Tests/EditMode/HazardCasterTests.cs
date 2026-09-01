@@ -111,6 +111,8 @@ namespace Wassup.Tests.EditMode
             var entity = _em.CreateEntity();
             _em.AddComponent<DefenderUnitTag>(entity);
             _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
+            // unit 9 — 프로덕션 스폰은 `HitRadius` 를 무조건 붙인다(기본 0.25).
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = 0.25f });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new HazardCastState
             {
@@ -137,6 +139,8 @@ namespace Wassup.Tests.EditMode
         {
             var entity = _em.CreateEntity();
             _em.AddComponentData(entity, new FactionTag { value = Faction.EnemyUnit });
+            // unit 9 — 프로덕션 스폰은 `HitRadius` 를 무조건 붙인다(기본 0.25).
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = 0.25f });
             // ⚠ 라이브 악몽은 이 태그를 갖는다. 없으면 어댑터의 적 후보 풀 밖이라
             // 스킬 레이어가 이 대상을 못 가리킨다(이 시스템의 대상 쿼리는 태그를
             // 안 보므로 선정 자체는 예전과 같다 — 달라지는 것은 «가리킬 수 있나»뿐이다).

@@ -33,7 +33,10 @@ namespace Wassup.Skills
         //
         // ⚠ tileSize 를 안 받는다 — 원본도 안 받는다(사거리가 이미 타일 단위 축이다).
         // 나누는 순간 두 구현이 갈린다.
-        public static int RangeToTiles(float range) => (int)(range + 0.5f);
+        // unit 9 — `GridMath.RangeToTiles` 와 같은 규칙(**ceil**, 격자 전용).
+        // `math` 를 안 부르는 이유는 이 어셈블리가 Unity.Mathematics 없이 컴파일되기 때문.
+        public static int RangeToTiles(float range)
+            => range <= 0f ? 0 : (int)range + ((int)range == range ? 0 : 1);
 
         // 거리² 오름차순으로 가까운 것부터 `cap` 개를 고른다.
         //
