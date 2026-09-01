@@ -249,9 +249,18 @@ namespace Wassup.Battle.Movement
                                 // 순찰 보정이 `Passable()` 마스크 질의로 판정하는 것과 같은 취지다.
                                 //
                                 // ⚠ **소스 영역(dist 0)을 벗어나는 스텝은 취하지 않는다.** 벗어나면
-                                // 다음 프레임 필드 하강이 되돌려 **왕복**이 된다. 가디언이 움직여
-                                // 필드가 stale 해지는 경우(오늘 저작 0종이지만 «오늘은 안 난다» 를
-                                // 주석으로 다시 쓰지 않는다)에도 이 검사가 구조적으로 막는다.
+                                // 다음 프레임 필드 하강이 되돌려 **왕복**이 된다.
+                                //
+                                // ⚠ 이 검사가 막는 것은 **왕복이지 동결이 아니다.** 가디언이 움직여
+                                // 필드가 stale 해지면 적은 **옛 디스크 가장자리에서 정지한다**(양축이
+                                // 이탈이라 거부 → `chaseMoved` false). 근본 수정은 「가디언 셀 변화 시
+                                // 필드 재굽기 또는 어그로 해제」이고 여기 없다 — 오늘 이동 가디언
+                                // 저작이 0종이라 도달 불가지만, **그 사실에 기대는 주석을 다시 쓰지 않기
+                                // 위해** 무엇이 안 고쳐졌는지를 여기 적어 둔다.
+                                //
+                                // ⚠ 외력은 이 불변식 **밖**이다 — 아래 적용 합성이 impulse 를 포함하므로
+                                // 넉백이 낀 프레임엔 소스 밖으로 나갈 수 있다. 의도된 것이다(넉백은 원래
+                                // 소스 안팎을 가리지 않는다).
                                 float2 taken = float2.zero;
                                 for (int a = 0; a < 2 && math.lengthsq(taken) < 1e-6f; a++)
                                 {
@@ -262,8 +271,12 @@ namespace Wassup.Battle.Movement
                                         float3.zero, field.tileSize, follow.ValueRO.radius, in nav);
                                     if (math.lengthsq(p - current) < 1e-8f) continue;          // 막혔다
                                     int2 pCell = GridMath.WorldToCell(p, field.tileSize, field.gridSize, origin: field.origin);
-                                    if (firingDist.IsCreated
-                                        && firingDist[GridMath.CellIndex(pCell, field.gridSize)] != 0) continue;  // 소스 이탈
+                                    // fail-closed — 필드가 없으면 이탈 검사를 못 하므로 스텝도 안 취한다.
+                                    // (오늘 `arrivedAtFiringCell` 은 `firingDist` 와 같은 블록에서만 서므로
+                                    //  도달 불가한 방어다. 나중에 다른 곳에서 서면 검사가 조용히 빠지는 쪽이 아니라
+                                    //  보정이 안 도는 쪽으로 실패해야 한다.)
+                                    if (!firingDist.IsCreated
+                                        || firingDist[GridMath.CellIndex(pCell, field.gridSize)] != 0) continue;
                                     taken = axis;
                                 }
                                 if (math.lengthsq(taken) > 1e-6f)

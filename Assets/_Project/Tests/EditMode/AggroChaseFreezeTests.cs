@@ -48,10 +48,14 @@ namespace Wassup.Tests.EditMode
 
         // 프로덕션의 정지 조건. **여기가 유일한 사거리 질의다** — MovementSystem 은 이걸 안 하고
         // `ai` 를 읽기만 한다(`EnemyAiStateSystem` 이 [UpdateBefore] 로 굽는다).
-        static bool StillChasing(float3 p, float3 origin, int tileRange)
+        // ⚠ 대상 몸 반경을 **명시 인자로 뚫어 둔다.** 프로덕션은 `BodyRadiusOf(g, _bodyRadiusLookup)`
+        // 를 넘기고(`EnemyAiStateSystem:109`), 오늘 방어유닛 `HitRadius` 저작이 0 이라 답이 같을 뿐이다
+        // — unit 6 이 몸을 저작하는 순간 하네스가 조용히 갈린다.
+        static bool StillChasing(float3 p, float3 origin, int tileRange, float guardianBody = 0f)
             => EnemyAiStateSystem.Evaluate(
                    aggroed: true,
-                   guardianInRange: AttackReach.InReach(p, GuardianPos(origin), tileRange, TileSize),
+                   guardianInRange: AttackReach.InReach(
+                       p, GuardianPos(origin), tileRange, TileSize, guardianBody),
                    hasFireTarget: false) == AiState.Chasing;
 
         // 보정 **없이** 필드만 = unit 4a~4c 사이의 동작.
@@ -69,6 +73,9 @@ namespace Wassup.Tests.EditMode
         }
 
         // MovementSystem 추격 분기 전체. 보정 게이트·폴백축·소스 이탈 금지까지 같은 구조.
+        // ⚠ **벽 판정은 근사다** — 프로덕션은 `ComposeMove` → `AgentCollision.Resolve`(에이전트 반경
+        // standoff · 교차축 스윕 · 프레임 변위 클램프)인데 여기는 도착 **셀** 질의 하나다.
+        // 그래서 이 하네스는 사거리 기하를 증언하지, 충돌 해소를 증언하지 않는다.
         static float3 WalkWithCorrection(in NativeArray<int> dist, in NativeArray<byte> mask,
                                          float3 start, float3 origin, int tileRange,
                                          int maxSteps, out int corrections)
@@ -151,26 +158,20 @@ namespace Wassup.Tests.EditMode
             finally { dist.Dispose(); }
         }
 
-        // ── 폴백축: 지배축이 벽이면 나머지 축으로 간다 ────────────────────────
-        [Test]
-        public void BlockedDominantAxis_FallsBackToSecondary()
-        {
-            const int tileRange = 1;
-            var o = float3.zero;
-            var dist = BuildField(tileRange, out _, wallCol: new int2(5, 0));
-            var mask = OpenMask(new int2(5, 0));
-            try
-            {
-                // 벽(x=5) 오른쪽에서 출발 — 지배축(-x)이 막히는 구간을 지난다.
-                var stopped = WalkWithCorrection(dist, mask, new float3(6f, 0f, 6f), o,
-                                                 tileRange, 600, out int corr);
-                Assert.GreaterOrEqual(corr, 0, "보정 횟수는 음수일 수 없다");
-                // 벽을 통과하지 않았다.
-                Assert.AreNotEqual(5, GridMath.WorldToCell(stopped, TileSize, Grid, o).x,
-                    "벽 칸에 서 있다 — 막힘 판정이 통과됐다");
-            }
-            finally { dist.Dispose(); mask.Dispose(); }
-        }
+        // ── 폴백축·소스 이탈 분기는 **테스트가 없다.** 거짓 초록을 두지 않는다 ──
+        //
+        // 처음에 `BlockedDominantAxis_FallsBackToSecondary` 를 썼다가 지웠다. 그 테스트는
+        // `Assert.GreaterOrEqual(corr, 0)` 처럼 **어떤 구현으로도 실패할 수 없는** 단언을
+        // 들고 있었고, 지형(관통 벽 반대편 출발) 때문에 보정 루프에 진입조차 안 했다.
+        //
+        // 그 뒤 사거리 1 에서 폴백축을 실제로 태우는 조합을 **전수 탐색했고 0 개**였다.
+        // 이유는 기하다: 가디언 쪽 cardinal 스텝은 체비셰프 오프셋을 키우지 않으므로 도착 셀이
+        // 항상 소스 디스크 안이고, 벽 칸은 `AgentCollision` 이 반경만큼 앞에서 세워 중심이
+        // 그 칸에 못 들어간다. **두 분기는 사거리 1 · 정적 가디언에서 도달 불가한 방어 코드다.**
+        //
+        // 그래서 여기 남길 수 있는 정직한 것은 「테스트 없음」이라는 사실뿐이다.
+        // 실제로 발화시키려면 (a) 사거리 ≥ 2 에 소스 링이 벽으로 끊긴 지형이거나
+        // (b) 가디언이 움직여 필드가 stale 해진 경우다. 후자는 저작 0종이라 오늘 못 만든다.
 
         // ── 고립 칸은 보정 대상이 아니다 ────────────────────────────────────
         [Test]
