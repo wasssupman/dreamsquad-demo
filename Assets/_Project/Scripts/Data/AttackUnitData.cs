@@ -94,7 +94,11 @@ namespace Wassup.Data
         // ⚠ **시트에 컬럼이 없다** → 임포터가 스킵하므로 SO 저작으로 끝난다(고아 컬럼
         // `aggroRange` 와 대칭). 반대로 같이 조정될 보스 HP 는 **시트가 정본**이라
         // `.asset` 만 고치면 다음 로그인 임포트가 되돌린다.
-        [Min(0f)] public float bodyRadius = 0f;
+        // ⚠ **unit 9 에서 기본값이 0 → 0.25 로 바뀌었다.** 「점」이던 시절엔 공격자 쪽 상수
+        // 0.5 가 몸을 대신했고 대상은 몸이 없었다. 이제 양쪽이 자기 몸을 들고 오며,
+        // 일반 유닛끼리는 0.25 + 0.25 = 0.5 로 **종전과 도달 거리가 같다.**
+        // 저작 키가 있는 에셋(보스 3종)만 자기 값을 유지하므로 그쪽은 재기준이 필요했다.
+        [Min(0f)] public float bodyRadius = 0.25f;
         // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
         // forced to 1 (guardian-only) by AttackSystem.

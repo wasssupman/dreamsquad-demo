@@ -93,7 +93,17 @@ namespace Wassup.Skills
         // 한 번 덜 끼는 편이 결정론에 유리하다.
         //
         // 단위는 **타일**이다. 월드 좌표를 넣지 말 것 — 호출부가 `tileSize` 로 나눠서 준다.
-        public const float SelfBodyRadiusTiles = 0.5f;
+        // ⚠ **unit 9 에서 이 상수가 둘로 갈렸다.** 원래 하나(`SelfBodyRadiusTiles = 0.5`)가
+        // 두 가지 뜻을 겸직했고, 「몸은 유닛별 저작」으로 가는 순간 그 둘이 서로 다른 값이 된다:
+        //
+        //   · **사거리** — 「공격자의 몸」. 이제 `bodyRadius` 저작에서 온다(일반 0.25).
+        //     상수가 아니므로 여기 없다. 술어가 인자로 받는다.
+        //   · **광역**   — 「후보 **칸**의 반폭」. 폭발은 점이고 후보가 칸이라 칸의 크기가
+        //     붙는다. 칸은 언제나 1타일이므로 **0.5 로 남는다.**
+        //
+        // ⚠ **광역을 유닛 몸(0.25)으로 바꾸지 말 것.** 반경 1 폭발이 대각을 통째로 잃어
+        // **십자 모양**이 된다(1.414 > 1.25) — rev 1 에서 순수 원으로 갔다가 되돌린 그 회귀다.
+        public const float CellHalfWidthTiles = 0.5f;
 
         // 오늘 전 유닛이 1×1 이라 사각 반폭은 0 이다(`FootprintWidthCells => 1`,
         // 방어유닛 저작도 1×1 로 철회됨). 다칸 유닛이 실제로 생기면 `(w−1)*0.5` 를 넘긴다.
@@ -107,21 +117,24 @@ namespace Wassup.Skills
         // `halfExtent` 가 살아 있다는 것, 그리고 다칸 몸은 원이 아니라는 것.
         public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
                                                      float halfExtentTiles,
-                                                     float rangeTiles, float targetBodyRadiusTiles)
+                                                     float rangeTiles,
+                                                     float selfBodyRadiusTiles,
+                                                     float targetBodyRadiusTiles)
         {
             // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
             // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
             float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfExtentTiles; if (vx < 0f) vx = 0f;
             float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfExtentTiles; if (vz < 0f) vz = 0f;
-            float reach = rangeTiles + SelfBodyRadiusTiles + targetBodyRadiusTiles;
+            // unit 9 — **오차 보정이 없다.** 양쪽 몸이 저작에서 오고 그 수치를 그대로 믿는다.
+            float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
             return vx * vx + vz * vz <= reach * reach;
         }
 
-        // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 0.5 + 대상반경` = **원**.
-        public static bool InBodyReach(float dxTiles, float dzTiles,
-                                       float rangeTiles, float targetBodyRadiusTiles)
+        // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 내몸 + 상대몸` = **원**.
+        public static bool InBodyReach(float dxTiles, float dzTiles, float rangeTiles,
+                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles)
             => InBodyReachWithHalfExtent(dxTiles, dzTiles, SelfHalfExtentTiles,
-                                         rangeTiles, targetBodyRadiusTiles);
+                                         rangeTiles, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
     }
 }

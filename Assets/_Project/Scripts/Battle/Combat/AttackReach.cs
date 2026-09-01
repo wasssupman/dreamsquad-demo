@@ -57,13 +57,17 @@ namespace Wassup.Battle.Combat
         // 「사거리 3」이 저작에서 타일 수이기 때문이다 — 월드로 환산하는 지점이 하나여야 한다.
         // ⚠ `tileRange` 가 **실수**인 이유: 유지 판정이 히스테리시스 폭 `h` 를 더해 부른다
         // (`TargetPersistence.KeepsLock`). 저작은 정수지만 술어는 그걸 알 필요가 없다.
-        public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange,
-                                   float tileSize, float targetBodyRadiusTiles = 0f)
+        // ⚠ `selfBodyRadiusTiles` 에 **기본값을 주지 않는다**(unit 9). 기본값을 주면
+        // 새 호출부가 몸을 안 넘기고도 컴파일되고, 그 순간 「소비처 열하나가 같은 답을
+        // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 상수 시절엔 술어가 자기 몸을
+        // 스스로 알았지만 이제 **저작에서 온다** — 호출부가 그것을 나를 책임을 진다.
+        public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
+                                   float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
             return Wassup.Skills.SkillMath.InBodyReach(
                 (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
-                tileRange, targetBodyRadiusTiles);
+                tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
 
         // 셀 좌표로 묻는 사거리 — 두 몸이 각자 칸 중앙에 설 때의 답이다.
@@ -72,9 +76,10 @@ namespace Wassup.Battle.Combat
         // 「밝은 칸인데 안 때린다」가 되고, 그게 가장 나쁜 종류의 버그다 —
         // 화면이 규칙을 **틀리게** 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
         public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
-                                       float targetBodyRadiusTiles = 0f)
+                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
             => Wassup.Skills.SkillMath.InBodyReach(
-                   tgtCell.x - atkCell.x, tgtCell.y - atkCell.y, tileRange, targetBodyRadiusTiles);
+                   tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
+                   tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
         // 격자 계층의 자. **사거리 판정에 쓰지 말 것** — 그 용도의 정본은 위 `InReach` 하나다.
         // 이 함수가 남은 이유는 순찰 이동뿐이다: 추격 필드 소스 수집이 셀 디스크라

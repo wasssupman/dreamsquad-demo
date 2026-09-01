@@ -248,7 +248,11 @@ namespace Wassup.Tests.EditMode
                 }
                 return PatrolAreaMath.StepDir(
                     _box, _full, Grid, center, home, radius, self, attackTiles,
-                    enemyCells, _flow, _dist, selfPos, enemyWorld, enemyBodies, tileSize);
+                    enemyCells, _flow, _dist, selfPos, enemyWorld, enemyBodies,
+                    // unit 9 — 순찰병 자기 몸. 대상 몸이 0 인 기존 기대값을 보존하려면
+                    // 상수 시절과 같은 합(0.5)이어야 하므로 여기에 0.5 를 준다
+                    // (실전에서는 양쪽 0.25 로 나뉜다 — 합이 같아 판정도 같다).
+                    0.5f, tileSize);
             }
             finally
             {

@@ -17,10 +17,14 @@ namespace Wassup.Tests.EditMode
     // 둥근 모서리가 됐다. 그게 이 spec 이 의도한 것이고, 뒤집으려면 spec 을 먼저 고친다.
     public class AttackReachTests
     {
+        // unit 9 — 몸은 이제 **양쪽이 각자 들고 온다**(상수 0.5 은퇴). 일반 유닛의 저작 기본값이
+        // 0.25 이고 둘이 만나면 0.5 라, 아래 기대값은 상수 시절과 **전부 같다** — 그게
+        // `b = 0.25` 를 고른 이유다(의미는 바로잡고 밸런스는 안 움직인다).
+        private const float Body = 0.25f;
         private const float Tile = 1f;
         private static float3 At(float x, float z) => new float3(x, 0f, z);
-        private static bool R(float ax, float az, float bx, float bz, int range, float body = 0f)
-            => AttackReach.InReach(At(ax, az), At(bx, bz), range, Tile, body);
+        private static bool R(float ax, float az, float bx, float bz, int range, float body = Body)
+            => AttackReach.InReach(At(ax, az), At(bx, bz), range, Tile, Body, body);
 
         [Test]
         public void Range1_KeepsAllEightNeighbours_IncludingDiagonal()
@@ -86,10 +90,16 @@ namespace Wassup.Tests.EditMode
         public void TargetBody_WidensReach_ByExactlyItsRadius()
         {
             // 대상의 몸은 **사거리에 더해진다**(원과 상자의 민코프스키 합).
-            // 큰 몸 = 큰 표적 — unit 3 이 만든 축이고 unit 6 이 값을 준다.
-            Assert.IsFalse(R(0, 0, 2.3f, 0, 1), "몸 없으면 v=1.8 > 1");
-            Assert.IsTrue(R(0, 0, 2.3f, 0, 1, body: 0.9f), "몸 0.9 면 상한이 1.9 로 올라 닿는다");
-            Assert.IsFalse(R(0, 0, 2.6f, 0, 1, body: 0.9f), "그 너머는 여전히 빠진다");
+            // 큰 몸 = 큰 표적 — unit 3 이 만든 축이고 unit 9 가 양쪽으로 대칭화했다.
+            //
+            // ⚠ **unit 9 로 절대값이 이동했다**(의도는 그대로): 상한 = 사거리 + 내몸 + 상대몸.
+            // 자기 몸이 상수 0.5 → 저작 0.25 로 줄어 0.9 몸 대상의 상한이 2.4 → **2.15** 다.
+            // 「대상 몸이 정확히 그 반지름만큼 넓힌다」는 성질은 아래 두 쌍이 진다.
+            Assert.IsFalse(R(0, 0, 2.3f, 0, 1, body: 0f), "대상이 점이면 상한 1.25 — 2.3 은 밖");
+            Assert.IsTrue(R(0, 0, 1.2f, 0, 1, body: 0f), "점 대상도 상한 1.25 안은 닿는다");
+            // 몸 0.9 를 주면 상한이 **정확히 0.9 만큼** 올라간다: 1.25 → 2.15.
+            Assert.IsTrue(R(0, 0, 2.1f, 0, 1, body: 0.9f), "몸 0.9 → 상한 2.15 안");
+            Assert.IsFalse(R(0, 0, 2.3f, 0, 1, body: 0.9f), "2.3 은 그 상한 밖 — 딱 0.9 만 늘었다");
         }
 
         [Test]
@@ -103,8 +113,8 @@ namespace Wassup.Tests.EditMode
         public void TileSize_IsTheOnlyWorldConversion()
         {
             // 술어는 타일 단위만 안다. 월드→타일 환산은 `AttackReach` 한 곳에서만 일어난다.
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(2.9f, 0), 1, 2f), "2칸 타일: 2.9/2=1.45 → v=0.95");
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(3.1f, 0), 1, 2f), "3.1/2=1.55 → v=1.05");
+            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(2.9f, 0), 1, 2f, Body, Body), "2칸 타일: 2.9/2=1.45 → v=0.95");
+            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(3.1f, 0), 1, 2f, Body, Body), "3.1/2=1.55 → v=1.05");
         }
 
         [Test]
@@ -114,8 +124,8 @@ namespace Wassup.Tests.EditMode
             // ⚠ 몸이 다르면 **의도적으로 비대칭**이다(큰 몸은 맞기 쉽고 때리기는 같다) —
             // 그래서 이 단언은 「같은 몸끼리」로 좁혀져 있다.
             var pa = At(2.3f, 7.1f); var pb = At(4.2f, 5.8f);
-            Assert.AreEqual(AttackReach.InReach(pa, pb, 2, Tile),
-                            AttackReach.InReach(pb, pa, 2, Tile));
+            Assert.AreEqual(AttackReach.InReach(pa, pb, 2, Tile, Body, Body),
+                            AttackReach.InReach(pb, pa, 2, Tile, Body, Body));
         }
 
         [Test]
@@ -140,7 +150,7 @@ namespace Wassup.Tests.EditMode
         public void OneByOne_ReachBoundary_IsACircle_NoFlatSides()
         {
             const int range = 4;
-            float expected = range + Wassup.Skills.SkillMath.SelfBodyRadiusTiles;   // 4.5
+            float expected = range + Body + Body;   // 4.5 — 양쪽 몸 합이 상수 시절 0.5 와 같다
             for (int deg = 0; deg < 360; deg += 5)
             {
                 float rad = deg * math.PI / 180f;
@@ -162,12 +172,12 @@ namespace Wassup.Tests.EditMode
             // 원이 되는 것이지, 술어가 원 전용이 된 게 아니다.
             // 반폭 1(3칸 폭) 몸: 축 방향 도달 = 1 + range + 0.5.
             const float half = 1f, range = 2f;
-            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, half, range, 0f),
+            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, half, range, Body, Body),
                 "축 방향: |Δ|=3.4 → v=2.4 ≤ 2.5");
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, half, range, 0f),
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, half, range, Body, Body),
                 "축 방향: |Δ|=3.6 → v=2.6 > 2.5");
             // 대각은 사각 몸 때문에 축보다 **덜** 멀리 간다(원이 아니다 — 의도).
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, half, range, 0f),
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, half, range, Body, Body),
                 "정대각: v=(2.4,2.4) → 3.39 > 2.5");
         }
 

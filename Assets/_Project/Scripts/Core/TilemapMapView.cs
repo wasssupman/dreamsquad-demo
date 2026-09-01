@@ -1051,8 +1051,10 @@ namespace Wassup.Core
         // true 로 부르는 곳은 **스킬 조준·텔레그래프** 하나뿐이고, 그건 거짓말이 아니라
         // **사실**이다 — 스킬 광역의 멤버십은 `TileAoe.IsInTileRange`(정사각형)로 남아 있다
         // (결정 4 — 저작이 칸 단위 조준이다). 표기가 그 자를 따라가는 것이 맞다.
+        // `selfBodyRadiusTiles` — unit 9. 도달 = `사거리 + 내몸 + 상대몸`이고 링은 앞의 둘을
+        // 그린다(대상 몸은 대상마다 달라 마크가 말한다). 상수 시절엔 이 값이 0.5 고정이었다.
         public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false,
-                                      bool squareShape = false)
+                                      bool squareShape = false, float selfBodyRadiusTiles = 0f)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
@@ -1068,7 +1070,8 @@ namespace Wassup.Core
                 // 판정과 **같은 본체**를 지난다 — 여기서 모양을 다시 그리지 않는다.
                 if (!squareShape && !Wassup.Battle.Combat.AttackReach.InCellReach(
                         new Unity.Mathematics.int2(center.x, center.y),
-                        new Unity.Mathematics.int2(cell.x, cell.y), tileRange)) continue;
+                        new Unity.Mathematics.int2(cell.x, cell.y), tileRange,
+                        selfBodyRadiusTiles)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
@@ -1078,7 +1081,7 @@ namespace Wassup.Core
             // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 2): 사각 반폭은 `_HalfExtent`,
             // 몸의 원 반지름은 `_Range` 에 더한다. 1×1 이면 반폭 0 → **진짜 원**이 그려진다.
             else ShowRangeRing(center,
-                    tileRange + Wassup.Skills.SkillMath.SelfBodyRadiusTiles,
+                    tileRange + selfBodyRadiusTiles,
                     Wassup.Skills.SkillMath.SelfHalfExtentTiles);
             ApplyRangeTint();
         }

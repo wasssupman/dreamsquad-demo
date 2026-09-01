@@ -129,6 +129,8 @@ namespace Wassup.Battle.Effects
                     // 타일 고정 방어유닛」이라는 **콘텐츠 사실**이지 이 코드의 성질이 아니다.
                     // 리터럴은 grep(「인라인 사거리 판정 0건」)에도 안 걸려 조용히 다른 자가 된다.
                     if (!AttackReach.InReach(casterPos, targetPos, tileRange, flowField.tileSize,
+                            _bodyRadiusLookup.HasComponent(casterEntity)
+                                ? _bodyRadiusLookup[casterEntity].value : 0f,
                             _bodyRadiusLookup.HasComponent(targetEntities[i])
                                 ? _bodyRadiusLookup[targetEntities[i]].value : 0f)) continue;
 

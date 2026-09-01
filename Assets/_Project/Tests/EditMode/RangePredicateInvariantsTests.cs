@@ -22,10 +22,10 @@ namespace Wassup.Tests.EditMode
         // **그 축소 자체가 unit 4a 다**(누가 묻느냐로 답이 갈리지 않는다). 두 헬퍼는 남기되
         // 둘 다 같은 함수를 부른다 — 「연속/고정이 이제 같은 자를 쓴다」를 눈에 보이게 두려고.
         private static bool Locked(int2 a, int2 b, int range)
-            => AttackReach.InReach(At(a), At(b), range, Tile);
+            => AttackReach.InReach(At(a), At(b), range, Tile, 0.25f, 0.25f);
 
         private static bool Continuous(int2 a, int2 b, float3 pa, float3 pb, int range)
-            => AttackReach.InReach(pa, pb, range, Tile);
+            => AttackReach.InReach(pa, pb, range, Tile, 0.25f, 0.25f);
 
         // ── 1. 사거리 단조성 ────────────────────────────────
         // 사거리를 키우면 대상 집합은 줄어들 수 없다. 어떤 자를 쓰든 참이어야 한다.

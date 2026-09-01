@@ -51,8 +51,9 @@ namespace Wassup.Battle.Combat
         // 락을 계속 붙들까? 사거리 판정은 **획득과 같은 술어**를 쓰되 `h` 만큼 넓게 본다.
         public static bool KeepsLock(bool targetAlive, float3 atkPos, float3 tgtPos,
                                      float tileRange, float tileSize,
+                                     float selfBodyRadiusTiles,
                                      float targetBodyRadiusTiles = 0f)
             => targetAlive && AttackReach.InReach(atkPos, tgtPos, tileRange + HysteresisTiles,
-                                                  tileSize, targetBodyRadiusTiles);
+                                                  tileSize, selfBodyRadiusTiles, targetBodyRadiusTiles);
     }
 }

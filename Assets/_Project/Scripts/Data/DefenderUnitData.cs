@@ -65,7 +65,15 @@ namespace Wassup.Data
         // 비어 있으면 UnitKitSummary.Describe 가 자동 요약문으로 폴백. 시드값 = 자동 요약문.
         [TextArea] public string desc;
         public float health = 50f;
+        // ⚠ **연속 반지름이다**(distance-based-range unit 9, 사용자 결정 2026-09-01).
+        // 「타일 개수」가 아니라 **타일 길이를 단위로 하는 반지름** — `2` = 2칸 거리,
+        // `0.1` = 타일 길이의 0.1. 정수일 이유가 없다.
         public float attackRange = 3f;
+        // unit 9 — 자기 중심 기준 커버 범위(타일). 판정은 `거리 ≤ 사거리 + 내몸 + 상대몸`
+        // 이고 **오차 보정 항이 없다** — 양쪽 수치를 그대로 믿는다.
+        // 기본 0.25 = 1×1 유닛의 몸. 둘이 만나면 0.5 라 종전 도달 거리와 같다.
+        // ⚠ 시트에 컬럼이 없어 임포터가 스킵한다 — SO 저작으로 끝난다(`AttackUnitData` 와 대칭).
+        [Min(0f)] public float bodyRadius = 0.25f;
         public float attackCooldown = 1f; // seconds between attacks
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;

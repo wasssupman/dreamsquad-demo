@@ -51,6 +51,11 @@ namespace Wassup.Battle.Combat
                                       float extraRadiusTiles = 0f)
             => Wassup.Skills.SkillMath.InBodyReach(
                    candidateCell.x - centerCell.x, candidateCell.y - centerCell.y,
-                   tileRange, extraRadiusTiles);
+                   tileRange,
+                   // ⚠ **여기 붙는 것은 「후보 칸의 반폭」이지 유닛의 몸이 아니다**(unit 9).
+                   // 폭발은 점이고 후보가 칸이라 칸의 크기가 붙는다. 칸은 언제나 1타일이므로
+                   // 유닛 몸(`bodyRadius`, 일반 0.25)으로 바꾸면 **반경 1 이 십자가 된다**.
+                   Wassup.Skills.SkillMath.CellHalfWidthTiles,
+                   extraRadiusTiles);
     }
 }

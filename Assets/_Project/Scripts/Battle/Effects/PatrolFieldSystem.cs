@@ -116,7 +116,10 @@ namespace Wassup.Battle.Effects
                     anchor.ValueRO.cell, anchor.ValueRO.homeCell, anchor.ValueRO.tileRadius,
                     selfCell, attackTiles,
                     enemyCells, scratchFlow, scratchDist,
-                    transform.ValueRO.Position, enemyWorld, enemyBody, flowField.tileSize);
+                    transform.ValueRO.Position, enemyWorld, enemyBody,
+                    // unit 9 — 순찰병 자기 몸. 안 넘기면 소비처 열하나 중 여기만 다른 답을 받는다.
+                    _hitRadiusLookup.HasComponent(entity) ? _hitRadiusLookup[entity].value : 0f,
+                    flowField.tileSize);
 
                 areaMask.Dispose();
             }

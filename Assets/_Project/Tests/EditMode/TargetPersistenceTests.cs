@@ -19,7 +19,8 @@ namespace Wassup.Tests.EditMode
         private const float Tile = 1f;
         private static float3 At(float x) => new float3(x, 0f, 0f);
         private static bool Keeps(float gapTiles, int range)
-            => TargetPersistence.KeepsLock(true, At(0f), At(gapTiles), range, Tile);
+            // unit 9 — 양쪽 몸 0.25 합 0.5 = 상수 시절과 같다. 기대값 보존.
+             => TargetPersistence.KeepsLock(true, At(0f), At(gapTiles), range, Tile, 0.25f, 0.25f);
 
         [Test]
         public void KeepsLock_AliveAndInRange_Keeps()
@@ -38,7 +39,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void KeepsLock_Dead_Releases()
         {
-            Assert.IsFalse(TargetPersistence.KeepsLock(false, At(0f), At(0f), 3, Tile));
+            Assert.IsFalse(TargetPersistence.KeepsLock(false, At(0f), At(0f), 3, Tile, 0.25f, 0.25f));
         }
 
         // ── unit 4d — 유지가 획득보다 **정확히 h 만큼** 넓다 ──
@@ -49,7 +50,7 @@ namespace Wassup.Tests.EditMode
             float h = TargetPersistence.HysteresisTiles;
             // 획득 경계 바로 밖 = 유지 경계 안쪽. 이 틈이 곧 진동을 삼키는 구간이다.
             float justOutside = range + 0.5f + h * 0.5f;
-            Assert.IsFalse(AttackReach.InReach(At(0f), At(justOutside), range, Tile),
+            Assert.IsFalse(AttackReach.InReach(At(0f), At(justOutside), range, Tile, 0.25f, 0.25f),
                 "획득은 이미 놓쳤다");
             Assert.IsTrue(Keeps(justOutside, range),
                 "유지는 아직 붙든다 — 이 틈이 없으면 경계에서 락이 진동한다");

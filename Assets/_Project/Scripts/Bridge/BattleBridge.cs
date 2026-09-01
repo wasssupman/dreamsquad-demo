@@ -2937,15 +2937,15 @@ namespace Wassup.Bridge
             var fac = q.ToComponentDataArray<FactionTag>(Unity.Collections.Allocator.Temp);
             for (int i = 0; i < ents.Length; i++)
             {
+                // unit 9 — 도달 구는 **자기 몸을 포함한다**(상수 0.5 은퇴).
+                float body = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
+                    ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value * tileSize : 0f;
                 float reach = 0f;
                 if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(ents[i]))
                 {
                     var st = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(ents[i]);
-                    reach = (GridMath.RangeToTiles(st.range) + Wassup.Skills.SkillMath.SelfBodyRadiusTiles)
-                            * tileSize;
+                    reach = GridMath.RangeToTiles(st.range) * tileSize + body;
                 }
-                float body = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
-                    ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value * tileSize : 0f;
                 if (reach <= 0f && body <= 0f) continue;
                 into.Add(new DebugReachSphere
                 {
@@ -7874,7 +7874,8 @@ namespace Wassup.Bridge
             // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
             if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
-            else tilemapMapView.SetPlacementRange(center, tileRange);
+            else tilemapMapView.SetPlacementRange(center, tileRange,
+                     selfBodyRadiusTiles: unit != null ? unit.bodyRadius : 0f);
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
             // (실측: 풀 4개 생성, 활성 0).
@@ -7952,8 +7953,11 @@ namespace Wassup.Bridge
                 if (_em.HasComponent<Wassup.Battle.Combat.UltimateLeapState>(ents[i])) continue;
                 float bodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(ents[i])
                     ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value : 0f;
+                // unit 9 — **표기도 판정과 같은 인자를 받는다.** 프리뷰 중인 유닛의 몸은
+                // 아직 엔티티가 없으므로(배치 전) 저작에서 직접 읽는다.
+                float selfBodyR = unit != null ? unit.bodyRadius : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
-                        atkPos, tf[i].Position, tileRange, tileSize, bodyR)) continue;
+                        atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR)) continue;
                 // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
                 // 그냥 넘기면 뷰가 그것을 view 월드로 받아 (a) 셀 중심 +0.5 보정과
                 // (b) 스테이지 격자 원점(`MapStage.gridOriginLocal`)을 **둘 다** 잃는다.
@@ -8228,6 +8232,10 @@ namespace Wassup.Bridge
             var pos = GridToWorldCenter(cell, spawnHeight);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
+            // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
+            // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
+            // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(entity, new AttackState
@@ -8498,6 +8506,10 @@ namespace Wassup.Bridge
             // 계약 1 — DefenderUnitTag 는 선택이 아니다. DestroyBattleEntities 가 타입 기반
             // 파괴라 이 태그가 없으면 매치 경계에서 안 지워지고 앱 수명 world 에 잔존한다.
             _em.AddComponent<DefenderUnitTag>(entity);
+            // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
+            // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
+            // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
             // 계약 1 — DefenderClassTag 도 붙인다. 태그 없음 면제는 EnemyTargetFilter 주석대로
             // 무생물(blocking hazard)용이라, 생물을 태그 없이 태우면 클래스 하드 타게팅 적
             // (킨들러 = 레인저 전용 마스크)이 레인저 대신 순찰병을 쏴서 그 적이 무력화된다.
