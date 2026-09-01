@@ -73,8 +73,20 @@ namespace Wassup.Battle.Movement
             // ⚠ **소스를 만든 것과 같은 술어여야 한다**(`DefenderFieldSystem` 의 스냅샷 조건:
             // `Faction.DefenderUnit` + `Health` + `WithNone<PendingDeployment, DeadTag>`).
             // 다르면 「소스는 섰는데 다가갈 대상이 없다」가 생기고, 그게 네 번째 자다.
+            //
+            // ⚠ 그 술어는 **사격 가능성을 안 본다** — 정지 근거인 `hasFireTarget` 은 `targetMask`·
+            // 통행층(`PlacementLayers.CanTarget`)·`EnemyTargetFilter.classMask` 를 더 지난다.
+            // 그래서 최근접이 **못 때리는** 방어유닛이면 그쪽으로 다가가 눌러붙을 수 있다.
+            // 소스 수집도 같은 필터를 안 걸어 원래 그 칸으로 걸어가 얼었으므로 **선재 결함의
+            // 상속**이지 신규가 아니다. 근본은 `DefenderFieldSystem` 과 함께 맞추는 것 — 후속 후보.
+            // ⚠ `DefenderFieldSystem:70` 의 「FSM 후보 풀과 동일 조건」은 **stale 이다** —
+            // `EnemyAiStateSystem:59` 는 `.WithNone<CoreShielded>()` 를 걸고 저쪽은 안 건다.
+            // 오늘 무해(코어는 `Faction.DefenderUnit` 이 아니라 faction 필터에서 먼저 걸린다).
             var huntTargets = new NativeList<float3>(16, Allocator.Temp);
-            if (hasHuntField)
+            // 헌터가 없는 프레임엔 스캔 자체를 건너뛴다 — `DefenderFieldSystem:61` 의
+            // `hunterQuery.IsEmpty` 조기 반환과 대칭.
+            if (hasHuntField
+                && !SystemAPI.QueryBuilder().WithAll<Wassup.Battle.Combat.DefenderHunterTag>().Build().IsEmpty)
                 foreach (var (huntFaction, huntTf) in
                          SystemAPI.Query<RefRO<FactionTag>, RefRO<LocalTransform>>()
                                   .WithAll<Health>().WithNone<PendingDeployment, DeadTag>())
@@ -463,7 +475,24 @@ namespace Wassup.Battle.Movement
                             // ⚠ 여기서도 사거리를 재판정하지 않는다. `ai == Marching` 이
                             // `EnemyAiStateSystem` 의 `hasFireTarget == false`(정본 술어,
                             // 마스크·통행층·대상 몸 포함)와 같은 뜻이고 [UpdateBefore] 라 신선하다.
-                            if (hunting && ai == AiState.Marching
+                            // ⚠⚠ **`!locked` 가 여기 있어야 한다.** 이 분기는 역사적으로 자기주도
+                            // 이동이 0 이라 잠금 게이트(`:flowStep = locked ? zero : …`)보다 앞에
+                            // 있어도 안전했다. 보정이 **자기 이동을 넣었으므로** 게이트도 같이
+                            // 와야 한다 — 없으면 자장가·동상에 걸린 헌터가 계속 걷고, 도약 비행 중
+                            // (`LeapFlight` 도 `locked` 에 접힌다) 위치를 덮어쓴다.
+                            // ⚠ CC 면역은 **`BossTag` 전용**이라(`CcApplySystem:37`) 비-보스 헌터
+                            // (`Enemy_DreamShard`: tier 0 + huntsDefenders 1)로 **오늘 재현된다.**
+                            //
+                            // ⚠ `aiStateLookup`/`attackStateLookup` 보유를 **명시로 요구한다**(fail-closed).
+                            // `ai` 기본값이 `Marching`(:128)이고 `EnemyAiStateSystem` 은 `hasAttack`
+                            // 이 거짓이면 술어를 **한 번도 안 부른다** — 그 `Marching` 은 「사거리 밖」이
+                            // 아니라 **「물어보지도 않았다」**다. 그 상태로 보정이 돌면 사거리를 모르는
+                            // 채 달라붙는다. 오늘 둘 다 무조건 bake 라 도달 불가지만 그 사실에
+                            // 기대지 않는다(`DefenderFieldSystem:66` 은 이미 「AttackState 없는 헌터」를
+                            // 상정하고 폴백을 둔다).
+                            if (hunting && !locked
+                                && aiStateLookup.HasComponent(entity) && ai == AiState.Marching
+                                && attackStateLookup.HasComponent(entity)
                                 && routeDist[idx] == 0 && huntTargets.Length > 0)
                             {
                                 // 최근접 방어유닛 — 소스 칸을 만든 것이 그중 하나다.
@@ -590,6 +619,10 @@ namespace Wassup.Battle.Movement
         // distance-based-range unit 4c — 「사격 칸에 도착했는데 사거리 밖」일 때의 접근 보정.
         // **어그로 레인과 사냥 레인이 이 하나를 공유한다** — 두 벌이면 조용히 갈리고, 그게
         // 이 결함의 원인(한 루프에 자가 셋)과 같은 클래스다.
+        //
+        // ⚠ **잠금(CC·도약 비행) 판정은 호출부 소유다.** 이 함수는 기계장치만 공유하고
+        // 게이트는 공유하지 않는다 — 두 호출부가 **각자** `!locked` 를 걸어야 한다.
+        // (한쪽만 걸었다가 잠긴 헌터가 걷는 결함이 실제로 났다.)
         //
         // 반환 = 실제로 취한 cardinal(zero = 못 움직임). `next` 는 외력까지 합성한 최종 위치.
         // 막힘 판정은 **자기주도 변위만으로** 한다(외력을 섞으면 벽에 막힌 축도 「움직였다」로
