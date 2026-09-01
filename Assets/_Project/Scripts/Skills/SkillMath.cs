@@ -133,14 +133,16 @@ namespace Wassup.Skills
         // ⚠ `halfX`/`halfZ` 는 **합산값**이다(내 반폭 + 상대 반폭). 축을 둘로 가른 이유는
         // 2×3 처럼 **비정사각** footprint 가 있기 때문이다 — 한 숫자로 접으면 3×3 으로 오독한다.
         // ⚠ `Δ` 는 **몸 중심 사이**다. 호출부가 중심 보정을 넣어서 준다.
+        // ⚠ 반폭을 `float2` 로 받는다 — **Burst 때문이다**(BC1055). 7-float 시그니처로 두면
+        // `AttackReach`(다른 어셈블리)에서 Burst 가 정의를 못 찾아 술어가 managed 로 떨어진다.
+        // 두 축이 한 값으로 묶이는 게 의미상으로도 맞다.
         public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
-                                                     float halfXTiles, float halfZTiles,
+                                                     Unity.Mathematics.float2 halfExtentTiles,
                                                      float rangeTiles,
                                                      float selfBodyRadiusTiles,
                                                      float targetBodyRadiusTiles)
         {
-            // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
-            // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
+            float halfXTiles = halfExtentTiles.x, halfZTiles = halfExtentTiles.y;
             float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfXTiles; if (vx < 0f) vx = 0f;
             float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfZTiles; if (vz < 0f) vz = 0f;
             // unit 9 — **오차 보정이 없다.** 양쪽 몸이 저작에서 오고 그 수치를 그대로 믿는다.
@@ -151,7 +153,8 @@ namespace Wassup.Skills
         // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 내몸 + 상대몸` = **원**.
         public static bool InBodyReach(float dxTiles, float dzTiles, float rangeTiles,
                                        float selfBodyRadiusTiles, float targetBodyRadiusTiles)
-            => InBodyReachWithHalfExtent(dxTiles, dzTiles, SelfHalfExtentTiles, SelfHalfExtentTiles,
+            => InBodyReachWithHalfExtent(dxTiles, dzTiles,
+                                         new Unity.Mathematics.float2(SelfHalfExtentTiles, SelfHalfExtentTiles),
                                          rangeTiles, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
     }

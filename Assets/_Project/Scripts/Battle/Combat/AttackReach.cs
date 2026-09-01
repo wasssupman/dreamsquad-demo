@@ -99,9 +99,7 @@ namespace Wassup.Battle.Combat
             float dz = (tgtPos.z - atkPos.z) * inv
                      + target.CenterOffsetTiles.y - self.CenterOffsetTiles.y;
             return Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(
-                dx, dz,
-                self.HalfExtentTiles.x + target.HalfExtentTiles.x,
-                self.HalfExtentTiles.y + target.HalfExtentTiles.y,
+                dx, dz, self.HalfExtentTiles + target.HalfExtentTiles,
                 tileRange, self.RadiusTiles, target.RadiusTiles);
         }
 

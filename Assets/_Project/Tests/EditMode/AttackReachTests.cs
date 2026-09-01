@@ -207,12 +207,12 @@ namespace Wassup.Tests.EditMode
         {
             const float hx = 0.5f, hz = 1.0f, range = 3f;
             float beyond = range + Body + Body;   // 반폭을 뺀 뒤의 상한 = 3.5
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(0f, 4.4f, hx, hz, range, Body, Body),
+            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(0f, 4.4f, new float2(hx, hz), range, Body, Body),
                 "세로 상한 = 1.0 + 3.5 = 4.5");
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(0f, 4.6f, hx, hz, range, Body, Body));
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.9f, 0f, hx, hz, range, Body, Body),
+            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(0f, 4.6f, new float2(hx, hz), range, Body, Body));
+            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.9f, 0f, new float2(hx, hz), range, Body, Body),
                 "가로 상한 = 0.5 + 3.5 = 4.0");
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(4.1f, 0f, hx, hz, range, Body, Body),
+            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(4.1f, 0f, new float2(hx, hz), range, Body, Body),
                 "정사각으로 접었다면 4.5 까지 닿아 여기서 참이 됐을 것이다");
             Assert.AreEqual(4.5f, hz + beyond, 1e-5f);
             Assert.AreEqual(4.0f, hx + beyond, 1e-5f);
@@ -225,11 +225,11 @@ namespace Wassup.Tests.EditMode
         {
             const float range = 1f;
             float lone = range + Body + Body;              // 1.5 — 점 대 점
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(lone - 0.05f, 0f, 0f, 0f, range, Body, Body));
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(lone + 0.05f, 0f, 0f, 0f, range, Body, Body));
+            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(lone - 0.05f, 0f, new float2(0f, 0f), range, Body, Body));
+            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(lone + 0.05f, 0f, new float2(0f, 0f), range, Body, Body));
             // 양쪽 반폭 1.0 → 상한 = 2.0 + 1.5 = 3.5
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.45f, 0f, 2.0f, 0f, range, Body, Body));
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(3.55f, 0f, 2.0f, 0f, range, Body, Body));
+            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.45f, 0f, new float2(2.0f, 0f), range, Body, Body));
+            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(3.55f, 0f, new float2(2.0f, 0f), range, Body, Body));
         }
 
         [Test]
@@ -240,12 +240,12 @@ namespace Wassup.Tests.EditMode
             // 원이 되는 것이지, 술어가 원 전용이 된 게 아니다.
             // 반폭 1(3칸 폭) 몸: 축 방향 도달 = 1 + range + 0.5.
             const float half = 1f, range = 2f;
-            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, half, half, range, Body, Body),
+            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, new float2(half, half), range, Body, Body),
                 "축 방향: |Δ|=3.4 → v=2.4 ≤ 2.5");
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, half, half, range, Body, Body),
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, new float2(half, half), range, Body, Body),
                 "축 방향: |Δ|=3.6 → v=2.6 > 2.5");
             // 대각은 사각 몸 때문에 축보다 **덜** 멀리 간다(원이 아니다 — 의도).
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, half, half, range, Body, Body),
+            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, new float2(half, half), range, Body, Body),
                 "정대각: v=(2.4,2.4) → 3.39 > 2.5");
         }
 

@@ -7882,8 +7882,15 @@ namespace Wassup.Bridge
             // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
             if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
-            else tilemapMapView.SetPlacementRange(center, rangeTiles,
-                     selfBodyRadiusTiles: unit.bodyRadius);
+            else
+            {
+                // unit 10 — 표기가 **판정과 같은 몸**을 받는다. 중심 보정·반폭이 여기서 들어간다.
+                var fpHalf = Wassup.Data.FootprintMath.GeometricCenterOffset(unit.Footprint);
+                tilemapMapView.SetPlacementRange(center, rangeTiles,
+                     selfBodyRadiusTiles: unit.bodyRadius,
+                     centerOffsetTiles: fpHalf,     // 앵커 → 기하 중심
+                     halfExtentTiles: fpHalf);      // 사각 반폭 = 같은 값 `(W−1)/2`
+            }
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
             // (실측: 풀 4개 생성, 활성 0).

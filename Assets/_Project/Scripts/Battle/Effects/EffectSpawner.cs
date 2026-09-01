@@ -264,8 +264,15 @@ namespace Wassup.Battle.Effects
                     {
                         for (int j = 0; j < defenderTiles.Length; j++)
                         {
-                            if (!cells[i].Equals(defenderTiles[j].anchor)) continue;
-                            reason = $"cell {cells[i]} overlaps defender tile";
+                            // ⚠ **unit 10 — 점유 rect 전체를 본다.** 종전엔 대표 셀 하나만
+                            // 대조해서, 다칸 유닛이면 대표 셀 아닌 점유 칸 위에 해저드가 섰다
+                            // (전 유닛 1×1 이던 시절엔 rect 가 그 한 칸이라 안 드러났다).
+                            var fp = defenderTiles[j];
+                            var rect = Wassup.Data.FootprintMath.Cells(
+                                new UnityEngine.Vector2Int(fp.anchor.x, fp.anchor.y),
+                                new UnityEngine.Vector2Int(fp.size.x, fp.size.y));
+                            if (!rect.Contains(new UnityEngine.Vector2Int(cells[i].x, cells[i].y))) continue;
+                            reason = $"cell {cells[i]} overlaps defender footprint";
                             return false;
                         }
                     }
