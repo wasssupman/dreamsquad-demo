@@ -130,16 +130,19 @@ namespace Wassup.Skills
         //
         // 오늘 이 오버로드의 호출부는 없다(전 유닛 1×1). **테스트가 계약을 진다** —
         // `halfExtent` 가 살아 있다는 것, 그리고 다칸 몸은 원이 아니라는 것.
+        // ⚠ `halfX`/`halfZ` 는 **합산값**이다(내 반폭 + 상대 반폭). 축을 둘로 가른 이유는
+        // 2×3 처럼 **비정사각** footprint 가 있기 때문이다 — 한 숫자로 접으면 3×3 으로 오독한다.
+        // ⚠ `Δ` 는 **몸 중심 사이**다. 호출부가 중심 보정을 넣어서 준다.
         public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
-                                                     float halfExtentTiles,
+                                                     float halfXTiles, float halfZTiles,
                                                      float rangeTiles,
                                                      float selfBodyRadiusTiles,
                                                      float targetBodyRadiusTiles)
         {
             // `Unity.Mathematics` 를 부르지 않는다 — 이 파일은 그 참조 없이 컴파일되고,
             // M1 에서 netstandard 로 옮길 때 의존이 하나 적을수록 좋다.
-            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfExtentTiles; if (vx < 0f) vx = 0f;
-            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfExtentTiles; if (vz < 0f) vz = 0f;
+            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfXTiles; if (vx < 0f) vx = 0f;
+            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfZTiles; if (vz < 0f) vz = 0f;
             // unit 9 — **오차 보정이 없다.** 양쪽 몸이 저작에서 오고 그 수치를 그대로 믿는다.
             float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
             return vx * vx + vz * vz <= reach * reach;
@@ -148,7 +151,7 @@ namespace Wassup.Skills
         // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 내몸 + 상대몸` = **원**.
         public static bool InBodyReach(float dxTiles, float dzTiles, float rangeTiles,
                                        float selfBodyRadiusTiles, float targetBodyRadiusTiles)
-            => InBodyReachWithHalfExtent(dxTiles, dzTiles, SelfHalfExtentTiles,
+            => InBodyReachWithHalfExtent(dxTiles, dzTiles, SelfHalfExtentTiles, SelfHalfExtentTiles,
                                          rangeTiles, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
     }

@@ -53,7 +53,16 @@ namespace Wassup.Battle.Combat
                                      float tileRange, float tileSize,
                                      float selfBodyRadiusTiles,
                                      float targetBodyRadiusTiles = 0f)
-            => targetAlive && AttackReach.InReach(atkPos, tgtPos, tileRange + HysteresisTiles,
-                                                  tileSize, selfBodyRadiusTiles, targetBodyRadiusTiles);
+            => KeepsLock(targetAlive, atkPos, AttackReach.BodyShape.Round(selfBodyRadiusTiles),
+                         tgtPos, AttackReach.BodyShape.Round(targetBodyRadiusTiles),
+                         tileRange, tileSize);
+
+        // unit 10 PR2 — 다칸 몸까지 나르는 정본. 유지 판정은 선정과 **같은 술어**를 지나야 하므로
+        // 몸 형태도 같은 것을 받는다(한쪽만 원으로 접으면 락이 조용히 갈린다).
+        public static bool KeepsLock(bool targetAlive, float3 atkPos, AttackReach.BodyShape self,
+                                     float3 tgtPos, AttackReach.BodyShape target,
+                                     float tileRange, float tileSize)
+            => targetAlive && AttackReach.InReach(atkPos, self, tgtPos, target,
+                                                  tileRange + HysteresisTiles, tileSize);
     }
 }

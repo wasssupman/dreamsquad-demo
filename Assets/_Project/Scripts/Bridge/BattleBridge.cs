@@ -8242,13 +8242,39 @@ namespace Wassup.Bridge
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");
 #endif
-            var pos = GridToWorldCenter(cell, spawnHeight);
+            // unit 10 PR2 — sim 위치 = footprint **기하 중심**(대표 셀 아님).
+            // 짝수 변에서 스프라이트와 사거리 원이 반 칸 갈리던 것이 여기서 닫힌다.
+            // 1×1 은 오프셋 0 이라 종전과 동일.
+            var fpCenterOff = Wassup.Data.FootprintMath.GeometricCenterOffset(unitData.Footprint);
+            var pos = GridToWorldCenter(cell, spawnHeight)
+                    + new float3(fpCenterOff.x * tileSize, 0f, fpCenterOff.y * tileSize);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
             _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
+            // ── unit 10 PR2 — footprint 가 **전투 어휘**가 되는 지점 ──────────────
+            // `defender-footprint` 결정 1(sim 무변) 폐기. 1×1 이면 아래 값이 전부 0/1칸이라
+            // 종전과 byte-identical 이다.
+            {
+                var fpSize = unitData.Footprint;
+                var half = Wassup.Data.FootprintMath.GeometricCenterOffset(fpSize);
+                // 위치를 **기하 중심**으로 옮겼으므로 몸 중심 보정은 0 이다.
+                _em.AddComponentData(entity, new Wassup.Battle.Units.BodyExtent
+                {
+                    halfExtent = new float2(half.x, half.y),
+                    centerOffset = float2.zero,
+                });
+                // 랭킹(`AttackSystem.DistanceSqToTarget`)이 최근접 점유 칸을 재게 한다 —
+                // 구조물(본능)이 이미 쓰는 어휘를 그대로 빌린다.
+                var fpRect = Wassup.Data.FootprintMath.Cells(cell, fpSize);
+                var occ = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
+                for (int oy = fpRect.yMin; oy < fpRect.yMax; oy++)
+                for (int ox = fpRect.xMin; ox < fpRect.xMax; ox++)
+                    occ.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(ox, oy) });
+            }
+
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
             _em.AddComponentData(entity, new AttackState
@@ -8511,7 +8537,12 @@ namespace Wassup.Bridge
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
 
             var cellV2 = new Vector2Int(homeCell.x, homeCell.y);
-            var pos = GridToWorldCenter(cellV2, spawnHeight);
+            // unit 10 PR2 — sim 위치 = footprint **기하 중심**(대표 셀 아님).
+            // 짝수 변에서 스프라이트와 사거리 원이 반 칸 갈리던 것이 여기서 닫힌다.
+            // 1×1 은 오프셋 0 이라 종전과 동일.
+            var fpCenterOff = Wassup.Data.FootprintMath.GeometricCenterOffset(unitData.Footprint);
+            var pos = GridToWorldCenter(cellV2, spawnHeight)
+                    + new float3(fpCenterOff.x * tileSize, 0f, fpCenterOff.y * tileSize);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
 #if UNITY_EDITOR
             _em.SetName(entity, $"Patrol_{unitData.displayName}_{homeCell.x}_{homeCell.y}");
@@ -8523,6 +8554,27 @@ namespace Wassup.Bridge
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
             _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
+            // ── unit 10 PR2 — footprint 가 **전투 어휘**가 되는 지점 ──────────────
+            // `defender-footprint` 결정 1(sim 무변) 폐기. 1×1 이면 아래 값이 전부 0/1칸이라
+            // 종전과 byte-identical 이다.
+            {
+                var fpSize = unitData.Footprint;
+                var half = Wassup.Data.FootprintMath.GeometricCenterOffset(fpSize);
+                // 위치를 **기하 중심**으로 옮겼으므로 몸 중심 보정은 0 이다.
+                _em.AddComponentData(entity, new Wassup.Battle.Units.BodyExtent
+                {
+                    halfExtent = new float2(half.x, half.y),
+                    centerOffset = float2.zero,
+                });
+                // 랭킹(`AttackSystem.DistanceSqToTarget`)이 최근접 점유 칸을 재게 한다 —
+                // 구조물(본능)이 이미 쓰는 어휘를 그대로 빌린다.
+                var fpRect = Wassup.Data.FootprintMath.Cells(cellV2, fpSize);
+                var occ = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
+                for (int oy = fpRect.yMin; oy < fpRect.yMax; oy++)
+                for (int ox = fpRect.xMin; ox < fpRect.xMax; ox++)
+                    occ.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(ox, oy) });
+            }
+
             // 계약 1 — DefenderClassTag 도 붙인다. 태그 없음 면제는 EnemyTargetFilter 주석대로
             // 무생물(blocking hazard)용이라, 생물을 태그 없이 태우면 클래스 하드 타게팅 적
             // (킨들러 = 레인저 전용 마스크)이 레인저 대신 순찰병을 쏴서 그 적이 무력화된다.

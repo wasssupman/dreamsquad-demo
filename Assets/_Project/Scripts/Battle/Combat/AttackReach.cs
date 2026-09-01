@@ -61,13 +61,48 @@ namespace Wassup.Battle.Combat
         // 새 호출부가 몸을 안 넘기고도 컴파일되고, 그 순간 「소비처 열하나가 같은 답을
         // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 상수 시절엔 술어가 자기 몸을
         // 스스로 알았지만 이제 **저작에서 온다** — 호출부가 그것을 나를 책임을 진다.
+        // 1×1 특수화(몸이 원). 다칸이 끼면 아래 `BodyShape` 오버로드를 쓴다.
         public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
                                    float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
+            => InReach(atkPos, BodyShape.Round(selfBodyRadiusTiles),
+                       tgtPos, BodyShape.Round(targetBodyRadiusTiles), tileRange, tileSize);
+
+        // 유닛의 몸 = **사각(반폭) ⊕ 원(반지름)**, 그리고 위치 → 몸 중심 보정.
+        // 1×1 이면 반폭·보정이 0 이라 순수 원이다.
+        public readonly struct BodyShape
+        {
+            public readonly float RadiusTiles;
+            public readonly float2 HalfExtentTiles;
+            public readonly float2 CenterOffsetTiles;
+
+            public BodyShape(float radiusTiles, float2 halfExtentTiles, float2 centerOffsetTiles)
+            {
+                RadiusTiles = radiusTiles;
+                HalfExtentTiles = halfExtentTiles;
+                CenterOffsetTiles = centerOffsetTiles;
+            }
+
+            public static BodyShape Round(float radiusTiles)
+                => new BodyShape(radiusTiles, float2.zero, float2.zero);
+        }
+
+        // **정본 진입점.** 두 몸의 민코프스키 합 — 반폭은 합산, 중심 보정은 각자 위치에 더한다.
+        // 게이트(여기)와 랭킹(`AttackSystem.DistanceSqToTarget`)이 **같은 몸**을 보게 하는 것이
+        // 이 오버로드의 존재 이유다(README:155 가 자인한 갈림).
+        public static bool InReach(float3 atkPos, BodyShape self,
+                                   float3 tgtPos, BodyShape target,
+                                   float tileRange, float tileSize)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            return Wassup.Skills.SkillMath.InBodyReach(
-                (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
-                tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
+            float dx = (tgtPos.x - atkPos.x) * inv
+                     + target.CenterOffsetTiles.x - self.CenterOffsetTiles.x;
+            float dz = (tgtPos.z - atkPos.z) * inv
+                     + target.CenterOffsetTiles.y - self.CenterOffsetTiles.y;
+            return Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(
+                dx, dz,
+                self.HalfExtentTiles.x + target.HalfExtentTiles.x,
+                self.HalfExtentTiles.y + target.HalfExtentTiles.y,
+                tileRange, self.RadiusTiles, target.RadiusTiles);
         }
 
         // 셀 좌표로 묻는 사거리 — 두 몸이 각자 칸 중앙에 설 때의 답이다.
