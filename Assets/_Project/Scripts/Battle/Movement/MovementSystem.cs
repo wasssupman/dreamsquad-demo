@@ -13,7 +13,7 @@ namespace Wassup.Battle.Movement
     [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct MovementSystem : ISystem
     {
-        // distance-based-range unit 4b — 추격 접근 보정용(RO). **명시 필드로 둔다** —
+        // distance-based-range unit 4c — 추격 접근 보정용(RO). **명시 필드로 둔다** —
         // `SystemAPI.GetComponentLookup` 로컬 형태로 새 lookup 을 추가하면 Burst 에서
         // NRE 로 죽는다(이 프로젝트에서 3회 재발).
         ComponentLookup<Aggroed> _aggroedLookup;
@@ -177,7 +177,7 @@ namespace Wassup.Battle.Movement
                     // **바깥 모서리**에 선다. 타일 고정 가디언 + 사거리 1 로 실측 2.05칸(도달 1.5칸).
                     // 아래 `arrivedAtFiringCell` 보정이 그 구간을 닫는다.
                     // 순찰 이동에는 그 보정이 있고(`PatrolAreaMath.CloseInDir`), **추격 레인에는
-                    // unit 4b 가 아래에 넣었다**(`arrivedAtFiringCell` 분기).
+                    // unit 4c 가 아래에 넣었다**(`arrivedAtFiringCell` 분기).
                     bool chaseMoved = false;
                     bool arrivedAtFiringCell = false;
                     if (chaseLookup.HasBuffer(entity))
@@ -210,7 +210,7 @@ namespace Wassup.Battle.Movement
                             }
                         }
                     }
-                    // distance-based-range unit 4b — 「도착했는데 못 쏜다」 보정.
+                    // distance-based-range unit 4c — 「도착했는데 못 쏜다」 보정.
                     //
                     // 추격 필드의 소스는 **셀 디스크**(`FlowFieldBuilder.CollectDefenderSources`,
                     // 체비셰프)인데 발사 판정은 unit 4a 이후 **월드 원**이다. 원은 정사각형의

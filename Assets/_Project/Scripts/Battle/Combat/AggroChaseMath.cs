@@ -22,7 +22,7 @@ namespace Wassup.Battle.Combat
             return NoAttack;
         }
 
-        // distance-based-range unit 4b — 「사격 칸에 도착했는데 월드 사거리 밖」일 때 가디언
+        // distance-based-range unit 4c — 「사격 칸에 도착했는데 월드 사거리 밖」일 때 가디언
         // 쪽으로 미는 cardinal. 소스가 셀 디스크(체비셰프)인데 발사가 월드 원이라 원이
         // 잘라낸 모서리에서 생기는 구간을 이동 쪽에서 닫는다.
         //

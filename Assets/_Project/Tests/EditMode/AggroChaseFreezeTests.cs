@@ -6,7 +6,7 @@ using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.EditMode
 {
-    // distance-based-range unit 4b — 「어그로된 적이 가디언 옆에 멈춰 서서 아무것도 안 한다」의 회귀 고정.
+    // distance-based-range unit 4c — 「어그로된 적이 가디언 옆에 멈춰 서서 아무것도 안 한다」의 회귀 고정.
     //
     // 추격 레인은 세 판정이 한 루프를 이룬다: 획득 = 셀 · 정지 = 셀(추격 필드 소스 디스크) ·
     // 발사 = 월드 원(unit 4a 이후). 원이 정사각형 모서리를 잘라내므로 「필드는 도착이라 하고
@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditMode
             return p;
         }
 
-        // MovementSystem 추격 분기 전체(필드 하강 + unit 4b 접근 보정).
+        // MovementSystem 추격 분기 전체(필드 하강 + unit 4c 접근 보정).
         // 보정 게이트는 시스템과 같다: 사격 칸 도착(dist 0) AND FSM 이 아직 Chasing
         // (= AttackReach.InReach 거짓). 여기 grid 는 전면 walkable 이라 폴백축은 안 쓰인다.
         static float3 WalkWithCorrection(in NativeArray<int> dist, float3 start, int tileRange, int maxSteps)

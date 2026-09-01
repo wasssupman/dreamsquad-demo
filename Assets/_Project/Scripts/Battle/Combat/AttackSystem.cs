@@ -503,8 +503,9 @@ namespace Wassup.Battle.Combat
                 float3 atkPos = transform.ValueRO.Position;
                 int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
                 int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
-                // 사거리 2차 게이트(물리 거리)는 **둘 다 연속 이동**일 때만 — AttackReach 주석.
-                bool attackerIsContinuous = targetPathLookup.HasComponent(attackerEntity);
+                // ⚠ 「사거리 2차 게이트는 **둘 다 연속 이동**일 때만」은 은퇴한 규칙이다 —
+                // unit 4a 가 `bothContinuous` 를 없애 술어가 하나가 됐다. 그 조건을 읽던
+                // `attackerIsContinuous` 지역 변수도 같이 지웠다(할당만 되고 소비처 0이었다).
                 float bestSq = float.MaxValue;
                 // distance-based-range unit 2 — 동거리 tie-break 축. 형제 둘
                 // (`NearestTargeting.RanksBefore`, `HazardCastSystem`)은 갖고 있는데 이 루프의
