@@ -162,9 +162,12 @@ namespace Wassup.Presentation
                 for (int i = 0; i < renderers.Length; i++)
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
-                    // tilted-billboard unit 9 — 지름 = 점유 폭 × 전역 배율. 1×1 은 종전과 동일(무회귀).
+                    // unit 15 — **그림자는 UI 다**: 지름 = 판정 몸 지름(2 × BodyRadiusTiles).
+                    // BlobShadowSize 는 「타일 → 월드」 환산이다(아트 knob 아님 — tileSize 와
+                    // 같아야 「그림자가 링에 닿으면 사거리 안」이 정확하다).
                     _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
-                        Mathf.Max(1, _visualData != null ? _visualData.FootprintWidthCells : 1)
+                        2f * (_visualData != null ? _visualData.BodyRadiusTiles
+                                                  : Wassup.Skills.SkillMath.StandardBodyRadiusTiles)
                             * BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
                         BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감

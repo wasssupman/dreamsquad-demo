@@ -8481,7 +8481,7 @@ namespace Wassup.Bridge
                     mesh,
                     material,
                     CharacterVisualScale,
-                    unitData.Footprint.x, // unit 9 — Spine 경로와 같은 블롭 지름
+                    unitData.BodyRadiusTiles, // unit 15 — Spine 경로와 같은 판정 몸 지름(2r)
                     out _);
             }
 
@@ -8715,7 +8715,7 @@ namespace Wassup.Bridge
                 var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
                 defenderFallbackViewPool.TrySpawn(
                     unitData.displayName, entity, fallbackWorld, mesh, material, CharacterVisualScale,
-                    unitData.Footprint.x, out _); // unit 9 — Spine 경로와 같은 블롭 지름
+                    unitData.BodyRadiusTiles, out _); // unit 15 — 판정 몸 지름(2r)
             }
 
             return entity;
@@ -10953,7 +10953,7 @@ namespace Wassup.Bridge
                     mesh,
                     CreateAttackUnitRuntimeMaterial(unitType.visualMaterial),
                     CharacterVisualScale,
-                    1, // unit 9 — 적/보스는 sim 이 1칸 점유(AttackUnitData.FootprintWidthCells 와 같은 참값)
+                    unitType.BodyRadiusTiles, // unit 15 — 티어 몸(보스는 개별) = 그림자 지름 2r
                     out _);
             }
 

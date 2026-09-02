@@ -45,9 +45,9 @@ namespace Wassup.Presentation
             return rect.width > 0f && rect.height > 0f;
         }
 
-        // tilted-billboard unit 9 — footprintWidth 는 블롭 지름의 기준(점유 폭, 셀).
+        // unit 15 — bodyRadiusTiles = 판정 몸 반경(타일). 블롭 지름 = 2r(그림자는 UI 다).
         public void Configure(Entity entity, Mesh mesh, Material material, float visualScale,
-            int footprintWidth)
+            float bodyRadiusTiles)
         {
             _entity = entity;
             Mesh quad = mesh != null ? mesh : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
@@ -79,7 +79,7 @@ namespace Wassup.Presentation
                 _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
                     _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
-                        Mathf.Max(1, footprintWidth) * BattleBridge.BlobShadowSize,
+                        2f * Mathf.Max(0.05f, bodyRadiusTiles) * BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
                         BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
