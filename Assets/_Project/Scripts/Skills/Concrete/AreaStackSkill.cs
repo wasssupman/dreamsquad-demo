@@ -30,7 +30,7 @@ namespace Wassup.Skills.Concrete
                 CandidateFilter.ExcludeDead
                 | CandidateFilter.ExcludeInUltimateLeap
                 | CandidateFilter.MatchTraversalLayers,
-                RangeMetric.Chebyshev, buf);
+                RangeMetric.AreaCircle, buf);
 
             for (int i = 0; i < n; i++)
             {

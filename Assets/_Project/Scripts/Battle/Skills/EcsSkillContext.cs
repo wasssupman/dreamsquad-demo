@@ -447,25 +447,28 @@ namespace Wassup.Battle.Skills
                 // false 로 만들어 **광역이 통째로 빈다**(구 셀 경로는 clamp 가 우연히 삼켰다).
                 float invT = _tileSize > 1e-6f ? 1f / _tileSize : 1f;
                 bool inRange;
-                if (metric == RangeMetric.Chebyshev)
+                float dxT = (p.x - center.x) * invT, dzT = (p.z - center.z) * invT;
+                switch (metric)
                 {
-                    // 사각 도형 = **받은 center 그대로** 중심, 반폭 (range + 0.5)칸.
-                    // 칸 조준 concrete(TileStatBurst 등)는 center 를 CellCenter 로 만들어
-                    // 넘기므로 종전(셀 스냅)과 byte-identical 이다. 자기시전(말파이트 착지
-                    // 충격 등)은 몸 중심 그대로 — 종전엔 CellOfPosition 스냅이 2×2 기하
-                    // 중심(셀 경계 위)을 우상단 칸으로 밀어 도형이 **반 칸 치우쳤다**
-                    // (unit 10 이 은퇴시킨 「대표 셀」과 같은 병 — unit 14 잔여 해소).
-                    // 이동 캐스터(보스 광역)도 칸 경계에서 도형이 튀지 않게 된다.
-                    inRange = Wassup.Skills.SkillMath.BodyOverlapsSquare(
-                        (p.x - center.x) * invT, (p.z - center.z) * invT,
-                        tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
-                }
-                else
-                {
-                    // 원 도형 — 반경 합(민코프스키). 중심은 시전 지점 그대로(양자화 없음).
-                    inRange = Wassup.Skills.SkillMath.InBodyReach(
-                        (p.x - center.x) * invT, (p.z - center.z) * invT,
-                        tileRange, 0f, targetR);
+                    case RangeMetric.AreaCircle:
+                        // 광역 원 — attach-range-preview 0a. 반경 = range + 칸 반폭 + 대상 몸: 투사체
+                        // TileAoe 착탄(`ProjectileHitSystem`)·자기 자리 폭발과 **같은 식**이라 광역 도형이
+                        // 하나가 된다. 종전 사각(`BodyOverlapsSquare`, 반폭 range+0.5)은 이 원의 외접이라
+                        // 모서리만 빠진다(반경 1 은 셀 기준 손실 0 — 대각 1.414 ≤ 1.5).
+                        // 중심은 **받은 center 그대로**(양자화 없음): 칸 조준 concrete 는 CellCenter 를,
+                        // 자기시전은 몸 중심을 넘긴다 — 2×2 기하 중심이 셀 경계 위에 와도 치우치지 않는다.
+                        inRange = Wassup.Skills.SkillMath.InBodyReach(
+                            dxT, dzT, tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
+                        break;
+                    case RangeMetric.Euclidean:
+                        // 사거리 원 — 반경 합(민코프스키), 칸 반폭 없음(탄 비행 거리).
+                        inRange = Wassup.Skills.SkillMath.InBodyReach(dxT, dzT, tileRange, 0f, targetR);
+                        break;
+                    default:
+                        // 은퇴한 자(Chebyshev)가 캐스팅으로 들어오면 조용히 판정하지 않는다.
+                        UnityEngine.Debug.LogError($"[SkillDispatch] 은퇴한 RangeMetric {(int)metric} — 후보 0");
+                        inRange = false;
+                        break;
                 }
                 if (!inRange) continue;
 

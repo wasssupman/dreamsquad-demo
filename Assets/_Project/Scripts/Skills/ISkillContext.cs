@@ -31,8 +31,22 @@ namespace Wassup.Skills
         RequireHealth = 1 << 6,
     }
 
-    // 거리 자. 대부분 체비셰프인데 전방 발사만 유클리드다 — 실측이라 축으로 남긴다.
-    public enum RangeMetric : byte { Chebyshev = 0, Euclidean = 1 }
+    // 거리 자 — 값이 뜻하는 것이 다르다(둘 다 원, 둘 다 몸 걸침):
+    //   AreaCircle  광역 도형. 반경 = tileRange + 칸 반폭(0.5) + 대상 몸. 「반경 1 = 여덟 이웃 전부」가
+    //               성립하는 자(대각 1.414 ≤ 1.5). 자기시전·칸 조준 광역 전부.
+    //   Euclidean   사거리/비행 거리. 반경 = tileRange + 대상 몸. 발사명세(EmitPattern)처럼 「탄이 실제로
+    //               가는 거리」라 칸 반폭을 더하면 사거리 밖 후보를 골라 탄이 도중 소멸한다.
+    // ⚠ **0 = AreaCircle** 이다 — `default(RangeMetric)`·인자 누락이 은퇴한 사각 자로 조용히 가지 않게.
+    // Chebyshev(사각 SDF) 는 dreamcatcher-attach-range-preview 0a 에서 은퇴 — 술어 본체
+    // `SkillMath.BodyOverlapsSquare` 는 보존(사용자 결정 2026-09-02 「기능은 남기고 비활성화」).
+    // 되살릴 땐 아래 Obsolete 속성부터 떼고 `EcsSkillContext.Collect` 에 분기를 다시 단다.
+    public enum RangeMetric : byte
+    {
+        AreaCircle = 0,
+        Euclidean = 1,
+        [System.Obsolete("사각 광역은 은퇴했다(attach-range-preview 0a). 광역은 AreaCircle, 사거리는 Euclidean.", true)]
+        Chebyshev = 2,
+    }
 
     // `Has(id, pred)` 의 술어. 개별 동사로 쪼개면 표면이 10개 늘어난다.
     public enum UnitPredicate : byte

@@ -71,7 +71,7 @@ namespace Wassup.Skills.Concrete
                        | CandidateFilter.ExcludePendingDeployment
                        | CandidateFilter.RequireHealth;
             if (!p.IncludesSelf) filter |= CandidateFilter.ExcludeSelf;
-            int n = ctx.Allies(caster, hostPos, radius, filter, RangeMetric.Chebyshev, buf);
+            int n = ctx.Allies(caster, hostPos, radius, filter, RangeMetric.AreaCircle, buf);
             if (n == 0) return;
 
             // ⚠ **우선순위와 인원 상한은 여기서 갈린다.** 상한이 없으면(카드 경로)

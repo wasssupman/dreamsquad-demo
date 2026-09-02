@@ -57,12 +57,12 @@ namespace Wassup.Skills.Concrete
             var allyFilter = CandidateFilter.ExcludeDead;
             if (!IncludesSelf) allyFilter |= CandidateFilter.ExcludeSelf;
             int n = TargetsAllies
-                ? ctx.Allies(caster, hostPos, a.Radius, allyFilter, RangeMetric.Chebyshev, buf)
+                ? ctx.Allies(caster, hostPos, a.Radius, allyFilter, RangeMetric.AreaCircle, buf)
                 : ctx.Opponents(caster, hostPos, a.Radius,
                                 CandidateFilter.ExcludeDead
                                 | CandidateFilter.ExcludeInUltimateLeap
                                 | CandidateFilter.MatchTraversalLayers,
-                                RangeMetric.Chebyshev, buf);
+                                RangeMetric.AreaCircle, buf);
             if (n == 0) return;
 
             var stat = FixedStat ?? a.Stat;

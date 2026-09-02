@@ -20,6 +20,9 @@ namespace Wassup.Tests.EditMode
         {
             public float3 Position;
             public Faction Faction;
+            // 몸 반지름(타일). 어댑터의 `HitRadius` 에 해당 — 광역·사거리 술어가 민코프스키로 더한다.
+            // 기본 0 = 점. 몸 걸침을 시험하는 테스트만 켠다.
+            public float BodyRadius;
             public float Health = 100f, MaxHealth = 100f;
             public float AttackRange, AttackTargetCount;
             // unit 5b — 「얼마나 다쳤나」(HP+실드합 ÷ 최대HP). 1 = 멀쩡함.
@@ -137,7 +140,6 @@ namespace Wassup.Tests.EditMode
                             CandidateFilter filter, RangeMetric metric, SkillEntityId[] into)
         {
             if (wanted == Faction.None) return 0;
-            var centerCell = CellOfPosition(center);
             int n = 0;
             // 결정론 — 딕셔너리 순서에 기대지 않도록 id 오름차순으로 훑는다.
             var ids = new List<int>(Units.Keys);
@@ -163,18 +165,13 @@ namespace Wassup.Tests.EditMode
                     if (!Wassup.Data.PlacementLayers.CanTarget(hostLayers, u.TraversalLayers)) continue;
                 }
 
-                bool inRange;
-                if (metric == RangeMetric.Chebyshev)
-                {
-                    var c = CellOfPosition(u.Position);
-                    inRange = SkillMath.ChebyshevDistance(c.x, c.y, centerCell.x, centerCell.y) <= tileRange;
-                }
-                else
-                {
-                    float dx = u.Position.x - center.x, dz = u.Position.z - center.z;
-                    float r = tileRange * TileSize;
-                    inRange = dx * dx + dz * dz <= r * r;
-                }
+                // 판정 본체는 어댑터(`EcsSkillContext.Collect`)와 **같은 함수**를 부른다 — 페이크가
+                // 자를 재구현하면 도메인 테스트가 초록인데 라이브가 다른 갈림이 생긴다(attach-range-preview 0a).
+                // 입력은 타일 단위(`/ TileSize`) — `TileSize ≠ 1` 픽스처에서도 반경이 타일로 읽힌다.
+                float dxT = (u.Position.x - center.x) / TileSize, dzT = (u.Position.z - center.z) / TileSize;
+                bool inRange = metric == RangeMetric.Euclidean
+                    ? SkillMath.InBodyReach(dxT, dzT, tileRange, 0f, u.BodyRadius)
+                    : SkillMath.InBodyReach(dxT, dzT, tileRange, SkillMath.CellHalfWidthTiles, u.BodyRadius);
                 if (inRange) into[n++] = new SkillEntityId(id);
             }
             return n;

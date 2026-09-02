@@ -49,7 +49,7 @@ namespace Wassup.Skills.Concrete
                 caster, hostPos, p.TileRange,
                 CandidateFilter.ExcludeSelf | CandidateFilter.ExcludeDead
                     | CandidateFilter.MatchTraversalLayers,
-                RangeMetric.Chebyshev, buf);
+                RangeMetric.AreaCircle, buf);
 
             var fromXZ = new float2(hostPos.x, hostPos.z);
             for (int i = 0; i < n; i++)

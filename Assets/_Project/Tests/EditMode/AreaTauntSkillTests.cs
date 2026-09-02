@@ -69,17 +69,30 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, TauntCount(ctx));
         }
 
+        // attach-range-preview 0a — 광역 자는 **원**(반경 N + 칸 반폭 + 몸)이다. 사거리(발사 명세)와
+        // 다른 점은 칸 반폭 0.5 — 「반경 N = N칸 안」이라는 저작 어휘를 지키는 항이다.
         [Test]
-        public void Diagonal_IsInRange_BecauseTheMetricIsChebyshev()
+        public void Diagonal_InsideTheCircle_IsInRange()
         {
-            // ⚠ 이 자는 발사 명세와 **다르다**(저긴 유클리드). 도발은 「몇 칸 안」이고
-            // 탄이 날아가지 않으므로 대각선이 같은 거리로 센다 — legacy arm 과 같은 자.
+            // (1.5, 1.5) = 2.12 ≤ 2 + 0.5 — 대각도 원 안이면 걸린다.
+            var ctx = Ctx(out var caster);
+            ctx.Add(2, new float3(1.5f, 0f, 1.5f), Faction.EnemyUnit);
+
+            new AreaTauntSkill().Execute(caster, default, P(2, 4f), ctx);
+
+            Assert.AreEqual(1, TauntCount(ctx));
+        }
+
+        [Test]
+        public void FarDiagonalCorner_IsOutsideTheCircle()
+        {
+            // (2, 2) = 2.83 > 2.5 — 옛 사각(체비셰프 2)에선 걸렸던 모서리. 원에선 빠진다.
             var ctx = Ctx(out var caster);
             ctx.Add(2, new float3(2f, 0f, 2f), Faction.EnemyUnit);
 
             new AreaTauntSkill().Execute(caster, default, P(2, 4f), ctx);
 
-            Assert.AreEqual(1, TauntCount(ctx));
+            Assert.AreEqual(0, TauntCount(ctx));
         }
 
         [Test]

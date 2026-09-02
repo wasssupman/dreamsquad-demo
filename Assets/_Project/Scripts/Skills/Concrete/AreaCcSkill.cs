@@ -31,7 +31,7 @@ namespace Wassup.Skills.Concrete
                 CandidateFilter.ExcludeDead
                 | CandidateFilter.ExcludeInUltimateLeap
                 | CandidateFilter.MatchTraversalLayers,
-                RangeMetric.Chebyshev, buf);
+                RangeMetric.AreaCircle, buf);
             if (n == 0) return;
 
             // 이 유닛이 «얼마나 높이 · 얼마나 오래» 띄우나는 스킬 저작이 아니라 유닛의

@@ -37,11 +37,11 @@ namespace Wassup.Battle.Combat
             => math.max(math.abs(a.x - b.x), math.abs(a.y - b.y));
 
         // ⚠ **광역 멤버십에 쓰지 말 것** — 그 용도의 정본은 아래 `IsInRadius` 다.
-        // 이 정사각형이 남은 곳은 둘뿐이고 **둘 다 「칸」이 물음의 일부**다(결정 4):
+        // 이 정사각형이 남은 곳은 **하나**뿐이고 「칸」이 물음의 일부다:
         //   · `DefenderDensity` — 「가장 밀집한 **칸**」. 보스 순간이동 착지 지점이라
         //     자를 바꾸면 착지가 조용히 바뀐다.
-        //   · `EcsSkillContext` 스킬 arm — 저작이 칸 단위 조준이다.
-        //   · `MovementSystem` 회오리 장 — 사거리가 아니라 **장(field) 멤버십**이다.
+        // (`EcsSkillContext` 스킬 arm 의 사각은 attach-range-preview 0a 에서 원(`RangeMetric.AreaCircle`,
+        //  아래 `IsInRadius` 와 같은 식)으로 접혔고, `MovementSystem` 회오리 장은 unit 18 에서 원이 됐다.)
         public static bool IsInTileRange(int2 candidateCell, int2 centerCell, int tileRange)
             => TileDistance(candidateCell, centerCell) <= tileRange;
 

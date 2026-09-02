@@ -23,7 +23,7 @@ namespace Wassup.Skills.Concrete
             var center = ctx.CellCenter(target.CellA);
             var buf = new SkillEntityId[MaxTargets];
             int n = ctx.Opponents(caster, center, p.TileRange,
-                CandidateFilter.ExcludeDead, RangeMetric.Chebyshev, buf);
+                CandidateFilter.ExcludeDead, RangeMetric.AreaCircle, buf);
 
             for (int i = 0; i < n; i++)
             {
