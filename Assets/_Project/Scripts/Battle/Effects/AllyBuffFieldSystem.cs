@@ -36,6 +36,10 @@ namespace Wassup.Battle.Effects
         {
             state.RequireForUpdate<AllyBuffField>();
             state.RequireForUpdate<StatModifierApplyEventsSingleton>();
+            // 리뷰 M6 (unit 18) — 셀 대 셀 시절엔 격자 파라미터가 불필요했지만, 이제
+            // centerCell 을 월드로 펴야 해서 필수다. 폴백(1,0)은 실제 좌표계와 달라
+            // 멤버십이 조용히 전부 틀린다 — ZoneApplySystem 과 같은 Require 로 못박는다.
+            state.RequireForUpdate<FlowFieldSingleton>();
             _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
         }
 
@@ -47,10 +51,11 @@ namespace Wassup.Battle.Effects
             if (fields.Length == 0) { fields.Dispose(); return; }
 
             var statQueue = SystemAPI.GetSingleton<StatModifierApplyEventsSingleton>().queue;
-            // unit 18 — 셀 대조 → 몸 기준 연속 멤버십. 격자 파라미터는 셀 중심의 월드 환산에만 쓴다.
-            bool hasFf = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var ff);
-            float tileSize = hasFf ? ff.tileSize : 1f;
-            float3 ffOrigin = hasFf ? ff.origin : float3.zero;
+            // unit 18 — 셀 대조 → 몸 기준 연속 멤버십. 격자 파라미터는 셀 중심의 월드 환산에만
+            // 쓴다(Require 로 존재 보장 — 리뷰 M6).
+            var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
+            float tileSize = ff.tileSize;
+            float3 ffOrigin = ff.origin;
             float buffInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
             _bodyRadiusLookup.Update(ref state);
             var hitRadiusLookup = _bodyRadiusLookup;

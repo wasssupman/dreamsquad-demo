@@ -426,6 +426,17 @@
   그 spec 의 unit 0 이 결정 4 가 「알고 남긴」 **스킬 광역 사각(`RangeMetric.Chebyshev`) 공존을
   원(`N + 0.5`)으로 닫는다** — 이 spec 의 마지막 격자 잔존 정리는 거기서 이어진다.
 
+- **`DeployedFacing`/`TryFacing` 거취 일괄** [M] — 리뷰 M5(2026-09-02). 조준 배치 은퇴로
+  컴포넌트 부착 producer 0 인데 소비 코드·고아 저작(`aimRangeTile`·`aimRangeColor`·
+  `aimRangeAlpha`·`AimArrowOrder`)·`_facingRetiredLookup`(Burst 함정 존치 줄)이 남아 있다.
+  방향 지정 유닛(머신거너 볼리)의 조준 UX 를 살릴지 접을지가 product 결정이라 일괄 처리.
+- **`scopeTileRange` 저작 재점검** [S] — 리뷰 M7(2026-09-02). unit 18 로 scope 자에 몸
+  반경이 더해져 `scopeTileRange=2` 의 실효가 축방향 ~2.75타일(+37%)이 됐다. 융단폭격·
+  불나방떼 등 저작값 유지가 의도인지 시트/SO 재확인(골든이 이 경로를 안 밟아 무변 통과).
+- **리뷰 LOW 잔여 3건** [S] — L6 `_impactSocketByEntity` 무한 성장(판 경계 Clear 만 —
+  3분 판이라 무해) · L8 존/해저드 0 프레임의 Temp 할당(early-return 이 할당 뒤) ·
+  L9 `RefreshRangeTargetMarks` 매 LateUpdate 갱신(배치 드래그 중에만 돌지만 스킵 가드 없음
+  — 단, 적이 매 프레임 움직여 마크 추적이 곧 기능이라 dirty 체크 실익은 측정 후 판단).
 - **칸 하이라이트 원형화** [M] — 위 「표기」 참조. `range 1 = 3×3` 계약과 콘텐츠 반경 재저작 동반.
 - **`AuraPulse` 은퇴** [S] — 프로덕션 소비처 0(자장가가 `AreaSleepSkill` 로 이전하며 소비자 소멸). 파일과 테스트 12건만 살아 있다. 이 spec 이 건드리는 파일이 아니라 별도.
 - **브리지 `ChebyshevDistance` 손복사본 제거** [S] — `BattleBridge.cs:7509`, `GridMath` 사본이며 사유가 어디에도 없다.

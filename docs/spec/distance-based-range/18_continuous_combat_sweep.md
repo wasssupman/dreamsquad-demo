@@ -4,6 +4,11 @@
 
 ## 전수조사 결과 (카드 47종 · 페이로드 33종)
 
+**unit 14 잔여 해소(2fa3d149, 리뷰 M3 기록)**: 도형 스킬 사각의 중심을
+`CellOfPosition` 스냅에서 **받은 center 그대로**로 — 칸 조준 concrete 는 byte-identical,
+자기시전(대다수 광역이 hostPos 를 넘김)은 몸 중심 정중앙이 되고 이동 캐스터의 도형이
+칸 경계에서 튀지 않는다. 골든 델타 1건(광역 CC 경계 이동)이 이 변경의 귀속.
+
 **이미 거리 기반(unit 12~14)**: 스킬 광역 멤버십 전부(AreaCc/Sleep/Dot/Stack/Taunt/Breath/
 StatAura/GrantShield/TileStatBurst — 몸 걸침) · 사거리 · 투사체 splash/스윕.
 
@@ -24,6 +29,9 @@ StatAura/GrantShield/TileStatBurst — 몸 걸침) · 사거리 · 투사체 spl
 - **어그로 타일 필드** — 설계 어휘가 타일 필드(이동 유도 축, aggro-tile-chase 재설계)
 - **보스 블링크/궁극기 착지 셀** — 지형(어느 칸에 서나) 축
 - **브리지 표기 2곳**(프리뷰 영향 수 등) — 표기 관용
+- **셀 고정 착탄점**(아틸러리 `BallisticArcToPoint`·에미터 `BindingClass.Cell`) — 착탄 **예고가
+  칸에 고정**되는 조준 저작(예고가 움직이면 안 된다는 기존 설계). 피해자 판정은 그 점 기준
+  연속(d 항). 리뷰 M1 이 존치 목록 누락을 잡아 추가
 - **해저드 존 틱** — unit 19 (구조 재설계라 분리)
 - 겸직 tileRange 2장(살찐 제물 30=−30% · 광란 10=잔존값) — 공간 아님(후속 후보의 겸직 해소 항목)
 

@@ -30,6 +30,9 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         {
             int n = candidateXZTiles.Length;
             if (n <= 0) return -1;
+            // 리뷰 L7 — 두 배열은 병렬 계약이다. 불일치는 호출부 버그(오늘 전 호출부가
+            // 같은 길이를 공급) — 조용한 OOB 대신 무선택으로 접는다(Burst 라 예외 불가).
+            if (candidateSimIds.Length != n) return -1;
 
             int k;
             switch (rule)

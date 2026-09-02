@@ -19,7 +19,7 @@
 - `ZoneApplySystem` = 해저드 스냅샷 × 피해자 몸 **직접 곱** — 멤버십
   `InBodyReach(반경, CellHalfWidth, 피해자 몸)`, 광역·회오리와 같은 자.
 - **은퇴**: `HazardSingleton`·`cellToEffects` 맵·`HazardLifetimeSystem` 의 매 프레임 재구축
-  (수명 틱만 남음)·브리지의 맵 할당/해제. `HazardCellsBuffer` 는 검사/뷰 소비자가 있어 존치.
+  (수명 틱만 남음)·브리지의 맵 할당/해제. `HazardCellsBuffer` 는 검사(테스트) 소비자가 있어 존치 — 뷰 소비자는 0(리뷰 M4 정정).
 - 겹친 동일 슬롯 존의 적용 순서는 종전(맵 삽입 = 청크 순서)과 같은 결 — 결정론 등급 무변.
 
 ## 완료 기준

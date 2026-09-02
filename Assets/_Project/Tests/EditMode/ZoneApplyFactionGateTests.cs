@@ -188,6 +188,27 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(pathEnemy, evt.target);
         }
 
+        // 리뷰 M4 (unit 19) — 모양→반경 매핑의 경계 핀. Square3x3(radius 1) 존:
+        // 소형 몸(0.25) 도달 = 1 + 0.5 + 0.25 = 1.75. 축 방향 1.7 은 **칸 밖 오버행 in**,
+        // 정대각 (1.4,1.4)=1.98 은 **옛 3×3 모서리 칸이지만 out** — 원 전환의 정의 그 자체.
+        [Test]
+        public void SquareZone_CircleBoundary_AxisOverhangIn_CornerOut()
+        {
+            var hz = _em.CreateEntity();
+            _em.AddComponentData(hz, new Hazard { remainingLife = 100f, originCell = ZoneCell, radiusTiles = 1 });
+            var buf = _em.AddBuffer<HazardEffectsBuffer>(hz);
+            buf.Add(new HazardEffectsBuffer { effect = new HazardEffect { kind = CcKind.Slow, param1 = 0.5f, restDuration = 2f } });
+
+            var axisIn = CreateMover(Faction.EnemyUnit, ZoneWorld + new float3(1.7f, 0f, 0f), bodyRadius: 0.25f);
+            CreateMover(Faction.EnemyUnit, ZoneWorld + new float3(1.4f, 0f, 1.4f), bodyRadius: 0.25f);
+
+            Tick();
+
+            Assert.AreEqual(1, _statQueue.Count, "축 오버행(1.7)만 걸리고 옛 모서리(1.98)는 빠져야 한다");
+            Assert.IsTrue(_statQueue.TryDequeue(out var evt));
+            Assert.AreEqual(axisIn, evt.target);
+        }
+
         // unit 19 — 존은 셀 해시가 아니라 **해저드 엔티티**(원 정의 + 효과 버퍼)다.
         private void AddZoneEffect(CcKind kind, float param1, float restDuration = 2f,
             PlacementLayer targetLayers = PlacementLayer.None)
@@ -218,9 +239,11 @@ namespace Wassup.Tests.EditMode
         private Entity CreateMover(Faction faction) => CreateMover(faction, ZoneWorld);
 
         private Entity CreateMover(Faction faction, float3 worldPos,
-            PlacementLayer traversalLayer = PlacementLayer.None)
+            PlacementLayer traversalLayer = PlacementLayer.None, float bodyRadius = 0f)
         {
             var entity = _em.CreateEntity();
+            if (bodyRadius > 0f)
+                _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = bodyRadius });
             _em.AddComponentData(entity, new FactionTag { value = faction });
             _em.AddComponentData(entity, LocalTransform.FromPosition(worldPos));
             _em.AddComponentData(entity, new PathFollowState

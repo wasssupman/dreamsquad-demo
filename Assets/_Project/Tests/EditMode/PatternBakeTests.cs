@@ -352,6 +352,36 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.018f, spec.randomIntervalMaxSec);
         }
 
+        // 리뷰 M2 (unit 18) — PatternScopeTests 재작성 때 소실된 SO→spec 복사 핀 복원.
+        // scope/fanOut 은 에미터 판정·리듬의 입력이라 복사 누락이 조용한 no-op 이 된다.
+        [Test]
+        public void TryToSpec_CopiesScopeAndFanOut_AndClampsNegatives()
+        {
+            _patternA.scopeTileRange = 3;
+            _patternA.fanOutToAllCandidates = true;
+            _patternA.fanOutStaggerSec = 0.25f;
+            Assert.IsTrue(_patternA.TryToSpec(0, out var spec));
+            Assert.AreEqual(3, spec.scopeTileRange);
+            Assert.IsTrue(spec.fanOutToAllCandidates);
+            Assert.AreEqual(0.25f, spec.fanOutStaggerSec, 1e-6f);
+
+            _patternA.scopeTileRange = -2;
+            _patternA.fanOutStaggerSec = -1f;
+            Assert.IsTrue(_patternA.TryToSpec(0, out var clamped));
+            Assert.AreEqual(0, clamped.scopeTileRange, "음수 저작은 0(전량 통과)으로 접는다");
+            Assert.AreEqual(0f, clamped.fanOutStaggerSec, 1e-6f);
+        }
+
+        // 미저작 기존 에셋의 기본값 = 레거시 동작(스코프 없음·fan 없음) — 무회귀 핀.
+        [Test]
+        public void TryToSpec_DefaultsAreLegacyBehaviour()
+        {
+            Assert.IsTrue(_patternA.TryToSpec(0, out var spec));
+            Assert.AreEqual(0, spec.scopeTileRange);
+            Assert.IsFalse(spec.fanOutToAllCandidates);
+            Assert.AreEqual(0f, spec.fanOutStaggerSec, 1e-6f);
+        }
+
         [Test]
         public void TryToSpec_RejectsReversedRandomIntervalRange()
         {

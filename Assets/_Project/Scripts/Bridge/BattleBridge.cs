@@ -5032,9 +5032,6 @@ namespace Wassup.Bridge
             return _cameraDirector;
         }
 
-        // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
-        // one event per direct-target impact. Task 0 keeps this as a no-op
-        // dequeue so the queue does not back up; task 3 connects it to the
         // unit 16 — 대상의 임팩트 소켓 높이(월드). 0 = 미저작.
         private float ImpactSocketHeightOf(Entity target)
         {
@@ -5054,6 +5051,9 @@ namespace Wassup.Bridge
             return v;
         }
 
+        // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
+        // one event per direct-target impact. Task 0 keeps this as a no-op
+        // dequeue so the queue does not back up; task 3 connects it to the
         private void DrainProjectileHitEvents()
         {
             if (!_projectileHitEventQueue.IsCreated) return;
@@ -5853,6 +5853,8 @@ namespace Wassup.Bridge
         // 새 규칙(사용자 결정 2026-08-15):
         //   1) 조준이 있으면 그 방향. 방향 지정 유닛의 조준을 스킬이 물려받는다 — 활성화가
         //      `DeployedFacing` 을 on-place **앞에** 붙여 두는 것이 이걸 위해서였다.
+        //      ⚠ distance-based-range 에서 조준 배치가 은퇴해 `DeployedFacing` 부착이 0 —
+        //      규칙 1 은 현재 발화하지 않고 규칙 2 가 실경로다(거취 일괄 = 리뷰 M5, 후속 후보).
         //   2) 없으면 사거리 안 가장 가까운 적 방향. 조준 UX 가 없는 유닛(마크스맨 등)의 규칙.
         //
         // **조준이 최근접보다 세다.** 조준은 방향만 정하고, 사건 성립(후보 존재)은 호출처가
@@ -8093,6 +8095,7 @@ namespace Wassup.Bridge
         public void ClearPlacementRange()
         {
             _placementMarkLive = false;
+            _placementMarkUnit = null;   // 리뷰 L-2 — SO 참조를 프리뷰 수명 밖에 남기지 않는다
             ClearRange(RangeDisplayOwner.Placement);
         }
 

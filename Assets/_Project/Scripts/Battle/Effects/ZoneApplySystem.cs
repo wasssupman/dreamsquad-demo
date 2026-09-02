@@ -100,7 +100,7 @@ namespace Wassup.Battle.Effects
                         continue;
                     for (int ei = 0; ei < zone.effCount; ei++)
                     {
-                    var effect = zoneEffects[zone.effStart + ei];
+                        var effect = zoneEffects[zone.effStart + ei];
                     if (!PlacementLayers.CanTarget(
                             effect.targetTraversalLayers,
                             path.ValueRO.traversalLayers)) continue;
