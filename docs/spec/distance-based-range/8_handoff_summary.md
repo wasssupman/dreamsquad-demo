@@ -1,80 +1,47 @@
-# 8 — handoff summary
+# 8 — Handoff Summary (최종, 2026-09-01)
 
-> 다음 사람이 **여기부터** 읽는다. 최신 계약은 README 와 번호 문서가 우선한다.
+> spec 완료 시점의 인계 지도. 최신 계약은 README(계약 1 rev 3)가 정본이다.
 
 ## Commit
 
-| 범위 | 커밋 |
-|---|---|
-| spec 작성·critic 수렴 | `9d814792` ~ `84b1e543` |
-| 하네스 결함(골든이 전투를 못 담았다) | `89e65d05` · `fade423a` |
-| unit 0 안전망 | `674cf654` · `a119fa73` |
-| unit 1 술어 수렴 + 리뷰 반영 | `426cff4a` · `d17d05d2` · `8774882b` |
-| 코퍼스에 연속 이동 아군 + 게이트 2종 | `820ed079` |
-| unit 3 몸(`bodyRadius`, 저작 0) | `957c34d2` |
-| unit 4a 자 교체 → **rev 2 진짜 원** | `85edd03e` → `72314313` |
-| unit 4b 광역 · 4d 히스테리시스 | `2ab53e51` · `40de7dd2` |
-| unit 5 표기(채움→링, 5커밋) | `0a36370d` · `f872cabd` · `13495b1c` · `ae380a6c` · `8b6ac4bb` · `b612fc54` |
-| unit 7 대상 마크 | `5f360f62` |
-| 리팩토링 · 리뷰 반영 2회 | `dab26b88` · `9db3d5c4` · `b950064f` |
+`691c1a22`(rev 3 문서) → `f9d329af`(12 원 회귀) → `9eafbf90`(13 티어) → `e2101a32`(14 몸 걸침)
+→ `cc375d06`(15 그림자) → `b3793fba`(16 소켓) → `0ebb1b6d`(11 facing 은퇴 −1102줄)
+→ `d706a096`(18 전수조사 전폐) → `23417bc5`(19 존 틱) + 골든 4회(`824f87aa`·`e1c11669` 등).
+units 0~10 은 이전 세션(`c587e15b` 까지).
 
 ## Implemented
 
-- **사거리 술어가 하나다.** `SkillMath.InBodyReachWithHalfExtent` 가 **유일한 본문**이고
-  `AttackReach`·`TileAoe`·배치 프리뷰·링·마크가 전부 그것을 지난다. `bothContinuous` 인자는 은퇴 —
-  **그 인자의 존재 자체가 「사거리 안의 뜻이 누가 묻느냐에 따라 달랐다」였다.**
-- **자 = 몸 사이 거리.** 1×1 끼리는 `|Δ| ≤ R + 0.5` = **진짜 원**. `halfExtent` 는 다칸 몸용으로
-  살아 있고(오늘 호출부 0, **테스트가 계약을 진다**), 0.5 는 「한 칸의 몸 반지름」이다.
-- **전투원에게 몸이 생겼다**(`bodyRadius`, `HitRadius`). 사거리·투사체 충돌·광역이 전부 더한다.
-  **값은 전부 0** — 저작은 unit 6.
-- **획득/유지가 갈렸다**(`h = 0.1`). 재서 정했다(정지 적 프레임 지터 0.047·0.051 실측).
-- **표기가 판정에서 나온다.** 링·채움이 같은 SDF 셰이더 하나이고 `_HalfExtent`·`_Range` 는
-  **판정 입력의 복사본**이다. 무효면 채도만 떨어진다 — 빨강은 고스트 충돌 전용.
-- **사거리 안 공격 대상에 발밑 마크.** 빨강을 **시간으로** 가른다(무효면 끈다).
-  방향 유닛·지원형은 안 켠다.
-- 코퍼스가 8건(`summoner` 추가 — 순찰병이 구조적으로 못 들어왔었다) + 게이트 3종
-  (공허·왕복·셋업) + `Bake Missing Goldens Only`.
+- **몸 = 원 하나** (계약 1 rev 3): 방어유닛 `min(W,H)/2` 내접원 파생 · 적 티어(소0.25/중0.5/대1.0/보스 개별)
+  · 구조물 `FootprintOf/2`. 판정 = `d² ≤ (사거리+selfR+targetR)²` — 술어 본체는 `SkillMath.InBodyReach` 하나
+- 스킬 광역·에미터·자장가 부속·회오리·광역 착탄·버프장·재조준·해저드 존 틱까지 **전투 판정 격자 0**
+  (에미터 결정론은 row-major 셀 키 → **simId rank** 로 재정의)
+- **캐리어 3종**: 그림자(지름 2r·lift 크기 불변)·링(사거리+selfR — 「그림자가 링에 닿으면 안」= 판정식과 동치)
+  ·임팩트 소켓(뷰 전용, 보스 0.8 저작). facing(레인·조준 페이즈) 은퇴
+- 원장 2장 + 전복 인벤토리 = `docs/blueprint/`
 
 ## Key Files
 
-| 무엇 | 어디 |
-|---|---|
-| **술어 본문(유일)** | `Scripts/Skills/SkillMath.cs` |
-| 변환·소비처 목록 11 | `Scripts/Battle/Combat/AttackReach.cs` |
-| 광역 | `Scripts/Battle/Combat/TileAoe.cs` |
-| 획득/유지 | `Scripts/Battle/Combat/TargetPersistence.cs` |
-| 몸 | `Scripts/Battle/Units/HitRadius.cs` · `Data/AttackUnitData.bodyRadius` |
-| 표기(링·채움·마크) | `Scripts/Core/TilemapMapView.cs` · `Shaders/PlacementRangeRing.shader` |
-| 대상 수집 | `BattleBridge.RefreshRangeTargetMarks` |
-| 하네스·골든 | `Editor/Battle/SimHarnessRunner.cs` · `SimGoldenMenu.cs` |
+`Skills/SkillMath.cs`(술어+이력) · `Combat/AttackReach.cs`(정본 진입점) · `Data/DefenderUnitData.cs`
+(`BodyRadiusTiles` 파생) · `Data/AttackUnitData.cs`(`bodySize`) · `Effects/ZoneApplySystem.cs`(존 원 직접 곱)
+· `Emission/PatternScope·PatternTargeting`(연속+simId) · `Presentation/UnitLiftVisual·SpineUnitView`(그림자 2r)
 
 ## Verified
 
-- EditMode **2671건 / 실패 2건** — 둘 다 **선행**(`boomerang`·`bomb_man` 문안, 시트 소관).
-- PlayMode 교착 카나리아 통과. 골든 8건 전건 통과. 고정 스텝 **2회 실행 일치**.
-- 코드 리뷰 2라운드 → **APPROVE**(CRITICAL 1 · HIGH 5 · MEDIUM 6 · LOW 9 전건 처리).
+EditMode 2,669건 전건 초록(선행 실패 2건 = bomb_man·boomerang 문안, 시트 소관) ·
+골든 재베이크 4회 전부 귀속(총 킬 경제 69→69 중립, no_defense 카나리아 바이트 동일,
+units 18·19 는 바이트 무변) · 결정론 2회 900틱 일치.
 
-## Notes — 되돌리면 안 되는 것
+## Notes (되돌리면 안 되는 것)
 
-1. **술어 본문을 복제하지 마라.** 두 벌이 되는 것이 이 spec 이 없애려던 문제다.
-2. **표기가 모양을 다시 그리지 마라.** 프리뷰·링·마크가 전부 판정 함수를 지난다.
-3. **정렬로 끊김을 피하지 마라.** 링·채움은 바닥 대역이다 — 세계에 그린 도형이 스프라이트를
-   관통하면 UI 로 읽혀 물성이 깨진다. **끊김은 채움이 흡수한다.**
-4. **`SelfBodyRadiusTiles` 를 √2−1 미만으로 내리지 마라** — 반경 1 폭발 20건이 십자로 붕괴한다
-   (테스트가 막는다).
-5. **`.mat` 의 `_Thickness` 를 올리면 마크 쿼드 여유를 함께 본다** — 안 그러면 테가 사각으로 잘리고
-   증상은 「마크가 각졌다」로 나온다.
-6. **2026-08-28 예외(사거리 칸에서 불가 표시 양보)를 되살리지 마라** — 채움 두 겹이 싸우던
-   증상 대응이었고 지금은 겹칠 픽셀이 없다.
-7. 「왜 없는지」를 적어 둔 곳 둘(`CoreShielded` 미필터 · `defenderClass` 미복제) — 지우면 다음
-   사람이 같은 검산을 처음부터 다시 한다.
+- **Burst lookup 함정 5회 재발**: OnUpdate 의 `SystemAPI.GetComponentLookup` 로컬 형태는
+  지우는 것도 **더하는 것도** NRE 를 부른다. 신규는 항상 필드(OnCreate+Update).
+  `AttackSystem.cs` 의 `facingLookupRetired` 는 소비처 0 이지만 **지우면 안 되는 줄**이다
+- 실효 도달 +0.25(1×1 selfR 0.5)는 **의도**(계약 5 rev) — 리베이스 금지
+- fan 시차 슬롯·조준 저작(칸)·어그로 타일 필드·착지 셀·표기는 **사유 있는 격자 존치**(unit 18 표)
+- `blobShadowSize`(씬) = tileSize 가 「그림자─링 동치」의 전제
 
 ## Follow-up
 
-- **unit 6(유일한 미완)** — 보스 `bodyRadius` 저작 + HP/방어 보상. ⚠ **같은 커밋**이어야 한다:
-  `bodyRadius` 는 SO 지만 HP 는 **시트 정본**이라 `.asset` 만 고치면 다음 로그인 임포트가 되돌린다.
-  면적 손실 재계산(사거리 1 **무손실** · 3 이 −25% 로 최악)은 `6_golden_regen_and_tuning.md`.
-- **실기기/공성 맵 확인 3건** — 거점 사각 마크(적 거점이 있는 맵 필요) · 사거리 5 링 판독 ·
-  unit 4d 진동 육안(이제 링이 그 도구다).
-- **후속 후보** — 「누가 회복되나」 표기(힐러. 색 축을 새로 여는 별개 결정) · 해저드 장판/회오리의
-  원-사각 불일치(비목표로 남겼다).
+README 후속 후보 참조 — 1순위: **보스전 축**(long_boss −4킬, 시트 결정) + Play 육안 체크리스트.
+다음 착수 spec: `docs/spec/dreamcatcher-attach-range-preview/`(결정 확정·미착수).
+M1(battle-sim-extraction)은 골든 기준선 안정으로 착수 조건 충족.
