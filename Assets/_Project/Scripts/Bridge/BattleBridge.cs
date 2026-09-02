@@ -9922,130 +9922,16 @@ namespace Wassup.Bridge
                 ?.Update();
         }
 
+        // attach-range-preview unit 1 — 라우팅 표는 `Wassup.Core.DcSkillRouting` 으로 **이사**했다.
+        // 부착 프리뷰 카탈로그(`DcRangeCatalog`)가 같은 표를 필요로 해서, bake 와 프리뷰가 한 함수를 부른다
+        // (두 벌이면 특수 케이스가 한쪽에만 추가돼 같은 저작이 소비처에 따라 다른 스킬로 간다).
+        // 특수 케이스 설명(자리의 주인이 다른 폭발 셋 · 트리거 무관 충전 · 빈사 버프)은 그 파일에 있다.
         private static int SkillIdForMechanic(Wassup.Data.DcTriggerKind trigger,
                                               Wassup.Data.DcPayloadKind kind)
-        {
-            if (trigger == Wassup.Data.DcTriggerKind.OnKill)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.SpawnHazard)
-                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
-            }
-            // unit 3d″ — **작별 선물.** `OnKill × SelfTileAoe`(시체폭발)와 같은 concrete 를
-            // 쓴다. 「실려 온 자리에서 터진다」가 같은 규칙이고, **누구의 자리인가**는
-            // 스킬이 아니라 감지자가 정하기 때문이다(죽인 자리 ↔ 죽은 자리).
-            // ⚠ `SkillIdForPayload(SelfTileAoe)` 로 가면 **안 된다** — 그건 살아 있는
-            // 시전자 발밑을 묻는 `SelfAreaBlastSkill` 이고, 드레인 시점엔 시전자가 없다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnDeath
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-            // unit 3d‴ — 피격 N회. **자기 자리 폭발**은 살아 있는 시전자 발밑이라
-            // `SelfAreaBlastSkill` 이 맞다(작별 선물과 반대 축이다).
-            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                // ⚠ `NextAttackDoubleFire` 는 여기가 아니라 **트리거 무관 스위치**에 있다.
-                // 여기 두면 `OnPlace × 충전` 이 라우팅을 못 찾아 0(=스킬 아님)이 되는데,
-                // 그 payload 의 arm 은 이미 철거돼서 **아무 일도 안 하고 아무 말도 안 한다.**
-                // 그 침묵을 PlayMode 가 잡았다(unit 8).
-            }
-            // unit 3e — 실드 파열. 피격 N회와 **같은 실행기**를 쓰므로 모양이 같다.
-            // ⚠ `AreaSleep` 은 concrete 가 「재우자마자 내가 깨울 자리」를 뺀다 — 레거시
-            // 파열엔 없던 규칙이다. 재우는 **수**는 그대로고(뺄 만큼 더 뽑는다) 달라지는
-            // 것은 «누가» 자느냐다. 자장가의 계약이 그쪽이 옳다고 보므로 concrete 를
-            // 둘로 가르지 않고 이 차이를 여기 적어 둔다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnShieldBreak)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.AreaSleep)
-                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
-            }
-            // unit 3e — 퇴근 운석. 죽은 자리 폭발과 **같은 규칙**이다(실려 온 자리에서
-            // 터진다). 다른 것은 값뿐 — 자리의 주인이 「비워진 칸」이고 예고 시간이 있다.
-            if (trigger == Wassup.Data.DcTriggerKind.OnRetire
-                && kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
-                return Wassup.Skills.Concrete.DeathSiteBlastSkill.Id;
-            // unit 4a — **부착되는 순간** 발동하는 것들(트리거 없음). 이 조합은 감지자가
-            // 아니라 **부착 지점**이 발화시킨다.
-            if (trigger == Wassup.Data.DcTriggerKind.None)
-            {
-                if (kind == Wassup.Data.DcPayloadKind.SelfBuffLethal)
-                    return Wassup.Skills.Concrete.SelfBuffLethalSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.DreamCocoon)
-                    return Wassup.Skills.Concrete.DreamCocoonSkill.Id;
-                if (kind == Wassup.Data.DcPayloadKind.BountyMark)
-                    return Wassup.Skills.Concrete.BountyMarkSkill.Id;
-            }
-            // 경계에서 켜진 자기 버프는 **출처가 다르다**(「빈사에서 켜졌다」).
-            if (trigger == Wassup.Data.DcTriggerKind.HealthThreshold
-                && kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
-                return Wassup.Skills.Concrete.ThresholdSelfBuffSkill.Id;
-            return SkillIdForPayload(kind);
-        }
+            => Wassup.Core.DcSkillRouting.SkillIdFor(trigger, kind);
 
         private static int SkillIdForPayload(Wassup.Data.DcPayloadKind kind)
-        {
-            switch (kind)
-            {
-                case Wassup.Data.DcPayloadKind.AreaSleep:
-                    return Wassup.Skills.Concrete.AreaSleepSkill.Id;
-                case Wassup.Data.DcPayloadKind.AllyMoveSpeedAura:
-                    return Wassup.Skills.Concrete.AllySpeedAuraSkill.Id;
-                case Wassup.Data.DcPayloadKind.GrantShield:
-                    return Wassup.Skills.Concrete.GrantShieldSkill.Id;
-                case Wassup.Data.DcPayloadKind.SelfTileAoe:
-                    return Wassup.Skills.Concrete.SelfAreaBlastSkill.Id;
-                case Wassup.Data.DcPayloadKind.SelfBlink:
-                    return Wassup.Skills.Concrete.BlinkToClusterSkill.Id;
-                case Wassup.Data.DcPayloadKind.UltimateLeap:
-                    return Wassup.Skills.Concrete.UltimateLeapSkill.Id;
-                case Wassup.Data.DcPayloadKind.EmitProjectilePattern:
-                    return Wassup.Skills.Concrete.EmitPatternSkill.Id;
-                case Wassup.Data.DcPayloadKind.AreaTaunt:
-                    return Wassup.Skills.Concrete.AreaTauntSkill.Id;
-                case Wassup.Data.DcPayloadKind.AreaBreath:
-                    return Wassup.Skills.Concrete.ConeBreathSkill.Id;
-                // 충전 부여는 **트리거를 모른다** — 「다음 공격이 세진다」는 무엇이 그것을
-                // 불렀든 같은 일이다. 트리거별 블록에 두면 그 트리거 밖 조합이 조용히 죽는다.
-                case Wassup.Data.DcPayloadKind.NextAttackDoubleFire:
-                    return Wassup.Skills.Concrete.GrantSelfChargeSkill.Id;
-                // 장판도 **실려 온 자리**에 깔린다 — 「누구의 자리인가」는 감지자가 정한다
-                // (`DeathSiteBlastSkill` 과 같은 논리). `SelfTileAoe` 가 concrete 둘로 갈린
-                // 것은 「죽은 자리 ↔ 내 발밑」이 **다른 규칙**이어서인데, 장판은 그 갈림이
-                // 없다. OnKill 블록에만 두면 나머지 조합이 조용히 죽는다.
-                case Wassup.Data.DcPayloadKind.SpawnHazard:
-                    return Wassup.Skills.Concrete.DeathSiteHazardSkill.Id;
-                case Wassup.Data.DcPayloadKind.AllyStatAura:
-                    return Wassup.Skills.Concrete.AllyStatAuraSkill.Id;
-                case Wassup.Data.DcPayloadKind.OpponentStatAura:
-                    return Wassup.Skills.Concrete.OpponentStatAuraSkill.Id;
-                case Wassup.Data.DcPayloadKind.GainCost:
-                    return Wassup.Skills.Concrete.GainCostSkill.Id;
-                case Wassup.Data.DcPayloadKind.ReduceSkillCooldown:
-                    return Wassup.Skills.Concrete.ReduceSkillCooldownSkill.Id;
-                case Wassup.Data.DcPayloadKind.AreaApplyStack:
-                    return Wassup.Skills.Concrete.AreaStackSkill.Id;
-                case Wassup.Data.DcPayloadKind.AreaCc:
-                    return Wassup.Skills.Concrete.AreaCcSkill.Id;
-                case Wassup.Data.DcPayloadKind.AreaDot:
-                    return Wassup.Skills.Concrete.AreaDotSkill.Id;
-                case Wassup.Data.DcPayloadKind.ApplyCcToTarget:
-                    return Wassup.Skills.Concrete.TargetCcSkill.Id;
-                case Wassup.Data.DcPayloadKind.ApplyStackToTarget:
-                    return Wassup.Skills.Concrete.TargetStackSkill.Id;
-                case Wassup.Data.DcPayloadKind.SelfStatBuff:
-                    return Wassup.Skills.Concrete.SelfStatBuffSkill.Id;
-                case Wassup.Data.DcPayloadKind.ProjectileToTarget:
-                    return Wassup.Skills.Concrete.TargetProjectileSkill.Id;
-                case Wassup.Data.DcPayloadKind.SelfOrbitProjectile:
-                    return Wassup.Skills.Concrete.OrbitProjectileSkill.Id;
-                default:
-                    return Wassup.Skills.SkillRegistry.NotRouted;
-            }
-        }
+            => Wassup.Core.DcSkillRouting.ForPayload(kind);
 
         // skill-layer-migration unit 3g — **카드와 유닛이 같은 규칙을 쓴다.**
         //

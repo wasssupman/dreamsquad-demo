@@ -1,0 +1,87 @@
+using UnityEngine;
+using Wassup.Data;
+using Wassup.Skills;
+using Wassup.Skills.Concrete;
+
+namespace Wassup.Core
+{
+    // dreamcatcher-attach-range-preview unit 1 — 「이 카드는 host 에서 어떤 도형·어떤 반경으로 작용하나」.
+    public enum DcRangeShape : byte { None = 0, Circle = 1 }
+
+    public readonly struct DcRangeSpec
+    {
+        public readonly DcRangeShape shape;
+        public readonly float radiusTiles;   // 도형 가장자리(타일). 표준 상대 항 없음 — README 계약 2.
+        public DcRangeSpec(DcRangeShape shape, float radiusTiles) { this.shape = shape; this.radiusTiles = radiusTiles; }
+        public static readonly DcRangeSpec None = new DcRangeSpec(DcRangeShape.None, 0f);
+        public bool Equals(in DcRangeSpec o) => shape == o.shape && radiusTiles == o.radiusTiles;
+    }
+
+    // 공간성 카탈로그 — **concrete(skillId) 로만** 판정하고 값은 보지 않는다.
+    //
+    // `tileRange` 는 kind 별로 7가지 다른 뜻을 갖는다(피해감소% · 누적 상한 · maxStack · 폴백 반경 · 궤도 반경 ·
+    // 실드 0 = 자기만 · 팅김 탐색 반경). 시트(`DcSheetApplier`)가 값을 매 로그인마다 덮으므로 「30 이면
+    // 퍼센트겠지」 식 값 추정은 다음 시트 편집에 깨진다. 모르는 concrete 는 None — **없는 범위를 지어내지
+    // 않는다**(fail-closed).
+    //
+    // 반경은 **판정 입력의 복사본**이다. 광역 concrete 는 `EcsSkillContext` 의 `RangeMetric.AreaCircle`
+    // arm(`InBodyReach(d, N, CellHalfWidthTiles, targetR)`)과 투사체 TileAoe 착탄이 쓰는 `N + 칸 반폭`,
+    // 발사명세는 `Euclidean` arm 의 `N`(탄 비행 거리 — 칸 반폭을 더하면 사거리 밖 후보를 고른다).
+    // 대상 몸(targetR)은 그리지 않는다 — 「대상 그림자가 링에 닿으면 걸린다」가 판정식과 동치라서다.
+    //
+    // ECS 무참조 · bake/UI 시점 전용(managed SO 읽기) — per-frame 호출 금지. `DcApplicability` 와 같은 자리.
+    public static class DcRangeCatalog
+    {
+        public static DcRangeSpec Resolve(int skillId, int tileRange)
+        {
+            if (skillId == SelfAreaBlastSkill.Id
+                || skillId == AreaSleepSkill.Id
+                || skillId == AreaCcSkill.Id
+                || skillId == AreaDotSkill.Id
+                || skillId == AreaStackSkill.Id
+                || skillId == AreaTauntSkill.Id
+                || skillId == AllySpeedAuraSkill.Id
+                || skillId == AllyStatAuraSkill.Id
+                || skillId == OpponentStatAuraSkill.Id
+                || skillId == GrantShieldSkill.Id)          // 0 = 자기만 → 아래 가드가 None 으로 접는다
+            {
+                return tileRange > 0
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange + SkillMath.CellHalfWidthTiles)
+                    : DcRangeSpec.None;
+            }
+            if (skillId == EmitPatternSkill.Id)
+            {
+                return tileRange > 0
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange)
+                    : DcRangeSpec.None;
+            }
+            // DeathSiteBlast·DeathSiteHazard(자리가 없다) · ConeBreath(부채꼴 제외 확정) · 대상형·즉발형·
+            // 스탯류·궤도(범위가 아니다) · TileStatBurst(액티브 칸 조준 — 부착 페이로드 아님) · 미배선 전부.
+            return DcRangeSpec.None;
+        }
+
+        // 카드 단위 — `mechanics` 를 돌며 첫 공간 spec 을 고른다. 공간 spec 이 2개 이상 서로 다르면 첫 것을
+        // 쓰고 1회 경고한다(라이브 안전망). 정식 방어는 에셋 lane 의 단일 도형 불변식 테스트(README 계약 6).
+        // `attackMods[].tileRange`(팅김 탐색 반경)는 착탄점 기준이라 host 중심 범위가 아니다 — 보지 않는다.
+        public static DcRangeSpec ResolveCard(DreamcatcherCard card)
+        {
+            if (card == null || card.mechanics == null) return DcRangeSpec.None;
+            var first = DcRangeSpec.None;
+            bool warned = false;
+            for (int i = 0; i < card.mechanics.Length; i++)
+            {
+                var m = card.mechanics[i];
+                var spec = Resolve(DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind), m.payload.tileRange);
+                if (spec.shape == DcRangeShape.None) continue;
+                if (first.shape == DcRangeShape.None) { first = spec; continue; }
+                if (!first.Equals(spec) && !warned)
+                {
+                    warned = true;
+                    Debug.LogWarning($"[DcRangeCatalog] '{card.id}': 공간 페이로드가 둘 이상이고 도형이 다르다 — "
+                                     + "첫 것만 그린다. 범위 채널은 하나다(단일 도형 불변식).");
+                }
+            }
+            return first;
+        }
+    }
+}
