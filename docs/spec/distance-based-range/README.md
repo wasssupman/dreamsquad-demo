@@ -237,6 +237,9 @@
    *rev (2026-09-01)*: rename 의 뜻이 커진다 — 두 arm 모두 **몸 걸침**이 된다(unit 14).
    `Chebyshev` = 사각 도형 SDF · `Euclidean` = 원 도형, 멤버십은 공히 `SDF(접지점) ≤ targetR`.
    「Euclidean arm 은 중심 대 중심 순수 원이라 계약 1 과 다른 자」 문제가 이 개정으로 해소된다.
+   *rev (2026-09-02)*: rename 은 **`dreamcatcher-attach-range-preview` unit 0a 가 이행한다** — 사각 SDF arm 이
+   원(`N + 0.5`, 몸 걸침)으로 바뀌고 `Chebyshev` 는 `[Obsolete(error)]` 로 컴파일 차단된다(사용자 결정 2026-09-02
+   Q2·D3). 결정 4 의 「원/사각 공존 — 알고 남긴다」는 그 시점에 소멸한다.
 8. **parity 를 확장하지 않고 소멸시킨다.** 이전 판단은 「asmdef 경계가 있는 한 이중 구현은
    영구」였으나 **틀렸다** — `Wassup.Runtime.asmdef` 의 references **첫 줄이 `Wassup.Skills`** 다.
    Runtime 은 Skills 를 부를 수 있고, **그 경로는 이미 완주된 적이 있다**: `TileAoe.IsInCone` 이
