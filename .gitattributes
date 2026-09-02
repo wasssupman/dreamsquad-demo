@@ -1,0 +1,2 @@
+# 골든 트레이스는 바이트 단위 비교 대상이다 — 어느 OS 에서 체크아웃해도 LF 여야 파서(LTV0 매직)와 골든 diff 가 맞는다.
+Assets/_Project/Tests/Golden/*.trace.txt text eol=lf
