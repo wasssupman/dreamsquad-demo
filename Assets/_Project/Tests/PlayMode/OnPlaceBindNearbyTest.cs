@@ -208,6 +208,11 @@ namespace Wassup.Tests.PlayMode
             candidates.Sort((a, b) => a.dist != b.dist ? b.dist.CompareTo(a.dist)
                 : a.cell.x != b.cell.x ? a.cell.x.CompareTo(b.cell.x) : a.cell.y.CompareTo(b.cell.y));
 
+            // attach-range-preview 0a — 광역은 **원**이다(호스트 기하 중심에서 반경 N + 0.5 + 대상 몸). 체비셰프
+            // 모서리(예: 2×2 호스트의 (−2,−2) 칸 = 중심거리 3.54)는 반경 3 오라의 원(3.5, 더미 몸 0) **밖**이다.
+            // 그래서 안/밖을 호스트 기하 중심 기준 유클리드로 고른다: 안 = 중심거리 ≤ nearMaxRange(원 안 여유),
+            // 밖 = 중심거리 ≥ farMinRange + 1.5(경계 3.5 에서 1칸 이상 떨어짐).
+            var fpOff = Wassup.Data.FootprintMath.GeometricCenterOffset(u.Footprint);
             foreach (var (_, c) in candidates)
             {
                 Vector2Int? n = null, f = null;
@@ -216,9 +221,10 @@ namespace Wassup.Tests.PlayMode
                     {
                         if (dx == 0 && dy == 0) continue;
                         if (!IsWalk(c.x + dx, c.y + dy) || !FarEnough(c.x + dx, c.y + dy)) continue;
-                        int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
-                        if (n == null && cheb <= nearMaxRange) n = new Vector2Int(c.x + dx, c.y + dy);
-                        else if (f == null && cheb > farMinRange) f = new Vector2Int(c.x + dx, c.y + dy);
+                        float cx = dx - fpOff.x, cy = dy - fpOff.y;
+                        float dist = Mathf.Sqrt(cx * cx + cy * cy);
+                        if (n == null && dist <= nearMaxRange) n = new Vector2Int(c.x + dx, c.y + dy);
+                        else if (f == null && dist >= farMinRange + 1.5f) f = new Vector2Int(c.x + dx, c.y + dy);
                     }
                 if (n != null && f != null)
                 {
