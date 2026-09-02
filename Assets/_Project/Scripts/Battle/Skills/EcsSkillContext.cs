@@ -384,7 +384,6 @@ namespace Wassup.Battle.Skills
 
             var pool = wanted == Faction.EnemyUnit ? _enemyPool : _defPool;
             var poolXf = wanted == Faction.EnemyUnit ? _enemyPoolXf : _defPoolXf;
-            var centerCell = CellOfPosition(center);
             var casterEntity = Resolve(caster.Unit);
 
             int n = 0;
@@ -448,11 +447,15 @@ namespace Wassup.Battle.Skills
                 bool inRange;
                 if (metric == RangeMetric.Chebyshev)
                 {
-                    // 저작은 칸 단위 조준 — 도형 = centerCell 중심, 반폭 (range + 0.5)칸 정사각.
-                    // 몸이 점이면 종전 셀 멤버십과 같은 집합으로 퇴화한다(`BodyOverlapsSquare` 헤더).
-                    var c = CellCenter(centerCell);
+                    // 사각 도형 = **받은 center 그대로** 중심, 반폭 (range + 0.5)칸.
+                    // 칸 조준 concrete(TileStatBurst 등)는 center 를 CellCenter 로 만들어
+                    // 넘기므로 종전(셀 스냅)과 byte-identical 이다. 자기시전(말파이트 착지
+                    // 충격 등)은 몸 중심 그대로 — 종전엔 CellOfPosition 스냅이 2×2 기하
+                    // 중심(셀 경계 위)을 우상단 칸으로 밀어 도형이 **반 칸 치우쳤다**
+                    // (unit 10 이 은퇴시킨 「대표 셀」과 같은 병 — unit 14 잔여 해소).
+                    // 이동 캐스터(보스 광역)도 칸 경계에서 도형이 튀지 않게 된다.
                     inRange = Wassup.Skills.SkillMath.BodyOverlapsSquare(
-                        (p.x - c.x) * invT, (p.z - c.z) * invT,
+                        (p.x - center.x) * invT, (p.z - center.z) * invT,
                         tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
                 }
                 else

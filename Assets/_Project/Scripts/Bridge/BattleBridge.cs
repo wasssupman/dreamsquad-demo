@@ -3477,6 +3477,9 @@ namespace Wassup.Bridge
             // 감각 튜닝 spec 이라 이 비대칭이 곧 작업 비용이다.
             MirrorLiftKnobs();
             SyncMonoUnitViews();
+            // 배치 마크 추적 — 적이 움직였으니(sim 은 Update, 여긴 그 뒤) 마크도 따라간다.
+            if (_placementMarkLive && _rangeOwner == RangeDisplayOwner.Placement)
+                RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit);
             ReconcileStatusFx();
             ReconcilePickupViews();
             ReconcileResignationViews();
@@ -7928,7 +7931,17 @@ namespace Wassup.Bridge
             _rangeOwner = next;
             if (next != RangeDisplayOwner.Placement && tilemapMapView != null)
                 tilemapMapView.SetPlacementRangeValidity(true);
+            if (next != RangeDisplayOwner.Placement) _placementMarkLive = false;   // 마크는 배치 전용
         }
+
+        // 사용자 버그 리포트 2026-09-01 — 「마크가 적을 따라오지 않는다」. 마크는 셀/앵커가
+        // 바뀔 때만(SetPlacementRange 래퍼) 다시 그려졌고 적은 매 프레임 움직인다 — 마크는
+        // 「누가 맞나」의 표시라 **적을 따라와야** 참말이다. 마지막 컨텍스트를 들고 있다가
+        // LateUpdate(뷰 싱크와 같은 슬롯 — sim 이동 후)가 매 프레임 다시 그린다.
+        private bool _placementMarkLive;
+        private Vector2Int _placementMarkCenter;
+        private int _placementMarkRange;
+        private DefenderUnitData _placementMarkUnit;
         // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
         private Entity _skillTelegraphProjectile = Entity.Null;
 
@@ -7972,8 +7985,20 @@ namespace Wassup.Bridge
             // 뜰 수 있어 시간 분리 장치도 못 가른다.
             // 방향 유닛과 **같은 판단**이다 — 「이놈들이 맞는다」가 그 유닛에겐 의미가 없다.
             // 「누가 회복되나」는 별개 표기이고 후속 후보다(색 축을 새로 열어야 한다).
-            if (!unit.targetAllies) RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
-            else if (tilemapMapView != null) tilemapMapView.SetRangeTargetMarks(null, null);
+            if (!unit.targetAllies)
+            {
+                // 마크 라이브 추적 시작 — 이후 프레임은 LateUpdate 가 같은 인자로 다시 그린다.
+                _placementMarkLive = true;
+                _placementMarkCenter = center;
+                _placementMarkRange = tileRange;
+                _placementMarkUnit = unit;
+                RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
+            }
+            else
+            {
+                _placementMarkLive = false;
+                if (tilemapMapView != null) tilemapMapView.SetRangeTargetMarks(null, null);
+            }
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
 
@@ -8056,7 +8081,11 @@ namespace Wassup.Bridge
             tilemapMapView.SetRangeTargetMarks(_markPos, _markHalf);
         }
 
-        public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);
+        public void ClearPlacementRange()
+        {
+            _placementMarkLive = false;
+            ClearRange(RangeDisplayOwner.Placement);
+        }
 
         // unit 11 — 조준 가이드(SetAimGuide·PaintLanes·CollectLaneCells)는 facing 과 함께 은퇴.
 
