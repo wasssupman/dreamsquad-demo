@@ -8164,15 +8164,24 @@ namespace Wassup.Bridge
         // 제약 12 근거: 범위 채널(`_rangeOwner`)·Entity→위치가 이미 이 클래스 소유이고 드래그 슬롯이
         // `SetSkillAimRange` 를 부르는 선례가 있다. 브리지는 도형 데이터(spec·style)만 받고 연출 분기를 갖지 않는다.
         //
-        // 순서: ① 비공간이면 채널을 **건드리지 않는다**(README 계약 3 — `tileRange<=0` 에서 조용히 return 하며
-        // 소유권만 가져가는 포탈 함정 회피). ② Placement 가 소유 중이면 **양보**(계약 4 — 배치 링은 셀 변경 시만
-        // 재페인트라 훔치면 다음 셀 이동까지 사라진다). ③ **owner 먼저, 그리기 뒤** — `ApplyRingTint` 가
+        // 순서(리뷰 H-2 반영): ① 비공간·반경 0 이면 채널을 **건드리지 않는다**(README 계약 3 — `tileRange<=0` 에서
+        // 조용히 return 하며 소유권만 가져가는 포탈 함정 회피). ② 그릴 수 있는 host 인지 **획득 전에** 확인한다 —
+        // 그릴 수 없는 host 로 채널을 훔쳤다 반납하면 직전 표기가 한 프레임 사라진다. ③ **다른 라이브 소유자에게
+        // 전부 양보**한다: Placement(배치 링은 셀 변경 시만 재페인트라 훔치면 다음 셀 이동까지 사라진다) 뿐 아니라
+        // SkillTelegraph(메테오·보스 착탄 예고는 투사체 비행 동안 살아 있고, Defender 카드 드래그는 IsAiming 을 켜지
+        // 않아 실제로 겹친다 — 훔치면 예고 없이 착탄하고 착탄 시 ClearSkillTelegraph 는 owner 불일치로 복구 못 한다).
+        // 획득은 owner 가 None 이거나 이미 AttachPreview 일 때만. ④ owner 를 잡은 뒤 그린다 — `ApplyRingTint` 가
         // `_rangeInvalid` 를 읽고 그 리셋은 `SetRangeOwner` 가 하므로, 거꾸로면 직전 배치가 무효 셀에 있었을 때
-        // 첫 프레임이 채도 저하로 뜬다(배치 경로가 「그리기 → owner」인 이유 = 타깃 마크 회수, 이 채널엔 없다).
+        // 첫 프레임이 채도 저하로 뜬다.
         public void SetAttachPreview(Entity host, Wassup.Core.DcRangeSpec spec, in Wassup.Data.RangeRingStyle style)
         {
-            if (host == Entity.Null || spec.shape == Wassup.Core.DcRangeShape.None) { ClearAttachPreview(); return; }
-            if (_rangeOwner == RangeDisplayOwner.Placement) return;
+            if (host == Entity.Null || spec.shape == Wassup.Core.DcRangeShape.None || spec.radiusTiles <= 0f)
+            {
+                ClearAttachPreview();
+                return;
+            }
+            if (!CanDrawAttachPreviewFor(host)) { ClearAttachPreview(); return; }
+            if (_rangeOwner != RangeDisplayOwner.None && _rangeOwner != RangeDisplayOwner.AttachPreview) return;
             _attachPreviewHost = host;
             _attachPreviewSpec = spec;
             _attachPreviewStyle = style;
@@ -8181,26 +8190,26 @@ namespace Wassup.Bridge
             RedrawAttachPreview();
         }
 
+        // 생존 술어 = 배치 레지스트리 등재(`TryGetDefenderCell` — pick·열거와 **같은 것**) + sim 위치 보유.
+        // `_em.Exists` 만 보면 사망 연출 중 엔티티가 남아 시체 위에 링이 남는다.
+        private bool CanDrawAttachPreviewFor(Entity host)
+            => tilemapMapView != null && HasLiveEntityManager()
+               && TryGetDefenderCell(host, out _)
+               && _em.Exists(host)
+               && _em.HasComponent<LocalTransform>(host);
+
         public void ClearAttachPreview()
         {
             _attachPreviewLive = false;
             ClearRange(RangeDisplayOwner.AttachPreview);   // 소유자일 때만 지운다(가드 그대로)
         }
 
-        // 생존 술어 = 배치 레지스트리 등재(`TryGetDefenderCell` — pick·열거와 **같은 것**). `_em.Exists` 만 보면
-        // 사망 연출 중 엔티티가 남아 시체 위에 링이 남는다. 위치는 sim `LocalTransform`(unit 10 이후 **기하 중심**
-        // 그대로 — footprint 오프셋을 더하면 이중 계산). 링은 타일 좌표를 직접 받으므로 `ToView` 는 쓰지 않는다:
-        // `GridToWorldCenter(cell) = _boardOrigin + cell × tileSize` 의 역함수.
+        // 위치는 sim `LocalTransform`(unit 10 이후 **기하 중심** 그대로 — footprint 오프셋을 더하면 이중 계산).
+        // 링은 타일 좌표를 직접 받으므로 `ToView` 는 쓰지 않는다: `GridToWorldCenter(cell) = _boardOrigin + cell × tileSize`
+        // 의 역함수. host 가 죽거나 레지스트리에서 빠지면(생존 술어 위) 채널을 반납한다.
         private void RedrawAttachPreview()
         {
-            if (tilemapMapView == null || !HasLiveEntityManager()
-                || !TryGetDefenderCell(_attachPreviewHost, out _)
-                || !_em.Exists(_attachPreviewHost)
-                || !_em.HasComponent<LocalTransform>(_attachPreviewHost))
-            {
-                ClearAttachPreview();
-                return;
-            }
+            if (!CanDrawAttachPreviewFor(_attachPreviewHost)) { ClearAttachPreview(); return; }
             var p = _em.GetComponentData<LocalTransform>(_attachPreviewHost).Position;
             float invT = tileSize > 1e-6f ? 1f / tileSize : 1f;
             var centerTiles = new Vector2((p.x - _boardOrigin.x) * invT, (p.z - _boardOrigin.z) * invT);

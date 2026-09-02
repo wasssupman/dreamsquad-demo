@@ -25,11 +25,13 @@ host 의 **몸 중심**에 카탈로그가 준 원을 그린다. 캐리어(`_ran
 
 ## 구현
 
-- **`SetAttachPreview` 순서**: ① `spec.shape == None` → `ClearAttachPreview()` 후 return(채널 무접촉, 계약 3).
-  ② **`_rangeOwner == Placement` 면 양보** — 그리지도 arm 하지도 않는다(계약 4). ③ 상태 저장 →
-  **`SetRangeOwner(AttachPreview)` 먼저** → `RedrawAttachPreview()`. owner 를 먼저 잡는 이유: `ApplyRingTint` 가
-  `_rangeInvalid` 를 읽고 그 리셋은 `SetRangeOwner` 가 하므로, 그리기를 먼저 하면 직전 배치가 무효 셀에 있었을 때
-  첫 프레임이 채도 저하로 뜬다. 배치 경로가 「그리기 → owner」인 이유(타깃 마크 회수)는 이 채널에 없다.
+- **`SetAttachPreview` 순서**(리뷰 H-2 반영): ① `shape == None` 또는 반경 0 → `ClearAttachPreview()` 후 return
+  (채널 무접촉, 계약 3). ② **그릴 수 있는 host 인지 획득 전에** 확인(레지스트리 등재 + `LocalTransform`) — 그릴 수
+  없는 host 로 채널을 훔쳤다 반납하면 직전 표기가 한 프레임 사라진다. ③ **owner 가 None 또는 AttachPreview 일 때만
+  획득** — Placement 뿐 아니라 **SkillTelegraph 에도 양보**한다. 착탄 예고는 투사체 비행 동안 살아 있고 Defender 카드
+  드래그는 `IsAiming` 을 켜지 않아 실제로 겹친다; 훔치면 예고 없이 착탄하고 `ClearSkillTelegraph` 는 owner 불일치로
+  복구하지 못한다. ④ 상태 저장 → `SetRangeOwner(AttachPreview)` → `RedrawAttachPreview()`. owner 를 그리기 앞에 잡는
+  이유: `ApplyRingTint` 가 `_rangeInvalid` 를 읽고 그 리셋은 `SetRangeOwner` 가 한다.
 - **`RedrawAttachPreview`**: 생존 판정은 `TryGetDefenderCell(host, out _)`(= `_defenderByTile` 등재 — pick·열거와
   **같은 술어**). `_em.Exists` 만 보면 사망 연출 중 시체 위에 링이 남는다. 살아 있으면 `LocalTransform`(기하 중심,
   양자화 없음) → 타일 좌표 `((p.x − origin.x)/tileSize, (p.z − origin.z)/tileSize)` → `SetAreaRange(center, r, style)`.

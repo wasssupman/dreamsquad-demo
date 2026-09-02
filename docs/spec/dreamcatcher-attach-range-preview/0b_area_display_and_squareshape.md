@@ -25,10 +25,13 @@
   배치 링은 종전 값(`rangeColor` · `rangeFillAlphaUnderRing` · `rangeRingAlpha`) 그대로.
 - `Bridge/BattleBridge.cs:8122 PinCenteredRange` — `SetAreaRange(new Vector2(cell.x, cell.y), tileRange + 0.5f,
   _tileSet.aimRingStyle)` 로. 주석 「squareShape … 여기만 예외다」 삭제. `SetSkillAimCells`(포탈 단일 셀)는 무변.
-- **VFX 반경 2곳도 판정에 맞춘다**(표기 동시 변경의 연장): `BattleBridge.cs:~2642` 회오리 `SpawnTornado(…,
-  tornadoTiles * tileSize, …)` → `(tornadoTiles + CellHalfWidthTiles) * tileSize` · `ProjectileHitSystem.cs:~796`
-  운석 착탄 `radiusWorld = tileRange * tileSize` → `(tileRange + CellHalfWidthTiles) * tileSize`. 둘 다 뷰 값이라
-  sim 판정·골든 무변(`radiusWorld` 는 이벤트 페이로드지만 판정에 쓰이지 않는다 — 구현 시 소비처 확인).
+- **VFX 반경 2곳도 판정에 맞춘다**(표기 동시 변경의 연장) — 둘 다 **브리지 소비처**에서 더한다: `BattleBridge.cs`
+  회오리 `SpawnTornado(…, (tornadoTiles + CellHalfWidthTiles) * tileSize, …)` · 운석 버스트
+  `SpawnMeteorBurst(pos, evt.radiusWorld + CellHalfWidthTiles * tileSize)`. ⚠ `ProjectileHitEvent.radiusWorld` 는
+  **트레이스에 기록**된다(`LegacyTraceRecorder.Ev(… f: evt.radiusWorld)`) — sim 쪽 값을 바꾸면 골든이 움직이므로
+  이벤트는 그대로 두고 뷰에서 더한다(리뷰 M-2 정정: 초안은 `ProjectileHitSystem` 을 지목했었다).
+  ⚠ VFX 인자는 `VfxSpawner` 에서 uniform `localScale` 로 쓰이므로 「+0.5 = 판정 가장자리」는 프리팹 단위 규약에
+  달려 코드로 검증되지 않는다 — unit 4 E 육안 항목.
 - stale 주석 정리: `BattleBridge.cs:8124~8126` · `TilemapMapView.cs:963~968`(「멤버십은 `IsInTileRange` 정사각형,
   결정 4」 — 결정 4 는 unit 14 에서 폐기).
 

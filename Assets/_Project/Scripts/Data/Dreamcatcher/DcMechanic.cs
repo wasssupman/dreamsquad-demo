@@ -43,7 +43,7 @@ namespace Wassup.Data
     // 미적용, host 생존 중 axis 매칭 **신규 배치 유닛**에 magnitude% 공속(매치영구) + duration
     // 초 warmup idle 부여. host 사망 시 회수(RegisterPlacementAura → RevokeDreamcatcherEffects).
     // nightmare-whip-aura — AllyMoveSpeedAura(9): 펄스 오라(보스 "채찍질"). PeriodicTimer
-    // 펄스마다 host 기준 Chebyshev tileRange 내 **host 와 같은 진영** 유닛(host 자신 제외)에
+    // 펄스마다 host 중심 원(반경 tileRange + 0.5 + 대상 몸 — attach-range-preview 0a) 안 **host 와 같은 진영** 유닛(host 자신 제외)에
     // MoveSpeedMul ×(1+magnitude/100), TTL=duration 모디파이어 부여. duration>periodSeconds
     // 가 authoring 계약(merge-refresh 유지) — 이탈/host 사망 시 TTL 자연 만료(revoke 없음).
     // dreamcatcher-new-abilities unit 0 — ApplyCcToTarget(N번째 공격이 맞은 적에게 CC),
@@ -319,9 +319,10 @@ namespace Wassup.Data
         // (kind별 struct 분리는 여전히 YAGNI — 전 필드 재사용으로 신규 필드 0).
         public ProjectileData projectile;
         // dreamcatcher-content-1 — SelfTileAoe: AOE 반경(타일). 기본 0 = 기존 카드 inert.
-        // nightmare-catcher unit 0 — AreaBarrage: 진앙 중심 Chebyshev AoE 반경 /
+        // nightmare-catcher unit 0 — AreaBarrage: 진앙 중심 AoE 반경 /
         // SelfBlink: 착지 탐색 반경(링 순회 상한).
-        // nightmare-whip-aura — AllyMoveSpeedAura: host 중심 오라 반경(Chebyshev).
+        // nightmare-whip-aura — AllyMoveSpeedAura: host 중심 오라 반경.
+        // ⚠ 광역 도형은 전부 **원**(반경 tileRange + 칸 반폭 + 대상 몸)이다 — attach-range-preview 0a 에서 사각 자 은퇴.
         public int tileRange;
         // dreamcatcher-content-1 — SelfBuffLethal: 지속/자폭 초. 기본 0.
         // nightmare-catcher unit 0 — AreaBarrage: 낙하 텔레그래프 초 → SkyFall

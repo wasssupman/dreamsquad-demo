@@ -68,7 +68,7 @@ namespace Wassup.Data
                  "채움 알파를 배치 링(0.12)보다 훨씬 높게 둔다. 사각 타일 채움(0.85) 시절과 같은 정보량을 목표로 " +
                  "실기기에서 튠(사용자 결정 2026-09-02 D6).\n" +
                  "색은 배치 링(라임)과 같은 가족이어도 된다 — 둘이 한 화면에 뜨지 않는다.")]
-        public RangeRingStyle aimRingStyle = new RangeRingStyle(new Color(1f, 0.85f, 0.1f, 1f), 0.4f, 0.95f);
+        public RangeRingStyle aimRingStyle = new RangeRingStyle(new Color(0.55f, 1f, 0.25f, 1f), 0.4f, 0.95f);   // 라임 — TileSet_Desert 저작과 동일
 
         [Tooltip("배치 무효일 때 사거리(링+채움)의 **채도 강하** 정도. 1 = 완전 회색.\n" +
                  "⚠ **붉히지 않는다**(사용자 결정 2026-08-31). 빨강은 고스트 충돌 전용이다 — " +

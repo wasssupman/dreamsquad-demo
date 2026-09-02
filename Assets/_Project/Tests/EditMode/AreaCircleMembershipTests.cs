@@ -49,6 +49,32 @@ namespace Wassup.Tests.EditMode
                 "사각 모서리(원 밖)의 대상은 광역에 걸리지 않아야 한다");
         }
 
+        // 리뷰 H(ecs) — 사각→원 손실표의 핀. 「골든 A/B 바이트 동일」은 카드 레이어가 N=1 뿐이라 N≥2 를
+        // 증언하지 못한다(N≥2 저작 9건: 보스 수면 4·아처 둔화 오라 3·배치 스킬 6종 2). 그래서 손실이 **의도한
+        // 크기**인지를 여기서 못박는다 — 정수 오프셋·소형 상대(0.25) 기준, 원은 사각의 부분집합이고 빠지는 칸은
+        // 모서리만이다. 값이 움직이면 자가 바뀐 것이다.
+        [TestCase(1, 9, 9)]
+        [TestCase(2, 25, 21)]
+        [TestCase(3, 49, 45)]
+        [TestCase(4, 81, 69)]
+        public void SquareToCircle_LosesOnlyCorners_ByTheDocumentedCount(int n, int squareCells, int circleCells)
+        {
+            const float targetR = SkillMath.StandardBodyRadiusTiles;
+            float half = n + SkillMath.CellHalfWidthTiles;
+            int sq = 0, ci = 0;
+            for (int dx = -n - 1; dx <= n + 1; dx++)
+            for (int dz = -n - 1; dz <= n + 1; dz++)
+            {
+                bool inSquare = SkillMath.BodyOverlapsSquare(dx, dz, half, targetR);
+                bool inCircle = SkillMath.InBodyReach(dx, dz, n, SkillMath.CellHalfWidthTiles, targetR);
+                if (inSquare) sq++;
+                if (inCircle) ci++;
+                Assert.IsFalse(inCircle && !inSquare, $"N={n} ({dx},{dz}) — 원이 사각 밖을 맞힌다(부분집합 위반)");
+            }
+            Assert.AreEqual(squareCells, sq, $"N={n} 종전 사각 칸 수");
+            Assert.AreEqual(circleCells, ci, $"N={n} 원 칸 수 — 손실표와 다르면 자가 바뀐 것이다");
+        }
+
         [Test]
         public void AreaSleep_N1_KeepsDiagonalNeighbour()
         {

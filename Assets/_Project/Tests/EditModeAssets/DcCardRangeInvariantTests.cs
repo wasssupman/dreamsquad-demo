@@ -16,6 +16,9 @@ namespace Wassup.Tests.EditModeAssets
     // 그래서 이 축이 도형을 만들지 않음을 여기서 못박는다.
     //
     // ⚠ 오늘 공간 카드 목록은 **로그로만** 남긴다 — 카드가 늘어도 이 테스트가 빨개지면 안 된다.
+    // ⚠ 한계(리뷰 M-3): 여기는 **디스크 SO** 만 본다. `DcSheetApplier` 가 런타임에 `payload.tileRange` 를 덮으면
+    // 카탈로그는 `tileRange > 0` 으로 도형을 가르므로 라이브 불변식은 `DcRangeCatalog.ResolveCard` 의 1회 경고가
+    // 지킨다. kind 는 시트가 못 바꾸므로(구조 변경은 Unity 안에서만) 「어느 mechanic 이 공간인가」 자체는 여기서 확정된다.
     public class DcCardRangeInvariantTests
     {
         private const string CardsRoot = "Assets/_Project/Data/Dreamcatcher";

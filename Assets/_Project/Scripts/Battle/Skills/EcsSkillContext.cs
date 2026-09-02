@@ -446,31 +446,26 @@ namespace Wassup.Battle.Skills
                 // 없으면 `_tileSize` 가 0 으로 들어오고, 그대로 나누면 0/0 = NaN 이 모든 비교를
                 // false 로 만들어 **광역이 통째로 빈다**(구 셀 경로는 clamp 가 우연히 삼켰다).
                 float invT = _tileSize > 1e-6f ? 1f / _tileSize : 1f;
-                bool inRange;
-                float dxT = (p.x - center.x) * invT, dzT = (p.z - center.z) * invT;
-                switch (metric)
+                // 광역 원 — attach-range-preview 0a. 반경 = range + 시전자 쪽 반폭 + 대상 몸.
+                //   AreaCircle: 반폭 = 칸 반폭(0.5) — 투사체 TileAoe 착탄(`ProjectileHitSystem`)·자기 자리
+                //   폭발과 **같은 식**이라 광역 도형이 하나가 된다. 종전 사각(`BodyOverlapsSquare`, 반폭 range+0.5)은
+                //   이 원의 외접이라 모서리만 빠진다(반경 1 은 셀 기준 손실 0 — 대각 1.414 ≤ 1.5).
+                //   Euclidean: 반폭 0 — 사거리·탄 비행 거리(발사 명세).
+                // 반폭 매핑은 `SkillMath.TryShapeHalfWidth` **하나**다(페이크와 공유 — 리뷰 H-1). 은퇴한 자
+                // (Chebyshev 캐스팅)는 false → 후보 0, 로그는 드레인당 1회(같은 함수의 overflow 규율).
+                // 중심은 **받은 center 그대로**(양자화 없음): 칸 조준 concrete 는 CellCenter 를, 자기시전은
+                // 몸 중심을 넘긴다 — 2×2 기하 중심이 셀 경계 위에 와도 치우치지 않는다.
+                if (!Wassup.Skills.SkillMath.TryShapeHalfWidth(metric, out float selfHalfT))
                 {
-                    case RangeMetric.AreaCircle:
-                        // 광역 원 — attach-range-preview 0a. 반경 = range + 칸 반폭 + 대상 몸: 투사체
-                        // TileAoe 착탄(`ProjectileHitSystem`)·자기 자리 폭발과 **같은 식**이라 광역 도형이
-                        // 하나가 된다. 종전 사각(`BodyOverlapsSquare`, 반폭 range+0.5)은 이 원의 외접이라
-                        // 모서리만 빠진다(반경 1 은 셀 기준 손실 0 — 대각 1.414 ≤ 1.5).
-                        // 중심은 **받은 center 그대로**(양자화 없음): 칸 조준 concrete 는 CellCenter 를,
-                        // 자기시전은 몸 중심을 넘긴다 — 2×2 기하 중심이 셀 경계 위에 와도 치우치지 않는다.
-                        inRange = Wassup.Skills.SkillMath.InBodyReach(
-                            dxT, dzT, tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
-                        break;
-                    case RangeMetric.Euclidean:
-                        // 사거리 원 — 반경 합(민코프스키), 칸 반폭 없음(탄 비행 거리).
-                        inRange = Wassup.Skills.SkillMath.InBodyReach(dxT, dzT, tileRange, 0f, targetR);
-                        break;
-                    default:
-                        // 은퇴한 자(Chebyshev)가 캐스팅으로 들어오면 조용히 판정하지 않는다.
-                        UnityEngine.Debug.LogError($"[SkillDispatch] 은퇴한 RangeMetric {(int)metric} — 후보 0");
-                        inRange = false;
-                        break;
+                    if (!_warnedRetiredMetricThisDrain)
+                    {
+                        _warnedRetiredMetricThisDrain = true;
+                        UnityEngine.Debug.LogError($"[SkillDispatch] 은퇴한 RangeMetric {(int)metric} — 이 드레인의 후보 0");
+                    }
+                    continue;
                 }
-                if (!inRange) continue;
+                float dxT = (p.x - center.x) * invT, dzT = (p.z - center.z) * invT;
+                if (!Wassup.Skills.SkillMath.InBodyReach(dxT, dzT, tileRange, selfHalfT, targetR)) continue;
 
                 if (n >= into.Length) { overflow++; continue; }
                 into[n++] = Handle(e);
@@ -500,10 +495,12 @@ namespace Wassup.Battle.Skills
         // 드레인 경계에서 호스트가 내린다. 프레임마다 한 번은 짖되 매 후보마다는 안 짖는다.
         private bool _warnedUnassignedThisDrain;
         private bool _warnedOverflowThisDrain;
+        private bool _warnedRetiredMetricThisDrain;   // attach-range-preview 0a — 은퇴한 RangeMetric 진단, 드레인당 1회
         public void ResetDrainWarnings()
         {
             _warnedUnassignedThisDrain = false;
             _warnedOverflowThisDrain = false;
+            _warnedRetiredMetricThisDrain = false;
         }
 
         // ── 질의: 격자 위의 판단 ────────────────────────────────────

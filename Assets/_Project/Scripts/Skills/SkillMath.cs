@@ -15,8 +15,9 @@ namespace Wassup.Skills
     // 「주석은 있는데 테스트가 없다」를 잡아서 만들었다).
     public static class SkillMath
     {
-        // 체비셰프(킹 무브) 거리. 이 게임의 「N칸 안」은 전부 이 자다 —
-        // 유일한 예외가 전방 발사의 유클리드다(포트의 `RangeMetric`).
+        // 체비셰프(킹 무브) 거리 — **격자 통계·배치 인접 전용으로 남았다.** 전투 판정의 「N칸 안」은
+        // 전부 원(`InBodyReach`)이다(distance-based-range · attach-range-preview 0a). 광역 도형의 사각 자는
+        // 은퇴했고(`RangeMetric.Chebyshev` Obsolete), 술어 본체 `BodyOverlapsSquare` 만 보존한다.
         public static int ChebyshevDistance(int ax, int ay, int bx, int by)
         {
             int dx = ax > bx ? ax - bx : bx - ax;
@@ -82,6 +83,21 @@ namespace Wassup.Skills
         // ⚠ **광역을 유닛 몸(0.25)으로 바꾸지 말 것.** 반경 1 폭발이 대각을 통째로 잃어
         // **십자 모양**이 된다(1.414 > 1.25) — rev 1 에서 순수 원으로 갔다가 되돌린 그 회귀다.
         public const float CellHalfWidthTiles = 0.5f;
+
+        // attach-range-preview 0a(리뷰 H-1) — `RangeMetric` 이 술어에 더하는 **시전자 쪽 반폭**.
+        // 어댑터(`EcsSkillContext.Collect`)와 페이크(`TestSkillContext`)가 **같은 함수**를 부른다 — 페이크가
+        // 매핑을 재구현하면 폴백 방향이 갈려(페이크 fail-open / 라이브 fail-closed) 도메인 테스트가 초록인데
+        // 라이브가 다르다. 반환 false = 은퇴한/미지의 자 → 호출부는 **후보 0** 으로 접는다(fail-closed).
+        //   AreaCircle → 칸 반폭(광역: 반경 N + 0.5 + 대상 몸) · Euclidean → 0(사거리·탄 비행 거리: N + 대상 몸).
+        public static bool TryShapeHalfWidth(RangeMetric metric, out float halfWidthTiles)
+        {
+            switch (metric)
+            {
+                case RangeMetric.AreaCircle: halfWidthTiles = CellHalfWidthTiles; return true;
+                case RangeMetric.Euclidean: halfWidthTiles = 0f; return true;
+                default: halfWidthTiles = 0f; return false;
+            }
+        }
 
         // **표준 소형 상대의 몸 반지름** = 적 티어 「소」. `AttackUnitData` 의 저작
         // 기본값과 같은 값이고(드리프트는 `RangeDisplayContractTests` 가 잡는다),

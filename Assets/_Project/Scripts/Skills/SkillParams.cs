@@ -108,7 +108,7 @@ namespace Wassup.Skills
         public AreaSleepParams(in SkillParams p) => _p = p;
 
         public int SleepCount => (int)_p.Magnitude;   // 재울 인원 M
-        public int Radius => _p.TileRange;            // 체비셰프 반경 N
+        public int Radius => _p.TileRange;            // 광역 원 반경 N(+칸 반폭·대상 몸은 어댑터가 더한다)
         public float Duration => _p.Duration;         // 수면 초 L
     }
 
@@ -142,7 +142,7 @@ namespace Wassup.Skills
         private readonly SkillParams _p;
         public TauntParams(in SkillParams p) => _p = p;
 
-        public int Radius => _p.TileRange;      // 체비셰프 반경
+        public int Radius => _p.TileRange;      // 광역 원 반경(+칸 반폭·대상 몸은 어댑터가 더한다)
         public float Duration => _p.Duration;   // 도발 지속 초
     }
 
@@ -153,7 +153,7 @@ namespace Wassup.Skills
         public AreaStackParams(in SkillParams p) => _p = p;
 
         public int Count => (int)_p.Magnitude;          // 몇 겹
-        public int Radius => _p.TileRange;              // 체비셰프 반경
+        public int Radius => _p.TileRange;              // 광역 원 반경(+칸 반폭·대상 몸은 어댑터가 더한다)
         public float PerStackDuration => _p.Duration;   // 겹당 지속(초)
         // ⚠ **상한은 여기 없다.** 그건 스택 종류의 성질이라 어댑터가 푼다.
         public SkillStackKind Stack => (SkillStackKind)_p.StackSelector;
