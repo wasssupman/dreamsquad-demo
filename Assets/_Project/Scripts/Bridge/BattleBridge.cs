@@ -8124,8 +8124,11 @@ namespace Wassup.Bridge
         private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)
         {
             if (tilemapMapView == null) return;
-            // squareShape: true — 스킬 광역의 멤버십이 정사각형으로 남아 있다(결정 4).
-            // 표기가 그 자를 따라가는 것이 맞다 — 여기만 예외다.
+            // squareShape: true — 액티브 스킬의 자는 「지정 타일 1개 중심 + N 거리 사각 도형」
+            // 이고, 히트는 격자 멤버십이 아니라 **그 도형에 유닛 그림자(targetR)가 접하나**다
+            // (distance-based-range unit 14 — EcsSkillContext 의 SDF ≤ targetR). 이 칸 표기는
+            // 그 사각 도형의 근사라, 실제는 몸 걸침만큼 표시보다 넓게 맞는다(무통보 관용).
+            // 원형 표기 전환은 후속 후보 「칸 하이라이트 원형화」.
             tilemapMapView.SetPlacementRange(center, tileRange, includeCenter: true, squareShape: true);
             SetRangeOwner(owner);
         }
