@@ -29,6 +29,12 @@ namespace Wassup.Battle.Combat
         // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
         // 핸들 갱신 순서에 기대지 않는다.
         private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+        // 리뷰 H1 (unit 11 잔여) — DeployedFacing 은 facing 은퇴로 소비처 0 이지만, OnUpdate 의
+        // 로컬 lookup 집합을 바꾸면(추가든 제거든) 이 시스템의 Burst 가 조용히 깨지는 재발 이력이
+        // 5회다. 좀비 로컬(`var x=…; _=x;`) 대신 **정식 필드 형태**로 두는 것이 이 프로젝트의
+        // 규율(MovementSystem 상단 주석)이고, lint 가 지울 수 없는 형태다. 지우려면 Burst ON 으로
+        // AttackSystem 계열 EditMode 초록을 반드시 확인할 것.
+        private ComponentLookup<Wassup.Battle.Units.DeployedFacing> _facingRetiredLookup;
         private ComponentLookup<Wassup.Battle.Units.DefenderFootprint> _footprintLookup;
 
         private EntityQuery _attackEventsQuery;
@@ -38,6 +44,7 @@ namespace Wassup.Battle.Combat
         public void OnCreate(ref SystemState state)
         {
             _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
+            _facingRetiredLookup = state.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
             _footprintLookup = state.GetComponentLookup<Wassup.Battle.Units.DefenderFootprint>(isReadOnly: true);
             state.RequireForUpdate<AttackState>();
             _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<UnitAttackVisualEventsSingleton>());
@@ -48,6 +55,7 @@ namespace Wassup.Battle.Combat
         public void OnUpdate(ref SystemState state)
         {
             _bodyRadiusLookup.Update(ref state);
+            _facingRetiredLookup.Update(ref state);
             _footprintLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
 
@@ -105,14 +113,6 @@ namespace Wassup.Battle.Combat
             // (KnockupVisualEvent 계약: durationSec == 스턴 시간이어야 착지와 해제가 맞는다).
             var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
-            // ⚠ **지우면 안 되는 줄** (Burst/소스젠 함정 4번째 재발 — unit 11, 2026-09-01).
-            // DeployedFacing 은 facing 은퇴로 소비처가 0 이지만, 이 GetComponentLookup 호출을
-            // 지우면 이 시스템의 **Burst 컴파일이 조용히 깨져** OnUpdate 가 NRE 를 던진다
-            // (전 공격 정지 · AttackSystem 계열 EditMode 24건 red · BC 에러 0건 · Burst OFF 면 통과).
-            // 이 한 줄의 복원/제거가 재현·해소를 오가는 유일한 스위치임을 이분으로 확인했다.
-            // 지우려면 Burst ON 으로 AttackSystem 계열 EditMode 초록을 반드시 확인할 것.
-            var facingLookupRetired = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
-            _ = facingLookupRetired;
             // defender-directional-volley unit 3 — 배치 시 확정된 영구 공격 방향(Units
             // 소유, 읽기 전용). 보유 유닛은 최근접 타겟 선택 대신 방향 레인 게이트로 발사.
             // projectile-shot-sequence unit 2 — 방향 pattern 원본과 진행 인스턴스.

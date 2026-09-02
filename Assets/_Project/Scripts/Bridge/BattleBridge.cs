@@ -8075,6 +8075,7 @@ namespace Wassup.Bridge
         public void ClearPlacementRange()
         {
             _placementMarkLive = false;
+            _placementMarkUnit = null;   // 리뷰 L-2 — SO 참조를 프리뷰 수명 밖에 남기지 않는다
             ClearRange(RangeDisplayOwner.Placement);
         }
 

@@ -388,7 +388,8 @@ namespace Wassup.Battle.Combat.Projectile
                                     targetPos, excludeIdx, victimPositions, victimTraversalLayers,
                                     projectile.ValueRO.targetTraversalLayers,
                                     victimFactionMasks, bounceWanted,
-                                    projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
+                                    projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin,
+                                    victimBodyRadii);
 
                                 if (nextIdx >= 0)
                                 {

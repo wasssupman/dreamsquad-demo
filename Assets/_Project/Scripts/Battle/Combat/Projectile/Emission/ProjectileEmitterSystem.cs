@@ -55,8 +55,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
             // 후보 풀은 진영별 lazy 빌드 — 인스턴스가 없거나 이 프레임에 발사가
             // 없으면 쿼리·할당 0 (BossPeriodicTriggerSystem whip 풀 선례).
-            // 셀 배열은 **fan 시차 슬롯 전용**으로 남는다(「같은 칸 = 같은 착탄 순간」은
-            // 착탄 리듬 저작이지 멤버십이 아니다 — unit 18 존치 사유).
+            // 셀 배열은 **fan 시차 슬롯 + 셀 바인딩 착탄점**용으로 남는다(전자는 착탄 리듬
+            // 저작, 후자는 칸 조준 저작 — 둘 다 멤버십이 아니다. unit 18 존치, 리뷰 M1 정정).
             NativeArray<Entity> defEntities = default, enemyEntities = default;
             NativeArray<int2> defCells = default, enemyCells = default;
             NativeArray<float2> defPosT = default, enemyPosT = default;
@@ -202,7 +202,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         else
                         {
                             var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
-                            var poolCells = hostIsEnemy ? defCells : enemyCells;   // fan 시차 슬롯 전용(unit 18 존치)
+                            var poolCells = hostIsEnemy ? defCells : enemyCells;   // fan 시차 슬롯 + 셀 바인딩 착탄점(둘 다 unit 18 존치 — 리뷰 M1 정정)
                             var poolPosT = hostIsEnemy ? defPosT : enemyPosT;
                             var poolSimIds = hostIsEnemy ? defSimIds : enemySimIds;
 

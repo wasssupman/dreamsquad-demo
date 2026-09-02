@@ -50,7 +50,9 @@ namespace Wassup.Battle.Combat.Projectile
             byte attackTargetLayers,
             NativeArray<int> candidateFactions,
             int wantedFactionMask,
-            int tileRange, float tileSize, int2 gridSize, float3 origin)
+            int tileRange, float tileSize, int2 gridSize, float3 origin,
+            // 리뷰 H2 (unit 18) — 후보 몸 반경(타일). 미생성(default) = 점(0) — 기존 호출부 무회귀.
+            NativeArray<float> candidateBodyRadii = default)
         {
             if (tileRange <= 0) return -1;
             // unit 18 — 위치 기반(셀 양자화 제거). gridSize/origin 인자는 호출부 보존을 위해
@@ -68,9 +70,12 @@ namespace Wassup.Battle.Combat.Projectile
                 if (wantedFactionMask != 0 && candidateFactions.IsCreated
                     && (candidateFactions[i] & wantedFactionMask) == 0) continue;
                 float3 pos = positions[i];
+                // unit 18 — 위치 기반 + 후보 몸(리뷰 H2: 다른 5곳과 같은 자 — 큰 몸은 더 멀리서 걸린다).
+                float bodyR = candidateBodyRadii.IsCreated && i < candidateBodyRadii.Length
+                    ? candidateBodyRadii[i] : 0f;
                 if (!Wassup.Skills.SkillMath.InBodyReach(
                         (pos.x - hitPos.x) * invT, (pos.z - hitPos.z) * invT,
-                        tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, 0f)) continue;   // unit 18 — 위치 기반
+                        tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, bodyR)) continue;
                 float dx = pos.x - hitPos.x;
                 float dz = pos.z - hitPos.z;
                 float d2 = dx * dx + dz * dz;
