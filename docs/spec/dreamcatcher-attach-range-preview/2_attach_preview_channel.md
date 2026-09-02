@@ -45,7 +45,8 @@ host 의 **몸 중심**에 카탈로그가 준 원을 그린다. 캐리어(`_ran
 
 > 구현 커밋 `80c00663`(2026-09-02). 브리지 wiring 이라 EditMode seam 이 없다 — 아래는 unit 4 Play 에서 확인한다.
 
-- [ ] **2×2 host**(전 방어유닛)에서 링 중심 = 앵커 + (0.5, 0.5) 타일 = 셀 경계 교점. 스프라이트는 발밑 기준이라
+- [ ] **다칸 host**(2×2 대다수 · 캐논 2×3 · 배스티온 3×2 · 버스터즈 1×2)에서 링 중심 = sim 기하 중심 = 앵커 + ((W−1)/2, (H−1)/2).
+      짝수 변은 셀 경계 위에 온다(`AttachRangePreviewTest` 가 캐논으로 검증). 스프라이트는 발밑 기준이라
       링 중심과 스프라이트 중앙이 세로로 어긋나는 것은 정상(배치 링과 같은 규약).
 - [ ] `spec.shape == None` 호출과 Placement 소유 중 호출은 `_rangeOwner` 를 바꾸지 않는다.
 - [ ] `ClearAttachPreview()` 는 소유자가 `AttachPreview` 일 때만 지운다 · 다른 owner 획득 시 `_attachPreviewLive` 꺼짐.
