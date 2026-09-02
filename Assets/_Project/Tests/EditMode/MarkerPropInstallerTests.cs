@@ -65,7 +65,7 @@ namespace Wassup.Tests.EditMode
                 Assert.IsNotNull(root, marker.name);
                 Assert.AreEqual(marker, root.parent, "프랍은 마커의 자식");
                 Assert.AreEqual(Vector3.zero, root.localPosition, "호스트 = 셀 중심이라 프랍은 로컬 0");
-                Assert.AreEqual(Quaternion.identity, root.localRotation, "수직 포탈 = identity");
+                Assert.AreEqual(Quaternion.identity, root.localRotation, "스타일 propEulerAngles 기본(0) = identity");
                 Assert.IsTrue(root.name.StartsWith(prop), $"{marker.name} 에 {prop} 가 아니라 {root.name}");
             }
         }
@@ -83,6 +83,23 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(custom.transform, s0.visualRoot, "맵 전용 연출은 건드리지 않는다");
             Assert.AreEqual(0, MarkerPropInstaller.Apply(_stageGo.GetComponent<MapStage>(), _style), "두 번째 호출은 0");
             Assert.AreEqual(1, g.transform.childCount, "골 밑 프랍은 하나");
+        }
+
+        // 방향은 스타일이 저작한다(코드 상수 0) — yaw 만 돌리면 프랍은 여전히 수직(up 보존).
+        [Test]
+        public void Apply_UsesStyleFacing_YawOnlyKeepsUpright()
+        {
+            var s0 = Spawn(0, Vector3.zero);
+            var g = Goal(Vector3.one);
+            _style.propEulerAngles = new Vector3(0f, -90f, 0f);
+
+            MarkerPropInstaller.Apply(_stageGo.GetComponent<MapStage>(), _style);
+
+            foreach (var root in new[] { s0.visualRoot, g.visualRoot })
+            {
+                Assert.Less(Quaternion.Angle(root.localRotation, Quaternion.Euler(0f, -90f, 0f)), 0.01f, "스타일 yaw 그대로");
+                Assert.Greater(Vector3.Dot(root.up, Vector3.up), 0.999f, "yaw 만 돌리면 수직 유지");
+            }
         }
 
         [Test]

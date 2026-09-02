@@ -25,6 +25,7 @@
 스폰/골 마커의 포탈 프랍은 스테이지 프리팹이 아니라 **`Assets/_Project/Data/Maps/MarkerPropStyle.asset`** 하나에서 온다. BattleScene 의 `_MarkerProps`(`MarkerPropInstaller`)가 스테이지가 켜질 때(`MapStage.Enabled`) `visualRoot` 가 빈 마커 밑에 프랍을 identity(수직)로 얹는다.
 
 - 포탈의 색/모양을 바꾸려면 → `SpawnPortal_Red` / `GoalPortal_Yellow` 프리팹 또는 스타일 에셋의 슬롯을 바꾼다. 네 맵이 함께 바뀐다.
+- 포탈이 바라보는 방향 → 스타일 에셋의 `propEulerAngles`(Y 만, 현재 −90 = 정면이 카메라 쪽). X/Z 를 넣으면 «수직 포탈» 계약이 깨져 Assets lane 이 빨개진다.
 - 특정 맵만 다른 연출 → 그 프리팹에서 마커 밑에 프랍을 두고 `visualRoot` 를 채운다. 설치자는 채워진 마커를 건너뛴다.
 - 라이브 풀 스테이지에 **공용 포탈 프리팹을 그대로 내장**하면 Assets lane(`MarkerPropStyleAssetTests.LivePoolStages_DoNotEmbedSharedProps`)이 빨개진다 — 스타일 교체가 그 맵엔 반쪽만 먹기 때문. 맵 전용 프랍(다른 프리팹)으로 `visualRoot` 를 채우는 것은 허용.
 - 프리뷰(`RenderPrefabPreview`)도 같은 규칙으로 프랍을 얹어 «실제로 보일 그림»을 찍는다.

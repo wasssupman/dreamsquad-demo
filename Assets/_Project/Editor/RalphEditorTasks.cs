@@ -87,6 +87,18 @@ namespace Wassup.EditorTools
             }
         }
 
+        static string PreviewAllProps()
+        {
+            var sb = new StringBuilder();
+            foreach (var (name, path) in new[] {
+                ("duel", MapStageDuelGenerator.PrefabPath),
+                ("street", "Assets/_Project/Art/Theme/street/MapStage_Street.prefab"),
+                ("subway", "Assets/_Project/Art/Theme/subway/MapStage_Subway.prefab"),
+                ("streetday", "Assets/_Project/Art/Theme/street_day/MapStage_StreetDay.prefab") })
+                sb.AppendLine(MapStageCameraFraming.RenderPrefabPreview(path, $".omc/ralph/preview_{name}_props.png", overlay: false));
+            return sb.ToString().TrimEnd();
+        }
+
         static string Run(string task)
         {
             switch (task)
@@ -101,14 +113,12 @@ namespace Wassup.EditorTools
                     var sb = new StringBuilder();
                     sb.AppendLine(MapStageAuthoringTools.EnsureMarkerPropStyle());
                     sb.AppendLine(MapStageDuelGenerator.Generate());
-                    foreach (var (name, path) in new[] {
-                        ("duel", MapStageDuelGenerator.PrefabPath),
-                        ("street", "Assets/_Project/Art/Theme/street/MapStage_Street.prefab"),
-                        ("subway", "Assets/_Project/Art/Theme/subway/MapStage_Subway.prefab"),
-                        ("streetday", "Assets/_Project/Art/Theme/street_day/MapStage_StreetDay.prefab") })
-                        sb.AppendLine(MapStageCameraFraming.RenderPrefabPreview(path, $".omc/ralph/preview_{name}_props.png", overlay: false));
+                    sb.AppendLine(PreviewAllProps());
                     return sb.ToString().TrimEnd();
                 }
+                case "preview_all_props":
+                    // 스타일(프랍·방향)만 바꿨을 때 — 프리팹은 건드리지 않고 4맵 클린 프리뷰만 다시 찍는다.
+                    return PreviewAllProps();
                 case "duel_stage":
                     return MapStageDuelGenerator.Generate();
                 case "preview_duel_clean":

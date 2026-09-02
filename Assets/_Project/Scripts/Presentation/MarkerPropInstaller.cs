@@ -50,24 +50,26 @@ namespace Wassup.Presentation
         }
 
         // 단일 규칙(런타임·에디터 프리뷰 공용): **활성** 서브트리의 visualRoot 가 빈 마커에만(스캐너·브리지 등록부와 같은 범위 — 비활성 마커는
-        // 맵에 없다), 호스트 밑 identity(수직 포탈)로 얹고 visualRoot 로 등록한다. 멱등 — 이미 채워진 마커는 건너뛴다. 반환 = 이번에 얹은 수.
+        // 맵에 없다), 호스트 밑 로컬 0 + 스타일이 저작한 회전(propEulerAngles, 수직 포탈은 yaw 만)으로 얹고 visualRoot 로 등록한다.
+        // 멱등 — 이미 채워진 마커는 건너뛴다. 반환 = 이번에 얹은 수.
         public static int Apply(MapStage stage, MarkerPropStyle style)
         {
             int n = 0;
+            var facing = Quaternion.Euler(style.propEulerAngles);
             if (style.spawnProp != null)
                 foreach (var s in stage.GetComponentsInChildren<SpawnMarker>(false))
-                    if (s.visualRoot == null) { s.visualRoot = Attach(s.transform, style.spawnProp); n++; }
+                    if (s.visualRoot == null) { s.visualRoot = Attach(s.transform, style.spawnProp, facing); n++; }
             if (style.goalProp != null)
                 foreach (var g in stage.GetComponentsInChildren<GoalMarker>(false))
-                    if (g.visualRoot == null) { g.visualRoot = Attach(g.transform, style.goalProp); n++; }
+                    if (g.visualRoot == null) { g.visualRoot = Attach(g.transform, style.goalProp, facing); n++; }
             return n;
         }
 
-        static Transform Attach(Transform host, GameObject prefab)
+        static Transform Attach(Transform host, GameObject prefab, Quaternion facing)
         {
             var t = Instantiate(prefab, host, false).transform;
             t.localPosition = Vector3.zero;
-            t.localRotation = Quaternion.identity;
+            t.localRotation = facing;
             t.localScale = Vector3.one;
             return t;
         }

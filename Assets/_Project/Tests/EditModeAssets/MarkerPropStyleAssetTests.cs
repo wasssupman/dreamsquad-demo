@@ -28,6 +28,8 @@ namespace Wassup.Tests.EditMode
                 Assert.IsNull(prop.GetComponentInChildren<GoalMarker>(true), slot + " 에 마커가 들어 있으면 스캐너가 이중 골로 읽는다");
             }
             Assert.AreNotEqual(style.spawnProp, style.goalProp, "스폰(빨강)과 골(노랑)은 다른 프리팹");
+            Assert.AreEqual(0f, style.propEulerAngles.x, "수직 포탈 — 스타일 회전은 yaw(Y) 만, X 는 0");
+            Assert.AreEqual(0f, style.propEulerAngles.z, "수직 포탈 — 스타일 회전은 yaw(Y) 만, Z 는 0");
         }
 
         // 씬 파일 정본 검사 — 설치자 컴포넌트가 있고(켜져 있고), 그 오브젝트가 활성이며, style 이 스타일 에셋을 가리킨다.
