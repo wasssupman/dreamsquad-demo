@@ -35,6 +35,14 @@ row-major **셀 키** rank 는 격자 없이는 정의되지 않는다 → **`Si
 
 ## 완료 기준
 
-- [ ] 위 6곳 격자 어휘 참조 0 (grep: 해당 파일의 WorldToCell/IsInTileRange/IsInRadius/ChebyshevDistance)
-- [ ] `PatternScope`/`PatternTargeting` 테스트가 연속 자로 재작성되어 초록
-- [ ] EditMode 전건 초록(선행 2건 제외) · 골든 재베이크 + simId 결정론 귀속
+- [x] 위 6곳의 판정 경로에서 격자 어휘 소멸(fan 시차·조준 저작 등 존치분은 사유 기록).
+- [x] `PatternScope.FilterByReach`/`PatternTargeting.Select`(simId) 테스트 재작성 초록.
+- [x] EditMode 2669건 전건 초록(선행 2건 제외) · **골든 8건 바이트 무변** — 이 시드들에선
+      셀 양자화가 승자를 바꾼 적이 없었다는 실측. simId 결정론도 결과 동일.
+
+### 진행 기록 — 2026-09-01 (d706a096)
+
+- Burst 함정 5번째 재발을 **내가 또 밟았다**: 신규 lookup 3개를 로컬 형태로 추가 →
+  MovementSystem NRE 로 이동 계열 전멸. MovementSystem 자기 주석이 이미 「로컬 형태
+  금지·필드로」라고 경고하고 있었다. 셋 다 필드 형태(OnCreate + Update)로 교정 후 초록.
+  교훈 확장: 지우는 것도 더하는 것도 로컬 형태는 건드리지 말 것 — 신규는 항상 필드.
