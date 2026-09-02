@@ -1,6 +1,6 @@
 # distance-based-range — 사거리·광역 판정을 거리 기반으로
 
-> 상태: **units 0~5·7·9·10 구현 완료 · 6(웨이브 재튜닝)·11(facing 은퇴) 대기 · 12~17 신설** (2026-09-01)
+> 상태: **units 0~17 구현 완료** (2026-09-01). 잔여: unit 6 보스전 축(시트 = 사용자 결정) · Play 육안 1회(소켓·그림자·머신거너)
 > 인계: [`8_handoff_summary.md`](8_handoff_summary.md) — 다음 사람은 여기부터 읽는다.
 > ⚠ unit 6 은 **시트 결정 대기**다. 보스 `bodyRadius` 는 SO 저작이지만 HP 보상이 시트 정본이라
 > 둘을 같은 커밋에 해야 한다(값 후보와 면적 배율은 `6_golden_regen_and_tuning.md`).

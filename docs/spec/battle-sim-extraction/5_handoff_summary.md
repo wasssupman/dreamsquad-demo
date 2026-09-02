@@ -122,3 +122,13 @@ M1 의 A/B 대조는 **지금 기준선**을 쓴다.
 **아직 안 한 것**: 보스 `bodyRadius` 저작 + HP 재조정(`distance-based-range` unit 6). 그건
 시트가 정본이라 사용자 결정 대기 중이고, **하는 순간 이 코퍼스가 다시 움직인다.**
 M1 을 그 앞에 시작하면 기준선이 도중에 갈린다 — 순서를 확인할 것.
+
+---
+
+### 역링크 — 코퍼스 갱신 이력 (distance-based-range, 2026-09-01)
+
+이 코퍼스의 현행 기준선은 `docs/spec/distance-based-range/` **계약 1 rev 3(몸=원)** 이후의
+것이다: units 12~14 재베이크(`824f87aa`) → unit 11 facing 은퇴(`e1c11669`, configHash 만).
+결정론 2회 일치 재확인(`harness-determinism.md`, hash `36ffa86ac081df9e`).
+M1 을 시작하는 사람은 그 spec 의 README·unit 12 진행 기록(킬 귀속표)부터 읽을 것.
+`force_wave.finalStateHash` 간헐 플레이키는 후속 후보 그대로 열려 있다.
