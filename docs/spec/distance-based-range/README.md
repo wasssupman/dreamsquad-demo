@@ -413,6 +413,9 @@
 
 ## 후속 후보 (현 spec 범위 밖)
 
+- **부착 단계 카드 범위 프리뷰** [M] — 사용자 제안(2026-09-01). 이 spec 의 표기 계약을
+  소비하는 별도 spec 으로 초안 작성됨 → `docs/spec/dreamcatcher-attach-range-preview/`.
+
 - **칸 하이라이트 원형화** [M] — 위 「표기」 참조. `range 1 = 3×3` 계약과 콘텐츠 반경 재저작 동반.
 - **`AuraPulse` 은퇴** [S] — 프로덕션 소비처 0(자장가가 `AreaSleepSkill` 로 이전하며 소비자 소멸). 파일과 테스트 12건만 살아 있다. 이 spec 이 건드리는 파일이 아니라 별도.
 - **브리지 `ChebyshevDistance` 손복사본 제거** [S] — `BattleBridge.cs:7509`, `GridMath` 사본이며 사유가 어디에도 없다.
