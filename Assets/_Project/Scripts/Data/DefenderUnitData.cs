@@ -69,11 +69,13 @@ namespace Wassup.Data
         // 「타일 개수」가 아니라 **타일 길이를 단위로 하는 반지름** — `2` = 2칸 거리,
         // `0.1` = 타일 길이의 0.1. 정수일 이유가 없다.
         public float attackRange = 3f;
-        // unit 9 — 자기 중심 기준 커버 범위(타일). 판정은 `거리 ≤ 사거리 + 내몸 + 상대몸`
-        // 이고 **오차 보정 항이 없다** — 양쪽 수치를 그대로 믿는다.
-        // 기본 0.25 = 1×1 유닛의 몸. 둘이 만나면 0.5 라 종전 도달 거리와 같다.
-        // ⚠ 시트에 컬럼이 없어 임포터가 스킵한다 — SO 저작으로 끝난다(`AttackUnitData` 와 대칭).
-        [Min(0f)] public float bodyRadius = 0.25f;
+        // unit 12 (계약 1 rev 3, 2026-09-01 외부 세션) — 몸 반경은 저작이 아니라 **footprint
+        // 파생식**: 점유 박스의 내접원 `min(W,H)/2` (1×1 → 0.5, 2×2 → 1.0). 표가 아니라 식이라
+        // 신규 footprint 에 자동 적용되고, 최악 위반(「안 닿았는데 맞음」 = 몸이 점유 밖)이 원천
+        // 차단된다. 코너는 플레이어 유리 관용. 판정은 `d² ≤ (사거리 + 내몸 + 상대몸)²` —
+        // 오차 보정 항 없음(unit 9). ⚠ 저작 필드 `bodyRadius`(0.25)는 rev 3 에서 은퇴 —
+        // 크기 축이 footprint 하나로 수렴한다(rev 2 는 축이 둘이라 조합이 무한이었다).
+        public float BodyRadiusTiles => Mathf.Min(Footprint.x, Footprint.y) * 0.5f;
         public float attackCooldown = 1f; // seconds between attacks
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;

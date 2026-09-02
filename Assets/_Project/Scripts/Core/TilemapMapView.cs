@@ -614,12 +614,13 @@ namespace Wassup.Core
             return _rangeRing;
         }
 
-        // 사거리 링을 한 칸 중심에 띄운다. **인자가 판정 입력의 복사본이다** — 호출부가
+        // 사거리 링을 띄운다. **인자가 판정 입력의 복사본이다** — 호출부가
         // `AttackReach` 에 넣는 값을 그대로 넣어야 「판정의 경계 그 자체」가 참으로 유지된다.
-        // halfExtentTiles = 유닛 몸의 반폭(오늘 전 유닛 0.5), rangeTiles = 사거리.
-        // ⚠ 중심은 **실수**다(짝수 변 footprint 는 셀 경계 위에 선다). 반폭도 **축별**이다 —
-        // 셰이더 `_HalfExtent` 가 Vector4 라 (x, y) 비대칭을 이미 지원한다(오프스크린 렌더 확인).
-        private void ShowRangeRing(Vector2 center, float rangeTiles, Vector2 halfExtentTiles)
+        // rangeTiles = 사거리 + 내몸 + 표준 상대(호출부가 합산해서 준다).
+        // ⚠ 중심은 **실수**다(짝수 변 footprint 는 셀 경계 위에 선다).
+        // rev 3(2026-09-01) — 몸 = 원이라 `_HalfExtent` 는 0 공급. 셰이더는 코드 무변
+        // (파라미터가 판정식과 1:1 이라 저작만 바뀌는 원리 — 셰이더 헤더 이력 참조).
+        private void ShowRangeRing(Vector2 center, float rangeTiles)
         {
             var sr = EnsureRangeRing();
             if (sr == null) return;   // 머티리얼 미배선 — EnsureRangeRing 이 1회 경고
@@ -632,7 +633,7 @@ namespace Wassup.Core
             local.z = -PropGroundLift;   // Ground(ZWrite On) 코플레이너 z-fight 방지
             sr.transform.localPosition = local;
             sr.transform.localScale = new Vector3(RingQuadCells * cs, RingQuadCells * cs, 1f);
-            _rangeRingMat.SetVector(RingHalfExtentId, new Vector4(halfExtentTiles.x, halfExtentTiles.y, 0f, 0f));
+            _rangeRingMat.SetVector(RingHalfExtentId, Vector4.zero);   // rev 3 — 몸 = 원
             _rangeRingMat.SetFloat(RingRangeId, rangeTiles);
             // 선과 채움은 **같은 라임**이어야 한다(사용자 조건 2) — 시안(고스트)·노랑(점유)·
             // 무채색(지형)과 색상 자체로 갈려야 채움 두 겹 문제가 재발하지 않는다.
@@ -1103,11 +1104,10 @@ namespace Wassup.Core
         // ⚠ **unit 10 — `anchor` 는 셀이지만 몸의 중심은 실수다.** 짝수 변 footprint 의 중심은
         // 셀 경계 위(x.5)라 `Vector2Int` 로는 표현할 수 없고, 표현하려 들면 정수 나눗셈으로
         // 반 칸을 잃는다 — 그게 이 spec 이 은퇴시킨 「대표 셀」 그 자체다.
-        // 그래서 중심은 `centerOffsetTiles` 로 따로 받고, 반폭도 **축별**로 받는다.
+        // 그래서 중심은 `centerOffsetTiles` 로 따로 받는다. 반폭 인자는 rev 3(몸=원)에서 은퇴.
         public void SetPlacementRange(Vector2Int anchor, float tileRange, bool includeCenter = false,
                                       bool squareShape = false, float selfBodyRadiusTiles = 0f,
-                                      Vector2 centerOffsetTiles = default,
-                                      Vector2 halfExtentTiles = default)
+                                      Vector2 centerOffsetTiles = default)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
@@ -1118,15 +1118,7 @@ namespace Wassup.Core
             float cx = anchor.x + centerOffsetTiles.x;
             float cz = anchor.y + centerOffsetTiles.y;
             int scan = Mathf.CeilToInt(tileRange + selfBodyRadiusTiles
-                + Mathf.Max(halfExtentTiles.x, halfExtentTiles.y)
                 + Wassup.Skills.SkillMath.StandardBodyRadiusTiles) + 1;
-            var selfShape = new Wassup.Battle.Combat.AttackReach.BodyShape(
-                selfBodyRadiusTiles,
-                new Unity.Mathematics.float2(halfExtentTiles.x, halfExtentTiles.y),
-                Unity.Mathematics.float2.zero);
-            // 표준 1×1 상대 — 점으로 보면 사거리 1 의 대각이 빠진다.
-            var probeShape = Wassup.Battle.Combat.AttackReach.BodyShape.Round(
-                Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
             for (int dx = -scan; dx <= scan; dx++)
             for (int dz = -scan; dz <= scan; dz++)
             {
@@ -1135,21 +1127,22 @@ namespace Wassup.Core
                 if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
                 // 판정과 **같은 본체**를 지난다 — 여기서 모양을 다시 그리지 않는다.
                 // 타일 단위 좌표를 그대로 넣으므로 `tileSize = 1`.
+                // 표준 1×1 상대(적 티어 「소」) — 점으로 보면 사거리 1 의 대각이 빠진다.
                 if (!squareShape && !Wassup.Battle.Combat.AttackReach.InReach(
-                        new Unity.Mathematics.float3(cx, 0f, cz), selfShape,
-                        new Unity.Mathematics.float3(cell.x, 0f, cell.y), probeShape,
-                        tileRange, 1f)) continue;
+                        new Unity.Mathematics.float3(cx, 0f, cz),
+                        new Unity.Mathematics.float3(cell.x, 0f, cell.y),
+                        tileRange, 1f, selfBodyRadiusTiles,
+                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
             // unit 5 — 윤곽. **채움과 같은 입력**에서 나온다(모양을 다시 그리지 않는다).
             // 스킬 조준(squareShape)은 자가 정사각형이라 링을 띄우지 않는다 — 거짓말이 되기 때문.
             if (squareShape) HideRangeRing();
-            // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 2): 사각 반폭은 `_HalfExtent`,
-            // 몸의 원 반지름은 `_Range` 에 더한다. 1×1 이면 반폭 0 → **진짜 원**이 그려진다.
+            // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 3): 몸 = 원 → `_HalfExtent` 0.
+            // 링 반경 = 사거리 + 내몸 + 표준 상대 — 「그림자가 링에 닿으면 안」이 판정식과 동치다.
             else ShowRangeRing(new Vector2(cx, cz),
-                    tileRange + selfBodyRadiusTiles + Wassup.Skills.SkillMath.StandardBodyRadiusTiles,
-                    halfExtentTiles);
+                    tileRange + selfBodyRadiusTiles + Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
             ApplyRangeTint();
         }
 

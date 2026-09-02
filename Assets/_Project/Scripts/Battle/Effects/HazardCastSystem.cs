@@ -40,13 +40,11 @@ namespace Wassup.Battle.Effects
         // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
         // 핸들 갱신 순서에 기대지 않는다.
         private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
-        private ComponentLookup<Wassup.Battle.Units.BodyExtent> _bodyExtentLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
-            _bodyExtentLookup = state.GetComponentLookup<Wassup.Battle.Units.BodyExtent>(isReadOnly: true);
             _casterPathLookup = state.GetComponentLookup<PathFollowState>(isReadOnly: true);
             state.RequireForUpdate<HazardCastState>();
             state.RequireForUpdate<FlowFieldSingleton>();
@@ -57,7 +55,6 @@ namespace Wassup.Battle.Effects
         public void OnUpdate(ref SystemState state)
         {
             _bodyRadiusLookup.Update(ref state);
-            _bodyExtentLookup.Update(ref state);
             float dt = SystemAPI.Time.DeltaTime;
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var spawnSingleton = SystemAPI.GetSingletonRW<HazardSpawnRequestsSingleton>();
@@ -133,10 +130,7 @@ namespace Wassup.Battle.Effects
                     // 3번째 인자에 `false` 리터럴을 두지 않는 이유: 그건 「오늘 캐스터가 전부
                     // 타일 고정 방어유닛」이라는 **콘텐츠 사실**이지 이 코드의 성질이 아니다.
                     // 리터럴은 grep(「인라인 사거리 판정 0건」)에도 안 걸려 조용히 다른 자가 된다.
-                    if (!AttackReach.InReach(
-                            casterPos, ShapeOf(casterEntity, _bodyRadiusLookup, _bodyExtentLookup),
-                            targetPos, ShapeOf(targetEntities[i], _bodyRadiusLookup, _bodyExtentLookup),
-                            tileRange, flowField.tileSize)) continue;
+                    if (!AttackReach.InReach(casterPos, targetPos, tileRange, flowField.tileSize, RadiusOf(casterEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
                     if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))
@@ -222,18 +216,9 @@ namespace Wassup.Battle.Effects
         }
 
         // unit 10 PR2 — 몸 형태(원 + 사각 반폭 + 중심 보정)를 한 번에 읽는다.
-        // `BodyExtent` 가 없으면(적·1×1) `Round(r)` 과 같다 — 무회귀.
-        static Wassup.Battle.Combat.AttackReach.BodyShape ShapeOf(
-            Entity e,
-            in ComponentLookup<Wassup.Battle.Units.HitRadius> radii,
-            in ComponentLookup<Wassup.Battle.Units.BodyExtent> extents)
-        {
-            float r = radii.HasComponent(e) ? radii[e].value : 0f;
-            if (!extents.HasComponent(e))
-                return Wassup.Battle.Combat.AttackReach.BodyShape.Round(r);
-            var x = extents[e];
-            return new Wassup.Battle.Combat.AttackReach.BodyShape(r, x.halfExtent, x.centerOffset);
-        }
+        // rev 3(2026-09-01) — 몸 = 원 하나. 컴포넌트가 없으면 점(0).
+        static float RadiusOf(Entity e, in ComponentLookup<Wassup.Battle.Units.HitRadius> radii)
+            => radii.HasComponent(e) ? radii[e].value : 0f;
 
     }
 }

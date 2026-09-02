@@ -67,40 +67,15 @@ namespace Wassup.Skills
             return n;
         }
 
-        // ── 사거리 술어 (distance-based-range unit 4a · rev 2) ──────────────
+        // ── 사거리 술어 (distance-based-range unit 4a · rev 3) ──────────────
         //
-        // **몸과 몸 사이의 빈틈**이 자다:
-        //
-        //     v = max(|Δ| − halfExtent, 0)          ← 성분별. 몸의 **사각 부분**만 뺀다
-        //     안 ⟺ |v| ≤ range + SelfBodyRadius + targetBodyRadius
-        //
-        // ⚠ **rev 2 에서 0.5 가 뺄셈에서 덧셈으로 옮겨왔다**(사용자 지적 2026-08-31).
-        // rev 1 은 공격자의 한 칸을 **정사각형**으로 봐서 `max(|Δ| − 0.5, 0)` 이었다. 그러면
-        // 경계가 「직선 4개 + 호 4개」가 되고 **둘레의 13.7% 가 직선**이다 — 하필 상하좌우
-        // 정중앙이라 눈이 곡률 끊김을 바로 잡아낸다(「원이 아니라 라운딩된 사각형」).
-        // 반지름 비(대각/축 = 1.046)로는 이 문제가 안 보인다 — **틀린 것을 재고 있었다.**
-        //
-        // 지금은 한 칸을 **내접원(반지름 0.5)** 으로 본다 → 1×1 끼리는 `|Δ| ≤ R + 0.5` = **진짜 원**.
-        // 바뀌지 않은 것: 축 방향 사거리(R+0.5 그대로) · 사거리 1의 여덟 이웃(1.414 ≤ 1.5).
-        // 바뀐 것: 얕은 대각 칸 일부가 빠진다(R≥3 에서 (3,2)·(4,3) 등).
-        //
-        // ⚠ **`halfExtent` 는 죽지 않았다.** 다칸 유닛의 몸은 여전히 사각이고(반폭 `(w−1)/2`),
-        // 거기에 0.5 원이 더해지는 형태다 — 1×1 이면 halfExtent 가 0 이라 순수 원이 된다.
-        // 셰이더도 같은 식이라 파라미터 값만 달라진다(`_HalfExtent`=0, `_Range`=R+0.5).
-        //
-        // **왜 처음부터 원이 아니었나**: rev 1 의 0.5 는 옛 `CellSlackTiles`(격자 정의에서 나온
-        // 슬랙)를 그대로 보존하려던 값이라 «칸 = 사각형» 을 따라갔다. 사거리는 **거리**이므로
-        // 몸을 원으로 보는 편이 뜻에도 맞다.
-        //
-        // ⚠ **sqrt 를 쓰지 않는다.** 제곱 비교로 끝난다 — sim 핫 경로이고 부동소수 반올림이
-        // 한 번 덜 끼는 편이 결정론에 유리하다.
-        //
-        // 단위는 **타일**이다. 월드 좌표를 넣지 말 것 — 호출부가 `tileSize` 로 나눠서 준다.
+        // **몸과 몸 사이의 빈틈**이 자다. rev 3(2026-09-01 외부 세션)에서 몸이 **원 하나**로
+        // 회귀했다 — 본문과 이력은 아래 `InBodyReach` 헤더 참조.
         // ⚠ **unit 9 에서 이 상수가 둘로 갈렸다.** 원래 하나(`SelfBodyRadiusTiles = 0.5`)가
         // 두 가지 뜻을 겸직했고, 「몸은 유닛별 저작」으로 가는 순간 그 둘이 서로 다른 값이 된다:
         //
         //   · **사거리** — 「공격자의 몸」. 이제 `bodyRadius` 저작에서 온다(일반 0.25).
-        //     상수가 아니므로 여기 없다. 술어가 인자로 받는다.
+        //     상수가 아니므로 여기 없다. 술어가 인자로 받는다(rev 3: 방어유닛은 파생식).
         //   · **광역**   — 「후보 **칸**의 반폭」. 폭발은 점이고 후보가 칸이라 칸의 크기가
         //     붙는다. 칸은 언제나 1타일이므로 **0.5 로 남는다.**
         //
@@ -108,7 +83,7 @@ namespace Wassup.Skills
         // **십자 모양**이 된다(1.414 > 1.25) — rev 1 에서 순수 원으로 갔다가 되돌린 그 회귀다.
         public const float CellHalfWidthTiles = 0.5f;
 
-        // **1×1 유닛의 몸 반지름.** `AttackUnitData`/`DefenderUnitData`/`StructureData` 의 저작
+        // **표준 소형 상대의 몸 반지름** = 적 티어 「소」. `AttackUnitData` 의 저작
         // 기본값과 같은 값이고(드리프트는 `RangeDisplayContractTests` 가 잡는다),
         // **표기가 「누구를」 기준으로 그리는지의 답**이기도 하다.
         //
@@ -120,42 +95,32 @@ namespace Wassup.Skills
         // 멀리서도 맞는데, 그건 대상 마크(unit 7)가 말한다.
         public const float StandardBodyRadiusTiles = 0.25f;
 
-        // 오늘 전 유닛이 1×1 이라 사각 반폭은 0 이다(`FootprintWidthCells => 1`,
-        // 방어유닛 저작도 1×1 로 철회됨). 다칸 유닛이 실제로 생기면 `(w−1)*0.5` 를 넘긴다.
-        public const float SelfHalfExtentTiles = 0f;
-
-        // **술어 본문은 여기 하나뿐이다.** 다칸 몸을 명시로 받는 형태이고, 아래 `InBodyReach` 는
-        // 오늘의 저작(전 유닛 1×1 → 반폭 0)을 넣은 **특수화**일 뿐이다.
-        // ⚠ 본문을 복제하지 말 것 — 사거리 술어가 두 벌이 되는 것이 이 spec 이 없애려던 문제다.
+        // **술어 본문은 여기 하나뿐이다** — rev 3(2026-09-01 외부 세션): 몸 = 원, edge-to-edge.
         //
-        // 오늘 이 오버로드의 호출부는 없다(전 유닛 1×1). **테스트가 계약을 진다** —
-        // `halfExtent` 가 살아 있다는 것, 그리고 다칸 몸은 원이 아니라는 것.
-        // ⚠ `halfX`/`halfZ` 는 **합산값**이다(내 반폭 + 상대 반폭). 축을 둘로 가른 이유는
-        // 2×3 처럼 **비정사각** footprint 가 있기 때문이다 — 한 숫자로 접으면 3×3 으로 오독한다.
-        // ⚠ `Δ` 는 **몸 중심 사이**다. 호출부가 중심 보정을 넣어서 준다.
-        // ⚠ 반폭을 `float2` 로 받는다 — **Burst 때문이다**(BC1055). 7-float 시그니처로 두면
-        // `AttackReach`(다른 어셈블리)에서 Burst 가 정의를 못 찾아 술어가 managed 로 떨어진다.
-        // 두 축이 한 값으로 묶이는 게 의미상으로도 맞다.
-        public static bool InBodyReachWithHalfExtent(float dxTiles, float dzTiles,
-                                                     Unity.Mathematics.float2 halfExtentTiles,
-                                                     float rangeTiles,
-                                                     float selfBodyRadiusTiles,
-                                                     float targetBodyRadiusTiles)
-        {
-            float halfXTiles = halfExtentTiles.x, halfZTiles = halfExtentTiles.y;
-            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfXTiles; if (vx < 0f) vx = 0f;
-            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfZTiles; if (vz < 0f) vz = 0f;
-            // unit 9 — **오차 보정이 없다.** 양쪽 몸이 저작에서 오고 그 수치를 그대로 믿는다.
-            float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
-            return vx * vx + vz * vz <= reach * reach;
-        }
-
-        // 오늘의 저작을 넣은 특수화. 1×1 이라 반폭 0 → `|Δ| ≤ range + 내몸 + 상대몸` = **원**.
+        //     안 ⟺ |Δ|² ≤ (range + selfR + targetR)²
+        //
+        // 반경의 출처: 방어유닛 = footprint 내접원 `min(W,H)/2` **파생식**(저작 없음) ·
+        // 적 = 티어 저작(소 0.25 / 중 0.5 / 대 1.0 / 보스 개별, unit 13) · 구조물 = 점유 내접원.
+        //
+        // 이력(같은 자리에서 세 번 바뀌었다 — 네 번째가 오면 여기부터 읽을 것):
+        //   rev 1  `max(|Δ|−0.5, 0)` — 칸을 정사각으로. 경계 13.7% 가 직선이라 눈에 걸렸다.
+        //   rev 2  사각 반폭 ⊕ 원(`InBodyReachWithHalfExtent`) — 다칸 몸을 사각으로.
+        //          **폐기 사유**: 몸 크기·모양이 유닛마다 달라 「사거리 N」의 실거리가 상대별
+        //          무한 조합이 됐고, 링이 그 조합을 그릴 수 없었다(최대 67% 과소 표기).
+        //          원 + 파생식이면 캐리어(그림자·링)가 판정과 1:1 이 된다(계약 1 rev 3).
+        //          BC1055 우회(`float2` 반폭 인자)도 사각 항과 함께 소멸했다.
+        //   rev 3  원 하나(현행). 「그림자가 진실이다」 — 그림자 반경 = targetR,
+        //          링 반경 = range + selfR 이라 「그림자가 링에 닿으면 안」이 판정식과 동치다.
+        //
+        // ⚠ **sqrt 를 쓰지 않는다.** 제곱 비교로 끝난다 — sim 핫 경로이고 부동소수 반올림이
+        // 한 번 덜 끼는 편이 결정론에 유리하다.
+        // ⚠ 단위는 **타일**이다. 월드 좌표를 넣지 말 것 — 호출부가 `tileSize` 로 나눠서 준다.
+        // ⚠ unit 9 — **오차 보정 항이 없다.** 양쪽 몸이 저작/파생에서 오고 그 수치를 그대로 믿는다.
         public static bool InBodyReach(float dxTiles, float dzTiles, float rangeTiles,
                                        float selfBodyRadiusTiles, float targetBodyRadiusTiles)
-            => InBodyReachWithHalfExtent(dxTiles, dzTiles,
-                                         new Unity.Mathematics.float2(SelfHalfExtentTiles, SelfHalfExtentTiles),
-                                         rangeTiles, selfBodyRadiusTiles, targetBodyRadiusTiles);
-
+        {
+            float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
+            return dxTiles * dxTiles + dzTiles * dzTiles <= reach * reach;
+        }
     }
 }

@@ -198,55 +198,40 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // ── unit 10 PR2: **비정사각 몸** ─────────────────────────────────────
-        // 2×3(캐논)이면 반폭이 (0.5, 1.0) 이라 **세로로 더 닿는다**. 한 숫자로 접으면
-        // 3×3 으로 오독해 가로가 0.5칸 과대평가된다 — 그게 축을 둘로 가른 이유다.
-        // README 가 예고한 「형태가 전투 어휘가 된다」의 실물이다.
+        // ── rev 3 (2026-09-01 외부 세션): 몸 = 원 ─────────────────────────────
+        // rev 2 의 사각 몸 테스트 3건(NonSquareBody / BothBodies_HalfExtentsAdd /
+        // MultiCellBody_KeepsTheFlatSides)은 `InBodyReachWithHalfExtent` 와 함께 은퇴했다.
+        // 원 모델의 계약: 도달은 **전방향 동일**(range + selfR + targetR)이고, 다칸의 크기는
+        // 반폭이 아니라 **내접원 반경**(`min(W,H)/2` 파생식)으로 들어온다.
         [Test]
-        public void NonSquareBody_ReachesFurtherAlongTheLongAxis()
+        public void BodiesAdd_AsRadii_Isotropically()
         {
-            const float hx = 0.5f, hz = 1.0f, range = 3f;
-            float beyond = range + Body + Body;   // 반폭을 뺀 뒤의 상한 = 3.5
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(0f, 4.4f, new float2(hx, hz), range, Body, Body),
-                "세로 상한 = 1.0 + 3.5 = 4.5");
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(0f, 4.6f, new float2(hx, hz), range, Body, Body));
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.9f, 0f, new float2(hx, hz), range, Body, Body),
-                "가로 상한 = 0.5 + 3.5 = 4.0");
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(4.1f, 0f, new float2(hx, hz), range, Body, Body),
-                "정사각으로 접었다면 4.5 까지 닿아 여기서 참이 됐을 것이다");
-            Assert.AreEqual(4.5f, hz + beyond, 1e-5f);
-            Assert.AreEqual(4.0f, hx + beyond, 1e-5f);
+            // 2×2 방어유닛(내접원 1.0)이 소형 적(0.25)을 볼 때: 상한 = 1 + 1.0 + 0.25 = 2.25.
+            const float range = 1f, selfR = 1.0f, targetR = 0.25f;
+            const float reach = range + selfR + targetR;
+            Assert.IsTrue(SkillMath.InBodyReach(reach - 0.05f, 0f, range, selfR, targetR));
+            Assert.IsFalse(SkillMath.InBodyReach(reach + 0.05f, 0f, range, selfR, targetR));
+            // 전방향 동일 — 대각도 같은 반지름이다(사각 몸의 「변」이 사라졌다).
+            float d = reach / 1.41421356f;
+            Assert.IsTrue(SkillMath.InBodyReach(d - 0.05f, d - 0.05f, range, selfR, targetR));
+            Assert.IsFalse(SkillMath.InBodyReach(d + 0.05f, d + 0.05f, range, selfR, targetR));
         }
 
-        // 두 몸의 반폭은 **합산**된다(민코프스키). 3×1 공격자가 3×1 대상을 볼 때
-        // 가로 도달은 각자 반폭 1.0 씩 = 2.0 만큼 늘어난다.
+        // 파생식이 정의 그대로인지 — 표(저작)가 아니라 식이라 신규 footprint 에 자동 적용된다.
         [Test]
-        public void BothBodies_HalfExtentsAdd()
+        public void DerivedBody_IsInscribedCircle_MinOfFootprint()
         {
-            const float range = 1f;
-            float lone = range + Body + Body;              // 1.5 — 점 대 점
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(lone - 0.05f, 0f, new float2(0f, 0f), range, Body, Body));
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(lone + 0.05f, 0f, new float2(0f, 0f), range, Body, Body));
-            // 양쪽 반폭 1.0 → 상한 = 2.0 + 1.5 = 3.5
-            Assert.IsTrue(SkillMath.InBodyReachWithHalfExtent(3.45f, 0f, new float2(2.0f, 0f), range, Body, Body));
-            Assert.IsFalse(SkillMath.InBodyReachWithHalfExtent(3.55f, 0f, new float2(2.0f, 0f), range, Body, Body));
-        }
-
-        [Test]
-        public void MultiCellBody_KeepsTheFlatSides_ByDesign()
-        {
-            // ⚠ `half-extent` 는 죽지 않았다 — 다칸 유닛의 몸은 여전히 **사각**이고, 그 사각의
-            // 변이 직선으로 남는 것이 **맞다**(그게 그 유닛의 몸 모양이다). 1×1 에서만 0 이라
-            // 원이 되는 것이지, 술어가 원 전용이 된 게 아니다.
-            // 반폭 1(3칸 폭) 몸: 축 방향 도달 = 1 + range + 0.5.
-            const float half = 1f, range = 2f;
-            Assert.IsTrue(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 0f, new float2(half, half), range, Body, Body),
-                "축 방향: |Δ|=3.4 → v=2.4 ≤ 2.5");
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.6f, 0f, new float2(half, half), range, Body, Body),
-                "축 방향: |Δ|=3.6 → v=2.6 > 2.5");
-            // 대각은 사각 몸 때문에 축보다 **덜** 멀리 간다(원이 아니다 — 의도).
-            Assert.IsFalse(Wassup.Skills.SkillMath.InBodyReachWithHalfExtent(3.4f, 3.4f, new float2(half, half), range, Body, Body),
-                "정대각: v=(2.4,2.4) → 3.39 > 2.5");
+            var def = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DefenderUnitData>();
+            try
+            {
+                Assert.AreEqual(0.5f, def.BodyRadiusTiles, 1e-6f, "1×1 = 내접원 0.5");
+                def.footprintWidth = 2; def.footprintHeight = 2;
+                Assert.AreEqual(1.0f, def.BodyRadiusTiles, 1e-6f, "2×2 = 1.0");
+                def.footprintWidth = 2; def.footprintHeight = 3;
+                Assert.AreEqual(1.0f, def.BodyRadiusTiles, 1e-6f,
+                    "2×3 = min/2 = 1.0 — 장축 끝은 몸 밖(원 근사, 지각 임계 아래로 수용)");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(def); }
         }
 
     }

@@ -27,13 +27,11 @@ namespace Wassup.Battle.Combat
         // 명시 필드 + `OnCreate` + `Update(ref state)` 가 Entities 정본 형태이고, 소스 생성기의
         // 핸들 갱신 순서에 기대지 않는다.
         private ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
-        private ComponentLookup<Wassup.Battle.Units.BodyExtent> _bodyExtentLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
-            _bodyExtentLookup = state.GetComponentLookup<Wassup.Battle.Units.BodyExtent>(isReadOnly: true);
             state.RequireForUpdate<EnemyAiState>();
         }
 
@@ -41,7 +39,6 @@ namespace Wassup.Battle.Combat
         public void OnUpdate(ref SystemState state)
         {
             _bodyRadiusLookup.Update(ref state);
-            _bodyExtentLookup.Update(ref state);
             bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
             float tileSize = hasFlowField ? flowField.tileSize : 1f;
             int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
@@ -110,10 +107,7 @@ namespace Wassup.Battle.Combat
                             // distance-based-range unit 1 — 「멈춰도 되나」도 **같은 술어**를 지난다.
                             // 셀만 보면 자를 바꾸는 순간 이 한 곳만 옛 답을 내고, 그게 정확히
                             // 「멈추는 근거」와 「쏘는 근거」가 갈리는 교착이다(AttackReach 헤더).
-                            guardianInRange = AttackReach.InReach(
-                                atkPos, ShapeOf(enemyEntity, _bodyRadiusLookup, _bodyExtentLookup),
-                                gPos, ShapeOf(g, _bodyRadiusLookup, _bodyExtentLookup),
-                                tileRange, tileSize);
+                            guardianInRange = AttackReach.InReach(atkPos, gPos, tileRange, tileSize, RadiusOf(enemyEntity, _bodyRadiusLookup), RadiusOf(g, _bodyRadiusLookup));
                         }
                     }
                 }
@@ -124,7 +118,7 @@ namespace Wassup.Battle.Combat
                         candEntities, candTransforms, candFactions, candTraversalLayers,
                         tileSize, gridSize, ffOrigin,
                         classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup,
-                        candPathLookup, _bodyRadiusLookup, _bodyExtentLookup);
+                        candPathLookup, _bodyRadiusLookup);
                 }
 
                 aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget);
@@ -153,18 +147,9 @@ namespace Wassup.Battle.Combat
             => l.HasComponent(e) ? l[e].value : 0f;
 
         // unit 10 PR2 — 몸 형태(원 + 사각 반폭 + 중심 보정)를 한 번에 읽는다.
-        // `BodyExtent` 가 없으면(적·1×1) `Round(r)` 과 같다 — 무회귀.
-        static Wassup.Battle.Combat.AttackReach.BodyShape ShapeOf(
-            Entity e,
-            in ComponentLookup<Wassup.Battle.Units.HitRadius> radii,
-            in ComponentLookup<Wassup.Battle.Units.BodyExtent> extents)
-        {
-            float r = radii.HasComponent(e) ? radii[e].value : 0f;
-            if (!extents.HasComponent(e))
-                return Wassup.Battle.Combat.AttackReach.BodyShape.Round(r);
-            var x = extents[e];
-            return new Wassup.Battle.Combat.AttackReach.BodyShape(r, x.halfExtent, x.centerOffset);
-        }
+        // rev 3(2026-09-01) — 몸 = 원 하나. 컴포넌트가 없으면 점(0).
+        static float RadiusOf(Entity e, in ComponentLookup<Wassup.Battle.Units.HitRadius> radii)
+            => radii.HasComponent(e) ? radii[e].value : 0f;
 
         static bool HasFireTarget(
             Entity attacker, int2 atkCell, float3 atkPos, float tileRange, int mask,
@@ -182,8 +167,7 @@ namespace Wassup.Battle.Combat
             in ComponentLookup<EnemyTargetFilter> filterLookup,
             in ComponentLookup<EnemyBehavior> behaviorLookup,
             in ComponentLookup<PathFollowState> pathLookup,
-            in ComponentLookup<Wassup.Battle.Units.HitRadius> bodyRadiusLookup,
-            in ComponentLookup<Wassup.Battle.Units.BodyExtent> bodyExtentLookup)
+            in ComponentLookup<Wassup.Battle.Units.HitRadius> bodyRadiusLookup)
         {
             // 락 미러: 락 타겟만 fire 가능.
             // target-persistence unit 3 — 게이트가 `!= None` 이다(구 `== FocusUntilDead`).
@@ -215,9 +199,7 @@ namespace Wassup.Battle.Combat
                     // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
                     // 유지 — unit 4d. `AttackSystem` 의 락 유지와 **같은 함수·같은 임계**여야
                     // 두 벌이 갈려 생기는 «락은 있는데 Marching» 데드락이 안 난다.
-                    bool curReach = TargetPersistence.KeepsLock(
-                        true, atkPos, ShapeOf(attacker, bodyRadiusLookup, bodyExtentLookup),
-                        curPos, ShapeOf(cur, bodyRadiusLookup, bodyExtentLookup), tileRange, tileSize);
+                    bool curReach = TargetPersistence.KeepsLock(true, atkPos, curPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(cur, bodyRadiusLookup));
                     // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
                     if (curReach) return true;
                     // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
@@ -240,10 +222,7 @@ namespace Wassup.Battle.Combat
                 float3 tgtPos = candTransforms[i].Position;
                 int2 tgtCell = GridMath.WorldToCell(tgtPos, tileSize, gridSize, origin: ffOrigin);
                 // 같은 술어(AttackReach) — AttackSystem·PatrolAreaMath 와 한 몸이어야 한다.
-                if (AttackReach.InReach(
-                        atkPos, ShapeOf(attacker, bodyRadiusLookup, bodyExtentLookup),
-                        tgtPos, ShapeOf(candEntities[i], bodyRadiusLookup, bodyExtentLookup),
-                        tileRange, tileSize))
+                if (AttackReach.InReach(atkPos, tgtPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(candEntities[i], bodyRadiusLookup)))
                     return true;
             }
             return false;

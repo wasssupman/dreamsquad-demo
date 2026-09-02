@@ -39,10 +39,9 @@ namespace Wassup.Data
         public Faction targetFactions = Faction.DefenderUnit;
         // ⚠ **연속 반지름**(distance-based-range unit 9) — 타일 길이 단위.
         [Min(0f)] public float attackRange = 3f;
-        // unit 9 — 자기 중심 기준 커버 범위(타일). 상수 0.5 가 은퇴하면서 거점도 자기 몸을
-        // 들고 와야 한다 — 안 그러면 도달 거리가 조용히 0.5 줄어든다.
-        // 기본 0.25 = 1×1 유닛과 같다. 거점의 3×3 **점유**는 별개 축(반폭)이고 미구현이다.
-        [Min(0f)] public float bodyRadius = 0.25f;
+        // unit 12 (계약 1 rev 3) — 몸 반경 저작은 은퇴. 거점의 footprint 는 **진영이 정하므로**
+        // (`StructurePlacements.FootprintOf`) SO 가 알 수 없고, bake(BattleBridge)가 점유 내접원
+        // `FootprintOf(faction)/2` 로 파생한다 — 본능 3×3 → 1.5, 마음 1×1 → 0.5.
         [Min(0.01f)] public float attackCooldown = 1.5f;
         [Min(0f)] public float attackDamage = 10f;
         [Tooltip("본능의 투사체. 없으면 unit 5 가 발사를 건너뛴다.")]

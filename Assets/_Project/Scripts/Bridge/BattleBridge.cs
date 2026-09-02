@@ -6501,7 +6501,9 @@ namespace Wassup.Bridge
                 // distance-based-range unit 9 — 거점도 몸을 갖는다. `AttackState` 를 받는
                 // bake 지점 넷(방어유닛·순찰·적·거점) 중 여기만 빠지면 거점의 도달 거리가
                 // 조용히 0.5 줄고, 대상일 때도 몸이 0 이 된다.
-                _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = s.data.bodyRadius });
+                // rev 3(unit 12) — 구조물 몸 = 점유 내접원 파생. 본능 3×3 → 1.5, 마음 → 0.5.
+                _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius
+                { value = Wassup.Data.StructurePlacements.FootprintOf(faction) * 0.5f });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));
 
                 // unit 10 — 적 마음 축의 활성 조건을 여기서 확정한다(저작에서 오므로 덱만
@@ -7922,12 +7924,11 @@ namespace Wassup.Bridge
             if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else
             {
-                // unit 10 — 표기가 **판정과 같은 몸**을 받는다. 중심 보정·반폭이 여기서 들어간다.
+                // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
                 var fpHalf = Wassup.Data.FootprintMath.GeometricCenterOffset(unit.Footprint);
                 tilemapMapView.SetPlacementRange(center, rangeTiles,
-                     selfBodyRadiusTiles: unit.bodyRadius,
-                     centerOffsetTiles: fpHalf,     // 앵커 → 기하 중심
-                     halfExtentTiles: fpHalf);      // 사각 반폭 = 같은 값 `(W−1)/2`
+                     selfBodyRadiusTiles: unit.BodyRadiusTiles,
+                     centerOffsetTiles: fpHalf);    // 앵커 → 기하 중심
             }
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
@@ -8008,7 +8009,7 @@ namespace Wassup.Bridge
                     ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(ents[i]).value : 0f;
                 // unit 9 — **표기도 판정과 같은 인자를 받는다.** 프리뷰 중인 유닛의 몸은
                 // 아직 엔티티가 없으므로(배치 전) 저작에서 직접 읽는다.
-                float selfBodyR = unit != null ? unit.bodyRadius : 0f;
+                float selfBodyR = unit != null ? unit.BodyRadiusTiles : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
                         atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR)) continue;
                 // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
@@ -8303,27 +8304,10 @@ namespace Wassup.Bridge
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
-            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
-            // ── unit 10 PR2 — footprint 가 **전투 어휘**가 되는 지점 ──────────────
-            // `defender-footprint` 결정 1(sim 무변) 폐기. 1×1 이면 아래 값이 전부 0/1칸이라
-            // 종전과 byte-identical 이다.
-            {
-                var fpSize = unitData.Footprint;
-                var half = Wassup.Data.FootprintMath.GeometricCenterOffset(fpSize);
-                // 위치를 **기하 중심**으로 옮겼으므로 몸 중심 보정은 0 이다.
-                _em.AddComponentData(entity, new Wassup.Battle.Units.BodyExtent
-                {
-                    halfExtent = new float2(half.x, half.y),
-                    centerOffset = float2.zero,
-                });
-                // 랭킹(`AttackSystem.DistanceSqToTarget`)이 최근접 점유 칸을 재게 한다 —
-                // 구조물(본능)이 이미 쓰는 어휘를 그대로 빌린다.
-                var fpRect = Wassup.Data.FootprintMath.Cells(cell, fpSize);
-                var occ = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
-                for (int oy = fpRect.yMin; oy < fpRect.yMax; oy++)
-                for (int ox = fpRect.xMin; ox < fpRect.xMax; ox++)
-                    occ.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(ox, oy) });
-            }
+            // rev 3(unit 12, 2026-09-01 외부 세션) — 몸 = footprint 내접원 **파생식**(저작 은퇴).
+            // 1×1 → 0.5, 2×2 → 1.0. unit 10 PR2 의 BodyExtent(사각 몸)·OccupiedCellsBuffer(칸
+            // 랭킹)는 원 회귀로 은퇴 — 게이트·랭킹·그림자·링이 전부 이 반경 하나에서 유도된다.
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.BodyRadiusTiles });
 
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.DefenderUnit });
@@ -8609,27 +8593,10 @@ namespace Wassup.Bridge
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
-            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.bodyRadius });
-            // ── unit 10 PR2 — footprint 가 **전투 어휘**가 되는 지점 ──────────────
-            // `defender-footprint` 결정 1(sim 무변) 폐기. 1×1 이면 아래 값이 전부 0/1칸이라
-            // 종전과 byte-identical 이다.
-            {
-                var fpSize = unitData.Footprint;
-                var half = Wassup.Data.FootprintMath.GeometricCenterOffset(fpSize);
-                // 위치를 **기하 중심**으로 옮겼으므로 몸 중심 보정은 0 이다.
-                _em.AddComponentData(entity, new Wassup.Battle.Units.BodyExtent
-                {
-                    halfExtent = new float2(half.x, half.y),
-                    centerOffset = float2.zero,
-                });
-                // 랭킹(`AttackSystem.DistanceSqToTarget`)이 최근접 점유 칸을 재게 한다 —
-                // 구조물(본능)이 이미 쓰는 어휘를 그대로 빌린다.
-                var fpRect = Wassup.Data.FootprintMath.Cells(cellV2, fpSize);
-                var occ = _em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(entity);
-                for (int oy = fpRect.yMin; oy < fpRect.yMax; oy++)
-                for (int ox = fpRect.xMin; ox < fpRect.xMax; ox++)
-                    occ.Add(new Wassup.Battle.Effects.OccupiedCellsBuffer { cell = new int2(ox, oy) });
-            }
+            // rev 3(unit 12, 2026-09-01 외부 세션) — 몸 = footprint 내접원 **파생식**(저작 은퇴).
+            // 1×1 → 0.5, 2×2 → 1.0. unit 10 PR2 의 BodyExtent(사각 몸)·OccupiedCellsBuffer(칸
+            // 랭킹)는 원 회귀로 은퇴 — 게이트·랭킹·그림자·링이 전부 이 반경 하나에서 유도된다.
+            _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.BodyRadiusTiles });
 
             // 계약 1 — DefenderClassTag 도 붙인다. 태그 없음 면제는 EnemyTargetFilter 주석대로
             // 무생물(blocking hazard)용이라, 생물을 태그 없이 태우면 클래스 하드 타게팅 적

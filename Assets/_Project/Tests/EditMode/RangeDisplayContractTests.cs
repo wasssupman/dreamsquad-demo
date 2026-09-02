@@ -20,23 +20,18 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void StandardBody_MatchesEveryAuthoringDefault()
         {
-            // 네 곳이 같은 값을 들고 있고 서로를 참조하지 않는다(asmdef 경계).
-            // 하나가 조용히 갈리면 표기와 판정이 갈린다 — 그걸 여기서 잡는다.
+            // rev 3(2026-09-01) — 표준 상대 = **적 티어 「소」** 하나다. 방어유닛·구조물의 몸은
+            // 저작이 아니라 footprint 파생식이 됐으므로 이 드리프트 감시의 대상에서 빠졌다
+            // (파생식 자체는 `AttackReachTests.DerivedBody_IsInscribedCircle` 이 고정한다).
             var atk = ScriptableObject.CreateInstance<Wassup.Data.AttackUnitData>();
-            var def = ScriptableObject.CreateInstance<Wassup.Data.DefenderUnitData>();
-            var str = ScriptableObject.CreateInstance<Wassup.Data.StructureData>();
             try
             {
                 Assert.AreEqual(SkillMath.StandardBodyRadiusTiles, atk.bodyRadius, 1e-6f,
-                    "AttackUnitData 기본 몸이 표기 기준과 갈렸다");
-                Assert.AreEqual(SkillMath.StandardBodyRadiusTiles, def.bodyRadius, 1e-6f,
-                    "DefenderUnitData 기본 몸이 표기 기준과 갈렸다");
-                Assert.AreEqual(SkillMath.StandardBodyRadiusTiles, str.bodyRadius, 1e-6f,
-                    "StructureData 기본 몸이 표기 기준과 갈렸다");
+                    "AttackUnitData 기본 몸(티어 소)이 표기 기준과 갈렸다");
             }
             finally
             {
-                Object.DestroyImmediate(atk); Object.DestroyImmediate(def); Object.DestroyImmediate(str);
+                Object.DestroyImmediate(atk);
             }
         }
 
