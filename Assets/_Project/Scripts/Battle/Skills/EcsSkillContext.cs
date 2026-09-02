@@ -31,6 +31,7 @@ namespace Wassup.Battle.Skills
         private ComponentLookup<Health> _health;
         // 통행 층 게이트가 쓴다 — 후보의 «어느 층으로 다니나» 는 Movement 소유 값이다.
         private ComponentLookup<Wassup.Battle.Movement.PathFollowState> _pathFollow;
+        private ComponentLookup<Wassup.Battle.Units.HitRadius> _hitRadius;   // unit 14 — 몸 걸침
 
         // 격자 파라미터. 도메인은 셀↔월드 변환을 이름으로만 부르고 이 셋을 모른다.
         private float _tileSize;
@@ -88,12 +89,14 @@ namespace Wassup.Battle.Skills
             in ComponentLookup<Wassup.Battle.Combat.AttackState> attack,
             in ComponentLookup<Health> health,
             in ComponentLookup<Wassup.Battle.Movement.PathFollowState> pathFollow,
+            in ComponentLookup<Wassup.Battle.Units.HitRadius> hitRadius,
             float tileSize, int2 gridSize, float3 origin)
         {
             _em = em;
             _transform = transform; _faction = faction;
             _enemyTag = enemyTag; _defTag = defTag;
             _attack = attack; _health = health; _pathFollow = pathFollow;
+            _hitRadius = hitRadius;
             _tileSize = tileSize; _gridSize = gridSize; _origin = origin;
         }
 
@@ -433,17 +436,27 @@ namespace Wassup.Battle.Skills
                 if (SimIdOf(e) == SimEntityId.Unassigned) { dropped++; continue; }
 
                 var p = poolXf[i].Position;
+                // unit 14 (결정 4 폐기) — 멤버십 = **몸 걸침**: SDF(접지점, 도형) ≤ targetR.
+                // 대상 몸이 도형에 걸치면 히트 — 사거리(unit 12)·티어(unit 13)와 **같은 몸**을
+                // 본다(값 하나). 종전(중심점 in 도형)보다 넓게만 맞으므로 표기(칸 하이라이트)는
+                // 무통보 관용과 동류로 이번에 안 바꾼다 — 도형 윤곽 표기는 후속 후보.
+                float targetR = _hitRadius.HasComponent(e) ? _hitRadius[e].value : 0f;
                 bool inRange;
                 if (metric == RangeMetric.Chebyshev)
                 {
-                    var cell = CellOfPosition(p);
-                    inRange = Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, tileRange);
+                    // 저작은 칸 단위 조준 — 도형 = centerCell 중심, 반폭 (range + 0.5)칸 정사각.
+                    // 몸이 점이면 종전 셀 멤버십과 같은 집합으로 퇴화한다(`BodyOverlapsSquare` 헤더).
+                    var c = CellCenter(centerCell);
+                    inRange = Wassup.Skills.SkillMath.BodyOverlapsSquare(
+                        (p.x - c.x) / _tileSize, (p.z - c.z) / _tileSize,
+                        tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
                 }
                 else
                 {
-                    float dx = p.x - center.x, dz = p.z - center.z;
-                    float r = tileRange * _tileSize;
-                    inRange = dx * dx + dz * dz <= r * r;
+                    // 원 도형 — 반경 합(민코프스키). 중심은 시전 지점 그대로(양자화 없음).
+                    inRange = Wassup.Skills.SkillMath.InBodyReach(
+                        (p.x - center.x) / _tileSize, (p.z - center.z) / _tileSize,
+                        tileRange, 0f, targetR);
                 }
                 if (!inRange) continue;
 

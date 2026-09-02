@@ -147,6 +147,7 @@ namespace Wassup.Battle.Skills
                 SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true),
                 SystemAPI.GetComponentLookup<Health>(isReadOnly: true),
                 SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PathFollowState>(isReadOnly: true),
+                SystemAPI.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true),
                 TileSize, GridSize, Origin);
 
             // ⚠ 풀을 **프레임당 한 번** 짓는다. fire 당 재구축하면 발동이 몰리는 프레임에

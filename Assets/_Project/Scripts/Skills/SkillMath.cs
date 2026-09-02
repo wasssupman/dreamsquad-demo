@@ -122,5 +122,18 @@ namespace Wassup.Skills
             float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
             return dxTiles * dxTiles + dzTiles * dzTiles <= reach * reach;
         }
+
+        // unit 14 (결정 4 폐기, 2026-09-01 외부 세션) — 광역 **사각 도형**의 몸 걸침.
+        // 도형 밖 거리(사각 SDF)가 대상 몸 반경 이하이면 걸친 것이다(자동 민코프스키 확장).
+        // `halfTiles` = 도형 반폭 — 칸 단위 조준은 `range + CellHalfWidthTiles`(range 1 = 3×3).
+        // 몸이 점(0)이면 「접지점 ∈ 사각」으로 정확히 퇴화한다 = 종전 셀 멤버십과 같은 집합.
+        // ⚠ 원 도형은 함수가 따로 없다 — `InBodyReach(dx, dz, r, 0, targetR)` 가 그 식이다.
+        public static bool BodyOverlapsSquare(float dxTiles, float dzTiles,
+                                              float halfTiles, float bodyRadiusTiles)
+        {
+            float vx = (dxTiles < 0f ? -dxTiles : dxTiles) - halfTiles; if (vx < 0f) vx = 0f;
+            float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfTiles; if (vz < 0f) vz = 0f;
+            return vx * vx + vz * vz <= bodyRadiusTiles * bodyRadiusTiles;
+        }
     }
 }

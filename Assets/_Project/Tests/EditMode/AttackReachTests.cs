@@ -217,6 +217,25 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(SkillMath.InBodyReach(d + 0.05f, d + 0.05f, range, selfR, targetR));
         }
 
+        // unit 14 — 사각 도형 몸 걸침. 몸이 점이면 종전 「접지점 ∈ 사각」으로 퇴화하고,
+        // 몸이 있으면 그 반경만큼 넓게 걸친다(민코프스키). 사거리와 같은 몸 값을 쓴다.
+        [Test]
+        public void SkillSquare_BodyOverlap_ExpandsByTargetRadius()
+        {
+            // 칸 조준 range 1 = 반폭 1.5 정사각. 소형 몸 0.25 는 변 밖 0.2 에서도 걸친다.
+            Assert.IsTrue(SkillMath.BodyOverlapsSquare(1.70f, 0f, 1.5f, 0.25f));
+            Assert.IsFalse(SkillMath.BodyOverlapsSquare(1.80f, 0f, 1.5f, 0.25f));
+            // 모서리 밖 (1.65,1.65): 사각 밖 거리 0.212 ≤ 0.25 — 걸침. (1.72,1.72)=0.311 — 아님.
+            Assert.IsTrue(SkillMath.BodyOverlapsSquare(1.65f, 1.65f, 1.5f, 0.25f));
+            Assert.IsFalse(SkillMath.BodyOverlapsSquare(1.72f, 1.72f, 1.5f, 0.25f));
+            // 2×2 방어유닛(내접원 1.0)이 변 밖 0.9 — 몸이 반쯤 걸친 유닛이 버프를 받는다.
+            Assert.IsTrue(SkillMath.BodyOverlapsSquare(2.40f, 0f, 1.5f, 1.0f));
+            Assert.IsFalse(SkillMath.BodyOverlapsSquare(2.60f, 0f, 1.5f, 1.0f));
+            // 몸 = 점이면 종전 셀 멤버십으로 퇴화.
+            Assert.IsTrue(SkillMath.BodyOverlapsSquare(1.49f, 0f, 1.5f, 0f));
+            Assert.IsFalse(SkillMath.BodyOverlapsSquare(1.51f, 0f, 1.5f, 0f));
+        }
+
         // 파생식이 정의 그대로인지 — 표(저작)가 아니라 식이라 신규 footprint 에 자동 적용된다.
         [Test]
         public void DerivedBody_IsInscribedCircle_MinOfFootprint()
