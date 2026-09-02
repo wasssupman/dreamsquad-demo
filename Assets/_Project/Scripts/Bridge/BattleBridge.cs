@@ -7794,16 +7794,6 @@ namespace Wassup.Bridge
             return true;
         }
 
-        // defender-directional-volley unit 1 — aim-phase 확정 방향을 기록하고 활성화.
-        // DeployedFacing 은 Units 소유, 배치 확정 시 이 1회 기록 후 불변(공통 계약 2).
-        // 컴포넌트를 먼저 붙여 on-place 스킬이 활성화 시점에 방향을 읽을 수 있게 한다.
-        public void ActivateDeployedDefender(Vector2Int cell, Entity entity, Vector2Int facing)
-        {
-            if (_em != null && entity != Entity.Null && _em.Exists(entity) && facing != Vector2Int.zero)
-                _em.AddComponentData(entity, new DeployedFacing { value = new int2(facing.x, facing.y) });
-            ActivateDeployedDefender(cell, entity);
-        }
-
         public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
         {
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
@@ -7918,7 +7908,7 @@ namespace Wassup.Bridge
         // PlacementAim = defender-directional-volley unit 9 (방향 지정 페이즈 레인 프리뷰).
         // 드롭 직후 드래그 세션의 CleanupSession 이 ClearPlacementRange 를 부르는데, 소유가
         // 이미 PlacementAim 이면 그 호출이 내 레인을 지우지 않는다 — 별도 소유자인 이유.
-        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, PlacementAim }
+        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph }   // PlacementAim 은 unit 11 에서 은퇴
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
 
         // placement-thumb-occlusion — 소유권 전환의 유일한 지점. **모든** `_rangeOwner` 대입이 여기를 탄다.
@@ -7939,19 +7929,6 @@ namespace Wassup.Bridge
             if (next != RangeDisplayOwner.Placement && tilemapMapView != null)
                 tilemapMapView.SetPlacementRangeValidity(true);
         }
-        private readonly List<Vector2Int> _laneCellScratch = new List<Vector2Int>();
-        // unit 5 — 레인 셀과 **그 셀이 속한 방향**을 나란히 모은다. 아이콘이 이 목록에서 나오므로
-        // "아이콘 = 칠해진 칸"이 구조적으로 보장된다(셀 선정이 LaneMath 를 공유하는 것과 같은 결).
-        private readonly List<Vector2Int> _laneDirScratch = new List<Vector2Int>();
-        private readonly List<float> _arrowAngles = new List<float>();
-        // 방향 미정(4레인 십자) 세기. 선택된 레인은 1. 0.45 는 시안 하이라이트가
-        // 비쳐 다른 색으로 오독됨(2026-07-19 사용자) — 같은 주황으로 읽히는 0.7.
-        private const float AimLaneDimAlpha = 0.7f;
-        // 조준 화살표/레인이 쓰는 4방향. 순서 = 화살표 인덱스.
-        private static readonly Vector2Int[] AimCardinals =
-        {
-            Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down,
-        };
         // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
         private Entity _skillTelegraphProjectile = Entity.Null;
 
@@ -7972,8 +7949,7 @@ namespace Wassup.Bridge
             // 게이트가 보는 박스가 셋으로 갈린다(실제로 갈려 있었다). 이제 소환사의
             // 공격범위가 곧 담당 구역이므로 다른 방어유닛과 **같은 줄**로 떨어진다 —
             // 화면 언어("이 유닛의 공격범위")가 소환사에게도 그대로 성립한다.
-            if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
-            else
+            // unit 11 — facing 은퇴: 전 유닛이 같은 원 사거리 표기다(레인 분기 삭제).
             {
                 // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
                 var fpHalf = Wassup.Data.FootprintMath.GeometricCenterOffset(unit.Footprint);
@@ -7996,7 +7972,7 @@ namespace Wassup.Bridge
             // 뜰 수 있어 시간 분리 장치도 못 가른다.
             // 방향 유닛과 **같은 판단**이다 — 「이놈들이 맞는다」가 그 유닛에겐 의미가 없다.
             // 「누가 회복되나」는 별개 표기이고 후속 후보다(색 축을 새로 열어야 한다).
-            if (!unit.RequiresFacing && !unit.targetAllies) RefreshRangeTargetMarks(center, tileRange, unit);
+            if (!unit.targetAllies) RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
             else if (tilemapMapView != null) tilemapMapView.SetRangeTargetMarks(null, null);
             SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
@@ -8082,73 +8058,7 @@ namespace Wassup.Bridge
 
         public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);
 
-        // unit 9 — 조준 페이즈 가이드(레인 + 화살표를 한 상태로). 선택 전이면 4레인 십자를
-        // 흐리게 = "이 중 하나를 커버한다"(사거리가 즉시 읽힌다), 선택되면 그 레인만 또렷 =
-        // "여기를 때린다". 방향을 말해주는 건 레인이 아니라 화살표다 — 레인은 대칭이라
-        // "위로 쏜다"와 "위에서 쏜다"가 같아 보인다.
-        public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
-        {
-            if (tilemapMapView == null || unit == null) return;
-            int tileRange = GridMath.RangeToTiles(unit.attackRange);
-            // unit 4 — 조준 표시는 세기 배율을 쓰지 않는다(전부 불투명). 미선택/선택은 알파가
-            // 아니라 **몇 개를 그리느냐**로 갈린다: 미선택=4레인 전부, 선택=그 레인 하나만.
-            // 드래그 프리뷰(SetPlacementRange)의 dim 은 outline 이라 그대로 AimLaneDimAlpha.
-            PaintLanes(center, tileRange, selected, 1f, aimStyle: true);
-            SetRangeOwner(RangeDisplayOwner.PlacementAim);
-
-            // unit 5 — 아이콘은 첫 칸이 아니라 **칠해진 모든 칸**에 얹는다. 채움만으로는
-            // "위로 쏜다"와 "위에서 쏜다"가 여전히 같아 보이는데(unit 9 판단 1), 칸마다
-            // 화살표가 있으면 레인 전체가 방향을 말한다. 목록은 PaintLanes 가 방금 고른
-            // 셀/방향 그대로라 아이콘과 타일이 어긋날 수 없다.
-            _arrowAngles.Clear();
-            for (int i = 0; i < _laneDirScratch.Count; i++)
-            {
-                var d = _laneDirScratch[i];
-                // 스프라이트는 +Y 를 향한다 → 그 방향으로 눕힌다.
-                _arrowAngles.Add(Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg - 90f);
-            }
-            // 선택되면 그 레인만 칠해지므로, 남은 아이콘은 전부 선택된 레인의 것이다 —
-            // 강조는 개별 인덱스가 아니라 상태 하나로 충분하다.
-            tilemapMapView.SetAimArrows(_laneCellScratch, _arrowAngles, selected.HasValue);
-        }
-
-        public void ClearAimGuide()
-        {
-            ClearRange(RangeDisplayOwner.PlacementAim);
-            if (tilemapMapView != null) tilemapMapView.ClearAimArrows();
-        }
-
-        // 칠할 셀을 시뮬의 발사 게이트와 **같은 함수**로 고른다 — 보이는 칸과 실제로 맞는
-        // 칸이 구조적으로 일치한다(따로 계산하면 언젠가 어긋난다).
-        private void PaintLanes(Vector2Int center, int tileRange, Vector2Int? facing, float alphaMul, bool aimStyle)
-        {
-            if (tileRange <= 0) return;
-            CollectLaneCells(center, tileRange, facing);
-            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul, aimStyle);
-        }
-
-        // 방향별로 나눠 훑어 셀과 방향을 짝지어 모은다. 판정은 여전히 시뮬의 발사 게이트
-        // (`LaneMath.IsInLane`)라 보이는 칸 = 실제로 맞는 칸이 유지된다.
-        private void CollectLaneCells(Vector2Int center, int tileRange, Vector2Int? facing)
-        {
-            _laneCellScratch.Clear();
-            _laneDirScratch.Clear();
-            var c = new int2(center.x, center.y);
-            for (int i = 0; i < AimCardinals.Length; i++)
-            {
-                var dir = AimCardinals[i];
-                if (facing.HasValue && facing.Value != dir) continue;
-                var d = new int2(dir.x, dir.y);
-                for (int dx = -tileRange; dx <= tileRange; dx++)
-                for (int dz = -tileRange; dz <= tileRange; dz++)
-                {
-                    var cell = new int2(center.x + dx, center.y + dz);
-                    if (!LaneMath.IsInLane(c, d, tileRange, cell)) continue;
-                    _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
-                    _laneDirScratch.Add(dir);
-                }
-            }
-        }
+        // unit 11 — 조준 가이드(SetAimGuide·PaintLanes·CollectLaneCells)는 facing 과 함께 은퇴.
 
         // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
         public void SetSkillAimRange(Vector2Int center, SkillData skill)
@@ -8178,9 +8088,8 @@ namespace Wassup.Bridge
         public void SetSkillAimCells(IReadOnlyList<Vector2Int> cells)
         {
             if (tilemapMapView == null || cells == null || cells.Count == 0) return;
-            // aimStyle: false — 나머지 Active 5종의 범위 프리뷰(SetPlacementRange)와 같은 타일·틴트
-            // 규칙을 쓴다. true 로 두면 한 번의 캐스트 안에서 점등 아트가 바뀐다(계약 8: 한 채널).
-            tilemapMapView.SetPlacementCells(cells, 1f, aimStyle: false);
+            // 나머지 Active 5종의 범위 프리뷰(SetPlacementRange)와 같은 타일·틴트 규칙(단일 채널).
+            tilemapMapView.SetPlacementCells(cells, 1f);
             SetRangeOwner(RangeDisplayOwner.SkillAim);
         }
 

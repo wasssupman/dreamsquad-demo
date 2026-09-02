@@ -19,7 +19,5 @@ namespace Wassup.Data
         public float arcHeight;          // 구르기 바운스 높이(뷰 전용)
         public float damage;             // 폭탄 피해
 
-        // unit 9 — 폭탄맨은 최근접 적을 노린다. 배치 시 방향 지정 페이즈 없음.
-        public override bool RequiresFacing => false;
     }
 }

@@ -14,9 +14,6 @@ namespace Wassup.Data
         [Tooltip("한 번의 공격 trigger가 실행할 방향 발사 패턴.")]
         public ProjectilePatternData pattern;
 
-        [Tooltip("배치 후 별도 방향 지정과 레인 타겟팅을 사용하는가.")]
-        public bool requiresFacing = true;
-
-        public override bool RequiresFacing => requiresFacing;
+        // unit 11 — requiresFacing(조준 페이즈·레인)은 은퇴. 다연발 패턴만 남는다.
     }
 }

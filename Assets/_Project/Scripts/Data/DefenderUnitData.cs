@@ -238,17 +238,7 @@ namespace Wassup.Data
             return null;
         }
 
-        // 배치 시 공격방향 지정(조준 페이즈) 필요 여부 — 능력이 선언(spec 계약 4).
-        // 구 directionalAttack flag 의 대체. cut-over(unit 2)에서 UX 소비처가 이걸 읽는다.
-        public bool RequiresFacing
-        {
-            get
-            {
-                for (int i = 0; i < abilities.Count; i++)
-                    if (abilities[i] != null && abilities[i].RequiresFacing) return true;
-                return false;
-            }
-        }
+        // unit 11 (distance-based-range) — RequiresFacing(조준 페이즈)은 은퇴했다.
 
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;

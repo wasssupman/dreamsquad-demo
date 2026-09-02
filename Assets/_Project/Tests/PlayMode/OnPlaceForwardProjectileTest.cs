@@ -56,62 +56,9 @@ namespace Wassup.Tests.PlayMode
                 "조준이 없으면 가장 가까운 적 방향으로 나가야 한다. 0 이면 총구가 여전히 고정 방향이다");
         }
 
-        // 방향 지정 유닛(머신거너)의 규칙: 플레이어가 조준한 방향이 스킬에 실린다.
-        //
-        // ⚠ 조준 **한 방향만** 검사하면 안 된다. 고장난 코드도 셀마다 어떤 고정 방향을 갖고,
-        // 그게 우연히 검사 방향과 같으면 통과한다 — 초판이 실제로 그렇게 새는 통과를 냈다.
-        // 네 방향을 각각 다른 칸에서 검사하면 단일 고정 방향으로는 통과할 수 없다.
-        [UnityTest]
-        public IEnumerator Facing_AimedDirectionWins_AllFourWays()
-        {
-            yield return LoadBattle();
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            var gm = Object.FindObjectOfType<GameManager>();
-
-            var unit = MakeTestUnit("machine_gunner", "test_onplace_forward_facing");
-            Prepare(bridge, gm, unit);
-
-            var facings = new[]
-            {
-                new Vector2Int(1, 0), new Vector2Int(-1, 0),
-                new Vector2Int(0, 1), new Vector2Int(0, -1),
-            };
-            var cells = FindPlaceableCells(bridge, unit, facings.Length);
-            Assert.AreEqual(facings.Length, cells.Count, "서로 다른 배치 칸 4개");
-
-            for (int i = 0; i < facings.Length; i++)
-            {
-                var cell = cells[i];
-                var facing = facings[i];
-                // 조준 방향 3칸 앞 = 맞아야 하는 적.
-                var aimed = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(
-                    new Vector2Int(cell.x + facing.x * 3, cell.y + facing.y * 3)));
-                // 조준과 **직교** 1칸 = 더 가깝지만 맞으면 안 되는 적. 이 대조군이 없으면
-                // 「조준을 무시하고 최근접 적만 쓰는」 구현도 4방향 전부 통과한다.
-                var offAxis = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(
-                    new Vector2Int(cell.x + facing.y, cell.y + facing.x)));
-
-                Entity entity;
-                Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, unit, out entity),
-                    $"begin deployment {cell}");
-                bridge.ActivateDeployedDefender(cell, entity, facing);
-                yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
-
-                float aimedDealt = Hp - em.GetComponentData<Health>(aimed).value;
-                float offAxisDealt = Hp - em.GetComponentData<Health>(offAxis).value;
-                em.DestroyEntity(aimed);
-                em.DestroyEntity(offAxis);
-
-                Assert.Greater(aimedDealt, 0f,
-                    $"조준 {facing} 방향의 적이 맞아야 한다 (배치 {cell}). 0 이면 조준이 무시되고 있다");
-                Assert.AreEqual(0f, offAxisDealt, 0.01f,
-                    $"조준 {facing} 과 직교한 더 가까운 적은 맞으면 안 된다 (배치 {cell}). "
-                    + "맞았다면 조준이 아니라 최근접 적을 쫓고 있거나 통로가 아니라 반경을 때리고 있다");
-            }
-
-            Object.Destroy(unit);
-        }
+        // unit 11 (distance-based-range) — 조준(facing) 축 은퇴로
+        // Facing_AimedDirectionWins_AllFourWays 테스트는 전제와 함께 은퇴했다.
+        // 방향의 출처는 위 테스트(최근접 대상)가 전부다.
 
         // 통로 폭 회귀: 적은 레인 오프셋으로 ±0.5 흩어져 걷는다. 반폭 0.45 시절엔 바로 옆 적이
         // lat≈1.0 으로 탈락했다(실측). 0.55 는 옛 폭에서 빠지고 새 폭에서 들어오는 값이다.
@@ -135,7 +82,7 @@ namespace Wassup.Tests.PlayMode
 
             Entity entity;
             Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, unit, out entity), "begin deployment");
-            bridge.ActivateDeployedDefender(cell, entity, new Vector2Int(0, 1)); // 북쪽 조준
+            bridge.ActivateDeployedDefender(cell, entity); // unit 11 — 방향은 최근접(그 적뿐)
             yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(skewed).value;

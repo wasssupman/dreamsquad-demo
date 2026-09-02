@@ -105,9 +105,16 @@ namespace Wassup.Battle.Combat
             // (KnockupVisualEvent 계약: durationSec == 스턴 시간이어야 착지와 해제가 맞는다).
             var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
+            // ⚠ **지우면 안 되는 줄** (Burst/소스젠 함정 4번째 재발 — unit 11, 2026-09-01).
+            // DeployedFacing 은 facing 은퇴로 소비처가 0 이지만, 이 GetComponentLookup 호출을
+            // 지우면 이 시스템의 **Burst 컴파일이 조용히 깨져** OnUpdate 가 NRE 를 던진다
+            // (전 공격 정지 · AttackSystem 계열 EditMode 24건 red · BC 에러 0건 · Burst OFF 면 통과).
+            // 이 한 줄의 복원/제거가 재현·해소를 오가는 유일한 스위치임을 이분으로 확인했다.
+            // 지우려면 Burst ON 으로 AttackSystem 계열 EditMode 초록을 반드시 확인할 것.
+            var facingLookupRetired = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
+            _ = facingLookupRetired;
             // defender-directional-volley unit 3 — 배치 시 확정된 영구 공격 방향(Units
             // 소유, 읽기 전용). 보유 유닛은 최근접 타겟 선택 대신 방향 레인 게이트로 발사.
-            var facingLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
             // projectile-shot-sequence unit 2 — 방향 pattern 원본과 진행 인스턴스.
             // 둘 다 Combat 소유이며 Bridge가 스폰 시 사전 부착한다.
             var patternSlotLookup = SystemAPI.GetBufferLookup<PatternSlot>(isReadOnly: false);
@@ -556,25 +563,13 @@ namespace Wassup.Battle.Combat
                     }
                     wantFrontmost = hasSlot;
                 }
-                // defender-directional-volley unit 3 — facing 유닛은 "레인에 적이 있으면
-                // 쏜다"가 타겟팅 규칙 전부다. 후보 루프를 공유해 레인 최근접 1기를
-                // witness 로 잡는다(단일 패스 — frontmost 선례). witness 는 데미지 대상이
-                // 아니라 발사 게이트/조준 시각의 근거 — 레인은 facing 축 직선이라 그
-                // 위치를 바라보면 곧 facing 방향을 바라보는 것과 같다.
-                bool hasFacing = facingLookup.HasComponent(attackerEntity);
-                int2 facing = hasFacing ? facingLookup[attackerEntity].value : default;
-                // projectile-shot-sequence unit 2 — facing Direction 탄은 START 때 레인
-                // witness가 발사 허가만 한다. 이후 궤적은 targetless이므로 wind-up 중
-                // witness가 죽거나 레인 밖으로 나가도 RESOLVE 자체를 취소하면 안 된다.
+                // distance-based-range unit 11 — facing(DeployedFacing·레인 게이트)은 은퇴했다.
+                // Directional 탄도 다른 유닛과 같은 최근접 타겟팅으로 START 하고, 방향은
+                // START 때 대상 쪽으로 스냅샷된다(committedDirection).
                 bool isDirectionalProjectile = projectileRefLookup.HasComponent(attackerEntity)
                     && projectileRefLookup[attackerEntity].movement == MovementKind.DirectionalLinear;
-                bool isFacingDirectional = hasFacing && isDirectionalProjectile;
                 float2 committedDirection = attack.ValueRO.committedDirection;
                 bool hasCommittedDirection = attack.ValueRO.hasCommittedDirection != 0;
-                Entity laneWitness = Entity.Null;
-                float3 laneWitnessPos = default;
-                float laneBestSq = float.MaxValue;
-                int laneBestSimId = int.MaxValue;   // unit 2 — 같은 축
 
                 bool fmHasBest = false;
                 bool fmChosenIsPriority = false;
@@ -656,16 +651,6 @@ namespace Wassup.Battle.Combat
                         bestSimIdPrio = targetSimIds[i];
                         bestTargetPrio = targetEntities[i];
                         bestTargetPosPrio = targetPos;
-                    }
-                    // 레인 witness — facing 축 1타일 폭 × [1..tileRange]. 위 Chebyshev
-                    // 사거리 필터를 이미 통과했으므로 레인은 그 부분집합이다.
-                    if (hasFacing && LaneMath.IsInLane(atkCell, facing, tileRange, tgtCell)
-                        && (d2 < laneBestSq || (d2 == laneBestSq && targetSimIds[i] < laneBestSimId)))
-                    {
-                        laneBestSq = d2;
-                        laneBestSimId = targetSimIds[i];
-                        laneWitness = targetEntities[i];
-                        laneWitnessPos = targetPos;
                     }
                     // frontmost tracking — rank in-range candidates by FlowField remaining
                     // distance, excluding unreachable cells.
@@ -881,7 +866,6 @@ namespace Wassup.Battle.Combat
                 if (defenderTagLookup.HasComponent(attackerEntity)
                     && focusLookup.HasComponent(attackerEntity)
                     && !behaviorLookup.HasComponent(attackerEntity)
-                    && !hasFacing
                     && !wantFrontmost
                     && !rankByHealth
                     && !aggroCapacityLookup.HasComponent(attackerEntity))
@@ -958,21 +942,6 @@ namespace Wassup.Battle.Combat
                     else bestTarget = Entity.Null;       // 사망/소멸 → lapse
                 }
 
-                // defender-directional-volley unit 3 — facing 최종 오버라이드. 방향 고정
-                // 유닛에게는 레인 밖 적이 존재하지 않는 것과 같다 — 최근접/우선순위/
-                // frontmost/aggro 가 무엇을 골랐든 레인 witness 로 덮는다(레인이 곧
-                // 타겟팅 규칙 전부). 레인이 비었으면 새 START는 하지 않는다(탄 낭비 방지).
-                // 단 이미 START된 targetless Direction 탄은 아래 RESOLVE 예외로 완주한다.
-                if (hasFacing)
-                {
-                    bestTarget = laneWitness;
-                    bestTargetPos = laneWitnessPos;
-                    // witness 는 "최전방"이 아니라 "최근접"이다 — frontmost 보너스를 여기에
-                    // 실으면 카드가 약속한 대상(최전방)이 아닌 적이 +20% 를 받는다. 방향
-                    // 유닛은 레인이 타겟팅 규칙 전부이므로 보너스를 포기한다(ecs-review L1).
-                    fmChosenIsPriority = false;
-                }
-
                 // attack-hit-delay — fire 를 START(공격 시작) / RESOLVE(타격 판정) 로 분리.
                 // 지연 중이면 tick → 만료한 프레임에 RESOLVE(재판정된 bestTarget, Direction은
                 // START 허가 유지). 아니면 쿨다운+타겟 조건 시 START.
@@ -1003,7 +972,7 @@ namespace Wassup.Battle.Combat
                         // Archer/Ranger처럼 nearest target으로 START하되, wind-up 뒤의
                         // 재판정이 이번 발사 기준축을 바꾸거나 취소하지 못하게 방향만
                         // Combat 상태에 스냅샷한다. 즉시 RESOLVE도 아래 로컬 값을 쓴다.
-                        if (!hasFacing && isDirectionalProjectile)
+                        if (isDirectionalProjectile)
                         {
                             float2 toTarget = (bestTargetPos - atkPos).xz;
                             committedDirection = math.lengthsq(toTarget) > 1e-6f
@@ -1083,22 +1052,15 @@ namespace Wassup.Battle.Combat
                 // 성사된 facing Direction 탄은 targetless 궤적이므로 witness 소실 뒤에도
                 // 고정 facing으로 발사한다. 로그/방향 보조점은 레인 끝을 사용한다.
                 bool resolveCommittedDirectionalWithoutWitness =
-                    doResolve && bestTarget == Entity.Null && !hasFacing
+                    doResolve && bestTarget == Entity.Null
                     && isDirectionalProjectile && hasCommittedDirection;
-                bool resolveFacingDirectionalWithoutWitness =
-                    doResolve && bestTarget == Entity.Null && isFacingDirectional;
-                if (resolveFacingDirectionalWithoutWitness)
-                {
-                    bestTargetPos = atkPos + new float3(facing.x, 0f, facing.y) * (rangeTiles * tileSize);
-                }
-                else if (resolveCommittedDirectionalWithoutWitness)
+                if (resolveCommittedDirectionalWithoutWitness)
                 {
                     bestTargetPos = atkPos
                         + new float3(committedDirection.x, 0f, committedDirection.y)
                         * (tileRange * tileSize);
                 }
                 if (doResolve && (bestTarget != Entity.Null
-                                  || resolveFacingDirectionalWithoutWitness
                                   || resolveCommittedDirectionalWithoutWitness))
                 {
                     float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
@@ -1290,17 +1252,12 @@ namespace Wassup.Battle.Combat
                             }
                             else if (projRef.movement == MovementKind.DirectionalLinear)
                             {
-                                // defender-directional-volley unit 3 — 방향 발사. 타겟
-                                // 엔티티를 싣지 않는다: 경로에 있는 것을 맞히는 탄이라
-                                // 발사 후 대상이 죽거나 비켜도 궤적은 그대로다.
-                                // 방향은 facing 이 원칙이고, facing 없는 유닛이 이 SO 를
-                                // 쓰면 조준 대상 쪽으로 쏜다(퇴화 벡터는 drain 이 폐기).
-                                float2 fireDir = facing;
-                                if (!hasFacing && hasCommittedDirection)
-                                {
-                                    fireDir = committedDirection;
-                                }
-                                else if (!hasFacing)
+                                // 방향 발사. 타겟 엔티티를 싣지 않는다: 경로에 있는 것을
+                                // 맞히는 탄이라 발사 후 대상이 죽거나 비켜도 궤적은 그대로다.
+                                // unit 11 — 방향의 출처는 조준 대상뿐이다(facing 은퇴).
+                                float2 fireDir;
+                                if (hasCommittedDirection) fireDir = committedDirection;
+                                else
                                 {
                                     float2 toTarget = (bestTargetPos - atkPos).xz;
                                     fireDir = math.lengthsq(toTarget) > 1e-6f ? math.normalize(toTarget) : new float2(0f, 1f);

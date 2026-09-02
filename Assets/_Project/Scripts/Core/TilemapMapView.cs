@@ -66,7 +66,6 @@ namespace Wassup.Core
         private float _rangeInvalidSince;
         // unit 4 — 지금 깔려 있는 범위 표시가 조준 페이즈 스타일인가. 페인트 시점에 정해지고
         // Update() 의 틴트가 같은 플래그로 색을 고른다(타일과 색이 갈라지지 않게).
-        private bool _rangeAimStyle;
         // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(정적, 펄스 없음).
         // range 와 분리된 전용 타일맵. 드래그 중엔 range 처럼 유닛 위로 상승(9998).
         private Tilemap _placeableTilemap;
@@ -78,8 +77,6 @@ namespace Wassup.Core
         private bool _blockedActive;
         private float _blockedShowTime;
         // defender-directional-volley unit 9 — 방향 지정 화살표(재사용 풀, 최대 4).
-        private readonly List<SpriteRenderer> _aimArrows = new();
-        private static Sprite _arrowSprite;
         private int2 _gridSize;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
         private readonly HashSet<Vector2Int> _hoverCells = new();
@@ -167,10 +164,8 @@ namespace Wassup.Core
         private const float PropGroundLift = 0.02f;
         // defender-directional-volley unit 9 — 조준 화살표도 같은 이유로 띄운다. 프랍보다
         // 조금 더(범위 타일 위에도 얹혀야) — 여전히 시각적으로 무시 가능한 높이.
-        private const float ArrowGroundLift = 0.05f;
         // unit 4 — 화살표를 조준 색에서 얼마나 밝히나. 화살표 스케일/알파(0.92·0.7·0.5)와 같은
         // 결의 프레젠테이션 상수 — 색 자체는 TileSetData 가 소유하고 여기선 명도만 민다.
-        private const float AimArrowLighten = 0.72f;
 
         // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
@@ -762,112 +757,7 @@ namespace Wassup.Core
             if (_rangeRing != null && _rangeRing.gameObject.activeSelf) _rangeRing.gameObject.SetActive(false);
         }
 
-        // defender-directional-volley unit 9 — 방향 지정 화살표. 보드에 눕는 탭 어포던스라
-        // 블롭/팝과 같은 방식(grid 자식 절차적 스프라이트)으로 그린다. 이 뷰는 write-only —
-        // 어느 칸에 어느 각도로 무엇이 선택됐는지는 전부 호출부가 정해 넘긴다.
-        // emphasized — unit 5. 방향이 확정된 상태(그 레인만 남은 상태)면 전부 또렷·크게,
-        // 미선택(4레인 전부 표시)이면 전부 흐리게·작게. 개별 선택 인덱스는 없다.
-        public void SetAimArrows(IReadOnlyList<Vector2Int> cells, IReadOnlyList<float> anglesDeg, bool emphasized)
-        {
-            if (grid == null || cells == null || anglesDeg == null || _tileSet == null) return;
-            float cellWorld = grid.cellSize.x;
-            for (int i = 0; i < cells.Count && i < anglesDeg.Count; i++)
-            {
-                var sr = EnsureAimArrow(i);
-                var local = grid.CellToLocalInterpolated(new Vector3(cells[i].x + 0.5f, cells[i].y + 0.5f, 0f));
-                sr.transform.localPosition = local;
-                sr.transform.localRotation = Quaternion.Euler(0f, 0f, anglesDeg[i]);
-                // 셀 평면에 그대로 눕히면 불투명 바닥 타일과 코플레이너라 z-acne(자글거림)가
-                // 난다 — 밉맵으로도 안 사라지는 렌더 단계 문제. 프랍이 PropGroundLift 로
-                // 푸는 바로 그 함정. world +Y 로 살짝 띄워 항상 타일 앞에 오게 한다(부모
-                // 회전/스케일 무관하게 정확히 +Y 만큼 — localPosition 뒤 world 로 보정).
-                sr.transform.position += Vector3.up * ArrowGroundLift;
-
-                bool on = emphasized;
-                // 선택된 화살표만 또렷하고 살짝 크다. 색은 조준 슬롯(unit 4)에서 오되 **명도를
-                // 올려** 쓴다 — 레인이 solid 로 채워지면 같은 색 화살표는 그 위에서 사라진다.
-                // 같은 색상(hue)을 유지하니 "레인과 한 몸"이라는 신호는 남고, 값 대비로 읽힌다.
-                var c = Color.Lerp(RangeTintColor(aimStyle: true), Color.white, AimArrowLighten);
-                c.a = on ? 1f : 0.5f;
-                sr.color = c;
-                float s = cellWorld * (on ? 0.92f : 0.7f);
-                sr.transform.localScale = new Vector3(s, s, 1f);
-                sr.gameObject.SetActive(true);
-            }
-            for (int i = cells.Count; i < _aimArrows.Count; i++) _aimArrows[i].gameObject.SetActive(false);
-        }
-
-        public void ClearAimArrows()
-        {
-            for (int i = 0; i < _aimArrows.Count; i++)
-                if (_aimArrows[i] != null) _aimArrows[i].gameObject.SetActive(false);
-        }
-
-        private SpriteRenderer EnsureAimArrow(int index)
-        {
-            while (_aimArrows.Count <= index)
-            {
-                var go = new GameObject($"AimArrow{_aimArrows.Count}");
-                go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너
-                var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = ArrowSprite();
-                sr.sortingOrder = BoardSortOrder.AimArrowOrder;
-                var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
-                if (overlayR != null) sr.sortingLayerID = overlayR.sortingLayerID;
-                go.SetActive(false);
-                _aimArrows.Add(sr);
-            }
-            return _aimArrows[index];
-        }
-
-        // +Y 를 향하는 삼각형(호출부가 Z 회전으로 방향을 만든다). 가장자리를 살짝 흐려
-        // 계단을 없앤다 — 타일 위에 눕는 작은 도형이라 에일리어싱이 그대로 보인다.
-        // 꼭짓점 (0, 0.9) / 밑변 (±0.75, -0.7). 한 점이 삼각형 안이면 true(하드 테스트).
-        private static bool InArrowTriangle(float u, float v)
-        {
-            if (v < -0.7f || v > 0.9f) return false;
-            float halfWidth = Mathf.Lerp(0f, 0.75f, Mathf.InverseLerp(0.9f, -0.7f, v));
-            return Mathf.Abs(u) <= halfWidth;
-        }
-
-        private static Sprite ArrowSprite()
-        {
-            if (_arrowSprite != null) return _arrowSprite;
-            // 자글거림은 두 층이다:
-            // (1) 소스 텍스처 앨리어싱 — 저해상도 + 대각 빗변에 수직이 아닌 페더. 해법 =
-            //     커버리지 슈퍼샘플링(텍셀당 SS×SS 하드 테스트 → 통과 비율을 알파로).
-            // (2) 렌더 minification — 보드가 40~58° 기울어 화살표가 비스듬히 눕는다.
-            //     밉맵이 없으면 축소 방향에서 계단이 그대로 샌다(둥근 블롭은 저주파라
-            //     안 보이지만 화살표는 대각 샤프 엣지라 두드러진다). 해법 = 밉체인 +
-            //     Trilinear + aniso. 소팅(11500)은 레인 타일 위라 z-fight 는 아니다.
-            const int R = 128;
-            const int SS = 4;
-            var tex = new Texture2D(R, R, TextureFormat.RGBA32, mipChain: true)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Trilinear,
-                anisoLevel = 4,
-            };
-            var px = new Color[R * R];
-            float inv = 1f / (SS * SS);
-            for (int y = 0; y < R; y++)
-                for (int x = 0; x < R; x++)
-                {
-                    int hits = 0;
-                    for (int sy = 0; sy < SS; sy++)
-                        for (int sx = 0; sx < SS; sx++)
-                        {
-                            float u = (x + (sx + 0.5f) / SS) / R * 2f - 1f;
-                            float v = (y + (sy + 0.5f) / SS) / R * 2f - 1f;
-                            if (InArrowTriangle(u, v)) hits++;
-                        }
-                    px[y * R + x] = new Color(1f, 1f, 1f, hits * inv);
-                }
-            tex.SetPixels(px);
-            tex.Apply();
-            _arrowSprite = Sprite.Create(tex, new Rect(0f, 0f, R, R), new Vector2(0.5f, 0.5f), R);
-            return _arrowSprite;
-        }
+        // unit 11 — 방향 조준 화살표(SetAimArrows 계열)는 facing 과 함께 은퇴.
 
         private static Sprite PopSprite()
         {
@@ -973,33 +863,13 @@ namespace Wassup.Core
             }
         }
 
-        // unit 4 — 범위 표시의 두 스타일. 조준 페이즈 슬롯이 비어 있으면(기본) 전부 range*
-        // 로 폴백해 기존 동작과 바이트 동일하다 — 스타일 분리는 에셋 할당으로 켜진다.
-        private TileBase RangeTileFor(bool aimStyle)
-            => aimStyle && _tileSet.aimRangeTile != null ? _tileSet.aimRangeTile : _tileSet.rangeTile;
-
         // 알파는 세기 배율(_rangeAlphaMul) 을 곱하기 전 기준값까지만 담는다 — 배율 적용은
         // 알파를 소유한 Update() 의 몫(unit 9 계약).
-        private Color RangeTintColor(bool aimStyle)
+        private Color RangeTintColor()
         {
-            // placement-thumb-occlusion — **유효성 면제는 에셋 유무가 아니라 aimStyle 이 결정한다.**
-            // 초판은 `aimStyle && aimRangeTile != null` 로 묶어서, aimRangeTile 미배선 tileset(새 시즌을
-            // CreateAssetMenu 로 만들면 기본 null)에서 조준 페이즈가 아래 invalid 분기로 떨어져 배치
-            // 유효성의 적색을 상속했다 — range-preview unit 4 가 약속한 "슬롯 비면 기존 동작과 바이트
-            // 동일" 폴백이 깨진다. aimStyle 은 "조준 채널이다"라는 **의미**로 쓰고, 에셋 유무는 타일·색
-            // 폴백에만 쓴다(스타일 축과 유효성 축을 직교로 유지).
-            if (aimStyle)
-            {
-                if (_tileSet.aimRangeTile == null)
-                {
-                    var fc = _tileSet.rangeColor; fc.a = _tileSet.rangePulseMaxAlpha; return fc;
-                }
-                var ac = _tileSet.aimRangeColor; ac.a = _tileSet.aimRangeAlpha; return ac;
-            }
             // placement-thumb-occlusion unit 3 — 배치 불가면 적색 + 전이 순간 1회 플래시.
-            // aimStyle 경로는 유효성을 모른다(드롭 후 방향 지정 채널). 단 스킬 조준/텔레그래프는
-            // aimStyle=false 로 그려지므로 이 분기 밖이 아니라 **owner 전환 시 리셋**이 그들을 지킨다
-            // (BattleBridge.ClearRange) — 색이 아니라 소유권이 경계다.
+            // 스킬 조준/텔레그래프는 **owner 전환 시 리셋**이 지킨다(BattleBridge.ClearRange)
+            // — 색이 아니라 소유권이 경계다.
             if (_rangeInvalid)
             {
                 // distance-based-range unit 5 커밋4 — **링이 있으면 사거리는 붉어지지 않는다.**
@@ -1113,7 +983,6 @@ namespace Wassup.Core
             ClearPlacementRange();
             EnsureRangeTilemap();
             _rangeAlphaMul = 1f;
-            _rangeAimStyle = false;
             // 몸의 중심(타일, 실수). 1×1 이면 앵커와 같다.
             float cx = anchor.x + centerOffsetTiles.x;
             float cz = anchor.y + centerOffsetTiles.y;
@@ -1149,19 +1018,17 @@ namespace Wassup.Core
         // defender-directional-volley unit 9 — 임의 셀 집합 점등(방향 레인). 사각 범위와
         // 같은 타일맵·수명·펄스를 공유하고 셀 목록만 호출부가 정한다. alphaMul = 세기
         // (방향 미정 십자는 흐리게, 선택된 레인은 또렷하게).
-        // aimStyle — unit 4. 조준 페이즈(레인/착지셀)는 배치 단계와 다른 타일·색을 쓴다.
-        // 드래그 프리뷰·스킬 조준/텔레그래프는 false 로 남아 기존 outline 그대로.
-        public void SetPlacementCells(IReadOnlyList<Vector2Int> cells, float alphaMul = 1f, bool aimStyle = false)
+        // unit 11 — aimStyle 축(조준 페이즈 전용 타일·색)은 facing 과 함께 은퇴.
+        public void SetPlacementCells(IReadOnlyList<Vector2Int> cells, float alphaMul = 1f)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
             ClearPlacementRange();
             EnsureRangeTilemap();
             _rangeAlphaMul = Mathf.Clamp01(alphaMul);
-            _rangeAimStyle = aimStyle;
             // unit 5 — 임의 셀 집합(방향 레인·스킬 조준)에는 링이 없다. 레인은 폭 0 정수 격자
             // 술어라 거리로 옮길 수 없고(비목표), 네모/원 어느 쪽으로 그려도 거짓말이 된다.
             HideRangeRing();
-            var tile = RangeTileFor(aimStyle);
+            var tile = _tileSet.rangeTile;
             for (int i = 0; i < cells.Count; i++)
             {
                 var cell = cells[i];
@@ -1177,7 +1044,7 @@ namespace Wassup.Core
         private void ApplyRangeTint()
         {
             if (_rangeTilemap == null) return;
-            var c = RangeTintColor(_rangeAimStyle); c.a *= _rangeAlphaMul;
+            var c = RangeTintColor(); c.a *= _rangeAlphaMul;
             _rangeTilemap.color = c;
         }
 

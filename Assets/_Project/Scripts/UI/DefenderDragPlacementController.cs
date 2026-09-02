@@ -50,7 +50,6 @@ namespace Wassup.UI
 
         // defender-directional-volley unit 6 — 방향 지정 유닛의 두 번째 배치 페이즈.
         // 이 컨트롤러 자체가 런타임 AddComponent 라 씬 배선이 없으므로 같은 방식으로 붙인다.
-        private DirectionAimController _aimController;
 
         private DragSession _session;
         private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
@@ -296,11 +295,6 @@ namespace Wassup.UI
         // 새 상태를 만들지 않고 기존 _session.active 를 그대로 읽는다 — 진실 소스는 하나.
         public bool IsDragging => _session.active;
 
-        // defender-directional-volley unit 6 — 방향 지정 페이즈 진행 중. 드래그 세션은 이미
-        // 끝났지만(드롭 완료) 화면은 여전히 배치 조작 중이다 — 보드 탭을 소비하는 다른
-        // 컨트롤러(DcInspect 등)가 이 스와이프를 자기 제스처로 오해하지 않게 알린다.
-        public bool IsAiming => _aimController != null && _aimController.IsActive;
-
         // placement-armed-board-drag unit 0 — arm 된 동안 보드 press 는 배치 제스처가 단독 소유한다.
         // DcInspectController 가 같은 press 를 인스펙트로 이중 소비하지 않게 양보하는 읽기 seam
         // (계약 11 aim-mode race 재생산 방지). arm 은 직전 프레임에 확정돼 press 프레임 실행순서와 무관.
@@ -334,12 +328,6 @@ namespace Wassup.UI
             if (uiFont != null) _uiFont = uiFont;
             if (cutscenePlayer != null) _cutscenePlayer = cutscenePlayer;
 
-            // unit 6 — 방향 페이즈 컨트롤러. 드롭 성공 시 핸드오프(CommitPlacementAt).
-            // 튜닝값(slowmoScale)은 드래그와 공유하는 DragSwaySettings 로 주입 — 전용 SO 폐기.
-            if (_aimController == null)
-                _aimController = gameObject.GetComponent<DirectionAimController>()
-                                 ?? gameObject.AddComponent<DirectionAimController>();
-            _aimController.Configure(bridge, mainCamera, swaySettings);
         }
 
         // drag-cancel-affordance unit 0 — 취소 존 주입(트레이 패널 rect). DefenderSelector 가 패널을
@@ -350,10 +338,6 @@ namespace Wassup.UI
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition, bool simulated = false)
         {
             if (unitData == null || bridge == null) return;
-            // defender-directional-volley unit 6 — 방향 지정 중엔 트레이가 잠긴다. 허용하면
-            // 그 드래그 제스처가 조준 스와이프로도 해석되고(두 곳에서 소비), 앞 유닛이
-            // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
-            if (_aimController != null && _aimController.IsActive) return;
             DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
             // placement-armed-board-drag unit 2 — 새 트레이 드래그(실드래그)는 직전 탭 배치의 range flourish 를 정지.
             // 시뮬 경로(탭/드래그 릴리즈의 자기 flight)는 자기 flourish 를 죽이면 안 되므로 제외.
@@ -1456,7 +1440,6 @@ namespace Wassup.UI
                 // 그 근거는 "시뮬은 자체 고스트가 이미 날았다" 였는데, 그건 **도착까지**의 이야기고 하마는
                 // **도착 이후**(반동→솟음→스틱 착지→스쿼시→고리·줄 잔류)라 겹치지 않았다. 지금은 탭 경로도
                 // 고스트를 날리지 않고 **여기서부터** 트레이 셀 → 타일을 난다(SimulateDragTo 주석 참조).
-                bool facing = session.unit != null && session.unit.RequiresFacing && _aimController != null;
                 // defender-footprint unit 2 — cell = 앵커. 방향 조준(레인 중심)·활성화·연출은
                 // 유닛이 실제로 서는 **대표 셀** 기준이다(1×1 은 앵커와 동일).
                 // 리뷰 H-2 — 하마 착지 연출(PlayDeploymentPresentation)도 대표 셀로: 앵커로 넘기면
@@ -1464,24 +1447,12 @@ namespace Wassup.UI
                 // unit 10 — 착지 연출 자리. 앵커로 넘긴다(1×1 은 기하 중심과 동일).
                 // 다칸에서 링·VFX 를 기하 중심으로 옮기는 것은 PR2(뷰 좌표) 소관.
                 var fpPrimary = cell;
-                bool dismount = StartDropDismount(session.unit, fpPrimary, entity, presentAtLanding: !facing);
-                // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
-                // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
-                // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
-                // Begin 이 먼저 슬로우모 lease 를 잡은 뒤 CleanupSession 이 드래그 lease 를
-                // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
-                if (facing)
-                {
-                    _aimController.Begin(session.unit, fpPrimary, entity);
-                    CleanupSession();
-                    PlacementCommitted?.Invoke(session.unit);
-                    return;
-                }
+                // unit 11 — facing(방향 지정 페이즈) 은퇴: 전 유닛이 드롭 즉시 활성화 경로다.
+                bool dismount = StartDropDismount(session.unit, fpPrimary, entity, presentAtLanding: true);
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
                 var deployRoutine = StartCoroutine(RunDeployment(session.unit, fpPrimary, entity, skipPresentation: dismount));
-                // defender-footprint unit 5 — 활성화 전까지 되돌리기 창. facing 유닛은 조준
-                // 페이즈가 화면을 쥐고 있어 제외(취소는 기존 backlog 항목대로 후속).
+                // defender-footprint unit 5 — 활성화 전까지 되돌리기 창.
                 BeginUndoWindow(entity, deployRoutine);
                 return;
             }

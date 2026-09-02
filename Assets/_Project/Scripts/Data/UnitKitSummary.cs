@@ -38,8 +38,8 @@ namespace Wassup.Data
             if (volley != null)
             {
                 int shotCount = volley.pattern?.shots?.Length ?? 0;
-                string aim = volley.RequiresFacing ? "지정 방향" : "대상 방향";
-                traits.Add(shotCount > 1 ? $"{aim}으로 {shotCount}연발 사격" : $"{aim} 사격");
+                // unit 11 — facing 은퇴: 전 유닛이 대상 방향 사격이다.
+                traits.Add(shotCount > 1 ? $"대상 방향으로 {shotCount}연발 사격" : "대상 방향 사격");
             }
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");
@@ -100,9 +100,8 @@ namespace Wassup.Data
                         if (m.payload.pattern != null && m.payload.pattern.barrel != null
                             && m.payload.pattern.barrel.flightMode == ProjectileFlightMode.Directional)
                         {
-                            // 방향의 주어는 유닛마다 다르다 — 조준 UX 가 있으면 «지정 방향», 없으면
-                            // «가까운 적». 문안이 없는 조작을 약속하지 않게 여기서 갈라 준다(리뷰 L1).
-                            string aimWord = u.RequiresFacing ? "지정 방향으로" : "가까운 적 쪽으로";
+                            // unit 11 — facing 은퇴: 방향의 주어는 언제나 «가까운 적»이다.
+                            string aimWord = "가까운 적 쪽으로";
                             return m.payload.pattern.barrel.knockbackDistance > 0f
                                 ? $"배치 시 {aimWord} 충격파 · 밀어냄"
                                 : $"배치 시 {aimWord} 일제 사격";

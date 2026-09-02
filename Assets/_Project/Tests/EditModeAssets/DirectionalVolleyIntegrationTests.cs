@@ -258,22 +258,9 @@ namespace Wassup.Tests.EditMode
                 _em.RemoveComponent<ProjectileSpawnRequest>(requests);
         }
 
-        [Test]
-        public void LaneGate_FiresOnlyWhenEnemyStandsInTheFacingLane()
-        {
-            CreateDirectionalDefender(float3.zero, new int2(1, 0), 5f, 1f, 8f);
-            CreateEnemy(new float3(0f, 0f, 3f));
-
-            Tick();
-            Assert.AreEqual(0, CollectRequests().Length);
-
-            CreateEnemy(new float3(3f, 0f, 0f));
-            Tick();
-            var requests = CollectRequests();
-            Assert.AreEqual(1, requests.Length);
-            Assert.AreEqual(new float2(1f, 0f), requests[0].direction);
-            Assert.AreEqual(Entity.Null, requests[0].target);
-        }
+        // unit 11 (distance-based-range) — 레인 게이트 계약은 facing 과 함께 은퇴했다
+        // (LaneGate_FiresOnlyWhenEnemyStandsInTheFacingLane 삭제). 방향 탄의 START 는
+        // 이제 최근접 타겟팅이고 방향은 대상 쪽 스냅샷이다.
 
         [Test]
         public void AuthoredDefenderPatterns_MatchShotgunAndMachineGunContracts()
@@ -282,8 +269,6 @@ namespace Wassup.Tests.EditMode
                 "Assets/_Project/Data/Defenders/Defender_Shotgunner.asset");
             var shotgunAbility = shotgun.GetAbility<DirectionalVolleyAbility>();
             Assert.IsNotNull(shotgunAbility?.pattern);
-            Assert.IsFalse(shotgun.RequiresFacing,
-                "샷건너는 Archer/Ranger와 같은 일반 배치 경로를 사용한다");
             Assert.AreSame(shotgun.projectile, shotgunAbility.pattern.barrel);
             Assert.IsTrue(shotgunAbility.pattern.TryToSpec(3, out var shotgunSpec));
             Assert.AreEqual(10, shotgunSpec.shots.Length);
@@ -330,7 +315,6 @@ namespace Wassup.Tests.EditMode
                 "Assets/_Project/Data/Defenders/Defender_MachineGunner.asset");
             var machineAbility = machineGun.GetAbility<DirectionalVolleyAbility>();
             Assert.IsNotNull(machineAbility?.pattern);
-            Assert.IsTrue(machineGun.RequiresFacing, "머신거너의 기존 2단계 방향 배치는 유지한다");
             Assert.AreSame(machineGun.projectile, machineAbility.pattern.barrel);
             Assert.IsTrue(machineAbility.pattern.TryToSpec(4, out var machineSpec));
             Assert.AreEqual(10, machineSpec.shots.Length);

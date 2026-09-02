@@ -308,20 +308,16 @@ namespace Wassup.UI
             // 손패가 열린 동안 보드 탭은 dismiss 캐처가 소유한다(unit 2). 여기서 raw press 를
             // 같이 노리면 두 소비자가 같은 press 를 다투게 된다(계약 11).
             if (handView != null && handView.State == DreamcatcherHandView.HandState.Hand) return true;
-            // 조준 중 탭 오독 방지. drag.IsAiming(defender-directional-volley unit 6): 드롭은
-            // 끝났지만 방향 지정 스와이프가 진행 중 — 그 스와이프가 유닛 탭으로도 읽히면 안 된다.
+            // 조준 중 탭 오독 방지(Active 캐스트·포탈 대기).
             if (AimingNow()) return true;
             return false;
         }
 
-        // 조준(Active 카드 캐스트 / 포탈 2탭 대기 / 배치 방향 지정) 진행 중인가.
+        // 조준(Active 카드 캐스트 / 포탈 2탭 대기) 진행 중인가.
         // 탭 게이트와 줌 피드 중단이 같은 판정을 공유한다(계약 2).
+        // unit 11 — 배치 방향 지정(drag.IsAiming)은 facing 과 함께 은퇴.
         private bool AimingNow()
-        {
-            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return true;
-            var drag = defenderSelector != null ? defenderSelector.DragController : null;
-            return drag != null && drag.IsAiming;
-        }
+            => GameManager.Instance != null && GameManager.Instance.IsAiming;
 
         // selection-hand-attach unit 2 — 손패 오픈 중 보드 탭 라우팅. 손패가 닫혀 있을 때의
         // raw 탭(HandleTap)과 결과는 같지만 "빈 보드/재탭" 이 **닫기 의도 탭**이라 선택 유무와

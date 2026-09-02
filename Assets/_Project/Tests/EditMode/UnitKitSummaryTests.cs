@@ -80,12 +80,12 @@ namespace Wassup.Tests.EditMode
         }
 
         // defender-ability-assets unit 2 — trait 소스가 능력 서브에셋으로 이동. 문구 불변.
-        private static DirectionalVolleyAbility Volley(int shots, bool requiresFacing = true)
+        // unit 11 (distance-based-range) — requiresFacing 축 은퇴: 전 유닛 «대상 방향» 문안.
+        private static DirectionalVolleyAbility Volley(int shots)
         {
             var a = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
             a.pattern = ScriptableObject.CreateInstance<ProjectilePatternData>();
             a.pattern.shots = new ProjectileShotStep[shots];
-            a.requiresFacing = requiresFacing;
             return a;
         }
 
@@ -98,7 +98,7 @@ namespace Wassup.Tests.EditMode
             u.abilities.Add(Volley(10));
             u.abilities.Add(ScriptableObject.CreateInstance<HazardCastAbility>());
             Assert.AreEqual(
-                "캐스터 · 원거리형. 지정 방향으로 10연발 사격, 지속 해저드 설치.",
+                "캐스터 · 원거리형. 대상 방향으로 10연발 사격, 지속 해저드 설치.",
                 UnitKitSummary.Build(u));
         }
 
@@ -109,7 +109,7 @@ namespace Wassup.Tests.EditMode
             u.role = DefenderClass.Ranger;
             u.projectile = Projectile();
             u.abilities.Add(Volley(1));
-            Assert.AreEqual("레인저 · 원거리형. 지정 방향 사격.", UnitKitSummary.Build(u));
+            Assert.AreEqual("레인저 · 원거리형. 대상 방향 사격.", UnitKitSummary.Build(u));
         }
 
         [Test]
@@ -118,7 +118,7 @@ namespace Wassup.Tests.EditMode
             var u = Unit();
             u.role = DefenderClass.Ranger;
             u.projectile = Projectile();
-            u.abilities.Add(Volley(10, requiresFacing: false));
+            u.abilities.Add(Volley(10));
             Assert.AreEqual(
                 "레인저 · 원거리형. 대상 방향으로 10연발 사격.",
                 UnitKitSummary.Build(u));

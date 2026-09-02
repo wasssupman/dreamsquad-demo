@@ -307,16 +307,7 @@ namespace Wassup.Tests.EditMode
                 "마스크 밖으로 나간 대상은 놓는다 — 계약 6");
         }
 
-        [Test]
-        public void FacingUnit_DoesNotLock_LaneWitnessIsAFireGateNotATarget()
-        {
-            var facing = CreateDefender(new float3(0f, 0f, 0f));
-            _em.AddComponentData(facing, new DeployedFacing { value = new int2(1, 0) });
-            CreateEnemy(new float3(1f, 0f, 0f));
-
-            for (int i = 0; i < 5; i++) Tick();
-
-            Assert.AreEqual(Entity.Null, LockOf(facing), "방향 유닛은 락을 받지 않는다");
-        }
+        // unit 11 (distance-based-range) — 「방향 유닛은 락 없음」 계약은 facing 과 함께
+        // 은퇴했다(FacingUnit_DoesNotLock 테스트 삭제). 이제 전 유닛이 같은 락 규칙이다.
     }
 }

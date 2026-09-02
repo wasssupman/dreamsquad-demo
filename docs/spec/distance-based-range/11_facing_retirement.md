@@ -33,9 +33,26 @@ facing 유닛의 타겟팅은 **폭 1칸 셀 레인**(`LaneMath.IsInLane`)이다
 - ⚠ **명일방주식 방향 배치 플레이가 사라진다.** 되살리려면 이 문서를 뒤집는 것이 아니라
   **연속 좌표에서 성립하는 새 어휘**(부채꼴·유닛 폭 직사각형)로 다시 설계해야 한다.
 
-## 완료 기준
+---
 
-- [ ] `LaneMath` 참조 0. grep 으로 확인
-- [ ] 머신거너·샷건너가 배치 즉시 최근접 적을 쏜다
-- [ ] 카드 문안에 「지정 방향」 잔존 0
-- [ ] EditMode 전건 초록. 골든은 **움직인다**(타겟 선정이 바뀐다) — 별도 체크포인트
+### 진행 기록 — 구현 2026-09-01
+
+- 삭제: `LaneMath`(+테스트) · `DirectionAimLogic`/`DirectionAimController`(+테스트, 런타임 생성이라
+  씬 배선 0) · `VolleyMachineGunnerTest`(레인 계약 그 자체라 전제와 함께 은퇴 — 다연발은
+  `DirectionalVolleyIntegrationTests` 패턴 계약이 지킨다) · AttackSystem 레인 witness/오버라이드 ·
+  브리지 조준 가이드 클러스터(SetAimGuide·PaintLanes·CollectLaneCells·화살표) · 뷰 aimStyle 축 ·
+  `RequiresFacing` 전 계열 · facing 활성화 오버로드.
+- 존치(스코프): `DeployedFacing` 컴포넌트·`ISkillContext.TryFacing`·`EmitPatternSkill` 폴백 —
+  이제 아무도 안 써서 폴백(조준 대상 방향)이 유일 경로다. 문안 「지정 방향」 잔존 0(grep).
+- ⚠ **Burst/소스젠 함정 4번째 재발**: `SystemAPI.GetComponentLookup<DeployedFacing>` 호출을
+  OnUpdate 에서 지우자 AttackSystem 의 Burst 컴파일이 조용히 깨져 NRE(전 공격 정지, BC 에러 0,
+  Burst OFF 면 통과). HEAD 복원 → 초록, 그 한 줄 복원 → 초록으로 **이분 확정**. 소비처 0 인
+  lookup 한 줄을 경고 주석과 함께 존치하는 것이 워크어라운드다(AttackSystem.cs 상단).
+
+## 완료 기준 (갱신)
+
+- [x] `LaneMath` 참조 0. grep 으로 확인
+- [x] 머신거너·샷건너가 배치 즉시 최근접 적을 쏜다 — 배치 경로 단일화(조준 페이즈 삭제) +
+      `OnPlaceForwardProjectileTest` 최근접 폴백. 육안은 다음 Play 에서
+- [x] 카드 문안에 「지정 방향」 잔존 0
+- [x] EditMode 전건 초록(선행 실패 2건 제외). 골든 재베이크는 별도 체크포인트

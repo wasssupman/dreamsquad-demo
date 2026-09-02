@@ -12,9 +12,5 @@ namespace Wassup.Data
         // unit-stat-spreadsheet-schema 의 id 매칭 규약 승계(spec 계약 5).
         public string id;
 
-        // 이 능력이 배치 시 공격방향 지정(조준 페이즈)을 요구하는가.
-        // 구 DefenderUnitData.directionalAttack flag 의 대체(spec 계약 4) —
-        // capability 는 능력이 선언하고, UX 소비처는 유닛 헬퍼만 읽는다.
-        public virtual bool RequiresFacing => false;
     }
 }

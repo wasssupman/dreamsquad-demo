@@ -204,11 +204,11 @@ namespace Wassup.UI
                 TickAutoStart();
                 return;
             }
-            bool interactionBlocked = IsPlacementInteractionBlocked(out bool aiming);
+            bool interactionBlocked = IsPlacementInteractionBlocked();
             RefreshStartAvailability(interactionBlocked);
             if (interactionBlocked)
             {
-                _countdownLabel.text = aiming ? "공격 방향을 정해주세요" : "배치 중";
+                _countdownLabel.text = "배치 중";   // unit 11 — 조준 페이즈 은퇴
                 return;
             }
             _remaining -= Time.deltaTime;
@@ -317,15 +317,15 @@ namespace Wassup.UI
         private bool CanFinishPlacement()
         {
             if (!_active) return false;
-            bool interactionBlocked = IsPlacementInteractionBlocked(out _);
+            bool interactionBlocked = IsPlacementInteractionBlocked();
             return PlacementPhasePolicy.CanFinish(interactionBlocked, IsIntroHeld());
         }
 
-        private bool IsPlacementInteractionBlocked(out bool aiming)
+        private bool IsPlacementInteractionBlocked()
         {
+            // unit 11 — 조준 페이즈(IsAiming) 은퇴: 차단 사유는 드래그 세션 하나다.
             var drag = defenderSelector != null ? defenderSelector.DragController : null;
-            aiming = drag != null && drag.IsAiming;
-            return aiming || (drag != null && drag.IsDragging);
+            return drag != null && drag.IsDragging;
         }
 
         private void RefreshStartAvailability(bool? interactionBlocked = null,
@@ -341,7 +341,7 @@ namespace Wassup.UI
                 SetStartJuice(false);
                 return;
             }
-            bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked(out _);
+            bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked();
             bool available = PlacementPhasePolicy.CanFinish(blocked, IsIntroHeld());
             if (_startAvailable == available &&
                 (_startButtonWrap == null || _startButtonWrap.activeSelf == available) &&

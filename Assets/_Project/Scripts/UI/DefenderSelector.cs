@@ -668,7 +668,6 @@ namespace Wassup.UI
             var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             int available = runtime != null ? runtime.CurrentInt : int.MinValue;
             int bestCost = int.MaxValue;
-            bool foundNonDirectional = false;
 
             for (int i = 0; i < _slotVisuals.Count; i++)
             {
@@ -677,14 +676,7 @@ namespace Wassup.UI
                 // 튜토리얼이 막힌다).
                 if (slot.data == null || slot.rect == null || slot.cost > available) continue;
                 if (IsExhausted(slot.data)) continue;
-                bool nonDirectional = !slot.data.RequiresFacing;
-                if (foundNonDirectional && !nonDirectional) continue;
-                if (nonDirectional && !foundNonDirectional)
-                {
-                    foundNonDirectional = true;
-                    bestCost = int.MaxValue;
-                    target = null;
-                }
+                // unit 11 — facing 은퇴로 «비방향 우선» 축은 소멸(전 유닛 동일 경로).
                 if (slot.cost >= bestCost) continue;
                 bestCost = slot.cost;
                 target = slot.rect;
