@@ -45,6 +45,24 @@ unit 0a~3 을 손패 흐름에서 한 번에 확인한다. Editor Play 1회 + **
 - [ ] 링·채움은 유닛 **아래**(정렬 −8, 2026-08-31 결정) — 끊김은 채움이 흡수.
 - [ ] **2×2 host** 에서 링 중심 = 셀 경계 교점. Subway 맵에서 확인(StreetDay 만으로 통과 판정 X).
 
+## 자동 검증 기록 (2026-09-02 · 원격 세션 — 손가락·실기기 항목은 미소화)
+
+- **EditMode** 코어+에셋 2692건 — 실패 2건 = 선행(`boomerang`·`bomb_man` 문안). 신규 24건(0a 3 · 1 21) 초록.
+- **PlayMode `AttachRangePreviewTest` 2건 통과**(unit 2 채널): host 몸 중심(2×2 → 셀 경계 교점)에 `_Range` = 카탈로그
+  반경 그대로 · `_HalfExtent` 0 · Clear 로 소멸 · 비공간 spec 은 채널 무접촉 · Placement 소유 중 양보 · 비소유 Clear 무해.
+- **PlayMode 전체 219건**: 실패 25건+(목록 cap). 격리 A/B(같은 그룹을 0a 이전 코드와 HEAD 로 각각 실행)로 귀속:
+  - **0a 귀속 2건** — `OnPlaceBindNearbyTest` 2건. 픽스처가 「반경 안」 칸을 체비셰프로 골라 2×2 호스트의 (−2,−2)
+    모서리(중심거리 3.54)를 뽑았고, 원 3.5(더미 몸 0) 밖이라 감속이 안 걸렸다. **의도된 변화** → 픽스처를 호스트
+    기하 중심 유클리드(안 ≤ 2 · 밖 ≥ 4.5)로 교체.
+  - **선행 15건**(0a 이전 코드에서도 동일 실패, 이 spec 무관): `AbilityAreaShieldTest` · `AbilityBombManBarrelTest` ·
+    `ActiveAllyZoneTest` · `BossThresholdSelfAoeTest` · `DefenderRetireTest.Retire_WithOnRetireCard…` ·
+    `DreamcatcherKillThresholdTest` 2 · `OnPlaceBoostNearbyTest` · `OnPlaceDotNearbyTest` · `OnPlaceMeleeBurstTest` 2 ·
+    `OnPlaceSkyStrikeTest` 2 · `OnPlaceTauntNearbyTest` · `PatrolDefenderPlayTest`. 증상은 배치 실패·초과 피해(44·80,
+    기본 공격이 더미에 닿음)·프로필 스톤 ×1.012 — 부모 spec 의 2×2 몸 반경(도달 +0.75) 이후 PlayMode 전체가 돌지
+    않은 것으로 보인다. `docs/spec/README.md` 「PlayMode 사전 실패」 절 갱신은 별도 docs 작업으로.
+  - 그 외 기존 목록의 환경 실패(`AuthE2ETest`·PrimeTween OnComplete·`DragCancelZoneTest`/`DragPlacementReachTest`
+    리플렉션 인자 수 — `ResolveFocusAndTarget` 시그니처 변경, 이 spec 무관).
+
 ## 완료 기준
 
 - [ ] A~F 전부 체크 · 콘솔 에러 0 · 스크린샷 3장(실기기 손가락 포함 1 · 원 카드 락온 1 · 액티브 조준 원 1).

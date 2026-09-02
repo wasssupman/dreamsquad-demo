@@ -31,6 +31,8 @@
 
 ## 완료 기준
 
+> 구현 커밋 `240e2b04`(2026-09-02). `ForceClose` 는 `CancelAllCardInteraction` → `EndInteraction` 경유 확인 — 추가 없음.
+
 - [ ] `cornered_burst` 드래그 → 유효 유닛 락온 순간 점등 · 다른 유효 유닛으로 이동 시 이동 · 빈 곳 이동 시 소멸 ·
       손 떼면(커밋/취소) 즉시 소멸.
 - [ ] full 3/3 유닛 락온 → 링 없음(리티클 invalid 폼만).

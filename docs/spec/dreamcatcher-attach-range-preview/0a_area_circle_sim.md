@@ -53,10 +53,20 @@
 
 ## 완료 기준
 
-- [ ] `RangeMetric.Chebyshev` 참조 0 — 컴파일러가 보장(grep 테스트 없음).
-- [ ] `AreaSleepSkillTests` · `StatAuraSkillTests` · `GrantShieldSkillTests` · `SkillLayerEndpointTests` 초록.
-      N=1 대각 후보 포함 단언은 **유지**돼야 한다(`+0.5` 의 존재 이유).
-- [ ] 페이크·어댑터가 같은 `SkillMath.InBodyReach` 를 호출한다(코드 리뷰 확인). `AttackReachTests` 의
-      `BodyOverlapsSquare` 단언은 그대로 초록(보존 기능).
-- [ ] 골든 8건 재베이크 + 2회 일치 + **diff 귀속 표**(어느 시나리오가 왜) + **킬 경제 변동 수치 → 사용자 승인**.
-- [ ] EditMode 코어·에셋 lane 전건 초록(선행 2건 `bomb_man`·`boomerang` 제외).
+- [x] `RangeMetric.Chebyshev` 참조 0 — 컴파일러가 보장(grep 테스트 없음). (`9cd583b0`)
+- [x] `AreaSleepSkillTests` · `StatAuraSkillTests` · `GrantShieldSkillTests` · `SkillLayerEndpointTests` 초록.
+      N=1 대각 후보 포함 단언은 **유지**(`AreaCircleMembershipTests.AreaSleep_N1_KeepsDiagonalNeighbour`).
+      `AreaTauntSkillTests` 의 사각 단언은 원 2건(안쪽 대각 포함 · 정대각 모서리 제외)으로 교체.
+- [x] 페이크·어댑터가 같은 `SkillMath.InBodyReach` 를 호출한다. `AttackReachTests` 의 `BodyOverlapsSquare`
+      단언은 그대로 초록(보존 기능).
+- [x] EditMode 코어·에셋 lane 2692건 중 실패 2건 = 선행(`bomb_man`·`boomerang` 문안).
+- [x] **골든 A/B(2026-09-02, 같은 세션·같은 조건)**: 0a 이전 코드와 이후 코드로 각각 8건을 구웠고 **8건 전부
+      바이트 동일**(Verify 2회 일치 포함). 이 코퍼스의 시드에서는 사각 모서리 대역에 후보가 선 적이 없다 —
+      **킬 경제 변동 0.** 파일: 스크래치 `golden_pre0a/` · `golden_post0a/`.
+- [ ] ⚠ **골든 재베이크는 커밋하지 않았다 — 조건 드리프트.** 현 세션 베이크의 `configHash` 가 HEAD 골든
+      (`e1c11669`, 36ffa86a…)과 다르다(454575ab…). 헤더 주석대로 「코드 회귀가 아니라 조건 드리프트」이며 0a 와
+      무관하다(A/B 동일이 증거). 결과도 크게 다르다(basic 5→2킬 · long_boss 21→11 · `no_defense` 유출 0→3).
+      유력 출처: 시트 임포트는 로비 로그인(`LoginAutoImport` → `AllRuntimeRefresher`)에서만 돌아 **BattleScene
+      직접 Play 는 디스크 SO 값**을 쓴다 — 이전 베이크 환경(로그인 후 전투 진입?)과 다를 수 있다. 씬은 둘 다
+      `BattleScene`(MapTest 에는 브리지가 없다) · dev 맵 오버라이드 키 없음. **어느 조건이 정본인지 사용자 결정 후**
+      그 조건에서 1회 재베이크·커밋(부모 spec 계약 10). HEAD 골든은 복구해 뒀다.
