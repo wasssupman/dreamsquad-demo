@@ -63,23 +63,22 @@ namespace Wassup.Core
         // 카드 단위 — `mechanics` 를 돌며 첫 공간 spec 을 고른다. 공간 spec 이 2개 이상 서로 다르면 첫 것을
         // 쓰고 1회 경고한다(라이브 안전망). 정식 방어는 에셋 lane 의 단일 도형 불변식 테스트(README 계약 6).
         // `attackMods[].tileRange`(팅김 탐색 반경)는 착탄점 기준이라 host 중심 범위가 아니다 — 보지 않는다.
+        // 경고는 **카드당 1회**(리뷰 L-9) — 드래그마다 호출되므로 호출당 1회면 로그가 스팸이 된다.
+        private static readonly System.Collections.Generic.HashSet<string> WarnedCards = new();
+
         public static DcRangeSpec ResolveCard(DreamcatcherCard card)
         {
             if (card == null || card.mechanics == null) return DcRangeSpec.None;
             var first = DcRangeSpec.None;
-            bool warned = false;
             for (int i = 0; i < card.mechanics.Length; i++)
             {
                 var m = card.mechanics[i];
                 var spec = Resolve(DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind), m.payload.tileRange);
                 if (spec.shape == DcRangeShape.None) continue;
                 if (first.shape == DcRangeShape.None) { first = spec; continue; }
-                if (!first.Equals(spec) && !warned)
-                {
-                    warned = true;
+                if (!first.Equals(spec) && WarnedCards.Add(card.id ?? ""))
                     Debug.LogWarning($"[DcRangeCatalog] '{card.id}': 공간 페이로드가 둘 이상이고 도형이 다르다 — "
                                      + "첫 것만 그린다. 범위 채널은 하나다(단일 도형 불변식).");
-                }
             }
             return first;
         }

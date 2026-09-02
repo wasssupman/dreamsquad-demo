@@ -69,7 +69,8 @@
 
 ## Follow-up (닫은 뒤 · 별도 커밋)
 
-- `docs/spec/README.md` 「PlayMode 사전 실패」 절에 위 15건 등재 · Follow-up Backlog 에 이 spec 후속 후보(F1~F6) 이관.
-- 리뷰 LOW: world→tile 변환 인라인 2곳 헬퍼화 · `ResolveCard` 경고를 카드당 1회로 · 전 concrete Id 를 카탈로그가 명시
-  분류하는지 잡는 테스트(새 area concrete 가 조용히 None 이 되는 것 감지).
-- `SkillIdForMechanic/SkillIdForPayload/SkillIdForCardPayload` 래퍼 3개(호출처 10곳) 를 `DcSkillRouting` 직접 호출로.
+- ~~`docs/spec/README.md` 사전 실패 절 15건 등재 · Backlog 이관~~ — **완료 2026-09-03**(후속 커밋).
+- ~~world→tile 변환 헬퍼화(`WorldToFractionalCell`) · `ResolveCard` 경고 카드당 1회 · 브리지 라우팅 래퍼 3개 은퇴
+  (호출처 10곳 → `DcSkillRouting` 직접 호출, `RoutingProbe` 만 잔존)~~ — **완료 2026-09-03**.
+- 남은 LOW: 전 concrete Id 를 카탈로그가 명시 분류하는지 잡는 테스트(새 area concrete 가 조용히 None 이 되는 것 감지) —
+  Backlog 「부착 범위 프리뷰」 절에 등재.

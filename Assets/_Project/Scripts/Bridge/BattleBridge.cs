@@ -2891,11 +2891,14 @@ namespace Wassup.Bridge
         // placement-cell-snap unit 1 — 히스테리시스 정책(PlacementCellSnap)이 소비할 소수 셀 좌표(unclamped).
         // GridMath.WorldToCell = floor(이 값 + 0.5) 와 같은 공간(셀 중심=정수, 경계=±0.5) → 커밋 셀과 드리프트 없음.
         public Vector2 DebugWorldToCellFractional(Vector3 worldPosition)
+            => WorldToFractionalCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z));
+
+        // sim 월드 → 소수 셀 좌표(셀 중심 = 정수). `GridToWorldCenter` 의 역함수 — 배치 스냅 히스테리시스와
+        // 부착 프리뷰 링 중심이 같은 식을 쓴다(리뷰 L-4: 인라인 2벌 → 1벌).
+        private Vector2 WorldToFractionalCell(float3 world)
         {
             float ts = tileSize > 0f ? tileSize : 1f;
-            return new Vector2(
-                (worldPosition.x - _boardOrigin.x) / ts,
-                (worldPosition.z - _boardOrigin.z) / ts);
+            return new Vector2((world.x - _boardOrigin.x) / ts, (world.z - _boardOrigin.z) / ts);
         }
 
         // placement-cell-snap unit 1 — DebugWorldToCell 이 clamp 에 쓰는 grid 크기(정책의 결과 clamp 용).
@@ -8214,9 +8217,7 @@ namespace Wassup.Bridge
         {
             if (!CanDrawAttachPreviewFor(_attachPreviewHost)) { ClearAttachPreview(); return; }
             var p = _em.GetComponentData<LocalTransform>(_attachPreviewHost).Position;
-            float invT = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            var centerTiles = new Vector2((p.x - _boardOrigin.x) * invT, (p.z - _boardOrigin.z) * invT);
-            tilemapMapView.SetAreaRange(centerTiles, _attachPreviewSpec.radiusTiles, _attachPreviewStyle);
+            tilemapMapView.SetAreaRange(WorldToFractionalCell(p), _attachPreviewSpec.radiusTiles, _attachPreviewStyle);
         }
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성 → 사거리 틴트(적색 + 전이 플래시).
@@ -8458,7 +8459,7 @@ namespace Wassup.Bridge
                     : _em.AddBuffer<DcTriggerSlot>(entity);
                 shieldSlots.Add(new DcTriggerSlot
                 {
-                    skillId = SkillIdForPayload(Wassup.Data.DcPayloadKind.GrantShield),
+                    skillId = Wassup.Core.DcSkillRouting.ForPayload(Wassup.Data.DcPayloadKind.GrantShield),
                     instanceId = _dcInstanceCounter++,
                     trigger = Wassup.Data.DcTriggerKind.PeriodicTimer,
                     periodSeconds = shieldAbility.cooldown,
@@ -9997,16 +9998,10 @@ namespace Wassup.Bridge
                 ?.Update();
         }
 
-        // attach-range-preview unit 1 — 라우팅 표는 `Wassup.Core.DcSkillRouting` 으로 **이사**했다.
-        // 부착 프리뷰 카탈로그(`DcRangeCatalog`)가 같은 표를 필요로 해서, bake 와 프리뷰가 한 함수를 부른다
-        // (두 벌이면 특수 케이스가 한쪽에만 추가돼 같은 저작이 소비처에 따라 다른 스킬로 간다).
-        // 특수 케이스 설명(자리의 주인이 다른 폭발 셋 · 트리거 무관 충전 · 빈사 버프)은 그 파일에 있다.
-        private static int SkillIdForMechanic(Wassup.Data.DcTriggerKind trigger,
-                                              Wassup.Data.DcPayloadKind kind)
-            => Wassup.Core.DcSkillRouting.SkillIdFor(trigger, kind);
-
-        private static int SkillIdForPayload(Wassup.Data.DcPayloadKind kind)
-            => Wassup.Core.DcSkillRouting.ForPayload(kind);
+        // attach-range-preview unit 1 — 라우팅 표(트리거×페이로드 → concrete)는 `Wassup.Core.DcSkillRouting` 으로
+        // **이사**했고 브리지 래퍼도 은퇴했다(리뷰 후속). bake 와 부착 프리뷰 카탈로그가 한 함수를 부른다 — 두 벌이면
+        // 특수 케이스(자리의 주인이 다른 폭발 셋 · 트리거 무관 충전 · 빈사 버프)가 한쪽에만 추가돼 같은 저작이 소비처에
+        // 따라 다른 스킬로 간다. 설명은 그 파일에 있다.
 
         // skill-layer-migration unit 3g — **카드와 유닛이 같은 규칙을 쓴다.**
         //
@@ -10018,11 +10013,9 @@ namespace Wassup.Bridge
         // ⚠ **두 벌로 두는 것 자체가 이제 위험이다** — 특수 케이스(자리의 주인이 다른 폭발
         // 셋 등)를 한쪽에만 추가하면 같은 저작이 host 종류에 따라 다른 스킬로 간다.
         //
-        // 여전히 concrete 가 없는 payload 는 `SkillIdForPayload` 의 default 가 0 을 준다.
+        // 여전히 concrete 가 없는 payload 는 `DcSkillRouting.ForPayload` 의 default 가 0 을 준다.
         // 그건 이제 **「스킬이 아니다」**이고, 스킬인데 0 인 조합은 bake 게이트가 거절한다.
-        private static int SkillIdForCardPayload(Wassup.Data.DcTriggerKind trigger,
-                                                 Wassup.Data.DcPayloadKind kind)
-            => SkillIdForMechanic(trigger, kind);
+        // (카드 전용 래퍼 `SkillIdForCardPayload` 는 attach-range-preview 후속에서 은퇴 — 호출처가 라우팅을 직접 부른다.)
 
         // skill-layer-migration unit 8 — **그물용 창.** 라우팅이 0 을 돌려주는 조합은
         // 이제 「arm 이 처리한다」가 아니라 **「아무도 처리 안 한다」**를 뜻한다(arm 이
@@ -10030,7 +10023,7 @@ namespace Wassup.Bridge
         // PlayMode 가 `OnPlace × 충전` 하나를 잡아낸 뒤에 판 창이다.
         public static int RoutingProbe(Wassup.Data.DcTriggerKind trigger,
                                        Wassup.Data.DcPayloadKind kind)
-            => SkillIdForMechanic(trigger, kind);
+            => Wassup.Core.DcSkillRouting.SkillIdFor(trigger, kind);
 
         private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
         {
@@ -10151,7 +10144,7 @@ namespace Wassup.Bridge
                     continue;
                 }
                 if (Wassup.Data.SkillPayloadPolicy.IsSkill(m.payload.kind)
-                    && SkillIdForMechanic(m.trigger.kind, m.payload.kind)
+                    && Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind)
                        == Wassup.Skills.SkillRegistry.NotRouted)
                 {
                     Debug.LogWarning(
@@ -10167,7 +10160,7 @@ namespace Wassup.Bridge
                     // skill-layer-foundation unit 5 — 이전된 payload 만 새 경로로 라우팅한다.
                     // 0 은 「스킬이 아니다」이고, 스킬인데 0 인 조합은 **위 게이트가 이미
                     // 거절했다** — 여기 도달하는 0 은 발동 규칙·공격의 성질뿐이다.
-                    skillId = SkillIdForMechanic(m.trigger.kind, m.payload.kind),
+                    skillId = Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),

@@ -121,6 +121,24 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 부착 범위 프리뷰 (dreamcatcher-attach-range-preview — **구현 완료 2026-09-03 · 검증 마감 대기**)
+
+인계: `docs/spec/dreamcatcher-attach-range-preview/5_handoff_summary.md`. 닫기 전 필수(골든 정본 조건 결정·재베이크,
+unit 4 육안)는 그 문서에. 아래는 닫은 뒤 후속.
+
+- **카드 면 「범위 있음」 글리프** [S] · 46장 중 4장만 링을 그려 학습 기회가 드물다 — 드래그 전 예고. (F1)
+- **오라 카드 문안 「발동 시 반경 N칸 안의 …」** [S] · `StatAura` 는 TTL 만 회수(반경 이탈 무관). 첫 `StatAura`/`GrantShield(N>0)`
+  카드와 함께. (F2)
+- **dim 면제 렌더 또는 링 라이브 중 `dimAlpha` 완화** [M] · 채움 주신호(D1)가 실기기에서 부족할 때의 다음 수. (F3)
+- **조준 중심 마커(토네이도)** [S] · 원의 중심이 엄지 밑 — SDF 중심 도트 또는 중심 셀 1칸. (F4)
+- **인스펙트 패널 범위 재열람** [S] · 손가락 없이 링을 보는 유일한 자리라 학습 채널로 우선. (F5)
+- **배치 사거리 링 `+0.25` 를 결정 8(가장자리)로 정합** [S] · 카드 범위 링은 가장자리, 배치 링은 표준 상대 항 — 읽기가 갈린다.
+  (F6, distance-based-range)
+- **콜아웃 「반경 N칸」 힌트** [S] · D4 에서 기각(프리젠터 비접촉). 오독이 실측되면 재론.
+- **폴백 반경·궤도 반경·부채꼴 표기** [S~M] · 폴백은 `PickFallbackTarget` 셀 체비셰프를 먼저 원으로 바꿔야 참말이 된다.
+- **새 area concrete 미분류 감지 테스트** [S] · 카탈로그는 fail-closed 라 새 concrete 가 조용히 None 이 된다 — 전 `ISkill` Id 를
+  명시 분류하는지 잡는 테스트. `IsPlacementRangeCell` 포워더(소비처 0) 삭제, dormant `BodyOverlapsSquare` 삭제 시점도 여기.
+
 #### 넓은 판 3부작 (wide-board — **작성됨 2026-08-25**, 착수 전)
 
 한 화면에 판을 우겨넣는 프레이밍을 은퇴시키고 자유 팬으로 더 큰 판을 플레이한다. 브레인스토밍에서
@@ -567,6 +585,26 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
   맵 고정 후에도 남는다 — 회오리 연타 성사율 문제. (elite-whirlpot)
   ※ 같은 파일의 다른 2건(`TakesNoDamage`·`WalksIn_ThenEngages`)은 **맵 미선언**이 원인이었고
   `PinMap` 으로 해소됐다.
+
+**추가 15건 — 2026-09-02 전체 실행 219건 재측정** (dreamcatcher-attach-range-preview 검증 중. **격리 A/B 로 귀속 완료**:
+같은 그룹을 0a 이전 코드와 이후 코드로 각각 돌려 아래 15건은 **양쪽에서 동일 실패** → 그 spec 무관. 0a 귀속 2건
+`OnPlaceBindNearbyTest` 는 픽스처를 원 계약으로 고쳐 통과. 증상은 배치 실패·초과 피해(44·80 — 기본 공격이 더미에
+닿음)·프로필 스톤 ×1.012 로, `distance-based-range` 의 2×2 몸 반경(도달 +0.75) 이후 PlayMode 전체가 돌지 않은 것으로 보인다.
+원인 분류는 미완 — 각 spec 소유자가 판독할 것):
+
+- **`AbilityAreaShieldTest`** [S] · 「실드셔틀 배치」 false — 배치 가능 셀 없음(맵/판형 의존?). (shield-guardian-defender)
+- **`AbilityBombManBarrelTest`** [M] · 길막 설치물 0개 — 투척→착탄→해저드 큐→드레인 사슬. (bomb-thrower-defender)
+- **`ActiveAllyZoneTest.Zone_BuffsAlliesInside_NotOutside`** [S] · 「place scout adjacent」 false. (active-ally-zone)
+- **`BossThresholdSelfAoeTest.ThresholdNova…`** [M] · 기대 540, 실측 500 — 자폭이 두 번 또는 다른 피해원. (boss)
+- **`DefenderRetireTest.Retire_WithOnRetireCard_DropsMeteorOnVacatedCell`** [M] · 인접 더미 피해 0. (defender-clock-out)
+- **`DreamcatcherKillThresholdTest`** 2건(CorpseBurst·EmberField) [S] · 전제 「방어유닛이 적을 처치」 불성립.
+- **`OnPlaceBoostNearbyTest`** [S] · 「반경 밖 아군 배치」 false. · **`OnPlaceDotNearbyTest`** [M] · 총 피해 127(기대 ~70).
+- **`OnPlaceMeleeBurstTest`** 2건 [M] · 피해 0 저작인데 44 · 70 기대에 114 — 기본 공격 44 가 더미에 닿는 형태.
+- **`OnPlaceSkyStrikeTest`** 2건 [M] · 200 기대에 280 · 적 2기에 미사일 3발.
+- **`OnPlaceTauntNearbyTest.TauntedEnemy_WalksTowardTheBastion`** [M] · 도발된 적이 이동하지 않음(2.00 → 2.00).
+- **`PatrolDefenderPlayTest.Summoner_SpawnsOnePatrol…`** [S] · 스폰 위치 (1,0) 기대, (2,1) 실측.
+- (기존 항목 재확인) `DragCancelZoneTest`·`DragPlacementReachTest` 는 `ResolveFocusAndTarget` 리플렉션 인자 수 불일치 —
+  컨트롤러 시그니처 변경에 테스트가 못 따라온 것. `AuthE2ETest` 는 `[Explicit]` 인데 전체 실행에 포함돼 돌았다.
 
 > **배치 실행(`-batchmode -nographics`)으로 재면 부풀어 보인다** —
 > `EntitiesAssetGC.GetAdditionalRoots` NRE 가 GC 타이밍에 터져 임의 귀속된다.

@@ -347,7 +347,7 @@ namespace Wassup.Bridge
                     // ⚠ `% → 배율` 은 여기서 바꾼다 — 슬롯 bake 가 같은 자리에서 같은 변환을
                     // 하고(그 주석: 「bake 가 % → 배율로 이미 바꿔 실은 값」), 도메인은 저작
                     // 인코딩을 모르는 것이 계약이다.
-                    int lethalSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
+                    int lethalSkillId = Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind);
                     if (lethalSkillId != Wassup.Skills.SkillRegistry.NotRouted
                         && _skillFiredQueue.IsCreated)
                     {
@@ -424,7 +424,7 @@ namespace Wassup.Bridge
                     // unit 4b — 실행은 concrete 가 한다. 저작(kind + %)을 스탯·배율로 푸는
                     // 것과 스택 슬롯 발급은 **여기가** 한다 — 둘 다 저작 인코딩과 브리지
                     // 소유 카운터라 도메인이 알 이유가 없다.
-                    int cocoonSkillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind);
+                    int cocoonSkillId = Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind);
                     if (cocoonSkillId != Wassup.Skills.SkillRegistry.NotRouted
                         && _skillFiredQueue.IsCreated)
                     {
@@ -549,7 +549,7 @@ namespace Wassup.Bridge
                     {
                         // unit 3d‴ — 이 버퍼의 라우팅 키. 슬롯 경로와 **같은 규칙 함수**를
                         // 쓴다(버퍼가 다르다는 것이 규칙이 다르다는 뜻은 아니다).
-                        skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
+                        skillId = Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind),
                         instanceId = _dcInstanceCounter++,
                         period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
                         counter = 0,
@@ -594,7 +594,7 @@ namespace Wassup.Bridge
                 var slot = new DcTriggerSlot
                 {
                     // 카드 경로의 스킬 레이어 라우팅 — 규칙은 `SkillIdForCardPayload` 소유.
-                    skillId = SkillIdForCardPayload(m.trigger.kind, m.payload.kind),
+                    skillId = Wassup.Core.DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind),
                     instanceId = _dcInstanceCounter++,
                     trigger = m.trigger.kind,
                     period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
@@ -1181,7 +1181,7 @@ namespace Wassup.Bridge
             // 여기가 한다(저작 인코딩과 브리지 소유 카운터).
             // ⚠ **부착 seam 이라 이 호출 안에서 끝난다.** 표식은 그 적이 죽을 때 소비되고,
             // 처치 이벤트가 enqueue 시점에 보상값을 복사하므로 늦으면 안 된다.
-            int bountySkillId = SkillIdForCardPayload(
+            int bountySkillId = Wassup.Core.DcSkillRouting.SkillIdFor(
                 card.mechanics[mi].trigger.kind, Wassup.Data.DcPayloadKind.BountyMark);
             if (bountySkillId != Wassup.Skills.SkillRegistry.NotRouted
                 && _skillFiredQueue.IsCreated)
