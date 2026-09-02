@@ -28,11 +28,15 @@ namespace Wassup.Battle.Effects
     [UpdateBefore(typeof(ModifierApplySystem))]
     public partial struct AllyBuffFieldSystem : ISystem
     {
+        // unit 18 — 멤버십이 유닛 몸을 본다. 로컬 형태 금지(Burst NRE 재발 이력) — 필드로.
+        ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<AllyBuffField>();
             state.RequireForUpdate<StatModifierApplyEventsSingleton>();
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -43,15 +47,24 @@ namespace Wassup.Battle.Effects
             if (fields.Length == 0) { fields.Dispose(); return; }
 
             var statQueue = SystemAPI.GetSingleton<StatModifierApplyEventsSingleton>().queue;
+            // unit 18 — 셀 대조 → 몸 기준 연속 멤버십. 격자 파라미터는 셀 중심의 월드 환산에만 쓴다.
+            bool hasFf = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var ff);
+            float tileSize = hasFf ? ff.tileSize : 1f;
+            float3 ffOrigin = hasFf ? ff.origin : float3.zero;
+            float buffInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
+            _bodyRadiusLookup.Update(ref state);
+            var hitRadiusLookup = _bodyRadiusLookup;
 
             // 배치 완료 방어유닛만 — 배치 대기(PendingDeployment)는 아직 판에 서지 않았고
             // (on-place 오라와 같은 규칙), 죽은 유닛은 제외(DefenderFieldSystem 과 같은 필터).
-            foreach (var (tile, entity) in
-                     SystemAPI.Query<RefRO<DefenderFootprint>>()
+            foreach (var (tile, xf, entity) in
+                     SystemAPI.Query<RefRO<DefenderFootprint>, RefRO<Unity.Transforms.LocalTransform>>()
                               .WithNone<PendingDeployment, DeadTag>()
                               .WithEntityAccess())
             {
-                var cell = tile.ValueRO.anchor;
+                // unit 18 — 판정 기준은 앵커 셀이 아니라 **몸**(기하 중심 + 내접원)이다.
+                float3 defPos = xf.ValueRO.Position;
+                float defBodyR = hitRadiusLookup.HasComponent(entity) ? hitRadiusLookup[entity].value : 0f;
 
                 // 겹친 장판은 누적되지 않는다(merge 키가 stat 단위로 같다). 그러면 "어느 값이 이기나"
                 // 를 chunk 순회 순서에 맡기게 되는데, 만료 시 swap-back 으로 순서가 런타임에 바뀌므로
@@ -61,8 +74,12 @@ namespace Wassup.Battle.Effects
                 for (int i = 0; i < fields.Length; i++)
                 {
                     var f = fields[i];
-                    // unit 4b — 오라 멤버십도 원이다(광역과 같은 자).
-                    if (!Wassup.Battle.Combat.TileAoe.IsInRadius(cell, f.centerCell, f.tileRange)) continue;
+                    // unit 18 — 오라 멤버십 = 원 + 유닛 몸(광역과 같은 자, 입력은 연속).
+                    float3 fCenter = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
+                        f.centerCell, tileSize, defPos.y, origin: ffOrigin);
+                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                            (defPos.x - fCenter.x) * buffInvT, (defPos.z - fCenter.z) * buffInvT,
+                            f.tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, defBodyR)) continue;
                     if (f.stat == StatKind.DamageMul) bestDamage = math.max(bestDamage, f.magnitude);
                     else if (f.stat == StatKind.AttackSpeedMul) bestSpeed = math.max(bestSpeed, f.magnitude);
                 }

@@ -25,10 +25,18 @@ namespace Wassup.Battle.Combat.Projectile.Emission
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct ProjectileEmitterSystem : ISystem
     {
+        // unit 18 — 스코프·선택의 연속 자(몸)와 simId 결정론. **명시 필드**로 둔다 —
+        // `SystemAPI.GetComponentLookup` 로컬 형태로 새 lookup 을 추가하면 Burst 에서
+        // NRE 로 죽는다(MovementSystem 주석·4회 재발 이력 참조).
+        ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+        ComponentLookup<Wassup.Battle.Units.SimEntityId> _simIdLookup;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EmitterInstance>();
             state.RequireForUpdate<FlowFieldSingleton>();
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
+            _simIdLookup = state.GetComponentLookup<Wassup.Battle.Units.SimEntityId>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -38,11 +46,22 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             float dt = SystemAPI.Time.DeltaTime;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            // unit 18 — 스코프·선택이 연속 자(위치+몸)와 simId 결정론을 쓴다(필드 lookup).
+            _bodyRadiusLookup.Update(ref state);
+            _simIdLookup.Update(ref state);
+            var hitRadiusLookup = _bodyRadiusLookup;
+            var simIdLookup = _simIdLookup;
+            float invT = ff.tileSize > 1e-6f ? 1f / ff.tileSize : 1f;
 
             // 후보 풀은 진영별 lazy 빌드 — 인스턴스가 없거나 이 프레임에 발사가
             // 없으면 쿼리·할당 0 (BossPeriodicTriggerSystem whip 풀 선례).
+            // 셀 배열은 **fan 시차 슬롯 전용**으로 남는다(「같은 칸 = 같은 착탄 순간」은
+            // 착탄 리듬 저작이지 멤버십이 아니다 — unit 18 존치 사유).
             NativeArray<Entity> defEntities = default, enemyEntities = default;
             NativeArray<int2> defCells = default, enemyCells = default;
+            NativeArray<float2> defPosT = default, enemyPosT = default;
+            NativeArray<float> defRadii = default, enemyRadii = default;
+            NativeArray<int> defSimIds = default, enemySimIds = default;
             bool defBuilt = false, enemyBuilt = false;
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -84,8 +103,16 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             defEntities = defQuery.ToEntityArray(Allocator.Temp);
                             var defXf = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                             defCells = new NativeArray<int2>(defXf.Length, Allocator.Temp);
+                            defPosT = new NativeArray<float2>(defXf.Length, Allocator.Temp);
+                            defRadii = new NativeArray<float>(defXf.Length, Allocator.Temp);
+                            defSimIds = new NativeArray<int>(defXf.Length, Allocator.Temp);
                             for (int c = 0; c < defXf.Length; c++)
+                            {
                                 defCells[c] = GridMath.WorldToCell(defXf[c].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                defPosT[c] = new float2(defXf[c].Position.x, defXf[c].Position.z) * invT;
+                                defRadii[c] = hitRadiusLookup.HasComponent(defEntities[c]) ? hitRadiusLookup[defEntities[c]].value : 0f;
+                                defSimIds[c] = simIdLookup.HasComponent(defEntities[c]) ? simIdLookup[defEntities[c]].value : int.MaxValue;
+                            }
                             defXf.Dispose();
                             defBuilt = true;
                         }
@@ -104,8 +131,16 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             enemyEntities = enemyQuery.ToEntityArray(Allocator.Temp);
                             var enemyXf = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                             enemyCells = new NativeArray<int2>(enemyXf.Length, Allocator.Temp);
+                            enemyPosT = new NativeArray<float2>(enemyXf.Length, Allocator.Temp);
+                            enemyRadii = new NativeArray<float>(enemyXf.Length, Allocator.Temp);
+                            enemySimIds = new NativeArray<int>(enemyXf.Length, Allocator.Temp);
                             for (int c = 0; c < enemyXf.Length; c++)
+                            {
                                 enemyCells[c] = GridMath.WorldToCell(enemyXf[c].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                enemyPosT[c] = new float2(enemyXf[c].Position.x, enemyXf[c].Position.z) * invT;
+                                enemyRadii[c] = hitRadiusLookup.HasComponent(enemyEntities[c]) ? hitRadiusLookup[enemyEntities[c]].value : 0f;
+                                enemySimIds[c] = simIdLookup.HasComponent(enemyEntities[c]) ? simIdLookup[enemyEntities[c]].value : int.MaxValue;
+                            }
                             enemyXf.Dispose();
                             enemyBuilt = true;
                         }
@@ -117,21 +152,29 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                     // 결과가 같은데, 발-루프 안에 두면 Temp 가 host×instance×shot 만큼 쌓인다.
                     // scope 0(기존 패턴)은 **할당도 분기도 없이** 원본 풀을 그대로 쓴다.
                     var scopedIdx = default(NativeArray<int>);
-                    var scopedCells = default(NativeArray<int2>);
+                    var scopedPosT = default(NativeArray<float2>);
+                    var scopedSimIds = default(NativeArray<int>);
                     int scopedCount = 0;
                     bool scoped = false;
                     if (shots > 0 && binding != BindingClass.Direction && inst.spec.scopeTileRange > 0)
                     {
-                        var srcCells = hostIsEnemy ? defCells : enemyCells;
-                        int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
-                        var raw = new NativeArray<int>(srcCells.Length, Allocator.Temp);
-                        scopedCount = PatternScope.Filter(srcCells, hostCell, inst.spec.scopeTileRange, raw);
+                        // unit 18 — 스코프는 사거리 술어와 같은 연속 자(위치 + 양쪽 몸).
+                        var srcPosT = hostIsEnemy ? defPosT : enemyPosT;
+                        var srcRadii = hostIsEnemy ? defRadii : enemyRadii;
+                        var srcSimIds = hostIsEnemy ? defSimIds : enemySimIds;
+                        float2 hostXZT = new float2(hostPos.x, hostPos.z) * invT;
+                        float hostBodyR = hitRadiusLookup.HasComponent(entity) ? hitRadiusLookup[entity].value : 0f;
+                        var raw = new NativeArray<int>(srcPosT.Length, Allocator.Temp);
+                        scopedCount = PatternScope.FilterByReach(srcPosT, hostXZT,
+                            inst.spec.scopeTileRange, hostBodyR, srcRadii, raw);
                         scopedIdx = new NativeArray<int>(scopedCount, Allocator.Temp);
-                        scopedCells = new NativeArray<int2>(scopedCount, Allocator.Temp);
+                        scopedPosT = new NativeArray<float2>(scopedCount, Allocator.Temp);
+                        scopedSimIds = new NativeArray<int>(scopedCount, Allocator.Temp);
                         for (int k = 0; k < scopedCount; k++)
                         {
                             scopedIdx[k] = raw[k];
-                            scopedCells[k] = srcCells[raw[k]];
+                            scopedPosT[k] = srcPosT[raw[k]];
+                            scopedSimIds[k] = srcSimIds[raw[k]];
                         }
                         raw.Dispose();
                         scoped = true;
@@ -159,7 +202,9 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         else
                         {
                             var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
-                            var poolCells = hostIsEnemy ? defCells : enemyCells;
+                            var poolCells = hostIsEnemy ? defCells : enemyCells;   // fan 시차 슬롯 전용(unit 18 존치)
+                            var poolPosT = hostIsEnemy ? defPosT : enemyPosT;
+                            var poolSimIds = hostIsEnemy ? defSimIds : enemySimIds;
 
                             // on-place-skill-rework unit 1 — fan-out: 이 shot 이 스코프 안 후보
                             // **전원** 에게 1발씩 나간다(1:1 융단폭격). 갈래마다 다른 것은 타겟뿐이라
@@ -271,14 +316,13 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             // 스코프가 있으면 선택은 **스코프 배열 안에서** 하고, 결과 index 는
                             // 반드시 원본 풀 index 로 되돌린다 — 아래 잠금 경로가
                             // `IndexOf(poolEntities, …)` 로 원본 index 를 만들어 쓰기 때문에
-                            // 두 index 공간이 섞이면 엉뚱한 칸을 때리거나 범위를 벗어난다.
-                            // (gridSize 는 원본 그대로 넘긴다 — rank 가 row-major 키를 만든다.)
-                            // bomb-barrel-on-place unit 3 — Nearest 는 시전자 칸을 알아야 한다.
-                            // 나머지 규칙은 이 인자를 읽지 않으므로 결과 무변경(회귀 핀 있음).
-                            int sel = PatternTargeting.Select(scoped ? scopedCells : poolCells,
+                            // 두 index 공간이 섞이면 엉뚱한 대상을 때리거나 범위를 벗어난다.
+                            // unit 18 — 연속 자(타일 단위 위치) + simId 순위 결정론.
+                            int sel = PatternTargeting.Select(scoped ? scopedPosT : poolPosT,
+                                                              scoped ? scopedSimIds : poolSimIds,
                                                               inst.spec.selection,
-                                                              inst.runtime.fireCount, ff.gridSize,
-                                                              GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin));
+                                                              inst.runtime.fireCount,
+                                                              new float2(hostPos.x, hostPos.z) * invT);
                             int idx = sel < 0 ? -1 : (scoped ? scopedIdx[sel] : sel);
                             // 명령 완성은 로직 계층이 한다(카운터 전진 포함).
                             order = PatternLogic.BuildOrder(inst.spec, ref inst.runtime, idx);
@@ -337,7 +381,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         ecb.AddComponent<ProjectileRequestCarrier>(carrier);
                     }
 
-                    if (scoped) { scopedIdx.Dispose(); scopedCells.Dispose(); }
+                    if (scoped) { scopedIdx.Dispose(); scopedPosT.Dispose(); scopedSimIds.Dispose(); }
 
                     if (EmitterTick.IsComplete(inst.runtime)) instances.RemoveAtSwapBack(i);
                     else instances[i] = inst;
@@ -347,8 +391,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
-            if (defBuilt) { defEntities.Dispose(); defCells.Dispose(); }
-            if (enemyBuilt) { enemyEntities.Dispose(); enemyCells.Dispose(); }
+            if (defBuilt) { defEntities.Dispose(); defCells.Dispose(); defPosT.Dispose(); defRadii.Dispose(); defSimIds.Dispose(); }
+            if (enemyBuilt) { enemyEntities.Dispose(); enemyCells.Dispose(); enemyPosT.Dispose(); enemyRadii.Dispose(); enemySimIds.Dispose(); }
         }
 
         // on-place-skill-rework unit 11 — `SubCellOffset`(같은 칸 여분 발을 0.28타일 비켜

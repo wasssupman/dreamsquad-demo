@@ -30,7 +30,6 @@ namespace Wassup.Skills.Concrete
             if (a.SleepCount < 1 || a.Radius < 1 || a.Duration <= 0f) return;
 
             var hostPos = ctx.Position(caster.Unit);
-            var hostCell = ctx.CellOf(caster.Unit);
 
             // **전 범위**가 후보다. 제외는 「내가 지금 때릴 대상」뿐이고 그건 아래
             // rank 로 뺀다.
@@ -62,7 +61,11 @@ namespace Wassup.Skills.Concrete
             // 그리고 **사거리 안일 때만** 건너뛰면 «재우자마자 자기가 깨우는» 자리만
             // 정확히 빠진다. 링 전체를 빼면 붙은 보스의 후보가 통째로 마른다.
             int skipCount = (int)math.max(0f, ctx.Stat(caster.Unit, UnitStat.AttackTargetCount));
-            int attackTiles = SkillMath.RangeToTiles(ctx.Stat(caster.Unit, UnitStat.AttackRange));
+            // unit 18 — 「내 사격권」은 **사거리 술어 그대로** 잰다(연속 + 양쪽 몸). 셀 체비셰프
+            // 근사는 경계 반 칸에서 「재우자마자 깨우는」 자리를 놓치거나 과하게 뺐다.
+            float attackRange = ctx.Stat(caster.Unit, UnitStat.AttackRange);
+            float hostBodyR = ctx.Stat(caster.Unit, UnitStat.BodyRadius);
+            float invT = ctx.TileSize > 1e-6f ? 1f / ctx.TileSize : 1f;
 
             // 뺄 만큼 더 뽑아야 실제 재우는 수가 cap 을 유지한다.
             var picked = new int[MaxCandidates];
@@ -74,8 +77,9 @@ namespace Wassup.Skills.Concrete
                 var id = candidates[picked[i]];
                 if (skipped < skipCount)
                 {
-                    var c = ctx.CellOf(id);
-                    if (SkillMath.ChebyshevDistance(c.x, c.y, hostCell.x, hostCell.y) <= attackTiles)
+                    var dp = ctx.Position(id) - hostPos;
+                    if (SkillMath.InBodyReach(dp.x * invT, dp.z * invT, attackRange,
+                                              hostBodyR, ctx.Stat(id, UnitStat.BodyRadius)))
                     {
                         skipped++;
                         continue;

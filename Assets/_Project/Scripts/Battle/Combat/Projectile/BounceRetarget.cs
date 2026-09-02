@@ -53,7 +53,9 @@ namespace Wassup.Battle.Combat.Projectile
             int tileRange, float tileSize, int2 gridSize, float3 origin)
         {
             if (tileRange <= 0) return -1;
-            int2 centerCell = GridMath.WorldToCell(hitPos, tileSize, gridSize, origin);
+            // unit 18 — 위치 기반(셀 양자화 제거). gridSize/origin 인자는 호출부 보존을 위해
+            // 남지만 더는 읽지 않는다.
+            float invT = tileSize > 1e-6f ? 1f / tileSize : 1f;
             int best = -1;
             float bestSq = float.MaxValue;
             for (int i = 0; i < positions.Length; i++)
@@ -66,8 +68,9 @@ namespace Wassup.Battle.Combat.Projectile
                 if (wantedFactionMask != 0 && candidateFactions.IsCreated
                     && (candidateFactions[i] & wantedFactionMask) == 0) continue;
                 float3 pos = positions[i];
-                int2 cell = GridMath.WorldToCell(pos, tileSize, gridSize, origin);
-                if (!TileAoe.IsInRadius(cell, centerCell, tileRange)) continue;   // unit 4b — 원
+                if (!Wassup.Skills.SkillMath.InBodyReach(
+                        (pos.x - hitPos.x) * invT, (pos.z - hitPos.z) * invT,
+                        tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, 0f)) continue;   // unit 18 — 위치 기반
                 float dx = pos.x - hitPos.x;
                 float dz = pos.z - hitPos.z;
                 float d2 = dx * dx + dz * dz;

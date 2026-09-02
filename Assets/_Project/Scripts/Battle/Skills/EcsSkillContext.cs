@@ -291,6 +291,8 @@ namespace Wassup.Battle.Skills
             // ⚠ **공격 스탯이 아닌 질의가 먼저다**(unit 5b). 아래 게이트는 `AttackState`
             // 없는 유닛을 0 으로 접는데, 「얼마나 다쳤나」는 공격과 무관한 값이라
             // 그 게이트에 걸리면 안 때리는 아군이 전부 0 으로 동률이 된다.
+            if (stat == UnitStat.BodyRadius)   // unit 18 — 공격 스탯 게이트보다 앞(몸은 공격 무관)
+                return _hitRadius.HasComponent(e) ? _hitRadius[e].value : 0f;
             if (stat == UnitStat.EffectiveHpRatio)
             {
                 if (!_health.HasComponent(e)) return 0f;

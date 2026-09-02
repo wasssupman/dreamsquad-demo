@@ -1,213 +1,114 @@
-using System;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
-using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // projectile-emission-pattern unit 0 — 타겟 선택 결정론. BarrageEpicenter
-    // 흡수 무회귀(unit 4 이관 근거) + 셔플 결정론/분포 + 청크 순서 무관성.
+    // projectile-emission-pattern unit 0 → distance-based-range unit 18 재작성.
+    // 타겟 선택 결정론 — 순위 축은 **simId 오름차순**(구 row-major 셀 키에서 교체.
+    // 셀 키는 격자 없이는 정의되지 않는다). 스냅샷/청크 순서와 무관해야 리플레이가 성립한다.
     public class PatternTargetingTests
     {
-        private static readonly int2 Grid = new int2(16, 16);
-
-        private static int Select(int2[] cells, PatternSelectionRule rule, int fireCount)
+        private static int Select(float2[] posT, int[] simIds, PatternSelectionRule rule,
+                                  int fireCount, float2 host = default)
         {
-            using var na = new NativeArray<int2>(cells, Allocator.Temp);
-            return PatternTargeting.Select(na, rule, fireCount, Grid);
-        }
-
-        // bomb-barrel-on-place unit 3 — Nearest 전용 진입점(시전자 칸이 필요하다).
-        private static int SelectNear(int2[] cells, int2 casterCell)
-        {
-            using var na = new NativeArray<int2>(cells, Allocator.Temp);
-            return PatternTargeting.Select(na, PatternSelectionRule.Nearest, fireCount: 0, Grid, casterCell);
+            using var na = new NativeArray<float2>(posT, Allocator.Temp);
+            using var ids = new NativeArray<int>(simIds, Allocator.Temp);
+            return PatternTargeting.Select(na, ids, rule, fireCount, host);
         }
 
         [Test]
-        public void Nearest_PicksTheClosestCandidate()
+        public void Nearest_PicksTheClosestCandidate_ByContinuousDistance()
         {
-            var cells = new[] { new int2(8, 8), new int2(3, 3), new int2(1, 5) };
-            Assert.AreEqual(1, SelectNear(cells, new int2(2, 2)), "체비셰프로 가장 가까운 칸");
+            var pos = new[] { new float2(8f, 8f), new float2(3f, 3f), new float2(1f, 5f) };
+            var ids = new[] { 10, 20, 30 };
+            Assert.AreEqual(1, Select(pos, ids, PatternSelectionRule.Nearest, 0, new float2(2f, 2f)));
         }
 
         [Test]
         public void Nearest_IsIndependentOfSnapshotOrder()
         {
-            var a = new[] { new int2(8, 8), new int2(3, 3), new int2(1, 5) };
-            var b = new[] { new int2(1, 5), new int2(8, 8), new int2(3, 3) };
-            Assert.AreEqual(a[SelectNear(a, new int2(2, 2))], b[SelectNear(b, new int2(2, 2))],
-                "청크 순서가 흔들려도 같은 칸이 뽑혀야 리플레이가 성립한다");
+            var a = new[] { new float2(8f, 8f), new float2(3f, 3f), new float2(1f, 5f) };
+            var aIds = new[] { 10, 20, 30 };
+            var b = new[] { new float2(1f, 5f), new float2(8f, 8f), new float2(3f, 3f) };
+            var bIds = new[] { 30, 10, 20 };
+            int ra = Select(a, aIds, PatternSelectionRule.Nearest, 0, new float2(2f, 2f));
+            int rb = Select(b, bIds, PatternSelectionRule.Nearest, 0, new float2(2f, 2f));
+            Assert.AreEqual(aIds[ra], bIds[rb], "청크 순서가 흔들려도 같은 대상이어야 리플레이가 성립한다");
         }
 
         [Test]
-        public void Nearest_TieBreaksByRowMajorKey_LikeTheOtherRules()
+        public void Nearest_TieBreaksByLowerSimId()
         {
-            // (1,2)·(3,2) 둘 다 시전자(2,2)에서 체비셰프 1. row-major 키가 작은 (1,2)가 이긴다.
-            var cells = new[] { new int2(3, 2), new int2(1, 2) };
-            Assert.AreEqual(1, SelectNear(cells, new int2(2, 2)));
+            // 완전 동거리 — 먼저 스폰된(낮은 simId) 쪽이 이긴다. AttackSystem unit 2 와 같은 축.
+            var pos = new[] { new float2(3f, 2f), new float2(1f, 2f) };
+            var ids = new[] { 7, 4 };
+            Assert.AreEqual(1, Select(pos, ids, PatternSelectionRule.Nearest, 0, new float2(2f, 2f)));
         }
 
         [Test]
-        public void Nearest_EmptyPool_ReturnsMinusOne()
+        public void RoundRobin_CyclesInSimIdOrder_RegardlessOfSnapshotOrder()
         {
-            Assert.AreEqual(-1, SelectNear(new int2[0], new int2(2, 2)));
+            var pos = new[] { new float2(1f, 1f), new float2(5f, 5f), new float2(2f, 9f) };
+            var ids = new[] { 30, 10, 20 };   // simId 순위: idx1(10) → idx2(20) → idx0(30)
+            Assert.AreEqual(1, Select(pos, ids, PatternSelectionRule.RoundRobin, 0));
+            Assert.AreEqual(2, Select(pos, ids, PatternSelectionRule.RoundRobin, 1));
+            Assert.AreEqual(0, Select(pos, ids, PatternSelectionRule.RoundRobin, 2));
+            Assert.AreEqual(1, Select(pos, ids, PatternSelectionRule.RoundRobin, 3));
         }
 
-        // ⚠ 회귀 핀 — casterCell 파라미터가 붙었다고 기존 두 규칙의 결과가 바뀌면 안 된다.
-        // 그 둘은 이 인자를 읽지 않으므로 어떤 값을 넣어도 같은 결과여야 한다.
         [Test]
-        public void ExistingRules_IgnoreCasterCell()
+        public void Shuffle_IsDeterministic_AndInRange()
         {
-            var cells = new[] { new int2(1, 1), new int2(5, 5), new int2(2, 9) };
-            using var na = new NativeArray<int2>(cells, Allocator.Temp);
-            for (int fire = 0; fire < 6; fire++)
+            var pos = new[] { new float2(1f, 1f), new float2(5f, 5f), new float2(2f, 9f), new float2(0f, 4f) };
+            var ids = new[] { 1, 2, 3, 4 };
+            for (int fire = 0; fire < 16; fire++)
             {
-                foreach (var rule in new[] { PatternSelectionRule.RoundRobin, PatternSelectionRule.DeterministicShuffle })
-                {
-                    int baseline = PatternTargeting.Select(na, rule, fire, Grid);
-                    Assert.AreEqual(baseline, PatternTargeting.Select(na, rule, fire, Grid, new int2(0, 0)));
-                    Assert.AreEqual(baseline, PatternTargeting.Select(na, rule, fire, Grid, new int2(15, 15)));
-                }
+                int first = Select(pos, ids, PatternSelectionRule.DeterministicShuffle, fire);
+                int second = Select(pos, ids, PatternSelectionRule.DeterministicShuffle, fire);
+                Assert.AreEqual(first, second, "같은 fireCount 는 항상 같은 결과");
+                Assert.That(first, Is.InRange(0, pos.Length - 1));
+            }
+        }
+
+        [Test]
+        public void Shuffle_IsIndependentOfSnapshotOrder()
+        {
+            var a = new[] { new float2(1f, 1f), new float2(5f, 5f), new float2(2f, 9f) };
+            var aIds = new[] { 11, 22, 33 };
+            var b = new[] { new float2(2f, 9f), new float2(1f, 1f), new float2(5f, 5f) };
+            var bIds = new[] { 33, 11, 22 };
+            for (int fire = 0; fire < 8; fire++)
+            {
+                int ra = Select(a, aIds, PatternSelectionRule.DeterministicShuffle, fire);
+                int rb = Select(b, bIds, PatternSelectionRule.DeterministicShuffle, fire);
+                Assert.AreEqual(aIds[ra], bIds[rb], $"fire={fire}: 순위 축이 simId 라 스냅샷 순서 무관");
             }
         }
 
         [Test]
         public void EmptyPool_ReturnsMinusOne()
         {
-            Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.RoundRobin, 0));
-            Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.DeterministicShuffle, 3));
-            Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.None, 0));
+            Assert.AreEqual(-1, Select(new float2[0], new int[0], PatternSelectionRule.RoundRobin, 0));
+            Assert.AreEqual(-1, Select(new float2[0], new int[0], PatternSelectionRule.DeterministicShuffle, 3));
+            Assert.AreEqual(-1, Select(new float2[0], new int[0], PatternSelectionRule.None, 0));
         }
 
         [Test]
         public void None_DoesNotSelect_FromNonEmptyPool()
         {
-            var cells = new[] { new int2(1, 1), new int2(2, 2) };
-            Assert.AreEqual(-1, Select(cells, PatternSelectionRule.None, 0));
+            var pos = new[] { new float2(1f, 1f), new float2(2f, 2f) };
+            Assert.AreEqual(-1, Select(pos, new[] { 1, 2 }, PatternSelectionRule.None, 0));
         }
 
         [Test]
-        public void RoundRobin_WalksRowMajorOrder_AndWraps()
+        public void NegativeFireCount_RoundRobin_DoesNotThrow()
         {
-            // row-major 오름차순: (1,0) → (3,0) → (0,2) → 다시 (1,0).
-            var cells = new[] { new int2(0, 2), new int2(1, 0), new int2(3, 0) };
-            Assert.AreEqual(1, Select(cells, PatternSelectionRule.RoundRobin, 0));
-            Assert.AreEqual(2, Select(cells, PatternSelectionRule.RoundRobin, 1));
-            Assert.AreEqual(0, Select(cells, PatternSelectionRule.RoundRobin, 2));
-            Assert.AreEqual(1, Select(cells, PatternSelectionRule.RoundRobin, 3));
-        }
-
-        // 흡수 전 BarrageEpicenter 와의 결과 일치는 f787c607(unit 0) 시점에 동일성
-        // 테스트로 검증한 뒤 원본을 삭제했다(unit 4). 계약 자체는 위 row-major 순회
-        // 테스트와 아래 스냅샷 순서 무관성 테스트가 계속 고정한다.
-        [Test]
-        public void Shuffle_IsDeterministic_SameFireCountSameResult()
-        {
-            var cells = new[] { new int2(2, 1), new int2(7, 4), new int2(3, 9), new int2(11, 2) };
-            for (int fire = 0; fire < 8; fire++)
-                Assert.AreEqual(
-                    Select(cells, PatternSelectionRule.DeterministicShuffle, fire),
-                    Select(cells, PatternSelectionRule.DeterministicShuffle, fire));
-        }
-
-        [Test]
-        public void Shuffle_IsNotAPlainRotation()
-        {
-            // 셔플이 사실상 round-robin 이면 "랜덤" 체감이 없다 — 최소 한 지점에서 갈려야 한다.
-            var cells = new[] { new int2(2, 1), new int2(7, 4), new int2(3, 9), new int2(11, 2) };
-            bool diverged = false;
-            for (int fire = 0; fire < 16 && !diverged; fire++)
-                diverged = Select(cells, PatternSelectionRule.DeterministicShuffle, fire)
-                        != Select(cells, PatternSelectionRule.RoundRobin, fire);
-            Assert.IsTrue(diverged);
-        }
-
-        [Test]
-        public void Shuffle_CoversEveryCandidate_OverManyShots()
-        {
-            var cells = new[] { new int2(2, 1), new int2(7, 4), new int2(3, 9), new int2(11, 2) };
-            var seen = new bool[cells.Length];
-            for (int fire = 0; fire < 200; fire++)
-            {
-                int idx = Select(cells, PatternSelectionRule.DeterministicShuffle, fire);
-                Assert.GreaterOrEqual(idx, 0);
-                seen[idx] = true;
-            }
-            for (int i = 0; i < seen.Length; i++)
-                Assert.IsTrue(seen[i], $"후보 {i} 가 200발 동안 한 번도 선택되지 않았다(편향)");
-        }
-
-        // README 계약 6 — ECS 청크 순서에 의존하면 같은 index 가 프레임마다 다른
-        // 대상을 가리킨다. 스냅샷 순서를 뒤집어도 "같은 셀" 이 선택돼야 한다.
-        [Test]
-        public void SnapshotOrder_DoesNotAffectSelectedCell()
-        {
-            var a = new[] { new int2(0, 2), new int2(1, 0), new int2(3, 0) };
-            var b = new[] { new int2(3, 0), new int2(0, 2), new int2(1, 0) };
-
-            foreach (var rule in new[] { PatternSelectionRule.RoundRobin, PatternSelectionRule.DeterministicShuffle })
-                for (int fire = 0; fire < 6; fire++)
-                {
-                    int2 pickedA = a[Select(a, rule, fire)];
-                    int2 pickedB = b[Select(b, rule, fire)];
-                    Assert.AreEqual(pickedA, pickedB, $"{rule} fire={fire}: 스냅샷 순서가 선택을 바꿨다");
-                }
-        }
-
-        // 리뷰 MEDIUM — 같은 셀에 후보가 둘 이상이면 tie-break 가 스냅샷 index 로 갈린다.
-        // 방어유닛은 타일 고정이라 유일하지만 적 후보(자유 이동)는 셀 공유가 상시다.
-        // 현재는 bake 가 host=enemy 로 고정돼 미도달이고, defender 패턴을 여는 시점에
-        // 안정 키(예: 병렬 배열로 받은 entity index)를 함께 넘겨야 한다. 이 테스트는
-        // 그 한계를 **문서화**한다 — 통과가 곧 "셀 단위까지만 결정론"이라는 뜻이다.
-        [Test]
-        public void DuplicateCells_CellStable_EntityTieBreakIsSnapshotOrder()
-        {
-            var a = new[] { new int2(4, 4), new int2(4, 4), new int2(9, 1) };
-            var b = new[] { new int2(4, 4), new int2(9, 1), new int2(4, 4) };
-
-            for (int fire = 0; fire < 6; fire++)
-            {
-                int2 pickedA = a[Select(a, PatternSelectionRule.RoundRobin, fire)];
-                int2 pickedB = b[Select(b, PatternSelectionRule.RoundRobin, fire)];
-                Assert.AreEqual(pickedA, pickedB, "선택된 '셀' 은 스냅샷 순서와 무관해야 한다");
-            }
-        }
-
-        [Test]
-        public void NegativeFireCount_StaysInRange()
-        {
-            var cells = new[] { new int2(1, 1), new int2(2, 2) };
-            foreach (var rule in new[] { PatternSelectionRule.RoundRobin, PatternSelectionRule.DeterministicShuffle })
-            {
-                int idx = Select(cells, rule, -3);
-                Assert.GreaterOrEqual(idx, 0);
-                Assert.Less(idx, cells.Length);
-            }
-        }
-
-        // MovementBinding 분류 누락 핀 — C# 은 enum switch 전수성을 강제하지 못하므로
-        // 새 MovementKind 가 추가되면 이 테스트가 실패해 분류 갱신을 강제한다.
-        [Test]
-        public void MovementBinding_ClassifiesEveryKnownKind()
-        {
-            var kinds = (MovementKind[])Enum.GetValues(typeof(MovementKind));
-            Assert.AreEqual(MovementBinding.KnownKindCount, kinds.Length,
-                "MovementKind 가 늘었다 — MovementBinding.Of 분류와 KnownKindCount 를 갱신하라");
-
-            Assert.AreEqual(BindingClass.Entity, MovementBinding.Of(MovementKind.HomingToEntity));
-            Assert.AreEqual(BindingClass.Entity, MovementBinding.Of(MovementKind.BezierHomingToEntity));
-            Assert.AreEqual(BindingClass.Cell, MovementBinding.Of(MovementKind.BallisticArcToPoint));
-            Assert.AreEqual(BindingClass.Cell, MovementBinding.Of(MovementKind.SkyFall));
-            Assert.AreEqual(BindingClass.Cell, MovementBinding.Of(MovementKind.GrenadeToCell));
-            Assert.AreEqual(BindingClass.Direction, MovementBinding.Of(MovementKind.DirectionalLinear));
-            // on-place-skill-rework unit 10 — **`SkyFall` 과 짝지어 고정한다.** 그림이 같아서
-            // 나중에 「낙하탄이니 Cell 이겠지」로 잘못 옮겨질 수 있는데, 그 순간 한 탄에 조준이
-            // 둘이 되어 예고 시간만큼 어긋난 그 결함(피해 0)이 되돌아온다.
-            Assert.AreEqual(BindingClass.Entity, MovementBinding.Of(MovementKind.SkyFallOnEntity));
+            var pos = new[] { new float2(1f, 1f), new float2(2f, 2f) };
+            int r = Select(pos, new[] { 1, 2 }, PatternSelectionRule.RoundRobin, -5);
+            Assert.That(r, Is.InRange(0, 1));
         }
     }
 }

@@ -81,6 +81,10 @@ namespace Wassup.Skills
         // 대신 파생값 하나를 여는 이유: 스킬이 묻는 것이 그 질문이고, 실드 합산 규칙은
         // 어댑터(`ShieldMath`)가 소유하기 때문이다.
         EffectiveHpRatio,
+        // unit 18 (distance-based-range) — 판정 몸 반경(타일). 자장가의 「내가 때릴 대상
+        // 제외」처럼 스킬이 사거리 술어를 미러해야 할 때 쓴다 — 술어와 같은 몸을 본다.
+        BodyRadius,
+
     }
 
     public interface ISkillContext

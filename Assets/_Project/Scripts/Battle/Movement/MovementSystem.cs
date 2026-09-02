@@ -18,6 +18,8 @@ namespace Wassup.Battle.Movement
         // NRE 로 죽는다(이 프로젝트에서 3회 재발).
         ComponentLookup<Aggroed> _aggroedLookup;
         ComponentLookup<LocalTransform> _guardianTransformLookup;
+        // unit 18 — 회오리 당김의 피해자 몸. 로컬 형태 금지 규칙(위 주석) 그대로 필드.
+        ComponentLookup<Wassup.Battle.Units.HitRadius> _pullBodyRadiusLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -26,6 +28,7 @@ namespace Wassup.Battle.Movement
             state.RequireForUpdate<FlowFieldSingleton>();
             _aggroedLookup = state.GetComponentLookup<Aggroed>(isReadOnly: true);
             _guardianTransformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            _pullBodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -48,6 +51,7 @@ namespace Wassup.Battle.Movement
             // leap-flight-state unit 0 — Combat 소유 태그를 RO 로 읽는다(AttackState·EnemyAiState 선례).
             var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
+            _pullBodyRadiusLookup.Update(ref state);   // unit 18 — 회오리 당김 피해자 몸
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
             // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
             // 장애물을 합쳐 조립하고, 아래 모든 충돌 해결이 이것만 본다.
@@ -334,11 +338,15 @@ namespace Wassup.Battle.Movement
                 for (int t = 0; t < tornadoFields.Length; t++)
                 {
                     var fieldT = tornadoFields[t];
-                    int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize, origin: field.origin);
-                    // distance-based-range unit 1 — 회오리는 **사거리가 아니라 장 멤버십**이라
-                    // `AttackReach` 가 아니라 광역 술어(`TileAoe`)로 수렴한다. README 배경이 든
-                    // 「화면은 원인데 판정은 사각형」 3곳 중 하나가 여기다.
-                    if (!TileAoe.IsInTileRange(cell, centerCell, fieldT.tileRange)) continue;
+                    // unit 18 — 「화면은 원인데 판정은 사각형」 마지막 1곳. 원 + 피해자 몸으로
+                    // 연속화(광역 자와 같은 물성: 반경 + 칸 반폭 + 몸). 셀 양자화도 함께 소멸.
+                    float tInv = field.tileSize > 1e-6f ? 1f / field.tileSize : 1f;
+                    float pullBodyR = _pullBodyRadiusLookup.HasComponent(entity) ? _pullBodyRadiusLookup[entity].value : 0f;
+                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                            (current.x - fieldT.centerWorld.x) * tInv,
+                            (current.z - fieldT.centerWorld.z) * tInv,
+                            fieldT.tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles,
+                            pullBodyR)) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);

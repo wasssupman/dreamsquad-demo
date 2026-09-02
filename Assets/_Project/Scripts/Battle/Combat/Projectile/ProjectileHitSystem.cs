@@ -741,8 +741,14 @@ namespace Wassup.Battle.Combat.Projectile
                                     projectile.ValueRO.targetTraversalLayers,
                                     victimTraversalLayers[i])) continue;
                             float3 vpos = victimTransforms[i].Position;
-                            int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
-                            if (!TileAoe.IsInRadius(cell, centerCell, tileRange, victimBodyRadii[i])) continue;   // unit 4b — 원 + 대상 몸
+                            // unit 18 — 피해자 **위치** 기준(셀 양자화 제거). 자는 unit 4b 그대로
+                            // (원 = 반경 + 칸 반폭 + 대상 몸), 입력만 연속이 됐다.
+                            float aoeInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
+                            if (!Wassup.Skills.SkillMath.InBodyReach(
+                                    (vpos.x - impactWorld.x) * aoeInvT,
+                                    (vpos.z - impactWorld.z) * aoeInvT,
+                                    tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles,
+                                    victimBodyRadii[i])) continue;
                             inRangeEnts.Add(victimEntities[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;

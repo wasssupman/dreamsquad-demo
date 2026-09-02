@@ -40,21 +40,31 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // 정식으로 열자(`SkyFallOnEntity` + `SingleSplash`) 접기도 게이트도 필요 없어졌다.
         // 교훈: **탄 하나에 조준은 하나다.** 조준을 둘로 두면 그 둘이 갈리는 시간만큼 어긋난다.
         //
-        // tileRange <= 0 = 전량 통과(현행 동작) — 이 arm 이 무회귀의 근거다.
-        public static int Filter(in NativeArray<int2> candidateCells, int2 hostCell,
-                                 int tileRange, NativeArray<int> outIndices)
+        // rangeTiles <= 0 = 전량 통과(현행 동작) — 이 arm 이 무회귀의 근거다.
+        //
+        // unit 18 (distance-based-range, 사용자 지시 2026-09-01) — 셀 체비셰프 → **사거리
+        // 술어와 같은 자**(`InBodyReach`: 도달 = range + 내몸 + 상대몸)로 교체. 후보를 셀로
+        // 접지 않으므로 칸 경계에서 스코프가 튀지 않는다. 좌표는 **타일 단위**(호출자 환산).
+        public static int FilterByReach(in NativeArray<float2> candidateXZTiles, float2 hostXZTiles,
+                                        float rangeTiles, float hostBodyRadiusTiles,
+                                        in NativeArray<float> bodyRadiiTiles,
+                                        NativeArray<int> outIndices)
         {
-            int n = candidateCells.Length;
+            int n = candidateXZTiles.Length;
             int count = 0;
-            if (tileRange <= 0)
+            if (rangeTiles <= 0f)
             {
                 for (int i = 0; i < n && i < outIndices.Length; i++) outIndices[count++] = i;
                 return count;
             }
             for (int i = 0; i < n && count < outIndices.Length; i++)
             {
-                int2 d = math.abs(candidateCells[i] - hostCell);
-                if (math.max(d.x, d.y) <= tileRange) outIndices[count++] = i;
+                float bodyR = bodyRadiiTiles.IsCreated && i < bodyRadiiTiles.Length ? bodyRadiiTiles[i] : 0f;
+                if (Wassup.Skills.SkillMath.InBodyReach(
+                        candidateXZTiles[i].x - hostXZTiles.x,
+                        candidateXZTiles[i].y - hostXZTiles.y,
+                        rangeTiles, hostBodyRadiusTiles, bodyR))
+                    outIndices[count++] = i;
             }
             return count;
         }
