@@ -30,6 +30,11 @@ MonoBehaviour:
   rangePulseSpeed: 3
   rangeFillAlphaUnderRing: 0.12
   rangeRingAlpha: 0.95
+  aimRingStyle:
+    color: {r: 0.55, g: 1, b: 0.25, a: 1}
+    fillAlpha: 0.4
+    lineAlpha: 0.95
+    pulse: 0
   rangeInvalidDesaturate: 0.75
   rangeTargetMarkColor: {r: 1, g: 0.28, b: 0.24, a: 0.9}
   rangeInvalidColor: {r: 1, g: 0.16, b: 0.13, a: 1}

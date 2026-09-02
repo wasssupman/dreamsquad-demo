@@ -95,6 +95,10 @@ namespace Wassup.Core
         private SpriteRenderer _rangeRing;
         private Material _rangeRingMat;
         private bool _rangeRingMatMissing;   // 미배선 경고 1회 게이트
+        // attach-range-preview 0b — 링 전용 경로(`SetAreaRange`)의 스타일. null = 배치 사거리 링 규칙
+        // (`rangeColor`·`rangeRingAlpha`·`rangeFillAlphaUnderRing`). `ClearPlacementRange` 가 리셋한다 —
+        // 배치 링이 다음에 뜰 때 조준 스타일이 남아 있으면 안 된다.
+        private Wassup.Data.RangeRingStyle? _ringStyleOverride;
         private static readonly int RingHalfExtentId = Shader.PropertyToID("_HalfExtent");
         private static readonly int RingRangeId = Shader.PropertyToID("_Range");
         private static readonly int RingQuadCellsId = Shader.PropertyToID("_QuadCells");
@@ -910,7 +914,23 @@ namespace Wassup.Core
         // 그래서 채움 tint 와 **같은 주기**로 돈다(Update).
         private void ApplyRingTint()
         {
-            if (_rangeRingMat == null) return;
+            if (_rangeRingMat == null || _tileSet == null) return;
+            // attach-range-preview 0b — 링 전용 경로는 자기 스타일을 쓴다. 유효성(배치 전용)은 보지 않는다.
+            if (_ringStyleOverride.HasValue)
+            {
+                var s = _ringStyleOverride.Value;
+                var sc = s.color; sc.a = s.lineAlpha;
+                float fill = s.fillAlpha;
+                if (s.pulse)
+                {
+                    // 사거리 채움 펄스와 같은 각속도. 0.5~1.0 배로만 흔든다 — 꺼지는 순간이 없어야 범위가 안 사라진다.
+                    float k = 0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
+                    fill *= k;
+                }
+                _rangeRingMat.SetColor(RingColorId, sc);
+                _rangeRingMat.SetFloat(RingFillAlphaId, fill);
+                return;
+            }
             var c = _tileSet.rangeColor;
             // unit 5 커밋4 — 무효면 **채도만** 떨어뜨린다. 붉히지 않는다: 빨강은 고스트 충돌
             // 전용이고(사용자 조건 5), 한 색에 「왜 안 되는지」와 「어디까지 닿는지」를 겹치면
@@ -954,18 +974,16 @@ namespace Wassup.Core
             ApplyTargetMarkVisibility();   // unit 7 — 빨강을 시간으로 가른다(위 계약)
         }
 
-        // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는
-        // 중심도 피해 범위라 포함한다 (range-preview unit 3).
-        // `squareShape` — 칠하는 모양이 **정사각형**인가.
+        // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비운다 (range-preview unit 3).
         //
-        // ⚠ 기본은 false(사거리 술어를 그대로 따르는 둥근 모양)다. distance-based-range unit 5:
-        // **표기는 판정에서 나온다.** 사거리가 몸 기준 거리로 바뀐 뒤(unit 4a) 프리뷰만 정사각형으로
-        // 남으면 사거리 2의 정대각 칸이 밝게 켜지는데 그 칸의 적은 안 맞는다 — 화면이 규칙을
-        // **틀리게 가르치는** 상태다.
+        // distance-based-range unit 5: **표기는 판정에서 나온다.** 사거리가 몸 기준 거리로 바뀐 뒤(unit 4a)
+        // 프리뷰만 정사각형으로 남으면 사거리 2의 정대각 칸이 밝게 켜지는데 그 칸의 적은 안 맞는다 —
+        // 화면이 규칙을 **틀리게 가르치는** 상태다.
         //
-        // true 로 부르는 곳은 **스킬 조준·텔레그래프** 하나뿐이고, 그건 거짓말이 아니라
-        // **사실**이다 — 스킬 광역의 멤버십은 `TileAoe.IsInTileRange`(정사각형)로 남아 있다
-        // (결정 4 — 저작이 칸 단위 조준이다). 표기가 그 자를 따라가는 것이 맞다.
+        // ⚠ 옛 `squareShape` 인자(스킬 조준·텔레그래프의 사각 채움)는 attach-range-preview 0b 에서 **삭제**됐다.
+        // 스킬 광역이 원(`RangeMetric.AreaCircle`, 0a)이 되어 사각 표기는 거짓말이 됐고, 그 경로는 상한
+        // 술어 없이 스캔 박스 전체를 칠하는 결함((2N+5)² 칸)도 안고 있었다. 조준·텔레그래프는 아래
+        // `SetAreaRange`(링 전용) 로 간다. 정확한 사각이 다시 필요해지면 셰이더 `_HalfExtent` 가 그린다.
         // `selfBodyRadiusTiles` — unit 9. 도달 = `사거리 + 내몸 + 상대몸`이고 링은 앞의 둘을
         // 그린다(대상 몸은 대상마다 달라 마크가 말한다). 상수 시절엔 이 값이 0.5 고정이었다.
         // `tileRange` 는 **연속 반지름**이다(unit 9) — 저작 `attackRange` 를 그대로 받는다.
@@ -976,8 +994,7 @@ namespace Wassup.Core
         // 반 칸을 잃는다 — 그게 이 spec 이 은퇴시킨 「대표 셀」 그 자체다.
         // 그래서 중심은 `centerOffsetTiles` 로 따로 받는다. 반폭 인자는 rev 3(몸=원)에서 은퇴.
         public void SetPlacementRange(Vector2Int anchor, float tileRange, bool includeCenter = false,
-                                      bool squareShape = false, float selfBodyRadiusTiles = 0f,
-                                      Vector2 centerOffsetTiles = default)
+                                      float selfBodyRadiusTiles = 0f, Vector2 centerOffsetTiles = default)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
@@ -997,7 +1014,7 @@ namespace Wassup.Core
                 // 판정과 **같은 본체**를 지난다 — 여기서 모양을 다시 그리지 않는다.
                 // 타일 단위 좌표를 그대로 넣으므로 `tileSize = 1`.
                 // 표준 1×1 상대(적 티어 「소」) — 점으로 보면 사거리 1 의 대각이 빠진다.
-                if (!squareShape && !Wassup.Battle.Combat.AttackReach.InReach(
+                if (!Wassup.Battle.Combat.AttackReach.InReach(
                         new Unity.Mathematics.float3(cx, 0f, cz),
                         new Unity.Mathematics.float3(cell.x, 0f, cell.y),
                         tileRange, 1f, selfBodyRadiusTiles,
@@ -1006,13 +1023,31 @@ namespace Wassup.Core
                 _rangeCells.Add(cell);
             }
             // unit 5 — 윤곽. **채움과 같은 입력**에서 나온다(모양을 다시 그리지 않는다).
-            // 스킬 조준(squareShape)은 자가 정사각형이라 링을 띄우지 않는다 — 거짓말이 되기 때문.
-            if (squareShape) HideRangeRing();
             // ⚠ **셰이더 인자는 술어와 1:1 이다**(rev 3): 몸 = 원 → `_HalfExtent` 0.
             // 링 반경 = 사거리 + 내몸 + 표준 상대 — 「그림자가 링에 닿으면 안」이 판정식과 동치다.
-            else ShowRangeRing(new Vector2(cx, cz),
+            ShowRangeRing(new Vector2(cx, cz),
                     tileRange + selfBodyRadiusTiles + Wassup.Skills.SkillMath.StandardBodyRadiusTiles);
             ApplyRangeTint();
+        }
+
+        // attach-range-preview 0b — **링 전용** 범위 표기. 타일을 칠하지 않고 SDF 링(선 + 내부 채움)만 띄운다.
+        // 소비처: 액티브 셀 조준·착탄 텔레그래프(조준 셀 중심, 반경 N + 0.5 — `RangeMetric.AreaCircle` 의
+        // 도형 가장자리) · 카드 부착 프리뷰(host 몸 중심, unit 2). 반경은 **판정 입력의 복사본**이고 표준 상대
+        // 항을 더하지 않는다(README 계약 2 — 「대상 그림자가 링에 닿으면 걸린다」가 판정식과 동치).
+        // ⚠ 가드 체인은 형제(`SetPlacementRange`)와 같다 — `ApplyRingTint` 가 `_tileSet` 을 역참조한다.
+        // ⚠ 순서 고정: Clear → 스타일 → Show. Clear 가 스타일을 리셋하므로 거꾸로면 방금 넣은 스타일이 지워진다.
+        public void SetAreaRange(Vector2 centerTiles, float radiusTiles)
+        {
+            if (_tileSet == null) return;
+            SetAreaRange(centerTiles, radiusTiles, _tileSet.aimRingStyle);
+        }
+
+        public void SetAreaRange(Vector2 centerTiles, float radiusTiles, in Wassup.Data.RangeRingStyle style)
+        {
+            if (grid == null || _tileSet == null || radiusTiles <= 0f) return;
+            ClearPlacementRange();
+            _ringStyleOverride = style;
+            ShowRangeRing(centerTiles, radiusTiles);
         }
 
         // defender-directional-volley unit 9 — 임의 셀 집합 점등(방향 레인). 사각 범위와
@@ -1051,6 +1086,7 @@ namespace Wassup.Core
         public void ClearPlacementRange()
         {
             HideRangeRing();      // unit 5 — 채움과 수명을 공유한다
+            _ringStyleOverride = null;   // 0b — 다음 페인트는 자기 스타일을 다시 정한다
             HideTargetMarks();    // unit 7 — 마크도 같은 수명
             if (_rangeCells.Count == 0) return;
             if (_rangeTilemap != null)

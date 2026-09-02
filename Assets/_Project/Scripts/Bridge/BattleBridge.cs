@@ -2638,9 +2638,10 @@ namespace Wassup.Bridge
                     if (vfxSpawner != null)
                     {
                         var tornadoWorld = GridToWorldCenter(tile);
+                        // attach-range-preview 0b — 당김 판정은 원 `N + 칸 반폭 (+ 몸)` 이라 VFX 링도 그 가장자리.
                         vfxSpawner.SpawnTornado(
                             new Vector3(tornadoWorld.x, 0f, tornadoWorld.z),
-                            tornadoTiles * tileSize, skill.durationSec);
+                            (tornadoTiles + Wassup.Skills.SkillMath.CellHalfWidthTiles) * tileSize, skill.durationSec);
                     }
                     break;
                 }
@@ -5073,7 +5074,10 @@ namespace Wassup.Bridge
                         hitH, data.hitVfxScale);
                 }
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
-                    vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
+                    // attach-range-preview 0b — 착탄 판정은 `N + 칸 반폭 (+ 몸)` 이라 버스트도 그 가장자리까지.
+                    // 이벤트의 radiusWorld(N × tileSize)는 트레이스에 기록되므로 건드리지 않고 뷰에서 더한다.
+                    vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z),
+                        evt.radiusWorld + Wassup.Skills.SkillMath.CellHalfWidthTiles * tileSize);
 
                 // camera-direction unit 2 — 헤비(광역) 착탄 구두점: 줌 펄스. 시각 라우팅
                 // (hitPrefab 유무)과 무관하게 TileAoe 착탄이면 발동. additive 전용 — 카메라 탈취 없음.
@@ -8116,15 +8120,18 @@ namespace Wassup.Bridge
         private void PinSkillTelegraph(Vector2Int cell, int tileRange)
             => PinCenteredRange(cell, tileRange, RangeDisplayOwner.SkillTelegraph);
 
-        // 스킬 조준·텔레그래프 공통 — 중심 포함 사각 범위 + 소유권 전환. 둘은 owner 만 다르다.
-        // 리셋을 여기 손으로 얹지 않는다: SetRangeOwner 가 Placement 외 전환에서 일괄 처리한다
-        // (이 두 경로는 aimStyle=false 로 그려져 _rangeAimStyle 가드 밖이라 반드시 반납이 필요하다).
+        // 스킬 조준·텔레그래프 공통 — 조준 셀 중심의 **원 링** + 소유권 전환. 둘은 owner 만 다르다.
+        // 리셋을 여기 손으로 얹지 않는다: SetRangeOwner 가 Placement 외 전환에서 일괄 처리한다.
+        //
+        // attach-range-preview 0b — 옛 사각 타일 채움(`squareShape`)은 은퇴. 스킬 광역이 원
+        // (`RangeMetric.AreaCircle`, 반경 N + 칸 반폭 + 대상 몸)이 됐으므로 표기도 그 자를 복사한다:
+        // 중심 = 조준 셀 중심(concrete 가 `ctx.CellCenter` 를 넘기는 것과 같은 점), 반경 = N + 0.5
+        // (도형 가장자리 — 대상 몸은 그림자가 말한다). 사용자 결정 2026-09-02 D6.
         private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)
         {
             if (tilemapMapView == null) return;
-            // squareShape: true — 스킬 광역의 멤버십이 정사각형으로 남아 있다(결정 4).
-            // 표기가 그 자를 따라가는 것이 맞다 — 여기만 예외다.
-            tilemapMapView.SetPlacementRange(center, tileRange, includeCenter: true, squareShape: true);
+            tilemapMapView.SetAreaRange(new Vector2(center.x, center.y),
+                tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles);
             SetRangeOwner(owner);
         }
 

@@ -62,6 +62,14 @@ namespace Wassup.Data
                  "모양(두께·라이너·페더)은 PlacementRangeRing.mat 인스펙터에서.")]
         [Range(0f, 1f)] public float rangeRingAlpha = 0.95f;
 
+        // dreamcatcher-attach-range-preview 0b — 액티브 셀 조준·텔레그래프의 링 스타일.
+        [Tooltip("액티브 스킬 셀 조준·착탄 텔레그래프의 **원 링** 스타일(반경 = N + 0.5, 조준 셀 중심).\n" +
+                 "배치 사거리 링과 다른 점: 작은 반경(1.5~2.5칸) + 손가락이 중심을 가리므로 **채움이 주신호**다 — " +
+                 "채움 알파를 배치 링(0.12)보다 훨씬 높게 둔다. 사각 타일 채움(0.85) 시절과 같은 정보량을 목표로 " +
+                 "실기기에서 튠(사용자 결정 2026-09-02 D6).\n" +
+                 "색은 배치 링(라임)과 같은 가족이어도 된다 — 둘이 한 화면에 뜨지 않는다.")]
+        public RangeRingStyle aimRingStyle = new RangeRingStyle(new Color(1f, 0.85f, 0.1f, 1f), 0.4f, 0.95f);
+
         [Tooltip("배치 무효일 때 사거리(링+채움)의 **채도 강하** 정도. 1 = 완전 회색.\n" +
                  "⚠ **붉히지 않는다**(사용자 결정 2026-08-31). 빨강은 고스트 충돌 전용이다 — " +
                  "「왜 안 되는지」는 footprint 가 말하고 사거리는 「어디까지 닿나」만 말한다. " +
