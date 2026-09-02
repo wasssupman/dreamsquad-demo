@@ -26,8 +26,16 @@ namespace Wassup.Tests.EditMode
             var atk = ScriptableObject.CreateInstance<Wassup.Data.AttackUnitData>();
             try
             {
-                Assert.AreEqual(SkillMath.StandardBodyRadiusTiles, atk.bodyRadius, 1e-6f,
+                Assert.AreEqual(SkillMath.StandardBodyRadiusTiles, atk.BodyRadiusTiles, 1e-6f,
                     "AttackUnitData 기본 몸(티어 소)이 표기 기준과 갈렸다");
+                // unit 13 — 티어표 그 자체. 보스만 개별 float 를 읽는다.
+                atk.bodySize = Wassup.Data.AttackUnitData.BodySize.Medium;
+                Assert.AreEqual(0.5f, atk.BodyRadiusTiles, 1e-6f);
+                atk.bodySize = Wassup.Data.AttackUnitData.BodySize.Large;
+                Assert.AreEqual(1.0f, atk.BodyRadiusTiles, 1e-6f);
+                atk.bodySize = Wassup.Data.AttackUnitData.BodySize.Boss;
+                atk.bodyRadius = 0.615f;
+                Assert.AreEqual(0.615f, atk.BodyRadiusTiles, 1e-6f);
             }
             finally
             {

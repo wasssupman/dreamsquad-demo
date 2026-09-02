@@ -29,6 +29,7 @@ MonoBehaviour:
   attackRange: 1
   attackCooldown: 1.2
   bodyRadius: 0.615
+  bodySize: 3
   attackTargetCount: 1
   projectile: {fileID: 0}
   hitDelaySec: 0.3

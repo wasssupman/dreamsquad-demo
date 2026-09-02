@@ -99,6 +99,20 @@ namespace Wassup.Data
         // 일반 유닛끼리는 0.25 + 0.25 = 0.5 로 **종전과 도달 거리가 같다.**
         // 저작 키가 있는 에셋(보스 3종)만 자기 값을 유지하므로 그쪽은 재기준이 필요했다.
         [Min(0f)] public float bodyRadius = 0.25f;
+        // unit 13 (계약 1 rev 3, 2026-09-01 외부 세션) — 적 몸 크기는 **티어**다:
+        // 소 0.25 / 중 0.5 / 대 1.0 / 보스 개별(위 bodyRadius float). 표를 타입으로 강제해
+        // 「사거리 N」의 상대별 실거리를 유한하게 만든다 — 근거 없는 소수(0.4)가 저작될 수
+        // 없다. Large 는 예약(오늘 소비 0) — 첫 대형 적이 올 때 코드 무변으로 켠다.
+        // ⚠ bodyRadius 는 Boss 티어에서만 읽힌다. 시트에 두 컬럼 다 없음 — SO 저작으로 끝.
+        public enum BodySize { Small = 0, Medium = 1, Large = 2, Boss = 3 }
+        public BodySize bodySize = BodySize.Small;
+        public float BodyRadiusTiles => bodySize switch
+        {
+            BodySize.Medium => 0.5f,
+            BodySize.Large => 1.0f,
+            BodySize.Boss => bodyRadius,
+            _ => Wassup.Skills.SkillMath.StandardBodyRadiusTiles,   // Small = 표준 소형 상대
+        };
         // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
         // forced to 1 (guardian-only) by AttackSystem.
