@@ -463,7 +463,8 @@ namespace Wassup.Core
 
         // ⚠ **footprint 전체를 덮는다**(unit 10). 팝이 손끝 한 칸에만 터지면 다칸 유닛이
         // 실제로 확정될 자리를 화면이 좁게 가르친다 — hover 를 rect 로 넓힌 것과 같은 이유다.
-        // 팝은 **rect 중심**에 서고 **긴 변**에 맞춰 커진다(정사각 스프라이트라 축별 스케일 불가).
+        // 팝은 **rect 중심**에 서고 footprint rect 에 축별 스케일로 맞는다(흰 정사각 스프라이트를
+        // localScale 로 늘림 — 「축별 불가」였던 구 주석은 오판, 직사각 footprint 도입으로 드러남).
         public void PulsePlacementHover(Vector2Int anchor, Vector2Int size, bool valid)
         {
             if (grid == null) return;
@@ -476,14 +477,14 @@ namespace Wassup.Core
             var popLocal = grid.CellToLocalInterpolated(new Vector3(cx + 0.5f, cy + 0.5f, 0f));
             popLocal.z = -PropGroundLift;
             sr.transform.localPosition = popLocal;
-            _commitPopSpan = Mathf.Max(rect.width, rect.height);
+            _commitPopSpan = new Vector2Int(rect.width, rect.height);
             Color c = valid ? commitPopValidColor : commitPopInvalidColor;
             if (_commitPopCo != null) StopCoroutine(_commitPopCo);
             _commitPopCo = StartCoroutine(CommitPopCoroutine(sr, c));
         }
 
-        // 확정 팝이 덮을 칸 수(긴 변). `PulsePlacementHover` 가 매 호출 갱신한다.
-        private int _commitPopSpan = 1;
+        // 확정 팝이 덮을 칸 수(가로×세로). `PulsePlacementHover` 가 매 호출 갱신한다.
+        private Vector2Int _commitPopSpan = Vector2Int.one;
 
         private SpriteRenderer EnsureCommitPop()
         {
@@ -772,8 +773,10 @@ namespace Wassup.Core
 
         private IEnumerator CommitPopCoroutine(SpriteRenderer sr, Color color)
         {
-            // unit 10 — footprint 의 긴 변만큼 덮는다(1×1 이면 종전과 동일).
-            float cellWorld = (grid != null ? grid.cellSize.x : 1f) * Mathf.Max(1, _commitPopSpan);
+            // unit 10 — footprint rect 전체를 덮는다(1×1 이면 종전과 동일).
+            float cs = grid != null ? grid.cellSize.x : 1f; // rect 보드·균일 cellSize 전제(ConfigureGrid)
+            float w = cs * Mathf.Max(1, _commitPopSpan.x);
+            float h = cs * Mathf.Max(1, _commitPopSpan.y);
             sr.gameObject.SetActive(true);
             float t = 0f;
             float dur = Mathf.Max(commitPopDuration, 0.01f);
@@ -781,8 +784,8 @@ namespace Wassup.Core
             {
                 float u = t / dur;
                 float ease = 1f - (1f - u) * (1f - u); // OutQuad — 빠르게 커졌다 감속 안착
-                float s = Mathf.Lerp(commitPopStartScale, commitPopEndScale, ease) * cellWorld;
-                sr.transform.localScale = new Vector3(s, s, 1f);
+                float k = Mathf.Lerp(commitPopStartScale, commitPopEndScale, ease);
+                sr.transform.localScale = new Vector3(k * w, k * h, 1f);
                 color.a = Mathf.Lerp(commitPopStartAlpha, 0f, ease);
                 sr.color = color;
                 t += Time.unscaledDeltaTime; // 배치 슬로우모 무관 실시간
