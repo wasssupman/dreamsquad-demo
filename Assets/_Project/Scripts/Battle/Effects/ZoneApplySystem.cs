@@ -18,25 +18,60 @@ namespace Wassup.Battle.Effects
     [UpdateBefore(typeof(Wassup.Battle.Effects.ModifierApplySystem))]
     public partial struct ZoneApplySystem : ISystem
     {
+        // unit 18/19 규율 — 신규 lookup 은 **필드 형태**(로컬 SystemAPI 형태는 Burst NRE 재발 이력).
+        Unity.Entities.ComponentLookup<Wassup.Battle.Units.HitRadius> _bodyRadiusLookup;
+
+        // unit 19 — 존 틱 판정 스냅샷: 원(중심·반경) + 효과 버퍼 구간.
+        private struct ZoneSnap
+        {
+            public float2 centerXZ;   // 월드
+            public int radiusTiles;
+            public int effStart;
+            public int effCount;
+        }
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<HazardSingleton>();
             state.RequireForUpdate<EnemyCcEventsSingleton>();
             state.RequireForUpdate<FlowFieldSingleton>();
+            _bodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var hazardSingleton = SystemAPI.GetSingleton<HazardSingleton>();
-            if (hazardSingleton.cellToEffects.Count() == 0) return;
+            _bodyRadiusLookup.Update(ref state);
 
             var ccQueue = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
             bool hasStatQueue = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasDotQueue = SystemAPI.TryGetSingleton<DotApplyEventsSingleton>(out var dotEvents);
             bool hasRuntimeEvents = SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents);
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
+            float invT = flowField.tileSize > 1e-6f ? 1f / flowField.tileSize : 1f;
+
+            // unit 19 — 셀 해시 브로드페이즈 은퇴. 해저드를 스냅샷하고 피해자 × 존 원으로
+            // 연속 판정한다(존 수 ≤ 수십, 피해자 ≤ 수십 — 곱해도 싸다). 겹친 동일 슬롯 존의
+            // 적용 순서는 종전(맵 삽입 순서 = 청크 순서)과 같은 결이라 결정론 등급 무변.
+            var zones = new Unity.Collections.NativeList<ZoneSnap>(Unity.Collections.Allocator.Temp);
+            var zoneEffects = new Unity.Collections.NativeList<HazardEffect>(Unity.Collections.Allocator.Temp);
+            foreach (var (hazard, effects) in
+                     SystemAPI.Query<RefRO<Hazard>, DynamicBuffer<HazardEffectsBuffer>>())
+            {
+                if (hazard.ValueRO.radiusTiles < 0 || effects.Length == 0) continue;
+                float3 c = GridMath.CellToWorldCenter(
+                    hazard.ValueRO.originCell, flowField.tileSize, origin: flowField.origin);
+                var snap = new ZoneSnap
+                {
+                    centerXZ = new float2(c.x, c.z),
+                    radiusTiles = hazard.ValueRO.radiusTiles,
+                    effStart = zoneEffects.Length,
+                    effCount = effects.Length,
+                };
+                for (int i = 0; i < effects.Length; i++) zoneEffects.Add(effects[i].effect);
+                zones.Add(snap);
+            }
+            if (zones.Length == 0) { zones.Dispose(); zoneEffects.Dispose(); return; }
 
             // summon-patrol-defender unit 0 — 진영 게이트. 이전엔 `PathFollowState` 보유만으로
             // 존 효과를 걸었는데, 그건 "이동체 = 적"이라는 암묵 전제에 기댄 것이었다
@@ -51,11 +86,21 @@ namespace Wassup.Battle.Effects
             {
                 if (((int)faction.ValueRO.value & (int)Faction.EnemyUnit) == 0) continue;
 
-                int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
-                if (!hazardSingleton.cellToEffects.TryGetFirstValue(cell, out var effect, out var iterator)) continue;
-
-                do
+                float3 vpos = transform.ValueRO.Position;
+                // unit 19 — 멤버십 = 원(반경 + 칸 반폭) + 피해자 몸. 광역·회오리와 같은 자.
+                float bodyR = _bodyRadiusLookup.HasComponent(entity) ? _bodyRadiusLookup[entity].value : 0f;
+                // 트레이스 페이로드용 피해자 셀(판정 아님 — 로그 축).
+                int2 cell = GridMath.WorldToCell(vpos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
+                for (int z = 0; z < zones.Length; z++)
                 {
+                    var zone = zones[z];
+                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                            (vpos.x - zone.centerXZ.x) * invT, (vpos.z - zone.centerXZ.y) * invT,
+                            zone.radiusTiles, Wassup.Skills.SkillMath.CellHalfWidthTiles, bodyR))
+                        continue;
+                    for (int ei = 0; ei < zone.effCount; ei++)
+                    {
+                    var effect = zoneEffects[zone.effStart + ei];
                     if (!PlacementLayers.CanTarget(
                             effect.targetTraversalLayers,
                             path.ValueRO.traversalLayers)) continue;
@@ -107,8 +152,11 @@ namespace Wassup.Battle.Effects
                             scalar = effect.param1,
                         });
                     }
-                } while (hazardSingleton.cellToEffects.TryGetNextValue(out effect, ref iterator));
+                    }
+                }
             }
+            zones.Dispose();
+            zoneEffects.Dispose();
         }
 
         private static DotEffect HazardEffectToDotEffect(in HazardEffect hazardEffect)

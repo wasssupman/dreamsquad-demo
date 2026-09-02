@@ -21,7 +21,6 @@ namespace Wassup.Tests.EditMode
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
-        private NativeParallelMultiHashMap<int2, HazardEffect> _cellToEffects;
         private NativeQueue<EnemyCcEvent> _ccQueue;
         private NativeQueue<StatModifierApplyEvent> _statQueue;
         private NativeQueue<DotApplyEvent> _dotQueue;
@@ -53,10 +52,6 @@ namespace Wassup.Tests.EditMode
                 version = 1,
             });
 
-            _cellToEffects = new NativeParallelMultiHashMap<int2, HazardEffect>(8, Allocator.Persistent);
-            var hazardEntity = _em.CreateEntity();
-            _em.AddComponentData(hazardEntity, new HazardSingleton { cellToEffects = _cellToEffects });
-
             _ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
             _em.AddComponentData(_em.CreateEntity(), new EnemyCcEventsSingleton { queue = _ccQueue });
 
@@ -73,7 +68,6 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
-            if (_cellToEffects.IsCreated) _cellToEffects.Dispose();
             if (_ccQueue.IsCreated) _ccQueue.Dispose();
             if (_statQueue.IsCreated) _statQueue.Dispose();
             if (_dotQueue.IsCreated) _dotQueue.Dispose();
@@ -194,18 +188,30 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(pathEnemy, evt.target);
         }
 
+        // unit 19 — 존은 셀 해시가 아니라 **해저드 엔티티**(원 정의 + 효과 버퍼)다.
         private void AddZoneEffect(CcKind kind, float param1, float restDuration = 2f,
             PlacementLayer targetLayers = PlacementLayer.None)
         {
-            _cellToEffects.Add(ZoneCell, new HazardEffect
+            var hz = _em.CreateEntity();
+            _em.AddComponentData(hz, new Hazard
             {
-                kind = kind,
-                param1 = param1,
-                param2 = 0f,
-                restDuration = restDuration,
-                tickInterval = 0f,
-                element = DotElement.Fire,
-                targetTraversalLayers = (byte)targetLayers,
+                remainingLife = 100f,
+                originCell = ZoneCell,
+                radiusTiles = 0,   // SingleCell — 도달 = 0.5 + 피해자 몸
+            });
+            var buf = _em.AddBuffer<HazardEffectsBuffer>(hz);
+            buf.Add(new HazardEffectsBuffer
+            {
+                effect = new HazardEffect
+                {
+                    kind = kind,
+                    param1 = param1,
+                    param2 = 0f,
+                    restDuration = restDuration,
+                    tickInterval = 0f,
+                    element = DotElement.Fire,
+                    targetTraversalLayers = (byte)targetLayers,
+                },
             });
         }
 

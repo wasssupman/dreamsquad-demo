@@ -553,7 +553,6 @@ namespace Wassup.Bridge
         // season-gimmick-clockout unit 4 — 메테오 착탄 Walk 셀 선택 결정론 rng(matchSeed 파생, 매치당 seed).
         private Unity.Mathematics.Random _meteorRng;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
-        private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
         // continuous-agent-movement unit 0 — 판 단위 sim 필드 3종의 핸들.
         // goal flow field(Phase 9) / 방어유닛-지향 필드(boss-defender-field unit 1) /
@@ -938,7 +937,6 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
-            DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
             // time-manager H1 — BattleTimeScale singleton 도 다른 인프라 싱글턴과 대칭으로 파괴.
             // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
@@ -983,7 +981,6 @@ namespace Wassup.Bridge
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
-            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
         }
 
         private void DisposeCachedQueries()
@@ -1938,12 +1935,6 @@ namespace Wassup.Bridge
             _blockedCells = new Unity.Collections.NativeHashSet<Unity.Mathematics.int2>(64, Allocator.Persistent);
             var obstacleSingleton = _em.CreateEntity();
             _em.AddComponentData(obstacleSingleton, new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells });
-
-            // Hazard cell→effects map. HazardLifetimeSystem rebuilds it each frame.
-            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
-            _hazardCellToEffects = new Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect>(64, Allocator.Persistent);
-            var hazardSingleton = _em.CreateEntity();
-            _em.AddComponentData(hazardSingleton, new Wassup.Battle.Effects.HazardSingleton { cellToEffects = _hazardCellToEffects });
 
             // Fix 3 (task 10): seed visual RNG so jitter is reproducible per session.
             // match-seed-unification — 비주얼 시드도 matchSeed 계열에서 파생(맵과 decorrelated).

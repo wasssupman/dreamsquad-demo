@@ -118,9 +118,19 @@ namespace Wassup.Battle.Effects
             if (so == null) return Entity.Null;
 
             var e = em.CreateEntity();
+            // unit 19 — 존 원 정의(중심 셀 + 반경). 모양→반경 매핑은 셀 샘플러와 같은 규칙.
+            int zoneRadius = so.shape switch
+            {
+                HazardShape.SingleCell => 0,
+                HazardShape.Square3x3 => 1,
+                HazardShape.RadiusSquare => Unity.Mathematics.math.max(1, so.radius),
+                _ => -1,
+            };
             em.AddComponentData(e, new Hazard
             {
                 remainingLife = so.lifetime,
+                originCell = originCell,
+                radiusTiles = zoneRadius,
             });
 
             var cellsBuffer = em.AddBuffer<HazardCellsBuffer>(e);
