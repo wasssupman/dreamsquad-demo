@@ -441,6 +441,10 @@ namespace Wassup.Battle.Skills
                 // 본다(값 하나). 종전(중심점 in 도형)보다 넓게만 맞으므로 표기(칸 하이라이트)는
                 // 무통보 관용과 동류로 이번에 안 바꾼다 — 도형 윤곽 표기는 후속 후보.
                 float targetR = _hitRadius.HasComponent(e) ? _hitRadius[e].value : 0f;
+                // ⚠ 역수 가드 — `AttackReach.InReach` 와 같은 관용구. 테스트 월드처럼 흐름장이
+                // 없으면 `_tileSize` 가 0 으로 들어오고, 그대로 나누면 0/0 = NaN 이 모든 비교를
+                // false 로 만들어 **광역이 통째로 빈다**(구 셀 경로는 clamp 가 우연히 삼켰다).
+                float invT = _tileSize > 1e-6f ? 1f / _tileSize : 1f;
                 bool inRange;
                 if (metric == RangeMetric.Chebyshev)
                 {
@@ -448,14 +452,14 @@ namespace Wassup.Battle.Skills
                     // 몸이 점이면 종전 셀 멤버십과 같은 집합으로 퇴화한다(`BodyOverlapsSquare` 헤더).
                     var c = CellCenter(centerCell);
                     inRange = Wassup.Skills.SkillMath.BodyOverlapsSquare(
-                        (p.x - c.x) / _tileSize, (p.z - c.z) / _tileSize,
+                        (p.x - c.x) * invT, (p.z - c.z) * invT,
                         tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles, targetR);
                 }
                 else
                 {
                     // 원 도형 — 반경 합(민코프스키). 중심은 시전 지점 그대로(양자화 없음).
                     inRange = Wassup.Skills.SkillMath.InBodyReach(
-                        (p.x - center.x) / _tileSize, (p.z - center.z) / _tileSize,
+                        (p.x - center.x) * invT, (p.z - center.z) * invT,
                         tileRange, 0f, targetR);
                 }
                 if (!inRange) continue;
