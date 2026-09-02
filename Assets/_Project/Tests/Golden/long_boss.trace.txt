@@ -1,6 +1,6 @@
 LTV0
 scenario=long_boss
-configHash=8aec94283fa627b6
+configHash=36ffa86ac081df9e
 matchSeed=20260822
 stepDt=0.0166666675
 tickCount=3600

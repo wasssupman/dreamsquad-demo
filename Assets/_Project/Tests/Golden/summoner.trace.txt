@@ -1,6 +1,6 @@
 LTV0
 scenario=summoner
-configHash=8560a22cfddb24fa
+configHash=8e04ec813cd59e54
 matchSeed=20260822
 stepDt=0.0166666675
 tickCount=1800

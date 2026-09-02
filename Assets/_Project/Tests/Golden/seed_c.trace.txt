@@ -1,6 +1,6 @@
 LTV0
 scenario=seed_c
-configHash=d02bfe482db556f0
+configHash=4419aae6599f2534
 matchSeed=31337
 stepDt=0.0166666675
 tickCount=1800

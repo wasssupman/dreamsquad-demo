@@ -1,6 +1,6 @@
 LTV0
 scenario=restart
-configHash=07b9ac3148ee5f70
+configHash=44979cea4c6f55ba
 matchSeed=4242
 stepDt=0.0166666675
 tickCount=2400
