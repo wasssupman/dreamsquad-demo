@@ -25,6 +25,12 @@
   배치 링은 종전 값(`rangeColor` · `rangeFillAlphaUnderRing` · `rangeRingAlpha`) 그대로.
 - `Bridge/BattleBridge.cs:8122 PinCenteredRange` — `SetAreaRange(new Vector2(cell.x, cell.y), tileRange + 0.5f,
   _tileSet.aimRingStyle)` 로. 주석 「squareShape … 여기만 예외다」 삭제. `SetSkillAimCells`(포탈 단일 셀)는 무변.
+- **VFX 반경 2곳도 판정에 맞춘다**(표기 동시 변경의 연장): `BattleBridge.cs:~2642` 회오리 `SpawnTornado(…,
+  tornadoTiles * tileSize, …)` → `(tornadoTiles + CellHalfWidthTiles) * tileSize` · `ProjectileHitSystem.cs:~796`
+  운석 착탄 `radiusWorld = tileRange * tileSize` → `(tileRange + CellHalfWidthTiles) * tileSize`. 둘 다 뷰 값이라
+  sim 판정·골든 무변(`radiusWorld` 는 이벤트 페이로드지만 판정에 쓰이지 않는다 — 구현 시 소비처 확인).
+- stale 주석 정리: `BattleBridge.cs:8124~8126` · `TilemapMapView.cs:963~968`(「멤버십은 `IsInTileRange` 정사각형,
+  결정 4」 — 결정 4 는 unit 14 에서 폐기).
 
 ## 구현
 
@@ -41,6 +47,7 @@
 - [ ] Play: 액티브 셀 조준(`TileStatBurst` 계열, 토네이도)이 조준 셀 중심 **원**으로 뜨고 채움이 펄스한다.
       손가락이 중심을 가린 상태에서도 범위가 읽힌다. 발동 결과와 링이 일치.
 - [ ] Play: 메테오·보스 착탄 텔레그래프가 원 링으로 뜨고 위험 구간이 읽힌다(채움이 유일한 신호였던 경로).
+- [ ] Play: 회오리 링 VFX · 운석 착탄 VFX 의 원이 조준 링(N + 0.5)과 같은 크기다.
 - [ ] Play: 배치 드래그 사거리 링이 종전과 동일(스크린샷 A/B) — 오버라이드 없을 때 `ApplyRingTint` 경로 무변.
 - [ ] `squareShape` 문자열 0건 · `_rangeCells` 가 `SetAreaRange` 뒤 비어 있음(EditMode 또는 로그 단언).
 - [ ] `RangeDisplayContractTests` 초록 · sim 파일 변경 0 · 골든 바이트 무변.

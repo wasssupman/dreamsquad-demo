@@ -31,7 +31,10 @@
 
 - **식 하나.** 광역 원 = 투사체 TileAoe 착탄(`ProjectileHitSystem:747`)과 같은 `InBodyReach(d, N, 0.5, targetR)`.
   `SelfAreaBlastSkill` 은 이미 이 식이라 무변. 중심은 `ctx.Position(caster)` 그대로(양자화 없음 — 2×2 의
-  기하 중심이 셀 경계 위에 온다).
+  기하 중심이 셀 경계 위에 온다). ⚠ 기존 `Euclidean` arm(`InBodyReach(d, N, **0**, targetR)`)을 그대로 쓰면
+  안 된다 — 칸 반폭이 빠져 반경 2 의 정대각이 빠진다. 그래서 arm 이 하나 더 필요하다(`AreaCircle`).
+- **액티브 6종 중 판정이 바뀌는 것은 `slow_field`(TileStatBurst) 하나다.** 버프장 2종·회오리·운석은 이미 이 식,
+  포탈은 반경 0.5 점 판정 무변(README 전수 표).
 - **밸런스 파급 — 숨기지 않는다.** 사각 → 내접원은 연속 면적 −21.5%. 카드 4장(N=1)은 셀 기준 손실 0 이지만
   같은 concrete 를 쓰는 저작이 좁아진다:
 

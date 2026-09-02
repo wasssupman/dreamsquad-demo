@@ -42,6 +42,20 @@
 ⚠ `lullaby_dart` **자장가**는 `ApplyCcToTarget`(N=0) — 비공간이다. 「자장가 = AreaSleep」은 스킬 어휘일 뿐
 카드가 아니다.
 
+### 액티브 스킬 전수 (2026-09-02 · 6종이 전부) — 규칙 「조준 타일 중심 · 원 N + 0.5 · 몸 접촉 · range 0 = 그 한 타일」
+
+| 스킬 | range | concrete → 캐리어 | 판정(오늘) | 규칙 대비 |
+|---|---|---|---|---|
+| `slow_field` 둔화 장판 | 2 | `TileStatBurstSkill`(원샷) | **사각** 반폭 2.5 ⊕ 몸 | **0a 가 원으로** — 유일한 판정 변경 |
+| `power_surge` 공격폭증 · `rapid_fire` 속사 | 1 | `AllyBuffFieldSkill` → `AllyBuffField`(틱) | 원 1.5 + 아군 몸(2×2 → 1.0, 실효 2.5) | ✓ 무변 |
+| `tornado` 회오리 | 2 | `PullFieldSkill` → `TornadoField`(틱) | 원 2.5 + 몸 | ✓ 판정 무변 · VFX 반경 N → 0b 가 N+0.5 |
+| `meteor` 운석 | 2 | `TileMeteorSkill` → 투사체 TileAoe(원샷, 유일한 텔레그래프) | 원 2.5 + 몸 | ✓ 판정 무변 · 착탄 VFX 반경 N → 0b |
+| `portal` 포탈 | 0 | `PortalLink`(입구·출구 두 칸) | 입구 셀 중심 반경 0.5 **점** 판정(몸 없음, `TileRange` 미사용) | ✓ **무변** — 칸 내접원 = 「그 한 타일」. 몸 항을 더하면 스치기만 해도 텔레포트 + 재진입 루프 위험 |
+
+중심은 6종 전부 `ctx.CellCenter` 라 바꿀 것이 없다. 표기는 6종 공통으로 사각 채움(`squareShape`, 상한 술어
+부재로 r1 = 7×7 · r2 = 9×9)이라 0b 가 원으로 옮긴다. 영향 수 카운터(`Count*InTileRange`)는 로그 전용·UI 소비처 0
+이라 존치(Q8). 반경은 `int`(`SkillFiredEvent.TileRange`, `ceil`)라 소수 저작은 올림된다 — 비목표.
+
 ### 겸직 `tileRange` — kind 로 막는다 (값이 아니라)
 
 `tileRange` 는 kind 별로 **7가지** 뜻을 갖는다. 시트(`DcSheetApplier`)가 값을 덮으므로 값 추정은 금지.
