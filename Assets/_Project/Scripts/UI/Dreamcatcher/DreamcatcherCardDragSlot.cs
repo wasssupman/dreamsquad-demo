@@ -52,6 +52,9 @@ namespace Wassup.UI
         // dreamcatcher-attach-lockon — 조준 시작 attachable 스냅샷(부착수는 드래그 중 불변).
         private readonly System.Collections.Generic.List<(Entity entity, Rect rect)> _defRectBuf = new();
         private readonly System.Collections.Generic.HashSet<Entity> _attachable = new();
+        // dreamcatcher-attach-range-preview unit 3 — 이 카드의 공간 spec(드래그 시작 1회, managed SO 읽기는 per-frame 금지).
+        // None 이면 어떤 락온에도 링을 켜지 않는다(계약 3 — 채널 무접촉).
+        private DcRangeSpec _attachRangeSpec;
         private bool _enemyMarkHoverValid; // 적 표식: 현재 호버가 유효(미표식 적)인가
         private bool _enemyMarkOnUnit;     // 적 표식: 손가락이 아군 유닛 위(무효 사유 구분 — unit 3 브리핑)
 
@@ -264,6 +267,8 @@ namespace Wassup.UI
                     if (_view.Controller.CanAttachMore(e) && _view.Bridge.WouldDreamcatcherCardApply(e, slot.card))
                         _attachable.Add(e);
                 }
+                // attach-range-preview unit 3 — 카드의 범위 도형은 드래그 동안 불변이라 여기서 1회.
+                _attachRangeSpec = DcRangeCatalog.ResolveCard(slot.card);
                 _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.AttachAim, _attachable);
             }
             else if (_mode == AimMode.EnemyMark)
@@ -492,6 +497,9 @@ namespace Wassup.UI
             _view.Focus?.End(); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 정리
             ClearHover();
             ClearAimRange();
+            // attach-range-preview unit 3 — 하드 클리어(커밋·취소·OnDisable·ForceClose 전부 여기로 모인다).
+            _view.Bridge?.ClearAttachPreview();
+            _attachRangeSpec = default;
             _aimCell = null;
             _portalEntryCell = null;
             if (_activeAiming)
@@ -760,6 +768,18 @@ namespace Wassup.UI
             if (found != _hoverEntity && found != Entity.Null && _attachable.Contains(found)
                 && _view.Bridge.TryGetUnitView(found, out var lockView) && lockView != null)
                 lockView.PlayPunch();
+
+            // dreamcatcher-attach-range-preview unit 3 — 카드 범위 링은 **유효 락온 전환 순간**에만 arm/clear
+            // (계약 8 · Q5). 히스테리시스 뒤라 밀집 손끝 흔들림에 옮겨 다니지 않고, 추종은 브리지 LateUpdate 가
+            // 한다. 무효 락온(full 3/3·비기여)은 표시 0 — 「왜 안 붙나」는 리티클 invalid 폼·콜아웃이 말한다.
+            if (found != _hoverEntity && _view.Bridge != null)
+            {
+                if (found != Entity.Null && _attachable.Contains(found) && focusCfg != null
+                    && _attachRangeSpec.shape != DcRangeShape.None)
+                    _view.Bridge.SetAttachPreview(found, _attachRangeSpec, focusCfg.attachRangeStyle);
+                else
+                    _view.Bridge.ClearAttachPreview();
+            }
 
             // 계약 #6 — 전체 빨강 틴트 제거. 정체 신호는 리티클(위치)+콜아웃(정체).
             _hoverCell = cell;
