@@ -58,7 +58,8 @@
 
 ## Follow-up (닫기 전 필수)
 
-1. **골든 정본 조건 결정** — A) BattleScene 직접 Play(디스크 SO, 재현 가능) / B) 로그인 후 전투 진입(시트 값, 실제 조건).
+1. **골든 정본 조건 결정**(2026-09-03 사용자: **보류** — HEAD 골든 유지, 이 세션에서 결정하지 않음) — A) BattleScene 직접
+   Play(디스크 SO, 재현 가능) / B) 로그인 후 전투 진입(시트 값, 실제 조건).
    결정 후 Play 중 `Wassup/Battle/Sim Harness/Regenerate Golden Corpus` 1회 → `Verify` 2회 일치 → **골든만 담은 커밋**
    (`docs/spec/battle-sim-extraction/golden-corpus.md` 동반). 기대: A 면 스크래치 `golden_post0a/` 와 바이트 동일.
 2. **unit 4 육안·실기기** (`4_play_verification.md` A~F): dim 아래 엄지가 host 위에서도 궁지폭발 채움이 1초 안에 읽히는가
