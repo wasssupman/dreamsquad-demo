@@ -82,5 +82,14 @@ namespace Wassup.UI
         public bool enableFocusTint = true;
         public Color focusTintValid = new Color(0.60f, 1f, 1f);   // 부착 가능 — 시안 캐스트
         public Color focusTintInvalid = new Color(1f, 0.52f, 0.56f); // 부착 불가 — 붉은 캐스트
+
+        [Header("G · 카드 범위 링 (dreamcatcher-attach-range-preview)")]
+        // 유효 락온 순간 host 몸 중심 바닥에 뜨는 카드 적용 범위 링. 링은 dim **아래** 월드 캐리어라
+        // 함께 감광되고(α .42), 반경 1.5칸은 엄지 접촉면 크기라 **채움이 주신호**다(결정 D1).
+        // 색 규칙: 시안 *계열*이되 리티클/base-ring 의 (0.42, 0.95, 1) 과 **같은 값 금지** — dim 곱 후
+        // 「죽은 시안」으로 읽힌다. confirmPulseColor 가족(밝은 쪽)에서 시작해 실기기에서 튠.
+        // 청보라 보드에서 실패하면 따뜻한 무채(달빛, 1 / 0.92 / 0.7 계열) 2안.
+        public Wassup.Data.RangeRingStyle attachRangeStyle
+            = new Wassup.Data.RangeRingStyle(new Color(0.72f, 1f, 0.96f, 1f), 0.4f, 0.9f);
     }
 }

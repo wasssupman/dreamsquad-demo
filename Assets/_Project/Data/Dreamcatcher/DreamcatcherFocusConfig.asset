@@ -56,3 +56,8 @@ MonoBehaviour:
   enableFocusTint: 1
   focusTintValid: {r: 0.6, g: 1, b: 1, a: 1}
   focusTintInvalid: {r: 1, g: 0.52, b: 0.56, a: 1}
+  attachRangeStyle:
+    color: {r: 0.72, g: 1, b: 0.96, a: 1}
+    fillAlpha: 0.4
+    lineAlpha: 0.9
+    pulse: 0

@@ -3472,6 +3472,9 @@ namespace Wassup.Bridge
             // 배치 마크 추적 — 적이 움직였으니(sim 은 Update, 여긴 그 뒤) 마크도 따라간다.
             if (_placementMarkLive && _rangeOwner == RangeDisplayOwner.Placement)
                 RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit);
+            // attach-range-preview unit 2 — 부착 프리뷰 추종(host 재배치·사망을 sim 위치에서 다시 읽는다).
+            if (_attachPreviewLive && _rangeOwner == RangeDisplayOwner.AttachPreview)
+                RedrawAttachPreview();
             ReconcileStatusFx();
             ReconcilePickupViews();
             ReconcileResignationViews();
@@ -7906,7 +7909,10 @@ namespace Wassup.Bridge
         // PlacementAim = defender-directional-volley unit 9 (방향 지정 페이즈 레인 프리뷰).
         // 드롭 직후 드래그 세션의 CleanupSession 이 ClearPlacementRange 를 부르는데, 소유가
         // 이미 PlacementAim 이면 그 호출이 내 레인을 지우지 않는다 — 별도 소유자인 이유.
-        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph }   // PlacementAim 은 unit 11 에서 은퇴
+        // AttachPreview = dreamcatcher-attach-range-preview unit 2 (카드 드래그 중 host 몸 중심의 카드 범위 링).
+        // Placement 와 상호배제가 없다(Defender 모드 카드 드래그는 IsAiming 을 켜지 않는다) — Placement 가
+        // 소유 중이면 프리뷰가 **양보**한다(SetAttachPreview 참조).
+        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, AttachPreview }   // PlacementAim 은 unit 11 에서 은퇴
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
 
         // placement-thumb-occlusion — 소유권 전환의 유일한 지점. **모든** `_rangeOwner` 대입이 여기를 탄다.
@@ -7927,6 +7933,7 @@ namespace Wassup.Bridge
             if (next != RangeDisplayOwner.Placement && tilemapMapView != null)
                 tilemapMapView.SetPlacementRangeValidity(true);
             if (next != RangeDisplayOwner.Placement) _placementMarkLive = false;   // 마크는 배치 전용
+            if (next != RangeDisplayOwner.AttachPreview) _attachPreviewLive = false;   // 부착 프리뷰 추종도 owner 에 딸린다
         }
 
         // 사용자 버그 리포트 2026-09-01 — 「마크가 적을 따라오지 않는다」. 마크는 셀/앵커가
@@ -7937,6 +7944,13 @@ namespace Wassup.Bridge
         private Vector2Int _placementMarkCenter;
         private int _placementMarkRange;
         private DefenderUnitData _placementMarkUnit;
+        // dreamcatcher-attach-range-preview unit 2 — 카드 드래그 중 락온 host 의 카드 범위 링. 앵커는 **Entity**
+        // (재배치는 Entity 를 보존하고 셀만 재키잉한다). 위치는 LateUpdate 가 host 의 sim 위치에서 매 프레임
+        // 다시 읽는다 — `DcAuraVisualPool` 과 같은 슬롯.
+        private bool _attachPreviewLive;
+        private Entity _attachPreviewHost = Entity.Null;
+        private Wassup.Core.DcRangeSpec _attachPreviewSpec;
+        private Wassup.Data.RangeRingStyle _attachPreviewStyle;
         // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
         private Entity _skillTelegraphProjectile = Entity.Null;
 
@@ -8142,6 +8156,55 @@ namespace Wassup.Bridge
             if (_rangeOwner != caller) return;
             SetRangeOwner(RangeDisplayOwner.None); // 반납도 전환이다 — validity 리셋이 여기 딸려온다
             if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
+        }
+
+        // dreamcatcher-attach-range-preview unit 2 — 카드 부착 프리뷰: host 몸 중심에 카탈로그(`DcRangeCatalog`)가
+        // 준 원을 그린다. 호출자는 드래그 슬롯(유효 락온 전환 순간에만) — 추종은 아래 LateUpdate 가 한다.
+        //
+        // 제약 12 근거: 범위 채널(`_rangeOwner`)·Entity→위치가 이미 이 클래스 소유이고 드래그 슬롯이
+        // `SetSkillAimRange` 를 부르는 선례가 있다. 브리지는 도형 데이터(spec·style)만 받고 연출 분기를 갖지 않는다.
+        //
+        // 순서: ① 비공간이면 채널을 **건드리지 않는다**(README 계약 3 — `tileRange<=0` 에서 조용히 return 하며
+        // 소유권만 가져가는 포탈 함정 회피). ② Placement 가 소유 중이면 **양보**(계약 4 — 배치 링은 셀 변경 시만
+        // 재페인트라 훔치면 다음 셀 이동까지 사라진다). ③ **owner 먼저, 그리기 뒤** — `ApplyRingTint` 가
+        // `_rangeInvalid` 를 읽고 그 리셋은 `SetRangeOwner` 가 하므로, 거꾸로면 직전 배치가 무효 셀에 있었을 때
+        // 첫 프레임이 채도 저하로 뜬다(배치 경로가 「그리기 → owner」인 이유 = 타깃 마크 회수, 이 채널엔 없다).
+        public void SetAttachPreview(Entity host, Wassup.Core.DcRangeSpec spec, in Wassup.Data.RangeRingStyle style)
+        {
+            if (host == Entity.Null || spec.shape == Wassup.Core.DcRangeShape.None) { ClearAttachPreview(); return; }
+            if (_rangeOwner == RangeDisplayOwner.Placement) return;
+            _attachPreviewHost = host;
+            _attachPreviewSpec = spec;
+            _attachPreviewStyle = style;
+            SetRangeOwner(RangeDisplayOwner.AttachPreview);
+            _attachPreviewLive = true;   // SetRangeOwner 가 다른 owner 로 갈 때 끄므로 획득 뒤에 켠다
+            RedrawAttachPreview();
+        }
+
+        public void ClearAttachPreview()
+        {
+            _attachPreviewLive = false;
+            ClearRange(RangeDisplayOwner.AttachPreview);   // 소유자일 때만 지운다(가드 그대로)
+        }
+
+        // 생존 술어 = 배치 레지스트리 등재(`TryGetDefenderCell` — pick·열거와 **같은 것**). `_em.Exists` 만 보면
+        // 사망 연출 중 엔티티가 남아 시체 위에 링이 남는다. 위치는 sim `LocalTransform`(unit 10 이후 **기하 중심**
+        // 그대로 — footprint 오프셋을 더하면 이중 계산). 링은 타일 좌표를 직접 받으므로 `ToView` 는 쓰지 않는다:
+        // `GridToWorldCenter(cell) = _boardOrigin + cell × tileSize` 의 역함수.
+        private void RedrawAttachPreview()
+        {
+            if (tilemapMapView == null || !HasLiveEntityManager()
+                || !TryGetDefenderCell(_attachPreviewHost, out _)
+                || !_em.Exists(_attachPreviewHost)
+                || !_em.HasComponent<LocalTransform>(_attachPreviewHost))
+            {
+                ClearAttachPreview();
+                return;
+            }
+            var p = _em.GetComponentData<LocalTransform>(_attachPreviewHost).Position;
+            float invT = tileSize > 1e-6f ? 1f / tileSize : 1f;
+            var centerTiles = new Vector2((p.x - _boardOrigin.x) * invT, (p.z - _boardOrigin.z) * invT);
+            tilemapMapView.SetAreaRange(centerTiles, _attachPreviewSpec.radiusTiles, _attachPreviewStyle);
         }
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성 → 사거리 틴트(적색 + 전이 플래시).
