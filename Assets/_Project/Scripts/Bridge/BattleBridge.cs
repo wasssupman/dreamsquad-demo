@@ -322,7 +322,9 @@ namespace Wassup.Bridge
         private EntityQuery _projectileQuery;
         private bool _projectileQueryCreated;
         // tilemap-mode-adoption unit 0 — 유닛 스케일. const 제거. 맵 빌드 시 설정.
-        public static float CharacterVisualScale { get; private set; } = 0.42f;
+        // 사용자 결정 2026-09-01 — 배치 유닛 크기 1.3배(0.42 → 0.546). 다칸 footprint 로
+        // 유닛이 먹는 칸이 커진 만큼 스프라이트도 그에 맞춰 키운다.
+        public static float CharacterVisualScale { get; private set; } = 0.546f;
         // Live-readable mirror of tilemapBillboardTilt, read by SpineUnitView each
         // LateUpdate. Synced from the serialized field in Awake/OnValidate; can be
         // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
@@ -3928,7 +3930,8 @@ namespace Wassup.Bridge
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
                 // defender-footprint unit 2 — 짝수 변 footprint 는 **뷰만** 기하 중심(+0.5칸)에 선다.
                 // sim 위치(대표 셀 중심)는 불변 — README 계약 2. 홀수/1×1 은 오프셋 0.
-                var fpOff = FootprintViewOffset(kv.Value.data);
+                // sim 위치는 **기하 중심**이다(unit 10) — 발밑까지 내려가는 차분만 더한다.
+                var fpOff = FootprintSimToFoot(kv.Value.data);
                 p.x += fpOff.x;
                 p.z += fpOff.y;
                 // defender-relocation unit 6 — 비행 중엔 컨트롤러가 준 오버라이드가 뷰 위치를 대신한다.
@@ -5209,29 +5212,48 @@ namespace Wassup.Bridge
             if (b.entity == Entity.Null || !_em.Exists(b.entity) || !_em.HasComponent<LocalTransform>(b.entity))
                 return false;
             var p = _em.GetComponentData<LocalTransform>(b.entity).Position;
-            var fpOff = FootprintViewOffset(b.data);
+            // ⚠ `p` 는 **기하 중심**이다(unit 10). 앵커 기준 오프셋을 더하면 이중 계산이 되어
+            // 배치 확정 위치가 실루엣과 갈린다 — 여기는 sim→발밑 **차분**을 쓴다.
+            var fpOff = FootprintSimToFoot(b.data);
             world = (Vector3)Wassup.Core.BoardSpace.ToView(
                 new Unity.Mathematics.float3(p.x + fpOff.x, p.y + spineDefenderYOffset, p.z + fpOff.y));
             return true;
         }
 
-        // defender-footprint unit 2 — 짝수 변 footprint 의 뷰 오프셋(월드 단위). 홀수/1×1 = zero.
-        // 소비처는 뷰 피드 계열만(sync·RestViewPos·비행 앵커·타일 게이지) — sim 소비 금지.
-        private Vector2 FootprintViewOffset(DefenderUnitData data)
+        // ── 뷰 오프셋은 **기준점이 둘**이다. 이름으로 가른다 ─────────────────────
+        //
+        // ⚠ unit 10 이전엔 하나였다 — sim 위치가 대표 셀이고 오프셋이 「대표 셀 → 기하 중심」
+        // 이라 두 기준이 우연히 같은 값을 요구했다. unit 10 이 sim 위치를 기하 중심으로 옮기면서
+        // **그 우연이 깨졌고**, 한 함수를 계속 쓰면 sim 기준 호출부가 오프셋을 **이중 계산**한다
+        // (실루엣과 배치 확정 위치가 갈렸다 — 사용자 관측 2026-09-01).
+        //
+        // 유닛은 자기 점유 상자의 **바닥에 서 있지** 한가운데 떠 있지 않다. 그래서 뷰의 종점은
+        // 언제나 **발밑**(하단 행의 가로 중앙)이고, 거기까지 가는 **출발점**만 둘이다.
+
+        /// 앵커 월드 → 발밑. 스폰 전(비행 종점·실루엣) 등 엔티티가 없는 시점이 쓴다.
+        private Vector2 FootprintAnchorToFoot(DefenderUnitData data)
         {
             if (data == null) return Vector2.zero;
-            var o = FootprintMath.GeometricCenterOffset(data.Footprint);
-            if (o == Vector2.zero) return Vector2.zero;
-            return new Vector2(o.x * tileSize, o.y * tileSize);
+            var o = FootprintMath.FootOffset(data.Footprint);
+            return o == Vector2.zero ? Vector2.zero : new Vector2(o.x * tileSize, o.y * tileSize);
         }
 
-        // defender-footprint unit 2 — 앵커 + 유닛 → footprint **기하 중심**의 view 좌표.
+        /// **sim 위치(기하 중심) → 발밑.** 세로로만 내려간다 — 가로 중앙은 이미 맞아 있다.
+        /// = `FootOffset − GeometricCenterOffset` = `(0, −(H−1)/2)`.
+        private Vector2 FootprintSimToFoot(DefenderUnitData data)
+        {
+            if (data == null) return Vector2.zero;
+            var fp = data.Footprint;
+            var d = FootprintMath.FootOffset(fp) - FootprintMath.GeometricCenterOffset(fp);
+            return d == Vector2.zero ? Vector2.zero : new Vector2(d.x * tileSize, d.y * tileSize);
+        }
+
+        // 앵커 + 유닛 → footprint **발밑**(하단 행 중앙)의 view 좌표.
         // 배치 비행(탭 시뮬)의 종점 등 스폰 전 시점에 쓴다(스폰 후엔 TryGetDefenderRestViewPos).
+        // ⚠ 이름의 `Center` 는 **가로 중앙**을 말한다 — 세로는 하단 행이다.
         public Vector3 GridAnchorToViewCenter(Vector2Int anchor, DefenderUnitData unit)
         {
-            var size = unit != null ? unit.Footprint : Vector2Int.one;
-            // unit 10 — 앵커에서 기하 중심으로 직접 간다(대표 셀 경유 없음).
-            var fpOff = FootprintViewOffset(unit);
+            var fpOff = FootprintAnchorToFoot(unit);
             var w = GridToWorldCenterVector(anchor);
             return Wassup.Core.BoardSpace.ToView(new Vector3(w.x + fpOff.x, w.y, w.z + fpOff.y));
         }
@@ -7790,10 +7812,26 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid);
         }
 
+        // unit 10 — 다칸 hover. `anchor` 는 점유 rect 의 min 코너.
+        public void SetPlacementHover(Vector2Int anchor, DefenderUnitData unit, bool valid)
+        {
+            if (tilemapMapView == null) return;
+            tilemapMapView.SetPlacementHover(
+                anchor, unit != null ? unit.Footprint : Vector2Int.one, valid);
+        }
+
         // placement-cell-snap unit 4 — 포커스 타일 확정(변경) 시 1회 팝.
         public void PulsePlacementHover(Vector2Int cell, bool valid)
         {
             if (tilemapMapView != null) tilemapMapView.PulsePlacementHover(cell, valid);
+        }
+
+        // unit 10 — 다칸 확정 팝.
+        public void PulsePlacementHover(Vector2Int anchor, DefenderUnitData unit, bool valid)
+        {
+            if (tilemapMapView == null) return;
+            tilemapMapView.PulsePlacementHover(
+                anchor, unit != null ? unit.Footprint : Vector2Int.one, valid);
         }
 
         // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트(hover 대체). dir=당김 방향, t=0(중심)~1(파열),
@@ -8134,7 +8172,12 @@ namespace Wassup.Bridge
         public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
             float duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
-            var world = GridToWorldCenterVector(cell, spawnHeight);                       // sim
+            // unit 10 — 연출은 유닛이 **실제로 서는 자리**(발밑)에서 터져야 한다. 앵커 셀 중심에서
+            // 터뜨리면 다칸 유닛의 링·VFX 가 좌하단 모서리에서 나고 스프라이트와 갈린다.
+            // `cell` 은 앵커다(바인딩 키 = 앵커, unit 10).
+            var fpFoot = FootprintAnchorToFoot(unitData);
+            var world = GridToWorldCenterVector(cell, spawnHeight)
+                      + new Vector3(fpFoot.x, 0f, fpFoot.y);                               // sim
             var viewWorld = (Vector3)Wassup.Core.BoardSpace.ToView(world);                 // view (직접 배치용)
 
             if (unitData != null && unitData.placementVfxPrefab != null)
@@ -8420,8 +8463,14 @@ namespace Wassup.Bridge
                 _em.AddComponent<PendingDeployment>(entity);
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
+            // unit 10 — `pos` 는 **기하 중심**이다. 링은 유닛이 서는 **발밑**에서 터져야
+            // 스프라이트와 자리가 맞는다(1×1 은 차분 0 이라 무회귀).
             if (spawnPlacementVfx && vfxSpawner != null)
-                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
+            {
+                var ringFoot = FootprintSimToFoot(unitData);
+                vfxSpawner.SpawnPlacementRing(
+                    new Vector3(pos.x + ringFoot.x, pos.y, pos.z + ringFoot.y));
+            }
 
             // Phase 8: if the unit has a Spine skeleton configured, spawn a
             // SkeletonAnimation GameObject instead of the billboard RenderMesh.
@@ -8672,8 +8721,13 @@ namespace Wassup.Bridge
 
             // unit 5 — 소환 순간 VFX. 전용 아트가 생기기 전까지 배치 링을 재사용한다
             // (순찰병이 "지금 나왔다"를 읽히게 하는 게 목적, 룩은 unit 7 에서 교체).
+            // unit 10 — `pos` 는 기하 중심이라 **발밑**으로 내려서 터뜨린다(1×1 은 차분 0).
             if (vfxSpawner != null)
-                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
+            {
+                var patrolFoot = FootprintSimToFoot(unitData);
+                vfxSpawner.SpawnPlacementRing(
+                    new Vector3(pos.x + patrolFoot.x, pos.y, pos.z + patrolFoot.y));
+            }
 
             bool spineSpawned = false;
             if (spineUnitPool != null)

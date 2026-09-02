@@ -311,7 +311,7 @@ namespace Wassup.UI
             HideKeyring();
             bridge.ClearDefenderViewOverride(entity);
             bridge.FinishDefenderRelocation(to, entity);
-            bridge.PulsePlacementHover(to, true); // 기존 착지 타일 팝 재사용
+            bridge.PulsePlacementHover(to, _unit, true); // 착지 팝 — footprint 전체
 
             // 재전개 — Battle 시계 대기 후 활성화. unit 8 부터 이 순간이 재정비의 보상 지점이다:
             // 밀치기 + on-place 재발동 + 회복이 브리지 꼬리 하나에서 같이 일어난다.
@@ -364,13 +364,14 @@ namespace Wassup.UI
             _scoutCell = cell;
             if (changed)
             {
-                bridge.PulsePlacementHover(cell, valid);
+                bridge.PulsePlacementHover(to, _unit, valid);   // footprint 전체
                 // unit 6 — press 중 그 타일의 공격범위 프리뷰(드래그 배치 스카우트 미러). 무효 셀은 소거.
                 // defender-footprint unit 2 — 범위 중심 = 목적지 대표 셀.
                 if (valid) bridge.SetPlacementRange(RelocationTargetPrimary(to), _unit);
                 else bridge.ClearPlacementRange();
             }
-            bridge.SetPlacementHover(cell, valid);
+            // unit 10 — footprint 전체. `to` 가 앵커다(`MapRelocationTarget` 이 하단중앙→앵커 변환).
+            bridge.SetPlacementHover(to, _unit, valid);
         }
 
         private void ClearScout()

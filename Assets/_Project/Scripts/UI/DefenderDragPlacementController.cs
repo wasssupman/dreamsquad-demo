@@ -1128,7 +1128,7 @@ namespace Wassup.UI
             if (changed)
             {
                 bridge.SetPlacementRange(fpPrimary, _armedUnit);  // 범위 격자 — 셀/앵커 변경 시만, 중심 = 대표 셀
-                bridge.PulsePlacementHover(cell, valid);          // 확정 팝
+                bridge.PulsePlacementHover(anchor, _armedUnit, valid);   // 확정 팝 — footprint 전체
             }
             _ghostAnchor = anchor;   // unit 2 rev — 전역 고스트 위 footprint 얹기(수명은 파생 토글 소유)
             _ghostAnchorValid = valid;
@@ -1136,7 +1136,9 @@ namespace Wassup.UI
             if (Cfg.stickyLiquidEnabled)
                 bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
             else
-                bridge.SetPlacementHover(cell, valid);
+                // unit 10 — **footprint 전체**를 밝힌다(손끝 한 칸이 아니라). 다칸 유닛이
+                // 실제로 먹을 자리를 화면이 좁게 가르치면 안 된다.
+                bridge.SetPlacementHover(anchor, _armedUnit, valid);
             // unit 7 — armed 는 **드래그 승격 후에만** 실루엣을 세운다(탭 경로 무변 계약).
             if (_boardDragging && Cfg.armedSilhouetteEnabled) UpdateDragSilhouette(anchor, _armedUnit);
             else HideDragSilhouette();
@@ -1675,7 +1677,7 @@ namespace Wassup.UI
             // flight-lift-feel unit 3 — 착지 눌림. 취소 경로(AbandonDismount)는 여기 못 오므로
             // 끊긴 비행에 스쿼시가 터지지 않는다.
             bridge?.PlayLandingSquash(entity, cfg.dropLandingSquash, cfg.dropLandingSquashSeconds);
-            bridge?.PulsePlacementHover(cell, true);
+            bridge?.PulsePlacementHover(cell, unit, true);   // 착지 팝 — footprint 전체
             // unit 3 — 스폰 연출(배치 링 펄스·placementVfx·PlayDeploy 스폰애니)을 착지 프레임에 발화.
             // 유닛이 공중인 commit 프레임에 타일에서 링이 터지던 어긋남 제거. **활성화 시계는 무변경**
             // (계약 4) — RunDeployment(skipPresentation)가 deploymentDuration 을 직접 읽어 commit 기준으로
@@ -1987,12 +1989,13 @@ namespace Wassup.UI
             // unit 7 rev — 액체 하이라이트가 hover 타일을 **대체**(고정 테두리 + 내부 번짐, 같은 셀에 개체 2개 금지).
             // 끄면 기존 타일 하이라이트로 폴백.
             if (!Cfg.stickyLiquidEnabled)
-                bridge?.SetPlacementHover(cell, valid);
+                // unit 10 — footprint 전체.
+                bridge?.SetPlacementHover(anchor, _session.unit, valid);
             if (changed || anchorChanged)
             {
                 // defender-footprint unit 2 — 사거리 링은 유닛이 실제로 설 대표 셀 중심(1×1 은 손가락 셀 동일).
                 bridge?.SetPlacementRange(primary, _session.unit);
-                bridge?.PulsePlacementHover(cell, valid); // unit 4 — 확정(셀 변경) 팝. 디바운스로 게이팅돼 스팸 아님.
+                bridge?.PulsePlacementHover(anchor, _session.unit, valid); // unit 4 — 확정 팝(footprint 전체). 디바운스 게이팅.
             }
             _ghostAnchor = anchor;   // unit 2 rev — 전역 고스트 위 footprint 얹기
             _ghostAnchorValid = valid;

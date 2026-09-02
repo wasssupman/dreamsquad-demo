@@ -389,18 +389,37 @@ namespace Wassup.Core
 
         // --- 배치 피드백 (SetPlacementHover/FlashTileReject/ClearPlacementHover) ---
 
+        // 1칸 호환 오버로드 — footprint 를 모르는 호출부용(스카우트 등).
         public void SetPlacementHover(Vector2Int cell, bool valid)
+            => SetPlacementHover(cell, Vector2Int.one, valid);
+
+        // ⚠ **footprint 전체를 칠한다**(사용자 결정 2026-09-01). 손끝 한 칸만 밝히면
+        // 다칸 유닛이 실제로 먹을 자리를 화면이 **좁게** 가르친다 — 액체 하이라이트를
+        // 끈 것과 같은 이유이고, 그 자리를 이 rect 가 대신한다.
+        // `anchor` 는 점유 rect 의 min 코너다(대표 셀 아님 — unit 10).
+        public void SetPlacementHover(Vector2Int anchor, Vector2Int size, bool valid)
         {
             if (overlayTilemap == null || _tileSet == null) return;
-            StopFlash(cell);
-            overlayTilemap.SetTile(ToCell(cell), valid ? _tileSet.hoverTile : _tileSet.rejectTile);
-            _hoverCells.Add(cell);
+            var tile = valid ? _tileSet.hoverTile : _tileSet.rejectTile;
+            var rect = Wassup.Data.FootprintMath.Cells(anchor, size);
+            for (int y = rect.yMin; y < rect.yMax; y++)
+            for (int x = rect.xMin; x < rect.xMax; x++)
+            {
+                var c = new Vector2Int(x, y);
+                if (c.x < 0 || c.x >= _gridSize.x || c.y < 0 || c.y >= _gridSize.y) continue;
+                StopFlash(c);
+                overlayTilemap.SetTile(ToCell(c), tile);
+                _hoverCells.Add(c);
+            }
         }
 
+        // ⚠ 셀 하나만 지우면 다칸 hover 의 **나머지 칸이 남는다**. 호출부는 앵커 하나만
+        // 들고 있으므로(이전 셀 기억) 여기서 **hover 전체**를 회수한다 — hover 는 언제나
+        // 한 유닛의 것이라 남의 것을 지울 위험이 없다.
         public void ClearPlacementHover(Vector2Int cell)
         {
-            if (!_hoverCells.Remove(cell)) return;
-            if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(cell), null);
+            if (_hoverCells.Count == 0) return;
+            ClearPlacementHover();
         }
 
         public void ClearPlacementHover()
@@ -443,18 +462,33 @@ namespace Wassup.Core
 
         // placement-cell-snap unit 4 — 포커스 타일 확정(변경) 시 셀 위에 스케일 오버슈트+알파 페이드 팝.
         // 하이라이트 타일(overlay)은 그대로 남고, 이 팝이 "여기로 확정됨"을 한 번 punctuate 한다.
+        // 1칸 호환 오버로드.
         public void PulsePlacementHover(Vector2Int cell, bool valid)
+            => PulsePlacementHover(cell, Vector2Int.one, valid);
+
+        // ⚠ **footprint 전체를 덮는다**(unit 10). 팝이 손끝 한 칸에만 터지면 다칸 유닛이
+        // 실제로 확정될 자리를 화면이 좁게 가르친다 — hover 를 rect 로 넓힌 것과 같은 이유다.
+        // 팝은 **rect 중심**에 서고 **긴 변**에 맞춰 커진다(정사각 스프라이트라 축별 스케일 불가).
+        public void PulsePlacementHover(Vector2Int anchor, Vector2Int size, bool valid)
         {
             if (grid == null) return;
             var sr = EnsureCommitPop();
+            var rect = Wassup.Data.FootprintMath.Cells(anchor, size);
+            // rect 의 기하 중심(칸 단위) — 짝수 변이면 셀 경계 위에 선다.
+            float cx = rect.xMin + (rect.width - 1) * 0.5f;
+            float cy = rect.yMin + (rect.height - 1) * 0.5f;
             // 액체 하이라이트와 동일 — Ground(ZWrite On) 코플레이너 z-fight 방지 리프트.
-            var popLocal = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
+            var popLocal = grid.CellToLocalInterpolated(new Vector3(cx + 0.5f, cy + 0.5f, 0f));
             popLocal.z = -PropGroundLift;
             sr.transform.localPosition = popLocal;
+            _commitPopSpan = Mathf.Max(rect.width, rect.height);
             Color c = valid ? commitPopValidColor : commitPopInvalidColor;
             if (_commitPopCo != null) StopCoroutine(_commitPopCo);
             _commitPopCo = StartCoroutine(CommitPopCoroutine(sr, c));
         }
+
+        // 확정 팝이 덮을 칸 수(긴 변). `PulsePlacementHover` 가 매 호출 갱신한다.
+        private int _commitPopSpan = 1;
 
         private SpriteRenderer EnsureCommitPop()
         {
@@ -477,8 +511,15 @@ namespace Wassup.Core
         // 렌더 = 셀 2배 쿼드 1장 + Wassup/PlacementLiquidTile 셰이더(SDF): 테두리(둥근사각)는 셀에 고정 =
         // "릴리즈하면 여기" 계약, 내부 fill 은 손가락 방향 액적과 smin 블렌드로 번지다 테두리를 넘는다.
         // 모양 튜닝은 .mat 인스펙터(라이브 반영). 쿼드는 회전하지 않는다 — 테두리는 축 정렬, 방향은 셰이더 uniform.
+        // ⚠ **비활성**(사용자 결정 2026-09-01). 다칸 footprint 로 손끝 셀 하이라이트가 유닛의
+        // 실제 점유(2×2 이상)와 어긋나 읽히기 때문이다 — 액체는 「릴리즈하면 **이 한 칸**」을
+        // 말하는 어휘라 다칸에서 거짓말이 된다. 되살리려면 이 가드를 지우면 되고, 그때는
+        // 액체 모양이 footprint rect 를 따라가야 한다(현재는 셀 1칸 고정).
+        [SerializeField] private bool placementLiquidEnabled = false;
+
         public void SetPlacementStretch(Vector2Int cell, Vector2 dir, float t, bool valid)
         {
+            if (!placementLiquidEnabled) { ClearPlacementStretch(); return; }
             if (grid == null) return;
             var sr = EnsureLiquidTile();
             if (sr == null) return; // 머티리얼 미배선 — EnsureLiquidTile 이 1회 경고
@@ -840,7 +881,8 @@ namespace Wassup.Core
 
         private IEnumerator CommitPopCoroutine(SpriteRenderer sr, Color color)
         {
-            float cellWorld = grid != null ? grid.cellSize.x : 1f; // 로컬 1셀 크기
+            // unit 10 — footprint 의 긴 변만큼 덮는다(1×1 이면 종전과 동일).
+            float cellWorld = (grid != null ? grid.cellSize.x : 1f) * Mathf.Max(1, _commitPopSpan);
             sr.gameObject.SetActive(true);
             float t = 0f;
             float dur = Mathf.Max(commitPopDuration, 0.01f);

@@ -23,6 +23,8 @@ MonoBehaviour:
     \uD6A8\uACFC: \uB3C4\uBC1C \xB7 \uCCB4\uB825 \uB0AE\uC740 \uC544\uAD70 \uC8FC\uAE30
     \uC2E4\uB4DC"
   health: 850
+  footprintWidth: 2
+  footprintHeight: 2
   attackRange: 1
   attackCooldown: 1.9
   hitDelaySec: 0.3

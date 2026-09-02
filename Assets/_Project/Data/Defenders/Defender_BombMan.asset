@@ -22,6 +22,8 @@ MonoBehaviour:
     \uC2A4\uD0AC: \uAC00\uAE4C\uC6B4 \uC801 \uBC29\uD5A5\uC73C\uB85C \uC2DC\uD55C
     \uD3ED\uD0C4 \uC124\uCE58\n\uD2B9\uC218 \uC2A4\uD0AC: \uC5C6\uC74C"
   health: 500
+  footprintWidth: 2
+  footprintHeight: 2
   attackRange: 5
   attackCooldown: 2.8
   hitDelaySec: 0

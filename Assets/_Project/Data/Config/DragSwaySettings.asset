@@ -25,10 +25,10 @@ MonoBehaviour:
   enableDeployCutscene: 0
   deployCutsceneSwipeRefSpeed: 925
   deployCutsceneSwipeSmoothing: 13.81
-  placementStickMargin: 0.607
+  placementStickMargin: 0.3
   placementOutsideToleranceCells: 1
   placementCommitInterval: 0.093
-  stickyLiquidEnabled: 1
+  stickyLiquidEnabled: 0
   armHighlightColor: {r: 0.35, g: 1, b: 0.9, a: 0.28}
   tapArcHeightFactor: 0.99
   tapArcLateralFactor: 0.503

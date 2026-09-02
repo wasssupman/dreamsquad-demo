@@ -284,7 +284,8 @@ namespace Wassup.Bridge
             // defender-footprint unit 2 — 비행 양끝도 뷰 피드와 같은 기하 중심(짝수 변 +0.5칸).
             // from = 옛 대표 셀, to = 스왑 후 대표 셀(앵커가 와도 해석). 오프셋은 뷰 전용 — sim 불변.
             if (TryResolveDefenderKey(to, out var toKey)) to = toKey;
-            var fpOff = FootprintViewOffset(unit);
+            // 양끝 다 **셀 월드**(앵커) 기준이다 — sim 위치가 아니므로 앵커→발밑 오프셋.
+            var fpOff = FootprintAnchorToFoot(unit);
             var off3 = new float3(fpOff.x, 0f, fpOff.y);
             start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight) + off3);
             end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight) + off3);
