@@ -271,8 +271,9 @@ namespace Wassup.Presentation
                 presentationHeight =
                     math.lerp(cur, frame.targetSocketHeight, frame.targetSocketBlend)
                     - state.heightOffset;
+                // 리뷰 L3 — 여기서 _active 에 쓰지 않는다: 메서드 끝의 단일 쓰기가
+                // lastSocketHeight 까지 같이 영속한다(중간 return 없음).
                 state.lastSocketHeight = frame.targetSocketHeight;
-                _active[entity] = state;
             }
 
             // projectile-shot-sequence unit 3 — 월드 +Y는 원근 카메라에서 view depth까지

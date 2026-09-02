@@ -4,6 +4,11 @@
 
 ## 전수조사 결과 (카드 47종 · 페이로드 33종)
 
+**unit 14 잔여 해소(2fa3d149, 리뷰 M3 기록)**: 도형 스킬 사각의 중심을
+`CellOfPosition` 스냅에서 **받은 center 그대로**로 — 칸 조준 concrete 는 byte-identical,
+자기시전(대다수 광역이 hostPos 를 넘김)은 몸 중심 정중앙이 되고 이동 캐스터의 도형이
+칸 경계에서 튀지 않는다. 골든 델타 1건(광역 CC 경계 이동)이 이 변경의 귀속.
+
 **이미 거리 기반(unit 12~14)**: 스킬 광역 멤버십 전부(AreaCc/Sleep/Dot/Stack/Taunt/Breath/
 StatAura/GrantShield/TileStatBurst — 몸 걸침) · 사거리 · 투사체 splash/스윕.
 

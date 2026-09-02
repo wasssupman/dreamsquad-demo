@@ -1,21 +1,22 @@
 using Unity.Collections;
 using Unity.Mathematics;
-using Wassup.Battle.Movement;
 
 namespace Wassup.Battle.Combat.Projectile
 {
     // dreamcatcher-attack-mod-bounce unit 1 — the retarget DECISION for a
-    // bouncing projectile: nearest living enemy within a Chebyshev tile radius of
-    // the impact, excluding the just-hit target. Pure geometry — no world, no
-    // system, no frame, no Entity. This is the architecture-neutral "logic" layer
-    // (EditMode-testable with a plain float3 array); the ImpactSystem arm that
-    // calls it is the thin ECS glue (unit 2). Mirrors TileAoe.IsInTileRange /
-    // BallisticArc.ArcPosition — same pure-function-plus-EditMode pattern.
+    // bouncing projectile: nearest living candidate the impact can reach
+    // (distance-based edge-to-edge since distance-based-range unit 18 — the old
+    // Chebyshev cell radius is retired), excluding the just-hit target. Pure
+    // geometry — no world, no system, no frame, no Entity. This is the
+    // architecture-neutral "logic" layer (EditMode-testable with a plain float3
+    // array); the ImpactSystem arm that calls it is the thin ECS glue (unit 2).
+    // Mirrors SkillMath.InBodyReach / BallisticArc.ArcPosition — same
+    // pure-function-plus-EditMode pattern.
     public static class BounceRetarget
     {
         // Returns the positions index of the next bounce target, or -1 if none.
-        // Skips excludeIndex (previous target); keeps candidates whose cell is
-        // within Chebyshev tileRange of hitPos's cell; picks the smallest XZ
+        // Skips excludeIndex (previous target); keeps candidates within tileRange
+        // of hitPos (edge-to-edge body reach — unit 18); picks the smallest XZ
         // squared distance. Ties resolve to the lower index (snapshot order =
         // deterministic). tileRange <= 0 → -1.
         public static int FindNext(

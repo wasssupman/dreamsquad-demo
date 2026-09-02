@@ -694,7 +694,6 @@ namespace Wassup.Battle.Combat.Projectile
                         // (contract: no new field). non-Damage outputs are a
                         // follow-up (v1 is Damage-only).
                         float3 impactWorld = projectile.ValueRO.impact;
-                        int2 centerCell = GridMath.WorldToCell(impactWorld, tileSize, gridSize, origin: ffOrigin);
                         int tileRange = projectile.ValueRO.impactTileRange;
                         float dmg = projectile.ValueRO.damage;
                         // nightmare-catcher unit 4 — victim pool by targetFaction.

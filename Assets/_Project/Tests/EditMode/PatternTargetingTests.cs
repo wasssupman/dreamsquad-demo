@@ -103,12 +103,67 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(-1, Select(pos, new[] { 1, 2 }, PatternSelectionRule.None, 0));
         }
 
+        // 리뷰 M2 — 재작성 때 소실된 핀 복원: 셔플이 단순 회전으로 퇴화하거나
+        // 특정 후보로 편향되지 않는지(성질), 그리고 Nearest 의 빈 풀.
+        [Test]
+        public void Shuffle_IsNotAPlainRotation()
+        {
+            var pos = new[] { new float2(1f, 1f), new float2(5f, 5f), new float2(2f, 9f), new float2(0f, 4f) };
+            var ids = new[] { 1, 2, 3, 4 };
+            bool diverged = false;
+            int prev = Select(pos, ids, PatternSelectionRule.DeterministicShuffle, 0);
+            for (int fire = 1; fire < 16 && !diverged; fire++)
+            {
+                int cur = Select(pos, ids, PatternSelectionRule.DeterministicShuffle, fire);
+                int rot = Select(pos, ids, PatternSelectionRule.RoundRobin, fire);
+                int rotPrev = Select(pos, ids, PatternSelectionRule.RoundRobin, fire - 1);
+                // 회전이면 (prev→cur) 스텝이 round-robin 스텝과 항상 같다 — 한 번이라도 다르면 회전 아님.
+                if ((cur - prev + pos.Length) % pos.Length != (rot - rotPrev + pos.Length) % pos.Length)
+                    diverged = true;
+                prev = cur;
+            }
+            Assert.IsTrue(diverged, "셔플이 round-robin 회전으로 퇴화했다");
+        }
+
+        [Test]
+        public void Shuffle_CoversEveryCandidate_OverManyShots()
+        {
+            var pos = new[] { new float2(1f, 1f), new float2(5f, 5f), new float2(2f, 9f), new float2(0f, 4f) };
+            var ids = new[] { 1, 2, 3, 4 };
+            var seen = new bool[pos.Length];
+            for (int fire = 0; fire < 64; fire++)
+                seen[Select(pos, ids, PatternSelectionRule.DeterministicShuffle, fire)] = true;
+            for (int i = 0; i < seen.Length; i++)
+                Assert.IsTrue(seen[i], $"후보 {i} 가 64발 동안 한 번도 안 뽑혔다 — 편향");
+        }
+
+        [Test]
+        public void Nearest_EmptyPool_ReturnsMinusOne()
+        {
+            Assert.AreEqual(-1, Select(new float2[0], new int[0], PatternSelectionRule.Nearest, 0, float2.zero));
+        }
+
         [Test]
         public void NegativeFireCount_RoundRobin_DoesNotThrow()
         {
             var pos = new[] { new float2(1f, 1f), new float2(2f, 2f) };
             int r = Select(pos, new[] { 1, 2 }, PatternSelectionRule.RoundRobin, -5);
             Assert.That(r, Is.InRange(0, 1));
+        }
+    }
+
+    // 리뷰 M2 — 재작성 때 소실된 전수성 핀 복원. 새 MovementKind 를 추가하고 분류를
+    // 잊으면 여기서 빨개진다(KnownKindCount 드리프트 감시).
+    public class MovementBindingTests
+    {
+        [Test]
+        public void ClassifiesEveryKnownKind()
+        {
+            var kinds = System.Enum.GetValues(typeof(Wassup.Battle.Combat.Projectile.MovementKind));
+            Assert.AreEqual(MovementBinding.KnownKindCount, kinds.Length,
+                "MovementKind 가 늘었다 — MovementBinding.Of 분류와 KnownKindCount 를 같이 갱신하라");
+            foreach (Wassup.Battle.Combat.Projectile.MovementKind k in kinds)
+                Assert.DoesNotThrow(() => MovementBinding.Of(k));
         }
     }
 }
