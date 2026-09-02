@@ -25,6 +25,10 @@ namespace Wassup.Presentation
         // 뷰는 그대로 적용한다 — 보드 좌표(gridSize/tileSize) 지식은 브리지가 소유한다는
         // 이 struct 의 원래 계약 그대로다.
         public int boardSortOrder;
+        // unit 16 — 임팩트 소켓(뷰 전용). height = 대상 저작 소켓 높이(월드), blend = 접근
+        // 구간 가중(0 = 미사용). 브리지가 대상·거리 지식을 갖고 여기엔 값만 싣는다.
+        public float targetSocketHeight;
+        public float targetSocketBlend;
     }
 
     // Attached once to each instantiated view — caches component arrays so ApplyMpb,
@@ -63,6 +67,9 @@ namespace Wassup.Presentation
             // unit 5 — spawn 직후 같은 프레임의 Bridge sync가 weapon/body anchor를
             // 덮지 않도록 딱 한 번 위치 갱신을 보류한다.
             public bool holdLaunchAnchorForFirstSync;
+            // unit 16 — 마지막 sync 가 남긴 소켓 높이. sim 엔티티가 파괴된 프레임에도
+            // 히트 드레인이 이 값을 읽어 임팩트 VFX 를 몸통에서 터뜨린다.
+            public float lastSocketHeight;
         }
 
         private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
@@ -93,6 +100,19 @@ namespace Wassup.Presentation
         }
 
         public int ActiveCount => _active.Count;
+
+        // unit 16 — 히트 드레인용. 드레인(DrainProjectileHitEvents)이 sync/despawn 보다
+        // 먼저 돌아 파괴 프레임에도 뷰 상태가 살아 있다 — 그 창을 이용한다.
+        public bool TryGetImpactSocketHeight(Entity entity, out float height)
+        {
+            if (_active.TryGetValue(entity, out var s) && s.lastSocketHeight > 0f)
+            {
+                height = s.lastSocketHeight;
+                return true;
+            }
+            height = 0f;
+            return false;
+        }
 
         // Fix 1: initialPosition prevents first-frame wrong-direction rotation for AlongVelocity.
         // initialDropOffset (unit 9, SkyFall): 첫 프레임 뷰를 낙하 시작 높이에서 시작시킨다 —
@@ -240,6 +260,19 @@ namespace Wassup.Presentation
                         state.view.transform.localScale = Vector3.one * (state.baseScale * pulse);
                     }
                 }
+            }
+
+            // unit 16 — 임팩트 소켓: 접근 구간(blend>0)에서 뷰 높이를 대상 몸통으로 흡수.
+            // 판정·sim 궤적 무변 — heightOffset 까지 합친 총 높이를 소켓으로 lerp 한 뒤
+            // heightOffset 몫을 되돌려 두 사용처(facing용 pos·실제 position)가 같이 따라온다.
+            if (frame.targetSocketBlend > 0f && frame.targetSocketHeight > 0f)
+            {
+                float cur = presentationHeight + state.heightOffset;
+                presentationHeight =
+                    math.lerp(cur, frame.targetSocketHeight, frame.targetSocketBlend)
+                    - state.heightOffset;
+                state.lastSocketHeight = frame.targetSocketHeight;
+                _active[entity] = state;
             }
 
             // projectile-shot-sequence unit 3 — 월드 +Y는 원근 카메라에서 view depth까지

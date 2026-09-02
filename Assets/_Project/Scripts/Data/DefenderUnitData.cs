@@ -76,6 +76,10 @@ namespace Wassup.Data
         // 오차 보정 항 없음(unit 9). ⚠ 저작 필드 `bodyRadius`(0.25)는 rev 3 에서 은퇴 —
         // 크기 축이 footprint 하나로 수렴한다(rev 2 는 축이 둘이라 조합이 무한이었다).
         public float BodyRadiusTiles => Mathf.Min(Footprint.x, Footprint.y) * 0.5f;
+        // unit 16 — **임팩트 소켓**(월드 유닛, 지면 위 높이). 투사체 «뷰» 가 마지막 구간에서
+        // 이 높이로 꽂히고 임팩트 VFX 도 여기서 터진다 — 명중 판정은 접지 원 그대로(sim 무변).
+        // 0 = 미저작 → 종전 경로(투사체 저작 visualHeightOffset). 몸통 중앙쯤을 저작한다.
+        [Min(0f)] public float impactSocketHeight = 0f;
         public float attackCooldown = 1f; // seconds between attacks
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;

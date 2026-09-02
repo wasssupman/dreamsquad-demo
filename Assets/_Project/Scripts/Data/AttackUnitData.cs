@@ -106,6 +106,10 @@ namespace Wassup.Data
         // ⚠ bodyRadius 는 Boss 티어에서만 읽힌다. 시트에 두 컬럼 다 없음 — SO 저작으로 끝.
         public enum BodySize { Small = 0, Medium = 1, Large = 2, Boss = 3 }
         public BodySize bodySize = BodySize.Small;
+        // unit 16 — **임팩트 소켓**(월드 유닛, 지면 위 높이). 투사체 «뷰» 가 마지막 구간에서
+        // 이 높이로 꽂히고 임팩트 VFX 도 여기서 터진다 — 명중 판정은 접지 원 그대로(sim 무변).
+        // 0 = 미저작 → 종전 경로(투사체 저작 visualHeightOffset). 몸통 중앙쯤을 저작한다.
+        [Min(0f)] public float impactSocketHeight = 0f;
         public float BodyRadiusTiles => bodySize switch
         {
             BodySize.Medium => 0.5f,

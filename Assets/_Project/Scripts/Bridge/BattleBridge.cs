@@ -317,6 +317,9 @@ namespace Wassup.Bridge
         // Entity→적 데이터 등록부(스폰 시 기록, 킬 드레인 시 조회+제거). 파괴된 Entity 값도
         // 키 비교는 유효(역참조 안 함 — SO 참조만 보관). teardown 에서 Clear.
         private readonly Dictionary<Entity, AttackUnitData> _enemyTypeByEntity = new();
+        // unit 16 — 임팩트 소켓 캐시(대상 엔티티 → 저작 높이). 조회는 적 등록부 → 방어유닛
+        // 바인딩 순이고, 미스도 0 으로 캐시해 매 프레임 선형 탐색을 피한다. 배틀 경계에서 비운다.
+        private readonly Dictionary<Entity, float> _impactSocketByEntity = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -810,6 +813,7 @@ namespace Wassup.Bridge
             // 형제 줄들이 전부 `if (x != null)` 인 이유가 이것이다(Unity 오버로드 == 가 fake-null 처리).
             if (retireFlight != null) retireFlight.CancelAll();
             _enemyTypeByEntity.Clear(); // dreamcatcher-orb-dock unit 6 — 적 데이터 등록부 정리
+            _impactSocketByEntity.Clear(); // unit 16 — 소켓 캐시도 같은 경계에서
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -3521,6 +3525,27 @@ namespace Wassup.Bridge
                     // 평면 보드라 sim-Y 를 drop 하고 z 를 화면 높이로 접어서, view 로 셀을
                     // 역산하면 행 정렬이 통째로 무너진다(`SpineUnitView.UpdateSortingOrder`
                     // 가 같은 이유로 `_simWorld` 를 쓴다 — 그 주석이 이 함정을 경고한다).
+                    // unit 16 — 임팩트 소켓(뷰 전용): 호밍 탄이 마지막 2칸에서 대상 몸통
+                    // 높이로 꽂힌다. sim 궤적·판정 무변 — 브리지가 대상 지식을 접어 값만 싣는다.
+                    if (state.target != Entity.Null
+                        && (state.movement == MovementKind.HomingToEntity
+                            || state.movement == MovementKind.BezierHomingToEntity)
+                        && _em.Exists(state.target)
+                        && _em.HasComponent<LocalTransform>(state.target))
+                    {
+                        float sock = ImpactSocketHeightOf(state.target);
+                        if (sock > 0f)
+                        {
+                            var tp = _em.GetComponentData<LocalTransform>(state.target).Position;
+                            float sdx = tp.x - frame.simPosition.x;
+                            float sdz = tp.z - frame.simPosition.z;
+                            float sdist = Mathf.Sqrt(sdx * sdx + sdz * sdz);
+                            const float SocketBlendTiles = 2f;
+                            frame.targetSocketHeight = sock;
+                            frame.targetSocketBlend = Mathf.Clamp01(
+                                1f - sdist / (SocketBlendTiles * Mathf.Max(0.01f, tileSize)));
+                        }
+                    }
                     if (state.movement == MovementKind.OrbitAroundPoint && _generatedMap.IsCreated)
                     {
                         var simPos = frame.simPosition;
@@ -5012,6 +5037,25 @@ namespace Wassup.Bridge
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
         // one event per direct-target impact. Task 0 keeps this as a no-op
         // dequeue so the queue does not back up; task 3 connects it to the
+        // unit 16 — 대상의 임팩트 소켓 높이(월드). 0 = 미저작.
+        private float ImpactSocketHeightOf(Entity target)
+        {
+            if (target == Entity.Null) return 0f;
+            if (_impactSocketByEntity.TryGetValue(target, out var cached)) return cached;
+            float v = 0f;
+            if (_enemyTypeByEntity.TryGetValue(target, out var enemyData) && enemyData != null)
+                v = enemyData.impactSocketHeight;
+            else
+                foreach (var kv in _defenderByTile)
+                    if (kv.Value.entity == target)
+                    {
+                        if (kv.Value.data != null) v = kv.Value.data.impactSocketHeight;
+                        break;
+                    }
+            _impactSocketByEntity[target] = v;
+            return v;
+        }
+
         private void DrainProjectileHitEvents()
         {
             if (!_projectileHitEventQueue.IsCreated) return;
@@ -5025,8 +5069,15 @@ namespace Wassup.Bridge
                 // TileAoe falls back to the legacy procedural burst. radiusWorld
                 // travels on the event because the AOE radius is per-cast.
                 if (data.hitPrefab != null)
+                {
+                    // unit 16 — 소켓 저작 대상이면 임팩트 VFX 를 몸통 높이에서(판정 무변).
+                    float hitH = data.visualHeightOffset;
+                    if (_projectileViewPool != null
+                        && _projectileViewPool.TryGetImpactSocketHeight(evt.source, out var sockH))
+                        hitH = sockH;
                     _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime,
-                        data.visualHeightOffset, data.hitVfxScale);
+                        hitH, data.hitVfxScale);
+                }
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
 
