@@ -16,7 +16,7 @@ MonoBehaviour:
   role: 2
   placementLayers: 1
   traversalLayers: 0
-  footprintWidth: 2
+  footprintWidth: 3
   footprintHeight: 2
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
   visible: 1
@@ -25,6 +25,7 @@ MonoBehaviour:
     \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC774 \uB098\uB97C \uB178\uB9BC"
   health: 800
   attackRange: 1
+  impactSocketHeight: 0
   attackCooldown: 1.5
   hitDelaySec: 0.3
   deployDelaySec: 0
