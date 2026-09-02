@@ -1,7 +1,7 @@
 # dreamcatcher-attach-range-preview — 부착 단계에서 카드의 적용 범위를 보여준다
 
-> 상태: **units 0a·0b·1·2·3 구현 완료(2026-09-02, 커밋 `9cd583b0`~`240e2b04`) · unit 4 자동 검증 완료
-> (PlayMode `AttachRangePreviewTest` 2건 초록 · 격리 A/B 로 0a 귀속 실패 2건 픽스처 수정) · 실기기·육안 항목 대기.**
+> 상태: **구현 완료 · 투트랙 리뷰 반영(`abff12fd`) · 검증 마감 대기(2026-09-03).** 남은 일은
+> [`5_handoff_summary.md`](5_handoff_summary.md) — 골든 정본 조건 결정 + 재베이크 1회, unit 4 육안·실기기, 그 뒤 「완료」 선언.
 > 골든: 0a 전/후 A/B 8건 바이트 동일(킬 경제 변동 0). 재베이크 커밋은 **조건 드리프트**(configHash 변화, 0a 무관)로
 > 보류 — 정본 조건 결정 후 1회. 상세는 `0a_area_circle_sim.md` 완료 기준.
 > 발원: `distance-based-range` 종료 시 사용자 제안. 그 spec 의 표기 계약(판정과 1:1)을 **소비**하는
