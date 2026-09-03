@@ -7953,7 +7953,11 @@ namespace Wassup.Bridge
             // `ToEntityArray` 를 쳐서 던진다.
             if (tilemapMapView == null || !HasLiveEntityManager() || !_aliveAttackersQueryCreated) return;
 
-            float3 atkPos = GridToWorldCenter(center);
+            // 베이스 통일(2026-09-03) — 판정 원점 = 베이스(발밑). `center` 는 앵커 셀이라 FootOffset 을
+            // 더해야 사거리 링·배치 후 sim 과 **같은 점**에서 잰다(2×2 는 반 타일, 3×2 는 한 타일 차였다).
+            var markBase = Wassup.Data.FootprintMath.FootOffset(unit != null ? unit.Footprint : Vector2Int.one);
+            float3 atkPos = GridToWorldCenter(center)
+                          + new float3(markBase.x * tileSize, 0f, markBase.y * tileSize);
             var q = _rangeTargetQuery;   // CreateAliveAttackerQueries 에서 1회 생성
             var ents = q.ToEntityArray(Unity.Collections.Allocator.Temp);
             var tf = q.ToComponentDataArray<LocalTransform>(Unity.Collections.Allocator.Temp);
