@@ -16,15 +16,16 @@ MonoBehaviour:
   role: 3
   placementLayers: 1
   traversalLayers: 0
+  footprintWidth: 2
+  footprintHeight: 2
   displayName: "\uC774\uC464\uC2DC\uAC1C"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBE60\uB978 \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801\uC5D0\uAC8C \uCD9C\uD608 \uBD80\uC5EC\n\uD2B9\uC218
     \uD6A8\uACFC: \uACF5\uACA9\uD560 \uB54C\uB9C8\uB2E4 \uCD9C\uD608 \uB204\uC801"
   health: 400
-  footprintWidth: 2
-  footprintHeight: 2
   attackRange: 1
+  impactSocketHeight: 0
   attackCooldown: 0.3
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -53,12 +54,6 @@ MonoBehaviour:
     op: 0
     stackKind: 3
     stackMaxStack: 5
-  onPlaceEffect: 0
-  onPlaceRange: 2
-  onPlaceMagnitude: 5
-  onPlaceDuration: 2
-  onPlaceStackKind: 3
-  onPlaceTickInterval: 0
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 2
@@ -67,7 +62,7 @@ MonoBehaviour:
   retireCooldownRatio: 0.4
   maxOnBoard: 1
   targetAllies: 0
-  attackTargetLayers: 6
+  attackTargetLayers: 2
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 85a7e6c668d5469bbecea2ecb6a7e09e, type: 2}
@@ -107,9 +102,6 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45

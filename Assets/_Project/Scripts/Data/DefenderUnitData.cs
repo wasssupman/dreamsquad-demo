@@ -207,7 +207,7 @@ namespace Wassup.Data
         // 폭발이라는 점이 예외의 근거다. 이니셜라이저는 Path 그대로 둔다 — 여기 있는
         // 27개 에셋이 전부 키를 명시하고 있어 이 값은 신규 저작에만 닿고, 신규 유닛의
         // 기본을 바꾸는 것은 별도 결정이다.
-        [Tooltip("이 유닛의 공격이 맞힐 수 있는 적 통행층. 기본은 Path|Air(지상+공중). 지상 전용은 아틸러리·폭탄맨뿐.")]
+        [Tooltip("이 유닛의 공격이 맞힐 수 있는 적 통행층. 원거리는 Path|Air(지상+공중), 근접(사거리 1)은 Path 지상 전용(2026-09-03 — 손이 안 닿는 공중을 때리던 버그 교정, 자산 lane 불변식이 지킨다). 지상 전용 원거리는 아틸러리·폭탄맨.")]
         public PlacementLayer attackTargetLayers = PlacementLayer.Path;
         public PlacementLayer EffectiveAttackTargetLayers
             => attackTargetLayers == PlacementLayer.None ? PlacementLayer.Path : attackTargetLayers;

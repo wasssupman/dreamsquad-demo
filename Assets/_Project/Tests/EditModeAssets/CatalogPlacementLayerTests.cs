@@ -8,12 +8,14 @@ namespace Wassup.Tests.EditMode
     // 층 비트필드 판정 로직 테스트(합성 맵)는 코어 lane 에 남는다.
     public class CatalogPlacementLayerTests
     {
-        // 2026-08-17 사용자 결정 — 지상 전용으로 남는 방어유닛의 **전체 목록**.
-        // 이 둘의 공격은 지면 착탄 폭발이라 하늘의 적에게 닿지 않는다.
+        // 2026-08-17 사용자 결정 — 지상 전용 **원거리** 예외 목록(지면 착탄 폭발이라 하늘에 안 닿음).
+        // rev 2026-09-03 사용자 결정 — **근접(사거리 ≤1, 비지원)도 전원 지상 전용**: 손이 닿을 리
+        // 없는 근접이 비행 적을 때리던 버그 교정. 근접은 id 목록이 아니라 사거리로 파생한다
+        // (신규 근접 유닛 자동 포함 — DefenderMeleeAirTargetTests 가 폴더 전수판).
         private static readonly string[] GroundOnlyDefenderIds = { "artillery", "bomb_man" };
 
         [Test]
-        public void DefenderCatalog_AllTargetPathAndAir_ExceptArtilleryAndBombMan()
+        public void DefenderCatalog_LayerAuthoring_MatchesRangeRule()
         {
             var catalog = AssetDatabase.LoadAssetAtPath<DefenderCatalog>(
                 "Assets/_Project/Data/DefenderCatalog.asset");
@@ -34,9 +36,16 @@ namespace Wassup.Tests.EditMode
                     continue;
                 }
 
+                if (!unit.targetAllies && unit.attackRange <= 1)
+                {
+                    Assert.AreEqual(PlacementLayer.Path, unit.EffectiveAttackTargetLayers,
+                        $"근접 {unit.id} 는 지상 전용이어야 한다(rev 2026-09-03)");
+                    continue;
+                }
+
                 Assert.AreEqual(PlacementLayer.Path | PlacementLayer.Air,
                     unit.EffectiveAttackTargetLayers,
-                    $"방어유닛 {unit.id} 은 지상과 공중 적을 모두 공격해야 한다");
+                    $"원거리 {unit.id} 은 지상과 공중 적을 모두 공격해야 한다");
             }
 
             Assert.AreEqual(GroundOnlyDefenderIds.Length, groundOnlySeen,

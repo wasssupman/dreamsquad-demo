@@ -26,6 +26,7 @@ MonoBehaviour:
     \uB744\uC6C0"
   health: 600
   attackRange: 1
+  impactSocketHeight: 0
   attackCooldown: 2
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -55,7 +56,7 @@ MonoBehaviour:
   retireCooldownRatio: 0.4
   maxOnBoard: 1
   targetAllies: 0
-  attackTargetLayers: 6
+  attackTargetLayers: 2
   targetFactions: 98
   abilities:
   - {fileID: 11400000, guid: 142b23fb212bc49c28c3284551579a93, type: 2}

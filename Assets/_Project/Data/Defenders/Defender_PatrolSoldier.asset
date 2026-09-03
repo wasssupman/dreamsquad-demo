@@ -16,15 +16,16 @@ MonoBehaviour:
   role: 3
   placementLayers: 1
   traversalLayers: 3
+  footprintWidth: 2
+  footprintHeight: 2
   displayName: "\uC18C\uD658\uC0AC\uCAC4"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uADFC\uC811 \uB2E8\uC77C \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uAC70\uC810 \uC8FC\uBCC0\uB9CC
     \uC21C\uCC30"
   health: 300
-  footprintWidth: 2
-  footprintHeight: 2
   attackRange: 1
+  impactSocketHeight: 0
   attackCooldown: 0.2
   hitDelaySec: 0.3
   deployDelaySec: 0
@@ -46,12 +47,6 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
-  onPlaceDuration: 0
-  onPlaceStackKind: 3
-  onPlaceTickInterval: 0
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 0
@@ -60,7 +55,7 @@ MonoBehaviour:
   retireCooldownRatio: 0.4
   maxOnBoard: 1
   targetAllies: 0
-  attackTargetLayers: 6
+  attackTargetLayers: 2
   targetFactions: 98
   abilities: []
   rarity: 0
@@ -89,9 +84,6 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
