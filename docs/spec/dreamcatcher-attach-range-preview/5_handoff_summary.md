@@ -58,10 +58,10 @@
 
 ## Follow-up (닫기 전 필수)
 
-1. **골든 정본 조건 결정**(2026-09-03 사용자: **보류** — HEAD 골든 유지, 이 세션에서 결정하지 않음) — A) BattleScene 직접
-   Play(디스크 SO, 재현 가능) / B) 로그인 후 전투 진입(시트 값, 실제 조건).
-   결정 후 Play 중 `Wassup/Battle/Sim Harness/Regenerate Golden Corpus` 1회 → `Verify` 2회 일치 → **골든만 담은 커밋**
-   (`docs/spec/battle-sim-extraction/golden-corpus.md` 동반). 기대: A 면 스크래치 `golden_post0a/` 와 바이트 동일.
+1. ~~**골든 정본 조건 결정**~~ — **완료 2026-09-03**(사용자 확정: **A** BattleScene 직접 Play·디스크 SO). HEAD 어셈블리에서
+   재생성 1회 + `Verify` 2회 전건 통과, 골든만 담은 커밋 `bb8cdefb`. ⚠ 재생성 메뉴 끝의 `AssetDatabase.Refresh` 가
+   pull 로 대기 중이던 스크립트를 임포트해 **Play 중 리컴파일 → ECS 월드 사망**(`_world == null`, Verify 가 빈 판)을
+   일으킬 수 있다 — pull 직후엔 Play 재진입 후 굽는다.
 2. **unit 4 육안·실기기** (`4_play_verification.md` A~F): dim 아래 엄지가 host 위에서도 궁지폭발 채움이 1초 안에 읽히는가
    (손가락 사진 1장) · 라임/시안 구분 · 액티브 조준 원 + 발동 결과 일치 · 회오리·운석 VFX 크기 = 조준 링 · 배치 드래그 중
    락온 시 배치 링 유지 · Subway 맵에서 2×2 host 중심(셀 경계 교점). 부족하면 `attachRangeStyle`·`aimRingStyle` 튠, 그래도
