@@ -252,7 +252,6 @@ namespace Wassup.Logging
         public string reason;
     }
 
-
     [Serializable]
     public class OnPlaceUsageLog
     {

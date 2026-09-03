@@ -102,9 +102,9 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SynergySlot_NeutralRefresh_RemovesOnlyItsBonus()
+        public void NeutralRefresh_RemovesOnlyThatSlotsBonus()
         {
-            using var world = new World("EffectTileModifierTests_SynergyNeutral");
+            using var world = new World("EffectTileModifierTests_NeutralRefresh");
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<ModifierApplySystem>());
@@ -121,12 +121,13 @@ namespace Wassup.Tests.EditMode
                 var defender = em.CreateEntity();
                 em.AddComponentData(defender, new ModifierStats());
 
-                statQ.Enqueue(MakeAdditiveEvent(defender, 0.2f, 1)); // 활성 시너지 +20%
+                statQ.Enqueue(MakeAdditiveEvent(defender, 0.2f, 1)); // 슬롯 1 에 +20%(구 시너지 슬롯 — 임의 번호)
                 world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
                 simGroup.Update();
                 Assert.AreEqual(1.2f, em.GetComponentData<ModifierStats>(defender).damageMul, 1e-4f);
 
-                // synergy-toggle: 같은 merge key의 +0 refresh는 슬롯을 삭제하지 않고 시너지 기여만 중립화한다.
+                // 같은 merge key 의 +0 refresh 는 슬롯을 삭제하지 않고 그 기여만 중립화한다 —
+                // 모디파이어 파이프라인의 범용 계약(첫 소비자였던 시너지는 2026-09-03 은퇴).
                 statQ.Enqueue(MakeAdditiveEvent(defender, 0f, 1));
                 world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
                 simGroup.Update();

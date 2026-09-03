@@ -107,7 +107,6 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.PlaceDefenderAs(from.x, from.y, unit), "source tile is free for a new placement");
         }
 
-
         // defender-relocation unit 8 — 대가와 보상. 재배치 1회에 코스트가 유닛 코스트만큼 줄고,
         // 활성화 시점에 최대 체력 비율만큼 회복하며, on-place 가드가 재무장된다.
         [UnityTest]
@@ -236,9 +235,6 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.TryGetDefenderCell(e, out var c), "entity is bound to a cell");
             return c;
         }
-
-        // 시너지 기여만 격리 판정: StatModifierSlot 버퍼에서 origin=Synergy·DamageMul 슬롯의
-        // magnitude 를 직독(read-only). 슬롯 없음 = 중립 1.0.
 
         private static DefenderCatalog FindCatalog()
         {

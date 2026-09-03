@@ -55,6 +55,7 @@ namespace Wassup.Skills
         Unspecified = 0,
         // 유닛 배치 스킬. 레거시 `OnPlaceEffectType` 계열이 쓰던 출처이고,
         // 값은 `Battle.Effects.ModifierOrigin` 과 **정렬돼 있어야 한다**(어댑터가 캐스트한다).
+        // ⚠ 저쪽 3(Synergy)은 은퇴 슬롯이다(2026-09-03 기능 제거) — 번호 재사용 금지.
         OnPlace = 1,
         // skill-layer-migration unit 7a — **플레이어 액티브 스킬 카드.** 시전 주체 엔티티가
         // 없는 유일한 출처다(손패에서 칸을 지정해 쓴다). 상태FX·오라 집계가 이 값으로

@@ -2,7 +2,7 @@
 """Analyze battle session JSON logs against PRD H1/H2/H3 hypotheses.
 
 H1 (draft convergence): picks + scores should converge across repeated plays.
-H2 (placement/skill axis): skill timing stddev should shrink, synergy activations
+H2 (placement/skill axis): skill timing stddev should shrink, on-place usage
     should rise as the player learns the strategic payoff of clustering.
 H3 (defeat attribution): outcome distribution + defeat timing for "was it
     close or blowout" context — the human-interview side is out of scope for
@@ -37,8 +37,6 @@ class Session:
     draft_picked: list[str]
     skill_loadout: list[str]
     skill_usages: list[dict[str, Any]] = field(default_factory=list)
-    synergy_activations: int = 0
-    synergy_peak: int = 0
     on_place_usages: list[dict[str, Any]] = field(default_factory=list)
     placements: list[dict[str, Any]] = field(default_factory=list)
 
@@ -56,7 +54,7 @@ def _get(d: dict, path: str, default=None):
 def load_sessions(logs_dir: Path) -> list[Session]:
     """Parse every `session-*.json` under `logs_dir` into Session dataclasses.
 
-    Older Phase 0~3 logs are missing some fields (synergy / skill / onPlace);
+    Older Phase 0~3 logs are missing some fields (skill / onPlace);
     we substitute defaults rather than failing so historical logs remain usable.
     """
     sessions: list[Session] = []
@@ -82,8 +80,6 @@ def load_sessions(logs_dir: Path) -> list[Session]:
             draft_picked=list(_get(d, "draft.picked", []) or []),
             skill_loadout=list(_get(d, "skill.loadout", []) or []),
             skill_usages=list(_get(d, "skill.usages", []) or []),
-            synergy_activations=int(_get(d, "synergy.activations", 0) or 0),
-            synergy_peak=int(_get(d, "synergy.peakCount", 0) or 0),
             on_place_usages=list(_get(d, "on_place_usages", []) or []),
             placements=list(_get(d, "placements", []) or []),
         ))
@@ -170,7 +166,7 @@ def analyze_h1(sessions: list[Session]) -> dict[str, Any]:
 # ------------------------------- H2 metrics ------------------------------- #
 
 def analyze_h2(sessions: list[Session]) -> dict[str, Any]:
-    """H2 probes whether skill timing / synergy use are converging.
+    """H2 probes whether skill timing / on-place use are converging.
 
     Phase 5 observables:
     - Skill usage timing mean/stddev per skill id (shrinking stddev = learned).
@@ -195,9 +191,6 @@ def analyze_h2(sessions: list[Session]) -> dict[str, Any]:
             "stddev_sec": round(statistics.stdev(times), 2) if len(times) > 1 else 0.0,
         }
 
-    synergy_activations = [s.synergy_activations for s in sessions]
-    synergy_peak = [s.synergy_peak for s in sessions]
-
     # onPlace usage per effect (e.g. SlowPulse / BoostNearbyDefenders).
     on_place_by_effect: Counter[str] = Counter()
     for s in sessions:
@@ -214,10 +207,6 @@ def analyze_h2(sessions: list[Session]) -> dict[str, Any]:
         "skill_usages_per_session_avg": round(
             total_skill_uses / max(len(sessions), 1), 2),
         "skill_timing_per_id": timing_summary,
-        "synergy": {
-            "activations_avg": round(statistics.mean(synergy_activations), 2) if synergy_activations else 0,
-            "peak_avg": round(statistics.mean(synergy_peak), 2) if synergy_peak else 0,
-        },
         "on_place_usage_by_effect": dict(on_place_by_effect),
         "placements": {
             "avg_per_session": round(statistics.mean(placement_counts), 2) if placement_counts else 0,
@@ -325,7 +314,6 @@ def render_markdown(h1: dict, h2: dict, h3: dict) -> str:
                 f"  - `{sid}`: n={meta['count']}, μ={meta['mean_sec']}s, σ={meta['stddev_sec']}s"
                 + "  _(σ ↓ = converging)_"
             )
-    out.append(f"- Synergy activations avg: {h2['synergy']['activations_avg']}, peak avg: {h2['synergy']['peak_avg']}")
     out.append(f"- onPlace usages by effect: {h2['on_place_usage_by_effect']}")
     p = h2["placements"]
     out.append(f"- Placements: {p['avg_per_session']} avg / session, {p['avg_unique_types']} unique types avg")

@@ -1,6 +1,10 @@
 # synergy-toggle — 인접 동족 시너지 제어
 
-상태: unit 0 구현 완료, 사용자 Play 확인 대기 (2026-07-15)
+상태: **은퇴 2026-09-03** — 시너지 기능 전량 제거(커밋 6e9acfbb, 사용자 결정). 이 spec 이 만든
+토글로 라이브에서 내내 꺼져 있던(휴면) 기능이라, 토글 유지 대신 기능 자체를 철거했다.
+`ModifierOrigin.Synergy`(서수 3)와 stackId 1 은 **번호만 보존** — `SkillModifierOrigin` →
+`ModifierOrigin` 숫자 캐스트(EcsSkillContext)가 서수에 매여 있어 지우면 하위 출처가 조용히
+밀린다. 재사용 금지. 이하 본문은 은퇴 전 이력이다.
 
 ## 목표
 

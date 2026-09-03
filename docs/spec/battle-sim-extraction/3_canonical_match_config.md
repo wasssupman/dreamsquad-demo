@@ -2,7 +2,7 @@
 
 ## 목적
 
-골든의 "같은 조건" 보장은 스탯 SO 스냅샷만으로 부족하다 — 씬 상주 gameplay knob(스폰 spread, `enableAdjacencySynergy` 등)도 결과를 바꾼다. 한 판의 조건 전체(맵·웨이브플랜 **생성 결과**·덱·seed·유닛/스킬/투사체/해저드/기믹 스탯·점수 룰·씬 knob)를 **불변 blob으로 물질화**하고 canonical 직렬화의 `configHash`를 만든다. 골든 diff 발생 시 "시트 드리프트 vs 코드 회귀"를 해시로 먼저 가르는 1차 판독 장치이자, 이후 AMR·커맨드로그의 공통 필드다. 셋업 난수(`UnityEngine.Random` — 웨이브 생성·기믹 선택)는 생성 **결과**가 blob에 실리므로 sim 상류로 격리된다.
+골든의 "같은 조건" 보장은 스탯 SO 스냅샷만으로 부족하다 — 씬 상주 gameplay knob(스폰 spread 등)도 결과를 바꾼다. 한 판의 조건 전체(맵·웨이브플랜 **생성 결과**·덱·seed·유닛/스킬/투사체/해저드/기믹 스탯·점수 룰·씬 knob)를 **불변 blob으로 물질화**하고 canonical 직렬화의 `configHash`를 만든다. 골든 diff 발생 시 "시트 드리프트 vs 코드 회귀"를 해시로 먼저 가르는 1차 판독 장치이자, 이후 AMR·커맨드로그의 공통 필드다. 셋업 난수(`UnityEngine.Random` — 웨이브 생성·기믹 선택)는 생성 **결과**가 blob에 실리므로 sim 상류로 격리된다.
 
 ## 변경 대상
 
@@ -53,7 +53,8 @@
 
 ### 씬 knob 분류표 (SerializeField 86개)
 
-**gameplay = 15개.** 전부 스냅샷에 들어간다(직접 값 또는 **물질화된 결과**로).
+**gameplay = 14개.** 전부 스냅샷에 들어간다(직접 값 또는 **물질화된 결과**로).
+(`enableAdjacencySynergy` 는 2026-09-03 시너지 은퇴로 필드·knob 줄 모두 말소 — configHash 가 움직여 골든 전건 재생성 동반.)
 
 | 필드 | 담기는 방식 |
 |---|---|
@@ -65,7 +66,6 @@
 | `fixedMapSeed` | `[sceneKnobs]` |
 | `tileSize` · `spawnHeight` · `agentRadiusTiles` | `[sceneKnobs]` |
 | `spawnSpreadEnabled` · `spawnSpreadFraction` · `spawnSpreadTopScale` · `spawnSubLaneCount` | `[sceneKnobs]` |
-| `enableAdjacencySynergy` | `[sceneKnobs]` |
 | `dcProcImpactMinIntervalSec` | `[sceneKnobs]` |
 
 **presentation/wiring = 71개.** 담지 않는다. 그룹으로:

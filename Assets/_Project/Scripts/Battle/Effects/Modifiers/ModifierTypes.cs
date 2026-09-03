@@ -22,7 +22,8 @@ namespace Wassup.Battle.Effects
         Unspecified = 0,
         OnPlace,          // 유닛 배치 스킬(BattleBridge onPlace*)
         Skill,            // 플레이어 액티브 스킬 카드
-        Synergy,          // 은퇴(2026-09-03 시너지 기능 제거) — 생산자 0. append-only 계약이라 슬롯만 보존
+        Synergy,          // 은퇴(2026-09-03 시너지 기능 제거) — 생산자 0. 슬롯을 지우면 뒤 값들이 밀려
+                          // SkillModifierOrigin → ModifierOrigin 숫자 캐스트(EcsSkillContext)가 조용히 어긋난다 — 보존
         Dreamcatcher,     // 드림캐쳐 카드/유닛 트리거(OnKill 자가버프 포함)
         Dreamstone,       // 드림스톤 로드아웃(영구 baseline)
         Tile,             // EffectTile

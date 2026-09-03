@@ -64,6 +64,6 @@
 - **import 직전 git-dirty 검사** [S] · 대상 폴더에 미커밋 변경 있으면 경고 — dry-run 전까지의 값싼 방어.
 - **Dreamstones 탭** [S] · `DreamstoneData`(13종, CardEffect 재사용) 평탄 탭 — 유닛 패턴 그대로.
 - **런타임 리프레시(로비 버튼) 드림캐쳐 확장** [M] · `DreamcatcherCardCatalog` 경유. 5번째 카탈로그 발생 시 `ScriptableCatalog<T>` 승격 조건(runtime-stat-refresh 백로그) 함께 검토.
-- **드림캐쳐 외 하드코딩 밸런스** [S] · `BattleBridge.SynergyPerNeighbor=0.1f`, `EnemyKillScoreDelta=10`, 점수 산식(`durationSec*10 - goal*50`) — 별도 spec 으로 SO/시트화 검토.
+- **드림캐쳐 외 하드코딩 밸런스** [S] · `EnemyKillScoreDelta=10`, 점수 산식(`durationSec*10 - goal*50`) — 별도 spec 으로 SO/시트화 검토. (~~SynergyPerNeighbor~~ 는 2026-09-03 시너지 은퇴로 소멸)
 - **기본 덱 구성(카드 id 리스트) 시트 노출** [S] · `DreamcatcherDeck_Default` — 에셋 참조 리스트라 id 해석기 필요.
 - **시트發 신규 카드 upsert** [M] · 현 계약은 update-only. 시트 행으로 .asset 신설(기본값 생성 후 art/projectile 만 Unity 보충) — 카드 신설 빈도가 높아지면 검토.

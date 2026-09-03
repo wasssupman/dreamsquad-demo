@@ -3303,7 +3303,9 @@ namespace Wassup.Bridge
             for (int i = 0; i < sn; i++) w.PutAsset($"s{i}", stackModifierAuthoring[i]);
 
             // 씬 상주 gameplay knob. 이 목록이 이 unit 의 실질이다 — 스탯 SO 만 스냅샷하면
-            // 「같은 SO 인데 결과가 다르다」가 남는다(스폰 spread·인접 시너지가 그 예).
+            // 「같은 SO 인데 결과가 다르다」가 남는다(스폰 spread 가 그 예).
+            // ⚠ 이 목록의 증감은 configHash 를 움직여 골든 전건을 무효화한다 — 재생성 동반 필수
+            // (enableAdjacencySynergy 말소가 그랬다, 2026-09-03 투트랙 리뷰 H-1).
             w.Section("sceneKnobs");
             w.Put("tileSize", tileSize);
             w.Put("spawnHeight", spawnHeight);
@@ -7575,7 +7577,10 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
 
             var entity = CreateDefenderEntity(primary, unitData, pendingDeployment: false, spawnPlacementVfx: true);
-            TriggerOnPlace(unitData, primary, entity);
+            // 투트랙 리뷰 M-3(2026-09-03) — 탭 경로 전용 사본(구 TriggerOnPlace)을 접고 드래그
+            // 경로와 **같은 함수**를 지난다. CreateDefenderEntity 가 _defenderByTile 등록을
+            // 마친 뒤라 바인딩 가드를 통과하고, 대표 셀 해석(TryResolveDefenderKey)도 얻는다.
+            TriggerDeploymentOnPlaceSkill(primary, entity);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -8857,14 +8862,6 @@ namespace Wassup.Bridge
             if (!_em.HasBuffer<DcTriggerSlot>(entity)) return;
             if (!_em.HasComponent<Wassup.Battle.Units.JustDeployed>(entity))
                 _em.AddComponent<Wassup.Battle.Units.JustDeployed>(entity);
-        }
-
-        private void TriggerOnPlace(DefenderUnitData unitData, Vector2Int cell, Entity entity)
-        {
-            MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
-            FireOnPlaceCameraShake(unitData);   // camera-direction unit 17
-            _onPlaceTriggeredEntities.Add(entity);
-            ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
         }
 
         public Unity.Entities.Entity DebugSpawnObstacleAt(Unity.Mathematics.int2 cell, float lifetime = 5f)

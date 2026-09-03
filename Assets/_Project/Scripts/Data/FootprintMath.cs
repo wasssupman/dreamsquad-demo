@@ -53,7 +53,8 @@ namespace Wassup.Data
         }
 
         // defender-footprint unit 3 — 두 셀 rect 의 체비셰프 거리. 0 = 겹침, 1 = 둘레 접촉(인접).
-        // 1×1 끼리 거리 1 = 8이웃과 동치 — 시너지 인접의 footprint 일반화가 이 함수 하나다.
+        // ⚠ 프로덕션 소비자 0(시너지 은퇴 2026-09-03) — backlog 「적 통행 차단 footprint」가
+        // 재소비할 후보라 **판단으로** 보존한다(자기 테스트만 남음). 재소비 없이 오래 가면 삭제 후보.
         public static int RectChebyshevDistance(RectInt a, RectInt b)
         {
             int dx = Mathf.Max(0, Mathf.Max(b.xMin - (a.xMax - 1), a.xMin - (b.xMax - 1)));

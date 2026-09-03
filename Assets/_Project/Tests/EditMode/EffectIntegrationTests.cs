@@ -122,9 +122,9 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Combat_Applies_SynergyMul_Stacked_With_DamageMul_Via_ModifierStats()
+        public void Combat_Applies_SecondSlotMul_Stacked_With_DamageMul_Via_ModifierStats()
         {
-            using var world = new World("EffectIntegrationTests_Synergy");
+            using var world = new World("EffectIntegrationTests_SecondSlot");
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<StatModifierTickSystem>());

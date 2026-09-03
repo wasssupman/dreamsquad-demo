@@ -36,6 +36,7 @@ namespace Wassup.Tests.EditMode
             => Assert.IsFalse(Eval(Slot(StatKind.DamageMul, CombineOp.Additive, 0.24f, ModifierOrigin.Dreamstone)));
 
         [Test]
+        // Synergy 는 생산자 0 인 은퇴 출처지만(2026-09-03) 「비-Dreamcatcher 출처 제외」의 대역으로 유효.
         public void Synergy_Excluded_False()
             => Assert.IsFalse(Eval(Slot(StatKind.DamageMul, CombineOp.Additive, 0.5f, ModifierOrigin.Synergy)));
 
