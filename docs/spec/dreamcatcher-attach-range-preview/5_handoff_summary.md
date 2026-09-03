@@ -73,5 +73,8 @@
 - ~~`docs/spec/README.md` 사전 실패 절 15건 등재 · Backlog 이관~~ — **완료 2026-09-03**(후속 커밋).
 - ~~world→tile 변환 헬퍼화(`WorldToFractionalCell`) · `ResolveCard` 경고 카드당 1회 · 브리지 라우팅 래퍼 3개 은퇴
   (호출처 10곳 → `DcSkillRouting` 직접 호출, `RoutingProbe` 만 잔존)~~ — **완료 2026-09-03**.
+- ~~액티브 장판(공격폭증·속사) 시전 뒤 남는 (2N+1)² 사각 바닥 점등 제거~~ — **완료 2026-09-03**(사용자 버그 보고 → active-ally-zone
+  계약 5 은퇴 · `TilemapMapView` zone 타일맵/refcount/`allyZoneColor` + 브리지 `DrainAllyBuffZoneVisuals` 삭제 · 핀
+  `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles`). `BattleScene.unity` 의 `allyZoneColor` 직렬화 키는 고아로 남는다(무해, 다음 씬 저장 시 소멸).
 - 남은 LOW: 전 concrete Id 를 카탈로그가 명시 분류하는지 잡는 테스트(새 area concrete 가 조용히 None 이 되는 것 감지) —
   Backlog 「부착 범위 프리뷰」 절에 등재.

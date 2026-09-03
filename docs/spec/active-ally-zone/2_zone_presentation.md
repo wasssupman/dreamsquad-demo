@@ -1,5 +1,10 @@
 # 2 — 장판 점등 (전용 zone 타일맵 + 셀 refcount)
 
+> **은퇴 2026-09-03** — 사용자 결정 「부착 후 맵 위에 남는 타일 제거」. 판정·조준이 원이 된 뒤 (2N+1)² 사각
+> 점등만 남아 거짓 도형이 됐다. zone 타일맵·refcount·`allyZoneColor`·브리지 등록부(`DrainAllyBuffZoneVisuals`)
+> 는 코드에서 삭제됐고, 회귀 핀은 `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles`. 아래는 당시 설계 이력이다
+> (README 계약 5).
+
 ## 목적
 
 효과가 화면에 남게 한다. 지금은 시전 후 근거가 사라져 "왜 저 유닛이 강한지" 를 알 수 없다.

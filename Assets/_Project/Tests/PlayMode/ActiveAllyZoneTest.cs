@@ -335,10 +335,12 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(0, CountLiveZones(em), "매치 종료가 캐리어를 정리한다");
         }
 
-        // 리뷰 test-gap 3 / 계약 5 — 겹친 장판 하나가 만료돼도 나머지 발자국이 온전해야 한다.
-        // 점등은 칸별 refcount 로 관리되므로 그 dict 를 직접 읽어 잰다.
+        // dreamcatcher-attach-range-preview 후속(2026-09-03 사용자) — 장판 시전은 **보드 타일을 하나도 칠하지 않는다.**
+        // 조준·판정이 원(N+0.5+몸)이 된 뒤에도 옛 (2N+1)² 사각 점등이 수명 동안 남아 "부착 후 타일이 남는다"로
+        // 읽혔다. 링 외 타일 채널(zone/range/effect 어느 것도)로 장판을 그리지 않음을 그리드 아래 Tilemap
+        // 전체의 사용 타일 수 스냅샷으로 잰다 — 이름 하나에 매이지 않고 어떤 채널로 새도 잡힌다.
         [UnityTest]
-        public IEnumerator ZonePaint_OverlapRefcount_SurvivesOneExpiry()
+        public IEnumerator ZoneCast_PaintsNoBoardTiles()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -354,32 +356,43 @@ namespace Wassup.Tests.PlayMode
             bridge.StartBattle();
             yield return null;
 
-            // 짧은 장판 + 긴 장판을 같은 칸에 겹쳐 깐다.
+            var before = SnapshotBoardTiles(bridge);
             Assert.IsTrue(bridge.CastSkillAtTile(
-                MakeSkill(SkillEffectType.RapidFire, 2f, 0.4f, 1f), center, out _), "짧은 장판");
-            Assert.IsTrue(bridge.CastSkillAtTile(
-                MakeSkill(SkillEffectType.PowerSurge, 2f, 120f, 1f), center, out _), "긴 장판");
+                MakeSkill(SkillEffectType.PowerSurge, 2f, 30f, 1f), center, out _), "공격폭증 장판");
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(2, ZoneCellRefs(bridge, center), "겹친 칸의 참조수 2");
+            Assert.AreEqual(1, CountLiveZones(em), "장판은 살아 있다(효과는 그대로)");
 
-            yield return PumpFor(0.4f + EffectSpawner.AllyBuffApplySec + 0.3f);
-            Assert.AreEqual(1, ZoneCellRefs(bridge, center),
-                "하나가 만료돼도 나머지 장판의 점등은 남는다(참조수 1)");
+            var after = SnapshotBoardTiles(bridge);
+            Assert.AreEqual(before.Count, after.Count, "시전이 새 Tilemap 을 만들지 않는다");
+            foreach (var kv in after)
+            {
+                Assert.IsTrue(before.TryGetValue(kv.Key, out int n), $"시전 후 새 Tilemap '{kv.Key}'");
+                Assert.AreEqual(n, kv.Value, $"Tilemap '{kv.Key}' 의 타일 수가 시전으로 바뀌었다");
+            }
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
 
-        // TilemapMapView._zoneCellRefs 직독 — 점등 refcount 는 뷰 내부 상태라 공개 API 가 없다.
-        private static int ZoneCellRefs(BattleBridge bridge, Vector2Int cell)
+        // 그리드 아래 모든 Tilemap 의 사용 타일 수 — 바닥·오버레이·프리뷰 채널 전부. 시전 전후 비교용.
+        private static Dictionary<string, int> SnapshotBoardTiles(BattleBridge bridge)
         {
             var viewField = typeof(BattleBridge).GetField("tilemapMapView",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            var view = viewField.GetValue(bridge);
+            var view = (Component)viewField.GetValue(bridge);
             Assert.IsNotNull(view, "tilemapMapView 배선");
-            var refsField = view.GetType().GetField("_zoneCellRefs",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            var dict = (Dictionary<Vector2Int, int>)refsField.GetValue(view);
-            return dict.TryGetValue(cell, out int n) ? n : 0;
+            var gridField = view.GetType().GetField("grid", BindingFlags.NonPublic | BindingFlags.Instance);
+            var grid = (Grid)gridField.GetValue(view);
+            Assert.IsNotNull(grid, "grid 배선");
+            var result = new Dictionary<string, int>();
+            foreach (var tm in grid.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>(true))
+            {
+                // GetUsedTilesCount 는 타일 **종류** 수라 칸 수를 못 잰다 — 블록을 읽어 non-null 칸을 센다.
+                tm.CompressBounds();
+                int set = 0;
+                foreach (var t in tm.GetTilesBlock(tm.cellBounds)) if (t != null) set++;
+                result[tm.gameObject.name] = set;
+            }
+            return result;
         }
 
         private static IEnumerator BeginWith(BattleBridge bridge, DefenderUnitData[] pool)

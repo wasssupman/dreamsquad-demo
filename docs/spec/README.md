@@ -429,10 +429,10 @@ splash 저작 검증.
 `docs/spec/active-ally-zone/5_handoff_summary.md`.
 
 - **감속장을 캐리어로** [M] · `ApplySlowField` 는 아직 **스냅샷**이다 — 시전 시점 반경 내 적에게 지속시간 모디파이어를 직접 걸어, 나중에 들어온 적은 안 걸리고 나간 적은 계속 느리다. 원칙("안에 있는 대상이 영향을 받는다")의 **마지막 예외**. `AllyBuffField`/`TornadoField` 패턴을 적 쪽에 그대로 적용하면 된다. (active-ally-zone)
-- **장판 위 아군 하이라이트** [M] · 지금은 바닥 점등만이라 "누가 강화 중인가" 가 유닛에 안 붙는다. `SetHoverHighlight` 는 단일 슬롯 래치라 조준 틴트와 공존 불가 → 정식 경로는 `StatusFxKind` append + `ReconcileStatusFx` 의 `origin == Skill` 분기. **프리팹 1개(아트) 필요.** (active-ally-zone × active-dreamcatcher-tile-aim)
+- **장판 위 아군 하이라이트** [M] · 바닥 점등이 은퇴(2026-09-03)한 뒤로 장판 수명 동안 시각 신호가 **0** 이다 — "누가 강화 중인가" 가 유닛에 안 붙는다. `SetHoverHighlight` 는 단일 슬롯 래치라 조준 틴트와 공존 불가 → 정식 경로는 `StatusFxKind` append + `ReconcileStatusFx` 의 `origin == Skill` 분기. **프리팹 1개(아트) 필요.** (active-ally-zone × active-dreamcatcher-tile-aim)
 - **press 시점 범위 프리뷰** [S] · 카드를 집는 순간 어디에 얼마나 퍼지는지 보이면 "이 카드는 영역" 을 글로 배우지 않아도 된다. 지금은 끌어야 보인다. 액티브/부착 공통. (active-ally-zone)
-- **적/아군 장판 프리뷰 색 구분** [S] · 조준 프리뷰가 적 대상·아군 대상 모두 같은 aim 타일이다. 장판 점등은 민트로 갈랐으니 조준도 같은 언어로. (active-dreamcatcher-tile-aim × active-ally-zone)
-- **장판 겹침 시각 규칙** [S] · 두 장이 겹친 칸의 표현(현재 refcount 로 점등만 유지, 수명 페이드 없음). 칸별 색은 타일맵당 컬러 1개 제약 때문에 별도 설계가 필요하다. (active-ally-zone)
+- **적/아군 장판 프리뷰 색 구분** [S] · 조준 링이 적 대상·아군 대상 모두 `TileSetData.aimRingStyle` 하나다. 가르려면 스타일 2개(SO)로. (active-dreamcatcher-tile-aim × active-ally-zone × dreamcatcher-attach-range-preview)
+- **장판 수명 표시 재도입** [S] · 바닥 사각 타일 점등은 은퇴(2026-09-03 — 원 판정·조준과 어긋나 「부착 후 타일 잔존」으로 읽힘). 다시 필요하면 원 링/VFX. 링 채널은 단일 owner 라 장판 여러 장 동시 표시 설계가 선행. (active-ally-zone × dreamcatcher-attach-range-preview)
 - **손가락 오클루전 오프셋** [S] · 타일 조준점이 손끝에 가려지는지 실기기 확인 후 판단. 배치 쪽에는 이미 가상 포인터 오프셋 선례가 있다. (active-dreamcatcher-tile-aim)
 - **`TornadoField`/`PortalLink` 매치 경계 정리 누락** [S] · `DestroyBattleEntities` 에 없어 캐리어가 다음 판까지 산다. 적 전용이라 매치 사이엔 대상이 없어 실질 무해했지만 `AllyBuffField` 와 같은 구멍이었다. (active-ally-zone)
 - **`SkillData.cooldownSec`/`cost` 완전 삭제** [S] · 액티브 흡수 후 dormant(각성치가 비용, 순환이 재등장 간격). 에셋 값만 남아 있다. (active-dreamcatcher-tile-aim)

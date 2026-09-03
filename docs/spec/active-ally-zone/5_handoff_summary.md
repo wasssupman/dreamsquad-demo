@@ -45,7 +45,9 @@
   단 반경이 처음엔 1칸으로 보였고 **시트(`DcSkills`)의 `range` 를 고쳐야** 3×3 이 나왔다 —
   에셋 값만 바꾸면 런타임 시트 갱신이 덮는다(README 계약 9).
 
-## Notes (되돌리면 안 되는 의도)
+## Notes
+
+- **바닥 점등은 은퇴했다(2026-09-03)** — README 계약 5. 아래 점등·refcount 관련 항목은 이력이다. (되돌리면 안 되는 의도)
 
 - **`AllyBuffApplySec` 는 `Maximum Allowed Timestep`(0.3333)보다 커야 한다.** 작으면 히칭 프레임
   한 번에 `StatModifierTickSystem` 이 갱신값을 넘어 깎아 슬롯이 사라지고 그 프레임만 base 스탯이 된다.

@@ -52,7 +52,7 @@
 |---|---|---|---|
 | 0 | ECS+bridge | `0_ally_buff_field.md` | 아군 버프 장판 캐리어 + 멤버십 갱신/만료 |
 | 1 | bridge+UI | `1_cast_path_and_aim_cleanup.md` | 캐스트 경로 교체 + 조준 아군 카운트 예고 제거 |
-| 2 | 표현 | `2_zone_presentation.md` | 장판 점등(바닥). 유닛 하이라이트는 후속으로 이관 — critic H3 |
+| 2 | 표현 | `2_zone_presentation.md` | ~~장판 점등(바닥)~~ **은퇴 2026-09-03** — 사각 점등이 원 판정·조준과 어긋나 「부착 후 타일 잔존」으로 읽혔다(계약 5). 유닛 하이라이트는 후속으로 이관 — critic H3 |
 | 3 | UI | `3_selection_release_on_active.md` | 선택 중 액티브 허용(선택만 해제 + 줌 복귀) |
 | 4 | 검증 | `4_validation.md` | PlayMode + Play e2e |
 
@@ -108,9 +108,13 @@
    같아서 그냥 두면 어느 magnitude 가 이기는지가 chunk 순회 순서에 달리고, 만료 시 swap-back 으로
    그 순서가 런타임에 바뀐다 → 배율이 다른 장판 2장이 겹치면 승자가 무작위가 된다. 시스템이
    stat 별 최댓값으로 접어 enqueue 한다(부수로 유닛당 enqueue 가 stat 수 ≤2 로 줄어든다).
-5. **점등은 전용 zone 타일맵 + 셀 refcount.** 맵 효과 타일(`_effectTilesByCell`)과 조준 프리뷰
-   (`RangeDisplayOwner.SkillAim`) 채널을 쓰지 않는다 — 둘 다 단일 owner set/clear 라 서로를 지운다.
-   장판은 동시에 여러 장 존재할 수 있으므로 칸별 참조수 없이는 먼저 만료된 장판이 겹친 칸을 지운다.
+5. ~~점등은 전용 zone 타일맵 + 셀 refcount.~~ **은퇴 (2026-09-03 · 사용자 결정 「부착 후 맵 위에 남는 타일 제거」).**
+   멤버십이 셀 대 셀 체비셰프였을 때 설계된 (2N+1)² 사각 점등이다. 판정이 원 `N + 0.5 + 몸`
+   (distance-based-range unit 18)이 되고 조준까지 원 링(dreamcatcher-attach-range-preview 0b)이 된 뒤에는
+   시전 순간 원이 사각 타일로 바뀌어 수명(6~8초) 동안 남는 것이 「타일이 남아 있다」로 읽혔다.
+   **장판은 바닥 타일을 하나도 칠하지 않는다** — `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles` 가 그리드 아래
+   모든 Tilemap 의 칸 수 스냅샷으로 핀. zone 타일맵·refcount·`allyZoneColor`·브리지 등록부는 코드에서 삭제.
+   수명 표시가 다시 필요하면 원 링/VFX 로 재설계한다(후속 후보).
 6. **조준 UI 는 6종 동일**: 상태줄 `놓으면 이 위치에 시전` 하나. 아군 카운트 조회
    (`CountDefendersInRange`)와 그 예고 문안은 제거한다.
 7. **선택 해제 트리거는 드래그 시작.** press 에서 풀면 선택 중 **탭 즉발 부착**이 깨진다.
@@ -139,13 +143,14 @@
 | 스폰 요청 | `CastSkillAtTile` 의 `PowerSurge`/`RapidFire` case (unit 1) |
 | ECS 엔티티 | `AllyBuffField` 캐리어 (unit 0, Effects 소유) — `TornadoField` 형태 |
 | 시뮬 적용 | 갱신 tick → `StatModifierApplyEvents` 큐 (기존 파이프라인, 신규 큐 없음) |
-| 뷰 생성 | 장판 바닥 점등 (unit 2). 유닛별 신호는 StatusFx 후속 |
-| 정리 | 만료 시 엔티티 파괴 + 뷰 회수 (unit 0·2) |
+| 뷰 생성 | N/A — 바닥 점등은 은퇴(2026-09-03, 계약 5). 조준 원은 시전 전까지만(`SetAreaRange` 링). 유닛별 신호는 StatusFx 후속 |
+| 정리 | 만료 시 엔티티 파괴 (unit 0) |
 
 ## 후속 후보
 
 - press 시점 범위 프리뷰(카드를 집는 순간 어디에 얼마나 퍼지는지 보이기) — 액티브/부착 공통.
-- 장판 겹침 시각 규칙(같은 종류 2장이 겹칠 때의 표현).
+- **장판 수명 표시 재도입** — 사각 타일 점등은 은퇴(계약 5). 다시 필요하면 원 링 또는 VFX. 링 채널은 단일 owner 라
+  다중 인스턴스(장판 여러 장 동시) 설계가 먼저다.
 - **감속장을 캐리어로** — 지금은 스냅샷이라 원칙의 마지막 예외다(위 배경 참조).
 - 적 대상 장판(감속장/회오리)도 같은 오버레이 언어로 통일할지.
 - **장판 위 아군 하이라이트**(StatusFx 채널 + 프리팹 1개) — critic H3 로 이 spec 에서 이관.

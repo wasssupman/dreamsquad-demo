@@ -58,8 +58,9 @@ namespace Wassup.Bridge
         }
 
         // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 사각 셀 열거
-        // 단일 지점이고(보드 경계 클리핑 + 스크래치 재사용 포함), 액티브 장판이 이미 쓰고 있다.
-        // 손으로 다시 돌면 "예고 셀 = 피해 셀" 계약이 두 계산의 우연한 일치에 기대게 된다.
+        // 단일 지점이다(보드 경계 클리핑 + 스크래치 재사용 포함). 액티브 장판 점등이 은퇴한 뒤(2026-09-03)
+        // 소비처는 이 예고 하나지만, 손으로 다시 돌면 "예고 셀 = 피해 셀" 계약이 두 계산의 우연한 일치에
+        // 기대게 되므로 그대로 둔다.
         private void ShowLandingTelegraph(Entity entity)
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;

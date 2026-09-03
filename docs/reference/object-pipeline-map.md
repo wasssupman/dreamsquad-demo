@@ -121,8 +121,8 @@
 | 시뮬 consumer | `Battle/Effects/AllyBuffFieldSystem.cs` | 매 프레임 재발행(ZoneApplySystem 관용구). duration = `AllyBuffApplySec` 고정 |
 | 이벤트 큐 | `StatModifierApplyEventsSingleton` (기존) | 신규 큐 없음 |
 | 수명/정리 | `Battle/Effects/EffectTickSystem.cs` + `BattleBridge.DestroyBattleEntities` | 만료 파괴 + 매치 경계 정리 |
-| View | `Core/TilemapMapView.cs` 전용 zone 타일맵(`AddZoneCells`/`RemoveZoneCells`, 칸별 refcount) + `BattleBridge.PaintAllyBuffZone`/`DrainAllyBuffZoneVisuals`/`ClearAllyBuffZonePaint` | 조준 프리뷰(`SkillAim`)·맵 효과 타일 채널과 분리 |
-| 씬 wiring | `TilemapMapView.allyZoneColor` | 유닛별 신호는 미구현(StatusFx 후속) |
+| View | **N/A** — 바닥 타일 점등은 은퇴(2026-09-03, active-ally-zone 계약 5). 장판은 수명 동안 뷰를 갖지 않는다 | 조준 원은 시전 전까지 `TilemapMapView.SetAreaRange` 링(`RangeDisplayOwner.SkillAim`). 회귀 핀 `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles` |
+| 씬 wiring | N/A — `allyZoneColor` 은퇴 | 유닛별 신호는 미구현(StatusFx 후속) |
 
 ## 픽업 — 레드불 (season-gimmick-overwork, 시즌 기믹)
 

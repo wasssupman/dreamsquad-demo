@@ -795,7 +795,6 @@ namespace Wassup.Bridge
             unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
-            ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 잔여 장판 점등 정리(생명주기 대칭)
             ClearBonusPortalViews(); // bonus-wave-pull unit 6 — 잔여 포탈 뷰 정리(생명주기 대칭).
                                      // ResetBonusWaveState 에도 있지만 그건 **다음 판 진입** 시점이라,
                                      // 여기가 없으면 판을 끝내고 로비로 나가는 경로에서 포탈이 남는다.
@@ -1542,7 +1541,6 @@ namespace Wassup.Bridge
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
             _bountyMarked.Clear(); // 살찌운 제물 — 표식 등록부도 매치 경계에서 초기화
-            ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 등록부와 refcount 를 함께 반납
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -2756,19 +2754,15 @@ namespace Wassup.Bridge
         // 강화되나)은 Effects 의 AllyBuffFieldSystem 소관이고, bridge 는 스폰 호출과 **로그용
         // 스냅샷 카운트**만 한다(TRD: MonoBehaviour 에 전투 로직 금지).
         // 반환값은 로그의 affected_count 전용 — 성공/실패 판정에 쓰지 않는다(0기도 성공).
-        // skill-layer-migration unit 7b — `SpawnAllyBuffZone` 과 `PaintAllyBuffZone` 은
-        // 은퇴했다. 스폰은 concrete 가 하고 점등은 `DrainAllyBuffZoneVisuals` 의 양방향
-        // 재조정이 한다 — **시전 시점의 캐리어 핸들이 더는 필요 없다.**
+        // skill-layer-migration unit 7b — `SpawnAllyBuffZone` 은 은퇴했다. 스폰은 concrete 가 한다.
+        // dreamcatcher-attach-range-preview 후속(2026-09-03) — 장판 **바닥 점등도 은퇴**했다(active-ally-zone
+        // 계약 5). 멤버십(원 `N+0.5+몸`)·조준(원 링)과 어긋난 (2N+1)² 사각 타일이 수명 동안 남아
+        // 「부착 후 타일이 남는다」로 읽혔다. 장판은 수명 동안 뷰를 갖지 않는다 — 핀
+        // `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles`.
 
-        // active-ally-zone unit 2 — 장판 점등 등록부(캐리어 엔티티 → 칠한 셀). 만료는 ECS 가
-        // 엔티티를 파괴해서 알리므로, 뷰 회수는 프레임 재조정으로 한다(bridge 책임 = 시각 드레인).
-        // 셀 목록을 들고 있지 않고 (중심, 반경)만 기억한다 — 캐스트마다 List 를 새로 만들지 않고,
-        // 회수 시 같은 규칙으로 다시 만든다(칠한 것과 반납하는 것이 같은 함수에서 나오게).
-        private readonly Dictionary<Entity, (Vector2Int center, int tileRange)> _allyZonePaint = new();
+        // 사각 셀 열거(보드 경계 클리핑) — 남은 소비처는 궁극기 착지 예고(`ShowLandingTelegraph`) 하나.
         private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
-        private readonly List<Entity> _zoneGoneScratch = new List<Entity>();
 
-        // 보드 안 셀만 담는다 — 점등하는 것과 등록부가 서술하는 것이 같아야 refcount 를 읽을 수 있다.
         private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
         {
             results.Clear();
@@ -2779,64 +2773,6 @@ namespace Wassup.Bridge
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
                 results.Add(cell);
-            }
-        }
-
-        // 등록부를 비우는 유일한 지점 — refcount 반납을 **같은 함수 안에서** 한다.
-        // 둘을 떼어 놓으면(등록부만 비우고 타일 정리는 TilemapMapView.Clear 에 맡기면) 순서가
-        // 바뀌는 순간 stale 엔트리가 새 매치의 refcount 를 깎아 살아 있는 장판의 발자국이 꺼진다 —
-        // refcount 를 도입한 이유가 그것이었다. 뷰 쪽 ClearZoneCells 는 멱등이라 이중 호출도 안전.
-        private void ClearAllyBuffZonePaint()
-        {
-            _allyZonePaint.Clear();
-            if (tilemapMapView != null) tilemapMapView.ClearZoneCells();
-        }
-
-        // 살아 있는 캐리어가 아닌 항목의 점등을 반납한다. 칸별 refcount 라 겹친 장판이 서로의
-        // 발자국을 지우지 않는다(TilemapMapView.RemoveZoneCells).
-        private void DrainAllyBuffZoneVisuals()
-        {
-            // skill-layer-migration unit 7b — **점등도 여기서 맞춘다.**
-            // 예전엔 시전 지점이 캐리어 엔티티를 **반환받아** 등록했는데, 실행이 스킬
-            // 레이어로 가면서 그 반환값이 사라졌다. 그런데 이 함수는 이미 「살아 있는
-            // 캐리어와 내 목록을 맞춘다」를 하고 있었다 — 반납만 하던 것을 **양방향**으로
-            // 만들면 반환값이 필요 없다(셈을 preview 로 푼 것과 같은 해법).
-            //
-            // ⚠ 캐리어가 `centerCell`·`tileRange` 를 들고 있어서 가능하다. 시전 시점의
-            // 지식이 아니라 **캐리어 자신의 상태**로 칠한다.
-            if (_allyZonePaint.Count == 0 && !HasLiveEntityManager()) return;
-            if (HasLiveEntityManager() && tilemapMapView != null)
-            {
-                using var newQ = _em.CreateEntityQuery(
-                    ComponentType.ReadOnly<Wassup.Battle.Effects.AllyBuffField>());
-                var live = newQ.ToEntityArray(Allocator.Temp);
-                var liveData = newQ.ToComponentDataArray<Wassup.Battle.Effects.AllyBuffField>(Allocator.Temp);
-                for (int i = 0; i < live.Length; i++)
-                {
-                    if (_allyZonePaint.ContainsKey(live[i])) continue;
-                    var c = new Vector2Int(liveData[i].centerCell.x, liveData[i].centerCell.y);
-                    BuildZoneCells(c, liveData[i].tileRange, _zoneCellScratch);
-                    tilemapMapView.AddZoneCells(_zoneCellScratch);
-                    _allyZonePaint[live[i]] = (c, liveData[i].tileRange);
-                }
-                live.Dispose(); liveData.Dispose();
-            }
-            if (_allyZonePaint.Count == 0) return;
-            _zoneGoneScratch.Clear();
-            foreach (var kv in _allyZonePaint)
-                if (kv.Key == Entity.Null || !_em.Exists(kv.Key)
-                    || !_em.HasComponent<Wassup.Battle.Effects.AllyBuffField>(kv.Key))
-                    _zoneGoneScratch.Add(kv.Key);
-
-            for (int i = 0; i < _zoneGoneScratch.Count; i++)
-            {
-                var gone = _zoneGoneScratch[i];
-                if (tilemapMapView != null && _allyZonePaint.TryGetValue(gone, out var painted))
-                {
-                    BuildZoneCells(painted.center, painted.tileRange, _zoneCellScratch);
-                    tilemapMapView.RemoveZoneCells(_zoneCellScratch);
-                }
-                _allyZonePaint.Remove(gone);
             }
         }
 
@@ -3155,12 +3091,6 @@ namespace Wassup.Bridge
             float dimTarget = _enemyDimActive ? Mathf.Clamp01(enemyDragDimAlpha) : 1f;
             _enemyDimAlpha = Mathf.MoveTowards(_enemyDimAlpha, dimTarget,
                 enemyDragDimFadeSpeed * UnityEngine.Time.unscaledDeltaTime);
-
-            // active-ally-zone unit 2 — 장판 점등 회수는 **페이즈 무관**이다(위 적 dim 페이드와 같은 이유).
-            // 승패는 `_running=false` 후 집계/결과 화면을 띄우는데, 그 사이에도 BattleSimGroup 은 돌아
-            // 만료된 캐리어가 파괴된다. `_running` 아래에 두면 결과를 읽는 동안 아무것도 없는 자리에
-            // 민트 타일이 켜진 채 남아 보드가 거짓을 보여준다.
-            if (HasLiveEntityManager()) DrainAllyBuffZoneVisuals();
 
             if (!_running) return;
 

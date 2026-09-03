@@ -32,9 +32,6 @@ namespace Wassup.Core
         [SerializeField] private Color commitPopValidColor = new Color(0.35f, 1f, 0.9f, 1f);
         [SerializeField] private Color commitPopInvalidColor = new Color(1f, 0.4f, 0.32f, 1f);
 
-        // active-ally-zone unit 2 — 아군 장판 색(민트). 조준 시안/불가 적색과 구분되는 색.
-        // 타일맵당 색 1개라 채널 균일하다. 이 파일의 색 규약(SerializeField 또는 tileSet SO)을 따른다.
-        [SerializeField] private Color allyZoneColor = new Color(0.42f, 0.95f, 0.72f, 0.42f);
         // ultimate-leap unit 4 — 착지 예고. **dimmed 주황 채움**(사용자 결정 2026-08-02).
         // 빨강 outline 에서 바꾼 이유: 빨강은 이미 `rangeInvalidColor`(배치 불가)가 쓰고 있어
         // 의미가 겹치고, outline 은 면적이 없어 "여기서 나가라" 가 주변시로 안 읽힌다.
@@ -229,7 +226,6 @@ namespace Wassup.Core
             _placeableActive = false;
             if (_blockedTilemap != null) _blockedTilemap.ClearAllTiles(); // first-run-tutorial unit 1
             _blockedActive = false;
-            ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
             ClearTelegraphCells(); // ultimate-leap unit 4 — 예고가 맵 너머로 살아남지 않게
             ClearGhostCells(); // defender-footprint unit 2 — 고스트도 맵 경계에서 회수
             _effectTileCells.Clear(); // unit 26 — 타일맵을 비웠으니 기억도 비운다(맵 리빌드 경계)
@@ -336,7 +332,6 @@ namespace Wassup.Core
             // 링의 끊김은 채움이 흡수한다** — 정렬로 피하지 않는다.
             SetRendererSorting(_rangeTilemap, -12);
             SetRendererSorting(_placeableTilemap, above ? 9998 : -13); // placement-eligible-tile-highlight unit 1
-            SetRendererSorting(_zoneTilemap, above ? 9997 : -14);     // active-ally-zone unit 2
             // ultimate-leap unit 4 — **이 목록에 반드시 있어야 한다.** 빠지면 예고가 -13 에 굳어,
             // 플레이어가 유닛을 빼려고 드래그를 시작하는 **바로 그 순간**(이 스킬이 성립하는 순간)
             // range/placeable 만 위로 올라가고 예고가 그 아래로 묻힌다.
@@ -1097,58 +1092,13 @@ namespace Wassup.Core
             _rangeCells.Clear();
         }
 
-        // ── active-ally-zone unit 2 — 액티브 아군 장판 점등 ──────────────────────
-        // 전용 타일맵이다. 조준 프리뷰(range)·맵 효과 타일(effect) 채널은 둘 다 단일 owner
-        // set/clear 라 재사용하면 서로를 지운다(조준이 장판을 지우거나 그 반대).
-        //
-        // **칸별 refcount 필수**: 장판은 동시에 여러 장 존재할 수 있어서, 단순 set/clear 를
-        // 복사하면 먼저 만료된 장판이 겹친 칸을 지우고 살아 있는 장판의 발자국이 사라진다.
-        private Tilemap _zoneTilemap;
-        private readonly Dictionary<Vector2Int, int> _zoneCellRefs = new Dictionary<Vector2Int, int>();
-
-        public void AddZoneCells(IReadOnlyList<Vector2Int> cells)
-        {
-            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
-            EnsureZoneTilemap();
-            for (int i = 0; i < cells.Count; i++)
-            {
-                var cell = cells[i];
-                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
-                _zoneCellRefs.TryGetValue(cell, out int refs);
-                _zoneCellRefs[cell] = refs + 1;
-                if (refs == 0) _zoneTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
-            }
-        }
-
-        public void RemoveZoneCells(IReadOnlyList<Vector2Int> cells)
-        {
-            if (_zoneTilemap == null || cells == null) return;
-            for (int i = 0; i < cells.Count; i++)
-            {
-                var cell = cells[i];
-                if (!_zoneCellRefs.TryGetValue(cell, out int refs)) continue;
-                if (refs <= 1)
-                {
-                    _zoneCellRefs.Remove(cell);
-                    _zoneTilemap.SetTile(ToCell(cell), null); // 마지막 참조만 실제로 끈다
-                }
-                else _zoneCellRefs[cell] = refs - 1;
-            }
-        }
-
-        public void ClearZoneCells()
-        {
-            _zoneCellRefs.Clear();
-            if (_zoneTilemap != null) _zoneTilemap.ClearAllTiles();
-        }
-
         // ── ultimate-leap unit 4 — 착지 예고 타일 ────────────────────────────────
         // **또 하나의 전용 타일맵이다.** range 채널을 공유할 수 없다: 그쪽은 `SetPlacementRange`/
         // `SetPlacementCells` 가 매번 `ClearPlacementRange()` 로 시작하는 단일 owner set/clear 라,
         // 예고 2초 동안 플레이어가 유닛을 드래그하면 배치 프리뷰와 예고가 서로를 지운다.
         // (예고 중 배치는 막을 수 없다 — 유닛을 빼고 다시 놓는 것이 이 스킬의 놀이다.)
         //
-        // zone 처럼 refcount 는 두지 않는다: 궁극기는 생존당 1회라 동시 예고가 존재할 수 없다.
+        // refcount 는 두지 않는다: 궁극기는 생존당 1회라 동시 예고가 존재할 수 없다.
         // 두 번째 소비처가 생기면 그 spec 이 refcount 를 붙인다(제약 8).
         private Tilemap _telegraphTilemap;
         private readonly List<Vector2Int> _telegraphCells = new List<Vector2Int>();
@@ -1204,7 +1154,7 @@ namespace Wassup.Core
             if (grid == null) return;
             var go = new GameObject("LandingTelegraphTiles");
             go.transform.SetParent(grid.transform, false);
-            // zone(-0.03) 위, range(-0.05) 아래 — 예고는 배치 프리뷰에 가려지지 않아야 한다.
+            // placeable(-0.04) 위, range(-0.05) 아래 — 예고는 배치 프리뷰에 가려지지 않아야 한다.
             go.transform.localPosition = new Vector3(0f, 0f, -0.045f);
             _telegraphTilemap = go.AddComponent<Tilemap>();
             var r = go.AddComponent<TilemapRenderer>();
@@ -1229,27 +1179,6 @@ namespace Wassup.Core
             if (_telegraphTilemap == null) return;
             if (_telegraphTilemap.color != landingTelegraphColor)
                 _telegraphTilemap.color = landingTelegraphColor;
-        }
-
-        private void EnsureZoneTilemap()
-        {
-            if (_zoneTilemap != null) return;
-            if (grid == null) return;
-            var go = new GameObject("AllyZoneTiles");
-            go.transform.SetParent(grid.transform, false);
-            // z-fight 방지 + 깊이 순서: effect(-15) 위, placeable(-0.04)/range(-0.05) 아래.
-            go.transform.localPosition = new Vector3(0f, 0f, -0.03f);
-            _zoneTilemap = go.AddComponent<Tilemap>();
-            var r = go.AddComponent<TilemapRenderer>();
-            _zoneTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
-            r.sortingOrder = _highlightAbove ? 9997 : -14;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용(range/placeable 과 동일)
-            {
-                var or = overlayTilemap.GetComponent<TilemapRenderer>();
-                if (or != null) r.sharedMaterial = or.sharedMaterial;
-            }
-            _zoneTilemap.color = allyZoneColor;
         }
 
         // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(전용 타일맵, range 와 분리).
