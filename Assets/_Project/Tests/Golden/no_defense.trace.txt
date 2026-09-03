@@ -1,6 +1,6 @@
 LTV0
 scenario=no_defense
-configHash=cccdbbed07dda325
+configHash=e4ff147bb5f0a0ac
 matchSeed=20260822
 stepDt=0.0166666675
 tickCount=1800
