@@ -58,10 +58,13 @@
 
 ## Follow-up (닫기 전 필수)
 
-1. ~~**골든 정본 조건 결정**~~ — **완료 2026-09-03**(사용자 확정: **A** BattleScene 직접 Play·디스크 SO). HEAD 어셈블리에서
-   재생성 1회 + `Verify` 2회 전건 통과, 골든만 담은 커밋 `bb8cdefb`. ⚠ 재생성 메뉴 끝의 `AssetDatabase.Refresh` 가
-   pull 로 대기 중이던 스크립트를 임포트해 **Play 중 리컴파일 → ECS 월드 사망**(`_world == null`, Verify 가 빈 판)을
-   일으킬 수 있다 — pull 직후엔 Play 재진입 후 굽는다.
+1. ~~**골든 정본 조건 결정**~~ — **완료 2026-09-03**(사용자 확정: **A** BattleScene 직접 Play·디스크 SO). 최초 커밋
+   `bb8cdefb`, 이후 베이스 통일(sim 위치=발밑)로 같은 날 재베이크. ⚠ 함정 둘을 실측했다:
+   ① 재생성/검증 메뉴 끝의 `AssetDatabase.Refresh` 가 대기 중이던 스크립트를 임포트해 **Play 중 리컴파일 →
+   ECS 월드 사망**(`_world == null`, Verify 가 빈 판·해시 공백) — pull/편집 직후엔 Play 재진입 후 굽는다.
+   ② **로비 로그인을 거친 에디터 세션은 in-memory SO 에 시트 값이 남아**(DisableDomainReload 라 Play 재시작에도
+   잔존) BattleScene 직접 Play 인데도 조건 A 가 오염된다 — 증상은 Verify 의 «값» 불일치(실드량 600↔700 류).
+   도메인 리로드(리컴파일)가 디스크 값으로 리셋한다. 굽기 전 세션이 로그인 이력을 가졌는지 의심할 것.
 2. **unit 4 육안·실기기** (`4_play_verification.md` A~F): dim 아래 엄지가 host 위에서도 궁지폭발 채움이 1초 안에 읽히는가
    (손가락 사진 1장) · 라임/시안 구분 · 액티브 조준 원 + 발동 결과 일치 · 회오리·운석 VFX 크기 = 조준 링 · 배치 드래그 중
    락온 시 배치 링 유지 · Subway 맵에서 2×2 host 중심(셀 경계 교점). 부족하면 `attachRangeStyle`·`aimRingStyle` 튠, 그래도
