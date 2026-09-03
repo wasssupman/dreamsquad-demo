@@ -47,4 +47,4 @@ Demo의 설계·구현·검증과 다음 작업 선정에는 사용하지 않는
 
 - **스펙 주도**: 기능 추가/변경은 `docs/spec/{feature-slug}/` 에 스펙 먼저, 작업 단위 파일(0~N) 순서로 구현. 1 파일 = 1 커밋
 - **리뷰**: 각 코드 작업 단위 종료 후 code-review, ECS 전투 코드 변경은 투트랙 리뷰
-- **ECS 경계**: `BattleBridge` 가 MonoBehaviour↔ECS 유일 창구. 맥락(Units/Movement/Combat/Effects) 간 Component 직접 쓰기 금지 — 상세는 `CLAUDE.md`·`docs/TRD.md`
+- **ECS 경계**: `BattleBridge` 가 MonoBehaviour↔ECS 유일 창구. 맥락(Units/Movement/Combat/Effects) 간 Component 직접 쓰기 금지 — 제약은 `CLAUDE.md`, 구조 지도는 `docs/reference/battle-core-architecture.md`

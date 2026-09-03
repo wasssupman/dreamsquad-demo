@@ -5,7 +5,7 @@ Session log analysis utilities for the Defense Tournament prototype.
 ## analyze_sessions.py
 
 Aggregates `GameLogs/session-*.json` files and outputs H1/H2/H3 metrics
-tied to `docs/PRD.md` §4.
+tied to the prototype PRD §4 (`docs/PRD.md` was retired 2026-09-03 — see git history).
 
 ```bash
 # Default: read GameLogs/ next to project root, emit markdown to stdout
@@ -29,7 +29,7 @@ python3 tools/analyze_sessions.py --logs /path/to/logs
 | H2 | onPlace usage by effect | 사용 분포 |
 | H3 | Outcome distribution + defeat timing | "얼마나 접전이었나" 정량 측면 |
 
-H2 코스트/3분 긴장감 축과 H3 정성 인터뷰 축은 PRD §4에서 별도 프로토콜.
+H2 코스트/3분 긴장감 축과 H3 정성 인터뷰 축은 구 PRD §4(은퇴, git 이력)의 별도 프로토콜.
 
 ## verify_production_transition.py
 

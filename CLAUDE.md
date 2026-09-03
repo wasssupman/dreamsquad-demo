@@ -44,7 +44,7 @@
 - 맥락 간 이벤트는 Buffer 또는 NativeQueue 싱글턴을 통한다. 직접 Component 수정 금지.
 - 현재 운영 중인 NativeQueue 채널 (29개): `BossLeapVisualEventsSingleton`, `UltimateLeapVisualEventsSingleton`, `GoalReachedEventsSingleton`, `GoalCollapsedEventsSingleton`, `DefenderDeathEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `HealAppliedEventsSingleton`, `DamageNumberEventsSingleton`, `EnemyKilledEventsSingleton`, `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`, `HazardSpawnRequestsSingleton`, `AttackOutputLogEventsSingleton`, `AggroAcquireEventsSingleton`, `ThreatHitEventsSingleton`, `BlinkRequestEventsSingleton`, `CcClearRequestsSingleton`, `MeteorBarrageRequestsSingleton`, `ShieldGrantedEventsSingleton`, `ShieldBreakEventsSingleton`, `CastEventsSingleton`, `DcTriggerFiredEventsSingleton`, `KnockupVisualEventsSingleton`, `DotApplyEventsSingleton`, `SkillFiredEventsSingleton`. (`MeteorBurstEventsSingleton` 은 Meteor 의 투사체 수렴으로 은퇴 — projectile-trajectory-payload unit 8. `AggroAcquireEventsSingleton` 은 Combat→Effects 히트 구동 어그로 — aggro-targeting unit 11. `ThreatHitEventsSingleton` 은 Combat→Combat 보스 위협 귀속, `BlinkRequestEventsSingleton` 은 Combat→Movement 텔레포트 seam — nightmare-catcher unit 1·3. `CcClearRequestsSingleton` 은 Units→Effects wake-on-hit(Sleep 해제) — combat-action-lock unit 3. `MeteorBarrageRequestsSingleton` 은 Effects→Bridge 사직서 임계 메테오 barrage cast — season-gimmick-clockout unit 3·4. `ShieldGrantedEventsSingleton` 은 Effects→Bridge 실드 부여 원샷 VFX — shield-guardian-defender unit 4. `ClockOutRefundEventsSingleton` 은 season-gimmick-clockout unit 8 재설계(강제 퇴근 제거 → 사망 시 사직서 드랍)로 은퇴 — 퇴근 코스트 환급 폐기. `ShieldBreakEventsSingleton` 은 Units→Bridge 실드 피격 파열(Sum>0→0 감지) → OnShieldBreak 페이로드(자기중심 폭발/주변 수면) 실행 — dreamcatcher-shield-break unit 0. `CastEventsSingleton` 은 Effects→Combat 해저드 캐스트 성사 = 그 host 의 공격 사건(캐스터는 attackRange 0 이라 RESOLVE 에 못 감) — attack-decoupling unit 4. `HazardCastSystem` 은 `[UpdateBefore(AttackSystem)]` 로 같은 프레임 소비를 보장한다. `KnockupVisualEventsSingleton` 은 Combat→Bridge 넉업 띄우기 연출 — 심에서 넉업의 실체는 짧은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분할 수 없다. 그래서 **띄운 쪽이 대상을 직접 신호**한다 — knockup-fighter-defender unit 3. `BossLeapVisualEventsSingleton` 은 Combat→Bridge 보스 도약 비행 신호 — sim 은 `BlinkRequestEventsSingleton` 으로 즉시 텔레포트하고 **뷰만** 아치로 날린다(출발/착지 퍼프 타이밍도 이 채널이 소유해서 착지 VFX 가 뷰 도착보다 먼저 터지지 않는다) — boss-jjangssen unit 6. `DotApplyEventsSingleton` 은 지속 피해 부여 seam — **지속 피해는 crowd control 이 아니라서** `CcEffect` 에서 떼어내 `DotEffect` 자기 버퍼를 갖는다. 한 버퍼를 쓰던 시절엔 성격이 다른 세 producer(스택 임계 파생·해저드 장판·배치 스킬)가 피해자당 슬롯 하나를 공유하며 scalar 를 덮어써, 출혈 중인 적이 화염 장판을 밟으면 장판을 나가도 장판 요율로 계속 타는 과피해가 났다. 병합 키 = **`(DotOrigin, DotElement)` 2축**. `DotOrigin`(Stack·Zone·OnPlace) = 슬롯을 가르는 기준 = 어느 파이프라인이 만들었나, `DotElement`(Bleed·Fire·Ice·Poison) = 화면에 보이는 그림. **둘을 한 필드로 겸직시키지 말 것** — 지금은 원소 하나가 파이프라인 하나에서만 나와(출혈=스택, 화염=장판) 우연히 1:1 이지만, 화염을 스택으로도 만드는 순간 장판 화염과 중첩 폭발 화염이 한 슬롯에서 서로를 덮어 같은 과피해가 재현된다. source(Entity)를 축으로 쓰는 것도 안 된다 — 존은 해저드 엔티티를 만들 수 없고, 난도질꾼 2기는 source 가 둘인데 둘 다 출혈이라 식별에 기여가 없다. 오라는 `element` 만 읽어 여러 origin 이 한 그림으로 접힌다. `CcKind.DoT` 는 해저드 저작 토큰으로만 잔존한다(`CcKind.Slow` 와 같은 형태) — dot-effect-extraction unit 0. `UltimateLeapVisualEventsSingleton` 은 Combat→Bridge 궁극기 도약(이탈→예고→강습) 연출 신호. `BossLeapVisualEventsSingleton`(아치 하나)을 재사용할 수 없는 이유: **이탈과 강하가 예고 시간만큼 떨어진 별개 사건**이라 한 이벤트에 실으려면 발동 시점에 도착 시각을 알아야 하는데, 그 시점은 sim 시퀀스(`UltimateLeapSystem`, Battle 도메인 시계)가 결정한다. 그래서 `kind`(Ascend/Descend) 2종으로 나눠 보내고 브리지는 예고 시간을 **복제하지 않는다**(복제하면 두 시계가 갈린다). 이 채널의 뷰는 게임 규칙을 하나도 소유하지 않는다 — 피해도 텔레포트도 sim 이 이미 끝냈고 브리지는 슬램 VFX 타이밍(뷰 도착)만 가진다(일반 도약이 착지 슬램을 브리지에서 쏘는 것과 다른 점) — ultimate-leap unit 3. `GoalCollapsedEventsSingleton` 은 Units→Bridge 골 붕괴(안정도 0) 알림 — **연출/로그 전용**이며 유출 전환은 골 엔티티 부재(공성 게이트가 매 프레임 `GoalPoint` 쿼리로 판정)가 담당해 브리지는 상태를 갱신하지 않는다 — goal-stability unit 4. `SkillFiredEventsSingleton` 은 **감지자→스킬 레이어**의 단일 채널 — skill-layer-migration. 다른 채널과 성격이 다르다: 나머지가 「무슨 일이 일어났다」를 나른다면 이것은 **「어떤 스킬이 발동했다」**를 나르고, 실행은 `ISkill` concrete 가 한다(도메인은 ECS 를 모른다). 이벤트가 **자기 seam 을 말한다**(`SkillFiredEvent.Seam`, 7종) — 감지자마다 same-frame 하류 계약이 다르고 그 구간이 서로 겹치지 않아 단일 드레인이 산술적으로 불가능하기 때문이다. 남의 seam 것은 큐 꼬리로 되돌리고, `budget = queue.Count` 스냅샷이 종료를 보장한다. 이벤트는 **값 스냅샷**이다(자리·피해·반경·층·시전자 진영) — 자기 죽음 seam 은 정의상 파괴 뒤에 돌아 드레인 시점에 시전자가 없다.)
 
-폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
+폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/` + 스킬 디스패처 `Battle/Skills/`(도메인은 `Scripts/Skills/` 별도 asmdef). 세 축(유닛·드림캐쳐·맵)이 맞물리는 구조 지도는 `docs/reference/battle-core-architecture.md`.
 
 ## 절대 제약 (위반 시 정지하고 질문)
 
@@ -61,15 +61,24 @@
    - **이 원칙의 핵심은 "모디파이어가 값을 순수하게 결정하고 결정된 값이 아키텍처-blind 하게 흐른다"는 *shape* 이지, "모든 수식을 함수로 빼라"가 아니다.** 자명한 한두 줄 산술을 호출처 하나뿐인데 별도 static/타입으로 빼는 건 제약 8("나중을 위한 추상 레이어 금지")과 충돌하는 **과잉 추상화**다. 추출은 로직이 **(a) 비자명(분기·다단계)** 이거나 **(b) 실제 재사용(2+ 호출처)** 이거나 **(c) 회귀 테스트 가치가 있는 sim-critical 계산**(데미지/이동/타겟팅)일 때만. 셋 다 아니고 값이 이미 plain 하게 흐르면 인라인이 맞다.
 11. **Production-transition firewall** (2026-08-11 사용자 결정): Demo가 유일한 upstream이다. `docs/production-transition/`은 Project owner가 미래 전환을 위해 미리 보관하는 **dormant downstream 자료**이며 Demo의 설계·구현·검증 정본이 아니다.
    - 현재 사용자 요청이 production-transition의 시작·갱신·검증을 **명시적으로** 지시하지 않으면 해당 subtree와 전용 verifier를 읽거나 실행하거나 작업 후보로 제안하지 않는다. 최근 커밋, stale 표시, watch path 변화, backlog 링크는 활성화 근거가 아니다.
-   - Demo의 정본 우선순위는 `CLAUDE.md` → 활성 `docs/spec/{feature-slug}/` → `docs/TRD.md`/`docs/PRD.md`의 적용 가능한 Demo 계약 → 코드·에셋·테스트다. Transition 문서와 충돌하면 Demo를 고치는 대신 transition 자료가 stale한 것으로 둔다.
+   - Demo의 정본 우선순위는 `CLAUDE.md` → 활성 `docs/spec/{feature-slug}/` → `docs/reference/`(게임 규칙 `ingame-flow.md` · 구조 `battle-core-architecture.md`) → 코드·에셋·테스트다. Transition 문서와 충돌하면 Demo를 고치는 대신 transition 자료가 stale한 것으로 둔다.
    - Transition maintenance/change register/coverage/decision/freeze audit는 Demo 작업의 시작·완료·검증·커밋을 절대 차단하지 않는다. Demo 변경에 맞춘 transition 문서 갱신도 같은 작업에 끼워 넣지 않으며, 명시적인 별도 후행 task와 별도 commit에서만 수행한다.
    - Freeze, cutover, production import와 후속 wave의 시점·범위는 Project owner만 결정한다. 명시적 활성화 전 agent는 이를 계획하거나 선제 작업하지 않는다.
-   - Transition과 무관한 Demo 아키텍처 변경은 Demo 목표만으로 별도 승인받고 이 파일과 TRD를 먼저 갱신해야 한다. Transition 문서를 근거로 ECS 경계나 네트워크 금지를 우회할 수 없다.
+   - Transition과 무관한 Demo 아키텍처 변경은 Demo 목표만으로 별도 승인받고 이 파일과 `docs/reference/battle-core-architecture.md` 를 먼저 갱신해야 한다. Transition 문서를 근거로 ECS 경계나 네트워크 금지를 우회할 수 없다.
 12. **BattleBridge 진입은 최후 수단** (2026-08-28 사용자 결정): 새 값·상태가 필요할 때 `BattleBridge` 에 serialized 필드나 static 미러를 **반사적으로 추가하지 않는다.** 제약 1 은 "ECS 통신의 유일한 창구"라는 뜻이지 "모든 전역값의 집" 이 아니다 — 편의로 얹은 진입점 하나가 다음 사람에게는 «그 값의 소유자는 브리지» 라는 잘못된 신호가 되고, 브리지는 이미 그렇게 비대해졌다.
    - **판단 순서**: (a) 그 값을 **이미 소유한 곳**이 노출하고 있지 않은지 먼저 확인한다 — 보드 평면은 `BoardSpace.RaycastPlane()`, 유닛별 값은 `ISpineUnitVisualData`/SO, 저작 값은 프리팹. (b) 없으면 **소유자 쪽에** 얇은 접근자를 추가한다. (c) 그래도 브리지가 유일한 자리라는 근거를 댈 수 있을 때만 추가한다.
    - 브리지 진입이 정말 필요하다고 판단되면 **그때 드러난 리팩토링 범위를 먼저 측정한다** — 관련 필드·미러·소비처가 몇 개인지 세고, 그 정리가 **현재 spec 의 검증 질문에 답하는 데 필요한지** 판정한다. 필요하면 같은 spec 안에 작업 단위로 넣고, 아니면 제약 9 대로 "후속 후보" 로 이관한다. 어느 쪽이든 **범위와 포함/이관 사유를 사용자에게 보고**한 뒤 진행한다.
    - 이미 브리지에 있는 필드의 **의미를 교체**하는 것(예: 절대 Y → 평면 상대 리프트)은 진입점 신설이 아니다 — 이 제약의 대상이 아니다.
-**전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
+**추가 제약** (구 `docs/TRD.md` §3 추상화 규칙 · §5 금지 패턴에서 2026-09-03 이관. TRD/PRD 는 Phase 시절 문서라 은퇴했고 이 목록이 제약의 전부다):
+
+- **생성 패턴**: 팩토리/빌더는 객체 생성이 3줄 이상일 때만. ECS 엔티티 조립은 `BattleBridge` 의 직접 `EntityManager` 호출 + 작은 변환 헬퍼로 충분하다 — 별도 팩토리 레이어 금지, Baker/SubScene 은 별도 spec 없이 도입하지 않는다.
+- **`UnityEvent` 금지**(디버깅 불가). **제네릭 타입 파라미터는 1개까지** — 2개 이상이면 설계를 의심하고 구체 타입으로 분할.
+- **`[SerializeField] private`** — public 필드 남발 금지(ECS Component struct 의 public 필드는 정상).
+- **MonoBehaviour 에 전투 로직 직접 작성 금지**(전투는 ECS 시스템에서만). UI 가 ECS Component 를 직접 읽거나 쓰지 않는다. "나중을 위한" 확장 포인트 · enum+switch 떡칠 금지.
+- **패키지/API**: 런타임 코드에 에디터 전용 API 금지 · Burst 컴파일이 실패하는 API 를 ECS 시스템에 금지 · DOTween/Zenject 등 범용 라이브러리는 근거 없으면 금지.
+- **`Shader.Find(...) + new Material(shader)` 금지** — 모바일 shader stripping 으로 null 이 돌아와 렌더가 깨진다. 런타임 Material 은 `Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque / CreateTransparent` 경유(`Assets/Resources/RuntimeMaterials/*.mat` always-included). 새 런타임 shader 는 `Assets/_Project/Shaders/` 명시 추가 + Resources 머티리얼 등록.
+- **Manager 싱글톤의 의도된 예외 2건**: `Wassup.Core.TimeControl.TimeManager`(도메인 스코프 시간 제어, `docs/spec/time-manager/`) · `SoundManager`(전역 SFX, `docs/spec/score-hud-impact-upgrade/` unit 4). 그 외는 제약 5.
+- **로깅은 마지막이 아니라 첫 축** — 브리지 드레인은 첫 줄에서 트레이스를 기록한다(`LegacyTraceRecorder.Ev`). 새 sim 사건 채널을 열면 로그/트레이스 정거장을 함께 연다.
 
 ## 원격 저장소 · 푸시 전략 (2026-07-27 확정)
 
@@ -85,9 +94,10 @@
 
 | 상황 | 읽을 문서 |
 |---|---|
-| "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
+| "이 게임의 규칙과 설계 지향은? 왜 이렇게 만드나?" | `docs/reference/ingame-flow.md` — 정식 플레이 흐름 · 전투 중 동사 4개 · **설계 지향 7축** · 드림캐쳐 사용 규칙 · 미결. (구 `docs/PRD.md` 는 프로토타입 가설 문서라 2026-09-03 은퇴 — 필요하면 git 이력) |
 | "Project owner가 production-transition 작업을 이번 요청에서 명시적으로 지시했나?" | 그때만 [`docs/production-transition/README.md`](docs/production-transition/README.md) 참조. 평상시에는 읽지 않는다. 이 subtree는 **owner-gated dormant downstream**이며 현재 Demo 구현 명세가 아니다. |
-| "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
+| "어떤 기술 제약이 있나?" | **이 파일**의 「절대 제약」12 + 「추가 제약」이 전부다. (구 `docs/TRD.md` 는 Phase 시절 문서라 2026-09-03 은퇴 — 살아 있던 규칙은 위로 이관됐고, 나머지는 git 이력) |
+| "유닛·드림캐쳐·맵이 코드에서 어떻게 맞물리나?" | `docs/reference/battle-core-architecture.md` — 세 축의 런타임 정체 · 한 판의 생애 · 프레임 순서 계약 · 교차점 매트릭스 · 채널 29 지도 · 불변식 17. **아키텍처 변경 전 대조 필수** |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
 | "과거 어떻게 만들어졌나?" | `docs/prototype/PHASE{0..10}.md` — 프로토타이핑 단계 종료 스펙 (읽기 전용 아카이브) |
@@ -223,8 +233,8 @@ critic/review 지적은 문서 계층을 깨지 않게 반영한다.
 ### 기술적 결정이 필요할 때 (우선순위)
 
 1. 현재 spec README 의 "공통 원칙" 또는 해당 작업 단위 파일에 명시돼 있으면 그대로 적용
-2. 없으면 `docs/TRD.md` 참조
-3. 없으면 `docs/PRD.md` 참조
+2. 없으면 이 파일의 「절대 제약」·「추가 제약」, 구조 판단은 `docs/reference/battle-core-architecture.md` 참조
+3. 없으면 `docs/reference/ingame-flow.md` 의 「설계 지향 7축」에 가장 도움 되는 선택. 그래도 모호하면 **단순한 쪽**
 4. 없으면 **작업 시작 전에 사용자에게 한 번에 묶어서 질문**. 작업 중간에 질문하지 않는다.
 
 ### 버그 수정 절차 (2026-08-10 확정 — 실패 사례에서 나온 규칙)

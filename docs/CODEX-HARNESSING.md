@@ -45,10 +45,10 @@ Codex는 코드를 쓸 수 있지만, 기본 상태에서는 다음 문제가 �
 
 이 저장소에서는 이미 그 역할이 나뉘어 있다:
 
-- `CLAUDE.md`: 프로젝트 정체성, 현재 단계, 절대 제약
-- `docs/PRD.md`: 왜 만드는가, 무엇을 검증하는가
-- `docs/TRD.md`: 기술 경계와 금지 패턴
-- `docs/PHASE0.md`~`docs/PHASE5.md`: 현재 작업 범위
+- `CLAUDE.md`: 프로젝트 정체성, 현재 단계, 절대 제약 + 추가 제약(금지 패턴)
+- `docs/reference/ingame-flow.md`: 게임 규칙과 설계 지향 — 왜 이렇게 만드는가
+- `docs/reference/battle-core-architecture.md`: 전투 구조 지도 — 유닛·드림캐쳐·맵의 교차점과 순서 계약
+- 활성 `docs/spec/{feature-slug}/README.md`: 현재 작업 범위 (구 PRD/TRD/PHASE 문서는 은퇴)
 
 핵심은 "문서가 많다"가 아니라, **문서마다 역할이 겹치지 않게 분리되어 있어야 한다**는 점이다.
 
@@ -201,9 +201,9 @@ Codex를 하네스로 쓸 때는 아래 루프를 반복하면 된다.
 Codex가 작업을 시작할 때 우선 읽어야 할 기본 순서는 아래처럼 고정하는 것이 좋다.
 
 1. `CLAUDE.md`
-2. 현재 Phase 문서
-3. `docs/TRD.md`
-4. 필요 시 `docs/PRD.md`
+2. 활성 spec `README.md` + 해당 작업 단위 파일
+3. `docs/reference/battle-core-architecture.md`
+4. 필요 시 `docs/reference/ingame-flow.md`
 
 이 순서를 고정하면 "기술적으로는 맞지만 현재 단계와 안 맞는 구현"이 줄어든다.
 

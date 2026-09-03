@@ -20,7 +20,7 @@ Burst/job incompatibility, and migration risks over style.
 ## Setup
 
 1. Verify package versions: `ProjectSettings/ProjectVersion.txt`, `Packages/manifest.json`, `Packages/packages-lock.json`. Target Entities 6.4.0.
-2. Read project rules: `CLAUDE.md` → `docs/TRD.md` → relevant `docs/spec/**`.
+2. Read project rules: `CLAUDE.md` (절대 제약 + 추가 제약) → `docs/reference/battle-core-architecture.md` (구조 지도) → relevant `docs/spec/**`.
 3. Load review checklist: `.claude/skills/ecs-reviewer/references/hybrid-ecs-review-checklist.md`.
 4. Inspect changed files with line numbers.
 

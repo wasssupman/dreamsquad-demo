@@ -30,8 +30,8 @@ Use local files as source of truth. Do not infer status from memory when the rep
    - Relevant `docs/spec/{feature-slug}/README.md`
    - Latest `{N}_handoff_summary.md` or `_session_handoff.md` in that spec, if present.
 4. Project/product references only as needed
-   - `docs/TRD.md` for technical constraints.
-   - `docs/PRD.md` for product intent.
+   - `CLAUDE.md` for technical constraints (절대 제약 + 추가 제약); `docs/reference/battle-core-architecture.md` for the battle structure map.
+   - `docs/reference/ingame-flow.md` for product intent (설계 지향 7축). `docs/TRD.md`/`docs/PRD.md` were retired 2026-09-03.
    - `docs/prototype/**` only when historical Phase context is explicitly needed.
 
 ## Finding the Likely Active Spec

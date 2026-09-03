@@ -72,7 +72,7 @@ Agent 2:
     Diff:
     {git diff HEAD~1..HEAD 출력 (또는 staged diff)}
 
-    - CLAUDE.md, docs/TRD.md의 ECS 제약을 hard constraint로 적용
+    - CLAUDE.md 의 ECS 제약(절대 제약 + 추가 제약)을 hard constraint로 적용, 구조 대조는 docs/reference/battle-core-architecture.md
     - .claude/skills/ecs-reviewer/references/hybrid-ecs-review-checklist.md 사용
     - 출력: CRITICAL/HIGH/MEDIUM/LOW 그룹화 + Residual Risk/Test Gaps
 ```
