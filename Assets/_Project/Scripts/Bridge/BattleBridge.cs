@@ -3884,12 +3884,7 @@ namespace Wassup.Bridge
                     continue;
 
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
-                // defender-footprint unit 2 — 짝수 변 footprint 는 **뷰만** 기하 중심(+0.5칸)에 선다.
-                // sim 위치(대표 셀 중심)는 불변 — README 계약 2. 홀수/1×1 은 오프셋 0.
-                // sim 위치는 **기하 중심**이다(unit 10) — 발밑까지 내려가는 차분만 더한다.
-                var fpOff = FootprintSimToFoot(kv.Value.data);
-                p.x += fpOff.x;
-                p.z += fpOff.y;
+                // sim 위치 = **베이스(발밑)** — 뷰가 오프셋 없이 그대로 선다(베이스 통일 2026-09-03).
                 // defender-relocation unit 6 — 비행 중엔 컨트롤러가 준 오버라이드가 뷰 위치를 대신한다.
                 // 오버라이드는 **VIEW 좌표**(ToView 우회) — 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려
                 // 아치가 평면이 되던 문제 교정(비행 곡선은 view 공간에서 계산). 비행은 PendingDeployment(비전투)라
@@ -5197,40 +5192,25 @@ namespace Wassup.Bridge
             if (b.entity == Entity.Null || !_em.Exists(b.entity) || !_em.HasComponent<LocalTransform>(b.entity))
                 return false;
             var p = _em.GetComponentData<LocalTransform>(b.entity).Position;
-            // ⚠ `p` 는 **기하 중심**이다(unit 10). 앵커 기준 오프셋을 더하면 이중 계산이 되어
-            // 배치 확정 위치가 실루엣과 갈린다 — 여기는 sim→발밑 **차분**을 쓴다.
-            var fpOff = FootprintSimToFoot(b.data);
+            // sim 위치 = **베이스(발밑)** — 오프셋 없이 그대로(베이스 통일 2026-09-03).
             world = (Vector3)Wassup.Core.BoardSpace.ToView(
-                new Unity.Mathematics.float3(p.x + fpOff.x, p.y + spineDefenderYOffset, p.z + fpOff.y));
+                new Unity.Mathematics.float3(p.x, p.y + spineDefenderYOffset, p.z));
             return true;
         }
 
-        // ── 뷰 오프셋은 **기준점이 둘**이다. 이름으로 가른다 ─────────────────────
+        // ── 뷰 오프셋 — 기준점은 **베이스(발밑) 하나**다(사용자 결정 2026-09-03) ─────────
         //
-        // ⚠ unit 10 이전엔 하나였다 — sim 위치가 대표 셀이고 오프셋이 「대표 셀 → 기하 중심」
-        // 이라 두 기준이 우연히 같은 값을 요구했다. unit 10 이 sim 위치를 기하 중심으로 옮기면서
-        // **그 우연이 깨졌고**, 한 함수를 계속 쓰면 sim 기준 호출부가 오프셋을 **이중 계산**한다
-        // (실루엣과 배치 확정 위치가 갈렸다 — 사용자 관측 2026-09-01).
-        //
-        // 유닛은 자기 점유 상자의 **바닥에 서 있지** 한가운데 떠 있지 않다. 그래서 뷰의 종점은
-        // 언제나 **발밑**(하단 행의 가로 중앙)이고, 거기까지 가는 **출발점**만 둘이다.
+        // sim 위치 자체가 발밑(하단 행 가로 중앙)이라 스폰 후에는 오프셋이 없다. 남은 변환은
+        // **스폰 전**(엔티티가 없어 앵커만 있는 시점 — 비행 종점·실루엣) 하나뿐이다.
+        // 이력: unit 10 이 sim = 기하 중심으로 뒀다가 직사각 footprint 에서 판정·링(중심)과
+        // 캐릭터(발밑)가 갈려 보여 발밑으로 통일했다(`FootprintSimToFoot` 은퇴 — 차분 항등 0).
 
-        /// 앵커 월드 → 발밑. 스폰 전(비행 종점·실루엣) 등 엔티티가 없는 시점이 쓴다.
+        /// 앵커 월드 → 베이스(발밑). 스폰 전(비행 종점·실루엣) 등 엔티티가 없는 시점이 쓴다.
         private Vector2 FootprintAnchorToFoot(DefenderUnitData data)
         {
             if (data == null) return Vector2.zero;
             var o = FootprintMath.FootOffset(data.Footprint);
             return o == Vector2.zero ? Vector2.zero : new Vector2(o.x * tileSize, o.y * tileSize);
-        }
-
-        /// **sim 위치(기하 중심) → 발밑.** 세로로만 내려간다 — 가로 중앙은 이미 맞아 있다.
-        /// = `FootOffset − GeometricCenterOffset` = `(0, −(H−1)/2)`.
-        private Vector2 FootprintSimToFoot(DefenderUnitData data)
-        {
-            if (data == null) return Vector2.zero;
-            var fp = data.Footprint;
-            var d = FootprintMath.FootOffset(fp) - FootprintMath.GeometricCenterOffset(fp);
-            return d == Vector2.zero ? Vector2.zero : new Vector2(d.x * tileSize, d.y * tileSize);
         }
 
         // 앵커 + 유닛 → footprint **발밑**(하단 행 중앙)의 view 좌표.
@@ -6145,10 +6125,10 @@ namespace Wassup.Bridge
                     rect.xMin -= paddingPx; rect.xMax += paddingPx;
                     rect.yMin -= paddingPx; rect.yMax += paddingPx;
                 }
-                // 리뷰 M-2/L-3 — 렌더 정렬은 뷰 월드(짝수 변 +0.5칸 오프셋 포함)의 RoundToInt 로
-                // 돈다(SpineUnitView.UpdateSortingOrder → ComputeFromWorld). 픽도 같은 오프셋을
-                // 같은 반올림으로 미러해야 짝수 footprint 에서 «앞면 우선»이 실제 앞면과 일치한다.
-                var pickOff = FootprintMath.GeometricCenterOffset(
+                // 리뷰 M-2/L-3 — 렌더 정렬은 뷰 월드의 RoundToInt 로 돈다(SpineUnitView.UpdateSortingOrder
+                // → ComputeFromWorld). 뷰 월드 = 베이스(발밑)이므로 픽도 FootOffset 을 같은 반올림으로
+                // 미러한다(베이스 통일 2026-09-03 — 종전 GeometricCenterOffset 은 세로가 뷰와 갈렸다).
+                var pickOff = FootprintMath.FootOffset(
                     kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one);
                 int order = Wassup.Presentation.BoardSortOrder.Compute(gridSize,
                     Mathf.RoundToInt(kv.Key.x + pickOff.x), Mathf.RoundToInt(kv.Key.y + pickOff.y));
@@ -7909,10 +7889,10 @@ namespace Wassup.Bridge
             // unit 11 — facing 은퇴: 전 유닛이 같은 원 사거리 표기다(레인 분기 삭제).
             {
                 // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
-                var fpHalf = Wassup.Data.FootprintMath.GeometricCenterOffset(unit.Footprint);
+                var fpBase = Wassup.Data.FootprintMath.FootOffset(unit.Footprint);
                 tilemapMapView.SetPlacementRange(center, rangeTiles,
                      selfBodyRadiusTiles: unit.BodyRadiusTiles,
-                     centerOffsetTiles: fpHalf);    // 앵커 → 기하 중심
+                     centerOffsetTiles: fpBase);    // 앵커 → 베이스(발밑) — 사거리 원점과 동일점(베이스 통일 2026-09-03)
             }
             // ⚠ **페인트 뒤에 부른다.** 뷰의 SetPlacementRange 가 내부에서 ClearPlacementRange 를
             // 먼저 부르고 그게 마크를 회수한다 — 앞에서 부르면 방금 만든 마크가 바로 지워진다
@@ -8140,7 +8120,7 @@ namespace Wassup.Bridge
             ClearRange(RangeDisplayOwner.AttachPreview);   // 소유자일 때만 지운다(가드 그대로)
         }
 
-        // 위치는 sim `LocalTransform`(unit 10 이후 **기하 중심** 그대로 — footprint 오프셋을 더하면 이중 계산).
+        // 위치는 sim `LocalTransform`(= **베이스·발밑**, 2026-09-03 통일) 그대로 — 오프셋 금지.
         // 링은 타일 좌표를 직접 받으므로 `ToView` 는 쓰지 않는다: `GridToWorldCenter(cell) = _boardOrigin + cell × tileSize`
         // 의 역함수. host 가 죽거나 레지스트리에서 빠지면(생존 술어 위) 채널을 반납한다.
         private void RedrawAttachPreview()
@@ -8286,12 +8266,13 @@ namespace Wassup.Bridge
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");
 #endif
-            // unit 10 PR2 — sim 위치 = footprint **기하 중심**(대표 셀 아님).
-            // 짝수 변에서 스프라이트와 사거리 원이 반 칸 갈리던 것이 여기서 닫힌다.
-            // 1×1 은 오프셋 0 이라 종전과 동일.
-            var fpCenterOff = Wassup.Data.FootprintMath.GeometricCenterOffset(unitData.Footprint);
+            // 베이스 통일(사용자 결정 2026-09-03) — sim 위치 = **베이스(발밑 = 하단 행 가로 중앙)**
+            // = 뷰·그림자가 서는 그 점. unit 10 PR2 의 「기하 중심」을 개정한다: 직사각 footprint 에서
+            // 판정·링·폭심(중심)과 캐릭터(발밑)가 (H−1)/2 타일 갈려 보였고 발밑 하나로 접었다.
+            // 사거리 원점·몸 원·자기중심 스킬·부착 프리뷰가 전부 이 점을 읽는다. 적은 무변(점 몸).
+            var fpBaseOff = Wassup.Data.FootprintMath.FootOffset(unitData.Footprint);
             var pos = GridToWorldCenter(cell, spawnHeight)
-                    + new float3(fpCenterOff.x * tileSize, 0f, fpCenterOff.y * tileSize);
+                    + new float3(fpBaseOff.x * tileSize, 0f, fpBaseOff.y * tileSize);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
@@ -8440,14 +8421,9 @@ namespace Wassup.Bridge
                 _em.AddComponent<PendingDeployment>(entity);
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
-            // unit 10 — `pos` 는 **기하 중심**이다. 링은 유닛이 서는 **발밑**에서 터져야
-            // 스프라이트와 자리가 맞는다(1×1 은 차분 0 이라 무회귀).
+            // `pos` = 베이스(발밑) — 유닛이 서는 그 자리에서 터진다(베이스 통일 2026-09-03).
             if (spawnPlacementVfx && vfxSpawner != null)
-            {
-                var ringFoot = FootprintSimToFoot(unitData);
-                vfxSpawner.SpawnPlacementRing(
-                    new Vector3(pos.x + ringFoot.x, pos.y, pos.z + ringFoot.y));
-            }
+                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
 
             // Phase 8: if the unit has a Spine skeleton configured, spawn a
             // SkeletonAnimation GameObject instead of the billboard RenderMesh.
@@ -8570,12 +8546,10 @@ namespace Wassup.Bridge
             _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity);
 
             var cellV2 = new Vector2Int(homeCell.x, homeCell.y);
-            // unit 10 PR2 — sim 위치 = footprint **기하 중심**(대표 셀 아님).
-            // 짝수 변에서 스프라이트와 사거리 원이 반 칸 갈리던 것이 여기서 닫힌다.
-            // 1×1 은 오프셋 0 이라 종전과 동일.
-            var fpCenterOff = Wassup.Data.FootprintMath.GeometricCenterOffset(unitData.Footprint);
+            // 베이스 통일(2026-09-03) — sim 위치 = **베이스(발밑)**. 위 SpawnDefender 와 같은 개정.
+            var fpBaseOff = Wassup.Data.FootprintMath.FootOffset(unitData.Footprint);
             var pos = GridToWorldCenter(cellV2, spawnHeight)
-                    + new float3(fpCenterOff.x * tileSize, 0f, fpCenterOff.y * tileSize);
+                    + new float3(fpBaseOff.x * tileSize, 0f, fpBaseOff.y * tileSize);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
 #if UNITY_EDITOR
             _em.SetName(entity, $"Patrol_{unitData.displayName}_{homeCell.x}_{homeCell.y}");
@@ -8681,13 +8655,9 @@ namespace Wassup.Bridge
 
             // unit 5 — 소환 순간 VFX. 전용 아트가 생기기 전까지 배치 링을 재사용한다
             // (순찰병이 "지금 나왔다"를 읽히게 하는 게 목적, 룩은 unit 7 에서 교체).
-            // unit 10 — `pos` 는 기하 중심이라 **발밑**으로 내려서 터뜨린다(1×1 은 차분 0).
+            // `pos` = 베이스(발밑) — 그대로 터뜨린다(베이스 통일 2026-09-03).
             if (vfxSpawner != null)
-            {
-                var patrolFoot = FootprintSimToFoot(unitData);
-                vfxSpawner.SpawnPlacementRing(
-                    new Vector3(pos.x + patrolFoot.x, pos.y, pos.z + patrolFoot.y));
-            }
+                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
 
             bool spineSpawned = false;
             if (spineUnitPool != null)

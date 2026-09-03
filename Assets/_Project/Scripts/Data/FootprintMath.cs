@@ -10,8 +10,9 @@ namespace Wassup.Data
     // ⚠ **distance-based-range unit 10 에서 「대표 셀」이 은퇴했다**(사용자 결정 2026-09-01).
     // 저장값은 **앵커 + W×H** 둘뿐이고 나머지는 전부 여기서 파생된다:
     //     점유 셀 집합 = `Cells(anchor, size)`
-    //     기하 중심   = `anchor + GeometricCenterOffset(size)`   ← 실루엣이 서는 곳
-    //     발밑       = `anchor + (GeometricCenterOffset(size).x, 0)`
+    //     베이스(발밑) = `anchor + FootOffset(size)`   ← **sim 위치**·뷰·실루엣·그림자가 서는 곳
+    //                    (2026-09-03 베이스 통일 — 사거리 원점·몸 원·자기중심 스킬 폭심도 이 점)
+    //     기하 중심   = `anchor + GeometricCenterOffset(size)`   ← 점유 상자 산술용(확정 팝 rect 등)
     //
     // 은퇴 이유: 짝수 변 footprint 는 **중심 칸이 없다**(2×3 의 중심은 셀 경계 위). 대표 셀은
     // 「짝수 변의 대표가 어느 칸이냐」를 정수 나눗셈으로 정한 동전 던지기였고, 플레이어에겐
@@ -36,7 +37,8 @@ namespace Wassup.Data
             return new Vector2((s.x - 1) * 0.5f, (s.y - 1) * 0.5f);
         }
 
-        // 앵커 → 발밑(하단 행의 가로 중앙). Y 소팅·그림자·지면 VFX 가 쓴다.
+        // 앵커 → 베이스(발밑 = 하단 행의 가로 중앙). **sim 위치**(베이스 통일 2026-09-03)·
+        // Y 소팅·그림자·지면 VFX 가 쓴다.
         // ⚠ 높이 2 이상에서 **중심으로 소팅하면 앞줄 유닛이 뒤로 들어간다** — 발이 앞에 있는데
         // 중심은 뒤에 있기 때문이다. 소팅은 반드시 이 값으로.
         public static Vector2 FootOffset(Vector2Int size)
