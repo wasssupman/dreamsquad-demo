@@ -17,7 +17,9 @@ namespace Wassup.Core
         public bool Equals(in DcRangeSpec o) => shape == o.shape && radiusTiles == o.radiusTiles;
     }
 
-    // 공간성 카탈로그 — **concrete(skillId) 로만** 판정하고 값은 보지 않는다.
+    // 공간성 카탈로그 — **concrete(skillId) 로 판정**하고 값은 보지 않는다. 예외 하나:
+    // DeathSiteBlast 는 concrete 가 「실려 온 자리에서 터진다」만 알고 **자리의 주인은 트리거가
+    // 정하므로**(죽인 자리 ↔ 자기 자리) 트리거까지 본다 — 아래 Resolve 3-인자 판 참조.
     //
     // `tileRange` 는 kind 별로 7가지 다른 뜻을 갖는다(피해감소% · 누적 상한 · maxStack · 폴백 반경 · 궤도 반경 ·
     // 실드 0 = 자기만 · 팅김 탐색 반경). 시트(`DcSheetApplier`)가 값을 매 로그인마다 덮으므로 「30 이면
@@ -32,7 +34,11 @@ namespace Wassup.Core
     // ECS 무참조 · bake/UI 시점 전용(managed SO 읽기) — per-frame 호출 금지. `DcApplicability` 와 같은 자리.
     public static class DcRangeCatalog
     {
+        // 트리거 문맥이 없는 호출부용 — DeathSite 계열은 자리의 주인을 몰라 fail-closed(None)로 접힌다.
         public static DcRangeSpec Resolve(int skillId, int tileRange)
+            => Resolve(skillId, tileRange, DcTriggerKind.None);
+
+        public static DcRangeSpec Resolve(int skillId, int tileRange, DcTriggerKind trigger)
         {
             if (skillId == SelfAreaBlastSkill.Id
                 || skillId == AreaSleepSkill.Id
@@ -55,8 +61,21 @@ namespace Wassup.Core
                     ? new DcRangeSpec(DcRangeShape.Circle, tileRange)
                     : DcRangeSpec.None;
             }
-            // DeathSiteBlast·DeathSiteHazard(자리가 없다) · ConeBreath(부채꼴 제외 확정) · 대상형·즉발형·
-            // 스탯류·궤도(범위가 아니다) · TileStatBurst(액티브 칸 조준 — 부착 페이로드 아님) · 미배선 전부.
+            // 사망폭발·퇴근 운석(사용자 결정 2026-09-03) — concrete 는 같은 DeathSiteBlast 지만
+            // **자기 사망/퇴근 트리거는 자리의 주인이 부착 유닛 자신**이고, 배치 유닛은 움직이지
+            // 않으므로 「지금 서 있는 자리 중심 원」이 거짓말이 아니다. 반경은 착탄식 복사본
+            // (N + 칸 반폭) — SelfAreaBlast 와 같은 자다. 처치(OnKill) 트리거는 죽인 **적**의
+            // 자리라 부착 시점에 알 수 없어 그대로 None(아래 fail-closed).
+            if (skillId == DeathSiteBlastSkill.Id
+                && (trigger == DcTriggerKind.OnDeath || trigger == DcTriggerKind.OnRetire))
+            {
+                return tileRange > 0
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange + SkillMath.CellHalfWidthTiles)
+                    : DcRangeSpec.None;
+            }
+            // DeathSiteBlast(처치 트리거 — 죽인 적의 자리) · DeathSiteHazard(동일 — 카드도 잿불뿐) ·
+            // ConeBreath(부채꼴 제외 확정) · 대상형·즉발형·스탯류·궤도(범위가 아니다) ·
+            // TileStatBurst(액티브 칸 조준 — 부착 페이로드 아님) · 미배선 전부.
             return DcRangeSpec.None;
         }
 
@@ -73,7 +92,7 @@ namespace Wassup.Core
             for (int i = 0; i < card.mechanics.Length; i++)
             {
                 var m = card.mechanics[i];
-                var spec = Resolve(DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind), m.payload.tileRange);
+                var spec = Resolve(DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind), m.payload.tileRange, m.trigger.kind);
                 if (spec.shape == DcRangeShape.None) continue;
                 if (first.shape == DcRangeShape.None) { first = spec; continue; }
                 if (!first.Equals(spec) && WarnedCards.Add(card.id ?? ""))

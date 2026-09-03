@@ -40,7 +40,8 @@
 | **원** r = `N + 0.5` | `AreaSleepSkill` · `AreaCcSkill` · `AreaDotSkill` · `AreaStackSkill` · `AreaTauntSkill` · `StatAuraSkill` 3종 · `GrantShieldSkill`(N>0) | `AreaSleep` · `AreaCc` · `AreaDot` · `AreaApplyStack` · `AreaTaunt` · `AllyMoveSpeedAura` · `AllyStatAura` · `OpponentStatAura` · `GrantShield` | **unit 0a 이후** `RangeMetric.AreaCircle` = 같은 식 · 카드 `shield_lull` **실드수면** 1장. 나머지는 배치 스킬·보스 SO — 카탈로그는 타입으로 덮는다 |
 | **원** r = `N` | `EmitPatternSkill` | `EmitProjectilePattern`(N>0) | 사거리 자 `InBodyReach(d, N, 0, targetR)` — 탄 비행 거리라 칸 반폭 없음 · `moth_swarm` 불나방떼 N=0 → 표시 0 |
 | 부채꼴 | `ConeBreathSkill` | `AreaBreath` | **제외 확정** — 카드 0장 |
-| **노출 X** | `DeathSiteBlastSkill` · `DeathSiteHazardSkill` | `SelfTileAoe` × OnKill · OnDeath · OnRetire / `SpawnHazard` × OnKill | 자리가 없다 · `farewell` 사망폭발 · `corpse_burst` · `severance_meteor` 퇴직위로금 · `ember_field` 잿불 |
+| **원** r = `N + 0.5` | `DeathSiteBlastSkill` (자기 사망/퇴근 트리거만) | `SelfTileAoe` × OnDeath · OnRetire | **rev 2026-09-03(사용자 결정)** — 자리의 주인이 부착 유닛 자신이고 배치 유닛은 정적이라 「지금 자리 중심 원」이 거짓말이 아니다. 카탈로그가 이 concrete 만 트리거를 본다 · `farewell` 사망폭발 · `severance_meteor` 퇴직위로금 |
+| **노출 X** | `DeathSiteBlastSkill` (처치 트리거) · `DeathSiteHazardSkill` | `SelfTileAoe` × OnKill / `SpawnHazard` × OnKill | 죽인 **적**의 자리 — 부착 시점 미상 · `corpse_burst` 시체폭발 · `ember_field` 잿불 |
 | **표시 0** | 그 외 전부 | 스탯·코스트·대상형·즉발형·`PlacementAura`·… | 없는 범위를 지어내지 않는다 |
 
 ⚠ `lullaby_dart` **자장가**는 `ApplyCcToTarget`(N=0) — 비공간이다. 「자장가 = AreaSleep」은 스킬 어휘일 뿐

@@ -47,7 +47,7 @@ namespace Wassup.Tests.EditModeAssets
                     foreach (var m in card.mechanics)
                     {
                         int skillId = DcSkillRouting.SkillIdFor(m.trigger.kind, m.payload.kind);
-                        var spec = DcRangeCatalog.Resolve(skillId, m.payload.tileRange);
+                        var spec = DcRangeCatalog.Resolve(skillId, m.payload.tileRange, m.trigger.kind);
                         if (spec.shape != DcRangeShape.None) distinct.Add((spec.shape, spec.radiusTiles));
                     }
                 }

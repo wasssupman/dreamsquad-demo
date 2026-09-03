@@ -9,7 +9,8 @@ namespace Wassup.Tests.EditMode
 {
     // dreamcatcher-attach-range-preview unit 1 — 공간성 카탈로그(concrete → 도형·반경)의 핀.
     //
-    // 지키는 것 셋: ① 도형은 kind(concrete)로만 정한다 — 값(`tileRange`)으로 추정하지 않는다.
+    // 지키는 것 셋: ① 도형은 kind(concrete)로 정한다 — 값(`tileRange`)으로 추정하지 않는다.
+    // 예외 하나(사용자 결정 2026-09-03): DeathSiteBlast 는 자리의 주인을 트리거가 정하므로 트리거까지 본다.
     // 겸직 kind 는 어떤 값이 와도 None 이다(시트가 값을 매 로그인마다 덮는다). ② 반경은 판정 입력의
     // 복사본 — 광역은 `N + CellHalfWidthTiles`, 발사명세는 `N`. ③ 모르는 concrete 는 None(fail-closed) —
     // 없는 범위를 지어내지 않는다.
@@ -22,6 +23,7 @@ namespace Wassup.Tests.EditMode
             GrantShieldSkill.Id,
         };
 
+        // 2-인자 Resolve(트리거 미상)에서 None 인 것들 — DeathSiteBlast 는 트리거가 있어야만 열린다(아래 테스트).
         private static readonly int[] NoShapeIds =
         {
             DeathSiteBlastSkill.Id, DeathSiteHazardSkill.Id, ConeBreathSkill.Id, TargetProjectileSkill.Id,
@@ -77,6 +79,23 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void DeathSiteBlast_SelfSiteTriggers_AreCircles()
+        {
+            // 사용자 결정 2026-09-03 — 자기 사망/퇴근은 자리의 주인이 부착 유닛 자신(정적)이라 노출.
+            foreach (var t in new[] { DcTriggerKind.OnDeath, DcTriggerKind.OnRetire })
+            {
+                var spec = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, t);
+                Assert.AreEqual(DcRangeShape.Circle, spec.shape, t.ToString());
+                Assert.AreEqual(2f + SkillMath.CellHalfWidthTiles, spec.radiusTiles, 1e-6f, $"{t} 반경은 착탄식 복사본");
+                Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 0, t).shape, $"{t} 반경 0");
+            }
+            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnKill).shape,
+                "처치는 죽인 적의 자리 — 부착 시점 미상, 미노출 유지");
+            Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteHazardSkill.Id, 2, DcTriggerKind.OnDeath).shape,
+                "장판은 fail-closed 유지(카드 0장·값 의미 미검증)");
+        }
+
+        [Test]
         public void ResolveCard_PicksTheSpatialMechanic()
         {
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
@@ -101,10 +120,13 @@ namespace Wassup.Tests.EditMode
             {
                 card.mechanics = new[]
                 {
-                    Mechanic(DcTriggerKind.OnDeath, DcPayloadKind.SelfTileAoe, tileRange: 2),      // 죽은 자리 — 위치 없음
+                    Mechanic(DcTriggerKind.OnKill, DcPayloadKind.SelfTileAoe, tileRange: 2),      // 죽인 적의 자리 — 위치 없음
                     Mechanic(DcTriggerKind.AttackN, DcPayloadKind.SelfStatBuff, tileRange: 10),   // 누적 상한
                 };
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape);
+                // 같은 concrete 라도 자기 사망 트리거면 그린다(사망폭발 — 사용자 결정 2026-09-03).
+                card.mechanics = new[] { Mechanic(DcTriggerKind.OnDeath, DcPayloadKind.SelfTileAoe, tileRange: 2) };
+                Assert.AreEqual(DcRangeShape.Circle, DcRangeCatalog.ResolveCard(card).shape);
                 card.mechanics = null;
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(card).shape, "메커닉 없는 카드");
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.ResolveCard(null).shape, "null 카드");
