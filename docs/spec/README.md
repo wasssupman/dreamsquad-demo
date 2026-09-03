@@ -121,6 +121,12 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+- **골든 코퍼스의 세션-교차 조건 축 미상** [M] · 2026-09-03 실측: 같은 코드·같은 디스크 SO 인데
+  한 세션 창(19시경)의 베이크가 다른 이벤트 가족(basic 162ev·long_boss 2632ev)으로 구워졌다가
+  다음 세션 창에서 원 가족(144ev·599ev)으로 복귀했다. 그 창 안에서는 교차 세션 Verify 도 통과 —
+  즉 시드 밖 조건 축 하나가 세션 경계보다 굵은 단위로 굴러간다([gimmick] 은 양쪽 다 무배정 확인,
+  용의자 미상). 재발 시 「전건 red = 이 축」 오진 방지용 기록. 원인 색출은 별도 조사 감. (battle-sim-extraction)
+
 #### 부착 범위 프리뷰 (dreamcatcher-attach-range-preview — **구현 완료 2026-09-03 · 검증 마감 대기**)
 
 인계: `docs/spec/dreamcatcher-attach-range-preview/5_handoff_summary.md`. 닫기 전 필수(골든 정본 조건 결정·재베이크,
