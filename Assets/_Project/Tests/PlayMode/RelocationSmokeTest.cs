@@ -107,79 +107,6 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.PlaceDefenderAs(from.x, from.y, unit), "source tile is free for a new placement");
         }
 
-        // 시너지 양쪽 재계산 (spec README 계약 6): 동일 유닛 인접 2기 → 양쪽 damageMul 1.1
-        // → 1기를 비인접 셀로 이동 → 잔류 유닛은 Begin 의 from 재계산으로, 이동 유닛은
-        // Activate 의 to 재계산으로 각각 1.0 복귀.
-        [UnityTest]
-        public IEnumerator Relocate_RecomputesSynergy_OnBothCells()
-        {
-            LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
-            for (int i = 0; i < 6; i++) yield return null;
-
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            // 라이브 씬은 enableAdjacencySynergy=0 — 계약(재계산이 양쪽 셀에서 발화) 검증을 위해
-            // 테스트에서만 켠다. Play 인스턴스 필드라 씬에 남지 않는다.
-            typeof(BattleBridge).GetField("enableAdjacencySynergy", BindingFlags.NonPublic | BindingFlags.Instance)
-                .SetValue(bridge, true);
-            var cat = FindCatalog();
-            // defender-board-limit — 인접 시너지 검증에 같은 유닛 2기가 필요하다(위와 같은 이유로
-            // 런타임 사본에만 상한을 푼다).
-            var unit = Object.Instantiate(cat.ById("ranger"));
-            unit.maxOnBoard = 99;
-            bridge.SetDefenderPool(new[] { unit });
-            bridge.BeginPlacement();
-            var gm = Object.FindObjectOfType<GameManager>();
-            gm.CostRuntime.ResetToStart();
-            gm.CostRuntime.AddCost(1000);
-            yield return null;
-
-            // 인접 배치 가능한 셀 쌍 탐색
-            Vector2Int a = default, b = default; bool foundPair = false;
-            for (int x = -24; x < 48 && !foundPair; x++)
-            for (int y = -24; y < 48 && !foundPair; y++)
-            {
-                if (!bridge.CanPlaceDefenderAt(x, y, unit, out _)) continue;
-                for (int dx = -1; dx <= 1 && !foundPair; dx++)
-                for (int dy = -1; dy <= 1 && !foundPair; dy++)
-                {
-                    if (dx == 0 && dy == 0) continue;
-                    if (bridge.CanPlaceDefenderAt(x + dx, y + dy, unit, out _))
-                    { a = new Vector2Int(x, y); b = new Vector2Int(x + dx, y + dy); foundPair = true; }
-                }
-            }
-            Assert.IsTrue(foundPair, "adjacent placeable pair exists");
-            Assert.IsTrue(bridge.PlaceDefenderAs(a.x, a.y, unit), "place A");
-            Assert.IsTrue(bridge.PlaceDefenderAs(b.x, b.y, unit), "place B");
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var entityA = EntityAt(bridge, em, a);
-            var entityB = EntityAt(bridge, em, b);
-            for (int i = 0; i < 3; i++) yield return null;
-            // 총합 damageMul 이 아니라 시너지 슬롯(origin=Synergy)만 직독 — 랜덤 기믹/드림스톤의
-            // 데미지 배율이 총합을 오염시켜도(관측: ×1.25 기믹 런) 무관하게 판정.
-            Assert.AreEqual(1.1f, SynergyMagnitude(em, entityA), 0.01f, "A synergy 1.1");
-            Assert.AreEqual(1.1f, SynergyMagnitude(em, entityB), 0.01f, "B synergy 1.1");
-
-            // A 를 B 와 비인접인 셀로 이동
-            Vector2Int to = default; bool foundTo = false;
-            for (int x = -24; x < 48 && !foundTo; x++)
-            for (int y = -24; y < 48 && !foundTo; y++)
-            {
-                var c = new Vector2Int(x, y);
-                if (Mathf.Max(Mathf.Abs(c.x - b.x), Mathf.Abs(c.y - b.y)) <= 1) continue; // B 인접 제외
-                if (bridge.CanRelocateDefender(a, c, out _)) { to = c; foundTo = true; }
-            }
-            Assert.IsTrue(foundTo, "non-adjacent relocation target exists");
-
-            Assert.IsTrue(bridge.TryBeginDefenderRelocation(a, to, out var moved, out _), "begin relocation");
-            for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.0f, SynergyMagnitude(em, entityB), 0.01f, "B recomputed at Begin (from-cell)");
-
-            bridge.FinishDefenderRelocation(to, moved);
-            bridge.ActivateDeployedDefender(to, moved);
-            for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.0f, SynergyMagnitude(em, entityA), 0.01f, "A recomputed at Activate (to-cell)");
-        }
 
         // defender-relocation unit 8 — 대가와 보상. 재배치 1회에 코스트가 유닛 코스트만큼 줄고,
         // 활성화 시점에 최대 체력 비율만큼 회복하며, on-place 가드가 재무장된다.
@@ -312,19 +239,6 @@ namespace Wassup.Tests.PlayMode
 
         // 시너지 기여만 격리 판정: StatModifierSlot 버퍼에서 origin=Synergy·DamageMul 슬롯의
         // magnitude 를 직독(read-only). 슬롯 없음 = 중립 1.0.
-        private static float SynergyMagnitude(EntityManager em, Entity e)
-        {
-            if (e == Entity.Null || !em.HasBuffer<Wassup.Battle.Effects.StatModifierSlot>(e)) return 1f;
-            var buf = em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(e);
-            for (int i = 0; i < buf.Length; i++)
-                if (buf[i].header.origin == Wassup.Battle.Effects.ModifierOrigin.Synergy
-                    && buf[i].stat == Wassup.Battle.Effects.StatKind.DamageMul)
-                    // ModifierAuthoring.FromMultiplier 역변환: ≥1 배율은 Additive(delta), <1 은 Multiplicative.
-                    return buf[i].op == Wassup.Battle.Effects.CombineOp.Additive
-                        ? 1f + buf[i].magnitude
-                        : buf[i].magnitude;
-            return 1f;
-        }
 
         private static DefenderCatalog FindCatalog()
         {

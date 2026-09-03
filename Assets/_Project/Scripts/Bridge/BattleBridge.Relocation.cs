@@ -197,7 +197,6 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Defender_{binding.data.displayName}_{toPrimary.x}_{toPrimary.y}");
 #endif
             tileHealthGaugeLayer?.Hide(from); // 게이지 키 = 셀. 새 셀은 상시 sync 가 다시 그린다.
-            RecomputeSynergyFor(from);        // 이탈 반영. to 쪽은 활성화가 수행(계약 6).
             RefreshPlacementHighlightIfShown();
             Debug.Log($"[BattleBridge] Relocation began: {binding.data.displayName} {from} -> {to}.");
             return true;
@@ -296,7 +295,7 @@ namespace Wassup.Bridge
         // 한 곳에 묶는다: 밀치기 → 활성화(= on-place 재발동) → 회복. 한 사건으로 읽혀야 한다.
         //
         // 밀치기를 확정이 아니라 여기서 부르는 이유: 확정 시점엔 유닛이 아직 비행 중이라 **빈 칸을
-        // 민다**. 즉시 배치 경로(TriggerOnPlaceAndSynergy)가 on-place 와 밀치기를 한 묶음으로
+        // 민다**. 즉시 배치 경로(TriggerOnPlace)가 on-place 와 밀치기를 한 묶음으로
         // 부르는 것과 같은 모양이고, 드래그 배치만 확정 시점에 부른다.
         //
         // healRatio 는 인자로 받는다 — 노브는 컨트롤러(RelocationSettings)가 소유하고 브리지는

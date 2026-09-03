@@ -18,7 +18,7 @@ namespace Wassup.Bridge
     {
         // ingame-dreamcatcher Unit 2 — dreamcatcher card effects are match-long and
         // apply to current + future matching defenders. stackId starts at 100 to
-        // avoid colliding with onplace/skill (0) and synergy (1) on the same stat.
+        // avoid colliding with onplace/skill (0) and the retired synergy slot (1) on the same stat.
         private struct ActiveDcEffect
         {
             public Wassup.Data.CardTargetAxis axis;

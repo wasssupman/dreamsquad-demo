@@ -23,7 +23,6 @@ namespace Wassup.Logging
         public SkillRecord skill = new();
         public List<HazardLog> hazards = new();
         public List<BlockingHazardLog> blocking_hazards = new();
-        public SynergyRecord synergy = new();
         public List<OnPlaceUsageLog> on_place_usages = new();
         public List<PlacementLog> placements = new();
         public List<AttackOutputUsageLog> attack_outputs = new();
@@ -253,16 +252,6 @@ namespace Wassup.Logging
         public string reason;
     }
 
-    // Phase 4: tracks adjacency synergy activity over the session. `activations`
-    // counts how many distinct defender entities have transitioned from "no
-    // synergy" to "has synergy" at least once; `peakCount` is the largest number
-    // of defenders concurrently holding SynergyBuff.
-    [Serializable]
-    public class SynergyRecord
-    {
-        public int activations;
-        public int peakCount;
-    }
 
     [Serializable]
     public class OnPlaceUsageLog

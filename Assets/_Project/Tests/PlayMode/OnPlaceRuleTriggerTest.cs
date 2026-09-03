@@ -18,7 +18,7 @@ namespace Wassup.Tests.PlayMode
     //
     // 회귀 대상 둘:
     //  ① **배치 확정 지점이 셋이다**(D&D `TriggerDeploymentOnPlaceSkill` · 탭
-    //     `TriggerOnPlaceAndSynergy` · 재배치가 재호출하는 `ActivateDeployedDefender`).
+    //     `TriggerOnPlace` · 재배치가 재호출하는 `ActivateDeployedDefender`).
     //     기존 on-place PlayMode 테스트는 전부 탭 경로라, 한 곳만 후킹하면 **라이브에서
     //     안 나가는 채로 초록**이 난다. 그래서 두 경로를 각각 검사한다.
     //  ② **`PatternSlot[0]` 은 다연발 것이어야 한다.** `AttackSystem` 이 slots[0] 하나만 읽고

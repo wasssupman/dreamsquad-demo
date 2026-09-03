@@ -185,10 +185,6 @@ namespace Wassup.Bridge
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
-        [Header("Battle Rules")]
-        [Tooltip("같은 방어 유닛을 인접 배치했을 때의 공격력 시너지. 기본 비활성.")]
-        [SerializeField] private bool enableAdjacencySynergy;
-
         [Header("Season Gimmick — Pickup View (season-gimmick-overwork unit 6)")]
         [Tooltip("레드불 픽업 뷰 모델/프리팹(FBX 가능). 비우면 절차적 플레이스홀더 큐브.")]
         [SerializeField] private GameObject pickupViewPrefab;
@@ -366,10 +362,6 @@ namespace Wassup.Bridge
         public static float WalkAnimMaxTimeScale { get; private set; } = 2f;
         public static float WalkAnimSmoothing { get; private set; } = 0.2f;
         public static float WalkAnimTeleportGuard { get; private set; } = 1.5f;
-        private const float SynergyPerNeighbor = 0.1f;
-        private readonly HashSet<Entity> _synergyActivatedEntities = new();
-        private int _synergyActivations;
-        private int _synergyPeakCount;
         private float _startTime;
         // time-manager Unit 3 — 전투 도메인 스케일이 반영된 경과 클럭(웨이브/타이머 load-bearing).
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
@@ -1548,9 +1540,6 @@ namespace Wassup.Bridge
             ApplyPendingDreamstones();
             _onPlaceTriggeredEntities.Clear();
             _effectTileAppliedEntities.Clear(); // unit 8 — 두 가드는 항상 같은 지점에서 함께 비운다
-            _synergyActivatedEntities.Clear();
-            _synergyActivations = 0;
-            _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
             _killCount = 0;
@@ -3323,7 +3312,6 @@ namespace Wassup.Bridge
             w.Put("spawnSpreadFraction", spawnSpreadFraction);
             w.Put("spawnSpreadTopScale", spawnSpreadTopScale);
             w.Put("spawnSubLaneCount", spawnSubLaneCount);
-            w.Put("enableAdjacencySynergy", enableAdjacencySynergy);
             w.Put("dcProcImpactMinIntervalSec", dcProcImpactMinIntervalSec);
             w.Put("fixedMapSeed", fixedMapSeed);
 
@@ -4140,13 +4128,13 @@ namespace Wassup.Bridge
                     spineUnitPool.NotifyDeath(binding.entity);
                     defenderFallbackViewPool?.Despawn(binding.entity);
                 }
-                Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
+                Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed.");
 
                 // skill-layer-migration unit 3g — **작별 선물 실행기가 여기서 사라졌다.**
                 // concrete 로 갔고 자기 죽음 seam 이 실행한다.
 
                 // dreamcatcher-awakening-hand unit 1 — relay after cleanup so the
-                // tile/synergy state is consistent when subscribers run. Entity is
+                // tile state is consistent when subscribers run. Entity is
                 // already destroyed in ECS; it is passed as a registry KEY only.
                 if (hasBinding)
                     DefenderDied?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
@@ -4221,7 +4209,6 @@ namespace Wassup.Bridge
             _occupiedTiles.Remove(key); // owner 맵을 안 지난 레거시 점유 방어(정상 경로에선 이미 비었다)
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             tileHealthGaugeLayer?.Hide(key);   // unit 3 — 퇴장 시 게이지 제거
-            RecomputeSynergyFor(key);
             return hasBinding;
         }
 
@@ -4426,7 +4413,7 @@ namespace Wassup.Bridge
             else
                 spineUnitPool?.Despawn(binding.entity);
             defenderFallbackViewPool?.Despawn(binding.entity);
-            Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed, synergy recomputed.");
+            Debug.Log($"[BattleBridge] Defender retired @ {cell}; tile freed.");
             DefenderRetired?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
             return true;
         }
@@ -5779,15 +5766,8 @@ namespace Wassup.Bridge
         // 규칙 경로(배치 스킬의 방향 발사)가 두 번째 소비자가 되면서 뽑았다 — 두 벌로 두면 한쪽만
         // 고쳐지는 날이 온다. 여기 남는 것은 «엔티티에서 값을 꺼내는 일» 과 **레거시 폴백** 뿐이다.
 
-        // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
-        // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
-        // Writes to SynergyBuff go through EffectSpawner so the Effects-context
-        // write gateway stays a single code path (Phase 2 decision #9).
-        // defender-footprint unit 3 — 시너지 스캔 스크래치(할당 재사용).
-        private readonly List<(Entity entity, DefenderUnitData data, RectInt rect)> _synergyScratch = new();
-
-        // defender-footprint 리뷰 M-6 — «등록 스냅샷» 방어선을 검사 쪽에도. SO footprint 가
-        // 배치 후(시트 임포트) 바뀌어도 시너지·재배치 자기-겹침은 **실제 점유 칸** 기준이어야
+        // defender-footprint 리뷰 M-6 — «등록 스냅샷» 방어선. SO footprint 가 배치 후
+        // (시트 임포트) 바뀌어도 재배치 자기-겹침은 **실제 점유 칸** 기준이어야
         // ReleaseDefenderFootprint 와 같은 rect 를 본다. 미등록(이론상 없음)이면 SO 폴백.
         private RectInt RegisteredFootprintRect(Vector2Int primary, Vector2Int fallbackSize)
         {
@@ -5811,79 +5791,6 @@ namespace Wassup.Bridge
             return new RectInt(minX, minY, maxX - minX + 1, maxY - minY + 1);
         }
 
-        private void RecomputeSynergyFor(Vector2Int cell)
-        {
-            if (!enableAdjacencySynergy)
-            {
-                NeutralizeActiveSynergy();
-                return;
-            }
-            if (!HasLiveEntityManager()) return; // 리뷰 L-6 — teardown 경계 방어(관용구 공유)
-
-            // defender-footprint unit 3 — 인접 = 두 footprint rect 의 **체비셰프 거리 1(둘레 접촉)**.
-            // 대표 셀 8이웃으로 재면 3×3 유닛의 8이웃이 전부 자기 몸 안이라 시너지가 죽는다.
-            // 1×1 끼리 거리 1 = 기존 8이웃과 동치(무회귀).
-            //
-            // 국소 재계산(변경 셀 3×3) → **전수 재계산**: footprint 제거 직후엔 반납된 rect 를
-            // 여기서 알 수 없어 국소화가 성립하지 않는다. 판 위 유닛은 수십 기라 O(n²) rect
-            // 비교는 무시 가능, EnqueueSynergyMul refresh 는 멱등이라 과잉 enqueue 무해.
-            // cell 파라미터는 호출 계약(변경 지점 통보)으로 유지하되 계산엔 쓰지 않는다.
-            _ = cell;
-            _synergyScratch.Clear();
-            foreach (var kv in _defenderByTile)
-            {
-                if (!_em.Exists(kv.Value.entity) || _em.HasComponent<PendingDeployment>(kv.Value.entity)) continue;
-                var size = kv.Value.data != null ? kv.Value.data.Footprint : Vector2Int.one;
-                var rect = RegisteredFootprintRect(kv.Key, size); // 리뷰 M-6 — 등록 스냅샷 기준
-                _synergyScratch.Add((kv.Value.entity, kv.Value.data, rect));
-            }
-
-            for (int i = 0; i < _synergyScratch.Count; i++)
-            {
-                var here = _synergyScratch[i];
-                int neighbors = 0;
-                for (int j = 0; j < _synergyScratch.Count; j++)
-                {
-                    if (i == j) continue;
-                    var other = _synergyScratch[j];
-                    if (other.data != here.data) continue;
-                    if (FootprintMath.RectChebyshevDistance(here.rect, other.rect) == 1)
-                        neighbors++;
-                }
-
-                if (neighbors == 0)
-                {
-                    // magnitude=1.0 (multiplicative identity) — effectively disables synergy contribution
-                    EnqueueSynergyMul(here.entity, 1f);
-                }
-                else
-                {
-                    bool wasPresent = _synergyActivatedEntities.Contains(here.entity);
-                    EnqueueSynergyMul(here.entity, 1f + SynergyPerNeighbor * neighbors);
-                    if (!wasPresent && _synergyActivatedEntities.Add(here.entity))
-                    {
-                        _synergyActivations++;
-                    }
-                }
-            }
-
-            // Peak tracking: count entities that have received a non-trivial synergy enqueue this session
-            int currentCount = _synergyActivatedEntities.Count;
-            if (currentCount > _synergyPeakCount) _synergyPeakCount = currentCount;
-        }
-
-        // 시너지 토글을 끈 뒤에도 이전 stackId=1 슬롯이 남지 않도록 중립값(+0)으로 refresh 한다.
-        // Effects 소유 ModifierStats 는 직접 쓰지 않고 기존 StatModifierApplyEvents 채널만 사용한다.
-        private void NeutralizeActiveSynergy()
-        {
-            if (_synergyActivatedEntities.Count == 0) return;
-            foreach (var binding in _defenderByTile.Values)
-            {
-                if (_em.Exists(binding.entity) && !_em.HasComponent<PendingDeployment>(binding.entity))
-                    EnqueueSynergyMul(binding.entity, 1f);
-            }
-            _synergyActivatedEntities.Clear();
-        }
 
         // Unit 8: channel enqueue helpers — route legacy effect produces through StatModifier channel.
         // source=target ensures the ApplySystem merge-key matches per-entity, preventing slot accumulation.
@@ -5943,12 +5850,6 @@ namespace Wassup.Bridge
 
         public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
             => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0, origin);
-
-        // Synergy: infinite duration, magnitude refreshed each recompute.
-        // multiplier=1.0 (neighbors==0) authors as the additive identity (+0.0).
-        // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0).
-        private void EnqueueSynergyMul(Entity target, float multiplier)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1, Wassup.Battle.Effects.ModifierOrigin.Synergy);
 
         // dreamcatcher-bridge-partial-cleanup unit 0 — 드림캐쳐 카드 번역자
         // (레지스트리·apply/revoke·부착 베이크·axis/effect 매핑)는
@@ -7674,7 +7575,7 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
 
             var entity = CreateDefenderEntity(primary, unitData, pendingDeployment: false, spawnPlacementVfx: true);
-            TriggerOnPlaceAndSynergy(unitData, primary, entity);
+            TriggerOnPlace(unitData, primary, entity);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -7730,7 +7631,6 @@ namespace Wassup.Bridge
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
             _cancellableDeployments.Remove(entity); // unit 5 리뷰 H-1 — 활성화 = 유예 종료
-            RecomputeSynergyFor(cell);
             Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
         }
 
@@ -7749,7 +7649,6 @@ namespace Wassup.Bridge
             FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
-            LogSynergy(binding.data, cell);
             return true;
         }
 
@@ -8862,8 +8761,8 @@ namespace Wassup.Bridge
         }
 
         // effect-tiles unit 2 — 효과 타일 modifier 슬롯 네임스페이스.
-        // 규약: on-place=0 · 시너지=1 · 효과타일=2 · **스킬 아군 버프=3** · 드림캐쳐=100+
-        // (EnqueueSynergyMul / AllyBuffField.StackId / _dcStackCounter 참조).
+        // 규약: on-place=0 · ~~시너지=1~~(기능 은퇴 2026-09-03 — 슬롯 번호는 재사용 금지) ·
+        // 효과타일=2 · **스킬 아군 버프=3** · 드림캐쳐=100+ (AllyBuffField.StackId / _dcStackCounter 참조).
         private const ushort EffectTileStackId = 2;
 
         // 스킬 아군 버프 슬롯(=3)은 active-ally-zone unit 0 에서 `AllyBuffField.StackId` 로 이전됐다 —
@@ -8960,18 +8859,12 @@ namespace Wassup.Bridge
                 _em.AddComponent<Wassup.Battle.Units.JustDeployed>(entity);
         }
 
-        private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)
+        private void TriggerOnPlace(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
-            // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
-            // onPlace is a standalone snapshot effect and must fire before the
-            // new defender's SynergyBuff is computed. Individual on-place effect
-            // rules decide whether the placed defender is included.
             MarkJustDeployedForRules(entity);   // unit 0 — 즉시 배치(탭) 경로
             FireOnPlaceCameraShake(unitData);   // camera-direction unit 17
             _onPlaceTriggeredEntities.Add(entity);
             ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
-            RecomputeSynergyFor(cell);
-            LogSynergy(unitData, cell);
         }
 
         public Unity.Entities.Entity DebugSpawnObstacleAt(Unity.Mathematics.int2 cell, float lifetime = 5f)
@@ -9732,17 +9625,6 @@ namespace Wassup.Bridge
         [UnityEngine.ContextMenu("Debug Spawn Obstacle At (3,1)")]
         private void DebugSpawnObstacleContext() => DebugSpawnObstacleAt(new Unity.Mathematics.int2(3, 1), 5f);
 
-
-        // skill-layer-migration unit 2g — **배치 효과 로그가 은퇴했다.** 레거시 enum 이
-        // 사라지면서 「무슨 효과가 몇 명에게」를 브리지가 알 수 없게 됐다 — 그건 이제
-        // 스킬 레이어의 사실이고, 필요하면 그쪽 계측(`ExecutedCountOf`)이 답한다.
-        // 남은 것은 시너지 통계뿐이라 이름도 그에 맞췄다.
-        private void LogSynergy(DefenderUnitData unitData, Vector2Int cell)
-        {
-            var logger = GameManager.Instance?.Logger;
-            if (logger != null)
-                logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
-        }
 
         private static void LogPlacementReject(string source, DefenderUnitData unitData, PlacementRejectReason reason)
         {

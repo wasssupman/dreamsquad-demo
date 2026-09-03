@@ -153,7 +153,7 @@ namespace Wassup.Battle.Effects
                             // stackId=0)과 (source,stat,op,stackId) 4개가 전부 겹쳤다 — 병합 규칙이
                             // magnitude 덮어쓰기라 강한 배치 감속이 약한 스택 감속으로 깎였다.
                             // kind 별 전용 id 로 갈라 파생끼리도 원소별 독립. base 100 은 저번호
-                            // (0=일반, 1=Synergy)를 피하기 위한 것.
+                            // (0=일반, 1=구 Synergy — 기능 은퇴, 번호 재사용 금지)를 피하기 위한 것.
                             stackId   = (ushort)(StackDerivedStackIdBase + (int)kind),
                             // 야근 번아웃만 전용 origin 승격 — 상태FX(BattleBridge)가 다른 Stack
                             // 파생과 안 섞이게(review #3). 범용 trigger→domain 통합은 파킹 문서.

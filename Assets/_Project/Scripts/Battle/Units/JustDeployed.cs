@@ -5,7 +5,7 @@ namespace Wassup.Battle.Units
     // on-place-skill-rework unit 0 — 「이 유닛이 방금 판에 놓였다」는 1프레임 사건 태그.
     //
     // 왜 태그인가: 배치 확정 지점이 브리지에 **셋**이다(D&D `TriggerDeploymentOnPlaceSkill` ·
-    // 탭 `TriggerOnPlaceAndSynergy` · 재배치가 재호출하는 `ActivateDeployedDefender`).
+    // 탭 `TriggerOnPlace` · 재배치가 재호출하는 `ActivateDeployedDefender`).
     // 배치 스킬 실행을 브리지에 두면 그 셋을 전부 후킹해야 하고, 하나만 놓치면 그 경로에서만
     // 스킬이 안 나가는 채로 테스트가 초록이 된다(기존 on-place PlayMode 는 전부 탭 경로다).
     // 브리지는 **태그만** 붙이고 `DcTriggerKind.OnPlace` 슬롯 소비는 BossPeriodicTriggerSystem

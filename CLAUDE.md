@@ -37,7 +37,7 @@
 - **Units** — 유닛 정의, 배치 상태, Health, 생성/소멸, IncomingDamage 버퍼, 사망 이벤트 큐
 - **Movement** — 경로 따라가기, 위치 갱신, Portal 텔레포트, Tornado field pull step
 - **Combat** — 타겟팅, 공격 쿨다운, 데미지 적용, 사거리 판정, 투사체, Meteor 해결, defender attack event
-- **Effects** — 상태이상(Slow/DamageBoost/CooldownReduction), 시너지(SynergyBuff), 스킬 캐리어(TornadoField/PortalLink/AllyBuffField) — `MeteorPending` 은 은퇴했다(투사체 수렴, 코드 0건)
+- **Effects** — 상태이상(Slow/DamageBoost/CooldownReduction), 스킬 캐리어(TornadoField/PortalLink/AllyBuffField) — 인접 시너지는 은퇴했다(2026-09-03 기능 제거, `ModifierOrigin.Synergy`/stackId 1 슬롯은 append-only 계약으로 번호만 보존) — `MeteorPending` 은 은퇴했다(투사체 수렴, 코드 0건)
 
 **맥락 간 통신 규칙**:
 - Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.

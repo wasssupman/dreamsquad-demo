@@ -321,13 +321,6 @@ namespace Wassup.Logging
             });
         }
 
-        public void SetSynergyStats(int activations, int peakCount)
-        {
-            if (currentEntry == null) return;
-            currentEntry.synergy.activations = activations;
-            currentEntry.synergy.peakCount = peakCount;
-        }
-
         public void RecordPlacement(string unitType, Vector2Int tile, float time, int costSpent)
         {
             if (currentEntry == null) return;
