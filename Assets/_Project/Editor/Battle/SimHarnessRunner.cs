@@ -225,6 +225,46 @@ namespace Wassup.EditorTools.Battle
             if (_sceneDefaultPool != null) bridge.SetDefenderPool(_sceneDefaultPool);
         }
 
+        // distance-based-range unit 22 후속(2026-09-04) — **맵 조건을 못박는다.**
+        //
+        // 코퍼스가 세션마다 갈리던 「미상의 조건 축」의 정체가 이것이었다:
+        // `DevMapOverride`(PlayerPrefs `dev_forceMapIndex`)는 **머신 상태**라 로비의 개발용 맵
+        // 스테퍼(◀▶) 한 번, 혹은 중단된 PlayMode 테스트(`StructureLivePlayTest` 등이 이 값을
+        // 바꿨다 되돌린다)만으로 바뀌고, `BattleBridge` 의 맵 선택에서 **1순위**다.
+        // 실측: 같은 날 두 번의 재생성이 index 3 / index 0 으로 갈려 킬이 전건 달라졌고
+        // (`no_defense` 가 0킬 → 3킬 — 방어유닛이 없는데 킬이 났다 = 본능 거점이 있는 다른 맵),
+        // configHash 도 8건 전부 갈렸다. 코드가 아니라 **조건**이 바뀐 것이다.
+        //
+        // 그래서 베이크·검증 동안 override 를 끄고(=씬 자신의 규칙: fixedMapSeed → 토너먼트
+        // 시드 → 폴백 0), 끝나면 **원래 값을 되돌린다** — PlayerPrefs 는 사용자 머신 설정이라
+        // 하네스가 삼키면 안 된다(PlayMode 테스트가 쓰는 관용구와 같은 형태).
+        public static MapConditionPin PinMapCondition() => MapConditionPin.Acquire();
+
+        public struct MapConditionPin : System.IDisposable
+        {
+            private int _saved;
+            private bool _held;
+
+            public static MapConditionPin Acquire()
+            {
+                var p = new MapConditionPin { _saved = Wassup.Core.DevMapOverride.Index, _held = true };
+                if (p._saved >= 0)
+                {
+                    Wassup.Core.DevMapOverride.Index = -1;   // off — 씬 규칙으로 되돌린다
+                    Debug.Log($"[Golden] dev 맵 강제(index={p._saved})를 베이크 동안 해제한다 — "
+                              + "코퍼스 조건은 씬 규칙으로 고정. 끝나면 원복.");
+                }
+                return p;
+            }
+
+            public void Dispose()
+            {
+                if (!_held) return;
+                _held = false;
+                if (_saved >= 0) Wassup.Core.DevMapOverride.Index = _saved;
+            }
+        }
+
         // 입력은 벽시계가 아니라 **틱 번호**로 반입한다 — 그래야 두 판의 입력이 같은 sim 시각에
         // 들어가고, 「입력 타이밍이 달라서 갈렸다」가 원인 후보에서 빠진다.
         private static void ApplyScheduledInput(BattleBridge bridge, in Scenario sc, int tick)

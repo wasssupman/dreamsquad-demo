@@ -121,11 +121,15 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
-- **골든 코퍼스의 세션-교차 조건 축 미상** [M] · 2026-09-03 실측: 같은 코드·같은 디스크 SO 인데
-  한 세션 창(19시경)의 베이크가 다른 이벤트 가족(basic 162ev·long_boss 2632ev)으로 구워졌다가
-  다음 세션 창에서 원 가족(144ev·599ev)으로 복귀했다. 그 창 안에서는 교차 세션 Verify 도 통과 —
-  즉 시드 밖 조건 축 하나가 세션 경계보다 굵은 단위로 굴러간다([gimmick] 은 양쪽 다 무배정 확인,
-  용의자 미상). 재발 시 「전건 red = 이 축」 오진 방지용 기록. 원인 색출은 별도 조사 감. (battle-sim-extraction)
+- ~~**골든 코퍼스의 세션-교차 조건 축 미상** [M]~~ → **정체 확인·차단 2026-09-04.**
+  범인은 **`DevMapOverride`(PlayerPrefs `dev_forceMapIndex`)** — 로비의 개발용 맵 스테퍼(◀▶)나
+  중단된 PlayMode 테스트(`StructureLivePlayTest` 등이 이 값을 바꿨다 되돌린다)가 남기는
+  **머신 상태**이고, `BattleBridge` 맵 선택의 **1순위**다. 실측: 같은 날 두 베이크가 index 3 /
+  index 0 으로 갈려 킬이 전건 달라졌고(`no_defense` 가 0킬 → 3킬 — 방어유닛이 없는데 킬이 났다
+  = 본능 거점이 있는 다른 맵) configHash 도 8건 전부 갈렸다. 2026-09-03 의 「이벤트 가족이
+  바뀌었다 돌아왔다」도 같은 축으로 설명된다. **차단**: 하네스가 베이크·검증 동안 override 를
+  끄고 끝나면 원복한다(`SimHarnessRunner.PinMapCondition`). 이후 조건은 씬 규칙(fixedMapSeed →
+  토너먼트 시드 → 폴백 0)으로 고정. (battle-sim-extraction · 발견은 distance-based-range unit 22)
 
 #### 부착 범위 프리뷰 (dreamcatcher-attach-range-preview — **구현 완료 2026-09-03 · 검증 마감 대기**)
 

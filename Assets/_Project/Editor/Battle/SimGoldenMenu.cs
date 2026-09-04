@@ -48,6 +48,9 @@ namespace Wassup.EditorTools.Battle
                 return;
             }
             System.IO.Directory.CreateDirectory(GoldenDir);
+            // 조건 고정 — dev 맵 강제(PlayerPrefs)가 코퍼스 조건을 세션마다 바꾸던 축을 끈다.
+            // 메서드를 벗어날 때 원래 값으로 되돌아간다(사유는 PinMapCondition 주석).
+            using var mapPin = SimHarnessRunner.PinMapCondition();
 
             var lines = new List<string>();
             int failed = 0;
@@ -156,6 +159,9 @@ namespace Wassup.EditorTools.Battle
                     + "보고서를 실패로 덮었다(이전 표를 결과로 오독하지 않게).");
                 return;
             }
+
+            // 재생성과 **같은 조건**으로 대조한다 — 여기서 빠지면 「검증만 다른 맵」이 된다.
+            using var mapPin = SimHarnessRunner.PinMapCondition();
 
             var lines = new List<string>();
             var diffs = new List<string>();
