@@ -188,7 +188,6 @@ namespace Wassup.Data
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
-        public int FootprintWidthCells => 1; // tilted-billboard unit 9 — 적/보스는 sim 이 1칸 점유(참값)
         public Vector3 SpineVisualOffset => visualOffset;
         public IReadOnlyList<string> SpinePartSkins => partSkins;
         public IReadOnlyList<SpineSlotColor> SpineSlotColors => slotColors;

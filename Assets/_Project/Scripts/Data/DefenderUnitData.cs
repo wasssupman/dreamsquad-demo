@@ -343,7 +343,6 @@ namespace Wassup.Data
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
-        public int FootprintWidthCells => Footprint.x; // tilted-billboard unit 9 (defender-footprint unit 0 이 소유한 값)
         // enemy-spawn-positioning 0 — 방어 유닛은 본 spec 범위 밖. 계약 기본값(오프셋 없음).
         public Vector3 SpineVisualOffset => Vector3.zero;
         public IReadOnlyList<string> SpinePartSkins => partSkins;

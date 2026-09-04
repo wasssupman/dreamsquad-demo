@@ -6371,7 +6371,10 @@ namespace Wassup.Bridge
                 // distance-based-range unit 9 — 거점도 몸을 갖는다. `AttackState` 를 받는
                 // bake 지점 넷(방어유닛·순찰·적·거점) 중 여기만 빠지면 거점의 도달 거리가
                 // 조용히 0.5 줄고, 대상일 때도 몸이 0 이 된다.
-                // rev 3(unit 12) — 구조물 몸 = 점유 내접원 파생. 본능 3×3 → 1.5, 마음 → 0.5.
+                // rev 3(unit 12) — 구조물 몸 = 점유/2 파생. 본능 3×3 → 1.5, 마음 → 0.5.
+                // ⚠ 방어유닛 규칙(가로/2, DefenderUnitData.BodyRadiusTiles)과 **별개 식**이지만
+                // 구조물 footprint 는 단일 int(정사각)라 수치가 항상 동치다 — 직사각 구조물을
+                // 만드는 날 두 식을 하나로 접을지 결정할 것(리뷰 L-5, 2026-09-04).
                 _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius
                 { value = Wassup.Data.StructurePlacements.FootprintOf(faction) * 0.5f });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));

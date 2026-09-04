@@ -1001,8 +1001,12 @@ namespace Wassup.Core
             // 몸의 중심(타일, 실수). 1×1 이면 앵커와 같다.
             float cx = anchor.x + centerOffsetTiles.x;
             float cz = anchor.y + centerOffsetTiles.y;
+            // 리뷰 L-4(2026-09-04) — 루프는 **앵커** 중심, 술어는 **베이스**(앵커+오프셋) 중심이라
+            // 오프셋만큼 스캔 여유가 먹힌다. 배스티온(W=3, 오프셋 1.0)이 종전 여유의 경계에
+            // 정확히 앉았다(필요 3.75/확보 4) — 오프셋을 명시적으로 더해 W 가 커져도 안 잘리게.
             int scan = Mathf.CeilToInt(tileRange + selfBodyRadiusTiles
-                + Wassup.Skills.SkillMath.StandardBodyRadiusTiles) + 1;
+                + Wassup.Skills.SkillMath.StandardBodyRadiusTiles
+                + Mathf.Max(Mathf.Abs(centerOffsetTiles.x), Mathf.Abs(centerOffsetTiles.y))) + 1;
             for (int dx = -scan; dx <= scan; dx++)
             for (int dz = -scan; dz <= scan; dz++)
             {
