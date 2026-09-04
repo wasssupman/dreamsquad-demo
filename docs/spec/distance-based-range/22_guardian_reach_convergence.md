@@ -69,7 +69,7 @@
 - [x] **맵 조건 축 차단** — 재베이크 중 코퍼스가 세션마다 갈리던 원인이 드러났다:
       `DevMapOverride`(PlayerPrefs). 하네스가 베이크·검증 동안 끄고 원복한다
       (`SimHarnessRunner.PinMapCondition`). `docs/spec/README.md` 백로그 항목 해소.
-- [ ] Play 육안: 배스티온이 옆에 붙은 적을 실제로 깎는지.
+- [x] Play 육안: 배스티온이 옆에 붙은 적을 실제로 깎는지 — **사용자 확인 2026-09-04**.
 
 ### 계측 함정 (이번에 실제로 밟음)
 
