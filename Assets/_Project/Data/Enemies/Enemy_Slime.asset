@@ -28,6 +28,9 @@ MonoBehaviour:
   moveSpeed: 1.3
   attackRange: 1
   attackCooldown: 1.5
+  bodyRadius: 0.25
+  bodySize: 1
+  impactSocketHeight: 0
   attackTargetCount: 1
   projectile: {fileID: 0}
   hitDelaySec: 0.3
@@ -80,6 +83,7 @@ MonoBehaviour:
       pattern: {fileID: 0}
       slamDamage: 0
       slamTileRange: 0
+      tickIntervalSec: 0
       stackModifier: {fileID: 0}
       splitUnit: {fileID: 11400000, guid: 2f8b46e1c3a94d5eb7091d6c8a3e5f47, type: 2}
       orbitCount: 0

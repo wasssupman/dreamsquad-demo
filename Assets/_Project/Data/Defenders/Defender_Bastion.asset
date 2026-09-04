@@ -67,7 +67,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1.69
+  spineVisualScale: 2.5
   partSkins:
   - boots/boots_c_12
   - bottom/bottom_c_12
