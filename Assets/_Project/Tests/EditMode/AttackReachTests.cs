@@ -202,7 +202,7 @@ namespace Wassup.Tests.EditMode
         // rev 2 의 사각 몸 테스트 3건(NonSquareBody / BothBodies_HalfExtentsAdd /
         // MultiCellBody_KeepsTheFlatSides)은 `InBodyReachWithHalfExtent` 와 함께 은퇴했다.
         // 원 모델의 계약: 도달은 **전방향 동일**(range + selfR + targetR)이고, 다칸의 크기는
-        // 반폭이 아니라 **내접원 반경**(`min(W,H)/2` 파생식)으로 들어온다.
+        // 반폭이 아니라 **파생 몸 반경**(`가로/2` — rev 2026-09-04, 구 내접원)으로 들어온다.
         [Test]
         public void BodiesAdd_AsRadii_Isotropically()
         {
@@ -238,17 +238,21 @@ namespace Wassup.Tests.EditMode
 
         // 파생식이 정의 그대로인지 — 표(저작)가 아니라 식이라 신규 footprint 에 자동 적용된다.
         [Test]
-        public void DerivedBody_IsInscribedCircle_MinOfFootprint()
+        public void DerivedBody_IsHalfWidth_ColumnsOnly()
         {
+            // rev 2026-09-04(사용자 결정) — 몸 반경 = 가로/2(열만, 행 배제). 세로 깊이는 무기여.
             var def = UnityEngine.ScriptableObject.CreateInstance<Wassup.Data.DefenderUnitData>();
             try
             {
-                Assert.AreEqual(0.5f, def.BodyRadiusTiles, 1e-6f, "1×1 = 내접원 0.5");
+                Assert.AreEqual(0.5f, def.BodyRadiusTiles, 1e-6f, "1×1 = 0.5");
                 def.footprintWidth = 2; def.footprintHeight = 2;
                 Assert.AreEqual(1.0f, def.BodyRadiusTiles, 1e-6f, "2×2 = 1.0");
                 def.footprintWidth = 2; def.footprintHeight = 3;
-                Assert.AreEqual(1.0f, def.BodyRadiusTiles, 1e-6f,
-                    "2×3 = min/2 = 1.0 — 장축 끝은 몸 밖(원 근사, 지각 임계 아래로 수용)");
+                Assert.AreEqual(1.0f, def.BodyRadiusTiles, 1e-6f, "2×3 = 가로 2 → 1.0 (세로 3 무기여)");
+                def.footprintWidth = 3; def.footprintHeight = 2;
+                Assert.AreEqual(1.5f, def.BodyRadiusTiles, 1e-6f, "3×2 = 가로 3 → 1.5");
+                def.footprintWidth = 1; def.footprintHeight = 2;
+                Assert.AreEqual(0.5f, def.BodyRadiusTiles, 1e-6f, "1×2 = 가로 1 → 0.5");
             }
             finally { UnityEngine.Object.DestroyImmediate(def); }
         }
