@@ -96,11 +96,24 @@ namespace Wassup.Tests.PlayMode
             Prepare(bridge, gm, bastion);
             var cell = FindBastionCell(bridge, em, bastion, 1, out var walk);
 
-            // 반경 안이되 **가장 먼** Walk 이웃에 둔다 — 붙어 있으면 거리 감소가 측정되지 않는다.
-            var enemy = SpawnWalker(em, bridge, FarthestFrom(cell, walk));
-            var host = bridge.GridToWorldCenterVector(cell);
+            // rev 2026-09-04(몸 반경 가로/2) — 산술로 자리를 고른다. 기준은 앵커가 아니라
+            // **베이스**(발밑 = 앵커+(1,0), 3×2)다: 도발엔 잡히되(원 2.5 = tileRange 2 + 칸 반폭,
+            // 더미 몸 0) 정지 도달(0.3 + 0 + 몸 1.5 = 1.8) **밖**인 밴드 (1.95, 2.4] 의 walk 칸.
+            // 붙어 있으면 거리 감소가 측정되지 않고, 정지 도달 안이면 배치 즉시 Standoff 라
+            // 한 발짝도 안 걷는다 — 옛 「앵커 체비셰프 최원거리」 선택이 그 함정을 밟았다.
+            var baseCell = new Vector2Int(cell.x + 1, cell.y);
+            var basePos = bridge.GridToWorldCenterVector(baseCell);
+            Vector2Int spawn = default; bool foundSpawn = false;
+            foreach (var w in walk)
+            {
+                var wp = bridge.GridToWorldCenterVector(w);
+                float d = math.distance(new float3(wp.x, wp.y, wp.z), new float3(basePos.x, basePos.y, basePos.z));
+                if (d > 1.95f && d <= 2.4f) { spawn = w; foundSpawn = true; break; }
+            }
+            Assert.IsTrue(foundSpawn, "밴드 (1.95, 2.4] 의 walk 칸이 없다 — 맵 기하가 바뀌었나?");
+            var enemy = SpawnWalker(em, bridge, spawn, range: 0.3f);
             float Dist() => math.distance(em.GetComponentData<LocalTransform>(enemy).Position,
-                                          new float3(host.x, host.y, host.z));
+                                          new float3(basePos.x, basePos.y, basePos.z));
 
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
             yield return Frames(5);
@@ -151,7 +164,7 @@ namespace Wassup.Tests.PlayMode
 
         // 비행 적은 근접 가디언에게 끌려오지 않는다 — 통행 층 게이트.
         [UnityTest]
-        public IEnumerator FlyingEnemy_IsTaunted_BecauseBastionAttacksAir()
+        public IEnumerator FlyingEnemy_IsNotTaunted_MeleeBastionIsGroundOnly()
         {
             yield return LoadBattle();
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -174,20 +187,16 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(bastion);
 
             Assert.IsTrue(groundTaunted, "지상 적이 안 걸렸다 — 대조군이 죽으면 아래 단언이 공짜로 통과한다");
-            // ⚠ **이 단언은 2026-08-25 에 뒤집혔다.**
+            // ⚠ **이 단언의 불변식은 「도발 축 = 공격 축」이고, 방향은 저작을 따라 두 번 뒤집혔다.**
             //
-            // 원래는 「비행 적은 안 걸린다」였다. 그 전제가 `47d24c15`(아틸러리·폭탄맨을 뺀
-            // 전 방어유닛이 공중도 공격)로 죽었다 — 배스티온의 `attackTargetLayers` 가
-            // 2(Path) → 6(Path|Air) 이 됐고, 도발은 그 마스크로 통행 층을 건다.
-            //
-            // 사용자 판정(2026-08-25): **「공중을 공격하면 도발도 공중에 걸리는 게 당연하다」.**
-            // 게이트는 살아 있고 마스크가 넓어진 것이라, 이 테스트가 지키는 것은
-            // 「도발 대상이 **공격 대상과 같은 축**을 쓴다」로 바뀐다.
-            //
-            // 되돌리려면 배스티온 마스크가 아니라 그 콘텐츠 결정부터 뒤집어야 한다.
-            Assert.IsTrue(flyingTaunted,
-                "비행 적이 도발에 안 걸렸다 — 배스티온이 공중을 공격하는데 도발만 지상이면 " +
-                "「도발은 어그로의 시한 획득」이라는 계약이 깨진다");
+            // 2026-08-25: `47d24c15`(전 방어유닛 공중 개방)로 「비행도 걸린다」로 뒤집힘
+            // (사용자 판정: 공중을 공격하면 도발도 공중에 걸리는 게 당연하다).
+            // 2026-09-03: `bc37b57c`(근접은 지상 전용 재개정)로 배스티온 마스크가 Path 로
+            // 돌아와 다시 「비행은 안 걸린다」 — 같은 불변식, 저작만 바뀐 것이다.
+            // 되돌리려면 이 테스트가 아니라 근접 지상 전용 콘텐츠 결정부터 뒤집어야 한다.
+            Assert.IsFalse(flyingTaunted,
+                "비행 적이 도발에 걸렸다 — 배스티온은 지상 전용(근접)인데 도발이 공중을 부르면 " +
+                "「도발 축 = 공격 축」 불변식이 깨진다(때리지도 못할 대상을 부른다)");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
@@ -238,24 +247,15 @@ namespace Wassup.Tests.PlayMode
             bridge.StartBattle();   // 어그로 이동은 sim 이 돌아야 보인다
         }
 
-        private static Vector2Int FarthestFrom(Vector2Int from, System.Collections.Generic.List<Vector2Int> cells)
-        {
-            var best = cells[0];
-            int bestD = 0;
-            foreach (var c in cells)
-            {
-                int d = Mathf.Max(Mathf.Abs(c.x - from.x), Mathf.Abs(c.y - from.y));
-                if (d > bestD) { bestD = d; best = c; }
-            }
-            return best;
-        }
 
-        // 실제로 걸어오는지 볼 때 쓰는 더미.
-        private static Entity SpawnWalker(EntityManager em, BattleBridge bridge, Vector2Int cell, byte layers = 0)
+        // 실제로 걸어오는지 볼 때 쓰는 더미. range 는 정지 도달(= range + 0 + 배스티온 몸)을
+        // 테스트가 통제하기 위한 노브 — 몸 반경이 가로/2(3×2 → 1.5)로 커진 뒤 기본 1 로는
+        // 「도발 잡힘(≤2.5)」과 「정지 밖」이 같은 값이 돼 걷기 관측이 산술적으로 불가능하다.
+        private static Entity SpawnWalker(EntityManager em, BattleBridge bridge, Vector2Int cell, byte layers = 0, float range = 1f)
             => SpawnBase(em, bridge, cell,
-                         layers: layers == 0 ? TraversalSlots.DefaultMask : layers);
+                         layers: layers == 0 ? TraversalSlots.DefaultMask : layers, range: range);
 
-        private static Entity SpawnBase(EntityManager em, BattleBridge bridge, Vector2Int cell, byte layers)
+        private static Entity SpawnBase(EntityManager em, BattleBridge bridge, Vector2Int cell, byte layers, float range = 1f)
         {
             var w = bridge.GridToWorldCenterVector(cell);
             var e = em.CreateEntity();
@@ -267,7 +267,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponent<AttackUnitTag>(e);
             // 전투 수단이 없는 적은 어그로 획득이 거부된다(좀비 방지 게이트) — 실데이터처럼
             // 도발 공격 프로파일을 준다.
-            em.AddComponentData(e, new Wassup.Battle.Combat.AggroAttackProfile { damage = 5f, cooldown = 1f, range = 1f });
+            em.AddComponentData(e, new Wassup.Battle.Combat.AggroAttackProfile { damage = 5f, cooldown = 1f, range = range });
             // 통행 층은 도발의 층 게이트가 읽는 값이다(없으면 0 = 무제한으로 조기 통과해
             // 게이트가 죽어도 테스트가 초록이 된다 — unit 4 후속 후보의 «더미가 통행 층을
             // 안 가진다» 공백).

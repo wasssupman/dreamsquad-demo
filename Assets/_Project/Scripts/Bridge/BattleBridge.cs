@@ -8186,7 +8186,7 @@ namespace Wassup.Bridge
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
-            // rev 3(unit 12, 2026-09-01 외부 세션) — 몸 = footprint 내접원 **파생식**(저작 은퇴).
+            // rev 3(unit 12) — 몸 = footprint **파생식**(저작 은퇴 · rev 2026-09-04 가로/2, 열만).
             // 1×1 → 0.5, 2×2 → 1.0. unit 10 PR2 의 BodyExtent(사각 몸)·OccupiedCellsBuffer(칸
             // 랭킹)는 원 회귀로 은퇴 — 게이트·랭킹·그림자·링이 전부 이 반경 하나에서 유도된다.
             _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.BodyRadiusTiles });
@@ -8468,7 +8468,7 @@ namespace Wassup.Bridge
             // distance-based-range unit 9 — 방어유닛도 몸을 갖는다. 종전엔 적 스폰에만
             // bake 돼 「적이 방어유닛을 때릴 때 대상 몸 0」이었고, 그게 명세 ⑥ 비대칭의
             // 실체였다. **조건부로 붙이지 않는다** — 갈리면 판정이 데이터에 따라 두 갈래가 된다.
-            // rev 3(unit 12, 2026-09-01 외부 세션) — 몸 = footprint 내접원 **파생식**(저작 은퇴).
+            // rev 3(unit 12) — 몸 = footprint **파생식**(저작 은퇴 · rev 2026-09-04 가로/2, 열만).
             // 1×1 → 0.5, 2×2 → 1.0. unit 10 PR2 의 BodyExtent(사각 몸)·OccupiedCellsBuffer(칸
             // 랭킹)는 원 회귀로 은퇴 — 게이트·랭킹·그림자·링이 전부 이 반경 하나에서 유도된다.
             _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius { value = unitData.BodyRadiusTiles });

@@ -206,7 +206,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void BodiesAdd_AsRadii_Isotropically()
         {
-            // 2×2 방어유닛(내접원 1.0)이 소형 적(0.25)을 볼 때: 상한 = 1 + 1.0 + 0.25 = 2.25.
+            // 2×2 방어유닛(파생 몸 1.0)이 소형 적(0.25)을 볼 때: 상한 = 1 + 1.0 + 0.25 = 2.25.
             const float range = 1f, selfR = 1.0f, targetR = 0.25f;
             const float reach = range + selfR + targetR;
             Assert.IsTrue(SkillMath.InBodyReach(reach - 0.05f, 0f, range, selfR, targetR));
@@ -228,7 +228,7 @@ namespace Wassup.Tests.EditMode
             // 모서리 밖 (1.65,1.65): 사각 밖 거리 0.212 ≤ 0.25 — 걸침. (1.72,1.72)=0.311 — 아님.
             Assert.IsTrue(SkillMath.BodyOverlapsSquare(1.65f, 1.65f, 1.5f, 0.25f));
             Assert.IsFalse(SkillMath.BodyOverlapsSquare(1.72f, 1.72f, 1.5f, 0.25f));
-            // 2×2 방어유닛(내접원 1.0)이 변 밖 0.9 — 몸이 반쯤 걸친 유닛이 버프를 받는다.
+            // 2×2 방어유닛(파생 몸 1.0)이 변 밖 0.9 — 몸이 반쯤 걸친 유닛이 버프를 받는다.
             Assert.IsTrue(SkillMath.BodyOverlapsSquare(2.40f, 0f, 1.5f, 1.0f));
             Assert.IsFalse(SkillMath.BodyOverlapsSquare(2.60f, 0f, 1.5f, 1.0f));
             // 몸 = 점이면 종전 셀 멤버십으로 퇴화.

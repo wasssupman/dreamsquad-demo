@@ -18,7 +18,7 @@ namespace Wassup.Presentation
             Material material,
             float visualScale,
             // unit 15 — 판정 몸 반경(타일). 블롭 지름 = 2r. 기본값을 두지 않는다:
-            // 호출처마다 정답이 다르고(디펜더=파생 내접원 / 적=티어), 기본값이 있으면 새
+            // 호출처마다 정답이 다르고(디펜더=가로/2 파생 / 적=티어), 기본값이 있으면 새
             // 호출처가 조용히 표준값을 받는다 — bodyRadiusTiles 시절 실제로 잡힌 사고다.
             float bodyRadiusTiles,
             out QuadUnitView view)

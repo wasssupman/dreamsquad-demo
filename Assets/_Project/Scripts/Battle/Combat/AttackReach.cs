@@ -61,7 +61,7 @@ namespace Wassup.Battle.Combat
         // ⚠ `selfBodyRadiusTiles` 에 **기본값을 주지 않는다**(unit 9). 기본값을 주면
         // 새 호출부가 몸을 안 넘기고도 컴파일되고, 그 순간 「소비처 열하나가 같은 답을
         // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 반경은 저작(적 티어)·파생
-        // (방어유닛 내접원 min(W,H)/2)에서 온다 — 호출부가 그것을 나를 책임을 진다.
+        // (방어유닛 가로/2 파생 — rev 2026-09-04, 구 내접원)에서 온다 — 호출부가 그것을 나를 책임을 진다.
         // ⚠ rev 2 의 `BodyShape`(사각 반폭 ⊕ 원)는 은퇴했다 — 사유는 `SkillMath.InBodyReach` 헤더.
         public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
                                    float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)

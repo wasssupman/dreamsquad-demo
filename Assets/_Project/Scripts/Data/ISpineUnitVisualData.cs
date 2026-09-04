@@ -35,7 +35,7 @@ namespace Wassup.Data
         int FootprintWidthCells { get; }
         // distance-based-range unit 15 — **판정 몸 반경**(타일). 그림자 지름 = 2r 의 유일한
         // 소스다: 그림자·링·판정이 같은 값에서 유도돼야 「그림자가 링에 닿으면 사거리 안」이
-        // 판정식과 동치가 된다(계약 1 rev 3). 방어유닛 = min(W,H)/2 파생, 적 = 티어.
+        // 판정식과 동치가 된다(계약 1 rev 3). 방어유닛 = 가로/2 파생(rev 2026-09-04), 적 = 티어.
         float BodyRadiusTiles { get; }
         // enemy-spawn-positioning 0 — 유닛 타입별 비주얼 피봇 미세조정(view-space). 기본 0.
         Vector3 SpineVisualOffset { get; }

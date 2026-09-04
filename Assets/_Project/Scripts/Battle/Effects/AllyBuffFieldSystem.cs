@@ -67,7 +67,7 @@ namespace Wassup.Battle.Effects
                               .WithNone<PendingDeployment, DeadTag>()
                               .WithEntityAccess())
             {
-                // unit 18 — 판정 기준은 앵커 셀이 아니라 **몸**(기하 중심 + 내접원)이다.
+                // unit 18 — 판정 기준은 앵커 셀이 아니라 **몸**(베이스 중심 + 파생 반경)이다.
                 float3 defPos = xf.ValueRO.Position;
                 float defBodyR = hitRadiusLookup.HasComponent(entity) ? hitRadiusLookup[entity].value : 0f;
 

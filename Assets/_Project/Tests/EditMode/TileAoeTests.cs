@@ -207,7 +207,7 @@ namespace Wassup.Tests.EditMode
 
         // ⚠ **반경 1 의 안전 여유가 rev 2 에서 0.293 → 0.086 으로 줄었다**(리뷰 M-5).
         // 저작된 AoE 의 절대다수(반경 1, 20건)가 이 여유 위에 서 있고,
-        // `SelfBodyRadiusTiles` 를 0.5 미만으로 만지는 순간(예: 0.4 → 1.414 > 1.4)
+        // 칸 반폭 상수 `CellHalfWidthTiles`(유닛 몸 아님)를 0.5 미만으로 만지는 순간(예: 0.4 → 1.414 > 1.4)
         // **반경 1 폭발이 전부 십자로 붕괴한다.** 그 하한을 여기서 못박는다.
         [Test]
         public void SelfBodyRadius_HasAHardFloor_OrRadius1BlastsCollapse()
