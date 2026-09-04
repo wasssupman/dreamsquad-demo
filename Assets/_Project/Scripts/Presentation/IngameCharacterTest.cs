@@ -8,8 +8,9 @@ namespace Wassup.Presentation
     // 그림자 하이브리드 실험대 (CharacterTest). 자식 SpriteRenderer 들이
     //   (1) 맵 바닥에 진짜 실루엣 그림자를 드리우고,
     //   (2) 게임이 시작되면 발밑 블롭 그림자까지 함께 갖는다.
-    // 게임 유닛 경로(SpineUnitView/QuadUnitView)는 BattleBridge.UseRealShadows 로 둘 중
-    // 하나만 쓴다 — 여기는 둘을 겹쳤을 때의 룩을 보려는 테스트라 일부러 상호배타를 깬다.
+    // 게임 유닛 경로(SpineUnitView/QuadUnitView)도 **2026-09-04부터 둘을 겹친다** —
+    // 블롭은 상시, `UseRealShadows` 는 캐스트를 더하기만 한다(unit 20 리뷰 M-1, 사용자 결정).
+    // 이 실험대가 먼저 「겹쳐도 렌더된다」를 보여준 것이 그 결정의 근거 하나였다.
     //
     // 두 토글은 **Play 중 인스펙터에서 실시간으로** 켜고 끌 수 있다. 진짜/블롭/둘 다/둘 다 없음을
     // 판을 다시 돌리지 않고 갈아 끼우며 비교하는 게 이 컴포넌트의 목적이다.
@@ -131,13 +132,17 @@ namespace Wassup.Presentation
             }
 
             // 유닛과 같은 블롭 경로. live=true 로 스프라이트를 옮기면 그림자도 따라온다.
+            // ⚠ 지름은 **1타일 고정**이다(리뷰 H-2). 이 하네스의 스프라이트는 판정 몸이 없어
+            // 「지름 = 2 × 몸반경」을 유도할 수 없다 — 그래서 유닛 규칙이 아니라 고정값을 쓴다.
+            // 종전엔 환산 상수를 **지름 자리에** 그대로 넘겨 tileSize=1 인 동안만 우연히
+            // 1타일이던 것을, 「1타일 × 환산」으로 의도가 보이게 적는다(값은 무변).
             for (int i = 0; i < _sprites.Length; i++)
             {
                 var sr = _sprites[i];
                 if (sr == null) continue;
                 _blobs.Add(BlobShadow.Attach(sr.transform,
                     BattleBridge.BlobShadowSprite,
-                    BattleBridge.BlobShadowSize,
+                    1f * BattleBridge.TileToWorld,
                     BattleBridge.BlobShadowColor,
                     BattleBridge.BlobShadowLift,
                     BoardSortOrder.ShadowOrder,

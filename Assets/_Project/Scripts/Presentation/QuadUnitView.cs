@@ -70,26 +70,21 @@ namespace Wassup.Presentation
 
             // 리뷰 L-5 — 재호출 시 이전 블롭을 남기지 않는다(머티리얼과 같은 규율).
             // 오늘 풀이 인스턴스당 1회만 부르지만, 이 메서드의 다른 줄들은 이미 재호출을 전제한다.
-            // 두 분기 **앞**에 둔다 — 진짜 그림자 모드로 전환된 재호출에서도 옛 블롭이 남지 않게.
             if (_blob != null) Destroy(_blob.gameObject);
-            // tilemap-real-shadows — 진짜 그림자(실루엣 cast) vs 블롭(상호배타).
-            if (BattleBridge.UseRealShadows)
-            {
-                // URP/Unlit + _ALPHATEST_ON → ShadowCaster 가 실루엣 cast. 평면이라 TwoSided.
-                _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-            }
-            else
-            {
-                _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                if (BattleBridge.BlobShadowSprite != null)
-                    // 리뷰 L-2 — `Mathf.Max(0.05f, r)` 클램프는 **삭제**. Spine 경로에 없는 비대칭이었고,
-                    // 발동하면 몸이 0 인 유닛에 0.1칸 그림자를 그려 «없는 몸»을 화면이 주장한다.
-                    // 몸 0 저작을 막는 것은 뷰가 아니라 저작 검증의 일이다.
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
-                        2f * bodyRadiusTiles * BattleBridge.BlobShadowSize,
-                        BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
-            }
+            // tilemap-real-shadows rev 2026-09-04 — 블롭 **상시** + 캐스트는 더하기(Spine 경로와
+            // 같은 결정 · 상호배타 폐기). URP/Unlit + _ALPHATEST_ON → ShadowCaster 가 실루엣 cast,
+            // 평면이라 TwoSided.
+            _renderer.shadowCastingMode = BattleBridge.UseRealShadows
+                ? UnityEngine.Rendering.ShadowCastingMode.TwoSided
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (BattleBridge.BlobShadowSprite != null)
+                // 리뷰 L-2 — `Mathf.Max(0.05f, r)` 클램프는 **삭제**. Spine 경로에 없는 비대칭이었고,
+                // 발동하면 몸이 0 인 유닛에 0.1칸 그림자를 그려 «없는 몸»을 화면이 주장한다.
+                // 몸 0 저작을 막는 것은 뷰가 아니라 저작 검증의 일이다.
+                _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
+                    2f * bodyRadiusTiles * BattleBridge.TileToWorld,
+                    BattleBridge.BlobShadowColor,
+                    BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
 
             // 재스폰/머티리얼 리빌드는 cutout 기준으로 되돌린다 → 다음 SetDimmed 가 정확히 재적용.
             _transparentApplied = false;

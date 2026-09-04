@@ -15,7 +15,7 @@ namespace Wassup.Editor
 
         // shadow-polish unit 6 — authored 블롭 기본값. 색은 런타임에 BattleBridge 전역값으로 덮인다(프리뷰용).
         private const string BlobShadowSpritePath = "Assets/_Project/Art/blob_shadow.png";
-        private const float BlobBaseSize = 1f; // 1타일 = 유닛 블롭의 환산 기준(BattleBridge.BlobShadowSize = tileSize)과 같은 출발점
+        private const float BlobBaseSize = 1f; // 1타일 = 유닛 블롭의 환산 기준(BattleBridge.TileToWorld = tileSize)과 같은 출발점
         // authoring 기본값(프랍별 조정 가능). 구 BlobShadowGroundY(절대 Y 0.216) − 0.02 에서 나온 수다.
         // tilted-billboard unit 7 이 유닛 블롭을 «평면 상대» 로 바꿨지만 프랍 authored 블롭은 프리팹이
         // 정본이라(shadow-polish unit 6) 이 값을 그대로 둔다 — 바꾸면 기존 프랍 프리팹과 어긋난다.

@@ -147,33 +147,33 @@ namespace Wassup.Presentation
             return current != null && current.Loop;
         }
 
-        // tilemap-real-shadows — Tilemap 모드 그림자: 진짜(빌보드 cast) vs 블롭(상호배타).
-        // 진짜 = renderer 가 실루엣 그림자 cast(평면이라 TwoSided). 블롭 = 발밑 타원 + cast OFF.
+        // tilemap-real-shadows — Tilemap 모드 그림자.
+        // **rev 2026-09-04(사용자 결정 · unit 20 리뷰 M-1): 상호배타 폐기.** 블롭은 **상시**이고
+        // `UseRealShadows` 는 캐스트 그림자를 **더하기만** 한다. 근거: 둘은 애초에 다른 축이다 —
+        // 블롭은 「이 몸이 이만하다」는 판정 UI(계약 8)이고 캐스트는 조명 연출이다. 배타로 두면
+        // 캐스트를 켜는 순간 크기 정보가 통째로 사라져 계약 11(「닿아 보이면 맞는다」)이 조용히
+        // 거짓이 됐다. 앞으로 블롭을 그림자처럼 안 보이게(마커 룩) 바꿔도 이 구조가 그대로 산다.
         private void ApplyTilemapShadow()
         {
             var renderers = GetComponentsInChildren<Renderer>(true);
-            if (BattleBridge.UseRealShadows)
-            {
-                for (int i = 0; i < renderers.Length; i++)
-                    renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-            }
-            else
-            {
-                for (int i = 0; i < renderers.Length; i++)
-                    renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                if (BattleBridge.BlobShadowSprite != null)
-                    // unit 15 — **그림자는 UI 다**: 지름 = 판정 몸 지름(2 × BodyRadiusTiles).
-                    // BlobShadowSize 는 「타일 → 월드」 환산이다(아트 knob 아님). unit 20 에서
-                    // 저작 필드를 은퇴시키고 `tileSize` 파생으로 접었다 — 둘이 갈리면
-                    // 「그림자가 링에 닿으면 사거리 안」이 조용히 거짓이 되기 때문.
-                    // 리뷰 L-1 — `_visualData == null → 표준 0.25` 폴백은 **삭제**했다. 도달 불가였고
-                    // (Spawn 이 먼저 대입 · SpineUnitPool 이 null 을 거른다 · 같은 파일이 무가드로
-                    // 역참조한다), 도달했다면 「몸이 0.25인 척하는 그림자」로 계약 8을 조용히 어겼다.
-                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
-                        2f * _visualData.BodyRadiusTiles * BattleBridge.BlobShadowSize,
-                        BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
-            }
+            var mode = BattleBridge.UseRealShadows
+                ? UnityEngine.Rendering.ShadowCastingMode.TwoSided   // 평면이라 TwoSided
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].shadowCastingMode = mode;
+
+            if (BattleBridge.BlobShadowSprite != null)
+                // unit 15 — **그림자는 UI 다**: 지름 = 판정 몸 지름(2 × BodyRadiusTiles).
+                // TileToWorld 는 「타일 → 월드」 환산이다(아트 knob 아님). unit 20 에서
+                // 저작 필드를 은퇴시키고 `tileSize` 파생으로 접었다 — 둘이 갈리면
+                // 「그림자가 링에 닿으면 사거리 안」이 조용히 거짓이 되기 때문.
+                // 리뷰 L-1 — `_visualData == null → 표준 0.25` 폴백은 **삭제**했다. 도달 불가였고
+                // (Spawn 이 먼저 대입 · SpineUnitPool 이 null 을 거른다 · 같은 파일이 무가드로
+                // 역참조한다), 도달했다면 「몸이 0.25인 척하는 그림자」로 계약 8을 조용히 어겼다.
+                _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
+                    2f * _visualData.BodyRadiusTiles * BattleBridge.TileToWorld,
+                    BattleBridge.BlobShadowColor,
+                    BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
         }
 
         public void UpdatePosition(Vector3 world)

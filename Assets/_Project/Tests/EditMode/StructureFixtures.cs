@@ -35,6 +35,11 @@ namespace Wassup.Tests.EditMode
             });
             em.AddComponentData(e, new Health { value = hp, max = hp });
             em.AddBuffer<IncomingDamage>(e);
+            // distance-based-range unit 20 리뷰 M-2 — 골 타워도 몸을 갖는다(마음 1×1 → 0.5).
+            // 브리지 스폰과 **같은 함수**에서 값을 읽는다 — 픽스처가 숫자를 손으로 적으면
+            // 산식이 바뀌는 날 프로덕션과 조용히 갈린다.
+            em.AddComponentData(e, new HitRadius
+            { value = Wassup.Data.StructurePlacements.BodyRadiusOf(Faction.DefenderCore) });
             // heart-stress-axis unit 2 — 브리지 스폰과 대칭(GoalTowerArchetypeTests 가 강제한다).
             em.AddBuffer<IncomingHeal>(e);
             em.AddComponentData(e, new FactionTag { value = Faction.DefenderCore });
@@ -51,6 +56,10 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(e, new StructureTag { cell = cell, faction = faction });
             em.AddComponentData(e, new Health { value = hp, max = hp });
             em.AddBuffer<IncomingDamage>(e);
+            // unit 20 리뷰 M-2 — 거점 몸(본능 3×3 → 1.5). 브리지가 붙이는데 픽스처가 빠뜨리면
+            // 「점 몸 본능」이라는 **프로덕션에 없는 상태**를 테스트하게 된다(골 타워와 같은 사유).
+            em.AddComponentData(e, new HitRadius
+            { value = Wassup.Data.StructurePlacements.BodyRadiusOf(faction) });
             em.AddComponentData(e, new FactionTag { value = faction });
             em.AddComponentData(e, LocalTransform.FromPosition(pos));
             var cells = em.AddBuffer<Wassup.Battle.Effects.OccupiedCellsBuffer>(e);

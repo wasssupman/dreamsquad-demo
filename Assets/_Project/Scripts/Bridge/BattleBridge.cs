@@ -181,11 +181,12 @@ namespace Wassup.Bridge
         [Tooltip("최대 높이에서의 그림자 알파 배율.")]
         [Range(0f, 1f)]
         [SerializeField] private float liftShadowMinAlpha = 0.35f;
-        [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
-        // distance-based-range unit 20 — 기본값 true → **false**. 유닛 그림자는 조명 연출이
-        // 아니라 「이 유닛의 몸이 이만하다」는 판정 UI 라(계약 8), 진짜 캐스트로 켜는 순간
-        // 그 정보가 통째로 사라진다. BattleScene 은 이미 0 이라 라이브 무변 — 바뀌는 것은
-        // 새 씬/필드 리셋의 기본값뿐이고, 그때 조용히 계약이 깨지던 것을 막는다.
+        [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자를 **추가**한다(바닥 receive + 빌보드 cast). 발밑 블롭은 이 값과 무관하게 상시. 모바일은 캐스트 강제 OFF.")]
+        // distance-based-range unit 20 — 기본값 true → **false**, 그리고 **rev 2026-09-04
+        // (사용자 결정): 블롭과의 상호배타 폐기 — 이 토글은 캐스트를 «더하기만» 한다.**
+        // 유닛 그림자는 조명 연출이 아니라 「이 유닛의 몸이 이만하다」는 판정 UI 라(계약 8),
+        // 배타로 두면 캐스트를 켜는 순간 크기 정보가 통째로 사라졌다. 두 축을 분리해 두면
+        // 앞으로 블롭을 그림자처럼 안 보이게(마커 룩) 바꾸고 그림자는 캐스트가 맡는 구성도 된다.
         [SerializeField] private bool useRealShadows;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
@@ -344,7 +345,10 @@ namespace Wassup.Bridge
         // 소비처는 `2 × 몸반경(타일) × 이 값` 으로 월드 지름을 만든다. 그래서 이 값이
         // `tileSize` 와 다른 순간 「그림자가 링에 닿으면 사거리 안」이 거짓이 된다 —
         // 종전엔 별개 serialized 필드라 둘 다 1 인 것이 **우연**이었다. 이제 파생한다.
-        public static float BlobShadowSize { get; private set; } = 1f;
+        // 리뷰 H-2(2026-09-04) — 구 이름 `BlobShadowSize` 는 셋 다 거짓이었다: 그림자 전용이
+        // 아니고(유닛·거점 공용), 크기가 아니며(배율), blob 과 무관하다. Presentation 이
+        // 인스턴스 프로퍼티(`TileSize`)를 못 읽어 static 미러가 필요한 것 자체는 정당하다.
+        public static float TileToWorld { get; private set; } = 1f;
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
         public static float BlobShadowLift { get; private set; } = 0.026f;
         // flight-lift-feel unit 1 — 코드 기본값이 곧 초기값이라 미배선 씬에서도 동작한다.
@@ -1383,7 +1387,7 @@ namespace Wassup.Bridge
             PropDistanceTiltMax = propDistanceTiltMax;
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
             BlobShadowSprite = blobShadowSprite;
-            BlobShadowSize = tileSize;   // unit 20 — 환산 상수는 저작하지 않고 타일 크기에서 파생
+            TileToWorld = tileSize;   // unit 20 — 환산 상수는 저작하지 않고 타일 크기에서 파생
             BlobShadowColor = blobShadowColor;
             BlobShadowLift = blobShadowLift;
             MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
@@ -6329,6 +6333,14 @@ namespace Wassup.Bridge
                         faction = Faction.DefenderCore,
                     });
                     AttachSimEntityId(tower);
+                    // distance-based-range unit 20 리뷰 M-2 — **골 타워도 몸을 갖는다.**
+                    // 종전엔 bake 4곳 중 여기만 `HitRadius` 가 없었고, `AttackSystem.RadiusOf` 는
+                    // 컴포넌트 부재를 반경 0(점)으로 읽는다. 적 대부분이 마스크에 DefenderCore 를
+                    // 가지므로 **적은 우리 마음에 0.5칸 더 붙어야 때리고, 우리는 적 마음(0.5)을
+                    // 0.5칸 일찍 때리는** 비대칭이 살아 있었다 — unit 9 가 없앤 「대상은 점」의 잔존.
+                    // 값은 적 마음과 **같은 함수**에서 온다(마음 1×1 → 0.5).
+                    _em.AddComponentData(tower, new Wassup.Battle.Units.HitRadius
+                    { value = Wassup.Data.StructurePlacements.BodyRadiusOf(Faction.DefenderCore) });
                     _em.AddComponentData(tower, new Health { value = _goalStabilityMax, max = _goalStabilityMax });
                     _em.AddBuffer<IncomingDamage>(tower);
                     // heart-stress-axis unit 2 — 악몽 처치가 마음을 회복시킨다. 힐은 이미
@@ -6500,13 +6512,14 @@ namespace Wassup.Bridge
                 // 엔티티 bake 와 **같은 함수**에서 온다(`BodyRadiusOf` — 리뷰 H-1: 종전엔
                 // 같은 수를 다른 모양으로 적어 형제로 보이지 않았다). 본능 3칸 · 마음 1칸.
                 // 유닛 뷰 3경로와도 같은 문장(`2f * r * 환산`)이다.
-                // 유닛과 같은 상호배타 — 진짜 그림자 모드에선 안 붙인다.
+                // rev 2026-09-04 — 유닛과 같은 결정: 블롭은 **상시**이고 `UseRealShadows` 는
+                // 캐스트를 더하기만 한다(상호배타 폐기 — 크기 정보가 조명 설정에 딸려 꺼지면 안 된다).
                 // live:false: 거점은 안 움직이고, 붕괴 주저앉음(StructureWreckView)에서
                 // 부모 스케일과 함께 줄어드는 편이 «무너졌다» 와 맞다.
-                if (!UseRealShadows && BlobShadowSprite != null)
+                if (BlobShadowSprite != null)
                     Wassup.Presentation.BlobShadow.Attach(
                         view.transform, BlobShadowSprite,
-                        2f * Wassup.Data.StructurePlacements.BodyRadiusOf(faction) * BlobShadowSize,
+                        2f * Wassup.Data.StructurePlacements.BodyRadiusOf(faction) * TileToWorld,
                         BlobShadowColor, BlobShadowLift,
                         Wassup.Presentation.BoardSortOrder.ShadowOrder);
                 // instinct-turret-readout unit 1 — 포신을 가진 프랍이면 셀로 등록해 둔다.
