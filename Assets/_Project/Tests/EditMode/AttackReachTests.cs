@@ -268,12 +268,16 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.5f, Wassup.Data.StructurePlacements.BodyRadiusOf(
                 Wassup.Battle.Units.Faction.EnemyCore), 1e-6f, "마음 1×1 → 0.5");
             // 「그림자 지름 = 2 × 판정 반경 = 점유 칸 수」 — 뷰가 그리는 값의 정의.
+            // ⚠ `DefenderCore`(방어 마음)를 **반드시** 포함한다 — 그 한 줄이 빠져 있어서
+            // 「우리 마음만 몸이 없다」가 오래 살아남았다(리뷰 M-2). 중립도 같이 건다.
             foreach (var f in new[]
                      {
                          Wassup.Battle.Units.Faction.EnemyInstinct,
                          Wassup.Battle.Units.Faction.DefenderInstinct,
+                         Wassup.Battle.Units.Faction.NeutralInstinct,
                          Wassup.Battle.Units.Faction.EnemyCore,
                          Wassup.Battle.Units.Faction.DefenderCore,
+                         Wassup.Battle.Units.Faction.NeutralCore,
                      })
                 Assert.AreEqual(Wassup.Data.StructurePlacements.FootprintOf(f),
                     2f * Wassup.Data.StructurePlacements.BodyRadiusOf(f), 1e-6f,

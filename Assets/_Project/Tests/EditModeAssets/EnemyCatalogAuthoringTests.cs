@@ -40,5 +40,33 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(unit.nightmareMechanics != null && unit.nightmareMechanics.Length > 0,
                 $"{unit.displayName}: 보스인데 메커닉이 없다");
         }
+
+        // distance-based-range unit 20 리뷰 T-2 — **몸 반경 0 저작 금지.**
+        // 0 이면 「화면엔 있는데 판정엔 없는」 유닛이 된다: 그림자 지름 = 2r 이라 그림자가
+        // 사라지고, 대상일 때 targetR 도 0 이라 상대가 0.5칸 가까이 와야 때린다.
+        // ⚠ `bodyRadius` 는 **Boss 티어에서만** 읽힌다(`AttackUnitData.BodyRadiusTiles`) —
+        //    Small/Medium/Large 는 티어표라 0 이 나올 수 없고 Boss 만 저작 사고가 가능하다.
+        // 이 단언이 뷰의 사일런트 보정을 대신한다: 종전 `QuadUnitView` 는 `Mathf.Max(0.05f, r)`
+        // 로 0 을 조용히 0.05 로 올려 «없는 몸» 을 화면이 주장하게 만들었고(그마저 Spine
+        // 경로엔 없어 두 뷰가 다른 거짓말을 했다), 리뷰 L-2 에서 그 클램프를 제거했다.
+        [Test]
+        public void EveryEnemy_HasNonZeroBody()
+        {
+            int seen = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:AttackUnitData"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var e = AssetDatabase.LoadAssetAtPath<AttackUnitData>(path);
+                if (e == null) continue;
+                seen++;
+                Assert.Greater(e.BodyRadiusTiles, 0f,
+                    $"{e.name} — 몸 반경 0. 그림자도 표적도 사라진다 ({path})");
+                if (e.bodySize == AttackUnitData.BodySize.Boss)
+                    Assert.Greater(e.bodyRadius, 0f,
+                        $"{e.name} — Boss 티어인데 bodyRadius 미저작(0). 티어표를 안 타므로 " +
+                        $"조용히 몸이 없어진다 ({path})");
+            }
+            Assert.Greater(seen, 0, "AttackUnitData 를 하나도 못 찾았다 — 경로/타입 규약이 바뀌었나?");
+        }
     }
 }
