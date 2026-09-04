@@ -20,8 +20,13 @@
 
 ### 전역 노브 (BattleBridge SerializeField → static)
 
-`liftScalePerHeight`(기본 0.14) · `liftScaleMax`(1.35) · `liftShadowMinScale`(0.55) ·
+`liftScalePerHeight`(기본 0.14) · `liftScaleMax`(1.35) · ~~`liftShadowMinScale`(0.55)~~ ·
 `liftShadowMinAlpha`(0.35) · `liftShadowFullHeight`(3.0 — 그림자가 최소치에 닿는 높이).
+
+> **rev 2026-09-04** — `liftShadowMinScale` 은 **은퇴**했다. `distance-based-range` unit 15 가
+> 「그림자 지름 = 판정 몸」을 계약으로 세우면서 높이로 그림자를 줄이는 축이 사라졌고
+> (`UnitLiftVisual.Resolve` 의 shadowScale 은 상수 1), 그 뒤로 이 노브는 인스펙터에서
+> **아무 일도 안 하면서 조절 가능해 보였다.** 아래 「전 반응 OFF」 조합도 노브 2개로 줄었다.
 
 **기본값이 곧 현행에 가까운 대역**이고, `liftScalePerHeight = 0` 이면 전 반응이 항등이다. 미배선
 씬에서도 안전하다. 노브를 `DragSwaySettings`·`BattleBridge.BossLeap` 에 복제하지 않는다(계약 3).

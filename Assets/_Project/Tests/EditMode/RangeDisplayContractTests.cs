@@ -22,7 +22,8 @@ namespace Wassup.Tests.EditMode
         {
             // rev 3(2026-09-01) — 표준 상대 = **적 티어 「소」** 하나다. 방어유닛·구조물의 몸은
             // 저작이 아니라 footprint 파생식이 됐으므로 이 드리프트 감시의 대상에서 빠졌다
-            // (파생식 자체는 `AttackReachTests.DerivedBody_IsInscribedCircle` 이 고정한다).
+            // (파생식 자체는 `AttackReachTests.DerivedBody_IsHalfWidth_ColumnsOnly` 가 고정한다
+            //  — 2026-09-04 가로/2 개정으로 이름이 바뀌었다).
             var atk = ScriptableObject.CreateInstance<Wassup.Data.AttackUnitData>();
             try
             {

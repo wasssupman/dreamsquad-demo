@@ -166,10 +166,11 @@ namespace Wassup.Presentation
                     // BlobShadowSize 는 「타일 → 월드」 환산이다(아트 knob 아님). unit 20 에서
                     // 저작 필드를 은퇴시키고 `tileSize` 파생으로 접었다 — 둘이 갈리면
                     // 「그림자가 링에 닿으면 사거리 안」이 조용히 거짓이 되기 때문.
+                    // 리뷰 L-1 — `_visualData == null → 표준 0.25` 폴백은 **삭제**했다. 도달 불가였고
+                    // (Spawn 이 먼저 대입 · SpineUnitPool 이 null 을 거른다 · 같은 파일이 무가드로
+                    // 역참조한다), 도달했다면 「몸이 0.25인 척하는 그림자」로 계약 8을 조용히 어겼다.
                     _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
-                        2f * (_visualData != null ? _visualData.BodyRadiusTiles
-                                                  : Wassup.Skills.SkillMath.StandardBodyRadiusTiles)
-                            * BattleBridge.BlobShadowSize,
+                        2f * _visualData.BodyRadiusTiles * BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
                         BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }

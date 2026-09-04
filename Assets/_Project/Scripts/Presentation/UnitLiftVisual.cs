@@ -36,7 +36,8 @@ namespace Wassup.Presentation
             // unit 15 (2026-09-01 외부 세션) — **그림자 크기는 판정 캐리어라 lift 로 줄이지
             // 않는다**(지름 = 2 × bodyRadius 고정). 높이는 진하기(alpha)만 말한다 —
             // 크기가 흔들리면 「그림자가 링에 닿으면 사거리 안」 읽기가 공중에서 거짓이 된다.
-            // LiftShadowMinScale knob 은 소비 0 으로 잔존(flight-lift-feel 이력).
+            // 짝이던 `liftShadowMinScale` knob 은 unit 20 리뷰에서 **은퇴**했다(소비 0 인데
+            // 인스펙터에서는 조절 가능해 보여 「높이로 그림자가 줄어든다」고 광고했다).
             shadowScale = 1f;
             shadowAlpha = Mathf.Lerp(1f, BattleBridge.LiftShadowMinAlpha, r);
         }

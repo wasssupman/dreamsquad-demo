@@ -68,6 +68,14 @@ namespace Wassup.Data
         public static int FootprintOf(Faction faction)
             => ((int)faction & Factions.AnyInstinct) != 0 ? InstinctFootprint : CoreFootprint;
 
+        // distance-based-range unit 20 리뷰 H-1 — **거점의 몸 반경.** 판정 bake(`HitRadius`)와
+        // 그림자(지름 = 2r)가 여기 하나를 읽는다. 종전엔 두 소비처가 같은 수를 **다른 모양**으로
+        // 적어(한쪽 `FootprintOf × 0.5`, 다른 쪽 `FootprintOf` 를 지름으로) 형제로 보이지 않았고,
+        // 묶는 것이 주석 하나뿐이었다. 방어유닛 규칙(가로/2)과는 여전히 별개 식이다 —
+        // 거점 footprint 는 단일 int(정사각)이라 수치가 동치일 뿐이고, 직사각 거점이 생기는 날
+        // 두 식을 합칠지 결정한다.
+        public static float BodyRadiusOf(Faction faction) => FootprintOf(faction) * 0.5f;
+
         // siege-lane-spawn unit 0/1 — 공성 파생 스폰 = 마음 셀 + 이 오프셋들.
         // **배열 순서가 곧 레인 번호다**: [하단(y−1), 상단(y+1)] = lane 0, 1.
         // 빌더(파생)·OnValidate(레인 검증)·테스트가 같은 배열을 봐야 순서 규칙이 두 벌로

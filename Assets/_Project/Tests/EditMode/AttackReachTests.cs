@@ -257,5 +257,27 @@ namespace Wassup.Tests.EditMode
             finally { UnityEngine.Object.DestroyImmediate(def); }
         }
 
+        // unit 20 리뷰 H-1 — 거점의 몸도 **식 하나**에서 나온다. 판정 bake(`HitRadius`)와
+        // 그림자(지름 = 2r)가 같은 함수를 읽는지를 여기서 고정한다. 종전엔 두 소비처가 같은
+        // 수를 다른 모양으로 적어(반경 vs 지름) 한쪽만 고쳐도 테스트가 안 울렸다.
+        [Test]
+        public void StructureBody_IsHalfFootprint_AndDiameterMatchesFootprint()
+        {
+            Assert.AreEqual(1.5f, Wassup.Data.StructurePlacements.BodyRadiusOf(
+                Wassup.Battle.Units.Faction.EnemyInstinct), 1e-6f, "본능 3×3 → 1.5");
+            Assert.AreEqual(0.5f, Wassup.Data.StructurePlacements.BodyRadiusOf(
+                Wassup.Battle.Units.Faction.EnemyCore), 1e-6f, "마음 1×1 → 0.5");
+            // 「그림자 지름 = 2 × 판정 반경 = 점유 칸 수」 — 뷰가 그리는 값의 정의.
+            foreach (var f in new[]
+                     {
+                         Wassup.Battle.Units.Faction.EnemyInstinct,
+                         Wassup.Battle.Units.Faction.DefenderInstinct,
+                         Wassup.Battle.Units.Faction.EnemyCore,
+                         Wassup.Battle.Units.Faction.DefenderCore,
+                     })
+                Assert.AreEqual(Wassup.Data.StructurePlacements.FootprintOf(f),
+                    2f * Wassup.Data.StructurePlacements.BodyRadiusOf(f), 1e-6f,
+                    $"{f}: 지름(2r)이 점유 칸과 갈렸다");
+        }
     }
 }

@@ -165,6 +165,10 @@ namespace Wassup.UI
                || reason == PlacementRejectReason.NotBuildable
                || reason == PlacementRejectReason.OutOfBounds;
 
+        // distance-based-range unit 20 리뷰 L-4 — **몸 원(블롭 그림자)은 의도적으로 없다.**
+        // 고스트 타일은 「몇 칸을 차지하나」(배치), 블롭은 「몸이 얼마나 큰가」(판정)라 서로 다른
+        // 정보다. 드래그 중에 둘을 같이 띄울지는 UX 결정이라 README 후속 후보로 남겼다 —
+        // 누락이 아니다. 띄우게 되면 지름은 `2 × unit.BodyRadiusTiles`(계약 8) 하나뿐이다.
         private void PaintGhost(DefenderUnitData unit)
         {
             if (bridge == null || unit == null) return;

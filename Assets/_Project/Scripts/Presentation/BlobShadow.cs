@@ -70,7 +70,10 @@ namespace Wassup.Presentation
             ApplyColor();
         }
 
-        // flight-lift-feel unit 1 — 유닛이 뜨면 그림자는 **지면에 남은 채** 작아지고 옅어진다.
+        // flight-lift-feel unit 1 — 유닛이 뜨면 그림자는 **지면에 남은 채** 옅어진다.
+        // ⚠ 크기는 안 변한다(distance-based-range unit 15): 지름은 판정 몸이라 높이로 흔들면
+        // 「그림자가 링에 닿으면 사거리 안」이 공중에서 거짓이 된다. `scaleMul` 인자는 그
+        // 결정 이후 **항상 1** 이다(`UnitLiftVisual.Resolve` 가 shadowScale 을 1로 고정).
         // 지면 Y 고정(ApplyTransform)은 원래부터 있었고, 여기서 반응만 얹는다.
         // 배율 2종은 각자 보관해 곱한다 — SetDimAlpha 가 base 색을 통째로 덮어쓰던 구조라
         // 그대로 두면 배치 dim 과 비행 알파가 서로를 지운다.
@@ -146,11 +149,17 @@ namespace Wassup.Presentation
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             // 부모 스케일 보정이 여기 있는 덕에, 유닛이 lift 로 커져도 그림자 월드 지름은 안 딸려
             // 올라간다(비행 반응은 아래 _flightScale 만으로 온다) — flight-lift-feel unit 1.
+            // ⚠ 리뷰 L-3(2026-09-04) — **로컬 Y 를 나눌 값은 부모의 Z 다.** 이 쿼드는
+            // `Euler(90,0,0)` 이라 로컬 +Y 가 월드 +Z 로 간다(로컬 X 만 월드 X 그대로).
+            // 부모 스케일이 균일한 동안은 par.y 로 나눠도 동치라 오래 숨어 있었는데,
+            // 비균일 소유자가 하나 있다 — 착지 스쿼시(`SpineUnitView._squash` =
+            // (1+ak, 1−ak, 1+ak)). 거기서 그림자가 Z 로 (1+ak)/(1−ak) 배(궁극기 a=0.14 → 1.33배)
+            // 늘어나 원이 아니게 됐다 = 그 프레임의 「그림자가 링에 닿으면」이 거짓.
             Vector3 par = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
             float sx = Mathf.Approximately(par.x, 0f) ? 1f : par.x;
-            float sy = Mathf.Approximately(par.y, 0f) ? 1f : par.y;
+            float sz = Mathf.Approximately(par.z, 0f) ? 1f : par.z;
             float size = _size * _flightScale;
-            transform.localScale = new Vector3(size / sx, size / sy, 1f);
+            transform.localScale = new Vector3(size / sx, size / sz, 1f);
         }
     }
 }

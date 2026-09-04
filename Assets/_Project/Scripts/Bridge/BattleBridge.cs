@@ -174,9 +174,10 @@ namespace Wassup.Bridge
         [SerializeField] private float liftScaleMax = 1.35f;
         [Tooltip("그림자가 최소 크기/알파에 닿는 높이(월드). 이 위로는 더 안 줄어든다.")]
         [SerializeField] private float liftShadowFullHeight = 3f;
-        [Tooltip("최대 높이에서의 그림자 크기 배율.")]
-        [Range(0.1f, 1f)]
-        [SerializeField] private float liftShadowMinScale = 0.55f;
+        // distance-based-range unit 20 리뷰 — 구 `liftShadowMinScale`(최대 높이에서의 그림자 크기
+        // 배율) 은퇴. unit 15 가 「그림자 지름 = 판정 몸」을 계약으로 못박으며 소비처가 0 이 됐는데
+        // (`UnitLiftVisual.Resolve` 가 shadowScale 을 1 로 고정) 인스펙터에는 남아 있어,
+        // **아무 일도 안 하는 손잡이**가 「높이로 그림자를 줄일 수 있다」고 광고하고 있었다.
         [Tooltip("최대 높이에서의 그림자 알파 배율.")]
         [Range(0f, 1f)]
         [SerializeField] private float liftShadowMinAlpha = 0.35f;
@@ -350,7 +351,6 @@ namespace Wassup.Bridge
         public static float LiftScalePerHeight { get; private set; } = 0.14f;
         public static float LiftScaleMax { get; private set; } = 1.35f;
         public static float LiftShadowFullHeight { get; private set; } = 3f;
-        public static float LiftShadowMinScale { get; private set; } = 0.55f;
         public static float LiftShadowMinAlpha { get; private set; } = 0.35f;
 
         private void MirrorLiftKnobs()
@@ -358,7 +358,6 @@ namespace Wassup.Bridge
             LiftScalePerHeight = liftScalePerHeight;
             LiftScaleMax = liftScaleMax;
             LiftShadowFullHeight = liftShadowFullHeight;
-            LiftShadowMinScale = liftShadowMinScale;
             LiftShadowMinAlpha = liftShadowMinAlpha;
         }
         // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
@@ -6381,11 +6380,10 @@ namespace Wassup.Bridge
                 // bake 지점 넷(방어유닛·순찰·적·거점) 중 여기만 빠지면 거점의 도달 거리가
                 // 조용히 0.5 줄고, 대상일 때도 몸이 0 이 된다.
                 // rev 3(unit 12) — 구조물 몸 = 점유/2 파생. 본능 3×3 → 1.5, 마음 → 0.5.
-                // ⚠ 방어유닛 규칙(가로/2, DefenderUnitData.BodyRadiusTiles)과 **별개 식**이지만
-                // 구조물 footprint 는 단일 int(정사각)라 수치가 항상 동치다 — 직사각 구조물을
-                // 만드는 날 두 식을 하나로 접을지 결정할 것(리뷰 L-5, 2026-09-04).
+                // unit 20 리뷰 H-1 — 산식은 `StructurePlacements.BodyRadiusOf` 단일 소유다
+                // (그림자도 같은 함수를 읽는다 — SpawnStructureViews).
                 _em.AddComponentData(entity, new Wassup.Battle.Units.HitRadius
-                { value = Wassup.Data.StructurePlacements.FootprintOf(faction) * 0.5f });
+                { value = Wassup.Data.StructurePlacements.BodyRadiusOf(faction) });
                 _em.AddComponentData(entity, LocalTransform.FromPosition(GridToWorldCenter(s.cell)));
 
                 // unit 10 — 적 마음 축의 활성 조건을 여기서 확정한다(저작에서 오므로 덱만
@@ -6498,16 +6496,17 @@ namespace Wassup.Bridge
                 _structureViews.Add(view);
                 // distance-based-range unit 20 — 거점도 자기 몸을 그림자로 말한다(계약 8
                 // 「그림자 = 상시 몸」). 종전엔 거점만 이 계약 밖이라, 판정 반경 1.5(본능)를
-                // 화면에서 읽을 방법이 아예 없었다. 지름 = 2 × 판정 반경이고 그 반경은
-                // **스폰이 굽는 HitRadius 와 같은 식**이다(SpawnStructures 의 FootprintOf × 0.5
-                // → 본능 3칸 · 마음 1칸). 식을 고치는 날 두 자리를 같이 고친다.
+                // 화면에서 읽을 방법이 아예 없었다. 지름 = 2 × 판정 반경이고, 그 반경은
+                // 엔티티 bake 와 **같은 함수**에서 온다(`BodyRadiusOf` — 리뷰 H-1: 종전엔
+                // 같은 수를 다른 모양으로 적어 형제로 보이지 않았다). 본능 3칸 · 마음 1칸.
+                // 유닛 뷰 3경로와도 같은 문장(`2f * r * 환산`)이다.
                 // 유닛과 같은 상호배타 — 진짜 그림자 모드에선 안 붙인다.
                 // live:false: 거점은 안 움직이고, 붕괴 주저앉음(StructureWreckView)에서
                 // 부모 스케일과 함께 줄어드는 편이 «무너졌다» 와 맞다.
                 if (!UseRealShadows && BlobShadowSprite != null)
                     Wassup.Presentation.BlobShadow.Attach(
                         view.transform, BlobShadowSprite,
-                        Wassup.Data.StructurePlacements.FootprintOf(faction) * BlobShadowSize,
+                        2f * Wassup.Data.StructurePlacements.BodyRadiusOf(faction) * BlobShadowSize,
                         BlobShadowColor, BlobShadowLift,
                         Wassup.Presentation.BoardSortOrder.ShadowOrder);
                 // instinct-turret-readout unit 1 — 포신을 가진 프랍이면 셀로 등록해 둔다.
