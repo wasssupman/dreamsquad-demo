@@ -152,8 +152,9 @@ namespace Wassup.Bridge
         [SerializeField] private float propDistanceTiltMax = 62f;
         [Header("Blob shadow (tilted-billboard unit 3) — Tilemap 모드 접지 그림자")]
         [SerializeField] private Sprite blobShadowSprite;
-        [Tooltip("블롭 월드 지름의 1타일 기준 배율(원형). 프랍별 추가 배율은 PropData.visualScale.")]
-        [SerializeField] private float blobShadowSize = 1f;
+        // distance-based-range unit 20 — 구 `blobShadowSize`(1타일 기준 배율) 은퇴. 값이
+        // 곧 `tileSize` 여야 하는 환산 상수라 저작으로 두면 **조용히 갈릴 수 있는 두 벌**이
+        // 된다(프랍별 추가 배율은 종전대로 PropData.visualScale 이 가진다).
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
         // tilted-billboard unit 7 — **평면 상대** 리프트다(구 blobShadowGroundY = 절대 월드 Y).
         // 절대 Y 는 스테이지마다 다른 발바닥 평면(MapStage.gridOriginLocal.y: 0 / 0.19 / 0.87)을
@@ -180,7 +181,11 @@ namespace Wassup.Bridge
         [Range(0f, 1f)]
         [SerializeField] private float liftShadowMinAlpha = 0.35f;
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
-        [SerializeField] private bool useRealShadows = true;
+        // distance-based-range unit 20 — 기본값 true → **false**. 유닛 그림자는 조명 연출이
+        // 아니라 「이 유닛의 몸이 이만하다」는 판정 UI 라(계약 8), 진짜 캐스트로 켜는 순간
+        // 그 정보가 통째로 사라진다. BattleScene 은 이미 0 이라 라이브 무변 — 바뀌는 것은
+        // 새 씬/필드 리셋의 기본값뿐이고, 그때 조용히 계약이 깨지던 것을 막는다.
+        [SerializeField] private bool useRealShadows;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
@@ -334,6 +339,10 @@ namespace Wassup.Bridge
         public static float PropDistanceTiltMax { get; private set; } = 62f;
         // tilted-billboard unit 3 — 블롭 그림자 데이터(하드코딩 금지: serialized 필드에서 빌드 시 미러).
         public static Sprite BlobShadowSprite { get; private set; }
+        // distance-based-range unit 20 — **저작 knob 이 아니라 「타일 → 월드」 환산이다.**
+        // 소비처는 `2 × 몸반경(타일) × 이 값` 으로 월드 지름을 만든다. 그래서 이 값이
+        // `tileSize` 와 다른 순간 「그림자가 링에 닿으면 사거리 안」이 거짓이 된다 —
+        // 종전엔 별개 serialized 필드라 둘 다 1 인 것이 **우연**이었다. 이제 파생한다.
         public static float BlobShadowSize { get; private set; } = 1f;
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
         public static float BlobShadowLift { get; private set; } = 0.026f;
@@ -1375,7 +1384,7 @@ namespace Wassup.Bridge
             PropDistanceTiltMax = propDistanceTiltMax;
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
             BlobShadowSprite = blobShadowSprite;
-            BlobShadowSize = blobShadowSize;
+            BlobShadowSize = tileSize;   // unit 20 — 환산 상수는 저작하지 않고 타일 크기에서 파생
             BlobShadowColor = blobShadowColor;
             BlobShadowLift = blobShadowLift;
             MirrorLiftKnobs(); // 스폰 전 1회 — 이후는 LateUpdate 가 매 프레임 갱신(라이브 튜닝)
@@ -6477,8 +6486,8 @@ namespace Wassup.Bridge
                 if (s.data == null || s.data.viewPrefab == null) continue;
                 // 스폰과 같은 필터 — 방어 마음은 goals[] 정본이라 거점 프랍을 세우지 않는다
                 // (골 구조물 프랍은 theme.goalStructureProp 이 이미 담당).
-                if (Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind)
-                    == Faction.DefenderCore) continue;
+                var faction = Wassup.Data.StructurePlacements.DeriveFaction(s.side, s.data.kind);
+                if (faction == Faction.DefenderCore) continue;
 
                 float3 simCenter = GridToWorldCenter(s.cell);
                 var view = Instantiate(s.data.viewPrefab,
@@ -6487,6 +6496,20 @@ namespace Wassup.Bridge
                 view.transform.localScale *= s.data.viewScale;
                 view.name = $"Structure_{s.data.displayName}_{s.cell.x}_{s.cell.y}";
                 _structureViews.Add(view);
+                // distance-based-range unit 20 — 거점도 자기 몸을 그림자로 말한다(계약 8
+                // 「그림자 = 상시 몸」). 종전엔 거점만 이 계약 밖이라, 판정 반경 1.5(본능)를
+                // 화면에서 읽을 방법이 아예 없었다. 지름 = 2 × 판정 반경이고 그 반경은
+                // **스폰이 굽는 HitRadius 와 같은 식**이다(SpawnStructures 의 FootprintOf × 0.5
+                // → 본능 3칸 · 마음 1칸). 식을 고치는 날 두 자리를 같이 고친다.
+                // 유닛과 같은 상호배타 — 진짜 그림자 모드에선 안 붙인다.
+                // live:false: 거점은 안 움직이고, 붕괴 주저앉음(StructureWreckView)에서
+                // 부모 스케일과 함께 줄어드는 편이 «무너졌다» 와 맞다.
+                if (!UseRealShadows && BlobShadowSprite != null)
+                    Wassup.Presentation.BlobShadow.Attach(
+                        view.transform, BlobShadowSprite,
+                        Wassup.Data.StructurePlacements.FootprintOf(faction) * BlobShadowSize,
+                        BlobShadowColor, BlobShadowLift,
+                        Wassup.Presentation.BoardSortOrder.ShadowOrder);
                 // instinct-turret-readout unit 1 — 포신을 가진 프랍이면 셀로 등록해 둔다.
                 // 「포신을 갖는가」는 **컴포넌트 유무**가 결정한다(kind 분기도 id 분기도 없다).
                 // 자식까지 훑는다 — 지금 두 변형은 루트에 달고 있지만, 리그가 깊어진 프랍이

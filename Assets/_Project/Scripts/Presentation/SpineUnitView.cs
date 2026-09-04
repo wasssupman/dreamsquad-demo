@@ -163,8 +163,9 @@ namespace Wassup.Presentation
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
                     // unit 15 — **그림자는 UI 다**: 지름 = 판정 몸 지름(2 × BodyRadiusTiles).
-                    // BlobShadowSize 는 「타일 → 월드」 환산이다(아트 knob 아님 — tileSize 와
-                    // 같아야 「그림자가 링에 닿으면 사거리 안」이 정확하다).
+                    // BlobShadowSize 는 「타일 → 월드」 환산이다(아트 knob 아님). unit 20 에서
+                    // 저작 필드를 은퇴시키고 `tileSize` 파생으로 접었다 — 둘이 갈리면
+                    // 「그림자가 링에 닿으면 사거리 안」이 조용히 거짓이 되기 때문.
                     _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite,
                         2f * (_visualData != null ? _visualData.BodyRadiusTiles
                                                   : Wassup.Skills.SkillMath.StandardBodyRadiusTiles)
