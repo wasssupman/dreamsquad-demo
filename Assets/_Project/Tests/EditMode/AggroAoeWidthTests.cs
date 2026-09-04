@@ -148,5 +148,126 @@ namespace Wassup.Tests.EditMode
                 + "sticky primary override 가 풀린 것이고, 적이 가디언에 도착하지 못한다.");
             Assert.AreEqual(0, Hits(guardian), "사거리 밖 가디언도 당연히 안 맞는다.");
         }
+
+        // ─── ③ 몸이 큰 가디언의 «휘두르는데 안 맞는» 밴드 (2026-09-04 사용자 버그 보고) ───
+        //
+        // 증상: 배스티온(3×2 · 사거리 1 · 몸 1.5)이 공격 모션은 나가는데 피해가 0.
+        // 재현 대상은 그 문장 그대로다 — **공격이 성사됐는데 IncomingDamage 가 비어 있다.**
+        //
+        // 두 술어가 갈려 있다:
+        //   · 발사 게이트  = `AttackReach.InReach`(몸 기반 연속) → 1 + 1.5 + 0.25 = 2.75타일
+        //   · 피해 대상 선정(가디언 분기) = `AggroTargeting` 의 `TileAoe.IsInRadius`
+        //     (칸 기반 · **공격자 몸을 0.5 로 가정**) → 1 + 0.5 = 1.5칸
+        // 그 사이(1.5, 2.75] 가 사각지대다. 배스티온은 **자기 몸 반경이 1.5** 라 옆구리에
+        // 붙은 적이 이미 그 밴드 안이고, 그래서 «항상» 안 맞는 것처럼 보인다.
+        private Entity MakeWideGuardian(float3 pos, float bodyRadius)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, LocalTransform.FromPosition(pos));
+            _em.AddComponentData(e, new FactionTag { value = Faction.DefenderUnit });
+            _em.AddComponent<DefenderUnitTag>(e);
+            _em.AddComponentData(e, new Health { value = 100f, max = 100f });
+            _em.AddBuffer<IncomingDamage>(e);
+            _em.AddComponentData(e, new HitRadius { value = bodyRadius });
+            _em.AddComponentData(e, new AggroCapacity { max = 2, held = 0 });
+            _em.AddComponentData(e, new AttackState
+            {
+                range = 1f, cooldownDuration = 1f, cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                targetMask = (int)Faction.EnemyUnit,
+            });
+            var ob = _em.AddBuffer<AttackOutputElement>(e);
+            ob.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 9f },
+            });
+            return e;
+        }
+
+        private Entity MakeTargetEnemy(float3 pos, float bodyRadius = 0.25f)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, LocalTransform.FromPosition(pos));
+            _em.AddComponentData(e, new FactionTag { value = Faction.EnemyUnit });
+            _em.AddComponent<AttackUnitTag>(e);
+            _em.AddComponentData(e, new Health { value = 100f, max = 100f });
+            _em.AddBuffer<IncomingDamage>(e);
+            _em.AddComponentData(e, new HitRadius { value = bodyRadius });
+            return e;
+        }
+
+        [Test]
+        public void WideGuardian_DamagesEnemyTouchingItsBody_NotJustCellNeighbor()
+        {
+            // 배스티온의 옆구리에 붙은 적: 몸 1.5 + 상대 0.25 = 1.75타일에서 몸이 맞닿는다.
+            // 게이트는 2.75 까지 허용하므로 **공격은 반드시 성사된다.**
+            var bastion = MakeWideGuardian(float3.zero, bodyRadius: 1.5f);
+            var enemy = MakeTargetEnemy(new float3(1.75f, 0f, 0f));
+
+            _simGroup.Update();
+
+            // 경계 계측 — 「발사했나」와 「맞혔나」를 갈라 본다. 둘을 뭉뚱그리면 증상이
+            // «사거리 밖이라 안 쏨» 인지 «쏘고 못 맞힘» 인지 알 수 없다(사용자 보고는 후자).
+            var st = _em.GetComponentData<AttackState>(bastion);
+            Assert.Greater(st.cooldownRemaining, 0f,
+                "가디언이 **발사조차** 안 했다 — 그러면 원인은 피해 선정이 아니라 게이트다.");
+            Assert.Greater(Hits(enemy), 0,
+                "★몸이 맞닿은 적에게 피해가 0 이다 — 발사 게이트(몸 기반 2.75)와 피해 대상 "
+                + "선정(칸 기반 1.5)이 갈렸다. 가디언 분기가 공격자 몸을 모르는 술어를 쓴다.");
+        }
+
+        // 가디언의 도달 경계가 **게이트와 같은 곡선**인지 거리를 훑어 고정한다.
+        // 몸 1.5 · 사거리 1 · 상대 몸 0.25 → 도달 2.75. 그 안은 전부 맞고 밖은 안 맞아야 한다.
+        // (이 형태로 찍었기에 「경계가 정확히 1.5」라는 실측이 나왔고, 그 값이 옛 칸 술어의
+        //  상수와 일치한다는 것이 진단의 결정적 근거였다.)
+        [Test]
+        public void WideGuardian_ReachCurve_MatchesGate()
+        {
+            float[] inside = { 0.9f, 1.51f, 1.75f, 2.0f, 2.7f };
+            float[] outside = { 2.9f, 3.5f };
+            var pattern = new System.Text.StringBuilder();
+            foreach (float d in inside)
+            {
+                TearDown(); SetUp();
+                MakeWideGuardian(float3.zero, bodyRadius: 1.5f);
+                var e = MakeTargetEnemy(new float3(d, 0f, 0f));
+                _simGroup.Update();
+                if (Hits(e) == 0) pattern.Append("안쪽인데 MISS:").Append(d.ToString("0.00")).Append(' ');
+            }
+            foreach (float d in outside)
+            {
+                TearDown(); SetUp();
+                MakeWideGuardian(float3.zero, bodyRadius: 1.5f);
+                var e = MakeTargetEnemy(new float3(d, 0f, 0f));
+                _simGroup.Update();
+                if (Hits(e) > 0) pattern.Append("바깥인데 HIT:").Append(d.ToString("0.00")).Append(' ');
+            }
+            Assert.AreEqual(string.Empty, pattern.ToString().Trim(),
+                "가디언 도달 곡선이 게이트(사거리+내몸+상대몸 = 2.75)와 갈렸다");
+        }
+
+        [Test]
+        public void WideGuardian_AndPlainDefender_AgreeOnWhoIsHittable()
+        {
+            // 같은 자리·같은 사거리인데 **가디언이냐 아니냐**로 답이 갈리면 안 된다.
+            // (비-가디언 분기는 이미 `AttackReach.InReach` 로 수렴돼 있다 — AttackSystem 주석
+            //  「다중타격의 2번째 이후 대상도 첫 대상과 같은 술어를 지난다」와 같은 규율.)
+            var guardian = MakeWideGuardian(float3.zero, bodyRadius: 1.5f);
+            var enemyA = MakeTargetEnemy(new float3(1.75f, 0f, 0f));
+            _simGroup.Update();
+            int guardianHits = Hits(enemyA);
+
+            TearDown();
+            SetUp();
+            var plain = MakeWideGuardian(float3.zero, bodyRadius: 1.5f);
+            _em.RemoveComponent<AggroCapacity>(plain);   // 유일한 차이 = 가디언 여부
+            var enemyB = MakeTargetEnemy(new float3(1.75f, 0f, 0f));
+            _simGroup.Update();
+            int plainHits = Hits(enemyB);
+
+            Assert.AreEqual(plainHits > 0, guardianHits > 0,
+                $"가디언 여부가 「누가 맞는가」를 바꿨다 — 일반 {plainHits}회 / 가디언 {guardianHits}회. "
+                + "도발 능력은 대상 «선정 우선순위» 만 바꿔야지 사거리를 바꾸면 안 된다.");
+        }
     }
 }

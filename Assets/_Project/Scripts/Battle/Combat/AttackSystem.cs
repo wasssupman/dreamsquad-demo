@@ -1432,16 +1432,22 @@ namespace Wassup.Battle.Combat
                                     float3 tp = targetTransforms[i].Position;
                                     cands[nc] = new AggroCandidate
                                     {
-                                        cell = GridMath.WorldToCell(tp, tileSize, gridSize, origin: ffOrigin),
                                         pos = tp,
+                                        // unit 22 — 후보의 몸. 게이트가 쓰는 항과 같은 것이다.
+                                        bodyRadius = RadiusOf(targetEntities[i], _bodyRadiusLookup),
                                         aggroed = aggroLookup.HasComponent(targetEntities[i]),
                                     };
                                     candIdx[nc] = i;
                                     nc++;
                                 }
                                 var outIdx = new NativeArray<int>(desiredCount, Allocator.Temp);
+                                // unit 22 — **게이트와 같은 인자로 부른다**(연속 사거리 + 양쪽 몸).
+                                // 종전엔 칸(atkCell/tileRange)으로 걸러, 몸이 큰 가디언이
+                                // 「휘두르는데 피해 0」이 됐다. 도발은 선정 우선순위만 바꾼다.
                                 int sel = AggroTargeting.SelectTargets(
-                                    atkCell, atkPos, tileRange, cap.held, cap.max,
+                                    atkPos, rangeTiles, tileSize,
+                                    RadiusOf(attackerEntity, _bodyRadiusLookup),
+                                    cap.held, cap.max,
                                     cands.GetSubArray(0, nc), outIdx);
                                 for (int s = 0; s < sel; s++)
                                     hitTargets[hitCount++] = targetEntities[candIdx[outIdx[s]]];
