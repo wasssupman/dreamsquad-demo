@@ -103,7 +103,11 @@ namespace Wassup.EditorTools.Battle
             public string setupError;
         }
 
-        public static RunResult Run(BattleBridge bridge, in Scenario sc, bool record)
+        // `onTick` 은 **관측 전용 훅**이다(틱 번호를 스텝 직후에 준다). 계측기가 시나리오
+        // 조립(맵 조건·덱·배치 스케줄)을 복제하지 않고 붙을 수 있게 하는 자리 — 복제하면
+        // 「계측이 본 판」과 「골든이 본 판」이 조용히 갈린다. 여기서 sim 을 건드리지 말 것.
+        public static RunResult Run(BattleBridge bridge, in Scenario sc, bool record,
+                                    System.Action<int> onTick = null)
         {
             string setupError = StartMatch(bridge, sc);
             if (record)
@@ -126,6 +130,7 @@ namespace Wassup.EditorTools.Battle
                     if (sc.pullWaveTicks != null && System.Array.IndexOf(sc.pullWaveTicks, t) >= 0)
                         bridge.TryPullNextWave();   // 규칙 층(상한·쿨다운)은 그대로 통과시킨다
                     bridge.StepOneTick();
+                    onTick?.Invoke(t);
                     digests[t] = Capture(bridge);
                 }
             }
