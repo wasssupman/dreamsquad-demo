@@ -20,6 +20,9 @@ namespace Wassup.Battle.Movement
         ComponentLookup<LocalTransform> _guardianTransformLookup;
         // unit 18 — 회오리 당김의 피해자 몸. 로컬 형태 금지 규칙(위 주석) 그대로 필드.
         ComponentLookup<Wassup.Battle.Units.HitRadius> _pullBodyRadiusLookup;
+        // enemy-detection-range unit 3 — 사냥 게이트의 새 소스(Combat 소유, RO). 같은 이유로 필드.
+        ComponentLookup<Wassup.Battle.Combat.DetectedTarget> _detectedLookup;
+        ComponentLookup<Wassup.Battle.Combat.DetectionRange> _detectionRangeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,6 +32,8 @@ namespace Wassup.Battle.Movement
             _aggroedLookup = state.GetComponentLookup<Aggroed>(isReadOnly: true);
             _guardianTransformLookup = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _pullBodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
+            _detectedLookup = state.GetComponentLookup<Wassup.Battle.Combat.DetectedTarget>(isReadOnly: true);
+            _detectionRangeLookup = state.GetComponentLookup<Wassup.Battle.Combat.DetectionRange>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -52,6 +57,8 @@ namespace Wassup.Battle.Movement
             var leapFlightLookup = SystemAPI.GetComponentLookup<LeapFlight>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
             _pullBodyRadiusLookup.Update(ref state);   // unit 18 — 회오리 당김 피해자 몸
+            _detectedLookup.Update(ref state);
+            _detectionRangeLookup.Update(ref state);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
             // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
             // 장애물을 합쳐 조립하고, 아래 모든 충돌 해결이 이것만 본다.
@@ -315,8 +322,37 @@ namespace Wassup.Battle.Movement
                 // boss-defender-field unit 2 — 보스 사냥 판정. hunt-dist 유한 = 도달 가능한
                 // 방어유닛 존재 → goal flow 대신 defender field 를 따른다. 방어유닛 0 이면
                 // DefenderFieldSystem 이 전 셀 MaxValue 로 리셋 → 자동으로 기존 마칭(계약 5).
+                // enemy-detection-range unit 3 — 게이트가 「태그를 가졌나」에서 **「이번 프레임 감지가
+                // 성립했나」**로 바뀌었다. 무제한 감지(보스·보너스)는 `DetectionSystem` 이 사실상 늘
+                // `hunting = 1` 을 주므로 그쪽 거동은 그대로다.
+                //
+                // ⚠ `hunterLookup` 은 여기서 소비처가 0 이 됐지만 **지우지 않는다.** 이유는 오직
+                // 하나다: **이 `OnUpdate` 안의 `GetComponentLookup` 호출을 지우면 Burst 가 조용히
+                // 깨져 NRE 가 난다** — 이 프로젝트에서 네 번 재발했다(memory: burst-lookup-removal-nre).
+                // 「다른 시스템이 그 태그를 쓰니까」는 **근거가 아니다**(리뷰 L4) — 남의 쿼리는
+                // 이 파일의 lookup 호출과 무관하고, 그렇게 적으면 다음 사람이 「저쪽이 안 쓰게 되면
+                // 지워도 되겠네」로 잘못 배운다.
                 bool hunting = hasHuntField && huntField.IsCreated
-                    && hunterLookup.HasComponent(entity)
+                    && _detectedLookup.HasComponent(entity) && _detectedLookup[entity].hunting != 0
+                    && huntField.dist[idx] != int.MaxValue;
+
+                // ⚠⚠ **leak-proof 는 `hunting` 과 분리한다 — 무제한 감지 전용이다.**
+                // 그대로 두면 유한 반경 감지 적도 골 칸을 밟고 공성으로 안 넘어가고, 그러면 감지가
+                // **이 게임의 유일한 패배 통로**(골 → 마음 HP → 스트레스 100 → 남은 시간 몰수)의
+                // 조절기가 된다. 「전멸시켜야 골에 간다」는 보스·보너스의 **저작된 성질**이지
+                // 매 웨이브 수십 기의 잡몹에게 상속시킬 규칙이 아니다(boss-defender-field 계약).
+                // ⚠⚠ **`hunting` 에 묶지 않는다**(리뷰 H2). `hunting` 은 감지 타이머(관성·막힘 해제·
+                // 억제)에 따라 매 프레임 꺼질 수 있는데, 그러면 **무제한 사냥꾼이 그 틈에 골을
+                // 유출한다.** `Enemy_DreamShard` 는 비보스라 CC 면역이 없어 자장가 한 번으로 그
+                // 틈이 열리고, `BonusWaveData` 가 보너스 적에게 무제한을 강제하는 이유(「이 적은
+                // 골로 안 간다」)가 조용히 깨진다. 골 유출은 이 게임의 유일한 패배 통로다.
+                //
+                // 그래서 **옛 술어를 그대로 쓰되 무제한으로만 한정한다** — 오늘 `Unlimited` 인 4종은
+                // 옛 `DefenderHunterTag` 부착 4종(보스 3 + DreamShard)과 **정확히 같은 집합**이라
+                // 이 형태가 계약 7 의 무회귀를 산술적으로 만족한다.
+                bool leakProof = hasHuntField && huntField.IsCreated
+                    && _detectionRangeLookup.HasComponent(entity)
+                    && _detectionRangeLookup[entity].Unlimited
                     && huntField.dist[idx] != int.MaxValue;
 
                 // 사냥 중엔 goal 셀을 지나쳐도 누수 안 함(leak-proof) — 방어유닛 전멸 후에만 도달 처리.
@@ -326,7 +362,7 @@ namespace Wassup.Battle.Movement
                 // ⑴ 이 루프가 WithNone<PastGoalTag> 라 영구 동결, ⑵ UnitLifecycle 의 PastGoal 파괴
                 // 루프는 AttackUnitTag 를 요구해 파괴도 안 됨, ⑶ 살아 있으니 SummonerState.current 가
                 // 계속 유효해 소환사가 남은 판 내내 재소환하지 못한다. 보스 leak-proof 와 같은 형태.
-                if (!hunting && !patrolling && field.IsGoalCell(cell))
+                if (!leakProof && !patrolling && field.IsGoalCell(cell))
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
                     continue;
@@ -489,7 +525,7 @@ namespace Wassup.Battle.Movement
                             // 와야 한다 — 없으면 자장가·동상에 걸린 헌터가 계속 걷고, 도약 비행 중
                             // (`LeapFlight` 도 `locked` 에 접힌다) 위치를 덮어쓴다.
                             // ⚠ CC 면역은 **`BossTag` 전용**이라(`CcApplySystem:37`) 비-보스 헌터
-                            // (`Enemy_DreamShard`: tier 0 + huntsDefenders 1)로 **오늘 재현된다.**
+                            // (`Enemy_DreamShard`: tier 0 + `detectionRange = -1`)로 **오늘 재현된다.**
                             //
                             // ⚠ `aiStateLookup`/`attackStateLookup` 보유를 **명시로 요구한다**(fail-closed).
                             // `ai` 기본값이 `Marching`(:128)이고 `EnemyAiStateSystem` 은 `hasAttack`

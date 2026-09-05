@@ -40,6 +40,10 @@ namespace Wassup.Core.Trace
         MeteorBarrage = 17,
         PatrolSpawn = 18,
         AttackOutputLog = 19,
+        // enemy-detection-range unit 5 — 적이 방어유닛을 «발견» 한 순간(hunting 0→1).
+        // a = 발견한 적, b = 발견당한 방어유닛. **append-only** — 기존 번호를 재사용하면
+        // 옛 골든이 다른 사건으로 읽힌다.
+        Detection = 20,
     }
 
     // 채널 무관 고정 폭 레코드. 채널마다 다른 구조체를 두지 않는 이유: 스키마가 채널 수만큼

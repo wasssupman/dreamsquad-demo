@@ -89,4 +89,4 @@ MonoBehaviour:
   flightLift: 0
   idleVariants: []
   tier: 0
-  huntsDefenders: 0
+  detectionRange: 0

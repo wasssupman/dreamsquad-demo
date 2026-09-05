@@ -110,6 +110,29 @@ namespace Wassup.Data
         // 이 높이로 꽂히고 임팩트 VFX 도 여기서 터진다 — 명중 판정은 접지 원 그대로(sim 무변).
         // 0 = 미저작 → 종전 경로(투사체 저작 visualHeightOffset). 몸통 중앙쯤을 저작한다.
         [Min(0f)] public float impactSocketHeight = 0f;
+        // enemy-detection-range unit 1 — 계약 8 의 이행 지점. 감지 반경이 공격 사거리보다 좁으면
+        // 무의미하다(그 안이면 이미 사거리 안이라 교전 중이다). 저작 실수를 조용히 통과시키지 않는다.
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (detectionRange >= MinDetectionRange && detectionRange <= attackRange)
+                Debug.LogWarning(
+                    $"[AttackUnitData] {name}: detectionRange({detectionRange}) 가 attackRange({attackRange}) 이하다 — " +
+                    "감지가 아무 일도 하지 않는다(그 안이면 이미 사거리 안이다).", this);
+
+            // 리뷰 L6 — 무기 없이 구워질 적에 감지를 저작하면 `DetectionSystem` 이 fail-closed 로
+            // 막지만(계약 11) **`DefenderHunterTag` 부착은 못 막는다.** 그 태그 하나로
+            // `DefenderFieldSystem` 의 매 프레임 그리드 BFS 가 켜지고 소스 반경은 인접 폴백으로
+            // 떨어진다 — 기능은 안 깨지고 낭비만 남으므로 저작 시점에 말해 준다.
+            if (UsesDetection
+                && attackMethod != EnemyAttackMethod.None
+                && (outputs == null || outputs.Length == 0))
+                Debug.LogWarning(
+                    $"[AttackUnitData] {name}: 감지를 저작했는데 outputs 가 비었다 — walk-only 로 구워져 " +
+                    "감지는 fail-closed 로 막히고 사냥 필드 재빌드만 켜진다(순수 낭비).", this);
+        }
+#endif
+
         public float BodyRadiusTiles => bodySize switch
         {
             BodySize.Medium => 0.5f,
@@ -282,15 +305,34 @@ namespace Wassup.Data
                  "엘리트는 특수 메커니즘을 갖되 보스 특권(CC·어그로 면역)은 받지 않는다.")]
         public EnemyTier tier = EnemyTier.Normal;
 
-        // bonus-wave-pull unit 0 — 「배치된 방어유닛을 찾아다니며 사냥하다가 전멸시키면
-        // 거점으로 향한다」. 그 이동은 boss-defender-field 가 이미 만들어 뒀고 `BossTag` 로
-        // 잠겨 있었다 — 이 플래그가 그 게이트를 티어와 무관하게 연다.
+        // enemy-detection-range unit 1 — **감지 반경.** 「이 적은 몇 칸 안의 방어유닛을
+        // 발견하는가」. 발견하면 진행 경로를 벗어나 그쪽으로 향하고, 사거리에 들면 기존대로
+        // 멈춰 싸운다.
         //
-        // ⚠ `tier = Boss` 로 대신하지 말 것. 그쪽은 CC 면역·어그로 면역·등장 경보까지
-        // 딸려와 「저체력 잡몹 무리」가 성립하지 않는다. 두 축은 독립이다 —
-        // 보스는 `tier` 로 사냥을 얻고(부착 조건이 `Boss || huntsDefenders`), 잡몹은 이 값으로.
-        // false 가 기본이자 정상이다(기존 적 17종 전부). Appended last (직렬화 back-compat).
-        [Tooltip("배치된 방어유닛을 찾아다니며 사냥한다. 방어유닛이 0기면 거점으로 향한다.")]
-        public bool huntsDefenders = false;
+        //   0  = 감지 안 함(기본). 사거리에 들어온 것만 친다 — 24종 중 20종의 값이다.
+        //   >0 = 반경(칸).
+        //   <0 = 무제한. 맵 어디든 방어유닛이 있으면 사냥한다.
+        //
+        // ⚠ **구 `huntsDefenders`(bool)를 흡수했다.** 그쪽은 「무제한 사냥」 한 점만 표현할 수
+        // 있었고, 그 사이의 유한 반경이 이 축의 값이다. 축을 둘로 두지 않는다.
+        // ⚠ **`tier == Boss` 는 더 이상 사냥을 주지 않는다.** 예전 부착 조건이
+        // `Boss || huntsDefenders` 라 보스는 저작 없이 사냥을 공짜로 받았는데, 그러면
+        // 「저작을 안 하면 티어가 대신 말한다」는 숨은 규칙이 생겨 축이 다시 둘이 된다.
+        // 보스 3종은 `-1` 을 **명시 저작**한다(누락은 `EnemyTierBakeTests` 가 잡는다).
+        // ⚠ **시트에 컬럼이 없다** → 임포터가 스킵하므로 SO 저작으로 끝난다
+        // (`bodyRadius`·`bodySize` 와 같은 처지). Appended last (직렬화 back-compat).
+        [Tooltip("몇 칸 안의 방어유닛을 발견하면 경로를 벗어나 달려드는가. " +
+                 "0 = 감지 안 함(기본), 음수 = 무제한 사냥.")]
+        public float detectionRange = 0f;
+
+        // 감지를 쓰는 적인가. 부착·게이트가 이 술어 하나를 지난다 — 「!= 0」을 호출처마다 다시
+        // 쓰면 음수(무제한)의 취급이 조용히 갈린다.
+        //
+        // ⚠ **`!= 0f` 가 아니라 임계 비교다**(리뷰 지적). float 이라 `0.001` 저작이 `!= 0` 을
+        // 통과해 `DefenderHunterTag` 를 붙이는데 반경은 무의미해진다 — 「태그는 붙었는데 아무것도
+        // 감지 못 하는」 적이 생기고, 그건 `DefenderFieldSystem` 의 재빌드 게이트까지 켠다.
+        public const float MinDetectionRange = 0.05f;
+        public bool UsesDetection => detectionRange < 0f || detectionRange >= MinDetectionRange;
+        public bool HasUnlimitedDetection => detectionRange < 0f;
     }
 }

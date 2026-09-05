@@ -37,7 +37,7 @@ flowchart LR
         B1["맵 빌드<br/>GeneratedMap → SimFieldInstaller"]
         B2["엔티티 조립<br/>CreateDefenderEntity / CreateEnemyEntity / SpawnStructureEntities"]
         B3["커맨드<br/>배치 · 퇴근 · 카드 부착 · 액티브 시전"]
-        B4["29 채널 드레인 · 뷰 sync · EndMatch"]
+        B4["30 채널 드레인 · 뷰 sync · EndMatch"]
     end
     subgraph ECS["BattleSimGroup — 시스템 54"]
         CTX["Units · Movement · Combat · Effects"]
@@ -56,7 +56,7 @@ flowchart LR
     B1 --> ECS
     B2 --> ECS
     B3 --> ECS
-    ECS -- "NativeQueue 29" --> B4
+    ECS -- "NativeQueue 30" --> B4
     B4 --> V
     B4 -- "C# event" --> HAND
 ```
@@ -91,7 +91,7 @@ flowchart LR
 | **몸·공간** | footprint → 내접원 반지름 · **배치 층 마스크**(Ground/Path/Air 비트) · 통행 층(순찰용) | 크기 티어 → 반지름 · **통행 층**(Air 면 지상 차단물을 장애물로 보지 않음) · `flightLift`(뷰 전용 높이) |
 | **생존** | 체력 · 사망 각성 보상 · 사망 쿨타임 · 퇴근 쿨타임(사망의 비율) · 보드 상한 | 체력 · 처치 각성 보상 · 안정도 피해(돌격형이 마음에 주는) · 분열(사망 시 자식) |
 | **공격** | 사거리(연속 반지름) · 쿨다운 · 히트 딜레이 · 배치 딜레이 · 대상 수 · 타겟 진영 마스크 · 타겟 통행층 · `targetAllies`(힐러) · **출력 목록**(§1.3) · 투사체 | 공격 방식(None/Melee/Projectile) · 타겟 모드(Nearest/FocusUntilDead) · 교전 이동(Halt/Advance/Pulse) · 타겟 진영/클래스 우선 · 출력 목록 · 투사체 · 어그로 전용 공격 프로파일 |
-| **이동** | 없음(순찰 소환물 예외) | 이동 속도 · 경로 축(적 SO 경로 > 웨이브 컨셉 > 레인 기본) · 방어유닛 사냥(`huntsDefenders`) |
+| **이동** | 없음(순찰 소환물 예외) | 이동 속도 · 경로 축(적 SO 경로 > 웨이브 컨셉 > 레인 기본) · **감지 반경**(`detectionRange`: 0 없음 / >0 반경 / <0 무제한 사냥) |
 | **경제** | 코스트 · 배치 쿨타임 | 웨이브 편성 knob(최소 등장 웨이브 · 웨이브당 상한) |
 | **규칙 슬롯** | 배치 스킬(`OnPlace` 트리거) · 능력 6종(방향 다연발 · 폭탄 투척 · 해저드 캐스트 · 실드 캐스트 · 소환 · 규칙 스킬) | **악몽 메커닉** = 트리거 × 페이로드 목록 — 카드와 **같은 어휘**(§1.10~1.11) |
 | **특수** | 어그로 수용량(가디언 = 존재가 곧 표식) | 보스 위협표 · 사냥꾼 태그 |
@@ -145,7 +145,7 @@ flowchart LR
 
 - **목적지 종류**: 골(여러 개면 전부 소스) · 웨이포인트(경로의 다음 점) · 거점 footprint(가장 가까운 벽면에 도착). 목적지 × **통행 마스크** 조합마다 방향장(flow) + 거리장(dist, 도달불가 표시)을 미리 깐다.
 - **프레임 결정 순서**: 포털 텔레포트 → 셀 산출·골 도달 판정 → 당김장 변위(이동을 대체하지 않는 후처리) → 교전 중이면 교전 이동 정책(Halt/Advance/Pulse) → 스텝 소스 선택(순찰 박스 / 사냥 필드 / 골 필드) → 방향 평활화 → **충돌 trim**(유닛 통행층별 벽 + 동적 장애물) → **분리**(겹침 해소, 별도 패스라 순서 의존 없음).
-- **어그로**: 가디언이 **히트로** 획득(수용량 · 선점 게이트) → 적은 가디언 인접 셀을 추격. 도발은 같은 채널. 사냥꾼(`huntsDefenders`)은 방어유닛 지향 필드를 따르고 골을 지나쳐도 유출하지 않는다. 보스 블링크 목적지 = 밀집 셀 질의(위협표는 누적만, 소비자 없음).
+- **어그로**: 가디언이 **히트로** 획득(수용량 · 선점 게이트) → 적은 가디언 인접 셀을 추격. 도발은 같은 채널. **감지**(`detectionRange != 0`)는 그 아래 층이다 — 반경 안에 «때릴 수 있는» 방어유닛이 있으면 방어유닛 지향 필드를 따른다. 골을 지나쳐도 유출하지 않는 leak-proof 는 **무제한(`< 0`, 보스·보너스) 전용**이고 유한 반경 감지에는 상속되지 않는다(enemy-detection-range 계약 9). 보스 블링크 목적지 = 밀집 셀 질의(위협표는 누적만, 소비자 없음).
 - **골 도달**: 돌격형(마음을 칠 마스크가 없음) = 마음에 안정도 피해 후 소멸(유출) / 공성형 = 살아서 거점을 공격. 도달 판정은 1회 고정.
 - **군집 규칙**: 통과 여유 < 밀어냄 폭이면 교착 — 몸 반지름은 군집 통과로 검산한다(단독 통과 아님).
 
@@ -251,12 +251,12 @@ flowchart LR
 flowchart TD
     L["로비 · LoadoutGate 통과"] --> S["GameManager<br/>EnsureMatchSeed → AssignGimmick"]
     S --> M["bridge.PrepareDraftMap → BuildMapForBattle<br/><b>맵 축 성립</b>"]
-    M --> P["SetPhase(Placement) → bridge.BeginPlacement<br/>큐 29 생성 · InstallSkillLayer · SimEntityId=0<br/><b>트레이 · 코스트 · 드림캐쳐 큐 구성</b>"]
+    M --> P["SetPhase(Placement) → bridge.BeginPlacement<br/>큐 30 생성 · InstallSkillLayer · SimEntityId=0<br/><b>트레이 · 코스트 · 드림캐쳐 큐 구성</b>"]
     P --> B["SetPhase(Battle) → bridge.StartBattle<br/>거점 엔티티 스폰 · 웨이브 플랜 확정 · _running=true"]
     B --> F["프레임 루프 ×180초 (§4)"]
     F --> E{"EndMatch"}
     E -->|"complete · stress_full · submitted"| T["BuildTally → 로거 → Tally → 서버 제출 → Result"]
-    T --> D["TeardownCurrentBattle<br/>필드 3 · 큐 29 · 엔티티 타입별 · 맵"]
+    T --> D["TeardownCurrentBattle<br/>필드 3 · 큐 30 · 엔티티 타입별 · 맵"]
 ```
 
 | 단계 | 진입점 | 세 축에 일어나는 일 |
@@ -409,14 +409,14 @@ flowchart TD
 
 ---
 
-## 6. 채널 지도 — 29 큐가 무엇을 나르나
+## 6. 채널 지도 — 30 큐가 무엇을 나르나
 
 전부 `BattleBridge.EnsureQueriesAndQueues` 가 만들고(3점 세트: Dispose → new → 싱글턴 엔티티) `TeardownCurrentBattle` 이 지운다. 단일 스트림으로 합치지 않는다(`battle-sim-extraction` 계약: 내부 phase 큐 / semantic / presentation 3분리).
 
 | 방향 | 채널 | 생산 맥락 → 소비 | 성격 |
 |---|---|---|---|
-| **ECS → 브리지** (17) | `EnemyKilled` · `GoalReached` · `DefenderDeath` · `DamageNumber` · `HealApplied` · `ShieldBreak` | Units → 점수/게이지/뷰/페이로드 | 판 규칙 + 연출 |
-| | `UnitAttackVisual` · `ProjectileHit` · `KnockupVisual` · `DcTriggerFired` · `AttackOutputLog` | Combat → 뷰/로그 | **연출·로그 전용** (`DcTriggerFired` 는 방어유닛 host 만 — 적 카드 연출 오발 방지) |
+| **ECS → 브리지** (18) | `EnemyKilled` · `GoalReached` · `DefenderDeath` · `DamageNumber` · `HealApplied` · `ShieldBreak` | Units → 점수/게이지/뷰/페이로드 | 판 규칙 + 연출 |
+| | `UnitAttackVisual` · `ProjectileHit` · `KnockupVisual` · `DcTriggerFired` · `AttackOutputLog` · `Detection` | Combat → 뷰/로그 | **연출·로그 전용** (`DcTriggerFired` 는 방어유닛 host 만 — 적 카드 연출 오발 방지. `Detection` 은 감지 0→1 전이 1회이고 페이로드의 `targetSimId` 는 **트레이스 전용** — 화면이 그 대상을 가리키면 실측 5.0% 에서 거짓말이 된다) |
 | | `ShieldGranted` · `BossLeapVisual` · `UltimateLeapVisual` | Skills/Combat → 뷰 오버라이드 | 시퀀스는 sim 이 소유, 뷰는 예고 시간을 **복제하지 않는다** |
 | | `HazardRuntime` · `HazardDestroyed` · `GoalCollapsed` | Effects/Units → 로그/프랍 | `GoalCollapsed` 는 **생산자 0**(휴면 — 붕괴는 등록부 폴링) |
 | **ECS → 브리지 실행 요청** (2) | `HazardSpawnRequests` · `MeteorBarrageRequests` | Effects/Combat/Skills → 브리지가 SO 조회 + 스폰 | sim 은 「무엇을」만, 실체화는 브리지 |
@@ -494,7 +494,7 @@ flowchart TD
 | `object-pipeline-map.md` 「스킬 해저드 — Tornado/Meteor/Portal」 | `MeteorPending` · `MeteorResolutionSystem` · `MeteorBurstEventsSingleton` · `ApplyTornado/ApplyMeteor/ApplyPortal` | 전부 은퇴. 액티브는 concrete(`PullFieldSkill`/`PortalSkill`/`TileMeteorSkill`) → Immediate seam |
 | `object-pipeline-map.md` 거점 표 | `Data/MapGrid/MapDocument.cs` `structures[]` · `MapDocument.bonusSpawns` | `MapDocument` 클래스 **없음**. 저작은 `StructureMarker`/`BonusSpawnMarker` 프랍, 런타임은 `GeneratedMap.structures/bonusSpawns` |
 | `CLAUDE.md` `GoalCollapsedEventsSingleton` 설명 | 「공성 게이트가 매 프레임 `GoalPoint` 쿼리로 판정」 | `GoalPoint` 코드 0건. 골 = `GoalTowerTag` 거점 엔티티, 붕괴 관측 = `_structureRegistry` 폴링. 채널 생산자 0 |
-| `../spec/battle-sim-extraction/README.md` | 「28채널」 | 29 (`SkillFiredEventsSingleton` 추가) |
+| `../spec/battle-sim-extraction/README.md` | 「28채널」 | 30 (`SkillFiredEventsSingleton` · `DetectionEventsSingleton` 추가) |
 
 ---
 

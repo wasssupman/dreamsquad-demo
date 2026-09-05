@@ -25,6 +25,11 @@ namespace Wassup.Presentation
         [SerializeField] private GameObject shieldGrantedPrefab;
         [Tooltip("실드 부여 이펙트 스케일(타일 1 유닛 기준)")]
         [SerializeField] private float shieldGrantedScale = 0.7f;
+        // enemy-detection-range unit 5 — 「발견」 표식. **미할당이 정상 상태다**(에러 로그를 내지
+        // 않는다) — 이 unit 의 검증 질문은 「사건이 채널을 타고 화면까지 도달하는가」이고,
+        // 전용 VFX 저작은 후속이다. 다른 채널이 미할당을 에러로 보는 것과 다른 점이며 의도다.
+        [SerializeField] private GameObject detectionMarkPrefab;
+        [SerializeField] private float detectionMarkLift = 0.9f;
 
         [Header("card-fly-to-target-absorb — 카드 흡수 임팩트")]
         [Tooltip("카드가 유닛/타일에 내리찍힐 때 터지는 이펙트(GA vfx_Hit_Rock03: 코어 플래시+충격파 링+파편). Null → ring+burst 폴백.")]
@@ -185,6 +190,22 @@ namespace Wassup.Presentation
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(healAppliedPrefab, pos, Quaternion.identity, transform);
             Destroy(go, 1.1f);
+        }
+
+        // enemy-detection-range unit 5 — 적이 방어유닛을 **발견한 순간** 머리 위 표식 1회.
+        //
+        // ⚠ **발견한 적에게만 붙는다. 대상을 가리키지 않는다** — 감지는 직선 최근접을 고르는데
+        // 몸은 공용 사냥판을 따라가 실측 5.0% 에서 다른 방어유닛에게 간다. 대상을 하이라이트하면
+        // 그 5.0% 에서 화면이 규칙을 **틀리게 가르친다**(`AttackReach` 헤더의 배치 프리뷰 경고와
+        // 같은 부류). 대상을 가리키려면 이동이 먼저 그 대상을 향해야 하고, 그건 B안 전환이다.
+        public void SpawnDetectionMark(Vector3 worldPos)
+        {
+            if (detectionMarkPrefab == null) return;   // 미할당 = 정상(위 필드 주석)
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            var pos = new Vector3(worldPos.x, worldPos.y + detectionMarkLift, worldPos.z);
+            var go = Instantiate(detectionMarkPrefab, pos, Quaternion.identity, transform);
+            float lifetime = ConfigureOneShot(go);
+            Destroy(go, lifetime);
         }
 
         // shield-guardian-defender unit 4 — 실드 부여 원샷. 벤더 프리팹은 루프형이라

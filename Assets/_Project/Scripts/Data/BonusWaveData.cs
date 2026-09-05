@@ -70,10 +70,13 @@ namespace Wassup.Data
                     $"[BonusWaveData] killThreshold({killThreshold}) 는 enemyCount({enemyCount}) 보다 커야 한다 — " +
                     "보너스 웨이브가 자기 자신을 재발화한다(README 계약 12).", this);
 
-            if (enemyUnit != null && !enemyUnit.huntsDefenders)
+            // enemy-detection-range unit 1 — 구 `huntsDefenders`(bool)가 `detectionRange` 로
+            // 흡수됐다. 보너스 적이 요구하는 것은 **무제한 사냥**(음수)이다 — 유한 반경을
+            // 저작하면 반경 밖 방어유닛은 못 찾아 「거점으로 직행」이 부분적으로 되살아난다.
+            if (enemyUnit != null && !enemyUnit.HasUnlimitedDetection)
                 Debug.LogWarning(
-                    "[BonusWaveData] enemyUnit.huntsDefenders 가 false 다 — 보너스 적이 방어유닛을 " +
-                    "사냥하지 않고 거점으로 직행한다.", this);
+                    $"[BonusWaveData] enemyUnit.detectionRange({enemyUnit.detectionRange}) 가 음수(무제한)가 " +
+                    "아니다 — 보너스 적이 방어유닛을 끝까지 사냥하지 않고 거점으로 향할 수 있다.", this);
         }
 #endif
     }

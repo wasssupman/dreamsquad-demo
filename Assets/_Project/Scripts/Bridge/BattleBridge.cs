@@ -537,6 +537,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
         // shield-guardian-defender unit 4 — Effects→Presentation 실드 부여 원샷 VFX 채널.
         private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldGrantedEventQueue;
+        // enemy-detection-range unit 5 — Combat→Presentation 발견 사건 채널(30번째).
+        private NativeQueue<Wassup.Battle.Combat.DetectionEvent> _detectionEventQueue;
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
@@ -914,6 +916,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.DetectionEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.DamageNumberEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.EnemyKilledEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
@@ -970,6 +973,7 @@ namespace Wassup.Bridge
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Dispose();
+            if (_detectionEventQueue.IsCreated) _detectionEventQueue.Dispose();
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
@@ -1611,6 +1615,9 @@ namespace Wassup.Bridge
             // `_running` 아래 드레인이라 큐에 남아, 여기서 **전투 시작 순간 일제히 터진다**.
             // 실드는 이미 붙어 있으므로 연출만 뒤늦게 오는 것이고, 그건 사건이 아니라 잔상이다.
             if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Clear();
+            // 같은 이유로 발견 사건도 비운다 — 배치 페이즈에 쌓인 표식이 전투 시작에 일제히 뜨면
+            // 그건 사건이 아니라 잔상이다.
+            if (_detectionEventQueue.IsCreated) _detectionEventQueue.Clear();
 
             _pending.Clear();
             ResetBonusWaveState();   // bonus-wave-pull unit 4 — 두 리셋 지점 양쪽에 있어야 한다
@@ -1839,6 +1846,13 @@ namespace Wassup.Bridge
             _shieldGrantedEventQueue = new NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent>(Allocator.Persistent);
             var shieldGrantedSingleton = _em.CreateEntity();
             _em.AddComponentData(shieldGrantedSingleton, new Wassup.Battle.Effects.ShieldGrantedEventsSingleton { queue = _shieldGrantedEventQueue });
+
+            // enemy-detection-range unit 5 — Combat→Presentation 발견 사건 채널.
+            // DetectionSystem 이 `hunting` 0→1 전이마다 1건 enqueue.
+            if (_detectionEventQueue.IsCreated) _detectionEventQueue.Dispose();
+            _detectionEventQueue = new NativeQueue<Wassup.Battle.Combat.DetectionEvent>(Allocator.Persistent);
+            var detectionSingleton = _em.CreateEntity();
+            _em.AddComponentData(detectionSingleton, new Wassup.Battle.Combat.DetectionEventsSingleton { queue = _detectionEventQueue });
 
             // Units->Presentation damage-number channel. DamageApplicationSystem enqueues
             // one event per enemy (AttackUnitTag) whose IncomingDamage was applied.
@@ -3143,6 +3157,7 @@ namespace Wassup.Bridge
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
+            DrainDetectionEvents();   // enemy-detection-range unit 5
             DrainDamageNumberEvents();
             // DrainEnemyKilledEvents 는 이 자리에서 Update 최상단(QueueDueWaves 앞)으로 옮겼다
             // — elite-enemy-tier unit 5. 되돌리면 분열이 웨이브 회전을 앞당긴다.
@@ -5053,6 +5068,28 @@ namespace Wassup.Bridge
                 Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.ShieldGranted,
                     Mathf.RoundToInt(evt.position.x * 100f), Mathf.RoundToInt(evt.position.z * 100f));
                 vfxSpawner.SpawnShieldGranted(new Vector3(evt.position.x, evt.position.y, evt.position.z));
+            }
+        }
+
+        // enemy-detection-range unit 5 — **발견 사건.** DetectionSystem 이 `hunting` 0→1 전이마다
+        // 1건 enqueue → 발견한 적 머리 위에 표식 1회.
+        //
+        // ⚠ **로깅이 첫 축이다**(CLAUDE.md). 트레이스를 표식보다 **먼저** 기록한다 — 연출이
+        // 실패해도(프리젠터 부재) 사건은 남아야 한다. 그래서 `vfxSpawner == null` 조기 반환을
+        // 쓰지 않고 루프 안에서 표식만 건너뛴다(다른 채널과 다른 점이며 의도다).
+        //
+        // ⚠ **표식은 «발견한 쪽»에만 붙는다. 대상을 가리키지 않는다.** `targetSimId` 는 트레이스
+        // 전용이다 — 감지는 직선 최근접을 고르는데 몸은 공용 사냥판을 따라가 실측 5.0% 에서 다른
+        // 방어유닛에게 간다. 대상을 가리키면 그 5.0% 에서 화면이 규칙을 틀리게 가르친다.
+        private void DrainDetectionEvents()
+        {
+            if (!_detectionEventQueue.IsCreated) return;
+            while (_detectionEventQueue.TryDequeue(out var evt))
+            {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.Detection,
+                    evt.enemySimId, evt.targetSimId);
+                if (vfxSpawner == null) continue;
+                vfxSpawner.SpawnDetectionMark(new Vector3(evt.enemyPos.x, evt.enemyPos.y, evt.enemyPos.z));
             }
         }
 
@@ -10560,8 +10597,25 @@ namespace Wassup.Bridge
             // BakeNightmareMechanics 안(BossTag 옆)에 두면 그 메서드가 nightmareMechanics 가
             // 비었을 때 조기 반환하므로 **메커닉 없는 사냥꾼에게 태그가 안 붙는다**. 보스는
             // 무회귀이고 테스트도 전부 초록인 채 사냥만 조용히 죽는다.
-            if (unitType.tier == Wassup.Data.EnemyTier.Boss || unitType.huntsDefenders)
+            //
+            // enemy-detection-range unit 1 — 조건이 `tier == Boss || huntsDefenders` 에서
+            // **감지 저작 하나**로 바뀌었다. 티어는 더 이상 사냥을 주지 않는다(보스 3종은
+            // `detectionRange = -1` 을 명시 저작한다). 태그의 뜻도 「방어유닛을 사냥한다」에서
+            // **「감지를 쓴다」**로 넓어졌다 — `DefenderFieldSystem` 은 코드 변경 0 이다.
+            if (unitType.UsesDetection)
+            {
                 _em.AddComponent<Wassup.Battle.Combat.DefenderHunterTag>(entity);
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.DetectionRange
+                {
+                    tiles = unitType.detectionRange,
+                });
+                // unit 2 — 값 컴포넌트와 **같은 자리**에서 상태도 붙인다. 매 프레임 값만 write 하고
+                // 핫패스에서 구조 변경을 하지 않는다(`enemy-hunter-targeting` 계약 6 의 교훈).
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.DetectedTarget
+                {
+                    target = Entity.Null,
+                });
+            }
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).

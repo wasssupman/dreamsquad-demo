@@ -116,13 +116,15 @@ namespace Wassup.Tests.EditMode
         }
 
         // 메커닉이 **없는** 유닛 — 위 MakeUnit 과 갈리는 지점이 이 테스트의 전부다.
-        private static AttackUnitData MakeBareUnit(EnemyTier tier, bool hunts)
+        // enemy-detection-range unit 1 — 구 `hunts`(bool)가 `detectionRange` 로 흡수됐다.
+        // 음수 = 무제한 사냥(구 huntsDefenders = true), 0 = 감지 안 함.
+        private static AttackUnitData MakeBareUnit(EnemyTier tier, float detectionRange)
         {
             var u = ScriptableObject.CreateInstance<AttackUnitData>();
-            u.displayName = $"BareUnit_{tier}_{hunts}";
+            u.displayName = $"BareUnit_{tier}_{detectionRange}";
             u.health = 100f;
             u.tier = tier;
-            u.huntsDefenders = hunts;
+            u.detectionRange = detectionRange;
             u.nightmareMechanics = null;              // ★조기 반환 경로
             // 뷰 풀이 `_MainTex` 를 세팅하므로 그 프로퍼티가 있는 셰이더여야 한다
             // (`Unlit/Color` 는 없어서 에러 로그가 나고 테스트가 그걸 미처리로 잡는다).
@@ -131,15 +133,19 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void 메커닉_없는_사냥꾼도_DefenderHunterTag_를_받는다()
+        public void 메커닉_없는_감지적도_DefenderHunterTag_를_받는다()
         {
-            var unitType = MakeBareUnit(EnemyTier.Normal, hunts: true);
+            var unitType = MakeBareUnit(EnemyTier.Normal, detectionRange: -1f);
             var e = InvokeCreateEnemy(unitType);
 
             Assert.AreNotEqual(Entity.Null, e, "적 생성에 실패했다");
             Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
-                "메커닉이 없는 사냥꾼에게 태그가 안 붙었다 — 부착 지점이 " +
+                "메커닉이 없는 감지 적에게 태그가 안 붙었다 — 부착 지점이 " +
                 "BakeNightmareMechanics 안으로 들어갔다(그 메서드는 메커닉이 비면 조기 반환한다)");
+            Assert.IsTrue(_world.EntityManager.HasComponent<DetectionRange>(e),
+                "DetectionRange 가 안 구워졌다 — 태그와 값은 같은 자리에서 함께 붙어야 한다");
+            Assert.IsTrue(_world.EntityManager.GetComponentData<DetectionRange>(e).Unlimited,
+                "음수 저작이 무제한으로 안 읽혔다");
             Assert.IsFalse(_world.EntityManager.HasComponent<BossTag>(e),
                 "Normal 인데 BossTag 가 붙었다");
 
@@ -147,27 +153,56 @@ namespace Wassup.Tests.EditMode
             Object.DestroyImmediate(unitType);
         }
 
+        // enemy-detection-range unit 1 — **뒤집힌 단언이다.** 예전엔 「보스는 저작 없이도 사냥
+        // 태그를 받는다」(부착 조건 `tier == Boss || huntsDefenders`)를 지켰다. 이제 티어는
+        // 사냥을 주지 않는다 — 그래야 「저작을 안 하면 티어가 대신 말한다」는 숨은 규칙이
+        // 안 생기고 축이 하나로 남는다. 보스 3종은 `.asset` 에 `-1` 을 명시 저작한다.
         [Test]
-        public void 메커닉_없는_보스도_사냥_태그를_받는다()
+        public void 보스라도_감지저작이_없으면_태그가_없다()
         {
-            var unitType = MakeBareUnit(EnemyTier.Boss, hunts: false);
+            var unitType = MakeBareUnit(EnemyTier.Boss, detectionRange: 0f);
             var e = InvokeCreateEnemy(unitType);
 
-            Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
-                "보스가 사냥 태그를 못 받았다 — 부착 조건이 (tier == Boss || huntsDefenders) 여야 한다");
+            Assert.IsFalse(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
+                "티어가 사냥을 주고 있다 — enemy-detection-range unit 1 은 그 폴백을 없앴다. " +
+                "부착 조건은 detectionRange != 0 하나여야 한다");
+            Assert.IsFalse(_world.EntityManager.HasComponent<DetectionRange>(e),
+                "감지 0 인데 DetectionRange 가 붙었다");
+            // ⚠ 여기서 `BossTag` 를 단언하지 않는다. `MakeBareUnit` 은 `nightmareMechanics = null`
+            // 이고 `BakeNightmareMechanics` 는 그때 **조기 반환**한다 — 보스라도 BossTag 가 안 붙는
+            // 것이 이 픽스처의 기존 동작이고(이 파일 위쪽 주석이 그 조기 반환을 설명한다),
+            // 티어 특권은 이 테스트의 주제가 아니다. 주제는 「티어가 사냥을 주지 않는다」 하나다.
 
             Object.DestroyImmediate(unitType.visualMaterial);
             Object.DestroyImmediate(unitType);
         }
 
         [Test]
-        public void 사냥꾼도_보스도_아니면_태그가_없다()
+        public void 감지저작이_없으면_태그도_값도_없다()
         {
-            var unitType = MakeBareUnit(EnemyTier.Normal, hunts: false);
+            var unitType = MakeBareUnit(EnemyTier.Normal, detectionRange: 0f);
             var e = InvokeCreateEnemy(unitType);
 
             Assert.IsFalse(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
                 "일반 적에 사냥 태그가 붙었다 — 적 전원이 방어유닛을 쫓는다");
+            Assert.IsFalse(_world.EntityManager.HasComponent<DetectionRange>(e),
+                "감지 0 인데 DetectionRange 가 붙었다 — 부재가 곧 «오늘과 같은 경로» 다");
+
+            Object.DestroyImmediate(unitType.visualMaterial);
+            Object.DestroyImmediate(unitType);
+        }
+
+        // 유한 반경도 태그를 받는다 — 무제한만의 성질이 아니라는 것을 고정한다.
+        [Test]
+        public void 유한_감지반경도_태그와_값을_받는다()
+        {
+            var unitType = MakeBareUnit(EnemyTier.Normal, detectionRange: 3f);
+            var e = InvokeCreateEnemy(unitType);
+
+            Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e));
+            var dr = _world.EntityManager.GetComponentData<DetectionRange>(e);
+            Assert.AreEqual(3f, dr.tiles, 1e-4f);
+            Assert.IsFalse(dr.Unlimited, "유한 반경이 무제한으로 읽혔다");
 
             Object.DestroyImmediate(unitType.visualMaterial);
             Object.DestroyImmediate(unitType);

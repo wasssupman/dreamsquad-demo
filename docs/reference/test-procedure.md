@@ -67,6 +67,18 @@ atk→`outputs[].magnitude` · attackCooldown · cost · DC 의 percent·magnitu
 모범 사례: `EditModeAssets/WaveKillBudgetPinTests.cs` — 리터럴 pin 이 밸런싱 머지에서
 깨진 사고와 상대 단언으로의 전환 근거가 헤더 주석에 남아 있다.
 
+## 새 테스트를 넣었으면 **총계를 확인한다**
+
+`run_tests` 결과의 `total` 이 **안 움직이면 그 테스트는 안 돈 것**이다. 초록은 「통과」가 아니라
+「실행된 것 중 실패가 없다」는 뜻이라, 파일이 컴파일에서 빠지면 **더 초록해 보인다.**
+
+실제 사고(2026-09-05, enemy-detection-range): `EditModeAssets` 에 새 테스트 4건을 넣었는데
+`using` 하나가 빠져 어셈블리가 통째로 컴파일에 실패했다. 콘솔의 `error CS0103` 은 이후 로그에
+밀려 있었고, **총계가 2740 그대로**인 것이 유일한 신호였다. 고친 뒤 2747.
+
+- 넣은 테스트 수만큼 `total` 이 늘었는지 매번 본다(가장 싼 검산이다).
+- 안 늘었으면 **먼저 `read_console` 로 `error CS` 를 찾는다** — 테스트 실패가 아니라 컴파일 실패다.
+
 ## 관련 문서
 
 - [`lessons/01-unity-mcp-operation.md`](lessons/01-unity-mcp-operation.md) — `run_tests` MCP 운용 함정

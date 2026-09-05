@@ -109,6 +109,13 @@ namespace Wassup.Tests.EditMode
             // 그러면 「실제 ECS 월드」인데 충돌 경로만 프로덕션과 다른 테스트가 된다.
             _em.AddComponentData(e, new PathFollowState { speed = 2f, radius = 0.25f });
             _em.AddComponent<DefenderHunterTag>(e);
+            // enemy-detection-range unit 3 — **사냥 게이트가 태그에서 감지로 옮겨갔다.**
+            // 태그만으로는 더 이상 `hunting` 이 서지 않는다(`MovementSystem` 은 이제
+            // `DetectedTarget.hunting` 을 읽는다). 이 픽스처가 고정하려는 것은 **이동 보정의
+            // 게이트**이지 감지 판정이 아니므로, 「지금 사냥 중」을 새 어휘로 그대로 표현한다.
+            // `DetectionRange` 는 무제한(-1) — 그래야 leak-proof 가 옛 헌터와 같이 걸린다.
+            _em.AddComponentData(e, new DetectionRange { tiles = -1f });
+            _em.AddComponentData(e, new DetectedTarget { target = Entity.Null, hunting = 1 });
             // FSM 이 「사거리 안 대상 없음」이라고 방금 말한 상태.
             _em.AddComponentData(e, new EnemyAiState { value = AiState.Marching });
             if (withAttack) _em.AddComponentData(e, new AttackState { range = 1f });
