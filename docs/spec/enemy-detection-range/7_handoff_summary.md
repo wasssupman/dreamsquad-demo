@@ -2,10 +2,10 @@
 
 ## Commit
 
-- (계측기) `feat(enemy-detection-range): unit 0 — 감지 도입 전 기준선 계측기`
-- (구현) `feat(enemy-detection-range): units 1~6 — 적 감지 반경`
+- `4f27b542` — feat(enemy-detection-range): unit 0 — 감지 도입 전 기준선 계측기
+- `032033f1` — feat(enemy-detection-range): units 1~6 — 적 감지 반경
 
-> 해시는 커밋 후 채운다.
+두 커밋 모두 **미푸시**다(푸시는 사용자 승인제).
 
 ## Implemented
 
