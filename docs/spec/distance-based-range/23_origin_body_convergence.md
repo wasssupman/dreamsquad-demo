@@ -144,8 +144,49 @@
 | OnShieldBreak / OnDamagedN | host 자신 | `DamageApplicationSystem:395·318` |
 
 → 「드레인 시점에 시전자가 없어 스냅샷이 필요하다」는 우려는 **생산자 쪽에서 이미 해소**된다.
-`SkillFiredEvent` 에 **`OriginBodyRadius` 한 필드**를 더하고 9자리 생산자가 채우면 된다
-(나머지 생산자 14곳 — 착탄점·해저드·착지점 — 은 기본 0.5 유지).
+
+### ⚠ 배선 정정 — 반경은 «자리와 짝»으로 다닌다 (필드 하나로는 틀린다)
+
+초안의 `CasterRef.BodyRadius` **하나로는 시체폭발이 틀린 값을 쓴다.**
+`Card_CorpseBurst`(OnKill)는 `Caster = killerSource`(**킬러**)인데 폭심은
+`TargetPosition = 죽은 적의 자리`다(`DamageApplicationSystem.cs:481-487`). 시전자 몸을 쓰면
+**방어유닛(1.0)의 몸으로 적 시체 위 폭발 반경을 정하게 된다.**
+
+`DeathSiteBlastSkill` 헤더가 이미 그 함정을 적어 뒀다 — *「호출처가 둘이고 **자리의 주인이
+다르다**. `OnKill` 은 「내가 죽인 자리」, `OnDeath` 는 「내가 죽은 자리」다. **누구의 자리인가는
+감지자가 정한다.**」*
+
+**위치 필드가 둘이므로 반경도 둘이다. 그 이상은 필요 없다:**
+
+```csharp
+// SkillFiredEvent — 반경은 «자리 바로 옆»에. 「반경은 자리와 함께 온다」가 불변식.
+public float3 FiredPosition;
+public float  CasterBodyRadius;   // FiredPosition/Caster 의 몸. 0 = 안 실었다
+public float3 TargetPosition;
+public float  EventBodyRadius;    // TargetPosition 주인의 몸. 0 = 그 자리는 «칸» 이다
+```
+
+| 소비 | 쓰는 반경 |
+|---|---|
+| 자기중심 질의(도발·CC·DoT·오라·실드부여·수면) | `CasterBodyRadius` |
+| 작별선물·재앙의심장(OnDeath) | 둘이 같은 값(`deathPos`) — 어느 쪽이든 동일 |
+| **시체폭발·잿불(OnKill)** | **`EventBodyRadius` = 죽은 «적» 의 몸.** 생산자가 `_transformLookup[entity]` 를 읽는 그 줄에서 같이 읽는다(그 시점에 피해자는 아직 살아 있다) |
+
+### 착탄 폭발 구분자 — **불필요. 규칙이 자동 해소한다**
+
+**원점의 정체를 아는 주체 = 그 자리를 써 넣는 자.** 오늘 모든 생산자가 이미 자기 자리를
+써 넣고, 그때 트리거 주체가 누군지 안다.
+
+| 생산자 | 자리 | 트리거된 대상 | 실을 반경 |
+|---|---|---|---|
+| `AttackSystem` 폭탄 분기 | 탄도 착탄 셀(**날아간 곳**) | **없음** — 주체가 아니라 목적지 | **0 = 칸 반폭(종전)** |
+| `SelfAreaBlastSkill:26` | `ctx.Position(caster.Unit)` | 시전자 | `caster.BodyRadius` |
+| `DeathSiteBlastSkill:36` | `p.EventPosition` | 죽은 적 / 죽은 자신 | `p.EventBodyRadius` |
+
+**수류탄에는 트리거된 대상이 없다** — 착탄점은 「던져서 도달한 좌표」지 누군가의 몸이 아니다.
+안 실으면 되고 **기본 0 이 곧 종전 동작**이다(`ProjectileSpawnRequest` 의 「Defaults 0 = legacy」
+선례 7건과 같은 형태). intent 필드로도 skillId 로도 **가를 필요가 없다** — 가름은 생산자 안에서
+이미 끝나 있다. **헬퍼·팩토리 금지**(스폰 지점 5곳, 제약 「생성 패턴」).
 
 ### ⚠ 첫 «음수» Δ 가 여기서 나온다
 
@@ -158,3 +199,18 @@ N=1 기준 **1.5 → 1.25 · 면적 −31%**. 「자기중심 광역은 전부 �
 폭심이 적이므로 반경이 **웨이브 구성(적 티어 분포)에 따라 판마다 달라진다.** 프리뷰로 그릴 수 없다.
 → `DcRangeCatalog.cs:76-79` 가 `OnKill` 을 **fail-closed(None)** 로 두는 현행 판단이 **여전히 옳다.**
 오늘도 프리뷰가 없으므로 **회귀 아님**(플레이어가 잃는 것이 없다).
+
+## ⛔ 착수 전 사용자 결정 1건 — 퇴근 운석의 자리
+
+`Card_SeveranceMeteor`(OnRetire)의 폭심을 코드가 **명시적으로 「칸」이라고 부른다**
+(`BattleBridge.cs:4384` — *「비워진 칸 중심 — 슬롯 불변」*).
+
+규칙의 트리거 주체는 **퇴근한 유닛**이지만 기록된 것은 **그 유닛이 비운 칸**이라, 둘 다
+규칙에 부합하게 읽힌다. 배스티온(몸 1.5)이 퇴근하면 운석이 +1.0 넓어지나, 아니면 칸 0.5 인가.
+
+- **ⓐ 유닛의 몸** — 「비워진 칸」은 실제로 배스티온이면 **3×2 영역**이다. 큰 유닛이 비운 큰
+  자리에 큰 운석이 떨어지는 것이 기하적으로도 맞고 화면에서도 읽힌다. (권고)
+- **ⓑ 칸** — 유닛은 죽은 게 아니라 **걸어 나갔다**. 시체가 없으므로 몸도 없다.
+
+어느 쪽이든 생산자 **한 줄**이다(`impactWorld` 를 계산하는 자리에서 몸도 같이 잡는다).
+**23b 착수 전에 답이 필요하다.**
