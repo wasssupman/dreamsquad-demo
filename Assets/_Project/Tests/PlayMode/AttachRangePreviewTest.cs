@@ -10,6 +10,7 @@ using Unity.Transforms;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Bridge;
+using Wassup.Skills;   // RangeMetric — DcRangeSpec 이 형을 필수 인자로 받는다(unit 23a)
 using Wassup.Data;
 
 namespace Wassup.Tests.PlayMode
@@ -51,7 +52,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.TryGetDefenderAt(cell, out var host), "host entity");
             yield return null;
 
-            var spec = new DcRangeSpec(DcRangeShape.Circle, 1.5f);   // cornered_burst 류: 1 + 칸 반폭
+            var spec = new DcRangeSpec(DcRangeShape.Circle, 1.5f, RangeMetric.CellArea);   // cornered_burst 류: 1 + 칸 반폭
             var style = new RangeRingStyle(Color.cyan, 0.4f, 0.9f);
             bridge.SetAttachPreview(host, spec, style);
             yield return null; yield return null;
@@ -107,7 +108,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(ring.activeSelf, "비공간 spec 은 링을 지우지 않는다");
             Assert.AreEqual(placementRadius, sr.sharedMaterial.GetFloat("_Range"), 1e-4f, "비공간 spec 은 반경을 건드리지 않는다");
             // ③ Placement 소유 중 — 양보.
-            bridge.SetAttachPreview(host, new DcRangeSpec(DcRangeShape.Circle, 1.5f), style);
+            bridge.SetAttachPreview(host, new DcRangeSpec(DcRangeShape.Circle, 1.5f, RangeMetric.CellArea), style);
             yield return null;
             Assert.AreEqual(placementRadius, sr.sharedMaterial.GetFloat("_Range"), 1e-4f, "Placement 소유 중엔 프리뷰가 양보한다");
             // Clear(비소유자) 도 배치 링을 지우지 못한다.
@@ -117,7 +118,7 @@ namespace Wassup.Tests.PlayMode
 
             // 배치가 반납하면 프리뷰가 채널을 얻는다.
             bridge.ClearPlacementRange();
-            bridge.SetAttachPreview(host, new DcRangeSpec(DcRangeShape.Circle, 1.5f), style);
+            bridge.SetAttachPreview(host, new DcRangeSpec(DcRangeShape.Circle, 1.5f, RangeMetric.CellArea), style);
             yield return null;
             Assert.IsTrue(ring.activeSelf);
             Assert.AreEqual(1.5f, sr.sharedMaterial.GetFloat("_Range"), 1e-3f, "반납 뒤엔 프리뷰 반경");

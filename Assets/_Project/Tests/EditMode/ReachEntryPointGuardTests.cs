@@ -195,7 +195,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void PublicReachEntryPoints_AreExactlyTheKnownSet()
         {
-            var src = File.ReadAllText(Path.Combine(SkillsRoot, "SkillMath.cs"));
+            var src = Read("Skills", "SkillMath.cs");
             var found = Regex.Matches(src, @"public\s+static\s+bool\s+(Reach\w*)\s*\(")
                              .Select(m => m.Groups[1].Value).OrderBy(x => x).ToArray();
             var expected = new[] { "ReachFromCell", "ReachFromImpact", "ReachFromUnit", "ReachWithOrigin" };

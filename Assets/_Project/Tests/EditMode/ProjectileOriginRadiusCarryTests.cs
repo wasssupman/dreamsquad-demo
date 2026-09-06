@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.Data;
 using Wassup.Bridge;
 
 namespace Wassup.Tests.EditMode
@@ -26,6 +27,7 @@ namespace Wassup.Tests.EditMode
         private World _world;
         private GameObject _go;
         private BattleBridge _bridge;
+        private ProjectileData _projData;
 
         [SetUp]
         public void SetUp()
@@ -39,18 +41,21 @@ namespace Wassup.Tests.EditMode
             SetField(_bridge, "_em", _world.EntityManager);
 
             // `SpawnProjectile` 이 `_projectileDataByIndex[req.dataIndex]` 를 읽는다.
-            // 탄 SO 는 이 테스트의 관심사가 아니라 null 한 칸이면 충분하다(코드가 null 을 상정한다).
+            // ⚠ **null 로는 부족하다** — `BallisticArcToPoint` 분기가 `projData.minFlightTime` 을
+            // 역참조한다(`BattleBridge:5614`). 실제 인스턴스를 준다(값은 이 테스트의 관심사가 아니다).
+            _projData = ScriptableObject.CreateInstance<ProjectileData>();
             var list = (List<ProjectileData>)typeof(BattleBridge)
                 .GetField("_projectileDataByIndex", BindingFlags.NonPublic | BindingFlags.Instance)
                 .GetValue(_bridge);
             list.Clear();
-            list.Add(null);
+            list.Add(_projData);
         }
 
         [TearDown]
         public void TearDown()
         {
             if (_go != null) Object.DestroyImmediate(_go);
+            if (_projData != null) Object.DestroyImmediate(_projData);
             if (_world != null && _world.IsCreated) _world.Dispose();
         }
 
