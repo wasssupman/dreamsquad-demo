@@ -18,7 +18,11 @@ namespace Wassup.Battle.Combat
     // ⚠ **감지는 이동판보다 «좁다».** 여기는 legal 필터(`targetMask`·통행층·`classMask`)를 지나는데
     // 이동을 만드는 `DefenderFieldSystem` 의 소스 수집은 faction 필터 하나뿐이다. **같지 않은 것이
     // 정상**이고 그 차이가 곧 「감지 대상 ≠ 이동 도착지」다. 두 술어를 억지로 맞추려
-    // 하지 말 것 — 맞추려면 `DefenderFieldSystem` 을 적별로 나눠야 하고 그게 B안이다.
+    // 하지 말 것 — 맞추려면 `DefenderFieldSystem` 을 적별로 나눠야 하고 그게 B안이었다.
+    // ✅ **unit 8 이 «유한 반경» 한정으로 그 B안을 채택했다** — 다만 공용 필드를 나누는 대신
+    // 적별 **대상 지향 추격판**을 굽는다(`DetectionChaseDist`/`Flow`). 그래서 유한 감지에서는
+    // 위 5.0% 가 **0** 이 됐고, 덤으로 「내 통행 층으로」가 성립해 비행이 편입됐다(계약 13).
+    // 무제한 감지는 계속 공용 사냥판을 탄다 — 그쪽 질문이 「아무 방어유닛이나」라서 맞는 답이다.
     //
     // **실측 5.0%**(1978 표본 중 99건, `Vanguard`·`Tanker` 감지 ON 상태의 재측정). 그중 도착지가
     // 「이 적이 못 때리는」 방어유닛인 경우는 **0건**이라 「달려는 가는데 피해 0」은 안 난다.
@@ -61,6 +65,17 @@ namespace Wassup.Battle.Combat
         // 표식이 다시 뜨면 안 된다. 두 값을 따로 튜닝하려면 이 관계를 먼저 깨야 한다.
         public const float MarkCooldownSeconds = 6f;
 
+        // unit 8 — 「그 적에게 갈 수 있나」를 몇 명까지 물어보나.
+        //
+        // 최근접 후보가 도달 불가일 때 **그 자리에서 포기하면** 뒤에 갈 수 있는 후보가 있어도
+        // 감지가 안 걸린다(벽 너머 방어유닛이 가까이 있으면 그 뒤 레인의 유닛을 영영 못 본다).
+        // 반대로 후보 전부에 BFS 를 돌리면 최악이 방어유닛 수만큼이라 그리드 BFS × 12 가 된다.
+        //
+        // 3 은 그 사이다. 감지 획득은 실측 **8판에 632회**(≈0.44회/초)라 어그로(히트 구동)와
+        // 같은 케이던스이고, 한 번의 획득이 최대 3회 BFS 를 쓰는 것은 배치 도발(한 틱에 최대
+        // 25기)보다 가볍다. 「4번째 후보라야 갈 수 있는 배치」가 실제로 관측되면 그때 올린다.
+        public const int MaxPathProbes = 3;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -102,7 +117,23 @@ namespace Wassup.Battle.Combat
             var evQueue = hasEvents ? evSingleton.ValueRW.queue : default;
 
             float dt = SystemAPI.Time.DeltaTime;
-            float tileSize = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var field) ? field.tileSize : 1f;
+            bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var field);
+            float tileSize = hasFlow ? field.tileSize : 1f;
+
+            // unit 8 — 대상 지향 추격판 굽기 재료. 스크래치는 **필요할 때 한 번만** 잡는다
+            // (감지 적이 하나도 대상을 새로 물지 않는 프레임이 대부분이다).
+            bool hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
+            int cellCount = hasFlow ? field.gridSize.x * field.gridSize.y : 0;
+            uint blockedSig = hasFlow ? field.blockedSignature : 0u;
+            // ⚠ **자기 OnUpdate 끝에서 재생한다**(`AggroStateSystem` 과 같은 규약). 그래야
+            // `[UpdateBefore(MovementSystem)]` 인 이 시스템이 부착한 버퍼를 **같은 프레임**에
+            // 이동이 본다 — 프레임 지연이 있으면 「감지했는데 한 프레임 골 쪽으로 간다」가 된다.
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var walkMask = default(NativeArray<byte>);
+            var tmpFlow = default(NativeArray<float2>);
+            var tmpDist = default(NativeArray<int>);
+            byte walkMaskLayers = 0;   // 0 = 미충전(유효 층은 아래에서 DefaultMask 로 승격된다)
+            var rejected = new NativeArray<Entity>(MaxPathProbes, Allocator.Temp);
 
             // 방어유닛 후보 스냅샷.
             //
@@ -180,7 +211,9 @@ namespace Wassup.Battle.Combat
 
                 if (!hasAtk || aggroed || d.suppressRemaining > 0f)
                 {
-                    detected.ValueRW = Clear(d);
+                    d = Clear(d);
+                    DropChase(ref d, enemy, ref ecb);
+                    detected.ValueRW = d;
                     continue;
                 }
 
@@ -208,38 +241,97 @@ namespace Wassup.Battle.Combat
                         selfR, RadiusOf(cur, _radiusLookup));
                 }
 
+                // ── 2b. 규칙 2단계를 물을 준비 ── 「**내**가 «그» 적에게 갈 수 있나」(unit 8)
+                //
+                // 층은 **내 것**을 쓴다. 규칙이 층을 언급하지 않으므로 비행에 분기가 없다 —
+                // 비행이 오래 빠져 있던 것은 공용 사냥판이 지상 마스크로만 구워졌기 때문이지
+                // 「비행은 감지 대상 밖」이라는 판단이 있었기 때문이 아니다(계약 13).
+                //
+                // ⚠ **무제한 감지는 여기 오지 않는다.** 그쪽의 진짜 질문은 「**아무** 방어유닛이나」
+                // 라서 공용 사냥판이 정확한 답이다. 보스·보너스의 이동은 한 바이트도 안 바뀐다.
+                //
+                // ⚠ 흐름장이 없는 합성 테스트 월드에서는 기하를 생략하고 감지만 성립시킨다
+                // (`AggroStateSystem` 의 `hasFlow` 계약과 같다 — 픽스처가 맵을 안 만든다).
+                byte myLayers = _pathLookup.HasComponent(enemy)
+                    ? _pathLookup[enemy].traversalLayers : TraversalSlots.DefaultMask;
+                if (myLayers == 0) myLayers = TraversalSlots.DefaultMask;
+                int myTileRange = AggroChaseMath.ResolveTileRange(true, atk.range, false, 0f);
+                bool canRoute = hasFlow && !unlimited && myTileRange != AggroChaseMath.NoAttack
+                                && InGrid(atkPos, in field);
+
                 if (!keep)
                 {
                     // ── 3. 새로 스캔 ── legal 필터 + 반경 → 최근접(동거리는 낮은 simId).
+                    //
+                    // ⚠ **최근접 하나로 끝나지 않는다.** 고른 대상까지 갈 수 없으면(벽 너머 등)
+                    // 그 후보를 빼고 다음을 본다. 규칙은 「감지 반경 안에 **갈 수 있는** 적이
+                    // 있으면」이지 「최근접이 갈 수 있으면」이 아니다 — 앞의 것으로 끝내면
+                    // 벽 너머 가까운 유닛 하나가 뒤 레인 전체를 가려 버린다.
                     cur = Entity.Null;
-                    var best = default(NearestTargeting.Candidate);
-                    bool hasBest = false;
-                    for (int i = 0; i < candCount; i++)
+                    int rejectCount = 0;
+                    for (int probe = 0; probe < MaxPathProbes; probe++)
                     {
-                        var c = candEntities[i];
-                        if (c == enemy) continue;
-                        if ((candFactionBits[i] & atk.targetMask) == 0) continue;
-                        if (!PlacementLayers.CanTarget(atk.targetTraversalLayers, candLayers[i])) continue;
-                        int cclass = candClasses[i];
-                        if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;
-
-                        float3 tgtPos = candPositions[i];
-                        // 감지 판정은 사거리와 **같은 자·같은 몸**이다(계약 3). 무제한은 반경만 건너뛴다.
-                        if (!unlimited && !AttackReach.InReach(
-                                atkPos, tgtPos, rangeTiles, tileSize,
-                                selfR, RadiusOf(c, _radiusLookup))) continue;
-
-                        float dx = tgtPos.x - atkPos.x, dz = tgtPos.z - atkPos.z;
-                        var cand = new NearestTargeting.Candidate
+                        Entity pick = Entity.Null;
+                        float3 pickPos = default;
+                        var best = default(NearestTargeting.Candidate);
+                        bool hasBest = false;
+                        for (int i = 0; i < candCount; i++)
                         {
-                            eligible = true,
-                            tileDist = 0,
-                            sqDist = dx * dx + dz * dz,
-                            simId = candIds[i],
-                        };
-                        if (!hasBest || NearestTargeting.RanksBefore(cand, best))
-                        { best = cand; cur = c; hasBest = true; }
+                            var c = candEntities[i];
+                            if (c == enemy) continue;
+                            bool rejectedBefore = false;
+                            for (int r = 0; r < rejectCount; r++)
+                                if (rejected[r] == c) { rejectedBefore = true; break; }
+                            if (rejectedBefore) continue;
+                            if ((candFactionBits[i] & atk.targetMask) == 0) continue;
+                            if (!PlacementLayers.CanTarget(atk.targetTraversalLayers, candLayers[i])) continue;
+                            int cclass = candClasses[i];
+                            if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;
+
+                            float3 tgtPos = candPositions[i];
+                            // 감지 판정은 사거리와 **같은 자·같은 몸**이다(계약 3). 무제한은 반경만 건너뛴다.
+                            if (!unlimited && !AttackReach.InReach(
+                                    atkPos, tgtPos, rangeTiles, tileSize,
+                                    selfR, RadiusOf(c, _radiusLookup))) continue;
+
+                            float dx = tgtPos.x - atkPos.x, dz = tgtPos.z - atkPos.z;
+                            var cand = new NearestTargeting.Candidate
+                            {
+                                eligible = true,
+                                tileDist = 0,
+                                sqDist = dx * dx + dz * dz,
+                                simId = candIds[i],
+                            };
+                            if (!hasBest || NearestTargeting.RanksBefore(cand, best))
+                            { best = cand; pick = c; pickPos = tgtPos; hasBest = true; }
+                        }
+
+                        if (pick == Entity.Null) break;              // 후보 소진 — 원래 가던 길
+                        if (!canRoute) { cur = pick; break; }        // 기하 생략(무제한·합성 월드)
+                        if (TryBuildChase(in field, hasObstacles, in obstacleSingleton,
+                                          myLayers, ref walkMaskLayers, atkPos, pickPos, myTileRange,
+                                          ref walkMask, ref tmpFlow, ref tmpDist))
+                        {
+                            cur = pick;
+                            AttachChase(ref d, enemy, pick, blockedSig, cellCount,
+                                        in tmpDist, in tmpFlow, ref ecb);
+                            break;
+                        }
+                        rejected[rejectCount++] = pick;              // 갈 수 없다 → 다음 후보
                     }
+                }
+                else if (canRoute && (d.chaseBuiltFor != cur || d.chaseSignature != blockedSig))
+                {
+                    // 대상은 유지인데 추격판이 없거나 낡았다(첫 획득 · 장애물 변경).
+                    // 다시 굽고, 그래도 못 가면 대상을 놓는다 — 규칙 3단계로 내려간다.
+                    if (TryBuildChase(in field, hasObstacles, in obstacleSingleton,
+                                      myLayers, ref walkMaskLayers, atkPos,
+                                      _transformLookup[cur].Position, myTileRange,
+                                      ref walkMask, ref tmpFlow, ref tmpDist))
+                        AttachChase(ref d, enemy, cur, blockedSig, cellCount,
+                                    in tmpDist, in tmpFlow, ref ecb);
+                    else
+                        cur = Entity.Null;
                 }
 
                 if (cur != Entity.Null)
@@ -297,6 +389,12 @@ namespace Wassup.Battle.Combat
                 }
                 else d.stuckSeconds = 0f;
 
+                // 사냥이 끝났으면 추격판을 뗀다(어그로 해제와 같은 규약).
+                // ⚠ **관성(grace) 중에는 떼지 않는다** — 대상이 죽어 `target` 이 비어도 `hunting`
+                // 은 1로 유지되므로 여기 안 걸린다. 그 1초 동안 적은 마지막 대상 자리로 계속
+                // 간다(관성의 실체가 이 버퍼의 잔존이다).
+                if (d.hunting == 0) DropChase(ref d, enemy, ref ecb);
+
                 detected.ValueRW = d;
 
                 // ── 7. 발견 사건(전이 1회) ──
@@ -324,6 +422,82 @@ namespace Wassup.Battle.Combat
             candIds.Dispose();
             candLayers.Dispose();
             candClasses.Dispose();
+
+            rejected.Dispose();
+            if (walkMask.IsCreated) { walkMask.Dispose(); tmpFlow.Dispose(); tmpDist.Dispose(); }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
+        }
+
+        // unit 8 — 「그 적에게 갈 수 있나」. 어그로 획득이 쓰는 기계를 **그대로** 쓴다
+        // (`FillWalkMask(층)` → `BuildChaseField(대상)` → 「내 칸이 도달 가능한가」).
+        // 자를 새로 만들지 않는 것이 요점이다 — 두 레인이 갈리면 「어그로는 가는데 감지는 안 간다」
+        // 가 생기고, 그건 플레이어에게 규칙이 둘로 보인다는 뜻이다.
+        private static bool TryBuildChase(
+            in FlowFieldSingleton field, bool hasObstacles, in ObstacleSingleton obstacles,
+            byte myLayers, ref byte cachedLayers,
+            float3 selfPos, float3 targetPos, int tileRange,
+            ref NativeArray<byte> walkMask, ref NativeArray<float2> tmpFlow, ref NativeArray<int> tmpDist)
+        {
+            int n = field.gridSize.x * field.gridSize.y;
+            if (n <= 0) return false;
+            if (!walkMask.IsCreated)
+            {
+                walkMask = new NativeArray<byte>(n, Allocator.Temp);
+                tmpFlow = new NativeArray<float2>(n, Allocator.Temp);
+                tmpDist = new NativeArray<int>(n, Allocator.Temp);
+            }
+            // 층이 바뀔 때만 다시 채운다. 한 프레임에 지상/비행이 섞이면 그 경계마다 한 번씩
+            // 다시 채우는데, 감지 획득 자체가 드물어(실측 ≈0.44회/초) 문제가 되지 않는다.
+            if (cachedLayers != myLayers)
+            {
+                MovementCellTrim.FillWalkMask(
+                    in field, myLayers, hasObstacles, in obstacles, walkMask);
+                cachedLayers = myLayers;
+            }
+            int2 tCell = GridMath.WorldToCell(targetPos, field.tileSize, field.gridSize, origin: field.origin);
+            int srcCount = AggroChaseMath.BuildChaseField(
+                walkMask, field.gridSize, tCell, tileRange, tmpFlow, tmpDist);
+            if (srcCount == 0) return false;                       // 사격 가능한 칸이 없다
+            int2 myCell = GridMath.WorldToCell(selfPos, field.tileSize, field.gridSize, origin: field.origin);
+            return tmpDist[GridMath.CellIndex(myCell, field.gridSize)] != int.MaxValue;
+        }
+
+        // 구운 필드를 버퍼로 부착하고 캐시 키를 찍는다. **성공 직후에 불러야 한다** —
+        // `tmpDist`/`tmpFlow` 는 다음 후보 탐침이 덮어쓴다.
+        private static void AttachChase(
+            ref DetectedTarget d, Entity enemy, Entity target, uint signature, int cellCount,
+            in NativeArray<int> dist, in NativeArray<float2> flow, ref EntityCommandBuffer ecb)
+        {
+            var bd = ecb.AddBuffer<DetectionChaseDist>(enemy);
+            bd.ResizeUninitialized(cellCount);
+            var bf = ecb.AddBuffer<DetectionChaseFlow>(enemy);
+            bf.ResizeUninitialized(cellCount);
+            for (int k = 0; k < cellCount; k++)
+            {
+                bd[k] = new DetectionChaseDist { dist = dist[k] };
+                bf[k] = new DetectionChaseFlow { flow = flow[k] };
+            }
+            d.chaseBuiltFor = target;
+            d.chaseSignature = signature;
+        }
+
+        // 추격판 제거 + 캐시 키 초기화. 「붙인 적 없다」면 아무것도 하지 않는다
+        // (매 프레임 모든 비사냥 적에게 RemoveComponent 를 쌓으면 ECB 가 헛돈다).
+        private static void DropChase(ref DetectedTarget d, Entity enemy, ref EntityCommandBuffer ecb)
+        {
+            if (d.chaseBuiltFor == Entity.Null) return;
+            ecb.RemoveComponent<DetectionChaseDist>(enemy);
+            ecb.RemoveComponent<DetectionChaseFlow>(enemy);
+            d.chaseBuiltFor = Entity.Null;
+            d.chaseSignature = 0u;
+        }
+
+        // 그리드 밖 적(스폰 직후 등)은 추격판을 물을 수 없다 — `CellIndex` 가 범위를 벗어난다.
+        private static bool InGrid(float3 pos, in FlowFieldSingleton field)
+        {
+            int2 c = GridMath.WorldToCell(pos, field.tileSize, field.gridSize, origin: field.origin);
+            return c.x >= 0 && c.y >= 0 && c.x < field.gridSize.x && c.y < field.gridSize.y;
         }
 
         private static DetectedTarget Clear(DetectedTarget d)

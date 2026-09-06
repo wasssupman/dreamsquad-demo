@@ -195,13 +195,62 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(X(e), 2f, "감지가 꺼졌으면 골 흐름장(+X)을 따라야 한다");
         }
 
+        // unit 8 — **사냥 레인이 둘로 갈렸다.** 무제한은 공용 사냥판, 유한은 대상 지향 추격판.
+        // 부호로 어느 소스를 탔는지 읽는 방식은 그대로 쓴다.
+        //
+        // ⚠ 이 테스트의 옛 판은 **유한** 반경으로 공용 사냥판(−X)을 기대했다. unit 8 에서
+        // 계약이 바뀌었다 — 유한 감지가 공용 필드를 타면 「아무 방어유닛의 사격 칸」으로 가고,
+        // 그 필드는 지상 마스크로만 구워져 비행이 벽 위에서 죽는다.
         [Test]
-        public void 감지가_켜진_적은_사냥판을_따른다()
+        public void 무제한_감지는_공용_사냥판을_따른다()
+        {
+            SetOpposingFlows();
+            var e = EnemyAt(2, 2, detectionRange: -1f, hunting: 1);
+            Tick();
+            Assert.Less(X(e), 2f, "무제한은 공용 사냥판(−X)을 따라야 한다 — 보스 거동 무회귀");
+        }
+
+        [Test]
+        public void 유한_감지는_대상_지향_추격판을_따른다()
+        {
+            SetOpposingFlows();
+            var e = EnemyAt(2, 2, detectionRange: 3f, hunting: 1);
+            AttachChase(e, new float2(-1f, 0f));
+            Tick();
+            Assert.Less(X(e), 2f,
+                "유한 감지는 자기 추격판(−X)을 따라야 한다 — 게이트가 소스를 안 갈아탔다");
+        }
+
+        // ★ 규칙 3단계의 **이동 쪽 절반**: 「갈 수 있는 경로가 없으면 원래 가던 길로」.
+        // 추격판 부재 = 「그 대상에게 갈 수 없다」의 이동 계층 표현이다.
+        [Test]
+        public void 유한_감지는_추격판이_없으면_원래_가던_길로_간다()
         {
             SetOpposingFlows();
             var e = EnemyAt(2, 2, detectionRange: 3f, hunting: 1);
             Tick();
-            Assert.Less(X(e), 2f, "감지가 켜졌으면 사냥판(−X)을 따라야 한다 — 게이트가 소스를 안 갈아탔다");
+            Assert.Greater(X(e), 2f,
+                "추격판이 없으면 골 흐름장(+X)으로 내려가야 한다. " +
+                "여기서 −X 로 가면 유한 감지가 아직 공용 사냥판을 타고 있는 것이다.");
+        }
+
+        // 대상 지향 추격판을 손으로 붙인다(이 픽스처에는 `DetectionSystem` 이 없다).
+        private void AttachChase(Entity e, float2 dir)
+        {
+            int n = W * H;
+            // ⚠ 두 번째 `AddBuffer` 는 **구조 변경**이라 첫 번째가 돌려준 핸들을 무효화한다.
+            // 둘 다 붙인 **뒤에** 다시 잡는다(이 순서를 지키지 않아 한 번 빨갰다).
+            _em.AddBuffer<Wassup.Battle.Combat.DetectionChaseDist>(e);
+            _em.AddBuffer<Wassup.Battle.Combat.DetectionChaseFlow>(e);
+            var bd = _em.GetBuffer<Wassup.Battle.Combat.DetectionChaseDist>(e);
+            bd.ResizeUninitialized(n);
+            for (int i = 0; i < n; i++)
+                bd[i] = new Wassup.Battle.Combat.DetectionChaseDist { dist = 5 };
+
+            var bf = _em.GetBuffer<Wassup.Battle.Combat.DetectionChaseFlow>(e);
+            bf.ResizeUninitialized(n);
+            for (int i = 0; i < n; i++)
+                bf[i] = new Wassup.Battle.Combat.DetectionChaseFlow { flow = dir };
         }
 
         // 계약 2 의 **이동 쪽 절반** — 어그로가 감지를 이긴다. `Chasing` 분기가 사냥 분기보다

@@ -23,6 +23,9 @@ namespace Wassup.Battle.Movement
         // enemy-detection-range unit 3 — 사냥 게이트의 새 소스(Combat 소유, RO). 같은 이유로 필드.
         ComponentLookup<Wassup.Battle.Combat.DetectedTarget> _detectedLookup;
         ComponentLookup<Wassup.Battle.Combat.DetectionRange> _detectionRangeLookup;
+        // unit 8 — 대상 지향 추격판(유한 반경 감지 전용). `huntField` 와 같은 모양이라 drop-in.
+        BufferLookup<Wassup.Battle.Combat.DetectionChaseDist> _chaseDistLookup;
+        BufferLookup<Wassup.Battle.Combat.DetectionChaseFlow> _chaseFlowLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -34,6 +37,8 @@ namespace Wassup.Battle.Movement
             _pullBodyRadiusLookup = state.GetComponentLookup<Wassup.Battle.Units.HitRadius>(isReadOnly: true);
             _detectedLookup = state.GetComponentLookup<Wassup.Battle.Combat.DetectedTarget>(isReadOnly: true);
             _detectionRangeLookup = state.GetComponentLookup<Wassup.Battle.Combat.DetectionRange>(isReadOnly: true);
+            _chaseDistLookup = state.GetBufferLookup<Wassup.Battle.Combat.DetectionChaseDist>(isReadOnly: true);
+            _chaseFlowLookup = state.GetBufferLookup<Wassup.Battle.Combat.DetectionChaseFlow>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -59,6 +64,8 @@ namespace Wassup.Battle.Movement
             _pullBodyRadiusLookup.Update(ref state);   // unit 18 — 회오리 당김 피해자 몸
             _detectedLookup.Update(ref state);
             _detectionRangeLookup.Update(ref state);
+            _chaseDistLookup.Update(ref state);
+            _chaseFlowLookup.Update(ref state);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
             // continuous-agent-movement unit 1·3 — 벽 질의 프레임 뷰. 정적 마스크 + 동적
             // 장애물을 합쳐 조립하고, 아래 모든 충돌 해결이 이것만 본다.
@@ -332,9 +339,37 @@ namespace Wassup.Battle.Movement
                 // 「다른 시스템이 그 태그를 쓰니까」는 **근거가 아니다**(리뷰 L4) — 남의 쿼리는
                 // 이 파일의 lookup 호출과 무관하고, 그렇게 적으면 다음 사람이 「저쪽이 안 쓰게 되면
                 // 지워도 되겠네」로 잘못 배운다.
-                bool hunting = hasHuntField && huntField.IsCreated
-                    && _detectedLookup.HasComponent(entity) && _detectedLookup[entity].hunting != 0
+                //
+                // enemy-detection-range unit 8 — **사냥 레인이 둘로 갈렸다.** 규칙은 하나지만
+                // 「그 적에게 갈 수 있나」를 답하는 필드가 감지 종류마다 다르다:
+                //
+                //   - **무제한**(보스·보너스) → 공용 사냥판(`huntField`). 그쪽의 진짜 질문이
+                //     「**아무** 방어유닛이나」라서 공용 필드가 **정확한 답**이다. 거동 무변.
+                //   - **유한 반경** → 대상 지향 추격판(`DetectionChaseDist/Flow`). 감지한 «그»
+                //     방어유닛까지, «내» 통행 층으로 구운 것이다.
+                //
+                // ⚠ 유한 감지가 공용 사냥판을 타던 시절의 결함 둘을 여기서 닫는다: ⑴ 도착지가
+                // 감지 대상과 **실측 5.0%** 갈렸고 ⑵ 그 필드가 지상 마스크로만 구워져 **비행이
+                // 벽 위에서 조용히 죽었다**(그게 「비행은 감지 대상 밖」으로 오독됐다).
+                // 이제 층 분기가 **없다** — 층은 추격판을 굽는 쪽이 `traversalLayers` 로 가져간다.
+                bool detectedHunting = _detectedLookup.HasComponent(entity)
+                                       && _detectedLookup[entity].hunting != 0;
+                bool unlimitedDetection = _detectionRangeLookup.HasComponent(entity)
+                                          && _detectionRangeLookup[entity].Unlimited;
+
+                bool huntShared = detectedHunting && unlimitedDetection
+                    && hasHuntField && huntField.IsCreated
                     && huntField.dist[idx] != int.MaxValue;
+
+                // 대상 지향 추격판. 길이 검사는 그리드가 바뀐 프레임의 낡은 버퍼를 거른다.
+                int cellTotal = field.gridSize.x * field.gridSize.y;
+                bool huntTargeted = detectedHunting && !unlimitedDetection
+                    && _chaseDistLookup.HasBuffer(entity) && _chaseFlowLookup.HasBuffer(entity)
+                    && _chaseDistLookup[entity].Length == cellTotal
+                    && _chaseFlowLookup[entity].Length == cellTotal
+                    && _chaseDistLookup[entity].Reinterpret<int>()[idx] != int.MaxValue;
+
+                bool hunting = huntShared || huntTargeted;
 
                 // ⚠⚠ **leak-proof 는 `hunting` 과 분리한다 — 무제한 감지 전용이다.**
                 // 그대로 두면 유한 반경 감지 적도 골 칸을 밟고 공성으로 안 넘어가고, 그러면 감지가
@@ -450,10 +485,19 @@ namespace Wassup.Battle.Movement
                     int goalSlot = field.SlotFor(FlowFieldSingleton.GoalSentinel, entityLayers);
                     var routeFlow = field.FlowSlot(goalSlot);
                     var routeDist = field.DistSlot(goalSlot);
-                    if (hunting)
+                    if (huntShared)
                     {
                         routeFlow = huntField.flow;
                         routeDist = huntField.dist;
+                    }
+                    else if (huntTargeted)
+                    {
+                        // unit 8 — 대상 지향 추격판은 `huntField` 와 **같은 모양**(flow + dist)이라
+                        // 여기서 갈아 끼우는 것으로 끝난다. 아래 하강·평활화·접근 보정 코드는
+                        // 한 줄도 안 바뀐다 — 그게 이 버퍼가 dist 만 두지 않고 flow 도 같이
+                        // 보관하는 이유다(어그로 추격판은 dist 만 두고 `RecoveryDir` 로 내려간다).
+                        routeFlow = _chaseFlowLookup[entity].Reinterpret<float2>().AsNativeArray();
+                        routeDist = _chaseDistLookup[entity].Reinterpret<int>().AsNativeArray();
                     }
                     else if (waypointLookup.HasComponent(entity))
                     {
@@ -553,6 +597,17 @@ namespace Wassup.Battle.Movement
                                     float hdz = huntTargets[t].z - current.z;
                                     float sq = hdx * hdx + hdz * hdz;
                                     if (sq < bestSq) { bestSq = sq; bestPos = huntTargets[t]; }
+                                }
+                                // unit 8 — 대상 지향 사냥이면 **그 대상**으로 붙는다. 위 최근접은
+                                // 공용 사냥판(무제한)용 근사다 — 도착지가 특정되지 않으니 「소스 칸을
+                                // 만든 것이 그중 하나」로 추정할 수밖에 없었다. 유한 감지는 대상이
+                                // 정해져 있으므로 추정하지 않는다(벽 너머에 더 가까운 유닛이 있어도
+                                // 그쪽으로 몸을 기울이지 않는다).
+                                if (huntTargeted && _detectedLookup.HasComponent(entity))
+                                {
+                                    var dt8 = _detectedLookup[entity].target;
+                                    if (dt8 != Entity.Null && _guardianTransformLookup.HasComponent(dt8))
+                                        bestPos = _guardianTransformLookup[dt8].Position;
                                 }
                                 float huntSpeedMul = modifierStatsLookup.HasComponent(entity)
                                     ? modifierStatsLookup[entity].moveSpeedMul : 1f;

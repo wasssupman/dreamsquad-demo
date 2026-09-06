@@ -89,4 +89,4 @@ MonoBehaviour:
   flightLift: 1.4
   idleVariants: []
   tier: 0
-  detectionRange: 0
+  detectionRange: 3
