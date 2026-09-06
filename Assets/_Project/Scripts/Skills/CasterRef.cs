@@ -21,19 +21,32 @@ namespace Wassup.Skills
         public readonly SkillEntityId Unit;
         public readonly Faction Faction;
 
-        public CasterRef(SkillEntityId unit, Faction faction)
+        // distance-based-range unit 23a — **시전자의 몸 반경(타일).**
+        //
+        // ★ **값으로 나른다**(`Faction` 과 같은 이유). 자기 죽음 seam 은 정의상 파괴 뒤에 돌아
+        // 드레인 시점에 엔티티에서 못 읽는다 — `SkillFiredEvent.CasterFaction` 이 이미 그 문제를
+        // 푼 선례이고, 이건 그 패턴의 n+1 번째 필드다.
+        // 부수 이득: 어댑터가 후보 루프 **안**에서 `HitRadius` 를 조회할 필요가 없다(값이 이미 손에
+        // 있고 루프 불변) — 조회로 되돌리면 후보마다 lookup 이 되고 fallback 0 위험이 되살아난다.
+        //
+        // 0 = 판 위에 몸이 없다(플레이어 시전). 「자리에 떨어지는 것」의 0 과는 **다른 축**이다 —
+        // 그쪽은 `SkillParams.EventBodyRadius` 가 말한다.
+        public readonly float BodyRadius;
+
+        public CasterRef(SkillEntityId unit, Faction faction, float bodyRadius = 0f)
         {
             Unit = unit;
             Faction = faction;
+            BodyRadius = bodyRadius;
         }
 
         // 유닛이 시전한다 — 보스·적·방어유닛 전부 이 경로다.
-        public static CasterRef OfUnit(SkillEntityId unit, Faction faction)
-            => new CasterRef(unit, faction);
+        public static CasterRef OfUnit(SkillEntityId unit, Faction faction, float bodyRadius = 0f)
+            => new CasterRef(unit, faction, bodyRadius);
 
-        // 플레이어가 시전한다 — 액티브 스킬. 판 위에 시전자가 없다.
+        // 플레이어가 시전한다 — 액티브 스킬. 판 위에 시전자가 없다(몸도 없다).
         public static CasterRef Player(Faction faction)
-            => new CasterRef(SkillEntityId.None, faction);
+            => new CasterRef(SkillEntityId.None, faction, 0f);
 
         // 이 스킬이 판 위의 시전자를 갖는가. `Position`/`Facing` 질의는 이것이 참일 때만
         // 부를 수 있다 — 거짓인데 부르면 어댑터가 loud 하게 거절한다.

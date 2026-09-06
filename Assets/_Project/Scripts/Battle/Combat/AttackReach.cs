@@ -73,7 +73,7 @@ namespace Wassup.Battle.Combat
                                    float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            return Wassup.Skills.SkillMath.InBodyReach(
+            return Wassup.Skills.SkillMath.ReachFromUnit(
                 (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
                 tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
@@ -85,7 +85,7 @@ namespace Wassup.Battle.Combat
         // 화면이 규칙을 **틀리게** 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
         public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
                                        float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
-            => Wassup.Skills.SkillMath.InBodyReach(
+            => Wassup.Skills.SkillMath.ReachFromUnit(
                    tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
                    tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
 

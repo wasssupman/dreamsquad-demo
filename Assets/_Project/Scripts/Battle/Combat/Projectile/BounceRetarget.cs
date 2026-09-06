@@ -74,9 +74,9 @@ namespace Wassup.Battle.Combat.Projectile
                 // unit 18 — 위치 기반 + 후보 몸(리뷰 H2: 다른 5곳과 같은 자 — 큰 몸은 더 멀리서 걸린다).
                 float bodyR = candidateBodyRadii.IsCreated && i < candidateBodyRadii.Length
                     ? candidateBodyRadii[i] : 0f;
-                if (!Wassup.Skills.SkillMath.InBodyReach(
+                if (!Wassup.Skills.SkillMath.ReachFromCell(
                         (pos.x - hitPos.x) * invT, (pos.z - hitPos.z) * invT,
-                        tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, bodyR)) continue;
+                        tileRange, bodyR)) continue;
                 float dx = pos.x - hitPos.x;
                 float dz = pos.z - hitPos.z;
                 float d2 = dx * dx + dz * dz;

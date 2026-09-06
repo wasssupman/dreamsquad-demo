@@ -744,11 +744,14 @@ namespace Wassup.Battle.Combat.Projectile
                             // unit 18 — 피해자 **위치** 기준(셀 양자화 제거). 자는 unit 4b 그대로
                             // (원 = 반경 + 칸 반폭 + 대상 몸), 입력만 연속이 됐다.
                             float aoeInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
-                            if (!Wassup.Skills.SkillMath.InBodyReach(
+                            // ⚠ unit 23b 미착수 — **자기 자리 폭발도 오늘은 여기로 온다**
+                            // (`flightTime = 0` 즉발). 그 경우 원점은 «유닛» 이라 이 자가 틀리다.
+                            // 요청 struct 에 원점 반경을 실어 고친다(23b). 진짜 날아온 탄의
+                            // 착탄점은 주인이 없어 자리형이 맞다.
+                            if (!Wassup.Skills.SkillMath.ReachFromCell(
                                     (vpos.x - impactWorld.x) * aoeInvT,
                                     (vpos.z - impactWorld.z) * aoeInvT,
-                                    tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles,
-                                    victimBodyRadii[i])) continue;
+                                    tileRange, victimBodyRadii[i])) continue;
                             inRangeEnts.Add(victimEntities[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;

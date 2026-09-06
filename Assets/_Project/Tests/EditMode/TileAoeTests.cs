@@ -212,7 +212,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void SelfBodyRadius_HasAHardFloor_OrRadius1BlastsCollapse()
         {
-            Assert.GreaterOrEqual(Wassup.Skills.SkillMath.CellHalfWidthTiles, 0.4143f,
+            Assert.GreaterOrEqual(Wassup.Skills.SkillMath.CellShapePaddingTiles, 0.4143f,
                 "√2 − 1 = 0.4142 미만이면 반경 1 폭발이 대각 이웃을 잃고 **십자 모양**이 된다 "
                 + "(unit 4b 가 이미 한 번 밟은 함정). 저작된 반경 1 AoE 20건이 여기 달려 있다.");
         }

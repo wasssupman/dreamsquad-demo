@@ -99,6 +99,10 @@ namespace Wassup.Tests.EditMode
                 case UnitStat.AttackTargetCount: return u.AttackTargetCount;
                 case UnitStat.TargetTraversalLayers: return u.TraversalLayers;
                 case UnitStat.EffectiveHpRatio: return u.EffectiveHpRatio;
+                // ⚠ **선행 결함**(unit 23a 에서 발견): 이 케이스가 없어 `BodyRadius` 가 «항상 0» 이었다.
+                // `AreaSleepSkill:81` 이 이미 이 값을 쓰고 있어 **페이크가 라이브보다 좁게 판정**했고,
+                // 몸을 축으로 삼는 차등 단언은 이 구멍을 메우기 전에는 **써도 안 움직인다**.
+                case UnitStat.BodyRadius: return u.BodyRadius;
                 default: return 0f;
             }
         }
@@ -169,9 +173,12 @@ namespace Wassup.Tests.EditMode
                 // 자를 재구현하면 도메인 테스트가 초록인데 라이브가 다른 갈림이 생긴다(attach-range-preview 0a,
                 // 리뷰 H-1: 처음엔 여기 삼항이 미지 metric 을 원으로 통과시켜 라이브의 fail-closed 와 반대였다).
                 // 입력은 타일 단위(`/ TileSize`) — `TileSize ≠ 1` 픽스처에서도 반경이 타일로 읽힌다.
-                if (!SkillMath.TryShapeHalfWidth(metric, out float selfHalfT)) continue;   // 은퇴한 자 = 후보 0(어댑터와 동일)
+                // unit 23a — 어댑터와 **같은 함수**를 부른다. 매핑을 여기서 재구현하면
+                // 폴백 방향이 갈려(페이크 fail-open / 라이브 fail-closed) 도메인 테스트가 초록인데
+                // 라이브가 다르다. `None`/은퇴한 자 = 후보 0.
+                if (!SkillMath.TryOriginRadius(metric, caster.BodyRadius, out float originRT)) continue;
                 float dxT = (u.Position.x - center.x) / TileSize, dzT = (u.Position.z - center.z) / TileSize;
-                if (SkillMath.InBodyReach(dxT, dzT, tileRange, selfHalfT, u.BodyRadius)) into[n++] = new SkillEntityId(id);
+                if (SkillMath.ReachWithOrigin(dxT, dzT, tileRange, originRT, u.BodyRadius)) into[n++] = new SkillEntityId(id);
             }
             return n;
         }

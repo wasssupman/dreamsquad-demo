@@ -32,13 +32,20 @@ namespace Wassup.Tests.EditMode
         };
 
         [Test]
-        public void AreaConcretes_AreCircles_OfRangePlusCellHalfWidth()
+        public void AreaConcretes_AreCircles_OfShapeRadiusOnly_AndScaleWithHostBody()
         {
+            // ★ unit 23a — spec 이 담는 것은 **도형 반경 N 뿐**이고, 원점 항은 host 를 아는
+            // 자리(브리지)가 `RadiusWithOrigin` 으로 더한다. 그래서 같은 카드도 붙는 유닛에 따라
+            // 링이 달라진다 — 판정이 그러니 표기도 그래야 한다(제약 13).
             foreach (int id in AreaCircleIds)
             {
                 var spec = DcRangeCatalog.Resolve(id, 2);
                 Assert.AreEqual(DcRangeShape.Circle, spec.shape, $"skill {id}");
-                Assert.AreEqual(2f + SkillMath.CellHalfWidthTiles, spec.radiusTiles, 1e-6f, $"skill {id} 반경은 N + 칸 반폭");
+                Assert.AreEqual(2f, spec.radiusTiles, 1e-6f, $"skill {id}: spec 은 도형 반경만 담는다");
+                Assert.AreEqual(RangeMetric.SelfArea, spec.metric, $"skill {id}: 자기중심 광역 = 몸에서 나오는 것");
+                // 차등 단언 — **host 몸이 반경을 움직인다.** 폭1(0.5) vs 폭3 배스티온(1.5).
+                Assert.AreEqual(2.5f, spec.RadiusWithOrigin(0.5f), 1e-6f, $"skill {id}: 폭1 host");
+                Assert.AreEqual(3.5f, spec.RadiusWithOrigin(1.5f), 1e-6f, $"skill {id}: 폭3 host 는 1칸 넓다");
             }
         }
 
@@ -82,13 +89,24 @@ namespace Wassup.Tests.EditMode
         public void DeathSiteBlast_SelfSiteTriggers_AreCircles()
         {
             // 사용자 결정 2026-09-03 — 자기 사망/퇴근은 자리의 주인이 부착 유닛 자신(정적)이라 노출.
+            //
+            // ★ **unit 23 에서 둘의 «형» 이 갈렸다**(사용자 결정 2026-09-06, 제약 13):
+            //   OnDeath  = 몸에서 나오는 것(죽은 그 유닛이 터진다) → host 몸이 붙는다
+            //   OnRetire = 자리에 떨어지는 것(운석이 «비워진 칸» 에 내린다) → 칸 반폭
+            // 종전엔 둘을 한 루프로 묶어 **둘 중 하나가 반드시 틀리는** 형태였다.
+            var death = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnDeath);
+            Assert.AreEqual(DcRangeShape.Circle, death.shape);
+            Assert.AreEqual(RangeMetric.SelfArea, death.metric, "사망 폭발은 그 몸이 터진다");
+            Assert.AreEqual(3.5f, death.RadiusWithOrigin(1.5f), 1e-6f, "배스티온이 죽으면 1칸 넓다");
+
+            var retire = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnRetire);
+            Assert.AreEqual(DcRangeShape.Circle, retire.shape);
+            Assert.AreEqual(RangeMetric.CellArea, retire.metric, "퇴근 운석은 «자리»에 떨어진다");
+            Assert.AreEqual(2.5f, retire.RadiusWithOrigin(1.5f), 1e-6f,
+                "퇴근 운석은 host 몸에 반응하지 않는다 — 지정은 귀속이지 기하가 아니다");
+
             foreach (var t in new[] { DcTriggerKind.OnDeath, DcTriggerKind.OnRetire })
-            {
-                var spec = DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, t);
-                Assert.AreEqual(DcRangeShape.Circle, spec.shape, t.ToString());
-                Assert.AreEqual(2f + SkillMath.CellHalfWidthTiles, spec.radiusTiles, 1e-6f, $"{t} 반경은 착탄식 복사본");
                 Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 0, t).shape, $"{t} 반경 0");
-            }
             Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteBlastSkill.Id, 2, DcTriggerKind.OnKill).shape,
                 "처치는 죽인 적의 자리 — 부착 시점 미상, 미노출 유지");
             Assert.AreEqual(DcRangeShape.None, DcRangeCatalog.Resolve(DeathSiteHazardSkill.Id, 2, DcTriggerKind.OnDeath).shape,
@@ -107,7 +125,8 @@ namespace Wassup.Tests.EditMode
                 };
                 var spec = DcRangeCatalog.ResolveCard(card);
                 Assert.AreEqual(DcRangeShape.Circle, spec.shape);
-                Assert.AreEqual(1f + SkillMath.CellHalfWidthTiles, spec.radiusTiles, 1e-6f);
+                Assert.AreEqual(1f, spec.radiusTiles, 1e-6f, "spec 은 도형 반경만 담는다(unit 23a)");
+                Assert.AreEqual(1.5f, spec.RadiusWithOrigin(0.5f), 1e-6f);
             }
             finally { Object.DestroyImmediate(card); }
         }

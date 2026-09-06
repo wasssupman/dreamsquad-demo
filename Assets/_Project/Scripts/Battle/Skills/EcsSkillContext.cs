@@ -451,11 +451,15 @@ namespace Wassup.Battle.Skills
                 //   폭발과 **같은 식**이라 광역 도형이 하나가 된다. 종전 사각(`BodyOverlapsSquare`, 반폭 range+0.5)은
                 //   이 원의 외접이라 모서리만 빠진다(반경 1 은 셀 기준 손실 0 — 대각 1.414 ≤ 1.5).
                 //   Euclidean: 반폭 0 — 사거리·탄 비행 거리(발사 명세).
-                // 반폭 매핑은 `SkillMath.TryShapeHalfWidth` **하나**다(페이크와 공유 — 리뷰 H-1). 은퇴한 자
-                // (Chebyshev 캐스팅)는 false → 후보 0, 로그는 드레인당 1회(같은 함수의 overflow 규율).
+                // unit 23a — 원점 항 매핑은 `SkillMath.TryOriginRadius` **하나**다(페이크와 공유 — 리뷰 H-1).
+                // 시전자 몸은 **분기가 아니라 인자**로 넘긴다 — 페이크가 매핑을 재구현하면 폴백 방향이 갈린다.
+                // ⚠ 값은 `caster` 가 이미 들고 있다(`CasterRef.BodyRadius`). **후보 루프 «안»에서
+                // `HitRadius` 를 조회하는 형태로 되돌리지 말 것** — 후보마다 lookup 이 되고,
+                // 시전자가 죽은 seam 에서 fallback 0 으로 새어 조용히 좁아진다.
+                // `None`/은퇴한 자는 false → 후보 0, 로그는 드레인당 1회(overflow 규율과 같음).
                 // 중심은 **받은 center 그대로**(양자화 없음): 칸 조준 concrete 는 CellCenter 를, 자기시전은
                 // 몸 중심을 넘긴다 — 2×2 기하 중심이 셀 경계 위에 와도 치우치지 않는다.
-                if (!Wassup.Skills.SkillMath.TryShapeHalfWidth(metric, out float selfHalfT))
+                if (!Wassup.Skills.SkillMath.TryOriginRadius(metric, caster.BodyRadius, out float originRT))
                 {
                     if (!_warnedRetiredMetricThisDrain)
                     {
@@ -465,7 +469,7 @@ namespace Wassup.Battle.Skills
                     continue;
                 }
                 float dxT = (p.x - center.x) * invT, dzT = (p.z - center.z) * invT;
-                if (!Wassup.Skills.SkillMath.InBodyReach(dxT, dzT, tileRange, selfHalfT, targetR)) continue;
+                if (!Wassup.Skills.SkillMath.ReachWithOrigin(dxT, dzT, tileRange, originRT, targetR)) continue;
 
                 if (n >= into.Length) { overflow++; continue; }
                 into[n++] = Handle(e);

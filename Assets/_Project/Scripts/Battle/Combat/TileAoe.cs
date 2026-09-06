@@ -49,13 +49,10 @@ namespace Wassup.Battle.Combat
         // (unit 3 의 축, 0 = 점). 큰 몸은 폭발에 더 잘 걸린다 — 사거리 술어와 같은 물성이다.
         public static bool IsInRadius(int2 candidateCell, int2 centerCell, int tileRange,
                                       float extraRadiusTiles = 0f)
-            => Wassup.Skills.SkillMath.InBodyReach(
+            // unit 23a — **자리형** 진입점. 칸 반폭은 인자가 아니라 그 함수의 성질이라
+            // 「내 몸」 자리에 틀린 값을 넘길 수 없다. 원점이 «유닛» 인 폭발은 여기 오면 안 된다.
+            => Wassup.Skills.SkillMath.ReachFromCell(
                    candidateCell.x - centerCell.x, candidateCell.y - centerCell.y,
-                   tileRange,
-                   // ⚠ **여기 붙는 것은 「후보 칸의 반폭」이지 유닛의 몸이 아니다**(unit 9).
-                   // 폭발은 점이고 후보가 칸이라 칸의 크기가 붙는다. 칸은 언제나 1타일이므로
-                   // 유닛 몸(`bodyRadius`, 일반 0.25)으로 바꾸면 **반경 1 이 십자가 된다**.
-                   Wassup.Skills.SkillMath.CellHalfWidthTiles,
-                   extraRadiusTiles);
+                   tileRange, extraRadiusTiles);
     }
 }

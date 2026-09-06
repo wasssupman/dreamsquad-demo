@@ -20,7 +20,8 @@ namespace Wassup.Tests.EditMode
         {
             var ctx = new TestSkillContext();
             ctx.Add(1, float3.zero, Faction.DefenderUnit, u => u.HasAggroCapacity = true);
-            caster = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit);
+            // unit 23a — 자기중심 광역의 원점 항은 시전자 몸이다. 라이브 최소치(폭1 = 0.5)를 준다.
+            caster = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit, bodyRadius: 0.5f);
             return ctx;
         }
 

@@ -2654,7 +2654,7 @@ namespace Wassup.Bridge
                         // attach-range-preview 0b — 당김 판정은 원 `N + 칸 반폭 (+ 몸)` 이라 VFX 링도 그 가장자리.
                         vfxSpawner.SpawnTornado(
                             new Vector3(tornadoWorld.x, 0f, tornadoWorld.z),
-                            (tornadoTiles + Wassup.Skills.SkillMath.CellHalfWidthTiles) * tileSize, skill.durationSec);
+                            (tornadoTiles + Wassup.Skills.SkillMath.CellShapePaddingTiles) * tileSize, skill.durationSec);
                     }
                     break;
                 }
@@ -5024,7 +5024,7 @@ namespace Wassup.Bridge
                     // attach-range-preview 0b — 착탄 판정은 `N + 칸 반폭 (+ 몸)` 이라 버스트도 그 가장자리까지.
                     // 이벤트의 radiusWorld(N × tileSize)는 트레이스에 기록되므로 건드리지 않고 뷰에서 더한다.
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z),
-                        evt.radiusWorld + Wassup.Skills.SkillMath.CellHalfWidthTiles * tileSize);
+                        evt.radiusWorld + Wassup.Skills.SkillMath.CellShapePaddingTiles * tileSize);
 
                 // camera-direction unit 2 — 헤비(광역) 착탄 구두점: 줌 펄스. 시각 라우팅
                 // (hitPrefab 유무)과 무관하게 TileAoe 착탄이면 발동. additive 전용 — 카메라 탈취 없음.
@@ -8044,7 +8044,7 @@ namespace Wassup.Bridge
         {
             if (tilemapMapView == null) return;
             tilemapMapView.SetAreaRange(new Vector2(center.x, center.y),
-                tileRange + Wassup.Skills.SkillMath.CellHalfWidthTiles);
+                tileRange + Wassup.Skills.SkillMath.CellShapePaddingTiles);
             SetRangeOwner(owner);
         }
 
@@ -8110,7 +8110,17 @@ namespace Wassup.Bridge
         {
             if (!CanDrawAttachPreviewFor(_attachPreviewHost)) { ClearAttachPreview(); return; }
             var p = _em.GetComponentData<LocalTransform>(_attachPreviewHost).Position;
-            tilemapMapView.SetAreaRange(WorldToFractionalCell(p), _attachPreviewSpec.radiusTiles, _attachPreviewStyle);
+            // distance-based-range unit 23a — **원점 항을 여기서 합성한다.**
+            // 카탈로그는 host 를 모르므로 「도형 반경 N + 형」만 담고, host 몸을 아는 자리는 여기다.
+            // 그래서 같은 카드도 붙는 유닛에 따라 링이 달라진다 — 판정이 그러니 화면도 그래야 한다.
+            // ⚠ 새 진입점·새 미러 필드를 만들지 않았다(제약 12) — 이 메서드가 이미 host `Entity` 를
+            // 들고 `LocalTransform` 을 읽고 있어 `HitRadius` 도 같은 자리에서 읽으면 된다.
+            // ⚠ **반경 산식을 여기서 다시 쓰지 말 것** — `RadiusWithOrigin` 이 판정과 «같은 함수»
+            // (`SkillMath.TryOriginRadius`)를 부른다. 복사하는 순간 표기와 판정이 갈린다.
+            float hostBodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(_attachPreviewHost)
+                ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(_attachPreviewHost).value : 0f;
+            tilemapMapView.SetAreaRange(WorldToFractionalCell(p),
+                _attachPreviewSpec.RadiusWithOrigin(hostBodyR), _attachPreviewStyle);
         }
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성 → 사거리 틴트(적색 + 전이 플래시).

@@ -80,22 +80,48 @@ namespace Wassup.Skills
         //   · **광역**   — 「후보 **칸**의 반폭」. 폭발은 점이고 후보가 칸이라 칸의 크기가
         //     붙는다. 칸은 언제나 1타일이므로 **0.5 로 남는다.**
         //
-        // ⚠ **광역을 유닛 몸(0.25)으로 바꾸지 말 것.** 반경 1 폭발이 대각을 통째로 잃어
-        // **십자 모양**이 된다(1.414 > 1.25) — rev 1 에서 순수 원으로 갔다가 되돌린 그 회귀다.
-        public const float CellHalfWidthTiles = 0.5f;
+        // ⚠⚠ **이 경고는 unit 23a 에서 «은퇴»했다** — 사유가 무효가 됐기 때문이다.
+        //   구 경고: *「광역을 유닛 몸(0.25)으로 바꾸지 말 것. 반경 1 폭발이 대각을 통째로 잃어
+        //   십자 모양이 된다(1.414 > 1.25)」*
+        //   무효 사유: 그 경고는 **몸이 상수 0.25 이던 시절**의 것이다. unit 12 가 몸을 footprint
+        //   파생(방어유닛 = 가로/2)으로 승격해 오늘 몸은 **전부 ≥ 0.5**(폭1 0.5 / 폭2 1.0 / 폭3 1.5)라
+        //   대각 손실이 **구조적으로 불가능**하다.
+        //   ⚠ 「무효임을 확인하고 은퇴시키는 것」과 「못 보고 지나가는 것」은 다르다 — unit 22 가
+        //   실패한 방식이 정확히 후자(*「문서에 있던 전제가 재검토되지 않았다」*)라 명시로 남긴다.
+        //
+        // 이 값은 **몸이 아니다.** 「자리에 떨어지는 것」이 **칸 하나를 덮기 위한 도형 보정항**이고,
+        // 그 일이 곧 「반경 1 이 대각을 잃지 않게 하는 것」이다. 「몸」으로 부르지 말 것 —
+        // 그렇게 부르는 순간 다음 사람이 유닛 몸으로 바꾸려 든다(그게 이 파일의 옛 실수다).
+        //
+        // ⚠ **private 이다**(unit 23a). 공개돼 있던 시절 호출부가 이 값을 **「내 몸」 자리에 손으로
+        // 넘길 수 있었고**, 그래서 원점이 유닛인 자리에도 칸 반폭이 조용히 들어갔다 — 그게
+        // unit 22·23 이 두 번 놓친 결함의 형태다. 이제 `ReachFromCell` 만 이 값을 안다.
+        private const float CellHalfWidthTiles = 0.5f;
 
-        // attach-range-preview 0a(리뷰 H-1) — `RangeMetric` 이 술어에 더하는 **시전자 쪽 반폭**.
-        // 어댑터(`EcsSkillContext.Collect`)와 페이크(`TestSkillContext`)가 **같은 함수**를 부른다 — 페이크가
-        // 매핑을 재구현하면 폴백 방향이 갈려(페이크 fail-open / 라이브 fail-closed) 도메인 테스트가 초록인데
-        // 라이브가 다르다. 반환 false = 은퇴한/미지의 자 → 호출부는 **후보 0** 으로 접는다(fail-closed).
-        //   AreaCircle → 칸 반폭(광역: 반경 N + 0.5 + 대상 몸) · Euclidean → 0(사거리·탄 비행 거리: N + 대상 몸).
-        public static bool TryShapeHalfWidth(RangeMetric metric, out float halfWidthTiles)
+        // 표기 전용 접근자 — 링·하이라이트가 **자리형** 도형을 그릴 때만.
+        // ⚠ 판정에 쓰지 말 것. 판정은 `ReachFromUnit`/`ReachFromCell` 두 진입점뿐이다.
+        public static float CellShapePaddingTiles => CellHalfWidthTiles;
+
+        // unit 23a — `RangeMetric` → **원점 항**. 형이 값을 정한다(제약 13).
+        //
+        // ⚠ **매핑은 여기 «하나»다**(attach-range-preview 리뷰 H-1). 어댑터(`EcsSkillContext.Collect`)와
+        // 페이크(`TestSkillContext`)가 **같은 함수**를 부른다 — 페이크가 매핑을 재구현하면 폴백 방향이
+        // 갈려(페이크 fail-open / 라이브 fail-closed) 도메인 테스트가 초록인데 라이브가 다르다.
+        // 그래서 시전자 몸을 **분기가 아니라 인자로** 받는다. 각자 분기하는 형태로 되돌리지 말 것.
+        //
+        // 반환 false = 안 정했거나(`None`) 은퇴한 자 → 호출부는 **후보 0** 으로 접는다(fail-closed).
+        public static bool TryOriginRadius(RangeMetric metric, float casterBodyRadiusTiles,
+                                           out float originRadiusTiles)
         {
             switch (metric)
             {
-                case RangeMetric.AreaCircle: halfWidthTiles = CellHalfWidthTiles; return true;
-                case RangeMetric.Euclidean: halfWidthTiles = 0f; return true;
-                default: halfWidthTiles = 0f; return false;
+                // 몸에서 나오는 것 — 그 몸의 반경.
+                case RangeMetric.SelfArea:  originRadiusTiles = casterBodyRadiusTiles; return true;
+                // 자리에 떨어지는 것 — 칸 하나를 덮는 도형 보정.
+                case RangeMetric.CellArea:  originRadiusTiles = CellHalfWidthTiles;    return true;
+                // 사거리·탄 비행 거리 — 원점 항 없음.
+                case RangeMetric.Euclidean: originRadiusTiles = 0f;                    return true;
+                default:                    originRadiusTiles = 0f;                    return false;
             }
         }
 
@@ -132,10 +158,32 @@ namespace Wassup.Skills
         // 한 번 덜 끼는 편이 결정론에 유리하다.
         // ⚠ 단위는 **타일**이다. 월드 좌표를 넣지 말 것 — 호출부가 `tileSize` 로 나눠서 준다.
         // ⚠ unit 9 — **오차 보정 항이 없다.** 양쪽 몸이 저작/파생에서 오고 그 수치를 그대로 믿는다.
-        public static bool InBodyReach(float dxTiles, float dzTiles, float rangeTiles,
-                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles)
+        // ★ **진입점은 둘뿐이다**(unit 23a). 호출부가 **원점이 무엇인지 선언**하게 만드는 것이 요점 —
+        // 「내 몸」 자리에 값을 손으로 넘길 수 있는 한 같은 누락이 반복된다(unit 22·23 이 그렇게 살아남았다).
+        // 본문은 private 이고 이 둘만 그것을 부른다.
+
+        // **몸에서 나오는 것** — 사거리 · 자기중심 광역 · 자폭 · 시체 폭발 · 오라 · 도발.
+        // `originBodyRadiusTiles` = 그 몸의 반경(방어유닛 = footprint 가로/2 · 적 = 티어 저작).
+        // ⚠ 여기에 칸 반폭을 넣지 말 것 — 그게 이 spec 이 고친 결함이다. 넣을 값이 없으면 `ReachFromCell`.
+        public static bool ReachFromUnit(float dxTiles, float dzTiles, float rangeTiles,
+                                         float originBodyRadiusTiles, float targetBodyRadiusTiles)
+            => Reach(dxTiles, dzTiles, rangeTiles, originBodyRadiusTiles, targetBodyRadiusTiles);
+
+        // **자리에 떨어지는 것** — 칸 조준 광역 · 투사체 착탄 · 장판 · 회오리 · 퇴근 운석.
+        // 원점 항은 **인자가 아니라 이 함수의 성질**이다(칸 반폭). 그래서 틀린 값을 넘길 수 없다.
+        public static bool ReachFromCell(float dxTiles, float dzTiles, float rangeTiles,
+                                         float targetBodyRadiusTiles)
+            => Reach(dxTiles, dzTiles, rangeTiles, CellHalfWidthTiles, targetBodyRadiusTiles);
+
+        // 원점 항을 이미 형에서 뽑아 둔 호출부용(`TryOriginRadius` 를 지난 값).
+        public static bool ReachWithOrigin(float dxTiles, float dzTiles, float rangeTiles,
+                                           float originRadiusTiles, float targetBodyRadiusTiles)
+            => Reach(dxTiles, dzTiles, rangeTiles, originRadiusTiles, targetBodyRadiusTiles);
+
+        private static bool Reach(float dxTiles, float dzTiles, float rangeTiles,
+                                  float originRadiusTiles, float targetBodyRadiusTiles)
         {
-            float reach = rangeTiles + selfBodyRadiusTiles + targetBodyRadiusTiles;
+            float reach = rangeTiles + originRadiusTiles + targetBodyRadiusTiles;
             return dxTiles * dxTiles + dzTiles * dzTiles <= reach * reach;
         }
 
@@ -143,7 +191,7 @@ namespace Wassup.Skills
         // 도형 밖 거리(사각 SDF)가 대상 몸 반경 이하이면 걸친 것이다(자동 민코프스키 확장).
         // `halfTiles` = 도형 반폭 — 칸 단위 조준은 `range + CellHalfWidthTiles`(range 1 = 3×3).
         // 몸이 점(0)이면 「접지점 ∈ 사각」으로 정확히 퇴화한다 = 종전 셀 멤버십과 같은 집합.
-        // ⚠ 원 도형은 함수가 따로 없다 — `InBodyReach(dx, dz, r, 0, targetR)` 가 그 식이다.
+        // ⚠ 원 도형은 함수가 따로 없다 — `ReachFromUnit(dx, dz, r, 0, targetR)` 가 그 식이다.
         public static bool BodyOverlapsSquare(float dxTiles, float dzTiles,
                                               float halfTiles, float bodyRadiusTiles)
         {

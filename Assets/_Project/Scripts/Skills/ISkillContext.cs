@@ -40,12 +40,27 @@ namespace Wassup.Skills
     // Chebyshev(사각 SDF) 는 dreamcatcher-attach-range-preview 0a 에서 은퇴 — 술어 본체
     // `SkillMath.BodyOverlapsSquare` 는 보존(사용자 결정 2026-09-02 「기능은 남기고 비활성화」).
     // 되살릴 땐 아래 Obsolete 속성부터 떼고 `EcsSkillContext.Collect` 에 분기를 다시 단다.
+    // distance-based-range unit 23a — **arm 이 「효과의 형」 3종에 1:1 로 붙는다**(제약 13).
+    // 「원점 항」은 원점이 무엇이냐가 아니라 **효과가 어떤 형이냐**가 정한다.
+    //
+    // ⚠ **`0 = None` 은 의도다.** 종전엔 `AreaCircle = 0` 이라 인자를 빠뜨리면 광역 자로 조용히
+    // 갔다. unit 23a 뒤로는 자기중심(`SelfArea`)이 9/11 이라, 0 이 유효 arm 이면 **미래의 자기중심
+    // 스킬이 인자를 빠뜨렸을 때 이 spec 이 고친 그 버그가 그대로 재생산**되고 — 하필 **폭 1 유닛
+    // 에서는 답이 같아 안 보인다**(오늘 5기). fail-closed 로 loud 하게 죽는 편이 낫다.
+    // ⚠ enum 은 어떤 `.asset`/`.prefab` 에도 직렬화돼 있지 않다(전수 확인) — 번호 변경이 무료다.
     public enum RangeMetric : byte
     {
-        AreaCircle = 0,
+        // 안 정했다 = 후보 0 + loud. 기본값이 유효 arm 이 되면 누락이 조용히 산다.
+        None = 0,
+        // 사거리·탄 비행 거리 — 원점 항 **0**.
         Euclidean = 1,
-        [System.Obsolete("사각 광역은 은퇴했다(attach-range-preview 0a). 광역은 AreaCircle, 사거리는 Euclidean.", true)]
+        [System.Obsolete("사각 광역은 은퇴했다(attach-range-preview 0a). 광역은 SelfArea/CellArea, 사거리는 Euclidean.", true)]
         Chebyshev = 2,
+        // **몸에서 나오는 것** — 자기중심 광역·자폭·오라·도발. 원점 항 = **그 몸의 반경**.
+        SelfArea = 3,
+        // **자리에 떨어지는 것** — 칸 조준 광역·착탄. 원점 항 = **칸 반폭**(몸이 아니라 도형 보정).
+        // 구 `AreaCircle`. 이름이 「원」을 말해 자기중심까지 삼켰던 것이 unit 23 의 결함이었다.
+        CellArea = 4,
     }
 
     // `Has(id, pred)` 의 술어. 개별 동사로 쪼개면 표면이 10개 늘어난다.

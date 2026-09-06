@@ -60,7 +60,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             for (int i = 0; i < n && count < outIndices.Length; i++)
             {
                 float bodyR = bodyRadiiTiles.IsCreated && i < bodyRadiiTiles.Length ? bodyRadiiTiles[i] : 0f;
-                if (Wassup.Skills.SkillMath.InBodyReach(
+                if (Wassup.Skills.SkillMath.ReachFromUnit(
                         candidateXZTiles[i].x - hostXZTiles.x,
                         candidateXZTiles[i].y - hostXZTiles.y,
                         rangeTiles, hostBodyRadiusTiles, bodyR))

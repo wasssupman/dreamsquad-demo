@@ -11,10 +11,24 @@ namespace Wassup.Core
     public readonly struct DcRangeSpec
     {
         public readonly DcRangeShape shape;
-        public readonly float radiusTiles;   // 도형 가장자리(타일). 표준 상대 항 없음 — README 계약 2.
-        public DcRangeSpec(DcRangeShape shape, float radiusTiles) { this.shape = shape; this.radiusTiles = radiusTiles; }
-        public static readonly DcRangeSpec None = new DcRangeSpec(DcRangeShape.None, 0f);
-        public bool Equals(in DcRangeSpec o) => shape == o.shape && radiusTiles == o.radiusTiles;
+        // ★ **unit 23a — 여기 든 것은 «도형 반경 N» 뿐이다.** 원점 항은 **안 들어 있다.**
+        // 종전엔 `N + 칸 반폭` 이 통째로 들어 있었는데, 그러면 host 몸이 반경을 바꾸는 형
+        // (자기중심 광역)을 표현할 수 없다 — 카탈로그는 host 를 모르기 때문이다.
+        // 화면에 그릴 값은 `RadiusWithOrigin(host 몸)` 이다.
+        public readonly float radiusTiles;
+        // 원점 항을 무엇으로 더할지 — **판정과 «같은 매핑»을 쓴다**(`SkillMath.TryOriginRadius`).
+        // 여기서 상수를 다시 쓰면 표기와 판정이 갈리고, 그게 unit 5 의 「화면이 규칙을 틀리게
+        // 가르친다」다. 그래서 자를 복사하지 않고 **같은 함수를 부른다.**
+        public readonly RangeMetric metric;
+        public DcRangeSpec(DcRangeShape shape, float radiusTiles, RangeMetric metric = RangeMetric.CellArea)
+        { this.shape = shape; this.radiusTiles = radiusTiles; this.metric = metric; }
+        public static readonly DcRangeSpec None = new DcRangeSpec(DcRangeShape.None, 0f, RangeMetric.None);
+        public bool Equals(in DcRangeSpec o) => shape == o.shape && radiusTiles == o.radiusTiles && metric == o.metric;
+
+        // 화면에 그릴 반경 — host 몸을 아는 자리(브리지)가 부른다.
+        public float RadiusWithOrigin(float hostBodyRadiusTiles)
+            => SkillMath.TryOriginRadius(metric, hostBodyRadiusTiles, out float originR)
+                ? radiusTiles + originR : radiusTiles;
     }
 
     // 공간성 카탈로그 — **concrete(skillId) 로 판정**하고 값은 보지 않는다. 예외 하나:
@@ -26,9 +40,9 @@ namespace Wassup.Core
     // 퍼센트겠지」 식 값 추정은 다음 시트 편집에 깨진다. 모르는 concrete 는 None — **없는 범위를 지어내지
     // 않는다**(fail-closed).
     //
-    // 반경은 **판정 입력의 복사본**이다. 광역 concrete 는 `EcsSkillContext` 의 `RangeMetric.AreaCircle`
-    // arm(`InBodyReach(d, N, CellHalfWidthTiles, targetR)`)과 투사체 TileAoe 착탄이 쓰는 `N + 칸 반폭`,
-    // 발사명세는 `Euclidean` arm 의 `N`(탄 비행 거리 — 칸 반폭을 더하면 사거리 밖 후보를 고른다).
+    // 반경은 **판정 입력의 복사본**이다 — unit 23a 부터는 «복사» 가 아니라 **같은 함수**를 부른다
+    // (`DcRangeSpec.RadiusWithOrigin` → `SkillMath.TryOriginRadius`). 자를 두 벌 두면 갈린다.
+    // 카탈로그가 담는 것은 **도형 반경 N + 형**이고, 원점 항은 host 를 아는 자리(브리지)가 더한다.
     // 대상 몸(targetR)은 그리지 않는다 — 「대상 그림자가 링에 닿으면 걸린다」가 판정식과 동치라서다.
     //
     // ECS 무참조 · bake/UI 시점 전용(managed SO 읽기) — per-frame 호출 금지. `DcApplicability` 와 같은 자리.
@@ -51,14 +65,17 @@ namespace Wassup.Core
                 || skillId == OpponentStatAuraSkill.Id
                 || skillId == GrantShieldSkill.Id)          // 0 = 자기만 → 아래 가드가 None 으로 접는다
             {
+                // **몸에서 나오는 것** — 원점 항 = host 몸. 그래서 같은 카드도 배스티온(1.5)에
+                // 붙으면 버스터즈(0.5)보다 1칸 넓다(제약 13).
                 return tileRange > 0
-                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange + SkillMath.CellHalfWidthTiles)
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.SelfArea)
                     : DcRangeSpec.None;
             }
             if (skillId == EmitPatternSkill.Id)
             {
+                // 탄 비행 거리 — 원점 항 없음.
                 return tileRange > 0
-                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange)
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.Euclidean)
                     : DcRangeSpec.None;
             }
             // 사망폭발·퇴근 운석(사용자 결정 2026-09-03) — concrete 는 같은 DeathSiteBlast 지만
@@ -66,11 +83,21 @@ namespace Wassup.Core
             // 않으므로 「지금 서 있는 자리 중심 원」이 거짓말이 아니다. 반경은 착탄식 복사본
             // (N + 칸 반폭) — SelfAreaBlast 와 같은 자다. 처치(OnKill) 트리거는 죽인 **적**의
             // 자리라 부착 시점에 알 수 없어 그대로 None(아래 fail-closed).
-            if (skillId == DeathSiteBlastSkill.Id
-                && (trigger == DcTriggerKind.OnDeath || trigger == DcTriggerKind.OnRetire))
+            // ⚠ **unit 23 에서 이 둘의 «형» 이 갈렸다**(제약 13, 사용자 결정 2026-09-06):
+            //   `OnDeath`  = **몸에서 나오는 것** — 죽은 그 유닛이 터진다 → 원점 항 = host 몸
+            //   `OnRetire` = **자리에 떨어지는 것** — 운석이 «비워진 칸» 에 내린다. 퇴근한 유닛이
+            //                그것을 «불렀을» 뿐이라 그 유닛의 몸은 안 붙는다(지정은 귀속이지 기하가 아니다).
+            // 한 케이스로 묶어 두면 둘 중 하나가 반드시 틀린다.
+            if (skillId == DeathSiteBlastSkill.Id && trigger == DcTriggerKind.OnDeath)
             {
                 return tileRange > 0
-                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange + SkillMath.CellHalfWidthTiles)
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.SelfArea)
+                    : DcRangeSpec.None;
+            }
+            if (skillId == DeathSiteBlastSkill.Id && trigger == DcTriggerKind.OnRetire)
+            {
+                return tileRange > 0
+                    ? new DcRangeSpec(DcRangeShape.Circle, tileRange, RangeMetric.CellArea)
                     : DcRangeSpec.None;
             }
             // DeathSiteBlast(처치 트리거 — 죽인 적의 자리) · DeathSiteHazard(동일 — 카드도 잿불뿐) ·

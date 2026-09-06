@@ -29,7 +29,7 @@ namespace Wassup.Skills.Concrete
                 CandidateFilter.ExcludeDead
                 | CandidateFilter.ExcludeInUltimateLeap
                 | CandidateFilter.MatchTraversalLayers,
-                RangeMetric.AreaCircle, buf);
+                RangeMetric.SelfArea, buf);
 
             // ⚠ **대상이 0이어도 묶인다.** 처음엔 「아무 일도 안 했는데 공격만 못 하는
             // 순수 손해」라고 보고 `n == 0` 에서 빠져나가게 했는데, 기존 그물이 그걸

@@ -24,16 +24,66 @@ namespace Wassup.Tests.EditMode
         {
             var ctx = new TestSkillContext();
             ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.EnemyUnit);
-            caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit);
+            // ★ unit 23a — 시전자에 **몸을 준다.** 라이브에서 자기중심 광역의 원점 항은 시전자 몸이고,
+            // 그 값은 «항상» ≥ 0.5 다(방어유닛 최소 폭1 = 0.5 · 적 소형 0.25 는 자기중심 광역 저작 0종).
+            // 페이크가 0 을 쓰면 반경이 «좁아져» 「반경 1 = 여덟 이웃」 계약이 깨진다 —
+            // 그게 `SkillMath` 의 옛 경고(십자 회귀)가 말하던 현상이고, **오늘 라이브에서는 불가능**하다.
+            caster = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit, bodyRadius: 0.5f);
             return ctx;
         }
 
         [Test]
-        public void RangeMetric_DefaultValue_IsAreaCircle()
+        public void RangeMetric_DefaultValue_IsNone_SoOmissionFailsClosed()
         {
-            // 값 0 = 원. 사각이 0 으로 남으면 인자 누락이 조용히 옛 자를 탄다.
-            Assert.AreEqual("AreaCircle", Enum.GetName(typeof(RangeMetric), (RangeMetric)0),
-                "RangeMetric 의 기본값(0)은 원 광역이어야 한다");
+            // ★ unit 23a — **기본값이 «유효 arm» 이면 안 된다.** 종전엔 `AreaCircle = 0` 이라
+            // 인자를 빠뜨리면 조용히 광역 자를 탔다. 전환 뒤로는 자기중심이 9/11 이라, 0 이
+            // 유효하면 **미래의 자기중심 스킬이 인자를 빠뜨렸을 때 이 spec 이 고친 그 버그가
+            // 그대로 재생산**되고 — 하필 **폭 1 유닛에서는 답이 같아 안 보인다**.
+            Assert.AreEqual("None", Enum.GetName(typeof(RangeMetric), (RangeMetric)0),
+                "RangeMetric 의 기본값(0)은 fail-closed 여야 한다");
+            Assert.IsFalse(SkillMath.TryOriginRadius(RangeMetric.None, 1.5f, out _),
+                "None 은 매핑을 거절해야 한다 — 호출부가 후보 0 으로 접는다");
+        }
+
+        // ★★ **차등 단언 — 이 unit 의 그물.** 시전자 몸만 키우면 대상 집합이 넓어져야 한다.
+        // ⚠ 호스트를 **폭 2 이상**으로 잡는 것이 요점이다. 폭 1(몸 0.5)은 옛 칸 반폭과 값이 같아
+        // 전후 답이 같고, 그래서 1×1 픽스처만 있던 것이 unit 22 의 결함을 숨겼다.
+        [Test]
+        public void SelfArea_WidensWithCasterBody_NotWithACellConstant()
+        {
+            // 오프셋 (2.2, 0): 폭1 시전자(0.5)면 1 + 0.5 + 0.25 = 1.75 밖 → 제외.
+            // 폭3 시전자(1.5)면 1 + 1.5 + 0.25 = 2.75 안 → 포함.
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.EnemyUnit);
+            ctx.Add(1, new float3(7.7f, 0, 5.5f), Faction.DefenderUnit);
+
+            var thin = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit, bodyRadius: 0.5f);
+            var wide = CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit, bodyRadius: 1.5f);
+            var buf = new SkillEntityId[8];
+
+            int thinN = ctx.Opponents(thin, new float3(5.5f, 0, 5.5f), 1,
+                                      CandidateFilter.ExcludeDead, RangeMetric.SelfArea, buf);
+            int wideN = ctx.Opponents(wide, new float3(5.5f, 0, 5.5f), 1,
+                                      CandidateFilter.ExcludeDead, RangeMetric.SelfArea, buf);
+
+            Assert.AreEqual(0, thinN, "폭1 시전자에겐 2.2칸이 밖이다");
+            Assert.AreEqual(1, wideN,
+                "폭3 시전자에겐 안이어야 한다 — 여기가 0 이면 원점 항이 아직 칸 상수다(unit 23 의 결함)");
+        }
+
+        // 「자리에 떨어지는 것」은 시전자 몸에 **반응하지 않는다** — 형이 갈렸다는 증거.
+        [Test]
+        public void CellArea_DoesNotReactToCasterBody()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(100, new float3(5.5f, 0, 5.5f), Faction.EnemyUnit);
+            ctx.Add(1, new float3(7.7f, 0, 5.5f), Faction.DefenderUnit);
+            var buf = new SkillEntityId[8];
+            int a = ctx.Opponents(CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit, 0.5f),
+                                  new float3(5.5f, 0, 5.5f), 1, CandidateFilter.ExcludeDead, RangeMetric.CellArea, buf);
+            int b = ctx.Opponents(CasterRef.OfUnit(new SkillEntityId(100), Faction.EnemyUnit, 1.5f),
+                                  new float3(5.5f, 0, 5.5f), 1, CandidateFilter.ExcludeDead, RangeMetric.CellArea, buf);
+            Assert.AreEqual(a, b, "자리형은 시전자 몸에 반응하면 안 된다(퇴근 운석이 이 형이다)");
         }
 
         [Test]
@@ -60,13 +110,13 @@ namespace Wassup.Tests.EditMode
         public void SquareToCircle_LosesOnlyCorners_ByTheDocumentedCount(int n, int squareCells, int circleCells)
         {
             const float targetR = SkillMath.StandardBodyRadiusTiles;
-            float half = n + SkillMath.CellHalfWidthTiles;
+            float half = n + SkillMath.CellShapePaddingTiles;
             int sq = 0, ci = 0;
             for (int dx = -n - 1; dx <= n + 1; dx++)
             for (int dz = -n - 1; dz <= n + 1; dz++)
             {
                 bool inSquare = SkillMath.BodyOverlapsSquare(dx, dz, half, targetR);
-                bool inCircle = SkillMath.InBodyReach(dx, dz, n, SkillMath.CellHalfWidthTiles, targetR);
+                bool inCircle = SkillMath.ReachFromCell(dx, dz, n, targetR);
                 if (inSquare) sq++;
                 if (inCircle) ci++;
                 Assert.IsFalse(inCircle && !inSquare, $"N={n} ({dx},{dz}) — 원이 사각 밖을 맞힌다(부분집합 위반)");

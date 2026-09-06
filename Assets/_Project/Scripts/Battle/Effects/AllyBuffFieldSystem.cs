@@ -82,9 +82,9 @@ namespace Wassup.Battle.Effects
                     // unit 18 — 오라 멤버십 = 원 + 유닛 몸(광역과 같은 자, 입력은 연속).
                     float3 fCenter = Wassup.Battle.Movement.GridMath.CellToWorldCenter(
                         f.centerCell, tileSize, defPos.y, origin: ffOrigin);
-                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
                             (defPos.x - fCenter.x) * buffInvT, (defPos.z - fCenter.z) * buffInvT,
-                            f.tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles, defBodyR)) continue;
+                            f.tileRange, defBodyR)) continue;
                     if (f.stat == StatKind.DamageMul) bestDamage = math.max(bestDamage, f.magnitude);
                     else if (f.stat == StatKind.AttackSpeedMul) bestSpeed = math.max(bestSpeed, f.magnitude);
                 }

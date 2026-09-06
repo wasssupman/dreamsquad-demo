@@ -117,6 +117,26 @@
 
 ## 완료 기준
 
+### 23a — **구현 완료 2026-09-06** (골든 제외)
+
+- [x] **선행**: `TestSkillContext.Stat` 에 `UnitStat.BodyRadius` 케이스 추가(항상 0 이던 선행 결함).
+- [x] 진입점 2개(`ReachFromUnit`/`ReachFromCell`) + 본문·상수 **private**. 술어 호출 12곳 전부 전환.
+- [x] `RangeMetric` = `None(0)` · `Euclidean(1)` · `SelfArea(3)` · `CellArea(4)`. 기본값 **fail-closed**.
+- [x] `TryOriginRadius(metric, casterBodyR, out)` — **매핑 하나**를 어댑터·페이크가 공유(리뷰 H-1 유지).
+- [x] `CasterRef.BodyRadius` + `SkillDispatchSystem.BuildCaster` 가 **루프 밖에서 한 번** 읽는다.
+- [x] 자기중심 광역 **9자리 / 8파일** → `SelfArea` · 칸 조준 1자리 → `CellArea`.
+- [x] 표기 동기 — `DcRangeSpec` 이 **도형 반경 + 형**만 담고, 브리지 `RedrawAttachPreview` 가
+      host 몸을 합성한다. **판정과 «같은 함수»**(`RadiusWithOrigin` → `TryOriginRadius`)를 부른다.
+- [x] `SkillMath` 의 「광역을 유닛 몸으로 바꾸지 말 것」 경고 **명시 은퇴**(사유 무효 확인).
+- [x] **가드** `ReachEntryPointGuardTests`(3) — sim·도메인의 표기 상수 참조 0건 + 본문 private + 옛 술어 부활 금지.
+- [x] **차등 단언** — `SelfArea_WidensWithCasterBody_NotWithACellConstant`(폭1 제외 / 폭3 포함) ·
+      `CellArea_DoesNotReactToCasterBody`(형이 갈렸다는 증거) · 카탈로그 2건.
+- [x] **EditMode 2765건 중 실패 2건**(`boomerang`·`bomb_man` — 시트 소유 **선행 실패**).
+      예측한 3건이 정확히 깨졌고 처방대로 복원됐다.
+- [ ] **골든 A/B** — 미실행(워크트리 격리 선행 필요).
+
+### 나머지
+
 - [ ] **선행**: `TestSkillContext.Stat` 에 `UnitStat.BodyRadius` 케이스 추가.
       ⚠ 오늘 없어서 **항상 0** 이고, `AreaSleepSkill:81` 이 이미 그 값을 쓴다 —
       **차등 단언을 그 전에 쓰면 안 움직인다**(unit 22 를 숨긴 것과 같은 눈속임).

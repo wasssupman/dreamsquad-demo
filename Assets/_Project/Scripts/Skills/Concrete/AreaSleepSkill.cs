@@ -43,7 +43,7 @@ namespace Wassup.Skills.Concrete
                 caster, hostPos, a.Radius,
                 CandidateFilter.ExcludeSelf | CandidateFilter.ExcludeDead
                     | CandidateFilter.ExcludePendingDeployment,
-                RangeMetric.AreaCircle, candidates);
+                RangeMetric.SelfArea, candidates);
             if (n == 0) return;
 
             // 거리² 로 좁힌 뒤 cap. 배제는 여기서 끝나야 cap 자리를 죽은/배치중 유닛이
@@ -78,8 +78,8 @@ namespace Wassup.Skills.Concrete
                 if (skipped < skipCount)
                 {
                     var dp = ctx.Position(id) - hostPos;
-                    if (SkillMath.InBodyReach(dp.x * invT, dp.z * invT, attackRange,
-                                              hostBodyR, ctx.Stat(id, UnitStat.BodyRadius)))
+                    if (SkillMath.ReachFromUnit(dp.x * invT, dp.z * invT, attackRange,
+                                                hostBodyR, ctx.Stat(id, UnitStat.BodyRadius)))
                     {
                         skipped++;
                         continue;

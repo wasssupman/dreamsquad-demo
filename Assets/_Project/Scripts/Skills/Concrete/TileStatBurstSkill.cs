@@ -23,7 +23,8 @@ namespace Wassup.Skills.Concrete
             var center = ctx.CellCenter(target.CellA);
             var buf = new SkillEntityId[MaxTargets];
             int n = ctx.Opponents(caster, center, p.TileRange,
-                CandidateFilter.ExcludeDead, RangeMetric.AreaCircle, buf);
+                // unit 23a — **칸 조준**이라 자리형이 맞다. 원점이 시전자가 아니라 `target.CellA` 다.
+                CandidateFilter.ExcludeDead, RangeMetric.CellArea, buf);
 
             for (int i = 0; i < n; i++)
             {

@@ -209,12 +209,12 @@ namespace Wassup.Tests.EditMode
             // 2×2 방어유닛(파생 몸 1.0)이 소형 적(0.25)을 볼 때: 상한 = 1 + 1.0 + 0.25 = 2.25.
             const float range = 1f, selfR = 1.0f, targetR = 0.25f;
             const float reach = range + selfR + targetR;
-            Assert.IsTrue(SkillMath.InBodyReach(reach - 0.05f, 0f, range, selfR, targetR));
-            Assert.IsFalse(SkillMath.InBodyReach(reach + 0.05f, 0f, range, selfR, targetR));
+            Assert.IsTrue(SkillMath.ReachFromUnit(reach - 0.05f, 0f, range, selfR, targetR));
+            Assert.IsFalse(SkillMath.ReachFromUnit(reach + 0.05f, 0f, range, selfR, targetR));
             // 전방향 동일 — 대각도 같은 반지름이다(사각 몸의 「변」이 사라졌다).
             float d = reach / 1.41421356f;
-            Assert.IsTrue(SkillMath.InBodyReach(d - 0.05f, d - 0.05f, range, selfR, targetR));
-            Assert.IsFalse(SkillMath.InBodyReach(d + 0.05f, d + 0.05f, range, selfR, targetR));
+            Assert.IsTrue(SkillMath.ReachFromUnit(d - 0.05f, d - 0.05f, range, selfR, targetR));
+            Assert.IsFalse(SkillMath.ReachFromUnit(d + 0.05f, d + 0.05f, range, selfR, targetR));
         }
 
         // unit 14 — 사각 도형 몸 걸침. 몸이 점이면 종전 「접지점 ∈ 사각」으로 퇴화하고,

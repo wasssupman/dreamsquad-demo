@@ -413,11 +413,10 @@ namespace Wassup.Battle.Movement
                     // 연속화(광역 자와 같은 물성: 반경 + 칸 반폭 + 몸). 셀 양자화도 함께 소멸.
                     float tInv = field.tileSize > 1e-6f ? 1f / field.tileSize : 1f;
                     float pullBodyR = _pullBodyRadiusLookup.HasComponent(entity) ? _pullBodyRadiusLookup[entity].value : 0f;
-                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
                             (current.x - fieldT.centerWorld.x) * tInv,
                             (current.z - fieldT.centerWorld.z) * tInv,
-                            fieldT.tileRange, Wassup.Skills.SkillMath.CellHalfWidthTiles,
-                            pullBodyR)) continue;
+                            fieldT.tileRange, pullBodyR)) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);

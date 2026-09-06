@@ -349,7 +349,15 @@ namespace Wassup.Battle.Skills
                     "자기 자신도 못 찾는다(모든 질의가 빈손). 스폰 지점의 ID 발급을 확인하라.");
             }
 
-            return CasterRef.OfUnit(new SkillEntityId(id), faction);
+            // distance-based-range unit 23a — **시전자의 몸을 «값으로» 싣는다**(제약 13).
+            // 자기중심 광역(`RangeMetric.SelfArea`)의 원점 항이 이 값이다.
+            // ⚠ 여기서 한 번 읽어 `CasterRef` 에 담는 것이 요점이다 — 어댑터가 **후보 루프 안**에서
+            // 조회하면 후보마다 lookup 이고, 그 형태로 되돌리지 말 것(리뷰 LOW 11).
+            // ⚠ 시전자가 **이미 파괴된** seam(자기 죽음·퇴근)은 위 분기로 빠져 몸이 0 이다 —
+            // 그 경로의 폭발은 unit 23b 가 `SkillFiredEvent` 의 값 스냅샷으로 따로 덮는다.
+            float bodyR = em.HasComponent<Wassup.Battle.Units.HitRadius>(caster)
+                ? em.GetComponentData<Wassup.Battle.Units.HitRadius>(caster).value : 0f;
+            return CasterRef.OfUnit(new SkillEntityId(id), faction, bodyR);
         }
 
         private static SkillTarget BuildTarget(EntityManager em, in SkillFiredEvent evt)

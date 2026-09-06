@@ -94,9 +94,9 @@ namespace Wassup.Battle.Effects
                 for (int z = 0; z < zones.Length; z++)
                 {
                     var zone = zones[z];
-                    if (!Wassup.Skills.SkillMath.InBodyReach(
+                    if (!Wassup.Skills.SkillMath.ReachFromCell(
                             (vpos.x - zone.centerXZ.x) * invT, (vpos.z - zone.centerXZ.y) * invT,
-                            zone.radiusTiles, Wassup.Skills.SkillMath.CellHalfWidthTiles, bodyR))
+                            zone.radiusTiles, bodyR))
                         continue;
                     for (int ei = 0; ei < zone.effCount; ei++)
                     {
