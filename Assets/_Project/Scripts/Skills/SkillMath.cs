@@ -96,6 +96,9 @@ namespace Wassup.Skills
         // ⚠ **private 이다**(unit 23a). 공개돼 있던 시절 호출부가 이 값을 **「내 몸」 자리에 손으로
         // 넘길 수 있었고**, 그래서 원점이 유닛인 자리에도 칸 반폭이 조용히 들어갔다 — 그게
         // unit 22·23 이 두 번 놓친 결함의 형태다. 이제 `ReachFromCell` 만 이 값을 안다.
+        // ⚠⚠ **보증 수준을 과장하지 말 것**(리뷰 M-1b): private 은 **이름을 숨긴 것**이지 값을
+        // 막은 것이 아니다 — `ReachFromUnit(dx, dz, r, 0.5f, targetR)` 리터럴은 여전히 컴파일되고
+        // 어떤 그물도 안 잡는다. 컴파일러가 막는 것은 「**명명된** 칸 상수를 원점 자리에 넘기기」까지다.
         private const float CellHalfWidthTiles = 0.5f;
 
         // 표기 전용 접근자 — 링·하이라이트가 **자리형** 도형을 그릴 때만.
@@ -180,6 +183,12 @@ namespace Wassup.Skills
         // ⚠ **0 이 「자리형」과 「생산자가 안 실었다」를 겸직한다**(리뷰 HIGH). 겸직 자체는
         // 종전 동작과 같아 안전하지만, **배선 누락이 의도된 자리형으로 위장**될 수 있다 —
         // 그래서 생산자 전수를 이름으로 고정하는 단언이 따로 있다(`OriginBodyRadiusWiringTests`).
+        //
+        // ⚠ **폴백 방향이 `TryOriginRadius(SelfArea, 0)` 과 «반대»다 — 의도한 비대칭이다**(리뷰 M-5).
+        //   여기(착탄): 0 → **0.5 로 승격**. 0 의 뜻이 「이 자리에 주인이 없다」이고 그게 곧 칸이다.
+        //   저쪽(자기중심): 0 → **0 유지**. 0 의 뜻이 「이 시전자에게 몸이 없다」라서, 0.5 로
+        //   올리면 몸 없는 시전자의 광역을 **없던 반 칸만큼 넓힌다.**
+        // 같은 숫자지만 **묻는 질문이 다르다.** 한쪽에 맞추려다 다른 쪽을 틀리게 하지 말 것.
         public static bool ReachFromImpact(float dxTiles, float dzTiles, float rangeTiles,
                                            float originBodyRadiusTiles, float targetBodyRadiusTiles)
             => Reach(dxTiles, dzTiles, rangeTiles,

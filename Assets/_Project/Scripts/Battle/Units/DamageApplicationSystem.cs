@@ -602,11 +602,11 @@ namespace Wassup.Battle.Units
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
-    
+
         // unit 23b — 사건 자리의 주인의 몸(타일). 없으면 0 = 「그 자리는 칸이다」.
         // ⚠ **`SkillFiredEvent` 의 위치 필드와 «짝»으로만 쓴다.** 자리는 A 의 것을 싣고 몸은
         // B 의 것을 실으면 「죽은 적 자리에 킬러의 몸」이 된다 — 그게 이 필드가 둘인 이유다.
         private float SelfBodyRadius(Entity e)
             => _bodyRadiusLookup.HasComponent(e) ? _bodyRadiusLookup[e].value : 0f;
-}
+    }
 }

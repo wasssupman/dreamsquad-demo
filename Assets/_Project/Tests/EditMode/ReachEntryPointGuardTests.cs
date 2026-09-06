@@ -26,6 +26,11 @@ namespace Wassup.Tests.EditMode
         private static string SkillsRoot =>
             Path.Combine(UnityEngine.Application.dataPath, "_Project", "Scripts", "Skills");
 
+        // ⚠ **Bridge 를 빼면 사각지대가 된다**(리뷰 M-3) — 표기 소비처 3곳과 판정 모양 코드
+        // (`CollectShieldBreakTargets`)가 전부 거기 산다. sim 은 아니지만 «판정을 흉내내는» 코드다.
+        private static string BridgeRoot =>
+            Path.Combine(UnityEngine.Application.dataPath, "_Project", "Scripts", "Bridge");
+
         // 표기 전용 접근자. sim 은 이 값을 **판정에 쓰면 안 된다** — 형은 `RangeMetric` 이 정한다.
         private const string DisplayOnlyAccessor = "CellShapePaddingTiles";
 
@@ -84,6 +89,13 @@ namespace Wassup.Tests.EditMode
                 "칸 반폭 상수가 private 이 아니다 — 이 값이 보이는 순간 「내 몸」 자리에 들어간다");
             Assert.IsTrue(src.Contains("public static bool ReachFromUnit("), "몸형 진입점이 없다");
             Assert.IsTrue(src.Contains("public static bool ReachFromCell("), "자리형 진입점이 없다");
+
+            // ★ **금지 스캔에는 «존재 단언»이 짝으로 필요하다**(리뷰 T-1/M-2).
+            // 없으면 리네임 한 번에 아래 스캔 셋이 전부 hit 0 으로 **vacuous 통과**하고,
+            // 「위반 0」과 「검사 대상 없음」이 구분되지 않는다 — 그물이 조용히 사라진다.
+            Assert.IsTrue(src.Contains("public static float " + DisplayOnlyAccessor),
+                $"표기 전용 접근자 `{DisplayOnlyAccessor}` 가 없다 — 이름이 바뀌었다면 "
+                + "아래 금지 스캔들이 전부 vacuous 통과 중이다. 상수와 스캔을 같이 갱신하라.");
 
             // 옛 이름이 되살아나면(복붙 복원) 그물이 통째로 무의미해진다.
             Assert.IsFalse(Regex.IsMatch(src, @"public\s+static\s+bool\s+InBodyReach\("),
@@ -154,6 +166,42 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(Read("Skills", "Concrete", "DeathSiteBlastSkill.cs")
                     .Contains("OriginBodyRadius = p.EventBodyRadius"),
                 "사망/시체 폭발이 «자리의 주인» 의 몸을 안 보낸다 — caster 것을 쓰면 시체폭발이 틀린다");
+        }
+
+        // ★★ **복사 지점을 고정한다 — 이 그물이 없어서 unit 23b 가 런타임 효과 0 으로 나갔다.**
+        //
+        // 초판은 `originBodyRadius` 를 `BallisticArcToPoint` **분기에만** 대입했는데, 자기 자리
+        // 폭발 4종(자폭·사망폭발·보스 도약·궁극기 슬램)이 전부 `SkyFall` 이라 **값이 상태에
+        // 한 번도 안 실렸다.** 생산자도 소비자도 옳았고 **그 사이의 복사 지점**만 비어 있었다 —
+        // 종전 그물은 양 끝만 봐서 통째로 놓쳤다. `0` 이 「자리형」과 「안 실었다」를 겸직해
+        // 관측상 완전히 조용했고, 골든 A/B 가 무변으로 나온 이유의 절반이 이것이다.
+        [Test]
+        public void OriginRadius_IsCopiedInTheCommonInitializer_NotPerBranch()
+        {
+            var src = Read("Bridge", "BattleBridge.cs");
+
+            // 오브젝트 초기화자 형태(`originBodyRadius = req.originBodyRadius,`)여야 한다.
+            Assert.IsTrue(Regex.IsMatch(src, @"\n\s*originBodyRadius\s*=\s*req\.originBodyRadius\s*,"),
+                "요청 → 상태 복사가 «공통 초기화 블록» 에 없다. 분기에 두면 다음 movement 가 생길 때 "
+                + "같은 누락이 재발하고, 기본 0 = 레거시라 «조용히» 산다");
+
+            // 분기 대입(`state.originBodyRadius = …`)은 금지 — 그게 이 결함의 형태였다.
+            Assert.IsFalse(Regex.IsMatch(src, @"state\.originBodyRadius\s*="),
+                "분기별 대입이 부활했다 — movement 하나를 빠뜨리면 그 경로만 조용히 옛 자로 돈다");
+        }
+
+        // 「원점 항을 «상수로» 손넘길 수 없다」가 진짜 계약이다. 진입점이 늘어나는 것 자체는
+        // 막지 않되(형이 늘면 정당하게 는다), **모르는 사이에 느는 것**은 막는다.
+        [Test]
+        public void PublicReachEntryPoints_AreExactlyTheKnownSet()
+        {
+            var src = File.ReadAllText(Path.Combine(SkillsRoot, "SkillMath.cs"));
+            var found = Regex.Matches(src, @"public\s+static\s+bool\s+(Reach\w*)\s*\(")
+                             .Select(m => m.Groups[1].Value).OrderBy(x => x).ToArray();
+            var expected = new[] { "ReachFromCell", "ReachFromImpact", "ReachFromUnit", "ReachWithOrigin" };
+            CollectionAssert.AreEqual(expected, found,
+                "공개 도달 진입점 목록이 바뀌었다. 늘릴 때는 «원점 항이 데이터에서 온다» 를 지키는지 "
+                + "확인하고 이 목록과 아키텍처 불변식 7 을 같이 갱신하라: " + string.Join(", ", found));
         }
 
         [Test]

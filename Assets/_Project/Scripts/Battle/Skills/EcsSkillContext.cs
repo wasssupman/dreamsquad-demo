@@ -464,7 +464,10 @@ namespace Wassup.Battle.Skills
                     if (!_warnedRetiredMetricThisDrain)
                     {
                         _warnedRetiredMetricThisDrain = true;
-                        UnityEngine.Debug.LogError($"[SkillDispatch] 은퇴한 RangeMetric {(int)metric} — 이 드레인의 후보 0");
+                        UnityEngine.Debug.LogError(
+                            $"[SkillDispatch] RangeMetric {(int)metric} 을 매핑할 수 없다 — 이 드레인의 후보 0. "
+                            + "0(None) 이면 **배선 누락**(concrete 가 metric 을 안 넘겼다)이고, "
+                            + "그 외면 은퇴한 자다. unit 23a 이후 이 자리의 최빈값은 전자다.");
                     }
                     continue;
                 }

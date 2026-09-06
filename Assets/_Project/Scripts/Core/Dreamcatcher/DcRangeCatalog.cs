@@ -20,15 +20,20 @@ namespace Wassup.Core
         // 여기서 상수를 다시 쓰면 표기와 판정이 갈리고, 그게 unit 5 의 「화면이 규칙을 틀리게
         // 가르친다」다. 그래서 자를 복사하지 않고 **같은 함수를 부른다.**
         public readonly RangeMetric metric;
-        public DcRangeSpec(DcRangeShape shape, float radiusTiles, RangeMetric metric = RangeMetric.CellArea)
+        // ⚠ **기본 인자를 두지 않는다**(리뷰 M-6). 두면 `ISkillContext` 가 세운 `None = 0`
+        // fail-closed 규율의 정반대가 된다 — arm 을 추가하며 metric 을 빠뜨리면 **조용히 자리형**으로 간다.
+        public DcRangeSpec(DcRangeShape shape, float radiusTiles, RangeMetric metric)
         { this.shape = shape; this.radiusTiles = radiusTiles; this.metric = metric; }
         public static readonly DcRangeSpec None = new DcRangeSpec(DcRangeShape.None, 0f, RangeMetric.None);
         public bool Equals(in DcRangeSpec o) => shape == o.shape && radiusTiles == o.radiusTiles && metric == o.metric;
 
         // 화면에 그릴 반경 — host 몸을 아는 자리(브리지)가 부른다.
+        // ⚠ 매핑이 거절하면(`None`/은퇴한 자) **0 을 돌려 「안 그림」으로 접는다**(리뷰 L-2/M-1).
+        // 종전엔 bare radius 를 돌려줘, 판정은 후보 0(fail-closed)인데 표기는 원을 그리는
+        // **방향이 반대인** 상태였다. 화면이 판정보다 관대하면 그게 곧 「규칙을 틀리게 가르친다」다.
         public float RadiusWithOrigin(float hostBodyRadiusTiles)
             => SkillMath.TryOriginRadius(metric, hostBodyRadiusTiles, out float originR)
-                ? radiusTiles + originR : radiusTiles;
+                ? radiusTiles + originR : 0f;
     }
 
     // 공간성 카탈로그 — **concrete(skillId) 로 판정**하고 값은 보지 않는다. 예외 하나:

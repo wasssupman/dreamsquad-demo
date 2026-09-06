@@ -45,14 +45,14 @@ namespace Wassup.Battle.Combat
         public static bool IsInTileRange(int2 candidateCell, int2 centerCell, int tileRange)
             => TileDistance(candidateCell, centerCell) <= tileRange;
 
-        // 광역 멤버십 — **모서리가 둥근** 사거리. `extraRadiusTiles` 는 대상의 몸 반경
+        // 광역 멤버십 — **모서리가 둥근** 사거리. `targetBodyRadiusTiles` 는 대상의 몸 반경
         // (unit 3 의 축, 0 = 점). 큰 몸은 폭발에 더 잘 걸린다 — 사거리 술어와 같은 물성이다.
         public static bool IsInRadius(int2 candidateCell, int2 centerCell, int tileRange,
-                                      float extraRadiusTiles = 0f)
+                                      float targetBodyRadiusTiles = 0f)
             // unit 23a — **자리형** 진입점. 칸 반폭은 인자가 아니라 그 함수의 성질이라
             // 「내 몸」 자리에 틀린 값을 넘길 수 없다. 원점이 «유닛» 인 폭발은 여기 오면 안 된다.
             => Wassup.Skills.SkillMath.ReachFromCell(
                    candidateCell.x - centerCell.x, candidateCell.y - centerCell.y,
-                   tileRange, extraRadiusTiles);
+                   tileRange, targetBodyRadiusTiles);
     }
 }

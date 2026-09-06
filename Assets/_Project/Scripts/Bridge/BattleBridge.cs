@@ -5587,6 +5587,14 @@ namespace Wassup.Bridge
                 priorityDamageMul = req.priorityDamageMul,
                 // dreamcatcher-heavy-strike unit 0 — 강공 전-victim 배율 verbatim 복사(기본 0=inert).
                 heavyDamageMul = req.heavyDamageMul,
+                // ★ distance-based-range unit 23b — **착탄 자리의 «주인» 의 몸, verbatim 복사.**
+                // ⚠ **여기(공통 초기화)에 있어야 한다.** 초판은 `BallisticArcToPoint` 분기에만
+                // 넣었는데, 자기 자리 폭발 4종(자폭·사망폭발·보스 도약·궁극기 슬램)이 전부
+                // `SkyFall` 이라 **값이 상태에 한 번도 안 실렸고 unit 23b 의 런타임 효과가 0** 이었다.
+                // 0 이 「자리형」과 「안 실었다」를 겸직해서 관측상 완전히 조용했다 — 골든 A/B 가
+                // 무변으로 나온 이유의 절반이 이것이다. 분기별로 복사하면 다음 movement 가
+                // 생길 때 같은 누락이 재발한다(기본 0 = 레거시라 조용히 산다).
+                originBodyRadius = req.originBodyRadius,
                 // bomb-thrower-defender unit 2 — TileAoe cap/CC verbatim(기본 0=레거시).
                 aoeTargetCap = req.aoeTargetCap,
                 ccKind = req.ccKind,
@@ -5603,7 +5611,6 @@ namespace Wassup.Bridge
                 state.impact = ballisticImpact;
                 state.arcHeight = req.arcHeight;
                 state.impactTileRange = req.impactTileRange;
-                state.originBodyRadius = req.originBodyRadius;   // unit 23b — 자리의 주인의 몸
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
             else if (req.movement == MovementKind.BezierHomingToEntity)

@@ -176,7 +176,7 @@ namespace Wassup.Tests.EditMode
             // 큰 몸은 폭발에 더 잘 걸린다 — unit 3 의 축이 광역에도 흐른다.
             var c = new int2(0, 0); var far = new int2(3, 0);   // v=2.5
             Assert.IsFalse(TileAoe.IsInRadius(far, c, 2));
-            Assert.IsTrue(TileAoe.IsInRadius(far, c, 2, extraRadiusTiles: 0.9f), "상한 2.9 ≥ 2.5");
+            Assert.IsTrue(TileAoe.IsInRadius(far, c, 2, targetBodyRadiusTiles: 0.9f), "상한 2.9 ≥ 2.5");
         }
 
 
