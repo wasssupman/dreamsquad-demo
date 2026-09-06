@@ -36,19 +36,35 @@
 | # | 자리 | 무슨 판정 | 원점 | 오늘 | 확인 |
 |---|---|---|---|---|---|
 | **A** | `Battle/Skills/EcsSkillContext.cs:458·468` | **자기중심 광역 9자리 / 8파일** — 도발·CC·DoT·스택·수면·브레스·실드부여·오라 2 | 시전자 유닛 | 칸 반폭 0.5 | 감사 2건 일치 |
-| **B** | `SelfAreaBlastSkill` · `DeathSiteBlastSkill` · 실드 파열(`BattleBridge:4568-4598`) → `ProjectileHitSystem:747` | **자기중심 폭발 3종**(진동갑주 자폭 · 사망폭발 · 퇴근 운석 · 실드 파열) | 트리거 대상 유닛 | 칸 반폭 0.5 (intent 경계 뒤) | critic |
+| **B** | `SelfAreaBlastSkill` · `DeathSiteBlastSkill` · `BossLeap:230` → `ProjectileHitSystem:747` | **자기 자리 폭발**(브루저 배치폭발 · 궁지/실드/진동갑주 카드 · 시체폭발 · 작별선물 · 재앙의심장 · 퇴근운석 · 보스 도약 슬램) | 트리거 대상 유닛 | 칸 반폭 0.5 (**intent 경계 뒤**) | critic + audit |
 | **C** | `Battle/Combat/AttackSystem.cs:331` · `:264` · `:403` (`PickFallbackTarget`) | **폭탄맨·아틸러리 «일반 공격» 대상 선정** + 해저드/폭탄 구동 DC 니들 | 공격자 유닛 | **체비셰프 셀 ≤ ceil(range)** — 양쪽 몸 0, 도형이 **사각** | audit |
 | **D** | `Skills/SkillCone.cs:38` ← `ConeBreathSkill:38·58` | 화염 브레스 **부채꼴 거리 게이트** | 시전자 유닛 | `TileRange × TileSize` — 양쪽 몸 0 | audit |
 | **E** | `Battle/Movement/MovementSystem.cs:317` | 포탈 입구 진입 | 칸(정당) | **대상 몸 누락** | audit |
 | **F** | `Bridge/BattleBridge.cs:5970` `TryPickNearestEnemy` | 드롭 지점 최근접 적(살찌운 제물) | 탭 지점 | **대상 몸 누락** | audit |
 
-**초판의 오류 정정**: `CollectShieldBreakTargets` 는 **`if (log != null)` 안에서만 도는 로그 전용**이다.
-피해는 `SpawnProjectile` 이 낸다. **그 함수만 고치면 트레이스가 실제 피해보다 넓은 집합을
-기록한다** — 「로깅은 첫 축」에 정면으로 걸린다. 고칠 대상은 **투사체 스폰 경로**(결함 B).
+**초판 오류 — 2차 정정(감사 2건 독립 확인)**: 실드 파열의 브리지 분기는 **죽은 코드**다.
+`:4566·4577·4615` 가 전부 `if (!routedToSkillLayer)` 이고, `OnShieldBreak × SelfTileAoe` →
+`SelfAreaBlastSkill.Id`, `× AreaSleep` → `AreaSleepSkill.Id` 로 **항상 라우팅**된다
+(`DcSkillRouting.cs:53-54`). 따라서:
+- **판정 축 → 인벤토리에서 삭제.** 실제 판정은 결함 A(`AreaSleepSkill`)와 B(`SelfAreaBlastSkill`)가
+  이미 덮는다. 별도 행으로 두면 **같은 결함을 두 번 센다.**
+- **로그 축 → 남긴다(우선순위 하).** `CollectShieldBreakTargets` 는 셀 양자화 + 칸 반폭 +
+  대상 몸 0 으로 뽑은 집합을 로그에 적어, 스킬 레이어가 실제로 재운 집합과 **다르다.**
+  고치되 **「로그 전용」을 주석에 못박는다** — 안 그러면 다음 사람이 판정으로 오해해 이중화한다.
+- **죽은 arm 철거는 별도 spec**(`skill-layer-migration unit 8` 의 잔여물).
 
-**미해결 쟁점 1건**: `EmitPatternSkill:86`(`Euclidean` → 내 몸 0). audit 은 결함,
-코드 주석(`SkillMath.cs:91`)과 critic 은 「탄 비행 거리라 정당」. **「발사 명세의 조준 후보 수집」이
-도달 판정인가 비행 거리인가**를 정해야 한다.
+**쟁점 해소**: `EmitPatternSkill:86`(`Euclidean`) — audit 이 재검토 후 **결함 아님**으로 판정을
+뒤집었다(탄 비행 거리). 오늘 자 그대로 둔다.
+
+**감사가 새로 올린 보류 3건** (이 unit 범위 밖 — 별도 판단):
+- `Effects/FlowFieldBuilder.cs:188` `CollectDefenderSources` — **사격 칸 필드 소스가 체비셰프
+  사각 + 앵커 셀** 기준이라 다칸 유닛의 몸을 모른다. `AttackReach` 헤더가 *「이동을 멈추는 근거가
+  사격 가능 여부인 이상 셋이 같은 답을 받아야 한다」* 고 못박은 축인데 **여기만 격자 자**다.
+  ⚠ 이 필드는 **어그로 추격판과 감지 추격판(enemy-detection-range unit 8)의 소스**이기도 하다.
+- `Bridge/BattleBridge.cs:5970` `TryPickNearestEnemy` — 원점이 유닛도 칸도 아닌 **탭 지점**이라
+  「원점의 몸」이 정의되지 않는다. 「대상의 몸」은 명제상 들어가야 하는데 없다.
+- `Combat/AuraPulse.cs`(체비셰프 링) · `Data/FootprintMath.cs:58` `RectChebyshevDistance` —
+  **프로덕션 소비처 0.** 삭제하거나 「은퇴」 표기. 살려 두면 다음 사람이 체비셰프를 재유입시킨다.
 
 ## 오차의 부호는 호스트마다 뒤집힌다 (상수 하나로 못 고친다)
 
@@ -113,3 +129,32 @@
 - 결함 B·C·D 의 밸런스 수치 · 드림캐쳐 카드 파급(같은 카드가 host 몸에 따라 달라지는가)
 - 깨질 테스트 목록 · 골든 재베이크 범위 · 작업 단위 분할안
 - `EmitPatternSkill`(`Euclidean`) 쟁점 판정
+
+## 사망·시체 폭발 — 사용자 결정이 코드와 일치함이 확인됐다
+
+`SkillDispatchSystem.cs:244` — `eventPos = TargetPosition ?? FiredPosition`. 생산자 전수 추적 결과
+**폭심은 예외 없이 「트리거된 대상」의 자리**이고, **몸 반경을 발화 시점에 읽을 수 있다**
+(생산자가 전부 파괴 «전» 에 돈다):
+
+| seam | 폭심 = 누구 | 생산자 |
+|---|---|---|
+| OnKill(시체폭발) | **죽인 적** | `DamageApplicationSystem:483` (가드가 생존 보장) |
+| OnDeath(작별선물·재앙의심장) | 죽은 host | `UnitLifecycleSystem:264` (파괴 직전) |
+| OnRetire(퇴근운석) | 퇴근한 방어유닛 | `BattleBridge:4382` |
+| OnShieldBreak / OnDamagedN | host 자신 | `DamageApplicationSystem:395·318` |
+
+→ 「드레인 시점에 시전자가 없어 스냅샷이 필요하다」는 우려는 **생산자 쪽에서 이미 해소**된다.
+`SkillFiredEvent` 에 **`OriginBodyRadius` 한 필드**를 더하고 9자리 생산자가 채우면 된다
+(나머지 생산자 14곳 — 착탄점·해저드·착지점 — 은 기본 0.5 유지).
+
+### ⚠ 첫 «음수» Δ 가 여기서 나온다
+
+`Card_CorpseBurst`(시체폭발)가 **표준 잡몹(몸 0.25)** 위에서 터지면 반경 `N+0.5` → `N+0.25`,
+N=1 기준 **1.5 → 1.25 · 면적 −31%**. 「자기중심 광역은 전부 넓어진다」는 **이 경로에서 거짓**이다.
+**골든 예측 문장은 반드시 부호를 포함해 쓴다.**
+
+### 시체폭발은 반경이 «런타임 가변»인 최초의 카드가 된다
+
+폭심이 적이므로 반경이 **웨이브 구성(적 티어 분포)에 따라 판마다 달라진다.** 프리뷰로 그릴 수 없다.
+→ `DcRangeCatalog.cs:76-79` 가 `OnKill` 을 **fail-closed(None)** 로 두는 현행 판단이 **여전히 옳다.**
+오늘도 프리뷰가 없으므로 **회귀 아님**(플레이어가 잃는 것이 없다).
