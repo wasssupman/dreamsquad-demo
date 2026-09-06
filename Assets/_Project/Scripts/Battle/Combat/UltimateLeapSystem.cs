@@ -74,6 +74,9 @@ namespace Wassup.Battle.Combat
                         impact          = leap.landingWorld,
                         damage          = leap.slamDamage,
                         impactTileRange = leap.slamTileRange,
+                        // unit 23b — 강습 슬램도 **그 몸이 내리찍는 것**이다(자리형 아님).
+                        originBodyRadius = SystemAPI.HasComponent<Wassup.Battle.Units.HitRadius>(entity)
+                            ? SystemAPI.GetComponent<Wassup.Battle.Units.HitRadius>(entity).value : 0f,
                         flightTime      = 0f,   // 즉발 — 예고가 이미 2초를 벌었다
                         arcHeight       = 0f,
                         dataIndex       = leap.projectileDataIndex,

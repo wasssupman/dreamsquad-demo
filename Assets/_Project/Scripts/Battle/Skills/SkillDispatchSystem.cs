@@ -234,7 +234,7 @@ namespace Wassup.Battle.Skills
                     continue;
                 }
 
-                var caster = BuildCaster(em, evt.Caster, evt.CasterFaction);
+                var caster = BuildCaster(em, evt.Caster, evt.CasterFaction, evt.CasterBodyRadius);
                 var target = BuildTarget(em, evt);
                 // ⚠ **사건 자리가 비면 시전자 자리로 접는다**(ECS 리뷰 M-7).
                 // 주기·경계·부착 seam 의 생산자는 `TargetPosition` 을 안 채운다 — 오늘
@@ -243,6 +243,10 @@ namespace Wassup.Battle.Skills
                 // 터진다.** 이 spec 이 이미 한 번 잡은 증상이라 0 을 흘려보내지 않는다.
                 var eventPos = math.all(evt.TargetPosition == float3.zero)
                     ? evt.FiredPosition : evt.TargetPosition;
+                // unit 23b — **자리와 몸은 같이 고른다.** 위에서 `TargetPosition` 을 골랐으면
+                // 몸도 그쪽 것이어야 한다 — 짝이 갈리면 「죽은 적 자리에 킬러의 몸」이 된다.
+                var eventBodyR = math.all(evt.TargetPosition == float3.zero)
+                    ? evt.CasterBodyRadius : evt.EventBodyRadius;
                 var p = new SkillParams(
                     evt.Magnitude, evt.Duration, evt.TileRange, evt.Period, evt.DataIndex,
                     evt.Selector, evt.Speed, evt.HitThreshold,
@@ -250,7 +254,7 @@ namespace Wassup.Battle.Skills
                     evt.PatternIndex, evt.StatSelector, evt.StackSelector,
                     evt.ProjectileMovement, evt.ProjectilePayload, evt.TargetTraversalLayers,
                     eventPos, evt.HazardDataIndex,
-                    evt.Count, evt.IncludesSelf, evt.Selector2, evt.ConeCosSq);
+                    evt.Count, evt.IncludesSelf, evt.Selector2, evt.ConeCosSq, eventBodyR);
 
                 // ⚠ **이벤트 하나의 실패가 드레인 전체를 죽이면 안 된다**(투트랙 리뷰 M-4).
                 // 어댑터의 `NotWired` 는 **의도된 loud 경로**라 이전 중에 실제로 던진다.
@@ -313,7 +317,8 @@ namespace Wassup.Battle.Skills
         protected abstract Unity.Mathematics.int2 GridSize { get; }
         protected abstract Unity.Mathematics.float3 Origin { get; }
 
-        private static CasterRef BuildCaster(EntityManager em, Entity caster, Faction snapshot)
+        private static CasterRef BuildCaster(EntityManager em, Entity caster, Faction snapshot,
+                                            float bodySnapshot = 0f)
         {
             if (caster == Entity.Null || !em.Exists(caster))
             {
@@ -322,7 +327,10 @@ namespace Wassup.Battle.Skills
                 // 맞지만 **자기 죽음 seam 에는 정반대**다. 그 seam 은 정의상 파괴 뒤에
                 // 돌아서 적의 작별 선물도 여기로 오고, 그러면 적이 «적» 을 겨눈다.
                 // 생산자가 실어 보낸 값이 있으면 그것이 이긴다.
-                return CasterRef.Player(snapshot != Faction.None ? snapshot : Faction.DefenderUnit);
+                // ⚠ 몸도 같이 접힌다 — 파괴된 시전자의 몸은 **생산자가 실어 온 값**뿐이다.
+                // 여기서 0 으로 접으면 자기중심 광역이 조용히 좁아진다(그게 unit 23 의 결함 모양).
+                return new CasterRef(SkillEntityId.None,
+                    snapshot != Faction.None ? snapshot : Faction.DefenderUnit, bodySnapshot);
             }
 
             // 결정은 `FactionRelation.Resolve` 가 소유한다 — 여기서 4단 체인을 복제하면
@@ -355,8 +363,9 @@ namespace Wassup.Battle.Skills
             // 조회하면 후보마다 lookup 이고, 그 형태로 되돌리지 말 것(리뷰 LOW 11).
             // ⚠ 시전자가 **이미 파괴된** seam(자기 죽음·퇴근)은 위 분기로 빠져 몸이 0 이다 —
             // 그 경로의 폭발은 unit 23b 가 `SkillFiredEvent` 의 값 스냅샷으로 따로 덮는다.
+            // 살아 있으면 실물이 정본, 없으면 생산자가 실어 온 스냅샷(자기 죽음 seam).
             float bodyR = em.HasComponent<Wassup.Battle.Units.HitRadius>(caster)
-                ? em.GetComponentData<Wassup.Battle.Units.HitRadius>(caster).value : 0f;
+                ? em.GetComponentData<Wassup.Battle.Units.HitRadius>(caster).value : bodySnapshot;
             return CasterRef.OfUnit(new SkillEntityId(id), faction, bodyR);
         }
 

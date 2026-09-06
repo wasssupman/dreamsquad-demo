@@ -1119,6 +1119,8 @@ namespace Wassup.Battle.Skills
                         impact = intent.Position,
                         damage = intent.Amount,
                         impactTileRange = intent.TileRange,
+                        // unit 23b — 자리의 주인의 몸을 **경계 너머까지** 실어 보낸다.
+                        originBodyRadius = intent.OriginBodyRadius,
                         flightTime = intent.Duration,
                         dataIndex = intent.DataIndex,
                         // 저작이 0 이면 1 — 원본 arm 의 규약이다.

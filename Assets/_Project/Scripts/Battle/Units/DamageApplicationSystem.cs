@@ -18,6 +18,8 @@ namespace Wassup.Battle.Units
     {
         private ComponentLookup<ModifierStats> _buffStatsLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        // unit 23b — 사건 자리의 «주인» 의 몸. 자리와 짝으로 실어 보낸다(제약 13).
+        private ComponentLookup<HitRadius> _bodyRadiusLookup;
         private ComponentLookup<AttackUnitTag> _attackTagLookup;
         // heart-stress-axis unit 2 — 마음의 회복은 **원샷 VFX 를 쓰지 않는다**(아래 힐 펄스
         // 게이트). 위 `_attackTagLookup` 이 데미지 폰트를 «적 전용» 으로 거르는 것과 같은 형태다.
@@ -50,6 +52,7 @@ namespace Wassup.Battle.Units
             state.RequireForUpdate<IncomingDamage>();
             _buffStatsLookup  = state.GetComponentLookup<ModifierStats>(isReadOnly: true);
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            _bodyRadiusLookup = state.GetComponentLookup<HitRadius>(isReadOnly: true);
             _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
             _goalTowerLookup  = state.GetComponentLookup<GoalTowerTag>(isReadOnly: true);
             _coreShieldedLookup = state.GetComponentLookup<CoreShielded>(isReadOnly: true);
@@ -71,6 +74,7 @@ namespace Wassup.Battle.Units
             float dt = SystemAPI.Time.DeltaTime;
             _buffStatsLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _bodyRadiusLookup.Update(ref state);
             _attackTagLookup.Update(ref state);
             _goalTowerLookup.Update(ref state);
             _healBufferLookup.Update(ref state);
@@ -316,8 +320,11 @@ namespace Wassup.Battle.Units
                                 SkillId = slot.skillId,
                                 SlotIndex = c,
                                 FiredPosition = selfPos,
+                                // unit 23b — 자리가 host 자신이므로 몸도 host 것이다(짝).
+                                CasterBodyRadius = SelfBodyRadius(entity),
                                 Target = Entity.Null,
                                 TargetPosition = selfPos,
+                                EventBodyRadius = SelfBodyRadius(entity),
                                 Magnitude = slot.magnitude,
                                 TileRange = slot.tileRange,
                                 Period = slot.period,
@@ -393,8 +400,10 @@ namespace Wassup.Battle.Units
                                 SkillId = sbSlot.skillId,
                                 SlotIndex = s,
                                 FiredPosition = sbPos,
+                                CasterBodyRadius = SelfBodyRadius(entity),
                                 Target = Entity.Null,
                                 TargetPosition = sbPos,
+                                EventBodyRadius = SelfBodyRadius(entity),
                                 Magnitude = sbSlot.magnitude,
                                 Duration = sbSlot.duration,
                                 TileRange = sbSlot.tileRange,
@@ -482,9 +491,15 @@ namespace Wassup.Battle.Units
                                 SlotIndex = s,
                                 FiredPosition = _transformLookup.HasComponent(killerSource)
                                     ? _transformLookup[killerSource].Position : float3.zero,
+                                CasterBodyRadius = SelfBodyRadius(killerSource),
                                 // 죽은 자리 — 시체폭발·장판이 여기를 쓴다.
                                 Target = Entity.Null,
                                 TargetPosition = _transformLookup[entity].Position,   // 위 가드가 보장
+                                // ★ unit 23b — **여기가 킬러의 몸이 아니라 «죽은 적» 의 몸이다.**
+                                // 시체폭발의 폭심은 시체이고, 시전자(킬러)는 귀속의 축일 뿐이다.
+                                // 킬러 몸을 쓰면 방어유닛(1.0)의 몸으로 적 시체 위 폭발을 정하게 된다.
+                                // 위 가드가 피해자 생존을 보장하므로 지금 읽을 수 있다.
+                                EventBodyRadius = SelfBodyRadius(entity),
                                 Magnitude = rs.magnitude,
                                 Duration = rs.duration,
                                 TileRange = rs.tileRange,
@@ -587,5 +602,11 @@ namespace Wassup.Battle.Units
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
-    }
+    
+        // unit 23b — 사건 자리의 주인의 몸(타일). 없으면 0 = 「그 자리는 칸이다」.
+        // ⚠ **`SkillFiredEvent` 의 위치 필드와 «짝»으로만 쓴다.** 자리는 A 의 것을 싣고 몸은
+        // B 의 것을 실으면 「죽은 적 자리에 킬러의 몸」이 된다 — 그게 이 필드가 둘인 이유다.
+        private float SelfBodyRadius(Entity e)
+            => _bodyRadiusLookup.HasComponent(e) ? _bodyRadiusLookup[e].value : 0f;
+}
 }

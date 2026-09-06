@@ -135,6 +135,26 @@
       예측한 3건이 정확히 깨졌고 처방대로 복원됐다.
 - [ ] **골든 A/B** — 미실행(워크트리 격리 선행 필요).
 
+### 23b — **구현 완료 2026-09-06** (골든 제외)
+
+- [x] **짝 배선** — `SkillFiredEvent.CasterBodyRadius`(↔`FiredPosition`) ·
+      `EventBodyRadius`(↔`TargetPosition`). 「반경은 자리와 함께 온다」가 불변식.
+      ⚠ 단일 필드로는 **시체폭발이 틀린다** — 시전자가 킬러이고 폭심은 죽은 적이라 둘이 갈린다.
+- [x] **생산자 5자리** — 피격·실드파열·처치(`DamageApplicationSystem`) · 자기 죽음
+      (`UnitLifecycleSystem`, 파괴 **직전** 스냅샷) · **퇴근 운석은 의도적으로 0**(자리형).
+- [x] `SkillParams.EventBodyRadius` · `SimIntent.OriginBodyRadius` ·
+      `ProjectileSpawnRequest`/`ProjectileState.originBodyRadius` — **intent 경계 너머까지** 나른다.
+- [x] `SkillMath.ReachFromImpact` — 자리에 주인이 있으면 그 몸, 없으면 칸(= 종전).
+      `ProjectileHitSystem` 이 실려 온 원점을 읽는다.
+- [x] **자기 자리 폭발 전수** — 자폭(`SelfAreaBlastSkill`) · 사망/시체/퇴근(`DeathSiteBlastSkill`) ·
+      **보스 도약 슬램** · **궁극기 강습 슬램**(감사가 추가로 찾은 2건).
+- [x] **로그 스냅샷을 피해와 같은 자로** — `CollectShieldBreakTargets` 가 셀 양자화를 버리고
+      `ReachFromImpact` 를 쓴다. **「로그 전용」을 헤더에 못박았다**(판정을 얹으면 이중화된다).
+- [x] **배선 그물** `OriginBodyRadiusWiringTests`(5) — 「0 이 자리형인지 누락인지」를 이름으로 고정.
+      특히 **시체폭발에 킬러 몸이 붙으면 실패**하고, **퇴근 운석의 의도된 0** 을 문장으로 지킨다.
+- [x] **EditMode 2770건 중 실패 2건**(선행 2건).
+- [ ] **골든 A/B** — 23a 와 함께 미실행(워크트리 격리 선행).
+
 ### 나머지
 
 - [ ] **선행**: `TestSkillContext.Stat` 에 `UnitStat.BodyRadius` 케이스 추가.

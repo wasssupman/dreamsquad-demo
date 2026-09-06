@@ -33,7 +33,11 @@ namespace Wassup.Skills.Concrete
                 Kind = SimIntentKind.SpawnProjectile,
                 Source = caster.Unit,          // owner — 킬 귀속
                 Target = SkillEntityId.None,   // 대상이 아니라 **자리**를 때린다
-                Position = p.EventPosition,    // 죽은 자리(발화 시점 스냅샷)
+                Position = p.EventPosition,
+                // unit 23b — 자리의 «주인» 의 몸. `caster` 것이 아니다 — 시체폭발(OnKill)은
+                // 시전자가 킬러이고 폭심은 죽은 «적» 이라 둘이 갈린다.
+                // 퇴근 운석(OnRetire)은 감지자가 0 을 실어 자리형으로 남는다.
+                OriginBodyRadius = p.EventBodyRadius,    // 죽은 자리(발화 시점 스냅샷)
                 Amount = a.Damage,
                 TileRange = a.Radius,
                 DataIndex = a.VfxDataIndex,

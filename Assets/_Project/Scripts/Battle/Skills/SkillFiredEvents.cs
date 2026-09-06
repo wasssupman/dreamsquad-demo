@@ -51,8 +51,17 @@ namespace Wassup.Battle.Skills
 
         // 발화 시점 스냅샷 ─────────────────────────────────────────
         public float3 FiredPosition;   // host 위치. 드레인 시점엔 이동·사망했을 수 있다
+        // unit 23b — `FiredPosition`/`Caster` 의 몸(타일). **반경은 자리와 짝으로 다닌다.**
+        // 드레인 시점에 시전자가 없을 수 있어(자기 죽음 seam) 생산자가 값으로 싣는다 —
+        // `CasterFaction` 이 이미 푼 그 문제이고, 이건 그 패턴의 n+1 번째 필드다. 0 = 안 실었다.
+        public float CasterBodyRadius;
         public Entity Target;          // bestTarget. 재도출하면 타겟팅 규칙을 복제하게 된다
         public float3 TargetPosition;
+        // unit 23b — `TargetPosition` **주인의 몸**(타일). 자리와 짝이다.
+        // ⚠ `CasterBodyRadius` 와 **다른 값일 수 있다** — 시체폭발(OnKill)은 시전자가 킬러이고
+        // 폭심은 죽은 적이라 둘이 갈린다. `DeathSiteBlastSkill` 이 쓰는 것은 **이쪽**이다.
+        // **0 = 그 자리는 «칸»**(자리에 떨어지는 것). 퇴근 운석이 의도적으로 0 이다.
+        public float EventBodyRadius;
         public float2 DirectionXZ;     // 넉백·브레스가 쓰는 **계산된** 방향
 
         // skill-layer-migration unit 7a — **대상이 엔티티가 아니라 칸일 때.**

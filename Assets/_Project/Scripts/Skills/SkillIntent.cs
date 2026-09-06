@@ -133,6 +133,11 @@ namespace Wassup.Skills
         // unit 7b — 두 번째 자리. 포탈만 쓴다(입구/출구).
         public int2 Cell2;
         public float3 Position;
+        // distance-based-range unit 23b — **`Position` 의 «주인» 의 몸**(타일). 자리와 짝이다.
+        // > 0 = 「몸에서 나오는 것」(그 몸이 터진다) · 0 = 「자리에 떨어지는 것」(칸 반폭 = 종전).
+        // ⚠ 수류탄 착탄점처럼 **주인이 없는 자리는 0 을 남긴다** — 던진 사람의 몸이 붙으면
+        // 착탄 반경이 던진 사람 크기로 넓어진다. 「지정」은 귀속이지 기하가 아니다(제약 13).
+        public float OriginBodyRadius;
         public float2 DirectionXZ;
 
         // 궤도 위 시작 각도(라디안). 여러 개를 균등 배치하는 것이 스킬의 판단이라

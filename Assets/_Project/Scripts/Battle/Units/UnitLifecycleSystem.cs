@@ -128,8 +128,11 @@ namespace Wassup.Battle.Units
                     var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
                         ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
                         : float3.zero;
+                    // unit 23b — 파괴 «직전» 이라 몸을 아직 읽을 수 있다. 드레인은 못 읽는다.
+                    var deathBodyR = SystemAPI.HasComponent<HitRadius>(entity)
+                        ? SystemAPI.GetComponent<HitRadius>(entity).value : 0f;
                     RouteDeathSkills(dcSlotLookup[entity], entity,
-                        Wassup.Battle.Units.Faction.DefenderUnit, deathPos,
+                        Wassup.Battle.Units.Faction.DefenderUnit, deathPos, deathBodyR,
                         ref skillFiredSingleton.ValueRW.queue);
                 }
 
@@ -202,7 +205,9 @@ namespace Wassup.Battle.Units
                     var deathPos = SystemAPI.HasComponent<Unity.Transforms.LocalTransform>(entity)
                         ? SystemAPI.GetComponent<Unity.Transforms.LocalTransform>(entity).Position
                         : float3.zero;
-                    RouteDeathSkills(dcSlotLookup[entity], entity, faction, deathPos,
+                    var deathBodyR2 = SystemAPI.HasComponent<HitRadius>(entity)
+                        ? SystemAPI.GetComponent<HitRadius>(entity).value : 0f;
+                    RouteDeathSkills(dcSlotLookup[entity], entity, faction, deathPos, deathBodyR2,
                         ref skillFiredSingleton.ValueRW.queue);
                 }
                 ecb.DestroyEntity(entity);
@@ -222,9 +227,11 @@ namespace Wassup.Battle.Units
         // ⚠ **진영은 인자다.** 여기서 도출하지 않는다 — 드레인 시점엔 이 엔티티가 이미
         // 파괴돼 있어 값으로 실어 보내야 하고(계약 8), 어느 루프에서 왔는지를 아는 것은
         // 호출자뿐이다.
+        // ⚠ `bodyRadius` 도 `faction` 과 같은 이유로 **호출자가 준다**(unit 23b) — 이 메서드가
+        // 도는 시점은 파괴 직전이라 호출자는 아직 읽을 수 있고, 드레인은 못 읽는다.
         private static void RouteDeathSkills(
             in DynamicBuffer<DcTriggerSlot> routeSlots, Entity entity,
-            Wassup.Battle.Units.Faction faction, float3 deathPos,
+            Wassup.Battle.Units.Faction faction, float3 deathPos, float bodyRadius,
             ref NativeQueue<Wassup.Battle.Skills.SkillFiredEvent> queue)
         {
                 ulong firedMask = 0;
@@ -262,8 +269,13 @@ namespace Wassup.Battle.Units
                         SkillId = rs.skillId,
                         SlotIndex = s,
                         FiredPosition = deathPos,
+                        // ⚠ unit 23b — **몸도 값으로 실어야 한다**(진영과 같은 이유).
+                        // 드레인 시점엔 파괴돼 못 읽고, 안 실으면 0 으로 새어 사망 폭발이
+                        // 조용히 좁아진다. 여기는 파괴 «직전» 이라 아직 읽을 수 있다.
+                        CasterBodyRadius = bodyRadius,
                         Target = Entity.Null,
                         TargetPosition = deathPos,   // 내가 쓰러진 자리
+                        EventBodyRadius = bodyRadius,   // 자리의 주인 = 죽은 나
                         Magnitude = rs.magnitude,
                         Duration = rs.duration,
                         TileRange = rs.tileRange,

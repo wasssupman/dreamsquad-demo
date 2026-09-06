@@ -76,6 +76,13 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload ─────────────────────────────────────────────────
         public int impactTileRange;
+        // distance-based-range unit 23b — **착탄 자리의 «주인» 의 몸**(타일).
+        // > 0 = 자기 자리 폭발(그 몸이 터진다) · **0 = 진짜 날아온 탄의 착탄점**(칸 반폭 = 종전).
+        // ⚠ 즉발 폭발(`flightTime = 0`)이 이 파이프라인을 타면 판정 지점의 국소 문맥에서는
+        // 「어떤 착탄점」으로 보여 칸 반폭이 옳아 보인다 — 그러나 그 자리는 트리거 대상의
+        // 몸 중심이다. 원점 정보를 **이 경계 너머까지 실어 보내는 것**이 이 필드의 존재 이유다
+        // (그게 안 실려서 unit 23 초판 감사가 이 결함을 원리적으로 못 봤다).
+        public float originBodyRadius;
 
         // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
         // Copied verbatim onto ProjectileState by the drain. Defaults 0 = legacy

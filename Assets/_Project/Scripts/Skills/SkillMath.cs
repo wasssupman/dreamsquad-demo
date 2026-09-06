@@ -175,6 +175,17 @@ namespace Wassup.Skills
                                          float targetBodyRadiusTiles)
             => Reach(dxTiles, dzTiles, rangeTiles, CellHalfWidthTiles, targetBodyRadiusTiles);
 
+        // **착탄 지점** — 그 자리에 «주인» 이 있으면 그 몸, 없으면 칸 반폭(unit 23b).
+        // 진짜 날아온 탄의 착탄점은 「던져서 도달한 좌표」지 누군가의 몸이 아니다 → 0 을 남긴다.
+        // ⚠ **0 이 「자리형」과 「생산자가 안 실었다」를 겸직한다**(리뷰 HIGH). 겸직 자체는
+        // 종전 동작과 같아 안전하지만, **배선 누락이 의도된 자리형으로 위장**될 수 있다 —
+        // 그래서 생산자 전수를 이름으로 고정하는 단언이 따로 있다(`OriginBodyRadiusWiringTests`).
+        public static bool ReachFromImpact(float dxTiles, float dzTiles, float rangeTiles,
+                                           float originBodyRadiusTiles, float targetBodyRadiusTiles)
+            => Reach(dxTiles, dzTiles, rangeTiles,
+                     originBodyRadiusTiles > 0f ? originBodyRadiusTiles : CellHalfWidthTiles,
+                     targetBodyRadiusTiles);
+
         // 원점 항을 이미 형에서 뽑아 둔 호출부용(`TryOriginRadius` 를 지난 값).
         public static bool ReachWithOrigin(float dxTiles, float dzTiles, float rangeTiles,
                                            float originRadiusTiles, float targetBodyRadiusTiles)

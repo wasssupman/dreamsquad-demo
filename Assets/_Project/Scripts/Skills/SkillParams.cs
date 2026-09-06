@@ -56,6 +56,13 @@ namespace Wassup.Skills
         // 부채꼴 반각의 cos². `HitThreshold`(투사체 도달 반경)와 **별개 축**이다 —
         // 겸직시키면 콘을 쏘는 투사체가 생기는 순간 한 필드가 두 뜻으로 갈린다.
         public readonly float ConeCosSq;
+        // distance-based-range unit 23b — **`EventPosition` 의 «주인» 의 몸**(타일).
+        // ⚠ **반경은 자리와 짝으로 다닌다.** `EventPosition` 이 누구 자리인지는 감지자가 정하고
+        // (`OnKill` = 죽인 적 · `OnDeath` = 죽은 자신 · `OnRetire` = 비워진 칸), 그 몸도 같이 온다.
+        // `CasterRef.BodyRadius` 로 대신할 수 없다 — 시체폭발은 시전자가 «킬러» 이고 폭심은
+        // «죽은 적» 이라, 시전자 몸을 쓰면 방어유닛(1.0)의 몸으로 적 시체 위 폭발을 정하게 된다.
+        // **0 = 그 자리는 «칸» 이다**(자리에 떨어지는 것 — 퇴근 운석이 그 형이다).
+        public readonly float EventBodyRadius;
         public readonly float SlamDamage;
         public readonly int SlamTileRange;
         public readonly int StackId;     // ⚠ ApplyStatModifier 병합 키의 일부 — 아래
@@ -72,7 +79,7 @@ namespace Wassup.Skills
             byte targetTraversalLayers = 0, Unity.Mathematics.float3 eventPosition = default,
             int hazardDataIndex = NoDataIndex,
             int count = 0, bool includesSelf = false, int selector2 = 0,
-            float coneCosSq = 0f)
+            float coneCosSq = 0f, float eventBodyRadius = 0f)
         {
             Magnitude = magnitude; Duration = duration; TileRange = tileRange;
             Period = period; DataIndex = dataIndex; Selector = selector;
@@ -84,7 +91,7 @@ namespace Wassup.Skills
             TargetTraversalLayers = targetTraversalLayers; EventPosition = eventPosition;
             HazardDataIndex = hazardDataIndex;
             Count = count; IncludesSelf = includesSelf; Selector2 = selector2;
-            ConeCosSq = coneCosSq;
+            ConeCosSq = coneCosSq; EventBodyRadius = eventBodyRadius;
         }
 
         // 영구를 뜻하는 인코딩. 저작이 「안 끝난다」를 표현하는 방법이 이 값이다.

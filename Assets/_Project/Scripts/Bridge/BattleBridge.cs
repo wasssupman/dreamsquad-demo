@@ -4383,6 +4383,12 @@ namespace Wassup.Bridge
                             Target = Entity.Null,
                             // 비워진 칸 중심 — 슬롯 불변. 이 자리를 지금 안 실으면 못 읽는다.
                             TargetPosition = new float3(impactWorld.x, impactWorld.y, impactWorld.z),
+                            // ★ **`EventBodyRadius` 를 «의도적으로» 안 싣는다 = 0 = 자리형**
+                            // (사용자 결정 2026-09-06, 제약 13). 퇴근 운석은 **「자리에 떨어지는 것」**
+                            // 이다 — 퇴근한 유닛이 «불렀을» 뿐 그 유닛이 터지는 것이 아니라,
+                            // 그 유닛의 몸은 붙지 않는다(지정은 귀속이지 기하가 아니다).
+                            // ⚠ 배선 누락이 아니다. 지우거나 채우지 말 것 — 채우면 배스티온이
+                            // 퇴근할 때만 운석이 1칸 넓어진다. `OriginBodyRadiusWiringTests` 가 고정한다.
                             Magnitude = slot.magnitude,
                             Duration = slot.duration,     // 낙하 예고 초(계약 8)
                             TileRange = slot.tileRange,
@@ -4595,7 +4601,9 @@ namespace Wassup.Bridge
                         }
                         if (log != null)
                         {
-                            CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, 0, targets);
+                            // 폭심의 주인 = 실드 보유 유닛 → 그 몸이 원점 항이다(피해 경로와 같은 값).
+                            CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, 0,
+                                HostBodyRadiusOf(evt.host), targets);
                             foreach (var t in targets)
                                 log.targets.Add(new Logging.ShieldBreakTargetLog
                                 { tile = t.cell, effect = "Damage", magnitude = evt.magnitude });
@@ -4609,7 +4617,8 @@ namespace Wassup.Bridge
                     // 로그는 그대로 남긴다(대상 스냅샷은 이전 여부와 무관한 사실이다).
                     if (cap >= 1 && evt.tileRange >= 1 && evt.duration > 0f)
                     {
-                        CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, cap, targets);
+                        CollectShieldBreakTargets(evt.host, evt.position, evt.tileRange, cap,
+                            HostBodyRadiusOf(evt.host), targets);
                         foreach (var t in targets)
                         {
                             if (!routedToSkillLayer)
@@ -4652,7 +4661,16 @@ namespace Wassup.Bridge
                 _em.HasComponent<DefenderUnitTag>(e));
         }
 
+        private float HostBodyRadiusOf(Entity e)
+            => _em.HasComponent<Wassup.Battle.Units.HitRadius>(e)
+                ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(e).value : 0f;
+
+        // ⚠⚠ **이 함수는 «로그 전용» 이다** — 피해는 `SpawnProjectile`(→ `ProjectileHitSystem`)이
+        // 낸다. 여기서 뽑은 집합은 트레이스에만 들어간다. **판정을 여기에 얹지 말 것** — 그러면
+        // 같은 규칙이 두 곳에 생기고, 둘이 갈리는 순간 한쪽만 고쳐진다(이 spec 이 고친 결함의 형태).
+        // 그러나 «자» 는 반드시 피해와 같아야 한다 — 다르면 계측기가 거짓말한다(unit 23b).
         private void CollectShieldBreakTargets(Entity caster, float3 center, int tileRange, int cap,
+            float originBodyRadius,
             System.Collections.Generic.List<(Entity entity, Vector2Int cell)> results)
         {
             results.Clear();
@@ -4683,8 +4701,16 @@ namespace Wassup.Bridge
             for (int i = 0; i < enemies.Length; i++)
             {
                 float3 vpos = xforms[i].Position;
-                var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
-                if (!Wassup.Battle.Combat.TileAoe.IsInRadius(cell, centerCell, tileRange)) continue;   // unit 4b — 원
+                // ★ unit 23b — **피해와 «같은 자»로 잰다.** 종전엔 양쪽을 셀로 양자화해
+                // (`WorldToCell`) 칸-칸 비교를 했고, 그래서 ⑴ 폭심이 유닛인데 칸 반폭 ⑵ 대상 몸 0
+                // ⑶ 반 칸 튐 — **로그가 실제 피해와 다른 집합을 기록**했다. 관측 도구가 거짓말하면
+                // 다음 사람이 그걸로 디버깅하다 헛짚는다(「로깅은 첫 축」).
+                float logInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
+                float victimR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(enemies[i])
+                    ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(enemies[i]).value : 0f;
+                if (!Wassup.Skills.SkillMath.ReachFromImpact(
+                        (vpos.x - center.x) * logInvT, (vpos.z - center.z) * logInvT,
+                        tileRange, originBodyRadius, victimR)) continue;
                 inRange.Add(i);
                 float dx = vpos.x - center.x;
                 float dz = vpos.z - center.z;
@@ -5577,6 +5603,7 @@ namespace Wassup.Bridge
                 state.impact = ballisticImpact;
                 state.arcHeight = req.arcHeight;
                 state.impactTileRange = req.impactTileRange;
+                state.originBodyRadius = req.originBodyRadius;   // unit 23b — 자리의 주인의 몸
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
             else if (req.movement == MovementKind.BezierHomingToEntity)

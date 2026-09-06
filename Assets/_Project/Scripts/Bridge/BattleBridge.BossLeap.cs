@@ -235,6 +235,8 @@ namespace Wassup.Bridge
                 impact          = end,
                 damage          = evt.slamDamage,
                 impactTileRange = evt.slamTileRange,
+                // unit 23b — 착지 슬램은 **그 몸이 내리찍는 것**이라 폭심의 주인이 보스 자신이다.
+                originBodyRadius = HostBodyRadiusOf(evt.entity),
                 flightTime      = 0f,   // 즉발 — 뷰가 이미 도착했다
                 arcHeight       = 0f,
                 dataIndex       = evt.dataIndex,

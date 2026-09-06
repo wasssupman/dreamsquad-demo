@@ -140,6 +140,8 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload (PayloadKind.TileAoe) ───────────────────────────
         public int impactTileRange;
+        // unit 23b — 착탄 자리의 주인의 몸(타일). 0 = 주인 없음(칸 반폭 = 종전).
+        public float originBodyRadius;
 
         // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
         // aoeTargetCap: nearest-B cap (0 = 무제한 = 레거시 메테오/스킬/보스 경로).

@@ -695,6 +695,8 @@ namespace Wassup.Battle.Combat.Projectile
                         // follow-up (v1 is Damage-only).
                         float3 impactWorld = projectile.ValueRO.impact;
                         int tileRange = projectile.ValueRO.impactTileRange;
+                        // unit 23b — 0 = 이 자리에 주인이 없다(진짜 날아온 탄) → 칸 반폭.
+                        float originBodyR = projectile.ValueRO.originBodyRadius;
                         float dmg = projectile.ValueRO.damage;
                         // nightmare-catcher unit 4 — victim pool by targetFaction.
                         // Enemy(0) = legacy pool so player Meteor / defender
@@ -744,14 +746,14 @@ namespace Wassup.Battle.Combat.Projectile
                             // unit 18 — 피해자 **위치** 기준(셀 양자화 제거). 자는 unit 4b 그대로
                             // (원 = 반경 + 칸 반폭 + 대상 몸), 입력만 연속이 됐다.
                             float aoeInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
-                            // ⚠ unit 23b 미착수 — **자기 자리 폭발도 오늘은 여기로 온다**
-                            // (`flightTime = 0` 즉발). 그 경우 원점은 «유닛» 이라 이 자가 틀리다.
-                            // 요청 struct 에 원점 반경을 실어 고친다(23b). 진짜 날아온 탄의
-                            // 착탄점은 주인이 없어 자리형이 맞다.
-                            if (!Wassup.Skills.SkillMath.ReachFromCell(
+                            // unit 23b — **자리에 «주인» 이 있으면 그 몸이 원점 항이다.**
+                            // 자기 자리 폭발(`flightTime = 0` 즉발: 자폭·시체폭발·사망폭발·
+                            // 도약 슬램)은 폭심이 트리거 대상의 몸 중심이라 칸 반폭이 틀리다.
+                            // 진짜 날아온 탄의 착탄점은 주인이 없어(0) 종전대로 자리형이다.
+                            if (!Wassup.Skills.SkillMath.ReachFromImpact(
                                     (vpos.x - impactWorld.x) * aoeInvT,
                                     (vpos.z - impactWorld.z) * aoeInvT,
-                                    tileRange, victimBodyRadii[i])) continue;
+                                    tileRange, originBodyR, victimBodyRadii[i])) continue;
                             inRangeEnts.Add(victimEntities[i]);
                             float dx = vpos.x - impactWorld.x;
                             float dz = vpos.z - impactWorld.z;

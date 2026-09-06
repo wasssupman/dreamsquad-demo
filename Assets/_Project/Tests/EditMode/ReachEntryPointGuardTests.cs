@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 
@@ -87,6 +88,82 @@ namespace Wassup.Tests.EditMode
             // 옛 이름이 되살아나면(복붙 복원) 그물이 통째로 무의미해진다.
             Assert.IsFalse(Regex.IsMatch(src, @"public\s+static\s+bool\s+InBodyReach\("),
                 "옛 5-인자 공개 술어가 되살아났다 — 원점 항을 손으로 넘길 수 있다");
+        }
+    }
+
+    // distance-based-range unit 23b — **「0 이 «자리형» 인지 «안 실었다» 인지」를 고정한다.**
+    //
+    // ★ `EventBodyRadius`/`originBodyRadius` 의 0 은 **두 뜻을 겸직**한다: 「이 자리는 칸이다」와
+    // 「생산자가 안 실었다」. 겸직 자체는 종전 동작과 같아 안전하지만, **배선 누락이 의도된
+    // 자리형으로 위장돼 조용히 산다** — 그게 이 spec 이 반복해 당한 fail-open 모양이라
+    // (unit 22 · unit 23 초판), 생산자를 **이름으로** 고정한다.
+    //
+    // ⚠ 개수만 세면 「하나 빼고 하나 더하면」 통과한다(`SkillAdapterDirectWriteTests` 의 한계).
+    // 그래서 **어느 파일이 무엇을 싣는가**를 같이 단언한다.
+    public class OriginBodyRadiusWiringTests
+    {
+        private static string Read(params string[] parts)
+            => File.ReadAllText(Path.Combine(
+                new[] { UnityEngine.Application.dataPath, "_Project", "Scripts" }
+                    .Concat(parts).ToArray()));
+
+        [Test]
+        public void DamageSeams_CarryTheOwnersBody_AndKillUsesTheVictimNotTheKiller()
+        {
+            var src = Read("Battle", "Units", "DamageApplicationSystem.cs");
+
+            // 피격·실드파열 — 자리도 몸도 host 자신.
+            Assert.GreaterOrEqual(Regex.Matches(src, @"EventBodyRadius\s*=\s*SelfBodyRadius\(entity\)").Count, 3,
+                "피격·실드파열·처치 세 seam 이 모두 자리의 주인의 몸을 실어야 한다");
+
+            // ★ 처치(시체폭발) — 시전자는 킬러지만 **폭심은 죽은 적**이다.
+            Assert.IsTrue(src.Contains("CasterBodyRadius = SelfBodyRadius(killerSource)"),
+                "처치 seam 의 시전자 몸은 킬러 것이다");
+            Assert.IsFalse(Regex.IsMatch(src, @"EventBodyRadius\s*=\s*SelfBodyRadius\(killerSource\)"),
+                "시체폭발의 폭심에 «킬러» 의 몸이 붙었다 — 폭심은 죽은 적이고, 킬러 몸을 쓰면 "
+                + "방어유닛(1.0)의 몸으로 적 시체 위 폭발 반경을 정하게 된다");
+        }
+
+        [Test]
+        public void DeathSeam_SnapshotsTheBody_BecauseTheEntityIsGoneAtDrain()
+        {
+            var src = Read("Battle", "Units", "UnitLifecycleSystem.cs");
+            Assert.IsTrue(src.Contains("EventBodyRadius = bodyRadius"),
+                "자기 죽음 seam 이 몸을 값으로 안 싣는다 — 드레인 시점엔 파괴돼 못 읽고, "
+                + "안 실으면 0 으로 새어 사망 폭발이 «조용히» 좁아진다");
+            Assert.IsTrue(src.Contains("CasterBodyRadius = bodyRadius"));
+        }
+
+        // ★ 퇴근 운석은 **의도적으로 0** 이다 — 「자리에 떨어지는 것」(사용자 결정 2026-09-06).
+        // 이 단언이 없으면 다음 사람이 「배선 누락이네」 하고 채워 넣고, 그러면 배스티온이
+        // 퇴근할 때만 운석이 1칸 넓어진다.
+        [Test]
+        public void RetireMeteor_IsDeliveryForm_AndSaysSoExplicitly()
+        {
+            var src = Read("Bridge", "BattleBridge.cs");
+            Assert.IsTrue(src.Contains("«의도적으로» 안 싣는다 = 0 = 자리형"),
+                "퇴근 운석의 자리형 의도가 코드에 안 적혀 있다 — 0 이 누락으로 오해된다");
+        }
+
+        [Test]
+        public void SelfSiteBlasts_CarryTheirOwnerBody_ThroughTheIntentBoundary()
+        {
+            Assert.IsTrue(Read("Skills", "Concrete", "SelfAreaBlastSkill.cs")
+                    .Contains("OriginBodyRadius = caster.BodyRadius"),
+                "자폭이 시전자 몸을 intent 경계 너머로 안 보낸다");
+            Assert.IsTrue(Read("Skills", "Concrete", "DeathSiteBlastSkill.cs")
+                    .Contains("OriginBodyRadius = p.EventBodyRadius"),
+                "사망/시체 폭발이 «자리의 주인» 의 몸을 안 보낸다 — caster 것을 쓰면 시체폭발이 틀린다");
+        }
+
+        [Test]
+        public void ImpactJudgment_ReadsTheCarriedOrigin_NotACellConstant()
+        {
+            var src = Read("Battle", "Combat", "Projectile", "ProjectileHitSystem.cs");
+            Assert.IsTrue(src.Contains("SkillMath.ReachFromImpact("),
+                "착탄 광역이 실려 온 원점을 안 읽는다 — 자기 자리 폭발이 칸 반폭으로 잘린다");
+            Assert.IsTrue(src.Contains("originBodyRadius"),
+                "요청에 실린 원점 반경이 판정까지 도달하지 않는다");
         }
     }
 }
