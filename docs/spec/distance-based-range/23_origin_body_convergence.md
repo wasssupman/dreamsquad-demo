@@ -124,11 +124,58 @@
 - [ ] **골든 A/B 분리 측정**(unit 22 방식) — 움직임의 **방향과 크기를 미리 적고** 그 밖이면 원인 규명.
 - [ ] Play 육안: 배스티온 도발이 옆구리 적을 실제로 끌어오는가.
 
+## 깨질 테스트 (6건 — 전수 확인)
+
+⚠ **깨지는 방향이 «좁아지는» 쪽이다.** 페이크(`TestSkillContext`)의 시전자 몸이 **0** 이라
+반경이 `2.5 → 2.0` · `1.5 → 1.0` 으로 **줄어든다**. 라이브에서는 몸이 ≥ 0.5 라 안 나는 현상이다.
+
+| 파일:테스트 | 왜 |
+|---|---|
+| `AreaTauntSkillTests:75 Diagonal_InsideTheCircle_IsInRange` | 반경 2, 대각 d=2.121 → 2.0 으로 줄어 탈락 |
+| `AreaCircleMembershipTests:79 AreaSleep_N1_KeepsDiagonalNeighbour` | 반경 1, 대각 d=1.414 → 1.0. **「반경 1 = 여덟 이웃」 계약이 깨진다** |
+| `AreaCircleMembershipTests:32 RangeMetric_DefaultValue_IsAreaCircle` | 기본값 단언 — append(3)이면 통과하나 뜻이 약해져 보강 필요 |
+| `DcRangeCatalogTests:34 AreaConcretes_AreCircles_OfRangePlusCellHalfWidth` | `2f + CellHalfWidthTiles` 상수 단언 |
+| `DcRangeCatalogTests:82 DeathSiteBlast_SelfSiteTriggers_AreCircles` | 같은 상수 단언. **게다가 「형」 결정으로 OnDeath(몸형)와 OnRetire(자리형)를 한 케이스로 묶은 이 테스트 자체를 갈라야 한다** |
+| `DcRangeCatalogTests:103 ResolveCard_PicksTheSpatialMechanic` | `1f + CellHalfWidthTiles` 상수 단언 |
+
+**안 깨지는 것**(여유 확인 완료): `AreaSleepSkillTests`·`StatAuraSkillTests`·`GrantShieldSkillTests`·
+`AllySpeedAuraSkillTests`·`ConeBreathSkillTests`·`AreaCircleMembershipTests:59`·`RangeDisplayContractTests`·
+`RangePredicateInvariantsTests`·`AttackReachTests`·`TileAoeTests`·`SkillRoutingCoverageTests`·`DcSkillRoutingTests`.
+
+**처방**: `TestSkillContext.cs:24-30` 픽스처 시전자에 `BodyRadius = 0.5` 를 주면 1·2 가 **뜻을 보존한 채**
+초록 복원. 3 에 차등 단언을 덧붙이고, 4~6 은 기대값을 host 몸 기준으로 갱신.
+**신규 2건**: 차등 단언(시전자 몸 0.5→1.5 면 대상 증가) · 금지 가드.
+
+## 골든 코퍼스 — 재베이크 필요 (8건 중 7건 이동)
+
+`BattleScene.unity:152-184` 기본 덱에 **Archer·Guardian·Bastion 이 전부** 있고 능력 트리거가
+전부 `OnPlace` 라 배치 즉시 발화한다. `no_defense`(배치 0)만 보스 몫(+0.058·+0.115)으로 극미세.
+
+**예측(부호 포함으로 적는다)**: Archer 3.5→4.0(×1.31) · Guardian 2.5→3.0(×1.44) ·
+Bastion 2.5→3.5(×1.96) → `EnemyKilled` **증가** · `GoalReached` **감소** ·
+`UnitAttack`/`AttackOutputLog`/`DamageNumber` **증가**.
+**유일한 반대 부호** = 시체폭발(OnKill, 폭심 = 죽은 적)이 표준 잡몹 위에서 1.5→1.25(**면적 −31%**).
+자리형 이벤트는 「형」 결정으로 **전부 무변동**.
+
+**A/B 분리 (unit 22 방식)**
+1. 변경 **전** 8건 `Verify` 로 기준선 통과 확인 — 무관 dirty 오염을 먼저 걸러낸다
+2. `no_defense` → **적 축만**(방어유닛 0 이라 변동 전량이 보스 몸 몫)
+3. `summoner` → **방어유닛 축**. 덱이 `{summoner, archer, cannon}` 고정(`SimHarnessRunner:71`)이고
+   영향 유닛이 **Archer 하나뿐**이라 변동 전량을 「둔화 3.5→4.0」에 귀속할 수 있는 가장 깨끗한 판
+4. 나머지 6건 = Guardian+Bastion+Malphite 몫. `long_boss` 가 **시체폭발 음수 Δ 를 검출할 유일한 장수 판**
+
+**⚠ 함정 둘**
+- `configHash` 는 **웨이브·덱에만** 반응해 이 변경으로는 **안 움직인다.** 실패가
+  「hash 동일 + 이벤트만 갈림」으로 나타나니 **hash 동일을 무변동으로 읽지 말 것.**
+- 재베이크 전 **워크트리 격리 필수** — 현재 dirty 에 시트 임포트분 유닛 스탯이 섞여 있어
+  **남의 WIP 가 기준선에 구워진다.** 굽고 나면 **골든만 담은 별도 커밋**으로 분리하고,
+  `6_golden_regen_and_tuning.md` 의 「7건」을 8건으로 정정한다.
+
 ## 미결 (감사 회신 대기)
 
-- 결함 B·C·D 의 밸런스 수치 · 드림캐쳐 카드 파급(같은 카드가 host 몸에 따라 달라지는가)
-- 깨질 테스트 목록 · 골든 재베이크 범위 · 작업 단위 분할안
-- `EmitPatternSkill`(`Euclidean`) 쟁점 판정
+- Q4 빠진 위험 · 작업 단위 분할안 확정(23a/23b 게이트·크기)
+- `AttackSystem.PickFallbackTarget` 이 **언제 도는가**(상시/예외) — 결함 C 의 우선순위가 여기서 갈린다
+- 표기·프리뷰 중 판정과 갈리는 자리 전수
 
 ## 사망·시체 폭발 — 사용자 결정이 코드와 일치함이 확인됐다
 
