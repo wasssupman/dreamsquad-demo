@@ -171,6 +171,16 @@ namespace Wassup.EditorTools.Battle
             public bool leaked;
             public int huntTicks;         // 사냥 필드가 실제로 도달 가능했던 틱(보스 레인 실측)
 
+            // ── unit 8 — 비행 감지 계측 ──
+            // 질문은 하나다: **비행이 감지로 배치 구역에 파고드나.** 그게 이 저작의 새 성질이고
+            // Play 육안의 첫 항목이라, 눈으로 보기 전에 「그런 틱이 실제로 있나」를 먼저 센다.
+            public bool isAir;
+            public int detectTicks;       // DetectedTarget.hunting != 0 인 틱
+            public int huntEpisodes;      // hunting 0→1 전이(= 발견 횟수). 위 R별 배열과 다른 것을 센다.
+            public bool prevDetected;
+            // 지상이 못 서는 칸(Path 비트 없음) = 벽·배치지. 사냥 중 여기 있으면 파고든 것이다.
+            public int overNonPathTicks;
+
             public int engageEpisodes;    // 비교전 → 교전 전이 횟수 = 사용자가 말한 «사이클»
             public int aggroEpisodes;
             public int marchTicks, engageTicks, chaseTicks, standoffTicks;
@@ -459,7 +469,28 @@ namespace Wassup.EditorTools.Battle
                     rec.everAggroed |= aggroed;
                     rec.leaked |= em.HasComponent<PastGoalTag>(e);
 
+                    // unit 8 — 비행 감지 계측.
+                    byte myLayers = em.HasComponent<PathFollowState>(e)
+                        ? em.GetComponentData<PathFollowState>(e).traversalLayers : (byte)0;
+                    rec.isAir |= (myLayers & (byte)Wassup.Data.PlacementLayer.Air) != 0;
+
+                    bool detectedNow = em.HasComponent<DetectedTarget>(e)
+                                       && em.GetComponentData<DetectedTarget>(e).hunting != 0;
+                    if (detectedNow) rec.detectTicks++;
+                    if (detectedNow && !rec.prevDetected) rec.huntEpisodes++;
+                    rec.prevDetected = detectedNow;
+
                     int2 cell = GridMath.WorldToCell(pos, field.tileSize, field.gridSize, origin: field.origin);
+
+                    // 사냥 중 «지상이 못 서는 칸» 에 있으면 배치 구역/벽 위다.
+                    if (detectedNow && field.cellLayers.IsCreated)
+                    {
+                        int ci = GridMath.CellIndex(cell, field.gridSize);
+                        if (ci >= 0 && ci < field.cellLayers.Length
+                            && (field.cellLayers[ci] & (byte)Wassup.Data.PlacementLayer.Path) == 0)
+                            rec.overNonPathTicks++;
+                    }
+
                     if (hasHunt && huntField.IsCreated
                         && huntField.dist[GridMath.CellIndex(cell, field.gridSize)] != int.MaxValue
                         && em.HasComponent<DefenderHunterTag>(e))
@@ -695,7 +726,11 @@ namespace Wassup.EditorTools.Battle
         private static string BuildReport(List<RunStats> runs)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("# detection-probe — 감지 반경 도입 전 실측");
+            sb.AppendLine("# detection-probe — 실측 (이 파일은 «마지막 실행» 결과다)");
+            sb.AppendLine();
+            sb.AppendLine("> ⚠ **이 파일은 기준선 아카이브가 아니다.** 계측기를 돌릴 때마다 통째로 덮인다.");
+            sb.AppendLine("> 감지 도입 «전» 기준선과 unit 6 의 A/B 값은 `6_authoring_and_rerun.md` 와 git 이력에 있다 —");
+            sb.AppendLine("> 여기 숫자를 「도입 전」으로 인용하지 말 것.");
             sb.AppendLine();
             sb.AppendLine($"- 조건: {runs.Count}판 × {MatchTicks}틱(3분) · 맵 풀 전체 × 배치밀도 {string.Join("/", Densities)}기(경로 분위수) · 당김 구동");
             sb.AppendLine("- 간격(gap) = 몸 가장자리 기준 칸 거리. `gap <= attackRange` 가 곧 사거리 안(AttackReach 와 같은 자).");
@@ -933,6 +968,31 @@ namespace Wassup.EditorTools.Battle
                 string label = hi == float.MaxValue ? $"> {lo:F0} (또는 legal 대상 없음)" : $"{lo:F0} ~ {hi:F0}";
                 sb.AppendLine($"| {label} | {c} | {ne} |");
             }
+
+            // ── unit 8 — 비행 감지 ──────────────────────────────────────────────
+            sb.AppendLine();
+            sb.AppendLine("## 비행 감지 (unit 8)");
+            sb.AppendLine();
+            sb.AppendLine("질문 둘: ⑴ 비행 감지가 **실제 판에서 발화하나** ⑵ 그 결과 **배치 구역에 파고드나**.");
+            sb.AppendLine("`파고듦` = 사냥 중인데 «지상이 못 서는 칸»(Path 비트 없음 = 벽·배치지) 위에 있던 틱.");
+            sb.AppendLine();
+            sb.AppendLine("| 무리 | 개체 | 발견한 개체 | 발견 횟수 | 사냥 틱 | 파고듦 틱 | 파고듦 비율 |");
+            sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|");
+            for (int g = 0; g < 2; g++)
+            {
+                bool air = g == 0;
+                var grp = new List<EnemyRec>();
+                foreach (var r in all) if (r.isAir == air) grp.Add(r);
+                long det = 0, eps = 0, over = 0;
+                foreach (var r in grp) { det += r.detectTicks; eps += r.huntEpisodes; over += r.overNonPathTicks; }
+                sb.AppendLine($"| {(air ? "**비행**" : "지상")} | {grp.Count} | {Count(grp, r => r.huntEpisodes > 0)} "
+                            + $"| {eps} | {det} | {over} | {Pct(over, det)} |");
+            }
+            sb.AppendLine();
+            sb.AppendLine("- 비행 «발견한 개체» 가 0 이면 Play 육안은 무의미하다 — 저작(`skimmer`·`dragon` = 3칸)이");
+            sb.AppendLine("  실제로 안 걸린 것이므로 웨이브 도달·배치 위치부터 본다.");
+            sb.AppendLine("- «파고듦 비율» 이 0 이면 비행이 감지는 하되 배치 구역엔 안 들어간 것이다(맵 지형 의존).");
+
             return sb.ToString();
         }
 
