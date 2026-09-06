@@ -10,7 +10,7 @@ namespace Wassup.Battle.Combat
     // 사거리 술어가 몸 기준 거리로 바뀐 지금(unit 4a) 광역만 정사각형으로 남으면 같은 「N칸」이
     // 물음에 따라 다른 모양이 된다. 그래서 `IsInRadius` 는 사거리 술어와 **같은 본체**를 쓴다.
     //
-    // ⚠ **사거리 술어와 같은 본체를 쓴다**(`SkillMath.InBodyReach`). 처음엔 순수 원
+    // ⚠ **사거리 술어와 같은 본체를 쓴다**(`SkillMath.ReachFromCell` → 공통 본문). 처음엔 순수 원
     // (`dx²+dy² ≤ r²`)으로 썼다가 되돌렸다 — **반경 1 폭발이 대각을 통째로 잃어 십자 모양이
     // 됐다**(대각 칸은 중심거리 1.41 > 1). 격자에서 작은 반경의 원은 그렇게 무너진다.
     //
@@ -40,7 +40,7 @@ namespace Wassup.Battle.Combat
         // 이 정사각형이 남은 곳은 **하나**뿐이고 「칸」이 물음의 일부다:
         //   · `DefenderDensity` — 「가장 밀집한 **칸**」. 보스 순간이동 착지 지점이라
         //     자를 바꾸면 착지가 조용히 바뀐다.
-        // (`EcsSkillContext` 스킬 arm 의 사각은 attach-range-preview 0a 에서 원(`RangeMetric.AreaCircle`,
+        // (`EcsSkillContext` 스킬 arm 의 사각은 attach-range-preview 0a 에서 원(구 `AreaCircle` = 오늘 `CellArea`,
         //  아래 `IsInRadius` 와 같은 식)으로 접혔고, `MovementSystem` 회오리 장은 unit 18 에서 원이 됐다.)
         public static bool IsInTileRange(int2 candidateCell, int2 centerCell, int tileRange)
             => TileDistance(candidateCell, centerCell) <= tileRange;

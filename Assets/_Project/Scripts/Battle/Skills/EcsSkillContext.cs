@@ -447,7 +447,7 @@ namespace Wassup.Battle.Skills
                 // false 로 만들어 **광역이 통째로 빈다**(구 셀 경로는 clamp 가 우연히 삼켰다).
                 float invT = _tileSize > 1e-6f ? 1f / _tileSize : 1f;
                 // 광역 원 — attach-range-preview 0a. 반경 = range + 시전자 쪽 반폭 + 대상 몸.
-                //   AreaCircle: 반폭 = 칸 반폭(0.5) — 투사체 TileAoe 착탄(`ProjectileHitSystem`)·자기 자리
+                //   CellArea: 반폭 = 칸 반폭(0.5) — 투사체 TileAoe 착탄(`ProjectileHitSystem`)·자기 자리
                 //   폭발과 **같은 식**이라 광역 도형이 하나가 된다. 종전 사각(`BodyOverlapsSquare`, 반폭 range+0.5)은
                 //   이 원의 외접이라 모서리만 빠진다(반경 1 은 셀 기준 손실 0 — 대각 1.414 ≤ 1.5).
                 //   Euclidean: 반폭 0 — 사거리·탄 비행 거리(발사 명세).

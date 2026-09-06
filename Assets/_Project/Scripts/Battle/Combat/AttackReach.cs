@@ -15,7 +15,8 @@ namespace Wassup.Battle.Combat
     //      관통당해도 무판정이었다.
     //   ③ 셀 체비셰프는 **칸 경계에서 튄다.** 반 칸 움직였을 뿐인데 판정이 뒤집힌다.
     //
-    // 지금은 `SkillMath.InBodyReach` 하나다. `bothContinuous` 인자가 사라졌다 —
+    // 지금은 `SkillMath.ReachFromUnit` 하나다(unit 23a — 본문은 private, 진입점이 형을 선언한다).
+    // `bothContinuous` 인자가 사라졌다 —
     // **그 인자의 존재 자체가 ①이었다.**
     //
     // ⚠ **본체가 여기 없다.** `Wassup.Skills`(엔진 무참조 asmdef)에 있고 이 파일은
@@ -68,7 +69,7 @@ namespace Wassup.Battle.Combat
         // 새 호출부가 몸을 안 넘기고도 컴파일되고, 그 순간 「소비처 열하나가 같은 답을
         // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 반경은 저작(적 티어)·파생
         // (방어유닛 가로/2 파생 — rev 2026-09-04, 구 내접원)에서 온다 — 호출부가 그것을 나를 책임을 진다.
-        // ⚠ rev 2 의 `BodyShape`(사각 반폭 ⊕ 원)는 은퇴했다 — 사유는 `SkillMath.InBodyReach` 헤더.
+        // ⚠ rev 2 의 `BodyShape`(사각 반폭 ⊕ 원)는 은퇴했다 — 사유는 `SkillMath` 술어 헤더.
         public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
                                    float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
         {

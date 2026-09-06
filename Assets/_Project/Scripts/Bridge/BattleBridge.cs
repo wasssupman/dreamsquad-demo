@@ -8064,7 +8064,8 @@ namespace Wassup.Bridge
         // 리셋을 여기 손으로 얹지 않는다: SetRangeOwner 가 Placement 외 전환에서 일괄 처리한다.
         //
         // attach-range-preview 0b — 옛 사각 타일 채움(`squareShape`)은 은퇴. 스킬 광역이 원
-        // (`RangeMetric.AreaCircle`, 반경 N + 칸 반폭 + 대상 몸)이 됐으므로 표기도 그 자를 복사한다:
+        // (`RangeMetric.CellArea`, 반경 N + 칸 반폭 + 대상 몸)이 됐으므로 표기도 그 자를 복사한다:
+        // ⚠ **칸 조준 전용이다**(unit 23a). 자기중심 광역의 표기는 `RedrawAttachPreview` 가 host 몸을 합성한다.
         // 중심 = 조준 셀 중심(concrete 가 `ctx.CellCenter` 를 넘기는 것과 같은 점), 반경 = N + 0.5
         // (도형 가장자리 — 대상 몸은 그림자가 말한다). 사용자 결정 2026-09-02 D6.
         private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)

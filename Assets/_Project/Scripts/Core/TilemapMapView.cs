@@ -979,7 +979,7 @@ namespace Wassup.Core
         // 화면이 규칙을 **틀리게 가르치는** 상태다.
         //
         // ⚠ 옛 `squareShape` 인자(스킬 조준·텔레그래프의 사각 채움)는 attach-range-preview 0b 에서 **삭제**됐다.
-        // 스킬 광역이 원(`RangeMetric.AreaCircle`, 0a)이 되어 사각 표기는 거짓말이 됐고, 그 경로는 상한
+        // 스킬 광역이 원(구 `AreaCircle` = 오늘 `CellArea`/`SelfArea`, 0a)이 되어 사각 표기는 거짓말이 됐고, 그 경로는 상한
         // 술어 없이 스캔 박스 전체를 칠하는 결함((2N+5)² 칸)도 안고 있었다. 조준·텔레그래프는 아래
         // `SetAreaRange`(링 전용) 로 간다. 정확한 사각이 다시 필요해지면 셰이더 `_HalfExtent` 가 그린다.
         // `selfBodyRadiusTiles` — unit 9. 도달 = `사거리 + 내몸 + 상대몸`이고 링은 앞의 둘을
@@ -1045,7 +1045,7 @@ namespace Wassup.Core
         }
 
         // attach-range-preview 0b — **링 전용** 범위 표기. 타일을 칠하지 않고 SDF 링(선 + 내부 채움)만 띄운다.
-        // 소비처: 액티브 셀 조준·착탄 텔레그래프(조준 셀 중심, 반경 N + 0.5 — `RangeMetric.AreaCircle` 의
+        // 소비처: 액티브 셀 조준·착탄 텔레그래프(조준 셀 중심, 반경 N + 0.5 — `RangeMetric.CellArea` 의
         // 도형 가장자리) · 카드 부착 프리뷰(host 몸 중심, unit 2). 반경은 **판정 입력의 복사본**이고 표준 상대
         // 항을 더하지 않는다(README 계약 2 — 「대상 그림자가 링에 닿으면 걸린다」가 판정식과 동치).
         // ⚠ 가드 체인은 형제(`SetPlacementRange`)와 같다 — `ApplyRingTint` 가 `_tileSet` 을 역참조한다.

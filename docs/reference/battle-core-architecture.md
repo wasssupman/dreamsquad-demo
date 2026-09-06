@@ -467,8 +467,26 @@ flowchart TD
 3. **스킬 concrete 는 ECS 를 모른다.** `Wassup.Skills` asmdef 가 Entities 를 참조하지 않아 컴파일이 강제한다. 쓰기는 `ctx.Emit` 만, 직접 쓰기 예외는 폐쇄 목록 4건 — `skill-layer-foundation` 계약 1·3.
 4. **감지는 분산, 실행은 단일.** 통합하면 매 프레임 전 유닛 재스캔이 된다. seam 수는 규칙이 정하지 문서가 정하지 않는다 — `skill-layer-foundation` 계약 6·7.
 5. **이벤트는 값 스냅샷이다.** 죽음 계열은 드레인 시점에 host 가 없다 — `CasterFaction` 까지 실어야 했던 이유 — 계약 8.
+   ⚠ **반경은 «자리와 짝»으로 다닌다**(`FiredPosition↔CasterBodyRadius`, `TargetPosition↔EventBodyRadius`). 단일 필드면 시체폭발이 **킬러의 몸**으로 적 시체 위 폭발을 정한다 — `distance-based-range` unit 23b.
 6. **배치 판정은 층 비트 하나.** 클래스 분기 금지. 통행층 파생은 `tiles` 에서, `placeMask` 로 통행을 판정하지 않는다 — `placement-mask` · `traversal-layers` unit 5.
-7. **유닛의 몸은 원, 격자는 0.** `HitRadius` 조건부 부착 금지(갈리면 판정이 두 갈래). sim 위치 = 발밑 — `distance-based-range`.
+7. **전투 도달 판정은 하나의 산식이다 — 예외는 배치(placement) 하나뿐.** `CLAUDE.md` **절대 제약 13**.
+
+   ```
+   도달 = |좌표 차| ≤ 범위 + «원점 항» + «대상의 몸»
+   ```
+
+   - **「원점 항」은 «원점이 무엇이냐»가 아니라 «효과의 형»이 정한다** — **몸에서 나오는 것**
+     (사거리·자기중심 광역·자폭·시체폭발·오라·도발) → 그 몸의 `HitRadius` · **자리에 떨어지는 것**
+     (퇴근 운석·투사체 착탄·수류탄·장판·회오리) → 칸 반폭(**몸이 아니라** 도형 보정항).
+     좌표를 «지정한» 유닛의 몸은 안 붙는다 — 지정은 귀속이지 기하가 아니다.
+   - 유닛의 몸은 **원**, 격자는 0. `HitRadius` 조건부 부착 금지(갈리면 판정이 두 갈래).
+     sim 위치 = **발밑**. 방어유닛 몸 = footprint **가로/2**.
+   - **진입점은 둘뿐이다** — `SkillMath.ReachFromUnit`(몸을 «요구») / `ReachFromCell`(안 받음).
+     본문과 칸 상수는 `private` 이라 **컴파일러가 1차 방어**다. 인라인 판정·상수 손넘김 금지.
+   - ⚠ **같은 결함을 세 번 놓쳤고 매번 «감사 방법»이 원인이었다** — 상수 grep 은 함수 뒤를,
+     술어 호출 전수는 **술어를 안 부르는 intent 경로**를 못 본다. 판정 지점의 국소 문맥만
+     보면 원점이 무엇이었는지 복원할 수 없다(그래서 원점을 경계 너머까지 실어 보낸다).
+   — `distance-based-range` unit 22 · 23.
 8. **「이 유닛은 어느 셀에 있나」를 재도입하지 않는다.** footprint 는 앵커 + 크기만 — `defender-footprint`.
 9. **`EndMatch` 호출처는 3곳.** 넷째는 패배 조건의 부활 — `three-minute-kill-race` · `heart-stress-axis`.
 10. **점수 = 처치 수, 제출은 생값.** 안정도·시간을 다시 섞지 않는다 — `battle-score-formula`.

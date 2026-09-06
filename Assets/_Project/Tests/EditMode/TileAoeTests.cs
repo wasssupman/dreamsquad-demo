@@ -131,7 +131,7 @@ namespace Wassup.Tests.EditMode
         // ── 광역 멤버십의 모양 (distance-based-range unit 4b) ──────────────
         //
         // `IsInTileRange`(체비셰프·정사각형)는 **격자 통계 전용**으로 남았고, 광역의 정본은
-        // `IsInRadius` 다 — 사거리 술어와 **같은 본체**(`SkillMath.InBodyReach`).
+        // `IsInRadius` 다 — 사거리 술어와 **같은 본체**(`SkillMath` 공통 본문, 진입점만 형이 다르다).
         // 아래 셋이 그 계약이다: 반경 1은 여덟 이웃 전부 · 반경 2는 정대각만 빠짐 ·
         // 두 함수가 실제로 다르다.
 

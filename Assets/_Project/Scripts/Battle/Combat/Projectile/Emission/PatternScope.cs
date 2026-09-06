@@ -43,7 +43,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         // rangeTiles <= 0 = 전량 통과(현행 동작) — 이 arm 이 무회귀의 근거다.
         //
         // unit 18 (distance-based-range, 사용자 지시 2026-09-01) — 셀 체비셰프 → **사거리
-        // 술어와 같은 자**(`InBodyReach`: 도달 = range + 내몸 + 상대몸)로 교체. 후보를 셀로
+        // 술어와 같은 자**(`ReachFromUnit`: 도달 = range + 내몸 + 상대몸)로 교체. 후보를 셀로
         // 접지 않으므로 칸 경계에서 스코프가 튀지 않는다. 좌표는 **타일 단위**(호출자 환산).
         public static int FilterByReach(in NativeArray<float2> candidateXZTiles, float2 hostXZTiles,
                                         float rangeTiles, float hostBodyRadiusTiles,

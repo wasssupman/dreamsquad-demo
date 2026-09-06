@@ -10,7 +10,7 @@ namespace Wassup.Battle.Combat.Projectile
     // geometry — no world, no system, no frame, no Entity. This is the
     // architecture-neutral "logic" layer (EditMode-testable with a plain float3
     // array); the ImpactSystem arm that calls it is the thin ECS glue (unit 2).
-    // Mirrors SkillMath.InBodyReach / BallisticArc.ArcPosition — same
+    // Mirrors SkillMath.ReachFromCell / BallisticArc.ArcPosition — same
     // pure-function-plus-EditMode pattern.
     public static class BounceRetarget
     {
