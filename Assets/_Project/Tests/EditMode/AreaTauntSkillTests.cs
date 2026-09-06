@@ -96,6 +96,42 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, TauntCount(ctx));
         }
 
+        // unit 23 완료 기준 — **배스티온 실측**. 저작 `Ability_Taunt_Bastion.tileRange = 2` 이고
+        // 몸이 1.5(폭3)라 도형 반경은 **3.5** 다. 여기까지가 「자기중심 광역의 원점 항은 시전자 몸」의
+        // 구체 수치이고, 이 값이 2.5 로 돌아가면 unit 22·23 이 고친 결함이 재유입된 것이다.
+        // ⚠ 일반 멤버십 차등(`AreaCircleMembershipTests`)과 별개로 **이 스킬 경로**를 지난다 —
+        //    unit 23 이 진입점을 갈아끼운 자리가 여기라 helper 만 초록이어도 여기가 빨갈 수 있다.
+        [Test]
+        public void BastionBody_WidensTauntShapeTo3_5()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(1, float3.zero, Faction.DefenderUnit, u => u.HasAggroCapacity = true);
+            ctx.Add(2, new float3(3.4f, 0f, 0f), Faction.EnemyUnit);   // 3.5 안
+            ctx.Add(3, new float3(3.6f, 0f, 0f), Faction.EnemyUnit);   // 3.5 밖
+            var bastion = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit, bodyRadius: 1.5f);
+
+            new AreaTauntSkill().Execute(bastion, default, P(2, 4f), ctx);
+
+            Assert.AreEqual(1, TauntCount(ctx),
+                "3.4 는 안(2 + 1.5) · 3.6 은 밖이어야 한다 — 0 이면 원점 항이 다시 칸 상수다");
+            Assert.AreEqual(2, ctx.SimIntents[0].Target.Value, "안쪽 적만 불려야 한다");
+        }
+
+        // 대조군 — 같은 저작에 몸만 폭1(0.5)이면 도형 반경은 2.5 이고 3.4 는 **밖**이다.
+        // 이 짝이 없으면 위 단언이 「그냥 사거리가 넉넉해서」 통과하는지 구분되지 않는다.
+        [Test]
+        public void ThinBody_SameAuthoring_DoesNotReach3_4()
+        {
+            var ctx = new TestSkillContext();
+            ctx.Add(1, float3.zero, Faction.DefenderUnit, u => u.HasAggroCapacity = true);
+            ctx.Add(2, new float3(3.4f, 0f, 0f), Faction.EnemyUnit);
+            var thin = CasterRef.OfUnit(new SkillEntityId(1), Faction.DefenderUnit, bodyRadius: 0.5f);
+
+            new AreaTauntSkill().Execute(thin, default, P(2, 4f), ctx);
+
+            Assert.AreEqual(0, TauntCount(ctx), "폭1 이면 2.5 까지다 — 3.4 는 밖");
+        }
+
         [Test]
         public void UnreachableLayer_IsNotCalled()
         {

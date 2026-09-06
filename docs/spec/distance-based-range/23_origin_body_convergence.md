@@ -133,7 +133,10 @@
       `CellArea_DoesNotReactToCasterBody`(형이 갈렸다는 증거) · 카탈로그 2건.
 - [x] **EditMode 2765건 중 실패 2건**(`boomerang`·`bomb_man` — 시트 소유 **선행 실패**).
       예측한 3건이 정확히 깨졌고 처방대로 복원됐다.
-- [ ] **골든 A/B** — 미실행(워크트리 격리 선행 필요).
+- [x] **골든 A/B** — 실행 완료(2026-09-06). 8건 중 7건 바이트 동일, `force_wave` 의
+      `finalStateHash` 하나만 갈렸다 = **23a(오라) 몫**. 총계는 전부 무변 — 코퍼스가
+      배치하는 4기에 **배스티온이 없어** Δ 최대 유닛이 측정에서 빠졌다. 상세는 아래
+      「골든 A/B — 실측 결과」 절.
 
 ### 23b — **구현 완료 2026-09-06** (골든 제외)
 
@@ -153,21 +156,30 @@
 - [x] **배선 그물** `OriginBodyRadiusWiringTests`(5) — 「0 이 자리형인지 누락인지」를 이름으로 고정.
       특히 **시체폭발에 킬러 몸이 붙으면 실패**하고, **퇴근 운석의 의도된 0** 을 문장으로 지킨다.
 - [x] **EditMode 2770건 중 실패 2건**(선행 2건).
-- [ ] **골든 A/B** — 23a 와 함께 미실행(워크트리 격리 선행).
+- [x] **골든 A/B** — C-1 수정 후 재측정(2026-09-07): **8/8 바이트 동일**. 다만 이번엔
+      「왜 안 움직였나」에 **구조적 답**이 있다 — 자폭 저작(브루저)이 덱에 없고, 나머지
+      자기 자리 폭발은 전부 드림캐쳐 카드인데 하네스는 카드를 안 붙이며, 코퍼스 보스의
+      몸이 정확히 0.5(= 칸 반폭)라 슬램 Δ 가 0 이다. **무회귀의 증거이지 «효과 없음»의
+      증거가 아니다.** 상세는 아래 「23b 순효과 측정」 절.
 
 ### 나머지
 
-- [ ] **선행**: `TestSkillContext.Stat` 에 `UnitStat.BodyRadius` 케이스 추가.
-      ⚠ 오늘 없어서 **항상 0** 이고, `AreaSleepSkill:81` 이 이미 그 값을 쓴다 —
-      **차등 단언을 그 전에 쓰면 안 움직인다**(unit 22 를 숨긴 것과 같은 눈속임).
-- [ ] compile · EditMode 전량 초록(선행 문안 2건 제외).
-- [ ] **차등 단언**: 같은 스킬·같은 자리에서 **시전자 footprint 만 키우면 대상 집합이 넓어진다.**
-      결함 A·B **각각**에 대해. 1×1 픽스처만 있으면 결함이 숨는다.
-- [ ] **가드**: sim 경로의 `CellHalfWidthTiles` 참조 0건 + 이름 단언
-      (`SkillAdapterDirectWriteTests` 관용구 재사용 — 개수만 세면 「하나 빼고 하나 더하면」 통과).
-- [ ] 배스티온 도발 도형 반경 실측 **3.5** · 자폭/사망폭발/실드파열이 host 몸에 반응.
-- [ ] **골든 A/B 분리 측정**(unit 22 방식) — 움직임의 **방향과 크기를 미리 적고** 그 밖이면 원인 규명.
-- [ ] Play 육안: 배스티온 도발이 옆구리 적을 실제로 끌어오는가.
+- [x] **선행**: `TestSkillContext.Stat` 에 `UnitStat.BodyRadius` 케이스 추가 — 23a 에서 완료.
+      ⚠ 없던 동안 **항상 0** 이었고 `AreaSleepSkill:81` 이 이미 그 값을 썼다 —
+      **차등 단언을 그 전에 썼으면 안 움직였다**(unit 22 를 숨긴 것과 같은 눈속임).
+- [x] compile · EditMode 전량 초록(선행 문안 2건 제외) — 코어 2612 / 실패 0 / 스킵 3(문서화된 의도).
+- [x] **차등 단언**: 결함 A(자기중심 광역) = `AreaCircleMembershipTests.SelfArea_WidensWithCasterBody_NotWithACellConstant`
+      + 형이 갈렸다는 짝 `CellArea_DoesNotReactToCasterBody`. 결함 B(원점 운반) =
+      `OriginBodyRadiusWiringTests`(5) + `ProjectileOriginRadiusCarryTests`(값이 상태까지 오는지 «읽어서» 확인).
+- [x] **가드**: `ReachEntryPointGuardTests` — `CellHalfWidthTiles` 가 `private const` 임을 정규식으로
+      고정(컴파일러가 1차 방어) + 옛 술어 부활 금지 + 표기 상수 참조 0건.
+- [x] 배스티온 도발 도형 반경 실측 **3.5** — `AreaTauntSkillTests.BastionBody_WidensTauntShapeTo3_5`
+      (저작 `tileRange 2` + 몸 1.5, 3.4 안 / 3.6 밖) + 대조군 `ThinBody_SameAuthoring_DoesNotReach3_4`
+      (몸 0.5 면 2.5 까지라 3.4 가 밖 — 짝이 없으면 「그냥 사거리가 넉넉해서」 통과하는지 못 가린다).
+      ⚠ 자폭/사망폭발/실드파열의 host 몸 반응은 **행동 테스트**(위 결함 B 그물)가 지킨다.
+- [x] **골든 A/B 분리 측정** — 2회 실행(23a 전후 · C-1 수정 후 23b 순효과). 결과와 «관측 불가»의
+      구조적 사유는 아래 두 절. 방향·크기를 사전 등록했고 그 밖이라 원인을 규명했다.
+- [ ] Play 육안: 배스티온 도발이 옆구리 적을 실제로 끌어오는가. **← 유일한 잔여 항목**
 
 ## 깨질 테스트 (6건 — 전수 확인)
 
