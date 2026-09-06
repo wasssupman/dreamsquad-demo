@@ -10602,9 +10602,25 @@ namespace Wassup.Bridge
             // **감지 저작 하나**로 바뀌었다. 티어는 더 이상 사냥을 주지 않는다(보스 3종은
             // `detectionRange = -1` 을 명시 저작한다). 태그의 뜻도 「방어유닛을 사냥한다」에서
             // **「감지를 쓴다」**로 넓어졌다 — `DefenderFieldSystem` 은 코드 변경 0 이다.
+            //
+            // enemy-detection-range unit 8 rev — 태그가 **다시 좁아졌다: 무제한 사냥 전용.**
+            // unit 8 이 유한 반경 감지를 공용 사냥판에서 떼어내 대상 지향 추격판으로 옮겼으므로,
+            // 유한 감지 적에게 이 태그를 계속 붙이면 **안 쓰는 필드를 매 프레임 굽게 한다.**
+            // 실제 대가 둘:
+            //   ⑴ `Vanguard`·`Tanker` 는 웨이브 상비라 태그가 사실상 항상 있어 `DefenderFieldSystem`
+            //      의 전체 그리드 BFS 가 **매 프레임** 돈다 — 소비자가 없는데도.
+            //   ⑵ 그 시스템의 소스 반경 `R = min(모든 헌터의 사거리)` 라, 유한 감지 적이
+            //      **자기가 안 쓰는 필드의 보스 R 을 끌어내린다**(사거리 1짜리가 섞이면 R=1).
+            // 좁힌 뒤: 일반 웨이브에는 그 BFS 가 아예 안 돈다(보스·보너스 판에서만).
+            //
+            // ⚠ 태그의 살아있는 소비처는 **공용 사냥판 관련 3곳뿐**이다
+            // (`DefenderFieldSystem` 의 조기반환·R 산출, `MovementSystem` 의 `huntTargets` 수집 게이트).
+            // 새 소비처를 붙일 때 «무제한 사냥꾼이라서» 인지 «감지를 써서» 인지 먼저 묻는다 —
+            // 뒤라면 이 태그가 아니라 `DetectionRange`/`DetectedTarget` 을 봐야 한다.
             if (unitType.UsesDetection)
             {
-                _em.AddComponent<Wassup.Battle.Combat.DefenderHunterTag>(entity);
+                if (unitType.HasUnlimitedDetection)
+                    _em.AddComponent<Wassup.Battle.Combat.DefenderHunterTag>(entity);
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.DetectionRange
                 {
                     tiles = unitType.detectionRange,

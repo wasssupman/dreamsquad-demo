@@ -76,6 +76,21 @@ namespace Wassup.Battle.Combat
         // 25기)보다 가볍다. 「4번째 후보라야 갈 수 있는 배치」가 실제로 관측되면 그때 올린다.
         public const int MaxPathProbes = 3;
 
+        // unit 8 rev — **우회 상한**(감지 반경의 배수). 초과하면 「갈 수 없다」로 친다.
+        //
+        // ⚠ 이것이 없으면 **직선으로 가까운데 경로로 먼** 대상에 커밋한다. 옛 공용 사냥판은
+        // «경로 최단»으로 내려가 그 상황이 구조적으로 불가능했는데, 대상 지향으로 바꾸면서
+        // 랭킹이 직선이 되어 되살아났다: 벽 너머 3칸(우회 40칸)이 직선 5칸 직통을 이긴다.
+        //
+        // 게다가 **유지 술어(`TargetPersistence.KeepsLock`)는 직선**이다. 우회하는 동안 직선거리가
+        // 늘면 락이 풀려 골로 복귀했다가 다시 감지 — **왕복 흔들림**이 된다. 막힘 해제 타이머는
+        // 못 잡는다(적은 계속 «움직이고» 있으므로 `holdingGround` 가 0이다).
+        //
+        // 2배로 묶으면 우회 중에도 직선거리가 유지 임계 근처를 못 벗어나 두 술어가 안 갈린다.
+        // 근본 수정은 유지 술어도 경로로 바꾸는 것인데, 그건 `AttackReach` 한 자를 쪼개는
+        // 일이라 이 spec 밖이다(계약 3).
+        public const float MaxDetourFactor = 2f;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -258,6 +273,9 @@ namespace Wassup.Battle.Combat
                 int myTileRange = AggroChaseMath.ResolveTileRange(true, atk.range, false, 0f);
                 bool canRoute = hasFlow && !unlimited && myTileRange != AggroChaseMath.NoAttack
                                 && InGrid(atkPos, in field);
+                // 우회 상한을 «필드 비용» 단위로 환산. `FlowFieldBuilder` 는 직교 10 / 대각 14 를
+                // 쓰므로 타일 ≈ cost / 10 이다.
+                int maxDetourCost = (int)math.round(rangeTiles * MaxDetourFactor * 10f);
 
                 if (!keep)
                 {
@@ -269,6 +287,11 @@ namespace Wassup.Battle.Combat
                     // 벽 너머 가까운 유닛 하나가 뒤 레인 전체를 가려 버린다.
                     cur = Entity.Null;
                     int rejectCount = 0;
+                    // 탐침한 후보 중 «경로 최단» 을 고르기 위한 누적(첫 도달 가능이 아니다).
+                    Entity bestReach = Entity.Null;
+                    float3 bestReachPos = default;
+                    int bestCost = int.MaxValue;
+                    Entity lastBuilt = Entity.Null;
                     for (int probe = 0; probe < MaxPathProbes; probe++)
                     {
                         Entity pick = Entity.Null;
@@ -308,26 +331,41 @@ namespace Wassup.Battle.Combat
 
                         if (pick == Entity.Null) break;              // 후보 소진 — 원래 가던 길
                         if (!canRoute) { cur = pick; break; }        // 기하 생략(무제한·합성 월드)
-                        if (TryBuildChase(in field, hasObstacles, in obstacleSingleton,
-                                          myLayers, ref walkMaskLayers, atkPos, pickPos, myTileRange,
-                                          ref walkMask, ref tmpFlow, ref tmpDist))
-                        {
-                            cur = pick;
-                            AttachChase(ref d, enemy, pick, blockedSig, cellCount,
-                                        in tmpDist, in tmpFlow, ref ecb);
-                            break;
-                        }
-                        rejected[rejectCount++] = pick;              // 갈 수 없다 → 다음 후보
+
+                        rejected[rejectCount++] = pick;              // 탐침한 것은 무조건 소진 처리
+                        int cost = TryBuildChase(in field, hasObstacles, in obstacleSingleton,
+                                                 myLayers, ref walkMaskLayers, atkPos, pickPos, myTileRange,
+                                                 ref walkMask, ref tmpFlow, ref tmpDist);
+                        lastBuilt = pick;
+                        // ⚠ **첫 도달 가능을 그냥 채택하지 않는다** — 랭킹이 직선이라 그러면
+                        // 우회가 짧은 직통을 이긴다. 탐침한 것 중 **경로가 가장 짧은** 것을 고르고,
+                        // 상한(`MaxDetourFactor`)을 넘는 것은 「갈 수 없다」로 친다.
+                        if (cost >= 0 && cost <= maxDetourCost && cost < bestCost)
+                        { bestCost = cost; bestReach = pick; bestReachPos = pickPos; }
+                    }
+
+                    if (cur == Entity.Null && bestReach != Entity.Null)
+                    {
+                        // 이긴 후보가 마지막으로 구운 것이 아니면 다시 굽는다
+                        // (`tmpDist`/`tmpFlow` 는 뒤 탐침이 덮어썼다).
+                        if (lastBuilt != bestReach)
+                            TryBuildChase(in field, hasObstacles, in obstacleSingleton,
+                                          myLayers, ref walkMaskLayers, atkPos, bestReachPos, myTileRange,
+                                          ref walkMask, ref tmpFlow, ref tmpDist);
+                        cur = bestReach;
+                        AttachChase(ref d, enemy, bestReach, blockedSig, cellCount,
+                                    in tmpDist, in tmpFlow, ref ecb);
                     }
                 }
                 else if (canRoute && (d.chaseBuiltFor != cur || d.chaseSignature != blockedSig))
                 {
                     // 대상은 유지인데 추격판이 없거나 낡았다(첫 획득 · 장애물 변경).
                     // 다시 굽고, 그래도 못 가면 대상을 놓는다 — 규칙 3단계로 내려간다.
-                    if (TryBuildChase(in field, hasObstacles, in obstacleSingleton,
-                                      myLayers, ref walkMaskLayers, atkPos,
-                                      _transformLookup[cur].Position, myTileRange,
-                                      ref walkMask, ref tmpFlow, ref tmpDist))
+                    int keepCost = TryBuildChase(in field, hasObstacles, in obstacleSingleton,
+                                                 myLayers, ref walkMaskLayers, atkPos,
+                                                 _transformLookup[cur].Position, myTileRange,
+                                                 ref walkMask, ref tmpFlow, ref tmpDist);
+                    if (keepCost >= 0 && keepCost <= maxDetourCost)
                         AttachChase(ref d, enemy, cur, blockedSig, cellCount,
                                     in tmpDist, in tmpFlow, ref ecb);
                     else
@@ -433,14 +471,17 @@ namespace Wassup.Battle.Combat
         // (`FillWalkMask(층)` → `BuildChaseField(대상)` → 「내 칸이 도달 가능한가」).
         // 자를 새로 만들지 않는 것이 요점이다 — 두 레인이 갈리면 「어그로는 가는데 감지는 안 간다」
         // 가 생기고, 그건 플레이어에게 규칙이 둘로 보인다는 뜻이다.
-        private static bool TryBuildChase(
+        // 반환 = **경로 비용**(`FlowFieldBuilder` 단위: 직교 10 / 대각 14), **-1 = 갈 수 없다.**
+        // bool 이 아니라 비용을 돌려주는 이유: 호출부가 「첫 도달 가능」이 아니라
+        // 「탐침한 것 중 경로 최단」을 골라야 하기 때문이다(직선 랭킹의 우회 결함).
+        private static int TryBuildChase(
             in FlowFieldSingleton field, bool hasObstacles, in ObstacleSingleton obstacles,
             byte myLayers, ref byte cachedLayers,
             float3 selfPos, float3 targetPos, int tileRange,
             ref NativeArray<byte> walkMask, ref NativeArray<float2> tmpFlow, ref NativeArray<int> tmpDist)
         {
             int n = field.gridSize.x * field.gridSize.y;
-            if (n <= 0) return false;
+            if (n <= 0) return -1;
             if (!walkMask.IsCreated)
             {
                 walkMask = new NativeArray<byte>(n, Allocator.Temp);
@@ -458,9 +499,10 @@ namespace Wassup.Battle.Combat
             int2 tCell = GridMath.WorldToCell(targetPos, field.tileSize, field.gridSize, origin: field.origin);
             int srcCount = AggroChaseMath.BuildChaseField(
                 walkMask, field.gridSize, tCell, tileRange, tmpFlow, tmpDist);
-            if (srcCount == 0) return false;                       // 사격 가능한 칸이 없다
+            if (srcCount == 0) return -1;                          // 사격 가능한 칸이 없다
             int2 myCell = GridMath.WorldToCell(selfPos, field.tileSize, field.gridSize, origin: field.origin);
-            return tmpDist[GridMath.CellIndex(myCell, field.gridSize)] != int.MaxValue;
+            int cost = tmpDist[GridMath.CellIndex(myCell, field.gridSize)];
+            return cost == int.MaxValue ? -1 : cost;
         }
 
         // 구운 필드를 버퍼로 부착하고 캐시 키를 찍는다. **성공 직후에 불러야 한다** —

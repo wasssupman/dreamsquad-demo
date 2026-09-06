@@ -584,19 +584,26 @@ namespace Wassup.Battle.Movement
                             // 즉 `attackStateLookup` 가드는 도달 불가한 방어가 아니라 **실제
                             // 저작 실수를 막는 가드**다 — 「어차피 항상 있으니」로 지우지 말 것.
                             // (`DefenderFieldSystem:66` 도 이미 「AttackState 없는 헌터」를 상정한다.)
+                            // ⚠ unit 8 rev — `huntTargets` 를 **요구하지 않는다.** 그 목록은
+                            // `DefenderHunterTag`(이제 **무제한 전용**) 게이트 뒤에서만 채워지므로,
+                            // 보스 없는 일반 웨이브에서는 비어 있다. 대상 지향 사냥은 그 목록이
+                            // 아니라 자기 대상을 쓰므로 여기서 막히면 **유한 감지가 보정을 통째로 잃는다**
+                            // (「도착했는데 못 쏜다」 영구 동결의 재발).
                             if (hunting && !locked
                                 && aiStateLookup.HasComponent(entity) && ai == AiState.Marching
                                 && attackStateLookup.HasComponent(entity)
-                                && routeDist[idx] == 0 && huntTargets.Length > 0)
+                                && routeDist[idx] == 0
+                                && (huntTargets.Length > 0 || huntTargeted))
                             {
                                 // 최근접 방어유닛 — 소스 칸을 만든 것이 그중 하나다.
                                 float bestSq = float.MaxValue; float3 bestPos = default;
+                                bool hasClosePos = false;
                                 for (int t = 0; t < huntTargets.Length; t++)
                                 {
                                     float hdx = huntTargets[t].x - current.x;
                                     float hdz = huntTargets[t].z - current.z;
                                     float sq = hdx * hdx + hdz * hdz;
-                                    if (sq < bestSq) { bestSq = sq; bestPos = huntTargets[t]; }
+                                    if (sq < bestSq) { bestSq = sq; bestPos = huntTargets[t]; hasClosePos = true; }
                                 }
                                 // unit 8 — 대상 지향 사냥이면 **그 대상**으로 붙는다. 위 최근접은
                                 // 공용 사냥판(무제한)용 근사다 — 도착지가 특정되지 않으니 「소스 칸을
@@ -607,21 +614,26 @@ namespace Wassup.Battle.Movement
                                 {
                                     var dt8 = _detectedLookup[entity].target;
                                     if (dt8 != Entity.Null && _guardianTransformLookup.HasComponent(dt8))
-                                        bestPos = _guardianTransformLookup[dt8].Position;
+                                    { bestPos = _guardianTransformLookup[dt8].Position; hasClosePos = true; }
                                 }
-                                float huntSpeedMul = modifierStatsLookup.HasComponent(entity)
-                                    ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                                float2 huntTaken = TryCloseIn(
-                                    current, bestPos, follow.ValueRO.speed * huntSpeedMul * dt,
-                                    in routeDist, field.gridSize, field.tileSize, field.origin,
-                                    follow.ValueRO.radius, in nav,
-                                    pullDisplacement + impulseDisplacement, out float3 huntNext);
-                                if (math.lengthsq(huntTaken) > 1e-6f)
+                                // ⚠ 관성(grace) 중에는 대상이 비어 있다 — 그때 목록도 비면 붙을
+                                // 자리가 없다. 원점(0,0,0)으로 기어가지 않도록 자리를 요구한다.
+                                if (hasClosePos)
                                 {
-                                    transform.ValueRW.Position = huntNext;
-                                    follow.ValueRW.holdingGround = 0;
-                                    follow.ValueRW.lastMoveDir = math.normalize(huntTaken);
-                                    continue;
+                                    float huntSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                        ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                                    float2 huntTaken = TryCloseIn(
+                                        current, bestPos, follow.ValueRO.speed * huntSpeedMul * dt,
+                                        in routeDist, field.gridSize, field.tileSize, field.origin,
+                                        follow.ValueRO.radius, in nav,
+                                        pullDisplacement + impulseDisplacement, out float3 huntNext);
+                                    if (math.lengthsq(huntTaken) > 1e-6f)
+                                    {
+                                        transform.ValueRW.Position = huntNext;
+                                        follow.ValueRW.holdingGround = 0;
+                                        follow.ValueRW.lastMoveDir = math.normalize(huntTaken);
+                                        continue;
+                                    }
                                 }
                             }
                             // truly isolated cell — 자기주도 이동은 없지만 외력은 적용 (unit 3).

@@ -192,14 +192,20 @@ namespace Wassup.Tests.EditMode
             Object.DestroyImmediate(unitType);
         }
 
-        // 유한 반경도 태그를 받는다 — 무제한만의 성질이 아니라는 것을 고정한다.
+        // ★ unit 8 rev — **유한 반경은 태그를 «안» 받는다.** 값과 태그가 갈리는 유일한 자리다.
+        //
+        // unit 8 이 유한 감지를 공용 사냥판에서 떼어내 대상 지향 추격판으로 옮겼으므로, 태그의
+        // 질문이 「감지를 쓰나」에서 **「공용 사냥판이 필요한가」**로 좁아졌다. 넓은 채로 두면
+        // `Vanguard`·`Tanker` 가 웨이브 상비라 **소비자 없는 전체 그리드 BFS 가 매 프레임** 돌고,
+        // 그 시스템의 `R = min(모든 헌터 사거리)` 가 보스 R 까지 끌어내린다.
         [Test]
-        public void 유한_감지반경도_태그와_값을_받는다()
+        public void 유한_감지반경은_값만_받고_사냥_태그는_안_받는다()
         {
             var unitType = MakeBareUnit(EnemyTier.Normal, detectionRange: 3f);
             var e = InvokeCreateEnemy(unitType);
 
-            Assert.IsTrue(_world.EntityManager.HasComponent<DefenderHunterTag>(e));
+            Assert.IsFalse(_world.EntityManager.HasComponent<DefenderHunterTag>(e),
+                "유한 감지에 사냥 태그가 붙었다 — 안 쓰는 공용 사냥판을 매 프레임 굽게 된다");
             var dr = _world.EntityManager.GetComponentData<DetectionRange>(e);
             Assert.AreEqual(3f, dr.tiles, 1e-4f);
             Assert.IsFalse(dr.Unlimited, "유한 반경이 무제한으로 읽혔다");

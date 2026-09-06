@@ -29,7 +29,7 @@ namespace Wassup.Tests.EditMode
     public class DetectionChaseFieldTests
     {
         private const int W = 9;
-        private const int H = 5;
+        private const int H = 7;
         private const int WallX = 4;      // 이 열은 지상이 못 지난다(Air 비트만 연다)
         private const float Dt = 1f / 60f;
 
@@ -135,6 +135,61 @@ namespace Wassup.Tests.EditMode
 
         private DetectedTarget Detected(Entity e) => _em.GetComponentData<DetectedTarget>(e);
         private bool HasChase(Entity e) => _em.HasBuffer<DetectionChaseDist>(e);
+
+        // 벽 열에 구멍 하나 — 「직선으로 가깝지만 경로로 먼」 배치를 만든다.
+        private void OpenWall(int y)
+        {
+            int i = y * W + WallX;
+            _field.cellLayers[i] = (byte)(PlacementLayer.Path | PlacementLayer.Air);
+            _field.walkMask[i] = 1;
+        }
+
+        // ── 우회 — 직선 랭킹이 만든 결함의 회귀 방지 ────────────────────────────
+        //
+        // ★ 옛 공용 사냥판은 «경로 최단»으로 내려가 이 상황이 **구조적으로 불가능**했다.
+        // 대상 지향으로 바꾸며 랭킹이 직선이 되어 되살아난 결함이라, 여기가 그 자리다.
+
+        [Test]
+        public void 직선_최근접이_우회면_경로가_짧은_쪽을_고른다()
+        {
+            OpenWall(H - 1);
+            var near = Defender(5, 2, simId: 1);   // 직선 2 — 그러나 벽을 돌아야 한다
+            var far = Defender(0, 2, simId: 2);    // 직선 3 — 직통
+            var e = Enemy(3, 2, detectionRange: 5f, layers: PlacementLayer.Path);
+            Step();
+
+            var got = Detected(e);
+            Assert.AreEqual(1, got.hunting, "둘 다 갈 수 있으므로 감지는 성립한다");
+            Assert.AreEqual(far, got.target,
+                $"직선으로 더 가까운 near={near.Index} 는 벽을 크게 돌아야 한다 — " +
+                "「첫 도달 가능」을 채택하면 여기서 적이 목표에서 멀어지는 쪽으로 걷는다");
+        }
+
+        [Test]
+        public void 우회가_상한을_넘으면_원래_가던_길로_간다()
+        {
+            OpenWall(H - 1);
+            Defender(5, 2, simId: 1);
+            var e = Enemy(3, 2, detectionRange: 2f, layers: PlacementLayer.Path);
+            Step();
+
+            Assert.AreEqual(0, Detected(e).hunting,
+                "직선 2칸이지만 경로는 반경의 2배를 넘는다 — 「갈 수 있다」로 치면 " +
+                "이동(경로)과 유지(직선) 술어가 갈려 왕복 흔들림이 된다");
+        }
+
+        // 상한이 «거리» 가 아니라 «반경 대비 비율» 임을 못박는다 — 같은 배치에서 반경만 넓히면 통과.
+        [Test]
+        public void 같은_우회도_반경이_넓으면_통과한다()
+        {
+            OpenWall(H - 1);
+            Defender(5, 2, simId: 1);
+            var e = Enemy(3, 2, detectionRange: 5f, layers: PlacementLayer.Path);
+            Step();
+
+            Assert.AreEqual(1, Detected(e).hunting,
+                "상한은 `detectionRange × MaxDetourFactor` 라 반경이 넓어지면 같은 우회가 허용된다");
+        }
 
         // ── 층 무관성 — 이 unit 의 본체 ──────────────────────────────────────────
 

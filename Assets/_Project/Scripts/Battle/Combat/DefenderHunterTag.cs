@@ -17,12 +17,21 @@ namespace Wassup.Battle.Combat
     // CC 면역(CcApplySystem·EffectSpawner) · 등장 경보 · ThreatEntry.
     // 새 소비처를 붙일 때 «보스라서 그런가, 사냥꾼이라서 그런가» 를 먼저 묻는다.
     //
-    // enemy-detection-range unit 1 — 태그의 뜻이 **「감지를 쓴다」**로 넓어졌다. 부착 조건이
-    // `tier == Boss || huntsDefenders` 에서 **`UsesDetection`**(임계 비교) 하나가 됐고(티어는 더 이상
-    // 사냥을 주지 않는다), 무제한 사냥은 그 값의 음수 구간이 됐다.
+    // enemy-detection-range unit 1 — 태그의 뜻이 **「감지를 쓴다」**로 넓어졌다(부착 조건 `UsesDetection`).
     //
-    // 부착은 `BattleBridge.CreateEnemyEntity` 본문에서 `unitType.UsesDetection` 로 1회
-    // (`DetectionRange` 값과 **같은 자리**에서 함께 붙는다 — 갈리면 「태그는 있는데 반경이 없다」).
+    // ★ **unit 8 rev 에서 다시 좁아졌다: 「무제한 사냥을 한다」**(`HasUnlimitedDetection`).
+    // unit 8 이 유한 반경 감지를 공용 사냥판에서 떼어내 **대상 지향 추격판**으로 옮겼기 때문이다.
+    // 이 태그가 게이팅하는 것은 이제 **공용 사냥판 하나**이고, 유한 감지 적은 그 필드를 읽지 않는다.
+    // 넓은 채로 두면 대가가 둘: ⑴ `Vanguard`·`Tanker` 가 웨이브 상비라 소비자 없는 전체 그리드
+    // BFS 가 매 프레임 돌고 ⑵ 소스 반경 `R = min(모든 헌터 사거리)` 라 **유한 감지 적이 자기가
+    // 안 쓰는 필드의 보스 R 을 끌어내린다.**
+    // → 좁힌 뒤 일반 웨이브에서는 그 BFS 가 **아예 안 돈다**(보스·보너스 판에서만).
+    //
+    // ⚠ **「감지를 쓰나」를 이 태그로 묻지 말 것** — 그건 `DetectionRange`/`DetectedTarget` 이다.
+    // 이 태그의 질문은 「**공용 사냥판이 필요한가**」 하나로 좁다.
+    //
+    // 부착은 `BattleBridge.CreateEnemyEntity` 본문에서 `unitType.HasUnlimitedDetection` 로 1회
+    // (`DetectionRange` 값과 **같은 자리**에서 붙는다 — 값은 감지 적 전원, 태그는 무제한만).
     // 스폰 이후 **불변**이다 — 전투 중 떼는 시스템이 생기면 맥락 소유권 질문이 다시 열린다
     // (지금은 브리지가 유일 writer, Movement·Effects 가 RO 소비).
     public struct DefenderHunterTag : IComponentData { }
