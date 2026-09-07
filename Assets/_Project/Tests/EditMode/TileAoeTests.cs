@@ -241,19 +241,38 @@ namespace Wassup.Tests.EditMode
                 "몸 1 이면 3칸이 안이다 — 거짓이면 예고가 원점 항을 빼고 그린다");
         }
 
-        [Test]
-        public void LandingTelegraph_MatchesTheDamagePredicate_ForAUnitOnThatCell()
+        // 칸 위의 **1×1** 유닛(몸 0.5)에 대해서만 예고와 피해가 같은 답을 낸다.
+        // ⚠ 원점 몸을 **라이브 대역 전체**로 돌린다(리뷰 M-1) — 하나만 보면 폴백 방향이 갈리는
+        //    구간을 원리적으로 못 잡는다. 0 은 아래 별도 단언이 따로 고정한다(도달 불가 + 방향 반대).
+        [TestCase(0.5f)]   // 짱쎈
+        [TestCase(0.558f)] // 마메모
+        [TestCase(0.615f)] // 나이트메어
+        [TestCase(1.0f)]
+        [TestCase(1.5f)]
+        public void LandingTelegraph_MatchesTheDamagePredicate_ForAUnitOnThatCell(float originR)
         {
-            // 칸 위의 1×1 유닛(몸 0.5)에 대해 예고와 **피해 판정**이 같은 답을 내야 한다.
-            // 피해: ReachFromImpact(원점 몸, 대상 몸 0.5) · 예고: ReachFromUnitToCell(원점 몸).
-            for (int dx = 0; dx <= 5; dx++)
-            for (int dz = 0; dz <= 5; dz++)
+            for (int dx = 0; dx <= 6; dx++)
+            for (int dz = 0; dz <= 6; dz++)
             {
-                bool painted = Wassup.Skills.SkillMath.ReachFromUnitToCell(dx, dz, 2, 1f);
-                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, 1f, 0.5f);
+                bool painted = Wassup.Skills.SkillMath.ReachFromUnitToCell(dx, dz, 2, originR);
+                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, originR, 0.5f);
                 Assert.AreEqual(hit, painted,
-                    $"({dx},{dz}) — 예고와 피해가 갈렸다. 화면이 규칙을 틀리게 가르친다");
+                    $"원점 몸 {originR} · ({dx},{dz}) — 예고와 피해가 갈렸다");
             }
+        }
+
+        // ⚠ **원점 몸 0 에서는 둘이 갈린다 — 알고 남긴다**(리뷰 M-1).
+        // 피해(`ReachFromImpact`)는 0 을 「이 자리에 주인이 없다」로 읽어 칸 반폭으로 **승격**하고,
+        // 예고(`ReachFromUnitToCell`)는 0 을 「몸이 없다」로 읽어 **그대로 둔다**. 그래서 예고가
+        // 0.5칸 좁다. 오늘 도달 불가다 — 스폰 5경로가 `HitRadius` 를 **무조건** 붙인다(불변식 7:
+        // 「조건부 부착 금지」). 그 불변이 깨지는 날 이 단언이 먼저 깨져서 결정을 요구한다.
+        [Test]
+        public void LandingTelegraph_AndDamage_DivergeAtZeroBody_ByConstruction()
+        {
+            // 3칸: 예고 3 > 2.5 밖 · 피해 3 ≤ 3.0(0 → 0.5 승격) 안.
+            Assert.IsFalse(Wassup.Skills.SkillMath.ReachFromUnitToCell(3f, 0f, 2, 0f));
+            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(3f, 0f, 2, 0f, 0.5f),
+                "피해 쪽 0 승격이 사라졌다면 이 비대칭 자체가 없어진 것 — 예고 쪽 폴백도 같이 정리하라");
         }
     }
 }

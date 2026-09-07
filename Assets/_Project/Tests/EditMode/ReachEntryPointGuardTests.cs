@@ -229,11 +229,31 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(body.Contains("SkillMath.ReachFromUnitToCell("),
                 "예고가 판정 술어를 안 지난다 — 사각 열거로 되돌아가면 모서리가 거짓 예고가 된다");
-            Assert.IsTrue(body.Contains("originBodyRadiusTiles"),
-                "예고가 원점 몸을 안 받는다 — 몸이 큰 보스일수록 화면이 좁게 가르친다");
+            // ⚠ `Contains("originBodyRadiusTiles")` 로는 **부족하다**(리뷰 H-2): 그건 이 함수의
+            // 파라미터 이름이라 시그니처에 이미 있고, 호출을 `…, 0f)` 로 바꿔도 통과한다 —
+            // 이 단언이 이름으로 지목한 회귀를 정확히 저질러도 초록이 된다. 인자가 술어까지
+            // **도달하는지**를 호출부 전체로 고정한다.
+            Assert.IsTrue(Regex.IsMatch(body,
+                    @"ReachFromUnitToCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*originBodyRadiusTiles\s*\)"),
+                "원점 몸이 술어까지 도달하지 않는다 — 몸이 큰 보스일수록 화면이 좁게 가르친다");
             Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
                     body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
                 "`[-N,+N]²` 사각 열거가 부활했다");
+        }
+
+        // ⚠ **복사 지점**을 이름으로 고정한다(리뷰 H-1). 위 가드는 술어(끝)와 소비자(끝)만 보고
+        // «그 사이에서 값이 실리는 자리» 를 안 봤다 — `ShowLandingTelegraph` 가 `0f` 를 넘기도록
+        // 바뀌어도 전건 초록이었다. 이 레포가 unit 23b(C-1)에서 이미 한 번 먹은 형태다:
+        // 「양 끝만 보는 그물은 그 사이의 복사 지점을 못 잡는다」(아키텍처 불변식 7).
+        [Test]
+        public void LandingTelegraph_CopiesTheLeapersBody_IntoTheCellEnumeration()
+        {
+            var src = Read("Bridge", "BattleBridge.UltimateLeap.cs");
+
+            Assert.IsTrue(Regex.IsMatch(src, @"GetComponentData<[^>]*HitRadius>\(entity\)\.value"),
+                "예고가 도약 주체의 몸을 읽지 않는다");
+            Assert.IsTrue(Regex.IsMatch(src, @"BuildZoneCells\([^;]*originBodyR\s*,\s*_zoneCellScratch\)"),
+                "읽은 몸이 셀 열거로 **전달되지 않는다** — 읽기만 하고 버리면 예고가 다시 좁아진다");
         }
     }
 }
