@@ -47,6 +47,10 @@ Stop and re-scope. This skill does not approve VFX Graph or JSON-authored Shader
 - Texture Sheet Animation 을 기본값처럼 사용하는 경우
 - Shader Graph JSON 을 텍스트로 직접 생성하거나 수정하려는 경우
 - 사용자 승인 없이 카탈로그 항목을 추가하려는 경우
+- `velocityOverLifetime`/`sizeOverLifetime` 등 **다축 모듈의 축마다 커브 모드가 다른** 경우
+  (예: y 만 Curve, x·z 는 Constant) — 에디터에서는 멀쩡해 보이고 **재생 시 콘솔 에러가 쏟아진다.**
+  상수 축도 `AnimationCurve.Constant` 로 승격해 모드를 맞춘다(시각 동일).
+  전역 가드 = `ParticleCurveModeConsistencyTests`(EditMode) — 새 프리팹은 반드시 통과시킨다.
 
 ## Rationalization Table
 | Topic | Default | Why |

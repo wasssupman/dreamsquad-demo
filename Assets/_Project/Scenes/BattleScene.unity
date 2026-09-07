@@ -585,7 +585,6 @@ MonoBehaviour:
   commitPopStartAlpha: 0.85
   commitPopValidColor: {r: 0.35, g: 1, b: 0.9, a: 1}
   commitPopInvalidColor: {r: 1, g: 0.4, b: 0.32, a: 1}
-  allyZoneColor: {r: 0.42, g: 0.95, b: 0.72, a: 0.42}
   landingTelegraphColor: {r: 1, g: 0.45, b: 0.08, a: 0.42}
   liquidValidBorder: {r: 0.45, g: 1, b: 0.55, a: 0.95}
   liquidValidFill: {r: 0.35, g: 0.95, b: 0.45, a: 0.45}
@@ -593,6 +592,7 @@ MonoBehaviour:
   liquidInvalidFill: {r: 1, g: 0.35, b: 0.28, a: 0.4}
   liquidSpring: 90
   liquidDamping: 9
+  placementLiquidEnabled: 0
 --- !u!156049354 &172395675
 Grid:
   m_ObjectHideFlags: 0
@@ -3441,7 +3441,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.CameraDirector
   config: {fileID: 11400000, guid: 7643de17742f54f4296f83b72a792c37, type: 2}
-  postVolume: {fileID: 0}
 --- !u!1 &1455149133
 GameObject:
   m_ObjectHideFlags: 0
@@ -4079,29 +4078,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 459f0fa86604f4ea2b0f9413be7a0272, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.TilemapPropScatter
-  groundTilemap: {fileID: 1520756905}
-  propsTilemap: {fileID: 1627119922}
-  decoGroundTile: {fileID: 11400000, guid: c8c3e25b24f1d451dbcc18d6d753abd3, type: 2}
-  propTiles:
-  - {fileID: 11400000, guid: b8e814086d3a840d68429e364630a717, type: 2}
-  - {fileID: 11400000, guid: 6cea08e6a8dc844fea60f464b21cad0d, type: 2}
-  - {fileID: 11400000, guid: 633e5de12b2354085a7795f2867669ab, type: 2}
-  - {fileID: 11400000, guid: 1450f5fb2a8054e0d865d252f4c0eec4, type: 2}
-  - {fileID: 11400000, guid: 4f954d50655794c15897f9265151504d, type: 2}
-  - {fileID: 11400000, guid: 0d93784617ff84e48957936e6819e2f5, type: 2}
-  - {fileID: 11400000, guid: 3dd9ed930f56b4a26abfdfb4b61e03ac, type: 2}
-  - {fileID: 11400000, guid: a17d3d317d6344cae97f7a67cf31284e, type: 2}
-  weights:
-  - 0.24
-  - 0.04
-  - 0.08
-  - 0.1
-  - 0.2
-  - 0.11
-  - 0.11
-  - 0.12
-  density: 0.45
-  seedSalt: 12345
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0
@@ -4383,6 +4359,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1740000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1740000002}
+  - component: {fileID: 1740000003}
+  m_Layer: 0
+  m_Name: _MarkerProps
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1740000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1740000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1740000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1740000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 379af7ae9baf46f9b2f9fef957ef8742, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.MarkerPropInstaller
+  style: {fileID: 11400000, guid: 352c3ed7c90443c996a8de804b3e3ace, type: 2}
 --- !u!1 &1795146345
 GameObject:
   m_ObjectHideFlags: 0
@@ -4420,6 +4441,8 @@ MonoBehaviour:
   healAppliedPrefab: {fileID: 6736404335509753307, guid: c73c83b92a33347efa457dcb948b2ba7, type: 3}
   shieldGrantedPrefab: {fileID: 8330006320348072208, guid: 6e4b6c99591848e4ca95111a6f384e71, type: 3}
   shieldGrantedScale: 0.7
+  detectionMarkPrefab: {fileID: 1332620569595262163, guid: 6b8dc33d536f7441991c259536fcd4ef, type: 3}
+  detectionMarkLift: 0.9
   cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   cardAbsorbScale: 0.6
   areaBreathPrefab: {fileID: 7251879486380165639, guid: 5a2d78f3c61b49e8b4137ac9e0d562b1, type: 3}
@@ -4686,13 +4709,11 @@ MonoBehaviour:
   propDistanceTiltMin: 28
   propDistanceTiltMax: 62
   blobShadowSprite: {fileID: 21300000, guid: 952c54b00e0c643b7a3c22cd1f3b3b7d, type: 3}
-  blobShadowSize: 1
   blobShadowColor: {r: 0, g: 0, b: 0.08, a: 0.75}
   blobShadowLift: 0.026
   liftScalePerHeight: 0.14
   liftScaleMax: 1.35
   liftShadowFullHeight: 3
-  liftShadowMinScale: 0.55
   liftShadowMinAlpha: 0.35
   useRealShadows: 0
   tilemapHiddenEnvironment: []
@@ -4701,7 +4722,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
   - {fileID: 11400000, guid: de365d3d90c04af19bb3fb09e3509249, type: 2}
   - {fileID: 11400000, guid: 46689fa6e0794d61ae5e6b74604fe2d4, type: 2}
-  enableAdjacencySynergy: 0
   pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
   pickupViewHeight: 0.3
   pickupModelScale: 1
@@ -4883,51 +4903,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1740000001
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1740000002}
-  - component: {fileID: 1740000003}
-  m_Layer: 0
-  m_Name: _MarkerProps
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1740000002
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1740000001}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1740000003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1740000001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 379af7ae9baf46f9b2f9fef957ef8742, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.MarkerPropInstaller
-  style: {fileID: 11400000, guid: 352c3ed7c90443c996a8de804b3e3ace, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

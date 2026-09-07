@@ -99,6 +99,16 @@ namespace Wassup.Presentation
         // 대조 기준이고, 값을 바꿀 땐 둘을 같이 바꾼다(WeaponTrailOrder 와 같은 규약).
         public const int StructureWreckOrder = -2;
 
+        // enemy-detection-range unit 5 — 「발견」 표식(몸 플래시 링 + 머리 위 「!」).
+        // 브레스·빔·궤적과 **같은 판단**으로 유닛 위 대역이다: 표식이 유닛에 잘리면
+        // "누가 나를 봤나"를 못 읽는다. 피격바(16000) 위 = 체력바와 겹쳐도 표식이 이긴다,
+        // 드래그 프리뷰(20000)·데미지 숫자(32000) 아래 = 배치 중이나 난타 중에 화면을 뺏지 않는다.
+        // ⚠ 실제 적용값은 **프리팹의 `ParticleSystemRenderer.sortingOrder`** 다
+        // (`VfxSpawner.SpawnDetectionMark` 은 정렬을 건드리지 않는다). 이 상수는 대역 문서이자
+        // 대조 기준이고, 값을 바꿀 땐 둘을 같이 바꾼다(WeaponTrailOrder 와 같은 규약).
+        // 링 = 이 값, 「!」 = +1(머리 위 기호가 링 위로).
+        public const int DetectionMarkOrder = 17000;
+
         // map-diorama-stage unit 3 — 행 간격을 상수 10 에서 폭 종속으로. 간격 < 폭이면 뒷줄
         // 오른쪽 유닛이 앞줄 왼쪽 유닛을 덮는다(폭 13~30 맵에서 실측된 기존 결함). +2 여유는
         // CharacterOffset(+1) 류의 행내 오프셋이 다음 행과 겹치지 않게 하는 완충.

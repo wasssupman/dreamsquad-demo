@@ -100,3 +100,16 @@
 - **Project tone**: 입구/출구를 동일 skeleton 으로 두고 색상만 분기 가능하게 설계
 - **Suggested MaxParticles**: 80
 - **sound_cue_hint**: compressed warp pop
+
+## Detection Mark (「발견」 표식) — draft
+- **Visual elements**: head 「!」 pop, body flash ring
+- **Typical palette**: alert yellow-orange (1.00, 0.72, 0.10), white core, dark rim
+- **Timing**: 0.14s pop overshoot(×1.22) into 0.30s hold, 0.55s total fade; ring 0.30~0.38s expand
+- **Particle types**: sprite
+- **Reference games**: Metal Gear alert(!), Arknights 교전 진입 분위기 참고
+- **Project tone**: 관습 기호(「!」)와 기존 오라 어휘(링)를 겹쳐 밀집 전투에서 둘 중 하나는 읽히게.
+  **스폰 예고 라인의 빨강(1, 0.16, 0.12)과 색을 분리**한다 — 예고는 「올 것」, 표식은 「이미 봤다」.
+  글리프는 **흰 코어 + 어두운 림**을 텍스처에 굽고 StartColor 로 곱해 틴트한다(밝은 맵에서도
+  아웃라인이 살아남는 구조). 링만 가산, 글리프는 알파 블렌드.
+- **Suggested MaxParticles**: 20 (Bang 8 + BodyFlash 12)
+- **sound_cue_hint**: short alert blip, no tail

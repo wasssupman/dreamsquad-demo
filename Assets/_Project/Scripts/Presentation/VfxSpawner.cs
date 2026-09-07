@@ -25,10 +25,14 @@ namespace Wassup.Presentation
         [SerializeField] private GameObject shieldGrantedPrefab;
         [Tooltip("실드 부여 이펙트 스케일(타일 1 유닛 기준)")]
         [SerializeField] private float shieldGrantedScale = 0.7f;
-        // enemy-detection-range unit 5 — 「발견」 표식. **미할당이 정상 상태다**(에러 로그를 내지
-        // 않는다) — 이 unit 의 검증 질문은 「사건이 채널을 타고 화면까지 도달하는가」이고,
-        // 전용 VFX 저작은 후속이다. 다른 채널이 미할당을 에러로 보는 것과 다른 점이며 의도다.
+        // enemy-detection-range unit 5 → **unit 9 에서 저작 완료**(`DetectionMark_SKELETON`).
+        // ⚠ unit 5 시절의 「미할당이 정상 상태」 예외는 **소멸했다** — 그 예외의 근거가
+        // 「전용 VFX 저작은 후속이다」였기 때문이고, 그 후속이 끝났다. 이제 나머지 슬롯 7개와
+        // 같은 규약이다(`object-pipeline-map.md` VFX 아키타입: 슬롯 null 이면 LogError · 폴백 없음).
         [SerializeField] private GameObject detectionMarkPrefab;
+        // 표식이 뜨는 높이(적 발밑 기준 화면 위쪽). ⚠ **짝 = `DetectionMark_SKELETON/BodyFlash`
+        // 의 `localPosition.y`(−0.55)** — 루트가 이만큼 올라가므로 링은 그만큼 되내려와 몸통에
+        // 온다. 하나를 바꾸면 다른 하나를 같이 본다(인스펙터에서 이 값만 만지면 링이 몸에서 뜬다).
         [SerializeField] private float detectionMarkLift = 0.9f;
 
         [Header("card-fly-to-target-absorb — 카드 흡수 임팩트")]
@@ -200,7 +204,13 @@ namespace Wassup.Presentation
         // 같은 부류). 대상을 가리키려면 이동이 먼저 그 대상을 향해야 하고, 그건 B안 전환이다.
         public void SpawnDetectionMark(Vector3 worldPos)
         {
-            if (detectionMarkPrefab == null) return;   // 미할당 = 정상(위 필드 주석)
+            if (detectionMarkPrefab == null)
+            {
+                // 조용한 리턴 금지 — 감지는 되는데 화면만 조용한 상태가 되고, 그건 「기능이 죽었다」와
+                // 구분이 안 된다(브레스 슬롯의 같은 판단). 씬 참조 유실이 유일한 실패 경로다.
+                Debug.LogError("[VfxSpawner] detectionMarkPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
+                return;
+            }
             worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + detectionMarkLift, worldPos.z);
             var go = Instantiate(detectionMarkPrefab, pos, Quaternion.identity, transform);

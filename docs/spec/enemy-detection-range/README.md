@@ -1,12 +1,13 @@
 # Enemy Detection Range — 적이 근처 방어유닛을 발견하면 경로를 벗어나 달려든다
 
-> 상태: **units 0~8(+rev) 구현 완료 2026-09-06 · Play 육안 대기**
+> 상태: **units 0~9 구현 완료 2026-09-07 · Play 육안만 대기**
 >
 > 저작: `Enemy_Vanguard`·`Enemy_Tanker`·**`Enemy_Skimmer`·`Enemy_Dragon`(비행)** = 감지 3칸 ·
 > 보스 3종 + `Enemy_DreamShard` = 무제한(−1) · 나머지 **16종** = 0
 > (정본은 `DetectionRangeAuthoringTests`). `waypoint_air` 는 **규칙에 의한 배제**(경로 저작이 정체성).
-> EditMode **2770건 중 선행 실패 2건만**(`boomerang`·`bomb_man` 문안 — 시트 문제, 무관).
-> ⚠ unit 5 는 **채널 완료 / 「발견」 표식 프리팹 저작 대기** — 화면에는 아직 안 뜬다.
+> EditMode **2788건 중 선행 실패 2건만**(`boomerang`·`bomb_man` 문안 — 시트 문제, 무관).
+> ⚠ unit 5 의 화면 몫은 **unit 9 에서 저작·배선 완료**(「!」 + 몸 플래시, 경보 노랑~주황).
+> `VfxSpawner.detectionMarkPrefab` 배선 + 씬 저장까지 끝났고 **남은 것은 Play 육안뿐**이다.
 >
 > 선행: `docs/spec/enemy-hunter-targeting/`(**폐기됨** — 아래 「왜 이번엔 다른가」 필독) ·
 > `docs/spec/boss-defender-field/`(사냥 이동 기계) · `docs/spec/aggro-targeting/` · `docs/spec/aggro-tile-chase/`
@@ -150,17 +151,20 @@
 | 2 | `2_detection_system.md` | 계약+테스트 | 감지 판정 순수 함수 + `DetectionSystem`(Combat) + `DetectedTarget` · EditMode |
 | 3 | `3_movement_gate.md` | 배선 | `MovementSystem` 사냥 게이트를 감지로 교체 · `DefenderFieldSystem` 게이트 갱신 |
 | 4 | `4_release_and_hysteresis.md` | 계약 | 대상 사망 + 관성 1초 · 히스테리시스 · **막힘 해제**(못 때리는 대상 앞 영구 정지 차단) |
-| 5 | `5_detect_event.md` | 배선 | 감지 성사 1회 사건 채널 → 브리지 · **채널 완료 / 표식 프리팹 저작 대기**(재사용할 팝업 프리젠터가 없었다 — 그 문서 참조) |
+| 5 | `5_detect_event.md` | 배선 | 감지 성사 1회 사건 채널 → 브리지 · **채널까지**(재사용할 팝업 프리젠터가 없었다 — 화면 몫은 unit 9) |
 | 6 | `6_authoring_and_rerun.md` | 저작+검증 | 어느 적에게 켤지 결정 · 계측 재실행 A/B · 골든 재베이크 판정 · Play 육안 |
 | 7 | `7_handoff_summary.md` | 인계 | 커밋 이후 지도 — 되돌리면 안 되는 것 · 남은 후속 |
 | 8 | `8_target_directed_chase.md` | 계약+배선 | **규칙 2단계를 문장대로** — 「**그** 적에게 **내** 층으로 갈 수 있나」. 대상 지향 추격판 신설 · 계약 13 이행 · 비행 편입 |
+| 9 | `9_detection_mark_vfx.md` | 저작 | unit 5 가 미룬 **화면 몫** — 「!」 팝 + 몸 플래시 링(경보 노랑~주황). 저작·정렬 대역·씬 배선 완료, **Play 육안 대기** |
 
 ## 파이프라인 커버리지
 
 신규 플레이 오브젝트 **없음** — 적의 이동 목표 선택이 바뀔 뿐 생성→렌더 경로는 무변.
 `docs/reference/object-pipeline-map.md` 의 정거장은 전부 **N/A**: 스폰(기존 적 경로 재사용) ·
 프리팹/SO(기존 `AttackUnitData` 필드 1개 추가) · 렌더(무변) · 티어다운(`AttackUnitTag` 상속).
-unit 5 의 「발견」 표식만 브리지 연출 정거장을 새로 쓴다 — 그 문서에서 다룬다.
+unit 5 의 「발견」 표식만 브리지 연출 정거장을 새로 쓰고, 그 저작물(프리팹·머티리얼·텍스처·
+정렬 대역)은 **unit 9** 가 만들었다 — `VFX (one-shot)` 아키타입 대조표는
+[`9_detection_mark_vfx.md`](9_detection_mark_vfx.md) 의 「파이프라인 커버리지」 절에 있다.
 
 ## 후속 후보 (스코프 밖)
 
