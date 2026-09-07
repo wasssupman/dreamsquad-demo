@@ -134,16 +134,26 @@ code + git history        구현 상세
   탈취당한 뒤 **재페인트 슬롯이 있는 것은 AttachPreview 뿐**이라, 수명이 정해진 표기(보스 착지
   예고 2초)를 올리면 배치 드래그 한 번에 통째로 사라지고 복구가 안 된다. 착지 예고는 전용 링
   채널로 뺐고(`TilemapMapView.SetTelegraphRing`), 중재표를 `SetRangeOwner` 헤더에 박았다.
-  **남은 것**: 운석 예고끼리의 clobber(`_skillTelegraphProjectile` 1슬롯 — 메테오 2발이 겹치면
-  앞엣것 예고가 사라진다) · 배치 유효성 틴트가 운석 예고 링에 새는 것(`SetPlacementRangeValidity`
-  가 owner 가드 없이 매 프레임).
-- **[하] 착지 예고 미해제 경로 2곳** — `DrainUltimateLeapVisualEvents` 의 조기 `continue`
-  (`!_em.Exists` · `!_ultimateLeapAirborne.Remove`)가 clear 호출보다 앞이라, 타면 링이 판 끝까지
-  남는다. 전용 채널이라 남을 막지는 않고 매치 경계가 정리하지만, 「아직 피할 수 있다」는 거짓 신호다.
+  **남은 것**(2026-09-08 실측 확인):
+  · 운석 예고끼리의 clobber — `_skillTelegraphProjectile` 이 1슬롯이라 메테오 2발이 겹치면 앞엣것
+    예고가 조용히 사라진다. ⚠ **창이 좁다**: `Telegraph = true` 생산자는 `TileMeteorSkill` **하나뿐**
+    이고(전수 1건) 사직서 barrage 는 telegraph 를 **안 싣는다**. 겹치려면 **0.8초**
+    (`Card_SeveranceMeteor.duration` = 예고 = 비행 시간) 안에 두 번 쏴야 한다 → **우선순위 하**.
+  · 배치 유효성 틴트가 운석 예고 링에 샌다 — `SetPlacementRangeValidity` 가 owner 가드 없이 매 프레임.
+    (착지 예고는 전용 채널로 빠져 해당 없음.)
+- **[하] 착지 예고 미해제 경로 2곳** (2026-09-08 실측 확인) — `DrainUltimateLeapVisualEvents` 의
+  조기 `continue` 둘(`!_em.Exists(evt.entity)` · `!_ultimateLeapAirborne.Remove(...)`)이 clear 호출보다
+  **앞**이라, 타면 링이 판 끝까지 남는다. 같은 축의 셋째 경로가 `UltimateLeapSystem` 쿼리의
+  `WithNone<DeadTag>()` — 공중에서 죽은 도약자는 **Descend 자체를 안 보낸다.**
+  전용 채널이라 남의 표기를 막지는 않고 매치 경계(`DisposeUltimateLeapChannel`)가 정리하지만,
+  살아 있는 판에서 「아직 피할 수 있다」는 거짓 신호다.
+  ⚠ 도달성은 낮다 — `DamageApplicationSystem` 이 `UltimateLeapState` 보유 엔티티의 피해를 버려서
+  정상 경로 공중 사망이 없다. 그 가드가 사라지는 날 셋 다 열린다.
 - **[하] 뷰의 죽은 타일 예고 채널 은퇴** — `SetTelegraphCells`/`ClearTelegraphCells`/`_telegraphTilemap`/
   `EnsureTelegraphTilemap`/`ApplyTelegraphTint` producer 0. 은퇴 비용은 **뷰 파일 안에서 닫힌다**
   (`landingTelegraphColor` 는 링이 계속 쓰고, `TileSetData.telegraphTile` 은 다른 소비처가 있다).
   소스 가드는 `BattleBridge*.cs` 만 보므로 **뷰에 남은 API 를 되쓰는 것은 아무도 못 막는다.**
+  (2026-09-08 실측: `TilemapMapView.cs` 밖 producer **0** — 테스트의 금지어 배열이 유일한 외부 언급.)
 - **[중] 착지 슬램의 «형»이 데이터로 안 실린다** (2026-09-07, `distance-based-range` unit 24 리뷰) —
   sim(`UltimateLeapSystem`)·뷰(`BuildZoneCells`)·판정(`ReachFromImpact` 의 0→칸 반폭 승격) **셋이
   각자 독립적으로** 「자리형」을 선언하고, 같은 답을 내는 근거가 서로 다르다. 브리지 주석은
