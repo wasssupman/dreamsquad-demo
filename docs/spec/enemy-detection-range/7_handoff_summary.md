@@ -119,3 +119,54 @@
 - **Android 실기기 비용** — 획득당 그리드 BFS 최대 3회. 실측 획득 빈도는 ≈0.44회/초지만
   기기 측정이 없다.
 - `unit 5` 표식이 이제 **유한 감지에서는** 대상을 가리켜도 참이다 — 계약 6 을 다시 쓸 수 있다.
+
+---
+
+## unit 9 — 「발견」 표식 + spec 종료 (2026-09-08)
+
+**Commit**
+
+- `8cf313e1` — feat(enemy-detection-range): unit 9 — 「발견」 표식 저작·배선
+- `81ddd2a4` — docs: unit 9 종료 · 해시 기록
+
+**Implemented**
+
+- unit 5 가 미룬 **화면 몫**. 적이 방어유닛을 처음 발견하는 순간 머리 위 **「!」 팝** +
+  몸통 **플래시 링** 1회. 경보 노랑~주황 `(1.00, 0.72, 0.10)` — 스폰 예고의 빨강과 **분리**
+  (예고는 「올 것」, 표식은 「이미 봤다」).
+- `DetectionMark_SKELETON.prefab`(PS 2개) + 머티리얼 2 + 텍스처 2(절차 생성·무압축) +
+  `BoardSortOrder.DetectionMarkOrder = 17000`(링 +0 / 「!」 +1).
+- **아웃라인을 텍스처에 굽는다** — 흰 코어→어두운 림을 굽고 StartColor 로 **곱해서** 틴트.
+  곱셈이 명암을 보존해 밝은 맵(사막·눈)에서도 기호가 배경에 안 녹는다. 셰이더 신작 0.
+- `VfxSpawner` 슬롯 null → **`LogError`**. unit 5 의 「미할당 = 정상」 예외는 폐기됐다.
+- `DetectionMarkVfxTests`(5) 신설.
+
+**Verified**
+
+EditMode 2788건 중 실패 2건(`boomerang`·`bomb_man` 문안 — 시트 소관 **선행 실패**) ·
+Assets lane 166/166 동일 · 오프스크린 렌더 육안(중간/밝은 배경) · **Play 육안 전항 통과 2026-09-08** ·
+코드 리뷰 2패스(HIGH 2·MEDIUM 4·LOW 4) 전량 반영.
+
+**Notes — 되돌리면 안 되는 것**
+
+- **`VfxSpawner` 의 `LogError` 를 조용한 리턴으로 되돌리지 말 것.** 씬 참조 유실이 이 기능의
+  **유일한 실패 경로**이고, 조용하면 「감지가 죽었다」와 구분이 안 된다. `DetectionMarkVfxTests`
+  는 **프리팹 내부만** 보므로 슬롯이 비어도 전건 초록이다 — 그물이 둘로 나뉜 것이 의도다.
+- **버스트 4를 바꾸지 말 것.** `ConfigureOneShot` 이 emission 을 t0 최소 4발로 덮어쓰고,
+  현재 색·알파는 **4겹 상태의 렌더를 보고** 정했다. 가산 링은 4겹에서 `(1,1,0.25)` 로 포화하고
+  알파 커버리지는 `1−(1−a)⁴` 다. `duration`·`rateOverTime` 를 만지면 색을 전부 다시 잡아야 한다.
+- **다축 파티클 모듈은 축마다 커브 «모드»가 같아야 한다** — y 만 Curve, x·z 는 Constant 로 두면
+  재생 시 콘솔 에러가 쏟아진다(에디터·오프스크린 렌더는 통과한다). 전역 가드
+  `ParticleCurveModeConsistencyTests` 가 유일한 그물. VFX 저작 스킬 Red Flags 로 승격했다.
+- **`BodyFlash.localPosition.y`(−0.55) 는 `detectionMarkLift`(0.9) 와 짝**이다. 한쪽만 바꾸면
+  링이 몸에서 뜬다.
+- **비행이 배치 구역으로 파고드는 것은 «수용»된 성질**이다(사용자 결정 2026-09-08, README 절).
+  결함으로 보고 좁히지 말 것 — 되돌리기는 저작 한 줄(`detectionRange = 0`)이다.
+
+**Follow-up**
+
+- **Android 실기기 비용** 미측정 — 획득당 그리드 BFS 최대 3회(≈0.44회/초).
+- **표식이 대상을 가리켜도 참이다 — 유한 감지 한정.** unit 8 이후 이동이 그 대상을 향하므로
+  계약 6 을 다시 쓸 수 있다. **무제한 감지는 여전히 갈린다**(공용 사냥판) — 열려면 감지 종류로 가른다.
+- `DetectionSystem` 위생 2건(막힘 해제가 `Clear` 초기화를 인라인 복제 · `Clear` 주석이 `markCooldown` 누락).
+- 무제한 감지가 **등장 즉시** 표식을 내는 것은 ⓐ 로 유지됐다(README 아님 — `9_detection_mark_vfx.md`).
