@@ -130,36 +130,57 @@ N거리 적용한다고 몸체 크기 상관없이. 운석과 같은 메커니�
 
 ## 완료 기준
 
-- [x] 예고가 판정과 **같은 본체**를 지난다(`ReachFromCell`).
-- [x] **형이 자리형이다** — 예고가 보스 몸을 안 읽고, 생산자 2곳이 `originBodyRadius = 0` 을 싣는다
-      (`LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers` — 세 파일을 한 단언이 묶는다).
-- [x] **표기가 몸을 모른다** — 대상 항 0. 소스 가드가 `const float targetR = 0f` 를 고정한다.
-- [x] **모양이 원이다 — 반경 1~5 전부** 축 뿔이 없다(도달이 정수가 될 수 없다).
-- [x] **모서리는 반경 2 부터 빠지고, 반경 1 의 3×3 은 온전하다**(대각 인접 계약).
-- [x] **예고 = 「대상을 점으로 본 피해」** — 8×8 전수 대조.
-- [x] **대가가 단언으로 있다** — 몸 있는 유닛이 예고 밖에서 맞는 표본 2건이 박혀 있다.
-- [x] **되돌아가지 못하게** — 소스 가드가 사각 열거 부활·대상 항 변조를 잡는다(윈도는 다음 선언까지).
-- [x] **점 + 거리로 전환** — 칸 열거를 통째로 철거하고 **운석과 같은 함수**(`PinSkillTelegraph`)를
-      부른다. 반경은 그 함수의 성질(`N + 칸 반폭`)이라 호출부가 조립하지 않는다.
-- [x] **그림자↔링 동치를 단언으로** — 몸 5종(0·0.25·0.5·1.0·1.5) × 거리 0~8 전수로
+⚠ **한 번 정리했다**(2026-09-08). 매체가 타일 → 링으로 바뀌면서 칸 멤버십 테스트가 전부
+삭제됐는데 체크 항목은 **그 테스트를 근거로 든 채 남아 있었다** — 이 spec 이 반복해서 당한
+「문서가 코드보다 많이 주장한다」의 재발이라, **현존하는 단언만** 근거로 다시 썼다.
+
+### 규칙
+
+- [x] 예고가 판정과 **같은 자**를 지난다 — 반경 = `CenteredRingRadius(N)` = `N + 칸 반폭`,
+      **운석과 단일 지점 공유**(`CenteredRingRadius_IsTheSingleSource_AndCarriesNoBody`).
+- [x] **표기가 몸을 모른다** — 그 반경에 몸이 안 섞인다(같은 단언의 금지어 절).
+      대상의 몸은 **그 유닛의 그림자**가 말한다.
+- [x] **그림자↔링 동치** — 몸 5종(0·0.25·0.5·1.0·1.5) × 거리 0~8 전수로
       「그림자가 링에 닿는다 ⟺ 피해 판정」을 고정(`ShadowTouchingTheRing_IsExactlyTheDamagePredicate`).
-- [x] **옛 무경고 표본이 링에서는 읽힌다** — 배스티온 `(-1,3)` · 2×2 `(2,2)`.
-- [x] **칸 열거가 되살아나지 않는다** — 소스 가드가 `SetTelegraphCells`·`BuildZoneCells` 부활을 잡는다.
-      ⚠ 초판 가드는 **vacuous** 였다(면제 절 `&& !view.Contains("되돌리지 말 것")` 이 같은 파일
-      주석에 걸려 **항상 통과**). 주석을 제거한 «코드만» 스캔하도록 고쳤다 — 이 레포에서 세 번째다.
-- [x] **예고는 «전용» 채널이다** — 한 번 운석의 공유 `_rangeOwner` 채널(`PinSkillTelegraph`)로
-      그렸다가 리뷰가 CRITICAL 로 잡았다. 그 채널은 단일 owner set/clear 라 예고 2초 동안
-      **배치 프리뷰와 예고가 서로를 지우고**(배치가 이기면 재페인트 경로가 없어 남은 시간 전부
-      무경고 — 탭 배치 peek 는 매 프레임 훔쳐서 1프레임만 산다), **운석 예고와도 서로를 지웠다**.
-      → `TilemapMapView.SetTelegraphRing`/`ClearTelegraphRing` 전용 링 인스턴스로 분리.
-      가드가 예고에서 `PinSkillTelegraph`·`ClearSkillTelegraph`·`SetAreaRange`·`SetRangeOwner` 를 금지한다.
+      ⚠ 이 단언이 실제로 잡는 것은 **`ReachFromImpact` 의 0→칸 반폭 승격 삭제**와
+      **`CellHalfWidthTiles ≠ 0.5`** 둘뿐이다(리뷰 M-2). 표기 쪽 회귀는 아래 소스 가드가 진다.
+- [x] **형이 자리형이다** — 예고가 보스 몸을 안 읽고, 슬램 생산자 2곳이 `originBodyRadius = 0` 을
+      싣는다(`LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers` — 세 파일을 한 단언이 묶는다).
+- [x] **진입점은 4개** — 신설했던 `ReachFromUnitToCell` 은 같은 날 철거
+      (`PublicReachEntryPoints_AreExactlyTheKnownSet`).
+
+### 매체·채널
+
+- [x] **점 + 거리** — 칸 열거(`BuildZoneCells`·`SetTelegraphCells`)를 통째로 철거
+      (`LandingTelegraph_IsAPointAndRadius_NotACellEnumeration`, 그리는 자리 **정확히 1**).
+      ⚠ 초판 가드는 **vacuous** 였다(면제 절이 자기 파일 주석에 걸려 항상 통과) — 주석 제거 후
+      «코드만» 스캔으로 정정. **이 레포에서 세 번째다.**
+- [x] **전용 채널** — 운석의 공유 `_rangeOwner` 채널로 그렸다가 리뷰가 CRITICAL 로 잡았다:
+      배치 드래그가 예고를 탈취하면 **재페인트 경로가 없어 보스가 무경고로 착지**하고, 반대로
+      예고가 배치 표기를 지우며, 운석 예고와도 서로를 지웠다.
+      → `TilemapMapView.SetTelegraphRing`/`ClearTelegraphRing` 전용 링으로 분리.
+      가드가 `PinSkillTelegraph`·`ClearSkillTelegraph`·`SetAreaRange`·`SetRangeOwner` 를 금지한다
+      (`LandingTelegraph_UsesItsOwnChannel_NotTheSharedRangeOwner`).
       ⚠ **철거 대상 코드의 헤더가 이 금지를 이미 적어 뒀는데 안 읽었다** — 「소비처 0 이 된 코드가
       왜 그렇게 생겼는지」를 읽지 않고 지운 것이 이 라운드의 실제 결함이다.
-- [x] **색이 갈린다** — 예고는 `landingTelegraphColor`(타일 시절과 같은 저작 필드), 사거리·조준 링은
-      라임. 공유 채널을 쓰던 동안은 **보스 슬램 경고가 플레이어 자기 조준 링과 동색**이었다.
-- [x] **링 기하는 한 곳이 소유한다** — `PlaceRing`. 실측으로 얻은 값(`CellToLocalInterpolated` +
-      접지 리프트)이라 두 벌이 되면 한쪽만 조용히 어긋난다.
-- [ ] Play 육안: 보스 강습 예고가 **착지점 중심의 원 하나**로 뜨는지.
+      재발 방지로 `SetRangeOwner` 헤더에 **중재표**(탈취 3 / 양보 1 · 재페인트 슬롯 유무)를 박았다.
+- [x] **색이 갈린다** — 예고는 `landingTelegraphColor`, 사거리·조준 링은 라임.
+      공유 채널을 쓰던 동안은 **보스 경고가 플레이어 자기 조준 링과 동색**이었다.
+- [x] **링 기하는 한 곳이 소유한다** — `PlaceRing`(실측으로 얻은 값이라 두 벌이 되면 한쪽만 어긋난다).
+
+### 은퇴한 기준 (매체 교체로 «질문 자체»가 사라짐)
+
+~~모양이 원이다(축 뿔 없음)~~ · ~~모서리는 반경 2 부터 빠진다~~ · ~~예고 = 대상을 점으로 본 피해~~ ·
+~~옛 무경고 표본이 링에서 읽힌다~~ — 전부 **칸 멤버십**을 묻던 것이라 링에는 대응물이 없다.
+「뿔」도 「모서리」도 이산 격자의 성질이었고, 링은 **연속 원**이라 원리적으로 생기지 않는다.
+그 서사는 위 「왜 링인가」 절이 진다.
+
+### 확인
+
+- [x] EditMode **2622 / 실패 0 / 스킵 3**(선행) · 가드 클래스 **11/11** 개별 실행 확인 ·
+      PlayMode `BossUltimateLeapTest` 통과.
+- [x] **Play 육안 — 사용자 확인 2026-09-08.** 보스 강습 예고가 착지점 중심의 원 하나로 뜬다.
+      커밋: `74c878de`(매체 교체) → `82ad19c1`(전용 채널 · 리뷰 반영).
 
 ## 남은 죽은 코드 — 사유를 정정한다
 
