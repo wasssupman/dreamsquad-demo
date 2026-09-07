@@ -195,6 +195,22 @@ namespace Wassup.Skills
                      originBodyRadiusTiles > 0f ? originBodyRadiusTiles : CellHalfWidthTiles,
                      targetBodyRadiusTiles);
 
+        // **몸이 내리찍는 것을 «칸» 으로 묻는다** — 예고 표기 전용(궁극기 강습 착지).
+        // 원점 = 그 몸(**인자 = 데이터에서 온다**) · 후보 = 칸(반폭은 이 함수의 성질이라 못 넘긴다).
+        //
+        // 왜 따로 있나: 예고는 「이 **칸**이 걸리나」를 묻는데 원점은 **유닛의 몸**이다.
+        // `ReachFromCell` 은 칸 반폭을 **원점**에 박아 몸을 못 싣고(그게 unit 23 이 고친 결함),
+        // `ReachFromUnit` 은 대상 항을 요구하는데 칸은 자기 몸을 모른다. 그 조합이 여기다.
+        //
+        // ⚠ **「칸 위의 1×1 유닛」에 정확하다.** 몸이 더 큰 유닛(2×2 = 1.0 · 배스티온 1.5)은
+        //   칠해진 칸 **바깥에서도 맞는다**(차이 = 그 몸 − 0.5). 칸은 거기 설 유닛의 몸을 모르므로
+        //   예고를 그만큼 넓히려면 «누가 서 있나» 를 봐야 한다 — 표기의 한계다.
+        // ⚠ 이름이 `Reach` 로 시작해야 한다 — 진입점 목록 가드(`PublicReachEntryPoints_AreExactlyTheKnownSet`)
+        //   가 그 접두사로 스캔한다. 다른 이름을 쓰면 **가드 밖에서 조용히 늘어난다.**
+        public static bool ReachFromUnitToCell(float dxTiles, float dzTiles, float rangeTiles,
+                                               float originBodyRadiusTiles)
+            => Reach(dxTiles, dzTiles, rangeTiles, originBodyRadiusTiles, CellHalfWidthTiles);
+
         // 원점 항을 이미 형에서 뽑아 둔 호출부용(`TryOriginRadius` 를 지난 값).
         public static bool ReachWithOrigin(float dxTiles, float dzTiles, float rangeTiles,
                                            float originRadiusTiles, float targetBodyRadiusTiles)

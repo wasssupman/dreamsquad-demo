@@ -2775,16 +2775,30 @@ namespace Wassup.Bridge
         // 「부착 후 타일이 남는다」로 읽혔다. 장판은 수명 동안 뷰를 갖지 않는다 — 핀
         // `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles`.
 
-        // 사각 셀 열거(보드 경계 클리핑) — 남은 소비처는 궁극기 착지 예고(`ShowLandingTelegraph`) 하나.
+        // 착지 예고의 셀 열거(보드 경계 클리핑) — 소비처는 궁극기 착지 예고(`ShowLandingTelegraph`) 하나.
+        //
+        // ⚠ **rev 2026-09-07 — 사각이 아니라 원이다.** 종전엔 `[-N,+N]²` 를 통째로 칠했는데
+        // 피해는 unit 4b 이후 **원**이라, N≥2 부터 **모서리가 거짓 예고**였다(반경 2 의 정대각은
+        // 2.83 > 2.5 라 안 맞는데 칠해졌다). 「예고 셀 = 피해 셀」이라던 주석은 그 시점부터 거짓이었고,
+        // 화면이 플레이어에게 규칙을 **틀리게** 가르치고 있었다(제약 13 미이행분 · unit 23 감사).
+        //
+        // 자는 판정과 **같은 본체**를 지난다 — `SkillMath.ReachFromUnitToCell`(원점 = 내리찍는 몸,
+        // 후보 = 칸). 반경 항을 여기서 다시 조립하지 않는다.
         private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
 
-        private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
+        private void BuildZoneCells(Vector2Int center, int tileRange, float originBodyRadiusTiles,
+                                    List<Vector2Int> results)
         {
             results.Clear();
             int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
-            for (int dx = -tileRange; dx <= tileRange; dx++)
-            for (int dz = -tileRange; dz <= tileRange; dz++)
+            // 스캔 상자는 **도달보다 넓게** 잡는다(몸·칸 반폭이 붙어 정수 N 을 넘는다).
+            // 좁으면 실제로 맞는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다.
+            int scan = Mathf.CeilToInt(tileRange + originBodyRadiusTiles) + 1;
+            for (int dx = -scan; dx <= scan; dx++)
+            for (int dz = -scan; dz <= scan; dz++)
             {
+                if (!Wassup.Skills.SkillMath.ReachFromUnitToCell(dx, dz, tileRange, originBodyRadiusTiles))
+                    continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
                 results.Add(cell);

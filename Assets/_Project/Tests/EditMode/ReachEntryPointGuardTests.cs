@@ -198,7 +198,10 @@ namespace Wassup.Tests.EditMode
             var src = Read("Skills", "SkillMath.cs");
             var found = Regex.Matches(src, @"public\s+static\s+bool\s+(Reach\w*)\s*\(")
                              .Select(m => m.Groups[1].Value).OrderBy(x => x).ToArray();
-            var expected = new[] { "ReachFromCell", "ReachFromImpact", "ReachFromUnit", "ReachWithOrigin" };
+            // `ReachFromUnitToCell`(2026-09-07) — 「몸이 내리찍는 것을 **칸**으로 묻는다」 = 착지 예고.
+            // 원점 항은 인자(데이터)이고 칸 반폭은 함수의 성질이라 계약을 지킨다.
+            var expected = new[] { "ReachFromCell", "ReachFromImpact", "ReachFromUnit",
+                                   "ReachFromUnitToCell", "ReachWithOrigin" };
             CollectionAssert.AreEqual(expected, found,
                 "공개 도달 진입점 목록이 바뀌었다. 늘릴 때는 «원점 항이 데이터에서 온다» 를 지키는지 "
                 + "확인하고 이 목록과 아키텍처 불변식 7 을 같이 갱신하라: " + string.Join(", ", found));
@@ -212,6 +215,25 @@ namespace Wassup.Tests.EditMode
                 "착탄 광역이 실려 온 원점을 안 읽는다 — 자기 자리 폭발이 칸 반폭으로 잘린다");
             Assert.IsTrue(src.Contains("originBodyRadius"),
                 "요청에 실린 원점 반경이 판정까지 도달하지 않는다");
+        }
+
+        // 표기도 판정과 같은 자를 지나야 한다. 착지 예고는 **화면이 규칙을 가르치는 자리**라
+        // 사각으로 되돌아가면 플레이어에게 거짓을 가르친다(2026-09-07 이전 상태가 그랬다).
+        [Test]
+        public void LandingTelegraph_UsesTheRoundPredicate_NotASquareEnumeration()
+        {
+            var src = Read("Bridge", "BattleBridge.cs");
+            int i = src.IndexOf("private void BuildZoneCells(");
+            Assert.Greater(i, 0, "착지 예고의 셀 열거를 못 찾았다 — 이름이 바뀌었나?");
+            string body = src.Substring(i, System.Math.Min(1200, src.Length - i));
+
+            Assert.IsTrue(body.Contains("SkillMath.ReachFromUnitToCell("),
+                "예고가 판정 술어를 안 지난다 — 사각 열거로 되돌아가면 모서리가 거짓 예고가 된다");
+            Assert.IsTrue(body.Contains("originBodyRadiusTiles"),
+                "예고가 원점 몸을 안 받는다 — 몸이 큰 보스일수록 화면이 좁게 가르친다");
+            Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
+                    body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
+                "`[-N,+N]²` 사각 열거가 부활했다");
         }
     }
 }

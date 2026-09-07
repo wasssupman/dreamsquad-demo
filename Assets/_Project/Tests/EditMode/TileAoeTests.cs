@@ -217,5 +217,43 @@ namespace Wassup.Tests.EditMode
                 + "(unit 4b 가 이미 한 번 밟은 함정). 저작된 반경 1 AoE 20건이 여기 달려 있다.");
         }
 
+        // ─── 착지 예고(궁극기 강습)의 자 — `ReachFromUnitToCell` (2026-09-07) ───
+        //
+        // 예고는 「이 **칸**이 걸리나」인데 원점은 «내리찍는 몸» 이다. 종전엔 브리지가
+        // `[-N,+N]²` 사각을 통째로 칠해 **모서리가 거짓 예고**였다(피해는 unit 4b 이후 원).
+
+        [Test]
+        public void LandingTelegraph_DropsTheSquareCorners()
+        {
+            // 반경 2 · 몸 0: 도달 2.5. 축은 안, **정대각(2.83)은 밖** — 옛 사각에선 칠해졌다.
+            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromUnitToCell(2f, 0f, 2, 0f), "축 2칸은 안");
+            Assert.IsFalse(Wassup.Skills.SkillMath.ReachFromUnitToCell(2f, 2f, 2, 0f),
+                "정대각 2.83 > 2.5 — 여기가 참이면 예고가 다시 사각이다(모서리 거짓 예고)");
+        }
+
+        [Test]
+        public void LandingTelegraph_WidensWithTheSlammingBody()
+        {
+            // 3칸은 몸 0 이면 밖(3 > 2.5), 몸 1 이면 안(3 ≤ 3.5). 예고가 원점 몸에 반응해야 한다 —
+            // 안 그러면 몸이 큰 보스일수록 화면이 **좁게** 가르친다.
+            Assert.IsFalse(Wassup.Skills.SkillMath.ReachFromUnitToCell(3f, 0f, 2, 0f), "몸 0 이면 3칸은 밖");
+            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromUnitToCell(3f, 0f, 2, 1f),
+                "몸 1 이면 3칸이 안이다 — 거짓이면 예고가 원점 항을 빼고 그린다");
+        }
+
+        [Test]
+        public void LandingTelegraph_MatchesTheDamagePredicate_ForAUnitOnThatCell()
+        {
+            // 칸 위의 1×1 유닛(몸 0.5)에 대해 예고와 **피해 판정**이 같은 답을 내야 한다.
+            // 피해: ReachFromImpact(원점 몸, 대상 몸 0.5) · 예고: ReachFromUnitToCell(원점 몸).
+            for (int dx = 0; dx <= 5; dx++)
+            for (int dz = 0; dz <= 5; dz++)
+            {
+                bool painted = Wassup.Skills.SkillMath.ReachFromUnitToCell(dx, dz, 2, 1f);
+                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, 1f, 0.5f);
+                Assert.AreEqual(hit, painted,
+                    $"({dx},{dz}) — 예고와 피해가 갈렸다. 화면이 규칙을 틀리게 가르친다");
+            }
+        }
     }
 }

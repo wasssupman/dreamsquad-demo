@@ -57,16 +57,23 @@ namespace Wassup.Bridge
             tilemapMapView?.ClearTelegraphCells(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
         }
 
-        // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 사각 셀 열거
+        // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 셀 열거
         // 단일 지점이다(보드 경계 클리핑 + 스크래치 재사용 포함). 액티브 장판 점등이 은퇴한 뒤(2026-09-03)
         // 소비처는 이 예고 하나지만, 손으로 다시 돌면 "예고 셀 = 피해 셀" 계약이 두 계산의 우연한 일치에
         // 기대게 되므로 그대로 둔다.
+        //
+        // ⚠ **원점 몸을 같이 넘긴다**(2026-09-07). 슬램은 「그 몸이 내리찍는 것」이라 도달이
+        // `사거리 + 그 몸 + 대상 몸` 이다(unit 23b — 슬램 intent 가 `originBodyRadius` 를 싣는다).
+        // 예고가 그 항을 빼면 **몸이 큰 보스일수록 화면이 좁게 가르친다.** 여기서 읽는 값과
+        // `UltimateLeapSystem` 이 intent 에 싣는 값은 **같은 컴포넌트**(`HitRadius`)다.
         private void ShowLandingTelegraph(Entity entity)
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
             var leap = _em.GetComponentData<UltimateLeapState>(entity);
+            float originBodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(entity)
+                ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(entity).value : 0f;
             BuildZoneCells(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange,
-                _zoneCellScratch);
+                originBodyR, _zoneCellScratch);
             tilemapMapView.SetTelegraphCells(_zoneCellScratch);
         }
 
