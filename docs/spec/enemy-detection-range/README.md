@@ -1,13 +1,15 @@
 # Enemy Detection Range — 적이 근처 방어유닛을 발견하면 경로를 벗어나 달려든다
 
-> 상태: **units 0~9 구현 완료 2026-09-07 · Play 육안만 대기**
+> 상태: **units 0~9 구현 완료 · unit 9 Play 육안 통과 2026-09-08 (`8cf313e1`)**
+> ⚠ **spec 종료 아님** — 표식 외 잔여 육안 4종(옆길 유닛 추격 · 대상 처치 후 관성 ·
+> 도발이 감지를 이기는가 · 미끼 배치)과 **비행이 배치 구역으로 파고드는 새 성질** 확인이 남았다.
 >
 > 저작: `Enemy_Vanguard`·`Enemy_Tanker`·**`Enemy_Skimmer`·`Enemy_Dragon`(비행)** = 감지 3칸 ·
 > 보스 3종 + `Enemy_DreamShard` = 무제한(−1) · 나머지 **16종** = 0
 > (정본은 `DetectionRangeAuthoringTests`). `waypoint_air` 는 **규칙에 의한 배제**(경로 저작이 정체성).
 > EditMode **2788건 중 선행 실패 2건만**(`boomerang`·`bomb_man` 문안 — 시트 문제, 무관).
-> ⚠ unit 5 의 화면 몫은 **unit 9 에서 저작·배선 완료**(「!」 + 몸 플래시, 경보 노랑~주황).
-> `VfxSpawner.detectionMarkPrefab` 배선 + 씬 저장까지 끝났고 **남은 것은 Play 육안뿐**이다.
+> ⚠ unit 5 의 화면 몫은 **unit 9 에서 완료**(「!」 + 몸 플래시, 경보 노랑~주황 · 커밋 `8cf313e1`).
+> 슬롯 null 은 이제 `LogError` 다 — unit 5 의 「미할당 = 정상」 예외는 폐기됐다.
 >
 > 선행: `docs/spec/enemy-hunter-targeting/`(**폐기됨** — 아래 「왜 이번엔 다른가」 필독) ·
 > `docs/spec/boss-defender-field/`(사냥 이동 기계) · `docs/spec/aggro-targeting/` · `docs/spec/aggro-tile-chase/`
@@ -155,7 +157,7 @@
 | 6 | `6_authoring_and_rerun.md` | 저작+검증 | 어느 적에게 켤지 결정 · 계측 재실행 A/B · 골든 재베이크 판정 · Play 육안 |
 | 7 | `7_handoff_summary.md` | 인계 | 커밋 이후 지도 — 되돌리면 안 되는 것 · 남은 후속 |
 | 8 | `8_target_directed_chase.md` | 계약+배선 | **규칙 2단계를 문장대로** — 「**그** 적에게 **내** 층으로 갈 수 있나」. 대상 지향 추격판 신설 · 계약 13 이행 · 비행 편입 |
-| 9 | `9_detection_mark_vfx.md` | 저작 | unit 5 가 미룬 **화면 몫** — 「!」 팝 + 몸 플래시 링(경보 노랑~주황). 저작·정렬 대역·씬 배선 완료, **Play 육안 대기** |
+| 9 | `9_detection_mark_vfx.md` | 저작 | unit 5 가 미룬 **화면 몫** — 「!」 팝 + 몸 플래시 링(경보 노랑~주황). **완료 2026-09-08 (`8cf313e1`)** |
 
 ## 파이프라인 커버리지
 
