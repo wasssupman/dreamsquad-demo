@@ -264,15 +264,20 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, CountOf(body, "SkillMath.ReachFromCell("),
                 "예고의 도달 판정은 정확히 하나여야 한다 — 0 이면 사각 열거로 되돌아간 것이고, "
                 + "2 이상이면 어느 분기가 화면을 그리는지 이 그물이 더는 말하지 못한다");
-            // ⚠ `Contains("…RadiusTiles")` 류로는 **부족하다**(리뷰 H-2): 파라미터 이름은 시그니처에
-            // 이미 있어서 인자를 바꿔치기해도 통과한다 — 단언이 이름으로 지목한 회귀를 정확히
-            // 저질러도 초록이 된다. **호출부 전체**를 고정한다.
+            // ⚠ **«이름» 이 아니라 «값» 을 잡는다.** 한때 이 자리를 `const float targetR = 0f;` 라는
+            // 지역 상수와 그 이름을 찾는 정규식으로 지켰는데, 그건 **단언되기 위해 존재하는 코드**였다
+            // (`targetR ≡ 0` 이라 산술도 호출도 리터럴과 동일했다 — 리뷰 M-2). 이제 4번째 인자가
+            // 리터럴 0 인지를 본다: 리네이밍·인라인 리팩터로는 안 깨지고, **몸을 넣으면 반드시 걸린다.**
             Assert.IsTrue(Regex.IsMatch(body,
-                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*targetR\s*\)"),
-                "예고의 대상 항이 술어까지 도달하지 않는다");
-            Assert.IsTrue(Regex.IsMatch(body, @"const\s+float\s+targetR\s*=\s*0f\s*;"),
-                "예고의 대상 항이 0 이 아니다 — 「중심점 기준 N거리, 몸체 크기 상관없이」가 규칙이다. "
-                + "표기가 몸을 알기 시작하면 「누구 기준이냐」가 생기고 화면이 유닛마다 다른 규칙을 말한다");
+                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*0f\s*\)"),
+                "예고의 대상 항이 리터럴 0 이 아니다 — 「중심점 기준 N거리, 몸체 크기 상관없이」가 규칙이고, "
+                + "운석 표기(`PinCenteredRange` · 사용자 결정 2026-09-02 D6)와 **같은 두 항**이다");
+            // ⚠ **금지어는 실제로 두 번 들어왔던 그 값들이다** — unit 23b 가 보스 몸(`HitRadius`)을,
+            // 그 뒤 한 커밋이 「표준 방어유닛 몸」을 넣었다. 표기가 몸을 알면 「누구 기준이냐」가 생긴다.
+            // 대상 몸은 **링과 그림자**가 말한다(계약) — 이 술어가 말하지 않는다.
+            Assert.IsFalse(Regex.IsMatch(body,
+                    @"ReachFromCell\([^)]*(?:BodyRadius|CellShapePadding|bodyR)[^)]*\)"),
+                "예고 술어에 «몸» 이 다시 들어왔다 — 화면이 유닛마다 다른 규칙을 말하게 된다");
             Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
                     body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
                 "`[-N,+N]²` 사각 열거가 부활했다");
