@@ -2784,7 +2784,7 @@ namespace Wassup.Bridge
         //
         // 자는 판정과 **같은 본체**를 지난다 — `SkillMath.ReachFromCell`. 착지 슬램은 **「자리에
         // 떨어지는 것」**이라(2026-09-07 사용자 결정) 원점 항이 칸 반폭이고, 그건 이 진입점의
-        // **성질**이라 손으로 넘길 수 없다. 대상 항만 넘긴다 — 후보가 «칸» 이므로 칸 반폭이다.
+        // **성질**이라 손으로 넘길 수 없다. 대상 항은 **0**(아래 참조).
         // 반경 항을 여기서 다시 조립하지 않는다.
         private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
 

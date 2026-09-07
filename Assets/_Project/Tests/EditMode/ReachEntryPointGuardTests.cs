@@ -119,6 +119,33 @@ namespace Wassup.Tests.EditMode
                 new[] { UnityEngine.Application.dataPath, "_Project", "Scripts" }
                     .Concat(parts).ToArray()));
 
+        // 선언 위치부터 **중괄호가 닫히는 데까지**. 소스 그물의 윈도를 글자 수나 「다음 선언」으로
+        // 자르면 이웃 메서드와 그 **선행 주석**을 삼켜 오탐·미탐이 난다(리뷰 L-2·L-4 가 둘 다 겪었다).
+        // ⚠ 문자열 리터럴 안의 중괄호는 안 센다 — 이 그물이 보는 메서드들엔 없고, 생기면
+        //    윈도가 **길어져** 단언이 빡세지는 쪽(fail-closed)이라 조용히 통과하지 않는다.
+        private static string MethodBody(string src, int declIndex)
+        {
+            int open = src.IndexOf('{', declIndex);
+            Assert.Greater(open, declIndex, "메서드 본문의 여는 중괄호를 못 찾았다");
+            int depth = 0;
+            for (int k = open; k < src.Length; k++)
+            {
+                if (src[k] == '{') depth++;
+                else if (src[k] == '}' && --depth == 0)
+                    return src.Substring(declIndex, k + 1 - declIndex);
+            }
+            Assert.Fail("메서드 본문의 닫는 중괄호를 못 찾았다");
+            return string.Empty;
+        }
+
+        private static int CountOf(string haystack, string needle)
+        {
+            int n = 0, at = 0;
+            while ((at = haystack.IndexOf(needle, at, System.StringComparison.Ordinal)) >= 0)
+            { n++; at += needle.Length; }
+            return n;
+        }
+
         [Test]
         public void DamageSeams_CarryTheOwnersBody_AndKillUsesTheVictimNotTheKiller()
         {
@@ -226,13 +253,17 @@ namespace Wassup.Tests.EditMode
             var src = Read("Bridge", "BattleBridge.cs");
             int i = src.IndexOf("private void BuildZoneCells(");
             Assert.Greater(i, 0, "착지 예고의 셀 열거를 못 찾았다 — 이름이 바뀌었나?");
-            // ⚠ 윈도를 **다음 선언까지**로 자른다(리뷰 L-2). 고정 1200자는 메서드 끝을 241자
-            // 넘겨 이웃 메서드를 삼켰고, 그쪽이 우연히 패턴을 만족/위반하면 오탐·미탐이 된다.
-            int end = src.IndexOf("\n        private ", i + 1);
-            string body = end > i ? src.Substring(i, end - i) : src.Substring(i);
+            // ⚠ 윈도는 **중괄호 균형**으로 자른다(리뷰 L-2 → L-4). 「고정 1200자」는 메서드 끝을
+            // 241자 넘겼고, 「다음 `private` 까지」로 고쳐도 **다음 메서드의 선행 주석 블록**을
+            // 삼켰다(실측 1642자). 이웃 주석이 우연히 패턴을 만족/위반하면 오탐·미탐이 된다.
+            string body = MethodBody(src, i);
 
-            Assert.IsTrue(body.Contains("SkillMath.ReachFromCell("),
-                "예고가 판정 술어를 안 지난다 — 사각 열거로 되돌아가면 모서리가 거짓 예고가 된다");
+            // ⚠ **«있으면 통과» 로는 부족하다**(리뷰 M-3): 몸을 실은 두 번째 `ReachFromCell(...)`
+            // 분기를 옆에 추가해도 positive 단언은 초록이다. 그래서 **개수까지** 고정한다 —
+            // 이 메서드의 도달 판정은 하나뿐이어야 한다.
+            Assert.AreEqual(1, CountOf(body, "SkillMath.ReachFromCell("),
+                "예고의 도달 판정은 정확히 하나여야 한다 — 0 이면 사각 열거로 되돌아간 것이고, "
+                + "2 이상이면 어느 분기가 화면을 그리는지 이 그물이 더는 말하지 못한다");
             // ⚠ `Contains("…RadiusTiles")` 류로는 **부족하다**(리뷰 H-2): 파라미터 이름은 시그니처에
             // 이미 있어서 인자를 바꿔치기해도 통과한다 — 단언이 이름으로 지목한 회귀를 정확히
             // 저질러도 초록이 된다. **호출부 전체**를 고정한다.
@@ -247,7 +278,6 @@ namespace Wassup.Tests.EditMode
                 "`[-N,+N]²` 사각 열거가 부활했다");
         }
 
-        // ⚠ **복사 지점**을 이름으로 고정한다(리뷰 H-1). 위 가드는 술어(끝)와 소비자(끝)만 보고
         // ⚠ **착지 슬램의 «형» 을 세 파일에서 함께 고정한다**(2026-09-07 사용자 결정).
         // 착지 슬램(도약·강습)은 **운석과 같은 「자리에 떨어지는 것」**이다 — 보스가 «지정한 좌표»에
         // 내리는 것이지 그 몸이 뻗는 것이 아니다. unit 23b 가 이것을 몸형으로 읽어 `HitRadius` 를
@@ -255,6 +285,8 @@ namespace Wassup.Tests.EditMode
         //
         // 형이 갈리면 화면과 판정이 서로 다른 규칙을 말한다. 그래서 **예고 1 + 생산자 2** 를
         // 한 테스트에 묶는다 — 하나만 되돌려도 여기서 빨개진다(unit 23b 는 «양 끝만» 보다 놓쳤다).
+        // ⚠ 「1 + 2」가 **1:1 대응이 아니다**(리뷰 L-7): 예고는 **궁극기 강습에만** 있다.
+        //   일반 보스 도약은 슬램만 쏘고 예고 타일을 안 칠한다 — 그래서 ①은 생산자 ②의 짝이다.
         [Test]
         public void LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers()
         {
@@ -262,6 +294,12 @@ namespace Wassup.Tests.EditMode
             var view = Read("Bridge", "BattleBridge.UltimateLeap.cs");
             Assert.IsFalse(Regex.IsMatch(view, @"GetComponentData<[^>]*HitRadius>"),
                 "예고가 다시 보스 몸을 읽는다 — 자리형을 몸형으로 바꿔 그리게 된다");
+            // ⚠ **헬퍼 경유 재유입도 막는다**(리뷰 M-3). 위 단언은 `HitRadius` **직접 읽기**만 본다.
+            // 같은 partial 클래스에 `HostBodyRadiusOf(Entity)` 가 살아 있고(실드 파열이 실사용),
+            // `6b1bb6ff` 이전의 `BattleBridge.BossLeap.cs` 가 **정확히 그 헬퍼로** 몸을 실었다.
+            // 제약 13 이 이 실패 모양을 문장으로 적어 뒀다 — 「흔적이 **함수 뒤에 숨어** grep 이 못 잡는다」.
+            Assert.IsFalse(view.Contains("HostBodyRadiusOf("),
+                "예고가 헬퍼를 거쳐 몸을 읽는다 — 직접 읽기만 막는 그물은 이 경로를 통과시킨다");
 
             // ② 강습 슬램(sim) · ③ 일반 도약 슬램(브리지) — 둘 다 0 을 싣는다.
             // 0 은 「이 자리에 주인이 없다」이고 판정이 칸 반폭으로 접는다(`ReachFromImpact`).
