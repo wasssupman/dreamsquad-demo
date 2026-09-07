@@ -217,89 +217,64 @@ namespace Wassup.Tests.EditMode
                 + "(unit 4b 가 이미 한 번 밟은 함정). 저작된 반경 1 AoE 20건이 여기 달려 있다.");
         }
 
-        // ─── 착지 예고(도약·강습)의 자 — **자리형** (2026-09-07 사용자 결정) ───
+        // ─── 착지 예고(궁극기 강습) — **점 + 거리** (2026-09-07 사용자 결정) ───
         //
-        // 착지 슬램은 **운석과 같다**: 보스가 «지정한 좌표»에 내린다. 그래서 원점은 그 좌표
-        // (칸 반폭)이고, 대상 항은 **0**(몸체 크기 무관) → **도달 = N + 0.5**.
-        // 종전엔 브리지가 `[-N,+N]²` 사각을 칠했고 피해는 unit 4b 이후 원이라 둘이 갈려 있었다.
+        // 착지 좌표를 중심으로 한 **원 하나**를 그린다(운석과 같은 함수 `PinSkillTelegraph`).
+        // 반경 = `N + 칸 반폭`, **대상 몸은 안 더한다** — 그건 그 유닛의 **그림자**가 말한다.
         //
-        // ⚠ unit 23b·24 는 이것을 **몸형**으로 읽었다(보스의 `HitRadius` 를 원점에 실었다).
-        //   사용자 결정으로 뒤집혔고, 형을 되돌리는 회귀는 `ReachEntryPointGuardTests`
-        //   (`LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers`)가 세 파일에서 잡는다.
+        // ⚠ **칸을 열거하던 시절의 테스트는 전부 지웠다.** 「점에서 계산한 칸 집합」은 「점 + 거리」를
+        //   이산 격자로 **양자화**하는 것이고, 그 양자화가 몸 있는 유닛을 예고 밖에서 맞게 만들었다
+        //   (실측 32곳). 매체가 원이 되면서 그 오차가 **정의상 사라진다** — 아래가 그 증명이다.
+        private const float LandingRing = 2f + 0.5f;   // 라이브 N=2 · `PinCenteredRange` 의 반경
 
-        // **중심점 기준 N거리 · 몸체 크기 무관**(2026-09-07 사용자 결정 — 운석과 같은 메커니즘).
-        // 대상 항 = 0(칸을 점으로 본다) → 도달 = N + 칸 반폭.
-        private static bool Painted(float dx, float dz, int range)
-            => Wassup.Skills.SkillMath.ReachFromCell(dx, dz, range, 0f);
-
-        // ⚠ **모양이 계약이다**(사용자 지적: *「완전한 원이어야지 왜 타원형을 그리지」*).
-        // 「뿔」 = 축 끝 칸은 들어오는데 그 **대각 이웃이 빠지는** 상태. 격자에서 도달이 **정수**면
-        // 축 칸이 «경계 동률»로 혼자 들어와 항상 뿔이 선다(대상 항을 1×1 몸 0.5 로 뒀을 때
-        // 실제로 그랬다 — 도달 3.0, 5×5 에 뿔 4개).
-        // 지금은 도달이 `N + 0.5` 라 **정수가 될 수 없다** → 뿔이 구조적으로 불가능하다.
-        [TestCase(1)] [TestCase(2)] [TestCase(3)] [TestCase(4)] [TestCase(5)]
-        public void LandingTelegraph_HasNoAxisSpike_AtAnyRange(int n)
+        [Test]
+        public void LandingTelegraphRing_RadiusIsRangePlusCellHalfWidth()
         {
-            Assert.IsTrue(Painted(n, 0f, n), $"반경 {n}: 축 {n}칸이 안이어야 한다");
-            Assert.IsFalse(Painted(n + 1, 0f, n), $"반경 {n}: 축 {n + 1}칸은 밖 — 여기가 축 끝이다");
-            Assert.IsTrue(Painted(n, 1f, n),
-                $"반경 {n}: 축 끝 칸의 대각 이웃이 빠졌다 = **뿔**이 섰다. "
-                + "도달이 정수로 떨어졌는지 의심하라(대상 항에 몸이 섞였을 때 그렇게 된다)");
+            Assert.AreEqual(LandingRing, 2f + Wassup.Skills.SkillMath.CellShapePaddingTiles, 1e-6f,
+                "링 반경이 `N + 칸 반폭` 이 아니다 — 이 값이 판정의 원점 항과 갈리면 "
+                + "아래 「그림자가 링에 닿으면 걸린다」가 더는 판정식과 동치가 아니다");
         }
 
-        // **모서리는 반경 2 부터 빠진다.** 반경 1 은 예외인데 그게 옳다 —
-        // 「대각 인접도 사거리 1」은 이 게임의 오래된 계약이다(`SkillMath` 헤더 · unit 4b).
-        [Test]
-        public void LandingTelegraph_KeepsRange1Diagonals_DropsCornersFromRange2()
-        {
-            Assert.IsTrue(Painted(1f, 1f, 1), "반경 1 대각 1.414 ≤ 1.5 — 3×3 이 온전해야 한다");
-            Assert.IsFalse(Painted(2f, 2f, 2), "반경 2 정대각 2.83 > 2.5 — 모서리가 빠진다");
-            Assert.IsFalse(Painted(3f, 3f, 3), "반경 3 정대각 4.24 > 3.5 — 빠진다");
-        }
-
-        // **예고 = 「대상을 점으로 본 피해」**. 두 쪽이 같은 답을 내는 근거는 서로 다르다:
-        // 예고는 칸 반폭을 **원점의 성질**로 갖고(`ReachFromCell`), 피해는 실려 온 0 을
-        // **「주인 없음」으로 읽어 승격**한다(`ReachFromImpact`).
+        // ★ **이 게임이 표기에서 몸을 빼도 되는 이유** — 사용자 결정 2026-09-02 D6.
         //
-        // ⚠ **이 테스트가 잡는 것은 «승격 삭제» 하나뿐이다**(리뷰 M-4 — 전개하면 양변이 문자
-        //   그대로 `Reach(dx,dz,2, 0.5, 0)` 이라 항등식에 가깝다). **생산자가 몸을 다시 싣는
-        //   회귀는 여기서 안 잡힌다** — 양쪽 `0f` 를 이 테스트가 직접 타이핑하기 때문이다.
-        //   그 축은 `ReachEntryPointGuardTests.LandingSlam_IsAPlaceForm_…` 가 소스로 고정한다.
-        //   ⚠ 이 주석을 「생산자가 바뀌면 여기가 먼저 말한다」로 되돌리지 말 것 — 거짓이다.
-        [Test]
-        public void LandingTelegraph_EqualsTheDamageWithAPointTarget()
+        //     |Δ| ≤ N + 0.5 + 대상 몸   ⟺   반경 «대상 몸» 인 그림자가 반경 «N + 0.5» 인 링에 닿는다
+        //
+        // 좌변은 피해 판정(`ReachFromImpact`, 자리형이라 원점 0 → 칸 반폭 승격), 우변은 플레이어가
+        // 화면에서 읽는 것이다. **둘이 동치**라서 링 하나로 모든 몸 크기를 정확히 가르칠 수 있다.
+        // 칸 채움에는 이 성질이 없다 — 걸치는 띠가 이진값으로 접히기 때문이다.
+        [TestCase(0f)]      // 점(몸 없는 가상 대상)
+        [TestCase(0.25f)]   // 적 소
+        [TestCase(0.5f)]    // 버스터즈 1×2 · 적 중
+        [TestCase(1.0f)]    // 2×2 (로스터 25종) · 캐논
+        [TestCase(1.5f)]    // 배스티온 3×2
+        public void ShadowTouchingTheRing_IsExactlyTheDamagePredicate(float bodyR)
         {
-            for (int dx = 0; dx <= 7; dx++)
-            for (int dz = 0; dz <= 7; dz++)
+            for (int step = 0; step <= 80; step++)
             {
-                bool painted = Painted(dx, dz, 2);
-                // 착지 슬램이 싣는 원점 = 0(자리형) · 대상을 점으로.
-                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, 0f, 0f);
-                Assert.AreEqual(hit, painted, $"({dx},{dz}) — 예고와 피해가 갈렸다");
+                float d = step * 0.1f;   // 중심에서의 거리(타일)
+                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(d, 0f, 2, 0f, bodyR);
+                bool shadowTouchesRing = d <= LandingRing + bodyR;
+                Assert.AreEqual(shadowTouchesRing, hit,
+                    $"몸 {bodyR} · 거리 {d:0.0} — 「그림자가 링에 닿는다」와 피해 판정이 갈렸다. "
+                    + "이 동치가 깨지면 링 하나로 몸을 가르칠 수 없고, 표기에 몸을 다시 들여야 한다");
             }
         }
 
-        // ⚠ **몸이 있는 유닛은 예고 밖에서도 맞는다 — 이 표기의 «성질»이지 결함이 아니다.**
-        // 예고는 「중심점 기준 N거리」라 몸을 모르고(사용자 결정), 피해는 언제나 상대의 몸을
-        // 잰다(제약 13). 그 차이가 곧 대상의 몸이다. 짝수 폭 유닛은 sim 위치가 칸 중심이 아니라
-        // **경계**라(`FootOffset` = ((W−1)/2, 0)) 어긋남이 대각에서 특히 커진다.
-        // 라이브 저작(반경 2) 전수 — 점유 칸이 **하나도** 안 칠해졌는데 맞는 앵커:
-        // 2×2 **8곳** · 배스티온 **11곳** · 캐논 **8곳** · 버스터즈 **5곳**.
-        // 아래 둘이 그 표본이다. 수가 바뀌면 표기 규칙이 바뀐 것이니 문서를 다시 재라.
+        // ⚠ **칸 채움이 놓치던 자리가 링에서는 읽힌다** — 매체 교체가 실제로 고친 것.
+        // 아래 둘은 타일 시절 「맞는데 점유 칸이 하나도 안 칠해지던」 앵커다(실측 32곳 중 표본).
         [Test]
-        public void LandingTelegraph_DoesNotKnowBodies_SoBodiedUnitsAreHitOutsideIt()
+        public void FormerlySilentMisses_AreReadableOnTheRing()
         {
-            // ① 배스티온(3×2, 몸 1.5) 앵커 (−1,3) → 발밑 (0,3), 거리 3.0 ≤ 4.0 이라 맞는다.
+            // ① 배스티온(3×2, 몸 1.5) 앵커 (−1,3) → 발밑 (0,3), 거리 3.0.
+            //    타일 시절: 점유 6칸 최근접 3.162 > 2.5 라 **한 칸도 안 칠해졌다**.
+            //    링: 그림자 1.5 가 링 2.5 에 닿는다(3.0 ≤ 4.0) → 읽힌다. 피해도 참.
+            Assert.IsTrue(3.0f <= LandingRing + 1.5f, "배스티온 그림자가 링에 닿아야 한다");
             Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(0f, 3f, 2, 0f, 1.5f));
-            for (int i = -1; i <= 1; i++)
-            for (int j = 3; j <= 4; j++)
-                Assert.IsFalse(Painted(i, j, 2), $"배스티온 점유 칸 ({i},{j})");
 
-            // ② 2×2(몸 1.0) 앵커 (2,2) → 발밑 (2.5,2), 거리 3.202 ≤ 3.5 라 맞는다.
+            // ② 2×2(몸 1.0) 앵커 (2,2) → 발밑 (2.5,2), 거리 3.2016.
+            float d = math.sqrt(2.5f * 2.5f + 2f * 2f);   // Unity.Mathematics — 이 파일엔 UnityEngine using 이 없다
+            Assert.IsTrue(d <= LandingRing + 1.0f, "2×2 그림자가 링에 닿아야 한다");
             Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(2.5f, 2f, 2, 0f, 1.0f));
-            for (int i = 2; i <= 3; i++)
-            for (int j = 2; j <= 3; j++)
-                Assert.IsFalse(Painted(i, j, 2), $"2×2 점유 칸 ({i},{j})");
         }
     }
 }

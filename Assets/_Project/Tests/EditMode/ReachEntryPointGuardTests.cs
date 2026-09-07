@@ -245,42 +245,47 @@ namespace Wassup.Tests.EditMode
                 "요청에 실린 원점 반경이 판정까지 도달하지 않는다");
         }
 
-        // 표기도 판정과 같은 자를 지나야 한다. 착지 예고는 **화면이 규칙을 가르치는 자리**라
-        // 사각으로 되돌아가면 플레이어에게 거짓을 가르친다(2026-09-07 이전 상태가 그랬다).
+        // 표기도 판정과 같은 자를 지나야 한다. 착지 예고는 **화면이 규칙을 가르치는 자리**다.
+        //
+        // ⚠ **점 + 거리이지 칸 열거가 아니다**(2026-09-07 사용자 결정). 「점에서 계산한 칸 집합」은
+        // 「점 + 거리」를 이산 격자로 **양자화**하는 것이고, 그 양자화가 몸 있는 유닛을 예고 밖에서
+        // 맞게 만들었다(실측 32곳). 그래서 예고는 **운석과 같은 함수**(`PinSkillTelegraph`)를 부른다 —
+        // 「운석과 같은 메커니즘」이 숫자만이 아니라 **경로 수준에서** 참이어야 한다.
         [Test]
-        public void LandingTelegraph_UsesTheRoundPredicate_NotASquareEnumeration()
+        public void LandingTelegraph_IsAPointAndRadius_NotACellEnumeration()
         {
-            var src = Read("Bridge", "BattleBridge.cs");
-            int i = src.IndexOf("private void BuildZoneCells(");
-            Assert.Greater(i, 0, "착지 예고의 셀 열거를 못 찾았다 — 이름이 바뀌었나?");
-            // ⚠ 윈도는 **중괄호 균형**으로 자른다(리뷰 L-2 → L-4). 「고정 1200자」는 메서드 끝을
-            // 241자 넘겼고, 「다음 `private` 까지」로 고쳐도 **다음 메서드의 선행 주석 블록**을
-            // 삼켰다(실측 1642자). 이웃 주석이 우연히 패턴을 만족/위반하면 오탐·미탐이 된다.
-            string body = MethodBody(src, i);
+            var view = Read("Bridge", "BattleBridge.UltimateLeap.cs");
+            Assert.IsTrue(Regex.IsMatch(view,
+                    @"PinSkillTelegraph\(\s*new Vector2Int\(\s*leap\.landingCell"),
+                "예고가 운석과 같은 함수(`PinSkillTelegraph`)를 안 부른다 — 「운석과 같은 메커니즘」이 "
+                + "경로 수준에서 깨졌다");
+            foreach (var banned in new[] { "SetTelegraphCells", "BuildZoneCells", "_zoneCellScratch" })
+                Assert.IsFalse(view.Contains(banned) && !view.Contains("되돌리지 말 것"),
+                    $"예고가 칸 열거(`{banned}`)로 되돌아갔다 — 양자화 오차가 그대로 돌아온다");
 
-            // ⚠ **«있으면 통과» 로는 부족하다**(리뷰 M-3): 몸을 실은 두 번째 `ReachFromCell(...)`
-            // 분기를 옆에 추가해도 positive 단언은 초록이다. 그래서 **개수까지** 고정한다 —
-            // 이 메서드의 도달 판정은 하나뿐이어야 한다.
-            Assert.AreEqual(1, CountOf(body, "SkillMath.ReachFromCell("),
-                "예고의 도달 판정은 정확히 하나여야 한다 — 0 이면 사각 열거로 되돌아간 것이고, "
-                + "2 이상이면 어느 분기가 화면을 그리는지 이 그물이 더는 말하지 못한다");
-            // ⚠ **«이름» 이 아니라 «값» 을 잡는다.** 한때 이 자리를 `const float targetR = 0f;` 라는
-            // 지역 상수와 그 이름을 찾는 정규식으로 지켰는데, 그건 **단언되기 위해 존재하는 코드**였다
-            // (`targetR ≡ 0` 이라 산술도 호출도 리터럴과 동일했다 — 리뷰 M-2). 이제 4번째 인자가
-            // 리터럴 0 인지를 본다: 리네이밍·인라인 리팩터로는 안 깨지고, **몸을 넣으면 반드시 걸린다.**
+            // 칸 열거 자체가 브리지에서 사라졌는지 — 소비처 0 인 열거가 남아 있으면 다음 사람이 되쓴다.
+            var bridge = Read("Bridge", "BattleBridge.cs");
+            Assert.IsFalse(Regex.IsMatch(bridge, @"private\s+void\s+BuildZoneCells\("),
+                "`BuildZoneCells` 가 되살아났다 — 소비처 0 이면 지운다(제약 8)");
+        }
+
+        // 반경은 **운석과 공유하는 함수의 성질**이다 — 호출부가 조립하지 않는다.
+        // `N + 칸 반폭` 이 D6 계약(사용자 결정 2026-09-02)이고, 「대상 몸은 그림자가 말한다」가
+        // 성립하는 것은 이 값이 판정의 **원점 항과 같기** 때문이다.
+        [Test]
+        public void CenteredRangeRing_RadiusIsRangePlusCellHalfWidth()
+        {
+            var bridge = Read("Bridge", "BattleBridge.cs");
+            var body = MethodBody(bridge, bridge.IndexOf("private void PinCenteredRange("));
+            Assert.AreEqual(1, CountOf(body, "SetAreaRange("),
+                "링 표기의 호출이 하나가 아니다 — 분기가 늘면 어느 쪽이 화면을 그리는지 말할 수 없다");
             Assert.IsTrue(Regex.IsMatch(body,
-                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*0f\s*\)"),
-                "예고의 대상 항이 리터럴 0 이 아니다 — 「중심점 기준 N거리, 몸체 크기 상관없이」가 규칙이고, "
-                + "운석 표기(`PinCenteredRange` · 사용자 결정 2026-09-02 D6)와 **같은 두 항**이다");
-            // ⚠ **금지어는 실제로 두 번 들어왔던 그 값들이다** — unit 23b 가 보스 몸(`HitRadius`)을,
-            // 그 뒤 한 커밋이 「표준 방어유닛 몸」을 넣었다. 표기가 몸을 알면 「누구 기준이냐」가 생긴다.
-            // 대상 몸은 **링과 그림자**가 말한다(계약) — 이 술어가 말하지 않는다.
-            Assert.IsFalse(Regex.IsMatch(body,
-                    @"ReachFromCell\([^)]*(?:BodyRadius|CellShapePadding|bodyR)[^)]*\)"),
-                "예고 술어에 «몸» 이 다시 들어왔다 — 화면이 유닛마다 다른 규칙을 말하게 된다");
-            Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
-                    body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
-                "`[-N,+N]²` 사각 열거가 부활했다");
+                    @"tileRange\s*\+\s*Wassup\.Skills\.SkillMath\.CellShapePaddingTiles"),
+                "링 반경이 `N + 칸 반폭` 이 아니다 — 이 값이 판정의 원점 항과 갈리면 "
+                + "「그림자가 링에 닿으면 걸린다」가 더는 판정식과 동치가 아니다");
+            Assert.IsFalse(Regex.IsMatch(body, @"(?:BodyRadius|bodyR)"),
+                "링 반경에 «몸» 이 들어왔다 — 대상 몸은 그림자가 말한다(D6). 표기가 몸을 알면 "
+                + "「누구 기준이냐」가 생긴다");
         }
 
         // ⚠ **착지 슬램의 «형» 을 세 파일에서 함께 고정한다**(2026-09-07 사용자 결정).

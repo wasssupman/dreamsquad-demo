@@ -2775,49 +2775,11 @@ namespace Wassup.Bridge
         // 「부착 후 타일이 남는다」로 읽혔다. 장판은 수명 동안 뷰를 갖지 않는다 — 핀
         // `ActiveAllyZoneTest.ZoneCast_PaintsNoBoardTiles`.
 
-        // 착지 예고의 셀 열거(보드 경계 클리핑) — 소비처는 궁극기 착지 예고(`ShowLandingTelegraph`) 하나.
-        //
-        // ⚠ **rev 2026-09-07 — 사각이 아니라 원이다.** 종전엔 `[-N,+N]²` 를 통째로 칠했는데
-        // 피해는 unit 4b 이후 **원**이라 **자가 갈려 있었다.** 「예고 셀 = 피해 셀」이라던 주석은
-        // 그 시점부터 거짓이었다.
-        //
-        // ⚠⚠ **rev 2026-09-07b — 「모서리는 거짓 예고였다」는 거짓이었다.** 이 주석이 한동안
-        // *「반경 2 의 정대각 2.83 > 2.5 라 안 맞는데 칠해졌다」* 고 적고 있었는데, 그 2.5 는
-        // **대상을 점으로 놓고** 잰 값이다. 피해 도달은 `N + 0.5 + 대상 몸`이고 방어유닛 몸의
-        // **최솟값이 0.5**(버스터즈 = 가로/2)라 정대각 칸에 선 유닛은 **로스터 4종 전부 맞는다**
-        // (2.828 ≤ 3.0). 지운 모서리 4칸은 거짓 예고가 아니라 **진짜 경고**였다.
-        // → 이 열거가 원인 것은 「거짓 예고를 지우려고」가 아니라 **운석 표기와 두 항을 맞추려고**다
-        //   (`PinCenteredRange` · 사용자 결정 2026-09-02 D6 — 반경 `N + 0.5`, **대상 몸은 그림자가 말한다**).
-        // ⚠ 그러니 여기서 대상 몸을 더하지 말 것 — 더하는 순간 「누구 기준이냐」가 생긴다
-        //   (unit 23b 가 보스 몸으로, 그 뒤 한 커밋이 「표준 방어유닛 몸」으로 두 번 시도했다).
-        //   **몸을 말하는 것은 이 채널이 아니라 링이다.**
-        //
-        // 자는 판정과 **같은 본체**를 지난다 — `SkillMath.ReachFromCell`. 착지 슬램은 **「자리에
-        // 떨어지는 것」**이라(2026-09-07 사용자 결정) 원점 항이 칸 반폭이고, 그건 이 진입점의
-        // **성질**이라 손으로 넘길 수 없다. 대상 항은 **0**(아래 참조).
-        // 반경 항을 여기서 다시 조립하지 않는다.
-        private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
-
-        private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
-        {
-            results.Clear();
-            int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
-            // 스캔 상자 — 도달이 `N + 칸 반폭 < N + 1` 이므로 **필요 최대 오프셋은 N**, `N+1` 이면 넉넉하다.
-            // 좁으면 실제로 맞는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다.
-            // ⚠ 상한을 둔다 — 저작 실수(거대 `tileRange`)가 프레임을 통째로 먹지 않게(리뷰 L-1).
-            int scan = Mathf.Clamp(tileRange + 1, 0, 64);
-            for (int dx = -scan; dx <= scan; dx++)
-            for (int dz = -scan; dz <= scan; dz++)
-            {
-                // 대상 항 = **0 — 칸을 «점» 으로 본다.** 「중심점 기준 N거리, 몸체 크기 상관없이」가
-                // 이 예고의 규칙이다(2026-09-07 사용자 결정). 위 헤더 참조 — 운석 표기와 같은 두 항이다.
-                if (!Wassup.Skills.SkillMath.ReachFromCell(dx, dz, tileRange, 0f))
-                    continue;
-                var cell = new Vector2Int(center.x + dx, center.y + dz);
-                if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
-                results.Add(cell);
-            }
-        }
+        // ⚠ **`BuildZoneCells` 는 철거했다**(2026-09-07). 착지 예고가 칸 열거를 버리고
+        // **점 + 거리**(운석과 같은 `PinSkillTelegraph` → 원 링)로 바뀌면서 소비처가 0 이 됐다.
+        // 「점에서 계산한 칸 집합」은 「점 + 거리」를 이산 격자로 **양자화**하는 것이고, 그 양자화가
+        // 몸 있는 유닛을 예고 밖에서 맞게 만들었다(실측 32곳). 되살리지 말 것 — 되살리는 순간
+        // 그 오차가 그대로 돌아온다. 이력은 `docs/spec/distance-based-range/24_*.md`.
 
         // 배치 대기(PendingDeployment) 유닛 제외 — 아직 판에 서지 않았다(on-place 오라와 같은 규칙).
         // 월드 생존 가드는 레포 관용구(HasLiveEntityManager)를 쓴다 — `_em == default` 단독은

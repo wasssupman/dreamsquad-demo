@@ -54,26 +54,29 @@ namespace Wassup.Bridge
             // 화면 밖에 멈춘 채 남지 않는다.
             _ultimateLeapAirborne.Clear();
             _enemyViewOverride.Clear();
-            tilemapMapView?.ClearTelegraphCells(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
+            ClearSkillTelegraph(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
         }
 
-        // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 셀 열거
-        // 단일 지점이다(보드 경계 클리핑 + 스크래치 재사용 포함). 액티브 장판 점등이 은퇴한 뒤(2026-09-03)
-        // 소비처는 이 예고 하나지만, 손으로 다시 돌면 두 계산의 우연한 일치에 기대게 되므로 그대로 둔다.
-        // (구 주석은 여기서 「예고 셀 = 피해 셀」계약을 인용했는데 그 계약은 unit 4b 에 이미 죽었다 — 리뷰 M-4.)
+        // 착지 예고 — **점 + 거리**. 착지 좌표를 중심으로 한 **원 하나**를 그린다.
+        // **운석과 같은 함수를 부른다**(`PinSkillTelegraph` → `PinCenteredRange`) — 「운석과 같은
+        // 메커니즘」(2026-09-07 사용자 결정)이 숫자만이 아니라 **경로 수준에서** 참이게 하는 것이
+        // 요점이다. 반경은 그 함수의 성질(`N + 칸 반폭`)이라 여기서 조립하지 않는다.
         //
-        // ⚠ **보스의 몸을 읽지 않는다 — 그게 이 예고의 형이다**(2026-09-07 사용자 결정).
-        // 착지 슬램은 **운석과 같은 「자리에 떨어지는 것」**이라 원점이 «착지 좌표» 자신이다.
-        // 여기서 `HitRadius` 를 읽어 넘기면 예고가 **자리형을 몸형으로 바꿔 그린다** — 그게
-        // unit 23b·24 가 한 번씩 잘못 짚은 자리다. 피해 쪽(`UltimateLeapSystem`)도 같은 이유로
-        // `originBodyRadius = 0` 을 싣는다. 두 쪽이 같은 형을 말해야 화면이 규칙을 맞게 가르친다.
+        // ⚠ **칸을 열거하지 않는다.** 종전엔 점에서 계산한 타일 집합을 칠했는데, 그건 「점 + 거리」를
+        // 이산 격자로 **양자화**하는 것이라 원의 가장자리에 걸치는 띠가 「칠해짐/안 칠해짐」 이진값으로
+        // 접혔다. 그 결과 몸이 있는 유닛이 예고 밖에서 맞는 자리가 생겼다(실측 32곳). 원은 그 오차가
+        // 없고, **대상의 몸은 그 유닛의 그림자가 말한다** — 「그림자가 링에 닿으면 걸린다」가
+        // 판정식 `|Δ| ≤ N + 0.5 + 대상 몸` 과 **동치**다(사용자 결정 2026-09-02 D6 · `SetAreaRange` 헤더).
+        // ⚠ 타일 열거로 되돌리지 말 것 — 되돌리는 순간 그 양자화 오차가 그대로 돌아온다.
+        //
+        // ⚠ **보스의 몸을 읽지 않는다**(2026-09-07). 착지 슬램은 「자리에 떨어지는 것」이라 원점이
+        // «착지 좌표» 자신이다. 피해 쪽(`UltimateLeapSystem`)도 같은 이유로 `originBodyRadius = 0` 을
+        // 싣는다. 두 쪽이 같은 형을 말해야 화면이 규칙을 맞게 가르친다.
         private void ShowLandingTelegraph(Entity entity)
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
             var leap = _em.GetComponentData<UltimateLeapState>(entity);
-            BuildZoneCells(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange,
-                _zoneCellScratch);
-            tilemapMapView.SetTelegraphCells(_zoneCellScratch);
+            PinSkillTelegraph(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange);
         }
 
         // ── 드레인 ──
@@ -100,8 +103,8 @@ namespace Wassup.Bridge
                     // 무시 — 허공에서 유닛이 떨어지는 그림을 만들지 않는다.
                     if (!_ultimateLeapAirborne.Remove(evt.entity)) continue;
                     // 예고는 **여기서** 끈다 — sim 이 착지를 확정한 순간이고, 강하 연출이 끝날
-                    // 때까지 붉은 타일을 남기면 "아직 피할 수 있다" 는 거짓 신호가 된다.
-                    tilemapMapView?.ClearTelegraphCells();
+                    // 때까지 링을 남기면 "아직 피할 수 있다" 는 거짓 신호가 된다.
+                    ClearSkillTelegraph();
                     StartCoroutine(RunUltimateLeapDescend(evt.entity, evt.world, evt.dataIndex));
                 }
             }
