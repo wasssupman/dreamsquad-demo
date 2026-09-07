@@ -74,9 +74,12 @@ namespace Wassup.Battle.Combat
                         impact          = leap.landingWorld,
                         damage          = leap.slamDamage,
                         impactTileRange = leap.slamTileRange,
-                        // unit 23b — 강습 슬램도 **그 몸이 내리찍는 것**이다(자리형 아님).
-                        originBodyRadius = SystemAPI.HasComponent<Wassup.Battle.Units.HitRadius>(entity)
-                            ? SystemAPI.GetComponent<Wassup.Battle.Units.HitRadius>(entity).value : 0f,
+                        // ⚠ **0 = 「자리에 떨어지는 것」**(2026-09-07 사용자 결정, unit 23b 정정).
+                        // 강습 슬램은 **운석과 같다** — 보스가 «지정한 좌표»에 내린다. 23b 는 이것을
+                        // 「그 몸이 내리찍는 것」으로 읽고 `HitRadius` 를 실었는데, 제약 13 의 형 구분은
+                        // 「몸에서 나오나 / 자리에 떨어지나」이고 이건 후자다. 지정은 기하가 아니라 귀속이다.
+                        // 0 을 남기면 판정이 칸 반폭으로 접는다(`ReachFromImpact`) — 그게 자리형이다.
+                        originBodyRadius = 0f,
                         flightTime      = 0f,   // 즉발 — 예고가 이미 2초를 벌었다
                         arcHeight       = 0f,
                         dataIndex       = leap.projectileDataIndex,

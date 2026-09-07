@@ -747,8 +747,11 @@ namespace Wassup.Battle.Combat.Projectile
                             // (원 = 반경 + 칸 반폭 + 대상 몸), 입력만 연속이 됐다.
                             float aoeInvT = tileSize > 1e-6f ? 1f / tileSize : 1f;
                             // unit 23b — **자리에 «주인» 이 있으면 그 몸이 원점 항이다.**
-                            // 자기 자리 폭발(`flightTime = 0` 즉발: 자폭·시체폭발·사망폭발·
-                            // 도약 슬램)은 폭심이 트리거 대상의 몸 중심이라 칸 반폭이 틀리다.
+                            // 자기 자리 폭발(`flightTime = 0` 즉발: 자폭·시체폭발·사망폭발)은
+                            // 폭심이 트리거 대상의 몸 중심이라 칸 반폭이 틀리다.
+                            // ⚠ **착지 슬램(도약·강습)은 여기 없다**(2026-09-07 사용자 결정) —
+                            // 즉발이라 같아 보이지만 **운석과 같은 「자리에 떨어지는 것」**이라
+                            // 0 을 싣는다. `flightTime == 0` 을 형의 판별로 쓰지 말 것.
                             // 진짜 날아온 탄의 착탄점은 주인이 없어(0) 종전대로 자리형이다.
                             if (!Wassup.Skills.SkillMath.ReachFromImpact(
                                     (vpos.x - impactWorld.x) * aoeInvT,

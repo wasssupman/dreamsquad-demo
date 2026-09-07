@@ -95,7 +95,11 @@ namespace Wassup.Skills
         //
         // ⚠ **private 이다**(unit 23a). 공개돼 있던 시절 호출부가 이 값을 **「내 몸」 자리에 손으로
         // 넘길 수 있었고**, 그래서 원점이 유닛인 자리에도 칸 반폭이 조용히 들어갔다 — 그게
-        // unit 22·23 이 두 번 놓친 결함의 형태다. 이제 `ReachFromCell` 만 이 값을 안다.
+        // unit 22·23 이 두 번 놓친 결함의 형태다.
+        // ⚠ **이 값을 아는 함수는 «둘» 이다**(리뷰 M-4 — 「이제 `ReachFromCell` 만 안다」는 거짓이었다):
+        //   `ReachFromCell` = 자리형의 **원점 항** · `ReachFromImpact` = 주인이 없을 때(0)의 **폴백**.
+        //   둘 다 이 값을 **원점 자리**에만 쓴다. 대상 자리에 쓰는 진입점은 없다 —
+        //   「칸을 대상으로 묻는」 표기가 필요하면 공개 접근자 `CellShapePaddingTiles` 를 쓴다.
         // ⚠⚠ **보증 수준을 과장하지 말 것**(리뷰 M-1b): private 은 **이름을 숨긴 것**이지 값을
         // 막은 것이 아니다 — `ReachFromUnit(dx, dz, r, 0.5f, targetR)` 리터럴은 여전히 컴파일되고
         // 어떤 그물도 안 잡는다. 컴파일러가 막는 것은 「**명명된** 칸 상수를 원점 자리에 넘기기」까지다.
@@ -195,24 +199,12 @@ namespace Wassup.Skills
                      originBodyRadiusTiles > 0f ? originBodyRadiusTiles : CellHalfWidthTiles,
                      targetBodyRadiusTiles);
 
-        // **몸이 내리찍는 것을 «칸» 으로 묻는다** — 예고 표기 전용(궁극기 강습 착지).
-        // 원점 = 그 몸(**인자 = 데이터에서 온다**) · 후보 = 칸(반폭은 이 함수의 성질이라 못 넘긴다).
-        //
-        // 왜 따로 있나 — ⚠ **「표현 불가능해서」가 아니다**(리뷰 M-1 정정). 본문이 단순 합이라
-        // `ReachFromCell(dx, dz, r, 몸)` 이 **셀 하나까지 같은 답**을 낸다. 근거는 **선언의 참거짓**이다:
-        // 그 대안은 원점의 몸을 **«대상» 슬롯**에 넘기는 것이고, 그게 제약 13 이 막으려는 「원점을
-        // 거짓으로 선언하는 호출부」다. 여기서는 원점이 인자 이름으로 자기를 밝힌다.
-        //
-        // ⚠ **정확한 곳은 「칸 위의 1×1」뿐이고, 로스터에 그런 유닛은 버스터즈 하나다**(리뷰 H-1).
-        //   나머지는 두 가지가 겹쳐 어긋난다: ① 몸이 0.5 보다 크고(2×2 = 1.0 · 배스티온 1.5)
-        //   ② 짝수 폭 유닛의 sim 위치가 **칸 중심이 아니라 경계**다(`FootOffset` = ((W−1)/2, 0)).
-        //   그 결과 **점유 칸이 하나도 안 칠해졌는데 맞는** 자리가 실재한다(라이브 저작 기준
-        //   2×2 는 앵커 2곳 · 배스티온 3곳 · 캐논 2곳). 대상 항을 무엇으로 둘지는 표기 결정이다.
-        // ⚠ 이름이 `Reach` 로 시작해야 한다 — 진입점 목록 가드(`PublicReachEntryPoints_AreExactlyTheKnownSet`)
-        //   가 그 접두사로 스캔한다. 다른 이름을 쓰면 **가드 밖에서 조용히 늘어난다.**
-        public static bool ReachFromUnitToCell(float dxTiles, float dzTiles, float rangeTiles,
-                                               float originBodyRadiusTiles)
-            => Reach(dxTiles, dzTiles, rangeTiles, originBodyRadiusTiles, CellHalfWidthTiles);
+        // ⚠ **5번째 진입점 `ReachFromUnitToCell` 은 신설했다가 «같은 날» 철거했다**(2026-09-07).
+        //   「몸이 내리찍는 것을 칸으로 묻는다」는 자였고, **착지 슬램이 몸형이라는 전제** 위에 있었다.
+        //   그 전제가 사용자 결정으로 뒤집혔다 — 착지 슬램은 **운석과 같은 「자리에 떨어지는 것」**이다
+        //   (아래 `ReachFromCell` 이 그 자다). 전제가 사라지자 소비처가 0 이 됐고, 소비처 0 인 공개
+        //   진입점은 제약 8 이 금지하는 「나중을 위한 층」이라 지웠다.
+        //   ⚠ 되살리지 말 것 — 「몸이 칸을 친다」가 정말 필요해지면 그때 **형부터** 정하고 온다.
 
         // 원점 항을 이미 형에서 뽑아 둔 호출부용(`TryOriginRadius` 를 지난 값).
         public static bool ReachWithOrigin(float dxTiles, float dzTiles, float rangeTiles,

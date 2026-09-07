@@ -235,8 +235,10 @@ namespace Wassup.Bridge
                 impact          = end,
                 damage          = evt.slamDamage,
                 impactTileRange = evt.slamTileRange,
-                // unit 23b — 착지 슬램은 **그 몸이 내리찍는 것**이라 폭심의 주인이 보스 자신이다.
-                originBodyRadius = HostBodyRadiusOf(evt.entity),
+                // ⚠ **0 = 「자리에 떨어지는 것」**(2026-09-07 사용자 결정, unit 23b 정정).
+                // 착지 슬램은 운석과 같은 형이다 — 강습(`UltimateLeapSystem`)과 **같은 규칙**을 쓴다.
+                // 같은 「착지 슬램」이 두 규칙을 갖지 않게 두 생산자를 함께 바꿨다.
+                originBodyRadius = 0f,
                 flightTime      = 0f,   // 즉발 — 뷰가 이미 도착했다
                 arcHeight       = 0f,
                 dataIndex       = evt.dataIndex,

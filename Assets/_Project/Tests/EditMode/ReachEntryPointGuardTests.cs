@@ -198,10 +198,11 @@ namespace Wassup.Tests.EditMode
             var src = Read("Skills", "SkillMath.cs");
             var found = Regex.Matches(src, @"public\s+static\s+bool\s+(Reach\w*)\s*\(")
                              .Select(m => m.Groups[1].Value).OrderBy(x => x).ToArray();
-            // `ReachFromUnitToCell`(2026-09-07) — 「몸이 내리찍는 것을 **칸**으로 묻는다」 = 착지 예고.
-            // 원점 항은 인자(데이터)이고 칸 반폭은 함수의 성질이라 계약을 지킨다.
+            // ⚠ **넷이다.** 2026-09-07 에 `ReachFromUnitToCell`(「몸이 칸을 친다」)을 5번째로
+            // 넣었다가 같은 날 철거했다 — 착지 슬램이 **자리형**으로 확정되면서 소비처가 0 이 됐다.
+            // 소비처 0 인 공개 진입점은 제약 8 이 금지하는 「나중을 위한 층」이다.
             var expected = new[] { "ReachFromCell", "ReachFromImpact", "ReachFromUnit",
-                                   "ReachFromUnitToCell", "ReachWithOrigin" };
+                                   "ReachWithOrigin" };
             CollectionAssert.AreEqual(expected, found,
                 "공개 도달 진입점 목록이 바뀌었다. 늘릴 때는 «원점 항이 데이터에서 온다» 를 지키는지 "
                 + "확인하고 이 목록과 아키텍처 불변식 7 을 같이 갱신하라: " + string.Join(", ", found));
@@ -225,35 +226,56 @@ namespace Wassup.Tests.EditMode
             var src = Read("Bridge", "BattleBridge.cs");
             int i = src.IndexOf("private void BuildZoneCells(");
             Assert.Greater(i, 0, "착지 예고의 셀 열거를 못 찾았다 — 이름이 바뀌었나?");
-            string body = src.Substring(i, System.Math.Min(1200, src.Length - i));
+            // ⚠ 윈도를 **다음 선언까지**로 자른다(리뷰 L-2). 고정 1200자는 메서드 끝을 241자
+            // 넘겨 이웃 메서드를 삼켰고, 그쪽이 우연히 패턴을 만족/위반하면 오탐·미탐이 된다.
+            int end = src.IndexOf("\n        private ", i + 1);
+            string body = end > i ? src.Substring(i, end - i) : src.Substring(i);
 
-            Assert.IsTrue(body.Contains("SkillMath.ReachFromUnitToCell("),
+            Assert.IsTrue(body.Contains("SkillMath.ReachFromCell("),
                 "예고가 판정 술어를 안 지난다 — 사각 열거로 되돌아가면 모서리가 거짓 예고가 된다");
-            // ⚠ `Contains("originBodyRadiusTiles")` 로는 **부족하다**(리뷰 H-2): 그건 이 함수의
-            // 파라미터 이름이라 시그니처에 이미 있고, 호출을 `…, 0f)` 로 바꿔도 통과한다 —
-            // 이 단언이 이름으로 지목한 회귀를 정확히 저질러도 초록이 된다. 인자가 술어까지
-            // **도달하는지**를 호출부 전체로 고정한다.
+            // ⚠ `Contains("…RadiusTiles")` 류로는 **부족하다**(리뷰 H-2): 파라미터 이름은 시그니처에
+            // 이미 있어서 인자를 바꿔치기해도 통과한다 — 단언이 이름으로 지목한 회귀를 정확히
+            // 저질러도 초록이 된다. **호출부 전체**를 고정한다.
             Assert.IsTrue(Regex.IsMatch(body,
-                    @"ReachFromUnitToCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*originBodyRadiusTiles\s*\)"),
-                "원점 몸이 술어까지 도달하지 않는다 — 몸이 큰 보스일수록 화면이 좁게 가르친다");
+                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*cellR\s*\)"),
+                "예고의 대상 항이 칸 반폭이 아니다 — 후보가 «칸» 인데 다른 값을 넣으면 "
+                + "「그 칸에 선 1×1 이 맞나」와 답이 갈린다");
             Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
                     body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
                 "`[-N,+N]²` 사각 열거가 부활했다");
         }
 
         // ⚠ **복사 지점**을 이름으로 고정한다(리뷰 H-1). 위 가드는 술어(끝)와 소비자(끝)만 보고
-        // «그 사이에서 값이 실리는 자리» 를 안 봤다 — `ShowLandingTelegraph` 가 `0f` 를 넘기도록
-        // 바뀌어도 전건 초록이었다. 이 레포가 unit 23b(C-1)에서 이미 한 번 먹은 형태다:
-        // 「양 끝만 보는 그물은 그 사이의 복사 지점을 못 잡는다」(아키텍처 불변식 7).
+        // ⚠ **착지 슬램의 «형» 을 세 파일에서 함께 고정한다**(2026-09-07 사용자 결정).
+        // 착지 슬램(도약·강습)은 **운석과 같은 「자리에 떨어지는 것」**이다 — 보스가 «지정한 좌표»에
+        // 내리는 것이지 그 몸이 뻗는 것이 아니다. unit 23b 가 이것을 몸형으로 읽어 `HitRadius` 를
+        // 실었고 unit 24 가 그 전제 위에 예고를 지었다 — **둘 다 정정된 것이 이 단언이다.**
+        //
+        // 형이 갈리면 화면과 판정이 서로 다른 규칙을 말한다. 그래서 **예고 1 + 생산자 2** 를
+        // 한 테스트에 묶는다 — 하나만 되돌려도 여기서 빨개진다(unit 23b 는 «양 끝만» 보다 놓쳤다).
         [Test]
-        public void LandingTelegraph_CopiesTheLeapersBody_IntoTheCellEnumeration()
+        public void LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers()
         {
-            var src = Read("Bridge", "BattleBridge.UltimateLeap.cs");
+            // ① 예고 — 도약 주체의 몸을 **읽지 않는다**(주석의 언급은 통과, 실제 호출만 잡는다).
+            var view = Read("Bridge", "BattleBridge.UltimateLeap.cs");
+            Assert.IsFalse(Regex.IsMatch(view, @"GetComponentData<[^>]*HitRadius>"),
+                "예고가 다시 보스 몸을 읽는다 — 자리형을 몸형으로 바꿔 그리게 된다");
 
-            Assert.IsTrue(Regex.IsMatch(src, @"GetComponentData<[^>]*HitRadius>\(entity\)\.value"),
-                "예고가 도약 주체의 몸을 읽지 않는다");
-            Assert.IsTrue(Regex.IsMatch(src, @"BuildZoneCells\([^;]*originBodyR\s*,\s*_zoneCellScratch\)"),
-                "읽은 몸이 셀 열거로 **전달되지 않는다** — 읽기만 하고 버리면 예고가 다시 좁아진다");
+            // ② 강습 슬램(sim) · ③ 일반 도약 슬램(브리지) — 둘 다 0 을 싣는다.
+            // 0 은 「이 자리에 주인이 없다」이고 판정이 칸 반폭으로 접는다(`ReachFromImpact`).
+            foreach (var (src, who) in new[]
+                     {
+                         (Read("Battle", "Combat", "UltimateLeapSystem.cs"), "강습 슬램"),
+                         (Read("Bridge", "BattleBridge.BossLeap.cs"),        "일반 도약 슬램"),
+                     })
+            {
+                Assert.IsTrue(Regex.IsMatch(src, @"originBodyRadius\s*=\s*0f\s*,"),
+                    $"{who} 가 원점 항 0(자리형)을 안 싣는다");
+                // ⚠ 부정 룩어헤드를 `=` 바로 뒤에 붙인다 — `=\s*(?!0f)` 로 쓰면 `\s*` 가 되짚어
+                // 공백 한 칸을 덜 먹은 자리에서 룩어헤드가 성립해 **항상 매치**한다(vacuous 의 반대: 상시 실패).
+                Assert.IsFalse(Regex.IsMatch(src, @"originBodyRadius\s*=(?!\s*0f\s*,)"),
+                    $"{who} 가 0 이 아닌 원점 항을 싣는다 — 착지 슬램은 자리형이다");
+            }
         }
     }
 }

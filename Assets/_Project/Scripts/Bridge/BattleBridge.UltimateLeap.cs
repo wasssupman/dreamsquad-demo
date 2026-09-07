@@ -59,21 +59,20 @@ namespace Wassup.Bridge
 
         // 착지 예고. 셀 집합을 **직접 돌지 않는다** — `BuildZoneCells` 가 이 브리지의 셀 열거
         // 단일 지점이다(보드 경계 클리핑 + 스크래치 재사용 포함). 액티브 장판 점등이 은퇴한 뒤(2026-09-03)
-        // 소비처는 이 예고 하나지만, 손으로 다시 돌면 "예고 셀 = 피해 셀" 계약이 두 계산의 우연한 일치에
-        // 기대게 되므로 그대로 둔다.
+        // 소비처는 이 예고 하나지만, 손으로 다시 돌면 두 계산의 우연한 일치에 기대게 되므로 그대로 둔다.
+        // (구 주석은 여기서 「예고 셀 = 피해 셀」계약을 인용했는데 그 계약은 unit 4b 에 이미 죽었다 — 리뷰 M-4.)
         //
-        // ⚠ **원점 몸을 같이 넘긴다**(2026-09-07). 슬램은 「그 몸이 내리찍는 것」이라 도달이
-        // `사거리 + 그 몸 + 대상 몸` 이다(unit 23b — 슬램 intent 가 `originBodyRadius` 를 싣는다).
-        // 예고가 그 항을 빼면 **몸이 큰 보스일수록 화면이 좁게 가르친다.** 여기서 읽는 값과
-        // `UltimateLeapSystem` 이 intent 에 싣는 값은 **같은 컴포넌트**(`HitRadius`)다.
+        // ⚠ **보스의 몸을 읽지 않는다 — 그게 이 예고의 형이다**(2026-09-07 사용자 결정).
+        // 착지 슬램은 **운석과 같은 「자리에 떨어지는 것」**이라 원점이 «착지 좌표» 자신이다.
+        // 여기서 `HitRadius` 를 읽어 넘기면 예고가 **자리형을 몸형으로 바꿔 그린다** — 그게
+        // unit 23b·24 가 한 번씩 잘못 짚은 자리다. 피해 쪽(`UltimateLeapSystem`)도 같은 이유로
+        // `originBodyRadius = 0` 을 싣는다. 두 쪽이 같은 형을 말해야 화면이 규칙을 맞게 가르친다.
         private void ShowLandingTelegraph(Entity entity)
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
             var leap = _em.GetComponentData<UltimateLeapState>(entity);
-            float originBodyR = _em.HasComponent<Wassup.Battle.Units.HitRadius>(entity)
-                ? _em.GetComponentData<Wassup.Battle.Units.HitRadius>(entity).value : 0f;
             BuildZoneCells(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange,
-                originBodyR, _zoneCellScratch);
+                _zoneCellScratch);
             tilemapMapView.SetTelegraphCells(_zoneCellScratch);
         }
 

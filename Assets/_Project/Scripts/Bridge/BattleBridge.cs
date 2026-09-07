@@ -2782,22 +2782,26 @@ namespace Wassup.Bridge
         // 2.83 > 2.5 라 안 맞는데 칠해졌다). 「예고 셀 = 피해 셀」이라던 주석은 그 시점부터 거짓이었고,
         // 화면이 플레이어에게 규칙을 **틀리게** 가르치고 있었다(제약 13 미이행분 · unit 23 감사).
         //
-        // 자는 판정과 **같은 본체**를 지난다 — `SkillMath.ReachFromUnitToCell`(원점 = 내리찍는 몸,
-        // 후보 = 칸). 반경 항을 여기서 다시 조립하지 않는다.
+        // 자는 판정과 **같은 본체**를 지난다 — `SkillMath.ReachFromCell`. 착지 슬램은 **「자리에
+        // 떨어지는 것」**이라(2026-09-07 사용자 결정) 원점 항이 칸 반폭이고, 그건 이 진입점의
+        // **성질**이라 손으로 넘길 수 없다. 대상 항만 넘긴다 — 후보가 «칸» 이므로 칸 반폭이다.
+        // 반경 항을 여기서 다시 조립하지 않는다.
         private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
 
-        private void BuildZoneCells(Vector2Int center, int tileRange, float originBodyRadiusTiles,
-                                    List<Vector2Int> results)
+        private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
         {
             results.Clear();
             int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
-            // 스캔 상자는 **도달보다 넓게** 잡는다(몸·칸 반폭이 붙어 정수 N 을 넘는다).
+            // 후보가 칸이라 **대상 항도 칸 반폭**이다 — 「그 칸에 선 1×1 유닛이 맞나」와 같은 질문.
+            float cellR = Wassup.Skills.SkillMath.CellShapePaddingTiles;
+            // 스캔 상자는 **도달보다 넓게** 잡는다(원점·대상 반폭이 붙어 정수 N 을 넘는다).
             // 좁으면 실제로 맞는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다.
-            int scan = Mathf.CeilToInt(tileRange + originBodyRadiusTiles) + 1;
+            // ⚠ 상한을 둔다 — 저작 실수(거대 `tileRange`)가 프레임을 통째로 먹지 않게(리뷰 L-1).
+            int scan = Mathf.Clamp(Mathf.CeilToInt(tileRange + cellR) + 1, 0, 64);
             for (int dx = -scan; dx <= scan; dx++)
             for (int dz = -scan; dz <= scan; dz++)
             {
-                if (!Wassup.Skills.SkillMath.ReachFromUnitToCell(dx, dz, tileRange, originBodyRadiusTiles))
+                if (!Wassup.Skills.SkillMath.ReachFromCell(dx, dz, tileRange, cellR))
                     continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
