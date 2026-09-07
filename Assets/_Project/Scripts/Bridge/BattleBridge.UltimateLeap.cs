@@ -54,13 +54,25 @@ namespace Wassup.Bridge
             // 화면 밖에 멈춘 채 남지 않는다.
             _ultimateLeapAirborne.Clear();
             _enemyViewOverride.Clear();
-            ClearSkillTelegraph(); // 예고가 매치 너머로 살아남지 않게 — clear 와 co-locate
+            // ⚠ **`?.` 를 쓰지 말 것**(리뷰 M-2). C# 의 null 조건 연산자는 Unity 의 fake-null 을
+            // 모른다. 이 경로는 `OnDestroy` → `TeardownCurrentBattle` → 여기로 오고, 그 시점엔
+            // 뷰가 이미 파괴돼 있어 `?.` 가 **MissingReferenceException 을 던지고 메서드를 중단**시킨다
+            // — 그러면 아래·위 정리가 통째로 안 돈다(같은 클래스 `BattleBridge.cs` 의 `retireFlight`
+            // 주석에 실측 사고가 적혀 있다, 2026-08-15).
+            if (tilemapMapView != null) tilemapMapView.ClearTelegraphRing(); // 예고가 매치 너머로 살아남지 않게
         }
 
         // 착지 예고 — **점 + 거리**. 착지 좌표를 중심으로 한 **원 하나**를 그린다.
-        // **운석과 같은 함수를 부른다**(`PinSkillTelegraph` → `PinCenteredRange`) — 「운석과 같은
-        // 메커니즘」(2026-09-07 사용자 결정)이 숫자만이 아니라 **경로 수준에서** 참이게 하는 것이
-        // 요점이다. 반경은 그 함수의 성질(`N + 칸 반폭`)이라 여기서 조립하지 않는다.
+        // 반경은 운석과 **같은 단일 지점**(`CenteredRingRadius` = `N + 칸 반폭`)에서 온다 —
+        // 여기서 조립하지 않는다(2026-09-07 사용자 결정 「운석과 같은 메커니즘」).
+        //
+        // ⚠⚠ **채널은 «전용» 이다 — 운석의 `PinSkillTelegraph` 를 쓰지 말 것.** 한 번 그렇게
+        // 했다가 리뷰가 잡았다(2026-09-07): 그건 `_rangeOwner` 공유 채널이라, 예고 2초 동안
+        // 플레이어가 유닛을 드래그하면 배치 프리뷰가 예고를 **지우고**(그 뒤 `ClearSkillTelegraph`
+        // 는 owner 불일치로 no-op, 재페인트 경로도 없어 **남은 시간 전부 무경고**), 반대로 예고가
+        // 배치 사거리 표기를 통째로 지우기도 했다. 운석 예고와도 owner 를 겸해 서로를 지웠다.
+        // 「예고 중 배치는 막을 수 없다 — 유닛을 빼고 다시 놓는 것이 이 스킬의 놀이다」
+        // (`TilemapMapView` 의 예고 채널 헤더가 원래 그렇게 적어 뒀는데 내가 안 읽었다).
         //
         // ⚠ **칸을 열거하지 않는다.** 종전엔 점에서 계산한 타일 집합을 칠했는데, 그건 「점 + 거리」를
         // 이산 격자로 **양자화**하는 것이라 원의 가장자리에 걸치는 띠가 「칠해짐/안 칠해짐」 이진값으로
@@ -76,7 +88,8 @@ namespace Wassup.Bridge
         {
             if (tilemapMapView == null || !_em.HasComponent<UltimateLeapState>(entity)) return;
             var leap = _em.GetComponentData<UltimateLeapState>(entity);
-            PinSkillTelegraph(new Vector2Int(leap.landingCell.x, leap.landingCell.y), leap.slamTileRange);
+            tilemapMapView.SetTelegraphRing(new Vector2(leap.landingCell.x, leap.landingCell.y),
+                CenteredRingRadius(leap.slamTileRange));
         }
 
         // ── 드레인 ──
@@ -104,7 +117,7 @@ namespace Wassup.Bridge
                     if (!_ultimateLeapAirborne.Remove(evt.entity)) continue;
                     // 예고는 **여기서** 끈다 — sim 이 착지를 확정한 순간이고, 강하 연출이 끝날
                     // 때까지 링을 남기면 "아직 피할 수 있다" 는 거짓 신호가 된다.
-                    ClearSkillTelegraph();
+                    if (tilemapMapView != null) tilemapMapView.ClearTelegraphRing();
                     StartCoroutine(RunUltimateLeapDescend(evt.entity, evt.world, evt.dataIndex));
                 }
             }

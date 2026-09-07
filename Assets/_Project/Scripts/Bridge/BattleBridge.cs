@@ -7833,6 +7833,20 @@ namespace Wassup.Bridge
         private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, AttachPreview }   // PlacementAim 은 unit 11 에서 은퇴
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
 
+        // ⚠⚠ **중재 규칙이 owner 마다 다르다 — 6번째를 붙이기 전에 이 표를 읽어라**(리뷰 2026-09-07).
+        //
+        //   owner          | 획득 방식      | 재페인트(잃었다가 되찾으면)
+        //   ---------------|----------------|---------------------------------------------
+        //   Placement      | **무조건 탈취** | 셀이 «바뀔 때만» (`if (changed)`)
+        //   SkillAim       | **무조건 탈취** | 셀이 «바뀔 때만» (`_lastRangeCell` 가드)
+        //   SkillTelegraph | **무조건 탈취** | **없음** (투사체 스폰 시 1회 pin)
+        //   AttachPreview  | **양보**(`:8108` None/자기 자신일 때만) | LateUpdate 추종(`_attachPreviewLive`)
+        //
+        // 이 비대칭이 실제로 사고를 냈다: 착지 예고를 SkillTelegraph 로 올렸더니 배치 드래그가
+        // 예고를 탈취했고, 예고에는 재페인트 슬롯이 없어 **보스가 무경고로 착지**했다(2026-09-07).
+        // → **재페인트 슬롯이 없는 «시한부» 표기는 이 채널에 올리지 말 것.** 전용 채널을 파라
+        //   (`TilemapMapView.SetTelegraphRing` 이 그 선례다). 여기 소비자를 늘릴 거면 위 표의
+        //   빈칸부터 채워라 — 「무조건 탈취 + 재페인트 없음」 조합이 이 채널의 함정이다.
         // placement-thumb-occlusion — 소유권 전환의 유일한 지점. **모든** `_rangeOwner` 대입이 여기를 탄다.
         //
         // 왜 필드 대입을 감싸는가: 배치 유효성 적색(`SetPlacementRangeValidity`)은 **Placement 만 소유**하는
@@ -8065,11 +8079,16 @@ namespace Wassup.Bridge
         // ⚠ **칸 조준 전용이다**(unit 23a). 자기중심 광역의 표기는 `RedrawAttachPreview` 가 host 몸을 합성한다.
         // 중심 = 조준 셀 중심(concrete 가 `ctx.CellCenter` 를 넘기는 것과 같은 점), 반경 = N + 0.5
         // (도형 가장자리 — 대상 몸은 그림자가 말한다). 사용자 결정 2026-09-02 D6.
+        // 자리형 도형의 표기 반경 — **단일 지점**. 운석·착탄 예고(이 함수)와 착지 예고
+        // (`ShowLandingTelegraph`, 전용 링 채널)가 **같은 값**을 써야 「운석과 같은 메커니즘」이
+        // 참이다. ⚠ 여기에 대상 몸을 더하지 말 것 — 그건 그 유닛의 **그림자**가 말한다(D6).
+        internal static float CenteredRingRadius(int tileRange)
+            => tileRange + Wassup.Skills.SkillMath.CellShapePaddingTiles;
+
         private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)
         {
             if (tilemapMapView == null) return;
-            tilemapMapView.SetAreaRange(new Vector2(center.x, center.y),
-                tileRange + Wassup.Skills.SkillMath.CellShapePaddingTiles);
+            tilemapMapView.SetAreaRange(new Vector2(center.x, center.y), CenteredRingRadius(tileRange));
             SetRangeOwner(owner);
         }
 

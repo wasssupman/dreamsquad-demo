@@ -138,6 +138,21 @@ namespace Wassup.Tests.EditMode
             return string.Empty;
         }
 
+        // 줄 주석(`//`)을 제거한 «코드만» 남긴다. 금지어 스캔은 반드시 이걸 지나야 한다 —
+        // 헤더가 그 금지어를 **이력으로 언급**하는 것이 이 레포의 관용구라, 원문을 그대로 스캔하면
+        // 그물이 자기 주석에 걸려 오탐이 나고, 그걸 피하려고 예외를 얹으면 **vacuous** 가 된다.
+        // ⚠ 블록 주석(`/* */`)·문자열 리터럴은 안 다룬다 — 이 그물이 보는 파일들엔 없다.
+        private static string StripComments(string src)
+        {
+            var sb = new System.Text.StringBuilder(src.Length);
+            foreach (var line in src.Split('\n'))
+            {
+                int at = line.IndexOf("//", System.StringComparison.Ordinal);
+                sb.Append(at >= 0 ? line.Substring(0, at) : line).Append('\n');
+            }
+            return sb.ToString();
+        }
+
         private static int CountOf(string haystack, string needle)
         {
             int n = 0, at = 0;
@@ -249,19 +264,30 @@ namespace Wassup.Tests.EditMode
         //
         // ⚠ **점 + 거리이지 칸 열거가 아니다**(2026-09-07 사용자 결정). 「점에서 계산한 칸 집합」은
         // 「점 + 거리」를 이산 격자로 **양자화**하는 것이고, 그 양자화가 몸 있는 유닛을 예고 밖에서
-        // 맞게 만들었다(실측 32곳). 그래서 예고는 **운석과 같은 함수**(`PinSkillTelegraph`)를 부른다 —
-        // 「운석과 같은 메커니즘」이 숫자만이 아니라 **경로 수준에서** 참이어야 한다.
+        // 맞게 만들었다(실측 32곳).
         [Test]
         public void LandingTelegraph_IsAPointAndRadius_NotACellEnumeration()
         {
             var view = Read("Bridge", "BattleBridge.UltimateLeap.cs");
             Assert.IsTrue(Regex.IsMatch(view,
-                    @"PinSkillTelegraph\(\s*new Vector2Int\(\s*leap\.landingCell"),
-                "예고가 운석과 같은 함수(`PinSkillTelegraph`)를 안 부른다 — 「운석과 같은 메커니즘」이 "
-                + "경로 수준에서 깨졌다");
+                    @"SetTelegraphRing\(\s*new Vector2\(\s*leap\.landingCell"),
+                "예고가 착지 좌표 중심의 링을 안 그린다 — 「점 + 거리」가 깨졌다");
+            Assert.IsTrue(view.Contains("CenteredRingRadius(leap.slamTileRange)"),
+                "예고 반경이 운석과 **같은 단일 지점**에서 오지 않는다 — 두 벌이 되면 한쪽만 조용히 갈린다");
+            // ⚠ **«있으면 통과» 로는 부족하다** — 몸을 실은 두 번째 그리기 분기를 옆에 추가해도
+            // 위 단언은 초록이다. 링은 하나뿐이어야 한다(그려지는 원이 둘이면 어느 쪽이 규칙인가?).
+            Assert.AreEqual(1, CountOf(StripComments(view), "SetTelegraphRing("),
+                "예고를 그리는 자리가 하나가 아니다 — 분기가 늘면 어느 원이 규칙인지 말할 수 없다");
+
+            // ⚠ **주석은 빼고 «코드» 만 본다.** 이 헤더가 금지어를 이력으로 언급하기 때문이다.
+            // 초판은 `Contains(banned) && !view.Contains("되돌리지 말 것")` 이었는데, 그 문구가
+            // 같은 파일 주석에 있어 조건이 **항상 거짓** = 칸 열거가 되살아나도 통과하는
+            // **vacuous 가드**였다(이 레포에서 세 번째다).
+            var code = StripComments(view);
             foreach (var banned in new[] { "SetTelegraphCells", "BuildZoneCells", "_zoneCellScratch" })
-                Assert.IsFalse(view.Contains(banned) && !view.Contains("되돌리지 말 것"),
-                    $"예고가 칸 열거(`{banned}`)로 되돌아갔다 — 양자화 오차가 그대로 돌아온다");
+                Assert.IsFalse(code.Contains(banned),
+                    $"예고가 칸 열거(`{banned}`)로 되돌아갔다 — 「점 + 거리」가 이산 격자로 "
+                    + "양자화되면서 몸 있는 유닛이 예고 밖에서 맞는 오차가 그대로 돌아온다");
 
             // 칸 열거 자체가 브리지에서 사라졌는지 — 소비처 0 인 열거가 남아 있으면 다음 사람이 되쓴다.
             var bridge = Read("Bridge", "BattleBridge.cs");
@@ -269,16 +295,41 @@ namespace Wassup.Tests.EditMode
                 "`BuildZoneCells` 가 되살아났다 — 소비처 0 이면 지운다(제약 8)");
         }
 
-        // 반경은 **운석과 공유하는 함수의 성질**이다 — 호출부가 조립하지 않는다.
-        // `N + 칸 반폭` 이 D6 계약(사용자 결정 2026-09-02)이고, 「대상 몸은 그림자가 말한다」가
-        // 성립하는 것은 이 값이 판정의 **원점 항과 같기** 때문이다.
+        // ★★ **예고는 «전용» 채널이어야 한다 — 이 그물이 가장 비싼 회귀를 막는다.**
+        //
+        // 한 번 `PinSkillTelegraph`(공유 `_rangeOwner` 채널)로 그렸다가 리뷰가 잡았다(2026-09-07).
+        // 그 채널은 `SetPlacementRange`/`SetAreaRange` 가 매번 `ClearPlacementRange()` 로 시작하는
+        // **단일 owner set/clear** 라, 예고 2초 동안:
+        //   · 플레이어가 유닛을 드래그하면 배치 프리뷰가 **예고를 지우고**, 그 뒤
+        //     `ClearSkillTelegraph` 는 owner 불일치로 no-op — **재페인트 경로가 없어** 남은 시간
+        //     전부 무경고로 착탄한다(탭 배치 peek 는 **매 프레임** 훔쳐서 예고가 1프레임만 뜬다).
+        //   · 반대로 예고가 배치 사거리 타일·링·타겟 마크를 통째로 지운다.
+        //   · 운석 착탄 예고와 owner 를 겸해 **서로를 지운다**(`_skillTelegraphProjectile` 도 stale).
+        // 「예고 중 배치는 막을 수 없다 — 유닛을 빼고 다시 놓는 것이 이 스킬의 놀이다.」
         [Test]
-        public void CenteredRangeRing_RadiusIsRangePlusCellHalfWidth()
+        public void LandingTelegraph_UsesItsOwnChannel_NotTheSharedRangeOwner()
+        {
+            var code = StripComments(Read("Bridge", "BattleBridge.UltimateLeap.cs"));
+            foreach (var shared in new[]
+                     { "PinSkillTelegraph", "ClearSkillTelegraph", "SetAreaRange", "SetRangeOwner" })
+                Assert.IsFalse(code.Contains(shared),
+                    $"예고가 공유 범위 채널(`{shared}`)을 쓴다 — 배치 프리뷰·운석 예고와 서로를 지운다. "
+                    + "예고는 `SetTelegraphRing`/`ClearTelegraphRing` 전용 채널만 쓴다");
+
+            // 전용 채널이 실제로 존재하는지 — 없으면 위 금지 스캔이 vacuous 해진다(존재 단언 짝).
+            var mapView = Read("Core", "TilemapMapView.cs");
+            Assert.IsTrue(mapView.Contains("public void SetTelegraphRing("),
+                "전용 예고 링 채널이 없다 — 이름이 바뀌었다면 위 금지 스캔이 무의미해진 것이다");
+            Assert.IsTrue(mapView.Contains("public void ClearTelegraphRing("), "전용 clear 가 없다");
+        }
+
+        // 반경은 **운석과 공유하는 단일 지점**에서 온다. `N + 칸 반폭` 이 D6 계약(2026-09-02)이고,
+        // 「대상 몸은 그림자가 말한다」가 성립하는 것은 이 값이 판정의 **원점 항과 같기** 때문이다.
+        [Test]
+        public void CenteredRingRadius_IsTheSingleSource_AndCarriesNoBody()
         {
             var bridge = Read("Bridge", "BattleBridge.cs");
-            var body = MethodBody(bridge, bridge.IndexOf("private void PinCenteredRange("));
-            Assert.AreEqual(1, CountOf(body, "SetAreaRange("),
-                "링 표기의 호출이 하나가 아니다 — 분기가 늘면 어느 쪽이 화면을 그리는지 말할 수 없다");
+            var body = MethodBody(bridge, bridge.IndexOf("internal static float CenteredRingRadius("));
             Assert.IsTrue(Regex.IsMatch(body,
                     @"tileRange\s*\+\s*Wassup\.Skills\.SkillMath\.CellShapePaddingTiles"),
                 "링 반경이 `N + 칸 반폭` 이 아니다 — 이 값이 판정의 원점 항과 갈리면 "
@@ -286,6 +337,11 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(Regex.IsMatch(body, @"(?:BodyRadius|bodyR)"),
                 "링 반경에 «몸» 이 들어왔다 — 대상 몸은 그림자가 말한다(D6). 표기가 몸을 알면 "
                 + "「누구 기준이냐」가 생긴다");
+
+            // 운석 경로도 같은 지점을 쓰는가 — 두 벌이 되면 한쪽만 조용히 갈린다.
+            var pin = MethodBody(bridge, bridge.IndexOf("private void PinCenteredRange("));
+            Assert.IsTrue(pin.Contains("CenteredRingRadius(tileRange)"),
+                "운석·착탄 예고가 공유 반경 지점을 안 쓴다 — 착지 예고와 갈린다");
         }
 
         // ⚠ **착지 슬램의 «형» 을 세 파일에서 함께 고정한다**(2026-09-07 사용자 결정).

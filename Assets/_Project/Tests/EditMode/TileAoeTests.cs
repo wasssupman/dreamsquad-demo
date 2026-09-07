@@ -260,21 +260,12 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // ⚠ **칸 채움이 놓치던 자리가 링에서는 읽힌다** — 매체 교체가 실제로 고친 것.
-        // 아래 둘은 타일 시절 「맞는데 점유 칸이 하나도 안 칠해지던」 앵커다(실측 32곳 중 표본).
-        [Test]
-        public void FormerlySilentMisses_AreReadableOnTheRing()
-        {
-            // ① 배스티온(3×2, 몸 1.5) 앵커 (−1,3) → 발밑 (0,3), 거리 3.0.
-            //    타일 시절: 점유 6칸 최근접 3.162 > 2.5 라 **한 칸도 안 칠해졌다**.
-            //    링: 그림자 1.5 가 링 2.5 에 닿는다(3.0 ≤ 4.0) → 읽힌다. 피해도 참.
-            Assert.IsTrue(3.0f <= LandingRing + 1.5f, "배스티온 그림자가 링에 닿아야 한다");
-            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(0f, 3f, 2, 0f, 1.5f));
+        // ⚠ **「옛 무경고 표본이 링에서는 읽힌다」 테스트는 지웠다**(리뷰 M-1).
+        //   단언 넷 중 둘이 `3.0f <= LandingRing + 1.5f` 같은 **컴파일 타임 상수 산술**이라
+        //   프로덕션 심볼을 하나도 안 지났고, 나머지 둘은 위 `ShadowTouchingTheRing` 의
+        //   커버리지 부분집합이었다(bodyR 1.5·1.0 에서 이미 전 거리 스윕). 정보 증분 ≈ 0.
+        //   대조군(타일 매체)이 삭제돼 「32곳이 0 이 됐다」를 코드로 표현할 방법이 없다 —
+        //   그 서사는 `24_landing_telegraph_round.md` 가 진다.
 
-            // ② 2×2(몸 1.0) 앵커 (2,2) → 발밑 (2.5,2), 거리 3.2016.
-            float d = math.sqrt(2.5f * 2.5f + 2f * 2f);   // Unity.Mathematics — 이 파일엔 UnityEngine using 이 없다
-            Assert.IsTrue(d <= LandingRing + 1.0f, "2×2 그림자가 링에 닿아야 한다");
-            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(2.5f, 2f, 2, 0f, 1.0f));
-        }
     }
 }

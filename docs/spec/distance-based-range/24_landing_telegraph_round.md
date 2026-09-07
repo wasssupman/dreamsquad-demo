@@ -145,4 +145,38 @@ N거리 적용한다고 몸체 크기 상관없이. 운석과 같은 메커니�
       「그림자가 링에 닿는다 ⟺ 피해 판정」을 고정(`ShadowTouchingTheRing_IsExactlyTheDamagePredicate`).
 - [x] **옛 무경고 표본이 링에서는 읽힌다** — 배스티온 `(-1,3)` · 2×2 `(2,2)`.
 - [x] **칸 열거가 되살아나지 않는다** — 소스 가드가 `SetTelegraphCells`·`BuildZoneCells` 부활을 잡는다.
+      ⚠ 초판 가드는 **vacuous** 였다(면제 절 `&& !view.Contains("되돌리지 말 것")` 이 같은 파일
+      주석에 걸려 **항상 통과**). 주석을 제거한 «코드만» 스캔하도록 고쳤다 — 이 레포에서 세 번째다.
+- [x] **예고는 «전용» 채널이다** — 한 번 운석의 공유 `_rangeOwner` 채널(`PinSkillTelegraph`)로
+      그렸다가 리뷰가 CRITICAL 로 잡았다. 그 채널은 단일 owner set/clear 라 예고 2초 동안
+      **배치 프리뷰와 예고가 서로를 지우고**(배치가 이기면 재페인트 경로가 없어 남은 시간 전부
+      무경고 — 탭 배치 peek 는 매 프레임 훔쳐서 1프레임만 산다), **운석 예고와도 서로를 지웠다**.
+      → `TilemapMapView.SetTelegraphRing`/`ClearTelegraphRing` 전용 링 인스턴스로 분리.
+      가드가 예고에서 `PinSkillTelegraph`·`ClearSkillTelegraph`·`SetAreaRange`·`SetRangeOwner` 를 금지한다.
+      ⚠ **철거 대상 코드의 헤더가 이 금지를 이미 적어 뒀는데 안 읽었다** — 「소비처 0 이 된 코드가
+      왜 그렇게 생겼는지」를 읽지 않고 지운 것이 이 라운드의 실제 결함이다.
+- [x] **색이 갈린다** — 예고는 `landingTelegraphColor`(타일 시절과 같은 저작 필드), 사거리·조준 링은
+      라임. 공유 채널을 쓰던 동안은 **보스 슬램 경고가 플레이어 자기 조준 링과 동색**이었다.
+- [x] **링 기하는 한 곳이 소유한다** — `PlaceRing`. 실측으로 얻은 값(`CellToLocalInterpolated` +
+      접지 리프트)이라 두 벌이 되면 한쪽만 조용히 어긋난다.
 - [ ] Play 육안: 보스 강습 예고가 **착지점 중심의 원 하나**로 뜨는지.
+
+## 남은 죽은 코드 — 사유를 정정한다
+
+`TilemapMapView` 의 **타일** 예고 채널(`SetTelegraphCells`/`ClearTelegraphCells`/`_telegraphCells`/
+`_telegraphTilemap`/`EnsureTelegraphTilemap`/`ApplyTelegraphTint`)은 producer 0 이다.
+
+⚠ 커밋 메시지에 *「씬의 serialized Tilemap 참조를 건드려야 해서」* 라고 적었는데 **거짓**이다 —
+`_telegraphTilemap` 은 `private Tilemap` 이고 `EnsureTelegraphTilemap` 이 `new GameObject` 로
+**런타임 생성**한다. 실제 접점은 셋뿐이다:
+
+| 접점 | 상태 |
+|---|---|
+| `landingTelegraphColor` (SerializeField, 씬 값) | **계속 쓴다** — 링 색이 이 필드다 |
+| `TileSetData.telegraphTile` | **다른 소비처가 있다**(`:1367`) — 이 채널만의 것이 아니다 |
+| `SetRendererSorting(_telegraphTilemap, …)` (`:342`) | 채널과 함께 지운다 |
+
+즉 은퇴 비용은 **뷰 파일 안에서 닫힌다**. 다음 작업으로 뺀 것은 비용이 아니라 **범위** 때문이고,
+그때까지 뷰에 남은 API 를 다음 사람이 되쓰는 것은 **아무 그물도 막지 않는다**(소스 가드는
+`BattleBridge*.cs` 만 본다).
+

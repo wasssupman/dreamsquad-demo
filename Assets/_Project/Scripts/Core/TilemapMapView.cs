@@ -205,6 +205,10 @@ namespace Wassup.Core
             if (_rangeRing != null) { SafeDestroy(_rangeRing.gameObject); _rangeRing = null; }   // unit 5 — 링도 동일
             if (_rangeRingMat != null) { SafeDestroy(_rangeRingMat); _rangeRingMat = null; }
             _rangeRingMatMissing = false;
+            // 착지 예고 링도 같은 수명 — 매치 너머로 살아남으면 다음 판에 붉은 원이 떠 있다.
+            if (_telegraphRing != null) { SafeDestroy(_telegraphRing.gameObject); _telegraphRing = null; }
+            if (_telegraphRingMat != null) { SafeDestroy(_telegraphRingMat); _telegraphRingMat = null; }
+            _telegraphRingMatMissing = false;
             for (int i = 0; i < _targetMarks.Count; i++)                  // unit 7 — 마크 풀도 동일
             {
                 if (_targetMarks[i] == null) continue;
@@ -609,6 +613,99 @@ namespace Wassup.Core
             return _rangeRing;
         }
 
+        // 링 하나를 «놓는다» — 위치·크기·셰이더 파라미터. **기하는 여기 하나가 소유한다.**
+        // ⚠ **`GetCellCenterLocal` 을 쓰면 안 된다** — 그건 z 에 0.5(셀 중심)를 넣는다.
+        // 부모가 90°X 회전이라 local −Z = world +Y 이므로 그 0.5 가 **보드에서 0.5 유닛 뜨는**
+        // 결과가 되고, 55° 카메라에서 링이 타일과 눈에 띄게 어긋난다(실측 후 수정).
+        // 확정 팝·액체 하이라이트와 **같은 관용구**를 쓴다: CellToLocalInterpolated + 접지 리프트.
+        // ⚠ 링이 둘이 됐다(사거리·착지 예고). 이 계산을 복사하지 말 것 — 실측으로 얻은 값이라
+        //    두 벌이 되면 한쪽만 조용히 어긋난다.
+        private void PlaceRing(SpriteRenderer sr, Material mat, Vector2 center, float rangeTiles)
+        {
+            float cs = grid.cellSize.x;   // rect 보드·균일 cellSize 전제(ConfigureGrid)
+            var local = grid.CellToLocalInterpolated(new Vector3(center.x + 0.5f, center.y + 0.5f, 0f));
+            local.z = -PropGroundLift;   // Ground(ZWrite On) 코플레이너 z-fight 방지
+            sr.transform.localPosition = local;
+            sr.transform.localScale = new Vector3(RingQuadCells * cs, RingQuadCells * cs, 1f);
+            mat.SetVector(RingHalfExtentId, Vector4.zero);   // rev 3 — 몸 = 원
+            mat.SetFloat(RingRangeId, rangeTiles);
+        }
+
+        // ── ultimate-leap unit 4 rev(2026-09-07) — 착지 예고 «링» ────────────────
+        //
+        // 매체가 타일 채움 → 원 링으로 바뀌었다(사용자 지시 *「타일말고 점기준으로」*).
+        // ⚠⚠ **그래도 «전용 채널» 이다.** 위 타일 채널 헤더가 적어 둔 금지는 「타일이냐 링이냐」가
+        //   아니라 **「range 채널을 공유하느냐」** 다: 그쪽은 `SetPlacementRange`/`SetAreaRange` 가
+        //   매번 `ClearPlacementRange()` 로 시작하는 **단일 owner set/clear** 라, 예고 2초 동안
+        //   플레이어가 유닛을 드래그하면 배치 프리뷰와 예고가 **서로를 지운다.**
+        //   실제로 한 번 공유했다가 리뷰가 잡았다(2026-09-07) — 배치가 예고를 지우면
+        //   `ClearSkillTelegraph` 는 owner 불일치로 no-op 이고 예고는 **재페인트 경로가 없어**
+        //   남은 시간 전부 무경고가 된다. 운석 예고와도 owner 를 겸해 서로를 지웠다.
+        //   **다시 공유하지 말 것.** 예고 중 배치는 막을 수 없다 — 유닛을 빼고 다시 놓는 것이
+        //   이 스킬의 놀이다.
+        //
+        // 색은 `landingTelegraphColor`(타일 시절과 같은 저작 필드)를 그대로 쓴다 — 사거리 링(라임)과
+        // **색으로** 갈린다. 정렬은 같은 바닥 대역(`RangeRingOrder`)이고, 둘을 order 로 가르지 않는
+        // 이유는 이 레포가 링/채움을 **색상 자체로** 가르기로 한 결정과 같다(`ShowRangeRing` 헤더).
+        private SpriteRenderer _telegraphRing;
+        private Material _telegraphRingMat;
+        private bool _telegraphRingMatMissing;
+
+        private SpriteRenderer EnsureTelegraphRing()
+        {
+            if (_telegraphRing != null) return _telegraphRing;
+            if (_telegraphRingMatMissing) return null;
+            var srcMat = _tileSet != null ? _tileSet.placementRangeRingMaterial : null;
+            if (srcMat == null)
+            {
+                // 예고가 아예 안 뜨면 회피가 불가능하다 = 불공정. **한 번은 시끄럽게** 알린다
+                // (타일 시절 `_telegraphFallbackWarned` 와 같은 규약).
+                Debug.LogWarning("TilemapMapView: placementRangeRingMaterial 미할당 — 착지 예고 링 생략. " +
+                                 "PlacementRangeRing.mat 을 tileSet 에 배선할 것.", this);
+                _telegraphRingMatMissing = true;
+                return null;
+            }
+            _telegraphRingMat = new Material(srcMat);
+            _telegraphRingMat.SetFloat(RingQuadCellsId, RingQuadCells);
+            var go = new GameObject("LandingTelegraphRing");
+            go.transform.SetParent(grid.transform, false);
+            go.transform.localRotation = Quaternion.identity;
+            _telegraphRing = go.AddComponent<SpriteRenderer>();
+            _telegraphRing.sprite = PopSprite();
+            _telegraphRing.sharedMaterial = _telegraphRingMat;
+            _telegraphRing.sortingOrder = BoardSortOrder.RangeRingOrder;
+            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+            if (overlayR != null) _telegraphRing.sortingLayerID = overlayR.sortingLayerID;
+            go.SetActive(false);
+            return _telegraphRing;
+        }
+
+        // 착지 예고 링. `radiusTiles` 는 **판정 입력의 복사본**이다(`N + 칸 반폭`) — 호출부가
+        // 조립하지 않고 브리지의 단일 지점에서 온다. 대상 몸은 안 더한다: 「그림자가 링에 닿으면
+        // 걸린다」가 판정식과 동치라 링 하나가 모든 몸 크기를 가르친다(사용자 결정 2026-09-02 D6).
+        public void SetTelegraphRing(Vector2 centerTiles, float radiusTiles)
+        {
+            if (grid == null || _tileSet == null || radiusTiles <= 0f) return;
+            var sr = EnsureTelegraphRing();
+            if (sr == null) return;
+            PlaceRing(sr, _telegraphRingMat, centerTiles, radiusTiles);
+            // 색 규약은 사거리 링과 **같은 두 프로퍼티**다(`ApplyRingTint` 참조): `_Color` 가 선,
+            // `_FillAlpha` 가 내부 채움. 저작 필드 `landingTelegraphColor` 의 알파는 «채움» 세기라
+            // 선은 불투명하게 올린다 — 타일 시절과 같은 읽힘(면적은 옅고 윤곽은 또렷하게).
+            var c = landingTelegraphColor;
+            float fillA = c.a;
+            c.a = 1f;
+            _telegraphRingMat.SetColor(RingColorId, c);
+            _telegraphRingMat.SetFloat(RingFillAlphaId, fillA);
+            if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
+        }
+
+        public void ClearTelegraphRing()
+        {
+            if (_telegraphRing != null && _telegraphRing.gameObject.activeSelf)
+                _telegraphRing.gameObject.SetActive(false);
+        }
+
         // 사거리 링을 띄운다. **인자가 판정 입력의 복사본이다** — 호출부가
         // `AttackReach` 에 넣는 값을 그대로 넣어야 「판정의 경계 그 자체」가 참으로 유지된다.
         // rangeTiles = 사거리 + 내몸 + 표준 상대(호출부가 합산해서 준다).
@@ -619,17 +716,7 @@ namespace Wassup.Core
         {
             var sr = EnsureRangeRing();
             if (sr == null) return;   // 머티리얼 미배선 — EnsureRangeRing 이 1회 경고
-            float cs = grid.cellSize.x;   // rect 보드·균일 cellSize 전제(ConfigureGrid)
-            // ⚠ **`GetCellCenterLocal` 을 쓰면 안 된다** — 그건 z 에 0.5(셀 중심)를 넣는다.
-            // 부모가 90°X 회전이라 local −Z = world +Y 이므로 그 0.5 가 **보드에서 0.5 유닛 뜨는**
-            // 결과가 되고, 55° 카메라에서 링이 타일과 눈에 띄게 어긋난다(실측 후 수정).
-            // 확정 팝·액체 하이라이트와 **같은 관용구**를 쓴다: CellToLocalInterpolated + 접지 리프트.
-            var local = grid.CellToLocalInterpolated(new Vector3(center.x + 0.5f, center.y + 0.5f, 0f));
-            local.z = -PropGroundLift;   // Ground(ZWrite On) 코플레이너 z-fight 방지
-            sr.transform.localPosition = local;
-            sr.transform.localScale = new Vector3(RingQuadCells * cs, RingQuadCells * cs, 1f);
-            _rangeRingMat.SetVector(RingHalfExtentId, Vector4.zero);   // rev 3 — 몸 = 원
-            _rangeRingMat.SetFloat(RingRangeId, rangeTiles);
+            PlaceRing(sr, _rangeRingMat, center, rangeTiles);
             // 선과 채움은 **같은 라임**이어야 한다(사용자 조건 2) — 시안(고스트)·노랑(점유)·
             // 무채색(지형)과 색상 자체로 갈려야 채움 두 겹 문제가 재발하지 않는다.
             // 그래서 링 색을 저작에서 끌어온다. 셰이더 기본값에 맡기면 둘이 조용히 갈린다.

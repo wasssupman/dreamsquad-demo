@@ -129,6 +129,21 @@ code + git history        구현 상세
   **정의상 0** 이다. 반경을 몸에 맞추려는 시도가 두 번 있었고(보스 몸 · 표준 유닛 몸) 둘 다
   「누구 기준이냐」를 만들었다 — **세 번째를 하지 말 것.**
 
+- **[중] `_rangeOwner` 채널에 «시한부 표기» 를 올릴 수 없다** (2026-09-07 리뷰) — 소비자 5인데
+  중재 규칙이 제각각이다(Placement·SkillAim·SkillTelegraph = **무조건 탈취**, AttachPreview = 양보).
+  탈취당한 뒤 **재페인트 슬롯이 있는 것은 AttachPreview 뿐**이라, 수명이 정해진 표기(보스 착지
+  예고 2초)를 올리면 배치 드래그 한 번에 통째로 사라지고 복구가 안 된다. 착지 예고는 전용 링
+  채널로 뺐고(`TilemapMapView.SetTelegraphRing`), 중재표를 `SetRangeOwner` 헤더에 박았다.
+  **남은 것**: 운석 예고끼리의 clobber(`_skillTelegraphProjectile` 1슬롯 — 메테오 2발이 겹치면
+  앞엣것 예고가 사라진다) · 배치 유효성 틴트가 운석 예고 링에 새는 것(`SetPlacementRangeValidity`
+  가 owner 가드 없이 매 프레임).
+- **[하] 착지 예고 미해제 경로 2곳** — `DrainUltimateLeapVisualEvents` 의 조기 `continue`
+  (`!_em.Exists` · `!_ultimateLeapAirborne.Remove`)가 clear 호출보다 앞이라, 타면 링이 판 끝까지
+  남는다. 전용 채널이라 남을 막지는 않고 매치 경계가 정리하지만, 「아직 피할 수 있다」는 거짓 신호다.
+- **[하] 뷰의 죽은 타일 예고 채널 은퇴** — `SetTelegraphCells`/`ClearTelegraphCells`/`_telegraphTilemap`/
+  `EnsureTelegraphTilemap`/`ApplyTelegraphTint` producer 0. 은퇴 비용은 **뷰 파일 안에서 닫힌다**
+  (`landingTelegraphColor` 는 링이 계속 쓰고, `TileSetData.telegraphTile` 은 다른 소비처가 있다).
+  소스 가드는 `BattleBridge*.cs` 만 보므로 **뷰에 남은 API 를 되쓰는 것은 아무도 못 막는다.**
 - **[중] 착지 슬램의 «형»이 데이터로 안 실린다** (2026-09-07, `distance-based-range` unit 24 리뷰) —
   sim(`UltimateLeapSystem`)·뷰(`BuildZoneCells`)·판정(`ReachFromImpact` 의 0→칸 반폭 승격) **셋이
   각자 독립적으로** 「자리형」을 선언하고, 같은 답을 내는 근거가 서로 다르다. 브리지 주석은
