@@ -237,9 +237,11 @@ namespace Wassup.Tests.EditMode
             // 이미 있어서 인자를 바꿔치기해도 통과한다 — 단언이 이름으로 지목한 회귀를 정확히
             // 저질러도 초록이 된다. **호출부 전체**를 고정한다.
             Assert.IsTrue(Regex.IsMatch(body,
-                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*cellR\s*\)"),
-                "예고의 대상 항이 칸 반폭이 아니다 — 후보가 «칸» 인데 다른 값을 넣으면 "
-                + "「그 칸에 선 1×1 이 맞나」와 답이 갈린다");
+                    @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*targetR\s*\)"),
+                "예고의 대상 항이 술어까지 도달하지 않는다");
+            Assert.IsTrue(body.Contains("SkillMath.StandardDefenderBodyRadiusTiles"),
+                "예고가 표준 방어유닛 몸을 대상 항으로 안 쓴다 — 칸 반폭으로 되돌리면 "
+                + "도달이 정수에 딱 떨어져 축에 뿔 4개 난 모양이 되고, 예고 밖인데 맞는 자리가 늘어난다");
             Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
                     body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
                 "`[-N,+N]²` 사각 열거가 부활했다");

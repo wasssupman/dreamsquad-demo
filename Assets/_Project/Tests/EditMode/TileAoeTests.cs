@@ -227,65 +227,78 @@ namespace Wassup.Tests.EditMode
         //   사용자 결정으로 뒤집혔고, 형을 되돌리는 회귀는 `ReachEntryPointGuardTests`
         //   (`LandingSlam_IsAPlaceForm_InTelegraphAndBothProducers`)가 세 파일에서 잡는다.
 
+        // 대상 항 = **표준 방어유닛 몸**(1.0). 「이 칸이 비었나」가 아니라 「이 칸에 유닛을
+        // 놓으면 맞나」를 그린다 → 도달 = N + 0.5 + 1.0.
         private static bool Painted(float dx, float dz, int range)
             => Wassup.Skills.SkillMath.ReachFromCell(
-                   dx, dz, range, Wassup.Skills.SkillMath.CellShapePaddingTiles);
+                   dx, dz, range, Wassup.Skills.SkillMath.StandardDefenderBodyRadiusTiles);
 
+        // ⚠ **모양이 계약이다**(2026-09-07 사용자 지적: *「완전한 원이어야지 왜 타원형을 그리지」*).
+        // 대상 항을 칸 반폭(0.5)으로 두면 도달이 **정확히 3.0** 이라 축 칸 (3,0) 만 «경계 동률»로
+        // 들어오고 이웃 (3,1)=3.16 은 빠진다 → 5×5 에 **뿔 4개**. 격자에서 반경이 정수에 딱
+        // 떨어지면 항상 그렇게 된다. 3.5 는 그 동률에서 벗어나 행 폭이 3·5·7·7·7·5·3 이 된다.
         [Test]
-        public void LandingTelegraph_IsAPlaceForm_ReachIsRangePlusOneTile()
+        public void LandingTelegraph_LooksRound_NoAxisSpikes()
         {
-            // 반경 2 → 도달 3.0.
-            Assert.IsTrue(Painted(3f, 0f, 2), "축 3칸은 안(3.0 ≤ 3.0)");
-            Assert.IsFalse(Painted(3f, 1f, 2), "3.162 > 3.0 — 밖");
+            // 뿔의 정의: 축 칸은 들어오는데 그 **대각 이웃이 빠지는** 상태.
+            Assert.IsTrue(Painted(3f, 0f, 2), "축 3칸은 안");
+            Assert.IsTrue(Painted(3f, 1f, 2),
+                "축 칸의 이웃(3.162)이 빠지면 축에 **뿔**이 서서 원으로 안 보인다 — "
+                + "도달이 정수에 딱 떨어졌는지 의심하라");
+            Assert.IsFalse(Painted(3f, 2f, 2), "3.606 > 3.5 — 밖(원이 무한정 커지지 않는다)");
+            Assert.IsFalse(Painted(4f, 0f, 2), "축 4칸 = 4.0 > 3.5 — 밖");
         }
 
         // ⚠ **「모서리를 없앴다」가 이 변경의 성과가 아니다**(리뷰 M-3 정정).
-        // 원 도달이 N+1 이라 사각 모서리 N√2 는 **N ≥ 3 부터** 빠진다. 라이브 저작은
-        // 짱쎈 강습 반경 2 뿐이라(`Enemy_Boss_Jjangssen.asset`) 모서리는 **지금도 칠해진다.**
-        // 실제로 일어난 일은 옛 사각 25칸 ⊂ 새 원 29칸 — **축 방향 4칸이 늘었다**(빠진 칸 0).
-        // 즉 고친 것은 「겁주기」가 아니라 **「맞는데 안 칠해지던 자리」** 쪽이다.
+        // 사각 모서리 N√2 는 도달 N+1.5 보다 **N ≥ 4 부터** 커진다. 라이브 저작은 짱쎈 강습
+        // 반경 2 뿐이라(`Enemy_Boss_Jjangssen.asset`) 모서리는 **지금도 칠해진다.**
+        // 이 unit 이 실제로 고친 것은 「맞는데 안 칠해지던 자리」 한 방향이다.
         [Test]
-        public void LandingTelegraph_KeepsSquareCornersAtLiveRange_DropsThemFromRange3()
+        public void LandingTelegraph_KeepsSquareCornersAtLiveRange_DropsThemFromRange4()
         {
             Assert.IsTrue(Painted(2f, 2f, 2),
-                "라이브(반경 2) 정대각 2.83 ≤ 3.0 — 모서리는 여전히 칠해진다. "
+                "라이브(반경 2) 정대각 2.83 ≤ 3.5 — 모서리는 여전히 칠해진다. "
                 + "여기가 거짓이 되면 「모서리 제거」 서술을 문서에 되살릴 수 있다");
-            Assert.IsFalse(Painted(3f, 3f, 3), "반경 3 정대각 4.24 > 4.0 — 여기서부터 빠진다");
+            Assert.IsTrue(Painted(3f, 3f, 3), "반경 3 정대각 4.24 ≤ 4.5 — 아직 칠해진다");
+            Assert.IsFalse(Painted(4f, 4f, 4), "반경 4 정대각 5.66 > 5.5 — 여기서부터 빠진다");
         }
 
-        // **예고 = 피해**(그 칸에 선 1×1 유닛 기준). 두 쪽이 같은 답을 내는 근거는 각각 다르다:
-        // 예고는 칸 반폭을 **원점의 성질**로 갖고, 피해는 실려 온 0 을 **「주인 없음」으로 읽어 승격**한다.
-        // ⚠ 그래서 이 단언은 항등식이 아니다 — 생산자가 0 이 아닌 값을 싣거나 승격이 사라지면 갈린다.
+        // **예고 = 피해** — 단, 「그 칸 **중심**에 표준 방어유닛(몸 1.0)이 서 있다면」이라는
+        // 표기 가정 위에서다. 두 쪽이 같은 답을 내는 근거는 서로 다르다: 예고는 칸 반폭을
+        // **원점의 성질**로 갖고, 피해는 실려 온 0 을 **「주인 없음」으로 읽어 승격**한다.
+        // ⚠ 그래서 항등식이 아니다 — 생산자가 0 이 아닌 값을 싣거나 승격이 사라지면 갈린다.
         [Test]
-        public void LandingTelegraph_MatchesTheDamage_ForA1x1StandingOnThatCell()
+        public void LandingTelegraph_MatchesTheDamage_ForAStandardDefenderCenteredOnThatCell()
         {
-            for (int dx = 0; dx <= 6; dx++)
-            for (int dz = 0; dz <= 6; dz++)
+            const float b = Wassup.Skills.SkillMath.StandardDefenderBodyRadiusTiles;
+            for (int dx = 0; dx <= 7; dx++)
+            for (int dz = 0; dz <= 7; dz++)
             {
                 bool painted = Painted(dx, dz, 2);
-                // 착지 슬램이 싣는 값 = 0(자리형). 대상 = 칸 위의 1×1(몸 0.5).
-                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, 0f, 0.5f);
+                // 착지 슬램이 싣는 값 = 0(자리형).
+                bool hit = Wassup.Skills.SkillMath.ReachFromImpact(dx, dz, 2, 0f, b);
                 Assert.AreEqual(hit, painted, $"({dx},{dz}) — 예고와 피해가 갈렸다");
             }
         }
 
-        // ⚠ **다칸 방어유닛은 칠해진 칸 «밖»에서도 맞는다 — 알고 남기는 한계다**(리뷰 H-2).
+        // ⚠ **남는 한계 — 배스티온 한 자리**(리뷰 H-2, 대상 항 1.0 으로 좁혀진 뒤).
         // 예고는 칸을 칠하는데 피해는 **유닛의 몸**을 재고, 짝수 폭 유닛의 sim 위치는 칸 중심이
         // 아니라 **경계**다(`FootOffset` = ((W−1)/2, 0)). 그래서 「반 칸 차이」가 아니라
-        // **점유 칸이 하나도 안 칠해졌는데 맞는** 자리가 생긴다 — 라이브 저작(반경 2) 기준
-        // 2×2 는 앵커 2곳 · 배스티온 3곳 · 캐논 2곳. 아래가 그중 하나다.
-        // 넓히려면 「그 칸에 누가 서 있나」를 봐야 하고, 그건 표기의 성질을 바꾸는 별도 결정이다.
+        // **점유 칸이 하나도 안 칠해졌는데 맞는** 자리가 남는다.
+        // 라이브 저작(반경 2) 전수: 2×2 **0** · 배스티온 **1** · 캐논 **0** · 버스터즈 **0**.
+        // (대상 항이 칸 반폭이던 시절엔 2 · 3 · 2 · 0 이었다.) 그 하나가 아래다.
+        // 없애려면 「그 칸에 누가 서 있나」를 봐야 하고, 그건 표기의 성질을 바꾸는 별도 결정이다.
         [Test]
-        public void LandingTelegraph_UnderpaintsMultiCellDefenders_ByConstruction()
+        public void LandingTelegraph_StillUnderpaintsTheBastion_AtOneAnchor()
         {
-            // 배스티온(3×2, 몸 1.5) 앵커 (1,3) → 발밑 = (1 + (3−1)/2, 3) = (2,3), 거리 3.606.
-            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(2f, 3f, 2, 0f, 1.5f),
-                "3.606 ≤ 4.0 — 맞는다");
-            // 그런데 점유 6칸 중 최근접 (1,3) 이 3.162 > 3.0 이라 **한 칸도 안 칠해진다.**
-            for (int i = 0; i < 3; i++)
-            for (int j = 0; j < 2; j++)
-                Assert.IsFalse(Painted(1 + i, 3 + j, 2),
-                    $"점유 칸 ({1 + i},{3 + j}) 이 칠해졌다면 이 한계가 좁아진 것 — "
+            // 배스티온(3×2, 몸 1.5) 앵커 (−1,4) → 발밑 = (−1 + (3−1)/2, 4) = (0,4), 거리 4.0.
+            Assert.IsTrue(Wassup.Skills.SkillMath.ReachFromImpact(0f, 4f, 2, 0f, 1.5f),
+                "4.0 ≤ 4.0 — 경계 동률로 맞는다");
+            // 점유 6칸의 최근접 (0,4) 가 4.0 > 3.5 라 **한 칸도 안 칠해진다.**
+            for (int i = -1; i <= 1; i++)
+            for (int j = 4; j <= 5; j++)
+                Assert.IsFalse(Painted(i, j, 2),
+                    $"점유 칸 ({i},{j}) 이 칠해졌다면 이 한계가 사라진 것 — "
                     + "문서(24_landing_telegraph_round.md)의 「남는 한계」를 다시 재라");
         }
     }

@@ -2792,16 +2792,19 @@ namespace Wassup.Bridge
         {
             results.Clear();
             int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
-            // 후보가 칸이라 **대상 항도 칸 반폭**이다 — 「그 칸에 선 1×1 유닛이 맞나」와 같은 질문.
-            float cellR = Wassup.Skills.SkillMath.CellShapePaddingTiles;
-            // 스캔 상자는 **도달보다 넓게** 잡는다(원점·대상 반폭이 붙어 정수 N 을 넘는다).
+            // 대상 항 = **표준 방어유닛 몸**(2×2 → 1.0). 질문은 「이 칸이 비었나」가 아니라
+            // **「이 칸에 유닛을 놓으면 맞나」**다. 칸 반폭(0.5)으로 그리면 도달이 정수에 딱
+            // 떨어져 축에 뿔 4개 난 모양이 나오고(원으로 안 보인다), 예고 밖인데 맞는 자리가
+            // 남는다 — 근거와 실측은 `SkillMath.StandardDefenderBodyRadiusTiles` 헤더.
+            float targetR = Wassup.Skills.SkillMath.StandardDefenderBodyRadiusTiles;
+            // 스캔 상자는 **도달보다 넓게** 잡는다(원점·대상 반경이 붙어 정수 N 을 넘는다).
             // 좁으면 실제로 맞는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다.
             // ⚠ 상한을 둔다 — 저작 실수(거대 `tileRange`)가 프레임을 통째로 먹지 않게(리뷰 L-1).
-            int scan = Mathf.Clamp(Mathf.CeilToInt(tileRange + cellR) + 1, 0, 64);
+            int scan = Mathf.Clamp(Mathf.CeilToInt(tileRange + targetR) + 1, 0, 64);
             for (int dx = -scan; dx <= scan; dx++)
             for (int dz = -scan; dz <= scan; dz++)
             {
-                if (!Wassup.Skills.SkillMath.ReachFromCell(dx, dz, tileRange, cellR))
+                if (!Wassup.Skills.SkillMath.ReachFromCell(dx, dz, tileRange, targetR))
                     continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
