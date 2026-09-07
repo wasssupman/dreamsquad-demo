@@ -80,6 +80,25 @@ namespace Wassup.EditorTools.Battle
             new Scenario { name = "force_wave", seed = 20260822, ticks = 1800,
                            placementTicks = new[] { 150, 330, 510, 690 },
                            pullWaveTicks = new[] { 300, 600, 900, 1200 } },
+            // battle-sim-extraction unit 7 — **몸이 큰 유닛의 자기 자리 폭발**을 코퍼스가 보게 한다.
+            //
+            // ⚠ 이게 없으면 코퍼스는 「원점 항」 축에 **구조적으로 눈이 먼다.** distance-based-range
+            // unit 23 이 A/B 를 두 번 돌리고도 8/8 동일로 끝난 이유가 그것이다:
+            //   · 기본 덱 배치 4기에 **배스티온이 없다**(몸 1.5 = 그 축의 Δ 최대 유닛)
+            //   · 자폭 저작인 **브루저가 덱에 없고**, 나머지 자기 자리 폭발은 전부 드림캐쳐
+            //     카드인데 **하네스는 카드를 안 붙인다**
+            //   · 코퍼스 보스의 몸이 **정확히 0.5**(= 칸 반폭)라 슬램 Δ 가 0
+            // 세 경로 모두 Δ 가 0 이라 「총계 무변」이 성공으로 오독되기 쉬웠다.
+            //
+            // 배스티온 = 배치 시 집단도발(자기중심 광역, 도형 반경 2 + 몸 1.5 = 3.5).
+            // 브루저   = `Ability_MeleeBurst_Bruiser` 가 **OnPlace** 트리거라 놓는 순간 터지고,
+            //            투사체를 물고 있어 `ProjectileHitSystem.ReachFromImpact` 를 지난다
+            //            (= 원점 운반 축의 유일한 «유닛 저작» 경로).
+            // 캐논     = 판을 건강하게 유지하는 화력. 근접 2종만 두면 유출 판이 된다
+            //            (`summoner` 가 캐논을 뺐다가 킬 9→1 · 유출 0→1 로 무너진 선례).
+            new Scenario { name = "wide_body",  seed = 20260822, ticks = 1800,
+                           placementTicks = new[] { 150, 330, 510, 690, 900 },
+                           defenderIds = new[] { "bastion", "bruiser", "cannon" } },
         };
 
         public struct Digest
