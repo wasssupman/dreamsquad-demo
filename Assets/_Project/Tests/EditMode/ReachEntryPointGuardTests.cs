@@ -239,9 +239,9 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(Regex.IsMatch(body,
                     @"ReachFromCell\(\s*dx\s*,\s*dz\s*,\s*tileRange\s*,\s*targetR\s*\)"),
                 "예고의 대상 항이 술어까지 도달하지 않는다");
-            Assert.IsTrue(body.Contains("SkillMath.StandardDefenderBodyRadiusTiles"),
-                "예고가 표준 방어유닛 몸을 대상 항으로 안 쓴다 — 칸 반폭으로 되돌리면 "
-                + "도달이 정수에 딱 떨어져 축에 뿔 4개 난 모양이 되고, 예고 밖인데 맞는 자리가 늘어난다");
+            Assert.IsTrue(Regex.IsMatch(body, @"const\s+float\s+targetR\s*=\s*0f\s*;"),
+                "예고의 대상 항이 0 이 아니다 — 「중심점 기준 N거리, 몸체 크기 상관없이」가 규칙이다. "
+                + "표기가 몸을 알기 시작하면 「누구 기준이냐」가 생기고 화면이 유닛마다 다른 규칙을 말한다");
             Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(
                     body, @"for\s*\(\s*int\s+dx\s*=\s*-tileRange"),
                 "`[-N,+N]²` 사각 열거가 부활했다");

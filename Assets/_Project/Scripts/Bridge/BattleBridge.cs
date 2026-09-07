@@ -2792,12 +2792,14 @@ namespace Wassup.Bridge
         {
             results.Clear();
             int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
-            // 대상 항 = **표준 방어유닛 몸**(2×2 → 1.0). 질문은 「이 칸이 비었나」가 아니라
-            // **「이 칸에 유닛을 놓으면 맞나」**다. 칸 반폭(0.5)으로 그리면 도달이 정수에 딱
-            // 떨어져 축에 뿔 4개 난 모양이 나오고(원으로 안 보인다), 예고 밖인데 맞는 자리가
-            // 남는다 — 근거와 실측은 `SkillMath.StandardDefenderBodyRadiusTiles` 헤더.
-            float targetR = Wassup.Skills.SkillMath.StandardDefenderBodyRadiusTiles;
-            // 스캔 상자는 **도달보다 넓게** 잡는다(원점·대상 반경이 붙어 정수 N 을 넘는다).
+            // 대상 항 = **0 — 칸을 «점» 으로 본다.** 「중심점 기준 N거리, 몸체 크기 상관없이」가
+            // 이 예고의 규칙이다(2026-09-07 사용자 결정 — 운석과 같은 메커니즘). 도달은
+            // `N + 칸 반폭`(원점 항, 몸이 아니라 칸 하나를 덮는 도형 보정)이다.
+            // ⚠ 여기에 «표준 유닛 몸» 같은 것을 넣지 말 것 — 표기가 몸을 알기 시작하면
+            //   「누구 기준이냐」가 생기고, 그 순간 화면이 유닛마다 다른 규칙을 말하게 된다.
+            //   부수 효과로 도달이 **정수가 될 수 없어** 축에 뿔이 서지 않는다(N+0.5 는 항상 .5).
+            const float targetR = 0f;
+            // 스캔 상자는 **도달보다 넓게** 잡는다(원점 반폭이 붙어 정수 N 을 넘는다).
             // 좁으면 실제로 맞는 칸이 안 칠해져 화면이 규칙을 좁게 가르친다.
             // ⚠ 상한을 둔다 — 저작 실수(거대 `tileRange`)가 프레임을 통째로 먹지 않게(리뷰 L-1).
             int scan = Mathf.Clamp(Mathf.CeilToInt(tileRange + targetR) + 1, 0, 64);
