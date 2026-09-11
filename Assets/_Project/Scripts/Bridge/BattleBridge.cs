@@ -8008,7 +8008,8 @@ namespace Wassup.Bridge
                 // 아직 엔티티가 없으므로(배치 전) 저작에서 직접 읽는다.
                 float selfBodyR = unit != null ? unit.BodyRadiusTiles : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
-                        atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR)) continue;
+                        atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR,
+                        Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
                 // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
                 // 그냥 넘기면 뷰가 그것을 view 월드로 받아 (a) 셀 중심 +0.5 보정과
                 // (b) 스테이지 격자 원점(`MapStage.gridOriginLocal`)을 **둘 다** 잃는다.

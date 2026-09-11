@@ -184,7 +184,8 @@ namespace Wassup.Battle.Effects
                 // 「열하나가 전부 같은 답을 받아야 한다」고 못박은 그 계약이 이미 깨져 있었다.
                 if (AttackReach.InReach(selfPos, enemyPositions[i], reach, tileSize,
                                         selfBodyRadiusTiles,
-                                        enemyBodyRadii.Length > i ? enemyBodyRadii[i] : 0f)) continue;
+                                        enemyBodyRadii.Length > i ? enemyBodyRadii[i] : 0f,
+                                        Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
                 float gap = math.max(math.abs(enemyPositions[i].x - selfPos.x),
                                      math.abs(enemyPositions[i].z - selfPos.z));
                 if (!found || gap < bestGap) { bestGap = gap; bestPos = enemyPositions[i]; found = true; }

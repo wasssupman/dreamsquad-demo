@@ -130,7 +130,7 @@ namespace Wassup.Battle.Effects
                     // 3번째 인자에 `false` 리터럴을 두지 않는 이유: 그건 「오늘 캐스터가 전부
                     // 타일 고정 방어유닛」이라는 **콘텐츠 사실**이지 이 코드의 성질이 아니다.
                     // 리터럴은 grep(「인라인 사거리 판정 0건」)에도 안 걸려 조용히 다른 자가 된다.
-                    if (!AttackReach.InReach(casterPos, targetPos, tileRange, flowField.tileSize, RadiusOf(casterEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
+                    if (!AttackReach.InReach(casterPos, targetPos, tileRange, flowField.tileSize, RadiusOf(casterEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup), Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
 
                     float distSq = math.distancesq(casterPos, targetPos);
                     if (distSq < bestSq || (distSq == bestSq && targetSimIds[i] < bestSimId))

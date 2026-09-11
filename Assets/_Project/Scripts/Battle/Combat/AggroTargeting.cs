@@ -76,7 +76,7 @@ namespace Wassup.Battle.Combat
                     if (freshOnly && c.aggroed) continue;
                     // unit 22 — 발사 게이트와 **같은 본체**. 여기서 모양을 다시 그리지 않는다.
                     if (!AttackReach.InReach(gPos, c.pos, rangeTiles, tileSize,
-                                             selfBodyRadius, c.bodyRadius)) continue;
+                                             selfBodyRadius, c.bodyRadius, AttackShapeBaked.Omni, 0)) continue;
                     float dx = c.pos.x - gPos.x;
                     float dz = c.pos.z - gPos.z;
                     float d2 = dx * dx + dz * dz;

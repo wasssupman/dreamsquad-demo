@@ -54,11 +54,28 @@ va² + vb² ≤ tr²
 
 ## 완료 기준
 
-- [ ] 부채꼴: 축 위 in · θ 가장자리에서 몸 걸치면 in / 점이면 경계 in · θ+ε 밖 out · **등 뒤(−X) 거리 > tr 에서
+- [x] 부채꼴: 축 위 in · θ 가장자리에서 몸 걸치면 in / 점이면 경계 in · θ+ε 밖 out · **등 뒤(−X) 거리 > tr 에서
       out** · `side = 0` 이 좌우 대칭(`(dx,dz)` 와 `(−dx,dz)` 같은 답) · A = 180 → 반평면 · `side = +1` 에서
       `dx < −tr` out.
-- [ ] 띠: `|dz| ≤ halfWidth + tr` 경계 · 뒤(`along < −tr`) out · 축 위 `along ≤ L + tr` 이 `Reach` 와 일치 ·
+- [x] 띠: `|dz| ≤ halfWidth + tr` 경계 · 뒤(`along < −tr`) out · 축 위 `along ≤ L + tr` 이 `Reach` 와 일치 ·
       `halfWidth = 0` 유효.
-- [ ] **Omni 항등**: 격자 점을 훑어 `InReach(…, Omni, 0)` == 구 `InReach` (rev 1 시그니처 결과) 전건 일치.
-- [ ] NaN/무한 0. `ReachEntryPointGuardTests` 초록.
-- [ ] 소비처 11곳 Omni 갱신 후 EditMode 코어 lane 전건 초록(선행 실패 2건 제외) · 골든 전건 초록(무변).
+- [x] **Omni 항등**: 격자 점을 훑어 `InReach(…, Omni, 0)` == `SkillMath.ReachFromUnit`(구 본체) 전건 일치 — 1,521점.
+- [x] NaN/무한 0. `ReachEntryPointGuardTests` 초록.
+- [x] 소비처 11곳 Omni 갱신 후 EditMode 코어 lane 전건 초록 — **2648건 · 실패 0 · 신규 15건**(리그 배치 2026-09-12).
+- [~] 골든 전건 초록 — **unit 2 로 이월.** `Verify Against Golden Corpus` 는 BattleScene Play 세션의 브리지를
+      요구해 배치 리그로 못 돌린다(MCP 단절 상태). unit 0 은 전 소비처가 Omni 라 구조적 무변이고, 위 Omni 항등
+      테스트가 그 증언을 대신한다. 동작이 실제로 바뀔 수 있는 unit 2 에서 돌린다.
+
+---
+
+### 진행 기록 — 구현 2026-09-12
+
+- 신설: `SkillMath.SectorGateX/BandGateX` · `Combat/AttackShapeBaked`(kind 0 = Omni · 1 Sector · 2 Band) ·
+  `AttackReach.InReach/InCellReach(…, in shape, side)` + private `ShapeGate`(두 진입점이 같은 본체).
+  `TargetPersistence.KeepsLock` 도 도형을 받는다(side 0 · `h` 는 사거리에만).
+- 소비처 갱신 11곳 + 테스트 6파일. `targetBodyRadiusTiles` 기본값도 함께 은퇴(뒤에 필수 인자가 오므로).
+- ⚠ **`in AttackShapeBaked.Omni` 는 컴파일되지 않는다**(CS8156) — 프로퍼티 rvalue 에 명시 `in` 을 붙일 수 없다.
+  호출부는 `in` 없이 넘긴다(컴파일러가 임시 사본을 만든다). 로컬 변수엔 `in` 유지. 12파일에서 한 번 넘어졌다.
+- 리그: 공유 `wassup-testrig` 가 남의 WIP(`AttackState`·`AttackSystem`·브리지 — 이 spec 과 같은 파일)로 dirty 라
+  `wassup-rig-das` 를 새로 팠다(APFS 클론). 끝나면 `git worktree remove --force`.
+- `.meta` 2건은 메인 에디터가 살아 있어 직접 생성됐다(guid 고정, 커밋 포함).

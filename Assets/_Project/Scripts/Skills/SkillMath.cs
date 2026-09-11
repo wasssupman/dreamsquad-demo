@@ -236,5 +236,43 @@ namespace Wassup.Skills
             float vz = (dzTiles < 0f ? -dzTiles : dzTiles) - halfTiles; if (vz < 0f) vz = 0f;
             return vx * vx + vz * vz <= bodyRadiusTiles * bodyRadiusTiles;
         }
+
+        // ── 좌/우 도형 게이트 (directional-attack-shape unit 0) ──────────────
+        //
+        // 반경 판정(`Reach`) **뒤에 AND 로 곱해지는 항**이다. 길이는 원이 정하고, 도형은 「보는 쪽으로
+        // 얼마나 좁게」만 정한다 — 그래서 게이트는 원점 항을 모르고 **대상 몸만** 본다(몸 걸침 = 히트).
+        //
+        // 도형은 항상 **+X 방향**이다. 유닛이 타겟 쪽으로 좌/우 반전하므로 회전 수학이 없다 —
+        // 호출부가 `along = side·dx`(또는 합집합이면 `|dx|`), `across = dz` 로 접어 넘긴다.
+        // 단위는 타일. sqrt·삼각함수 0 — 각도는 bake 1회에 `(sin, cos)` 가 된다(`SkillCone.cosSq` 선례).
+
+        // 보는 쪽 부채꼴. 반각 θ ≤ 90°(전체각 ≤ 180°) — 볼록 쐐기라 SDF 가 세 영역으로 끝난다.
+        //   중심이 안 → true · 가장자리에 투영되면 가장자리 거리 ≤ 몸 · 그 외(꼭짓점 뒤)는 꼭짓점 거리 ≤ 몸.
+        // ⚠ 꼭짓점 뒤를 가장자리 식으로 근사하지 말 것 — sinθ 배 관대해져 등 뒤 인접 적이 샌다
+        //   (`AttackShapeGateTests.Sector_BehindApex_UsesApexDistance_NotEdgeApproximation`).
+        public static bool SectorGateX(float along, float across, float sinHalf, float cosHalf,
+                                       float targetBodyRadiusTiles)
+        {
+            float b = across < 0f ? -across : across;
+            if (along * sinHalf >= b * cosHalf) return true;                 // 쐐기 안
+            if (along * cosHalf + b * sinHalf >= 0f)                          // 가장자리 광선에 투영
+            {
+                float d = b * cosHalf - along * sinHalf;                      // 가장자리까지 수직 거리(밖이면 양수)
+                return d <= targetBodyRadiusTiles;
+            }
+            return along * along + b * b <= targetBodyRadiusTiles * targetBodyRadiusTiles;   // 꼭짓점 뒤
+        }
+
+        // 보는 쪽 가로 띠. 상자 = `along ∈ [0, length]` · `|across| ≤ halfWidth`. `length` 는 호출부가
+        // `사거리 + 원점 몸` 으로 넘겨 축 위에서 `Reach` 와 같은 곳에서 끝난다.
+        // `BodyOverlapsSquare` 를 반폭 둘 + 중심 오프셋으로 일반화한 상자 SDF ≤ 몸.
+        public static bool BandGateX(float along, float across, float halfWidth, float lengthTiles,
+                                     float targetBodyRadiusTiles)
+        {
+            float halfLen = lengthTiles * 0.5f;
+            float va = along - halfLen; if (va < 0f) va = -va; va -= halfLen; if (va < 0f) va = 0f;
+            float vb = across < 0f ? -across : across; vb -= halfWidth; if (vb < 0f) vb = 0f;
+            return va * va + vb * vb <= targetBodyRadiusTiles * targetBodyRadiusTiles;
+        }
     }
 }

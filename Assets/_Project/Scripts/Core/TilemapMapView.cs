@@ -1110,7 +1110,8 @@ namespace Wassup.Core
                         new Unity.Mathematics.float3(cx, 0f, cz),
                         new Unity.Mathematics.float3(cell.x, 0f, cell.y),
                         tileRange, 1f, selfBodyRadiusTiles,
-                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
+                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles,
+                        Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }

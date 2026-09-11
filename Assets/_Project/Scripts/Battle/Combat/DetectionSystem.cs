@@ -253,7 +253,7 @@ namespace Wassup.Battle.Combat
                 {
                     keep = unlimited || TargetPersistence.KeepsLock(
                         true, atkPos, _transformLookup[cur].Position, rangeTiles, tileSize,
-                        selfR, RadiusOf(cur, _radiusLookup));
+                        selfR, RadiusOf(cur, _radiusLookup), AttackShapeBaked.Omni);
                 }
 
                 // ── 2b. 규칙 2단계를 물을 준비 ── 「**내**가 «그» 적에게 갈 수 있나」(unit 8)
@@ -315,7 +315,8 @@ namespace Wassup.Battle.Combat
                             // 감지 판정은 사거리와 **같은 자·같은 몸**이다(계약 3). 무제한은 반경만 건너뛴다.
                             if (!unlimited && !AttackReach.InReach(
                                     atkPos, tgtPos, rangeTiles, tileSize,
-                                    selfR, RadiusOf(c, _radiusLookup))) continue;
+                                    selfR, RadiusOf(c, _radiusLookup),
+                                    AttackShapeBaked.Omni, 0)) continue;   // 감지는 원 — 방향 없는 질문(계약 3)
 
                             float dx = tgtPos.x - atkPos.x, dz = tgtPos.z - atkPos.z;
                             var cand = new NearestTargeting.Candidate

@@ -70,13 +70,24 @@ namespace Wassup.Battle.Combat
         // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 반경은 저작(적 티어)·파생
         // (방어유닛 가로/2 파생 — rev 2026-09-04, 구 내접원)에서 온다 — 호출부가 그것을 나를 책임을 진다.
         // ⚠ rev 2 의 `BodyShape`(사각 반폭 ⊕ 원)는 은퇴했다 — 사유는 `SkillMath` 술어 헤더.
+        //
+        // ── 좌/우 도형 (directional-attack-shape unit 0) ──
+        // `shape` 는 공격자의 `AttackState.shape`(bake). `side` 는 dx 부호를 접는 방식:
+        //   0  = 양쪽 합집합(`|dx|`) — **획득**: 「보는 쪽 도형 ∪ 반대쪽 도형」 안의 후보
+        //   ±1 = 한쪽(`side·dx`)   — **부가 타격**: 주 대상 쪽만
+        // 도형은 +X 고정이라 회전이 없다(유닛이 타겟 쪽으로 좌/우 반전한다). Omni 면 게이트를 건너뛴다.
+        // ⚠ `shape`·`side` 에도 **기본값을 주지 않는다** — «사거리 안»의 뜻이 누가 묻느냐에 따라 달라지면
+        //   위 ①(같은 거리가 경로에 따라 다르게 판정)과 (11)의 182프레임 교착이 재현된다. 소비처가 도형을
+        //   **선언**하게 만드는 것이 이행 방식이다(제약 13 의 「원점 선언」과 같은 형태). 감지만 `Omni` 를
+        //   명시로 넘긴다 — 「저 놈이 있다」는 방향이 없는 질문이다.
         public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
-                                   float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
+                                   float selfBodyRadiusTiles, float targetBodyRadiusTiles,
+                                   in AttackShapeBaked shape, int side)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            return Wassup.Skills.SkillMath.ReachFromUnit(
-                (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
-                tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
+            float dx = (tgtPos.x - atkPos.x) * inv, dz = (tgtPos.z - atkPos.z) * inv;
+            return Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles)
+                && ShapeGate(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, side);
         }
 
         // 셀 좌표로 묻는 사거리 — 두 몸이 각자 칸 중앙에 설 때의 답이다.
@@ -85,10 +96,25 @@ namespace Wassup.Battle.Combat
         // 「밝은 칸인데 안 때린다」가 되고, 그게 가장 나쁜 종류의 버그다 —
         // 화면이 규칙을 **틀리게** 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
         public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
-                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
-            => Wassup.Skills.SkillMath.ReachFromUnit(
-                   tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
-                   tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
+                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles,
+                                       in AttackShapeBaked shape, int side)
+        {
+            float dx = tgtCell.x - atkCell.x, dz = tgtCell.y - atkCell.y;
+            return Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles)
+                && ShapeGate(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, side);
+        }
+
+        // 도형 항 하나 — 두 진입점이 같은 본체를 지난다. 띠의 길이 = 사거리 + 원점 몸(축 위에서 원과 일치).
+        private static bool ShapeGate(float dx, float dz, float tileRange, float selfBodyRadiusTiles,
+                                      float targetBodyRadiusTiles, in AttackShapeBaked shape, int side)
+        {
+            if (shape.kind == AttackShapeBaked.OmniKind) return true;
+            float along = side == 0 ? (dx < 0f ? -dx : dx) : side * dx;
+            return shape.kind == AttackShapeBaked.SectorKind
+                ? Wassup.Skills.SkillMath.SectorGateX(along, dz, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles)
+                : Wassup.Skills.SkillMath.BandGateX(along, dz, shape.halfWidth,
+                                                     tileRange + selfBodyRadiusTiles, targetBodyRadiusTiles);
+        }
 
         // 격자 계층의 자. **사거리 판정에 쓰지 말 것** — 그 용도의 정본은 위 `InReach` 하나다.
         // 이 함수가 남은 이유는 순찰 이동뿐이다: 추격 필드 소스 수집이 셀 디스크라

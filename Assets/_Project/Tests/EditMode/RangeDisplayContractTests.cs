@@ -57,9 +57,9 @@ namespace Wassup.Tests.EditMode
             for (int dx = -6; dx <= 6; dx++)
             for (int dz = -6; dz <= 6; dz++)
             {
-                bool painted = AttackReach.InCellReach(int2.zero, new int2(dx, dz), range, b, b);
+                bool painted = AttackReach.InCellReach(int2.zero, new int2(dx, dz), range, b, b, AttackShapeBaked.Omni, 0);
                 bool hits = AttackReach.InReach(
-                    float3.zero, new float3(dx, 0f, dz), range, 1f, b, b);
+                    float3.zero, new float3(dx, 0f, dz), range, 1f, b, b, AttackShapeBaked.Omni, 0);
                 Assert.AreEqual(hits, painted,
                     $"사거리 {range}, 칸 ({dx},{dz}) — 화면과 판정이 갈렸다");
             }
@@ -74,10 +74,10 @@ namespace Wassup.Tests.EditMode
             for (int dz = -1; dz <= 1; dz++)
             {
                 if (dx == 0 && dz == 0) continue;
-                Assert.IsTrue(AttackReach.InCellReach(int2.zero, new int2(dx, dz), 1, b, b),
+                Assert.IsTrue(AttackReach.InCellReach(int2.zero, new int2(dx, dz), 1, b, b, AttackShapeBaked.Omni, 0),
                     $"사거리 1 인데 ({dx},{dz}) 가 안 칠해진다 — 대각을 잃으면 십자가 된다");
             }
-            Assert.IsFalse(AttackReach.InCellReach(int2.zero, new int2(2, 2), 1, b, b),
+            Assert.IsFalse(AttackReach.InCellReach(int2.zero, new int2(2, 2), 1, b, b, AttackShapeBaked.Omni, 0),
                 "두 칸 대각까지 칠해지면 반대로 넓게 가르치는 것이다");
         }
     }
