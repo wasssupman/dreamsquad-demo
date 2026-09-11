@@ -49,7 +49,7 @@ namespace Wassup.Tests.EditMode
             var u = Unit();
             u.attackTargetCount = 3;
             u.attackShape = new AttackShape { kind = AttackShapeKind.Rect, width = 1f };
-            Assert.AreEqual("파이터 · 근접형. 보는 쪽 일직선(세로 폭 1) 최대 3체 관통.", UnitKitSummary.Build(u));
+            Assert.AreEqual("파이터 · 근접형. 보는 쪽 일직선(세로 폭 1) 최대 3체 동시 타격.", UnitKitSummary.Build(u));
         }
 
         [Test]

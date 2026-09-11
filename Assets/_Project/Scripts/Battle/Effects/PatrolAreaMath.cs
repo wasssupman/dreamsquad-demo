@@ -119,7 +119,7 @@ namespace Wassup.Battle.Effects
             NativeArray<float> enemyBodyRadii,
             float selfBodyRadiusTiles,
             float tileSize,
-            in Wassup.Battle.Combat.AttackShapeBaked shape)
+            in Wassup.Data.AttackShapeBaked shape)
         {
             int selfIdx = GridMath.CellIndex(selfCell, gridSize);
 
@@ -162,7 +162,7 @@ namespace Wassup.Battle.Effects
             int2 selfCell, float3 selfPos, int attackTileRange,
             NativeArray<int2> enemyCells, NativeArray<float3> enemyPositions,
             NativeArray<float> enemyBodyRadii, float selfBodyRadiusTiles, float tileSize,
-            in Wassup.Battle.Combat.AttackShapeBaked shape)
+            in Wassup.Data.AttackShapeBaked shape)
         {
             if (!enemyPositions.IsCreated || enemyPositions.Length != enemyCells.Length)
                 return float2.zero;

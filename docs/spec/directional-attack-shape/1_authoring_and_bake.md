@@ -70,5 +70,8 @@ public struct AttackShape
 
 - `Data/AttackShape.cs`(저작 enum+struct) · `Combat/AttackShapeBake.cs`(순수 변환, `System.Math` — `Mathf` 안 씀) ·
   `AttackState.shape` · 두 SO 필드 · 브리지 3곳 + `BakeAttackShape` 헬퍼. `OnValidate` 경고는 넣지 않았다(계약 10).
-- 리뷰 관점 메모: `AttackShapeBake` 는 Combat 폴더에 있지만 ECS 타입을 안 쓴다 — Data 를 참조해야 해서(`AttackShape`)
-  `Wassup.Skills` 로는 못 가고, bake 결과 타입(`AttackShapeBaked`)이 Combat 소유라 여기 뒀다.
+- **위치 결론(리뷰 MED 반영)**: `AttackShapeBaked`·`AttackShapeBake` 를 **`Scripts/Data/`(`Wassup.Data`)** 로 옮겼다.
+  둘 다 ECS 타입을 안 쓰는 plain 타입이고, Combat 에 두면 `UnitKitSummary`(Data) → Combat **역참조**가 생긴다(같은
+  asmdef 라 조용히 컴파일된다). `PlacementLayers`·`FootprintMath` 와 같은 자리. `AttackState.shape` 는 Combat → Data
+  한 방향으로 그대로. Combat 쪽 파일은 `using AttackShapeBaked = Wassup.Data.AttackShapeBaked;` alias(네임스페이스
+  전체 using 은 `Faction` 등 충돌 위험).

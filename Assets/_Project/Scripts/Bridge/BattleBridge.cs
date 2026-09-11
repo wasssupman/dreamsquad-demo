@@ -3411,7 +3411,7 @@ namespace Wassup.Bridge
             SyncMonoUnitViews();
             // 배치 마크 추적 — 적이 움직였으니(sim 은 Update, 여긴 그 뒤) 마크도 따라간다.
             if (_placementMarkLive && _rangeOwner == RangeDisplayOwner.Placement)
-                RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit);
+                RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit, _placementMarkShape);
             // attach-range-preview unit 2 — 부착 프리뷰 추종(host 재배치·사망을 sim 위치에서 다시 읽는다).
             if (_attachPreviewLive && _rangeOwner == RangeDisplayOwner.AttachPreview)
                 RedrawAttachPreview();
@@ -7876,6 +7876,7 @@ namespace Wassup.Bridge
         private Vector2Int _placementMarkCenter;
         private int _placementMarkRange;
         private DefenderUnitData _placementMarkUnit;
+        private Wassup.Data.AttackShapeBaked _placementMarkShape;   // unit 3 — SetPlacementRange 진입에서 1회 bake
         // dreamcatcher-attach-range-preview unit 2 — 카드 드래그 중 락온 host 의 카드 범위 링. 앵커는 **Entity**
         // (재배치는 Entity 를 보존하고 셀만 재키잉한다). 위치는 LateUpdate 가 host 의 sim 위치에서 매 프레임
         // 다시 읽는다 — `DcAuraVisualPool` 과 같은 슬롯.
@@ -7888,9 +7889,9 @@ namespace Wassup.Bridge
 
         // directional-attack-shape unit 1 — 저작 → bake 는 한 함수(`AttackShapeBake.From`)를 지나고, 정의역 밖
         // (reflex 각)은 여기서 **한 번** 말한다. 순수 함수는 로그를 안 찍는다(제약 10).
-        private static Wassup.Battle.Combat.AttackShapeBaked BakeAttackShape(in Wassup.Data.AttackShape authored, UnityEngine.Object owner)
+        private static Wassup.Data.AttackShapeBaked BakeAttackShape(in Wassup.Data.AttackShape authored, UnityEngine.Object owner)
         {
-            var baked = Wassup.Battle.Combat.AttackShapeBake.From(in authored, out bool ok);
+            var baked = Wassup.Data.AttackShapeBake.From(in authored, out bool ok);
             if (!ok)
                 Debug.LogError($"[AttackShape] {owner?.name}: angleDeg {authored.angleDeg} 는 정의역 (0,180]∪{{360}} 밖(reflex) — "
                              + "360° 로 읽는다. 등 뒤까지 때리려면 360, 방향을 주려면 180 이하로.", owner);
@@ -7903,6 +7904,9 @@ namespace Wassup.Bridge
             // unit 9 — 원형 프리뷰는 **연속 반지름**을 그대로 쓴다. 레인(정수 칸)만 접는다.
             float rangeTiles = unit.attackRange;
             int tileRange = GridMath.RangeToTiles(rangeTiles);
+            // directional-attack-shape unit 3 — 도형은 **여기서 한 번** 굽는다. 정의역 밖(reflex) 로그도 여기서 한 번.
+            // 마크 갱신은 LateUpdate 가 매 프레임 부르므로 거기서 구우면 60fps LogError 가 된다(리뷰 MED).
+            var shape = BakeAttackShape(unit.attackShape, unit);
             // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
@@ -7919,7 +7923,7 @@ namespace Wassup.Bridge
                 // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
                 var fpBase = Wassup.Data.FootprintMath.FootOffset(unit.Footprint);
                 tilemapMapView.SetPlacementRange(center, rangeTiles,
-                     BakeAttackShape(unit.attackShape, unit),   // unit 3 — 표기가 판정과 같은 도형을 받는다
+                     shape,   // unit 3 — 표기가 판정과 같은 도형을 받는다
                      selfBodyRadiusTiles: unit.BodyRadiusTiles,
                      centerOffsetTiles: fpBase);    // 앵커 → 베이스(발밑) — 사거리 원점과 동일점(베이스 통일 2026-09-03)
             }
@@ -7945,7 +7949,8 @@ namespace Wassup.Bridge
                 _placementMarkCenter = center;
                 _placementMarkRange = tileRange;
                 _placementMarkUnit = unit;
-                RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
+                _placementMarkShape = shape;
+                RefreshRangeTargetMarks(center, tileRange, unit, shape);   // unit 11 — facing 분기 삭제
             }
             else
             {
@@ -7973,7 +7978,8 @@ namespace Wassup.Bridge
         // 이 마스크는 `Resolve` 의 세 결과 중 어느 것도 `DefenderCore` 비트를 갖지 않는다
         // (AllyMask=DefenderUnit · 저작값 전 27종이 적 진영 · Legacy=EnemyUnit).
         // 적지 않으면 다음 사람이 이 검산을 처음부터 다시 한다.
-        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit)
+        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit,
+                                             in Wassup.Data.AttackShapeBaked markShape)
         {
             _markPos.Clear();
             _markHalf.Clear();
@@ -8004,7 +8010,6 @@ namespace Wassup.Bridge
             // 지원형(`targetAllies`)은 층 마스크를 **0** 으로 굽는다 — 아군 방어유닛은
             // `PathFollowState` 가 없는 고정 유닛이라 층 축이 의미가 없기 때문이다.
             var atkLayers = unit.targetAllies ? (byte)0 : (byte)unit.EffectiveAttackTargetLayers;
-            var markShape = BakeAttackShape(unit.attackShape, unit);
             for (int i = 0; i < ents.Length; i++)
             {
                 if (((int)fac[i].value & mask) == 0) continue;

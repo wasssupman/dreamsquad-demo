@@ -1409,9 +1409,6 @@ namespace Wassup.Battle.Combat
                             // 사거리에 들어오는 순간 `EngageMovement.Halt` 로 멈춰 싸우고 가디언에
                             // **영영 도착하지 않는다.** 고정 = `AggroAoeWidthTests`.
                             int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
-                            // directional-attack-shape unit 2 — 주 대상이 정해졌다. 이제부터 «보는 쪽»이 있다.
-                            // 부가 타격은 이쪽 도형 안에서만 고른다. Omni 면 side 는 무시된다(게이트가 안 돈다).
-                            int hitSide = AttackReach.SideOf(bestTargetPos.x - atkPos.x);
                             var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
                             int hitCount = 0;
 
@@ -1492,6 +1489,11 @@ namespace Wassup.Battle.Combat
                             else
                             {
                                 hitTargets[hitCount++] = bestTarget;
+                                // directional-attack-shape unit 2 — 주 대상이 정해졌다. 이제부터 «보는 쪽»이 있다.
+                                // 부가 타격은 이쪽 도형 안에서만 고른다. Omni 면 side 는 무시된다(게이트가 안 돈다).
+                                // ⚠ 이 분기 안에서 계산한다 — 가디언 분기는 `bestTargetPos` 를 `outIdx[0]` 로 재대입하므로
+                                //   합류 전에 계산하면 옛 위치를 본다(리뷰 LOW). 가디언 쪽 side 는 `FillNearest` 가 스스로 정한다.
+                                int hitSide = AttackReach.SideOf(bestTargetPos.x - atkPos.x);
                                 if (desiredCount > 1)
                                 {
                                     var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);

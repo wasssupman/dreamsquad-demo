@@ -1,6 +1,4 @@
-using Wassup.Data;
-
-namespace Wassup.Battle.Combat
+namespace Wassup.Data
 {
     // directional-attack-shape unit 1 — 저작(`AttackShape`) → bake(`AttackShapeBaked`) 순수 변환.
     //

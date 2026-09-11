@@ -1,7 +1,9 @@
-namespace Wassup.Battle.Combat
+namespace Wassup.Data
 {
-    // directional-attack-shape unit 0 — 공격 판정 도형의 **bake 된** 형태. `AttackState` 가 싣고
-    // `AttackReach` 가 읽는다. 저작 struct(`Data/AttackShape`, unit 1)와 다른 타입인 이유:
+    // directional-attack-shape unit 0 — 공격 판정 도형의 **bake 된** 형태. `AttackState`(Combat) 가 싣고
+    // `AttackReach` 가 읽는다. ⚠ 여기(Data)에 사는 이유: ECS 타입을 하나도 안 쓰는 plain struct 이고,
+    //   `UnitKitSummary`(Data) 도 bake 를 읽어야 해서 Combat 에 두면 Data → Combat 역참조가 생긴다(리뷰 MED).
+    //   `PlacementLayers`·`FootprintMath` 와 같은 자리 — 전투가 소비하는 순수 타입. 저작 struct(`Data/AttackShape`, unit 1)와 다른 타입인 이유:
     //   · sim 은 각도를 모른다 — 저작 각도는 bake 1회에 `(sin, cos)` 가 되고 폭은 반폭이 된다.
     //   · **`kind 0 = Omni`** 여야 한다. `default(AttackState)` 가 안전해야 하기 때문 — 도발 공격
     //     (`TauntAttackGrantSystem`)·v1 투사체처럼 코드가 만드는 `AttackState` 는 도형을 모르고 0 으로

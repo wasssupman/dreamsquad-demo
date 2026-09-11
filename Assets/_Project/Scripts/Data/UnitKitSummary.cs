@@ -32,14 +32,14 @@ namespace Wassup.Data
             // directional-attack-shape unit 3 — 도형은 기존 어휘(「최대 N체 동시 타격」)를 키운다. ⚠ 「전방」을 쓰지
             // 않는다 — 이 유닛에 배치 방향은 없고 «캐릭터가 보는 쪽»이 방향이다. bake 를 지나 정의역 밖(reflex)은
             // Omni 문안으로 떨어진다(sim 과 같은 폴백 — 문안이 sim 보다 넓게 말하지 않는다).
-            var shape = Wassup.Battle.Combat.AttackShapeBake.From(u.attackShape, out _);
-            if (shape.kind == Wassup.Battle.Combat.AttackShapeBaked.SectorKind)
+            var shape = Wassup.Data.AttackShapeBake.From(u.attackShape, out _);
+            if (shape.kind == Wassup.Data.AttackShapeBaked.SectorKind)
                 traits.Add(u.attackTargetCount > 1
                     ? $"보는 쪽 {u.attackShape.angleDeg:0.#}° 안 최대 {u.attackTargetCount}체 동시 타격"
                     : $"보는 쪽 {u.attackShape.angleDeg:0.#}° 안의 적만 공격");
-            else if (shape.kind == Wassup.Battle.Combat.AttackShapeBaked.BandKind)
+            else if (shape.kind == Wassup.Data.AttackShapeBaked.BandKind)
                 traits.Add(u.attackTargetCount > 1
-                    ? $"보는 쪽 일직선(세로 폭 {u.attackShape.width:0.#}) 최대 {u.attackTargetCount}체 관통"
+                    ? $"보는 쪽 일직선(세로 폭 {u.attackShape.width:0.#}) 최대 {u.attackTargetCount}체 동시 타격"
                     : $"보는 쪽 일직선(세로 폭 {u.attackShape.width:0.#})의 적만 공격");
             else if (u.attackTargetCount > 1)
                 traits.Add($"최대 {u.attackTargetCount}체 동시 타격");

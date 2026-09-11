@@ -1,3 +1,4 @@
+using AttackShapeBaked = Wassup.Data.AttackShapeBaked;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;

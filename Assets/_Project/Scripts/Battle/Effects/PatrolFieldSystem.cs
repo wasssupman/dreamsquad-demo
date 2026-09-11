@@ -123,7 +123,7 @@ namespace Wassup.Battle.Effects
                     // directional-attack-shape unit 2 — 순찰병 자기 도형(오늘 전부 Omni). 소비처 11곳 계약.
                     SystemAPI.HasComponent<Wassup.Battle.Combat.AttackState>(entity)
                         ? SystemAPI.GetComponent<Wassup.Battle.Combat.AttackState>(entity).shape
-                        : Wassup.Battle.Combat.AttackShapeBaked.Omni);
+                        : Wassup.Data.AttackShapeBaked.Omni);
 
                 areaMask.Dispose();
             }

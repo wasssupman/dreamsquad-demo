@@ -1,3 +1,4 @@
+using AttackShapeBaked = Wassup.Data.AttackShapeBaked;
 using NUnit.Framework;
 using Unity.Mathematics;
 using Wassup.Battle.Combat;
@@ -189,6 +190,13 @@ namespace Wassup.Tests.EditMode
                 AttackReach.InReach(At(0, 0), At(1, 1.3f), 4f, 1f, SelfR, Tr, in s, +1),
                 AttackReach.InReach(At(0, 0), At(2, 2.6f), 4f, 2f, SelfR, Tr, in s, +1));
         }
+
+        // 계약 4 — 결정론. `dx == 0`(정확히 위/아래)은 +X. ECS 리뷰 L2: 간접 검증만 있어 직접 못박는다.
+        [TestCase(0f, ExpectedResult = 1)]
+        [TestCase(-0.01f, ExpectedResult = -1)]
+        [TestCase(0.01f, ExpectedResult = 1)]
+        [TestCase(float.NegativeInfinity, ExpectedResult = -1)]
+        public int SideOf_SignOfDx_TieGoesRight(float dx) => AttackReach.SideOf(dx);
 
         [Test]
         public void Gates_DegenerateInputs_ReturnBoolWithoutThrowing()
