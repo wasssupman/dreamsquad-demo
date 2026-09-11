@@ -1,0 +1,36 @@
+# 3 — 표기: 링이 도형을 그린다 · 문안 · VFX
+
+## 목적
+
+「저 위 적은 안 때린다」가 **배치 전에** 읽혀야 한다(결정 rev 2-3). 링·배치 프리뷰·부착 프리뷰가 판정과 같은
+술어로 도형을 그린다(계약 9). 방향의 시각 보증자는 캐릭터 반전 자체라 VFX 는 회전이 필요 없다.
+
+## 변경 대상
+
+- `Core/TilemapMapView.cs:1109` `SetPlacementRange` 셀 페인트 — `InCellReach(..., shape, side 0)`
+- `Bridge/BattleBridge.cs:8010` 링 반경 산출 — 도형 유닛은 원 링 대신 **셀 윤곽 페인트**(또는 절차 메시)
+- `Presentation/` 링 컴포넌트(distance-based-range unit 5·15) — 도형 분기
+- `dreamcatcher-attach-range-preview` 링 — 같은 술어
+- `Data/UnitKitSummary.cs:32` — 문안
+- `Bridge/BattleBridge.cs:4813~` — `attackVfxAtAttacker`(선택)
+
+## 구현
+
+- **모양**: Sector 양쪽 = 나비넥타이 ∩ 원 · Band 양쪽 = 가로 띠 ∩ 원. 원 링 스프라이트는 못 그리므로 도형 유닛은
+  **셀 단위 윤곽**으로 떨어진다 — `InCellReach` 가 이미 같은 본체를 지나므로 「밝은 칸인데 안 때린다」가
+  구조적으로 불가능하다. 원 링(Omni)은 무변. 정렬 3티어·다크 라이너 규칙은 unit 5 그대로.
+- **부착 프리뷰·선택 링**(판정 캐리어 3종 중 링) — 같은 분기. 그림자·대상 마크 무변.
+- **문안**(`UnitKitSummary`) — 기존 어휘를 키운다:
+  - Omni: 무변. Sector: 「**보는 쪽 A°** 안의 적만 공격」(+ N체면 「최대 N체 동시 타격」 병기).
+    Band: 「**보는 쪽 일직선(세로 폭 W)** 의 적만 공격」. ⚠ 「전방」은 이제 **참말**이지만(캐릭터가 보는 쪽)
+    「보는 쪽」이 더 직접적이다.
+- **VFX**: 캐릭터가 좌/우 반전으로 방향을 이미 말한다. `attackVfxFacesTarget` 은 기존대로. 참격 자국을 공격자
+  자리에 찍고 싶으면 `attackVfxAtAttacker` 옵션(원점 분기 한 줄) — 필수 아님, unit 4 육안에서 필요하면.
+
+## 완료 기준
+
+- [ ] 도형 유닛 배치 프리뷰가 나비넥타이/띠 모양으로 칠해지고, 그 안의 셀 = `InCellReach` true 셀 (표기 단언 —
+      `RangeDisplayContractTests` 확장).
+- [ ] Omni 유닛 링·프리뷰 픽셀 무변(스크린샷 대조).
+- [ ] 문안 테스트: Omni 전건 무변(선행 실패 2건 제외) · Sector/Band 가짜 SO 두 문안.
+- [ ] 부착 프리뷰가 도형 유닛에서 같은 모양.
