@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditMode
         static int Select(NativeArray<AggroCandidate> cands, NativeArray<int> outIdx,
                           int held, int capacity, float rangeTiles = 2f, float selfBodyRadius = 0.5f)
             => AggroTargeting.SelectTargets(float3.zero, rangeTiles, 1f, selfBodyRadius,
-                                            held, capacity, cands, outIdx);
+                                            held, capacity, AttackShapeBaked.Omni, cands, outIdx);
 
         [Test]
         public void SelectTargets_FreeSlot_PrefersFreshOverNearerAggroed()

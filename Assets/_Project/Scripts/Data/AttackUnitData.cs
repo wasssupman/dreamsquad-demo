@@ -144,6 +144,9 @@ namespace Wassup.Data
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
         // forced to 1 (guardian-only) by AttackSystem.
         public int attackTargetCount = 1;
+        // directional-attack-shape unit 1 — 보는 쪽 공격 도형(방어유닛과 같은 축). 기본 = 360°.
+        // ⚠ 추격(detection) 적에는 저작하지 않는다 — 추격판 사격 칸이 도형을 모른다(spec 계약 11).
+        public AttackShape attackShape = AttackShape.Omni;
         public ProjectileData projectile;
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;

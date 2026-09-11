@@ -35,12 +35,25 @@
 
 ## 완료 기준
 
-- [ ] `AttackShapeSelectionTests`: 공격자 + 후보 5(좌 축·우 축·우 θ 안·우 θ 밖·정확히 위 2칸).
+- [x] `AttackShapeSelectionTests`: 공격자 + 후보 5(좌 축·우 축·우 θ 안·우 θ 밖·정확히 위 2칸).
       `Sector(90)`: 획득 후보 = 좌·우 축·우 θ 안(3) → 최근접이 우 축이면 side +1, 부가 = 우 θ 안만 · **정확히 위
       2칸은 후보 아님**. `Band(1.0)`: 위 2칸 후보 아님, 좌우 축 후보. `Omni`: 5 전부(오늘과 동일).
-- [ ] side 결정: `dx == 0` → +1 · 좌 최근접 → −1 · 부가 타격이 반대쪽을 절대 안 잡는다.
-- [ ] 가디언(AggroCapacity) 버전 동일 단언 · `AggroAoeWidthTests` · `AttackReachTests` · `RangePredicateInvariantsTests`
+- [x] side 결정: `dx == 0` → +1 · 좌 최근접 → −1 · 부가 타격이 반대쪽을 절대 안 잡는다.
+- [x] 가디언(AggroCapacity) 버전 동일 단언 · `AggroAoeWidthTests` · `AttackReachTests` · `RangePredicateInvariantsTests`
       무변 초록.
-- [ ] 적(EnemyAiState) 버전: 띠 저작 적이 **정확히 위** 방어유닛 앞에서 `Halt` 하지 않고 지나간다(획득과 정지가
-      같은 답 — 헤더 (11) 교착 회귀).
-- [ ] 골든 전건 초록(저작 0). Burst: `AttackSystem` lookup 존치 함정(`AttackSystem.cs:32`).
+- [~] 적(EnemyAiState) 버전 — **unit 4 하네스로 이월.** `HasFireTarget`·`guardianInRange` 가 같은 `InReach(shape)` 를
+      지나는 것은 코드로 보장되지만(같은 함수·같은 인자), 「지나간다」는 이동까지 얽혀 EditMode 픽스처가 없다.
+- [~] 골든 — unit 4 로 이월(Play 세션 필요). Burst: lookup 존치 함정 무접촉 ✓.
+
+---
+
+### 진행 기록 — 구현 2026-09-12
+
+- `AttackReach.SideOf(dx)` 신설(두 sim 호출처 + 뷰 규칙과 일치시키기 위해). `AttackSystem` 은 Outputs 경로 진입에서
+  `hitSide` 를 한 번 계산해 pass 루프에 넘긴다. 락 유지·sticky·RESOLVE 재판정은 side 0.
+- `AggroTargeting.FillNearest` — `count == 0` 이면 side 0, 그 뒤 `outIdx[0]` 쪽. Pass A/B 동일.
+- ⚠ **계획과 다른 점**: 「`keepFrontmostPrimary` swap 뒤 side 를 새 primary 로 재계산한다」는 **한 줄이 아니다** —
+  부가 타격이 이미 옛 primary 쪽에서 뽑혀 있어 재선정이 필요하다. 삼중 조합(가디언 × 끝을 보는 눈 × 도형)이
+  희귀해 **구현하지 않고** README 후속 후보에 남긴다. 결과: 그 조합에서 부가 타격은 SelectTargets 의 primary 쪽.
+- `EnemyAiStateSystem` 은 `attackLookup[enemy].shape` 를 두 호출에 넘긴다 · `PatrolFieldSystem` 은 순찰병 `AttackState.shape`
+  (없으면 Omni) · `HazardCastSystem`·`DetectionSystem` 은 Omni **명시**(계약 3 · 캐스터는 사거리 0).

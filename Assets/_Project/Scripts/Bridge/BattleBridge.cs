@@ -7886,6 +7886,17 @@ namespace Wassup.Bridge
         // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
         private Entity _skillTelegraphProjectile = Entity.Null;
 
+        // directional-attack-shape unit 1 — 저작 → bake 는 한 함수(`AttackShapeBake.From`)를 지나고, 정의역 밖
+        // (reflex 각)은 여기서 **한 번** 말한다. 순수 함수는 로그를 안 찍는다(제약 10).
+        private static Wassup.Battle.Combat.AttackShapeBaked BakeAttackShape(in Wassup.Data.AttackShape authored, UnityEngine.Object owner)
+        {
+            var baked = Wassup.Battle.Combat.AttackShapeBake.From(in authored, out bool ok);
+            if (!ok)
+                Debug.LogError($"[AttackShape] {owner?.name}: angleDeg {authored.angleDeg} 는 정의역 (0,180]∪{{360}} 밖(reflex) — "
+                             + "360° 로 읽는다. 등 뒤까지 때리려면 360, 방향을 주려면 180 이하로.", owner);
+            return baked;
+        }
+
         public void SetPlacementRange(Vector2Int center, DefenderUnitData unit)
         {
             if (tilemapMapView == null || unit == null) return;
@@ -7908,6 +7919,7 @@ namespace Wassup.Bridge
                 // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
                 var fpBase = Wassup.Data.FootprintMath.FootOffset(unit.Footprint);
                 tilemapMapView.SetPlacementRange(center, rangeTiles,
+                     BakeAttackShape(unit.attackShape, unit),   // unit 3 — 표기가 판정과 같은 도형을 받는다
                      selfBodyRadiusTiles: unit.BodyRadiusTiles,
                      centerOffsetTiles: fpBase);    // 앵커 → 베이스(발밑) — 사거리 원점과 동일점(베이스 통일 2026-09-03)
             }
@@ -7992,6 +8004,7 @@ namespace Wassup.Bridge
             // 지원형(`targetAllies`)은 층 마스크를 **0** 으로 굽는다 — 아군 방어유닛은
             // `PathFollowState` 가 없는 고정 유닛이라 층 축이 의미가 없기 때문이다.
             var atkLayers = unit.targetAllies ? (byte)0 : (byte)unit.EffectiveAttackTargetLayers;
+            var markShape = BakeAttackShape(unit.attackShape, unit);
             for (int i = 0; i < ents.Length; i++)
             {
                 if (((int)fac[i].value & mask) == 0) continue;
@@ -8009,7 +8022,7 @@ namespace Wassup.Bridge
                 float selfBodyR = unit != null ? unit.BodyRadiusTiles : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
                         atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR,
-                        Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
+                        markShape, 0)) continue;   // unit 3 — 마크도 도형(좌우 합집합 = 획득 후보)
                 // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
                 // 그냥 넘기면 뷰가 그것을 view 월드로 받아 (a) 셀 중심 +0.5 보정과
                 // (b) 스테이지 격자 원점(`MapStage.gridOriginLocal`)을 **둘 다** 잃는다.
@@ -8329,6 +8342,7 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
                 attackTargetCount = unitData.attackTargetCount,
+                shape = BakeAttackShape(unitData.attackShape, unitData),
                 // battle-structures unit 8 — 저작 타겟 마스크(기본 = 적 진영 전부).
                 // 아군 타게팅(힐러)은 여전히 DefenderUnit 단독이고 저작 마스크를 이긴다 —
                 // AnyDefender 로 넓히면 IncomingHeal 버퍼가 없는 거점이 후보에 들어
@@ -8615,6 +8629,7 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec,
                 attackTargetCount = unitData.attackTargetCount,
+                shape = BakeAttackShape(unitData.attackShape, unitData),
                 // battle-structures unit 8 — 순찰 아군도 같은 저작 축을 쓴다. 배치 방어유닛과
                 // 같은 SO 타입이라 «순찰만 거점을 못 때린다» 는 예외를 만들 이유가 없다.
                 targetMask = Wassup.Battle.Combat.DefenderTargetDefaults.Resolve(
@@ -10721,6 +10736,7 @@ namespace Wassup.Bridge
                     cooldownDuration = unitType.attackCooldown,
                     cooldownRemaining = 0f,
                     attackTargetCount = Mathf.Max(1, unitType.attackTargetCount),
+                    shape = BakeAttackShape(unitType.attackShape, unitType),
                     targetMask = authoredTargetMask,
                     hitDelaySec = unitType.hitDelaySec,
                 });

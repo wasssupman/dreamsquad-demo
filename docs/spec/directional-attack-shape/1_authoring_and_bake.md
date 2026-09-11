@@ -57,8 +57,18 @@ public struct AttackShape
 
 ## 완료 기준
 
-- [ ] bake: `0→Omni` · `360→Omni` · `120→Sector(sin60,cos60)` · `180→Sector(1,0)` · `270→Omni+ok=false` ·
+- [x] bake: `0→Omni` · `360→Omni` · `120→Sector(sin60,cos60)` · `180→Sector(1,0)` · `270→Omni+ok=false` ·
       `Rect(1.0)→halfWidth 0.5` · `default(AttackShape)→Omni`.
-- [ ] 27 방어유닛 + 적 SO 전건 Omni — 에셋 lane 단언 1건(드리프트 그물).
-- [ ] 브리지 3곳이 같은 bake 를 지난다(grep `AttackShapeBake.From` 3건).
-- [ ] 라이브 무변: 골든 전건 초록 · EditMode 코어+에셋 lane 초록.
+- [x] 27 방어유닛 + 적 SO 전건 Omni — 에셋 lane `AttackShapeAuthoringTests` 2건(방어유닛·적).
+- [x] 브리지 3곳이 같은 bake 를 지난다 — `BattleBridge.BakeAttackShape` 헬퍼 하나(로그는 여기서만).
+- [x] EditMode 코어+에셋 lane 초록(2833건 · 선행 실패 2건 외 0). 골든은 unit 4 로 이월(Play 세션 필요) —
+      「전 SO 가 Omni 로 bake 된다」(에셋 lane) + 「Omni 게이트는 항등」(unit 0) 두 단언이 무변을 증언한다.
+
+---
+
+### 진행 기록 — 구현 2026-09-12
+
+- `Data/AttackShape.cs`(저작 enum+struct) · `Combat/AttackShapeBake.cs`(순수 변환, `System.Math` — `Mathf` 안 씀) ·
+  `AttackState.shape` · 두 SO 필드 · 브리지 3곳 + `BakeAttackShape` 헬퍼. `OnValidate` 경고는 넣지 않았다(계약 10).
+- 리뷰 관점 메모: `AttackShapeBake` 는 Combat 폴더에 있지만 ECS 타입을 안 쓴다 — Data 를 참조해야 해서(`AttackShape`)
+  `Wassup.Skills` 로는 못 가고, bake 결과 타입(`AttackShapeBaked`)이 Combat 소유라 여기 뒀다.

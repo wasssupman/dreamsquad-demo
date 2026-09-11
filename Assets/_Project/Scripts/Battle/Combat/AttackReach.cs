@@ -104,6 +104,10 @@ namespace Wassup.Battle.Combat
                 && ShapeGate(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, side);
         }
 
+        // 주 대상이 정해진 뒤 **어느 쪽을 보나** — 부가 타격·가디언 선정·뷰 반전이 같은 규칙을 본다.
+        // `dx == 0`(정확히 위/아래) 은 +X. 결정론이 계약이다(spec 계약 4).
+        public static int SideOf(float dx) => dx < 0f ? -1 : 1;
+
         // 도형 항 하나 — 두 진입점이 같은 본체를 지난다. 띠의 길이 = 사거리 + 원점 몸(축 위에서 원과 일치).
         private static bool ShapeGate(float dx, float dz, float tileRange, float selfBodyRadiusTiles,
                                       float targetBodyRadiusTiles, in AttackShapeBaked shape, int side)

@@ -1081,7 +1081,10 @@ namespace Wassup.Core
         // 셀 경계 위(x.5)라 `Vector2Int` 로는 표현할 수 없고, 표현하려 들면 정수 나눗셈으로
         // 반 칸을 잃는다 — 그게 이 spec 이 은퇴시킨 「대표 셀」 그 자체다.
         // 그래서 중심은 `centerOffsetTiles` 로 따로 받는다. 반폭 인자는 rev 3(몸=원)에서 은퇴.
-        public void SetPlacementRange(Vector2Int anchor, float tileRange, bool includeCenter = false,
+        // directional-attack-shape unit 3 — `shape` 는 판정과 **같은 bake 값**(호출부가 SO 에서 굽는다). 도형 유닛은
+        // 칸 채움이 좌우 합집합(나비넥타이/띠)으로 떨어지고 **원 링은 안 그린다** — 원은 그 유닛에게 거짓말이다.
+        public void SetPlacementRange(Vector2Int anchor, float tileRange, Wassup.Battle.Combat.AttackShapeBaked shape,
+                                      bool includeCenter = false,
                                       float selfBodyRadiusTiles = 0f, Vector2 centerOffsetTiles = default)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
@@ -1111,7 +1114,7 @@ namespace Wassup.Core
                         new Unity.Mathematics.float3(cell.x, 0f, cell.y),
                         tileRange, 1f, selfBodyRadiusTiles,
                         Wassup.Skills.SkillMath.StandardBodyRadiusTiles,
-                        Wassup.Battle.Combat.AttackShapeBaked.Omni, 0)) continue;
+                        in shape, 0)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
@@ -1128,7 +1131,9 @@ namespace Wassup.Core
             // 갈린 뒤(중형 0.5 저작) 그 가정은 큰 적에게 거짓이 됐다 — 링은 크기와 무관하게
             // 참인 쪽을 택하고, 채움이 링보다 최대 0.25칸 바깥까지 칠해지는 것은 **감수한다**
             // (칸은 배치 안내, 링은 판정 — 서로 다른 것을 말한다).
-            ShowRangeRing(new Vector2(cx, cz), tileRange + selfBodyRadiusTiles);
+            // 도형 유닛(unit 3): 링 없음 — 칸 윤곽이 도형을 말한다. `InCellReach` 와 같은 본체라 「밝은 칸인데
+            // 안 때린다」가 구조적으로 불가능하다.
+            if (shape.IsOmni) ShowRangeRing(new Vector2(cx, cz), tileRange + selfBodyRadiusTiles);
             ApplyRangeTint();
         }
 

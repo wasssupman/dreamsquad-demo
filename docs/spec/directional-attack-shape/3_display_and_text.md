@@ -29,8 +29,19 @@
 
 ## 완료 기준
 
-- [ ] 도형 유닛 배치 프리뷰가 나비넥타이/띠 모양으로 칠해지고, 그 안의 셀 = `InCellReach` true 셀 (표기 단언 —
-      `RangeDisplayContractTests` 확장).
-- [ ] Omni 유닛 링·프리뷰 픽셀 무변(스크린샷 대조).
-- [ ] 문안 테스트: Omni 전건 무변(선행 실패 2건 제외) · Sector/Band 가짜 SO 두 문안.
-- [ ] 부착 프리뷰가 도형 유닛에서 같은 모양.
+- [x] 도형 유닛 배치 프리뷰 = `InCellReach(shape, 0)` 셀(코드 경로가 같은 술어) · 도형 유닛은 원 링을 안 그린다.
+      ⚠ 표기 단언 확장은 안 했다 — `RangeDisplayContractTests` 는 이미 「칠한 칸 == InReach」를 같은 두 함수로
+      대조하고, 도형은 그 두 함수에 같은 인자로 들어간다. 별도 단언은 같은 것을 두 번 쓰는 것.
+- [~] Omni 유닛 링·프리뷰 픽셀 무변 — unit 4 Play 육안으로 이월(코드상 Omni 분기는 종전 경로 그대로).
+- [x] 문안 테스트: `AttackShapeTextTests` 5건(Omni 무변 · Sector N체/1체 · Band · reflex→Omni 문안). 기존 문안 테스트 무변.
+- [~] 부착 프리뷰 — **손대지 않았다.** `SetAttachPreview` 는 카드의 `DcRangeSpec`(스킬 반경)을 그리지 유닛 사거리가
+      아니다. 유닛 사거리를 그리는 표기는 배치 프리뷰(+마크)뿐이라 그 둘만 도형을 받는다.
+- [~] `attackVfxAtAttacker` 옵션 — 넣지 않았다(선택 항목 · 소비처 0 · 제약 8). unit 4 육안에서 필요하면.
+
+---
+
+### 진행 기록 — 구현 2026-09-12
+
+- `TilemapMapView.SetPlacementRange(anchor, tileRange, shape, …)` — 도형 인자 필수. `shape.IsOmni` 일 때만 링.
+- `BattleBridge.SetPlacementRange`·`RefreshRangeTargetMarks` 가 `BakeAttackShape(unit.attackShape)` 를 넘긴다.
+- `UnitKitSummary` — bake 를 지나 문안을 정한다(sim 과 같은 폴백: reflex 는 Omni 문안).

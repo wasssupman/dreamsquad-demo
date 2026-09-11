@@ -44,5 +44,9 @@ namespace Wassup.Battle.Combat
         // 「어떻게 고르나」는 건드리지 않는다 — 「고른 뒤 한 공격 안에서 안 바뀐다」만이다.
         public Entity committedTarget;
         public byte hasCommittedTarget;
+
+        // directional-attack-shape unit 1 — 보는 쪽 도형(bake). `default` = Omni = 오늘 동작이라 코드가
+        // 만드는 AttackState(도발 공격·v1 투사체)는 이 필드를 몰라도 안전하다. config(bake 1회).
+        public AttackShapeBaked shape;
     }
 }

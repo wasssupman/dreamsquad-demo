@@ -93,6 +93,9 @@ namespace Wassup.Data
         // nearest in-range attackers per cooldown tick. Default 1 preserves
         // single-target behavior; Bastion/Bruiser type tanks benefit from 3+.
         public int attackTargetCount = 1;
+        // directional-attack-shape unit 1 — 보는 쪽 공격 도형. 기본 = 360°(오늘). 길이는 attackRange.
+        // YAML 에 키가 없으면 이 초기값이 살지만 **정본은 bake 폴백**(0 → Omni)이다.
+        public AttackShape attackShape = AttackShape.Omni;
         public Mesh visualMesh;
         public Material visualMaterial;
 

@@ -45,7 +45,7 @@ namespace Wassup.Battle.Combat
         // `gPos`·`selfBodyRadius`·`rangeTiles`·`tileSize` 는 발사 게이트가 쓰는 것과 **같은 인자**다.
         public static int SelectTargets(
             float3 gPos, float rangeTiles, float tileSize, float selfBodyRadius,
-            int held, int capacity,
+            int held, int capacity, in AttackShapeBaked shape,
             NativeArray<AggroCandidate> cands, NativeArray<int> outIdx)
         {
             int maxTargets = outIdx.Length;
@@ -54,19 +54,22 @@ namespace Wassup.Battle.Combat
             int count = 0;
             // Pass A — 여유가 있으면 비-어그로만으로 먼저 채운다(신규 팩 흡수).
             if (held < capacity)
-                count = FillNearest(gPos, rangeTiles, tileSize, selfBodyRadius, cands, outIdx, count, freshOnly: true);
+                count = FillNearest(gPos, rangeTiles, tileSize, selfBodyRadius, in shape, cands, outIdx, count, freshOnly: true);
             // Pass B — 남은 슬롯을 일반 최근접으로 채운다(이미 뽑힌 인덱스 제외).
-            count = FillNearest(gPos, rangeTiles, tileSize, selfBodyRadius, cands, outIdx, count, freshOnly: false);
+            count = FillNearest(gPos, rangeTiles, tileSize, selfBodyRadius, in shape, cands, outIdx, count, freshOnly: false);
             return count;
         }
 
         private static int FillNearest(
-            float3 gPos, float rangeTiles, float tileSize, float selfBodyRadius,
+            float3 gPos, float rangeTiles, float tileSize, float selfBodyRadius, in AttackShapeBaked shape,
             NativeArray<AggroCandidate> cands, NativeArray<int> outIdx, int count, bool freshOnly)
         {
             int maxTargets = outIdx.Length;
             while (count < maxTargets)
             {
+                // directional-attack-shape unit 2 — primary(outIdx[0]) 는 좌우 합집합(side 0)에서 뽑고, 그 뒤부터는
+                // primary 쪽 도형 안에서만. Pass A/B 모두 같은 규칙 — 방향은 outIdx[0] 하나다.
+                int side = count == 0 ? 0 : AttackReach.SideOf(cands[outIdx[0]].pos.x - gPos.x);
                 int best = -1;
                 float bestSq = float.MaxValue;
                 for (int i = 0; i < cands.Length; i++)
@@ -76,7 +79,7 @@ namespace Wassup.Battle.Combat
                     if (freshOnly && c.aggroed) continue;
                     // unit 22 — 발사 게이트와 **같은 본체**. 여기서 모양을 다시 그리지 않는다.
                     if (!AttackReach.InReach(gPos, c.pos, rangeTiles, tileSize,
-                                             selfBodyRadius, c.bodyRadius, AttackShapeBaked.Omni, 0)) continue;
+                                             selfBodyRadius, c.bodyRadius, in shape, side)) continue;
                     float dx = c.pos.x - gPos.x;
                     float dz = c.pos.z - gPos.z;
                     float d2 = dx * dx + dz * dz;
