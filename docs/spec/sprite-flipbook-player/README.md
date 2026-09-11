@@ -1,6 +1,6 @@
 # Sprite Flipbook Player
 
-상태: 완료 2026-07-20
+상태: 완료 2026-07-20 · **unit 5 추가 구현 2026-09-11** (NxM 격자 자동 슬라이스)
 
 ## 상위 목표
 
@@ -24,6 +24,7 @@
 | 2 | 재생기 | `2_flipbook_player.md` | `SpriteFlipbookPlayer` MonoBehaviour — `SpriteRenderer` 구동 |
 | 3 | 오소링 | `3_sheet_authoring.md` | 통 시트 슬라이스 오소링 경로 + 검증 |
 | 4 | 인계 | `4_handoff_summary.md` | 구현 종료 요약 (커밋 해시 포함) |
+| 5 | 오소링 | `5_grid_slice_authoring.md` | PNG 1장 + 가로 N × 세로 M → 임포터 슬라이스까지 버튼 하나로 |
 
 ## Feature-wide 계약
 
@@ -68,6 +69,7 @@ Unity `Sprite Mode = Multiple` 로 자른 서브스프라이트를 에디터 유
 
 ## 후속 후보 (현 spec 범위 밖)
 
+- ~~**통 시트 격자 자르기 자동화**~~ · unit 5 로 흡수됨 (2026-09-11).
 - **`DeployCutscenePlayer` 를 이 재생기 위로 재작성** · 연출(캔버스/슬라이드/틸트)은 유지하고 프레임 진행만 위임. 기존 동작 회귀 검증이 커서 분리.
 - **UI `Image` 타겟 지원** · 두 번째 구현체가 실제로 필요해지면 그때 렌더 타겟 추출.
 - **로비 캐릭터의 `Animator` 대체** · 리액션 길이의 이중 진실(C# 타이머 ↔ Animator exit time)과 상태 매직 스트링이 사라지지만, `.anim`/컨트롤러 에셋 정리 + 키링 연동 회귀 검증이 딸려온다.
