@@ -56,9 +56,13 @@
 - **`DefenderUnitData.attackVfxAtAttacker`** 신설 — 히트 VFX 를 공격자 자리에 찍는다(브리지 드레인 원점 분기, 지연 경로 포함).
   도형 유닛은 이걸 켜고 `attackVfxFacesTarget` 과 함께 저작한다 — 회전하는 부가 타격 도형의 **유일한 시각 보증자**.
   ✅ **참격 자국 저작·통합 완료 2026-09-12** — `VFX/SlashMark_SKELETON.prefab` + `.mat`(URP Particles/Unlit 가산).
-  Shuriken `Shape=Circle arc 60° · radius 1.0 · thickness 1` 로 부채꼴 **면을 즉시 채우는 스탬프**(30 입자 · 0.3s one-shot ·
-  HorizontalBillboard 로 바닥에 눕힘 · 텍스처 시트 없음). `shape.rotation (90,−60,0)` 이 호의 중심을 +Z(= `PlayHit` 의 타겟
-  방향)로 맞춘다 — 오프스크린 렌더로 +X·+Z 두 방향 확인. 첫 시도(반경 0.2 링에서 튀는 파편)는 원점 뭉치로만 보여 폐기.
+  **rev 2026-09-12 (Play 「거의 안 보인다」 → 재작업)**: 파편 팬(30입자 가산)은 라이브 스크린샷에서 발밑 작은 둥근 빛으로만
+  보였다 — 카메라 pitch 50° 에 눌리고 가산 주황이 타일에 묻히며 방향이 안 읽힘. 그래서 **부채꼴 모양 자체를 그린 쿼드 1장**으로
+  바꿨다: 절차 생성 텍스처 `SlashMark_Sector.png`(꼭짓점 아래 중앙 · 반각 30° · 채움 α0.42 + 밝은 테두리 α0.95) 를
+  `SlashMark_SectorQuad.asset`(꼭짓점 원점 · +Y 1유닛) 에 입혀 **메시 파티클 1개**(`startRotation3D x=90°` 로 눕힘 ·
+  `alignment=Local` 이라 `PlayHit` 의 LookRotation 을 따라 +Z=타겟 방향) + 자식 잔불 20개(가산). 알파 블렌드라 밝은 타일
+  위에서도 선다. 0.5s one-shot, 0.45s 홀드 후 페이드. pitch 50° 렌더에서 +Z·+X·대각 세 방향 부채꼴 확인(`slash_sheet4.png`).
+  ⚠ 텍스처의 반각 30° 는 저작 60° 와 **손으로 맞춘 것** — 각도를 바꾸면 텍스처를 다시 굽는다(후속: 각도 → 셰이더 파라미터).
   브루저·말파이트: `attackVfxPrefab = SlashMark_SKELETON · attackVfxAtAttacker · attackVfxFacesTarget · scale 1.6`(사거리 1 + 몸).
   ⚠ 두 유닛의 **기존 히트 VFX(브루저 FireBlast · 말파이트 흙 폭발)는 슬롯이 하나라 대체됐다** — 유닛별 톤(카탈로그 팔레트)과
   「타격점 히트 + 공격자 참격」 2슬롯은 후속 후보. 필수 오버라이드: Duration 0.3 · StartColor (1,0.8,0.45,0.9) · MaxParticles 30 · Loop false.
