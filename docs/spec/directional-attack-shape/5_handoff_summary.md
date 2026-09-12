@@ -36,6 +36,10 @@
 - `in AttackShapeBaked.Omni`(프로퍼티 rvalue)는 CS8156 — `in` 없이 넘긴다.
 - 브루저·말파이트의 **기존 히트 VFX(FireBlast · 흙 폭발)는 참격 자국으로 대체됐다**(슬롯 하나). 2슬롯·유닛별 팔레트는 후속.
 
+## unit 6 (2026-09-12 추가)
+- 배치 프리뷰 공격 가이드: `TilemapMapView.SetShapeGuide/ClearShapeGuide`(부채꼴 메시 2장, 링 색·대역) · `BattleBridge.RefreshRangeTargetMarks`
+  가 `NearestTargeting.RanksBefore` 로 최근접을 뽑아 방향을 넘긴다. 라이브 검증 완료(`guide_f.png`). 참격 자국은 부채꼴 쿼드로 재작업(`94e41c6d`).
+
 ## Follow-up
 - 골든 재베이크(map WIP 정리 후) · Play 육안(링 원 복귀 · 위쪽 적도 때림 · 참격 자국 방향) · `wide_body` 골든 첫 베이크.
 - 참격 VFX 정식화(`_SKELETON` 접미사 제거 = 사용자 폴리시) · 유닛별 톤 · 타격점 히트 + 공격자 참격 2슬롯.

@@ -351,6 +351,9 @@ namespace Wassup.Core
             // 관통하면 UI 오버레이로 읽혀 물성이 깨진다. **끊김은 채움이 흡수한다.**
             // 그럼에도 이 목록에 있는 이유 = 빠뜨린 렌더러가 옛 값에 굳는 사고 방지(궁극기 예고 선례).
             if (_rangeRing != null) _rangeRing.sortingOrder = BoardSortOrder.RangeRingOrder;
+            // directional-attack-shape unit 6 — 공격 가이드도 링과 같은 대역(빠뜨린 렌더러가 옛 값에 굳는 사고 방지).
+            if (_shapeGuideFill != null) _shapeGuideFill.sortingOrder = BoardSortOrder.RangeRingOrder;
+            if (_shapeGuideRim != null) _shapeGuideRim.sortingOrder = BoardSortOrder.RangeRingOrder;
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -844,6 +847,136 @@ namespace Wassup.Core
             if (_rangeRing != null && _rangeRing.gameObject.activeSelf) _rangeRing.gameObject.SetActive(false);
         }
 
+        // ── directional-attack-shape unit 6 — 배치 프리뷰 공격 가이드(부채꼴) ──────────────
+        //
+        // 배치 중 사거리 안에 적이 있으면 **sim 과 같은 규칙으로 고른 타겟** 쪽으로 부채꼴을 그린다 —
+        // 「이 자리에 놓으면 지금 이 방향으로 휘두른다, 이 안이 같이 맞는다」. 정적 가이드(절반의 시간
+        // 거짓말)가 아니라 매 프레임 라이브 타겟을 따라가므로 「표시가 진실」을 지킨다.
+        //
+        // **뷰는 방향·반경·각을 받기만 한다** — 누가 타겟인지는 브리지가 `NearestTargeting.RanksBefore`
+        // (sim 획득과 같은 tie-break)로 정한다(unit 5·7 과 같은 규율: 표기가 규칙을 다시 그리지 않는다).
+        // 모양은 텍스처가 아니라 **부채꼴 메시**(각·반경이 인자) — 참격 자국 텍스처(반각 30° 고정)와 달리
+        // 저작 각도가 바뀌어도 그대로 참말이다. 색은 링과 같은 `rangeColor`(「예고」 언어) 로 채움은 옅게,
+        // 테는 또렷하게. 바깥 호는 링 원과 겹친다(반경 = 사거리 + 내 몸 = 링 반경).
+        private MeshRenderer _shapeGuideFill, _shapeGuideRim;
+        private Mesh _shapeGuideFillMesh, _shapeGuideRimMesh;
+        private float _shapeGuideAngleDeg = -1f, _shapeGuideRadiusTiles = -1f;
+        private const int ShapeGuideSegments = 24;
+        private const float ShapeGuideFillAlpha = 0.16f;
+        private const float ShapeGuideRimAlpha = 0.85f;
+        private const float ShapeGuideRimWidthTiles = 0.07f;
+
+        // `centerTiles` = 베이스(발밑, 타일 실수) · `dirTiles` = 타겟 방향(타일 축, 정규화 불필요) ·
+        // `radiusTiles` = 사거리 + 내 몸 · `angleDeg` = 전체각. 방향이 없거나(같은 자리) 각이 정의역 밖이면 숨긴다.
+        public void SetShapeGuide(Vector2 centerTiles, Vector2 dirTiles, float radiusTiles, float angleDeg)
+        {
+            if (grid == null || _tileSet == null || radiusTiles <= 0f || angleDeg <= 0f || angleDeg >= 360f
+                || dirTiles.sqrMagnitude < 1e-6f)
+            {
+                ClearShapeGuide();
+                return;
+            }
+            EnsureShapeGuide();
+            if (!Mathf.Approximately(_shapeGuideAngleDeg, angleDeg) || !Mathf.Approximately(_shapeGuideRadiusTiles, radiusTiles))
+            {
+                float cs = grid.cellSize.x;
+                float r = radiusTiles * cs;
+                BuildFan(_shapeGuideFillMesh, angleDeg, 0f, r);
+                BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
+                _shapeGuideAngleDeg = angleDeg; _shapeGuideRadiusTiles = radiusTiles;
+            }
+            var local = grid.CellToLocalInterpolated(new Vector3(centerTiles.x + 0.5f, centerTiles.y + 0.5f, 0f));
+            local.z = -PropGroundLift;
+            float yaw = Mathf.Atan2(dirTiles.y, dirTiles.x) * Mathf.Rad2Deg - 90f;   // 메시는 +Y 를 향한다
+            var rot = Quaternion.Euler(0f, 0f, yaw);
+            _shapeGuideFill.transform.localPosition = local; _shapeGuideFill.transform.localRotation = rot;
+            _shapeGuideRim.transform.localPosition = local;  _shapeGuideRim.transform.localRotation = rot;
+            var c = _tileSet.rangeColor;
+            c.a = ShapeGuideFillAlpha; _shapeGuideFill.sharedMaterial.color = c;
+            c.a = ShapeGuideRimAlpha;  _shapeGuideRim.sharedMaterial.color = c;
+            if (!_shapeGuideFill.gameObject.activeSelf) _shapeGuideFill.gameObject.SetActive(true);
+            if (!_shapeGuideRim.gameObject.activeSelf) _shapeGuideRim.gameObject.SetActive(true);
+        }
+
+        public void ClearShapeGuide()
+        {
+            if (_shapeGuideFill != null && _shapeGuideFill.gameObject.activeSelf) _shapeGuideFill.gameObject.SetActive(false);
+            if (_shapeGuideRim != null && _shapeGuideRim.gameObject.activeSelf) _shapeGuideRim.gameObject.SetActive(false);
+        }
+
+        private void EnsureShapeGuide()
+        {
+            if (_shapeGuideFill != null) return;
+            _shapeGuideFill = MakeShapeGuideRenderer("PlacementShapeGuideFill", out _shapeGuideFillMesh);
+            _shapeGuideRim = MakeShapeGuideRenderer("PlacementShapeGuideRim", out _shapeGuideRimMesh);
+        }
+
+        private MeshRenderer MakeShapeGuideRenderer(string name, out Mesh mesh)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(grid.transform, false);   // grid 자식 → 타일과 코플레이너(링과 같다)
+            mesh = new Mesh { name = name };
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            // 제약: Shader.Find + new Material 금지 — always-included 런타임 머티리얼에서 파생한다.
+            mr.sharedMaterial = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeColor);
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+            mr.sortingOrder = BoardSortOrder.RangeRingOrder;
+            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+            if (overlayR != null) mr.sortingLayerID = overlayR.sortingLayerID;
+            go.SetActive(false);
+            return mr;
+        }
+
+        // 부채꼴 채움: 꼭짓점(원점) + 호. +Y 가 중심 방향. `rInner` 0 = 꼭짓점부터.
+        private static void BuildFan(Mesh mesh, float angleDeg, float rInner, float rOuter)
+        {
+            int n = ShapeGuideSegments;
+            float half = angleDeg * 0.5f * Mathf.Deg2Rad;
+            var v = new Vector3[n + 2]; var t = new int[n * 3];
+            v[0] = Vector3.zero;
+            for (int i = 0; i <= n; i++)
+            {
+                float a = Mathf.PI * 0.5f - half + (2f * half) * i / n;
+                v[i + 1] = new Vector3(Mathf.Cos(a) * rOuter, Mathf.Sin(a) * rOuter, 0f);
+            }
+            for (int i = 0; i < n; i++) { t[i * 3] = 0; t[i * 3 + 1] = i + 2; t[i * 3 + 2] = i + 1; }
+            mesh.Clear(); mesh.vertices = v; mesh.triangles = t; mesh.RecalculateBounds();
+        }
+
+        // 부채꼴 테: 호 띠 + 두 직선 가장자리 띠(안쪽으로 `w`). 모서리 겹침은 알파가 조금 진해질 뿐이라 허용.
+        private static void BuildFanOutline(Mesh mesh, float angleDeg, float r, float w)
+        {
+            int n = ShapeGuideSegments;
+            float half = angleDeg * 0.5f * Mathf.Deg2Rad;
+            var verts = new List<Vector3>(); var tris = new List<int>();
+            // 호 띠
+            for (int i = 0; i <= n; i++)
+            {
+                float a = Mathf.PI * 0.5f - half + (2f * half) * i / n;
+                var d = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                verts.Add(d * (r - w)); verts.Add(d * r);
+            }
+            for (int i = 0; i < n; i++)
+            {
+                int b = i * 2;
+                tris.Add(b); tris.Add(b + 3); tris.Add(b + 1);
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+            }
+            // 직선 가장자리 띠 2개 — 안쪽(중심 방향 +Y 쪽) 법선으로 오프셋
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float a = Mathf.PI * 0.5f + side * half;
+                var e = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                var nrm = new Vector3(-side * e.y, side * e.x, 0f);   // 부채꼴 안쪽을 향하는 수직
+                int b = verts.Count;
+                verts.Add(Vector3.zero); verts.Add(nrm * w); verts.Add(e * r); verts.Add(e * r + nrm * w);
+                if (side < 0) { tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3); }
+                else          { tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2); }
+            }
+            mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
+        }
+
         // unit 11 — 방향 조준 화살표(SetAimArrows 계열)는 facing 과 함께 은퇴.
 
         private static Sprite PopSprite()
@@ -1189,6 +1322,7 @@ namespace Wassup.Core
         public void ClearPlacementRange()
         {
             HideRangeRing();      // unit 5 — 채움과 수명을 공유한다
+            ClearShapeGuide();    // directional-attack-shape unit 6 — 가이드도 같은 수명
             _ringStyleOverride = null;   // 0b — 다음 페인트는 자기 스타일을 다시 정한다
             HideTargetMarks();    // unit 7 — 마크도 같은 수명
             if (_rangeCells.Count == 0) return;

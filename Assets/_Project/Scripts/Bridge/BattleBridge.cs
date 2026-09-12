@@ -8009,6 +8009,9 @@ namespace Wassup.Bridge
             // 지원형(`targetAllies`)은 층 마스크를 **0** 으로 굽는다 — 아군 방어유닛은
             // `PathFollowState` 가 없는 고정 유닛이라 층 축이 의미가 없기 때문이다.
             var atkLayers = unit.targetAllies ? (byte)0 : (byte)unit.EffectiveAttackTargetLayers;
+            // directional-attack-shape unit 6 — 가이드용 «지금 물 타겟». sim 획득과 같은 규칙: 최근접, 동거리는 낮은 simId
+            // (`NearestTargeting.RanksBefore` — AttackSystem:615 의 tie-break). 배치 전이라 락·도발·frontmost 는 없다.
+            bool guideHas = false; var guideBest = default(Wassup.Battle.Combat.NearestTargeting.Candidate); float3 guidePos = default;
             for (int i = 0; i < ents.Length; i++)
             {
                 if (((int)fac[i].value & mask) == 0) continue;
@@ -8038,9 +8041,26 @@ namespace Wassup.Bridge
                 if (_em.HasComponent<Wassup.Battle.Units.StructureTag>(ents[i]))
                     half = Wassup.Data.StructurePlacements.FootprintOf(fac[i].value) * 0.5f;
                 _markHalf.Add(half);
+                var cand = new Wassup.Battle.Combat.NearestTargeting.Candidate
+                {
+                    sqDist = math.distancesq(atkPos, tf[i].Position),
+                    simId = _em.HasComponent<Wassup.Battle.Units.SimEntityId>(ents[i])
+                        ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(ents[i]).value
+                        : Wassup.Battle.Units.SimEntityId.Unassigned,
+                };
+                if (!guideHas || Wassup.Battle.Combat.NearestTargeting.RanksBefore(in cand, in guideBest))
+                { guideBest = cand; guidePos = tf[i].Position; guideHas = true; }
             }
             ents.Dispose(); tf.Dispose(); fac.Dispose();
             tilemapMapView.SetRangeTargetMarks(_markPos, _markHalf);
+            // unit 6 — 도형 유닛(부채꼴)만, 타겟이 있을 때만. 반경 = 링과 같은 값(사거리 + 내 몸).
+            var guideShape = BakeAttackShape(unit.attackShape, unit);
+            if (guideHas && guideShape.kind == Wassup.Data.AttackShapeBaked.SectorKind)
+                tilemapMapView.SetShapeGuide(
+                    new Vector2(center.x + markBase.x, center.y + markBase.y),
+                    new Vector2(guidePos.x - atkPos.x, guidePos.z - atkPos.z),
+                    unit.attackRange + unit.BodyRadiusTiles, unit.attackShape.angleDeg);
+            else tilemapMapView.ClearShapeGuide();
         }
 
         public void ClearPlacementRange()
