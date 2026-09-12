@@ -1,4 +1,3 @@
-using AttackShapeBaked = Wassup.Data.AttackShapeBaked;
 using NUnit.Framework;
 using Unity.Mathematics;
 using Wassup.Battle.Combat;
@@ -24,14 +23,13 @@ namespace Wassup.Tests.EditMode
         // `b = 0.25` 를 고른 이유다(의미는 바로잡고 밸런스는 안 움직인다).
         private const float Body = 0.25f;
         private const float Tile = 1f;
-        private static readonly AttackShapeBaked Omni = AttackShapeBaked.Omni;   // directional-attack-shape — 360° 항등
         private static float3 At(float x, float z) => new float3(x, 0f, z);
         private static bool R(float ax, float az, float bx, float bz, int range, float body = Body)
-            => AttackReach.InReach(At(ax, az), At(bx, bz), range, Tile, Body, body, in Omni, 0);
+            => AttackReach.InReach(At(ax, az), At(bx, bz), range, Tile, Body, body);
         // unit 9 — 비정수 사거리용. `range` 는 무시되고 `rangeF` 가 쓰인다.
         private static bool R(float ax, float az, float bx, float bz, int range,
                               float body, float rangeF)
-            => AttackReach.InReach(At(ax, az), At(bx, bz), rangeF, Tile, Body, body, in Omni, 0);
+            => AttackReach.InReach(At(ax, az), At(bx, bz), rangeF, Tile, Body, body);
 
         [Test]
         public void Range1_KeepsAllEightNeighbours_IncludingDiagonal()
@@ -149,8 +147,8 @@ namespace Wassup.Tests.EditMode
         public void TileSize_IsTheOnlyWorldConversion()
         {
             // 술어는 타일 단위만 안다. 월드→타일 환산은 `AttackReach` 한 곳에서만 일어난다.
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(2.9f, 0), 1, 2f, Body, Body, in Omni, 0), "2칸 타일: 2.9/2=1.45 → v=0.95");
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(3.1f, 0), 1, 2f, Body, Body, in Omni, 0), "3.1/2=1.55 → v=1.05");
+            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(2.9f, 0), 1, 2f, Body, Body), "2칸 타일: 2.9/2=1.45 → v=0.95");
+            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(3.1f, 0), 1, 2f, Body, Body), "3.1/2=1.55 → v=1.05");
         }
 
         [Test]
@@ -160,8 +158,8 @@ namespace Wassup.Tests.EditMode
             // ⚠ 몸이 다르면 **의도적으로 비대칭**이다(큰 몸은 맞기 쉽고 때리기는 같다) —
             // 그래서 이 단언은 「같은 몸끼리」로 좁혀져 있다.
             var pa = At(2.3f, 7.1f); var pb = At(4.2f, 5.8f);
-            Assert.AreEqual(AttackReach.InReach(pa, pb, 2, Tile, Body, Body, in Omni, 0),
-                            AttackReach.InReach(pb, pa, 2, Tile, Body, Body, in Omni, 0));
+            Assert.AreEqual(AttackReach.InReach(pa, pb, 2, Tile, Body, Body),
+                            AttackReach.InReach(pb, pa, 2, Tile, Body, Body));
         }
 
         [Test]

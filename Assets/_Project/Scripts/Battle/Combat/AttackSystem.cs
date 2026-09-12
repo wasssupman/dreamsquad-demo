@@ -612,7 +612,7 @@ namespace Wassup.Battle.Combat
                     if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // class not allowed
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
-                    if (!AttackReach.InReach(atkPos, targetPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup), in attack.ValueRO.shape, 0)) continue;
+                    if (!AttackReach.InReach(atkPos, targetPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup))) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetPos);
                     // battle-structures unit 0 — 거점에 대한 타입 기반 특별 취급은 없다.
                     // 마스크에 들어온 후보는 종류를 묻지 않고 **거리로만** 경쟁한다.
@@ -752,7 +752,7 @@ namespace Wassup.Battle.Combat
                             // 락 유지도 **선정과 같은 술어**를 지나되 히스테리시스 `h` 만큼 넓다
                             // (unit 4d). 셀만 보면 락을 문 뒤로는 몸 거리가 영영 적용되지 않고,
                             // EnemyAiState 쪽 미러와 갈려 «쏘면서 골로 걸어가는» 상태가 된다.
-                            keepLock = TargetPersistence.KeepsLock(true, atkPos, curPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(cur, _bodyRadiusLookup), in attack.ValueRO.shape);
+                            keepLock = TargetPersistence.KeepsLock(true, atkPos, curPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(cur, _bodyRadiusLookup));
                         }
 
                         if (keepLock)
@@ -793,7 +793,7 @@ namespace Wassup.Battle.Combat
                         // distance-based-range unit 1 — 어그로 sticky 도 **같은 술어**를 지난다.
                         // 오늘은 가디언이 타일 고정이라 2차 게이트가 안 걸려 결과가 같지만,
                         // 인라인으로 두면 자를 바꾸는 순간 이 한 곳만 옛 답을 낸다.
-                        if (AttackReach.InReach(atkPos, gPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(g, _bodyRadiusLookup), in attack.ValueRO.shape, 0))
+                        if (AttackReach.InReach(atkPos, gPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(g, _bodyRadiusLookup)))
                         {
                             bestTarget = g;
                             bestTargetPos = gPos;
@@ -825,7 +825,7 @@ namespace Wassup.Battle.Combat
                             int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
                             // unit 1 수렴 — 락 유지도 선정과 같은 술어를 지난다.
                             if (TargetPersistence.KeepsLock(// 유지 — unit 4d
-                                    true, atkPos, ltPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(lt, _bodyRadiusLookup), in attack.ValueRO.shape))
+                                    true, atkPos, ltPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(lt, _bodyRadiusLookup)))
                             { bestTarget = lt; bestTargetPos = ltPos; }
                             else bestTarget = Entity.Null; // out of range → lapse
                         }
@@ -890,7 +890,7 @@ namespace Wassup.Battle.Combat
                             dcurPos = aggroTransformLookup.HasComponent(dcur)
                                 ? aggroTransformLookup[dcur].Position : bestTargetPos;
                             dKeep = TargetPersistence.KeepsLock(// 유지 — unit 4d
-                                true, atkPos, dcurPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(dcur, _bodyRadiusLookup), in attack.ValueRO.shape);
+                                true, atkPos, dcurPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(dcur, _bodyRadiusLookup));
                         }
                         if (dKeep)
                         {
@@ -935,7 +935,7 @@ namespace Wassup.Battle.Combat
                             ? aggroTransformLookup[ct].Position : bestTargetPos;
                         int2 ctCell = GridMath.WorldToCell(ctPos, tileSize, gridSize, origin: ffOrigin);
                         if (TargetPersistence.KeepsLock(// 유지 — unit 4d
-                                true, atkPos, ctPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(ct, _bodyRadiusLookup), in attack.ValueRO.shape))
+                                true, atkPos, ctPos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(ct, _bodyRadiusLookup)))
                         { bestTarget = ct; bestTargetPos = ctPos; }
                         else bestTarget = Entity.Null;   // 사거리 이탈 → lapse
                     }
@@ -1489,11 +1489,10 @@ namespace Wassup.Battle.Combat
                             else
                             {
                                 hitTargets[hitCount++] = bestTarget;
-                                // directional-attack-shape unit 2 — 주 대상이 정해졌다. 이제부터 «보는 쪽»이 있다.
-                                // 부가 타격은 이쪽 도형 안에서만 고른다. Omni 면 side 는 무시된다(게이트가 안 돈다).
-                                // ⚠ 이 분기 안에서 계산한다 — 가디언 분기는 `bestTargetPos` 를 `outIdx[0]` 로 재대입하므로
-                                //   합류 전에 계산하면 옛 위치를 본다(리뷰 LOW). 가디언 쪽 side 는 `FillNearest` 가 스스로 정한다.
-                                int hitSide = AttackReach.SideOf(bestTargetPos.x - atkPos.x);
+                                // directional-attack-shape rev 3 — 주 대상이 정해졌다. 부가 타격은 **그 대상을 향한 실제 방향**을
+                                // 축으로 세운 도형 안에서만 고른다(획득은 원 — 위 (1)). Omni 면 도형 항은 안 돈다.
+                                // ⚠ 이 분기 안에서 계산한다 — 가디언 분기는 `bestTargetPos` 를 `outIdx[0]` 로 재대입한다.
+                                var hitDir = new float2(bestTargetPos.x - atkPos.x, bestTargetPos.z - atkPos.z);
                                 if (desiredCount > 1)
                                 {
                                     var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
@@ -1523,8 +1522,8 @@ namespace Wassup.Battle.Combat
                                             int2 tgtCellAoE = GridMath.WorldToCell(aoePos, tileSize, gridSize, origin: ffOrigin);
                                             // unit 1 수렴 — 다중타격의 2번째 이후 대상도 **첫 대상과 같은 술어**를
                                             // 지난다. 갈려 있으면 「내가 때릴 수 있는 적」의 정의가 발마다 다르다.
-                                            // directional-attack-shape unit 2 — 부가 타격은 **주 대상 쪽** 도형 안에서만(side ±1).
-                                            if (!AttackReach.InReach(atkPos, aoePos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup), in attack.ValueRO.shape, hitSide)) continue;
+                                            // directional-attack-shape rev 3 — 원 AND 주 대상 방향 도형(부가 타격 전용 진입점).
+                                            if (!AttackReach.InReachShaped(atkPos, aoePos, rangeTiles, tileSize, RadiusOf(attackerEntity, _bodyRadiusLookup), RadiusOf(targetEntities[i], _bodyRadiusLookup), in attack.ValueRO.shape, hitDir)) continue;
                                             float d2 = DistanceSqToTarget(atkPos, aoePos);
                                             if (rankByHealth)
                                             {

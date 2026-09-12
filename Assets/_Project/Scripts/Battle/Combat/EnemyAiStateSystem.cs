@@ -107,14 +107,14 @@ namespace Wassup.Battle.Combat
                             // distance-based-range unit 1 — 「멈춰도 되나」도 **같은 술어**를 지난다.
                             // 셀만 보면 자를 바꾸는 순간 이 한 곳만 옛 답을 내고, 그게 정확히
                             // 「멈추는 근거」와 「쏘는 근거」가 갈리는 교착이다(AttackReach 헤더).
-                            guardianInRange = AttackReach.InReach(atkPos, gPos, tileRange, tileSize, RadiusOf(enemyEntity, _bodyRadiusLookup), RadiusOf(g, _bodyRadiusLookup), attackLookup[enemyEntity].shape, 0);
+                            guardianInRange = AttackReach.InReach(atkPos, gPos, tileRange, tileSize, RadiusOf(enemyEntity, _bodyRadiusLookup), RadiusOf(g, _bodyRadiusLookup));
                         }
                     }
                 }
                 else if (hasAttack)
                 {
                     hasFireTarget = HasFireTarget(enemyEntity, atkCell, atkPos, tileRange, mask,
-                        targetTraversalLayers, attackLookup[enemyEntity].shape,
+                        targetTraversalLayers,
                         candEntities, candTransforms, candFactions, candTraversalLayers,
                         tileSize, gridSize, ffOrigin,
                         classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup,
@@ -153,7 +153,7 @@ namespace Wassup.Battle.Combat
 
         static bool HasFireTarget(
             Entity attacker, int2 atkCell, float3 atkPos, float tileRange, int mask,
-            byte attackTargetLayers, in AttackShapeBaked shape,
+            byte attackTargetLayers,
             in NativeArray<Entity> candEntities,
             in NativeArray<LocalTransform> candTransforms,
             in NativeArray<FactionTag> candFactions,
@@ -199,7 +199,7 @@ namespace Wassup.Battle.Combat
                     // 정지 판정은 공격 판정과 **같은 술어**여야 한다(AttackReach 주석 — 갈리면 교착).
                     // 유지 — unit 4d. `AttackSystem` 의 락 유지와 **같은 함수·같은 임계**여야
                     // 두 벌이 갈려 생기는 «락은 있는데 Marching» 데드락이 안 난다.
-                    bool curReach = TargetPersistence.KeepsLock(true, atkPos, curPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(cur, bodyRadiusLookup), in shape);
+                    bool curReach = TargetPersistence.KeepsLock(true, atkPos, curPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(cur, bodyRadiusLookup));
                     // target-persistence unit 1·2 — 유지 판정은 AttackSystem 과 **같은 함수**다.
                     if (curReach) return true;
                     // 사거리 이탈 → 락 해제(D2). 예전엔 여기서 false 를 반환해 Marching 이 됐고,
@@ -222,7 +222,7 @@ namespace Wassup.Battle.Combat
                 float3 tgtPos = candTransforms[i].Position;
                 int2 tgtCell = GridMath.WorldToCell(tgtPos, tileSize, gridSize, origin: ffOrigin);
                 // 같은 술어(AttackReach) — AttackSystem·PatrolAreaMath 와 한 몸이어야 한다.
-                if (AttackReach.InReach(atkPos, tgtPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(candEntities[i], bodyRadiusLookup), in shape, 0))
+                if (AttackReach.InReach(atkPos, tgtPos, tileRange, tileSize, RadiusOf(attacker, bodyRadiusLookup), RadiusOf(candEntities[i], bodyRadiusLookup)))
                     return true;
             }
             return false;

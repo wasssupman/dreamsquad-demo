@@ -93,9 +93,17 @@ namespace Wassup.Data
         // nearest in-range attackers per cooldown tick. Default 1 preserves
         // single-target behavior; Bastion/Bruiser type tanks benefit from 3+.
         public int attackTargetCount = 1;
-        // directional-attack-shape unit 1 — 보는 쪽 공격 도형. 기본 = 360°(오늘). 길이는 attackRange.
+        // directional-attack-shape rev 3 — **부가 타격** 도형(주 대상 방향 중심 부채꼴/띠). 기본 = 360°(오늘).
+        // 획득은 원이라 attackTargetCount 1 이면 효과 0(OnValidate 경고). 길이는 attackRange.
         // YAML 에 키가 없으면 이 초기값이 살지만 **정본은 bake 폴백**(0 → Omni)이다.
         public AttackShape attackShape = AttackShape.Omni;
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (!AttackShapeBake.From(attackShape, out _).IsOmni && attackTargetCount <= 1)
+                Debug.LogWarning($"[DefenderUnitData] {name}: 공격 도형을 저작했는데 attackTargetCount 가 1 — 도형은 부가 타격만 거르므로 효과가 없다.", this);
+        }
+#endif
         public Mesh visualMesh;
         public Material visualMaterial;
 
@@ -110,6 +118,10 @@ namespace Wassup.Data
         public float attackVfxScale = 1f;
         // 히트 VFX 를 타격 방향으로 회전시킬지. 방향성 있는 폭발(흙 분출 등)만 true.
         public bool attackVfxFacesTarget;
+        // directional-attack-shape rev 3 — 히트 VFX 를 대상 자리가 아니라 **공격자 자리**에 찍는다(참격 자국).
+        // 도형(attackShape) 유닛은 이걸 켜고 attackVfxFacesTarget 과 함께 저작한다 — 회전하는 부가 타격 도형의
+        // 유일한 시각 보증자다(정적 가이드는 절반의 시간 거짓말이라 두지 않는다).
+        public bool attackVfxAtAttacker;
         // 히트 VFX 기본 자세 보정(로컬 오일러, 계산된 회전 **뒤에** 곱해진다).
         // 필요한 이유: 벤더 VFX 는 대개 "바닥 = 월드 XZ" 관례로 저작되는데, 이 게임의 보드는
         // Tilemap 그리드라 **바닥이 월드 XY 평면**이다(BoardSpace.ToView 가 sim XZ → 셀 XY).

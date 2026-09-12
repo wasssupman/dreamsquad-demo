@@ -119,11 +119,7 @@ namespace Wassup.Battle.Effects
                     transform.ValueRO.Position, enemyWorld, enemyBody,
                     // unit 9 — 순찰병 자기 몸. 안 넘기면 소비처 열하나 중 여기만 다른 답을 받는다.
                     _hitRadiusLookup.HasComponent(entity) ? _hitRadiusLookup[entity].value : 0f,
-                    flowField.tileSize,
-                    // directional-attack-shape unit 2 — 순찰병 자기 도형(오늘 전부 Omni). 소비처 11곳 계약.
-                    SystemAPI.HasComponent<Wassup.Battle.Combat.AttackState>(entity)
-                        ? SystemAPI.GetComponent<Wassup.Battle.Combat.AttackState>(entity).shape
-                        : Wassup.Data.AttackShapeBaked.Omni);
+                    flowField.tileSize);
 
                 areaMask.Dispose();
             }

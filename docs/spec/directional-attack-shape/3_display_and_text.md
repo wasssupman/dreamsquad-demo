@@ -47,3 +47,14 @@
 - `TilemapMapView.SetPlacementRange(anchor, tileRange, shape, …)` — 도형 인자 필수. `shape.IsOmni` 일 때만 링.
 - `BattleBridge.SetPlacementRange`·`RefreshRangeTargetMarks` 가 `BakeAttackShape(unit.attackShape)` 를 넘긴다.
 - `UnitKitSummary` — bake 를 지나 문안을 정한다(sim 과 같은 폴백: reflex 는 Omni 문안).
+
+---
+
+### rev 3 (2026-09-12) — 되돌림 + VFX 원점
+
+- `TilemapMapView.SetPlacementRange` 도형 인자 삭제 · **링은 항상 원**. `BattleBridge` 마크도 원. `_placementMarkShape` 삭제.
+- **`DefenderUnitData.attackVfxAtAttacker`** 신설 — 히트 VFX 를 공격자 자리에 찍는다(브리지 드레인 원점 분기, 지연 경로 포함).
+  도형 유닛은 이걸 켜고 `attackVfxFacesTarget` 과 함께 저작한다 — 회전하는 부가 타격 도형의 **유일한 시각 보증자**.
+  ⚠ 참격 자국 프리팹 저작·슬롯 연결은 **에디터 작업**(unity-vfx-authoring → 오프스크린 렌더 육안) — 미실행.
+- 문안: 「휘두르는 쪽 A° 안 최대 N체 동시 타격」(N > 1 일 때만 · N = 1 은 도형 문안 없음 — 효과 0) · Band 「찌르는 방향 일직선…」.
+- `OnValidate` 경고 복귀(rev 1 계약 9): 도형 × `attackTargetCount ≤ 1` = 효과 0.

@@ -6,14 +6,13 @@ using Wassup.Skills;
 
 namespace Wassup.Tests.EditMode
 {
-    // directional-attack-shape unit 0 — 좌/우 도형 게이트의 **절대값**을 못박는다.
+    // directional-attack-shape unit 0 — 도형 게이트의 **절대값**을 못박는다.
     //
-    // 도형은 항상 **+X 방향**이다. 호출부가 `side` 로 dx 부호를 접어 넘긴다:
-    //   along = side == 0 ? |dx| : side·dx   ·   across = dz
-    // 0 = 양쪽 합집합(획득) · ±1 = 한쪽(부가 타격). 유닛이 타겟 쪽으로 좌/우 반전하므로 회전 수학이 없다.
+    // `SkillMath` 게이트는 **+X 고정 프레임**이다(along = 주 대상 방향 성분, across = 수직 성분). 회전은
+    // `AttackReach.InReachShaped` 가 한다 — 주 대상 방향 벡터를 받아 Δ 를 그 프레임으로 내린다(rev 3).
     //
-    // 게이트는 반경 판정(`Reach`) **뒤에 AND 로 곱해지는 항**이다 — 길이는 원이 정하고, 도형은
-    // 「보는 쪽으로 얼마나 좁게」만 정한다. 그래서 Omni(360°)에서 `InReach` 는 옛 답과 비트 단위로 같다.
+    // 도형은 반경 판정(`Reach`) **뒤에 AND 로 곱해지는 항**이고 **부가 타격에만** 쓰인다 — 획득은 원이다.
+    // 그래서 Omni(360°)에서 `InReachShaped` 는 `InReach` 와 비트 단위로 같다.
     public class AttackShapeGateTests
     {
         private const float Tr = 0.5f;        // 중형 적의 몸
@@ -43,6 +42,8 @@ namespace Wassup.Tests.EditMode
         };
 
         private static float3 At(float x, float z) => new float3(x, 0f, z);
+        private static readonly float2 Right = new float2(1f, 0f);
+        private static readonly float2 Up = new float2(0f, 1f);
 
         // ── 부채꼴 ─────────────────────────────────────────────────────────────
 
@@ -62,7 +63,6 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(Sector(1f, 1.3f, 90f), "몸이 가장자리에 걸치면 안");
             // (1, 1.9): 거리 = 0.636 > 0.5 → 몸도 안 닿는다
             Assert.IsFalse(Sector(1f, 1.9f, 90f), "몸도 안 닿으면 밖");
-            // 아래쪽(−dz)도 대칭
             Assert.IsTrue(Sector(1f, -1.3f, 90f));
             Assert.IsFalse(Sector(1f, -1.9f, 90f));
         }
@@ -80,8 +80,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Sector_180_DegeneratesToHalfPlane()
         {
-            // 반각 90° → 「앞쪽 반평면 + 몸」: along ≥ −tr.
-            Assert.IsTrue(Sector(0f, 5f, 180f), "옆(정확히 위)도 안");
+            Assert.IsTrue(Sector(0f, 5f, 180f), "옆도 안");
             Assert.IsTrue(Sector(-0.4f, 5f, 180f), "살짝 뒤라도 몸이 걸치면 안");
             Assert.IsFalse(Sector(-0.6f, 5f, 180f), "몸 반경 너머 뒤는 밖");
         }
@@ -91,7 +90,6 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Band_LateralEdge_IsHalfWidthPlusBody()
         {
-            // 반폭 0.5 + 몸 0.5 = 1.0 까지.
             Assert.IsTrue(Band(1f, 0.9f, 0.5f, 2f), "0.9 — 몸이 띠에 걸친다");
             Assert.IsFalse(Band(1f, 1.1f, 0.5f, 2f), "1.1 — 몸도 안 닿는다");
             Assert.IsTrue(Band(1f, -0.9f, 0.5f, 2f), "아래쪽 대칭");
@@ -100,8 +98,8 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Band_Behind_IsOutBeyondBody()
         {
-            Assert.IsTrue(Band(-0.4f, 0f, 0.5f, 2f), "뒤 0.4 — 몸이 상자 뒷면에 걸친다");
-            Assert.IsFalse(Band(-0.6f, 0f, 0.5f, 2f), "뒤 0.6 — 밖");
+            Assert.IsTrue(Band(-0.4f, 0f, 0.5f, 2f));
+            Assert.IsFalse(Band(-0.6f, 0f, 0.5f, 2f));
         }
 
         [Test]
@@ -114,24 +112,24 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Band_ZeroHalfWidth_IsValid_BodyOnAxisHits()
         {
-            Assert.IsTrue(Band(1f, 0.4f, 0f, 2f), "폭 0 이어도 몸이 축에 걸치면 안");
+            Assert.IsTrue(Band(1f, 0.4f, 0f, 2f));
             Assert.IsFalse(Band(1f, 0.6f, 0f, 2f));
         }
 
-        // ── AttackReach 래퍼 ───────────────────────────────────────────────────
+        // ── AttackReach.InReachShaped (rev 3 — 방향 벡터 회전) ─────────────────
 
         [Test]
-        public void InReach_Omni_IsBitIdenticalToReachFromUnit()
+        public void InReachShaped_Omni_IsBitIdenticalToInReach()
         {
-            // 360° 항등 — 저작 안 한 유닛은 오늘과 같다. 격자를 훑어 옛 본체와 전건 대조.
+            // 360° 항등 — 저작 안 한 유닛의 부가 타격은 오늘과 같다. 격자를 훑어 원 진입점과 전건 대조.
             var omni = AttackShapeBaked.Omni;
             int checkedCount = 0;
             for (float range = 0f; range <= 4f; range += 0.5f)
                 for (int x = -6; x <= 6; x++)
                     for (int z = -6; z <= 6; z++)
                     {
-                        bool expected = SkillMath.ReachFromUnit(x, z, range, SelfR, Tr);
-                        bool actual = AttackReach.InReach(At(0, 0), At(x, z), range, Tile, SelfR, Tr, in omni, 0);
+                        bool expected = AttackReach.InReach(At(0, 0), At(x, z), range, Tile, SelfR, Tr);
+                        bool actual = AttackReach.InReachShaped(At(0, 0), At(x, z), range, Tile, SelfR, Tr, in omni, Right);
                         Assert.AreEqual(expected, actual, $"range={range} Δ=({x},{z})");
                         checkedCount++;
                     }
@@ -139,64 +137,64 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void InReach_SideZero_IsLeftRightSymmetric()
+        public void InReachShaped_RotatesWithPrimaryDirection()
         {
+            // 주 대상이 **위**(+Z)에 있으면 도형도 위를 향한다 — 회전 불변: (Δ, u) 를 같이 돌려도 답이 같다.
             var s = SectorShape(90f);
             for (int x = -4; x <= 4; x++)
                 for (int z = -4; z <= 4; z++)
                     Assert.AreEqual(
-                        AttackReach.InReach(At(0, 0), At(x, z), 4f, Tile, SelfR, Tr, in s, 0),
-                        AttackReach.InReach(At(0, 0), At(-x, z), 4f, Tile, SelfR, Tr, in s, 0),
-                        $"Δ=({x},{z}) 와 ({-x},{z}) 가 달라진다");
+                        AttackReach.InReachShaped(At(0, 0), At(x, z), 4f, Tile, SelfR, Tr, in s, Right),
+                        AttackReach.InReachShaped(At(0, 0), At(-z, x), 4f, Tile, SelfR, Tr, in s, Up),
+                        $"Δ=({x},{z})@Right vs ({-z},{x})@Up 이 달라진다");
         }
 
         [Test]
-        public void InReach_SidePlus_RejectsTargetOnTheLeft_SideZeroAccepts()
+        public void InReachShaped_OppositeSide_IsOut_SameSideIn()
         {
             var s = SectorShape(90f);
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, 0), "합집합은 왼쪽도");
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, +1), "오른쪽만 볼 땐 왼쪽 밖");
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, -1), "왼쪽만 볼 땐 안");
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(2, 0), 4f, Tile, SelfR, Tr, in s, Right), "주 대상 쪽");
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, Right), "반대편은 밖");
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, new float2(-1f, 0f)), "주 대상이 왼쪽이면 왼쪽이 안");
         }
 
         [Test]
-        public void InReach_Sector_DirectlyAbove_IsNotACandidate()
+        public void InReachShaped_DirectionScaleDoesNotMatter()
         {
-            // 검증 질문의 얼굴 — 머리 위 두 칸은 보는 쪽 부채꼴(90°) 어디에도 없다. 합집합으로 봐도 없다.
-            var s = SectorShape(90f);
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(0, 2), 4f, Tile, SelfR, Tr, in s, 0));
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(0, -2), 4f, Tile, SelfR, Tr, in s, 0));
-            var omni = AttackShapeBaked.Omni;
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(0, 2), 4f, Tile, SelfR, Tr, in omni, 0), "Omni 는 잡는다");
+            // 정규화 불필요 — 월드든 타일이든 방향만 쓴다.
+            var s = SectorShape(60f);
+            Assert.AreEqual(
+                AttackReach.InReachShaped(At(0, 0), At(2, 1), 4f, Tile, SelfR, Tr, in s, new float2(1f, 0.2f)),
+                AttackReach.InReachShaped(At(0, 0), At(2, 1), 4f, Tile, SelfR, Tr, in s, new float2(37f, 7.4f)));
         }
 
         [Test]
-        public void InReach_Band_OnAxisLength_MatchesReach()
+        public void InReachShaped_UndefinedDirection_PassesShapeTerm()
         {
-            // 띠의 길이 = 사거리 + 원점 몸. 축 위에서 원(Reach)과 정확히 같은 곳에서 끝난다.
+            // 주 대상이 같은 자리 → 방향 없음 → 도형 항 통과(원 항만). 계약 7.
+            var s = SectorShape(30f);
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(-2, 0), 4f, Tile, SelfR, Tr, in s, float2.zero));
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(-9, 0), 4f, Tile, SelfR, Tr, in s, float2.zero), "원 항은 여전히 본다");
+        }
+
+        [Test]
+        public void InReachShaped_Band_OnAxisLength_MatchesReach()
+        {
             var b = BandShape(0.5f);
             float edge = 2f + SelfR + Tr;   // Reach 경계 = 3.0
-            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(edge, 0), 2f, Tile, SelfR, Tr, in b, +1), "경계 포함");
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(edge + 0.02f, 0), 2f, Tile, SelfR, Tr, in b, +1), "경계 너머");
-            Assert.IsFalse(AttackReach.InReach(At(0, 0), At(0, 2), 2f, Tile, SelfR, Tr, in b, 0), "정확히 위 2칸은 후보 아님");
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(edge, 0), 2f, Tile, SelfR, Tr, in b, Right), "경계 포함");
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(edge + 0.02f, 0), 2f, Tile, SelfR, Tr, in b, Right), "경계 너머");
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(0, 2), 2f, Tile, SelfR, Tr, in b, Right), "축 밖 세로 2 는 띠 밖");
         }
 
         [Test]
-        public void InReach_TileSizeIsDividedOut_BeforeTheGate()
+        public void InReachShaped_TileSizeIsDividedOut_BeforeTheGate()
         {
-            // 월드 2배 스케일에서도 같은 답 — 게이트가 타일 단위를 받는지 확인.
             var s = SectorShape(90f);
             Assert.AreEqual(
-                AttackReach.InReach(At(0, 0), At(1, 1.3f), 4f, 1f, SelfR, Tr, in s, +1),
-                AttackReach.InReach(At(0, 0), At(2, 2.6f), 4f, 2f, SelfR, Tr, in s, +1));
+                AttackReach.InReachShaped(At(0, 0), At(1, 1.3f), 4f, 1f, SelfR, Tr, in s, Right),
+                AttackReach.InReachShaped(At(0, 0), At(2, 2.6f), 4f, 2f, SelfR, Tr, in s, Right));
         }
-
-        // 계약 4 — 결정론. `dx == 0`(정확히 위/아래)은 +X. ECS 리뷰 L2: 간접 검증만 있어 직접 못박는다.
-        [TestCase(0f, ExpectedResult = 1)]
-        [TestCase(-0.01f, ExpectedResult = -1)]
-        [TestCase(0.01f, ExpectedResult = 1)]
-        [TestCase(float.NegativeInfinity, ExpectedResult = -1)]
-        public int SideOf_SignOfDx_TieGoesRight(float dx) => AttackReach.SideOf(dx);
 
         [Test]
         public void Gates_DegenerateInputs_ReturnBoolWithoutThrowing()

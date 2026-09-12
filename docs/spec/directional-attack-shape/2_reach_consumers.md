@@ -57,3 +57,13 @@
   희귀해 **구현하지 않고** README 후속 후보에 남긴다. 결과: 그 조합에서 부가 타격은 SelectTargets 의 primary 쪽.
 - `EnemyAiStateSystem` 은 `attackLookup[enemy].shape` 를 두 호출에 넘긴다 · `PatrolFieldSystem` 은 순찰병 `AttackState.shape`
   (없으면 Omni) · `HazardCastSystem`·`DetectionSystem` 은 Omni **명시**(계약 3 · 캐스터는 사거리 0).
+
+---
+
+### rev 3 (2026-09-12) — 되돌림
+
+- 소비처 11곳 중 **획득·유지·정지 10곳은 원(`InReach`) 시그니처로 복귀** — 도형 인자 없음. 계약 2 「기본값 없음」은 부가
+  타격 진입점 `AttackReach.InReachShaped(…, in shape, float2 dirToPrimary)` 에만 남는다.
+- 부가 타격 2곳: `AttackSystem` pass 루프(`hitDir = bestTargetPos − atkPos`) · `AggroTargeting.FillNearest`(primary 확정 후
+  `outIdx[0]` 방향). `SideOf` 는 소비처 0 이 되어 삭제.
+- `HasFireTarget`·`KeepsLock`·`PatrolAreaMath`·`DetectionSystem`·`HazardCastSystem` 은 rev 1 이전 그대로.

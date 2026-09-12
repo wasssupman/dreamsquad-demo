@@ -1,4 +1,3 @@
-using AttackShapeBaked = Wassup.Data.AttackShapeBaked;
 using Unity.Burst;
 using Unity.Mathematics;
 
@@ -50,14 +49,12 @@ namespace Wassup.Battle.Combat
         public const float HysteresisTiles = 0.1f;
 
         // 락을 계속 붙들까? 사거리 판정은 **획득과 같은 술어**를 쓰되 `h` 만큼 넓게 본다.
-        // directional-attack-shape — 도형도 획득과 같다(합집합, side 0). 히스테리시스 `h` 는 **사거리에만**
-        // 붙는다 — 도형의 각·폭은 안 넓힌다(그 축엔 진동이 관측된 적이 없다).
         public static bool KeepsLock(bool targetAlive, float3 atkPos, float3 tgtPos,
                                      float tileRange, float tileSize,
-                                     float selfBodyRadiusTiles, float targetBodyRadiusTiles,
-                                     in AttackShapeBaked shape)
+                                     float selfBodyRadiusTiles,
+                                     float targetBodyRadiusTiles = 0f)
             => targetAlive && AttackReach.InReach(atkPos, tgtPos,
                                                   tileRange + HysteresisTiles, tileSize,
-                                                  selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, 0);
+                                                  selfBodyRadiusTiles, targetBodyRadiusTiles);
     }
 }

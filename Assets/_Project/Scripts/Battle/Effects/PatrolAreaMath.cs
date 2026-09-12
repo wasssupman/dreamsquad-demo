@@ -118,8 +118,7 @@ namespace Wassup.Battle.Effects
             NativeArray<float3> enemyPositions,
             NativeArray<float> enemyBodyRadii,
             float selfBodyRadiusTiles,
-            float tileSize,
-            in Wassup.Data.AttackShapeBaked shape)
+            float tileSize)
         {
             int selfIdx = GridMath.CellIndex(selfCell, gridSize);
 
@@ -143,7 +142,7 @@ namespace Wassup.Battle.Effects
                 // 격자는 "도착"이라 멈추고 공격은 "멀다"고 거부해 교착이 난다(AttackReach 주석).
                 return CloseInDir(areaMask, gridSize, anchorCell, tileRadius,
                     selfCell, selfPos, attackTileRange, enemyCells, enemyPositions,
-                    enemyBodyRadii, selfBodyRadiusTiles, tileSize, in shape);
+                    enemyBodyRadii, selfBodyRadiusTiles, tileSize);
             }
 
             if (selfCell.Equals(homeCell)) return float2.zero;
@@ -161,8 +160,7 @@ namespace Wassup.Battle.Effects
             NativeArray<byte> areaMask, int2 gridSize, int2 anchorCell, int tileRadius,
             int2 selfCell, float3 selfPos, int attackTileRange,
             NativeArray<int2> enemyCells, NativeArray<float3> enemyPositions,
-            NativeArray<float> enemyBodyRadii, float selfBodyRadiusTiles, float tileSize,
-            in Wassup.Data.AttackShapeBaked shape)
+            NativeArray<float> enemyBodyRadii, float selfBodyRadiusTiles, float tileSize)
         {
             if (!enemyPositions.IsCreated || enemyPositions.Length != enemyCells.Length)
                 return float2.zero;
@@ -186,8 +184,7 @@ namespace Wassup.Battle.Effects
                 // 「열하나가 전부 같은 답을 받아야 한다」고 못박은 그 계약이 이미 깨져 있었다.
                 if (AttackReach.InReach(selfPos, enemyPositions[i], reach, tileSize,
                                         selfBodyRadiusTiles,
-                                        enemyBodyRadii.Length > i ? enemyBodyRadii[i] : 0f,
-                                        in shape, 0)) continue;
+                                        enemyBodyRadii.Length > i ? enemyBodyRadii[i] : 0f)) continue;
                 float gap = math.max(math.abs(enemyPositions[i].x - selfPos.x),
                                      math.abs(enemyPositions[i].z - selfPos.z));
                 if (!found || gap < bestGap) { bestGap = gap; bestPos = enemyPositions[i]; found = true; }

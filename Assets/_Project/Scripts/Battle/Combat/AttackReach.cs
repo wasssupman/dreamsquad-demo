@@ -33,6 +33,8 @@ namespace Wassup.Battle.Combat
     //   5) AttackSystem 방어유닛 focus 락 유지                                   [유지]
     //   6) AttackSystem committedTarget 재판정 — RESOLVE 시 이탈 판정             [유지]
     //   7) AttackSystem 다중타격 2번째 이후 대상 — 첫 대상과 같은 정의여야 한다      [획득]
+    //      ⚠ directional-attack-shape rev 3 — 이 하나만 **도형 항**이 추가로 곱해진다(`InReachShaped`).
+    //        원 안이면서 「주 대상 방향 도형 안」이어야 한다. 원 항은 (1)과 같다.
     //   ── 정지(Combat) ──
     //   8) EnemyAiStateSystem guardianInRange — 어그로된 적이 멈춰도 되나          [획득]
     //   9) EnemyAiStateSystem.HasFireTarget   — «멈춰도 되나»                    [획득/유지]
@@ -57,6 +59,14 @@ namespace Wassup.Battle.Combat
     // ⚠ 스냅샷 어긋남: 이 술어는 **그 프레임의 위치**를 본다. `MovementSystem` 뒤에 도는
     // 시스템(`AttackSystem` · `EnemyAiStateSystem` · `HazardCastSystem`)은 이동 후 위치를,
     // 앞에 도는 것은 이동 전 위치를 본다 — 한 스텝만큼 어긋날 수 있다. 오늘 허용 범위다.
+    //
+    // ── 도형 (directional-attack-shape rev 3, 2026-09-12 사용자 결정 「안 1」) ──
+    // **획득·유지·정지는 원이다** — 사거리 안이면 반드시 반응한다(주류 TD 의 계약, 캐주얼 안전판).
+    // 도형(부채꼴/띠)은 **부가 타격에만** 곱해진다: 주 대상이 정해진 뒤 «그 대상을 향한 실제 방향»을
+    // 축으로 도형을 세우고, 원 안 후보 중 그 안의 것만 같이 때린다. 캐릭터의 좌/우 반전은 연출이다
+    // (타겟 쪽으로 가장 가까운 면). rev 2(좌/우 축 · 획득부터 도형 · 나비넥타이 표기)는 «사거리 안인데
+    // 가만히 선 유닛»이 자동전투에선 교정 수단 없이 반복 노출된다는 이유로 폐기 — README 리뷰 이력.
+    // 그래서 표기는 원 링 그대로이고, 도형은 **공격 순간 VFX** 로만 그린다(정적 가이드는 절반의 시간 거짓말).
     public static class AttackReach
     {
         // **정본 진입점.** 사거리(타일) 안인가 — rev 3(2026-09-01 외부 세션): 몸 = 원 하나,
@@ -71,24 +81,13 @@ namespace Wassup.Battle.Combat
         // 받는다」는 이 파일 헤더의 계약이 조용히 깨진다. 반경은 저작(적 티어)·파생
         // (방어유닛 가로/2 파생 — rev 2026-09-04, 구 내접원)에서 온다 — 호출부가 그것을 나를 책임을 진다.
         // ⚠ rev 2 의 `BodyShape`(사각 반폭 ⊕ 원)는 은퇴했다 — 사유는 `SkillMath` 술어 헤더.
-        //
-        // ── 좌/우 도형 (directional-attack-shape unit 0) ──
-        // `shape` 는 공격자의 `AttackState.shape`(bake). `side` 는 dx 부호를 접는 방식:
-        //   0  = 양쪽 합집합(`|dx|`) — **획득**: 「보는 쪽 도형 ∪ 반대쪽 도형」 안의 후보
-        //   ±1 = 한쪽(`side·dx`)   — **부가 타격**: 주 대상 쪽만
-        // 도형은 +X 고정이라 회전이 없다(유닛이 타겟 쪽으로 좌/우 반전한다). Omni 면 게이트를 건너뛴다.
-        // ⚠ `shape`·`side` 에도 **기본값을 주지 않는다** — «사거리 안»의 뜻이 누가 묻느냐에 따라 달라지면
-        //   위 ①(같은 거리가 경로에 따라 다르게 판정)과 (11)의 182프레임 교착이 재현된다. 소비처가 도형을
-        //   **선언**하게 만드는 것이 이행 방식이다(제약 13 의 「원점 선언」과 같은 형태). 감지만 `Omni` 를
-        //   명시로 넘긴다 — 「저 놈이 있다」는 방향이 없는 질문이다.
         public static bool InReach(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
-                                   float selfBodyRadiusTiles, float targetBodyRadiusTiles,
-                                   in AttackShapeBaked shape, int side)
+                                   float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
         {
             float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
-            float dx = (tgtPos.x - atkPos.x) * inv, dz = (tgtPos.z - atkPos.z) * inv;
-            return Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles)
-                && ShapeGate(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, side);
+            return Wassup.Skills.SkillMath.ReachFromUnit(
+                (tgtPos.x - atkPos.x) * inv, (tgtPos.z - atkPos.z) * inv,
+                tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
 
         // 셀 좌표로 묻는 사거리 — 두 몸이 각자 칸 중앙에 설 때의 답이다.
@@ -97,27 +96,35 @@ namespace Wassup.Battle.Combat
         // 「밝은 칸인데 안 때린다」가 되고, 그게 가장 나쁜 종류의 버그다 —
         // 화면이 규칙을 **틀리게** 가르친다. 위 `InReach` 와 **같은 본체**를 지난다.
         public static bool InCellReach(int2 atkCell, int2 tgtCell, float tileRange,
-                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles,
-                                       in AttackShapeBaked shape, int side)
-        {
-            float dx = tgtCell.x - atkCell.x, dz = tgtCell.y - atkCell.y;
-            return Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles)
-                && ShapeGate(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles, in shape, side);
-        }
+                                       float selfBodyRadiusTiles, float targetBodyRadiusTiles = 0f)
+            => Wassup.Skills.SkillMath.ReachFromUnit(
+                   tgtCell.x - atkCell.x, tgtCell.y - atkCell.y,
+                   tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles);
 
-        // 주 대상이 정해진 뒤 **어느 쪽을 보나** — 부가 타격·가디언 선정·뷰 반전이 같은 규칙을 본다.
-        // `dx == 0`(정확히 위/아래) 은 +X. 결정론이 계약이다(spec 계약 4).
-        public static int SideOf(float dx) => dx < 0f ? -1 : 1;
-
-        // 도형 항 하나 — 두 진입점이 같은 본체를 지난다. 띠의 길이 = 사거리 + 원점 몸(축 위에서 원과 일치).
-        private static bool ShapeGate(float dx, float dz, float tileRange, float selfBodyRadiusTiles,
-                                      float targetBodyRadiusTiles, in AttackShapeBaked shape, int side)
+        // **부가 타격 전용 진입점** (directional-attack-shape rev 3). 원 항(위 `InReach` 와 같은 본체) AND
+        // 도형 항. `dirToPrimary` = 공격자 → 주 대상 **sim XZ** 벡터(정규화 불필요, 월드/타일 어느 단위든
+        // 방향만 쓴다). 도형은 그 방향을 +X 로 회전한 프레임에서 판정한다(`SkillMath` 게이트는 +X 고정).
+        //
+        // ⚠ `shape` 에 기본값을 주지 않는다 — 소비처가 「내 도형」을 선언한다(제약 13 「원점 선언」과 같은 형태).
+        // ⚠ 방향이 정의되지 않으면(주 대상이 같은 자리) 도형 항은 **통과** — `SkillCone.SameSpotEpsSq` 선례.
+        //   Omni 면 도형 항을 건너뛴다(오늘 경로와 명령 수 동일).
+        public static bool InReachShaped(float3 atkPos, float3 tgtPos, float tileRange, float tileSize,
+                                         float selfBodyRadiusTiles, float targetBodyRadiusTiles,
+                                         in AttackShapeBaked shape, float2 dirToPrimary)
         {
+            float inv = tileSize > 1e-6f ? 1f / tileSize : 1f;
+            float dx = (tgtPos.x - atkPos.x) * inv, dz = (tgtPos.z - atkPos.z) * inv;
+            if (!Wassup.Skills.SkillMath.ReachFromUnit(dx, dz, tileRange, selfBodyRadiusTiles, targetBodyRadiusTiles))
+                return false;
             if (shape.kind == AttackShapeBaked.OmniKind) return true;
-            float along = side == 0 ? (dx < 0f ? -dx : dx) : side * dx;
+            float len2 = math.lengthsq(dirToPrimary);
+            if (len2 <= Wassup.Skills.SkillCone.SameSpotEpsSq) return true;
+            float2 u = dirToPrimary * math.rsqrt(len2);
+            float along  = u.x * dx + u.y * dz;        // 주 대상 방향 성분
+            float across = u.x * dz - u.y * dx;        // 그 수직 성분(부호는 게이트가 |·| 로 접는다)
             return shape.kind == AttackShapeBaked.SectorKind
-                ? Wassup.Skills.SkillMath.SectorGateX(along, dz, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles)
-                : Wassup.Skills.SkillMath.BandGateX(along, dz, shape.halfWidth,
+                ? Wassup.Skills.SkillMath.SectorGateX(along, across, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles)
+                : Wassup.Skills.SkillMath.BandGateX(along, across, shape.halfWidth,
                                                      tileRange + selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
 

@@ -1081,10 +1081,9 @@ namespace Wassup.Core
         // 셀 경계 위(x.5)라 `Vector2Int` 로는 표현할 수 없고, 표현하려 들면 정수 나눗셈으로
         // 반 칸을 잃는다 — 그게 이 spec 이 은퇴시킨 「대표 셀」 그 자체다.
         // 그래서 중심은 `centerOffsetTiles` 로 따로 받는다. 반폭 인자는 rev 3(몸=원)에서 은퇴.
-        // directional-attack-shape unit 3 — `shape` 는 판정과 **같은 bake 값**(호출부가 SO 에서 굽는다). 도형 유닛은
-        // 칸 채움이 좌우 합집합(나비넥타이/띠)으로 떨어지고 **원 링은 안 그린다** — 원은 그 유닛에게 거짓말이다.
-        public void SetPlacementRange(Vector2Int anchor, float tileRange, Wassup.Data.AttackShapeBaked shape,
-                                      bool includeCenter = false,
+        // directional-attack-shape rev 3 — 도형 유닛도 **원 링 그대로**다. 획득(사거리 안이면 반드시 반응)이 원이라
+        // 링이 참말이고, 회전하는 부가 타격 도형은 정적으로 그리면 절반의 시간 거짓말이라 공격 순간 VFX 로만 그린다.
+        public void SetPlacementRange(Vector2Int anchor, float tileRange, bool includeCenter = false,
                                       float selfBodyRadiusTiles = 0f, Vector2 centerOffsetTiles = default)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
@@ -1113,8 +1112,7 @@ namespace Wassup.Core
                         new Unity.Mathematics.float3(cx, 0f, cz),
                         new Unity.Mathematics.float3(cell.x, 0f, cell.y),
                         tileRange, 1f, selfBodyRadiusTiles,
-                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles,
-                        in shape, 0)) continue;
+                        Wassup.Skills.SkillMath.StandardBodyRadiusTiles)) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
@@ -1131,10 +1129,7 @@ namespace Wassup.Core
             // 갈린 뒤(중형 0.5 저작) 그 가정은 큰 적에게 거짓이 됐다 — 링은 크기와 무관하게
             // 참인 쪽을 택하고, 채움이 링보다 최대 0.25칸 바깥까지 칠해지는 것은 **감수한다**
             // (칸은 배치 안내, 링은 판정 — 서로 다른 것을 말한다).
-            // 도형 유닛(unit 3): 링 없음 — **칸 채움**이 도형을 말한다(윤곽 렌더는 없다. 링이 없으면 `RangeFillAlpha`
-            // 가 채움에 풀알파를 줘 그 자체로 선명하다). 채움은 위 `InReach` 와 같은 본체라 「밝은 칸인데 안 때린다」가
-            // 구조적으로 불가능하다.
-            if (shape.IsOmni) ShowRangeRing(new Vector2(cx, cz), tileRange + selfBodyRadiusTiles);
+            ShowRangeRing(new Vector2(cx, cz), tileRange + selfBodyRadiusTiles);
             ApplyRangeTint();
         }
 

@@ -1,4 +1,3 @@
-using AttackShapeBaked = Wassup.Data.AttackShapeBaked;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -56,7 +55,7 @@ namespace Wassup.Tests.EditMode
             => EnemyAiStateSystem.Evaluate(
                    aggroed: true,
                    guardianInRange: AttackReach.InReach(
-                       p, GuardianPos(origin), tileRange, TileSize, guardianBody, 0f, AttackShapeBaked.Omni, 0),
+                       p, GuardianPos(origin), tileRange, TileSize, guardianBody),
                    hasFireTarget: false) == AiState.Chasing;
 
         // 보정 **없이** 필드만 = unit 4a~4c 사이의 동작.

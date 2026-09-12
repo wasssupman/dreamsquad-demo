@@ -4,8 +4,8 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // directional-attack-shape unit 3 — 카드 문안. 기존 어휘(「최대 N체 동시 타격」)를 키우고 새 기호를 얹지
-    // 않는다. ⚠ 「전방」을 쓰지 않는다 — 방향은 «캐릭터가 보는 쪽»이고 문안이 그 사실을 말한다.
+    // directional-attack-shape rev 3 — 카드 문안. 도형은 부가 타격만 거르므로 「최대 N체 동시 타격」을 키운 형태이고,
+    // N = 1 이면 도형 문안이 없다(효과 0). ⚠ 「전방」을 쓰지 않는다 — 방향은 «때리는 놈 쪽».
     public class AttackShapeTextTests
     {
         private static DefenderUnitData Unit()
@@ -25,22 +25,21 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Sector_SaysFacingSideAndAngle()
+        public void Sector_SaysSwingSideAndAngle()
         {
             var u = Unit();
             u.attackTargetCount = 3;
-            u.attackShape = new AttackShape { kind = AttackShapeKind.Circle, angleDeg = 90f };
-            Assert.AreEqual("파이터 · 근접형. 보는 쪽 90° 안 최대 3체 동시 타격.", UnitKitSummary.Build(u));
+            u.attackShape = new AttackShape { kind = AttackShapeKind.Circle, angleDeg = 60f };
+            Assert.AreEqual("파이터 · 근접형. 휘두르는 쪽 60° 안 최대 3체 동시 타격.", UnitKitSummary.Build(u));
         }
 
         [Test]
-        public void Sector_SingleTarget_StillSaysShape()
+        public void Sector_SingleTarget_NoShapeText_ShapeHasNoEffect()
         {
-            // rev 2 — 획득도 자르므로 단일 타겟 도형이 유효하다. 문안도 낸다.
             var u = Unit();
             u.attackTargetCount = 1;
             u.attackShape = new AttackShape { kind = AttackShapeKind.Circle, angleDeg = 60f };
-            Assert.AreEqual("파이터 · 근접형. 보는 쪽 60° 안의 적만 공격.", UnitKitSummary.Build(u));
+            Assert.AreEqual("파이터 · 근접형.", UnitKitSummary.Build(u));
         }
 
         [Test]
@@ -49,7 +48,7 @@ namespace Wassup.Tests.EditMode
             var u = Unit();
             u.attackTargetCount = 3;
             u.attackShape = new AttackShape { kind = AttackShapeKind.Rect, width = 1f };
-            Assert.AreEqual("파이터 · 근접형. 보는 쪽 일직선(세로 폭 1) 최대 3체 동시 타격.", UnitKitSummary.Build(u));
+            Assert.AreEqual("파이터 · 근접형. 찌르는 방향 일직선(세로 폭 1) 최대 3체 동시 타격.", UnitKitSummary.Build(u));
         }
 
         [Test]

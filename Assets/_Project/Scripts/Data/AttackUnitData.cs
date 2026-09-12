@@ -115,6 +115,8 @@ namespace Wassup.Data
 #if UNITY_EDITOR
         private void OnValidate()
         {
+            if (!AttackShapeBake.From(attackShape, out _).IsOmni && attackTargetCount <= 1)
+                Debug.LogWarning($"[AttackUnitData] {name}: 공격 도형을 저작했는데 attackTargetCount 가 1 — 도형은 부가 타격만 거르므로 효과가 없다.", this);
             if (detectionRange >= MinDetectionRange && detectionRange <= attackRange)
                 Debug.LogWarning(
                     $"[AttackUnitData] {name}: detectionRange({detectionRange}) 가 attackRange({attackRange}) 이하다 — " +
@@ -144,8 +146,8 @@ namespace Wassup.Data
         // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
         // forced to 1 (guardian-only) by AttackSystem.
         public int attackTargetCount = 1;
-        // directional-attack-shape unit 1 — 보는 쪽 공격 도형(방어유닛과 같은 축). 기본 = 360°.
-        // ⚠ 추격(detection) 적에는 저작하지 않는다 — 추격판 사격 칸이 도형을 모른다(spec 계약 11).
+        // directional-attack-shape rev 3 — **부가 타격** 도형(방어유닛과 같은 축). 기본 = 360°. 획득은 원이라
+        // 추격·정지 판정과 안 갈린다(rev 2 의 추격 적 금지 계약은 소멸). attackTargetCount 1 이면 효과 0.
         public AttackShape attackShape = AttackShape.Omni;
         public ProjectileData projectile;
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.

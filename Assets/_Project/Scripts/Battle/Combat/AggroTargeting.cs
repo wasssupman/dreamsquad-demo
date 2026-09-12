@@ -68,9 +68,12 @@ namespace Wassup.Battle.Combat
             int maxTargets = outIdx.Length;
             while (count < maxTargets)
             {
-                // directional-attack-shape unit 2 — primary(outIdx[0]) 는 좌우 합집합(side 0)에서 뽑고, 그 뒤부터는
-                // primary 쪽 도형 안에서만. Pass A/B 모두 같은 규칙 — 방향은 outIdx[0] 하나다.
-                int side = count == 0 ? 0 : AttackReach.SideOf(cands[outIdx[0]].pos.x - gPos.x);
+                // directional-attack-shape rev 3 — primary(outIdx[0]) 는 **원**에서 뽑고, 그 뒤부터는 primary 를 향한
+                // 실제 방향의 도형 안에서만. Pass A/B 모두 같은 규칙 — 방향은 outIdx[0] 하나다.
+                bool shaped = count > 0;
+                float2 dir = shaped
+                    ? new float2(cands[outIdx[0]].pos.x - gPos.x, cands[outIdx[0]].pos.z - gPos.z)
+                    : float2.zero;
                 int best = -1;
                 float bestSq = float.MaxValue;
                 for (int i = 0; i < cands.Length; i++)
@@ -79,8 +82,10 @@ namespace Wassup.Battle.Combat
                     var c = cands[i];
                     if (freshOnly && c.aggroed) continue;
                     // unit 22 — 발사 게이트와 **같은 본체**. 여기서 모양을 다시 그리지 않는다.
-                    if (!AttackReach.InReach(gPos, c.pos, rangeTiles, tileSize,
-                                             selfBodyRadius, c.bodyRadius, in shape, side)) continue;
+                    bool reach = shaped
+                        ? AttackReach.InReachShaped(gPos, c.pos, rangeTiles, tileSize, selfBodyRadius, c.bodyRadius, in shape, dir)
+                        : AttackReach.InReach(gPos, c.pos, rangeTiles, tileSize, selfBodyRadius, c.bodyRadius);
+                    if (!reach) continue;
                     float dx = c.pos.x - gPos.x;
                     float dz = c.pos.z - gPos.z;
                     float d2 = dx * dx + dz * dz;

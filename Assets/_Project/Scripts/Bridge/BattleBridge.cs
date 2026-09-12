@@ -3411,7 +3411,7 @@ namespace Wassup.Bridge
             SyncMonoUnitViews();
             // 배치 마크 추적 — 적이 움직였으니(sim 은 Update, 여긴 그 뒤) 마크도 따라간다.
             if (_placementMarkLive && _rangeOwner == RangeDisplayOwner.Placement)
-                RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit, _placementMarkShape);
+                RefreshRangeTargetMarks(_placementMarkCenter, _placementMarkRange, _placementMarkUnit);
             // attach-range-preview unit 2 — 부착 프리뷰 추종(host 재배치·사망을 sim 위치에서 다시 읽는다).
             if (_attachPreviewLive && _rangeOwner == RangeDisplayOwner.AttachPreview)
                 RedrawAttachPreview();
@@ -4829,18 +4829,24 @@ namespace Wassup.Bridge
                     // hitDelaySec 뒤 RESOLVE 에 들어가므로, 그대로 재생하면 이펙트가 타격보다
                     // 먼저 터진다 — 파이터 4종이 전부 hitDelaySec 0.3 이라 눈에 띄었다.
                     // 배틀 도메인 시간으로 미뤄 RESOLVE 시점에 맞춘다(슬로모에서도 동기 유지).
+                    // directional-attack-shape rev 3 — 도형 유닛의 참격 자국은 **공격자 자리**에서 대상 방향으로 찍는다.
+                    // 회전하는 부가 타격 도형의 유일한 시각 보증자다(정적 가이드 없음). `attackVfxFacesTarget` 과 함께 저작.
+                    float3 hitVfxSimPos = evt.targetWorld;
+                    if (defData.attackVfxAtAttacker && HasLiveEntityManager() && _em.Exists(evt.attacker)
+                        && _em.HasComponent<LocalTransform>(evt.attacker))
+                        hitVfxSimPos = _em.GetComponentData<LocalTransform>(evt.attacker).Position;
                     if (defData.hitDelaySec > 0f)
                         _pendingHitVfx.Add(new PendingHitVfx
                         {
                             prefab = defData.attackVfxPrefab,
-                            simPos = evt.targetWorld,
+                            simPos = hitVfxSimPos,
                             scale = defData.attackVfxScale,
                             facing = hitFacing,
                             euler = defData.attackVfxEulerOffset,
                             remaining = defData.hitDelaySec,
                         });
                     else
-                        _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld,
+                        _projectileViewPool?.PlayHit(defData.attackVfxPrefab, hitVfxSimPos,
                             scale: defData.attackVfxScale, facingViewDir: hitFacing,
                             eulerOffset: defData.attackVfxEulerOffset);
                 }
@@ -7876,7 +7882,6 @@ namespace Wassup.Bridge
         private Vector2Int _placementMarkCenter;
         private int _placementMarkRange;
         private DefenderUnitData _placementMarkUnit;
-        private Wassup.Data.AttackShapeBaked _placementMarkShape;   // unit 3 — SetPlacementRange 진입에서 1회 bake
         // dreamcatcher-attach-range-preview unit 2 — 카드 드래그 중 락온 host 의 카드 범위 링. 앵커는 **Entity**
         // (재배치는 Entity 를 보존하고 셀만 재키잉한다). 위치는 LateUpdate 가 host 의 sim 위치에서 매 프레임
         // 다시 읽는다 — `DcAuraVisualPool` 과 같은 슬롯.
@@ -7904,9 +7909,6 @@ namespace Wassup.Bridge
             // unit 9 — 원형 프리뷰는 **연속 반지름**을 그대로 쓴다. 레인(정수 칸)만 접는다.
             float rangeTiles = unit.attackRange;
             int tileRange = GridMath.RangeToTiles(rangeTiles);
-            // directional-attack-shape unit 3 — 도형은 **여기서 한 번** 굽는다. 정의역 밖(reflex) 로그도 여기서 한 번.
-            // 마크 갱신은 LateUpdate 가 매 프레임 부르므로 거기서 구우면 60fps LogError 가 된다(리뷰 MED).
-            var shape = BakeAttackShape(unit.attackShape, unit);
             // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
             // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
@@ -7923,7 +7925,6 @@ namespace Wassup.Bridge
                 // rev 3(unit 12) — 표기가 판정과 같은 몸(파생 원)을 받는다. 반폭 항은 은퇴.
                 var fpBase = Wassup.Data.FootprintMath.FootOffset(unit.Footprint);
                 tilemapMapView.SetPlacementRange(center, rangeTiles,
-                     shape,   // unit 3 — 표기가 판정과 같은 도형을 받는다
                      selfBodyRadiusTiles: unit.BodyRadiusTiles,
                      centerOffsetTiles: fpBase);    // 앵커 → 베이스(발밑) — 사거리 원점과 동일점(베이스 통일 2026-09-03)
             }
@@ -7949,8 +7950,7 @@ namespace Wassup.Bridge
                 _placementMarkCenter = center;
                 _placementMarkRange = tileRange;
                 _placementMarkUnit = unit;
-                _placementMarkShape = shape;
-                RefreshRangeTargetMarks(center, tileRange, unit, shape);   // unit 11 — facing 분기 삭제
+                RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
             }
             else
             {
@@ -7978,8 +7978,7 @@ namespace Wassup.Bridge
         // 이 마스크는 `Resolve` 의 세 결과 중 어느 것도 `DefenderCore` 비트를 갖지 않는다
         // (AllyMask=DefenderUnit · 저작값 전 27종이 적 진영 · Legacy=EnemyUnit).
         // 적지 않으면 다음 사람이 이 검산을 처음부터 다시 한다.
-        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit,
-                                             in Wassup.Data.AttackShapeBaked markShape)
+        private void RefreshRangeTargetMarks(Vector2Int center, int tileRange, DefenderUnitData unit)
         {
             _markPos.Clear();
             _markHalf.Clear();
@@ -8026,8 +8025,7 @@ namespace Wassup.Bridge
                 // 아직 엔티티가 없으므로(배치 전) 저작에서 직접 읽는다.
                 float selfBodyR = unit != null ? unit.BodyRadiusTiles : 0f;
                 if (!Wassup.Battle.Combat.AttackReach.InReach(
-                        atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR,
-                        markShape, 0)) continue;   // unit 3 — 마크도 도형(좌우 합집합 = 획득 후보)
+                        atkPos, tf[i].Position, tileRange, tileSize, selfBodyR, bodyR)) continue;
                 // ⚠ **`BoardSpace.ToView` 를 반드시 지난다** — `LocalTransform.Position` 은 **sim 좌표**다.
                 // 그냥 넘기면 뷰가 그것을 view 월드로 받아 (a) 셀 중심 +0.5 보정과
                 // (b) 스테이지 격자 원점(`MapStage.gridOriginLocal`)을 **둘 다** 잃는다.
