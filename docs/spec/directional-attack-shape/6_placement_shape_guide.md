@@ -26,7 +26,7 @@
   링과 같은 라임이면 원과 한 덩어리로 읽혀 방향이 죽는다), 채움 α0.22 · 테 α0.85 · 정렬 `PlacementShapeGuideOrder(−7)` =
   링(−8)·범위 타일(−12) **위**, 마크(−6 으로 상향) 아래. 머티리얼은 `RuntimeMaterialFactory.CreateTransparent`.
   자가 리뷰(2026-09-12)로 바꾼 것: ① 참격 텍스처(반각 30° 고정) 재사용 → **메시**(각·반경이 인자라 저작 각도가 바뀌어도 참말,
-  「60° 아니면 경고」 분기 자체가 사라짐 — 불필요한 확장 제거) ② 색을 참격 주황이 아니라 **링 색**으로 — 「예고」와 「타격」이
+  「60° 아니면 경고」 분기 자체가 사라짐 — 불필요한 확장 제거) ② ~~색을 참격 주황이 아니라 링 색으로~~ → 빨강(마크 언어, `41460f54`)으로 바뀜 — 「예고」와 「타격」이
   색으로 갈린다(비주얼 비대칭 제거) ③ 바깥 호 = 링 원과 정확히 겹친다(반경 동일).
 - `Bridge/BattleBridge.cs` `RefreshRangeTargetMarks` — 후보 루프에서 `NearestTargeting.RanksBefore`(sim 과 **같은 함수**)로
   최근접 추적 → 도형 유닛이면 `SetShapeGuide`, 없으면 `ClearShapeGuide`. `TilemapMapView.ClearPlacementRange` 가 가이드도 회수
@@ -36,7 +36,7 @@
 
 ## 완료 기준
 
-- [x] 라이브 검증 2026-09-12(`scratchpad/live/guide_f.png`): 브루저 프리뷰(11,7) — 원 링 안에 라임 부채꼴이 최근접 적(오른쪽 위,
+- [x] 라이브 검증 2026-09-12(`scratchpad/live/guide_f.png`): 브루저 프리뷰(11,7) — 원 링 안에 부채꼴(당시 라임 · `41460f54` 이후 빨강)이 최근접 적(오른쪽 위,
       빨간 마크) 쪽을 향하고 바깥 호가 링과 겹친다. 검증 레시피: Play → `SceneTransition.Go(Battle)` → `StartBattle` →
       **첫 적 스폰 즉시** `TimeManager.Request(Battle, 0)` 동결(수비 0 이면 5초 안에 스트레스 100 → 결과창) → `SetPlacementRange`
       → `ScreenCapture`. 「적이 벗어나면 사라진다 · Omni 엔 안 뜬다」는 코드 경로(`guideHas`/`SectorKind` 게이트)로 보장, 육안은 사용자.

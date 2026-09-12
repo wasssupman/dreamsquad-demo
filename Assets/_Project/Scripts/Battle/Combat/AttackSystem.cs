@@ -2188,7 +2188,7 @@ namespace Wassup.Battle.Combat
         // 하나다. rev 2 는 최근접 점유 칸(`OccupiedCellsBuffer`)으로 재 다칸 대상에 유리했지만,
         // 몸이 원으로 회귀하며 「게이트=원 / 랭킹=칸」의 갈림을 다시 만들지 않기 위해 은퇴했다.
         // 조준점(`bestTargetPos`)도 대상 중심이다 — 몸통 표현은 임팩트 소켓(unit 16, 뷰)이 진다.
-        private static float DistanceSqToTarget(float3 attackerPos, float3 targetPos)
+        internal static float DistanceSqToTarget(float3 attackerPos, float3 targetPos)   // 브리지 가이드 랭킹도 같은 축(XZ)을 쓴다
         {
             float3 diff = targetPos - attackerPos;
             return diff.x * diff.x + diff.z * diff.z;

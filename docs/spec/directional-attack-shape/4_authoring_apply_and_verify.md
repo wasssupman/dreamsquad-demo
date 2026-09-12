@@ -59,7 +59,7 @@
 ## rev 3b 저작 — 이쑤시개 Rect (2026-09-12 · 사용자 결정 「이쑤시개는 rect 로 확정」)
 
 - **이쑤시개(`slasher`)** `Rect/폭 1` + `attackRange 2` + `attackTargetCount 3`. 찌르는 창 — 주 대상 방향 일직선
-  (길이 = 사거리 2 + 내 몸 0.5 + 대상 몸, 좌우 반폭 0.5 + 대상 몸)의 최대 3체. 이 spec 의 **유일한 Band 저작**이자
+  (길이 = 사거리 2 + 내 몸 **1.0**(footprint 2×2 → `BodyRadiusTiles` = 가로/2) + 대상 몸 = 3.0 + 대상 몸, 좌우 반폭 0.5 + 대상 몸)의 최대 3체. 이 spec 의 **유일한 Band 저작**이자
   Rect 코드 경로의 라이브 검증 유닛(README 후속 후보 「긴창 전용 신규 유닛」은 신설 없이 이쑤시개로 해소).
 - 참격 VFX: `SlashMark_Band_SKELETON`(사각 텍스처 + `SlashMark_BandQuad_w1_l3` 메시 x ±1/6·+Y 1, `attackVfxScale 3`
   → 폭 1·길이 3 = 판정 상자의 점-대상 코어와 같다. 크기 커브는 상수 1 — 첫 프레임부터 정확). `AtAttacker`·`FacesTarget`.

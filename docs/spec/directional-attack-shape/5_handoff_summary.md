@@ -9,7 +9,7 @@
 ## Implemented (rev 3 = 안 1)
 - 획득·락 유지·정지 판정은 **원**(종전 `AttackReach.InReach`). 「사거리 안이면 반드시 반응」.
 - 부가 타격만 **주 대상을 향한 실제 방향** 도형으로 거른다 — `AttackReach.InReachShaped(shape, dirToPrimary)`,
-  소비처 2곳(`AttackSystem` pass 루프 · `AggroTargeting.FillNearest`). 술어 본체 `SkillMath.SectorGateX/BandGateX`(+X 프레임,
+  소비처 2곳(`AttackSystem` pass 루프 · `AggroTargeting.FillNearest`). 술어 본체 `SkillMath.SectorGate/BandGate`(+X 프레임,
   몸 걸침 SDF, sqrt·삼각함수 0). 회전은 래퍼가.
 - 저작 `Data/AttackShape`(kind + 형마다 파라미터 하나 · 길이는 `attackRange`) → bake `Data/AttackShapeBake`(폴백 Omni · reflex 거절)
   → `AttackState.shape`(bake 0 = Omni 안전값). 브리지 스폰 3곳 `BakeAttackShape` 헬퍼.
@@ -48,7 +48,7 @@
 - 브루저·말파이트의 **기존 히트 VFX(FireBlast · 흙 폭발)는 참격 자국으로 대체됐다**(슬롯 하나). 2슬롯·유닛별 팔레트는 후속.
 
 ## unit 6 (2026-09-12 추가)
-- 배치 프리뷰 공격 가이드: `TilemapMapView.SetShapeGuide/ClearShapeGuide`(부채꼴 메시 2장, 링 색·대역) · `BattleBridge.RefreshRangeTargetMarks`
+- 배치 프리뷰 공격 가이드: `TilemapMapView.SetShapeGuide/ClearShapeGuide`(부채꼴/띠 메시 2장, 빨강 · 링 위 대역) · `BattleBridge.RefreshRangeTargetMarks`
   가 `NearestTargeting.RanksBefore` 로 최근접을 뽑아 방향을 넘긴다. 색 = 빨강(`rangeTargetMarkColor`, 마크 언어) · 정렬 `PlacementShapeGuideOrder(-7)`
   = 링·타일 위, 마크(-6) 아래. 띠(Rect)도 `SetShapeGuide(band: true, halfWidthTiles)`. 라이브 검증 완료(`guide_f.png`·`rect_d.png`).
 

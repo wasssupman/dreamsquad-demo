@@ -16,7 +16,7 @@
 
 ## 구현
 
-- **모양**: Sector 양쪽 = 나비넥타이 ∩ 원 · Band 양쪽 = 가로 띠 ∩ 원. 원 링 스프라이트는 못 그리므로 도형 유닛은
+- ~~**모양**: Sector 양쪽 = 나비넥타이 ∩ 원 · Band 양쪽 = 가로 띠 ∩ 원.~~ (rev 2 — **폐기**, 링은 원. 아래 rev 3 절이 정본) 원 링 스프라이트는 못 그리므로 도형 유닛은
   **셀 채움**으로 떨어진다(윤곽 렌더 신설 없음 — 링이 없으면 `RangeFillAlpha` 가 채움에 풀알파를 준다) — `InCellReach` 가 이미 같은 본체를 지나므로 「밝은 칸인데 안 때린다」가
   구조적으로 불가능하다. 원 링(Omni)은 무변. 정렬 3티어·다크 라이너 규칙은 unit 5 그대로.
 - **부착 프리뷰·선택 링**(판정 캐리어 3종 중 링) — 같은 분기. 그림자·대상 마크 무변.
@@ -44,7 +44,7 @@
 
 ### 진행 기록 — 구현 2026-09-12
 
-- `TilemapMapView.SetPlacementRange(anchor, tileRange, shape, …)` — 도형 인자 필수. `shape.IsOmni` 일 때만 링.
+- ~~`TilemapMapView.SetPlacementRange(anchor, tileRange, shape, …)` — 도형 인자 필수. `shape.IsOmni` 일 때만 링.~~ (rev 3 에서 되돌림 — 링은 항상 원, 도형 인자 없음)
 - `BattleBridge.SetPlacementRange`·`RefreshRangeTargetMarks` 가 `BakeAttackShape(unit.attackShape)` 를 넘긴다.
 - `UnitKitSummary` — bake 를 지나 문안을 정한다(sim 과 같은 폴백: reflex 는 Omni 문안).
 

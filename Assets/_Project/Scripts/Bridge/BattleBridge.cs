@@ -4820,10 +4820,16 @@ namespace Wassup.Bridge
                     // 방향성 히트(흙 폭발 등)는 공격자→대상 방향으로 회전시킨다. 방향은 **view 공간**
                     // 에서 구한다 — sim 방향을 그대로 쓰면 평면 보드에서 엉뚱한 축으로 돈다.
                     Vector3 hitFacing = default;
-                    if (defData.attackVfxFacesTarget
-                        && ResolveBeamViewPos(evt.attacker, true, out var atkView))
+                    if (defData.attackVfxFacesTarget)
                     {
-                        hitFacing = (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - atkView;
+                        // 방향의 원점 = 그림의 원점. 공격자 자리 참격(`attackVfxAtAttacker`)은 발밑(LocalTransform)에 찍히므로
+                        // 발밑에서 재고, 타격점 VFX 는 종전대로 임팩트 소켓(anchor)에서 잰다 — 소켓이 치우친 유닛에서 축이 갈리지 않게.
+                        Vector3 atkView;
+                        bool haveOrigin = defData.attackVfxAtAttacker && HasLiveEntityManager() && _em.Exists(evt.attacker)
+                                          && _em.HasComponent<LocalTransform>(evt.attacker);
+                        if (haveOrigin) atkView = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(evt.attacker).Position);
+                        else haveOrigin = ResolveBeamViewPos(evt.attacker, true, out atkView);
+                        if (haveOrigin) hitFacing = (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - atkView;
                     }
                     // ⚠ 이 시각 이벤트는 공격 **START** 에 나온다(애니 트리거 겸용). 피해는
                     // hitDelaySec 뒤 RESOLVE 에 들어가므로, 그대로 재생하면 이펙트가 타격보다
@@ -4846,6 +4852,7 @@ namespace Wassup.Bridge
                             remaining = defData.hitDelaySec,
                             attacker = evt.attacker,
                             target = evt.target,
+                            originAtAttacker = defData.attackVfxAtAttacker,
                         });
                     else
                         _projectileViewPool?.PlayHit(defData.attackVfxPrefab, hitVfxSimPos,
@@ -4889,6 +4896,7 @@ namespace Wassup.Bridge
             // 유일한 시각 보증자라 그 어긋남은 「맞는 적을 빗겨간 그림」이 된다. 둘 다 살아 있을 때만 재계산.
             public Entity attacker;
             public Entity target;
+            public bool originAtAttacker;   // simPos 가 공격자 발밑이면 방향 원점도 그것
         }
         private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
 
@@ -4901,9 +4909,15 @@ namespace Wassup.Bridge
                 if (p.remaining > 0f) { _pendingHitVfx[i] = p; continue; }
                 var facing = p.facing;
                 if (facing != default && p.target != Entity.Null && HasLiveEntityManager()
-                    && _em.Exists(p.target) && _em.HasComponent<LocalTransform>(p.target)
-                    && ResolveBeamViewPos(p.attacker, true, out var atkViewNow))
-                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(p.target).Position) - atkViewNow;
+                    && _em.Exists(p.target) && _em.HasComponent<LocalTransform>(p.target))
+                {
+                    // 원점은 START 와 같은 규칙: 그림이 찍히는 자리(simPos — 공격자 자리면 발밑, 아니면 대상 자리는 방향 원점이
+                    // 아니므로 anchor). 재생 시점의 대상 현재 위치로.
+                    Vector3 originView; bool ok;
+                    if (p.originAtAttacker) { originView = (Vector3)Wassup.Core.BoardSpace.ToView(p.simPos); ok = true; }
+                    else ok = ResolveBeamViewPos(p.attacker, true, out originView);
+                    if (ok) facing = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(p.target).Position) - originView;
+                }
                 _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale,
                     facingViewDir: facing, eulerOffset: p.euler);
                 _pendingHitVfx.RemoveAt(i);
@@ -8060,7 +8074,7 @@ namespace Wassup.Bridge
                 _markHalf.Add(half);
                 var cand = new Wassup.Battle.Combat.NearestTargeting.Candidate
                 {
-                    sqDist = math.distancesq(atkPos, tf[i].Position),
+                    sqDist = Wassup.Battle.Combat.AttackSystem.DistanceSqToTarget(atkPos, tf[i].Position),   // sim 과 같은 XZ 거리
                     simId = _em.HasComponent<Wassup.Battle.Units.SimEntityId>(ents[i])
                         ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(ents[i]).value
                         : Wassup.Battle.Units.SimEntityId.Unassigned,

@@ -861,7 +861,8 @@ namespace Wassup.Core
         // 테는 또렷하게. 바깥 호는 링 원과 겹친다(반경 = 사거리 + 내 몸 = 링 반경). 정렬은 링·타일 위, 마크 아래.
         private MeshRenderer _shapeGuideFill, _shapeGuideRim;
         private Mesh _shapeGuideFillMesh, _shapeGuideRimMesh;
-        private float _shapeGuideAngleDeg = -1f, _shapeGuideRadiusTiles = -1f;
+        private float _shapeGuideAngleDeg = -1f, _shapeGuideRadiusTiles = -1f, _shapeGuideCellSize = -1f;   // 메시 캐시 키
+        private bool _shapeGuideMatMissing;   // 머티리얼 팩토리 실패 경고 1회 게이트(링과 같은 규약)
         private const int ShapeGuideSegments = 24;
         private const float ShapeGuideFillAlpha = 0.22f;
         private const float ShapeGuideRimAlpha = 0.85f;
@@ -882,10 +883,12 @@ namespace Wassup.Core
                 return;
             }
             EnsureShapeGuide();
+            if (_shapeGuideFill == null || _shapeGuideRim == null) return;   // 머티리얼 없음 — 1회 경고 뒤 조용히 빠진다
             float key = band ? -(halfWidthTiles + 1f) : angleDeg;   // 띠는 음수 키로 부채꼴과 구분
-            if (!Mathf.Approximately(_shapeGuideAngleDeg, key) || !Mathf.Approximately(_shapeGuideRadiusTiles, radiusTiles))
+            float cs = grid.cellSize.x;
+            if (!Mathf.Approximately(_shapeGuideAngleDeg, key) || !Mathf.Approximately(_shapeGuideRadiusTiles, radiusTiles)
+                || !Mathf.Approximately(_shapeGuideCellSize, cs))   // 메시는 cellSize 로 굽는다 — 키에 포함(맵별 타일 크기 대비)
             {
-                float cs = grid.cellSize.x;
                 float r = radiusTiles * cs;
                 if (band)
                 {
@@ -899,7 +902,7 @@ namespace Wassup.Core
                     BuildFan(_shapeGuideFillMesh, angleDeg, r);
                     BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
                 }
-                _shapeGuideAngleDeg = key; _shapeGuideRadiusTiles = radiusTiles;
+                _shapeGuideAngleDeg = key; _shapeGuideRadiusTiles = radiusTiles; _shapeGuideCellSize = cs;
             }
             var local = grid.CellToLocalInterpolated(new Vector3(centerTiles.x + 0.5f, centerTiles.y + 0.5f, 0f));
             local.z = -PropGroundLift;
@@ -910,8 +913,9 @@ namespace Wassup.Core
             // 색은 **마크와 같은 빨강**(`rangeTargetMarkColor`) — 「같이 맞는 범위」는 「이놈이 맞는다」와 한 언어다. 링(라임)과
             // 같은 색이면 원과 부채꼴이 한 덩어리로 읽혀 방향이 죽는다(사용자 지적 2026-09-12).
             var c = _tileSet.rangeTargetMarkColor;
-            c.a = ShapeGuideFillAlpha; _shapeGuideFill.sharedMaterial.color = c;
-            c.a = ShapeGuideRimAlpha;  _shapeGuideRim.sharedMaterial.color = c;
+            // 팩토리 규약(`ApplyColor`: _BaseColor·_Color·color 전부)으로 — `.color` 만 쓰면 셰이더 교체 시 알파가 조용히 죽는다.
+            c.a = ShapeGuideFillAlpha; Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeGuideFill.sharedMaterial, c);
+            c.a = ShapeGuideRimAlpha;  Wassup.Rendering.RuntimeMaterialFactory.ApplyColor(_shapeGuideRim.sharedMaterial, c);
             if (!_shapeGuideFill.gameObject.activeSelf) _shapeGuideFill.gameObject.SetActive(true);
             if (!_shapeGuideRim.gameObject.activeSelf) _shapeGuideRim.gameObject.SetActive(true);
         }
@@ -924,9 +928,17 @@ namespace Wassup.Core
 
         private void EnsureShapeGuide()
         {
-            if (_shapeGuideFill != null) return;
-            _shapeGuideFill = MakeShapeGuideRenderer("PlacementShapeGuideFill", out _shapeGuideFillMesh);
-            _shapeGuideRim = MakeShapeGuideRenderer("PlacementShapeGuideRim", out _shapeGuideRimMesh);
+            if (_shapeGuideFill != null || _shapeGuideMatMissing) return;
+            var mat = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeTargetMarkColor);
+            if (mat == null)
+            {
+                _shapeGuideMatMissing = true;   // 링(`_rangeRingMatMissing`)과 같은 규약 — 매 프레임 NRE 대신 1회 경고
+                Debug.LogWarning("[TilemapMapView] 배치 가이드 머티리얼을 만들 수 없다(RuntimeMaterials 미배선) — 가이드 생략.", this);
+                return;
+            }
+            var mat2 = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeTargetMarkColor);
+            _shapeGuideFill = MakeShapeGuideRenderer("PlacementShapeGuideFill", mat, out _shapeGuideFillMesh);
+            _shapeGuideRim = MakeShapeGuideRenderer("PlacementShapeGuideRim", mat2 != null ? mat2 : mat, out _shapeGuideRimMesh);
         }
 
         // 맵 리빌드 경계 — grid 자식이라 GameObject 는 grid 와 함께 사라질 수 있지만, 메시·머티리얼은 아니다.
@@ -945,18 +957,19 @@ namespace Wassup.Core
             }
             if (_shapeGuideFillMesh != null) { SafeDestroy(_shapeGuideFillMesh); _shapeGuideFillMesh = null; }
             if (_shapeGuideRimMesh != null) { SafeDestroy(_shapeGuideRimMesh); _shapeGuideRimMesh = null; }
-            _shapeGuideAngleDeg = -1f; _shapeGuideRadiusTiles = -1f;
+            _shapeGuideAngleDeg = -1f; _shapeGuideRadiusTiles = -1f; _shapeGuideCellSize = -1f;
+            _shapeGuideMatMissing = false;   // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용(링과 같다)
         }
 
-        private MeshRenderer MakeShapeGuideRenderer(string name, out Mesh mesh)
+        private MeshRenderer MakeShapeGuideRenderer(string name, Material mat, out Mesh mesh)
         {
             var go = new GameObject(name);
             go.transform.SetParent(grid.transform, false);   // grid 자식 → 타일과 코플레이너(링과 같다)
             mesh = new Mesh { name = name };
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
-            // 제약: Shader.Find + new Material 금지 — always-included 런타임 머티리얼에서 파생한다.
-            mr.sharedMaterial = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeTargetMarkColor);
+            // 제약: Shader.Find + new Material 금지 — always-included 런타임 머티리얼에서 파생한다(호출부가 null 을 걸렀다).
+            mr.sharedMaterial = mat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
             mr.sortingOrder = BoardSortOrder.PlacementShapeGuideOrder;   // 링·타일 위, 마크 아래
             var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
