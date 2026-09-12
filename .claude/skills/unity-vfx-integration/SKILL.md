@@ -82,3 +82,13 @@ NativeQueue 적용 기준:
 - 즉시 보여야 하는 배치/경고/시전 예고는 direct call
 - ECS 결과가 확정된 피해/처치/폭발은 `NativeQueue`
 - 이벤트 payload 는 위치, 반경, 색 인덱스 같은 값 타입 위주로 유지
+
+## 공격 VFX 슬롯 규약 (rev 2026-09-12 — directional-attack-shape 에서 정착)
+- `DefenderUnitData.attackVfxPrefab` 하나에 `attackVfxScale`(프리팹 스케일을 **덮는다** — 크기는 이 인자로) · `attackVfxFacesTarget`(방향)
+  · `attackVfxAtAttacker`(원점 = 공격자 발밑, 아니면 대상 자리) · `attackVfxEulerOffset`(계산 회전 **뒤에** 곱하는 자세 knob).
+- 공격 시각 이벤트는 **START** 에 오고 피해는 `hitDelaySec` 뒤 RESOLVE 다. 브리지가 `PendingHitVfx` 로 배틀 도메인 시간만큼 미뤄 재생하고,
+  **방향은 재생 시점에 공격자·대상 현재 위치로 다시 잰다**(START 스냅샷은 0.3s 에 ~15° 갈린다). 원점 규칙 = 그림이 찍히는 자리
+  (발밑이면 발밑, 아니면 임팩트 소켓).
+- 방향 회전은 `ProjectileViewPool.PlayHit` 이 up 축을 고정하고 yaw 만 준다 — 방향을 그대로 forward 로 주면 기운다.
+- 세션형(빔)은 `attackAnimPeriod` 기반 TTL — 상수 TTL 금지(공속 버프에서 깜빡인다).
+- 지연 재생 콜백·풀 재사용: `TrailRenderer.autodestruct=false`, 풀 GO 는 `ResetVfx` 로 재생 신선도 확보.

@@ -1,5 +1,9 @@
 # Material 설정 레퍼런스 (Shader Graph 대체)
 
+> rev 2026-09-12: 빈 `.shadergraph` 템플릿 2개(dissolve/glow)는 삭제했다 — 5개월간 한 번도 채워지지 않았고 Shader Graph 는 공개 생성
+> API 가 없다. 이 문서는 **에셋 `.mat`**(프리팹에 붙는 것) 프리셋 가이드다. **런타임에 코드로 만드는 머티리얼**은 여기 절차가 아니라
+> `Wassup.Rendering.RuntimeMaterialFactory`(`CreateOpaque/CreateTransparent/*Texture` + `ApplyColor`) 만 쓴다 — `Shader.Find` 금지(CLAUDE.md).
+
 `.shadergraph` 템플릿을 아직 만들지 않은 상태에서도 dissolve / glow 느낌을 빠르게 시작할 수 있도록, Unity 에디터에서 바로 만들 수 있는 **Material 기본 프리셋 2종** 의 설정값을 문서로 정리한다. `.mat` 파일을 하드코딩된 GUID 로 직접 drop 하면 URP 셰이더 GUID 가 프로젝트마다 달라 충돌 위험이 있으므로, **사용자가 에디터에서 수작업 생성**하는 가이드를 따르는 것이 안전하다.
 
 ---

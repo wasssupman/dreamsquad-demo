@@ -1,128 +1,88 @@
-# Common Skill VFX Reference
+# Common Skill VFX Reference — 인벤토리 + 카탈로그
 
-상태: 사용자 승인 대기 중. 아래 카탈로그 엔트리는 모두 draft 이며, 사용자 승인 없이 카탈로그에 항목 추가 금지.
+> rev 2026-09-12. **인벤토리(1절)가 정본**이다 — 실제 프리팹과 승인 상태. 카탈로그(2절)는 승인된 효과의 톤·타이밍 기록,
+> 초안(3절)은 아직 프리팹이 없는 아이디어다. 새 항목은 사용자 승인 뒤에만 2절로 올린다.
+> 레시피 A = 스프라이트 빌보드 · B = 절차 텍스처 + 쿼드 메시(지면 도형) · C = 벤더 사본 스트립 (`SKILL.md`).
 
-## Whirlwind
-- **Visual elements**: dust spiral, pale wind ring, upward swirl
-- **Typical palette**: pale cyan, white, gray-brown
-- **Timing**: 1.2s burst into 3.0s sustained spin, then 0.4s fade
-- **Particle types**: sprite, trail
-- **Reference games**: Diablo 4, Hades, LoL 분위기 참고
-- **Project tone**: donut shape + velocity over lifetime 기반의 경량 Shuriken 회오리
-- **Suggested MaxParticles**: 50
-- **sound_cue_hint**: airy whoosh with light grit
+## 1. 프리팹 인벤토리 (`Assets/_Project/VFX/`, 37개)
 
-## Fireball
-- **Visual elements**: hot core, ember trail, small smoke tail
-- **Typical palette**: orange, yellow-white, dark ember red
-- **Timing**: 0.15s launch flare, travel sustain, 0.25s impact pop
-- **Particle types**: sprite, trail
-- **Reference games**: Diablo 4, PoE 2, LoL 분위기 참고
-- **Project tone**: 발사체 trail 최소화, impact 는 짧은 burst 로 분리
-- **Suggested MaxParticles**: 60
-- **sound_cue_hint**: short ignition snap
+| 프리팹 | 역할 | 레시피 | 상태 | 비고 |
+| --- | --- | --- | --- | --- |
+| `SlashMark_SKELETON` | 참격 자국 — 60° 부채꼴(브루저·말파이트) | B | 승인 2026-09-12 | 다음 편집 때 접미사 제거 대상 |
+| `SlashMark_Band_SKELETON` | 참격 자국 — 띠 폭 1·길이 3(이쑤시개) | B | 승인 2026-09-12 | 크기 커브 상수 1 |
+| `DetectionMark_SKELETON` | 「발견」 표식(「!」 + 몸 플래시) | A | 승인 2026-09-08 | `ConfigureOneShot` 버스트 하한 4 주의 |
+| `DamageNumberSpark_SKELETON` | 대미지 넘버 스파크 | A | 운용 중 | 오프스크린 렌더 튜닝 선례 |
+| `DamageNumber_Popup` | 대미지 넘버 팝업 | A | 운용 중 | |
+| `Meteor_Falling_SKELETON` / `Meteor_Burst_SKELETON` | 운석 낙하 / 착탄 | A(Burst 는 mesh) | 운용 중 | 착탄은 sim 시점(NativeQueue) |
+| `Placement_SKELETON` | 배치 착지 링·퍼프 | B | 운용 중 | 퇴근 여운도 재사용 |
+| `Portal_SKELETON` | 포탈 | A | 운용 중 | |
+| `Tornado_SKELETON` | 회오리 장판 | A | 운용 중 | |
+| `Whirlpot_Whirl_SKELETON` | 휠윈드 적(회오리) | A | 운용 중 | |
+| `AreaBreath_Fire_SKELETON` | 엘리트 화염 브레스 | C(mesh·flipbook) | 운용 중 | |
+| `StatusAura_Bleed/Fire/Ice/Poison` | 지속 피해 오라 4종 | C(mesh) | 운용 중 | `DotElement` 별 그림 |
+| `EmpowerAura` | 강화 버프 오라 | A | 운용 중 | |
+| `Heal_Applied_VFX` | 회복 적용 | A | 운용 중 | |
+| `Burnout_Smoke` / `LastRun_Torchlight` | 번아웃 / 라스트런 상태 | C(WALLCOEUR·flipbook) | 운용 중 | 상태 VFX 벤더 교체(5f0d1241) |
+| `BusterBeam` | 버스터즈 빔 | C(mesh) | 운용 중 | 세션형(주기 TTL) |
+| `Bomb_Sphere` | 폭탄맨 구체 | A | 운용 중 | |
+| `MalphiteHitEarth` | 말파이트 흙 폭발 | C(mesh) | 운용 중 | 참격 자국으로 슬롯 대체됨 — 2슬롯은 후속 |
+| `ShotgunPelletFireball` / `Projectiles/vfx_Projectile_ShotgunBlast_Green` | 샷건 탄·발사 | C | 운용 중 | |
+| `Projectiles/vfx_Projectile_Needle_Flame_SKELETON` | 화염 바늘 투사체 | C | 운용 중 | |
+| `VFX_MachineGunFire` | 머신건 발사 | C(mesh·flipbook) | 운용 중 | |
+| `InstinctWreck_Burst` / `InstinctWreck_Smolder` | 본능 붕괴 폭발 / 잔불 | C(mesh·flipbook) | 운용 중 | flipbook 「퍼프 무더기」 함정 선례 |
+| `WeaponTrail_Slash` / `_Cyan` / `_Lightning` / `_Simple` | 무기 궤적 룩 4종 | C(Trail) | 운용 중 | 저작은 `docs/reference/weapon-trail-authoring.md` |
 
-## Meteor
-- **Visual elements**: warning ring, descending ember streak, ground burst
-- **Typical palette**: orange, ash brown, red
-- **Timing**: 0.8s warning, 0.1s hit flash, 0.9s debris fade
-- **Particle types**: sprite, trail
-- **Reference games**: Diablo 4, Slay the Spire, LoL 분위기 참고
-- **Project tone**: 경고링은 직접 호출, 폭발은 ECS 시점 동기화 burst 로 분리
-- **Suggested MaxParticles**: 100
-- **sound_cue_hint**: warning hum into heavy impact
+## 2. 카탈로그 (승인된 효과)
 
-## Portal
-- **Visual elements**: circular rim, inner swirl, sparse sparks
-- **Typical palette**: violet-blue, cyan, white
-- **Timing**: 0.3s open, 2.0s stable loop, 0.25s close
-- **Particle types**: sprite, trail
-- **Reference games**: Diablo 4, PoE 2, Hades 분위기 참고
-- **Project tone**: 두 겹 이상 겹치지 않는 얇은 링과 느린 회전 입자로 구성
-- **Suggested MaxParticles**: 80
-- **sound_cue_hint**: arcane hum
+### Slash Mark (지면 참격 자국) — 부채꼴
+- **상태**: 사용자 승인 2026-09-12 (directional-attack-shape rev 3). 1차 「Shuriken arc 파편 팬」은 카메라 pitch 에 눌려 폐기.
+- **Visual elements**: 공격자 발밑에서 타겟 방향으로 눕는 60° 부채꼴 쿼드(절차 텍스처 `SlashMark_Sector.png`: 채움 α0.42 + 밝은 테 α0.95)
+  + 잔불 자식 1개
+- **Typical palette**: 웜 오렌지-화이트, 알파 블렌드(가산 아님 — 밝은 바닥에서도 형태 유지)
+- **Timing**: 0.5s one-shot, 크기 커브 상수 1 · `hitDelaySec` 뒤 RESOLVE 시점 재생, 방향은 **재생 시점에 재측정**
+- **Particle types**: mesh 파티클 1(`SlashMark_SectorQuad`, 꼭짓점 원점·+Y 전방·`alignment Local`·`startRotation3D x=90°`) + sprite 잔불
+- **Project tone**: 「몸은 옆을 보는데 판정은 위」를 메꾸는 **유일한 시각 보증자**(정적 가이드 없음). 크기 = `attackVfxScale`(1.6),
+  회전 = `attackVfxFacesTarget`, 원점 = `attackVfxAtAttacker`(발밑). 각 = 저작 `attackShape.angleDeg` 와 1:1
+- **Suggested MaxParticles**: 8
+- **sound_cue_hint**: 기존 `attackSfxClip` 그대로
 
-## Shield Aura
-- **Visual elements**: soft ring, orbit motes, thin pulse
-- **Typical palette**: cyan, mint, white
-- **Timing**: 0.2s appear, 2.5s loop pulse, 0.3s fade
-- **Particle types**: sprite
-- **Reference games**: LoL, Hades, Diablo 4 분위기 참고
-- **Project tone**: 과한 반투명 볼륨 대신 저밀도 orbit motes 로 표현
-- **Suggested MaxParticles**: 50
+### Slash Mark — Band(띠) 변형
+- **상태**: 사용자 승인 2026-09-12 (「이쑤시개는 rect 로 확정」)
+- **Visual elements**: 사각 쿼드(`SlashMark_Band.png` 테두리 텍스처, `SlashMark_BandQuad_w1_l3` x ±1/6·+Y 1) × `attackVfxScale 3` → 폭 1·길이 3
+  = 판정 상자의 점-대상 코어(폭 = 저작 `width`, 길이 = 사거리 + 내 몸)
+- **Timing**: 0.5s one-shot, 크기 커브 상수 1(첫 프레임부터 판정 크기)
+- **Particle types**: mesh 파티클 1, 잔불 없음
+- **Project tone**: 「찌르는 창」 — 부채꼴과 같은 슬롯·같은 규칙(재생 시점 방향 재측정), 형만 다르다
+- **Suggested MaxParticles**: 4
 
-## Poison Drip
-- **Visual elements**: toxic droplets, faint splash, hanging mist
-- **Typical palette**: sickly green, dark olive, black-green
-- **Timing**: 0.4s drip spawn, 0.2s splash, 1.0s residue fade
-- **Particle types**: sprite
-- **Reference games**: PoE 2, Diablo 4, Hades 분위기 참고
-- **Project tone**: 중력 기반 droplet 몇 개와 지면 근처 mist 최소치만 사용
-- **Suggested MaxParticles**: 40
-- **sound_cue_hint**: wet acidic tick
-
-## Lightning Bolt
-- **Visual elements**: sharp beam, branch spark, brief hit flash
-- **Typical palette**: white, electric blue, pale violet
-- **Timing**: 0.05s strike, 0.1s branch flicker, 0.15s afterglow
-- **Particle types**: trail, sprite
-- **Reference games**: LoL, Diablo 4, PoE 2 분위기 참고
-- **Project tone**: 라인은 짧게, branch 는 sprite burst 로만 처리
-- **Suggested MaxParticles**: 45
-- **sound_cue_hint**: dry electric crack
-
-## Heal Glow
-- **Visual elements**: soft pulse, upward motes, center shimmer
-- **Typical palette**: warm gold, soft green, white
-- **Timing**: 0.2s bloom, 1.2s sustain, 0.4s fade
-- **Particle types**: sprite
-- **Reference games**: Hades, LoL, Slay the Spire 분위기 참고
-- **Project tone**: emissive color 감은 material 파라미터 위주, 입자는 적게
-- **Suggested MaxParticles**: 45
-- **sound_cue_hint**: gentle rising chime
-
-## Ice Shard
-- **Visual elements**: shard burst, cold mist, tiny sparkle
-- **Typical palette**: icy blue, white, pale teal
-- **Timing**: 0.08s crack, 0.25s shard burst, 0.6s cold mist fade
-- **Particle types**: sprite, mesh
-- **Reference games**: Diablo 4, LoL, Hades 분위기 참고
-- **Project tone**: mesh shard 는 최소 수량만, 주 표현은 sprite burst 로 처리
-- **Suggested MaxParticles**: 70
-- **sound_cue_hint**: brittle ice snap
-
-## Teleport Portal
-- **Visual elements**: collapse ring, vertical streaks, exit spark bloom
-- **Typical palette**: magenta, blue-white, black
-- **Timing**: 0.2s open flash, 0.6s transit shimmer, 0.2s exit pop
-- **Particle types**: sprite, trail
-- **Reference games**: PoE 2, Diablo 4, LoL 분위기 참고
-- **Project tone**: 입구/출구를 동일 skeleton 으로 두고 색상만 분기 가능하게 설계
-- **Suggested MaxParticles**: 80
-- **sound_cue_hint**: compressed warp pop
-
-## Detection Mark (「발견」 표식) — draft
+### Detection Mark (「발견」 표식)
+- **상태**: 사용자 승인 2026-09-08 (enemy-detection-range unit 9)
 - **Visual elements**: head 「!」 pop, body flash ring
 - **Typical palette**: alert yellow-orange (1.00, 0.72, 0.10), white core, dark rim
 - **Timing**: 0.14s pop overshoot(×1.22) into 0.30s hold, 0.55s total fade; ring 0.30~0.38s expand
 - **Particle types**: sprite
 - **Reference games**: Metal Gear alert(!), Arknights 교전 진입 분위기 참고
-- **Project tone**: 관습 기호(「!」)와 기존 오라 어휘(링)를 겹쳐 밀집 전투에서 둘 중 하나는 읽히게.
-  **스폰 예고 라인의 빨강(1, 0.16, 0.12)과 색을 분리**한다 — 예고는 「올 것」, 표식은 「이미 봤다」.
-  글리프는 **흰 코어 + 어두운 림**을 텍스처에 굽고 StartColor 로 곱해 틴트한다(밝은 맵에서도
-  아웃라인이 살아남는 구조). 링만 가산, 글리프는 알파 블렌드.
+- **Project tone**: 관습 기호(「!」)와 기존 오라 어휘(링)를 겹쳐 밀집 전투에서 둘 중 하나는 읽히게. 스폰 예고 라인의 빨강(1, 0.16, 0.12)과
+  색을 분리 — 예고는 「올 것」, 표식은 「이미 봤다」. 글리프는 흰 코어 + 어두운 림을 텍스처에 굽고 StartColor 로 틴트. 링만 가산.
+  ⚠ 원샷 경로(`ConfigureOneShot`)가 버스트 최소 4 를 강제 — shape 를 켜면 「!」가 넷으로 보인다.
 - **Suggested MaxParticles**: 20 (Bang 8 + BodyFlash 12)
 - **sound_cue_hint**: short alert blip, no tail
 
-## Slash Mark (지면 참격 자국)
-- **상태**: 사용자 승인 2026-09-12 (directional-attack-shape rev 3)
-- **Visual elements**: 공격자 발밑에서 타겟 방향으로 펼쳐지는 60° 부채꼴 파편 팬, 짧은 원호 잔광
-- **Typical palette**: 유닛 톤(브루저 = 웜 오렌지-화이트, 말파이트 = 스톤 그레이-앰버), 바닥에 눕는 반투명
-- **Timing**: 0.05s 팬 버스트 → 0.25s 페이드 (one-shot 0.3s — `hitDelaySec` 뒤 RESOLVE 시점에 재생)
-- **Particle types**: sprite billboard 1종. Shuriken `Shape=Circle, arc=60°` 로 방향 팬을 만들어 부채꼴 텍스처 없음 —
-  arc 각 = 저작 `attackShape.angleDeg` 와 1:1
-- **Reference games**: Hades(몸은 느슨, 참격 VFX 가 방향 전담), Brotato/HoloCure 분위기 참고
-- **Project tone**: 「몸은 옆을 보는데 판정은 위」를 메꾸는 **유일한 시각 보증자**(정적 가이드 없음). 크기 = `attackVfxScale`,
-  회전 = `attackVfxFacesTarget`, 원점 = `attackVfxAtAttacker`(공격자 자리)
-- **Suggested MaxParticles**: 30
-- **sound_cue_hint**: 기존 `attackSfxClip` 그대로, 추가 없음
+### Meteor
+- **상태**: 운용 중(`Meteor_Falling/Burst_SKELETON`). 경고링은 직접 호출, 착탄은 sim 시점 NativeQueue — 투사체 파이프라인으로 수렴.
+- **Typical palette**: 오렌지-화이트 코어, 어두운 잔재
+- **Project tone**: 「자리에 떨어지는 것」(칸 반폭 0.5, 몸 없음) — 표기 반경은 `CenteredRingRadius` 와 같은 값
+
+### Portal / Tornado / Whirlwind(휠윈드)
+- **상태**: 운용 중(`Portal_SKELETON`, `Tornado_SKELETON`, `Whirlpot_Whirl_SKELETON`). 얇은 링 + 느린 회전 입자, 상한 50.
+- **Project tone**: 휠윈드는 **전방위가 정체성** — 방향 도형을 저작하지 않는다(사용자 결정 2026-09-12).
+
+### Status Aura (지속 피해 오라 4종) / Burnout / LastRun
+- **상태**: 운용 중. WALLCOEUR·PixPlays 사본(레시피 C). `DotElement`(Bleed·Fire·Ice·Poison) 별 그림, origin 은 보지 않는다.
+- **Project tone**: 오라는 유닛에 부착되는 지속 루프 — 상한 200, `Loop=true`, 정리 주체는 `StatusFx` 프레젠터.
+
+## 3. 초안 (프리팹 없음 — 필요해질 때 승인 후 승격)
+
+- **Fireball / Ice Shard / Lightning Bolt / Poison Drip**: 원거리 탄·착탄 아이디어. 현재 투사체 룩은 벤더 사본(`Projectiles/`)으로 충당.
+- **Shield Aura / Heal Glow**: 실드는 `ShieldGrantedEventsSingleton` 원샷 VFX 로, 회복은 `Heal_Applied_VFX` 로 이미 다른 이름으로 운용.
+- **Teleport Portal**: 입구/출구 같은 skeleton + 색 분기 아이디어. `Portal_SKELETON` 이 대체.
