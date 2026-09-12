@@ -218,6 +218,7 @@ namespace Wassup.Core
             _targetMarks.Clear();
             _targetMarkCount = 0;   // 풀 길이와 「마지막 요청 수」가 갈린 채 남지 않게
             if (_targetMarkMat != null) { SafeDestroy(_targetMarkMat); _targetMarkMat = null; }
+            DestroyShapeGuide();   // directional-attack-shape unit 6 — 가이드도 같은 수명(리뷰 must-fix 1)
             _liquidTileMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
@@ -888,12 +889,14 @@ namespace Wassup.Core
                 float r = radiusTiles * cs;
                 if (band)
                 {
-                    BuildBand(_shapeGuideFillMesh, halfWidthTiles * cs, r);
-                    BuildBandOutline(_shapeGuideRimMesh, halfWidthTiles * cs, r, ShapeGuideRimWidthTiles * cs);
+                    // 폭 0 저작(bake 는 여전히 Band — 축 위 몸 걸침만 히트)도 선으로는 보이게 테 폭을 하한으로.
+                    float hw = Mathf.Max(halfWidthTiles, ShapeGuideRimWidthTiles) * cs;
+                    BuildBand(_shapeGuideFillMesh, hw, r);
+                    BuildBandOutline(_shapeGuideRimMesh, hw, r, ShapeGuideRimWidthTiles * cs);
                 }
                 else
                 {
-                    BuildFan(_shapeGuideFillMesh, angleDeg, 0f, r);
+                    BuildFan(_shapeGuideFillMesh, angleDeg, r);
                     BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
                 }
                 _shapeGuideAngleDeg = key; _shapeGuideRadiusTiles = radiusTiles;
@@ -926,6 +929,25 @@ namespace Wassup.Core
             _shapeGuideRim = MakeShapeGuideRenderer("PlacementShapeGuideRim", out _shapeGuideRimMesh);
         }
 
+        // 맵 리빌드 경계 — grid 자식이라 GameObject 는 grid 와 함께 사라질 수 있지만, 메시·머티리얼은 아니다.
+        // 링/마크와 같은 수명으로 명시 파괴. 캐시 키도 리셋해 다음 맵에서 새 메시를 굽는다.
+        private void DestroyShapeGuide()
+        {
+            if (_shapeGuideFill != null)
+            {
+                if (_shapeGuideFill.sharedMaterial != null) SafeDestroy(_shapeGuideFill.sharedMaterial);
+                SafeDestroy(_shapeGuideFill.gameObject); _shapeGuideFill = null;
+            }
+            if (_shapeGuideRim != null)
+            {
+                if (_shapeGuideRim.sharedMaterial != null) SafeDestroy(_shapeGuideRim.sharedMaterial);
+                SafeDestroy(_shapeGuideRim.gameObject); _shapeGuideRim = null;
+            }
+            if (_shapeGuideFillMesh != null) { SafeDestroy(_shapeGuideFillMesh); _shapeGuideFillMesh = null; }
+            if (_shapeGuideRimMesh != null) { SafeDestroy(_shapeGuideRimMesh); _shapeGuideRimMesh = null; }
+            _shapeGuideAngleDeg = -1f; _shapeGuideRadiusTiles = -1f;
+        }
+
         private MeshRenderer MakeShapeGuideRenderer(string name, out Mesh mesh)
         {
             var go = new GameObject(name);
@@ -943,8 +965,8 @@ namespace Wassup.Core
             return mr;
         }
 
-        // 부채꼴 채움: 꼭짓점(원점) + 호. +Y 가 중심 방향. `rInner` 0 = 꼭짓점부터.
-        private static void BuildFan(Mesh mesh, float angleDeg, float rInner, float rOuter)
+        // 부채꼴 채움: 꼭짓점(원점) + 호. +Y 가 중심 방향.
+        private static void BuildFan(Mesh mesh, float angleDeg, float rOuter)
         {
             int n = ShapeGuideSegments;
             float half = angleDeg * 0.5f * Mathf.Deg2Rad;
@@ -983,11 +1005,13 @@ namespace Wassup.Core
             {
                 float a = Mathf.PI * 0.5f + side * half;
                 var e = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
-                var nrm = new Vector3(-side * e.y, side * e.x, 0f);   // 부채꼴 안쪽을 향하는 수직
+                // 부채꼴 안쪽(중심 축 +Y 쪽)을 향하는 수직 — 오른쪽 가장자리(side −1)는 e 를 +90°, 왼쪽은 −90° 회전.
+                // ⚠ 부호가 뒤집히면 테가 판정 도형 **밖**으로 나가 「가이드 = 판정」이 테 폭만큼 깨진다(리뷰 nit).
+                var nrm = new Vector3(side * e.y, -side * e.x, 0f);
                 int b = verts.Count;
                 verts.Add(Vector3.zero); verts.Add(nrm * w); verts.Add(e * r); verts.Add(e * r + nrm * w);
-                if (side < 0) { tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3); }
-                else          { tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2); }
+                if (side < 0) { tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2); }
+                else          { tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3); }
             }
             mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
         }
@@ -1010,8 +1034,7 @@ namespace Wassup.Core
             {
                 int j = (i + 1) % 4; int b = verts.Count;
                 verts.Add(outer[i]); verts.Add(outer[j]); verts.Add(inner[i]); verts.Add(inner[j]);
-                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
-                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);   // 양면(감김 무관)
+                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);   // 단면 — 셰이더가 Cull Off 라 양면은 알파 2배일 뿐
             }
             mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
         }

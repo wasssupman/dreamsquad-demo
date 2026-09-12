@@ -12,7 +12,7 @@ namespace Wassup.Data
     // 단위·기하가 달라 한 필드로 접으면 `tileRange` 의 재현이다.
     //
     // ⚠ 도형은 「얼마나 멀리」를 정하지 않는다 — 반경도 길이도 `attackRange` 가 소유한다. 여기 있는 것은
-    //   「보는 쪽으로 얼마나 좁게」뿐이다. 방향은 항상 캐릭터가 보는 좌/우(타겟 쪽으로 자동 반전).
+    //   「주 대상 쪽으로 얼마나 좁게」뿐이다. 방향 = 주 대상을 향한 실제 방향(rev 3). 캐릭터 좌/우 반전은 연출.
     // ⚠ `None` kind 가 없다 — `Circle/360` 이 항등원이라 `None` 은 같은 것의 두 번째 표현이다.
     //   bake 쪽(`AttackShapeBaked`)엔 `Omni = 0` 이 있는데 그건 `default(AttackState)` 가 안전해야 해서다.
     //   둘의 번호를 맞추려 들지 말 것.
@@ -23,11 +23,11 @@ namespace Wassup.Data
     {
         public AttackShapeKind kind;
 
-        [Tooltip("Circle 전용 — 보는 쪽 부채꼴 전체각(도). 360 = 전방위(오늘 동작). 0 = 미저작 → 360. " +
+        [Tooltip("Circle 전용 — 주 대상 쪽 부채꼴 전체각(도). 360 = 전방위(오늘 동작). 0 = 미저작 → 360. " +
                  "180 초과 360 미만(reflex)은 bake 가 거절하고 360 으로 읽는다.")]
         [Range(15f, 360f)] public float angleDeg;
 
-        [Tooltip("Rect 전용 — 보는 쪽 가로 띠의 세로 폭(타일). 길이는 attackRange.")]
+        [Tooltip("Rect 전용 — 주 대상 쪽 띠의 좌우 폭(타일). 길이는 attackRange.")]
         [Min(0f)] public float width;
 
         public static AttackShape Omni => new AttackShape { kind = AttackShapeKind.Circle, angleDeg = 360f };

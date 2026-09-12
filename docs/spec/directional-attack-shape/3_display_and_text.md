@@ -68,3 +68,9 @@
   「타격점 히트 + 공격자 참격」 2슬롯은 후속 후보. 필수 오버라이드: Duration 0.3 · StartColor (1,0.8,0.45,0.9) · MaxParticles 30 · Loop false.
 - 문안: 「휘두르는 쪽 A° 안 최대 N체 동시 타격」(N > 1 일 때만 · N = 1 은 도형 문안 없음 — 효과 0) · Band 「찌르는 방향 일직선…」.
 - `OnValidate` 경고 복귀(rev 1 계약 9): 도형 × `attackTargetCount ≤ 1` = 효과 0.
+
+## 리뷰 반영 (2026-09-12) — 참격 방향은 재생 시점에 다시 잰다
+- START 이벤트의 `targetWorld` 로 잰 방향을 `hitDelaySec`(파이터 0.3s) 뒤에 그대로 쓰면 sim 의 RESOLVE 방향(`hitDir`)과 갈린다
+  (속도 1.3 적이 0.39칸 이동 → 1.5칸 거리에서 ~15°). `PendingHitVfx` 가 `attacker`·`target` 엔티티를 싣고 재생 순간 둘의 현재
+  위치로 방향을 재계산한다(대상이 죽었으면 스냅샷 유지). 잔여 오차 = RESOLVE 에서 주 대상이 **다른 적으로 바뀐** 경우뿐.
+

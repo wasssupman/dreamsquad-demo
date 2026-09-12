@@ -188,6 +188,22 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void InReachShaped_Band_WideBody_AxisEdgeStillMatchesReach()
+        {
+            // ★ 리뷰 M-3 — 큰 몸(배스티온 3×2 = 1.5)에서 띠 길이 = 사거리 + 내 몸. 축 위 경계가 원(Reach) 경계와
+            //   같아야 한다. distance-based-range unit 22 결함(배스티온 피해 0)이 났던 자리라 못박는다.
+            var b = BandShape(0.5f);
+            const float wideSelf = 1.5f;
+            float edge = 2f + wideSelf + Tr;   // 4.0
+            Assert.IsTrue(AttackReach.InReach(At(0, 0), At(edge, 0), 2f, Tile, wideSelf, Tr), "원 경계 포함");
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(edge, 0), 2f, Tile, wideSelf, Tr, in b, Right), "띠 축 경계 = 원 경계");
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(edge + 0.02f, 0), 2f, Tile, wideSelf, Tr, in b, Right), "경계 너머");
+            // 큰 몸이라도 옆 폭은 그대로 반폭 + 대상 몸 — 몸이 띠를 넓히지 않는다.
+            Assert.IsTrue(AttackReach.InReachShaped(At(0, 0), At(2f, 0.9f), 2f, Tile, wideSelf, Tr, in b, Right));
+            Assert.IsFalse(AttackReach.InReachShaped(At(0, 0), At(2f, 1.1f), 2f, Tile, wideSelf, Tr, in b, Right));
+        }
+
+        [Test]
         public void InReachShaped_TileSizeIsDividedOut_BeforeTheGate()
         {
             var s = SectorShape(90f);

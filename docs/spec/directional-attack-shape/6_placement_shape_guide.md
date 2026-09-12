@@ -45,3 +45,9 @@
 - [x] 드롭·취소·재배치 경로 — 전부 `TilemapMapView.ClearPlacementRange` 를 지나고 거기서 `ClearShapeGuide`. EditMode 코어+에셋
       2837건 무회귀(선행 실패 2건 외 0).
 - [x] EditMode: 순수 함수는 신설하지 않고 `NearestTargeting.RanksBefore` 를 **재사용**(sim 과 같은 tie-break, 기존 테스트가 고정).
+
+## 리뷰 반영 (2026-09-12)
+- 가이드 메시·머티리얼은 `TilemapMapView.Clear()`(맵 리빌드)에서 링·마크와 같은 수명으로 파괴(`DestroyShapeGuide`).
+- 도형 bake 는 `SetPlacementRange` 진입 1회(`_placementMarkShape`) — LateUpdate 매 프레임 bake 는 정의역 밖 저작에서 60fps LogError.
+- 부채꼴 테의 직선 가장자리 법선 부호 정정(안쪽) · 띠 테 단면 · 폭 0 띠는 테 폭을 하한으로 그린다 · `BuildFan` 의 미사용 `rInner` 제거.
+

@@ -4844,6 +4844,8 @@ namespace Wassup.Bridge
                             facing = hitFacing,
                             euler = defData.attackVfxEulerOffset,
                             remaining = defData.hitDelaySec,
+                            attacker = evt.attacker,
+                            target = evt.target,
                         });
                     else
                         _projectileViewPool?.PlayHit(defData.attackVfxPrefab, hitVfxSimPos,
@@ -4882,6 +4884,11 @@ namespace Wassup.Bridge
             public Vector3 facing;
             public Vector3 euler;
             public float remaining;
+            // directional-attack-shape 리뷰 must-fix 3 — 방향은 **재생 시점**에 다시 잰다. START 스냅샷은 hitDelaySec(0.3s)
+            // 동안 적이 0.4칸 걸어가면 sim 의 RESOLVE 방향(`hitDir`, 그 순간 주 대상)과 15° 갈린다. 참격 자국이 방향의
+            // 유일한 시각 보증자라 그 어긋남은 「맞는 적을 빗겨간 그림」이 된다. 둘 다 살아 있을 때만 재계산.
+            public Entity attacker;
+            public Entity target;
         }
         private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
 
@@ -4892,8 +4899,13 @@ namespace Wassup.Bridge
                 var p = _pendingHitVfx[i];
                 p.remaining -= battleDeltaTime;
                 if (p.remaining > 0f) { _pendingHitVfx[i] = p; continue; }
+                var facing = p.facing;
+                if (facing != default && p.target != Entity.Null && HasLiveEntityManager()
+                    && _em.Exists(p.target) && _em.HasComponent<LocalTransform>(p.target)
+                    && ResolveBeamViewPos(p.attacker, true, out var atkViewNow))
+                    facing = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(p.target).Position) - atkViewNow;
                 _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale,
-                    facingViewDir: p.facing, eulerOffset: p.euler);
+                    facingViewDir: facing, eulerOffset: p.euler);
                 _pendingHitVfx.RemoveAt(i);
             }
         }
@@ -7882,6 +7894,10 @@ namespace Wassup.Bridge
         private Vector2Int _placementMarkCenter;
         private int _placementMarkRange;
         private DefenderUnitData _placementMarkUnit;
+        // directional-attack-shape unit 6 — 가이드 도형은 **SetPlacementRange 진입에서 1회** 굽는다. 마크 갱신은 LateUpdate 가
+        // 매 프레임 부르므로 거기서 구우면 정의역 밖 저작의 LogError 가 60fps 로 쌓인다(`26ef25a6` 이 지운 것을 unit 6 이
+        // 되살렸다 — 리뷰 must-fix 2).
+        private Wassup.Data.AttackShapeBaked _placementMarkShape;
         // dreamcatcher-attach-range-preview unit 2 — 카드 드래그 중 락온 host 의 카드 범위 링. 앵커는 **Entity**
         // (재배치는 Entity 를 보존하고 셀만 재키잉한다). 위치는 LateUpdate 가 host 의 sim 위치에서 매 프레임
         // 다시 읽는다 — `DcAuraVisualPool` 과 같은 슬롯.
@@ -7950,6 +7966,7 @@ namespace Wassup.Bridge
                 _placementMarkCenter = center;
                 _placementMarkRange = tileRange;
                 _placementMarkUnit = unit;
+                _placementMarkShape = BakeAttackShape(unit.attackShape, unit);
                 RefreshRangeTargetMarks(center, tileRange, unit);   // unit 11 — facing 분기 삭제
             }
             else
@@ -8053,8 +8070,8 @@ namespace Wassup.Bridge
             }
             ents.Dispose(); tf.Dispose(); fac.Dispose();
             tilemapMapView.SetRangeTargetMarks(_markPos, _markHalf);
-            // unit 6 — 도형 유닛(부채꼴)만, 타겟이 있을 때만. 반경 = 링과 같은 값(사거리 + 내 몸).
-            var guideShape = BakeAttackShape(unit.attackShape, unit);
+            // unit 6 — 도형 유닛만, 타겟이 있을 때만. 반경 = 링과 같은 값(사거리 + 내 몸). 도형은 진입 시 1회 bake 한 값.
+            var guideShape = _placementMarkShape;
             if (guideHas && !guideShape.IsOmni)
                 tilemapMapView.SetShapeGuide(
                     new Vector2(center.x + markBase.x, center.y + markBase.y),
@@ -8069,6 +8086,7 @@ namespace Wassup.Bridge
         {
             _placementMarkLive = false;
             _placementMarkUnit = null;   // 리뷰 L-2 — SO 참조를 프리뷰 수명 밖에 남기지 않는다
+            _placementMarkShape = default;
             ClearRange(RangeDisplayOwner.Placement);
         }
 

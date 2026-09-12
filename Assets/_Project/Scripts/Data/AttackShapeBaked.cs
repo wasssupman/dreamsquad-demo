@@ -10,13 +10,13 @@ namespace Wassup.Data
     //     남는데, 그게 곧 오늘 동작(360°)이어야 한다. 저작 enum 에는 `None` 이 없다(`Circle/360` 이
     //     항등원이라 중복) — **둘의 번호를 맞추려 들지 말 것.**
     //
-    // 도형은 항상 **+X 방향**이다. 유닛이 타겟 쪽으로 좌/우 반전하므로 회전이 없다 — 호출부가
-    // `side` 로 dx 부호를 접어 넘긴다(`AttackReach` 헤더).
+    // 게이트(`SkillMath`)는 **+X 고정 프레임**이고, 회전은 `AttackReach.InReachShaped` 가 **주 대상 방향 벡터**로 Δ 를
+    // 그 프레임에 내려 한다(rev 3). 좌/우 반전(rev 2 의 `side`)은 연출일 뿐 판정 축이 아니다 — 호출부가 부호를 접지 않는다.
     public struct AttackShapeBaked
     {
         public const byte OmniKind = 0;     // 360° — 게이트 없음. 오늘 동작
-        public const byte SectorKind = 1;   // 보는 쪽 부채꼴 — `sinHalf/cosHalf`
-        public const byte BandKind = 2;     // 보는 쪽 가로 띠 — `halfWidth`
+        public const byte SectorKind = 1;   // 주 대상 방향 부채꼴 — `sinHalf/cosHalf`
+        public const byte BandKind = 2;     // 주 대상 방향 띠 — `halfWidth`
 
         public byte kind;
         public float sinHalf;    // Sector 전용 — 반각의 sin

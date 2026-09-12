@@ -52,7 +52,7 @@ namespace Wassup.Battle.Combat
         public static bool KeepsLock(bool targetAlive, float3 atkPos, float3 tgtPos,
                                      float tileRange, float tileSize,
                                      float selfBodyRadiusTiles,
-                                     float targetBodyRadiusTiles = 0f)
+                                     float targetBodyRadiusTiles)
             => targetAlive && AttackReach.InReach(atkPos, tgtPos,
                                                   tileRange + HysteresisTiles, tileSize,
                                                   selfBodyRadiusTiles, targetBodyRadiusTiles);
