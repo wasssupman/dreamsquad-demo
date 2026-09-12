@@ -79,3 +79,17 @@ va² + vb² ≤ tr²
 - 리그: 공유 `wassup-testrig` 가 남의 WIP(`AttackState`·`AttackSystem`·브리지 — 이 spec 과 같은 파일)로 dirty 라
   `wassup-rig-das` 를 새로 팠다(APFS 클론). 끝나면 `git worktree remove --force`.
 - `.meta` 2건은 메인 에디터가 살아 있어 직접 생성됐다(guid 고정, 커밋 포함).
+
+### ⚠ Burst BC1055 함정 — 2026-09-12 에디터 세션에서 재발 (원인 확정)
+
+`AttackReach.InReachShaped` 가 `SkillMath.SectorGate/BandGate` 를 부르는 자리에서 **Burst error BC1055: Unable to resolve
+the definition of the method** 가 에디터 콘솔에 떴다. 4a 진행 기록 (1)은 asmdef 참조 누락이 원인이었지만 **이번은 다르다**:
+- 리그(새 프로세스) 배치·인-에디터 EditMode 는 전부 초록. `Library/ScriptAssemblies`·Bee artifacts·ref.dll 전부 새 메서드 포함.
+- 메서드 이름을 바꿔도 에러가 **이름을 따라오고**, 호출 순서를 바꾸면 **먼저 호출되는 새 메서드**로 에러가 옮겨간다
+  (`BandGateX` → `BandGate` → `SectorGate`). 옛 메서드(`ReachFromUnit`)는 항상 해석된다.
+- → **에디터 프로세스 안의 Burst 네이티브 컴파일러가 `Wassup.Skills` 의 옛 이미지를 붙들고 있다.** 어셈블리 재컴파일·
+  `Jobs/Burst/Enable Compilation` 토글·도메인 리로드로는 안 풀린다. `Temp/bin/Debug` 의 stale DLL(dotnet build 산출물)은
+  무관했다(지워도 동일).
+- **해법 = 에디터 재시작.** 에디터에선 Burst 실패 시 managed 폴백으로 돌아 테스트는 초록이지만, **기기 빌드(AOT)에선 빌드
+  실패**가 되므로 커밋 전에 반드시 확인한다. 메서드 이름 정리(`SectorGateX/BandGateX` → `SectorGate/BandGate`)는 이 실험의
+  부산물로 남긴다(+X 프레임 의미는 주석이 든다).

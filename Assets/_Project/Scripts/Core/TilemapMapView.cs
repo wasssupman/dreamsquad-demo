@@ -352,8 +352,8 @@ namespace Wassup.Core
             // 그럼에도 이 목록에 있는 이유 = 빠뜨린 렌더러가 옛 값에 굳는 사고 방지(궁극기 예고 선례).
             if (_rangeRing != null) _rangeRing.sortingOrder = BoardSortOrder.RangeRingOrder;
             // directional-attack-shape unit 6 — 공격 가이드도 링과 같은 대역(빠뜨린 렌더러가 옛 값에 굳는 사고 방지).
-            if (_shapeGuideFill != null) _shapeGuideFill.sortingOrder = BoardSortOrder.RangeRingOrder;
-            if (_shapeGuideRim != null) _shapeGuideRim.sortingOrder = BoardSortOrder.RangeRingOrder;
+            if (_shapeGuideFill != null) _shapeGuideFill.sortingOrder = BoardSortOrder.PlacementShapeGuideOrder;
+            if (_shapeGuideRim != null) _shapeGuideRim.sortingOrder = BoardSortOrder.PlacementShapeGuideOrder;
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -856,13 +856,13 @@ namespace Wassup.Core
         // **뷰는 방향·반경·각을 받기만 한다** — 누가 타겟인지는 브리지가 `NearestTargeting.RanksBefore`
         // (sim 획득과 같은 tie-break)로 정한다(unit 5·7 과 같은 규율: 표기가 규칙을 다시 그리지 않는다).
         // 모양은 텍스처가 아니라 **부채꼴 메시**(각·반경이 인자) — 참격 자국 텍스처(반각 30° 고정)와 달리
-        // 저작 각도가 바뀌어도 그대로 참말이다. 색은 링과 같은 `rangeColor`(「예고」 언어) 로 채움은 옅게,
-        // 테는 또렷하게. 바깥 호는 링 원과 겹친다(반경 = 사거리 + 내 몸 = 링 반경).
+        // 저작 각도가 바뀌어도 그대로 참말이다. 색은 마크와 같은 `rangeTargetMarkColor`(「맞는다」 언어) 로 채움은 옅게,
+        // 테는 또렷하게. 바깥 호는 링 원과 겹친다(반경 = 사거리 + 내 몸 = 링 반경). 정렬은 링·타일 위, 마크 아래.
         private MeshRenderer _shapeGuideFill, _shapeGuideRim;
         private Mesh _shapeGuideFillMesh, _shapeGuideRimMesh;
         private float _shapeGuideAngleDeg = -1f, _shapeGuideRadiusTiles = -1f;
         private const int ShapeGuideSegments = 24;
-        private const float ShapeGuideFillAlpha = 0.16f;
+        private const float ShapeGuideFillAlpha = 0.22f;
         private const float ShapeGuideRimAlpha = 0.85f;
         private const float ShapeGuideRimWidthTiles = 0.07f;
 
@@ -891,7 +891,9 @@ namespace Wassup.Core
             var rot = Quaternion.Euler(0f, 0f, yaw);
             _shapeGuideFill.transform.localPosition = local; _shapeGuideFill.transform.localRotation = rot;
             _shapeGuideRim.transform.localPosition = local;  _shapeGuideRim.transform.localRotation = rot;
-            var c = _tileSet.rangeColor;
+            // 색은 **마크와 같은 빨강**(`rangeTargetMarkColor`) — 「같이 맞는 범위」는 「이놈이 맞는다」와 한 언어다. 링(라임)과
+            // 같은 색이면 원과 부채꼴이 한 덩어리로 읽혀 방향이 죽는다(사용자 지적 2026-09-12).
+            var c = _tileSet.rangeTargetMarkColor;
             c.a = ShapeGuideFillAlpha; _shapeGuideFill.sharedMaterial.color = c;
             c.a = ShapeGuideRimAlpha;  _shapeGuideRim.sharedMaterial.color = c;
             if (!_shapeGuideFill.gameObject.activeSelf) _shapeGuideFill.gameObject.SetActive(true);
@@ -919,9 +921,9 @@ namespace Wassup.Core
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
             // 제약: Shader.Find + new Material 금지 — always-included 런타임 머티리얼에서 파생한다.
-            mr.sharedMaterial = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeColor);
+            mr.sharedMaterial = Wassup.Rendering.RuntimeMaterialFactory.CreateTransparent(_tileSet.rangeTargetMarkColor);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
-            mr.sortingOrder = BoardSortOrder.RangeRingOrder;
+            mr.sortingOrder = BoardSortOrder.PlacementShapeGuideOrder;   // 링·타일 위, 마크 아래
             var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
             if (overlayR != null) mr.sortingLayerID = overlayR.sortingLayerID;
             go.SetActive(false);

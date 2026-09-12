@@ -122,10 +122,10 @@ namespace Wassup.Battle.Combat
             float2 u = dirToPrimary * math.rsqrt(len2);
             float along  = u.x * dx + u.y * dz;        // 주 대상 방향 성분
             float across = u.x * dz - u.y * dx;        // 그 수직 성분(부호는 게이트가 |·| 로 접는다)
-            return shape.kind == AttackShapeBaked.SectorKind
-                ? Wassup.Skills.SkillMath.SectorGateX(along, across, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles)
-                : Wassup.Skills.SkillMath.BandGateX(along, across, shape.halfWidth,
-                                                     tileRange + selfBodyRadiusTiles, targetBodyRadiusTiles);
+            if (shape.kind == AttackShapeBaked.SectorKind)
+                return Wassup.Skills.SkillMath.SectorGate(along, across, shape.sinHalf, shape.cosHalf, targetBodyRadiusTiles);
+            return Wassup.Skills.SkillMath.BandGate(along, across, shape.halfWidth,
+                                                    tileRange + selfBodyRadiusTiles, targetBodyRadiusTiles);
         }
 
         // 격자 계층의 자. **사거리 판정에 쓰지 말 것** — 그 용도의 정본은 위 `InReach` 하나다.

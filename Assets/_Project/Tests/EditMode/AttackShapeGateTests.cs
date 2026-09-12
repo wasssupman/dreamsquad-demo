@@ -23,10 +23,10 @@ namespace Wassup.Tests.EditMode
         private static float Cos(float deg) => math.cos(math.radians(deg));
 
         private static bool Sector(float along, float across, float fullAngleDeg, float tr = Tr)
-            => SkillMath.SectorGateX(along, across, Sin(fullAngleDeg * 0.5f), Cos(fullAngleDeg * 0.5f), tr);
+            => SkillMath.SectorGate(along, across, Sin(fullAngleDeg * 0.5f), Cos(fullAngleDeg * 0.5f), tr);
 
         private static bool Band(float along, float across, float halfWidth, float length, float tr = Tr)
-            => SkillMath.BandGateX(along, across, halfWidth, length, tr);
+            => SkillMath.BandGate(along, across, halfWidth, length, tr);
 
         private static AttackShapeBaked SectorShape(float fullAngleDeg) => new AttackShapeBaked
         {

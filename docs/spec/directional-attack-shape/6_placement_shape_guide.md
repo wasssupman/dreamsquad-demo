@@ -21,7 +21,9 @@
 
 - `Core/TilemapMapView.cs` — `SetShapeGuide(centerTiles, dirTiles, radiusTiles, angleDeg)` / `ClearShapeGuide()`.
   **부채꼴 메시**(채움 fan + 테 띠, 24분할)를 grid 자식으로 눕힌 `MeshRenderer` 2개 — 링과 같은 정렬 대역(`RangeRingOrder`)·
-  높이(`PropGroundLift`)·색(`rangeColor` — 「예고」 언어, 채움 α0.16 · 테 α0.85). 머티리얼은 `RuntimeMaterialFactory.CreateTransparent`.
+  높이(`PropGroundLift`). **사용자 지시(2026-09-12)로 색·정렬 변경**: 색 = 마크와 같은 `rangeTargetMarkColor`(빨강 —
+  링과 같은 라임이면 원과 한 덩어리로 읽혀 방향이 죽는다), 채움 α0.22 · 테 α0.85 · 정렬 `PlacementShapeGuideOrder(−7)` =
+  링(−8)·범위 타일(−12) **위**, 마크(−6 으로 상향) 아래. 머티리얼은 `RuntimeMaterialFactory.CreateTransparent`.
   자가 리뷰(2026-09-12)로 바꾼 것: ① 참격 텍스처(반각 30° 고정) 재사용 → **메시**(각·반경이 인자라 저작 각도가 바뀌어도 참말,
   「60° 아니면 경고」 분기 자체가 사라짐 — 불필요한 확장 제거) ② 색을 참격 주황이 아니라 **링 색**으로 — 「예고」와 「타격」이
   색으로 갈린다(비주얼 비대칭 제거) ③ 바깥 호 = 링 원과 정확히 겹친다(반경 동일).

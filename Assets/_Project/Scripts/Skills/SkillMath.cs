@@ -250,7 +250,7 @@ namespace Wassup.Skills
         //   중심이 안 → true · 가장자리에 투영되면 가장자리 거리 ≤ 몸 · 그 외(꼭짓점 뒤)는 꼭짓점 거리 ≤ 몸.
         // ⚠ 꼭짓점 뒤를 가장자리 식으로 근사하지 말 것 — sinθ 배 관대해져 등 뒤 인접 적이 샌다
         //   (`AttackShapeGateTests.Sector_BehindApex_UsesApexDistance_NotEdgeApproximation`).
-        public static bool SectorGateX(float along, float across, float sinHalf, float cosHalf,
+        public static bool SectorGate(float along, float across, float sinHalf, float cosHalf,
                                        float targetBodyRadiusTiles)
         {
             float b = across < 0f ? -across : across;
@@ -266,7 +266,7 @@ namespace Wassup.Skills
         // 보는 쪽 가로 띠. 상자 = `along ∈ [0, length]` · `|across| ≤ halfWidth`. `length` 는 호출부가
         // `사거리 + 원점 몸` 으로 넘겨 축 위에서 `Reach` 와 같은 곳에서 끝난다.
         // `BodyOverlapsSquare` 를 반폭 둘 + 중심 오프셋으로 일반화한 상자 SDF ≤ 몸.
-        public static bool BandGateX(float along, float across, float halfWidth, float lengthTiles,
+        public static bool BandGate(float along, float across, float halfWidth, float lengthTiles,
                                      float targetBodyRadiusTiles)
         {
             float halfLen = lengthTiles * 0.5f;

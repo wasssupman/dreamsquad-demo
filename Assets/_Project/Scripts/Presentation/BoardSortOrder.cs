@@ -38,7 +38,10 @@ namespace Wassup.Presentation
         // distance-based-range unit 7 — 사거리 안 상대 **발밑 마크**. 링과 같은 바닥 대역이고
         // 링(−8)보다 한 칸 위 = 링 위를 지나갈 때 마크가 먹히지 않는다.
         // ⚠ 여기도 유닛 위로 올리지 않는다 — 마크는 **발밑**이라 유닛에 가려져도 보인다.
-        public const int RangeTargetMarkOrder = -7;
+        // directional-attack-shape unit 6 — 배치 프리뷰 **공격 가이드**(최근접 적 방향 부채꼴). 링(−8)·범위 타일(−12)
+        // **위**, 마크 아래 = 부채꼴이 적 발밑을 덮어도 「이놈이 맞는다」 마크가 먹히지 않는다(사용자 지시 2026-09-12).
+        public const int PlacementShapeGuideOrder = -7;
+        public const int RangeTargetMarkOrder = -6;   // unit 6 에서 −7 → −6 (가이드에 자리를 내줌)
 
         // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트: 바닥 타일 하이라이트 위, 확정 팝(12000) 아래.
         // 팝은 확정 순간의 이완이라 액체보다 앞에 터져야 한다.
