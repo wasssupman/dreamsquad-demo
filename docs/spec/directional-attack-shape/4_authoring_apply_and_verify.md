@@ -56,6 +56,20 @@
 - 적 저작 없음(유지).
 - 골든: 말파이트 부가 타격만 좁아진다 → 기본 덱 코퍼스 7건 변화(더 작음). 재베이크 대상.
 
+## rev 3b 저작 — 이쑤시개 Rect (2026-09-12 · 사용자 결정 「이쑤시개는 rect 로 확정」)
+
+- **이쑤시개(`slasher`)** `Rect/폭 1` + `attackRange 2` + `attackTargetCount 3`. 찌르는 창 — 주 대상 방향 일직선
+  (길이 = 사거리 2 + 내 몸 0.5 + 대상 몸, 좌우 반폭 0.5 + 대상 몸)의 최대 3체. 이 spec 의 **유일한 Band 저작**이자
+  Rect 코드 경로의 라이브 검증 유닛(README 후속 후보 「긴창 전용 신규 유닛」은 신설 없이 이쑤시개로 해소).
+- 참격 VFX: `SlashMark_Band_SKELETON`(사각 텍스처 + `SlashMark_BandQuad_w1_l3` 메시 x ±1/6·+Y 1, `attackVfxScale 3`
+  → 폭 1·길이 3 = 판정 상자의 점-대상 코어와 같다. 크기 커브는 상수 1 — 첫 프레임부터 정확). `AtAttacker`·`FacesTarget`.
+  라이브: 배치 (23,3)·적 (26,3.2) 에서 공격 순간 띠가 발밑에서 적 쪽으로 눕는다(`band_live_0.png`), 오프스크린 3방향 시트 OK.
+- ⚠ **시트가 정본** — `attackTargetCount`·`attackRange` 는 Defenders 탭에 있어 push 하지 않으면 로비 진입마다 1·(옛 값)으로
+  되돌아간다(실제로 한 번 되돌아갔다). `attackShape` 는 시트에 없어 에셋만 정본.
+- 에셋 lane 허용 목록: `slasher` → Band 폭 1 · count > 1, `Fighter && count > 1` → 60°, 나머지 Omni
+  (`Defenders_MultiHitFightersAreSector60_SlasherIsBand_OthersOmni`).
+- 골든: 이쑤시개는 기본 덱 7종 밖 → 코퍼스 무변.
+
 ## 완료 기준
 
 - [x] 사용자 결정 기록(유닛·형·수치) — 위 「사용자 결정」 절.

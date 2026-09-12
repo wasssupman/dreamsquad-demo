@@ -32,7 +32,7 @@
   최근접 추적 → 도형 유닛이면 `SetShapeGuide`, 없으면 `ClearShapeGuide`. `TilemapMapView.ClearPlacementRange` 가 가이드도 회수
   (드롭·취소·재배치 경로는 전부 거길 지난다). 재배치(`DefenderRelocationController`)·peek 경로도 같은 `SetPlacementRange` 라 자동 포함.
 - 자가 리뷰에서 확인한 구멍 없음: 힐러(`targetAllies`)는 마크 경로가 이미 건너뛰어 가이드도 없음(Omni 라 무관) · 같은 자리 타겟
-  (방향 0)은 숨김 · Rect 는 저작 0 이라 Sector 만.
+  (방향 0)은 숨김 · Rect 는 이쑤시개 확정(unit 4 rev 3b) 뒤 띠 가이드로 그린다.
 
 ## 완료 기준
 

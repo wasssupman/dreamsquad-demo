@@ -12,7 +12,13 @@ namespace Wassup.Tests.EditMode
         // rev 2026-09-03 사용자 결정 — **근접(사거리 ≤1, 비지원)도 전원 지상 전용**: 손이 닿을 리
         // 없는 근접이 비행 적을 때리던 버그 교정. 근접은 id 목록이 아니라 사거리로 파생한다
         // (신규 근접 유닛 자동 포함 — DefenderMeleeAirTargetTests 가 폴더 전수판).
+        // rev 2026-09-12 — 근접 = **사거리 ≤1 또는 파이터 클래스(손 무기)**. 이쑤시개가 찌르는 창으로
+        // 사거리 2 를 받았는데(directional-attack-shape unit 4 rev 3b) 창이 2칸 닿는다고 하늘에 닿진 않는다.
+        // 캐스터·빔·소환사는 투사체가 없어도 파이터가 아니라 원거리 그대로다.
         private static readonly string[] GroundOnlyDefenderIds = { "artillery", "bomb_man" };
+
+        internal static bool IsMelee(DefenderUnitData u)
+            => !u.targetAllies && (u.attackRange <= 1 || u.role == DefenderClass.Fighter);
 
         [Test]
         public void DefenderCatalog_LayerAuthoring_MatchesRangeRule()
@@ -36,10 +42,10 @@ namespace Wassup.Tests.EditMode
                     continue;
                 }
 
-                if (!unit.targetAllies && unit.attackRange <= 1)
+                if (IsMelee(unit))
                 {
                     Assert.AreEqual(PlacementLayer.Path, unit.EffectiveAttackTargetLayers,
-                        $"근접 {unit.id} 는 지상 전용이어야 한다(rev 2026-09-03)");
+                        $"근접 {unit.id} 는 지상 전용이어야 한다(rev 2026-09-03 · 파이터 포함 2026-09-12)");
                     continue;
                 }
 

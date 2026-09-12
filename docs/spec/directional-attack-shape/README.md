@@ -127,7 +127,7 @@ N/A — 새 플레이 오브젝트 없음. 링은 기존 표기 정거장(셀 �
 
 ## 범위 밖 / 후속 후보
 
-- **긴창 전용 신규 유닛 + Rect 라이브 저작·Play 검증** — 이 spec 은 Rect 코드 경로까지.
+- ~~**긴창 전용 신규 유닛 + Rect 라이브 저작·Play 검증**~~ — **해소(2026-09-12)**: 신설 없이 이쑤시개를 Rect 폭 1 로 확정(unit 4 rev 3b).
 - **추격 적 × 도형 · 순찰 아군 × 도형** — 추격판 사격 칸 수집(`FlowFieldBuilder.CollectDefenderSources`)과 순찰
   접근(`PatrolAreaMath.CloseInDir`)이 도형을 알아야 한다.
 - **스킬 광역에 방향 항** — `AreaSleepSkill` 등은 원으로 모은다.

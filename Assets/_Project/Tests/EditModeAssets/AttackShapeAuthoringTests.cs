@@ -13,10 +13,15 @@ namespace Wassup.Tests.EditModeAssets
         private const string EnemyRoot = "Assets/_Project/Data";
 
         // unit 4 (사용자 결정 2026-09-12 「안 1 · 60°」) — 다중 타격(attackTargetCount > 1) 파이터는 60° 부채꼴,
-        // 나머지는 Omni. 단일 타겟 파이터(슬래셔·말많은놈·순찰병)는 도형이 효과 0 이라 저작하지 않는다.
+        // 나머지는 Omni. 단일 타겟 파이터(말많은놈·순찰병)는 도형이 효과 0 이라 저작하지 않는다.
+        // unit 4 rev 3b (사용자 결정 2026-09-12 「이쑤시개는 rect 로 확정」) — 이쑤시개(`slasher`)만 **띠**(Rect 폭 1):
+        // 찌르는 창이라 주 대상 뒤 일직선(사거리 2 + 몸)의 최대 3체. 유일한 Band 저작이라 id 로 못박는다.
         // 이 목록이 곧 「어느 유닛이 도형을 갖나」의 정본이다 — 바꾸려면 spec unit 4 를 고친다.
+        private const string BandDefenderId = "slasher";
+        private const float BandDefenderWidth = 1f;
+
         [Test]
-        public void Defenders_MultiHitFightersAreSector60_OthersOmni()
+        public void Defenders_MultiHitFightersAreSector60_SlasherIsBand_OthersOmni()
         {
             var offenders = new StringBuilder();
             int n = 0, shaped = 0;
@@ -27,6 +32,15 @@ namespace Wassup.Tests.EditModeAssets
                 n++;
                 var baked = AttackShapeBake.From(u.attackShape, out bool ok);
                 if (!ok) { offenders.Append(u.id).Append("(정의역 밖) "); continue; }
+                if (u.id == BandDefenderId)
+                {
+                    shaped++;
+                    if (baked.kind != AttackShapeBaked.BandKind || u.attackShape.width != BandDefenderWidth)
+                        offenders.Append(u.id).Append("(띠 폭 1 이어야 한다) ");
+                    if (u.attackTargetCount <= 1)
+                        offenders.Append(u.id).Append("(단일 타겟에 띠 — 효과 0) ");
+                    continue;
+                }
                 bool expectSector = u.role == DefenderClass.Fighter && u.attackTargetCount > 1;
                 if (expectSector)
                 {

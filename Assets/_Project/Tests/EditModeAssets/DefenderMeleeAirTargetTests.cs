@@ -23,12 +23,12 @@ namespace Wassup.Tests.EditModeAssets
             foreach (var guid in AssetDatabase.FindAssets("t:DefenderUnitData", new[] { Root }))
             {
                 var u = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (u == null || u.targetAllies || u.attackRange > 1) continue;
+                if (u == null || !Wassup.Tests.EditMode.CatalogPlacementLayerTests.IsMelee(u)) continue;   // 사거리 ≤1 또는 파이터(2026-09-12)
                 melee++;
                 if ((u.EffectiveAttackTargetLayers & PlacementLayer.Air) != 0)
                     offenders.Append(u.id).Append(' ');
             }
-            Assert.Greater(melee, 0, "근접(사거리 ≤1) 방어유닛을 찾지 못했다 — 경로/필드 규약이 바뀌었나?");
+            Assert.Greater(melee, 0, "근접(사거리 ≤1 또는 파이터) 방어유닛을 찾지 못했다 — 경로/필드 규약이 바뀌었나?");
             Assert.IsTrue(offenders.Length == 0,
                 $"근접인데 공중을 때린다(attackTargetLayers 에 Air): {offenders}");
         }
