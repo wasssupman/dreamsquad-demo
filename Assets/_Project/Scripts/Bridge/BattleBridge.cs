@@ -8055,11 +8055,13 @@ namespace Wassup.Bridge
             tilemapMapView.SetRangeTargetMarks(_markPos, _markHalf);
             // unit 6 — 도형 유닛(부채꼴)만, 타겟이 있을 때만. 반경 = 링과 같은 값(사거리 + 내 몸).
             var guideShape = BakeAttackShape(unit.attackShape, unit);
-            if (guideHas && guideShape.kind == Wassup.Data.AttackShapeBaked.SectorKind)
+            if (guideHas && !guideShape.IsOmni)
                 tilemapMapView.SetShapeGuide(
                     new Vector2(center.x + markBase.x, center.y + markBase.y),
                     new Vector2(guidePos.x - atkPos.x, guidePos.z - atkPos.z),
-                    unit.attackRange + unit.BodyRadiusTiles, unit.attackShape.angleDeg);
+                    unit.attackRange + unit.BodyRadiusTiles, unit.attackShape.angleDeg,
+                    band: guideShape.kind == Wassup.Data.AttackShapeBaked.BandKind,
+                    halfWidthTiles: guideShape.halfWidth);
             else tilemapMapView.ClearShapeGuide();
         }
 

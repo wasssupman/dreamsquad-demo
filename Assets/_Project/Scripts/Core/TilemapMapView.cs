@@ -868,22 +868,35 @@ namespace Wassup.Core
 
         // `centerTiles` = 베이스(발밑, 타일 실수) · `dirTiles` = 타겟 방향(타일 축, 정규화 불필요) ·
         // `radiusTiles` = 사거리 + 내 몸 · `angleDeg` = 전체각. 방향이 없거나(같은 자리) 각이 정의역 밖이면 숨긴다.
-        public void SetShapeGuide(Vector2 centerTiles, Vector2 dirTiles, float radiusTiles, float angleDeg)
+        // `band` = 띠(직사각형) 가이드. 그때 `angleDeg` 대신 `halfWidthTiles` 를 쓴다 — 길이는 여전히 `radiusTiles`(사거리 + 내 몸).
+        public void SetShapeGuide(Vector2 centerTiles, Vector2 dirTiles, float radiusTiles, float angleDeg,
+                                  bool band = false, float halfWidthTiles = 0f)
         {
-            if (grid == null || _tileSet == null || radiusTiles <= 0f || angleDeg <= 0f || angleDeg >= 360f
+            bool badSector = !band && (angleDeg <= 0f || angleDeg >= 360f);
+            bool badBand = band && halfWidthTiles < 0f;
+            if (grid == null || _tileSet == null || radiusTiles <= 0f || badSector || badBand
                 || dirTiles.sqrMagnitude < 1e-6f)
             {
                 ClearShapeGuide();
                 return;
             }
             EnsureShapeGuide();
-            if (!Mathf.Approximately(_shapeGuideAngleDeg, angleDeg) || !Mathf.Approximately(_shapeGuideRadiusTiles, radiusTiles))
+            float key = band ? -(halfWidthTiles + 1f) : angleDeg;   // 띠는 음수 키로 부채꼴과 구분
+            if (!Mathf.Approximately(_shapeGuideAngleDeg, key) || !Mathf.Approximately(_shapeGuideRadiusTiles, radiusTiles))
             {
                 float cs = grid.cellSize.x;
                 float r = radiusTiles * cs;
-                BuildFan(_shapeGuideFillMesh, angleDeg, 0f, r);
-                BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
-                _shapeGuideAngleDeg = angleDeg; _shapeGuideRadiusTiles = radiusTiles;
+                if (band)
+                {
+                    BuildBand(_shapeGuideFillMesh, halfWidthTiles * cs, r);
+                    BuildBandOutline(_shapeGuideRimMesh, halfWidthTiles * cs, r, ShapeGuideRimWidthTiles * cs);
+                }
+                else
+                {
+                    BuildFan(_shapeGuideFillMesh, angleDeg, 0f, r);
+                    BuildFanOutline(_shapeGuideRimMesh, angleDeg, r, ShapeGuideRimWidthTiles * cs);
+                }
+                _shapeGuideAngleDeg = key; _shapeGuideRadiusTiles = radiusTiles;
             }
             var local = grid.CellToLocalInterpolated(new Vector3(centerTiles.x + 0.5f, centerTiles.y + 0.5f, 0f));
             local.z = -PropGroundLift;
@@ -975,6 +988,30 @@ namespace Wassup.Core
                 verts.Add(Vector3.zero); verts.Add(nrm * w); verts.Add(e * r); verts.Add(e * r + nrm * w);
                 if (side < 0) { tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3); }
                 else          { tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2); }
+            }
+            mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
+        }
+
+        // 띠 채움: 꼭짓점(원점)에서 +Y 로 `length`, 좌우 `halfWidth`. sim 의 `BandGate` 상자(along ∈ [0, L], |across| ≤ w) 와 같은 도형.
+        private static void BuildBand(Mesh mesh, float halfWidth, float length)
+        {
+            var v = new[] { new Vector3(-halfWidth, 0f, 0f), new Vector3(halfWidth, 0f, 0f), new Vector3(-halfWidth, length, 0f), new Vector3(halfWidth, length, 0f) };
+            var t = new[] { 0, 2, 1, 1, 2, 3 };
+            mesh.Clear(); mesh.vertices = v; mesh.triangles = t; mesh.RecalculateBounds();
+        }
+
+        // 띠 테: 네 변을 안쪽으로 `w` 만큼 두른 띠(모서리 겹침 허용).
+        private static void BuildBandOutline(Mesh mesh, float halfWidth, float length, float w)
+        {
+            var verts = new List<Vector3>(); var tris = new List<int>();
+            Vector3[] outer = { new Vector3(-halfWidth, 0f, 0f), new Vector3(halfWidth, 0f, 0f), new Vector3(halfWidth, length, 0f), new Vector3(-halfWidth, length, 0f) };
+            Vector3[] inner = { new Vector3(-halfWidth + w, w, 0f), new Vector3(halfWidth - w, w, 0f), new Vector3(halfWidth - w, length - w, 0f), new Vector3(-halfWidth + w, length - w, 0f) };
+            for (int i = 0; i < 4; i++)
+            {
+                int j = (i + 1) % 4; int b = verts.Count;
+                verts.Add(outer[i]); verts.Add(outer[j]); verts.Add(inner[i]); verts.Add(inner[j]);
+                tris.Add(b); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 3); tris.Add(b + 2);
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1); tris.Add(b + 1); tris.Add(b + 2); tris.Add(b + 3);   // 양면(감김 무관)
             }
             mesh.Clear(); mesh.SetVertices(verts); mesh.SetTriangles(tris, 0); mesh.RecalculateBounds();
         }
