@@ -113,3 +113,16 @@
   아웃라인이 살아남는 구조). 링만 가산, 글리프는 알파 블렌드.
 - **Suggested MaxParticles**: 20 (Bang 8 + BodyFlash 12)
 - **sound_cue_hint**: short alert blip, no tail
+
+## Slash Mark (지면 참격 자국)
+- **상태**: 사용자 승인 2026-09-12 (directional-attack-shape rev 3)
+- **Visual elements**: 공격자 발밑에서 타겟 방향으로 펼쳐지는 60° 부채꼴 파편 팬, 짧은 원호 잔광
+- **Typical palette**: 유닛 톤(브루저 = 웜 오렌지-화이트, 말파이트 = 스톤 그레이-앰버), 바닥에 눕는 반투명
+- **Timing**: 0.05s 팬 버스트 → 0.25s 페이드 (one-shot 0.3s — `hitDelaySec` 뒤 RESOLVE 시점에 재생)
+- **Particle types**: sprite billboard 1종. Shuriken `Shape=Circle, arc=60°` 로 방향 팬을 만들어 부채꼴 텍스처 없음 —
+  arc 각 = 저작 `attackShape.angleDeg` 와 1:1
+- **Reference games**: Hades(몸은 느슨, 참격 VFX 가 방향 전담), Brotato/HoloCure 분위기 참고
+- **Project tone**: 「몸은 옆을 보는데 판정은 위」를 메꾸는 **유일한 시각 보증자**(정적 가이드 없음). 크기 = `attackVfxScale`,
+  회전 = `attackVfxFacesTarget`, 원점 = `attackVfxAtAttacker`(공격자 자리)
+- **Suggested MaxParticles**: 30
+- **sound_cue_hint**: 기존 `attackSfxClip` 그대로, 추가 없음

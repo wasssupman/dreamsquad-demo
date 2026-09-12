@@ -55,6 +55,12 @@
 - `TilemapMapView.SetPlacementRange` 도형 인자 삭제 · **링은 항상 원**. `BattleBridge` 마크도 원. `_placementMarkShape` 삭제.
 - **`DefenderUnitData.attackVfxAtAttacker`** 신설 — 히트 VFX 를 공격자 자리에 찍는다(브리지 드레인 원점 분기, 지연 경로 포함).
   도형 유닛은 이걸 켜고 `attackVfxFacesTarget` 과 함께 저작한다 — 회전하는 부가 타격 도형의 **유일한 시각 보증자**.
-  ⚠ 참격 자국 프리팹 저작·슬롯 연결은 **에디터 작업**(unity-vfx-authoring → 오프스크린 렌더 육안) — 미실행.
+  ✅ **참격 자국 저작·통합 완료 2026-09-12** — `VFX/SlashMark_SKELETON.prefab` + `.mat`(URP Particles/Unlit 가산).
+  Shuriken `Shape=Circle arc 60° · radius 1.0 · thickness 1` 로 부채꼴 **면을 즉시 채우는 스탬프**(30 입자 · 0.3s one-shot ·
+  HorizontalBillboard 로 바닥에 눕힘 · 텍스처 시트 없음). `shape.rotation (90,−60,0)` 이 호의 중심을 +Z(= `PlayHit` 의 타겟
+  방향)로 맞춘다 — 오프스크린 렌더로 +X·+Z 두 방향 확인. 첫 시도(반경 0.2 링에서 튀는 파편)는 원점 뭉치로만 보여 폐기.
+  브루저·말파이트: `attackVfxPrefab = SlashMark_SKELETON · attackVfxAtAttacker · attackVfxFacesTarget · scale 1.6`(사거리 1 + 몸).
+  ⚠ 두 유닛의 **기존 히트 VFX(브루저 FireBlast · 말파이트 흙 폭발)는 슬롯이 하나라 대체됐다** — 유닛별 톤(카탈로그 팔레트)과
+  「타격점 히트 + 공격자 참격」 2슬롯은 후속 후보. 필수 오버라이드: Duration 0.3 · StartColor (1,0.8,0.45,0.9) · MaxParticles 30 · Loop false.
 - 문안: 「휘두르는 쪽 A° 안 최대 N체 동시 타격」(N > 1 일 때만 · N = 1 은 도형 문안 없음 — 효과 0) · Band 「찌르는 방향 일직선…」.
 - `OnValidate` 경고 복귀(rev 1 계약 9): 도형 × `attackTargetCount ≤ 1` = 효과 0.
