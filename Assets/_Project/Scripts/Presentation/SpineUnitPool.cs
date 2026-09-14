@@ -6,9 +6,11 @@ using Wassup.Data;
 
 namespace Wassup.Presentation
 {
+    // sprite-unit-backend unit 1 — 값 타입은 UnitView(추상 베이스). 이 풀 하나가 두 백엔드를 담는다
+    // (개명은 씬 SerializeField 배선 때문에 후속 후보). 소비 seam 은 var 로 받아 소스가 안 바뀐다.
     public class SpineUnitPool : MonoBehaviour
     {
-        private readonly Dictionary<Entity, SpineUnitView> _byEntity = new();
+        private readonly Dictionary<Entity, UnitView> _byEntity = new();
         private readonly List<Entity> _scratch = new();
 
         // time-manager Unit 4 — Battle 스케일 변화 시 활성 유닛 애니 속도 fan-out.
@@ -23,7 +25,7 @@ namespace Wassup.Presentation
                 if (kv.Value != null) kv.Value.SetAnimationTimeScale(scale);
         }
 
-        public bool TrySpawn(ISpineUnitVisualData visualData, IDefenderSpineExtras defenderExtras, Entity entity, Vector3 worldPos, string namePrefix, out SpineUnitView view)
+        public bool TrySpawn(ISpineUnitVisualData visualData, IDefenderSpineExtras defenderExtras, Entity entity, Vector3 worldPos, string namePrefix, out UnitView view)
         {
             view = null;
             if (visualData == null || visualData.SpineSkeletonDataAsset == null) return false;
@@ -32,13 +34,14 @@ namespace Wassup.Presentation
             string safeName = string.IsNullOrEmpty(visualData.SpineDisplayName) ? "Unit" : visualData.SpineDisplayName;
             var go = new GameObject($"{namePrefix}_{safeName}_{entity.Index}");
             go.transform.SetParent(transform, worldPositionStays: false);
-            view = go.AddComponent<SpineUnitView>();
-            view.Spawn(visualData, defenderExtras, entity, worldPos);
+            var spine = go.AddComponent<SpineUnitView>();
+            spine.Spawn(visualData, defenderExtras, entity, worldPos);
+            view = spine;
             _byEntity[entity] = view;
             return true;
         }
 
-        public bool TryGet(Entity entity, out SpineUnitView view)
+        public bool TryGet(Entity entity, out UnitView view)
             => _byEntity.TryGetValue(entity, out view) && view != null;
 
         public void NotifyAttack(Entity entity, Vector3? targetWorld = null, float attackAnimPeriod = 0f)
@@ -91,7 +94,7 @@ namespace Wassup.Presentation
         //
         // ⚠ **반환된 뷰의 수명은 호출자 것이다.** 풀이 더 이상 모르므로 teardown/DespawnMissing 이
         // 치워주지 않는다 — 호출자가 반드시 Dispose 해야 고아 GameObject 가 안 남는다.
-        public bool Detach(Entity entity, out SpineUnitView view)
+        public bool Detach(Entity entity, out UnitView view)
         {
             if (!_byEntity.TryGetValue(entity, out view) || view == null) { view = null; return false; }
             _byEntity.Remove(entity);

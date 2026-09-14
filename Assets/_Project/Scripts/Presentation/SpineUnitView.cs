@@ -9,7 +9,10 @@ using Wassup.Data;
 namespace Wassup.Presentation
 {
     [DisallowMultipleComponent]
-    public class SpineUnitView : MonoBehaviour
+    // sprite-unit-backend unit 1 — seam 표면은 UnitView(추상·선언만)가 소유한다. 이 파일의 본문은
+    // 그 spec 에서 두 곳만 바뀌었다: 이 상속 선언(+ override 키워드)과 SetFacingByViewDelta 의 판정
+    // 호출(UnitFacing). 나머지는 무변경 — 임시 기능이 Spine 경로에 회귀를 만들지 않게.
+    public class SpineUnitView : UnitView
     {
         private SkeletonAnimation _skeleton;
         private SkeletonRenderer _skeletonRenderer;
@@ -18,15 +21,8 @@ namespace Wassup.Presentation
         private Entity _entity;
         private bool _dying;
         private string _attackAnimationName;
-        private const float FacingMoveEpsilon = 0.001f;
-        // continuous-agent-movement 후속(2026-08-09 사용자 제보: 제자리 좌우 팩팩거림) —
-        // epsilon(1mm)만 넘으면 즉시 반전하던 구 규칙은 4-이웃 축정렬 이동 전제였다
-        // (프레임 델타가 33mm 직진 아니면 0). 연속 이동에선 대기열 평형·벽면 슬라이드·
-        // 분리 밀림이 ±수 mm 의 부호 교대 dx 를 만들어 스프라이트가 프레임마다 뒤집힌다.
-        // 반대 방향 이동이 이 거리만큼 **누적**돼야 뒤집는다(같은 방향이 나오면 리셋).
-        // 0.05 = 타일 5% ≈ 정상 보행 1.5프레임 — 진짜 회두는 여전히 즉각으로 보인다.
-        // FaceToward(공격 타겟 지정)는 명시 이벤트라 누적 없이 즉시 반전한다.
-        private const float FacingFlipAccum = 0.05f;
+        // continuous-agent-movement 후속(2026-08-09 제자리 좌우 팩팩거림) — 누적 히스테리시스.
+        // 규칙과 상수(epsilon·0.05 타일)는 UnitFacing 이 소유한다(sprite-unit-backend unit 1 이관).
         private float _pendingFlipAccum;
         // tilemap-view-backend unit 3 — sim 좌표 보존. transform.position 은 view 좌표(ToView)라
         // sorting 셀 역산에 쓸 수 없다(z 소실). sorting 은 이 sim 좌표로 계산한다.
@@ -56,11 +52,11 @@ namespace Wassup.Presentation
         // 부착 로직은 리그가 소유한다 — 뷰는 붙이고 재생 신호만 준다.
         private WeaponTrailRig _weaponTrail;
 
-        public Entity Entity => _entity;
+        public override Entity Entity => _entity;
 
         // summon-patrol-defender unit 10 — 현재 트랙0 애니 이름(읽기 전용). 테스트가 «지금 무엇을
         // 재생 중인가»를 단언할 수 있는 유일한 창구다. 상태를 바꾸지 않는다.
-        public string CurrentAnimationName
+        public override string CurrentAnimationName
         {
             get
             {
@@ -117,7 +113,7 @@ namespace Wassup.Presentation
         // 이 값을 직접 세팅하지 않으면 슬로우모에서 애니만 풀스피드로 튀어 시뮬과 desync 된다.
         // enemy-walk-anim-speed unit 1 — Battle 스케일과 걷기 배율(_walkFactor)을 곱해 합성한다.
         // 이 진입점은 Battle 스케일만 갱신하고 실제 세팅은 ApplyTimeScale 이 담당(정지 프리즈 유지).
-        public void SetAnimationTimeScale(float scale)
+        public override void SetAnimationTimeScale(float scale)
         {
             _battleScale = scale;
             ApplyTimeScale();
@@ -176,7 +172,7 @@ namespace Wassup.Presentation
                     BattleBridge.BlobShadowLift, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
         }
 
-        public void UpdatePosition(Vector3 world)
+        public override void UpdatePosition(Vector3 world)
         {
             FaceAlongMovement(world);
             // enemy-walk-anim-speed unit 1 — 걷기 배율은 ApplyRenderPosition 이 _simWorld 를
@@ -259,7 +255,7 @@ namespace Wassup.Presentation
         // 매 프레임 피드가 값을 다시 쓰므로(비행 아니면 0) 별도 clear 가 필요 없다.
         private float _flightHeight;
 
-        public void SetFlightHeight(float viewSpaceHeight) => _flightHeight = viewSpaceHeight;
+        public override void SetFlightHeight(float viewSpaceHeight) => _flightHeight = viewSpaceHeight;
 
         // knockup-fighter-defender unit 3 — 넉업 띄우기. sim 은 이 유닛이 떠 있다는 사실을
         // 모른다(심의 실체는 짧은 Stun) — 여기서만 해석하는 순수 뷰 오프셋이다.
@@ -269,7 +265,7 @@ namespace Wassup.Presentation
         private float _hopDuration;
         private float _hopHeight;
 
-        public void PlayKnockupHop(float durationSec, float height)
+        public override void PlayKnockupHop(float durationSec, float height)
         {
             if (durationSec <= 0f || height <= 0f) return;
             // 재신호는 재시작 — 연속 히트로 계속 떠 있는 것이 의도(스턴도 remainingTime=max 로 갱신).
@@ -296,7 +292,7 @@ namespace Wassup.Presentation
             return _hopHeight * 4f * t * (1f - t);     // 포물선: 양끝 0, 중앙 최고
         }
 
-        public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
+        public override void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
         {
             // sim 좌표로 셀 역산 — view 좌표(transform.position)는 z 가 소실돼 행 정렬이 붕괴한다.
             int order = BoardSortOrder.ComputeFromWorld(
@@ -329,7 +325,7 @@ namespace Wassup.Presentation
         // 렌더러 월드 AABB 를 화면에 투영한 사각형. 포인터가 유닛 "몸체" 위인지의
         // 판정 근거다 — 보드 평면 레이캐스트(발밑 셀)는 틸트 빌보드가 화면상
         // 위로 솟아 있어 몸체 포인팅을 놓친다(근본 원인). 카메라 뒤쪽이면 false.
-        public bool TryGetScreenRect(Camera cam, out Rect rect)
+        public override bool TryGetScreenRect(Camera cam, out Rect rect)
         {
             rect = default;
             if (cam == null || _dying || _meshRenderer == null) return false;
@@ -353,7 +349,7 @@ namespace Wassup.Presentation
 
         // defender-relocation unit 6 — 재배치 비행 키링을 머리 위에 얹기 위한 대략 높이(월드).
         // 메시 AABB 세로 크기(빌보드 실루엣의 화면 세로 높이). 미준비 시 스케일 폴백.
-        public float ApproxWorldHeight =>
+        public override float ApproxWorldHeight =>
             _meshRenderer != null ? _meshRenderer.bounds.size.y : Mathf.Abs(transform.lossyScale.y);
 
         // defender-relocation unit 6 — 비행 중 VIEW 좌표 직접 배치(BoardSpace.ToView 우회 — 평면 정면뷰가
@@ -361,7 +357,7 @@ namespace Wassup.Presentation
         // 전경 소팅(보드 타일 위로 hop). 비행은 PendingDeployment(비전투)라 facing/walk/게이지 갱신 불요.
         // flight-lift-feel unit 2 — lift 는 좌표에서 역산할 수 없어 호출측이 같이 준다(절대 view 좌표라
         // 기저선을 뷰가 모른다). 이 경로는 ApplyRenderPosition 을 타지 않으므로 반응 적용도 여기서 한다.
-        public void SetFlightView(Vector3 viewPos, float lift = 0f, Vector3 groundAnchor = default)
+        public override void SetFlightView(Vector3 viewPos, float lift = 0f, Vector3 groundAnchor = default)
         {
             transform.position = viewPos;
             if (_meshRenderer != null) _meshRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
@@ -384,7 +380,7 @@ namespace Wassup.Presentation
         private Color _savedTint = Color.white;
         private Vector3 _baseScale = Vector3.one; // card-fly unit 1 — 펀치 펄스 복귀 기준(스폰 시 캡처)
 
-        public void SetHoverHighlight(bool on, Color tint)
+        public override void SetHoverHighlight(bool on, Color tint)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             var skel = _skeleton.Skeleton;
@@ -416,7 +412,7 @@ namespace Wassup.Presentation
         // unit-health-display unit 1 — 적 저체력 틴트. BattleBridge 가 HealthDisplayStyle 로
         // ratio→Color 를 평가해 주입한다(뷰는 SO 를 모른다). _dying 중엔 마지막 틴트를 유지해
         // 죽음 연출 색을 덮지 않는다. 알파는 건드리지 않음(RGB 만).
-        public void SetHealthTint(Color tint)
+        public override void SetHealthTint(Color tint)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             // 호버 강조 중엔 저장값으로 흡수 — 해제 시 이 색으로 복원된다.
@@ -432,7 +428,7 @@ namespace Wassup.Presentation
         // card-fly-to-target-absorb unit 1 — 카드 흡수 묵직 임팩트(타겟 월드 반응).
         // 둘 다 self-contained: base 스케일/현재 틴트를 캡처해 복귀하므로 health/hover 틴트
         // 로직과 충돌 없음. unscaled(슬로모 중에도 스냅) — 카드 비행과 톤 일치.
-        public void PlayPunch(float overshoot = 0.28f, float dur = 0.16f)
+        public override void PlayPunch(float overshoot = 0.28f, float dur = 0.16f)
         {
             if (_dying || !gameObject.activeInHierarchy) return;
             StartCoroutine(PunchRoutine(overshoot, dur));
@@ -461,7 +457,7 @@ namespace Wassup.Presentation
         // 시계는 unscaled: 착지는 순간 반응이라 슬로모에 늘어지면 임팩트가 죽는다.
         private Coroutine _squashRoutine;
 
-        public void PlayLandingSquash(float amount, float seconds)
+        public override void PlayLandingSquash(float amount, float seconds)
         {
             if (amount <= 0f || seconds <= 0f || _dying || !gameObject.activeInHierarchy) return;
             if (_squashRoutine != null) StopCoroutine(_squashRoutine);
@@ -488,7 +484,7 @@ namespace Wassup.Presentation
             _squashRoutine = null;
         }
 
-        public void FlashWhite(float dur = 0.14f)
+        public override void FlashWhite(float dur = 0.14f)
         {
             if (_dying || !gameObject.activeInHierarchy || _skeleton == null || _skeleton.Skeleton == null) return;
             StartCoroutine(FlashRoutine(dur));
@@ -546,7 +542,7 @@ namespace Wassup.Presentation
         // placement-enemy-see-through unit 2 — 드래그 배치 중 반투명 전환.
         // 적 Spine 머티리얼은 PMA transparent 라 블렌드 전환 없이 skeleton.A 로 페이드한다.
         // R/G/B(health tint)와 독립. _dying 중엔 사망 연출 색/알파를 덮지 않는다.
-        public void SetDimmed(bool transparent, float alpha)
+        public override void SetDimmed(bool transparent, float alpha)
         {
             float a = Mathf.Clamp01(alpha);
             if (!_dying && _skeleton != null && _skeleton.Skeleton != null)
@@ -569,7 +565,7 @@ namespace Wassup.Presentation
             }
         }
 
-        public void PlayAttack(float attackAnimPeriod = 0f)
+        public override void PlayAttack(float attackAnimPeriod = 0f)
         {
             if (_dying || _skeleton == null) return;
             string attack = ResolveAnimation(_visualData.SpineAttackAnimation);
@@ -632,7 +628,7 @@ namespace Wassup.Presentation
             _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / (scale * animScale));
         }
 
-        public bool PlayDeploy()
+        public override bool PlayDeploy()
         {
             if (_dying || _skeleton == null) return false;
             // Defender-only feedback. Enemies spawn without IDefenderSpineExtras
@@ -657,7 +653,7 @@ namespace Wassup.Presentation
             return true;
         }
 
-        public void Kill()
+        public override void Kill()
         {
             if (_dying) return;
             _dying = true;
@@ -682,13 +678,13 @@ namespace Wassup.Presentation
             track.Complete += _ => { if (this != null) Destroy(gameObject); };
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             _dying = true;
             if (this != null) Destroy(gameObject);
         }
 
-        public void FaceToward(Vector3 worldPoint)
+        public override void FaceToward(Vector3 worldPoint)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             // worldPoint 는 sim 좌표(NotifyAttack 경유) — view 좌표로 변환해 view transform 과 같은 공간에서 비교.
@@ -717,32 +713,21 @@ namespace Wassup.Presentation
         private void SetFacingByViewDelta(float dx, bool immediate)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
-            if (Mathf.Abs(dx) <= FacingMoveEpsilon) return;
-            float currentAbs = Mathf.Abs(_skeleton.Skeleton.ScaleX);
+            float scaleX = _skeleton.Skeleton.ScaleX;
+            float currentAbs = Mathf.Abs(scaleX);
             if (currentAbs < 0.001f) currentAbs = 1f;
             // 적/디펜더 모두 Casual Character 단일 리그를 공유한다(unit-parts-appearance 6).
             // 리그 컨벤션: ScaleX=+1 이 -x(왼쪽)를 본다 → dx>0(오른쪽 이동/타겟)이면 -1 로 뒤집어 +x 를 향한다.
             // 과거엔 적이 반대 방향의 별도 리그라 부호를 enemy/defender 로 분기했으나, 단일 리그가 된
             // 지금은 규칙도 하나다. 방향이 반대인 미래 리그는 코드 분기 대신 SkeletonFlipX modifier 로
             // 데이터에서 정규화한다(net facing = Skeleton.ScaleX * rootScaleX).
-            float desiredSign = dx >= 0f ? -1f : 1f;
-
-            // 이미 그 방향을 보고 있으면 누적 리셋 — 노이즈가 쌓여 뒤집히는 것을 막는다.
-            if (Mathf.Sign(_skeleton.Skeleton.ScaleX) == desiredSign)
-            {
-                _pendingFlipAccum = 0f;
-                return;
-            }
-            if (!immediate)
-            {
-                _pendingFlipAccum += Mathf.Abs(dx);
-                if (_pendingFlipAccum < FacingFlipAccum) return;   // 아직 확신 없음 — 유지
-            }
-            _pendingFlipAccum = 0f;
-            _skeleton.Skeleton.ScaleX = currentAbs * desiredSign;
+            // sprite-unit-backend unit 1 — 판정(epsilon·누적·즉시)은 UnitFacing 이 소유하고 스프라이트 뷰와
+            // 공유한다. 여기는 부호 번역만: 리그 규약 ScaleX=+1 → 왼쪽이므로 facingRight = ScaleX < 0.
+            if (!UnitFacing.ShouldFlip(dx, facingRight: scaleX < 0f, immediate, ref _pendingFlipAccum)) return;
+            _skeleton.Skeleton.ScaleX = currentAbs * (dx >= 0f ? -1f : 1f);
         }
 
-        public Vector3 ResolveCastAnchor()
+        public override Vector3 ResolveCastAnchor()
         {
             // 반환값은 view 공간(transform 기반, transform.position 은 이미 ToView). 호출측은 view 끼리 비교/빼기.
             // Cast anchor is only meaningful for defenders firing projectiles.
@@ -762,7 +747,7 @@ namespace Wassup.Presentation
             return transform.TransformPoint(off);
         }
 
-        public Vector3 ResolveProjectileLaunchAnchor()
+        public override Vector3 ResolveProjectileLaunchAnchor()
         {
             // defender는 저작된 weapon bone/cast offset을 그대로 공유한다. 적은
             // defender extras가 없으므로 renderer의 실제 world body center를 쓴다.

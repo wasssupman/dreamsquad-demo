@@ -3919,7 +3919,9 @@ namespace Wassup.Bridge
                 {
                     spineView.UpdatePosition(world);
                     if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
-                    SyncSummonerAnimationState(entity, kv.Value.data, spineView);
+                    // sprite-unit-backend unit 1 — 루프 오버라이드는 Spine 애니 이름 API. 호출부에서 가른다.
+                    if (spineView is Wassup.Presentation.SpineUnitView summonerSpine)
+                        SyncSummonerAnimationState(entity, kv.Value.data, summonerSpine);
                 }
                 else if (defenderFallbackViewPool != null &&
                          defenderFallbackViewPool.TryGet(entity, out var fallbackView))
@@ -5242,9 +5244,9 @@ namespace Wassup.Bridge
         }
 
         // card-fly-to-target-absorb unit 1 — 카드 흡수 묵직 임팩트 게이트웨이(뷰가 뷰풀/EntityManager
-        // 를 모르게 유지). SpineUnitView 반응(펀치/플래시)은 spine 유닛일 때만; SpawnCardAbsorbVfx 는
+        // 를 모르게 유지). 뷰 반응(펀치/플래시)은 풀 유닛(Spine/스프라이트)일 때만; SpawnCardAbsorbVfx 는
         // view 좌표를 그대로 VfxSpawner 에 위임(ToView 하지 않는 전용 경로).
-        public bool TryGetUnitView(Entity entity, out Wassup.Presentation.SpineUnitView view)
+        public bool TryGetUnitView(Entity entity, out Wassup.Presentation.UnitView view)
         {
             view = null;
             return spineUnitPool != null && spineUnitPool.TryGet(entity, out view) && view != null;

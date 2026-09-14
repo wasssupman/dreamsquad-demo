@@ -92,15 +92,15 @@ namespace Wassup.UI
 
         // 동시 퇴근이 가능하므로 **단일 슬롯이 아니라 목록**이다. 2.4초로 길어진 지금은 겹칠
         // 확률이 rev 2 보다 훨씬 높다. teardown 에서 뷰와 키링 루트를 **쌍으로** 정리한다.
-        private readonly List<(SpineUnitView view, GameObject keyringRoot)> _inFlight =
-            new List<(SpineUnitView, GameObject)>();
+        private readonly List<(UnitView view, GameObject keyringRoot)> _inFlight =
+            new List<(UnitView, GameObject)>();
 
         // BattleBridge 가 퇴근 확정 시 호출한다. view 는 이미 풀에서 떼어진 상태이고,
         // **이 시점부터 수명은 여기 것**이다(SpineUnitPool.Detach 의 계약).
         //
         // simWorld = 링을 칠 좌표. VfxSpawner 가 진입부에서 ToView 하므로 **sim 을 넘긴다**
         // (이중 변환 금지). 뷰의 transform 은 view 공간이라 이 용도로 쓸 수 없다.
-        public void Fly(SpineUnitView view, Vector3 simWorld, DefenderUnitData unitData)
+        public void Fly(UnitView view, Vector3 simWorld, DefenderUnitData unitData)
         {
             if (view == null) return;
             // 그림자는 지면에 남는다 — 유닛이 뽑혀 올라가는 동안 원래 칸에 원본 크기로 눌러앉아
@@ -112,7 +112,7 @@ namespace Wassup.UI
             var billboard = view.GetComponent<Billboard>();
             if (billboard != null) billboard.enabled = false;
 
-            // 스케일 인수 — SpineUnitView 는 **자기 코루틴 2개**(PunchRoutine·SquashRoutine)를
+            // 스케일 인수 — UnitView 는 **자기 코루틴 2개**(PunchRoutine·SquashRoutine)를
             // 갖고 그것들이 ApplyRenderScale 로 localScale 을 매 프레임 덮는다. Detach 는 그걸
             // 멈추지 않고 _dying 도 false 라 계속 돈다 — 부착 카드가 주기 발동하는 유닛을
             // 발동 임팩트 중에 퇴근시키면 장력 stretch 가 펀치 배율과 싸워 몸이 깜빡인다.
@@ -128,13 +128,13 @@ namespace Wassup.UI
         }
 
         // 등록된 뒤 생성되는 키링 루트를 해당 항목에 이어 붙인다(teardown 이 둘 다 치우도록).
-        private void AttachKeyringRoot(SpineUnitView view, GameObject root)
+        private void AttachKeyringRoot(UnitView view, GameObject root)
         {
             for (int i = 0; i < _inFlight.Count; i++)
                 if (_inFlight[i].view == view) { _inFlight[i] = (view, root); return; }
         }
 
-        private IEnumerator Run(SpineUnitView view, Vector3 simWorld, DefenderUnitData unitData)
+        private IEnumerator Run(UnitView view, Vector3 simWorld, DefenderUnitData unitData)
         {
             Vector3 basePos = view.transform.position;
             Vector3 baseScale = view.transform.localScale;
@@ -153,7 +153,7 @@ namespace Wassup.UI
             var keyring = drag != null ? drag.CreateKeyringHardware(unitData) : default;
             AttachKeyringRoot(view, keyring.root);
 
-            // ⚠ localScale/rotation 직접 대입 — SpineUnitView 는 "스케일 쓰기의 단일 지점"을,
+            // ⚠ localScale/rotation 직접 대입 — UnitView 는 "스케일 쓰기의 단일 지점"을,
             // Billboard 는 회전을 요구하지만 둘 다 **경합 소유자가 있을 때**의 규칙이다.
             // Fly 가 매 프레임 피드(끊김)·Billboard·뷰 자체 코루틴을 전부 정리했으므로
             // 여기서는 소유자가 하나뿐이다.
@@ -260,7 +260,7 @@ namespace Wassup.UI
         // 재배치는 스무스 추종(sway 근사)을 썼지만 여기서는 **즉시 추종**이다. 저항 구간의 움찔은
         // 고주파라 관성을 넣으면 줄이 뭉개지고, 뽑힘은 순간이라 뒤처지면 "따라간다"로 읽힌다.
         private static void DrawKeyring(DefenderDragPlacementController.KeyringHardware kr,
-            SpineUnitView view, Vector3 up, float extraLift)
+            UnitView view, Vector3 up, float extraLift)
         {
             if (!kr.valid || view == null) return;
             Vector3 head = view.transform.position + up * view.ApproxWorldHeight;
@@ -270,7 +270,7 @@ namespace Wassup.UI
             kr.cord.SetPosition(1, head);
         }
 
-        private void Finish(SpineUnitView view, DefenderDragPlacementController.KeyringHardware keyring)
+        private void Finish(UnitView view, DefenderDragPlacementController.KeyringHardware keyring)
         {
             // 머티리얼은 드래그 컨트롤러 공유 — 루트만 파괴한다(재배치 HideKeyring 과 동일 규약).
             if (keyring.root != null) Destroy(keyring.root);
