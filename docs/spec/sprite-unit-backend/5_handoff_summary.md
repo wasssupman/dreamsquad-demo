@@ -9,7 +9,7 @@
 | `46f6e11f` | feat(sprite-unit-backend): unit 2a — SpriteUnitView 골격 + TrySpawn 백엔드 선택 |
 | `9bc5e83b` | feat(sprite-unit-backend): unit 2b — SpriteUnitView 반응 |
 | `ca769aba` | feat(sprite-unit-backend): unit 3 — 드래그 그림을 스프라이트로 |
-| (unit 4) | 시트 3장 발 피벗 재슬라이스 + `MotionSet_good` + PlayMode 테스트 + 파이프라인 맵 |
+| `bcfd2a60` | unit 4 — 시트 3장 발 피벗 재슬라이스 + `MotionSet_good` + PlayMode 테스트 + 파이프라인 맵 |
 
 ## Implemented
 

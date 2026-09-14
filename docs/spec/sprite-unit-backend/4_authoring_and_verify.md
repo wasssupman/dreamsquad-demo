@@ -33,3 +33,7 @@
 - PlayMode 신규 1파일 초록 · 기존 PlayMode 회귀 0.
 - 사용자 Play 확인: 위 시퀀스에서 캡슐·흰 박스·중앙 피벗 부양·좌우 반전 오류 0.
 - `docs/reference/object-pipeline-map.md` 방어유닛/적 View/Pool 행에 `SpriteUnitView` 한 줄 추가(같은 커밋).
+
+---
+
+2026-09-15 에셋·테스트 커밋 · `bcfd2a60` — 재슬라이스 pivot.y=0 확인 · EditMode 2697 초록 · **PlayMode lane 미실행 · 대상 유닛 미정 · 사용자 Play 확인 대기.**
