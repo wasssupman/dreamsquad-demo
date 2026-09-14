@@ -23,6 +23,10 @@ namespace Wassup.Editor
         private Texture2D _sheet;
         private int _columns = 4;
         private int _rows = 4;
+        // sprite-unit-backend unit 0 — 피벗. 기본 Center(확인용 프리팹 무회귀). 유닛 시트는 BottomCenter —
+        // transform 원점이 발(=셀 위치)이어야 Billboard 접지 계약·블롭 앵커·정렬이 성립한다.
+        // 두 값만 지원한다. 뷰에서 오프셋으로 보정하지 않는 이유는 그 spec README 참조.
+        private SpriteAlignment _pivot = SpriteAlignment.Center;
 
         // 격자 미리보기용 원본 해상도 캐시. 프로바이더 초기화는 매 repaint 하기엔 무거워서
         // 시트가 바뀔 때만 다시 잰다. 캐시는 미리보기 라벨 전용이고, 실제 자르기는 항상 다시 잰다.
@@ -62,6 +66,9 @@ namespace Wassup.Editor
         {
             _columns = Mathf.Max(1, EditorGUILayout.IntField("가로 칸 수 (N)", _columns));
             _rows = Mathf.Max(1, EditorGUILayout.IntField("세로 칸 수 (M)", _rows));
+            int pivotIndex = EditorGUILayout.Popup("피벗", _pivot == SpriteAlignment.BottomCenter ? 1 : 0,
+                new[] { "Center (확인용 프리팹)", "BottomCenter (유닛 = 발)" });
+            _pivot = pivotIndex == 1 ? SpriteAlignment.BottomCenter : SpriteAlignment.Center;
 
             // 나누어떨어지는지를 누르기 **전에** 보여준다 — 실패 조건이 곧 이 유닛의 유일한 규칙이라
             // 다이얼로그로만 알리면 N·M 을 감으로 더듬게 된다.
@@ -86,7 +93,7 @@ namespace Wassup.Editor
             using (new EditorGUI.DisabledScope(_sheet == null))
             {
                 if (GUILayout.Button($"{_columns}×{_rows} 로 자르고 채우기"))
-                    SliceAndFill((SpriteFlipbookData)target, _sheet, _columns, _rows);
+                    SliceAndFill((SpriteFlipbookData)target, _sheet, _columns, _rows, _pivot);
             }
         }
 
@@ -106,8 +113,15 @@ namespace Wassup.Editor
 
         // unit 5 — 격자 자르기 + 이어서 unit 3 의 주입. 중간에 끊기면 임포터만 바뀌고 frames 는
         // 옛 프레임을 가리킨 채 남으므로, 실패는 전부 **임포터를 건드리기 전에** 판정한다.
-        private static void SliceAndFill(SpriteFlipbookData data, Texture2D sheet, int columns, int rows)
+        private static void SliceAndFill(SpriteFlipbookData data, Texture2D sheet, int columns, int rows,
+            SpriteAlignment alignment = SpriteAlignment.Center)
         {
+            // Center 와 BottomCenter 만 — 그 외는 유닛에 쓸 일이 없고 pivot 좌표 계산이 늘어난다.
+            if (alignment != SpriteAlignment.Center && alignment != SpriteAlignment.BottomCenter)
+            {
+                Fail($"지원하지 않는 피벗 {alignment} — Center 또는 BottomCenter.");
+                return;
+            }
             if (!TryGetImporter(sheet, out string path, out TextureImporter importer)) return;
 
             // 읽기용 프로바이더. 검증이 끝나기 전에는 임포터를 건드리지 않는다.
@@ -152,8 +166,8 @@ namespace Wassup.Editor
                 {
                     name = frameName,
                     rect = new Rect(cell.x, cell.y, cell.width, cell.height),
-                    pivot = new Vector2(0.5f, 0.5f),
-                    alignment = SpriteAlignment.Center,
+                    pivot = new Vector2(0.5f, alignment == SpriteAlignment.BottomCenter ? 0f : 0.5f),
+                    alignment = alignment,
                     border = Vector4.zero,
                 };
                 if (inherited.TryGetValue(frameName, out GUID id)) rect.spriteID = id;

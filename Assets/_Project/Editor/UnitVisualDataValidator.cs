@@ -21,6 +21,10 @@ namespace Wassup.Editor
             IReadOnlyList<SpineSlotColor> colors = data.SpineSlotColors;
             bool hasParts = parts != null && parts.Count > 0;
             bool hasColors = colors != null && colors.Count > 0;
+            // sprite-unit-backend unit 0 — 스프라이트 백엔드는 파츠 조합·슬롯 틴트를 원리적으로 못 그린다.
+            // 조용히 무시되면 「왜 머리색이 안 바뀌나」로 보이므로 저작 시점에 말한다. 아래 Spine 검증은 그대로 돈다.
+            if (data.SpriteMotions != null && (hasParts || hasColors))
+                warnings.Add("spriteMotions 가 있어 이 유닛은 시트로 그려진다 — partSkins/slotColors 는 무시된다");
             if (!hasParts && !hasColors) return warnings; // 빈 목록 = 단일 스킨 경로, 검증 대상 아님
 
             var sda = data.SpineSkeletonDataAsset;

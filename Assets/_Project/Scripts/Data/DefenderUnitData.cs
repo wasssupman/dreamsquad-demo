@@ -414,6 +414,12 @@ namespace Wassup.Data
         [Header("Idle Variants")]
         [Tooltip("대기 중 번갈아 재생할 애니 이름들. 비우면 idleAnimation 단일 루프.")]
         public List<string> idleVariants = new List<string>();
+
+        // sprite-unit-backend unit 0 — 스프라이트 백엔드 opt-in. 비면 Spine(현행). 맨 뒤(직렬화 순서 보존).
+        [Header("Sprite Backend (임시)")]
+        [Tooltip("스프라이트 모션 세트. 할당하면 이 유닛은 Spine 대신 시트로 그려진다. 비우면 원래대로.")]
+        public UnitSpriteMotionSet spriteMotions;
+        public UnitSpriteMotionSet SpriteMotions => spriteMotions;
     }
 
 }

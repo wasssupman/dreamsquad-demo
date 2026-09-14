@@ -339,5 +339,11 @@ namespace Wassup.Data
         public const float MinDetectionRange = 0.05f;
         public bool UsesDetection => detectionRange < 0f || detectionRange >= MinDetectionRange;
         public bool HasUnlimitedDetection => detectionRange < 0f;
+
+        // sprite-unit-backend unit 0 — 스프라이트 백엔드 opt-in. 비면 Spine(현행). 맨 뒤(직렬화 순서 보존).
+        [Header("Sprite Backend (임시)")]
+        [Tooltip("스프라이트 모션 세트. 할당하면 이 적은 Spine 대신 시트로 그려진다. 비우면 원래대로.")]
+        public UnitSpriteMotionSet spriteMotions;
+        public UnitSpriteMotionSet SpriteMotions => spriteMotions;
     }
 }

@@ -27,7 +27,7 @@ unit 3 이 만든 「통 시트에서 채우기」 는 *이미 잘린* 시트만
 1. `SpriteDataProviderFactories` → `ISpriteEditorDataProvider` → `ITextureDataProvider` 로
    **원본 해상도**를 읽는다(읽기 전용 — 아직 임포터를 건드리지 않는다).
 2. `FlipbookSheetGrid.TryCellSize` 로 셀 크기를 구한다. **나누어떨어지지 않으면 중단**한다.
-3. `SpriteRect` N×M 개를 만든다. 이름은 Unity 슬라이서와 같은 `{텍스처명}_{i}`, 피벗 중앙.
+3. `SpriteRect` N×M 개를 만든다. 이름은 Unity 슬라이서와 같은 `{텍스처명}_{i}`. 피벗은 팝업으로 **Center**(기본 · 확인용 프리팹) / **BottomCenter**(유닛 = 발) 둘 중 하나 — `sprite-unit-backend` unit 0 (2026-09-15) 에서 인자로 열렸다. 다른 정렬은 지원하지 않는다.
 4. 여기서부터 쓰기 — `textureType = Sprite` · `spriteImportMode = Multiple` 을 먼저 확정하고
    프로바이더를 **다시 열어** `SetSpriteRects` → `Apply` → `ImportAsset(ForceUpdate)`.
 5. 이어서 unit 3 의 `FillFromSheet` 를 그대로 호출해 `frames` 를 채운다.

@@ -48,5 +48,11 @@ namespace Wassup.Data
         // 방출 종료 지점 = 공격 애니 길이 대비 비율. 스윙 구간에만 걸어야 복귀 동작에
         // 궤적이 따라붙지 않는다. 애니마다 다르므로 유닛 데이터가 소유한다.
         float SpineWeaponTrailEndNormalized { get; }
+
+        // sprite-unit-backend unit 0 — 스프라이트 모션 세트. **null = Spine(현행), 비null = 스프라이트.**
+        // 이 getter 가 그 spec 이 「축이 쓰는 요소」에 하는 유일한 확장이다 — SpineUnitPool.TrySpawn 이
+        // 이 인터페이스만 받으므로 다른 길이 없다(SpineIdleVariants 와 같은 근거로 공용 인터페이스에 둔다).
+        // 임시 기능 전제: 되돌리기 = 유닛 SO 의 그 필드를 비우는 것.
+        UnitSpriteMotionSet SpriteMotions { get; }
     }
 }
