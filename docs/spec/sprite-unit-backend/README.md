@@ -1,6 +1,6 @@
 # Sprite Unit Backend
 
-상태: **rev 3 · 2026-09-15 · 구현 중** (critic 리뷰 반영. units 0~4 순서 구현)
+상태: **구현 완료 2026-09-15 · Play 확인 대기** (units 0~3 커밋 · unit 4 에셋/테스트 커밋 · PlayMode lane 미실행 · 대상 유닛 미정)
 
 ## 검증 질문
 

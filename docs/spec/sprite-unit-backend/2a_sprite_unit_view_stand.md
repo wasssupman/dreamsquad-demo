@@ -27,7 +27,7 @@ if (set == null && (visualData == null || visualData.SpineSkeletonDataAsset == n
 `SpriteRenderer` 추가 + `SpriteFlipbookPlayer` 추가(`timeDomain = Battle`, `playOnEnable = false`) →
 `Billboard.Setup(Tilted, CharacterBillboardTilt)` → `BlobShadow.Attach(… 2 × BodyRadiusTiles × TileToWorld …, live:true)` →
 `_battleScale` pull → `PlayLocomotion()`. 정렬은 **`_sr.sortingOrder` 직접** — 렌더러가 하나라 스윕이 없고 블롭 제외 가드도 불필요.
-`flipX` 초기값 = `set.SheetFacesRight`(리그 규약과 같이 「기본은 왼쪽을 본다」).
+`flipX` 초기값 = false(시트가 그려진 그대로). 「오른쪽을 보는가」는 `FacingRight` 가 `sheetFacesRight` 로 정규화해 답한다.
 
 **복사하는 멤버** (Spine 참조 0 — 그대로): `UpdatePosition`(이동 측정→로코모션→hop→위치) · `ApplyRenderPosition`(`ToView + SpineVisualOffset + lift`) ·
 `ApplyLift`/`ApplyRenderScale`(스케일 단일 지점 — `_baseScale·_flightScale·_punchScale·_squash`) · `SetFlightHeight` · `PlayKnockupHop`/`AdvanceHop`/`CurrentHopOffset` ·
@@ -48,4 +48,8 @@ if (set == null && (visualData == null || visualData.SpineSkeletonDataAsset == n
 - 이동 유닛(적)은 walk 시트가 있으면 이동 중 walk, 정지 시 idle · 방향 전환에 `flipX` 가 따라온다.
 - 오버헤드 체력바가 붙고, 드림캐쳐 드래그 픽킹(`TryPickDefenderAtScreen`)이 그 유닛을 잡는다 — **브리지 변경 0 으로**.
 - 세트 있으나 idle 비면 경고 + 쿼드 폴백. 세트 없는 유닛은 종전과 동일(Spine).
-- `SpriteFlipbookPlayerTests` 기존 초록 + `Speed` 2건.
+- `SpriteFlipbookPlayerTests` 기존 초록. `Speed` 는 `Update` 경로에만 걸려 `Tick` 테스트로 못 잡는다 — unit 4 PlayMode 의 공격 압축 단언이 덮는다.
+
+---
+
+2026-09-15 구현 · `46f6e11f` — 컴파일 0 에러. Play 확인은 unit 4 로.

@@ -50,3 +50,7 @@ Spine 은 `facingRight = ScaleX < 0` 으로 번역해 호출하고 `ScaleX = cur
   `PatrolDefenderPlayTest`·`DefenderRetireTest` 수정 0 으로 초록(`CurrentAnimationName`·`gameObject` 가 베이스/MonoBehaviour 에 있다).
 - `grep -rn "out SpineUnitView"` 0건 · `SpineUnitView` 타입 명시는 풀의 `AddComponent` · 소환사 sync 시그니처+캐스트 · 주석뿐.
 - 컴파일 0 에러(에디터 + 격리 리그).
+
+---
+
+2026-09-15 구현 · `05b630ef` — EditMode 2697 초록(신규 4) · PlayMode 테스트 수정 0 · PlayMode lane 미실행.

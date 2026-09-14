@@ -52,3 +52,7 @@ getter `SpriteMotions => spriteMotions`. 직렬화 순서 보존(기존 에셋�
 - 슬라이서 팝업에서 BottomCenter 로 `good_idle_alpha` 를 재슬라이스하면 `Sprite.pivot.y == 0` 이고
   `Flipbook_good_idle` 의 프레임 참조가 Missing 이 되지 않는다(GUID 보존).
 - 검증기: 세트 + partSkins 동시 저작 시 경고 1줄, 세트만 있으면 경고 0.
+
+---
+
+2026-09-15 구현 · `162b3643` — EditMode 6건 초록 · 컴파일 0 에러 · 사용자 Play 확인 대기.
