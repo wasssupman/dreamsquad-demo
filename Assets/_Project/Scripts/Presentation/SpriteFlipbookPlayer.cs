@@ -33,6 +33,22 @@ namespace Wassup.Presentation
         // `WaitWhile(() => player.IsPlaying)` 에서 영구 대기하며 인스턴스를 샌다.
         public bool IsLooping => flipbook != null && flipbook.Loop;
 
+        // sprite-unit-backend unit 2a — 유닛 뷰가 「지금 무엇을 재생 중인가」를 이름으로 답하기 위한 창구
+        // (UnitView.CurrentAnimationName). 재생 상태를 바꾸지 않는다.
+        public SpriteFlipbookData Current => flipbook;
+
+        // sprite-unit-backend unit 2a — 재생 배율. 공격 압축(발사 주기 맞춤)과 걷기 배율이 쓴다.
+        // 이 spec 이 재생기에 하는 유일한 확장 — 대안 「뷰가 자가 tick」은 OnDisable 이 _playing 을
+        // 내려 컴포넌트를 끌 수 없고, 켜 두면 이중 진행이라 불가. 기본 1 = 현행.
+        public float Speed { get; set; } = 1f;
+
+        // 런타임 AddComponent 소비자(유닛 뷰·드래그 프리뷰)가 도메인을 고른다. 인스펙터 값과 같은 필드.
+        public TimeDomain TimeDomain
+        {
+            get => timeDomain;
+            set => timeDomain = value;
+        }
+
         // 비활성 GameObject 에 AddComponent 직후 Play() 하면 Awake 전이라 필드가 비어 있다 — lazy 조회.
         private SpriteRenderer Renderer =>
             _renderer != null ? _renderer : (_renderer = GetComponent<SpriteRenderer>());
@@ -52,7 +68,7 @@ namespace Wassup.Presentation
         private void Update()
         {
             if (!_playing) return;
-            Tick(TimeManager.Instance.DeltaTime(timeDomain));
+            Tick(TimeManager.Instance.DeltaTime(timeDomain) * Speed);
         }
 
         public void Play(SpriteFlipbookData data)

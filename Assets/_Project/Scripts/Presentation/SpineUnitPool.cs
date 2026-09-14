@@ -28,15 +28,36 @@ namespace Wassup.Presentation
         public bool TrySpawn(ISpineUnitVisualData visualData, IDefenderSpineExtras defenderExtras, Entity entity, Vector3 worldPos, string namePrefix, out UnitView view)
         {
             view = null;
-            if (visualData == null || visualData.SpineSkeletonDataAsset == null) return false;
+            if (visualData == null) return false;
+            // sprite-unit-backend unit 2a — 백엔드 선택은 **여기 한 곳**이다. 세트가 있으면 스프라이트,
+            // 없으면 종전대로 Spine(스켈레톤 없으면 false → 호출측 쿼드 폴백). 스폰 게이트 3곳은
+            // `bool spawned = TrySpawn(...)` 이라 sprite 에 true 만 돌려주면 불변이다.
+            // 세트가 있는데 idle 이 비면 조용히 안 보이는 유닛이 나오므로(CreateEnemyEntity 계약 9)
+            // 경고하고 세트를 무시한다 — Spine 이 있으면 Spine, 없으면 쿼드.
+            var set = visualData.SpriteMotions;
+            if (set != null && !set.HasIdle)
+            {
+                Debug.LogWarning($"SpineUnitPool: '{visualData.SpineDisplayName}' 의 스프라이트 세트 '{set.name}' 에 idle 이 없다 — 세트를 무시한다.", set);
+                set = null;
+            }
+            if (set == null && visualData.SpineSkeletonDataAsset == null) return false;
             if (_byEntity.TryGetValue(entity, out view) && view != null) return true;
 
             string safeName = string.IsNullOrEmpty(visualData.SpineDisplayName) ? "Unit" : visualData.SpineDisplayName;
             var go = new GameObject($"{namePrefix}_{safeName}_{entity.Index}");
             go.transform.SetParent(transform, worldPositionStays: false);
-            var spine = go.AddComponent<SpineUnitView>();
-            spine.Spawn(visualData, defenderExtras, entity, worldPos);
-            view = spine;
+            if (set != null)
+            {
+                var sprite = go.AddComponent<SpriteUnitView>();
+                sprite.Spawn(visualData, defenderExtras, set, entity, worldPos);
+                view = sprite;
+            }
+            else
+            {
+                var spine = go.AddComponent<SpineUnitView>();
+                spine.Spawn(visualData, defenderExtras, entity, worldPos);
+                view = spine;
+            }
             _byEntity[entity] = view;
             return true;
         }
