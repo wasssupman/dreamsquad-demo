@@ -280,6 +280,8 @@ namespace Wassup.UI
             public Transform spineChild;
             // drag-cancel-affordance unit 0 — 취소 예고 고스트 알파용 핸들. 폴백 capsule 프리뷰면 null.
             public SkeletonAnimation skeleton;
+            // sprite-unit-backend unit 3 — 스프라이트 고스트의 알파 핸들(skeleton 의 대응). 둘 중 하나만 비null.
+            public SpriteFlipbookPlayer flipbook;
             public float visualScale;
             public float unitHeight;        // 실루엣 월드 높이(발→머리). 머리 오프셋용.
             public Vector2Int? hoverTile;
@@ -928,6 +930,8 @@ namespace Wassup.UI
             // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없음(미지원, 계약 아님).
             if (_session.skeleton != null)
                 SetPreviewAlpha(_session.skeleton, ghost ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
+            else if (_session.flipbook != null)
+                SetSpriteAlpha(_session.flipbook, ghost ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
         }
 
         // 취소 룩 하드 해제 — 세션 정리 경유(커밋/취소/비활성). 알파 원복은 프리뷰가 곧 파괴되므로
@@ -1237,7 +1241,11 @@ namespace Wassup.UI
         // 정렬한다(키링의 머리-정렬과 반대). 빌보드는 스폰 뷰(SpineUnitView)와 동일 규약.
         private bool TryBuildDragSilhouette(DefenderUnitData unitData)
         {
-            if (unitData == null || unitData.skeletonDataAsset == null) return false;
+            if (unitData == null) return false;
+            // sprite-unit-backend unit 3 — 세트가 있으면 스프라이트(풀의 TrySpawn 과 같은 게이트). Spine 경로는 무변경.
+            if (unitData.SpriteMotions != null && unitData.SpriteMotions.HasIdle)
+                return TryBuildDragSilhouetteSprite(unitData);
+            if (unitData.skeletonDataAsset == null) return false;
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
 
             var root = new GameObject($"DragSilhouette_{unitData.displayName}");
@@ -1734,7 +1742,11 @@ namespace Wassup.UI
 
         private bool TryBuildKeyringPreview(DefenderUnitData unitData, ref DragSession session)
         {
-            if (unitData == null || unitData.skeletonDataAsset == null) return false;
+            if (unitData == null) return false;
+            // sprite-unit-backend unit 3 — 세트가 있으면 스프라이트(2026-09-15 사용자 결정: idle/drag 시트 재생).
+            if (unitData.SpriteMotions != null && unitData.SpriteMotions.HasIdle)
+                return TryBuildKeyringPreviewSprite(unitData, ref session);
+            if (unitData.skeletonDataAsset == null) return false;
 
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
 
@@ -1911,6 +1923,106 @@ namespace Wassup.UI
                     return candidate;
             }
             return null;
+        }
+
+        // ---- sprite-unit-backend unit 3 — 스프라이트 고스트 ------------------------------------------
+        // Spine 빌더 2개와 같은 트리(root → Billboard → 자식)에 SpriteRenderer + SpriteFlipbookPlayer 를 세운다.
+        // 클럭은 Interaction — 드래그는 슬로우모 중에도 실시간(silhouetteFollowSpeed 가 unscaled 인 것과 같은 이유).
+        // 정렬 산식은 Spine 의 localBounds 와 같다: 피벗이 발(unit 0)이면 오프셋 0, 중앙 피벗 시트도 sprite.bounds 가
+        // 그걸 반영하므로 같은 식으로 발/머리를 맞춘다.
+
+        private static SpriteFlipbookPlayer BuildSpriteChild(GameObject parent, string name, float scale,
+            SpriteFlipbookData clip, float alpha)
+        {
+            var child = new GameObject(name);
+            child.transform.SetParent(parent.transform, false);
+            child.transform.localScale = Vector3.one * scale;
+            var sr = child.AddComponent<SpriteRenderer>();
+            sr.flipX = false;   // 스폰(SpriteUnitView)과 같은 초기 방향 — 시트가 그려진 그대로.
+            sr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            var c = sr.color; c.a = Mathf.Clamp01(alpha); sr.color = c;
+            var player = child.AddComponent<SpriteFlipbookPlayer>();
+            player.TimeDomain = TimeDomain.Interaction;
+            if (clip != null) player.Play(clip);
+            return player;
+        }
+
+        private bool TryBuildDragSilhouetteSprite(DefenderUnitData unitData)
+        {
+            var set = unitData.SpriteMotions;
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+
+            var root = new GameObject($"DragSilhouette_{unitData.displayName}");
+            var billboard = root.AddComponent<Billboard>();
+            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            // 서 있는 그림 — idle(이동 아님).
+            var player = BuildSpriteChild(root, $"{root.name}_Sprite", scale,
+                set.ResolveLocomotion(false), Cfg.silhouetteAlpha);
+            var sr = player.GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite != null)
+            {
+                var b = sr.sprite.bounds;   // 발을 root 원점에(Spine 의 -lb.min.y 와 같은 식)
+                player.transform.localPosition = new Vector3(-b.center.x * scale, -b.min.y * scale, 0f);
+            }
+
+            _dragSilhouette = root;
+            _dragSilhouetteUnit = unitData;
+            _dragSilhouettePlaced = false;
+            return true;
+        }
+
+        private bool TryBuildKeyringPreviewSprite(DefenderUnitData unitData, ref DragSession session)
+        {
+            var set = unitData.SpriteMotions;
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+
+            var root = new GameObject($"DragPreview_{unitData.displayName}");
+            BuildRingAndCord(root, root.name, scale, out var ringXform, out var cordLr);
+
+            var endNode = new GameObject($"{root.name}_End");
+            endNode.transform.SetParent(root.transform, false);
+            var endBillboard = endNode.AddComponent<Billboard>();
+            endBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            var swingPivot = new GameObject($"{root.name}_Swing");
+            swingPivot.transform.SetParent(endNode.transform, false);
+
+            // 손끝에서는 drag 시트(없으면 idle). 배치 유닛은 불투명(placement-enemy-see-through unit 5).
+            var player = BuildSpriteChild(swingPivot, $"{root.name}_Sprite", scale,
+                set.ResolveDrag(), 1f);
+
+            // 머리를 endNode(=머리 위치)에 정렬 — Spine 의 -lb.max.y 와 같은 식.
+            float unitHeight = scale;
+            Vector3 charmPos = Vector3.down * Cfg.charmDrop;
+            var sr = player.GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite != null && sr.sprite.bounds.size.y > 0.01f)
+            {
+                var b = sr.sprite.bounds;
+                charmPos += new Vector3(-b.center.x * scale, -b.max.y * scale, 0f);
+                unitHeight = b.size.y * scale;
+            }
+            player.transform.localPosition = charmPos;
+
+            session.preview = root;
+            session.cordLine = cordLr;
+            session.ring = ringXform;
+            session.endNode = endNode.transform;
+            session.swingPivot = swingPivot.transform;
+            session.spineChild = player.transform;
+            session.skeleton = null;
+            session.flipbook = player;
+            session.visualScale = scale;
+            session.unitHeight = unitHeight;
+            return true;
+        }
+
+        private static void SetSpriteAlpha(SpriteFlipbookPlayer player, float alpha)
+        {
+            if (player == null) return;
+            var sr = player.GetComponent<SpriteRenderer>();
+            if (sr == null) return;
+            var c = sr.color; c.a = alpha; sr.color = c;
         }
 
         private static void SetPreviewAlpha(SkeletonAnimation skeleton, float alpha)
