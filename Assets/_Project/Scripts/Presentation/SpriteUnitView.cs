@@ -307,22 +307,175 @@ namespace Wassup.Presentation
             if (_weaponTrail != null) _weaponTrail.Bind(null);
         }
 
-        // ---- unit 2b 에서 채운다 --------------------------------------------------------------
+        // ---- 틴트 4축 (SpineUnitView 복사 — Skeleton.GetColor/SetColor → _sr.color) -------------------
 
-        public override void SetHoverHighlight(bool on, Color tint) { }
-        public override void SetHealthTint(Color tint) { }
-        public override void FlashWhite(float dur = 0.14f) { }
-        public override void SetDimmed(bool transparent, float alpha) { }
-        public override void PlayPunch(float overshoot = 0.28f, float dur = 0.16f) { }
-        public override void PlayLandingSquash(float amount, float seconds) { }
-        public override void PlayAttack(float attackAnimPeriod = 0f) { }
-        public override bool PlayDeploy() => false;
+        private bool _hoverHighlightActive;
+        private Color _savedTint = Color.white;
+
+        private Color Rgb(Color c) => new Color(c.r, c.g, c.b);
+        private void SetRgb(Color rgb) { var c = _sr.color; c.r = rgb.r; c.g = rgb.g; c.b = rgb.b; _sr.color = c; }
+
+        public override void SetHoverHighlight(bool on, Color tint)
+        {
+            if (_dying || _sr == null) return;
+            if (on)
+            {
+                if (!_hoverHighlightActive) { _savedTint = Rgb(_sr.color); _hoverHighlightActive = true; }
+                SetRgb(tint);
+            }
+            else if (_hoverHighlightActive)
+            {
+                _hoverHighlightActive = false;
+                SetRgb(_savedTint);
+            }
+        }
+
+        public override void SetHealthTint(Color tint)
+        {
+            if (_dying || _sr == null) return;
+            if (_hoverHighlightActive) { _savedTint = tint; return; }   // 호버 중엔 저장값으로 흡수
+            SetRgb(tint);
+        }
+
+        private bool _flashActive;
+        private Color _flashRestore;
+
+        public override void FlashWhite(float dur = 0.14f)
+        {
+            if (_dying || !gameObject.activeInHierarchy || _sr == null) return;
+            StartCoroutine(FlashRoutine(dur));
+        }
+
+        private System.Collections.IEnumerator FlashRoutine(float dur)
+        {
+            // 복귀 목표 = resting 색. hover 중이면 _savedTint, 연발 중이면 앞 flash 의 restore 승계(흰빛 오염 방지).
+            Color restore = _hoverHighlightActive ? _savedTint : (_flashActive ? _flashRestore : Rgb(_sr.color));
+            _flashRestore = restore;
+            _flashActive = true;
+            SetRgb(Color.white);
+            float e = 0f;
+            while (e < dur)
+            {
+                e += Time.unscaledDeltaTime;
+                if (_dying || _sr == null) yield break;
+                float k = Mathf.Clamp01(e / dur);
+                SetRgb(Color.Lerp(Color.white, restore, k));
+                yield return null;
+            }
+            if (!_dying && _sr != null) SetRgb(_hoverHighlightActive ? _savedTint : restore);
+            _flashActive = false;
+        }
+
+        // 드래그 배치 중 반투명. 실그림자 스윕은 없다(README — 스프라이트 렌더러는 캐스트 off 고정).
+        public override void SetDimmed(bool transparent, float alpha)
+        {
+            float a = Mathf.Clamp01(alpha);
+            if (!_dying && _sr != null) { var c = _sr.color; c.a = a; _sr.color = c; }
+            _blob?.SetDimAlpha(transparent ? a : 1f);
+        }
+
+        // ---- 스케일 반응 (SpineUnitView 복사) ---------------------------------------------------
+
+        public override void PlayPunch(float overshoot = 0.28f, float dur = 0.16f)
+        {
+            if (_dying || !gameObject.activeInHierarchy) return;
+            StartCoroutine(PunchRoutine(overshoot, dur));
+        }
+
+        private System.Collections.IEnumerator PunchRoutine(float overshoot, float dur)
+        {
+            float peak = 1f + Mathf.Max(0f, overshoot);
+            float half = Mathf.Max(0.01f, dur * 0.35f);
+            float e = 0f;
+            while (e < half) { e += Time.unscaledDeltaTime; if (_dying) yield break;
+                _punchScale = Mathf.Lerp(1f, peak, e / half); ApplyRenderScale(); yield return null; }
+            float back = Mathf.Max(0.01f, dur - half);
+            e = 0f;
+            while (e < back) { e += Time.unscaledDeltaTime; if (_dying) yield break;
+                _punchScale = Mathf.Lerp(peak, 1f, e / back); ApplyRenderScale(); yield return null; }
+            if (!_dying) { _punchScale = 1f; ApplyRenderScale(); }
+        }
+
+        private Coroutine _squashRoutine;
+
+        public override void PlayLandingSquash(float amount, float seconds)
+        {
+            if (amount <= 0f || seconds <= 0f || _dying || !gameObject.activeInHierarchy) return;
+            if (_squashRoutine != null) StopCoroutine(_squashRoutine);
+            _squashRoutine = StartCoroutine(SquashRoutine(amount, seconds));
+        }
+
+        private System.Collections.IEnumerator SquashRoutine(float amount, float seconds)
+        {
+            // k 를 증분 **전에** 적용 — 첫 프레임에 authored amount 에 닿아야 세기가 프레임레이트에 안 묶인다.
+            float e = 0f;
+            while (true)
+            {
+                float k = 1f - Mathf.Clamp01(e / seconds);
+                _squash = new Vector3(1f + amount * k, 1f - amount * k, 1f + amount * k);
+                ApplyRenderScale();
+                if (e >= seconds || _dying) break;
+                yield return null;
+                e += Time.unscaledDeltaTime;
+            }
+            _squash = Vector3.one;
+            if (!_dying) ApplyRenderScale();
+            _squashRoutine = null;
+        }
+
+        // ---- 모션 사건 -------------------------------------------------------------------------
+
+        private void PlayOneShot(SpriteFlipbookData data, float speed)
+        {
+            _oneShot = data;
+            _player.Play(data);
+            _player.Speed = speed;
+        }
+
+        // 공격 애니를 실제 발사 주기에 맞춰 압축 재생(compress-to-fit) — Spine 의 entry.TimeScale = max(1, Duration/period)
+        // 와 같은 식. 하한 1(느린 공격을 늘리지 않음), period<=0 이면 1. 시트가 없으면 Spine 이 트랙 없을 때처럼 조용히 무시.
+        public override void PlayAttack(float attackAnimPeriod = 0f)
+        {
+            if (_dying || _player == null || _set == null) return;
+            var attack = _set.Attack;
+            if (attack == null || attack.FrameCount == 0 || attack.Fps <= 0f) return;
+            float duration = attack.FrameCount / attack.Fps;
+            float speed = attackAnimPeriod > 0f && duration > 0f ? Mathf.Max(1f, duration / attackAnimPeriod) : 1f;
+            PlayOneShot(attack, speed);
+            // 궤적은 스윙 구간에만 — 압축 배율로 나눈다. 슬로우모는 재생기 도메인 클럭이 이미 반영하므로 여기선 안 나눈다
+            // (Spine 은 skeleton.timeScale 로 따로 나눴다 — 그 항이 여기선 클럭 자체에 들어 있다).
+            if (_weaponTrail != null && _visualData != null)
+                _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / speed);
+        }
+
+        public override bool PlayDeploy()
+        {
+            if (_dying || _player == null || _set == null) return false;
+            if (_defenderExtras == null) return false;   // 적 가드(Spine 과 동일)
+            var deploy = _set.ResolveDeploy();
+            if (deploy == null) return false;
+            if (deploy.Loop) { PlayLocomotion(force: true); return true; }   // idle 까지 폴백된 경우 — 원샷 폴링에 걸리면 영영 안 끝난다
+            PlayOneShot(deploy, 1f);
+            return true;
+        }
 
         public override void Kill()
         {
             if (_dying) return;
             _dying = true;
-            Destroy(gameObject);
+            // 사망 프레임에 비행·펀치·스쿼시 배율 원복 — Kill 뒤엔 UpdatePosition 이 안 온다(Spine 과 같은 이유).
+            _flightScale = 1f;
+            _punchScale = 1f;
+            _squash = Vector3.one;
+            ApplyRenderScale();
+            if (_blob != null) _blob.SetFlight(1f, 1f);
+            var death = _set != null ? _set.Death : null;
+            if (_player == null || death == null || death.FrameCount == 0 || death.Loop)
+            {
+                Destroy(gameObject);   // death 미저작 = 즉시 파괴. 루프 시트는 완주가 없어 같은 취급.
+                return;
+            }
+            PlayOneShot(death, 1f);   // 완주는 Update 폴링 → Destroy
         }
 
         public override void Dispose()
@@ -331,7 +484,23 @@ namespace Wassup.Presentation
             if (this != null) Destroy(gameObject);
         }
 
-        public override Vector3 ResolveCastAnchor() => transform.position;
-        public override Vector3 ResolveProjectileLaunchAnchor() => transform.position;
+        // ---- 앵커 -------------------------------------------------------------------------------
+
+        // 본 추적 분기가 없다 — 저작 필드(SpineCastAnchorLocalOffset)만 재사용하고 Spine 의 정적 폴백 8줄을 복사했다.
+        // 부호: Spine 은 ScaleX<0(=오른쪽 봄)일 때 x 반전 — 여기선 같은 조건이 FacingRight 다.
+        public override Vector3 ResolveCastAnchor()
+        {
+            if (_defenderExtras == null) return transform.position;
+            var off = _defenderExtras.SpineCastAnchorLocalOffset;
+            if (FacingRight) off.x = -off.x;
+            return transform.TransformPoint(off);
+        }
+
+        public override Vector3 ResolveProjectileLaunchAnchor()
+        {
+            if (_defenderExtras == null)
+                return _sr != null && _sr.sprite != null ? _sr.bounds.center : transform.position;
+            return ResolveCastAnchor();
+        }
     }
 }
