@@ -37,6 +37,7 @@
 | 2b | 뷰 — 반응한다 | `2b_sprite_unit_view_react.md` | 공격·배치·사망·반응 어휘·앵커 — **싸우고, 죽고, 움찔한다** |
 | 3 | 드래그 그림 | `3_drag_preview.md` | 손끝 고스트 + 보드 실루엣을 스프라이트로 |
 | 4 | 저작·검증 | `4_authoring_and_verify.md` | 유닛 1기 실저작 + PlayMode 테스트 + Play 확인 |
+| 6 | 대기 변형 | `6_idle_variants.md` | idle1/idle2… — 쉼(idle 0프레임) → 변형 원샷 → 쉼 (2026-09-16 사용자 요청) |
 
 handoff 는 `5_handoff_summary.md` (구현 종료 시).
 
@@ -61,7 +62,8 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
   `TrySpawn(ISpineUnitVisualData …)` 이 인터페이스만 받으므로 다른 길이 없다(`SpineIdleVariants` 선례).
 
 - **모션 슬롯은 Spine 이 정본이다.** `idle`(루프) · `walk`(루프) · `attack`(원샷) · `death`(원샷) ·
-  `deploy`(원샷·방어유닛) · `drag`(루프·방어유닛) — 6개. `idleVariants` 는 넣지 않는다(소환사 하나만 쓴다).
+  `deploy`(원샷·방어유닛) · `drag`(루프·방어유닛) — 6개. ~~`idleVariants` 는 넣지 않는다~~ → **unit 6 에서 열림**(2026-09-16):
+  `idleVariants[]` + `idleRestGap` — 쉼(idle 0프레임) → 풀에서 하나 원샷 → 쉼. Spine 의 변형(루프 이어 붙임)과 **다른 성질**이다.
 
 - **빈 슬롯은 폴백하지 실패하지 않는다 — 단 `idle` 은 예외다.** 폴백은 순수 함수
   (`UnitSpriteMotionSet.Resolve*`, EditMode 테스트)가 정한다: `walk` 없음 → 이동/정지 구분 없이 idle ·
@@ -144,7 +146,6 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
 
 - **`SpineUnitPool` 개명** · 씬 SerializeField 배선이 걸려 있어 백엔드가 상설로 승격될 때.
 - **`ISpineUnitVisualData` 개명** · 이제 sprite getter 까지 들어가 이름이 더 거짓이 됐다. 두 SO + validator + 테스트로 번진다.
-- **`idleVariants` 슬롯** · 쓸 스프라이트 유닛이 생기면.
 - **소환 루프 오버라이드의 스프라이트 대응** · 소환 순찰병에 시트를 저작할 때.
 - **파츠 조합의 스프라이트 대안** · 「조합 결과를 굽는」 오소링 문제로 다시 세운다.
 - **Spine 전면 은퇴** · 이 spec 의 목표가 아니다.

@@ -89,6 +89,42 @@ public class UnitSpriteMotionSetTests
         Assert.AreSame(_drag, _set.ResolveDrag());
     }
 
+    // unit 6 — 대기 변형 풀: 0번 = idle, 1번~ = 변형. 비면 변형 모드가 아니다.
+    [Test]
+    public void IdlePool_IsIdlePlusVariants_InOrder()
+    {
+        Slot("idle", _idle);
+        Assert.IsFalse(_set.HasIdleVariants);
+        Assert.AreEqual(1, _set.IdlePoolCount);
+        var so = new SerializedObject(_set);
+        var list = so.FindProperty("idleVariants");
+        list.arraySize = 2;
+        list.GetArrayElementAtIndex(0).objectReferenceValue = _walk;   // 아무 시트나 — 순서만 본다
+        list.GetArrayElementAtIndex(1).objectReferenceValue = _attack;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        Assert.IsTrue(_set.HasIdleVariants);
+        Assert.AreEqual(3, _set.IdlePoolCount);
+        Assert.AreSame(_idle, _set.IdlePoolAt(0), "쉬는 그림의 출처 = 0번 = idle");
+        Assert.AreSame(_walk, _set.IdlePoolAt(1));
+        Assert.AreSame(_attack, _set.IdlePoolAt(2));
+        Assert.IsNull(_set.IdlePoolAt(3));
+    }
+
+    [Test]
+    public void IdleRestGap_LerpsWithinRange_AndNeverNegative()
+    {
+        var so = new SerializedObject(_set);
+        so.FindProperty("idleRestGap").vector2Value = new Vector2(1f, 3f);
+        so.ApplyModifiedPropertiesWithoutUndo();
+        Assert.AreEqual(1f, _set.PickIdleRestGap(0f), 1e-5f);
+        Assert.AreEqual(2f, _set.PickIdleRestGap(0.5f), 1e-5f);
+        Assert.AreEqual(3f, _set.PickIdleRestGap(1f), 1e-5f);
+        Assert.AreEqual(3f, _set.PickIdleRestGap(7f), 1e-5f, "roll 은 0..1 로 클램프");
+        so.FindProperty("idleRestGap").vector2Value = new Vector2(-2f, -1f);
+        so.ApplyModifiedPropertiesWithoutUndo();
+        Assert.AreEqual(0f, _set.PickIdleRestGap(0.5f), "음수 저작은 0 으로 — 쉼 없이 연속 재생");
+    }
+
     [Test]
     public void Death_HasNoFallback()
     {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Wassup.Data
@@ -5,8 +6,7 @@ namespace Wassup.Data
     // sprite-unit-backend unit 0 — 유닛 하나의 스프라이트 모션 세트. 「모션당 시트 1장」.
     //
     // 슬롯은 Spine 유닛이 실제로 쓰는 모션과 1:1 이다(ISpineUnitVisualData / IDefenderSpineExtras):
-    //   idle · walk · attack · death (전 유닛) · deploy · drag (방어유닛). idle 변형은 넣지 않는다 —
-    //   지금 쓰는 유닛이 소환사 하나뿐이고 스프라이트 저작 계획이 없다(제약 8).
+    //   idle · walk · attack · death (전 유닛) · deploy · drag (방어유닛) + 대기 변형 풀(unit 6, 아래 참조).
     //
     // 유닛 SO 는 이 세트를 가리키는 **필드 하나**만 갖는다. 비면 Spine, 있으면 스프라이트 —
     // 되돌리기 = 그 필드 비우기(임시 기능 전제). 필드를 7개로 흩뿌리면 되돌리기가 「7개 지우기」가 된다.
@@ -32,6 +32,16 @@ namespace Wassup.Data
         [Tooltip("드래그 중 루프. 비면 idle.")]
         [SerializeField] private SpriteFlipbookData drag;
 
+        // sprite-unit-backend unit 6 — 대기 변형(2026-09-16 사용자 결정). 비어 있으면 idle 단일 루프(현행).
+        // 하나라도 있으면 idle 상태의 모양이 바뀐다: idle 의 0 프레임으로 **쉬다가** → 쉬는 시간이 끝나면
+        // 풀(idle + 변형들)에서 하나를 뽑아 **한 번** 틀고 → 다시 쉰다. Spine 의 idleVariants(루프를 이어 붙임)와
+        // 다른 성질이라 이름은 같아도 계약은 이 파일이 정본이다. 변형 모드에선 풀의 시트가 전부 원샷이어야 한다.
+        [Header("대기 변형")]
+        [Tooltip("추가 대기 모션(원샷). 하나라도 있으면 idle 도 원샷으로 취급되어 「idle 0프레임으로 쉼 → 풀에서 하나 재생 → 쉼」을 반복한다.")]
+        [SerializeField] private List<SpriteFlipbookData> idleVariants = new List<SpriteFlipbookData>();
+        [Tooltip("변형 사이 쉬는 시간(초) 범위. 쉬는 동안은 idle 의 0 프레임으로 선다.")]
+        [SerializeField] private Vector2 idleRestGap = new Vector2(1f, 3f);
+
         [Header("시트 규약")]
         [Tooltip("시트가 오른쪽(+x)을 보고 그려졌으면 체크. 기본 규약은 Spine 리그와 같이 「왼쪽을 본다」 — " +
                  "SkeletonFlipXModifier 의 데이터 대응이다(코드 분기 대신 여기서 정규화).")]
@@ -46,6 +56,20 @@ namespace Wassup.Data
         public bool SheetFacesRight => sheetFacesRight;
 
         public bool HasIdle => idle != null;
+
+        // 대기 변형 모드인가. 풀 = idle(0번) + idleVariants(1번~). 쉬는 그림은 항상 idle 의 0 프레임.
+        public bool HasIdleVariants => idleVariants != null && idleVariants.Count > 0;
+        public int IdlePoolCount => idle == null ? 0 : 1 + (idleVariants != null ? idleVariants.Count : 0);
+        public SpriteFlipbookData IdlePoolAt(int index)
+        {
+            if (index == 0) return idle;
+            int v = index - 1;
+            return idleVariants != null && v >= 0 && v < idleVariants.Count ? idleVariants[v] : null;
+        }
+        public Vector2 IdleRestGap => idleRestGap;
+        // 쉬는 시간 하나를 뽑는다. roll 은 0..1 난수(프레젠테이션 난수 — sim 난수와 섞지 않는다).
+        public float PickIdleRestGap(float roll) =>
+            Mathf.Max(0f, Mathf.Lerp(idleRestGap.x, idleRestGap.y, Mathf.Clamp01(roll)));
 
         // 이동 중이고 walk 가 있으면 walk, 아니면 idle. Spine ResolveLocomotionAnimation 과 같은 규칙.
         public SpriteFlipbookData ResolveLocomotion(bool moving) =>
@@ -68,7 +92,13 @@ namespace Wassup.Data
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            WarnLoopPolicy(nameof(idle), idle, wantLoop: true);
+            // 변형 모드에선 idle 도 원샷이어야 한다(한 번 틀고 쉬는 구조). 아니면 영영 안 끝나 변형이 안 나온다.
+            WarnLoopPolicy(nameof(idle), idle, wantLoop: !HasIdleVariants);
+            if (idleVariants != null)
+                for (int i = 0; i < idleVariants.Count; i++)
+                    WarnLoopPolicy($"idleVariants[{i}]", idleVariants[i], wantLoop: false);
+            if (idleRestGap.x < 0f || idleRestGap.y < idleRestGap.x)
+                Debug.LogWarning($"UnitSpriteMotionSet '{name}': idleRestGap 은 0 ≤ min ≤ max 여야 한다 (지금 {idleRestGap}).", this);
             WarnLoopPolicy(nameof(walk), walk, wantLoop: true);
             WarnLoopPolicy(nameof(drag), drag, wantLoop: true);
             WarnLoopPolicy(nameof(attack), attack, wantLoop: false);

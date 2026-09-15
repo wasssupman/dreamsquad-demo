@@ -43,6 +43,11 @@ namespace Wassup.Presentation
         private const float SimDtEpsilon = 1e-5f;
         private const float LocoMoveOnFrac = 0.15f;
         private const float LocoMoveOffFrac = 0.05f;
+        // unit 6 — 대기 변형 순환. _idleCycling 이면 정지 자리는 루프가 아니라 「쉼(idle 0프레임) → 풀에서 하나 원샷 → 쉼」.
+        // 쉬는 동안 재생기는 Stop 상태라 IsPlaying 이 거짓이다 — 원샷 완주 폴링(_oneShot)과는 별개 축.
+        private bool _idleCycling;
+        private float _restRemaining;
+        private int _idleIndex = -1;
 
         public override Entity Entity => _entity;
 
@@ -106,7 +111,39 @@ namespace Wassup.Presentation
             {
                 _oneShot = null;
                 PlayLocomotion(force: true);
+                return;
             }
+            TickIdleCycle();
+        }
+
+        // unit 6 — 쉼 타이머와 변형 완주. 시계는 배틀 스케일(hop 과 같은 이유 — 슬로우모에서 같이 느려져야 한다).
+        private void TickIdleCycle()
+        {
+            if (!_idleCycling || _oneShot != null || _set == null) return;
+            if (_player.IsPlaying) return;                       // 변형 재생 중
+            if (_restRemaining > 0f)
+            {
+                _restRemaining -= Time.deltaTime * _battleScale;
+                if (_restRemaining > 0f) return;
+                int next = UnitAnimationChoice.ChooseNext(_set.IdlePoolCount, _idleIndex, UnityEngine.Random.value);
+                var clip = _set.IdlePoolAt(next);
+                if (clip == null || clip.FrameCount == 0) { EnterIdleRest(); return; }
+                _idleIndex = next;
+                _player.Play(clip);
+                _player.Speed = 1f;
+                return;
+            }
+            EnterIdleRest();                                     // 변형 완주 → 다시 쉼
+        }
+
+        // 쉼 = 재생기 정지 + idle 0 프레임. 렌더러는 건드리지 않는다(disableRendererWhenFinished 는 꺼져 있다).
+        private void EnterIdleRest()
+        {
+            _idleCycling = true;
+            _player.Stop();
+            var rest = _set.Idle != null ? _set.Idle.FrameAt(0) : null;
+            if (rest != null) _sr.sprite = rest;
+            _restRemaining = _set.PickIdleRestGap(UnityEngine.Random.value);
         }
 
         // ---- 로코모션 ---------------------------------------------------------------------
@@ -118,6 +155,13 @@ namespace Wassup.Presentation
             if (!force && _oneShot != null) return;
             var desired = _set.ResolveLocomotion(_moving);
             if (desired == null) return;
+            // unit 6 — 정지 자리가 idle 이고 변형이 저작돼 있으면 루프 대신 쉼/변형 순환. 이미 순환 중이면 유지.
+            if (desired == _set.Idle && _set.HasIdleVariants)
+            {
+                if (!_idleCycling || force) EnterIdleRest();
+                return;
+            }
+            _idleCycling = false;
             if (!force && _player.Current == desired && _player.IsPlaying) { ApplySpeed(); return; }
             _player.Play(desired);
             ApplySpeed();
@@ -427,6 +471,7 @@ namespace Wassup.Presentation
 
         private void PlayOneShot(SpriteFlipbookData data, float speed)
         {
+            _idleCycling = false;
             _oneShot = data;
             _player.Play(data);
             _player.Speed = speed;
