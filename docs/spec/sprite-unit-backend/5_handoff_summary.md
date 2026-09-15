@@ -51,12 +51,12 @@
 - **`UpdateWalkTimeScale` 의 `WalkAnimSpeedEnabled` 게이트는 Spine 과 같다** — 스타일 SO 미할당이면 `_moving` 이 영영 false 라
   walk 시트가 안 돈다. 이것은 현행 Spine 동작이지 스프라이트 결함이 아니다.
 - **피벗은 발(BottomCenter)** — 뷰에서 오프셋 보정 금지. 중앙 피벗으로 잘린 옛 시트를 유닛에 꽂으면 반칸 뜬다.
-- **PPU 240 고정.** 크기는 `spineVisualScale` 만.
+- **PPU 160 고정**(2026-09-15 · 240 은 Play 에서 너무 작았다 → 1.5×). 크기 차이는 `spineVisualScale` 만.
 
 ## Follow-up
 
-- **대상 유닛 결정(사용자)** — `MotionSet_good`(파란 정장·대검)을 어느 방어유닛 SO 에 꽂을지. 꽂으면 그 유닛이 라이브에서
-  스프라이트로 바뀐다(시트 임포트가 유닛 SO 를 덮는 함정 — `spriteMotions` 는 시트 컬럼이 없어 안전).
+- ~~대상 유닛 결정~~ → **이쑤시개(`Defender_Slasher`)에 저작됨** `ea6da528`. Play 실측: 스폰·픽킹·공격 압축(Speed 2.22)·반전·반응·드래그 실루엣 전부 통과, 콘솔 0.
+  (`spriteMotions` 는 시트 컬럼이 없어 임포트에 안 덮인다.)
 - **PlayMode lane 1회 실행** + 사용자 Play 확인(배치 모션·공격 압축·픽킹·펀치·사망·퇴근 비행).
 - `good` 에 walk/death/deploy 시트가 없다 — 지금은 폴백(death 즉시 파괴·deploy→drag).
 - README 후속 후보 6건(풀·인터페이스 개명, idleVariants, 소환 오버라이드, 파츠 대안, Spine 은퇴).
