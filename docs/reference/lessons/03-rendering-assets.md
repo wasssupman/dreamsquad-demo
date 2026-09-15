@@ -365,7 +365,7 @@ Unity 는 이런 파일에도 `.meta` 를 만들어 두므로 meta 존재만으�
 
 ## 흰 배경 시트는 «전역 흰색 키잉»이 아니라 «테두리 flood-fill»로 뚫는다 (sprite-unit-backend, 2026-09-15)
 
-AI 생성 시트(`good_*.png`·`bucy.png`)는 알파 채널이 있어도 전부 255 고 배경이 흰색이다. 그대로 자르면
+AI 생성 시트(`roy_*.png`·`bucy.png`)는 알파 채널이 있어도 전부 255 고 배경이 흰색이다. 그대로 자르면
 유닛 뒤에 흰 박스가 뜬다. 규약은 `{unit}_{motion}.png`(원본) → `{unit}_{motion}_alpha.png`(배경 제거) 이고
 슬라이스는 `_alpha` 쪽만 한다(원본은 `Default/Single` 로 둔다).
 

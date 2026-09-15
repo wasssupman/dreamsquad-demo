@@ -136,7 +136,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: good_drag_alpha_0
+      name: roy_drag_alpha_0
       rect:
         serializedVersion: 2
         x: 0
@@ -151,14 +151,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b3105096e7a6d4e2ebee2cf42d58ea61
-      internalID: -223755478287301434
+      spriteID: c55a5c91186bf4467b434643f14c67fe
+      internalID: 1286761849
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_1
+      name: roy_drag_alpha_1
       rect:
         serializedVersion: 2
         x: 640
@@ -173,14 +173,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ae8d7abbc7319474c91fa0fe49d1896e
-      internalID: -1866135568109506422
+      spriteID: b28cc89fc07004d3292c1eddbdaced4b
+      internalID: -780610550
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_2
+      name: roy_drag_alpha_2
       rect:
         serializedVersion: 2
         x: 1280
@@ -195,14 +195,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 60a3e9c41e3c642569d317b517bd8806
-      internalID: 8824212416204856051
+      spriteID: 6a1b2a1d0b8ab4e70bf7f4a102b2c0bf
+      internalID: -415590050
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_3
+      name: roy_drag_alpha_3
       rect:
         serializedVersion: 2
         x: 1920
@@ -217,14 +217,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b2491dbe2b2384891b78f883505c879a
-      internalID: -5360565422738643088
+      spriteID: bb429a4a0df93402abbc2ec4cd7399ef
+      internalID: -1351106343
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_4
+      name: roy_drag_alpha_4
       rect:
         serializedVersion: 2
         x: 2560
@@ -239,14 +239,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fbe9d9582202d493d8a435ee1df35c66
-      internalID: -3586779734718488617
+      spriteID: b5f8e73c3b6494ddd8718cbd3ed79dce
+      internalID: -288586978
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_5
+      name: roy_drag_alpha_5
       rect:
         serializedVersion: 2
         x: 3200
@@ -261,14 +261,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 8b5f13f0443d546afb9688a26c433b5c
-      internalID: -26939879076255161
+      spriteID: 713c5475aff224d13aa392811f372f15
+      internalID: 1204357079
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_6
+      name: roy_drag_alpha_6
       rect:
         serializedVersion: 2
         x: 0
@@ -283,14 +283,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f5ccf13dd409040579ca28145086dadf
-      internalID: 5293399330860306698
+      spriteID: 31a74773f45f8419587c69b607743b5e
+      internalID: -1431464887
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_7
+      name: roy_drag_alpha_7
       rect:
         serializedVersion: 2
         x: 640
@@ -305,14 +305,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 31e67377db9494c0a84bcc2910c51205
-      internalID: -3519750436364706824
+      spriteID: 61e4d84cb79dc417c86b1f17c701d0c5
+      internalID: -1223784267
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_8
+      name: roy_drag_alpha_8
       rect:
         serializedVersion: 2
         x: 1280
@@ -327,14 +327,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 27794fb8da1f84a778a8579c541d94a4
-      internalID: -1445926024389773320
+      spriteID: 425ea267ba4f4475aa658895709e0e50
+      internalID: 2084339970
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_9
+      name: roy_drag_alpha_9
       rect:
         serializedVersion: 2
         x: 1920
@@ -349,14 +349,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: da83bc75f356349789bea160e5b5d52b
-      internalID: -5188170664896254970
+      spriteID: eb9e65684869740baacba592afce7c55
+      internalID: 1720600874
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_10
+      name: roy_drag_alpha_10
       rect:
         serializedVersion: 2
         x: 2560
@@ -371,14 +371,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3fe470c7735e14135a30ac4a3e16e0c6
-      internalID: 3380404263682973507
+      spriteID: ff34b1acabe7d49f7b012291cf81f2ad
+      internalID: -779914522
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_11
+      name: roy_drag_alpha_11
       rect:
         serializedVersion: 2
         x: 3200
@@ -393,14 +393,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: db9f07741ee4345f0a785d783350c263
-      internalID: 2172291328546871056
+      spriteID: eeaf4f5f4fbce41168d62cfa95477de1
+      internalID: -717971051
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_12
+      name: roy_drag_alpha_12
       rect:
         serializedVersion: 2
         x: 0
@@ -415,14 +415,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ad52a603e9b4043ca989508ea130295b
-      internalID: 4300098605456009570
+      spriteID: 005b66142899d49ed9eae086df7d8fbc
+      internalID: -1856820698
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_13
+      name: roy_drag_alpha_13
       rect:
         serializedVersion: 2
         x: 640
@@ -437,14 +437,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c607e545049aa431993036a154cd6a6a
-      internalID: -3354567965304542979
+      spriteID: bc97f195270894bc38bf2e730da927dc
+      internalID: 423530242
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_14
+      name: roy_drag_alpha_14
       rect:
         serializedVersion: 2
         x: 1280
@@ -459,14 +459,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4f88dfa593ef443a6a6ed4179745201a
-      internalID: -670849934313968283
+      spriteID: 0597d05807f3c4e71b098dc72c7690c6
+      internalID: -875882401
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_15
+      name: roy_drag_alpha_15
       rect:
         serializedVersion: 2
         x: 1920
@@ -481,14 +481,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d66d68a75f48a497c94ac885e9c65382
-      internalID: -9160715416668073875
+      spriteID: ebaffa953acd04c3bbff3584118022f0
+      internalID: 528005411
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_16
+      name: roy_drag_alpha_16
       rect:
         serializedVersion: 2
         x: 2560
@@ -503,14 +503,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 52a004a6053d44b70afd3197e53fbc27
-      internalID: 2639925631319896427
+      spriteID: f892fffffc982485eabc5f9813fd6aa4
+      internalID: -769867589
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_17
+      name: roy_drag_alpha_17
       rect:
         serializedVersion: 2
         x: 3200
@@ -525,14 +525,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 583e422d64e5b406b9b87d397f793725
-      internalID: -4776877798906715246
+      spriteID: 9109ae16749ca4e1d8380c616318238e
+      internalID: 23238557
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_18
+      name: roy_drag_alpha_18
       rect:
         serializedVersion: 2
         x: 0
@@ -547,14 +547,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: dea10842bffee49ce801d7f47c849fca
-      internalID: -6137825941151058904
+      spriteID: e88ad4ca787bf4457a2b7d436a92f1bb
+      internalID: 668973236
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_19
+      name: roy_drag_alpha_19
       rect:
         serializedVersion: 2
         x: 640
@@ -569,14 +569,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 09aef372789904d84ad524ae468afbe3
-      internalID: 1434536456748122931
+      spriteID: ebe2242fae1e64b4bb6690646c8a447c
+      internalID: -548589699
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_20
+      name: roy_drag_alpha_20
       rect:
         serializedVersion: 2
         x: 1280
@@ -591,14 +591,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d46c8da7e7b5849d486960fc48d3b06c
-      internalID: -5963752594874982574
+      spriteID: a82224ce2130549c994de185ca99372d
+      internalID: -2023781991
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_21
+      name: roy_drag_alpha_21
       rect:
         serializedVersion: 2
         x: 1920
@@ -613,14 +613,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 84cbf610e625d4297bc2f4e27e48c911
-      internalID: 3677774647372047343
+      spriteID: 68f098068ddf94ef49005eaa0fd84b9b
+      internalID: 1760418546
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_22
+      name: roy_drag_alpha_22
       rect:
         serializedVersion: 2
         x: 2560
@@ -635,14 +635,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4c8932fbde87641abb913ca64c080f9f
-      internalID: -8591115513767294181
+      spriteID: 1e812f33cd22f4ef3b388ece69d3a7e5
+      internalID: 1091225440
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_23
+      name: roy_drag_alpha_23
       rect:
         serializedVersion: 2
         x: 3200
@@ -657,14 +657,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bbe69d42db694414f8083e00f10fc487
-      internalID: -4206763739211237443
+      spriteID: 92e5d513a2d574caf857dae49ce244af
+      internalID: 1341610565
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_24
+      name: roy_drag_alpha_24
       rect:
         serializedVersion: 2
         x: 0
@@ -679,14 +679,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: cf0efb7f16a6a43679ca42edced7fec0
-      internalID: 6293713383299220968
+      spriteID: b40bd3271faef4c1d8469db220683484
+      internalID: 663854253
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_25
+      name: roy_drag_alpha_25
       rect:
         serializedVersion: 2
         x: 640
@@ -701,14 +701,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 434746fdbe9674e14967793cd56fbacc
-      internalID: -7888508041659017091
+      spriteID: d90bdba08d24848b38fb5a6777bb15a1
+      internalID: 429242145
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_26
+      name: roy_drag_alpha_26
       rect:
         serializedVersion: 2
         x: 1280
@@ -723,14 +723,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5ea3f58575e4f4e24ba912e875e79185
-      internalID: 5322789885039072795
+      spriteID: 1280db65ae0b14e78b791b905dd41959
+      internalID: 737367954
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_27
+      name: roy_drag_alpha_27
       rect:
         serializedVersion: 2
         x: 1920
@@ -745,14 +745,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 37ad96fda54d64411af42f178bd04b91
-      internalID: 958720047826470123
+      spriteID: ddff05c53963547c8afb2898b90d1f37
+      internalID: -1131792999
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_28
+      name: roy_drag_alpha_28
       rect:
         serializedVersion: 2
         x: 2560
@@ -767,14 +767,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4bc706bbe71054e9d85d2194287e21ab
-      internalID: 8735206515329444368
+      spriteID: df6751f945a204714a9f7e5de679f526
+      internalID: 1193801927
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_29
+      name: roy_drag_alpha_29
       rect:
         serializedVersion: 2
         x: 3200
@@ -789,14 +789,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 099ed2b116e2042fbb63d6b54562b3a5
-      internalID: -8318975488610828547
+      spriteID: ba569c71383e0492286492d1034d727b
+      internalID: 705351958
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_30
+      name: roy_drag_alpha_30
       rect:
         serializedVersion: 2
         x: 0
@@ -811,14 +811,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 2587923c462584794aadf9e35418f6e3
-      internalID: 412015862129632641
+      spriteID: 5eb1ed49dfc3c4359946fa694168356f
+      internalID: 1794600357
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_31
+      name: roy_drag_alpha_31
       rect:
         serializedVersion: 2
         x: 640
@@ -833,14 +833,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a643297d1dfa5455e83953adbffa7fb6
-      internalID: -112203299445773491
+      spriteID: 1a68967984f5d42aa8c35fdfa59f0402
+      internalID: 138247541
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_32
+      name: roy_drag_alpha_32
       rect:
         serializedVersion: 2
         x: 1280
@@ -855,14 +855,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 41545380c30ca4d9e8363494531961ac
-      internalID: 2351996223856602286
+      spriteID: b4c2feb750f8a4456a84a02c4454d8f4
+      internalID: 1390141776
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_33
+      name: roy_drag_alpha_33
       rect:
         serializedVersion: 2
         x: 1920
@@ -877,14 +877,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3fd03202c4ef14df9b4f5fc2181b3f50
-      internalID: -387017394467790133
+      spriteID: f470e261f00fe4179b634f5796ec5ca3
+      internalID: -968829560
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_34
+      name: roy_drag_alpha_34
       rect:
         serializedVersion: 2
         x: 2560
@@ -899,14 +899,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 58acf2f3f98434e6a896b8b30fd56be1
-      internalID: 8395989646988647285
+      spriteID: 8437aa53384ab426284059162cf8261d
+      internalID: 1730122251
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_drag_alpha_35
+      name: roy_drag_alpha_35
       rect:
         serializedVersion: 2
         x: 3200
@@ -921,8 +921,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ebfc5c138e0f042dba840d35b2e57ae1
-      internalID: -2116722568784010876
+      spriteID: e6054d49bfb28425192d8fbb9a632f55
+      internalID: -1477306095
       vertices: []
       indices: 
       edges: []
@@ -977,6 +977,42 @@ TextureImporter:
       good_drag_alpha_7: -3519750436364706824
       good_drag_alpha_8: -1445926024389773320
       good_drag_alpha_9: -5188170664896254970
+      roy_drag_alpha_0: 1286761849
+      roy_drag_alpha_1: -780610550
+      roy_drag_alpha_10: -779914522
+      roy_drag_alpha_11: -717971051
+      roy_drag_alpha_12: -1856820698
+      roy_drag_alpha_13: 423530242
+      roy_drag_alpha_14: -875882401
+      roy_drag_alpha_15: 528005411
+      roy_drag_alpha_16: -769867589
+      roy_drag_alpha_17: 23238557
+      roy_drag_alpha_18: 668973236
+      roy_drag_alpha_19: -548589699
+      roy_drag_alpha_2: -415590050
+      roy_drag_alpha_20: -2023781991
+      roy_drag_alpha_21: 1760418546
+      roy_drag_alpha_22: 1091225440
+      roy_drag_alpha_23: 1341610565
+      roy_drag_alpha_24: 663854253
+      roy_drag_alpha_25: 429242145
+      roy_drag_alpha_26: 737367954
+      roy_drag_alpha_27: -1131792999
+      roy_drag_alpha_28: 1193801927
+      roy_drag_alpha_29: 705351958
+      roy_drag_alpha_3: -1351106343
+      roy_drag_alpha_30: 1794600357
+      roy_drag_alpha_31: 138247541
+      roy_drag_alpha_32: 1390141776
+      roy_drag_alpha_33: -968829560
+      roy_drag_alpha_34: 1730122251
+      roy_drag_alpha_35: -1477306095
+      roy_drag_alpha_4: -288586978
+      roy_drag_alpha_5: 1204357079
+      roy_drag_alpha_6: -1431464887
+      roy_drag_alpha_7: -1223784267
+      roy_drag_alpha_8: 2084339970
+      roy_drag_alpha_9: 1720600874
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

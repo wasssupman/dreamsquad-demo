@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c694421dc6c684e73b2db67421d54d82, type: 3}
-  m_Name: MotionSet_good
+  m_Name: MotionSet_roy
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.UnitSpriteMotionSet
   idle: {fileID: 11400000, guid: c9a1bf4af5e7d4cb6a5949751a4138eb, type: 2}
   walk: {fileID: 0}

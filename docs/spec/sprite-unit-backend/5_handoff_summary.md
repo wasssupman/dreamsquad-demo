@@ -9,7 +9,7 @@
 | `46f6e11f` | feat(sprite-unit-backend): unit 2a — SpriteUnitView 골격 + TrySpawn 백엔드 선택 |
 | `9bc5e83b` | feat(sprite-unit-backend): unit 2b — SpriteUnitView 반응 |
 | `ca769aba` | feat(sprite-unit-backend): unit 3 — 드래그 그림을 스프라이트로 |
-| `bcfd2a60` | unit 4 — 시트 3장 발 피벗 재슬라이스 + `MotionSet_good` + PlayMode 테스트 + 파이프라인 맵 |
+| `bcfd2a60` | unit 4 — 시트 3장 발 피벗 재슬라이스 + `MotionSet_roy` + PlayMode 테스트 + 파이프라인 맵 |
 
 ## Implemented
 
@@ -22,7 +22,7 @@
 - facing 판정은 `UnitFacing.ShouldFlip`(순수) 하나 — Spine 도 이걸 호출한다. 시트 방향은 세트 `sheetFacesRight` 로 정규화.
 - 백엔드 선택은 `SpineUnitPool.TrySpawn` 한 곳. 세트 있으나 idle 비면 경고 + 세트 무시.
 - 드래그 그림(보드 실루엣·손끝 키링) 스프라이트 분기. 취소 알파는 `DragSession.flipbook`.
-- 슬라이서 피벗 Center/BottomCenter. `good_*` 3장은 BottomCenter 로 재슬라이스(GUID 보존).
+- 슬라이서 피벗 Center/BottomCenter. `roy_*` 3장은 BottomCenter 로 재슬라이스(GUID 보존).
 
 ## Key Files
 
@@ -31,7 +31,7 @@
 - `Assets/_Project/Scripts/Presentation/SpriteFlipbookPlayer.cs` — `Speed`/`TimeDomain`/`Current`(유일한 재생기 확장)
 - `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — `TryBuild*Sprite` 2개
 - `Assets/_Project/Editor/SpriteFlipbookDataEditor.cs` — 피벗 인자
-- `Assets/_Project/Data/Flipbook/MotionSet_good.asset` + `Flipbook_good_{idle,attack,drag}` · `Sprites/Unit/good_*_alpha.png`
+- `Assets/_Project/Data/Flipbook/MotionSet_roy.asset` + `Flipbook_roy_{idle,attack,drag}` · `Sprites/Unit/roy_*_alpha.png`
 - 테스트: `Tests/EditMode/UnitSpriteMotionSetTests.cs`(6) · `UnitFacingTests.cs`(4) · `Tests/PlayMode/SpriteUnitBackendPlayTest.cs`(1 · 합성 세트)
 
 ## Verified

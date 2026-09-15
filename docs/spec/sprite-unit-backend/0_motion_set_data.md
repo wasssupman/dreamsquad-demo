@@ -19,7 +19,7 @@
 ## 구현
 
 `UnitSpriteMotionSet : ScriptableObject` — `[SerializeField] SpriteFlipbookData idle, walk, attack, death, deploy, drag;`
-`[SerializeField] bool sheetFacesRight;` (시트가 오른쪽을 보고 그려졌으면 체크. 오늘 `good_*` 시트가 그렇다.)
+`[SerializeField] bool sheetFacesRight;` (시트가 오른쪽을 보고 그려졌으면 체크. 오늘 `roy_*` 시트가 그렇다.)
 getter 는 읽기 전용 프로퍼티. 배열/리스트를 노출하지 않는다.
 
 **폴백은 세트 자신의 순수 메서드**로 둔다(입력 = 직렬화 참조, 출력 = 참조 하나 — 아키텍처 타입 무관):
@@ -49,8 +49,8 @@ getter `SpriteMotions => spriteMotions`. 직렬화 순서 보존(기존 에셋�
 
 - EditMode: `UnitSpriteMotionSetTests` — 폴백 4규칙 + `HasIdle` (6건 내외). 기존 총계에서 그만큼 는다.
 - 컴파일 0 에러. 기존 `Defender_*`/`Enemy_*` 에셋 diff 0 (필드 맨 뒤 + 기본 null).
-- 슬라이서 팝업에서 BottomCenter 로 `good_idle_alpha` 를 재슬라이스하면 `Sprite.pivot.y == 0` 이고
-  `Flipbook_good_idle` 의 프레임 참조가 Missing 이 되지 않는다(GUID 보존).
+- 슬라이서 팝업에서 BottomCenter 로 `roy_idle_alpha` 를 재슬라이스하면 `Sprite.pivot.y == 0` 이고
+  `Flipbook_roy_idle` 의 프레임 참조가 Missing 이 되지 않는다(GUID 보존).
 - 검증기: 세트 + partSkins 동시 저작 시 경고 1줄, 세트만 있으면 경고 0.
 
 ---

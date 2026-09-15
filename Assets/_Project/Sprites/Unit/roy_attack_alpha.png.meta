@@ -136,7 +136,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: good_attack_alpha_0
+      name: roy_attack_alpha_0
       rect:
         serializedVersion: 2
         x: 0
@@ -151,14 +151,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d8dad89f3302b4e8fa0006c4b436e63c
-      internalID: 1751363986
+      spriteID: 9e7fb9a28ed0943bda8a1681223d8914
+      internalID: -125779450
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_1
+      name: roy_attack_alpha_1
       rect:
         serializedVersion: 2
         x: 640
@@ -173,14 +173,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7d6cc296acf574392aa6bfaa36689031
-      internalID: -175459296
+      spriteID: 6c0d7f6058dc24b1ebf0ca619187d97a
+      internalID: 131243492
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_2
+      name: roy_attack_alpha_2
       rect:
         serializedVersion: 2
         x: 1280
@@ -195,14 +195,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b4435062c58dc4c938b0e5653f365cec
-      internalID: -2096153705
+      spriteID: bbe4413e27edc43d785b2f17ab3d0963
+      internalID: 1985669868
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_3
+      name: roy_attack_alpha_3
       rect:
         serializedVersion: 2
         x: 1920
@@ -217,14 +217,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a3796b52302ec48bd817fccc0c538b09
-      internalID: 942260656
+      spriteID: dee7b1abb99a34c8eb97f6781d4c5e39
+      internalID: 978832533
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_4
+      name: roy_attack_alpha_4
       rect:
         serializedVersion: 2
         x: 0
@@ -239,14 +239,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 408e223df3141453d8f95334a616d81e
-      internalID: 684751344
+      spriteID: 13a37325f08c941ea86ecf6681ec0b12
+      internalID: 1739493848
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_5
+      name: roy_attack_alpha_5
       rect:
         serializedVersion: 2
         x: 640
@@ -261,14 +261,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7fb80c7f4f5e443c1a274db89f14ce78
-      internalID: 921857107
+      spriteID: ff4bd6d9da5a541f0800c6431d4db248
+      internalID: 701534687
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_6
+      name: roy_attack_alpha_6
       rect:
         serializedVersion: 2
         x: 1280
@@ -283,14 +283,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ff78eb548280d412f9bf7e7c05a63127
-      internalID: 1553552592
+      spriteID: 77a9cc3cb6910496da97b717d92f5f60
+      internalID: 1811095156
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_7
+      name: roy_attack_alpha_7
       rect:
         serializedVersion: 2
         x: 1920
@@ -305,14 +305,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5cda4fdb92d844a56aa49c605df4ab3b
-      internalID: 238618499
+      spriteID: 5abd946e7d0bf45bf871951b52211d51
+      internalID: 286516184
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_8
+      name: roy_attack_alpha_8
       rect:
         serializedVersion: 2
         x: 0
@@ -327,14 +327,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 514002e53da994a89a1cdbb58c092475
-      internalID: 1774444831
+      spriteID: 18197afb247d240e79fee335519db52d
+      internalID: -2027579631
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_9
+      name: roy_attack_alpha_9
       rect:
         serializedVersion: 2
         x: 640
@@ -349,14 +349,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c18dd1536d2ec450a95aaf1b136b8728
-      internalID: 2054240761
+      spriteID: 1487ade80e4654e5a83d061a1692f98b
+      internalID: 1130304646
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_10
+      name: roy_attack_alpha_10
       rect:
         serializedVersion: 2
         x: 1280
@@ -371,14 +371,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e77f2a007a5d44075bb97f9ef7e8d7b9
-      internalID: -2025532441
+      spriteID: 3e0e04ad961f047d3904c9fd648cf767
+      internalID: 1837468295
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_11
+      name: roy_attack_alpha_11
       rect:
         serializedVersion: 2
         x: 1920
@@ -393,14 +393,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 25ed6105f7a51423f812f8702cc864bd
-      internalID: 158879748
+      spriteID: c14d81816381944caa74ef02e7001ba7
+      internalID: -1825082458
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_12
+      name: roy_attack_alpha_12
       rect:
         serializedVersion: 2
         x: 0
@@ -415,14 +415,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 00d0dd9ff38764cbbb0855cf0bd94a14
-      internalID: 208465880
+      spriteID: 70b9f296761464239833e3c6a9b501a8
+      internalID: -1481939877
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_13
+      name: roy_attack_alpha_13
       rect:
         serializedVersion: 2
         x: 640
@@ -437,14 +437,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e9b209430ad284688804df1b88352a0d
-      internalID: -127373018
+      spriteID: 24ed8fcb969354f3e87822deea167df5
+      internalID: 1208895979
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_14
+      name: roy_attack_alpha_14
       rect:
         serializedVersion: 2
         x: 1280
@@ -459,14 +459,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e56c7ad8ba67d47ff9a8950dfbe3ee84
-      internalID: -1708658143
+      spriteID: 7140e5fb7c3fd46048165872ee6497de
+      internalID: 2086605942
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: good_attack_alpha_15
+      name: roy_attack_alpha_15
       rect:
         serializedVersion: 2
         x: 1920
@@ -481,8 +481,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4918eaa3e3f544d1f8c8a1b0f7d2fadf
-      internalID: -645233626
+      spriteID: b567c4be0b46e4ca39996099afe458ec
+      internalID: -1948029494
       vertices: []
       indices: 
       edges: []
@@ -533,6 +533,22 @@ TextureImporter:
       good_attack_alpha_7: 238618499
       good_attack_alpha_8: 1774444831
       good_attack_alpha_9: 2054240761
+      roy_attack_alpha_0: -125779450
+      roy_attack_alpha_1: 131243492
+      roy_attack_alpha_10: 1837468295
+      roy_attack_alpha_11: -1825082458
+      roy_attack_alpha_12: -1481939877
+      roy_attack_alpha_13: 1208895979
+      roy_attack_alpha_14: 2086605942
+      roy_attack_alpha_15: -1948029494
+      roy_attack_alpha_2: 1985669868
+      roy_attack_alpha_3: 978832533
+      roy_attack_alpha_4: 1739493848
+      roy_attack_alpha_5: 701534687
+      roy_attack_alpha_6: 1811095156
+      roy_attack_alpha_7: 286516184
+      roy_attack_alpha_8: -2027579631
+      roy_attack_alpha_9: 1130304646
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
