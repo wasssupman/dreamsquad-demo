@@ -49,5 +49,5 @@ MonoBehaviour:
   - {fileID: 1694786503, guid: 5b7eaeaa9d50c41228067025ce4f5120, type: 3}
   - {fileID: -1424363620, guid: 5b7eaeaa9d50c41228067025ce4f5120, type: 3}
   - {fileID: -894037942, guid: 5b7eaeaa9d50c41228067025ce4f5120, type: 3}
-  fps: 24
+  fps: 12
   loop: 1
