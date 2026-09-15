@@ -14,7 +14,7 @@
 
 ## 구현
 
-**시트 규약(확정)**: PPU **128**(2026-09-15 확정 · 상대 튜닝 240 → 160 → 106.67 → 133.33 뒤 2의 거듭제곱으로 반올림) · 셀 640×360 · 원본은 `Raw/{unit}_{motion}.png`(미추적) → 배경 제거본 `{unit}_{motion}.png` →
+**시트 규약(확정)**: PPU **106.67**(= 128 ÷ 1.2 · 2026-09-16 「20% 키우자」 · 셀 640×360 기준, 다른 캔버스는 캐릭터 높이 비율로 보정) · 셀 640×360 · 원본은 `Raw/{unit}_{motion}.png`(미추적) → 배경 제거본 `{unit}_{motion}.png` →
 `Flipbook_{unit}_{motion}` · 피벗 BottomCenter · idle/walk/drag 루프 · attack/death/deploy 원샷 · fps 24.
 배경 제거는 테두리 flood-fill(내부 흰색 보존) — 스크립트는 `docs/reference/lessons/03-rendering-assets.md` 에 승격.
 

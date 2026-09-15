@@ -100,7 +100,7 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
   ⚠ 이미 잘린 시트는 재슬라이스해야 바뀐다(GUID 보존이라 참조는 안 끊긴다).
 
 - **크기 노브는 하나다.** `spineVisualScale × BattleBridge.CharacterVisualScale` — Spine 과 같은 식,
-  필드 신설 0. **PPU 128 고정**(저작 규약 — 2026-09-15 확정. 상대 튜닝 3회로 133.33 에 닿은 뒤 2의 거듭제곱·프랍 256 의 절반으로 반올림, +4%). 유닛별 크기는 `spineVisualScale` 로만. 유닛별로 PPU 를 바꾸면 노브가 둘이 된다 — 크기 차이는 `spineVisualScale` 로만.
+  필드 신설 0. **PPU 106.67 고정**(= 128 ÷ 1.2 · 저작 규약 — 2026-09-15 128 확정 뒤 2026-09-16 「20% 키우자」로 한 번 더. 캔버스가 다른 보정 시트도 같은 비율로 나눈다). 유닛별 크기는 `spineVisualScale` 로만. 유닛별로 PPU 를 바꾸면 노브가 둘이 된다 — 크기 차이는 `spineVisualScale` 로만.
 
 - **재생기 확장 1건 — `SpriteFlipbookPlayer.Speed`.** 공격 압축(발사 주기 맞춤)과 걷기 배율에
   필요하다. 대안 「뷰가 자가 tick」은 불가 — 재생기 `OnDisable` 이 `_playing` 을 내려 컴포넌트를
