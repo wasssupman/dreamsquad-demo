@@ -118,3 +118,4 @@ MonoBehaviour:
   walkAnimation: 
   outgameScaleMul: 1
   idleVariants: []
+  spriteMotions: {fileID: 11400000, guid: 3d8507af54c9443b2bf7b1d327a27c6a, type: 2}
