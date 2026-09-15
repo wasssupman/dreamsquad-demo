@@ -55,7 +55,7 @@
 
 ## Follow-up
 
-- ~~대상 유닛 결정~~ → **이쑤시개(`Defender_Slasher`)에 저작됨** `ea6da528`. Play 실측: 스폰·픽킹·공격 압축(Speed 2.22)·반전·반응·드래그 실루엣 전부 통과, 콘솔 0.
+- ~~대상 유닛 결정~~ → 2026-09-16 재배정: **roy → 말파이트(`Defender_Malphite`)** · **rosa → 넉백머신(`Defender_AntiAir`)** · 이쑤시개는 Spine 복귀. 두 스프라이트 유닛 `deploymentDuration` 1.0(deploy 0.67s + 여유). rosa/roy_deploy 는 캔버스가 달라(셀 418×235) PPU 93/90 보정 — 시트를 640×360 캔버스로 다시 내보내면 128 로 통일 가능. 처음 Play 실측은 이쑤시개에서 `ea6da528`. Play 실측: 스폰·픽킹·공격 압축(Speed 2.22)·반전·반응·드래그 실루엣 전부 통과, 콘솔 0.
   (`spriteMotions` 는 시트 컬럼이 없어 임포트에 안 덮인다.)
 - **PlayMode lane 1회 실행** + 사용자 Play 확인(배치 모션·공격 압축·픽킹·펀치·사망·퇴근 비행).
 - `good` 에 walk/death/deploy 시트가 없다 — 지금은 폴백(death 즉시 파괴·deploy→drag).

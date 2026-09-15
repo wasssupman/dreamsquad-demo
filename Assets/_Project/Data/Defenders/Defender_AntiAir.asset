@@ -16,25 +16,31 @@ MonoBehaviour:
   role: 1
   placementLayers: 1
   traversalLayers: 2
+  footprintWidth: 2
+  footprintHeight: 2
   displayName: "\uB109\uBC31\uBA38\uC2E0"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB0AE\uC740 \uD53C\uD574\uC758 \uD22C\uC0AC\uCCB4\uB97C
     \uB9E4\uC6B0 \uBE60\uB974\uAC8C \uC5F0\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
     \uD6A8\uACFC: \uB109\uBC31 \uD22C\uC0AC\uCCB4 \uBC1C\uC0AC"
   health: 400
-  footprintWidth: 2
-  footprintHeight: 2
   attackRange: 4
+  impactSocketHeight: 0
   attackCooldown: 0.5
   hitDelaySec: 0
   deployDelaySec: 0
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: 604db68e369c540ce8f64c11788d54f3, type: 3}
   attackSfxClip: {fileID: 0}
   attackVfxScale: 1
   attackVfxFacesTarget: 0
+  attackVfxAtAttacker: 0
   attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 11400000, guid: 7a28b52abfc76442fab4980e2e6a41a9, type: 2}
@@ -46,12 +52,6 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
-  onPlaceDuration: 0
-  onPlaceStackKind: 0
-  onPlaceTickInterval: 0
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 3
@@ -100,12 +100,9 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
   castAnchorBone: WEAPON
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
+  deploymentDuration: 1
   placementSkillDelay: 0
   awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
@@ -114,3 +111,4 @@ MonoBehaviour:
   walkAnimation: 
   outgameScaleMul: 1
   idleVariants: []
+  spriteMotions: {fileID: 11400000, guid: 0fad44b08778c481d8e7e41503b2b16d, type: 2}

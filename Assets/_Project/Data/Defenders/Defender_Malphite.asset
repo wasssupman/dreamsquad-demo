@@ -104,7 +104,7 @@ MonoBehaviour:
   knockupVisualHeight: 1.2
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
+  deploymentDuration: 1
   placementSkillDelay: 0
   awakeningReward: 3
   weaponTrailPrefab: {fileID: 7076356317959749484, guid: 89982ff2f270a4a2d96c27241a10847f, type: 3}
@@ -113,3 +113,4 @@ MonoBehaviour:
   walkAnimation: 
   outgameScaleMul: 1
   idleVariants: []
+  spriteMotions: {fileID: 11400000, guid: 3d8507af54c9443b2bf7b1d327a27c6a, type: 2}
