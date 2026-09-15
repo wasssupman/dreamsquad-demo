@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c694421dc6c684e73b2db67421d54d82, type: 3}
+  m_Name: MotionSet_hidy
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.UnitSpriteMotionSet
+  idle: {fileID: 11400000, guid: 91ab5db37b2024295968925f18a99572, type: 2}
+  walk: {fileID: 0}
+  attack: {fileID: 11400000, guid: 6b6f4c1530138438fa6c4d5e37c6021b, type: 2}
+  death: {fileID: 0}
+  deploy: {fileID: 11400000, guid: e2477cbc6b15547f3836c0982e285a0e, type: 2}
+  drag: {fileID: 11400000, guid: 4725fb26af6cc46caa71603434bba4c3, type: 2}
+  idleBreaks:
+  - {fileID: 11400000, guid: 98bac1f88ddb04a968a09876ef4310a1, type: 2}
+  idleRestGap: {x: 1, y: 3}
+  sheetFacesRight: 1

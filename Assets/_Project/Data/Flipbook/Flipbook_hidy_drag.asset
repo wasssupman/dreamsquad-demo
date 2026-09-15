@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86c49a8213e5b4a7c84cf1482b39aec3, type: 3}
+  m_Name: Flipbook_hidy_drag
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SpriteFlipbookData
+  frames:
+  - {fileID: -5568906239687289787, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -4475279042443544882, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 5093860337116715916, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 5311470173081527655, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 4857000280297837522, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -7718073864813805617, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -8814348310475958709, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -1700476533425865352, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -6855441660447946730, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 2675019529230503459, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -736334983406105743, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 4253191014502851735, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -4033874577915878066, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -4142290536311117946, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: -9172615478509050764, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  - {fileID: 2372841130178755761, guid: aba2e49377dd349d19d244ca858b92e1, type: 3}
+  fps: 24
+  loop: 1
