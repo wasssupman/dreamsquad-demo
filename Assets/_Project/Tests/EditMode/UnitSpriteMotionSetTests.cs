@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wassup.Data;
 
 // sprite-unit-backend unit 0 — 빈 슬롯 폴백 규칙. 입력은 직렬화 참조, 출력은 참조 하나 —
@@ -21,6 +22,17 @@ public class UnitSpriteMotionSetTests
         _deploy = ScriptableObject.CreateInstance<SpriteFlipbookData>();
         _drag = ScriptableObject.CreateInstance<SpriteFlipbookData>();
         _set = ScriptableObject.CreateInstance<UnitSpriteMotionSet>();
+        // 슬롯별 루프 정책은 상수(idle/walk/drag = 루프, attack/deploy = 원샷). OnValidate 가 위반을 LogError 로
+        // 알리고 러너는 그걸 실패로 치므로, 픽스처부터 정책대로 만든다.
+        SetLoop(_idle, true); SetLoop(_walk, true); SetLoop(_drag, true);
+        SetLoop(_attack, false); SetLoop(_deploy, false);
+    }
+
+    private static void SetLoop(SpriteFlipbookData data, bool loop)
+    {
+        var so = new SerializedObject(data);
+        so.FindProperty("loop").boolValue = loop;
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     [TearDown]
@@ -89,20 +101,23 @@ public class UnitSpriteMotionSetTests
         Assert.AreSame(_drag, _set.ResolveDrag());
     }
 
-    // unit 6 — 대기 변형 풀: 0번 = idle, 1번~ = 변형. 비면 변형 모드가 아니다.
+    // unit 6 — 대기 컷 풀: 0번 = idle, 1번~ = 대기 컷. 비면 컷 모드가 아니다.
     [Test]
-    public void IdlePool_IsIdlePlusVariants_InOrder()
+    public void IdlePool_IsIdlePlusBreaks_InOrder()
     {
         Slot("idle", _idle);
-        Assert.IsFalse(_set.HasIdleVariants);
+        Assert.IsFalse(_set.HasIdleBreaks);
         Assert.AreEqual(1, _set.IdlePoolCount);
+        // 합성 시트는 프레임이 0 이라 OnValidate 가 「비었거나 프레임 0」 에러를 낸다 — 그 검증이 의도된 동작이다.
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleBreaks\\[0\\]"));
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleBreaks\\[1\\]"));
         var so = new SerializedObject(_set);
-        var list = so.FindProperty("idleVariants");
+        var list = so.FindProperty("idleBreaks");
         list.arraySize = 2;
         list.GetArrayElementAtIndex(0).objectReferenceValue = _walk;   // 아무 시트나 — 순서만 본다
         list.GetArrayElementAtIndex(1).objectReferenceValue = _attack;
         so.ApplyModifiedPropertiesWithoutUndo();
-        Assert.IsTrue(_set.HasIdleVariants);
+        Assert.IsTrue(_set.HasIdleBreaks);
         Assert.AreEqual(3, _set.IdlePoolCount);
         Assert.AreSame(_idle, _set.IdlePoolAt(0), "쉬는 그림의 출처 = 0번 = idle");
         Assert.AreSame(_walk, _set.IdlePoolAt(1));
@@ -120,9 +135,10 @@ public class UnitSpriteMotionSetTests
         Assert.AreEqual(2f, _set.PickIdleRestGap(0.5f), 1e-5f);
         Assert.AreEqual(3f, _set.PickIdleRestGap(1f), 1e-5f);
         Assert.AreEqual(3f, _set.PickIdleRestGap(7f), 1e-5f, "roll 은 0..1 로 클램프");
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleRestGap"));   // 음수 저작 = 검증기가 잡는 저작 오류
         so.FindProperty("idleRestGap").vector2Value = new Vector2(-2f, -1f);
         so.ApplyModifiedPropertiesWithoutUndo();
-        Assert.AreEqual(0f, _set.PickIdleRestGap(0.5f), "음수 저작은 0 으로 — 쉼 없이 연속 재생");
+        Assert.AreEqual(0f, _set.PickIdleRestGap(0.5f), "음수 저작은 0 으로 — 뷰는 쉼 0 을 「다음 틱에 바로 다음 컷」으로 읽는다(연속 재생)");
     }
 
     [Test]

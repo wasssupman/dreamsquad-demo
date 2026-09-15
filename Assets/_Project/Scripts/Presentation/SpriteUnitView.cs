@@ -43,16 +43,21 @@ namespace Wassup.Presentation
         private const float SimDtEpsilon = 1e-5f;
         private const float LocoMoveOnFrac = 0.15f;
         private const float LocoMoveOffFrac = 0.05f;
-        // unit 6 — 대기 변형 순환. _idleCycling 이면 정지 자리는 루프가 아니라 「쉼(idle 0프레임) → 풀에서 하나 원샷 → 쉼」.
-        // 쉬는 동안 재생기는 Stop 상태라 IsPlaying 이 거짓이다 — 원샷 완주 폴링(_oneShot)과는 별개 축.
+        // unit 6 — 대기 컷 순환. _idleCycling 이면 정지 자리는 루프가 아니라 「쉼(idle 0프레임) → 풀에서 하나 한 바퀴 → 쉼」.
+        // 타이머 하나(_idleTimer)가 쉼과 재생 둘 다 잰다 — 재생 길이는 FlipbookMath.Duration(시트 loop 무관).
+        // 재생기 IsPlaying 을 폴링하지 않으므로 _oneShot 축과 섞이지 않는다(리뷰 M1·M3).
         private bool _idleCycling;
-        private float _restRemaining;
+        private bool _idleResting;
+        private float _idleTimer;
         private int _idleIndex = -1;
 
         public override Entity Entity => _entity;
 
         // 「지금 무엇을 재생 중인가」 — 플립북 에셋 이름. Spine 의 트랙0 애니 이름에 대응.
-        public override string CurrentAnimationName => _player != null && _player.Current != null ? _player.Current.name : null;
+        // 쉬는 동안은 아무것도 재생 중이 아니지만 「idle 자리」다 — 테스트 창구가 직전 대기 컷 이름을 돌려주면 거짓이다(리뷰 M4).
+        public override string CurrentAnimationName =>
+            _idleCycling && _idleResting && _set != null && _set.Idle != null ? _set.Idle.name
+            : (_player != null && _player.Current != null ? _player.Current.name : null);
 
         // 오른쪽(+x)을 보는가. 시트 규약(sheetFacesRight)으로 flipX 부호를 정규화한다 —
         // SkeletonFlipXModifier 가 리그 규약을 데이터에서 정규화하는 것의 스프라이트 대응.
@@ -116,34 +121,40 @@ namespace Wassup.Presentation
             TickIdleCycle();
         }
 
-        // unit 6 — 쉼 타이머와 변형 완주. 시계는 배틀 스케일(hop 과 같은 이유 — 슬로우모에서 같이 느려져야 한다).
+        // unit 6 — 쉼과 한 바퀴를 타이머 하나로. 시계는 배틀 스케일(hop 과 같은 이유 — 슬로우모에서 같이 느려져야 한다).
+        // 쉼 시간 0 이면 다음 틱에 바로 다음 컷을 뽑는다 = 쉼 없이 연속 재생(저작 (0,0) 의 뜻).
         private void TickIdleCycle()
         {
             if (!_idleCycling || _oneShot != null || _set == null) return;
-            if (_player.IsPlaying) return;                       // 변형 재생 중
-            if (_restRemaining > 0f)
+            _idleTimer -= Time.deltaTime * _battleScale;
+            if (_idleTimer > 0f) return;
+            if (_idleResting)
             {
-                _restRemaining -= Time.deltaTime * _battleScale;
-                if (_restRemaining > 0f) return;
                 int next = UnitAnimationChoice.ChooseNext(_set.IdlePoolCount, _idleIndex, UnityEngine.Random.value);
                 var clip = _set.IdlePoolAt(next);
-                if (clip == null || clip.FrameCount == 0) { EnterIdleRest(); return; }
-                _idleIndex = next;
-                _player.Play(clip);
-                _player.Speed = 1f;
-                return;
+                float duration = clip != null ? FlipbookMath.Duration(clip.Fps, clip.FrameCount) : 0f;
+                if (duration > 0f)
+                {
+                    _idleIndex = next;
+                    _idleResting = false;
+                    _idleTimer = duration;          // 한 바퀴 — 시트가 루프여도 여기서 끊는다
+                    _player.Play(clip);
+                    _player.Speed = 1f;
+                    return;
+                }
             }
-            EnterIdleRest();                                     // 변형 완주 → 다시 쉼
+            EnterIdleRest();                        // 한 바퀴 끝(또는 뽑힌 컷이 비어 있음) → 쉼
         }
 
         // 쉼 = 재생기 정지 + idle 0 프레임. 렌더러는 건드리지 않는다(disableRendererWhenFinished 는 꺼져 있다).
         private void EnterIdleRest()
         {
             _idleCycling = true;
+            _idleResting = true;
             _player.Stop();
             var rest = _set.Idle != null ? _set.Idle.FrameAt(0) : null;
-            if (rest != null) _sr.sprite = rest;
-            _restRemaining = _set.PickIdleRestGap(UnityEngine.Random.value);
+            if (rest != null && _sr != null) _sr.sprite = rest;
+            _idleTimer = _set.PickIdleRestGap(UnityEngine.Random.value);
         }
 
         // ---- 로코모션 ---------------------------------------------------------------------
@@ -155,8 +166,8 @@ namespace Wassup.Presentation
             if (!force && _oneShot != null) return;
             var desired = _set.ResolveLocomotion(_moving);
             if (desired == null) return;
-            // unit 6 — 정지 자리가 idle 이고 변형이 저작돼 있으면 루프 대신 쉼/변형 순환. 이미 순환 중이면 유지.
-            if (desired == _set.Idle && _set.HasIdleVariants)
+            // unit 6 — 정지 자리가 idle 이고 대기 컷이 저작돼 있으면 루프 대신 쉼/컷 순환. 이미 순환 중이면 유지.
+            if (desired == _set.Idle && _set.HasIdleBreaks)
             {
                 if (!_idleCycling || force) EnterIdleRest();
                 return;

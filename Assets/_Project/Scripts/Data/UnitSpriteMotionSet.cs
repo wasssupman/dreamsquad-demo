@@ -6,7 +6,7 @@ namespace Wassup.Data
     // sprite-unit-backend unit 0 — 유닛 하나의 스프라이트 모션 세트. 「모션당 시트 1장」.
     //
     // 슬롯은 Spine 유닛이 실제로 쓰는 모션과 1:1 이다(ISpineUnitVisualData / IDefenderSpineExtras):
-    //   idle · walk · attack · death (전 유닛) · deploy · drag (방어유닛) + 대기 변형 풀(unit 6, 아래 참조).
+    //   idle · walk · attack · death (전 유닛) · deploy · drag (방어유닛) + 대기 컷 풀(unit 6, 아래 참조).
     //
     // 유닛 SO 는 이 세트를 가리키는 **필드 하나**만 갖는다. 비면 Spine, 있으면 스프라이트 —
     // 되돌리기 = 그 필드 비우기(임시 기능 전제). 필드를 7개로 흩뿌리면 되돌리기가 「7개 지우기」가 된다.
@@ -32,14 +32,16 @@ namespace Wassup.Data
         [Tooltip("드래그 중 루프. 비면 idle.")]
         [SerializeField] private SpriteFlipbookData drag;
 
-        // sprite-unit-backend unit 6 — 대기 변형(2026-09-16 사용자 결정). 비어 있으면 idle 단일 루프(현행).
+        // sprite-unit-backend unit 6 — 대기 컷(idle break, 2026-09-16 사용자 결정). 비어 있으면 idle 단일 루프(현행).
         // 하나라도 있으면 idle 상태의 모양이 바뀐다: idle 의 0 프레임으로 **쉬다가** → 쉬는 시간이 끝나면
-        // 풀(idle + 변형들)에서 하나를 뽑아 **한 번** 틀고 → 다시 쉰다. Spine 의 idleVariants(루프를 이어 붙임)와
-        // 다른 성질이라 이름은 같아도 계약은 이 파일이 정본이다. 변형 모드에선 풀의 시트가 전부 원샷이어야 한다.
-        [Header("대기 변형")]
-        [Tooltip("추가 대기 모션(원샷). 하나라도 있으면 idle 도 원샷으로 취급되어 「idle 0프레임으로 쉼 → 풀에서 하나 재생 → 쉼」을 반복한다.")]
-        [SerializeField] private List<SpriteFlipbookData> idleVariants = new List<SpriteFlipbookData>();
-        [Tooltip("변형 사이 쉬는 시간(초) 범위. 쉬는 동안은 idle 의 0 프레임으로 선다.")]
+        // 풀(idle + 대기 컷들)에서 하나를 뽑아 **한 바퀴** 틀고 → 다시 쉰다.
+        // ⚠ 「한 바퀴」는 뷰가 FlipbookMath.Duration 으로 재서 끝낸다 — 시트의 loop 체크박스를 **보지 않는다**.
+        //   그래서 idle 은 변형 유무와 무관하게 루프 슬롯이고(폴백 소비자들이 그 루프에 기댄다), 슬롯별 루프 정책은
+        //   전부 상수로 남는다(리뷰 M1). Spine 의 SpineIdleVariants(애니 이름 · 루프 이어 붙임)와는 이름부터 갈랐다.
+        [Header("대기 컷 (idle breaks)")]
+        [Tooltip("추가 대기 모션. 하나라도 있으면 「idle 0프레임으로 쉼 → 풀(idle+대기 컷)에서 하나 한 바퀴 → 쉼」을 반복한다. loop 설정은 무관.")]
+        [SerializeField] private List<SpriteFlipbookData> idleBreaks = new List<SpriteFlipbookData>();
+        [Tooltip("대기 컷 사이 쉬는 시간(초) 범위. 쉬는 동안은 idle 의 0 프레임으로 선다. (0,0) = 쉼 없이 연속 재생.")]
         [SerializeField] private Vector2 idleRestGap = new Vector2(1f, 3f);
 
         [Header("시트 규약")]
@@ -57,14 +59,14 @@ namespace Wassup.Data
 
         public bool HasIdle => idle != null;
 
-        // 대기 변형 모드인가. 풀 = idle(0번) + idleVariants(1번~). 쉬는 그림은 항상 idle 의 0 프레임.
-        public bool HasIdleVariants => idleVariants != null && idleVariants.Count > 0;
-        public int IdlePoolCount => idle == null ? 0 : 1 + (idleVariants != null ? idleVariants.Count : 0);
+        // 대기 컷 모드인가. 풀 = idle(0번) + idleBreaks(1번~). 쉬는 그림은 항상 idle 의 0 프레임.
+        public bool HasIdleBreaks => idleBreaks != null && idleBreaks.Count > 0;
+        public int IdlePoolCount => idle == null ? 0 : 1 + (idleBreaks != null ? idleBreaks.Count : 0);
         public SpriteFlipbookData IdlePoolAt(int index)
         {
             if (index == 0) return idle;
             int v = index - 1;
-            return idleVariants != null && v >= 0 && v < idleVariants.Count ? idleVariants[v] : null;
+            return idleBreaks != null && v >= 0 && v < idleBreaks.Count ? idleBreaks[v] : null;
         }
         public Vector2 IdleRestGap => idleRestGap;
         // 쉬는 시간 하나를 뽑는다. roll 은 0..1 난수(프레젠테이션 난수 — sim 난수와 섞지 않는다).
@@ -92,13 +94,14 @@ namespace Wassup.Data
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            // 변형 모드에선 idle 도 원샷이어야 한다(한 번 틀고 쉬는 구조). 아니면 영영 안 끝나 변형이 안 나온다.
-            WarnLoopPolicy(nameof(idle), idle, wantLoop: !HasIdleVariants);
-            if (idleVariants != null)
-                for (int i = 0; i < idleVariants.Count; i++)
-                    WarnLoopPolicy($"idleVariants[{i}]", idleVariants[i], wantLoop: false);
+            // 슬롯별 루프 정책은 상수다 — idle 은 대기 컷 유무와 무관하게 루프(대기 컷의 「한 바퀴」는 뷰가 길이를 잰다).
+            WarnLoopPolicy(nameof(idle), idle, wantLoop: true);
+            if (idleBreaks != null)
+                for (int i = 0; i < idleBreaks.Count; i++)
+                    if (idleBreaks[i] == null || idleBreaks[i].FrameCount == 0)
+                        Debug.LogError($"UnitSpriteMotionSet '{name}': idleBreaks[{i}] 이 비었거나 프레임이 0 — 뽑히면 건너뛴다.", this);
             if (idleRestGap.x < 0f || idleRestGap.y < idleRestGap.x)
-                Debug.LogWarning($"UnitSpriteMotionSet '{name}': idleRestGap 은 0 ≤ min ≤ max 여야 한다 (지금 {idleRestGap}).", this);
+                Debug.LogError($"UnitSpriteMotionSet '{name}': idleRestGap 은 0 ≤ min ≤ max 여야 한다 (지금 {idleRestGap}).", this);
             WarnLoopPolicy(nameof(walk), walk, wantLoop: true);
             WarnLoopPolicy(nameof(drag), drag, wantLoop: true);
             WarnLoopPolicy(nameof(attack), attack, wantLoop: false);
@@ -111,7 +114,8 @@ namespace Wassup.Data
         private void WarnLoopPolicy(string slot, SpriteFlipbookData data, bool wantLoop)
         {
             if (data == null || data.Loop == wantLoop) return;
-            Debug.LogWarning(wantLoop
+            // 원인이 에셋 체크박스라 경고로는 묻힌다 — FlipbookCharacterView 와 같이 에러로(리뷰 Minor 2).
+            Debug.LogError(wantLoop
                 ? $"UnitSpriteMotionSet '{name}': '{slot}' 은 루프 슬롯인데 '{data.name}' 의 loop 가 꺼져 있다."
                 : $"UnitSpriteMotionSet '{name}': '{slot}' 은 원샷 슬롯인데 '{data.name}' 의 loop 가 켜져 있다 — 완료 판정이 안 나 유닛이 갇힌다.",
                 this);

@@ -37,7 +37,7 @@
 | 2b | 뷰 — 반응한다 | `2b_sprite_unit_view_react.md` | 공격·배치·사망·반응 어휘·앵커 — **싸우고, 죽고, 움찔한다** |
 | 3 | 드래그 그림 | `3_drag_preview.md` | 손끝 고스트 + 보드 실루엣을 스프라이트로 |
 | 4 | 저작·검증 | `4_authoring_and_verify.md` | 유닛 1기 실저작 + PlayMode 테스트 + Play 확인 |
-| 6 | 대기 변형 | `6_idle_variants.md` | idle1/idle2… — 쉼(idle 0프레임) → 변형 원샷 → 쉼 (2026-09-16 사용자 요청) |
+| 6 | 대기 컷 | `6_idle_variants.md` | idle1/idle2… — 쉼(idle 0프레임) → 한 바퀴 → 쉼 (2026-09-16 사용자 요청 · critic rev) |
 
 handoff 는 `5_handoff_summary.md` (구현 종료 시).
 
@@ -63,7 +63,7 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
 
 - **모션 슬롯은 Spine 이 정본이다.** `idle`(루프) · `walk`(루프) · `attack`(원샷) · `death`(원샷) ·
   `deploy`(원샷·방어유닛) · `drag`(루프·방어유닛) — 6개. ~~`idleVariants` 는 넣지 않는다~~ → **unit 6 에서 열림**(2026-09-16):
-  `idleVariants[]` + `idleRestGap` — 쉼(idle 0프레임) → 풀에서 하나 원샷 → 쉼. Spine 의 변형(루프 이어 붙임)과 **다른 성질**이다.
+  `idleBreaks[]` + `idleRestGap` — 쉼(idle 0프레임) → 풀에서 하나 **한 바퀴**(뷰가 길이를 잰다 · 시트 loop 무관) → 쉼. 슬롯별 루프 정책은 여전히 상수(idle = 루프). Spine 의 `SpineIdleVariants`(루프 이어 붙임)와 성질이 달라 이름도 갈랐다.
 
 - **빈 슬롯은 폴백하지 실패하지 않는다 — 단 `idle` 은 예외다.** 폴백은 순수 함수
   (`UnitSpriteMotionSet.Resolve*`, EditMode 테스트)가 정한다: `walk` 없음 → 이동/정지 구분 없이 idle ·
