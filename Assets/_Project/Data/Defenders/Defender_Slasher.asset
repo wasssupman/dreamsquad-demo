@@ -109,7 +109,7 @@ MonoBehaviour:
   knockupVisualHeight: 1.2
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
+  deploymentDuration: 0.6666667
   placementSkillDelay: 0
   awakeningReward: 3
   weaponTrailPrefab: {fileID: 416037035443229880, guid: badefa6935aa04ba9badb5386cb9a3c8, type: 3}
