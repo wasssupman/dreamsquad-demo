@@ -10,6 +10,7 @@
 | `9bc5e83b` | feat(sprite-unit-backend): unit 2b — SpriteUnitView 반응 |
 | `ca769aba` | feat(sprite-unit-backend): unit 3 — 드래그 그림을 스프라이트로 |
 | `bcfd2a60` | unit 4 — 시트 3장 발 피벗 재슬라이스 + `MotionSet_roy` + PlayMode 테스트 + 파이프라인 맵 |
+| `9fa225a2`→`f42b42dd` | unit 6 — 대기 컷(idle breaks) 쉼→한 바퀴→쉼 · critic REVISE 반영(뷰가 길이를 잰다, 시트 loop 무관) |
 
 ## Implemented
 
@@ -46,6 +47,8 @@
 - **`UnitView` 는 반드시 `MonoBehaviour` 파생.** 인터페이스로 바꾸면 컴파일은 되고 파괴된 뷰가 풀 생존 판정을 통과한다
   (`SpriteUnitBackendPlayTest` 마지막 단언이 그 회귀 가드).
 - **`SpineUnitView` 본문은 두 곳만 바뀌었다** — 상속/override · `UnitFacing` 호출. 그 외 diff 가 생기면 이 spec 밖이다.
+- **대기 컷의 「한 바퀴」는 뷰가 `FlipbookMath.Duration` 으로 잰다 — 시트 loop 를 다시 보게 만들지 말 것.** 첫 구현이 그랬다가
+  슬롯별 루프 정책 불변식과 폴백 3경로를 깼다(critic M1·M2). `idleBreaks` 는 Spine `SpineIdleVariants` 와 성질이 달라 이름을 갈랐다.
 - **원샷 폴백이 루프 시트로 떨어지면 원샷 취급하지 않는다** (`PlayDeploy` 의 `deploy.Loop` 분기 · `Kill` 의 `death.Loop`).
   안 그러면 `_oneShot` 폴링이 영영 안 끝나 유닛이 갇힌다(프리뷰 뷰가 같은 함정을 기록했다).
 - **`UpdateWalkTimeScale` 의 `WalkAnimSpeedEnabled` 게이트는 Spine 과 같다** — 스타일 SO 미할당이면 `_moving` 이 영영 false 라
