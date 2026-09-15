@@ -1956,9 +1956,11 @@ namespace Wassup.UI
             var billboard = root.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-            // 서 있는 그림 — idle(이동 아님).
+            // 드래그 중이므로 drag 시트(없으면 idle) — 2026-09-15 사용자 결정. Spine 실루엣이 idle 을 고르는 것과
+            // 다르다: 라이브 D&D 는 손끝 키링을 만들지 않고 실루엣만 쓰므로, 여기서 drag 를 안 틀면 drag 시트가
+            // 본 게임 흐름에서 한 번도 안 나온다.
             var player = BuildSpriteChild(root, $"{root.name}_Sprite", scale,
-                set.ResolveLocomotion(false), Cfg.silhouetteAlpha);
+                set.ResolveDrag(), Cfg.silhouetteAlpha);
             var sr = player.GetComponent<SpriteRenderer>();
             if (sr != null && sr.sprite != null)
             {

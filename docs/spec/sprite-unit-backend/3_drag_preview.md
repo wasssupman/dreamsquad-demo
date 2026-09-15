@@ -20,7 +20,7 @@ Spine 경로는 한 줄도 안 바뀐다.
 
 스프라이트 빌더 — 같은 트리 구조(`root` → `Billboard` → 자식)에 `SpriteRenderer` + `SpriteFlipbookPlayer`
 (`timeDomain = Interaction` — 드래그는 슬로우모 중에도 실시간, `Cfg.silhouetteFollowSpeed` 가 unscaled 인 것과 같은 이유).
-재생: 실루엣 = `ResolveLocomotion(false)`(idle) · 키링 고스트 = `ResolveDrag()`(drag→idle).
+재생: 실루엣 · 키링 고스트 **둘 다** `ResolveDrag()`(drag→idle) — 2026-09-15 사용자 결정. Spine 실루엣은 idle 을 고르지만(그 코드 주석 「서 있는 그림」) 라이브 D&D 는 키링을 안 만들고 실루엣만 쓰므로, 실루엣이 idle 이면 drag 시트가 본 게임에서 한 번도 안 나온다.
 `flipX = set.SheetFacesRight` · `sortingOrder = DragPreviewOrder` · 알파 = `Cfg.silhouetteAlpha` / 1.
 
 정렬 오프셋 — Spine 은 `localBounds` 로 발/머리를 원점에 맞춘다. 스프라이트는 **피벗이 발**(unit 0)이라
