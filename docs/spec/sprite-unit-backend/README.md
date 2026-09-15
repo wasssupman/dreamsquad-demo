@@ -98,7 +98,7 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
   ⚠ 이미 잘린 시트는 재슬라이스해야 바뀐다(GUID 보존이라 참조는 안 끊긴다).
 
 - **크기 노브는 하나다.** `spineVisualScale × BattleBridge.CharacterVisualScale` — Spine 과 같은 식,
-  필드 신설 0. **PPU 160 고정**(저작 규약 — 2026-09-15 사용자 결정 「현재(240) 기준 50% 더 키운 것을 스프라이트 캐릭터의 기본으로」 → 240/1.5). 유닛별로 PPU 를 바꾸면 노브가 둘이 된다 — 크기 차이는 `spineVisualScale` 로만.
+  필드 신설 0. **PPU 106.67 고정**(= 240 ÷ 2.25 · 저작 규약 — 2026-09-15 사용자 결정 2회: 240 → 「50% 더」 160 → 「현재 기준 50% 더」 106.67). 유닛별로 PPU 를 바꾸면 노브가 둘이 된다 — 크기 차이는 `spineVisualScale` 로만.
 
 - **재생기 확장 1건 — `SpriteFlipbookPlayer.Speed`.** 공격 압축(발사 주기 맞춤)과 걷기 배율에
   필요하다. 대안 「뷰가 자가 tick」은 불가 — 재생기 `OnDisable` 이 `_playing` 을 내려 컴포넌트를
