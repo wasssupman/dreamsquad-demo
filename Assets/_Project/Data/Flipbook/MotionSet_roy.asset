@@ -16,6 +16,6 @@ MonoBehaviour:
   walk: {fileID: 0}
   attack: {fileID: 11400000, guid: 5d207f3db31f541f68c61f5adf3ca00b, type: 2}
   death: {fileID: 0}
-  deploy: {fileID: 0}
+  deploy: {fileID: 11400000, guid: 66f2cdac4d6cb4f5291b78c5ea10d90f, type: 2}
   drag: {fileID: 11400000, guid: 5b29dbf3574a94947b7256f84ed6d01c, type: 2}
   sheetFacesRight: 1
