@@ -374,5 +374,5 @@ AI 생성 시트(`good_*.png`·`bucy.png`)는 알파 채널이 있어도 전부 
   그 영역의 알파 = `clamp((250 − min) × 255/50)` — 완전 흰색 0, 200 은 255 라 경계 1~2px 가 소프트 알파로 남아
   참격 잔상(흰 호) 같은 반투명 요소도 살아남는다. 실측: 셔츠 보존 · 잔상 반투명 유지 · 2560×1440 에 2초.
 - 검증은 마젠타 위에 합성해 눈으로 — `Read` 로 셀 하나를 잘라 본다. 알파 히스토그램만 보면 셔츠 구멍을 못 잡는다.
-- 임포터 규약: `Sprite / PPU 106.67(= 240 ÷ 2.25) / alphaIsTransparency / mipmap off`. 유닛 시트는 **피벗 BottomCenter**(발). PPU 는 2026-09-15 에 두 번 「50% 더」로 240 → 160 → 106.67 — 유닛별 크기는 PPU 가 아니라 `spineVisualScale` 로.
+- 임포터 규약: `Sprite / PPU 133.33(= 240 ÷ 1.8) / alphaIsTransparency / mipmap off`. 유닛 시트는 **피벗 BottomCenter**(발). PPU 는 2026-09-15 튜닝 3회로 240 → 160 → 106.67 → 133.33 — 유닛별 크기는 PPU 가 아니라 `spineVisualScale` 로.
 

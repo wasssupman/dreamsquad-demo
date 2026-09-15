@@ -51,7 +51,7 @@
 - **`UpdateWalkTimeScale` 의 `WalkAnimSpeedEnabled` 게이트는 Spine 과 같다** — 스타일 SO 미할당이면 `_moving` 이 영영 false 라
   walk 시트가 안 돈다. 이것은 현행 Spine 동작이지 스프라이트 결함이 아니다.
 - **피벗은 발(BottomCenter)** — 뷰에서 오프셋 보정 금지. 중앙 피벗으로 잘린 옛 시트를 유닛에 꽂으면 반칸 뜬다.
-- **PPU 106.67 고정**(= 240 ÷ 2.25 · 2026-09-15 두 번 「50% 더」). 크기 차이는 `spineVisualScale` 만. 인스펙터에 손으로 칠 땐 `106.67`.
+- **PPU 133.33 고정**(= 240 ÷ 1.8 · 2026-09-15 튜닝 3회의 최종값). 크기 차이는 `spineVisualScale` 만. 인스펙터에 손으로 칠 땐 `133.33`.
 
 ## Follow-up
 

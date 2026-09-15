@@ -14,12 +14,12 @@
 
 ## 구현
 
-**시트 규약(확정)**: PPU **106.67 = 240 ÷ 2.25**(2026-09-15 사용자 결정 2회 · 240 → 160 → 106.67, 각각 「50% 더」) · 셀 640×360 · `{unit}_{motion}.png`(원본) → `{unit}_{motion}_alpha.png`(배경 제거) →
+**시트 규약(확정)**: PPU **133.33 = 240 ÷ 1.8**(2026-09-15 사용자 튜닝 3회 · 240 → 160 → 106.67 → 133.33) · 셀 640×360 · `{unit}_{motion}.png`(원본) → `{unit}_{motion}_alpha.png`(배경 제거) →
 `Flipbook_{unit}_{motion}` · 피벗 BottomCenter · idle/walk/drag 루프 · attack/death/deploy 원샷 · fps 24.
 배경 제거는 테두리 flood-fill(내부 흰색 보존) — 스크립트는 `docs/reference/lessons/03-rendering-assets.md` 에 승격.
 
 **크기 맞추기** — Spine 유닛 옆에 세우고 `spineVisualScale` 만 돌린다(PPU·인스턴스 scale 금지 — 노브 하나 계약).
-실측: PPU 240 에서 이쑤시개 실높이 1.02(Spine 힐러 1.22) → 사용자 「너무 작다」 → PPU 160 으로 1.48 → 다시 「50% 더」 → PPU 106.67 로 2.2(Spine 힐러 1.26 의 약 1.75×).
+실측: PPU 240 에서 이쑤시개 실높이 1.02(Spine 힐러 1.22) → 사용자 「너무 작다」 → PPU 160 으로 1.48 → 「50% 더」 106.67(2.2) → 「20% 작게」 **133.33 로 약 1.78**(Spine 힐러 1.26 의 약 1.4×).
 
 **PlayMode 테스트** — 라이브 에셋을 건드리지 않는다: `Instantiate(Defender_X)` 로 SO 를 복제해 `spriteMotions` 를
 꽂고 스크립트 배틀에 배치 → `TryGetUnitView` 가 `SpriteUnitView` 를 돌려주고 · `CurrentAnimationName == "Flipbook_good_idle"` ·
