@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sprite-unit-backend unit 4 — 흰 배경 스프라이트 시트 → 알파. 사용: python3 tools/key_sheet_alpha.py in.png out_alpha.png
+# sprite-unit-backend unit 4 — 흰 배경 스프라이트 시트 → 알파. 사용: python3 tools/key_sheet_alpha.py Raw/roy_idle.png roy_idle.png
 # 규칙은 docs/reference/lessons/03-rendering-assets.md 「흰 배경 시트는 …」 참조. 의존: Pillow, numpy.
 # 흰 배경 → 알파. 테두리에서 연결된 near-white 만 지운다(내부 흰색=셔츠 보존), 경계는 소프트 알파.
 import sys, numpy as np

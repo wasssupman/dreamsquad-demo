@@ -31,7 +31,7 @@
 - `Assets/_Project/Scripts/Presentation/SpriteFlipbookPlayer.cs` — `Speed`/`TimeDomain`/`Current`(유일한 재생기 확장)
 - `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — `TryBuild*Sprite` 2개
 - `Assets/_Project/Editor/SpriteFlipbookDataEditor.cs` — 피벗 인자
-- `Assets/_Project/Data/Flipbook/MotionSet_roy.asset` + `Flipbook_roy_{idle,attack,drag}` · `Sprites/Unit/roy_*_alpha.png`
+- `Assets/_Project/Data/Flipbook/MotionSet_roy.asset` + `Flipbook_roy_{idle,attack,drag}` · `Sprites/Unit/roy_*.png`(배경 제거본 · 원본은 `Sprites/Unit/Raw/`)
 - 테스트: `Tests/EditMode/UnitSpriteMotionSetTests.cs`(6) · `UnitFacingTests.cs`(4) · `Tests/PlayMode/SpriteUnitBackendPlayTest.cs`(1 · 합성 세트)
 
 ## Verified

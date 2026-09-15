@@ -6,7 +6,7 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Sprites/Unit/roy_{idle,attack,drag}_alpha.png` 재슬라이스(피벗 BottomCenter)
+- `Assets/_Project/Sprites/Unit/roy_{idle,attack,drag}.png` 재슬라이스(피벗 BottomCenter)
 - `Assets/_Project/Data/Flipbook/Flipbook_roy_*.asset` (기존 3개 — 참조 보존)
 - 신규 `Assets/_Project/Data/Flipbook/MotionSet_roy.asset` (`UnitSpriteMotionSet` · idle/attack/drag · `sheetFacesRight = true`)
 - 대상 유닛 SO 1기의 `spriteMotions` 필드 — **어느 유닛인지는 사용자 결정**(good = 파란 정장·대검 캐릭터)
@@ -14,7 +14,7 @@
 
 ## 구현
 
-**시트 규약(확정)**: PPU **128**(2026-09-15 확정 · 상대 튜닝 240 → 160 → 106.67 → 133.33 뒤 2의 거듭제곱으로 반올림) · 셀 640×360 · `{unit}_{motion}.png`(원본) → `{unit}_{motion}_alpha.png`(배경 제거) →
+**시트 규약(확정)**: PPU **128**(2026-09-15 확정 · 상대 튜닝 240 → 160 → 106.67 → 133.33 뒤 2의 거듭제곱으로 반올림) · 셀 640×360 · 원본은 `Raw/{unit}_{motion}.png`(미추적) → 배경 제거본 `{unit}_{motion}.png` →
 `Flipbook_{unit}_{motion}` · 피벗 BottomCenter · idle/walk/drag 루프 · attack/death/deploy 원샷 · fps 24.
 배경 제거는 테두리 flood-fill(내부 흰색 보존) — 스크립트는 `docs/reference/lessons/03-rendering-assets.md` 에 승격.
 

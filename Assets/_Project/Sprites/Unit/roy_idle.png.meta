@@ -136,7 +136,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: roy_idle_alpha_0
+      name: roy_idle_0
       rect:
         serializedVersion: 2
         x: 0
@@ -151,14 +151,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3d5bc9f95ef8246768b93f53400b8414
-      internalID: 715596600
+      spriteID: c7df83e86b4e54e43b11456f5f752207
+      internalID: 571522424
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_1
+      name: roy_idle_1
       rect:
         serializedVersion: 2
         x: 640
@@ -173,14 +173,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 66695ce3a0a9542339603a2e173ef03c
-      internalID: 1729615466
+      spriteID: 99206fa7ccfaa4fafac296b9b980e5e8
+      internalID: -1468200311
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_2
+      name: roy_idle_2
       rect:
         serializedVersion: 2
         x: 1280
@@ -195,14 +195,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f2ff1942e411e4d3ca2dd2b77651188c
-      internalID: 434223686
+      spriteID: 050d50aaa282541a093acfe9395bc6bf
+      internalID: -747800471
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_3
+      name: roy_idle_3
       rect:
         serializedVersion: 2
         x: 1920
@@ -217,14 +217,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b6a297c72defe41bc9d37759d407eff0
-      internalID: 1498062220
+      spriteID: 31da4581b8ec5414c9457a55f073c19e
+      internalID: -236963553
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_4
+      name: roy_idle_4
       rect:
         serializedVersion: 2
         x: 2560
@@ -239,14 +239,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 35611d52ae3c2440fb6cff5ec1cd2a11
-      internalID: -82522414
+      spriteID: 8c4ab9e83fc7c44b3b209bccb27fc1ea
+      internalID: -1820816361
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_5
+      name: roy_idle_5
       rect:
         serializedVersion: 2
         x: 3200
@@ -261,14 +261,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7efcd76b45bac479bb84702a7ab7985a
-      internalID: 1088035359
+      spriteID: 5b57d05eb8ebf4acdae2eb79bcea9e38
+      internalID: 677133208
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_6
+      name: roy_idle_6
       rect:
         serializedVersion: 2
         x: 0
@@ -283,14 +283,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4a0dd127578b94c69b3c88afdf8502e7
-      internalID: -1559611527
+      spriteID: beefaf2f9e09148baa490dba82e6d9b1
+      internalID: 1525242428
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_7
+      name: roy_idle_7
       rect:
         serializedVersion: 2
         x: 640
@@ -305,14 +305,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e5dd3ec480d1543dd906e87e378fd44e
-      internalID: -2138778084
+      spriteID: 803674bf4034f4eb5921ab07a3123141
+      internalID: 335670127
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_8
+      name: roy_idle_8
       rect:
         serializedVersion: 2
         x: 1280
@@ -327,14 +327,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 0ee949f683e4e4a739feabbeca34d46b
-      internalID: -705403965
+      spriteID: 5f234b439ccc142ad8e822471a790159
+      internalID: -2109844624
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_9
+      name: roy_idle_9
       rect:
         serializedVersion: 2
         x: 1920
@@ -349,14 +349,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 2e54ca9d6a72c46c099fa5776eb9f33c
-      internalID: -557302678
+      spriteID: 1ee1a408527224055b4b952a72af2c47
+      internalID: 1570201694
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_10
+      name: roy_idle_10
       rect:
         serializedVersion: 2
         x: 2560
@@ -371,14 +371,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f3972923561b046cdb99bec9c4d47150
-      internalID: 669585867
+      spriteID: cbcd2b1db0869417c98ed2703b42692b
+      internalID: 199535656
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_11
+      name: roy_idle_11
       rect:
         serializedVersion: 2
         x: 3200
@@ -393,14 +393,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 47b33a5194deb4a0f8bfc7c7ef325264
-      internalID: 1012540656
+      spriteID: 7ccf062daad3d4055bb79b29ff5be8f3
+      internalID: 1456191319
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_12
+      name: roy_idle_12
       rect:
         serializedVersion: 2
         x: 0
@@ -415,14 +415,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5d8d106bc5cca4b23ba2a08cf8f728f0
-      internalID: -247680675
+      spriteID: b60ea0640ce274510b826e827f569060
+      internalID: -573688256
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_13
+      name: roy_idle_13
       rect:
         serializedVersion: 2
         x: 640
@@ -437,14 +437,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 4bb8317b9f346485e9e41c197abba5e6
-      internalID: -1958077732
+      spriteID: 726aa53c3fa22458c8108a31041906b5
+      internalID: 1212007252
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_14
+      name: roy_idle_14
       rect:
         serializedVersion: 2
         x: 1280
@@ -459,14 +459,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f9f6ccee6c0cc444f97626d309fa81f1
-      internalID: 1912878182
+      spriteID: 600c6932451bb4ea4a2d00dd33d3eb80
+      internalID: 1853872717
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_15
+      name: roy_idle_15
       rect:
         serializedVersion: 2
         x: 1920
@@ -481,14 +481,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 158f85d82a1c049f89c68d702f7f50de
-      internalID: -1461026723
+      spriteID: 2dfece676e1a749be9a023645f92d545
+      internalID: -1122324561
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_16
+      name: roy_idle_16
       rect:
         serializedVersion: 2
         x: 2560
@@ -503,14 +503,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ff6e7a20166cc461ca20baf6657a196e
-      internalID: -1428344872
+      spriteID: 7ff0997b98faf41e1bccf0a6c204f996
+      internalID: 679839875
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_17
+      name: roy_idle_17
       rect:
         serializedVersion: 2
         x: 3200
@@ -525,14 +525,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 79ebf5475e8b440bbbf020e9a84987df
-      internalID: 1129541987
+      spriteID: aab3e66a695144097a6862d633075127
+      internalID: -280354412
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_18
+      name: roy_idle_18
       rect:
         serializedVersion: 2
         x: 0
@@ -547,14 +547,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 41687d5d54cb443aaa7c24170c377902
-      internalID: -2009670021
+      spriteID: dc7eace831d8a4e0e96e61b14ca9e44e
+      internalID: -352176904
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_19
+      name: roy_idle_19
       rect:
         serializedVersion: 2
         x: 640
@@ -569,14 +569,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 248d1141ef6f2467aa63ff3437765708
-      internalID: 382934677
+      spriteID: 4854345937e41473690dc6fec818b894
+      internalID: -1053744475
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_20
+      name: roy_idle_20
       rect:
         serializedVersion: 2
         x: 1280
@@ -591,14 +591,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ca84bd06bfab74cd2b67e2c1e81bc4eb
-      internalID: 545757083
+      spriteID: 554f32a1924a24d1f99743ad8d9a9fda
+      internalID: -1568982781
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_21
+      name: roy_idle_21
       rect:
         serializedVersion: 2
         x: 1920
@@ -613,14 +613,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 58a371a8aaca94be2b2ad5a92a9df813
-      internalID: -529088229
+      spriteID: 7e51574ad58ff4971ba30256e7d5a797
+      internalID: -2046899987
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_22
+      name: roy_idle_22
       rect:
         serializedVersion: 2
         x: 2560
@@ -635,14 +635,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b3efb509d7eeb44538dd3aebbf79cf9f
-      internalID: -323454018
+      spriteID: 03abf7c830eb24e6d8cd98313f53e643
+      internalID: 1975588833
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_23
+      name: roy_idle_23
       rect:
         serializedVersion: 2
         x: 3200
@@ -657,14 +657,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 317e69701e3c048b1897b6cb7486b8cd
-      internalID: 1436368468
+      spriteID: d2ec4f90419fa4e7d8533536ec67b9d5
+      internalID: -487921814
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_24
+      name: roy_idle_24
       rect:
         serializedVersion: 2
         x: 0
@@ -679,14 +679,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 786ae73c9898540d4911fdc67d58585b
-      internalID: 82071537
+      spriteID: a0d49eecfa4884aa284ad16e9d2e6793
+      internalID: -126761066
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_25
+      name: roy_idle_25
       rect:
         serializedVersion: 2
         x: 640
@@ -701,14 +701,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bec84587253e0441e9e95b86abecc940
-      internalID: -296710303
+      spriteID: bb62c91c55c2b4f0eb806ddc4a3e2f08
+      internalID: 356932296
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_26
+      name: roy_idle_26
       rect:
         serializedVersion: 2
         x: 1280
@@ -723,14 +723,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e4de7132f0b3940718573eb577de9148
-      internalID: 170485283
+      spriteID: 78fada01cf64e4725a280a4843379902
+      internalID: -1847790350
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_27
+      name: roy_idle_27
       rect:
         serializedVersion: 2
         x: 1920
@@ -745,14 +745,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bc649d4d30d9d4636b9b80e9197c3d30
-      internalID: 1574652275
+      spriteID: 4bf1021e9d14f4593934489566da9cf2
+      internalID: -684756956
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_28
+      name: roy_idle_28
       rect:
         serializedVersion: 2
         x: 2560
@@ -767,14 +767,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a7a0711e5b0c14bef9c9a60000a18683
-      internalID: 1341930996
+      spriteID: f1b342744f3764d2f8f0cfc0133ef668
+      internalID: 439382805
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_29
+      name: roy_idle_29
       rect:
         serializedVersion: 2
         x: 3200
@@ -789,14 +789,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f05039067479a48b9a312caa7e672517
-      internalID: -1429621858
+      spriteID: d8d8e5a80a18841a29de0e623dc70c6e
+      internalID: 1280417128
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_30
+      name: roy_idle_30
       rect:
         serializedVersion: 2
         x: 0
@@ -811,14 +811,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 609ed3fb1e8ff4c8990dbad7b967964e
-      internalID: 1285863977
+      spriteID: d5fb8f114b67c4c1b8a29ef99eb8d93b
+      internalID: -1229428141
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_31
+      name: roy_idle_31
       rect:
         serializedVersion: 2
         x: 640
@@ -833,14 +833,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 047b95c09a9744864845527c0065f234
-      internalID: 246551069
+      spriteID: 23d9cac555f604a13abe6f1d2c0ceecc
+      internalID: 1418997362
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_32
+      name: roy_idle_32
       rect:
         serializedVersion: 2
         x: 1280
@@ -855,14 +855,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: db77ca3b184674185b507a5d3f6f0348
-      internalID: 1893417178
+      spriteID: 85c57b7d05f7045e4877eda332c3fbc0
+      internalID: 1375975231
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_33
+      name: roy_idle_33
       rect:
         serializedVersion: 2
         x: 1920
@@ -877,14 +877,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ed2d73f7c2a0540d7ac27c09dfc40e64
-      internalID: 75865468
+      spriteID: cc89f056e2bc24df388896442f3828c6
+      internalID: 1694786503
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_34
+      name: roy_idle_34
       rect:
         serializedVersion: 2
         x: 2560
@@ -899,14 +899,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 057d974c9c3604baabb1a7c531fa8574
-      internalID: 422763424
+      spriteID: 1668e2398484544fb9356af0e2e9c5fc
+      internalID: -1424363620
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_idle_alpha_35
+      name: roy_idle_35
       rect:
         serializedVersion: 2
         x: 3200
@@ -921,8 +921,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c86fc92dad0094c91a79e3f86461bcfa
-      internalID: -44461531
+      spriteID: f32672d59a831417cb471567c500905d
+      internalID: -894037942
       vertices: []
       indices: 
       edges: []
@@ -977,6 +977,42 @@ TextureImporter:
       good_idle_alpha_7: -3399323388731184554
       good_idle_alpha_8: 7617477085932153134
       good_idle_alpha_9: 8436207758958827959
+      roy_idle_0: 571522424
+      roy_idle_1: -1468200311
+      roy_idle_10: 199535656
+      roy_idle_11: 1456191319
+      roy_idle_12: -573688256
+      roy_idle_13: 1212007252
+      roy_idle_14: 1853872717
+      roy_idle_15: -1122324561
+      roy_idle_16: 679839875
+      roy_idle_17: -280354412
+      roy_idle_18: -352176904
+      roy_idle_19: -1053744475
+      roy_idle_2: -747800471
+      roy_idle_20: -1568982781
+      roy_idle_21: -2046899987
+      roy_idle_22: 1975588833
+      roy_idle_23: -487921814
+      roy_idle_24: -126761066
+      roy_idle_25: 356932296
+      roy_idle_26: -1847790350
+      roy_idle_27: -684756956
+      roy_idle_28: 439382805
+      roy_idle_29: 1280417128
+      roy_idle_3: -236963553
+      roy_idle_30: -1229428141
+      roy_idle_31: 1418997362
+      roy_idle_32: 1375975231
+      roy_idle_33: 1694786503
+      roy_idle_34: -1424363620
+      roy_idle_35: -894037942
+      roy_idle_4: -1820816361
+      roy_idle_5: 677133208
+      roy_idle_6: 1525242428
+      roy_idle_7: 335670127
+      roy_idle_8: -2109844624
+      roy_idle_9: 1570201694
       roy_idle_alpha_0: 715596600
       roy_idle_alpha_1: 1729615466
       roy_idle_alpha_10: 669585867

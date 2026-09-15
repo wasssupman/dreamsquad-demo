@@ -13,21 +13,21 @@ MonoBehaviour:
   m_Name: Flipbook_roy_attack
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SpriteFlipbookData
   frames:
-  - {fileID: -125779450, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 131243492, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1985669868, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 978832533, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1739493848, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 701534687, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1811095156, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 286516184, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: -2027579631, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1130304646, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1837468295, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: -1825082458, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: -1481939877, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 1208895979, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: 2086605942, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
-  - {fileID: -1948029494, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -1053444823, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -547559072, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -1892093062, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -166900464, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -260557469, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 38102621, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 1367225847, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -1593233539, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 1705432427, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 1646950763, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 1566696996, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 223009867, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -1795080057, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -108662319, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: 57670162, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
+  - {fileID: -2097732952, guid: d86a8b28d54e14995a7f33638835f113, type: 3}
   fps: 24
   loop: 0

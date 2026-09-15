@@ -136,7 +136,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: roy_attack_alpha_0
+      name: roy_attack_0
       rect:
         serializedVersion: 2
         x: 0
@@ -151,14 +151,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 9e7fb9a28ed0943bda8a1681223d8914
-      internalID: -125779450
+      spriteID: f71145beac2d94385abf67cc9e8530a4
+      internalID: -1053444823
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_1
+      name: roy_attack_1
       rect:
         serializedVersion: 2
         x: 640
@@ -173,14 +173,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6c0d7f6058dc24b1ebf0ca619187d97a
-      internalID: 131243492
+      spriteID: 98737141f6533472d822babc3b84e4a9
+      internalID: -547559072
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_2
+      name: roy_attack_2
       rect:
         serializedVersion: 2
         x: 1280
@@ -195,14 +195,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bbe4413e27edc43d785b2f17ab3d0963
-      internalID: 1985669868
+      spriteID: b70ad975fdaa247af8da87c695e09daa
+      internalID: -1892093062
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_3
+      name: roy_attack_3
       rect:
         serializedVersion: 2
         x: 1920
@@ -217,14 +217,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: dee7b1abb99a34c8eb97f6781d4c5e39
-      internalID: 978832533
+      spriteID: 484a27482cf5b4887a38d135511e6909
+      internalID: -166900464
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_4
+      name: roy_attack_4
       rect:
         serializedVersion: 2
         x: 0
@@ -239,14 +239,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 13a37325f08c941ea86ecf6681ec0b12
-      internalID: 1739493848
+      spriteID: 342e7f8d397484c1bb598c730328a2aa
+      internalID: -260557469
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_5
+      name: roy_attack_5
       rect:
         serializedVersion: 2
         x: 640
@@ -261,14 +261,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ff4bd6d9da5a541f0800c6431d4db248
-      internalID: 701534687
+      spriteID: 0158861e67bec450dac097bba3f671b8
+      internalID: 38102621
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_6
+      name: roy_attack_6
       rect:
         serializedVersion: 2
         x: 1280
@@ -283,14 +283,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 77a9cc3cb6910496da97b717d92f5f60
-      internalID: 1811095156
+      spriteID: 9a2fc4c196812427a8bf586b9ff1a871
+      internalID: 1367225847
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_7
+      name: roy_attack_7
       rect:
         serializedVersion: 2
         x: 1920
@@ -305,14 +305,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5abd946e7d0bf45bf871951b52211d51
-      internalID: 286516184
+      spriteID: dcb05d36c83b8459ba038263ffde1d2f
+      internalID: -1593233539
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_8
+      name: roy_attack_8
       rect:
         serializedVersion: 2
         x: 0
@@ -327,14 +327,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 18197afb247d240e79fee335519db52d
-      internalID: -2027579631
+      spriteID: 5e4eb8a3f127f473984f2117805341e3
+      internalID: 1705432427
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_9
+      name: roy_attack_9
       rect:
         serializedVersion: 2
         x: 640
@@ -349,14 +349,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 1487ade80e4654e5a83d061a1692f98b
-      internalID: 1130304646
+      spriteID: 46ab9d71749ef470ab993bc6244c42ae
+      internalID: 1646950763
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_10
+      name: roy_attack_10
       rect:
         serializedVersion: 2
         x: 1280
@@ -371,14 +371,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3e0e04ad961f047d3904c9fd648cf767
-      internalID: 1837468295
+      spriteID: a4f17c9a65cbc49f6bc4cd3fead70367
+      internalID: 1566696996
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_11
+      name: roy_attack_11
       rect:
         serializedVersion: 2
         x: 1920
@@ -393,14 +393,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c14d81816381944caa74ef02e7001ba7
-      internalID: -1825082458
+      spriteID: 2a3d42ff08fa74795b7370f80d6d957b
+      internalID: 223009867
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_12
+      name: roy_attack_12
       rect:
         serializedVersion: 2
         x: 0
@@ -415,14 +415,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 70b9f296761464239833e3c6a9b501a8
-      internalID: -1481939877
+      spriteID: 7606984c3f7204da6a4a76dd13cb13d4
+      internalID: -1795080057
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_13
+      name: roy_attack_13
       rect:
         serializedVersion: 2
         x: 640
@@ -437,14 +437,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 24ed8fcb969354f3e87822deea167df5
-      internalID: 1208895979
+      spriteID: df501239de1d24a18a66f836dcf1cd65
+      internalID: -108662319
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_14
+      name: roy_attack_14
       rect:
         serializedVersion: 2
         x: 1280
@@ -459,14 +459,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7140e5fb7c3fd46048165872ee6497de
-      internalID: 2086605942
+      spriteID: 34ce1c3c780f74003a316a225f5e56cc
+      internalID: 57670162
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: roy_attack_alpha_15
+      name: roy_attack_15
       rect:
         serializedVersion: 2
         x: 1920
@@ -481,8 +481,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b567c4be0b46e4ca39996099afe458ec
-      internalID: -1948029494
+      spriteID: d539673396605459db7aa0921e04a04c
+      internalID: -2097732952
       vertices: []
       indices: 
       edges: []
@@ -533,6 +533,22 @@ TextureImporter:
       good_attack_alpha_7: 238618499
       good_attack_alpha_8: 1774444831
       good_attack_alpha_9: 2054240761
+      roy_attack_0: -1053444823
+      roy_attack_1: -547559072
+      roy_attack_10: 1566696996
+      roy_attack_11: 223009867
+      roy_attack_12: -1795080057
+      roy_attack_13: -108662319
+      roy_attack_14: 57670162
+      roy_attack_15: -2097732952
+      roy_attack_2: -1892093062
+      roy_attack_3: -166900464
+      roy_attack_4: -260557469
+      roy_attack_5: 38102621
+      roy_attack_6: 1367225847
+      roy_attack_7: -1593233539
+      roy_attack_8: 1705432427
+      roy_attack_9: 1646950763
       roy_attack_alpha_0: -125779450
       roy_attack_alpha_1: 131243492
       roy_attack_alpha_10: 1837468295
