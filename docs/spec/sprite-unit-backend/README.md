@@ -1,6 +1,6 @@
 # Sprite Unit Backend
 
-상태: **구현 완료 2026-09-15 · Play 확인 대기** (units 0~3 커밋 · unit 4 에셋/테스트 커밋 · PlayMode lane 미실행 · 대상 유닛 미정)
+상태: **구현 완료 2026-09-15 · 라이브 3기 저작 2026-09-16** (units 0~6 커밋 · 말파이트=roy · 넉백머신=rosa · 이쑤시개=hidy(대기 컷) · PlayMode lane 미실행 · 사용자 Play 육안 대기)
 
 ## 검증 질문
 

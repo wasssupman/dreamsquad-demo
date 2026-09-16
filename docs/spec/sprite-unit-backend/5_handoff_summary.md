@@ -58,8 +58,9 @@
 
 ## Follow-up
 
-- ~~대상 유닛 결정~~ → 2026-09-16 재배정: **roy → 말파이트(`Defender_Malphite`)** · **rosa → 넉백머신(`Defender_AntiAir`)** · 이쑤시개는 Spine 복귀. 두 스프라이트 유닛 `deploymentDuration` 1.0(deploy 0.67s + 여유). rosa/roy_deploy 는 캔버스가 달라(셀 418×235) PPU 93/90 보정 — 시트를 640×360 캔버스로 다시 내보내면 128 로 통일 가능. 처음 Play 실측은 이쑤시개에서 `ea6da528`. Play 실측: 스폰·픽킹·공격 압축(Speed 2.22)·반전·반응·드래그 실루엣 전부 통과, 콘솔 0.
-  (`spriteMotions` 는 시트 컬럼이 없어 임포트에 안 덮인다.)
-- **PlayMode lane 1회 실행** + 사용자 Play 확인(배치 모션·공격 압축·픽킹·펀치·사망·퇴근 비행).
-- `good` 에 walk/death/deploy 시트가 없다 — 지금은 폴백(death 즉시 파괴·deploy→drag).
-- README 후속 후보 6건(풀·인터페이스 개명, idleVariants, 소환 오버라이드, 파츠 대안, Spine 은퇴).
+- **라이브 배정(2026-09-16)**: 말파이트=`MotionSet_roy`(idle·attack·drag·deploy) · 넉백머신=`MotionSet_rosa`(4모션) · 이쑤시개=`MotionSet_hidy`(idle1 + 대기 컷 idle2 · attack·drag·deploy). 세 유닛 `deploymentDuration` 1.0. idle·drag 는 12fps, attack·deploy 24fps.
+- **PlayMode lane 1회 실행**(`SpriteUnitBackendPlayTest` + `PatrolDefenderPlayTest`·`DefenderRetireTest` 회귀) — 에디터 포커스 필요, 사용자 확인 후.
+- **사용자 Play 육안** — 3기 배치→드래그 실루엣(drag 시트)→착지(deploy)→idle(hidy 는 쉼/컷)→공격→사망/퇴근.
+- **시트 캔버스 통일** — hidy(3종 캔버스)·rosa·roy_deploy 가 PPU 보정본(106.67 × 높이비). 셀 640×360·캐릭터 ~324px·발 여백 18px 로 재수출하면 보정 전부 제거.
+- **death 시트 없음(3기 전부)** — 지금은 사망 즉시 파괴. 저작되면 세트 `death` 에 꽂기만.
+- README 후속 후보(풀·인터페이스 개명, 소환 오버라이드, 파츠 대안, Spine 은퇴).
