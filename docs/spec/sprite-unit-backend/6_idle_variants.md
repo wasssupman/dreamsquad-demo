@@ -1,5 +1,7 @@
 # 6 · 대기 컷(idle breaks) — 쉼 → 한 바퀴 → 쉼
 
+> ⚠ **2026-09-17 rev(idle-break-shared)** — 「쉼 = idle 0프레임 정지」 틀은 폐기됐다. 지금은 **기본 idle 루프가 항상 돌고** `idleBreakInterval`(구 `idleRestGap`, FormerlySerializedAs) 초마다 `idleBreaks` 중 하나를 한 바퀴 끼운 뒤 루프로 돌아온다. 풀 = 컷만(`IdleBreakCount`/`IdleBreakAt`), 규칙은 `IdleBreakCycle` 이 Spine 뷰와 공유. 정본은 `docs/spec/idle-break-shared/`. 아래는 당시 기록.
+
 ## 목적
 
 `idle1`, `idle2` … 처럼 대기 시트가 여러 장인 캐릭터의 idle 상태를 만든다 (2026-09-16 사용자 결정):

@@ -63,7 +63,7 @@ handoff 는 `5_handoff_summary.md` (구현 종료 시).
 
 - **모션 슬롯은 Spine 이 정본이다.** `idle`(루프) · `walk`(루프) · `attack`(원샷) · `death`(원샷) ·
   `deploy`(원샷·방어유닛) · `drag`(루프·방어유닛) — 6개. ~~`idleVariants` 는 넣지 않는다~~ → **unit 6 에서 열림**(2026-09-16):
-  `idleBreaks[]` + `idleRestGap` — 쉼(idle 0프레임) → 풀에서 하나 **한 바퀴**(뷰가 길이를 잰다 · 시트 loop 무관) → 쉼. 슬롯별 루프 정책은 여전히 상수(idle = 루프). Spine 의 `SpineIdleVariants`(루프 이어 붙임)와 성질이 달라 이름도 갈랐다.
+  `idleBreaks[]` + `idleBreakInterval`(구 `idleRestGap`) — **rev 2026-09-17(idle-break-shared)**: 기본 idle 루프가 항상 돌고 N초마다 컷 하나 **한 바퀴**(뷰가 길이를 잰다 · 시트 loop 무관) → 루프. 슬롯별 루프 정책은 여전히 상수(idle = 루프). 규칙(`IdleBreakCycle`)과 데이터 모양은 Spine 의 `SpineIdleBreaks` 와 같다 — `docs/spec/idle-break-shared/`.
 
 - **빈 슬롯은 폴백하지 실패하지 않는다 — 단 `idle` 은 예외다.** 폴백은 순수 함수
   (`UnitSpriteMotionSet.Resolve*`, EditMode 테스트)가 정한다: `walk` 없음 → 이동/정지 구분 없이 idle ·

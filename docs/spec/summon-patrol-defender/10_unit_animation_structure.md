@@ -1,5 +1,7 @@
 # unit 10 — 유닛별 애니메이션 구조 (idle 변형 + 조건 루프 + 전이 원샷)
 
+> ⚠ **2026-09-17 idle-break-shared 로 대체됨** — 「idle 변형 루프 이어 붙임」(계약 5·7 의 `idleVariants` 순환)은 은퇴했다. 지금은 `idleBreaks`(FormerlySerializedAs) + `idleBreakInterval` 로 **기본 idle 루프가 항상 돌고 N초마다 컷 한 바퀴**를 끼우며, 규칙은 `IdleBreakCycle` 이 스프라이트 백엔드와 공유한다. 정본은 `docs/spec/idle-break-shared/`. 아래는 당시 기록.
+
 ## 목적
 
 요구사항 2 를 닫으면서, **특정 유닛이 자기만의 애니메이션 구조를 갖는 통로**를 연다. unit 8 이 "유닛마다 다른 스켈레톤"을 열었다면 이 unit 은 "유닛마다 다른 **재생 규칙**"을 연다.

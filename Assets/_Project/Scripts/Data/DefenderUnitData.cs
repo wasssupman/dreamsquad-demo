@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Wassup.Battle.Effects;
 
 namespace Wassup.Data
@@ -102,6 +103,8 @@ namespace Wassup.Data
         {
             if (!AttackShapeBake.From(attackShape, out _).IsOmni && attackTargetCount <= 1)
                 Debug.LogWarning($"[DefenderUnitData] {name}: 공격 도형을 저작했는데 attackTargetCount 가 1 — 도형은 부가 타격만 거르므로 효과가 없다.", this);
+            if (idleBreakInterval.x < 0f || idleBreakInterval.y < idleBreakInterval.x)
+                Debug.LogError($"[DefenderUnitData] {name}: idleBreakInterval 은 0 ≤ min ≤ max 여야 한다 (지금 {idleBreakInterval}).", this);
         }
 #endif
         public Mesh visualMesh;
@@ -354,7 +357,8 @@ namespace Wassup.Data
         // summon-patrol-defender unit 5 — 단 거점 수비 아군(Patrol)은 이동한다. 그 유닛만
         // walkAnimation 을 채운다. 기존 에셋은 null/"" 이라 현행 동작 그대로다(무회귀).
         public string SpineWalkAnimation => walkAnimation;
-        public IReadOnlyList<string> SpineIdleVariants => idleVariants;
+        public IReadOnlyList<string> SpineIdleBreaks => idleBreaks;
+        public Vector2 IdleBreakInterval => idleBreakInterval;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
@@ -411,9 +415,13 @@ namespace Wassup.Data
 
         // summon-patrol-defender unit 10 — idle 변형 풀. 직렬화 순서를 흔들지 않게 맨 뒤.
         // 비어 있으면 idleAnimation 단일 루프(현행). 2개 이상일 때만 순환이 의미를 갖는다.
-        [Header("Idle Variants")]
-        [Tooltip("대기 중 번갈아 재생할 애니 이름들. 비우면 idleAnimation 단일 루프.")]
-        public List<string> idleVariants = new List<string>();
+        [Header("Idle Breaks")]
+        [Tooltip("N초마다 한 번 끼워 넣는 대기 애니 이름들(기본 idleAnimation 은 넣지 않는다). 비우면 idle 단일 루프.")]
+        [FormerlySerializedAs("idleVariants")]
+        public List<string> idleBreaks = new List<string>();
+        // idle-break-shared — 컷 사이 간격(초) 범위. (N,N) = 고정. 맨 뒤(직렬화 순서 보존).
+        [Tooltip("대기 컷 사이 간격(초) 범위. 비어 있는 idleBreaks 면 무의미.")]
+        public Vector2 idleBreakInterval = new Vector2(1f, 3f);
 
         // sprite-unit-backend unit 0 — 스프라이트 백엔드 opt-in. 비면 Spine(현행). 맨 뒤(직렬화 순서 보존).
         [Header("Sprite Backend (임시)")]

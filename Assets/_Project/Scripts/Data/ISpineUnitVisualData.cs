@@ -14,13 +14,13 @@ namespace Wassup.Data
         SkeletonDataAsset SpineSkeletonDataAsset { get; }
         string SpineSkinName { get; }
         string SpineIdleAnimation { get; }
-        // summon-patrol-defender unit 10 — idle 변형 풀. 2개 이상이면 루프가 한 바퀴 끝날 때마다
-        // 다음 변형을 뽑아 이어 재생한다(직전과 같은 것은 피한다). 비어 있으면 SpineIdleAnimation
-        // 단일 루프 = 현행 동작이라 미저작 유닛은 무회귀다.
-        // 공용 인터페이스에 두는 이유: **어떤 유닛이든 가질 수 있는 성질**이다. 디펜더 전용
-        // IDefenderSpineExtras 에 넣어 적을 배제하는 방식은 무기 궤적에서 한 번 막다른 길이었다
-        // (그 인터페이스 주석 참조 — 보스/구조물을 넣을 길을 스스로 막았다).
-        IReadOnlyList<string> SpineIdleVariants { get; }
+        // summon-patrol-defender unit 10 → idle-break-shared(2026-09-17) — 대기 컷(idle break) 풀.
+        // 기본 idle 루프가 항상 돌고, IdleBreakInterval 초마다 여기 있는 애니 하나를 한 바퀴 끼운 뒤 루프로 돌아온다.
+        // 기본 idle 은 풀에 없다. 규칙은 IdleBreakCycle(Presentation)이 스프라이트 백엔드와 공유한다.
+        // 공용 인터페이스에 두는 이유: **어떤 유닛이든 가질 수 있는 성질**이다(무기 궤적의 IDefenderSpineExtras 막다른 길 참조).
+        IReadOnlyList<string> SpineIdleBreaks { get; }
+        // 컷 사이 간격(초) 범위. (N,N) = 고정 N초.
+        Vector2 IdleBreakInterval { get; }
         // enemy-walk-anim-speed unit 4 — 이동 중 재생할 걷기 애니. 비어 있으면
         // 이동/정지 구분 없이 SpineIdleAnimation 단일 루프(현행 동작 = 회귀 없음).
         // 설정 시: 이동 중 이 애니, 정지 중 SpineIdleAnimation 으로 자동 전환.
@@ -51,7 +51,7 @@ namespace Wassup.Data
 
         // sprite-unit-backend unit 0 — 스프라이트 모션 세트. **null = Spine(현행), 비null = 스프라이트.**
         // 이 getter 가 그 spec 이 「축이 쓰는 요소」에 하는 유일한 확장이다 — SpineUnitPool.TrySpawn 이
-        // 이 인터페이스만 받으므로 다른 길이 없다(SpineIdleVariants 와 같은 근거로 공용 인터페이스에 둔다).
+        // 이 인터페이스만 받으므로 다른 길이 없다(SpineIdleBreaks 와 같은 근거로 공용 인터페이스에 둔다).
         // 임시 기능 전제: 되돌리기 = 유닛 SO 의 그 필드를 비우는 것.
         UnitSpriteMotionSet SpriteMotions { get; }
     }

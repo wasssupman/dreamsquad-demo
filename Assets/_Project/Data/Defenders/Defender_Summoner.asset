@@ -96,7 +96,7 @@ MonoBehaviour:
   moveSpeed: 0
   walkAnimation: 
   outgameScaleMul: 0.372
-  idleVariants:
-  - idle
+  idleBreaks:
   - idle2
   - idle3
+  idleBreakInterval: {x: 1, y: 3}

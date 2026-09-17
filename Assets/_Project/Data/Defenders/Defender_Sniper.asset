@@ -16,25 +16,31 @@ MonoBehaviour:
   role: 1
   placementLayers: 1
   traversalLayers: 0
+  footprintWidth: 2
+  footprintHeight: 2
   displayName: "\uC2A4\uB098\uC774\uD37C"
   visible: 1
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC7A5\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
     \uC2A4\uD0AC: \uAE38\uBAA9 \uBC29\uD5A5\uC73C\uB85C \uAC15\uD55C \uD0C4\uD658
     \uBC1C\uC0AC\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 250
-  footprintWidth: 2
-  footprintHeight: 2
   attackRange: 4
+  impactSocketHeight: 0
   attackCooldown: 2.5
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef101, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: ef4b79448a0a040b595fe501d4344289, type: 3}
   attackSfxClip: {fileID: 0}
   attackVfxScale: 1
   attackVfxFacesTarget: 0
+  attackVfxAtAttacker: 0
   attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 11400000, guid: 3ff11c1bd9a37449fb137b0993b15d0b, type: 2}
@@ -46,12 +52,6 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 0
-  onPlaceRange: 8
-  onPlaceMagnitude: 120
-  onPlaceDuration: 0
-  onPlaceStackKind: 0
-  onPlaceTickInterval: 0
   onPlaceShakeStrength: 0
   onPlaceShakeDuration: 0
   cost: 5
@@ -67,27 +67,16 @@ MonoBehaviour:
   rarity: 1
   portrait: {fileID: 21300000, guid: 47d2be793bc424506bdd7474bb64040b, type: 3}
   aggroCapacity: 0
-  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
-  spineSkinName: full_skins
+  skeletonDataAsset: {fileID: 11400000, guid: 2a1d1345636254818bc7f1519d130db7, type: 2}
+  spineSkinName: 
   idleAnimation: Idle
-  attackAnimation: Attack3
-  deathAnimation: Die
-  spineVisualScale: 1.69
-  partSkins:
-  - boots/boots_c_16
-  - bottom/bottom_c_50
-  - brow/brow_c_7
-  - eyes/eyes_c_17
-  - gloves/gloves_c_13
-  - hair_hat/hair_hat_c_15
-  - helmet/helmet_c_55
-  - mouth/mouth_c_6
-  - gear_right/gear_right_c_38
-  - top/top_c_18
-  - skin/skin_1
+  attackAnimation: attack
+  deathAnimation: 
+  spineVisualScale: 0.52
+  partSkins: []
   slotColors: []
-  dragAnimation: Attack1
-  deployAnimation: Hit
+  dragAnimation: 
+  deployAnimation: drop
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
   attackVfxPrefab: {fileID: 0}
   deployCutsceneFrames:
@@ -151,10 +140,7 @@ MonoBehaviour:
   sleepOnHitSec: 0
   knockupOnHitSec: 0
   knockupVisualHeight: 1.2
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
-  castAnchorBone: WEAPON
+  castAnchorBone: Muzzle
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
@@ -163,5 +149,8 @@ MonoBehaviour:
   weaponTrailEndNormalized: 0.31
   moveSpeed: 1.5
   walkAnimation: 
-  outgameScaleMul: 1
-  idleVariants: []
+  outgameScaleMul: 0.372
+  idleBreaks:
+  - Idle2
+  idleBreakInterval: {x: 1, y: 3}
+  spriteMotions: {fileID: 0}

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Wassup.Data
 {
@@ -212,7 +213,8 @@ namespace Wassup.Data
         public string SpineSkinName => spineSkinName;
         public string SpineIdleAnimation => idleAnimation;
         public string SpineWalkAnimation => walkAnimation;
-        public IReadOnlyList<string> SpineIdleVariants => idleVariants;
+        public IReadOnlyList<string> SpineIdleBreaks => idleBreaks;
+        public Vector2 IdleBreakInterval => idleBreakInterval;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
@@ -296,9 +298,13 @@ namespace Wassup.Data
         // summon-patrol-defender unit 10 — idle 변형 풀. 적도 가질 수 있는 성질이라 공용
         // 인터페이스에 있고, 여기선 저작 슬롯만 연다. 비어 있음 = 현행(단일 idle 루프).
         // 지금 이 값을 채운 적 에셋은 없다.
-        [Header("Idle Variants")]
-        [Tooltip("대기 중 번갈아 재생할 애니 이름들. 비우면 idleAnimation 단일 루프.")]
-        public List<string> idleVariants = new List<string>();
+        [Header("Idle Breaks")]
+        [Tooltip("N초마다 한 번 끼워 넣는 대기 애니 이름들(기본 idleAnimation 은 넣지 않는다). 비우면 idle 단일 루프.")]
+        [FormerlySerializedAs("idleVariants")]
+        public List<string> idleBreaks = new List<string>();
+        // idle-break-shared — 컷 사이 간격(초) 범위. (N,N) = 고정. 맨 뒤(직렬화 순서 보존).
+        [Tooltip("대기 컷 사이 간격(초) 범위. 비어 있는 idleBreaks 면 무의미.")]
+        public Vector2 idleBreakInterval = new Vector2(1f, 3f);
 
         // elite-enemy-tier unit 0 — 등급 축. **BossTag·위협테이블·등장경보의 유일한 출처**다
         // (그 앞까지는 「nightmareMechanics 가 비어있지 않으면 곧 보스」였다 —

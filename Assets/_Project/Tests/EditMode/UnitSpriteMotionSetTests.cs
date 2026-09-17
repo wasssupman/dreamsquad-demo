@@ -101,14 +101,13 @@ public class UnitSpriteMotionSetTests
         Assert.AreSame(_drag, _set.ResolveDrag());
     }
 
-    // unit 6 — 대기 컷 풀: 0번 = idle, 1번~ = 대기 컷. 비면 컷 모드가 아니다.
+    // idle-break-shared — 풀 = 컷만. 기본 idle 은 항상 도는 것이지 끼워 넣는 것이 아니다.
     [Test]
-    public void IdlePool_IsIdlePlusBreaks_InOrder()
+    public void IdleBreaks_ExcludeBaseIdle_InOrder()
     {
         Slot("idle", _idle);
         Assert.IsFalse(_set.HasIdleBreaks);
-        Assert.AreEqual(1, _set.IdlePoolCount);
-        // 합성 시트는 프레임이 0 이라 OnValidate 가 「비었거나 프레임 0」 에러를 낸다 — 그 검증이 의도된 동작이다.
+        Assert.AreEqual(0, _set.IdleBreakCount);
         LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleBreaks\\[0\\]"));
         LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleBreaks\\[1\\]"));
         var so = new SerializedObject(_set);
@@ -118,27 +117,27 @@ public class UnitSpriteMotionSetTests
         list.GetArrayElementAtIndex(1).objectReferenceValue = _attack;
         so.ApplyModifiedPropertiesWithoutUndo();
         Assert.IsTrue(_set.HasIdleBreaks);
-        Assert.AreEqual(3, _set.IdlePoolCount);
-        Assert.AreSame(_idle, _set.IdlePoolAt(0), "쉬는 그림의 출처 = 0번 = idle");
-        Assert.AreSame(_walk, _set.IdlePoolAt(1));
-        Assert.AreSame(_attack, _set.IdlePoolAt(2));
-        Assert.IsNull(_set.IdlePoolAt(3));
+        Assert.AreEqual(2, _set.IdleBreakCount);
+        Assert.AreSame(_walk, _set.IdleBreakAt(0));
+        Assert.AreSame(_attack, _set.IdleBreakAt(1));
+        Assert.IsNull(_set.IdleBreakAt(2));
+        Assert.AreSame(_idle, _set.Idle, "기본 idle 은 풀 밖에 그대로");
     }
 
     [Test]
-    public void IdleRestGap_LerpsWithinRange_AndNeverNegative()
+    public void IdleBreakInterval_LerpsWithinRange_AndNeverNegative()
     {
         var so = new SerializedObject(_set);
-        so.FindProperty("idleRestGap").vector2Value = new Vector2(1f, 3f);
+        so.FindProperty("idleBreakInterval").vector2Value = new Vector2(1f, 3f);
         so.ApplyModifiedPropertiesWithoutUndo();
-        Assert.AreEqual(1f, _set.PickIdleRestGap(0f), 1e-5f);
-        Assert.AreEqual(2f, _set.PickIdleRestGap(0.5f), 1e-5f);
-        Assert.AreEqual(3f, _set.PickIdleRestGap(1f), 1e-5f);
-        Assert.AreEqual(3f, _set.PickIdleRestGap(7f), 1e-5f, "roll 은 0..1 로 클램프");
-        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleRestGap"));   // 음수 저작 = 검증기가 잡는 저작 오류
-        so.FindProperty("idleRestGap").vector2Value = new Vector2(-2f, -1f);
+        Assert.AreEqual(1f, _set.PickIdleBreakInterval(0f), 1e-5f);
+        Assert.AreEqual(2f, _set.PickIdleBreakInterval(0.5f), 1e-5f);
+        Assert.AreEqual(3f, _set.PickIdleBreakInterval(1f), 1e-5f);
+        Assert.AreEqual(3f, _set.PickIdleBreakInterval(7f), 1e-5f, "roll 은 0..1 로 클램프");
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("idleBreakInterval"));   // 음수 저작 = 검증기가 잡는 저작 오류
+        so.FindProperty("idleBreakInterval").vector2Value = new Vector2(-2f, -1f);
         so.ApplyModifiedPropertiesWithoutUndo();
-        Assert.AreEqual(0f, _set.PickIdleRestGap(0.5f), "음수 저작은 0 으로 — 뷰는 쉼 0 을 「다음 틱에 바로 다음 컷」으로 읽는다(연속 재생)");
+        Assert.AreEqual(0f, _set.PickIdleBreakInterval(0.5f), "음수 저작은 0 으로 — 컷 끝나자마자 다음 컷");
     }
 
     [Test]

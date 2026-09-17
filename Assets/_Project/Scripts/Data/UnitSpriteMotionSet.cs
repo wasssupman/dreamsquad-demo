@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Wassup.Data
 {
@@ -32,17 +33,16 @@ namespace Wassup.Data
         [Tooltip("드래그 중 루프. 비면 idle.")]
         [SerializeField] private SpriteFlipbookData drag;
 
-        // sprite-unit-backend unit 6 — 대기 컷(idle break, 2026-09-16 사용자 결정). 비어 있으면 idle 단일 루프(현행).
-        // 하나라도 있으면 idle 상태의 모양이 바뀐다: idle 의 0 프레임으로 **쉬다가** → 쉬는 시간이 끝나면
-        // 풀(idle + 대기 컷들)에서 하나를 뽑아 **한 바퀴** 틀고 → 다시 쉰다.
-        // ⚠ 「한 바퀴」는 뷰가 FlipbookMath.Duration 으로 재서 끝낸다 — 시트의 loop 체크박스를 **보지 않는다**.
-        //   그래서 idle 은 변형 유무와 무관하게 루프 슬롯이고(폴백 소비자들이 그 루프에 기댄다), 슬롯별 루프 정책은
-        //   전부 상수로 남는다(리뷰 M1). Spine 의 SpineIdleVariants(애니 이름 · 루프 이어 붙임)와는 이름부터 갈랐다.
+        // sprite-unit-backend unit 6 → idle-break-shared(2026-09-17) — 대기 컷(idle break). 비어 있으면 idle 단일 루프(현행).
+        // 틀: **기본 idle 루프가 항상 돌고**, N초마다 여기 있는 컷 하나를 한 바퀴 끼운 뒤 루프로 돌아온다. 기본 idle 은 풀에 없다.
+        // 「한 바퀴」는 뷰가 FlipbookMath.Duration 으로 재서 끝낸다 — 시트의 loop 체크박스를 보지 않는다. 그래서 슬롯별 루프 정책은
+        // 상수(idle = 루프)로 남는다. 규칙 자체(타이머·직전 회피)는 IdleBreakCycle(Presentation)이 Spine 과 공유한다.
         [Header("대기 컷 (idle breaks)")]
-        [Tooltip("추가 대기 모션. 하나라도 있으면 「idle 0프레임으로 쉼 → 풀(idle+대기 컷)에서 하나 한 바퀴 → 쉼」을 반복한다. loop 설정은 무관.")]
+        [Tooltip("N초마다 한 번 끼워 넣는 대기 모션들. 기본 idle 은 여기 넣지 않는다. loop 설정은 무관(한 바퀴만 튼다).")]
         [SerializeField] private List<SpriteFlipbookData> idleBreaks = new List<SpriteFlipbookData>();
-        [Tooltip("대기 컷 사이 쉬는 시간(초) 범위. 쉬는 동안은 idle 의 0 프레임으로 선다. (0,0) = 쉼 없이 연속 재생.")]
-        [SerializeField] private Vector2 idleRestGap = new Vector2(1f, 3f);
+        [Tooltip("컷 사이 간격(초) 범위. (N,N) = 고정 N초. (0,0) = 컷 끝나자마자 다음 컷.")]
+        [FormerlySerializedAs("idleRestGap")]
+        [SerializeField] private Vector2 idleBreakInterval = new Vector2(1f, 3f);
 
         [Header("시트 규약")]
         [Tooltip("시트가 오른쪽(+x)을 보고 그려졌으면 체크. 기본 규약은 Spine 리그와 같이 「왼쪽을 본다」 — " +
@@ -59,19 +59,15 @@ namespace Wassup.Data
 
         public bool HasIdle => idle != null;
 
-        // 대기 컷 모드인가. 풀 = idle(0번) + idleBreaks(1번~). 쉬는 그림은 항상 idle 의 0 프레임.
+        // 대기 컷이 저작돼 있나. 풀 = idleBreaks 만(기본 idle 은 항상 도는 것이지 끼워 넣는 것이 아니다).
         public bool HasIdleBreaks => idleBreaks != null && idleBreaks.Count > 0;
-        public int IdlePoolCount => idle == null ? 0 : 1 + (idleBreaks != null ? idleBreaks.Count : 0);
-        public SpriteFlipbookData IdlePoolAt(int index)
-        {
-            if (index == 0) return idle;
-            int v = index - 1;
-            return idleBreaks != null && v >= 0 && v < idleBreaks.Count ? idleBreaks[v] : null;
-        }
-        public Vector2 IdleRestGap => idleRestGap;
-        // 쉬는 시간 하나를 뽑는다. roll 은 0..1 난수(프레젠테이션 난수 — sim 난수와 섞지 않는다).
-        public float PickIdleRestGap(float roll) =>
-            Mathf.Max(0f, Mathf.Lerp(idleRestGap.x, idleRestGap.y, Mathf.Clamp01(roll)));
+        public int IdleBreakCount => idleBreaks != null ? idleBreaks.Count : 0;
+        public SpriteFlipbookData IdleBreakAt(int index) =>
+            idleBreaks != null && index >= 0 && index < idleBreaks.Count ? idleBreaks[index] : null;
+        public Vector2 IdleBreakInterval => idleBreakInterval;
+        // 다음 컷까지의 간격 하나를 뽑는다. roll 은 0..1 난수(프레젠테이션 난수 — sim 난수와 섞지 않는다).
+        public float PickIdleBreakInterval(float roll) =>
+            Mathf.Max(0f, Mathf.Lerp(idleBreakInterval.x, idleBreakInterval.y, Mathf.Clamp01(roll)));
 
         // 이동 중이고 walk 가 있으면 walk, 아니면 idle. Spine ResolveLocomotionAnimation 과 같은 규칙.
         public SpriteFlipbookData ResolveLocomotion(bool moving) =>
@@ -94,14 +90,14 @@ namespace Wassup.Data
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            // 슬롯별 루프 정책은 상수다 — idle 은 대기 컷 유무와 무관하게 루프(대기 컷의 「한 바퀴」는 뷰가 길이를 잰다).
+            // 슬롯별 루프 정책은 상수다 — idle 은 대기 컷 유무와 무관하게 루프(기본 루프가 항상 돈다).
             WarnLoopPolicy(nameof(idle), idle, wantLoop: true);
             if (idleBreaks != null)
                 for (int i = 0; i < idleBreaks.Count; i++)
                     if (idleBreaks[i] == null || idleBreaks[i].FrameCount == 0)
                         Debug.LogError($"UnitSpriteMotionSet '{name}': idleBreaks[{i}] 이 비었거나 프레임이 0 — 뽑히면 건너뛴다.", this);
-            if (idleRestGap.x < 0f || idleRestGap.y < idleRestGap.x)
-                Debug.LogError($"UnitSpriteMotionSet '{name}': idleRestGap 은 0 ≤ min ≤ max 여야 한다 (지금 {idleRestGap}).", this);
+            if (idleBreakInterval.x < 0f || idleBreakInterval.y < idleBreakInterval.x)
+                Debug.LogError($"UnitSpriteMotionSet '{name}': idleBreakInterval 은 0 ≤ min ≤ max 여야 한다 (지금 {idleBreakInterval}).", this);
             WarnLoopPolicy(nameof(walk), walk, wantLoop: true);
             WarnLoopPolicy(nameof(drag), drag, wantLoop: true);
             WarnLoopPolicy(nameof(attack), attack, wantLoop: false);

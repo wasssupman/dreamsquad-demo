@@ -31,12 +31,17 @@ MonoBehaviour:
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
+  attackShape:
+    kind: 0
+    angleDeg: 360
+    width: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: 005ae8f0afe4f492f8300ea11dd12bb7, type: 3}
   attackSfxClip: {fileID: 8300000, guid: e8962da3f1ead45c6a177491b461d564, type: 3}
   attackVfxScale: 1
   attackVfxFacesTarget: 0
+  attackVfxAtAttacker: 0
   attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
@@ -64,28 +69,16 @@ MonoBehaviour:
   rarity: 2
   portrait: {fileID: 21300000, guid: 6418d1fd7f1c44234af1bd185238dfe6, type: 3}
   aggroCapacity: 2
-  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
-  spineSkinName: full_skins
-  idleAnimation: Idle
-  attackAnimation: Attack3
-  deathAnimation: Die
-  spineVisualScale: 1.69
-  partSkins:
-  - boots/boots_c_18
-  - bottom/bottom_c_18
-  - brow/brow_c_10
-  - eyes/eyes_c_10
-  - gloves/gloves_c_15
-  - hair_hat/hair_hat_c_10
-  - helmet/helmet_c_40
-  - mouth/mouth_c_9
-  - gear_left/gear_left_c_10
-  - gear_right/gear_right_c_2
-  - top/top_c_30
-  - skin/skin_1
+  skeletonDataAsset: {fileID: 11400000, guid: 7c3f1a541b5c9481098aedebd3be5745, type: 2}
+  spineSkinName: 
+  idleAnimation: idle2
+  attackAnimation: attack
+  deathAnimation: 
+  spineVisualScale: 0.3
+  partSkins: []
   slotColors: []
-  dragAnimation: Attack1
-  deployAnimation: Hit
+  dragAnimation: 
+  deployAnimation: drop
   placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
   attackVfxPrefab: {fileID: 3398366222349601506, guid: 8a96702a3dfb5af449dca32388593992, type: 3}
   deployCutsceneFrames: []
@@ -108,5 +101,9 @@ MonoBehaviour:
   weaponTrailEndNormalized: 0.31
   moveSpeed: 1.5
   walkAnimation: 
-  outgameScaleMul: 1
-  idleVariants: []
+  outgameScaleMul: 0.372
+  idleBreaks:
+  - idle1
+  - idle3
+  idleBreakInterval: {x: 1, y: 3}
+  spriteMotions: {fileID: 0}
