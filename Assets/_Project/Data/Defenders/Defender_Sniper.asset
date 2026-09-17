@@ -72,7 +72,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: attack
   deathAnimation: 
-  spineVisualScale: 0.52
+  spineVisualScale: 1.04
   partSkins: []
   slotColors: []
   dragAnimation: 
