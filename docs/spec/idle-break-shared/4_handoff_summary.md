@@ -12,7 +12,7 @@
 - `UnitSpriteMotionSet`: 풀 = 컷만(`IdleBreakCount`/`IdleBreakAt`), `idleRestGap` → `idleBreakInterval`(FormerlySerializedAs), `PickIdleBreakInterval`.
 - Spine 데이터: `idleVariants` → `idleBreaks`(FormerlySerializedAs) + `idleBreakInterval`(맨 뒤) — Defender/Attack 둘 다. `ISpineUnitVisualData.SpineIdleBreaks`/`IdleBreakInterval`.
 - `SpineUnitView`: 루프 이어붙임(`AdvanceIdleVariant`·`HookIdleVariantCycle`·`OnIdleVariantComplete`) 은퇴 → `TickIdleCycle`(UpdatePosition, 배틀 스케일). 컷은 **loop:true 엔트리 + Animation.Duration 타이머**(계약 5 유지). 원샷·배치·오버라이드 이탈 시 `StopIdleCycle()` → 큐 복귀는 기본 idle, 그 루프가 실제로 돌기 시작한 프레임에 타이머 재개.
-- 저작: 스나이퍼 = CH2(`Idle` / `[Idle2]` / attack / drop / Muzzle / scale 1.04), 실드셔틀 = CH3(`idle2` / `[idle1, idle3]` / attack / drop / scale 0.60) — 초기 0.52/0.30 을 사용자 지시로 2배, 소환사 `[idle2, idle3]`. 셋 다 interval (1,3), `outgameScaleMul` 0.372(CH1 과 동일).
+- 저작: 스나이퍼 = CH2(`Idle` / `[Idle2]` / attack / drop / Muzzle / scale 0.832 · `hitDelaySec` 1.0 = attack 리코일 키 1.0s 에 발사 맞춤 · 시트 push 됨), 실드셔틀 = CH3(`idle2` / `[idle1, idle3]` / attack / drop / scale 0.48) — 초기 0.52/0.30 → ×2 → ×0.8 (사용자 지시), 소환사 `[idle2, idle3]`. 셋 다 interval (1,3), `outgameScaleMul` 0.372(CH1 과 동일).
 
 ## Key Files
 

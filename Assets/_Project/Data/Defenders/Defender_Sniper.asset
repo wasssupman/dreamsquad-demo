@@ -27,7 +27,7 @@ MonoBehaviour:
   attackRange: 4
   impactSocketHeight: 0
   attackCooldown: 2.5
-  hitDelaySec: 0.3
+  hitDelaySec: 1
   deployDelaySec: 0
   attackTargetCount: 1
   attackShape:
@@ -72,7 +72,7 @@ MonoBehaviour:
   idleAnimation: Idle
   attackAnimation: attack
   deathAnimation: 
-  spineVisualScale: 1.04
+  spineVisualScale: 0.832
   partSkins: []
   slotColors: []
   dragAnimation: 
