@@ -69,16 +69,16 @@ MonoBehaviour:
   rarity: 2
   portrait: {fileID: 21300000, guid: 6418d1fd7f1c44234af1bd185238dfe6, type: 3}
   aggroCapacity: 2
-  skeletonDataAsset: {fileID: 11400000, guid: 7c3f1a541b5c9481098aedebd3be5745, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: d0c7eaf63027c49d3894ccf552e4c878, type: 2}
   spineSkinName: 
-  idleAnimation: idle2
-  attackAnimation: attack
+  idleAnimation: idle1
+  attackAnimation: attack4
   deathAnimation: 
-  spineVisualScale: 0.48
+  spineVisualScale: 0.73
   partSkins: []
   slotColors: []
   dragAnimation: 
-  deployAnimation: drop
+  deployAnimation: skill
   placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
   attackVfxPrefab: {fileID: 3398366222349601506, guid: 8a96702a3dfb5af449dca32388593992, type: 3}
   deployCutsceneFrames: []
@@ -103,7 +103,6 @@ MonoBehaviour:
   walkAnimation: 
   outgameScaleMul: 0.372
   idleBreaks:
-  - idle1
-  - idle3
+  - idle2
   idleBreakInterval: {x: 1, y: 3}
   spriteMotions: {fileID: 0}
