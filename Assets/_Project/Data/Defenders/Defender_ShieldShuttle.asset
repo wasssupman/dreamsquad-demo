@@ -29,7 +29,7 @@ MonoBehaviour:
   impactSocketHeight: 0
   attackCooldown: 1.9
   hitDelaySec: 0.3
-  deployDelaySec: 0
+  deployDelaySec: 0.67
   attackTargetCount: 1
   attackShape:
     kind: 0

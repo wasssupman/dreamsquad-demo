@@ -28,7 +28,7 @@ MonoBehaviour:
   impactSocketHeight: 0
   attackCooldown: 1.6
   hitDelaySec: 0.3
-  deployDelaySec: 0
+  deployDelaySec: 0.97
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef104, type: 2}

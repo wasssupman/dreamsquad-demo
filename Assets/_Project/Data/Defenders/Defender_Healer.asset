@@ -26,7 +26,7 @@ MonoBehaviour:
   attackRange: 2
   attackCooldown: 3.15
   hitDelaySec: 0.3
-  deployDelaySec: 0
+  deployDelaySec: 0.97
   attackTargetCount: 3
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0fa3aa86ccc0643bcba349ade2f4baea, type: 2}
