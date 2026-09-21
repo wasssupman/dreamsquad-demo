@@ -15,7 +15,7 @@ namespace Wassup.Tests.PlayMode
 {
     // defender-drop-dismount unit 5 — 하마 비행 계약 회귀 가드.
     //   계약 5: 핸드오프 팝 0(고스트 마지막 발점 ≈ 첫 오버라이드)
-    //   계약 4: 활성화 시계 commit 기준(deploymentDuration), 착지 ≤ 활성화
+    //   계약 4 rev(defender-deploy-phase): 활성화 = 착지 + 배치 모션 길이(DeployMotionSeconds), 착지 ≤ 활성화
     //   계약 1 rev(unit 7): 배치 3종(트레이 D&D · 탭투플레이스 · armed 보드드래그) 전부 dismount 발동
     //   계약 7: 비행은 세션 독립(새 드래그가 이전 비행을 죽이지 않음)
     public class DropDismountTest
@@ -110,7 +110,7 @@ namespace Wassup.Tests.PlayMode
             // 화면 위로 올라가 보드 안에 들어오고, 취소가 아니라 배치가 되어 이 섹션의 의도가 조용히 사라진다.
             ctrl.EndDrag(DriveAiming(ctrl, new Vector2(Screen.width * 0.5f, Screen.height * 0.01f)));
 
-            // ── 3) 활성화 시계: commit + deploymentDuration(±0.15s 창), 착지 ≤ 활성화 ──
+            // ── 3) 활성화 시계: commit + 비행(dropTotalSeconds) + 배치 모션 길이(DeployMotionSeconds), 착지 ≤ 활성화 ──
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             float deadline = Time.realtimeSinceStartup + 5f;
             while (Time.realtimeSinceStartup < deadline
@@ -118,11 +118,15 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             float activationElapsed = Time.realtimeSinceStartup - commitTime;
             Assert.IsFalse(em.HasComponent<Wassup.Battle.Units.PendingDeployment>(entityA), "activated");
-            float expected = Mathf.Max(0f, unit.deploymentDuration);
-            // 창 상한 +0.25 는 에디터 프레임 히치 여유 — 진짜 회귀(착지 후 시계 시작 = +0.45 시프트)와는
-            // 명확히 구분된다. 하한은 조기 활성화(클램프 위반) 검출.
+            // defender-deploy-phase — 비행은 unscaled 프레젠테이션 시간, 배치 모션은 배틀 시간(테스트는 스케일 1).
+            var cfgField = typeof(DefenderDragPlacementController).GetField("_cfg",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cfg = cfgField?.GetValue(ctrl) as DragSwaySettings;
+            float flight = cfg != null ? Mathf.Max(0.05f, cfg.dropTotalSeconds) : 0.45f;
+            float expected = flight + Mathf.Max(0f, unit.DeployMotionSeconds);
+            // 창 상한 +0.25 는 에디터 프레임 히치 여유. 하한은 조기 활성화(착지 전·모션 중) 검출.
             Assert.That(activationElapsed, Is.InRange(expected - 0.05f, expected + 0.25f),
-                $"활성화 = commit + deploymentDuration({expected}s) 유지(계약 4). 실측 {activationElapsed:F3}s");
+                $"활성화 = commit + 비행({flight:F2}s) + 배치 모션({unit.DeployMotionSeconds:F2}s) (계약 4 rev). 실측 {activationElapsed:F3}s");
             for (int i = 0; i < 2; i++) yield return null;
             Assert.IsFalse(GetOverride(bridge, entityA).HasValue,
                 "착지(오버라이드 해제)가 활성화보다 늦지 않다(계약 3 클램프)");
@@ -154,7 +158,7 @@ namespace Wassup.Tests.PlayMode
                 yield return null;
             }
             Assert.AreNotEqual(Entity.Null, entityB, "tap placement landed");
-            // 하마 비행 창(dropTotalSeconds, deploymentDuration 으로 클램프)이 도는 동안 오버라이드가
+            // 하마 비행 창(dropTotalSeconds)이 도는 동안 오버라이드가
             // 살아 있어야 한다. 상한 2s 는 안전망 — 그 안에 반드시 착지한다(계약 3).
             float tapFlightDeadline = Time.realtimeSinceStartup + 2f;
             while (Time.realtimeSinceStartup < tapFlightDeadline && GetOverride(bridge, entityB).HasValue)

@@ -21,6 +21,7 @@ namespace Wassup.Presentation
         private Entity _entity;
         private bool _dying;
         private string _attackAnimationName;
+        private string _deployAnimationName;   // defender-deploy-phase unit 3 — 진행 중 배치 원샷 판별(공격 큐잉)
         // continuous-agent-movement 후속(2026-08-09 제자리 좌우 팩팩거림) — 누적 히스테리시스.
         // 규칙과 상수(epsilon·0.05 타일)는 UnitFacing 이 소유한다(sprite-unit-backend unit 1 이관).
         private float _pendingFlipAccum;
@@ -573,7 +574,12 @@ namespace Wassup.Presentation
             if (string.IsNullOrEmpty(attack)) return;
             _attackAnimationName = attack;
             var state = _skeleton.AnimationState;
-            var entry = state.SetAnimation(0, attack, false);
+            // defender-deploy-phase unit 3 — 원샷 순서 Death > Deploy > Attack. 배치 원샷이 트랙 0 에 진행 중이면 자르지 않고
+            // 큐에 얹는다(ClearLoopOverride 의 관용구). sim 이 Deploying 중 공격을 막으니 2중 방어 — 뷰가 sim 순서에 기대지 않게.
+            var current = state.GetTrack(0);
+            bool deployPlaying = current != null && !current.Loop && !current.IsComplete
+                && current.Animation != null && current.Animation.Name == _deployAnimationName;
+            var entry = deployPlaying ? state.AddAnimation(0, attack, false, 0f) : state.SetAnimation(0, attack, false);
             // attack-anim-speed-match — 공격 애니를 실제 발사 주기(sim 값, max(간격, hitDelay))에 맞춰
             // 압축 재생(compress-to-fit). TrackEntry.TimeScale 은 이 공격 애니만 스케일 →
             // skeleton.timeScale(걷기/battleScale)과 독립 곱. 별도 튜닝 데이터 없이 공격속도 필드에서 직접 도출.
@@ -637,14 +643,11 @@ namespace Wassup.Presentation
             // and never invoke this path; guarding here prevents accidental
             // animation triggers if an enemy entity ever reaches it.
             if (_defenderExtras == null) return false;
-            string animation = ResolveAnimation(
-                _defenderExtras.SpineDeployAnimation,
-                _defenderExtras.SpineDragAnimation,
-                _visualData.SpineAttackAnimation,
-                _visualData.SpineIdleAnimation,
-                "idle",
-                "walk");
+            // defender-deploy-phase unit 3 — 명시 슬롯만. 폴백 체인(drag→attack→idle)은 은퇴: 길이의 출처(DeployMotionSeconds,
+            // 명시 슬롯)와 재생의 출처가 같아야 sim 근거 없는 연출 지연이 생기지 않는다. 없으면 false = 배치 모션 없음.
+            string animation = ResolveAnimation(_defenderExtras.SpineDeployAnimation);
             if (string.IsNullOrEmpty(animation)) return false;
+            _deployAnimationName = animation;
             var state = _skeleton.AnimationState;
             state.SetAnimation(0, animation, false);
             // enemy-walk-anim-speed unit 4 — 배치 후 복귀도 로코모션 리졸브 경유.

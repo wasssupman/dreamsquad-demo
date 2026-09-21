@@ -310,6 +310,10 @@ namespace Wassup.Battle.Combat
                     (ccActionLookup.HasBuffer(attackerEntity)
                      && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]))
                     || leapFlightLookup.HasComponent(attackerEntity);
+                // defender-deploy-phase unit 3 — START 가능 여부는 UnitActionPhase 가 답한다(추출 · 동작 무변).
+                // Deploying·Dead 는 쿼리 랭크(위 WithNone)라 여기 오지 않는다.
+                bool canStart = UnitActionPhase.CanStartAction(
+                    UnitActionPhase.Resolve(actionLocked, attack.ValueRO.hitDelayRemaining > 0f));
 
                 // bomb-thrower-defender unit 4 — 폭탄맨은 일반 타겟팅/RESOLVE 경로를 타지
                 // 않으므로 여기서 처리하고 continue. CC(action-lock)는 일반 공격과 동일하게
@@ -321,7 +325,7 @@ namespace Wassup.Battle.Combat
                 // 착지 칸은 발사 시점 스냅샷이다 — 적이 걸어 나가면 빗나간다(유도 아님).
                 if (bombLauncherLookup.HasComponent(attackerEntity))
                 {
-                    if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f
+                    if (canStart && attack.ValueRO.cooldownRemaining <= 0f
                         && projectileRefLookup.HasComponent(attackerEntity))
                     {
                         var bomb = bombLauncherLookup[attackerEntity];
@@ -433,7 +437,7 @@ namespace Wassup.Battle.Combat
                 // bombardment 를 그대로 따르지 않는 지점이다. 상세는 아래 게이트 블록.
                 if (summonerLookup.HasComponent(attackerEntity))
                 {
-                    if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f)
+                    if (canStart && attack.ValueRO.cooldownRemaining <= 0f)
                     {
                         var summoner = summonerLookup[attackerEntity];
                         // 계약 9 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
@@ -953,7 +957,7 @@ namespace Wassup.Battle.Combat
                     if (rem <= 0f) doResolve = true;   // 지연 만료 → 이번 프레임 타격
                     // 지연 중엔 새 공격 START 안 함
                 }
-                else if (!actionLocked && bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                else if (canStart && bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
                     // ── START ── 애니메이션 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
                     bool isDefenderStart = defenderTagLookup.HasComponent(attackerEntity);

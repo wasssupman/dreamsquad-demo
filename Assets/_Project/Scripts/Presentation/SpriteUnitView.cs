@@ -30,6 +30,10 @@ namespace Wassup.Presentation
         private bool _dying;
         // 진행 중인 원샷(attack/deploy/death). null = 로코모션 루프 중.
         private SpriteFlipbookData _oneShot;
+        // defender-deploy-phase unit 3 — 배치 원샷 중 들어온 공격 1칸 큐(원샷 순서 Death > Deploy > Attack).
+        private SpriteFlipbookData _queuedAttack;
+        private float _queuedAttackSpeed;
+        private float _queuedTrailSeconds;
         private float _pendingFlipAccum;
         // sim 좌표 보존 — transform.position 은 view 좌표(ToView)라 sorting 셀 역산에 쓸 수 없다.
         private Vector3 _simWorld;
@@ -109,6 +113,14 @@ namespace Wassup.Presentation
             if (_oneShot != null && !_player.IsPlaying)
             {
                 _oneShot = null;
+                if (_queuedAttack != null)
+                {
+                    var queued = _queuedAttack; float speed = _queuedAttackSpeed, trail = _queuedTrailSeconds;
+                    _queuedAttack = null;
+                    PlayOneShot(queued, speed);
+                    if (trail > 0f && _weaponTrail != null) _weaponTrail.Play(trail);
+                    return;
+                }
                 PlayLocomotion(force: true);
                 return;
             }
@@ -486,20 +498,28 @@ namespace Wassup.Presentation
             if (attack == null || attack.FrameCount == 0 || attack.Fps <= 0f) return;
             float duration = attack.FrameCount / attack.Fps;
             float speed = attackAnimPeriod > 0f && duration > 0f ? Mathf.Max(1f, duration / attackAnimPeriod) : 1f;
-            PlayOneShot(attack, speed);
             // 궤적은 스윙 구간에만 — 압축 배율로 나눈다. 슬로우모는 재생기 도메인 클럭이 이미 반영하므로 여기선 안 나눈다
             // (Spine 은 skeleton.timeScale 로 따로 나눴다 — 그 항이 여기선 클럭 자체에 들어 있다).
-            if (_weaponTrail != null && _visualData != null)
-                _weaponTrail.Play(duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / speed);
+            float trailSeconds = _visualData != null ? duration * Mathf.Clamp01(_visualData.SpineWeaponTrailEndNormalized) / speed : 0f;
+            // defender-deploy-phase unit 3 — 배치 원샷이 진행 중이면 자르지 않고 1칸 큐(완주 폴링이 꺼낸다).
+            if (_oneShot != null && _oneShot == _set.Deploy && _player.IsPlaying)
+            {
+                _queuedAttack = attack; _queuedAttackSpeed = speed; _queuedTrailSeconds = trailSeconds;
+                return;
+            }
+            PlayOneShot(attack, speed);
+            if (_weaponTrail != null && trailSeconds > 0f) _weaponTrail.Play(trailSeconds);
         }
 
         public override bool PlayDeploy()
         {
             if (_dying || _player == null || _set == null) return false;
             if (_defenderExtras == null) return false;   // 적 가드(Spine 과 동일)
-            var deploy = _set.ResolveDeploy();
-            if (deploy == null) return false;
-            if (deploy.Loop) { PlayLocomotion(force: true); return true; }   // idle 까지 폴백된 경우 — 원샷 폴링에 걸리면 영영 안 끝난다
+            // defender-deploy-phase unit 3 — 명시 슬롯만(ResolveDeploy 폴백 은퇴). 길이의 출처(DeployMotionSeconds)와 같은 슬롯.
+            var deploy = _set.Deploy;
+            if (deploy == null || deploy.FrameCount == 0) return false;
+            if (deploy.Loop) { PlayLocomotion(force: true); return true; }   // 저작 오류(OnValidate 가 알린다) — 원샷 폴링에 걸리면 영영 안 끝난다
+            _queuedAttack = null;
             PlayOneShot(deploy, 1f);
             return true;
         }

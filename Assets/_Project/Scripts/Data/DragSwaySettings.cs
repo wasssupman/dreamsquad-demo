@@ -112,7 +112,7 @@ namespace Wassup.Data
         public float boardDragThreshold = 16f;
 
         [Header("⑩ 드롭 하마 — 릴리스 반동→솟음→착지 (defender-drop-dismount)")]
-        [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 런타임에 deploymentDuration 으로 클램프(공중=pending 보장). 느리게 관찰하려면 그 값도 같이 올려야 한다.")]
+        [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 비행 = pending 의 첫 단계(InFlight)라 클램프 없음.")]
         [Range(0.1f, 1f)]
         public float dropTotalSeconds = 0.45f;
         [Tooltip("반동 구간(초) — 줄이 벙은 채 -camUp 으로 dip(힘 모으기). 총 시간 내 비율로 환산.")]
@@ -211,11 +211,10 @@ namespace Wassup.Data
         public float placementMagnetRadiusCells = 0f;
 
         [Header("⑭ 배치 되돌리기 — 활성화 전 취소 유예 (defender-footprint unit 5·rev 2)")]
-        // rev 2 (2026-08-30) — **기본 off.** 유예 창은 `deploymentDuration`(전 유닛 0.45초)이고
-        // 배치 비행은 `min(dropTotalSeconds, deploymentDuration)` = 같은 0.45초라, 착지 뒤 남는
-        // 시간이 **0** 이다. 버튼이 뜰 수 있는 구간은 «날아가는 중»뿐이었고 그건 도착 전에
-        // 되돌리기를 먼저 읽히게 한다. 창을 늘리려면 deploymentDuration 을 올려야 하는데
-        // 그건 유닛이 더 오래 무력한 밸런스 변경이라 UX 수정으로 할 일이 아니다.
+        // rev 2 (2026-08-30) — **기본 off.** 당시 유예 창은 `deploymentDuration`(0.45)이고 비행이 그걸 다 먹어
+        // 착지 뒤 남는 시간이 0 이었다. defender-deploy-phase(2026-09-21) 부터 창 = 비행(`dropTotalSeconds`) + 배치 모션
+        // 길이(`DefenderUnitData.DeployMotionSeconds`, 0~1.67s)라 착지 뒤에도 열려 있다 — 켤지는 UX 결정(밸런스는 이미
+        // 페이즈가 정한다). 실수 복구는 ① 릴리즈 전 실루엣+고스트(표시=확정) ② 배치 후 «철수»(무료·즉시)가 맡는다.
         // 실수 복구는 ① 릴리즈 전 실루엣+고스트(표시=확정) ② 배치 후 «철수»(무료·즉시)가 맡는다.
         [Tooltip("false = 유예 버튼 자체를 끈다(브리지 되감기 API 는 남는다). 기본 off — 위 주석 참조.")]
         public bool deployUndoEnabled = false;

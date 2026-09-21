@@ -85,8 +85,8 @@ namespace Wassup.Data
         public float attackCooldown = 1f; // seconds between attacks
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;
-        // attack-hit-delay 2 — 배치 직후 공격 시작까지 지연(초). 그동안 idle(공격 X). 0 = 즉시.
-        public float deployDelaySec = 0f;
+        // (attack-hit-delay 2 의 `deployDelaySec` 은 defender-deploy-phase 에서 은퇴 — 배치 직후 대기는 PendingDeployment 페이즈가 맡고
+        //  그 길이는 DeployMotionSeconds 가 답한다. 시트 컬럼도 함께 탈락.)
 
         // Phase 8 §13 follow-up — melee-only AoE cap. Projectile defenders
         // still hit a single target (splash is handled by ProjectileData).
@@ -345,8 +345,8 @@ namespace Wassup.Data
         [Header("Cast Anchor")]
         public string castAnchorBone = "";
         public Vector3 castAnchorLocalOffset = new Vector3(0.5f, 1f, 0f);
-        public float deploymentDuration = 0.45f;
-        public float placementSkillDelay = 0f;
+        // (`deploymentDuration`·`placementSkillDelay` 는 defender-deploy-phase 에서 은퇴 — 저작 초 없음. 배치 페이즈 길이 = DeployMotionSeconds,
+        //  배치 스킬 = 활성화 엣지. 사용자 결정 2026-09-21.)
 
         public string SpineDisplayName => displayName;
         public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
@@ -428,6 +428,30 @@ namespace Wassup.Data
         [Tooltip("스프라이트 모션 세트. 할당하면 이 유닛은 Spine 대신 시트로 그려진다. 비우면 원래대로.")]
         public UnitSpriteMotionSet spriteMotions;
         public UnitSpriteMotionSet SpriteMotions => spriteMotions;
+
+        // defender-deploy-phase unit 0 — 배치 페이즈 길이(초) = 배치 모션 길이. 저작 초 없음(사용자 결정 2026-09-21).
+        // BodyRadiusTiles 와 같은 «소유자가 파생값을 노출» 자리(제약 12 (a)). 명시 슬롯만 본다 — 뷰의 폴백 체인
+        // (drag→attack→idle)은 «무엇을 틀까»의 답이지 «얼마나 기다릴까»의 답이 아니다. 없으면 0 = 착지 즉시 활성화.
+        // 백엔드 판별은 SpineUnitPool.TrySpawn 과 같은 게이트(HasIdle) — 시트로 그리는 유닛의 Spine 트랙 길이를 재지 않는다.
+        // GetSkeletonData(true) 는 에셋 로드(뷰 인스턴스 아님)이고 캐시되므로 헤드리스·EditMode 에서 같은 값 — 결정론 유지.
+        public float DeployMotionSeconds
+        {
+            get
+            {
+                var sm = spriteMotions;
+                if (sm != null && sm.HasIdle)
+                {
+                    var deploy = sm.Deploy;
+                    return deploy != null
+                        ? Wassup.Presentation.FlipbookMath.Duration(deploy.Fps, deploy.FrameCount)
+                        : 0f;
+                }
+                if (skeletonDataAsset == null || string.IsNullOrEmpty(deployAnimation)) return 0f;
+                var data = skeletonDataAsset.GetSkeletonData(true);
+                var anim = data != null ? data.FindAnimation(deployAnimation) : null;
+                return anim != null ? anim.Duration : 0f;
+            }
+        }
     }
 
 }

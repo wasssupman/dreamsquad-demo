@@ -28,7 +28,6 @@ MonoBehaviour:
   impactSocketHeight: 0
   attackCooldown: 1.02
   hitDelaySec: 0.3
-  deployDelaySec: 0.97
   attackTargetCount: 3
   attackShape:
     kind: 0
@@ -103,8 +102,6 @@ MonoBehaviour:
   knockupVisualHeight: 1.2
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
-  placementSkillDelay: 0
   awakeningReward: 3
   weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
   weaponTrailEndNormalized: 0.31

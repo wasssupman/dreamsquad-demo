@@ -44,6 +44,8 @@ namespace Wassup.Core.Trace
         // a = 발견한 적, b = 발견당한 방어유닛. **append-only** — 기존 번호를 재사용하면
         // 옛 골든이 다른 사건으로 읽힌다.
         Detection = 20,
+        // defender-deploy-phase unit 1 — 배치 페이즈 종료(활성화). a = 방어유닛 sim id. append-only.
+        DefenderActivated = 21,
     }
 
     // 채널 무관 고정 폭 레코드. 채널마다 다른 구조체를 두지 않는 이유: 스키마가 채널 수만큼

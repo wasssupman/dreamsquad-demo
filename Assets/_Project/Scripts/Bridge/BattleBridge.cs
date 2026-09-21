@@ -511,6 +511,7 @@ namespace Wassup.Bridge
         private readonly HashSet<Vector2Int> _breachedCells = new();
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
+        private NativeQueue<Wassup.Battle.Units.DefenderActivatedEvent> _defenderActivatedQueue; // defender-deploy-phase unit 1
         // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
         private NativeQueue<ShieldBreakEvent> _shieldBreakQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
@@ -958,6 +959,7 @@ namespace Wassup.Bridge
         {
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            if (_defenderActivatedQueue.IsCreated) _defenderActivatedQueue.Dispose();
             if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
@@ -1744,6 +1746,13 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
+
+            // defender-deploy-phase unit 1 — 배치 활성화 채널(Units→Bridge). 배치는 StartBattle 전에 일어나므로
+            // 여기(BeginPlacement 경유)에서 만들고 드레인은 TickBattleFrame 의 _running 게이트 앞에 둔다.
+            if (_defenderActivatedQueue.IsCreated) _defenderActivatedQueue.Dispose();
+            _defenderActivatedQueue = new NativeQueue<Wassup.Battle.Units.DefenderActivatedEvent>(Allocator.Persistent);
+            var activatedSingleton = _em.CreateEntity();
+            _em.AddComponentData(activatedSingleton, new Wassup.Battle.Units.DefenderActivatedEventsSingleton { queue = _defenderActivatedQueue });
 
             // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널.
             if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
@@ -3096,6 +3105,9 @@ namespace Wassup.Bridge
             float dimTarget = _enemyDimActive ? Mathf.Clamp01(enemyDragDimAlpha) : 1f;
             _enemyDimAlpha = Mathf.MoveTowards(_enemyDimAlpha, dimTarget,
                 enemyDragDimFadeSpeed * UnityEngine.Time.unscaledDeltaTime);
+
+            // defender-deploy-phase unit 2 — 배치 활성화는 판 시작 전에도 일어난다(배치 단계). _running 앞.
+            DrainDefenderActivatedEvents();
 
             if (!_running) return;
 
@@ -7709,11 +7721,17 @@ namespace Wassup.Bridge
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
 
-            var entity = CreateDefenderEntity(primary, unitData, pendingDeployment: false, spawnPlacementVfx: true);
-            // 투트랙 리뷰 M-3(2026-09-03) — 탭 경로 전용 사본(구 TriggerOnPlace)을 접고 드래그
-            // 경로와 **같은 함수**를 지난다. CreateDefenderEntity 가 _defenderByTile 등록을
-            // 마친 뒤라 바인딩 가드를 통과하고, 대표 셀 해석(TryResolveDefenderKey)도 얻는다.
-            TriggerDeploymentOnPlaceSkill(primary, entity);
+            // defender-deploy-phase unit 2 — 즉시 배치도 같은 페이즈를 탄다: 비행 없음 → 착지(연출 + sim 전이) → 배치 모션 길이 → 활성화.
+            // 배치 링은 PlayDeploymentPresentation 이 그리므로 생성 시 spawnPlacementVfx 는 끈다(이중 링 방지).
+            // 종전의 즉시 TriggerDeploymentOnPlaceSkill 은 은퇴(배치 스킬 = 활성화 엣지 · 사용자 결정 2026-09-21).
+            // 그 호출이 남아 있으면 pending 이 붙은 채 스킬이 나가 ExcludePendingDeployment 로 자기 실드가 자기를 뺐다.
+            var entity = CreateDefenderEntity(primary, unitData, spawnPlacementVfx: false);
+            if (isActiveAndEnabled)
+            {
+                try { PlayDeploymentPresentation(unitData, primary, entity); }
+                catch (System.Exception ex) { Debug.LogException(ex, this); }
+            }
+            LandDeployedDefender(entity);
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -7741,7 +7759,7 @@ namespace Wassup.Bridge
             OccupyDefenderFootprint(cell, unitData.Footprint);
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, primary, Time.time - _startTime, unitData.cost);
-            entity = CreateDefenderEntity(primary, unitData, pendingDeployment: true, spawnPlacementVfx: false);
+            entity = CreateDefenderEntity(primary, unitData, spawnPlacementVfx: false);
             _cancellableDeployments.Add(entity); // unit 5 리뷰 H-1 — 신규 배치만 취소 유예 대상
             // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
             Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
@@ -7756,27 +7774,37 @@ namespace Wassup.Bridge
             if (TryResolveDefenderKey(cell, out var key)) cell = key;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
 
-            if (!_onPlaceTriggeredEntities.Contains(entity))
-                TriggerDeploymentOnPlaceSkill(cell, entity);
-
-            // ⚠ **이 두 줄 사이에 시스템 갱신이 끼면 안 된다**(skill-layer-migration, 재리뷰 M-6).
-            // 위가 `JustDeployed` 를 달고 배치 스킬은 **다음 시스템 갱신**에 실행되는데,
-            // 실드 부여 같은 배치 스킬은 후보에서 «배치 중인 유닛»을 뺀다. 아래 제거가
-            // 늦어지면 **방금 놓인 그 유닛이 자기 배치 스킬의 후보에서 빠진다** —
-            // 레거시가 `d.entity != placedEntity && HasComponent<PendingDeployment>` 라는
-            // 한 줄 예외를 들고 있던 이유가 이것이고, 지금은 그 예외 대신 **순서**가 지킨다.
-            // 둘 다 브리지 동기 구간이라 오늘은 성립한다. 떼어 놓지 말 것.
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
             _cancellableDeployments.Remove(entity); // unit 5 리뷰 H-1 — 활성화 = 유예 종료
             Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
         }
+        // defender-deploy-phase unit 2 — 착지 신호. 비행(InFlight, 프레젠테이션 시간)이 끝나는 **모든** 출구가 이걸 부른다:
+        // 하마 착지 · 즉시 배치 · 비행 중단(AbandonDismount) · OnDisable(FinishDismountsInstant). 안 부르면 영구 InFlight =
+        // 공격·피격·퇴근 전부 불가한 좀비. 여기서부터 sim(DeploymentActivationSystem)이 배치 모션 길이만큼 재고 활성화한다.
+        public void LandDeployedDefender(Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            if (!_em.HasComponent<PendingDeployment>(entity)) return;
+            if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(entity)) return;
+            var pending = _em.GetComponentData<PendingDeployment>(entity);
+            if (pending.stage == PendingDeployment.Deploying) return;   // 이미 착지
+            float motion = 0f;
+            if (TryGetDefenderCell(entity, out var cell) && _defenderByTile.TryGetValue(cell, out var binding) && binding.data != null)
+                motion = Mathf.Max(0f, binding.data.DeployMotionSeconds);
+            _em.SetComponentData(entity, new PendingDeployment { stage = PendingDeployment.Deploying, remaining = motion });
+            Debug.Log($"[BattleBridge] Landed deployed defender {entity} — deploying {motion:F2}s.");
+        }
+
+        // 동기 활성화 진입점 — 재배치(자기 시계 redeploySeconds 가 이미 기다렸다)·테스트·디버그용. sim 시스템
+        // (DeploymentActivationSystem)이 하는 세 줄을 EntityManager 로 그대로 한다. 라이브 배치 경로는 이걸 부르지 않는다.
 
         public bool TriggerDeploymentOnPlaceSkill(Vector2Int cell, Entity entity)
         {
             // NOTE: on-place push impulse is enqueued earlier — at TryBeginDefenderDeployment
             // (drag-drop path) or PlaceDefenderAs (instant path). Do NOT re-call ApplyOnPlacePush
             // here; that would double-fire the radius push impulse.
+            if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(entity)) return;
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
             if (_onPlaceTriggeredEntities.Contains(entity)) return false;
             // defender-footprint unit 1 — 대표 셀 해석(효과 타일·on-place 는 대표 셀에서 발동).
@@ -7790,10 +7818,35 @@ namespace Wassup.Bridge
             return true;
         }
 
+            MarkJustDeployedForRules(entity);
+            OnDefenderActivated(entity);
+        }
+
+        // 활성화의 장부 — 드레인(라이브)과 동기 진입점(위) 둘 다 여기로 온다. JustDeployed 는 다루지 않는다(sim/위가 붙였다).
+        private void OnDefenderActivated(Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) { _cancellableDeployments.Remove(entity); return; }
+            if (!TryGetDefenderCell(entity, out var cell) || !_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity)
+            { _cancellableDeployments.Remove(entity); return; }
+
+            if (!_onPlaceTriggeredEntities.Contains(entity))
+                TriggerDeploymentOnPlaceSkill(cell, entity);
         // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
         // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후.
         private void ApplyEnvironmentGating()
         {
+        private void DrainDefenderActivatedEvents()
+        {
+            if (!_defenderActivatedQueue.IsCreated) return;
+            while (_defenderActivatedQueue.TryDequeue(out var evt))
+            {
+                Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DefenderActivated,
+                    a: _em != null && _em.Exists(evt.entity) && _em.HasComponent<Wassup.Battle.Units.SimEntityId>(evt.entity)
+                        ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(evt.entity).value : -1);
+                OnDefenderActivated(evt.entity);
+            }
+        }
+
             if (tilemapHiddenEnvironment == null) return;
             for (int i = 0; i < tilemapHiddenEnvironment.Length; i++)
             {
@@ -8253,9 +8306,11 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell);
         }
 
-        public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
+        // defender-deploy-phase unit 2 — 연출만. sim 전이(LandDeployedDefender)는 호출자가 나란히 부른다(연출 없는 경로도 전이는 있어야 하므로).
+        // duration 은 배치 모션 길이 — VFX 수명·링 펄스·폴백 펄스 게이트의 소스. 모션 0 인 유닛은 폴백 펄스가 뜨지 않는다.
+        public void PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
-            float duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
+            float duration = unitData != null ? Mathf.Max(0f, unitData.DeployMotionSeconds) : 0f;
             // unit 10 — 연출은 유닛이 **실제로 서는 자리**(발밑)에서 터져야 한다. 앵커 셀 중심에서
             // 터뜨리면 다칸 유닛의 링·VFX 가 좌하단 모서리에서 나고 스프라이트와 갈린다.
             // `cell` 은 앵커다(바인딩 키 = 앵커, unit 10).
@@ -8284,8 +8339,6 @@ namespace Wassup.Bridge
             {
                 StartCoroutine(PlayFallbackDeploymentPulse(unitData, viewWorld, duration));
             }
-
-            return duration;
         }
 
         private IEnumerator PlayFallbackDeploymentPulse(DefenderUnitData unitData, Vector3 world, float duration)
@@ -8350,7 +8403,6 @@ namespace Wassup.Bridge
         private Entity CreateDefenderEntity(
             Vector2Int cell,
             DefenderUnitData unitData,
-            bool pendingDeployment,
             bool spawnPlacementVfx)
         {
             var entity = _em.CreateEntity();
@@ -8369,6 +8421,8 @@ namespace Wassup.Bridge
             DefenderPlaced?.Invoke(entity, unitData);
             // unit 10 — 저장값은 **앵커 + 크기**뿐이다. 「대표 셀」은 은퇴했다.
             _em.AddComponentData(entity, new DefenderFootprint
+        // defender-deploy-phase unit 2 — 모든 방어유닛은 PendingDeployment{InFlight} 로 태어난다(경로 무관). 비행이 없는
+        // 경로(PlaceDefenderAs)는 호출자가 곧바로 LandDeployedDefender 를 부른다.
             {
                 anchor = new int2(cell.x, cell.y),
                 size = new int2(unitData.Footprint.x, unitData.Footprint.y),
@@ -8399,7 +8453,7 @@ namespace Wassup.Bridge
             {
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
-                cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
+                cooldownRemaining = 0f, // defender-deploy-phase — 배치 직후 대기는 PendingDeployment(Deploying)가 맡는다(deployDelaySec 은퇴)
                 attackTargetCount = unitData.attackTargetCount,
                 shape = BakeAttackShape(unitData.attackShape, unitData),
                 // battle-structures unit 8 — 저작 타겟 마스크(기본 = 적 진영 전부).
@@ -8528,8 +8582,7 @@ namespace Wassup.Bridge
                     current = Entity.Null,
                 });
             }
-            if (pendingDeployment)
-                _em.AddComponent<PendingDeployment>(entity);
+            _em.AddComponent<PendingDeployment>(entity);   // 기본값 = InFlight
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
             // `pos` = 베이스(발밑) — 유닛이 서는 그 자리에서 터진다(베이스 통일 2026-09-03).
@@ -8686,7 +8739,7 @@ namespace Wassup.Bridge
             {
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
-                cooldownRemaining = unitData.deployDelaySec,
+                cooldownRemaining = 0f, // defender-deploy-phase — deployDelaySec 은퇴(순찰병은 pending 없음 = 소환 즉시, 종전 0 과 같다)
                 attackTargetCount = unitData.attackTargetCount,
                 shape = BakeAttackShape(unitData.attackShape, unitData),
                 // battle-structures unit 8 — 순찰 아군도 같은 저작 축을 쓴다. 배치 방어유닛과

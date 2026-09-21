@@ -783,16 +783,14 @@ namespace Wassup.UI
         // 버튼은 유닛 뷰 앵커 추종 스크린 오버레이. 활성화·소멸을 매 프레임 관측해 자기 소거 —
         // «유예 종료 = 전투 행동 시작 즉시»가 IsDefenderPendingDeployment 하나로 판정된다.
         private Unity.Entities.Entity _undoEntity = Unity.Entities.Entity.Null;
-        private Coroutine _undoDeployRoutine;
         private GameObject _undoCanvasGO;
         private UnityEngine.UI.Button _undoButton;
         private RectTransform _undoButtonRect;
 
-        private void BeginUndoWindow(Unity.Entities.Entity entity, Coroutine deployRoutine)
+        private void BeginUndoWindow(Unity.Entities.Entity entity)
         {
             if (!Cfg.deployUndoEnabled || bridge == null) return;
             _undoEntity = entity;
-            _undoDeployRoutine = deployRoutine;
             EnsureUndoButton();
             // unit 5 rev — 노출은 UpdateUndoWindow 단독 소유(자리를 잡은 뒤 켠다). 여기서 켜면
             // 직전 배치가 남긴 화면 위치에 한 프레임 번쩍인다.
@@ -801,7 +799,6 @@ namespace Wassup.UI
         private void EndUndoWindow()
         {
             _undoEntity = Unity.Entities.Entity.Null;
-            _undoDeployRoutine = null;
             if (_undoButton != null) _undoButton.gameObject.SetActive(false);
         }
 
@@ -834,11 +831,9 @@ namespace Wassup.UI
         private void OnUndoPressed()
         {
             var entity = _undoEntity;
-            var routine = _undoDeployRoutine;
             EndUndoWindow();
             if (bridge == null || entity == Unity.Entities.Entity.Null) return;
-            if (!bridge.TryCancelPendingDeployment(entity)) return; // 활성화 직후의 늦은 탭 — no-op
-            if (routine != null) StopCoroutine(routine);            // 활성화 시계 중단
+            if (!bridge.TryCancelPendingDeployment(entity)) return; // 활성화 직후의 늦은 탭 — no-op(취소가 엔티티를 파괴하므로 sim 시계도 함께 사라진다)
             // 리뷰 L-5 — 하마 정리는 코루틴의 «바인딩 붕괴» 분기에 맡긴다(취소가 바인딩을 이미
             // 지웠으므로 다음 틱에 AbandonDismount 가 잔류물·오버라이드까지 걷는다). 여기서 키를
             // 먼저 지우면 그 분기 대신 plain yield break 로 빠져 키링 잔류물이 공중에 얼어붙는다.
@@ -1455,7 +1450,7 @@ namespace Wassup.UI
                 // defender-footprint unit 2 — cell = 앵커. 방향 조준(레인 중심)·활성화·연출은
                 // 유닛이 실제로 서는 **대표 셀** 기준이다(1×1 은 앵커와 동일).
                 // 리뷰 H-2 — 하마 착지 연출(PlayDeploymentPresentation)도 대표 셀로: 앵커로 넘기면
-                // 배치 링·VFX 가 좌하단 모서리에서 터져 폴백 경로(RunDeployment)와 자리가 갈린다.
+                // 배치 링·VFX 가 좌하단 모서리에서 터져 폴백 경로(FinishDeploymentEntry)와 자리가 갈린다.
                 // unit 10 — 착지 연출 자리. 앵커로 넘긴다(1×1 은 기하 중심과 동일).
                 // 다칸에서 링·VFX 를 기하 중심으로 옮기는 것은 PR2(뷰 좌표) 소관.
                 var fpPrimary = cell;
@@ -1463,9 +1458,11 @@ namespace Wassup.UI
                 bool dismount = StartDropDismount(session.unit, fpPrimary, entity, presentAtLanding: true);
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
-                var deployRoutine = StartCoroutine(RunDeployment(session.unit, fpPrimary, entity, skipPresentation: dismount));
-                // defender-footprint unit 5 — 활성화 전까지 되돌리기 창.
-                BeginUndoWindow(entity, deployRoutine);
+                // defender-deploy-phase unit 2 — 활성화 시계는 sim 이 든다(PendingDeployment.Deploying). 여기는 비행이
+                // 없는 경우 착지를 즉시 알리는 것뿐. 하마 비행이면 RunDropDismount 의 착지 프레임이 Land 를 부른다.
+                if (!dismount) FinishDeploymentEntry(session.unit, fpPrimary, entity);
+                // defender-footprint unit 5 — 활성화 전까지 되돌리기 창(종료 = PendingDeployment 소멸을 폴링).
+                BeginUndoWindow(entity);
                 return;
             }
             bridge?.FlashPlacementReject(cell);
@@ -1508,9 +1505,8 @@ namespace Wassup.UI
 
             var cfg = Cfg;
             float duration = Mathf.Max(0.05f, cfg.dropTotalSeconds);
-            // 계약 3 — 드롭 창 ⊆ pending 창: 공중 유닛이 활성(공격/피격/재배치 가능)이 되는 일이 구조적으로 없다.
-            if (unit != null && unit.deploymentDuration > 0f)
-                duration = Mathf.Min(duration, unit.deploymentDuration);
+            // defender-deploy-phase unit 2 — 비행은 pending 의 첫 단계(InFlight)라 길이 클램프가 필요 없다. 공중 유닛이
+            // 활성이 되는 일은 착지 신호(LandDeployedDefender)가 없는 한 구조적으로 없다.
             float recoilFrac = Mathf.Clamp(cfg.dropRecoilSeconds / duration, 0.02f, 0.6f);
 
             Vector3 start = _unitPosWorld;
@@ -1671,6 +1667,8 @@ namespace Wassup.UI
                 try { bridge.PlayDeploymentPresentation(unit, cell, entity); }
                 catch (System.Exception ex) { Debug.LogException(ex, this); }
             }
+            // defender-deploy-phase unit 2 — 착지 = sim 페이즈 전이(InFlight → Deploying). 연출 여부와 무관하게 부른다.
+            bridge?.LandDeployedDefender(entity);
             // unit 4 — 잔류 페이드 꼬리: 노브(dropRingFade 등)가 비행보다 길면 착지 후에도 페이드를
             // 마저 굴린다(동결 방지). 기본값에선 착지 전에 끝나 한 번도 안 돈다.
             while (UpdateKeyringRemnant(remnant, end, camUp, elapsed, recoilSeconds, cfg))
@@ -1684,6 +1682,9 @@ namespace Wassup.UI
         {
             _activeDismounts.Remove(entity);
             bridge?.ClearDefenderViewOverride(entity);
+            // defender-deploy-phase unit 2 — 비행을 끝내는 출구는 전부 착지다(안 부르면 영구 InFlight). 취소로 바인딩이 이미
+            // 사라진 경우 Land 는 내부 가드로 no-op.
+            bridge?.LandDeployedDefender(entity);
             // 잔류물은 즉시 파괴(spec 정정: abandon = teardown 맥락 — 페이드 연출 의미 없음, 붙박이만 방지).
             if (remnant != null && remnant.holder != null) { Destroy(remnant.holder); remnant.holder = null; }
         }
@@ -1693,37 +1694,22 @@ namespace Wassup.UI
         private void FinishDismountsInstant()
         {
             if (_activeDismounts.Count == 0) return;
-            foreach (var kv in _activeDismounts) bridge?.ClearDefenderViewOverride(kv.Key);
+            foreach (var kv in _activeDismounts)
+            {
+                bridge?.ClearDefenderViewOverride(kv.Key);
+                bridge?.LandDeployedDefender(kv.Key);   // defender-deploy-phase unit 2 — 즉시 완결도 착지다
+            }
             _activeDismounts.Clear();
         }
 
-        private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity,
-            bool skipPresentation = false)
+        // defender-deploy-phase unit 2 — 비행 없는 커밋(하마 비행이 시작되지 못한 경우)의 착지: 연출 + sim 착지 신호.
+        // 종전 RunDeployment 코루틴(deploymentDuration WaitForSeconds → ActivateDeployedDefender)은 은퇴 — 시계는 sim 이 든다.
+        private void FinishDeploymentEntry(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity)
         {
-            float duration = 0f;
-            if (skipPresentation)
-            {
-                // defender-drop-dismount unit 3 — 연출은 하마 착지 프레임이 발화(RunDropDismount).
-                // 여기는 활성화 시계만: PlayDeploymentPresentation 의 반환과 같은 소스(deploymentDuration)를
-                // 직접 읽어 commit 기준 대기를 유지한다(계약 4 — 밸런스 무변경, 착지 ≤ 활성화).
-                duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
-            }
-            else if (bridge != null)
-            {
-                try
-                {
-                    duration = bridge.PlayDeploymentPresentation(unitData, cell, entity);
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogException(ex, this);
-                }
-            }
-
-            if (duration > 0f) yield return new WaitForSeconds(duration);
-            float skillDelay = unitData != null ? Mathf.Max(0f, unitData.placementSkillDelay) : 0f;
-            if (skillDelay > 0f) yield return new WaitForSeconds(skillDelay);
-            bridge?.ActivateDeployedDefender(cell, entity);
+            if (bridge == null) return;
+            try { bridge.PlayDeploymentPresentation(unitData, cell, entity); }
+            catch (System.Exception ex) { Debug.LogException(ex, this); }
+            bridge.LandDeployedDefender(entity);
         }
 
         private DragSession BuildSession(DefenderUnitData unitData, bool simulated, Vector2 fromScreen)

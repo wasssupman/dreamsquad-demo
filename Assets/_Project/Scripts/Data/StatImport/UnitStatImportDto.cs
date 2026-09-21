@@ -37,7 +37,7 @@ namespace Wassup.Data.StatImport
         public float? attackDamage;
         public float? attackCooldown;
         public float? hitDelaySec;
-        public float? deployDelaySec;
+        // (`deployDelaySec` 컬럼은 defender-deploy-phase 에서 은퇴 — 시트가 보내도 무시된다.)
         public int? attackTargetCount;
         public int? cost;
         // defender-placement-cooldown — 배치 성공이 거는 연사 게이트(초). 0 = 없음.

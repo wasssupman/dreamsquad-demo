@@ -79,16 +79,13 @@ public class UnitSpriteMotionSetTests
     }
 
     [Test]
-    public void Deploy_FallsBack_DeployDragAttackIdle()
+    public void Deploy_HasNoFallback()
     {
-        Slot("idle", _idle);
-        Assert.AreSame(_idle, _set.ResolveDeploy());
-        Slot("attack", _attack);
-        Assert.AreSame(_attack, _set.ResolveDeploy());
-        Slot("drag", _drag);
-        Assert.AreSame(_drag, _set.ResolveDeploy());
+        // defender-deploy-phase — 배치 모션은 명시 슬롯만. 폴백을 되살리면 길이(DeployMotionSeconds)와 재생이 갈린다.
+        Slot("idle", _idle); Slot("attack", _attack); Slot("drag", _drag);
+        Assert.IsNull(_set.Deploy);
         Slot("deploy", _deploy);
-        Assert.AreSame(_deploy, _set.ResolveDeploy());
+        Assert.AreSame(_deploy, _set.Deploy);
     }
 
     [Test]

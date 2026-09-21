@@ -27,7 +27,6 @@ MonoBehaviour:
   attackRange: 4
   attackCooldown: 8
   hitDelaySec: 0.3
-  deployDelaySec: 1.33
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
@@ -88,8 +87,6 @@ MonoBehaviour:
   onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
-  deploymentDuration: 0.45
-  placementSkillDelay: 0
   awakeningReward: 3
   weaponTrailPrefab: {fileID: 0}
   weaponTrailEndNormalized: 0.31

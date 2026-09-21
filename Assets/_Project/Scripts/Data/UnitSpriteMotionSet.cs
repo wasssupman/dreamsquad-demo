@@ -73,14 +73,8 @@ namespace Wassup.Data
         public SpriteFlipbookData ResolveLocomotion(bool moving) =>
             moving && walk != null ? walk : idle;
 
-        // Spine PlayDeploy 의 후보 순서(deploy → drag → attack → idle)를 그대로 옮겼다.
-        public SpriteFlipbookData ResolveDeploy()
-        {
-            if (deploy != null) return deploy;
-            if (drag != null) return drag;
-            if (attack != null) return attack;
-            return idle;
-        }
+        // (ResolveDeploy — deploy→drag→attack→idle 폴백 — 은 defender-deploy-phase 에서 은퇴. 배치 모션은 명시 슬롯만 튼다:
+        //  길이의 출처(DefenderUnitData.DeployMotionSeconds)와 재생의 출처가 같아야 한다. Spine PlayDeploy 도 동일.)
 
         // 드래그 프리뷰용. Spine 쪽 ResolveAnimation(drag, idle, attack) 에서 attack 은 빼는데,
         // 그쪽은 「트랙이 존재하는 첫 이름」 탐색이라 attack 이 끼었을 뿐이고 손끝에서 공격 모션이

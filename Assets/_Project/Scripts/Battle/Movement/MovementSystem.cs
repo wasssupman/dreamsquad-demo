@@ -168,6 +168,9 @@ namespace Wassup.Battle.Movement
                 // (CC = 남이 건 것 / LeapFlight = 본체 자신의 상태).
                 bool locked = (ccLookup.HasBuffer(entity) && CcActionLock.IsLocked(ccLookup[entity]))
                               || leapFlightLookup.HasComponent(entity);
+                // defender-deploy-phase unit 3 — 자기주도 이동도 같은 표(UnitActionPhase)를 읽는다. 스윙 중 정지는
+                // Pulse 가 hitDelayRemaining 을 따로 보므로 여기선 false(동작 무변).
+                locked = !UnitActionPhase.CanStartAction(UnitActionPhase.Resolve(locked, swinging: false));
 
                 // defender-knockback-on-impact unit 2 — 넉백(외력)을 **분기 앞에서** 합성한다.
                 // 아래 조기 이탈 경로들이 예전 소비 지점(flow-step 근처)에 닿기 전에 continue

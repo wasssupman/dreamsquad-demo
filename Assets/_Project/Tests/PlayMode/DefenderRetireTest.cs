@@ -101,7 +101,7 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.AddCost(1000);
             yield return null;
 
-            // PlaceDefenderAs 는 pendingDeployment:false 라 즉시 활성이다. 비행 상태를 만들려면
+            // PlaceDefenderAs 는 착지(Deploying)부터 시작해 모션 길이 뒤 활성이다(레인저 Hit 0.97s). 비행(InFlight) 상태를 만들려면
             // 드래그 배치가 쓰는 TryBeginDefenderDeployment 로 들어가야 한다.
             Assert.IsTrue(BeginFirstValidDeployment(bridge, unit, out var cell, out var entity),
                 "begin pending deployment");
