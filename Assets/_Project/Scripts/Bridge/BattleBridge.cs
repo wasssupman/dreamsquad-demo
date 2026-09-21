@@ -4134,16 +4134,7 @@ namespace Wassup.Bridge
                 i: (int)cur);
         }
 
-        // README 계약 9 의 생존 술어. **3중이어야 한다** — Exists 만 보면 DeadTag 가 붙고
-        // 실제 파괴되기까지의 프레임 동안 순찰병이 살아 보여서 상실 모션이 늦게 나간다.
-        // (BattleBridge.Relocation 의 검사는 2중인데, 거기선 그 지연이 무해했다.)
-        private bool IsPatrolAlive(Entity patrol)
-        {
-            if (patrol == Entity.Null || !_em.Exists(patrol)) return false;
-            if (_em.HasComponent<DeadTag>(patrol)) return false;
-            if (!_em.HasComponent<Health>(patrol)) return false;
-            return _em.GetComponentData<Health>(patrol).value > 0f;
-        }
+        // (IsPatrolAlive — 3중 생존 술어 — 는 defender-autobattle-ai unit 2 에서 DefenderAiStateSystem 으로 옮겨졌다. 여기 소비처 0.)
 
         private static SummonPatrolAbility FindSummonPatrolAbility(DefenderUnitData data)
         {
