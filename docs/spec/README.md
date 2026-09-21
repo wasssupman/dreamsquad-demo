@@ -653,6 +653,15 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
 > 바뀐 것 동기). `AuthE2ETest` 는 환경 의존(dev 서버 계정/스키마)이라 `[Explicit]` 로
 > 기본 실행에서 제외 — Test Runner 직접 선택 시에만 돈다.
 
+> **2026-09-21 기준선 재측정** (defender-deploy-phase·autobattle-ai 착수 전 `2d28a6d4` 를 별도 worktree `wassup-baseline` 에서 `-runTests PlayMode`, 219건):
+> **59 실패** = "Bone not found: Gear" 로그 어설션 33건(파츠형 Layer Lab 리그 — 메인 워크트리엔 미커밋 에셋 수정이 있어 거기선 안 난다)
+> + 아래 26건. 그 뒤 두 spec 반영본(`4209e654`)은 25 실패이고 그중 24건이 이 기준선과 겹친다(= 그 두 spec 과 무관). 겹치는 24건:
+> `AbilityAreaShield`·`AbilityBombManBarrel`·`ActiveAllyZone.Zone_BuffsAlliesInside`·`OnPlaceBoostNearby`(2×2 풋프린트 인접 앵커가 겹쳐 `Occupied` — 풋프린트 spec 이후) ·
+> `AttachRangePreview` ×2(캐논 반경 1.5→2.0) · `AuthE2E`·`DeckInfoPresetApplyLive`(계정) · `DragCancelZone`·`DragPlacementReach`(테스트가 3-인자 리플렉션, 시그니처는 2-인자) ·
+> `DreamcatcherAttachRequirement`·`DreamcatcherCombatDamage` ×2·`DreamcatcherEffect` ×2(+1.2% 교차 오염) · `DreamcatcherSleepDamage` ×2(25초 공격 0회) ·
+> `BossThresholdSelfAoe` · `DropDismountTest.RealDragDrop_…`(screen roundtrip 셀 없음) · `OnPlaceMeleeBurst` ×2·`OnPlaceSkyStrike.EachEnemy…`(기본 공격이 계측에 섞임) · `PatrolDefenderPlayTest` ×2.
+> 기준선에만 있던 `WhipAura`·`WhirlpotLiveRepro` 는 순서·환경 의존. **두 spec 이후에만 빨간 1건**: `OnPlaceSkyStrikeTest.FanOutImpacts_AreStaggered_NotSimultaneous`(0.08s 시차가 한 프레임에 접힘 — 프레임 히치 의심, 재실행으로 판정).
+
 **남은 9건** (전부 원인 분류 완료 — fast-lane unit 2, 2026-08-16):
 
 - **`PlacementAuraTest` 3건** [S] · 기대 1.0, 실측 **1.012** 로 일관. +1.2% 는 Common 최하
