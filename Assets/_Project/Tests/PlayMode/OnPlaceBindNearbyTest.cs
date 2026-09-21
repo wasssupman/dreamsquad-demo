@@ -11,6 +11,7 @@ using Wassup.Data;
 using Wassup.Battle.Units;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -259,7 +260,7 @@ namespace Wassup.Tests.PlayMode
             // ⚠ 스킬 레이어의 핸들 축 — 없으면 이 더미는 **후보에서 빠진다**
             // (어댑터가 `SimEntityId` 로 역변환한다). 예전 arm 은 `Entity` 를 직접 들었다.
             BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
-            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.UnitAi.AiState.Marching });
             em.AddComponentData(e, new ModifierStats
             {
                 damageMul      = 1f,

@@ -7,6 +7,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.EditMode
 {

@@ -802,6 +802,13 @@ namespace Wassup.Presentation
         private IdleBreakCycle _idle = IdleBreakCycle.Idle;
         private string _currentBreak;          // 재생 중인 컷 이름(루프 중이면 null)
 
+        // defender-autobattle-ai unit 4 — 결정 입력은 AI 상태 하나. 메커니즘(오버라이드·엣지 판정)은 아래 그대로.
+        public override void SetAiState(Wassup.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot)
+        {
+            if (state == Wassup.UnitAi.DefenderAiState.Sustaining) SetLoopOverride(sustainLoop, sustainLostOneShot);
+            else ClearLoopOverride();
+        }
+
         // 같은 값 재호출은 무동작 — 브리지가 매 프레임 밀어도 애니가 재시작되지 않는다.
         public void SetLoopOverride(string loopAnim, string onClearOneShot)
         {

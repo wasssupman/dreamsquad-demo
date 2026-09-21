@@ -2,7 +2,8 @@
     "name": "Wassup.UnitAi",
     "rootNamespace": "Wassup.UnitAi",
     "references": [
-        "Unity.Mathematics"
+        "Unity.Mathematics",
+        "Unity.Burst"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

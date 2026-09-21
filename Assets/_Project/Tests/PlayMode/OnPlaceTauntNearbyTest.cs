@@ -12,6 +12,7 @@ using Wassup.Data;
 using Wassup.Battle.Units;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -278,7 +279,7 @@ namespace Wassup.Tests.PlayMode
             // ⚠ **EnemyAiState 가 없으면 도발이 이동으로 이어지지 않는다.** MovementSystem 은
             // 이 컴포넌트가 없으면 Marching 으로 떨어뜨려 그냥 골로 걸어간다 — 어그로 상태는
             // 붙었는데 적이 멀어지는 그림이 나온다(실측 2.46 → 5.39). 실제 적은 스폰 시 받는다.
-            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.UnitAi.AiState.Marching });
             return e;
         }
 

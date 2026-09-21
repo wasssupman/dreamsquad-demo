@@ -13,6 +13,7 @@ using Wassup.Data;
 using Wassup.Battle.Units;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -180,7 +181,7 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
             em.AddComponentData(e, new PathFollowState { speed = speed, traversalLayers = TraversalSlots.DefaultMask });
-            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.UnitAi.AiState.Marching });
             em.AddComponentData(e, new ModifierStats
             {
                 damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f,

@@ -192,7 +192,20 @@ namespace Wassup.Tests.EditMode
                 current = current,
                 hasSummonedOnce = hasSummonedOnce,
             });
+            // defender-autobattle-ai unit 2 — 소환물 생존 판정은 이제 DefenderAiStateSystem 이 상태(Sustaining)로 든다.
+            // 라이브 bake(CreateDefenderEntity)와 같은 두 컴포넌트를 픽스처에도 단다.
+            if (!_em.HasComponent<DefenderUnitTag>(e)) _em.AddComponent<DefenderUnitTag>(e);
+            _em.AddComponentData(e, new DefenderAiStatus { value = Wassup.UnitAi.DefenderAiState.Ready });
+            _em.AddComponentData(e, new DefenderAiPolicy { value = Wassup.UnitAi.DefenderAttackPolicy.Summon });
             return e;
+        }
+
+        // AttackSystem 은 같은 틱 앞에서 쓰인 AI 상태를 읽는다 — 둘을 함께 넣고 정렬(UpdateBefore 가 순서를 잡는다).
+        private void AddAttackWithAi()
+        {
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<DefenderAiStateSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            _simGroup.SortSystems();
         }
 
         // 타겟 스냅샷 조건(FactionTag + Health + LocalTransform)을 채운 적.
@@ -214,7 +227,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Summoner_Stages_One_Request_When_No_Patrol_Alive()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             var summoner = CreateSummoner(cooldownRemaining: 0f, current: Entity.Null);
 
@@ -228,7 +241,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Summoner_Does_Not_Stage_While_Patrol_Alive()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             var alive = _em.CreateEntity();
             _em.AddComponentData(alive, new Health { value = 50f, max = 50f });
@@ -244,7 +257,7 @@ namespace Wassup.Tests.EditMode
         {
             // 계약 9 — `current != Entity.Null` 만 보면 파괴된 순찰병의 stale 핸들로
             // 소환사가 영구 대기한다. Exists 까지 봐야 재소환이 돈다.
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             var dead = _em.CreateEntity();
             _em.AddComponentData(dead, new Health { value = 50f, max = 50f });
@@ -259,7 +272,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Summoner_Restages_When_Current_Is_Dead_But_Not_Destroyed()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             var dying = _em.CreateEntity();
             _em.AddComponentData(dying, new Health { value = 0f, max = 50f });
@@ -276,7 +289,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void First_Summon_Waits_Until_An_Enemy_Enters_The_Area()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             var summoner = CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
 
@@ -291,7 +304,7 @@ namespace Wassup.Tests.EditMode
         public void First_Summon_Fires_When_Enemy_Is_Inside_The_Area()
         {
             // 소환사 셀 (1,0), 반경 2 → 구역 x∈[-1,3]. 적 (2,0) 은 안.
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
             CreateEnemyAt(2f);
@@ -307,7 +320,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Cover_Radius_Comes_From_The_Summoner_Attack_Range()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false, range: 4f);
             CreateEnemyAt(4f);   // 반경 2 였다면 밖(Chebyshev 3), 반경 4 면 안
@@ -322,7 +335,7 @@ namespace Wassup.Tests.EditMode
         public void First_Summon_Ignores_Enemy_Outside_The_Area()
         {
             // 적 (4,0) 은 소환사 (1,0) 기준 Chebyshev 3 > 반경 2 → 구역 밖.
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
             CreateEnemyAt(4f);
@@ -338,7 +351,7 @@ namespace Wassup.Tests.EditMode
             // goal-tower-siege unit 1 — **단언이 뒤집혔다**(구: PastGoal 적은 무시).
             // 그 태그는 이제 "유출 대기"(곧 사라질 적)가 아니라 "골에 붙어 타워를 때리는 중"이다.
             // 골을 두들기는 적이야말로 순찰을 부를 이유이므로 첫 소환 게이트가 열려야 한다.
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: false);
             var enemy = CreateEnemyAt(2f);
@@ -353,7 +366,7 @@ namespace Wassup.Tests.EditMode
         public void Respawn_Ignores_The_Gate_Once_Consumed()
         {
             // "한 번 만들면 유지" — 게이트 소비 후엔 적이 사라져도 재소환이 끊기지 않는다.
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 0f, current: Entity.Null, hasSummonedOnce: true);
 
@@ -365,7 +378,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Summoner_Waits_While_Cooldown_Remains()
         {
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            AddAttackWithAi();
             CreateLinearFlowField();
             CreateSummoner(cooldownRemaining: 2f, current: Entity.Null);
 

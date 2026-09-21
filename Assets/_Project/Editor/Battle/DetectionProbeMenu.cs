@@ -7,6 +7,7 @@ using Unity.Transforms;
 using UnityEditor;
 using UnityEngine;
 using Wassup.Battle.Combat;
+using Wassup.UnitAi;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;

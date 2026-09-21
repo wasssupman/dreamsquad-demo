@@ -12,6 +12,7 @@ using Wassup.Data;
 using Wassup.Battle.Units;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -266,7 +267,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(e, new PathFollowState { speed = 2f, traversalLayers = TraversalSlots.DefaultMask });
             // 스킬 레이어의 핸들 축 — 없으면 이 더미는 후보에서 빠진다.
             BattleBridgeTestAccess.AttachSimEntityId(bridge, e);
-            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            em.AddComponentData(e, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.UnitAi.AiState.Marching });
             return e;
         }
     }

@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Movement;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.EditMode
 {

@@ -20,6 +20,7 @@ using Wassup.Rendering;
 using Wassup.UI;
 using Wassup.Battle;
 using Wassup.Core.TimeControl;
+using Wassup.UnitAi;
 // DraftController lives in Wassup.Core above.
 
 namespace Wassup.Bridge
@@ -1542,6 +1543,7 @@ namespace Wassup.Bridge
             _occupiedTiles.Clear();
             _defenderCellOwner.Clear(); // defender-footprint unit 1 — 점유 집합과 co-locate(불변식)
             _cancellableDeployments.Clear(); // unit 5 리뷰 H-1 — 매치 경계에서 자격 셋도 함께
+            _lastDefenderAiState.Clear();    // defender-autobattle-ai unit 3 — 전이 트레이스 기준도 매치 경계에서
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
             _defenderViewOverride.Clear(); // defender-relocation review L1 — 뷰 오버라이드도 _defenderByTile 리셋과 co-locate(불변식)
@@ -3927,6 +3929,7 @@ namespace Wassup.Bridge
                     var tileCenterView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(p.x, 0f, p.z));
                     tileHealthGaugeLayer.Set(kv.Key, tileCenterView, tileSize, Health.ComputeRatio(dh.value, dh.max));
                 }
+                TraceDefenderAiTransition(entity);   // defender-autobattle-ai unit 3
                 if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                 {
                     spineView.UpdatePosition(world);
@@ -4111,9 +4114,24 @@ namespace Wassup.Bridge
             if (ability == null) return;
             if (string.IsNullOrEmpty(ability.activeAnimation)) return;
 
-            Entity patrol = _em.GetComponentData<Wassup.Battle.Combat.SummonerState>(summoner).current;
-            if (IsPatrolAlive(patrol)) view.SetLoopOverride(ability.activeAnimation, ability.lostAnimation);
-            else view.ClearLoopOverride();
+            // defender-autobattle-ai unit 3·4 — 생존 폴링(IsPatrolAlive) 대신 AI 상태를 읽는다. 뷰는 상태 하나로 루프를 고른다.
+            var ai = _em.HasComponent<Wassup.Battle.Combat.DefenderAiStatus>(summoner)
+                ? _em.GetComponentData<Wassup.Battle.Combat.DefenderAiStatus>(summoner).value
+                : Wassup.UnitAi.DefenderAiState.Ready;
+            view.SetAiState(ai, ability.activeAnimation, ability.lostAnimation);
+        }
+
+        // defender-autobattle-ai unit 3 — 상태 전이 트레이스. 유닛당 «변할 때만» 한 줄(채널 22). 판정이 아니라 관측이라 브리지가 든다.
+        private readonly Dictionary<Entity, Wassup.UnitAi.DefenderAiState> _lastDefenderAiState = new();
+        private void TraceDefenderAiTransition(Entity entity)
+        {
+            if (!_em.HasComponent<Wassup.Battle.Combat.DefenderAiStatus>(entity)) return;
+            var cur = _em.GetComponentData<Wassup.Battle.Combat.DefenderAiStatus>(entity).value;
+            if (_lastDefenderAiState.TryGetValue(entity, out var prev) && prev == cur) return;
+            _lastDefenderAiState[entity] = cur;
+            Wassup.Core.Trace.LegacyTraceRecorder.Ev(Wassup.Core.Trace.TraceChannel.DefenderAiState,
+                a: _em.HasComponent<Wassup.Battle.Units.SimEntityId>(entity) ? _em.GetComponentData<Wassup.Battle.Units.SimEntityId>(entity).value : -1,
+                i: (int)cur);
         }
 
         // README 계약 9 의 생존 술어. **3중이어야 한다** — Exists 만 보면 DeadTag 가 붙고
@@ -7767,18 +7785,6 @@ namespace Wassup.Bridge
             return true;
         }
 
-        public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
-        {
-            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
-            // defender-footprint unit 1 — 호출자(배치 컨트롤러)는 앵커를 들고 있을 수 있다 — 대표 셀로 해석.
-            if (TryResolveDefenderKey(cell, out var key)) cell = key;
-            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
-
-            if (_em.HasComponent<PendingDeployment>(entity))
-                _em.RemoveComponent<PendingDeployment>(entity);
-            _cancellableDeployments.Remove(entity); // unit 5 리뷰 H-1 — 활성화 = 유예 종료
-            Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
-        }
         // defender-deploy-phase unit 2 — 착지 신호. 비행(InFlight, 프레젠테이션 시간)이 끝나는 **모든** 출구가 이걸 부른다:
         // 하마 착지 · 즉시 배치 · 비행 중단(AbandonDismount) · OnDisable(FinishDismountsInstant). 안 부르면 영구 InFlight =
         // 공격·피격·퇴근 전부 불가한 좀비. 여기서부터 sim(DeploymentActivationSystem)이 배치 모션 길이만큼 재고 활성화한다.
@@ -7798,26 +7804,16 @@ namespace Wassup.Bridge
 
         // 동기 활성화 진입점 — 재배치(자기 시계 redeploySeconds 가 이미 기다렸다)·테스트·디버그용. sim 시스템
         // (DeploymentActivationSystem)이 하는 세 줄을 EntityManager 로 그대로 한다. 라이브 배치 경로는 이걸 부르지 않는다.
-
-        public bool TriggerDeploymentOnPlaceSkill(Vector2Int cell, Entity entity)
+        public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
         {
-            // NOTE: on-place push impulse is enqueued earlier — at TryBeginDefenderDeployment
-            // (drag-drop path) or PlaceDefenderAs (instant path). Do NOT re-call ApplyOnPlacePush
-            // here; that would double-fire the radius push impulse.
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            // defender-footprint unit 1 — 호출자(배치 컨트롤러)는 앵커를 들고 있을 수 있다 — 대표 셀로 해석.
+            if (TryResolveDefenderKey(cell, out var key)) cell = key;
+            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
             if (_em.HasComponent<Wassup.Battle.Units.DeadTag>(entity)) return;
-            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
-            if (_onPlaceTriggeredEntities.Contains(entity)) return false;
-            // defender-footprint unit 1 — 대표 셀 해석(효과 타일·on-place 는 대표 셀에서 발동).
-            if (TryResolveDefenderKey(cell, out var resolvedKey)) cell = resolvedKey;
-            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
-            MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
-            FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
-            _onPlaceTriggeredEntities.Add(entity);
-            ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
-            return true;
-        }
-
+            if (_em.HasComponent<PendingDeployment>(entity))
+                _em.RemoveComponent<PendingDeployment>(entity);
             MarkJustDeployedForRules(entity);
             OnDefenderActivated(entity);
         }
@@ -7831,10 +7827,10 @@ namespace Wassup.Bridge
 
             if (!_onPlaceTriggeredEntities.Contains(entity))
                 TriggerDeploymentOnPlaceSkill(cell, entity);
-        // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
-        // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후.
-        private void ApplyEnvironmentGating()
-        {
+            _cancellableDeployments.Remove(entity); // unit 5 리뷰 H-1 — 활성화 = 유예 종료
+            Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
+        }
+
         private void DrainDefenderActivatedEvents()
         {
             if (!_defenderActivatedQueue.IsCreated) return;
@@ -7847,6 +7843,28 @@ namespace Wassup.Bridge
             }
         }
 
+        public bool TriggerDeploymentOnPlaceSkill(Vector2Int cell, Entity entity)
+        {
+            // NOTE: on-place push impulse is enqueued earlier — at TryBeginDefenderDeployment
+            // (drag-drop path) or PlaceDefenderAs (instant path). Do NOT re-call ApplyOnPlacePush
+            // here; that would double-fire the radius push impulse.
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
+            if (_onPlaceTriggeredEntities.Contains(entity)) return false;
+            // defender-footprint unit 1 — 대표 셀 해석(효과 타일·on-place 는 대표 셀에서 발동).
+            if (TryResolveDefenderKey(cell, out var resolvedKey)) cell = resolvedKey;
+            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
+
+            MarkJustDeployedForRules(entity);   // unit 0 — D&D 경로 + 재배치 재무장(이 함수를 재호출한다)
+            FireOnPlaceCameraShake(binding.data);   // camera-direction unit 17
+            _onPlaceTriggeredEntities.Add(entity);
+            ApplyEffectTileOnce(cell, entity); // unit 8 — 자기 가드(재배치 재무장에 딸려오지 않는다)
+            return true;
+        }
+
+        // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
+        // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후.
+        private void ApplyEnvironmentGating()
+        {
             if (tilemapHiddenEnvironment == null) return;
             for (int i = 0; i < tilemapHiddenEnvironment.Length; i++)
             {
@@ -8400,6 +8418,8 @@ namespace Wassup.Bridge
 
         // defender-footprint unit 1 — cell = **대표 셀**. footprint 점유 등록(OccupyDefenderFootprint)은
         // 호출자(배치 2경로) 몫이고, 이 함수는 바인딩·DefenderFootprint·sim 위치를 전부 그 한 칸에 건다.
+        // defender-deploy-phase unit 2 — 모든 방어유닛은 PendingDeployment{InFlight} 로 태어난다(경로 무관). 비행이 없는
+        // 경로(PlaceDefenderAs)는 호출자가 곧바로 LandDeployedDefender 를 부른다.
         private Entity CreateDefenderEntity(
             Vector2Int cell,
             DefenderUnitData unitData,
@@ -8421,8 +8441,6 @@ namespace Wassup.Bridge
             DefenderPlaced?.Invoke(entity, unitData);
             // unit 10 — 저장값은 **앵커 + 크기**뿐이다. 「대표 셀」은 은퇴했다.
             _em.AddComponentData(entity, new DefenderFootprint
-        // defender-deploy-phase unit 2 — 모든 방어유닛은 PendingDeployment{InFlight} 로 태어난다(경로 무관). 비행이 없는
-        // 경로(PlaceDefenderAs)는 호출자가 곧바로 LandDeployedDefender 를 부른다.
             {
                 anchor = new int2(cell.x, cell.y),
                 size = new int2(unitData.Footprint.x, unitData.Footprint.y),
@@ -8582,6 +8600,14 @@ namespace Wassup.Bridge
                     current = Entity.Null,
                 });
             }
+            // defender-autobattle-ai unit 1 — AI 상태 + 공격 정책(능력 존재에서 한 번 bake — 로직은 이 값만 본다).
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderAiPolicy
+            {
+                value = _em.HasComponent<Wassup.Battle.Combat.SummonerState>(entity) ? Wassup.UnitAi.DefenderAttackPolicy.Summon
+                      : _em.HasComponent<Wassup.Battle.Combat.BombLauncherState>(entity) ? Wassup.UnitAi.DefenderAttackPolicy.Bomb
+                      : Wassup.UnitAi.DefenderAttackPolicy.Target,
+            });
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderAiStatus { value = Wassup.UnitAi.DefenderAiState.Deploying });
             _em.AddComponent<PendingDeployment>(entity);   // 기본값 = InFlight
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
@@ -8767,7 +8793,7 @@ namespace Wassup.Bridge
             // 적 AI 스택을 그대로 물려받는다 — EnemyAiStateSystem 은 FactionTag 를 안 보고
             // AttackState.targetMask 로만 타겟을 찾는다(faction-agnostic). Halt = 사거리에
             // 적이 들면 정지하고 공격.
-            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.Battle.Combat.AiState.Marching });
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState { value = Wassup.UnitAi.AiState.Marching });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyBehavior
             {
                 targetMode = Wassup.Data.EnemyTargetMode.Nearest,
@@ -10895,7 +10921,7 @@ namespace Wassup.Bridge
             // enemy-ai-fsm Unit 0 — FSM 상태 초기값. EnemyAiStateSystem(unit 1)이 매 틱 갱신.
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState
             {
-                value = Wassup.Battle.Combat.AiState.Marching,
+                value = Wassup.UnitAi.AiState.Marching,
             });
             // target-persistence unit 3 — 공격 가능한 **전 적**에게 부착한다(구 FocusUntilDead 한정).
             // Nearest 4종(Tanker·Debuffer·보스 2종)도 락을 받는다 — D4.

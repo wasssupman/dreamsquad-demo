@@ -11,6 +11,7 @@ using Wassup.Core.TimeControl;
 using Wassup.Bridge;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Units;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.PlayMode
 {

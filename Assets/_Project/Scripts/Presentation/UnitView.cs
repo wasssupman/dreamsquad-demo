@@ -54,6 +54,9 @@ namespace Wassup.Presentation
 
         // 모션 사건 — 공격(발사 주기 압축)·배치·사망(연출 후 자멸)·즉시 파괴.
         public abstract void PlayAttack(float attackAnimPeriod = 0f);
+        // defender-autobattle-ai unit 4 — 뷰는 sim 의 AI 상태 하나를 받아 «루프»를 고른다(Sustaining → 능력 루프, 그 외 → 기본 로코모션).
+        // 원샷(배치·공격·사망)은 사건 채널 그대로다 — 상태로 바꾸면 프레임 유실이 생긴다. 백엔드가 루프 오버라이드를 모르면 무동작.
+        public virtual void SetAiState(Wassup.UnitAi.DefenderAiState state, string sustainLoop, string sustainLostOneShot) { }
         public abstract bool PlayDeploy();
         public abstract void Kill();
         public abstract void Dispose();

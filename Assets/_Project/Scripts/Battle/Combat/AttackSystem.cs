@@ -138,6 +138,7 @@ namespace Wassup.Battle.Combat
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
             // enemy-ai-fsm 3a — fire 게이트용 상태 RO.
             var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
+            var defenderAiLookup = SystemAPI.GetComponentLookup<DefenderAiStatus>(isReadOnly: true);   // defender-autobattle-ai unit 2
             var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(isReadOnly: false);
             // dreamcatcher-unit-trigger unit 2 — triggered card slots (counter RW).
             var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: false);
@@ -315,6 +316,14 @@ namespace Wassup.Battle.Combat
                 // Deploying·Dead 는 쿼리 랭크(위 WithNone)라 여기 오지 않는다.
                 bool canStart = UnitActionPhase.CanStartAction(
                     UnitActionPhase.Resolve(actionLocked, attack.ValueRO.hitDelayRemaining > 0f));
+                // defender-autobattle-ai unit 2 — 방어유닛은 저장된 AI 상태(DefenderAiStateSystem, 같은 틱 앞)를 읽는다.
+                // 「타겟이 있나」만 이 시스템의 몫(후속 unit-ai-targeting). 적은 위 공통 술어 + EnemyAiState 게이트 그대로.
+                bool cooldownReady = attack.ValueRO.cooldownRemaining <= 0f;
+                bool hasDefenderAi = defenderAiLookup.HasComponent(attackerEntity);
+                var defenderAi = hasDefenderAi ? defenderAiLookup[attackerEntity].value : Wassup.UnitAi.DefenderAiState.Ready;
+                bool canStartAttack = hasDefenderAi
+                    ? DefenderAi.CanStartAttack(defenderAi, cooldownReady)
+                    : canStart && cooldownReady;
 
                 // bomb-thrower-defender unit 4 — 폭탄맨은 일반 타겟팅/RESOLVE 경로를 타지
                 // 않으므로 여기서 처리하고 continue. CC(action-lock)는 일반 공격과 동일하게
@@ -326,7 +335,7 @@ namespace Wassup.Battle.Combat
                 // 착지 칸은 발사 시점 스냅샷이다 — 적이 걸어 나가면 빗나간다(유도 아님).
                 if (bombLauncherLookup.HasComponent(attackerEntity))
                 {
-                    if (canStart && attack.ValueRO.cooldownRemaining <= 0f
+                    if (canStartAttack
                         && projectileRefLookup.HasComponent(attackerEntity))
                     {
                         var bomb = bombLauncherLookup[attackerEntity];
@@ -438,16 +447,12 @@ namespace Wassup.Battle.Combat
                 // bombardment 를 그대로 따르지 않는 지점이다. 상세는 아래 게이트 블록.
                 if (summonerLookup.HasComponent(attackerEntity))
                 {
-                    if (canStart && attack.ValueRO.cooldownRemaining <= 0f)
+                    if (canStartAttack)
                     {
                         var summoner = summonerLookup[attackerEntity];
-                        // 계약 9 — 양방향 대칭 생존 술어. `current != Entity.Null` 만 보면
-                        // 파괴된 순찰병의 stale 핸들로 소환사가 영구 대기한다.
-                        bool alivePatrol = summoner.current != Entity.Null
-                            && SystemAPI.Exists(summoner.current)
-                            && !deadLookup.HasComponent(summoner.current)
-                            && healthLookup.HasComponent(summoner.current)
-                            && healthLookup[summoner.current].value > 0f;
+                        // 계약 9 의 생존 술어는 DefenderAiStateSystem 이 하나로 든다 — 여기선 상태(Sustaining)만 읽는다
+                        // (defender-autobattle-ai unit 2). 같은 틱 앞에서 계산되므로 종전 인라인 판정과 같은 값.
+                        bool alivePatrol = defenderAi == Wassup.UnitAi.DefenderAiState.Sustaining;
 
                         // 초회 게이트 — 첫 순찰병은 **담당 구역 안에 적이 있을 때만** 낸다
                         // (사용자 결정 2026-08-03). 구역 술어는 PatrolAreaMath 가 단독 소유한다.
@@ -958,7 +963,7 @@ namespace Wassup.Battle.Combat
                     if (rem <= 0f) doResolve = true;   // 지연 만료 → 이번 프레임 타격
                     // 지연 중엔 새 공격 START 안 함
                 }
-                else if (canStart && bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                else if (canStartAttack && bestTarget != Entity.Null)
                 {
                     // ── START ── 애니메이션 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
                     bool isDefenderStart = defenderTagLookup.HasComponent(attackerEntity);

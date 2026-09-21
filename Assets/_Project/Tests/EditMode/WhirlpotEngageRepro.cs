@@ -5,6 +5,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Units;
 using Wassup.Data;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.EditMode
 {

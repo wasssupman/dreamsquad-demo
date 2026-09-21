@@ -7,6 +7,7 @@ using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Combat
 {
@@ -131,11 +132,9 @@ namespace Wassup.Battle.Combat
         }
 
         // 순수 전이 함수. aggro 우선, 비-aggro 는 "AttackSystem 이 fire 할 타겟 존재" 로 Engaging/Marching.
+        // defender-autobattle-ai unit 5 — 규칙은 로직 레이어(EnemyAi.Evaluate)가 소유. 호환용 위임.
         public static AiState Evaluate(bool aggroed, bool guardianInRange, bool hasFireTarget)
-        {
-            if (aggroed) return guardianInRange ? AiState.Standoff : AiState.Chasing;
-            return hasFireTarget ? AiState.Engaging : AiState.Marching;
-        }
+            => EnemyAi.Evaluate(aggroed, guardianInRange, hasFireTarget);
 
         // AttackSystem fire 조건 미러. 타겟 **선정** 로직은 여전히 손으로 맞춰야 하지만,
         // 락 **유지** 판정만은 target-persistence unit 1 이 TargetPersistence.KeepsLock 으로

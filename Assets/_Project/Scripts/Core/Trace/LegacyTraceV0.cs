@@ -46,6 +46,8 @@ namespace Wassup.Core.Trace
         Detection = 20,
         // defender-deploy-phase unit 1 — 배치 페이즈 종료(활성화). a = 방어유닛 sim id. append-only.
         DefenderActivated = 21,
+        // defender-autobattle-ai unit 3 — 방어유닛 AI 상태 전이(변할 때만). a = sim id, i = DefenderAiState 값. append-only.
+        DefenderAiState = 22,
     }
 
     // 채널 무관 고정 폭 레코드. 채널마다 다른 구조체를 두지 않는 이유: 스키마가 채널 수만큼

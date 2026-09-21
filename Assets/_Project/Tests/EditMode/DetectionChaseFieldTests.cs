@@ -8,6 +8,7 @@ using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
+using Wassup.UnitAi;
 
 namespace Wassup.Tests.EditMode
 {

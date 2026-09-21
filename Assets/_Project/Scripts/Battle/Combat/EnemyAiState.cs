@@ -1,14 +1,12 @@
 using Unity.Entities;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Combat
 {
-    // enemy-ai-fsm Unit 0 — 적 행동 FSM 상태. Combat 소유, EnemyAiStateSystem(unit 1)만 쓴다.
-    // MovementSystem·AttackSystem 은 RO 로 읽어 이동/공격을 결정한다. lifecycle(Dead/PastGoal)
-    // 과 CC 는 이 enum 밖 직교 차원.
-    public enum AiState : byte { Marching, Engaging, Chasing, Standoff }
-
+    // enemy-ai-fsm Unit 0 — 적 행동 FSM 상태 컴포넌트. Combat 소유, EnemyAiStateSystem 만 쓴다.
+    // 값 타입 `AiState` 와 전이 규칙 `EnemyAi.Evaluate` 는 로직 레이어(Wassup.UnitAi)로 갔다 — defender-autobattle-ai unit 5.
     public struct EnemyAiState : IComponentData
     {
-        public AiState value;
+        public Wassup.UnitAi.AiState value;
     }
 }

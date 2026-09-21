@@ -7,6 +7,7 @@ using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Combat
 {

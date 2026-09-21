@@ -1,6 +1,6 @@
 # Defender Autobattle AI — 방어유닛 행동 결정을 아키텍처 무관 로직 레이어로
 
-상태: **초안 2026-09-21 · 승인 대기** (units 미착수). 선행: `defender-deploy-phase`(3b1992a9 + `Wassup.UnitAi` asmdef 신설).
+상태: **구현 완료 2026-09-21 · 사용자 Play 육안 확인 대기** (units 0~6 · EditMode 두 lane 초록 · MCP Play 계측 통과 — `7_handoff_summary.md`). 권장안 채택: 방어유닛 전용 어휘 · 뷰 포함 · 적 편입 포함. 선행: `defender-deploy-phase`(3b1992a9 + `Wassup.UnitAi` asmdef 신설).
 
 ## 검증 질문
 
@@ -22,9 +22,13 @@ ECS 는 그 입력을 만들고 결정을 실행만 하며, 뷰는 같은 상태
 ```
 Wassup.UnitAi (로직 · 엔진 참조 불가 · EditMode 테스트가 곧 규칙서)
    struct DefenderAiInput   { deploying, dead, actionLocked, swinging, cooldownReady, hasTarget, summonAlive, loopOverride… }  // plain 값 스냅샷
-   enum   DefenderAiState   { Deploying, Locked, Swinging, Ready(대기), Engaging(공격 진행), Sustaining(소환물 유지)… }
-   struct DefenderDecision  { state, startAttack, startCast, keepLoop… }
-   static DefenderAi.Decide(in DefenderAiInput) → DefenderDecision
+   enum   DefenderAiState   { Deploying, Locked, Engaging(스윙 중), Sustaining(소환물 유지), Ready(대기) }   // 큰 랭크가 우선
+   static DefenderAi.Resolve(in DefenderAiInput) → DefenderAiState                    // 타겟 무관 상태(매 틱, 유일 writer 가 저장)
+   static DefenderAi.CanStartAttack(state, cooldownReady) → bool                       // 타겟은 적용 레이어가 안다(후속 spec 에서 편입)
+   ⚠ 설계 정정(구현 중): Decide 하나가 «타겟이 있나»까지 알려면 AttackSystem 의 타겟 스캔(포커스 락·persistence·frontmost)을 복제해야 한다 —
+     적 FSM 의 HasFireTarget 미러가 낳은 바로 그 이중화다. 그래서 상태는 타겟 무관 랭크까지만 저장하고, 「이번 틱 START」는 AttackSystem 이
+     자기 타겟 결과 + `CanStartAttack(state, ready)` 로 정한다. Engaging 은 «스윙 중»(hitDelayRemaining > 0)이다 — 즉발 공격은 Ready 에서 사건만 낸다.
+     타겟팅이 로직 레이어로 오면(후속 unit-ai-targeting) Engaging 이 «START 결정»까지 앞당겨진다.
 
 Wassup.Runtime / ECS (적용)
    DefenderAiStateSystem(Combat, 적 FSM 과 같은 밴드): 컴포넌트 → Input → Decide → DefenderAiState 컴포넌트에 씀(유일 writer)
@@ -39,13 +43,13 @@ Mono (뷰)
 
 | 파일 | 작업 구분 | 목적 |
 |---|---|---|
-| 0 | 로직 | `DefenderAiInput/State/Decision` + `DefenderAi.Decide` — 오늘의 판정을 **그대로** 옮긴다(동작 무변). 진리표 EditMode 테스트 = 규칙서 |
-| 1 | 적용·저장 | `DefenderAiState` 컴포넌트(Combat) + `DefenderAiStateSystem`(유일 writer). 아직 아무도 안 읽음 |
-| 2 | 소비 전환 | AttackSystem(START) · HazardCast · Movement 가 상태를 읽는다. 자기 판정 삭제. `AttackSystemUnifiedLoopTests`·`CcActionLockTests` 무수정 초록 |
-| 3 | 소환사 | 「소환물 생존 → 능력 루프」를 브리지 폴링이 아니라 상태(`Sustaining`)로. `SetLoopOverride` 는 상태 미러가 됨 |
-| 4 | 뷰 | 원샷/루프/순환 우선순위를 상태 하나로 읽기. `PatrolDefenderPlayTest` 무수정 |
-| 5 | 적 편입 | `EnemyAiStateSystem.Evaluate` 를 `Wassup.UnitAi.EnemyAi.Evaluate` 로 이동(동작 무변) — 두 진영이 같은 레이어 |
-| 6 | 검증 | EditMode 진리표 · 골든 코퍼스 **무변**(동작 무변의 증거) · PlayMode lane |
+| 0 | 로직 | `0_defender_ai_logic.md` — `DefenderAiInput/State/AttackPolicy` + `DefenderAi.Resolve/CanStartAttack`. 진리표 EditMode = 규칙서 |
+| 1 | 적용·저장 | `1_state_component_and_system.md` — `DefenderAiStatus`·`DefenderAiPolicy` 컴포넌트(Combat) + `DefenderAiStateSystem`(유일 writer, 밴드 C) |
+| 2 | 소비 전환 | `2_attack_consumes_state.md` — AttackSystem 3경로(일반·폭탄·소환)의 START 가 `CanStartAttack(state, ready)` 를 읽고 소환사 alivePatrol 사본 삭제 |
+| 3 | 소환사·브리지 | `3_bridge_reads_state.md` — 브리지 `SyncSummonerAnimationState` 가 `IsPatrolAlive` 폴링 대신 `Sustaining` 을 읽음 + 상태 전이 트레이스(채널 22) |
+| 4 | 뷰 | `4_view_state_input.md` — `UnitView.SetAiState` — 뷰는 상태 하나로 루프 오버라이드/대기 순환을 고른다(원샷은 사건) |
+| 5 | 적 편입 | `5_enemy_ai_join.md` — `AiState` enum + `Evaluate` → `Wassup.UnitAi`(`EnemyAi.Evaluate`), 동작 무변 |
+| 6 | 검증 | `6_verify.md` — EditMode · 골든 **값 무변**(채널 22 추가만) · PlayMode(`PatrolDefenderPlayTest`) |
 
 ## Feature-wide 계약 (초안)
 
@@ -57,9 +61,9 @@ Mono (뷰)
    **같은 함수**를 부르고, 의도층(`DefenderAi.Decide` / `EnemyAi.Evaluate`)은 진영별이다. 하나의 인터페이스로 묶지 않는다 — 입력·상태 집합이
    다르고(적 = 이동 정책 축, 방어유닛 = 배치·유지 축) 둘을 한 손으로 잡는 소비자가 없다(제약 8 · 제네릭 2개 금지). 그런 소비자가 생기면 그때 승격.
 6. **트레이스.** 상태 전이는 사건이다 — `TraceChannel` append(«왜 안 쐈나»를 로그로 읽는다). 골든은 채널 추가로만 갈리고 값은 같아야 한다.
-7. **아키타입 판별은 정책 필드로, 타입 체크 금지.** 소환사·폭탄맨·순찰병·캐스터의 다른 행동은 `Decide` 안의 `if (isSummoner)` 가 아니라
-   SO 의 **정책 enum**(적의 `engageMovement{Halt/Advance/Pulse}` 선례)을 입력으로 받아 분기한다. 행동은 데이터, 로직은 정책을 해석한다.
-   유닛이 늘어도 `Decide` 가 아키타입 switch 로 자라지 않게 하는 장치.
+7. **아키타입 판별은 정책 값으로, 타입 체크 금지.** `DefenderAttackPolicy{Target, Bomb, Summon}` 을 입력으로 받아 분기한다. 값의 출처는 스폰 시
+   bake(`DefenderAiPolicy` 컴포넌트 — 능력 SO 존재에서 한 번 파생). SO 에 별도 enum 을 두면 능력과 갈릴 수 있어(정책 Summon + 능력 없음) 두지 않는다 —
+   적의 `engageMovement` 는 이동 정책이 능력과 독립이라 SO 필드가 맞았고, 여기선 공격 정책이 능력 그 자체다. 로직은 정책만 본다.
 8. **결정 틱 = sim 틱.** 표준 오토배틀러가 쓰는 저주기 결정 틱은 이 규모(방어 ~10 · 적 ~30)에서 이득이 없고 결정론만 흐린다. 매 sim 틱 평가.
 
 ## 열린 질문 (승인 전 결정)
