@@ -65,7 +65,7 @@ namespace Wassup.Tests.PlayMode
             var near = SpawnDummyEnemy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)));
             var far = SpawnDummyEnemy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, slasher), "place slasher");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, slasher), "place slasher");
 
             // 큐 드레인 + 임계 발화 + CcApply 까지 몇 프레임.
             // ⚠ stackCount 로 단언하지 않는다: Bleed 는 `atStack 5 · mode Consume` 이라

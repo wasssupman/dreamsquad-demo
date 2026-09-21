@@ -67,7 +67,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(bridge.CanPlaceDefenderAt(secondCell.x, secondCell.y, unit, out var reason),
                 "2기째 거부");
             Assert.AreEqual(PlacementRejectReason.LimitReached, reason, "사유 = LimitReached");
-            Assert.IsFalse(bridge.PlaceDefenderAs(secondCell.x, secondCell.y, unit), "커밋 경로도 막힌다");
+            Assert.IsFalse(TestPlacement.PlaceActive(bridge, secondCell.x, secondCell.y, unit), "커밋 경로도 막힌다");
             Assert.AreEqual(1, bridge.DeployedCountOf(unit), "거부는 카운트를 늘리지 않는다");
 
             // 사망 → 자리가 빈다. 리셋 훅은 없다 — 카운트가 _defenderByTile 파생이라
@@ -168,7 +168,7 @@ namespace Wassup.Tests.PlayMode
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
                     {
                         cell = new Vector2Int(x, y);
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
                     }
             cell = default;
             return false;

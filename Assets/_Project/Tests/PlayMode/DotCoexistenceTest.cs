@@ -67,7 +67,7 @@ namespace Wassup.Tests.PlayMode
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, unit, out _)) { cell = new Vector2Int(x, y); break; }
             Assert.AreNotEqual(int.MinValue, cell.x, "배치 가능 타일을 못 찾았다");
-            bridge.PlaceDefenderAs(cell.x, cell.y, unit);
+            TestPlacement.PlaceActive(bridge, cell.x, cell.y, unit);
             bridge.StartBattle();
 
             var byTile = (System.Collections.IDictionary)typeof(BattleBridge)

@@ -74,7 +74,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(skillLong.cooldownSec, beforeLong, 0.001f, "Consume 이 쿨다운을 돌려 놓았다(전제)");
             Assert.IsFalse(sr.IsReady(skillShort), "짧은 스킬도 배치 전에는 쿨다운 중이다(전제)");
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, ranger), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, ranger), "배치");
             for (int f = 0; f < 4; f++) yield return null;   // 규칙 경로는 다음 틱에 적용된다
 
             float afterLong = sr.GetRemainingSeconds(skillLong);

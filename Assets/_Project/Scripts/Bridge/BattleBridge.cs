@@ -913,6 +913,7 @@ namespace Wassup.Bridge
         {
             DestroyEntitiesByType<GoalReachedEventsSingleton>();
             DestroyEntitiesByType<DefenderDeathEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Units.DefenderActivatedEventsSingleton>();   // defender-deploy-phase — 안 지우면 다음 판에 2개 → GetSingleton 예외
             DestroyEntitiesByType<ShieldBreakEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();

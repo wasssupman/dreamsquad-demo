@@ -74,8 +74,8 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(tileRange, 0, "반경이 저작돼 있어야 경계 단언이 선다");
             var origin = FindTripleCells(bridge, booster, tileRange, out var inCell, out var outCell);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(inCell.x, inCell.y, allyIn), "반경 안 아군 배치");
-            Assert.IsTrue(bridge.PlaceDefenderAs(outCell.x, outCell.y, allyOut), "반경 밖 아군 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, inCell.x, inCell.y, allyIn), "반경 안 아군 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, outCell.x, outCell.y, allyOut), "반경 밖 아군 배치");
             Assert.IsTrue(bridge.TryGetDefenderAt(inCell, out var inEntity), "반경 안 아군 엔티티");
             Assert.IsTrue(bridge.TryGetDefenderAt(outCell, out var outEntity), "반경 밖 아군 엔티티");
 
@@ -83,7 +83,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1f, DamageMul(em, inEntity), 0.001f, "배치 직후 아군 배율은 1(오염 가드)");
             Assert.AreEqual(1f, DamageMul(em, outEntity), 0.001f, "배치 직후 아군 배율은 1(오염 가드)");
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(origin.x, origin.y, booster), "가디언 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, origin.x, origin.y, booster), "가디언 배치");
             Assert.IsTrue(bridge.TryGetDefenderAt(origin, out var selfEntity), "가디언 엔티티");
 
             // 모디파이어는 큐 → ApplySystem → AggregateSystem 경로라 반영까지 프레임이 필요하다.

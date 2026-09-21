@@ -125,7 +125,7 @@ namespace Wassup.Tests.PlayMode
                 if (taken.Contains(c)) continue;
                 if (!bridge.CanPlaceDefenderAt(x, y, u, out _)) continue;
                 cell = c;
-                return bridge.PlaceDefenderAs(x, y, u);
+                return TestPlacement.PlaceActive(bridge, x, y, u);
             }
             cell = default;
             return false;

@@ -59,7 +59,7 @@ namespace Wassup.Tests.PlayMode
             var inRange = SpawnWalker(em, bridge, near);
             var outFar = SpawnWalker(em, bridge, far);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, archer), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, archer), "배치");
             yield return Frames(6);
 
             // 감속이 이동이 실제로 읽는 스탯(집계 결과)에 앉았는지 먼저 확인 — 위치 델타
@@ -111,7 +111,7 @@ namespace Wassup.Tests.PlayMode
             var cell = FindCellWithWalkNeighbours(bridge, em, archer, 2, 3, out var near, out _);
             var enemy = SpawnWalker(em, bridge, near);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, archer), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, archer), "배치");
             yield return Frames(6);
             Assert.Less(MoveMul(em, enemy), 0.6f, "부착(감속이 실효 스탯에 앉음)");
 

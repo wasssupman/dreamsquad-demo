@@ -110,7 +110,7 @@ namespace Wassup.Tests.PlayMode
             var near = SpawnDummyEnemy(em, bridge, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y))));
             var far = SpawnDummyEnemy(em, bridge, ToFloat3(bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y))));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "place malphite");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, malphite), "place malphite");
 
             bool nearStunned = false;
             float t = 0f;
@@ -174,7 +174,7 @@ namespace Wassup.Tests.PlayMode
         {
             var cell = FindPlaceableCell(bridge, u);
             if (cell.x == int.MinValue) return false;
-            return bridge.PlaceDefenderAs(cell.x, cell.y, u);
+            return TestPlacement.PlaceActive(bridge, cell.x, cell.y, u);
         }
 
         private static Vector2Int FindPlaceableCell(BattleBridge bridge, DefenderUnitData u)

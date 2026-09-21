@@ -456,7 +456,7 @@ namespace Wassup.Tests.PlayMode
                         if (dx == 0 && dy == 0) continue;
                         int qx = p.x + dx, qy = p.y + dy;
                         if (!_bridge.CanPlaceDefenderAt(qx, qy, u, out _)) continue;
-                        if (!_bridge.PlaceDefenderAs(qx, qy, u)) continue;
+                        if (!TestPlacement.PlaceActive(_bridge, qx, qy, u)) continue;
                         _approachCell = path[k - ApproachCells];
                         return true;
                     }
@@ -469,7 +469,7 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
             return false;
         }
 

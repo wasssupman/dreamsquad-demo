@@ -45,7 +45,7 @@ namespace Wassup.Tests.PlayMode
             // 적은 **북쪽**에만 있다. 남쪽 고정 코드는 여기서 반드시 0을 낸다.
             var north = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + 2)));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, unit), "place");
             yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(north).value;
@@ -116,7 +116,7 @@ namespace Wassup.Tests.PlayMode
             // 진짜 적은 더 멀고 다른 방향.
             var real = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 4, cell.y)));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, unit), "place");
             yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float realDealt = Hp - em.GetComponentData<Health>(real).value;
@@ -147,7 +147,7 @@ namespace Wassup.Tests.PlayMode
             int far = unit.GetAbility<UnitSkillAbility>().mechanics[0].payload.tileRange + 6;
             var beyond = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x, cell.y + far)));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "place");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, unit), "place");
             yield return Frames(60);   // 탄 비행 시간(레거시는 즉발이라 10 이면 됐다)
 
             float dealt = Hp - em.GetComponentData<Health>(beyond).value;

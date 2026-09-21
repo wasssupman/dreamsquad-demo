@@ -172,7 +172,7 @@ namespace Wassup.Tests.PlayMode
                     if (d < bestD) { bestD = d; bestX = x; bestY = y; }
                 }
                 if (bestX < 0) break;
-                bridge.PlaceDefenderAs(bestX, bestY, unit);
+                TestPlacement.PlaceActive(bridge, bestX, bestY, unit);
                 placed++;
             }
             return placed;

@@ -63,7 +63,7 @@ namespace Wassup.Tests.PlayMode
             var near = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 1, cell.y)), Hp);
             var far = SpawnDummy(em, bridge, bridge.GridToWorldCenterVector(new Vector2Int(cell.x + 9, cell.y)), Hp);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, busters), "place busters");
 
             // duration(2s) + 여유. DoT 가 다 닳을 때까지.
             float t = 0f;

@@ -77,7 +77,7 @@ namespace Wassup.Tests.PlayMode
             var side = SpawnDummy(em, bridge, new Vector2Int(cell.x + 3, cell.y));
             var farOnAxis = SpawnDummy(em, bridge, new Vector2Int(cell.x, cell.y + aimRange + 2));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, blaster), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, blaster), "배치");
 
             // OnPlace 1회 발사 — 반복이 없으므로 pellets 가 사거리 끝까지 갈 시간만 준다.
             yield return Seconds(2f);
@@ -123,7 +123,7 @@ namespace Wassup.Tests.PlayMode
             // 조준 풀(반경 aimRange) 밖 — 유일한 적이 후보가 못 된다.
             var far = SpawnDummy(em, bridge, new Vector2Int(cell.x, cell.y + aimRange + 2));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, blaster), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, blaster), "배치");
             yield return Seconds(2f);
 
             float d = Hp - em.GetComponentData<Health>(far).value;

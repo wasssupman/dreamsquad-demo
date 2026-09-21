@@ -71,7 +71,7 @@ namespace Wassup.Tests.PlayMode
                 for (int y = -24; y < 48; y++)
                     if (_bridge.CanPlaceDefenderAt(x, y, unit, out _)) { cell = new Vector2Int(x, y); break; }
             Assert.AreNotEqual(int.MinValue, cell.x, "배치 가능 타일을 못 찾았다");
-            _bridge.PlaceDefenderAs(cell.x, cell.y, unit);
+            TestPlacement.PlaceActive(_bridge, cell.x, cell.y, unit);
             _bridge.StartBattle();
 
             // 배치된 방어 유닛을 피해자로 쓴다 — **뷰가 붙어 있어야** 오라가 실제로 스폰된다.

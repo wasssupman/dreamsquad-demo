@@ -54,7 +54,7 @@ namespace Wassup.Tests.PlayMode
             var inC = SpawnDummy(em, bridge, new Vector2Int(cell.x - 1, cell.y - 1));
             var outFar = SpawnDummy(em, bridge, new Vector2Int(cell.x + 5, cell.y + 5));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
 
             // 경계 계측 — 실패 시 어디서 끊겼는지 한눈에 보이게 한다.
             var host = bridge.TryGetDefenderAt(cell, out Entity he) ? he : Entity.Null;
@@ -119,7 +119,7 @@ namespace Wassup.Tests.PlayMode
             var e1 = SpawnDummy(em, bridge, new Vector2Int(cell.x + 1, cell.y));
             var e2 = SpawnDummy(em, bridge, new Vector2Int(cell.x + 2, cell.y));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
             yield return Frames(60);
 
             float d1 = Hp - em.GetComponentData<Health>(e1).value;
@@ -157,7 +157,7 @@ namespace Wassup.Tests.PlayMode
             var a = SpawnDummy(em, bridge, target);
             var b = SpawnDummy(em, bridge, target);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
 
             // 발수는 **동시 생존 최대치**로 센다. 갈래는 한 프레임에 다 발사되고 시차는
             // 낙하 시간에만 들어가므로(emitter 주석), 발사 직후 프레임에 전부 살아 있다.
@@ -214,7 +214,7 @@ namespace Wassup.Tests.PlayMode
             var first = SpawnDummy(em, bridge, firstCell);
             var last = SpawnDummy(em, bridge, lastCell);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
 
             // 「먼저 맞은 쪽이 있는데 나중 쪽은 아직 안 맞은」 프레임이 존재하는가.
             bool sawGap = false;
@@ -256,7 +256,7 @@ namespace Wassup.Tests.PlayMode
             var cell = FindPlaceableCell(bridge, cannon);
             var far = SpawnDummy(em, bridge, new Vector2Int(cell.x + 6, cell.y + 6));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
             yield return Frames(60);
 
             float d = Hp - em.GetComponentData<Health>(far).value;
@@ -293,7 +293,7 @@ namespace Wassup.Tests.PlayMode
             float tile = TileSize(bridge);
 
             var victim = SpawnDummy(em, bridge, new Vector2Int(cell.x + 1, cell.y));
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
 
             // 탄이 실제로 뜬 뒤에 옮긴다 — 발사 전에 옮기면 새 칸을 겨눠서 결함이 숨는다.
             bool launched = false;
@@ -357,7 +357,7 @@ namespace Wassup.Tests.PlayMode
             em.SetComponentData(b, LocalTransform.FromPosition(
                 new float3(center.x + 0.3f * tile, center.y, center.z)));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, cannon), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, cannon), "배치");
 
             float3 ia = default, ib = default;
             bool got = false;

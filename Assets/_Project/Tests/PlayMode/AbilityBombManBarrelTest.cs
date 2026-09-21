@@ -60,7 +60,7 @@ namespace Wassup.Tests.PlayMode
             var victim = SpawnDummy(em, bridge, targetCell);
             var before = SnapshotBlockers(em);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bombMan), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bombMan), "배치");
 
             // 곡사 비행(짧다) + 해저드 큐 → 브리지 드레인 → 스폰까지 넉넉히.
             yield return Seconds(2.5f);
@@ -107,7 +107,7 @@ namespace Wassup.Tests.PlayMode
             var far = SpawnDummy(em, bridge, farCell);
             var before = SnapshotBlockers(em);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bombMan), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bombMan), "배치");
             yield return Seconds(2f);
 
             var newBlockers = NewBlockers(em, before);

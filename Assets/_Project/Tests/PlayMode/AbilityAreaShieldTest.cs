@@ -71,9 +71,9 @@ namespace Wassup.Tests.PlayMode
 
             // **수혜자 먼저, 셔틀 나중** — GrantShield 는 배치 순간 스냅샷이라, 셔틀보다
             // 늦게 배치된 유닛은 실드를 못 받는다. 순서가 곧 발동 조건이다.
-            Assert.IsTrue(bridge.PlaceDefenderAs(nearCell.x, nearCell.y, nearUnit), "근거리 수혜자 배치");
-            Assert.IsTrue(bridge.PlaceDefenderAs(farCell.x, farCell.y, farUnit), "원거리 대조군 배치");
-            Assert.IsTrue(bridge.PlaceDefenderAs(hostCell.x, hostCell.y, shuttle), "실드셔틀 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, nearCell.x, nearCell.y, nearUnit), "근거리 수혜자 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, farCell.x, farCell.y, farUnit), "원거리 대조군 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, hostCell.x, hostCell.y, shuttle), "실드셔틀 배치");
 
             // OnPlace 발화(JustDeployed 소비) 1프레임 + IncomingShield→ShieldSlot 드레인
             // 1프레임이 최소 — 넉넉히 흘린다(실드는 다음 프레임 드레인이 의도된 동작).

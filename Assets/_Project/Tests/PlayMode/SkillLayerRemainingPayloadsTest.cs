@@ -208,7 +208,7 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, unit, out _))
-                        return bridge.PlaceDefenderAs(x, y, unit);
+                        return TestPlacement.PlaceActive(bridge, x, y, unit);
             return false;
         }
 

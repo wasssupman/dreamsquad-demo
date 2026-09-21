@@ -89,7 +89,7 @@ namespace Wassup.Tests.PlayMode
                                          (byte)PlacementLayer.Ground);
 
             Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bruiser), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bruiser), "배치");
 
             // ① 즉발성. ⚠ 레거시는 `IncomingDamage` 직접 주입이라 **다음 프레임**에 다
             // 들어갔다. 규칙 경로는 폭발이 요청 캐리어 한 번을 거치므로 한 프레임 더 든다 —
@@ -158,7 +158,7 @@ namespace Wassup.Tests.PlayMode
             var near = SpawnDummy(em, bridge, new Vector2Int(cell.x + 1, cell.y),
                                   (byte)PlacementLayer.Path);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bruiser), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bruiser), "배치");
             float t = 0f;
             while (t < 0.5f) { t += Time.deltaTime; yield return null; }
 

@@ -159,7 +159,7 @@ namespace Wassup.Tests.PlayMode
             {
                 if (!bridge.CanPlaceDefenderAt(x, y, data, out _)) continue;
                 cell = new Vector2Int(x, y);
-                return bridge.PlaceDefenderAs(x, y, data);
+                return TestPlacement.PlaceActive(bridge, x, y, data);
             }
             cell = default;
             return false;

@@ -74,7 +74,7 @@ namespace Wassup.Tests.PlayMode
 
             // 유효 목적지 / 점유(무효) 목적지 준비
             Vector2Int target = FindRelocTarget(bridge, source);
-            Assert.IsTrue(bridge.PlaceDefenderAs(target.x, target.y, unit), "place blocker on future-invalid cell");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, target.x, target.y, unit), "place blocker on future-invalid cell");
             Vector2Int occupiedCell = target;                     // 이제 점유 → 무효 목적지
             Vector2Int target2 = FindRelocTarget(bridge, source); // 새 유효 목적지
             Assert.AreNotEqual(occupiedCell, target2, "distinct valid target exists");
@@ -198,7 +198,7 @@ namespace Wassup.Tests.PlayMode
             var cellA = SoleCell(bridge);
             // 둘째로 집을 유닛 B 를 다른 셀에 배치
             var blockerCell = FindRelocTarget(bridge, cellA);
-            Assert.IsTrue(bridge.PlaceDefenderAs(blockerCell.x, blockerCell.y, unit), "place unit B");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, blockerCell.x, blockerCell.y, unit), "place unit B");
             gm.SetPhase(GamePhase.Battle);
             yield return null;
 
@@ -341,7 +341,7 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
             return false;
         }
 

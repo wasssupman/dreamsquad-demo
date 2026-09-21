@@ -457,7 +457,7 @@ namespace Wassup.Tests.PlayMode
             for (int y = -24; y < 48; y++)
             {
                 if (!bridge.CanPlaceDefenderAt(x, y, unit, out _)) continue;
-                if (!bridge.PlaceDefenderAs(x, y, unit)) continue;
+                if (!TestPlacement.PlaceActive(bridge, x, y, unit)) continue;
                 if (bridge.TryGetDefenderAt(new Vector2Int(x, y), out entity)) return true;
             }
 

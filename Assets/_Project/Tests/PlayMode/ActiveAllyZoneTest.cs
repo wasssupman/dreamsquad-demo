@@ -102,7 +102,7 @@ namespace Wassup.Tests.PlayMode
             // 사후 진입: 장판이 사는 동안 그 안에 배치하면 강화된다.
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             Assert.IsTrue(bridge.CanPlaceDefenderAt(target.x, target.y, late, out _), "그 칸에 배치 가능");
-            Assert.IsTrue(bridge.PlaceDefenderAs(target.x, target.y, late), "장판 안에 배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, target.x, target.y, late), "장판 안에 배치");
             for (int i = 0; i < 5; i++) yield return null;
 
             Assert.AreEqual(2f, GetStat(bridge, em, "ranger").attackSpeedMul, 0.01f,
@@ -476,7 +476,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         private static bool PlaceFirstValid(BattleBridge bridge, DefenderUnitData u)
-            => TryFindPlaceableCell(bridge, u, out var c) && bridge.PlaceDefenderAs(c.x, c.y, u);
+            => TryFindPlaceableCell(bridge, u, out var c) && TestPlacement.PlaceActive(bridge, c.x, c.y, u);
 
         // center 의 이웃 8칸 중 처음 배치 가능한 곳(= 체비셰프 1). 호출 8회 상한.
         private static bool PlaceAdjacentTo(BattleBridge bridge, DefenderUnitData u, Vector2Int center)
@@ -487,7 +487,7 @@ namespace Wassup.Tests.PlayMode
                     if (dx == 0 && dy == 0) continue;
                     int x = center.x + dx, y = center.y + dy;
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
                 }
             return false;
         }
@@ -500,7 +500,7 @@ namespace Wassup.Tests.PlayMode
                 {
                     if (Chebyshev(new Vector2Int(x, y), center) < minDist) continue;
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
                 }
             return false;
         }

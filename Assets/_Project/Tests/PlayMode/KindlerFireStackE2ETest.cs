@@ -73,8 +73,8 @@ namespace Wassup.Tests.PlayMode
             // 체비셰프 거리 정확히 4 인 배치 가능 셀 쌍을 찾는다(위 주석의 배치 근거).
             Assert.IsTrue(FindCellPair(bridge, archer, guardian, 4, out var aCell, out var gCell),
                 "거리 4 배치 셀 쌍");
-            Assert.IsTrue(bridge.PlaceDefenderAs(aCell.x, aCell.y, archer), "place archer");
-            Assert.IsTrue(bridge.PlaceDefenderAs(gCell.x, gCell.y, guardian), "place guardian");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, aCell.x, aCell.y, archer), "place archer");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, gCell.x, gCell.y, guardian), "place guardian");
 
             var archerE = FindDefenderAt(bridge, em, aCell);
             var guardianE = FindDefenderAt(bridge, em, gCell);

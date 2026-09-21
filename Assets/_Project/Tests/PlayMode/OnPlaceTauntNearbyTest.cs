@@ -63,7 +63,7 @@ namespace Wassup.Tests.PlayMode
             // (arm 은 unit 8 철거까지 살아 있으므로 이 구멍은 지금 실재한다.)
             Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bastion), "배치");
             yield return Frames(20);
 
             int seamRuns = Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOf(
@@ -116,7 +116,7 @@ namespace Wassup.Tests.PlayMode
             float Dist() => math.distance(em.GetComponentData<LocalTransform>(enemy).Position,
                                           new float3(basePos.x, basePos.y, basePos.z));
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bastion), "배치");
             yield return Frames(5);
             float before = Dist();
             Assert.IsTrue(em.HasComponent<Aggroed>(enemy), "도발 상태");
@@ -146,7 +146,7 @@ namespace Wassup.Tests.PlayMode
             var cell = FindBastionCell(bridge, em, bastion, 1, out var walk);
             var enemy = SpawnWalker(em, bridge, walk[0]);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bastion), "배치");
             yield return Frames(10);
             Assert.IsTrue(em.HasComponent<Aggroed>(enemy), "부착");
 
@@ -179,7 +179,7 @@ namespace Wassup.Tests.PlayMode
             var ground = SpawnWalker(em, bridge, walk[0]);
             var flying = SpawnWalker(em, bridge, walk[1], (byte)PlacementLayer.Air);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, bastion), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, bastion), "배치");
             yield return Frames(20);
 
             bool groundTaunted = em.HasComponent<Aggroed>(ground);

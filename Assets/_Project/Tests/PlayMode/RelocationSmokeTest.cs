@@ -104,7 +104,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(em.HasComponent<PendingDeployment>(entity), "PendingDeployment removed on activate");
 
             // 비워진 원 타일에 재배치 성공
-            Assert.IsTrue(bridge.PlaceDefenderAs(from.x, from.y, unit), "source tile is free for a new placement");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, from.x, from.y, unit), "source tile is free for a new placement");
         }
 
         // defender-relocation unit 8 — 대가와 보상. 재배치 1회에 코스트가 유닛 코스트만큼 줄고,
@@ -247,7 +247,7 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
             return false;
         }
 

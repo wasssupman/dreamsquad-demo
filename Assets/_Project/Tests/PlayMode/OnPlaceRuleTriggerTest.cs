@@ -64,7 +64,7 @@ namespace Wassup.Tests.PlayMode
             var cell = FindPlaceableCells(bridge, caster, 1, minGap: 1)[0];
 
             Wassup.Battle.Skills.SkillDispatchSystemBase.ResetExecutedCount();
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, caster), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, caster), "배치");
             yield return Frames(8);
             Assert.GreaterOrEqual(
                 Wassup.Battle.Skills.SkillDispatchSystemBase.ExecutedCountOfSkill(
@@ -119,7 +119,7 @@ namespace Wassup.Tests.PlayMode
             Prepare(bridge, gm, plain);
             var cell = FindPlaceableCells(bridge, plain, 1, minGap: 1)[0];
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, plain), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, plain), "배치");
             var e = FindDefenderAt(bridge, cell);
             Assert.AreNotEqual(Entity.Null, e, "엔티티");
 
@@ -153,7 +153,7 @@ namespace Wassup.Tests.PlayMode
             Prepare(bridge, gm, caster);
             var cell = FindPlaceableCells(bridge, caster, 1, minGap: 1)[0];
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, caster), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, caster), "배치");
             var e = FindDefenderAt(bridge, cell);
             Assert.AreNotEqual(Entity.Null, e, "엔티티");
 
@@ -207,7 +207,7 @@ namespace Wassup.Tests.PlayMode
 
             Prepare(bridge, gm, unit);
             var cell = FindPlaceableCells(bridge, unit, 1, minGap: 1)[0];
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, unit), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, unit), "배치");
             yield return Frames(4);
 
             var e = FindDefenderAt(bridge, cell);

@@ -62,7 +62,7 @@ namespace Wassup.Tests.PlayMode
 
             var cell = FindPlaceableCell(bridge, scout);
             float before = cost.Current;
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, scout), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, scout), "배치");
             // skill-layer-migration unit 2c — 규칙 경로는 배치 **다음 틱**에 적용된다.
             // 계약은 「배치하면 코스트가 들어온다」이지 「반환 전에 들어온다」가 아니다.
             for (int f = 0; f < 4; f++) yield return null;
@@ -91,7 +91,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(cost.Max, cost.Current, 0.001f, "우물 가득 채움 전제");
 
             var cell = FindPlaceableCell(bridge, scout);
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, scout), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, scout), "배치");
             for (int f = 0; f < 4; f++) yield return null;   // 규칙 경로는 다음 틱에 적용된다
             float after = cost.Current;
             Object.Destroy(scout);

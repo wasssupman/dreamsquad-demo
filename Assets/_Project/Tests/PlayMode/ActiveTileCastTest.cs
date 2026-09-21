@@ -102,7 +102,7 @@ namespace Wassup.Tests.PlayMode
             for (int x = -24; x < 48; x++)
                 for (int y = -24; y < 48; y++)
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
             return false;
         }
 
@@ -115,7 +115,7 @@ namespace Wassup.Tests.PlayMode
                     if (dx == 0 && dy == 0) continue;
                     int x = center.x + dx, y = center.y + dy;
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
                 }
             return false;
         }
@@ -128,7 +128,7 @@ namespace Wassup.Tests.PlayMode
                 {
                     if (Chebyshev(new Vector2Int(x, y), center) < minDist) continue;
                     if (bridge.CanPlaceDefenderAt(x, y, u, out _))
-                        return bridge.PlaceDefenderAs(x, y, u);
+                        return TestPlacement.PlaceActive(bridge, x, y, u);
                 }
             return false;
         }

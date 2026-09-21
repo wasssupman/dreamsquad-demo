@@ -56,7 +56,7 @@ namespace Wassup.Tests.PlayMode
             var inRange = SpawnWalker(em, bridge, near);
             var outFar = SpawnWalker(em, bridge, far);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, malphite), "배치");
             yield return Frames(6);
 
             Assert.IsTrue(HasStun(em, inRange), "반경 안 적에 Stun 이 안 붙었다");
@@ -94,7 +94,7 @@ namespace Wassup.Tests.PlayMode
             var cell = FindCellWithWalkNeighbours(bridge, em, malphite, 1, 2, out var near, out _);
             var enemy = SpawnWalker(em, bridge, near);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, malphite), "배치");
             yield return Frames(6);
             Assert.IsTrue(HasStun(em, enemy), "부착");
 
@@ -132,7 +132,7 @@ namespace Wassup.Tests.PlayMode
             var inRange = SpawnWalker(em, bridge, near);
             var outFar = SpawnWalker(em, bridge, far);
 
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, malphite), "배치");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, malphite), "배치");
             yield return Frames(10);
 
             float nearHp = em.GetComponentData<Health>(inRange).value;

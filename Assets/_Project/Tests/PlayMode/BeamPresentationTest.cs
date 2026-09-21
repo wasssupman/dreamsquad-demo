@@ -49,7 +49,7 @@ namespace Wassup.Tests.PlayMode
 
             Vector2Int cell = FindPlaceableCell(bridge, busters);
             Assert.AreNotEqual(int.MinValue, cell.x, "placeable cell");
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, busters), "place busters");
 
             // ★ 이것이 없으면 드레인이 안 돌아 빔이 영원히 안 생긴다.
             bridge.StartBattle();
@@ -136,7 +136,7 @@ namespace Wassup.Tests.PlayMode
             }
 
             bridge.StartBattle();
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, busters), "place busters");
 
             // 조사 지속(2초) 동안 동시에 살아있는 빔 세션의 최대치.
             int maxActive = 0;
@@ -230,7 +230,7 @@ namespace Wassup.Tests.PlayMode
             gm.CostRuntime.AddCost(100000);
             Vector2Int cell = FindPlaceableCell(bridge, busters);
             bridge.StartBattle();
-            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, cell.x, cell.y, busters), "place busters");
 
             var defender = FindDefender(bridge, em);
             Assert.AreNotEqual(Entity.Null, defender, "defender resolved");

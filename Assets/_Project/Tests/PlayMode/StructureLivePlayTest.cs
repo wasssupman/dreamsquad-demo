@@ -339,7 +339,7 @@ namespace Wassup.Tests.PlayMode
                     if (dx == 0 && dy == 0) continue;
                     int x = coreCell.x + dx, y = coreCell.y + dy;
                     if (bridge.CanPlaceDefenderAt(x, y, grinder, out _)
-                        && bridge.PlaceDefenderAs(x, y, grinder)) placedAroundCore++;
+                        && TestPlacement.PlaceActive(bridge, x, y, grinder)) placedAroundCore++;
                 }
             Assert.Greater(placedAroundCore, 0,
                 "적 마음 인접에 배치할 수 없다 — 마음이 본체 1칸만 닫는다는 계약이 깨졌다");
@@ -448,7 +448,7 @@ namespace Wassup.Tests.PlayMode
             foreach (var c in candidates)
             {
                 if (!bridge.CanPlaceDefenderAt(c.x, c.y, u, out _)) continue;
-                if (!bridge.PlaceDefenderAs(c.x, c.y, u)) continue;
+                if (!TestPlacement.PlaceActive(bridge, c.x, c.y, u)) continue;
                 cell = c;
                 return true;
             }

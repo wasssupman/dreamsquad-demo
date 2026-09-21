@@ -69,7 +69,7 @@ namespace Wassup.Tests.PlayMode
 
             Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell),
                 "placeable summoner cell whose own cell (or a cover-local cell) is traversable");
-            Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData), "place summoner");
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, ownerCell.x, ownerCell.y, summonerData), "place summoner");
             Assert.IsTrue(PlaceFirstValid(bridge, healerData, out var healerCell), "place healer");
             Assert.IsTrue(PlaceFirstValid(bridge, shieldData, out var shieldCell), "place shield shuttle");
 
@@ -290,7 +290,7 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell));
-            Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData));
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, ownerCell.x, ownerCell.y, summonerData));
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var summoner = EntityAt(bridge, em, ownerCell);
 
@@ -345,7 +345,7 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             Assert.IsTrue(FindSummonerCell(bridge, summonerData, ability.patrolUnit, out var ownerCell));
-            Assert.IsTrue(bridge.PlaceDefenderAs(ownerCell.x, ownerCell.y, summonerData));
+            Assert.IsTrue(TestPlacement.PlaceActive(bridge, ownerCell.x, ownerCell.y, summonerData));
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var summoner = EntityAt(bridge, em, ownerCell);
 
@@ -420,7 +420,7 @@ namespace Wassup.Tests.PlayMode
             {
                 if (!bridge.CanPlaceDefenderAt(x, y, data, out _)) continue;
                 cell = new Vector2Int(x, y);
-                return bridge.PlaceDefenderAs(x, y, data);
+                return TestPlacement.PlaceActive(bridge, x, y, data);
             }
             cell = default;
             return false;
