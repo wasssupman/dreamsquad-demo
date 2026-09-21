@@ -137,7 +137,7 @@ flowchart LR
 
 | 계층 | 축 | 규칙 |
 |---|---|---|
-| **스탯 모디파이어** | 스탯 7(DamageMul · AttackSpeedMul · DmgTakenMul · RegenPerSec · MoveSpeedMul · DamageVsCcMul · MaxHealthMul) × 결합(Multiplicative · Additive · Override) × 출처(`ModifierOrigin` **14 — 생산자 있는 12**: OnPlace · Skill · Dreamcatcher · Dreamstone · Tile · Zone · Boss · HealthThreshold · OnHit · Stack · Gimmick · Burnout / **생산자 0 둘**: 기본값 · 은퇴한 인접 시너지 — **번호만 보존**한다. 지우면 뒤 값이 밀려 도메인→ECS 숫자 캐스트가 조용히 어긋난다) | 출처별 슬롯(stackId)에 얹히고 TTL 로 만료. 같은 슬롯은 **갱신(덮어쓰기)이 기본**이고, **상한을 실으면 갱신이 「누적」으로 바뀐다**(새 값 = min(상한, 기존 + 새 값)) — 광란이 쌓이는 이유다. ⚠ **철회에는 상한을 실으면 안 된다**: 이 엔진의 회수는 슬롯 삭제가 아니라 **항등값 덮어쓰기**(중화)라, 상한이 실리면 min(상한, 기존 + 항등) = 기존 이 되어 **지우기가 조용히 실패한다.** 슬롯 집계 → **실효 스탯** 매 프레임 재계산(집계 결과는 바닥·천장으로 clamp — 곱이 0 이나 무한으로 달아나지 않게). 철회 = 배율 1.0 재적용(중화). 소스: 공격 출력 · 투사체 · 장판 · 필드 · 픽업 · 스택 임계 · 스킬 · Squad 카드 · 효과 타일 · 드림스톤(판 밖) |
+| **스탯 모디파이어** | 스탯 7(DamageMul · AttackSpeedMul · DmgTakenMul · RegenPerSec · MoveSpeedMul · DamageVsCcMul · MaxHealthMul) × 결합(Multiplicative · Additive · Override) × 출처(`ModifierOrigin` **14 — 생산자 있는 12**: OnPlace · Skill · Dreamcatcher · Dreamstone · Tile · Zone · Boss · HealthThreshold · OnHit · Stack · Gimmick · Burnout / **생산자 0 둘**: 기본값 · 은퇴한 인접 시너지 — **번호만 보존**한다. 지우면 뒤 값이 밀려 도메인→ECS 숫자 캐스트가 조용히 어긋난다) | **병합 키는 4축**(누가 걸었나 · 어느 스탯 · 어느 결합 · 슬롯 번호)이고 TTL 로 만료한다 — 「출처 분류」가 키가 아니므로 **서로 다른 둘이 건 같은 종류의 버프는 덮지 않고 각자 산다**(장판 둘·카드 둘이 한 칸을 다투지 않는다). `Override` 가 하나라도 있으면 그 값들의 **최댓값이 이긴다**(적용 순서와 무관 — 열거 번호가 우승자를 정하지 않는다). 같은 키는 **갱신(덮어쓰기)이 기본**이고, **상한을 실으면 갱신이 「누적」으로 바뀐다**(새 값 = min(상한, 기존 + 새 값)) — 광란이 쌓이는 이유다. ⚠ **철회에는 상한을 실으면 안 된다**: 이 엔진의 회수는 슬롯 삭제가 아니라 **항등값 덮어쓰기**(중화)라, 상한이 실리면 min(상한, 기존 + 항등) = 기존 이 되어 **지우기가 조용히 실패한다.** 슬롯 집계 → **실효 스탯** 매 프레임 재계산(집계 결과는 바닥·천장으로 clamp — 곱이 0 이나 무한으로 달아나지 않게). 철회 = 배율 1.0 재적용(중화). 소스: 공격 출력 · 투사체 · 장판 · 필드 · 픽업 · 스택 임계 · 스킬 · Squad 카드 · 효과 타일 · 드림스톤(판 밖) |
 | **스택** | 종류(Fire · Ice · Bleed · Poison · Fatigue) × 최대 스택 × **임계 규칙**(atStack × 모드 Edge/Consume → 파생 효과 ApplyDot / ApplyStun / ApplyStat) | Edge 는 **올라가는 길에만** 발화(최대 중첩에서 꺼진다 — 광란이 스택을 못 쓴 이유), Consume 은 임계에서 스택을 소모. 피로는 시즌 기믹이 쌓는다 |
 | **CC** | Slow · Impulse(벡터 넉백) · Stun · Sleep (+ 지속 피해 토큰이 해저드 저작용으로만 잔존 — 실제 계층은 아래 별도 행) | **행동 잠금** = **Stun·Sleep**(출처 불문) **‖ 도약 비행** — 「잠겼다」는 새 행동을 못 **시작**한다는 뜻이고, 이미 시작한 스윙과 쿨다운 틱은 계속 돈다(그래야 깨어난 유닛이 즉시 때린다). **넉백은 잠금이 아니다** — 밀려나는 중에도 때린다. 보스 면역은 잠금 집합 **+ 넉백**이라 둘을 한 줄로 쓰면 안 된다. Sleep 은 피격 시 해제(wake-on-hit). 감쇠는 이동 **후**. 넉업은 짧은 Stun 의 연출 이름 |
 | **지속 피해** | 슬롯 키 = **출처(Stack · Zone · OnPlace) × 원소(Bleed · Fire · Ice · Poison)** 2축 · 틱 간격 | CC 가 아니라 별도 계층. 두 축을 한 필드로 겸직시키지 않는다(장판 화염과 중첩 화염이 서로 덮는 과피해 재현) |
@@ -570,6 +570,7 @@ flowchart TD
 | 결정론 · 골든 · 하네스 | `../spec/battle-sim-extraction/README.md` · `harness-determinism.md` |
 | 점수 · 종료 통로 | `score-formula.md` |
 | 카드 스키마 필드 상세 | `dreamcatcher-card-schema.md` |
+| 스탯·모디파이어 상세(정적 스탯 구조 · 슬롯 수명) | `../spec/unit-stats-and-modifiers/` |
 
 ## 유지 규칙
 
