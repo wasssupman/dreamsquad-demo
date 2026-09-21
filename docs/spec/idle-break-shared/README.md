@@ -1,6 +1,6 @@
 # Idle Break Shared — 대기 컷 로직 공유 + 신규 Spine 2종
 
-상태: **구현 완료 2026-09-17 · 사용자 Play 육안 확인 대기** (units 0~3 구현·EditMode 초록·MCP Play 계측 통과 — `4_handoff_summary.md`)
+상태: **완료 2026-09-21** — 사용자 Play 확인. 커밋 `8cc852ef` + 튜닝 `9bfe9bd8`·`9d350c06`·`1416f80f`(CH4)·`2d28a6d4`(리그 소스) — `4_handoff_summary.md`
 
 ## 검증 질문
 

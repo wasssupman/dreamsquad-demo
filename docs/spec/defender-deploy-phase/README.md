@@ -1,6 +1,6 @@
 # Defender Deploy Phase — 「배치 중」을 방어유닛 행동의 최상위 페이즈로
 
-상태: **구현 완료 2026-09-21 · 사용자 Play 육안 확인 대기** (units 0~3 구현 · EditMode 초록 · MCP Play 계측 통과 — `5_handoff_summary.md`. 취소·퇴근 거부 창 확대는 «배치 중엔 아무 일도 없다»의 귀결로 보고 진행 — 사용자 이의 시 되돌림)
+상태: **완료 2026-09-21** — 사용자 Play 확인(“문제 없음”). 커밋 `3b1992a9`(페이즈) · `d28be037`+`f5b37a37`(UnitAi 레이어). 남은 것: PlayMode lane · 골든 재베이크 · 푸시 — `5_handoff_summary.md`
 
 ## 검증 질문
 
