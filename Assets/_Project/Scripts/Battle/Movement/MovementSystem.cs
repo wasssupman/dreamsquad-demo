@@ -6,6 +6,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Units;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Movement
 {

@@ -8,6 +8,7 @@ using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Combat
 {

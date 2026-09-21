@@ -4,6 +4,7 @@
     "references": [
         "Wassup.Runtime",
         "Wassup.Skills",
+        "Wassup.UnitAi",
         "PrimeTween.Runtime",
         "Unity.Mathematics",
         "Unity.Entities",

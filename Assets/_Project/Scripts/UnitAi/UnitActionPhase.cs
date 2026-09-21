@@ -1,6 +1,6 @@
-namespace Wassup.Battle.Combat
+namespace Wassup.UnitAi
 {
-    // defender-deploy-phase unit 3 — 「지금 이 유닛이 행동을 시작할 수 있나」의 자리. 순수 · 아키 타입 0 · Burst 호환.
+    // defender-deploy-phase unit 3 — 「지금 이 유닛이 행동을 시작할 수 있나」의 자리. 로직 레이어(Wassup.UnitAi, 엔진 참조 불가) · Burst 호환.
     //
     // 우선순위 표(문서 계약, docs/spec/defender-deploy-phase README 6):
     //   Dead > Deploying > Locked > Swinging > Free

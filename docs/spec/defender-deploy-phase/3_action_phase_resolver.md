@@ -7,7 +7,7 @@
 
 ## 변경 대상
 
-- 신규 `Assets/_Project/Scripts/Battle/Combat/UnitActionPhase.cs` (순수 static · Burst 호환 · 아키 타입 0. Combat 에 두는 이유: Movement·Effects 가 Combat 을 참조하는 방향이 이미 있다)
+- 신규 `Assets/_Project/Scripts/UnitAi/UnitActionPhase.cs` (**신규 asmdef `Wassup.UnitAi`, `noEngineReferences: true`** — `Wassup.Skills` 와 같은 결. rev 2026-09-21 사용자: autobattle AI 로직은 아키텍처(Mono/ECS) 무관 레이어에서 돈다. 배치 시계 규칙 `DeployPhaseClock` 도 여기)
 - `Battle/Combat/AttackSystem.cs:309` — `actionLocked` 계산 → `UnitActionPhase.Resolve(...)` 소비
 - `Battle/Movement/MovementSystem.cs:169` — `locked` 동일
 - `Presentation/UnitView.cs` · `SpineUnitView.cs` · `SpriteUnitView.cs` — 원샷 순서 + `PlayDeploy` 명시 슬롯만

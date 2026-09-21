@@ -70,7 +70,7 @@ handoff 는 `5_handoff_summary.md`.
    효과 타일)를 처리. 첫 줄은 트레이스(`TraceChannel.DefenderActivated = 21`, append-only). 동기 진입점은 **이름 그대로**
    `ActivateDeployedDefender(cell, entity)` 로 남긴다(sim 시스템의 세 줄을 EntityManager 로 그대로 — 테스트 6곳·재배치 무수정).
 6. **우선순위의 자리는 순수 함수 하나 — 오늘은 추출, 내일은 AI 상태.** `UnitActionPhase.Resolve(actionLocked, swinging) → Locked > Swinging > Free`
-   (`Battle/Combat/` — Movement·Effects 가 Combat 을 참조하는 방향). Attack·Movement 의 `actionLocked`/`locked` 식이 이 함수를 부른다 — **동작 무변**.
+   (`Wassup.UnitAi` 로직 레이어 — 엔진 참조 불가 asmdef). Attack·Movement 의 `actionLocked`/`locked` 식이 이 함수를 부른다 — **동작 무변**.
    `Deploying`·`Dead` 는 이 함수의 인자가 아니라 **쿼리 랭크**다: `WithNone<PendingDeployment>` 14곳(+`EcsSkillContext` 2곳) = «존재 배제»(피격·타겟
    후보까지), `DeadTag` = 파괴 대기. 표 전체(Dead > Deploying > Locked > Swinging > Free)는 문서 계약이고 코드는 각 랭크의 실제 소비 지점을 가리킨다.
    critic M-9: HazardCast 에 CC 락을 새로 여는 것·Attack 루프에 Dead 게이트를 더하는 것은 **동작 변경**이라 이 spec 밖(후속 후보). 저장 상태

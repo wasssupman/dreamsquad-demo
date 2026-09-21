@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Wassup.Battle.Combat;
+using Wassup.UnitAi;
 
 namespace Wassup.Battle.Units
 {
@@ -41,9 +42,11 @@ namespace Wassup.Battle.Units
                 bool dead = SystemAPI.HasComponent<DeadTag>(entity);
                 if (!dead)
                 {
-                    if (pending.ValueRO.stage != PendingDeployment.Deploying) continue;
-                    pending.ValueRW.remaining -= dt;
-                    if (pending.ValueRO.remaining > 0f) continue;
+                    // 시계 규칙은 로직 레이어(DeployPhaseClock)가 소유 — 여기는 컴포넌트를 읽고 결과를 실행만.
+                    float remaining = pending.ValueRO.remaining;
+                    bool activate = DeployPhaseClock.Advance(pending.ValueRO.stage == PendingDeployment.Deploying, ref remaining, dt);
+                    pending.ValueRW.remaining = remaining;
+                    if (!activate) continue;
                 }
                 ecb.RemoveComponent<PendingDeployment>(entity);
                 if (dead) continue;

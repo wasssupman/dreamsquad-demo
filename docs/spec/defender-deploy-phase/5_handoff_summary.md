@@ -17,7 +17,7 @@
 
 ## Key Files
 
-- `Battle/Units/PendingDeployment.cs` · `DeploymentActivationSystem.cs` · `DefenderActivatedEventsSingleton.cs` · `Battle/Combat/UnitActionPhase.cs`
+- `Battle/Units/PendingDeployment.cs` · `DeploymentActivationSystem.cs` · `DefenderActivatedEventsSingleton.cs` · **`UnitAi/`(신규 asmdef `Wassup.UnitAi`, 엔진 참조 불가)**: `UnitActionPhase.cs` · `DeployPhaseClock.cs`
 - `Bridge/BattleBridge.cs`(`LandDeployedDefender`·`ActivateDeployedDefender`·`OnDefenderActivated`·`DrainDefenderActivatedEvents`·`PlaceDefenderAs`·`PlayDeploymentPresentation`)
 - `UI/DefenderDragPlacementController.cs`(`CommitPlacementAt`·`FinishDeploymentEntry`·`RunDropDismount` 착지·`AbandonDismount`·`FinishDismountsInstant`)
 - `Data/DefenderUnitData.cs`(`DeployMotionSeconds`) · `Presentation/SpineUnitView.cs`·`SpriteUnitView.cs`
