@@ -46,11 +46,13 @@
 | 카드 효과(부착·시전의 실행) | unit 7. 커맨드는 **성사**되고 자원이 움직이되 효과 자리는 진단 통로로 말하고 지나간다(조용한 무동작 금지) | unit 7 |
 | 거점 개체(마음·본능)의 스폰 | 아직 어느 unit 도 세우지 않는다. `HeartMeter` 의 「거점 피해 → 마음」 구독은 **배선만** 서 있고 생산자가 없다 | 후속 |
 | 효과 타일의 **효과** | 뽑기·1회 소비 가드만 이식(`PlacementService`). 적용은 unit 6 | unit 6 |
+| 코드 기본값을 「기획」으로 읽기 | **기준은 라이브 에셋이다.** 골든과 모드 SO 는 `BattleConfig.asset`(배치 입력 off · 카운트다운 3) · `DefaultCostConfig.asset`(10/10/0.35/창 30) · `AwakeningConfig.asset`(게이지 20/100 · 손패 **4** · 부착 3) · `DeckRuleConfig_Default.asset`(덱 10 · Squad **무제한**)에서 값을 가져온다. C# 필드 기본값(손패 5 · Squad ≤2 · 코스트 30/15/20)과 **다르다** | 정정 |
+| `MatchModeData.squadCardMax` | 안 만들었다 — 덱 규칙은 `DeckRuleConfig` 가 이미 소유하고 라이브가 **무제한**이다. 모드가 그 값을 복제하면 두 곳이 갈린다 | 소유 이전 |
 
 ## 완료 기준
 
 - [x] 헤드리스 초록(**348 통과 / 0 실패**). RNG 소비 순서는 **오라클 테스트**가 증언한다 — 옛 EditMode 테스트는 SO 를 만들어 돌려 헤드리스에서 컴파일되지 않으므로, 그 테스트가 지키던 «소비 차례»를 `WaveGeneratorTests` 가 손으로 재현해 대조한다(웨이브 수 → 종 A → 종 B → 지터 → 배분 → 보스 후처리).
-- [x] 골든 `kill_race_3min`: 고정구 덱(`Deck_Duel` 손잡이 복제)·맵 스냅샷·라이브 등가 모드로 3분 완주, 종료 사유 `complete`(틱 10810 = 배치 창 10 + 10800), 킬 126, 결정론 2회 동일. `wave_clear_8`·`time_attack_8`: 8웨이브 클리어 종료. `heart_collapse`: `MatchOutcome.kind = Defeat`.
+- [x] 골든 `kill_race_3min`: 고정구 덱(`Deck_Duel` 손잡이 복제)·맵 스냅샷·**라이브 에셋 모드**로 3분 완주 — 종료 사유 `complete`, 틱 10980(배치 창 180 = 3초 카운트다운 + 전투 10800), 전투 시계 180.000, 킬 126 / 점수 125(하나는 방어유닛 사망이라 처치가 아니다), 결정론 2회 동일. `wave_clear_8`·`time_attack_8`: 틱 3649 · 57.817초에 8웨이브 클리어. `heart_collapse`: `stress_full` · `MatchOutcome.kind = Defeat` · 놓침 4.
 - [x] 모드 유효성 테스트 빨강 케이스 확인(`targetWaves 12` vs 덱 `maxWaveCount 10` · 저작 플랜 × `clockKind` · 손패 > 덱). ⚠ **Assets lane 이 아니라 코어 lane**에 있다 — 검증기(`ModeValidation`)가 코어에 있어야 헤드리스와 에셋이 **같은 자**를 쓴다.
 - [x] 담당자 안 `mode` 분기 0(`CoreArchitectureTests` — `MatchClock` 만 예외이고 그것이 시계 정책의 소유자다) · `EndMatch` 호출처 **4곳 정확히**.
 - [x] rule-holders 56행 매핑(아래 표).

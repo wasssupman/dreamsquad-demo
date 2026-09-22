@@ -148,20 +148,19 @@ namespace Wassup.BattleCore
                 // 컨셉 블록 3웨이브 · 램프 break 15/12. 배치 판정(코스트·상한·창)도 이 판이 진다.
                 Name = "kill_race_3min",
                 Seed = 4242,
-                Ticks = 11400,   // 배치 창(플레이어가 닫는다) + 180초 전투 + 여유
+                Ticks = 11100,   // 배치 창 180틱(3초 카운트다운) + 180초 전투 + 여유
                 BuildDefinition = () => WaveFixture(4242, GoalKind.KillScoreTimed, ClockKind.FixedLimit, 0),
                 BuildSchedule = () =>
                 {
                     var s = new CommandSchedule();
-                    // 배치 창 안에서 판정을 지난다 — 코스트·보드 상한·층이 전부 걸린다.
-                    s.Add(2, Command.PlaceDefender(0, new int2(3, 1)));
-                    s.Add(2, Command.PlaceDefender(0, new int2(4, 1)));
-                    s.Add(2, Command.PlaceDefender(0, new int2(3, 3)));
-                    s.Add(2, Command.PlaceDefender(0, new int2(4, 3)));
+                    // ⚠ 라이브는 배치 **입력이 꺼진** 모드라 창 안의 배치는 거절된다. 그래서
+                    // 창이 자동으로 닫힌 뒤(180틱)에 놓는다 — 전투 중 배치가 라이브의 모습이다.
+                    s.Add(181, Command.PlaceDefender(0, new int2(3, 1)));
+                    s.Add(181, Command.PlaceDefender(0, new int2(4, 1)));
+                    s.Add(181, Command.PlaceDefender(0, new int2(3, 3)));
+                    s.Add(181, Command.PlaceDefender(0, new int2(4, 3)));
                     // 못 놓는 자리 한 번 — 거절도 규칙이라 골든이 증언한다.
-                    s.Add(3, Command.PlaceDefender(0, new int2(3, 1)));
-                    // 플레이어가 배치 창을 닫는다. 여기서부터 전투 시계·웨이브·코스트 재생.
-                    s.Add(10, Command.FinishPlacement());
+                    s.Add(182, Command.PlaceDefender(0, new int2(3, 1)));
                     return s;
                 },
             },
@@ -192,20 +191,19 @@ namespace Wassup.BattleCore
                 Seed = 9090,
                 Ticks = 6000,
                 BuildDefinition = () => CollapseFixture(9090),
-                // 방어유닛을 **하나도 안 놓는다**. 배치 창만 닫아 전투를 열면 그 뒤는
-                // 규칙이 알아서 한다 — 그것이 이 시나리오의 질문이다.
-                BuildSchedule = () => new CommandSchedule().Add(2, Command.FinishPlacement()),
+                // **커맨드가 하나도 없다.** 방어유닛을 안 놓고, 배치 창은 카운트다운으로
+                // 스스로 닫힌다 — 그 뒤는 규칙이 알아서 한다는 것이 이 시나리오의 질문이다.
+                BuildSchedule = () => new CommandSchedule(),
             },
         };
 
-        // 8웨이브를 «막는» 판의 입력: 방어유닛 4기를 두 레인에 붙여 세우고 창을 닫는다.
+        // 8웨이브를 «막는» 판의 입력: 배치 창이 자동으로 닫힌 뒤 방어유닛 4기를 두 레인에 붙여 세운다.
         private static CommandSchedule ClearSchedule()
             => new CommandSchedule()
-                .Add(2, Command.PlaceDefender(0, new int2(3, 1)))
-                .Add(2, Command.PlaceDefender(0, new int2(4, 1)))
-                .Add(2, Command.PlaceDefender(0, new int2(3, 3)))
-                .Add(2, Command.PlaceDefender(0, new int2(4, 3)))
-                .Add(10, Command.FinishPlacement());
+                .Add(181, Command.PlaceDefender(0, new int2(3, 1)))
+                .Add(181, Command.PlaceDefender(0, new int2(4, 1)))
+                .Add(181, Command.PlaceDefender(0, new int2(3, 3)))
+                .Add(181, Command.PlaceDefender(0, new int2(4, 3)));
 
         public static Scenario ByName(string name)
         {
@@ -280,7 +278,7 @@ namespace Wassup.BattleCore
         {
             var def = MapFixture(seed, detectionRange: 0f);
 
-            // 방어유닛 — 사거리 3 · 초당 25. 코스트 2 에 판 상한 4 라 시작 자원 10 으로
+            // 방어유닛 — 사거리 3 · 초당 25. 코스트 2 에 판 상한 4 라 라이브 시작 자원 10 으로
             // 정확히 4기를 세울 수 있다(다섯 번째는 자리가 물려 거절된다).
             ref var d = ref def.Units[0];
             d.Health = 1000f;
@@ -333,6 +331,14 @@ namespace Wassup.BattleCore
                 RampBreakUnits = 12,
             };
 
+            // ⚠ 모드 값은 **라이브 에셋**에서 옮겼다(코드 기본값이 아니다 — 「기획 그대로」의
+            // 기준은 에셋이다). 출처:
+            //   `Data/Config/BattleConfig.asset`      placementPhaseEnabled 0 · countdown 3
+            //   `Data/Config/DefaultCostConfig.asset` 시작 10 · 상한 10 · 초당 0.35
+            //   `Data/Dreamcatcher/AwakeningConfig.asset`     게이지 20/100 · 손패 4 · 부착 3
+            //   `Data/Dreamcatcher/DeckRuleConfig_Default.asset`  덱 10
+            // **유닛 스탯은 여전히 고정구**다 — 그쪽은 시트가 매일 움직이고, 이 골든이 묻는 것은
+            // 「판이 규칙대로 도는가」이지 「스탯이 얼마인가」가 아니다.
             var mode = ModeDef.Default();
             mode.ModeId = goal == GoalKind.KillScoreTimed ? "kill_score_timed"
                         : goal == GoalKind.WaveClear ? "wave_clear"
@@ -342,9 +348,16 @@ namespace Wassup.BattleCore
             mode.TargetWaves = targetWaves;
             mode.AllowSubmit = goal == GoalKind.KillScoreTimed;
             mode.SubmitsReport = goal == GoalKind.KillScoreTimed;
-            // 배치 창은 **플레이어가 닫는다**(길이 0). 그 신호가 코스트 재생을 켠다(X24).
-            mode.PlacementInputEnabled = true;
-            mode.PlacementSeconds = 0f;
+            // 라이브는 배치 **입력이 꺼져 있고** 3초 카운트다운으로 자동 시작한다. 창이 닫히는
+            // 그 신호가 코스트 재생을 켠다(X24) — 그래서 골든이 그 순간을 지난다.
+            mode.PlacementInputEnabled = false;
+            mode.PlacementSeconds = 3f;
+            mode.Cost = new CostDef { Start = 10f, Max = 10f, RegenPerSec = 0.35f };
+            mode.HandSize = 4;
+            mode.AttachCap = 3;
+            mode.Awakening = new AwakeningDef { Start = 20f, Max = 100f };
+            mode.DeckSize = 10;
+            mode.PublicActiveCount = 2;
             mode.BoardCap = 8;
             def.Mode = mode;
 
