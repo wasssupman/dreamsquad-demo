@@ -36,23 +36,78 @@
 
 ## 이식 제외
 
+> 구현 뒤 실제로 안 옮긴 것으로 채웠다. **플레이 중 이상하면 이 표부터 본다.**
+
 | 안 옮긴 것 | 이유 | 등급 |
 |---|---|---|
-| 흐름장 슬롯 fail-open(`SlotFor` 폴백) | 미저작 목적지가 엉뚱한 길로 가는 것을 조용히 덮는다 → loud | 보류(M2) |
-| `FlowFieldSingleton` 단일 구조·flat stride | Entities 산물. 배열의 배열 + `FlowSlot` 뷰 타입으로 직접 인덱싱 금지를 **타입**으로 | 보류(M3) |
-| `hunterLookup` 좀비·Burst lookup 존치 | 존재 이유 소멸 | 제거(M19) |
+| 흐름장 슬롯 fail-open(`SlotFor` 폴백) | 미저작 목적지가 엉뚱한 길로 가는 것을 조용히 덮는다 → `FlowFieldSet.Slot` 이 **던진다** | 보류(M2) |
+| `FlowFieldSingleton` 단일 구조·flat stride | Entities 산물. **배열의 배열 + `FlowSlot` 뷰**로 바꿔 stride 개념 자체를 없앴다 — 슬롯마다 길이 = 칸 수 배열을 통째로 든다 | 보류(M3) |
+| `hunterLookup` 좀비·Burst lookup 존치 | 존재 이유(Burst 가 조용히 깨짐)가 통째로 소멸 | 제거(M19) |
 | `LateralRecenter` | 실측 묘비, 되살리지 않음 | 제거(M15) |
-| `MapDocument_MovementStress` 고아 에셋 | 삭제 후보(도구표) | 제거(M21) |
-| 분리 강도 「프레임당 0.5」의 값 | 의미(소프트·상한 반지름)만 옮기고 값은 플레이 후 재검토 | 보류(M13) |
-| Ground 통행 슬롯 | 현행에 없음 — 만들지 않음 | 보류(M23, 현행 유지) |
-| 효과 타일 시드 -1 | 현행 그대로(같은 맵 = 같은 칸). 재결정은 플레이 뒤 | 보류(M25) |
-| 이동 가디언 추격판 재굽기 | 이동 가디언 저작 0 | 보류(M6) |
+| `MapDocument_MovementStress` 고아 에셋 | 이 unit 에서 손대지 않았다 — 삭제는 도구 처분표(unit 0)의 몫 | 제거(M21) |
+| 분리 강도 「프레임당 0.5」의 **값** | 고정 틱 1/60 이라 「프레임당 = 틱당」이 같은 뜻 — **의미만** 옮겼다. 값 재검토는 플레이 뒤 | 보류(M13) |
+| Ground 통행 슬롯 | 현행에 없음 — 만들지 않았다(`TraversalSlots.DefaultMask = Path`) | 보류(M23, 현행 유지) |
+| 효과 타일 시드 -1 | 선정 **규칙**(소금 XOR · `\|1u` 가드 · row-major)만 옮겼다. 시드를 어디서 받을지는 맵 파이프라인 결정이라 미정 | 보류(M25) |
+| 이동 가디언 추격판 재굽기 | 이동 가디언 저작 0. 전제(**「대상은 움직이지 않는다」**)를 `ChaseFieldCache` 헤더에 명시로 남겼다 | 보류(M6) |
+| 감지 유지의 히스테리시스 폭 | 옛 `TargetPersistence.KeepsLock` 은 공격 락과 **같은 자**다. 여기서는 `AiMovePhase.HysteresisTiles`(0.5) 로 두고, unit 3 에서 공격 락과 합류시킨다 | 보류 |
+| 감지 후보 탐침의 `EnemyTargetFilter.classMask` | 방어유닛 **클래스** 축이 정의표에 아직 없다(unit 4 의 저작). 진영·통행층 필터는 그대로 옮겼다 | 보류 |
+| 보스 어그로 면역 | 티어·보스 태그가 unit 3 의 저작 축이다. 어그로 게이트 자리는 `AiMovePhase.GrantAggro` 에 이미 있다 | 보류 |
+| 순찰 소환물의 **소환** 경로 | 소환 스킬이 unit 7 이다. `Patrol.SummonedBy` 와 「소환사 사망 → 소멸」 규칙은 옮겼다(`FieldPrepPhase.StepPatrol`) | 보류 |
+| `AttackShapeBaked` 의 **저작·bake** | 도형 진입점(`InReachShaped`)은 옮겼지만 각도 → `(sin, cos)` bake 는 unit 3 | 보류 |
+| 옛 EditMode 테스트의 `[Ignore]` 분리 순서 사례 | 새 코어가 그 축을 `SimEntityId` 오름차순으로 **닫았다**(M27). 닫힌 것을 증언하는 테스트로 대체 | 제거 |
+
+### 복사·적응한 순수 테스트
+
+| 옛 파일 | 새 파일 | 비고 |
+|---|---|---|
+| `GridMathTests` | `MapGridMathTests` | 반올림·`FlowStep`·`RangeToTiles` |
+| `FlowFieldBuilderTests` | `FlowFieldBuilderTests` | `NativeArray`→배열, `CellQueue` 인자 추가 |
+| `NavGridTests` · `MovementCellTrimTests` · `FillWalkMaskTests` | `NavGridAndTrimTests` | 셋이 같은 조립을 묻는다 |
+| `AgentCollisionTests` | `AgentCollisionTests` | 코너 오프셋 단언을 「칸 반폭 + 반지름 + skin」으로 다시 적었다(M12) |
+| `PathSmoothingTests` | `PathSmoothingTests` | 「첫 후보 무조건 채택」·반지름 가시선 |
+| `SeparationTests` | `SeparationTests` | `[Ignore]` 순서 사례는 옮기지 않았다(위) |
+| `SpawnSpreadTests` · `WaypointProgressTests` · `FlowRecoveryTests` · `AggroChaseMathTests` · `StructureDestinationTests`(선택 부분) | `MovePureMathTests` | 순수 함수 다섯을 한 파일로 |
+| `PatrolAreaMathTests` | `PatrolAreaMathTests` | 스크래치 객체로 서명 변경 |
+| `AttackReachTests` | `AttackReachTests` | 도형 케이스는 unit 3 에서 합류 |
+
+## 필수 17 ↔ 검증 지점
+
+| # | 규칙 한 줄 | 어디서 증언하나 |
+|---|---|---|
+| M1 | 놓을 수 있는 칸과 지나갈 수 있는 칸은 다른 축 | `NavGridAndTrimTests.통행_마스크는_칸_층과_슬롯_마스크의_교집합이다` · `MapSnapshot.Normalize`(배치 폴백은 `OpenPlacement`, 통행은 `Derive`) · `MovementRulesTests.배치_유닛이_장애물이_되고_퇴근하면_풀린다` |
+| M4 | 「도착했는데 못 쏜다」를 두 레인이 각자 보정 | `AiMovePhase.TryCloseIn`(공유) + 호출부 둘(`StepChasing` · `TryHuntCloseIn`) · `MovePureMathTests.접근_보정은_지배축_cardinal_이다` |
+| M5 | 거리장 없으면 안 뗀다 · 소스 이탈 스텝 금지 | `AiMovePhase.TryCloseIn`(fail-closed + `firingDist != 0` 거부) · `DetectionRulesTests.유한_감지는_방어유닛_앞에서_멈춘다` |
+| M7 | 사냥 반경 = 헌터 사거리의 min fold | `DetectionRulesTests.사냥판_반경은_가장_짧은_사거리로_내려간다` |
+| M8 | 발견한 대상 ≠ 걸어가는 목적지 | `DefenderHuntField`(진영 필터) ↔ `ReachProbe.IsLegalDetectionTarget`(타겟 마스크·통행층) · `DetectionRulesTests.무제한_감지는_유출_면제를_받는다` |
+| M9 | 네 박자 상수 · 표식 쿨 > 억제 | `DetectionRulesTests.표식_쿨이_억제보다_길다` · `.발견은_전이_1회다` |
+| M10 | 리무버 둘 · 도발은 필드만 뗀다 | `DetectionRulesTests.장애물이_바뀌면_어그로가_풀리고_도발은_표시만_남는다` · `.도발_시한이_지나면_풀린다` |
+| M11 | 순찰 구역 마스크는 스스로 비운다 | `PatrolAreaMathTests.구역_마스크는_스스로_0_으로_시작한다` |
+| M12 | 충돌 여유와 코너 오프셋은 같은 값 | `AgentCollisionTests.코너_조준_오프셋은_충돌_여유와_같은_값을_쓴다` |
+| M13 | 밀어내기는 틱당 0.5 · 상한 반지름 · 소프트 | `SeparationTests.누적_적용은_상한을_넘지_않는다` · `.깊게_겹칠수록_세게_민다` · 골든 `march_to_goal` |
+| M14 | 스폰 흩뿌림은 반 칸을 못 넘는다 | `MovePureMathTests.오프셋은_반_칸을_절대_못_넘는다` |
+| M16 | 효과 타일 자리 뽑기의 결정론 3요소 | `EffectTileSelectTests.같은_시드면_같은_칸이다` · `.시드_0_도_판을_만든다` · `.배치_가능_칸만_뽑는다` |
+| M18 | 거점 동률 = 칸 사전순, 코어와 예고선이 공유 | `StructureChoiceTests.칸_사전순이_동률을_가른다` · `AiMovePhase.SortStructures` |
+| M20 | 무제한 사냥만 도착지를 추정한다 | `AiMovePhase.TryHuntCloseIn`(유한은 자기 대상, 무제한은 최근접 추정) · 골든 `detect_and_chase` |
+| M22 | 맵↔덱 짝을 이름으로 추론하면 틀린다 | `MatchDefinitionBuilder.BuildMap` 이 **이름을 안 본다** — 스캐너 산출을 그대로 접는다(추론 지점 0) |
+| M27 | 분리 누적은 `SimEntityId` 오름차순 | `MovementRulesTests.분리_누적은_id_오름차순이다` · `DeterminismTests.적_20기_군집도_두_실행이_같다` |
+| M29 | 다칸 저작이 라이브다 | `PlacementOccupancyTests.다칸_점유와_주인은_항상_짝이다` · `ObstacleSetTests.다칸_점유를_통째로_막는다` · 골든 `detour_obstacle`(2×2) |
 
 ## 완료 기준
 
-- [ ] 헤드리스 `dotnet build/test` 초록. 복사한 순수 테스트 전부 통과(적응 목록을 이 파일에 기록).
-- [ ] 골든 3종: `march_to_goal`(레인 2·적 6·골 1 — `GoalReached` 순서가 스폰 순서와 일치) · `detour_obstacle`(길목에 2×2 방어유닛 배치 → 흐름장 재빌드 → 우회, 교착 0) · `detect_and_chase`(유한 감지 적이 방어유닛 앞에서 `holdingGround`=1, 표식 1회).
-- [ ] 결정론: 같은 정의표·스케줄 2회 트레이스 동일(분리 누적 정렬 포함 — 적 20기 군집).
-- [ ] 군집 통과 검산(memory: 단독 통과 ≠ 군집 통과): 1칸 복도 적 20기 100초 교착 0.
-- [ ] 규칙 분류표 맵·이동 「필수」 17 이 각각 테스트 또는 골든 시나리오에 매핑돼 있다(표를 이 파일 하단에).
+- [x] 헤드리스 `dotnet build/test` 초록. 복사한 순수 테스트 전부 통과(적응 목록은 위 표).
+- [x] 골든 3종: `march_to_goal`(레인 2·적 6·골 1 — 레인 안에서 `GoalReached` 순서가 스폰 순서와 일치) · `detour_obstacle`(길목에 2×2 방어유닛 배치 → 흐름장 재빌드 → 우회, 교착 0) · `detect_and_chase`(유한 감지 적이 방어유닛 앞에서 정지, 표식 1회).
+- [x] 결정론: 같은 정의표·스케줄 2회 트레이스 동일(분리 누적 정렬 포함 — 적 20기 군집).
+- [x] 군집 통과 검산: 1칸 복도 적 20기 100초 교착 0(20기 전원 통과).
+- [x] 규칙 분류표 맵·이동 「필수」 17 이 각각 테스트 또는 골든 시나리오에 매핑돼 있다(위 표).
+- [ ] Unity EditMode lane 초록 — **에디터 열릴 때**(헤드리스 lane 은 초록).
 - [ ] `core-reviewer` APPROVE.
+
+### 구현에서 갈린 점 (기록)
+
+- **`detour_obstacle` 의 적은 거점 전담이다.** 유닛을 노리는 적으로 두면 사거리에 든 순간
+  교전으로 멈춰 서는데, 그 정지를 푸는 수단(전투)이 unit 3 에 있다 — 우회를 묻는 시나리오가
+  교전을 묻게 된다. 라이브의 마음사냥꾼과 같은 저작이라 규칙을 왜곡하지 않는다.
+- **레인 «사이» 도달 순서는 규칙이 아니다.** 입구마다 골까지 거리가 달라 섞이는 것이 정상이고,
+  단언은 「같은 문에서 나온 순서는 뒤집히지 않는다」로 좁혔다.
+- **`AttackShapeBaked` 를 이 unit 에서 가져왔다.** 도형 진입점(`InReachShaped`)을 「나중에
+  쓸 거니까」로 빼 두면 그때 **원 항만 쓰는 복사본**이 생긴다 — 제약 13 이 막는 그 형태다.

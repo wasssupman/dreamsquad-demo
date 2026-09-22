@@ -1,0 +1,25 @@
+LTV0
+channels=core
+scenario=march_to_goal
+configHash=c1b6678d32f7fe11
+matchSeed=2001
+stepDt=0.016666668
+tickCount=1800
+events=13
+0 0 0 -1 0 0
+2 1 1 -1 2 100000
+2 1 2 -1 2 100000
+22 1 3 -1 2 100000
+22 1 4 -1 2 100000
+42 1 5 -1 2 100000
+42 1 6 -1 2 100000
+317 4 2 -1 1 0
+323 4 1 -1 1 0
+339 4 3 -1 1 0
+342 4 4 -1 1 0
+359 4 5 -1 1 0
+359 4 6 -1 1 0
+finalKills=0
+finalScore=0
+finalLeaks=0
+finalStateHash=F9F8380BF57959B6

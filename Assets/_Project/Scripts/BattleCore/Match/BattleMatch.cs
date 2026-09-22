@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Wassup.BattleCore.Map;
+using Wassup.BattleCore.Move;
 
 namespace Wassup.BattleCore
 {
@@ -23,6 +25,7 @@ namespace Wassup.BattleCore
         // ── 담당자 ──
         private readonly MatchClock _clock;
         private readonly CommandPhase _commands;
+        private readonly MapRuntime _map;
 
         private readonly TickPipeline _pipeline;
 
@@ -33,18 +36,23 @@ namespace Wassup.BattleCore
             _world = new BattleWorld(_bus, worldCapacity);
             _rng = new RngStreams(definition.Seed);
 
-            _clock = new MatchClock();
-            _commands = new CommandPhase(_world, _clock, _def);
+            // unit 2 — 맵 런타임. 통행 마스크 목록은 **정의표에서** 온다(그 판에 나오는 유닛들이
+            // 여는 층). 슬롯 수가 여기서 정해지므로 정의표 밖에서 층을 만들 수 없다.
+            _map = new MapRuntime(definition.Map, CollectTraversalMasks(definition));
+            var chasePool = new ChaseFieldPool(definition.Map.CellCount);
 
-            // 틱 순서. 빈 자리 6개(장 준비 · 사망 수렴 · AI/이동 · 효과/투사체 · 전투 ·
-            // 담당자 단계)는 unit 2~4 가 **이 배열에 끼운다**. 순서를 바꾸는 것은 규칙을
-            // 바꾸는 것이므로 그때 같은 커밋에서 근거를 남긴다.
+            _clock = new MatchClock();
+            _commands = new CommandPhase(_world, _clock, _def, _map);
+
+            // 틱 순서. 남은 빈 자리(사망 수렴 · 효과/투사체 · 전투 · 담당자 단계)는 unit 3~4 가
+            // **이 배열에 끼운다**. 순서를 바꾸는 것은 규칙을 바꾸는 것이므로 그때 같은 커밋에서
+            // 근거를 남긴다.
             _pipeline = new TickPipeline(new ITickPhase[]
             {
-                _commands,      // phase 0 — Immediate seam
-                // unit 2: FieldPrepPhase
+                _commands,                              // phase 0 — Immediate seam
+                new FieldPrepPhase(_map, chasePool),    // unit 2 — 장애물·어그로·사냥판·순찰
                 // unit 3: DeathConvergePhase
-                // unit 2: AiMovePhase
+                new AiMovePhase(_map, chasePool),       // unit 2 — 상태·도발·거점·감지·이동·분리
                 // unit 3: TickProjectilePhase
                 // unit 3: CombatPhase
                 // unit 4: OwnerSteps (WaveScheduler · CostLedger · PlacementService ·
@@ -59,10 +67,28 @@ namespace Wassup.BattleCore
                 Def = _def,
                 Bus = _bus,
                 Rng = _rng,
+                Map = _map,
                 Dt = Dt,
                 Tick = 0,
             };
         }
+
+        // 그 판에 나올 수 있는 유닛들의 통행 층. 0(미저작)은 기본 마스크로 접힌다.
+        private static byte[] CollectTraversalMasks(MatchDefinition def)
+        {
+            var masks = new List<byte>(4);
+            for (int i = 0; i < def.Enemies.Length; i++) Add(masks, (byte)def.Enemies[i].TraversalLayers);
+            for (int i = 0; i < def.Units.Length; i++) Add(masks, (byte)def.Units[i].TraversalLayers);
+            return masks.ToArray();
+
+            void Add(List<byte> into, byte m)
+            {
+                if (m == 0) return;
+                if (!into.Contains(m)) into.Add(m);
+            }
+        }
+
+        public MapRuntime Map => _map;
 
         public MatchDefinition Definition => _def;
         public BattleWorld World => _world;

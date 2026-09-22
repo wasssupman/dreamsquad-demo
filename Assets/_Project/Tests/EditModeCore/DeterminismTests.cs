@@ -30,6 +30,26 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(a.Trace.finalStateHash, b.Trace.finalStateHash);
         }
 
+        // unit 2 — 군집 결정론. 분리 누적이 `SimEntityId` 오름차순으로 닫혔는지를 묻는다(M27).
+        // 적 20기가 같은 문에서 나와 서로 밀어내는 구간이 그 축이 드러나는 자리다.
+        private static CommandSchedule CrowdSchedule()
+        {
+            var s = new CommandSchedule();
+            for (int i = 0; i < 20; i++) s.Add(2 + i, Command.DebugSpawnEnemyInLane(0, i % 2));
+            return s;
+        }
+
+        [Test]
+        public void 적_20기_군집도_두_실행이_같다()
+        {
+            var a = CoreHarness.Run(CoreGoldenCorpus.MarchFixture(77), CrowdSchedule(), 1800, "crowd");
+            var b = CoreHarness.Run(CoreGoldenCorpus.MarchFixture(77), CrowdSchedule(), 1800, "crowd");
+
+            Assert.IsNull(a.Trace.DiffAgainst(b.Trace), "군집에서 트레이스가 갈렸다");
+            Assert.AreEqual(a.Trace.finalStateHash, b.Trace.finalStateHash,
+                "이벤트는 같은데 상태가 갈렸다면 분리 누적 순서를 의심한다");
+        }
+
         [Test]
         public void 거절_receipt_도_두_실행이_같다()
         {

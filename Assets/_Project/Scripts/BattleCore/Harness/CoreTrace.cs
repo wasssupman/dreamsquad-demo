@@ -27,6 +27,11 @@ namespace Wassup.BattleCore
         UnitSpawned = 1,
         UnitDestroyed = 2,
         MatchEnded = 3,
+        // ── unit 2 (맵·이동) ──
+        GoalReached = 4,
+        Detected = 5,
+        AggroAcquired = 6,
+        Blinked = 7,
     }
 
     public struct CoreTraceEvent
@@ -95,6 +100,10 @@ namespace Wassup.BattleCore
                 case CoreEventKind.UnitSpawned: channel = CoreTraceChannel.UnitSpawned; return true;
                 case CoreEventKind.UnitDestroyed: channel = CoreTraceChannel.UnitDestroyed; return true;
                 case CoreEventKind.MatchEnded: channel = CoreTraceChannel.MatchEnded; return true;
+                case CoreEventKind.GoalReached: channel = CoreTraceChannel.GoalReached; return true;
+                case CoreEventKind.Detected: channel = CoreTraceChannel.Detected; return true;
+                case CoreEventKind.AggroAcquired: channel = CoreTraceChannel.AggroAcquired; return true;
+                case CoreEventKind.Blinked: channel = CoreTraceChannel.Blinked; return true;
                 default: channel = default; return false;
             }
         }

@@ -16,6 +16,16 @@ namespace Wassup.BattleCore
         UnitSpawned = 2,
         UnitDestroyed = 3,
         MatchEnded = 4,
+
+        // ── unit 2 (맵·이동) ──
+        /// <summary>적이 골에 닿았다. **1회 고정.** `Arg` = 공성 가능(1) / 유출(0).</summary>
+        GoalReached = 5,
+        /// <summary>발견. `hunting` 0→1 전이에서만 1건 — 매 틱 쏘면 초당 60건이다.</summary>
+        Detected = 6,
+        /// <summary>어그로 획득. `Arg` = 도발(1) / 히트(0).</summary>
+        AggroAcquired = 7,
+        /// <summary>순간이동 완료. 위치를 소유한 곳(이동)이 낸다.</summary>
+        Blinked = 8,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -116,5 +126,42 @@ namespace Wassup.BattleCore
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius), Site.Nowhere,
                              u.Faction, (int)u.Kind, u.Health);
+
+        // ── unit 2 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 골 도달. `canSiege` = 그 적이 방어 마음을 **때릴 수 있나**(공성형) — 아니면 유출이다.
+        /// 소비는 unit 4(`HeartMeter`)와 unit 3(거점 공성)이 나눠 가진다.
+        /// </summary>
+        public static CoreEvent GoalReached(int tick, Unit u, bool canSiege)
+            => new CoreEvent(CoreEventKind.GoalReached, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, canSiege ? 1 : 0, 0f);
+
+        /// <summary>
+        /// 발견. ⚠ `B`(대상)는 **트레이스 전용**이다 — 화면이 그 대상을 가리키면 안 된다.
+        /// 감지는 직선 최근접 legal 을 고르는데 이동은 공용 사냥판이라 실측 5.0% 에서 둘이
+        /// 갈리고, 그 구간에서 화면이 규칙을 **틀리게** 가르친다.
+        /// </summary>
+        public static CoreEvent Detected(int tick, Unit u, SimEntityId target)
+            => new CoreEvent(CoreEventKind.Detected, tick,
+                             u.Id, target,
+                             new Site(u.Position, u.HitRadius), Site.Nowhere,
+                             u.Faction, 0, 0f);
+
+        /// <summary>어그로 획득. `A` = 끌려간 적, `B` = 가디언.</summary>
+        public static CoreEvent AggroAcquired(int tick, Unit enemy, SimEntityId guardian, bool taunt)
+            => new CoreEvent(CoreEventKind.AggroAcquired, tick,
+                             enemy.Id, guardian,
+                             new Site(enemy.Position, enemy.HitRadius), Site.Nowhere,
+                             enemy.Faction, taunt ? 1 : 0, 0f);
+
+        /// <summary>순간이동 완료. `SiteTarget` = 도착 자리(뷰가 아치를 그릴 근거).</summary>
+        public static CoreEvent Blinked(int tick, Unit u, float3 from)
+            => new CoreEvent(CoreEventKind.Blinked, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(from, u.HitRadius), new Site(u.Position, u.HitRadius),
+                             u.Faction, 0, 0f);
     }
 }

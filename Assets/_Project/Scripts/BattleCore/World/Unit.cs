@@ -38,6 +38,24 @@ namespace Wassup.BattleCore
         /// <summary>배치 모션 중. 전투 코어가 소유한 페이즈이고 그동안 표적이 되지 않는다.</summary>
         public bool Deploying;
 
+        // ── unit 2 부분(nullable) ──────────────────────────────────────────────
+        // 「있나 없나」가 곧 아키타입이다. 예: `Detection == null` = 감지 0 = 오늘과 같은 경로.
+
+        /// <summary>이동체만. 방어유닛·거점에는 없다.</summary>
+        public MoveState Move;
+
+        /// <summary>감지하는 적만. 저작 반경 0 이면 붙지 않는다.</summary>
+        public Detection Detection;
+
+        /// <summary>가디언(수용량) 또는 끌려간 적(대상). 둘 다 이 한 타입을 쓴다.</summary>
+        public Aggro Aggro;
+
+        /// <summary>순찰 소환물만.</summary>
+        public Patrol Patrol;
+
+        /// <summary>배치 유닛만. 다칸 점유가 라이브다(2×2 · 캐논 2×3).</summary>
+        public Footprint Footprint;
+
         internal void Reset()
         {
             Id = SimEntityId.None;
@@ -50,6 +68,19 @@ namespace Wassup.BattleCore
             MaxHealth = 0f;
             Dead = false;
             Deploying = false;
+
+            // 부분은 **버리지 않고 비운다** — 배열을 든 부분(추격판)은 풀이 따로 회수하고,
+            // 나머지는 다음 대여 때 그대로 재사용된다(틱 중 할당 0).
+            Move?.Reset();
+            Detection?.Reset();
+            Aggro?.Reset();
+            Patrol?.Reset();
+            Footprint?.Reset();
+            Move = null;
+            Detection = null;
+            Aggro = null;
+            Patrol = null;
+            Footprint = null;
         }
 
         /// <summary>

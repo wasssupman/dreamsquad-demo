@@ -1,4 +1,5 @@
 using Unity.Mathematics;
+using Wassup.BattleCore.Map;
 
 namespace Wassup.BattleCore
 {
@@ -56,6 +57,53 @@ namespace Wassup.BattleCore
                     // 유지되는지가 골든에 드러난다(끝을 지우면 잘못된 구현도 통과한다).
                     .Add(40, Command.DebugDestroy(new SimEntityId(2))),
             },
+            new Scenario
+            {
+                // unit 2 — 「레인 2 · 적 6 · 골 1」. `GoalReached` 순서가 **스폰 순서와 같아야**
+                // 한다. 같은 레인에서 나온 적들이 순서를 바꾸면 분리 누적이 순회 순서에
+                // 의존한다는 뜻이다(M27 이 닫은 축).
+                Name = "march_to_goal",
+                Seed = 2001,
+                Ticks = 1800,
+                BuildDefinition = () => MarchFixture(2001),
+                BuildSchedule = () =>
+                {
+                    var s = new CommandSchedule();
+                    for (int i = 0; i < 3; i++)
+                    {
+                        s.Add(2 + i * 20, Command.DebugSpawnEnemyInLane(0, 0));
+                        s.Add(2 + i * 20, Command.DebugSpawnEnemyInLane(0, 1));
+                    }
+                    return s;
+                },
+            },
+            new Scenario
+            {
+                // unit 2 — 길목에 2×2 방어유닛을 놓으면 흐름장이 다시 구워지고 우회로가 선다.
+                // 교착 0 = 적이 결국 골에 닿는다.
+                //
+                // ⚠ 이 시나리오의 적은 **거점 전담**이다(유닛을 안 노린다 — 라이브의 마음사냥꾼과
+                // 같은 저작). 안 그러면 사거리에 든 순간 교전으로 멈춰 서고, 그 정지를 풀 수단
+                // (전투)이 unit 3 에 있어서 **우회를 묻는 시나리오가 교전을 묻게 된다.**
+                Name = "detour_obstacle",
+                Seed = 2002,
+                Ticks = 1800,
+                BuildDefinition = () => DetourFixture(2002),
+                BuildSchedule = () => new CommandSchedule()
+                    .Add(2, Command.PlaceDefender(0, new int2(5, 1)))
+                    .Add(10, Command.DebugSpawnEnemyInLane(0, 0)),
+            },
+            new Scenario
+            {
+                // unit 2 — 유한 감지 적이 방어유닛 앞에서 멈추고 표식은 **한 번**만 난다.
+                Name = "detect_and_chase",
+                Seed = 2003,
+                Ticks = 1200,
+                BuildDefinition = () => DetectFixture(2003),
+                BuildSchedule = () => new CommandSchedule()
+                    .Add(2, Command.PlaceDefender(0, new int2(6, 1)))
+                    .Add(10, Command.DebugSpawnEnemyInLane(0, 0)),
+            },
         };
 
         public static Scenario ByName(string name)
@@ -63,6 +111,43 @@ namespace Wassup.BattleCore
             for (int i = 0; i < All.Length; i++)
                 if (All[i].Name == name) return All[i];
             return null;
+        }
+
+
+        /// <summary>unit 2 골든의 판 — 12×5 빈 격자, 레인 2, 골 1. 방어유닛은 2×2 다(M29).</summary>
+        public static MatchDefinition MarchFixture(int seed) => MapFixture(seed, detectionRange: 0f);
+
+        /// <summary>같은 판인데 적이 유한 감지를 갖는다.</summary>
+        public static MatchDefinition DetectFixture(int seed) => MapFixture(seed, detectionRange: 4f);
+
+        /// <summary>같은 판인데 적이 **거점 전담**이다 — 방어유닛을 안 노리므로 교전으로 멈추지 않는다.</summary>
+        public static MatchDefinition DetourFixture(int seed)
+        {
+            var def = MapFixture(seed, detectionRange: 0f);
+            def.Enemies[0].TargetFactions = (int)Wassup.Battle.Units.Faction.DefenderCore;
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
+        }
+
+        private static MatchDefinition MapFixture(int seed, float detectionRange)
+        {
+            var map = new MapSnapshot
+            {
+                Width = 12,
+                Height = 5,
+                TileSize = 1f,
+                Goals = new[] { new int2(11, 2) },
+                Spawns = new[] { new int2(0, 1), new int2(0, 3) },
+            };
+            map.Normalize();
+
+            var def = Fixture(seed);
+            def.Map = map;
+            def.Units[0].FootprintWidth = 2;
+            def.Units[0].FootprintHeight = 2;
+            def.Enemies[0].DetectionRange = detectionRange;
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
         }
 
         /// <summary>고정구 정의표. 방어 1종 · 적 1종 · 3×3 빈 판.</summary>

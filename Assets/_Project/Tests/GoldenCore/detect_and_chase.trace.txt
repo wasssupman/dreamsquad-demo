@@ -1,0 +1,16 @@
+LTV0
+channels=core
+scenario=detect_and_chase
+configHash=e5365321ed877ea2
+matchSeed=2003
+stepDt=0.016666668
+tickCount=1200
+events=4
+0 0 0 -1 0 0
+2 1 1 -1 1 50000
+10 1 2 -1 2 100000
+64 5 2 1 0 0
+finalKills=0
+finalScore=0
+finalLeaks=0
+finalStateHash=045FFAF05D5BA964

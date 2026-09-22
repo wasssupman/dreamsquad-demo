@@ -21,6 +21,9 @@ namespace Wassup.Tests.EditMode.Core
 
         [TestCase("empty_board")]
         [TestCase("spawn_destroy")]
+        [TestCase("march_to_goal")]
+        [TestCase("detour_obstacle")]
+        [TestCase("detect_and_chase")]
         public void 골든과_일치한다(string name)
         {
             var sc = CoreGoldenCorpus.ByName(name);
@@ -61,19 +64,28 @@ namespace Wassup.Tests.EditMode.Core
         {
             var run = CoreGoldenCorpus.Run(CoreGoldenCorpus.ByName("spawn_destroy"));
 
-            int spawns = 0, destroys = 0, ends = 0;
+            int spawns = 0, destroys = 0, ends = 0, goals = 0, other = 0;
             for (int i = 0; i < run.events.Count; i++)
             {
-                if (run.events[i].channel == CoreTraceChannel.UnitSpawned) spawns++;
-                if (run.events[i].channel == CoreTraceChannel.UnitDestroyed) destroys++;
-                if (run.events[i].channel == CoreTraceChannel.MatchEnded) ends++;
+                switch (run.events[i].channel)
+                {
+                    case CoreTraceChannel.UnitSpawned: spawns++; break;
+                    case CoreTraceChannel.UnitDestroyed: destroys++; break;
+                    case CoreTraceChannel.MatchEnded: ends++; break;
+                    case CoreTraceChannel.GoalReached: goals++; break;
+                    default: other++; break;
+                }
             }
 
             Assert.AreEqual(3, spawns);
             Assert.AreEqual(1, destroys);
             // 300틱짜리 시나리오라 판은 아직 안 끝난다 — 끝났다면 시계가 잘못 세고 있다.
             Assert.AreEqual(0, ends, "300틱에 판이 끝나면 안 된다");
-            Assert.AreEqual(5, run.events.Count, "시작 1 + 스폰 3 + 소멸 1");
+            // unit 2 부터 적이 걷는다 — 3×3 픽스처의 골이 두 칸 앞이라 살아남은 둘이 닿는다.
+            // 「시작 1 + 스폰 3 + 소멸 1」 이라는 unit 1 의 문장은 여기서 골 도달만큼 늘어난다.
+            Assert.AreEqual(2, goals, "소멸한 하나를 뺀 둘이 골에 닿는다");
+            Assert.AreEqual(1, other, "나머지는 시작 사건 하나뿐");
+            Assert.AreEqual(7, run.events.Count);
         }
     }
 }

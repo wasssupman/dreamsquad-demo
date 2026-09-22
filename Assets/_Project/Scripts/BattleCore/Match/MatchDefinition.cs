@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Unity.Mathematics;
+using Wassup.BattleCore.Map;   // unit 2 — `MapSnapshot` 은 이제 맵 폴더가 소유한다
 
 namespace Wassup.BattleCore
 {
@@ -68,10 +69,40 @@ namespace Wassup.BattleCore
             sb.Append("[map]\n");
             Put(sb, "width", Map.Width, inv);
             Put(sb, "height", Map.Height, inv);
+            Put(sb, "tileSize", Map.TileSize, inv);
             for (int i = 0; i < Map.Spawns.Length; i++)
                 Put(sb, "spawn" + i.ToString(inv), Cell(Map.Spawns[i], inv));
+            for (int i = 0; i < Map.SpawnRoutes.Length; i++)
+                Put(sb, "route" + i.ToString(inv), Map.SpawnRoutes[i], inv);
             for (int i = 0; i < Map.Goals.Length; i++)
                 Put(sb, "goal" + i.ToString(inv), Cell(Map.Goals[i], inv));
+            for (int i = 0; i < Map.WaypointRanges.Length; i++)
+                Put(sb, "path" + i.ToString(inv), Cell(Map.WaypointRanges[i], inv));
+            for (int i = 0; i < Map.WaypointCells.Length; i++)
+                Put(sb, "wp" + i.ToString(inv), Cell(Map.WaypointCells[i], inv));
+            for (int i = 0; i < Map.Structures.Length; i++)
+            {
+                var st = Map.Structures[i];
+                Put(sb, "struct" + i.ToString(inv),
+                    Cell(st.Cell, inv) + "," + st.Faction.ToString(inv) + "," + st.Footprint.ToString(inv));
+            }
+            for (int i = 0; i < Map.BonusSpawns.Length; i++)
+                Put(sb, "bonus" + i.ToString(inv), Cell(Map.BonusSpawns[i], inv));
+            // 칸 격자는 줄마다 적으면 해시 입력이 수천 줄이 된다. 대신 **행 단위 다이제스트**를
+            // 남긴다 — 한 칸만 바뀌어도 그 행의 값이 바뀌므로 「맵을 바꿨는데 해시가 그대로」가
+            // 생기지 않고, diff 가 「몇 번째 행이 바뀌었나」를 바로 가리킨다.
+            for (int y = 0; y < Map.Height; y++)
+            {
+                uint tiles = 2166136261u, place = 2166136261u;
+                for (int x = 0; x < Map.Width; x++)
+                {
+                    int idx = y * Map.Width + x;
+                    tiles = (tiles ^ (idx < Map.Tiles.Length ? (byte)Map.Tiles[idx] : (byte)0)) * 16777619u;
+                    place = (place ^ (idx < Map.PlaceMask.Length ? Map.PlaceMask[idx] : (byte)0)) * 16777619u;
+                }
+                Put(sb, "row" + y.ToString(inv),
+                    tiles.ToString("x8", inv) + "," + place.ToString("x8", inv));
+            }
 
             for (int i = 0; i < Units.Length; i++)
             {
@@ -147,6 +178,13 @@ namespace Wassup.BattleCore
         public int Role;
         public int AttackShape;
 
+        // ── unit 2 ──
+        /// <summary>동시에 붙들 수 있는 적 수. 0 = 가디언이 아니다.</summary>
+        public int AggroCapacity;
+
+        /// <summary>때릴 수 있는 진영 비트. 0 = 미저작 → 기본값(`TargetDefaults`).</summary>
+        public int TargetFactions;
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -162,6 +200,8 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "traversalLayers", TraversalLayers, inv);
             MatchDefinition.Put(sb, "role", Role, inv);
             MatchDefinition.Put(sb, "attackShape", AttackShape, inv);
+            MatchDefinition.Put(sb, "aggroCapacity", AggroCapacity, inv);
+            MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
         }
     }
 
@@ -186,6 +226,16 @@ namespace Wassup.BattleCore
         public int AwakeningReward;
         public int AttackShape;
 
+        // ── unit 2 ──
+        /// <summary>교전 중 이동 정책(`EngageMovement`). 저작 기본은 Halt(0).</summary>
+        public int EngageMovement;
+
+        /// <summary>때릴 수 있는 진영 비트. 0 = 미저작 → 기본값(상대 진영 전부).</summary>
+        public int TargetFactions;
+
+        /// <summary>저작 경로 번호. -1 = 미지정 → 컨셉/레인 기본으로 내려간다(`WaypointRouting`).</summary>
+        public int WaypointPathIndex;
+
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
             MatchDefinition.Put(sb, "id", Id);
@@ -205,24 +255,9 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "detectionRange", DetectionRange, inv);
             MatchDefinition.Put(sb, "awakeningReward", AwakeningReward, inv);
             MatchDefinition.Put(sb, "attackShape", AttackShape, inv);
+            MatchDefinition.Put(sb, "engageMovement", EngageMovement, inv);
+            MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
+            MatchDefinition.Put(sb, "waypointPathIndex", WaypointPathIndex, inv);
         }
-    }
-
-    // 맵의 plain 스냅샷. 이 unit 은 **stub** 이다 — 크기·스폰·골까지.
-    // 타일·배치 마스크·웨이포인트·경로는 unit 2(`MapStageScanner`)에서 채워진다.
-    public struct MapSnapshot
-    {
-        public int Width;
-        public int Height;
-        public int2[] Spawns;
-        public int2[] Goals;
-
-        public static MapSnapshot Empty() => new MapSnapshot
-        {
-            Width = 0,
-            Height = 0,
-            Spawns = System.Array.Empty<int2>(),
-            Goals = System.Array.Empty<int2>(),
-        };
     }
 }

@@ -28,6 +28,18 @@ namespace Wassup.BattleCore
         /// <summary>id 오름차순 개체 목록. 순회 중 구조 변경 금지 — 소멸은 틱 단계가 모아서 한다.</summary>
         public IReadOnlyList<Unit> Units => _units;
 
+        // unit 2 — 판 위에 깔린 장(포탈·당김). 유닛이 아니라 여기 산다(UML §2).
+        // 이동이 매 틱 읽고, 생성·수명은 효과 레이어(unit 6)가 갖는다.
+        private readonly List<FieldCarrier> _fields = new List<FieldCarrier>(8);
+        public List<FieldCarrier> Fields => _fields;
+
+        // unit 2 — 어그로 **요청** 줄. 「누가 누구에게 끌렸다」를 말하는 것은 히트를 낸 쪽
+        // (unit 3 의 공격 루프)과 도발을 건 쪽(unit 7)이고, **게이트·추격판·이벤트는 여기**가 한다.
+        // 요청과 부착을 나누는 이유: 수용량·선점 판정이 한 틱 안에서 일관되어야 하는데,
+        // 생산자가 곧바로 붙이면 「먼저 온 쪽이 이긴다」가 생산자 순서에 매인다.
+        private readonly List<AggroRequest> _aggroRequests = new List<AggroRequest>(16);
+        public List<AggroRequest> AggroRequests => _aggroRequests;
+
         public int Count => _units.Count;
 
         public BattleWorld(EventBus bus, int capacity)

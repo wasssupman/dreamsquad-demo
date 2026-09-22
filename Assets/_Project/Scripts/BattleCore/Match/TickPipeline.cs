@@ -21,6 +21,9 @@ namespace Wassup.BattleCore
         public EventBus Bus;
         public RngStreams Rng;
 
+        /// <summary>unit 2 — 맵의 런타임 상태(흐름장·벽·장애물·사냥판·점유표). 판당 한 벌.</summary>
+        public Wassup.BattleCore.Map.MapRuntime Map;
+
         /// <summary>항상 `BattleMatch.Dt` = 1/60. 코어는 프레임을 모른다.</summary>
         public float Dt;
 

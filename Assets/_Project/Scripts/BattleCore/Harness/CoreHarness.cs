@@ -48,6 +48,12 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.UnitSpawned, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.UnitDestroyed, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.MatchEnded, 0, trace.Record);
+            // unit 2 — 맵·이동의 사건. **새 채널을 열면 여기 구독도 같이 연다** — 안 열면
+            // 골든이 그 규칙에 대해 아무 말도 하지 않은 채 초록이 된다(조용한 무증언).
+            match.Bus.Subscribe(CoreEventKind.GoalReached, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.Detected, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.AggroAcquired, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.Blinked, 0, trace.Record);
 
             // 구독 **뒤에** 시작한다 — `Begin` 이 `MatchStarted` 를 그 자리에서 배달한다.
             match.Begin();

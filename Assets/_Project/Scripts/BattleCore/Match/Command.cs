@@ -16,6 +16,8 @@ namespace Wassup.BattleCore
         // 디버그 커맨드 — 하네스·골든 전용. 판정을 갖지 않는다(시나리오가 곧 의도다).
         DebugSpawnEnemy = 4,
         DebugDestroy = 5,
+        /// <summary>unit 2 — 길목을 막았다 풀었다 하는 디버그 손잡이(우회 시나리오의 입력).</summary>
+        DebugSetObstacle = 6,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -74,6 +76,16 @@ namespace Wassup.BattleCore
         /// <summary>대상 개체(`Retire` · `DebugDestroy`).</summary>
         public SimEntityId Target;
 
+        /// <summary>
+        /// unit 2 — 스폰 레인. `DebugSpawnEnemy` 에서 0 이상이면 그 레인의 입구 칸에서 나오고
+        /// `Cell` 은 무시된다. -1 이면 `Cell` 을 그대로 쓴다(맵 없는 픽스처).
+        /// 레인 순번은 **웨이브 결정론 키**라 스폰 흩뿌림의 레인 배정도 이 값을 쓴다.
+        /// </summary>
+        public int Lane;
+
+        /// <summary>`DebugSetObstacle` 의 켬/끔.</summary>
+        public bool Flag;
+
         // 카드·스킬 필드(`cardId` · `host` · `skill`)는 unit 7(트리거 레이어)에서 붙는다.
 
         public static Command PlaceDefender(int defIndex, int2 cell, float2 facing = default) => new Command
@@ -83,6 +95,7 @@ namespace Wassup.BattleCore
             Cell = cell,
             Facing = facing,
             Target = SimEntityId.None,
+            Lane = -1,
         };
 
         public static Command Retire(SimEntityId target) => new Command
@@ -90,6 +103,7 @@ namespace Wassup.BattleCore
             Kind = CommandKind.Retire,
             DefIndex = -1,
             Target = target,
+            Lane = -1,
         };
 
         public static Command Submit() => new Command
@@ -97,14 +111,27 @@ namespace Wassup.BattleCore
             Kind = CommandKind.Submit,
             DefIndex = -1,
             Target = SimEntityId.None,
+            Lane = -1,
         };
 
+        /// <summary>칸 지정 스폰(맵 없는 픽스처용). 레인은 쓰지 않는다.</summary>
         public static Command DebugSpawnEnemy(int defIndex, int2 cell) => new Command
         {
             Kind = CommandKind.DebugSpawnEnemy,
             DefIndex = defIndex,
             Cell = cell,
             Target = SimEntityId.None,
+            Lane = -1,
+        };
+
+        /// <summary>레인 지정 스폰. 입구 칸·기본 경로·측면 분산 레인이 전부 이 번호에서 나온다.</summary>
+        public static Command DebugSpawnEnemyInLane(int defIndex, int lane) => new Command
+        {
+            Kind = CommandKind.DebugSpawnEnemy,
+            DefIndex = defIndex,
+            Cell = int2.zero,
+            Target = SimEntityId.None,
+            Lane = lane,
         };
 
         public static Command DebugDestroy(SimEntityId target) => new Command
@@ -112,6 +139,18 @@ namespace Wassup.BattleCore
             Kind = CommandKind.DebugDestroy,
             DefIndex = -1,
             Target = target,
+            Lane = -1,
+        };
+
+        /// <summary>길목을 막았다 푼다. 흐름장은 **막힌 틱에** 다시 구워진다(장애물 시그니처).</summary>
+        public static Command DebugSetObstacle(int2 cell, bool on) => new Command
+        {
+            Kind = CommandKind.DebugSetObstacle,
+            DefIndex = -1,
+            Cell = cell,
+            Target = SimEntityId.None,
+            Lane = -1,
+            Flag = on,
         };
     }
 

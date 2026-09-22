@@ -1,4 +1,6 @@
+using Unity.Mathematics;
 using Wassup.BattleCore;
+using Wassup.BattleCore.Map;
 using Wassup.Data;
 
 namespace Wassup.BattleCoreUnity
@@ -21,7 +23,9 @@ namespace Wassup.BattleCoreUnity
         public static MatchDefinition Build(DefenderUnitData[] defenders,
                                             AttackUnitData[] enemies,
                                             int seed,
-                                            ModeDef mode)
+                                            ModeDef mode,
+                                            in GeneratedMap map = default,
+                                            float tileSize = 1f)
         {
             var def = new MatchDefinition
             {
@@ -29,10 +33,83 @@ namespace Wassup.BattleCoreUnity
                 Mode = mode,
                 Units = BuildUnits(defenders),
                 Enemies = BuildEnemies(enemies),
-                Map = MapSnapshot.Empty(),   // unit 2 에서 `MapStageScanner` 가 채운다
+                Map = BuildMap(in map, tileSize),
             };
             def.ConfigHash = def.ComputeConfigHash();
             return def;
+        }
+
+        /// <summary>
+        /// 스캐너 산출(`GeneratedMap`)을 plain 스냅샷으로 접는다. **스캐너는 무변**이다 —
+        /// 그쪽은 씬 계층을 훑어 칸 격자를 파는 저작 파이프라인이고, 여기는 그 결과를 읽기만 한다.
+        ///
+        /// ⚠ **통행 층은 `tiles` 에서만 파생한다**(M1). `placeMask` 는 저작 그대로 싣되 통행에
+        /// 쓰지 않는다 — 저작 의미가 «어느 유닛이 여기 설 수 있나» 라서, 통행으로 읽으면
+        /// 「배치 금지」로 칠한 통로가 라우팅에서 사라진다(실측 사고).
+        /// </summary>
+        public static MapSnapshot BuildMap(in GeneratedMap map, float tileSize)
+        {
+            var snap = MapSnapshot.Empty();
+            snap.TileSize = tileSize > 0f ? tileSize : 1f;
+            if (!map.IsCreated) return snap;
+
+            snap.Width = map.gridSize.x;
+            snap.Height = map.gridSize.y;
+            int n = snap.Width * snap.Height;
+
+            snap.Tiles = new MapTile[n];
+            snap.PlaceMask = new byte[n];
+            snap.CellLayers = new byte[n];
+            for (int i = 0; i < n; i++)
+            {
+                var tile = (MapTile)(byte)map.tiles[i];
+                snap.Tiles[i] = tile;
+                snap.PlaceMask[i] = map.placeMask.IsCreated
+                    ? PlacementLayers.Sanitize(map.placeMask[i])
+                    : LayerBits.Derive(tile);
+                snap.CellLayers[i] = LayerBits.Derive(tile);
+            }
+
+            snap.Spawns = Copy(map.spawns);
+            snap.Goals = map.goals.IsCreated && map.goals.Length > 0
+                ? Copy(map.goals)
+                : new[] { new int2(map.goal.x, map.goal.y) };
+            snap.WaypointCells = Copy(map.waypointCells);
+            snap.WaypointRanges = Copy(map.waypointRanges);
+
+            if (map.spawnRoutes.IsCreated)
+            {
+                snap.SpawnRoutes = new int[map.spawnRoutes.Length];
+                for (int i = 0; i < snap.SpawnRoutes.Length; i++) snap.SpawnRoutes[i] = map.spawnRoutes[i];
+            }
+
+            if (map.structures.IsCreated)
+            {
+                snap.Structures = new StructureSpot[map.structures.Length];
+                for (int i = 0; i < snap.Structures.Length; i++)
+                {
+                    var st = map.structures[i];
+                    snap.Structures[i] = new StructureSpot
+                    {
+                        Cell = st.cell,
+                        Faction = (int)st.faction,
+                        // 크기는 **종류에서 파생한다**. 상수를 박으면 1×1 마음이 3×3 을
+                        // 차지한다고 거짓말한다.
+                        Footprint = StructurePlacements.FootprintOf(st.faction),
+                    };
+                }
+            }
+
+            snap.BonusSpawns = Copy(map.bonusSpawns);
+            return snap;
+        }
+
+        private static int2[] Copy(Unity.Collections.NativeArray<int2> src)
+        {
+            if (!src.IsCreated || src.Length == 0) return System.Array.Empty<int2>();
+            var outp = new int2[src.Length];
+            for (int i = 0; i < outp.Length; i++) outp[i] = src[i];
+            return outp;
         }
 
         private static UnitDef[] BuildUnits(DefenderUnitData[] src)
@@ -59,6 +136,8 @@ namespace Wassup.BattleCoreUnity
                     TraversalLayers = (int)d.EffectiveTraversalLayers,
                     Role = (int)d.role,
                     AttackShape = (int)d.attackShape,
+                    AggroCapacity = d.aggroCapacity,
+                    TargetFactions = (int)d.targetFactions,
                 };
             }
             return outp;
@@ -91,6 +170,9 @@ namespace Wassup.BattleCoreUnity
                     DetectionRange = e.detectionRange,
                     AwakeningReward = e.awakeningReward,
                     AttackShape = (int)e.attackShape,
+                    EngageMovement = (int)e.engageMovement,
+                    TargetFactions = (int)e.targetFactions,
+                    WaypointPathIndex = e.waypointPathIndex,
                 };
             }
             return outp;

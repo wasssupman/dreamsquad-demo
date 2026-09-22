@@ -26,6 +26,19 @@
 | `SubmitCommandTests` | ③ `Submit` 은 60초 전 거절 · 후 수락 |
 | `SimEntityIdTests` | ④ 스폰 순번 · `None` 정렬 배제 |
 | `DestroyEventTests` | ⑤ `UnitDestroyed` 없이 사라진 유닛 0 |
-| `CoreGoldenTests` | 골든 2종 베이크·검증 |
+| `CoreGoldenTests` | 골든 5종 베이크·검증(unit 1 의 2 + unit 2 의 3) |
+
+## unit 2 (맵·이동) 대응
+
+| 테스트 | 무엇을 증언하나 |
+|---|---|
+| `MapGridMathTests` · `FlowFieldBuilderTests` · `NavGridAndTrimTests` | 격자 수학 · 흐름장(옥타일·코너컷) · 층별 벽 조립 |
+| `AgentCollisionTests` · `PathSmoothingTests` | 충돌 슬라이드·접선 보존 · 평활화와 코너 조준(같은 여유 값) |
+| `SeparationTests` · `MovePureMathTests` · `PatrolAreaMathTests` | 밀어내기 · 스폰 흩뿌림 · 경로 진행 · 거점 고르기 · 순찰 |
+| `MapRuntimeTests` | 슬롯 없음 = loud · 장애물 시그니처 · 다칸 점유 · 효과 타일 자리 |
+| `AttackReachTests` | 도달 산식(제약 13) — 이동의 정지 조건이 공격과 **같은 자**를 쓴다 |
+| `MovementRulesTests` · `DetectionRulesTests` | 판을 돌려 묻는 규칙: 골 도달 1회 · 우회 · 정지 관찰 · 감지 네 박자 · 어그로/도발 |
+| `MovementRulesTests.군집_통과_검산_1칸_복도_20기_100초` | 단독 통과 ≠ 군집 통과 |
+| `DeterminismTests.적_20기_군집도_두_실행이_같다` | 분리 누적이 `SimEntityId` 오름차순으로 닫혔나 |
 
 ⑥(`configHash`)은 SO 를 읽어야 해서 `Tests/EditModeAssets/` 에 있다.
