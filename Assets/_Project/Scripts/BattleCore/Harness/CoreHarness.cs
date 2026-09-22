@@ -1,0 +1,70 @@
+using System.Collections.Generic;
+
+namespace Wassup.BattleCore
+{
+    // battle-core-rebuild unit 1 — 엔진 없이 판을 돌리는 러너.
+    //
+    // 옛 하네스와 **병존**한다(계약 3). 둘이 동시에 있는 동안만 A/B 비교가 가능하고,
+    // 옛 러너는 unit 9 에서 은퇴한다. 비교 축은 id 가 아니라 **순서**다 — 센티널이
+    // 다르기 때문이다(unit 0 항목 9).
+    //
+    // 옛 `SimHarnessClock` 의 `Time.captureDeltaTime` 고정은 옮기지 않았다.
+    // 코어는 프레임을 모르고, 시간은 틱 수로 만든다.
+    public static class CoreHarness
+    {
+        public sealed class Result
+        {
+            public CoreTrace Trace;
+            public BattleMatch Match;
+            public List<Receipt> Receipts;
+        }
+
+        /// <summary>
+        /// 시나리오 하나를 끝까지 돌린다.
+        ///
+        /// 한 틱의 차례: **이 틱의 커맨드 → `match.Tick()`**. 커맨드를 뒤에 놓으면
+        /// 「틱 t 에 배치」가 실제로는 t+1 부터 효력이 생겨 골든이 한 틱씩 밀린다.
+        ///
+        /// `ticks` 를 다 돌기 전에 판이 끝나면(제출·만료) 남은 틱은 no-op 이다 —
+        /// 일부러 멈추지 않는다. 「끝난 판에 틱을 더 줘도 아무 일도 없다」가 계약 5 이고,
+        /// 그것을 골든이 증언해야 한다.
+        /// </summary>
+        public static Result Run(MatchDefinition def, CommandSchedule schedule, int ticks, string scenario)
+        {
+            var match = new BattleMatch(def);
+            var trace = new CoreTrace
+            {
+                scenario = scenario ?? "",
+                configHash = def.ConfigHash ?? "",
+                matchSeed = def.Seed,
+                stepDt = BattleMatch.Dt,
+                tickCount = ticks,
+            };
+
+            // 기록은 **버스 구독**으로 한다 — 틱 루프가 「무엇을 기록할지」를 알면
+            // 기록이 규칙의 일부가 된다. 순서 0 = 누구보다 먼저(담당자가 사건을 보고
+            // 상태를 바꾸기 전의 값을 남긴다).
+            match.Bus.Subscribe(CoreEventKind.MatchStarted, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.UnitSpawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.UnitDestroyed, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.MatchEnded, 0, trace.Record);
+
+            // 구독 **뒤에** 시작한다 — `Begin` 이 `MatchStarted` 를 그 자리에서 배달한다.
+            match.Begin();
+
+            var receipts = new List<Receipt>(schedule?.Count ?? 0);
+            schedule?.Rewind();
+
+            for (int t = 0; t < ticks; t++)
+            {
+                schedule?.ApplyDue(match, t, receipts);
+                match.Tick();
+                match.ClearEvents();   // outbox 는 Unity 층의 것 — 하네스는 구독으로 받는다
+            }
+
+            trace.finalStateHash = match.World.StateHash();
+            // 킬·점수·유출은 담당자(`ScoreLedger`·`HeartMeter`)가 생기는 unit 4 부터 채워진다.
+            return new Result { Trace = trace, Match = match, Receipts = receipts };
+        }
+    }
+}

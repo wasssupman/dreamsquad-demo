@@ -1,0 +1,6 @@
+# battle-core-rebuild unit 1 — 루트 .gitignore 의 `*.csproj` 는 Unity 가 생성하는
+# 프로젝트 파일을 겨냥한 것이다. 이 둘은 **손으로 쓴 헤드리스 lane** 이라 추적한다.
+!BattleCore.csproj
+!BattleCore.Tests.csproj
+bin/
+obj/

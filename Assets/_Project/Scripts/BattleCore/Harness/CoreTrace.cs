@@ -1,0 +1,210 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
+
+namespace Wassup.BattleCore
+{
+    // battle-core-rebuild unit 1 — 새 코어의 관측 기록.
+    //
+    // **포맷은 `LegacyTraceV0` 와 같다**(magic `LTV0`, 줄 단위 텍스트, `f` 는 1e-3 격자
+    // 정수로 저장). 같은 포맷을 쓰는 이유는 사람이 같은 눈으로 두 계보의 골든을 diff 할
+    // 수 있어야 하기 때문이다.
+    //
+    // 그런데 **채널 enum 은 새로 시작한다**(0 부터). 옛 22 뒤에 이어 붙이지 않는 이유:
+    // 옛 채널은 옛 전투의 사건 이름표라, 새 코어의 사건을 그 번호 공간에 넣으면 한 파일이
+    // 두 어휘를 갖게 된다. 그래서 파일 계열도 폴더로 나눈다(`Tests/GoldenCore/`).
+    //
+    // 그 대신 **파서가 계열을 확인한다** — 헤더의 `channels=core` 가 그것이다.
+    // 옛 리더는 모르는 키를 무시하므로 포맷 호환은 유지되고, 새 리더는 옛 파일을 거절한다.
+    // (구분자가 없으면 두 계열이 육안으로 같아 보이고, 그때 골든 하나가 조용히 엉뚱한
+    //  채널 이름으로 읽힌다.)
+    //
+    // ⚠ **append-only.** 기존 번호를 재사용하면 이미 구운 골든이 다른 사건으로 읽힌다.
+    public enum CoreTraceChannel : byte
+    {
+        MatchStarted = 0,
+        UnitSpawned = 1,
+        UnitDestroyed = 2,
+        MatchEnded = 3,
+    }
+
+    public struct CoreTraceEvent
+    {
+        public int tick;
+        public CoreTraceChannel channel;
+        public int a;      // 주체 SimEntityId (-1 = 없음)
+        public int b;      // 대상 SimEntityId (-1 = 없음)
+        public int i;      // 채널별 정수(UnitKind · MatchEndReason 등)
+        public float f;    // 채널별 실수(체력·경과 시간 등)
+
+        public bool SameAs(in CoreTraceEvent o)
+            => tick == o.tick && channel == o.channel && a == o.a && b == o.b && i == o.i
+               && Quantize(f) == Quantize(o.f);
+
+        // 저장 해상도 = 비교 해상도. 옛 포맷과 **같은 함수**를 쓴다 — 여기서 갈리면
+        // 「파일로는 같은데 메모리로는 다르다」가 생긴다.
+        public static int Quantize(float v) => Wassup.Core.Trace.TraceEvent.Quantize(v);
+    }
+
+    public sealed class CoreTrace
+    {
+        public const string Magic = "LTV0";
+        public const string Series = "core";
+
+        public string scenario = "";
+        public string configHash = "";
+        public int matchSeed;
+        public float stepDt;
+        public int tickCount;
+
+        public readonly List<CoreTraceEvent> events = new List<CoreTraceEvent>();
+
+        // 최종 결산 — 대조에서 **exact** 로 보는 정수들.
+        public int finalKills;
+        public int finalScore;
+        public int finalLeaks;
+        public ulong finalStateHash;
+
+        /// <summary>
+        /// 코어 이벤트 한 건을 기록한다. 버스 배달 중에 불린다.
+        /// `in` 을 쓰지 않는 것은 `Action&lt;CoreEvent&gt;` 로 구독하기 위해서다 —
+        /// `CoreEvent` 는 값 타입이라 복사 비용이 구독 한 겹보다 싸다.
+        /// </summary>
+        public void Record(CoreEvent e)
+        {
+            if (!TryChannel(e.Kind, out var channel)) return;
+            events.Add(new CoreTraceEvent
+            {
+                tick = e.Tick,
+                channel = channel,
+                a = e.A.Value,
+                b = e.B.Value,
+                i = e.Arg,
+                f = e.Amount,
+            });
+        }
+
+        // 기록하지 않는 종류가 생기면 여기서 걸러진다. 「전부 기록」을 강제하지 않는 이유:
+        // 뷰 전용 사건(연출 신호)은 규칙을 증언하지 않아 골든을 부풀리기만 한다.
+        private static bool TryChannel(CoreEventKind kind, out CoreTraceChannel channel)
+        {
+            switch (kind)
+            {
+                case CoreEventKind.MatchStarted: channel = CoreTraceChannel.MatchStarted; return true;
+                case CoreEventKind.UnitSpawned: channel = CoreTraceChannel.UnitSpawned; return true;
+                case CoreEventKind.UnitDestroyed: channel = CoreTraceChannel.UnitDestroyed; return true;
+                case CoreEventKind.MatchEnded: channel = CoreTraceChannel.MatchEnded; return true;
+                default: channel = default; return false;
+            }
+        }
+
+        public string Serialize()
+        {
+            var sb = new StringBuilder(1024 + events.Count * 24);
+            var inv = CultureInfo.InvariantCulture;
+            sb.Append(Magic).Append('\n');
+            sb.Append("channels=").Append(Series).Append('\n');
+            sb.Append("scenario=").Append(scenario).Append('\n');
+            sb.Append("configHash=").Append(configHash).Append('\n');
+            sb.Append("matchSeed=").Append(matchSeed.ToString(inv)).Append('\n');
+            sb.Append("stepDt=").Append(stepDt.ToString("R", inv)).Append('\n');
+            sb.Append("tickCount=").Append(tickCount.ToString(inv)).Append('\n');
+            sb.Append("events=").Append(events.Count.ToString(inv)).Append('\n');
+            for (int n = 0; n < events.Count; n++)
+            {
+                var e = events[n];
+                sb.Append(e.tick.ToString(inv)).Append(' ')
+                  .Append(((int)e.channel).ToString(inv)).Append(' ')
+                  .Append(e.a.ToString(inv)).Append(' ')
+                  .Append(e.b.ToString(inv)).Append(' ')
+                  .Append(e.i.ToString(inv)).Append(' ')
+                  .Append(CoreTraceEvent.Quantize(e.f).ToString(inv)).Append('\n');
+            }
+            sb.Append("finalKills=").Append(finalKills.ToString(inv)).Append('\n');
+            sb.Append("finalScore=").Append(finalScore.ToString(inv)).Append('\n');
+            sb.Append("finalLeaks=").Append(finalLeaks.ToString(inv)).Append('\n');
+            sb.Append("finalStateHash=").Append(finalStateHash.ToString("X16", inv)).Append('\n');
+            return sb.ToString();
+        }
+
+        public static CoreTrace Deserialize(string text)
+        {
+            var inv = CultureInfo.InvariantCulture;
+            var t = new CoreTrace();
+            var lines = text.Split('\n');
+            if (lines.Length == 0 || lines[0] != Magic)
+                throw new FormatException($"trace magic mismatch: '{(lines.Length > 0 ? lines[0] : "")}'");
+
+            bool seriesSeen = false;
+            int declared = 0;
+            for (int n = 1; n < lines.Length; n++)
+            {
+                string line = lines[n];
+                if (line.Length == 0) continue;
+                int eq = line.IndexOf('=');
+                if (eq > 0)
+                {
+                    string k = line.Substring(0, eq), v = line.Substring(eq + 1);
+                    switch (k)
+                    {
+                        case "channels":
+                            if (v != Series)
+                                throw new FormatException($"trace channel series '{v}' — 코어 골든이 아니다(옛 계열은 CoreTrace 로 읽지 않는다)");
+                            seriesSeen = true;
+                            break;
+                        case "scenario": t.scenario = v; break;
+                        case "configHash": t.configHash = v; break;
+                        case "matchSeed": t.matchSeed = int.Parse(v, inv); break;
+                        case "stepDt": t.stepDt = float.Parse(v, NumberStyles.Float, inv); break;
+                        case "tickCount": t.tickCount = int.Parse(v, inv); break;
+                        case "events": declared = int.Parse(v, inv); break;
+                        case "finalKills": t.finalKills = int.Parse(v, inv); break;
+                        case "finalScore": t.finalScore = int.Parse(v, inv); break;
+                        case "finalLeaks": t.finalLeaks = int.Parse(v, inv); break;
+                        case "finalStateHash": t.finalStateHash = ulong.Parse(v, NumberStyles.HexNumber, inv); break;
+                    }
+                    continue;
+                }
+                var p = line.Split(' ');
+                if (p.Length != 6) throw new FormatException($"trace event row has {p.Length} fields: '{line}'");
+                t.events.Add(new CoreTraceEvent
+                {
+                    tick = int.Parse(p[0], inv),
+                    channel = (CoreTraceChannel)int.Parse(p[1], inv),
+                    a = int.Parse(p[2], inv),
+                    b = int.Parse(p[3], inv),
+                    i = int.Parse(p[4], inv),
+                    f = int.Parse(p[5], inv) / 1000f,
+                });
+            }
+            if (!seriesSeen)
+                throw new FormatException("trace 에 'channels=core' 가 없다 — 옛 계열(LegacyTraceV0)이다");
+            if (declared != t.events.Count)
+                throw new FormatException($"trace declares {declared} events but carries {t.events.Count}");
+            return t;
+        }
+
+        /// <summary>대조. 첫 불일치의 사람이 읽을 설명을 돌려준다(null = 일치).</summary>
+        public string DiffAgainst(CoreTrace other)
+        {
+            if (other == null) return "상대 trace 가 없다";
+            if (configHash != other.configHash)
+                return $"configHash 가 다르다 ({configHash} vs {other.configHash}) — 코드 회귀가 아니라 **조건 드리프트**다";
+            if (tickCount != other.tickCount) return $"tickCount {tickCount} vs {other.tickCount}";
+            int n = Math.Min(events.Count, other.events.Count);
+            for (int k = 0; k < n; k++)
+                if (!events[k].SameAs(other.events[k]))
+                    return $"이벤트 #{k} 불일치 — golden(t{events[k].tick} {events[k].channel} a{events[k].a} b{events[k].b} i{events[k].i} f{events[k].f:F3})"
+                         + $" vs run(t{other.events[k].tick} {other.events[k].channel} a{other.events[k].a} b{other.events[k].b} i{other.events[k].i} f{other.events[k].f:F3})";
+            if (events.Count != other.events.Count)
+                return $"이벤트 수 {events.Count} vs {other.events.Count} (앞 {n}개는 동일 — 뒤에서 갈렸다)";
+            if (finalKills != other.finalKills) return $"finalKills {finalKills} vs {other.finalKills}";
+            if (finalScore != other.finalScore) return $"finalScore {finalScore} vs {other.finalScore}";
+            if (finalLeaks != other.finalLeaks) return $"finalLeaks {finalLeaks} vs {other.finalLeaks}";
+            if (finalStateHash != other.finalStateHash)
+                return $"finalStateHash {finalStateHash:X16} vs {other.finalStateHash:X16}";
+            return null;
+        }
+    }
+}

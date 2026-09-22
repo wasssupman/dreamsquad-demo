@@ -40,9 +40,32 @@
 
 ## 완료 기준
 
-- [ ] Unity: `Wassup.BattleCore.asmdef` 컴파일, `noEngineReferences` 위반 시 컴파일 실패 확인(의도적 `using UnityEngine` 1줄로 빨강 → 제거).
-- [ ] 헤드리스: `dotnet build Tools/battle-core-rebuild/headless/BattleCore.csproj` 오류 0 · `dotnet test …/BattleCore.Tests.csproj` 초록.
-- [ ] EditMode.Core 테스트: ① 10,800틱 뒤 `MatchEnded(complete)` 정확히 1회, 이후 틱 no-op ② 같은 정의표+스케줄 2회 → 트레이스 해시 동일 ③ `Submit` 은 60초 전 거절·후 수락 ④ `SimEntityId` 스폰 순번·`None` 정렬 배제 ⑤ `UnitDestroyed` 없이 사라진 유닛 0(소멸 경로 전수 = `BattleWorld.Destroy` 1곳) ⑥ (Assets lane) 같은 SO 로 두 번 빌드 → `configHash` 동일, 아트 참조 교체 → 동일, `modeId` 변경 → 상이.
-- [ ] 골든 2종 베이크·검증 통과.
+> 실측 2026-09-23. **헤드리스 lane** 은 실행해 확인했고, **Unity lane** 은 에디터가
+> 열릴 때 확인한다(작성 시점 에디터 세션 없음 — 컴파일을 주장하지 않는다).
+
+- [x] 헤드리스: `dotnet build tools/battle-core-rebuild/headless/BattleCore.csproj` → 오류 0 · 경고 0.
+- [x] 헤드리스: `dotnet test …/BattleCore.Tests.csproj` → **통과 31 / 실패 0**.
+- [x] 엔진 참조 게이트: 코어 파일에 `using UnityEngine;` 1줄 → `error CS0246` 로 빨강, 제거 후 초록(의도적 확인).
+- [x] 코어 소스 전수 grep(`UnityEngine`·`Unity.Entities`·`Unity.Collections`·`System.Random`·`DateTime`·`Time.`) → **코드 0건**(주석·README 만).
+- [x] EditMode.Core 테스트 ①~⑤ 초록(헤드리스 lane 에서 같은 소스로 실행):
+      ① 10,800틱 뒤 `MatchEnded(complete)` 정확히 1회 · 이후 틱 no-op
+      ② 같은 정의표+스케줄 2회 → 트레이스 바이트 동일 · receipt 동일
+      ③ `Submit` 은 3,600틱 전 거절(`SubmitLocked`) · 그 틱부터 수락
+      ④ `SimEntityId` 스폰 순번 1~ · `None(-1)` 정렬 밖 · 소멸 id 재사용 없음 · 목록 오름차순 유지
+      ⑤ 「스폰 − 소멸 이벤트 = 월드 잔존」 정확히 성립(소멸 경로 = `BattleWorld.Destroy` 1곳)
+- [x] 골든 2종(`empty_board` 10,800틱 · `spawn_destroy`) 베이크 후 재실행 대조 통과. 왕복 게이트 통과.
+- [x] `check_ledgers.py` exit 0 — 메서드 367 · 필드 91(옛 브리지 무변이라 자명).
+- [x] 감지기에 새 경로 3종 추가 · `node --check` 통과.
+- [ ] Unity: `Wassup.BattleCore.asmdef` 컴파일 · EditMode.Core lane 초록 · Assets lane ⑥(`configHash`) 초록 — **에디터 열릴 때**.
 - [ ] `core-reviewer` 리뷰 APPROVE(매니저 재생성 0 · 엔진 참조 0).
-- [ ] `check_ledgers.py` exit 0(옛 브리지는 무변이라 자명).
+
+### 이 unit 에서 갈린 결정 (spec 본문과 다른 것)
+
+| 항목 | 문서 | 실제 | 이유 |
+|---|---|---|---|
+| `MatchSeed.GenerateRandom()` | 「엔진 무참조 확인됨」 | `UnityEngine.Random.Range` → `Guid.NewGuid()` | 그 한 줄만 엔진에 매여 있었다. 시그니처는 유지(호출처 둘 중 하나가 **동결된 `BattleBridge`**) |
+| `CoreTrace` | 「`LegacyTraceV0` 포맷」 | 포맷은 같고 **클래스는 별도** + 헤더 `channels=core` | 채널 enum 이 다른데 한 타입을 쓰면 골든이 옛 채널 **이름**으로 읽힌다. 구분자가 없으면 두 계열이 육안으로 같다 |
+| 거절 사유 이름 | — | `Occupied`(옛 `PlacementRejectReason` 그대로) | 「이름으로 옮긴다」를 문자 그대로 |
+| `CoreEvent` 필드 | `{Kind, tick, a, b, Site×2, faction, amount}` | + `Arg`(int) | 트레이스 한 줄의 `i`/`f` 와 1:1 이 되어 뷰도 골든도 되묻지 않는다. `MatchEnded` 사유가 실릴 자리 |
+| `configHash` 소유 | 「빌더가 계산」 | `MatchDefinition.ComputeConfigHash()`(코어) · 빌더는 호출만 | README 가 소유자를 `MatchDefinition` 이라 적었고, 코어에 두면 아트가 **타입 수준에서** 못 샌다 · 헤드리스에서 테스트 가능 |
+| 헤드리스 경로 대문자 | `Tools/…` | `tools/…` | 인덱스에 이미 `tools/`(소문자)가 있다. macOS 는 같은 폴더지만 대문자로 커밋하면 대소문자 구분 파일시스템에서 디렉터리가 **둘**이 된다 |

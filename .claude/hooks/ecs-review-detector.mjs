@@ -38,6 +38,9 @@ const ECS_PATH_FRAGMENTS = [
 // unit 0 항목 5 — 새 코어 경로는 ecs-reviewer 가 아니라 core-reviewer 로 간다.
 const CORE_PATH_FRAGMENTS = [
   'Assets/_Project/Scripts/BattleCore/',
+  'Assets/_Project/Scripts/BattleCoreUnity/',
+  'Assets/_Project/Editor/BattleCore/',
+  'Assets/_Project/Tests/EditModeCore/',
   'Assets/_Project/Scenes/BattleCoreScene.unity',
 ];
 

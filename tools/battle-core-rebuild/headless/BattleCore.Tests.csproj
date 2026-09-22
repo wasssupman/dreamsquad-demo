@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    battle-core-rebuild unit 1 — 헤드리스 테스트 lane.
+
+    **Unity EditMode 와 같은 `.cs` 를 컴파일한다.** 그래서 테스트 소스는
+    `NUnit.Framework` 와 코어 타입만 쓴다(`Tests/EditModeCore/README.md`).
+    두 벌로 나뉘는 순간 한쪽만 초록인 상태가 생기고, 그게 가장 비싼 실패다.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup/Library/ScriptAssemblies</UnityScriptAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(RepoRoot)Assets\_Project\Tests\EditModeCore\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="BattleCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Unity.Mathematics">
+      <HintPath>$(UnityScriptAssemblies)/Unity.Mathematics.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+</Project>
