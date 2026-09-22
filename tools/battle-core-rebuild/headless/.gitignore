@@ -4,3 +4,4 @@
 !BattleCore.Tests.csproj
 bin/
 obj/
+!BattleCoreUnity.Check.csproj

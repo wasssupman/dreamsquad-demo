@@ -28,13 +28,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 코어 + 코어가 참조하는 엔진 무관 어셈블리 둘. Unity 쪽 asmdef 경계와 같은 집합이다. -->
+    <!-- 코어 소스만 컴파일한다. Skills·UnitAi 는 에디터가 만든 dll 을 참조한다 — Unity asmdef 경계와 같은 집합이고, 소스를 다시 컴파일하면 Runtime.dll 이 아는 타입과 정체성이 갈린다(Unity 층 검사 lane 이 그것에 걸렸다). -->
     <Compile Include="$(RepoRoot)Assets\_Project\Scripts\BattleCore\**\*.cs" />
-    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Skills\**\*.cs" />
-    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\UnitAi\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="Wassup.Skills"><HintPath>$(UnityScriptAssemblies)/Wassup.Skills.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="Wassup.UnitAi"><HintPath>$(UnityScriptAssemblies)/Wassup.UnitAi.dll</HintPath><Private>true</Private></Reference>
     <Reference Include="Unity.Mathematics">
       <HintPath>$(UnityScriptAssemblies)/Unity.Mathematics.dll</HintPath>
       <Private>true</Private>

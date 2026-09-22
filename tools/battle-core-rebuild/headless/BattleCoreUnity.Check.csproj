@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    battle-core-rebuild unit 3 후속 — Unity 층 컴파일 검사 lane.
+
+    `BattleCore.csproj` 는 코어만 컴파일하므로 `Scripts/BattleCoreUnity/**`(정의표 빌더·드라이버)의
+    오류를 못 잡는다(unit 3 에서 struct 캐스트 오류가 그렇게 새어 나갔다). 이 프로젝트는 그 층을
+    에디터의 UnityEngine 모듈 dll + 메인 워크트리 `Library/ScriptAssemblies` 의 옛 어셈블리에 대고
+    **컴파일만** 한다(실행·테스트 없음). 코어는 ProjectReference 로 받는다. 정본은 여전히 Unity 에디터.
+
+    ⚠ 옛 `Wassup.Runtime.dll` 에는 코어로 옮긴 `MatchSeed`·`LegacyTraceV0` 사본이 아직 들어 있다
+    (에디터가 그 이동 뒤 재컴파일한 적이 없다). Unity 층 소스가 그 둘을 직접 쓰면 CS0433 모호성이
+    난다 — 그 경우만 이 lane 이 거짓 빨강이다(에디터 재컴파일 뒤 소멸).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Wassup.BattleCoreUnity.Check</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <NoWarn>$(NoWarn);CS1701;CS1702</NoWarn>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\..\</RepoRoot>
+    <UnityScriptAssemblies Condition="'$(UnityScriptAssemblies)' == ''">/Users/sy/dev/wassup/Library/ScriptAssemblies</UnityScriptAssemblies>
+    <UnityEngineDir Condition="'$(UnityEngineDir)' == ''">/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine</UnityEngineDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\BattleCoreUnity\**\*.cs" />
+    <!-- unit 4 — 새 모드 SO. `Wassup.Runtime.dll` 은 에디터가 이 타입을 컴파일하기 전 것이라 여기 명시로 넣는다(에디터 재컴파일 뒤에는 중복이 아니라 «먼저 찾는 쪽»이 된다). -->
+    <Compile Include="$(RepoRoot)Assets\_Project\Scripts\Data\MatchModeData.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="BattleCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="$(UnityEngineDir)/*.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Wassup.Runtime.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Wassup.Skills.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Wassup.UnitAi.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Mathematics.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Collections.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Burst.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Entities.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.Transforms.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/spine-unity.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/spine-csharp.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/PrimeTween.Runtime.dll" Private="false" />
+    <Reference Include="$(UnityScriptAssemblies)/Wassup.DepthParallax.dll" Private="false" />
+  </ItemGroup>
+
+</Project>
