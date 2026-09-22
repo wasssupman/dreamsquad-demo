@@ -38,10 +38,11 @@ namespace Wassup.BattleCoreUnity
                                             int seed,
                                             float costRateMultiplier = 1f,
                                             in GeneratedMap map = default,
-                                            float tileSize = 1f)
+                                            float tileSize = 1f,
+                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null)
         {
             var enemies = CollectEnemies(deck, plan, bonus);
-            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize);
+            var def = Build(defenders, enemies, seed, ToModeDef(mode), in map, tileSize, structures);
 
             def.CostRateMultiplier = Mathf.Max(0f, costRateMultiplier);
             def.WaveDeck = ToDeckDef(deck, enemies);
@@ -68,12 +69,19 @@ namespace Wassup.BattleCoreUnity
              : lobbyOrServer != null ? lobbyOrServer
              : fallback;
 
+        /// <summary>
+        /// ⚠ `structures` 는 **스테이지 저작 목록**(`StructureMarker` 산출)이다. 격자 투영
+        /// (`GeneratedMap.structures`)에는 셀과 진영밖에 없어 스탯이 없다 — 둘을 칸으로
+        /// 맞추는 것이 `CombatDefinitionBuilder.FillStructures` 의 일이고, 안 넘기면
+        /// 저작 거점은 **한 기도 안 선다**(조용히 기본 스탯으로 세우지 않는다).
+        /// </summary>
         public static MatchDefinition Build(DefenderUnitData[] defenders,
                                             AttackUnitData[] enemies,
                                             int seed,
                                             ModeDef mode,
                                             in GeneratedMap map = default,
-                                            float tileSize = 1f)
+                                            float tileSize = 1f,
+                                            System.Collections.Generic.IReadOnlyList<StructureEntry> structures = null)
         {
             var def = new MatchDefinition
             {
@@ -85,7 +93,7 @@ namespace Wassup.BattleCoreUnity
             };
             // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
             // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
-            CombatDefinitionBuilder.Fill(def, defenders, enemies);
+            CombatDefinitionBuilder.Fill(def, defenders, enemies, structures);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -147,11 +155,18 @@ namespace Wassup.BattleCoreUnity
                         // 크기는 **종류에서 파생한다**. 상수를 박으면 1×1 마음이 3×3 을
                         // 차지한다고 거짓말한다.
                         Footprint = StructurePlacements.FootprintOf(st.faction),
+                        // 스탯 줄은 스테이지 저작과 칸을 맞춰야 정해진다 — 그 일은
+                        // `CombatDefinitionBuilder.FillStructures` 가 한다.
+                        DefIndex = -1,
                     };
                 }
             }
 
             snap.BonusSpawns = Copy(map.bonusSpawns);
+
+            // 스폰·골·거점 자리는 배치를 받지 않는다(옛 `BattleBridge.CloseCellLayers`).
+            // **저작을 읽은 뒤 마지막에 덮는다** — 규칙이 저작본을 오염시키지 않게 하는 순서다.
+            snap.CloseReservedPlacement();
             return snap;
         }
 

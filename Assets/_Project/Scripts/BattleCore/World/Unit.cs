@@ -57,6 +57,28 @@ namespace Wassup.BattleCore
         /// <summary>배치 모션 중. 전투 코어가 소유한 페이즈이고 그동안 표적이 되지 않는다.</summary>
         public bool Deploying;
 
+        /// <summary>
+        /// 지금은 표적이 아니다. **옛 `CoreShielded` 의 후계**이고, 오늘의 유일한 생산자는
+        /// `HeartMeter`(본능이 살아 있는 동안 마음을 뺀다)다.
+        ///
+        /// 「배치 중」·「도약 중」과 같은 축에 두는 이유: 제외 조건이 흩어지면 우선순위 함수가
+        /// 그중 몇 개만 아는 상태가 생긴다 — 옛 전투가 `WithNone` 14곳으로 겪은 일이다.
+        /// </summary>
+        public bool Untargetable;
+
+        /// <summary>
+        /// **이 개체의 체력은 다른 담당자가 든다.** 피해 단계가 체력을 안 건드리고 인박스도
+        /// 안 비운다 — 그 둘 다 플래그를 세운 쪽의 일이다.
+        ///
+        /// 오늘의 유일한 생산자는 `HeartMeter`(마음 타워)다. 마음의 체력은 개체가 아니라
+        /// 담당자가 들어야 「마음 N개가 저수지 하나를 공유」로 여는 날 이사 비용이 0 이다(X29).
+        /// ⚠ 이 플래그를 세우고 **안 비우면 피해가 무한히 쌓인다** — 세운 쪽이 드레인을 진다.
+        /// </summary>
+        public bool HealthExternal;
+
+        /// <summary>거점인가. 상태이상·모디파이어 **전면 면역**의 술어다(F3).</summary>
+        public bool IsStructure => Kind == UnitKind.Structure;
+
         // ── unit 2 부분(nullable) ──────────────────────────────────────────────
         // 「있나 없나」가 곧 아키타입이다. 예: `Detection == null` = 감지 0 = 오늘과 같은 경로.
 
@@ -118,6 +140,8 @@ namespace Wassup.BattleCore
             Dead = false;
             DeathTick = -1;
             Deploying = false;
+            Untargetable = false;
+            HealthExternal = false;
 
             parts.Reclaim(this);
 
@@ -130,13 +154,15 @@ namespace Wassup.BattleCore
         /// 표적이 될 수 있나. 옛 전투가 `WithNone` 14곳에 흩어 놓았던 제외 조건의 단일화 —
         /// 새 제외 조건이 생기면 **여기 한 줄**로 들어온다(UML §2).
         ///
-        /// 제외 3종: **사망 대기 · 배치 중 · 궁극기로 판 밖에 나간 자**(C16).
+        /// 제외 4종: **사망 대기 · 배치 중 · 궁극기로 판 밖에 나간 자**(C16) ·
+        /// **표적 제외 선언**(마음 방패 — 본능이 살아 있는 동안의 마음).
         /// ⚠ 일반 도약(보스)은 **비행 중에도 맞는다** — 그쪽은 즉시 순간이동이고 뷰만 난다.
         /// ⚠ 옛 전투는 이 셋을 쿼리(`WithNone`)가 걸러서 우선순위 함수가 둘을 **인자로 안
         /// 받았다.** 쿼리가 사라진 지금 그 표가 조용히 3단으로 줄지 않게 하는 것이 이 술어다.
         /// </summary>
         public bool IsTargetable()
-            => !Dead && !Deploying && !(Progressive != null && Progressive.LeapActive);
+            => !Dead && !Deploying && !Untargetable
+               && !(Progressive != null && Progressive.LeapActive);
 
         /// <summary>
         /// 행동을 시작할 수 있나의 **잠금 축**(START 만 막는다 — 이미 시작한 스윙은 완료된다).

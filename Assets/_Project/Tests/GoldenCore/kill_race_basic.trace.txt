@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=kill_race_basic
-configHash=9d7e7891559f3384
+configHash=86de96713a12926a
 matchSeed=3001
 stepDt=0.016666668
 tickCount=10800

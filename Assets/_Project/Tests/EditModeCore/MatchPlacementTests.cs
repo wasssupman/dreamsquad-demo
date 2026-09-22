@@ -85,7 +85,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(1, match.Map.Occupancy.OwnerCount);
 
             // 퇴근하면 칸이 풀린다 — 쌍이 깨지면 죽은 유닛이 칸을 영영 문다.
-            Assert.IsTrue(match.Apply(Command.Retire(new SimEntityId(1))).Accepted);
+            Assert.IsTrue(match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match))).Accepted);
             Assert.AreEqual(0, match.Map.Occupancy.OwnerCount);
             Assert.IsFalse(match.Map.Occupancy.IsOccupied(new int2(3, 1)));
         }
@@ -175,7 +175,7 @@ namespace Wassup.Tests.EditMode.Core
             var retired = CoreMatchFixtures.Listen(match, CoreEventKind.Retired);
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
 
-            Assert.IsTrue(match.Apply(Command.Retire(new SimEntityId(1))).Accepted);
+            Assert.IsTrue(match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match))).Accepted);
 
             Assert.AreEqual(1, retired.Count);
             Assert.AreEqual(0, slain.Count,
@@ -192,7 +192,7 @@ namespace Wassup.Tests.EditMode.Core
             var match = CoreMatchFixtures.BeginBattle(def);
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
 
-            Assert.IsFalse(match.Apply(Command.Retire(new SimEntityId(1))).Accepted);
+            Assert.IsFalse(match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match))).Accepted);
         }
 
         [Test]
@@ -205,7 +205,7 @@ namespace Wassup.Tests.EditMode.Core
             var activated = CoreMatchFixtures.Listen(match, CoreEventKind.DefenderActivated);
 
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var u = match.World.Find(new SimEntityId(1));
+            var u = match.World.Find(CoreMatchFixtures.PlacedDefender(match));
             Assert.IsTrue(u.Deploying, "배치 중에는 표적도 사냥판 소스도 아니다");
             Assert.AreEqual(0, activated.Count);
 
@@ -227,7 +227,7 @@ namespace Wassup.Tests.EditMode.Core
 
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
 
-            Assert.IsFalse(match.World.Find(new SimEntityId(1)).Deploying,
+            Assert.IsFalse(match.World.Find(CoreMatchFixtures.PlacedDefender(match)).Deploying,
                 "한 틱짜리 대기로 흉내 내면 그 틱 동안 「놓았는데 유령」이 된다");
             Assert.AreEqual(1, activated.Count);
         }
@@ -242,7 +242,7 @@ namespace Wassup.Tests.EditMode.Core
             var activated = CoreMatchFixtures.Listen(match, CoreEventKind.DefenderActivated);
 
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            match.Apply(Command.DebugDestroy(new SimEntityId(1)));
+            match.Apply(Command.DebugDestroy(CoreMatchFixtures.PlacedDefender(match)));
             for (int t = 0; t < 200; t++) match.Tick();
 
             Assert.AreEqual(0, activated.Count, "시체는 배치되지 않는다(E5)");
@@ -321,7 +321,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreEqual(2, match.Placement.ArmedEffectTiles.Count, "회수도 재무장도 없다");
 
             // 같은 자리에 다시 놓아도 재무장되지 않는다.
-            match.Apply(Command.Retire(new SimEntityId(1)));
+            match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match)));
             for (int t = 0; t < 300; t++) match.Tick();
             match.Apply(Command.PlaceDefender(0, cell));
             Assert.AreEqual(2, match.Placement.ArmedEffectTiles.Count);

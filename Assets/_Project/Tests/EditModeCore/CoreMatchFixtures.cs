@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using Wassup.BattleCore;
 using Wassup.BattleCore.Map;
+using Wassup.Battle.Units;
 using Wassup.BattleCore.Wave;
 
 namespace Wassup.Tests.EditMode.Core
@@ -131,6 +132,66 @@ namespace Wassup.Tests.EditMode.Core
             match.Begin();
             match.Apply(Command.FinishPlacement());
             return match;
+        }
+
+        /// <summary>
+        /// 저작 거점 한 기를 판에 더한다. 자리(`MapSnapshot.Structures`)와 스탯 줄
+        /// (`MatchDefinition.Structures`)이 **쌍으로** 늘어난다 — 라이브에서 그 쌍을 맞추는
+        /// 것은 빌더의 일이고(칸으로 저작과 맞춘다), 여기서는 고정구가 직접 맞춘다.
+        /// 해시는 호출자가 마지막에 굽는다.
+        /// </summary>
+        public static void AddStructure(MatchDefinition def, int2 cell, Faction faction,
+                                        float health, float attackDamage = 0f,
+                                        float attackRange = 0f, int targetFactions = 0)
+        {
+            var attack = AttackDef.Default();
+            attack.Mode = (int)TargetMode.Nearest;
+            attack.Outputs = attackDamage > 0f
+                ? new[] { new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = attackDamage } }
+                : System.Array.Empty<AttackOutputDef>();
+
+            var rows = new List<StructureDef>(def.Structures)
+            {
+                new StructureDef
+                {
+                    Id = "fixture_structure",
+                    Health = health,
+                    AttackRange = attackRange,
+                    AttackCooldown = 1f,
+                    AttackTargetCount = 1,
+                    TargetFactions = targetFactions,
+                    Attack = attack,
+                },
+            };
+            var spots = new List<StructureSpot>(def.Map.Structures)
+            {
+                new StructureSpot
+                {
+                    Cell = cell,
+                    Faction = (int)faction,
+                    Footprint = ((int)faction & Factions.AnyInstinct) != 0
+                        ? StructureSize.Instinct
+                        : StructureSize.Core,
+                    DefIndex = rows.Count - 1,
+                },
+            };
+            def.Structures = rows.ToArray();
+            def.Map.Structures = spots.ToArray();
+            def.Map.CloseReservedPlacement();
+        }
+
+        /// <summary>
+        /// 판 위의 **첫 방어유닛**. 테스트가 `new SimEntityId(1)` 을 박으면 판 위의 가구가
+        /// 하나 늘 때마다(마음 타워가 그랬다) 통째로 깨진다 — 그 리터럴은 결정론의 증거가
+        /// 아니라 **우연**이고, 이 판에서 증언할 것은 「방금 놓은 유닛」이다.
+        /// (id 발급 순서 자체를 묻는 테스트는 `SimEntityIdTests` 가 따로 진다.)
+        /// </summary>
+        public static SimEntityId PlacedDefender(BattleMatch match)
+        {
+            var units = match.World.Units;
+            for (int i = 0; i < units.Count; i++)
+                if (units[i].Kind == UnitKind.Defender) return units[i].Id;
+            return SimEntityId.None;
         }
 
         public static List<CoreEvent> Listen(BattleMatch match, CoreEventKind kind)

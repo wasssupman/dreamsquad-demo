@@ -396,7 +396,7 @@ namespace Wassup.BattleCore
                 var u = _victims[_victimPick[k]];
                 Deal(ctx, u, p.Owner, p.Damage);
                 if (p.AoeCc != CcRequestKind.None && p.AoeCcSeconds > 0f)
-                    ctx.World.CcRequests.Add(CcRequest.Of(u.Id, p.AoeCc, p.AoeCcSeconds, p.Owner));
+                    ctx.World.RequestCc(CcRequest.Of(u.Id, p.AoeCc, p.AoeCcSeconds, p.Owner));
             }
 
             ctx.Bus.Publish(CoreEvent.ProjectileHit(ctx.Tick, p, SimEntityId.None, take));
@@ -436,7 +436,7 @@ namespace Wassup.BattleCore
                     if (math.lengthsq(dir) > 1e-8f)
                     {
                         dir = math.normalize(dir) * p.SweepKnockbackSpeed;
-                        ctx.World.CcRequests.Add(CcRequest.Push(
+                        ctx.World.RequestCc(CcRequest.Push(
                             u.Id, new float3(dir.x, 0f, dir.y), p.SweepKnockbackDuration, p.Owner));
                     }
                 }
@@ -497,7 +497,7 @@ namespace Wassup.BattleCore
             float2 travel = victim.Move.LastMoveDir;
             if (math.lengthsq(travel) <= 1e-6f) return;
             float2 v = -math.normalize(travel) * (distance / duration);
-            ctx.World.CcRequests.Add(CcRequest.Push(victim.Id, new float3(v.x, 0f, v.y), duration, source));
+            ctx.World.RequestCc(CcRequest.Push(victim.Id, new float3(v.x, 0f, v.y), duration, source));
         }
 
         private int CollectBounceCandidates(TickContext ctx, Projectile p, SimEntityId exclude)

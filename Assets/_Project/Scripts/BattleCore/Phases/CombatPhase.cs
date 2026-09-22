@@ -1002,6 +1002,11 @@ namespace Wassup.BattleCore
                     inbox.Heal.Clear();
                     continue;
                 }
+                // **체력을 다른 담당자가 드는 개체**(마음 타워)는 이 단계가 통째로 건너뛴다 —
+                // 인박스도 **안 비운다**. 비우면 그 담당자가 받을 것이 사라지고, 안 건너뛰면
+                // 최대 체력 0 짜리 개체가 매 틱 죽는다. 드레인의 주인은 플래그를 세운 쪽이다.
+                if (u.HealthExternal) continue;
+
                 if (u.Dead) { inbox.Damage.Clear(); inbox.Heal.Clear(); continue; }
 
                 // ── 실드 부여 드레인 ──
@@ -1090,7 +1095,7 @@ namespace Wassup.BattleCore
         // **그 틱에 수면이 걸린 대상**을 뺀다.
         private void FlushCc(TickContext ctx)
         {
-            for (int i = 0; i < _pendingCc.Count; i++) ctx.World.CcRequests.Add(_pendingCc[i]);
+            for (int i = 0; i < _pendingCc.Count; i++) ctx.World.RequestCc(_pendingCc[i]);
             _pendingCc.Clear();
 
             for (int i = 0; i < _pendingWake.Count; i++)
@@ -1254,9 +1259,13 @@ namespace Wassup.BattleCore
                                               atk.Cc.KnockupVisualHeight));
         }
 
-        /// <summary>보스 면역 집합 — 기절·수면·넉백은 **출처 불문** 안 걸린다.</summary>
+        /// <summary>
+        /// 이 대상은 군중 제어를 못 받는다. 보스 면역(기절·수면·넉백 **출처 불문**)과
+        /// 거점 면역(F3)이 **같은 술어**에 있는 이유: 둘 다 「이 대상에게는 이 축이 아예
+        /// 없다」는 말이고, 둘을 나누면 새 효과가 한쪽만 물어본다.
+        /// </summary>
         private static bool IsImmune(TickContext ctx, Unit victim)
-            => victim.Attack != null && victim.Attack.BossImmune;
+            => !EffectEligibility.AcceptsCc(victim);
 
         // ── 공통 ─────────────────────────────────────────────────────────────
 
@@ -1288,6 +1297,17 @@ namespace Wassup.BattleCore
             => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
                                 d.AttackTargetCount, d.AggroCapacity,
                                 TargetDefaults.ResolveDefender(d.TargetFactions), def, parts);
+
+        /// <summary>
+        /// 거점(본능·적 마음)의 공격. **마스크의 「0」이 유닛·적과 뜻이 다르다** — 저쪽은
+        /// 「미저작 = 기본값」이고 여기는 **「아무도 안 때린다」**다. 거점은 편이 배치에서
+        /// 오므로 SO 가 자기 상대를 모르고(방어 본능과 적 본능이 같은 SO 일 수 있다),
+        /// 「모르면 상대 진영 전부」로 접으면 방어 본능이 방어유닛을 쏜다.
+        /// </summary>
+        public static AttackState BuildAttackState(in StructureDef d, MatchDefinition def = null,
+                                                   UnitPartPool parts = null)
+            => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
+                                d.AttackTargetCount, 0, d.TargetFactions, def, parts);
 
         public static AttackState BuildAttackState(in EnemyDef d, MatchDefinition def = null,
                                                    UnitPartPool parts = null)

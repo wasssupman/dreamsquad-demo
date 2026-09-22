@@ -64,6 +64,8 @@ namespace Wassup.BattleCore
         private float2[] _structPos = new float2[16];
         private int[] _structFaction = new int[16];
         private int2[] _structCell = new int2[16];
+        /// <summary>이번 틱 **살아 있는** 거점의 진영 비트. 죽은 자리는 0 이라 어떤 마스크도 안 문다.</summary>
+        private int[] _structLiveFaction = new int[16];
         private int _structCount;
 
         private SimEntityId[] _rejected = new SimEntityId[MaxPathProbes];
@@ -90,6 +92,7 @@ namespace Wassup.BattleCore
                 _structPos = new float2[_structCount];
                 _structFaction = new int[_structCount];
                 _structCell = new int2[_structCount];
+                _structLiveFaction = new int[_structCount];
             }
             for (int i = 0; i < _structCount; i++)
             {
@@ -203,6 +206,7 @@ namespace Wassup.BattleCore
         private void StepStructureDestination(TickContext ctx)
         {
             if (_structCount == 0) return;
+            RefreshStructureLiveness(ctx);
             var units = ctx.World.Units;
             for (int i = 0; i < units.Count; i++)
             {
@@ -212,7 +216,7 @@ namespace Wassup.BattleCore
                 var def = EnemyDefOf(ctx, u);
                 int mask = TargetDefaults.ResolveEnemy(def.TargetFactions);
                 int pick = StructureChoice.NearestIndex(
-                    new float2(u.Position.x, u.Position.z), _structPos, _structFaction, _structCount, mask);
+                    new float2(u.Position.x, u.Position.z), _structPos, _structLiveFaction, _structCount, mask);
 
                 u.Move.HasStructureDest = false;
                 if (pick < 0) continue;
@@ -225,6 +229,36 @@ namespace Wassup.BattleCore
 
                 u.Move.HasStructureDest = true;
                 u.Move.StructureDest = _structCell[pick];
+            }
+        }
+
+        /// <summary>
+        /// **무너진 거점은 목적지가 아니다.** 저작 자리는 판 내내 스냅샷에 남지만 그 위의
+        /// 개체는 죽는다 — 자리만 보면 적이 **잔해를 향해 계속 걸어간다.**
+        ///
+        /// 죽은 자리의 진영을 0 으로 두는 것으로 고르기에서 빠진다(`(faction & mask) != 0` 이
+        /// 자격 술어다). `StructureChoice` 의 서명을 안 바꾸는 이유는 그 함수를 예고선이 함께
+        /// 쓰기 때문이다(M18) — 자를 하나 더 만들면 「가이드 ≠ 실제 이동선」이 돌아온다.
+        ///
+        /// 개체와 자리는 **칸으로** 맞춘다. 거점은 자기 칸 중앙에 서고 움직이지 않으므로
+        /// 그 대응이 판 내내 유지된다(움직이는 거점이 생기면 이 가정부터 깨진다).
+        /// </summary>
+        private void RefreshStructureLiveness(TickContext ctx)
+        {
+            for (int i = 0; i < _structCount; i++) _structLiveFaction[i] = 0;
+
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Kind != UnitKind.Structure || u.Dead) continue;
+                var cell = _map.CellOf(u.Position);
+                for (int k = 0; k < _structCount; k++)
+                {
+                    if (!_structCell[k].Equals(cell)) continue;
+                    _structLiveFaction[k] = _structFaction[k];
+                    break;
+                }
             }
         }
 

@@ -92,6 +92,11 @@ namespace Wassup.BattleCore.Map
                 for (int i = 0; i < n; i++) layers[i] = LayerBits.Derive(Tiles[i]);
                 CellLayers = layers;
             }
+
+            // 마지막은 **예약 칸 폐쇄**다. 파생이 아니라 규칙이지만 여기 붙여 둔 이유는
+            // 고정구가 이 한 줄을 빠뜨리면 테스트가 라이브와 **다른 판**을 보기 때문이다
+            // (라이브 경로는 빌더가 같은 함수를 부른다).
+            CloseReservedPlacement();
         }
 
         public bool InBounds(int2 cell)
@@ -141,6 +146,41 @@ namespace Wassup.BattleCore.Map
 
         /// <summary>칸 → 판 좌표. 격자 원점 0 의 평면이라 y = 0 이다(제약: `BoardSpace` 는 뷰 소관).</summary>
         public float3 CellCenter(int2 cell) => GridMath.CellToWorldCenter(cell, TileSize);
+
+        /// <summary>
+        /// **예약 칸을 배치에서 닫는다.** 스폰 · 골 · 거점 footprint 세 종류이고, 옛
+        /// `BattleBridge.CloseCellLayers` 의 후계다.
+        ///
+        /// 왜 파생이 아니라 규칙인가: 칸 종류는 셋 다 `Walk` 다(스폰·골은 정의상 걷는 칸이고,
+        /// 거점은 그 위에 선다). 통행 파생이 `Walk → Path` 를 열기 때문에 Path 층 유닛에게는
+        /// **적이 튀어나오는 칸과 유출 지점 위**가 배치 가능으로 보인다 — 어느 층 저작에도
+        /// 없던 의미다. 그래서 저작을 읽은 **뒤** 마지막에 덮는다.
+        ///
+        /// ⚠ **되돌리지 않는다.** 본능이 무너져도 그 자리는 닫힌 채다(옛 전투와 같다) —
+        /// 「건물이 서 있으니까」가 아니라 「그 자리는 이 판에서 배치판이 아니다」가 규칙이고,
+        /// 되열면 잔해 위에 세우는 그림이 판 중간에 생긴다.
+        /// 멱등이라 여러 번 불러도 같다.
+        /// </summary>
+        public void CloseReservedPlacement()
+        {
+            if (PlaceMask == null || PlaceMask.Length != CellCount) return;
+            for (int i = 0; i < Spawns.Length; i++) Close(Spawns[i]);
+            for (int i = 0; i < Goals.Length; i++) Close(Goals[i]);
+            for (int i = 0; i < Structures.Length; i++)
+            {
+                int half = Structures[i].Footprint / 2;
+                var c = Structures[i].Cell;
+                for (int dy = -half; dy <= half; dy++)
+                for (int dx = -half; dx <= half; dx++)
+                    Close(new int2(c.x + dx, c.y + dy));
+            }
+        }
+
+        private void Close(int2 cell)
+        {
+            if (!InBounds(cell)) return;
+            PlaceMask[Index(cell)] = LayerBits.None;
+        }
 
         /// <summary>「목적지가 골 전체」를 뜻하는 센티널. 실제 칸이 아니다.</summary>
         public static int2 GoalDestination => new int2(-1, -1);
@@ -195,7 +235,22 @@ namespace Wassup.BattleCore.Map
                || (attackTargetLayers & targetTraversalLayers) != 0;
     }
 
-    // 거점의 런타임 투영. 셀 + 진영 비트뿐이다 — 마스크 파생·연결성·모드 판정은 이 둘만 본다.
+    // 거점의 «크기와 몸». 옛 `StructurePlacements.FootprintOf`/`BodyRadiusOf` 의 후계이고,
+    // **한 함수가 둘을 다 정한다** — 종전엔 판정 bake 와 그림자가 같은 수를 다른 모양으로 적어
+    // (한쪽 `Footprint × 0.5`, 다른 쪽 `Footprint` 를 지름으로) 형제로 보이지 않았다.
+    //
+    // ⚠ 크기는 **진영이 정한다**(E28 보류) — 마음 1×1 · 본능 3×3. SO 가 알 수 없는 구조라
+    // 저작으로 못 바꾼다. 임의 footprint 일반화는 `battle-structures` backlog 소관이다.
+    public static class StructureSize
+    {
+        public const int Core = 1;
+        public const int Instinct = 3;
+
+        /// <summary>몸 반경 = 점유의 **내접원**. 제약 13 의 «대상의 몸» 항이 이 값을 받는다.</summary>
+        public static float BodyRadius(int footprint) => footprint * 0.5f;
+    }
+
+    // 거점의 런타임 투영. 셀 + 진영 비트 + 정의표 줄 — 마스크 파생·연결성·모드 판정은 앞의 둘만 본다.
     public struct StructureSpot
     {
         public int2 Cell;
@@ -205,5 +260,18 @@ namespace Wassup.BattleCore.Map
 
         /// <summary>점유 한 변(마음 1 · 본능 3). 상수를 박으면 1×1 마음이 3×3 이라고 거짓말한다.</summary>
         public int Footprint;
+
+        /// <summary>
+        /// 정의표(`MatchDefinition.Structures`)의 인덱스. -1 = 스탯 미저작.
+        ///
+        /// **스탯을 여기 싣지 않는 이유**: 같은 `StructureData` 를 여러 자리에 찍는 것이
+        /// 저작의 기본형이고(본능 3기 = 같은 SO 세 자리), 값을 자리마다 복제하면 「같은
+        /// 건물인데 체력이 다른」 상태가 표현 가능해진다. 자리는 «어디에 무엇이 서 있나»
+        /// 만 말하고 «그것이 얼마인가» 는 정의표가 든다 — 유닛·적과 같은 규율이다.
+        ///
+        /// ⚠ **방어 마음(골 타워)은 여기 없다.** 그쪽 정본은 `Goals` 이고 체력은
+        /// `HeartDef.MaxHealth`(덱 저작) 하나다 — 두 벌이 되는 것을 저작 검증이 막고 있다.
+        /// </summary>
+        public int DefIndex;
     }
 }

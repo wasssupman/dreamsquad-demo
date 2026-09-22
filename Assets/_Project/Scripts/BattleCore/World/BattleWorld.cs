@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using Wassup.Battle.Units;
 using Wassup.BattleCore.Combat.Projectile;
+using Wassup.BattleCore.Map;
 
 namespace Wassup.BattleCore
 {
@@ -66,6 +67,19 @@ namespace Wassup.BattleCore
         private readonly List<CcRequest> _ccRequests = new List<CcRequest>(16);
         public List<CcRequest> CcRequests => _ccRequests;
 
+        /// <summary>
+        /// 군중 제어 요청을 넣는 **유일한 문**. 생산자가 넷(공격 히트·광역 착탄·스윕 넉백·
+        /// 기상)이라 각자 거르면 언젠가 하나가 빠진다 — 실제로 F3(「거점은 전면 면역」)이
+        /// 옛 전투에서 진입 가드 셋에 흩어져 있었고 그래서 새 경로마다 구멍이 열렸다.
+        /// 자격 판정은 `EffectEligibility` 하나이고, 못 받는 대상의 요청은 **버린다**.
+        /// </summary>
+        public bool RequestCc(in CcRequest req)
+        {
+            if (!EffectEligibility.AcceptsCc(Find(req.Target))) return false;
+            _ccRequests.Add(req);
+            return true;
+        }
+
         private readonly List<WakeRequest> _wakeRequests = new List<WakeRequest>(8);
         public List<WakeRequest> WakeRequests => _wakeRequests;
 
@@ -119,6 +133,36 @@ namespace Wassup.BattleCore
             _byId[u.Id.Value] = u;
 
             _bus.Publish(CoreEvent.Spawned(tick, u));
+            return u;
+        }
+
+        /// <summary>
+        /// **거점 하나를 세운다**(마음 타워 · 본능 · 적 마음). 스폰하는 쪽이 둘이라
+        /// (`HeartMeter` 가 마음을, 장 준비 단계가 저작 거점을) 조립은 여기 한 곳이다 —
+        /// 두 벌이면 「어느 경로로 섰나」가 몸 반경·점유를 바꾼다.
+        ///
+        /// 계약 셋을 이 함수가 **구조로** 진다:
+        ///   · 몸 = 점유의 내접원(`StructureSize.BodyRadius`) — 제약 13 의 «대상의 몸».
+        ///   · `cell` 은 **중심 칸**이다(옛 저작과 같다). 앵커(min 코너)는 여기서 파생한다.
+        ///   · `healthExternal` 이면 `maxHealth` 를 **안 싣는다** — 그 체력은 담당자의 것이고
+        ///     개체에 미러를 만드는 순간 둘이 갈린다(X29).
+        ///
+        /// ⚠ 이동 상태(`Move`)를 안 붙인다 = 거점은 **움직이지 않는다**. 그리고 장애물
+        /// 수집이 `Kind == Defender` 만 막으므로 거점은 **통행을 막지 않는다**(점유만) —
+        /// 「본능 footprint 는 벽」이라는 옛 계약은 2026-08-12 에 폐기됐다.
+        /// </summary>
+        public Unit SpawnStructure(Faction faction, int defIndex, int2 cell, float3 position,
+                                   int footprint, float maxHealth, bool healthExternal, int tick)
+        {
+            int side = math.max(1, footprint);
+            var u = Spawn(UnitKind.Structure, faction, defIndex, position,
+                          StructureSize.BodyRadius(side),
+                          healthExternal ? 0f : maxHealth, deploying: false, tick: tick);
+            u.HealthExternal = healthExternal;
+            u.Footprint = _parts.RentFootprint();
+            u.Footprint.Anchor = new int2(cell.x - side / 2, cell.y - side / 2);
+            u.Footprint.Width = side;
+            u.Footprint.Height = side;
             return u;
         }
 

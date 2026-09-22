@@ -29,6 +29,7 @@ namespace Wassup.Tests.EditMode.Core
         [TestCase("wave_clear_8")]
         [TestCase("time_attack_8")]
         [TestCase("heart_collapse")]
+        [TestCase("siege_instinct_fall")]
         public void 골든과_일치한다(string name)
         {
             var sc = CoreGoldenCorpus.ByName(name);

@@ -195,6 +195,20 @@ namespace Wassup.BattleCore
                 // 스스로 닫힌다 — 그 뒤는 규칙이 알아서 한다는 것이 이 시나리오의 질문이다.
                 BuildSchedule = () => new CommandSchedule(),
             },
+            new Scenario
+            {
+                // unit 4 — **공성형이 마음을 깎는 판.** 다른 골든이 한 번도 안 지나는 구간이라
+                // (그쪽은 방어유닛이 다 잡아 버린다) 이 unit 이 연 경로를 여기서만 증언한다:
+                //   방어 본능이 먼저 서서 마음을 **표적에서 뺀다** → 적이 본능을 부순다 →
+                //   방패가 떨어지고 마음 타워가 조준 후보가 된다 → 그 피해가 담당자의
+                //   저수지로 흘러 판이 `stress_full` 로 끝난다.
+                // 방어유닛을 한 기도 안 놓는 것이 이 시나리오의 입력이다.
+                Name = "siege_instinct_fall",
+                Seed = 9191,
+                Ticks = 6000,
+                BuildDefinition = () => SiegeFixture(9191),
+                BuildSchedule = () => new CommandSchedule(),
+            },
         };
 
         // 8웨이브를 «막는» 판의 입력: 배치 창이 자동으로 닫힌 뒤 방어유닛 4기를 두 레인에 붙여 세운다.
@@ -387,6 +401,49 @@ namespace Wassup.BattleCore
                 def.Enemies[i].StabilityDamage = 60;
             }
             def.Heart = new HeartDef { MaxHealth = 200f, KillHealPerAwakening = 0f };
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
+        }
+
+        /// <summary>
+        /// **공성으로 마음이 무너지는 판.** `CollapseFixture` 의 짝이고 다른 축을 묻는다 —
+        /// 그쪽은 돌격형(마음을 **못 때리는** 적)이 닿아서 산화하는 길이고, 이쪽은
+        /// 공성형이 마음 타워를 **때려서** 깎는 길이다. 통로는 둘 다 `stress_full` 하나다.
+        ///
+        /// 적의 타겟 마스크를 **손대지 않는다** — 미저작(0)의 기본값이 「상대 진영 전부」라
+        /// 마음도 본능도 그 안에 있다. 손대는 순간 이 골든이 묻는 것이 기본값이 아니게 된다.
+        /// </summary>
+        public static MatchDefinition SiegeFixture(int seed)
+        {
+            var def = WaveFixture(seed, GoalKind.WaveClear, ClockKind.CountUp, 8);
+            def.Heart = new HeartDef { MaxHealth = 200f, KillHealPerAwakening = 0f };
+
+            // 방어 본능 하나 — 공격은 안 한다(방패로만 선다). 체력을 얇게 둬서 판 안에서
+            // 실제로 무너지게 한다: 「방패가 깨지는 순간」이 이 골든의 가운데 토막이다.
+            def.Structures = new[]
+            {
+                new StructureDef
+                {
+                    Id = "fixture_instinct",
+                    Health = 150f,
+                    AttackRange = 0f,
+                    AttackCooldown = 1f,
+                    AttackTargetCount = 1,
+                    TargetFactions = 0,
+                    Attack = AttackDef.Default(),
+                },
+            };
+            def.Map.Structures = new[]
+            {
+                new StructureSpot
+                {
+                    Cell = new int2(8, 2),
+                    Faction = (int)Wassup.Battle.Units.Faction.DefenderInstinct,
+                    Footprint = StructureSize.Instinct,
+                    DefIndex = 0,
+                },
+            };
+            def.Map.CloseReservedPlacement();
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }

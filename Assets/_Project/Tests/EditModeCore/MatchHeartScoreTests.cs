@@ -59,17 +59,21 @@ namespace Wassup.Tests.EditMode.Core
         }
 
         [Test]
-        public void 공성형은_골에_서고_마음은_안_깎인다()
+        public void 공성형은_골_칸에_닿기_전에_마음_타워에_막힌다()
         {
             var match = Battle();   // 기본 타겟 = 상대 진영 전부(마음 포함)
             var goals = CoreMatchFixtures.Listen(match, CoreEventKind.GoalReached);
 
-            for (int t = 0; t < 60 * 20 && goals.Count == 0; t++) match.Tick();
+            for (int t = 0; t < 60 * 20; t++) match.Tick();
 
-            Assert.AreEqual(1, goals[0].Arg, "공성 가능");
+            // 마음 타워가 판에 서면서 **공성형은 골 칸을 밟지 않는다** — 사거리 안에 먼저
+            // 들어 교전으로 멈추기 때문이다. 그것이 「공성」의 실체이고, 골 도달 사건은
+            // 돌격형(마음을 못 때리는 적)만 낸다.
+            Assert.AreEqual(0, goals.Count, "공성형은 골 칸까지 못 간다 — 마음 앞에서 멈춘다");
+            Assert.AreEqual(0, match.Heart.Leaks,
+                "「놓쳤다」는 돌격형이 산화한 수다 — 공성은 그 수에 들어가지 않는다");
             Assert.AreEqual(300f, match.Heart.Health, 1e-3f,
-                "마음 앞에서 아직 잡을 수 있으므로 놓친 것이 아니다");
-            Assert.AreEqual(0, match.Heart.Leaks);
+                "이 고정구의 적은 피해 산출이 비어 있다 — 때리기는 하되 깎이지 않는다");
         }
 
         [Test]
@@ -153,7 +157,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var match = Battle();
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var u = match.World.Find(new SimEntityId(1));
+            var u = match.World.Find(CoreMatchFixtures.PlacedDefender(match));
             u.Inbox.Damage.Add(new DamageEntry { Amount = 99999f, Source = SimEntityId.Match });
             match.Tick();
 

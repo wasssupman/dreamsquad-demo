@@ -25,7 +25,8 @@ namespace Wassup.BattleCoreUnity
         /// </summary>
         public static void Fill(MatchDefinition def,
                                 DefenderUnitData[] defenders,
-                                AttackUnitData[] enemies)
+                                AttackUnitData[] enemies,
+                                IReadOnlyList<StructureEntry> structures = null)
         {
             var projectiles = new List<ProjectileData>();
             var patterns = new List<ProjectilePatternData>();
@@ -55,6 +56,11 @@ namespace Wassup.BattleCoreUnity
                 if (e == null) continue;
                 def.Enemies[i].Attack = BuildEnemyAttack(e, projectiles, patterns);
             }
+
+            // 거점은 **탄 표를 유닛·적과 공유한다**(본능 포탑의 탄이 그 판의 탄 목록에 든다).
+            // 표를 굳히기 **전**에 채우는 이유가 이것이다 — 뒤로 미루면 본능의 탄만 표 밖을
+            // 가리켜 조용히 근접으로 접힌다.
+            FillStructures(def, structures, projectiles);
 
             def.Projectiles = new ProjectileDef[projectiles.Count];
             for (int i = 0; i < projectiles.Count; i++) def.Projectiles[i] = ToDef(projectiles[i]);
@@ -117,6 +123,90 @@ namespace Wassup.BattleCoreUnity
             if (volley != null) a.PatternDefIndices = CollectPatterns(volley, patterns, projectiles);
 
             return a;
+        }
+
+        /// <summary>
+        /// 거점 정의표 + 자리마다의 인덱스. **자리는 «어디에 무엇이» 만 말하고 스탯은 표가
+        /// 든다** — 같은 `StructureData` 를 여러 자리에 찍는 것이 저작의 기본형이라(본능 3기 =
+        /// 같은 SO 세 자리) 값을 자리마다 복제하면 「같은 건물인데 체력이 다른」 상태가
+        /// 표현 가능해진다.
+        ///
+        /// 자리와 저작을 **칸으로 맞춘다.** 격자 투영(`GeneratedMap.structures`)에는 셀과
+        /// 진영밖에 없고 SO 참조는 스테이지 저작 목록에만 있기 때문이다. 짝을 못 찾은
+        /// 자리는 `DefIndex = -1` 로 남아 **안 세워진다** — 조용히 기본 스탯으로 세우면
+        /// 「체력이 어디서 왔는지 아무도 모르는 건물」이 판에 선다.
+        /// </summary>
+        private static void FillStructures(MatchDefinition def,
+                                           IReadOnlyList<StructureEntry> structures,
+                                           List<ProjectileData> projectiles)
+        {
+            var spots = def.Map.Structures;
+            for (int i = 0; i < spots.Length; i++) spots[i].DefIndex = -1;
+            if (structures == null || structures.Count == 0) return;
+
+            var assets = new List<StructureData>(structures.Count);
+            var rows = new List<StructureDef>(structures.Count);
+
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var cell = spots[i].Cell;
+                StructureData data = null;
+                for (int k = 0; k < structures.Count; k++)
+                {
+                    var e = structures[k];
+                    if (e.data == null || e.cell.x != cell.x || e.cell.y != cell.y) continue;
+                    data = e.data;
+                    break;
+                }
+                if (data == null)
+                {
+                    UnityEngine.Debug.LogWarning(
+                        $"[CombatDefinitionBuilder] 거점 자리 ({cell.x},{cell.y}) 에 맞는 StructureData 가 "
+                        + "스테이지 저작 목록에 없다 — 이 자리는 세우지 않는다.");
+                    continue;
+                }
+
+                int di = assets.IndexOf(data);
+                if (di < 0)
+                {
+                    assets.Add(data);
+                    rows.Add(ToStructureDef(data, projectiles));
+                    di = rows.Count - 1;
+                }
+                spots[i].DefIndex = di;
+            }
+
+            def.Structures = rows.ToArray();
+        }
+
+        private static StructureDef ToStructureDef(StructureData d, List<ProjectileData> projectiles)
+        {
+            var a = AttackDef.Default();
+            a.ProjectileDefIndex = IndexOf(projectiles, d.projectile);
+            a.Outputs = d.attackDamage > 0f
+                ? new[]
+                {
+                    new AttackOutputDef
+                    {
+                        Kind = Wassup.BattleCore.AttackOutputKind.Damage,
+                        Magnitude = d.attackDamage,
+                    },
+                }
+                : System.Array.Empty<AttackOutputDef>();
+
+            return new StructureDef
+            {
+                Id = string.IsNullOrEmpty(d.displayName) ? d.name : d.displayName,
+                Health = d.health,
+                AttackRange = d.attackRange,
+                AttackCooldown = d.attackCooldown,
+                HitDelaySeconds = 0f,
+                AttackTargetCount = 1,
+                // ⚠ 저작 그대로 싣는다 — **0 은 「아무도 안 때린다」**이지 기본값이 아니다.
+                // 거점은 편이 배치에서 오므로 SO 가 자기 상대를 모른다.
+                TargetFactions = (int)d.targetFactions,
+                Attack = a,
+            };
         }
 
         private static AttackDef BuildEnemyAttack(AttackUnitData e,

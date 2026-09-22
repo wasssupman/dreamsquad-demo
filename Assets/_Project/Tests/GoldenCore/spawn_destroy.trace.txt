@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=spawn_destroy
-configHash=1e2706820e38f792
+configHash=d32a566e23a215c3
 matchSeed=4321
 stepDt=0.016666668
 tickCount=300

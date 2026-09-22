@@ -39,6 +39,44 @@ namespace Wassup.BattleCore
             _fullMask = new byte[math.max(1, map.Snapshot.CellCount)];
         }
 
+        /// <summary>
+        /// **저작 거점(본능 · 적 마음)을 세운다.** 판 경계에 한 번.
+        ///
+        /// 왜 이 단계가 세우나: 본능은 **장(場)의 가구**다 — 이동이 읽는 목적지
+        /// (`StepStructureDestination`)와 장애물·점유와 같은 층이고, 그 장을 굽는 자리가
+        /// 여기다. 마음 타워만 `HeartMeter` 가 세우는 것은 그 체력이 담당자에게 있기
+        /// 때문이고(X29), 가구라서가 아니다.
+        ///
+        /// 안 세우는 둘:
+        ///   · **방어 마음**(`DefenderCore`) — 정본은 `Goals` 이고 세우는 자는 `HeartMeter` 다.
+        ///     저작 검증을 뚫고 왔어도 여기서 안 세운다(골이 두 벌이 되는 것을 막는다).
+        ///   · **체력 0** — 세우자마자 무너지는 건물은 판에 세우지 않는다.
+        /// </summary>
+        public void Begin(BattleWorld world, MatchDefinition def, int tick)
+        {
+            if (_map == null) return;
+            var spots = _map.Snapshot.Structures;
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var spot = spots[i];
+                var faction = (Faction)spot.Faction;
+                if (faction == Faction.DefenderCore) continue;
+
+                int di = spot.DefIndex;
+                if (di < 0 || di >= def.Structures.Length) continue;
+                ref var sd = ref def.Structures[di];
+                if (sd.Health <= 0f) continue;
+
+                var u = world.SpawnStructure(faction, di, spot.Cell,
+                                             _map.CenterOf(spot.Cell),
+                                             spot.Footprint <= 0 ? StructureSize.Instinct : spot.Footprint,
+                                             sd.Health, healthExternal: false, tick: tick);
+                // 공격 저작이 없으면 `AttackState` 자체를 안 붙인다 — 공격 루프가 「팔이
+                // 있는데 휘두를 것이 없는」 개체를 매 틱 돌지 않게 하는 것이 그 값이다.
+                if (sd.HasAttack) u.Attack = CombatPhase.BuildAttackState(in sd, def, world.Parts);
+            }
+        }
+
         public void Run(TickContext ctx)
         {
             if (_map == null || _map.Snapshot.CellCount == 0) return;

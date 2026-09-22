@@ -84,7 +84,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var match = Battle();
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var host = new SimEntityId(1);
+            var host = CoreMatchFixtures.PlacedDefender(match);
             int entry = FirstOfKind(match, CardKind.Attach);
 
             Assert.IsTrue(match.Apply(Command.AttachCard(entry, host)).Accepted);
@@ -102,7 +102,7 @@ namespace Wassup.Tests.EditMode.Core
             int entry = FirstOfKind(match, CardKind.Attach);
 
             Assert.AreEqual(RejectReason.InsufficientAwakening,
-                match.Apply(Command.AttachCard(entry, new SimEntityId(1))).Reason);
+                match.Apply(Command.AttachCard(entry, CoreMatchFixtures.PlacedDefender(match))).Reason);
             Assert.AreEqual(12, match.Hand.QueueCount, "실패한 부착은 순환도 차감도 하지 않는다");
             Assert.AreEqual(5f, match.Hand.Gauge, 1e-4f);
         }
@@ -112,7 +112,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var match = Battle(d => d.Mode.Awakening = new AwakeningDef { Start = 100f, Max = 100f });
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var host = new SimEntityId(1);
+            var host = CoreMatchFixtures.PlacedDefender(match);
 
             int attached = 0;
             for (int guard = 0; guard < 12 && attached < 4; guard++)
@@ -137,7 +137,7 @@ namespace Wassup.Tests.EditMode.Core
             Assert.GreaterOrEqual(active, 0);
 
             Assert.AreEqual(RejectReason.WrongCardKind,
-                match.Apply(Command.AttachCard(active, new SimEntityId(1))).Reason);
+                match.Apply(Command.AttachCard(active, CoreMatchFixtures.PlacedDefender(match))).Reason);
         }
 
         [Test]
@@ -174,7 +174,7 @@ namespace Wassup.Tests.EditMode.Core
 
             Assert.GreaterOrEqual(outside, 0);
             Assert.AreEqual(RejectReason.CardNotInHand,
-                match.Apply(Command.AttachCard(outside, new SimEntityId(1))).Reason);
+                match.Apply(Command.AttachCard(outside, CoreMatchFixtures.PlacedDefender(match))).Reason);
         }
 
         [Test]
@@ -182,7 +182,7 @@ namespace Wassup.Tests.EditMode.Core
         {
             var match = Battle();
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var host = new SimEntityId(1);
+            var host = CoreMatchFixtures.PlacedDefender(match);
             int entry = FirstOfKind(match, CardKind.Attach);
             match.Apply(Command.AttachCard(entry, host));
 
@@ -207,7 +207,7 @@ namespace Wassup.Tests.EditMode.Core
                 d.Mode.HandSize = 12;   // 12장 전부 손패에 둬서 선언 카드를 확실히 붙인다
             });
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
-            var host = new SimEntityId(1);
+            var host = CoreMatchFixtures.PlacedDefender(match);
 
             // 선언 카드(9번)와 평범한 카드 둘을 붙인다.
             int declaring = EntryOfCard(match, 9);
@@ -230,7 +230,7 @@ namespace Wassup.Tests.EditMode.Core
             match.Apply(Command.PlaceDefender(0, new int2(3, 1)));
             float before = match.Hand.Gauge;
 
-            match.Apply(Command.Retire(new SimEntityId(1)));
+            match.Apply(Command.Retire(CoreMatchFixtures.PlacedDefender(match)));
             match.Tick();
 
             Assert.AreEqual(before, match.Hand.Gauge, 1e-4f,

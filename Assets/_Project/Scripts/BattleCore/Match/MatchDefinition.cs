@@ -26,6 +26,15 @@ namespace Wassup.BattleCore
         public UnitDef[] Units = System.Array.Empty<UnitDef>();
         public EnemyDef[] Enemies = System.Array.Empty<EnemyDef>();
 
+        /// <summary>
+        /// 거점 정의표(본능·적 마음). `MapSnapshot.StructureSpot.DefIndex` 가 가리킨다.
+        ///
+        /// ⚠ **방어 마음(골 타워)은 이 표에 없다.** 그 체력은 개체가 아니라 `HeartMeter` 가
+        /// 들고(X29), 공격도 하지 않는다 — 표에 빈 줄을 만들어 두면 언젠가 누가 거기에
+        /// 체력을 적고 그 순간 마음의 체력이 두 벌이 된다.
+        /// </summary>
+        public StructureDef[] Structures = System.Array.Empty<StructureDef>();
+
         // unit 3 — 전투가 쓰는 정의표. 유닛 줄이 **인덱스로** 가리킨다(참조를 복제하지 않는다).
         public ProjectileDef[] Projectiles = System.Array.Empty<ProjectileDef>();
         public PatternDef[] Patterns = System.Array.Empty<PatternDef>();
@@ -57,8 +66,15 @@ namespace Wassup.BattleCore
         /// <summary>보너스 당김의 저작. 기본은 없음.</summary>
         public Wave.BonusWaveDef Bonus = Wave.BonusWaveDef.None();
 
-        /// <summary>마음의 체력·회복 배율. 체력을 드는 것은 `HeartMeter` 다(거점 개체가 아니다).</summary>
-        public HeartDef Heart = HeartDef.Default();
+        /// <summary>
+        /// 마음의 체력·회복 배율. 체력을 드는 것은 `HeartMeter` 다(거점 개체가 아니다).
+        ///
+        /// ⚠ **기본이 「마음 없음」(체력 0)이다.** 라이브 값은 덱이 주고(`goalStabilityMax`)
+        /// 빌더가 그 한 곳에서 싣는다 — 정의표에 기본값 1500 을 박아 두면 덱을 안 넘긴 경로가
+        /// 「마음이 있는 판」이 되고, 그 판에는 아무도 저작하지 않은 마음 타워가 선다.
+        /// 0 = 마음 미저작 = 타워를 안 세운다 = 스트레스 0(`StressMath.FromHealth(0, 0)`).
+        /// </summary>
+        public HeartDef Heart;
 
         /// <summary>
         /// 코스트 재생 배율(드림스톤 `CostRate`). **모드 값이 아니다** — 그 판에 들고 들어온
@@ -138,7 +154,8 @@ namespace Wassup.BattleCore
             {
                 var st = Map.Structures[i];
                 Put(sb, "struct" + i.ToString(inv),
-                    Cell(st.Cell, inv) + "," + st.Faction.ToString(inv) + "," + st.Footprint.ToString(inv));
+                    Cell(st.Cell, inv) + "," + st.Faction.ToString(inv) + ","
+                    + st.Footprint.ToString(inv) + "," + st.DefIndex.ToString(inv));
             }
             for (int i = 0; i < Map.BonusSpawns.Length; i++)
                 Put(sb, "bonus" + i.ToString(inv), Cell(Map.BonusSpawns[i], inv));
@@ -167,6 +184,11 @@ namespace Wassup.BattleCore
             {
                 sb.Append("[enemy").Append(i.ToString(inv)).Append("]\n");
                 Enemies[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < Structures.Length; i++)
+            {
+                sb.Append("[structure").Append(i.ToString(inv)).Append("]\n");
+                Structures[i].Canonicalize(sb, inv);
             }
             for (int i = 0; i < Projectiles.Length; i++)
             {
@@ -376,6 +398,47 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "engageMovement", EngageMovement, inv);
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             MatchDefinition.Put(sb, "waypointPathIndex", WaypointPathIndex, inv);
+            Attack.Canonicalize(sb, inv);
+        }
+    }
+
+    // 거점 정의표 한 줄(본능·적 마음). 저작 SO 는 `StructureData` 하나이고 **진영은 여기
+    // 없다** — 같은 스탯의 방어 본능과 적 본능이 SO 두 벌이 되지 않게 진영을 배치가 정하기
+    // 때문이다(`MapSnapshot.StructureSpot.Faction`).
+    //
+    // 크기·몸 반경도 여기 없다: 진영이 정하므로(`StructureSize`) SO 가 알 수 없다.
+    public struct StructureDef
+    {
+        public string Id;
+        public float Health;
+
+        // ── 공격(본능만) ──
+        // 마음은 공격하지 않는다 — 저작이 0 이면 공격 상태 자체가 안 붙는다.
+        public float AttackRange;
+        public float AttackCooldown;
+        public float HitDelaySeconds;
+        public int AttackTargetCount;
+
+        /// <summary>때릴 수 있는 진영 비트. **0 = 아무도 안 때린다**(적·유닛의 「0 = 기본값」과 다르다).</summary>
+        public int TargetFactions;
+
+        /// <summary>공격 저작. 유닛·적과 **같은 타입**이다 — 통합 루프가 셋을 구분하지 않는다.</summary>
+        public AttackDef Attack;
+
+        /// <summary>공격 저작이 실제로 있나. 없으면 `AttackState` 를 안 붙인다(= 아무도 안 때린다).</summary>
+        public bool HasAttack
+            => TargetFactions != 0 && AttackRange > 0f
+               && Attack.Outputs != null && Attack.Outputs.Length > 0;
+
+        internal void Canonicalize(StringBuilder sb, CultureInfo inv)
+        {
+            MatchDefinition.Put(sb, "id", Id);
+            MatchDefinition.Put(sb, "health", Health, inv);
+            MatchDefinition.Put(sb, "attackRange", AttackRange, inv);
+            MatchDefinition.Put(sb, "attackCooldown", AttackCooldown, inv);
+            MatchDefinition.Put(sb, "hitDelaySeconds", HitDelaySeconds, inv);
+            MatchDefinition.Put(sb, "attackTargetCount", AttackTargetCount, inv);
+            MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             Attack.Canonicalize(sb, inv);
         }
     }

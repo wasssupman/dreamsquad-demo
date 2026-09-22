@@ -333,20 +333,20 @@ namespace Wassup.BattleCore
 
         // ── 각성 ─────────────────────────────────────────────────────────────
 
+        // ⚠ **개체를 되묻지 않는다.** 정의표 줄은 사건이 값으로 실어 온다(`CoreEvent.DefIndex`) —
+        // 처치 사건의 대상은 곧 사라지는 개체라, 드레인 시점에 되물으면 소멸이 한 틱 당겨지는
+        // 날 각성 보상이 조용히 0 이 된다. 어느 표를 보는지는 **진영**이 정한다.
         private void OnSlain(CoreEvent e)
         {
             int reward = 0;
+            int i = e.DefIndex;
             if (e.Faction == Faction.EnemyUnit)
             {
-                var victim = _world.Find(e.B);
-                if (victim != null && victim.DefIndex >= 0 && victim.DefIndex < _def.Enemies.Length)
-                    reward = _def.Enemies[victim.DefIndex].AwakeningReward;
+                if (i >= 0 && i < _def.Enemies.Length) reward = _def.Enemies[i].AwakeningReward;
             }
             else if (e.Faction == Faction.DefenderUnit)
             {
-                var victim = _world.Find(e.B);
-                if (victim != null && victim.DefIndex >= 0 && victim.DefIndex < _def.Units.Length)
-                    reward = _def.Units[victim.DefIndex].AwakeningReward;
+                if (i >= 0 && i < _def.Units.Length) reward = _def.Units[i].AwakeningReward;
             }
             Gain(reward);
         }

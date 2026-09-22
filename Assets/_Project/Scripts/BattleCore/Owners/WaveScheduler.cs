@@ -276,10 +276,21 @@ namespace Wassup.BattleCore
 
             // 목록은 **삽입 순서**로 돈다(생성기의 펼침 순서 = 결정론 키). 시간으로 정렬하면
             // 같은 시각의 동률을 정렬 안정성이 정하게 된다.
+            //
+            // ⚠ **제거는 «앞으로 접기»다.** 스왑 팝(끝 원소를 구멍에 넣기)은 남은 항목의
+            // 순서를 흔들고, 그 순서가 곧 다음 틱의 스폰 차례라 **같은 시드가 다른 판**이 된다.
+            // 역순 순회도 안 된다 — 한 틱에 여러 마리가 나올 때 발행 차례가 뒤집혀 웨이브
+            // 시작 신호가 그 웨이브의 **마지막** 적에게 붙는다. 그래서 읽기 커서와 쓰기
+            // 커서를 따로 두고 한 번만 지난다(O(n) · 순서 보존 · 인덱스 되감기 없음).
+            int write = 0;
             for (int i = 0; i < _pending.Count; i++)
             {
                 var s = _pending[i];
-                if (s.AtSec > now) continue;
+                if (s.AtSec > now)
+                {
+                    _pending[write++] = s;   // 아직 아니다 — 자리를 당겨 보존한다
+                    continue;
+                }
 
                 var u = EnemySpawn.At(ctx, _map, s.EnemyIndex, s.Lane, s.Cell, s.PathIndex, ctx.Tick);
                 if (u != null && s.Bonus) _bonusIds.Add(u.Id.Value);
@@ -293,10 +304,8 @@ namespace Wassup.BattleCore
                                 && _plan.Waves[s.WaveNumber - 1].IsBoss;
                     _bus.Publish(CoreEvent.WaveStarted(ctx.Tick, s.WaveNumber, boss));
                 }
-
-                _pending.RemoveAt(i);
-                i--;
             }
+            if (write < _pending.Count) _pending.RemoveRange(write, _pending.Count - write);
         }
 
         // ── 당김 2층 ─────────────────────────────────────────────────────────

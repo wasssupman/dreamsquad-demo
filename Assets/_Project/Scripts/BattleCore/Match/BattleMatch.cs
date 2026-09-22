@@ -38,6 +38,7 @@ namespace Wassup.BattleCore
         private readonly GimmickHost _gimmick;
 
         private readonly CommandPhase _commands;
+        private readonly FieldPrepPhase _fieldPrep;
         private readonly MapRuntime _map;
         private readonly SeamHooks _seams;
 
@@ -57,6 +58,9 @@ namespace Wassup.BattleCore
             // 여는 층). 슬롯 수가 여기서 정해지므로 정의표 밖에서 층을 만들 수 없다.
             _map = new MapRuntime(definition.Map, CollectTraversalMasks(definition));
             var chasePool = new ChaseFieldPool(definition.Map.CellCount);
+            // 장 준비 단계는 **판 경계에도** 할 일이 있다(저작 거점 세우기) — 그래서 배열
+            // 리터럴 안에서 만들지 않고 붙들어 둔다.
+            _fieldPrep = new FieldPrepPhase(_map, chasePool);
 
             _clock = new MatchClock();
             _seams = new SeamHooks();
@@ -82,13 +86,17 @@ namespace Wassup.BattleCore
             _pipeline = new TickPipeline(new ITickPhase[]
             {
                 _commands,                              // phase 0 — Immediate seam
-                new FieldPrepPhase(_map, chasePool),    // unit 2 — 장애물·어그로·사냥판·순찰
+                _fieldPrep,                             // unit 2 — 장애물·어그로·사냥판·순찰
                 new AiMovePhase(_map, chasePool),       // unit 2 — 상태·도발·거점·감지·이동·분리
                 new TickProjectilePhase(_map),          // unit 3 — 발사 요청·궤적·착탄
                 new CombatPhase(_map),                  // unit 3 — 공격·피해·사망·도약
                 // ── unit 4: 담당자 단계 ──
                 // 배치 활성화가 **맨 앞**인 이유: 이번 틱에 활성화된 유닛이 다음 틱의 전투에
                 // 들어가고, 그 한 틱의 차이가 배치 페이즈 길이의 정의다.
+                // 마음이 **맨 앞**인 이유 둘: ⓐ 마음 타워의 인박스를 비우는 것이 이 담당자의
+                // 일이고(체력이 여기 있다) 그 피해는 방금 끝난 전투 단계가 넣은 것이다.
+                // ⓑ 붕괴가 판을 끝내므로, 뒤에 두면 이미 무너진 판에서 웨이브가 한 번 더 나온다.
+                _heart,                                 // 마음 방패 관찰 · 타워 인박스 드레인
                 _placement,                             // 재배치 대기 · 배치 활성화
                 _cost,                                  // 코스트 재생
                 _waves,                                 // 웨이브 예약 · 스폰
@@ -201,6 +209,10 @@ namespace Wassup.BattleCore
             _clock.Begin(in mode, _bus, Dt);
             _cost.Begin(in mode.Cost, _def.CostRateMultiplier, regenStartsNow: !mode.HasPlacementPhase);
             _score.Begin();
+            // ⚠ **본능이 마음보다 먼저 선다.** 마음의 방패가 「본능이 살아 있나」라는 관찰이라,
+            // 순서가 뒤집히면 판의 첫 틱 동안만 마음이 조준 가능한 창이 생긴다.
+            // (id 발급 순서이기도 하다 — 결정론의 축이므로 바꾸면 모든 골든이 갈린다.)
+            _fieldPrep.Begin(_world, _def, 0);
             _heart.Begin(in _def.Heart);
             _placement.Begin(_def.Roster, mode.PlacementInputEnabled, mode.RetireEnabled,
                              mode.BoardCap, _def.EffectTileCount,

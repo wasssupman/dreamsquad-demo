@@ -164,8 +164,25 @@ namespace Wassup.BattleCore
         /// <summary>종류별 실수(피해량·지속시간 등). 이 unit 에서는 체력.</summary>
         public readonly float Amount;
 
+        /// <summary>
+        /// **그 개체의 정의표 줄**(`Units`/`Enemies` 의 인덱스). 없으면 -1.
+        ///
+        /// 왜 값으로 싣나: 이 필드를 쓰는 사건 둘(`UnitSlain`·`GoalReached`)은 **주체가 곧
+        /// 사라지는** 사건이다. 받는 쪽이 id 로 개체를 되물어 인덱스를 읽으면, 드레인 순서가
+        /// 바뀌거나 소멸이 한 틱 당겨지는 날 보상·안정도 피해가 **조용히 0** 이 된다.
+        /// 계약 7 이 「이벤트는 값 스냅샷」이라고 적은 것이 정확히 이 함정이고, 제약 13 의
+        /// 사망 폭발 반경이 같은 이유로 두 번 좁아졌다.
+        ///
+        /// ⚠ 종류에 따라 **가리키는 표가 다르다**(적이면 `Enemies`, 방어유닛이면 `Units`) —
+        /// `Faction` 과 짝으로 읽는다. 거점은 -1 이다(그 표는 스탯을 다르게 센다).
+        /// 트레이스에는 실리지 않는다 — 채널 여섯 칸(tick·channel·a·b·i·f)이 포맷이고,
+        /// 이 값은 규칙을 증언하지 않는다(`b` 로 그 개체를 찾으면 나오는 파생값이다).
+        /// </summary>
+        public readonly int DefIndex;
+
         private CoreEvent(CoreEventKind kind, int tick, SimEntityId a, SimEntityId b,
-                          Site siteFired, Site siteTarget, Faction faction, int arg, float amount)
+                          Site siteFired, Site siteTarget, Faction faction, int arg, float amount,
+                          int defIndex = -1)
         {
             Kind = kind;
             Tick = tick;
@@ -176,6 +193,7 @@ namespace Wassup.BattleCore
             Faction = faction;
             Arg = arg;
             Amount = amount;
+            DefIndex = defIndex;
         }
 
         public static CoreEvent MatchStartedAt(int tick)
@@ -211,7 +229,7 @@ namespace Wassup.BattleCore
             => new CoreEvent(CoreEventKind.GoalReached, tick,
                              u.Id, SimEntityId.None,
                              new Site(u.Position, u.HitRadius), Site.Nowhere,
-                             u.Faction, canSiege ? 1 : 0, 0f);
+                             u.Faction, canSiege ? 1 : 0, 0f, u.DefIndex);
 
         /// <summary>
         /// 발견. ⚠ `B`(대상)는 **트레이스 전용**이다 — 화면이 그 대상을 가리키면 안 된다.
@@ -312,7 +330,7 @@ namespace Wassup.BattleCore
                              killer, victim.Id,
                              Site.Nowhere,
                              new Site(victim.Position, victim.HitRadius),
-                             victim.Faction, (int)victim.Kind, victim.MaxHealth);
+                             victim.Faction, (int)victim.Kind, victim.MaxHealth, victim.DefIndex);
 
         public static CoreEvent Knockup(int tick, Unit target, float seconds, float height)
             => new CoreEvent(CoreEventKind.Knockup, tick,
