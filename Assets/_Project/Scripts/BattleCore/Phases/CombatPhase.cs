@@ -1,0 +1,1356 @@
+using System.Collections.Generic;
+using Unity.Mathematics;
+using Wassup.Battle.Units;
+using Wassup.BattleCore.Combat;
+using Wassup.BattleCore.Combat.Emission;
+using Wassup.BattleCore.Combat.Projectile;
+using Wassup.BattleCore.Map;
+using Wassup.UnitAi;
+
+namespace Wassup.BattleCore
+{
+    // battle-core-rebuild unit 3 — **유닛이 때리고, 맞고, 죽는다.**
+    //
+    // 하위 단계의 순서가 계약이다(UML §4 · spec 변경 대상 표):
+    //   ① 후보 스냅샷 → ② 공격 루프 → **[Attack seam]** → ③ 피해 → **[Death seam]**
+    //   → ④ 후처리(군중 제어 부여·기상) → ⑤ 소멸 → **[Lifecycle seam]** → ⑥ 경계
+    //   → **[Threshold seam]** → ⑦ 도약·순간이동 → ⑧ 실드 부여 스테이징
+    //
+    // ⚠ **③ 뒤에 ④ 가 오는 것이 C9 의 절반이다.** 「내가 때린 피해가 내가 건 잠을 깨우지
+    // 않는다」는 옛 전투에서 **시스템 순서의 우연**이었다(피해 프레임 N, 수면 적용 N+1).
+    // 한 틱 안에서 도는 새 코어에는 그 우연이 없으므로 가드를 **명시로** 세운다:
+    //   ⒜ 군중 제어 부여는 피해 판정 **뒤** 단계다(이 순서).
+    //   ⒝ 기상 요청은 **그 틱에 수면이 걸린 대상을 뺀다**(`FlushCc` 의 필터).
+    // 둘 중 하나만으로는 부족하다.
+    //
+    // ⚠ **소멸은 「표시한 틱」에 하지 않는다**(구현 9). 사망 표시 틱 ≠ 소멸 틱이라야
+    // 시체 폭발·사직서 드랍·순찰 연쇄가 자기 자리를 읽을 창이 생긴다(C18 이 나르던 순서).
+    // 그래서 ⑤ 는 **이전 틱에 표시된** 것만 지운다.
+    public sealed class CombatPhase : ITickPhase
+    {
+        public string Name => "Combat";
+
+        /// <summary>
+        /// 이번 틱에 공격이 볼 수 있는 후보 하나. **전 진영 통합 풀**이고 진영 판정은
+        /// 공격자마다 따로 한다 — 「미리 걸러져 있다」고 읽으면 아군 오사가 난다.
+        /// </summary>
+        private struct Candidate
+        {
+            public Unit U;
+            public int SimId;
+            public int Faction;
+            public byte Layers;
+            public int Class;
+            public float3 Pos;
+            public float Body;
+            public int2 Cell;
+        }
+
+        private readonly MapRuntime _map;
+
+        // 재사용 버퍼 — 틱 중 할당 0.
+        private Candidate[] _cands = new Candidate[128];
+        private int _candCount;
+
+        private NearestTargeting.Candidate[] _near = new NearestTargeting.Candidate[128];
+        private AggroCandidate[] _aggro = new AggroCandidate[128];
+        private int[] _aggroIdx = new int[16];
+        private int[] _aggroBack = new int[128];
+        private Unit[] _hit = new Unit[16];
+        private bool[] _picked = new bool[128];
+
+        private readonly List<CcRequest> _pendingCc = new List<CcRequest>(16);
+        private readonly List<WakeRequest> _pendingWake = new List<WakeRequest>(16);
+        private readonly List<SimEntityId> _toDestroy = new List<SimEntityId>(16);
+
+        // 발사 명세 스크래치.
+        private float2[] _patternXZ = new float2[128];
+        private int[] _patternIds = new int[128];
+        private float[] _patternBody = new float[128];
+        private int[] _patternScope = new int[128];
+
+        public CombatPhase(MapRuntime map) => _map = map;
+
+        public void Run(TickContext ctx)
+        {
+            BuildCandidates(ctx);
+
+            StepAttack(ctx);
+            // 진행 중인 발사 명세는 공격 루프와 **별도로** 매 틱 전진한다 — 버스트가 틱을
+            // 넘기 때문이다(한 트리거가 여러 틱에 걸쳐 탄을 뱉는다).
+            StepEmitters(ctx, _map != null ? _map.TileSize : 1f);
+            ctx.Seams.Run(Seam.Attack, ctx);
+
+            StepDamage(ctx);
+            ctx.Seams.Run(Seam.Death, ctx);
+
+            FlushCc(ctx);
+
+            StepDestroy(ctx);
+            ctx.Seams.Run(Seam.Lifecycle, ctx);
+
+            StepThreshold(ctx);
+            ctx.Seams.Run(Seam.Threshold, ctx);
+
+            StepLeap(ctx);
+
+            StageShields(ctx);
+        }
+
+        // ── ① 후보 스냅샷 ────────────────────────────────────────────────────
+        //
+        // 틱 시작에 한 번 모은다. 제외 3종(`IsTargetable`)만 걸러지고 **진영은 안 거른다.**
+        private void BuildCandidates(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            _candCount = 0;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (!u.IsTargetable()) continue;
+                if (_candCount >= _cands.Length) GrowCandidates();
+                _cands[_candCount++] = new Candidate
+                {
+                    U = u,
+                    SimId = u.Id.Value,
+                    Faction = (int)u.Faction,
+                    Layers = u.Move != null ? u.Move.TraversalLayers : (byte)0,
+                    Class = ClassOf(ctx, u),
+                    Pos = u.Position,
+                    Body = u.HitRadius,
+                    Cell = _map != null ? _map.CellOf(u.Position) : int2.zero,
+                };
+            }
+        }
+
+        private static int ClassOf(TickContext ctx, Unit u)
+        {
+            if (u.Kind != UnitKind.Defender) return -1;
+            if (u.DefIndex < 0 || u.DefIndex >= ctx.Def.Units.Length) return -1;
+            return ctx.Def.Units[u.DefIndex].Role;
+        }
+
+        // ── ② 공격 루프 ──────────────────────────────────────────────────────
+        //
+        // **방어유닛·적·도발받은 적·순찰병이 한 루프**다(census 「통합 공격자 루프」).
+        // 진영별 분기는 마스크가, 아키타입 분기는 **정책 값**이 한다 — 타입을 묻지 않는다.
+        private void StepAttack(TickContext ctx)
+        {
+            float tileSize = _map != null ? _map.TileSize : 1f;
+            var units = ctx.World.Units;
+
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var atk = u.Attack;
+                if (atk == null) continue;
+                // 배치 중·사망 대기는 공격자가 아니다(옛 쿼리 랭크 `WithNone` 의 후계).
+                if (u.Deploying || u.Dead) continue;
+
+                // ⒜ 쿨다운은 **CC 중에도 돈다** — 풀리는 즉시 때리는 근거다.
+                //    이 줄을 잠금 판정 뒤로 옮기면 CC 와 규약이 갈린다(묶인 유닛의 쿨이 언다).
+                if (atk.CooldownRemaining > 0f)
+                    atk.CooldownRemaining = math.max(0f, atk.CooldownRemaining - ctx.Dt);
+
+                // ⒝ 행동 잠금은 **START 만 막는다.** 이미 시작한 스윙은 완료된다.
+                bool actionLocked = u.ActionLocked;
+                var phase = UnitActionPhase.Resolve(actionLocked, atk.Swinging);
+                bool cooldownReady = atk.CooldownRemaining <= 0f;
+
+                // ⒞ 행동 상태 — **결정은 `Wassup.UnitAi`, 저장은 `Unit.Ai`**(구현 12).
+                //    공격 루프와 이동이 **같은 술어**를 봐야 데드락이 안 난다.
+                bool isDefenderAi = u.Kind == UnitKind.Defender;
+                bool summonAlive = atk.Policy == AttackPolicy.Summon && HasLiveSummon(ctx, u.Id);
+                if (isDefenderAi)
+                {
+                    u.Ai.Defender = DefenderAi.Resolve(new DefenderAiInput
+                    {
+                        deploying = u.Deploying,
+                        actionLocked = actionLocked,
+                        swinging = atk.Swinging,
+                        policy = ToUnitAiPolicy(atk.Policy),
+                        summonAlive = summonAlive,
+                    });
+                }
+
+                bool canStart = isDefenderAi
+                    ? DefenderAi.CanStartAttack(u.Ai.Defender, cooldownReady)
+                    : UnitActionPhase.CanStartAction(phase) && cooldownReady;
+
+                // ⒟ 정책 — **대상을 고르기 전에** 처리하고 루프를 빠져나간다(C3).
+                //    뒤에 두면 소환사의 근접 사거리 안에 적이 들어와야 소환돼 순찰병이
+                //    마중 나갈 시간이 없어진다.
+                if (atk.Policy == AttackPolicy.Bomb) { StepBomb(ctx, u, atk, canStart, tileSize); continue; }
+                if (atk.Policy == AttackPolicy.Summon) { StepSummon(ctx, u, atk, canStart, summonAlive); continue; }
+
+                // ⒠ 대상 선정 → START / RESOLVE
+                StepTargetPolicy(ctx, u, atk, actionLocked, canStart, tileSize);
+            }
+        }
+
+        private static DefenderAttackPolicy ToUnitAiPolicy(AttackPolicy p)
+        {
+            // 명시 switch — 번호가 같다는 사실에 기대지 않는다(둘은 다른 어셈블리의 어휘다).
+            switch (p)
+            {
+                case AttackPolicy.Bomb: return DefenderAttackPolicy.Bomb;
+                case AttackPolicy.Summon: return DefenderAttackPolicy.Summon;
+                default: return DefenderAttackPolicy.Target;
+            }
+        }
+
+        // ── 폭탄맨 ───────────────────────────────────────────────────────────
+        //
+        // 사거리 안 **최근접 적이 선 칸**에 던진다. 착지 칸은 발사 시점 스냅샷이다 —
+        // 적이 걸어 나가면 빗나간다(유도가 아니다).
+        //
+        // ⚠ **사각 자를 그대로 둔다**(C20 — 보류). 이름은 폴백인데 이 아키타입의 유일
+        // 경로이고, 양쪽 몸이 0 이다. 원 자로 바꾸면 착지 칸이 조용히 달라진다 = 밸런스 변경.
+        private void StepBomb(TickContext ctx, Unit u, AttackState atk, bool canStart, float tileSize)
+        {
+            if (!canStart) return;
+            if (atk.Bomb.ProjectileDefIndex < 0)
+            {
+                // C4 — 규칙이 발동했는데 실행할 팔이 없다. 조용한 무동작 금지가 계약이다.
+                ctx.Warn("[Combat] 폭탄 정책인데 탄 정의가 없다 — 쿨은 소비되지 않고 대기한다.");
+                return;
+            }
+
+            int pick = PickChebyshevNearest(u, atk);
+            // **던진 프레임에만 쿨을 리셋한다.** 사거리에 적이 없으면 쿨을 만료 상태로
+            // 대기시켜(C1) 적이 들어온 프레임에 즉시 던진다 — 여기서 리셋하면 최대 한 쿨 늦다.
+            if (pick < 0) return;
+
+            var target = _cands[pick];
+            int2 landCell = target.Cell;
+            float3 landWorld = _map != null ? _map.CenterOf(landCell) : target.Pos;
+
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = atk.Bomb.ProjectileDefIndex;
+            req.Movement = MovementKind.GrenadeToCell;
+            req.Payload = PayloadKind.TileAoe;
+            req.Owner = u.Id;
+            req.OwnerFaction = u.Faction;
+            req.TargetMask = atk.TargetMask;
+            req.TargetLayers = atk.TargetLayers;
+            req.Origin = u.Position;
+            req.Impact = landWorld;
+            req.Damage = atk.Bomb.Damage;
+            // **자리에 떨어지는 것** — 폭탄은 그 유닛에서 나오는 것이 아니라 그 유닛이
+            // 지정한 좌표에 떨어진다. 0 을 남기는 것이 그 형의 표현이다(제약 13).
+            req.OriginBodyRadius = 0f;
+            req.ImpactTileRange = atk.Bomb.AoeTileRange;
+            req.AoeTargetCap = atk.Bomb.AoeTargetCap;
+            req.FlightTime = atk.Bomb.TravelSeconds;
+            req.FuseSeconds = atk.Bomb.FuseSeconds;
+            ctx.World.ProjectileRequests.Add(req);
+
+            ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, SimEntityId.None,
+                                                     landWorld, 0f, 1, atk.Period(1f)));
+            atk.FireCount++;
+            atk.CooldownRemaining = atk.Interval;
+        }
+
+        private int PickChebyshevNearest(Unit u, AttackState atk)
+        {
+            int tileRange = Wassup.Skills.SkillMath.RangeToTiles(atk.Range);
+            int2 selfCell = _map != null ? _map.CellOf(u.Position) : int2.zero;
+            int n = 0;
+            for (int i = 0; i < _candCount; i++)
+            {
+                var c = _cands[i];
+                bool eligible = c.U != u && Legal(in c, atk);
+                if (n >= _near.Length) System.Array.Resize(ref _near, _near.Length * 2);
+                _near[n++] = new NearestTargeting.Candidate
+                {
+                    Eligible = eligible,
+                    TileDist = TileAoe.TileDistance(c.Cell, selfCell),
+                    SqDist = SqXZ(u.Position, c.Pos),
+                    SimId = c.SimId,
+                };
+            }
+            return NearestTargeting.SelectNearest(_near, n, tileRange);
+        }
+
+        // ── 소환사 ───────────────────────────────────────────────────────────
+        //
+        // **소환물이 살아 있어도 쿨은 돈다**(C2) — 스폰만 건너뛴다. 안 돌리면 소환물이
+        // 죽는 즉시 재소환이 되어 동작이 바뀐다. 그래서 유지 상태도 공격 START 를 «시도»한다.
+        //
+        // 초회 게이트: 첫 순찰병은 **담당 구역 안에 적이 있을 때만** 낸다. 게이트가 닫혀
+        // 있으면 쿨을 리셋하지 않고 만료 상태로 대기한다(폭탄맨과 같은 규율).
+        private void StepSummon(TickContext ctx, Unit u, AttackState atk, bool canStart, bool summonAlive)
+        {
+            if (!canStart) return;
+
+            int patrolDef = atk.Summon.PatrolDefIndex;
+            if (patrolDef < 0 || patrolDef >= ctx.Def.Units.Length)
+            {
+                ctx.Warn("[Combat] 소환 정책인데 순찰 정의가 없다 — 쿨은 소비되지 않고 대기한다.");
+                return;
+            }
+
+            int coverTiles = math.max(1, Wassup.Skills.SkillMath.RangeToTiles(atk.Range));
+            int2 anchor = _map != null ? _map.CellOf(u.Position) : int2.zero;
+
+            bool gateOpen = atk.HasSummonedOnce;
+            if (!gateOpen && !summonAlive)
+            {
+                for (int i = 0; i < _candCount && !gateOpen; i++)
+                {
+                    var c = _cands[i];
+                    if ((c.Faction & (int)Faction.EnemyUnit) == 0) continue;
+                    if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
+                    // 골에 붙어 타워를 때리는 적도 순찰을 부를 이유다(C14 와 같은 근거).
+                    if (Wassup.BattleCore.Move.PatrolAreaMath.IsInArea(c.Cell, anchor, coverTiles)) gateOpen = true;
+                }
+            }
+
+            if (gateOpen && !summonAlive)
+            {
+                ref var pd = ref ctx.Def.Units[patrolDef];
+                var patrol = ctx.World.Spawn(UnitKind.Patrol, Faction.DefenderUnit, patrolDef,
+                                             _map != null ? _map.CenterOf(anchor) : u.Position,
+                                             pd.BodyRadiusTiles, pd.Health,
+                                             deploying: false, tick: ctx.Tick);
+                patrol.Patrol = new Patrol
+                {
+                    Anchor = anchor,
+                    Home = anchor,
+                    Radius = coverTiles,
+                    SummonedBy = u.Id,
+                };
+                patrol.Move = new MoveState
+                {
+                    Speed = pd.MoveSpeed,
+                    TraversalLayers = (byte)pd.TraversalLayers,
+                };
+                patrol.Attack = BuildAttackState(in pd, ctx.Def);
+                atk.HasSummonedOnce = true;
+
+                ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, patrol.Id,
+                                                         patrol.Position, patrol.HitRadius, 1,
+                                                         atk.Period(1f)));
+            }
+
+            if (gateOpen) atk.CooldownRemaining = atk.Interval;
+        }
+
+        private static bool HasLiveSummon(TickContext ctx, SimEntityId owner)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (u.Patrol != null && !u.Dead && u.Patrol.SummonedBy == owner) return true;
+            }
+            return false;
+        }
+
+        // ── 타겟 정책(일반 공격) ──────────────────────────────────────────────
+        private void StepTargetPolicy(TickContext ctx, Unit u, AttackState atk,
+                                      bool actionLocked, bool canStart, float tileSize)
+        {
+            SimEntityId best = SimEntityId.None;
+            float3 bestPos = default;
+            float bestBody = 0f;
+
+            PickTarget(ctx, u, atk, actionLocked, tileSize, ref best, ref bestPos, ref bestBody);
+
+            // START / RESOLVE — 선딜이 있으면 두 박자, 없으면 같은 틱에 둘 다.
+            bool doResolve = false;
+            if (atk.HitDelayRemaining > 0f)
+            {
+                float rem = atk.HitDelayRemaining - ctx.Dt;
+                atk.HitDelayRemaining = math.max(0f, rem);
+                if (rem <= 0f) doResolve = true;   // 선딜 만료 → 이번 틱 타격
+                // 선딜 중에는 새 START 가 없다
+            }
+            else if (canStart && !best.IsNone && StateAllowsFire(u))
+            {
+                // ── START ── 커밋 + 쿨다운 + 선딜 시작. 타격은 RESOLVE 다.
+                atk.CommittedTarget = best;
+                if (IsDirectional(ctx, atk))
+                {
+                    float2 toTarget = (bestPos - u.Position).xz;
+                    atk.CommittedDirection = math.lengthsq(toTarget) > 1e-6f
+                        ? math.normalize(toTarget) : new float2(0f, 1f);
+                    atk.HasCommittedDirection = true;
+                }
+
+                atk.CooldownRemaining = atk.Interval;
+                // 충전 — 다음 공격 한 번을 즉시 더 쏜다. **각 발이 온전한 공격**이라
+                // 군중 제어·로그가 발마다 한 번씩 난다(RESOLVE 안에서 복제하지 않는 이유).
+                if (u.Progressive != null && u.Progressive.Charge > 0)
+                {
+                    atk.CooldownRemaining = 0f;
+                    u.Progressive.Charge--;
+                }
+
+                if (atk.HitDelay <= 0f) doResolve = true;
+                else atk.HitDelayRemaining = atk.HitDelay;
+            }
+
+            if (!doResolve) return;
+
+            // RESOLVE — 커밋한 대상을 다시 확인한다. **strict lapse**: 사라졌으면 빗나간다.
+            // 유일한 예외가 방향탄이다 — 겨눌 임자가 없는 궤적이라 커밋 축으로 나간다.
+            var committed = ctx.World.Find(atk.CommittedTarget);
+            bool committedValid = committed != null && committed.IsTargetable()
+                && TargetPersistence.KeepsLock(true, u.Position, committed.Position,
+                                               atk.Range, tileSize, u.HitRadius, committed.HitRadius);
+            bool directionalLapse = !committedValid && IsDirectional(ctx, atk) && atk.HasCommittedDirection;
+
+            if (committedValid)
+            {
+                best = committed.Id;
+                bestPos = committed.Position;
+                bestBody = committed.HitRadius;
+            }
+            else if (directionalLapse)
+            {
+                best = SimEntityId.None;
+                bestPos = u.Position + new float3(atk.CommittedDirection.x, 0f, atk.CommittedDirection.y)
+                          * (atk.Range * tileSize);
+                bestBody = 0f;
+            }
+            else
+            {
+                atk.ClearCommit();
+                return;   // 빗나감 — START 모션만 나가고 아무 일도 안 일어난다
+            }
+
+            Resolve(ctx, u, atk, best, bestPos, bestBody, tileSize);
+            atk.ClearCommit();
+        }
+
+        // 적은 `Engaging`·`Standoff` 에서만 쏜다. 방어유닛·순찰병은 상태 머신 대상이 아니다.
+        private static bool StateAllowsFire(Unit u)
+        {
+            if (u.Kind != UnitKind.Enemy) return true;
+            return u.Ai.Enemy == AiState.Engaging || u.Ai.Enemy == AiState.Standoff;
+        }
+
+        private static bool IsDirectional(TickContext ctx, AttackState atk)
+        {
+            if (atk.ProjectileDefIndex < 0 || atk.ProjectileDefIndex >= ctx.Def.Projectiles.Length) return false;
+            var kind = (MovementKind)ctx.Def.Projectiles[atk.ProjectileDefIndex].Movement;
+            return MovementBinding.Of(kind) == BindingClass.Direction;
+        }
+
+        // ── 타겟 선정 ────────────────────────────────────────────────────────
+        //
+        // 한 번의 순회로 최근접·우선 클래스·최전방·최저 체력을 전부 재고, 그 뒤에 덮어쓰기
+        // 사슬을 탄다. 순서가 곧 우선순위다:
+        //   최근접 → 힐러(최저 체력) → 우선 클래스 → 지속 락 → 어그로 → 최전방
+        private void PickTarget(TickContext ctx, Unit u, AttackState atk, bool actionLocked,
+                                float tileSize, ref SimEntityId best, ref float3 bestPos, ref float bestBody)
+        {
+            float bestSq = float.MaxValue;
+            int bestSimId = int.MaxValue;
+            float prioSq = float.MaxValue;
+            int prioSimId = int.MaxValue;
+            SimEntityId prio = SimEntityId.None;
+            float3 prioPos = default;
+            float prioBody = 0f;
+
+            // 힐러 = 아군을 겨누는 방어유닛. 최근접이 아니라 **가장 다친 아군**을 고른다.
+            bool rankByHealth = u.Kind == UnitKind.Defender
+                                && atk.TargetMask == (int)Faction.DefenderUnit;
+            bool wantFrontmost = atk.WantsFrontmost;
+
+            Unit healBest = null; LowestHealthTargeting.Candidate healBestC = default;
+            Unit fmBest = null; FrontmostTargeting.Candidate fmBestC = default;
+            bool lockStillCandidate = false;
+
+            for (int i = 0; i < _candCount; i++)
+            {
+                var c = _cands[i];
+                if ((c.Faction & atk.TargetMask) == 0) continue;
+                if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
+                // 락이 **아직 합법 후보인가** — 여기서 표시하면 조회도 스캔도 늘지 않는다.
+                if (!atk.Lock.IsNone && c.SimId == atk.Lock.Value) lockStillCandidate = true;
+                if (c.U == u) continue;
+                if (atk.ClassMask != 0 && c.Class >= 0 && (atk.ClassMask & (1 << c.Class)) == 0) continue;
+                if (!AttackReach.InReach(u.Position, c.Pos, atk.Range, tileSize, u.HitRadius, c.Body)) continue;
+
+                float d2 = SqXZ(u.Position, c.Pos);
+
+                // **거점 특별 취급 없음**(C15) — 마스크를 통과한 후보는 종류를 묻지 않고
+                // 거리로만 경쟁한다. 2026-08-09 사용자 확정으로 예외가 제거됐다.
+                if (d2 < bestSq || (d2 == bestSq && c.SimId < bestSimId))
+                {
+                    bestSq = d2; bestSimId = c.SimId;
+                    best = c.U.Id; bestPos = c.Pos; bestBody = c.Body;
+                }
+
+                if (rankByHealth)
+                {
+                    var hc = new LowestHealthTargeting.Candidate
+                    {
+                        HpRatio = HealthMath.ComputeRatio(c.U.Health, c.U.MaxHealth),
+                        SqDist = d2,
+                        SimId = c.SimId,
+                    };
+                    if (healBest == null || LowestHealthTargeting.RanksBefore(in hc, in healBestC))
+                    { healBest = c.U; healBestC = hc; }
+                }
+
+                if (atk.PriorityClass > 0 && c.Class == atk.PriorityClass
+                    && (d2 < prioSq || (d2 == prioSq && c.SimId < prioSimId)))
+                {
+                    prioSq = d2; prioSimId = c.SimId;
+                    prio = c.U.Id; prioPos = c.Pos; prioBody = c.Body;
+                }
+
+                if (wantFrontmost)
+                {
+                    int fdist = FlowDistanceOf(in c);
+                    if (fdist == FrontmostTargeting.UnreachableDist) continue;
+                    var fc = new FrontmostTargeting.Candidate
+                    {
+                        FlowDist = fdist, SqDist = d2, SimId = c.SimId,
+                    };
+                    if (fmBest == null || FrontmostTargeting.RanksBefore(in fc, in fmBestC))
+                    { fmBest = c.U; fmBestC = fc; }
+                }
+            }
+
+            // 힐러 — 같은 후보 집합에서 **순위만** 바꾼다. 최근접이 못 고르는 상황에서는
+            // 이쪽도 못 고른다(없던 대상을 만들지 않는다).
+            if (rankByHealth && healBest != null)
+            {
+                best = healBest.Id; bestPos = healBest.Position; bestBody = healBest.HitRadius;
+            }
+
+            // 우선 클래스 — 사거리 안에 있으면 최근접을 덮는다.
+            if (!prio.IsNone) { best = prio; bestPos = prioPos; bestBody = prioBody; }
+
+            // ── 지속 락 ──
+            //
+            // **제외 4종은 누락이 아니라 계약이다**(C13 의 짝):
+            //   facing    — 은퇴했다(레인 witness 자체가 사라졌다). 살아 있는 제외는 아래 셋.
+            //   frontmost — 「매 공격마다 지금의 최전방」이 그 카드의 계약이다.
+            //   힐러      — 최저 체력 재랭킹이 정체성이다.
+            //   가디언    — 어그로 자석이 「아직 안 물린 적 우선」으로 신규 팩을 흡수한다.
+            //               주 대상을 고정하면 자석이 죽는다.
+            bool wantsLock = atk.Mode != TargetMode.None
+                             && !wantFrontmost && !rankByHealth && atk.AggroCapacity <= 0;
+            if (wantsLock)
+            {
+                // C13 — **행동 불능 중에는 락을 비우고 재잠금도 건너뛴다.**
+                // ⚠ `else` 로 감싸는 것이 핵심이다. 비우기만 하고 아래로 흘리면 해제 분기가
+                // 그 틱의 최근접으로 **즉시 다시 잠근다**(초판이 그랬고 테스트가 잡았다).
+                if (actionLocked)
+                {
+                    atk.Lock = SimEntityId.None;
+                }
+                else
+                {
+                    var cur = ctx.World.Find(atk.Lock);
+                    bool keep = cur != null && lockStillCandidate && cur.IsTargetable()
+                        && TargetPersistence.KeepsLock(true, u.Position, cur.Position,
+                                                       atk.Range, tileSize, u.HitRadius, cur.HitRadius);
+                    if (keep)
+                    {
+                        best = cur.Id; bestPos = cur.Position; bestBody = cur.HitRadius;
+                    }
+                    else
+                    {
+                        // 사망 ∨ 사거리 이탈 → 해제하고 이미 계산된 픽을 채택한다.
+                        atk.Lock = best;
+                    }
+                }
+            }
+
+            // ── 어그로 sticky ──
+            //
+            // **배타적이다**(C11). 도발당한 적은 가디언만 본다 — 사거리 밖이면 쏘지 않고
+            // 걸어간다. 「가디언 없으면 최근접」으로 풀면 가는 길에 만난 유닛과 싸우느라
+            // 가디언에 영영 도착하지 않는다.
+            if (u.Aggro != null && !u.Aggro.Target.IsNone && u.Kind == UnitKind.Enemy)
+            {
+                best = SimEntityId.None;
+                var g = ctx.World.Find(u.Aggro.Target);
+                if (g != null && g.IsTargetable()
+                    && AttackReach.InReach(u.Position, g.Position, atk.Range, tileSize,
+                                           u.HitRadius, g.HitRadius))
+                {
+                    best = g.Id; bestPos = g.Position; bestBody = g.HitRadius;
+                }
+            }
+
+            // ── 최전방 ──
+            //
+            // 스윙 중 유지는 **커밋**이 한다(strict lapse 가 그쪽 계약과 같다) — 옛 전투가
+            // 별도 락을 둔 이유는 카드 배율 스냅샷 때문이었고, 그 배율은 unit 7 의 것이다.
+            if (wantFrontmost && fmBest != null)
+            {
+                best = fmBest.Id; bestPos = fmBest.Position; bestBody = fmBest.HitRadius;
+            }
+        }
+
+        private int FlowDistanceOf(in Candidate c)
+        {
+            if (_map == null || _map.Snapshot.CellCount == 0) return FrontmostTargeting.UnreachableDist;
+            var slot = _map.Flow.GoalSlot(TraversalSlots.DefaultMask);
+            if (!slot.Exists) return FrontmostTargeting.UnreachableDist;
+            return slot.DistAt(c.Cell);
+        }
+
+        // ── RESOLVE ──────────────────────────────────────────────────────────
+        private void Resolve(TickContext ctx, Unit u, AttackState atk,
+                             SimEntityId primary, float3 primaryPos, float primaryBody, float tileSize)
+        {
+            atk.FireCount++;
+
+            // 탄이 있으면 요청을 내고 끝난다 — 피해는 착탄이 정한다.
+            if (atk.ProjectileDefIndex >= 0)
+            {
+                EmitProjectile(ctx, u, atk, primary, primaryPos, tileSize);
+                ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
+                                                         primaryBody, 1, atk.Period(1f)));
+                FirePatterns(ctx, u, atk, tileSize);
+                return;
+            }
+
+            // 근접 — 즉시 해결. 주 대상 + 부가 타격(도형 AND).
+            int hitCount = SelectHits(ctx, u, atk, primary, primaryPos, tileSize);
+
+            // 가디언 대표 — **실제로 때린 적**을 주 대상으로 세운다(C6). 넉백·로그가
+            // 주 대상과 그 좌표를 읽으므로 불일치를 여기서 없앤다.
+            if (hitCount > 0 && _hit[0] != null)
+            {
+                primary = _hit[0].Id;
+                primaryPos = _hit[0].Position;
+                primaryBody = _hit[0].HitRadius;
+            }
+
+            for (int k = 0; k < hitCount; k++) ApplyOutputs(ctx, u, atk, _hit[k]);
+
+            // 히트 구동 어그로 — Combat 은 「때렸다」 사실만 전달하고, 수용량·선점 게이트는
+            // 받는 쪽(`AiMovePhase.GrantAggro`)이 갖는다.
+            if (atk.AggroCapacity > 0)
+                for (int k = 0; k < hitCount; k++)
+                    ctx.World.AggroRequests.Add(AggroRequest.Hit(_hit[k].Id, u.Id));
+
+            // 넉업 — 때린 **전원**에게 짧은 기절. 넉백·수면(주 대상 1체)과 스코프가 다르다.
+            if (atk.Cc.KnockupSeconds > 0f)
+                for (int k = 0; k < hitCount; k++) RequestKnockup(ctx, u, atk, _hit[k]);
+
+            // 넉백·수면 — **주 대상 1체.**
+            var primaryUnit = hitCount > 0 ? _hit[0] : null;
+            if (primaryUnit != null)
+            {
+                if (atk.Cc.KnockbackDistance > 0f && atk.Cc.KnockbackDuration > 0f)
+                    RequestKnockback(ctx, u, atk, primaryUnit);
+                if (atk.Cc.SleepSeconds > 0f) RequestSleep(ctx, u, atk, primaryUnit);
+            }
+
+            ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, primary, primaryPos,
+                                                     primaryBody, hitCount, atk.Period(1f)));
+            FirePatterns(ctx, u, atk, tileSize);
+        }
+
+        // 주 대상 + 부가 타격. **획득은 원, 부가 타격만 도형**이다 — 도형은 넓히지 못한다.
+        private int SelectHits(TickContext ctx, Unit u, AttackState atk,
+                               SimEntityId primary, float3 primaryPos, float tileSize)
+        {
+            int desired = math.max(1, atk.TargetCount);
+            if (desired > _hit.Length) System.Array.Resize(ref _hit, desired);
+            int count = 0;
+
+            // 가디언은 **자석 규칙**으로 고른다(아직 안 물린 적 우선 → 상한이 차면 정리).
+            if (atk.AggroCapacity > 0)
+            {
+                int n = 0;
+                for (int i = 0; i < _candCount; i++)
+                {
+                    var c = _cands[i];
+                    if (c.U == u) continue;
+                    if ((c.Faction & atk.TargetMask) == 0) continue;
+                    if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
+                    if (n >= _aggro.Length)
+                    {
+                        System.Array.Resize(ref _aggro, _aggro.Length * 2);
+                        System.Array.Resize(ref _aggroBack, _aggroBack.Length * 2);
+                    }
+                    _aggro[n] = new AggroCandidate
+                    {
+                        Pos = c.Pos,
+                        BodyRadius = c.Body,
+                        Aggroed = c.U.Aggro != null && !c.U.Aggro.Target.IsNone,
+                    };
+                    _aggroBack[n] = i;
+                    n++;
+                }
+                if (desired > _aggroIdx.Length) System.Array.Resize(ref _aggroIdx, desired);
+                int sel = AggroTargeting.SelectTargets(u.Position, atk.Range, tileSize, u.HitRadius,
+                                                       u.Aggro != null ? u.Aggro.Held : 0,
+                                                       atk.AggroCapacity, in atk.Shape,
+                                                       _aggro, n, _aggroIdx, desired);
+                for (int s = 0; s < sel; s++) _hit[count++] = _cands[_aggroBack[_aggroIdx[s]]].U;
+                return count;
+            }
+
+            var primaryUnit = ctx.World.Find(primary);
+            if (primaryUnit == null) return 0;
+            _hit[count++] = primaryUnit;
+            if (desired <= 1) return count;
+
+            // 부가 타격 — **주 대상을 향한 실제 방향**을 축으로 세운 도형 안에서만.
+            var dir = new float2(primaryPos.x - u.Position.x, primaryPos.z - u.Position.z);
+            if (_candCount > _picked.Length) System.Array.Resize(ref _picked, _candCount);
+            for (int i = 0; i < _candCount; i++) _picked[i] = _cands[i].U == primaryUnit;
+
+            while (count < desired)
+            {
+                int pickIdx = -1;
+                float pickSq = float.MaxValue;
+                int pickSimId = int.MaxValue;
+                for (int i = 0; i < _candCount; i++)
+                {
+                    if (_picked[i]) continue;
+                    var c = _cands[i];
+                    if (c.U == u) continue;
+                    if ((c.Faction & atk.TargetMask) == 0) continue;
+                    if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
+                    if (atk.ClassMask != 0 && c.Class >= 0 && (atk.ClassMask & (1 << c.Class)) == 0) continue;
+                    if (!AttackReach.InReachShaped(u.Position, c.Pos, atk.Range, tileSize,
+                                                   u.HitRadius, c.Body, in atk.Shape, dir)) continue;
+                    float d2 = SqXZ(u.Position, c.Pos);
+                    if (d2 < pickSq || (d2 == pickSq && c.SimId < pickSimId))
+                    { pickSq = d2; pickSimId = c.SimId; pickIdx = i; }
+                }
+                if (pickIdx < 0) break;
+                _picked[pickIdx] = true;
+                _hit[count++] = _cands[pickIdx].U;
+            }
+            return count;
+        }
+
+        // 한 공격이 내는 출력들. 피해·회복은 여기서 인박스로 들어가고, 스탯·스택은
+        // unit 6 의 자리다(오늘은 경고 없이 흘린다 — 저작은 이미 존재하고 적용만 늦는다).
+        private void ApplyOutputs(TickContext ctx, Unit u, AttackState atk, Unit victim)
+        {
+            var outputs = atk.Outputs;
+            for (int o = 0; o < outputs.Length; o++)
+            {
+                var def = outputs[o];
+                switch (def.Kind)
+                {
+                    case AttackOutputKind.Damage:
+                        if (def.Magnitude > 0f)
+                            victim.Inbox.Damage.Add(new DamageEntry { Amount = def.Magnitude, Source = u.Id });
+                        break;
+                    case AttackOutputKind.Heal:
+                        if (def.Magnitude > 0f) victim.Inbox.Heal.Add(def.Magnitude);
+                        break;
+                    // unit 6 자리 — 모디파이어·스택 적용.
+                    case AttackOutputKind.ApplyStat:
+                    case AttackOutputKind.ApplyStack:
+                        break;
+                }
+            }
+        }
+
+        private void EmitProjectile(TickContext ctx, Unit u, AttackState atk,
+                                    SimEntityId target, float3 targetPos, float tileSize)
+        {
+            if (atk.ProjectileDefIndex >= ctx.Def.Projectiles.Length)
+            {
+                ctx.Warn("[Combat] 탄 정의 인덱스가 범위 밖이다 — 발사가 소비됐는데 탄이 없다.");
+                return;
+            }
+            ref var pd = ref ctx.Def.Projectiles[atk.ProjectileDefIndex];
+
+            float damage = 0f;
+            for (int o = 0; o < atk.Outputs.Length; o++)
+                if (atk.Outputs[o].Kind == AttackOutputKind.Damage) damage += atk.Outputs[o].Magnitude;
+
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = atk.ProjectileDefIndex;
+            req.Movement = (MovementKind)pd.Movement;
+            req.Payload = (PayloadKind)pd.Payload;
+            req.Owner = u.Id;
+            req.OwnerFaction = u.Faction;
+            req.TargetMask = atk.TargetMask;
+            req.TargetLayers = atk.TargetLayers;
+            req.Target = target;
+            req.Origin = u.Position;
+            req.Impact = targetPos;
+            req.Damage = damage;
+            // 일반 공격의 탄은 **자리에 떨어지는 것**이다 — 던져서 도달한 좌표이지
+            // 누군가의 몸이 아니다. 몸에서 나오는 즉발 폭발(unit 7)이 0 이 아닌 값을 싣는다.
+            req.OriginBodyRadius = 0f;
+            req.Direction = atk.HasCommittedDirection
+                ? atk.CommittedDirection
+                : math.normalizesafe((targetPos - u.Position).xz, new float2(0f, 1f));
+            req.DistanceOverride = pd.MaxDistance > 0f ? pd.MaxDistance : atk.Range * tileSize;
+            req.ImpactKnockbackDistance = atk.Cc.KnockbackDistance;
+            req.ImpactKnockbackDuration = atk.Cc.KnockbackDuration;
+            ctx.World.ProjectileRequests.Add(req);
+        }
+
+        // ── 발사 명세 ────────────────────────────────────────────────────────
+        //
+        // 「누구를·몇 발·어떤 간격·얼마나 벌려」. **탄의 성질은 복제하지 않는다.**
+        // 버스트 중에는 쿨다운을 마지막 탄 뒤로 미룬다.
+        private void FirePatterns(TickContext ctx, Unit u, AttackState atk, float tileSize)
+        {
+            if (atk.PatternSlots.Count == 0) return;
+
+            for (int s = 0; s < atk.PatternSlots.Count; s++)
+            {
+                var slot = atk.PatternSlots[s];
+                if (slot.Active) continue;   // 이미 진행 중인 버스트는 트리거를 다시 받지 않는다
+                if (slot.PatternDefIndex < 0 || slot.PatternDefIndex >= ctx.Def.Patterns.Length)
+                {
+                    // C4 — 발동했는데 실행할 팔이 없다. 횟수는 이미 소비된 채로 경고한다.
+                    ctx.Warn("[Combat] 발사 명세 슬롯이 가리키는 패턴이 없다 — 발동이 소비됐다.");
+                    continue;
+                }
+
+                ref var pat = ref ctx.Def.Patterns[slot.PatternDefIndex];
+                int shots = pat.ShotCount;
+                if (shots <= 0) continue;
+
+                var inst = slot.Instance;
+                inst.EnsureCapacity(shots);
+                inst.PatternDefIndex = slot.PatternDefIndex;
+                inst.LockedTarget = SimEntityId.None;
+                for (int i = 0; i < shots; i++)
+                {
+                    inst.Directions[i] = pat.Shots[i].DirectionT;
+                    inst.Intervals[i] = pat.Shots[i].IntervalAfterPreviousSec;
+                }
+                // 탄막 난수 씨앗 = `hash(사수 SimEntityId, 발사 카운터)`. 인스턴스는 버스트마다
+                // 다시 시작하므로 카운터는 **durable 소유자**(슬롯)가 든다 — 0 에서 시작하면
+                // RoundRobin 이 영원히 같은 순위를 고른다.
+                inst.Seed = PatternTargeting.ShotSeed(u.Id.Value, slot.FireCountBase);
+                PatternShotRandomizer.Apply(inst.Directions, inst.Intervals,
+                                            pat.RandomizeShotsPerTrigger,
+                                            pat.RandomIntervalMinSec, pat.RandomIntervalMaxSec, inst.Seed);
+
+                EmitterTick.Begin(ref inst.Runtime, shots, slot.FireCountBase);
+                slot.Active = true;
+
+                // 버스트 중 쿨다운 연장 — 다음 트리거는 **마지막 탄이 나간 뒤부터** 기다린다.
+                atk.CooldownRemaining += TotalDuration(inst.Intervals, shots);
+            }
+        }
+
+        // 첫 발의 간격은 계약상 무시한다(트리거 즉시 나간다). 배열이 슬롯 재사용으로
+        // 넉넉할 수 있으므로 **저작 발수까지만** 센다.
+        private static float TotalDuration(float[] intervals, int shots)
+        {
+            float d = 0f;
+            for (int i = 1; i < shots && i < intervals.Length; i++) d += math.max(0f, intervals[i]);
+            return d;
+        }
+
+        /// <summary>진행 중인 발사 명세를 전진시킨다. 공격 루프와 별도로 매 틱 돈다.</summary>
+        private void StepEmitters(TickContext ctx, float tileSize)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var atk = u.Attack;
+                if (atk == null || atk.PatternSlots.Count == 0) continue;
+
+                for (int s = 0; s < atk.PatternSlots.Count; s++)
+                {
+                    var slot = atk.PatternSlots[s];
+                    if (!slot.Active) continue;
+                    var inst = slot.Instance;
+
+                    int fire = EmitterTick.Advance(ref inst.Runtime, ctx.Dt, inst.Intervals);
+                    for (int f = 0; f < fire; f++) EmitPatternShot(ctx, u, atk, inst, tileSize);
+
+                    if (EmitterTick.IsComplete(in inst.Runtime))
+                    {
+                        // durable 카운터를 되돌려 받는다 — 다음 버스트가 이어서 센다.
+                        slot.FireCountBase = inst.Runtime.FireCount;
+                        slot.Active = false;
+                    }
+                }
+            }
+        }
+
+        private void EmitPatternShot(TickContext ctx, Unit u, AttackState atk,
+                                     EmitterInstance inst, float tileSize)
+        {
+            ref var pat = ref ctx.Def.Patterns[inst.PatternDefIndex];
+            int shotIndex = inst.Runtime.ShotIndex;
+            inst.Runtime.ShotIndex++;
+            inst.Runtime.FireCount++;
+
+            if (pat.BarrelProjectileDefIndex < 0
+                || pat.BarrelProjectileDefIndex >= ctx.Def.Projectiles.Length)
+            {
+                ctx.Warn("[Combat] 패턴에 탄이 없다 — 발사가 소비됐다.");
+                return;
+            }
+            ref var bd = ref ctx.Def.Projectiles[pat.BarrelProjectileDefIndex];
+
+            // 후보 풀 — **반경 게이트가 선택 앞**에 온다. 좁힌 결과를 제자리에서 압축해
+            // 선택 함수가 받는 인덱스 공간과 바깥 인덱스 공간을 하나로 유지한다
+            // (지역 인덱스를 밖으로 흘리면 잠금 경로가 엉뚱한 유닛을 가리킨다).
+            float2 hostXZ = new float2(u.Position.x / tileSize, u.Position.z / tileSize);
+            int n = 0;
+            for (int i = 0; i < _candCount; i++)
+            {
+                var c = _cands[i];
+                if (c.U == u) continue;
+                if ((c.Faction & atk.TargetMask) == 0) continue;
+                if (!LayerBits.CanTarget(atk.TargetLayers, c.Layers)) continue;
+                if (n >= _patternXZ.Length) GrowPatternScratch();
+                _patternXZ[n] = new float2(c.Pos.x / tileSize, c.Pos.z / tileSize);
+                _patternIds[n] = c.SimId;
+                _patternBody[n] = c.Body;
+                n++;
+            }
+            int scoped = PatternScope.FilterByReach(_patternXZ, _patternBody, n, hostXZ,
+                                                    pat.ScopeTileRange, u.HitRadius, _patternScope);
+            for (int k = 0; k < scoped; k++)
+            {
+                int src = _patternScope[k];
+                _patternXZ[k] = _patternXZ[src];
+                _patternIds[k] = _patternIds[src];
+                _patternBody[k] = _patternBody[src];
+            }
+
+            SimEntityId target = SimEntityId.None;
+            float3 targetPos = u.Position;
+            if (scoped > 0)
+            {
+                // 잠금은 **인덱스가 아니라 id** 다 — 후보 스냅샷은 틱 로컬이라 인덱스를 잠그면
+                // 틱을 넘는 버스트에서 같은 인덱스가 다른 유닛을 가리킨다.
+                if (!pat.ReselectPerShot && !inst.LockedTarget.IsNone
+                    && ctx.World.Find(inst.LockedTarget) != null)
+                {
+                    target = inst.LockedTarget;
+                }
+                else
+                {
+                    var rule = (PatternSelectionRule)pat.Selection;
+                    int pick = PatternTargeting.Select(_patternXZ, _patternIds, scoped, rule,
+                                                       inst.Runtime.FireCount, hostXZ);
+                    if (pick >= 0)
+                    {
+                        target = new SimEntityId(_patternIds[pick]);
+                        if (!pat.ReselectPerShot) inst.LockedTarget = target;
+                    }
+                }
+            }
+            var tu = ctx.World.Find(target);
+            if (tu != null) targetPos = tu.Position;
+
+            var req = ProjectileRequest.Empty;
+            req.DefIndex = pat.BarrelProjectileDefIndex;
+            req.Movement = (MovementKind)bd.Movement;
+            req.Payload = (PayloadKind)bd.Payload;
+            req.Owner = u.Id;
+            req.OwnerFaction = u.Faction;
+            req.TargetMask = atk.TargetMask;
+            req.TargetLayers = atk.TargetLayers;
+            req.Target = target;
+            req.Origin = u.Position;
+            req.Impact = targetPos;
+            req.Damage = pat.Damage;
+            req.OriginBodyRadius = 0f;
+            req.SwingIndex = shotIndex;
+            req.FlightTime = pat.TelegraphSec;
+            float t = shotIndex < inst.Directions.Length ? inst.Directions[shotIndex] : 0f;
+            float2 baseDir = math.normalizesafe((targetPos - u.Position).xz, new float2(0f, 1f));
+            req.Direction = PatternDirection.Resolve(baseDir, pat.MinAngleDeg, pat.MaxAngleDeg, t);
+            req.DistanceOverride = bd.MaxDistance > 0f ? bd.MaxDistance : atk.Range * tileSize;
+            ctx.World.ProjectileRequests.Add(req);
+        }
+
+        private void GrowPatternScratch()
+        {
+            System.Array.Resize(ref _patternXZ, _patternXZ.Length * 2);
+            System.Array.Resize(ref _patternIds, _patternIds.Length * 2);
+            System.Array.Resize(ref _patternBody, _patternBody.Length * 2);
+            System.Array.Resize(ref _patternScope, _patternScope.Length * 2);
+        }
+
+        // ── ③ 피해 ───────────────────────────────────────────────────────────
+        //
+        // 인박스에 쌓인 것을 **한 번에** 적용한다:
+        //   받는 피해 배율 → 실드 흡수 → 체력 → 킬 귀속 → 사망 표시
+        //
+        // ⚠ 「완전 흡수 = 피격 아님」은 조건식을 안 바꾸고 성립한다 — 이후 분기 전부가
+        // **관통분**을 본다.
+        private void StepDamage(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var inbox = u.Inbox;
+
+                // **무적이 아니라 드랍**이다 — 궁극기로 판 밖에 나간 자의 인박스를 비운다(C12).
+                // 쿼리에서 빼면 피해가 적립됐다가 착지 틱에 통째로 터진다(지연 폭탄).
+                // 따름정리: **공중에서 죽는 일이 없다** = 착지가 보장된다.
+                if (u.Progressive != null && u.Progressive.LeapActive)
+                {
+                    inbox.Damage.Clear();
+                    inbox.Heal.Clear();
+                    continue;
+                }
+                if (u.Dead) { inbox.Damage.Clear(); inbox.Heal.Clear(); continue; }
+
+                // ── 실드 부여 드레인 ──
+                // **지난 틱에 스테이징된 것**만 소모한다(C17 — 부여만 한 틱 늦는 비대칭).
+                if (inbox.Shield.Count > 0)
+                {
+                    for (int k = 0; k < inbox.Shield.Count; k++)
+                        ShieldMath.Merge(u.Shield.Slots, inbox.Shield[k].Source, inbox.Shield[k].Amount);
+                    inbox.Shield.Clear();
+                }
+
+                float regen = u.RegenPerSec;
+                if (inbox.Damage.Count == 0 && inbox.Heal.Count == 0 && regen <= 0f) continue;
+
+                float total = 0f;
+                SimEntityId killer = SimEntityId.None;
+                float killerAmount = 0f;
+                for (int k = 0; k < inbox.Damage.Count; k++)
+                {
+                    var e = inbox.Damage[k];
+                    total += e.Amount;
+                    KillAttribution.Consider(e.Amount, e.Source, ref killer, ref killerAmount);
+                }
+                total *= u.DamageTakenMul;
+
+                float preShield = total;
+                bool shieldBroke = false;
+                if (u.Shield.Any && total > 0f)
+                {
+                    float before = ShieldMath.Sum(u.Shield.Slots);
+                    total = ShieldMath.Absorb(u.Shield.Slots, total);
+                    if (before > 0f && ShieldMath.Sum(u.Shield.Slots) <= 0f) shieldBroke = true;
+                }
+                float absorbed = preShield - total;
+
+                float pulse = 0f;
+                for (int k = 0; k < inbox.Heal.Count; k++) pulse += inbox.Heal[k];
+                // **재생은 피해 그릇 유무와 무관하다**(C24 → 분리). 옛 전투는 한 단계가
+                // 성격이 다른 일을 겸직해 「피해 버퍼가 하나도 없으면 재생도 멈추는」 결합이 있었다.
+                float heal = pulse + regen * ctx.Dt;
+
+                float newHp = math.min(u.MaxHealth, u.Health - total + heal);
+                u.Health = newHp;
+                float ratio = HealthMath.ComputeRatio(newHp, u.MaxHealth);
+
+                // 피해 숫자 — 인박스 항목당 하나이고 **비율은 그 틱 최종값**이다(C7).
+                // 실드가 일부만 막으면 관통분 비례로 배분한다.
+                if (total > 0f || absorbed > 0f)
+                {
+                    float pierceRatio = preShield > 0f ? total / preShield : 1f;
+                    for (int k = 0; k < inbox.Damage.Count; k++)
+                    {
+                        var e = inbox.Damage[k];
+                        float applied = e.Amount * u.DamageTakenMul * pierceRatio;
+                        if (applied <= 0f) continue;
+                        ctx.Bus.Publish(CoreEvent.DamageApplied(ctx.Tick, u, e.Source, applied,
+                                                                absorbed, ratio));
+                    }
+                }
+                if (shieldBroke) ctx.Bus.Publish(CoreEvent.ShieldBroken(ctx.Tick, u));
+                // 회복 펄스만 연출한다 — 초당 재생은 조용히 흐른다(매 틱 신호는 노이즈다).
+                if (pulse > 0f) ctx.Bus.Publish(CoreEvent.HealApplied(ctx.Tick, u, pulse));
+
+                // 피격 시 수면 해제 — **실제로 피해를 입었을 때만**이고 기절은 안 깬다.
+                // ⚠ 요청만 쌓는다. 같은 틱에 걸린 수면을 거르는 것은 `FlushCc` 다(C9).
+                if (total > 0f) _pendingWake.Add(new WakeRequest { Target = u.Id });
+
+                inbox.Damage.Clear();
+                inbox.Heal.Clear();
+
+                if (newHp > 0f) continue;
+
+                // ── 사망 표시 ──
+                u.Dead = true;
+                u.DeathTick = ctx.Tick;
+                // **피해로 죽었을 때만** 낸다 — 분열·처치 보상의 사건이다.
+                // 출처 없는 죽음(지속 피해·자해·환경)은 미귀속이고 이 사건이 안 난다(의도).
+                if (!killer.IsNone) ctx.Bus.Publish(CoreEvent.UnitSlain(ctx.Tick, killer, u));
+                u.Progressive?.Interrupt(ProgressInterrupt.Death);
+            }
+        }
+
+        // ── ④ 후처리 ─────────────────────────────────────────────────────────
+        //
+        // C9 의 나머지 절반. 군중 제어 요청을 **피해 뒤**에 줄로 옮기고, 기상 요청은
+        // **그 틱에 수면이 걸린 대상**을 뺀다.
+        private void FlushCc(TickContext ctx)
+        {
+            for (int i = 0; i < _pendingCc.Count; i++) ctx.World.CcRequests.Add(_pendingCc[i]);
+            _pendingCc.Clear();
+
+            for (int i = 0; i < _pendingWake.Count; i++)
+            {
+                var w = _pendingWake[i];
+                bool sleptThisTick = false;
+                var reqs = ctx.World.CcRequests;
+                for (int k = 0; k < reqs.Count; k++)
+                {
+                    if (reqs[k].Kind != CcRequestKind.Sleep) continue;
+                    if (reqs[k].Target != w.Target) continue;
+                    sleptThisTick = true;
+                    break;
+                }
+                // **내가 때린 피해가 내가 건 잠을 깨우지 않는다.** 옛 전투는 시스템 순서가
+                // 우연히 보장했을 뿐이라 명시 가드가 없었다 — 여기가 그 가드다.
+                if (!sleptThisTick) ctx.World.WakeRequests.Add(w);
+            }
+            _pendingWake.Clear();
+
+            // unit 6 자리 — 군중 제어 슬롯 적용·감쇠. 오늘은 요청만 쌓고 소비자가 없다.
+        }
+
+        // ── ⑤ 소멸 ───────────────────────────────────────────────────────────
+        //
+        // **`BattleWorld.Destroy` 가 유일한 경로**다(계약 7). 이번 틱에 표시된 것은 **남긴다** —
+        // 표시 틱 ≠ 소멸 틱이라야 시체가 자기 자리를 읽을 창이 생긴다.
+        private void StepDestroy(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            _toDestroy.Clear();
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                if (!u.Dead) continue;
+                // **죽은 채 배치 중이면 조용히 걷기만 한다** — 「시체는 배치되지 않는다」.
+                if (u.Deploying) { _toDestroy.Add(u.Id); continue; }
+                if (u.DeathTick >= 0 && u.DeathTick >= ctx.Tick) continue;   // 이번 틱 표시분은 한 틱 남긴다
+                _toDestroy.Add(u.Id);
+            }
+            for (int i = 0; i < _toDestroy.Count; i++)
+            {
+                _map?.Occupancy.Release(_toDestroy[i]);
+                ctx.World.Destroy(_toDestroy[i], ctx.Tick);
+            }
+        }
+
+        // ── ⑥ 경계 ───────────────────────────────────────────────────────────
+        //
+        // 치명 타이머 — 시간이 끝나면 **스스로 최대 체력의 일부를 깎는다.**
+        // 출처가 없으므로 이 피해로 죽어도 처치 보상이 안 난다(자해 = 미귀속).
+        private void StepThreshold(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var pg = u.Progressive;
+                if (pg == null || !pg.LethalActive || u.Dead) continue;
+                pg.LethalRemaining -= ctx.Dt;
+                if (pg.LethalRemaining > 0f) continue;
+                pg.LethalActive = false;
+                float amount = u.MaxHealth * pg.LethalFraction;
+                if (amount > 0f)
+                    u.Inbox.Damage.Add(new DamageEntry { Amount = amount, Source = SimEntityId.None });
+            }
+        }
+
+        // ── ⑦ 도약 · 순간이동 ────────────────────────────────────────────────
+        //
+        // 궁극기 도약 = 이탈(피격 불가 · 잠금 + 무적 **원자 개시**) → 예고 → 강습 → 착지 슬램.
+        // 시퀀스를 코어가 소유하는 이유: 예고 시간은 **회피 창이자 피해 게이트** = 게임 규칙이다.
+        //
+        // ⚠ 착지 슬램은 **자리에 떨어지는 것**이다(2026-09-07 사용자 정정). 보스가 «지정한
+        // 좌표»에 내리는 것이라 그 몸이 붙지 않는다 — `OriginBodyRadius = 0`.
+        // ⚠ 즉발(`flightTime == 0`)로 판별하지 말 것. 자폭·시체 폭발과 배선이 같아 보이지만
+        // 형이 다르다.
+        private void StepLeap(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++)
+            {
+                var u = units[i];
+                var pg = u.Progressive;
+                if (pg == null || !pg.LeapActive) continue;
+
+                pg.LeapRemaining -= ctx.Dt;
+                if (pg.LeapRemaining > 0f) continue;
+
+                // ① 순간이동 — 위치는 이동이 소유하므로 요청으로 넘긴다.
+                if (u.Move != null) { u.Move.HasBlink = true; u.Move.BlinkTo = pg.LandingWorld; }
+                else u.Position = pg.LandingWorld;
+
+                // ② 착지 슬램 — 자리형(0 몸).
+                if (pg.SlamDamage > 0f && pg.SlamProjectileDefIndex >= 0)
+                {
+                    var req = ProjectileRequest.Empty;
+                    req.DefIndex = pg.SlamProjectileDefIndex;
+                    req.Movement = MovementKind.SkyFall;
+                    req.Payload = PayloadKind.TileAoe;
+                    req.Owner = u.Id;
+                    req.OwnerFaction = u.Faction;
+                    req.TargetMask = u.Attack != null ? u.Attack.TargetMask : 0;
+                    req.TargetLayers = u.Attack != null ? u.Attack.TargetLayers : (byte)0;
+                    req.Origin = pg.LandingWorld;
+                    req.Impact = pg.LandingWorld;
+                    req.Damage = pg.SlamDamage;
+                    req.ImpactTileRange = pg.SlamTileRange;
+                    req.OriginBodyRadius = 0f;   // ⚠ 자리형 — 「몸이 내리찍는 것」이 아니다
+                    req.FlightTime = 0f;         // 예고가 이미 시간을 벌었다
+                    ctx.World.ProjectileRequests.Add(req);
+                }
+
+                // ③ 상태 해제 — 무적과 잠금이 **함께** 떨어진다(붙을 때와 대칭).
+                pg.LeapActive = false;
+                if (u.Move != null) u.Move.Locked = false;
+
+                ctx.Bus.Publish(CoreEvent.LeapDescend(ctx.Tick, u, pg.LandingWorld, ultimate: true));
+            }
+        }
+
+        // ── ⑧ 실드 부여 스테이징 ──────────────────────────────────────────────
+        //
+        // C17 의 비대칭을 만드는 **유일한 자리**. 이번 틱에 쌓인 부여를 다음 틱 드레인으로 넘긴다.
+        private void StageShields(TickContext ctx)
+        {
+            var units = ctx.World.Units;
+            for (int i = 0; i < units.Count; i++) units[i].Inbox.StageShield();
+        }
+
+        // ── 군중 제어 부여 ───────────────────────────────────────────────────
+
+        private void RequestKnockback(TickContext ctx, Unit u, AttackState atk, Unit victim)
+        {
+            if (IsImmune(ctx, victim)) return;
+            if (victim.Move == null) return;
+            // **방향을 모르는 대상은 밀리지 않는다**(C8). 스폰 직후·고정 구조물이 그렇다 —
+            // 0 방향으로 밀면 원점으로 빨려든다.
+            float2 travel = victim.Move.LastMoveDir;
+            if (math.lengthsq(travel) <= 1e-6f) return;
+            // 미는 방향은 **적이 가던 방향의 반대** 하나다(2026-08-17 사용자 결정 B).
+            // 상대속도 합산은 은퇴했다 — 지나쳐 가는 적을 골 쪽으로 밀어줬다.
+            float2 v = -math.normalize(travel) * (atk.Cc.KnockbackDistance / atk.Cc.KnockbackDuration);
+            _pendingCc.Add(CcRequest.Push(victim.Id, new float3(v.x, 0f, v.y),
+                                          atk.Cc.KnockbackDuration, u.Id));
+        }
+
+        private void RequestSleep(TickContext ctx, Unit u, AttackState atk, Unit victim)
+        {
+            if (IsImmune(ctx, victim)) return;
+            _pendingCc.Add(CcRequest.Of(victim.Id, CcRequestKind.Sleep, atk.Cc.SleepSeconds, u.Id));
+        }
+
+        private void RequestKnockup(TickContext ctx, Unit u, AttackState atk, Unit victim)
+        {
+            if (IsImmune(ctx, victim)) return;
+            // 심에서 넉업의 실체는 **짧은 기절**이다. 그래서 띄우는 연출은 **띄운 쪽이 따로
+            // 신호한다** — 뷰가 군중 제어 종류로 판단하면 일반 기절까지 떠오른다.
+            _pendingCc.Add(CcRequest.Of(victim.Id, CcRequestKind.Stun, atk.Cc.KnockupSeconds, u.Id));
+            ctx.Bus.Publish(CoreEvent.Knockup(ctx.Tick, victim, atk.Cc.KnockupSeconds,
+                                              atk.Cc.KnockupVisualHeight));
+        }
+
+        /// <summary>보스 면역 집합 — 기절·수면·넉백은 **출처 불문** 안 걸린다.</summary>
+        private static bool IsImmune(TickContext ctx, Unit victim)
+            => victim.Attack != null && victim.Attack.BossImmune;
+
+        // ── 공통 ─────────────────────────────────────────────────────────────
+
+        private bool Legal(in Candidate c, AttackState atk)
+        {
+            if ((c.Faction & atk.TargetMask) == 0) return false;
+            return LayerBits.CanTarget(atk.TargetLayers, c.Layers);
+        }
+
+        private static float SqXZ(float3 a, float3 b)
+        {
+            float dx = b.x - a.x, dz = b.z - a.z;
+            return dx * dx + dz * dz;
+        }
+
+        private void GrowCandidates()
+        {
+            int n = _cands.Length * 2;
+            System.Array.Resize(ref _cands, n);
+            System.Array.Resize(ref _picked, n);
+        }
+
+        /// <summary>
+        /// 정의표 한 줄에서 공격 상태를 세운다. 스폰하는 쪽(커맨드·웨이브·소환)이 **모두**
+        /// 이 함수를 지나야 「어떤 경로로 태어났나」가 공격 규칙을 바꾸지 않는다.
+        /// </summary>
+        public static AttackState BuildAttackState(in UnitDef d, MatchDefinition def = null)
+            => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
+                                d.AttackTargetCount, d.AggroCapacity,
+                                TargetDefaults.ResolveDefender(d.TargetFactions), def);
+
+        public static AttackState BuildAttackState(in EnemyDef d, MatchDefinition def = null)
+            => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
+                                d.AttackTargetCount, 0,
+                                TargetDefaults.ResolveEnemy(d.TargetFactions), def);
+
+        // 표 밖을 가리키는 참조는 **여기서 한 번** 접는다. 매 RESOLVE 에서 접으면 같은 경고가
+        // 초당 수십 번 나고, 그보다 나쁘게 **미저작 0 이 탄 0번을 조용히 쏜다.**
+        private static int ClampRef(int index, int count)
+            => index >= 0 && index < count ? index : -1;
+
+        private static AttackState BuildAttackState(in AttackDef a, float range, float cooldown,
+                                                    float hitDelay, int targetCount,
+                                                    int aggroCapacity, int targetMask,
+                                                    MatchDefinition def)
+        {
+            int projectiles = def != null ? def.Projectiles.Length : 0;
+            int units = def != null ? def.Units.Length : 0;
+            var s = new AttackState
+            {
+                Range = range,
+                Interval = cooldown,
+                HitDelay = hitDelay,
+                TargetCount = math.max(1, targetCount),
+                TargetMask = targetMask,
+                TargetLayers = (byte)a.TargetLayers,
+                PriorityClass = a.PriorityClass,
+                ClassMask = a.ClassMask,
+                Mode = (TargetMode)a.Mode,
+                Policy = (AttackPolicy)a.Policy,
+                ProjectileDefIndex = ClampRef(a.ProjectileDefIndex, projectiles),
+                Outputs = a.Outputs ?? System.Array.Empty<AttackOutputDef>(),
+                AggroCapacity = aggroCapacity,
+                BossImmune = a.BossImmune,
+                Shape = new AttackShapeBaked
+                {
+                    kind = (byte)a.ShapeKind,
+                    sinHalf = a.ShapeSinHalf,
+                    cosHalf = a.ShapeCosHalf,
+                    halfWidth = a.ShapeHalfWidth,
+                },
+                Cc = new CcOnHit
+                {
+                    KnockbackDistance = a.KnockbackDistance,
+                    KnockbackDuration = a.KnockbackDuration,
+                    SleepSeconds = a.SleepOnHitSec,
+                    KnockupSeconds = a.KnockupOnHitSec,
+                    KnockupVisualHeight = a.KnockupVisualHeight,
+                },
+                Bomb = new BombSpec
+                {
+                    ProjectileDefIndex = ClampRef(a.BombProjectileDefIndex, projectiles),
+                    Damage = a.BombDamage,
+                    AoeTileRange = a.BombAoeTileRange,
+                    AoeTargetCap = a.BombAoeTargetCap,
+                    TravelSeconds = a.BombTravelSeconds,
+                    FuseSeconds = a.BombFuseSeconds,
+                    ArcHeight = a.BombArcHeight,
+                },
+                Summon = new SummonSpec { PatrolDefIndex = ClampRef(a.SummonPatrolDefIndex, units) },
+            };
+            if (a.PatternDefIndices != null)
+                for (int i = 0; i < a.PatternDefIndices.Length; i++)
+                    s.PatternSlots.Add(new PatternSlotState { PatternDefIndex = a.PatternDefIndices[i] });
+            return s;
+        }
+    }
+}

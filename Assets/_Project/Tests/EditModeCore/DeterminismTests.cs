@@ -50,6 +50,44 @@ namespace Wassup.Tests.EditMode.Core
                 "이벤트는 같은데 상태가 갈렸다면 분리 누적 순서를 의심한다");
         }
 
+        // unit 3 — 전투가 도는 판의 결정론. 30기가 죽고 320여 건의 사건이 나는 동안
+        // **두 실행이 바이트로 같아야** 한다(피해 인박스 순회·킬 귀속·요청 줄이 전부 이 축이다).
+        [Test]
+        public void 킬_레이스는_두_실행이_같다()
+        {
+            var sc = CoreGoldenCorpus.ByName("kill_race_basic");
+            var a = CoreHarness.Run(sc.BuildDefinition(), sc.BuildSchedule(), sc.Ticks, sc.Name);
+            var b = CoreHarness.Run(sc.BuildDefinition(), sc.BuildSchedule(), sc.Ticks, sc.Name);
+
+            Assert.IsNull(a.Trace.DiffAgainst(b.Trace));
+            Assert.AreEqual(a.Trace.Serialize(), b.Trace.Serialize());
+            Assert.AreEqual(a.Trace.finalStateHash, b.Trace.finalStateHash);
+            Assert.Greater(a.Trace.finalKills, 0, "처치가 0 이면 이 골든은 아무것도 증언하지 않는다");
+        }
+
+        // 조각 A 의 완료 기준 — 헤드리스로 3분 판이 **완주**하고, 스폰한 적이 전부 사라진다.
+        [Test]
+        public void 킬_레이스가_완주한다()
+        {
+            var sc = CoreGoldenCorpus.ByName("kill_race_basic");
+            var run = CoreHarness.Run(sc.BuildDefinition(), sc.BuildSchedule(), sc.Ticks, sc.Name);
+
+            int spawnedEnemies = 0, destroyed = 0, slain = 0, ended = 0;
+            for (int i = 0; i < run.Trace.events.Count; i++)
+            {
+                var e = run.Trace.events[i];
+                if (e.channel == CoreTraceChannel.UnitSpawned && e.i == (int)UnitKind.Enemy) spawnedEnemies++;
+                if (e.channel == CoreTraceChannel.UnitDestroyed) destroyed++;
+                if (e.channel == CoreTraceChannel.UnitSlain) slain++;
+                if (e.channel == CoreTraceChannel.MatchEnded) ended++;
+            }
+
+            Assert.AreEqual(1, ended, "판이 끝난다");
+            Assert.AreEqual(30, spawnedEnemies);
+            Assert.AreEqual(spawnedEnemies, destroyed, "스폰한 적이 전부 사라진다");
+            Assert.AreEqual(spawnedEnemies, slain, "전부 **피해로** 죽었다");
+        }
+
         [Test]
         public void 거절_receipt_도_두_실행이_같다()
         {

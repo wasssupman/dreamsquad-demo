@@ -52,6 +52,7 @@ namespace Wassup.BattleCore
                 case CommandKind.DebugSpawnEnemy: return DebugSpawn(cmd, tick);
                 case CommandKind.DebugDestroy: return DebugDestroy(cmd, tick);
                 case CommandKind.DebugSetObstacle: return DebugObstacle(cmd);
+                case CommandKind.DebugSpawnDefender: return DebugSpawnDefender(cmd, tick);
                 default: return Receipt.Reject(RejectReason.UnknownCommand);
             }
         }
@@ -92,7 +93,32 @@ namespace Wassup.BattleCore
 
             u.Footprint = new Footprint { Anchor = anchor, Width = w, Height = h };
             if (d.AggroCapacity > 0) u.Aggro = new Aggro { Capacity = d.AggroCapacity };
+            // unit 3 — 공격은 **정의표에서** 온다. 스폰 경로가 여럿이어도(배치·디버그·소환·웨이브)
+            // 전부 같은 함수를 지나야 「어떤 경로로 태어났나」가 공격 규칙을 바꾸지 않는다.
+            u.Attack = CombatPhase.BuildAttackState(in d, _def);
 
+            _map.Occupancy.Occupy(u.Id, anchor, w, h);
+            return Receipt.Ok;
+        }
+
+        // 디버그 스폰 — **판정을 갖지 않는다**(시나리오가 곧 의도다). 배치 마스크·점유·코스트를
+        // 전부 건너뛰므로 골든이 「방어유닛이 선 판」을 unit 4 없이 세울 수 있다.
+        private Receipt DebugSpawnDefender(in Command cmd, int tick)
+        {
+            if (cmd.DefIndex < 0 || cmd.DefIndex >= _def.Units.Length)
+                return Receipt.Reject(RejectReason.InvalidUnit);
+
+            ref var d = ref _def.Units[cmd.DefIndex];
+            int w = math.max(1, d.FootprintWidth);
+            int h = math.max(1, d.FootprintHeight);
+            int2 anchor = cmd.Cell;
+
+            var u = _world.Spawn(UnitKind.Defender, Faction.DefenderUnit, cmd.DefIndex,
+                                 FootCenter(anchor, w), d.BodyRadiusTiles, d.Health,
+                                 deploying: false, tick: tick);
+            u.Footprint = new Footprint { Anchor = anchor, Width = w, Height = h };
+            if (d.AggroCapacity > 0) u.Aggro = new Aggro { Capacity = d.AggroCapacity };
+            u.Attack = CombatPhase.BuildAttackState(in d, _def);
             _map.Occupancy.Occupy(u.Id, anchor, w, h);
             return Receipt.Ok;
         }
@@ -162,6 +188,9 @@ namespace Wassup.BattleCore
 
             // **감지 0 = 오늘과 같은 경로.** 부착 자체가 게이트다 — 분기가 아니라 부재로 표현한다.
             if (d.DetectionRange != 0f) u.Detection = new Detection { Range = d.DetectionRange };
+
+            // unit 3 — 적도 방어유닛과 **같은 함수**로 공격을 얻는다(통합 루프가 둘을 구분하지 않는다).
+            u.Attack = CombatPhase.BuildAttackState(in d, _def);
 
             return Receipt.Ok;
         }

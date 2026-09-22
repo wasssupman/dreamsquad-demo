@@ -54,6 +54,21 @@ namespace Wassup.BattleCore
             match.Bus.Subscribe(CoreEventKind.Detected, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.AggroAcquired, 0, trace.Record);
             match.Bus.Subscribe(CoreEventKind.Blinked, 0, trace.Record);
+            // unit 3 — 전투 판정의 사건. 새 채널을 열면 여기 구독도 같이 연다.
+            match.Bus.Subscribe(CoreEventKind.AttackResolved, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ProjectileSpawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ProjectileDespawned, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ProjectileHit, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.DamageApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.HealApplied, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.ShieldBroken, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.UnitSlain, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.Knockup, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.LeapAscend, 0, trace.Record);
+            match.Bus.Subscribe(CoreEventKind.LeapDescend, 0, trace.Record);
+
+            int kills = 0;
+            match.Bus.Subscribe(CoreEventKind.UnitSlain, 1, _ => kills++);
 
             // 구독 **뒤에** 시작한다 — `Begin` 이 `MatchStarted` 를 그 자리에서 배달한다.
             match.Begin();
@@ -69,7 +84,9 @@ namespace Wassup.BattleCore
             }
 
             trace.finalStateHash = match.World.StateHash();
-            // 킬·점수·유출은 담당자(`ScoreLedger`·`HeartMeter`)가 생기는 unit 4 부터 채워진다.
+            trace.finalKills = kills;
+            // 점수·유출은 담당자(`ScoreLedger`·`HeartMeter`)가 생기는 unit 4 부터 채워진다.
+            // 처치 수만 여기서 센다 — **피해로 죽은 것**의 수이고, 그것이 unit 3 의 규칙이다.
             return new Result { Trace = trace, Match = match, Receipts = receipts };
         }
     }

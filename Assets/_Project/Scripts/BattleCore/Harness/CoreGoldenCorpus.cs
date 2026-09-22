@@ -95,6 +95,36 @@ namespace Wassup.BattleCore
             },
             new Scenario
             {
+                // unit 3 — 조각 A 의 검증 질문 그 자체: **헤드리스로 3분 판이 완주하는가.**
+                // 적 30기(레인 2 교대) vs 방어유닛 4기. 옛 코퍼스 `basic` 의 후계이고,
+                // 그쪽과는 **거시 지표**(킬 수·유출 수·생존 방어유닛)로만 대조한다(계약 3).
+                //
+                // ⚠ 여기 수치도 **고정구**다. 게임 값이 아니라 「3분 안에 전부 죽고 판이
+                // 끝나는가」를 물을 수 있는 최소 조건이고, 시트 드리프트가 이 축을 흔들면 안 된다.
+                Name = "kill_race_basic",
+                Seed = 3001,
+                Ticks = 10800,
+                BuildDefinition = () => KillRaceFixture(3001),
+                BuildSchedule = () =>
+                {
+                    var s = new CommandSchedule();
+                    // 방어유닛 4기 — 두 레인에 둘씩. 배치 판정(코스트·쿨다운·상한)은 unit 4 라
+                    // 디버그 스폰으로 세운다(시나리오가 곧 의도다).
+                    // ⚠ 레인마다 **둘씩 붙여** 세운다. 적은 교전 정책이 `Halt` 라 사거리 안에
+                    // 들어오면 **거기서 멈춘다** — 멀리 둔 방어유닛은 판 내내 한 발도 안 쏜다.
+                    // (레인당 하나 + 뒤쪽에 하나로 세웠더니 뒤쪽 둘이 통째로 놀았다.)
+                    s.Add(2, Command.DebugSpawnDefender(0, new int2(3, 1)));
+                    s.Add(2, Command.DebugSpawnDefender(0, new int2(4, 1)));
+                    s.Add(2, Command.DebugSpawnDefender(0, new int2(3, 3)));
+                    s.Add(2, Command.DebugSpawnDefender(0, new int2(4, 3)));
+                    // 적 30기 — 5초 간격으로 레인 교대.
+                    for (int i = 0; i < 30; i++)
+                        s.Add(60 + i * 300, Command.DebugSpawnEnemyInLane(0, i % 2));
+                    return s;
+                },
+            },
+            new Scenario
+            {
                 // unit 2 — 유한 감지 적이 방어유닛 앞에서 멈추고 표식은 **한 번**만 난다.
                 Name = "detect_and_chase",
                 Seed = 2003,
@@ -125,6 +155,44 @@ namespace Wassup.BattleCore
         {
             var def = MapFixture(seed, detectionRange: 0f);
             def.Enemies[0].TargetFactions = (int)Wassup.Battle.Units.Faction.DefenderCore;
+            def.ConfigHash = def.ComputeConfigHash();
+            return def;
+        }
+
+        /// <summary>
+        /// unit 3 골든의 판 — 같은 12×5 격자에 **서로 때릴 수 있는** 저작을 얹는다.
+        /// 방어유닛은 사거리 3·초당 25, 적은 체력 180·사거리 1·초당 5 다.
+        /// 이 배합이 노린 것: 적이 **사거리 안으로 들어와 멈추고 맞받아친다**(교전 정책 Halt).
+        /// 방어유닛이 너무 세면 적이 스폰 지점에서 녹아 「맞는 쪽」 규칙이 한 번도 안 돈다.
+        /// </summary>
+        public static MatchDefinition KillRaceFixture(int seed)
+        {
+            var def = MapFixture(seed, detectionRange: 0f);
+
+            ref var d = ref def.Units[0];
+            d.Health = 1000f;
+            d.AttackRange = 3f;
+            d.AttackCooldown = 1f;
+            d.FootprintWidth = 1;
+            d.FootprintHeight = 1;
+            d.BodyRadiusTiles = 0.5f;
+            d.Attack = AttackDef.Default();
+            d.Attack.Outputs = new[]
+            {
+                new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = 25f },
+            };
+
+            ref var e = ref def.Enemies[0];
+            e.Health = 180f;
+            e.MoveSpeed = 1.5f;
+            e.AttackRange = 1f;
+            e.AttackCooldown = 1f;
+            e.Attack = AttackDef.Default();
+            e.Attack.Outputs = new[]
+            {
+                new AttackOutputDef { Kind = AttackOutputKind.Damage, Magnitude = 5f },
+            };
+
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -173,7 +241,10 @@ namespace Wassup.BattleCore
                         PlacementLayers = 1,
                         TraversalLayers = 0,
                         Role = 0,
-                        AttackShape = 0,
+                        // 공격 저작은 **명시**한다. `default(AttackDef)` 도 안전하게 접히지만
+                        // (표 밖 참조는 빌드에서 근접으로 접힌다), 고정구가 그 안전망에
+                        // 기대면 안전망이 언제 깨졌는지 아무도 모른다.
+                        Attack = AttackDef.Default(),
                     },
                 },
                 Enemies = new[]
@@ -196,7 +267,7 @@ namespace Wassup.BattleCore
                         StabilityDamage = 1,
                         DetectionRange = 0f,
                         AwakeningReward = 1,
-                        AttackShape = 0,
+                        Attack = AttackDef.Default(),
                     },
                 },
                 Map = new MapSnapshot

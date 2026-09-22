@@ -1,14 +1,18 @@
 LTV0
 channels=core
 scenario=detour_obstacle
-configHash=cf7e5f4042f27ad7
+configHash=6b914fd9e91b395b
 matchSeed=2002
 stepDt=0.016666668
 tickCount=1800
-events=4
+events=8
 0 0 0 -1 0 0
 2 1 1 -1 1 50000
 10 1 2 -1 2 100000
+63 8 1 2 1 1000
+124 8 1 2 1 1000
+185 8 1 2 1 1000
+246 8 1 2 1 1000
 336 4 2 -1 1 0
 finalKills=0
 finalScore=0

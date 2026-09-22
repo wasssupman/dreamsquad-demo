@@ -1,7 +1,7 @@
 LTV0
 channels=core
 scenario=march_to_goal
-configHash=c1b6678d32f7fe11
+configHash=786ff298e215266d
 matchSeed=2001
 stepDt=0.016666668
 tickCount=1800

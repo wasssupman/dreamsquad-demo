@@ -40,9 +40,13 @@ namespace Wassup.BattleCore
 
         /// <summary>
         /// 유지 임계가 획득보다 넓다 — 방어유닛 둘 사이에서 대상이 튀는 것을 막는다.
-        /// ⚠ unit 3 의 공격 락 히스테리시스와 **같은 자**여야 한다(그때 합류한다).
+        ///
+        /// ⚠ **unit 3 에서 공격 락과 같은 자로 합쳤다.** unit 2 는 여기에 0.5 를 따로 들고
+        /// 있었는데, 옛 전투의 감지도 `TargetPersistence.KeepsLock`(0.1)을 **재사용**했으므로
+        /// 그쪽이 옳다. 같은 종류의 진동을 막는 데 두 개의 자를 두지 않는다 — 값의 근거
+        /// (실측 지터 0.047·0.051의 약 2배)는 `TargetPersistence` 헤더에 있다.
         /// </summary>
-        public const float HysteresisTiles = 0.5f;
+        public const float HysteresisTiles = Combat.TargetPersistence.HysteresisTiles;
 
         private readonly MapRuntime _map;
         private readonly ChaseFieldPool _pool;
@@ -125,13 +129,15 @@ namespace Wassup.BattleCore
             {
                 var u = units[i];
                 if (u.Move == null || u.Dead) continue;
-                if (u.Kind != UnitKind.Enemy) { u.Move.Ai = AiState.Marching; continue; }
+                if (u.Kind != UnitKind.Enemy) { u.Ai.Enemy = AiState.Marching; continue; }
 
                 var def = EnemyDefOf(ctx, u);
                 bool aggroed = u.Aggro != null && !u.Aggro.Target.IsNone;
                 bool guardianInRange = aggroed && ReachProbe.GuardianInRange(ctx.World, u, def, _map.TileSize);
                 bool hasFireTarget = !aggroed && ReachProbe.HasFireTarget(ctx.World, u, def, _map.TileSize);
-                u.Move.Ai = EnemyAi.Evaluate(aggroed, guardianInRange, hasFireTarget);
+                // **결정은 `Wassup.UnitAi`, 저장은 `Unit.Ai`**(unit 3 구현 12) — 공격 루프가
+                // 읽는 자리와 같아야 「락은 있는데 Marching」 데드락이 안 난다.
+                u.Ai.Enemy = EnemyAi.Evaluate(aggroed, guardianInRange, hasFireTarget);
             }
         }
 
@@ -319,7 +325,7 @@ namespace Wassup.BattleCore
                 if (d.Hunting && !unlimited)
                 {
                     bool blocked = !self.Move.Locked
-                                   && self.Move.Ai == AiState.Marching
+                                   && self.Ai.Enemy == AiState.Marching
                                    && self.Move.HoldingGround;
                     d.Stuck = blocked ? d.Stuck + dt : 0f;
                     if (d.Stuck >= StuckReleaseSeconds)
@@ -454,13 +460,13 @@ namespace Wassup.BattleCore
                 bool hasImpulse = math.lengthsq(impulse) > 1e-8f;
 
                 // ── 상태 갈림 — 여기서 끝나는 상태는 포털·골·당김을 안 지난다 ──
-                if (mv.Ai == AiState.Standoff)
+                if (u.Ai.Enemy == AiState.Standoff)
                 {
                     if (hasImpulse) u.Position = Compose(current, float3.zero, impulse, mv.Radius, in nav);
                     continue;
                 }
 
-                if (mv.Ai == AiState.Chasing)
+                if (u.Ai.Enemy == AiState.Chasing)
                 {
                     StepChasing(ctx, u, mv, in nav, impulse, hasImpulse, dt);
                     continue;
@@ -530,7 +536,7 @@ namespace Wassup.BattleCore
                 bool hasPull = math.lengthsq(pull) > 1e-8f;
 
                 // ── 교전 정책 ── 멈춰 있어도 외력은 받는다.
-                if (mv.Ai == AiState.Engaging)
+                if (u.Ai.Enemy == AiState.Engaging)
                 {
                     bool advance = mv.Engage == EngageMovement.Advance
                                    || (mv.Engage == EngageMovement.Pulse && !mv.Locked);
@@ -697,7 +703,7 @@ namespace Wassup.BattleCore
         private bool TryHuntCloseIn(TickContext ctx, Unit u, MoveState mv, in NavGrid nav,
                                     int[] routeDist, int idx, float3 external, float dt)
         {
-            if (mv.Locked || mv.Ai != AiState.Marching) return false;
+            if (mv.Locked || u.Ai.Enemy != AiState.Marching) return false;
             if (routeDist[idx] != 0) return false;
 
             float3 targetPos;

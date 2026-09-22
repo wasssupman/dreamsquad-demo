@@ -1,0 +1,67 @@
+using System;
+
+namespace Wassup.BattleCore
+{
+    // battle-core-rebuild unit 3 — 트리거 레이어가 들어올 **자리**.
+    //
+    // 이 unit 은 훅을 **뚫기만** 한다(spec 변경 대상 표: 「seam 은 unit 7 이 채운다」).
+    // 지금 등록된 핸들러는 0 이고 `Run` 은 빈 루프다.
+    //
+    // ⚠ **왜 지금 만드나**(제약 8 「나중을 위한 추상 레이어 금지」와의 관계):
+    // seam 은 추상 레이어가 아니라 **순서 계약**이다. 「피해 뒤·소멸 전」처럼 사건이 끼어들 수
+    // 있는 구간은 옛 전투에서 `[UpdateAfter]`/`[UpdateBefore]` 네 건이 들고 있던 **게임 규칙**
+    // 이고(C18), 그 구간을 나중에 «찾아서» 뚫으면 위치가 조용히 달라진다. 그래서 위치를 지금
+    // 코드로 고정하고, **내용만** unit 7 이 채운다.
+    // 반대로 **추상은 하나도 만들지 않았다** — 인터페이스도, 등록 DSL 도, 우선순위 정렬도 없다.
+    // 핸들러는 `Action<TickContext>` 하나이고 배열은 조립 시점에 한 번 채워진다.
+    //
+    // ⚠ 등록은 **틱 밖**(조립 시점)에서만 한다. 틱 중에 등록하면 순회 중 배열이 바뀐다.
+    public enum Seam : byte
+    {
+        /// <summary>공격이 성사된 직후. 공격 구동 효과(강공·부착 카드)가 여기 붙는다.</summary>
+        Attack = 0,
+        /// <summary>피해가 적용되고 사망이 표시된 직후. **시체는 아직 판 위에 있다.**</summary>
+        Death = 1,
+        /// <summary>소멸 직후. 자리는 소멸 사건이 값으로 나른다(개체는 이미 없다).</summary>
+        Lifecycle = 2,
+        /// <summary>체력 경계(임계)를 넘은 직후. 도약·순간이동이 이 뒤에 온다.</summary>
+        Threshold = 3,
+
+        /// <summary>종류 수. 종류가 아니다 — 배열 크기가 이 값에서 나온다.</summary>
+        _Count,
+    }
+
+    public sealed class SeamHooks
+    {
+        private static readonly Action<TickContext>[] Empty = Array.Empty<Action<TickContext>>();
+
+        private readonly Action<TickContext>[][] _handlers;
+
+        public SeamHooks()
+        {
+            _handlers = new Action<TickContext>[(int)Seam._Count][];
+            for (int i = 0; i < _handlers.Length; i++) _handlers[i] = Empty;
+        }
+
+        /// <summary>조립 시점 등록. 순서는 등록 순서다(구독 순서가 계약인 `EventBus` 와 같은 규율).</summary>
+        public void Register(Seam seam, Action<TickContext> handler)
+        {
+            if (handler == null) throw new ArgumentNullException(nameof(handler));
+            int i = (int)seam;
+            var old = _handlers[i];
+            var next = new Action<TickContext>[old.Length + 1];
+            Array.Copy(old, next, old.Length);
+            next[old.Length] = handler;
+            _handlers[i] = next;
+        }
+
+        public int CountAt(Seam seam) => _handlers[(int)seam].Length;
+
+        /// <summary>핸들러가 0 이면 아무 일도 안 한다 — 오늘의 전부다.</summary>
+        public void Run(Seam seam, TickContext ctx)
+        {
+            var list = _handlers[(int)seam];
+            for (int i = 0; i < list.Length; i++) list[i](ctx);
+        }
+    }
+}

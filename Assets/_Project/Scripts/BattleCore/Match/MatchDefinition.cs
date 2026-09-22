@@ -26,6 +26,10 @@ namespace Wassup.BattleCore
         public UnitDef[] Units = System.Array.Empty<UnitDef>();
         public EnemyDef[] Enemies = System.Array.Empty<EnemyDef>();
 
+        // unit 3 — 전투가 쓰는 정의표. 유닛 줄이 **인덱스로** 가리킨다(참조를 복제하지 않는다).
+        public ProjectileDef[] Projectiles = System.Array.Empty<ProjectileDef>();
+        public PatternDef[] Patterns = System.Array.Empty<PatternDef>();
+
         public MapSnapshot Map = MapSnapshot.Empty();
 
         /// <summary>
@@ -114,6 +118,16 @@ namespace Wassup.BattleCore
                 sb.Append("[enemy").Append(i.ToString(inv)).Append("]\n");
                 Enemies[i].Canonicalize(sb, inv);
             }
+            for (int i = 0; i < Projectiles.Length; i++)
+            {
+                sb.Append("[projectile").Append(i.ToString(inv)).Append("]\n");
+                Projectiles[i].Canonicalize(sb, inv);
+            }
+            for (int i = 0; i < Patterns.Length; i++)
+            {
+                sb.Append("[pattern").Append(i.ToString(inv)).Append("]\n");
+                Patterns[i].Canonicalize(sb, inv);
+            }
         }
 
         private static string Cell(int2 c, CultureInfo inv)
@@ -176,7 +190,6 @@ namespace Wassup.BattleCore
         public int PlacementLayers;
         public int TraversalLayers;
         public int Role;
-        public int AttackShape;
 
         // ── unit 2 ──
         /// <summary>동시에 붙들 수 있는 적 수. 0 = 가디언이 아니다.</summary>
@@ -184,6 +197,17 @@ namespace Wassup.BattleCore
 
         /// <summary>때릴 수 있는 진영 비트. 0 = 미저작 → 기본값(`TargetDefaults`).</summary>
         public int TargetFactions;
+
+        // ── unit 3 ──
+        /// <summary>
+        /// 이동 속도. **순찰 소환물만 읽는다** — 배치 유닛은 칸에 고정이라 이동 상태 자체가
+        /// 안 붙는다. 저작은 방어유닛 줄이 들고 있고(소환물도 방어유닛 SO 다), 그래서
+        /// 순찰병용 정의표 타입을 따로 만들지 않는다.
+        /// </summary>
+        public float MoveSpeed;
+
+        /// <summary>공격 저작. 통합 루프는 방어유닛·적을 구분하지 않으므로 **같은 타입**이다.</summary>
+        public AttackDef Attack;
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -199,9 +223,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "placementLayers", PlacementLayers, inv);
             MatchDefinition.Put(sb, "traversalLayers", TraversalLayers, inv);
             MatchDefinition.Put(sb, "role", Role, inv);
-            MatchDefinition.Put(sb, "attackShape", AttackShape, inv);
             MatchDefinition.Put(sb, "aggroCapacity", AggroCapacity, inv);
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
+            MatchDefinition.Put(sb, "moveSpeed", MoveSpeed, inv);
+            Attack.Canonicalize(sb, inv);
         }
     }
 
@@ -224,7 +249,6 @@ namespace Wassup.BattleCore
         public int StabilityDamage;
         public float DetectionRange;
         public int AwakeningReward;
-        public int AttackShape;
 
         // ── unit 2 ──
         /// <summary>교전 중 이동 정책(`EngageMovement`). 저작 기본은 Halt(0).</summary>
@@ -235,6 +259,10 @@ namespace Wassup.BattleCore
 
         /// <summary>저작 경로 번호. -1 = 미지정 → 컨셉/레인 기본으로 내려간다(`WaypointRouting`).</summary>
         public int WaypointPathIndex;
+
+        // ── unit 3 ──
+        /// <summary>공격 저작. 방어유닛 줄과 **같은 타입**이다(통합 루프가 둘을 구분하지 않는다).</summary>
+        public AttackDef Attack;
 
         internal void Canonicalize(StringBuilder sb, CultureInfo inv)
         {
@@ -254,10 +282,10 @@ namespace Wassup.BattleCore
             MatchDefinition.Put(sb, "stabilityDamage", StabilityDamage, inv);
             MatchDefinition.Put(sb, "detectionRange", DetectionRange, inv);
             MatchDefinition.Put(sb, "awakeningReward", AwakeningReward, inv);
-            MatchDefinition.Put(sb, "attackShape", AttackShape, inv);
             MatchDefinition.Put(sb, "engageMovement", EngageMovement, inv);
             MatchDefinition.Put(sb, "targetFactions", TargetFactions, inv);
             MatchDefinition.Put(sb, "waypointPathIndex", WaypointPathIndex, inv);
+            Attack.Canonicalize(sb, inv);
         }
     }
 }

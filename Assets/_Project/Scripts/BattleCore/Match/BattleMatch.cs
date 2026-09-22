@@ -26,6 +26,7 @@ namespace Wassup.BattleCore
         private readonly MatchClock _clock;
         private readonly CommandPhase _commands;
         private readonly MapRuntime _map;
+        private readonly SeamHooks _seams;
 
         private readonly TickPipeline _pipeline;
 
@@ -43,6 +44,7 @@ namespace Wassup.BattleCore
 
             _clock = new MatchClock();
             _commands = new CommandPhase(_world, _clock, _def, _map);
+            _seams = new SeamHooks();
 
             // 틱 순서. 남은 빈 자리(사망 수렴 · 효과/투사체 · 전투 · 담당자 단계)는 unit 3~4 가
             // **이 배열에 끼운다**. 순서를 바꾸는 것은 규칙을 바꾸는 것이므로 그때 같은 커밋에서
@@ -51,12 +53,15 @@ namespace Wassup.BattleCore
             {
                 _commands,                              // phase 0 — Immediate seam
                 new FieldPrepPhase(_map, chasePool),    // unit 2 — 장애물·어그로·사냥판·순찰
-                // unit 3: DeathConvergePhase
                 new AiMovePhase(_map, chasePool),       // unit 2 — 상태·도발·거점·감지·이동·분리
-                // unit 3: TickProjectilePhase
-                // unit 3: CombatPhase
+                new TickProjectilePhase(_map),          // unit 3 — 발사 요청·궤적·착탄
+                new CombatPhase(_map),                  // unit 3 — 공격·피해·사망·도약
                 // unit 4: OwnerSteps (WaveScheduler · CostLedger · PlacementService ·
                 //         HeartMeter · GimmickHost · IMatchGoal)
+                // ⚠ UML §4 의 `DeathConvergePhase` 는 **따로 만들지 않았다.** 그것이 들고 있던
+                // 두 일이 각자 주인을 찾았기 때문이다: 사망 표시 수렴은 `CombatPhase` 의 피해
+                // 단계(표시)와 소멸 단계(한 틱 뒤 제거)로 나뉘었고, 배치 활성화는 `PlacementService`
+                // (unit 4)의 것이다. 빈 단계를 남기면 다음 사람이 「여기 뭘 넣어야 하나」를 묻는다.
                 _clock,         // 시계·종료 통로
                 new FlushPhase(),
             });
@@ -70,6 +75,7 @@ namespace Wassup.BattleCore
                 Map = _map,
                 Dt = Dt,
                 Tick = 0,
+                Seams = _seams,
             };
         }
 
@@ -89,6 +95,19 @@ namespace Wassup.BattleCore
         }
 
         public MapRuntime Map => _map;
+
+        /// <summary>트리거 레이어(unit 7)가 여기 등록한다. 등록은 **틱 밖**에서만.</summary>
+        public SeamHooks Seams => _seams;
+
+        /// <summary>
+        /// 진단 통로. **조용한 무동작 금지**(C4)의 수신처이고, 연결하지 않으면 버려진다 —
+        /// 코어는 로거를 소유하지 않는다.
+        /// </summary>
+        public System.Action<string> Report
+        {
+            get => _ctx.Report;
+            set => _ctx.Report = value;
+        }
 
         public MatchDefinition Definition => _def;
         public BattleWorld World => _world;

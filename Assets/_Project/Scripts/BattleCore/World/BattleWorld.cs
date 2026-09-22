@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Mathematics;
 using Wassup.Battle.Units;
+using Wassup.BattleCore.Combat.Projectile;
 
 namespace Wassup.BattleCore
 {
@@ -39,6 +40,27 @@ namespace Wassup.BattleCore
         // 생산자가 곧바로 붙이면 「먼저 온 쪽이 이긴다」가 생산자 순서에 매인다.
         private readonly List<AggroRequest> _aggroRequests = new List<AggroRequest>(16);
         public List<AggroRequest> AggroRequests => _aggroRequests;
+
+        // unit 3 — 날아가는 것들. 유닛과 **같은 id 공간**을 쓴다(한 판 안에서 번호를 재사용하지
+        // 않는다는 계약이 개체 종류를 가리지 않기 때문이다).
+        private readonly List<Projectile> _projectiles = new List<Projectile>(32);
+        private readonly Dictionary<int, Projectile> _projById = new Dictionary<int, Projectile>(32);
+        private readonly Stack<Projectile> _projPool = new Stack<Projectile>(32);
+        public IReadOnlyList<Projectile> Projectiles => _projectiles;
+
+        // unit 3 — **요청 줄 셋.** 전부 「사실」이 아니라 「해 달라」이고, 게이트는 받는 쪽이 갖는다.
+        //   · 발사 — 공격 루프가 넣고 `TickProjectilePhase` 가 소비한다(한 틱에 같은 주체가
+        //     서로 독립인 발사를 여러 개 낼 수 있다 — 옛 캐리어 엔티티가 나르던 규칙).
+        //   · 군중 제어 — 부여 측이 넣고 슬롯 적용은 unit 6 이 한다.
+        //   · 기상 — 피격으로 잠을 깨우는 요청. **그 틱에 새로 걸린 수면은 대상에서 뺀다**(C9).
+        private readonly List<ProjectileRequest> _projectileRequests = new List<ProjectileRequest>(16);
+        public List<ProjectileRequest> ProjectileRequests => _projectileRequests;
+
+        private readonly List<CcRequest> _ccRequests = new List<CcRequest>(16);
+        public List<CcRequest> CcRequests => _ccRequests;
+
+        private readonly List<WakeRequest> _wakeRequests = new List<WakeRequest>(8);
+        public List<WakeRequest> WakeRequests => _wakeRequests;
 
         public int Count => _units.Count;
 
@@ -83,11 +105,32 @@ namespace Wassup.BattleCore
         }
 
         /// <summary>
-        /// **유일한 제거 경로.** 목록·사전에서 빼고, 풀에 돌려주고, `UnitDestroyed` 를 낸다.
+        /// 탄 하나를 만든다. 유닛과 같은 번호 발급기를 쓰고 `ProjectileSpawned` 를 낸다.
+        /// 값은 전부 **발사 시점 스냅샷**이다 — 쏘고 나면 사수 스탯이 변해도 탄은 안 변한다.
+        /// </summary>
+        public Projectile SpawnProjectile(int tick)
+        {
+            var p = _projPool.Count > 0 ? _projPool.Pop() : new Projectile();
+            p.Reset();
+            p.Id = new SimEntityId(_nextId++);
+            _projectiles.Add(p);          // id 단조 증가 → append 가 곧 오름차순
+            _projById[p.Id.Value] = p;
+            return p;
+        }
+
+        public Projectile FindProjectile(SimEntityId id)
+            => _projById.TryGetValue(id.Value, out var p) ? p : null;
+
+        /// <summary>
+        /// **유일한 제거 경로.** 목록·사전에서 빼고, 풀에 돌려주고, 소멸 사건을 낸다.
+        /// 유닛과 탄이 **같은 함수**를 쓰는 이유: 두 번째 제거 경로를 만들면 계약 7
+        /// (「모든 소멸은 소멸 이벤트를 낸다」)이 종류마다 따로 지켜져야 하고, 그러면
+        /// 언젠가 한쪽이 조용히 빠진다.
         /// 이미 없는 id 는 false(중복 소멸은 사건이 아니다).
         /// </summary>
         public bool Destroy(SimEntityId id, int tick)
         {
+            if (_projById.TryGetValue(id.Value, out var proj)) return DestroyProjectile(proj, tick);
             if (!_byId.TryGetValue(id.Value, out var u)) return false;
 
             // 소멸 이벤트는 **빼기 전에** 값을 읽어 만든다 — `Reset` 뒤에 읽으면 자리도
@@ -103,6 +146,36 @@ namespace Wassup.BattleCore
 
             _bus.Publish(ev);
             return true;
+        }
+
+        private bool DestroyProjectile(Projectile p, int tick)
+        {
+            // 소멸 이벤트는 **빼기 전에** 값을 읽어 만든다 — 자리도 원점 몸도 0 으로 새면
+            // 뷰가 착탄 연출을 엉뚱한 곳에 튼다(유닛 쪽과 같은 함정).
+            var ev = CoreEvent.ProjectileDespawned(tick, p);
+
+            _projById.Remove(p.Id.Value);
+            int index = IndexOfProjectile(p.Id);
+            if (index >= 0) _projectiles.RemoveAt(index);
+
+            p.Reset();
+            _projPool.Push(p);
+
+            _bus.Publish(ev);
+            return true;
+        }
+
+        private int IndexOfProjectile(SimEntityId id)
+        {
+            int lo = 0, hi = _projectiles.Count - 1;
+            while (lo <= hi)
+            {
+                int mid = (lo + hi) >> 1;
+                int v = _projectiles[mid].Id.Value;
+                if (v == id.Value) return mid;
+                if (v < id.Value) lo = mid + 1; else hi = mid - 1;
+            }
+            return -1;
         }
 
         // 목록이 오름차순이라 이분 탐색이 성립한다. 선형 탐색을 쓰면 소멸이 O(n),
@@ -139,6 +212,20 @@ namespace Wassup.BattleCore
                 h = Fnv(h, Quantize(u.HitRadius));
                 h = Fnv(h, Quantize(u.Health));
                 h = Fnv(h, (u.Dead ? 1 : 0) | (u.Deploying ? 2 : 0));
+            }
+            // 날아가는 것도 상태다 — 빼면 「이벤트는 같은데 탄 위치가 갈렸다」를 못 잡는다.
+            // 탄이 없는 판은 이 루프가 한 번도 안 돌아 unit 1·2 의 지문이 그대로 유지된다.
+            for (int i = 0; i < _projectiles.Count; i++)
+            {
+                var p = _projectiles[i];
+                h = Fnv(h, p.Id.Value);
+                h = Fnv(h, (int)p.Movement);
+                h = Fnv(h, (int)p.Payload);
+                h = Fnv(h, Quantize(p.Position.x));
+                h = Fnv(h, Quantize(p.Position.y));
+                h = Fnv(h, Quantize(p.Position.z));
+                h = Fnv(h, Quantize(p.Elapsed));
+                h = Fnv(h, Quantize(p.Damage));
             }
             return h;
         }

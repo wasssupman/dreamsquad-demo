@@ -61,9 +61,6 @@ namespace Wassup.BattleCore
         /// <summary>자기주도 이동 잠금(CC·도약 비행). 외력은 이 게이트 밖이다.</summary>
         public bool Locked;
 
-        /// <summary>이번 틱의 코어 결정 상태(`EnemyAi.Evaluate` 결과).</summary>
-        public Wassup.UnitAi.AiState Ai = Wassup.UnitAi.AiState.Marching;
-
         /// <summary>순찰 유닛의 이번 틱 자기주도 방향. zero = 정지.</summary>
         public float2 PatrolStep;
 
@@ -84,7 +81,6 @@ namespace Wassup.BattleCore
             HasBlink = false;
             BlinkTo = float3.zero;
             Locked = false;
-            Ai = Wassup.UnitAi.AiState.Marching;
             PatrolStep = float2.zero;
         }
     }

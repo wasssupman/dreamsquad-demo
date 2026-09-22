@@ -35,6 +35,9 @@ namespace Wassup.BattleCoreUnity
                 Enemies = BuildEnemies(enemies),
                 Map = BuildMap(in map, tileSize),
             };
+            // unit 3 — 전투 저작(공격·탄·발사 명세)을 같은 줄에 채워 넣는다. **해시를 굽기 전**
+            // 이어야 한다 — 뒤에 두면 「스탯을 바꿨는데 해시가 그대로」가 된다.
+            CombatDefinitionBuilder.Fill(def, defenders, enemies);
             def.ConfigHash = def.ComputeConfigHash();
             return def;
         }
@@ -116,31 +119,37 @@ namespace Wassup.BattleCoreUnity
         {
             if (src == null) return System.Array.Empty<UnitDef>();
             var outp = new UnitDef[src.Length];
-            for (int i = 0; i < src.Length; i++)
-            {
-                var d = src[i];
-                if (d == null) continue;
-                var fp = d.Footprint;
-                outp[i] = new UnitDef
-                {
-                    Id = d.id,
-                    Health = d.health,
-                    AttackRange = d.attackRange,
-                    AttackCooldown = d.attackCooldown,
-                    HitDelaySeconds = d.hitDelaySec,
-                    AttackTargetCount = d.attackTargetCount,
-                    BodyRadiusTiles = d.BodyRadiusTiles,
-                    FootprintWidth = fp.x,
-                    FootprintHeight = fp.y,
-                    PlacementLayers = (int)d.EffectivePlacementLayers,
-                    TraversalLayers = (int)d.EffectiveTraversalLayers,
-                    Role = (int)d.role,
-                    AttackShape = (int)d.attackShape,
-                    AggroCapacity = d.aggroCapacity,
-                    TargetFactions = (int)d.targetFactions,
-                };
-            }
+            for (int i = 0; i < src.Length; i++) outp[i] = ToUnitDef(src[i]);
             return outp;
+        }
+
+        /// <summary>
+        /// 방어유닛 SO 한 장 → 정의표 한 줄. `public` 인 이유: 순찰 소환물처럼 **카탈로그에
+        /// 없는** 에셋을 unit 3 의 전투 빌더가 표에 편입해야 한다(그쪽이 같은 변환을 복제하면
+        /// 두 벌이 갈린다).
+        /// </summary>
+        public static UnitDef ToUnitDef(DefenderUnitData d)
+        {
+            if (d == null) return default;
+            var fp = d.Footprint;
+            return new UnitDef
+            {
+                Id = d.id,
+                Health = d.health,
+                AttackRange = d.attackRange,
+                AttackCooldown = d.attackCooldown,
+                HitDelaySeconds = d.hitDelaySec,
+                AttackTargetCount = d.attackTargetCount,
+                BodyRadiusTiles = d.BodyRadiusTiles,
+                FootprintWidth = fp.x,
+                FootprintHeight = fp.y,
+                PlacementLayers = (int)d.EffectivePlacementLayers,
+                TraversalLayers = (int)d.EffectiveTraversalLayers,
+                Role = (int)d.role,
+                AggroCapacity = d.aggroCapacity,
+                TargetFactions = (int)d.targetFactions,
+                MoveSpeed = d.moveSpeed,
+            };
         }
 
         private static EnemyDef[] BuildEnemies(AttackUnitData[] src)
@@ -169,7 +178,6 @@ namespace Wassup.BattleCoreUnity
                     StabilityDamage = e.stabilityDamage,
                     DetectionRange = e.detectionRange,
                     AwakeningReward = e.awakeningReward,
-                    AttackShape = (int)e.attackShape,
                     EngageMovement = (int)e.engageMovement,
                     TargetFactions = (int)e.targetFactions,
                     WaypointPathIndex = e.waypointPathIndex,

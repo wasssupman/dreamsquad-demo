@@ -29,6 +29,18 @@ namespace Wassup.BattleCore
 
         /// <summary>이 틱의 번호(0 부터). `MatchClock` 이 단계 끝에서 올린다.</summary>
         public int Tick;
+
+        /// <summary>unit 3 — 트리거 레이어가 들어올 자리. 오늘은 등록된 핸들러가 0 이다.</summary>
+        public SeamHooks Seams;
+
+        /// <summary>
+        /// unit 3 — 진단 통로. **조용한 무동작 금지**(C4)의 이행 수단이다: 규칙이 발동했는데
+        /// 실행할 팔이 없으면 여기로 말한다(횟수는 이미 소비된 채로).
+        /// null 이면 버린다 — 코어는 로거를 소유하지 않는다(엔진을 모른다).
+        /// </summary>
+        public System.Action<string> Report;
+
+        public void Warn(string message) => Report?.Invoke(message);
     }
 
     public sealed class TickPipeline

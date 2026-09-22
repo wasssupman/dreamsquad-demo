@@ -32,6 +32,18 @@ namespace Wassup.BattleCore
         Detected = 5,
         AggroAcquired = 6,
         Blinked = 7,
+        // ── unit 3 (전투 판정) ──
+        AttackResolved = 8,
+        ProjectileSpawned = 9,
+        ProjectileDespawned = 10,
+        ProjectileHit = 11,
+        DamageApplied = 12,
+        HealApplied = 13,
+        ShieldBroken = 14,
+        UnitSlain = 15,
+        Knockup = 16,
+        LeapAscend = 17,
+        LeapDescend = 18,
     }
 
     public struct CoreTraceEvent
@@ -104,6 +116,17 @@ namespace Wassup.BattleCore
                 case CoreEventKind.Detected: channel = CoreTraceChannel.Detected; return true;
                 case CoreEventKind.AggroAcquired: channel = CoreTraceChannel.AggroAcquired; return true;
                 case CoreEventKind.Blinked: channel = CoreTraceChannel.Blinked; return true;
+                case CoreEventKind.AttackResolved: channel = CoreTraceChannel.AttackResolved; return true;
+                case CoreEventKind.ProjectileSpawned: channel = CoreTraceChannel.ProjectileSpawned; return true;
+                case CoreEventKind.ProjectileDespawned: channel = CoreTraceChannel.ProjectileDespawned; return true;
+                case CoreEventKind.ProjectileHit: channel = CoreTraceChannel.ProjectileHit; return true;
+                case CoreEventKind.DamageApplied: channel = CoreTraceChannel.DamageApplied; return true;
+                case CoreEventKind.HealApplied: channel = CoreTraceChannel.HealApplied; return true;
+                case CoreEventKind.ShieldBroken: channel = CoreTraceChannel.ShieldBroken; return true;
+                case CoreEventKind.UnitSlain: channel = CoreTraceChannel.UnitSlain; return true;
+                case CoreEventKind.Knockup: channel = CoreTraceChannel.Knockup; return true;
+                case CoreEventKind.LeapAscend: channel = CoreTraceChannel.LeapAscend; return true;
+                case CoreEventKind.LeapDescend: channel = CoreTraceChannel.LeapDescend; return true;
                 default: channel = default; return false;
             }
         }

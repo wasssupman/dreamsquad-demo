@@ -18,6 +18,12 @@ namespace Wassup.BattleCore
         DebugDestroy = 5,
         /// <summary>unit 2 — 길목을 막았다 풀었다 하는 디버그 손잡이(우회 시나리오의 입력).</summary>
         DebugSetObstacle = 6,
+        /// <summary>
+        /// unit 3 — 방어유닛을 **판정 없이** 세운다. 코스트·쿨다운·보드 상한·손패는
+        /// `PlacementService`(unit 4)의 것이고, 골든이 그것을 기다리면 조각 A 의 검증 질문
+        /// (「헤드리스로 3분 판 완주」)에 답할 수 없다.
+        /// </summary>
+        DebugSpawnDefender = 7,
     }
 
     // 거절 사유. 옛 `PlacementRejectReason` · `DcRejectReason` 의 값을 **이름으로** 옮겼다
@@ -139,6 +145,17 @@ namespace Wassup.BattleCore
             Kind = CommandKind.DebugDestroy,
             DefIndex = -1,
             Target = target,
+            Lane = -1,
+        };
+
+        /// <summary>판정 없이 방어유닛을 세운다(하네스·골든 전용).</summary>
+        public static Command DebugSpawnDefender(int defIndex, int2 cell, float2 facing = default) => new Command
+        {
+            Kind = CommandKind.DebugSpawnDefender,
+            DefIndex = defIndex,
+            Cell = cell,
+            Facing = facing,
+            Target = SimEntityId.None,
             Lane = -1,
         };
 

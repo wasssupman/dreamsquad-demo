@@ -26,6 +26,37 @@ namespace Wassup.BattleCore
         AggroAcquired = 7,
         /// <summary>순간이동 완료. 위치를 소유한 곳(이동)이 낸다.</summary>
         Blinked = 8,
+
+        // ── unit 3 (전투 판정) ──
+        /// <summary>공격이 **성사됐다**(RESOLVE). `Arg` = 이 공격이 때린 대상 수.</summary>
+        AttackResolved = 9,
+        /// <summary>탄이 나갔다. `Arg` = `MovementKind`, `Amount` = 피해 스냅샷.</summary>
+        ProjectileSpawned = 10,
+        /// <summary>탄이 사라졌다. 모든 소멸은 소멸 사건을 낸다(계약 7).</summary>
+        ProjectileDespawned = 11,
+        /// <summary>탄이 닿았다. `Arg` = 이 착탄이 때린 대상 수.</summary>
+        ProjectileHit = 12,
+        /// <summary>
+        /// 피해가 적용됐다. `Amount` = 실제로 들어간 양, `Arg` = 흡수량(정수 격자).
+        /// `SiteTarget.OriginBody` 자리에 **그 틱 최종 체력 비율**을 싣는다(C7).
+        /// </summary>
+        DamageApplied = 13,
+        /// <summary>회복 펄스. 초당 재생은 여기 오지 않는다(조용히 흐른다).</summary>
+        HealApplied = 14,
+        /// <summary>실드 합이 양수에서 0 이 된 **그 순간**. 시간 만료는 구조적으로 배제된다.</summary>
+        ShieldBroken = 15,
+        /// <summary>
+        /// **피해로** 죽었다. `A` = 때린 자, `B` = 죽은 자. 분열·처치 보상의 사건이고
+        /// `UnitDestroyed`(제거)와 다른 축이다 — 출처 없는 죽음은 이 사건을 안 낸다.
+        /// </summary>
+        UnitSlain = 16,
+        /// <summary>띄우기 연출. **띄운 쪽이 대상을 직접 신호한다** — 심에서 넉업은 짧은 기절이라
+        /// 뷰가 군중 제어 종류로는 일반 기절과 구분할 수 없다.</summary>
+        Knockup = 17,
+        /// <summary>도약 이탈. `Arg` = 궁극기(1) / 일반(0).</summary>
+        LeapAscend = 18,
+        /// <summary>도약 강하. 일반 도약은 sim 이 이미 착지했고 뷰만 난다.</summary>
+        LeapDescend = 19,
         // append-only. 번호를 재사용하면 구운 골든이 다른 사건으로 읽힌다.
 
         /// <summary>
@@ -163,5 +194,102 @@ namespace Wassup.BattleCore
                              u.Id, SimEntityId.None,
                              new Site(from, u.HitRadius), new Site(u.Position, u.HitRadius),
                              u.Faction, 0, 0f);
+
+        // ── unit 3 ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 공격 성사. `SiteFired` = 공격자(몸 붙음 — 「몸에서 나오는 것」) ·
+        /// `SiteTarget` = 주 대상 자리, `Amount` = 실주기(애니가 실발사보다 빨리 끝나지 않게).
+        /// </summary>
+        public static CoreEvent AttackResolved(int tick, Unit attacker, SimEntityId target,
+                                               float3 targetPos, float targetBody,
+                                               int hitCount, float period)
+            => new CoreEvent(CoreEventKind.AttackResolved, tick,
+                             attacker.Id, target,
+                             new Site(attacker.Position, attacker.HitRadius),
+                             new Site(targetPos, targetBody),
+                             attacker.Faction, hitCount, period);
+
+        /// <summary>
+        /// 탄 발사. `SiteFired.OriginBody` 가 **제약 13 의 원점 항**을 경계 너머로 나른다 —
+        /// 0 이면 「자리에 떨어지는 것」이다.
+        /// </summary>
+        public static CoreEvent ProjectileSpawned(int tick, Combat.Projectile.Projectile p)
+            => new CoreEvent(CoreEventKind.ProjectileSpawned, tick,
+                             p.Id, p.Owner,
+                             new Site(p.Position, p.OriginBodyRadius),
+                             new Site(p.Impact, 0f),
+                             p.OwnerFaction, (int)p.Movement, p.Damage);
+
+        public static CoreEvent ProjectileDespawned(int tick, Combat.Projectile.Projectile p)
+            => new CoreEvent(CoreEventKind.ProjectileDespawned, tick,
+                             p.Id, p.Owner,
+                             new Site(p.Position, p.OriginBodyRadius),
+                             Site.Nowhere,
+                             p.OwnerFaction, (int)p.Payload, p.Elapsed);
+
+        public static CoreEvent ProjectileHit(int tick, Combat.Projectile.Projectile p,
+                                              SimEntityId victim, int hitCount)
+            => new CoreEvent(CoreEventKind.ProjectileHit, tick,
+                             p.Id, victim,
+                             new Site(p.Position, p.OriginBodyRadius),
+                             Site.Nowhere,
+                             p.OwnerFaction, hitCount, p.Damage);
+
+        /// <summary>
+        /// 피해 적용. **체력 비율은 그 틱의 최종값**이다(C7) — 뷰가 계산하면 같은 틱의
+        /// 숫자들이 서로 다른 비율을 나른다. 그래서 값으로 싣고, 자리는 `SiteTarget` 이다.
+        /// </summary>
+        public static CoreEvent DamageApplied(int tick, Unit victim, SimEntityId source,
+                                              float amount, float absorbed, float hpRatioFinal)
+            => new CoreEvent(CoreEventKind.DamageApplied, tick,
+                             source, victim.Id,
+                             Site.Nowhere,
+                             new Site(victim.Position, hpRatioFinal),
+                             victim.Faction, (int)(absorbed * 1000f), amount);
+
+        public static CoreEvent HealApplied(int tick, Unit target, float amount)
+            => new CoreEvent(CoreEventKind.HealApplied, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, 0, amount);
+
+        public static CoreEvent ShieldBroken(int tick, Unit target)
+            => new CoreEvent(CoreEventKind.ShieldBroken, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, 0, 0f);
+
+        /// <summary>
+        /// 피해로 죽었다. **몸 반경·진영은 발화 시점 스냅샷**이다 — 드레인 시점에 다시 읽으면
+        /// 0 으로 새어 사망 폭발이 조용히 좁아진다(제약 13 이 두 번 당한 함정).
+        /// </summary>
+        public static CoreEvent UnitSlain(int tick, SimEntityId killer, Unit victim)
+            => new CoreEvent(CoreEventKind.UnitSlain, tick,
+                             killer, victim.Id,
+                             Site.Nowhere,
+                             new Site(victim.Position, victim.HitRadius),
+                             victim.Faction, (int)victim.Kind, victim.MaxHealth);
+
+        public static CoreEvent Knockup(int tick, Unit target, float seconds, float height)
+            => new CoreEvent(CoreEventKind.Knockup, tick,
+                             target.Id, SimEntityId.None,
+                             new Site(target.Position, target.HitRadius), Site.Nowhere,
+                             target.Faction, (int)(height * 1000f), seconds);
+
+        /// <summary>도약 이탈. `ultimate` = 궁극기(판 밖으로 나간다) / 일반(비행 중에도 맞는다).</summary>
+        public static CoreEvent LeapAscend(int tick, Unit u, float3 landing, bool ultimate, float seconds)
+            => new CoreEvent(CoreEventKind.LeapAscend, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius),
+                             new Site(landing, 0f),   // 착지 자리는 **자리형**이다(0 = 칸)
+                             u.Faction, ultimate ? 1 : 0, seconds);
+
+        public static CoreEvent LeapDescend(int tick, Unit u, float3 landing, bool ultimate)
+            => new CoreEvent(CoreEventKind.LeapDescend, tick,
+                             u.Id, SimEntityId.None,
+                             new Site(u.Position, u.HitRadius),
+                             new Site(landing, 0f),
+                             u.Faction, ultimate ? 1 : 0, 0f);
     }
 }

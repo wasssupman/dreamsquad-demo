@@ -191,6 +191,11 @@ namespace Wassup.Tests.EditMode.Core
             match.Tick();
             Assert.IsFalse(match.World.Find(new SimEntityId(2)).Aggro.Target.IsNone);
 
+            // ⚠ unit 3 부터 **히트가 어그로를 다시 문다.** 이 테스트가 묻는 것은 「시한이 준다」
+            // 하나라, 가디언의 공격을 떼어 재획득이 끼어들지 못하게 한다. 재획득 쪽 증언은
+            // `CombatRulesTests.가디언은_때린_적을_끌어온다` 가 따로 한다.
+            match.World.Find(new SimEntityId(1)).Attack = null;
+
             for (int t = 0; t < 60; t++) match.Tick();
             Assert.IsTrue(match.World.Find(new SimEntityId(2)).Aggro.Target.IsNone,
                 "0 은 무기한 센티널이고 >0 만 감소한다");
