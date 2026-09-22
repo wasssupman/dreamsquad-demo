@@ -12,7 +12,7 @@
 > 구현 상세의 정본은 코드이고, 이 문서가 코드와 어긋나면 **그 자리에서 이 문서를 고친다.**
 >
 > 작성 2026-09-03 · §1 추가 2026-09-04 · **전면 재정합 2026-09-21**(5개 영역 병렬 대조 — 공격·판정 / 이동·맵·웨이브 /
-> 상태효과·드림캐쳐·스킬 / 투사체·경제·판정 / 프레임·채널·뷰). 기준 커밋 `ccec4a1d` + 미커밋 `defender-deploy-phase`.
+> 상태효과·드림캐쳐·스킬 / 투사체·경제·판정 / 프레임·채널·뷰) · **2026-09-22 추가 반영**(`defender-deploy-phase` 착지 · `defender-autobattle-ai` 신설 — 엔진-프리 레이어 둘째). 기준 커밋 `bcb88dda`.
 > 경로는 `Assets/_Project/Scripts/` 기준.
 > (구 `docs/TRD.md`·`docs/PRD.md` 는 2026-09-03 은퇴.)
 
@@ -41,7 +41,7 @@ flowchart LR
         B3["커맨드<br/>배치 · 퇴근 · 카드 부착 · 액티브 시전"]
         B4["31 채널 드레인 · 뷰 sync · EndMatch"]
     end
-    subgraph ECS["BattleSimGroup — 시스템 56"]
+    subgraph ECS["BattleSimGroup — 시스템 57"]
         CTX["Units · Movement · Combat · Effects"]
         SK["Skills 디스패처 7 seam<br/>→ ISkill concrete 34 (ECS 무참조)"]
     end
@@ -105,7 +105,7 @@ flowchart LR
 1. **후보 수집** — 타겟 진영 마스크 ∩ 타겟 통행층 ∩ 상태 필터. 판에서 빠지는 것은 **배치 중**(놓였지만 아직 참여 전) · **사망 대기**(파괴 직전) · **판 밖으로 이탈한 도약자**(궁극기의 예고 구간) 셋이다 — **일반 도약은 비행 중에도 후보로 남는다**(공중의 유닛도 맞는다). 마음은 본능이 살아 있는 동안 후보에서 빠진다(§1.13). 거점도 일반 후보(타입 우선순위 없음).
 2. **사거리** — 몸과 몸 사이 거리: `d ≤ 사거리 + 내 반지름 + 상대 반지름`. 격자 보정항 없음. **획득·유지·정지는 언제나 이 원 하나다** — 방향 도형은 이 단계에 없고 6단계의 부가 타격에만 붙는다(사거리 안인데 가만히 선 유닛을 만들지 않는 것이 이 분리의 이유).
 3. **선정기** — Nearest / Frontmost(진행도) / LowestHealth(힐) · 어그로·도발이 걸려 있으면 그 대상 우선 · **지속 락**(한 번 잡은 대상은 사거리 이탈·사망까지 유지).
-4. **쿨다운 · 행동 페이즈** — 쿨다운은 CC 중에도 계속 감소한다(풀리면 즉시 공격). 「지금 행동을 시작할 수 있나」는 **한 표**가 답한다: **사망 대기 > 배치 중 > 행동 잠금**(Stun·Sleep 또는 도약 비행) **> 스윙 중**(히트 딜레이 대기) **> 자유**. 위 둘은 1단계에서 이미 판에서 빠져 있고, 아래 둘은 **START 만** 막는다 — 이미 시작한 스윙의 RESOLVE 는 어느 랭크에서도 완료된다. 넉백은 **외력**이라 이 표에 없다(자기주도 행동을 막지 않는다).
+4. **쿨다운 · 행동 상태** — 쿨다운은 CC 중에도 계속 감소한다(풀리면 즉시 공격). 「이 유닛이 지금 무엇을 하고 있나」는 **이름 붙은 한 상태**가 답하고, 큰 랭크가 이긴다: **배치 중**(판에 없다) **> 잠김**(기절·수면 또는 도약 비행) **> 교전 중**(스윙을 시작해 타격 판정을 기다린다) **> 유지 중**(소환사가 자기 소환물이 살아 있는 동안) **> 대기**. 공격을 **시작할 수 있는 것은 대기와 유지 중 둘뿐**이다(유지 중도 시도한다 — 소환물이 살아 있으면 스폰을 건너뛰고 쿨만 리셋하는 것이 오늘의 규칙이라, 그 리셋이 없으면 소환물이 죽는 즉시 재소환이 된다). 사망 대기는 이 상태의 입력이 아니라 **1단계에서 이미 판에서 빠지는** 축이다. 「잠김」은 **START 만** 막는다 — 이미 시작한 스윙의 RESOLVE 는 어느 랭크에서도 완료된다. 넉백은 **외력**이라 이 표에 없다(자기주도 행동을 막지 않는다). 「타겟이 있나」는 이 상태가 **모른다** — 타겟 스캔을 복제하지 않으려고 일부러 뺐고, 그건 공격 단계가 자기 결과로 안다.
 5. **START** — 애니 신호 · 쿨다운 리셋 · 히트 딜레이 시작.
 6. **RESOLVE** — 대상 재판정 → **출력 목록** 적용: `Damage` / `Heal` / `ApplyStat`(스탯 모디파이어) / `ApplyStack`(스택). 근접은 피해 인박스에 직접, 원거리는 투사체 요청. **다중 대상**(대상 수 상한 — 주 대상은 2단계의 원에서 뽑고, **부가 타격만** 「주 대상을 향한 실제 방향」을 축으로 세운 도형 안에서 고른다. 도형 미저작 = 전방위 = 항등원이라 대상 수가 1이면 도형은 아무 일도 하지 않는다) · 카드 공격 변조(튕김·최전열·수면 특효) · 넉백 CC · 가디언이면 **맞은 적**이 곧 어그로 대상(별도 획득 반경이 따로 있는 게 아니다) · **공격 트리거 카운트**(§1.11 Attack seam).
 
@@ -242,7 +242,7 @@ flowchart LR
 |---|---|---|---|
 | **판 밖 정본** | `Data/DefenderUnitData.cs` · `Data/AttackUnitData.cs` (+`DefenderCatalog`/`EnemyCatalog`). **시트가 덮는다**. 시각 백엔드도 여기서 갈린다 — `spriteMotions`(`UnitSpriteMotionSet`)가 비면 Spine, 차 있으면 스프라이트(방어·적 공통 `ISpineUnitVisualData`) | `Data/Dreamcatcher/DreamcatcherCard.cs` 한 종류. `type`(Squad/Unit/Active) · `mechanics[]` = **트리거 × 페이로드** 직교 조합(`DcMechanic.cs`) · `attackMods[]` · Active 는 `SkillData` 를 감쌈 | `Core/MapStage/MapStage.cs` 루트 + 프랍 컴포넌트(`SpawnMarker`/`GoalMarker`/`RouteMarker`/`StructureMarker`/`BonusSpawnMarker`/`PropFootprint`/`PlacementBlockZone`). `Data/MapStage/MapStagePool.cs` 가 **(stage, deck, plan) 짝**을 시드로 고른다 |
 | **매치 구성 시** | `BattleBridge.defenderPool`(= 트레이 슬롯) · `GeneratedWavePlan`(적 로스터 — 저작 플랜 > 인카운터 플랜 > 시드 생성) | `Core/Dreamcatcher/DreamcatcherCycleDeck.cs` **12장** = 저장 덱 10 + 공용 액티브 2. 매치 시드 Fisher-Yates 1회. 각성 게이지 `gaugeStart` | `Data/GeneratedMap.cs` — `tiles`(Walk/Deco) · `placeMask`(셀이 여는 배치 층 비트) · `spawns` · `goals` · `waypointCells/Ranges` · `spawnRoutes` · `structures` · `bonusSpawns` |
-| **ECS 안** | `Entity` + 맥락별 컴포넌트(축은 §1.2). 방어유닛은 `PathFollowState` 없음(순찰 소환물 예외), 적은 `IncomingHeal` 없음 | **캐리어 엔티티 없음.** host 유닛 엔티티의 `DcTriggerSlot`(Combat) · `DcAttackModSlot`(Combat) · `DamagedCounter`(Units) 버퍼. **Squad 카드는 ECS 에 존재하지 않는다**(브리지 리스트 + `StatModifierApplyEvent`) | `FlowFieldSingleton`(Effects) — 슬롯 = **목적지 × 통행 마스크**, 슬롯별 BFS · `DefenderFieldSingleton`(무제한 사냥 전용) · `DetectionChaseDist`/`Flow`(Combat, 적별 대상 지향 추격판) · `PickupSpawnState` · 거점 엔티티(골 타워 `GoalTowerTag`, 본능 `StructureTag`, Units) |
+| **ECS 안** | `Entity` + 맥락별 컴포넌트(축은 §1.2). 방어유닛은 `PathFollowState` 없음(순찰 소환물 예외), 적은 `IncomingHeal` 없음. **행동 상태는 ECS 가 «저장»하되 «결정»은 밖에서 한다** — `Wassup.UnitAi`(엔진 참조 불가)가 plain 값 스냅샷을 받아 상태를 돌려주고, `DefenderAiStateSystem`(Combat, 유일 writer)이 입력을 만들어 그 답을 저장한다. 적도 같은 공통 술어층을 쓴다 | **캐리어 엔티티 없음.** host 유닛 엔티티의 `DcTriggerSlot`(Combat) · `DcAttackModSlot`(Combat) · `DamagedCounter`(Units) 버퍼. **Squad 카드는 ECS 에 존재하지 않는다**(브리지 리스트 + `StatModifierApplyEvent`) | `FlowFieldSingleton`(Effects) — 슬롯 = **목적지 × 통행 마스크**, 슬롯별 BFS · `DefenderFieldSingleton`(무제한 사냥 전용) · `DetectionChaseDist`/`Flow`(Combat, 적별 대상 지향 추격판) · `PickupSpawnState` · 거점 엔티티(골 타워 `GoalTowerTag`, 본능 `StructureTag`, Units) |
 | **뷰** | 백엔드 **3종**, 값 타입은 추상 베이스 `Presentation/UnitView.cs`(인터페이스로 두면 Unity fake-null 이 새어 생존 판정이 깨진다). **선택 지점은 `SpineUnitPool.TrySpawn` 한 곳** — SO 에 스프라이트 모션 세트가 있으면 `SpriteUnitView`, 없으면 `SpineUnitView`, 둘 다 없으면 호출측이 `QuadUnitViewPool`(개발용 폴백)로 간다. 대기 루프 + 주기적 컷 규칙은 백엔드 중립 순수 구조체(`IdleBreakCycle`)가 소유하고 두 백엔드가 같이 소비 · 오버헤드 HP 는 매 프레임 폴링 | 손패 뷰 · 머리 위 카드 아이콘 스트립 · `DcAuraVisualPool` | **스테이지 인스턴스 자체가 바닥** · `Core/TilemapMapView.cs` 는 오버레이(격자·마커·사거리 링)만 · `Core/BoardSpace.cs` 가 sim↔view 변환 유일 지점 |
 | **브리지 등록부** | `_defenderByTile`(앵커 셀 → Entity+SO, **판 위 유닛의 유일한 진실원**) · `_defenderCellOwner`(점유 셀 → 앵커) · `_enemyTypeByEntity`(Entity → SO) | `_activeDcEffects`(Squad) · `_activePlacementSleeps` · HandController `_attachedTo`(entryId → Entity) | `_generatedMap` · `_occupiedTiles`(항상 `_defenderCellOwner` 와 쌍) · `_structureRegistry` · `_effectTilesByCell`(칸 → 효과 타일 종류) · 골/스폰 마커 등록부 |
 | **판 안에서 변하는 것** | 배치·사망·퇴근으로 생멸. 스탯은 `ModifierStats` 배율로만 | 부착·회수로 큐가 순환, 게이지 증감 | **`placeMask` 만** 라이브 폐쇄(스폰·골·거점 footprint). 통행은 불변, 동적 장애물은 `ObstacleSingleton` 별도 |
@@ -304,7 +304,7 @@ flowchart TD
 → CheckTimer                    (→ EndMatch "complete")
 ```
 
-### 4.2 `BattleSimGroup` — 56 시스템을 밴드로
+### 4.2 `BattleSimGroup` — 57 시스템을 밴드로
 
 `RateManager = BattleScaledRateManager` 가 그룹 한 지점에서 dt 를 스케일한다. **슬로모는 뷰 전용이 아니다** — 그룹 안 모든 `SystemAPI.Time.DeltaTime` 이 스케일되고, `scale <= 0` 이면 그룹 전체가 쉰다. 결정론은 스케일이 아니라 **틱 순서**가 지킨다.
 
@@ -312,7 +312,7 @@ flowchart TD
 |---|---|---|---|
 | **A. 필드·상태 준비** | `HazardLifetime` · `Obstacle/FlowFieldRebuild` · `DefenderField` · `PatrolField` · `AggroState` · `ModifierApply` · `CcApply` · `ZoneApply` · `AllyBuffField` · `BossPeriodicTrigger` → **[Periodic seam]** | Effects · Combat | 맵(장애물→필드) 과 드림캐쳐(모디파이어 큐 소비, 주기/배치 트리거) 가 유닛 상태에 먼저 도착 |
 | **B. 사망 수렴 · 배치 활성화** | `HealthDeath` · `LethalTimer` · `DeploymentActivation`(`UpdateAfter(BossPeriodicTrigger)` — 이번 틱 활성화 → 다음 틱 배치 스킬) | Units | `DeadTag` 합류점 · 배치 페이즈 종료(`PendingDeployment` 제거 + `JustDeployed` 를 같은 ECB 에서) |
-| **C. AI · 이동** | `TauntAttackGrant` · `EnemyAiState` · `StructureDestination` → **`MovementSystem`** → `AgentSeparation` · `HazardCast` → **[Cast seam]** | Combat → Movement → Effects | 유닛이 맵(FlowField 슬롯, 유닛 통행층별 `NavGrid`)을 읽는 유일한 밴드. 포털 텔레포트·토네이도 당김도 여기 |
+| **C. AI · 이동** | `TauntAttackGrant` · `EnemyAiState` · **`DefenderAiState`** · `StructureDestination` → **`MovementSystem`** → `AgentSeparation` · `HazardCast` → **[Cast seam]** | Combat → Movement → Effects | 유닛이 맵(FlowField 슬롯, 유닛 통행층별 `NavGrid`)을 읽는 유일한 밴드. 포털 텔레포트·토네이도 당김도 여기 |
 | **D. 틱 · 투사체 · 스탯 집계** | `EffectTick` · `ProjectileMove` → `ProjectileHit` · `StatModifierTick` → **`ModifierStatsAggregate`**(유일 writer) → `MaxHealthScale` · `StackModifierTick` · `Heat/FatigueAccrual` · `Pickup*` · `ResignationThreshold` | Effects · Combat · Units | 드림캐쳐가 준 배율이 실효 스탯으로 접히는 자리 |
 | **E. 공격 → 피해 → 파괴 → 경계** | **`AttackSystem`** → **[Attack seam]** → **`DamageApplication`** → **[Death seam]** → `ResignationDrop` · `PatrolLifecycle` · `CcClear` · `ProjectileEmitter` · `BarrelExplosion` · `DreamCocoon` · `CcDecay` → **`UnitLifecycle`**(엔티티 파괴 + 골 도달/사망 이벤트) → **[Lifecycle seam]** → `HealthThreshold` → **[Threshold seam]** → `UltimateLeap` → `BlinkApply` | Combat → Units → Movement | 카드 트리거 대부분이 여기서 감지된다(공격마다 · N번째 · 처치 · 피격 · 실드 파열 · 죽음) |
 | **(밖) Immediate seam** | `SkillDispatchImmediateSystem` — **브리지가 `Update()` 를 직접 호출** | Skills | 부착 즉발 3종 · 액티브 시전. 부착은 동기 트랜잭션이라 프레임을 기다릴 수 없다 |
@@ -481,7 +481,7 @@ flowchart TD
 
 1. **`BattleBridge` 밖에서 `EntityManager` 금지, 그리고 브리지 진입은 최후 수단.** 값의 소유자가 노출하고 있는지 먼저 본다 — `CLAUDE.md` 제약 1·12.
 2. **Component 쓰기는 소유 맥락만. 맥락 간은 큐/버퍼.** `Health` 는 Units 만, `ModifierStats` 는 `ModifierStatsAggregateSystem` 만, `EnemyAiState` 는 `EnemyAiStateSystem` 만 — `CLAUDE.md` 제약 2.
-3. **스킬 concrete 는 ECS 를 모른다.** `Wassup.Skills` asmdef 가 Entities 를 참조하지 않아 컴파일이 강제한다. 쓰기는 `ctx.Emit` 만, 직접 쓰기 예외는 폐쇄 목록 4건 — `skill-layer-foundation` 계약 1·3.
+3. **엔진-프리 로직 레이어가 둘이고, 경계는 컴파일러가 지킨다.** `Wassup.Skills`(무엇을 할 것인가)와 `Wassup.UnitAi`(지금 무엇을 하고 있나) 둘 다 `noEngineReferences` 라 **엔진 타입을 쓰면 빌드가 깨진다** — 규율이 아니라 구조다. 둘 다 받는 것은 **plain 값 스냅샷**이고 돌려주는 것은 **결정**이며, ECS 는 입력을 만들고 결정을 실행하는 **적용 레이어**다. 새 판정 로직은 이 형태를 따른다(아키텍처가 바뀌어도 그대로 이식된다). 스킬 concrete 는 ECS 를 모르고, 쓰기는 `ctx.Emit` 만, 직접 쓰기 예외는 폐쇄 목록 4건 — `skill-layer-foundation` 계약 1·3.
 4. **감지는 분산, 실행은 단일.** 통합하면 매 프레임 전 유닛 재스캔이 된다. seam 수는 규칙이 정하지 문서가 정하지 않는다 — `skill-layer-foundation` 계약 6·7.
 5. **이벤트는 값 스냅샷이다.** 죽음 계열은 드레인 시점에 host 가 없다 — `CasterFaction` 까지 실어야 했던 이유 — 계약 8.
    ⚠ **반경은 «자리와 짝»으로 다닌다**(`FiredPosition↔CasterBodyRadius`, `TargetPosition↔EventBodyRadius`). 단일 필드면 시체폭발이 **킬러의 몸**으로 적 시체 위 폭발을 정한다 — `distance-based-range` unit 23b.
@@ -540,7 +540,7 @@ flowchart TD
 | 문서 | 어긋난 것 | 실제 |
 |---|---|---|
 | `CLAUDE.md` Combat 항목 | 「Meteor 해결」 | `MeteorResolutionSystem`·`MeteorPending`·`MeteorBurstEventsSingleton` 코드 0건 — 메테오는 투사체(`SkyFall × TileAoe`) |
-| `../spec/battle-sim-extraction/order-capture.md` | 시스템 48 · 무순서 3 · `ShieldCastSystem` 포함 | **56**(ISystem 49 + 디스패처 7) · 무순서 **4** — `ShieldCastSystem` 삭제(주기 슬롯으로 흡수), `SkillDispatch*` 7 · `DetectionSystem` · `DeploymentActivationSystem` 추가. 재덤프 필요(자동 생성물이라 손으로 고치지 않는다) |
+| `../spec/battle-sim-extraction/order-capture.md` | 시스템 48 · 무순서 3 · `ShieldCastSystem` 포함 | **57**(ISystem 50 + 디스패처 7) · 무순서 **4** — `ShieldCastSystem` 삭제(주기 슬롯으로 흡수), `SkillDispatch*` 7 · `DetectionSystem` · `DeploymentActivationSystem` 추가. 재덤프 필요(자동 생성물이라 손으로 고치지 않는다) |
 | `object-pipeline-map.md` 「스킬 해저드 — Tornado/Meteor/Portal」 | `MeteorPending` · `MeteorResolutionSystem` · `MeteorBurstEventsSingleton` · `ApplyTornado/ApplyMeteor/ApplyPortal` | 전부 은퇴. 액티브는 concrete(`PullFieldSkill`/`PortalSkill`/`TileMeteorSkill`) → Immediate seam |
 | `object-pipeline-map.md` — 적 표 · 거점 표 · 승패 축 | `Data/MapGrid/MapDocument.cs` `structures[]` · `MapDocument.bonusSpawns` · `MapDocument.OnValidate` · `MapDocumentPool.OnValidate` (3곳) | `MapDocument`·`MapDocumentPool` 클래스 **둘 다 없음**(이름만 `MapStagePool` 주석에 계보로 남음). 저작은 `StructureMarker`/`BonusSpawnMarker` 프랍, 런타임은 `GeneratedMap.structures/bonusSpawns`, 풀 검증은 `MapStagePool` |
 | `object-pipeline-map.md` 승패 축 | 「판정은 `CheckEnemyCoreDestroyed`(Update 에서 Sync **다음**)」 | 코드 0건 — 패배 개념 제거(`three-minute-kill-race`)로 은퇴했고, 판을 끝내는 것은 `EndMatch` 호출처 3곳뿐(§8 불변식 9) |
@@ -565,6 +565,7 @@ flowchart TD
 | 게임 규칙 · 동사 4개 · 드림캐쳐 사용법 | `ingame-flow.md` |
 | 새 플레이 오브젝트의 정거장 체크 | `object-pipeline-map.md` |
 | 스킬 레이어 계약 12 · seam 규칙 | `../spec/skill-layer-foundation/README.md` · `../spec/skill-layer-migration/README.md` |
+| 행동 상태 결정 계약 · 공통 술어층 | `../spec/defender-autobattle-ai/README.md` · `../spec/defender-deploy-phase/README.md` |
 | 적 이동 알고리즘 · 쓰지 않은 것 | `enemy-movement-algorithm.md` |
 | 맵 저작 규칙 · 하드 실패 목록 | `map-stage-authoring.md` |
 | 결정론 · 골든 · 하네스 | `../spec/battle-sim-extraction/README.md` · `harness-determinism.md` |
