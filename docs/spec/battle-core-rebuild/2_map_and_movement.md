@@ -49,7 +49,7 @@
 | Ground 통행 슬롯 | 현행에 없음 — 만들지 않았다(`TraversalSlots.DefaultMask = Path`) | 보류(M23, 현행 유지) |
 | 효과 타일 시드 -1 | 선정 **규칙**(소금 XOR · `\|1u` 가드 · row-major)만 옮겼다. 시드를 어디서 받을지는 맵 파이프라인 결정이라 미정 | 보류(M25) |
 | 이동 가디언 추격판 재굽기 | 이동 가디언 저작 0. 전제(**「대상은 움직이지 않는다」**)를 `ChaseFieldCache` 헤더에 명시로 남겼다 | 보류(M6) |
-| 감지 유지의 히스테리시스 폭 | 옛 `TargetPersistence.KeepsLock` 은 공격 락과 **같은 자**다. 여기서는 `AiMovePhase.HysteresisTiles`(0.5) 로 두고, unit 3 에서 공격 락과 합류시킨다 | 보류 |
+| 감지 유지의 히스테리시스 폭 | **옛 값 0.1 그대로.** 옛 `DetectionSystem` 이 `TargetPersistence.KeepsLock`(0.1)을 **재사용**했으므로 감지 유지 = 공격 락 유지 = 같은 자다. unit 2 초판이 0.5 를 따로 들었던 것은 드리프트였고 unit 3 에서 `Combat.TargetPersistence.HysteresisTiles` 하나로 합쳤다 — `AiMovePhase.HysteresisTiles` 는 그 상수의 별칭이다 | 이식 |
 | 감지 후보 탐침의 `EnemyTargetFilter.classMask` | 방어유닛 **클래스** 축이 정의표에 아직 없다(unit 4 의 저작). 진영·통행층 필터는 그대로 옮겼다 | 보류 |
 | 보스 어그로 면역 | 티어·보스 태그가 unit 3 의 저작 축이다. 어그로 게이트 자리는 `AiMovePhase.GrantAggro` 에 이미 있다 | 보류 |
 | 순찰 소환물의 **소환** 경로 | 소환 스킬이 unit 7 이다. `Patrol.SummonedBy` 와 「소환사 사망 → 소멸」 규칙은 옮겼다(`FieldPrepPhase.StepPatrol`) | 보류 |

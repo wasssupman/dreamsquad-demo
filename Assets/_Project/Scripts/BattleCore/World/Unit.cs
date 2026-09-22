@@ -98,7 +98,12 @@ namespace Wassup.BattleCore
         /// <summary>이번 틱에 들어온 피해·회복·실드. 비우는 시점이 셋이 같지 않다(C17).</summary>
         public readonly Inbox Inbox = new Inbox();
 
-        internal void Reset()
+        /// <summary>
+        /// 풀에 돌아가기 전 비우기. **부분은 버리지 않고 `UnitPartPool` 이 회수한다**(F4) —
+        /// 틱 중 `new` 가 그대로 쓰레기가 되던 자리다.
+        /// ⚠ 부분이 늘면 `UnitPartPool.Reclaim` 도 같이 고친다.
+        /// </summary>
+        internal void Reset(UnitPartPool parts)
         {
             Id = SimEntityId.None;
             Kind = UnitKind.None;
@@ -114,22 +119,7 @@ namespace Wassup.BattleCore
             DeathTick = -1;
             Deploying = false;
 
-            // 부분은 **버리지 않고 비운다** — 배열을 든 부분(추격판)은 풀이 따로 회수하고,
-            // 나머지는 다음 대여 때 그대로 재사용된다(틱 중 할당 0).
-            Move?.Reset();
-            Detection?.Reset();
-            Aggro?.Reset();
-            Patrol?.Reset();
-            Footprint?.Reset();
-            Attack?.Reset();
-            Progressive?.Reset();
-            Move = null;
-            Detection = null;
-            Aggro = null;
-            Patrol = null;
-            Footprint = null;
-            Attack = null;
-            Progressive = null;
+            parts.Reclaim(this);
 
             Ai.Reset();
             Shield.Reset();

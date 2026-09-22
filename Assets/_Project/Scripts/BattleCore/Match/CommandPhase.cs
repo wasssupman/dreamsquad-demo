@@ -91,11 +91,9 @@ namespace Wassup.BattleCore
                                  FootCenter(anchor, w), d.BodyRadiusTiles, d.Health,
                                  deploying: false, tick: tick);
 
-            u.Footprint = new Footprint { Anchor = anchor, Width = w, Height = h };
-            if (d.AggroCapacity > 0) u.Aggro = new Aggro { Capacity = d.AggroCapacity };
+            AttachDefenderParts(u, in d, anchor, w, h);
             // unit 3 — 공격은 **정의표에서** 온다. 스폰 경로가 여럿이어도(배치·디버그·소환·웨이브)
             // 전부 같은 함수를 지나야 「어떤 경로로 태어났나」가 공격 규칙을 바꾸지 않는다.
-            u.Attack = CombatPhase.BuildAttackState(in d, _def);
 
             _map.Occupancy.Occupy(u.Id, anchor, w, h);
             return Receipt.Ok;
@@ -116,9 +114,7 @@ namespace Wassup.BattleCore
             var u = _world.Spawn(UnitKind.Defender, Faction.DefenderUnit, cmd.DefIndex,
                                  FootCenter(anchor, w), d.BodyRadiusTiles, d.Health,
                                  deploying: false, tick: tick);
-            u.Footprint = new Footprint { Anchor = anchor, Width = w, Height = h };
-            if (d.AggroCapacity > 0) u.Aggro = new Aggro { Capacity = d.AggroCapacity };
-            u.Attack = CombatPhase.BuildAttackState(in d, _def);
+            AttachDefenderParts(u, in d, anchor, w, h);
             _map.Occupancy.Occupy(u.Id, anchor, w, h);
             return Receipt.Ok;
         }
@@ -174,23 +170,27 @@ namespace Wassup.BattleCore
             var u = _world.Spawn(UnitKind.Enemy, Faction.EnemyUnit, cmd.DefIndex,
                                  pos, d.BodyRadius, d.Health, deploying: false, tick: tick);
 
-            u.Move = new MoveState
-            {
-                Speed = d.MoveSpeed,
-                Radius = AgentRadiusTiles,
-                TraversalLayers = (byte)d.TraversalLayers,
-                Engage = (EngageMovement)math.clamp(d.EngageMovement, 0, 2),
-                // 경로 선택 — **좁은 쪽이 이긴다**: 적 정의 > 웨이브 컨셉 > 레인 기본.
-                // 컨셉은 웨이브 생성기(unit 4)가 채우므로 여기서는 -1 이다.
-                PathIndex = WaypointRouting.ResolvePathIndex(
-                    d.WaypointPathIndex, -1, lane >= 0 ? map.RouteForSpawn(lane) : -1),
-            };
+            var move = _world.Parts.RentMove();
+            move.Speed = d.MoveSpeed;
+            move.Radius = AgentRadiusTiles;
+            move.TraversalLayers = (byte)d.TraversalLayers;
+            move.Engage = (EngageMovement)math.clamp(d.EngageMovement, 0, 2);
+            // 경로 선택 — **좁은 쪽이 이긴다**: 적 정의 > 웨이브 컨셉 > 레인 기본.
+            // 컨셉은 웨이브 생성기(unit 4)가 채우므로 여기서는 -1 이다.
+            move.PathIndex = WaypointRouting.ResolvePathIndex(
+                d.WaypointPathIndex, -1, lane >= 0 ? map.RouteForSpawn(lane) : -1);
+            u.Move = move;
 
             // **감지 0 = 오늘과 같은 경로.** 부착 자체가 게이트다 — 분기가 아니라 부재로 표현한다.
-            if (d.DetectionRange != 0f) u.Detection = new Detection { Range = d.DetectionRange };
+            if (d.DetectionRange != 0f)
+            {
+                var det = _world.Parts.RentDetection();
+                det.Range = d.DetectionRange;
+                u.Detection = det;
+            }
 
             // unit 3 — 적도 방어유닛과 **같은 함수**로 공격을 얻는다(통합 루프가 둘을 구분하지 않는다).
-            u.Attack = CombatPhase.BuildAttackState(in d, _def);
+            u.Attack = CombatPhase.BuildAttackState(in d, _def, _world.Parts);
 
             return Receipt.Ok;
         }
@@ -208,6 +208,26 @@ namespace Wassup.BattleCore
             if (!_map.Snapshot.InBounds(cmd.Cell)) return Receipt.Reject(RejectReason.OutOfBounds);
             _map.Obstacles.SetManual(cmd.Cell, cmd.Flag);
             return Receipt.Ok;
+        }
+
+        // 방어유닛의 부분 부착 — **배치와 디버그 스폰이 같은 함수를 지난다.** 두 벌로 두면
+        // 「어떤 경로로 태어났나」가 규칙을 바꾸고, 그 차이는 골든이 아니라 플레이에서만 보인다.
+        private void AttachDefenderParts(Unit u, in UnitDef d, int2 anchor, int w, int h)
+        {
+            var fp = _world.Parts.RentFootprint();
+            fp.Anchor = anchor;
+            fp.Width = w;
+            fp.Height = h;
+            u.Footprint = fp;
+
+            if (d.AggroCapacity > 0)
+            {
+                var aggro = _world.Parts.RentAggro();
+                aggro.Capacity = d.AggroCapacity;
+                u.Aggro = aggro;
+            }
+
+            u.Attack = CombatPhase.BuildAttackState(in d, _def, _world.Parts);
         }
 
         /// <summary>몸 반지름(칸). **군집 통과로 검산한 값**이다 — 단독 통과는 검산이 아니다.</summary>

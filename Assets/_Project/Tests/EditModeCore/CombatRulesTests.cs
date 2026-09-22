@@ -158,6 +158,63 @@ namespace Wassup.Tests.EditMode.Core
             Assert.AreNotEqual(before, d.Attack.CooldownRemaining, "그동안에도 쿨은 돈다");
         }
 
+        [Test]
+        public void 소환사가_죽으면_순찰병도_소멸_사건을_낸다()
+        {
+            // unit 2 리뷰 F3 — 초판은 `Dead` 만 세우고 지우지 않아 뷰가 그 순찰병을 영원히
+            // 들고 있었다. 소멸 경로는 **하나**이고(`BattleWorld.Destroy`) 순찰 연쇄도 그 길이다.
+            var def = Definition(policy: AttackPolicy.Summon);
+            def.Units[0].Attack.Policy = (int)AttackPolicy.Summon;
+            def.Units[0].Attack.SummonPatrolDefIndex = 1;
+            def.ConfigHash = def.ComputeConfigHash();
+
+            var m = Match(def);
+            var gone = Listen(m, CoreEventKind.UnitDestroyed);
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            m.Apply(Command.DebugSpawnEnemy(0, new int2(5, 1)));
+            Tick(m, 2);
+
+            var summoner = First(m, UnitKind.Defender);
+            var patrol = First(m, UnitKind.Patrol);
+            Assert.IsNotNull(patrol);
+            var patrolId = patrol.Id;
+
+            gone.Clear();
+            m.Apply(Command.DebugDestroy(summoner.Id));
+            Tick(m, 1);
+            Assert.IsTrue(patrol.Dead, "표시는 그 틱에");
+            Assert.AreEqual(0, CountDestroyed(gone, patrolId), "소멸은 표시 틱이 아니다");
+
+            Tick(m, 1);
+            Assert.AreEqual(1, CountDestroyed(gone, patrolId), "다음 틱에 정확히 한 번");
+            Assert.IsNull(m.World.Find(patrolId));
+        }
+
+        // ── F4 · 부분은 풀에서 빌린다 ───────────────────────────────────────
+
+        [Test]
+        public void 개체_부분은_돌려쓴다()
+        {
+            // 어그로 획득·스폰은 틱 중에 도는 일이다. `new` 로 두면 3분 판에서 수백 개가
+            // 쓰레기가 된다 — 부재(null)는 아키타입의 표현이라 그대로 두고 **객체만** 돌려쓴다.
+            var m = Match(Definition(defenderDamage: 0f));
+            m.Apply(Command.DebugSpawnDefender(0, new int2(4, 1)));
+            var first = First(m, UnitKind.Defender);
+            int firstId = first.Id.Value;   // ⚠ `first` 자체가 풀로 돌아가 재대여된다 — 값으로 잡는다
+            var attack = first.Attack;
+            var footprint = first.Footprint;
+
+            m.Apply(Command.Retire(first.Id));
+            m.Apply(Command.DebugSpawnDefender(0, new int2(6, 1)));
+            var second = First(m, UnitKind.Defender);
+
+            Assert.AreNotEqual(firstId, second.Id.Value, "id 는 한 판 안에서 재사용하지 않는다");
+            Assert.AreSame(attack, second.Attack, "공격 상태를 다시 빌려 온다");
+            Assert.AreSame(footprint, second.Footprint, "점유도 마찬가지");
+            Assert.AreEqual(0f, second.Attack.CooldownRemaining, 1e-5f, "빌려줄 때 비어 있다");
+            Assert.IsTrue(second.Attack.Lock.IsNone);
+        }
+
         // ── C17 · 실드 부여만 다음 틱 ────────────────────────────────────────
 
         [Test]
@@ -583,6 +640,13 @@ namespace Wassup.Tests.EditMode.Core
         // ── 헬퍼 ─────────────────────────────────────────────────────────────
 
         private static int CountProjectiles(BattleMatch m) => m.World.Projectiles.Count;
+
+        private static int CountDestroyed(System.Collections.Generic.List<CoreEvent> events, SimEntityId id)
+        {
+            int n = 0;
+            for (int i = 0; i < events.Count; i++) if (events[i].A == id) n++;
+            return n;
+        }
 
         private static int CountPatrols(BattleMatch m)
         {

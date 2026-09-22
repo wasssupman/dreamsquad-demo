@@ -207,9 +207,18 @@ namespace Wassup.BattleCore
                 if (u.Patrol == null || u.Move == null || u.Dead) continue;
 
                 // 소환사가 죽으면 소환물도 사라진다 — 이동을 멈추는 것이 아니라 소멸이다.
+                //
+                // ⚠ **여기서 지우지 않는다.** 표시만 하고 소멸은 `CombatPhase` 의 사망 단계가
+                // `BattleWorld.Destroy` 로 한다(unit 3 사망 2단계). 두 번째 제거 경로를 만들면
+                // 계약 7(「모든 소멸은 소멸 이벤트를 낸다」)이 경로마다 따로 지켜져야 하고,
+                // 그러면 언젠가 한쪽이 조용히 빠진다 — 실제로 초판이 `Dead` 만 세우고
+                // `UnitDestroyed` 를 안 내서 뷰가 그 순찰병을 영원히 들고 있었다.
+                // `DeathTick` 을 함께 찍는 것도 계약이다: 안 찍으면 표시 틱과 소멸 틱이 같아져
+                // 시체가 자기 자리를 읽을 창(시체 폭발·사직서 드랍)이 이 경로에만 없어진다.
                 if (!u.Patrol.SummonedBy.IsNone && ctx.World.Find(u.Patrol.SummonedBy) == null)
                 {
                     u.Dead = true;
+                    u.DeathTick = ctx.Tick;
                     u.Move.PatrolStep = float2.zero;
                     continue;
                 }

@@ -255,7 +255,9 @@ namespace Wassup.BattleCore
             HasCommittedDirection = false;
             Lock = SimEntityId.None;
             FireCount = 0;
-            PatternSlots.Clear();
+            // ⚠ `PatternSlots` 는 **비우지 않는다.** 슬롯이 발사 인스턴스와 그 간격·방향
+            // 배열을 들고 있어서 버리면 다음 대여가 통째로 다시 할당한다(F4).
+            // 개수·내용을 맞추는 것은 채우는 쪽(`CombatPhase.Fill`)이다.
             HasSummonedOnce = false;
             GrantedByTaunt = false;
             PreviousTargetMask = 0;

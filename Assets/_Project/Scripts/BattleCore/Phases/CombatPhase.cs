@@ -313,19 +313,20 @@ namespace Wassup.BattleCore
                                              _map != null ? _map.CenterOf(anchor) : u.Position,
                                              pd.BodyRadiusTiles, pd.Health,
                                              deploying: false, tick: ctx.Tick);
-                patrol.Patrol = new Patrol
-                {
-                    Anchor = anchor,
-                    Home = anchor,
-                    Radius = coverTiles,
-                    SummonedBy = u.Id,
-                };
-                patrol.Move = new MoveState
-                {
-                    Speed = pd.MoveSpeed,
-                    TraversalLayers = (byte)pd.TraversalLayers,
-                };
-                patrol.Attack = BuildAttackState(in pd, ctx.Def);
+                var parts = ctx.World.Parts;
+                var box = parts.RentPatrol();
+                box.Anchor = anchor;
+                box.Home = anchor;
+                box.Radius = coverTiles;
+                box.SummonedBy = u.Id;
+                patrol.Patrol = box;
+
+                var move = parts.RentMove();
+                move.Speed = pd.MoveSpeed;
+                move.TraversalLayers = (byte)pd.TraversalLayers;
+                patrol.Move = move;
+
+                patrol.Attack = BuildAttackState(in pd, ctx.Def, parts);
                 atk.HasSummonedOnce = true;
 
                 ctx.Bus.Publish(CoreEvent.AttackResolved(ctx.Tick, u, patrol.Id,
@@ -1282,15 +1283,17 @@ namespace Wassup.BattleCore
         /// 정의표 한 줄에서 공격 상태를 세운다. 스폰하는 쪽(커맨드·웨이브·소환)이 **모두**
         /// 이 함수를 지나야 「어떤 경로로 태어났나」가 공격 규칙을 바꾸지 않는다.
         /// </summary>
-        public static AttackState BuildAttackState(in UnitDef d, MatchDefinition def = null)
+        public static AttackState BuildAttackState(in UnitDef d, MatchDefinition def = null,
+                                                   UnitPartPool parts = null)
             => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
                                 d.AttackTargetCount, d.AggroCapacity,
-                                TargetDefaults.ResolveDefender(d.TargetFactions), def);
+                                TargetDefaults.ResolveDefender(d.TargetFactions), def, parts);
 
-        public static AttackState BuildAttackState(in EnemyDef d, MatchDefinition def = null)
+        public static AttackState BuildAttackState(in EnemyDef d, MatchDefinition def = null,
+                                                   UnitPartPool parts = null)
             => BuildAttackState(in d.Attack, d.AttackRange, d.AttackCooldown, d.HitDelaySeconds,
                                 d.AttackTargetCount, 0,
-                                TargetDefaults.ResolveEnemy(d.TargetFactions), def);
+                                TargetDefaults.ResolveEnemy(d.TargetFactions), def, parts);
 
         // 표 밖을 가리키는 참조는 **여기서 한 번** 접는다. 매 RESOLVE 에서 접으면 같은 경고가
         // 초당 수십 번 나고, 그보다 나쁘게 **미저작 0 이 탄 0번을 조용히 쏜다.**
@@ -1300,57 +1303,78 @@ namespace Wassup.BattleCore
         private static AttackState BuildAttackState(in AttackDef a, float range, float cooldown,
                                                     float hitDelay, int targetCount,
                                                     int aggroCapacity, int targetMask,
-                                                    MatchDefinition def)
+                                                    MatchDefinition def, UnitPartPool parts)
         {
             int projectiles = def != null ? def.Projectiles.Length : 0;
             int units = def != null ? def.Units.Length : 0;
-            var s = new AttackState
-            {
-                Range = range,
-                Interval = cooldown,
-                HitDelay = hitDelay,
-                TargetCount = math.max(1, targetCount),
-                TargetMask = targetMask,
-                TargetLayers = (byte)a.TargetLayers,
-                PriorityClass = a.PriorityClass,
-                ClassMask = a.ClassMask,
-                Mode = (TargetMode)a.Mode,
-                Policy = (AttackPolicy)a.Policy,
-                ProjectileDefIndex = ClampRef(a.ProjectileDefIndex, projectiles),
-                Outputs = a.Outputs ?? System.Array.Empty<AttackOutputDef>(),
-                AggroCapacity = aggroCapacity,
-                BossImmune = a.BossImmune,
-                Shape = new AttackShapeBaked
-                {
-                    kind = (byte)a.ShapeKind,
-                    sinHalf = a.ShapeSinHalf,
-                    cosHalf = a.ShapeCosHalf,
-                    halfWidth = a.ShapeHalfWidth,
-                },
-                Cc = new CcOnHit
-                {
-                    KnockbackDistance = a.KnockbackDistance,
-                    KnockbackDuration = a.KnockbackDuration,
-                    SleepSeconds = a.SleepOnHitSec,
-                    KnockupSeconds = a.KnockupOnHitSec,
-                    KnockupVisualHeight = a.KnockupVisualHeight,
-                },
-                Bomb = new BombSpec
-                {
-                    ProjectileDefIndex = ClampRef(a.BombProjectileDefIndex, projectiles),
-                    Damage = a.BombDamage,
-                    AoeTileRange = a.BombAoeTileRange,
-                    AoeTargetCap = a.BombAoeTargetCap,
-                    TravelSeconds = a.BombTravelSeconds,
-                    FuseSeconds = a.BombFuseSeconds,
-                    ArcHeight = a.BombArcHeight,
-                },
-                Summon = new SummonSpec { PatrolDefIndex = ClampRef(a.SummonPatrolDefIndex, units) },
-            };
-            if (a.PatternDefIndices != null)
-                for (int i = 0; i < a.PatternDefIndices.Length; i++)
-                    s.PatternSlots.Add(new PatternSlotState { PatternDefIndex = a.PatternDefIndices[i] });
+            // F4 — 스폰도 틱 중에 돈다(웨이브·소환). 풀이 있으면 빌린다.
+            var s = parts != null ? parts.RentAttack() : new AttackState();
+            Fill(s, in a, range, cooldown, hitDelay, targetCount, aggroCapacity, targetMask,
+                 projectiles, units);
             return s;
+        }
+
+        // 빌려 온 인스턴스를 **덮어쓴다.** 새로 만들지 않는 이유는 F4 와 같다 —
+        // 스폰도 틱 중에 도는 일이고, 그때마다 공격 상태 하나가 쓰레기가 됐다.
+        private static void Fill(AttackState s, in AttackDef a, float range, float cooldown,
+                                 float hitDelay, int targetCount, int aggroCapacity, int targetMask,
+                                 int projectiles, int units)
+        {
+            s.Range = range;
+            s.Interval = cooldown;
+            s.HitDelay = hitDelay;
+            s.TargetCount = math.max(1, targetCount);
+            s.TargetMask = targetMask;
+            s.TargetLayers = (byte)a.TargetLayers;
+            s.PriorityClass = a.PriorityClass;
+            s.ClassMask = a.ClassMask;
+            s.Mode = (TargetMode)a.Mode;
+            s.Policy = (AttackPolicy)a.Policy;
+            s.ProjectileDefIndex = ClampRef(a.ProjectileDefIndex, projectiles);
+            s.Outputs = a.Outputs ?? System.Array.Empty<AttackOutputDef>();
+            s.AggroCapacity = aggroCapacity;
+            s.BossImmune = a.BossImmune;
+            s.Shape = new AttackShapeBaked
+            {
+                kind = (byte)a.ShapeKind,
+                sinHalf = a.ShapeSinHalf,
+                cosHalf = a.ShapeCosHalf,
+                halfWidth = a.ShapeHalfWidth,
+            };
+            s.Cc = new CcOnHit
+            {
+                KnockbackDistance = a.KnockbackDistance,
+                KnockbackDuration = a.KnockbackDuration,
+                SleepSeconds = a.SleepOnHitSec,
+                KnockupSeconds = a.KnockupOnHitSec,
+                KnockupVisualHeight = a.KnockupVisualHeight,
+            };
+            s.Bomb = new BombSpec
+            {
+                ProjectileDefIndex = ClampRef(a.BombProjectileDefIndex, projectiles),
+                Damage = a.BombDamage,
+                AoeTileRange = a.BombAoeTileRange,
+                AoeTargetCap = a.BombAoeTargetCap,
+                TravelSeconds = a.BombTravelSeconds,
+                FuseSeconds = a.BombFuseSeconds,
+                ArcHeight = a.BombArcHeight,
+            };
+            s.Summon = new SummonSpec { PatrolDefIndex = ClampRef(a.SummonPatrolDefIndex, units) };
+
+            // 발사 명세 슬롯 — **개수만 맞추고 객체는 돌려쓴다.** 슬롯은 발사 인스턴스와 그
+            // 간격·방향 배열을 들고 있어서 버리면 다음 대여가 통째로 다시 할당한다.
+            int want = a.PatternDefIndices != null ? a.PatternDefIndices.Length : 0;
+            while (s.PatternSlots.Count < want) s.PatternSlots.Add(new PatternSlotState());
+            while (s.PatternSlots.Count > want) s.PatternSlots.RemoveAt(s.PatternSlots.Count - 1);
+            for (int i = 0; i < want; i++)
+            {
+                var slot = s.PatternSlots[i];
+                slot.PatternDefIndex = a.PatternDefIndices[i];
+                slot.FireCountBase = 0;
+                slot.Active = false;
+                slot.Instance.LockedTarget = SimEntityId.None;
+                slot.Instance.Runtime = default;
+            }
         }
     }
 }

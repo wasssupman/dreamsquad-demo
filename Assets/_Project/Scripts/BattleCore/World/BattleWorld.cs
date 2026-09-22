@@ -26,6 +26,13 @@ namespace Wassup.BattleCore
 
         private int _nextId = SimEntityId.FirstSpawnValue;
 
+        // 개체 **부분**의 풀(F4). 개체 자체는 `_pool` 이, 부분은 이쪽이 돌려쓴다 —
+        // 어그로 획득·스폰이 틱 중에 도는 일이라 `new` 를 그대로 두면 쓰레기가 쌓인다.
+        private readonly UnitPartPool _parts = new UnitPartPool();
+
+        /// <summary>부분을 빌리는 곳. 부착 지점(커맨드·소환·도발)이 전부 여기를 지난다.</summary>
+        public UnitPartPool Parts => _parts;
+
         /// <summary>id 오름차순 개체 목록. 순회 중 구조 변경 금지 — 소멸은 틱 단계가 모아서 한다.</summary>
         public IReadOnlyList<Unit> Units => _units;
 
@@ -86,7 +93,7 @@ namespace Wassup.BattleCore
                           float3 position, float hitRadius, float maxHealth, bool deploying, int tick)
         {
             var u = _pool.Count > 0 ? _pool.Pop() : new Unit();
-            u.Reset();
+            u.Reset(_parts);
             u.Id = new SimEntityId(_nextId++);
             u.Kind = kind;
             u.Faction = faction;
@@ -141,7 +148,7 @@ namespace Wassup.BattleCore
             int index = IndexOf(id);
             if (index >= 0) _units.RemoveAt(index);   // RemoveAt 은 순서를 유지한다
 
-            u.Reset();
+            u.Reset(_parts);
             _pool.Push(u);
 
             _bus.Publish(ev);

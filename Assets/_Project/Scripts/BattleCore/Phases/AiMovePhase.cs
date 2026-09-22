@@ -185,7 +185,7 @@ namespace Wassup.BattleCore
                     continue;
                 }
 
-                enemy.Aggro = enemy.Aggro ?? new Aggro();
+                enemy.Aggro = enemy.Aggro ?? ctx.World.Parts.RentAggro();   // F4 — 틱 중 할당 0
                 enemy.Aggro.Target = req.Guardian;
                 enemy.Aggro.Remaining = req.Seconds;
                 enemy.Aggro.Taunted = req.Taunt;
