@@ -25,7 +25,11 @@ MonoBehaviour:
   plan: {fileID: 0}
   mapPool: {fileID: 0}
   gimmickEnabled: 0
-  gimmickPool: []
+  gimmickPool:
+  - {fileID: 11400000, guid: 0356a9ea312ae944396422653318f410, type: 2}
+  - {fileID: 11400000, guid: cca8f90535af4a348b1105ec76cd9d6f, type: 2}
+  - {fileID: 11400000, guid: 86e4b7298c8358740a39ebdda2b762e3, type: 2}
+  - {fileID: 11400000, guid: 0f78b4158d94a0240bad81a0e037cdc7, type: 2}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
   placementPhaseEnabled: 0
   autoStartCountdownSec: 3
