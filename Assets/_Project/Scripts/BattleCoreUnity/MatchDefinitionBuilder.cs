@@ -487,7 +487,12 @@ namespace Wassup.BattleCoreUnity
                     AttackCooldown = e.attackCooldown,
                     HitDelaySeconds = e.hitDelaySec,
                     AttackTargetCount = e.attackTargetCount,
-                    BodyRadius = e.bodyRadius,
+                    // ⚠ **`bodyRadius` 가 아니라 `BodyRadiusTiles` 다.** 앞의 날 필드는
+                    // `bodySize == Boss` 일 때만 읽히는 저작 칸이고, 나머지 크기는 파생이다
+                    // (Small 0.25 · Medium 0.5 · Large 1.0). 날 필드를 실으면 중형·대형 적의
+                    // **몸이 통째로 0.25 로 줄어** 제약 13 의 「대상의 몸」 항이 틀린다.
+                    // 방어유닛 줄은 처음부터 파생값(`d.BodyRadiusTiles`)을 쓰고 있었다 — 비대칭이었다.
+                    BodyRadius = e.BodyRadiusTiles,
                     TraversalLayers = (int)e.EffectiveTraversalLayers,
                     EnemyClass = (int)e.enemyClass,
                     Tier = (int)e.tier,
