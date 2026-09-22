@@ -4,6 +4,13 @@
 
 ---
 
+## ⚠ 현재 상태 (2026-09-23) — 전투는 전환 중
+
+**전투는 `docs/spec/battle-core-rebuild/` 로 ECS → 순수 C# 「전투 코어」 전환 중이다.** 이 파일의 제약은 **적용 범위가 둘로 갈린다**:
+- **옛 전투**(`Assets/_Project/Scripts/Battle/` · `Bridge/` 와 그 직접 소비자) — **동결.** 규칙 변경 금지, 버그픽스·뷰·카메라·UI·아웃게임만 계속. 아래 「옛 전투 — ECS 맥락 분리」 절과 `[옛 전투]` 꼬리표가 붙은 제약이 적용된다.
+- **새 전투 코어**(`Assets/_Project/Scripts/BattleCore/` + 새 Unity 층) — 「새 전투 코어 — 절대 제약」 절 + spec README 계약이 정본. ECS 제약은 적용되지 않는다.
+- 꼬리표 없는 제약·워크플로는 공통이다. 전환이 끝나는 unit 9 에서 옛 전투 절은 삭제되고 코어 절이 본문으로 승격된다.
+
 ## 프로젝트 한 줄
 
 비동기 토너먼트 디펜스 게임을 만든다. 프로토타이핑 단계(Phase 0~10)를 끝내고 **프로젝트 구체화 단계** 에 진입했다. 이후 모든 구현은 `docs/spec/{feature-slug}/` 단위 스펙으로 관리한다.
@@ -25,14 +32,16 @@
 
 - **엔진**: Unity 6.4 (`6000.4.3f1`) · URP 17.4
 - **언어**: C#
-- **아키텍처**: 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour
+- **아키텍처**: `[옛 전투]` 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour. `[새 전투 코어]` 순수 C# 전투 코어(`Wassup.BattleCore`) + MonoBehaviour 드라이버/뷰 — 전환 중
 - **필수 패키지**: Entities 6.4.0, Entities Graphics 6.4.0, Burst, Collections, Mathematics, Jobs, TextMeshPro, Input System, spine-unity, spine-csharp
-- **ECS 버전 기준**: 이 프로젝트의 타겟은 Entities 6.4.0 이다. Entities 1.x 기준 문서/패턴을 source of truth 로 삼지 않는다.
+- **ECS 버전 기준**: 이 프로젝트의 타겟은 Entities 6.4.0 이다. Entities 1.x 기준 문서/패턴을 source of truth 로 삼지 않는다. `[옛 전투]` — Entities·Entities Graphics 는 `battle-core-rebuild` unit 9 에서 제거된다. 새 코드는 Entities 를 참조하지 않는다.
 - **타겟**: Android 실기기(주) + Unity Editor 플레이 + iOS Ad Hoc 내부 QA 빌드(보조)
 
-## ECS 맥락 분리
+## 옛 전투 — ECS 맥락 분리 `[옛 전투 · 동결]`
 
-전투 시뮬레이션은 **맥락(Context)별로 분리**된다:
+> 적용 범위: `Scripts/Battle/` · `Bridge/` 와 그 직접 소비자. **동결 기간의 유지보수에만** 쓴다. 새 전투 코어에는 맥락·채널·시스템 개념이 없다 — 이 절을 새 코드의 근거로 인용하지 않는다.
+
+옛 전투 시뮬레이션은 **맥락(Context)별로 분리**된다:
 
 - **Units** — 유닛 정의, 배치 상태, Health, 생성/소멸, IncomingDamage 버퍼, 사망 이벤트 큐
 - **Movement** — 경로 따라가기, 위치 갱신, Portal 텔레포트, Tornado field pull step
@@ -48,14 +57,17 @@
 
 ## 절대 제약 (위반 시 정지하고 질문)
 
-1. **ECS 경계 엄수**: `BattleBridge` 클래스가 MonoBehaviour ↔ ECS 통신의 유일한 창구다. 그 외 MonoBehaviour에서 `EntityManager` / `World.DefaultGameObjectInjectionWorld` / `SystemAPI` 직접 호출 금지.
-2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
-3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
-4. **Authoring/Runtime 분리**: ScriptableObject/프리팹/Spine/Particle/UI 는 MonoBehaviour 계층에 두고, ECS 런타임 상태는 unmanaged Component/Buffer 중심으로 유지한다.
+1. `[옛 전투]` **ECS 경계 엄수**: `BattleBridge` 클래스가 MonoBehaviour ↔ ECS 통신의 유일한 창구다. 그 외 MonoBehaviour에서 `EntityManager` / `World.DefaultGameObjectInjectionWorld` / `SystemAPI` 직접 호출 금지.
+2. `[옛 전투]` **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
+3. `[옛 전투]` **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선). `[공통]` **네트워크 코드 완전 금지**.
+4. `[옛 전투]` **Authoring/Runtime 분리**: ScriptableObject/프리팹/Spine/Particle/UI 는 MonoBehaviour 계층에 두고, ECS 런타임 상태는 unmanaged Component/Buffer 중심으로 유지한다.
 5. **Manager 싱글톤 제한 완화** (2026-07-07 사용자 결정): 기존 "GameManager 1개만" 하드 캡 해제. 명확한 단일 역할의 매니저(예: `SoundManager`)는 허용한다. 단 무분별한 `XxxManager` 남발은 지양 — 기능이 실제로 전역 매니저를 요구할 때만 신설하고, 애매하면 질문한다.
 6. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
 7. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
-8. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
+8. **추상화의 근거는 «닫힌 변형 축»이다** (2026-09-23 사용자 결정으로 개정 — 구 문면 「인터페이스는 구현체 2개 이상일 때만」은 **은퇴**. 번호는 참조 보존을 위해 유지):
+   - 변형 축이 설계상 닫혀 있으면(enum·SO 로 열거된 종류 — 예: 매치 목표 종류, 스킬 concrete) **구현체가 하나여도** 인터페이스/추상 타입을 둘 수 있다. 축 자체가 근거다.
+   - 변형 축이 없는 「나중을 위한」 추상 레이어는 여전히 금지다 — 구현체가 둘이어도 축이 없으면 금지.
+   - 단일 사례를 축 없이 하드코딩해 두는 것(예: 존 효과의 진영 하드 게이트)도 같은 실수의 반대편이다 — 축이 보이면 축을 연다.
 9. **현재 작업 중인 spec 범위를 넘어서는 기능 구현 금지**. 범위 밖 항목은 별도 spec 초안 또는 해당 spec 폴더의 "후속 후보" 섹션으로 이관 후 대기.
 10. **아키텍처 중립 로직은 순수 함수로 분리** (2026-07-10 사용자 결정): 계산 로직이 Mono/ECS 아키텍처와 **본질적으로** 얽히지 않으면(스탯 모디파이어 결합, 속도·타이밍→배율 변환, 클램프·정규화 등), ISystem/MonoBehaviour 같은 아키텍처 종속 메서드 안에 인라인하지 말고 **plain 값 입력 → plain 값 출력** 순수 static 함수로 둔다. 스탯 모디파이어와 그 적용 산식은 순수하게 값을 **결정**하고, 결정된 값은 각 아키텍처(ECS 시뮬 / Mono 프레젠테이션)가 **알아서 해석·소비**한다(값 자체는 아키텍처를 모른다). 순수 함수는 EditMode 단위 테스트 대상. **모범**: `ModifierMath.CombineMul`(순수 결합) → ECS 가 적용 / 뷰가 해석, `ModifierMathTests` 로 검증. 판정 기준 = "이 계산이 `EntityManager`/`SkeletonAnimation`/`Time` 같은 아키텍처 타입을 실제로 필요로 하는가?" 아니면 순수 함수로 뺀다.
    - **이 원칙의 핵심은 "모디파이어가 값을 순수하게 결정하고 결정된 값이 아키텍처-blind 하게 흐른다"는 *shape* 이지, "모든 수식을 함수로 빼라"가 아니다.** 자명한 한두 줄 산술을 호출처 하나뿐인데 별도 static/타입으로 빼는 건 제약 8("나중을 위한 추상 레이어 금지")과 충돌하는 **과잉 추상화**다. 추출은 로직이 **(a) 비자명(분기·다단계)** 이거나 **(b) 실제 재사용(2+ 호출처)** 이거나 **(c) 회귀 테스트 가치가 있는 sim-critical 계산**(데미지/이동/타겟팅)일 때만. 셋 다 아니고 값이 이미 plain 하게 흐르면 인라인이 맞다.
@@ -65,7 +77,7 @@
    - Transition maintenance/change register/coverage/decision/freeze audit는 Demo 작업의 시작·완료·검증·커밋을 절대 차단하지 않는다. Demo 변경에 맞춘 transition 문서 갱신도 같은 작업에 끼워 넣지 않으며, 명시적인 별도 후행 task와 별도 commit에서만 수행한다.
    - Freeze, cutover, production import와 후속 wave의 시점·범위는 Project owner만 결정한다. 명시적 활성화 전 agent는 이를 계획하거나 선제 작업하지 않는다.
    - Transition과 무관한 Demo 아키텍처 변경은 Demo 목표만으로 별도 승인받고 이 파일과 `docs/reference/battle-core-architecture.md` 를 먼저 갱신해야 한다. Transition 문서를 근거로 ECS 경계나 네트워크 금지를 우회할 수 없다.
-12. **BattleBridge 진입은 최후 수단** (2026-08-28 사용자 결정): 새 값·상태가 필요할 때 `BattleBridge` 에 serialized 필드나 static 미러를 **반사적으로 추가하지 않는다.** 제약 1 은 "ECS 통신의 유일한 창구"라는 뜻이지 "모든 전역값의 집" 이 아니다 — 편의로 얹은 진입점 하나가 다음 사람에게는 «그 값의 소유자는 브리지» 라는 잘못된 신호가 되고, 브리지는 이미 그렇게 비대해졌다.
+12. `[옛 전투]` **BattleBridge 진입은 최후 수단** (2026-08-28 사용자 결정): 새 값·상태가 필요할 때 `BattleBridge` 에 serialized 필드나 static 미러를 **반사적으로 추가하지 않는다.** 제약 1 은 "ECS 통신의 유일한 창구"라는 뜻이지 "모든 전역값의 집" 이 아니다 — 편의로 얹은 진입점 하나가 다음 사람에게는 «그 값의 소유자는 브리지» 라는 잘못된 신호가 되고, 브리지는 이미 그렇게 비대해졌다.
    - **판단 순서**: (a) 그 값을 **이미 소유한 곳**이 노출하고 있지 않은지 먼저 확인한다 — 보드 평면은 `BoardSpace.RaycastPlane()`, 유닛별 값은 `ISpineUnitVisualData`/SO, 저작 값은 프리팹. (b) 없으면 **소유자 쪽에** 얇은 접근자를 추가한다. (c) 그래도 브리지가 유일한 자리라는 근거를 댈 수 있을 때만 추가한다.
    - 브리지 진입이 정말 필요하다고 판단되면 **그때 드러난 리팩토링 범위를 먼저 측정한다** — 관련 필드·미러·소비처가 몇 개인지 세고, 그 정리가 **현재 spec 의 검증 질문에 답하는 데 필요한지** 판정한다. 필요하면 같은 spec 안에 작업 단위로 넣고, 아니면 제약 9 대로 "후속 후보" 로 이관한다. 어느 쪽이든 **범위와 포함/이관 사유를 사용자에게 보고**한 뒤 진행한다.
    - 이미 브리지에 있는 필드의 **의미를 교체**하는 것(예: 절대 Y → 평면 상대 리프트)은 진입점 신설이 아니다 — 이 제약의 대상이 아니다.
@@ -125,14 +137,25 @@
 
 **추가 제약** (구 `docs/TRD.md` §3 추상화 규칙 · §5 금지 패턴에서 2026-09-03 이관. TRD/PRD 는 Phase 시절 문서라 은퇴했고 이 목록이 제약의 전부다):
 
-- **생성 패턴**: 팩토리/빌더는 객체 생성이 3줄 이상일 때만. ECS 엔티티 조립은 `BattleBridge` 의 직접 `EntityManager` 호출 + 작은 변환 헬퍼로 충분하다 — 별도 팩토리 레이어 금지, Baker/SubScene 은 별도 spec 없이 도입하지 않는다.
+- **생성 패턴**: 팩토리/빌더는 객체 생성이 3줄 이상일 때만. `[옛 전투]` ECS 엔티티 조립은 `BattleBridge` 의 직접 `EntityManager` 호출 + 작은 변환 헬퍼로 충분하다 — 별도 팩토리 레이어 금지, Baker/SubScene 은 별도 spec 없이 도입하지 않는다.
 - **`UnityEvent` 금지**(디버깅 불가). **제네릭 타입 파라미터는 1개까지** — 2개 이상이면 설계를 의심하고 구체 타입으로 분할.
 - **`[SerializeField] private`** — public 필드 남발 금지(ECS Component struct 의 public 필드는 정상).
 - **MonoBehaviour 에 전투 로직 직접 작성 금지**(전투는 ECS 시스템에서만). UI 가 ECS Component 를 직접 읽거나 쓰지 않는다. "나중을 위한" 확장 포인트 · enum+switch 떡칠 금지.
-- **패키지/API**: 런타임 코드에 에디터 전용 API 금지 · Burst 컴파일이 실패하는 API 를 ECS 시스템에 금지 · DOTween/Zenject 등 범용 라이브러리는 근거 없으면 금지.
+- **패키지/API**: 런타임 코드에 에디터 전용 API 금지 · `[옛 전투]` Burst 컴파일이 실패하는 API 를 ECS 시스템에 금지 · DOTween/Zenject 등 범용 라이브러리는 근거 없으면 금지.
 - **`Shader.Find(...) + new Material(shader)` 금지** — 모바일 shader stripping 으로 null 이 돌아와 렌더가 깨진다. 런타임 Material 은 `Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque / CreateTransparent` 경유(`Assets/Resources/RuntimeMaterials/*.mat` always-included). 새 런타임 shader 는 `Assets/_Project/Shaders/` 명시 추가 + Resources 머티리얼 등록.
 - **Manager 싱글톤의 의도된 예외 2건**: `Wassup.Core.TimeControl.TimeManager`(도메인 스코프 시간 제어, `docs/spec/time-manager/`) · `SoundManager`(전역 SFX, `docs/spec/score-hud-impact-upgrade/` unit 4). 그 외는 제약 5.
-- **로깅은 마지막이 아니라 첫 축** — 브리지 드레인은 첫 줄에서 트레이스를 기록한다(`LegacyTraceRecorder.Ev`). 새 sim 사건 채널을 열면 로그/트레이스 정거장을 함께 연다.
+- **로깅은 마지막이 아니라 첫 축** — `[옛 전투]` 브리지 드레인은 첫 줄에서 트레이스를 기록한다(`LegacyTraceRecorder.Ev`). `[공통]` 새 사건 채널·이벤트 종류를 열면 로그/트레이스 정거장을 함께 연다.
+
+## 새 전투 코어 — 절대 제약 `[새 전투 코어]` (2026-09-23)
+
+> 적용 범위: `Assets/_Project/Scripts/BattleCore/`(asmdef `Wassup.BattleCore`) 와 그것을 구동·표시하는 새 Unity 층. 계약의 정본은 `docs/spec/battle-core-rebuild/README.md`(Feature-wide 계약 13) 이고, 아래는 그중 **위반 시 정지하고 질문**해야 할 것만 옮긴 것이다.
+
+1. **매니저를 두지 않는다.** 전투 안에 매니저·브리지·컨트롤러라는 이름의 클래스를 두지 않는다. 판정·상태·저장은 그 일의 담당자만 한다. 담당자 간 순서 의존은 이벤트 구독 순서로 표현한다. `BattleMatch` 는 담당자를 만들고 틱 순서를 나열하는 조립 지점일 뿐이다.
+2. **전투 코어는 엔진을 모른다.** `Wassup.BattleCore` 는 `noEngineReferences` 이고 참조는 `Unity.Mathematics` · `Wassup.Skills` · `Wassup.UnitAi` 뿐이다. Unity 층은 정의표 물질화(`MatchDefinitionBuilder`) · 시간(`BattleDriver`) · 뷰 · 입력만 갖는다. 코어에 `UnityEngine` 타입이 필요해 보이면 정지하고 질문.
+3. **규칙은 옮기고 기계는 옮기지 않는다.** 옛 전투의 컴포넌트·시스템·큐·ECB·Burst 우회를 새 코드에 재현하지 않는다. 땜빵·우연은 의도만 옮기고, 안 옮긴 것은 그 unit 의 「이식 제외」 표에 남긴다.
+4. **커맨드 ≠ 이벤트.** 플레이어 입력은 커맨드(틱 시작 동기 적용 + receipt), 사건은 값 스냅샷 이벤트(`SimEntityId` 키, 자리↔몸 짝). 이벤트로 상태를 되묻지 않는다.
+5. **매치 모드는 닫힌 집합.** 목표 종류는 enum, 모드는 SO(`MatchModeData`), 재현은 modeId + seed. 모드는 값을 덮어쓰지 않고 «어느 저작 자산을 쓸지» 고른다. 담당자는 모드를 모른다.
+6. **결정론.** 고정 틱 1/60 · 단일 스레드 · 순회는 `SimEntityId` 오름차순. 슬로모·정지는 틱 발행률. 판 종료 후 틱 0.
 
 ## 원격 저장소 · 푸시 전략 (2026-07-27 확정)
 
@@ -151,7 +174,8 @@
 | "이 게임의 규칙과 설계 지향은? 왜 이렇게 만드나?" | `docs/reference/ingame-flow.md` — 정식 플레이 흐름 · 전투 중 동사 4개 · **설계 지향 7축** · 드림캐쳐 사용 규칙 · 미결. (구 `docs/PRD.md` 는 프로토타입 가설 문서라 2026-09-03 은퇴 — 필요하면 git 이력) |
 | "Project owner가 production-transition 작업을 이번 요청에서 명시적으로 지시했나?" | 그때만 [`docs/production-transition/README.md`](docs/production-transition/README.md) 참조. 평상시에는 읽지 않는다. 이 subtree는 **owner-gated dormant downstream**이며 현재 Demo 구현 명세가 아니다. |
 | "어떤 기술 제약이 있나?" | **이 파일**의 「절대 제약」12 + 「추가 제약」이 전부다. (구 `docs/TRD.md` 는 Phase 시절 문서라 2026-09-03 은퇴 — 살아 있던 규칙은 위로 이관됐고, 나머지는 git 이력) |
-| "유닛·드림캐쳐·맵이 코드에서 어떻게 맞물리나?" | `docs/reference/battle-core-architecture.md` — 세 축의 런타임 정체 · 한 판의 생애 · 프레임 순서 계약 · 교차점 매트릭스 · 채널 30 지도 · 불변식 17. **아키텍처 변경 전 대조 필수** |
+| "유닛·드림캐쳐·맵이 코드에서 어떻게 맞물리나?" | `docs/reference/battle-core-architecture.md` — **§1 은 아키텍처 중립 설계 아웃라인(새 코어의 입력)**, §2~§10 은 `[옛 전투]` 구조 지도(맥락·채널·시스템 순서·불변식 17). 옛 전투 변경 전 대조 필수, 새 코어에는 §1 만 인용 |
+| "전투 전환(ECS → 전투 코어)은 어디까지 왔고 무엇을 따라야 하나?" | `docs/spec/battle-core-rebuild/README.md`(계약 13 · 작업 단위 · 이식 제외 표) · `class-diagram.md` · `match-mode-design.md`. 설계 입력은 `docs/plans/2026-09-22-battle-core-rebuild-census/` |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
 | "과거 어떻게 만들어졌나?" | `docs/prototype/PHASE{0..10}.md` — 프로토타이핑 단계 종료 스펙 (읽기 전용 아카이브) |
@@ -274,10 +298,10 @@ critic/review 지적은 문서 계층을 깨지 않게 반영한다.
 - [ ] 이 기능이 현재 spec 범위 안인가?
 - [ ] 이 코드에 테스트를 작성하는 것이 자연스러운가?
 - [ ] "확장 가능"을 이유로 만드는 구조가 지금 실제로 쓰이는가?
-- [ ] Component 쓰기가 소유 맥락 내에서만 일어나는가?
+- [ ] `[옛 전투]` Component 쓰기가 소유 맥락 내에서만 일어나는가? / `[새 전투 코어]` 판정·상태가 그 일의 담당자 안에만 있는가(매니저 없음)?
 - [ ] 상속 계층이 3단계를 넘지 않는가?
 
-### ECS 설계의 불확실성 대응
+### ECS 설계의 불확실성 대응 `[옛 전투]`
 
 1. **작은 결정은 에이전트가 내리고 짧게 설명한다** — 사용자가 실시간으로 ECS를 학습하는 효과
 2. **아키텍처 수준의 결정은 사용자에게 질문한다** — 여러 정답이 있는 경우에만. 작업 단위마다 질문하지 않고 묶어서 한 번에.
@@ -333,7 +357,7 @@ critic/review 지적은 문서 계층을 깨지 않게 반영한다.
 - **추상화 먼저 만들지 않는다.** 인터페이스부터 정의한 뒤 구현하는 방식 금지. 구체 구현부터 시작해서 반복이 생기면 그때 추출한다.
 - **사용자 확인 없이 다음 작업 단위로 넘어가지 않는다.**
 - **경계를 유혹적으로 넓히지 않는다.** "이 한 줄만 예외로 하면..." 금지. 경계 위반이 필요해 보이면 정지하고 질문.
-- **맥락 폴더를 임의로 만들지 않는다.** 현재 허용된 맥락은 Units / Movement / Combat / Effects 4개. 새 맥락이 필요해 보이면 질문. (Presentation 폴더는 ECS 맥락이 아닌 MonoBehaviour View 계층임을 명심.)
+- `[옛 전투]` **맥락 폴더를 임의로 만들지 않는다.** 현재 허용된 맥락은 Units / Movement / Combat / Effects 4개. 새 맥락이 필요해 보이면 질문. (Presentation 폴더는 ECS 맥락이 아닌 MonoBehaviour View 계층임을 명심.)
 - **Unity 씬 wiring 을 "사용자 수작업" 으로 미루지 않는다.** UnityMCP로 자동화 가능한 것은 전부 자동화한 뒤 Play 검증까지가 완료.
 
 ## 기억할 것
